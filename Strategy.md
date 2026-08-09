@@ -36,20 +36,50 @@ Ne jamais inventer arbitrairement un comportement uniquement pour faire compiler
 
 ---
 
-## Source de vérité
+## Sources de vérité
 
-Toujours utiliser `Blaze.c` comme référence lors de la reconstruction.
+Toujours utiliser `Blaze.c` comme référence principale lors de la reconstruction de Blaze.
 
 Ne jamais modifier `Blaze.c`.
 
 Ne jamais considérer une précédente traduction C# comme plus fiable que `Blaze.c`.
 
+Les DLL utilisées par Blaze ont également été décompilées avec Ghidra.
+
+Ces fichiers décompilés sont des **sources de référence secondaires en lecture seule**.
+
+Ils ne doivent JAMAIS être modifiés.
+
+Ils doivent être consultés lorsqu'un appel externe, un ordinal, une signature native ou un comportement provenant d'une DLL doit être compris.
+
 Lorsqu'une ambiguïté apparaît :
 
 1. revenir au code correspondant dans `Blaze.c`;
 2. analyser les appels et les variables environnantes ;
-3. conserver autant que possible la sémantique du pseudo-code Ghidra ;
-4. utiliser un `TODO(REVERSE)` si le comportement exact reste impossible à déterminer.
+3. si une DLL externe est impliquée, consulter sa version décompilée ;
+4. conserver autant que possible la sémantique du pseudo-code Ghidra ;
+5. utiliser un `TODO(REVERSE)` si le comportement exact reste impossible à déterminer.
+
+---
+
+## Documentation des DLL
+
+Les connaissances acquises pendant l'analyse des DLL doivent être documentées progressivement dans :
+
+`Documentation/DLL/<nom-de-la-dll>.md`
+
+Cette documentation doit servir de mémoire technique du reverse engineering.
+
+Lorsqu'un export, un ordinal, une fonction ou un comportement d'une DLL est suffisamment compris :
+
+1. vérifier si une documentation existe déjà pour cette DLL ;
+2. la créer si nécessaire ;
+3. ajouter ou mettre à jour les informations découvertes ;
+4. conserver les références utiles vers les noms et adresses générés par Ghidra.
+
+Avant de réanalyser une fonction externe déjà rencontrée, consulter d'abord la documentation de la DLL correspondante.
+
+La documentation doit distinguer les comportements confirmés des hypothèses restant à vérifier.
 
 ---
 
@@ -59,7 +89,7 @@ Commencer exclusivement par la fonction :
 
 `entry`
 
-Analyser son rôle et reconstruire son équivalent C# dans `Blaze/Blaze.cs`.
+Analyser son rôle et reconstruire son équivalent C# dans `src/Blaze/Blaze.cs`.
 
 Ensuite, suivre les fonctions appelées par `entry`.
 
@@ -72,6 +102,8 @@ Procéder progressivement selon le graphe d'appels :
 
 Ne pas commencer à traduire aléatoirement des fonctions éloignées du point d'entrée.
 
+Lorsque l'exécution atteint une fonction encore non reconstruite, reprendre naturellement la reconstruction depuis cette fonction et poursuivre autant que raisonnablement possible dans ses dépendances.
+
 ---
 
 ## Méthode de reconstruction
@@ -81,15 +113,16 @@ Pour chaque fonction Ghidra rencontrée :
 1. lire entièrement la fonction dans `Blaze.c`;
 2. identifier autant que possible son rôle ;
 3. analyser les fonctions qu'elle appelle ;
-4. analyser les données globales qu'elle utilise ;
-5. déterminer les types C# les plus plausibles ;
-6. reconstruire son contrôle de flux ;
-7. écrire son équivalent dans `Blaze/Blaze.cs`;
-8. compiler le projet ;
-9. corriger uniquement les erreurs liées au code nouvellement ajouté ;
-10. continuer avec les dépendances nécessaires.
+4. lorsqu'une DLL externe est impliquée, consulter sa décompilation et sa documentation ;
+5. analyser les données globales qu'elle utilise ;
+6. déterminer les types C# les plus plausibles ;
+7. reconstruire son contrôle de flux ;
+8. écrire son équivalent dans `src/Blaze/Blaze.cs`;
+9. compiler le projet ;
+10. corriger uniquement les erreurs liées au code nouvellement ajouté ;
+11. continuer avec les dépendances nécessaires.
 
-Travailler par petits groupes cohérents de fonctions.
+Travailler par groupes cohérents de fonctions.
 
 Relancer régulièrement :
 
@@ -206,6 +239,8 @@ Lorsque le pseudo-code utilise une API Windows connue, utiliser un P/Invoke C# a
 
 Conserver un commentaire indiquant la fonction native originale lorsque cela aide à la traçabilité.
 
+Pour les fonctions provenant d'une DLL décompilée, analyser leur implémentation avant d'inférer leur comportement ou leur signature depuis les seuls call-sites.
+
 Pour les appels indirects ou pointeurs de fonctions dont la signature n'est pas encore certaine :
 
 `// TODO(REVERSE): confirmer la signature native et la convention d'appel.`
@@ -256,6 +291,7 @@ Préférer :
 Ne jamais :
 
 * modifier `Blaze.c`;
+* modifier les sources décompilées des DLL ;
 * réécrire massivement le fichier avec des regex ;
 * ajouter des centaines de casts simplement pour compiler ;
 * remplacer arbitrairement une valeur inconnue par `0`, `null` ou `false`;
@@ -285,7 +321,7 @@ Lorsqu'une fonction vient d'être traduite, privilégier la correction de cette 
 
 Pour le moment :
 
-`Blaze/Blaze.cs`
+`src/Blaze/Blaze.cs`
 
 doit contenir toute la reconstruction.
 
@@ -312,5 +348,6 @@ Une fonction peut être considérée comme reconstruite lorsque :
 * les types utilisés sont raisonnablement cohérents ;
 * son rôle est nommé correctement ou marqué comme inconnu ;
 * sa provenance Ghidra reste identifiable ;
+* ses dépendances externes ont été analysées lorsque nécessaire ;
 * elle ne contient pas de modification arbitraire destinée uniquement à compiler ;
 * les incertitudes restantes sont indiquées par `TODO(REVERSE)`.
