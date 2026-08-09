@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia", "OpenForesia\OpenForesia.csproj", "{0AA8C88C-7DAB-4E55-B725-0706430EE706}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Tools", "OpenForesia.Tools\OpenForesia.Tools.csproj", "{2E04A4FB-3554-46FF-BCD7-198E69090B5E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0AA8C88C-7DAB-4E55-B725-0706430EE706}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AA8C88C-7DAB-4E55-B725-0706430EE706}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AA8C88C-7DAB-4E55-B725-0706430EE706}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AA8C88C-7DAB-4E55-B725-0706430EE706}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2E04A4FB-3554-46FF-BCD7-198E69090B5E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E04A4FB-3554-46FF-BCD7-198E69090B5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E04A4FB-3554-46FF-BCD7-198E69090B5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E04A4FB-3554-46FF-BCD7-198E69090B5E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "OpenForesia.Tools/1.0.0": {
+        "runtime": {
+          "OpenForesia.Tools.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "OpenForesia.Tools/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
