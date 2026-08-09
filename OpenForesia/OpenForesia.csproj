@@ -13,18 +13,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Update="Legacy\DLL\*.dll">
+        <None Update="src\DLL\*.dll">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <TargetPath>%(Filename)%(Extension)</TargetPath>
         </None>
     </ItemGroup>
 
     <ItemGroup>
-      <ClCompile Include="Legacy\Decompiled\Blaze.c" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Blaze\" />
+      <Folder Include="src\Blaze\" />
+      <Folder Include="src\DLL\" />
     </ItemGroup>
 
 </Project>

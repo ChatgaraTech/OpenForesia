@@ -12,3 +12,4 @@ F:\Open Foresia Project\GitHub Project\OpenForesia\OpenForesia.Tools\obj\Debug\n
 F:\Open Foresia Project\GitHub Project\OpenForesia\OpenForesia.Tools\obj\Debug\net9.0\OpenForesia.Tools.pdb
 F:\Open Foresia Project\GitHub Project\OpenForesia\OpenForesia.Tools\obj\Debug\net9.0\OpenForesia.Tools.genruntimeconfig.cache
 F:\Open Foresia Project\GitHub Project\OpenForesia\OpenForesia.Tools\obj\Debug\net9.0\ref\OpenForesia.Tools.dll
+F:\Open Foresia Project\GitHub Project\OpenForesia\OpenForesia.Tools\obj\Debug\net9.0\OpenForesia.Tools.sourcelink.json
