@@ -6,8 +6,8 @@ void FUN_00513660(void)
   int iVar2;
   undefined1 *puVar3;
   undefined4 uVar4;
-  undefined1 auStack_8 [4];
-  undefined1 auStack_4 [4];
+  undefined1 local_8 [4];
+  undefined1 local_4 [4];
   
   while( true ) {
     DVar1 = WaitForMultipleObjects(9,(HANDLE *)&DAT_005db838,0,0xffffffff);
@@ -20,10 +20,10 @@ void FUN_00513660(void)
       else {
         iVar2 = DVar1 - 1;
       }
-      puVar3 = auStack_4;
+      puVar3 = local_4;
       uVar4 = 0;
       (**(code **)(*DAT_005db900 + 0x2c))
-                (DAT_005db900,(&DAT_005db8a0)[iVar2 * 2],DAT_005db8a8,auStack_8,puVar3,0,0,0);
+                (DAT_005db900,(&DAT_005db8a0)[iVar2 * 2],DAT_005db8a8,local_8,puVar3,0,0,0);
       if (DAT_005db860 + 10 < DAT_005db750) {
         FUN_00531bb0(DAT_005db8f4,
                      DAT_005db860 * (uint)*(ushort *)(DAT_005db8f4 + 0xc) + DAT_005db8f8,

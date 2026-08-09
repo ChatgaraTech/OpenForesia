@@ -16,13 +16,13 @@ int __thiscall FUN_00543760(int param_1,int *param_2)
   int *piStack_24;
   undefined1 *puStack_20;
   int *piStack_14;
-  undefined1 auStack_10 [12];
+  undefined1 local_10 [12];
   undefined1 auStack_4 [4];
   
   if (param_2 == (int *)0x0) {
     return -0x7ff8ffa9;
   }
-  puStack_20 = auStack_10;
+  puStack_20 = local_10;
   piStack_24 = param_2;
   ppiStack_28 = (int **)0x543787;
   iVar1 = (**(code **)(*param_2 + 0x28))();

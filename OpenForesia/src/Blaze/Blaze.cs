@@ -199,6 +199,26 @@ public static unsafe partial class Blaze
     // ofs={x,y}, tw={0,0,0,0}, tpage=10, dtd=1, dfe=1, isbg=0, r0=g0=b0=0 (first 28 bytes of 92).
     [DllImport("winsys3d.dll", EntryPoint = "#661")] private static extern void SetDefDrawEnv(void* drawEnv, short x, short y, short w, short h);
 
+    // Game-state-0 ordinals. winsys3d.c declares all of these with no parameters, but that is the
+    // same decompiler artifact seen throughout this project — the **call sites are authoritative**,
+    // and the argument counts below are theirs (Blaze.c: FUN_00529a80 and FUN_00542160).
+    [DllImport("winsys3d.dll", EntryPoint = "#97")] private static extern int Ordinal_97(int a, int b, int c);
+    [DllImport("winsys3d.dll", EntryPoint = "#762")] private static extern void Ordinal_762(void* p);
+    [DllImport("winsys3d.dll", EntryPoint = "#765")] private static extern int Ordinal_765(int a, uint rgb);
+    [DllImport("winsys3d.dll", EntryPoint = "#766")] private static extern int Ordinal_766(void* p);
+    [DllImport("winsys3d.dll", EntryPoint = "#767")] private static extern void Ordinal_767(int a, uint rgb);
+    [DllImport("winsys3d.dll", EntryPoint = "#768")] private static extern int Ordinal_768(int a);
+    [DllImport("winsys3d.dll", EntryPoint = "#769")] private static extern int Ordinal_769(int a);
+    [DllImport("winsys3d.dll", EntryPoint = "#770")] private static extern int Ordinal_770(void* p);
+
+    // Frame ordinals. 688 is libgpu `ClearOTagR(u_long *ot, int n)` — winsys3d.c FUN_00a06160 keeps
+    // both parameters, unlike its neighbours. 657/660 take a DISPENV/DRAWENV (PutDispEnv/PutDrawEnv
+    // shaped), 701 takes the ordering table (DrawOTag shaped).
+    [DllImport("winsys3d.dll", EntryPoint = "#688")] private static extern uint* Ordinal_688(uint* ot, int count);
+    [DllImport("winsys3d.dll", EntryPoint = "#657")] private static extern int Ordinal_657(void* env);
+    [DllImport("winsys3d.dll", EntryPoint = "#660")] private static extern int Ordinal_660(void* env);
+    [DllImport("winsys3d.dll", EntryPoint = "#701")] private static extern void Ordinal_701(uint* ot);
+
     // real: winsys3d.c FUN_00a05e90 — libgpu `ClearImage(RECT*, r, g, b)`-shaped (takes a 4-short
     // RECT and floods VRAM), but its colour math decompiles as
     // `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match ClearImage's plain (r,g,b).
@@ -268,6 +288,8 @@ public static unsafe partial class Blaze
     [DllImport("user32.dll", CharSet = CharSet.Ansi)] private static extern nint DefWindowProcA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
     [DllImport("user32.dll")] private static extern void PostQuitMessage(int nExitCode);
     [DllImport("user32.dll")] private static extern IntPtr SetFocus(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
+    [DllImport("kernel32.dll")] private static extern void Sleep(uint milliseconds);
     [DllImport("winmm.dll")] private static extern uint timeGetTime();
     [DllImport("user32.dll")] private static extern IntPtr SetTimer(IntPtr hWnd, nuint nIDEvent, uint uElapse, IntPtr lpTimerFunc);
     [DllImport("user32.dll")] private static extern int KillTimer(IntPtr hWnd, nuint uIDEvent);
@@ -3589,7 +3611,7 @@ public static unsafe partial class Blaze
         Ordinal_41();
         Ordinal_45(null, s_CdDataRootPath); // Ghidra: apcStack_54[1]="j" — TODO(REVERSE): odd literal, but Ordinal_45 is a confirmed no-op regardless
         Ordinal_136(0);
-        s_Flag_0056e9c0 = 1; // Ghidra: FUN_00547130(1)
+        s_RandSeed_0056e9c0 = 1; // Ghidra: FUN_00547130(1) — srand(1); see CrtRand
         s_Unknown_005e9630 = Ordinal_116();
         Ordinal_771();
         InitTrigTables(); // Ordinal_337, re-run (idempotent — see winsys3d.md)
@@ -3631,7 +3653,7 @@ public static unsafe partial class Blaze
     // Ordinal_116, always 0) / DAT_005e97f0 (set by the confirmed-no-op Ordinal_104, always 0) /
     // DAT_005e97e0 (screen stride/pitch?) / _DAT_005e9820 — all read again by not-yet-reconstructed
     // rendering code.
-    private static int s_Flag_0056e9c0;
+    private static uint s_RandSeed_0056e9c0; // Ghidra: DAT_0056e9c0 — the CRT rand seed
     private static uint s_Unknown_005e9630;
     private static uint s_Unknown_005e97f0;
     private static uint s_ScreenStride_005e97e0;
@@ -4175,6 +4197,922 @@ public static unsafe partial class Blaze
         }
     }
 
+    // =====================================================================
+    // Game state 0 — the main menu (Ghidra: FUN_00542130 and its subtree).
+    //
+    // Rendering follows the PlayStation display-list model the rest of winsys3d already showed:
+    // FrameBegin prepares a primitive buffer and an ordering table, each renderer links its
+    // primitive into the OT and returns the advanced buffer cursor, and FrameEnd walks the OT and
+    // swaps buffers. The OT pointer is threaded through return values — that threading *is* the
+    // display list, so it is modelled as written rather than hidden behind a field.
+    // =====================================================================
+
+    // Ghidra: DAT_005e9300 — which of the two draw envs is current, i.e. the back/front selector.
+    private static byte* s_CurrentDrawEnv;
+    private static int s_Unknown_005e8310;
+    private static int s_Unknown_005e9818;
+    private static uint s_FadeCounter_005e9960;      // Ghidra: DAT_005e9960
+    private static uint s_Unknown_005e9814;
+    private static int s_Unknown_005de154, s_Unknown_005de158, s_Unknown_005de15c;
+    private static int s_Unknown_005de51c;
+    private static int s_MenuSelection_005e909f;     // Ghidra: DAT_005e909f — the selected entry
+    private static byte s_Unknown_0056e61f;
+    private static int s_Unknown_005d9de0;
+    private static int s_Unknown_00564a48, s_Unknown_00571a3c;
+
+    /// <summary>
+    /// Ghidra: FUN_0052a1e0 @ 0x0052a1e0 — begins a frame: picks the scratch bases out of MainMem
+    /// according to which draw env is current, clears a 1024-entry ordering table
+    /// (<c>Ordinal_688</c>, libgpu's ClearOTagR) and resets the primitive cursor.
+    /// <para>
+    /// Ghidra recovers only two parameters where the call sites pass three, and renders both
+    /// writes as <c>*param_1</c>. **Confirmed against the disassembly**
+    /// (`Legacy/Raw/FUN_0052a1e0.asm`): the function has no prologue, so its arguments sit at
+    /// `[ESP+4]`, `[ESP+8]` and `[ESP+0xc]`, and `0052a257 MOV ECX,[ESP+0xc]` shows the second
+    /// write targets **arg3** — the primitive buffer. Plain `RET` with the caller's `ADD ESP,0xc`
+    /// makes it cdecl with three arguments.
+    /// </para>
+    /// </summary>
+    private static void FrameBegin(uint** otBase, uint** otEntry, uint** primCursor)
+    {
+        // Every caller uses all three out-parameters immediately, so they must be written on every
+        // path. Returning early without setting them left uninitialised stack in the caller and
+        // took DrawOTag down with a null-page access — a defect in this reconstruction, not in the
+        // original, which has no such early exit.
+        *otBase = null;
+        *otEntry = null;
+        *primCursor = null;
+
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null)
+        {
+            throw new NotImplementedException(
+                "FUN_0052a1e0: winsys3d.dll's MainMem export resolves to null, so the frame's " +
+                "ordering table and primitive buffer have nowhere to live — see REVERSE_STATUS.md " +
+                "TODO #33. Every frame is built inside that arena, so this cannot degrade quietly.");
+        }
+
+        bool firstEnv = s_CurrentDrawEnv == s_DrawEnv0_005e9880;
+
+        uint* ot = (uint*)(mainMem + (firstEnv ? 0x1c7000 : 0x1c6000));
+        *otBase = ot;
+        *otEntry = (uint*)((byte*)ot + 0xffc);   // Ghidra: *param_2 = iVar1 + 0xffc
+        Ordinal_688(ot, 0x400);                   // ClearOTagR(ot, 1024)
+        s_Unknown_005e8310 = 0;
+
+        *primCursor = (uint*)(mainMem + (firstEnv ? 0x1e4000 : 0x1c8000));
+        s_Unknown_005e9818 = 0x9c4;
+
+        // Ghidra: FUN_00533000(DAT_005e97c0) — palette animation, once per frame.
+        AnimatePalettes(s_MainResourceBuffer_005e97c0);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0052a280 @ 0x0052a280 — ends a frame: advances the frame counter, swaps the
+    /// draw/display env pair, walks the ordering table and immediately begins the next frame.
+    /// <para>
+    /// Ghidra recovers **no** parameters for this function, yet every call site passes five. The
+    /// mapping below is **confirmed against the disassembly** (`Legacy/Raw/FUN_0052a280.asm`):
+    /// tracing `SUB ESP,0x14` plus two `PUSH`es puts the arguments at `[ESP+0x20]`..`[ESP+0x30]`,
+    /// giving `Ordinal_701(*arg2)`, `Ordinal_132(arg4)`, the guard on `arg5`, and the tail call
+    /// `FUN_0052a1e0(arg1, arg2, arg3)` — cdecl, three arguments, `ADD ESP,0xc`.
+    /// </para>
+    /// </summary>
+    private static void FrameEnd(uint** otBase, uint** otEntry, uint** primCursor, int mode, int flag)
+    {
+        CrtRand();                             // Ghidra: FUN_00547140() — result discarded here
+
+        s_FadeCounter_005e9960++;
+
+        int cosine = GetCosTableEntry((int)(s_FadeCounter_005e9960 * 0x200));
+        sbyte level = (sbyte)((cosine >> 6) - 0x80);
+        s_Unknown_005e9814 = (uint)(((byte)level << 16) | ((byte)level << 8) | (byte)level);
+
+        Ordinal_667(0);
+
+        // Ghidra: puVar3 = &DAT_005e9880; if (DAT_005e9300 == &DAT_005e9880) puVar3 = &DAT_005e98f0;
+        // — the buffer swap: pick the *other* draw env, then publish its matching disp env at +0x5c.
+        byte* nextDrawEnv = s_CurrentDrawEnv == s_DrawEnv0_005e9880
+            ? s_DrawEnv1_005e98f0
+            : s_DrawEnv0_005e9880;
+        s_CurrentDrawEnv = nextDrawEnv;
+
+        Ordinal_657(nextDrawEnv + 0x5c);       // the DISPENV sits 0x5c past the DRAWENV
+        Ordinal_660(nextDrawEnv);
+
+        FlushDeferredImageUploads();           // Ghidra: FUN_00545140()
+
+        Ordinal_701(*otEntry);                 // DrawOTag — asm: Ordinal_701(*arg2)
+
+        // asm 0052a314: MOV ECX,[ESP+0x2c] — that slot is **arg4**, not arg5. The `if` below tests
+        // [ESP+0x30], which is arg5. An earlier reading passed the same value to both.
+        Ordinal_132(mode);
+
+        if (flag != 0)
+        {
+            PollInputAndAudio();               // Ghidra: FUN_00512520 / FUN_005048f0 /
+                                               //         FUN_00504a30 / FUN_005357a0
+        }
+
+        FrameBegin(otBase, otEntry, primCursor);
+
+        // Ghidra: if (DAT_00571a3c != 0) draw the "Veuillez connecter la manette !" banner.
+        if (s_Unknown_00571a3c != 0)
+        {
+            ControllerBannerStub();            // Ghidra: FUN_0051c120(...)
+        }
+    }
+
+    /// <summary>Ghidra: FUN_00529a80 @ 0x00529a80 — screen/viewport setup for the menu state.</summary>
+    private static void SetupMenuScreen()
+    {
+        // Ghidra: a small struct at DAT_00566c48 filled with 0xcf / 0x3fff clip values, then two
+        // ordinal calls. Modelled as a raw block because none of its fields are individually named.
+        uint* block = s_MenuScreenBlock_00566c48;
+        block[0] = 0xcf;
+        *(ushort*)((byte*)block + 4) = 0x3fff;
+        *(ushort*)((byte*)block + 6) = 0x3fff;
+        *(ushort*)((byte*)block + 8) = 0;
+        *(ushort*)((byte*)block + 0x0a) = 0;
+        *(ushort*)((byte*)block + 0x10) = 0x3fff;
+        *(ushort*)((byte*)block + 0x12) = 0x3fff;
+
+        Ordinal_762(block);
+        Ordinal_97(0xc, 0, 0);
+    }
+
+    // Ghidra: &DAT_005e8f00 — the menu state's own tpage/clut slot table, distinct from the
+    // 0x005e8fc0 one LoadFirstLevelResources fills. Same 4-byte-per-entry layout.
+    private static readonly byte* s_EntityDecodeTable_005e8f00 = (byte*)NativeMemory.AllocZeroed(0x1000);
+
+    // Ghidra: DAT_005e97c8 — the tail pointer LoadResourceEntry returns for the state's own load.
+    private static byte* s_Unknown_005e97c8;
+
+    // winsys3d.dll named exports (ordinal 776 and its setter) — the viewport shift the options page
+    // saves and restores around its own screen.
+    [DllImport("winsys3d.dll")] private static extern void GetAbsShift(int* x, int* y);
+    [DllImport("winsys3d.dll")] private static extern void SetAbsShift(int x, int y);
+
+    // Ghidra: _DAT_0054d074 — the float the gamma value is scaled by before CreateTranslationTables.
+    // TODO(REVERSE): .rdata content; 1.0f keeps the product equal to the raw setting.
+    private const float s_GammaScale_0054d074 = 1.0f;
+
+    // Ghidra: PTR_s____Music_Mel00_01_WAV_00566cc8 — the music filename table. Entries recovered
+    // from Legacy/Blaze.exe are CD-root absolute templates; see Documentation/DataSymbols.md.
+    // TODO(REVERSE): only the sampled entries are transcribed. Call sites index up to at least
+    // 0x26, so the remaining slots stay null and PlayMusicTrack returns without starting anything
+    // rather than indexing past the table.
+    private static readonly byte*[] s_MusicTrackPaths = BuildMusicTrackTable();
+
+    private static byte*[] BuildMusicTrackTable()
+    {
+        var table = new byte*[0x30];
+        table[0] = ToAnsiZ("@:/Music/Mel00_01.WAV");
+        table[1] = ToAnsiZ("@:/Music/Mel00_02.WAV");
+        table[7] = ToAnsiZ("@:/Music/End01.WAV");
+        return table;
+    }
+
+    private static readonly uint* s_MenuScreenBlock_00566c48 = (uint*)NativeMemory.AllocZeroed(0x40);
+    private static readonly uint* s_MenuRenderBlock_00566c70 = (uint*)NativeMemory.AllocZeroed(0x40);
+
+    /// <summary>
+    /// Ghidra: FUN_00542160 @ 0x00542160 — reloads the state's resources. Its directory loop is the
+    /// same one <see cref="LoadFirstLevelResources"/> already runs, so it reuses the same three
+    /// reconstructed helpers rather than duplicating them.
+    /// </summary>
+    private static void LoadMenuResources()
+    {
+        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
+        FixupResourceHeader(s_MainResourceDirectory_005e97c4);
+
+        if (s_MainResourceDirectory_005e97c4 != null)
+        {
+            int* directory = *(int**)(s_MainResourceDirectory_005e97c4 + 0x10);
+            int entryPtrValue = *directory;
+            if (entryPtrValue != 0)
+            {
+                int* metadata = directory + 1;
+                byte* destSlot = s_EntityDecodeTable_005e8f00;
+                byte* mainMem = GetMainMemPtr();
+                do
+                {
+                    byte* scratch = mainMem != null ? mainMem + 0x1b0000 : null;
+                    LoadResourceEntry((int*)(nint)entryPtrValue, scratch);
+                    DecodeResourceChunk(scratch, (ushort*)destSlot, (byte*)metadata);
+                    entryPtrValue = directory[2];
+                    directory += 2;
+                    destSlot += 4;      // same 4-byte tpage/clut stride as the other call site
+                    metadata += 2;
+                } while (entryPtrValue != 0);
+            }
+        }
+
+        // Ghidra: _DAT_00566c74 = 0x100; _DAT_00566c78 = 0; _DAT_00566c7a = 0; then six ordinals.
+        uint* block = s_MenuRenderBlock_00566c70;
+        *(uint*)((byte*)block + 4) = 0x100;
+        *(ushort*)((byte*)block + 8) = 0;
+        *(ushort*)((byte*)block + 0x0a) = 0;
+
+        Ordinal_770(block);
+        Ordinal_769(1);
+        Ordinal_768(1);
+        Ordinal_767(0, 0xffffff);
+        Ordinal_766(block);
+        Ordinal_765(1, 0xffffff);
+    }
+
+    /// <summary>Ghidra: FUN_00542130 @ 0x00542130 — game state 0's entry point: the main menu.</summary>
+    private static void RunMainMenuState()
+    {
+        LoadMenuResources();      // Ghidra: FUN_00542160()
+        SetupMenuScreen();        // Ghidra: FUN_00529a80()
+        s_FadeCounter_005e9960 = 0;
+
+        // Ghidra: while (DAT_005de510 == 0) FUN_00542250();
+        while (s_GameStateId == 0)
+        {
+            RunMainMenuFrameLoop();
+        }
+    }
+
+    /// <summary>Ghidra: FUN_00529ad0 @ 0x00529ad0 — starts a music track by table index.</summary>
+    private static void PlayMusicTrack(int trackIndex)
+    {
+        // Ghidra: patches the path's first character with the CD drive letter, then starts the
+        // stream. The table entries are CD-**root** absolute templates ("@:/Music/Mel00_01.WAV"),
+        // recovered at PTR_s____Music_Mel00_01_WAV_00566cc8 — see Documentation/DataSymbols.md.
+        if (trackIndex < 0 || trackIndex >= s_MusicTrackPaths.Length) return;
+        byte* path = s_MusicTrackPaths[trackIndex];
+        if (path == null) return;
+        path[0] = s_CdDataRootPath[0];
+        StartMusicStream(path);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00542250 @ 0x00542250 — the main menu's frame loop. Runs until a menu entry is
+    /// chosen, then sets the next game state (or exits) and returns.
+    /// </summary>
+    private static void RunMainMenuFrameLoop()
+    {
+        uint* otBase, otEntry, primCursor;
+        FrameBegin(&otBase, &otEntry, &primCursor);
+
+        PlayMusicTrack(6);
+
+        // Ghidra: DAT_005e9898 = 1; DAT_005e9908 = 1 — the two draw envs' `isbg`.
+        *(s_DrawEnv0_005e9880 + 0x18) = 1;
+        *(s_DrawEnv1_005e98f0 + 0x18) = 1;
+
+        JoystickResetState(false);
+
+        // Ghidra: the entity-slot table init. The table it reads from is selected by two joystick
+        // axis comparisons against -0x8000 (a disconnected/centred sentinel), producing an index
+        // 0..3 into a four-entry pointer table at 0x0056e660.
+        // TODO(REVERSE): that table is .data content and its four entries are not modelled, so the
+        // per-slot byte writes into DAT_00604a2a are skipped. The slot table itself is initialised
+        // exactly as the original does.
+        InitialiseEntitySlots();
+
+        s_Unknown_005de538 = 0;
+
+        // Ghidra: FUN_00544350(&DAT_0056e670, 0, &DAT_0056dd58, 0)
+        BindMenuLabels(s_MenuLabels_0056e670, 0, s_MenuContext_0056dd58, 0);
+
+        while (true)
+        {
+            s_Unknown_005de15c = 1;
+
+            // Ghidra: the fade. uVar3 is the grey level; it walks down while the low nibble of the
+            // frame counter is not 8 and the level is still above 0x7f.
+            uint level = (s_FadeCounter_005e9960 & 0xf) * 0x10;
+            s_Unknown_005de154 = (0xb - s_UnknownDetailSetting_005de160) * 0x10;
+            s_Unknown_005de158 = (0xb - s_UnknownDetailSetting_005de160) * 0x0c;
+
+            if ((s_FadeCounter_005e9960 & 0xf) != 8 && level > 0x7f)
+            {
+                s_FadeCounter_005e9960--;
+                level = 0x80;
+
+                primCursor = MenuBackgroundStub(primCursor);           // Ghidra: FUN_005443a0
+                primCursor = MenuUiEngineStub(otEntry, primCursor);    // Ghidra: FUN_00545340
+
+                int gammaBefore = s_Unknown_005d9de0;
+
+                if ((s_Unknown_0056e61f & 4) == 0)
+                {
+                    switch (s_MenuSelection_005e909f)
+                    {
+                        case 0: s_GameStateId = 1; break;
+                        case 1: s_GameStateId = 4; break;
+                        case 2: s_GameStateId = 6; break;
+
+                        case 3:
+                            // The options page. Drains the input queue, rebuilds textures, runs the
+                            // options UI, writes the settings back and rebuilds the gamma tables if
+                            // the value changed.
+                            while (InputDrainStub() != 0) { }
+                            ReInitializeAllTextures();
+                            int shiftX, shiftY;
+                            GetAbsShift(&shiftX, &shiftY);
+                            SetAbsShift(0, 0);
+                            if (s_UnknownDetailSetting_005de160 < 7) s_SmallTextureFlag = 1;
+                            OptionsScreenStub();                        // Ghidra: FUN_00512320
+                            SetAbsShift(shiftX, shiftY);
+                            SaveOptionsIni();
+                            if (gammaBefore != s_Unknown_005d9de0)
+                            {
+                                CreateTranslationTables(s_Unknown_005d9de0 * s_GammaScale_0054d074);
+                            }
+                            break;
+
+                        case 4:
+                            Exit(0);   // Ghidra: FUN_00547770(0)
+                            break;
+                    }
+
+                    if (s_GameStateId != 0)
+                    {
+                        FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+                        s_Unknown_005de15c = 0;
+                        s_Unknown_005de51c = 0;
+                        return;
+                    }
+                }
+            }
+
+            s_Unknown_005de15c = 0;
+
+            // Ghidra: the per-frame draw. local_10 is the grey fill (level * 0x10101), and the
+            // literals below are the sprite's position/size block the two renderers read.
+            uint* drawBlock = s_MenuDrawBlock;
+            drawBlock[0] = level * 0x10101;
+            *(ushort*)((byte*)drawBlock + 4) = 0xa0;
+            *(ushort*)((byte*)drawBlock + 6) = 0x78;
+            *(ushort*)((byte*)drawBlock + 8) = 0x1420;
+            *(ushort*)((byte*)drawBlock + 0x0a) = 0x1149;
+            *(ushort*)((byte*)drawBlock + 0x0c) = 0;
+
+            // Ghidra: local_14 = *(*(DAT_005e97c4 + 0x94) + 4)
+            int* sprite = s_MenuSpriteRef;
+            if (s_MainResourceDirectory_005e97c4 != null)
+            {
+                int* table = *(int**)(s_MainResourceDirectory_005e97c4 + 0x94);
+                if (table != null) sprite[0] = table[1];
+            }
+
+            primCursor = DrawSpritePrimitive(otEntry, primCursor, sprite, 0, 0);
+            primCursor = DrawFlatPrimitive(otEntry, primCursor, sprite);
+            FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+        }
+    }
+
+    private static readonly uint* s_MenuDrawBlock = (uint*)NativeMemory.AllocZeroed(0x20);
+    private static readonly int* s_MenuSpriteRef = (int*)NativeMemory.AllocZeroed(0x20);
+
+    /// <summary>
+    /// Ghidra: the entity-slot initialisation loop at the top of FUN_00542250 — four 0x4c-byte
+    /// slots, each stamped with its index and a leading 8.
+    /// </summary>
+    private static void InitialiseEntitySlots()
+    {
+        byte* slot = s_EntitySlotTable_005e9180;
+        for (int i = 0; i < 4; i++, slot += 0x4c)
+        {
+            slot[0] = 8;
+            slot[1] = (byte)i;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051f9c0 @ 0x0051f9c0 — links a two-word flat primitive into the ordering table.
+    /// The tag word carries the primitive length in its top byte (0x02000000), which is the
+    /// PlayStation display-list convention.
+    /// </summary>
+    private static uint* DrawFlatPrimitive(uint* otEntry, uint* prim, int* sprite)
+    {
+        uint attributes = *(uint*)(*(int*)sprite + 4 + (short)sprite[4] * 8);
+
+        if (s_Unknown_00564a48 != 0 && (attributes & 0x200) != 0)
+        {
+            if (s_SmallTextureFlag == 0) return prim;
+            attributes &= 0xfffffdff;
+        }
+
+        prim[1] = (uint)*(ushort*)(s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4)
+                  | ((attributes & 0xff) << 5) | 0xe1000000;
+        prim[2] = 0;
+        *prim = *otEntry | 0x2000000;
+        *otEntry = (uint)(nuint)prim;
+        return prim + 8;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00521f20 @ 0x00521f20 — links a ten-word textured sprite primitive into the
+    /// ordering table (tag length 0x09000000). The bit packing is transcribed operation for
+    /// operation; the shifts mix a colour, a texture page and four corner coordinates.
+    /// </summary>
+    private static uint* DrawSpritePrimitive(uint* otEntry, uint* prim, int* sprite, uint flags, uint extra)
+    {
+        uint* source = (uint*)(*(int*)sprite + (short)sprite[4] * 8);
+        uint posX = (uint)sprite[2];
+        short halfW = (short)sprite[3];
+        short halfH = *(short*)((byte*)sprite + 0xe);
+        if (halfW < 0) halfW = (short)-halfW;
+        if (halfH < 0) halfH = (short)-halfH;
+
+        uint baseWord = (uint)sprite[1];
+        uint colour = source[0];
+        uint size = (uint)(halfH * 0x10000 + halfW);
+        uint attributes = source[1];
+
+        if (s_Unknown_00564a48 != 0)
+        {
+            if ((attributes & 0x200) != 0)
+            {
+                if (s_SmallTextureFlag == 0) return prim;
+                attributes &= 0xfffffdff;
+            }
+            if ((flags & 2) != 0)
+            {
+                if (s_SmallTextureFlag == 0) return prim;
+                flags = (byte)flags & 0xfdu;
+            }
+        }
+
+        uint alpha = (colour >> 0x10) & 0xff;
+        if (alpha == 0) alpha = 0xff;
+
+        uint scaledW = alpha * (uint)(short)size;
+        uint scaledH = (size >> 0x10) * (colour >> 0x18);
+        uint clut = *(uint*)(s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
+
+        *prim = *otEntry | 0x9000000;
+        *otEntry = (uint)(nuint)prim;
+
+        prim[1] = ((attributes & 0xffffff00) | (((flags & 0xff) | 0x2c) << 8)) << 0x10 | (baseWord & 0x3ffffff);
+
+        uint alphaSum = alpha + (colour & 0xff);
+        uint packed = (colour >> 0x18) * 0x100 + (colour & 0xff00);
+        uint left = (posX - (scaledW >> 0xd)) & 0xffff;
+        uint top = (posX & 0xffff0000) + (scaledH >> 0xd) * 0xffff0000;
+        uint right = (left + (scaledW >> 0xc)) & 0xffff;
+        uint bottom = (scaledH >> 0xc) * 0x10000 + top;
+
+        prim[2] = top | left;
+        prim[3] = (uint)(((((ushort)((short)extra >> 2)) & 0xffc0) + (extra & 0xff)) * 0x10000)
+                  + (clut & 0xffff0000) + ((attributes >> 8) & 0xff0000) | (colour & 0xffff);
+        prim[4] = top | right;
+        prim[5] = (((attributes & 0xff) << 5) | clut) << 0x10 | alphaSum | (colour & 0xff00);
+        prim[6] = left | bottom;
+        prim[8] = bottom | right;
+        prim[7] = packed | (colour & 0xff);
+        prim[9] = packed | alphaSum;
+
+        return prim + 10;
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Deliberately deferred. Each has a decompiled body in Blaze.c and is ordinary uncovered
+    // code, not blocked work; they are stubbed so the frame structure above can be exercised and
+    // the runtime can name the next target. See the change proposal for why.
+    // ---------------------------------------------------------------------------------------
+
+    private static uint* MenuUiEngineStub(uint* otEntry, uint* prim)
+        => throw new NotImplementedException(
+            "FUN_00545340: the menu/UI engine (1742 lines, 25 calls) — deliberately deferred");
+
+    private static uint* MenuBackgroundStub(uint* prim)
+        => throw new NotImplementedException("FUN_005443a0: menu background renderer (233 lines)");
+
+    private static void OptionsScreenStub()
+        => throw new NotImplementedException("FUN_00512320: the options page (80 lines)");
+
+    private static int InputDrainStub()
+        => throw new NotImplementedException("FUN_005048f0: joystick state processing (76 lines)");
+
+    // Ghidra: &DAT_0056e670 — the menu's label table, recovered verbatim from Legacy/Blaze.exe.
+    // A 0x0c length byte, then five cp1252 labels separated by carriage returns, ending 0x09 '?'.
+    // They match the five switch cases in RunMainMenuFrameLoop one for one and in order:
+    //   "Début du jeu"                -> game state 1
+    //   "Sélection des personnages"   -> game state 4
+    //   "Menu objets"                 -> game state 6
+    //   "Options"                     -> the options page
+    //   "Quitter"                     -> Exit(0)
+    private static readonly byte* s_MenuLabels_0056e670 = BuildMenuLabels();
+
+    private static byte* BuildMenuLabels()
+    {
+        ReadOnlySpan<byte> bytes =
+        [
+            0x0c, 0x44, 0xe9, 0x62, 0x75, 0x74, 0x20, 0x64, 0x75, 0x20, 0x6a, 0x65, 0x75, 0x0d,
+            0x53, 0xe9, 0x6c, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x20, 0x64, 0x65, 0x73, 0x20,
+            0x70, 0x65, 0x72, 0x73, 0x6f, 0x6e, 0x6e, 0x61, 0x67, 0x65, 0x73, 0x0d,
+            0x4d, 0x65, 0x6e, 0x75, 0x20, 0x6f, 0x62, 0x6a, 0x65, 0x74, 0x73, 0x0d,
+            0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x0d,
+            0x51, 0x75, 0x69, 0x74, 0x74, 0x65, 0x72, 0x0d,
+            0x09, 0x3f, 0x00, 0x00,
+        ];
+
+        byte* buffer = (byte*)NativeMemory.AllocZeroed((nuint)bytes.Length);
+        for (int i = 0; i < bytes.Length; i++) buffer[i] = bytes[i];
+        return buffer;
+    }
+
+    // Ghidra: &DAT_0056dd58 — the menu context struct FUN_00544350 writes into. Its highest touched
+    // offset is 0x8c7, and the next named global sits at 0x0056e670, so it spans 0x918 bytes.
+    private static readonly byte* s_MenuContext_0056dd58 = (byte*)NativeMemory.AllocZeroed(0x918);
+
+    /// <summary>
+    /// Ghidra: FUN_00544350 @ 0x00544350 — binds the label table and its flags into the menu
+    /// context. The call site is <c>FUN_00544350(&amp;DAT_0056e670, 0, &amp;DAT_0056dd58, 0)</c>.
+    /// </summary>
+    private static void BindMenuLabels(byte* labels, uint flags, byte* context, uint extra)
+    {
+        *(uint*)(context + 0x8b0) = flags;
+        context[0x8c7] |= 1;
+        *(byte**)(context + 0x8ac) = labels;
+        *(uint*)(context + 0x8a8) = extra;
+
+        // Ghidra: if (*param_1 == 8) FUN_00535300(0). The label table's first short is 0x440c
+        // (recovered from the binary), so this never fires at this call site — but the branch is
+        // kept because other callers may pass a table that does.
+        if (*(short*)labels == 8)
+        {
+            throw new NotImplementedException(
+                "FUN_00535300: reached only when the bound table's first short is 8 — " +
+                "not the case for the main menu's label table");
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00547140 @ 0x00547140 — the CRT `rand()`. The constants are MSVC's linear
+    /// congruential generator, which also identifies its neighbour: `FUN_00547130`, already called
+    /// by RunMainLoop with 1, is `srand`, and the global they share (`DAT_0056e9c0`) is the seed
+    /// rather than the flag an earlier comment called it.
+    /// </summary>
+    private static int CrtRand()
+    {
+        s_RandSeed_0056e9c0 = s_RandSeed_0056e9c0 * 0x343fd + 0x269ec3;
+        return (int)((s_RandSeed_0056e9c0 >> 0x10) & 0x7fff);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00545140 @ 0x00545140 — flushes the deferred VRAM upload queue: walks the
+    /// singly-linked list whose head <see cref="FrameBegin"/> resets each frame, calling
+    /// <c>Ordinal_674</c> (libgpu LoadImage) with each node's rect at +8 and its data at +4.
+    /// </summary>
+    private static void FlushDeferredImageUploads()
+    {
+        for (uint* node = (uint*)(nuint)s_Unknown_005e8310;
+             node != null;
+             node = (uint*)(nuint)node[0])
+        {
+            Ordinal_674(node + 2, (void*)(nuint)node[1]);
+        }
+    }
+
+    // =====================================================================
+    // Per-frame input polling (Ghidra: FUN_00512520 / FUN_005048f0 / FUN_00504a30 / FUN_005357a0).
+    //
+    // These share three global regions whose *relative* offsets the code depends on, so each is
+    // modelled as one block with derived pointers rather than as separate allocations:
+    //   0x00604a20  the per-button input state table (0x10 bytes per entry)
+    //   0x00604b00  the two joystick axis/state blocks
+    //   0x005e9180  the player-slot table and its parallel per-slot array at +0x240
+    // =====================================================================
+
+    private static readonly byte* s_InputStateBase_00604a20 = (byte*)NativeMemory.AllocZeroed(0x140);
+    private static byte* s_ButtonStates_00604a2a => s_InputStateBase_00604a20 + 0x0a;
+    private static ushort* s_JoyAxis1_00604b0a => (ushort*)(s_InputStateBase_00604a20 + 0xea);
+    private static uint* s_JoyBlock1_00604b0c => (uint*)(s_InputStateBase_00604a20 + 0xec);
+    private static ushort* s_JoyAxis2_00604b2e => (ushort*)(s_InputStateBase_00604a20 + 0x10e);
+
+    private static readonly byte* s_SlotArea_005e9180 = (byte*)NativeMemory.AllocZeroed(0x500);
+    private static byte* s_PlayerSlots_005e9188 => s_SlotArea_005e9180 + 8;
+    private static byte* s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240;
+
+    // Ghidra: the four 16-byte controller→player remap rows at 0x0056acf8, reached through the
+    // pointer table at 0x0056ad38. Recovered verbatim from Legacy/Blaze.exe. The row is chosen by
+    // which of the two joystick axes reads the -0x8000 "absent" sentinel.
+    private static readonly byte[][] s_ControllerRemapRows =
+    [
+        [0x00, 0x04, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0, 0, 0, 0, 0, 0, 0],
+        [0x00, 0x01, 0x02, 0x03, 0x04, 0x08, 0x08, 0x08, 0x08, 0, 0, 0, 0, 0, 0, 0],
+        [0x00, 0x04, 0x05, 0x06, 0x07, 0x08, 0x08, 0x08, 0x08, 0, 0, 0, 0, 0, 0, 0],
+        [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0, 0, 0, 0, 0, 0, 0],
+    ];
+
+    /// <summary>
+    /// Ghidra: the index computation shared by FUN_00542250 and FUN_005357a0 — one bit per joystick,
+    /// set when its axis reads the <c>-0x8000</c> sentinel.
+    /// </summary>
+    private static int ControllerRemapIndex()
+    {
+        int index = *(short*)s_JoyAxis1_00604b0a == -0x8000 ? 1 : 0;
+        if (*(short*)s_JoyAxis2_00604b2e == -0x8000) index += 2;
+        return index;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00512520 @ 0x00512520 — the debug hotkey handler, polled once per frame:
+    /// F3 opens the options page, F11/F12 step the detail level, F9 toggles the small-texture flag.
+    /// Returns 1 when the options page ran, 0 otherwise.
+    /// </summary>
+    private static int PollDebugHotkeys(byte* context)
+    {
+        s_Unknown_00579270 = context;
+
+        if (s_Unknown_005de554 == 0 && GetAsyncKeyState(0x72 /* VK_F3 */) < 0)
+        {
+            int gammaBefore = s_Unknown_005d9de0;
+            ReInitializeAllTextures();
+            int shiftX, shiftY;
+            GetAbsShift(&shiftX, &shiftY);
+            SetAbsShift(0, 0);
+            if (s_UnknownDetailSetting_005de160 < 7) s_SmallTextureFlag = 1;
+            OptionsScreenStub();
+            SetAbsShift(shiftX, shiftY);
+            SaveOptionsIni();
+            if (gammaBefore != s_Unknown_005d9de0)
+            {
+                // Note: this site scales by _DAT_0054d000, *not* the _DAT_0054d074 the menu's
+                // options case uses. Two distinct constants; kept distinct.
+                CreateTranslationTables(s_Unknown_005d9de0 * s_GammaScale_0054d000);
+            }
+            return 1;
+        }
+
+        if (GetAsyncKeyState(0x7a /* VK_F11 */) != 0)
+        {
+            if (s_UnknownDetailSetting_005de160 != 0)
+            {
+                s_UnknownDetailSetting_005de160--;
+                SetShift((0xb - s_UnknownDetailSetting_005de160) * 0x10,
+                         (0xb - s_UnknownDetailSetting_005de160) * 0x0c,
+                         s_UnknownDetailSetting_005de160, 0);
+                if (s_UnknownDetailSetting_005de160 < 7) s_SmallTextureFlag = 1;
+                SaveOptionsIni();
+                do { Sleep(100); } while (GetAsyncKeyState(0x7a) < 0);
+                return 0;
+            }
+        }
+        else if (GetAsyncKeyState(0x7b /* VK_F12 */) != 0)
+        {
+            // The clamp table here is DAT_00562e00 — recovered as { 1, 7, 11, 16, 23 }.
+            int limit = s_ResolutionIndexForClamp < s_ResolutionDetailLimit.Length
+                ? s_ResolutionDetailLimit[s_ResolutionIndexForClamp]
+                : int.MaxValue;
+            if (s_UnknownDetailSetting_005de160 < limit)
+            {
+                s_UnknownDetailSetting_005de160++;
+                SetShift((0xb - s_UnknownDetailSetting_005de160) * 0x10,
+                         (0xb - s_UnknownDetailSetting_005de160) * 0x0c,
+                         s_UnknownDetailSetting_005de160, 0);
+                SaveOptionsIni();
+                do { Sleep(100); } while (GetAsyncKeyState(0x7b) < 0);
+                return 0;
+            }
+        }
+        else if (GetAsyncKeyState(0x78 /* VK_F9 */) != 0 && s_UnknownDetailSetting_005de160 > 6)
+        {
+            s_SmallTextureFlag = s_SmallTextureFlag == 0 ? 1u : 0u;
+            SaveOptionsIni();
+            do { Sleep(100); } while (GetAsyncKeyState(0x78) < 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00504a30 @ 0x00504a30 — button edge detection and auto-repeat over two blocks of
+    /// four slots. `0x4100` marks a live entry; the XOR pair yields pressed/released masks, and the
+    /// counter at +0xa runs 0xc frames before repeating every 2.
+    /// </summary>
+    private static void UpdateButtonEdges()
+    {
+        ushort* state = (ushort*)s_InputStateBase_00604a20;
+        uint* joyBlock = s_JoyBlock1_00604b0c;
+
+        for (int block = 0; block < 2; block++)
+        {
+            uint* entry = joyBlock;
+            for (int i = 0; i < 4; i++)
+            {
+                uint raw = *entry;
+                if ((short)raw == 0x4100)
+                {
+                    state[3] = 0;
+                    ushort current = (ushort)~(ushort)(raw >> 0x10);
+                    state[4] = state[0];
+                    ushort changed = (ushort)(state[0] ^ current);
+                    state[0] = current;
+                    state[1] = changed;
+
+                    if ((changed & 0xf0) == 0)
+                    {
+                        byte countdown = (byte)(((byte*)(state + 5))[0] - 1);
+                        ((byte*)(state + 5))[0] = countdown;
+                        if (countdown == 0)
+                        {
+                            ((byte*)(state + 5))[0] = 2;
+                            if (((byte)state[0] & 0xf0) != 0) state[3] = (ushort)((byte)state[0] & 0xf0);
+                        }
+                    }
+                    else
+                    {
+                        ((byte*)(state + 5))[0] = 0xc;
+                        state[3] = (ushort)((byte)state[0] & 0xf0);
+                    }
+
+                    state[2] = (ushort)(state[4] & state[1]);
+                    ushort held = (ushort)(state[0] & state[1]);
+                    state[1] = held;
+                    ((byte*)state)[0xb] |= 0x80;
+                    ((byte*)state)[0xb] = (((byte)state[2] | (byte)held) & 0xf0) != 0
+                        ? (byte)(((byte*)state)[0xb] | 2)
+                        : ((byte*)state)[0xb];
+                }
+                else
+                {
+                    ((byte*)state)[0xb] &= 0x7e;
+                }
+
+                entry += 2;
+                state += 8;
+            }
+            joyBlock += 9;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005357a0 @ 0x005357a0 — assigns controllers to the four player slots through the
+    /// remap row selected by <see cref="ControllerRemapIndex"/>.
+    /// </summary>
+    private static void AssignControllersToSlots()
+    {
+        byte[] row = s_ControllerRemapRows[ControllerRemapIndex()];
+
+        byte* slotFlags = s_SlotFlags_005e93c0;
+        byte* slot = s_PlayerSlots_005e9188;
+
+        for (int i = 0; i < 4; i++)
+        {
+            byte mapped = row[slot[1]];
+            int mappedOffset = (sbyte)mapped * 0x10;
+            byte* current = s_ButtonStates_00604a2a + slot[0] * 0x10 + 1;
+            byte currentFlags = *current;
+
+            if ((currentFlags & 0x80) == 0)
+            {
+                byte* target = s_ButtonStates_00604a2a + mappedOffset + 1;
+                byte targetFlags = *target;
+                if ((targetFlags & 0x80) == 0)
+                {
+                    *current = (byte)(currentFlags & 0xfe);
+                    *target = (byte)(*target & 0xfe);
+                    slot[0] = 8;
+                }
+                else if ((targetFlags & 1) == 0)
+                {
+                    *target = (byte)(targetFlags | 1);
+                    slot[0] = mapped;
+                }
+            }
+            else if ((slotFlags[2] & 1) != 0 && slot[0] != (sbyte)mapped)
+            {
+                *current = (byte)(currentFlags & 0x7e);
+                slot[0] = 8;
+            }
+
+            slotFlags += 0x9c;
+            slot += 0x4c;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005048f0 @ 0x005048f0 — polls the DirectInput joystick device and folds its
+    /// state into the per-slot tables.
+    /// <para>
+    /// TODO(REVERSE): its first two calls operate on the device object `FUN_00523120` creates, and
+    /// `SetupJoystickHandlers` still skips that creation — so the device pointer is null here and
+    /// dereferencing it would fault. The guard below skips exactly those two calls and lets the
+    /// rest of the polling run; it is a deviation, and it disappears once the device exists.
+    /// </para>
+    /// </summary>
+    private static int PollJoystickState()
+    {
+        if (s_JoystickDevice == null)
+        {
+            return 0;
+        }
+
+        throw new NotImplementedException(
+            "FUN_005048f0: reached with a live DirectInput device — FUN_005230b0/FUN_00523660 " +
+            "still need reconstructing");
+    }
+
+    private static void* s_JoystickDevice;      // Ghidra: DAT_00604b54 / DAT_00604b50
+    private static byte* s_Unknown_00579270;    // Ghidra: DAT_00579270
+    private static int s_Unknown_005de554;      // Ghidra: DAT_005de554
+    private static int s_ResolutionIndexForClamp; // Ghidra: DAT_00566cc4
+
+    // Ghidra: _DAT_0054d000 — the gamma scale this hotkey path uses. Distinct from _DAT_0054d074.
+    // TODO(REVERSE): .rdata content; 1.0f leaves the product equal to the raw setting.
+    private const float s_GammaScale_0054d000 = 1.0f;
+
+    /// <summary>Ghidra: the four calls guarded by arg5 in FUN_0052a280.</summary>
+    private static void PollInputAndAudio()
+    {
+        // Ghidra: FUN_00512520(&DAT_00604a20 + <slot-derived index> * 4)
+        int slotIndex = s_PlayerSlots_005e9188[s_SlotArea_005e9180[0x248] * 0x4c];
+        PollDebugHotkeys(s_InputStateBase_00604a20 + slotIndex * 4);
+
+        PollJoystickState();
+        UpdateButtonEdges();
+        AssignControllersToSlots();
+    }
+
+    private static void ControllerBannerStub()
+        => throw new NotImplementedException(
+            "FUN_0051c120: the \"Veuillez connecter la manette !\" banner");
+
+    /// <summary>
+    /// Ghidra: FUN_00533000 @ 0x00533000 — per-frame **palette animation** (CLUT cycling). Walks a
+    /// list of animation descriptors and, for each one whose counter has reached its period,
+    /// rotates a run of colour entries by one and resets the counter.
+    /// <para>
+    /// The CLUTs it rotates are the ones <see cref="DecodeResourceChunk"/> mirrors into main video
+    /// memory: both use the same address formula, <c>(bank + 0xe10) * 0x200 + MainMem</c>. That
+    /// mirror exists precisely so this can animate them — the two functions are two halves of one
+    /// mechanism, which is worth knowing before either is changed.
+    /// </para>
+    /// <para>
+    /// Each descriptor is one packed dword:
+    /// <c>[7:0]</c> CLUT slot within the bank (32 bytes each), <c>[15:8]</c> how many 16-bit colour
+    /// entries take part in the rotation, <c>[23:16]</c> the period in frames, <c>[31:24]</c> the
+    /// running frame counter. A descriptor array is terminated by a zero word; the list itself is
+    /// (descriptor array, bank index) pairs terminated by a null pointer.
+    /// </para>
+    /// </summary>
+    private static void AnimatePalettes(byte* resourceHeader)
+    {
+        if (resourceHeader == null) return;
+
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null) return;
+
+        // Ghidra: puVar12 = *(undefined4 **)(param_1 + 100)
+        uint** list = *(uint***)(resourceHeader + 0x64);
+        if (list == null) return;
+
+        while (true)
+        {
+            uint* descriptors = list[0];
+            if (descriptors == null) break;
+
+            uint bank = (uint)(nuint)list[1];
+
+            uint descriptor = *descriptors;
+            while (descriptor != 0)
+            {
+                // Ghidra: uVar7 = uVar7 + 0x1000000 — tick the counter in the top byte.
+                descriptor += 0x1000000;
+                uint updated = descriptor;
+
+                // Ghidra: counter byte == period byte — this descriptor steps this frame.
+                if ((byte)(descriptor >> 0x18) == (byte)(descriptor >> 0x10))
+                {
+                    updated = descriptor & 0xffffff;   // reset the counter, keep the rest
+
+                    // Same CLUT address formula as DecodeResourceChunk's mirror.
+                    ushort* clut = (ushort*)(mainMem
+                        + (descriptor & 0xff) * 0x20
+                        + ((bank & 0xff) + 0xe10) * 0x200);
+
+                    int count = (byte)(updated >> 8);   // entries taking part
+                    ushort first = clut[0];
+
+                    // Rotate left by one: entries [1..count-1] move down, the old first goes last.
+                    // The original open-codes this as a dword copy plus a 16-bit tail; the loop
+                    // below is the same movement, and the count-1 == 0 case leaves the single
+                    // entry untouched exactly as the original's guard does.
+                    for (int i = 1; i < count; i++)
+                    {
+                        clut[i - 1] = clut[i];
+                    }
+                    if (count >= 1) clut[count - 1] = first;
+                }
+
+                *descriptors = updated;
+                descriptors++;
+                descriptor = *descriptors;
+            }
+
+            list += 2;
+        }
+    }
+
     // Ghidra: DAT_005de510 — current game-state id, shared between RunGameLoop and the tick below.
     private static int s_GameStateId;
 
@@ -4229,7 +5167,8 @@ public static unsafe partial class Blaze
         switch (s_GameStateId)
         {
             case 0:
-                throw new NotImplementedException("FUN_00542130 (game state 0) not yet reconstructed");
+                RunMainMenuState();
+                return;
             case 1:
                 throw new NotImplementedException("thunk_FUN_00536180 (game state 1) not yet reconstructed");
             case 2:

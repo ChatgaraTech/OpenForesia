@@ -328,7 +328,7 @@ transcribed, with Ghidra addresses kept in comments for traceability:
    - `winsys3d.c` contains **no** `CreateWindow`/`RegisterClass` at all.
    - `wsyskern.c`'s `"HugoXX"` window is a throwaway parent for an error `MessageBoxA`, immediately destroyed.
    - `3dhelp.c` **receives** an `HWND` from its caller (stores it at device+0x18 and validates it with `IsWindow`); it never creates one. Its `GetDesktopWindow` use is only for `GetDeviceCaps`.
-   - `winsys3d.c`'s `Ordinal_789` device-init branch is never reached: both `Blaze.c` call sites pass `0` as its first argument.
+   - **CORRECTED — this next claim is exactly backwards.** `Ordinal_789(0, 0)` is the *real* 3D device initialiser: passing 0 as the first argument is what **triggers** full init (it loads `3dhelp.dll`, resolves `Create3DDevice`, and on failure shows "3D-Graphics initialisation error" then `ExitProcess(3)` — `winsys3d.c:5966`). Observed firing for real once this reconstruction held DirectDraw exclusively and never released it. The non-zero values are the *teardown* paths (-1 / -2). Original claim, wrong: ~~`winsys3d.c`'s `Ordinal_789` device-init branch is never reached: both `Blaze.c` call sites pass `0` as its first argument.~~
 
    Conclusion: the main window's creation site is **not present in any available source**. Most likely it lives in a `Blaze.exe` code path Ghidra rendered as a bodiless `LAB_`, or is reached through one of the unresolved indirect calls. This is the main reason nothing can render yet — see the "Reality check" section.
 7. **atexit() registration**: `DoExit` walks a table (`DAT_00607950`..`DAT_0060794c`) that nothing currently populates — no `atexit()` call sites have been reconstructed yet in the reachable call graph. Revisit if/when one turns up.
@@ -364,7 +364,9 @@ transcribed, with Ghidra addresses kept in comments for traceability:
 27. **`DAT_005631d4` initial value** (music enabled/disabled at startup): data-section content, so unavailable; `s_MusicEnabled` defaults to 0, meaning music starts disabled and `StartMusicStream` early-outs until `ToggleMusicEnabled` flips it. Note `DAT_005631d0` (the "no stream running" flag) needed no such assumption — a first `StartMusicStream` always routes through `StopMusicStream`, which sets the flag before it is tested.
 28. **`FUN_0053da20`/`FUN_0053db20` (positional sound gain)** — the remaining members of the sound-effect family, deliberately left untranslated. `FUN_0053da20` computes a left/right gain pair from a world position via the cos table (ordinal 450) and `FUN_0053db20` feeds the result to `PlaySoundEffect`, but Ghidra declares `FUN_0053da20` with **2** parameters while `FUN_0053db20` calls it with **3**, and its body reads `unaff_SI` and `unaff_retaddr` — register-passed values never tied to a parameter. Reconstructing it would mean inventing a signature, which Strategy.md forbids; it needs a Ghidra re-run with the calling convention corrected (same class as the `__fastcall`/`__thiscall` cases noted under the systemic blocker).
 29. **Sound-directory second half (`DAT_005e8520`, entries `0x3c`..`0x4c`)** is loaded by `FUN_00512xxx` (`Blaze.c:63354`), which is not reconstructed — so those 17 entries stay zero and sound ids `0x3c`..`0x4c` (which include the four fixed UI sounds `PlayUiSound38`..`3B`) currently resolve to a zero-length sample and play silence. Not a data-availability problem: it is ordinary uncovered code, and the same call site also fills the level sample bank `DAT_00600900`.
-30. **`PTR_s____Music_Mel00_01_WAV_00566cc8`** — the music-filename pointer table indexed by `FUN_00529ad0`/`PlayMusicTrack`, the only caller of `StartMusicStream`. Call sites pass indices up to at least `0x26`, and `FUN_00529ad0` patches each path's first character with the CD drive letter (`s____Blaze_Blade_005631e8[0]`) before playing. Data-only table, so it is not reconstructed and `FUN_00529ad0` is deliberately left untranslated rather than filled with invented filenames — same category as #17/#22, but a whole table rather than single strings.
+30. **RESOLVED — table recovered and `PlayMusicTrack` reconstructed.** The entries are CD-**root** absolute templates (`@:/Music/Mel00_01.WAV`), drive-letter patched at index 0, recorded in `Documentation/DataSymbols.md`. Only the sampled entries are transcribed so far; call sites index up to at least `0x26`, and unsampled slots stay null so `PlayMusicTrack` returns rather than reading past the table. **Nothing is audible yet**: no `DirectSoundCreate` site exists (#26), so `StartMusicStream` takes its no-device early-out. Silence here is expected, not a defect. Original note: ~~**`PTR_s____Music_Mel00_01_WAV_00566cc8`** — the music-filename pointer table indexed by `FUN_00529ad0`/`PlayMusicTrack`, the only caller of `StartMusicStream`. Call sites pass indices up to at least `0x26`, and `FUN_00529ad0` patches each path's first character with the CD drive letter (`s____Blaze_Blade_005631e8[0]`) before playing. Data-only table, so it is not reconstructed and `FUN_00529ad0` is deliberately left untranslated rather than filled with invented filenames — same category as #17/#22, but a whole table rather than single strings.~~
+
+36. **`FUN_00545340` — the menu/UI engine, deliberately deferred.** 1742 lines, three parameters, 25 calls, reached twice per menu frame alongside `FUN_005443a0` (233 lines). It is ordinary uncovered code with a full decompiled body, not blocked work, but it is a project in its own right and reconstructing it blind — with no way to observe whether the surrounding frame order is right — would have been the wrong order of operations. Stubbed along with `FUN_005443a0`, `FUN_00512320` (the options page) and `FUN_005048f0` (joystick state processing, which pulls in `FUN_005231f0`/`FUN_00523660`).
 
 31. **Dropped return values silently delete control-flow edges — a startup hang, now fixed.** `FUN_00542f30` is declared `void` by Ghidra (`Blaze.c:90063`) even though it tail-calls `FUN_00542c40`, which Ghidra itself types `undefined4 __fastcall`, and both call sites in `FUN_00529c10` read the result (`Blaze.c:74442`, `74450`). The reconstruction had followed the `void` declaration, which removed **two of the attract loop's four exit conditions**; combined with the other two being dead (`PlayMovie` always reports 0 while `TrySetupMovieStream` is a stub), `RunMainLoop` spun forever at 100% CPU and startup never reached engine init. Fixed by trusting the call site over the declaration and reconstructing `FUN_00542c40`'s bitmap-load prologue, whose `return 1` on a missing `TITLE640.BMP` is the original's own way out of the loop when there is no CD.
     **Rule this establishes**: when Ghidra's declaration and a call site disagree about a return value or a parameter, the *call site* wins. A stub must still return a value if its result is one of a loop's exit conditions.
@@ -510,18 +512,80 @@ CD-relative resolved one directory too high and found nothing. Fixed in
 `SYSTEM.INI`, `DATA/`, and the movies, with `E:\Snd\` and `E:\Music\` at the
 root reached by their own `@:`-prefixed absolute templates.
 
+**THE RECONSTRUCTION DRAWS.** The attract screen displays the CD's `TITLE640.BMP` —
+confirmed on screen, and measured as `StretchDIBits` returning 480 scanlines. The
+path is complete end to end: CD detection → `E:\FRENCH\DATA/TITLE640.BMP` →
+`LoadBitmapFile` → `FUN_00512a10` creating the DirectDraw primary surface into
+`wrapper[1]` → `GetDC`/`StretchDIBits`/`ReleaseDC`.
+
+**Two environmental deviations, both measured rather than assumed.** Neither is a
+reconstruction shortcut; both are the modern platform refusing what the 1999
+binary asks for:
+
+| Original | Modern Windows | Handling |
+|---|---|---|
+| `SetDisplayMode(640, 480, 16)` | returns `E_NOTIMPL` (0x80004001) — 16bpp mode changes are gone | the faithful call is attempted first; a 32bpp retry fires **only** on that exact HRESULT, so it would never trigger on period hardware |
+| surfaces stay valid | `GetDC` fails with `DDERR_SURFACELOST` (0x887601c2) between repaints | `Restore` (vtable 0x6c) then one retry — the same pairing the original uses elsewhere in this cluster |
+
+**Method note that earned its keep**: three consecutive hypotheses about why nothing
+displayed were wrong (bitmap not loading, `GetDC` failing, blit skipped). What
+settled it was writing the whole path's state to a log file and reading it. The
+actual cause was in none of the three — and one of them, "the blit is a faithful
+no-op", was a claim about code that had simply never been written.
+
 **Current runtime behaviour, CD mounted, no temporary patches.** Startup runs the
 whole spine, loads and decodes real game resources, **enters the game loop**, and
 stops inside the per-frame tick on the first unreconstructed game state:
 
 ```
 === OpenForesia ===
-Unhandled exception. System.NotImplementedException: FUN_00542130 (game state 0)
-not yet reconstructed
-   at Blaze.RunGameStateTick()
-   at Blaze.RunGameLoop()
-   at Blaze.RunMainLoop()
+Unhandled exception. System.NotImplementedException: FUN_00533000: per-frame
+resource refresh
+   at Blaze.FrameResourceRefresh()
+   at Blaze.FrameBegin(...)
+   at Blaze.RunMainMenuFrameLoop()
+   at Blaze.RunMainMenuState()
 ```
+
+**Game state 0 is the main menu**, and it is now reconstructed. Its resource load
+and screen setup complete, and execution reaches the frame loop, where the first
+missing piece is `FUN_00533000` — a *named* function with a decompiled body,
+rather than "game state 0".
+
+What the menu is, from the switch at the end of its frame loop: five entries
+selected by `DAT_005e909f` — three that hand off to game states 1, 4 and 6, an
+options page that rewrites `BLAZE.cfg` and rebuilds the gamma tables, and a quit
+that calls the CRT `exit`. The `(DAT_005e9960 & 0xf) * 0x10` counter with its
+`0x80` floor is a fade; `level * 0x10101` is its grey.
+
+**Shared frame infrastructure, reconstructed here but used by every state**:
+`FUN_0052a1e0` prepares a primitive buffer and a 1024-entry ordering table
+(`Ordinal_688` = libgpu `ClearOTagR`), each renderer links its primitive into the
+OT and returns the advanced cursor, and `FUN_0052a280` walks the OT
+(`Ordinal_701`) and swaps the draw/display env pair. The OT pointer is threaded
+through return values — that threading *is* the display list.
+
+**Both frame functions' parameters are now confirmed against disassembly**
+(`Legacy/Raw/FUN_0052a1e0.asm`, `FUN_0052a280.asm`). Ghidra gives `FUN_0052a1e0`
+two parameters where the call sites pass three, and `FUN_0052a280` **none** where
+they pass five. The listings settle both, and found one real error the reasoning
+had missed:
+
+- `FUN_0052a1e0` — no prologue, so args are at `[ESP+4/8/0xc]`. Its two
+  apparently-identical `*param_1` writes are really `*arg1` (OT base) and
+  `*arg3` (primitive buffer); `0052a257 MOV ECX,[ESP+0xc]` proves it. cdecl, 3 args.
+- `FUN_0052a280` — `SUB ESP,0x14` plus two pushes puts args at `[ESP+0x20..0x30]`,
+  giving `Ordinal_701(*arg2)`, `Ordinal_132(**arg4**)` and the guard on `arg5`.
+  **The reconstruction had been passing arg5 to both**, so `Ordinal_132` received
+  1 instead of 3 — which corrupted winsys3d's state and made `DrawOTag` fault
+  natively. Neither value is distinguishable in the pseudocode: they are adjacent
+  stack slots holding small integers, and Ghidra names them alike.
+
+**Method, now proven four times over** (`FUN_005322f0`, `FUN_00542600`,
+`FUN_00512930`, `FUN_0052a280`): when Ghidra loses parameters, **read the
+disassembly**. Every one of these was settled in minutes by a listing after
+resisting careful reasoning — and in two cases the pseudocode was not merely
+incomplete but actively wrong.
 
 That is a qualitative change from every earlier run. `LoadFirstLevelResources`
 now completes — `DecodeResourceChunk` (#19) uploads the TIM textures for real —
