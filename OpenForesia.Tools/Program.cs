@@ -1,10 +1,39 @@
 ﻿using System.Reflection.PortableExecutable;
 using System.Text;
 
+// Verb dispatch. A bare path keeps the original behaviour (dump the export table) because
+// Documentation/DLL/*.md documents that exact invocation for resolving ordinal-only imports.
+if (args.Length == 0)
+{
+    PrintUsage();
+    return;
+}
+
+if (args[0] is "sections")
+{
+    if (args.Length != 2) { PrintUsage(); return; }
+    DumpSections(args[1]);
+    return;
+}
+
+if (args[0] is "at")
+{
+    if (args.Length is < 3 or > 4) { PrintUsage(); return; }
+    // Le compteur se lit en decimal (contrairement aux adresses, hexa par defaut comme Ghidra) :
+    // "at <fichier> <va> 32" doit lire 32 octets, pas 0x32.
+    var requestedBytes = 64;
+    if (args.Length == 4 && !TryParseByteCount(args[3], out requestedBytes))
+    {
+        Console.WriteLine($"Nombre d'octets invalide : {args[3]}");
+        return;
+    }
+    DumpAt(args[1], args[2], requestedBytes);
+    return;
+}
+
 if (args.Length != 1)
 {
-    Console.WriteLine("Usage:");
-    Console.WriteLine("  OpenForesia.Tools <path-to-dll>");
+    PrintUsage();
     return;
 }
 
@@ -190,6 +219,330 @@ for (var functionIndex = 0;
 // ============================================================
 // Helpers
 // ============================================================
+
+static void PrintUsage()
+{
+    Console.WriteLine("Usage:");
+    Console.WriteLine("  OpenForesia.Tools <path>                     table d'exports (comportement d'origine)");
+    Console.WriteLine("  OpenForesia.Tools sections <path>            sections PE : plages VA, offsets fichier");
+    Console.WriteLine("  OpenForesia.Tools at <path> <va> [octets]    dumpe les octets a une adresse virtuelle Ghidra");
+    Console.WriteLine();
+    Console.WriteLine("Exemples:");
+    Console.WriteLine("  OpenForesia.Tools winsys3d.dll");
+    Console.WriteLine("  OpenForesia.Tools sections Legacy/Blaze.exe");
+    Console.WriteLine("  OpenForesia.Tools at Legacy/Blaze.exe 0x005631f8");
+    Console.WriteLine();
+    Console.WriteLine("Les adresses sont lues en hexadecimal (prefixe 0x optionnel), comme dans Ghidra.");
+    Console.WriteLine("Le nombre d'octets est lu en decimal (prefixer 0x pour de l'hexa).");
+}
+
+
+// Accepte "0x005631f8", "005631f8" (hex par defaut, comme Ghidra) ou "d:64" pour un decimal.
+static bool TryParseNumber(
+    string text,
+    out int value)
+{
+    value = 0;
+
+    if (string.IsNullOrWhiteSpace(text))
+    {
+        return false;
+    }
+
+    if (text.StartsWith("d:", StringComparison.OrdinalIgnoreCase))
+    {
+        return int.TryParse(text.AsSpan(2), out value);
+    }
+
+    var digits = text.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+        ? text.AsSpan(2)
+        : text.AsSpan();
+
+    return int.TryParse(
+        digits,
+        System.Globalization.NumberStyles.HexNumber,
+        System.Globalization.CultureInfo.InvariantCulture,
+        out value);
+}
+
+
+// Compteur d'octets : decimal par defaut, "0x" pour l'hexa. Volontairement different de
+// TryParseNumber, dont l'hexa-par-defaut a du sens pour une adresse Ghidra mais pas pour un nombre.
+static bool TryParseByteCount(
+    string text,
+    out int value)
+{
+    value = 0;
+
+    if (string.IsNullOrWhiteSpace(text))
+    {
+        return false;
+    }
+
+    if (text.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+    {
+        return int.TryParse(
+            text.AsSpan(2),
+            System.Globalization.NumberStyles.HexNumber,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out value);
+    }
+
+    return int.TryParse(text, out value);
+}
+
+
+// Ouvre le PE et renvoie ses headers + le contenu brut, ou null en cas d'echec (message deja affiche).
+static (byte[] File, PEHeaders Headers)? OpenPortableExecutable(
+    string path)
+{
+    var fullPath = Path.GetFullPath(path);
+
+    if (!File.Exists(fullPath))
+    {
+        Console.WriteLine($"Fichier introuvable : {fullPath}");
+        return null;
+    }
+
+    var bytes = File.ReadAllBytes(fullPath);
+
+    using var stream = new MemoryStream(bytes);
+    using var reader = new PEReader(stream);
+
+    if (reader.PEHeaders.PEHeader is null)
+    {
+        Console.WriteLine("Ce fichier n'est pas un PE Windows valide.");
+        return null;
+    }
+
+    Console.WriteLine($"Fichier     : {fullPath}");
+    Console.WriteLine($"Image base  : 0x{reader.PEHeaders.PEHeader.ImageBase:X8}");
+    Console.WriteLine();
+
+    return (bytes, reader.PEHeaders);
+}
+
+
+// Retrouve la section contenant une RVA. Renvoie null si l'adresse ne tombe dans aucune section :
+// c'est ce qui rend une mauvaise adresse diagnostiquable au lieu de silencieusement plausible.
+static string? SectionNameForRva(
+    int rva,
+    PEHeaders headers)
+{
+    foreach (var section in headers.SectionHeaders)
+    {
+        var size = Math.Max(
+            section.VirtualSize,
+            section.SizeOfRawData);
+
+        if (rva >= section.VirtualAddress &&
+            rva < section.VirtualAddress + size)
+        {
+            return section.Name;
+        }
+    }
+
+    return null;
+}
+
+
+static void DumpSections(
+    string path)
+{
+    var pe = OpenPortableExecutable(path);
+
+    if (pe is null)
+    {
+        return;
+    }
+
+    var headers = pe.Value.Headers;
+    var imageBase = headers.PEHeader!.ImageBase;
+
+    Console.WriteLine(
+        $"{"Section",-10} {"VA debut",-12} {"VA fin",-12} " +
+        $"{"RVA",-12} {"Taille",-10} Offset fichier");
+
+    Console.WriteLine(new string('-', 78));
+
+    foreach (var section in headers.SectionHeaders)
+    {
+        var size = Math.Max(
+            section.VirtualSize,
+            section.SizeOfRawData);
+
+        var startVa = imageBase + (ulong)section.VirtualAddress;
+        var endVa = startVa + (ulong)size;
+
+        Console.WriteLine(
+            $"{section.Name,-10} " +
+            $"0x{startVa:X8}   " +
+            $"0x{endVa:X8}   " +
+            $"0x{section.VirtualAddress:X8}   " +
+            $"0x{size:X6}   " +
+            $"0x{section.PointerToRawData:X8}");
+    }
+}
+
+
+static void DumpAt(
+    string path,
+    string virtualAddressText,
+    int byteCount)
+{
+    if (!TryParseNumber(virtualAddressText, out var virtualAddress))
+    {
+        Console.WriteLine($"Adresse invalide : {virtualAddressText}");
+        return;
+    }
+
+    if (byteCount <= 0)
+    {
+        Console.WriteLine("Le nombre d'octets doit etre positif.");
+        return;
+    }
+
+    var pe = OpenPortableExecutable(path);
+
+    if (pe is null)
+    {
+        return;
+    }
+
+    var file = pe.Value.File;
+    var headers = pe.Value.Headers;
+
+    var imageBase = (long)headers.PEHeader!.ImageBase;
+    var rva = (int)(virtualAddress - imageBase);
+
+    if (rva < 0)
+    {
+        Console.WriteLine(
+            $"L'adresse 0x{virtualAddress:X8} est inferieure a l'image base " +
+            $"0x{imageBase:X8} — ce n'est pas une adresse virtuelle de ce binaire.");
+
+        return;
+    }
+
+    var sectionName = SectionNameForRva(rva, headers);
+    var offset = RvaToFileOffset(rva, headers);
+
+    // Echec bruyant plutot qu'un offset plausible mais faux.
+    if (sectionName is null)
+    {
+        Console.WriteLine(
+            $"L'adresse 0x{virtualAddress:X8} (RVA 0x{rva:X8}) ne tombe dans aucune " +
+            $"section de ce fichier. Verifiez l'adresse, ou listez les sections avec " +
+            $"'sections'.");
+
+        return;
+    }
+
+    // Cas distinct du precedent, et c'est une *reponse*, pas une erreur : l'adresse est bien dans
+    // une section, mais au-dela de ses donnees brutes. La VirtualSize d'une section peut depasser
+    // sa SizeOfRawData ; cette queue n'existe pas dans le fichier et le chargeur la remplit de
+    // zeros (donnees non initialisees, style BSS). Un symbole qui atterrit la vaut exactement zero
+    // au demarrage et est renseigne a l'execution — le confondre avec "adresse invalide" ferait
+    // chercher un bug la ou il n'y en a pas.
+    if (offset < 0 || offset >= file.Length)
+    {
+        Console.WriteLine($"VA          : 0x{virtualAddress:X8}");
+        Console.WriteLine($"RVA         : 0x{rva:X8}");
+        Console.WriteLine($"Section     : {sectionName}");
+        Console.WriteLine();
+        Console.WriteLine(
+            "Donnees NON INITIALISEES : l'adresse est dans la section, mais au-dela de ses");
+        Console.WriteLine(
+            "octets presents dans le fichier. Le chargeur met cette zone a zero ; la valeur");
+        Console.WriteLine(
+            "est donc 0 au demarrage et ne peut venir que du code, pas de la section de donnees.");
+
+        return;
+    }
+
+    var available = Math.Min(byteCount, file.Length - offset);
+
+    Console.WriteLine($"VA          : 0x{virtualAddress:X8}");
+    Console.WriteLine($"RVA         : 0x{rva:X8}");
+    Console.WriteLine($"Offset      : 0x{offset:X8} ({offset})");
+    Console.WriteLine($"Section     : {sectionName}");
+    Console.WriteLine($"Octets lus  : {available}");
+    Console.WriteLine();
+
+    // --- hex + ascii ---
+    Console.WriteLine("Hex:");
+
+    for (var lineStart = 0; lineStart < available; lineStart += 16)
+    {
+        var lineLength = Math.Min(16, available - lineStart);
+
+        var hex = new StringBuilder();
+        var ascii = new StringBuilder();
+
+        for (var i = 0; i < lineLength; i++)
+        {
+            var b = file[offset + lineStart + i];
+
+            hex.Append($"{b:x2}");
+
+            if (i % 2 == 1)
+            {
+                hex.Append(' ');
+            }
+
+            ascii.Append(
+                b >= 0x20 && b < 0x7f
+                    ? (char)b
+                    : '.');
+        }
+
+        Console.WriteLine(
+            $"  0x{virtualAddress + lineStart:X8}: {hex.ToString().PadRight(41)} {ascii}");
+    }
+
+    Console.WriteLine();
+
+    // --- chaine C ---
+    var stringEnd = offset;
+
+    while (stringEnd < file.Length &&
+           stringEnd < offset + available &&
+           file[stringEnd] != 0)
+    {
+        stringEnd++;
+    }
+
+    var asciiString = Encoding.ASCII.GetString(
+        file,
+        offset,
+        stringEnd - offset);
+
+    Console.WriteLine(
+        stringEnd < offset + available
+            ? $"Chaine C    : \"{asciiString}\""
+            : $"Chaine C    : \"{asciiString}\" (pas de NUL dans la fenetre lue)");
+
+    Console.WriteLine();
+
+    // --- dwords little-endian ---
+    Console.WriteLine("Dwords (little-endian):");
+
+    for (var i = 0; i + 4 <= available; i += 4)
+    {
+        var dword = ReadUInt32(file, offset + i);
+
+        // Une valeur qui retombe dans l'image est probablement un pointeur : le signaler
+        // fait gagner du temps sur les tables de pointeurs (PTR_FUN_*, tables de chaines).
+        var looksLikePointer =
+            dword >= (uint)imageBase &&
+            dword < (uint)imageBase + 0x1000000;
+
+        Console.WriteLine(
+            $"  +0x{i:X2}  0x{dword:X8}" +
+            (looksLikePointer ? "   <- pointeur potentiel" : string.Empty));
+    }
+}
+
 
 static int RvaToFileOffset(
     int rva,

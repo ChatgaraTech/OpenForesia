@@ -8,7 +8,22 @@ decompiled DLL sources (`3dhelp.c`, `gldhelp.c`, `playst.c`, `winsys3d.c`,
 the running memory of what's been learned about each — check there before
 re-analyzing an external call, and update it when a new one is understood.
 
+**The binary is now in the repo at `Legacy/Blaze.exe`** — the "systemic blocker"
+section below is resolved, and `Documentation/DataSymbols.md` holds every value
+recovered from its data sections. Read more with
+`OpenForesia.Tools at Legacy/Blaze.exe <va>`.
+
 Build: `dotnet build OpenForesia.sln` — builds clean as of this update.
+Run: the app targets **x86** but the only SDK here is x64, so building and
+running need *different* environments and cannot share one shell:
+
+- **Build** needs `DOTNET_ROOT=C:\Users\Sagara\.dotnet` on the x64 SDK.
+- **Run** needs that variable **unset**. Launch the built x86 apphost directly —
+  `OpenForesia\bin\Debug\net9.0\OpenForesia.exe` — and it resolves against the
+  x86 runtime in `C:\Program Files (x86)\dotnet` (Microsoft.NETCore.App 9.0.8,
+  runtime-only). `dotnet run`, or any launch with `DOTNET_ROOT` still pointing
+  at the x64 install, fails with `0x800700C1` (bad image format) because the
+  x86 apphost tries to load the x64 `hostfxr.dll`.
 Note for this machine: the .NET SDK is not on PATH / not in the usual install
 locations; a working SDK was found at `C:\Users\Sagara\.dotnet` (prepend it to
 `PATH` and set `DOTNET_ROOT` before calling `dotnet`).
@@ -84,10 +99,20 @@ RunMainLoop (FUN_00529c10) sub-graph          [DONE this session]
 │  │                                             own construction (FUN_00512930/FUN_005431e0) is
 │  │                                             TODO(REVERSE) — see banner comment in Blaze.cs]
 │  ├─ TryOpenMovieStream/CloseMovieStreamIfOpen (FUN_00542f40/FUN_00542f50) [DONE, thin dispatchers]
-│  ├─ RewindMovieFallbackFrame (FUN_00542f30 -> FUN_00542c40) [PARTIAL — only the one confirmed
-│  │                                             field reset (*(param+0x2c)=0); the DirectDraw-
-│  │                                             wrapper-vtable-based fallback-bitmap blit is
-│  │                                             TODO(REVERSE), same root cause as above]
+│  ├─ ShowTitleScreenAndWait (FUN_00542f30 -> FUN_00542c40) [PARTIAL — **renamed this session**
+│  │                                             from the misleading `RewindMovieFallbackFrame`:
+│  │                                             this is the arcade-style attract-mode title screen
+│  │                                             (load DATA\TITLE640.BMP, blit it, wait 20 s or
+│  │                                             until key/mouse/joystick input), not a frame
+│  │                                             rewind. The field reset and the **whole bitmap-load
+│  │                                             prologue** are now faithful, including the
+│  │                                             `return 1` on load failure — that return value is
+│  │                                             what breaks the attract loop when no CD is present.
+│  │                                             Still TODO(REVERSE): the StretchDIBits blit through
+│  │                                             the DirectDraw-wrapper vtable and the 20 s wait,
+│  │                                             both useless until a real window/WNDPROC exists
+│  │                                             (#6/#14). **Fixed a startup hang while doing this**
+│  │                                             — see TODO #31.]
 │  ├─ TrySetupMovieStream (FUN_00542a70)       [STUB, returns false — TODO(REVERSE): entirely
 │  │                                             built from calls through the unrecoverable custom
 │  │                                             "stream"/DirectDraw-wrapper vtables; the original
@@ -240,14 +265,16 @@ the FUN_00513xxx effect API above.
 | `FUN_00542740`/`FUN_00542940` | 0x00542740/0x00542940 | `CreateMoviePlayerWindow`/`DestroyMoviePlayerWindow` | Hidden VfW-class window; creation is a documented partial (see call-graph notes above) |
 | `FUN_00542800`/`FUN_005428d0` | 0x00542800/0x005428d0 | `OpenMovieStream`/`CloseMovieStream` | Sub-object alloc/free; partial, see call-graph notes above |
 | `FUN_00542f40`/`FUN_00542f50` | 0x00542f40/0x00542f50 | `TryOpenMovieStream`/`CloseMovieStreamIfOpen` | Thin dispatchers |
-| `FUN_00542f30` | 0x00542f30 | `RewindMovieFallbackFrame` | Partial, see call-graph notes above |
+| `FUN_00542f30` | 0x00542f30 | `ShowTitleScreenAndWait` | Attract-mode title screen; bitmap-load prologue + its `return 1` failure path faithful, blit/20 s wait still TODO. Renamed from `RewindMovieFallbackFrame` |
+| `LoadBitmapFile` | wsyskern ord. 115 | `LoadBitmapFile` | Whole-file .BMP loader, P/Invoked by name; `mode 0` = silent failure. See `Documentation/DLL/wsyskern.md` |
+| `Free` | wsyskern ord. 89 | `WsysFree` | wsyskern's own deallocator — **a different heap** from the CRT `Free`; required for anything `LoadBitmapFile` returns |
 | `FUN_00542a70` | 0x00542a70 | `TrySetupMovieStream` | Stub (always false), see call-graph notes above |
 | `FUN_00542b70`/`FUN_00542eb0` | 0x00542b70/0x00542eb0 | `PlayMoviePumpLoop`/`PlayMovie` | Joystick capture + message pump, faithful |
 | `FUN_00504460` | 0x00504460 | `SetupJoystickHandlers` | Partial, see call-graph notes above |
 | `FUN_00504b10` | 0x00504b10 | `JoystickResetState` | Faithful |
 | `FUN_0050f120` | 0x0050f120 | `CheckDeviceCapabilityFlag` | Faithful structure, opaque vtable call |
 | `FUN_00529e40` | 0x00529e40 | `SetShadingDefaults` | Faithful |
-| `FUN_00529eb0` | 0x00529eb0 | `InitViewportSurfaces` | Faithful |
+| `FUN_00529eb0` | 0x00529eb0 | `InitViewportSurfaces` | First half faithful (4 libgpu env structs + 12 field stores); second half skipped while `GetMainMemPtr()` is null. Fixed a null-pointer crash here, see TODO #32 |
 | (inlined in `FUN_00529c10`) | — | `LoadUiFontFromCd` | Faithful |
 | `FUN_0052a3d0` | 0x0052a3d0 | `RunGameLoop` | Faithful control-flow, including the per-state resource lookup; throws at its remaining unresolved dependency (see "Next area to explore") |
 | `FUN_0052a030` | 0x0052a030 | `LoadFirstLevelResources` | Faithful; throws mid-loop at `DecodeResourceChunk` |
@@ -308,16 +335,17 @@ transcribed, with Ghidra addresses kept in comments for traceability:
 8. **Ordinal 790's callback** (`Blaze.c`: `&LAB_00512ef0`, passed to `SetDeviceLostCallback`): no decompiled function body anywhere in `Blaze.c` — Ghidra only ever saw it address-taken. Cannot be reconstructed without further disassembly. `winsys3d.c` confirms the DLL does call it back later (see `Documentation/DLL/winsys3d.md`), so this matters once device-loss/reset handling comes up.
 9. ~~**`DAT_005db900`/`DAT_005db758[50]`** interface identity~~ — **RESOLVED**. Reading the shutdown path (`FUN_00512ff0`/`FUN_00512ea0`) and the buffer-creation path (`FUN_00513030`, `FUN_005133xx`) exercises enough distinct vtable slots to pin both interfaces against the documented DirectX 3–5 COM layouts with no ambiguity: `DAT_005db8e4` is **`IDirectSound`** (0x08 Release, 0x0c CreateSoundBuffer) and `DAT_005db900`/`DAT_005db758[50]` are **`IDirectSoundBuffer`** (0x08 Release, 0x24 GetStatus, 0x2c Lock, 0x30 Play, 0x3c SetVolume, 0x48 Stop, 0x4c Unlock). This retroactively confirms the 0x3c=SetVolume reading in `ApplyCdVolume`/`ApplyAllSoundBufferVolumes`. The 50-slot count is confirmed independently by `FUN_00512ea0`'s loop bound (`0x005db758`..`0x005db81f`). *Update, this session*: the **buffer**-creation paths are now reconstructed (`AllocateSoundBuffer`, `StartMusicStream`), and a third interface was added to the set — `DAT_005db904` is **`IDirectSoundNotify`** (0x08 Release, 0x0c SetNotificationPositions), pinned by `StartMusicStream` obtaining it via `QueryInterface` on the streaming buffer and then using it only with the argument pair `(8, &DAT_005db8a0)` where `DAT_005db8a0`..`DAT_005db8df` has just been filled as exactly 8 `{ dwOffset, hEventNotify }` pairs. *Still open*: the **device** itself (`DAT_005db8e4`) still has no assignment site anywhere in the reconstructed graph — no `DirectSoundCreate` call has been located — so every entry point still takes its "no device" early-out at runtime. See TODO #26.
 10. **AU_00564a05 blob**: `s_SmallTextureFlag` only reconstructs one 4-byte field (`._51_4_`) of what's clearly a larger structure/array (`AU_00564a05`) — the rest of that blob hasn't been characterized.
-11. **`DAT_00563080` ini key / `DAT_005630bc` ini extension / `DAT_005630c4` format string**: none of these three have a Ghidra-derived string name (unlike e.g. `s_SoundVol_005630b0`), so their exact text is a placeholder/guess in `Blaze.cs` (`UnknownIniKey_005630a0`, `IniFileExtension = ".ini"`) — see inline TODOs.
+11. **RESOLVED** — recovered from `Legacy/Blaze.exe`, see `Documentation/DataSymbols.md`. The options-file extension (`DAT_005630bc`) is **`.cfg`, not `.ini`**, which is why `LoadOptionsIni` had never found a file; `DAT_005630a0` is `CdVol` (the former `UnknownIniKey_005630a0` placeholder); `DAT_005630c4` is `%d`. The full key set is `Size`, `Small`, `Filter`, `Gamma`, `CdVol`, `SoundVol` under section `Options`, corroborated by the installed game's own `BLAZE.cfg`. Original note kept below for context.
+    ~~**`DAT_00563080` ini key / `DAT_005630bc` ini extension / `DAT_005630c4` format string**: none of these three have a Ghidra-derived string name (unlike e.g. `s_SoundVol_005630b0`), so their exact text is a placeholder/guess in `Blaze.cs` (`UnknownIniKey_005630a0`, `IniFileExtension = ".ini"`) — see inline TODOs.~~
 12. **`DAT_00562e00` per-resolution clamp table**: content unknown; `s_ResolutionDetailLimit` in `Blaze.cs` is a placeholder filled with `int.MaxValue` (i.e. the clamp is currently a no-op).
 13. **Movie/intro-video subsystem's two custom C++ vtables** (`PTR_LAB_0054d078` — the DirectDraw-wrapper class constructed by `FUN_00512930`/`FUN_00512d10`, and `PTR_LAB_0054d0a0` — the video-stream class constructed by `FUN_005431e0`/`FUN_00542fc0`): every vtable slot these point at (`LAB_0054dxxx` targets) has no decompiled body anywhere in `Blaze.c` — same class of gap as ordinal 790's `&LAB_00512ef0` callback, just a whole class's worth at once. `TrySetupMovieStream`/`OpenMovieStream`/`RewindMovieFallbackFrame` in `Blaze.cs` stop exactly at these vtable calls; see the "Movie / intro-video subsystem" banner comment in `Blaze.cs` for the full writeup of what *is* independently confirmed (real DirectDraw vtable offsets matching the public `IDirectDraw`/`IDirectDrawSurface` v1 layout, real Win32 window/message-pump/joystick-capture behavior).
 14. **Movie window procedure** (`Blaze.c`: `&LAB_00542600`, the `WNDPROC` for window class `"VfwClass"`): no decompiled body. `CreateMoviePlayerWindow` in `Blaze.cs` therefore does not actually call `RegisterClassA`/`CreateWindowExA` (would crash on the first dispatched message with no real `WndProc`); `HWnd` stays `IntPtr.Zero`. This is also *why* `DAT_005db85c` (TODO #6 above) still can't be threaded through — the movie window isn't the main window anyway (it's a separate 2000x2000 hidden helper window), so the real main-window creation is presumably elsewhere, still unlocated.
-15. **`PTR_FUN_0056c96c`** (per-frame "tick" function pointer, called indirectly by `FUN_0052a3d0`/`RunGameLoop`) — **investigated and closed as "requires the binary"**. `0x0056c96c` occurs exactly once in all 98k lines of `Blaze.c`: at the call site itself. It is therefore not a runtime-assigned variable at all but a **statically initialised `.data` function pointer** — the linker wrote the target address into the image, and Ghidra's `PTR_<KIND>_<address-of-pointer>` naming (compare the confirmed `PTR_s_Blaze___Blade_00563208`, `PTR_PTR_00566d68`, `PTR_FUN_0056b4d0`) tells us the slot holds an unnamed function pointer but not *which* function. Its neighbours (`s_FEMALE_0056c95c`, `DAT_0056c964`, `DAT_0056c978`) confirm it sits in initialised data. **No amount of further reading of `Blaze.c` can recover it** — see the "Systemic blocker" section below. Guessing a plausible target would violate Strategy.md's "ne jamais inventer une signature/un comportement", so `RunGameLoop` throws rather than silently skipping the tick.
+15. **`PTR_FUN_0056c96c`** — **RESOLVED. The pointer holds `0x00537CA0`, and `FUN_00537ca0` is already decompiled in `Blaze.c` at line 83364** — so the game loop's tick needs no Ghidra re-run at all. It is the **per-game-state dispatcher**: it clears `Zoom8BitTextures`, calls `ReInitializeAllTextures()`, then switches on `DAT_005de510` across at least 7 states (`FUN_00542130`, `thunk_FUN_00536180`, `FUN_00542160`+`FUN_00537da0`, `thunk_FUN_00516020`, `FUN_005066d0`, `FUN_00504c90`, `FUN_00524180`). Note this makes `FUN_0052a440` — long assumed to be the state dispatcher — not the one the tick actually reaches. The adjacent pointer at `0x0056c970` holds `0x00537d50`, which is **not** in `Blaze.c` and would need a scoped re-run if it matters. Wiring the tick into `RunGameLoop` is a separate change; `RunGameLoop` still throws until then. Historical reasoning that led here, kept because it was sound: `0x0056c96c` occurs exactly once in all 98k lines of `Blaze.c`: at the call site itself. It is therefore not a runtime-assigned variable at all but a **statically initialised `.data` function pointer** — the linker wrote the target address into the image, and Ghidra's `PTR_<KIND>_<address-of-pointer>` naming (compare the confirmed `PTR_s_Blaze___Blade_00563208`, `PTR_PTR_00566d68`, `PTR_FUN_0056b4d0`) tells us the slot holds an unnamed function pointer but not *which* function. Its neighbours (`s_FEMALE_0056c95c`, `DAT_0056c964`, `DAT_0056c978`) confirm it sits in initialised data. **No amount of further reading of `Blaze.c` can recover it** — see the "Systemic blocker" section below. Guessing a plausible target would violate Strategy.md's "ne jamais inventer une signature/un comportement", so `RunGameLoop` throws rather than silently skipping the tick.
 16. **`DAT_005633a8`** (mode flag read pervasively, including by `FUN_00529eb0`/`InitViewportSurfaces`): no assignment site reached yet either; always 0 (its default) in the current reconstruction.
 17. **Font-loading filename** (`Blaze.c`: `s_DATA_Font_bmp_005684cc`) and the three intro-movie filenames (`s_TEPS_AVI_005684f4`/`s_OPENING_AVI_005684e8`/`s_ANI01_AVI_005684dc`): only Ghidra's auto-derived symbol names survive, not the literal bytes — `"DATA\FONT.BMP"`/`"TEPS.AVI"`/`"OPENING.AVI"`/`"ANI01.AVI"` in `Blaze.cs` are best guesses from the symbol names, same caveat as TODO #4's message strings.
 18. **`FUN_00529b00`/`LoadWholeFileToBuffer`'s incomplete Ghidra analysis**: the failure path returns `unaff_ESI` (a register Ghidra never attributed a value to at function entry — genuinely indeterminate, not just unnamed) and the read call shows a literal `2` (`Ordinal_334(iVar1,2,iVar2)`) exactly where a destination-buffer argument should be, one parameter short of the two arguments both real call sites actually pass. Reconstructed using the evident 2-argument intent (`dest` as that argument, `0` as an explicit safe failure return) — flagged rather than presented as certain.
 19. **`FUN_005322f0`/`DecodeResourceChunk` — genuinely unrecoverable, not just unread**: several of its inputs are `unaff_ESI`/`unaff_DI`/`unaff_retaddr` and outputs `extraout_var`/`extraout_var_00`/`extraout_var_01` in Ghidra's own decompilation — register-allocated values Ghidra could never tie to a defining instruction or a real variable. This is a stronger category of gap than the usual "not yet read": Ghidra's *own* static analysis of this function is incomplete, so no amount of re-reading `Blaze.c` will resolve it without disassembling the raw instructions. **Current blocking point** for `LoadFirstLevelResources` (thrown on the first directory entry, if the loaded "SYSTEM.INI"-equivalent file lists any).
-20. **`DAT_0056aca8`** (resource-fixup schema table read by `FixupResourceHeader`/`FUN_00532070`): data-only global, byte content not present in `Blaze.c`'s text (same category as `DAT_00562e00`/TODO #12) — `s_ResourceFixupSchema_0056aca8` is an empty array, so the schema-driven fixup pass is a safe no-op rather than a guess.
+20. **RESOLVED — schema recovered *and* its reading confirmed.** `DAT_0056aca8` holds 37 `ushort`s ending at a `0x0000` terminator. Each entry is **`(low byte = index, high byte = stride)`**: the low byte selects `header[4 + index]` (a pointer the fixed pass already relocated) and the high byte is the byte stride for walking the chained list it heads. This is settled by `FUN_00532070`'s own `& 0xff` / `>> 8`, not inferred from the byte pattern — an earlier `(kind, size)` guess was wrong. The schema-driven pass is now reconstructed and is no longer a no-op. **Watch the two relocation formulas**: the fixed pass adds `header[0]`, the schema pass adds `header[0] + header[1]`; using the shorter one yields plausible-looking pointers that are off by a constant. Full table and analysis in `Documentation/DataSymbols.md`. Original note: ~~**`DAT_0056aca8`** (resource-fixup schema table read by `FixupResourceHeader`/`FUN_00532070`): data-only global, byte content not present in `Blaze.c`'s text (same category as `DAT_00562e00`/TODO #12) — `s_ResourceFixupSchema_0056aca8` is an empty array, so the schema-driven fixup pass is a safe no-op rather than a guess.~~
 21. **`DAT_006008c8`/`DAT_00604930`/`DAT_00600904`** (the 3 comparison targets in `IsKnownOverrideDestination`/`FUN_0052a660`): none have an assignment site anywhere in the reconstructed call graph yet, so they're always null/zero; the 2 true-branch bodies (native override-table installers, one pulling in 11 further `FUN_` calls) are stubbed rather than translated.
 22. **`PTR_s_BLAZE_ALL_1_00566bbc`/`PTR_s_SYSTEM_INI_1_00566bb8`/`s____snd_Base_snd_00568500`** filenames used by the resource-loader subsystem: same category as TODO #17 — only Ghidra's derived symbol names survive; `"BLAZE.ALL"`/`"SYSTEM.INI"`/`"\SND\BASE.SND"` in `Blaze.cs` are best guesses.
 23. **Music-streaming worker thread** (`Blaze.c`: `&LAB_00513660`, passed to `CreateThread` by `FUN_005131d0`): no decompiled body anywhere in `Blaze.c` — address-taken only, exactly the same class of gap as the movie `WNDPROC` (#14) and ordinal 790's callback (#8). `StartMusicStream` therefore does **not** call `CreateThread` (jumping to an address we cannot reconstruct would crash), same precedent as `CreateMoviePlayerWindow` skipping `CreateWindowExA`; `s_MusicStreamThread` stays `IntPtr.Zero`. Consequence: everything else in the start path is real, so a track *would* begin playing, but nothing ever refills the buffer — the pre-decoded 80 blocks would loop forever instead of streaming on. This is also why `DAT_005db860`/`DAT_005db750`/`DAT_005db89c` (source-block cursor, total block count, playing flag) and the 8 notification events are written but never read in the reconstruction: the worker is their only consumer. Resolvable by re-running Ghidra with `0x00513660` forced to "disassemble as function".
@@ -329,42 +357,69 @@ transcribed, with Ghidra addresses kept in comments for traceability:
 29. **Sound-directory second half (`DAT_005e8520`, entries `0x3c`..`0x4c`)** is loaded by `FUN_00512xxx` (`Blaze.c:63354`), which is not reconstructed — so those 17 entries stay zero and sound ids `0x3c`..`0x4c` (which include the four fixed UI sounds `PlayUiSound38`..`3B`) currently resolve to a zero-length sample and play silence. Not a data-availability problem: it is ordinary uncovered code, and the same call site also fills the level sample bank `DAT_00600900`.
 30. **`PTR_s____Music_Mel00_01_WAV_00566cc8`** — the music-filename pointer table indexed by `FUN_00529ad0`/`PlayMusicTrack`, the only caller of `StartMusicStream`. Call sites pass indices up to at least `0x26`, and `FUN_00529ad0` patches each path's first character with the CD drive letter (`s____Blaze_Blade_005631e8[0]`) before playing. Data-only table, so it is not reconstructed and `FUN_00529ad0` is deliberately left untranslated rather than filled with invented filenames — same category as #17/#22, but a whole table rather than single strings.
 
-## Systemic blocker — `Blaze.exe` itself is missing from the repo
+31. **Dropped return values silently delete control-flow edges — a startup hang, now fixed.** `FUN_00542f30` is declared `void` by Ghidra (`Blaze.c:90063`) even though it tail-calls `FUN_00542c40`, which Ghidra itself types `undefined4 __fastcall`, and both call sites in `FUN_00529c10` read the result (`Blaze.c:74442`, `74450`). The reconstruction had followed the `void` declaration, which removed **two of the attract loop's four exit conditions**; combined with the other two being dead (`PlayMovie` always reports 0 while `TrySetupMovieStream` is a stub), `RunMainLoop` spun forever at 100% CPU and startup never reached engine init. Fixed by trusting the call site over the declaration and reconstructing `FUN_00542c40`'s bitmap-load prologue, whose `return 1` on a missing `TITLE640.BMP` is the original's own way out of the loop when there is no CD.
+    **Rule this establishes**: when Ghidra's declaration and a call site disagree about a return value or a parameter, the *call site* wins. A stub must still return a value if its result is one of a loop's exit conditions.
+    **The same defect is still latent** in `PlayMoviePumpLoop` (`FUN_00542b70`): its `do { … } while (*param_1 != 0)` terminates only when the movie-stream vtable callback clears the playing flag (TODO #13), and is currently unreachable *only* because `TrySetupMovieStream` returns false. Enabling that stub without a completion signal re-hangs startup in a tight `PeekMessage` spin. A warning comment now sits at that loop in `Blaze.cs`.
 
-**This is the single highest-leverage thing that can change.** The repo root contains
-`Blaze.c` and the five helper DLLs *together with their binaries*
-(`winsys3d.dll`, `wsyskern.dll`, `playst.dll`, `3dhelp.dll`, `gldhelp.dll`) — but
-**not `Blaze.exe`**. (`Prompt.md` refers to a `Legacy/Decompiled` solution folder;
-no such folder exists here.)
+32. **`FUN_00529eb0`/`InitViewportSurfaces` was writing through a null pointer — fixed, and the ordinals are now identified.** The reconstruction passed `null` to `Ordinal_661` (under a `TODO(REVERSE): exact 3rd struct target not modeled`), passed stack scratch buffers instead of the four global structs, and had the argument order rotated on all four calls — a native `0xC0000005` that killed the process the moment the attract-loop fix made this function reachable. Root cause: Ghidra spills these calls' arguments into unattributed stack slots (`uStack_18`..`puStack_50`) instead of rendering them as arguments, and gives the fourth call only three of its five. Reading the slots back in ascending-address (cdecl push) order recovers all four exactly.
+    **Identification, now certain**: winsys3d.dll ordinals 658/661/665/674 are a port of the PlayStation SDK's **libgpu** — fitting, since the sibling DLL is literally named `playst.dll`. Ordinal 658 is `SetDefDispEnv(DISPENV*, x, y, w, h)` and 661 is `SetDefDrawEnv(DRAWENV*, x, y, w, h)`; their bodies write the documented DISPENV/DRAWENV field layouts field for field. The four globals `Blaze.c` passes them (`DAT_005e9880`, `DAT_005e98dc`, `DAT_005e98f0`, `DAT_005e994c`) are spaced **92 / 20 / 92 / 20 bytes** apart — exactly `sizeof(DRAWENV)` / `sizeof(DISPENV)` — and all 12 of the follow-up global stores land on valid fields of those layouts. Three independent confirmations, no guessing. The setup is standard PSX double buffering at 320x240 (`0x140`x`0xf0`): display one buffer at y=0 while drawing the other at y=240, and swap.
+    Ordinal 674 is `LoadImage(RECT*, data)` (its `rect.y > 0x1ff` early-out confirms 1024x512 VRAM). Ordinal 665 is `ClearImage`-shaped but its colour math decompiles as `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match libgpu's plain `(r,g,b)` — deliberately left un-renamed until that is explained.
+    *Still open in this function*: the `DAT_005633a8 != 0` branch calls `Ordinal_674` with a RECT (`uStack_58`) whose `x` advances by 0x40 per iteration and wraps at 0x400; the reconstruction's `tileRect` is never initialized and its `frameOffset` is tracked separately from the rect it belongs to. That branch is currently unreachable (`GetMainMemPtr()` returns null, TODO #33), so it is flagged rather than fixed.
 
-Having the DLL *binaries* is exactly why ordinal-only imports could be resolved
-(`pe_exports.ps1` reads their export tables directly). Not having `Blaze.exe`
-is exactly why a whole *class* of TODOs is stuck, because `Blaze.c` is a
-**code-only decompilation**: Ghidra emitted function bodies, not the `.data`
-/`.rdata` sections. Every symbol whose value lives in initialised data is
-therefore unrecoverable by construction, no matter how carefully `Blaze.c` is
-re-read.
+33. **`GetMainMemPtr()` returns null** — winsys3d.dll's `MainMem` export is not yet resolved, so the entire second half of `InitViewportSurfaces` (the framebuffer checkerboard fill and the 0x20-iteration `LoadImage` tile upload loop) is skipped by an early return, and any other code reading main video memory will do the same. Now that startup runs end to end this is the most visible remaining gap below the game loop itself.
 
-Currently blocked *solely* by this, and all unblockable at once by adding the
-binary (or a Ghidra data-section export):
+34. **The attract loop has no reachable exit once the CD is present — now a loud throw.** With the data root corrected, `ShowTitleScreenAndWait` loads `DATA/TITLE640.BMP` successfully and returns 0, and `PlayMovie` is pinned at 0 while `TrySetupMovieStream` is stubbed (#13). All four of the loop's exits therefore depend on unreconstructed subsystems, and the process spins at 100% CPU with no message pump — the same silent-misbehaviour shape as #31, arriving from the opposite direction. `ShowTitleScreenAndWait` now throws a descriptive `NotImplementedException` at the point where the original's 20-second `timeGetTime` wait and its key/mouse/joystick handling would be, rather than returning 0. The degradation is targeted: with no CD the bitmap load still fails, the function returns 1, the loop exits on iteration 1 and startup proceeds. **To clear this**, the real fix is the main window + `WNDPROC` (#6/#14) so input can actually arrive; reconstructing the 20 s timeout alone would produce a faithfully-infinite loop, which is no better.
 
-| TODO | Symbol(s) | What's missing |
+35. **RESOLVED** — the schema-driven relocation pass is reconstructed (TODO #20), `LoadResourceEntry` no longer faults, and the directory walk now reaches `DecodeResourceChunk`. Original diagnosis kept below; it was correct. ~~**`LoadResourceEntry` faults on unrelocated directory pointers against real game data.** Measured with the CD mounted and the attract loop temporarily bypassed: `LoadFirstLevelResources` loads `SYSTEM.INI;1`, enters its directory-entry loop, and dereferences `entryPtrValue` — a raw value read straight out of the file — as a pointer, giving a `NullReferenceException`/AV in `LoadResourceEntry`. Cause is upstream and already documented: `FixupResourceHeader`'s schema-driven relocation pass is a no-op because `s_ResourceFixupSchema_0056aca8` is an empty array, so the file's internal offsets are never turned into real pointers. **This is now fixable** — `DAT_0056aca8`'s bytes were recovered and are recorded in `Documentation/DataSymbols.md` (#20); the `(kind, size)` reading of them is still a hypothesis and needs confirming against `FUN_00532070`'s use of the table. Until then `DecodeResourceChunk` (#19) cannot be reached, so it stays untested.~~
+
+## ~~Systemic blocker~~ — RESOLVED: `Blaze.exe` is now in the repo
+
+**This section previously said a whole class of work was impossible. It was wrong, and it
+was the most misleading thing in this file** — it told every future session not to try.
+
+`Blaze.exe` is now committed at **`Legacy/Blaze.exe`** (1,589,760 bytes, MD5
+`46d90d1b4526f4a9a441f851c77179b3`), registered as a solution item under the
+existing `Legacy` solution folder. It is provably the same build `Blaze.c` came
+from: image base `0x400000` + entry RVA `0x147D40` = `0x00547D40`, exactly
+`entry`'s address.
+
+The reasoning that led here still holds and is worth keeping: `Blaze.c` is a
+**code-only decompilation** — Ghidra emitted function bodies, not `.data`
+/`.rdata`. Any symbol whose value lives in initialised data is unrecoverable by
+re-reading `Blaze.c`, no matter how carefully. The fix was never more analysis;
+it was getting the bytes.
+
+Read them with:
+
+```
+OpenForesia.Tools sections Legacy/Blaze.exe
+OpenForesia.Tools at Legacy/Blaze.exe 0x005631f8 [bytes]
+```
+
+All recovered values are recorded in **`Documentation/DataSymbols.md`**, keyed by
+Ghidra VA. Every TODO below that was blocked on data is now resolved there:
+
+| TODO | Symbol(s) | Outcome |
 |---|---|---|
-| #15 | `PTR_FUN_0056c96c` | the game loop's per-frame tick function pointer |
-| #2 | `DAT_00563280`..`_0056328c` | CD-check filename template |
-| #3 | `PTR_s_Blaze___Blade_00563208` | `Setup3DDevice`'s title/string table |
-| #4, #17, #22 | all the `s_*` message/filename strings | literal bytes (currently best-guess text) |
-| #10 | `AU_00564a05` | structure/array content |
-| #11 | ini key/extension/format strings | literal bytes |
-| #12 | `DAT_00562e00` | per-resolution clamp table |
-| #20 | `DAT_0056aca8` | resource-fixup schema table |
-| #21 | `DAT_006008c8`/`DAT_00604930`/`DAT_00600904` | override-table base pointers |
-| #24 | `DAT_0056ac60`/`DAT_0056ac80`/`DAT_0056ac90` | MS-ADPCM adaptation + coefficient tables (values reconstructed from the standard, worth verifying) |
-| #27 | `DAT_005631d4` | whether music is enabled at startup |
-| #30 | `PTR_s____Music_Mel00_01_WAV_00566cc8` | the music-filename pointer table |
+| #15 | `PTR_FUN_0056c96c` | **`0x00537CA0`** — and `FUN_00537ca0` is already in `Blaze.c` (line 83364). It is the per-game-state dispatcher. No Ghidra re-run needed. |
+| #2 | `DAT_00563280` | `"@:\cd.idx"` — and `cd.idx` exists at the CD root |
+| #3 | `PTR_s_Blaze___Blade_00563208` | all 5 strings recovered; slot meanings match `winsys3d.md` exactly |
+| #4 | message strings | `"Please insert Blaze & Blade CD!"`, `"Erreur"` |
+| #11 | ini keys/extension | extension is **`.cfg`, not `.ini`** — the reconstruction has never found its options file |
+| #12 | `DAT_00562e00` | `1, 7, 11, 16, 23` — real clamps; the current `int.MaxValue` no-op is wrong |
+| #17, #22 | filenames | recovered exactly, incl. forward slashes (`DATA/Font.bmp`) and ISO-9660 `;1` suffixes |
+| #20 | `DAT_0056aca8` | bytes recovered; `(kind, size)` reading still a hypothesis |
+| #21 | `DAT_006008c8`/`DAT_00604930`/`DAT_00600904` | **uninitialised `.data` tail** — zero at load, written only by code. No data recovery can help; confirms they have no assignment site yet. |
+| #24 | MS-ADPCM tables | standard values **confirmed byte-for-byte** — the earlier assumption was right |
+| #27 | `DAT_005631d4` | **`1`** — music is *enabled* at startup; the reconstruction defaults it to 0 |
+| #30 | music filename table | `"@:/Music/Mel00_01.WAV"` etc., drive-patched absolute paths |
+| — | `DAT_005631f8` | `"@:\FRENCH\"` — the data root, not the drive root. Cause of a live path bug; see `fix-cd-data-paths`. |
 
-Two further blockers are *not* fixed by the binary alone but by **re-running
-Ghidra** (or a disassembler) on it:
+Applying these values to `Blaze.cs` is deliberately **not** part of that recovery
+work — each one gets reviewed against its call site in its own change.
+
+Two further blockers were never about the data, and are **still open**. They need
+**re-running Ghidra** on the binary — which is now possible, since the binary is here:
 
 - **#19 `FUN_005322f0`** — Ghidra's own analysis is incomplete
   (`unaff_ESI`/`unaff_DI`/`unaff_retaddr` inputs, `extraout_var*` outputs).
@@ -376,6 +431,14 @@ Ghidra** (or a disassembler) on it:
   the highest-value: it is a single self-contained thread procedure whose
   inputs (`DAT_005db860`, `DAT_005db750`, `DAT_005db89c`, the 8 notification
   events, the stop event) are all already identified.
+
+**This is not only a fidelity concern — it has already produced a shipped bug.**
+TODO #31 records the first confirmed case: following Ghidra's `void`
+declaration for `FUN_00542f30` over its call sites deleted two of an
+attract loop's four exit conditions and hung startup outright. Treat every
+`void`-declared function whose result a call site reads, and every function
+called with more arguments than Ghidra declares, as a defect waiting to
+happen rather than a cosmetic annotation. The call site is authoritative.
 
 A recurring, *separate* quality issue also worth noting: Ghidra's **parameter
 recovery is unreliable throughout this binary** — `FUN_00529b00`,
@@ -425,8 +488,71 @@ re-init, UI font load, viewport setup, `LoadFirstLevelResources` — all the
 way through to handing off to the real per-frame game loop, which itself now
 runs its per-state resource lookup before hitting its own blocking point.
 
-- **`DecodeResourceChunk` (Ghidra: `FUN_005322f0`)** — **the current blocking
-  point.** Reached from `LoadFirstLevelResources`'s directory-entry loop
+**The CD is present and detected — earlier notes here saying otherwise were wrong.**
+The retail disc mounts at `E:`, the drive scan finds it, and the failures
+previously attributed to "no game CD" were a path bug: the data root is
+`"@:\FRENCH\"` (Ghidra `DAT_005631f8`), not the bare drive root. Everything
+CD-relative resolved one directory too high and found nothing. Fixed in
+`fix-cd-data-paths`; the disc's real layout is `E:\French\` for `BLAZE.ALL`,
+`SYSTEM.INI`, `DATA/`, and the movies, with `E:\Snd\` and `E:\Music\` at the
+root reached by their own `@:`-prefixed absolute templates.
+
+**Two runtime behaviours measured with the CD mounted:**
+
+- The attract-mode title screen **loads** `DATA/TITLE640.BMP` — the path fix is
+  proven. It then throws, deliberately: see TODO #34.
+- With the attract loop bypassed by a temporary local patch (not committed),
+  `LoadFirstLevelResources` **finds `SYSTEM.INI;1`, walks real directory entries,
+  relocates them, and reaches `DecodeResourceChunk`** — which throws its
+  documented `NotImplementedException`.
+
+  **TODO #19 is therefore exercised for the first time.** Every previous run
+  either never got here or got here for the wrong reason: before the CD paths
+  were fixed the loader found no entries at all, and before the relocation pass
+  was reconstructed (#20/#35) it faulted on an unrelocated pointer one call
+  earlier. The resource path is now genuinely blocked on `FUN_005322f0` itself,
+  which is the hard blocker the analysis predicted all along.
+
+**First end-to-end run (before the CD paths were fixed).** After the attract-loop
+hang (TODO #31) and the viewport-init crash (TODO #32) were fixed, the
+reconstruction ran the **entire startup spine** and stopped where the analysis
+said it would — at the game loop's missing tick callback, as a descriptive
+managed exception rather than a crash:
+
+```
+=== OpenForesia ===
+Unhandled exception. System.NotImplementedException: FUN_0052a3d0: per-frame
+tick callback (Ghidra: PTR_FUN_0056c96c) has no known assignment site yet
+   at Blaze.RunGameLoop()
+   at Blaze.RunMainLoop()
+   at Blaze.RunApplication(...)
+   at Blaze.entry()
+```
+
+Everything upstream executes on a machine with **no game CD**: CRT bring-up,
+CD scan, `LoadOptionsIni`, the full intro/attract sequence (exits on iteration
+1 as designed), engine/device re-init, `ShutdownMoviePlayer`,
+`CheckDeviceCapabilityFlag`, `SetShadingDefaults`, `InitViewportSurfaces`,
+`SetupJoystickHandlers`, `LoadUiFontFromCd`, the `Ordinal_710/668/720/92/104`
+sequence, and `LoadFirstLevelResources`.
+
+Note `LoadFirstLevelResources` completes *without* reaching
+`DecodeResourceChunk` (TODO #19): with no CD, the "SYSTEM.INI"-equivalent it
+loads lists no directory entries, so the loop body that would hit that stub
+never runs. TODO #19 therefore remains untested rather than resolved — it will
+reappear the moment real game data is present.
+
+So the empirical blocking point is now **TODO #15, `PTR_FUN_0056c96c`** — the
+same one the static analysis already identified as the game loop's blocker,
+and it is gated behind the systemic missing-`Blaze.exe` problem rather than
+being a reading task.
+
+- **`DecodeResourceChunk` (Ghidra: `FUN_005322f0`)** — **now genuinely reached
+  at runtime** against real game data, and the blocker on the resource path.
+  Recovering it needs a **Ghidra re-run** on `Legacy/Blaze.exe` with corrected
+  calling conventions, which is possible now that the binary is in the repo —
+  it is no longer gated on anything external. Reached from
+  `LoadFirstLevelResources`'s directory-entry loop
   (thrown on the first entry, if the loaded "SYSTEM.INI"-equivalent file
   lists any — untested against real game data, since none is available in
   this environment). Unlike every other gap so far, this one is genuinely

@@ -28,17 +28,27 @@ dotnet run --project OpenForesia          # runs Blaze.entry()
 Two `NETSDK1189` warnings about `Prefer32Bit` are expected and harmless. There is no test project;
 verification is `dotnet build` plus reading the reconstruction against `Blaze.c`.
 
-DLL inspector (dumps a PE export table — ordinal → RVA → name):
+PE inspector. A bare path keeps the original export-table dump (ordinal → RVA → name); the two
+verbs read the binary's data sections:
 
 ```powershell
-dotnet run --project OpenForesia.Tools -- winsys3d.dll
+dotnet run --project OpenForesia.Tools -- winsys3d.dll                        # exports
+dotnet run --project OpenForesia.Tools -- sections Legacy/Blaze.exe           # VA ranges
+dotnet run --project OpenForesia.Tools -- at Legacy/Blaze.exe 0x005631f8 32   # bytes at a Ghidra VA
 ```
+
+`at` takes a **Ghidra virtual address** (hex, `0x` optional) and prints the resolved file offset and
+section alongside hex, C-string and dword renderings. Byte counts are decimal. An address landing in
+`.data`'s uninitialised tail is reported as such — that means "zero at load, written only by code",
+which is an answer, not an error.
 
 ## Layout
 
 | Path | Role |
 |---|---|
 | `Blaze.c` (98k lines) | Ghidra decompilation of `Blaze.exe`. **Source of truth. Never modify.** |
+| `Legacy/Blaze.exe` | The game binary itself (MD5 `46d90d1b4526f4a9a441f851c77179b3`). Same build as `Blaze.c`: image base `0x400000` + entry RVA `0x147D40` = `0x00547D40` = `entry`. |
+| `Documentation/DataSymbols.md` | Values recovered from the binary's data sections, keyed by Ghidra VA. |
 | `winsys3d.c`, `wsyskern.c`, `playst.c`, `3dhelp.c`, `gldhelp.c` | Ghidra decompilations of the five helper DLLs. **Secondary references, read-only.** |
 | `*.dll` (repo root) | The actual DLL binaries — this is what makes ordinal-only imports resolvable. |
 | `OpenForesia/src/Blaze/Blaze.cs` | The entire reconstruction (one file, by design — see "Phase 1"). |

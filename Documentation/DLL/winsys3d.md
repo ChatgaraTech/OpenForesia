@@ -13,6 +13,53 @@ Export table was resolved with a small pure-Python PE32 export-directory parser
 `winsys3d.dll` sitting in the repo root, then cross-checked against the matching
 function body in `winsys3d.c` by RVA.
 
+## The libgpu family (ordinals 658 / 661 / 665 / 674) — **IDENTIFIED**
+
+These are a port of the **PlayStation SDK's `libgpu`**, which is consistent with
+the sibling DLL being named `playst.dll`. Blaze & Blade is a PSX title, and this
+part of `winsys3d.dll` is its graphics layer carried over almost verbatim.
+
+| Ordinal | winsys3d.c | libgpu equivalent | Confidence |
+|--------:|------------|-------------------|------------|
+| 658 | `FUN_00a05ac0` @ `0xa05ac0` | `SetDefDispEnv(DISPENV*, x, y, w, h)` | **certain** |
+| 661 | `FUN_00a05b50` @ `0xa05b50` | `SetDefDrawEnv(DRAWENV*, x, y, w, h)` | **certain** |
+| 674 | `FUN_00a05d50` @ `0xa05d50` | `LoadImage(RECT*, u_long* data)` | high |
+| 665 | `FUN_00a05e90` @ `0xa05e90` | `ClearImage`-shaped, see caveat | partial |
+
+Three independent lines of evidence pin 658 and 661:
+
+1. **Field-for-field body match.** 658 writes `disp={x,y,w,h}`,
+   `screen={0,0,0x100,0xf0}`, `isinter=0`, `isrgb24=0` — the documented
+   `DISPENV` layout. 661 writes `clip={x,y,w,h}`, `ofs={x,y}`, `tw={0,0,0,0}`,
+   `tpage=10`, `dtd=1`, `dfe=1`, `isbg=0`, `r0=g0=b0=0` — the documented
+   `DRAWENV` prefix.
+2. **Struct spacing proves the sizes.** The four globals `Blaze.exe` passes sit
+   at `0x005e9880`, `0x005e98dc`, `0x005e98f0`, `0x005e994c` — alternating gaps
+   of **92** and **20** bytes, exactly `sizeof(DRAWENV)` and `sizeof(DISPENV)`.
+3. **The caller's follow-up stores all land on valid fields** of those layouts
+   (`+0x08..+0x0e` = `DISPENV.screen`, `+0x16` = `DRAWENV.dtd`,
+   `+0x18` = `DRAWENV.isbg`).
+
+```
+DISPENV (20) = { RECT disp; RECT screen; u_char isinter, isrgb24, pad0, pad1; }
+DRAWENV (92) = { RECT clip; short ofs[2]; RECT tw; u_short tpage;
+                 u_char dtd, dfe, isbg, r0, g0, b0; ... }
+RECT     (8) = { short x, y, w, h; }
+```
+
+**Argument recovery caveat**: Ghidra does *not* render these calls' arguments as
+arguments in `Blaze.c`. It spills them into unattributed stack slots
+(`uStack_18`, `puStack_28`, …) and, for one call, emits only three of the five.
+Read the slots back in **ascending address order** — the cdecl push order — to
+recover `(env, x, y, w, h)`. Getting this wrong caused a null-pointer crash in
+the reconstruction; see `REVERSE_STATUS.md` TODO #32.
+
+`LoadImage` (674) early-outs on `rect.y > 0x1ff`, confirming the familiar
+1024x512 VRAM addressing. **Caveat on 665**: it takes a `RECT` and floods VRAM
+like `ClearImage`, but its colour math decompiles as
+`((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match libgpu's plain
+`(r, g, b)` parameters — left un-renamed in `Blaze.cs` until explained.
+
 ## Confirmed named exports used by Blaze.exe
 
 ### `Setup3DDevice` (ordinal 823, RVA `0x1910`, `winsys3d.c:386`) — **ANALYZED**

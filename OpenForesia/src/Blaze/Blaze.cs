@@ -95,6 +95,28 @@ public static unsafe partial class Blaze
     [DllImport("wsyskern.dll")]
     private static extern IntPtr LoadBitmapEx(IntPtr hInstance, IntPtr resourceIdOrName, out IntPtr phPalette);
 
+    // wsyskern.dll ordinal 115 (named export, wsyskern.c:13885 @ 0x10010500). Reads a whole .BMP
+    // file into a wsyskern-heap buffer and returns a pointer to its raw BITMAPFILEHEADER-prefixed
+    // image, or null on failure. `mode` selects the failure reporting: 0 = silent, 1 = fatal
+    // `filenotfound`/`fileerror` message box, 2 = `warnfilenotfound`/`warnfileerror` warning.
+    // The only Blaze.c call site (0x00542c40, the attract title screen) passes 0, i.e. a missing
+    // file must fail silently and is a normal, handled outcome.
+    //
+    // IMPORTANT: the returned buffer comes from wsyskern's own heap (its `Malloc`, ordinal 124,
+    // wsyskern.c:9769), so it must be released with wsyskern's `Free` below — NOT with this file's
+    // CRT-derived Free, which maps to NativeMemory and would corrupt the heap.
+    [DllImport("wsyskern.dll")]
+    private static extern byte* LoadBitmapFile(byte* fileName, uint mode);
+
+    // wsyskern.dll ordinal 89 (named export, wsyskern.c:9818 @ 0x1000bc30). The matching deallocator
+    // for anything wsyskern's `Malloc` produced. Blaze.c calls it exactly twice, both on the attract
+    // screen's title bitmap (Blaze.c:89940 and 90131) — note it is the capitalized `Free`/`Malloc`
+    // pair Ghidra resolved from the import table, a different heap from the lowercase CRT
+    // malloc/free chain (FUN_00547220/FUN_00547210) this file maps onto NativeMemory.
+    // Passing null is safe: it forwards to a CRT free, and Blaze.c itself calls it unconditionally.
+    [DllImport("wsyskern.dll", EntryPoint = "Free")]
+    private static extern void WsysFree(byte* block);
+
     // winsys3d.dll ordinal 823 (named export). Role now fully confirmed by reading its body and
     // its callee chain in winsys3d.c (FUN_00a010d0 -> dialog proc FUN_00a012f0): despite the name,
     // this is the game's **renderer-selection dialog / launcher**, not a device creation call.
@@ -157,12 +179,32 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#138")] private static extern void Ordinal_138(); // confirmed no-op (FUN_00a26470)
     [DllImport("winsys3d.dll", EntryPoint = "#368")] private static extern void Ordinal_368(void* eightDwordStruct); // real: winsys3d.c FUN_00a20ed0, copies 8 dwords into DLL-internal "shading defaults" state (EXT_011d0828); exact field semantics TODO(REVERSE)
     [DllImport("winsys3d.dll", EntryPoint = "#378")] private static extern void Ordinal_378(int a, int b); // real: winsys3d.c FUN_00a21020, stores (a,b) into DLL-internal state (EXT_011cb414/EXT_011cb410); exact semantics TODO(REVERSE)
-    [DllImport("winsys3d.dll", EntryPoint = "#658")] private static extern void Ordinal_658(void* buf, short a, short b, short c, short d); // real: winsys3d.c FUN_00a05ac0, fills a caller-owned "surface descriptor" struct
-    [DllImport("winsys3d.dll", EntryPoint = "#661")] private static extern void Ordinal_661(void* buf, short a, short b, short c, short d); // real: winsys3d.c FUN_00a05b50, fills a caller-owned "surface descriptor" struct (richer variant)
-    [DllImport("winsys3d.dll", EntryPoint = "#665")] private static extern int Ordinal_665(void* rect, byte r, byte g, uint b); // real: winsys3d.c FUN_00a05e90, fills a video-memory region with a flat color
+    // Ordinals 658/661/665/674 are winsys3d.dll's port of the PlayStation SDK's **libgpu** — which
+    // is what the sibling `playst.dll` ("PlayStation") is named after, and unsurprising for a PSX
+    // game ported to Windows. The two below are identified beyond doubt by their bodies: they write
+    // exactly the documented DISPENV and DRAWENV field layouts, and the four global structs Blaze.c
+    // passes them are spaced 20 / 92 bytes apart, matching sizeof(DISPENV) / sizeof(DRAWENV) exactly.
+    // Both take (env, x, y, w, h) — a *screen rectangle*, not four opaque shorts.
+
+    // winsys3d.c FUN_00a05ac0 — libgpu `SetDefDispEnv(DISPENV*, x, y, w, h)`. Writes disp={x,y,w,h},
+    // screen={0,0,0x100,0xf0}, isinter=0, isrgb24=0 (18 of the struct's 20 bytes).
+    [DllImport("winsys3d.dll", EntryPoint = "#658")] private static extern void SetDefDispEnv(void* dispEnv, short x, short y, short w, short h);
+
+    // winsys3d.c FUN_00a05b50 — libgpu `SetDefDrawEnv(DRAWENV*, x, y, w, h)`. Writes clip={x,y,w,h},
+    // ofs={x,y}, tw={0,0,0,0}, tpage=10, dtd=1, dfe=1, isbg=0, r0=g0=b0=0 (first 28 bytes of 92).
+    [DllImport("winsys3d.dll", EntryPoint = "#661")] private static extern void SetDefDrawEnv(void* drawEnv, short x, short y, short w, short h);
+
+    // real: winsys3d.c FUN_00a05e90 — libgpu `ClearImage(RECT*, r, g, b)`-shaped (takes a 4-short
+    // RECT and floods VRAM), but its colour math decompiles as
+    // `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match ClearImage's plain (r,g,b).
+    // TODO(REVERSE): left un-renamed until that is explained rather than assumed.
+    [DllImport("winsys3d.dll", EntryPoint = "#665")] private static extern int Ordinal_665(void* rect, byte r, byte g, uint b);
     [DllImport("winsys3d.dll", EntryPoint = "#667")] private static extern void Ordinal_667(int a); // confirmed no-op (FUN_00a02e20)
     [DllImport("winsys3d.dll", EntryPoint = "#668")] private static extern int Ordinal_668(int a, int b, int c, int d, int e, int f); // real: winsys3d.c FUN_00a020a0, registers a debug/console text channel slot (unused feature in the shipped build)
-    [DllImport("winsys3d.dll", EntryPoint = "#674")] private static extern int Ordinal_674(void* rect, void* srcBuffer); // real: winsys3d.c FUN_00a05d50, blits srcBuffer into the video-memory region described by rect
+    // real: winsys3d.c FUN_00a05d50 — libgpu `LoadImage(RECT*, u_long* data)`: copies `data` row by
+    // row into the VRAM rectangle. `rect` is a 4-short RECT {x,y,w,h}, and the body early-outs on
+    // rect.y > 0x1ff, confirming a 1024x512 VRAM addressing scheme.
+    [DllImport("winsys3d.dll", EntryPoint = "#674")] private static extern int Ordinal_674(void* rect, void* srcBuffer);
     [DllImport("winsys3d.dll", EntryPoint = "#681")] private static extern void Ordinal_681(int a); // confirmed no-op (FUN_00a02e20)
     [DllImport("winsys3d.dll", EntryPoint = "#710")] private static extern void Ordinal_710(int width, int height); // real: winsys3d.c FUN_00a026e0, (re)creates the DLL's text/console overlay bitmap at the given size
     [DllImport("winsys3d.dll", EntryPoint = "#712")] private static extern void Ordinal_712(int a); // confirmed no-op (FUN_00a02870)
@@ -774,14 +816,11 @@ public static unsafe partial class Blaze
 
             if (foundLetter != '@')
             {
-                // Ghidra: DAT_005631f8 = s____Blaze_Blade_005631e8[0]; persisted here (the original
-                // only shows a 1-byte write in Blaze.c's text, but DAT_005631f8 is read back
-                // elsewhere — RunMainLoop, PlayMovie — as a full "X:\" C string, so the whole
-                // drive-root buffer is persisted, not just the drive letter).
-                s_CdDriveRootPath[0] = (byte)foundLetter;
-                s_CdDriveRootPath[1] = (byte)':';
-                s_CdDriveRootPath[2] = (byte)'\\';
-                s_CdDriveRootPath[3] = 0;
+                // Ghidra: DAT_005631f8 = s____Blaze_Blade_005631e8[0]. A single-byte store, and
+                // that is genuinely all it is: the rest of "@:\FRENCH\" is static data the linker
+                // wrote into the image. Patch index 0 only — do not rebuild the string from parts,
+                // or the language directory is lost again.
+                s_CdDataRootPath[0] = (byte)foundLetter;
 
                 cdCheckPath[0] = (byte)foundLetter;
                 IntPtr hFile = OpenExistingFileReadOnly(cdCheckPath);
@@ -947,7 +986,11 @@ public static unsafe partial class Blaze
 
     // TODO(REVERSE): DAT_005630bc has no Ghidra-derived string name (short/undecoded literal);
     // ".ini" is a strong but unconfirmed guess for the settings-file extension.
-    private const string IniFileExtension = ".ini";
+    // Ghidra: DAT_005630bc — recovered from Legacy/Blaze.exe as ".cfg", not ".ini". The installed
+    // game's own options file is BLAZE.cfg, and its [Options]/[D3DDriver]/[Controls] sections match
+    // what LoadOptionsIni/LoadKeyBindings already read — so those two were correct all along and
+    // had simply never located their file.
+    private const string IniFileExtension = ".cfg";
 
     // TODO(REVERSE): ini key text unknown — DAT_00563080 (the key name argument for
     // DAT_005de160 below) has no Ghidra-derived string name either.
@@ -987,12 +1030,16 @@ public static unsafe partial class Blaze
     // inventing real limits.
     private static readonly int[] s_ResolutionDetailLimit = CreateUnknownResolutionLimitTable();
 
+    // Ghidra: DAT_00562e00 — recovered from Legacy/Blaze.exe as the dwords
+    // { 1, 7, 11, 16, 23, 0 }. These are real per-resolution detail clamps; the table was
+    // previously filled with int.MaxValue on the assumption that its content was unrecoverable,
+    // which turned the clamp into a silent no-op.
+    // TODO(REVERSE): the trailing 0 is transcribed as read. It is plausibly a terminator rather
+    // than a 6th entry meaning "clamp everything to 0", and no call site has been reconstructed
+    // that indexes past 4 — s_ResolutionIndex comes from the ini's Resolution key (4 in the real
+    // BLAZE.cfg). Kept verbatim rather than trimmed to a guess.
     private static int[] CreateUnknownResolutionLimitTable()
-    {
-        var table = new int[8];
-        Array.Fill(table, int.MaxValue);
-        return table;
-    }
+        => [1, 7, 11, 16, 23, 0];
 
     // Ghidra: &DAT_00564b58, 240 ints (4 groups x 3 categories x 20 actions) — key-binding table.
     // Key format reconstructed as "K%01x%01x%02x" (Ghidra: s_K_01x_01x_02x_00564f6c).
@@ -1207,12 +1254,47 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: winsys3d.dll ordinal 331 (winsys3d.c: FUN_00a26220), confirmed to be a thin
-    /// CreateFileA wrapper. All three RunApplication call sites pass mode 0 (read-only):
-    /// CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL).
+    /// Ghidra: winsys3d.c FUN_00a261e0 — the path normalizer every winsys3d file-open call runs its
+    /// argument through first. It does two things, both of which matter here:
+    /// <list type="bullet">
+    /// <item>skips one leading backslash, so a template like <c>"\SND\BASE.SND"</c> is relative</item>
+    /// <item><b>truncates at the first <c>';'</c></b>, which is what makes the ISO-9660 version
+    /// suffixes in <c>"BLAZE.ALL;1"</c> and <c>"SYSTEM.INI;1"</c> work — the DLL opens
+    /// <c>"BLAZE.ALL"</c>. On a 1999 raw ISO-9660 mount the <c>;1</c> was part of the real
+    /// filename; on a modern mount it is stripped by the filesystem. Either way this truncation
+    /// makes the stored literal correct, so the literals are kept verbatim rather than edited.</item>
+    /// </list>
+    /// This was previously missed: <c>Ordinal_331</c> was recorded as a "thin CreateFileA wrapper"
+    /// and called directly, which silently dropped the normalization.
+    /// </summary>
+    private static byte* NormalizePath(byte* path)
+    {
+        byte* source = path;
+        if (*source == (byte)'\\') source++;
+
+        byte* buffer = (byte*)Malloc(260 /* MAX_PATH */);
+        int i = 0;
+        while (*source != 0 && *source != (byte)';' && i < 259)
+        {
+            buffer[i++] = *source++;
+        }
+        buffer[i] = 0;
+        return buffer;
+    }
+
+    /// <summary>
+    /// Ghidra: winsys3d.dll ordinal 331 (winsys3d.c: FUN_00a26220). All three RunApplication call
+    /// sites pass mode 0 (read-only):
+    /// CreateFileA(NormalizePath(path), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+    /// FILE_ATTRIBUTE_NORMAL, NULL).
     /// </summary>
     private static IntPtr OpenExistingFileReadOnly(byte* path)
-        => CreateFileA(path, 0x80000000 /* GENERIC_READ */, 1 /* FILE_SHARE_READ */, null, 3 /* OPEN_EXISTING */, 0x80 /* FILE_ATTRIBUTE_NORMAL */, IntPtr.Zero);
+    {
+        byte* normalized = NormalizePath(path);
+        IntPtr handle = CreateFileA(normalized, 0x80000000 /* GENERIC_READ */, 1 /* FILE_SHARE_READ */, null, 3 /* OPEN_EXISTING */, 0x80 /* FILE_ATTRIBUTE_NORMAL */, IntPtr.Zero);
+        Free(normalized);
+        return handle;
+    }
 
     /// <summary>
     /// Ghidra: <c>IDirectSoundBuffer::SetVolume</c> (vtable offset 0x3c), called from FUN_005137b0
@@ -1396,11 +1478,10 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     // Ghidra: DAT_005631d4 — nonzero while music is enabled (toggled by FUN_00513860, and read
-    // by the options UI at 0x0050f2xx). TODO(REVERSE): its initial value is data-section content
-    // and therefore unavailable (see the systemic blocker in REVERSE_STATUS.md), so it defaults
-    // to 0 here — i.e. music starts disabled and StartMusicStream takes its early-out until
-    // ToggleMusicEnabled flips it. Whether the original ships with music on is unconfirmed.
-    private static uint s_MusicEnabled;
+    // by the options UI at 0x0050f2xx). Recovered from Legacy/Blaze.exe @ 0x005631d4 as **1**:
+    // music ships **enabled**. This previously defaulted to 0 on the assumption that the value was
+    // unrecoverable, which silently made StartMusicStream take its early-out forever.
+    private static uint s_MusicEnabled = 1;
 
     // Ghidra: DAT_005631d0 — nonzero while no stream is running. Note the inverted sense: it is
     // *cleared* at the end of a successful start and *set* at the top of a stop. Left at 0 (its
@@ -2420,6 +2501,10 @@ public static unsafe partial class Blaze
         public void* Stream;                // offset 0x18 (param_1[6]) — Ghidra: FUN_005431e0 result; TODO(REVERSE) vtable unrecoverable
         public bool Playing;                // offset 0x00 (*param_1)
         public int Result;                  // offset 0x2c (param_1[0xb])
+        public byte* TitleBitmap;           // offset 0x08 (param_1[2]) — the attract screen's TITLE640.BMP
+                                            // image. Allocated on *wsyskern's* heap inside LoadBitmapFile,
+                                            // so it is released with WsysFree, never the CRT Free.
+        public int TitleBitmapLoaded;       // offset 0x0c (param_1[3]) — nonzero once TitleBitmap is cached
     }
 
     private static MoviePlayerState? s_MoviePlayer; // Ghidra: DAT_005dffa8
@@ -2516,7 +2601,10 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: FUN_00542f60 @ 0x00542f60 — allocates the movie-player struct and creates its window.</summary>
     private static void InitMoviePlayer()
     {
-        s_MoviePlayer = new MoviePlayerState();
+        // Ghidra: the allocation is followed by an explicit *(p+0xc) = 0; *(p+8) = 0 — the title
+        // bitmap cache starts empty. A fresh MoviePlayerState is already zeroed, so this mirrors
+        // the original rather than adding behavior.
+        s_MoviePlayer = new MoviePlayerState { TitleBitmap = null, TitleBitmapLoaded = 0 };
         CreateMoviePlayerWindow(s_MoviePlayer);
     }
 
@@ -2529,6 +2617,16 @@ public static unsafe partial class Blaze
         {
             CloseMovieStream(s_MoviePlayer);
         }
+
+        // Ghidra: Free(*(DAT_005dffa8 + 8)) then FUN_00547210(iVar1) — note the two *different*
+        // heaps, used correctly by the original: the title bitmap goes back to wsyskern (which
+        // allocated it in LoadBitmapFile), the player struct to the CRT. The original calls this
+        // unconditionally; wsyskern's Free tolerates null. Our struct is GC-managed, so only the
+        // bitmap needs releasing here.
+        WsysFree(s_MoviePlayer.TitleBitmap);
+        s_MoviePlayer.TitleBitmap = null;
+        s_MoviePlayer.TitleBitmapLoaded = 0;
+
         s_MoviePlayer = null;
     }
 
@@ -2536,13 +2634,88 @@ public static unsafe partial class Blaze
     private static bool TryOpenMovieStream()
         => s_MoviePlayer != null && OpenMovieStream(s_MoviePlayer);
 
-    /// <summary>Ghidra: FUN_00542f30 @ 0x00542f30 -> FUN_00542c40 — rewinds/resets the fallback splash frame.</summary>
-    private static void RewindMovieFallbackFrame()
+    // Ghidra: s__sDATA_TITLE640_BMP_0056e6d4 — the wsprintfA format string is "%sDATA\TITLE640.BMP",
+    // its "%s" filled with the CD drive root (DAT_005631f8). Only Ghidra's derived symbol name
+    // survives in Blaze.c, not the literal bytes, so the text below is a best guess reconstructed
+    // from that name — same caveat as the movie filenames above and REVERSE_STATUS.md TODOs #17/#22.
+    private static readonly byte* s_TitleBitmapFileName = ToAnsiZ("DATA/TITLE640.BMP");
+
+    /// <summary>
+    /// Ghidra: FUN_00542f30 @ 0x00542f30 -> FUN_00542c40 — the attract-mode title screen: shows
+    /// TITLE640.BMP and waits, returning non-zero to tell the attract loop to stop attracting.
+    /// <para>
+    /// Returns 1 when the caller should leave the attract loop (title bitmap unavailable, or — in
+    /// the original — the user pressed something), 0 when the attract loop should continue to the
+    /// next movie.
+    /// </para>
+    /// <para>
+    /// TODO(REVERSE): Ghidra declares the FUN_00542f30 thunk as <c>void</c> (Blaze.c:90063) even
+    /// though it tail-calls FUN_00542c40, which it types <c>undefined4 __fastcall</c>, and the call
+    /// site in FUN_00529c10 reads the result (Blaze.c:74442, 74450). The call site is authoritative:
+    /// this is the same unreliable-signature-recovery problem catalogued in REVERSE_STATUS.md, and
+    /// following the <c>void</c> declaration here previously deleted two of the attract loop's four
+    /// exits, hanging startup.
+    /// </para>
+    /// </summary>
+    private static int ShowTitleScreenAndWait()
     {
-        // Ghidra: *(param_1+0x2c) = 0; the rest of FUN_00542c40 (load "TITLE640.BMP" from the CD and
-        // StretchDIBits-blit it through the DirectDraw wrapper's own vtable) needs the same
-        // unrecoverable custom vtable as OpenMovieStream — see the subsystem banner above.
-        if (s_MoviePlayer != null) s_MoviePlayer.Result = 0;
+        if (s_MoviePlayer == null) return 1;
+        MoviePlayerState player = s_MoviePlayer;
+
+        // Ghidra: *(param_1+0x2c) = 0
+        player.Result = 0;
+
+        // Ghidra: if (*(param_1+0xc) == 0) { ... } — load the title bitmap once, then cache it.
+        if (player.TitleBitmapLoaded == 0)
+        {
+            byte* path = BuildCdPath(s_TitleBitmapFileName);
+            player.TitleBitmap = LoadBitmapFile(path, 0 /* silent on failure — see wsyskern.md */);
+            Free(path);
+
+            // Ghidra: if (iVar3 == 0) return 1; — the original's own graceful degradation when the
+            // CD (or the file) is absent. Reporting 1 is what breaks FUN_00529c10's attract loop,
+            // letting startup continue to engine initialization instead of attracting forever.
+            if (player.TitleBitmap == null) return 1;
+
+            player.TitleBitmapLoaded = 1;
+        }
+
+        // ---------------------------------------------------------------------------------------
+        // Deliberately not reconstructed — the rest of FUN_00542c40 (Blaze.c:89916-89975):
+        //
+        //   * `*(param_1+4) = 1` then a StretchDIBits blit of the 640x480 bitmap through the
+        //     DirectDraw wrapper's own vtable — GetDC at offset 0x44, ReleaseDC at 0x68 on the
+        //     inner object at *(param_1+0x1c)+4. Both calls are null-checked in the original, so
+        //     this part would in fact degrade safely.
+        //   * joySetCapture on both joysticks, then a message-pump loop that exits with 1 on
+        //     WM_KEYDOWN (0x100), WM_LBUTTONDOWN (0x201), WM_RBUTTONDOWN (0x204),
+        //     WM_MBUTTONDOWN (0x207), MM_JOY1BUTTONDOWN (0x3b5) or MM_JOY2BUTTONDOWN (0x3b6) —
+        //     freeing the bitmap on the way out — re-blits on WM_TIMER (0x111, lParam 1), raises
+        //     the fatal exception on WM_QUIT (0x12), and exits with 0 once timeGetTime shows more
+        //     than 19999 ms elapsed since the last blit.
+        //
+        // Reason: none of that can receive input without a real main window and WNDPROC, which do
+        // not exist yet (REVERSE_STATUS.md TODO #6 and #14).
+        //
+        // Why this throws instead of returning 0: reaching here means the title bitmap loaded, and
+        // at that point the attract loop in RunMainLoop has **no reachable exit at all**. Its four
+        // conditions are this function's two calls — which can only report "stop attracting" on a
+        // load failure or on user input — and two PlayMovie results, which are pinned at 0 while
+        // TrySetupMovieStream is a stub. Returning 0 spins the process at 100% CPU forever with no
+        // message pump; that is precisely the silent misbehaviour this codebase throws to avoid,
+        // and it is how the pre-CD version of this bug presented.
+        //
+        // Note the degradation is targeted: with no CD the load fails, this function returns 1
+        // above, the loop exits on iteration 1 and startup proceeds normally. Only the
+        // CD-present path — where the original would show the title screen and wait for a
+        // keypress — stops here, which is exactly where the missing capability actually bites.
+        // ---------------------------------------------------------------------------------------
+        throw new NotImplementedException(
+            "FUN_00542c40: the attract-mode title screen loaded DATA/TITLE640.BMP but cannot wait " +
+            "for input — the 20s timeGetTime wait and its key/mouse/joystick handling need a real " +
+            "main window and WNDPROC (REVERSE_STATUS.md TODO #6/#14). Without them the attract " +
+            "loop in RunMainLoop has no reachable exit, since its other two exits depend on " +
+            "PlayMovie, stubbed at 0 by TrySetupMovieStream (TODO #13).");
     }
 
     /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 -> FUN_005428d0 — closes the stream if one is open.</summary>
@@ -2576,6 +2749,14 @@ public static unsafe partial class Blaze
 
         if (TrySetupMovieStream(player))
         {
+            // HAZARD — do not enable TrySetupMovieStream without also signalling completion.
+            // This loop terminates only when `player.Playing` is cleared, and the sole thing that
+            // clears it in the original is a callback through the movie stream object's vtable,
+            // whose slots have no decompiled body anywhere in Blaze.c (REVERSE_STATUS.md TODO #13).
+            // The loop is currently unreachable *only* because TrySetupMovieStream is a stub
+            // returning false. Making that stub return true before the completion signal exists
+            // re-hangs startup — this time in a tight PeekMessage spin rather than a bare one.
+            // This is the same defect class that TODO #31 records for the attract loop.
             player.Playing = true;
             MSG msg;
             do
@@ -2606,7 +2787,7 @@ public static unsafe partial class Blaze
 
         byte* path = stackalloc byte[64];
         int i = 0;
-        for (byte* p = s_CdDriveRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = movieFileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
 
@@ -2734,17 +2915,54 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void InitViewportSurfaces()
     {
-        short* buf1 = stackalloc short[9];
-        buf1[0] = 0xf0; buf1[1] = 0x140; buf1[2] = 0xf0; buf1[3] = 0;
-        Ordinal_658(buf1, 0xf0, 0x140, 0xf0, 0);
+        // Ghidra renders these four calls with their arguments spilled to unattributed stack slots
+        // (uStack_18..puStack_50) rather than as call arguments, and gives the fourth only three of
+        // its five. Reading the slots back in ascending address order — the cdecl push order — and
+        // cross-checking against the DLL bodies recovers all four completely:
+        //
+        //   Ordinal_658(&DAT_005e98dc, 0, 0xf0, 0x140, 0xf0)   disp env 0 : (0,240,320,240)
+        //   Ordinal_658(&DAT_005e994c, 0, 0,    0x140, 0xf0)   disp env 1 : (0,  0,320,240)
+        //   Ordinal_661(&DAT_005e9880, 0, 0,    0x140, 0xf0)   draw env 0 : (0,  0,320,240)
+        //   Ordinal_661(&DAT_005e98f0, 0, 0xf0, 0x140, 0xf0)   draw env 1 : (0,240,320,240)
+        //
+        // i.e. the standard PSX double-buffer setup: while one buffer is displayed at y=0 the other
+        // is drawn at y=240, and vice versa. 0x140/0xf0 are 320x240.
+        //
+        // The previous reconstruction had the argument order rotated, passed stack scratch buffers
+        // instead of the four globals, and passed **null** for the fourth — which is what made
+        // winsys3d.dll write through a null pointer and take down the process.
+        SetDefDispEnv(s_DispEnv0_005e98dc, 0, 0xf0, 0x140, 0xf0);
+        SetDefDispEnv(s_DispEnv1_005e994c, 0, 0, 0x140, 0xf0);
+        SetDefDrawEnv(s_DrawEnv0_005e9880, 0, 0, 0x140, 0xf0);
+        SetDefDrawEnv(s_DrawEnv1_005e98f0, 0, 0xf0, 0x140, 0xf0);
 
-        short* buf2 = stackalloc short[14];
-        Ordinal_658(buf2, 0xf0, 0x140, 0, 0);
+        // Ghidra: the 12 global stores that follow the calls. Each one lands inside one of the four
+        // structs above at an offset that matches the DISPENV/DRAWENV layout exactly — which is the
+        // independent confirmation that the identification is right. They override some of what the
+        // two DLL helpers just defaulted.
+        //
+        // _DAT_005e98e4/_e6/_e8/_ea = disp env 0's `screen` rect  (0,0,320,240) — replaces the
+        // 0x100-wide default SetDefDispEnv writes.
+        *(short*)(s_DispEnv0_005e98dc + 0x08) = 0;
+        *(short*)(s_DispEnv0_005e98dc + 0x0a) = 0;
+        *(short*)(s_DispEnv0_005e98dc + 0x0c) = 0x140;
+        *(short*)(s_DispEnv0_005e98dc + 0x0e) = 0xf0;
 
-        short* buf3 = stackalloc short[14];
-        Ordinal_661(buf3, 0xf0, 0x140, 0, 0);
+        // _DAT_005e9954/_56/_58/_5a = disp env 1's `screen` rect, same values.
+        *(short*)(s_DispEnv1_005e994c + 0x08) = 0;
+        *(short*)(s_DispEnv1_005e994c + 0x0a) = 0;
+        *(short*)(s_DispEnv1_005e994c + 0x0c) = 0x140;
+        *(short*)(s_DispEnv1_005e994c + 0x0e) = 0xf0;
 
-        Ordinal_661(null, 0, 0, 0xf0, 0x140); // Ghidra: Ordinal_661(&DAT_005e98f0,0,0xf0); TODO(REVERSE): exact 3rd struct target not modeled
+        // DAT_005e9896 / _DAT_005e9898 and DAT_005e9906 / _DAT_005e9908 = each draw env's `dtd`
+        // (dither, offset 0x16 — already 1 from SetDefDrawEnv, so this store is a no-op) and `isbg`
+        // (offset 0x18 — flipped from 0 to 1, i.e. clear the framebuffer to the background colour
+        // before drawing). Ghidra shows the isbg stores as 2-byte writes overlapping the adjacent
+        // `r0` byte; r0 was just zeroed by SetDefDrawEnv, so a byte store is equivalent here.
+        *(s_DrawEnv0_005e9880 + 0x16) = 1;
+        *(s_DrawEnv0_005e9880 + 0x18) = 1;
+        *(s_DrawEnv1_005e98f0 + 0x16) = 1;
+        *(s_DrawEnv1_005e98f0 + 0x18) = 1;
 
         byte* mainMem = GetMainMemPtr();
         if (mainMem == null) return; // TODO(REVERSE): winsys3d.dll's MainMem not yet resolvable in this environment
@@ -2775,14 +2993,47 @@ public static unsafe partial class Blaze
         }
     }
 
+    // The four global libgpu environment structs InitViewportSurfaces sets up (Ghidra:
+    // DAT_005e9880 / DAT_005e98dc / DAT_005e98f0 / DAT_005e994c). Their **addresses prove their
+    // sizes**: consecutive structs sit 92 and 20 bytes apart, alternating, which is exactly
+    // sizeof(DRAWENV) and sizeof(DISPENV) in the PlayStation SDK's libgpu:
+    //
+    //   0x005e9880  DRAWENV  92 bytes   draw env 0
+    //   0x005e98dc  DISPENV  20 bytes   disp env 0
+    //   0x005e98f0  DRAWENV  92 bytes   draw env 1
+    //   0x005e994c  DISPENV  20 bytes   disp env 1   (ends 0x005e9960)
+    //
+    // DISPENV = { RECT disp; RECT screen; u_char isinter, isrgb24, pad0, pad1; }
+    // DRAWENV = { RECT clip; short ofs[2]; RECT tw; u_short tpage; u_char dtd, dfe, isbg,
+    //             r0, g0, b0; ... }  with RECT = { short x, y, w, h; }
+    //
+    // Allocated zeroed, matching how this file models other DAT_ globals that are really structs.
+    // They must be process-lifetime globals, not stack buffers: the not-yet-reconstructed rendering
+    // code reads them back on every frame.
+    private const int DrawEnvSize = 92;
+    private const int DispEnvSize = 20;
+    private static readonly byte* s_DrawEnv0_005e9880 = (byte*)NativeMemory.AllocZeroed(DrawEnvSize);
+    private static readonly byte* s_DispEnv0_005e98dc = (byte*)NativeMemory.AllocZeroed(DispEnvSize);
+    private static readonly byte* s_DrawEnv1_005e98f0 = (byte*)NativeMemory.AllocZeroed(DrawEnvSize);
+    private static readonly byte* s_DispEnv1_005e994c = (byte*)NativeMemory.AllocZeroed(DispEnvSize);
+
     // Ghidra: DAT_005633a8 — read pervasively as a mode flag (movie-intro skip / safe-mode?);
     // TODO(REVERSE): exact meaning not confirmed, no assignment site reached yet from RunMainLoop.
     private static int s_UnknownModeFlag_005633a8;
 
-    // Ghidra: DAT_005631f8 — the found CD-ROM drive root ("X:\\"), computed in RunApplication but
-    // never persisted there before this session; RunMainLoop and PlayMovie both read it back as a
-    // C string to build "<drive>:\<movie>.avi" paths.
-    private static readonly byte* s_CdDriveRootPath = (byte*)NativeMemory.Alloc(4);
+    // Ghidra: DAT_005631f8 — the game's **data root** on the CD. Recovered from Legacy/Blaze.exe at
+    // VA 0x005631f8: the bytes are "@:\FRENCH\", NOT the bare drive root this was previously assumed
+    // to be. See Documentation/DataSymbols.md.
+    //
+    // '@' (0x40, 'A'-1) is the drive-letter placeholder; RunApplication's scan writes the detected
+    // letter into index 0 and resets it to '@' when nothing matches. Only index 0 is ever patched —
+    // the language directory is static data, which is exactly why Blaze.c's text (code only, no
+    // .data) showed a single-byte store and gave no hint that the rest of the string existed.
+    //
+    // This is a distinct buffer from the CD *presence marker* path 16 bytes earlier
+    // (s____Blaze_Blade_005631e8 = "@:\Blaze&Blade"). Conflating the two is what made every
+    // CD-relative path resolve one directory too high and find nothing.
+    private static readonly byte* s_CdDataRootPath = ToAnsiZ("@:\\FRENCH\\");
 
     /// <summary>
     /// Ghidra: FUN_00529c10 @ 0x00529c10 — Blaze &amp; Blade's own "RunMainLoop": plays the four
@@ -2802,11 +3053,16 @@ public static unsafe partial class Blaze
                 PlayMovie(s_MovieNameOpening, 3);
             }
 
+            // Ghidra: Blaze.c:74441-74451. The attract loop has FOUR exit conditions, one per step —
+            // title screen, ANI01, title screen, OPENING — and every one of them must stay, even
+            // while a step is degraded. Dropping the two ShowTitleScreenAndWait checks (Ghidra types
+            // that thunk `void`, but the call site reads its result) is what previously made this
+            // loop unbreakable, since PlayMovie always reports 0 while TrySetupMovieStream is a stub.
             while (true)
             {
-                RewindMovieFallbackFrame();
+                if (ShowTitleScreenAndWait() != 0) break;
                 if (PlayMovie(s_MovieNameAni01, 3) != 0) break;
-                RewindMovieFallbackFrame();
+                if (ShowTitleScreenAndWait() != 0) break;
                 if (PlayMovie(s_MovieNameOpening, 3) != 0) break;
             }
         }
@@ -2814,7 +3070,7 @@ public static unsafe partial class Blaze
 
         Ordinal_129();
         Ordinal_41();
-        Ordinal_45(null, s_CdDriveRootPath); // Ghidra: apcStack_54[1]="j" — TODO(REVERSE): odd literal, but Ordinal_45 is a confirmed no-op regardless
+        Ordinal_45(null, s_CdDataRootPath); // Ghidra: apcStack_54[1]="j" — TODO(REVERSE): odd literal, but Ordinal_45 is a confirmed no-op regardless
         Ordinal_136(0);
         s_Flag_0056e9c0 = 1; // Ghidra: FUN_00547130(1)
         s_Unknown_005e9630 = Ordinal_116();
@@ -2888,10 +3144,10 @@ public static unsafe partial class Blaze
     private static void LoadUiFontFromCd()
     {
         // Ghidra: s_DATA_Font_bmp_005684cc — only the derived symbol name survives; best guess below.
-        byte* fontFileName = ToAnsiZ("DATA\\FONT.BMP"); // TODO(REVERSE): exact literal bytes not recovered
+        byte* fontFileName = ToAnsiZ("DATA/Font.bmp"); // recovered verbatim from Legacy/Blaze.exe @ 0x005684cc — forward slash, mixed case
         byte* path = stackalloc byte[64];
         int i = 0;
-        for (byte* p = s_CdDriveRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = fontFileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
 
@@ -2916,22 +3172,55 @@ public static unsafe partial class Blaze
     // standalone files ("SYSTEM.INI"-equivalent, "BASE.SND"-equivalent) loaded whole.
     // =====================================================================
 
-    // Ghidra: PTR_s_BLAZE_ALL_1_00566bbc / PTR_s_SYSTEM_INI_1_00566bb8 — only Ghidra's derived
-    // symbol names survive, not the literal bytes; best guesses from the symbol names.
-    private static readonly byte* s_ArchiveFileName = ToAnsiZ("BLAZE.ALL"); // TODO(REVERSE)
-    private static readonly byte* s_SystemFileName = ToAnsiZ("SYSTEM.INI"); // TODO(REVERSE)
-    // Ghidra: s____snd_Base_snd_00568500 — a "@:\..." drive-letter-template string like
-    // s____Blaze_Blade_005631e8/DAT_005631f8 elsewhere; only its first byte (the '@' placeholder)
-    // is overwritten with the real drive letter at the use site. TODO(REVERSE): exact bytes unknown.
-    private static readonly byte* s_SoundArchiveTemplate = ToAnsiZ("\\SND\\BASE.SND");
+    // Ghidra: PTR_s_BLAZE_ALL_1_00566bbc -> 0x005684b0, PTR_s_SYSTEM_INI_1_00566bb8 -> 0x005684bc.
+    // Recovered verbatim from Legacy/Blaze.exe — the `;1` is an ISO-9660 file version, and Ghidra's
+    // "_1_" in the symbol names was echoing it all along. Keep the suffix: NormalizePath truncates
+    // at ';' before the open, exactly as winsys3d.dll does. See Documentation/DataSymbols.md.
+    private static readonly byte* s_ArchiveFileName = ToAnsiZ("BLAZE.ALL;1");
+    private static readonly byte* s_SystemFileName = ToAnsiZ("SYSTEM.INI;1");
 
+    // Ghidra: s____snd_Base_snd_00568500, recovered as "@:\snd\Base.snd". A CD-**root** absolute
+    // template with its own '@' drive-letter placeholder — it does NOT go through the data root.
+    // Lowercase "snd", matching the disc's E:\Snd\ directory (Windows is case-insensitive here).
+    private static readonly byte* s_SoundArchiveTemplate = ToAnsiZ("@:\\snd\\Base.snd");
+
+    /// <summary>
+    /// Builds a **data-root-relative** path: the data root (Ghidra DAT_005631f8, "@:\FRENCH\" with
+    /// its drive letter patched) followed by a relative filename. This is the family that covers
+    /// BLAZE.ALL;1, SYSTEM.INI;1, DATA/Font.bmp, DATA/TITLE640.BMP and the three intro movies.
+    /// <para>
+    /// It is <b>not</b> the only family — see <see cref="BuildCdRootPath"/> for templates that are
+    /// already absolute and address the CD root instead.
+    /// </para>
+    /// </summary>
     private static byte* BuildCdPath(byte* fileName)
     {
         byte* path = (byte*)Malloc(64);
         int i = 0;
-        for (byte* p = s_CdDriveRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = fileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
+        return path;
+    }
+
+    /// <summary>
+    /// Builds a **CD-root** path from a template that is already absolute and carries its own '@'
+    /// drive-letter placeholder — e.g. "@:\snd\Base.snd" (Ghidra: s____snd_Base_snd_00568500) and
+    /// the music table's "@:/Music/Mel00_01.WAV" entries. Only index 0 is substituted; the rest of
+    /// the template is copied verbatim, separators and case included.
+    /// <para>
+    /// These live at the CD root, not under the language directory, which the disc layout confirms:
+    /// <c>E:\snd\</c> and <c>E:\Music\</c> sit beside <c>E:\French\</c> rather than inside it. Running
+    /// them through <see cref="BuildCdPath"/> would prepend the data root and never resolve.
+    /// </para>
+    /// </summary>
+    private static byte* BuildCdRootPath(byte* absoluteTemplate)
+    {
+        byte* path = (byte*)Malloc(64);
+        int i = 0;
+        for (byte* p = absoluteTemplate; *p != 0 && i < 63; p++, i++) path[i] = *p;
+        path[i] = 0;
+        if (i > 0) path[0] = s_CdDataRootPath[0]; // the detected drive letter
         return path;
     }
 
@@ -3025,17 +3314,42 @@ public static unsafe partial class Blaze
     // TODO(REVERSE): data-only global, byte content not present in Blaze.c's text; left empty, so
     // the schema-driven second fixup pass below is a safe (but incomplete) no-op — same category of
     // gap as s_ResolutionDetailLimit elsewhere in this file.
-    private static readonly ushort[] s_ResourceFixupSchema_0056aca8 = Array.Empty<ushort>();
+    // Ghidra: DAT_0056aca8 — recovered from Legacy/Blaze.exe, 37 ushorts ending at the 0x0000 the
+    // original's loop terminates on. The terminator is NOT stored here; the loop below runs to the
+    // array's length instead, which is equivalent and keeps the sentinel out of the data.
+    //
+    // Each entry packs two fields, and this is confirmed by FUN_00532070's own masking rather than
+    // inferred: the **low byte is an index** into the header's already-relocated pointer array
+    // (`header[4 + index]`), and the **high byte is the byte stride** used to walk that list.
+    // The earlier "(record kind, size)" reading in an older revision of DataSymbols.md was wrong.
+    //
+    // Every index is below 0x3c, matching the 60 dwords the fixed pass relocates — an internal
+    // consistency check the recovered bytes pass.
+    private static readonly ushort[] s_ResourceFixupSchema_0056aca8 =
+    [
+        0x0800, 0x0801, 0x0802, 0x0803, 0x0804, 0x0805, 0x0806, 0x0807,
+        0x0408, 0x0409, 0x040a, 0x140b, 0x040e, 0x0410, 0x0411, 0x0414,
+        0x0815, 0x0417, 0x0418, 0x0419, 0x041b, 0x041c, 0x081d, 0x041e,
+        0x041f, 0x0421, 0x0423, 0x0425, 0x0426, 0x0827, 0x0428, 0x042a,
+        0x042b, 0x042d, 0x042f, 0x0430, 0x0431,
+    ];
 
     /// <summary>
-    /// Ghidra: FUN_00532070 @ 0x00532070. Fixes up a just-loaded resource blob's internal
-    /// "base-relative" offsets into real pointers, now that the blob's real load address is known:
-    /// first a fixed run of 60 header dwords (offsets `blob[4..0x40)`), then a schema-driven pass
-    /// over per-record fields (schema table content unavailable, see above — degrades to a no-op).
+    /// Ghidra: FUN_00532070 @ 0x00532070. Turns a just-loaded resource blob's stored
+    /// "base-relative" offsets into real pointers, now that its load address is known. Two passes:
+    /// a fixed run of 60 header dwords, then a schema-driven walk over the chained lists those
+    /// dwords point at.
+    /// <para>
+    /// The two passes use **different** relocation formulas — the fixed pass adds
+    /// <c>header[0]</c>, the schema pass adds <c>header[0] + header[1]</c>. That extra term is not
+    /// incidental; dropping it yields pointers that look valid and are wrong by a constant.
+    /// </para>
     /// </summary>
     private static void FixupResourceHeader(byte* blob)
     {
         if (blob == null) return;
+
+        // Ghidra: iVar1 = *param_1; the fixed 60-dword pass over blob[4..0x40).
         int origin = *(int*)blob;
         int* field = (int*)blob + 4;
         for (int i = 0; i < 0x3c; i++, field++)
@@ -3043,12 +3357,34 @@ public static unsafe partial class Blaze
             *field = (int)(nint)blob + *field + origin;
         }
 
-        // Schema-driven pass — see s_ResourceFixupSchema_0056aca8 TODO above; empty schema means
-        // this loop body never runs, matching Ghidra's `while (uVar5 != 0)` with uVar5 starting at
-        // the (unavailable) schema table's first entry.
-        // TODO(REVERSE): FUN_00532070's schema-driven fixup pass — not reachable without the real
-        // DAT_0056aca8 schema bytes; s_ResourceFixupSchema_0056aca8 is always empty, so this is a
-        // faithful (if incomplete) no-op rather than a guessed implementation.
+        // Ghidra: iVar3 = param_1[1]; the schema pass's extra relocation term.
+        int recordOrigin = ((int*)blob)[1];
+
+        // Ghidra: the `while (uVar5 != 0)` walk over DAT_0056aca8. Each schema entry names one of
+        // the pointers the pass above just relocated, plus the stride to walk the list it heads.
+        foreach (ushort entry in s_ResourceFixupSchema_0056aca8)
+        {
+            int listIndex = entry & 0xff;
+            int stride = entry >> 8;
+
+            int* node = (int*)(nint)((int*)blob)[4 + listIndex];
+
+            // Ghidra checks both the pointer and its first dword — an empty list is stored as a
+            // valid pointer to a zero, not as a null.
+            if (node == null) continue;
+            int value = *node;
+            if (value == 0) continue;
+
+            // Read-then-advance, in the original's order: relocate the current dword, then take the
+            // next link from `node + stride`, then step. Reordering these changes which dword ends
+            // the walk.
+            do
+            {
+                *node = (int)(nint)blob + value + recordOrigin + origin;
+                value = *(int*)((byte*)node + stride);
+                node = (int*)((byte*)node + stride);
+            } while (value != 0);
+        }
     }
 
     /// <summary>
@@ -3133,8 +3469,10 @@ public static unsafe partial class Blaze
 
         uint savedStride = s_ScreenStride_005e97e0;
 
-        byte* sndPath = BuildCdPath(s_SoundArchiveTemplate);
-        sndPath[0] = s_CdDriveRootPath[0]; // template's own leading '@' placeholder -> real drive letter
+        // CD-root family, not data-root: the sound bank lives at E:\Snd\, beside E:\French\ rather
+        // than inside it. This previously went through BuildCdPath, which prefixed the data root
+        // onto an already-absolute template and could never resolve.
+        byte* sndPath = BuildCdRootPath(s_SoundArchiveTemplate);
         IntPtr sndHandle = OpenExistingFileReadOnly(sndPath);
         Free(sndPath);
         // Ghidra doesn't guard the open failing here either — ReadFile/CloseHandle on an invalid

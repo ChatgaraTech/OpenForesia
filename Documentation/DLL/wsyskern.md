@@ -8,7 +8,7 @@ A "utility kernel" DLL with a large *named* export table (758 exports in the
 adjacent `playst.dll` are PSX-SDK-style audio/graphics; `wsyskern.dll`'s own
 758-ish exports skew toward Win32-GDI-adjacent helpers: bitmap/resource
 loading, printer DC helpers, sprite sizing, hit-testing ("Hot*" functions),
-array/file helpers). Only one export has been analyzed so far.
+array/file helpers). Three exports have been analyzed so far.
 
 ## Confirmed named exports used by Blaze.exe
 
@@ -49,8 +49,64 @@ CD-check succeeds and immediately handed to `winsys3d.dll`'s
 `LPCSTR`/`MAKEINTRESOURCE` slot at the ABI level) rather than inferring it
 from the call site alone.
 
+### `LoadBitmapFile(LPCSTR, DWORD)` (ordinal 115, RVA `0x10500`, `wsyskern.c:13885`)
+
+Loads a whole `.BMP` **file** (as opposed to `LoadBitmapEx`'s embedded
+`RT_BITMAP` *resource*) into a wsyskern-heap buffer and returns a pointer to its
+raw `BITMAPFILEHEADER`-prefixed image, or `NULL` on failure. No GDI object is
+created — the caller blits it itself with `StretchDIBits`, reading the
+`BITMAPINFO` at `+0xe` and the pixel bits at `+*(int*)(p+10)`.
+
+**Confirmed** (whole body read):
+
+- `CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)`.
+- On success: reads the first 4 bytes, rewinds, and tests the signature against
+  `0x4d42` (`"BM"`). If it matches: `GetFileSize`, `Malloc(size)`, one full-file
+  `ReadFile`, `CloseHandle`, return the buffer.
+- `param_2` is a **failure-reporting mode**, not a flags word:
+
+  | Value | Missing file | Bad/corrupt content |
+  |------:|--------------|---------------------|
+  | `0` | silent, returns `NULL` | silent, returns `NULL` |
+  | `1` | `filenotfound(path)` — fatal message box | `fileerror(path)` |
+  | `2` | `warnfilenotfound(path)`, returns `NULL` | `warnfileerror(path)` |
+
+**Hypothesis / not yet read**: when the signature is *not* `"BM"`, the function
+falls back to `FUN_10003260(hFile)` (`wsyskern.c:1254`) and accepts the result
+only if it then starts with `0x4d42` — i.e. an unpacking/decompression path for
+bitmaps stored in some container format. That helper's body has not been read;
+the reconstruction does not depend on it, since a plain `.BMP` takes the
+confirmed path.
+
+**Call site** (`Blaze.c:89909`, `FUN_00542c40`, the attract-mode title screen):
+`LoadBitmapFile("<cdRoot>DATA\TITLE640.BMP", 0)` — mode `0`, so a missing CD
+must fail **silently**, and the caller treats that as a normal handled outcome
+(it returns 1, which breaks the attract loop; see `REVERSE_STATUS.md`).
+
+### `Malloc(uint)` / `Free(void*)` (ordinals 124 / 89, RVA `0xbbc0` / `0xbc30`, `wsyskern.c:9769` / `9818`)
+
+The DLL's **own heap** pair, distinct from Blaze.exe's CRT `malloc`/`free`
+chain (`FUN_00547220`/`FUN_00547210`). Ghidra resolved both by name from
+Blaze.exe's import table, which is why they appear capitalized in `Blaze.c`.
+
+- `Malloc` forwards to `FUN_10014270` and then **zero-fills** the block (dword
+  loop plus a byte tail), calling `outofmemory(size)` on failure.
+- `Free` wraps `FUN_100144f0` in an SEH frame. Passing `NULL` is safe, and
+  `Blaze.c` itself calls it unconditionally on a possibly-null field.
+
+**Why this matters**: any buffer returned by `LoadBitmapFile` lives on
+*wsyskern's* heap and must be released with **this** `Free`. `Blaze.c` uses the
+pair correctly — `FUN_00542f90` calls `Free(player+8)` on the title bitmap and
+then the CRT `FUN_00547210(player)` on the struct itself. Mixing the two in the
+C# reconstruction (e.g. releasing the bitmap through the `NativeMemory`-backed
+CRT `Free`) would corrupt the heap, so `Blaze.cs` declares this one separately
+as `WsysFree`.
+
+Blaze.c calls the capitalized `Free` exactly twice (`Blaze.c:89940`, `90131`),
+both on that title bitmap; it never calls the capitalized `Malloc` directly.
+
 ## Not yet analyzed
 
-Everything else — `wsyskern.dll` has ~758 named exports and only one has been
-read so far. No other calls into this DLL have been reached yet in the
-reconstructed call graph (see `REVERSE_STATUS.md`).
+Everything else — `wsyskern.dll` has ~758 named exports and only the three above
+have been read. Also unread: `PaletteFromDIB`, `FUN_10003260` (the non-`"BM"`
+fallback noted above), and the `filenotfound`/`fileerror`/`warn*` reporters.

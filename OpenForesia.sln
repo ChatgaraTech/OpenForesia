@@ -5,6 +5,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Tools", "OpenForesia.Tools\OpenForesia.Tools.csproj", "{2E04A4FB-3554-46FF-BCD7-198E69090B5E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Legacy", "Legacy", "{642FD3DE-4255-4A69-8FB2-76FF09CA0B38}"
+	ProjectSection(SolutionItems) = preProject
+		Legacy\Blaze.exe = Legacy\Blaze.exe
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Decompiled", "Decompiled", "{4FA8626D-A4FF-4E82-9126-F3F89E7131D9}"
 	ProjectSection(SolutionItems) = preProject
