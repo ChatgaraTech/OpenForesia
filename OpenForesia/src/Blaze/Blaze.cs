@@ -2558,15 +2558,37 @@ public static unsafe partial class Blaze
     /// </summary>
     private static bool OpenMovieStream(MoviePlayerState player)
     {
+        // Ghidra: iVar1 = FUN_00547220(0x48); then, only if that succeeded,
+        //         iVar1 = FUN_00512930(*(param_1 + 0x10));   <- the HWnd
+        //         *(param_1 + 0x1c) = iVar1;
+        //         if (iVar1 == 0) return 0;
+        //
+        // The second step is the one that matters and it is NOT optional: the original stores
+        // FUN_00512930's result — the constructed DirectDraw wrapper — and **returns failure when
+        // it is null**. FUN_00512930 builds that wrapper against the movie player's window, and
+        // neither exists here: the window is never created (its WNDPROC has no decompiled body,
+        // TODO #14) and the wrapper's own class vtable is unrecoverable (TODO #13).
+        //
+        // So the faithful result of this function, in the current reconstruction, is **failure** —
+        // not success. An earlier revision allocated the buffer, skipped the construction entirely,
+        // and still returned true, claiming a step it had never performed. That is what pushed
+        // RunMainLoop into an attract sequence the original would have skipped outright, and it is
+        // why startup dead-ended once the CD made the title bitmap loadable (TODO #34).
+        //
+        // The original treats a failed open as an ordinary, handled outcome: RunMainLoop's
+        // `if (streamOpened)` skips the intro movies and the attract loop and carries straight on
+        // to engine initialization. Reporting failure here is therefore the *original's own*
+        // no-DirectDraw path, not a workaround bolted on to get past a blocker.
         void* ddrawWrapper = Malloc(0x48);
         if (ddrawWrapper == null) return false;
-        // TODO(REVERSE): FUN_00512930/FUN_00512a10 (real DirectDraw CreateSurface/SetCooperativeLevel
-        // sequence) go here; not yet wired up to a real IDirectDraw object in this reconstruction.
-        player.DirectDrawWrapper = ddrawWrapper;
 
-        void* stream = Malloc(0x120);
-        player.Stream = stream; // TODO(REVERSE): FUN_005431e0's vtable is unrecoverable; left zeroed.
-        return true; // faithful: the original always returns 1 here regardless of `stream`.
+        // TODO(REVERSE): FUN_00512930 goes here. Until it exists the wrapper is null by
+        // construction, so free the raw allocation rather than parking a half-built object in
+        // player.DirectDrawWrapper where teardown would later treat it as real.
+        Free(ddrawWrapper);
+        player.DirectDrawWrapper = null;
+        player.Stream = null;
+        return false;
     }
 
     /// <summary>Ghidra: FUN_005428d0 @ 0x005428d0 — releases the sub-objects allocated by OpenMovieStream.</summary>
@@ -3547,12 +3569,6 @@ public static unsafe partial class Blaze
                     LoadResourceEntry((int*)(nint)entryPtrValue, (byte*)s_OverrideDestA_006008c8);
                 }
 
-                if (s_MainLoopTickCallback == null)
-                {
-                    throw new NotImplementedException(
-                        "FUN_0052a3d0: per-frame tick callback (Ghidra: PTR_FUN_0056c96c) has no known " +
-                        "assignment site yet — see REVERSE_STATUS.md");
-                }
                 s_MainLoopTickCallback();
             } while (s_GameStateId == 0);
 
@@ -3564,10 +3580,93 @@ public static unsafe partial class Blaze
         }
     }
 
-    // Ghidra: DAT_005de510 — current game-state id, and PTR_FUN_0056c96c — Blaze-owned per-frame
-    // tick function pointer, assignment site not yet found in the reconstructed call graph.
+    // Ghidra: DAT_005de510 — current game-state id, shared between RunGameLoop and the tick below.
     private static int s_GameStateId;
-    private static delegate* unmanaged<void> s_MainLoopTickCallback;
+
+    // Ghidra: PTR_FUN_0056c96c — the per-frame tick RunGameLoop calls indirectly. **Resolved**: the
+    // pointer's initialised value was read out of Legacy/Blaze.exe as 0x00537CA0, and FUN_00537ca0
+    // already has a decompiled body in Blaze.c (line 83364), so no Ghidra re-run was needed. See
+    // Documentation/DataSymbols.md.
+    //
+    // Kept as a function pointer rather than a direct call: the original really does dispatch
+    // through a statically initialised .data slot, and preserving that indirection keeps the shape
+    // of the code honest. A managed function pointer is enough — there is no native caller.
+    private static delegate*<void> s_MainLoopTickCallback = &RunGameStateTick;
+
+    // winsys3d.dll: ReInitializeAllTextures is a named export (called by winsys3d.c itself at
+    // winsys3d.c:4119). Zoom8BitTextures is an imported *data* symbol, same category as
+    // TexFilterPossible/MainMem — resolved lazily via GetProcAddress, since P/Invoke has no
+    // mechanism for imported data.
+    [DllImport("winsys3d.dll")] private static extern void ReInitializeAllTextures();
+
+    private static uint* s_Zoom8BitTextures;
+    private static uint* GetZoom8BitTexturesPtr()
+    {
+        if (s_Zoom8BitTextures == null)
+        {
+            IntPtr module = LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+            if (module != IntPtr.Zero)
+            {
+                s_Zoom8BitTextures = (uint*)GetProcAddress(module, ToAnsiZ("Zoom8BitTextures"));
+            }
+        }
+        return s_Zoom8BitTextures;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00537ca0 @ 0x00537ca0 — the per-frame tick, and the game's real **per-state
+    /// dispatcher**. Note this displaces a long-standing assumption in REVERSE_STATUS.md that
+    /// FUN_0052a440 played that role; the tick pointer reaches this function instead.
+    /// <para>
+    /// Every one of the eleven state handlers below **has a decompiled body in Blaze.c** — they are
+    /// ordinary uncovered code, not blocked on anything, so each stub names its Ghidra function so
+    /// the next state to reconstruct is obvious from the exception alone.
+    /// </para>
+    /// </summary>
+    private static void RunGameStateTick()
+    {
+        // Ghidra: *(undefined4 *)Zoom8BitTextures_exref = 0;
+        uint* zoom = GetZoom8BitTexturesPtr();
+        if (zoom != null) *zoom = 0;
+
+        ReInitializeAllTextures();
+
+        switch (s_GameStateId)
+        {
+            case 0:
+                throw new NotImplementedException("FUN_00542130 (game state 0) not yet reconstructed");
+            case 1:
+                throw new NotImplementedException("thunk_FUN_00536180 (game state 1) not yet reconstructed");
+            case 2:
+                // Ghidra: FUN_00542160(); DAT_00564a4c = 0; FUN_00537da0(); DAT_00564a4c = 1;
+                //         DAT_005de510 = 3;   <- the one case that advances the state itself
+                throw new NotImplementedException("FUN_00542160/FUN_00537da0 (game state 2) not yet reconstructed");
+            case 3:
+                // Ghidra: sets Zoom8BitTextures back to 1 before dispatching.
+                throw new NotImplementedException("thunk_FUN_00516020 (game state 3) not yet reconstructed");
+            case 4:
+                throw new NotImplementedException("FUN_005066d0 (game state 4) not yet reconstructed");
+            case 5:
+                throw new NotImplementedException("FUN_00504c90 (game state 5) not yet reconstructed");
+            case 6:
+                throw new NotImplementedException("FUN_00524180 (game state 6) not yet reconstructed");
+            case 7:
+                throw new NotImplementedException("FUN_00531b40 (game state 7) not yet reconstructed");
+            case 8:
+                throw new NotImplementedException("FUN_005315d0 (game state 8) not yet reconstructed");
+            case 9:
+                throw new NotImplementedException("FUN_0051bb00 (game state 9) not yet reconstructed");
+            case 10:
+                throw new NotImplementedException("FUN_00513ba0 (game state 10) not yet reconstructed");
+            default:
+                // Ghidra: `uRam00000000 = 1;` — a store to address 0. Not a translation artifact:
+                // the original deliberately faults on an unknown state, i.e. this is its assert.
+                throw new InvalidOperationException(
+                    $"FUN_00537ca0: unknown game state {s_GameStateId}. The original stores to " +
+                    "address 0 here, deliberately crashing — reproduced as an exception rather " +
+                    "than by writing to a null pointer.");
+        }
+    }
     // Ghidra: DAT_005e92b0 — per-game-state value read from the loaded resource file's own table
     // at offset 0x48; read again by not-yet-reconstructed code (e.g. FUN_00542160).
     private static int s_Unknown_005e92b0;
