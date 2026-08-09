@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OpenForesia")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a1dee7694345aa93df3b3b7c5a0df9fad4f980fb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c55994a4907c2f1f33ce2cea75304271055e9d46")]
 [assembly: System.Reflection.AssemblyProductAttribute("OpenForesia")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OpenForesia")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

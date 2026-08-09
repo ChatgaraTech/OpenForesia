@@ -21,7 +21,6 @@
 
     <ItemGroup>
       <Folder Include="src\Blaze\" />
-      <Folder Include="src\DLL\" />
     </ItemGroup>
 
 </Project>

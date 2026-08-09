@@ -591,19 +591,12 @@ public static unsafe partial class Blaze
             for (char letter = 'C'; letter < '['; letter++)
             {
                 driveRoot[0] = (byte)letter;
-                uint driveType = GetDriveTypeA(driveRoot);
-                if (driveType == DRIVE_CDROM)
-                {
-                    if (letter == 'X') foundDriveX = true;
-                    if (letter == 'Z') foundDriveZ = true;
 
-                    IntPtr handle = Ordinal_331(driveRoot, 0, 0);
-                    if ((int)handle >= 0)
-                    {
-                        Ordinal_336(handle);
-                        foundLetter = letter;
-                        break;
-                    }
+                // Check if drive is type DRIVE_CDROM and keep letter found
+                if (GetDriveTypeA(driveRoot) == DRIVE_CDROM)
+                {
+                    foundLetter = letter;
+                    break;
                 }
             }
 
