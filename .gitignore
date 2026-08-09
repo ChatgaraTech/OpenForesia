@@ -1,0 +1,46 @@
+# .NET / C#
+[Bb]in/
+[Oo]bj/
+out/
+
+# Build configurations
+[Dd]ebug/
+[Rr]elease/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+*.DotSettings.user
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet / generated artifacts
+*.nupkg
+*.snupkg
+
+# Tests / coverage
+TestResults/
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+
+# Logs / temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local tooling
+scratchpad/
