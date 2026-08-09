@@ -1,0 +1,147 @@
+                             **************************************************************
+                             *                          FUNCTION                          *
+                             **************************************************************
+                               undefined FUN_005322f0()
+             undefined         <UNASSIGNED>   <RETURN>
+                             FUN_005322f0                                    XREF[11]:    FUN_00504ca0:00504d0f(c), 
+                                                                                          FUN_005066e0:0050679c(c), 
+                                                                                          FUN_005160e0:00516157(c), 
+                                                                                          FUN_00516250:005162f2(c), 
+                                                                                          FUN_00516350:00516530(c), 
+                                                                                          FUN_00524210:00524301(c), 
+                                                                                          FUN_0052a030:0052a0f6(c), 
+                                                                                          FUN_0052a440:0052a4ec(c), 
+                                                                                          FUN_005315f0:00531662(c), 
+                                                                                          FUN_00536ba0:00536c9c(c), 
+                                                                                          FUN_00542160:005421cf(c)  
+        005322f0 8b 44 24 04     MOV        EAX,dword ptr [ESP + Stack[0x4]]
+        005322f4 83 ec 14        SUB        ESP,0x14
+        005322f7 56              PUSH       ESI
+        005322f8 57              PUSH       EDI
+        005322f9 50              PUSH       EAX
+        005322fa e8 51 39        CALL       WINSYS3D.DLL::Ordinal_677                        undefined Ordinal_677()
+                 01 00
+        005322ff 8d 4c 24 08     LEA        ECX,[ESP + 0x8]
+        00532303 51              PUSH       ECX
+        00532304 e8 41 39        CALL       WINSYS3D.DLL::Ordinal_662                        undefined Ordinal_662()
+                 01 00
+        00532309 8b 44 24 10     MOV        EAX,dword ptr [ESP + 0x10]
+        0053230d 8b 7c 24 28     MOV        EDI,dword ptr [ESP + 0x28]
+        00532311 85 c0           TEST       EAX,EAX
+        00532313 74 5a           JZ         LAB_0053236f
+        00532315 8b 54 24 0c     MOV        EDX,dword ptr [ESP + 0xc]
+        00532319 66 c7 02        MOV        word ptr [EDX],0x0
+                 00 00
+        0053231e 8b 4c 24 0c     MOV        ECX,dword ptr [ESP + 0xc]
+        00532322 66 0f b6        MOVZX      AX,byte ptr [EDI + 0x1]
+                 47 01
+        00532327 05 c0 01        ADD        EAX,0x1c0
+                 00 00
+        0053232c 66 89 41 02     MOV        word ptr [ECX + 0x2],AX
+        00532330 8b 44 24 0c     MOV        EAX,dword ptr [ESP + 0xc]
+        00532334 0f bf 70 06     MOVSX      ESI,word ptr [EAX + 0x6]
+        00532338 0f bf 50 04     MOVSX      EDX,word ptr [EAX + 0x4]
+        0053233c 0f af f2        IMUL       ESI,EDX
+        0053233f 81 c6 ff        ADD        ESI,0xff
+                 00 00 00
+        00532345 66 c7 40        MOV        word ptr [EAX + 0x4],0x100
+                 04 00 01
+        0053234b 8b 4c 24 0c     MOV        ECX,dword ptr [ESP + 0xc]
+        0053234f 81 e6 00        AND        ESI,0xffffff00
+                 ff ff ff
+        00532355 8b c6           MOV        EAX,ESI
+        00532357 c1 f8 08        SAR        EAX,0x8
+        0053235a 66 89 41 06     MOV        word ptr [ECX + 0x6],AX
+        0053235e 8b 54 24 10     MOV        EDX,dword ptr [ESP + 0x10]
+        00532362 8b 44 24 0c     MOV        EAX,dword ptr [ESP + 0xc]
+        00532366 52              PUSH       EDX
+        00532367 50              PUSH       EAX
+        00532368 e8 b1 37        CALL       WINSYS3D.DLL::Ordinal_674                        undefined Ordinal_674()
+                 01 00
+        0053236d eb 04           JMP        LAB_00532373
+                             LAB_0053236f                                    XREF[1]:     00532313(j)  
+        0053236f 8b 74 24 20     MOV        ESI,dword ptr [ESP + 0x20]
+                             LAB_00532373                                    XREF[1]:     0053236d(j)  
+        00532373 8b 44 24 18     MOV        EAX,dword ptr [ESP + 0x18]
+        00532377 85 c0           TEST       EAX,EAX
+        00532379 74 44           JZ         LAB_005323bf
+        0053237b 8a 07           MOV        AL,byte ptr [EDI]
+        0053237d 3c 1c           CMP        AL,0x1c
+        0053237f 74 3e           JZ         LAB_005323bf
+        00532381 8b 54 24 14     MOV        EDX,dword ptr [ESP + 0x14]
+        00532385 24 0f           AND        AL,0xf
+        00532387 66 33 c9        XOR        CX,CX
+        0053238a 8a c8           MOV        CL,AL
+        0053238c c1 e1 06        SHL        ECX,0x6
+        0053238f 66 89 0a        MOV        word ptr [EDX],CX
+        00532392 8a 07           MOV        AL,byte ptr [EDI]
+        00532394 66 0f b6        MOVZX      DX,byte ptr [EDI + 0x2]
+                 57 02
+        00532399 24 10           AND        AL,0x10
+        0053239b 66 33 c9        XOR        CX,CX
+        0053239e 8a c8           MOV        CL,AL
+        005323a0 8b 44 24 14     MOV        EAX,dword ptr [ESP + 0x14]
+        005323a4 c1 e2 02        SHL        EDX,0x2
+        005323a7 03 ca           ADD        ECX,EDX
+        005323a9 c1 e1 04        SHL        ECX,0x4
+        005323ac 66 89 48 02     MOV        word ptr [EAX + 0x2],CX
+        005323b0 8b 4c 24 18     MOV        ECX,dword ptr [ESP + 0x18]
+        005323b4 8b 54 24 14     MOV        EDX,dword ptr [ESP + 0x14]
+        005323b8 51              PUSH       ECX
+        005323b9 52              PUSH       EDX
+        005323ba e8 5f 37        CALL       WINSYS3D.DLL::Ordinal_674                        undefined Ordinal_674()
+                 01 00
+                             LAB_005323bf                                    XREF[2]:     00532379(j), 0053237f(j)  
+        005323bf 8b 44 24 14     MOV        EAX,dword ptr [ESP + 0x14]
+        005323c3 66 8b 08        MOV        CX,word ptr [EAX]
+        005323c6 66 8b 50 02     MOV        DX,word ptr [EAX + 0x2]
+        005323ca 8a 44 24 08     MOV        AL,byte ptr [ESP + 0x8]
+        005323ce 81 e2 00        AND        EDX,0x100
+                 01 00 00
+        005323d4 c1 f9 02        SAR        ECX,0x2
+        005323d7 81 e1 f0        AND        ECX,0xf0
+                 00 00 00
+        005323dd 83 e0 03        AND        EAX,0x3
+        005323e0 0b ca           OR         ECX,EDX
+        005323e2 80 cd 20        OR         CH,0x20
+        005323e5 66 c1 f9 04     SAR        CX,0x4
+        005323e9 c1 e0 07        SHL        EAX,0x7
+        005323ec 0b c8           OR         ECX,EAX
+        005323ee 8b 44 24 24     MOV        EAX,dword ptr [ESP + 0x24]
+        005323f2 66 89 08        MOV        word ptr [EAX],CX
+        005323f5 66 0f b6        MOVZX      CX,byte ptr [EDI + 0x1]
+                 4f 01
+        005323fa 81 c1 c0        ADD        ECX,0x1c0
+                 01 00 00
+        00532400 c1 e1 06        SHL        ECX,0x6
+        00532403 66 89 48 02     MOV        word ptr [EAX + 0x2],CX
+        00532407 8a 47 01        MOV        AL,byte ptr [EDI + 0x1]
+        0053240a 3c 10           CMP        AL,0x10
+        0053240c 73 30           JNC        LAB_0053243e
+        0053240e 8b 4c 24 10     MOV        ECX,dword ptr [ESP + 0x10]
+        00532412 85 c9           TEST       ECX,ECX
+        00532414 74 28           JZ         LAB_0053243e
+        00532416 8b 15 b4        MOV        EDX,dword ptr [->WINSYS3D.DLL::MainMem]          = 00208874
+                 87 60 00
+        0053241c 25 ff 00        AND        EAX,0xff
+                 00 00
+        00532421 05 10 0e        ADD        EAX,0xe10
+                 00 00
+        00532426 8b 3a           MOV        EDI,dword ptr [EDX]
+        00532428 c1 e0 09        SHL        EAX,0x9
+        0053242b 03 c7           ADD        EAX,EDI
+        0053242d d1 fe           SAR        ESI,0x1
+        0053242f 74 0d           JZ         LAB_0053243e
+                             LAB_00532431                                    XREF[1]:     0053243c(j)  
+        00532431 8b 11           MOV        EDX,dword ptr [ECX]
+        00532433 83 c1 04        ADD        ECX,0x4
+        00532436 89 10           MOV        dword ptr [EAX],EDX
+        00532438 83 c0 04        ADD        EAX,0x4
+        0053243b 4e              DEC        ESI
+        0053243c 75 f3           JNZ        LAB_00532431
+                             LAB_0053243e                                    XREF[3]:     0053240c(j), 00532414(j), 
+                                                                                          0053242f(j)  
+        0053243e 5f              POP        EDI
+        0053243f 5e              POP        ESI
+        00532440 83 c4 14        ADD        ESP,0x14
+        00532443 c3              RET

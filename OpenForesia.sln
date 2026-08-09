@@ -38,6 +38,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DLL", "DLL", "{EDDF5C9F-CFC
 		wsyskern.c = wsyskern.c
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Raw", "Raw", "{B1BCCA8C-ABD2-43AD-9FAA-CD18504B7AD6}"
+	ProjectSection(SolutionItems) = preProject
+		Legacy\Raw\FUN_005322f0.txt = Legacy\Raw\FUN_005322f0.txt
+		Legacy\Raw\FUN_00512930.txt = Legacy\Raw\FUN_00512930.txt
+		Legacy\Raw\FUN_00542740.txt = Legacy\Raw\FUN_00542740.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -58,5 +65,6 @@ Global
 		{F774B4A0-B0D4-41B2-BB29-3B67C8FEDEEC} = {7828CE86-792B-4791-A20E-1D42D903C21B}
 		{89A8BCD3-3CEF-400A-B48E-0002B8B6130C} = {B0137B08-526E-46A9-B606-20DE4AE9DB46}
 		{EDDF5C9F-CFC4-4408-9EFD-D781AF85FEF3} = {4FA8626D-A4FF-4E82-9126-F3F89E7131D9}
+		{B1BCCA8C-ABD2-43AD-9FAA-CD18504B7AD6} = {642FD3DE-4255-4A69-8FB2-76FF09CA0B38}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,88 @@
+                             **************************************************************
+                             *                          FUNCTION                          *
+                             **************************************************************
+                               undefined FUN_00512930()
+             undefined         <UNASSIGNED>   <RETURN>
+             undefined4        Stack[-0x4]:4  local_4                                 XREF[1]:     00512998(W)  
+             undefined4        Stack[-0xc]:4  local_c                                 XREF[1]:     005129bf(R)  
+             undefined         Stack[-0x10]:1 local_10                                XREF[1]:     005129a2(*)  
+             undefined4        Stack[-0x14]:4 local_14                                XREF[1]:     00512992(W)  
+                             FUN_00512930                                    XREF[1]:     FUN_00542800:00542839(c)  
+        00512930 6a ff           PUSH       -0x1
+        00512932 68 fb c1        PUSH       LAB_0054c1fb
+                 54 00
+        00512937 64 a1 00        MOV        EAX,FS:[0x0]
+                 00 00 00
+        0051293d 50              PUSH       EAX
+        0051293e 64 89 25        MOV        dword ptr FS:[0x0],ESP
+                 00 00 00 00
+        00512945 83 ec 08        SUB        ESP,0x8
+        00512948 53              PUSH       EBX
+        00512949 56              PUSH       ESI
+        0051294a 8b 1d e4        MOV        EBX,dword ptr [->USER32.DLL::SetRect]            = 00208b5c
+                 85 60 00
+        00512950 57              PUSH       EDI
+        00512951 33 ff           XOR        EDI,EDI
+        00512953 8b f1           MOV        ESI,ECX
+        00512955 57              PUSH       EDI
+        00512956 57              PUSH       EDI
+        00512957 57              PUSH       EDI
+        00512958 8d 46 10        LEA        EAX,[ESI + 0x10]
+        0051295b 57              PUSH       EDI
+        0051295c 50              PUSH       EAX
+        0051295d 89 3e           MOV        dword ptr [ESI],EDI
+        0051295f 89 7e 04        MOV        dword ptr [ESI + 0x4],EDI
+        00512962 89 7e 08        MOV        dword ptr [ESI + 0x8],EDI
+        00512965 89 7e 30        MOV        dword ptr [ESI + 0x30],EDI
+        00512968 c7 46 34        MOV        dword ptr [ESI + 0x34],0xff00ff
+                 ff 00 ff 00
+        0051296f ff d3           CALL       EBX=>USER32.DLL::SetRect
+        00512971 57              PUSH       EDI
+        00512972 57              PUSH       EDI
+        00512973 57              PUSH       EDI
+        00512974 8d 4e 20        LEA        ECX,[ESI + 0x20]
+        00512977 57              PUSH       EDI
+        00512978 51              PUSH       ECX
+        00512979 ff d3           CALL       EBX=>USER32.DLL::SetRect
+        0051297b 6a 18           PUSH       0x18
+        0051297d 89 7e 0c        MOV        dword ptr [ESI + 0xc],EDI
+        00512980 89 7e 38        MOV        dword ptr [ESI + 0x38],EDI
+        00512983 c7 46 3c        MOV        dword ptr [ESI + 0x3c],0x1
+                 01 00 00 00
+        0051298a e8 91 48        CALL       FUN_00547220                                     undefined FUN_00547220()
+                 03 00
+        0051298f 83 c4 04        ADD        ESP,0x4
+        00512992 89 44 24 0c     MOV        dword ptr [ESP + local_14],EAX
+        00512996 3b c7           CMP        EAX,EDI
+        00512998 89 7c 24 1c     MOV        dword ptr [ESP + local_4],EDI
+        0051299c 74 14           JZ         LAB_005129b2
+        0051299e 8b 4c 24 24     MOV        ECX,dword ptr [ESP + Stack[0x4]]
+        005129a2 8d 54 24 10     LEA        EDX=>local_10,[ESP + 0x10]
+        005129a6 52              PUSH       EDX
+        005129a7 51              PUSH       ECX
+        005129a8 56              PUSH       ESI
+        005129a9 8b c8           MOV        ECX,EAX
+        005129ab e8 60 03        CALL       FUN_00512d10                                     undefined FUN_00512d10()
+                 00 00
+        005129b0 eb 02           JMP        LAB_005129b4
+                             LAB_005129b2                                    XREF[1]:     0051299c(j)  
+        005129b2 33 c0           XOR        EAX,EAX
+                             LAB_005129b4                                    XREF[1]:     005129b0(j)  
+        005129b4 3b c7           CMP        EAX,EDI
+        005129b6 74 05           JZ         LAB_005129bd
+        005129b8 83 c0 0c        ADD        EAX,0xc
+        005129bb eb 02           JMP        LAB_005129bf
+                             LAB_005129bd                                    XREF[1]:     005129b6(j)  
+        005129bd 33 c0           XOR        EAX,EAX
+                             LAB_005129bf                                    XREF[1]:     005129bb(j)  
+        005129bf 8b 4c 24 14     MOV        ECX,dword ptr [ESP + local_c]
+        005129c3 89 46 44        MOV        dword ptr [ESI + 0x44],EAX
+        005129c6 89 7e 40        MOV        dword ptr [ESI + 0x40],EDI
+        005129c9 8b c6           MOV        EAX,ESI
+        005129cb 5f              POP        EDI
+        005129cc 5e              POP        ESI
+        005129cd 64 89 0d        MOV        dword ptr FS:[0x0],ECX
+                 00 00 00 00
+        005129d4 5b              POP        EBX
+        005129d5 83 c4 14        ADD        ESP,0x14
+        005129d8 c2 04 00        RET        0x4

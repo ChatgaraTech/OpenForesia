@@ -1,0 +1,98 @@
+                             **************************************************************
+                             *                          FUNCTION                          *
+                             **************************************************************
+                               undefined FUN_00542740()
+             undefined         <UNASSIGNED>   <RETURN>
+             undefined4        Stack[-0x4]:4  local_4                                 XREF[1]:     0054279b(W)  
+             undefined4        Stack[-0x8]:4  local_8                                 XREF[1]:     00542797(W)  
+             undefined4        Stack[-0xc]:4  local_c                                 XREF[1]:     0054278e(W)  
+             undefined4        Stack[-0x10]:4 local_10                                XREF[1]:     00542784(W)  
+             undefined4        Stack[-0x14]:4 local_14                                XREF[1]:     00542775(W)  
+             undefined4        Stack[-0x18]:4 local_18                                XREF[2]:     0054276e(W), 
+                                                                                                   005427a9(R)  
+             undefined4        Stack[-0x1c]:4 local_1c                                XREF[1]:     0054275d(W)  
+             undefined4        Stack[-0x20]:4 local_20                                XREF[1]:     00542761(W)  
+             undefined4        Stack[-0x24]:4 local_24                                XREF[1]:     00542755(W)  
+             undefined4        Stack[-0x28]:4 local_28                                XREF[2]:     00542751(W), 
+                                                                                                   00542792(*)  
+                             FUN_00542740                                    XREF[1]:     FUN_00542f60:00542f81(c)  
+        00542740 83 ec 28        SUB        ESP,0x28
+        00542743 53              PUSH       EBX
+        00542744 8b 1d cc        MOV        EBX,dword ptr [->KERNEL32.DLL::GetModuleHandleA] = 00208adc
+                 85 60 00
+        0054274a 56              PUSH       ESI
+        0054274b 57              PUSH       EDI
+        0054274c 33 ff           XOR        EDI,EDI
+        0054274e 8b f1           MOV        ESI,ECX
+        00542750 57              PUSH       EDI
+        00542751 89 7c 24 10     MOV        dword ptr [ESP + local_28],EDI
+        00542755 c7 44 24        MOV        dword ptr [ESP + local_24],LAB_00542600
+                 14 00 26 
+                 54 00
+        0054275d 89 7c 24 1c     MOV        dword ptr [ESP + local_1c],EDI
+        00542761 89 7c 24 18     MOV        dword ptr [ESP + local_20],EDI
+        00542765 ff d3           CALL       EBX=>KERNEL32.DLL::GetModuleHandleA
+        00542767 6a 0a           PUSH       0xa
+        00542769 68 c4 e6        PUSH       s_WSYSKERN.DLL_0056e6c4                          = "WSYSKERN.DLL"
+                 56 00
+        0054276e 89 44 24 24     MOV        dword ptr [ESP + local_18],EAX
+        00542772 89 46 14        MOV        dword ptr [ESI + 0x14],EAX
+        00542775 89 7c 24 28     MOV        dword ptr [ESP + local_14],EDI
+        00542779 ff d3           CALL       EBX=>KERNEL32.DLL::GetModuleHandleA
+        0054277b 50              PUSH       EAX
+        0054277c ff 15 04        CALL       dword ptr [->USER32.DLL::LoadCursorA]            = 00208c0a
+                 86 60 00
+        00542782 6a 04           PUSH       0x4
+        00542784 89 44 24 28     MOV        dword ptr [ESP + local_10],EAX
+        00542788 ff 15 c4        CALL       dword ptr [->GDI32.DLL::GetStockObject]          = 00208c80
+                 84 60 00
+        0054278e 89 44 24 28     MOV        dword ptr [ESP + local_c],EAX
+        00542792 8d 44 24 0c     LEA        EAX=>local_28,[ESP + 0xc]
+        00542796 50              PUSH       EAX
+        00542797 89 7c 24 30     MOV        dword ptr [ESP + local_8],EDI
+        0054279b c7 44 24        MOV        dword ptr [ESP + local_4],s_VfwClass_0056e6b8    = "VfwClass"
+                 34 b8 e6 
+                 56 00
+        005427a3 ff 15 0c        CALL       dword ptr [->USER32.DLL::RegisterClassA]         = 00208bf8
+                 86 60 00
+        005427a9 8b 4c 24 1c     MOV        ECX,dword ptr [ESP + local_18]
+        005427ad 57              PUSH       EDI
+        005427ae 51              PUSH       ECX
+        005427af 57              PUSH       EDI
+        005427b0 57              PUSH       EDI
+        005427b1 6a 0a           PUSH       0xa
+        005427b3 6a 0a           PUSH       0xa
+        005427b5 57              PUSH       EDI
+        005427b6 57              PUSH       EDI
+        005427b7 68 00 00        PUSH       0x80000000
+                 00 80
+        005427bc 68 d8 31        PUSH       s_Blaze_&_Blade_005631d8                         = "Blaze & Blade"
+                 56 00
+        005427c1 68 b8 e6        PUSH       s_VfwClass_0056e6b8                              = "VfwClass"
+                 56 00
+        005427c6 6a 08           PUSH       0x8
+        005427c8 89 3e           MOV        dword ptr [ESI],EDI
+        005427ca 89 7e 0c        MOV        dword ptr [ESI + 0xc],EDI
+        005427cd ff 15 08        CALL       dword ptr [->USER32.DLL::CreateWindowExA]        = 00208be6
+                 86 60 00
+        005427d3 6a 03           PUSH       0x3
+        005427d5 50              PUSH       EAX
+        005427d6 89 46 10        MOV        dword ptr [ESI + 0x10],EAX
+        005427d9 ff 15 f8        CALL       dword ptr [->USER32.DLL::ShowWindow]             = 00208bd8
+                 85 60 00
+        005427df 8b 56 10        MOV        EDX,dword ptr [ESI + 0x10]
+        005427e2 6a 01           PUSH       0x1
+        005427e4 68 d0 07        PUSH       0x7d0
+                 00 00
+        005427e9 68 d0 07        PUSH       0x7d0
+                 00 00
+        005427ee 57              PUSH       EDI
+        005427ef 57              PUSH       EDI
+        005427f0 52              PUSH       EDX
+        005427f1 ff 15 00        CALL       dword ptr [->USER32.DLL::MoveWindow]             = 00208bca
+                 86 60 00
+        005427f7 5f              POP        EDI
+        005427f8 5e              POP        ESI
+        005427f9 5b              POP        EBX
+        005427fa 83 c4 28        ADD        ESP,0x28
+        005427fd c3              RET

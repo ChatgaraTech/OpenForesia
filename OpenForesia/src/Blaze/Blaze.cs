@@ -6,6 +6,8 @@
 // src/Blaze/REVERSE_STATUS.md — read that file before continuing this work.
 
 using System;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace OpenForesia.Blaze;
@@ -73,6 +75,9 @@ public static unsafe partial class Blaze
 
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern uint GetPrivateProfileIntA(byte* lpAppName, byte* lpKeyName, int nDefault, byte* lpFileName);
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern int WritePrivateProfileStringA(byte* lpAppName, byte* lpKeyName, byte* lpString, byte* lpFileName);
+
+    // Ghidra: FUN_005129e0 -> DirectDrawCreate(NULL, &lpDD, NULL).
+    [DllImport("ddraw.dll")] private static extern int DirectDrawCreate(void* lpGUID, void** lplpDD, void* pUnkOuter);
 
     [DllImport("ole32.dll")] private static extern int CoInitialize(void* pvReserved);
     [DllImport("ole32.dll")] private static extern void CoUninitialize();
@@ -205,6 +210,15 @@ public static unsafe partial class Blaze
     // row into the VRAM rectangle. `rect` is a 4-short RECT {x,y,w,h}, and the body early-outs on
     // rect.y > 0x1ff, confirming a 1024x512 VRAM addressing scheme.
     [DllImport("winsys3d.dll", EntryPoint = "#674")] private static extern int Ordinal_674(void* rect, void* srcBuffer);
+
+    // winsys3d.c FUN_00a05bb0 — libgpu `OpenTIM(u_long *addr)`. Parks a cursor at `addr + 4` in the
+    // DLL global DAT_011be790; ReadTIM below consumes and clears it, so the pair is one-shot.
+    [DllImport("winsys3d.dll", EntryPoint = "#677")] private static extern int OpenTim(void* timData);
+
+    // winsys3d.c FUN_00a05bd0 — libgpu `ReadTIM(TIM_IMAGE*)`. Parses the TIM header the cursor
+    // points at and fills the 5-dword TIM_IMAGE below. When the header's bit 3 is clear the image
+    // has no CLUT and it writes mode=2, crect=null, caddr=null.
+    [DllImport("winsys3d.dll", EntryPoint = "#662")] private static extern void ReadTim(TimImage* image);
     [DllImport("winsys3d.dll", EntryPoint = "#681")] private static extern void Ordinal_681(int a); // confirmed no-op (FUN_00a02e20)
     [DllImport("winsys3d.dll", EntryPoint = "#710")] private static extern void Ordinal_710(int width, int height); // real: winsys3d.c FUN_00a026e0, (re)creates the DLL's text/console overlay bitmap at the given size
     [DllImport("winsys3d.dll", EntryPoint = "#712")] private static extern void Ordinal_712(int a); // confirmed no-op (FUN_00a02870)
@@ -251,6 +265,10 @@ public static unsafe partial class Blaze
 
     [DllImport("user32.dll")] private static extern int PeekMessageA(MSG* lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
     [DllImport("user32.dll")] private static extern int DispatchMessageA(MSG* lpMsg);
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] private static extern nint DefWindowProcA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
+    [DllImport("user32.dll")] private static extern void PostQuitMessage(int nExitCode);
+    [DllImport("user32.dll")] private static extern IntPtr SetFocus(IntPtr hWnd);
+    [DllImport("winmm.dll")] private static extern uint timeGetTime();
     [DllImport("user32.dll")] private static extern IntPtr SetTimer(IntPtr hWnd, nuint nIDEvent, uint uElapse, IntPtr lpTimerFunc);
     [DllImport("user32.dll")] private static extern int KillTimer(IntPtr hWnd, nuint uIDEvent);
     [DllImport("user32.dll")] private static extern int PostMessageA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
@@ -2505,6 +2523,11 @@ public static unsafe partial class Blaze
                                             // image. Allocated on *wsyskern's* heap inside LoadBitmapFile,
                                             // so it is released with WsysFree, never the CRT Free.
         public int TitleBitmapLoaded;       // offset 0x0c (param_1[3]) — nonzero once TitleBitmap is cached
+        public int AttractActive;           // offset 0x04 (param_1[1]) — set while the title screen is up;
+                                            // FUN_00542970 tests it alongside Playing
+        public int TimerArmed;              // offset 0x20 (param_1[8]) — nonzero once SetTimer(hwnd,1,...) ran
+        public int Field24;                 // offset 0x24 — OpenMovieStream writes 2
+        public int Field28;                 // offset 0x28 — OpenMovieStream writes 1; gates the WM_TIMER step
     }
 
     private static MoviePlayerState? s_MoviePlayer; // Ghidra: DAT_005dffa8
@@ -2512,30 +2535,465 @@ public static unsafe partial class Blaze
     private static readonly byte* s_VfwClassName = ToAnsiZ("VfwClass"); // Ghidra: s_VfwClass_0056e6b8 — TODO(REVERSE): exact bytes not recovered, name inferred from symbol
     private static readonly byte* s_MovieWindowTitle = ToAnsiZ("Blaze & Blade"); // Ghidra: s_Blaze___Blade_005631d8 — TODO(REVERSE): exact bytes not recovered
 
+    // =====================================================================
+    // DirectDraw surface setup (Ghidra: FUN_005129e0 + FUN_00512a10).
+    //
+    // The vtable offsets below are the documented IDirectDraw / IDirectDrawSurface v1 layouts, and
+    // every one used here cross-checks against a decompiled call site:
+    //   IDirectDraw:        0x18 CreateSurface, 0x4c RestoreDisplayMode,
+    //                       0x50 SetCooperativeLevel, 0x54 SetDisplayMode
+    //   IDirectDrawSurface: 0x30 GetAttachedSurface, 0x58 GetSurfaceDesc,
+    //                       0x44 GetDC, 0x68 ReleaseDC  (the last two are what the attract blit uses)
+    // =====================================================================
+
+    private const int IDirectDraw_CreateSurface = 0x18 / 4;
+    private const int IDirectDraw_RestoreDisplayMode = 0x4c / 4;
+    private const int IDirectDraw_SetCooperativeLevel = 0x50 / 4;
+    private const int IDirectDraw_SetDisplayMode = 0x54 / 4;
+    private const int IDirectDrawSurface_GetAttachedSurface = 0x30 / 4;
+    private const int IDirectDrawSurface_GetSurfaceDesc = 0x58 / 4;
+
+    // DDSURFACEDESC is 0x6c bytes — the literal FUN_00512a10 writes into dwSize, corroborated by the
+    // 0x1b-dword (108-byte) zeroing loop that precedes each use.
+    private const int DdSurfaceDescSize = 0x6c;
+    private const uint DDSD_CAPS = 0x0001;
+    private const uint DDSD_HEIGHT = 0x0002;
+    private const uint DDSD_WIDTH = 0x0004;
+    private const uint DDSD_BACKBUFFERCOUNT = 0x0020;
+    private const uint DDSCAPS_COMPLEX = 0x0008;
+    private const uint DDSCAPS_FLIP = 0x0010;
+    private const uint DDSCAPS_PRIMARYSURFACE = 0x0200;
+    private const uint DDSCAPS_BACKBUFFER = 0x0004;
+
+    /// <summary>
+    /// Ghidra: FUN_00512a10 @ 0x00512a10 (`__thiscall`) — brings DirectDraw up and creates the
+    /// flippable primary surface. **This is what populates `wrapper[1]`**, the surface the attract
+    /// screen's blit reaches through GetDC/ReleaseDC; FUN_00512930 explicitly leaves it null, which
+    /// is why recovering the overlay vtable alone never produced a picture.
+    /// <para>
+    /// Two spots in the decompiled body are decompiler noise, reconstructed from intent: the guard
+    /// renders as <c>((uint)(param_1 + 2) &amp; 4) &amp;&amp; ((uint)(param_1 + 2) &amp; 2)</c>, which
+    /// tests an *address*. 4 and 2 are `DDSD_WIDTH` and `DDSD_HEIGHT`, so the real test is on the
+    /// surface description's flags, and the `SetRect` that follows takes its width and height from
+    /// that description.
+    /// </para>
+    /// </summary>
+    private static int SetupDirectDrawSurfaces(uint* wrapper, IntPtr hwnd)
+    {
+        // Ghidra: FUN_005129e0 — DirectDrawCreate(NULL, &wrapper[0], NULL), 0 on failure.
+        void* directDraw;
+        int hr = DirectDrawCreate(null, &directDraw, null);
+        if (hr < 0 || directDraw == null) return unchecked((int)0x80004005); // E_FAIL — Ghidra's -0x7fffbffb
+        wrapper[0] = (uint)(nuint)directDraw;
+
+        void** ddVtable = *(void***)directDraw;
+
+        // Ghidra: (**(*dd + 0x50))(dd, hwnd, 0x13)
+        // 0x13 = DDSCL_FULLSCREEN | DDSCL_ALLOWREBOOT | DDSCL_EXCLUSIVE.
+        var setCooperativeLevel = (delegate* unmanaged[Stdcall]<void*, IntPtr, uint, int>)ddVtable[IDirectDraw_SetCooperativeLevel];
+        hr = setCooperativeLevel(directDraw, hwnd, 0x13);
+        if (hr < 0) return hr;
+
+        // Ghidra: (**(*dd + 0x54))(dd, 0x280, 0x1e0, 0x10) — 640 x 480 x 16bpp.
+        var setDisplayMode = (delegate* unmanaged[Stdcall]<void*, uint, uint, uint, int>)ddVtable[IDirectDraw_SetDisplayMode];
+        hr = setDisplayMode(directDraw, 0x280, 0x1e0, 0x10);
+
+        // ENVIRONMENTAL DEVIATION, measured rather than assumed. The original only ever asks for
+        // 640x480x16, and that is what is attempted first. Modern Windows declines 16bpp mode
+        // changes outright — measured here as E_NOTIMPL (0x80004001) — while the same 640x480 at
+        // 32bpp succeeds and everything downstream (CreateSurface, GetDC, StretchDIBits) then works.
+        // Falling back keeps the faithful call as the primary path and makes the deviation explicit
+        // and conditional, rather than silently rewriting the original's request.
+        if (hr == unchecked((int)0x80004001) /* E_NOTIMPL */)
+        {
+            hr = setDisplayMode(directDraw, 0x280, 0x1e0, 32);
+        }
+
+        if (hr < 0) return hr;
+
+        // DEVIATION, deliberate and flagged. The original restores the display mode only through its
+        // own teardown path. This reconstruction still throws on unreconstructed game states, and an
+        // abrupt exit while holding an exclusive 640x480 mode leaves the user's desktop switched.
+        // This restore-on-exit hook is a safety net, not fidelity — remove it once the shutdown path
+        // is reliably reached.
+        RegisterDisplayModeRestore(directDraw);
+
+        // Ghidra: 0x1b-dword zeroing loop, then dwSize = 0x6c, dwFlags = 0x21, ddsCaps = 0x218.
+        byte* desc = stackalloc byte[DdSurfaceDescSize];
+        for (int i = 0; i < DdSurfaceDescSize; i++) desc[i] = 0;
+        *(uint*)(desc + 0x00) = DdSurfaceDescSize;
+        *(uint*)(desc + 0x04) = DDSD_CAPS | DDSD_BACKBUFFERCOUNT;                        // 0x21
+        *(uint*)(desc + 0x14) = 1;                                                        // dwBackBufferCount
+        *(uint*)(desc + 0x68) = DDSCAPS_PRIMARYSURFACE | DDSCAPS_FLIP | DDSCAPS_COMPLEX;  // 0x218
+
+        void* primarySurface;
+        var createSurface = (delegate* unmanaged[Stdcall]<void*, void*, void**, void*, int>)ddVtable[IDirectDraw_CreateSurface];
+        hr = createSurface(directDraw, desc, &primarySurface, null);
+        if (hr < 0) return hr;
+
+        wrapper[1] = (uint)(nuint)primarySurface;   // the assignment the whole display path hinges on
+
+        void** surfaceVtable = *(void***)primarySurface;
+
+        // Ghidra: auStack_28[0] = 4 (DDSCAPS_BACKBUFFER); (**(*surface + 0x30))(surface, &caps, &out)
+        uint* caps = stackalloc uint[4];
+        caps[0] = DDSCAPS_BACKBUFFER; caps[1] = 0; caps[2] = 0; caps[3] = 0;
+        void* backBuffer;
+        var getAttachedSurface = (delegate* unmanaged[Stdcall]<void*, uint*, void**, int>)surfaceVtable[IDirectDrawSurface_GetAttachedSurface];
+        hr = getAttachedSurface(primarySurface, caps, &backBuffer);
+        if (hr < 0) return hr;
+
+        // Ghidra: second 0x1b-dword zeroing loop, dwSize = 0x6c, then (**(*surface + 0x58))(...)
+        byte* surfaceDesc = stackalloc byte[DdSurfaceDescSize];
+        for (int i = 0; i < DdSurfaceDescSize; i++) surfaceDesc[i] = 0;
+        *(uint*)(surfaceDesc + 0x00) = DdSurfaceDescSize;
+        var getSurfaceDesc = (delegate* unmanaged[Stdcall]<void*, byte*, int>)surfaceVtable[IDirectDrawSurface_GetSurfaceDesc];
+        hr = getSurfaceDesc(primarySurface, surfaceDesc);
+        if (hr < 0) return hr;
+
+        uint flags = *(uint*)(surfaceDesc + 0x04);
+        uint height = *(uint*)(surfaceDesc + 0x08);
+        uint width = *(uint*)(surfaceDesc + 0x0c);
+
+        if ((flags & DDSD_WIDTH) != 0 && (flags & DDSD_HEIGHT) != 0)
+        {
+            // Win32 RECT here (four LONGs at wrapper[4..7]), not the four-short libgpu RECT used by
+            // the winsys3d ordinals elsewhere in this file.
+            SetRect((int*)(wrapper + 4), 0, 0, (int)width, (int)height);
+            wrapper[0xe] = 0;   // Ghidra: param_1[0xe] = 0
+            wrapper[0xf] = 1;   // Ghidra: param_1[0xf] = 1
+            wrapper[3] = 1;     // Ghidra: param_1[3]  = 1
+            hr = 0;
+        }
+
+        return hr;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00512b40 @ 0x00512b40 (`__thiscall`) — releases the surfaces and, crucially,
+    /// calls <c>SetCooperativeLevel(hwnd, DDSCL_NORMAL)</c> to **drop the exclusive display mode**
+    /// before releasing the DirectDraw object.
+    /// <para>
+    /// This is not optional bookkeeping. `winsys3d.dll`'s own 3D initialiser (`Ordinal_789(0, 0)`)
+    /// runs later in RunMainLoop, loads `3dhelp.dll` and calls its `Create3DDevice`; if this
+    /// reconstruction is still holding DirectDraw exclusively, that creation fails and the DLL
+    /// shows "3D-Graphics initialisation error" and calls <c>ExitProcess(3)</c>
+    /// (`winsys3d.c:5966`). Observed exactly that way before this was reconstructed.
+    /// </para>
+    /// </summary>
+    private static int ReleaseDirectDrawSurfaces(uint* wrapper, IntPtr hwnd)
+    {
+        // Ghidra: param_1[2] then param_1[1] — Release each if non-null, in that order.
+        for (int slot = 2; slot >= 1; slot--)
+        {
+            void* obj = (void*)(nuint)wrapper[slot];
+            if (obj != null)
+            {
+                void** vt = *(void***)obj;
+                var release = (delegate* unmanaged[Stdcall]<void*, uint>)vt[IUnknown_Release];
+                release(obj);
+                wrapper[slot] = 0;
+            }
+        }
+
+        void* directDraw = (void*)(nuint)wrapper[0];
+        if (directDraw != null)
+        {
+            void** ddVtable = *(void***)directDraw;
+
+            // Ghidra: (**(*dd + 0x50))(dd, hwnd, 8) — 8 = DDSCL_NORMAL. On failure the original
+            // shows its own message box and returns the HRESULT without releasing.
+            var setCooperativeLevel = (delegate* unmanaged[Stdcall]<void*, IntPtr, uint, int>)ddVtable[IDirectDraw_SetCooperativeLevel];
+            int hr = setCooperativeLevel(directDraw, hwnd, 8);
+            if (hr < 0)
+            {
+                MessageBoxA(hwnd, s_SetCooperativeLevelFailed, s_ErrorCaption, 0x10);
+                return hr;
+            }
+
+            var release = (delegate* unmanaged[Stdcall]<void*, uint>)ddVtable[IUnknown_Release];
+            release(directDraw);
+            wrapper[0] = 0;
+
+            // The exclusive mode is gone, so the safety-net hook has nothing left to restore.
+            s_DisplayModeOwner = null;
+        }
+
+        wrapper[0xd] = 0xff00ff;                       // Ghidra: param_1[0xd] = 0xff00ff
+        SetRect((int*)(wrapper + 4), 0, 0, 0, 0);
+        SetRect((int*)(wrapper + 8), 0, 0, 0, 0);
+        wrapper[3] = 0;
+        return 0;
+    }
+
+    private const int IUnknown_Release = 0x08 / 4;
+    private const int IDirectDrawSurface_GetDC = 0x44 / 4;
+    private const int IDirectDrawSurface_Restore = 0x6c / 4;
+    private const int IDirectDrawSurface_ReleaseDC = 0x68 / 4;
+
+    /// <summary>
+    /// Ghidra: the blit inside FUN_00542c40 (`Blaze.c:89916-89929`) — draws the loaded
+    /// TITLE640.BMP onto the DirectDraw primary surface. Used both for the initial paint and for
+    /// the WM_COMMAND(lParam == 1) repaint.
+    /// <para>
+    /// The bitmap is the raw .BMP file image `LoadBitmapFile` returned, so the two offsets the
+    /// original indexes are BITMAPFILEHEADER fields: <c>+10</c> is `bfOffBits` (pixel data) and
+    /// <c>+0xe</c> is the BITMAPINFOHEADER that immediately follows the 14-byte file header.
+    /// </para>
+    /// </summary>
+    private static void BlitTitleScreen(MoviePlayerState player)
+    {
+        if (player.TitleBitmap == null || player.DirectDrawWrapper == null) return;
+
+        // Ghidra: piVar1 = *(int **)(*(int *)(param_1 + 0x1c) + 4) — the wrapper's primary surface.
+        // Null until FUN_00512a10 has run; the original null-checks it, and so does this.
+        void* surface = (void*)(nuint)((uint*)player.DirectDrawWrapper)[1];
+        if (surface == null) return;
+
+        void** surfaceVtable = *(void***)surface;
+
+        IntPtr hdc = IntPtr.Zero;
+        var getDc = (delegate* unmanaged[Stdcall]<void*, IntPtr*, int>)surfaceVtable[IDirectDrawSurface_GetDC];
+        int hrDc = getDc(surface, &hdc);
+
+        // A surface goes "lost" whenever the display mode changes or another application takes the
+        // display; every later call on it then fails until it is restored. Measured happening here
+        // between two attract-screen repaints. The original carries the same Restore-and-retry
+        // pairing elsewhere in this cluster (vtable 0x6c), so this is its own handling, not a patch.
+        if (hrDc == unchecked((int)0x887601c2) /* DDERR_SURFACELOST */)
+        {
+            var restore = (delegate* unmanaged[Stdcall]<void*, int>)surfaceVtable[IDirectDrawSurface_Restore];
+            if (restore(surface) < 0) return;
+            hrDc = getDc(surface, &hdc);
+        }
+
+        if (hrDc < 0 || hdc == IntPtr.Zero) return;
+
+        byte* bmp = player.TitleBitmap;
+        void* bits = bmp + *(int*)(bmp + 10);   // bfOffBits
+        void* info = bmp + 0xe;                 // BITMAPINFOHEADER
+
+        StretchDIBits(hdc, 0, 0, 0x280, 0x1e0, 0, 0, 0x280, 0x1e0,
+                      bits, info, 0 /* DIB_RGB_COLORS */, 0xcc0020 /* SRCCOPY */);
+
+        var releaseDc = (delegate* unmanaged[Stdcall]<void*, IntPtr, int>)surfaceVtable[IDirectDrawSurface_ReleaseDC];
+        releaseDc(surface, hdc);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00512930 @ 0x00512930 (`__thiscall`) — constructs the DirectDraw wrapper object.
+    /// Every field the teardown and the blit later read is initialised **here**, which is why
+    /// skipping it is not harmless: `Malloc` maps to <c>NativeMemory.Alloc</c> and does not zero,
+    /// so `ReleaseDirectDrawSurfaces` read an uninitialised <c>wrapper[2]</c> as a COM pointer and
+    /// dereferenced garbage. The original zeroes exactly these slots.
+    /// </summary>
+    private static void ConstructDirectDrawWrapper(uint* wrapper)
+    {
+        // Ghidra: SetRect(ESI + 0x10, 0,0,0,0) and SetRect(ESI + 0x20, 0,0,0,0) — two Win32 RECTs.
+        SetRect((int*)(wrapper + 4), 0, 0, 0, 0);
+        SetRect((int*)(wrapper + 8), 0, 0, 0, 0);
+
+        wrapper[0] = 0;          // Ghidra: MOV [ESI],EDI       — IDirectDraw
+        wrapper[1] = 0;          // Ghidra: MOV [ESI+0x4],EDI   — primary surface
+        wrapper[2] = 0;          // Ghidra: MOV [ESI+0x8],EDI   — the slot that caused the crash
+        wrapper[3] = 0;          // Ghidra: MOV [ESI+0xc],EDI
+        wrapper[0xc] = 0;        // Ghidra: MOV [ESI+0x30],EDI
+        wrapper[0xd] = 0xff00ff; // Ghidra: MOV [ESI+0x34],0xff00ff — the colour key
+        wrapper[0xe] = 0;        // Ghidra: MOV [ESI+0x38],EDI
+        wrapper[0xf] = 1;        // Ghidra: MOV [ESI+0x3c],1
+        wrapper[0x10] = 0;       // Ghidra: MOV [ESI+0x40],EDI
+
+        // Ghidra: sub = FUN_00547220(0x18); if (sub) FUN_00512d10(sub, this, hwnd, &local);
+        //         this[0x44] = (result != 0) ? result + 0xc : 0;
+        // The 0x18-byte object is the "Overlay Callback Object" — a COM sink whose vtable slots are
+        // known (0x0054D028) but which nothing can ever call back into here, because no real
+        // DirectDraw overlay is registered against it. Leaving this null is the original's own
+        // allocation-failure path, not an invented one.
+        wrapper[0x11] = 0;       // TODO(REVERSE): FUN_00512d10's overlay callback sink.
+    }
+
+    // Ghidra: s_SetCooperativeLevel___failed_to_g_00563178 — only the truncated symbol name
+    // survives in Blaze.c; the reconstructed text is a best guess, same caveat as the other
+    // message strings.
+    private static readonly byte* s_SetCooperativeLevelFailed = ToAnsiZ("SetCooperativeLevel() failed to go back to normal mode.");
+
+    // Safety net for the deviation noted above — not part of the original.
+    private static void* s_DisplayModeOwner;
+
+    private static void RegisterDisplayModeRestore(void* directDraw)
+    {
+        if (s_DisplayModeOwner != null) return;
+        s_DisplayModeOwner = directDraw;
+        AppDomain.CurrentDomain.ProcessExit += static (_, _) => RestoreDisplayModeIfHeld();
+        AppDomain.CurrentDomain.UnhandledException += static (_, _) => RestoreDisplayModeIfHeld();
+    }
+
+    private static void RestoreDisplayModeIfHeld()
+    {
+        void* dd = s_DisplayModeOwner;
+        if (dd == null) return;
+        s_DisplayModeOwner = null;
+        void** vtable = *(void***)dd;
+        var restore = (delegate* unmanaged[Stdcall]<void*, int>)vtable[IDirectDraw_RestoreDisplayMode];
+        restore(dd);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00542a00 @ 0x00542a00 (`__thiscall`) — **stops playback**. This is the function
+    /// that was missing when the attract loop had no reachable exit: it clears the playing flag and
+    /// publishes a result, which is what lets PlayMoviePumpLoop return and PlayMovie report non-zero.
+    /// </summary>
+    private static void StopMoviePlayback(MoviePlayerState player, IntPtr hwnd, int result)
+    {
+        // Ghidra: if (param_1[8] != 0) { KillTimer(param_2, 1); param_1[8] = 0; }
+        if (player.TimerArmed != 0)
+        {
+            KillTimer(hwnd, 1);
+            player.TimerArmed = 0;
+        }
+
+        // Ghidra: guarded by param_1[6] (the stream) and *(param_1[6] + 8). The body tears the
+        // stream down through its own vtable (FUN_00512c80 / FUN_00543180 / slots 0x18 and 0x08).
+        // Stream is null in this reconstruction — TODO(REVERSE) #13 — so the guard skips it exactly
+        // as the original would with no stream open. Nothing is invented here.
+        if (player.Stream != null)
+        {
+            // TODO(REVERSE): stream teardown via the unrecoverable vtable; unreachable while
+            // TrySetupMovieStream is a stub.
+        }
+
+        player.Playing = false;   // Ghidra: *param_1 = 0
+        player.Result = result;   // Ghidra: param_1[0xb] = param_3
+    }
+
+    /// <summary>Ghidra: FUN_00542970 @ 0x00542970 (`__thiscall`) — WM_ACTIVATEAPP handling.</summary>
+    private static void OnMoviePlayerActivate(MoviePlayerState player, int activated)
+    {
+        if (player.Playing || player.AttractActive != 0)
+        {
+            if (activated != 0)
+            {
+                SetFocus(player.HWnd);
+                ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
+                PostMessageA(player.HWnd, 0x111 /* WM_COMMAND */, 1, 1);
+                return;
+            }
+            StopMoviePlayback(player, player.HWnd, 1);
+            ShowWindow(player.HWnd, 2 /* SW_SHOWMINIMIZED */);
+        }
+    }
+
+    /// <summary>Ghidra: FUN_005429e0 @ 0x005429e0 (`__thiscall`) — WM_TIMER: step one movie frame.</summary>
+    private static void OnMoviePlayerTimer(MoviePlayerState player, nuint timerId)
+    {
+        if (timerId == 1 && player.Field28 != 0)
+        {
+            // TODO(REVERSE): FUN_00512c80 — the DirectDraw wrapper's per-frame flip. Not reachable
+            // while the wrapper's vtable is unreconstructed (#13); Field28 is only set once a
+            // stream is really open.
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00542600 @ 0x00542600 — the `"VfwClass"` window procedure. Ghidra never
+    /// disassembled it because the address is only ever *stored* into `WNDCLASSA.lpfnWndProc`,
+    /// never called, so it produced no body until the bytes were forced to disassemble; the
+    /// listing lives in `Legacy/Raw/FUN_00542600.txt`.
+    /// <para>
+    /// Its message set is exactly the one the attract-mode title screen waits on, which is what
+    /// makes the attract loop terminable at all.
+    /// </para>
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+    private static nint MoviePlayerWindowProc(IntPtr hwnd, uint msg, nuint wParam, nint lParam)
+    {
+        // Ghidra: if (DAT_005dffa8 == 0) return DefWindowProcA(...);
+        MoviePlayerState? player = s_MoviePlayer;
+        if (player == null) return DefWindowProcA(hwnd, msg, wParam, lParam);
+
+        switch (msg)
+        {
+            case 0x0002: // WM_DESTROY — falls through to `return 0` in the original, doing nothing
+                return 0;
+
+            case 0x0010: // WM_CLOSE
+                PostQuitMessage(0);
+                return 0;
+
+            case 0x001c: // WM_ACTIVATEAPP
+                OnMoviePlayerActivate(player, (int)wParam);
+                return 0;
+
+            case 0x0100: // WM_KEYDOWN — only Escape stops playback; other keys fall through to 0
+                if (wParam == 0x1b /* VK_ESCAPE */)
+                {
+                    StopMoviePlayback(player, hwnd, 1);
+                }
+                return 0;
+
+            case 0x0113: // WM_TIMER
+                OnMoviePlayerTimer(player, wParam);
+                return 0;
+
+            case 0x0201: // WM_LBUTTONDOWN
+            case 0x0204: // WM_RBUTTONDOWN
+            case 0x0207: // WM_MBUTTONDOWN
+            case 0x03b5: // MM_JOY1BUTTONDOWN
+            case 0x03b6: // MM_JOY2BUTTONDOWN
+                StopMoviePlayback(player, hwnd, 1);
+                return 0;
+
+            case 0x0464: // MM_MCINOTIFY
+                // Ghidra: iVar2 = FUN_00542560(hwnd, wParam, lParam); if (iVar2 == 0) return 0;
+                //         FUN_00542a00(hwnd, 0);
+                // TODO(REVERSE): FUN_00542560 is in Blaze.c but only matters once MCI playback is
+                // actually started, which this reconstruction never does. Treated as "not handled".
+                return 0;
+
+            default:
+                return DefWindowProcA(hwnd, msg, wParam, lParam);
+        }
+    }
+
     /// <summary>Ghidra: FUN_00542740 @ 0x00542740 — creates the hidden window the movie player renders into.</summary>
     private static void CreateMoviePlayerWindow(MoviePlayerState player)
     {
         IntPtr hInstance = GetModuleHandleA(null);
         player.HInstance = hInstance;
 
+        // Ghidra: SUB ESP,0x28 reserves exactly one WNDCLASSA, and the ten stores that follow are
+        // its fields in order (Legacy/Raw/FUN_00542740.txt). Note the cursor comes from
+        // wsyskern.dll's resource 10, not from a system cursor.
         var wc = new WNDCLASSA
         {
             style = 0,
-            lpfnWndProc = IntPtr.Zero, // TODO(REVERSE): Ghidra: &LAB_00542600, window-proc body not decompiled in Blaze.c; DefWindowProcA-equivalent behavior assumed by leaving 0 unsafe here would crash, so real registration is skipped below.
-            cbWndExtra = 0,
+            lpfnWndProc = (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, nuint, nint, nint>)&MoviePlayerWindowProc,
             cbClsExtra = 0,
+            cbWndExtra = 0,
             hInstance = hInstance,
             hIcon = IntPtr.Zero,
+            hCursor = LoadCursorA(GetModuleHandleA(ToAnsiZ("WSYSKERN.DLL")), (IntPtr)10),
             hbrBackground = GetStockObject(4 /* BLACK_BRUSH */),
             lpszMenuName = null,
             lpszClassName = s_VfwClassName,
         };
 
-        // TODO(REVERSE): the original's window procedure (&LAB_00542600) has no decompiled body in
-        // Blaze.c, so a faithful RegisterClassA/CreateWindowExA call can't safely be made here (an
-        // unset lpfnWndProc would crash on the first message). The rest of the movie player degrades
-        // gracefully with HWnd left Zero — see TrySetupMovieStream.
-        player.HWnd = IntPtr.Zero;
+        RegisterClassA(&wc);
+
+        // Ghidra: CreateWindowExA(8, "VfwClass", "Blaze & Blade", 0x80000000, 0, 0, 10, 10, 0, 0,
+        //                          hInstance, 0) — WS_EX_TOPMOST + WS_POPUP, created tiny and
+        // resized below, which is why this window is invisible in practice.
+        player.HWnd = CreateWindowExA(
+            8 /* WS_EX_TOPMOST */, s_VfwClassName, s_MovieWindowTitle, 0x80000000 /* WS_POPUP */,
+            0, 0, 10, 10, IntPtr.Zero, IntPtr.Zero, hInstance, null);
+
+        // Ghidra: *ESI = 0; *(ESI+0xc) = 0 — done before CreateWindowExA in the original; ordering
+        // is immaterial since the window procedure early-outs while DAT_005dffa8 is null.
+        player.Playing = false;
+        player.TitleBitmapLoaded = 0;
+
+        ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
+        MoveWindow(player.HWnd, 0, 0, 0x7d0, 0x7d0, 1);
     }
 
     /// <summary>Ghidra: FUN_00542940 @ 0x00542940 — destroys the movie player's hidden window.</summary>
@@ -2563,32 +3021,35 @@ public static unsafe partial class Blaze
         //         *(param_1 + 0x1c) = iVar1;
         //         if (iVar1 == 0) return 0;
         //
-        // The second step is the one that matters and it is NOT optional: the original stores
-        // FUN_00512930's result — the constructed DirectDraw wrapper — and **returns failure when
-        // it is null**. FUN_00512930 builds that wrapper against the movie player's window, and
-        // neither exists here: the window is never created (its WNDPROC has no decompiled body,
-        // TODO #14) and the wrapper's own class vtable is unrecoverable (TODO #13).
-        //
-        // So the faithful result of this function, in the current reconstruction, is **failure** —
-        // not success. An earlier revision allocated the buffer, skipped the construction entirely,
-        // and still returned true, claiming a step it had never performed. That is what pushed
-        // RunMainLoop into an attract sequence the original would have skipped outright, and it is
-        // why startup dead-ended once the CD made the title bitmap loadable (TODO #34).
-        //
-        // The original treats a failed open as an ordinary, handled outcome: RunMainLoop's
-        // `if (streamOpened)` skips the intro movies and the attract loop and carries straight on
-        // to engine initialization. Reporting failure here is therefore the *original's own*
-        // no-DirectDraw path, not a workaround bolted on to get past a blocker.
+        // FUN_00512930's disassembly (Legacy/Raw/FUN_00512930.txt) ends `MOV EAX,ESI; RET 0x4` — it
+        // returns `this` unconditionally, even when its own internal Malloc fails. So the original's
+        // `if (iVar1 == 0) return 0` only fires when the 0x48-byte allocation below fails, and the
+        // open otherwise **succeeds**. A previous revision returned false here and justified it as
+        // the original's no-DirectDraw path; that justification was wrong, and the deviation is now
+        // unnecessary because the window procedure is reconstructed and the attract loop can end.
         void* ddrawWrapper = Malloc(0x48);
         if (ddrawWrapper == null) return false;
 
-        // TODO(REVERSE): FUN_00512930 goes here. Until it exists the wrapper is null by
-        // construction, so free the raw allocation rather than parking a half-built object in
-        // player.DirectDrawWrapper where teardown would later treat it as real.
-        Free(ddrawWrapper);
-        player.DirectDrawWrapper = null;
-        player.Stream = null;
-        return false;
+        // Ghidra: iVar1 = FUN_00512930(iVar1, param_1[0x10]) — the wrapper's constructor. It is not
+        // optional: Malloc does not zero, and the teardown reads slots this initialises.
+        ConstructDirectDrawWrapper((uint*)ddrawWrapper);
+        player.DirectDrawWrapper = ddrawWrapper;
+
+        player.Field24 = 2;   // Ghidra: *(param_1 + 0x24) = 2
+        player.Field28 = 1;   // Ghidra: *(param_1 + 0x28) = 1
+
+        void* stream = Malloc(0x120);
+        player.Stream = null; // TODO(REVERSE): FUN_005431e0 builds a DirectShow graph object here
+                              // (CLSID_FilterGraph / IID_IGraphBuilder, see #13). Left null so every
+                              // stream-guarded branch takes the original's own "no stream" path.
+        if (stream != null) Free(stream);
+
+        // Ghidra: FUN_00512a10(*(param_1 + 0x10)) — the tail call of FUN_00542800, with the wrapper
+        // in ECX and the window handle as its stack argument. This is what fills wrapper[1] with the
+        // primary surface, so the attract screen's blit has something to draw into.
+        SetupDirectDrawSurfaces((uint*)player.DirectDrawWrapper, player.HWnd);
+
+        return true; // faithful: the original returns 1 once the wrapper allocation succeeded
     }
 
     /// <summary>Ghidra: FUN_005428d0 @ 0x005428d0 — releases the sub-objects allocated by OpenMovieStream.</summary>
@@ -2608,8 +3069,10 @@ public static unsafe partial class Blaze
 
         if (player.DirectDrawWrapper != null)
         {
-            // Ghidra: FUN_00512b40(param_1[4]) — real DirectDraw surface/clipper teardown; TODO(REVERSE)
-            // once FUN_00512930's construction above is wired to a real IDirectDraw object.
+            // Ghidra: FUN_00512b40(param_1[4]) — the real teardown. Skipping it is not harmless:
+            // it is what drops the exclusive display mode, and without it winsys3d.dll's own 3D
+            // init (Ordinal_789) cannot acquire DirectDraw and aborts the process.
+            ReleaseDirectDrawSurfaces((uint*)player.DirectDrawWrapper, player.HWnd);
             Free(player.DirectDrawWrapper);
         }
         player.DirectDrawWrapper = null;
@@ -2716,28 +3179,60 @@ public static unsafe partial class Blaze
         //     the fatal exception on WM_QUIT (0x12), and exits with 0 once timeGetTime shows more
         //     than 19999 ms elapsed since the last blit.
         //
-        // Reason: none of that can receive input without a real main window and WNDPROC, which do
-        // not exist yet (REVERSE_STATUS.md TODO #6 and #14).
-        //
-        // Why this throws instead of returning 0: reaching here means the title bitmap loaded, and
-        // at that point the attract loop in RunMainLoop has **no reachable exit at all**. Its four
-        // conditions are this function's two calls — which can only report "stop attracting" on a
-        // load failure or on user input — and two PlayMovie results, which are pinned at 0 while
-        // TrySetupMovieStream is a stub. Returning 0 spins the process at 100% CPU forever with no
-        // message pump; that is precisely the silent misbehaviour this codebase throws to avoid,
-        // and it is how the pre-CD version of this bug presented.
-        //
-        // Note the degradation is targeted: with no CD the load fails, this function returns 1
-        // above, the loop exits on iteration 1 and startup proceeds normally. Only the
-        // CD-present path — where the original would show the title screen and wait for a
-        // keypress — stops here, which is exactly where the missing capability actually bites.
+        // Ghidra: the GetDC / StretchDIBits / ReleaseDC sequence at Blaze.c:89916-89929.
+        BlitTitleScreen(player);
         // ---------------------------------------------------------------------------------------
-        throw new NotImplementedException(
-            "FUN_00542c40: the attract-mode title screen loaded DATA/TITLE640.BMP but cannot wait " +
-            "for input — the 20s timeGetTime wait and its key/mouse/joystick handling need a real " +
-            "main window and WNDPROC (REVERSE_STATUS.md TODO #6/#14). Without them the attract " +
-            "loop in RunMainLoop has no reachable exit, since its other two exits depend on " +
-            "PlayMovie, stubbed at 0 by TrySetupMovieStream (TODO #13).");
+
+        // Ghidra: DVar4 = timeGetTime(); *(param_1+4) = 1; joySetCapture x2; then a message pump
+        // that exits with 1 on input and with 0 once 19999 ms have elapsed since the last redraw.
+        uint lastDraw = timeGetTime();
+        player.AttractActive = 1;
+        joySetCapture(player.HWnd, 0, 0x32, 1);
+        joySetCapture(player.HWnd, 1, 0x32, 1);
+
+        MSG msg;
+        while (true)
+        {
+            while (PeekMessageA(&msg, IntPtr.Zero, 0, 0, 1 /* PM_REMOVE */) != 0)
+            {
+                // Ghidra: the key/mouse/joystick set that ends the attract screen. Handled here
+                // *and* in the window procedure — the original tests them in this loop directly,
+                // which is what makes the wait end even when the message is not dispatched.
+                if (msg.message is 0x100 or 0x201 or 0x204 or 0x207 or 0x3b5 or 0x3b6)
+                {
+                    WsysFree(player.TitleBitmap);
+                    player.TitleBitmap = null;
+                    player.TitleBitmapLoaded = 0;
+                    player.AttractActive = 0;
+                    joyReleaseCapture(0);
+                    joyReleaseCapture(1);
+                    return 1;
+                }
+
+                // Ghidra: WM_COMMAND with lParam == 1 re-blits and restarts the 20-second clock.
+                if (msg.message == 0x111 && msg.lParam == 1)
+                {
+                    BlitTitleScreen(player);
+                    lastDraw = timeGetTime();
+                }
+
+                if (msg.message == 0x12 /* WM_QUIT */)
+                {
+                    RaiseException(0xe0000001, 0, 0, null);
+                }
+
+                DispatchMessageA(&msg);
+            }
+
+            // Ghidra: if (19999 < timeGetTime() - DVar4) { *(param_1+4) = 0; joyRelease; return 0; }
+            if (timeGetTime() - lastDraw > 19999)
+            {
+                player.AttractActive = 0;
+                joyReleaseCapture(0);
+                joyReleaseCapture(1);
+                return 0;
+            }
+        }
     }
 
     /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 -> FUN_005428d0 — closes the stream if one is open.</summary>
@@ -3410,23 +3905,119 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005322f0 @ 0x005322f0 — decodes/unpacks one resource chunk (loaded by
-    /// LoadResourceEntry into a scratch buffer) into its final destination slot. TODO(REVERSE):
-    /// unlike every other function in this file, this one is *not* reconstructable even in
-    /// principle from Blaze.c's text — Ghidra's own decompilation leaves several of its inputs as
-    /// `unaff_ESI`/`unaff_DI`/`unaff_retaddr` (register-allocated values whose defining
-    /// instructions Ghidra never attributed to this function) and its outputs as
-    /// `extraout_var`/`extraout_var_00`/`extraout_var_01` (register return values from callees
-    /// Ghidra couldn't tie to a real variable). Both real call sites (here and the not-yet-reached
-    /// FUN_00542160) pass 3 arguments despite Ghidra recovering only a 1-parameter signature,
-    /// confirming the analysis is genuinely incomplete, not just unnamed. Signature widened to the
-    /// 3 arguments both call sites actually pass; body intentionally left throwing.
+    /// <summary>
+    /// libgpu's `TIM_IMAGE`, filled by ReadTIM. Exactly the 20 bytes FUN_005322f0 reserves with
+    /// `SUB ESP,0x14` and hands to Ordinal_662 via `LEA ECX,[ESP+8]`.
     /// </summary>
-    private static void DecodeResourceChunk(byte* scratch, byte* destSlot, int* metadata)
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TimImage
     {
-        throw new NotImplementedException(
-            "FUN_005322f0: Ghidra's own decompilation is incomplete for this function " +
-            "(unaff_ESI/unaff_DI/unaff_retaddr register inputs never resolved) — see REVERSE_STATUS.md");
+        public uint Mode;        // +0x00 — pixel mode; header & 7, or 2 when the TIM has no CLUT
+        public short* ClutRect;  // +0x04 — RECT {x,y,w,h}; null when there is no CLUT
+        public void* ClutData;   // +0x08 — palette bytes; null when there is no CLUT
+        public short* PixelRect; // +0x0c — RECT {x,y,w,h}
+        public void* PixelData;  // +0x10 — pixel bytes
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005322f0 @ 0x005322f0 — uploads one TIM texture (loaded by LoadResourceEntry
+    /// into a scratch buffer) into VRAM, and records its texture-page / CLUT pair in a slot.
+    /// <para>
+    /// Reconstructed from the raw disassembly in <c>Legacy/Raw/FUN_005322f0.txt</c>, because the
+    /// decompiler's output for this function was not merely unnamed but **wrong**:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>Its `puStack_14`/`psStack_10`/`iStack_c` "indeterminate" locals are the fields of the
+    /// libgpu <c>TIM_IMAGE</c> that <c>Ordinal_662</c> (ReadTIM) fills through the out-pointer
+    /// `&amp;stack0xffffffe8`. Ghidra never linked the pointer to the slots it writes.</item>
+    /// <item>`unaff_retaddr` is not a return address: it is **parameter 2**, the 2-short texture
+    /// slot. Both call sites advance their slot pointer by exactly 4 bytes, which corroborates it.</item>
+    /// <item>Every `param_1[0..2]` byte read in the decompiled body actually comes from
+    /// **`EDI` = parameter 3**, the metadata triple — not from the chunk pointer.</item>
+    /// <item>`(*param_1 &amp; 0xff10)` is a decompiler artifact. The instruction is `AND AL,0x10`,
+    /// a byte mask; using `0xff10` would corrupt the pixel rect's y coordinate.</item>
+    /// </list>
+    /// <para>
+    /// The `extraout_var*` values Ghidra invented for this function are simply Ordinal_674's
+    /// ignored return value and have no role at all.
+    /// </para>
+    /// </summary>
+    private static void DecodeResourceChunk(byte* timData, ushort* slot, byte* meta)
+    {
+        // Ghidra: PUSH arg1; CALL Ordinal_677; LEA ECX,[ESP+8]; PUSH ECX; CALL Ordinal_662.
+        // The 20 bytes SUB ESP,0x14 reserves are exactly this struct.
+        TimImage tim;
+        OpenTim(timData);
+        ReadTim(&tim);
+
+        // ESI carries the CLUT's byte count from the branch below into the copy loop at the end.
+        // It is only meaningful when a CLUT exists; the no-CLUT path loads arg1 into it (Ghidra:
+        // `MOV ESI,[ESP+0x20]`) but that value is dead, because ReadTIM zeroes `caddr` in the same
+        // case and `caddr` guards the loop.
+        int clutByteCount = 0;
+
+        // Ghidra: MOV EAX,[ESP+0x10]; TEST EAX,EAX; JZ — the test is on **caddr**, not crect.
+        if (tim.ClutData != null)
+        {
+            short* clutRect = tim.ClutRect;
+
+            clutRect[0] = 0;                                    // x = 0
+            clutRect[1] = (short)(meta[1] + 0x1c0);             // y = meta[1] + 0x1c0
+
+            // Read w and h *before* w is overwritten — the original does the same, and the
+            // multiply below depends on the original width.
+            int packed = clutRect[3] * clutRect[2];             // h * w
+            packed = (packed + 0xff) & unchecked((int)0xffffff00);
+            clutRect[2] = 0x100;                                // w = 256
+            clutRect[3] = (short)(packed >> 8);                 // h = rounded / 256
+            clutByteCount = packed;
+
+            Ordinal_674(clutRect, tim.ClutData);                // LoadImage(crect, caddr)
+        }
+
+        // Ghidra: MOV EAX,[ESP+0x18] — guarded on **paddr**, plus a skip when meta[0] == 0x1c.
+        if (tim.PixelData != null && meta[0] != 0x1c)
+        {
+            short* pixelRect = tim.PixelRect;
+
+            // Ghidra: AND AL,0xf; SHL ECX,6.
+            pixelRect[0] = (short)((meta[0] & 0x0f) << 6);
+
+            // Ghidra: AND AL,0x10 — a *byte* mask. The decompiler rendered this as `& 0xff10`,
+            // which is wrong and would have corrupted the y coordinate.
+            pixelRect[1] = (short)((((meta[0] & 0x10) + meta[2] * 4)) << 4);
+
+            Ordinal_674(pixelRect, tim.PixelData);              // LoadImage(prect, paddr)
+        }
+
+        // Ghidra: 005323bf-005323f2. Packs the texture-page word out of the pixel rect and the TIM
+        // mode — libgpu's GetTPage shape. Transcribed operation for operation rather than
+        // simplified, since the intermediate 16-bit SAR is not equivalent to a 32-bit one.
+        int x = tim.PixelRect[0];
+        int y = tim.PixelRect[1];
+        int tpage = ((x >> 2) & 0xf0) | (y & 0x100);
+        tpage |= 0x2000;                                        // Ghidra: OR CH,0x20
+        tpage = (short)tpage >> 4;                              // Ghidra: SAR CX,4 — 16-bit
+        tpage |= ((int)tim.Mode & 3) << 7;
+        slot[0] = (ushort)tpage;
+
+        // Ghidra: (meta[1] + 0x1c0) << 6 — libgpu's GetClut for x=0, matching the crect y above.
+        slot[1] = (ushort)((meta[1] + 0x1c0) << 6);
+
+        // Ghidra: 00532407-0053243c. Mirrors the CLUT into main video memory for the low banks.
+        if (meta[1] < 0x10 && tim.ClutData != null)
+        {
+            byte* mainMem = GetMainMemPtr();
+            if (mainMem != null)
+            {
+                uint* source = (uint*)tim.ClutData;
+                uint* dest = (uint*)(mainMem + ((meta[1] + 0xe10) << 9));
+                for (int remaining = clutByteCount >> 1; remaining != 0; remaining--)
+                {
+                    *dest++ = *source++;
+                }
+            }
+        }
     }
 
     // Ghidra: DAT_005e8fc0 — parallel per-entry decode-destination table walked alongside the
@@ -3480,10 +4071,14 @@ public static unsafe partial class Blaze
                 {
                     byte* scratch = mainMem != null ? mainMem + 0x1b0000 : null;
                     LoadResourceEntry((int*)(nint)entryPtrValue, scratch);
-                    DecodeResourceChunk(scratch, destSlot, metadata); // throws — see summary above
+                    DecodeResourceChunk(scratch, (ushort*)destSlot, (byte*)metadata);
                     entryPtrValue = directory[2];
                     directory += 2;
-                    destSlot += 16;
+                    // Ghidra: `undefined *puVar13; ... puVar13 = puVar13 + 4;` — a **byte** pointer
+                    // advancing 4 bytes, i.e. one tpage/clut pair per entry. This was 16, a 4x
+                    // over-stride that would have scattered the texture slots; it went unnoticed
+                    // because DecodeResourceChunk threw before the loop could ever iterate.
+                    destSlot += 4;
                     metadata += 2;
                 } while (entryPtrValue != 0);
             }
