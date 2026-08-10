@@ -325,20 +325,210 @@ public static unsafe partial class Blaze
     [DllImport("kernel32.dll")] private static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
     [DllImport("kernel32.dll")] private static extern IntPtr CreateThread(void* lpThreadAttributes, nuint dwStackSize, IntPtr lpStartAddress, void* lpParameter, uint dwCreationFlags, uint* lpThreadId);
 
+    // =====================================================================
+    // The winsys3d display-list arena (Ghidra: MainMem / DAT_00b6dbd8)
+    //
+    // Both binaries address the display list on **24 bits**:
+    //   - winsys3d.c FUN_00a06160 (Ordinal_688, ClearOTagR) stores `(uint)entry & 0xffffff` into
+    //     every link and terminates the list with the 0xffffff sentinel;
+    //   - winsys3d.c FUN_00a061b0 (Ordinal_701, DrawOTag) follows `*p & 0xffffff` and reads the
+    //     top byte as the primitive's word count;
+    //   - Blaze.exe agrees — DrawFlatPrimitive builds its tag as `*prim = *otEntry | 0x2000000`,
+    //     which is only correct while the address's top byte is zero.
+    // So every ordering table and primitive buffer must live below 0x01000000.
+    //
+    // In 1998 that was automatic: Blaze.exe imports winsys3d.dll **statically** (the name sits in
+    // its import table at file offset 0x1703AC, the only one of the five DLLs so imported), the
+    // loader mapped it at its preferred base 0x00A00000, and winsys3d.c line 568 set
+    // `MainMem = &DAT_00b6dbd8` = 0x00B6DBD8. On modern Windows the DLL is relocated out of low
+    // memory — measured at 0x09… on this machine, because OpenForesia.exe's own ASLR base sits
+    // inside winsys3d's preferred range — and DrawOTag faults on the very first frame.
+    //
+    // DEVIATION (environmental, see REVERSE_STATUS.md): the arena is allocated here, in low
+    // memory, and its address written into the `MainMem` pointer winsys3d exports. The DLL file is
+    // not modified and no Windows setting is changed. This is sound because MainMem is a genuine
+    // indirection — it occurs exactly three times in 27703 lines of winsys3d.c:
+    //     line  568  MainMem = &DAT_00b6dbd8;                     the sole initialisation, in entry()
+    //     line 5655  DAT_00dedbd8 = iVar1 + 0x240000 + MainMem;   DrawOTag, re-derived every frame
+    //     line 5843  DAT_00dedbd8 = MainMem + 0x200000;           Ordinal_789's device init, once
+    // and DAT_00b6dbd8 itself is referenced only at line 568. Nothing between MainMem + 0x0 and
+    // MainMem + 0x280000 is addressed by a fixed address — the globals resume exactly at
+    // MainMem + 0x280000 — which is what makes the arena relocatable at all.
+    // =====================================================================
+
+    // Ghidra: winsys3d.c line 568 — MainMem points 0xDBD8 into the 64KB-aligned region that holds
+    // DAT_00b6dbd8, so allocating at 0x00B60000 reproduces MainMem == 0x00B6DBD8 exactly.
+    private const uint MainMemOffsetInArena = 0xDBD8;
+    private const uint ArenaPreferredBase = 0x00B60000;
+    private const uint ArenaOriginalMainMem = ArenaPreferredBase + MainMemOffsetInArena; // 0x00B6DBD8
+
+    // Ghidra: winsys3d.c — the arena runs from MainMem to MainMem + 0x280000, where the DLL's
+    // globals resume (DAT_00dedbd8 and 36 others). Known usage: Blaze.exe takes +0x1c6000..+0x1e4000
+    // for its two ordering tables and primitive buffers, winsys3d takes +0x200000 and +0x240000 for
+    // its double-buffered scratch (lines 5843 and 5655).
+    private const uint ArenaSize = 0x280000;
+    private const uint ArenaAllocationSize = MainMemOffsetInArena + ArenaSize; // rounded up below
+
+    // The 24-bit link ceiling, and the address-space floor Windows permanently reserves.
+    private const uint DisplayListCeiling = 0x01000000;
+    private const uint ArenaScanFloor = 0x00010000;
+    private const uint AllocationGranularity = 0x10000;
+
+    private const uint MEM_COMMIT = 0x1000, MEM_RESERVE = 0x2000, MEM_FREE = 0x10000;
+    private const uint PAGE_READWRITE = 0x04;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MEMORY_BASIC_INFORMATION
+    {
+        public IntPtr BaseAddress;
+        public IntPtr AllocationBase;
+        public uint AllocationProtect;
+        public IntPtr RegionSize;
+        public uint State;
+        public uint Protect;
+        public uint Type;
+    }
+
+    [DllImport("kernel32.dll")] private static extern void* VirtualAlloc(void* lpAddress, nuint dwSize, uint flAllocationType, uint flProtect);
+    [DllImport("kernel32.dll")] private static extern nuint VirtualQuery(void* lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer, nuint dwLength);
+
+    private static byte* s_DisplayListArena;   // the base of our allocation, not MainMem itself
+
+    /// <summary>
+    /// Places the display-list arena in low memory and points winsys3d's exported
+    /// <c>MainMem</c> at it. Idempotent, and must run before any winsys3d entry point that
+    /// derives a pointer from the arena — in practice before <c>Ordinal_789(0, 0)</c>, whose
+    /// body (winsys3d.c line 5843) caches <c>MainMem + 0x200000</c> once and never re-derives it.
+    /// </summary>
+    private static void EnsureDisplayListArena()
+    {
+        if (s_DisplayListArena != null) return;
+
+        // Reserve BEFORE loading winsys3d.dll. The DLL is an 8.3 MB image and, once relocated out
+        // of its preferred base, is itself the strongest competitor for the same low window —
+        // loading it first made this placement fail roughly one run in four.
+
+        // Page-round the request; the arena proper starts MainMemOffsetInArena into it.
+        nuint size = (ArenaAllocationSize + 0xFFFu) & ~0xFFFu;
+
+        // The whole arena must stay under the 24-bit ceiling, so the last base we may use is
+        // bounded by the ceiling minus the allocation, aligned down to allocation granularity.
+        uint maxBase = (DisplayListCeiling - (uint)size) & ~(AllocationGranularity - 1);
+
+        // 1. The original layout first, so runtime addresses equal the ones in winsys3d.c.
+        byte* arena = (byte*)VirtualAlloc((void*)ArenaPreferredBase, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+        // 2. Otherwise take the fitting block closest to the original layout, so the delta a reader
+        //    has to apply to addresses quoted in winsys3d.c stays as small as this run allows.
+        uint largestFreeSeen = 0;
+        if (arena == null)
+        {
+            arena = ScanForLowArena(size, maxBase, out largestFreeSeen);
+        }
+
+        if (arena == null)
+        {
+            throw new InvalidOperationException(
+                $"The display list is addressed on 24 bits (winsys3d.c ClearOTagR/DrawOTag mask by " +
+                $"0xffffff), so its arena must sit below 0x{DisplayListCeiling:X8}. No free block of " +
+                $"0x{size:X} bytes was available below 0x{maxBase:X8} — the largest free region there " +
+                $"was 0x{largestFreeSeen:X} bytes. Without it every frame would fault inside DrawOTag " +
+                $"with no explanation — see REVERSE_STATUS.md, arena deviation.");
+        }
+
+        s_DisplayListArena = arena;
+        byte* mainMem = arena + MainMemOffsetInArena;
+
+        // Only now bring the library in, and point its exported pointer at the arena we secured.
+        EnsureWinsys3dLoaded();
+        if (s_MainMemExref == null) return;   // the DLL itself is unavailable; callers handle null
+        *s_MainMemExref = mainMem;
+
+        long delta = (long)(nint)mainMem - ArenaOriginalMainMem;
+        Console.Error.WriteLine(delta == 0
+            ? $"winsys3d arena at MainMem=0x{(nint)mainMem:X8} — original 1998 layout, addresses " +
+              "match winsys3d.c one for one"
+            : $"winsys3d arena at MainMem=0x{(nint)mainMem:X8} — 0x{ArenaOriginalMainMem:X8} was " +
+              $"unavailable; {(delta < 0 ? "subtract" : "add")} 0x{Math.Abs(delta):X} " +
+              $"{(delta < 0 ? "from" : "to")} any address read from winsys3d.c");
+    }
+
+    /// <summary>
+    /// Walks the free regions between <see cref="ArenaScanFloor"/> and <paramref name="maxBase"/>
+    /// and takes the **highest** base that fits. Highest rather than first for two reasons: it lands
+    /// nearest the original 0x00B60000, keeping the reported delta small, and it avoids parking the
+    /// arena at the very bottom of the address space where pointer values become suspiciously small.
+    /// </summary>
+    private static byte* ScanForLowArena(nuint size, uint maxBase, out uint largestFreeSeen)
+    {
+        nuint mbiSize = (nuint)sizeof(MEMORY_BASIC_INFORMATION);
+        largestFreeSeen = 0;
+        bool found = false;
+        uint best = 0;
+
+        for (uint address = ArenaScanFloor; address <= maxBase;)
+        {
+            if (VirtualQuery((void*)address, out MEMORY_BASIC_INFORMATION mbi, mbiSize) == 0) break;
+
+            uint regionBase = (uint)(nint)mbi.BaseAddress;
+            uint regionSize = (uint)(nint)mbi.RegionSize;
+            if (regionSize == 0) break;
+
+            if (mbi.State == MEM_FREE)
+            {
+                if (regionSize > largestFreeSeen) largestFreeSeen = regionSize;
+
+                // VirtualAlloc needs a granularity-aligned base, which a free region rarely starts on.
+                uint lowest = (regionBase + AllocationGranularity - 1) & ~(AllocationGranularity - 1);
+                ulong regionEnd = (ulong)regionBase + regionSize;
+
+                if (regionEnd >= (ulong)lowest + size)
+                {
+                    // The highest granularity-aligned base that still fits inside this region.
+                    uint highest = (uint)((regionEnd - size) & ~(ulong)(AllocationGranularity - 1));
+                    if (highest > maxBase) highest = maxBase;
+                    if (highest >= lowest)
+                    {
+                        found = true;
+                        best = highest;
+                    }
+                }
+            }
+
+            address = regionBase + regionSize;
+        }
+
+        if (!found) return null;
+
+        // A region can be taken between the scan and the allocation; retry downward if so.
+        for (uint candidate = best; candidate >= ArenaScanFloor; candidate -= AllocationGranularity)
+        {
+            byte* arena = (byte*)VirtualAlloc((void*)candidate, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            if (arena != null) return arena;
+        }
+
+        return null;
+    }
+
     // Ghidra: MainMem_exref — Blaze.exe imports this pointer as DATA from winsys3d.dll (mirrors
     // TexFilterPossible_exref below: winsys3d.c's `entry` sets `MainMem = &DAT_00b6dbd8;`, its own
-    // ~1MB scratch arena). Resolved lazily via GetProcAddress, same pattern as GetTexFilterPossiblePtr.
+    // scratch arena). Resolved lazily via GetProcAddress, same pattern as GetTexFilterPossiblePtr.
     private static byte** s_MainMemExref;
+
+    private static void EnsureWinsys3dLoaded()
+    {
+        if (s_MainMemExref != null) return;
+
+        IntPtr module = LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+        if (module != IntPtr.Zero)
+        {
+            s_MainMemExref = (byte**)GetProcAddress(module, ToAnsiZ("MainMem"));
+        }
+    }
+
     private static byte* GetMainMemPtr()
     {
-        if (s_MainMemExref == null)
-        {
-            IntPtr module = LoadLibraryA(ToAnsiZ("winsys3d.dll"));
-            if (module != IntPtr.Zero)
-            {
-                s_MainMemExref = (byte**)GetProcAddress(module, ToAnsiZ("MainMem"));
-            }
-        }
+        EnsureDisplayListArena();
         return s_MainMemExref != null ? *s_MainMemExref : null;
     }
 
@@ -726,6 +916,13 @@ public static unsafe partial class Blaze
     /// </summary>
     public static void entry()
     {
+        // DEVIATION, and it must come first: Blaze.exe imports winsys3d.dll statically, so in the
+        // original the library was mapped — and its arena fixed at 0x00B6DBD8 — before this entry
+        // point ever ran. Loading it here and retargeting MainMem reproduces that ordering, which
+        // Ordinal_789's device init depends on: winsys3d.c line 5843 caches MainMem + 0x200000 once
+        // and never re-derives it. See EnsureDisplayListArena for the 24-bit constraint behind this.
+        EnsureDisplayListArena();
+
         uint version = GetVersion();
         s_WinMinor = (byte)((version >> 8) & 0xff);
         s_WinMajor = (byte)(version & 0xff);

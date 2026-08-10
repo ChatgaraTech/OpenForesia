@@ -13,6 +13,73 @@ Export table was resolved with a small pure-Python PE32 export-directory parser
 `winsys3d.dll` sitting in the repo root, then cross-checked against the matching
 function body in `winsys3d.c` by RVA.
 
+## The display list is addressed on 24 bits — **CONFIRMED**, and it constrains the whole port
+
+This is the single most load-bearing fact about this DLL. It is read directly out of
+`winsys3d.c`, not inferred.
+
+`Ordinal_688` (`FUN_00a06160` @ `0xa06160`, libgpu `ClearOTagR`) builds the ordering table
+with **24-bit links and a zero top byte**:
+
+```c
+*puVar2 = ((uint)puVar1 ^ *puVar2 & 0xffffff) & 0xffffff ^ *puVar2 & 0xffffff;
+*param_1 = 0xffffff;                       /* the end-of-list sentinel */
+```
+
+which reduces to `*puVar2 = (uint)puVar1 & 0xffffff`. `Ordinal_701`
+(`FUN_00a061b0` @ `0xa061b0`, `DrawOTag`) walks it the same way, and reads the freed top
+byte as the primitive's word count:
+
+```c
+if ((char)(*puVar2 >> 0x18) != '\0') { FUN_00a26b20(puVar2); }   /* top byte = length */
+puVar2 = (uint *)(*puVar2 & 0xffffff);                           /* 24-bit link */
+} while (puVar2 != (uint *)&DAT_00ffffff);
+```
+
+`Blaze.exe` builds its tags to match — `DrawFlatPrimitive` does
+`*prim = *otEntry | 0x2000000`, packing the length into a top byte it assumes is free.
+**Both sides of the interface depend on it**, so it cannot be worked around on either.
+
+**Consequence:** every ordering table and every primitive buffer must live below
+`0x01000000`. In the original this was automatic — `Blaze.exe` imports `winsys3d.dll`
+*statically* (the name sits in its import table at file offset `0x1703AC`, the only one of
+the five DLLs so imported), the loader mapped it at its preferred base `0x00A00000`, and
+`winsys3d.c:568` set `MainMem = &DAT_00b6dbd8` = `0x00B6DBD8`.
+
+### The `MainMem` arena
+
+`MainMem` is a **plain exported data pointer**, and a genuine indirection: it occurs
+exactly three times in 27 703 lines.
+
+| `winsys3d.c` | code | role |
+|---|---|---|
+| 568 | `MainMem = &DAT_00b6dbd8;` | the sole initialisation, in `entry()` |
+| 5655 | `DAT_00dedbd8 = iVar1 + 0x240000 + MainMem;` | `DrawOTag` — re-derived every frame |
+| 5843 | `DAT_00dedbd8 = MainMem + 0x200000;` | `Ordinal_789`'s device init — derived **once** |
+
+`DAT_00b6dbd8` itself is referenced only at line 568, and **no symbol between
+`MainMem + 0x0` and `MainMem + 0x280000` is addressed by a fixed address** — the DLL's
+globals resume exactly at `MainMem + 0x280000` (`DAT_00dedbd8` and 36 others). The arena is
+therefore `0x280000` bytes wide and fully relocatable by rewriting the exported pointer.
+
+Known usage inside it:
+
+| offset | user |
+|---|---|
+| `+0x1c6000` / `+0x1c7000` | ordering tables, one per draw env (`Blaze.exe`, `FUN_0052a1e0`) |
+| `+0x1c8000` / `+0x1e4000` | primitive buffers, one per draw env (`Blaze.exe`, `FUN_0052a1e0`) |
+| `+0x200000` / `+0x240000` | winsys3d's double-buffered scratch (lines 5843 and 5655) |
+
+`entry()` does **not** populate the arena: it sets the pointer, takes a separate 1 MB
+`Malloc(0x100000)` into `EXT_00b6dbd0`, and loads font/KANJI resources into unrelated
+globals. There is nothing in it to preserve across a relocation.
+
+**Ordering matters**: line 5843 caches its derived pointer once and never recomputes it, so
+the arena must be fixed before `Ordinal_789` is first called. Line 5655 re-derives every
+frame and is self-correcting, which is a safety net, not a licence to relocate late.
+
+See `REVERSE_STATUS.md` for how the reconstruction restores this on modern Windows.
+
 ## The libgpu family (ordinals 658 / 661 / 665 / 674) — **IDENTIFIED**
 
 These are a port of the **PlayStation SDK's `libgpu`**, which is consistent with

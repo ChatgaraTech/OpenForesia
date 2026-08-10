@@ -82,6 +82,13 @@ which is an answer, not an error.
 - Use P/Invoke for recognized Win32/CRT calls rather than transcribing runtime assembly, keeping a
   comment naming the original. For DLL calls, read the DLL's decompiled body before inferring a
   signature from call sites.
+- **Read the DLL's own decompilation before reconstructing a call into it — not only for the
+  signature, but for the data conventions it implies.** `winsys3d.c`, `wsyskern.c` etc. are sources
+  of truth on the same footing as `Blaze.c`; they are just not reconstructed. A worked example:
+  `DrawFlatPrimitive`'s `*prim = *otEntry | 0x2000000` was transcribed faithfully and still produced
+  a native crash, because the convention it belongs to — the display list is addressed on 24 bits —
+  lives in `ClearOTagR`/`DrawOTag` on the DLL side. Reading those two functions first would have
+  caught it immediately; a day of debugging did not.
 - Build in coherent groups of functions, rebuilding often. If a change causes error counts to
   explode or demands casts everywhere, revert and re-examine the type decision instead of patching.
 - Gaps throw a descriptive `NotImplementedException` rather than silently no-op'ing, so a missing

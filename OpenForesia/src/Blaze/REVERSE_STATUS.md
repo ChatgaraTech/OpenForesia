@@ -518,14 +518,43 @@ path is complete end to end: CD detection → `E:\FRENCH\DATA/TITLE640.BMP` →
 `LoadBitmapFile` → `FUN_00512a10` creating the DirectDraw primary surface into
 `wrapper[1]` → `GetDC`/`StretchDIBits`/`ReleaseDC`.
 
-**Two environmental deviations, both measured rather than assumed.** Neither is a
-reconstruction shortcut; both are the modern platform refusing what the 1999
+**Three environmental deviations, all measured rather than assumed.** None is a
+reconstruction shortcut; all three are the modern platform refusing what the 1999
 binary asks for:
 
 | Original | Modern Windows | Handling |
 |---|---|---|
 | `SetDisplayMode(640, 480, 16)` | returns `E_NOTIMPL` (0x80004001) — 16bpp mode changes are gone | the faithful call is attempted first; a 32bpp retry fires **only** on that exact HRESULT, so it would never trigger on period hardware |
 | surfaces stay valid | `GetDC` fails with `DDERR_SURFACELOST` (0x887601c2) between repaints | `Restore` (vtable 0x6c) then one retry — the same pairing the original uses elsewhere in this cluster |
+| `winsys3d.dll` maps at its preferred base `0x00A00000`, putting the `MainMem` display-list arena at `0x00B6DBD8` | ASLR relocates it out of low memory (measured at `0x09…`), because `OpenForesia.exe`'s own image base sits inside winsys3d's preferred range and the CLR reserves the rest | the arena is allocated in low memory and its address written into the `MainMem` pointer winsys3d exports — see below |
+
+### The display-list arena (`EnsureDisplayListArena`)
+
+**The whole display list is addressed on 24 bits.** `Ordinal_688` (ClearOTagR) stores
+`(uint)entry & 0xffffff` in every link and terminates with `0xffffff`; `Ordinal_701`
+(DrawOTag) follows `*p & 0xffffff` and reads the top byte as the primitive's word count;
+and `Blaze.exe` itself packs that length in with `*prim = *otEntry | 0x2000000`. Both sides
+of the interface depend on it, so it cannot be worked around on either — the arena has to
+sit below `0x01000000`. Full derivation in `Documentation/DLL/winsys3d.md`.
+
+This deviation is safe because `MainMem` is a genuine indirection: three occurrences in
+27 703 lines of `winsys3d.c` (line 568 initialises, lines 5655 and 5843 read), and nothing
+between `MainMem + 0x0` and `MainMem + 0x280000` is addressed by a fixed address. The DLL
+file is never modified and no Windows setting is changed.
+
+Two ordering facts make the implementation what it is, both learned by measuring:
+
+- **Reserve before loading.** `winsys3d.dll` is an 8.3 MB image and, once relocated, is the
+  strongest competitor for the same low window. Loading it first made the placement fail
+  roughly one run in four; allocating first made it succeed 6/6.
+- **Place before `Ordinal_789`.** `winsys3d.c:5843` caches `MainMem + 0x200000` once and
+  never recomputes it, so the arena is fixed at the top of `entry()` — which also matches
+  the original, where the static import mapped the DLL before the CRT entry point ran.
+
+The preferred base `0x00B60000` reproduces `MainMem == 0x00B6DBD8` exactly, so decompiled
+addresses match runtime ones. When it is taken, the highest fitting block below the ceiling
+is used instead and the delta is logged at startup; when nothing fits, startup fails with a
+descriptive exception naming the constraint rather than letting `DrawOTag` fault natively.
 
 **Method note that earned its keep**: three consecutive hypotheses about why nothing
 displayed were wrong (bitmap not loading, `GetDC` failing, blit skipped). What
@@ -534,18 +563,41 @@ actual cause was in none of the three — and one of them, "the blit is a faithf
 no-op", was a claim about code that had simply never been written.
 
 **Current runtime behaviour, CD mounted, no temporary patches.** Startup runs the
-whole spine, loads and decodes real game resources, **enters the game loop**, and
-stops inside the per-frame tick on the first unreconstructed game state:
+whole spine, loads and decodes real game resources, **enters the game loop, and
+now renders frames** — `DrawOTag` completes on every one of them. Execution stops
+on the first unreconstructed renderer:
 
 ```
 === OpenForesia ===
-Unhandled exception. System.NotImplementedException: FUN_00533000: per-frame
-resource refresh
-   at Blaze.FrameResourceRefresh()
-   at Blaze.FrameBegin(...)
+winsys3d arena at MainMem=0x0083DBD8 — 0x00B6DBD8 was unavailable;
+subtract 0x330000 from any address read from winsys3d.c
+Unhandled exception. System.NotImplementedException: FUN_005443a0: menu
+background renderer (233 lines)
+   at Blaze.MenuBackgroundStub(UInt32*)
    at Blaze.RunMainMenuFrameLoop()
    at Blaze.RunMainMenuState()
 ```
+
+`MenuBackgroundStub` sits inside the fade branch, which the frame counter only
+enters after several `FrameEnd`s — so this is reached by *iterating*, not on the
+first frame. The blocker is now ordinary uncovered code with a decompiled body.
+
+**Correction to an earlier reading of this crash.** The native `0xC0000005` in
+`Ordinal_701` was previously attributed to a regression introduced by the four
+input-polling functions, and believed to strike on the *second* frame. Both were
+wrong, and instrumentation settled it in one run: the fault was on the **first**
+`FrameEnd`, and `PollInputAndAudio` — which sits *after* `DrawOTag` in `FrameEnd`
+— had never executed at all. It could not have been the cause. The polling
+functions were not a regression; they had merely unblocked the frame path far
+enough to expose the arena problem behind it.
+
+One real infidelity did surface while checking them, and is worth fixing when
+that area is next touched: `PollInputAndAudio`'s index is
+`&DAT_00604a20 + DAT_005e9188[DAT_005e93c8[(_DAT_005de538 & 0xff) * 0x9c] * 0x4c] * 4`,
+and the reconstruction hardcodes the outer index to 0 instead of reading
+`_DAT_005de538`. Equivalent today (that global is 0), but not faithful. The
+pointer it computes is a dead store in the current reconstruction — `DAT_00579270`
+is read only by `FUN_00510ce8`, which is not yet on any executed path.
 
 **Game state 0 is the main menu**, and it is now reconstructed. Its resource load
 and screen setup complete, and execution reaches the frame loop, where the first
