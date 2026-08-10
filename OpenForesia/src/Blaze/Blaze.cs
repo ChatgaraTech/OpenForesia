@@ -1259,9 +1259,12 @@ public static unsafe partial class Blaze
     // had simply never located their file.
     private const string IniFileExtension = ".cfg";
 
-    // TODO(REVERSE): ini key text unknown — DAT_00563080 (the key name argument for
-    // DAT_005de160 below) has no Ghidra-derived string name either.
-    private const string UnknownIniKey_005630a0 = "UNKNOWN_REVERSE_005630a0";
+    // Ghidra: &DAT_00563080 (Blaze.c:58266) — Ghidra gave it no string name, but the literal is
+    // present in Legacy/Blaze.exe: "Size". It sits in the .data key block exactly where the call
+    // order puts it, between "Small" (0x00563088) and "Resolution" (0x00563074), and the installed
+    // game's BLAZE.cfg carries Size=23 alongside Resolution=4 — which is precisely
+    // s_ResolutionDetailLimit[4]. Three independent confirmations; no longer a TODO.
+    private const string SizeIniKey = "Size";
 
     // Ghidra: DAT_0054d000. TODO(REVERSE): no literal value in Blaze.c (data-only global); this
     // is inferred as 1/64 from cross-referencing winsys3d.c's own default
@@ -1279,19 +1282,23 @@ public static unsafe partial class Blaze
     // reconstructed blob (AU_00564a05). Ini key "Small", default 0.
     private static uint s_SmallTextureFlag;
 
-    // Ghidra: DAT_005de160, ini key UnknownIniKey_005630a0, default 0xb (11). Clamped in
-    // LoadOptionsIni against a per-resolution table (DAT_00562e00). Exact purpose unknown.
-    private static int s_UnknownDetailSetting_005de160 = 0xb;
+    // Ghidra: DAT_005de160, ini key "Size", default 0xb (11). Clamped in LoadOptionsIni against a
+    // per-resolution table (DAT_00562e00). The key name is confirmed; what the value actually
+    // sizes is not. TODO(REVERSE): find the read sites of DAT_005de160 to establish its role.
+    private static int s_SizeSetting_005de160 = 0xb;
 
     // Ghidra: DAT_00566cc4 (ini "Resolution", default 2) / DAT_00562df8 (ini "Timing", default 1).
     private static uint s_ResolutionIndex;
     private static uint s_TimingMode;
 
     // Ghidra: &DAT_00564a58, 4 ints — per-joystick-slot assignment (-1 = unassigned). Ini keys
-    // built from format string reconstructed as "Joy %d" (Ghidra: s_Joy_d_00563064).
+    // built from format string "Joy%d" — no space (Ghidra: s_Joy_d_00563064; literal read back
+    // from Legacy/Blaze.exe at 0x00563064). An earlier reconstruction wrote "Joy %d", which reads
+    // keys the real BLAZE.cfg does not contain: the joystick settings silently fell back to their
+    // defaults instead of being loaded.
     private static readonly int[] s_JoystickSlot = new int[4];
 
-    // Ghidra: &DAT_00562e00 — per-resolution clamp table for s_UnknownDetailSetting_005de160.
+    // Ghidra: &DAT_00562e00 — per-resolution clamp table for s_SizeSetting_005de160.
     // TODO(REVERSE): actual byte content not present in Blaze.c (data-only global); sized as a
     // guess and filled with int.MaxValue as a safe (non-clamping) placeholder rather than
     // inventing real limits.
@@ -1301,10 +1308,12 @@ public static unsafe partial class Blaze
     // { 1, 7, 11, 16, 23, 0 }. These are real per-resolution detail clamps; the table was
     // previously filled with int.MaxValue on the assumption that its content was unrecoverable,
     // which turned the clamp into a silent no-op.
+    // Entries 0..4 are confirmed: the installed BLAZE.cfg pairs Resolution=4 with Size=23, and
+    // this table's index 4 is 23 — the clamp is a no-op there, which is what a settings file
+    // written by the game itself must produce.
     // TODO(REVERSE): the trailing 0 is transcribed as read. It is plausibly a terminator rather
-    // than a 6th entry meaning "clamp everything to 0", and no call site has been reconstructed
-    // that indexes past 4 — s_ResolutionIndex comes from the ini's Resolution key (4 in the real
-    // BLAZE.cfg). Kept verbatim rather than trimmed to a guess.
+    // than a 6th entry meaning "clamp everything to 0"; the bytes that follow (01 02 03 04 05 06
+    // 07 08) are visibly a different table, so 0x00562e00 ends here either way. Kept verbatim.
     private static int[] CreateUnknownResolutionLimitTable()
         => [1, 7, 11, 16, 23, 0];
 
@@ -2673,14 +2682,20 @@ public static unsafe partial class Blaze
         if (texFilterPossible != null) *texFilterPossible = filter;
 
         s_SmallTextureFlag = ReadIniInt("Small", 0, iniPathAnsi);
-        s_UnknownDetailSetting_005de160 = (int)ReadIniInt(UnknownIniKey_005630a0, 0xb, iniPathAnsi);
+        s_SizeSetting_005de160 = (int)ReadIniInt(SizeIniKey, 0xb, iniPathAnsi);
         s_ResolutionIndex = ReadIniInt("Resolution", 2, iniPathAnsi);
         s_TimingMode = ReadIniInt("Timing", 1, iniPathAnsi);
+
+        // ECHAFAUDAGE TEMPORAIRE : trace du fichier d'options réellement lu et des valeurs prises.
+        LogDisplayMode("bureau, avant init 3D");
+        Console.Error.WriteLine(
+            $"[CFG] {Marshal.PtrToStringAnsi((IntPtr)iniPathAnsi)} -> Resolution={s_ResolutionIndex} " +
+            $"Size={s_SizeSetting_005de160} Small={s_SmallTextureFlag} Timing={s_TimingMode}");
 
         int nextJoystickSlot = 0;
         for (int i = 0; i < s_JoystickSlot.Length; i++)
         {
-            uint enabled = ReadIniInt($"Joy {i}", 1, iniPathAnsi);
+            uint enabled = ReadIniInt($"Joy{i}", 1, iniPathAnsi);
             s_JoystickSlot[i] = enabled == 0 ? -1 : nextJoystickSlot++;
         }
 
@@ -2689,9 +2704,9 @@ public static unsafe partial class Blaze
         CreateTranslationTables(s_GammaIni * GammaIniScale);
 
         if (s_ResolutionIndex < (uint)s_ResolutionDetailLimit.Length &&
-            s_ResolutionDetailLimit[s_ResolutionIndex] < s_UnknownDetailSetting_005de160)
+            s_ResolutionDetailLimit[s_ResolutionIndex] < s_SizeSetting_005de160)
         {
-            s_UnknownDetailSetting_005de160 = s_ResolutionDetailLimit[s_ResolutionIndex];
+            s_SizeSetting_005de160 = s_ResolutionDetailLimit[s_ResolutionIndex];
         }
 
         LoadKeyBindings(iniPathAnsi);
@@ -2715,13 +2730,13 @@ public static unsafe partial class Blaze
         WriteIniInt("Filter", texFilterPossible != null ? *texFilterPossible : 0, iniPathAnsi);
 
         WriteIniInt("Small", s_SmallTextureFlag, iniPathAnsi);
-        WriteIniInt(UnknownIniKey_005630a0, (uint)s_UnknownDetailSetting_005de160, iniPathAnsi);
+        WriteIniInt(SizeIniKey, (uint)s_SizeSetting_005de160, iniPathAnsi);
         WriteIniInt("Resolution", s_ResolutionIndex, iniPathAnsi);
         WriteIniInt("Timing", s_TimingMode, iniPathAnsi);
 
         for (int i = 0; i < s_JoystickSlot.Length; i++)
         {
-            WriteIniInt($"Joy {i}", s_JoystickSlot[i] != -1 ? 1u : 0u, iniPathAnsi);
+            WriteIniInt($"Joy{i}", s_JoystickSlot[i] != -1 ? 1u : 0u, iniPathAnsi);
         }
 
         SaveKeyBindings(iniPathAnsi);
@@ -3848,6 +3863,8 @@ public static unsafe partial class Blaze
         // scene rendered unscaled in a corner of a 640x480 screen.
 
         Ordinal_789(0, s_ResolutionIndexForClamp);
+        InstallDeviceShim();   // ECHAFAUDAGE TEMPORAIRE — voir DeviceShim.cs
+        LogDisplayMode("après init 3D"); // ECHAFAUDAGE TEMPORAIRE
         ShutdownMoviePlayer(); // Ghidra: FUN_00542f90()
         CheckDeviceCapabilityFlag(); // Ghidra: FUN_0050f120()
         Ordinal_110(0);
@@ -3857,7 +3874,7 @@ public static unsafe partial class Blaze
         // Ghidra: FUN_0040a600() — confirmed no-op (`return;` with an empty body).
         SetupJoystickHandlers(); // Ghidra: FUN_00504460()
 
-        int detail = s_UnknownDetailSetting_005de160;
+        int detail = s_SizeSetting_005de160;
         SetShift((0xb - detail) * 0x10, (0xb - detail) * 0xc, detail, 0);
 
         LoadUiFontFromCd();
@@ -4735,8 +4752,8 @@ public static unsafe partial class Blaze
             // Ghidra: the fade. uVar3 is the grey level; it walks down while the low nibble of the
             // frame counter is not 8 and the level is still above 0x7f.
             uint level = (s_FadeCounter_005e9960 & 0xf) * 0x10;
-            s_Unknown_005de154 = (0xb - s_UnknownDetailSetting_005de160) * 0x10;
-            s_Unknown_005de158 = (0xb - s_UnknownDetailSetting_005de160) * 0x0c;
+            s_Unknown_005de154 = (0xb - s_SizeSetting_005de160) * 0x10;
+            s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0x0c;
 
             if ((s_FadeCounter_005e9960 & 0xf) != 8 && level > 0x7f)
             {
@@ -4765,7 +4782,7 @@ public static unsafe partial class Blaze
                             int shiftX, shiftY;
                             GetAbsShift(&shiftX, &shiftY);
                             SetAbsShift(0, 0);
-                            if (s_UnknownDetailSetting_005de160 < 7) s_SmallTextureFlag = 1;
+                            if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
                             OptionsScreenStub();                        // Ghidra: FUN_00512320
                             SetAbsShift(shiftX, shiftY);
                             SaveOptionsIni();
@@ -5938,7 +5955,7 @@ public static unsafe partial class Blaze
         if (s_Unknown_005de15c == 0) return;
 
         uint* p = *prim;
-        p[1] = (s_SmallTextureFlag == 0 && 7 < s_UnknownDetailSetting_005de160)
+        p[1] = (s_SmallTextureFlag == 0 && 7 < s_SizeSetting_005de160)
             ? 0xfb00000b
             : 0xfb000001;
         p[2] = (uint)s_Unknown_005de154;
@@ -5957,9 +5974,9 @@ public static unsafe partial class Blaze
         if (s_Unknown_005de15c == 0) return;
 
         uint* p = *prim;
-        p[1] = (uint)(s_UnknownDetailSetting_005de160 - 0x5000000);
-        p[2] = (uint)(s_UnknownDetailSetting_005de160 * -0x10 + 0xb0);
-        p[3] = (uint)(s_UnknownDetailSetting_005de160 * -0x0c + 0x84);
+        p[1] = (uint)(s_SizeSetting_005de160 - 0x5000000);
+        p[2] = (uint)(s_SizeSetting_005de160 * -0x10 + 0xb0);
+        p[3] = (uint)(s_SizeSetting_005de160 * -0x0c + 0x84);
         p[0] = *otEntry | 0x3000000;
         *otEntry = (uint)(nuint)p;
         *prim = p + 4;
@@ -6466,7 +6483,7 @@ public static unsafe partial class Blaze
             int shiftX, shiftY;
             GetAbsShift(&shiftX, &shiftY);
             SetAbsShift(0, 0);
-            if (s_UnknownDetailSetting_005de160 < 7) s_SmallTextureFlag = 1;
+            if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
             OptionsScreenStub();
             SetAbsShift(shiftX, shiftY);
             SaveOptionsIni();
@@ -6481,13 +6498,13 @@ public static unsafe partial class Blaze
 
         if (GetAsyncKeyState(0x7a /* VK_F11 */) != 0)
         {
-            if (s_UnknownDetailSetting_005de160 != 0)
+            if (s_SizeSetting_005de160 != 0)
             {
-                s_UnknownDetailSetting_005de160--;
-                SetShift((0xb - s_UnknownDetailSetting_005de160) * 0x10,
-                         (0xb - s_UnknownDetailSetting_005de160) * 0x0c,
-                         s_UnknownDetailSetting_005de160, 0);
-                if (s_UnknownDetailSetting_005de160 < 7) s_SmallTextureFlag = 1;
+                s_SizeSetting_005de160--;
+                SetShift((0xb - s_SizeSetting_005de160) * 0x10,
+                         (0xb - s_SizeSetting_005de160) * 0x0c,
+                         s_SizeSetting_005de160, 0);
+                if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
                 SaveOptionsIni();
                 do { Sleep(100); } while (GetAsyncKeyState(0x7a) < 0);
                 return 0;
@@ -6495,22 +6512,24 @@ public static unsafe partial class Blaze
         }
         else if (GetAsyncKeyState(0x7b /* VK_F12 */) != 0)
         {
-            // The clamp table here is DAT_00562e00 — recovered as { 1, 7, 11, 16, 23 }.
+            // The clamp table here is DAT_00562e00 — recovered as { 1, 7, 11, 16, 23, 0 }. F12
+            // raises Size up to the ceiling for the current Resolution; at Resolution=4 that
+            // ceiling is 23, which is what the installed BLAZE.cfg holds.
             int limit = s_ResolutionIndexForClamp < s_ResolutionDetailLimit.Length
                 ? s_ResolutionDetailLimit[s_ResolutionIndexForClamp]
                 : int.MaxValue;
-            if (s_UnknownDetailSetting_005de160 < limit)
+            if (s_SizeSetting_005de160 < limit)
             {
-                s_UnknownDetailSetting_005de160++;
-                SetShift((0xb - s_UnknownDetailSetting_005de160) * 0x10,
-                         (0xb - s_UnknownDetailSetting_005de160) * 0x0c,
-                         s_UnknownDetailSetting_005de160, 0);
+                s_SizeSetting_005de160++;
+                SetShift((0xb - s_SizeSetting_005de160) * 0x10,
+                         (0xb - s_SizeSetting_005de160) * 0x0c,
+                         s_SizeSetting_005de160, 0);
                 SaveOptionsIni();
                 do { Sleep(100); } while (GetAsyncKeyState(0x7b) < 0);
                 return 0;
             }
         }
-        else if (GetAsyncKeyState(0x78 /* VK_F9 */) != 0 && s_UnknownDetailSetting_005de160 > 6)
+        else if (GetAsyncKeyState(0x78 /* VK_F9 */) != 0 && s_SizeSetting_005de160 > 6)
         {
             s_SmallTextureFlag = s_SmallTextureFlag == 0 ? 1u : 0u;
             SaveOptionsIni();

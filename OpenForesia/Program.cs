@@ -30,6 +30,8 @@ if (!Startup.ArenaClaimed)
 
 Console.WriteLine("=== OpenForesia ===");
 
+D3D11Backend.Probe(); // ECHAFAUDAGE TEMPORAIRE — validation de faisabilité, à retirer
+
 Blaze.entry();
 return 0;
 

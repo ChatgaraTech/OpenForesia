@@ -1,5 +1,42 @@
 # Analyse — écran noir sur le menu principal
 
+> **Mesure du 2026-08-10, à lire avant le reste.** Le mode d'affichage réellement appliqué a enfin
+> été mesuré (`DeviceShim.LogDisplayMode`, appelé avant et après l'init 3D) :
+>
+> ```
+> bureau           : 2560x1440 32bpp 144Hz
+> après init 3D    : 1440x900  32bpp 144Hz      <- constant, quelle que soit Resolution
+> ```
+>
+> Balayage de la clé `Resolution` du `.cfg`, un lancement par valeur :
+>
+> | `Resolution` | mode obtenu | viewport demandé |
+> |---|---|---|
+> | 0 | 1440x900 | (0,0) 320x240 |
+> | 1 | 1440x900 | (0,0) 512x384 |
+> | 2 | 1440x900 | (0,0) 640x480 |
+> | 3 | 1440x900 | (0,0) 800x600 |
+> | 4 | 1440x900 | (32,24) 960x720 *(Size=21 ; 1024x768 à Size=23)* |
+> | 5 | 1440x900 | (176,133) 288x216 — **hors table**, valeurs parasites |
+>
+> Deux conclusions :
+>
+> 1. `Resolution` ne choisit **pas** le mode d'affichage, contrairement à ce qui était supposé plus
+>    bas dans ce document : elle indexe la table de décalages de base de `winsys3d`
+>    (`DAT_00a2c49c`) et ne fixe que la taille du rendu. Le mode, lui, est négocié par `3dhelp`
+>    (`SetDisplayMode`, `3dhelp.c:1275`) et vaut 1440x900 dans tous les cas.
+> 2. **Le jeu rend donc au maximum 1024x768 dans un mode 1440x900.** L'image occupe le coin haut
+>    gauche avec du remplissage autour — exactement le symptôme observé. Aucun mode 16:10 de ce
+>    type n'existait sur le matériel de 1998 : la négociation de mode ne survit pas au matériel
+>    moderne, et c'est elle qu'il faut supprimer, pas replacer le viewport.
+>
+> Effet de bord utile : `Resolution=5` produit des valeurs parasites, ce qui confirme que la table
+> de base de `winsys3d` compte exactement 5 entrées valides (0..4). Comme la table de bridage
+> `DAT_00562e00` est indexée par la même valeur, son 6ᵉ dword (`0`) est bien un terminateur.
+>
+> Le taux d'écran noir, lui, **n'a pas bougé** après la correction de la clé `Size` : ce bug était
+> réel mais orthogonal.
+
 Document de synthèse à destination du responsable du projet. Il rassemble le symptôme, tout ce qui
 a été mesuré, les hypothèses écartées et pourquoi, afin qu'aucune piste déjà close ne soit
 rouverte.
