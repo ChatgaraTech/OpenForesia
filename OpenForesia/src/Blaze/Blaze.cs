@@ -3068,7 +3068,6 @@ public static unsafe partial class Blaze
 
     // Safety net for the deviation noted above — not part of the original.
     private static void* s_DisplayModeOwner;
-
     private static void RegisterDisplayModeRestore(void* directDraw)
     {
         if (s_DisplayModeOwner != null) return;
@@ -3842,7 +3841,13 @@ public static unsafe partial class Blaze
         s_Unknown_005e9630 = Ordinal_116();
         Ordinal_771();
         InitTrigTables(); // Ordinal_337, re-run (idempotent — see winsys3d.md)
-        Ordinal_789(0, 0); // Ghidra: Ordinal_789(0); 2nd arg TODO(REVERSE), inert when 1st arg is 0
+        // Ghidra: Ordinal_789(0, DAT_00566cc4) — Blaze.c line 79100. The second argument is **not**
+        // inert, as an earlier note here claimed: winsys3d.c FUN_00a06420 opens with
+        // `DAT_00a2c49c = param_2`, and that global indexes the base-offset tables SetShift uses to
+        // position the viewport. Passing 0 selected the 320x240 entry (-160,-120), which is why the
+        // scene rendered unscaled in a corner of a 640x480 screen.
+
+        Ordinal_789(0, s_ResolutionIndexForClamp);
         ShutdownMoviePlayer(); // Ghidra: FUN_00542f90()
         CheckDeviceCapabilityFlag(); // Ghidra: FUN_0050f120()
         Ordinal_110(0);
@@ -4519,6 +4524,7 @@ public static unsafe partial class Blaze
     /// `FUN_0052a1e0(arg1, arg2, arg3)` — cdecl, three arguments, `ADD ESP,0xc`.
     /// </para>
     /// </summary>
+
     private static void FrameEnd(uint** otBase, uint** otEntry, uint** primCursor, int mode, int flag)
     {
         CrtRand();                             // Ghidra: FUN_00547140() — result discarded here
@@ -4694,6 +4700,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00542250 @ 0x00542250 — the main menu's frame loop. Runs until a menu entry is
     /// chosen, then sets the next game state (or exits) and returns.
     /// </summary>
+
 
     private static void RunMainMenuFrameLoop()
     {
@@ -5002,20 +5009,38 @@ public static unsafe partial class Blaze
     private static int s_GlyphMode_005dffd0;        // Ghidra: DAT_005dffd0 — 0 none / 1 latin / 2 DBCS
     private static int s_Unknown_005dffe8;          // Ghidra: DAT_005dffe8
 
-    // Ghidra: &DAT_0056e7b0 — proportional glyph widths, recovered verbatim (see DataSymbols.md).
+    /// <summary>
+    /// Ghidra: &amp;DAT_0056e7b0 — proportional glyph widths, one byte per folded slot.
+    /// <para>
+    /// **Taken from `FUN_00507890`, not from the `.data` image.** The two differ, and the `.data`
+    /// copy is the stale one: `FUN_00507890` builds the real table as 186 stack literals and copies
+    /// it over (`FUN_00507870` is its fixed-width counterpart, every entry 8). The `.data` copy
+    /// gives `I`=6/`J`=2 and `M`=5/`N`=8 — impossible for a proportional font, and the direct cause
+    /// of the uneven spacing: narrow glyphs advanced too far, wide ones not far enough. This table
+    /// gives `I`=2, `M`=8, `i`=2, `l`=2, `m`=8, `t`=4, `Q`=8.
+    /// </para>
+    /// The folding that indexes it is confirmed against the machine code at 0x00543EE3:
+    /// `CMP SI,0x41 / LEA EAX,[ESI-0x22] / JAE / LEA EAX,[ESI-0x21]`, then
+    /// `MOVSX AX,[ESI + 0x0056E7B0]` — so both the folding and the base are faithful as written.
+    /// <para>
+    /// TODO(REVERSE): neither setter has a call site in `Blaze.c` — both are reached only through
+    /// an address-taken table, so which one runs when is not established. The proportional one is
+    /// installed here because the original demonstrably renders proportional text.
+    /// </para>
+    /// </summary>
     private static readonly byte[] s_GlyphWidths_0056e7b0 =
     [
         0x02,0x04,0x08,0x06,0x0a,0x08,0x02,0x04,0x04,0x06,0x06,0x02,0x04,0x02,0x04,0x06,
-        0x04,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x02,0x02,0x04,0x06,0x04,0x06,
-        0x06,0x06,0x06,0x06,0x05,0x05,0x07,0x06,0x02,0x06,0x07,0x05,0x08,0x07,0x07,0x06,
-        0x08,0x06,0x06,0x06,0x06,0x07,0x08,0x06,0x06,0x07,0x03,0x04,0x03,0x06,0x08,0x05,
-        0x05,0x05,0x05,0x05,0x04,0x05,0x05,0x02,0x03,0x06,0x02,0x08,0x05,0x06,0x05,0x05,
-        0x04,0x06,0x04,0x05,0x06,0x06,0x06,0x06,0x06,0x04,0x02,0x04,0x07,0x07,0x02,0x06,
-        0x06,0x06,0x06,0x02,0x07,0x04,0x0a,0x06,0x06,0x0a,0x04,0x0a,0x04,0x04,0x06,0x05,
-        0x05,0x03,0x06,0x07,0x02,0x04,0x03,0x06,0x06,0x08,0x0a,0x0a,0x06,0x06,0x06,0x06,
-        0x06,0x06,0x0a,0x07,0x05,0x05,0x06,0x06,0x03,0x03,0x04,0x04,0x08,0x07,0x08,0x08,
-        0x08,0x08,0x08,0x06,0x07,0x06,0x06,0x06,0x06,0x06,0x07,0x06,0x06,0x06,0x06,0x05,
-        0x06,0x08,0x05,0x05,0x05,0x06,0x06,0x03,0x03,0x04,0x04,0x07,0x05,0x06,0x06,0x06,
+        0x04,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x02,0x02,0x04,0x06,0x04,0x06,0x06,
+        0x06,0x06,0x06,0x05,0x05,0x07,0x06,0x02,0x06,0x07,0x05,0x08,0x07,0x07,0x06,0x08,
+        0x06,0x06,0x06,0x06,0x07,0x08,0x06,0x06,0x07,0x03,0x04,0x03,0x06,0x08,0x05,0x05,
+        0x05,0x05,0x05,0x04,0x05,0x05,0x02,0x03,0x06,0x02,0x08,0x05,0x06,0x05,0x05,0x04,
+        0x06,0x04,0x05,0x06,0x06,0x06,0x06,0x06,0x04,0x02,0x04,0x07,0x07,0x02,0x06,0x06,
+        0x06,0x06,0x02,0x07,0x04,0x0a,0x06,0x06,0x0a,0x04,0x0a,0x08,0x04,0x06,0x05,0x05,
+        0x03,0x06,0x07,0x02,0x04,0x03,0x06,0x06,0x08,0x0a,0x0a,0x06,0x06,0x06,0x06,0x06,
+        0x06,0x0a,0x07,0x05,0x05,0x06,0x06,0x03,0x03,0x04,0x04,0x08,0x07,0x08,0x08,0x08,
+        0x08,0x08,0x06,0x07,0x06,0x06,0x06,0x06,0x06,0x07,0x06,0x06,0x06,0x06,0x05,0x06,
+        0x08,0x05,0x05,0x05,0x06,0x06,0x03,0x03,0x04,0x04,0x07,0x05,0x06,0x06,0x06,0x06,
         0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,
     ];
 
@@ -5150,7 +5175,7 @@ public static unsafe partial class Blaze
         *(uint*)(descriptor + 0x0c) = 0xf000000;
         s_OtCursor_005e8314 = (uint*)(descriptor + 0xa4);
         s_SpriteCursor_005e8324 = (uint*)(descriptor + 0x828);
-        s_BreakPen_005e8328 = 0;
+        s_PenX_005e8320 = 0;                            // Ghidra: DAT_005e8320 = 0
         s_GlyphMode_005dffd0 = 0;
         s_StagingWrite_005e8304 = StagingBank(descriptor[0x14], 0);
         return text;   // Ghidra returns unaff_ESI — the caller's cursor, unchanged
@@ -5165,7 +5190,7 @@ public static unsafe partial class Blaze
     private static void NewLine(int reset, byte* descriptor)
     {
         FlushLine(descriptor);
-        if (s_BreakPen_005e8328 != 0) EnqueueGlyphUpload(descriptor);
+        if (s_PenX_005e8320 != 0) EnqueueGlyphUpload(descriptor);
         if ((sbyte)descriptor[0x0e] != 0) EmitTextSprite(descriptor);
 
         uint packed = (*(uint*)(descriptor + 0x0c) + 0x100) & 0xff00ff00;
@@ -5176,7 +5201,7 @@ public static unsafe partial class Blaze
         s_OtCursor_005e8314 = (uint*)(descriptor + (0x29 - line) * 4);
         s_SpriteCursor_005e8324 = (uint*)(descriptor + (0x828 - line * 0x80));
         s_StagingWrite_005e8304 = StagingBank(descriptor[0x14], line);
-        s_BreakPen_005e8328 = 0;
+        s_PenX_005e8320 = 0;                            // Ghidra: DAT_005e8320 = 0
         s_BreakStaging_005e02fc = null;
 
         if (reset != 0) s_TextState_005e8308 = 0;
@@ -5388,6 +5413,8 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00543b20 @ 0x00543b20 — rasterises one character into the 4bpp staging buffer
     /// and advances the pen, implementing word wrap by backtracking to the last break.
     /// </summary>
+
+
     private static void RasterizeGlyph(byte* descriptor, uint character, int oddAlign)
     {
         CheatCodeProbe((byte)character);
@@ -5434,10 +5461,13 @@ public static unsafe partial class Blaze
             FillStagingRun(width);
 
             s_BreakColumn_005e8300 = penBefore + (uint)advance;
-            s_BreakStaging_005e02fc = s_StagingWrite_005e8304
-                                      + (int)(((penBefore & 1) + (uint)advance) >> 1) - 0x700;
+
+            // Ghidra applies `+ ((pen & 1) + width) / 2 - 0x700` **once**, after the 15-row loop —
+            // and FillStagingRun already does exactly that as its last statement. Repeating it here
+            // advanced the staging pointer twice per space, which drifted every glyph after the
+            // first space of a line into the wrong columns and eventually the wrong bank.
+            s_BreakStaging_005e02fc = s_StagingWrite_005e8304;
             s_BreakPen_005e8328 = (uint)descriptor[0x0e] + (uint)advance;
-            s_StagingWrite_005e8304 = s_BreakStaging_005e02fc;
         }
         else
         {
@@ -5483,7 +5513,6 @@ public static unsafe partial class Blaze
 
             int bitOffset = (index % 0x1f) * 10;
             byte* rows = GetMainMemPtr() + (bitOffset >> 3) + (index / 0x1f) * 0x230 + 0x1ad8f0;
-
             advance = width;
             BlitGlyphRows(rows, bitOffset, advance);
         }
@@ -5884,7 +5913,7 @@ public static unsafe partial class Blaze
             }
 
             FlushLine(descriptor);
-            if (s_BreakPen_005e8328 != 0) EnqueueGlyphUpload(descriptor);
+            if (s_PenX_005e8320 != 0) EnqueueGlyphUpload(descriptor);
             if ((sbyte)descriptor[0x0e] != 0) EmitTextSprite(descriptor);
             s_TextState_005e8308 = 0;
             return s_UploadCursor_005e831c;
@@ -6622,7 +6651,11 @@ public static unsafe partial class Blaze
     private static void* s_JoystickDevice;      // Ghidra: DAT_00604b54 / DAT_00604b50
     private static byte* s_Unknown_00579270;    // Ghidra: DAT_00579270
     private static int s_Unknown_005de554;      // Ghidra: DAT_005de554
-    private static int s_ResolutionIndexForClamp; // Ghidra: DAT_00566cc4
+    // Ghidra: DAT_00566cc4 — **the same global as s_ResolutionIndex**, not a second one. Blaze.c
+    // line 58267 fills it from the ini's Resolution key, exactly as LoadOptionsIni does here, and
+    // the reconstruction had split one global into two fields with only one of them ever assigned.
+    // Third instance of this shape today, after DAT_0056e61f and DAT_005e8fc0.
+    private static int s_ResolutionIndexForClamp => (int)s_ResolutionIndex;
 
     // Ghidra: _DAT_0054d000 — the gamma scale this hotkey path uses. Distinct from _DAT_0054d074.
     // TODO(REVERSE): .rdata content; 1.0f leaves the product equal to the raw setting.

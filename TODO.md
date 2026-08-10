@@ -32,7 +32,111 @@ lue dans le binaire contient « Début du jeu », « Sélection des personnages 
 
 ---
 
-## Le point de reprise : le menu se dessine, mais à l'échelle 1:1 dans un coin
+## Le menu principal est fidèle à l'original
+
+Comparé côte à côte avec des captures du jeu officiel par le responsable : « peu de différence,
+voire aucune ». Quatre bugs ont été nécessaires pour y arriver, tous confirmés contre le binaire.
+
+### Les quatre corrections, et comment chacune a été établie
+
+1. **Index de résolution non transmis.** `Ordinal_789(0, 0)` au lieu de
+   `Ordinal_789(0, DAT_00566cc4)`. Le 2ᵉ argument n'est pas inerte : `winsys3d.c FUN_00a06420`
+   ouvre sur `DAT_00a2c49c = param_2`, et cette globale indexe les tables de base que `SetShift`
+   utilise pour positionner le viewport. Avec 0, la base valait `(-160,-120)` — d'où le bas-droite
+   du menu affiché dans le coin haut-gauche.
+   Au passage : `DAT_00566cc4` **est** `s_ResolutionIndex` (`Blaze.c` ligne 58267 la remplit depuis
+   la clé `Resolution` de l'ini), encore une globale que la reconstruction avait dédoublée.
+
+2. **Le crayon ne repartait pas de zéro entre les lignes.** `FUN_00544d90` (ligne 91430) et
+   `FUN_00544c50` (ligne 91354) font `DAT_005e8320 = 0` ; j'avais écrit `DAT_005e8328` — deux
+   globales voisines interverties, dans quatre endroits.
+
+3. **Double avance du pointeur d'écriture** dans le chemin « espace » du rastériseur. Ghidra
+   applique `+ ((pen & 1) + largeur) / 2 - 0x700` **une seule fois**, et `FillStagingRun` le faisait
+   déjà. Tout glissait après le premier espace d'une ligne.
+
+4. **La table de largeurs de glyphes venait de la mauvaise source.** Le contenu `.data` de
+   `DAT_0056e7b0` est une copie **périmée** : `FUN_00507890` construit la vraie table en 186
+   littéraux sur la pile et la recopie par-dessus (`FUN_00507870` est la variante chasse fixe, tout
+   à 8). La copie `.data` donne `I`=6 et `M`=5 — impossible pour une police proportionnelle.
+   Le repli et la base de table, eux, ont été **vérifiés dans le code machine** à `0x00543EE3` :
+   `CMP SI,0x41 / LEA EAX,[ESI-0x22] / JAE / LEA EAX,[ESI-0x21]` puis
+   `MOVSX AX,[ESI + 0x0056E7B0]` — la reconstruction était fidèle, c'est bien la donnée qui
+   était fausse.
+
+Détail utile : le bitmap de police est **inversé** — `0x0f` est le fond (les espaces sont
+transparents) et l'encre porte un dégradé vertical par rangée.
+
+---
+
+## Le bug ouvert : écran parfois entièrement noir
+
+Environ un lancement sur trois n'affiche rien. **Ce n'est pas la logique du menu** : sur 6 runs
+instrumentés, l'état est rigoureusement identique, que l'écran soit visible ou noir —
+
+```
+texte=20 mots  panneau=114 mots  flags=0x05  panelOT=0x…0828  slot31=0x73C0021B  fade=8
+```
+
+La liste d'affichage est donc construite à l'identique à chaque fois. **Le défaut est en aval, dans
+la couche de présentation.** Écartés par la mesure : l'adresse de l'arène (un run l'a même obtenue
+à l'adresse d'origine et restait noir) et la relance automatique.
+
+**Mesures faites, et ce qu'elles écartent définitivement :**
+
+| vérifié | résultat |
+|---|---|
+| état du menu (texte, panneau, flags, slot CLUT, fade) | **identique** sur 6 runs, visibles comme noirs |
+| `DrawOTag` s'exécute-t-elle vraiment ? | **59–60 frames sur 60**, sur 7 lancements |
+| garde `VSyncDelayed` | passe à 0 dès la 2ᵉ frame, le timer `timeSetEvent` tourne |
+| garde `DAT_00dedc44` | 0 en permanence, ne bloque jamais |
+| adresse de l'arène | sans corrélation (un run à l'adresse d'origine était noir) |
+| relance automatique | sans corrélation |
+| `RegisterDisplayModeRestore` | n'ajoute pas de référence COM, ne retient rien |
+| sélection du renderer | `DAT_011be738 = (driver == "GLIDE")` → 0 = `3dhelp.dll` = Direct3D, conforme |
+
+**La reconstruction dessine donc de façon parfaitement régulière.** Le défaut est entièrement
+en aval de `DrawOTag`, dans la présentation par le device 3D (`3dhelp.dll` + pilote).
+
+**Trois variantes de mode vidéo testées, sans effet** (5 lancements chacune) :
+
+| variante | menus visibles |
+|---|---|
+| 0 — comportement actuel | 2/5 |
+| 1 — rendre le mode exclusif DirectDraw avant l'init 3D | 3/5 |
+| 2 — ne jamais appeler `SetDisplayMode` | 1/5 |
+
+Indiscernables. **L'hypothèse du conflit de mode vidéo est écartée.**
+
+Observation la plus utile du responsable : **le menu clignotait** sur un essai. Signature de double
+buffering — l'écran noir serait alors « on est tombé du mauvais côté ». Deux vérifications
+derrière, toutes deux négatives :
+
+- les uploads VRAM des glyphes sont à `x=768, y=288..352` en 64×16, hors des tampons d'image
+  `(0,0)-(320,480)` d'une VRAM 1024×512 → **aucune collision** ;
+- l'appariement des tampons est conforme à Ghidra : env0 dessine en `y=0` / affiche `y=240`,
+  env1 l'inverse.
+
+**Impasse à ne pas rouvrir : changer le renderer depuis notre code.** `Setup3DDevice` se contente
+de lire `[D3DDriver] Driver` et `Description` dans l'ini, de les comparer à `"GLIDE"` et
+`"SOFTWARE"`, et de les réécrire. Aucun dialogue, aucune énumération. Le drapeau `SOFTWARE`
+(`DAT_011be73c`) ne fait que **désactiver le filtrage de textures** (winsys3d.c ligne 5935) — il ne
+change pas le device. Le sélecteur de renderer que propose le jeu d'origine appartient à son
+programme de configuration séparé, non reconstruit ; le device vient de `Create3DDevice()` dans
+`3dhelp.dll`, qui ne prend aucun argument.
+
+**Conclusion provisoire** : plus aucune piste solide côté reconstruction. Le défaut se situe entre
+`3dhelp.dll`, Direct3D et le pilote, sur du matériel qui n'a plus rien de commun avec 1998. La
+seule voie qui resterait est d'instrumenter ou de contourner `Create3DDevice`, ce qui est un
+chantier en soi et sort du cadre de la transcription fidèle.
+
+**Attention méthodologique** : une capture d'écran (`CopyFromScreen`) ne mesure pas ce bug de façon
+fiable — en plein écran exclusif elle ne voit pas la surface DirectDraw. Une mesure qui donnait
+exactement 150 pixels allumés à chaque run « visible » captait en réalité un élément du bureau.
+
+---
+
+## Historique : le menu se dessinait à l'échelle 1:1 dans un coin
 
 **Le rendu marche.** Une bissection l'a établi : une primitive plate non texturée (un rectangle
 rouge plein écran) s'affiche. Donc device, environnements, `DrawOTag`, permutation et présentation
@@ -78,6 +182,18 @@ $sh.AppActivate($t.Id); Start-Sleep -Milliseconds 600; $sh.SendKeys(" ")
 
 **Tuer tout l'arbre** en fin de test (`Get-Process -Name OpenForesia | Stop-Process -Force`) :
 les enfants relancés survivent au parent et verrouillent l'exe, ce qui fait échouer le build suivant.
+
+### Bug ouvert, à ne pas perdre : le menu s'affiche par intermittence
+
+Constaté sur 10 lancements côté responsable, après la stabilisation : **parfois le menu (en haut à
+gauche) apparaît, parfois rien du tout**, sans erreur ni plantage. La stabilité mémoire n'est donc
+pas en cause.
+
+Piste la plus probable : l'ordre des frames. La branche de fade ne s'active qu'à partir de
+`(DAT_005e9960 & 0xf) >= 9`, et le moteur de texte ne pose sa mise en page **qu'une seule fois**
+(le bit 2 de `flags[0x8c7]` le fait ressortir ensuite). Si le panneau est dessiné avant que cette
+mise en page ait eu lieu, ou si la table d'ordre du descripteur est réinitialisée entre-temps,
+la frame sort vide. À corréler avec l'adresse où l'arène a atterri, qui change à chaque lancement.
 
 ### Reste à traiter
 
