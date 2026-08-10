@@ -191,6 +191,56 @@ Le périmètre minimal d'un device de remplacement :
 | | méthodes |
 |---|---|
 | chemin par frame | `+0x5C` Clear(TARGET), `+0x60` Clear(ZBUFFER), `+0xB0` BeginScene, `+0x64` liaison de texture, `+0x8C` SHADEMODE, `+0xBC` DrawPrimitive, `+0xB4` EndScene, `+0xDC` Flip |
+
+### Ce qui est repris par le backend Direct3D 11
+
+Depuis `replace-3d-backend-with-d3d11`, `3dhelp` n'est plus sur le chemin d'affichage. La façade
+`OpenForesia/src/Blaze/DeviceShim.cs` remplace les slots suivants dans une copie de la vtable :
+
+| slot | rôle | état |
+|---|---|---|
+| `+0x50` | pose du viewport | repris — seules les dimensions sont retenues ; le décalage n'a plus d'objet, la présentation centre elle-même |
+| `+0x5C` | effacement de la cible | repris |
+| `+0x60` | effacement du tampon Z | repris (jamais appelé en phase menu) |
+| `+0x64` | liaison de texture | **enregistrée mais neutre** — les pixels vivent dans une surface DirectDraw dont le chemin de création n'est pas identifié |
+| `+0x8C` | mode d'ombrage | repris — plat reproduit en recopiant la couleur du premier sommet |
+| `+0xB0` | début de scène | repris ; c'est aussi là que le backend est créé, au premier appel |
+| `+0xB4` | fin de scène | repris ; **c'est ici que se fait la présentation** |
+| `+0xBC` | `DrawPrimitive` | repris — bandes et éventails dépliés en listes |
+| `+0xDC` | « Flip » | inerte (jamais appelé, voir ci-dessous) |
+
+Tous les autres slots continuent d'aller à `3dhelp`. Son initialisation reste nécessaire — c'est
+elle qui crée l'objet dont `winsys3d` appelle la vtable — mais son emprise sur l'affichage est
+défaite juste après : sa fenêtre (classe `Example`) est masquée et le mode d'affichage restauré.
+
+`OPENFORESIA_LEGACY_3DHELP=1` rétablit le pass-through intégral.
+
+### Correction du 2026-08-10 — mesure au runtime, phase menu
+
+Cette cartographie a été établie par lecture statique des sites d'appel. Comptage réel sur 121
+images du menu (compteurs par slot, façade `DeviceShim`) :
+
+| slot | appels |
+|---|---|
+| `+0xB0` BeginScene | 121 |
+| `+0xB4` EndScene | 120 |
+| `+0xBC` DrawPrimitive | 12 655 |
+| `+0x8C` SHADEMODE | 120 |
+| `+0x5C` Clear(TARGET) | 122 |
+| `+0x64` liaison de texture | 10 870 *(dont ~10 000 avant la première image — phase attract)* |
+| `+0x60` Clear(ZBUFFER) | **0** |
+| `+0xDC` Flip | **0** |
+
+Deux écarts avec la lecture statique :
+
+1. **`+0xDC` n'est jamais appelé.** La présentation ne passe pas par ce slot dans la phase menu ;
+   elle emprunte vraisemblablement les `Blt` de surface de `+0x30` / `+0xE8`. La frontière d'image
+   exploitable est donc `EndScene`, dont le compte suit exactement celui de `BeginScene`.
+2. **`+0x60` n'est jamais appelé** en 2D : le menu ne se sert pas du tampon de profondeur.
+
+Les sites d'appel existent bel et bien dans le code — ils ne sont simplement pas empruntés par
+cette phase. La cartographie statique n'est pas fausse, elle est incomplète sur la question « quels
+slots sont réellement parcourus, et quand ».
 | états de rendu | ~10 passe-plats d'une ligne |
 | accesseurs | 22, déjà cartographiés et triviaux |
 | ponctuelles | 4 grosses fonctions, 1 appel chacune, décompilées et lisibles |

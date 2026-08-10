@@ -1,5 +1,65 @@
 # Analyse — écran noir sur le menu principal
 
+> ## RÉSOLU le 2026-08-10
+>
+> **Cause** : les quatre structures d'environnement de rendu sont **contiguës** dans le binaire, et
+> cette contiguïté est un contrat :
+>
+> ```
+> 0x005e9880  DrawEnv0  92 octets (0x5C)
+> 0x005e98dc  DispEnv0  20        <- DrawEnv0 + 0x5C
+> 0x005e98f0  DrawEnv1  92        <- DrawEnv0 + 0x70
+> 0x005e994c  DispEnv1  20        <- DrawEnv1 + 0x5C
+> ```
+>
+> `FrameEnd` publie l'environnement d'affichage par `Ordinal_657(nextDrawEnv + 0x5c)` : il *dépend*
+> du fait que le DISPENV suive immédiatement son DRAWENV. La reconstruction les allouait en
+> **quatre blocs de tas séparés**, donc cet accès lisait 20 octets de mémoire quelconque au lieu du
+> DISPENV.
+>
+> **Mécanisme de l'intermittence.** Côté `winsys3d`, l'ordinal 657 (`FUN_00a05a00`,
+> `winsys3d.c:5041`) branche sur un champ de cette structure :
+>
+> ```c
+> if (*(short *)(param_1 + 1) < 0x141) {      // largeur <= 320
+>     SetAbsShift(0x140 - DAT_011be6bc >> 1, 0xf0 - _DAT_011be6be >> 1);
+> } else {
+>     DAT_011be770 = 0; DAT_011be774 = 0;     // remise à zéro du décalage
+> }
+> ```
+>
+> Selon ce que le tas contenait, la branche prise variait. Quand la première branche partait, elle
+> posait un décalage absolu calculé sur des ordures, et `SetShift` (`winsys3d.c:4934`) le composait
+> dans la translation appliquée à **tous** les sommets — qui sortaient de l'écran.
+>
+> **Preuve.** Relevé des globales au premier dessin :
+>
+> ```
+> NOIR     abs=(1453,7725)   shift=(-160,-120) size=21  -> composé=(4391,23199)
+> NOIR     abs=(3380,10490)  shift=(-160,-120) size=21  -> composé=(10172,31494)
+> CONTENU  abs=(0,0)         shift=(0,0)       size=0   -> composé=(0,0)
+> ```
+>
+> Et les coordonnées de la même primitive (mêmes uv, même couleur) :
+> `NOIR x=9946 y=10368` contre `CONTENU x=80 y=136`.
+>
+> **Correction** : allouer les quatre structures dans un unique bloc contigu de 224 octets, aux
+> offsets 0x00 / 0x5C / 0x70 / 0xCC.
+>
+> **Vérification** : 10 lancements sur 10 affichent le menu, contre 3 sur 10 avant. Mesure
+> automatisée et reproductible (capture de la zone cliente, comptage des pixels non noirs).
+>
+> **Classe de bug** : la même que celles déjà rencontrées dans ce projet — un symbole `DAT_` qui
+> désigne un point *intérieur* d'une structure plus grande, et dont la reconstruction fait à tort
+> une entité indépendante. C'est la quatrième occurrence.
+>
+> **Ce que l'hypothèse initiale avait de faux.** Tout ce document, plus bas, poursuit l'affichage
+> exclusif DirectDraw et le changement de mode. Cette piste était erronée : le bug a survécu au
+> remplacement complet du backend par Direct3D 11 en mode fenêtré, avec exactement le même taux.
+> Le remplacement reste utile pour d'autres raisons (voir `openspec/changes/replace-3d-backend-with-d3d11`),
+> mais il n'a pas corrigé ceci — et c'est justement parce qu'il a rendu le bug *observable* que la
+> cause a pu être isolée.
+
 > **Mesure du 2026-08-10, à lire avant le reste.** Le mode d'affichage réellement appliqué a enfin
 > été mesuré (`DeviceShim.LogDisplayMode`, appelé avant et après l'init 3D) :
 >

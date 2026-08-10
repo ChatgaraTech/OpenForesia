@@ -6,6 +6,21 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-10
 
+- fix : **écran noir intermittent résolu** — les quatre structures DRAWENV/DISPENV sont contiguës dans le binaire et `FrameEnd` lit le DISPENV à `DrawEnv + 0x5C` ; les allouer séparément faisait lire du tas quelconque. 10 lancements sur 10 affichent le menu, contre 3 sur 10 avant
+- feat : mesure automatisée du taux d'écran noir (capture de la zone cliente, comptage des pixels allumés)
+- feat : bascule fenêtre / plein écran sans bordure par Alt+Entrée, position et dimensions restituées au retour
+- fix : Alt+Entrée retiré à DXGI (`MakeWindowAssociation`) — il aurait basculé en plein écran exclusif, le mécanisme même que cette change supprime
+- feat : `3dhelp` débranché de l'affichage — sa fenêtre est masquée et le mode d'affichage restauré ; le bureau n'est plus jamais modifié, y compris après terminaison forcée
+- feat : la géométrie du menu s'affiche dans la fenêtre du backend, en fenêtré, sans changement de résolution
+- fix : combinaison texture/diffuse en mode décalque — le jeu émet ses quads texturés avec une diffuse noire, les multiplier donnait un écran noir
+- doc : le cadrage en haut à gauche vient du jeu lui-même, qui émet sa géométrie dans un espace d'environ 320x240 sans que rien ne la mette à l'échelle de la cible
+- feat : chemin chaud du jeu redirigé vers le backend D3D11 (effacements, scènes, `DrawPrimitive`, ombrage plat/Gouraud, viewport) — bascule `OPENFORESIA_LEGACY_3DHELP=1` pour revenir à 3dhelp
+- feat : dépliage des bandes et éventails de triangles en listes, et ombrage plat reproduit à la copie de la couleur du premier sommet
+- fix : création du device D3D11 déplacée dans la boucle de rendu — la faire pendant l'init du jeu l'empêchait d'atteindre sa boucle
+- fix : exceptions des thunks capturées et journalisées — une exception managée traversant une frame native tuait le processus sans trace
+- doc : correction de la cartographie de 3dhelp par comptage au runtime — `+0xDC` (Flip) et `+0x60` (Clear Z) ne sont jamais appelés en phase menu, la présentation se fait à `EndScene`
+- feat : backend Direct3D 11 via Silk.NET — fenêtre propre, swap chain DXGI fenêtrée, cible de rendu hors écran, shaders pour sommets pré-transformés, présentation à l'échelle avec rapport d'aspect préservé
+- feat : test de bout en bout du backend (`--d3d11-selftest`) — damier plein cadre et interpolation de couleurs, sans démarrer le jeu
 - doc : mode d'affichage mesuré — le jeu rend au plus 1024x768 dans un mode 1440x900 négocié par `3dhelp`, indépendant de `Resolution` (cause du cadrage en haut à gauche)
 - doc : `Resolution` indexe la table de décalages de `winsys3d`, pas le mode d'affichage ; 5 entrées valides (0..4), l'index 5 produit des valeurs parasites
 - fix : clé ini `DAT_00563080` = `Size` (confirmée dans le binaire) — la reconstruction écrivait un doublon `UNKNOWN_REVERSE_005630a0` et relisait sa propre copie, d'où un rendu en 640x480 letterboxé au lieu du plein 1024x768

@@ -3790,12 +3790,30 @@ public static unsafe partial class Blaze
     // Allocated zeroed, matching how this file models other DAT_ globals that are really structs.
     // They must be process-lifetime globals, not stack buffers: the not-yet-reconstructed rendering
     // code reads them back on every frame.
-    private const int DrawEnvSize = 92;
-    private const int DispEnvSize = 20;
-    private static readonly byte* s_DrawEnv0_005e9880 = (byte*)NativeMemory.AllocZeroed(DrawEnvSize);
-    private static readonly byte* s_DispEnv0_005e98dc = (byte*)NativeMemory.AllocZeroed(DispEnvSize);
-    private static readonly byte* s_DrawEnv1_005e98f0 = (byte*)NativeMemory.AllocZeroed(DrawEnvSize);
-    private static readonly byte* s_DispEnv1_005e994c = (byte*)NativeMemory.AllocZeroed(DispEnvSize);
+    private const int DrawEnvSize = 92;   // 0x5C
+    private const int DispEnvSize = 20;   // 0x14
+
+    // Les quatre structures sont **contiguës** dans le binaire, et cette contiguïté est un contrat,
+    // pas un hasard de placement :
+    //
+    //     0x005e9880  DrawEnv0  92 octets
+    //     0x005e98dc  DispEnv0  20      <- DrawEnv0 + 0x5C
+    //     0x005e98f0  DrawEnv1  92      <- DrawEnv0 + 0x70
+    //     0x005e994c  DispEnv1  20      <- DrawEnv1 + 0x5C
+    //     0x005e9960  (s_FadeCounter, la globale suivante — d'où la taille totale de 224)
+    //
+    // FrameEnd publie l'environnement d'affichage par `Ordinal_657(nextDrawEnv + 0x5c)` : il
+    // *dépend* du fait que le DISPENV suive immédiatement son DRAWENV. Les allouer en quatre blocs
+    // séparés faisait lire 20 octets de tas quelconque à la place du DISPENV — d'où un écran noir
+    // intermittent, mesuré à 7 lancements sur 10, selon ce que le tas contenait à cet endroit.
+    // Voir ANALYSE_ECRAN_NOIR_MENU.md pour la mesure qui a isolé la cause.
+    private const int EnvBlockSize = 224;   // 0x005e9960 - 0x005e9880
+    private static readonly byte* s_EnvBlock_005e9880 = (byte*)NativeMemory.AllocZeroed(EnvBlockSize);
+
+    private static readonly byte* s_DrawEnv0_005e9880 = s_EnvBlock_005e9880 + 0x00;
+    private static readonly byte* s_DispEnv0_005e98dc = s_EnvBlock_005e9880 + 0x5C;
+    private static readonly byte* s_DrawEnv1_005e98f0 = s_EnvBlock_005e9880 + 0x70;
+    private static readonly byte* s_DispEnv1_005e994c = s_EnvBlock_005e9880 + 0xCC;
 
     // Ghidra: DAT_005633a8 — read pervasively as a mode flag (movie-intro skip / safe-mode?);
     // TODO(REVERSE): exact meaning not confirmed, no assignment site reached yet from RunMainLoop.

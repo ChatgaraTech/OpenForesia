@@ -1,18 +1,20 @@
 // =====================================================================
-// ECHAFAUDAGE TEMPORAIRE — NE PAS COMMITER TEL QUEL
+// Façade devant le device 3D de 3dhelp.dll, et point de bascule vers le backend Direct3D 11.
 //
-// Façade en pass-through devant le device 3D de 3dhelp.dll. Elle ne change aucun comportement :
-// chaque slot intercepté journalise ses arguments puis réémet l'appel vers la fonction d'origine.
-//
-// But : voir enfin ce que winsys3d envoie réellement au device — arguments de DrawPrimitive,
-// contenu des sommets, liaison de texture — et comparer un lancement où le menu s'affiche à un
-// lancement noir. C'est le seul point aveugle qui reste (voir ANALYSE_ECRAN_NOIR_MENU.md).
+// Le chemin d'affichage du jeu passe par la vtable de ce device : winsys3d.dll l'appelle sans
+// jamais toucher aux champs de l'objet. Il suffit donc de reprendre les slots du chemin chaud pour
+// détourner tout le rendu, sans modifier ni winsys3d ni 3dhelp — qui restent des références de
+// rétro-ingénierie non modifiées.
 //
 // Mécanisme : on n'alloue pas de faux objet. On copie la vtable du vrai device, on remplace les
 // slots voulus, et on écrit notre copie dans `device[0]`. Conséquences :
-//   - `this` reste le vrai objet, donc les slots non interceptés fonctionnent inchangés ;
+//   - `this` reste le vrai objet, donc les slots non repris fonctionnent inchangés ;
 //   - nos thunks reçoivent le vrai `this` et peuvent réémettre vers la fonction d'origine ;
 //   - les appels internes que 3dhelp se fait à lui-même via sa vtable passent aussi par nous.
+//
+// Variables d'environnement :
+//   OPENFORESIA_LEGACY_3DHELP=1   rétablit le pass-through intégral vers 3dhelp
+//   OPENFORESIA_DUMP_GEOMETRY=1   relève sommets et décalages sur quelques primitives
 //
 // Cartographie des slots : Documentation/DLL/3dhelp.md
 // =====================================================================
@@ -37,6 +39,80 @@ public static unsafe partial class Blaze
     private const int ShimLogSkip = 400;
     private const int ShimLogBudget = 24;
     private static readonly int[] s_ShimSeen = new int[DeviceVtableSlots];
+
+    // =====================================================================
+    // Étape 3 — le chemin chaud passe par le backend Direct3D 11 au lieu d'être réémis vers 3dhelp.
+    //
+    // La bascule est conservée pour pouvoir comparer les deux chemins sans recompiler :
+    // OPENFORESIA_LEGACY_3DHELP=1 rétablit le pass-through intégral.
+    // =====================================================================
+
+    private static readonly bool s_UseD3D11 =
+        Environment.GetEnvironmentVariable("OPENFORESIA_LEGACY_3DHELP") != "1";
+
+    /// <summary>Vrai une fois le backend initialisé, ce qui n'arrive qu'à la première pose de viewport.</summary>
+    private static bool s_BackendLive;
+
+    /// <summary>Ombrage courant : <c>D3DSHADE_FLAT</c> vaut 1, Gouraud vaut 2.</summary>
+    private static bool s_FlatShading;
+
+    /// <summary>Dimensions de rendu demandées par le jeu, relevées à la pose du viewport.</summary>
+    private static int s_SceneWidth, s_SceneHeight;
+
+    /// <summary>
+    /// Exécute le chemin backend en rapportant toute exception au lieu de la laisser remonter.
+    ///
+    /// Ces thunks sont appelés depuis <c>winsys3d</c>, donc depuis du code natif. Une exception
+    /// managée qui traverse une frame native ne « lève » pas : elle termine le processus sans
+    /// message exploitable. La règle du dépôt veut qu'un manque soit bruyant — ici, bruyant veut
+    /// dire journalisé et signalé, pas propagé.
+    /// </summary>
+    private static bool Guarded(string quoi, Action action)
+    {
+        try
+        {
+            action();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            if (s_GuardReported.Add($"{quoi}:{ex.Message}"))
+                Console.Error.WriteLine($"[D3D11] {quoi} : {ex.GetType().Name} — {ex.Message}");
+            return false;
+        }
+    }
+
+    private static readonly HashSet<string> s_GuardReported = [];
+
+    /// <summary>
+    /// Crée le backend au **premier début de scène**, et non à la pose du viewport.
+    ///
+    /// La pose du viewport paraissait le point naturel — c'est là que les dimensions de rendu sont
+    /// connues. Mesuré : y créer la fenêtre et le device empêche le jeu d'atteindre sa boucle de
+    /// rendu (48 lignes de rendu dans les relevés précédents, zéro après). La pose du viewport a
+    /// lieu au milieu de l'initialisation du jeu, et y intercaler l'initialisation de D3D11/DXGI la
+    /// perturbe. On ne fait donc qu'y **relever** les dimensions ; la création attend la boucle.
+    /// </summary>
+    private static void EnsureBackend()
+    {
+        if (!s_UseD3D11 || s_SceneWidth <= 0 || s_SceneHeight <= 0) return;
+
+        if (!s_BackendLive)
+        {
+            D3D11Backend.Initialize(s_SceneWidth, s_SceneHeight, "OpenForesia");
+            s_BackendLive = true;
+
+            // Tâche 4.3 : 3dhelp ne présente plus rien depuis que le chemin chaud passe par le
+            // backend. On lui reprend l'affichage, sinon sa fenêtre en mode exclusif recouvre la
+            // nôtre et le mode d'affichage reste celui qu'il a négocié.
+            D3D11Window.ReleaseLegacyDisplay();
+            D3D11Window.Focus();
+        }
+        else
+        {
+            D3D11Backend.EnsureSceneTarget(s_SceneWidth, s_SceneHeight);
+        }
+    }
 
     /// <summary>Vrai dans la fenêtre d'échantillonnage ; compte toujours les appels.</summary>
     private static bool ShimTake(int slot)
@@ -249,6 +325,14 @@ public static unsafe partial class Blaze
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static int Shim_SetViewport(void* self, int x, int y, int w, int h)
     {
+        // Le décalage (x, y) servait à centrer le rendu dans un mode d'affichage plus grand que
+        // lui. Le backend rend dans une cible à ses dimensions exactes et la présente centrée : le
+        // décalage n'a donc plus d'objet, seules les dimensions sont reprises.
+        s_SceneWidth = w;
+        s_SceneHeight = h;
+
+        if (s_UseD3D11) return 0;
+
         int hr = ((delegate* unmanaged[Thiscall]<void*, int, int, int, int, int>)
             s_ShimRealVtable[0x50 / 4])(self, x, y, w, h);
         Console.Error.WriteLine(
@@ -324,66 +408,174 @@ public static unsafe partial class Blaze
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static void Shim_ClearTarget(void* self, void* rects, int count)
     {
-        if (ShimTake(0x5C)) { Console.Error.WriteLine($"[SHIM] Clear(TARGET) rects=0x{(nint)rects:X8} n={count}"); }
+        ShimTake(0x5C);
+        if (s_UseD3D11 && s_BackendLive) { D3D11Backend.ClearColor(0f, 0f, 0f); return; }
         ((delegate* unmanaged[Thiscall]<void*, void*, int, void>)s_ShimRealVtable[0x5C / 4])(self, rects, count);
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static void Shim_ClearZ(void* self, void* rects, int count)
     {
-        if (ShimTake(0x60)) { Console.Error.WriteLine($"[SHIM] Clear(ZBUFFER) rects=0x{(nint)rects:X8} n={count}"); }
+        ShimTake(0x60);
+        if (s_UseD3D11 && s_BackendLive) { D3D11Backend.ClearDepth(); return; }
         ((delegate* unmanaged[Thiscall]<void*, void*, int, void>)s_ShimRealVtable[0x60 / 4])(self, rects, count);
     }
 
+    /// <summary>
+    /// Slot +0x64 — liaison de texture. L'argument est un objet texture de <c>3dhelp</c> dont le
+    /// backend ne sait rien : ses pixels vivent dans une surface DirectDraw créée par un chemin qui
+    /// n'est pas encore identifié (tâche 3.5).
+    ///
+    /// En attendant, la liaison est **enregistrée mais neutre** : le backend dessine avec sa texture
+    /// blanche. Les primitives texturées sortent donc en aplat de leur couleur diffuse. C'est
+    /// volontairement visible — pas un no-op silencieux — pour que l'état d'avancement se lise à
+    /// l'écran.
+    /// </summary>
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static void Shim_BindTexture(void* self, void* texture)
     {
-        if (ShimTake(0x64)) { Console.Error.WriteLine($"[SHIM] BindTexture 0x{(nint)texture:X8}"); }
+        ShimTake(0x64);
+        if (s_UseD3D11 && s_BackendLive) { s_BoundTexture = texture; return; }
         ((delegate* unmanaged[Thiscall]<void*, void*, void>)s_ShimRealVtable[0x64 / 4])(self, texture);
+    }
+
+    private static void* s_BoundTexture;
+
+    /// <summary>Relevé de géométrie et de décalages : <c>OPENFORESIA_DUMP_GEOMETRY=1</c>.</summary>
+    private static readonly bool s_DumpGeometry =
+        Environment.GetEnvironmentVariable("OPENFORESIA_DUMP_GEOMETRY") == "1";
+
+    /// <summary>
+    /// ECHAFAUDAGE TEMPORAIRE. Relève les globales de décalage de <c>winsys3d</c> qui composent la
+    /// translation appliquée à tous les sommets (<c>winsys3d.c:4934</c>, <c>SetShift</c>) :
+    ///
+    /// <code>
+    /// DAT_011be770 = base_x[DAT_00a2c49c] + (DAT_011be780 * (Size+9) * 0x20) / 0x140 + shift_x
+    /// </code>
+    ///
+    /// Sert à identifier laquelle de ces valeurs part en vrille lors des lancements où la géométrie
+    /// sort de l'écran. Décalages relevés depuis la base de <c>winsys3d.dll</c> (Ghidra la place à
+    /// 0x00a00000).
+    /// </summary>
+    private static void LogShiftGlobals()
+    {
+        IntPtr mod = GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
+        if (mod == IntPtr.Zero) return;
+        byte* b = (byte*)mod;
+
+        int composeX = *(int*)(b + 0x7BE770);   // DAT_011be770
+        int composeY = *(int*)(b + 0x7BE774);   // DAT_011be774
+        int shiftX = *(int*)(b + 0x7BE778);     // DAT_011be778
+        int shiftY = *(int*)(b + 0x7BE77C);     // DAT_011be77c
+        int absX = *(int*)(b + 0x7BE780);       // DAT_011be780
+        int absY = *(int*)(b + 0x7BE784);       // DAT_011be784
+        int resIndex = *(int*)(b + 0x2C49C);    // DAT_00a2c49c
+        int size = *(int*)(b + 0x2C498);        // DAT_00a2c498
+
+        int baseX = 0, baseY = 0;
+        if ((uint)resIndex < 8)
+        {
+            baseX = *(int*)(b + 0x2C4D8 + resIndex * 4);
+            baseY = *(int*)(b + 0x2C4F0 + resIndex * 4);
+        }
+
+        Console.Error.WriteLine(
+            $"[SHIFT] composé=({composeX},{composeY}) base=({baseX},{baseY}) " +
+            $"shift=({shiftX},{shiftY}) abs=({absX},{absY}) resIndex={resIndex} size={size}");
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static void Shim_ShadeMode(void* self, uint value)
     {
-        if (ShimTake(0x8C)) { Console.Error.WriteLine($"[SHIM] SetRenderState(SHADEMODE, {value})"); }
+        ShimTake(0x8C);
+        if (s_UseD3D11 && s_BackendLive) { s_FlatShading = value == 1; return; }
         ((delegate* unmanaged[Thiscall]<void*, uint, void>)s_ShimRealVtable[0x8C / 4])(self, value);
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static void Shim_BeginScene(void* self)
     {
-        if (ShimTake(0xB0)) { Console.Error.WriteLine("[SHIM] BeginScene"); }
+        ShimTake(0xB0);
+        if (s_ShimSeen[0xB0 / 4] % 60 == 1) ShimReport();
+        if (s_UseD3D11)
+        {
+            if (!s_BackendLive) Guarded("Initialize", EnsureBackend);
+            if (s_BackendLive) { Guarded("BeginScene", D3D11Backend.BeginScene); return; }
+        }
         ((delegate* unmanaged[Thiscall]<void*, void>)s_ShimRealVtable[0xB0 / 4])(self);
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static int Shim_EndScene(void* self)
     {
-        int hr = ((delegate* unmanaged[Thiscall]<void*, int>)s_ShimRealVtable[0xB4 / 4])(self);
-        if (ShimTake(0xB4)) { Console.Error.WriteLine($"[SHIM] EndScene -> 0x{hr:X8}"); }
-        return hr;
+        ShimTake(0xB4);
+
+        if (s_UseD3D11 && s_BackendLive)
+        {
+            // La présentation se fait ici, et non au slot +0xDC (« Flip »). Mesuré : sur 121
+            // scènes et 12 655 primitives, +0xDC n'a été appelé **aucune** fois — le jeu présente
+            // par un autre chemin que ce slot dans cette phase (vraisemblablement les Blt de
+            // surface de +0x30 / +0xE8). EndScene est la frontière d'image fiable : son compte
+            // suit exactement celui de BeginScene.
+            Guarded("Present", () =>
+            {
+                D3D11Backend.Present();
+                // La fenêtre est la nôtre : c'est ici, une fois par image, que sa file de messages
+                // est vidée. Sans cela Windows la déclarerait « ne répond pas ».
+                if (!D3D11Window.PumpMessages()) Environment.Exit(0);
+            });
+            return 0;
+        }
+
+        return ((delegate* unmanaged[Thiscall]<void*, int>)s_ShimRealVtable[0xB4 / 4])(self);
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static void Shim_DrawPrimitive(void* self, uint type, uint vertexType, void* vertices,
                                            uint count, uint flags)
     {
-        if (ShimTake(0xBC))
-        {
+        ShimTake(0xBC);
 
-            // Octets bruts plutôt qu'une interprétation : la disposition supposée (D3DTLVERTEX)
-            // donnait un 4e champ systématiquement nul, ce qui est invalide pour un TLVERTEX mais
-            // normal pour un D3DLVERTEX (`dwReserved`). On ne tranche pas, on regarde.
-            uint* c = (uint*)vertices;
-            var sb = new System.Text.StringBuilder(
-                $"[SHIM] DrawPrimitive type={type} fmt={vertexType} n={count} flags={flags}");
-            for (int vi = 0; vi < (int)count && vi < 2; vi++)
+        if (s_UseD3D11 && s_BackendLive)
+        {
+            // `vertexType` 3 = D3DVT_TLVERTEX, dont la disposition est exactement celle de
+            // TlVertex : 32 octets, sommets déjà projetés. Confirmé au vidage brut — le 4e champ
+            // vaut 0x38D1B717, soit rhw ≈ 0,0001, et non le `dwReserved` nul d'un D3DLVERTEX.
+            void* v = vertices;
+            uint t = type, vt = vertexType, n = count;
+
+            // ECHAFAUDAGE TEMPORAIRE : les premières primitives réellement soumises au backend,
+            // décodées en TLVERTEX. Objectif : vérifier que les coordonnées tombent bien dans
+            // 0..s_SceneWidth / 0..s_SceneHeight, plutôt que de le supposer.
+            // Relevé de géométrie sur demande : c'est lui qui a isolé la cause de l'écran noir
+            // intermittent (coordonnées translatées hors écran). Conservé derrière une variable
+            // d'environnement plutôt que supprimé — le même relevé servira pour l'échelle des
+            // coordonnées et pour les textures.
+            if (s_DumpGeometry && vt == 3 && s_ShimSeen[0xBC / 4] is 1 or 500 or 2000 or 10000)
             {
-                sb.Append($"\n         v{vi} brut:");
-                for (int w = 0; w < 8; w++) sb.Append($" {c[vi * 8 + w]:X8}");
+                if (s_ShimSeen[0xBC / 4] == 1) LogShiftGlobals();
+                var t2 = (TlVertex*)v;
+                var sb = new System.Text.StringBuilder(
+                    $"[GEO] dessin #{s_ShimSeen[0xBC / 4]} topologie={t} n={n} " +
+                    $"texture={(s_BoundTexture != null ? "oui" : "non")} cible={s_SceneWidth}x{s_SceneHeight}");
+                for (int i = 0; i < (int)n && i < 4; i++)
+                    sb.Append($"\n      v{i} x={t2[i].X:F1} y={t2[i].Y:F1} z={t2[i].Z:F4} " +
+                              $"rhw={t2[i].Rhw:G4} diffuse=0x{t2[i].Diffuse:X8} uv=({t2[i].U:F3},{t2[i].V:F3})");
+                Console.Error.WriteLine(sb.ToString());
             }
-            Console.Error.WriteLine(sb.ToString());
+            Guarded($"DrawPrimitive(topologie={t}, format={vt})", () =>
+            {
+                if (vt != 3)
+                    throw new NotImplementedException(
+                        $"format de sommet {vt} non porté " +
+                        "(1 = D3DVT_VERTEX, 2 = D3DVT_LVERTEX) ; seul TLVERTEX avait été observé");
+
+                D3D11Backend.DrawPrimitive(t, (TlVertex*)v, (int)n, default, s_FlatShading,
+                    textured: s_BoundTexture != null);
+            });
+            return;
         }
+
         ((delegate* unmanaged[Thiscall]<void*, uint, uint, void*, uint, uint, void>)
             s_ShimRealVtable[0xBC / 4])(self, type, vertexType, vertices, count, flags);
     }
@@ -391,6 +583,12 @@ public static unsafe partial class Blaze
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static int Shim_Flip(void* self, void* target, uint flags)
     {
+        ShimTake(0xDC);
+
+        // Jamais atteint dans la phase menu (mesuré : 0 appel sur 121 images) ; la présentation a
+        // lieu à EndScene. Conservé au cas où une autre phase emprunterait ce slot.
+        if (s_UseD3D11 && s_BackendLive) return 0;
+
         int hr = ((delegate* unmanaged[Thiscall]<void*, void*, uint, int>)s_ShimRealVtable[0xDC / 4])(self, target, flags);
         if (ShimTake(0xDC)) { Console.Error.WriteLine($"[SHIM] Flip target=0x{(nint)target:X8} flags={flags} -> 0x{hr:X8}"); }
 

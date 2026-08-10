@@ -30,7 +30,13 @@ if (!Startup.ArenaClaimed)
 
 Console.WriteLine("=== OpenForesia ===");
 
-D3D11Backend.Probe(); // ECHAFAUDAGE TEMPORAIRE — validation de faisabilité, à retirer
+// ECHAFAUDAGE TEMPORAIRE (tâche 2.6) : vérification de bout en bout du backend Direct3D 11, sans
+// démarrer le jeu. `3dhelp` reste en place et n'est pas sollicité par ce chemin.
+if (Environment.GetCommandLineArgs().Contains("--d3d11-selftest"))
+{
+    D3D11Backend.SelfTest();
+    return 0;
+}
 
 Blaze.entry();
 return 0;
