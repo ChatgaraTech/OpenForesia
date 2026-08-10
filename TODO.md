@@ -32,30 +32,126 @@ lue dans le binaire contient « Début du jeu », « Sélection des personnages 
 
 ---
 
-## Le point de reprise
+## Le point de reprise : le menu se dessine, mais à l'échelle 1:1 dans un coin
 
-```
-Unhandled exception. System.NotImplementedException:
-   FUN_005443a0: menu background renderer (233 lines)
-   at Blaze.MenuBackgroundStub(UInt32*)
-   at Blaze.RunMainMenuFrameLoop()
+**Le rendu marche.** Une bissection l'a établi : une primitive plate non texturée (un rectangle
+rouge plein écran) s'affiche. Donc device, environnements, `DrawOTag`, permutation et présentation
+sont tous sains — inutile d'y revenir.
+
+Et l'observation qui explique le reste : ce rectangle de **320×240** occupait le **quart supérieur
+gauche** d'un écran en **640×480**, avec le cadre du menu visible au même endroit. Le menu est donc
+dessiné correctement, **il n'est simplement pas mis à l'échelle**.
+
+La mise à l'échelle passe par les primitives de code `0xFB` qu'émettent `EmitViewportRect`
+(`FUN_0051be20`) et `EmitClipRect` (`FUN_0051bdb0`), toutes deux pilotées par
+`s_UnknownDetailSetting_005de160` et par `SetShift`. Avec le niveau de détail par défaut `0xb`,
+`(0xb - 0xb) = 0` : les deux rectangles sortent à zéro. **C'est la première chose à examiner.**
+
+### Stabilité : réglée (12/12)
+
+Trois causes distinctes de corruption mémoire, toutes converties en échecs nommés :
+
+1. **Débordement de pile** dans `RunTextEngine` — la collecte des échappements `$` écrivait sans
+   borne dans un tampon de pile de 8 octets. L'original s'en sort parce que son texte ne porte
+   jamais plus de 6 échappements. C'était la signature du `Fatal error` CLR.
+2. **Index de slot joueur non borné** dans `DrawUiPanel` — `slot` est un octet servant d'index avec
+   un pas de `0x9c`/`0x4c` dans des tables de `0x500`, et la valeur lue devenait un **offset
+   d'écriture** dans un tampon de `0x140`. C'était le `0x80131506` (corruption du tas managé).
+3. **Descripteur alloué trop tard** — rendu paresseux pour que la relance fonctionne, il se
+   retrouvait alloué à la première frame du menu, quand le runtime avait saturé la fenêtre basse.
+   Il est maintenant réclamé dès l'initialiseur de module, dans le `try`.
+
+Plus des bornes sur : banc de glyphes, slot tpage/CLUT, atlas UI, parcours de la table d'ordre du
+panneau, et parcours du flux de texte dans les deux passes.
+
+L'arène fait jusqu'à **3 tentatives** de relance (~1 perte sur 4 par tentative, donc <2 % d'échec).
+
+### Protocole de test automatique
+
+Plus besoin d'appuyer sur une touche. Lancer, attendre ~5 s, puis :
+
+```powershell
+$sh = New-Object -ComObject WScript.Shell
+$t = Get-Process -Name OpenForesia | Sort-Object Id | Select-Object -Last 1
+$sh.AppActivate($t.Id); Start-Sleep -Milliseconds 600; $sh.SendKeys(" ")
 ```
 
-Ce n'est plus un crash natif : c'est du **code ordinaire non couvert**, avec un corps décompilé
-disponible dans `Blaze.c`. Le prochain pas est de le reconstruire.
+**Tuer tout l'arbre** en fin de test (`Get-Process -Name OpenForesia | Stop-Process -Force`) :
+les enfants relancés survivent au parent et verrouillent l'exe, ce qui fait échouer le build suivant.
+
+### Reste à traiter
+
+- **Comportement aléatoire d'un lancement à l'autre**, et des `Fatal Error` du CLR occasionnels.
+  Signe de corruption mémoire quelque part dans les écritures par pointeur. Une garde a été posée
+  sur la boucle de recopie de la table d'ordre du panneau (`DrawUiPanel`), qui déréférençait sans
+  vérifier le lien nul — reste à chercher ailleurs.
+- **Le placement de l'arène** est passé à 10/10 grâce à une relance unique bornée, mais celle-ci
+  se déclenche encore ~4 fois sur 10. Le fond du problème reste la concurrence avec le CLR sur la
+  fenêtre de 16 Mo.
+
+---
+
+## Historique du diagnostic de l'écran noir
+
+Le menu tourne sans lever aucune exception, et **la géométrie est correcte** : le panneau émet
+21 primitives bien formées dans la table d'ordre, à des adresses valides sous 16 Mo. Mesuré.
+
+Ce qui a déjà été corrigé pendant le diagnostic :
+
+- **Le descripteur du panneau était zéroé.** `DAT_0056dd58` est statiquement initialisé dans la
+  `.data` (position, dimensions, et surtout les bits `0x1000000` qui activent fond / cadre / texte).
+  Récupéré du binaire, 35 octets non nuls. Sans lui, `DrawUiPanel` ne dessinait strictement rien.
+- **`AllocLowZeroed` affamait l'arène.** Les initialiseurs de champs statiques s'exécutent avant
+  le corps d'`entry()`, donc une petite allocation basse coupait en deux la région dont l'arène a
+  besoin. L'arène se réserve maintenant en premier, et les petites allocations partent du haut.
+
+- **`DAT_005e8fc0` n'est pas une seconde table.** `0x005e8fc0 − 0x005e8f00 = 0xC0`, soit 48 entrées :
+  c'est la **même** table de tpage/CLUT vue 48 entrées plus loin, et Ghidra en a nommé deux points.
+  Modélisées comme deux allocations séparées, l'entrée `0x31` que réclame le panneau
+  (= entrée 1 de `DAT_005e8fc0`, remplie par `LoadFirstLevelResources`) revenait à zéro, donc
+  **toutes les primitives référençaient la page de texture 0** — une VRAM vide, d'où le noir avec
+  une géométrie par ailleurs juste. Mesuré : `slot[0x31]` passe de `0x00000000` à `0x73C0021B`.
+
+  Au passage : le répertoire du menu ne contient que **4 entrées** (slots 0–3), donc
+  `LoadMenuResources` ne pouvait jamais atteindre l'entrée 49 par lui-même.
+
+**Ce qui reste ouvert : le placement de l'arène est intermittent.**
+
+L'arène de 2,5 Mo doit tenir sous `0x01000000`, une fenêtre de 16 Mo que le runtime .NET se
+dispute. Elle est réclamée dès l'initialiseur de module (le plus tôt où du code managé s'exécute),
+et le repli ne demande plus les `0xDBD8` de décalage inutiles — ça a fait passer la réussite de
+~60 % à ~75 %, mais **environ un lancement sur quatre échoue encore**, proprement, avec le message
+qui nomme la contrainte.
+
+Prochain levier si ça gêne : empêcher le CLR de réserver dans cette fenêtre (variables
+d'environnement GC), ou un lanceur natif qui réserve avant le démarrage du runtime.
+
+Écartés par la mesure, inutile d'y revenir :
+
+| vérifié | résultat |
+|---|---|
+| gardes de `DrawOTag` (`VSyncDelayed`, `DAT_00dedc44`) | tous à 0, le dessin s'exécute |
+| device 3D (`DAT_011be760`) | vivant, fenêtre valide |
+| environnement de dessin | `clip=(0,240,320,240) ofs=(0,240) isbg=1` — double buffering correct |
+| liste d'affichage | 21 primitives, liens 24 bits valides |
+
+**Piste à suivre** : `LoadMenuResources` (Ghidra `FUN_00542160`) et `DecodeResourceChunk`, qui
+doivent remplir `DAT_005e8f00` et téléverser l'atlas du menu en VRAM.
 
 ---
 
 ## Ensuite, par ordre de rentabilité
 
-1. **`FUN_005443a0`** (233 l.) — le renderer de fond du menu. C'est là que ça s'arrête aujourd'hui.
-2. **`FUN_00545340`** — le moteur de menu/UI, 1742 lignes, 25 appels (TODO #36). Le gros morceau,
-   et ce qui ferait apparaître un menu réellement affiché.
+1. **Remplir `DAT_005e8f00` et téléverser l'atlas** — c'est ce qui sépare d'un menu visible.
+2. **`FUN_0052a440`** — le dispatcher d'état de jeu, atteint quand le menu passe la main.
 3. **`FUN_00512320`** — la page d'options (80 l.), stub actuel.
 4. **`FUN_00523120`** — création du device DirectInput. Débloquerait `FUN_005048f0` et supprimerait
    la déviation du sondage joystick.
 5. **Le device DirectSound** (TODO #26) — aucun `DirectSoundCreate` localisé. Toute la pile audio
    est reconstruite mais inerte : `PlayMusicTrack` s'exécute sans rien produire, ce n'est pas un bug.
+6. **Les 26 gestionnaires de codes de contrôle** non reconstruits (dialogue, listes d'objets, texte
+   de combat). Le menu n'en touche aucun ; ils lèvent nommément si un autre écran les atteint.
+   Ils demandent une reprise Ghidra ciblée — adresses dans `Documentation/DataSymbols.md`.
 
 ---
 

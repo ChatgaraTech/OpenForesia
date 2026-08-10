@@ -201,3 +201,105 @@ switches on `DAT_005de510` (the game state) across at least 7 cases, dispatching
 turns out to matter.
 
 Wiring this into `RunGameLoop` is deliberately out of scope here — see `REVERSE_STATUS.md`.
+
+## The UI text engine's two dispatch tables (`FUN_005443a0`)
+
+`FUN_005443a0` runs the same byte stream twice over its descriptor and dispatches every byte
+below `0x20` through a **different table per pass**:
+
+| pass | table | role |
+|---|---|---|
+| 1 (scan) | `PTR_LAB_0056e870` | measure/skip — collects `$`-escapes, draws nothing |
+| 2 (render) | `PTR_FUN_0056e728` | emit glyphs |
+
+Both are 32 entries of 4 bytes, recovered verbatim from `Legacy/Blaze.exe`. **They are the same
+table except where pass 1 substitutes a cursor-advance stub** for a handler that would draw.
+
+| code | pass 1 | pass 2 | code | pass 1 | pass 2 |
+|---|---|---|---|---|---|
+| `00` | `543950` | `544FB0` | `10` | `544F70` | `544F70` |
+| `01` | `543970` | `544810` | `11` | `544F80` | `544F80` |
+| `02` | `543960` | `544970` | `12` | `544F90` | `544F90` |
+| `03` | `543960` | `544990` | `13` | `544FA0` | `544FA0` |
+| `04` | `543960` | `5449B0` | `14` | `543950` | `544FB0` |
+| `05` | `543950` | `5449D0` | `15` | `545010` | `545010` |
+| `06` | `543960` | `5449F0` | `16` | `545020` | `545020` |
+| `07` | `544A80` | `544A80` | `17` | `545030` | `545030` |
+| `08` | `543950` | `544AB0` | `18` | `545040` | `545040` |
+| `09` | `543950` | `544B10` | `19` | `545070` | `545070` |
+| `0a` | `543960` | `544BC0` | `1a` | `5450A0` | `5450A0` |
+| `0b` | `544C10` | `544C10` | `1b` | `5450D0` | `5450D0` |
+| `0c` | `543940` | `544C50` | `1c` | `544E80` | `544E80` |
+| `0d` | `543940` | `544D90` | `1d` | `544F10` | `544F10` |
+| `0e` | `543950` | `544B50` | `1e` | `545100` | `545100` |
+| `0f` | `544E50` | `544E50` | `1f` | `545120` | `545120` |
+
+**Only 5 of the 31 distinct pass-2 handlers exist in `Blaze.c`** (`544810`, `544C10`, `544C50`,
+`544D90`, `544FB0`). The rest are reached only through these tables, so Ghidra never emitted them
+as functions — the "address-taken-only bodies" class, which needs a scoped Ghidra re-run at those
+addresses rather than more reading.
+
+### Bodies decoded by hand from the binary
+
+The four pass-1 stubs are 16 bytes each and are **not** semantic handlers: they declare how many
+operand bytes each control code consumes, so the scan can skip the stream without drawing.
+
+| address | bytes | meaning |
+|---|---|---|
+| `0x00543940` | `8B 44 24 04 C3` | `return p` (no operand) |
+| `0x00543950` | `8B 44 24 04 40 C3` | `return p + 1` |
+| `0x00543960` | `8B 44 24 04 83 C0 02 C3` | `return p + 2` |
+| `0x00543970` | `8B 44 24 04 83 C0 03 C3` | `return p + 3` |
+
+`0x00544b10` — pass-2 handler for control code `0x09`, 49 bytes, the end-of-page/wait code:
+
+```
+8B 4C 24 08          MOV ECX,[ESP+8]        ; descriptor
+8A 81 C7 08 00 00    MOV AL,[ECX+0x8C7]     ; flags
+C6 41 3B 01          MOV byte [ECX+0x3B],1
+0C 04                OR  AL,4               ; the bit FUN_005443a0 tests on entry
+C6 81 C4 08 00 00 00 MOV byte [ECX+0x8C4],0
+88 81 C7 08 00 00    MOV [ECX+0x8C7],AL
+8B 44 24 04          MOV EAX,[ESP+4]        ; text cursor
+8A 10                MOV DL,[EAX]           ; operand byte
+40                   INC EAX
+88 91 C5 08 00 00    MOV [ECX+0x8C5],DL
+89 81 AC 08 00 00    MOV [ECX+0x8AC],EAX    ; descriptor->text = p+1
+C3                   RET
+```
+
+Raising flag bit 2 makes every later `FUN_005443a0` call return immediately — which closes the
+loop with the main menu's label stream, ending `0x09 0x3f` (code 9, operand `?`).
+
+### What the main menu actually reaches
+
+Its label table `DAT_0056e670` contains exactly three control codes: `0x0c` at the head, `0x0d`
+five times as separators, `0x09` as terminator. Their handlers are `543940`/`544C50`,
+`543940`/`544D90` and `543950`/`544B10` — **all five bodies are available**, three decompiled and
+two decoded above. The main menu therefore needs no Ghidra re-run.
+
+## `DAT_0056e7b0` — proportional glyph widths
+
+186 bytes, one per glyph slot, indexed by the folded character code `FUN_00543b20` computes
+(subtracting `0x21`/`0x22`/`0x23`/`0x44`/`0x45`/`0x46` by range). Values are pixel widths, 2 to 10.
+
+```
+0204 0806 0a08 0204 0406 0602 0402 0406  0406 0606 0606 0606 0602 0204 0604 0606
+0606 0605 0507 0602 0607 0508 0707 0608  0606 0606 0708 0606 0703 0403 0608 0505
+0505 0504 0505 0203 0602 0805 0605 0504  0604 0506 0606 0606 0402 0407 0702 0606
+0606 0207 040a 0606 0a04 0a04 0406 0505  0306 0702 0403 0606 080a 0a06 0606 0606
+060a 0705 0506 0603 0304 0408 0708 0808  0808 0607 0606 0606 0607 0606 0606 0506
+0805 0505 0606 0303 0404 0705 0606 0606  0606 0606 0606 0606 0606 0000 0000 0000
+```
+
+## The font bitmap lives inside the `MainMem` arena
+
+`FUN_00543b20` fetches glyph rows with
+
+```c
+pbVar5 = (byte *)((iVar15 >> 3) + (iVar9 / 0x1f) * 0x230 + 0x1ad8f0 + *(int *)MainMem_exref);
+```
+
+i.e. **`MainMem + 0x1ad8f0`**, rows `0x28` bytes apart, 31 glyphs per `0x230`-byte band, 1 bit per
+pixel unpacked into a 4bpp staging buffer. This sits inside the `0x280000` arena and is a further
+reason the arena has to be placed correctly before anything draws.

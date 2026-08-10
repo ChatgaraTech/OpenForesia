@@ -562,10 +562,40 @@ settled it was writing the whole path's state to a log file and reading it. The
 actual cause was in none of the three — and one of them, "the blit is a faithful
 no-op", was a claim about code that had simply never been written.
 
-**Current runtime behaviour, CD mounted, no temporary patches.** Startup runs the
+**The main menu's whole frame path is now reconstructed.** The UI text engine
+(`FUN_005443a0`) and the UI window renderer (`FUN_00545340`) both run, and a full
+run completes **without throwing at all** — the first time in this project.
+
+Three things worth carrying forward from that work:
+
+- **The UI text engine is two passes over one dispatch mechanism.** Pass 1 scans
+  through `PTR_LAB_0056e870`, pass 2 renders through `PTR_FUN_0056e728`; both
+  tables are recovered verbatim in `Documentation/DataSymbols.md`. Only 5 of the
+  31 distinct pass-2 handlers exist in `Blaze.c` — the rest are address-taken-only
+  and need a scoped Ghidra re-run. **The main menu reaches none of them**: its
+  three control codes are covered, two decompiled and one decoded by hand.
+- **`FUN_005443a0` was mis-named `MenuBackgroundStub`.** It is neither a background
+  nor menu-specific — 49 call sites. What it threads in and out is a **VRAM upload
+  node cursor**, not a primitive cursor: `FUN_00543980` enqueues onto the same list
+  `FlushDeferredImageUploads` drains.
+- **A Ghidra symbol that was really a struct field.** `DAT_0056e61f` is
+  `menuContext[0x8c7]` — `0x0056e61f - 0x0056dd58 = 0x8c7`, the descriptor's flags
+  byte. Modelled as its own global, the menu's confirm gate was permanently open
+  and it selected an entry on its first frame. Worth suspecting whenever a `DAT_`
+  lands inside a known structure's extent.
+
+**`FUN_00544150`'s signature is confirmed against disassembly** (`Legacy/Raw/
+FUN_00544150.asm`, exported for this). Ghidra renders the descriptor as
+`unaff_retaddr` because the function reuses arg2's stack slot as scratch; the
+listing shows `MOV EAX,[ESP+0x14]` loading **arg1** after four pushes, and arg1 is
+what receives `+0xe`/`+0x10`. The call sites' `(descriptor, codepoint)` is right and
+the pseudocode is wrong — **the fifth time reading the listing has settled a
+question that resisted careful reading of the pseudocode.**
+
+**Earlier runtime behaviour, kept for the sequence.** Startup runs the
 whole spine, loads and decodes real game resources, **enters the game loop, and
-now renders frames** — `DrawOTag` completes on every one of them. Execution stops
-on the first unreconstructed renderer:
+now renders frames** — `DrawOTag` completes on every one of them. Execution then
+stopped on the first unreconstructed renderer:
 
 ```
 === OpenForesia ===

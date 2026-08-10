@@ -400,6 +400,35 @@ public static unsafe partial class Blaze
     /// derives a pointer from the arena — in practice before <c>Ordinal_789(0, 0)</c>, whose
     /// body (winsys3d.c line 5843) caches <c>MainMem + 0x200000</c> once and never re-derives it.
     /// </summary>
+    /// <summary>
+    /// Claims the low arena at the earliest point managed code runs. Called from a module
+    /// initializer, which executes before <c>Main</c> and before any other static constructor —
+    /// every allocation the program makes afterwards is one more competitor for the same
+    /// 16 MB window, and the window is contended enough to lose the race otherwise.
+    /// </summary>
+    internal static void PrepareDisplayListArena() => EnsureDisplayListArena();
+
+    /// <summary>
+    /// Same, but reports failure instead of throwing, so the caller can decide whether a fresh
+    /// process is worth trying. Address-space layout differs run to run, so a relaunch is a real
+    /// second chance rather than a retry of the same conditions.
+    /// </summary>
+    internal static bool TryPrepareDisplayListArena()
+    {
+        try
+        {
+            EnsureDisplayListArena();
+
+            // Claim every low allocation now, not on first use. These have to live below
+            // 0x01000000 as well, and taking the menu descriptor lazily at the first menu frame
+            // meant competing with a runtime that had had seconds to grow into the same window —
+            // measured: the arena succeeded and the descriptor then failed.
+            _ = s_MenuContext_0056dd58;
+            return true;
+        }
+        catch (InvalidOperationException) { return false; }
+    }
+
     private static void EnsureDisplayListArena()
     {
         if (s_DisplayListArena != null) return;
@@ -408,36 +437,37 @@ public static unsafe partial class Blaze
         // of its preferred base, is itself the strongest competitor for the same low window —
         // loading it first made this placement fail roughly one run in four.
 
-        // Page-round the request; the arena proper starts MainMemOffsetInArena into it.
-        nuint size = (ArenaAllocationSize + 0xFFFu) & ~0xFFFu;
+        // 1. The original layout first: 0xDBD8 of lead-in so MainMem lands on 0x00B6DBD8 exactly
+        //    and every address in winsys3d.c reads straight against the running process.
+        nuint preferredSize = (ArenaAllocationSize + 0xFFFu) & ~0xFFFu;
+        byte* arena = (byte*)VirtualAlloc((void*)ArenaPreferredBase, preferredSize,
+                                          MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        byte* mainMem = arena != null ? arena + MainMemOffsetInArena : null;
 
-        // The whole arena must stay under the 24-bit ceiling, so the last base we may use is
-        // bounded by the ceiling minus the allocation, aligned down to allocation granularity.
-        uint maxBase = (DisplayListCeiling - (uint)size) & ~(AllocationGranularity - 1);
-
-        // 1. The original layout first, so runtime addresses equal the ones in winsys3d.c.
-        byte* arena = (byte*)VirtualAlloc((void*)ArenaPreferredBase, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-
-        // 2. Otherwise take the fitting block closest to the original layout, so the delta a reader
-        //    has to apply to addresses quoted in winsys3d.c stays as small as this run allows.
+        // 2. Otherwise only the arena proper is needed — the 0xDBD8 lead-in exists solely to hit
+        //    the original address, and demanding it in the fallback cost 56 KB of contiguous low
+        //    memory for nothing. Measured: it was the difference between 0x250000 free and a
+        //    0x28E000 request failing.
         uint largestFreeSeen = 0;
         if (arena == null)
         {
+            nuint size = ArenaSize;
+            uint maxBase = (DisplayListCeiling - (uint)size) & ~(AllocationGranularity - 1);
             arena = ScanForLowArena(size, maxBase, out largestFreeSeen);
-        }
+            mainMem = arena;
 
-        if (arena == null)
-        {
-            throw new InvalidOperationException(
-                $"The display list is addressed on 24 bits (winsys3d.c ClearOTagR/DrawOTag mask by " +
-                $"0xffffff), so its arena must sit below 0x{DisplayListCeiling:X8}. No free block of " +
-                $"0x{size:X} bytes was available below 0x{maxBase:X8} — the largest free region there " +
-                $"was 0x{largestFreeSeen:X} bytes. Without it every frame would fault inside DrawOTag " +
-                $"with no explanation — see REVERSE_STATUS.md, arena deviation.");
+            if (arena == null)
+            {
+                throw new InvalidOperationException(
+                    $"The display list is addressed on 24 bits (winsys3d.c ClearOTagR/DrawOTag mask " +
+                    $"by 0xffffff), so its arena must sit below 0x{DisplayListCeiling:X8}. No free " +
+                    $"block of 0x{size:X} bytes was available below 0x{maxBase:X8} — the largest free " +
+                    $"region there was 0x{largestFreeSeen:X} bytes. Without it every frame would fault " +
+                    $"inside DrawOTag with no explanation — see REVERSE_STATUS.md, arena deviation.");
+            }
         }
 
         s_DisplayListArena = arena;
-        byte* mainMem = arena + MainMemOffsetInArena;
 
         // Only now bring the library in, and point its exported pointer at the arena we secured.
         EnsureWinsys3dLoaded();
@@ -4239,9 +4269,19 @@ public static unsafe partial class Blaze
         }
     }
 
-    // Ghidra: DAT_005e8fc0 — parallel per-entry decode-destination table walked alongside the
-    // directory linked list in LoadFirstLevelResources; size unconfirmed, sized generously.
-    private static readonly byte* s_EntityDecodeTable_005e8fc0 = (byte*)NativeMemory.AllocZeroed(0x1000);
+    // Ghidra: DAT_005e8fc0 — **not a second table**. It is DAT_005e8f00 offset by 0xC0, i.e. the
+    // same tpage/clut array starting 48 entries in, and Ghidra simply named two points inside it.
+    //
+    // Modelling them as separate allocations is what left the main menu black: its panel
+    // descriptor asks for entry 0x31 of DAT_005e8f00 = 0x31 - 0x30 = entry 1 of DAT_005e8fc0,
+    // which LoadFirstLevelResources fills. LoadMenuResources only writes entries 0..3 (measured:
+    // the menu's directory has exactly four), so entry 0x31 came back zero and every panel
+    // primitive sampled texture page 0 — an empty region of VRAM, hence a black screen with
+    // otherwise perfectly formed geometry.
+    //
+    // Same shape of bug as DAT_0056e61f being menuContext[0x8c7]: suspect any DAT_ that lands
+    // inside a known structure's extent.
+    private static byte* s_EntityDecodeTable_005e8fc0 => s_EntityDecodeTable_005e8f00 + 0xC0;
     // Ghidra: DAT_005e8340 (0x1e0 bytes, read from "BASE.SND" here) immediately followed by
     // DAT_005e8520 (0x88 bytes, read from the level file by FUN_00512xxx @ 0x006335x). They are
     // one contiguous array: 0x005e8520 - 0x005e8340 == 0x1e0 exactly, and PlaySoundEffect indexes
@@ -4413,7 +4453,11 @@ public static unsafe partial class Blaze
     private static int s_Unknown_005de154, s_Unknown_005de158, s_Unknown_005de15c;
     private static int s_Unknown_005de51c;
     private static int s_MenuSelection_005e909f;     // Ghidra: DAT_005e909f — the selected entry
-    private static byte s_Unknown_0056e61f;
+    // Ghidra names DAT_0056e61f as its own symbol, but it is **inside** the menu context:
+    // 0x0056e61f - 0x0056dd58 = 0x8c7, the descriptor's flags byte. Modelling it separately made
+    // the confirm gate always open, so the menu selected an entry on its very first frame. Bit 2
+    // is the one Handler_00544b10 raises when the text stream ends.
+    private static byte s_Unknown_0056e61f => s_MenuContext_0056dd58[0x8c7];
     private static int s_Unknown_005d9de0;
     private static int s_Unknown_00564a48, s_Unknown_00571a3c;
 
@@ -4650,6 +4694,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00542250 @ 0x00542250 — the main menu's frame loop. Runs until a menu entry is
     /// chosen, then sets the next game state (or exits) and returns.
     /// </summary>
+
     private static void RunMainMenuFrameLoop()
     {
         uint* otBase, otEntry, primCursor;
@@ -4691,8 +4736,8 @@ public static unsafe partial class Blaze
                 s_FadeCounter_005e9960--;
                 level = 0x80;
 
-                primCursor = MenuBackgroundStub(primCursor);           // Ghidra: FUN_005443a0
-                primCursor = MenuUiEngineStub(otEntry, primCursor);    // Ghidra: FUN_00545340
+                primCursor = RunTextEngine(primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_005443a0
+                primCursor = DrawUiPanel(otEntry, primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_00545340
 
                 int gammaBefore = s_Unknown_005d9de0;
 
@@ -4869,18 +4914,1337 @@ public static unsafe partial class Blaze
         return prim + 10;
     }
 
+    // =====================================================================
+    // The UI text engine (Ghidra: FUN_005443a0 and its subtree)
+    //
+    // Shared by the whole game, not just the menu: FUN_005443a0 has 49 call sites. It runs one
+    // byte stream **twice** over a descriptor, dispatching every byte below 0x20 through a
+    // different 32-entry table per pass:
+    //
+    //   pass 1  scan    PTR_LAB_0056e870   measures and skips; collects '$'-escapes, draws nothing
+    //   pass 2  render  PTR_FUN_0056e728   emits glyphs
+    //
+    // Both tables are recovered verbatim in Documentation/DataSymbols.md, along with the five
+    // handler bodies Ghidra never emitted (they are reached only through these tables) which were
+    // decoded by hand from Legacy/Blaze.exe.
+    //
+    // What it produces is **not** ordinary primitives. Glyphs are rasterised into a staging buffer
+    // (DAT_005e0300, 4 bits per pixel), and each finished line is enqueued as a VRAM upload node
+    // onto the same list FlushDeferredImageUploads drains. The cursor threaded in and out of
+    // FUN_005443a0 is that node cursor.
+    //
+    // Descriptor layout, from the offsets these functions touch:
+    //   +0x00  ushort  tpage/clut slot, indexes DAT_005e8f00
+    //   +0x0a  short   line height budget
+    //   +0x0c  uint    packed line state; byte +0x0d is the line index
+    //   +0x0e  sbyte   pen X accumulator
+    //   +0x10  short   glyph count; byte +0x11 is the line index again
+    //   +0x12  byte    line width, in units of 8 pixels
+    //   +0x14  byte    staging bank
+    //   +0x15  sbyte   nested-text stack depth
+    //   +0x68  16-entry ordering table (ClearOTagR'd by control code 0x0c)
+    //   +0xa4  ordering-table cursor base
+    //   +0x828 sprite primitive base
+    //   +0x8ac text cursor      +0x8a8 completion callback     +0x8b0 callback user data
+    //   +0x8b4 nested-text return stack
+    //   +0x8c6 byte    frame countdown       +0x8c7 byte  flags
+    // =====================================================================
+
+    // Ghidra: &DAT_005e0300 — the 4bpp glyph staging arena, addressed as (bank + line) * 0x800.
+    // The next named global is DAT_005e8300, which puts its size at 0x8000 — sixteen banks.
+    private static readonly byte* s_GlyphStaging_005e0300 = (byte*)NativeMemory.AllocZeroed(0x8000);
+
+    /// <summary>
+    /// The 4bpp glyph staging bank for one line, bounds-checked. The buffer holds 16 banks of
+    /// 0x800 bytes. Its extent in the original is inferred from where the next named global sits,
+    /// so an index past it is a defect in this reconstruction rather than original behaviour — and
+    /// has to say so rather than quietly scribble over another allocation.
+    /// </summary>
+    private static byte* StagingBank(uint bank, uint line)
+    {
+        uint index = bank + line;
+        if (index >= 0x10)
+        {
+            throw new InvalidOperationException(
+                $"UI text staging bank {index} (bank {bank} + line {line}) is past the 16-bank " +
+                "buffer at DAT_005e0300. The line counter is a byte, so a descriptor laying out " +
+                "more than 16 lines would corrupt unrelated memory here.");
+        }
+        return s_GlyphStaging_005e0300 + index * 0x800;
+    }
+
+    /// <summary>
+    /// One tpage/clut slot of the table at DAT_005e8f00, bounds-checked. A descriptor carries its
+    /// slot as a full ushort, so a wrong or unpopulated descriptor can index far past the table.
+    /// </summary>
+    private static uint* DecodeSlot(uint index)
+    {
+        if (index >= 0x400)
+        {
+            throw new InvalidOperationException(
+                $"tpage/clut slot {index} is past the 1024-entry table at DAT_005e8f00 — the " +
+                "descriptor asking for it is not the one this table was filled for.");
+        }
+        return (uint*)(s_EntityDecodeTable_005e8f00 + index * 4);
+    }
+
+    private static byte* s_StagingWrite_005e8304;   // Ghidra: DAT_005e8304 — staging write pointer
+    private static int s_TextState_005e8308;        // Ghidra: DAT_005e8308 — 0 / 1 / 2 / -1, see below
+    private static byte* s_TrimAnchor_005e830c;     // Ghidra: DAT_005e830c — leading-space trim anchor
+    private static uint* s_OtCursor_005e8314;       // Ghidra: DAT_005e8314 — OT cursor in the descriptor
+    private static int s_LineIndex_005e8318;        // Ghidra: DAT_005e8318 — lines emitted this page
+    private static uint* s_UploadCursor_005e831c;   // Ghidra: DAT_005e831c — the node cursor, in and out
+    private static uint s_PenX_005e8320;            // Ghidra: DAT_005e8320 — pen X, in 4bpp columns
+    private static uint* s_SpriteCursor_005e8324;   // Ghidra: DAT_005e8324 — sprite cursor in the descriptor
+    private static uint s_BreakPen_005e8328;        // Ghidra: DAT_005e8328 — pen saved at the last break
+    private static uint s_BreakColumn_005e8300;     // Ghidra: _DAT_005e8300 — column saved at the last break
+    private static byte* s_BreakStaging_005e02fc;   // Ghidra: DAT_005e02fc — staging ptr at the last break
+    private static int s_GlyphMode_005dffd0;        // Ghidra: DAT_005dffd0 — 0 none / 1 latin / 2 DBCS
+    private static int s_Unknown_005dffe8;          // Ghidra: DAT_005dffe8
+
+    // Ghidra: &DAT_0056e7b0 — proportional glyph widths, recovered verbatim (see DataSymbols.md).
+    private static readonly byte[] s_GlyphWidths_0056e7b0 =
+    [
+        0x02,0x04,0x08,0x06,0x0a,0x08,0x02,0x04,0x04,0x06,0x06,0x02,0x04,0x02,0x04,0x06,
+        0x04,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x02,0x02,0x04,0x06,0x04,0x06,
+        0x06,0x06,0x06,0x06,0x05,0x05,0x07,0x06,0x02,0x06,0x07,0x05,0x08,0x07,0x07,0x06,
+        0x08,0x06,0x06,0x06,0x06,0x07,0x08,0x06,0x06,0x07,0x03,0x04,0x03,0x06,0x08,0x05,
+        0x05,0x05,0x05,0x05,0x04,0x05,0x05,0x02,0x03,0x06,0x02,0x08,0x05,0x06,0x05,0x05,
+        0x04,0x06,0x04,0x05,0x06,0x06,0x06,0x06,0x06,0x04,0x02,0x04,0x07,0x07,0x02,0x06,
+        0x06,0x06,0x06,0x02,0x07,0x04,0x0a,0x06,0x06,0x0a,0x04,0x0a,0x04,0x04,0x06,0x05,
+        0x05,0x03,0x06,0x07,0x02,0x04,0x03,0x06,0x06,0x08,0x0a,0x0a,0x06,0x06,0x06,0x06,
+        0x06,0x06,0x0a,0x07,0x05,0x05,0x06,0x06,0x03,0x03,0x04,0x04,0x08,0x07,0x08,0x08,
+        0x08,0x08,0x08,0x06,0x07,0x06,0x06,0x06,0x06,0x06,0x07,0x06,0x06,0x06,0x06,0x05,
+        0x06,0x08,0x05,0x05,0x05,0x06,0x06,0x03,0x03,0x04,0x04,0x07,0x05,0x06,0x06,0x06,
+        0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,
+    ];
+
+    // Ghidra: memmove — FUN_00547a00 is 420 lines of unrolled MSVC block copy. Per the project's
+    // rule, a recognised CRT routine is called rather than transcribed.
+    [DllImport("msvcrt.dll", EntryPoint = "memmove", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void* CrtMemMove(void* dest, void* src, nuint count);
+
+    /// <summary>
+    /// Ghidra: FUN_0051c0e0 @ 0x0051c0e0 — advances a cheat-code matcher over every character the
+    /// text engine draws, against the string at <c>DAT_00564a40</c>.
+    /// </summary>
+    private static void CheatCodeProbe(byte ch)
+    {
+        // TODO(REVERSE): DAT_00564a40 is the expected sequence and DAT_005633a8 the latch it
+        // clears. Both live in initialised .data; recovering them only changes whether a cheat
+        // can be entered, never whether text draws, so the matcher is kept structurally faithful
+        // with an empty sequence — which simply never matches.
+        if (s_CheatSequence_00564a40.Length == 0 ||
+            s_CheatSequence_00564a40[s_CheatIndex_005de164] == 0)
+        {
+            s_Unknown_005633a8 = 0;
+            s_CheatIndex_005de164 = 0;
+            return;
+        }
+
+        if (ch == s_CheatSequence_00564a40[s_CheatIndex_005de164])
+        {
+            s_CheatIndex_005de164++;
+            return;
+        }
+
+        s_CheatIndex_005de164 = 0;
+    }
+
+    private static readonly byte[] s_CheatSequence_00564a40 = [0];  // TODO(REVERSE): .data content
+    private static int s_CheatIndex_005de164;   // Ghidra: DAT_005de164
+    private static int s_Unknown_005633a8;      // Ghidra: DAT_005633a8
+
+    /// <summary>
+    /// Ghidra: FUN_00543980 @ 0x00543980 — enqueues the finished line's staging bank as a VRAM
+    /// upload node, onto the same list <see cref="FlushDeferredImageUploads"/> drains.
+    /// </summary>
+    private static void EnqueueGlyphUpload(byte* descriptor)
+    {
+        int clut = (int)*DecodeSlot(*(ushort*)descriptor);
+        uint packed = *(uint*)(descriptor + 0x0c);
+        ushort bank = *(ushort*)(descriptor + 0x14);
+
+        uint* node = s_UploadCursor_005e831c;
+        node[1] = (uint)(nuint)StagingBank((byte)bank, (packed >> 8) & 0xff);
+        node[3] = 0x100040;
+        node[2] = (uint)((byte)bank * 0x100000 +
+                         ((((packed >> 4) & 0xf0) + (uint)((((clut + 1) & 0x10) + 2) * 0x10)) * 0x10000
+                          | (uint)((clut + 1) & 0xf) << 6));
+
+        node[0] = (uint)(nuint)s_Unknown_005e8310;
+        s_Unknown_005e8310 = (int)(nuint)node;
+        s_UploadCursor_005e831c = node + 4;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00543a10 @ 0x00543a10 — links the finished line's textured sprite into the
+    /// descriptor's own 16-entry ordering table.
+    /// </summary>
+    private static void EmitTextSprite(byte* descriptor)
+    {
+        ushort bank = *(ushort*)(descriptor + 0x14);
+        uint packed = *(uint*)(descriptor + 0x0c);
+        int clut = (int)*DecodeSlot(*(ushort*)descriptor);
+        uint rect = *(uint*)(descriptor + 0x20);
+
+        uint* prim = s_SpriteCursor_005e8324;
+        prim[2] = *(uint*)(descriptor + 0x24) | 0x64000000;
+        prim[1] = (rect >> 0x10) & 0x60 | (uint)(clut + 1) & 0xffff | 0xe1000000;
+        prim[3] = (((rect >> 8) & 0xff) + (uint)(ushort)((sbyte)((packed >> 8) & 0xf) * 0x0c)) * 0x10000
+                  | ((rect & 0xff) + (packed & 0xff));
+        prim[4] = rect & 0xf0000 | (uint)(clut + 1) & 0xffff0000
+                  | ((((uint)(byte)bank * 0x100 + packed) & 0xf00) * 0x10 + 0x2000 + (packed & 0xff)) & 0xffff;
+        prim[5] = (packed >> 0x10) & 0xff | (packed >> 8) & 0xff0000;
+
+        prim[0] = *s_OtCursor_005e8314 | 0x5000000;
+        *s_OtCursor_005e8314 = (uint)(nuint)prim;
+        s_SpriteCursor_005e8324 = prim + 6;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00544cb0 @ 0x00544cb0 — closes the current line: trims the leading run the
+    /// engine had provisionally drawn, then grows the descriptor's height budget by one line.
+    /// </summary>
+    private static void FlushLine(byte* descriptor)
+    {
+        if (s_TextState_005e8308 == 2)
+        {
+            uint trim = (((uint)descriptor[0x12] * 8 - s_PenX_005e8320) - 10) >> 1;
+            if ((ushort)trim < 0x100)
+            {
+                uint span = (uint)((int)((trim & 0xffff) + 1) >> 1);
+                for (int row = 0xf; row != 0; row--)
+                {
+                    CrtMemMove(s_TrimAnchor_005e830c + span, s_TrimAnchor_005e830c,
+                               (nuint)((s_PenX_005e8320 + 1) >> 1));
+
+                    byte* fill = s_TrimAnchor_005e830c;
+                    for (uint w = span >> 2; w != 0; w--) { *(uint*)fill = 0xffffffff; fill += 4; }
+                    for (uint b = span & 3; b != 0; b--) { *fill = 0xff; fill++; }
+
+                    s_TrimAnchor_005e830c += 0x80;   // Ghidra: DAT_005e830c + 0x20 on a uint*
+                }
+
+                s_PenX_005e8320 += trim & 0xffff;
+                descriptor[0x0e] = (byte)(descriptor[0x0e] + (byte)trim);
+            }
+        }
+
+        s_LineIndex_005e8318++;
+        int height = s_LineIndex_005e8318 * 0x0c + 6;
+        if (*(short*)(descriptor + 0x0a) < height && (descriptor[0x8c7] & 2) != 0)
+        {
+            *(short*)(descriptor + 0x0a) = (short)height;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00544c50 @ 0x00544c50 — pass-2 handler for control code <c>0x0c</c>: begins a
+    /// page. Clears the descriptor's own 16-entry ordering table and re-bases every cursor.
+    /// </summary>
+    private static byte* Handler_00544c50(byte* text, byte* descriptor)
+    {
+        Ordinal_688((uint*)(descriptor + 0x68), 0x10);   // ClearOTagR on the descriptor's own OT
+        *(ushort*)(descriptor + 0x10) = 0;
+        *(uint*)(descriptor + 0x0c) = 0xf000000;
+        s_OtCursor_005e8314 = (uint*)(descriptor + 0xa4);
+        s_SpriteCursor_005e8324 = (uint*)(descriptor + 0x828);
+        s_BreakPen_005e8328 = 0;
+        s_GlyphMode_005dffd0 = 0;
+        s_StagingWrite_005e8304 = StagingBank(descriptor[0x14], 0);
+        return text;   // Ghidra returns unaff_ESI — the caller's cursor, unchanged
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00544d90 @ 0x00544d90 — pass-2 handler for control code <c>0x0d</c>: ends the
+    /// line, uploads it, emits its sprite, and re-points every cursor at the next line's slots.
+    /// </summary>
+    private static byte* Handler_00544d90(byte* text, byte* descriptor) { NewLine(0, descriptor); return text; }
+
+    private static void NewLine(int reset, byte* descriptor)
+    {
+        FlushLine(descriptor);
+        if (s_BreakPen_005e8328 != 0) EnqueueGlyphUpload(descriptor);
+        if ((sbyte)descriptor[0x0e] != 0) EmitTextSprite(descriptor);
+
+        uint packed = (*(uint*)(descriptor + 0x0c) + 0x100) & 0xff00ff00;
+        *(uint*)(descriptor + 0x0c) = packed;
+        *(short*)(descriptor + 0x10) = (short)packed;
+
+        uint line = (packed >> 8) & 0xff;
+        s_OtCursor_005e8314 = (uint*)(descriptor + (0x29 - line) * 4);
+        s_SpriteCursor_005e8324 = (uint*)(descriptor + (0x828 - line * 0x80));
+        s_StagingWrite_005e8304 = StagingBank(descriptor[0x14], line);
+        s_BreakPen_005e8328 = 0;
+        s_BreakStaging_005e02fc = null;
+
+        if (reset != 0) s_TextState_005e8308 = 0;
+        if (s_TextState_005e8308 == 2) s_TextState_005e8308 = 1;
+        s_GlyphMode_005dffd0 = 0;
+    }
+
+    /// <summary>
+    /// Pass-2 handler for control code <c>0x09</c> — end of page / wait. **Decoded by hand from
+    /// Legacy/Blaze.exe**: Ghidra never emitted this body, since it is reached only through
+    /// PTR_FUN_0056e728. Bytes and full listing in Documentation/DataSymbols.md.
+    /// <code>
+    /// 8B 4C 24 08  MOV ECX,[ESP+8]     8B 44 24 04  MOV EAX,[ESP+4]
+    /// 8A 81 ..     MOV AL,[ECX+0x8C7]  8A 10        MOV DL,[EAX]
+    /// C6 41 3B 01  MOV [ECX+0x3B],1    40           INC EAX
+    /// 0C 04        OR  AL,4            88 91 ..     MOV [ECX+0x8C5],DL
+    /// C6 81 ..     MOV [ECX+0x8C4],0   89 81 ..     MOV [ECX+0x8AC],EAX
+    /// 88 81 ..     MOV [ECX+0x8C7],AL  C3           RET
+    /// </code>
+    /// Raising flag bit 2 is what makes every later <see cref="RunTextEngine"/> call return at
+    /// once, so a finished page costs nothing on subsequent frames.
+    /// </summary>
+    private static byte* Handler_00544b10(byte* text, byte* descriptor)
+    {
+        byte flags = descriptor[0x8c7];
+        descriptor[0x3b] = 1;
+        flags |= 4;
+        descriptor[0x8c4] = 0;
+        descriptor[0x8c7] = flags;
+
+        descriptor[0x8c5] = *text;          // the operand byte — '?' for the main menu
+        text++;
+        *(byte**)(descriptor + 0x8ac) = text;
+        return text;
+    }
+
+    // The four pass-1 stubs, decoded from the binary. They are not semantic handlers: they declare
+    // how many operand bytes a control code consumes so the scan can skip without drawing.
+    private static byte* Advance0(byte* p, byte* descriptor) => p;        // 0x00543940  8B 44 24 04 C3
+    private static byte* Advance1(byte* p, byte* descriptor) => p + 1;    // 0x00543950  ... 40 C3
+    private static byte* Advance2(byte* p, byte* descriptor) => p + 2;    // 0x00543960  ... 83 C0 02 C3
+    private static byte* Advance3(byte* p, byte* descriptor) => p + 3;    // 0x00543970  ... 83 C0 03 C3
+
+    private delegate byte* TextControlHandler(byte* text, byte* descriptor);
+
+    /// <summary>
+    /// Builds one of the two dispatch tables. Both are modelled as tables rather than a switch
+    /// because that is what the original is, and because the two differ only by substitution —
+    /// a switch would hide that <c>0x00543950</c> alone covers six codes.
+    /// </summary>
+    private static TextControlHandler[] BuildTextTable(bool renderPass)
+    {
+        var t = new TextControlHandler[0x20];
+
+        // Slots with no reconstructed body. Each names its address and code rather than no-opping,
+        // so an unreached corner of the text format announces itself the first time it is used.
+        for (int i = 0; i < 0x20; i++)
+        {
+            int code = i;
+            uint address = (renderPass ? s_RenderTable_0056e728 : s_ScanTable_0056e870)[i];
+            t[i] = (text, descriptor) => throw new NotImplementedException(
+                $"UI text control code 0x{code:x2} dispatches to FUN_{address:x8}, which Ghidra " +
+                $"never emitted (reached only through {(renderPass ? "PTR_FUN_0056e728" : "PTR_LAB_0056e870")}). " +
+                "It needs a scoped Ghidra re-run at that address — see Documentation/DataSymbols.md.");
+        }
+
+        if (!renderPass)
+        {
+            // Pass 1: every slot whose recovered address is one of the four stubs.
+            for (int i = 0; i < 0x20; i++)
+            {
+                t[i] = s_ScanTable_0056e870[i] switch
+                {
+                    0x00543940 => Advance0,
+                    0x00543950 => Advance1,
+                    0x00543960 => Advance2,
+                    0x00543970 => Advance3,
+                    _ => t[i],
+                };
+            }
+        }
+        else
+        {
+            t[0x09] = Handler_00544b10;   // 0x00544b10, decoded here
+            t[0x0c] = Handler_00544c50;   // 0x00544c50, decompiled
+            t[0x0d] = Handler_00544d90;   // 0x00544d90, decompiled
+        }
+
+        return t;
+    }
+
+    // Ghidra: PTR_LAB_0056e870 and PTR_FUN_0056e728, both recovered verbatim from Legacy/Blaze.exe.
+    private static readonly uint[] s_ScanTable_0056e870 =
+    [
+        0x543950, 0x543970, 0x543960, 0x543960, 0x543960, 0x543950, 0x543960, 0x544A80,
+        0x543950, 0x543950, 0x543960, 0x544C10, 0x543940, 0x543940, 0x543950, 0x544E50,
+        0x544F70, 0x544F80, 0x544F90, 0x544FA0, 0x543950, 0x545010, 0x545020, 0x545030,
+        0x545040, 0x545070, 0x5450A0, 0x5450D0, 0x544E80, 0x544F10, 0x545100, 0x545120,
+    ];
+
+    private static readonly uint[] s_RenderTable_0056e728 =
+    [
+        0x544FB0, 0x544810, 0x544970, 0x544990, 0x5449B0, 0x5449D0, 0x5449F0, 0x544A80,
+        0x544AB0, 0x544B10, 0x544BC0, 0x544C10, 0x544C50, 0x544D90, 0x544B50, 0x544E50,
+        0x544F70, 0x544F80, 0x544F90, 0x544FA0, 0x544FB0, 0x545010, 0x545020, 0x545030,
+        0x545040, 0x545070, 0x5450A0, 0x5450D0, 0x544E80, 0x544F10, 0x545100, 0x545120,
+    ];
+
+    private static readonly TextControlHandler[] s_ScanHandlers = BuildTextTable(false);
+    private static readonly TextControlHandler[] s_RenderHandlers = BuildTextTable(true);
+
+    // winsys3d ordinal 57 (winsys3d.c FUN_00a05060) — maps a Shift-JIS code to a 16x16 1bpp glyph
+    // inside the KANJI resource the DLL locks at startup, or to a blank when it is out of range.
+    [DllImport("winsys3d.dll", EntryPoint = "#57")] private static extern ushort* Ordinal_57(uint sjis);
+
+    // Ghidra: DAT_0056e9b4 / _b8 / _bc — recovered from Legacy/Blaze.exe. Full-width Shift-JIS
+    // punctuation that this renderer squeezes to half width.
+    private static readonly uint[] s_HalfWidthCodes_0056e9b4 = [0x8381, 0x7981, 0x6981];
+
+    // Ghidra: &DAT_005dffd8 — the 15-byte row scratch the spreading pass fills.
+    private static readonly byte* s_DbcsRowScratch_005dffd8 = (byte*)NativeMemory.AllocZeroed(0x20);
+
+    /// <summary>
+    /// Ghidra: FUN_00544150 @ 0x00544150 — the DBCS/kanji glyph renderer. Fetches a 16x16 1bpp
+    /// glyph, spreads each row's bits and unpacks it into the 4bpp staging buffer.
+    /// <para>
+    /// **Signature confirmed against `Legacy/Raw/FUN_00544150.asm`.** Ghidra renders the descriptor
+    /// as <c>unaff_retaddr</c> because the function reuses arg2's stack slot as scratch
+    /// (<c>[ESP+0x18]</c>). The listing settles it: at <c>00544318</c>, after four pushes,
+    /// <c>MOV EAX,[ESP+0x14]</c> loads **arg1** and it is arg1 that receives <c>+0xe</c> and
+    /// <c>+0x10</c> — so the call sites' <c>(descriptor, codepoint)</c> is right and the
+    /// pseudocode is wrong. The fifth time this project has been saved by reading the listing.
+    /// </para>
+    /// </summary>
+    private static void RenderDbcsGlyph(byte* descriptor, uint codepoint)
+    {
+        if (s_GlyphMode_005dffd0 == 1) return;
+
+        uint code = codepoint & 0xffff;
+        uint swapped = (code >> 8) | (code << 8);
+        s_GlyphMode_005dffd0 = 2;
+
+        bool halfWidth = swapped == s_HalfWidthCodes_0056e9b4[2]
+                      || swapped == s_HalfWidthCodes_0056e9b4[1]
+                      || swapped == s_HalfWidthCodes_0056e9b4[0];
+
+        ushort* rows = Ordinal_57(code);
+
+        uint spread = 0;
+        byte* scratch = s_DbcsRowScratch_005dffd8;
+        for (int row = 0xf; row != 0; row--)
+        {
+            // CONCAT11(lo, hi) — the row is byte-swapped out of the resource.
+            ushort r = (ushort)(((*rows & 0xff) << 8) | (*rows >> 8));
+            if (halfWidth) r >>= 1;
+
+            byte carry = (byte)((byte)(r >> 1) | (byte)(r & 1));
+            uint v = (uint)((r >> 1) & 0xfffc) >> 1;
+            spread = (v & 0xe000) >> 6
+                   | ((v & 0xf800) >> 5) & 0xff
+                   | ((v & 0xfe00) >> 4) & 0x7f
+                   | ((v & 0xff80) >> 3) & 0x3f
+                   | ((v & 0xffe0) >> 2) & 0x1f
+                   | ((v & 0xfff8) >> 1) & 0xf
+                   | (v & 7)
+                   | (uint)(carry & 3);
+
+            byte packed = (byte)spread;
+            if (row == 4 || row == 8 || row == 0x0c)
+            {
+                scratch--;
+                packed |= *scratch;
+            }
+            *scratch = packed;
+
+            scratch++;
+            rows++;
+        }
+
+        byte* dest = s_StagingWrite_005e8304;
+        scratch = s_DbcsRowScratch_005dffd8;
+        for (uint shade = 0xf; shade != 0; shade--)
+        {
+            s_StagingWrite_005e8304 = dest;
+
+            uint bits = *scratch;
+            for (int i = 8; i != 0; i--)
+            {
+                spread <<= 4;
+                if ((bits & 1) != 0) spread |= shade;
+                bits >>= 1;
+            }
+
+            *(uint*)s_StagingWrite_005e8304 = ~spread;
+            scratch++;
+            dest = s_StagingWrite_005e8304 + 0x80;   // Ghidra: DAT_005e8304 + 0x20 on a uint*
+        }
+
+        // Ghidra: DAT_005e8304 + -0x1bf on a uint* = -0x6fc bytes from start+0x700, i.e. +4.
+        // The listing agrees by a different route: start+0x780 then SUB EBP,0x77c.
+        s_StagingWrite_005e8304 -= 0x6fc;
+
+        descriptor[0x0e] = (byte)(descriptor[0x0e] + 8);
+        s_PenX_005e8320 += 8;
+        descriptor[0x10]++;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00543b20 @ 0x00543b20 — rasterises one character into the 4bpp staging buffer
+    /// and advances the pen, implementing word wrap by backtracking to the last break.
+    /// </summary>
+    private static void RasterizeGlyph(byte* descriptor, uint character, int oddAlign)
+    {
+        CheatCodeProbe((byte)character);
+
+        ushort ch = (ushort)character;
+        if (s_TextState_005e8308 == 0 && ch == 0x20)
+        {
+            s_TrimAnchor_005e830c = s_StagingWrite_005e8304;
+            s_TextState_005e8308 = 1;
+        }
+
+        if (s_TextState_005e8308 == 1 && ch == 0x20) return;   // leading space, provisional
+
+        short width;
+        int advance;
+
+        if (ch == 0x5e)   // '^' — a solid rule to the next 8-column boundary
+        {
+            advance = 8 - (int)(s_PenX_005e8320 & 7);
+            width = (short)advance;
+            FillStagingRun((short)advance);
+            descriptor[0x0e] = (byte)(descriptor[0x0e] + (byte)advance);
+            s_PenX_005e8320 += (uint)advance;
+            descriptor[0x10]++;
+            return;
+        }
+
+        s_GlyphMode_005dffd0 = 1;
+
+        if ((ch < 0x21 && ch != 0x14) || 0xff < ch)
+        {
+            // A space or an unprintable: draw a blank and remember it as the wrap point.
+            if ((uint)descriptor[0x12] * 8 - 10 < s_PenX_005e8320 && s_BreakStaging_005e02fc != null)
+            {
+                NewLine(0, descriptor);
+                return;
+            }
+
+            width = 4;
+            if (oddAlign != 0 && (descriptor[0x0e] & 1) != 0) width = 5;
+            advance = width;
+
+            uint penBefore = s_PenX_005e8320;
+            FillStagingRun(width);
+
+            s_BreakColumn_005e8300 = penBefore + (uint)advance;
+            s_BreakStaging_005e02fc = s_StagingWrite_005e8304
+                                      + (int)(((penBefore & 1) + (uint)advance) >> 1) - 0x700;
+            s_BreakPen_005e8328 = (uint)descriptor[0x0e] + (uint)advance;
+            s_StagingWrite_005e8304 = s_BreakStaging_005e02fc;
+        }
+        else
+        {
+            if ((uint)descriptor[0x12] * 8 - 10 < s_PenX_005e8320 && s_BreakStaging_005e02fc != null)
+            {
+                ReflowPartialWord(descriptor);
+            }
+
+            // Ghidra: DAT_005e8308 = ((0 < DAT_005e8308) - 1 & 0xfffffffd) + 2 — a SETcc idiom.
+            // Positive state becomes 2 (a leading space was trimmed); anything else becomes -1.
+            s_TextState_005e8308 =
+                (((s_TextState_005e8308 > 0 ? 1 : 0) - 1) & unchecked((int)0xfffffffd)) + 2;
+
+            switch (character & 0xffff)
+            {
+                case 0x40: case 0x80: case 0x8a: case 0x9a: case 0xc0: case 0xe0:
+                    character = 0xa5;
+                    break;
+            }
+
+            ch = (ushort)character;
+            short slot;
+            if (ch < 0xe1)
+            {
+                if (ch < 0xc1)
+                {
+                    if (ch < 0xa1)
+                    {
+                        slot = ch < 0x61 ? (ch < 0x41 ? (short)(ch - 0x21) : (short)(ch - 0x22))
+                                         : (short)(ch - 0x23);
+                    }
+                    else slot = (short)(ch - 0x44);
+                }
+                else slot = (short)(ch - 0x45);
+            }
+            else slot = (short)(ch - 0x46);
+
+            int index = slot;
+            width = index >= 0 && index < s_GlyphWidths_0056e7b0.Length
+                ? s_GlyphWidths_0056e7b0[index]
+                : (short)0;
+            if (oddAlign != 0 && (((ushort)descriptor[0x0e] + width) & 1) != 0) width++;
+
+            int bitOffset = (index % 0x1f) * 10;
+            byte* rows = GetMainMemPtr() + (bitOffset >> 3) + (index / 0x1f) * 0x230 + 0x1ad8f0;
+
+            advance = width;
+            BlitGlyphRows(rows, bitOffset, advance);
+        }
+
+        descriptor[0x0e] = (byte)(descriptor[0x0e] + (byte)width);
+        s_PenX_005e8320 += (uint)advance;
+        descriptor[0x10]++;
+    }
+
+    /// <summary>The 15-row blank fill shared by the <c>'^'</c> rule and the space path.</summary>
+    private static void FillStagingRun(short width)
+    {
+        byte* row = s_StagingWrite_005e8304;
+        uint pen = s_PenX_005e8320;
+
+        for (int r = 0xf; r != 0; r--)
+        {
+            s_StagingWrite_005e8304 = row;
+            uint column = pen & 1;
+            uint bit = pen;
+            for (int i = width + 1; i != 0; i--)
+            {
+                byte* cell = s_StagingWrite_005e8304 + ((int)column >> 1);
+                if ((bit & 1) == 0) *cell = 0x0f;
+                else *cell |= 0xf0;
+                bit++;
+                column++;
+                pen = s_PenX_005e8320;
+            }
+            row = s_StagingWrite_005e8304 + 0x80;   // Ghidra: DAT_005e8304 + 0x20 on a uint*
+        }
+
+        s_StagingWrite_005e8304 += (int)(((pen & 1) + (uint)width) >> 1) - 0x700;
+    }
+
+    /// <summary>
+    /// The 15-row glyph blit: one 12-bit slice per row out of the font bitmap, unpacked into
+    /// 4bpp cells. Row 1 is forced solid, which is what gives the glyph its baseline.
+    /// </summary>
+    private static void BlitGlyphRows(byte* rows, int bitOffset, int advance)
+    {
+        byte* row = s_StagingWrite_005e8304;
+        uint pen = s_PenX_005e8320;
+        int shift = (bitOffset + (((bitOffset + ((bitOffset >> 31) & 7)) >> 3) * -8)) & 0x1f;
+
+        for (int r = 0xf; r != 0; r--)
+        {
+            s_StagingWrite_005e8304 = row;
+
+            uint slice = ((((uint)rows[1] + (uint)rows[0] * 0x100) * 0x100 + rows[2]) << shift) >> 0xc;
+            if (r == 1) slice = 0xffffffff;
+
+            uint column = pen & 1;
+            uint bit = pen;
+            for (int i = advance; i != 0; i--)
+            {
+                int cell = (int)column >> 1;
+                if ((bit & 1) == 0)
+                {
+                    if ((slice & 0x800) == 0) *(sbyte*)(s_StagingWrite_005e8304 + cell) = (sbyte)r;
+                    else s_StagingWrite_005e8304[cell] = 0x0f;
+                }
+                else if ((slice & 0x800) == 0)
+                {
+                    s_StagingWrite_005e8304[cell] =
+                        (byte)((r << 4) | (s_StagingWrite_005e8304[cell] & 0x0f));
+                }
+                else s_StagingWrite_005e8304[cell] |= 0xf0;
+
+                bit++;
+                column++;
+                slice <<= 1;
+                pen = s_PenX_005e8320;
+            }
+
+            rows += 0x28;
+            row = s_StagingWrite_005e8304 + 0x80;
+        }
+
+        s_StagingWrite_005e8304 += (int)(((pen & 1) + (uint)advance) >> 1) - 0x700;
+    }
+
+    /// <summary>
+    /// The word-wrap backtrack: rewinds the pen to the last break, starts a new line, and copies
+    /// the partial word's staged pixels onto it — byte-aligned or nibble-shifted by parity.
+    /// </summary>
+    private static void ReflowPartialWord(byte* descriptor)
+    {
+        uint carried = s_PenX_005e8320 - s_BreakColumn_005e8300;
+        sbyte penBefore = (sbyte)descriptor[0x0e];
+        sbyte penAtBreak = (sbyte)s_BreakPen_005e8328;
+
+        s_PenX_005e8320 = s_BreakColumn_005e8300;
+        descriptor[0x0e] = (byte)penAtBreak;
+        byte* source = s_BreakStaging_005e02fc;
+
+        NewLine(0, descriptor);
+
+        int span = (int)(carried + 1) >> 1;
+
+        if ((s_BreakColumn_005e8300 & 1) == 0)
+        {
+            for (int r = 0xf; r != 0; r--)
+            {
+                byte* src = source;
+                byte* dst = s_StagingWrite_005e8304;
+                for (uint w = (uint)span >> 2; w != 0; w--) { *(uint*)dst = *(uint*)src; src += 4; dst += 4; }
+                source += 0x80;
+                for (uint b = (uint)span & 3; b != 0; b--) { *dst = *src; src++; dst++; }
+                s_StagingWrite_005e8304 += 0x80;
+            }
+        }
+        else
+        {
+            for (int r = 0xf; r != 0; r--)
+            {
+                for (int i = 0; i < span; i++)
+                {
+                    s_StagingWrite_005e8304[i] =
+                        (byte)((sbyte)source[i + 1] * 0x10 + (source[i] >> 4));
+                }
+                source += 0x80;
+                s_StagingWrite_005e8304 += 0x80;
+            }
+        }
+
+        s_StagingWrite_005e8304 += ((int)carried >> 1) - 0x780;
+        s_PenX_005e8320 = carried;
+        descriptor[0x0e] = (byte)(penBefore - penAtBreak);
+        s_BreakStaging_005e02fc = null;
+    }
+
+    /// <summary>
+    /// Allocates below <c>0x01000000</c>. Text descriptors are masked to 24 bits by
+    /// <see cref="RunTextEngine"/> exactly as the original does — where it is the identity, since
+    /// every descriptor is a <c>.data</c> global of an image based at <c>0x00400000</c>. Keeping
+    /// them low here keeps it the identity, instead of turning a faithful mask into corruption.
+    /// </summary>
+    private static byte* AllocLowZeroed(uint size)
+    {
+        // The arena needs 2.6 MB contiguous and gets first pick. Static field initialisers run
+        // before entry()'s body, so without this a 64 KB descriptor allocated at the very bottom
+        // could split the only region large enough and starve it — measured, not hypothetical.
+        EnsureDisplayListArena();
+
+        nuint rounded = (size + 0xFFFu) & ~0xFFFu;
+
+        // Downward from the top of the window, for the same reason: keep the low span contiguous.
+        for (uint address = (DisplayListCeiling - AllocationGranularity) & ~(AllocationGranularity - 1);
+             address >= ArenaScanFloor; address -= AllocationGranularity)
+        {
+            if (address + rounded >= DisplayListCeiling) continue;
+            byte* block = (byte*)VirtualAlloc((void*)address, rounded, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            if (block != null) return block;
+        }
+
+        throw new InvalidOperationException(
+            $"No free block of 0x{rounded:X} bytes below 0x{DisplayListCeiling:X8}. UI text " +
+            "descriptors are masked to 24 bits by FUN_005443a0, so they cannot live higher.");
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005443a0 @ 0x005443a0 — the UI text engine. Runs the descriptor's byte stream
+    /// twice: pass 1 scans and collects <c>$</c>-escapes, pass 2 emits glyphs. Returns the advanced
+    /// VRAM-upload node cursor.
+    /// </summary>
+    private static uint* RunTextEngine(uint* uploadCursor, byte* descriptorArg)
+    {
+        // Ghidra: puVar11 = (undefined4 *)(param_2 & 0xffffff). The identity in the original; a
+        // reconstruction bug here rather than original behaviour if it ever bites.
+        byte* descriptor = (byte*)((nuint)descriptorArg & 0xffffff);
+        if (descriptor != descriptorArg)
+        {
+            throw new InvalidOperationException(
+                $"FUN_005443a0 masks its descriptor to 24 bits, but this one is at " +
+                $"0x{(nint)descriptorArg:X8}. Allocate it with AllocLowZeroed.");
+        }
+
+        // Ghidra: local_8d4[8]. The '&' path can index it at -1 (for the literal "&0"), so the
+        // buffer is offset by one rather than silently clamping an index the original allows.
+        byte* escapeBuffer = stackalloc byte[8];
+        for (int i = 0; i < 8; i++) escapeBuffer[i] = 0;
+        byte* escapes = escapeBuffer + 1;
+
+        byte flags = descriptor[0x8c7];
+        if ((flags & 4) != 0) return uploadCursor;
+        if ((flags & 2) != 0) return uploadCursor;
+        if ((flags & 0x40) != 0) return uploadCursor;
+        if ((flags & 0x80) != 0) return uploadCursor;
+
+        if ((sbyte)descriptor[0x8c6] != 0)
+        {
+            descriptor[0x8c6] = (byte)((sbyte)descriptor[0x8c6] - 1);
+            return uploadCursor;
+        }
+
+        byte* text = *(byte**)(descriptor + 0x8ac);
+        if (text == null) return uploadCursor;
+
+        s_TextState_005e8308 = 0;
+        s_BreakStaging_005e02fc = null;
+        s_LineIndex_005e8318 = 1;
+        if (s_Unknown_005dffe8 == 0) s_Unknown_005dffe8 = 1;
+
+        s_UploadCursor_005e831c = uploadCursor;
+
+        uint line = (*(uint*)(descriptor + 0x10) >> 8) & 0xff;
+        *(uint*)(descriptor + 0x0c) = (*(uint*)(descriptor + 0x10) & 0xffff) | 0xf000000;
+        s_OtCursor_005e8314 = (uint*)(descriptor + (0x29 - line) * 4);
+        s_SpriteCursor_005e8324 = (uint*)(descriptor + (0x20a - line * 0x20) * 4);
+        s_StagingWrite_005e8304 = StagingBank(descriptor[0x14], line);
+        s_PenX_005e8320 = 0;
+
+        // Ghidra: the 0x232-dword block copy into local_8c8 — pass 1 must leave no trace.
+        const int SaveBytes = 0x232 * 4;
+        byte* saved = stackalloc byte[SaveBytes];
+        Buffer.MemoryCopy(descriptor, saved, SaveBytes, SaveBytes);
+
+        // ---- pass 1: scan ----
+        byte* escapeWrite = escapes;
+        byte* cursor = text;
+        bool terminated = false;
+
+        // Neither pass has a length bound in the original: the stream is trusted to be
+        // NUL-terminated .data. A cursor that walks off would read arbitrary memory here, so both
+        // passes stop and say so instead. 0x4000 is far past any real page of text.
+        int scanned = 0;
+        const int ScanLimit = 0x4000;
+
+        while (!terminated)
+        {
+            while (true)
+            {
+                if (++scanned > ScanLimit)
+                {
+                    throw new InvalidOperationException(
+                        $"FUN_005443a0: scanned over 0x{ScanLimit:X} bytes without reaching a " +
+                        "terminator. The descriptor text pointer at +0x8ac is not a NUL-terminated " +
+                        "stream, so this walk is reading memory that is not text.");
+                }
+
+                byte b = *cursor;
+                byte* next = cursor + 1;
+                if (b == 0) break;
+
+                if (b < 0x20)
+                {
+                    cursor = s_ScanHandlers[b](next, descriptor);
+                    if (b == 9 || b == 0x0e || b == 0x0f) { terminated = true; break; }
+                }
+                else
+                {
+                    if (b > 0x7f && b < 0xa0) next = cursor + 2;   // DBCS lead byte
+                    cursor = next;
+                    // The original writes here unbounded into its 8-byte stack array, which is
+                    // safe only because its own text never carries more escapes than that. Ours
+                    // would corrupt the stack — the classic shape of a random CLR fatal error —
+                    // so the write stops at the six slots the function initialises.
+                    if (next[-1] == 0x24 && escapeWrite < escapes + 6)
+                    {
+                        *escapeWrite = *next;
+                        escapeWrite++;
+                    }
+                }
+            }
+            if (terminated) break;
+
+            if ((sbyte)descriptor[0x15] == 0)
+            {
+                *(uint*)(descriptor + 0x8ac) = 0;
+                descriptor[0x8c7] &= 0xfe;
+                break;
+            }
+
+            byte depth = (byte)((sbyte)descriptor[0x15] - 1);
+            descriptor[0x15] = depth;
+            cursor = *(byte**)(descriptor + 0x8b4 + depth * 4);
+            *(uint*)(descriptor + 0x8b4 + depth * 4) = 0;
+        }
+
+        // ---- pass 2: render ----
+        Buffer.MemoryCopy(saved, descriptor, SaveBytes, SaveBytes);
+        cursor = text;
+        bool skipping = false;
+        scanned = 0;
+
+        while (true)
+        {
+            bool reachedTail = false;
+
+            while (true)
+            {
+                if (++scanned > ScanLimit)
+                {
+                    throw new InvalidOperationException(
+                        $"FUN_005443a0: rendered over 0x{ScanLimit:X} bytes without reaching a " +
+                        "terminator — same cause as the scan pass, see above.");
+                }
+
+                ushort u = *cursor;
+                byte* next = cursor + 1;
+                if (u == 0) break;
+
+                if (u < 0x20)
+                {
+                    skipping = false;
+                    cursor = s_RenderHandlers[u](next, descriptor);
+                    if (u == 9 || u == 0x0e || u == 0x0f) { reachedTail = true; break; }
+                }
+                else if (u < 0x80 || 0x9f < u)
+                {
+                    if (*cursor == 0x24)          // '$' — an escape, already collected in pass 1
+                    {
+                        cursor += 2;
+                    }
+                    else
+                    {
+                        if (*cursor == 0x26)      // '&' — conditional on a collected escape
+                        {
+                            byte selector = *next;
+                            int slot = 0;
+                            if (selector > 0x2f && selector < 0x36)
+                            {
+                                slot = selector - 0x31;
+                                next = cursor + 2;
+                            }
+                            byte want = escapes[slot];
+                            if (*next != want) skipping = true;
+                            if (*next == 0x78 && (want == 0x6d || want == 0x73)) skipping = false;
+                            if (next[1] == 0x5b) next += 3;
+                            else skipping = false;
+                        }
+
+                        cursor = next;
+                        if (next[-1] == 0x5d) skipping = false;      // ']' closes the conditional
+                        else if (!skipping)
+                        {
+                            RasterizeGlyph(descriptor, next[-1], *next < 0x20 ? 1 : 0);
+                        }
+                    }
+                }
+                else if (u < 0x83 && s_GlyphMode_005dffd0 != 2)
+                {
+                    // Half-width kana: look the two-byte code up in the table the resource
+                    // directory points at, and fall back to the DBCS renderer on a miss.
+                    uint code = u | ((uint)*next << 8);
+                    short* table = *(short**)(*(byte**)(s_MainResourceBuffer_005e97c0 + 0x70));
+                    int index = 0;
+                    while (*table != (short)code)
+                    {
+                        if (0xfe < (short)index) { index = -1; break; }
+                        table++;
+                        index++;
+                    }
+
+                    if (index >= 0 && (short)index < 0xff && ((short)index > 0 || s_GlyphMode_005dffd0 == 1))
+                    {
+                        RasterizeGlyph(descriptor, (uint)index, 1);
+                    }
+                    else
+                    {
+                        RenderDbcsGlyph(descriptor, *next + code * 0x100);
+                    }
+                    cursor += 2;
+                }
+                else
+                {
+                    RenderDbcsGlyph(descriptor, (uint)((*cursor << 8) | *next));
+                    cursor += 2;
+                }
+            }
+
+            if (!reachedTail)
+            {
+                skipping = false;
+                if ((sbyte)descriptor[0x15] != 0)
+                {
+                    byte depth = (byte)((sbyte)descriptor[0x15] - 1);
+                    descriptor[0x15] = depth;
+                    cursor = *(byte**)(descriptor + 0x8b4 + depth * 4);
+                    *(uint*)(descriptor + 0x8b4 + depth * 4) = 0;
+                    continue;
+                }
+
+                descriptor[0x8c7] &= 0xfe;
+                *(uint*)(descriptor + 0x8ac) = 0;
+
+                uint completion = *(uint*)(descriptor + 0x8a8);
+                if (completion != 0)
+                {
+                    // TODO(REVERSE): the original calls this through the pointer at +0x8a8 with
+                    // the user data at +0x8b0. No call site assigns it yet, so reaching it means a
+                    // caller now does and the signature has to be established.
+                    throw new NotImplementedException(
+                        $"FUN_005443a0: text completion callback at 0x{completion:X8} — no " +
+                        "assignment site is reconstructed yet, so its signature is unknown");
+                }
+            }
+
+            FlushLine(descriptor);
+            if (s_BreakPen_005e8328 != 0) EnqueueGlyphUpload(descriptor);
+            if ((sbyte)descriptor[0x0e] != 0) EmitTextSprite(descriptor);
+            s_TextState_005e8308 = 0;
+            return s_UploadCursor_005e831c;
+        }
+    }
+
+    // =====================================================================
+    // The UI window renderer (Ghidra: FUN_00545340 and its four primitive emitters)
+    //
+    // Draws one UI panel: its scroll arrows, its frame corners and edges, the text display list
+    // FUN_005443a0 already built inside the descriptor, and its cursor. The panel's own ordering
+    // table is copied into the frame's, offset by the panel's screen position — which is why the
+    // text engine builds a self-contained list rather than writing into the frame directly.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0051bdb0 @ 0x0051bdb0 — links a screen-space clip rectangle, chosen by the
+    /// small-texture flag and the detail level.
+    /// </summary>
+    private static void EmitClipRect(uint* otEntry, uint** prim)
+    {
+        if (s_Unknown_005de15c == 0) return;
+
+        uint* p = *prim;
+        p[1] = (s_SmallTextureFlag == 0 && 7 < s_UnknownDetailSetting_005de160)
+            ? 0xfb00000b
+            : 0xfb000001;
+        p[2] = (uint)s_Unknown_005de154;
+        p[3] = (uint)s_Unknown_005de158;
+        p[0] = *otEntry | 0x3000000;
+        *otEntry = (uint)(nuint)p;
+        *prim = p + 4;                       // Ghidra: *param_2 + 0x10 bytes
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051be20 @ 0x0051be20 — links the panel's viewport rectangle, derived from the
+    /// detail level the options page and the F11/F12 hotkeys set.
+    /// </summary>
+    private static void EmitViewportRect(uint* otEntry, uint** prim)
+    {
+        if (s_Unknown_005de15c == 0) return;
+
+        uint* p = *prim;
+        p[1] = (uint)(s_UnknownDetailSetting_005de160 - 0x5000000);
+        p[2] = (uint)(s_UnknownDetailSetting_005de160 * -0x10 + 0xb0);
+        p[3] = (uint)(s_UnknownDetailSetting_005de160 * -0x0c + 0x84);
+        p[0] = *otEntry | 0x3000000;
+        *otEntry = (uint)(nuint)p;
+        *prim = p + 4;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00545160 @ 0x00545160 — a six-word textured sprite (tag 0x05000000).
+    /// </summary>
+    private static uint* EmitSprite(uint* otEntry, uint* prim, uint tpage, uint position,
+                                    uint offset, uint clut, uint size)
+    {
+        prim[1] = (offset >> 0x10) & 0x60 | tpage & 0xffff | 0xe1000000;
+        prim[2] = clut | 0x64000000;
+        prim[3] = ((position >> 0x10) + ((offset >> 8) & 0xff)) * 0x10000
+                  | (position + (offset & 0xff)) & 0xffff;
+        prim[4] = offset & 0xf0000 | tpage & 0xffff0000 | size & 0xffff;
+        prim[5] = (size >> 8) & 0xff0000 | (size >> 0x10) & 0xff;
+        prim[0] = *otEntry | 0x5000000;
+        *otEntry = (uint)(nuint)prim;
+        return prim + 6;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00545220 @ 0x00545220 — an eight-word tinted sprite (tag 0x07000000), the
+    /// frame edges. Its colour word is built by packing three 5-bit channels.
+    /// </summary>
+    private static uint* EmitTintedSprite(uint* otEntry, uint* prim, uint tpage, uint position,
+                                          uint offset, uint clut, uint tint, uint size)
+    {
+        prim[1] = (offset >> 0x10) & 0x60 | tpage & 0xffff | 0xe1000000;
+        prim[2] = ((((((tint >> 8) & 0xff) >> 3 | 0xffffc400) << 5 | (tint & 0xff) >> 3) << 5
+                    | (uint)((byte)(-(sbyte)(tint >> 0x18)) >> 3)) << 5)
+                  | (uint)((byte)(-(sbyte)(tint >> 0x10)) >> 3);
+        if (s_Unknown_00564a48 != 0) clut &= 0xfdffffff;
+        prim[3] = clut | 0x64000000;
+        prim[4] = ((position >> 0x10) + ((offset >> 8) & 0xff)) * 0x10000
+                  | (position + (offset & 0xff)) & 0xffff;
+        prim[6] = size;
+        prim[7] = 0xe2000000;
+        prim[5] = offset & 0xf0000 | tpage & 0xffff0000 | tint & 0xffff;
+        prim[0] = *otEntry | 0x7000000;
+        *otEntry = (uint)(nuint)prim;
+        return prim + 8;
+    }
+
+    // Ghidra: &DAT_005e9060 — the per-panel selection index the scroll handling writes back.
+    private static readonly byte* s_PanelSelection_005e9060 = (byte*)NativeMemory.AllocZeroed(0x100);
+
+    /// <summary>
+    /// Ghidra: FUN_00545340 @ 0x00545340 — draws one UI panel and returns the advanced primitive
+    /// cursor. 17 call sites across the game; this is the shared window layer, not menu-specific.
+    /// </summary>
+    private static uint* DrawUiPanel(uint* otEntry, uint* prim, byte* descriptor)
+    {
+        EmitViewportRect(otEntry, &prim);
+
+        // Which player slot drives this panel: taken from the owner object when it has one, and
+        // from the active slot otherwise.
+        uint slot;
+        uint* owner = *(uint**)(descriptor + 0x8b0);
+        bool resolved = false;
+        if (owner != null)
+        {
+            uint kind = *owner & 0xfc0000;
+            if (kind == 0x200000)
+            {
+                if (owner[0x1b] != 0) { slot = *(byte*)((nuint)owner[0x1b] + 8); resolved = true; }
+                else slot = 0;
+            }
+            else if (kind == 0x400000) { slot = *((byte*)owner + 9); resolved = true; }
+            else if (kind == 0x800000) { slot = (byte)owner[2]; resolved = true; }
+            else slot = 0;
+        }
+        else slot = 0;
+
+        if (!resolved) slot = s_SlotArea_005e9180[0x248 + (uint)s_Unknown_005de538 * 0x9c];
+        // The original indexes four player slots with a stride of 0x9c/0x4c. `slot` comes from a
+        // byte in .data, so a table this reconstruction has not populated yields 0..255 and walks
+        // far past both arrays — and the value read then becomes a *write* offset below. This was
+        // corrupting the managed heap (Fatal error 0x80131506), so it fails loudly instead.
+        if (slot >= 4)
+        {
+            throw new InvalidOperationException(
+                $"FUN_00545340: player slot {slot} is outside the four the slot tables hold. It " +
+                "comes from DAT_005e93c8 via DAT_005de538; one of those is not initialised the way " +
+                "the original has it.");
+        }
+
+        if ((*(uint*)(s_SlotFlags_005e93c0 + slot * 0x9c) & 0x10000) != 0)
+        {
+            slot = s_SlotArea_005e9180[0x248 + (uint)s_Unknown_005de538 * 0x9c];
+        }
+
+        byte slotIndex1 = s_PlayerSlots_005e9188[slot * 0x4c + 1];
+        // The original reaches this only once the resource directory is loaded. Guarding is not
+        // padding: a null here faults natively inside the emitters below, several frames later,
+        // with nothing naming the cause.
+        byte** atlasSlot = s_MainResourceBuffer_005e97c0 != null
+            ? *(byte***)(s_MainResourceBuffer_005e97c0 + 0x94)
+            : null;
+        if (atlasSlot == null || *atlasSlot == null)
+        {
+            throw new InvalidOperationException(
+                "FUN_00545340: the UI atlas at DAT_005e97c0+0x94 is not loaded, so the panel has " +
+                "no texture metadata to draw from. LoadFirstLevelResources must run first.");
+        }
+        byte* atlas = *atlasSlot;
+
+        uint tpage = *DecodeSlot(*(ushort*)descriptor);
+        uint extent = *(uint*)(descriptor + 8);
+        // Second bound, on the value rather than the index: `buttons` addresses the per-controller
+        // input table (0x140 bytes, 0x10 per entry) and is used for writes, so it must land inside
+        // it. 8 is the original's "no controller" sentinel and is a legitimate value here.
+        int controller = s_PlayerSlots_005e9188[slot * 0x4c];
+        if (controller * 0x10 + 0x10 > 0x140)
+        {
+            throw new InvalidOperationException(
+                $"FUN_00545340: controller index {controller} for slot {slot} is past the input " +
+                "state table at DAT_00604a20. Writing there would corrupt unrelated memory.");
+        }
+        int buttons = controller * 0x10;
+        uint scrollFlags = *(uint*)(descriptor + 0x38);
+        int position = *(int*)(descriptor + 4);
+
+        // ---- the scroll arrows, four directions, each with its own repeat rule ----
+        if ((scrollFlags & 0x1000000) != 0 && (descriptor[0x8c7] & 0x20) == 0)
+        {
+            byte* buttonState = s_InputStateBase_00604a20 + buttons;
+
+            if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
+                && (descriptor[0x8c7] & 0x40) != 0)
+            {
+                descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 2);
+                PlayUiSound3A();
+            }
+            if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
+                && (descriptor[0x8c7] & 0x80) != 0)
+            {
+                descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 3);
+                PlayUiSound3A();
+            }
+            if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
+                && (descriptor[0x8c7] & 0xc0) == 0)
+            {
+                descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 1);
+                PlayUiSound3A();
+            }
+            if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 2)
+                && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0x40) != 0)
+            {
+                descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 2);
+                PlayUiSound3A();
+            }
+            if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 3)
+                && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0x80) != 0)
+            {
+                descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 3);
+                PlayUiSound3A();
+            }
+            if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 1)
+                && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0xc0) == 0)
+            {
+                descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 1);
+                PlayUiSound3A();
+            }
+
+            // Confirm: latch the selection back into the per-panel table and clear the edge.
+            ushort edge = *(ushort*)(s_InputStateBase_00604a20 + buttons + 2);
+            if ((edge & 0x8000) != 0)
+            {
+                *(ushort*)(s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
+                byte flags = descriptor[0x8c7];
+                descriptor[0x3b] = 0;
+                descriptor[0x8c7] = (byte)(flags & 0xfb);
+
+                if ((flags & 0x40) != 0)
+                    s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] >> 1);
+                if ((descriptor[0x8c7] & 0x80) != 0)
+                    s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] / 3);
+                if ((descriptor[0x8c7] & 0xc0) == 0)
+                    s_PanelSelection_005e9060[descriptor[0x8c5]] = descriptor[0x8c4];
+
+                PlayUiSound38();
+                descriptor[0x8c7] &= 0x3f;
+            }
+
+            uint clut = *(uint*)(descriptor + 0x3c);
+            uint arrow = scrollFlags + (uint)((descriptor[0x8c4] + 0x155555) * 0xc00);
+            prim = EmitSprite(otEntry, prim, tpage, (uint)position, arrow, clut,
+                              *(uint*)(atlas + 0xd8 + (uint)slotIndex1 * 8));
+            prim = EmitSprite(otEntry, prim, tpage, (uint)position, arrow + 0x400, clut,
+                              *(uint*)(atlas + 0xc0));
+        }
+
+        // ---- the confirm cursor ----
+        uint cursorFlags = *(uint*)(descriptor + 0x30);
+        if ((cursorFlags & 0x1000000) != 0 && (descriptor[0x8c7] & 0x20) == 0)
+        {
+            ushort edge = *(ushort*)(s_InputStateBase_00604a20 + buttons + 2);
+            if ((edge & 0x8000) != 0)
+            {
+                *(ushort*)(s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
+                descriptor[0x33] = 0;
+                descriptor[0x8c7] &= 0xfd;
+                PlayUiSound38();
+            }
+
+            uint clut = *(uint*)(descriptor + 0x34);
+            uint packed = (cursorFlags & 0xffff0000) | (byte)cursorFlags | (((extent >> 0x10) & 0xff) << 8);
+            prim = EmitSprite(otEntry, prim, tpage, (uint)position, packed + 0x40c, clut,
+                              *(uint*)(atlas + 0xd8 + (uint)slotIndex1 * 8));
+            prim = EmitSprite(otEntry, prim, tpage, (uint)position, packed, clut,
+                              *(uint*)(atlas + (s_FadeCounter_005e9960 >> 1 & 3) * 8));
+        }
+
+        // ---- up to four decorations ----
+        uint* cursor = prim;
+        byte* slotDesc = descriptor + 0x48;
+        byte* slotAtlas = atlas + 0x20;
+        for (int i = 4; i != 0; i--)
+        {
+            uint flags = *(uint*)slotDesc;
+            if ((flags & 0x1000000) != 0)
+            {
+                cursor = EmitSprite(otEntry, cursor, tpage, (uint)position, flags,
+                                    *(uint*)(slotDesc + 4), *(uint*)slotAtlas);
+                prim = cursor;
+            }
+            slotAtlas += 8;
+            slotDesc += 8;
+        }
+
+        // ---- the frame: four corners then four edges ----
+        uint frame = *(uint*)(descriptor + 0x40);
+        if ((frame & 0x1000000) != 0)
+        {
+            uint clut = *(uint*)(descriptor + 0x44);
+            prim = EmitSprite(otEntry, cursor, tpage, (uint)position, frame, clut, *(uint*)(atlas + 0x60));
+            uint width = extent & 0xffff;
+            prim = EmitSprite(otEntry, prim, tpage, width + (uint)position, frame, clut, *(uint*)(atlas + 0x68));
+            uint height = extent & 0xffff0000;
+            uint farCorner = width + (uint)position + height;
+            prim = EmitSprite(otEntry, prim, tpage, farCorner, frame, clut, *(uint*)(atlas + 0x78));
+            prim = EmitSprite(otEntry, prim, tpage, farCorner - width, frame, clut, *(uint*)(atlas + 0x70));
+
+            uint horizontal = (extent - 0x10) & 0xffff | 0x100000;
+            prim = EmitTintedSprite(otEntry, prim, tpage, (uint)position + 0x10, frame, clut,
+                                    *(uint*)(atlas + 0x40), horizontal);
+            prim = EmitTintedSprite(otEntry, prim, tpage, (uint)position + 0x10 + height, frame, clut,
+                                    *(uint*)(atlas + 0x48), horizontal);
+            uint vertical = height - 0x100000 | 0x10;
+            prim = EmitTintedSprite(otEntry, prim, tpage, (uint)position + 0x100000, frame, clut,
+                                    *(uint*)(atlas + 0x50), vertical);
+            cursor = EmitTintedSprite(otEntry, prim, tpage, (uint)position + 0x100000 + width, frame, clut,
+                                      *(uint*)(atlas + 0x58), vertical);
+            prim = cursor;
+        }
+
+        // ---- the text: copy the display list FUN_005443a0 built inside the descriptor,
+        //      offsetting each sprite by the panel's position. The 24-bit link mask again.
+        if ((*(uint*)(descriptor + 0x20) & 0x1000000) != 0)
+        {
+            uint link = *(uint*)(descriptor + 0xa4);
+            int guard = 0;
+            for (uint* node = (uint*)(link & 0xffffff); node != (uint*)0xffffff; node = (uint*)(link & 0xffffff))
+            {
+                // The original cannot reach a null link: ClearOTagR terminates the descriptor's
+                // own ordering table with the 0xffffff sentinel, so the walk always ends. Reaching
+                // null here means this reconstruction let the panel be drawn before the text engine
+                // ever cleared that table — a defect on our side, and one that would otherwise show
+                // up as an unexplained native fault.
+                if (node == null || ++guard > 0x400)
+                {
+                    throw new InvalidOperationException(
+                        $"FUN_00545340: the panel's ordering table at descriptor+0xa4 is not a " +
+                        $"terminated list ({(node == null ? "null link" : "over 1024 nodes")}). It is " +
+                        "cleared by control code 0x0c in FUN_005443a0 — the text engine must have " +
+                        "laid the page out at least once before the panel is drawn.");
+                }
+
+                if ((*node & 0xff000000) != 0)
+                {
+                    cursor[1] = node[1];
+                    prim[2] = node[2];
+                    prim[3] = node[3] + (uint)position;
+                    prim[4] = node[4];
+                    prim[5] = node[5];
+                    prim[0] = *otEntry | 0x5000000;
+                    *otEntry = (uint)(nuint)prim;
+                    cursor = prim + 6;
+                    prim = cursor;
+                }
+                link = *node;
+            }
+        }
+
+        // ---- the panel background ----
+        if ((*(uint*)(descriptor + 0x18) & 0x1000000) != 0)
+        {
+            prim = EmitTintedSprite(otEntry, cursor, tpage, (uint)position,
+                                    *(uint*)(descriptor + 0x18), *(uint*)(descriptor + 0x1c),
+                                    *(uint*)(atlas + 0x80), extent);
+        }
+
+        EmitClipRect(otEntry, &prim);
+        return prim;
+    }
+
     // ---------------------------------------------------------------------------------------
     // Deliberately deferred. Each has a decompiled body in Blaze.c and is ordinary uncovered
     // code, not blocked work; they are stubbed so the frame structure above can be exercised and
     // the runtime can name the next target. See the change proposal for why.
     // ---------------------------------------------------------------------------------------
 
-    private static uint* MenuUiEngineStub(uint* otEntry, uint* prim)
-        => throw new NotImplementedException(
-            "FUN_00545340: the menu/UI engine (1742 lines, 25 calls) — deliberately deferred");
-
-    private static uint* MenuBackgroundStub(uint* prim)
-        => throw new NotImplementedException("FUN_005443a0: menu background renderer (233 lines)");
 
     private static void OptionsScreenStub()
         => throw new NotImplementedException("FUN_00512320: the options page (80 lines)");
@@ -4918,7 +6282,53 @@ public static unsafe partial class Blaze
 
     // Ghidra: &DAT_0056dd58 — the menu context struct FUN_00544350 writes into. Its highest touched
     // offset is 0x8c7, and the next named global sits at 0x0056e670, so it spans 0x918 bytes.
-    private static readonly byte* s_MenuContext_0056dd58 = (byte*)NativeMemory.AllocZeroed(0x918);
+    /// <summary>
+    /// Ghidra: &amp;DAT_0056dd58 — the main menu's panel descriptor, **statically initialised in
+    /// `.data`** and recovered verbatim from `Legacy/Blaze.exe`. Only 35 of its bytes are
+    /// non-zero; the rest is the scratch the text engine and the renderer fill in.
+    /// <para>
+    /// Leaving it zeroed is what produced a black screen: every feature test in
+    /// <see cref="DrawUiPanel"/> is <c>field &amp; 0x1000000</c>, so a zeroed descriptor draws
+    /// nothing at all — no background, no frame, no text.
+    /// </para>
+    /// Allocated low because <see cref="RunTextEngine"/> masks it to 24 bits.
+    /// </summary>
+    // Lazy, not a field initializer: field initializers run inside the type constructor, so a
+    // failure to secure low memory here would surface as TypeInitializationException — outside the
+    // reach of the module initializer's try/catch, and therefore unrecoverable by relaunching.
+    private static byte* s_MenuContextStorage;
+    private static byte* s_MenuContext_0056dd58
+        => s_MenuContextStorage != null ? s_MenuContextStorage : (s_MenuContextStorage = BuildMenuContext());
+
+    private static byte* BuildMenuContext()
+    {
+        // The allocation keeps 0x918 bytes of slack, but the descriptor proper ends at +0x8c7:
+        // the bytes beyond it in the original belong to neighbouring globals, not to this struct
+        // (0x0056e620 is the controller remap table, 0x0056e660 its four-entry pointer table).
+        byte* ctx = AllocLowZeroed(0x918);
+
+        // (offset, value) pairs, read straight out of the binary. Key fields:
+        //   +0x00  0x0031            tpage/clut slot, indexes DAT_005e8f00
+        //   +0x04  0x00080008        panel position (8, 8)
+        //   +0x08  0x00480088        panel extent (0x88 x 0x48)
+        //   +0x18  0x010F0808        background   — bit 0x1000000 set, so it draws
+        //   +0x20  0x01070C10        text         — set
+        //   +0x30  0x000F2874        cursor       — clear
+        //   +0x38  0x000F0C00        scroll arrows— clear
+        //   +0x40  0x010F0000        frame        — set
+        ReadOnlySpan<(short Offset, byte Value)> initial =
+        [
+            (0x000,0x31), (0x004,0x08), (0x006,0x08), (0x008,0x88), (0x00A,0x48), (0x012,0x1A),
+            (0x013,0x0C), (0x018,0x08), (0x019,0x08), (0x01A,0x0F), (0x01B,0x01), (0x01C,0x20),
+            (0x01D,0x10), (0x01E,0xCF), (0x01F,0x02), (0x020,0x10), (0x021,0x0C), (0x022,0x07),
+            (0x023,0x01), (0x027,0x01), (0x02F,0x01), (0x030,0x74), (0x031,0x28), (0x032,0x0F),
+            (0x037,0x01), (0x039,0x0C), (0x03A,0x0F), (0x03F,0x01), (0x042,0x0F), (0x043,0x01),
+            (0x047,0x01), (0x04F,0x01), (0x057,0x01), (0x05F,0x01), (0x067,0x01),
+        ];
+
+        foreach ((short offset, byte value) in initial) ctx[offset] = value;
+        return ctx;
+    }
 
     /// <summary>
     /// Ghidra: FUN_00544350 @ 0x00544350 — binds the label table and its flags into the menu
@@ -5221,8 +6631,13 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: the four calls guarded by arg5 in FUN_0052a280.</summary>
     private static void PollInputAndAudio()
     {
-        // Ghidra: FUN_00512520(&DAT_00604a20 + <slot-derived index> * 4)
-        int slotIndex = s_PlayerSlots_005e9188[s_SlotArea_005e9180[0x248] * 0x4c];
+        // Ghidra: FUN_00512520(&DAT_00604a20 +
+        //   (byte)(&DAT_005e9188)[(byte)(&DAT_005e93c8)[(_DAT_005de538 & 0xff) * 0x9c] * 0x4c] * 4)
+        // The outer index had been hardcoded to 0 instead of reading _DAT_005de538. Equivalent
+        // while that global is 0, but not faithful — and FUN_00545340 uses the same expression,
+        // which is what settled it.
+        int slotIndex = s_PlayerSlots_005e9188[
+            s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
         PollDebugHotkeys(s_InputStateBase_00604a20 + slotIndex * 4);
 
         PollJoystickState();
