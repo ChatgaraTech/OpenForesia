@@ -141,6 +141,8 @@ public static unsafe partial class Blaze
             (0xBC, "DrawPrimitive"), (0xDC, "Flip"),
         ];
         foreach ((int slot, string nom) in noms) sb.Append($" {nom}={s_ShimSeen[slot / 4]}");
+        if (s_DumpGeometry && s_GeoMaxX > float.MinValue)
+            sb.Append($" | enveloppe X=[{s_GeoMinX:F0}..{s_GeoMaxX:F0}] Y=[{s_GeoMinY:F0}..{s_GeoMaxY:F0}] cible={s_SceneWidth}x{s_SceneHeight}");
         Console.Error.WriteLine(sb.ToString());
     }
 
@@ -399,6 +401,11 @@ public static unsafe partial class Blaze
         s_SceneWidth = w;
         s_SceneHeight = h;
 
+        if (s_TraceViewport)
+            Console.Error.WriteLine(
+                $"[TRACE] +0x50 SetViewport({x}, {y}, {w}x{h}) — Size={CurrentSize()}, " +
+                $"image {s_ShimSeen[0xB0 / 4]}, dessin #{s_ShimSeen[0xBC / 4]}");
+
         if (s_UseD3D11) return 0;
 
         if (s_ShimRealVtable == null) return 0;
@@ -520,6 +527,54 @@ public static unsafe partial class Blaze
     private static readonly bool s_DumpGeometry =
         Environment.GetEnvironmentVariable("OPENFORESIA_DUMP_GEOMETRY") == "1";
 
+    private static float s_GeoMinX = float.MaxValue, s_GeoMaxX = float.MinValue;
+    private static float s_GeoMinY = float.MaxValue, s_GeoMaxY = float.MinValue;
+
+    // =====================================================================
+    // ECHAFAUDAGE TEMPORAIRE — tâche 4.5 de `replace-3d-backend-with-d3d11`.
+    //
+    // Deux échantillons ont montré que `Size` vaut 21 à `BeginScene` et 11 au dix-millième dessin de
+    // la même image : il change donc *dans* l'image. Ce relevé donne la **séquence complète** sur
+    // quelques images — chaque appel au viewport avec ses quatre arguments, et chaque transition de
+    // `Size` avec l'indice du dessin où elle survient.
+    //
+    // OPENFORESIA_TRACE_VP=1
+    // =====================================================================
+
+    private static readonly bool s_TraceViewport =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_VP") == "1";
+
+    private static byte* s_Winsys3dBase;
+    private static int s_TracedSize = int.MinValue;
+
+    /// <summary>Valeur courante de <c>DAT_00a2c498</c>, le niveau <c>Size</c> de winsys3d.</summary>
+    private static int CurrentSize()
+    {
+        if (s_Winsys3dBase == null)
+        {
+            IntPtr mod = GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
+            if (mod == IntPtr.Zero) return int.MinValue;
+            s_Winsys3dBase = (byte*)mod;
+        }
+        return *(int*)(s_Winsys3dBase + 0x2C498);
+    }
+
+    /// <summary>Vrai pendant la fenêtre d'observation : quelques images après la mise en régime.</summary>
+    private static bool TracingFrame() =>
+        s_TraceViewport && s_ShimSeen[0xB0 / 4] is >= 60 and <= 62;
+
+    /// <summary>Note une transition de <c>Size</c>, où qu'elle survienne.</summary>
+    private static void TraceSizeChange(string quand)
+    {
+        if (!s_TraceViewport) return;
+        int size = CurrentSize();
+        if (size == s_TracedSize) return;
+        s_TracedSize = size;
+        Console.Error.WriteLine(
+            $"[TRACE] Size -> {size} ({(size + 9) * 0x20}x{(size + 9) * 0x18}) " +
+            $"à {quand}, image {s_ShimSeen[0xB0 / 4]}, dessin #{s_ShimSeen[0xBC / 4]}");
+    }
+
     /// <summary>
     /// ECHAFAUDAGE TEMPORAIRE. Relève les globales de décalage de <c>winsys3d</c> qui composent la
     /// translation appliquée à tous les sommets (<c>winsys3d.c:4934</c>, <c>SetShift</c>) :
@@ -557,6 +612,31 @@ public static unsafe partial class Blaze
         Console.Error.WriteLine(
             $"[SHIFT] composé=({composeX},{composeY}) base=({baseX},{baseY}) " +
             $"shift=({shiftX},{shiftY}) abs=({absX},{absY}) resIndex={resIndex} size={size}");
+
+        // Test discriminant de la tâche 4.5. Les sommets ne sont pas mis à l'échelle en ligne : ils
+        // traversent une table de flottants indexée par la coordonnée brute
+        // (`winsys3d.c:10328`, `x = table[coord] + composé`). `SetShift` la choisit par
+        // `base + Size * 16000` ; une branche « haute résolution » de `SetDispEnv`
+        // (`winsys3d.c:5060`) la remplace par deux adresses figées et force `Size` à zéro.
+        //
+        // Lire la table tranche : `table[100] / 100` **est** le facteur réellement appliqué.
+        // Attendu si tout va bien avec Size=21 : 3.0. Si l'on trouve 1.0, la branche haute
+        // résolution est active et le correctif se situe côté `Size` / DISPENV, pas côté viewport.
+        uint tableX = *(uint*)(b + 0x2C4A0);   // PTR_DAT_00a2c4a0
+        uint tableY = *(uint*)(b + 0x2C4A4);   // PTR_DAT_00a2c4a4
+        uint attendu = (uint)((nint)mod + 0x31138 + size * 16000);
+
+        Console.Error.WriteLine(
+            $"[SHIFT] tableX=0x{tableX:X8} tableY=0x{tableY:X8} " +
+            $"attendu pour Size={size} : 0x{attendu:X8} {(tableX == attendu ? "(concorde)" : "(NE CONCORDE PAS — branche haute résolution ?)")}");
+
+        if (tableX != 0)
+        {
+            float* t = (float*)(nint)tableX;
+            Console.Error.WriteLine(
+                $"[SHIFT] table[0]={t[0]:F3} table[1]={t[1]:F3} table[100]={t[100]:F3} " +
+                $"table[320]={t[320]:F3} → facteur ≈ {(t[100] != 0 ? t[100] / 100f : 0f):F3}");
+        }
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
@@ -574,6 +654,11 @@ public static unsafe partial class Blaze
     {
         ShimTake(0xB0);
         if (s_ShimSeen[0xB0 / 4] % 60 == 1) ShimReport();
+
+        if (TracingFrame())
+            Console.Error.WriteLine($"[TRACE] ===== image {s_ShimSeen[0xB0 / 4]} : BeginScene, Size={CurrentSize()}, cible={s_SceneWidth}x{s_SceneHeight}");
+        TraceSizeChange("BeginScene");
+
         if (s_UseD3D11)
         {
             if (!s_BackendLive) Guarded("Initialize", EnsureBackend);
@@ -633,7 +718,9 @@ public static unsafe partial class Blaze
             // coordonnées et pour les textures.
             if (s_DumpGeometry && vt == 3 && s_ShimSeen[0xBC / 4] is 1 or 500 or 2000 or 10000)
             {
-                if (s_ShimSeen[0xBC / 4] == 1) LogShiftGlobals();
+                // Relevé au premier dessin **et** en régime établi : `SetShift` peut être rappelée
+                // entre les deux et changer la table de conversion sous nos pieds.
+                if (s_ShimSeen[0xBC / 4] is 1 or 10000) LogShiftGlobals();
                 var t2 = (TlVertex*)v;
                 var sb = new System.Text.StringBuilder(
                     $"[GEO] dessin #{s_ShimSeen[0xBC / 4]} topologie={t} n={n} " +
@@ -643,6 +730,32 @@ public static unsafe partial class Blaze
                               $"rhw={t2[i].Rhw:G4} diffuse=0x{t2[i].Diffuse:X8} uv=({t2[i].U:F3},{t2[i].V:F3})");
                 Console.Error.WriteLine(sb.ToString());
             }
+            if (TracingFrame())
+            {
+                TraceSizeChange("un dessin");
+                var tvx = (TlVertex*)v;
+                if (n > 0)
+                    Console.Error.WriteLine(
+                        $"[TRACE]   dessin #{s_ShimSeen[0xBC / 4]} topo={t} n={n} " +
+                        $"v0=({tvx[0].X:F0},{tvx[0].Y:F0}) v{n - 1}=({tvx[n - 1].X:F0},{tvx[n - 1].Y:F0})");
+            }
+
+            // ECHAFAUDAGE TEMPORAIRE — tâche 4.5. Enveloppe des coordonnées réellement soumises.
+            // Le relevé du dessin #500 montre des sommets non mis à l'échelle alors que la table de
+            // conversion contient bien le facteur 3 : certains chemins de `winsys3d` l'empruntent,
+            // d'autres non. L'enveloppe globale dit lesquels dominent.
+            if (s_DumpGeometry && vt == 3)
+            {
+                var tv = (TlVertex*)v;
+                for (int i = 0; i < (int)n; i++)
+                {
+                    if (tv[i].X < s_GeoMinX) s_GeoMinX = tv[i].X;
+                    if (tv[i].X > s_GeoMaxX) s_GeoMaxX = tv[i].X;
+                    if (tv[i].Y < s_GeoMinY) s_GeoMinY = tv[i].Y;
+                    if (tv[i].Y > s_GeoMaxY) s_GeoMaxY = tv[i].Y;
+                }
+            }
+
             Guarded($"DrawPrimitive(topologie={t}, format={vt})", () =>
             {
                 if (vt != 3)

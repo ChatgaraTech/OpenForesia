@@ -225,7 +225,11 @@ conservé.
       l'affichage plus tôt (le mode a déjà basculé pendant l'appel) et restaurer la position sur
       `WM_DISPLAYCHANGE` (personne ne pompe les messages pendant l'init 3D). Les deux ont été
       retirées plutôt que laissées en place.
-- [ ] 9.2 Empêcher `3dhelp` de changer le mode — **tenté, échoué, à reprendre**
+- [x] 9.2 Empêcher `3dhelp` de changer le mode — **approches abandonnées, objectif atteint autrement**
+      → Les trois approches décrites ci-dessous ont toutes échoué et sont closes. L'objectif — plus
+      aucun changement de mode — est atteint par le device synthétique (9.4 à 9.9), qui supprime la
+      cause au lieu de la contourner. Ce qui suit est conservé pour ce qu'il apprend, pas comme
+      travail en attente.
       → Ce qui **marche** : `3dhelp.dll` importe `DirectDrawCreate` statiquement depuis `DDRAW.dll`
       (aucun `LoadLibrary` ni `GetProcAddress`), le détournement de son entrée d'import fonctionne,
       et l'interception de `QueryInterface` montre la séquence exacte — `IDirectDraw2`,
@@ -252,7 +256,9 @@ conservé.
       → Conclusion, désormais étayée par trois approches indépendantes : **`Create3DDevice` exige une
       vraie bascule en mode exclusif.** On ne peut pas avoir simultanément « pas de changement de
       mode » et « `3dhelp` initialisé ».
-- [ ] 9.4 Device synthétique — **la seule voie qui atteint l'objectif**, analyse faite, à réaliser
+- [x] 9.4 Device synthétique — **la seule voie qui atteint l'objectif**, analyse faite puis réalisée
+      → Analyse ci-dessous, réalisation en 9.5 à 9.9. Le pronostic était juste sur toute la ligne :
+      le point d'entrée, la séquence d'initialisation, le rôle de `+0x30`, la contrainte d'arité.
       → Point d'entrée établi : `winsys3d` charge `3dhelp` **dynamiquement**
       (`winsys3d.c:5854-5855`, `LoadLibraryA` puis `GetProcAddress("Create3DDevice")`), et non par
       table d'imports. Détourner `GetProcAddress` dans la table d'imports de `winsys3d` — technique

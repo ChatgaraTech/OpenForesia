@@ -44,23 +44,42 @@
 - [ ] 4.5 Échelle des coordonnées : le jeu émet sa géométrie dans un espace d'environ 320x240 alors
       que la cible fait 960x720, d'où l'image cantonnée en haut à gauche. Déterminer où le facteur
       d'échelle devrait s'appliquer (`SetShift` / niveau de zoom `Size` / viewport D3D3)
-- [x] 4.3 Cesser d'initialiser le chemin DirectDraw de `3dhelp`
-- [x] 4.4 Vérifier que la résolution du bureau n'est plus jamais modifiée, y compris après une
-      terminaison anormale
-
-## 5. Bascule fenêtre / plein écran
-
-- [x] 5.1 Implémenter le plein écran sans bordure par redimensionnement de la fenêtre
-- [x] 5.2 Mémoriser position et dimensions pour le retour en fenêtre
-- [x] 5.3 Redimensionner la swap chain au redimensionnement de la fenêtre
-
-## 6. Vérification et nettoyage
-
-- [ ] 6.1 Comparer le menu côte à côte avec le jeu d'origine (référence : le rendu actuel est déjà
-      jugé fidèle)
-- [x] 6.2 Relever le taux d'écran noir sur au moins 10 lancements et le consigner dans
-      `ANALYSE_ECRAN_NOIR_MENU.md`
-- [x] 6.3 Retirer l'échafaudage de journalisation (`[VP]`, `[CFG]`, `[MODE]`, `[D3D11]`) et les
-      marqueurs `ECHAFAUDAGE TEMPORAIRE`
-- [x] 6.4 Documenter le backend dans `Documentation/DLL/3dhelp.md` (ce qui est porté, ce qui lève)
-- [x] 6.5 Mettre à jour `HISTORY.md` et `REVERSE_STATUS.md`
+      → **Cause trouvée le 2026-08-12, ce n'est aucune des hypothèses envisagées.** Mesuré : `Size`
+      vaut 21 (facteur 3) au premier dessin et **11 (facteur 2)** en régime établi du menu. La garde
+      de `SetShift` (`winsys3d.c:4941`) n'appelle le slot viewport `+0x50` **que si son
+      quatrième argument est nul**, alors qu'elle change `Size` et la table de conversion
+      inconditionnellement. Appelée avec ce drapeau non nul, elle modifie donc l'échelle des sommets
+      sans toucher au viewport : la cible reste dimensionnée par le dernier `Size` ayant posé un
+      viewport (21 → 960x720) pendant que les sommets sont émis pour le `Size` courant
+      (11 → 640x480).
+      → Vérification arithmétique : avec le facteur 2 et le décalage `(32, 24)`, l'enveloppe
+      mesurée `X=[32..352] Y=[24..216]` correspond à des brutes `0..160` par `0..96`.
+      → **Deux hypothèses écartées, à ne pas rouvrir** : les tables sont correctes et correctement
+      choisies (`table[100]=300` pour `Size=21`), et la branche « haute résolution » de
+      `SetDispEnv` n'est **pas** active.
+      → **Correctif tenté et inerte, ce qui est un fait de plus.** Faire suivre la taille de rendu au
+      `Size` courant, relu à `BeginScene`, ne déclenche jamais : la valeur y est **21 à chaque
+      début de scène** et 11 au dix-millième dessin de la même image. `Size` change donc *dans*
+      l'image et est remis avant la suivante — le moteur pose un viewport 960x720 à chaque image puis
+      dessine avec le facteur 2, délibérément. Code retiré plutôt que laissé inerte.
+      → **Reste ouvert** : soit le device d'origine recevait lui aussi un viewport 960x720 avec des
+      sommets en 640x480, et la compensation est ailleurs ; soit `+0x50` fait quelque chose qu'une
+      simple taille de cible ne capture pas. `+0x50` correspond à `SetCurrentViewport` sur le
+      device D3D3, qui pose un viewport **dans** une surface dimensionnée par le mode d'affichage —
+      ce n'est pas la même chose que choisir la taille d'une cible hors écran, et c'est là que le
+      facteur manquant se cache le plus probablement.
+      → **Séquence complète relevée** (`OPENFORESIA_TRACE_VP=1`), trois faits stables :
+      `+0x50` est appelé **une seule fois**, au démarrage — `SetViewport(32, 24, 960x720)` — et
+      `(32,24)` est exactement le décalage composé, donc c'est un **sous-rectangle** dans une
+      surface plus grande, pas une taille de cible ; sur D3D3, `SetCurrentViewport` désigne bien une
+      fenêtre dans une surface dimensionnée par le mode d'affichage (1024x768 pour `Resolution=4`).
+      Le motif par image est `Size=21` à `BeginScene` puis `11` deux dessins plus tard et pour
+      tout le corps de l'image, identiquement à chaque image — le 21 est transitoire. Et le contenu
+      émis est une grille de cellules de 30 px débutant à `(64,56)`, enveloppe `320x192` : un
+      espace PSX 320x240 jamais agrandi.
+      → **Mesure décisive suivante** : le rendu du menu étant reconstruit en C# (change
+      `reconstruct-main-menu-rendering`), les coordonnées **brutes** de la liste d'affichage sont
+      disponibles de notre côté. Les journaliser en regard des `TLVERTEX` qui sortent de
+      `DrawPrimitive` donne le facteur réellement appliqué comme un **rapport mesuré**, ce qui
+      tranche entre les deux lectures que l'arithmétique seule ne sépare pas — facteur 2 sur des
+      brutes 0..160, ou facteur 1 sur des brutes 0..320.

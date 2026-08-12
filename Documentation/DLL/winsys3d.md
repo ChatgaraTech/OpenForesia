@@ -190,6 +190,77 @@ and their content can only be inspected in a live process. Note also that `SetSh
 two addresses 160 000 bytes apart. One of the two readings is wrong — most likely Ghidra
 mis-recovered one line of `SetShift`. Unresolved; needs a runtime dump, not more reading.
 
+### Root cause of the mis-scaled menu — **found 2026-08-12, and it is neither earlier hypothesis**
+
+Measured at runtime with the geometry dump, sampling the shift globals at the first draw and again
+in the menu's steady state:
+
+| | `Size` | table factor |
+|---|---|---|
+| first draw | 21 | 3.0 |
+| draw 10 000 (menu steady state) | **11** | **2.0** |
+
+So the engine **changes `Size` after the viewport has been set**, and the culprit is the guard in
+`SetShift` itself:
+
+```c
+if (param_4 == 0) {                    /* only when this flag is zero */
+    device->vtable[0x50](base_x[mode] + x, base_y[mode] + y,
+                         (Size + 9) * 0x20, (Size + 9) * 0x18);   /* sets the viewport */
+}
+DAT_00a2c498     = Size;               /* but Size and the table change unconditionally */
+PTR_DAT_00a2c4a0 = &DAT_00a31138 + Size * 16000;
+```
+
+**Called with a non-zero fourth argument, `SetShift` changes the vertex scale without touching the
+viewport.** The render target therefore keeps the size implied by the *last* `Size` that did set a
+viewport (21 → 960x720), while vertices are emitted for the *current* `Size` (11 → 640x480). Hence
+an image confined to the upper-left of the target.
+
+Everything checks out arithmetically: with factor 2 and an offset of `(32, 24)`, the measured
+envelope `X = [32..352]`, `Y = [24..216]` corresponds to raw coordinates `0..160` by `0..96`, and
+the sampled quad at `x = 80, 192` to raw `24` and `80`.
+
+Two hypotheses are therefore **disproved** and should not be revisited: the lookup tables are
+correct and correctly selected (`table[100] = 300` for `Size = 21`, `table[320] = 960`), and the
+high-resolution branch below is **not** active — `resIndex` stays 4 and the table pointer always
+matches `base + Size * 16000`.
+
+**But the obvious fix does not work, and that is itself a finding.** Reading `DAT_00a2c498` at
+`BeginScene` and resizing the render target accordingly was implemented and measured: it never
+triggers. The value is **21 at every `BeginScene`** and 11 by the 10 000th draw of the same frame —
+so `Size` changes *within* a frame and is reset before the next one. The engine therefore sets a
+960x720 viewport each frame and then draws with factor 2, every frame, deliberately.
+
+What that leaves open: whether the original device also received a 960x720 viewport and vertices in
+a 640x480 space — in which case the mis-scaling is not a reconstruction defect at all and the
+compensation belongs elsewhere — or whether slot `+0x50` does something a plain render-target size
+does not capture. `+0x50` maps to `SetCurrentViewport` on the D3D3 device, which sets a viewport
+*inside* a surface whose size is the display mode; that is not the same thing as choosing the size
+of an off-screen target, and the difference is the most likely place the remaining factor hides.
+
+**The full sequence, measured (`OPENFORESIA_TRACE_VP=1`).** Three facts, all stable across frames:
+
+- **`+0x50` is called exactly once**, at startup: `SetViewport(32, 24, 960x720)`. Not per frame.
+  And `(32, 24)` is precisely the composed offset — so the argument pair is a **position**, and the
+  call describes a sub-rectangle inside a larger surface, not the size of a render target. On D3D3
+  that is what `SetCurrentViewport` means: the surface is the display mode's size (1024x768 for
+  `Resolution = 4`), and the viewport is a window into it.
+- **Per-frame `Size` pattern**: 21 at `BeginScene`, then 11 two draws later, and 11 for the whole
+  body of the frame. Every frame, identically. The 21 is transient.
+- **The emitted content is a grid of 30-pixel cells** starting at `(64, 56)`, columns at 64, 94,
+  124 …, rows at 56, 86, 116, 146, 176, 200 — envelope `320x192`, which is exactly a 320x240 PSX
+  space with its used rows, never enlarged.
+
+So the geometry arrives in PSX space, offset by the composed shift, and nothing scales it up.
+
+**Next measurement, and it is the decisive one.** The menu's drawing was reconstructed in C#
+(change `reconstruct-main-menu-rendering`), so the **raw display-list coordinates are available on
+our side**. Logging them next to the `TLVERTEX` values that come out of `DrawPrimitive` gives the
+factor actually applied, as a ratio rather than an inference — which settles between the two
+readings that coordinate arithmetic alone cannot separate (factor 2 over raw 0..160, or factor 1
+over raw 0..320).
+
 ### The high-resolution branch bypasses the whole mechanism
 
 `FUN_00a05a00` (`winsys3d.c:5042`, in substance `SetDispEnv`) copies a 5-dword DISPENV then
