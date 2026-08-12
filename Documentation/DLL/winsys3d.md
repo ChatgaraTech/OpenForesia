@@ -127,6 +127,114 @@ like `ClearImage`, but its colour math decompiles as
 `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match libgpu's plain
 `(r, g, b)` parameters — left un-renamed in `Blaze.cs` until explained.
 
+## Coordinate scaling: `Size`, the lookup tables, and the display-mode table — **CONFIRMED**
+
+Established 2026-08-12 while investigating task 4.5 of `replace-3d-backend-with-d3d11`
+("geometry lands in a ~320x240 space inside a 960x720 target"). Values below were read out
+of `winsys3d.dll` itself with `OpenForesia.Tools -- at winsys3d.dll <VA> <n>`, not inferred.
+
+### One variable drives both the viewport and the vertex scale
+
+`SetShift(x, y, Size, flag)` (ordinal 796, `winsys3d.c:4937`) does two things at once:
+
+```c
+device->vtable[0x50](base_x[mode] + x, base_y[mode] + y,
+                     (Size + 9) * 0x20,          /* width  */
+                     (Size + 9) * 0x18);         /* height */
+DAT_00a2c498     = Size;
+PTR_DAT_00a2c4a0 = &DAT_00a31138 + Size * 16000;   /* X lookup table */
+PTR_DAT_00a2c4a4 = &DAT_00a31138 + Size * 16000;   /* Y lookup table */
+```
+
+So the viewport handed to `3dhelp` slot `+0x50` — the one `DeviceShim` records as the render
+size — is `(Size+9)*32` by `(Size+9)*24`. `Size = 1` gives 320x240, `Size = 11` gives 640x480,
+`Size = 21` gives **960x720**.
+
+**Confirmed at runtime the same day.** `OpenForesia.cfg` reads `Resolution=4 Size=21`, and the
+backend reports a 960x720 scene — `(21+9)*32 = 960`, `(21+9)*24 = 720`. The deduction above is
+therefore measured, not just derived.
+
+**Correction on the display-mode claim.** An earlier revision of this paragraph read the
+reconstruction's own `[MODE] après init 3D: 1440x900` log line as proof that `3dhelp` switches the
+desktop mode. That log is an **in-process** `GetDeviceCaps` reading and does not establish what the
+desktop is doing. Polled from a separate process every 150 ms across a full startup (256 samples,
+40 s), the desktop stayed at its native mode throughout. On the legacy startup path the same poll
+does see real changes — 59 samples at 640x480, 3 at 1440x900 — so mode changes are genuinely
+observable when they happen; the `3dhelp` one simply was not, on this machine, once the game no
+longer holds DirectDraw exclusively. Whether it is shorter than the sampling interval or purely
+in-process is not settled.
+
+Vertices are **not** scaled inline. They are mapped through a float lookup table indexed by the
+raw coordinate (`winsys3d.c:10328` and ~40 similar sites):
+
+```c
+x_final = ((float *)PTR_DAT_00a2c4a0)[coord_x] + (float)DAT_011be770;
+```
+
+`ShiftVertices` (ordinal 824, `winsys3d.c:4913`) states the factor the tables are meant to
+encode:
+
+```c
+factor = (float)((DAT_00a2c498 + 9) * 0x20) * _DAT_00a2a06c;
+```
+
+`_DAT_00a2a06c` at VA `0x00a2a06c` (`.rdata`) is `0x3B4CCCCD` = **0.003125 = 1/320**. So
+`factor = (Size+9)*32 / 320`: `Size=1` → x1.0, `Size=21` → **x3.0** — exactly the 320 → 960
+ratio observed on screen.
+
+### The tables are built at runtime, not stored
+
+VA `0x00a31138` reads as all zeros on disk. Two consequences: the tables are filled in by code,
+and their content can only be inspected in a live process. Note also that `SetShift` assigns the
+**same** address to the X and Y table pointers, while the high-resolution branch below assigns
+two addresses 160 000 bytes apart. One of the two readings is wrong — most likely Ghidra
+mis-recovered one line of `SetShift`. Unresolved; needs a runtime dump, not more reading.
+
+### The high-resolution branch bypasses the whole mechanism
+
+`FUN_00a05a00` (`winsys3d.c:5042`, in substance `SetDispEnv`) copies a 5-dword DISPENV then
+branches on its width:
+
+```c
+if (dispenv.width <= 320) {                 /* normal path */
+    SetAbsShift((320 - w) / 2, (240 - h) / 2);
+    /* Size preserved, tables = base + Size * 16000 */
+} else {                                    /* high-resolution path */
+    DAT_00a2c498     = 0;                   /* overwrites the Size set by SetShift */
+    DAT_011be778     = 0;   DAT_011be77c = 0;
+    PTR_DAT_00a2c4a0 = &DAT_00a34fb8;       /* two fixed addresses, outside */
+    PTR_DAT_00a2c4a4 = &DAT_00a5c0b8;       /* the Size-indexed family      */
+    DAT_011be770     = 0;   DAT_011be774 = 0;
+}
+```
+
+This branch **decouples the viewport from the coordinate mapping**: the viewport keeps whatever
+`SetShift` last pushed, while the vertex tables fall back to fixed ones. It is the leading
+candidate for the symptom recorded in `TODO.md`, and it is discriminable by one runtime
+measurement — read `PTR_DAT_00a2c4a0` and a few entries of the table it points at, and compare
+`table[100] / 100` against the expected factor.
+
+### The display-mode table — **CONFIRMED, read from the binary**
+
+`DAT_00a2c49c` is a display-mode index, set by `ChangeResolution` (ordinal 749,
+`winsys3d.c:6010`). The four arrays it indexes:
+
+| index | width `0xa2c4a8` | height `0xa2c4c0` | `base_x` `0xa2c4d8` | `base_y` `0xa2c4f0` |
+|---|---|---|---|---|
+| 0 | 320 | 240 | −160 | −120 |
+| 1 | 512 | 384 | −64 | −48 |
+| 2 | 640 | 480 | 0 | 0 |
+| 3 | 800 | 600 | +80 | +60 |
+| 4 | 1024 | 768 | +192 | +144 |
+
+The offsets are exactly `(width − 640) / 2` and `(height − 480) / 2`. **The engine's logical
+reference space is 640x480**, and `base_x`/`base_y` centre that image inside the real display
+mode. This had not been recorded anywhere in the repo before.
+
+Both arrays are terminated by `0x00000000` / `0xFFFFFFFF` past index 4, so the valid range is
+0..4 — the bounds check `(uint)resIndex < 8` in `DeviceShim.LogShiftGlobals` is looser than the
+data warrants.
+
 ## Confirmed named exports used by Blaze.exe
 
 ### `Setup3DDevice` (ordinal 823, RVA `0x1910`, `winsys3d.c:386`) — **ANALYZED**

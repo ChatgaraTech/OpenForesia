@@ -31,14 +31,43 @@ La géométrie du menu s'affiche, **en aplats blancs** : les textures ne sont pa
 
 Deux choses séparent l'image actuelle d'un menu correct, les deux mesurées et localisées :
 
-- **tâche 3.5** — les textures. Les pixels vivent dans une surface DirectDraw dont le chemin de
-  création n'est pas identifié.
+- **tâche 3.5** — les textures. Le chemin de création est désormais **identifié de bout en bout** :
+  `Documentation/DLL/3dhelp.md`, section « Les textures ». L'argument du slot `+0x64` est un objet,
+  pas un handle ; ses pixels viennent d'un DIB GDI ordinaire ; trois points d'accroche sont
+  possibles, dont un qui ne dépend d'aucun état DirectDraw.
 - **tâche 4.5** — l'échelle. Le jeu émet sa géométrie dans un espace d'environ 320x240 alors que la
   cible fait 960x720, d'où l'image cantonnée en haut à gauche. Ce n'est pas un défaut de viewport.
+  Mécanisme établi dans `Documentation/DLL/winsys3d.md`, section « Coordinate scaling » : `Size`
+  pilote à la fois le viewport et la table de conversion des sommets, et une branche « haute
+  résolution » de `SetDispEnv` les découple. Une mesure au runtime tranche.
 
 ---
 
-## Demande du responsable, à traiter (2026-08-10)
+## Demande du responsable — **traitée le 2026-08-12**, un résiduel
+
+La change `render-title-screen-in-window` est implémentée. Ce qu'on voit maintenant au lancement :
+une seule fenêtre, l'écran-titre dedans, le bureau intact.
+
+| | avant | après |
+|---|---|---|
+| plein écran exclusif 640x480 | ~9 s | supprimé |
+| fenêtre `VfwClass` 2000x2000 `WS_EX_TOPMOST` | visible | jamais affichée |
+| écran-titre | plein écran | dans la fenêtre du jeu |
+| fenêtres visibles | 2 | **1** |
+| rendu du menu | — | identique au bit près |
+
+**Le clignotement est supprimé.** `3dhelp` n'est plus initialisé du tout : `winsys3d` le charge
+dynamiquement, on détourne son `GetProcAddress` et on lui rend un **device synthétique**
+(`OpenForesia/src/Blaze/SyntheticDevice.cs`). Mesuré : 500 ms de bascule de mode sur le chemin
+d'origine, **0 ms** désormais, et le rendu du menu est identique au bit près — 0 pixel différent sur
+172 800. Actif par défaut ; `OPENFORESIA_LEGACY_STARTUP=1` rétablit le chemin d'origine.
+
+Ce que le device synthétique ne fait **pas** : porter les textures. Les objets qu'il rend existent
+et répondent, mais leur handle vaut zéro, soit « aucune texture liée » — l'état que le backend
+traite déjà en rendant les primitives en aplats blancs. Le portage réel reste la tâche 3.5 de
+`replace-3d-backend-with-d3d11`.
+
+## Demande d'origine (2026-08-10), conservée pour mémoire
 
 > « J'aimerai qu'on ait qu'une fenêtre, point barre : plus d'affichage en plein écran du titre puis
 > basculement sur la fenêtre. »
@@ -56,6 +85,12 @@ Ce que ça implique, à vérifier avant de chiffrer :
 2. L'écran-titre et l'attract ne passent pas par `DrawPrimitive` : ils passent par un
    `GetDC` / `StretchDIBits` sur une surface DirectDraw. Les afficher dans la fenêtre demande de
    porter ce chemin-là aussi, ce n'est pas un simple déplacement d'appel.
+
+   **Corrigé le 2026-08-12** — ce portage est plus petit qu'estimé ici. Il passe par trois slots de
+   la vtable device, `+0xC4` / `+0xCC` / `+0xD0`, que `DeviceShim` intercepte déjà, et il ne demande
+   **pas** de lire une surface DirectDraw : rendre le HDC d'une DIB section à nous suffit. Voir
+   `Documentation/DLL/3dhelp.md`, section « L'écran-titre et l'attract ». Ce sujet est donc
+   **indépendant de la tâche 3.5**, contrairement à ce que cette page laissait entendre.
 
 ---
 

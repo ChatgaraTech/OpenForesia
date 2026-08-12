@@ -1283,9 +1283,19 @@ public static unsafe partial class Blaze
     private static uint s_SmallTextureFlag;
 
     // Ghidra: DAT_005de160, ini key "Size", default 0xb (11). Clamped in LoadOptionsIni against a
-    // per-resolution table (DAT_00562e00). The key name is confirmed; what the value actually
-    // sizes is not. TODO(REVERSE): find the read sites of DAT_005de160 to establish its role.
+    // per-resolution table (DAT_00562e00).
+    //
+    // Role established 2026-08-12 (the earlier TODO(REVERSE) here is answered): this is the
+    // engine's render-size level. `SetShift` (winsys3d.c:4937) hands the 3D device a viewport of
+    // `(Size + 9) * 0x20` by `(Size + 9) * 0x18` and selects the vertex-scaling lookup table with
+    // the same value. So Size 11 is 640x480 — the engine's logical reference space — and the
+    // shipped `Size=21` is 960x720, which matches the render target measured at runtime. Full
+    // derivation in `Documentation/DLL/winsys3d.md`, section "Coordinate scaling".
     private static int s_SizeSetting_005de160 = 0xb;
+
+    /// <summary>Taille de rendu que le réglage <c>Size</c> implique, en pixels.</summary>
+    private static (int Width, int Height) RenderSizeFromSizeSetting()
+        => ((s_SizeSetting_005de160 + 9) * 0x20, (s_SizeSetting_005de160 + 9) * 0x18);
 
     // Ghidra: DAT_00566cc4 (ini "Resolution", default 2) / DAT_00562df8 (ini "Timing", default 1).
     private static uint s_ResolutionIndex;
@@ -2819,6 +2829,28 @@ public static unsafe partial class Blaze
 
     // DDSURFACEDESC is 0x6c bytes — the literal FUN_00512a10 writes into dwSize, corroborated by the
     // 0x1b-dword (108-byte) zeroing loop that precedes each use.
+    /// <summary>
+    /// Vrai quand la séquence de démarrage — écran-titre et attract — s'affiche dans la fenêtre du
+    /// jeu au lieu de l'affichage exclusif du binaire d'origine.
+    ///
+    /// <para>
+    /// C'est le drapeau de la **seule déviation de fidélité volontaire** de ce projet. Les trois
+    /// autres écarts consignés dans <c>REVERSE_STATUS.md</c> sont subis — le refus du 16 bits par
+    /// Windows moderne, les surfaces perdues, l'arène relocalisée par l'ASLR — et la reconstruction
+    /// les contourne pour rester fonctionnelle. Celui-ci est demandé : le jeu ne doit plus prendre
+    /// l'affichage en exclusif ni changer le mode, pour n'avoir qu'une seule fenêtre du lancement
+    /// au menu.
+    /// </para>
+    /// <para>
+    /// <c>OPENFORESIA_LEGACY_STARTUP=1</c> rétablit intégralement le comportement d'origine, sur le
+    /// modèle d'<c>OPENFORESIA_LEGACY_3DHELP</c>. Ce qu'il gouverne : le niveau de coopération
+    /// DirectDraw et le changement de mode dans <see cref="SetupDirectDrawSurfaces"/>, et les
+    /// quatre sites qui affichent ou maximisent la fenêtre <c>VfwClass</c>.
+    /// </para>
+    /// </summary>
+    private static readonly bool s_WindowedStartup =
+        Environment.GetEnvironmentVariable("OPENFORESIA_LEGACY_STARTUP") != "1";
+
     private const int DdSurfaceDescSize = 0x6c;
     private const uint DDSD_CAPS = 0x0001;
     private const uint DDSD_HEIGHT = 0x0002;
@@ -2855,8 +2887,40 @@ public static unsafe partial class Blaze
         // Ghidra: (**(*dd + 0x50))(dd, hwnd, 0x13)
         // 0x13 = DDSCL_FULLSCREEN | DDSCL_ALLOWREBOOT | DDSCL_EXCLUSIVE.
         var setCooperativeLevel = (delegate* unmanaged[Stdcall]<void*, IntPtr, uint, int>)ddVtable[IDirectDraw_SetCooperativeLevel];
-        hr = setCooperativeLevel(directDraw, hwnd, 0x13);
-        if (hr < 0) return hr;
+
+        // DEVIATION DELIBEREE ET CONDITIONNELLE — change `render-title-screen-in-window`.
+        //
+        // L'original prend l'affichage en `DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE` puis le bascule en
+        // 640x480, et c'est la moitié « affichage » de l'écran plein écran qu'on veut supprimer.
+        // Tout cet appareillage n'a qu'un produit réellement consommé : le contexte de périphérique
+        // que `BlitTitleScreen` obtenait par `GetDC` sur la surface primaire. Le backend le fournit
+        // désormais (`StartupSurface`), donc plus rien ne le réclame ici :
+        //
+        //   * le back buffer obtenu par `GetAttachedSurface` n'était jamais stocké,
+        //   * aucun `Flip` n'est jamais appelé sur cette chaîne,
+        //   * les champs du wrapper renseignés ensuite ne sont lus que par le chemin vidéo
+        //     DirectShow, laissé nul (TODO #13).
+        //
+        // On garde donc l'objet DirectDraw et son cycle de vie — `ReleaseDirectDrawSurfaces` le
+        // libère toujours — et on ne retire que la prise d'affichage. `OPENFORESIA_LEGACY_STARTUP=1`
+        // rétablit intégralement le chemin d'origine.
+        if (!s_WindowedStartup)
+        {
+            hr = setCooperativeLevel(directDraw, hwnd, 0x13);
+            if (hr < 0) return hr;
+        }
+        else
+        {
+            // 8 = DDSCL_NORMAL, la même valeur que la séquence de démontage d'origine emploie.
+            hr = setCooperativeLevel(directDraw, hwnd, 8);
+            if (hr < 0) return hr;
+
+            // Ni changement de mode, ni chaîne primaire/flip : plus personne ne les consomme, et
+            // c'est leur suppression qui fait disparaître le plein écran. Le wrapper garde les
+            // valeurs de son constructeur ; les renseigner reviendrait à inventer une description
+            // de surface qui n'existe plus.
+            return 0;
+        }
 
         // Ghidra: (**(*dd + 0x54))(dd, 0x280, 0x1e0, 0x10) — 640 x 480 x 16bpp.
         var setDisplayMode = (delegate* unmanaged[Stdcall]<void*, uint, uint, uint, int>)ddVtable[IDirectDraw_SetDisplayMode];
@@ -3007,7 +3071,18 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void BlitTitleScreen(MoviePlayerState player)
     {
-        if (player.TitleBitmap == null || player.DirectDrawWrapper == null) return;
+        if (player.TitleBitmap == null) return;
+
+        // Régime GDI de démarrage : la même image est écrite dans la surface hors écran du backend,
+        // qui sera présentée dans la fenêtre du jeu.
+        //
+        // **Ajout, pas substitution.** Le chemin DirectDraw ci-dessous reste intact ; l'écran-titre
+        // continue donc de s'afficher exactement comme avant, en plus d'alimenter notre surface.
+        // C'est ce qui rend ce palier réversible : le retrait du chemin d'origine est un pas
+        // séparé et assumé (change `render-title-screen-in-window`, groupe 6).
+        BlitTitleScreenToStartupSurface(player);
+
+        if (player.DirectDrawWrapper == null) return;
 
         // Ghidra: piVar1 = *(int **)(*(int *)(param_1 + 0x1c) + 4) — the wrapper's primary surface.
         // Null until FUN_00512a10 has run; the original null-checks it, and so does this.
@@ -3037,11 +3112,69 @@ public static unsafe partial class Blaze
         void* bits = bmp + *(int*)(bmp + 10);   // bfOffBits
         void* info = bmp + 0xe;                 // BITMAPINFOHEADER
 
-        StretchDIBits(hdc, 0, 0, 0x280, 0x1e0, 0, 0, 0x280, 0x1e0,
+        StretchDIBits(hdc, 0, 0, TitleScreenWidth, TitleScreenHeight,
+                      0, 0, TitleScreenWidth, TitleScreenHeight,
                       bits, info, 0 /* DIB_RGB_COLORS */, 0xcc0020 /* SRCCOPY */);
 
         var releaseDc = (delegate* unmanaged[Stdcall]<void*, IntPtr, int>)surfaceVtable[IDirectDrawSurface_ReleaseDC];
         releaseDc(surface, hdc);
+    }
+
+    // Les dimensions que l'original emploie sur ce chemin, en source comme en destination : le
+    // `StretchDIBits` de Blaze.c:89916-89929 et le `SetDisplayMode` de FUN_00512a10 portent les
+    // mêmes littéraux. Ce ne sont donc pas des valeurs choisies par la reconstruction.
+    private const int TitleScreenWidth = 0x280;    // 640
+    private const int TitleScreenHeight = 0x1e0;   // 480
+
+    /// <summary>
+    /// Écrit l'écran-titre dans la surface hors écran du backend, en réutilisant le même
+    /// <c>StretchDIBits</c> et les mêmes dimensions que le chemin d'origine.
+    /// </summary>
+    private static void BlitTitleScreenToStartupSurface(MoviePlayerState player)
+    {
+        IntPtr dc = StartupSurface.EnsureDc(TitleScreenWidth, TitleScreenHeight);
+        if (dc == IntPtr.Zero) return;
+
+        byte* bmp = player.TitleBitmap;
+        void* bits = bmp + *(int*)(bmp + 10);   // bfOffBits
+        void* info = bmp + 0xe;                 // BITMAPINFOHEADER
+
+        int scanlines = StretchDIBits(dc, 0, 0, TitleScreenWidth, TitleScreenHeight,
+                                      0, 0, TitleScreenWidth, TitleScreenHeight,
+                                      bits, info, 0 /* DIB_RGB_COLORS */, 0xcc0020 /* SRCCOPY */);
+        if (scanlines > 0) StartupSurface.MarkDrawn();
+
+        // Présentation : cet appel est la frontière d'image du régime GDI, ce qu'EndScene est au
+        // régime Direct3D. Un échec ne dégrade que ce redessin — journalisé une fois, jamais
+        // propagé, jamais interruptif pour la boucle d'attract.
+        //
+        // **Aucune pompe de messages ici**, contrairement à ce que fait EndScene. La boucle
+        // d'attract (`ShowTitleScreenAndWait`) est elle-même une pompe `PeekMessageA(NULL, …, PM_REMOVE)`
+        // qui tourne en permanence et dispatche : les messages de notre fenêtre sont donc déjà
+        // servis. Vider la file ici consommerait les `WM_KEYDOWN` qui terminent l'attract, et le
+        // démarrage n'atteindrait plus jamais le menu.
+        if (StartupSurface.HasContent && !PresentStartupSurface() && !s_StartupPresentReported)
+        {
+            s_StartupPresentReported = true;
+            Console.Error.WriteLine("[GDI] présentation de l'écran-titre indisponible — redessin ignoré");
+        }
+
+    }
+
+    private static bool s_StartupPresentReported;
+
+    /// <summary>
+    /// Présente la surface de démarrage dans la fenêtre du jeu. Rend faux si la fenêtre n'existe
+    /// pas encore ou si le contexte de périphérique est indisponible — l'appelant se contente alors
+    /// de sauter ce redessin.
+    /// </summary>
+    private static bool PresentStartupSurface()
+    {
+        IntPtr hwnd = D3D11Window.Handle;
+        if (hwnd == IntPtr.Zero) return false;
+
+        (int w, int h) = D3D11Window.ClientSize();
+        return StartupSurface.PresentTo(hwnd, w, h);
     }
 
     /// <summary>
@@ -3136,8 +3269,16 @@ public static unsafe partial class Blaze
         {
             if (activated != 0)
             {
-                SetFocus(player.HWnd);
-                ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
+                // DEVIATION CONDITIONNELLE — voir s_WindowedStartup. Ce couple SetFocus +
+                // SW_MAXIMIZE rend la fenêtre VfwClass plein écran **à chaque activation de
+                // l'application** pendant l'attract : la neutraliser à la création ne suffit pas,
+                // l'original la rétablit ici. C'est le site le plus important des quatre.
+                // Le PostMessage qui suit déclenche le redessin et reste actif dans les deux cas.
+                if (!s_WindowedStartup)
+                {
+                    SetFocus(player.HWnd);
+                    ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
+                }
                 PostMessageA(player.HWnd, 0x111 /* WM_COMMAND */, 1, 1);
                 return;
             }
@@ -3255,6 +3396,14 @@ public static unsafe partial class Blaze
         player.Playing = false;
         player.TitleBitmapLoaded = 0;
 
+        // DEVIATION CONDITIONNELLE — voir s_WindowedStartup.
+        // Ces deux appels sont la moitié « fenêtre » du plein écran de démarrage : un popup
+        // WS_EX_TOPMOST maximisé puis étendu à 2000x2000. La fenêtre reste créée — `joySetCapture`
+        // et la procédure de fenêtre en dépendent — mais n'est plus montrée.
+        // Mesuré (tâche 2.2) : les touches terminent toujours l'attract, la boucle qui les lit
+        // faisant un `PeekMessageA(NULL, …)` à l'échelle du thread.
+        if (s_WindowedStartup) return;
+
         ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
         MoveWindow(player.HWnd, 0, 0, 0x7d0, 0x7d0, 1);
     }
@@ -3325,7 +3474,8 @@ public static unsafe partial class Blaze
         }
         player.Stream = null;
 
-        if (player.HWnd != IntPtr.Zero)
+        // DEVIATION CONDITIONNELLE — voir s_WindowedStartup.
+        if (player.HWnd != IntPtr.Zero && !s_WindowedStartup)
         {
             MoveWindow(player.HWnd, 0, 0, 2000, 2000, 1);
         }
@@ -3340,7 +3490,8 @@ public static unsafe partial class Blaze
         }
         player.DirectDrawWrapper = null;
 
-        if (player.HWnd != IntPtr.Zero)
+        // DEVIATION CONDITIONNELLE — voir s_WindowedStartup.
+        if (player.HWnd != IntPtr.Zero && !s_WindowedStartup)
         {
             ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE, per Ghidra literal */);
         }
@@ -3842,6 +3993,11 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void RunMainLoop()
     {
+        // La fenêtre du jeu naît ici, avant l'écran-titre — pas de device, il attend le premier
+        // début de scène. Hors reconstruction : le binaire d'origine n'a pas de fenêtre à lui à ce
+        // stade, il dessine dans l'affichage exclusif. Voir la change `render-title-screen-in-window`.
+        CreateGameWindow();
+
         InitMoviePlayer();
         bool streamOpened = TryOpenMovieStream();
         if (streamOpened)
@@ -3879,6 +4035,11 @@ public static unsafe partial class Blaze
         // `DAT_00a2c49c = param_2`, and that global indexes the base-offset tables SetShift uses to
         // position the viewport. Passing 0 selected the 320x240 entry (-160,-120), which is why the
         // scene rendered unscaled in a corner of a 640x480 screen.
+
+        // `Ordinal_789` charge `3dhelp.dll` et lui fait créer son device, ce qui bascule le mode
+        // d'affichage du bureau. Le device synthétique intercepte cette création. Voir
+        // `SyntheticDevice.cs` ; opt-in tant qu'il n'est pas éprouvé.
+        InstallSyntheticDevice();
 
         Ordinal_789(0, s_ResolutionIndexForClamp);
         InstallDeviceShim();   // ECHAFAUDAGE TEMPORAIRE — voir DeviceShim.cs

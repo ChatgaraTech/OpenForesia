@@ -44,6 +44,7 @@ pointeur suffit, aucune disposition mémoire à reproduire.
 | `[0x15]` | `+0x54` | surface DirectDraw secondaire |
 | `[0x16]` | `+0x58` | surface optionnelle — **nulle en pratique**, `3dhelp` gère ce cas |
 | `[0x17]` | `+0x5C` | **`IDirect3DDevice2`** — la cible de la plupart des slots |
+| `[0x2B]` | `+0xAC` | **objet matériau** (vtable `0x0FFE6248`) — porte le `D3DMATERIAL` dont `hTexture` est réécrit à chaque liaison de texture |
 | — | `+0xA0`, `+0xA4`, `+0xB4`, `+0xB8` | champs d'état, lus par les getters |
 
 Vérifié à l'exécution : `[0x10]`, `[0x15]` et `[0x17]` sont toujours non nuls, `[0x16]` toujours nul.
@@ -93,14 +94,15 @@ Tous suivent le même motif : `MOV EAX,[ECX+0x5C]` puis `d3d->SetRenderState(id,
 | `+0xC4` | `0x0FFE1D40` | 32 | `surface[0x15]->GetDC` |
 | `+0xCC` | `0x0FFE1D80` | 32 | `surface[0x10]->GetDC` |
 | `+0xD0` | `0x0FFE1DA0` | 32 | `surface[0x10]->ReleaseDC` |
-| `+0xD8` | `0x0FFE1DE0` | 32 | `surface[0x0D]->GetSurfaceDesc`, 2 arguments |
+| `+0xD8` | `0x0FFE1DE0` | 32 | **attente de retour de balayage vertical** — `[0x0D]->vtable[0x58]`, 2 arguments. Décrit à tort ici comme `GetSurfaceDesc`, voir la correction plus bas |
 
 ### Accesseurs et cycle de vie
 
 | slot | cible | taille | rôle |
 |---|---|---|---|
 | `+0x0C` | `0x0FFE1840` | 48 | `Initialize(arg)` — remet `+0xA0`/`+0xB4`/`+0xB8` à zéro, stocke `arg` en `+0x1C` |
-| `+0x10` | `0x0FFE1970` | 32 | alloue `0x20` octets et construit (décompilé) |
+| `+0x10` | `0x0FFE1970` | 32 | **fabrique de textures** — `Malloc(0x20)` puis constructeur (vtable `0x0FFE61F8`). Voir « Les textures » |
+| `+0x14` | `0x0FFE1A40` | 32 | **fabrique de matériaux** — `Malloc(0x68)` puis `FUN_0ffe30f0` (vtable `0x0FFE6248`) |
 | `+0x20` | `0x0FFE1790` | 16 | getter du champ `+0xB4` |
 | `+0x24` | `0x0FFE17A0` | 16 | getter du champ `+0xB8` |
 | `+0x28` | `0x0FFE17A0` | 16 | **même fonction que `+0x24`** |
@@ -151,7 +153,7 @@ Nombre de sites d'appel dans `winsys3d.c` :
 |---|---|---|
 | `+0xBC` | **DrawPrimitive** | **45** |
 | `+0x8C` | `SetRenderState(SHADEMODE)` | **45** |
-| `+0x64` | **liaison de texture** — `SetLightState(1 MATERIAL)` puis `SetRenderState(1 TEXTUREHANDLE)` | **18** |
+| `+0x64` | **liaison de texture** — reçoit un *objet* texture, voir « Les textures » | **18** |
 | `+0x6C` | `SetTransform(WORLD)` | 5 |
 | `+0xA4`, `+0x94` | `SetRenderState` | 4 |
 | `+0xB0`, `+0xB4`, `+0xA0`, `+0x98` | scène et états | 3 |
@@ -184,6 +186,267 @@ Le chemin par frame se réduit à : **`Clear` ×2 → `BeginScene` → `DrawPrim
 
 ---
 
+## Les textures — du DIB au handle
+
+> Établi le 2026-08-12, en préparation de la tâche 3.5 de `replace-3d-backend-with-d3d11`.
+> Chaque maillon est vérifié soit dans `3dhelp.c`, soit directement dans les octets de
+> `3dhelp.dll` (`OpenForesia.Tools -- at 3dhelp.dll <VA> <n>`).
+
+### Correction — ce que `+0x64` reçoit
+
+Ce document annonçait pour `+0x64` : « `SetLightState(1 MATERIAL)` puis
+`SetRenderState(1 TEXTUREHANDLE)` ». C'est le résumé de ce qui se passe **deux niveaux plus bas**,
+et il a fait croire que l'argument du slot était un handle opaque — donc que les pixels étaient
+hors d'atteinte. Ils ne le sont pas. Le corps réel du slot est à `0x0FFE1900` (vtable device
+`0x0FFE6000` + `0x64`) :
+
+```
+8b 44 24 04        mov eax,[esp+4]        ; l'argument
+56                 push esi
+8b f1              mov esi,ecx            ; this = device 3dhelp
+50                 push eax
+8b 8e ac 00 00 00  mov ecx,[esi+0xAC]     ; sous-objet MATÉRIAU
+e8 6d 19 00 00     call 0x0FFE3280        ;   FUN_0ffe3280(materiau, argument)
+8b 4e 5c           mov ecx,[esi+0x5C]     ; IDirect3DDevice2
+51                 push ecx
+8b 8e ac 00 00 00  mov ecx,[esi+0xAC]
+e8 de 18 00 00     call 0x0FFE3200        ;   FUN_0ffe3200(materiau, d3dDevice)
+5e                 pop esi
+c2 04 00           ret 4
+```
+
+`device+0xAC` est un objet **matériau** (vtable `0x0FFE6248`, `Malloc(0x68)`, construit par
+`FUN_0ffe30f0` à `3dhelp.c:863`). Il porte un `D3DMATERIAL` à son offset `+0x08`, `dwSize = 0x50`
+écrit en clair. `FUN_0ffe3280` (`3dhelp.c:994`) fait :
+
+```c
+materiau->+0x58 = argument;
+materiau->+0x50 = argument->vtable[1]();   /* +0x50 = struct+0x48 = hTexture */
+```
+
+`+0x50` tombe donc exactement sur le champ `hTexture` du `D3DMATERIAL`. Et `argument->vtable[1]`,
+lu à `0x0FFE2B40`, est `mov eax,[ecx+0x10] / ret`.
+
+**L'argument de `+0x64` est un pointeur d'objet texture, pas un handle.** Les deux `SetLightState`
+/ `SetRenderState` que ce document mentionnait sont dans `FUN_0ffe3200` (`3dhelp.c:938`), en aval.
+
+### La classe texture
+
+Fabriquée par le **slot device `+0x10`** (`0x0FFE1970`) : `Malloc(0x20)` puis `FUN_0ffe2af0`, qui
+pose la vtable `0x0FFE61F8`. Trente-deux octets, huit champs :
+
+| offset | contenu |
+|---|---|
+| `+0x00` | vtable = `0x0FFE61F8` |
+| `+0x04` | `IDirectDrawSurface` — **mémoire système, porte les pixels** |
+| `+0x08` | `IDirectDrawSurface` — résultat de `CreateSurface`, la texture vue par Direct3D |
+| `+0x0C` | `IDirectDrawPalette` — seulement si profondeur ≤ 8 bits |
+| `+0x10` | `D3DTEXTUREHANDLE` — ce que `vtable[1]` renvoie |
+| `+0x14` | drapeau de chemin : `0` = DIB palettisé via GDI, `≠0` = autre chemin |
+| `+0x18` | a une palette |
+| `+0x1C` | device `3dhelp` propriétaire (dont `+0x5C` = `IDirect3DDevice2`) |
+
+Vtable de la classe, lue à `0x0FFE61F8` :
+
+| slot | cible | rôle |
+|---|---|---|
+| `[0]` | `0x0FFE2B20` | destructeur (`FUN_0ffe2b20`) |
+| `[1]` | `0x0FFE2B40` | `return this->+0x10` — le handle |
+| `[2]` | `0x0FFE2D10` | **le chargeur**, décompilé à `3dhelp.c:677` |
+| `[3]` | `0x0FFE15D0` | rôle non établi |
+| `[4]` | `0x0FFE3020` | rôle non établi |
+| `[5]` | `0x0FFE2F90` | rôle non établi — appelé en fin de chargement, vraisemblablement la remontée `+0x04` → `+0x08` |
+
+### Le chargeur, `FUN_0ffe2d10`
+
+Ghidra a typé son second paramètre en `BITMAPINFO*` alors que c'est le **`this`** qui l'est ; en
+rétablissant, la fonction se lit sans ambiguïté. Elle prend un `BITMAPINFO` du jeu et produit un
+handle :
+
+```
+BITMAPINFO
+    │  DDSURFACEDESC dwSize=0x6C, dwFlags |= 0x1007
+    │  ddsCaps = 0x1800 (TEXTURE|SYSTEMMEMORY)
+    │       ou  0x4005000 si le device annonce la mémoire vidéo
+    ▼
+IDirectDraw::CreateSurface  (dd->vtable +0x18)   ──►  this->+0x08
+    │
+    ├─ une seule surface : this->+0x04 = this->+0x08, AddRef
+    └─ sinon : second CreateSurface caps=0x1800   ──►  this->+0x04
+    │
+    ▼
+DDPaletteFromBitmap  ──►  this->+0x0C
+SetPalette (surf +0x7C) appliqué aux DEUX surfaces
+    │
+    ▼
+FUN_0ffe2f20 :   surface(+0x04)->GetDC       (surf +0x44)
+                 StretchDIBits(hdc, …, bitmapInfo, DIB_RGB_COLORS, SRCCOPY)
+                 surface(+0x04)->ReleaseDC   (surf +0x68)
+                 this->vtable[5]()           ← remontée +0x04 → +0x08
+    │
+    ▼
+surface(+0x08)->QueryInterface(IID_IDirect3DTexture2)   IID à 0x0FFE6670
+texture2->GetHandle(d3dDevice, &this->+0x10)            (tex2 +0x0C)
+texture2->Release()
+```
+
+Deux faits en découlent, et ce sont eux qui rendent la tâche 3.5 abordable :
+
+1. **la source des pixels est un DIB GDI ordinaire** — pas un format DirectDraw ni un format PSX ;
+2. **la surface `+0x04` est en mémoire système par construction**, donc verrouillable, à la
+   différence d'une texture en mémoire vidéo.
+
+### Trois points d'accroche possibles
+
+| route | où | ce qu'on obtient | dépendance |
+|---|---|---|---|
+| **A** | `+0x64`, l'objet est déjà construit | lire `+0x04`, `GetSurfaceDesc` (surf `+0x58`) puis `Lock` (surf `+0x64`) | exige que DirectDraw soit encore vivant après la tâche 4.3 — **non vérifié** |
+| **B** | `+0x10` (fabrique, **déjà intercepté**) puis échange de la vtable de l'objet pour capter `[2]` | le `BITMAPINFO` d'origine, avant tout DirectDraw | aucune |
+| **C** | `winsys3d`, en amont du DIB (`FUN_00a27430`, tpage/CLUT) | les données du jeu | chantier de reconstruction complet, hors tâche 3.5 |
+
+La route **B** ne dépend d'aucun état DirectDraw et réutilise le mécanisme d'échange de vtable déjà
+éprouvé dans `DeviceShim.cs`. La route **A** est plus courte mais son hypothèse reste à mesurer.
+
+---
+
+## L'écran-titre et l'attract — un chemin GDI, mais **pas** par la vtable device
+
+> **Correction du 2026-08-12, par la mesure.** Une première rédaction de cette section, le même
+> jour, affirmait que l'écran-titre dessinait par les slots `+0xC4` / `+0xCC` / `+0xD0` de la vtable
+> device, et qu'il suffisait de les intercepter. **C'est faux.** Les compteurs posés sur ces trois
+> slots (tâche 1.2 de `render-title-screen-in-window`) donnent **zéro appel** sur un démarrage
+> complet — attract compris — jusqu'à 361 images de menu. Ces slots existent, `winsys3d` les
+> référence, mais aucune des phases observées ne les emprunte.
+
+Ces trois slots restent décrits ici pour ce qu'ils sont, sans plus leur prêter de rôle :
+
+| slot | cible | corps décodé | appels mesurés |
+|---|---|---|---|
+| `+0xC4` | `0x0FFE1D40` | `this->+0x54 ->vtable[0x44]` — `GetDC(HDC*)`, 1 arg | **0** |
+| `+0xCC` | `0x0FFE1D80` | `this->+0x40 ->vtable[0x44]` — `GetDC(HDC*)`, 1 arg | **0** |
+| `+0xD0` | `0x0FFE1DA0` | `this->+0x40 ->vtable[0x68]` — `ReleaseDC(HDC)`, 1 arg | **0** |
+
+**Où l'écran-titre dessine réellement** : dans la reconstruction elle-même, à
+`OpenForesia/src/Blaze/Blaze.cs`, méthode `BlitTitleScreen` (Ghidra `Blaze.c:89916-89929`). Elle
+prend la surface primaire du wrapper DirectDraw que le jeu construit lui-même
+(`FUN_00512a10`), appelle `GetDC` (surface `+0x44`), `StretchDIBits` du bitmap `TITLE640.BMP` en
+**640x480** (`0x280 × 0x1e0`, constantes de l'original), puis `ReleaseDC` (surface `+0x68`) — avec
+une reprise sur `DDERR_SURFACELOST` via `Restore` (`+0x6C`).
+
+C'est donc du code C# que le projet contrôle directement. Porter l'écran-titre dans la fenêtre ne
+demande **aucune interception de vtable**.
+
+### Le changement de mode d'affichage — mécanisme, et trois façons de ne pas l'éviter
+
+Établi le 2026-08-12. `3dhelp` prend l'affichage en `DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE`
+(`FUN_0ffe35e0`, niveau `0x11`) puis appelle `IDirectDraw2::SetDisplayMode` (`FUN_0ffe3620`,
+`3dhelp.c:1276`, corps à `0x0FFE3680`). Mesuré depuis un processus séparé à 30 ms : le bureau
+bascule réellement — sur cette machine, **2560x1440 vers 1440x900 pendant 200 à 600 ms**, puis
+retour. Windows repositionne les fenêtres à chaque bascule. C'est le clignotement perçu entre
+l'écran-titre et le menu.
+
+Tout cela se produit dans `Create3DDevice`, **à l'intérieur d'`Ordinal_789`**, donc avant qu'une
+façade de vtable puisse être posée.
+
+**Ce qui a été tenté, et ce que chaque échec apprend :**
+
+| tentative | clignotement | init `3dhelp` |
+|---|---|---|
+| détourner `DirectDrawCreate` (import statique de `3dhelp`) puis échanger la vtable des objets `IDirectDraw` | supprimé | **faute d'accès** `0xC0000005` dans `Ordinal_789`, avant même l'appel à `SetDisplayMode` |
+| supprimer `ChangeDisplaySettingsExA` (import statique de `ddraw.dll` vers `USER32.dll`) | supprimé | `Ordinal_789` ne rend jamais la main |
+| rediriger le même appel vers le mode courant, pour garder `ddraw` et Windows d'accord | supprimé | idem |
+
+Deux enseignements durables :
+
+- **`ddraw` ne supporte pas qu'on remplace le pointeur de vtable de ses objets**, contrairement à
+  ceux de `3dhelp` que `DeviceShim` échange sans difficulté. Réduire l'intrusion à un seul slot sur
+  une seule interface n'y change rien.
+- **`Create3DDevice` exige une vraie bascule en mode exclusif.** Trois approches indépendantes
+  aboutissent au même constat : on ne peut pas avoir simultanément « pas de changement de mode » et
+  « `3dhelp` initialisé ».
+
+Détail utile au passage : le journal montre que `ddraw` demande précisément
+**1440x900x32 avec `CDS_FULLSCREEN`**, suivi d'une restauration — d'où deux clignotements.
+
+**La seule voie restante est de ne plus faire initialiser `3dhelp` du tout.** `winsys3d` le charge
+**dynamiquement** (`winsys3d.c:5854-5855`, `LoadLibraryA` puis `GetProcAddress("Create3DDevice")`),
+et non par table d'imports : détourner `GetProcAddress` permet de rendre un device à nous. La
+séquence d'initialisation qu'il devra encaisser est `+0x18` (crée la fenêtre `Example`), `+0x0C`,
+`+0x2C`, puis `+0x30(0, largeur, …)` — **`+0x30` étant la prise d'affichage**, et si elle rend zéro
+`winsys3d` affiche « 3D Graphics initialisation error » et appelle `ExitProcess(3)`.
+
+Ampleur réelle : `FUN_0ffe1990` (slots `+0x68` / `+0x6C`) commence par `mov eax,[ecx+0x5C]`, l'objet
+`IDirect3DDevice2` que `+0x30` crée ; tous les slots d'état font de même. Neutraliser `+0x30` sans
+porter les autres les fait déréférencer un pointeur nul. **Le device synthétique est donc le portage
+des slots**, pas un correctif ponctuel.
+
+Contrainte à ne pas oublier : chaque slot remplacé doit nettoyer exactement autant d'octets que
+l'original, `stdcall` étant à nettoyage par l'appelé. Les comptes se lisent dans le `ret N` du code
+de `3dhelp` — `+0x30` fait `ret 12` (trois arguments), `+0x2C` fait `ret 0`. **Ne pas se fier à
+Ghidra** : il annonçait deux arguments pour `+0x30`.
+
+### Table des arités — indispensable au device synthétique
+
+Extraite du binaire le 2026-08-12 : pour chaque slot, le nombre d'octets que la fonction retire de
+la pile (`ret N`), donc `N / 4` arguments après le `this` passé en `ECX`. **Tout slot remplacé doit
+nettoyer exactement autant**, `stdcall` étant à nettoyage par l'appelé ; une erreur d'un seul slot
+corrompt la pile.
+
+Méthode : parcours de la vtable `0x0FFE6000`, puis recherche dans chaque fonction du premier
+`C2 imm16` ou `C3` suivi de remplissage (`0x90`/`0xCC`), ce qui écarte les faux positifs à
+l'intérieur d'instructions.
+
+| slot | ret | slot | ret | slot | ret | slot | ret |
+|---|---|---|---|---|---|---|---|
+| `+0x00` | 4 | `+0x40` | 0 | `+0x80` | 4 | `+0xC0` | 28 |
+| `+0x04` | 4 | `+0x44` | 0 | `+0x84` | 4 | `+0xC4` | 4 |
+| `+0x08` | 4 | `+0x48` | 0 | `+0x88` | 8 | `+0xC8` | 4 |
+| `+0x0C` | 4 | `+0x4C` | 0 | `+0x8C` | 4 | `+0xCC` | 4 |
+| `+0x10` | 0 | `+0x50` | **16** | `+0x90` | 4 | `+0xD0` | 4 |
+| `+0x14` | 0 | `+0x54` | 4 | `+0x94` | 4 | `+0xD4` | 4 |
+| `+0x18` | 4 | `+0x58` | 4 | `+0x98` | 4 | `+0xD8` | 8 |
+| `+0x1C` | 0 | `+0x5C` | **8** | `+0x9C` | 4 | `+0xDC` | 8 |
+| `+0x20` | 0 | `+0x60` | 8 | `+0xA0` | 4 | `+0xE0` | 0 |
+| `+0x24` | 0 | `+0x64` | **4** | `+0xA4` | 4 | `+0xE4` | 0 |
+| `+0x28` | 0 | `+0x68` | 4 | `+0xA8` | 8 | `+0xE8` | 8 |
+| `+0x2C` | **8** | `+0x6C` | 4 | `+0xAC` | 8 | `+0xF0` | 4 |
+| `+0x30` | **12** | `+0x70` | 4 | `+0xB0` | **0** | `+0xF4` | 4 |
+| `+0x34` | 0 | `+0x74` | 4 | `+0xB4` | **0** | `+0xF8` | 0 |
+| `+0x38` | 4 | `+0x78` | 4 | `+0xB8` | 0 | `+0xFC` | 0 |
+| `+0x3C` | 0 | `+0x7C` | 4 | `+0xBC` | **20** | | |
+
+Les valeurs en gras sont celles des slots que `DeviceShim` remplace déjà, et **elles concordent
+toutes** avec les signatures qu'il déclare — validation croisée de la table et du code existant.
+
+Deux pièges confirmés :
+
+- **Ne pas se fier à Ghidra pour l'arité.** Il annonce deux arguments pour `+0x30`, qui fait
+  `ret 12`, soit trois.
+- Une lecture manuelle en fin de fonction est trompeuse : le `ret 0` visible à `0x0FFE20E5` n'est
+  pas la fin de `+0x2C` (`0x0FFE1E40`, 640 octets, donc jusqu'à `0x0FFE20C0`) mais celle de `+0x1C`,
+  la fonction suivante. `+0x2C` fait bien `ret 8`.
+
+### Correction — `+0xD8` n'est pas `GetSurfaceDesc`
+
+Ce document annonçait « `surface[0x0D]->GetSurfaceDesc`, 2 arguments ». Deux faits le contredisent :
+
+- le corps décodé (`0x0FFE1DE0`) appelle `this->+0x34 ->vtable[0x58]` avec **deux** arguments
+  (`ret 8`), alors que `GetSurfaceDesc` n'en prend qu'un ;
+- `winsys3d.c:5070` l'appelle `(1, 0)` sous une garde `VSyncDelayed`.
+
+Mesure : **361 appels pour 361 `BeginScene`** — exactement un par image — toujours `(a=1, b=0)`,
+toujours `S_OK`. C'est une **attente de retour de balayage vertical**, et l'objet en `+0x34` est
+donc l'objet `IDirectDraw` et non une surface : `WaitForVerticalBlank` est à `+0x58` de
+`IDirectDraw`, avec la signature `(dwFlags, hEvent)` et `DDWAITVB_BLOCKBEGIN = 1`.
+
+Ce qui remet en cause l'entrée voisine : `+0xDC`, décrit ici comme « Flip », appelle
+`this->+0x34 ->vtable[0x2C]` sur **le même objet**, avec deux arguments. Sur `IDirectDraw`, `+0x2C`
+est `GetCaps(halCaps, helCaps)`. Cela expliquerait enfin pourquoi ce slot est mesuré à **zéro appel**
+sur 121 puis 361 images : ce n'a jamais été une fonction de présentation. À confirmer — l'objet en
+`+0x34` mériterait d'être identifié par sa vtable à l'exécution plutôt que par déduction.
+
+---
+
 ## Conclusion pour l'étape 2
 
 Le périmètre minimal d'un device de remplacement :
@@ -202,7 +465,7 @@ Depuis `replace-3d-backend-with-d3d11`, `3dhelp` n'est plus sur le chemin d'affi
 | `+0x50` | pose du viewport | repris — seules les dimensions sont retenues ; le décalage n'a plus d'objet, la présentation centre elle-même |
 | `+0x5C` | effacement de la cible | repris |
 | `+0x60` | effacement du tampon Z | repris (jamais appelé en phase menu) |
-| `+0x64` | liaison de texture | **enregistrée mais neutre** — les pixels vivent dans une surface DirectDraw dont le chemin de création n'est pas identifié |
+| `+0x64` | liaison de texture | **enregistrée mais neutre** — le pointeur d'objet est mémorisé, le backend dessine avec sa texture blanche. Le chemin des pixels est désormais établi, voir « Les textures » |
 | `+0x8C` | mode d'ombrage | repris — plat reproduit en recopiant la couleur du premier sommet |
 | `+0xB0` | début de scène | repris ; c'est aussi là que le backend est créé, au premier appel |
 | `+0xB4` | fin de scène | repris ; **c'est ici que se fait la présentation** |

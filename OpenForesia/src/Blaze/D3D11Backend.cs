@@ -199,11 +199,27 @@ internal static unsafe class D3D11Backend
     /// hors écran est dimensionnée par <paramref name="sceneWidth"/> / <paramref name="sceneHeight"/>
     /// et suivra ensuite les changements de taille de rendu du jeu.
     /// </summary>
+    /// <summary>
+    /// Crée la fenêtre du jeu si elle n'existe pas déjà, **sans** device ni swap chain, et rend son
+    /// handle.
+    ///
+    /// Étape volontairement distincte de <see cref="Initialize"/>. Le régime de démarrage —
+    /// écran-titre et attract — présente en GDI et n'a besoin d'aucun objet Direct3D, alors que
+    /// créer le device pendant l'initialisation du jeu l'empêche d'atteindre sa boucle de rendu
+    /// (mesuré, voir le commentaire de <c>DeviceShim.EnsureBackend</c>). Séparer les deux permet
+    /// d'avoir la fenêtre tôt sans payer ce prix.
+    ///
+    /// Idempotente : sans effet si la fenêtre existe déjà, quelles que soient les dimensions
+    /// demandées.
+    /// </summary>
+    internal static IntPtr EnsureWindow(int clientWidth, int clientHeight, string title = "OpenForesia")
+        => D3D11Window.Create(clientWidth, clientHeight, title);
+
     internal static void Initialize(int sceneWidth, int sceneHeight, string title = "OpenForesia")
     {
         if (Ready) return;
 
-        IntPtr hwnd = D3D11Window.Create(sceneWidth, sceneHeight, title);
+        IntPtr hwnd = EnsureWindow(sceneWidth, sceneHeight, title);
 
         s_Api = D3D11.GetApi(null);
         s_Compiler = D3DCompiler.GetApi();

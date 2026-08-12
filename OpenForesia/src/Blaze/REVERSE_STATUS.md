@@ -530,6 +530,46 @@ binary asks for:
 | surfaces stay valid | `GetDC` fails with `DDERR_SURFACELOST` (0x887601c2) between repaints | `Restore` (vtable 0x6c) then one retry — the same pairing the original uses elsewhere in this cluster |
 | `winsys3d.dll` maps at its preferred base `0x00A00000`, putting the `MainMem` display-list arena at `0x00B6DBD8` | ASLR relocates it out of low memory (measured at `0x09…`), because `OpenForesia.exe`'s own image base sits inside winsys3d's preferred range and the CLR reserves the rest | the arena is allocated in low memory and its address written into the `MainMem` pointer winsys3d exports — see below |
 
+### A fourth deviation — deliberate, not environmental (`s_WindowedStartup`)
+
+Added 2026-08-12 by the change `render-title-screen-in-window`. The three above are **subtractions
+the platform forces**; this one is **a behaviour change the project asks for**, and it is the only
+one of its kind so far. It must not be mistaken for the others.
+
+**What it changes.** The startup sequence — title screen and attract — no longer takes the display.
+`SetupDirectDrawSurfaces` requests `DDSCL_NORMAL` instead of
+`DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE`, skips `SetDisplayMode(640, 480)` and skips the
+primary/flip surface chain; the four sites that show or maximise the `VfwClass` window stop doing
+so. The title screen is drawn into a DIB section owned by the backend (`StartupSurface`) and
+presented into the game window instead.
+
+**Why it is safe to drop all of that.** The whole DirectDraw apparatus had exactly one consumed
+product: the `HDC` that `BlitTitleScreen` obtained by `GetDC` on the primary surface. The back
+buffer fetched by `GetAttachedSurface` was never stored, no `Flip` was ever called on the chain,
+and the wrapper fields filled afterwards are read only by the DirectShow video path, left null
+(TODO #13). The DirectDraw object itself and its release sequence are untouched.
+
+**Measured effect.** Polling the desktop mode from a separate process every 150 ms across a full
+startup: on the original path, 59 samples at 640x480 and 3 at 1440x900 — roughly nine seconds of
+switched desktop. On the new path, 256 samples out of 256 at the native mode. The `VfwClass`
+window is no longer visible, `Ordinal_789` still initialises `3dhelp` without `ExitProcess(3)`, and
+the menu is still reached.
+
+**Reversal.** `OPENFORESIA_LEGACY_STARTUP=1` restores the original path in full, on the model of
+`OPENFORESIA_LEGACY_3DHELP`. Verified: the legacy run reproduces the mode changes above and still
+reaches the menu.
+
+**What it does not fix.** `3dhelp` still switches the desktop mode for 200–600 ms inside
+`Ordinal_789`, between the title screen and the menu. Three independent attempts to suppress that —
+swapping the vtable of `ddraw`'s `IDirectDraw` objects, and two ways of neutering
+`ChangeDisplaySettingsExA` in `ddraw`'s import table — each removed the mode change and each left
+`3dhelp` unable to finish initialising. Two durable findings came out of it: **`ddraw` does not
+tolerate having its objects' vtable pointer replaced** (unlike `3dhelp`'s, which `DeviceShim` swaps
+freely), and **`Create3DDevice` requires a real exclusive-mode switch**. The remaining route is a
+synthetic device — `winsys3d` loads `3dhelp` dynamically, so `GetProcAddress` can be intercepted —
+which amounts to porting the vtable slots rather than patching one. Full plan in
+`Documentation/DLL/3dhelp.md` and in the change's `tasks.md`, group 9.
+
 ### The display-list arena (`EnsureDisplayListArena`)
 
 **The whole display list is addressed on 24 bits.** `Ordinal_688` (ClearOTagR) stores
@@ -820,6 +860,46 @@ picked off any time; of them, the level-load path at `Blaze.c:63354` (TODO #29)
 is the cheapest genuinely useful one, since it is what makes the reconstructed
 sound-effect layer able to reach its second sample bank.
 
+## 2026-08-12 — DLL-side findings behind the two open rendering tasks
+
+Nothing here changes a numbered `TODO(REVERSE)` or the current blocking point:
+this is knowledge about `3dhelp` and `winsys3d`, not about `Blaze.cs`. It is
+recorded because it removes two things this file and `TODO.md` previously
+treated as unknown, and because both were established by **reading the DLL
+binaries' data sections**, a move that is easy to forget is available.
+
+**Textures (task 3.5 of `replace-3d-backend-with-d3d11`).** The argument passed
+to device slot `+0x64` is an **object pointer**, not an opaque
+`D3DTEXTUREHANDLE` — earlier notes said the opposite and concluded the pixels
+were unreachable. The object is a 32-byte `3dhelp` texture (vtable
+`0x0FFE61F8`) holding two `IDirectDrawSurface` pointers, a palette, and the
+handle at `+0x10`; its pixels originate as a **plain GDI DIB** blitted in with
+`StretchDIBits`. Full chain, layouts and the three candidate hook points:
+`Documentation/DLL/3dhelp.md`, section "Les textures — du DIB au handle".
+
+**Coordinate scaling (task 4.5).** `Size` drives the viewport *and* the vertex
+lookup tables at once, with factor `(Size+9)*32 / 320`; a high-resolution branch
+in `SetDispEnv` decouples the two, which is the leading explanation for geometry
+landing in a 320x240 space inside a 960x720 target. Also established, and new to
+the repo: **the engine's logical reference space is 640x480**, and
+`DAT_00a2c49c` indexes a five-entry display-mode table whose per-mode offsets are
+exactly `(mode − 640x480) / 2`. See `Documentation/DLL/winsys3d.md`, section
+"Coordinate scaling".
+
+**Two things deliberately left as hypotheses**, both settled by measurement
+rather than further reading:
+
+- whether `3dhelp`'s DirectDraw surfaces are still alive after task 4.3 stopped
+  initialising its display path — this decides between the two cheap hook points;
+- `SetShift` assigns the same address to the X and Y table pointers while the
+  high-resolution branch assigns two addresses 160 000 bytes apart. One reading
+  is wrong, most likely a Ghidra mis-recovery on one line.
+
+**Consequence for `TODO.md`**: the "one window only" request is **not** gated on
+task 3.5. The title screen and attract draw through device slots `+0xC4` /
+`+0xCC` / `+0xD0`, which `DeviceShim` already intercepts, and porting them needs
+no DirectDraw surface read at all.
+
 ## Tooling note
 
 A small PE export-table dumper was written to `scratchpad/pe_exports.py`
@@ -841,3 +921,15 @@ other numbers) inside `winsys3d.c` directly often finds the implementation
 faster than round-tripping through the PE export table at all — see
 `Documentation/DLL/winsys3d.md` and `Documentation/DLL/wsyskern.md` for
 worked examples of both workflows.
+
+**`OpenForesia.Tools at` works on the helper DLLs too**, not just
+`Legacy/Blaze.exe` — `at winsys3d.dll <va>`, `at 3dhelp.dll <va>`, using the
+very `@ 0xXXXXXXXX` addresses those `.c` files carry. Unlike `Blaze.c`, the DLLs
+ship with their data sections in the repo, so a DLL symbol whose value lives in
+initialised data is **never** blocked the way a `Blaze.c` one used to be: it is
+one command away. This is how the display-mode table and the `3dhelp` vtables
+were recovered on 2026-08-12 rather than guessed. Two caveats found in passing:
+build the tool with the x64 SDK but **run the `net9.0` apphost** (the `net10.0`
+output hits the same `0x800700C1` bad-image-format wall described at the top of
+this file), and an address landing in a `.data` region that reads as zero on disk
+means the table is built at runtime — an answer, not a failure.

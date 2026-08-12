@@ -10,6 +10,14 @@ Identity check — image base `0x400000` + entry RVA `0x147D40` = `0x00547D40`, 
 
 Read with `OpenForesia.Tools at Legacy/Blaze.exe <va> [bytes]`.
 
+**The same tool works on the helper DLLs**, which sit in the repo root — `at winsys3d.dll <va>`,
+`at 3dhelp.dll <va>`, and so on, using the very `@ 0xXXXXXXXX` addresses their `.c` files carry.
+The "code-only decompilation" blocker described in `CLAUDE.md` is specific to `Blaze.c`; a DLL
+symbol whose value lives in initialised data is **not** blocked, it is one command away. Findings
+from a DLL belong in `Documentation/DLL/<dll>.md`, not in this file, which stays `Blaze.exe`-only.
+Worked examples: the display-mode and scaling tables in `Documentation/DLL/winsys3d.md`, the
+texture class vtable in `Documentation/DLL/3dhelp.md`.
+
 ## Section map
 
 | Section | VA range | RVA | Size | File offset |

@@ -102,11 +102,20 @@ public static unsafe partial class Blaze
             D3D11Backend.Initialize(s_SceneWidth, s_SceneHeight, "OpenForesia");
             s_BackendLive = true;
 
+            // Bascule de régime, irréversible : la swap chain existe, elle seule présente
+            // désormais. La surface GDI du démarrage est libérée et ne sera pas réallouée.
+            StartupSurface.Retire();
+
             // Tâche 4.3 : 3dhelp ne présente plus rien depuis que le chemin chaud passe par le
             // backend. On lui reprend l'affichage, sinon sa fenêtre en mode exclusif recouvre la
             // nôtre et le mode d'affichage reste celui qu'il a négocié.
             D3D11Window.ReleaseLegacyDisplay();
             D3D11Window.Focus();
+
+            // Le mode d'affichage vient d'être rendu ; on remet la fenêtre là où elle était avant
+            // que les changements d'affichage de `3dhelp` ne la déplacent. La continuité visuelle
+            // entre l'écran-titre et le menu en dépend.
+            D3D11Window.RestorePlacement();
         }
         else
         {
@@ -164,6 +173,16 @@ public static unsafe partial class Blaze
     {
         if (s_ShimOurVtable != null) return;
 
+        // Avec le device synthétique il n'y a rien à envelopper : sa vtable **est** déjà la nôtre,
+        // chemin chaud compris. La poser une seconde fois ferait de nos propres thunks la « vtable
+        // d'origine » vers laquelle ils se replient — donc une récursion infinie, observée comme un
+        // débordement de pile dans `Shim_BindTexture`.
+        if (s_SyntheticDevice != null)
+        {
+            Console.Error.WriteLine("[SHIM] device synthétique en place — façade inutile");
+            return;
+        }
+
         IntPtr mod = GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
         if (mod == IntPtr.Zero) return;
 
@@ -198,6 +217,55 @@ public static unsafe partial class Blaze
             $"copie=0x{(nint)copy:X8} ; 8 slots interceptés");
 
         InstallInnerShims(device);
+    }
+
+    /// <summary>
+    /// ECHAFAUDAGE TEMPORAIRE — tâche 1.1 de <c>render-title-screen-in-window</c>.
+    ///
+    /// Crée la fenêtre du jeu en tête de <c>RunMainLoop</c>, donc <b>avant l'écran-titre</b>, sans
+    /// device ni swap chain.
+    ///
+    /// Deux mesures autorisent ce placement. La tâche 1.1 a séparé les deux moitiés de la mesure
+    /// consignée dans <see cref="EnsureBackend"/> — créer la fenêtre <b>et</b> le device pendant
+    /// l'initialisation empêche le jeu d'atteindre sa boucle de rendu — et montré que la fenêtre
+    /// seule est sans effet : c'est le device qui est en cause, et il reste créé au premier
+    /// <c>BeginScene</c>. La tâche 2.2 a vérifié que les touches terminent toujours l'attract avec
+    /// cette fenêtre au premier plan.
+    ///
+    /// Dimensions : celles que le jeu déduira lui-même de son réglage <c>Size</c>, plutôt qu'une
+    /// taille arbitraire suivie d'un redimensionnement quand la pose du viewport révèle la vraie.
+    ///
+    /// Dimensions : 640x480, l'espace logique de référence du moteur — établi dans
+    /// <c>Documentation/DLL/winsys3d.md</c>. La taille de la fenêtre n'est de toute façon jamais
+    /// observée par le jeu ; la swap chain se dimensionnera sur la zone cliente réelle.
+    /// </summary>
+    private static void CreateGameWindow()
+    {
+        (int width, int height) = RenderSizeFromSizeSetting();
+
+        // Un échec ici n'est pas fatal : sans fenêtre à nous, le jeu retombe sur le chemin
+        // d'affichage d'origine. Bruyant plutôt que silencieux, conformément à la règle du dépôt,
+        // mais pas propagé — cet appel est sur le chemin de démarrage du jeu.
+        Guarded("CreateGameWindow", () =>
+        {
+            D3D11Backend.EnsureWindow(width, height, "OpenForesia");
+
+            // Géométrie de référence, relevée avant tout changement d'affichage. `3dhelp` en
+            // négocie encore un à son initialisation, et Windows repositionne les fenêtres à cette
+            // occasion : sans ce relevé, la fenêtre se déplace entre l'écran-titre et le menu.
+            D3D11Window.SavePlacement();
+
+            // En démarrage fenêtré, notre fenêtre est la seule du jeu : c'est elle qui doit
+            // recevoir la saisie.
+            //
+            // L'original s'arroge le premier plan par `OnMoviePlayerActivate` — `SetFocus` puis
+            // `SW_MAXIMIZE` sur la fenêtre `VfwClass` — à chaque activation de l'application. Cette
+            // fenêtre n'étant plus affichée, personne ne le fait plus. Or la boucle d'attract lit
+            // les touches par `PeekMessageA(NULL, …)`, qui ne rapporte que les messages **du thread
+            // appelant** : sans le focus, les frappes partent vers une autre application et le
+            // démarrage n'atteint jamais le menu. Mesuré exactement ainsi.
+            if (s_WindowedStartup) D3D11Window.Focus();
+        });
     }
 
     // =====================================================================
@@ -333,6 +401,7 @@ public static unsafe partial class Blaze
 
         if (s_UseD3D11) return 0;
 
+        if (s_ShimRealVtable == null) return 0;
         int hr = ((delegate* unmanaged[Thiscall]<void*, int, int, int, int, int>)
             s_ShimRealVtable[0x50 / 4])(self, x, y, w, h);
         Console.Error.WriteLine(
@@ -410,6 +479,8 @@ public static unsafe partial class Blaze
     {
         ShimTake(0x5C);
         if (s_UseD3D11 && s_BackendLive) { D3D11Backend.ClearColor(0f, 0f, 0f); return; }
+        // Avec le device synthétique il n'y a pas de vtable d'origine : le repli devient neutre.
+        if (s_ShimRealVtable == null) return;
         ((delegate* unmanaged[Thiscall]<void*, void*, int, void>)s_ShimRealVtable[0x5C / 4])(self, rects, count);
     }
 
@@ -418,6 +489,8 @@ public static unsafe partial class Blaze
     {
         ShimTake(0x60);
         if (s_UseD3D11 && s_BackendLive) { D3D11Backend.ClearDepth(); return; }
+        // Avec le device synthétique il n'y a pas de vtable d'origine : le repli devient neutre.
+        if (s_ShimRealVtable == null) return;
         ((delegate* unmanaged[Thiscall]<void*, void*, int, void>)s_ShimRealVtable[0x60 / 4])(self, rects, count);
     }
 
@@ -436,6 +509,8 @@ public static unsafe partial class Blaze
     {
         ShimTake(0x64);
         if (s_UseD3D11 && s_BackendLive) { s_BoundTexture = texture; return; }
+        // Avec le device synthétique il n'y a pas de vtable d'origine : le repli devient neutre.
+        if (s_ShimRealVtable == null) return;
         ((delegate* unmanaged[Thiscall]<void*, void*, void>)s_ShimRealVtable[0x64 / 4])(self, texture);
     }
 
@@ -489,6 +564,8 @@ public static unsafe partial class Blaze
     {
         ShimTake(0x8C);
         if (s_UseD3D11 && s_BackendLive) { s_FlatShading = value == 1; return; }
+        // Avec le device synthétique il n'y a pas de vtable d'origine : le repli devient neutre.
+        if (s_ShimRealVtable == null) return;
         ((delegate* unmanaged[Thiscall]<void*, uint, void>)s_ShimRealVtable[0x8C / 4])(self, value);
     }
 
@@ -502,6 +579,8 @@ public static unsafe partial class Blaze
             if (!s_BackendLive) Guarded("Initialize", EnsureBackend);
             if (s_BackendLive) { Guarded("BeginScene", D3D11Backend.BeginScene); return; }
         }
+        // Avec le device synthétique il n'y a pas de vtable d'origine : le repli devient neutre.
+        if (s_ShimRealVtable == null) return;
         ((delegate* unmanaged[Thiscall]<void*, void>)s_ShimRealVtable[0xB0 / 4])(self);
     }
 
@@ -527,6 +606,7 @@ public static unsafe partial class Blaze
             return 0;
         }
 
+        if (s_ShimRealVtable == null) return 0;
         return ((delegate* unmanaged[Thiscall]<void*, int>)s_ShimRealVtable[0xB4 / 4])(self);
     }
 
@@ -576,6 +656,8 @@ public static unsafe partial class Blaze
             return;
         }
 
+        // Avec le device synthétique il n'y a pas de vtable d'origine : le repli devient neutre.
+        if (s_ShimRealVtable == null) return;
         ((delegate* unmanaged[Thiscall]<void*, uint, uint, void*, uint, uint, void>)
             s_ShimRealVtable[0xBC / 4])(self, type, vertexType, vertices, count, flags);
     }
@@ -589,6 +671,7 @@ public static unsafe partial class Blaze
         // lieu à EndScene. Conservé au cas où une autre phase emprunterait ce slot.
         if (s_UseD3D11 && s_BackendLive) return 0;
 
+        if (s_ShimRealVtable == null) return 0;
         int hr = ((delegate* unmanaged[Thiscall]<void*, void*, uint, int>)s_ShimRealVtable[0xDC / 4])(self, target, flags);
         if (ShimTake(0xDC)) { Console.Error.WriteLine($"[SHIM] Flip target=0x{(nint)target:X8} flags={flags} -> 0x{hr:X8}"); }
 

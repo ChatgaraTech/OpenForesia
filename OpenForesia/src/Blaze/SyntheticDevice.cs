@@ -1,0 +1,543 @@
+// =====================================================================
+// Device 3D synthétique — remplace entièrement celui de `3dhelp.dll`.
+//
+// Pourquoi. `3dhelp` prend l'affichage en mode exclusif et bascule le mode du bureau dans
+// `Create3DDevice`, ce qui fait clignoter l'écran entre l'écran-titre et le menu. Trois tentatives
+// pour l'en empêcher tout en le laissant s'initialiser ont échoué (voir `Documentation/DLL/3dhelp.md`) :
+// sa création de device **exige** une vraie bascule en mode exclusif. La seule voie restante est de
+// ne plus le faire initialiser du tout.
+//
+// Comment. `winsys3d` charge `3dhelp` **dynamiquement** — `LoadLibraryA` puis
+// `GetProcAddress("Create3DDevice")`, `winsys3d.c:5854-5855` — et non par table d'imports. On
+// détourne donc `GetProcAddress` dans la table d'imports de `winsys3d` (fonction Win32 ordinaire,
+// aucun objet COM) et on rend notre propre fabrique de device.
+//
+// Ce que le device doit encaisser, relevé dans `winsys3d.c:5856-5864` :
+//
+//     DAT_011be760 = Create3DDevice()
+//     device->vtable[0x18]()                    crée la fenêtre chez l'original
+//     device->vtable[0x0C]() ; [0x2C]()
+//     iVar4 = device->vtable[0x30](0, largeur, ...)
+//     si iVar4 == 0  ->  « 3D Graphics initialisation error » + ExitProcess(3)
+//     puis [0x70] et [0x68] avec des matrices, et la suite de l'init
+//
+// **`+0x30` doit rendre non nul.** C'est le slot qui, chez l'original, prend l'affichage.
+//
+// L'arité, le point critique. `stdcall` nettoie côté appelé : chaque slot doit retirer de la pile
+// exactement autant d'octets que l'original, sous peine de la corrompre — un bug qui ne se
+// diagnostique pas. La table ci-dessous est extraite du binaire (`ret N` de chaque fonction de la
+// vtable `0x0FFE6000`) et documentée dans `Documentation/DLL/3dhelp.md`. Elle concorde avec les
+// huit slots que `DeviceShim` déclarait déjà. **Ne pas se fier à Ghidra pour ces comptes.**
+//
+// Actif par défaut depuis le 2026-08-12 : mesuré, il supprime le changement de mode (0 ms contre
+// 500 ms) et produit un rendu de menu **identique au bit près** au chemin d'origine — 0 pixel
+// différent sur 172 800. `OPENFORESIA_LEGACY_STARTUP=1` ou `OPENFORESIA_LEGACY_3DHELP=1` le
+// désactivent.
+//
+// Ce qu'il ne fait pas : porter les textures. Les objets qu'il rend au jeu existent et répondent,
+// mais leur handle vaut zéro — « aucune texture liée », l'état que le backend traite déjà en
+// rendant les primitives en aplats. Le portage réel reste la tâche 3.5 de
+// `replace-3d-backend-with-d3d11`.
+// =====================================================================
+
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+namespace OpenForesia.Blaze;
+
+public static unsafe partial class Blaze
+{
+    /// <summary>
+    /// Actif par défaut : c'est lui qui supprime le clignotement d'écran au démarrage.
+    ///
+    /// <para>
+    /// Deux façons de le désactiver, toutes deux cohérentes avec ce qu'elles signifient :
+    /// <c>OPENFORESIA_LEGACY_STARTUP=1</c> rétablit toute la séquence de démarrage d'origine, dont
+    /// la prise d'affichage par <c>3dhelp</c> ; <c>OPENFORESIA_LEGACY_3DHELP=1</c> demande que tout
+    /// passe par <c>3dhelp</c>, ce qui suppose évidemment qu'il existe.
+    /// </para>
+    /// <para>
+    /// Propriété calculée et non champ statique : l'ordre d'initialisation des champs statiques
+    /// entre fichiers d'une même classe partielle n'est pas garanti, et celui-ci dépend de
+    /// <c>s_WindowedStartup</c>, déclaré dans <c>Blaze.cs</c>.
+    /// </para>
+    /// </summary>
+    private static bool s_UseSyntheticDevice =>
+        s_WindowedStartup && Environment.GetEnvironmentVariable("OPENFORESIA_LEGACY_3DHELP") != "1";
+
+    /// <summary>
+    /// Octets retirés de la pile par chaque slot, indexés par <c>offset / 4</c>. Extrait du binaire ;
+    /// voir la table dans <c>Documentation/DLL/3dhelp.md</c>. `0xEC` n'a pas de cible valide dans la
+    /// vtable et vaut zéro par défaut.
+    /// </summary>
+    private static readonly byte[] s_SlotCleanup =
+    [
+     /* 0x00 */ 4, 4, 4, 4, 0, 0, 4, 0,
+     /* 0x20 */ 0, 0, 0, 8, 12, 0, 4, 0,
+     /* 0x40 */ 0, 0, 0, 0, 16, 4, 4, 8,
+     /* 0x60 */ 8, 4, 4, 4, 4, 4, 4, 4,
+     /* 0x80 */ 4, 4, 8, 4, 4, 4, 4, 4,
+     /* 0xA0 */ 4, 4, 8, 8, 0, 0, 0, 20,
+     /* 0xC0 */ 28, 4, 4, 4, 4, 4, 8, 8,
+     /* 0xE0 */ 0, 0, 8, 0, 4, 4, 0, 0,
+    ];
+
+    /// <summary>
+    /// Mode de capture : laisse <c>3dhelp</c> s'initialiser réellement, mais relève ce que les
+    /// accesseurs de capacités rendent. Sert à obtenir les 56 octets que <c>winsys3d</c> copie
+    /// depuis <c>+0x4C</c> — valeurs qu'il faut **mesurer et non inventer**, puisqu'elles décident
+    /// du filtrage de texture, de l'alpha et du mélange.
+    ///
+    /// L'écran clignote pendant une capture : c'est justement le chemin d'origine qui tourne.
+    /// </summary>
+    private static readonly bool s_CaptureDeviceCaps =
+        Environment.GetEnvironmentVariable("OPENFORESIA_CAPTURE_CAPS") == "1";
+
+    private static void* s_SyntheticDevice;
+    private static void* s_RealGetProcAddress;
+    private static void* s_RealCreate3DDevice;
+    private static void** s_CaptureRealVtable;
+    private static void* s_DeviceDesc;
+
+    /// <summary>
+    /// <c>D3DDEVICEDESC</c> que <c>+0x4C</c> rend — **relevé sur une exécution réelle**, pas
+    /// inventé (<c>OPENFORESIA_CAPTURE_CAPS=1</c>, 2026-08-12).
+    ///
+    /// <para>
+    /// <c>winsys3d</c> copie les 56 octets à l'offset 100 — le <c>dpcTriCaps</c>, un
+    /// <c>D3DPRIMCAPS</c> — dans ses globales <c>DAT_00a2f438</c>… puis en teste les bits pour
+    /// décider du filtrage de texture, du mélange et de l'alpha (`winsys3d.c:2495-2528`). Des
+    /// capacités inventées produiraient un rendu subtilement faux plutôt qu'un échec franc, d'où la
+    /// capture.
+    /// </para>
+    /// <para>
+    /// **Portée de la mesure** : ce sont les capacités que <c>3dhelp</c> rapportait sur cette
+    /// machine. Un autre matériel en donnerait d'autres. Les figer rend donc le device synthétique
+    /// non portable en toute rigueur ; c'est acceptable ici parce que le chemin chaud est repris par
+    /// le backend Direct3D 11 et que ces bits ne gouvernent plus que le choix de branches dans
+    /// <c>winsys3d</c>. À revoir si le rendu s'écarte sur une autre configuration.
+    /// </para>
+    /// </summary>
+    private static readonly uint[] s_CapturedDeviceDesc =
+    [
+        0x000000CC, 0x000001E3, 0x00000002, 0x021BBEF1, 0x00000008, 0x00000001,
+        0x00000001, 0x00000010, 0x00000007, 0x00000001, 0x00000008, 0x00000038,
+        0x00000272, 0x003379B1, 0x000000FF, 0x00001FFF, 0x00001FFF, 0x000000FF,
+        0x000C528F, 0x00000CCD, 0x0303073F, 0x000000CF, 0x0000001F, 0x00000000,
+        0x00000000, 0x00000038, 0x00000272, 0x003379B1, 0x000000FF, 0x00001FFF,
+        0x00001FFF, 0x000000FF, 0x000C528F, 0x00000CCD, 0x0303073F, 0x000000CF,
+        0x0000001F, 0x00000000, 0x00000000, 0x00000D00, 0x00000600, 0x00000000,
+        0x0000FFFE, 0x00000001, 0x00000001, 0x00004000, 0x00004000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000,
+    ];
+
+    /// <summary>Profondeur rapportée par les accesseurs <c>+0x20</c> / <c>+0x24</c> / <c>+0x28</c> — relevée à 16.</summary>
+    private const int CapturedBitDepth = 16;
+    private static readonly bool[] s_SynthSeen = new bool[DeviceVtableSlots];
+
+    /// <summary>Décalage du dernier slot neutre appelé, écrit par son trampoline.</summary>
+    private static int* s_LastSynthSlot;
+
+    [DllImport("kernel32.dll")] private static extern int VirtualProtect(void* address, nuint size, uint newProtect, uint* oldProtect);
+    // `VirtualAlloc` est déjà déclaré dans Blaze.cs — même classe partielle.
+
+    private const uint MemCommitReserve = 0x1000 | 0x2000;
+    private const uint PageExecuteReadWrite = 0x40;
+    private const int StubSize = 16;
+
+    /// <summary>
+    /// Fabrique un trampoline qui note le décalage du slot puis saute au thunk neutre de son arité.
+    ///
+    /// <para>
+    /// Sans cela, un thunk neutre partagé par plusieurs slots ne peut pas dire lequel l'a appelé, et
+    /// l'inventaire — le vrai produit de ce chantier — reste illisible. Le trampoline écrit une
+    /// constante en mémoire puis saute : il ne touche aucun registre ni la pile, donc les arguments
+    /// et la convention d'appel arrivent intacts au thunk.
+    /// </para>
+    /// <code>
+    ///   C7 05 &lt;adresse&gt; &lt;slot&gt;   mov dword [s_LastSynthSlot], slot
+    ///   E9 &lt;rel32&gt;                jmp thunk
+    /// </code>
+    /// </summary>
+    private static void* MakeSlotStub(byte* stub, int slotOffset, void* thunk)
+    {
+        stub[0] = 0xC7; stub[1] = 0x05;
+        *(void**)(stub + 2) = s_LastSynthSlot;
+        *(int*)(stub + 6) = slotOffset;
+        stub[10] = 0xE9;
+        *(int*)(stub + 11) = (int)((byte*)thunk - (stub + 15));
+        return stub;
+    }
+
+    /// <summary>
+    /// Détourne <c>GetProcAddress</c> dans la table d'imports de <c>winsys3d.dll</c>. À appeler
+    /// **avant** <c>Ordinal_789</c>. Sans effet si le module n'est pas chargé ou l'entrée absente.
+    /// </summary>
+    private static void InstallSyntheticDevice()
+    {
+        if ((!s_UseSyntheticDevice && !s_CaptureDeviceCaps) || s_RealGetProcAddress != null) return;
+
+        IntPtr winsys3d = GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
+        if (winsys3d == IntPtr.Zero)
+        {
+            Console.Error.WriteLine("[SYNTH] winsys3d.dll non chargé — device synthétique inactif");
+            return;
+        }
+
+        void* replacement = (delegate* unmanaged[Stdcall]<IntPtr, byte*, void*>)&GetProcAddressThunk;
+        if (!PatchImportEntry(winsys3d, "KERNEL32.dll", "GetProcAddress", replacement, out s_RealGetProcAddress))
+        {
+            Console.Error.WriteLine("[SYNTH] entrée GetProcAddress introuvable — device synthétique inactif");
+            return;
+        }
+
+        Console.Error.WriteLine("[SYNTH] GetProcAddress détourné dans winsys3d");
+    }
+
+    /// <summary>
+    /// Remplace une entrée de la table d'imports d'un module chargé ; les RVA y sont relatives à la
+    /// base du module.
+    /// </summary>
+    private static bool PatchImportEntry(IntPtr module, string dll, string function, void* replacement, out void* original)
+    {
+        original = null;
+        byte* b = (byte*)module;
+
+        int lfanew = *(int*)(b + 0x3C);
+        byte* nt = b + lfanew;
+        if (*(uint*)nt != 0x00004550) return false;              // "PE\0\0"
+
+        uint importRva = *(uint*)(nt + 0x80);                     // DataDirectory[1].VirtualAddress
+        if (importRva == 0) return false;
+
+        for (byte* desc = b + importRva; ; desc += 20)
+        {
+            uint nameRva = *(uint*)(desc + 12);
+            if (nameRva == 0) break;
+            if (!AsciiEqualsIgnoreCase(b + nameRva, dll)) continue;
+
+            uint oftRva = *(uint*)(desc + 0);
+            uint ftRva = *(uint*)(desc + 16);
+            if (ftRva == 0) continue;
+
+            uint* names = (uint*)(b + (oftRva != 0 ? oftRva : ftRva));
+            void** slots = (void**)(b + ftRva);
+
+            for (int i = 0; names[i] != 0; i++)
+            {
+                if ((names[i] & 0x80000000u) != 0) continue;      // importé par ordinal
+                if (!AsciiEqualsIgnoreCase(b + names[i] + 2, function)) continue;   // IMAGE_IMPORT_BY_NAME
+
+                uint old;
+                if (VirtualProtect(&slots[i], (nuint)sizeof(void*), 0x04 /* PAGE_READWRITE */, &old) == 0) return false;
+                original = slots[i];
+                slots[i] = replacement;
+                VirtualProtect(&slots[i], (nuint)sizeof(void*), old, &old);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool AsciiEqualsIgnoreCase(byte* p, string s)
+    {
+        for (int i = 0; i < s.Length; i++)
+        {
+            byte c = p[i];
+            if (c == 0) return false;
+            if (char.ToLowerInvariant((char)c) != char.ToLowerInvariant(s[i])) return false;
+        }
+        return p[s.Length] == 0;
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void* GetProcAddressThunk(IntPtr module, byte* procName)
+    {
+        // Un import par ordinal a ses 16 bits de poids fort nuls : ce n'est pas une chaîne.
+        var realGet = (delegate* unmanaged[Stdcall]<IntPtr, byte*, void*>)s_RealGetProcAddress;
+
+        if ((nuint)procName > 0xFFFF && AsciiEqualsIgnoreCase(procName, "Create3DDevice"))
+        {
+            s_RealCreate3DDevice = realGet(module, procName);
+
+            if (s_CaptureDeviceCaps)
+            {
+                Console.Error.WriteLine("[CAPS] Create3DDevice intercepté en mode capture — 3dhelp s'initialise normalement");
+                return (delegate* unmanaged[Stdcall]<void*>)&Create3DDeviceCaptureThunk;
+            }
+
+            Console.Error.WriteLine("[SYNTH] Create3DDevice intercepté — 3dhelp ne sera pas initialisé");
+            return (delegate* unmanaged[Stdcall]<void*>)&Create3DDeviceThunk;
+        }
+
+        return realGet(module, procName);
+    }
+
+    /// <summary>
+    /// Fabrique le device synthétique : un objet nul de 256 octets dont le premier champ pointe sur
+    /// notre vtable. <c>winsys3d</c> ne lit jamais les champs de cet objet — vérifié
+    /// exhaustivement, voir <c>Documentation/DLL/3dhelp.md</c> — donc sa disposition n'a pas à être
+    /// reproduite ; seule la taille compte, pour que les lectures de diagnostic ne débordent pas.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void* Create3DDeviceThunk()
+    {
+        if (s_SyntheticDevice != null) return s_SyntheticDevice;
+
+        void** vtable = (void**)NativeMemory.AllocZeroed((nuint)(DeviceVtableSlots * sizeof(void*)));
+
+        s_LastSynthSlot = (int*)NativeMemory.AllocZeroed(sizeof(int));
+        byte* stubs = (byte*)VirtualAlloc(null, (nuint)(DeviceVtableSlots * StubSize),
+                                          MemCommitReserve, PageExecuteReadWrite);
+        if (stubs == null)
+        {
+            Console.Error.WriteLine("[SYNTH] allocation exécutable refusée — device synthétique impossible");
+            return null;
+        }
+
+        // Chaque slot reçoit d'abord le trampoline vers le thunk neutre de son arité.
+        for (int i = 0; i < DeviceVtableSlots; i++)
+        {
+            byte cleanup = i < s_SlotCleanup.Length ? s_SlotCleanup[i] : (byte)0;
+            vtable[i] = MakeSlotStub(stubs + i * StubSize, i * 4, NeutralThunk(cleanup));
+        }
+
+        // `+0x30` doit rendre non nul, faute de quoi winsys3d appelle ExitProcess(3).
+        vtable[0x30 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, uint, uint, int>)&Synth_InitDisplay;
+
+        // Capacités relevées. `+0x4C` doit rendre un pointeur : winsys3d copie 56 octets depuis
+        // `résultat + 100` et en teste les bits.
+        s_DeviceDesc = NativeMemory.AllocZeroed((nuint)(s_CapturedDeviceDesc.Length * sizeof(uint)));
+        for (int i = 0; i < s_CapturedDeviceDesc.Length; i++)
+            ((uint*)s_DeviceDesc)[i] = s_CapturedDeviceDesc[i];
+
+        vtable[0x4C / 4] = (delegate* unmanaged[Thiscall]<void*, void*>)&Synth_GetDeviceDesc;
+        vtable[0x20 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_BitDepth;
+        vtable[0x24 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_BitDepth;
+        vtable[0x28 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_BitDepth;
+
+        // `+0x10` — fabrique de textures. Rendre zéro fait obtenir un objet nul au jeu, qui le
+        // déréférence plus loin (faute d'accès dans `Ordinal_701`/`DrawOTag` depuis `FrameEnd`).
+        vtable[0x10 / 4] = (delegate* unmanaged[Thiscall]<void*, void*>)&Synth_CreateTexture;
+
+        // `+0x3C` — drapeau « application active », lu par la pompe de messages de winsys3d
+        // (`FUN_00a01d70`, `winsys3d.c:612`) : quand aucun message n'attend et que ce drapeau vaut
+        // zéro, elle appelle `WaitMessage()` et **reboucle indéfiniment**. Rendre zéro condamne donc
+        // le jeu à une attente oisive perpétuelle, sans plantage ni progrès. On rend actif.
+        vtable[0x3C / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_Active;
+
+        // Chemin chaud : les thunks déjà écrits et éprouvés de la façade.
+        vtable[0x50 / 4] = (delegate* unmanaged[Thiscall]<void*, int, int, int, int, int>)&Shim_SetViewport;
+        vtable[0x5C / 4] = (delegate* unmanaged[Thiscall]<void*, void*, int, void>)&Shim_ClearTarget;
+        vtable[0x60 / 4] = (delegate* unmanaged[Thiscall]<void*, void*, int, void>)&Shim_ClearZ;
+        vtable[0x64 / 4] = (delegate* unmanaged[Thiscall]<void*, void*, void>)&Shim_BindTexture;
+        vtable[0x8C / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_ShadeMode;
+        vtable[0xB0 / 4] = (delegate* unmanaged[Thiscall]<void*, void>)&Shim_BeginScene;
+        vtable[0xB4 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Shim_EndScene;
+        vtable[0xBC / 4] = (delegate* unmanaged[Thiscall]<void*, uint, uint, void*, uint, uint, void>)&Shim_DrawPrimitive;
+        vtable[0xDC / 4] = (delegate* unmanaged[Thiscall]<void*, void*, uint, int>)&Shim_Flip;
+
+        void** device = (void**)NativeMemory.AllocZeroed(256);
+        device[0] = vtable;
+        s_SyntheticDevice = device;
+
+        Console.Error.WriteLine($"[SYNTH] device synthétique créé — objet=0x{(nint)device:X8} vtable=0x{(nint)vtable:X8}");
+        return device;
+    }
+
+    // =====================================================================
+    // Mode capture — relève les capacités que le vrai device rapporte.
+    //
+    // On laisse `3dhelp` créer son device et prendre l'affichage, puis on échange sa vtable pour
+    // journaliser ce que rendent les quatre accesseurs que `winsys3d` consulte avant de configurer
+    // le rendu (`winsys3d.c:2489-2499`). Échanger la vtable d'un objet `3dhelp` est éprouvé — c'est
+    // ce que fait `DeviceShim` — à la différence des objets `ddraw`, qui ne le supportent pas.
+    // =====================================================================
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void* Create3DDeviceCaptureThunk()
+    {
+        void** device = (void**)((delegate* unmanaged[Stdcall]<void*>)s_RealCreate3DDevice)();
+        if (device == null) return device;
+
+        s_CaptureRealVtable = (void**)device[0];
+
+        void** copy = (void**)NativeMemory.Alloc((nuint)(DeviceVtableSlots * sizeof(void*)));
+        for (int i = 0; i < DeviceVtableSlots; i++) copy[i] = s_CaptureRealVtable[i];
+
+        copy[0x20 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Capture_20;
+        copy[0x24 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Capture_24;
+        copy[0x28 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Capture_28;
+        copy[0x4C / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Capture_4C;
+
+        device[0] = copy;
+        Console.Error.WriteLine($"[CAPS] device réel=0x{(nint)device:X8}, vtable d'origine=0x{(nint)s_CaptureRealVtable:X8}");
+        return device;
+    }
+
+    private static int CaptureGetter(void* self, int slot, string nom)
+    {
+        int v = ((delegate* unmanaged[Thiscall]<void*, int>)s_CaptureRealVtable[slot / 4])(self);
+        Console.Error.WriteLine($"[CAPS] +0x{slot:X2} {nom} -> 0x{v:X8} ({v})");
+        return v;
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Capture_20(void* self) => CaptureGetter(self, 0x20, "getter champ +0xB4");
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Capture_24(void* self) => CaptureGetter(self, 0x24, "getter champ +0xB8");
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Capture_28(void* self) => CaptureGetter(self, 0x28, "getter champ +0xB8 (bis)");
+
+    /// <summary>
+    /// Le slot décisif : <c>winsys3d</c> copie 56 octets depuis <c>résultat + 100</c>. On relève ce
+    /// bloc tel quel, plus un peu de contexte autour, pour pouvoir le rejouer à l'identique dans le
+    /// device synthétique.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Capture_4C(void* self)
+    {
+        int v = ((delegate* unmanaged[Thiscall]<void*, int>)s_CaptureRealVtable[0x4C / 4])(self);
+        Console.Error.WriteLine($"[CAPS] +0x4C -> 0x{v:X8}");
+
+        if (v == 0) { Console.Error.WriteLine("[CAPS] +0x4C a rendu zéro — rien à relever"); return v; }
+
+        uint* p = (uint*)(nint)v;
+        var sb = new System.Text.StringBuilder("[CAPS] bloc copié par winsys3d (14 dwords depuis +100) :");
+        for (int i = 0; i < 14; i++) sb.Append($"\n[CAPS]   +{100 + i * 4,3} = 0x{p[25 + i]:X8}   -> DAT_00a2f{0x438 + i * 4:X3}");
+        Console.Error.WriteLine(sb.ToString());
+
+        // Structure entière. Le premier dword est `dwSize` : 0xCC = 204 = sizeof(D3DDEVICEDESC),
+        // et le bloc copié à +100 est son `dpcTriCaps` (D3DPRIMCAPS, 56 octets). On relève tout,
+        // pour pouvoir rejouer la structure à l'identique dans le device synthétique.
+        int size = (int)p[0];
+        if (size is < 4 or > 4096) size = 204;
+        var sb2 = new System.Text.StringBuilder($"[CAPS] D3DDEVICEDESC complet, dwSize={size} :");
+        for (int i = 0; i * 4 < size; i++)
+        {
+            if (i % 6 == 0) sb2.Append($"\n[CAPS]   [{i * 4,3}]");
+            sb2.Append($" 0x{p[i]:X8},");
+        }
+        Console.Error.WriteLine(sb2.ToString());
+        return v;
+    }
+
+    /// <summary>Thunk neutre correspondant au nombre d'octets à retirer de la pile.</summary>
+    private static void* NeutralThunk(byte cleanupBytes) => cleanupBytes switch
+    {
+        0 => (delegate* unmanaged[Thiscall]<void*, int>)&Synth_0,
+        4 => (delegate* unmanaged[Thiscall]<void*, uint, int>)&Synth_1,
+        8 => (delegate* unmanaged[Thiscall]<void*, uint, uint, int>)&Synth_2,
+        12 => (delegate* unmanaged[Thiscall]<void*, uint, uint, uint, int>)&Synth_3,
+        16 => (delegate* unmanaged[Thiscall]<void*, uint, uint, uint, uint, int>)&Synth_4,
+        20 => (delegate* unmanaged[Thiscall]<void*, uint, uint, uint, uint, uint, int>)&Synth_5,
+        28 => (delegate* unmanaged[Thiscall]<void*, uint, uint, uint, uint, uint, uint, uint, int>)&Synth_7,
+        _ => (delegate* unmanaged[Thiscall]<void*, int>)&Synth_0,
+    };
+
+    /// <summary>
+    /// Journalise le premier appel à chaque slot. C'est l'inventaire que la tâche 4.1 de
+    /// <c>replace-3d-backend-with-d3d11</c> demande, obtenu gratuitement : tout slot qui apparaît
+    /// ici est réellement emprunté par <c>winsys3d</c> et devra être porté ou justifié.
+    /// </summary>
+    private static void NoteSynthSlot(int cleanupBytes, string origine)
+    {
+        int slot = s_LastSynthSlot != null ? *s_LastSynthSlot : -1;
+        if ((uint)(slot / 4) < (uint)s_SynthSeen.Length)
+        {
+            if (s_SynthSeen[slot / 4]) return;      // un seul relevé par slot
+            s_SynthSeen[slot / 4] = true;
+        }
+        Console.Error.WriteLine($"[SYNTH] slot +0x{slot:X2} neutre ({origine}, nettoie {cleanupBytes} octets)");
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_InitDisplay(void* self, uint a, uint b, uint c)
+    {
+        Console.Error.WriteLine($"[SYNTH] +0x30 prise d'affichage neutralisée ({a}, {b}, {c}) — rend succès");
+        return 1;   // non nul = succès, sinon winsys3d appelle ExitProcess(3)
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static void* Synth_GetDeviceDesc(void* self) => s_DeviceDesc;
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_BitDepth(void* self) => CapturedBitDepth;
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_Active(void* self) => 1;
+
+    // =====================================================================
+    // Objets texture synthétiques.
+    //
+    // Le jeu en réclame par le slot device `+0x10` et les manipule ensuite par leur propre vtable.
+    // Ils n'ont **pas besoin de vrais pixels** : le backend Direct3D 11 ne porte pas encore la
+    // liaison de texture (tâche 3.5 de `replace-3d-backend-with-d3d11`) et rend déjà les primitives
+    // en aplats de leur couleur diffuse. Ce qu'il leur faut, c'est exister et répondre sans faute.
+    //
+    // Arités relevées dans le binaire, vtable de la classe texture à `0x0FFE61F8` :
+    //   [0] destructeur           ret 4     [4] ?                    ret 0
+    //   [1] rend le handle (+0x10) ret 0    [5] remontée +0x04→+0x08 ret 0
+    //   [2] chargeur (BITMAPINFO)  ret 8    [6] ?                    ret 4
+    //   [3] ?                      ret 16   [7] ?                    ret 0
+    //
+    // Disposition de l'objet d'origine : 32 octets, documentée dans `Documentation/DLL/3dhelp.md`.
+    // On alloue la même taille, à zéro : le handle lu en `+0x10` vaut donc zéro, ce qui signifie
+    // « aucune texture liée » — exactement l'état que le backend traite déjà.
+    // =====================================================================
+
+    private const int TextureVtableSlots = 8;
+    private static void** s_TextureVtable;
+    private static byte* s_TextureStubs;
+    private static int s_TextureCount;
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static void* Synth_CreateTexture(void* self)
+    {
+        if (s_TextureVtable == null)
+        {
+            s_TextureStubs = (byte*)VirtualAlloc(null, (nuint)(TextureVtableSlots * StubSize),
+                                                 MemCommitReserve, PageExecuteReadWrite);
+            if (s_TextureStubs == null) return null;
+
+            byte[] cleanup = [4, 0, 8, 16, 0, 0, 4, 0];
+            s_TextureVtable = (void**)NativeMemory.AllocZeroed((nuint)(TextureVtableSlots * sizeof(void*)));
+            for (int i = 0; i < TextureVtableSlots; i++)
+            {
+                // Décalage marqué 0x100 + i pour distinguer ces slots de ceux du device au journal.
+                s_TextureVtable[i] = MakeSlotStub(s_TextureStubs + i * StubSize, 0x100 + i * 4,
+                                                  NeutralThunk(cleanup[i]));
+            }
+        }
+
+        void** texture = (void**)NativeMemory.AllocZeroed(32);
+        texture[0] = s_TextureVtable;
+        s_TextureCount++;
+        if (s_TextureCount <= 3)
+            Console.Error.WriteLine($"[SYNTH] texture synthétique #{s_TextureCount} = 0x{(nint)texture:X8}");
+        return texture;
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_0(void* self) { NoteSynthSlot(0, "0 arg"); return 0; }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_1(void* self, uint a) { NoteSynthSlot(4, "1 arg"); return 0; }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_2(void* self, uint a, uint b) { NoteSynthSlot(8, "2 args"); return 0; }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_3(void* self, uint a, uint b, uint c) { NoteSynthSlot(12, "3 args"); return 0; }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_4(void* self, uint a, uint b, uint c, uint d) { NoteSynthSlot(16, "4 args"); return 0; }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_5(void* self, uint a, uint b, uint c, uint d, uint e) { NoteSynthSlot(20, "5 args"); return 0; }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_7(void* self, uint a, uint b, uint c, uint d, uint e, uint f, uint g) { NoteSynthSlot(28, "7 args"); return 0; }
+}

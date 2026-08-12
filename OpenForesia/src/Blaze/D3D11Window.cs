@@ -71,6 +71,13 @@ internal static unsafe class D3D11Window
     private static extern IntPtr CreateWindowExA(uint exStyle, byte* className, byte* windowName, uint style,
         int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr instance, void* param);
     [DllImport("user32.dll")] private static extern IntPtr DefWindowProcA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
+    [DllImport("user32.dll")] private static extern IntPtr BeginPaint(IntPtr hWnd, byte* paintStruct);
+    [DllImport("user32.dll")] private static extern int EndPaint(IntPtr hWnd, byte* paintStruct);
+
+    private const uint WmPaint = 0x000F;
+
+    /// <summary>PAINTSTRUCT : hdc, fErase, rcPaint, fRestore, fIncUpdate, rgbReserved[32].</summary>
+    private const int PaintStructSize = 64;
     [DllImport("user32.dll")] private static extern int ShowWindow(IntPtr hWnd, int cmd);
     [DllImport("user32.dll")] private static extern int UpdateWindow(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern int PeekMessageA(Msg* msg, IntPtr hWnd, uint min, uint max, uint remove);
@@ -120,6 +127,27 @@ internal static unsafe class D3D11Window
             case WmSize:
                 s_Resized = true;
                 return IntPtr.Zero;
+
+
+            case WmPaint:
+                // Le régime GDI de démarrage n'a pas de mémoire d'image côté fenêtre : sans ceci,
+                // la fenêtre redevient vide dès qu'elle est découverte, puisque le jeu ne redessine
+                // son écran-titre que sur WM_COMMAND ou toutes les vingt secondes. Sans objet en
+                // régime Direct3D, où la swap chain présente à chaque image — d'où le test sur
+                // StartupSurface.Retired, seule autorité sur la frontière entre les deux régimes.
+                if (!StartupSurface.Retired && StartupSurface.HasContent)
+                {
+                    byte* ps = stackalloc byte[PaintStructSize];
+                    IntPtr dc = BeginPaint(hWnd, ps);
+                    if (dc != IntPtr.Zero)
+                    {
+                        (int w, int h) = ClientSize();
+                        StartupSurface.PresentToDc(dc, w, h);
+                        EndPaint(hWnd, ps);
+                        return IntPtr.Zero;
+                    }
+                }
+                break;
 
             case WmKeyDown:
             case WmSysKeyDown:
@@ -183,8 +211,12 @@ internal static unsafe class D3D11Window
         // Affichage **sans activation**, et restitution du premier plan à la fenêtre qui l'avait.
         // Tant que 3dhelp est encore initialisé, c'est lui qui détient la saisie du jeu : voler le
         // focus ici empêche le title screen de recevoir la moindre touche, et le jeu n'atteint
-        // jamais sa boucle de rendu. Ce ménage disparaîtra avec la tâche 4.2, quand la saisie sera
-        // portée sur cette fenêtre.
+        // jamais sa boucle de rendu.
+        //
+        // En démarrage fenêtré (`s_WindowedStartup`), cette précaution n'a plus d'objet : la
+        // fenêtre `VfwClass` n'est plus affichée et c'est la nôtre qui doit recevoir la saisie.
+        // L'activation est alors faite explicitement par l'appelant, `CreateGameWindow`, plutôt
+        // qu'ici — cette méthode reste neutre pour ne pas dépendre du régime de démarrage.
         IntPtr previous = GetForegroundWindow();
         ShowWindow(Handle, SwShowNoActivate);
         UpdateWindow(Handle);
@@ -259,6 +291,43 @@ internal static unsafe class D3D11Window
     private const uint SwpFrameChanged = 0x0020;
     private const uint SwpNoZOrder = 0x0004;
     private const uint SwpNoOwnerZOrder = 0x0200;
+    private const uint SwpNoActivate = 0x0010;
+
+    private static Rect s_SavedPlacement;
+    private static bool s_HasSavedPlacement;
+
+    /// <summary>
+    /// Mémorise la géométrie de la fenêtre, pour pouvoir la rétablir après un changement
+    /// d'affichage.
+    /// </summary>
+    internal static void SavePlacement()
+    {
+        if (Handle == IntPtr.Zero) return;
+        Rect r;
+        if (GetWindowRect(Handle, &r) == 0) return;
+        s_SavedPlacement = r;
+        s_HasSavedPlacement = true;
+    }
+
+    /// <summary>
+    /// Rétablit la géométrie mémorisée.
+    ///
+    /// <para>
+    /// Nécessaire parce que <c>3dhelp</c> négocie encore un mode d'affichage à son initialisation,
+    /// et que Windows repositionne les fenêtres à chaque changement de mode — mesuré : la fenêtre
+    /// se déplaçait deux fois entre l'écran-titre et le menu, sans que le projet ne la touche. Le
+    /// jour où <c>3dhelp</c> ne changera plus de mode, cet appel deviendra sans effet plutôt que
+    /// faux.
+    /// </para>
+    /// </summary>
+    internal static void RestorePlacement()
+    {
+        if (Handle == IntPtr.Zero || !s_HasSavedPlacement) return;
+        SetWindowPos(Handle, IntPtr.Zero,
+            s_SavedPlacement.Left, s_SavedPlacement.Top,
+            s_SavedPlacement.Width, s_SavedPlacement.Height,
+            SwpNoZOrder | SwpNoOwnerZOrder | SwpNoActivate);
+    }
     private const uint MonitorDefaultToNearest = 2;
 
     private static bool s_Fullscreen;
