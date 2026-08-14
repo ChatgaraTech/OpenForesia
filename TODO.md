@@ -162,6 +162,45 @@ Deux réserves à connaître :
   second jeu clavier que `FUN_00523660` lit déjà ; et assigner une touche l'efface de toutes les
   liaisons clavier des quatre groupes, en laissant la catégorie manette intacte.
 
+**Sortir de la page d'options rebouclait sur elle-même** — Échap faisait clignoter le menu
+principal et revenait aussitôt. Deux causes cumulées, toutes deux mesurées :
+
+- la touche est **encore enfoncée** au retour, et le menu la prend pour une validation. Le jeu a son
+  idiome pour ça (la vidange `while (FUN_005048f0() != 0)` qu'il fait déjà *avant* d'ouvrir la
+  page) ; elle est maintenant appliquée aussi à la sortie, **cadencée** — sans cadence, l'état
+  DirectInput ne se rafraîchit pas et la boucle ne se termine jamais ;
+- la **garde de validation reste ouverte** : le `switch` est conditionné par
+  `menuContext[0x8c7] & 4`, qui reste à zéro au retour, donc l'image suivante rouvre la même
+  entrée. Le signe qui l'a montré : `Clear(TARGET)` figé pendant que `BeginScene` continuait de
+  compter ;
+- et l'état interactif du menu est un **couple**, pas un bit : `[0x3b] == 1` **et** bit 2 levé. Ne
+  relever que le bit 2 ramenait le menu à l'écran mais sans curseur. Le relevé par image le disait
+  déjà — une validation fait tomber les deux ensemble (`+0x03B:1->0`, `+0x8C7:05->01`) — et je
+  l'avais mal lu la première fois. On restaure les deux, sans remettre le curseur à zéro comme le
+  fait `Handler_00544b10`, pour que la sélection du joueur survive à l'aller-retour.
+
+Ce sont **deux déviations**, et elles désignent la même lecture inachevée : l'original n'en a besoin
+d'aucune, donc son panneau distingue un bouton *nouvellement* enfoncé d'un bouton maintenu, là où
+cette reconstruction lit le mot d'état et non le mot de fronts. C'est là qu'est le correctif propre.
+
+Fait récupéré au passage : `DAT_005e9960` n'est pas un compteur de fondu mais un **compteur de
+frames global**, incrémenté par `FrameEnd`. Le test du menu avec son `counter--` est donc un
+*maintien* dans une bande, pas un décompte.
+
+**Échap et « Quitter le jeu » sont réparés.**
+
+- Échap quittait le jeu au lieu de revenir en arrière, et la cause n'était pas dans le jeu :
+  `D3D11Window` fermait la fenêtre sur cette touche — un confort du banc de test — d'où un
+  `WM_QUIT` que la pompe du jeu convertit en `RaiseException(0xE0000001)`. Retiré ; la fenêtre se
+  ferme sur `WM_CLOSE`. Échap remonte maintenant d'une page à la fois, vérifié sur deux niveaux.
+  À retenir : **un confort de développement dans la couche hôte peut imiter un comportement du jeu**
+  au point que l'indice (le code d'exception du jeu) désigne le jeu.
+- « Quitter le jeu » levait `RaiseException(0xE0000001)` tel quel — fidèle, mais rien ne le
+  rattrape côté managé : le processus tombait par le rapport d'erreurs Windows et aucune des cinq
+  étapes d'arrêt ne tournait. C'est désormais une exception managée rattrapée dans
+  `RunApplication`, juste devant le `finally` qui les porte déjà — là où le gestionnaire SEH de
+  l'original reprend la main. Vérifié : sortie propre, aucun plantage journalisé.
+
 Reste **une** feuille, apparue en lisant la page manettes : `FUN_005115c0`, la configuration des
 boutons d'un joueur, 168 lignes.
 

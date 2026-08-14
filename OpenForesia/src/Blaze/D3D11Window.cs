@@ -159,7 +159,11 @@ internal static unsafe class D3D11Window
                     ToggleFullscreen();
                     return IntPtr.Zero;
                 }
-                if ((int)wParam == VkEscape) CloseRequested = true;
+                // **Échap ne ferme pas la fenêtre.** Ce raccourci datait du banc de test, avant que
+                // le jeu n'ait d'entrée : c'est aujourd'hui la touche « retour » de toutes ses
+                // pages, et la fermeture qu'il demandait remontait en WM_QUIT, que la pompe du jeu
+                // convertit en RaiseException(0xE0000001) — quitter le jeu au lieu de revenir à
+                // l'écran précédent. La fenêtre se ferme sur WM_CLOSE, comme toute fenêtre.
                 break;
         }
 

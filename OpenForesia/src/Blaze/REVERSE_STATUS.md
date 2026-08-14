@@ -1036,6 +1036,75 @@ Measured after the fix: all four label sets rasterise, the six atlases and the t
 are created (`256x256`, 8-bit, bottom-up, through the texture class's `[2]` slot), and execution
 stops on the page loop's own `NotImplementedException`. The setup is **on by default** again.
 
+### Leaving the options page put the menu in a loop, and the fade counter is a frame counter
+
+Second half of the same report: Escape from the options page flashed the main menu and came
+straight back. Instrumented, the mechanism is clear and has two parts.
+
+**Part one — the key is still held on return.** Escape is bound to pad mask `0x4000`, so the menu's
+first frame after the page returns sees it down, treats it as a confirm, and re-opens the same
+entry. The game's own idiom for this is the drain loop the options branch already runs *before*
+opening the page (`while (FUN_005048f0() != 0)`); it is now applied symmetrically on the way out.
+It must be **paced** — spinning without letting the message pump run leaves the DirectInput state
+frozen and the loop never ends, which is what the first attempt did.
+
+**Part two — the confirm gate stays open.** Draining is not enough: the switch is gated on
+`menuContext[0x8c7] & 4`, and that bit stays clear after the page returns, so the very next frame
+fires the same case again. The measurement that shows it plainly is `Clear(TARGET)` frozen while
+`BeginScene` keeps counting — the menu never draws a frame, because it re-enters the page every
+time.
+
+**Part three — the interactive state is a pair, not a bit.** Raising bit 2 alone brought the menu
+back but left it dead: visible, and no cursor. The per-frame descriptor diff had already shown the
+answer and it was misread the first time — a confirm drops **two** fields together
+(`+0x03B:1->0` and `+0x8C7:05->01`), so the steady interactive state is `[0x3b] == 1` **and** bit 2
+raised. Restoring both is what `Handler_00544b10` does at end of page; it also resets the cursor to
+0, which is deliberately not reproduced here so the player's selection survives the round trip.
+Verified: the menu returns, stays, and its cursor moves.
+
+**Both are deviations, and both point at the same unfinished reading.** The original needs neither,
+which means its panel distinguishes a *newly pressed* button from a held one, where this
+reconstruction reads the held word (`CurrentPadWord`, the state word, not the edge word that
+`UpdateButtonEdges` computes right beside it). That is where the clean fix lives; these two lines
+stand in until the panel's input semantics are established.
+
+**A useful fact recovered on the way**: `DAT_005e9960` is not a fade counter but a **global frame
+counter**, incremented by `FUN_0052a280` — `FrameEnd` — on every frame. The menu's
+`(counter & 0xf) != 8 && level > 0x7f` test with its `counter--` is therefore a *hold*, not a
+countdown: the menu pins the counter inside a band for as long as it is the active screen.
+
+### Escape was quitting the game, and the culprit was our own window
+
+Reported as "the back key behaves strangely in the options". Measured: pressing Escape anywhere in
+the options killed the process with exception code **0xE0000001** — which is the game's own
+software-exception code, so the first reading was that "Quitter le jeu" had somehow run. Tracing
+showed it had not: `UiSelect` never even saw the key.
+
+The cause is in `D3D11Window`'s window procedure, which had
+
+```csharp
+if ((int)wParam == VkEscape) CloseRequested = true;
+```
+
+a convenience from when that window was a test harness with no game input behind it. Escape asked
+the window to close, which becomes `WM_QUIT`, which the game's own message pump turns into
+`RaiseException(0xE0000001)` — quitting instead of going back. Removed: the window closes on
+`WM_CLOSE`, like any window. Escape now returns one page at a time, verified two levels deep.
+
+Worth generalising: **a development affordance in the host layer can impersonate a game behaviour**
+so exactly that the evidence (the game's own exception code) points at the game.
+
+### "Quitter le jeu" now exits instead of crashing
+
+`RaiseException(0xE0000001)` was transcribed literally at all three sites — the options' quit entry
+and the movie player's two message pumps. Faithful, and useless here: nothing on the managed side
+catches it, so it terminated the process through Windows error reporting and none of the five
+shutdown stages ran.
+
+It is now a managed `BlazeQuitException`, caught in `RunApplication` immediately before the
+`finally` that already carries those stages — which is exactly where the original's SEH handler
+resumes. Verified: the entry exits the game, and no crash is recorded in the event log.
+
 ### The key editor
 
 `FUN_00511d40` is reconstructed, with its two helpers (`FUN_005115a0` scancode→name index,

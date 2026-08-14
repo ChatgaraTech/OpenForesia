@@ -1,9 +1,9 @@
-// OpenForesia — reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
-// in Blaze.c (Legacy source of truth — never modify it, see Prompt.md / Strategy.md).
+﻿// OpenForesia â€” reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
+// in Blaze.c (Legacy source of truth â€” never modify it, see Prompt.md / Strategy.md).
 //
 // This file follows the call graph starting at the PE entry point `entry` and works
 // outward. Progress, naming decisions and open questions are tracked in
-// src/Blaze/REVERSE_STATUS.md — read that file before continuing this work.
+// src/Blaze/REVERSE_STATUS.md â€” read that file before continuing this work.
 
 using System;
 using System.IO;
@@ -108,14 +108,14 @@ public static unsafe partial class Blaze
     // file must fail silently and is a normal, handled outcome.
     //
     // IMPORTANT: the returned buffer comes from wsyskern's own heap (its `Malloc`, ordinal 124,
-    // wsyskern.c:9769), so it must be released with wsyskern's `Free` below — NOT with this file's
+    // wsyskern.c:9769), so it must be released with wsyskern's `Free` below â€” NOT with this file's
     // CRT-derived Free, which maps to NativeMemory and would corrupt the heap.
     [DllImport("wsyskern.dll")]
     private static extern byte* LoadBitmapFile(byte* fileName, uint mode);
 
     // wsyskern.dll ordinal 89 (named export, wsyskern.c:9818 @ 0x1000bc30). The matching deallocator
     // for anything wsyskern's `Malloc` produced. Blaze.c calls it exactly twice, both on the attract
-    // screen's title bitmap (Blaze.c:89940 and 90131) — note it is the capitalized `Free`/`Malloc`
+    // screen's title bitmap (Blaze.c:89940 and 90131) â€” note it is the capitalized `Free`/`Malloc`
     // pair Ghidra resolved from the import table, a different heap from the lowercase CRT
     // malloc/free chain (FUN_00547220/FUN_00547210) this file maps onto NativeMemory.
     // Passing null is safe: it forwards to a CRT free, and Blaze.c itself calls it unconditionally.
@@ -127,8 +127,8 @@ public static unsafe partial class Blaze
     // this is the game's **renderer-selection dialog / launcher**, not a device creation call.
     // It enumerates DirectDraw drivers (DirectDrawEnumerateA), probes for a 3Dfx card by
     // LoadLibrary("GLIDE2X.DLL") + GetProcAddress("_grSstQueryBoards@4"), then shows modal dialog
-    // resource 0x66 — the same resource id whose RT_BITMAP LoadBitmapEx loads, i.e. hBitmap /
-    // hPalette are that dialog's splash image — and writes the chosen driver back to the ini.
+    // resource 0x66 â€” the same resource id whose RT_BITMAP LoadBitmapEx loads, i.e. hBitmap /
+    // hPalette are that dialog's splash image â€” and writes the chosen driver back to the ini.
     // See Documentation/DLL/winsys3d.md for the full analysis and struct layout.
     //
     // `titleStrings` is a pointer to an array of 5 ANSI string pointers, consumed by the dialog
@@ -150,10 +150,10 @@ public static unsafe partial class Blaze
     // cross-checked directly in winsys3d.c (decompiled DLL source, see
     // Documentation/DLL/winsys3d.md for the full analysis):
     //   - ordinal 337 (winsys3d.c: FUN_00a1df00) builds the engine's trig lookup tables
-    //     (fills DAT_011cb420[0x1000] via fsin()) — no arguments, run once.
+    //     (fills DAT_011cb420[0x1000] via fsin()) â€” no arguments, run once.
     //   - ordinals 450/451 (winsys3d.c: FUN_00a25c20/FUN_00a25c40) are simple reads from that
     //     same 0x1000-entry ring buffer, 450 phase-shifted by 0x400 (a quarter period) relative
-    //     to 451 — i.e. a classic packed cos()/sin() lookup table pair.
+    //     to 451 â€” i.e. a classic packed cos()/sin() lookup table pair.
     //   - ordinal 790 (winsys3d.c: FUN_00a06410) just stores the pointer into a DLL-private
     //     global (DAT_011be798) that winsys3d.dll later calls indirectly as a callback
     //     (confirmed via cross-reference in winsys3d.c); likely a device-lost/reset notification
@@ -166,9 +166,9 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#790")] private static extern void SetDeviceLostCallback(void* callback);
 
     // The following winsys3d.dll ordinals are used directly by RunMainLoop (Ghidra: FUN_00529c10)
-    // and its immediate dependency graph. Signatures/behavior were confirmed against winsys3d.c —
+    // and its immediate dependency graph. Signatures/behavior were confirmed against winsys3d.c â€”
     // see Documentation/DLL/winsys3d.md for the full per-ordinal writeup. Several are literal
-    // no-op stubs in the shipped DLL (`return 0;` / `return;` with no body) — they are still
+    // no-op stubs in the shipped DLL (`return 0;` / `return;` with no body) â€” they are still
     // declared and called for real (rather than special-cased away) so the call graph stays
     // traceable to Blaze.c 1:1, and because "does nothing" is itself the DLL's real, confirmed
     // behavior here, not an assumption.
@@ -179,28 +179,28 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#110")] private static extern void Ordinal_110(int a); // confirmed no-op (FUN_00a02e20)
     [DllImport("winsys3d.dll", EntryPoint = "#116")] private static extern uint Ordinal_116(); // confirmed no-op, returns 0 (FUN_00a02490)
     [DllImport("winsys3d.dll", EntryPoint = "#129")] private static extern void Ordinal_129(); // confirmed no-op (FUN_00a02490)
-    [DllImport("winsys3d.dll", EntryPoint = "#132")] private static extern int Ordinal_132(int a); // real: winsys3d.c FUN_00a053e0, VSync/frame-pacing wait — DLL-internal timing state
+    [DllImport("winsys3d.dll", EntryPoint = "#132")] private static extern int Ordinal_132(int a); // real: winsys3d.c FUN_00a053e0, VSync/frame-pacing wait â€” DLL-internal timing state
     [DllImport("winsys3d.dll", EntryPoint = "#136")] private static extern int Ordinal_136(int a); // real: winsys3d.c FUN_00a05770, get/set DAT_011be6a4 ("frame time offset"?), returns previous value
     [DllImport("winsys3d.dll", EntryPoint = "#138")] private static extern void Ordinal_138(); // confirmed no-op (FUN_00a26470)
     [DllImport("winsys3d.dll", EntryPoint = "#368")] private static extern void Ordinal_368(void* eightDwordStruct); // real: winsys3d.c FUN_00a20ed0, copies 8 dwords into DLL-internal "shading defaults" state (EXT_011d0828); exact field semantics TODO(REVERSE)
     [DllImport("winsys3d.dll", EntryPoint = "#378")] private static extern void Ordinal_378(int a, int b); // real: winsys3d.c FUN_00a21020, stores (a,b) into DLL-internal state (EXT_011cb414/EXT_011cb410); exact semantics TODO(REVERSE)
-    // Ordinals 658/661/665/674 are winsys3d.dll's port of the PlayStation SDK's **libgpu** — which
+    // Ordinals 658/661/665/674 are winsys3d.dll's port of the PlayStation SDK's **libgpu** â€” which
     // is what the sibling `playst.dll` ("PlayStation") is named after, and unsurprising for a PSX
     // game ported to Windows. The two below are identified beyond doubt by their bodies: they write
     // exactly the documented DISPENV and DRAWENV field layouts, and the four global structs Blaze.c
     // passes them are spaced 20 / 92 bytes apart, matching sizeof(DISPENV) / sizeof(DRAWENV) exactly.
-    // Both take (env, x, y, w, h) — a *screen rectangle*, not four opaque shorts.
+    // Both take (env, x, y, w, h) â€” a *screen rectangle*, not four opaque shorts.
 
-    // winsys3d.c FUN_00a05ac0 — libgpu `SetDefDispEnv(DISPENV*, x, y, w, h)`. Writes disp={x,y,w,h},
+    // winsys3d.c FUN_00a05ac0 â€” libgpu `SetDefDispEnv(DISPENV*, x, y, w, h)`. Writes disp={x,y,w,h},
     // screen={0,0,0x100,0xf0}, isinter=0, isrgb24=0 (18 of the struct's 20 bytes).
     [DllImport("winsys3d.dll", EntryPoint = "#658")] private static extern void SetDefDispEnv(void* dispEnv, short x, short y, short w, short h);
 
-    // winsys3d.c FUN_00a05b50 — libgpu `SetDefDrawEnv(DRAWENV*, x, y, w, h)`. Writes clip={x,y,w,h},
+    // winsys3d.c FUN_00a05b50 â€” libgpu `SetDefDrawEnv(DRAWENV*, x, y, w, h)`. Writes clip={x,y,w,h},
     // ofs={x,y}, tw={0,0,0,0}, tpage=10, dtd=1, dfe=1, isbg=0, r0=g0=b0=0 (first 28 bytes of 92).
     [DllImport("winsys3d.dll", EntryPoint = "#661")] private static extern void SetDefDrawEnv(void* drawEnv, short x, short y, short w, short h);
 
     // Game-state-0 ordinals. winsys3d.c declares all of these with no parameters, but that is the
-    // same decompiler artifact seen throughout this project — the **call sites are authoritative**,
+    // same decompiler artifact seen throughout this project â€” the **call sites are authoritative**,
     // and the argument counts below are theirs (Blaze.c: FUN_00529a80 and FUN_00542160).
     [DllImport("winsys3d.dll", EntryPoint = "#97")] private static extern int Ordinal_97(int a, int b, int c);
     [DllImport("winsys3d.dll", EntryPoint = "#762")] private static extern void Ordinal_762(void* p);
@@ -211,7 +211,7 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#769")] private static extern int Ordinal_769(int a);
     [DllImport("winsys3d.dll", EntryPoint = "#770")] private static extern int Ordinal_770(void* p);
 
-    // Frame ordinals. 688 is libgpu `ClearOTagR(u_long *ot, int n)` — winsys3d.c FUN_00a06160 keeps
+    // Frame ordinals. 688 is libgpu `ClearOTagR(u_long *ot, int n)` â€” winsys3d.c FUN_00a06160 keeps
     // both parameters, unlike its neighbours. 657/660 take a DISPENV/DRAWENV (PutDispEnv/PutDrawEnv
     // shaped), 701 takes the ordering table (DrawOTag shaped).
     [DllImport("winsys3d.dll", EntryPoint = "#688")] private static extern uint* Ordinal_688(uint* ot, int count);
@@ -219,28 +219,28 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#660")] private static extern int Ordinal_660(void* env);
     [DllImport("winsys3d.dll", EntryPoint = "#701")] private static extern void Ordinal_701(uint* ot);
 
-    // libgpu MoveImage(RECT* src, int dstX, int dstY) — copies a rectangle inside the emulated
+    // libgpu MoveImage(RECT* src, int dstX, int dstY) â€” copies a rectangle inside the emulated
     // VRAM. Body confirmed at winsys3d.c:5348 (`/* 0x5df0  676 */`): it walks `src->h` rows of
     // `src->w` texels from the arena and writes them at (dstX, dstY).
     [DllImport("winsys3d.dll", EntryPoint = "#676")] private static extern void Ordinal_676(ushort* sourceRect, int destinationX, int destinationY);
 
-    // real: winsys3d.c FUN_00a05e90 — libgpu `ClearImage(RECT*, r, g, b)`-shaped (takes a 4-short
+    // real: winsys3d.c FUN_00a05e90 â€” libgpu `ClearImage(RECT*, r, g, b)`-shaped (takes a 4-short
     // RECT and floods VRAM), but its colour math decompiles as
     // `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match ClearImage's plain (r,g,b).
     // TODO(REVERSE): left un-renamed until that is explained rather than assumed.
     [DllImport("winsys3d.dll", EntryPoint = "#665")] private static extern int Ordinal_665(void* rect, byte r, byte g, uint b);
     [DllImport("winsys3d.dll", EntryPoint = "#667")] private static extern void Ordinal_667(int a); // confirmed no-op (FUN_00a02e20)
     [DllImport("winsys3d.dll", EntryPoint = "#668")] private static extern int Ordinal_668(int a, int b, int c, int d, int e, int f); // real: winsys3d.c FUN_00a020a0, registers a debug/console text channel slot (unused feature in the shipped build)
-    // real: winsys3d.c FUN_00a05d50 — libgpu `LoadImage(RECT*, u_long* data)`: copies `data` row by
+    // real: winsys3d.c FUN_00a05d50 â€” libgpu `LoadImage(RECT*, u_long* data)`: copies `data` row by
     // row into the VRAM rectangle. `rect` is a 4-short RECT {x,y,w,h}, and the body early-outs on
     // rect.y > 0x1ff, confirming a 1024x512 VRAM addressing scheme.
     [DllImport("winsys3d.dll", EntryPoint = "#674")] private static extern int Ordinal_674(void* rect, void* srcBuffer);
 
-    // winsys3d.c FUN_00a05bb0 — libgpu `OpenTIM(u_long *addr)`. Parks a cursor at `addr + 4` in the
+    // winsys3d.c FUN_00a05bb0 â€” libgpu `OpenTIM(u_long *addr)`. Parks a cursor at `addr + 4` in the
     // DLL global DAT_011be790; ReadTIM below consumes and clears it, so the pair is one-shot.
     [DllImport("winsys3d.dll", EntryPoint = "#677")] private static extern int OpenTim(void* timData);
 
-    // winsys3d.c FUN_00a05bd0 — libgpu `ReadTIM(TIM_IMAGE*)`. Parses the TIM header the cursor
+    // winsys3d.c FUN_00a05bd0 â€” libgpu `ReadTIM(TIM_IMAGE*)`. Parses the TIM header the cursor
     // points at and fills the 5-dword TIM_IMAGE below. When the header's bit 3 is clear the image
     // has no CLUT and it writes mode=2, crect=null, caddr=null.
     [DllImport("winsys3d.dll", EntryPoint = "#662")] private static extern void ReadTim(TimImage* image);
@@ -253,10 +253,10 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "SetShift")] private static extern void SetShift(int x, int y, int zoomLevel, int flag); // real, named export (ordinal 796): camera/view shift+zoom, winsys3d.c confirmed
 
     // winsys3d.dll ordinals used by FUN_00504460 (joystick/interrupt-style event-handler
-    // (de)registration bookkeeping — see winsys3d.c FUN_00a040d0/FUN_00a04220 and neighbors).
+    // (de)registration bookkeeping â€” see winsys3d.c FUN_00a040d0/FUN_00a04220 and neighbors).
     [DllImport("winsys3d.dll", EntryPoint = "#6")] private static extern void* Ordinal_6(uint messageId, uint p2, uint p3, void* callback); // real: winsys3d.c FUN_00a040d0, registers a handler, returns an opaque handle
     [DllImport("winsys3d.dll", EntryPoint = "#10")] private static extern int Ordinal_10(void* handle); // real: winsys3d.c FUN_00a04220, unregisters a handler returned by ordinal 6
-    [DllImport("winsys3d.dll", EntryPoint = "#40")] private static extern void Ordinal_40(); // real: winsys3d.c FUN_00a04fd0 — TODO(REVERSE): body not read, opaque
+    [DllImport("winsys3d.dll", EntryPoint = "#40")] private static extern void Ordinal_40(); // real: winsys3d.c FUN_00a04fd0 â€” TODO(REVERSE): body not read, opaque
     [DllImport("winsys3d.dll", EntryPoint = "#63")] private static extern void Ordinal_63(int a); // confirmed no-op (FUN_00a02870)
     [DllImport("winsys3d.dll", EntryPoint = "#64")] private static extern int Ordinal_64(); // confirmed no-op, returns 0 (FUN_00a02490)
     [DllImport("winsys3d.dll", EntryPoint = "#66")] private static extern void Ordinal_66(); // confirmed no-op (FUN_00a26470)
@@ -300,6 +300,27 @@ public static unsafe partial class Blaze
     [DllImport("user32.dll")] private static extern int KillTimer(IntPtr hWnd, nuint uIDEvent);
     [DllImport("user32.dll")] private static extern int PostMessageA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
     [DllImport("kernel32.dll")] private static extern void RaiseException(uint dwExceptionCode, uint dwExceptionFlags, uint nNumberOfArguments, nint* lpArguments);
+
+    /// <summary>
+    /// Ghidra: <c>RaiseQuitException()</c> — l'exception logicielle par laquelle
+    /// le jeu abandonne la boucle en cours pour rejoindre sa sortie. Trois sites la lèvent :
+    /// « Quitter le jeu » dans la page d'options, et les deux pompes de messages du lecteur de
+    /// vidéo quand elles voient <c>WM_QUIT</c>.
+    /// <para>
+    /// Dans l'original, un gestionnaire SEH la rattrape en haut de pile et enchaîne sur la séquence
+    /// d'arrêt. La lever telle quelle ici ne fait qu'abattre le processus : rien côté managé ne la
+    /// rattrape, et l'arrêt propre ne s'exécute pas. On la représente donc par une exception
+    /// managée, que <see cref="RunApplication"/> rattrape à l'endroit exact où l'original reprend
+    /// la main — devant le <c>finally</c> qui porte déjà les cinq étapes d'arrêt.
+    /// </para>
+    /// </summary>
+    private sealed class BlazeQuitException : Exception
+    {
+        internal BlazeQuitException() : base("Ghidra: RaiseException(0xE0000001) — sortie du jeu") { }
+    }
+
+    /// <summary>Ghidra: RaiseQuitException().</summary>
+    private static void RaiseQuitException() => throw new BlazeQuitException();
     [DllImport("winmm.dll")] private static extern uint joySetCapture(IntPtr hWnd, uint uJoyID, uint uPeriod, int fChanged);
     [DllImport("winmm.dll")] private static extern uint joyReleaseCapture(uint uJoyID);
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern byte* lstrcpyA(byte* lpString1, byte* lpString2);
@@ -338,7 +359,7 @@ public static unsafe partial class Blaze
     //     every link and terminates the list with the 0xffffff sentinel;
     //   - winsys3d.c FUN_00a061b0 (Ordinal_701, DrawOTag) follows `*p & 0xffffff` and reads the
     //     top byte as the primitive's word count;
-    //   - Blaze.exe agrees — DrawFlatPrimitive builds its tag as `*prim = *otEntry | 0x2000000`,
+    //   - Blaze.exe agrees â€” DrawFlatPrimitive builds its tag as `*prim = *otEntry | 0x2000000`,
     //     which is only correct while the address's top byte is zero.
     // So every ordering table and primitive buffer must live below 0x01000000.
     //
@@ -346,28 +367,28 @@ public static unsafe partial class Blaze
     // its import table at file offset 0x1703AC, the only one of the five DLLs so imported), the
     // loader mapped it at its preferred base 0x00A00000, and winsys3d.c line 568 set
     // `MainMem = &DAT_00b6dbd8` = 0x00B6DBD8. On modern Windows the DLL is relocated out of low
-    // memory — measured at 0x09… on this machine, because OpenForesia.exe's own ASLR base sits
-    // inside winsys3d's preferred range — and DrawOTag faults on the very first frame.
+    // memory â€” measured at 0x09â€¦ on this machine, because OpenForesia.exe's own ASLR base sits
+    // inside winsys3d's preferred range â€” and DrawOTag faults on the very first frame.
     //
     // DEVIATION (environmental, see REVERSE_STATUS.md): the arena is allocated here, in low
     // memory, and its address written into the `MainMem` pointer winsys3d exports. The DLL file is
     // not modified and no Windows setting is changed. This is sound because MainMem is a genuine
-    // indirection — it occurs exactly three times in 27703 lines of winsys3d.c:
+    // indirection â€” it occurs exactly three times in 27703 lines of winsys3d.c:
     //     line  568  MainMem = &DAT_00b6dbd8;                     the sole initialisation, in entry()
     //     line 5655  DAT_00dedbd8 = iVar1 + 0x240000 + MainMem;   DrawOTag, re-derived every frame
     //     line 5843  DAT_00dedbd8 = MainMem + 0x200000;           Ordinal_789's device init, once
     // and DAT_00b6dbd8 itself is referenced only at line 568. Nothing between MainMem + 0x0 and
-    // MainMem + 0x280000 is addressed by a fixed address — the globals resume exactly at
-    // MainMem + 0x280000 — which is what makes the arena relocatable at all.
+    // MainMem + 0x280000 is addressed by a fixed address â€” the globals resume exactly at
+    // MainMem + 0x280000 â€” which is what makes the arena relocatable at all.
     // =====================================================================
 
-    // Ghidra: winsys3d.c line 568 — MainMem points 0xDBD8 into the 64KB-aligned region that holds
+    // Ghidra: winsys3d.c line 568 â€” MainMem points 0xDBD8 into the 64KB-aligned region that holds
     // DAT_00b6dbd8, so allocating at 0x00B60000 reproduces MainMem == 0x00B6DBD8 exactly.
     private const uint MainMemOffsetInArena = 0xDBD8;
     private const uint ArenaPreferredBase = 0x00B60000;
     private const uint ArenaOriginalMainMem = ArenaPreferredBase + MainMemOffsetInArena; // 0x00B6DBD8
 
-    // Ghidra: winsys3d.c — the arena runs from MainMem to MainMem + 0x280000, where the DLL's
+    // Ghidra: winsys3d.c â€” the arena runs from MainMem to MainMem + 0x280000, where the DLL's
     // globals resume (DAT_00dedbd8 and 36 others). Known usage: Blaze.exe takes +0x1c6000..+0x1e4000
     // for its two ordering tables and primitive buffers, winsys3d takes +0x200000 and +0x240000 for
     // its double-buffered scratch (lines 5843 and 5655).
@@ -402,12 +423,12 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Places the display-list arena in low memory and points winsys3d's exported
     /// <c>MainMem</c> at it. Idempotent, and must run before any winsys3d entry point that
-    /// derives a pointer from the arena — in practice before <c>Ordinal_789(0, 0)</c>, whose
+    /// derives a pointer from the arena â€” in practice before <c>Ordinal_789(0, 0)</c>, whose
     /// body (winsys3d.c line 5843) caches <c>MainMem + 0x200000</c> once and never re-derives it.
     /// </summary>
     /// <summary>
     /// Claims the low arena at the earliest point managed code runs. Called from a module
-    /// initializer, which executes before <c>Main</c> and before any other static constructor —
+    /// initializer, which executes before <c>Main</c> and before any other static constructor â€”
     /// every allocation the program makes afterwards is one more competitor for the same
     /// 16 MB window, and the window is contended enough to lose the race otherwise.
     /// </summary>
@@ -426,7 +447,7 @@ public static unsafe partial class Blaze
 
             // Claim every low allocation now, not on first use. These have to live below
             // 0x01000000 as well, and taking the menu descriptor lazily at the first menu frame
-            // meant competing with a runtime that had had seconds to grow into the same window —
+            // meant competing with a runtime that had had seconds to grow into the same window â€”
             // measured: the arena succeeded and the descriptor then failed.
             _ = s_MenuContext_0056dd58;
             return true;
@@ -439,7 +460,7 @@ public static unsafe partial class Blaze
         if (s_DisplayListArena != null) return;
 
         // Reserve BEFORE loading winsys3d.dll. The DLL is an 8.3 MB image and, once relocated out
-        // of its preferred base, is itself the strongest competitor for the same low window —
+        // of its preferred base, is itself the strongest competitor for the same low window â€”
         // loading it first made this placement fail roughly one run in four.
 
         // 1. The original layout first: 0xDBD8 of lead-in so MainMem lands on 0x00B6DBD8 exactly
@@ -449,7 +470,7 @@ public static unsafe partial class Blaze
                                           MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         byte* mainMem = arena != null ? arena + MainMemOffsetInArena : null;
 
-        // 2. Otherwise only the arena proper is needed — the 0xDBD8 lead-in exists solely to hit
+        // 2. Otherwise only the arena proper is needed â€” the 0xDBD8 lead-in exists solely to hit
         //    the original address, and demanding it in the fallback cost 56 KB of contiguous low
         //    memory for nothing. Measured: it was the difference between 0x250000 free and a
         //    0x28E000 request failing.
@@ -466,9 +487,9 @@ public static unsafe partial class Blaze
                 throw new InvalidOperationException(
                     $"The display list is addressed on 24 bits (winsys3d.c ClearOTagR/DrawOTag mask " +
                     $"by 0xffffff), so its arena must sit below 0x{DisplayListCeiling:X8}. No free " +
-                    $"block of 0x{size:X} bytes was available below 0x{maxBase:X8} — the largest free " +
+                    $"block of 0x{size:X} bytes was available below 0x{maxBase:X8} â€” the largest free " +
                     $"region there was 0x{largestFreeSeen:X} bytes. Without it every frame would fault " +
-                    $"inside DrawOTag with no explanation — see REVERSE_STATUS.md, arena deviation.");
+                    $"inside DrawOTag with no explanation â€” see REVERSE_STATUS.md, arena deviation.");
             }
         }
 
@@ -481,9 +502,9 @@ public static unsafe partial class Blaze
 
         long delta = (long)(nint)mainMem - ArenaOriginalMainMem;
         Console.Error.WriteLine(delta == 0
-            ? $"winsys3d arena at MainMem=0x{(nint)mainMem:X8} — original 1998 layout, addresses " +
+            ? $"winsys3d arena at MainMem=0x{(nint)mainMem:X8} â€” original 1998 layout, addresses " +
               "match winsys3d.c one for one"
-            : $"winsys3d arena at MainMem=0x{(nint)mainMem:X8} — 0x{ArenaOriginalMainMem:X8} was " +
+            : $"winsys3d arena at MainMem=0x{(nint)mainMem:X8} â€” 0x{ArenaOriginalMainMem:X8} was " +
               $"unavailable; {(delta < 0 ? "subtract" : "add")} 0x{Math.Abs(delta):X} " +
               $"{(delta < 0 ? "from" : "to")} any address read from winsys3d.c");
     }
@@ -545,7 +566,7 @@ public static unsafe partial class Blaze
         return null;
     }
 
-    // Ghidra: MainMem_exref — Blaze.exe imports this pointer as DATA from winsys3d.dll (mirrors
+    // Ghidra: MainMem_exref â€” Blaze.exe imports this pointer as DATA from winsys3d.dll (mirrors
     // TexFilterPossible_exref below: winsys3d.c's `entry` sets `MainMem = &DAT_00b6dbd8;`, its own
     // scratch arena). Resolved lazily via GetProcAddress, same pattern as GetTexFilterPossiblePtr.
     private static byte** s_MainMemExref;
@@ -571,7 +592,7 @@ public static unsafe partial class Blaze
     // CRT support (MSVC 6 / "Visual Studio 1998" runtime startup, confirmed by several
     // functions Ghidra matched to known library symbols, e.g. __amsg_exit, __exit).
     //
-    // None of this is Blaze-specific game logic — it is the C runtime's process bring-up
+    // None of this is Blaze-specific game logic â€” it is the C runtime's process bring-up
     // (heap init, small-block allocator, argv/environ construction, atexit/static-destructor
     // plumbing). Per Prompt.md/Strategy.md guidance, standard CRT internals are represented
     // with a C# abstraction (the .NET native allocator, structured argv/environ parsing)
@@ -689,7 +710,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00547740 @ 0x00547740, called once from `entry` before argv parsing.
     /// Runs the C then C++ static-initializer tables (via `_initterm` @ FUN_00547860) plus an
     /// optional floating-point-related callback (DAT_00607954).
-    /// TODO(REVERSE): same as RunStaticDestructors — the initializer table contents are
+    /// TODO(REVERSE): same as RunStaticDestructors â€” the initializer table contents are
     /// linker-generated data outside Blaze.c; revisit once specific global objects are found.
     /// </summary>
     private static void RunStaticInitializers()
@@ -944,7 +965,7 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     /// <summary>
-    /// Ghidra: entry @ 0x00547d40 — the raw PE entry point, i.e. MSVC's `WinMainCRTStartup`.
+    /// Ghidra: entry @ 0x00547d40 â€” the raw PE entry point, i.e. MSVC's `WinMainCRTStartup`.
     /// Performs C-runtime bring-up (heap, argv/environ, static initializers), extracts the
     /// WinMain-style command line, then hands off to <see cref="RunApplication"/>
     /// (Ghidra: FUN_00513900), which is where Blaze & Blade's own code begins.
@@ -952,7 +973,7 @@ public static unsafe partial class Blaze
     public static void entry()
     {
         // DEVIATION, and it must come first: Blaze.exe imports winsys3d.dll statically, so in the
-        // original the library was mapped — and its arena fixed at 0x00B6DBD8 — before this entry
+        // original the library was mapped â€” and its arena fixed at 0x00B6DBD8 â€” before this entry
         // point ever ran. Loading it here and retargeting MainMem reproduces that ordering, which
         // Ordinal_789's device init depends on: winsys3d.c line 5843 caches MainMem + 0x200000 once
         // and never re-derives it. See EnsureDisplayListArena for the 24-bit constraint behind this.
@@ -1020,12 +1041,12 @@ public static unsafe partial class Blaze
     }
 
     // =====================================================================
-    // RunApplication — Blaze & Blade's own entry point (this is where "our" game code starts;
+    // RunApplication â€” Blaze & Blade's own entry point (this is where "our" game code starts;
     // everything above is C-runtime/CRT startup plumbing).
     // =====================================================================
 
     /// <summary>
-    /// Ghidra: FUN_00513900 @ 0x00513900 — the WinMain-equivalent passed to `entry`. Ghidra only
+    /// Ghidra: FUN_00513900 @ 0x00513900 â€” the WinMain-equivalent passed to `entry`. Ghidra only
     /// recovered the first parameter (hInstance); the other three are reconstructed from the
     /// call site in `entry` (hInstance, hPrevInstance, lpCmdLine, nCmdShow), matching the
     /// standard WinMain signature.
@@ -1039,7 +1060,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint RunApplication(IntPtr hInstance, IntPtr hPrevInstance, byte* lpCmdLine, uint nCmdShow)
     {
-        // Ghidra: s____Blaze_Blade_005631e8 @ 0x005631e8 — a 4-byte "X:\\\0" drive-root buffer
+        // Ghidra: s____Blaze_Blade_005631e8 @ 0x005631e8 â€” a 4-byte "X:\\\0" drive-root buffer
         // whose first byte is swapped for each candidate drive letter.
         byte* driveRoot = stackalloc byte[4];
         driveRoot[1] = (byte)':';
@@ -1048,7 +1069,7 @@ public static unsafe partial class Blaze
 
         // TODO(REVERSE): DAT_00563280.._0056328c (the CD-check filename template copied into
         // local_2c/local_28/local_24/local_20 in the original) are 16 bytes of initialized data
-        // not present in Blaze.c's text — only Ghidra's derived symbol names survive. The drive
+        // not present in Blaze.c's text â€” only Ghidra's derived symbol names survive. The drive
         // letter substitution below is faithful; the rest of the template is a placeholder.
         byte* cdCheckPath = stackalloc byte[16];
 
@@ -1090,7 +1111,7 @@ public static unsafe partial class Blaze
             {
                 // Ghidra: DAT_005631f8 = s____Blaze_Blade_005631e8[0]. A single-byte store, and
                 // that is genuinely all it is: the rest of "@:\FRENCH\" is static data the linker
-                // wrote into the image. Patch index 0 only — do not rebuild the string from parts,
+                // wrote into the image. Patch index 0 only â€” do not rebuild the string from parts,
                 // or the language directory is lost again.
                 s_CdDataRootPath[0] = (byte)foundLetter;
 
@@ -1109,7 +1130,7 @@ public static unsafe partial class Blaze
 
                 // Ghidra: builds a 0x1000-entry lookup table combining the sin table (ordinal 451)
                 // low 16 bits with the cos table (ordinal 450, phase-shifted by a quarter period)
-                // in the high word — see Documentation/DLL/winsys3d.md. Packed sin/cos table,
+                // in the high word â€” see Documentation/DLL/winsys3d.md. Packed sin/cos table,
                 // consumed by the not-yet-reconstructed rendering code.
                 for (int i = 0; i < 0x1000; i++)
                 {
@@ -1132,12 +1153,20 @@ public static unsafe partial class Blaze
                 {
                     RunMainLoop(); // Ghidra: FUN_00529c10 @ 0x00529c10
                 }
+                catch (BlazeQuitException)
+                {
+                    // Ghidra: l'exception logicielle 0xE0000001 que le jeu lève pour abandonner la
+                    // boucle en cours et rejoindre sa sortie — « Quitter le jeu » dans les options,
+                    // et WM_QUIT dans les pompes du lecteur de vidéo. Le `finally` ci-dessous est
+                    // l'équivalent du gestionnaire SEH de l'original : la séquence d'arrêt tourne
+                    // quand même.
+                }
                 finally
                 {
                     ShutdownStage1(); // Ghidra: FUN_00504600 @ 0x00504600
                     SaveOptionsIni(); // Ghidra: thunk_FUN_0050f300 @ 0x0050f520 -> FUN_0050f300
                     ShutdownStage3(); // Ghidra: FUN_00512ff0 @ 0x00512ff0
-                    // Ghidra: DestroyWindow(DAT_005db85c) — main window handle global not yet reconstructed.
+                    // Ghidra: DestroyWindow(DAT_005db85c) â€” main window handle global not yet reconstructed.
                     // TODO(REVERSE): DAT_005db85c (main HWND) needs to be threaded through from window creation.
                     ShutdownStage4(); // Ghidra: FUN_00542f50 @ 0x00542f50
                     ShutdownStage5(); // Ghidra: FUN_00542f90 @ 0x00542f90
@@ -1156,13 +1185,13 @@ public static unsafe partial class Blaze
         }
     }
 
-    // Ghidra: &PTR_s_Blaze___Blade_00563208 — the 5-entry ANSI string-pointer table passed as
+    // Ghidra: &PTR_s_Blaze___Blade_00563208 â€” the 5-entry ANSI string-pointer table passed as
     // Setup3DDevice's 3rd argument (see the P/Invoke declaration above for how winsys3d.dll's
     // dialog proc consumes each slot).
     //
     // This previously passed `driveRoot` as a placeholder, which was actively wrong: the DLL would
     // have read a 4-byte "X:\\\0" buffer as an array of five pointers and dereferenced whatever
-    // followed it on the stack. Entry [0] is well founded — Ghidra's own symbol name for the table
+    // followed it on the stack. Entry [0] is well founded â€” Ghidra's own symbol name for the table
     // (`PTR_s_Blaze___Blade_...`) records that its first entry points at the "Blaze & Blade" string,
     // the same literal used as the movie window's title (s_Blaze___Blade_005631d8).
     //
@@ -1190,7 +1219,7 @@ public static unsafe partial class Blaze
     // Ghidra: DAT_00600920, a 0x1000-entry (0x4000-byte) table populated in RunApplication.
     private static readonly uint[] s_LookupTable00600920 = new uint[0x1000];
 
-    // Ghidra: DAT_00604920 / DAT_00600900 — the two raw 8-bit-PCM sample banks, allocated in
+    // Ghidra: DAT_00604920 / DAT_00600900 â€” the two raw 8-bit-PCM sample banks, allocated in
     // RunApplication and filled straight from disk. Their role is settled by PlaySoundEffect
     // (FUN_0053cea0), which adds a directory entry's offset to one of these two bases to get the
     // sample's address: the "base" bank holds sound ids 0..0x3b (loaded from "\SND\BASE.SND"
@@ -1199,7 +1228,7 @@ public static unsafe partial class Blaze
     private static void* s_BaseSoundBank;   // 790000 bytes
     private static void* s_LevelSoundBank;  // 260000 bytes
 
-    // Ghidra: s_Please_insert_Blaze___Blade_CD__00563258 / s_Erreur_00563278 — symbol names were
+    // Ghidra: s_Please_insert_Blaze___Blade_CD__00563258 / s_Erreur_00563278 â€” symbol names were
     // derived by Ghidra from the actual string bytes, but those bytes aren't reproduced in
     // Blaze.c's text. TODO(REVERSE): confirm exact original text/encoding from the binary.
     private static readonly byte* s_PleaseInsertCdMessage = ToAnsiZ("Please insert the Blaze & Blade CD-ROM.");
@@ -1229,7 +1258,7 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: FUN_005138d0 @ 0x005138d0 — restores the volumes saved above.</summary>
+    /// <summary>Ghidra: FUN_005138d0 @ 0x005138d0 â€” restores the volumes saved above.</summary>
     private static void RestoreWaveOutVolume()
     {
         uint deviceCount = waveOutGetNumDevs();
@@ -1258,22 +1287,22 @@ public static unsafe partial class Blaze
 
     // TODO(REVERSE): DAT_005630bc has no Ghidra-derived string name (short/undecoded literal);
     // ".ini" is a strong but unconfirmed guess for the settings-file extension.
-    // Ghidra: DAT_005630bc — recovered from Legacy/Blaze.exe as ".cfg", not ".ini". The installed
+    // Ghidra: DAT_005630bc â€” recovered from Legacy/Blaze.exe as ".cfg", not ".ini". The installed
     // game's own options file is BLAZE.cfg, and its [Options]/[D3DDriver]/[Controls] sections match
-    // what LoadOptionsIni/LoadKeyBindings already read — so those two were correct all along and
+    // what LoadOptionsIni/LoadKeyBindings already read â€” so those two were correct all along and
     // had simply never located their file.
     private const string IniFileExtension = ".cfg";
 
-    // Ghidra: &DAT_00563080 (Blaze.c:58266) — Ghidra gave it no string name, but the literal is
+    // Ghidra: &DAT_00563080 (Blaze.c:58266) â€” Ghidra gave it no string name, but the literal is
     // present in Legacy/Blaze.exe: "Size". It sits in the .data key block exactly where the call
     // order puts it, between "Small" (0x00563088) and "Resolution" (0x00563074), and the installed
-    // game's BLAZE.cfg carries Size=23 alongside Resolution=4 — which is precisely
+    // game's BLAZE.cfg carries Size=23 alongside Resolution=4 â€” which is precisely
     // s_ResolutionDetailLimit[4]. Three independent confirmations; no longer a TODO.
     private const string SizeIniKey = "Size";
 
     // Ghidra: DAT_0054d000. TODO(REVERSE): no literal value in Blaze.c (data-only global); this
     // is inferred as 1/64 from cross-referencing winsys3d.c's own default
-    // `CreateTranslationTables(1.0f)` call against the ini's default Gamma value of 0x40 (64) —
+    // `CreateTranslationTables(1.0f)` call against the ini's default Gamma value of 0x40 (64) â€”
     // 64 * (1/64) == 1.0, matching the DLL's default. See Documentation/DLL/winsys3d.md.
     private const float GammaIniScale = 1.0f / 64.0f;
 
@@ -1283,7 +1312,7 @@ public static unsafe partial class Blaze
     private static uint s_CdVolumeIni;
     private static uint s_GammaIni;
 
-    // Ghidra: AU_00564a05._51_4_ — a 4-byte field at offset 0x33 inside a larger, not-yet-
+    // Ghidra: AU_00564a05._51_4_ â€” a 4-byte field at offset 0x33 inside a larger, not-yet-
     // reconstructed blob (AU_00564a05). Ini key "Small", default 0.
     private static uint s_SmallTextureFlag;
 
@@ -1293,12 +1322,12 @@ public static unsafe partial class Blaze
     // Role established 2026-08-12 (the earlier TODO(REVERSE) here is answered): this is the
     // engine's render-size level. `SetShift` (winsys3d.c:4937) hands the 3D device a viewport of
     // `(Size + 9) * 0x20` by `(Size + 9) * 0x18` and selects the vertex-scaling lookup table with
-    // the same value. So Size 11 is 640x480 — the engine's logical reference space — and the
+    // the same value. So Size 11 is 640x480 â€” the engine's logical reference space â€” and the
     // shipped `Size=21` is 960x720, which matches the render target measured at runtime. Full
     // derivation in `Documentation/DLL/winsys3d.md`, section "Coordinate scaling".
     private static int s_SizeSetting_005de160 = 0xb;
 
-    /// <summary>Taille de rendu que le réglage <c>Size</c> implique, en pixels.</summary>
+    /// <summary>Taille de rendu que le rÃ©glage <c>Size</c> implique, en pixels.</summary>
     private static (int Width, int Height) RenderSizeFromSizeSetting()
         => ((s_SizeSetting_005de160 + 9) * 0x20, (s_SizeSetting_005de160 + 9) * 0x18);
 
@@ -1306,25 +1335,25 @@ public static unsafe partial class Blaze
     private static uint s_ResolutionIndex;
     private static uint s_TimingMode;
 
-    // Ghidra: &DAT_00564a58, 4 ints — per-joystick-slot assignment (-1 = unassigned). Ini keys
-    // built from format string "Joy%d" — no space (Ghidra: s_Joy_d_00563064; literal read back
+    // Ghidra: &DAT_00564a58, 4 ints â€” per-joystick-slot assignment (-1 = unassigned). Ini keys
+    // built from format string "Joy%d" â€” no space (Ghidra: s_Joy_d_00563064; literal read back
     // from Legacy/Blaze.exe at 0x00563064). An earlier reconstruction wrote "Joy %d", which reads
     // keys the real BLAZE.cfg does not contain: the joystick settings silently fell back to their
     // defaults instead of being loaded.
     private static readonly int[] s_JoystickSlot = new int[4];
 
-    // Ghidra: &DAT_00562e00 — per-resolution clamp table for s_SizeSetting_005de160.
+    // Ghidra: &DAT_00562e00 â€” per-resolution clamp table for s_SizeSetting_005de160.
     // TODO(REVERSE): actual byte content not present in Blaze.c (data-only global); sized as a
     // guess and filled with int.MaxValue as a safe (non-clamping) placeholder rather than
     // inventing real limits.
     private static readonly int[] s_ResolutionDetailLimit = CreateUnknownResolutionLimitTable();
 
-    // Ghidra: DAT_00562e00 — recovered from Legacy/Blaze.exe as the dwords
+    // Ghidra: DAT_00562e00 â€” recovered from Legacy/Blaze.exe as the dwords
     // { 1, 7, 11, 16, 23, 0 }. These are real per-resolution detail clamps; the table was
     // previously filled with int.MaxValue on the assumption that its content was unrecoverable,
     // which turned the clamp into a silent no-op.
     // Entries 0..4 are confirmed: the installed BLAZE.cfg pairs Resolution=4 with Size=23, and
-    // this table's index 4 is 23 — the clamp is a no-op there, which is what a settings file
+    // this table's index 4 is 23 â€” the clamp is a no-op there, which is what a settings file
     // written by the game itself must produce.
     // TODO(REVERSE): the trailing 0 is transcribed as read. It is plausibly a terminator rather
     // than a 6th entry meaning "clamp everything to 0"; the bytes that follow (01 02 03 04 05 06
@@ -1332,7 +1361,7 @@ public static unsafe partial class Blaze
     private static int[] CreateUnknownResolutionLimitTable()
         => [1, 7, 11, 16, 23, 0];
 
-    // Ghidra: &DAT_00564b58, 240 ints (4 groups x 3 categories x 20 actions) — key-binding table.
+    // Ghidra: &DAT_00564b58, 240 ints (4 groups x 3 categories x 20 actions) â€” key-binding table.
     // Key format reconstructed as "K%01x%01x%02x" (Ghidra: s_K_01x_01x_02x_00564f6c).
     private static readonly int[] s_KeyBindings = new int[4 * 3 * 20];
 
@@ -1352,7 +1381,7 @@ public static unsafe partial class Blaze
     //
     // The IDirectSoundNotify identity comes out of FUN_005131d0: the object is obtained by
     // QueryInterface (vtable slot 0) on the streaming buffer and is then only ever used through
-    // slot 0x0c with the argument pair (8, &DAT_005db8a0) — and DAT_005db8a0..DAT_005db8df is
+    // slot 0x0c with the argument pair (8, &DAT_005db8a0) â€” and DAT_005db8a0..DAT_005db8df is
     // filled in as exactly 8 { dwOffset, hEventNotify } pairs just before that call. That is
     // IDirectSoundNotify::SetNotificationPositions(dwPositionNotifies, pcPositionNotifies) with
     // a DSBPOSITIONNOTIFY[8]; no other DirectSound interface has that shape.
@@ -1429,28 +1458,28 @@ public static unsafe partial class Blaze
         public IntPtr hEventNotify;
     }
 
-    // Ghidra: DAT_005db8e4 — the IDirectSound device object.
-    // TODO(REVERSE): nothing in the reconstructed call graph assigns it — no DirectSoundCreate
+    // Ghidra: DAT_005db8e4 â€” the IDirectSound device object.
+    // TODO(REVERSE): nothing in the reconstructed call graph assigns it â€” no DirectSoundCreate
     // call site has been located yet, so it is still null at runtime and every entry point below
     // takes its "no device" early-out. Same category of coverage gap as DAT_005db85c (TODO #6).
     private static void* s_DirectSound;
 
-    // Ghidra: DAT_005db754 — a second COM object released just before the IDirectSound device in
+    // Ghidra: DAT_005db754 â€” a second COM object released just before the IDirectSound device in
     // FUN_00512ff0. TODO(REVERSE): only ever seen through Release (vtable 0x08), so its concrete
     // type isn't pinned down; position in the teardown order suggests the primary/listener buffer.
     private static void* s_DirectSoundPrimary;
 
-    // Ghidra: DAT_005db900 — the streaming-music IDirectSoundBuffer created by FUN_005131d0.
+    // Ghidra: DAT_005db900 â€” the streaming-music IDirectSoundBuffer created by FUN_005131d0.
     // (The ini key that drives its volume is "CdVol", hence ApplyCdVolume's name, but the buffer
-    // itself is the ADPCM music stream, not a CD-audio object — FUN_005131d0 fills it from a
+    // itself is the ADPCM music stream, not a CD-audio object â€” FUN_005131d0 fills it from a
     // .WAV file on disk.)
     private static void* s_MusicStreamBuffer;
 
-    // Ghidra: DAT_005db904 — the IDirectSoundNotify of the buffer above.
+    // Ghidra: DAT_005db904 â€” the IDirectSoundNotify of the buffer above.
     private static void* s_MusicStreamNotify;
 
     // Ghidra: &DAT_005db758, 50 IDirectSoundBuffer pointers. The count is confirmed by
-    // FUN_00512ea0's loop bound (`while ((int)piVar3 <= 0x5db81f)` starting at 0x005db758 —
+    // FUN_00512ea0's loop bound (`while ((int)piVar3 <= 0x5db81f)` starting at 0x005db758 â€”
     // exactly 50 dword slots).
     private static readonly void*[] s_SoundBuffers = new void*[50];
 
@@ -1466,7 +1495,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00512ea0 @ 0x00512ea0. Releases all 50 sound buffers. When
     /// <paramref name="stopPlayingBuffers"/> is set, a buffer that is still playing is stopped and
     /// then released; when it is clear, a still-playing buffer is skipped entirely and left
-    /// allocated (Ghidra: the `goto LAB_00512edf` path) — reproduced exactly.
+    /// allocated (Ghidra: the `goto LAB_00512edf` path) â€” reproduced exactly.
     /// </summary>
     private static void ReleaseAllSoundBuffers(bool stopPlayingBuffers)
     {
@@ -1494,7 +1523,7 @@ public static unsafe partial class Blaze
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern IntPtr LoadLibraryA(byte* lpLibFileName);
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern IntPtr GetProcAddress(IntPtr hModule, byte* lpProcName);
 
-    // Ghidra: TexFilterPossible_exref — Blaze.exe imports this `uint` as DATA (not a function)
+    // Ghidra: TexFilterPossible_exref â€” Blaze.exe imports this `uint` as DATA (not a function)
     // from winsys3d.dll. Confirmed via winsys3d.c: it defines and reads/writes a plain global
     // `TexFilterPossible` (see Documentation/DLL/winsys3d.md). P/Invoke has no direct mechanism
     // for an imported data symbol, so it's resolved lazily via GetProcAddress instead.
@@ -1545,12 +1574,12 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: winsys3d.c FUN_00a261e0 — the path normalizer every winsys3d file-open call runs its
+    /// Ghidra: winsys3d.c FUN_00a261e0 â€” the path normalizer every winsys3d file-open call runs its
     /// argument through first. It does two things, both of which matter here:
     /// <list type="bullet">
     /// <item>skips one leading backslash, so a template like <c>"\SND\BASE.SND"</c> is relative</item>
     /// <item><b>truncates at the first <c>';'</c></b>, which is what makes the ISO-9660 version
-    /// suffixes in <c>"BLAZE.ALL;1"</c> and <c>"SYSTEM.INI;1"</c> work — the DLL opens
+    /// suffixes in <c>"BLAZE.ALL;1"</c> and <c>"SYSTEM.INI;1"</c> work â€” the DLL opens
     /// <c>"BLAZE.ALL"</c>. On a 1999 raw ISO-9660 mount the <c>;1</c> was part of the real
     /// filename; on a modern mount it is stripped by the filesystem. Either way this truncation
     /// makes the stored literal correct, so the literals are kept verbatim rather than edited.</item>
@@ -1590,8 +1619,8 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: <c>IDirectSoundBuffer::SetVolume</c> (vtable offset 0x3c), called from FUN_005137b0
     /// and FUN_00513800. The value range (-10000..0, hundredths of a decibel) matches
-    /// DSBVOLUME_MIN/DSBVOLUME_MAX. The interface identity — an open question when those two
-    /// functions were first reconstructed — is now confirmed; see the DirectSound banner above.
+    /// DSBVOLUME_MIN/DSBVOLUME_MAX. The interface identity â€” an open question when those two
+    /// functions were first reconstructed â€” is now confirmed; see the DirectSound banner above.
     /// </summary>
     private static void InvokeSetVolume(void* comObject, int attenuationHundredthDb)
     {
@@ -1601,11 +1630,11 @@ public static unsafe partial class Blaze
         setVolume(comObject, attenuationHundredthDb);
     }
 
-    // Ghidra: DAT_005db8ec — the current music-stream attenuation, computed by FUN_005137b0 and
+    // Ghidra: DAT_005db8ec â€” the current music-stream attenuation, computed by FUN_005137b0 and
     // read back by FUN_005131d0 when it starts a new stream.
     private static int s_MusicAttenuation;
 
-    // Ghidra: DAT_005db8e8 — the current sound-effect attenuation, computed by FUN_00513800 and
+    // Ghidra: DAT_005db8e8 â€” the current sound-effect attenuation, computed by FUN_00513800 and
     // read back by FUN_00513180 every time an effect is played.
     private static int s_SoundEffectAttenuation;
 
@@ -1658,7 +1687,7 @@ public static unsafe partial class Blaze
     /// 11025 Hz / 8-bit / stereo secondary buffer and parks it in the first free slot of
     /// <see cref="s_SoundBuffers"/>, returning that slot index (-1 on any failure).
     ///
-    /// TODO(REVERSE): Ghidra's register attribution is wrong in the tail of this function — it
+    /// TODO(REVERSE): Ghidra's register attribution is wrong in the tail of this function â€” it
     /// writes `piVar3` (which it had just loaded from DAT_005db8e4, the *device*) into the slot
     /// table and releases the same `piVar3` when the table is full, while the newly created
     /// buffer sits unused in the `local_2c` output parameter of CreateSoundBuffer. Storing the
@@ -1710,7 +1739,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00513110 @ 0x00513110 — <c>IDirectSoundBuffer::Lock</c> over the whole buffer
+    /// Ghidra: FUN_00513110 @ 0x00513110 â€” <c>IDirectSoundBuffer::Lock</c> over the whole buffer
     /// (dwFlags 2 == DSBLOCK_ENTIREBUFFER; the second pointer/size pair is passed as NULL, which
     /// is legal precisely because the entire buffer is locked from offset 0).
     /// </summary>
@@ -1724,7 +1753,7 @@ public static unsafe partial class Blaze
         return lockBuffer(buffer, 0, 0, audioPtr, audioBytes, null, null, DSBLOCK_ENTIREBUFFER) >= 0;
     }
 
-    /// <summary>Ghidra: FUN_00513150 @ 0x00513150 — <c>IDirectSoundBuffer::Unlock</c>.</summary>
+    /// <summary>Ghidra: FUN_00513150 @ 0x00513150 â€” <c>IDirectSoundBuffer::Unlock</c>.</summary>
     private static void UnlockSoundBuffer(int slot, void* audioPtr, uint audioBytes)
     {
         void* buffer = s_SoundBuffers[slot];
@@ -1764,35 +1793,35 @@ public static unsafe partial class Blaze
     // segments long is created; the first 80 source blocks are decoded straight into it; playback
     // starts looping and a worker thread then refills whichever segment has just been passed.
     //
-    // Everything above is reconstructed. The worker thread itself is not — see the TODO(REVERSE)
+    // Everything above is reconstructed. The worker thread itself is not â€” see the TODO(REVERSE)
     // at the CreateThread site in StartMusicStream.
     // =====================================================================
 
-    // Ghidra: DAT_005631d4 — nonzero while music is enabled (toggled by FUN_00513860, and read
+    // Ghidra: DAT_005631d4 â€” nonzero while music is enabled (toggled by FUN_00513860, and read
     // by the options UI at 0x0050f2xx). Recovered from Legacy/Blaze.exe @ 0x005631d4 as **1**:
     // music ships **enabled**. This previously defaulted to 0 on the assumption that the value was
     // unrecoverable, which silently made StartMusicStream take its early-out forever.
     private static uint s_MusicEnabled = 1;
 
-    // Ghidra: DAT_005631d0 — nonzero while no stream is running. Note the inverted sense: it is
+    // Ghidra: DAT_005631d0 â€” nonzero while no stream is running. Note the inverted sense: it is
     // *cleared* at the end of a successful start and *set* at the top of a stop. Left at 0 (its
     // .bss default): a first StartMusicStream always takes the "different track" path, which
     // calls StopMusicStream and so sets the flag before it is tested.
     private static uint s_MusicStreamStopped;
 
-    // Ghidra: DAT_005db8f0 — the whole-file scratch buffer. Its size is the literal 0x004c4b40
+    // Ghidra: DAT_005db8f0 â€” the whole-file scratch buffer. Its size is the literal 0x004c4b40
     // (5,000,000), which Ghidra rendered as `&LAB_004c4b40` because the constant happens to fall
     // inside the .text range; it is used identically as a plain size in the tail-zeroing loop.
     private const uint MusicFileBufferSize = 0x004c4b40;
     private static byte* s_MusicFileBuffer;
 
-    // Ghidra: DAT_005db8f4 / DAT_005db8f8 / DAT_005db8fc — the `fmt ` chunk body, the `data`
+    // Ghidra: DAT_005db8f4 / DAT_005db8f8 / DAT_005db8fc â€” the `fmt ` chunk body, the `data`
     // chunk body and the `data` chunk size, all pointing into s_MusicFileBuffer.
     private static ADPCMWAVEFORMAT* s_MusicFormat;
     private static byte* s_MusicData;
     private static int s_MusicDataSize;
 
-    // Ghidra: DAT_005db820 — the PCM WAVEFORMATEX describing the *decoded* stream. Kept in native
+    // Ghidra: DAT_005db820 â€” the PCM WAVEFORMATEX describing the *decoded* stream. Kept in native
     // memory because the original is a .bss global whose address is handed to DirectSound.
     private static readonly WAVEFORMATEX* s_MusicOutputFormat = (WAVEFORMATEX*)NativeMemory.AllocZeroed((nuint)sizeof(WAVEFORMATEX));
 
@@ -1802,17 +1831,17 @@ public static unsafe partial class Blaze
     private static readonly DSBPOSITIONNOTIFY* s_MusicNotifyPositions = (DSBPOSITIONNOTIFY*)NativeMemory.AllocZeroed(MusicNotifyCount * (nuint)sizeof(DSBPOSITIONNOTIFY));
     private static readonly IntPtr[] s_MusicNotifyEvents = new IntPtr[MusicNotifyCount];
 
-    // Ghidra: DAT_005db858 — the "please exit" event signalled by FUN_005135d0.
+    // Ghidra: DAT_005db858 â€” the "please exit" event signalled by FUN_005135d0.
     private static IntPtr s_MusicStopEvent;
 
-    // Ghidra: DAT_005db880 / DAT_005db8e0 — the streaming worker thread and its thread id.
+    // Ghidra: DAT_005db880 / DAT_005db8e0 â€” the streaming worker thread and its thread id.
     private static IntPtr s_MusicStreamThread;
     private static uint s_MusicStreamThreadId;
 
     // Ghidra: DAT_005db860 / DAT_005db750 / DAT_005db89c. The first two are the streaming
     // worker's cursor (source block index reached so far) and its end marker (total number of
     // source blocks); the third is a flag set as playback starts.
-    // TODO(REVERSE): all three are only ever *written* in the reconstructed graph — their readers
+    // TODO(REVERSE): all three are only ever *written* in the reconstructed graph â€” their readers
     // live in the missing worker thread body (LAB_00513660), so their exact roles above are read
     // off the values written (0x50 == the 80 blocks pre-decoded, and a block count derived from
     // the data-chunk size / nBlockAlign) rather than from consuming code.
@@ -1829,18 +1858,18 @@ public static unsafe partial class Blaze
 
     // Ghidra: DAT_0054ded8, the riid handed to QueryInterface in FUN_005131d0. The GUID *bytes*
     // are .rdata and therefore absent from Blaze.c (same systemic blocker as the other data-only
-    // symbols), but the interface identity is pinned by how the returned object is used — see the
+    // symbols), but the interface identity is pinned by how the returned object is used â€” see the
     // DirectSound banner above. The value below is the documented IID_IDirectSoundNotify.
     private static readonly Guid IID_IDirectSoundNotify = new Guid("b0210783-89cd-11d0-af08-00a0c925cd16");
 
-    // Ghidra: DAT_0056ac60 (16 shorts), DAT_0056ac80 and DAT_0056ac90 (7 shorts each) — read by
+    // Ghidra: DAT_0056ac60 (16 shorts), DAT_0056ac80 and DAT_0056ac90 (7 shorts each) â€” read by
     // FUN_00531bb0 and FUN_00531f70 respectively.
     //
     // These are data-only globals, so their bytes are not in Blaze.c either; the values below are
     // the standard Microsoft-ADPCM tables. The identification is structural rather than a guess:
     // FUN_00531f70 only accepts a `fmt ` chunk with wFormatTag == 2 (WAVE_FORMAT_ADPCM),
     // wBitsPerSample == 4 and wNumCoef == 7, and then compares aCoef[0..6].iCoef1/iCoef2 against
-    // DAT_0056ac80/DAT_0056ac90 — i.e. it verifies the file uses the standard coefficient set so
+    // DAT_0056ac80/DAT_0056ac90 â€” i.e. it verifies the file uses the standard coefficient set so
     // that the decoder's own hardcoded tables apply. The addresses corroborate the sizes exactly:
     // 16 shorts at 0x0056ac60 end at 0x0056ac80, and 7 shorts at 0x0056ac80 end at 0x0056ac8e,
     // padded to the next entry at 0x0056ac90.
@@ -1896,8 +1925,8 @@ public static unsafe partial class Blaze
     /// <paramref name="src"/> into <paramref name="dest"/> until <paramref name="srcByteBudget"/>
     /// source bytes have been consumed, and returns the number of bytes written.
     ///
-    /// The block layout it walks — per channel: 1 predictor index, then a 16-bit iDelta, iSamp1
-    /// and iSamp2 — plus the nibble-per-sample body with channels interleaved inside each byte,
+    /// The block layout it walks â€” per channel: 1 predictor index, then a 16-bit iDelta, iSamp1
+    /// and iSamp2 â€” plus the nibble-per-sample body with channels interleaved inside each byte,
     /// is standard MS-ADPCM, which is what makes the hardcoded tables above identifiable.
     ///
     /// The original keeps iDelta/iSamp1 in one `short[4]` (deltas at [0..1], samples at [2..3])
@@ -1996,7 +2025,7 @@ public static unsafe partial class Blaze
         }
 
     finished:
-        // Ghidra: `(((destBits & 0xff) >> 3) << (channels >> 1 & 0x1f)) * decodedSamples` — bytes
+        // Ghidra: `(((destBits & 0xff) >> 3) << (channels >> 1 & 0x1f)) * decodedSamples` â€” bytes
         // per sample, doubled for stereo, times the number of sample frames emitted.
         return ((destBits >> 3) << (channels >> 1)) * decodedSamples;
     }
@@ -2029,7 +2058,7 @@ public static unsafe partial class Blaze
             if (IsStandardMsAdpcmFormat(s_MusicFormat))
             {
                 // Continues from the current file position (0x400), so this reads the remainder.
-                // TODO(REVERSE): the original subtracts unconditionally — a file smaller than
+                // TODO(REVERSE): the original subtracts unconditionally â€” a file smaller than
                 // 0x400 bytes underflows the length, and one larger than 5 MB overruns the
                 // buffer. Both are original behaviour and are left as-is rather than "fixed",
                 // but they are why the tail-zeroing below is guarded.
@@ -2072,13 +2101,13 @@ public static unsafe partial class Blaze
 
         if (s_MusicEnabled == 0) return 1;
 
-        // Ghidra: __strcmpi — a different track than the one currently in the scratch buffer has
+        // Ghidra: __strcmpi â€” a different track than the one currently in the scratch buffer has
         // to stop the current stream and reload before it can be started.
         if (lstrcmpiA(path, s_LoadedMusicPath) != 0)
         {
             StopMusicStream();
             // Ghidra shows `FUN_00513470()` with no argument, but the callee's only use of its
-            // parameter is the CreateFileA path and this is its sole call site — another instance
+            // parameter is the CreateFileA path and this is its sole call site â€” another instance
             // of the parameter-recovery weakness noted in REVERSE_STATUS.md.
             if (!LoadMusicWaveFile(path)) return 0;
         }
@@ -2087,7 +2116,7 @@ public static unsafe partial class Blaze
         if (s_DirectSound == null) return -1;
 
         // The decoded stream is always described as 16-bit stereo at the source sample rate, even
-        // for a mono source — preserved as decompiled.
+        // for a mono source â€” preserved as decompiled.
         s_MusicOutputFormat->wFormatTag = WAVE_FORMAT_PCM;
         s_MusicOutputFormat->nChannels = 2;
         s_MusicOutputFormat->nSamplesPerSec = s_MusicFormat->wfx.nSamplesPerSec;
@@ -2158,14 +2187,14 @@ public static unsafe partial class Blaze
         s_MusicStreamStopped = 0;
 
         // TODO(REVERSE): the streaming worker thread's body is missing. Blaze.c passes
-        // `&LAB_00513660` to CreateThread but contains no function at that address — Ghidra only
+        // `&LAB_00513660` to CreateThread but contains no function at that address â€” Ghidra only
         // ever saw it address-taken, the same class of gap as the movie WndProc (TODO #14) and
         // the ordinal-790 device-lost callback (TODO #8). Calling CreateThread with an address we
         // cannot reconstruct would jump into nothing, so the call is skipped exactly like
         // CreateMoviePlayerWindow skips CreateWindowExA, and the handle stays zero.
         //
         // Consequence: everything above is real, so a track would start playing, but nothing ever
-        // refills the buffer — the primed 80 blocks would loop forever instead of streaming on.
+        // refills the buffer â€” the primed 80 blocks would loop forever instead of streaming on.
         // s_MusicSourceBlockCursor / s_MusicTotalBlocks / s_MusicPlaying / s_MusicNotifyEvents /
         // s_MusicStopEvent exist for that thread and currently have no reader.
         s_MusicStreamThread = IntPtr.Zero;
@@ -2186,7 +2215,7 @@ public static unsafe partial class Blaze
             SetEvent(s_MusicStopEvent);
 
             // With the worker thread not created (see StartMusicStream), the handle is zero and
-            // this returns WAIT_FAILED immediately instead of blocking — kept as decompiled.
+            // this returns WAIT_FAILED immediately instead of blocking â€” kept as decompiled.
             WaitForSingleObject(s_MusicStreamThread, 0xffffffff);
             s_MusicStreamThread = IntPtr.Zero;
 
@@ -2218,13 +2247,13 @@ public static unsafe partial class Blaze
     // Sound-effect layer (Ghidra: FUN_0053cea0 dispatcher + the five FUN_0053dxxx resamplers).
     //
     // PlaySoundEffect(soundId, pitch, gainLeft, gainRight) is the game's single sound entry point
-    // — around 200 call sites all over Blaze.c. It looks the sample up in the sound directory,
+    // â€” around 200 call sites all over Blaze.c. It looks the sample up in the sound directory,
     // then picks one of five hand-written resamplers by pitch band. Each resampler allocates a
     // DirectSound buffer sized for its output, converts the mono 8-bit source into 8-bit stereo
     // while applying the two gains, pads the remainder with silence and plays it.
     //
     // `pitch` is 1.10 fixed point with 0x400 as unity: 0x800 plays an octave up, 0x200 an octave
-    // down. That reading is not a guess — it falls out of the dispatcher's own thresholds matching
+    // down. That reading is not a guess â€” it falls out of the dispatcher's own thresholds matching
     // each resampler's exact rate ratio, e.g. 0x800 -> Decimated(step 2), 0xc00 -> Decimated(3),
     // 0x600 -> DroppingOneIn(2) (ratio 3/2), 0x555 -> DroppingOneIn(3) (4/3), 0x200 -> Doubled
     // (1/2). Every band lines up.
@@ -2326,7 +2355,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Ghidra: FUN_0053d2c0 @ 0x0053d2c0. Emits <paramref name="n"/> frames then skips one source
-    /// sample, i.e. plays back at ratio (n+1)/n — the fine pitch-up steps between unity and
+    /// sample, i.e. plays back at ratio (n+1)/n â€” the fine pitch-up steps between unity and
     /// double speed.
     ///
     /// The inner loop reproduces Ghidra's `for (; src = src + 1, i != 0; i--)` exactly: the source
@@ -2376,8 +2405,8 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0053d420 @ 0x0053d420. Per group of n+1 source samples emits n+2 frames — the
-    /// first sample, an interpolated frame midway to the next, then n more — i.e. plays back at
+    /// Ghidra: FUN_0053d420 @ 0x0053d420. Per group of n+1 source samples emits n+2 frames â€” the
+    /// first sample, an interpolated frame midway to the next, then n more â€” i.e. plays back at
     /// ratio (n+1)/(n+2), the fine pitch-*down* steps between unity and half speed.
     /// </summary>
     private static void PlaySampleInsertingOneIn(int n, byte* src, int srcLength, int gainLeft, int gainRight)
@@ -2440,8 +2469,8 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0053d640 @ 0x0053d640. Per group of n source samples emits 2n-1 frames — one
-    /// plain frame, then n-1 pairs of (sample, interpolated midpoint) — i.e. ratio n/(2n-1), the
+    /// Ghidra: FUN_0053d640 @ 0x0053d640. Per group of n source samples emits 2n-1 frames â€” one
+    /// plain frame, then n-1 pairs of (sample, interpolated midpoint) â€” i.e. ratio n/(2n-1), the
     /// fine steps just above half speed.
     /// </summary>
     private static void PlaySampleDoubledExceptOneIn(int n, byte* src, int srcLength, int gainLeft, int gainRight)
@@ -2505,7 +2534,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Ghidra: FUN_0053d880 @ 0x0053d880. Emits two frames per source sample (the sample and an
-    /// interpolated midpoint) — exactly half speed, one octave down.
+    /// interpolated midpoint) â€” exactly half speed, one octave down.
     /// </summary>
     private static void PlaySampleDoubled(byte* src, int srcLength, int gainLeft, int gainRight)
     {
@@ -2562,7 +2591,7 @@ public static unsafe partial class Blaze
         else return; // ids past the end of the directory are silently ignored
 
         // Both halves of the directory are indexed off the same base; only the bank differs.
-        // No null check on the bank here — the original has none either, and none is needed: the
+        // No null check on the bank here â€” the original has none either, and none is needed: the
         // pointer is only ever dereferenced after a sound buffer has been allocated successfully,
         // which cannot happen before RunApplication has allocated both banks.
         SoundDirectoryEntry entry = s_SoundDirectory[soundId];
@@ -2609,32 +2638,32 @@ public static unsafe partial class Blaze
         if (pitch < 0x021a) { PlaySampleDoubled(src, srcLength, gainLeft, gainRight); return; }
 
         // Ghidra renders this one call as `FUN_0053d640(9)` with its four remaining arguments
-        // dropped — a register-attribution miss, not a different signature: it is the last arm of
+        // dropped â€” a register-attribution miss, not a different signature: it is the last arm of
         // the same ladder and every sibling arm passes the identical (src, length, gains) set.
         PlaySampleDoubledExceptOneIn(9, src, srcLength, gainLeft, gainRight);
     }
 
-    /// <summary>Ghidra: FUN_0053db80 @ 0x0053db80 — fixed UI sound, id 0x38.</summary>
+    /// <summary>Ghidra: FUN_0053db80 @ 0x0053db80 â€” fixed UI sound, id 0x38.</summary>
     private static void PlayUiSound38() => PlaySoundEffect(0x38, 0x400, 0x2000, 0x2000);
 
-    /// <summary>Ghidra: FUN_0053dba0 @ 0x0053dba0 — fixed UI sound, id 0x39.</summary>
+    /// <summary>Ghidra: FUN_0053dba0 @ 0x0053dba0 â€” fixed UI sound, id 0x39.</summary>
     private static void PlayUiSound39() => PlaySoundEffect(0x39, 0x400, 0x2000, 0x2000);
 
-    /// <summary>Ghidra: FUN_0053db60 @ 0x0053db60 — fixed UI sound, id 0x3a.</summary>
+    /// <summary>Ghidra: FUN_0053db60 @ 0x0053db60 â€” fixed UI sound, id 0x3a.</summary>
     private static void PlayUiSound3A() => PlaySoundEffect(0x3a, 0x400, 0x2000, 0x2000);
 
-    /// <summary>Ghidra: FUN_0053dbc0 @ 0x0053dbc0 — fixed UI sound, id 0x3b.</summary>
+    /// <summary>Ghidra: FUN_0053dbc0 @ 0x0053dbc0 â€” fixed UI sound, id 0x3b.</summary>
     private static void PlayUiSound3B() => PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
 
     // TODO(REVERSE): FUN_0053da20 @ 0x0053da20 (positional gain calculation: distance/angle ->
     // left/right gain pair via the cos table, ordinal 450) and its caller FUN_0053db20 are the
     // remaining members of this family and are deliberately *not* reconstructed yet. Ghidra
     // declares FUN_0053da20 with 2 parameters but FUN_0053db20 calls it with 3, and its body reads
-    // `unaff_SI` and `unaff_retaddr` — register-passed values Ghidra never tied to a parameter.
+    // `unaff_SI` and `unaff_retaddr` â€” register-passed values Ghidra never tied to a parameter.
     // Reconstructing it would mean inventing a signature, so it waits for a Ghidra re-run with the
     // calling convention corrected (same class of problem as the cases listed in REVERSE_STATUS.md).
 
-    /// <summary>Ghidra: FUN_005235d0 @ 0x005235d0 — loads the [Controls] key-binding table.</summary>
+    /// <summary>Ghidra: FUN_005235d0 @ 0x005235d0 â€” loads the [Controls] key-binding table.</summary>
     private static void LoadKeyBindings(byte* iniPathAnsi)
     {
         byte* sectionAnsi = ToAnsiZ(ControlsIniSection);
@@ -2656,7 +2685,7 @@ public static unsafe partial class Blaze
         Free(sectionAnsi);
     }
 
-    /// <summary>Ghidra: FUN_00523540 @ 0x00523540 — saves the [Controls] key-binding table.</summary>
+    /// <summary>Ghidra: FUN_00523540 @ 0x00523540 â€” saves the [Controls] key-binding table.</summary>
     private static void SaveKeyBindings(byte* iniPathAnsi)
     {
         byte* sectionAnsi = ToAnsiZ(ControlsIniSection);
@@ -2701,7 +2730,7 @@ public static unsafe partial class Blaze
         s_ResolutionIndex = ReadIniInt("Resolution", 2, iniPathAnsi);
         s_TimingMode = ReadIniInt("Timing", 1, iniPathAnsi);
 
-        // ECHAFAUDAGE TEMPORAIRE : trace du fichier d'options réellement lu et des valeurs prises.
+        // ECHAFAUDAGE TEMPORAIRE : trace du fichier d'options rÃ©ellement lu et des valeurs prises.
         LogDisplayMode("bureau, avant init 3D");
         Console.Error.WriteLine(
             $"[CFG] {Marshal.PtrToStringAnsi((IntPtr)iniPathAnsi)} -> Resolution={s_ResolutionIndex} " +
@@ -2730,7 +2759,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Ghidra: FUN_0050f300 @ 0x0050f300, duplicated by the linker/Ghidra as
-    /// thunk_FUN_0050f300 @ 0x0050f520 (identical body — both map onto this one method). Mirror
+    /// thunk_FUN_0050f300 @ 0x0050f520 (identical body â€” both map onto this one method). Mirror
     /// of <see cref="LoadOptionsIni"/>: writes every setting back to the ini file.
     /// </summary>
     private static void SaveOptionsIni()
@@ -2765,7 +2794,7 @@ public static unsafe partial class Blaze
     // (window class "VfwClass") wrapping what strongly appears to be a DirectDraw
     // output surface (FUN_00512930/FUN_00512a10/FUN_00512b40/FUN_00512c80 use vtable
     // offsets that match the public, documented IDirectDraw/IDirectDrawSurface (v1)
-    // COM layout exactly: 0x50=SetCooperativeLevel — confirmed by the sibling error
+    // COM layout exactly: 0x50=SetCooperativeLevel â€” confirmed by the sibling error
     // string "SetCooperativeLevel() failed to g[et]..."; 0x54=SetDisplayMode called
     // with 640x480x16; 0x18=CreateSurface; 0x2c=Flip/0x6c=Restore in a device-lost
     // retry loop) plus a *second*, Blaze-owned C++ "stream" object (vtable
@@ -2774,7 +2803,7 @@ public static unsafe partial class Blaze
     // matching FUN_00543100/140/180; a 100ms SetTimer drives per-frame stepping).
     //
     // TODO(REVERSE): the Blaze-owned "stream" object's vtable slots point at
-    // LAB_xxxxxxxx addresses with *no* decompiled body anywhere in Blaze.c — Ghidra
+    // LAB_xxxxxxxx addresses with *no* decompiled body anywhere in Blaze.c â€” Ghidra
     // never saw their instructions, only their address taken (same situation as the
     // ordinal-790 device-lost callback documented above). The exact decoder backing
     // it (VfW vs. an internal codec) can't be determined without further disassembly
@@ -2784,7 +2813,7 @@ public static unsafe partial class Blaze
     // either), this reconstruction implements every part that *is* independently
     // verifiable (window lifetime, DirectDraw surface lifetime, joystick capture,
     // the message pump, the exe-relative movie path building) faithfully, and stops
-    // exactly at the "step one frame" vtable call — TrySetupMovieStream below always
+    // exactly at the "step one frame" vtable call â€” TrySetupMovieStream below always
     // reports failure, which the original's own code already treats as a normal,
     // handled case (RunMainLoop keeps going without the intro movies playing).
     // =====================================================================
@@ -2794,25 +2823,25 @@ public static unsafe partial class Blaze
     {
         public IntPtr HWnd;                 // offset 0x10 (param_1[4])
         public IntPtr HInstance;            // offset 0x14 (param_1[5])
-        public void* DirectDrawWrapper;     // offset 0x1c (param_1[7]) — Ghidra: FUN_00512930 result
-        public void* Stream;                // offset 0x18 (param_1[6]) — Ghidra: FUN_005431e0 result; TODO(REVERSE) vtable unrecoverable
+        public void* DirectDrawWrapper;     // offset 0x1c (param_1[7]) â€” Ghidra: FUN_00512930 result
+        public void* Stream;                // offset 0x18 (param_1[6]) â€” Ghidra: FUN_005431e0 result; TODO(REVERSE) vtable unrecoverable
         public bool Playing;                // offset 0x00 (*param_1)
         public int Result;                  // offset 0x2c (param_1[0xb])
-        public byte* TitleBitmap;           // offset 0x08 (param_1[2]) — the attract screen's TITLE640.BMP
+        public byte* TitleBitmap;           // offset 0x08 (param_1[2]) â€” the attract screen's TITLE640.BMP
                                             // image. Allocated on *wsyskern's* heap inside LoadBitmapFile,
                                             // so it is released with WsysFree, never the CRT Free.
-        public int TitleBitmapLoaded;       // offset 0x0c (param_1[3]) — nonzero once TitleBitmap is cached
-        public int AttractActive;           // offset 0x04 (param_1[1]) — set while the title screen is up;
+        public int TitleBitmapLoaded;       // offset 0x0c (param_1[3]) â€” nonzero once TitleBitmap is cached
+        public int AttractActive;           // offset 0x04 (param_1[1]) â€” set while the title screen is up;
                                             // FUN_00542970 tests it alongside Playing
-        public int TimerArmed;              // offset 0x20 (param_1[8]) — nonzero once SetTimer(hwnd,1,...) ran
-        public int Field24;                 // offset 0x24 — OpenMovieStream writes 2
-        public int Field28;                 // offset 0x28 — OpenMovieStream writes 1; gates the WM_TIMER step
+        public int TimerArmed;              // offset 0x20 (param_1[8]) â€” nonzero once SetTimer(hwnd,1,...) ran
+        public int Field24;                 // offset 0x24 â€” OpenMovieStream writes 2
+        public int Field28;                 // offset 0x28 â€” OpenMovieStream writes 1; gates the WM_TIMER step
     }
 
     private static MoviePlayerState? s_MoviePlayer; // Ghidra: DAT_005dffa8
 
-    private static readonly byte* s_VfwClassName = ToAnsiZ("VfwClass"); // Ghidra: s_VfwClass_0056e6b8 — TODO(REVERSE): exact bytes not recovered, name inferred from symbol
-    private static readonly byte* s_MovieWindowTitle = ToAnsiZ("Blaze & Blade"); // Ghidra: s_Blaze___Blade_005631d8 — TODO(REVERSE): exact bytes not recovered
+    private static readonly byte* s_VfwClassName = ToAnsiZ("VfwClass"); // Ghidra: s_VfwClass_0056e6b8 â€” TODO(REVERSE): exact bytes not recovered, name inferred from symbol
+    private static readonly byte* s_MovieWindowTitle = ToAnsiZ("Blaze & Blade"); // Ghidra: s_Blaze___Blade_005631d8 â€” TODO(REVERSE): exact bytes not recovered
 
     // =====================================================================
     // DirectDraw surface setup (Ghidra: FUN_005129e0 + FUN_00512a10).
@@ -2832,25 +2861,25 @@ public static unsafe partial class Blaze
     private const int IDirectDrawSurface_GetAttachedSurface = 0x30 / 4;
     private const int IDirectDrawSurface_GetSurfaceDesc = 0x58 / 4;
 
-    // DDSURFACEDESC is 0x6c bytes — the literal FUN_00512a10 writes into dwSize, corroborated by the
+    // DDSURFACEDESC is 0x6c bytes â€” the literal FUN_00512a10 writes into dwSize, corroborated by the
     // 0x1b-dword (108-byte) zeroing loop that precedes each use.
     /// <summary>
-    /// Vrai quand la séquence de démarrage — écran-titre et attract — s'affiche dans la fenêtre du
+    /// Vrai quand la sÃ©quence de dÃ©marrage â€” Ã©cran-titre et attract â€” s'affiche dans la fenÃªtre du
     /// jeu au lieu de l'affichage exclusif du binaire d'origine.
     ///
     /// <para>
-    /// C'est le drapeau de la **seule déviation de fidélité volontaire** de ce projet. Les trois
-    /// autres écarts consignés dans <c>REVERSE_STATUS.md</c> sont subis — le refus du 16 bits par
-    /// Windows moderne, les surfaces perdues, l'arène relocalisée par l'ASLR — et la reconstruction
-    /// les contourne pour rester fonctionnelle. Celui-ci est demandé : le jeu ne doit plus prendre
-    /// l'affichage en exclusif ni changer le mode, pour n'avoir qu'une seule fenêtre du lancement
+    /// C'est le drapeau de la **seule dÃ©viation de fidÃ©litÃ© volontaire** de ce projet. Les trois
+    /// autres Ã©carts consignÃ©s dans <c>REVERSE_STATUS.md</c> sont subis â€” le refus du 16 bits par
+    /// Windows moderne, les surfaces perdues, l'arÃ¨ne relocalisÃ©e par l'ASLR â€” et la reconstruction
+    /// les contourne pour rester fonctionnelle. Celui-ci est demandÃ© : le jeu ne doit plus prendre
+    /// l'affichage en exclusif ni changer le mode, pour n'avoir qu'une seule fenÃªtre du lancement
     /// au menu.
     /// </para>
     /// <para>
-    /// <c>OPENFORESIA_LEGACY_STARTUP=1</c> rétablit intégralement le comportement d'origine, sur le
-    /// modèle d'<c>OPENFORESIA_LEGACY_3DHELP</c>. Ce qu'il gouverne : le niveau de coopération
+    /// <c>OPENFORESIA_LEGACY_STARTUP=1</c> rÃ©tablit intÃ©gralement le comportement d'origine, sur le
+    /// modÃ¨le d'<c>OPENFORESIA_LEGACY_3DHELP</c>. Ce qu'il gouverne : le niveau de coopÃ©ration
     /// DirectDraw et le changement de mode dans <see cref="SetupDirectDrawSurfaces"/>, et les
-    /// quatre sites qui affichent ou maximisent la fenêtre <c>VfwClass</c>.
+    /// quatre sites qui affichent ou maximisent la fenÃªtre <c>VfwClass</c>.
     /// </para>
     /// </summary>
     private static readonly bool s_WindowedStartup =
@@ -2867,7 +2896,7 @@ public static unsafe partial class Blaze
     private const uint DDSCAPS_BACKBUFFER = 0x0004;
 
     /// <summary>
-    /// Ghidra: FUN_00512a10 @ 0x00512a10 (`__thiscall`) — brings DirectDraw up and creates the
+    /// Ghidra: FUN_00512a10 @ 0x00512a10 (`__thiscall`) â€” brings DirectDraw up and creates the
     /// flippable primary surface. **This is what populates `wrapper[1]`**, the surface the attract
     /// screen's blit reaches through GetDC/ReleaseDC; FUN_00512930 explicitly leaves it null, which
     /// is why recovering the overlay vtable alone never produced a picture.
@@ -2881,10 +2910,10 @@ public static unsafe partial class Blaze
     /// </summary>
     private static int SetupDirectDrawSurfaces(uint* wrapper, IntPtr hwnd)
     {
-        // Ghidra: FUN_005129e0 — DirectDrawCreate(NULL, &wrapper[0], NULL), 0 on failure.
+        // Ghidra: FUN_005129e0 â€” DirectDrawCreate(NULL, &wrapper[0], NULL), 0 on failure.
         void* directDraw;
         int hr = DirectDrawCreate(null, &directDraw, null);
-        if (hr < 0 || directDraw == null) return unchecked((int)0x80004005); // E_FAIL — Ghidra's -0x7fffbffb
+        if (hr < 0 || directDraw == null) return unchecked((int)0x80004005); // E_FAIL â€” Ghidra's -0x7fffbffb
         wrapper[0] = (uint)(nuint)directDraw;
 
         void** ddVtable = *(void***)directDraw;
@@ -2893,22 +2922,22 @@ public static unsafe partial class Blaze
         // 0x13 = DDSCL_FULLSCREEN | DDSCL_ALLOWREBOOT | DDSCL_EXCLUSIVE.
         var setCooperativeLevel = (delegate* unmanaged[Stdcall]<void*, IntPtr, uint, int>)ddVtable[IDirectDraw_SetCooperativeLevel];
 
-        // DEVIATION DELIBEREE ET CONDITIONNELLE — change `render-title-screen-in-window`.
+        // DEVIATION DELIBEREE ET CONDITIONNELLE â€” change `render-title-screen-in-window`.
         //
         // L'original prend l'affichage en `DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE` puis le bascule en
-        // 640x480, et c'est la moitié « affichage » de l'écran plein écran qu'on veut supprimer.
-        // Tout cet appareillage n'a qu'un produit réellement consommé : le contexte de périphérique
+        // 640x480, et c'est la moitiÃ© Â« affichage Â» de l'Ã©cran plein Ã©cran qu'on veut supprimer.
+        // Tout cet appareillage n'a qu'un produit rÃ©ellement consommÃ© : le contexte de pÃ©riphÃ©rique
         // que `BlitTitleScreen` obtenait par `GetDC` sur la surface primaire. Le backend le fournit
-        // désormais (`StartupSurface`), donc plus rien ne le réclame ici :
+        // dÃ©sormais (`StartupSurface`), donc plus rien ne le rÃ©clame ici :
         //
-        //   * le back buffer obtenu par `GetAttachedSurface` n'était jamais stocké,
-        //   * aucun `Flip` n'est jamais appelé sur cette chaîne,
-        //   * les champs du wrapper renseignés ensuite ne sont lus que par le chemin vidéo
-        //     DirectShow, laissé nul (TODO #13).
+        //   * le back buffer obtenu par `GetAttachedSurface` n'Ã©tait jamais stockÃ©,
+        //   * aucun `Flip` n'est jamais appelÃ© sur cette chaÃ®ne,
+        //   * les champs du wrapper renseignÃ©s ensuite ne sont lus que par le chemin vidÃ©o
+        //     DirectShow, laissÃ© nul (TODO #13).
         //
-        // On garde donc l'objet DirectDraw et son cycle de vie — `ReleaseDirectDrawSurfaces` le
-        // libère toujours — et on ne retire que la prise d'affichage. `OPENFORESIA_LEGACY_STARTUP=1`
-        // rétablit intégralement le chemin d'origine.
+        // On garde donc l'objet DirectDraw et son cycle de vie â€” `ReleaseDirectDrawSurfaces` le
+        // libÃ¨re toujours â€” et on ne retire que la prise d'affichage. `OPENFORESIA_LEGACY_STARTUP=1`
+        // rÃ©tablit intÃ©gralement le chemin d'origine.
         if (!s_WindowedStartup)
         {
             hr = setCooperativeLevel(directDraw, hwnd, 0x13);
@@ -2916,24 +2945,24 @@ public static unsafe partial class Blaze
         }
         else
         {
-            // 8 = DDSCL_NORMAL, la même valeur que la séquence de démontage d'origine emploie.
+            // 8 = DDSCL_NORMAL, la mÃªme valeur que la sÃ©quence de dÃ©montage d'origine emploie.
             hr = setCooperativeLevel(directDraw, hwnd, 8);
             if (hr < 0) return hr;
 
-            // Ni changement de mode, ni chaîne primaire/flip : plus personne ne les consomme, et
-            // c'est leur suppression qui fait disparaître le plein écran. Le wrapper garde les
-            // valeurs de son constructeur ; les renseigner reviendrait à inventer une description
+            // Ni changement de mode, ni chaÃ®ne primaire/flip : plus personne ne les consomme, et
+            // c'est leur suppression qui fait disparaÃ®tre le plein Ã©cran. Le wrapper garde les
+            // valeurs de son constructeur ; les renseigner reviendrait Ã  inventer une description
             // de surface qui n'existe plus.
             return 0;
         }
 
-        // Ghidra: (**(*dd + 0x54))(dd, 0x280, 0x1e0, 0x10) — 640 x 480 x 16bpp.
+        // Ghidra: (**(*dd + 0x54))(dd, 0x280, 0x1e0, 0x10) â€” 640 x 480 x 16bpp.
         var setDisplayMode = (delegate* unmanaged[Stdcall]<void*, uint, uint, uint, int>)ddVtable[IDirectDraw_SetDisplayMode];
         hr = setDisplayMode(directDraw, 0x280, 0x1e0, 0x10);
 
         // ENVIRONMENTAL DEVIATION, measured rather than assumed. The original only ever asks for
         // 640x480x16, and that is what is attempted first. Modern Windows declines 16bpp mode
-        // changes outright — measured here as E_NOTIMPL (0x80004001) — while the same 640x480 at
+        // changes outright â€” measured here as E_NOTIMPL (0x80004001) â€” while the same 640x480 at
         // 32bpp succeeds and everything downstream (CreateSurface, GetDC, StretchDIBits) then works.
         // Falling back keeps the faithful call as the primary path and makes the deviation explicit
         // and conditional, rather than silently rewriting the original's request.
@@ -2947,7 +2976,7 @@ public static unsafe partial class Blaze
         // DEVIATION, deliberate and flagged. The original restores the display mode only through its
         // own teardown path. This reconstruction still throws on unreconstructed game states, and an
         // abrupt exit while holding an exclusive 640x480 mode leaves the user's desktop switched.
-        // This restore-on-exit hook is a safety net, not fidelity — remove it once the shutdown path
+        // This restore-on-exit hook is a safety net, not fidelity â€” remove it once the shutdown path
         // is reliably reached.
         RegisterDisplayModeRestore(directDraw);
 
@@ -3003,7 +3032,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00512b40 @ 0x00512b40 (`__thiscall`) — releases the surfaces and, crucially,
+    /// Ghidra: FUN_00512b40 @ 0x00512b40 (`__thiscall`) â€” releases the surfaces and, crucially,
     /// calls <c>SetCooperativeLevel(hwnd, DDSCL_NORMAL)</c> to **drop the exclusive display mode**
     /// before releasing the DirectDraw object.
     /// <para>
@@ -3016,7 +3045,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static int ReleaseDirectDrawSurfaces(uint* wrapper, IntPtr hwnd)
     {
-        // Ghidra: param_1[2] then param_1[1] — Release each if non-null, in that order.
+        // Ghidra: param_1[2] then param_1[1] â€” Release each if non-null, in that order.
         for (int slot = 2; slot >= 1; slot--)
         {
             void* obj = (void*)(nuint)wrapper[slot];
@@ -3034,7 +3063,7 @@ public static unsafe partial class Blaze
         {
             void** ddVtable = *(void***)directDraw;
 
-            // Ghidra: (**(*dd + 0x50))(dd, hwnd, 8) — 8 = DDSCL_NORMAL. On failure the original
+            // Ghidra: (**(*dd + 0x50))(dd, hwnd, 8) â€” 8 = DDSCL_NORMAL. On failure the original
             // shows its own message box and returns the HRESULT without releasing.
             var setCooperativeLevel = (delegate* unmanaged[Stdcall]<void*, IntPtr, uint, int>)ddVtable[IDirectDraw_SetCooperativeLevel];
             int hr = setCooperativeLevel(directDraw, hwnd, 8);
@@ -3065,7 +3094,7 @@ public static unsafe partial class Blaze
     private const int IDirectDrawSurface_ReleaseDC = 0x68 / 4;
 
     /// <summary>
-    /// Ghidra: the blit inside FUN_00542c40 (`Blaze.c:89916-89929`) — draws the loaded
+    /// Ghidra: the blit inside FUN_00542c40 (`Blaze.c:89916-89929`) â€” draws the loaded
     /// TITLE640.BMP onto the DirectDraw primary surface. Used both for the initial paint and for
     /// the WM_COMMAND(lParam == 1) repaint.
     /// <para>
@@ -3078,18 +3107,18 @@ public static unsafe partial class Blaze
     {
         if (player.TitleBitmap == null) return;
 
-        // Régime GDI de démarrage : la même image est écrite dans la surface hors écran du backend,
-        // qui sera présentée dans la fenêtre du jeu.
+        // RÃ©gime GDI de dÃ©marrage : la mÃªme image est Ã©crite dans la surface hors Ã©cran du backend,
+        // qui sera prÃ©sentÃ©e dans la fenÃªtre du jeu.
         //
-        // **Ajout, pas substitution.** Le chemin DirectDraw ci-dessous reste intact ; l'écran-titre
+        // **Ajout, pas substitution.** Le chemin DirectDraw ci-dessous reste intact ; l'Ã©cran-titre
         // continue donc de s'afficher exactement comme avant, en plus d'alimenter notre surface.
-        // C'est ce qui rend ce palier réversible : le retrait du chemin d'origine est un pas
-        // séparé et assumé (change `render-title-screen-in-window`, groupe 6).
+        // C'est ce qui rend ce palier rÃ©versible : le retrait du chemin d'origine est un pas
+        // sÃ©parÃ© et assumÃ© (change `render-title-screen-in-window`, groupe 6).
         BlitTitleScreenToStartupSurface(player);
 
         if (player.DirectDrawWrapper == null) return;
 
-        // Ghidra: piVar1 = *(int **)(*(int *)(param_1 + 0x1c) + 4) — the wrapper's primary surface.
+        // Ghidra: piVar1 = *(int **)(*(int *)(param_1 + 0x1c) + 4) â€” the wrapper's primary surface.
         // Null until FUN_00512a10 has run; the original null-checks it, and so does this.
         void* surface = (void*)(nuint)((uint*)player.DirectDrawWrapper)[1];
         if (surface == null) return;
@@ -3127,13 +3156,13 @@ public static unsafe partial class Blaze
 
     // Les dimensions que l'original emploie sur ce chemin, en source comme en destination : le
     // `StretchDIBits` de Blaze.c:89916-89929 et le `SetDisplayMode` de FUN_00512a10 portent les
-    // mêmes littéraux. Ce ne sont donc pas des valeurs choisies par la reconstruction.
+    // mÃªmes littÃ©raux. Ce ne sont donc pas des valeurs choisies par la reconstruction.
     private const int TitleScreenWidth = 0x280;    // 640
     private const int TitleScreenHeight = 0x1e0;   // 480
 
     /// <summary>
-    /// Écrit l'écran-titre dans la surface hors écran du backend, en réutilisant le même
-    /// <c>StretchDIBits</c> et les mêmes dimensions que le chemin d'origine.
+    /// Ã‰crit l'Ã©cran-titre dans la surface hors Ã©cran du backend, en rÃ©utilisant le mÃªme
+    /// <c>StretchDIBits</c> et les mÃªmes dimensions que le chemin d'origine.
     /// </summary>
     private static void BlitTitleScreenToStartupSurface(MoviePlayerState player)
     {
@@ -3149,19 +3178,19 @@ public static unsafe partial class Blaze
                                       bits, info, 0 /* DIB_RGB_COLORS */, 0xcc0020 /* SRCCOPY */);
         if (scanlines > 0) StartupSurface.MarkDrawn();
 
-        // Présentation : cet appel est la frontière d'image du régime GDI, ce qu'EndScene est au
-        // régime Direct3D. Un échec ne dégrade que ce redessin — journalisé une fois, jamais
-        // propagé, jamais interruptif pour la boucle d'attract.
+        // PrÃ©sentation : cet appel est la frontiÃ¨re d'image du rÃ©gime GDI, ce qu'EndScene est au
+        // rÃ©gime Direct3D. Un Ã©chec ne dÃ©grade que ce redessin â€” journalisÃ© une fois, jamais
+        // propagÃ©, jamais interruptif pour la boucle d'attract.
         //
-        // **Aucune pompe de messages ici**, contrairement à ce que fait EndScene. La boucle
-        // d'attract (`ShowTitleScreenAndWait`) est elle-même une pompe `PeekMessageA(NULL, …, PM_REMOVE)`
-        // qui tourne en permanence et dispatche : les messages de notre fenêtre sont donc déjà
+        // **Aucune pompe de messages ici**, contrairement Ã  ce que fait EndScene. La boucle
+        // d'attract (`ShowTitleScreenAndWait`) est elle-mÃªme une pompe `PeekMessageA(NULL, â€¦, PM_REMOVE)`
+        // qui tourne en permanence et dispatche : les messages de notre fenÃªtre sont donc dÃ©jÃ 
         // servis. Vider la file ici consommerait les `WM_KEYDOWN` qui terminent l'attract, et le
-        // démarrage n'atteindrait plus jamais le menu.
+        // dÃ©marrage n'atteindrait plus jamais le menu.
         if (StartupSurface.HasContent && !PresentStartupSurface() && !s_StartupPresentReported)
         {
             s_StartupPresentReported = true;
-            Console.Error.WriteLine("[GDI] présentation de l'écran-titre indisponible — redessin ignoré");
+            Console.Error.WriteLine("[GDI] prÃ©sentation de l'Ã©cran-titre indisponible â€” redessin ignorÃ©");
         }
 
     }
@@ -3169,8 +3198,8 @@ public static unsafe partial class Blaze
     private static bool s_StartupPresentReported;
 
     /// <summary>
-    /// Présente la surface de démarrage dans la fenêtre du jeu. Rend faux si la fenêtre n'existe
-    /// pas encore ou si le contexte de périphérique est indisponible — l'appelant se contente alors
+    /// PrÃ©sente la surface de dÃ©marrage dans la fenÃªtre du jeu. Rend faux si la fenÃªtre n'existe
+    /// pas encore ou si le contexte de pÃ©riphÃ©rique est indisponible â€” l'appelant se contente alors
     /// de sauter ce redessin.
     /// </summary>
     private static bool PresentStartupSurface()
@@ -3183,7 +3212,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00512930 @ 0x00512930 (`__thiscall`) — constructs the DirectDraw wrapper object.
+    /// Ghidra: FUN_00512930 @ 0x00512930 (`__thiscall`) â€” constructs the DirectDraw wrapper object.
     /// Every field the teardown and the blit later read is initialised **here**, which is why
     /// skipping it is not harmless: `Malloc` maps to <c>NativeMemory.Alloc</c> and does not zero,
     /// so `ReleaseDirectDrawSurfaces` read an uninitialised <c>wrapper[2]</c> as a COM pointer and
@@ -3191,35 +3220,35 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void ConstructDirectDrawWrapper(uint* wrapper)
     {
-        // Ghidra: SetRect(ESI + 0x10, 0,0,0,0) and SetRect(ESI + 0x20, 0,0,0,0) — two Win32 RECTs.
+        // Ghidra: SetRect(ESI + 0x10, 0,0,0,0) and SetRect(ESI + 0x20, 0,0,0,0) â€” two Win32 RECTs.
         SetRect((int*)(wrapper + 4), 0, 0, 0, 0);
         SetRect((int*)(wrapper + 8), 0, 0, 0, 0);
 
-        wrapper[0] = 0;          // Ghidra: MOV [ESI],EDI       — IDirectDraw
-        wrapper[1] = 0;          // Ghidra: MOV [ESI+0x4],EDI   — primary surface
-        wrapper[2] = 0;          // Ghidra: MOV [ESI+0x8],EDI   — the slot that caused the crash
+        wrapper[0] = 0;          // Ghidra: MOV [ESI],EDI       â€” IDirectDraw
+        wrapper[1] = 0;          // Ghidra: MOV [ESI+0x4],EDI   â€” primary surface
+        wrapper[2] = 0;          // Ghidra: MOV [ESI+0x8],EDI   â€” the slot that caused the crash
         wrapper[3] = 0;          // Ghidra: MOV [ESI+0xc],EDI
         wrapper[0xc] = 0;        // Ghidra: MOV [ESI+0x30],EDI
-        wrapper[0xd] = 0xff00ff; // Ghidra: MOV [ESI+0x34],0xff00ff — the colour key
+        wrapper[0xd] = 0xff00ff; // Ghidra: MOV [ESI+0x34],0xff00ff â€” the colour key
         wrapper[0xe] = 0;        // Ghidra: MOV [ESI+0x38],EDI
         wrapper[0xf] = 1;        // Ghidra: MOV [ESI+0x3c],1
         wrapper[0x10] = 0;       // Ghidra: MOV [ESI+0x40],EDI
 
         // Ghidra: sub = FUN_00547220(0x18); if (sub) FUN_00512d10(sub, this, hwnd, &local);
         //         this[0x44] = (result != 0) ? result + 0xc : 0;
-        // The 0x18-byte object is the "Overlay Callback Object" — a COM sink whose vtable slots are
+        // The 0x18-byte object is the "Overlay Callback Object" â€” a COM sink whose vtable slots are
         // known (0x0054D028) but which nothing can ever call back into here, because no real
         // DirectDraw overlay is registered against it. Leaving this null is the original's own
         // allocation-failure path, not an invented one.
         wrapper[0x11] = 0;       // TODO(REVERSE): FUN_00512d10's overlay callback sink.
     }
 
-    // Ghidra: s_SetCooperativeLevel___failed_to_g_00563178 — only the truncated symbol name
+    // Ghidra: s_SetCooperativeLevel___failed_to_g_00563178 â€” only the truncated symbol name
     // survives in Blaze.c; the reconstructed text is a best guess, same caveat as the other
     // message strings.
     private static readonly byte* s_SetCooperativeLevelFailed = ToAnsiZ("SetCooperativeLevel() failed to go back to normal mode.");
 
-    // Safety net for the deviation noted above — not part of the original.
+    // Safety net for the deviation noted above â€” not part of the original.
     private static void* s_DisplayModeOwner;
     private static void RegisterDisplayModeRestore(void* directDraw)
     {
@@ -3240,7 +3269,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00542a00 @ 0x00542a00 (`__thiscall`) — **stops playback**. This is the function
+    /// Ghidra: FUN_00542a00 @ 0x00542a00 (`__thiscall`) â€” **stops playback**. This is the function
     /// that was missing when the attract loop had no reachable exit: it clears the playing flag and
     /// publishes a result, which is what lets PlayMoviePumpLoop return and PlayMovie report non-zero.
     /// </summary>
@@ -3255,7 +3284,7 @@ public static unsafe partial class Blaze
 
         // Ghidra: guarded by param_1[6] (the stream) and *(param_1[6] + 8). The body tears the
         // stream down through its own vtable (FUN_00512c80 / FUN_00543180 / slots 0x18 and 0x08).
-        // Stream is null in this reconstruction — TODO(REVERSE) #13 — so the guard skips it exactly
+        // Stream is null in this reconstruction â€” TODO(REVERSE) #13 â€” so the guard skips it exactly
         // as the original would with no stream open. Nothing is invented here.
         if (player.Stream != null)
         {
@@ -3267,18 +3296,18 @@ public static unsafe partial class Blaze
         player.Result = result;   // Ghidra: param_1[0xb] = param_3
     }
 
-    /// <summary>Ghidra: FUN_00542970 @ 0x00542970 (`__thiscall`) — WM_ACTIVATEAPP handling.</summary>
+    /// <summary>Ghidra: FUN_00542970 @ 0x00542970 (`__thiscall`) â€” WM_ACTIVATEAPP handling.</summary>
     private static void OnMoviePlayerActivate(MoviePlayerState player, int activated)
     {
         if (player.Playing || player.AttractActive != 0)
         {
             if (activated != 0)
             {
-                // DEVIATION CONDITIONNELLE — voir s_WindowedStartup. Ce couple SetFocus +
-                // SW_MAXIMIZE rend la fenêtre VfwClass plein écran **à chaque activation de
-                // l'application** pendant l'attract : la neutraliser à la création ne suffit pas,
-                // l'original la rétablit ici. C'est le site le plus important des quatre.
-                // Le PostMessage qui suit déclenche le redessin et reste actif dans les deux cas.
+                // DEVIATION CONDITIONNELLE â€” voir s_WindowedStartup. Ce couple SetFocus +
+                // SW_MAXIMIZE rend la fenÃªtre VfwClass plein Ã©cran **Ã  chaque activation de
+                // l'application** pendant l'attract : la neutraliser Ã  la crÃ©ation ne suffit pas,
+                // l'original la rÃ©tablit ici. C'est le site le plus important des quatre.
+                // Le PostMessage qui suit dÃ©clenche le redessin et reste actif dans les deux cas.
                 if (!s_WindowedStartup)
                 {
                     SetFocus(player.HWnd);
@@ -3292,19 +3321,19 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: FUN_005429e0 @ 0x005429e0 (`__thiscall`) — WM_TIMER: step one movie frame.</summary>
+    /// <summary>Ghidra: FUN_005429e0 @ 0x005429e0 (`__thiscall`) â€” WM_TIMER: step one movie frame.</summary>
     private static void OnMoviePlayerTimer(MoviePlayerState player, nuint timerId)
     {
         if (timerId == 1 && player.Field28 != 0)
         {
-            // TODO(REVERSE): FUN_00512c80 — the DirectDraw wrapper's per-frame flip. Not reachable
+            // TODO(REVERSE): FUN_00512c80 â€” the DirectDraw wrapper's per-frame flip. Not reachable
             // while the wrapper's vtable is unreconstructed (#13); Field28 is only set once a
             // stream is really open.
         }
     }
 
     /// <summary>
-    /// Ghidra: FUN_00542600 @ 0x00542600 — the `"VfwClass"` window procedure. Ghidra never
+    /// Ghidra: FUN_00542600 @ 0x00542600 â€” the `"VfwClass"` window procedure. Ghidra never
     /// disassembled it because the address is only ever *stored* into `WNDCLASSA.lpfnWndProc`,
     /// never called, so it produced no body until the bytes were forced to disassemble; the
     /// listing lives in `Legacy/Raw/FUN_00542600.txt`.
@@ -3322,7 +3351,7 @@ public static unsafe partial class Blaze
 
         switch (msg)
         {
-            case 0x0002: // WM_DESTROY — falls through to `return 0` in the original, doing nothing
+            case 0x0002: // WM_DESTROY â€” falls through to `return 0` in the original, doing nothing
                 return 0;
 
             case 0x0010: // WM_CLOSE
@@ -3333,7 +3362,7 @@ public static unsafe partial class Blaze
                 OnMoviePlayerActivate(player, (int)wParam);
                 return 0;
 
-            case 0x0100: // WM_KEYDOWN — only Escape stops playback; other keys fall through to 0
+            case 0x0100: // WM_KEYDOWN â€” only Escape stops playback; other keys fall through to 0
                 if (wParam == 0x1b /* VK_ESCAPE */)
                 {
                     StopMoviePlayback(player, hwnd, 1);
@@ -3364,7 +3393,7 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: FUN_00542740 @ 0x00542740 — creates the hidden window the movie player renders into.</summary>
+    /// <summary>Ghidra: FUN_00542740 @ 0x00542740 â€” creates the hidden window the movie player renders into.</summary>
     private static void CreateMoviePlayerWindow(MoviePlayerState player)
     {
         IntPtr hInstance = GetModuleHandleA(null);
@@ -3390,30 +3419,30 @@ public static unsafe partial class Blaze
         RegisterClassA(&wc);
 
         // Ghidra: CreateWindowExA(8, "VfwClass", "Blaze & Blade", 0x80000000, 0, 0, 10, 10, 0, 0,
-        //                          hInstance, 0) — WS_EX_TOPMOST + WS_POPUP, created tiny and
+        //                          hInstance, 0) â€” WS_EX_TOPMOST + WS_POPUP, created tiny and
         // resized below, which is why this window is invisible in practice.
         player.HWnd = CreateWindowExA(
             8 /* WS_EX_TOPMOST */, s_VfwClassName, s_MovieWindowTitle, 0x80000000 /* WS_POPUP */,
             0, 0, 10, 10, IntPtr.Zero, IntPtr.Zero, hInstance, null);
 
-        // Ghidra: *ESI = 0; *(ESI+0xc) = 0 — done before CreateWindowExA in the original; ordering
+        // Ghidra: *ESI = 0; *(ESI+0xc) = 0 â€” done before CreateWindowExA in the original; ordering
         // is immaterial since the window procedure early-outs while DAT_005dffa8 is null.
         player.Playing = false;
         player.TitleBitmapLoaded = 0;
 
-        // DEVIATION CONDITIONNELLE — voir s_WindowedStartup.
-        // Ces deux appels sont la moitié « fenêtre » du plein écran de démarrage : un popup
-        // WS_EX_TOPMOST maximisé puis étendu à 2000x2000. La fenêtre reste créée — `joySetCapture`
-        // et la procédure de fenêtre en dépendent — mais n'est plus montrée.
-        // Mesuré (tâche 2.2) : les touches terminent toujours l'attract, la boucle qui les lit
-        // faisant un `PeekMessageA(NULL, …)` à l'échelle du thread.
+        // DEVIATION CONDITIONNELLE â€” voir s_WindowedStartup.
+        // Ces deux appels sont la moitiÃ© Â« fenÃªtre Â» du plein Ã©cran de dÃ©marrage : un popup
+        // WS_EX_TOPMOST maximisÃ© puis Ã©tendu Ã  2000x2000. La fenÃªtre reste crÃ©Ã©e â€” `joySetCapture`
+        // et la procÃ©dure de fenÃªtre en dÃ©pendent â€” mais n'est plus montrÃ©e.
+        // MesurÃ© (tÃ¢che 2.2) : les touches terminent toujours l'attract, la boucle qui les lit
+        // faisant un `PeekMessageA(NULL, â€¦)` Ã  l'Ã©chelle du thread.
         if (s_WindowedStartup) return;
 
         ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
         MoveWindow(player.HWnd, 0, 0, 0x7d0, 0x7d0, 1);
     }
 
-    /// <summary>Ghidra: FUN_00542940 @ 0x00542940 — destroys the movie player's hidden window.</summary>
+    /// <summary>Ghidra: FUN_00542940 @ 0x00542940 â€” destroys the movie player's hidden window.</summary>
     private static void DestroyMoviePlayerWindow(MoviePlayerState player)
     {
         if (player.HWnd != IntPtr.Zero)
@@ -3427,8 +3456,8 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: FUN_00542800 @ 0x00542800. Allocates the DirectDraw-wrapper and custom stream
     /// sub-objects. In the original, this always returns success (1) once memory allocation
-    /// succeeds — the stream object's own construction can silently leave its fields zeroed
-    /// without failing the overall open. TODO(REVERSE): see the subsystem banner above — the
+    /// succeeds â€” the stream object's own construction can silently leave its fields zeroed
+    /// without failing the overall open. TODO(REVERSE): see the subsystem banner above â€” the
     /// stream object's vtable can't be faithfully constructed, so `player.Stream` stays null.
     /// </summary>
     private static bool OpenMovieStream(MoviePlayerState player)
@@ -3438,7 +3467,7 @@ public static unsafe partial class Blaze
         //         *(param_1 + 0x1c) = iVar1;
         //         if (iVar1 == 0) return 0;
         //
-        // FUN_00512930's disassembly (Legacy/Raw/FUN_00512930.txt) ends `MOV EAX,ESI; RET 0x4` — it
+        // FUN_00512930's disassembly (Legacy/Raw/FUN_00512930.txt) ends `MOV EAX,ESI; RET 0x4` â€” it
         // returns `this` unconditionally, even when its own internal Malloc fails. So the original's
         // `if (iVar1 == 0) return 0` only fires when the 0x48-byte allocation below fails, and the
         // open otherwise **succeeds**. A previous revision returned false here and justified it as
@@ -3447,7 +3476,7 @@ public static unsafe partial class Blaze
         void* ddrawWrapper = Malloc(0x48);
         if (ddrawWrapper == null) return false;
 
-        // Ghidra: iVar1 = FUN_00512930(iVar1, param_1[0x10]) — the wrapper's constructor. It is not
+        // Ghidra: iVar1 = FUN_00512930(iVar1, param_1[0x10]) â€” the wrapper's constructor. It is not
         // optional: Malloc does not zero, and the teardown reads slots this initialises.
         ConstructDirectDrawWrapper((uint*)ddrawWrapper);
         player.DirectDrawWrapper = ddrawWrapper;
@@ -3461,7 +3490,7 @@ public static unsafe partial class Blaze
                               // stream-guarded branch takes the original's own "no stream" path.
         if (stream != null) Free(stream);
 
-        // Ghidra: FUN_00512a10(*(param_1 + 0x10)) — the tail call of FUN_00542800, with the wrapper
+        // Ghidra: FUN_00512a10(*(param_1 + 0x10)) â€” the tail call of FUN_00542800, with the wrapper
         // in ECX and the window handle as its stack argument. This is what fills wrapper[1] with the
         // primary surface, so the attract screen's blit has something to draw into.
         SetupDirectDrawSurfaces((uint*)player.DirectDrawWrapper, player.HWnd);
@@ -3469,7 +3498,7 @@ public static unsafe partial class Blaze
         return true; // faithful: the original returns 1 once the wrapper allocation succeeded
     }
 
-    /// <summary>Ghidra: FUN_005428d0 @ 0x005428d0 — releases the sub-objects allocated by OpenMovieStream.</summary>
+    /// <summary>Ghidra: FUN_005428d0 @ 0x005428d0 â€” releases the sub-objects allocated by OpenMovieStream.</summary>
     private static void CloseMovieStream(MoviePlayerState player)
     {
         if (player.Stream != null)
@@ -3479,7 +3508,7 @@ public static unsafe partial class Blaze
         }
         player.Stream = null;
 
-        // DEVIATION CONDITIONNELLE — voir s_WindowedStartup.
+        // DEVIATION CONDITIONNELLE â€” voir s_WindowedStartup.
         if (player.HWnd != IntPtr.Zero && !s_WindowedStartup)
         {
             MoveWindow(player.HWnd, 0, 0, 2000, 2000, 1);
@@ -3487,7 +3516,7 @@ public static unsafe partial class Blaze
 
         if (player.DirectDrawWrapper != null)
         {
-            // Ghidra: FUN_00512b40(param_1[4]) — the real teardown. Skipping it is not harmless:
+            // Ghidra: FUN_00512b40(param_1[4]) â€” the real teardown. Skipping it is not harmless:
             // it is what drops the exclusive display mode, and without it winsys3d.dll's own 3D
             // init (Ordinal_789) cannot acquire DirectDraw and aborts the process.
             ReleaseDirectDrawSurfaces((uint*)player.DirectDrawWrapper, player.HWnd);
@@ -3495,24 +3524,24 @@ public static unsafe partial class Blaze
         }
         player.DirectDrawWrapper = null;
 
-        // DEVIATION CONDITIONNELLE — voir s_WindowedStartup.
+        // DEVIATION CONDITIONNELLE â€” voir s_WindowedStartup.
         if (player.HWnd != IntPtr.Zero && !s_WindowedStartup)
         {
             ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE, per Ghidra literal */);
         }
     }
 
-    /// <summary>Ghidra: FUN_00542f60 @ 0x00542f60 — allocates the movie-player struct and creates its window.</summary>
+    /// <summary>Ghidra: FUN_00542f60 @ 0x00542f60 â€” allocates the movie-player struct and creates its window.</summary>
     private static void InitMoviePlayer()
     {
-        // Ghidra: the allocation is followed by an explicit *(p+0xc) = 0; *(p+8) = 0 — the title
+        // Ghidra: the allocation is followed by an explicit *(p+0xc) = 0; *(p+8) = 0 â€” the title
         // bitmap cache starts empty. A fresh MoviePlayerState is already zeroed, so this mirrors
         // the original rather than adding behavior.
         s_MoviePlayer = new MoviePlayerState { TitleBitmap = null, TitleBitmapLoaded = 0 };
         CreateMoviePlayerWindow(s_MoviePlayer);
     }
 
-    /// <summary>Ghidra: FUN_00542f90 @ 0x00542f90 — destroys the window and frees the movie-player struct.</summary>
+    /// <summary>Ghidra: FUN_00542f90 @ 0x00542f90 â€” destroys the window and frees the movie-player struct.</summary>
     private static void ShutdownMoviePlayer()
     {
         if (s_MoviePlayer == null) return;
@@ -3522,7 +3551,7 @@ public static unsafe partial class Blaze
             CloseMovieStream(s_MoviePlayer);
         }
 
-        // Ghidra: Free(*(DAT_005dffa8 + 8)) then FUN_00547210(iVar1) — note the two *different*
+        // Ghidra: Free(*(DAT_005dffa8 + 8)) then FUN_00547210(iVar1) â€” note the two *different*
         // heaps, used correctly by the original: the title bitmap goes back to wsyskern (which
         // allocated it in LoadBitmapFile), the player struct to the CRT. The original calls this
         // unconditionally; wsyskern's Free tolerates null. Our struct is GC-managed, so only the
@@ -3534,22 +3563,22 @@ public static unsafe partial class Blaze
         s_MoviePlayer = null;
     }
 
-    /// <summary>Ghidra: FUN_00542f40 @ 0x00542f40 -> FUN_00542800 — tries to open the movie stream.</summary>
+    /// <summary>Ghidra: FUN_00542f40 @ 0x00542f40 -> FUN_00542800 â€” tries to open the movie stream.</summary>
     private static bool TryOpenMovieStream()
         => s_MoviePlayer != null && OpenMovieStream(s_MoviePlayer);
 
-    // Ghidra: s__sDATA_TITLE640_BMP_0056e6d4 — the wsprintfA format string is "%sDATA\TITLE640.BMP",
+    // Ghidra: s__sDATA_TITLE640_BMP_0056e6d4 â€” the wsprintfA format string is "%sDATA\TITLE640.BMP",
     // its "%s" filled with the CD drive root (DAT_005631f8). Only Ghidra's derived symbol name
     // survives in Blaze.c, not the literal bytes, so the text below is a best guess reconstructed
-    // from that name — same caveat as the movie filenames above and REVERSE_STATUS.md TODOs #17/#22.
+    // from that name â€” same caveat as the movie filenames above and REVERSE_STATUS.md TODOs #17/#22.
     private static readonly byte* s_TitleBitmapFileName = ToAnsiZ("DATA/TITLE640.BMP");
 
     /// <summary>
-    /// Ghidra: FUN_00542f30 @ 0x00542f30 -> FUN_00542c40 — the attract-mode title screen: shows
+    /// Ghidra: FUN_00542f30 @ 0x00542f30 -> FUN_00542c40 â€” the attract-mode title screen: shows
     /// TITLE640.BMP and waits, returning non-zero to tell the attract loop to stop attracting.
     /// <para>
-    /// Returns 1 when the caller should leave the attract loop (title bitmap unavailable, or — in
-    /// the original — the user pressed something), 0 when the attract loop should continue to the
+    /// Returns 1 when the caller should leave the attract loop (title bitmap unavailable, or â€” in
+    /// the original â€” the user pressed something), 0 when the attract loop should continue to the
     /// next movie.
     /// </para>
     /// <para>
@@ -3569,14 +3598,14 @@ public static unsafe partial class Blaze
         // Ghidra: *(param_1+0x2c) = 0
         player.Result = 0;
 
-        // Ghidra: if (*(param_1+0xc) == 0) { ... } — load the title bitmap once, then cache it.
+        // Ghidra: if (*(param_1+0xc) == 0) { ... } â€” load the title bitmap once, then cache it.
         if (player.TitleBitmapLoaded == 0)
         {
             byte* path = BuildCdPath(s_TitleBitmapFileName);
-            player.TitleBitmap = LoadBitmapFile(path, 0 /* silent on failure — see wsyskern.md */);
+            player.TitleBitmap = LoadBitmapFile(path, 0 /* silent on failure â€” see wsyskern.md */);
             Free(path);
 
-            // Ghidra: if (iVar3 == 0) return 1; — the original's own graceful degradation when the
+            // Ghidra: if (iVar3 == 0) return 1; â€” the original's own graceful degradation when the
             // CD (or the file) is absent. Reporting 1 is what breaks FUN_00529c10's attract loop,
             // letting startup continue to engine initialization instead of attracting forever.
             if (player.TitleBitmap == null) return 1;
@@ -3585,16 +3614,16 @@ public static unsafe partial class Blaze
         }
 
         // ---------------------------------------------------------------------------------------
-        // Deliberately not reconstructed — the rest of FUN_00542c40 (Blaze.c:89916-89975):
+        // Deliberately not reconstructed â€” the rest of FUN_00542c40 (Blaze.c:89916-89975):
         //
         //   * `*(param_1+4) = 1` then a StretchDIBits blit of the 640x480 bitmap through the
-        //     DirectDraw wrapper's own vtable — GetDC at offset 0x44, ReleaseDC at 0x68 on the
+        //     DirectDraw wrapper's own vtable â€” GetDC at offset 0x44, ReleaseDC at 0x68 on the
         //     inner object at *(param_1+0x1c)+4. Both calls are null-checked in the original, so
         //     this part would in fact degrade safely.
         //   * joySetCapture on both joysticks, then a message-pump loop that exits with 1 on
         //     WM_KEYDOWN (0x100), WM_LBUTTONDOWN (0x201), WM_RBUTTONDOWN (0x204),
-        //     WM_MBUTTONDOWN (0x207), MM_JOY1BUTTONDOWN (0x3b5) or MM_JOY2BUTTONDOWN (0x3b6) —
-        //     freeing the bitmap on the way out — re-blits on WM_TIMER (0x111, lParam 1), raises
+        //     WM_MBUTTONDOWN (0x207), MM_JOY1BUTTONDOWN (0x3b5) or MM_JOY2BUTTONDOWN (0x3b6) â€”
+        //     freeing the bitmap on the way out â€” re-blits on WM_TIMER (0x111, lParam 1), raises
         //     the fatal exception on WM_QUIT (0x12), and exits with 0 once timeGetTime shows more
         //     than 19999 ms elapsed since the last blit.
         //
@@ -3615,7 +3644,7 @@ public static unsafe partial class Blaze
             while (PeekMessageA(&msg, IntPtr.Zero, 0, 0, 1 /* PM_REMOVE */) != 0)
             {
                 // Ghidra: the key/mouse/joystick set that ends the attract screen. Handled here
-                // *and* in the window procedure — the original tests them in this loop directly,
+                // *and* in the window procedure â€” the original tests them in this loop directly,
                 // which is what makes the wait end even when the message is not dispatched.
                 if (msg.message is 0x100 or 0x201 or 0x204 or 0x207 or 0x3b5 or 0x3b6)
                 {
@@ -3637,7 +3666,7 @@ public static unsafe partial class Blaze
 
                 if (msg.message == 0x12 /* WM_QUIT */)
                 {
-                    RaiseException(0xe0000001, 0, 0, null);
+                    RaiseQuitException();
                 }
 
                 DispatchMessageA(&msg);
@@ -3654,14 +3683,14 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 -> FUN_005428d0 — closes the stream if one is open.</summary>
+    /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 -> FUN_005428d0 â€” closes the stream if one is open.</summary>
     private static void CloseMovieStreamIfOpen()
     {
         if (s_MoviePlayer != null) CloseMovieStream(s_MoviePlayer);
     }
 
     /// <summary>
-    /// Ghidra: FUN_00542a70 @ 0x00542a70 — opens the underlying video stream on the just-created
+    /// Ghidra: FUN_00542a70 @ 0x00542a70 â€” opens the underlying video stream on the just-created
     /// window and arms the 100ms per-frame timer. TODO(REVERSE): entirely built out of calls
     /// through the unrecoverable custom "stream"/DirectDraw-wrapper vtables (see banner above);
     /// always reports failure here, matching how the original already handles a failed open.
@@ -3670,13 +3699,13 @@ public static unsafe partial class Blaze
         => false;
 
     /// <summary>
-    /// Ghidra: FUN_00542b70 @ 0x00542b70 — plays the stream opened by TrySetupMovieStream, pumping
+    /// Ghidra: FUN_00542b70 @ 0x00542b70 â€” plays the stream opened by TrySetupMovieStream, pumping
     /// window messages (and raising the original's WM_QUIT-triggered fatal exception faithfully)
     /// until playback finishes, with joystick input captured for skip/cancel for the duration.
     /// </summary>
     private static int PlayMoviePumpLoop(MoviePlayerState player, byte* path)
     {
-        // Ghidra: lstrcpyA(param_1[6] + 0xc, param_2) — copies into the (unrecoverable) stream
+        // Ghidra: lstrcpyA(param_1[6] + 0xc, param_2) â€” copies into the (unrecoverable) stream
         // object's own filename buffer; nothing to copy into without that object, so skipped.
         player.Result = 0;
 
@@ -3685,13 +3714,13 @@ public static unsafe partial class Blaze
 
         if (TrySetupMovieStream(player))
         {
-            // HAZARD — do not enable TrySetupMovieStream without also signalling completion.
+            // HAZARD â€” do not enable TrySetupMovieStream without also signalling completion.
             // This loop terminates only when `player.Playing` is cleared, and the sole thing that
             // clears it in the original is a callback through the movie stream object's vtable,
             // whose slots have no decompiled body anywhere in Blaze.c (REVERSE_STATUS.md TODO #13).
             // The loop is currently unreachable *only* because TrySetupMovieStream is a stub
             // returning false. Making that stub return true before the completion signal exists
-            // re-hangs startup — this time in a tight PeekMessage spin rather than a bare one.
+            // re-hangs startup â€” this time in a tight PeekMessage spin rather than a bare one.
             // This is the same defect class that TODO #31 records for the attract loop.
             player.Playing = true;
             MSG msg;
@@ -3701,7 +3730,7 @@ public static unsafe partial class Blaze
                 {
                     if (msg.message == 0x12 /* WM_QUIT */)
                     {
-                        RaiseException(0xe0000001, 0, 0, null);
+                        RaiseQuitException();
                     }
                     DispatchMessageA(&msg);
                 }
@@ -3730,7 +3759,7 @@ public static unsafe partial class Blaze
         return PlayMoviePumpLoop(s_MoviePlayer, path);
     }
 
-    // Ghidra: s_TEPS_AVI_005684f4 / s_OPENING_AVI_005684e8 / s_ANI01_AVI_005684dc — only Ghidra's
+    // Ghidra: s_TEPS_AVI_005684f4 / s_OPENING_AVI_005684e8 / s_ANI01_AVI_005684dc â€” only Ghidra's
     // auto-derived symbol names survive in Blaze.c, not the literal bytes; best-guess filenames.
     private static readonly byte* s_MovieNameTeps = ToAnsiZ("TEPS.AVI");
     private static readonly byte* s_MovieNameOpening = ToAnsiZ("OPENING.AVI");
@@ -3742,13 +3771,13 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Ghidra: FUN_00504460 @ 0x00504460. Registers, then immediately unregisters, a set of 8
-    /// winsys3d.dll "handler" slots (Ghidra: Ordinal_6/Ordinal_10 — see winsys3d.c FUN_00a040d0/
+    /// winsys3d.dll "handler" slots (Ghidra: Ordinal_6/Ordinal_10 â€” see winsys3d.c FUN_00a040d0/
     /// FUN_00a04220, a generic handler-table used elsewhere for DPMI/legacy-interrupt-style
     /// callbacks), then sets up a joystick device via FUN_00523120 before resetting joystick
     /// state (FUN_00504b10). TODO(REVERSE): the 8 callback targets (&LAB_00504610.._680) have no
     /// decompiled bodies in Blaze.c, matching the ordinal-790/&LAB_00512ef0 situation elsewhere;
     /// passed through as null. FUN_00523120 (DirectInput joystick device creation, tied to the
-    /// main window handle) has its own unread dependency chain (FUN_00522dc0/eb0/e40) — next
+    /// main window handle) has its own unread dependency chain (FUN_00522dc0/eb0/e40) â€” next
     /// frontier, see REVERSE_STATUS.md.
     /// </summary>
     private static void SetupJoystickHandlers()
@@ -3771,8 +3800,8 @@ public static unsafe partial class Blaze
         // found. It does not block this call, for two reasons established by reading the chain:
         // the first argument is an `HINSTANCE` whose null case the constructor handles explicitly
         // (`GetModuleHandleA(NULL)`), and the handle itself is only ever used as the window of
-        // `SetCooperativeLevel`. The reconstruction now owns a real window — the Direct3D 11
-        // backend's — so there is a legitimate handle to give, which was not true when TODO #6 was
+        // `SetCooperativeLevel`. The reconstruction now owns a real window â€” the Direct3D 11
+        // backend's â€” so there is a legitimate handle to give, which was not true when TODO #6 was
         // declared blocked.
         fixed (byte** keyboardState = &s_KeyboardState_00604b50)
             s_JoystickDevice_00604b54 = CreateInputDevice(IntPtr.Zero, D3D11Window.Handle,
@@ -3785,7 +3814,7 @@ public static unsafe partial class Blaze
     }
 
     // =====================================================================
-    // DirectInput bring-up — Ghidra: FUN_00523120 and its init chain
+    // DirectInput bring-up â€” Ghidra: FUN_00523120 and its init chain
     //
     // The game's entire input path hangs off one 0x8c4-byte object. `SetupJoystickHandlers`
     // creates it; `PollJoystickState` (FUN_005048f0) reads it every frame; `ShutdownStage1`
@@ -3793,7 +3822,7 @@ public static unsafe partial class Blaze
     // out-pointers FUN_00523120 hands back:
     //
     //     +0x000  IDirectInputA*
-    //     +0x004  HWND — the window given to SetCooperativeLevel
+    //     +0x004  HWND â€” the window given to SetCooperativeLevel
     //     +0x008  keyboard device cell (a pointer to a pointer, allocated separately)
     //     +0x00c  16 joystick device cells
     //     +0x04c  mouse device cell
@@ -3812,18 +3841,18 @@ public static unsafe partial class Blaze
     [DllImport("dinput.dll", ExactSpelling = true)]
     private static extern int DirectInputCreateA(IntPtr hinst, uint version, void** ppDI, void* unkOuter);
 
-    // IDirectInputA — byte offsets divided by 4, checked against the call sites in Blaze.c.
+    // IDirectInputA â€” byte offsets divided by 4, checked against the call sites in Blaze.c.
     private const int IDirectInput_CreateDevice = 0x0c / 4;
     private const int IDirectInput_EnumDevices = 0x10 / 4;
 
-    // IDirectInputDeviceA — likewise; SetDataFormat at +0x2c, SetCooperativeLevel at +0x34 and
+    // IDirectInputDeviceA â€” likewise; SetDataFormat at +0x2c, SetCooperativeLevel at +0x34 and
     // Acquire at +0x1c are what FUN_005233c0/FUN_00523470 call, in that order.
     private const int IDirectInputDevice_Acquire = 0x1c / 4;
     private const int IDirectInputDevice_GetDeviceState = 0x24 / 4;
     private const int IDirectInputDevice_SetDataFormat = 0x2c / 4;
     private const int IDirectInputDevice_SetCooperativeLevel = 0x34 / 4;
 
-    /// <summary>DISCL_FOREGROUND | DISCL_NONEXCLUSIVE — the literal 6 both device setups pass.</summary>
+    /// <summary>DISCL_FOREGROUND | DISCL_NONEXCLUSIVE â€” the literal 6 both device setups pass.</summary>
     private const uint DiscLevel_ForegroundNonExclusive = 6;
 
     private static readonly Guid s_GuidSysKeyboard =            // Ghidra: DAT_0054db58
@@ -3850,7 +3879,7 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: the keyboard DIDATAFORMAT at 0x00546f60 and its object table at 0x00545f60, rebuilt
     /// in this process's memory. The table cannot be copied verbatim: every entry holds a pointer
-    /// to a GUID at `Blaze.exe`'s own image base, which is not mapped here — so the bytes are
+    /// to a GUID at `Blaze.exe`'s own image base, which is not mapped here â€” so the bytes are
     /// reproduced field for field with our copy of `GUID_Key` substituted.
     /// </summary>
     private static DIDATAFORMAT* BuildKeyboardDataFormat()
@@ -3869,10 +3898,10 @@ public static unsafe partial class Blaze
             table[i].Flags = 0;
         }
 
-        format->Size = 0x18;          // relevé verbatim à 0x00546f60
+        format->Size = 0x18;          // relevÃ© verbatim Ã  0x00546f60
         format->ObjSize = 0x10;
         format->Flags = 2;            // DIDF_ABSAXIS
-        format->DataSize = objects;   // 256 octets d'état clavier
+        format->DataSize = objects;   // 256 octets d'Ã©tat clavier
         format->NumObjs = objects;
         format->Rgodf = table;
         return format;
@@ -3901,7 +3930,7 @@ public static unsafe partial class Blaze
         var axes = (Guid*)NativeMemory.Alloc(3, (nuint)sizeof(Guid));
         axes[0] = s_GuidXAxis; axes[1] = s_GuidYAxis; axes[2] = s_GuidZAxis;
 
-        // (GUID, dwOfs, dwType) relevés à 0x00546f80 ; 0x03 = DIDFT_AXIS, 0x0c = DIDFT_BUTTON,
+        // (GUID, dwOfs, dwType) relevÃ©s Ã  0x00546f80 ; 0x03 = DIDFT_AXIS, 0x0c = DIDFT_BUTTON,
         // 0xffff00 = DIDFT_ANYINSTANCE, 0x80000000 = DIDFT_OPTIONAL.
         table[0] = new DIOBJECTDATAFORMAT { Guid = &axes[0], Ofs = 0x00, Type = 0x00FFFF03 };
         table[1] = new DIOBJECTDATAFORMAT { Guid = &axes[1], Ofs = 0x04, Type = 0x00FFFF03 };
@@ -3911,7 +3940,7 @@ public static unsafe partial class Blaze
         table[5] = new DIOBJECTDATAFORMAT { Guid = null, Ofs = 0x0E, Type = 0x80FFFF0C };
         table[6] = new DIOBJECTDATAFORMAT { Guid = null, Ofs = 0x0F, Type = 0x80FFFF0C };
 
-        format->Size = 0x18;          // relevé verbatim à 0x00546ff0
+        format->Size = 0x18;          // relevÃ© verbatim Ã  0x00546ff0
         format->ObjSize = 0x10;
         format->Flags = 2;            // DIDF_ABSAXIS
         format->DataSize = 0x10;      // DIMOUSESTATE
@@ -3923,14 +3952,14 @@ public static unsafe partial class Blaze
     private static DIDATAFORMAT* s_MouseDataFormat;
 
     /// <summary>
-    /// Ghidra: FUN_00523120 @ 0x00523120 — allocates the input-device object, constructs it and
+    /// Ghidra: FUN_00523120 @ 0x00523120 â€” allocates the input-device object, constructs it and
     /// runs its initialisation, handing back three pointers into it. Returns null if either step
     /// fails, exactly as the original does (it frees the object and returns 0).
     /// </summary>
     private static byte* CreateInputDevice(IntPtr instance, IntPtr window,
                                            byte** keyboardState, byte** joystickState, byte** mouseState)
     {
-        // Ghidra: iVar1 = FUN_00547220(0x8c4) — the CRT operator new. A null return is carried
+        // Ghidra: iVar1 = FUN_00547220(0x8c4) â€” the CRT operator new. A null return is carried
         // through rather than short-circuited, matching the original.
         var device = (byte*)Malloc(0x8c4);
         if (device != null) InputDeviceConstruct(device, instance, window);
@@ -3953,16 +3982,16 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00522dc0 @ 0x00522dc0 — the constructor. Creates the DirectInput object and
+    /// Ghidra: FUN_00522dc0 @ 0x00522dc0 â€” the constructor. Creates the DirectInput object and
     /// zeroes the three state areas.
     /// </summary>
     private static void InputDeviceConstruct(byte* device, IntPtr instance, IntPtr window)
     {
-        // Ghidra: if (param_2 == 0) param_2 = GetModuleHandleA(NULL) — which is why the never-found
+        // Ghidra: if (param_2 == 0) param_2 = GetModuleHandleA(NULL) â€” which is why the never-found
         // DAT_005db85c never blocked this call.
         if (instance == IntPtr.Zero) instance = GetModuleHandleA(null);
 
-        // Ghidra: DirectInputCreateA(hInstance, 0x500, this, 0) — version 5, the object receiving
+        // Ghidra: DirectInputCreateA(hInstance, 0x500, this, 0) â€” version 5, the object receiving
         // the interface pointer at its own offset 0.
         int hr = DirectInputCreateA(instance, 0x500, (void**)device, null);
         if (hr < 0)
@@ -3981,7 +4010,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00522eb0 @ 0x00522eb0 — creates the keyboard device, then the mouse device
+    /// Ghidra: FUN_00522eb0 @ 0x00522eb0 â€” creates the keyboard device, then the mouse device
     /// (whose failure is tolerated and simply clears its cell), then enumerates attached joysticks.
     /// </summary>
     private static int InputDeviceInitialise(byte* device)
@@ -4004,14 +4033,14 @@ public static unsafe partial class Blaze
         if (mouseCell != null) *mouseCell = null;
         *(void***)(device + 0x4c) = mouseCell;
 
-        // Ghidra: a failing mouse releases its cell and carries on — the mouse is optional.
+        // Ghidra: a failing mouse releases its cell and carries on â€” the mouse is optional.
         if (CreateMouseDevice(mouseCell, directInput, window) < 0)
         {
             if (mouseCell != null) { ReleaseComObject(*mouseCell); Free(mouseCell); }
             *(void***)(device + 0x4c) = null;
         }
 
-        // Ghidra: (*directInput)[0x10](4, &LAB_00522d80, &count, 1) — EnumDevices over
+        // Ghidra: (*directInput)[0x10](4, &LAB_00522d80, &count, 1) â€” EnumDevices over
         // DIDEVTYPE_JOYSTICK with DIEDFL_ATTACHEDONLY, whose callback counts what is attached.
         int joystickCount = 0;
         var enumDevices = (delegate* unmanaged[Stdcall]<void*, uint, void*, void*, uint, int>)
@@ -4020,21 +4049,21 @@ public static unsafe partial class Blaze
                     &joystickCount, 1);
 
         // TODO(REVERSE): FUN_00523230 creates one device per enumerated joystick. Ghidra's
-        // decompilation of it is unusable — the whole frame is rendered as `puStack_`/`piStack_`
-        // temporaries and every vtable call has lost its arguments — so it belongs to the
+        // decompilation of it is unusable â€” the whole frame is rendered as `puStack_`/`piStack_`
+        // temporaries and every vtable call has lost its arguments â€” so it belongs to the
         // "read the disassembly" class rather than the reading class. Until it is recovered the
         // 16 joystick cells stay null, which every consumer already tests for (FUN_005230b0 skips
         // null cells), so the keyboard path is unaffected.
         *(int*)(device + 0x8b0) = joystickCount;
 
         Console.Error.WriteLine(
-            $"[INPUT] DirectInput prêt — clavier acquis, {joystickCount} manette(s) détectée(s), " +
-            "création des manettes non reconstruite (FUN_00523230)");
+            $"[INPUT] DirectInput prÃªt â€” clavier acquis, {joystickCount} manette(s) dÃ©tectÃ©e(s), " +
+            "crÃ©ation des manettes non reconstruite (FUN_00523230)");
         return 0;
     }
 
     /// <summary>
-    /// Ghidra: &LAB_00522d80 — the enumeration callback, address-taken only and with no decompiled
+    /// Ghidra: &LAB_00522d80 â€” the enumeration callback, address-taken only and with no decompiled
     /// body anywhere. Its role is fixed by its use: the count it accumulates in the caller's
     /// `pvRef` is what the loop below it iterates over. Returning DIENUM_CONTINUE (1) is what makes
     /// the enumeration visit every attached device.
@@ -4047,7 +4076,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005233c0 @ 0x005233c0 — CreateDevice(GUID_SysKeyboard), SetDataFormat,
+    /// Ghidra: FUN_005233c0 @ 0x005233c0 â€” CreateDevice(GUID_SysKeyboard), SetDataFormat,
     /// SetCooperativeLevel(window, 6), Acquire. Ghidra recovered two parameters where the call site
     /// passes three: the window it hands to SetCooperativeLevel is the one it dropped.
     /// </summary>
@@ -4083,7 +4112,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00523470 @ 0x00523470 — the same sequence for GUID_SysMouse, with the 7-object
+    /// Ghidra: FUN_00523470 @ 0x00523470 â€” the same sequence for GUID_SysMouse, with the 7-object
     /// mouse data format at 0x00546ff0. A failure at any step is returned to the caller, which
     /// treats a missing mouse as normal.
     /// </summary>
@@ -4126,15 +4155,15 @@ public static unsafe partial class Blaze
         release(obj);
     }
 
-    // Ghidra: DAT_00604b50 — the keyboard state area inside the device object, handed back as
+    // Ghidra: DAT_00604b50 â€” the keyboard state area inside the device object, handed back as
     // FUN_00523120's third argument. `DAT_00604b54`, the object itself, is declared with the
     // teardown code that already owned it.
     private static byte* s_KeyboardState_00604b50;
 
     /// <summary>
-    /// Ghidra: FUN_00504b10 @ 0x00504b10 — resets the 9-slot joystick binding/state table.
+    /// Ghidra: FUN_00504b10 @ 0x00504b10 â€” resets the 9-slot joystick binding/state table.
     /// `clearName` mirrors the original's `param_1 != 0` guard around one extra field
-    /// (`puVar1[1] = 0`) that's cleared only on some call sites — exact field meaning unconfirmed.
+    /// (`puVar1[1] = 0`) that's cleared only on some call sites â€” exact field meaning unconfirmed.
     /// </summary>
     private static void JoystickResetState(bool clearName)
     {
@@ -4151,7 +4180,7 @@ public static unsafe partial class Blaze
     private struct JoystickSlotState
     {
         public ushort AxisOrButton;
-        public ushort Name; // Ghidra: puVar1[1] — TODO(REVERSE) exact field meaning unconfirmed
+        public ushort Name; // Ghidra: puVar1[1] â€” TODO(REVERSE) exact field meaning unconfirmed
     }
 
     // Ghidra: &DAT_00604a28-relative 9-entry table walked by FUN_00504b10.
@@ -4172,11 +4201,11 @@ public static unsafe partial class Blaze
         s_DeviceCapFlag_00564a48 = result == 0;
     }
 
-    // Ghidra: DAT_00564a48 — boolean capability flag set by CheckDeviceCapabilityFlag.
+    // Ghidra: DAT_00564a48 â€” boolean capability flag set by CheckDeviceCapabilityFlag.
     private static bool s_DeviceCapFlag_00564a48;
 
     /// <summary>
-    /// Ghidra: FUN_00529e40 @ 0x00529e40 — pushes a fixed "shading defaults" struct into
+    /// Ghidra: FUN_00529e40 @ 0x00529e40 â€” pushes a fixed "shading defaults" struct into
     /// winsys3d.dll via ordinals 378/368. Field semantics beyond their literal values are unknown.
     /// </summary>
     private static void SetShadingDefaults()
@@ -4195,21 +4224,21 @@ public static unsafe partial class Blaze
 
         Ordinal_378(0, 0); // TODO(REVERSE): Ordinal_378 takes no visible args at this call site in
                             // Blaze.c beyond an implicit/optimized-out pair; passed (0,0) as a
-                            // faithful placeholder — see winsys3d.md.
+                            // faithful placeholder â€” see winsys3d.md.
         Ordinal_368(buf);
     }
 
     /// <summary>
-    /// Ghidra: FUN_00529eb0 @ 0x00529eb0 — initializes several on-screen viewport/surface
+    /// Ghidra: FUN_00529eb0 @ 0x00529eb0 â€” initializes several on-screen viewport/surface
     /// descriptors (via ordinals 658/661) and either fills the main render buffer with a
     /// checkerboard pattern + tiled blit (ordinals 674/667), or clears it to black (ordinals
-    /// 665/667), depending on DAT_005633a8 (an unrecovered global — TODO(REVERSE) exact meaning).
+    /// 665/667), depending on DAT_005633a8 (an unrecovered global â€” TODO(REVERSE) exact meaning).
     /// </summary>
     private static void InitViewportSurfaces()
     {
         // Ghidra renders these four calls with their arguments spilled to unattributed stack slots
         // (uStack_18..puStack_50) rather than as call arguments, and gives the fourth only three of
-        // its five. Reading the slots back in ascending address order — the cdecl push order — and
+        // its five. Reading the slots back in ascending address order â€” the cdecl push order â€” and
         // cross-checking against the DLL bodies recovers all four completely:
         //
         //   Ordinal_658(&DAT_005e98dc, 0, 0xf0, 0x140, 0xf0)   disp env 0 : (0,240,320,240)
@@ -4221,7 +4250,7 @@ public static unsafe partial class Blaze
         // is drawn at y=240, and vice versa. 0x140/0xf0 are 320x240.
         //
         // The previous reconstruction had the argument order rotated, passed stack scratch buffers
-        // instead of the four globals, and passed **null** for the fourth — which is what made
+        // instead of the four globals, and passed **null** for the fourth â€” which is what made
         // winsys3d.dll write through a null pointer and take down the process.
         SetDefDispEnv(s_DispEnv0_005e98dc, 0, 0xf0, 0x140, 0xf0);
         SetDefDispEnv(s_DispEnv1_005e994c, 0, 0, 0x140, 0xf0);
@@ -4229,11 +4258,11 @@ public static unsafe partial class Blaze
         SetDefDrawEnv(s_DrawEnv1_005e98f0, 0, 0xf0, 0x140, 0xf0);
 
         // Ghidra: the 12 global stores that follow the calls. Each one lands inside one of the four
-        // structs above at an offset that matches the DISPENV/DRAWENV layout exactly — which is the
+        // structs above at an offset that matches the DISPENV/DRAWENV layout exactly â€” which is the
         // independent confirmation that the identification is right. They override some of what the
         // two DLL helpers just defaulted.
         //
-        // _DAT_005e98e4/_e6/_e8/_ea = disp env 0's `screen` rect  (0,0,320,240) — replaces the
+        // _DAT_005e98e4/_e6/_e8/_ea = disp env 0's `screen` rect  (0,0,320,240) â€” replaces the
         // 0x100-wide default SetDefDispEnv writes.
         *(short*)(s_DispEnv0_005e98dc + 0x08) = 0;
         *(short*)(s_DispEnv0_005e98dc + 0x0a) = 0;
@@ -4247,8 +4276,8 @@ public static unsafe partial class Blaze
         *(short*)(s_DispEnv1_005e994c + 0x0e) = 0xf0;
 
         // DAT_005e9896 / _DAT_005e9898 and DAT_005e9906 / _DAT_005e9908 = each draw env's `dtd`
-        // (dither, offset 0x16 — already 1 from SetDefDrawEnv, so this store is a no-op) and `isbg`
-        // (offset 0x18 — flipped from 0 to 1, i.e. clear the framebuffer to the background colour
+        // (dither, offset 0x16 â€” already 1 from SetDefDrawEnv, so this store is a no-op) and `isbg`
+        // (offset 0x18 â€” flipped from 0 to 1, i.e. clear the framebuffer to the background colour
         // before drawing). Ghidra shows the isbg stores as 2-byte writes overlapping the adjacent
         // `r0` byte; r0 was just zeroed by SetDefDrawEnv, so a byte store is equivalent here.
         *(s_DrawEnv0_005e9880 + 0x16) = 1;
@@ -4261,7 +4290,7 @@ public static unsafe partial class Blaze
 
         if (s_UnknownModeFlag_005633a8 == 0)
         {
-            // Ghidra: two runs of `*(undefined4*)(mainMem + 4 + off) = 0x80008000;` — a checkerboard fill.
+            // Ghidra: two runs of `*(undefined4*)(mainMem + 4 + off) = 0x80008000;` â€” a checkerboard fill.
             for (int off = 0x1c3ffc - 4; off >= 0x1c1ffc; off -= 4)
                 *(uint*)(mainMem + 4 + off) = 0x80008000;
             for (int off = 0x1b7ffc - 4; off >= 0x1afffc; off -= 4)
@@ -4305,20 +4334,20 @@ public static unsafe partial class Blaze
     private const int DrawEnvSize = 92;   // 0x5C
     private const int DispEnvSize = 20;   // 0x14
 
-    // Les quatre structures sont **contiguës** dans le binaire, et cette contiguïté est un contrat,
+    // Les quatre structures sont **contiguÃ«s** dans le binaire, et cette contiguÃ¯tÃ© est un contrat,
     // pas un hasard de placement :
     //
     //     0x005e9880  DrawEnv0  92 octets
     //     0x005e98dc  DispEnv0  20      <- DrawEnv0 + 0x5C
     //     0x005e98f0  DrawEnv1  92      <- DrawEnv0 + 0x70
     //     0x005e994c  DispEnv1  20      <- DrawEnv1 + 0x5C
-    //     0x005e9960  (s_FadeCounter, la globale suivante — d'où la taille totale de 224)
+    //     0x005e9960  (s_FadeCounter, la globale suivante â€” d'oÃ¹ la taille totale de 224)
     //
     // FrameEnd publie l'environnement d'affichage par `Ordinal_657(nextDrawEnv + 0x5c)` : il
-    // *dépend* du fait que le DISPENV suive immédiatement son DRAWENV. Les allouer en quatre blocs
-    // séparés faisait lire 20 octets de tas quelconque à la place du DISPENV — d'où un écran noir
-    // intermittent, mesuré à 7 lancements sur 10, selon ce que le tas contenait à cet endroit.
-    // Voir ANALYSE_ECRAN_NOIR_MENU.md pour la mesure qui a isolé la cause.
+    // *dÃ©pend* du fait que le DISPENV suive immÃ©diatement son DRAWENV. Les allouer en quatre blocs
+    // sÃ©parÃ©s faisait lire 20 octets de tas quelconque Ã  la place du DISPENV â€” d'oÃ¹ un Ã©cran noir
+    // intermittent, mesurÃ© Ã  7 lancements sur 10, selon ce que le tas contenait Ã  cet endroit.
+    // Voir ANALYSE_ECRAN_NOIR_MENU.md pour la mesure qui a isolÃ© la cause.
     private const int EnvBlockSize = 224;   // 0x005e9960 - 0x005e9880
     private static readonly byte* s_EnvBlock_005e9880 = (byte*)NativeMemory.AllocZeroed(EnvBlockSize);
 
@@ -4327,16 +4356,16 @@ public static unsafe partial class Blaze
     private static readonly byte* s_DrawEnv1_005e98f0 = s_EnvBlock_005e9880 + 0x70;
     private static readonly byte* s_DispEnv1_005e994c = s_EnvBlock_005e9880 + 0xCC;
 
-    // Ghidra: DAT_005633a8 — read pervasively as a mode flag (movie-intro skip / safe-mode?);
+    // Ghidra: DAT_005633a8 â€” read pervasively as a mode flag (movie-intro skip / safe-mode?);
     // TODO(REVERSE): exact meaning not confirmed, no assignment site reached yet from RunMainLoop.
     private static int s_UnknownModeFlag_005633a8;
 
-    // Ghidra: DAT_005631f8 — the game's **data root** on the CD. Recovered from Legacy/Blaze.exe at
+    // Ghidra: DAT_005631f8 â€” the game's **data root** on the CD. Recovered from Legacy/Blaze.exe at
     // VA 0x005631f8: the bytes are "@:\FRENCH\", NOT the bare drive root this was previously assumed
     // to be. See Documentation/DataSymbols.md.
     //
     // '@' (0x40, 'A'-1) is the drive-letter placeholder; RunApplication's scan writes the detected
-    // letter into index 0 and resets it to '@' when nothing matches. Only index 0 is ever patched —
+    // letter into index 0 and resets it to '@' when nothing matches. Only index 0 is ever patched â€”
     // the language directory is static data, which is exactly why Blaze.c's text (code only, no
     // .data) showed a single-byte store and gave no hint that the rest of the string existed.
     //
@@ -4346,7 +4375,7 @@ public static unsafe partial class Blaze
     private static readonly byte* s_CdDataRootPath = ToAnsiZ("@:\\FRENCH\\");
 
     /// <summary>
-    /// Ghidra: FUN_00529c10 @ 0x00529c10 — Blaze &amp; Blade's own "RunMainLoop": plays the four
+    /// Ghidra: FUN_00529c10 @ 0x00529c10 â€” Blaze &amp; Blade's own "RunMainLoop": plays the four
     /// intro movies (gracefully skipped if the movie subsystem can't be opened, exactly like the
     /// original's own handling of a failed open), re-initializes engine/device state, loads the
     /// UI font from the CD, sets up the viewport, and finally hands off to the real per-frame game
@@ -4354,8 +4383,8 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void RunMainLoop()
     {
-        // La fenêtre du jeu naît ici, avant l'écran-titre — pas de device, il attend le premier
-        // début de scène. Hors reconstruction : le binaire d'origine n'a pas de fenêtre à lui à ce
+        // La fenÃªtre du jeu naÃ®t ici, avant l'Ã©cran-titre â€” pas de device, il attend le premier
+        // dÃ©but de scÃ¨ne. Hors reconstruction : le binaire d'origine n'a pas de fenÃªtre Ã  lui Ã  ce
         // stade, il dessine dans l'affichage exclusif. Voir la change `render-title-screen-in-window`.
         CreateGameWindow();
 
@@ -4368,8 +4397,8 @@ public static unsafe partial class Blaze
                 PlayMovie(s_MovieNameOpening, 3);
             }
 
-            // Ghidra: Blaze.c:74441-74451. The attract loop has FOUR exit conditions, one per step —
-            // title screen, ANI01, title screen, OPENING — and every one of them must stay, even
+            // Ghidra: Blaze.c:74441-74451. The attract loop has FOUR exit conditions, one per step â€”
+            // title screen, ANI01, title screen, OPENING â€” and every one of them must stay, even
             // while a step is degraded. Dropping the two ShowTitleScreenAndWait checks (Ghidra types
             // that thunk `void`, but the call site reads its result) is what previously made this
             // loop unbreakable, since PlayMovie always reports 0 while TrySetupMovieStream is a stub.
@@ -4385,33 +4414,33 @@ public static unsafe partial class Blaze
 
         Ordinal_129();
         Ordinal_41();
-        Ordinal_45(null, s_CdDataRootPath); // Ghidra: apcStack_54[1]="j" — TODO(REVERSE): odd literal, but Ordinal_45 is a confirmed no-op regardless
+        Ordinal_45(null, s_CdDataRootPath); // Ghidra: apcStack_54[1]="j" â€” TODO(REVERSE): odd literal, but Ordinal_45 is a confirmed no-op regardless
         Ordinal_136(0);
-        s_RandSeed_0056e9c0 = 1; // Ghidra: FUN_00547130(1) — srand(1); see CrtRand
+        s_RandSeed_0056e9c0 = 1; // Ghidra: FUN_00547130(1) â€” srand(1); see CrtRand
         s_Unknown_005e9630 = Ordinal_116();
         Ordinal_771();
-        InitTrigTables(); // Ordinal_337, re-run (idempotent — see winsys3d.md)
-        // Ghidra: Ordinal_789(0, DAT_00566cc4) — Blaze.c line 79100. The second argument is **not**
+        InitTrigTables(); // Ordinal_337, re-run (idempotent â€” see winsys3d.md)
+        // Ghidra: Ordinal_789(0, DAT_00566cc4) â€” Blaze.c line 79100. The second argument is **not**
         // inert, as an earlier note here claimed: winsys3d.c FUN_00a06420 opens with
         // `DAT_00a2c49c = param_2`, and that global indexes the base-offset tables SetShift uses to
         // position the viewport. Passing 0 selected the 320x240 entry (-160,-120), which is why the
         // scene rendered unscaled in a corner of a 640x480 screen.
 
-        // `Ordinal_789` charge `3dhelp.dll` et lui fait créer son device, ce qui bascule le mode
-        // d'affichage du bureau. Le device synthétique intercepte cette création. Voir
-        // `SyntheticDevice.cs` ; opt-in tant qu'il n'est pas éprouvé.
+        // `Ordinal_789` charge `3dhelp.dll` et lui fait crÃ©er son device, ce qui bascule le mode
+        // d'affichage du bureau. Le device synthÃ©tique intercepte cette crÃ©ation. Voir
+        // `SyntheticDevice.cs` ; opt-in tant qu'il n'est pas Ã©prouvÃ©.
         InstallSyntheticDevice();
 
         Ordinal_789(0, s_ResolutionIndexForClamp);
-        InstallDeviceShim();   // ECHAFAUDAGE TEMPORAIRE — voir DeviceShim.cs
-        LogDisplayMode("après init 3D"); // ECHAFAUDAGE TEMPORAIRE
+        InstallDeviceShim();   // ECHAFAUDAGE TEMPORAIRE â€” voir DeviceShim.cs
+        LogDisplayMode("aprÃ¨s init 3D"); // ECHAFAUDAGE TEMPORAIRE
         ShutdownMoviePlayer(); // Ghidra: FUN_00542f90()
         CheckDeviceCapabilityFlag(); // Ghidra: FUN_0050f120()
         Ordinal_110(0);
         Ordinal_681(0);
         SetShadingDefaults(); // Ghidra: FUN_00529e40()
         InitViewportSurfaces(); // Ghidra: FUN_00529eb0()
-        // Ghidra: FUN_0040a600() — confirmed no-op (`return;` with an empty body).
+        // Ghidra: FUN_0040a600() â€” confirmed no-op (`return;` with an empty body).
         SetupJoystickHandlers(); // Ghidra: FUN_00504460()
 
         int detail = s_SizeSetting_005de160;
@@ -4440,39 +4469,39 @@ public static unsafe partial class Blaze
 
     // Ghidra: DAT_0056e9c0 (set by FUN_00547130) / _DAT_005e9630 (set by the confirmed-no-op
     // Ordinal_116, always 0) / DAT_005e97f0 (set by the confirmed-no-op Ordinal_104, always 0) /
-    // DAT_005e97e0 (screen stride/pitch?) / _DAT_005e9820 — all read again by not-yet-reconstructed
+    // DAT_005e97e0 (screen stride/pitch?) / _DAT_005e9820 â€” all read again by not-yet-reconstructed
     // rendering code.
-    private static uint s_RandSeed_0056e9c0; // Ghidra: DAT_0056e9c0 — the CRT rand seed
+    private static uint s_RandSeed_0056e9c0; // Ghidra: DAT_0056e9c0 â€” the CRT rand seed
     private static uint s_Unknown_005e9630;
     private static uint s_Unknown_005e97f0;
     private static uint s_ScreenStride_005e97e0;
-    // Ghidra: DAT_005e97c0 — renamed from an earlier "screen/back-buffer base" guess once
+    // Ghidra: DAT_005e97c0 â€” renamed from an earlier "screen/back-buffer base" guess once
     // FUN_0052a030 (LoadFirstLevelResources) showed it's really the destination buffer for the
     // top-level "<cd-drive-root>SYSTEM.INI"-equivalent resource-file load, immediately after
-    // RunMainLoop sets it to `mainMem + 0xe0000` here — a fixed scratch address inside winsys3d's
+    // RunMainLoop sets it to `mainMem + 0xe0000` here â€” a fixed scratch address inside winsys3d's
     // arena reserved for that blob (LoadFirstLevelResources then treats it as a struct: offsets
     // 0x10/0x48/0x6c/100 are read back as sub-tables/fields once loaded).
     private static byte* s_MainResourceBuffer_005e97c0;
     private static int s_Unknown_005e9820;
 
     /// <summary>
-    /// Ghidra: FUN_00547130 @ 0x00547130 — trivial setter, folded directly into RunMainLoop above
+    /// Ghidra: FUN_00547130 @ 0x00547130 â€” trivial setter, folded directly into RunMainLoop above
     /// (`s_Flag_0056e9c0 = 1`) rather than kept as a separate one-line method.
     /// </summary>
 
     /// <summary>
-    /// Ghidra: the font-loading sequence inlined at the end of FUN_00529c10 (no separate function —
+    /// Ghidra: the font-loading sequence inlined at the end of FUN_00529c10 (no separate function â€”
     /// builds "&lt;cd-drive-root&gt;DATA\FONT.BMP"-style path via string concatenation, opens it with
     /// Ordinal_331/333/334/336, which are the same thin CreateFileA/SetFilePointer/ReadFile/
-    /// CloseHandle wrappers already confirmed for OpenExistingFileReadOnly elsewhere — called via
-    /// real Win32 here for consistency with that precedent — reads a chunk into the engine's main
+    /// CloseHandle wrappers already confirmed for OpenExistingFileReadOnly elsewhere â€” called via
+    /// real Win32 here for consistency with that precedent â€” reads a chunk into the engine's main
     /// memory arena, then builds a font/glyph table via ordinals 92/104/132/712/720 and the two
     /// FUN_0052a030/FUN_0052a3d0 hand-off below).
     /// </summary>
     private static void LoadUiFontFromCd()
     {
-        // Ghidra: s_DATA_Font_bmp_005684cc — only the derived symbol name survives; best guess below.
-        byte* fontFileName = ToAnsiZ("DATA/Font.bmp"); // recovered verbatim from Legacy/Blaze.exe @ 0x005684cc — forward slash, mixed case
+        // Ghidra: s_DATA_Font_bmp_005684cc â€” only the derived symbol name survives; best guess below.
+        byte* fontFileName = ToAnsiZ("DATA/Font.bmp"); // recovered verbatim from Legacy/Blaze.exe @ 0x005684cc â€” forward slash, mixed case
         byte* path = stackalloc byte[64];
         int i = 0;
         for (byte* p = s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
@@ -4495,20 +4524,20 @@ public static unsafe partial class Blaze
     // =====================================================================
     // Resource-file loader subsystem (Ghidra: FUN_00529b00/FUN_00529b50/FUN_00532070/FUN_005322f0/
     // FUN_0052a660), used by LoadFirstLevelResources (FUN_0052a030) below. Everything here loads
-    // from "BLAZE.ALL", a monolithic resource archive on the CD (sector-addressed — offsets are in
+    // from "BLAZE.ALL", a monolithic resource archive on the CD (sector-addressed â€” offsets are in
     // 2048-byte units, confirmed by the `<< 0xb` shift in LoadResourceEntry), plus a couple of
     // standalone files ("SYSTEM.INI"-equivalent, "BASE.SND"-equivalent) loaded whole.
     // =====================================================================
 
     // Ghidra: PTR_s_BLAZE_ALL_1_00566bbc -> 0x005684b0, PTR_s_SYSTEM_INI_1_00566bb8 -> 0x005684bc.
-    // Recovered verbatim from Legacy/Blaze.exe — the `;1` is an ISO-9660 file version, and Ghidra's
+    // Recovered verbatim from Legacy/Blaze.exe â€” the `;1` is an ISO-9660 file version, and Ghidra's
     // "_1_" in the symbol names was echoing it all along. Keep the suffix: NormalizePath truncates
     // at ';' before the open, exactly as winsys3d.dll does. See Documentation/DataSymbols.md.
     private static readonly byte* s_ArchiveFileName = ToAnsiZ("BLAZE.ALL;1");
     private static readonly byte* s_SystemFileName = ToAnsiZ("SYSTEM.INI;1");
 
     // Ghidra: s____snd_Base_snd_00568500, recovered as "@:\snd\Base.snd". A CD-**root** absolute
-    // template with its own '@' drive-letter placeholder — it does NOT go through the data root.
+    // template with its own '@' drive-letter placeholder â€” it does NOT go through the data root.
     // Lowercase "snd", matching the disc's E:\Snd\ directory (Windows is case-insensitive here).
     private static readonly byte* s_SoundArchiveTemplate = ToAnsiZ("@:\\snd\\Base.snd");
 
@@ -4517,7 +4546,7 @@ public static unsafe partial class Blaze
     /// its drive letter patched) followed by a relative filename. This is the family that covers
     /// BLAZE.ALL;1, SYSTEM.INI;1, DATA/Font.bmp, DATA/TITLE640.BMP and the three intro movies.
     /// <para>
-    /// It is <b>not</b> the only family — see <see cref="BuildCdRootPath"/> for templates that are
+    /// It is <b>not</b> the only family â€” see <see cref="BuildCdRootPath"/> for templates that are
     /// already absolute and address the CD root instead.
     /// </para>
     /// </summary>
@@ -4533,7 +4562,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Builds a **CD-root** path from a template that is already absolute and carries its own '@'
-    /// drive-letter placeholder — e.g. "@:\snd\Base.snd" (Ghidra: s____snd_Base_snd_00568500) and
+    /// drive-letter placeholder â€” e.g. "@:\snd\Base.snd" (Ghidra: s____snd_Base_snd_00568500) and
     /// the music table's "@:/Music/Mel00_01.WAV" entries. Only index 0 is substituted; the rest of
     /// the template is copied verbatim, separators and case included.
     /// <para>
@@ -4553,36 +4582,36 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0052a660 @ 0x0052a660 — checks whether `dest` is one of three well-known
+    /// Ghidra: FUN_0052a660 @ 0x0052a660 â€” checks whether `dest` is one of three well-known
     /// "class override table" destinations; if so, substitutes hardcoded native function-pointer
     /// tables instead of loading resource-file bytes into it. TODO(REVERSE): none of the three
     /// comparison targets (Ghidra: DAT_006008c8/DAT_00604930/DAT_00600904) have an assignment site
     /// anywhere in the reconstructed call graph yet, so they're always null here and every real
-    /// call site's `dest` (always a valid non-null scratch-buffer pointer) can never match — this
+    /// call site's `dest` (always a valid non-null scratch-buffer pointer) can never match â€” this
     /// always returns false in the current reconstruction. The three true-branch bodies (the
     /// DAT_00600904 one alone pulls in 11 further FUN_ calls, presumably per-entity-class native
     /// vtable installers) are out of scope for this pass and stubbed loudly rather than guessed.
     /// </summary>
     private static bool IsKnownOverrideDestination(void* dest)
     {
-        if (dest == s_OverrideDestA_006008c8) return true; // Ghidra: no body at all for this case — just `return 1;`
+        if (dest == s_OverrideDestA_006008c8) return true; // Ghidra: no body at all for this case â€” just `return 1;`
         if (dest == s_OverrideDestB_00604930)
-            throw new NotImplementedException("FUN_0052a660: DAT_00604930 override-table branch not reconstructed — see REVERSE_STATUS.md");
+            throw new NotImplementedException("FUN_0052a660: DAT_00604930 override-table branch not reconstructed â€” see REVERSE_STATUS.md");
         if (dest == s_OverrideDestC_00600904)
-            throw new NotImplementedException("FUN_0052a660: DAT_00600904 override-table branch (+11 dependent FUN_ calls) not reconstructed — see REVERSE_STATUS.md");
+            throw new NotImplementedException("FUN_0052a660: DAT_00600904 override-table branch (+11 dependent FUN_ calls) not reconstructed â€” see REVERSE_STATUS.md");
         return false;
     }
 
-    // Ghidra: DAT_006008c8 / DAT_00604930 / DAT_00600904 — never assigned anywhere reached yet.
+    // Ghidra: DAT_006008c8 / DAT_00604930 / DAT_00600904 â€” never assigned anywhere reached yet.
     private static void* s_OverrideDestA_006008c8;
     private static void* s_OverrideDestB_00604930;
     private static void* s_OverrideDestC_00600904;
 
     /// <summary>
     /// Ghidra: FUN_00529b00 @ 0x00529b00. Opens `path`, reads the whole file into `dest`, closes
-    /// it, and returns the next dword-aligned address past the loaded data (bump-allocator style —
+    /// it, and returns the next dword-aligned address past the loaded data (bump-allocator style â€”
     /// matches LoadResourceEntry's own return convention below). TODO(REVERSE): Ghidra's own
-    /// decompilation of this function is incomplete — the failure path returns `unaff_ESI` (a
+    /// decompilation of this function is incomplete â€” the failure path returns `unaff_ESI` (a
     /// register Ghidra could not attribute a value to at function entry) and the read call shows a
     /// literal `2` where a destination-buffer argument would be expected
     /// (`Ordinal_334(iVar1,2,iVar2)`), one parameter short of the two arguments every real call
@@ -4593,7 +4622,7 @@ public static unsafe partial class Blaze
     private static byte* LoadWholeFileToBuffer(byte* path, byte* dest)
     {
         IntPtr handle = OpenExistingFileReadOnly(path);
-        if ((int)handle < 0) return null; // TODO(REVERSE): see summary above — original's real failure value unrecoverable
+        if ((int)handle < 0) return null; // TODO(REVERSE): see summary above â€” original's real failure value unrecoverable
 
         uint size = SetFilePointer(handle, 0, null, 2 /* FILE_END */);
         SetFilePointer(handle, 0, null, 0 /* FILE_BEGIN */);
@@ -4622,7 +4651,7 @@ public static unsafe partial class Blaze
         Free(path);
         if ((int)handle < 0)
         {
-            // Ghidra: `/* WARNING: Do nothing block with infinite loop */ do {} while (true);` —
+            // Ghidra: `/* WARNING: Do nothing block with infinite loop */ do {} while (true);` â€”
             // preserved faithfully rather than silently changed to a graceful failure; the original
             // hangs here instead of continuing with an invalid handle.
             while (true) { }
@@ -4637,12 +4666,12 @@ public static unsafe partial class Blaze
         return (byte*)(((nint)dest + size + 3) & ~3);
     }
 
-    // Ghidra: DAT_0056aca8 — a ushort-driven schema table describing which fields of a loaded
+    // Ghidra: DAT_0056aca8 â€” a ushort-driven schema table describing which fields of a loaded
     // resource blob need base-relative-to-absolute pointer fixups (see FixupResourceHeader below).
     // TODO(REVERSE): data-only global, byte content not present in Blaze.c's text; left empty, so
-    // the schema-driven second fixup pass below is a safe (but incomplete) no-op — same category of
+    // the schema-driven second fixup pass below is a safe (but incomplete) no-op â€” same category of
     // gap as s_ResolutionDetailLimit elsewhere in this file.
-    // Ghidra: DAT_0056aca8 — recovered from Legacy/Blaze.exe, 37 ushorts ending at the 0x0000 the
+    // Ghidra: DAT_0056aca8 â€” recovered from Legacy/Blaze.exe, 37 ushorts ending at the 0x0000 the
     // original's loop terminates on. The terminator is NOT stored here; the loop below runs to the
     // array's length instead, which is equivalent and keeps the sentinel out of the data.
     //
@@ -4651,7 +4680,7 @@ public static unsafe partial class Blaze
     // (`header[4 + index]`), and the **high byte is the byte stride** used to walk that list.
     // The earlier "(record kind, size)" reading in an older revision of DataSymbols.md was wrong.
     //
-    // Every index is below 0x3c, matching the 60 dwords the fixed pass relocates — an internal
+    // Every index is below 0x3c, matching the 60 dwords the fixed pass relocates â€” an internal
     // consistency check the recovered bytes pass.
     private static readonly ushort[] s_ResourceFixupSchema_0056aca8 =
     [
@@ -4668,7 +4697,7 @@ public static unsafe partial class Blaze
     /// a fixed run of 60 header dwords, then a schema-driven walk over the chained lists those
     /// dwords point at.
     /// <para>
-    /// The two passes use **different** relocation formulas — the fixed pass adds
+    /// The two passes use **different** relocation formulas â€” the fixed pass adds
     /// <c>header[0]</c>, the schema pass adds <c>header[0] + header[1]</c>. That extra term is not
     /// incidental; dropping it yields pointers that look valid and are wrong by a constant.
     /// </para>
@@ -4697,7 +4726,7 @@ public static unsafe partial class Blaze
 
             int* node = (int*)(nint)((int*)blob)[4 + listIndex];
 
-            // Ghidra checks both the pointer and its first dword — an empty list is stored as a
+            // Ghidra checks both the pointer and its first dword â€” an empty list is stored as a
             // valid pointer to a zero, not as a null.
             if (node == null) continue;
             int value = *node;
@@ -4723,15 +4752,15 @@ public static unsafe partial class Blaze
     [StructLayout(LayoutKind.Sequential)]
     private struct TimImage
     {
-        public uint Mode;        // +0x00 — pixel mode; header & 7, or 2 when the TIM has no CLUT
-        public short* ClutRect;  // +0x04 — RECT {x,y,w,h}; null when there is no CLUT
-        public void* ClutData;   // +0x08 — palette bytes; null when there is no CLUT
-        public short* PixelRect; // +0x0c — RECT {x,y,w,h}
-        public void* PixelData;  // +0x10 — pixel bytes
+        public uint Mode;        // +0x00 â€” pixel mode; header & 7, or 2 when the TIM has no CLUT
+        public short* ClutRect;  // +0x04 â€” RECT {x,y,w,h}; null when there is no CLUT
+        public void* ClutData;   // +0x08 â€” palette bytes; null when there is no CLUT
+        public short* PixelRect; // +0x0c â€” RECT {x,y,w,h}
+        public void* PixelData;  // +0x10 â€” pixel bytes
     }
 
     /// <summary>
-    /// Ghidra: FUN_005322f0 @ 0x005322f0 — uploads one TIM texture (loaded by LoadResourceEntry
+    /// Ghidra: FUN_005322f0 @ 0x005322f0 â€” uploads one TIM texture (loaded by LoadResourceEntry
     /// into a scratch buffer) into VRAM, and records its texture-page / CLUT pair in a slot.
     /// <para>
     /// Reconstructed from the raw disassembly in <c>Legacy/Raw/FUN_005322f0.txt</c>, because the
@@ -4744,7 +4773,7 @@ public static unsafe partial class Blaze
     /// <item>`unaff_retaddr` is not a return address: it is **parameter 2**, the 2-short texture
     /// slot. Both call sites advance their slot pointer by exactly 4 bytes, which corroborates it.</item>
     /// <item>Every `param_1[0..2]` byte read in the decompiled body actually comes from
-    /// **`EDI` = parameter 3**, the metadata triple — not from the chunk pointer.</item>
+    /// **`EDI` = parameter 3**, the metadata triple â€” not from the chunk pointer.</item>
     /// <item>`(*param_1 &amp; 0xff10)` is a decompiler artifact. The instruction is `AND AL,0x10`,
     /// a byte mask; using `0xff10` would corrupt the pixel rect's y coordinate.</item>
     /// </list>
@@ -4767,7 +4796,7 @@ public static unsafe partial class Blaze
         // case and `caddr` guards the loop.
         int clutByteCount = 0;
 
-        // Ghidra: MOV EAX,[ESP+0x10]; TEST EAX,EAX; JZ — the test is on **caddr**, not crect.
+        // Ghidra: MOV EAX,[ESP+0x10]; TEST EAX,EAX; JZ â€” the test is on **caddr**, not crect.
         if (tim.ClutData != null)
         {
             short* clutRect = tim.ClutRect;
@@ -4775,7 +4804,7 @@ public static unsafe partial class Blaze
             clutRect[0] = 0;                                    // x = 0
             clutRect[1] = (short)(meta[1] + 0x1c0);             // y = meta[1] + 0x1c0
 
-            // Read w and h *before* w is overwritten — the original does the same, and the
+            // Read w and h *before* w is overwritten â€” the original does the same, and the
             // multiply below depends on the original width.
             int packed = clutRect[3] * clutRect[2];             // h * w
             packed = (packed + 0xff) & unchecked((int)0xffffff00);
@@ -4786,7 +4815,7 @@ public static unsafe partial class Blaze
             Ordinal_674(clutRect, tim.ClutData);                // LoadImage(crect, caddr)
         }
 
-        // Ghidra: MOV EAX,[ESP+0x18] — guarded on **paddr**, plus a skip when meta[0] == 0x1c.
+        // Ghidra: MOV EAX,[ESP+0x18] â€” guarded on **paddr**, plus a skip when meta[0] == 0x1c.
         if (tim.PixelData != null && meta[0] != 0x1c)
         {
             short* pixelRect = tim.PixelRect;
@@ -4794,7 +4823,7 @@ public static unsafe partial class Blaze
             // Ghidra: AND AL,0xf; SHL ECX,6.
             pixelRect[0] = (short)((meta[0] & 0x0f) << 6);
 
-            // Ghidra: AND AL,0x10 — a *byte* mask. The decompiler rendered this as `& 0xff10`,
+            // Ghidra: AND AL,0x10 â€” a *byte* mask. The decompiler rendered this as `& 0xff10`,
             // which is wrong and would have corrupted the y coordinate.
             pixelRect[1] = (short)((((meta[0] & 0x10) + meta[2] * 4)) << 4);
 
@@ -4802,17 +4831,17 @@ public static unsafe partial class Blaze
         }
 
         // Ghidra: 005323bf-005323f2. Packs the texture-page word out of the pixel rect and the TIM
-        // mode — libgpu's GetTPage shape. Transcribed operation for operation rather than
+        // mode â€” libgpu's GetTPage shape. Transcribed operation for operation rather than
         // simplified, since the intermediate 16-bit SAR is not equivalent to a 32-bit one.
         int x = tim.PixelRect[0];
         int y = tim.PixelRect[1];
         int tpage = ((x >> 2) & 0xf0) | (y & 0x100);
         tpage |= 0x2000;                                        // Ghidra: OR CH,0x20
-        tpage = (short)tpage >> 4;                              // Ghidra: SAR CX,4 — 16-bit
+        tpage = (short)tpage >> 4;                              // Ghidra: SAR CX,4 â€” 16-bit
         tpage |= ((int)tim.Mode & 3) << 7;
         slot[0] = (ushort)tpage;
 
-        // Ghidra: (meta[1] + 0x1c0) << 6 — libgpu's GetClut for x=0, matching the crect y above.
+        // Ghidra: (meta[1] + 0x1c0) << 6 â€” libgpu's GetClut for x=0, matching the crect y above.
         slot[1] = (ushort)((meta[1] + 0x1c0) << 6);
 
         // Ghidra: 00532407-0053243c. Mirrors the CLUT into main video memory for the low banks.
@@ -4831,14 +4860,14 @@ public static unsafe partial class Blaze
         }
     }
 
-    // Ghidra: DAT_005e8fc0 — **not a second table**. It is DAT_005e8f00 offset by 0xC0, i.e. the
+    // Ghidra: DAT_005e8fc0 â€” **not a second table**. It is DAT_005e8f00 offset by 0xC0, i.e. the
     // same tpage/clut array starting 48 entries in, and Ghidra simply named two points inside it.
     //
     // Modelling them as separate allocations is what left the main menu black: its panel
     // descriptor asks for entry 0x31 of DAT_005e8f00 = 0x31 - 0x30 = entry 1 of DAT_005e8fc0,
     // which LoadFirstLevelResources fills. LoadMenuResources only writes entries 0..3 (measured:
     // the menu's directory has exactly four), so entry 0x31 came back zero and every panel
-    // primitive sampled texture page 0 — an empty region of VRAM, hence a black screen with
+    // primitive sampled texture page 0 â€” an empty region of VRAM, hence a black screen with
     // otherwise perfectly formed geometry.
     //
     // Same shape of bug as DAT_0056e61f being menuContext[0x8c7]: suspect any DAT_ that lands
@@ -4849,18 +4878,18 @@ public static unsafe partial class Blaze
     // one contiguous array: 0x005e8520 - 0x005e8340 == 0x1e0 exactly, and PlaySoundEffect indexes
     // *both* halves off &DAT_005e8340 (`&DAT_005e8340 + soundId * 8` for ids up to 0x4c), only
     // switching which sample bank the entry's offset is added to. 0x1e0 + 0x88 == 0x268 == 77
-    // entries of 8 bytes, and 0x4c is exactly the last valid index — the sizes corroborate.
+    // entries of 8 bytes, and 0x4c is exactly the last valid index â€” the sizes corroborate.
     private const int SoundDirectoryBaseCount = 0x1e0 / 8;  // 60 entries, ids 0x00..0x3b
     private const int SoundDirectoryCount = 0x268 / 8;      // 77 entries, ids 0x00..0x4c
     private static readonly SoundDirectoryEntry* s_SoundDirectory =
         (SoundDirectoryEntry*)NativeMemory.AllocZeroed(SoundDirectoryCount * (nuint)sizeof(SoundDirectoryEntry));
-    // Ghidra: DAT_005e97e4 / _DAT_005e9810 / _DAT_005e9824 / DAT_005de538 — all read again by
+    // Ghidra: DAT_005e97e4 / _DAT_005e9810 / _DAT_005e9824 / DAT_005de538 â€” all read again by
     // not-yet-reconstructed code.
     private static uint s_Unknown_005e97e4;
     private static int s_Unknown_005e9810;
     private static IntPtr s_Unknown_005e9824;
     private static int s_Unknown_005de538;
-    // Ghidra: &DAT_005e9180 — small per-slot table reset at the end of FUN_0052a030 (4 entries of
+    // Ghidra: &DAT_005e9180 â€” small per-slot table reset at the end of FUN_0052a030 (4 entries of
     // 0x4c/76 bytes: 0x13 dwords zeroed, byte[-1]=8, byte[0]=incrementing slot id). Also touched
     // (not yet reconstructed) by FUN_00542160's near-identical loop elsewhere.
     private static readonly byte* s_EntitySlotTable_005e9180 = (byte*)NativeMemory.AllocZeroed(0x140);
@@ -4868,12 +4897,12 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: FUN_0052a030 @ 0x0052a030. Loads the "&lt;cd-drive-root&gt;SYSTEM.INI"-equivalent
     /// level/base resource file, fixes up its internal pointers, decodes each directory entry it
-    /// lists (throws at the first one — see DecodeResourceChunk above), loads the base sound
+    /// lists (throws at the first one â€” see DecodeResourceChunk above), loads the base sound
     /// archive's header + big scratch buffer, and resets the small entity-slot table.
     /// </summary>
     private static void LoadFirstLevelResources()
     {
-        // Ghidra: FUN_0040a600() — confirmed no-op.
+        // Ghidra: FUN_0040a600() â€” confirmed no-op.
         byte* path = BuildCdPath(s_SystemFileName);
         s_MainResourceDirectory_005e97c4 = LoadWholeFileToBuffer(path, s_MainResourceBuffer_005e97c0);
         Free(path);
@@ -4895,7 +4924,7 @@ public static unsafe partial class Blaze
                     DecodeResourceChunk(scratch, (ushort*)destSlot, (byte*)metadata);
                     entryPtrValue = directory[2];
                     directory += 2;
-                    // Ghidra: `undefined *puVar13; ... puVar13 = puVar13 + 4;` — a **byte** pointer
+                    // Ghidra: `undefined *puVar13; ... puVar13 = puVar13 + 4;` â€” a **byte** pointer
                     // advancing 4 bytes, i.e. one tpage/clut pair per entry. This was 16, a 4x
                     // over-stride that would have scattered the texture slots; it went unnoticed
                     // because DecodeResourceChunk threw before the loop could ever iterate.
@@ -4913,7 +4942,7 @@ public static unsafe partial class Blaze
         byte* sndPath = BuildCdRootPath(s_SoundArchiveTemplate);
         IntPtr sndHandle = OpenExistingFileReadOnly(sndPath);
         Free(sndPath);
-        // Ghidra doesn't guard the open failing here either — ReadFile/CloseHandle on an invalid
+        // Ghidra doesn't guard the open failing here either â€” ReadFile/CloseHandle on an invalid
         // handle simply fail harmlessly, matching the original's unconditional calls.
         uint sndBytesRead;
         // The first 60 directory entries, then the whole base sample bank they point into.
@@ -4949,20 +4978,20 @@ public static unsafe partial class Blaze
         s_Unknown_005de538 = 0;
     }
 
-    // Ghidra: DAT_005e97c4 — the loaded resource file's own "next free address" bookkeeping value;
+    // Ghidra: DAT_005e97c4 â€” the loaded resource file's own "next free address" bookkeeping value;
     // not yet used further by any reconstructed code past LoadFirstLevelResources itself.
     private static byte* s_MainResourceDirectory_005e97c4;
 
     /// <summary>
-    /// Ghidra: FUN_0052a3d0 @ 0x0052a3d0 — the real, never-returning per-frame game loop. Ticks via
+    /// Ghidra: FUN_0052a3d0 @ 0x0052a3d0 â€” the real, never-returning per-frame game loop. Ticks via
     /// an indirect call through a Blaze-owned function pointer (Ghidra: PTR_FUN_0056c96c) whose
     /// assignment site hasn't been found yet anywhere in the reconstructed call graph, then
     /// dispatches to FUN_0052a440 whenever the game-state id (Ghidra: DAT_005de510) changes away
-    /// from 0. The only way out, in the original, is process termination via Exit()/ExitProcess —
+    /// from 0. The only way out, in the original, is process termination via Exit()/ExitProcess â€”
     /// there is no normal `return` path, so RunApplication's post-RunMainLoop shutdown sequence is
     /// dead code in practice (still preserved faithfully in RunApplication's `finally` block).
     /// TODO(REVERSE): PTR_FUN_0056c96c's assignment site not found; FUN_0052a440 (the per-state
-    /// dispatcher) not yet reconstructed — next frontier after LoadFirstLevelResources above.
+    /// dispatcher) not yet reconstructed â€” next frontier after LoadFirstLevelResources above.
     /// </summary>
     private static void RunGameLoop()
     {
@@ -4977,7 +5006,7 @@ public static unsafe partial class Blaze
                     s_Unknown_005e92b0 = perStateTable1[s_GameStateId];
                     int* perStateTable2 = *(int**)(s_MainResourceBuffer_005e97c0 + 0x6c);
                     int entryPtrValue = perStateTable2[s_GameStateId];
-                    // Ghidra: FUN_00529b50(entry, DAT_006008c8) — this destination is always
+                    // Ghidra: FUN_00529b50(entry, DAT_006008c8) â€” this destination is always
                     // IsKnownOverrideDestination's first case *by construction* (the call site
                     // passes DAT_006008c8 as both the value being compared and the comparand), so
                     // it's always a no-op here regardless of DAT_006008c8's real (never assigned
@@ -4996,14 +5025,14 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0052a440 @ 0x0052a440 — **the inter-state loading screen**, and not the
+    /// Ghidra: FUN_0052a440 @ 0x0052a440 â€” **the inter-state loading screen**, and not the
     /// "per-game-state dispatcher" an earlier revision of this file called it. Two call sites fix
     /// its role beyond doubt: <see cref="RunGameLoop"/> runs it whenever the game leaves a state
     /// for one other than 7, 9, 2 or 3, and <c>FUN_00516250</c> runs it when the current area index
     /// changes, immediately before that area's resources are loaded.
     /// <para>
     /// What it does: load one resource entry into the scratch at <c>MainMem + 0x1b0000</c>, decode
-    /// it, then show it for 150 frames. It is skippable — pressing START or SQUARE plays a UI sound
+    /// it, then show it for 150 frames. It is skippable â€” pressing START or SQUARE plays a UI sound
     /// and the screen ends when that press is <em>released</em>, which is also why a button already
     /// held on entry cannot skip it.
     /// </para>
@@ -5018,17 +5047,17 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void RunLoadingScreen()
     {
-        // Ghidra: FUN_0040a600() — an empty body in Blaze.c (`void FUN_0040a600(void) { return; }`).
+        // Ghidra: FUN_0040a600() â€” an empty body in Blaze.c (`void FUN_0040a600(void) { return; }`).
         // Called here and at the top of every game-loop iteration; nothing to reproduce.
 
         byte* mainMem = GetMainMemPtr();
         if (s_MainResourceBuffer_005e97c0 == null || mainMem == null) return;
 
-        // Ghidra: piVar2 = *(int **)(DAT_005e97c0 + 0x84) — a table of (entry, metadata) pairs.
+        // Ghidra: piVar2 = *(int **)(DAT_005e97c0 + 0x84) â€” a table of (entry, metadata) pairs.
         int* pairs = *(int**)(s_MainResourceBuffer_005e97c0 + 0x84);
         if (pairs == null) return;
 
-        // Ghidra: the walk to the end of the pair list. **Its result is never used** — transcribed
+        // Ghidra: the walk to the end of the pair list. **Its result is never used** â€” transcribed
         // rather than dropped, because a discarded traversal usually means Ghidra lost the use, not
         // that the original wrote a dead loop.
         int* walk = pairs;
@@ -5043,7 +5072,7 @@ public static unsafe partial class Blaze
                             (ushort*)(s_EntityDecodeTable_005e8f00 + 0xfc),   // Ghidra: &DAT_005e8ffc
                             (byte*)(pairs + entryIndex * 2 + 1));
 
-        // Ghidra: two Ordinal_676 calls — winsys3d's MoveImage(RECT* src, int dstX, int dstY),
+        // Ghidra: two Ordinal_676 calls â€” winsys3d's MoveImage(RECT* src, int dstX, int dstY),
         // confirmed at winsys3d.c:5348, which copies a VRAM rectangle to another VRAM position.
         // The two rectangles are the eight ushorts the function opens with.
         //
@@ -5062,8 +5091,8 @@ public static unsafe partial class Blaze
         uint* otBase, otEntry, primCursor;
         FrameBegin(&otBase, &otEntry, &primCursor);
 
-        // Ghidra: the 20-byte sprite descriptor, the same shape as the main menu's — pointer,
-        // colour, x/y, tpage/clut, index — and passed by address to both renderers.
+        // Ghidra: the 20-byte sprite descriptor, the same shape as the main menu's â€” pointer,
+        // colour, x/y, tpage/clut, index â€” and passed by address to both renderers.
         byte* sprite = s_LoadingScreenSprite;
         *(uint*)(sprite + 0x04) = 0x1000000;
         *(ushort*)(sprite + 0x08) = 0xa0;
@@ -5073,7 +5102,7 @@ public static unsafe partial class Blaze
         *(uint*)(sprite + 0x10) = 0;
 
         // TODO(REVERSE): the descriptor's pointer field. The original sets it to the address of a
-        // stack slot that **nothing in the pseudocode ever writes** — the second symptom of the
+        // stack slot that **nothing in the pseudocode ever writes** â€” the second symptom of the
         // lost frame. It has to be an array of 8-byte texture records, since DrawSpritePrimitive
         // indexes it as `*(int*)sprite + sprite[4] * 8`; the menu's equivalent comes from the
         // resource directory (`*(*(DAT_005e97c4 + 0x94) + 4)`). Left null rather than guessed, and
@@ -5081,7 +5110,7 @@ public static unsafe partial class Blaze
         // harmless degradation, whereas an invented pointer would fault or draw garbage.
         bool spriteResolved = *(int*)sprite != 0;
 
-        // Ghidra: iVar5 is a three-state gate — -1 until nothing is held (so a button carried in
+        // Ghidra: iVar5 is a three-state gate â€” -1 until nothing is held (so a button carried in
         // from the previous screen cannot skip this one), 0 armed, 1 pressed and acknowledged.
         int phase = -1;
         int framesLeft = 0x96;
@@ -5096,8 +5125,8 @@ public static unsafe partial class Blaze
             FrameEnd(&otBase, &otEntry, &primCursor, 1, 1);
 
             // Ghidra: START (0x0008) or SQUARE (0x8000) of the current player's pad word. The word
-            // at DAT_00604a20 is **active high** — UpdateButtonEdges inverts the active-low word
-            // FUN_00523660 builds — so a set bit is a held button.
+            // at DAT_00604a20 is **active high** â€” UpdateButtonEdges inverts the active-low word
+            // FUN_00523660 builds â€” so a set bit is a held button.
             bool held = (CurrentPadWord() & 0x8008) != 0;
 
             if (!held && phase == -1) phase = 0;
@@ -5117,7 +5146,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: the pad-word expression shared by FUN_00512520, FUN_00545340 and FUN_0052a440 —
+    /// Ghidra: the pad-word expression shared by FUN_00512520, FUN_00545340 and FUN_0052a440 â€”
     /// <c>*(ushort *)(&amp;DAT_00604a20 + DAT_005e9188[DAT_005e93c8[(DAT_005de538 &amp; 0xff) * 0x9c] * 0x4c] * 4)</c>.
     /// Factored because it had already been transcribed twice and drifted once: one copy hardcoded
     /// the outer index to 0 instead of reading DAT_005de538.
@@ -5130,27 +5159,27 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: the loading screen's sprite descriptor — 20 bytes, **one contiguous block**. Split
+    /// Ghidra: the loading screen's sprite descriptor â€” 20 bytes, **one contiguous block**. Split
     /// into two allocations it would draw nothing at all, which is exactly what happened to the
     /// main menu's background; see REVERSE_STATUS.md, 2026-08-14.
     /// </summary>
     private static readonly byte* s_LoadingScreenSprite = (byte*)NativeMemory.AllocZeroed(0x20);
 
-    // Ghidra: DAT_005de528 — the area index game state 3 loads its screen from. Never assigned in
+    // Ghidra: DAT_005de528 â€” the area index game state 3 loads its screen from. Never assigned in
     // the reconstructed graph yet, so it reads 0.
     private static int s_Unknown_005de528;
 
     // =====================================================================
-    // Game state 0 — the main menu (Ghidra: FUN_00542130 and its subtree).
+    // Game state 0 â€” the main menu (Ghidra: FUN_00542130 and its subtree).
     //
     // Rendering follows the PlayStation display-list model the rest of winsys3d already showed:
     // FrameBegin prepares a primitive buffer and an ordering table, each renderer links its
     // primitive into the OT and returns the advanced buffer cursor, and FrameEnd walks the OT and
-    // swaps buffers. The OT pointer is threaded through return values — that threading *is* the
+    // swaps buffers. The OT pointer is threaded through return values â€” that threading *is* the
     // display list, so it is modelled as written rather than hidden behind a field.
     // =====================================================================
 
-    // Ghidra: DAT_005e9300 — which of the two draw envs is current, i.e. the back/front selector.
+    // Ghidra: DAT_005e9300 â€” which of the two draw envs is current, i.e. the back/front selector.
     private static byte* s_CurrentDrawEnv;
     private static int s_Unknown_005e8310;
     private static int s_Unknown_005e9818;
@@ -5159,17 +5188,17 @@ public static unsafe partial class Blaze
     private static int s_Unknown_005de154, s_Unknown_005de158, s_Unknown_005de15c;
     private static int s_Unknown_005de51c;
     /// <summary>
-    /// The menu's selected entry — <c>menuContext[0x8c4]</c>, i.e. address 0x0056e61c.
+    /// The menu's selected entry â€” <c>menuContext[0x8c4]</c>, i.e. address 0x0056e61c.
     /// <para>
     /// **Ghidra names `DAT_005e909f` as the switch selector here, and that is wrong.** Two facts
     /// rule it out: that global is written in exactly two places in all of `Blaze.c`, both `= 0`
     /// and both in unrelated entity/sound code, so the switch could only ever pick case 0; and a
     /// per-frame diff of the descriptor (`OPENFORESIA_TRACE_MENU=1`) shows **offset 0x8c4** stepping
-    /// 0 → 1 → 2 in exact time with the arrow presses that move the cursor on screen.
+    /// 0 â†’ 1 â†’ 2 in exact time with the arrow presses that move the cursor on screen.
     /// </para>
     /// <para>
     /// 0x0056e61c is three bytes before `DAT_0056e61f`, the flags byte the same `if` reads and
-    /// which was itself found to be `menuContext[0x8c7]` — one dword, two fields. Ghidra never
+    /// which was itself found to be `menuContext[0x8c7]` â€” one dword, two fields. Ghidra never
     /// named 0x0056e61c at all, because nothing reaches it as an absolute address; it is only ever
     /// `descriptor + 0x8c4`. Same shape of defect as the four before it, and the sixth overall.
     /// </para>
@@ -5181,19 +5210,19 @@ public static unsafe partial class Blaze
     // is the one Handler_00544b10 raises when the text stream ends.
     private static byte s_Unknown_0056e61f => s_MenuContext_0056dd58[0x8c7];
     /// <summary>
-    /// Ghidra: DAT_005d9de0 — **le même global que <see cref="s_GammaIni"/>**, la clé « Gamma » de
-    /// l'ini, et non un second. Le commentaire de LoadOptionsIni le disait déjà ; il avait quand
-    /// même été redéclaré ici, et n'étant jamais écrit il valait zéro. Conséquence visible : la
+    /// Ghidra: DAT_005d9de0 â€” **le mÃªme global que <see cref="s_GammaIni"/>**, la clÃ© Â« Gamma Â» de
+    /// l'ini, et non un second. Le commentaire de LoadOptionsIni le disait dÃ©jÃ  ; il avait quand
+    /// mÃªme Ã©tÃ© redÃ©clarÃ© ici, et n'Ã©tant jamais Ã©crit il valait zÃ©ro. ConsÃ©quence visible : la
     /// page d'options passait ses palettes dans <c>Gamma(valeur, 0.0)</c>, ce qui les rendait
-    /// noires — fond et cadre invisibles, libellés intacts parce qu'eux n'y passent pas.
-    /// Septième occurrence d'un global reconstruit sous deux noms.
+    /// noires â€” fond et cadre invisibles, libellÃ©s intacts parce qu'eux n'y passent pas.
+    /// SeptiÃ¨me occurrence d'un global reconstruit sous deux noms.
     /// </summary>
     private static int s_Unknown_005d9de0 => (int)s_GammaIni;
 
     private static int s_Unknown_00564a48, s_Unknown_00571a3c;
 
     /// <summary>
-    /// Ghidra: FUN_0052a1e0 @ 0x0052a1e0 — begins a frame: picks the scratch bases out of MainMem
+    /// Ghidra: FUN_0052a1e0 @ 0x0052a1e0 â€” begins a frame: picks the scratch bases out of MainMem
     /// according to which draw env is current, clears a 1024-entry ordering table
     /// (<c>Ordinal_688</c>, libgpu's ClearOTagR) and resets the primitive cursor.
     /// <para>
@@ -5201,7 +5230,7 @@ public static unsafe partial class Blaze
     /// writes as <c>*param_1</c>. **Confirmed against the disassembly**
     /// (`Legacy/Raw/FUN_0052a1e0.asm`): the function has no prologue, so its arguments sit at
     /// `[ESP+4]`, `[ESP+8]` and `[ESP+0xc]`, and `0052a257 MOV ECX,[ESP+0xc]` shows the second
-    /// write targets **arg3** — the primitive buffer. Plain `RET` with the caller's `ADD ESP,0xc`
+    /// write targets **arg3** â€” the primitive buffer. Plain `RET` with the caller's `ADD ESP,0xc`
     /// makes it cdecl with three arguments.
     /// </para>
     /// </summary>
@@ -5209,7 +5238,7 @@ public static unsafe partial class Blaze
     {
         // Every caller uses all three out-parameters immediately, so they must be written on every
         // path. Returning early without setting them left uninitialised stack in the caller and
-        // took DrawOTag down with a null-page access — a defect in this reconstruction, not in the
+        // took DrawOTag down with a null-page access â€” a defect in this reconstruction, not in the
         // original, which has no such early exit.
         *otBase = null;
         *otEntry = null;
@@ -5220,7 +5249,7 @@ public static unsafe partial class Blaze
         {
             throw new NotImplementedException(
                 "FUN_0052a1e0: winsys3d.dll's MainMem export resolves to null, so the frame's " +
-                "ordering table and primitive buffer have nowhere to live — see REVERSE_STATUS.md " +
+                "ordering table and primitive buffer have nowhere to live â€” see REVERSE_STATUS.md " +
                 "TODO #33. Every frame is built inside that arena, so this cannot degrade quietly.");
         }
 
@@ -5235,25 +5264,25 @@ public static unsafe partial class Blaze
         *primCursor = (uint*)(mainMem + (firstEnv ? 0x1e4000 : 0x1c8000));
         s_Unknown_005e9818 = 0x9c4;
 
-        // Ghidra: FUN_00533000(DAT_005e97c0) — palette animation, once per frame.
+        // Ghidra: FUN_00533000(DAT_005e97c0) â€” palette animation, once per frame.
         AnimatePalettes(s_MainResourceBuffer_005e97c0);
     }
 
     /// <summary>
-    /// Ghidra: FUN_0052a280 @ 0x0052a280 — ends a frame: advances the frame counter, swaps the
+    /// Ghidra: FUN_0052a280 @ 0x0052a280 â€” ends a frame: advances the frame counter, swaps the
     /// draw/display env pair, walks the ordering table and immediately begins the next frame.
     /// <para>
     /// Ghidra recovers **no** parameters for this function, yet every call site passes five. The
     /// mapping below is **confirmed against the disassembly** (`Legacy/Raw/FUN_0052a280.asm`):
     /// tracing `SUB ESP,0x14` plus two `PUSH`es puts the arguments at `[ESP+0x20]`..`[ESP+0x30]`,
     /// giving `Ordinal_701(*arg2)`, `Ordinal_132(arg4)`, the guard on `arg5`, and the tail call
-    /// `FUN_0052a1e0(arg1, arg2, arg3)` — cdecl, three arguments, `ADD ESP,0xc`.
+    /// `FUN_0052a1e0(arg1, arg2, arg3)` â€” cdecl, three arguments, `ADD ESP,0xc`.
     /// </para>
     /// </summary>
 
     private static void FrameEnd(uint** otBase, uint** otEntry, uint** primCursor, int mode, int flag)
     {
-        CrtRand();                             // Ghidra: FUN_00547140() — result discarded here
+        CrtRand();                             // Ghidra: FUN_00547140() â€” result discarded here
 
         s_FadeCounter_005e9960++;
 
@@ -5264,7 +5293,7 @@ public static unsafe partial class Blaze
         Ordinal_667(0);
 
         // Ghidra: puVar3 = &DAT_005e9880; if (DAT_005e9300 == &DAT_005e9880) puVar3 = &DAT_005e98f0;
-        // — the buffer swap: pick the *other* draw env, then publish its matching disp env at +0x5c.
+        // â€” the buffer swap: pick the *other* draw env, then publish its matching disp env at +0x5c.
         byte* nextDrawEnv = s_CurrentDrawEnv == s_DrawEnv0_005e9880
             ? s_DrawEnv1_005e98f0
             : s_DrawEnv0_005e9880;
@@ -5275,9 +5304,9 @@ public static unsafe partial class Blaze
 
         FlushDeferredImageUploads();           // Ghidra: FUN_00545140()
 
-        Ordinal_701(*otEntry);                 // DrawOTag — asm: Ordinal_701(*arg2)
+        Ordinal_701(*otEntry);                 // DrawOTag â€” asm: Ordinal_701(*arg2)
 
-        // asm 0052a314: MOV ECX,[ESP+0x2c] — that slot is **arg4**, not arg5. The `if` below tests
+        // asm 0052a314: MOV ECX,[ESP+0x2c] â€” that slot is **arg4**, not arg5. The `if` below tests
         // [ESP+0x30], which is arg5. An earlier reading passed the same value to both.
         Ordinal_132(mode);
 
@@ -5296,7 +5325,7 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: FUN_00529a80 @ 0x00529a80 — screen/viewport setup for the menu state.</summary>
+    /// <summary>Ghidra: FUN_00529a80 @ 0x00529a80 â€” screen/viewport setup for the menu state.</summary>
     private static void SetupMenuScreen()
     {
         // Ghidra: a small struct at DAT_00566c48 filled with 0xcf / 0x3fff clip values, then two
@@ -5314,23 +5343,23 @@ public static unsafe partial class Blaze
         Ordinal_97(0xc, 0, 0);
     }
 
-    // Ghidra: &DAT_005e8f00 — the menu state's own tpage/clut slot table, distinct from the
+    // Ghidra: &DAT_005e8f00 â€” the menu state's own tpage/clut slot table, distinct from the
     // 0x005e8fc0 one LoadFirstLevelResources fills. Same 4-byte-per-entry layout.
     private static readonly byte* s_EntityDecodeTable_005e8f00 = (byte*)NativeMemory.AllocZeroed(0x1000);
 
-    // Ghidra: DAT_005e97c8 — the tail pointer LoadResourceEntry returns for the state's own load.
+    // Ghidra: DAT_005e97c8 â€” the tail pointer LoadResourceEntry returns for the state's own load.
     private static byte* s_Unknown_005e97c8;
 
-    // winsys3d.dll named exports (ordinal 776 and its setter) — the viewport shift the options page
+    // winsys3d.dll named exports (ordinal 776 and its setter) â€” the viewport shift the options page
     // saves and restores around its own screen.
     [DllImport("winsys3d.dll")] private static extern void GetAbsShift(int* x, int* y);
     [DllImport("winsys3d.dll")] private static extern void SetAbsShift(int x, int y);
 
-    // Ghidra: _DAT_0054d074 — the float the gamma value is scaled by before CreateTranslationTables.
+    // Ghidra: _DAT_0054d074 â€” the float the gamma value is scaled by before CreateTranslationTables.
     // TODO(REVERSE): .rdata content; 1.0f keeps the product equal to the raw setting.
     private const float s_GammaScale_0054d074 = 1.0f;
 
-    // Ghidra: PTR_s____Music_Mel00_01_WAV_00566cc8 — the music filename table. Entries recovered
+    // Ghidra: PTR_s____Music_Mel00_01_WAV_00566cc8 â€” the music filename table. Entries recovered
     // from Legacy/Blaze.exe are CD-root absolute templates; see Documentation/DataSymbols.md.
     // TODO(REVERSE): only the sampled entries are transcribed. Call sites index up to at least
     // 0x26, so the remaining slots stay null and PlayMusicTrack returns without starting anything
@@ -5350,7 +5379,7 @@ public static unsafe partial class Blaze
     private static readonly uint* s_MenuRenderBlock_00566c70 = (uint*)NativeMemory.AllocZeroed(0x40);
 
     /// <summary>
-    /// Ghidra: FUN_00542160 @ 0x00542160 — reloads the state's resources. Its directory loop is the
+    /// Ghidra: FUN_00542160 @ 0x00542160 â€” reloads the state's resources. Its directory loop is the
     /// same one <see cref="LoadFirstLevelResources"/> already runs, so it reuses the same three
     /// reconstructed helpers rather than duplicating them.
     /// </summary>
@@ -5395,7 +5424,7 @@ public static unsafe partial class Blaze
         Ordinal_765(1, 0xffffff);
     }
 
-    /// <summary>Ghidra: FUN_00542130 @ 0x00542130 — game state 0's entry point: the main menu.</summary>
+    /// <summary>Ghidra: FUN_00542130 @ 0x00542130 â€” game state 0's entry point: the main menu.</summary>
     private static void RunMainMenuState()
     {
         LoadMenuResources();      // Ghidra: FUN_00542160()
@@ -5409,12 +5438,12 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: FUN_00529ad0 @ 0x00529ad0 — starts a music track by table index.</summary>
+    /// <summary>Ghidra: FUN_00529ad0 @ 0x00529ad0 â€” starts a music track by table index.</summary>
     private static void PlayMusicTrack(int trackIndex)
     {
         // Ghidra: patches the path's first character with the CD drive letter, then starts the
         // stream. The table entries are CD-**root** absolute templates ("@:/Music/Mel00_01.WAV"),
-        // recovered at PTR_s____Music_Mel00_01_WAV_00566cc8 — see Documentation/DataSymbols.md.
+        // recovered at PTR_s____Music_Mel00_01_WAV_00566cc8 â€” see Documentation/DataSymbols.md.
         if (trackIndex < 0 || trackIndex >= s_MusicTrackPaths.Length) return;
         byte* path = s_MusicTrackPaths[trackIndex];
         if (path == null) return;
@@ -5423,7 +5452,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00542250 @ 0x00542250 — the main menu's frame loop. Runs until a menu entry is
+    /// Ghidra: FUN_00542250 @ 0x00542250 â€” the main menu's frame loop. Runs until a menu entry is
     /// chosen, then sets the next game state (or exits) and returns.
     /// </summary>
 
@@ -5435,7 +5464,7 @@ public static unsafe partial class Blaze
 
         PlayMusicTrack(6);
 
-        // Ghidra: DAT_005e9898 = 1; DAT_005e9908 = 1 — the two draw envs' `isbg`.
+        // Ghidra: DAT_005e9898 = 1; DAT_005e9908 = 1 â€” the two draw envs' `isbg`.
         *(s_DrawEnv0_005e9880 + 0x18) = 1;
         *(s_DrawEnv1_005e98f0 + 0x18) = 1;
 
@@ -5465,7 +5494,7 @@ public static unsafe partial class Blaze
             s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0x0c;
 
             // ECHAFAUDAGE TEMPORAIRE (OPENFORESIA_TRACE_MENU=1) : pourquoi la validation ouvre
-            // l'entrée 0 mais pas l'entrée 3. On relève ce que la boucle voit réellement.
+            // l'entrÃ©e 0 mais pas l'entrÃ©e 3. On relÃ¨ve ce que la boucle voit rÃ©ellement.
             if (s_TraceMenu) TraceMenuDescriptorChanges();
 
             if ((s_FadeCounter_005e9960 & 0xf) != 8 && level > 0x7f)
@@ -5497,6 +5526,57 @@ public static unsafe partial class Blaze
                             SetAbsShift(0, 0);
                             if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
                             OptionsScreenStub();                        // Ghidra: FUN_00512320
+
+                            // DEVIATION, une ligne, et mesurée. La page d'options se quitte par
+                            // Échap, qui est lié au bouton 0x4000 de la manette. Au retour, la
+                            // première image du menu voit ce bouton **encore enfoncé**, son panneau
+                            // le prend pour une validation et rouvre aussitôt la page : à l'écran,
+                            // un aller-retour instantané au menu principal.
+                            //
+                            // Le jeu a son propre idiome pour ça — la boucle de vidange juste
+                            // au-dessus, `while (FUN_005048f0() != 0)`, qui attend le relâchement
+                            // avant d'entrer dans la page. On l'applique symétriquement à la
+                            // sortie.
+                            //
+                            // TODO(REVERSE): l'original n'a pas cette seconde vidange, ce qui veut
+                            // dire que son panneau distingue une touche *nouvellement* enfoncée
+                            // d'une touche maintenue — un front — là où cette reconstruction lit
+                            // l'état maintenu (`CurrentPadWord`, le mot d'état, pas le mot de
+                            // fronts que `UpdateButtonEdges` calcule juste à côté). C'est là qu'est
+                            // le correctif propre ; celui-ci en tient lieu en attendant, et se
+                            // retire d'une ligne le jour où la sémantique du panneau est établie.
+                            //
+                            // La boucle est **cadencée** par Ordinal_132, contrairement à celle du
+                            // dessus : sans elle, elle tourne à vide sans laisser la pompe de
+                            // messages s'exécuter, et l'état DirectInput ne se rafraîchit jamais —
+                            // mesuré, le jeu restait figé dans la page. C'est la même attente que
+                            // l'éditeur de touches utilise entre deux captures.
+                            UiPageTrace("options : retour au menu, vidange…");
+                            while (InputDrainStub() != 0) { Ordinal_132(0); }
+
+                            // …et on referme la garde de validation. Sans cela le `switch`
+                            // ci-dessus se redéclenche à l'image suivante sur la même entrée :
+                            // mesuré, `Clear(TARGET)` reste figé pendant que `BeginScene` continue
+                            // de compter, signe que le menu n'a jamais repris la main.
+                            //
+                            // Le bit 2 est celui que `Handler_00544b10` lève quand le flux de texte
+                            // d'une page se termine, et qui referme la garde jusqu'à la validation
+                            // suivante. Le rétablir ici, c'est remettre le menu dans l'état où il
+                            // était avant d'ouvrir la page.
+                            //
+                            // **Les deux champs, pas un seul.** L'état interactif du menu est le
+                            // couple `[0x3b] == 1` et bit 2 levé — c'est ce que le relevé par image
+                            // montre en régime stable, et la validation les fait tomber ensemble
+                            // (`+0x03B:1->0` et `+0x8C7:05->01`). Ne relever que le bit 2 referme
+                            // la garde sans marquer la page terminée : le menu redevient visible
+                            // mais son curseur ne répond plus.
+                            //
+                            // `Handler_00544b10` remet en plus le curseur à zéro (`[0x8c4] = 0`) ;
+                            // on ne le fait pas, pour laisser la sélection là où le joueur l'avait.
+                            s_MenuContext_0056dd58[0x3b] = 1;
+                            s_MenuContext_0056dd58[0x8c7] |= 4;
+                            UiPageTrace("options : vidange terminée, garde refermée");
+
                             SetAbsShift(shiftX, shiftY);
                             SaveOptionsIni();
                             if (gammaBefore != s_Unknown_005d9de0)
@@ -5528,13 +5608,13 @@ public static unsafe partial class Blaze
             // stack, and it is `&local_14` that both renderers receive:
             //
             //     +0x00  local_14  descriptor pointer, from the resource directory
-            //     +0x04  local_10  colour — the fade's grey, level * 0x10101
+            //     +0x04  local_10  colour â€” the fade's grey, level * 0x10101
             //     +0x08  local_c   x = 0xa0 (160)      +0x0a  local_a  y = 0x78 (120)
             //     +0x0c  local_8   tpage = 0x1420      +0x0e  local_6  clut  = 0x1149
             //     +0x10  local_4   0
             //
             // This had been reconstructed as **two separate heap blocks**, so the sprite reached
-            // the renderers with a null position, size and texture page — which is why no
+            // the renderers with a null position, size and texture page â€” which is why no
             // background was drawn on either rendering path. Same shape of bug as the four
             // DRAWENV/DISPENV structures, whose contiguity is likewise a contract; it is the
             // fifth occurrence in this project, and the second where the evidence was "a `DAT_`
@@ -5561,7 +5641,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: `&local_14` in FUN_00542250 — the menu background sprite's descriptor, 20 bytes,
+    /// Ghidra: `&local_14` in FUN_00542250 â€” the menu background sprite's descriptor, 20 bytes,
     /// **one contiguous block**. See the layout comment at its only use site; splitting it is what
     /// kept the background from being drawn.
     /// </summary>
@@ -5573,7 +5653,7 @@ public static unsafe partial class Blaze
     /// <summary>
     /// ECHAFAUDAGE TEMPORAIRE (<c>OPENFORESIA_TRACE_MENU=1</c>). Reports which bytes of the menu
     /// descriptor change from one frame to the next, alongside the pad word that caused it. The
-    /// cursor visibly moves, so whatever holds its position must show up here — the same method
+    /// cursor visibly moves, so whatever holds its position must show up here â€” the same method
     /// that identified <c>menuContext[0x8c7]</c>.
     /// </summary>
     private static void TraceMenuDescriptorChanges()
@@ -5597,13 +5677,13 @@ public static unsafe partial class Blaze
         if (changed != 0 || pad != 0)
             Console.Error.WriteLine(
                 $"[MENU] pad=0x{pad:X4} fade={s_FadeCounter_005e9960} " +
-                $"drapeaux=0x{s_Unknown_0056e61f:X2} changés={changed}{changes}");
+                $"drapeaux=0x{s_Unknown_0056e61f:X2} changÃ©s={changed}{changes}");
     }
 
     private static byte[]? s_MenuTraceSnapshot;
 
     /// <summary>
-    /// Ghidra: the entity-slot initialisation loop at the top of FUN_00542250 — four 0x4c-byte
+    /// Ghidra: the entity-slot initialisation loop at the top of FUN_00542250 â€” four 0x4c-byte
     /// slots, each stamped with its index and a leading 8.
     /// </summary>
     private static void InitialiseEntitySlots()
@@ -5617,7 +5697,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0051f9c0 @ 0x0051f9c0 — links a two-word flat primitive into the ordering table.
+    /// Ghidra: FUN_0051f9c0 @ 0x0051f9c0 â€” links a two-word flat primitive into the ordering table.
     /// The tag word carries the primitive length in its top byte (0x02000000), which is the
     /// PlayStation display-list convention.
     /// </summary>
@@ -5640,7 +5720,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00521f20 @ 0x00521f20 — links a ten-word textured sprite primitive into the
+    /// Ghidra: FUN_00521f20 @ 0x00521f20 â€” links a ten-word textured sprite primitive into the
     /// ordering table (tag length 0x09000000). The bit packing is transcribed operation for
     /// operation; the shifts mix a colour, a texture page and four corner coordinates.
     /// </summary>
@@ -5740,14 +5820,14 @@ public static unsafe partial class Blaze
     //   +0x8c6 byte    frame countdown       +0x8c7 byte  flags
     // =====================================================================
 
-    // Ghidra: &DAT_005e0300 — the 4bpp glyph staging arena, addressed as (bank + line) * 0x800.
-    // The next named global is DAT_005e8300, which puts its size at 0x8000 — sixteen banks.
+    // Ghidra: &DAT_005e0300 â€” the 4bpp glyph staging arena, addressed as (bank + line) * 0x800.
+    // The next named global is DAT_005e8300, which puts its size at 0x8000 â€” sixteen banks.
     private static readonly byte* s_GlyphStaging_005e0300 = (byte*)NativeMemory.AllocZeroed(0x8000);
 
     /// <summary>
     /// The 4bpp glyph staging bank for one line, bounds-checked. The buffer holds 16 banks of
     /// 0x800 bytes. Its extent in the original is inferred from where the next named global sits,
-    /// so an index past it is a defect in this reconstruction rather than original behaviour — and
+    /// so an index past it is a defect in this reconstruction rather than original behaviour â€” and
     /// has to say so rather than quietly scribble over another allocation.
     /// </summary>
     private static byte* StagingBank(uint bank, uint line)
@@ -5772,41 +5852,41 @@ public static unsafe partial class Blaze
         if (index >= 0x400)
         {
             throw new InvalidOperationException(
-                $"tpage/clut slot {index} is past the 1024-entry table at DAT_005e8f00 — the " +
+                $"tpage/clut slot {index} is past the 1024-entry table at DAT_005e8f00 â€” the " +
                 "descriptor asking for it is not the one this table was filled for.");
         }
         return (uint*)(s_EntityDecodeTable_005e8f00 + index * 4);
     }
 
-    private static byte* s_StagingWrite_005e8304;   // Ghidra: DAT_005e8304 — staging write pointer
-    private static int s_TextState_005e8308;        // Ghidra: DAT_005e8308 — 0 / 1 / 2 / -1, see below
-    private static byte* s_TrimAnchor_005e830c;     // Ghidra: DAT_005e830c — leading-space trim anchor
-    private static uint* s_OtCursor_005e8314;       // Ghidra: DAT_005e8314 — OT cursor in the descriptor
-    private static int s_LineIndex_005e8318;        // Ghidra: DAT_005e8318 — lines emitted this page
-    private static uint* s_UploadCursor_005e831c;   // Ghidra: DAT_005e831c — the node cursor, in and out
-    private static uint s_PenX_005e8320;            // Ghidra: DAT_005e8320 — pen X, in 4bpp columns
-    private static uint* s_SpriteCursor_005e8324;   // Ghidra: DAT_005e8324 — sprite cursor in the descriptor
-    private static uint s_BreakPen_005e8328;        // Ghidra: DAT_005e8328 — pen saved at the last break
-    private static uint s_BreakColumn_005e8300;     // Ghidra: _DAT_005e8300 — column saved at the last break
-    private static byte* s_BreakStaging_005e02fc;   // Ghidra: DAT_005e02fc — staging ptr at the last break
-    private static int s_GlyphMode_005dffd0;        // Ghidra: DAT_005dffd0 — 0 none / 1 latin / 2 DBCS
+    private static byte* s_StagingWrite_005e8304;   // Ghidra: DAT_005e8304 â€” staging write pointer
+    private static int s_TextState_005e8308;        // Ghidra: DAT_005e8308 â€” 0 / 1 / 2 / -1, see below
+    private static byte* s_TrimAnchor_005e830c;     // Ghidra: DAT_005e830c â€” leading-space trim anchor
+    private static uint* s_OtCursor_005e8314;       // Ghidra: DAT_005e8314 â€” OT cursor in the descriptor
+    private static int s_LineIndex_005e8318;        // Ghidra: DAT_005e8318 â€” lines emitted this page
+    private static uint* s_UploadCursor_005e831c;   // Ghidra: DAT_005e831c â€” the node cursor, in and out
+    private static uint s_PenX_005e8320;            // Ghidra: DAT_005e8320 â€” pen X, in 4bpp columns
+    private static uint* s_SpriteCursor_005e8324;   // Ghidra: DAT_005e8324 â€” sprite cursor in the descriptor
+    private static uint s_BreakPen_005e8328;        // Ghidra: DAT_005e8328 â€” pen saved at the last break
+    private static uint s_BreakColumn_005e8300;     // Ghidra: _DAT_005e8300 â€” column saved at the last break
+    private static byte* s_BreakStaging_005e02fc;   // Ghidra: DAT_005e02fc â€” staging ptr at the last break
+    private static int s_GlyphMode_005dffd0;        // Ghidra: DAT_005dffd0 â€” 0 none / 1 latin / 2 DBCS
     private static int s_Unknown_005dffe8;          // Ghidra: DAT_005dffe8
 
     /// <summary>
-    /// Ghidra: &amp;DAT_0056e7b0 — proportional glyph widths, one byte per folded slot.
+    /// Ghidra: &amp;DAT_0056e7b0 â€” proportional glyph widths, one byte per folded slot.
     /// <para>
     /// **Taken from `FUN_00507890`, not from the `.data` image.** The two differ, and the `.data`
     /// copy is the stale one: `FUN_00507890` builds the real table as 186 stack literals and copies
     /// it over (`FUN_00507870` is its fixed-width counterpart, every entry 8). The `.data` copy
-    /// gives `I`=6/`J`=2 and `M`=5/`N`=8 — impossible for a proportional font, and the direct cause
+    /// gives `I`=6/`J`=2 and `M`=5/`N`=8 â€” impossible for a proportional font, and the direct cause
     /// of the uneven spacing: narrow glyphs advanced too far, wide ones not far enough. This table
     /// gives `I`=2, `M`=8, `i`=2, `l`=2, `m`=8, `t`=4, `Q`=8.
     /// </para>
     /// The folding that indexes it is confirmed against the machine code at 0x00543EE3:
     /// `CMP SI,0x41 / LEA EAX,[ESI-0x22] / JAE / LEA EAX,[ESI-0x21]`, then
-    /// `MOVSX AX,[ESI + 0x0056E7B0]` — so both the folding and the base are faithful as written.
+    /// `MOVSX AX,[ESI + 0x0056E7B0]` â€” so both the folding and the base are faithful as written.
     /// <para>
-    /// TODO(REVERSE): neither setter has a call site in `Blaze.c` — both are reached only through
+    /// TODO(REVERSE): neither setter has a call site in `Blaze.c` â€” both are reached only through
     /// an address-taken table, so which one runs when is not established. The proportional one is
     /// installed here because the original demonstrably renders proportional text.
     /// </para>
@@ -5827,13 +5907,13 @@ public static unsafe partial class Blaze
         0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,
     ];
 
-    // Ghidra: memmove — FUN_00547a00 is 420 lines of unrolled MSVC block copy. Per the project's
+    // Ghidra: memmove â€” FUN_00547a00 is 420 lines of unrolled MSVC block copy. Per the project's
     // rule, a recognised CRT routine is called rather than transcribed.
     [DllImport("msvcrt.dll", EntryPoint = "memmove", CallingConvention = CallingConvention.Cdecl)]
     private static extern void* CrtMemMove(void* dest, void* src, nuint count);
 
     /// <summary>
-    /// Ghidra: FUN_0051c0e0 @ 0x0051c0e0 — advances a cheat-code matcher over every character the
+    /// Ghidra: FUN_0051c0e0 @ 0x0051c0e0 â€” advances a cheat-code matcher over every character the
     /// text engine draws, against the string at <c>DAT_00564a40</c>.
     /// </summary>
     private static void CheatCodeProbe(byte ch)
@@ -5841,7 +5921,7 @@ public static unsafe partial class Blaze
         // TODO(REVERSE): DAT_00564a40 is the expected sequence and DAT_005633a8 the latch it
         // clears. Both live in initialised .data; recovering them only changes whether a cheat
         // can be entered, never whether text draws, so the matcher is kept structurally faithful
-        // with an empty sequence — which simply never matches.
+        // with an empty sequence â€” which simply never matches.
         if (s_CheatSequence_00564a40.Length == 0 ||
             s_CheatSequence_00564a40[s_CheatIndex_005de164] == 0)
         {
@@ -5864,7 +5944,7 @@ public static unsafe partial class Blaze
     private static int s_Unknown_005633a8;      // Ghidra: DAT_005633a8
 
     /// <summary>
-    /// Ghidra: FUN_00543980 @ 0x00543980 — enqueues the finished line's staging bank as a VRAM
+    /// Ghidra: FUN_00543980 @ 0x00543980 â€” enqueues the finished line's staging bank as a VRAM
     /// upload node, onto the same list <see cref="FlushDeferredImageUploads"/> drains.
     /// </summary>
     private static void EnqueueGlyphUpload(byte* descriptor)
@@ -5886,7 +5966,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00543a10 @ 0x00543a10 — links the finished line's textured sprite into the
+    /// Ghidra: FUN_00543a10 @ 0x00543a10 â€” links the finished line's textured sprite into the
     /// descriptor's own 16-entry ordering table.
     /// </summary>
     private static void EmitTextSprite(byte* descriptor)
@@ -5911,7 +5991,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00544cb0 @ 0x00544cb0 — closes the current line: trims the leading run the
+    /// Ghidra: FUN_00544cb0 @ 0x00544cb0 â€” closes the current line: trims the leading run the
     /// engine had provisionally drawn, then grows the descriptor's height budget by one line.
     /// </summary>
     private static void FlushLine(byte* descriptor)
@@ -5948,7 +6028,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00544c50 @ 0x00544c50 — pass-2 handler for control code <c>0x0c</c>: begins a
+    /// Ghidra: FUN_00544c50 @ 0x00544c50 â€” pass-2 handler for control code <c>0x0c</c>: begins a
     /// page. Clears the descriptor's own 16-entry ordering table and re-bases every cursor.
     /// </summary>
     private static byte* Handler_00544c50(byte* text, byte* descriptor)
@@ -5961,11 +6041,11 @@ public static unsafe partial class Blaze
         s_PenX_005e8320 = 0;                            // Ghidra: DAT_005e8320 = 0
         s_GlyphMode_005dffd0 = 0;
         s_StagingWrite_005e8304 = StagingBank(descriptor[0x14], 0);
-        return text;   // Ghidra returns unaff_ESI — the caller's cursor, unchanged
+        return text;   // Ghidra returns unaff_ESI â€” the caller's cursor, unchanged
     }
 
     /// <summary>
-    /// Ghidra: FUN_00544d90 @ 0x00544d90 — pass-2 handler for control code <c>0x0d</c>: ends the
+    /// Ghidra: FUN_00544d90 @ 0x00544d90 â€” pass-2 handler for control code <c>0x0d</c>: ends the
     /// line, uploads it, emits its sprite, and re-points every cursor at the next line's slots.
     /// </summary>
     private static byte* Handler_00544d90(byte* text, byte* descriptor) { NewLine(0, descriptor); return text; }
@@ -5993,7 +6073,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Pass-2 handler for control code <c>0x09</c> — end of page / wait. **Decoded by hand from
+    /// Pass-2 handler for control code <c>0x09</c> â€” end of page / wait. **Decoded by hand from
     /// Legacy/Blaze.exe**: Ghidra never emitted this body, since it is reached only through
     /// PTR_FUN_0056e728. Bytes and full listing in Documentation/DataSymbols.md.
     /// <code>
@@ -6015,7 +6095,7 @@ public static unsafe partial class Blaze
         descriptor[0x8c4] = 0;
         descriptor[0x8c7] = flags;
 
-        descriptor[0x8c5] = *text;          // the operand byte — '?' for the main menu
+        descriptor[0x8c5] = *text;          // the operand byte â€” '?' for the main menu
         text++;
         *(byte**)(descriptor + 0x8ac) = text;
         return text;
@@ -6032,7 +6112,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Builds one of the two dispatch tables. Both are modelled as tables rather than a switch
-    /// because that is what the original is, and because the two differ only by substitution —
+    /// because that is what the original is, and because the two differ only by substitution â€”
     /// a switch would hide that <c>0x00543950</c> alone covers six codes.
     /// </summary>
     private static TextControlHandler[] BuildTextTable(bool renderPass)
@@ -6048,7 +6128,7 @@ public static unsafe partial class Blaze
             t[i] = (text, descriptor) => throw new NotImplementedException(
                 $"UI text control code 0x{code:x2} dispatches to FUN_{address:x8}, which Ghidra " +
                 $"never emitted (reached only through {(renderPass ? "PTR_FUN_0056e728" : "PTR_LAB_0056e870")}). " +
-                "It needs a scoped Ghidra re-run at that address — see Documentation/DataSymbols.md.");
+                "It needs a scoped Ghidra re-run at that address â€” see Documentation/DataSymbols.md.");
         }
 
         if (!renderPass)
@@ -6096,26 +6176,26 @@ public static unsafe partial class Blaze
     private static readonly TextControlHandler[] s_ScanHandlers = BuildTextTable(false);
     private static readonly TextControlHandler[] s_RenderHandlers = BuildTextTable(true);
 
-    // winsys3d ordinal 57 (winsys3d.c FUN_00a05060) — maps a Shift-JIS code to a 16x16 1bpp glyph
+    // winsys3d ordinal 57 (winsys3d.c FUN_00a05060) â€” maps a Shift-JIS code to a 16x16 1bpp glyph
     // inside the KANJI resource the DLL locks at startup, or to a blank when it is out of range.
     [DllImport("winsys3d.dll", EntryPoint = "#57")] private static extern ushort* Ordinal_57(uint sjis);
 
-    // Ghidra: DAT_0056e9b4 / _b8 / _bc — recovered from Legacy/Blaze.exe. Full-width Shift-JIS
+    // Ghidra: DAT_0056e9b4 / _b8 / _bc â€” recovered from Legacy/Blaze.exe. Full-width Shift-JIS
     // punctuation that this renderer squeezes to half width.
     private static readonly uint[] s_HalfWidthCodes_0056e9b4 = [0x8381, 0x7981, 0x6981];
 
-    // Ghidra: &DAT_005dffd8 — the 15-byte row scratch the spreading pass fills.
+    // Ghidra: &DAT_005dffd8 â€” the 15-byte row scratch the spreading pass fills.
     private static readonly byte* s_DbcsRowScratch_005dffd8 = (byte*)NativeMemory.AllocZeroed(0x20);
 
     /// <summary>
-    /// Ghidra: FUN_00544150 @ 0x00544150 — the DBCS/kanji glyph renderer. Fetches a 16x16 1bpp
+    /// Ghidra: FUN_00544150 @ 0x00544150 â€” the DBCS/kanji glyph renderer. Fetches a 16x16 1bpp
     /// glyph, spreads each row's bits and unpacks it into the 4bpp staging buffer.
     /// <para>
     /// **Signature confirmed against `Legacy/Raw/FUN_00544150.asm`.** Ghidra renders the descriptor
     /// as <c>unaff_retaddr</c> because the function reuses arg2's stack slot as scratch
     /// (<c>[ESP+0x18]</c>). The listing settles it: at <c>00544318</c>, after four pushes,
     /// <c>MOV EAX,[ESP+0x14]</c> loads **arg1** and it is arg1 that receives <c>+0xe</c> and
-    /// <c>+0x10</c> — so the call sites' <c>(descriptor, codepoint)</c> is right and the
+    /// <c>+0x10</c> â€” so the call sites' <c>(descriptor, codepoint)</c> is right and the
     /// pseudocode is wrong. The fifth time this project has been saved by reading the listing.
     /// </para>
     /// </summary>
@@ -6137,7 +6217,7 @@ public static unsafe partial class Blaze
         byte* scratch = s_DbcsRowScratch_005dffd8;
         for (int row = 0xf; row != 0; row--)
         {
-            // CONCAT11(lo, hi) — the row is byte-swapped out of the resource.
+            // CONCAT11(lo, hi) â€” the row is byte-swapped out of the resource.
             ushort r = (ushort)(((*rows & 0xff) << 8) | (*rows >> 8));
             if (halfWidth) r >>= 1;
 
@@ -6193,7 +6273,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00543b20 @ 0x00543b20 — rasterises one character into the 4bpp staging buffer
+    /// Ghidra: FUN_00543b20 @ 0x00543b20 â€” rasterises one character into the 4bpp staging buffer
     /// and advances the pen, implementing word wrap by backtracking to the last break.
     /// </summary>
 
@@ -6214,7 +6294,7 @@ public static unsafe partial class Blaze
         short width;
         int advance;
 
-        if (ch == 0x5e)   // '^' — a solid rule to the next 8-column boundary
+        if (ch == 0x5e)   // '^' â€” a solid rule to the next 8-column boundary
         {
             advance = 8 - (int)(s_PenX_005e8320 & 7);
             width = (short)advance;
@@ -6245,7 +6325,7 @@ public static unsafe partial class Blaze
 
             s_BreakColumn_005e8300 = penBefore + (uint)advance;
 
-            // Ghidra applies `+ ((pen & 1) + width) / 2 - 0x700` **once**, after the 15-row loop —
+            // Ghidra applies `+ ((pen & 1) + width) / 2 - 0x700` **once**, after the 15-row loop â€”
             // and FillStagingRun already does exactly that as its last statement. Repeating it here
             // advanced the staging pointer twice per space, which drifted every glyph after the
             // first space of a line into the wrong columns and eventually the wrong bank.
@@ -6259,7 +6339,7 @@ public static unsafe partial class Blaze
                 ReflowPartialWord(descriptor);
             }
 
-            // Ghidra: DAT_005e8308 = ((0 < DAT_005e8308) - 1 & 0xfffffffd) + 2 — a SETcc idiom.
+            // Ghidra: DAT_005e8308 = ((0 < DAT_005e8308) - 1 & 0xfffffffd) + 2 â€” a SETcc idiom.
             // Positive state becomes 2 (a leading space was trimmed); anything else becomes -1.
             s_TextState_005e8308 =
                 (((s_TextState_005e8308 > 0 ? 1 : 0) - 1) & unchecked((int)0xfffffffd)) + 2;
@@ -6380,7 +6460,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// The word-wrap backtrack: rewinds the pen to the last break, starts a new line, and copies
-    /// the partial word's staged pixels onto it — byte-aligned or nibble-shifted by parity.
+    /// the partial word's staged pixels onto it â€” byte-aligned or nibble-shifted by parity.
     /// </summary>
     private static void ReflowPartialWord(byte* descriptor)
     {
@@ -6430,7 +6510,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Allocates below <c>0x01000000</c>. Text descriptors are masked to 24 bits by
-    /// <see cref="RunTextEngine"/> exactly as the original does — where it is the identity, since
+    /// <see cref="RunTextEngine"/> exactly as the original does â€” where it is the identity, since
     /// every descriptor is a <c>.data</c> global of an image based at <c>0x00400000</c>. Keeping
     /// them low here keeps it the identity, instead of turning a faithful mask into corruption.
     /// </summary>
@@ -6438,7 +6518,7 @@ public static unsafe partial class Blaze
     {
         // The arena needs 2.6 MB contiguous and gets first pick. Static field initialisers run
         // before entry()'s body, so without this a 64 KB descriptor allocated at the very bottom
-        // could split the only region large enough and starve it — measured, not hypothetical.
+        // could split the only region large enough and starve it â€” measured, not hypothetical.
         EnsureDisplayListArena();
 
         nuint rounded = (size + 0xFFFu) & ~0xFFFu;
@@ -6458,7 +6538,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005443a0 @ 0x005443a0 — the UI text engine. Runs the descriptor's byte stream
+    /// Ghidra: FUN_005443a0 @ 0x005443a0 â€” the UI text engine. Runs the descriptor's byte stream
     /// twice: pass 1 scans and collects <c>$</c>-escapes, pass 2 emits glyphs. Returns the advanced
     /// VRAM-upload node cursor.
     /// </summary>
@@ -6509,7 +6589,7 @@ public static unsafe partial class Blaze
         s_StagingWrite_005e8304 = StagingBank(descriptor[0x14], line);
         s_PenX_005e8320 = 0;
 
-        // Ghidra: the 0x232-dword block copy into local_8c8 — pass 1 must leave no trace.
+        // Ghidra: the 0x232-dword block copy into local_8c8 â€” pass 1 must leave no trace.
         const int SaveBytes = 0x232 * 4;
         byte* saved = stackalloc byte[SaveBytes];
         Buffer.MemoryCopy(descriptor, saved, SaveBytes, SaveBytes);
@@ -6552,7 +6632,7 @@ public static unsafe partial class Blaze
                     cursor = next;
                     // The original writes here unbounded into its 8-byte stack array, which is
                     // safe only because its own text never carries more escapes than that. Ours
-                    // would corrupt the stack — the classic shape of a random CLR fatal error —
+                    // would corrupt the stack â€” the classic shape of a random CLR fatal error â€”
                     // so the write stops at the six slots the function initialises.
                     if (next[-1] == 0x24 && escapeWrite < escapes + 6)
                     {
@@ -6592,7 +6672,7 @@ public static unsafe partial class Blaze
                 {
                     throw new InvalidOperationException(
                         $"FUN_005443a0: rendered over 0x{ScanLimit:X} bytes without reaching a " +
-                        "terminator — same cause as the scan pass, see above.");
+                        "terminator â€” same cause as the scan pass, see above.");
                 }
 
                 ushort u = *cursor;
@@ -6607,13 +6687,13 @@ public static unsafe partial class Blaze
                 }
                 else if (u < 0x80 || 0x9f < u)
                 {
-                    if (*cursor == 0x24)          // '$' — an escape, already collected in pass 1
+                    if (*cursor == 0x24)          // '$' â€” an escape, already collected in pass 1
                     {
                         cursor += 2;
                     }
                     else
                     {
-                        if (*cursor == 0x26)      // '&' — conditional on a collected escape
+                        if (*cursor == 0x26)      // '&' â€” conditional on a collected escape
                         {
                             byte selector = *next;
                             int slot = 0;
@@ -6690,7 +6770,7 @@ public static unsafe partial class Blaze
                     // the user data at +0x8b0. No call site assigns it yet, so reaching it means a
                     // caller now does and the signature has to be established.
                     throw new NotImplementedException(
-                        $"FUN_005443a0: text completion callback at 0x{completion:X8} — no " +
+                        $"FUN_005443a0: text completion callback at 0x{completion:X8} â€” no " +
                         "assignment site is reconstructed yet, so its signature is unknown");
                 }
             }
@@ -6708,12 +6788,12 @@ public static unsafe partial class Blaze
     //
     // Draws one UI panel: its scroll arrows, its frame corners and edges, the text display list
     // FUN_005443a0 already built inside the descriptor, and its cursor. The panel's own ordering
-    // table is copied into the frame's, offset by the panel's screen position — which is why the
+    // table is copied into the frame's, offset by the panel's screen position â€” which is why the
     // text engine builds a self-contained list rather than writing into the frame directly.
     // =====================================================================
 
     /// <summary>
-    /// Ghidra: FUN_0051bdb0 @ 0x0051bdb0 — links a screen-space clip rectangle, chosen by the
+    /// Ghidra: FUN_0051bdb0 @ 0x0051bdb0 â€” links a screen-space clip rectangle, chosen by the
     /// small-texture flag and the detail level.
     /// </summary>
     private static void EmitClipRect(uint* otEntry, uint** prim)
@@ -6732,7 +6812,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0051be20 @ 0x0051be20 — links the panel's viewport rectangle, derived from the
+    /// Ghidra: FUN_0051be20 @ 0x0051be20 â€” links the panel's viewport rectangle, derived from the
     /// detail level the options page and the F11/F12 hotkeys set.
     /// </summary>
     private static void EmitViewportRect(uint* otEntry, uint** prim)
@@ -6749,7 +6829,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00545160 @ 0x00545160 — a six-word textured sprite (tag 0x05000000).
+    /// Ghidra: FUN_00545160 @ 0x00545160 â€” a six-word textured sprite (tag 0x05000000).
     /// </summary>
     private static uint* EmitSprite(uint* otEntry, uint* prim, uint tpage, uint position,
                                     uint offset, uint clut, uint size)
@@ -6766,7 +6846,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00545220 @ 0x00545220 — an eight-word tinted sprite (tag 0x07000000), the
+    /// Ghidra: FUN_00545220 @ 0x00545220 â€” an eight-word tinted sprite (tag 0x07000000), the
     /// frame edges. Its colour word is built by packing three 5-bit channels.
     /// </summary>
     private static uint* EmitTintedSprite(uint* otEntry, uint* prim, uint tpage, uint position,
@@ -6788,11 +6868,11 @@ public static unsafe partial class Blaze
         return prim + 8;
     }
 
-    // Ghidra: &DAT_005e9060 — the per-panel selection index the scroll handling writes back.
+    // Ghidra: &DAT_005e9060 â€” the per-panel selection index the scroll handling writes back.
     private static readonly byte* s_PanelSelection_005e9060 = (byte*)NativeMemory.AllocZeroed(0x100);
 
     /// <summary>
-    /// Ghidra: FUN_00545340 @ 0x00545340 — draws one UI panel and returns the advanced primitive
+    /// Ghidra: FUN_00545340 @ 0x00545340 â€” draws one UI panel and returns the advanced primitive
     /// cursor. 17 call sites across the game; this is the shared window layer, not menu-specific.
     /// </summary>
     private static uint* DrawUiPanel(uint* otEntry, uint* prim, byte* descriptor)
@@ -6821,7 +6901,7 @@ public static unsafe partial class Blaze
         if (!resolved) slot = s_SlotArea_005e9180[0x248 + (uint)s_Unknown_005de538 * 0x9c];
         // The original indexes four player slots with a stride of 0x9c/0x4c. `slot` comes from a
         // byte in .data, so a table this reconstruction has not populated yields 0..255 and walks
-        // far past both arrays — and the value read then becomes a *write* offset below. This was
+        // far past both arrays â€” and the value read then becomes a *write* offset below. This was
         // corrupting the managed heap (Fatal error 0x80131506), so it fails loudly instead.
         if (slot >= 4)
         {
@@ -7012,14 +7092,14 @@ public static unsafe partial class Blaze
                 // The original cannot reach a null link: ClearOTagR terminates the descriptor's
                 // own ordering table with the 0xffffff sentinel, so the walk always ends. Reaching
                 // null here means this reconstruction let the panel be drawn before the text engine
-                // ever cleared that table — a defect on our side, and one that would otherwise show
+                // ever cleared that table â€” a defect on our side, and one that would otherwise show
                 // up as an unexplained native fault.
                 if (node == null || ++guard > 0x400)
                 {
                     throw new InvalidOperationException(
                         $"FUN_00545340: the panel's ordering table at descriptor+0xa4 is not a " +
                         $"terminated list ({(node == null ? "null link" : "over 1024 nodes")}). It is " +
-                        "cleared by control code 0x0c in FUN_005443a0 — the text engine must have " +
+                        "cleared by control code 0x0c in FUN_005443a0 â€” the text engine must have " +
                         "laid the page out at least once before the panel is drawn.");
                 }
 
@@ -7057,8 +7137,8 @@ public static unsafe partial class Blaze
     // A second, self-contained UI layer, unrelated to the display-list renderer the main menu
     // uses. It talks to the 3D device **directly**: every widget ends up in FUN_00510500 or
     // FUN_00510330, which build four `D3DTLVERTEX` on the stack and submit them as one
-    // `DrawPrimitive(D3DPT_TRIANGLEFAN, D3DVT_TLVERTEX, …, 4, 0)`. The device is the one
-    // `Ordinal_750` returns — `DAT_011be760`, the same object DeviceShim faces — so this whole
+    // `DrawPrimitive(D3DPT_TRIANGLEFAN, D3DVT_TLVERTEX, â€¦, 4, 0)`. The device is the one
+    // `Ordinal_750` returns â€” `DAT_011be760`, the same object DeviceShim faces â€” so this whole
     // layer renders through the Direct3D 11 backend without any further plumbing.
     //
     // **On the vertex order, which Ghidra does not give directly.** In both builders the address
@@ -7066,10 +7146,10 @@ public static unsafe partial class Blaze
     // so the slot naming cannot be trusted on its own. Grouping the assignments by the 32-byte
     // `TLVERTEX` stride resolves it without guesswork, and the two agree: the array starts at the
     // address the scaling helper receives, and its four vertices are
-    // `(x1,y1) (x2,y1) (x2,y2) (x1,y2)` — the standard quad fan, with `z` and `rhw` both 0.9f.
+    // `(x1,y1) (x2,y1) (x2,y2) (x1,y2)` â€” the standard quad fan, with `z` and `rhw` both 0.9f.
     // =====================================================================
 
-    /// <summary>Ghidra: DAT_00578e28 — the device, fetched once per use through Ordinal_750.</summary>
+    /// <summary>Ghidra: DAT_00578e28 â€” the device, fetched once per use through Ordinal_750.</summary>
     private static void** UiDeviceVtable => *(void***)Ordinal_750();
 
     private const int Device_BindTexture = 0x64 / 4;
@@ -7094,12 +7174,12 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00510110 @ 0x00510110 — maps the layer's own 320x240-ish coordinates onto the
+    /// Ghidra: FUN_00510110 @ 0x00510110 â€” maps the layer's own 320x240-ish coordinates onto the
     /// current resolution, in place, for <paramref name="count"/> vertices.
     /// <para>
     /// The two offset tables were read out of <c>Legacy/Blaze.exe</c>: X at 0x00566c98 is
     /// <c>{-160, -64, 0, 80, 192}</c> and Y at 0x00566cb0 is <c>{-120, -48, 0, 60, 144}</c>,
-    /// indexed by the ini's Resolution. Entry 4 is `(192, 144)` — exactly the "base" the
+    /// indexed by the ini's Resolution. Entry 4 is `(192, 144)` â€” exactly the "base" the
     /// `[SHIFT]` runtime trace reports, which is what confirms the tables are the right ones.
     /// </para>
     /// </summary>
@@ -7128,7 +7208,7 @@ public static unsafe partial class Blaze
     private static readonly int[] s_UiOffsetX_00566c98 = [-160, -64, 0, 80, 192];
     private static readonly int[] s_UiOffsetY_00566cb0 = [-120, -48, 0, 60, 144];
 
-    // Ghidra: _DAT_0054d020 = -0.1f and _DAT_0054d024 = 1/256f — the half-texel bias and the
+    // Ghidra: _DAT_0054d020 = -0.1f and _DAT_0054d024 = 1/256f â€” the half-texel bias and the
     // reciprocal of the atlas width, read from the binary's .rdata.
     private const float UiTexelBias = -0.1f;
     private const float UiTexelScale = 1.0f / 256.0f;
@@ -7137,7 +7217,7 @@ public static unsafe partial class Blaze
     private const float UiDepth = 0.9f;
 
     /// <summary>
-    /// Ghidra: FUN_00510330 @ 0x00510330 — a flat filled rectangle, drawn untextured (it binds
+    /// Ghidra: FUN_00510330 @ 0x00510330 â€” a flat filled rectangle, drawn untextured (it binds
     /// texture 0) and alpha-blended.
     /// </summary>
     private static void UiFillRect(int x, int y, int width, int height, uint colour)
@@ -7151,7 +7231,7 @@ public static unsafe partial class Blaze
 
         UiSetState(Device_BindTexture, 0);
 
-        // Ghidra: the capability word at deviceDesc + 0x80 chooses between two blend setups —
+        // Ghidra: the capability word at deviceDesc + 0x80 chooses between two blend setups â€”
         // bit 0x1000 leaves the state alone, bit 0x2000 raises the 0x9c pair instead.
         uint caps = deviceDesc != null ? *(uint*)((byte*)deviceDesc + 0x80) : 0;
         if ((caps & 0x1000) == 0)
@@ -7170,7 +7250,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00510500 @ 0x00510500 — one textured quad out of an atlas: the destination
+    /// Ghidra: FUN_00510500 @ 0x00510500 â€” one textured quad out of an atlas: the destination
     /// rectangle, the source position and size in texels, the texture object and a modulating
     /// colour. Opaque: it forces alpha off and ONE/ZERO blending.
     /// </summary>
@@ -7213,7 +7293,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005108f0 @ 0x005108f0 — draws one pre-rendered label strip. The label index
+    /// Ghidra: FUN_005108f0 @ 0x005108f0 â€” draws one pre-rendered label strip. The label index
     /// selects both its width (from the runtime-built table at DAT_00589758) and which of four
     /// atlases holds it: 0..0x11 in the first, 0x12..0x23 in the second, 0x24..0x35 in the third,
     /// and negative indices in the fourth, counted backwards. Rows are 14 texels tall.
@@ -7222,10 +7302,10 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void UiDrawLabel(int x, int y, int label, int centred, uint colour)
     {
-        // La table est indexée des deux côtés : les libellés d'ACTION.TXT ont des identifiants
-        // négatifs et leurs largeurs sont écrites en descendant sous la base. Un garde qui ramenait
-        // ces index à 0 donnait à toutes les actions la largeur du libellé 0, ce qui les tronquait
-        // toutes à la même longueur.
+        // La table est indexÃ©e des deux cÃ´tÃ©s : les libellÃ©s d'ACTION.TXT ont des identifiants
+        // nÃ©gatifs et leurs largeurs sont Ã©crites en descendant sous la base. Un garde qui ramenait
+        // ces index Ã  0 donnait Ã  toutes les actions la largeur du libellÃ© 0, ce qui les tronquait
+        // toutes Ã  la mÃªme longueur.
         int width = s_UiLabelWidths_00589758[label];
         if (centred == 1) x -= width >> 1;
 
@@ -7248,7 +7328,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00510740 @ 0x00510740 — the page's window frame: a translucent fill, then the
+    /// Ghidra: FUN_00510740 @ 0x00510740 â€” the page's window frame: a translucent fill, then the
     /// eight pieces of a nine-patch border taken from the 16x16 cells of the frame atlas.
     /// </summary>
     private static void UiDrawFrame(int x, int y, int width, int height)
@@ -7269,14 +7349,14 @@ public static unsafe partial class Blaze
         UiBlit(right, bottom, 0x10, 0x10, 0x70, 0, atlas, 0x10, 0x10, 0xffffff);
     }
 
-    /// <summary>Ghidra: FUN_00510a70 @ 0x00510a70 — the selection cursor, one 15x16 cell.</summary>
+    /// <summary>Ghidra: FUN_00510a70 @ 0x00510a70 â€” the selection cursor, one 15x16 cell.</summary>
     private static void UiDrawCursor(int x, int y)
         => UiBlit(x, y, 0xf, 0x10, 0xf0, 0, s_UiFrameAtlas_00599ddc, 0xf, 0x10, 0xffffff);
 
-    // winsys3d, exports nommés. `ShiftVertices` (ordinal 824, winsys3d.c:4913) applique
-    // `x = décalage + (Size + 9) * 32 / 320 * x` — le facteur documenté dans la section
-    // « Coordinate scaling ». Le fond de page passe par lui ; les widgets, eux, par la mise à
-    // l'échelle que le jeu fait lui-même (FUN_00510110). Les deux coexistent, c'est voulu.
+    // winsys3d, exports nommÃ©s. `ShiftVertices` (ordinal 824, winsys3d.c:4913) applique
+    // `x = dÃ©calage + (Size + 9) * 32 / 320 * x` â€” le facteur documentÃ© dans la section
+    // Â« Coordinate scaling Â». Le fond de page passe par lui ; les widgets, eux, par la mise Ã 
+    // l'Ã©chelle que le jeu fait lui-mÃªme (FUN_00510110). Les deux coexistent, c'est voulu.
     [DllImport("winsys3d.dll", ExactSpelling = true)]
     private static extern void ShiftVertices(TlVertex* vertices, int count);
 
@@ -7292,14 +7372,14 @@ public static unsafe partial class Blaze
     private static extern int ChangeResolution(int resolution);
 
     /// <summary>
-    /// Ghidra: FUN_0050fe90 @ 0x0050fe90 — début d'image : chacune des huit textures de la page est
-    /// interrogée par son slot <c>[8]</c> (<c>IDirectDrawSurface::IsLost</c> chez 3dhelp) et
-    /// recréée depuis sa source si elle a été perdue.
+    /// Ghidra: FUN_0050fe90 @ 0x0050fe90 â€” dÃ©but d'image : chacune des huit textures de la page est
+    /// interrogÃ©e par son slot <c>[8]</c> (<c>IDirectDrawSurface::IsLost</c> chez 3dhelp) et
+    /// recrÃ©Ã©e depuis sa source si elle a Ã©tÃ© perdue.
     /// <para>
-    /// Sur notre chemin le slot rend toujours « pas perdue » — une texture Direct3D 11 ne se perd
-    /// pas comme une surface DirectDraw — donc cette passe ne fait rien. Elle est transcrite
-    /// entière malgré tout : c'est elle qui prouve que le slot 8 existe, et le jour où une perte de
-    /// device sera gérée, la reconstruction est déjà en place.
+    /// Sur notre chemin le slot rend toujours Â« pas perdue Â» â€” une texture Direct3D 11 ne se perd
+    /// pas comme une surface DirectDraw â€” donc cette passe ne fait rien. Elle est transcrite
+    /// entiÃ¨re malgrÃ© tout : c'est elle qui prouve que le slot 8 existe, et le jour oÃ¹ une perte de
+    /// device sera gÃ©rÃ©e, la reconstruction est dÃ©jÃ  en place.
     /// </para>
     /// </summary>
     private static void RestoreLostUiTextures()
@@ -7333,9 +7413,9 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005101c0 @ 0x005101c0 — le fond de page : un seul quad `(0,0)-(320,241)` en
-    /// coordonnées du jeu, texturé par BACKGRND.PIC, opaque, filtrage activé le temps du dessin.
-    /// Les coordonnées de texture sont les constantes du binaire, `0.5/256` et `255/256` en X,
+    /// Ghidra: FUN_005101c0 @ 0x005101c0 â€” le fond de page : un seul quad `(0,0)-(320,241)` en
+    /// coordonnÃ©es du jeu, texturÃ© par BACKGRND.PIC, opaque, filtrage activÃ© le temps du dessin.
+    /// Les coordonnÃ©es de texture sont les constantes du binaire, `0.5/256` et `255/256` en X,
     /// `224.5/256` en Y.
     /// </summary>
     private static void DrawUiBackground()
@@ -7350,7 +7430,7 @@ public static unsafe partial class Blaze
         quad[3] = UiBackgroundVertex(0f, 241f, u1, v2);
 
         // Ghidra perd l'argument du premier appel ; le second est SetTextureFilterMode(0), et le
-        // filtrage n'aurait pas de sens laissé actif après un fond plein écran.
+        // filtrage n'aurait pas de sens laissÃ© actif aprÃ¨s un fond plein Ã©cran.
         SetTextureFilterMode(1);
         ShiftVertices(quad, 4);
 
@@ -7368,16 +7448,16 @@ public static unsafe partial class Blaze
         => new() { X = x, Y = y, Z = UiDepth, Rhw = UiDepth, Diffuse = 0xffffffff, Specular = 0, U = u, V = v };
 
     /// <summary>
-    /// Ghidra: FUN_00510aa0 @ 0x00510aa0 — la sélection. Fait avancer <paramref name="selection"/>
-    /// entre <paramref name="min"/> et <paramref name="max"/>, et rend un masque de ce qui a été
-    /// demandé : 1 valider, 2 gauche, 4 droite, 8 page précédente, 0x10 page suivante, et
+    /// Ghidra: FUN_00510aa0 @ 0x00510aa0 â€” la sÃ©lection. Fait avancer <paramref name="selection"/>
+    /// entre <paramref name="min"/> et <paramref name="max"/>, et rend un masque de ce qui a Ã©tÃ©
+    /// demandÃ© : 1 valider, 2 gauche, 4 droite, 8 page prÃ©cÃ©dente, 0x10 page suivante, et
     /// <c>0xffffffff</c> pour annuler.
     /// <para>
-    /// Deux sources d'entrée, lues séparément. Le clavier est pris **directement dans le tampon
+    /// Deux sources d'entrÃ©e, lues sÃ©parÃ©ment. Le clavier est pris **directement dans le tampon
     /// DirectInput** (`DAT_00604b50`), par scancode : 0xC8 haut, 0xD0 bas, 0xCB gauche, 0xCD
-    /// droite, 0x1C entrée, 0x01 échap, 0xC9 et 0xD1 page précédente/suivante. La manette passe par
-    /// le bloc d'état que <c>PollInputAndAudio</c> désigne (`DAT_00579270`). La répétition tient en
-    /// deux compteurs : 12 images avant la première répétition, 2 ensuite.
+    /// droite, 0x1C entrÃ©e, 0x01 Ã©chap, 0xC9 et 0xD1 page prÃ©cÃ©dente/suivante. La manette passe par
+    /// le bloc d'Ã©tat que <c>PollInputAndAudio</c> dÃ©signe (`DAT_00579270`). La rÃ©pÃ©tition tient en
+    /// deux compteurs : 12 images avant la premiÃ¨re rÃ©pÃ©tition, 2 ensuite.
     /// </para>
     /// </summary>
     private static uint UiSelect(int* selection, int min, int max)
@@ -7392,8 +7472,8 @@ public static unsafe partial class Blaze
         byte* keys = s_KeyboardState_00604b50;
         if (keys == null) return 0;
 
-        // Ghidra: haut et bas partagent le même compteur de répétition, et s'excluent — le bas
-        // n'est même pas consulté tant que le haut est enfoncé.
+        // Ghidra: haut et bas partagent le mÃªme compteur de rÃ©pÃ©tition, et s'excluent â€” le bas
+        // n'est mÃªme pas consultÃ© tant que le haut est enfoncÃ©.
         if (keys[0xc8] != 0)
         {
             held = UiRepeat();
@@ -7419,8 +7499,8 @@ public static unsafe partial class Blaze
 
         if (held == 0) { s_UiRepeatCounter_005d9e08 = 0; s_UiRepeatActive_005d9e00 = 0; }
 
-        // Les quatre touches à front : entrée, échap, page précédente, page suivante. L'état
-        // précédent tient dans les quatre bits de DAT_005d9e04.
+        // Les quatre touches Ã  front : entrÃ©e, Ã©chap, page prÃ©cÃ©dente, page suivante. L'Ã©tat
+        // prÃ©cÃ©dent tient dans les quatre bits de DAT_005d9e04.
         uint edges = s_UiKeyEdges_005d9e04;
         edges = UiEdge(keys[0x1c] != 0, edges, 1, ref result, 1);
         if (keys[0x01] != 0 && (edges & 2) == 0) result = 0xffffffff;
@@ -7428,6 +7508,11 @@ public static unsafe partial class Blaze
         edges = UiEdge(keys[0xc9] != 0, edges, 4, ref result, 8);
         edges = UiEdge(keys[0xd1] != 0, edges, 8, ref result, 0x10);
         s_UiKeyEdges_005d9e04 = edges;
+
+        if (s_TraceMenu && (result != 0 || held != 0 || keys[0x01] != 0))
+            Console.Error.WriteLine(
+                $"[UI] sÃ©lection -> 0x{result:X8} (maintien={held} fronts=0x{edges:X} " +
+                $"entrÃ©e={keys[0x1c]:X2} Ã©chap={keys[0x01]:X2})");
 
         if (held != 0 || edges != 0) return result;
 
@@ -7450,7 +7535,7 @@ public static unsafe partial class Blaze
         return result;
     }
 
-    /// <summary>Ghidra: le motif de répétition répété cinq fois dans FUN_00510aa0.</summary>
+    /// <summary>Ghidra: le motif de rÃ©pÃ©tition rÃ©pÃ©tÃ© cinq fois dans FUN_00510aa0.</summary>
     private static uint UiRepeat()
     {
         if (s_UiRepeatActive_005d9e00 == 0)
@@ -7467,7 +7552,7 @@ public static unsafe partial class Blaze
         return 3;
     }
 
-    /// <summary>Ghidra: le motif de détection de front des quatre touches d'action.</summary>
+    /// <summary>Ghidra: le motif de dÃ©tection de front des quatre touches d'action.</summary>
     private static uint UiEdge(bool down, uint edges, uint bit, ref uint result, uint resultBit)
     {
         if (!down) return edges & ~bit;
@@ -7480,8 +7565,8 @@ public static unsafe partial class Blaze
     private static int s_UiRepeatCounter_005d9e08;   // Ghidra: DAT_005d9e08
     private static int s_UiOptionsSelection_005d9e48;// Ghidra: DAT_005d9e48
 
-    // Ghidra: DAT_005d9df8 — la couleur-clé que la restauration réapplique. Comme ses voisines,
-    // elle n'est écrite nulle part dans le graphe reconstruit et vaut donc zéro.
+    // Ghidra: DAT_005d9df8 â€” la couleur-clÃ© que la restauration rÃ©applique. Comme ses voisines,
+    // elle n'est Ã©crite nulle part dans le graphe reconstruit et vaut donc zÃ©ro.
     private static readonly uint* s_UiRestoreColourKey_005d9df8 = (uint*)NativeMemory.AllocZeroed(2, sizeof(uint));
     private static uint* s_UiFrameColourKey_005d9df8 => s_UiRestoreColourKey_005d9df8;
 
@@ -7498,8 +7583,8 @@ public static unsafe partial class Blaze
     //     DATA/BACKGRND.PIC   the page background        -> one texture
     //     DATA/FRAMEMOD.PIC   the window frame and cursor sheet
     //
-    // The labels are **rasterised in software** — glyph by glyph, through wsyskern's DIBCopyBlock,
-    // into 256x256 8-bit buffers — and only then handed to the device as textures via the texture
+    // The labels are **rasterised in software** â€” glyph by glyph, through wsyskern's DIBCopyBlock,
+    // into 256x256 8-bit buffers â€” and only then handed to the device as textures via the texture
     // class's `[2]` slot. That is the path this file wrongly recorded as never taken; see
     // Documentation/DLL/3dhelp.md, correction of 2026-08-14.
     // =====================================================================
@@ -7521,30 +7606,30 @@ public static unsafe partial class Blaze
     [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void DeleteArray(void* array);
 
     // =====================================================================
-    // DEVIATION, mesurée et bornée : la lecture des fichiers texte ne passe plus par l'API de
+    // DEVIATION, mesurÃ©e et bornÃ©e : la lecture des fichiers texte ne passe plus par l'API de
     // tableaux de `wsyskern`.
     //
-    // Pourquoi. `LoadArray` **corrompt le tas** dans ce processus, de façon cumulative avec le
+    // Pourquoi. `LoadArray` **corrompt le tas** dans ce processus, de faÃ§on cumulative avec le
     // nombre de lignes lues : 1 ligne passe, 4 lignes font tomber le processus plus loin, le
-    // fichier entier le fait tomber tout de suite — et toujours à la première allocation qui suit,
-    // signature d'une corruption causée ailleurs. Ce qui a été écarté par la mesure, et n'est donc
-    // pas à rouvrir :
+    // fichier entier le fait tomber tout de suite â€” et toujours Ã  la premiÃ¨re allocation qui suit,
+    // signature d'une corruption causÃ©e ailleurs. Ce qui a Ã©tÃ© Ã©cartÃ© par la mesure, et n'est donc
+    // pas Ã  rouvrir :
     //
     //   - l'appel est conforme : `RET 0x18` dans la DLL, donc 6 arguments stdcall, et le sens de
-    //     chacun est lu dans `FUN_10004060` (index de départ, plafond de lignes, lignes à sauter,
-    //     drapeaux) ; `ArrayToString` de même, `RET 0x10` ;
-    //   - l'objet est valide : `CreateArray` pose le tag « ARAY » que le validateur exige, et
-    //     `LoadArray` sortirait proprement s'il ne l'était pas — ce qu'il fait avec un fichier
-    //     absent, cas où **toute la mise en place s'exécute jusqu'au bout** ;
-    //   - ce n'est ni la capacité initiale (0 comme 0x80 échouent), ni la croissance (le drapeau
-    //     « ne pas agrandir » n'y change rien), ni le chemin (correct, fichier présent).
+    //     chacun est lu dans `FUN_10004060` (index de dÃ©part, plafond de lignes, lignes Ã  sauter,
+    //     drapeaux) ; `ArrayToString` de mÃªme, `RET 0x10` ;
+    //   - l'objet est valide : `CreateArray` pose le tag Â« ARAY Â» que le validateur exige, et
+    //     `LoadArray` sortirait proprement s'il ne l'Ã©tait pas â€” ce qu'il fait avec un fichier
+    //     absent, cas oÃ¹ **toute la mise en place s'exÃ©cute jusqu'au bout** ;
+    //   - ce n'est ni la capacitÃ© initiale (0 comme 0x80 Ã©chouent), ni la croissance (le drapeau
+    //     Â« ne pas agrandir Â» n'y change rien), ni le chemin (correct, fichier prÃ©sent).
     //
-    // Ce que le tableau apporte ici se réduit à « rendre la ligne i d'un fichier texte ». On le
-    // fait donc nous-mêmes. C'est la même nature de déviation que le remplacement de DirectDraw
+    // Ce que le tableau apporte ici se rÃ©duit Ã  Â« rendre la ligne i d'un fichier texte Â». On le
+    // fait donc nous-mÃªmes. C'est la mÃªme nature de dÃ©viation que le remplacement de DirectDraw
     // par Direct3D 11, en beaucoup plus petit, et elle ne touche aucune logique du jeu.
     //
-    // `OPENFORESIA_WSYSKERN_ARRAYS=1` rétablit le chemin d'origine, pour qui voudra reprendre le
-    // diagnostic côté DLL.
+    // `OPENFORESIA_WSYSKERN_ARRAYS=1` rÃ©tablit le chemin d'origine, pour qui voudra reprendre le
+    // diagnostic cÃ´tÃ© DLL.
     // =====================================================================
 
     private sealed class UiTextFile
@@ -7555,15 +7640,15 @@ public static unsafe partial class Blaze
     private static readonly bool s_UseWsyskernArrays =
         Environment.GetEnvironmentVariable("OPENFORESIA_WSYSKERN_ARRAYS") == "1";
 
-    /// <summary>Ghidra: LoadArray — lit tout le fichier et le découpe en lignes.</summary>
+    /// <summary>Ghidra: LoadArray â€” lit tout le fichier et le dÃ©coupe en lignes.</summary>
     private static void ReadUiTextFile(UiTextFile file, string name)
     {
         file.Lines.Clear();
 
         byte* fileName = ToAnsiZ(name);
         byte* pathAnsi = BuildCdPath(fileName);
-        // Le tampon fait 64 octets et n'est zéro que jusqu'au terminateur : couper au premier zéro,
-        // pas à la fin, sinon la queue non initialisée se retrouve dans le chemin.
+        // Le tampon fait 64 octets et n'est zÃ©ro que jusqu'au terminateur : couper au premier zÃ©ro,
+        // pas Ã  la fin, sinon la queue non initialisÃ©e se retrouve dans le chemin.
         int length = 0;
         while (length < 64 && pathAnsi[length] != 0) length++;
         string path = System.Text.Encoding.Latin1.GetString(pathAnsi, length);
@@ -7588,9 +7673,9 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: ArrayToString — copie la ligne demandée dans un tampon ANSI terminé par zéro. Un
-    /// index hors du fichier rend une chaîne vide, ce que la boucle appelante traite déjà comme
-    /// « rien à dessiner ».
+    /// Ghidra: ArrayToString â€” copie la ligne demandÃ©e dans un tampon ANSI terminÃ© par zÃ©ro. Un
+    /// index hors du fichier rend une chaÃ®ne vide, ce que la boucle appelante traite dÃ©jÃ  comme
+    /// Â« rien Ã  dessiner Â».
     /// </summary>
     private static void UiLineToBuffer(UiTextFile file, int index, byte* buffer, int size)
     {
@@ -7604,7 +7689,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0050f560 @ 0x0050f560 — character to glyph index. The five ranges skip the
+    /// Ghidra: FUN_0050f560 @ 0x0050f560 â€” character to glyph index. The five ranges skip the
     /// punctuation gaps of the cp1252 layout the font sheet is laid out in; six accented capitals
     /// and the currency sign all fold onto index 0xa5.
     /// </summary>
@@ -7626,7 +7711,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0050f770 @ 0x0050f770 — the width a string will occupy, in the same terms
+    /// Ghidra: FUN_0050f770 @ 0x0050f770 â€” the width a string will occupy, in the same terms
     /// FUN_0050f680 advances by: a space is 4, anything else its glyph's width, control characters
     /// nothing.
     /// </summary>
@@ -7636,10 +7721,10 @@ public static unsafe partial class Blaze
         for (int i = 0; text[i] != 0; i++)
         {
             byte c = text[i];
-            // Ghidra rend le caractère en `char` **signé**, ce qui est un artefact : `FUN_0050f560`
-            // compare son paramètre à 0x80, 0x8a, 0x9a, 0xc0 et 0xe0, valeurs qu'un char signé ne
-            // peut jamais prendre. Le test des caractères de contrôle, lui, est bien signé dans
-            // l'original — les deux formulations y sont équivalentes.
+            // Ghidra rend le caractÃ¨re en `char` **signÃ©**, ce qui est un artefact : `FUN_0050f560`
+            // compare son paramÃ¨tre Ã  0x80, 0x8a, 0x9a, 0xc0 et 0xe0, valeurs qu'un char signÃ© ne
+            // peut jamais prendre. Le test des caractÃ¨res de contrÃ´le, lui, est bien signÃ© dans
+            // l'original â€” les deux formulations y sont Ã©quivalentes.
             if ((sbyte)c is > 0 and < 0x20) continue;
             if (c == ' ') { width += 4; continue; }
 
@@ -7651,7 +7736,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0050f680 @ 0x0050f680 — draws one string into a DIB at row
+    /// Ghidra: FUN_0050f680 @ 0x0050f680 â€” draws one string into a DIB at row
     /// <paramref name="row"/> (rows are 14 texels tall), starting at <paramref name="x"/>, and
     /// returns the pen position it ended at. Each glyph is one DIBCopyBlock out of the font sheet,
     /// whose cells are 10 wide and 14 tall, 31 to a row.
@@ -7683,9 +7768,9 @@ public static unsafe partial class Blaze
             int width = s_GlyphWidths_0056e7b0[glyph];
 
             // GARDE-FOU, et instrument. La cible fait 256x256 en 8 bits, soit exactement les
-            // 64 Kio du tampon. `DIBCopyBlock` ne clippe pas de manière sûre : un blit qui sort
-            // écrit hors du tampon et corrompt le tas — le symptôme observé. On refuse le blit et
-            // on le signale, ce qui dit du même coup s'il arrive vraiment.
+            // 64 Kio du tampon. `DIBCopyBlock` ne clippe pas de maniÃ¨re sÃ»re : un blit qui sort
+            // Ã©crit hors du tampon et corrompt le tas â€” le symptÃ´me observÃ©. On refuse le blit et
+            // on le signale, ce qui dit du mÃªme coup s'il arrive vraiment.
             if (x < 0 || row < 0 || x + width > 0x100 || row * 0xe + 0xe > 0x100)
             {
                 UiStage($"    blit REFUSE hors cible : ({x},{row * 0xe}) l={width} " +
@@ -7706,7 +7791,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0050f9b0 @ 0x0050f9b0 — the key names, which unlike the other label sets do not
+    /// Ghidra: FUN_0050f9b0 @ 0x0050f9b0 â€” the key names, which unlike the other label sets do not
     /// get one row each: they are packed left to right and wrapped at 253 texels, each entry's
     /// (x, row, width) recorded in the placement table at DAT_00599c80.
     /// </summary>
@@ -7735,7 +7820,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0050f7d0 @ 0x0050f7d0 — the two .PIC-backed textures. Both bitmaps' headers are
+    /// Ghidra: FUN_0050f7d0 @ 0x0050f7d0 â€” the two .PIC-backed textures. Both bitmaps' headers are
     /// copied out of the loaded file, their 256-entry palettes passed through wsyskern's
     /// <c>Gamma</c> at the ini's gamma setting, and the result handed to a texture object.
     /// </summary>
@@ -7745,7 +7830,7 @@ public static unsafe partial class Blaze
         byte* frame = s_UiFrameFile_00589838;
         if (background == null || frame == null) return;
 
-        // Ghidra: 10 dwords — the BITMAPINFOHEADER alone; the palette that follows is rebuilt.
+        // Ghidra: 10 dwords â€” the BITMAPINFOHEADER alone; the palette that follows is rebuilt.
         NativeMemory.Copy(background + 0xe, s_UiBackgroundInfo_00578e30, 40);
         NativeMemory.Copy(frame + 0xe, s_UiFrameInfo_00589840, 40);
 
@@ -7774,7 +7859,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: the three-call idiom this page repeats for every texture — create through the
+    /// Ghidra: the three-call idiom this page repeats for every texture â€” create through the
     /// device's `+0x10` factory, load through the texture class's `[2]` slot, and, when it has one,
     /// set a colour key through `[6]`.
     /// </summary>
@@ -7792,7 +7877,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0050fab0 @ 0x0050fab0 — the options page's one-time setup, guarded by
+    /// Ghidra: FUN_0050fab0 @ 0x0050fab0 â€” the options page's one-time setup, guarded by
     /// DAT_005d9de4 so it runs on first entry only, followed by the texture creation that runs
     /// every time (the gamma may have changed).
     /// </summary>
@@ -7815,8 +7900,8 @@ public static unsafe partial class Blaze
             UiStage("chargement FONT.PIC");
             s_UiFontFile_00589c74 = LoadUiFile(s_UiFileFont, silent: true);
 
-            // Ghidra: 0x10a dwords out of the font file at +0xe — a BITMAPINFOHEADER plus its
-            // 256-entry palette, 1064 bytes — reused as the header of every rasterisation target,
+            // Ghidra: 0x10a dwords out of the font file at +0xe â€” a BITMAPINFOHEADER plus its
+            // 256-entry palette, 1064 bytes â€” reused as the header of every rasterisation target,
             // with the dimensions forced to 256x256. Measured on the disc's FONT.PIC: 312x84, 8
             // bits, so the copy covers a real 256-colour palette and the target is exactly the
             // 64 KiB the buffers provide.
@@ -7826,14 +7911,14 @@ public static unsafe partial class Blaze
             *(int*)(s_UiTargetInfo_00579278 + 4) = 0x100;    // biWidth
             *(int*)(s_UiTargetInfo_00579278 + 8) = 0x100;    // biHeight, positive: bottom-up
 
-            UiStage("rastérisation CONFIG.TXT (3 atlas)");
+            UiStage("rastÃ©risation CONFIG.TXT (3 atlas)");
             RasteriseLabelSet(array, s_UiAtlas0Bits_00589c80, 0, 0, 0x12);
             RasteriseLabelSet(array, s_UiAtlas1Bits_005b9de0, 0x12, 0x12, 0x12);
             RasteriseLabelSet(array, s_UiAtlas2Bits_005c9de0, 0x24, 0x24, 0x12);
 
             // Ghidra: ACTION.TXT's widths are written **downward** from DAT_00589754, which is what
             // makes FUN_005108f0's negative label ids resolve.
-            UiStage("rastérisation ACTION.TXT");
+            UiStage("rastÃ©risation ACTION.TXT");
             ReadUiTextFile(array, s_UiFileActionText);
             NativeMemory.Fill(s_UiAtlasNegativeBits_00579708, UiAtlasBytes, 0);
             byte* text = stackalloc byte[0x20];
@@ -7844,9 +7929,9 @@ public static unsafe partial class Blaze
                     RasteriseLabel(s_UiAtlasNegativeBits_00579708, s_UiTargetInfo_00579278, i, text, 0);
             }
 
-            // Ghidra: the joystick set is the only one drawn twice — 0x24 entries folded onto 0x12
+            // Ghidra: the joystick set is the only one drawn twice â€” 0x24 entries folded onto 0x12
             // rows, the second half offset by 0x80. Its widths are not recorded.
-            UiStage("rastérisation JOYSTICK.TXT");
+            UiStage("rastÃ©risation JOYSTICK.TXT");
             ReadUiTextFile(array, s_UiFileJoystickText);
             NativeMemory.Fill(s_UiAtlasJoystickBits_00599de0, UiAtlasBytes, 0);
             for (int i = 0; i < 0x24; i++)
@@ -7856,7 +7941,7 @@ public static unsafe partial class Blaze
                                i % 0x12, text, i < 0x12 ? 0 : 0x80);
             }
 
-            UiStage("rastérisation KEYBOARD.TXT");
+            UiStage("rastÃ©risation KEYBOARD.TXT");
             ReadUiTextFile(array, s_UiFileKeyboardText);
             RasteriseKeyLabels(array);
         }
@@ -7889,15 +7974,21 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// ECHAFAUDAGE TEMPORAIRE. Jalonne la mise en place : le tas s'est corrompu quelque part dans
-    /// cette chaîne au premier essai, et une corruption de tas ne lève pas là où elle est causée.
-    /// La dernière étape journalisée avant la mort nomme la coupable.
+    /// cette chaÃ®ne au premier essai, et une corruption de tas ne lÃ¨ve pas lÃ  oÃ¹ elle est causÃ©e.
+    /// La derniÃ¨re Ã©tape journalisÃ©e avant la mort nomme la coupable.
     /// </summary>
     private static void UiStage(string stage)
     {
         if (s_RunOptionsSetup) Console.Error.WriteLine($"[UI] {stage}");
     }
 
-    /// <summary>Ghidra: FUN_0050fa50 — the CD path, then LoadBitmapFile in its silent mode.</summary>
+    /// <summary>ECHAFAUDAGE : entrÃ©e et sortie de chaque page, sous OPENFORESIA_TRACE_MENU=1.</summary>
+    private static void UiPageTrace(string page)
+    {
+        if (s_TraceMenu) Console.Error.WriteLine($"[UI] {page}");
+    }
+
+    /// <summary>Ghidra: FUN_0050fa50 â€” the CD path, then LoadBitmapFile in its silent mode.</summary>
     private static byte* LoadUiFile(string name, bool silent)
     {
         byte* fileName = ToAnsiZ(name);
@@ -7913,8 +8004,8 @@ public static unsafe partial class Blaze
         byte* fileName = ToAnsiZ(name);
         byte* path = BuildCdPath(fileName);
         // ECHAFAUDAGE : OPENFORESIA_OPTIONS_BADPATH=1 remplace le chemin par un fichier absent,
-        // ce qui fait sortir le chargeur juste après l'ouverture ratée. Sépare « la faute est dans
-        // l'ouverture » de « la faute est dans la lecture des lignes ».
+        // ce qui fait sortir le chargeur juste aprÃ¨s l'ouverture ratÃ©e. SÃ©pare Â« la faute est dans
+        // l'ouverture Â» de Â« la faute est dans la lecture des lignes Â».
         if (Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_BADPATH") == "1")
         {
             byte* absent = ToAnsiZ("Z:/pas-de-fichier.txt");
@@ -7927,13 +8018,13 @@ public static unsafe partial class Blaze
             return;
         }
 
-        // ECHAFAUDAGE : OPENFORESIA_OPTIONS_NOGROW=1 met le drapeau 8 (« ne pas agrandir »), ce qui
-        // court-circuite l'appel de croissance du chargeur. Sépare « la croissance corrompt » de
-        // « la lecture/stockage des lignes corrompt ».
+        // ECHAFAUDAGE : OPENFORESIA_OPTIONS_NOGROW=1 met le drapeau 8 (Â« ne pas agrandir Â»), ce qui
+        // court-circuite l'appel de croissance du chargeur. SÃ©pare Â« la croissance corrompt Â» de
+        // Â« la lecture/stockage des lignes corrompt Â».
         int flags = Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_NOGROW") == "1" ? 8 : 0;
 
-        // ECHAFAUDAGE : le 4e argument du chargeur est un **plafond de lignes** (0 = illimité).
-        // OPENFORESIA_OPTIONS_MAXLINES borne la lecture, pour trouver à quelle ligne ça casse.
+        // ECHAFAUDAGE : le 4e argument du chargeur est un **plafond de lignes** (0 = illimitÃ©).
+        // OPENFORESIA_OPTIONS_MAXLINES borne la lecture, pour trouver Ã  quelle ligne Ã§a casse.
         _ = int.TryParse(Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_MAXLINES"), out int maxLines);
 
         UiStage($"  LoadArray(\"{System.Text.Encoding.Latin1.GetString(path, 40).TrimEnd('\0', ' ')}\") lignes<={maxLines} drapeaux={flags}");
@@ -7941,10 +8032,10 @@ public static unsafe partial class Blaze
         UiStage("  LoadArray revenu");
         Free(path);
         Free(fileName);
-        UiStage("  libéré");
+        UiStage("  libÃ©rÃ©");
     }
 
-    // Ghidra: the seven file names at 0x005630c8..0x00563134, read verbatim from Legacy/Blaze.exe —
+    // Ghidra: the seven file names at 0x005630c8..0x00563134, read verbatim from Legacy/Blaze.exe â€”
     // forward slashes, like every other CD path this reconstruction builds.
     private const string s_UiFileKeyboardText = "DATA/KEYBOARD.TXT";
     private const string s_UiFileJoystickText = "DATA/JOYSTICK.TXT";
@@ -7954,13 +8045,13 @@ public static unsafe partial class Blaze
     private const string s_UiFileFrame = "DATA/FRAMEMOD.PIC";
     private const string s_UiFileBackground = "DATA/BACKGRND.PIC";
 
-    /// <summary>Ghidra: the 0x4000-dword clears — 64 KB, one 256x256 8-bit page.</summary>
+    /// <summary>Ghidra: the 0x4000-dword clears â€” 64 KB, one 256x256 8-bit page.</summary>
     private const nuint UiAtlasBytes = 0x4000 * 4;
 
     /// <summary>
-    /// Ghidra: la borne de boucle de FUN_0050f9b0 — de `0x599c81` à `0x599dd6` par pas de 4, soit
-    /// **86** entrées. Les 85 premières sont les noms de touches de KEYBOARD.TXT ; la 86ᵉ est
-    /// l'invite que l'éditeur affiche à la place d'une touche pendant la capture.
+    /// Ghidra: la borne de boucle de FUN_0050f9b0 â€” de `0x599c81` Ã  `0x599dd6` par pas de 4, soit
+    /// **86** entrÃ©es. Les 85 premiÃ¨res sont les noms de touches de KEYBOARD.TXT ; la 86áµ‰ est
+    /// l'invite que l'Ã©diteur affiche Ã  la place d'une touche pendant la capture.
     /// </summary>
     private const int UiKeyLabelCount = 0x56;
 
@@ -7981,19 +8072,19 @@ public static unsafe partial class Blaze
     private static readonly void* s_UiKeyboardBits_005a9de0 = NativeMemory.AllocZeroed(UiAtlasBytes);
     private static readonly byte* s_UiKeyPlacement_00599c80 = (byte*)NativeMemory.AllocZeroed(UiKeyLabelCount * 4 + 8);
 
-    // Ghidra: DAT_005d9de8 and DAT_005d9df0 — the two colour keys, DDCOLORKEY pairs of palette
+    // Ghidra: DAT_005d9de8 and DAT_005d9df0 â€” the two colour keys, DDCOLORKEY pairs of palette
     // indices. TODO(REVERSE): neither is written anywhere in the reconstructed graph and both read
-    // as uninitialised data in the binary, so they are zero — index 0 transparent, which is the
+    // as uninitialised data in the binary, so they are zero â€” index 0 transparent, which is the
     // usual convention for these sheets but is not confirmed.
     private static readonly uint* s_UiFrameColourKey_005d9de8 = (uint*)NativeMemory.AllocZeroed(2, sizeof(uint));
     private static readonly uint* s_UiAtlasColourKey_005d9df0 = (uint*)NativeMemory.AllocZeroed(2, sizeof(uint));
 
     // Ghidra: &DAT_0056e7b0, the glyph widths, is **already reconstructed** further up this file
     // for the UI text engine. A second copy transcribed here from the same hex dump carried one
-    // 0x06 too many — the duplicate-symbol error is what caught it. One table, one definition.
+    // 0x06 too many â€” the duplicate-symbol error is what caught it. One table, one definition.
 
     // Ghidra: the texture objects this layer draws from, and the label-width table. All are built
-    // at runtime by FUN_0050fab0 — 0x00589758 reads as uninitialised data in the binary, which is
+    // at runtime by FUN_0050fab0 â€” 0x00589758 reads as uninitialised data in the binary, which is
     // an answer rather than a gap: nothing but code can fill it.
     private static void* s_UiAtlas0_00589c6c;
     private static void* s_UiAtlas1_00589830;
@@ -8005,7 +8096,7 @@ public static unsafe partial class Blaze
     private static void* s_UiFrameAtlas_00599ddc;
 
     /// <summary>
-    /// Ghidra: &amp;DAT_00589758 — the label widths, **indexed on both sides of that address**.
+    /// Ghidra: &amp;DAT_00589758 â€” the label widths, **indexed on both sides of that address**.
     /// FUN_0050fab0 writes three contiguous 18-entry runs upward from it (0x00589758, 0x005897a0,
     /// 0x005897e8) for label ids 0..0x35, and a fourth run **downward** from 0x00589754 for the
     /// ACTION.TXT labels, which FUN_005108f0 reaches with negative ids. One block with the base
@@ -8022,7 +8113,7 @@ public static unsafe partial class Blaze
 
 
     /// <summary>
-    /// Ghidra: FUN_00512320 @ 0x00512320 — the options page. Its first statement is
+    /// Ghidra: FUN_00512320 @ 0x00512320 â€” the options page. Its first statement is
     /// <c>FUN_0050fab0()</c>, which is reconstructed, so the setup runs for real here; the page's
     /// own loop is not, and says so.
     /// </summary>
@@ -8030,8 +8121,8 @@ public static unsafe partial class Blaze
     {
         OptionsSetup();     // Ghidra: FUN_0050fab0
 
-        // Ghidra: la boucle de page. Quatre entrées, sélectionnées entre 0 et 3 ; la quatrième
-        // quitte par une exception logicielle, échap quitte en libérant les huit textures.
+        // Ghidra: la boucle de page. Quatre entrÃ©es, sÃ©lectionnÃ©es entre 0 et 3 ; la quatriÃ¨me
+        // quitte par une exception logicielle, Ã©chap quitte en libÃ©rant les huit textures.
         while (true)
         {
             RestoreLostUiTextures();                                    // FUN_0050fe90
@@ -8067,11 +8158,12 @@ public static unsafe partial class Blaze
                     case 1: PlayUiSound38(); SoundOptionsPage(); break;      // FUN_005113d0
                     case 2: PlayUiSound38(); ControlOptionsPage(); break;    // FUN_00512220
                     case 3:
+                        UiPageTrace("Quitter le jeu");
                         PlayUiSound38();
-                        // Ghidra: RaiseException(0xe0000001, 0, 0, NULL) — la sortie du jeu depuis
-                        // la page d'options, la même exception logicielle que le lecteur de vidéo
+                        // Ghidra: RaiseQuitException() â€” la sortie du jeu depuis
+                        // la page d'options, la mÃªme exception logicielle que le lecteur de vidÃ©o
                         // utilise pour WM_QUIT.
-                        RaiseException(0xe0000001, 0, 0, null);
+                        RaiseQuitException();
                         break;
                 }
             }
@@ -8080,7 +8172,7 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: les trois slots de scène que la page emprunte, sur le même device.</summary>
+    /// <summary>Ghidra: les trois slots de scÃ¨ne que la page emprunte, sur le mÃªme device.</summary>
     private static void UiBeginScene()
         => ((delegate* unmanaged[Thiscall]<void*, void>)UiDeviceVtable[0xb0 / 4])(Ordinal_750());
 
@@ -8091,8 +8183,8 @@ public static unsafe partial class Blaze
         => ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xb8 / 4])(Ordinal_750());
 
     /// <summary>
-    /// Ghidra: la sortie par échap libère les huit textures de la page — chacune par le slot
-    /// <c>[0]</c> de sa classe, avec le drapeau 1 des destructeurs C++ de l'époque.
+    /// Ghidra: la sortie par Ã©chap libÃ¨re les huit textures de la page â€” chacune par le slot
+    /// <c>[0]</c> de sa classe, avec le drapeau 1 des destructeurs C++ de l'Ã©poque.
     /// </summary>
     private static void ReleaseUiTextures()
     {
@@ -8114,9 +8206,9 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00510a00 @ 0x00510a00 — une jauge : la glissière (0x86 x 10, prise en
+    /// Ghidra: FUN_00510a00 @ 0x00510a00 â€” une jauge : la glissiÃ¨re (0x86 x 10, prise en
     /// <c>(0, 0x20)</c> de la planche du cadre) puis le curseur (8 x 10, pris en <c>(0x8e, 0x20)</c>)
-    /// posé à <c>x + valeur + 1</c>.
+    /// posÃ© Ã  <c>x + valeur + 1</c>.
     /// </summary>
     private static void UiDrawGauge(int x, int y, int value)
     {
@@ -8125,8 +8217,8 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0050f980 @ 0x0050f980 — réapplique le gamma : détruit les deux textures issues
-    /// des `.PIC` et les refabrique, palettes repassées dans <c>Gamma</c> au nouveau réglage.
+    /// Ghidra: FUN_0050f980 @ 0x0050f980 â€” rÃ©applique le gamma : dÃ©truit les deux textures issues
+    /// des `.PIC` et les refabrique, palettes repassÃ©es dans <c>Gamma</c> au nouveau rÃ©glage.
     /// </summary>
     private static void RebuildGammaTextures()
     {
@@ -8136,14 +8228,15 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005110b0 @ 0x005110b0 — la page « Affichage ». Cinq réglages, six quand le
-    /// device annonce la capacité que son slot <c>+0xE0</c> rapporte : taille de l'écran, gamma,
+    /// Ghidra: FUN_005110b0 @ 0x005110b0 â€” la page Â« Affichage Â». Cinq rÃ©glages, six quand le
+    /// device annonce la capacitÃ© que son slot <c>+0xE0</c> rapporte : taille de l'Ã©cran, gamma,
     /// filtrage de texture, affichage de statut, puis deux pages filles.
     /// </summary>
     private static void DisplayOptionsPage()
     {
-        // Ghidra: le slot +0xE0 décide si la sixième ligne existe. Non porté par le device
-        // synthétique, il rend zéro — donc cinq lignes, ce qui est le cas nominal.
+        UiPageTrace("entrée page Affichage");
+        // Ghidra: le slot +0xE0 dÃ©cide si la sixiÃ¨me ligne existe. Non portÃ© par le device
+        // synthÃ©tique, il rend zÃ©ro â€” donc cinq lignes, ce qui est le cas nominal.
         int extra = ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xe0 / 4])(Ordinal_750()) != 0 ? 1 : 0;
 
         while (true)
@@ -8163,8 +8256,8 @@ public static unsafe partial class Blaze
             UiDrawLabel(0x5c, 0x90, 0x25, 0, 0xffffff);
             if (extra != 0) UiDrawLabel(0x5c, 0x9c, 0x24, 0, 0xffffff);
 
-            // Ghidra: la position du curseur saute une ligne au-delà de l'entrée 1 — les deux
-            // premières portent une jauge, donc occupent deux crans chacune.
+            // Ghidra: la position du curseur saute une ligne au-delÃ  de l'entrÃ©e 1 â€” les deux
+            // premiÃ¨res portent une jauge, donc occupent deux crans chacune.
             int line = (s_UiDisplaySelection_005d9e10 > 1 ? 1 : 0) + 6 + s_UiDisplaySelection_005d9e10
                        + (s_UiDisplaySelection_005d9e10 > 0 ? 1 : 0);
             UiDrawCursor(0x4b, line * 0xc);
@@ -8246,19 +8339,20 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: `*(int *)(&DAT_00562e00 + DAT_00566cc4 * 4)` — le plafond de détail de la résolution courante.</summary>
+    /// <summary>Ghidra: `*(int *)(&DAT_00562e00 + DAT_00566cc4 * 4)` â€” le plafond de dÃ©tail de la rÃ©solution courante.</summary>
     private static int UiDetailLimit
         => s_ResolutionIndex < (uint)s_ResolutionDetailLimit.Length
             ? s_ResolutionDetailLimit[s_ResolutionIndex]
             : 1;
 
     /// <summary>
-    /// Ghidra: FUN_005113d0 @ 0x005113d0 — la page « Son » : volume CD, volume des effets, et
+    /// Ghidra: FUN_005113d0 @ 0x005113d0 â€” la page Â« Son Â» : volume CD, volume des effets, et
     /// l'interrupteur de musique. Les deux volumes bougent par pas de 8 entre 0 et 0x80, et chaque
-    /// changement est appliqué immédiatement.
+    /// changement est appliquÃ© immÃ©diatement.
     /// </summary>
     private static void SoundOptionsPage()
     {
+        UiPageTrace("entrée page Son");
         while (true)
         {
             RestoreLostUiTextures();
@@ -8326,11 +8420,12 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00512220 @ 0x00512220 — la page « Contrôle », deux entrées qui ouvrent chacune
+    /// Ghidra: FUN_00512220 @ 0x00512220 â€” la page Â« ContrÃ´le Â», deux entrÃ©es qui ouvrent chacune
     /// une page de configuration.
     /// </summary>
     private static void ControlOptionsPage()
     {
+        UiPageTrace("entrée page Contrôle");
         while (true)
         {
             RestoreLostUiTextures();
@@ -8366,12 +8461,12 @@ public static unsafe partial class Blaze
     private static int s_UiSoundSelection_005d9e14;     // Ghidra: DAT_005d9e14
     private static int s_UiControlSelection_005d9e44;   // Ghidra: DAT_005d9e44
 
-    // Les quatre pages filles. Toutes ont un corps décompilé et aucune dépendance bloquée ; elles
-    // sont nommées pour que le runtime désigne la suivante.
+    // Les quatre pages filles. Toutes ont un corps dÃ©compilÃ© et aucune dÃ©pendance bloquÃ©e ; elles
+    // sont nommÃ©es pour que le runtime dÃ©signe la suivante.
     /// <summary>
-    /// Ghidra: FUN_00510d40 @ 0x00510d40 — la page **Timing**, quatre choix. La sélection est
-    /// initialisée depuis le réglage courant à la première ouverture seulement (bit 0 de
-    /// DAT_00579260), et n'est appliquée qu'à la validation.
+    /// Ghidra: FUN_00510d40 @ 0x00510d40 â€” la page **Timing**, quatre choix. La sÃ©lection est
+    /// initialisÃ©e depuis le rÃ©glage courant Ã  la premiÃ¨re ouverture seulement (bit 0 de
+    /// DAT_00579260), et n'est appliquÃ©e qu'Ã  la validation.
     /// </summary>
     private static void TimingPage()
     {
@@ -8416,16 +8511,16 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00510e60 @ 0x00510e60 — la page **résolution**. Le device annonce les modes
+    /// Ghidra: FUN_00510e60 @ 0x00510e60 â€” la page **rÃ©solution**. Le device annonce les modes
     /// qu'il accepte par un masque de bits (slot <c>+0x1c</c>), la page en fait une liste, et une
-    /// validation qui change réellement de mode détruit les huit textures, refait la mise en place
+    /// validation qui change rÃ©ellement de mode dÃ©truit les huit textures, refait la mise en place
     /// et recale le zoom.
     /// <para>
-    /// TODO(REVERSE): le device synthétique ne porte ni <c>+0x1c</c> (le masque des modes) ni
+    /// TODO(REVERSE): le device synthÃ©tique ne porte ni <c>+0x1c</c> (le masque des modes) ni
     /// <c>+0xE8</c> (le changement effectif, qui est ce que <c>ChangeResolution</c> appelle). Le
-    /// masque revient donc à zéro, la liste est vide, et la page n'affiche que son titre. C'est
-    /// une dégradation visible et sans risque : le garde ci-dessous empêche d'indexer une liste
-    /// vide, ce que l'original n'a pas à faire puisque son device annonce toujours au moins un
+    /// masque revient donc Ã  zÃ©ro, la liste est vide, et la page n'affiche que son titre. C'est
+    /// une dÃ©gradation visible et sans risque : le garde ci-dessous empÃªche d'indexer une liste
+    /// vide, ce que l'original n'a pas Ã  faire puisque son device annonce toujours au moins un
     /// mode.
     /// </para>
     /// </summary>
@@ -8459,7 +8554,7 @@ public static unsafe partial class Blaze
 
             if (action == 0xffffffff) return;
 
-            // Le garde : sans mode annoncé il n'y a rien à choisir.
+            // Le garde : sans mode annoncÃ© il n'y a rien Ã  choisir.
             if ((action & 1) != 0 && count > 0
                 && (uint)s_UiResolutionSelection_005d9e0c < (uint)count
                 && modes[s_UiResolutionSelection_005d9e0c] != (int)s_ResolutionIndex)
@@ -8470,7 +8565,7 @@ public static unsafe partial class Blaze
                 s_ResolutionIndex = (uint)modes[s_UiResolutionSelection_005d9e0c];
                 ChangeResolution((int)s_ResolutionIndex);
 
-                // Ghidra: la file est vidée de ses WM_QUIT (0x12) avant de continuer.
+                // Ghidra: la file est vidÃ©e de ses WM_QUIT (0x12) avant de continuer.
                 MSG message;
                 while (PeekMessageA(&message, IntPtr.Zero, 0x12, 0x12, 1) != 0) { }
 
@@ -8488,17 +8583,18 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005119c0 @ 0x005119c0 — l'affectation des manettes. Quatre lignes « joueur N »
-    /// suivies du numéro de manette attribué, puis quatre lignes « configurer », grisées
+    /// Ghidra: FUN_005119c0 @ 0x005119c0 â€” l'affectation des manettes. Quatre lignes Â« joueur N Â»
+    /// suivies du numÃ©ro de manette attribuÃ©, puis quatre lignes Â« configurer Â», grisÃ©es
     /// (0x5f5f5f au lieu de 0xffffff) tant que le joueur correspondant n'a pas de manette.
     /// <para>
-    /// L'affectation est un rang compact : attribuer à un joueur lui donne le rang suivant libre et
-    /// décale ceux d'après ; le retirer les décale en arrière. Les quatre lignes du bas sont
-    /// sautées à la navigation quand elles sont inactives.
+    /// L'affectation est un rang compact : attribuer Ã  un joueur lui donne le rang suivant libre et
+    /// dÃ©cale ceux d'aprÃ¨s ; le retirer les dÃ©cale en arriÃ¨re. Les quatre lignes du bas sont
+    /// sautÃ©es Ã  la navigation quand elles sont inactives.
     /// </para>
     /// </summary>
     private static void JoystickAssignmentPage()
     {
+        UiPageTrace("entrée page Manettes");
         while (true)
         {
             RestoreLostUiTextures();
@@ -8513,8 +8609,8 @@ public static unsafe partial class Blaze
                 int y = 0x48 + player * 0xc;
                 int label = 0x13 + player;
                 UiDrawLabel(0x5c, y, label, 0, 0xffffff);
-                // Ghidra: DAT_005897a4 + player*4 — la largeur du libellé qu'on vient de poser,
-                // prise dans la table des largeurs, sert de décalage pour la valeur.
+                // Ghidra: DAT_005897a4 + player*4 â€” la largeur du libellÃ© qu'on vient de poser,
+                // prise dans la table des largeurs, sert de dÃ©calage pour la valeur.
                 UiDrawLabel(s_UiLabelWidths_00589758[label] + 0x5c, y,
                             s_JoystickSlot[player] + 0x18, 0, 0xffffff);
             }
@@ -8556,7 +8652,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: la boucle qui repousse le curseur hors des quatre lignes « configurer » inactives —
+    /// Ghidra: la boucle qui repousse le curseur hors des quatre lignes Â« configurer Â» inactives â€”
     /// vers le haut si on y arrivait en descendant... et l'inverse, selon le sens du mouvement.
     /// </summary>
     private static void SkipInactiveJoystickRows(int before)
@@ -8577,8 +8673,8 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: attribuer donne au joueur le rang égal au nombre de joueurs déjà servis avant lui et
-    /// incrémente ceux d'après ; retirer met -1 et décrémente ceux d'après. Les rangs restent donc
+    /// Ghidra: attribuer donne au joueur le rang Ã©gal au nombre de joueurs dÃ©jÃ  servis avant lui et
+    /// incrÃ©mente ceux d'aprÃ¨s ; retirer met -1 et dÃ©crÃ©mente ceux d'aprÃ¨s. Les rangs restent donc
     /// toujours compacts.
     /// </summary>
     private static void ToggleJoystickAssignment(int player)
@@ -8602,7 +8698,7 @@ public static unsafe partial class Blaze
     private static int s_UiResolutionSelection_005d9e0c;  // Ghidra: DAT_005d9e0c
     private static int s_UiJoystickSelection_005d9e38;    // Ghidra: DAT_005d9e38
 
-    /// <summary>Ghidra: FUN_0053dbc0 — le bip d'action refusée.</summary>
+    /// <summary>Ghidra: FUN_0053dbc0 â€” le bip d'action refusÃ©e.</summary>
     private static void PlayUiSoundError() => PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
 
     private static void JoystickButtonsPageStub(int player)
@@ -8610,8 +8706,8 @@ public static unsafe partial class Blaze
             $"FUN_005115c0 : les boutons de la manette du joueur {player + 1} (168 lignes)");
 
     /// <summary>
-    /// Ghidra: FUN_005115a0 @ 0x005115a0 — retrouve l'index du nom d'une touche à partir de son
-    /// scancode, en cherchant dans la table des 85 scancodes. -1 si la touche n'est pas listée.
+    /// Ghidra: FUN_005115a0 @ 0x005115a0 â€” retrouve l'index du nom d'une touche Ã  partir de son
+    /// scancode, en cherchant dans la table des 85 scancodes. -1 si la touche n'est pas listÃ©e.
     /// </summary>
     private static int KeyLabelForScancode(int scancode)
     {
@@ -8621,7 +8717,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005109c0 @ 0x005109c0 puis FUN_005108b0 — dessine un nom de touche depuis
+    /// Ghidra: FUN_005109c0 @ 0x005109c0 puis FUN_005108b0 â€” dessine un nom de touche depuis
     /// l'atlas clavier, en lisant sa position dans la table de placement que
     /// <see cref="RasteriseKeyLabels"/> a remplie : x en <c>+0</c>, ligne en <c>+1</c>, largeur en
     /// <c>+2</c>.
@@ -8636,19 +8732,20 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00511d40 @ 0x00511d40 — l'éditeur de touches. Une liste de 0x31 lignes défilant
-    /// par fenêtre de onze, bâtie sur la table de descripteurs `DAT_00562ed8` : huit actions
-    /// globales, puis quatre blocs « Joueur N » (un en-tête coloré et neuf actions), et une
-    /// dernière ligne qui remet les liaisons par défaut.
+    /// Ghidra: FUN_00511d40 @ 0x00511d40 â€” l'Ã©diteur de touches. Une liste de 0x31 lignes dÃ©filant
+    /// par fenÃªtre de onze, bÃ¢tie sur la table de descripteurs `DAT_00562ed8` : huit actions
+    /// globales, puis quatre blocs Â« Joueur N Â» (un en-tÃªte colorÃ© et neuf actions), et une
+    /// derniÃ¨re ligne qui remet les liaisons par dÃ©faut.
     /// <para>
-    /// Chaque ligne d'action montre jusqu'à deux touches. Ce sont les catégories 0 et 1 de la même
-    /// table de liaisons — `DAT_00564ba8` est `DAT_00564b58` décalé de vingt entrées — c'est-à-dire
-    /// les deux jeux clavier que <see cref="FoldKeyboardIntoPadState"/> lit déjà. Assigner une
+    /// Chaque ligne d'action montre jusqu'Ã  deux touches. Ce sont les catÃ©gories 0 et 1 de la mÃªme
+    /// table de liaisons â€” `DAT_00564ba8` est `DAT_00564b58` dÃ©calÃ© de vingt entrÃ©es â€” c'est-Ã -dire
+    /// les deux jeux clavier que <see cref="FoldKeyboardIntoPadState"/> lit dÃ©jÃ . Assigner une
     /// touche pousse l'ancienne en second et efface ce scancode partout ailleurs.
     /// </para>
     /// </summary>
     private static void KeyConfigPage()
     {
+        UiPageTrace("entrée éditeur de touches");
         int capturing = -1;
         bool drainAfterCapture = false;
 
@@ -8670,12 +8767,12 @@ public static unsafe partial class Blaze
                 uint colour = *(uint*)desc;
                 int kind = (sbyte)desc[4];
 
-                // Ghidra: un `kind` négatif est une ligne d'en-tête — elle ne porte qu'un libellé.
+                // Ghidra: un `kind` nÃ©gatif est une ligne d'en-tÃªte â€” elle ne porte qu'un libellÃ©.
                 if (kind < 0) { UiDrawLabel(0x20, y, (sbyte)desc[6], 0, colour); continue; }
 
                 UiDrawLabel(0x20, y, -1 - kind, 0, colour);
 
-                // Ghidra: les quatre directions portent une flèche prise dans la planche du cadre.
+                // Ghidra: les quatre directions portent une flÃ¨che prise dans la planche du cadre.
                 if (kind is > 3 and < 8)
                 {
                     UiBlit(s_UiLabelWidths_00589758[-kind] + 0x20, y + 2, 8, 9,
@@ -8712,7 +8809,7 @@ public static unsafe partial class Blaze
             fixed (int* selection = &s_UiKeySelection_005d9e3c)
                 action = UiSelect(selection, 0, 0x30);
 
-            // Ghidra: page précédente / page suivante déplacent de dix, curseur et fenêtre ensemble.
+            // Ghidra: page prÃ©cÃ©dente / page suivante dÃ©placent de dix, curseur et fenÃªtre ensemble.
             if ((action & 8) != 0)
             {
                 s_UiKeySelection_005d9e3c -= 10;
@@ -8730,8 +8827,8 @@ public static unsafe partial class Blaze
 
             FollowKeyCursor();
 
-            // Ghidra: une ligne d'en-tête (kind == -1, mais pas -2) est franchie dans le sens du
-            // déplacement. La dernière ligne, de type -2, reste sélectionnable.
+            // Ghidra: une ligne d'en-tÃªte (kind == -1, mais pas -2) est franchie dans le sens du
+            // dÃ©placement. La derniÃ¨re ligne, de type -2, reste sÃ©lectionnable.
             if ((sbyte)s_KeyRowTable_00562ed8[s_UiKeySelection_005d9e3c * 8 + 4] == -1)
                 s_UiKeySelection_005d9e3c += s_UiKeySelection_005d9e3c > before ? 1 : -1;
 
@@ -8759,7 +8856,7 @@ public static unsafe partial class Blaze
                 continue;
             }
 
-            // Mode capture : la première touche listée qu'on trouve enfoncée devient la liaison.
+            // Mode capture : la premiÃ¨re touche listÃ©e qu'on trouve enfoncÃ©e devient la liaison.
             PollJoystickState();
             int pressed = -1;
             for (int i = 0; i < 0x55; i++)
@@ -8783,14 +8880,14 @@ public static unsafe partial class Blaze
             capturing = -1;
             drainAfterCapture = true;
 
-            // L'ancienne liaison devient la seconde ; la nouvelle prend la première place.
+            // L'ancienne liaison devient la seconde ; la nouvelle prend la premiÃ¨re place.
             s_KeyBindings[target + 20] = s_KeyBindings[target];
             s_KeyBindings[target] = scancode;
             Ordinal_132(2);
         }
     }
 
-    /// <summary>Ghidra: la fenêtre suit le curseur, une ligne à la fois, deux fois par tour.</summary>
+    /// <summary>Ghidra: la fenÃªtre suit le curseur, une ligne Ã  la fois, deux fois par tour.</summary>
     private static void FollowKeyCursor()
     {
         if (s_UiKeySelection_005d9e3c < s_UiKeyScroll_005d9e40) s_UiKeyScroll_005d9e40--;
@@ -8798,8 +8895,8 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: la boucle d'attente qui suit une validation — tant qu'une touche listée est
-    /// enfoncée, on repolle. Elle empêche la touche de validation d'être capturée aussitôt.
+    /// Ghidra: la boucle d'attente qui suit une validation â€” tant qu'une touche listÃ©e est
+    /// enfoncÃ©e, on repolle. Elle empÃªche la touche de validation d'Ãªtre capturÃ©e aussitÃ´t.
     /// </summary>
     private static void WaitForAllKeysReleased()
     {
@@ -8815,9 +8912,9 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: le scancode retenu est effacé de **toutes** les liaisons clavier — les deux
-    /// catégories des quatre groupes, soit 2 x 20 entiers par groupe de 0x3c. La troisième
-    /// catégorie, celle de la manette, n'est pas touchée.
+    /// Ghidra: le scancode retenu est effacÃ© de **toutes** les liaisons clavier â€” les deux
+    /// catÃ©gories des quatre groupes, soit 2 x 20 entiers par groupe de 0x3c. La troisiÃ¨me
+    /// catÃ©gorie, celle de la manette, n'est pas touchÃ©e.
     /// </summary>
     private static void ClearScancodeEverywhere(int scancode)
     {
@@ -8827,7 +8924,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: la dernière ligne rétablit les liaisons du joueur 1 depuis la table de défauts et
+    /// Ghidra: la derniÃ¨re ligne rÃ©tablit les liaisons du joueur 1 depuis la table de dÃ©fauts et
     /// efface celles des trois autres.
     /// </summary>
     private static void ResetKeyBindings()
@@ -8843,12 +8940,12 @@ public static unsafe partial class Blaze
     private const int KeyRowCount = 0x31;
 
     // =====================================================================
-    // Les cinq tables de l'éditeur de touches, relevées dans Legacy/Blaze.exe.
+    // Les cinq tables de l'Ã©diteur de touches, relevÃ©es dans Legacy/Blaze.exe.
     // =====================================================================
 
     /// <summary>
-    /// Ghidra: &amp;DAT_00562e18 — les 85 scancodes DirectInput que l'éditeur sait nommer, dans le
-    /// même ordre que les lignes de KEYBOARD.TXT. Le 0xff qui suit est un terminateur.
+    /// Ghidra: &amp;DAT_00562e18 â€” les 85 scancodes DirectInput que l'Ã©diteur sait nommer, dans le
+    /// mÃªme ordre que les lignes de KEYBOARD.TXT. Le 0xff qui suit est un terminateur.
     /// </summary>
     private static readonly byte[] s_KeyScancodes_00562e18 =
     [
@@ -8861,7 +8958,7 @@ public static unsafe partial class Blaze
     ];
 
     /// <summary>
-    /// Ghidra: &amp;DAT_00562ec0 — l'action d'une ligne vers son rang dans le bloc de vingt liaisons.
+    /// Ghidra: &amp;DAT_00562ec0 â€” l'action d'une ligne vers son rang dans le bloc de vingt liaisons.
     /// </summary>
     private static readonly byte[] s_KeyActionIndex_00562ec0 =
     [
@@ -8870,14 +8967,14 @@ public static unsafe partial class Blaze
     ];
 
     /// <summary>
-    /// Ghidra: `(&amp;DAT_0056305c)[kind]` pour kind 4..7 — la colonne de la flèche de direction dans
+    /// Ghidra: `(&amp;DAT_0056305c)[kind]` pour kind 4..7 â€” la colonne de la flÃ¨che de direction dans
     /// la planche du cadre. Les quatre octets utiles sont ceux de 0x00563060.
     /// </summary>
     private static readonly byte[] s_KeyArrowColumn_00563060 = [0x03, 0x01, 0x02, 0x00];
 
     /// <summary>
-    /// Ghidra: &amp;DAT_00564ab8 — les liaisons par défaut du joueur 1, quarante entiers : les deux
-    /// jeux clavier. Ils correspondent exactement aux clés `K0000`..`K0113` du BLAZE.cfg installé,
+    /// Ghidra: &amp;DAT_00564ab8 â€” les liaisons par dÃ©faut du joueur 1, quarante entiers : les deux
+    /// jeux clavier. Ils correspondent exactement aux clÃ©s `K0000`..`K0113` du BLAZE.cfg installÃ©,
     /// ce qui les confirme.
     /// </summary>
     private static readonly int[] s_KeyBindingDefaults_00564ab8 =
@@ -8889,14 +8986,14 @@ public static unsafe partial class Blaze
     ];
 
     /// <summary>
-    /// Ghidra: &amp;DAT_00562ed8 — les 0x31 lignes de l'éditeur, huit octets chacune : couleur sur
-    /// quatre octets, puis l'action, le groupe et le libellé, tous trois signés.
+    /// Ghidra: &amp;DAT_00562ed8 â€” les 0x31 lignes de l'Ã©diteur, huit octets chacune : couleur sur
+    /// quatre octets, puis l'action, le groupe et le libellÃ©, tous trois signÃ©s.
     /// <para>
-    /// Transcrites en octets bruts plutôt qu'interprétées : la table se relit alors ligne à ligne
-    /// contre le vidage du binaire, ce qu'une reconstruction structurée ne permet pas. La structure
-    /// s'y lit quand même — huit actions globales en blanc, puis quatre blocs « Joueur N » dans les
-    /// quatre teintes `FFBFBF`, `BFFFBF`, `BFBFFF`, `FFFFBF`, chacun un en-tête (action -1) et neuf
-    /// actions, et une dernière ligne d'action -2 : la remise aux valeurs par défaut.
+    /// Transcrites en octets bruts plutÃ´t qu'interprÃ©tÃ©es : la table se relit alors ligne Ã  ligne
+    /// contre le vidage du binaire, ce qu'une reconstruction structurÃ©e ne permet pas. La structure
+    /// s'y lit quand mÃªme â€” huit actions globales en blanc, puis quatre blocs Â« Joueur N Â» dans les
+    /// quatre teintes `FFBFBF`, `BFFFBF`, `BFBFFF`, `FFFFBF`, chacun un en-tÃªte (action -1) et neuf
+    /// actions, et une derniÃ¨re ligne d'action -2 : la remise aux valeurs par dÃ©faut.
     /// </para>
     /// </summary>
     private static readonly byte* s_KeyRowTable_00562ed8 = BuildKeyRowTable();
@@ -8942,7 +9039,7 @@ public static unsafe partial class Blaze
         return table;
     }
 
-    /// <summary>Journalisation des étapes de la mise en place : <c>OPENFORESIA_OPTIONS_SETUP=1</c>.</summary>
+    /// <summary>Journalisation des Ã©tapes de la mise en place : <c>OPENFORESIA_OPTIONS_SETUP=1</c>.</summary>
     private static readonly bool s_RunOptionsSetup =
         Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_SETUP") == "1";
 
@@ -8950,18 +9047,18 @@ public static unsafe partial class Blaze
         Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_GLYPHS") == "1";
 
     /// <summary>
-    /// Ghidra: the menu's options branch drains input with `while (FUN_005048f0() != 0)` — it waits
+    /// Ghidra: the menu's options branch drains input with `while (FUN_005048f0() != 0)` â€” it waits
     /// until nothing is held before opening the page, so the keypress that chose "Options" is not
     /// still down inside it. `FUN_005048f0` is <see cref="PollJoystickState"/>, reconstructed on
     /// 2026-08-14; this stub predates it and was never anything else.
     /// </summary>
     private static int InputDrainStub() => PollJoystickState();
 
-    // Ghidra: &DAT_0056e670 — the menu's label table, recovered verbatim from Legacy/Blaze.exe.
+    // Ghidra: &DAT_0056e670 â€” the menu's label table, recovered verbatim from Legacy/Blaze.exe.
     // A 0x0c length byte, then five cp1252 labels separated by carriage returns, ending 0x09 '?'.
     // They match the five switch cases in RunMainMenuFrameLoop one for one and in order:
-    //   "Début du jeu"                -> game state 1
-    //   "Sélection des personnages"   -> game state 4
+    //   "DÃ©but du jeu"                -> game state 1
+    //   "SÃ©lection des personnages"   -> game state 4
     //   "Menu objets"                 -> game state 6
     //   "Options"                     -> the options page
     //   "Quitter"                     -> Exit(0)
@@ -8985,21 +9082,21 @@ public static unsafe partial class Blaze
         return buffer;
     }
 
-    // Ghidra: &DAT_0056dd58 — the menu context struct FUN_00544350 writes into. Its highest touched
+    // Ghidra: &DAT_0056dd58 â€” the menu context struct FUN_00544350 writes into. Its highest touched
     // offset is 0x8c7, and the next named global sits at 0x0056e670, so it spans 0x918 bytes.
     /// <summary>
-    /// Ghidra: &amp;DAT_0056dd58 — the main menu's panel descriptor, **statically initialised in
+    /// Ghidra: &amp;DAT_0056dd58 â€” the main menu's panel descriptor, **statically initialised in
     /// `.data`** and recovered verbatim from `Legacy/Blaze.exe`. Only 35 of its bytes are
     /// non-zero; the rest is the scratch the text engine and the renderer fill in.
     /// <para>
     /// Leaving it zeroed is what produced a black screen: every feature test in
     /// <see cref="DrawUiPanel"/> is <c>field &amp; 0x1000000</c>, so a zeroed descriptor draws
-    /// nothing at all — no background, no frame, no text.
+    /// nothing at all â€” no background, no frame, no text.
     /// </para>
     /// Allocated low because <see cref="RunTextEngine"/> masks it to 24 bits.
     /// </summary>
     // Lazy, not a field initializer: field initializers run inside the type constructor, so a
-    // failure to secure low memory here would surface as TypeInitializationException — outside the
+    // failure to secure low memory here would surface as TypeInitializationException â€” outside the
     // reach of the module initializer's try/catch, and therefore unrecoverable by relaunching.
     private static byte* s_MenuContextStorage;
     private static byte* s_MenuContext_0056dd58
@@ -9016,11 +9113,11 @@ public static unsafe partial class Blaze
         //   +0x00  0x0031            tpage/clut slot, indexes DAT_005e8f00
         //   +0x04  0x00080008        panel position (8, 8)
         //   +0x08  0x00480088        panel extent (0x88 x 0x48)
-        //   +0x18  0x010F0808        background   — bit 0x1000000 set, so it draws
-        //   +0x20  0x01070C10        text         — set
-        //   +0x30  0x000F2874        cursor       — clear
-        //   +0x38  0x000F0C00        scroll arrows— clear
-        //   +0x40  0x010F0000        frame        — set
+        //   +0x18  0x010F0808        background   â€” bit 0x1000000 set, so it draws
+        //   +0x20  0x01070C10        text         â€” set
+        //   +0x30  0x000F2874        cursor       â€” clear
+        //   +0x38  0x000F0C00        scroll arrowsâ€” clear
+        //   +0x40  0x010F0000        frame        â€” set
         ReadOnlySpan<(short Offset, byte Value)> initial =
         [
             (0x000,0x31), (0x004,0x08), (0x006,0x08), (0x008,0x88), (0x00A,0x48), (0x012,0x1A),
@@ -9036,7 +9133,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00544350 @ 0x00544350 — binds the label table and its flags into the menu
+    /// Ghidra: FUN_00544350 @ 0x00544350 â€” binds the label table and its flags into the menu
     /// context. The call site is <c>FUN_00544350(&amp;DAT_0056e670, 0, &amp;DAT_0056dd58, 0)</c>.
     /// </summary>
     private static void BindMenuLabels(byte* labels, uint flags, byte* context, uint extra)
@@ -9047,18 +9144,18 @@ public static unsafe partial class Blaze
         *(uint*)(context + 0x8a8) = extra;
 
         // Ghidra: if (*param_1 == 8) FUN_00535300(0). The label table's first short is 0x440c
-        // (recovered from the binary), so this never fires at this call site — but the branch is
+        // (recovered from the binary), so this never fires at this call site â€” but the branch is
         // kept because other callers may pass a table that does.
         if (*(short*)labels == 8)
         {
             throw new NotImplementedException(
-                "FUN_00535300: reached only when the bound table's first short is 8 — " +
+                "FUN_00535300: reached only when the bound table's first short is 8 â€” " +
                 "not the case for the main menu's label table");
         }
     }
 
     /// <summary>
-    /// Ghidra: FUN_00547140 @ 0x00547140 — the CRT `rand()`. The constants are MSVC's linear
+    /// Ghidra: FUN_00547140 @ 0x00547140 â€” the CRT `rand()`. The constants are MSVC's linear
     /// congruential generator, which also identifies its neighbour: `FUN_00547130`, already called
     /// by RunMainLoop with 1, is `srand`, and the global they share (`DAT_0056e9c0`) is the seed
     /// rather than the flag an earlier comment called it.
@@ -9070,7 +9167,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00545140 @ 0x00545140 — flushes the deferred VRAM upload queue: walks the
+    /// Ghidra: FUN_00545140 @ 0x00545140 â€” flushes the deferred VRAM upload queue: walks the
     /// singly-linked list whose head <see cref="FrameBegin"/> resets each frame, calling
     /// <c>Ordinal_674</c> (libgpu LoadImage) with each node's rect at +8 and its data at +4.
     /// </summary>
@@ -9104,7 +9201,7 @@ public static unsafe partial class Blaze
     private static byte* s_PlayerSlots_005e9188 => s_SlotArea_005e9180 + 8;
     private static byte* s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240;
 
-    // Ghidra: the four 16-byte controller→player remap rows at 0x0056acf8, reached through the
+    // Ghidra: the four 16-byte controllerâ†’player remap rows at 0x0056acf8, reached through the
     // pointer table at 0x0056ad38. Recovered verbatim from Legacy/Blaze.exe. The row is chosen by
     // which of the two joystick axes reads the -0x8000 "absent" sentinel.
     private static readonly byte[][] s_ControllerRemapRows =
@@ -9116,7 +9213,7 @@ public static unsafe partial class Blaze
     ];
 
     /// <summary>
-    /// Ghidra: the index computation shared by FUN_00542250 and FUN_005357a0 — one bit per joystick,
+    /// Ghidra: the index computation shared by FUN_00542250 and FUN_005357a0 â€” one bit per joystick,
     /// set when its axis reads the <c>-0x8000</c> sentinel.
     /// </summary>
     private static int ControllerRemapIndex()
@@ -9127,7 +9224,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00512520 @ 0x00512520 — the debug hotkey handler, polled once per frame:
+    /// Ghidra: FUN_00512520 @ 0x00512520 â€” the debug hotkey handler, polled once per frame:
     /// F3 opens the options page, F11/F12 step the detail level, F9 toggles the small-texture flag.
     /// Returns 1 when the options page ran, 0 otherwise.
     /// </summary>
@@ -9171,7 +9268,7 @@ public static unsafe partial class Blaze
         }
         else if (GetAsyncKeyState(0x7b /* VK_F12 */) != 0)
         {
-            // The clamp table here is DAT_00562e00 — recovered as { 1, 7, 11, 16, 23, 0 }. F12
+            // The clamp table here is DAT_00562e00 â€” recovered as { 1, 7, 11, 16, 23, 0 }. F12
             // raises Size up to the ceiling for the current Resolution; at Resolution=4 that
             // ceiling is 23, which is what the installed BLAZE.cfg holds.
             int limit = s_ResolutionIndexForClamp < s_ResolutionDetailLimit.Length
@@ -9199,7 +9296,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00504a30 @ 0x00504a30 — button edge detection and auto-repeat over two blocks of
+    /// Ghidra: FUN_00504a30 @ 0x00504a30 â€” button edge detection and auto-repeat over two blocks of
     /// four slots. `0x4100` marks a live entry; the XOR pair yields pressed/released masks, and the
     /// counter at +0xa runs 0xc frames before repeating every 2.
     /// </summary>
@@ -9260,7 +9357,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005357a0 @ 0x005357a0 — assigns controllers to the four player slots through the
+    /// Ghidra: FUN_005357a0 @ 0x005357a0 â€” assigns controllers to the four player slots through the
     /// remap row selected by <see cref="ControllerRemapIndex"/>.
     /// </summary>
     private static void AssignControllersToSlots()
@@ -9305,7 +9402,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005048f0 @ 0x005048f0 — polls the DirectInput joystick device and folds its
+    /// Ghidra: FUN_005048f0 @ 0x005048f0 â€” polls the DirectInput joystick device and folds its
     /// state into the per-slot tables.
     /// <para>
     /// Three parts, all reconstructed: `FUN_005231f0`/`FUN_005230b0` read every acquired device,
@@ -9319,7 +9416,7 @@ public static unsafe partial class Blaze
     {
         if (s_JoystickDevice_00604b54 == null) return 0;
 
-        // Ghidra: FUN_005231f0(DAT_00604b54) — a one-line forwarder to FUN_005230b0.
+        // Ghidra: FUN_005231f0(DAT_00604b54) â€” a one-line forwarder to FUN_005230b0.
         PollInputDevices(s_JoystickDevice_00604b54);
 
         // Ghidra: FUN_00523660(DAT_00604b50, &DAT_00604ac0)
@@ -9370,7 +9467,7 @@ public static unsafe partial class Blaze
             }
 
             // Ghidra: any of the four sub-slots the folding above did not mark live is stamped
-            // with the "nothing pressed" pattern — 0xffff41ff / 0xffffffff, the same active-low
+            // with the "nothing pressed" pattern â€” 0xffff41ff / 0xffffffff, the same active-low
             // convention the button masks use.
             uint slotMask = 0xf;
             int slot = cursor;
@@ -9390,20 +9487,20 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_005230b0 @ 0x005230b0 — reads the current state of every acquired device into
+    /// Ghidra: FUN_005230b0 @ 0x005230b0 â€” reads the current state of every acquired device into
     /// the object's three state areas.
     /// </summary>
     private static void PollInputDevices(byte* device)
     {
         if (device == null) return;
 
-        // Ghidra: FUN_00523410(device + 0x50) — a thiscall whose `this` is the keyboard cell;
+        // Ghidra: FUN_00523410(device + 0x50) â€” a thiscall whose `this` is the keyboard cell;
         // Ghidra shows only the stack argument. 0x100 bytes of keyboard state, cleared as 0x40
         // dwords when the device is gone.
         if (*(void**)(device + 8) != null)
             ReadDeviceState(*(void***)(device + 8), device + 0x50, 0x100, 0x40);
 
-        // Ghidra: FUN_005234c0(device + 0x8b4) — same shape for the mouse: 0x10 bytes, 4 dwords.
+        // Ghidra: FUN_005234c0(device + 0x8b4) â€” same shape for the mouse: 0x10 bytes, 4 dwords.
         if (*(void**)(device + 0x4c) != null)
             ReadDeviceState(*(void***)(device + 0x4c), device + 0x8b4, 0x10, 4);
 
@@ -9421,7 +9518,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00523410 @ 0x00523410 and FUN_005234c0 @ 0x005234c0 — the same function twice,
+    /// Ghidra: FUN_00523410 @ 0x00523410 and FUN_005234c0 @ 0x005234c0 â€” the same function twice,
     /// differing only in the state size they request and the number of dwords they clear on
     /// failure. `IDirectInputDevice::GetDeviceState` is retried after re-acquiring, which is what
     /// makes input survive the window losing and regaining the foreground.
@@ -9451,18 +9548,18 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00523660 @ 0x00523660 — folds the raw keyboard (and joystick) state into the
+    /// Ghidra: FUN_00523660 @ 0x00523660 â€” folds the raw keyboard (and joystick) state into the
     /// four players' pad states, through the `[Controls]` binding table.
     /// <para>
     /// The convention is **active low**: a player's button word starts at 0xffff and every bound
     /// key that is down clears its bit. The bit each binding clears comes from the 20-entry mask
     /// table at 0x00564f18, recovered from `Legacy/Blaze.exe` and unmistakably a PlayStation pad
-    /// layout — 0x0010 up, 0x0020 right, 0x0040 down, 0x0080 left, 0x0008 start, 0x0001 select,
+    /// layout â€” 0x0010 up, 0x0020 right, 0x0040 down, 0x0080 left, 0x0008 start, 0x0001 select,
     /// the four face buttons at 0x1000..0x8000, the shoulders at 0x0100..0x0800, and four
     /// two-button combinations closing the table.
     /// </para>
     /// <para>
-    /// Returns non-zero if anything at all was pressed — the value FUN_005048f0 passes on.
+    /// Returns non-zero if anything at all was pressed â€” the value FUN_005048f0 passes on.
     /// </para>
     /// </summary>
     private static int FoldKeyboardIntoPadState(byte* deviceState, byte* padState)
@@ -9471,7 +9568,7 @@ public static unsafe partial class Blaze
 
         int anyInput = 0;
 
-        // Ghidra: if (DAT_00564a50 == 0) the raw state is zeroed before use — a keyboard-enable
+        // Ghidra: if (DAT_00564a50 == 0) the raw state is zeroed before use â€” a keyboard-enable
         // gate. Recovered from Legacy/Blaze.exe as 1, so the state is kept.
         if (s_KeyboardEnabled_00564a50 == 0)
             NativeMemory.Fill(deviceState, 0x3f * sizeof(uint), 0);
@@ -9492,7 +9589,7 @@ public static unsafe partial class Blaze
             int bindings = player * 60;     // Ghidra: the 0x3c-int stride of DAT_00564b58
             int entry = player * 8;         // Ghidra: iVar6, the pad-state stride
 
-            // Ghidra: scancode 0x3e is DIK_F4 — held down, it silences the keyboard entirely. The
+            // Ghidra: scancode 0x3e is DIK_F4 â€” held down, it silences the keyboard entirely. The
             // second test lets only player 0 through while DAT_005de168 is set.
             if ((deviceState[0x3e] & 0x80) == 0 && (player == 0 || s_Unknown_005de168 == 0))
             {
@@ -9500,7 +9597,7 @@ public static unsafe partial class Blaze
                 padState[entry + 4] = 0;
                 padState[entry + 5] = 0x41;
 
-                // Ghidra: two passes of 20 over binding categories 0 and 1 — the primary and
+                // Ghidra: two passes of 20 over binding categories 0 and 1 â€” the primary and
                 // alternate keyboard layouts. The binding cursor runs on across both.
                 for (int category = 0; category < 2; category++)
                 {
@@ -9515,7 +9612,7 @@ public static unsafe partial class Blaze
                     }
                 }
 
-                // Ghidra: the third pass reads category 2 — the joystick bindings — from the
+                // Ghidra: the third pass reads category 2 â€” the joystick bindings â€” from the
                 // joystick button area at state + 0x100, indexed by this player's assigned stick.
                 ushort accumulated = buttons;
                 for (int action = 0; action < 20; action++)
@@ -9551,7 +9648,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: &amp;DAT_00564f18 — 20 PlayStation pad button masks, one per binding slot, read
+    /// Ghidra: &amp;DAT_00564f18 â€” 20 PlayStation pad button masks, one per binding slot, read
     /// verbatim out of <c>Legacy/Blaze.exe</c>. Slots 9 and 10 are genuinely zero; the last four
     /// are two-button combinations.
     /// </summary>
@@ -9564,29 +9661,29 @@ public static unsafe partial class Blaze
         0x0500, 0x0a00, 0x0c00, 0x0300,     // L2+L1, R2+R1, L1+R1, L2+R2
     ];
 
-    /// <summary>Ghidra: DAT_00564a50 — read from Legacy/Blaze.exe as 1.</summary>
+    /// <summary>Ghidra: DAT_00564a50 â€” read from Legacy/Blaze.exe as 1.</summary>
     private static readonly int s_KeyboardEnabled_00564a50 = 1;
 
-    // Ghidra: DAT_005de168 — gates players 2..4 in FUN_00523660. Never assigned anywhere in the
+    // Ghidra: DAT_005de168 â€” gates players 2..4 in FUN_00523660. Never assigned anywhere in the
     // reconstructed graph yet, so it stays 0 and all four players are polled, as the original does
     // on a fresh start.
     private static int s_Unknown_005de168;
     private static byte* s_Unknown_00579270;    // Ghidra: DAT_00579270
     private static int s_Unknown_005de554;      // Ghidra: DAT_005de554
-    // Ghidra: DAT_00566cc4 — **the same global as s_ResolutionIndex**, not a second one. Blaze.c
+    // Ghidra: DAT_00566cc4 â€” **the same global as s_ResolutionIndex**, not a second one. Blaze.c
     // line 58267 fills it from the ini's Resolution key, exactly as LoadOptionsIni does here, and
     // the reconstruction had split one global into two fields with only one of them ever assigned.
     // Third instance of this shape today, after DAT_0056e61f and DAT_005e8fc0.
     private static int s_ResolutionIndexForClamp => (int)s_ResolutionIndex;
 
-    // Ghidra: _DAT_0054d000 — **lu dans Legacy/Blaze.exe : 0x3C800000, soit 1/64**, et non 1.0f
-    // comme un TODO le supposait ici. C'est aussi le même symbole que `GammaIniScale` déclaré plus
-    // haut dans ce fichier, qui portait déjà la bonne valeur par déduction ; huitième global
+    // Ghidra: _DAT_0054d000 â€” **lu dans Legacy/Blaze.exe : 0x3C800000, soit 1/64**, et non 1.0f
+    // comme un TODO le supposait ici. C'est aussi le mÃªme symbole que `GammaIniScale` dÃ©clarÃ© plus
+    // haut dans ce fichier, qui portait dÃ©jÃ  la bonne valeur par dÃ©duction ; huitiÃ¨me global
     // reconstruit sous deux noms.
     //
-    // La valeur compte : la page d'options passe ses palettes dans `Gamma(valeur, réglage * ce
-    // facteur)`. À 1.0f le produit valait 64 et rendait toutes les palettes blanches — fond et
-    // cadre invisibles. À 1/64 le réglage par défaut de l'ini (64) donne 1.0, le gamma neutre.
+    // La valeur compte : la page d'options passe ses palettes dans `Gamma(valeur, rÃ©glage * ce
+    // facteur)`. Ã€ 1.0f le produit valait 64 et rendait toutes les palettes blanches â€” fond et
+    // cadre invisibles. Ã€ 1/64 le rÃ©glage par dÃ©faut de l'ini (64) donne 1.0, le gamma neutre.
     private const float s_GammaScale_0054d000 = 1.0f / 64.0f;
 
     /// <summary>Ghidra: the four calls guarded by arg5 in FUN_0052a280.</summary>
@@ -9595,7 +9692,7 @@ public static unsafe partial class Blaze
         // Ghidra: FUN_00512520(&DAT_00604a20 +
         //   (byte)(&DAT_005e9188)[(byte)(&DAT_005e93c8)[(_DAT_005de538 & 0xff) * 0x9c] * 0x4c] * 4)
         // The outer index had been hardcoded to 0 instead of reading _DAT_005de538. Equivalent
-        // while that global is 0, but not faithful — and FUN_00545340 uses the same expression,
+        // while that global is 0, but not faithful â€” and FUN_00545340 uses the same expression,
         // which is what settled it.
         int slotIndex = s_PlayerSlots_005e9188[
             s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
@@ -9611,13 +9708,13 @@ public static unsafe partial class Blaze
             "FUN_0051c120: the \"Veuillez connecter la manette !\" banner");
 
     /// <summary>
-    /// Ghidra: FUN_00533000 @ 0x00533000 — per-frame **palette animation** (CLUT cycling). Walks a
+    /// Ghidra: FUN_00533000 @ 0x00533000 â€” per-frame **palette animation** (CLUT cycling). Walks a
     /// list of animation descriptors and, for each one whose counter has reached its period,
     /// rotates a run of colour entries by one and resets the counter.
     /// <para>
     /// The CLUTs it rotates are the ones <see cref="DecodeResourceChunk"/> mirrors into main video
     /// memory: both use the same address formula, <c>(bank + 0xe10) * 0x200 + MainMem</c>. That
-    /// mirror exists precisely so this can animate them — the two functions are two halves of one
+    /// mirror exists precisely so this can animate them â€” the two functions are two halves of one
     /// mechanism, which is worth knowing before either is changed.
     /// </para>
     /// <para>
@@ -9649,11 +9746,11 @@ public static unsafe partial class Blaze
             uint descriptor = *descriptors;
             while (descriptor != 0)
             {
-                // Ghidra: uVar7 = uVar7 + 0x1000000 — tick the counter in the top byte.
+                // Ghidra: uVar7 = uVar7 + 0x1000000 â€” tick the counter in the top byte.
                 descriptor += 0x1000000;
                 uint updated = descriptor;
 
-                // Ghidra: counter byte == period byte — this descriptor steps this frame.
+                // Ghidra: counter byte == period byte â€” this descriptor steps this frame.
                 if ((byte)(descriptor >> 0x18) == (byte)(descriptor >> 0x10))
                 {
                     updated = descriptor & 0xffffff;   // reset the counter, keep the rest
@@ -9686,22 +9783,22 @@ public static unsafe partial class Blaze
         }
     }
 
-    // Ghidra: DAT_005de510 — current game-state id, shared between RunGameLoop and the tick below.
+    // Ghidra: DAT_005de510 â€” current game-state id, shared between RunGameLoop and the tick below.
     private static int s_GameStateId;
 
-    // Ghidra: PTR_FUN_0056c96c — the per-frame tick RunGameLoop calls indirectly. **Resolved**: the
+    // Ghidra: PTR_FUN_0056c96c â€” the per-frame tick RunGameLoop calls indirectly. **Resolved**: the
     // pointer's initialised value was read out of Legacy/Blaze.exe as 0x00537CA0, and FUN_00537ca0
     // already has a decompiled body in Blaze.c (line 83364), so no Ghidra re-run was needed. See
     // Documentation/DataSymbols.md.
     //
     // Kept as a function pointer rather than a direct call: the original really does dispatch
     // through a statically initialised .data slot, and preserving that indirection keeps the shape
-    // of the code honest. A managed function pointer is enough — there is no native caller.
+    // of the code honest. A managed function pointer is enough â€” there is no native caller.
     private static delegate*<void> s_MainLoopTickCallback = &RunGameStateTick;
 
     // winsys3d.dll: ReInitializeAllTextures is a named export (called by winsys3d.c itself at
     // winsys3d.c:4119). Zoom8BitTextures is an imported *data* symbol, same category as
-    // TexFilterPossible/MainMem — resolved lazily via GetProcAddress, since P/Invoke has no
+    // TexFilterPossible/MainMem â€” resolved lazily via GetProcAddress, since P/Invoke has no
     // mechanism for imported data.
     [DllImport("winsys3d.dll")] private static extern void ReInitializeAllTextures();
 
@@ -9720,11 +9817,11 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00537ca0 @ 0x00537ca0 — the per-frame tick, and the game's real **per-state
+    /// Ghidra: FUN_00537ca0 @ 0x00537ca0 â€” the per-frame tick, and the game's real **per-state
     /// dispatcher**. Note this displaces a long-standing assumption in REVERSE_STATUS.md that
     /// FUN_0052a440 played that role; the tick pointer reaches this function instead.
     /// <para>
-    /// Every one of the eleven state handlers below **has a decompiled body in Blaze.c** — they are
+    /// Every one of the eleven state handlers below **has a decompiled body in Blaze.c** â€” they are
     /// ordinary uncovered code, not blocked on anything, so each stub names its Ghidra function so
     /// the next state to reconstruct is obvious from the exception alone.
     /// </para>
@@ -9766,26 +9863,26 @@ public static unsafe partial class Blaze
             case 10:
                 throw new NotImplementedException("FUN_00513ba0 (game state 10) not yet reconstructed");
             default:
-                // Ghidra: `uRam00000000 = 1;` — a store to address 0. Not a translation artifact:
+                // Ghidra: `uRam00000000 = 1;` â€” a store to address 0. Not a translation artifact:
                 // the original deliberately faults on an unknown state, i.e. this is its assert.
                 throw new InvalidOperationException(
                     $"FUN_00537ca0: unknown game state {s_GameStateId}. The original stores to " +
-                    "address 0 here, deliberately crashing — reproduced as an exception rather " +
+                    "address 0 here, deliberately crashing â€” reproduced as an exception rather " +
                     "than by writing to a null pointer.");
         }
     }
-    // Ghidra: DAT_005e92b0 — per-game-state value read from the loaded resource file's own table
+    // Ghidra: DAT_005e92b0 â€” per-game-state value read from the loaded resource file's own table
     // at offset 0x48; read again by not-yet-reconstructed code (e.g. FUN_00542160).
     private static int s_Unknown_005e92b0;
 
     // =====================================================================
-    // Not yet reconstructed — large subsystems reached directly from RunApplication.
+    // Not yet reconstructed â€” large subsystems reached directly from RunApplication.
     // These throw rather than silently no-op so the gap is loud instead of hidden.
     // See REVERSE_STATUS.md for the "next area to explore" notes on each.
     // =====================================================================
 
     /// <summary>
-    /// Ghidra: FUN_00522e40 @ 0x00522e40 — destructor for the 0x8c4-byte joystick/DirectInput
+    /// Ghidra: FUN_00522e40 @ 0x00522e40 â€” destructor for the 0x8c4-byte joystick/DirectInput
     /// device struct allocated by FUN_00523120 (the 0x8c4 size matches that allocation exactly,
     /// and the final `for (0x231 dwords) *p++ = 0;` zero-fill covers the same 0x8c4 bytes).
     /// Frees 18 owned sub-objects (fields [2], [0x13], and [3..0x12]), releases the underlying
@@ -9795,7 +9892,7 @@ public static unsafe partial class Blaze
     {
         // Ghidra: each sub-object is destructed via FUN_005233a0 then freed via FUN_00547210.
         // TODO(REVERSE): FUN_005233a0 (the per-sub-object destructor) hasn't been read yet, so
-        // only the Free half is reproduced — the sub-objects hold no COM references that the
+        // only the Free half is reproduced â€” the sub-objects hold no COM references that the
         // reconstructed graph knows about, but this is not yet proven.
         void* field2 = device[2];
         if (field2 != null) Free(field2);
@@ -9815,22 +9912,22 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00504600 @ 0x00504600 -> FUN_00523200 @ 0x00523200 — post-loop teardown,
+    /// Ghidra: FUN_00504600 @ 0x00504600 -> FUN_00523200 @ 0x00523200 â€” post-loop teardown,
     /// stage 1: destroys and frees the joystick/DirectInput device created by FUN_00523120.
     /// </summary>
     private static void ShutdownStage1()
     {
-        // Ghidra: FUN_00523200(DAT_00604b54) — `if (p != 0) { FUN_00522e40(p); FUN_00547210(p); }`
+        // Ghidra: FUN_00523200(DAT_00604b54) â€” `if (p != 0) { FUN_00522e40(p); FUN_00547210(p); }`
         if (s_JoystickDevice_00604b54 == null) return;
         DestroyJoystickDevice((void**)s_JoystickDevice_00604b54);
         Free(s_JoystickDevice_00604b54);
         s_JoystickDevice_00604b54 = null;
     }
 
-    // Ghidra: DAT_00604b54 — the input-device object. Created by FUN_00523120, which
+    // Ghidra: DAT_00604b54 â€” the input-device object. Created by FUN_00523120, which
     // SetupJoystickHandlers now calls; ShutdownStage1 destroys it.
     //
-    // **This global had been reconstructed under three different names** — `s_JoystickDevice`,
+    // **This global had been reconstructed under three different names** â€” `s_JoystickDevice`,
     // `s_JoystickDevice_00604b54` and, briefly, an `s_InputDevice_00604b54` added while
     // reconstructing the creation chain. One address, one field: the same shape of defect as
     // DAT_00566cc4 / s_ResolutionIndex, and the reason to check for an existing name before
@@ -9838,7 +9935,7 @@ public static unsafe partial class Blaze
     private static byte* s_JoystickDevice_00604b54;
 
     /// <summary>
-    /// Ghidra: FUN_00512ff0 @ 0x00512ff0 — post-loop teardown, stage 3: the DirectSound shutdown.
+    /// Ghidra: FUN_00512ff0 @ 0x00512ff0 â€” post-loop teardown, stage 3: the DirectSound shutdown.
     /// Releases the primary/listener object, then every sound buffer (stopping any that are still
     /// playing), then the IDirectSound device itself.
     /// </summary>
@@ -9849,7 +9946,7 @@ public static unsafe partial class Blaze
         if (s_DirectSoundPrimary != null)
         {
             InvokeComMethod(s_DirectSoundPrimary, IDirectSoundBuffer_Release);
-            // Ghidra does not null DAT_005db754 here — preserved as-is.
+            // Ghidra does not null DAT_005db754 here â€” preserved as-is.
         }
 
         ReleaseAllSoundBuffers(stopPlayingBuffers: true);
@@ -9858,9 +9955,9 @@ public static unsafe partial class Blaze
         s_DirectSound = null;
     }
 
-    /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 (-> FUN_005428d0) — post-loop teardown, stage 4; same function RunMainLoop uses mid-sequence, see CloseMovieStreamIfOpen.</summary>
+    /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 (-> FUN_005428d0) â€” post-loop teardown, stage 4; same function RunMainLoop uses mid-sequence, see CloseMovieStreamIfOpen.</summary>
     private static void ShutdownStage4() => CloseMovieStreamIfOpen();
 
-    /// <summary>Ghidra: FUN_00542f90 @ 0x00542f90 — post-loop teardown, stage 5; same function RunMainLoop uses mid-sequence, see ShutdownMoviePlayer.</summary>
+    /// <summary>Ghidra: FUN_00542f90 @ 0x00542f90 â€” post-loop teardown, stage 5; same function RunMainLoop uses mid-sequence, see ShutdownMoviePlayer.</summary>
     private static void ShutdownStage5() => ShutdownMoviePlayer();
 }
