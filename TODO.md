@@ -24,22 +24,25 @@ Ne pas recopier ces tâches ici : deux listes divergent toujours.
 ## Où en est le rendu
 
 Le jeu rend par un backend **Direct3D 11** (Silk.NET), dans une **fenêtre**, sans changement de mode
-d'affichage. `3dhelp.dll` n'est plus sur le chemin d'affichage ; son initialisation reste nécessaire
-parce que `winsys3d` appelle la vtable du device qu'elle crée.
+d'affichage. `3dhelp.dll` n'est plus sur le chemin d'affichage et n'est même plus initialisée : un
+device synthétique répond à sa place (`SyntheticDevice.cs`).
 
-La géométrie du menu s'affiche, **en aplats blancs** : les textures ne sont pas encore portées.
+**Le menu s'affiche texturé dans la fenêtre depuis le 2026-08-14** — tâche 3.5 faite : textures,
+modulation par la couleur diffuse, mélange alpha et transparence par couleur-clé. Vérifié par
+comparaison automatisée de deux captures du même binaire, l'une avec `OPENFORESIA_LEGACY_3DHELP=1` :
+boîte englobante `290x148` **des deux côtés**, **écart moyen 0,2/255 par canal**, 0,1 % de pixels
+franchement différents. Tenu sur 1021 images consécutives sans exception. Détail et hypothèses
+corrigées dans `tasks.md` de la change et dans `Documentation/DLL/3dhelp.md`.
 
-Deux choses séparent l'image actuelle d'un menu correct, les deux mesurées et localisées :
+~~**tâche 4.5** — l'échelle~~ — **prémisse réfutée par la même mesure.** Le rendu d'origine cantonne
+le menu exactement au même endroit et à la même taille ; il n'y a pas de facteur d'échelle manquant.
+Ce qui reste éventuellement à décider est un choix de présentation, pas une correction de fidélité.
 
-- **tâche 3.5** — les textures. Le chemin de création est désormais **identifié de bout en bout** :
-  `Documentation/DLL/3dhelp.md`, section « Les textures ». L'argument du slot `+0x64` est un objet,
-  pas un handle ; ses pixels viennent d'un DIB GDI ordinaire ; trois points d'accroche sont
-  possibles, dont un qui ne dépend d'aucun état DirectDraw.
-- **tâche 4.5** — l'échelle. Le jeu émet sa géométrie dans un espace d'environ 320x240 alors que la
-  cible fait 960x720, d'où l'image cantonnée en haut à gauche. Ce n'est pas un défaut de viewport.
-  Mécanisme établi dans `Documentation/DLL/winsys3d.md`, section « Coordinate scaling » : `Size`
-  pilote à la fois le viewport et la table de conversion des sommets, et une branche « haute
-  résolution » de `SetDispEnv` les découple. Une mesure au runtime tranche.
+**Une autre observation du même jour, non expliquée**, à ne pas confondre avec ce qui précède : sans
+frappe clavier sur l'écran-titre, le processus **sort de lui-même après exactement 60 images de
+menu**, sans exception ni entrée dans le journal d'événements. Avec une frappe (le jeu attend une
+touche pour passer au menu), il tourne indéfiniment — 301 images et plus. Reproductible dans les
+deux sens.
 
 ---
 

@@ -97,9 +97,9 @@ internal static unsafe class D3D11Backend
     private const string ShaderSource = """
         cbuffer Constants : register(b0)
         {
-            float2 InvTargetSize;   // 1 / (largeur, hauteur) de la cible de rendu
-            float  Modulate;        // 1 = texture x diffuse, 0 = texture seule (décalque)
-            float  Padding;
+            float2 InvTargetSize;     // 1 / (largeur, hauteur) de la cible de rendu
+            float  Modulate;          // 1 = texture x diffuse, 0 = texture seule
+            float  AlphaFromTexture;  // 1 = MODULATEALPHA (alpha texture x diffuse), 0 = MODULATE
         };
 
         Texture2D    SourceTexture : register(t0);
@@ -139,14 +139,24 @@ internal static unsafe class D3D11Backend
         float4 PSMain(VSOutput input) : SV_Target
         {
             float4 t = SourceTexture.Sample(SourceSampler, input.Texcoord);
-            // Direct3D 3 décide de la combinaison texture/diffuse par TEXTUREMAPBLEND. Le jeu
-            // émet ses quads texturés avec une diffuse **noire** (0xFF000000) : les multiplier
-            // donnerait du noir. C'est la signature d'un mode décalque, où la texture remplace la
-            // couleur. On garde donc les deux comportements et on choisit selon la liaison.
+            // Direct3D 3 décide de la combinaison texture/diffuse par TEXTUREMAPBLEND. Le jeu ne
+            // le pose qu'à deux valeurs, **2 (MODULATE) et 4 (MODULATEALPHA)** — jamais DECAL :
+            // `winsys3d.c:2522/2526` et `6024/6027`, le choix ne dépendant que d'un bit de capacité
+            // du device. Les deux multiplient la texture par la diffuse. La modulation est donc
+            // toujours active sur ce chemin ; `Modulate` reste paramétrable pour le quad de
+            // présentation, qui n'est pas une primitive du jeu.
             float4 c = lerp(t, t * input.Diffuse, Modulate);
-            // L'alpha de la diffuse est ignoré par Direct3D 3 tant que le mélange n'est pas activé,
-            // et le jeu laisse cet octet à zéro sur une partie de ses sommets.
-            c.a = 1.0f;
+            // Couleur-clé. Les textures du jeu arrivent en ARGB1555 (ou 4444) : le bit d'alpha à
+            // zéro y signifie « texel transparent », ce que Direct3D 3 réalisait par DDCKEY_SRCBLT
+            // — un test, pas un mélange. On reproduit le test, ce qui évite d'introduire une
+            // dépendance à l'ordre de dessin qui n'existait pas dans l'original. La texture blanche
+            // 1x1 des primitives non texturées a un alpha plein, donc ce test ne les touche pas.
+            if (t.a <= 0.0f) discard;
+            // Alpha : `TEXTUREMAPBLEND` 2 (MODULATE) prend celui de la diffuse seule, 4
+            // (MODULATEALPHA) y multiplie celui de la texture. Le jeu pose l'un ou l'autre selon
+            // une capacité du device (`winsys3d.c:2522/2526`). Cet alpha ne compte que lorsque
+            // ALPHABLENDENABLE est actif — sinon l'état de mélange opaque l'ignore.
+            c.a = lerp(input.Diffuse.a, t.a * input.Diffuse.a, AlphaFromTexture);
             return c;
         }
         """;
@@ -551,7 +561,8 @@ internal static unsafe class D3D11Backend
         UpdateConstants(s_ConstTargetW, s_ConstTargetH);
     }
 
-    private static void UpdateConstants(int targetWidth, int targetHeight, float modulate = 1f)
+    private static void UpdateConstants(int targetWidth, int targetHeight, float modulate = 1f,
+                                        float alphaFromTexture = 0f)
     {
         MappedSubresource mapped = default;
         SilkMarshal.ThrowHResult(s_Context.Map(
@@ -560,7 +571,7 @@ internal static unsafe class D3D11Backend
         c[0] = 1f / targetWidth;
         c[1] = 1f / targetHeight;
         c[2] = modulate;
-        c[3] = 0f;
+        c[3] = alphaFromTexture;
         s_Context.Unmap(s_ConstantBuffer, 0);
 
         var cb = s_ConstantBuffer;
@@ -589,7 +600,7 @@ internal static unsafe class D3D11Backend
     /// </summary>
     internal static void DrawTriangles(
         ReadOnlySpan<TlVertex> vertices, ComPtr<ID3D11ShaderResourceView> texture,
-        bool alphaBlend = false, float modulate = 1f)
+        bool alphaBlend = false, float modulate = 1f, float alphaFromTexture = 0f)
     {
         if (vertices.Length < 3) return;
 
@@ -600,12 +611,12 @@ internal static unsafe class D3D11Backend
             for (int start = 0; start < vertices.Length; start += chunk)
             {
                 int len = Math.Min(chunk, vertices.Length - start);
-                DrawTriangles(vertices.Slice(start, len), texture, alphaBlend, modulate);
+                DrawTriangles(vertices.Slice(start, len), texture, alphaBlend, modulate, alphaFromTexture);
             }
             return;
         }
 
-        UpdateConstants(s_ConstTargetW, s_ConstTargetH, modulate);
+        UpdateConstants(s_ConstTargetW, s_ConstTargetH, modulate, alphaFromTexture);
 
         MappedSubresource mapped = default;
         SilkMarshal.ThrowHResult(s_Context.Map(s_VertexBuffer, 0, Map.WriteDiscard, 0, ref mapped));
@@ -662,7 +673,7 @@ internal static unsafe class D3D11Backend
     internal static void DrawPrimitive(
         uint primitiveType, TlVertex* vertices, int count,
         ComPtr<ID3D11ShaderResourceView> texture, bool flatShading,
-        bool textured = false, bool alphaBlend = false)
+        bool alphaBlend = false, bool alphaFromTexture = false)
     {
         if (count < 3) return;
 
@@ -692,7 +703,7 @@ internal static unsafe class D3D11Backend
                 break;
         }
 
-        DrawTriangles(s_Expanded.AsSpan(0, n), texture, alphaBlend, textured ? 0f : 1f);
+        DrawTriangles(s_Expanded.AsSpan(0, n), texture, alphaBlend, 1f, alphaFromTexture ? 1f : 0f);
 
         void Emit(TlVertex a, TlVertex b, TlVertex c)
         {
@@ -812,6 +823,101 @@ internal static unsafe class D3D11Backend
         {
             X = x, Y = y, Z = 0f, Rhw = 1f, Diffuse = color, Specular = 0, U = u, V = v,
         };
+    }
+
+    // =====================================================================
+    // Registre des textures du jeu — tâche 3.5
+    //
+    // Le jeu réclame ses objets texture par le slot device `+0x10`, les charge par le slot `[3]`
+    // de leur propre vtable, puis les lie par le slot device `+0x64`. Ces trois moments sont chez
+    // nous depuis le device synthétique ; ce registre est ce qui les relie : la clé est le
+    // **pointeur de l'objet texture**, la seule identité que le jeu manipule.
+    //
+    // La création de la vue est **différée**. Les premières textures sont chargées pendant
+    // l'attract, avant que le device Direct3D 11 n'existe (mesuré : plus de 10 000 liaisons avant
+    // la première image). On garde donc les texels convertis jusqu'à ce que le backend soit prêt,
+    // et on les libère dès que la vue est créée.
+    // =====================================================================
+
+    private sealed class GameTexture
+    {
+        internal int Width, Height;
+        internal uint[]? Pixels;                             // BGRA ; libéré une fois la vue créée
+        internal ComPtr<ID3D11ShaderResourceView> View;
+        internal bool ViewCreated;
+    }
+
+    private static readonly Dictionary<nint, GameTexture> s_GameTextures = [];
+
+    /// <summary>Nombre d'objets texture actuellement connus. Sert au bilan de fin d'image.</summary>
+    internal static int GameTextureCount => s_GameTextures.Count;
+
+    /// <summary>Enregistre les texels convertis d'un objet texture, en remplaçant les précédents.</summary>
+    internal static void RegisterTexture(nint key, int width, int height, uint[] bgra)
+    {
+        if (s_GameTextures.TryGetValue(key, out GameTexture? existing))
+        {
+            existing.View.Dispose();
+            existing.View = default;
+            existing.ViewCreated = false;
+        }
+
+        s_GameTextures[key] = new GameTexture { Width = width, Height = height, Pixels = bgra };
+    }
+
+    /// <summary>Libère un objet texture détruit par le jeu.</summary>
+    internal static void ReleaseTexture(nint key)
+    {
+        if (!s_GameTextures.Remove(key, out GameTexture? texture)) return;
+        texture.View.Dispose();
+    }
+
+    /// <summary>
+    /// Vue de l'objet texture donné, créée à la demande. Rend une vue nulle si l'objet est inconnu
+    /// ou si le device n'existe pas encore — <see cref="DrawTriangles"/> traite ce cas en liant la
+    /// texture blanche, c'est-à-dire le comportement d'avant cette tâche.
+    /// </summary>
+    internal static ComPtr<ID3D11ShaderResourceView> TextureView(nint key)
+    {
+        if (!Ready || !s_GameTextures.TryGetValue(key, out GameTexture? texture)) return default;
+
+        if (!texture.ViewCreated)
+        {
+            uint[]? pixels = texture.Pixels;
+            if (pixels == null) return default;
+            fixed (uint* p = pixels) texture.View = CreateTexture(texture.Width, texture.Height, p);
+            texture.ViewCreated = true;
+            texture.Pixels = null;                            // la copie GPU suffit désormais
+        }
+
+        return texture.View;
+    }
+
+    /// <summary>
+    /// Crée une texture immuable à partir d'un buffer BGRA 8 bits par canal, et rend sa vue.
+    /// Utilisée par le portage de la liaison de texture (tâche 3.5) : le jeu fournit ses texels en
+    /// 16 bits, la conversion vers BGRA a lieu chez l'appelant, qui seul connaît les masques.
+    /// </summary>
+    internal static ComPtr<ID3D11ShaderResourceView> CreateTexture(int width, int height, uint* bgra)
+    {
+        ComPtr<ID3D11Texture2D> texture = default;
+        ComPtr<ID3D11ShaderResourceView> srv = default;
+
+        var desc = new Texture2DDesc
+        {
+            Width = (uint)width, Height = (uint)height, MipLevels = 1, ArraySize = 1,
+            Format = Format.FormatB8G8R8A8Unorm,
+            SampleDesc = new SampleDesc(1, 0),
+            Usage = Usage.Immutable,
+            BindFlags = (uint)BindFlag.ShaderResource,
+        };
+        var data = new SubresourceData { PSysMem = bgra, SysMemPitch = (uint)(width * 4) };
+
+        SilkMarshal.ThrowHResult(s_Device.CreateTexture2D(in desc, in data, ref texture));
+        SilkMarshal.ThrowHResult(s_Device.CreateShaderResourceView(
+            texture, (ShaderResourceViewDesc*)null, ref srv));
+        texture.Dispose();
+        return srv;
     }
 
     private static ComPtr<ID3D11ShaderResourceView> CreateCheckerTexture(int size)

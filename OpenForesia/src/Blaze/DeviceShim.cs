@@ -523,6 +523,57 @@ public static unsafe partial class Blaze
 
     private static void* s_BoundTexture;
 
+    // =====================================================================
+    // États de mélange — portés avec la liaison de texture (tâche 3.5), parce que sans eux
+    // l'image sort exactement deux fois trop claire.
+    //
+    // Ce qui l'a établi : le panneau du menu ressortait à (14,7,57) là où `3dhelp` donne (7,3,28),
+    // un facteur 2 net. La cause est l'alpha des sommets — la diffuse des quads du panneau porte
+    // 0x7F — combiné au mélange que `FUN_00a03db0` (`winsys3d.c:3157-3160`) active dès que les
+    // textures font 16 bits : ALPHABLENDENABLE(1), SRCBLEND(5 = SRCALPHA),
+    // DESTBLEND(6 = INVSRCALPHA). Sans mélange, ces quads se posaient opaques.
+    // =====================================================================
+
+    /// <summary>2 = <c>D3DTBLEND_MODULATE</c>, 4 = <c>D3DTBLEND_MODULATEALPHA</c>.</summary>
+    private static uint s_TextureMapBlend = 2;
+    private static bool s_AlphaBlendEnable;
+    private static uint s_SrcBlend = 2, s_DestBlend = 1;
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static void Shim_TextureMapBlend(void* self, uint mode)
+    {
+        if (s_TextureMapBlend != mode)
+            Console.Error.WriteLine($"[SHIM] TEXTUREMAPBLEND = {mode} " +
+                                    $"({(mode == 4 ? "MODULATEALPHA" : mode == 2 ? "MODULATE" : "inattendu")})");
+        s_TextureMapBlend = mode;
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static void Shim_AlphaBlendEnable(void* self, uint on) => s_AlphaBlendEnable = on != 0;
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static void Shim_SrcBlend(void* self, uint blend) => s_SrcBlend = blend;
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static void Shim_DestBlend(void* self, uint blend) => s_DestBlend = blend;
+
+    /// <summary>
+    /// Vrai si le mélange actif est bien celui que le backend sait poser. Le jeu n'emploie que deux
+    /// couples : <c>(2, 1)</c> = ONE/ZERO, c'est-à-dire opaque, et <c>(5, 6)</c> =
+    /// SRCALPHA/INVSRCALPHA. Tout autre couple est signalé une fois plutôt que rendu de travers.
+    /// </summary>
+    private static bool AlphaBlendActive()
+    {
+        if (!s_AlphaBlendEnable) return false;
+        if (s_SrcBlend == 5 && s_DestBlend == 6) return true;
+
+        if (s_GuardReported.Add($"blend:{s_SrcBlend}/{s_DestBlend}"))
+            Console.Error.WriteLine(
+                $"[SHIM] couple de mélange non porté SRCBLEND={s_SrcBlend} DESTBLEND={s_DestBlend} " +
+                "— rendu opaque en attendant");
+        return false;
+    }
+
     /// <summary>Relevé de géométrie et de décalages : <c>OPENFORESIA_DUMP_GEOMETRY=1</c>.</summary>
     private static readonly bool s_DumpGeometry =
         Environment.GetEnvironmentVariable("OPENFORESIA_DUMP_GEOMETRY") == "1";
@@ -763,8 +814,16 @@ public static unsafe partial class Blaze
                         $"format de sommet {vt} non porté " +
                         "(1 = D3DVT_VERTEX, 2 = D3DVT_LVERTEX) ; seul TLVERTEX avait été observé");
 
-                D3D11Backend.DrawPrimitive(t, (TlVertex*)v, (int)n, default, s_FlatShading,
-                    textured: s_BoundTexture != null);
+                // La texture liée est identifiée par le pointeur de l'objet que `+0x64` a reçu :
+                // c'est la seule identité que le jeu manipule, et la clé du registre du backend.
+                // Vue nulle = objet inconnu ou pas encore chargé, cas où le backend lie sa texture
+                // blanche — le comportement d'avant la tâche 3.5.
+                var bound = s_BoundTexture != null
+                    ? D3D11Backend.TextureView((nint)s_BoundTexture)
+                    : default;
+
+                D3D11Backend.DrawPrimitive(t, (TlVertex*)v, (int)n, bound, s_FlatShading,
+                    alphaBlend: AlphaBlendActive(), alphaFromTexture: s_TextureMapBlend == 4);
             });
             return;
         }

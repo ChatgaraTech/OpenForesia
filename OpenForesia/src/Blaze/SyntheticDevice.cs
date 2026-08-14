@@ -331,6 +331,14 @@ public static unsafe partial class Blaze
         vtable[0x5C / 4] = (delegate* unmanaged[Thiscall]<void*, void*, int, void>)&Shim_ClearTarget;
         vtable[0x60 / 4] = (delegate* unmanaged[Thiscall]<void*, void*, int, void>)&Shim_ClearZ;
         vtable[0x64 / 4] = (delegate* unmanaged[Thiscall]<void*, void*, void>)&Shim_BindTexture;
+
+        // États de mélange, portés avec la liaison de texture : sans eux les quads à alpha partiel
+        // sortent opaques, donc deux fois trop clairs. Voir le bloc « États de mélange » de
+        // DeviceShim.cs pour la mesure qui l'a établi.
+        vtable[0x94 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_TextureMapBlend;
+        vtable[0x98 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_AlphaBlendEnable;
+        vtable[0xA0 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_SrcBlend;
+        vtable[0xA4 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_DestBlend;
         vtable[0x8C / 4] = (delegate* unmanaged[Thiscall]<void*, uint, void>)&Shim_ShadeMode;
         vtable[0xB0 / 4] = (delegate* unmanaged[Thiscall]<void*, void>)&Shim_BeginScene;
         vtable[0xB4 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Shim_EndScene;
@@ -480,12 +488,31 @@ public static unsafe partial class Blaze
     // Arités relevées dans le binaire, vtable de la classe texture à `0x0FFE61F8` :
     //   [0] destructeur           ret 4     [4] ?                    ret 0
     //   [1] rend le handle (+0x10) ret 0    [5] remontée +0x04→+0x08 ret 0
-    //   [2] chargeur (BITMAPINFO)  ret 8    [6] ?                    ret 4
-    //   [3] ?                      ret 16   [7] ?                    ret 0
+    //   [2] chargeur (BITMAPINFO)  ret 8    [6] couleur-clé          ret 4
+    //   [3] chargeur (texels)      ret 16   [7] ?                    ret 0
     //
     // Disposition de l'objet d'origine : 32 octets, documentée dans `Documentation/DLL/3dhelp.md`.
-    // On alloue la même taille, à zéro : le handle lu en `+0x10` vaut donc zéro, ce qui signifie
-    // « aucune texture liée » — exactement l'état que le backend traite déjà.
+    // On alloue la même taille, à zéro : le handle lu en `+0x10` vaut donc zéro. Rien ne le lit sur
+    // notre chemin — c'était `3dhelp` qui s'en servait, et il n'est plus là ; le backend identifie
+    // une texture par le **pointeur de l'objet**, que le slot device `+0x64` lui donne directement.
+    //
+    // **Quel slot charge réellement, mesuré le 2026-08-14.** Le slot `[2]`, celui que
+    // `Documentation/DLL/3dhelp.md` décrivait comme « le chargeur », n'est **jamais appelé** : le
+    // relevé des slots empruntés ne montre que `[3]`, une fois par objet créé. La lecture de
+    // `winsys3d.c` le confirme — `FUN_00a03460` (chemin DIB palettisé, qui appelle `[2]`) n'est
+    // atteint par aucun chemin observé, alors que `FUN_00a03980` (`winsys3d.c:3064`) appelle
+    //
+    //     texture->vtable[3](largeur, hauteur, texels, DDPIXELFORMAT*)
+    //
+    // avec des texels **déjà en 16 bits**, convertis depuis la VRAM émulée par la table de
+    // traduction que `CreateTranslationTables` (ordinal 756) a construite. C'est le chemin porté
+    // ici. Deux formats possibles, choisis par le jeu selon la table employée et lisibles dans le
+    // `DDPIXELFORMAT` qu'il fournit : ARGB1555 (`7C00/03E0/001F/8000`) et ARGB4444
+    // (`0F00/00F0/000F/F000`). On lit les masques plutôt que de les supposer.
+    //
+    // Le slot `[6]` (couleur-clé) reste neutre : `winsys3d` ne l'appelle que si `DAT_00b2d07c`
+    // vaut moins de 16, ce qui n'arrive pas ici — la transparence passe par le bit d'alpha du
+    // format 16 bits, que le shader teste.
     // =====================================================================
 
     private const int TextureVtableSlots = 8;
@@ -510,6 +537,12 @@ public static unsafe partial class Blaze
                 s_TextureVtable[i] = MakeSlotStub(s_TextureStubs + i * StubSize, 0x100 + i * 4,
                                                   NeutralThunk(cleanup[i]));
             }
+
+            // Les deux seuls slots que le jeu emprunte réellement (mesuré) : le chargeur et le
+            // destructeur. Les autres restent neutres, et signalent leur premier appel s'ils
+            // venaient à servir.
+            s_TextureVtable[3] = (delegate* unmanaged[Thiscall]<void*, uint, uint, void*, void*, int>)&Synth_TextureLoad;
+            s_TextureVtable[0] = (delegate* unmanaged[Thiscall]<void*, uint, int>)&Synth_TextureDestroy;
         }
 
         void** texture = (void**)NativeMemory.AllocZeroed(32);
@@ -518,6 +551,122 @@ public static unsafe partial class Blaze
         if (s_TextureCount <= 3)
             Console.Error.WriteLine($"[SYNTH] texture synthétique #{s_TextureCount} = 0x{(nint)texture:X8}");
         return texture;
+    }
+
+    /// <summary>
+    /// Slot texture <c>[3]</c> — le chargeur réellement emprunté par le jeu.
+    /// <c>winsys3d.c:3064</c> : <c>vtable[3](largeur, hauteur, texels, DDPIXELFORMAT*)</c>.
+    ///
+    /// <para>
+    /// Les texels sont fournis en 16 bits, jointifs, une ligne après l'autre de haut en bas — le
+    /// pas vaut donc <c>largeur * 2</c>. La conversion vers BGRA se fait ici parce que c'est ici
+    /// que le format est connu : ses masques arrivent dans le <c>DDPIXELFORMAT</c> du dernier
+    /// argument, et le jeu en emploie deux selon la table de traduction choisie.
+    /// </para>
+    /// <para>
+    /// Rend un HRESULT : <c>winsys3d</c> ne teste que le signe (<c>if (iVar10 &lt; 0)</c>, après
+    /// quoi il détruit l'objet et abandonne la texture). Un échec de conversion est donc rapporté
+    /// comme un échec plutôt que dissimulé.
+    /// </para>
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_TextureLoad(void* self, uint width, uint height, void* texels, void* pixelFormat)
+    {
+        int hr = -1;
+        Guarded("chargement de texture", () =>
+        {
+            if (self == null || texels == null || pixelFormat == null)
+                throw new InvalidOperationException("argument nul");
+            if (width == 0 || height == 0 || width > 4096 || height > 4096)
+                throw new InvalidOperationException($"dimensions inattendues {width}x{height}");
+
+            // DDPIXELFORMAT : dwSize, dwFlags, dwFourCC, dwRGBBitCount, puis les quatre masques.
+            uint* format = (uint*)pixelFormat;
+            uint bitCount = format[3];
+            if (bitCount != 16)
+                throw new NotImplementedException(
+                    $"texture en {bitCount} bits par texel — seul le format 16 bits de " +
+                    "FUN_00a03980 a été observé ; le chemin palettisé de FUN_00a03460 passerait " +
+                    "par le slot [2], jamais appelé jusqu'ici");
+
+            uint[] bgra = ConvertTexels16((ushort*)texels, (int)width, (int)height,
+                                          format[4], format[5], format[6], format[7]);
+            D3D11Backend.RegisterTexture((nint)self, (int)width, (int)height, bgra);
+            hr = 0;
+
+            if (s_TextureLoads++ < 4)
+                Console.Error.WriteLine(
+                    $"[SYNTH] texture chargée 0x{(nint)self:X8} {width}x{height} " +
+                    $"masques R=0x{format[4]:X4} G=0x{format[5]:X4} B=0x{format[6]:X4} A=0x{format[7]:X4} " +
+                    $"— {s_LastTransparentTexels} texels transparents sur {width * height}");
+        });
+        return hr;
+    }
+
+    private static int s_TextureLoads;
+    private static int s_LastTransparentTexels;
+
+    /// <summary>
+    /// Développe des texels 16 bits en BGRA 32 bits d'après les masques du format.
+    ///
+    /// <para>
+    /// Chaque canal est ramené sur 8 bits par mise à l'échelle sur sa propre étendue, ce qui traite
+    /// du même coup les 5 bits des couleurs en 1555, les 4 bits du 4444, et le bit unique d'alpha :
+    /// pour lui, l'étendue vaut 1, donc le calcul rend 0 ou 255 — exactement la couleur-clé que
+    /// Direct3D 3 réalisait par <c>DDCKEY_SRCBLT</c>.
+    /// </para>
+    /// </summary>
+    private static uint[] ConvertTexels16(ushort* texels, int width, int height,
+                                          uint maskR, uint maskG, uint maskB, uint maskA)
+    {
+        (int shiftR, uint maxR) = Field(maskR);
+        (int shiftG, uint maxG) = Field(maskG);
+        (int shiftB, uint maxB) = Field(maskB);
+        (int shiftA, uint maxA) = Field(maskA);
+
+        uint[] bgra = new uint[width * height];
+        int transparent = 0;
+
+        for (int i = 0; i < bgra.Length; i++)
+        {
+            uint texel = texels[i];
+            uint r = maxR != 0 ? Scale((texel & maskR) >> shiftR, maxR) : 0;
+            uint g = maxG != 0 ? Scale((texel & maskG) >> shiftG, maxG) : 0;
+            uint b = maxB != 0 ? Scale((texel & maskB) >> shiftB, maxB) : 0;
+            uint a = maxA != 0 ? Scale((texel & maskA) >> shiftA, maxA) : 255;
+            if (a < 128) transparent++;
+            bgra[i] = a << 24 | r << 16 | g << 8 | b;         // B8G8R8A8 : b, g, r, a en mémoire
+        }
+
+        s_LastTransparentTexels = transparent;
+        return bgra;
+
+        static (int shift, uint max) Field(uint mask)
+        {
+            if (mask == 0) return (0, 0);
+            int shift = System.Numerics.BitOperations.TrailingZeroCount(mask);
+            return (shift, mask >> shift);
+        }
+
+        static uint Scale(uint value, uint max) => max == 0 ? 0 : value * 255 / max;
+    }
+
+    /// <summary>
+    /// Slot texture <c>[0]</c> — destructeur. <c>winsys3d</c> l'appelle sur échec de chargement et
+    /// à l'éviction du cache LRU (<c>winsys3d.c:25471</c> et voisinage), avec le drapeau
+    /// « libérer la mémoire » des destructeurs C++ de l'époque. On libère la vue Direct3D et
+    /// l'objet lui-même, faute de quoi chaque éviction fuirait une texture.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_TextureDestroy(void* self, uint flags)
+    {
+        Guarded("destruction de texture", () =>
+        {
+            if (self == null) return;
+            D3D11Backend.ReleaseTexture((nint)self);
+            if ((flags & 1) != 0) NativeMemory.Free(self);
+        });
+        return 0;
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]

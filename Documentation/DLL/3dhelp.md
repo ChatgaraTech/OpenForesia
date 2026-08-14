@@ -307,6 +307,72 @@ Deux faits en découlent, et ce sont eux qui rendent la tâche 3.5 abordable :
 La route **B** ne dépend d'aucun état DirectDraw et réutilise le mécanisme d'échange de vtable déjà
 éprouvé dans `DeviceShim.cs`. La route **A** est plus courte mais son hypothèse reste à mesurer.
 
+### Correction du 2026-08-14 — **le chargeur emprunté est le slot `[3]`, pas le `[2]`**
+
+Tout ce qui précède décrit le slot `[2]` (`FUN_0ffe2d10`, chargement depuis un `BITMAPINFO`). Cette
+description est exacte mais **porte sur un chemin que le jeu n'emprunte pas**. Relevé au runtime :
+sur un démarrage complet jusqu'au menu, le slot `[2]` reçoit **zéro appel**, et le slot `[3]` — noté
+« rôle non établi » dans la table de la classe — en reçoit **un par objet texture créé**.
+
+La lecture de `winsys3d.c` le confirme et l'explique. Deux fabriques de textures y coexistent :
+
+| fonction | pixels produits | slot appelé |
+|---|---|---|
+| `FUN_00a03460` | DIB palettisé 4/8/16 bpp + palette CLUT | `[2]`, 2 arguments — **jamais atteint** |
+| `FUN_00a03980` (`winsys3d.c:3064`) | texels **16 bits**, jointifs, de haut en bas | `[3]`, 4 arguments |
+
+```c
+piVar7  = device->vtable[0x10]();                    /* création de l'objet texture   */
+puVar2  = *piVar7;                                   /* sa vtable                     */
+iVar10  = puVar2[3](largeur, hauteur, texels, &ddpf); /* ← le chargeur réel           */
+if (piVar7 != 0 && DAT_00b2d07c < 0x10)
+    puVar2[6](&couleurCle);                          /* seulement en deçà de 16 bits  */
+if (iVar10 < 0) { puVar2[0](1); piVar7 = 0; }        /* échec : destruction           */
+```
+
+Le quatrième argument est un `DDPIXELFORMAT` complet monté sur la pile (`dwSize = 0x20`,
+`dwFlags = 0x41` = `DDPF_RGB | DDPF_ALPHAPIXELS`, `dwRGBBitCount = 0x10`, puis les quatre masques).
+Le jeu en emploie **deux**, choisis d'après la table de traduction employée :
+
+| | R | G | B | A |
+|---|---|---|---|---|
+| ARGB1555 | `0x7C00` | `0x03E0` | `0x001F` | `0x8000` |
+| ARGB4444 | `0x0F00` | `0x00F0` | `0x000F` | `0xF000` |
+
+Mesuré en phase menu : ARGB1555, textures de 256x256, 256x32 et 128x128, avec une fraction notable
+de texels à alpha nul (4264 sur 8192, 3779 sur 16384) — **c'est le bit d'alpha qui porte la
+transparence**, pas la couleur-clé, dont l'appel est justement sauté à 16 bits par texel.
+
+Conséquence pratique : il n'y a **ni palette ni DIB à décoder** pour porter les textures. La
+conversion se réduit à développer chaque canal de 16 bits vers 8 d'après les masques fournis.
+
+### Mise à jour du 2026-08-14 — la route B n'a plus rien à accrocher : le point est déjà à nous
+
+Depuis le device synthétique (`SyntheticDevice.cs`, change `render-title-screen-in-window`),
+`3dhelp` n'est plus chargé du tout. **C'est nous qui fabriquons la classe texture** : le slot device
+`+0x10` est `Synth_CreateTexture`, qui alloue les 32 octets et pose une vtable de 8 stubs neutres
+(`SyntheticDevice.cs:497`). Il n'y a donc plus de vtable à échanger — le chargeur `[2]` **reçoit
+déjà** le `BITMAPINFO` et le pointeur de pixels du jeu, et les jette (`Synth_2`, `return 0`).
+
+Trois faits mesurés le 2026-08-14, qui bornent la tâche 3.5 :
+
+- **Un seul site lie une vraie texture.** Sur les 18 appels à `+0x64` de `winsys3d.c`
+  (écrits `+ 100` en décimal, d'où l'échec d'un `grep 0x64`), **17 passent `0`** — déliaison. Le
+  seul qui passe un objet est `FUN_00a27430` (`winsys3d.c:25471`), qui lit `entry[0]` d'une entrée
+  de cache. La même entrée porte en `[6]..[9]` les tables de conversion UV et en `[10]` un tampon
+  d'image : c'est un cache **LRU**, donc les objets texture sont détruits et refabriqués — le
+  slot `[0]` (destructeur) est l'endroit où libérer la ressource D3D, sinon fuite.
+- **Les `uv` qui parviennent au backend sont déjà normalisés `0..1`.** Relevé
+  `OPENFORESIA_DUMP_GEOMETRY=1` : `uv=(0,002..0,998)`, `(0,438..0,368)`, `(0,688..0,472)`. Aucune
+  conversion de coordonnées de texture n'est à écrire côté port.
+- **Les pixels viennent de notre propre arène.** `FUN_00a03460` lit
+  `puVar7 * 0x800 + offset + EXT_00b6dbd0`, c'est-à-dire la VRAM PSX émulée que la reconstruction
+  remplit déjà avec les TIM du CD. Trois formats à convertir, pas un : `biBitCount` vaut **4, 8 ou
+  16**, `biHeight > 0` (DIB **bottom-up**, à retourner), palette de 256 `RGBQUAD` en ligne montée
+  depuis la CLUT via `DAT_00b2d080`, et la transparence arrive séparément — index de couleur-clé
+  par `texture->vtable[6]` en 4/8 bpp (seulement si `DAT_00b2d07c < 0x10`), bit `0x8000` du
+  `DDPIXELFORMAT` en 16 bpp (`FUN_00a03980`).
+
 ---
 
 ## L'écran-titre et l'attract — un chemin GDI, mais **pas** par la vtable device
@@ -465,7 +531,9 @@ Depuis `replace-3d-backend-with-d3d11`, `3dhelp` n'est plus sur le chemin d'affi
 | `+0x50` | pose du viewport | repris — seules les dimensions sont retenues ; le décalage n'a plus d'objet, la présentation centre elle-même |
 | `+0x5C` | effacement de la cible | repris |
 | `+0x60` | effacement du tampon Z | repris (jamais appelé en phase menu) |
-| `+0x64` | liaison de texture | **enregistrée mais neutre** — le pointeur d'objet est mémorisé, le backend dessine avec sa texture blanche. Le chemin des pixels est désormais établi, voir « Les textures » |
+| `+0x64` | liaison de texture | **portée le 2026-08-14** (tâche 3.5) — le pointeur d'objet sert de clé au registre de textures du backend, alimenté par le slot `[3]` de la classe texture. Rendu mesuré identique à `3dhelp` : écart moyen 0,2/255 par canal |
+| `+0x94` | `TEXTUREMAPBLEND` | portée — relevé : le jeu pose **4 (MODULATEALPHA)** |
+| `+0x98`, `+0xA0`, `+0xA4` | `ALPHABLENDENABLE`, `SRCBLEND`, `DESTBLEND` | portées — sans elles les quads à alpha partiel sortaient opaques, donc deux fois trop clairs |
 | `+0x8C` | mode d'ombrage | repris — plat reproduit en recopiant la couleur du premier sommet |
 | `+0xB0` | début de scène | repris ; c'est aussi là que le backend est créé, au premier appel |
 | `+0xB4` | fin de scène | repris ; **c'est ici que se fait la présentation** |

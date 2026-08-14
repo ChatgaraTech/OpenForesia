@@ -25,7 +25,37 @@
 - [x] 3.3 `DrawPrimitive` (`+0xBC`) — traduction de `D3DTLVERTEX` vers le format de sommet du
       backend, sans transformation
 - [x] 3.4 Mode d'ombrage (`+0x8C`) — plat et Gouraud
-- [ ] 3.5 Liaison de texture (`+0x64`), création et conversion des textures depuis le format du jeu
+- [x] 3.5 Liaison de texture (`+0x64`), création et conversion des textures depuis le format du jeu
+      → **Fait le 2026-08-14.** Le menu s'affiche texturé dans la fenêtre, mesuré **identique à
+      `3dhelp`** : boîte englobante `290x148` des deux côtés, écart moyen **0,2/255 par canal**,
+      0,1 % de pixels franchement différents (comparaison automatisée de deux captures du même
+      binaire, l'une avec `OPENFORESIA_LEGACY_3DHELP=1`).
+      → **Le chargeur n'est pas le slot que la doc annonçait.** Le slot `[2]` de la classe texture
+      (chemin DIB palettisé, `FUN_00a03460`) n'est **jamais appelé**. Le jeu passe par
+      `FUN_00a03980` (`winsys3d.c:3064`), qui appelle `vtable[3](largeur, hauteur, texels,
+      DDPIXELFORMAT*)` avec des texels **déjà en 16 bits**. Rien à décoder d'une palette : on lit
+      les masques du `DDPIXELFORMAT` fourni (ARGB1555 observé, ARGB4444 possible) et on développe
+      en BGRA. Mesuré sur les trois premières textures : 256x256, 256x32, 128x128, masques
+      `7C00/03E0/001F/8000`, avec 4264 et 3779 texels transparents — le bit d'alpha porte bien la
+      transparence.
+      → **Deux corrections d'hypothèses au passage**, toutes deux issues de la comparaison d'images
+      et non de la lecture :
+      1. le mode « décalque » que le shader appliquait aux quads texturés était faux —
+         `TEXTUREMAPBLEND` (slot `+0x94`) ne vaut que **2 (MODULATE)** ou **4 (MODULATEALPHA)**,
+         jamais DECAL (`winsys3d.c:2522/2526`, `6024/6027`) ; sans modulation le panneau du menu
+         sortait gris au lieu de bleu nuit ;
+      2. il fallait porter le **mélange** avec, sinon l'image sortait exactement deux fois trop
+         claire : la diffuse des quads du panneau porte `0x7F` et `FUN_00a03db0`
+         (`winsys3d.c:3157-3160`) active `ALPHABLENDENABLE` avec `SRCALPHA`/`INVSRCALPHA` dès que
+         les textures font 16 bits. Relevé au runtime : le jeu pose bien **MODULATEALPHA**.
+      → Portage de la transparence : test dans le shader (`discard` sur alpha nul), qui reproduit
+      la couleur-clé `DDCKEY_SRCBLT` de Direct3D 3 sans introduire de dépendance à l'ordre de
+      dessin. Le slot `[6]` (couleur-clé explicite) reste neutre : `winsys3d` ne l'appelle qu'en
+      dessous de 16 bits par texel, ce qui n'arrive pas ici.
+      → **Non couvert, à traiter en 4.1** : les mêmes états de mélange ne sont pas posés sur le
+      chemin de repli `OPENFORESIA_LEGACY_STARTUP=1` (façade sur le `3dhelp` réel), où les objets
+      texture appartiennent à `3dhelp` et restent donc invisibles au registre — ce chemin rend
+      toujours en aplats, comme avant cette tâche.
 - [x] 3.6 Présentation branchée sur la swap chain — **à `EndScene` (`+0xB4`), pas à `+0xDC`** :
       mesuré, `+0xDC` n'est appelé aucune fois sur 121 images
 - [x] 3.9 Vérification visuelle du chemin porté — **faite après 4.3** : la géométrie du menu
@@ -83,3 +113,22 @@
       `DrawPrimitive` donne le facteur réellement appliqué comme un **rapport mesuré**, ce qui
       tranche entre les deux lectures que l'arithmétique seule ne sépare pas — facteur 2 sur des
       brutes 0..160, ou facteur 1 sur des brutes 0..320.
+      → **2026-08-14 — LA PRÉMISSE DE CETTE TÂCHE EST FAUSSE, mesurée par comparaison d'images.**
+      Deux lancements du même binaire, même `OpenForesia.cfg` (`Resolution=4 Size=21`) : l'un avec
+      `OPENFORESIA_LEGACY_3DHELP=1` (rendu par `3dhelp`, celui que le responsable décrit comme
+      correct), l'autre par défaut (backend D3D11). Boîte englobante du menu, mesurée au pixel :
+
+      | chemin | origine | taille |
+      |---|---|---|
+      | `3dhelp`, dans son primaire 1440x900, viewport `(32,24,960x720)` | `(48,54)` | **290x148** |
+      | D3D11, dans la cible 960x720 | `(48,40)` | **304x176** |
+
+      Même origine, même ordre de grandeur — **il n'y a pas de facteur d'échelle manquant**. Le
+      rendu d'origine cantonne le menu exactement au même endroit et à la même taille : à
+      `Resolution=4`, `3dhelp` **n'agrandit pas non plus** la géométrie du menu, le reste de l'écran
+      est noir chez lui aussi. L'écart résiduel (304x176 contre 290x148) s'explique par la réunion
+      des quads blancs, qui englobe des primitives que `3dhelp` dessine en sombre.
+      → **Conséquence** : cette tâche ne décrit pas un défaut de portage mais le comportement propre
+      du jeu à cette résolution. Ce qui reste éventuellement à décider est un choix de présentation
+      (jouer à une `Resolution` plus basse, ou présenter un sous-rectangle agrandi), pas une
+      correction de fidélité. À rouvrir sous cet angle ou à clore.
