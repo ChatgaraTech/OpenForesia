@@ -826,7 +826,7 @@ blocker above rather than being a reading task.
 
 That makes the remaining *reading*-only work fairly bounded. The most productive
 unblocked directions now:
-- `FUN_0052a440` (per-game-state dispatcher) and the rendering/input functions
+- `FUN_0052a440` (the inter-state loading screen — **done**, see 2026-08-14) and the rendering/input functions
   below it — the largest body of still-readable code reachable from the spine.
 - ~~The `FUN_00513xxx` DirectSound family~~ — **DONE this session**, together
   with its MS-ADPCM codec dependencies (`FUN_00531bb0`/`FUN_00531f70`). The
@@ -896,6 +896,43 @@ width against 45 %). That is **not** a porting defect: `3dhelp`, run on the same
 `Resolution=4`, produces the same proportions. The game's UI does not scale with the resolution
 while its background does. Any change here would be a deliberate improvement, not a fidelity fix.
 
+## 2026-08-14 — `FUN_0052a440` is the loading screen, and its frame is lost
+
+Reconstructed and running. **It is not the "per-game-state dispatcher"** this file used to call it;
+two call sites fix its role: `RunGameLoop` runs it whenever the game leaves a state for one other
+than 7, 9, 2 or 3, and `FUN_00516250` runs it when the area index changes, right before that area's
+resources load. It loads one resource entry into `MainMem + 0x1b0000`, decodes it, and shows it for
+150 frames — skippable with START or SQUARE, the skip taking effect on **release**, which is what
+stops a button held from the previous screen from eating the screen.
+
+Measured after the fix: confirming an entry in the menu now runs two further 60-frame blocks with
+`DrawPrimitive` almost flat — the loading screen's frames, drawn empty for the reason below — and
+execution then reaches game state 1 and stops at `thunk_FUN_00536180`. **That is the new blocking
+point.**
+
+**Ghidra did not recover this function's stack frame**, and it costs exactly two things. Both are
+marked TODO(REVERSE) in the code rather than guessed:
+
+- **the second `MoveImage`'s source rectangle.** The eight ushorts the function opens with are two
+  VRAM rectangles, `{0x380, 0, 0x80, 0xe0}` and `{0, 0x1ff, 0x100, 1}`. The first call's
+  destination is well supported — the two zeroes assigned immediately before it are its pushed
+  arguments — but the second is rendered with a source address four bytes below the first
+  rectangle, which cannot be right.
+- **the sprite descriptor's pointer field.** The original sets it to the address of a stack slot
+  that *nothing in the pseudocode ever writes*. It must be an array of 8-byte texture records,
+  since `DrawSpritePrimitive` indexes it as `*(int*)sprite + sprite[4] * 8`, and the menu's
+  equivalent comes from the resource directory. Left null, and the two draws are skipped while it
+  is: **the loading screen is currently blank**. A visible, harmless degradation; an invented
+  pointer would fault or draw garbage.
+
+A listing of `0x0052a440` closes both in minutes — the same move that settled `FUN_0052a1e0`,
+`FUN_0052a280`, `FUN_00544150`, `FUN_005322f0` and `FUN_00512930`. No disassembler is available in
+this environment, so it needs a Ghidra export like the ones already in `Legacy/Raw/Blaze/`.
+
+What the frame did *not* cost, worth recording so it is not re-litigated: the argument order of
+`FUN_00529b50(entry, destination)` and `FUN_005322f0(timData, slot, metadata)`. `FUN_00516250`
+calls the former with both arguments intact, and both ran against real data here without faulting.
+
 ## 2026-08-14 — DirectInput bring-up, and TODO #6 stops mattering
 
 `FUN_00523120` and its whole init chain are reconstructed: `FUN_00522dc0` (the constructor,
@@ -931,8 +968,8 @@ not mapped in this process.
 Verified at runtime by injecting real key events: the cursor moves exactly one entry per arrow
 press and back up, the difference between frames confined to the cursor column (`x=[24..52]`,
 the y-band stepping down and back), and the confirm key leaves the menu — landing on
-`FUN_0052a440`, the per-game-state dispatcher, as a descriptive exception. **That is the new
-blocking point, and it is ordinary uncovered code.**
+`FUN_0052a440` as a descriptive exception — since reconstructed, so the frontier has moved on to
+game state 1. **That was the then-new blocking point, and it was ordinary uncovered code.**
 
 Three things worth carrying forward from `FUN_00523660`:
 

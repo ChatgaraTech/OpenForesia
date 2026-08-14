@@ -219,6 +219,11 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#660")] private static extern int Ordinal_660(void* env);
     [DllImport("winsys3d.dll", EntryPoint = "#701")] private static extern void Ordinal_701(uint* ot);
 
+    // libgpu MoveImage(RECT* src, int dstX, int dstY) — copies a rectangle inside the emulated
+    // VRAM. Body confirmed at winsys3d.c:5348 (`/* 0x5df0  676 */`): it walks `src->h` rows of
+    // `src->w` texels from the arena and writes them at (dstX, dstY).
+    [DllImport("winsys3d.dll", EntryPoint = "#676")] private static extern void Ordinal_676(ushort* sourceRect, int destinationX, int destinationY);
+
     // real: winsys3d.c FUN_00a05e90 — libgpu `ClearImage(RECT*, r, g, b)`-shaped (takes a 4-short
     // RECT and floods VRAM), but its colour math decompiles as
     // `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match ClearImage's plain (r,g,b).
@@ -4985,11 +4990,155 @@ public static unsafe partial class Blaze
 
             if (s_GameStateId != 7 && s_GameStateId != 9 && s_GameStateId != 2 && s_GameStateId != 3)
             {
-                throw new NotImplementedException(
-                    "FUN_0052a440 (per-game-state dispatcher) not yet reconstructed — see REVERSE_STATUS.md");
+                RunLoadingScreen();     // Ghidra: FUN_0052a440
             }
         }
     }
+
+    /// <summary>
+    /// Ghidra: FUN_0052a440 @ 0x0052a440 — **the inter-state loading screen**, and not the
+    /// "per-game-state dispatcher" an earlier revision of this file called it. Two call sites fix
+    /// its role beyond doubt: <see cref="RunGameLoop"/> runs it whenever the game leaves a state
+    /// for one other than 7, 9, 2 or 3, and <c>FUN_00516250</c> runs it when the current area index
+    /// changes, immediately before that area's resources are loaded.
+    /// <para>
+    /// What it does: load one resource entry into the scratch at <c>MainMem + 0x1b0000</c>, decode
+    /// it, then show it for 150 frames. It is skippable — pressing START or SQUARE plays a UI sound
+    /// and the screen ends when that press is <em>released</em>, which is also why a button already
+    /// held on entry cannot skip it.
+    /// </para>
+    /// <para>
+    /// **Ghidra did not recover this function's stack frame.** Several calls are rendered with
+    /// their arguments as free-standing locals (<c>piStack_50</c>/<c>puStack_54</c> are argument
+    /// slots, not variables), and one slot the code reads is never written anywhere in the
+    /// pseudocode. Two consequences are marked TODO(REVERSE) below. The argument order of the two
+    /// resource calls is not among them: <c>FUN_00516250</c> calls the same
+    /// <c>FUN_00529b50(entry, destination)</c> with both arguments intact, which settles it.
+    /// </para>
+    /// </summary>
+    private static void RunLoadingScreen()
+    {
+        // Ghidra: FUN_0040a600() — an empty body in Blaze.c (`void FUN_0040a600(void) { return; }`).
+        // Called here and at the top of every game-loop iteration; nothing to reproduce.
+
+        byte* mainMem = GetMainMemPtr();
+        if (s_MainResourceBuffer_005e97c0 == null || mainMem == null) return;
+
+        // Ghidra: piVar2 = *(int **)(DAT_005e97c0 + 0x84) — a table of (entry, metadata) pairs.
+        int* pairs = *(int**)(s_MainResourceBuffer_005e97c0 + 0x84);
+        if (pairs == null) return;
+
+        // Ghidra: the walk to the end of the pair list. **Its result is never used** — transcribed
+        // rather than dropped, because a discarded traversal usually means Ghidra lost the use, not
+        // that the original wrote a dead loop.
+        int* walk = pairs;
+        while (*walk != 0) walk += 2;
+
+        // Ghidra: game state 3 picks its entry from DAT_005de528; every other state uses 0xb.
+        uint entryIndex = s_GameStateId == 3 ? (uint)(s_Unknown_005de528 & 0xff) : 0xb;
+
+        byte* scratch = mainMem + 0x1b0000;
+        LoadResourceEntry((int*)(nint)pairs[entryIndex * 2], scratch);
+        DecodeResourceChunk(scratch,
+                            (ushort*)(s_EntityDecodeTable_005e8f00 + 0xfc),   // Ghidra: &DAT_005e8ffc
+                            (byte*)(pairs + entryIndex * 2 + 1));
+
+        // Ghidra: two Ordinal_676 calls — winsys3d's MoveImage(RECT* src, int dstX, int dstY),
+        // confirmed at winsys3d.c:5348, which copies a VRAM rectangle to another VRAM position.
+        // The two rectangles are the eight ushorts the function opens with.
+        //
+        // TODO(REVERSE): the destinations are what the lost stack frame costs here. The first call
+        // is preceded by `piStack_50 = 0; puStack_54 = 0`, which are its two pushed arguments, so
+        // (0, 0) is well supported; the second is rendered as `Ordinal_676(&uStack_28, 0, 0)`,
+        // whose source address is four bytes below the first rectangle and cannot be right. Both
+        // are transcribed with the rectangles as read; a Ghidra listing of 0x0052a440 settles the
+        // second one in minutes, the way it settled FUN_0052a1e0 and FUN_0052a280.
+        ushort* rect = stackalloc ushort[8];
+        rect[0] = 0x380; rect[1] = 0; rect[2] = 0x80; rect[3] = 0xe0;
+        rect[4] = 0; rect[5] = 0x1ff; rect[6] = 0x100; rect[7] = 1;
+        Ordinal_676(rect, 0, 0);
+        Ordinal_676(rect + 4, 0, 0);
+
+        uint* otBase, otEntry, primCursor;
+        FrameBegin(&otBase, &otEntry, &primCursor);
+
+        // Ghidra: the 20-byte sprite descriptor, the same shape as the main menu's — pointer,
+        // colour, x/y, tpage/clut, index — and passed by address to both renderers.
+        byte* sprite = s_LoadingScreenSprite;
+        *(uint*)(sprite + 0x04) = 0x1000000;
+        *(ushort*)(sprite + 0x08) = 0xa0;
+        *(ushort*)(sprite + 0x0a) = 0x80;
+        *(ushort*)(sprite + 0x0c) = 0x1400;
+        *(ushort*)(sprite + 0x0e) = 0x1249;
+        *(uint*)(sprite + 0x10) = 0;
+
+        // TODO(REVERSE): the descriptor's pointer field. The original sets it to the address of a
+        // stack slot that **nothing in the pseudocode ever writes** — the second symptom of the
+        // lost frame. It has to be an array of 8-byte texture records, since DrawSpritePrimitive
+        // indexes it as `*(int*)sprite + sprite[4] * 8`; the menu's equivalent comes from the
+        // resource directory (`*(*(DAT_005e97c4 + 0x94) + 4)`). Left null rather than guessed, and
+        // the two draws are skipped while it is: a blank screen for the 150 frames is a visible,
+        // harmless degradation, whereas an invented pointer would fault or draw garbage.
+        bool spriteResolved = *(int*)sprite != 0;
+
+        // Ghidra: iVar5 is a three-state gate — -1 until nothing is held (so a button carried in
+        // from the previous screen cannot skip this one), 0 armed, 1 pressed and acknowledged.
+        int phase = -1;
+        int framesLeft = 0x96;
+
+        while (framesLeft != 0 || phase != 0)
+        {
+            if (spriteResolved)
+            {
+                primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+                primCursor = DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
+            }
+            FrameEnd(&otBase, &otEntry, &primCursor, 1, 1);
+
+            // Ghidra: START (0x0008) or SQUARE (0x8000) of the current player's pad word. The word
+            // at DAT_00604a20 is **active high** — UpdateButtonEdges inverts the active-low word
+            // FUN_00523660 builds — so a set bit is a held button.
+            bool held = (CurrentPadWord() & 0x8008) != 0;
+
+            if (!held && phase == -1) phase = 0;
+
+            if (!held)
+            {
+                if (phase == 1) return;
+            }
+            else if (phase == 0)
+            {
+                phase = 1;
+                PlayUiSound38();        // Ghidra: FUN_0053db80
+            }
+
+            framesLeft--;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: the pad-word expression shared by FUN_00512520, FUN_00545340 and FUN_0052a440 —
+    /// <c>*(ushort *)(&amp;DAT_00604a20 + DAT_005e9188[DAT_005e93c8[(DAT_005de538 &amp; 0xff) * 0x9c] * 0x4c] * 4)</c>.
+    /// Factored because it had already been transcribed twice and drifted once: one copy hardcoded
+    /// the outer index to 0 instead of reading DAT_005de538.
+    /// </summary>
+    private static ushort CurrentPadWord()
+    {
+        int slot = s_PlayerSlots_005e9188[
+            s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
+        return *(ushort*)(s_InputStateBase_00604a20 + slot * 4);
+    }
+
+    /// <summary>
+    /// Ghidra: the loading screen's sprite descriptor — 20 bytes, **one contiguous block**. Split
+    /// into two allocations it would draw nothing at all, which is exactly what happened to the
+    /// main menu's background; see REVERSE_STATUS.md, 2026-08-14.
+    /// </summary>
+    private static readonly byte* s_LoadingScreenSprite = (byte*)NativeMemory.AllocZeroed(0x20);
+
+    // Ghidra: DAT_005de528 — the area index game state 3 loads its screen from. Never assigned in
+    // the reconstructed graph yet, so it reads 0.
+    private static int s_Unknown_005de528;
 
     // =====================================================================
     // Game state 0 — the main menu (Ghidra: FUN_00542130 and its subtree).

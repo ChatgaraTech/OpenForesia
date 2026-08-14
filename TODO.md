@@ -73,8 +73,18 @@ FUN_00504a30  UpdateButtonEdges            [FAIT]
 ```
 
 **Le menu se navigue.** Vérifié en injectant de vraies frappes : le curseur descend d'un item par
-flèche et remonte, et la touche de validation quitte le menu. La reconstruction bute alors sur
-`FUN_0052a440`, le répartiteur d'états de jeu — **nouveau point de blocage, et du code ordinaire.**
+flèche et remonte, et la touche de validation quitte le menu.
+
+**`FUN_0052a440` est reconstruite** — ce n'est pas le « répartiteur d'états de jeu » que ce fichier
+annonçait, mais **l'écran de chargement inter-états** : il charge une entrée de ressource, la
+décode, et l'affiche 150 images, passable avec START ou CARRÉ (au relâchement). Il tourne ; le
+blocage est désormais **l'état de jeu 1** (`thunk_FUN_00536180`).
+
+Deux réserves, toutes deux dues à une frame que Ghidra n'a pas récupérée sur cette fonction :
+la source du second `MoveImage`, et le pointeur du descripteur de sprite — laissé nul, donc
+**l'écran de chargement est vide pour l'instant**. Un listing désassemblé de `0x0052a440` referme
+les deux ; il n'y a pas de désassembleur ici, il faut un export Ghidra comme ceux de
+`Legacy/Raw/Blaze/`.
 
 Trois choses à savoir avant de toucher à l'entrée :
 
