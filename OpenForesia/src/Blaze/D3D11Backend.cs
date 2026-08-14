@@ -875,6 +875,7 @@ internal static unsafe class D3D11Backend
     }
 
     private static readonly Dictionary<nint, GameTexture> s_GameTextures = [];
+    private static readonly HashSet<nint> s_MissingTextures = [];
 
     /// <summary>Nombre d'objets texture actuellement connus. Sert au bilan de fin d'image.</summary>
     internal static int GameTextureCount => s_GameTextures.Count;
@@ -906,7 +907,16 @@ internal static unsafe class D3D11Backend
     /// </summary>
     internal static ComPtr<ID3D11ShaderResourceView> TextureView(nint key)
     {
-        if (!Ready || !s_GameTextures.TryGetValue(key, out GameTexture? texture)) return default;
+        if (!Ready) return default;
+
+        if (!s_GameTextures.TryGetValue(key, out GameTexture? texture))
+        {
+            // ECHAFAUDAGE : une liaison qui ne trouve pas sa texture retombe sur le blanc, ce qui
+            // se voit mal à l'écran et se diagnostique mal. On le signale une fois par clé.
+            if (s_MissingTextures.Add(key))
+                Console.Error.WriteLine($"[D3D11] liaison sans texture enregistrée : 0x{key:X8}");
+            return default;
+        }
 
         if (!texture.ViewCreated)
         {

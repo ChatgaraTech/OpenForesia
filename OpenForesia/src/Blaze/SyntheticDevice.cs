@@ -515,7 +515,14 @@ public static unsafe partial class Blaze
     // format 16 bits, que le shader teste.
     // =====================================================================
 
-    private const int TextureVtableSlots = 8;
+    /// <summary>
+    /// Douze, et non huit. La vtable réelle de la classe texture, relue à <c>0x0FFE61F8</c> dans
+    /// <c>3dhelp.dll</c>, porte au moins onze entrées utiles — la table de ce fichier n'en listait
+    /// que huit, ce qui suffisait tant que seul le menu principal était en jeu. La page d'options
+    /// appelle le slot <b>8</b> (<c>+0x20</c>) une fois par texture et par image : c'est
+    /// <c>IsLost</c>, et lire au-delà de la vtable aurait sauté dans du vide.
+    /// </summary>
+    private const int TextureVtableSlots = 12;
     private static void** s_TextureVtable;
     private static byte* s_TextureStubs;
     private static int s_TextureCount;
@@ -529,7 +536,10 @@ public static unsafe partial class Blaze
                                                  MemCommitReserve, PageExecuteReadWrite);
             if (s_TextureStubs == null) return null;
 
-            byte[] cleanup = [4, 0, 8, 16, 0, 0, 4, 0];
+            // Arités relevées dans le binaire ; les slots 8 et au-delà viennent de la relecture du
+            // 2026-08-14 : [7] et [8] sont des accesseurs sans argument (`ret` sec), [9] est nul
+            // dans la vtable d'origine, [10] prend un octet.
+            byte[] cleanup = [4, 0, 8, 16, 0, 0, 4, 0, 0, 0, 4, 0];
             s_TextureVtable = (void**)NativeMemory.AllocZeroed((nuint)(TextureVtableSlots * sizeof(void*)));
             for (int i = 0; i < TextureVtableSlots; i++)
             {
@@ -543,6 +553,9 @@ public static unsafe partial class Blaze
             // venaient à servir.
             s_TextureVtable[3] = (delegate* unmanaged[Thiscall]<void*, uint, uint, void*, void*, int>)&Synth_TextureLoad;
             s_TextureVtable[0] = (delegate* unmanaged[Thiscall]<void*, uint, int>)&Synth_TextureDestroy;
+            s_TextureVtable[2] = (delegate* unmanaged[Thiscall]<void*, void*, void*, int>)&Synth_TextureLoadDib;
+            s_TextureVtable[6] = (delegate* unmanaged[Thiscall]<void*, void*, int>)&Synth_TextureColourKey;
+            s_TextureVtable[8] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_TextureIsLost;
         }
 
         void** texture = (void**)NativeMemory.AllocZeroed(32);
@@ -605,6 +618,160 @@ public static unsafe partial class Blaze
 
     private static int s_TextureLoads;
     private static int s_LastTransparentTexels;
+
+    /// <summary>
+    /// Slot texture <c>[2]</c> — le chargeur **depuis un DIB**, `vtable[2](BITMAPINFO*, pixels*)`.
+    ///
+    /// <para>
+    /// Ce document et ce fichier ont d'abord affirmé que ce slot n'était jamais appelé. C'était
+    /// vrai du menu principal, et faux en général : la page d'options l'emprunte pour ses quatre
+    /// atlas de libellés (`FUN_0050fab0`, `Blaze.c`), qu'elle rastérise elle-même en 256x256 8 bits
+    /// à partir de `FONT.PIC` et des fichiers texte du CD, puis charge par ici.
+    /// </para>
+    /// <para>
+    /// Le DIB est un `BITMAPINFO` ordinaire : en-tête de 40 octets, `biHeight` positif donc lignes
+    /// **de bas en haut**, pas de ligne aligné sur 4 octets, palette `RGBQUAD` en ligne pour 4 et
+    /// 8 bits. La transparence n'arrive qu'ensuite, par le slot <c>[6]</c> — d'où la conservation
+    /// des index et de la palette jusque-là.
+    /// </para>
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_TextureLoadDib(void* self, void* bitmapInfo, void* pixels)
+    {
+        int hr = -1;
+        Guarded("chargement de texture DIB", () =>
+        {
+            if (self == null || bitmapInfo == null || pixels == null)
+                throw new InvalidOperationException("argument nul");
+
+            var header = (uint*)bitmapInfo;
+            int width = (int)header[1];
+            int height = (int)header[2];
+            uint bitCount = header[3] >> 16;          // biPlanes en bas, biBitCount en haut
+            bool bottomUp = height > 0;
+            if (!bottomUp) height = -height;
+
+            if (width <= 0 || height <= 0 || width > 4096 || height > 4096)
+                throw new InvalidOperationException($"dimensions inattendues {width}x{height}");
+            if (bitCount != 4 && bitCount != 8)
+                throw new NotImplementedException(
+                    $"DIB en {bitCount} bits par pixel — seuls 4 et 8 bits sont produits par " +
+                    "FUN_0050fab0, le seul appelant connu de ce slot");
+
+            var palette = (uint*)((byte*)bitmapInfo + 0x28);
+            var source = new DibSource
+            {
+                Width = width,
+                Height = height,
+                BitCount = (int)bitCount,
+                BottomUp = bottomUp,
+                Indices = CopyDibIndices((byte*)pixels, width, height, (int)bitCount),
+                Palette = CopyPalette(palette),
+            };
+
+            s_DibSources[(nint)self] = source;
+            D3D11Backend.RegisterTexture((nint)self, width, height, ExpandDib(source, -1, -1));
+            hr = 0;
+
+            if (s_DibLoads++ < 4)
+                Console.Error.WriteLine(
+                    $"[SYNTH] texture DIB chargée 0x{(nint)self:X8} {width}x{height} " +
+                    $"{bitCount} bits, {(bottomUp ? "bas-haut" : "haut-bas")}");
+        });
+        return hr;
+    }
+
+    /// <summary>
+    /// Slot texture <c>[6]</c> — la couleur-clé, un `DDCOLORKEY { low, high }` d'index de palette.
+    /// Elle arrive **après** le chargement, donc la texture est reconstruite avec ces index rendus
+    /// transparents plutôt que retouchée.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_TextureColourKey(void* self, void* colourKey)
+    {
+        Guarded("couleur-clé de texture", () =>
+        {
+            if (self == null || colourKey == null) return;
+            if (!s_DibSources.TryGetValue((nint)self, out DibSource? source)) return;
+
+            int low = (int)((uint*)colourKey)[0];
+            int high = (int)((uint*)colourKey)[1];
+            D3D11Backend.RegisterTexture((nint)self, source.Width, source.Height,
+                                         ExpandDib(source, low, high));
+        });
+        return 0;
+    }
+
+    /// <summary>
+    /// Slot texture <c>[8]</c> — dans <c>3dhelp</c>, `mov eax,[ecx+8]` puis un appel au slot
+    /// <c>+0x60</c> de la surface DirectDraw : <c>IDirectDrawSurface::IsLost</c>. Son appelant
+    /// (`FUN_0050fe90`) recrée la texture dès que le retour est non nul.
+    /// <para>
+    /// Une texture Direct3D 11 ne se perd pas comme une surface DirectDraw : on rend toujours
+    /// « pas perdue ». C'est la même nature de déviation que le reste du device synthétique — la
+    /// perte de surface est un mécanisme DirectDraw, pas un comportement du jeu.
+    /// </para>
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_TextureIsLost(void* self) => 0;
+
+    private sealed class DibSource
+    {
+        internal int Width, Height, BitCount;
+        internal bool BottomUp;
+        internal byte[] Indices = [];
+        internal uint[] Palette = [];
+    }
+
+    private static readonly Dictionary<nint, DibSource> s_DibSources = [];
+    private static int s_DibLoads;
+
+    private static byte[] CopyDibIndices(byte* pixels, int width, int height, int bitCount)
+    {
+        int stride = ((width * bitCount + 31) / 32) * 4;
+        byte[] copy = new byte[stride * height];
+        fixed (byte* destination = copy)
+            System.Buffer.MemoryCopy(pixels, destination, copy.Length, copy.Length);
+        return copy;
+    }
+
+    private static uint[] CopyPalette(uint* palette)
+    {
+        uint[] copy = new uint[256];
+        for (int i = 0; i < 256; i++) copy[i] = palette[i];
+        return copy;
+    }
+
+    /// <summary>
+    /// Développe les index en BGRA, en retournant les lignes si le DIB est de bas en haut et en
+    /// rendant transparents les index compris dans la couleur-clé (bornes incluses, -1 = aucune).
+    /// </summary>
+    private static uint[] ExpandDib(DibSource source, int keyLow, int keyHigh)
+    {
+        int stride = ((source.Width * source.BitCount + 31) / 32) * 4;
+        uint[] bgra = new uint[source.Width * source.Height];
+
+        for (int y = 0; y < source.Height; y++)
+        {
+            int sourceRow = source.BottomUp ? source.Height - 1 - y : y;
+            int rowStart = sourceRow * stride;
+
+            for (int x = 0; x < source.Width; x++)
+            {
+                int index = source.BitCount == 8
+                    ? source.Indices[rowStart + x]
+                    : (x & 1) == 0
+                        ? source.Indices[rowStart + (x >> 1)] >> 4
+                        : source.Indices[rowStart + (x >> 1)] & 0x0f;
+
+                uint colour = source.Palette[index] & 0x00ffffff;
+                bool transparent = keyLow >= 0 && index >= keyLow && index <= keyHigh;
+                bgra[y * source.Width + x] = transparent ? 0u : colour | 0xff000000u;
+            }
+        }
+
+        return bgra;
+    }
 
     /// <summary>
     /// Développe des texels 16 bits en BGRA 32 bits d'après les masques du format.

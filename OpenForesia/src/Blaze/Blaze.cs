@@ -5158,13 +5158,38 @@ public static unsafe partial class Blaze
     private static uint s_Unknown_005e9814;
     private static int s_Unknown_005de154, s_Unknown_005de158, s_Unknown_005de15c;
     private static int s_Unknown_005de51c;
-    private static int s_MenuSelection_005e909f;     // Ghidra: DAT_005e909f — the selected entry
+    /// <summary>
+    /// The menu's selected entry — <c>menuContext[0x8c4]</c>, i.e. address 0x0056e61c.
+    /// <para>
+    /// **Ghidra names `DAT_005e909f` as the switch selector here, and that is wrong.** Two facts
+    /// rule it out: that global is written in exactly two places in all of `Blaze.c`, both `= 0`
+    /// and both in unrelated entity/sound code, so the switch could only ever pick case 0; and a
+    /// per-frame diff of the descriptor (`OPENFORESIA_TRACE_MENU=1`) shows **offset 0x8c4** stepping
+    /// 0 → 1 → 2 in exact time with the arrow presses that move the cursor on screen.
+    /// </para>
+    /// <para>
+    /// 0x0056e61c is three bytes before `DAT_0056e61f`, the flags byte the same `if` reads and
+    /// which was itself found to be `menuContext[0x8c7]` — one dword, two fields. Ghidra never
+    /// named 0x0056e61c at all, because nothing reaches it as an absolute address; it is only ever
+    /// `descriptor + 0x8c4`. Same shape of defect as the four before it, and the sixth overall.
+    /// </para>
+    /// </summary>
+    private static int s_MenuSelection_0056e61c => s_MenuContext_0056dd58[0x8c4];
     // Ghidra names DAT_0056e61f as its own symbol, but it is **inside** the menu context:
     // 0x0056e61f - 0x0056dd58 = 0x8c7, the descriptor's flags byte. Modelling it separately made
     // the confirm gate always open, so the menu selected an entry on its very first frame. Bit 2
     // is the one Handler_00544b10 raises when the text stream ends.
     private static byte s_Unknown_0056e61f => s_MenuContext_0056dd58[0x8c7];
-    private static int s_Unknown_005d9de0;
+    /// <summary>
+    /// Ghidra: DAT_005d9de0 — **le même global que <see cref="s_GammaIni"/>**, la clé « Gamma » de
+    /// l'ini, et non un second. Le commentaire de LoadOptionsIni le disait déjà ; il avait quand
+    /// même été redéclaré ici, et n'étant jamais écrit il valait zéro. Conséquence visible : la
+    /// page d'options passait ses palettes dans <c>Gamma(valeur, 0.0)</c>, ce qui les rendait
+    /// noires — fond et cadre invisibles, libellés intacts parce qu'eux n'y passent pas.
+    /// Septième occurrence d'un global reconstruit sous deux noms.
+    /// </summary>
+    private static int s_Unknown_005d9de0 => (int)s_GammaIni;
+
     private static int s_Unknown_00564a48, s_Unknown_00571a3c;
 
     /// <summary>
@@ -5439,6 +5464,10 @@ public static unsafe partial class Blaze
             s_Unknown_005de154 = (0xb - s_SizeSetting_005de160) * 0x10;
             s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0x0c;
 
+            // ECHAFAUDAGE TEMPORAIRE (OPENFORESIA_TRACE_MENU=1) : pourquoi la validation ouvre
+            // l'entrée 0 mais pas l'entrée 3. On relève ce que la boucle voit réellement.
+            if (s_TraceMenu) TraceMenuDescriptorChanges();
+
             if ((s_FadeCounter_005e9960 & 0xf) != 8 && level > 0x7f)
             {
                 s_FadeCounter_005e9960--;
@@ -5451,7 +5480,7 @@ public static unsafe partial class Blaze
 
                 if ((s_Unknown_0056e61f & 4) == 0)
                 {
-                    switch (s_MenuSelection_005e909f)
+                    switch (s_MenuSelection_0056e61c)
                     {
                         case 0: s_GameStateId = 1; break;
                         case 1: s_GameStateId = 4; break;
@@ -5537,6 +5566,41 @@ public static unsafe partial class Blaze
     /// kept the background from being drawn.
     /// </summary>
     private static readonly byte* s_MenuBackgroundSprite = (byte*)NativeMemory.AllocZeroed(0x20);
+
+    private static readonly bool s_TraceMenu =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_MENU") == "1";
+
+    /// <summary>
+    /// ECHAFAUDAGE TEMPORAIRE (<c>OPENFORESIA_TRACE_MENU=1</c>). Reports which bytes of the menu
+    /// descriptor change from one frame to the next, alongside the pad word that caused it. The
+    /// cursor visibly moves, so whatever holds its position must show up here — the same method
+    /// that identified <c>menuContext[0x8c7]</c>.
+    /// </summary>
+    private static void TraceMenuDescriptorChanges()
+    {
+        const int extent = 0x918;
+        byte* context = s_MenuContext_0056dd58;
+        s_MenuTraceSnapshot ??= new byte[extent];
+
+        ushort pad = CurrentPadWord();
+        var changes = new System.Text.StringBuilder();
+        int changed = 0;
+
+        for (int i = 0; i < extent; i++)
+        {
+            if (context[i] == s_MenuTraceSnapshot[i]) continue;
+            if (++changed <= 12)
+                changes.Append($" +0x{i:X3}:{s_MenuTraceSnapshot[i]:X2}->{context[i]:X2}");
+            s_MenuTraceSnapshot[i] = context[i];
+        }
+
+        if (changed != 0 || pad != 0)
+            Console.Error.WriteLine(
+                $"[MENU] pad=0x{pad:X4} fade={s_FadeCounter_005e9960} " +
+                $"drapeaux=0x{s_Unknown_0056e61f:X2} changés={changed}{changes}");
+    }
+
+    private static byte[]? s_MenuTraceSnapshot;
 
     /// <summary>
     /// Ghidra: the entity-slot initialisation loop at the top of FUN_00542250 — four 0x4c-byte
@@ -6987,6 +7051,969 @@ public static unsafe partial class Blaze
         return prim;
     }
 
+    // =====================================================================
+    // The options page's drawing layer (Ghidra: the FUN_00510xxx family)
+    //
+    // A second, self-contained UI layer, unrelated to the display-list renderer the main menu
+    // uses. It talks to the 3D device **directly**: every widget ends up in FUN_00510500 or
+    // FUN_00510330, which build four `D3DTLVERTEX` on the stack and submit them as one
+    // `DrawPrimitive(D3DPT_TRIANGLEFAN, D3DVT_TLVERTEX, …, 4, 0)`. The device is the one
+    // `Ordinal_750` returns — `DAT_011be760`, the same object DeviceShim faces — so this whole
+    // layer renders through the Direct3D 11 backend without any further plumbing.
+    //
+    // **On the vertex order, which Ghidra does not give directly.** In both builders the address
+    // passed to `DrawPrimitive` disagrees with the one passed to the scaling helper by 16 bytes,
+    // so the slot naming cannot be trusted on its own. Grouping the assignments by the 32-byte
+    // `TLVERTEX` stride resolves it without guesswork, and the two agree: the array starts at the
+    // address the scaling helper receives, and its four vertices are
+    // `(x1,y1) (x2,y1) (x2,y2) (x1,y2)` — the standard quad fan, with `z` and `rhw` both 0.9f.
+    // =====================================================================
+
+    /// <summary>Ghidra: DAT_00578e28 — the device, fetched once per use through Ordinal_750.</summary>
+    private static void** UiDeviceVtable => *(void***)Ordinal_750();
+
+    private const int Device_BindTexture = 0x64 / 4;
+    private const int Device_AlphaBlendEnable = 0x98 / 4;
+    private const int Device_StippleState = 0x9c / 4;
+    private const int Device_SrcBlend = 0xa0 / 4;
+    private const int Device_DestBlend = 0xa4 / 4;
+    private const int Device_DrawPrimitive = 0xbc / 4;
+    private const int Device_GetDeviceDesc = 0x4c / 4;
+
+    private static void UiSetState(int slot, uint value)
+    {
+        var method = (delegate* unmanaged[Thiscall]<void*, uint, void>)UiDeviceVtable[slot];
+        method(Ordinal_750(), value);
+    }
+
+    private static void UiDrawFan(TlVertex* vertices)
+    {
+        var draw = (delegate* unmanaged[Thiscall]<void*, uint, uint, void*, uint, uint, void>)
+            UiDeviceVtable[Device_DrawPrimitive];
+        draw(Ordinal_750(), 6, 3, vertices, 4, 0);   // D3DPT_TRIANGLEFAN, D3DVT_TLVERTEX
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00510110 @ 0x00510110 — maps the layer's own 320x240-ish coordinates onto the
+    /// current resolution, in place, for <paramref name="count"/> vertices.
+    /// <para>
+    /// The two offset tables were read out of <c>Legacy/Blaze.exe</c>: X at 0x00566c98 is
+    /// <c>{-160, -64, 0, 80, 192}</c> and Y at 0x00566cb0 is <c>{-120, -48, 0, 60, 144}</c>,
+    /// indexed by the ini's Resolution. Entry 4 is `(192, 144)` — exactly the "base" the
+    /// `[SHIFT]` runtime trace reports, which is what confirms the tables are the right ones.
+    /// </para>
+    /// </summary>
+    private static void UiScaleVertices(TlVertex* vertices, int count)
+    {
+        int scale, offsetX, offsetY;
+        if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+        {
+            scale = 2; offsetX = 0; offsetY = 0;
+        }
+        else
+        {
+            scale = 1; offsetX = 0xa0; offsetY = 0x78;
+        }
+
+        uint resolution = s_ResolutionIndex < (uint)s_UiOffsetX_00566c98.Length ? s_ResolutionIndex : 0;
+
+        for (int i = 0; i < count; i++)
+        {
+            vertices[i].X = vertices[i].X * scale + s_UiOffsetX_00566c98[resolution] + offsetX;
+            vertices[i].Y = vertices[i].Y * scale + s_UiOffsetY_00566cb0[resolution] + offsetY;
+        }
+    }
+
+    // Ghidra: the tables at 0x00566c98 and 0x00566cb0, read verbatim from Legacy/Blaze.exe.
+    private static readonly int[] s_UiOffsetX_00566c98 = [-160, -64, 0, 80, 192];
+    private static readonly int[] s_UiOffsetY_00566cb0 = [-120, -48, 0, 60, 144];
+
+    // Ghidra: _DAT_0054d020 = -0.1f and _DAT_0054d024 = 1/256f — the half-texel bias and the
+    // reciprocal of the atlas width, read from the binary's .rdata.
+    private const float UiTexelBias = -0.1f;
+    private const float UiTexelScale = 1.0f / 256.0f;
+
+    /// <summary>Ghidra: the 0.9f both `z` and `rhw` carry on every vertex this layer builds.</summary>
+    private const float UiDepth = 0.9f;
+
+    /// <summary>
+    /// Ghidra: FUN_00510330 @ 0x00510330 — a flat filled rectangle, drawn untextured (it binds
+    /// texture 0) and alpha-blended.
+    /// </summary>
+    private static void UiFillRect(int x, int y, int width, int height, uint colour)
+    {
+        void* deviceDesc = ((delegate* unmanaged[Thiscall]<void*, void*>)
+            UiDeviceVtable[Device_GetDeviceDesc])(Ordinal_750());
+
+        TlVertex* quad = stackalloc TlVertex[4];
+        UiQuad(quad, x, y, width, height, colour);
+        UiScaleVertices(quad, 4);
+
+        UiSetState(Device_BindTexture, 0);
+
+        // Ghidra: the capability word at deviceDesc + 0x80 chooses between two blend setups —
+        // bit 0x1000 leaves the state alone, bit 0x2000 raises the 0x9c pair instead.
+        uint caps = deviceDesc != null ? *(uint*)((byte*)deviceDesc + 0x80) : 0;
+        if ((caps & 0x1000) == 0)
+        {
+            if ((caps & 0x2000) != 0) UiSetState(Device_StippleState, 1);
+        }
+        else
+        {
+            UiSetState(Device_AlphaBlendEnable, 1);
+        }
+
+        UiSetState(Device_SrcBlend, 5);     // D3DBLEND_SRCALPHA
+        UiSetState(Device_DestBlend, 6);    // D3DBLEND_INVSRCALPHA
+        UiDrawFan(quad);
+        UiSetState(Device_StippleState, 0);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00510500 @ 0x00510500 — one textured quad out of an atlas: the destination
+    /// rectangle, the source position and size in texels, the texture object and a modulating
+    /// colour. Opaque: it forces alpha off and ONE/ZERO blending.
+    /// </summary>
+    private static void UiBlit(int x, int y, int width, int height,
+                               int sourceX, int sourceY, void* texture,
+                               int sourceWidth, int sourceHeight, uint colour)
+    {
+        TlVertex* quad = stackalloc TlVertex[4];
+        UiQuad(quad, x, y, width, height, colour | 0xff000000);
+
+        float u1 = (sourceX - UiTexelBias) * UiTexelScale;
+        float v1 = (sourceY - UiTexelBias) * UiTexelScale;
+        float u2 = (sourceWidth - UiTexelBias + sourceX) * UiTexelScale;
+        float v2 = (sourceHeight - UiTexelBias + sourceY) * UiTexelScale;
+
+        quad[0].U = u1; quad[0].V = v1;
+        quad[1].U = u2; quad[1].V = v1;
+        quad[2].U = u2; quad[2].V = v2;
+        quad[3].U = u1; quad[3].V = v2;
+
+        UiScaleVertices(quad, 4);
+
+        var bind = (delegate* unmanaged[Thiscall]<void*, void*, void>)UiDeviceVtable[Device_BindTexture];
+        bind(Ordinal_750(), texture);
+
+        UiSetState(Device_AlphaBlendEnable, 0);
+        UiSetState(Device_SrcBlend, 2);     // D3DBLEND_ONE
+        UiSetState(Device_DestBlend, 1);    // D3DBLEND_ZERO
+        UiDrawFan(quad);
+    }
+
+    /// <summary>Fills the four vertices both builders share, less their texture coordinates.</summary>
+    private static void UiQuad(TlVertex* quad, int x, int y, int width, int height, uint colour)
+    {
+        float x1 = x, y1 = y, x2 = x + width, y2 = y + height;
+        quad[0] = new TlVertex { X = x1, Y = y1, Z = UiDepth, Rhw = UiDepth, Diffuse = colour };
+        quad[1] = new TlVertex { X = x2, Y = y1, Z = UiDepth, Rhw = UiDepth, Diffuse = colour };
+        quad[2] = new TlVertex { X = x2, Y = y2, Z = UiDepth, Rhw = UiDepth, Diffuse = colour };
+        quad[3] = new TlVertex { X = x1, Y = y2, Z = UiDepth, Rhw = UiDepth, Diffuse = colour };
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005108f0 @ 0x005108f0 — draws one pre-rendered label strip. The label index
+    /// selects both its width (from the runtime-built table at DAT_00589758) and which of four
+    /// atlases holds it: 0..0x11 in the first, 0x12..0x23 in the second, 0x24..0x35 in the third,
+    /// and negative indices in the fourth, counted backwards. Rows are 14 texels tall.
+    /// <paramref name="centred"/> is the original's `param_4 == 1`, which shifts left by half the
+    /// label's width.
+    /// </summary>
+    private static void UiDrawLabel(int x, int y, int label, int centred, uint colour)
+    {
+        // La table est indexée des deux côtés : les libellés d'ACTION.TXT ont des identifiants
+        // négatifs et leurs largeurs sont écrites en descendant sous la base. Un garde qui ramenait
+        // ces index à 0 donnait à toutes les actions la largeur du libellé 0, ce qui les tronquait
+        // toutes à la même longueur.
+        int width = s_UiLabelWidths_00589758[label];
+        if (centred == 1) x -= width >> 1;
+
+        if (label < 0)
+        {
+            UiBlit(x, y, width, 0xe, 0, (-1 - label) * 0xe, s_UiAtlasNegative_00589708,
+                   width, 0xe, colour);
+            return;
+        }
+
+        void* atlas = s_UiAtlas0_00589c6c;
+        if (label > 0x11)
+        {
+            if (label < 0x24) { label -= 0x12; atlas = s_UiAtlas1_00589830; }
+            else if (label > 0x35) return;
+            else { label -= 0x24; atlas = s_UiAtlas2_00589834; }
+        }
+
+        UiBlit(x, y, width, 0xe, 0, label * 0xe, atlas, width, 0xe, colour);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00510740 @ 0x00510740 — the page's window frame: a translucent fill, then the
+    /// eight pieces of a nine-patch border taken from the 16x16 cells of the frame atlas.
+    /// </summary>
+    private static void UiDrawFrame(int x, int y, int width, int height)
+    {
+        void* atlas = s_UiFrameAtlas_00599ddc;
+        UiFillRect(x + 8, y + 8, width - 0x10, height - 0x10, 0x7f080437);
+
+        int right = x + width - 0x10;
+        int bottom = y + height - 0x10;
+
+        UiBlit(x, y, 0x10, 0x10, 0x40, 0, atlas, 0x10, 0x10, 0xffffff);
+        UiBlit(x + 0x10, y, width - 0x1f, 0x10, 0, 0, atlas, 0xf, 0x10, 0xffffff);
+        UiBlit(right, y, 0x10, 0x10, 0x50, 0, atlas, 0x10, 0x10, 0xffffff);
+        UiBlit(x, y + 0x10, 0x10, height - 0x1f, 0x20, 0, atlas, 0x10, 0xf, 0xffffff);
+        UiBlit(right, y + 0x10, 0x10, height - 0x1f, 0x30, 0, atlas, 0x10, 0xf, 0xffffff);
+        UiBlit(x, bottom, 0x10, 0x10, 0x60, 0, atlas, 0x10, 0x10, 0xffffff);
+        UiBlit(x + 0x10, bottom, width - 0x1f, 0x10, 0x10, 0, atlas, 0xf, 0x10, 0xffffff);
+        UiBlit(right, bottom, 0x10, 0x10, 0x70, 0, atlas, 0x10, 0x10, 0xffffff);
+    }
+
+    /// <summary>Ghidra: FUN_00510a70 @ 0x00510a70 — the selection cursor, one 15x16 cell.</summary>
+    private static void UiDrawCursor(int x, int y)
+        => UiBlit(x, y, 0xf, 0x10, 0xf0, 0, s_UiFrameAtlas_00599ddc, 0xf, 0x10, 0xffffff);
+
+    // winsys3d, exports nommés. `ShiftVertices` (ordinal 824, winsys3d.c:4913) applique
+    // `x = décalage + (Size + 9) * 32 / 320 * x` — le facteur documenté dans la section
+    // « Coordinate scaling ». Le fond de page passe par lui ; les widgets, eux, par la mise à
+    // l'échelle que le jeu fait lui-même (FUN_00510110). Les deux coexistent, c'est voulu.
+    [DllImport("winsys3d.dll", ExactSpelling = true)]
+    private static extern void ShiftVertices(TlVertex* vertices, int count);
+
+    [DllImport("winsys3d.dll", ExactSpelling = true)]
+    private static extern void SetTextureFilterMode(int mode);
+
+    [DllImport("winsys3d.dll", ExactSpelling = true)]
+    private static extern int SetTimingMode(int mode);
+
+    // winsys3d ordinal 749 (winsys3d.c:6010) : demande au device le mode d'affichage d'index
+    // `resolution` par son slot `+0xE8`, et ne retient le changement que si le device l'accepte.
+    [DllImport("winsys3d.dll", ExactSpelling = true)]
+    private static extern int ChangeResolution(int resolution);
+
+    /// <summary>
+    /// Ghidra: FUN_0050fe90 @ 0x0050fe90 — début d'image : chacune des huit textures de la page est
+    /// interrogée par son slot <c>[8]</c> (<c>IDirectDrawSurface::IsLost</c> chez 3dhelp) et
+    /// recréée depuis sa source si elle a été perdue.
+    /// <para>
+    /// Sur notre chemin le slot rend toujours « pas perdue » — une texture Direct3D 11 ne se perd
+    /// pas comme une surface DirectDraw — donc cette passe ne fait rien. Elle est transcrite
+    /// entière malgré tout : c'est elle qui prouve que le slot 8 existe, et le jour où une perte de
+    /// device sera gérée, la reconstruction est déjà en place.
+    /// </para>
+    /// </summary>
+    private static void RestoreLostUiTextures()
+    {
+        byte* background = s_UiBackgroundFile_00579264;
+        byte* frame = s_UiFrameFile_00589838;
+
+        RestoreIfLost(ref s_UiBackgroundTexture_0057926c, s_UiBackgroundInfo_00578e30,
+                      background != null ? background + *(int*)(background + 10) : null, null);
+        RestoreIfLost(ref s_UiFrameAtlas_00599ddc, s_UiFrameInfo_00589840,
+                      frame != null ? frame + *(int*)(frame + 10) : null, s_UiFrameColourKey_005d9df8);
+
+        RestoreIfLost(ref s_UiAtlas0_00589c6c, s_UiTargetInfo_00579278, s_UiAtlas0Bits_00589c80, s_UiRestoreColourKey_005d9df8);
+        RestoreIfLost(ref s_UiAtlas1_00589830, s_UiTargetInfo_00579278, s_UiAtlas1Bits_005b9de0, s_UiRestoreColourKey_005d9df8);
+        RestoreIfLost(ref s_UiAtlas2_00589834, s_UiTargetInfo_00579278, s_UiAtlas2Bits_005c9de0, s_UiRestoreColourKey_005d9df8);
+        RestoreIfLost(ref s_UiAtlasNegative_00589708, s_UiTargetInfo_00579278, s_UiAtlasNegativeBits_00579708, s_UiRestoreColourKey_005d9df8);
+        RestoreIfLost(ref s_UiAtlasKeyboard_00589c78, s_UiTargetInfo_00579278, s_UiKeyboardBits_005a9de0, s_UiRestoreColourKey_005d9df8);
+        RestoreIfLost(ref s_UiAtlasJoystick_00599dd8, s_UiTargetInfo_00579278, s_UiAtlasJoystickBits_00599de0, s_UiRestoreColourKey_005d9df8);
+    }
+
+    private static void RestoreIfLost(ref void* texture, byte* bitmapInfo, void* bits, uint* colourKey)
+    {
+        if (texture == null || bits == null) return;
+
+        void** vtable = *(void***)texture;
+        int lost = ((delegate* unmanaged[Thiscall]<void*, int>)vtable[8])(texture);
+        if (lost == 0) return;
+
+        ((delegate* unmanaged[Thiscall]<void*, uint, int>)vtable[0])(texture, 1);
+        texture = UiCreateTexture(bitmapInfo, bits, colourKey);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005101c0 @ 0x005101c0 — le fond de page : un seul quad `(0,0)-(320,241)` en
+    /// coordonnées du jeu, texturé par BACKGRND.PIC, opaque, filtrage activé le temps du dessin.
+    /// Les coordonnées de texture sont les constantes du binaire, `0.5/256` et `255/256` en X,
+    /// `224.5/256` en Y.
+    /// </summary>
+    private static void DrawUiBackground()
+    {
+        TlVertex* quad = stackalloc TlVertex[4];
+        const float u1 = 0.001953125f, u2 = 0.99609375f;   // 0x3B000000, 0x3F7F8000
+        const float v2 = 0.876953125f;                     // 0x3F608000
+
+        quad[0] = UiBackgroundVertex(0f, 0f, u1, u1);
+        quad[1] = UiBackgroundVertex(320f, 0f, u2, u1);
+        quad[2] = UiBackgroundVertex(320f, 241f, u2, v2);
+        quad[3] = UiBackgroundVertex(0f, 241f, u1, v2);
+
+        // Ghidra perd l'argument du premier appel ; le second est SetTextureFilterMode(0), et le
+        // filtrage n'aurait pas de sens laissé actif après un fond plein écran.
+        SetTextureFilterMode(1);
+        ShiftVertices(quad, 4);
+
+        var bind = (delegate* unmanaged[Thiscall]<void*, void*, void>)UiDeviceVtable[Device_BindTexture];
+        bind(Ordinal_750(), s_UiBackgroundTexture_0057926c);
+
+        UiSetState(Device_AlphaBlendEnable, 0);
+        UiSetState(Device_SrcBlend, 2);     // D3DBLEND_ONE
+        UiSetState(Device_DestBlend, 1);    // D3DBLEND_ZERO
+        UiDrawFan(quad);
+        SetTextureFilterMode(0);
+    }
+
+    private static TlVertex UiBackgroundVertex(float x, float y, float u, float v)
+        => new() { X = x, Y = y, Z = UiDepth, Rhw = UiDepth, Diffuse = 0xffffffff, Specular = 0, U = u, V = v };
+
+    /// <summary>
+    /// Ghidra: FUN_00510aa0 @ 0x00510aa0 — la sélection. Fait avancer <paramref name="selection"/>
+    /// entre <paramref name="min"/> et <paramref name="max"/>, et rend un masque de ce qui a été
+    /// demandé : 1 valider, 2 gauche, 4 droite, 8 page précédente, 0x10 page suivante, et
+    /// <c>0xffffffff</c> pour annuler.
+    /// <para>
+    /// Deux sources d'entrée, lues séparément. Le clavier est pris **directement dans le tampon
+    /// DirectInput** (`DAT_00604b50`), par scancode : 0xC8 haut, 0xD0 bas, 0xCB gauche, 0xCD
+    /// droite, 0x1C entrée, 0x01 échap, 0xC9 et 0xD1 page précédente/suivante. La manette passe par
+    /// le bloc d'état que <c>PollInputAndAudio</c> désigne (`DAT_00579270`). La répétition tient en
+    /// deux compteurs : 12 images avant la première répétition, 2 ensuite.
+    /// </para>
+    /// </summary>
+    private static uint UiSelect(int* selection, int min, int max)
+    {
+        uint result = 0;
+        uint held = 0;
+
+        PollJoystickState();            // Ghidra: FUN_005048f0
+        UpdateButtonEdges();            // Ghidra: FUN_00504a30
+        AssignControllersToSlots();     // Ghidra: FUN_005357a0
+
+        byte* keys = s_KeyboardState_00604b50;
+        if (keys == null) return 0;
+
+        // Ghidra: haut et bas partagent le même compteur de répétition, et s'excluent — le bas
+        // n'est même pas consulté tant que le haut est enfoncé.
+        if (keys[0xc8] != 0)
+        {
+            held = UiRepeat();
+            if ((held & 2) != 0 && *selection > min) { (*selection)--; PlayUiSound3A(); }
+        }
+        else if (keys[0xd0] != 0)
+        {
+            held = UiRepeat();
+            if ((held & 2) != 0 && *selection < max) { (*selection)++; PlayUiSound3A(); }
+        }
+
+        if (keys[0xcb] != 0)
+        {
+            held = UiRepeat();
+            if ((held & 2) != 0) { result = 2; PlayUiSound3A(); }
+        }
+
+        if (keys[0xcd] != 0)
+        {
+            held = UiRepeat();
+            if ((held & 2) != 0) { result |= 4; PlayUiSound3A(); }
+        }
+
+        if (held == 0) { s_UiRepeatCounter_005d9e08 = 0; s_UiRepeatActive_005d9e00 = 0; }
+
+        // Les quatre touches à front : entrée, échap, page précédente, page suivante. L'état
+        // précédent tient dans les quatre bits de DAT_005d9e04.
+        uint edges = s_UiKeyEdges_005d9e04;
+        edges = UiEdge(keys[0x1c] != 0, edges, 1, ref result, 1);
+        if (keys[0x01] != 0 && (edges & 2) == 0) result = 0xffffffff;
+        edges = keys[0x01] != 0 ? edges | 2 : edges & ~2u;
+        edges = UiEdge(keys[0xc9] != 0, edges, 4, ref result, 8);
+        edges = UiEdge(keys[0xd1] != 0, edges, 8, ref result, 0x10);
+        s_UiKeyEdges_005d9e04 = edges;
+
+        if (held != 0 || edges != 0) return result;
+
+        // La manette, seulement si le clavier ne dit rien.
+        byte* pad = s_Unknown_00579270;
+        if (pad == null) return result;
+
+        ushort directions = *(ushort*)(pad + 6);
+        if ((directions & 0x10) != 0 && *selection > min) { (*selection)--; PlayUiSound3A(); }
+        else if ((directions & 0x40) != 0 && *selection < max) { (*selection)++; PlayUiSound3A(); }
+
+        if ((directions & 0x80) != 0) result |= 2;
+        if ((directions & 0x20) != 0) result |= 4;
+
+        ushort buttons = *(ushort*)(pad + 2);
+        if ((buttons & 0x8000) != 0) result |= 1;
+        if ((buttons & 0x0800) != 0) result |= 8;
+        if ((buttons & 0x0400) != 0) result |= 0x10;
+        if ((buttons & 0x4000) != 0) return 0xffffffff;
+        return result;
+    }
+
+    /// <summary>Ghidra: le motif de répétition répété cinq fois dans FUN_00510aa0.</summary>
+    private static uint UiRepeat()
+    {
+        if (s_UiRepeatActive_005d9e00 == 0)
+        {
+            s_UiRepeatActive_005d9e00 = 1;
+            s_UiRepeatCounter_005d9e08 = 0xc;
+            return 3;
+        }
+
+        s_UiRepeatCounter_005d9e08--;
+        if (s_UiRepeatCounter_005d9e08 != 0) return 1;
+
+        s_UiRepeatCounter_005d9e08 = 2;
+        return 3;
+    }
+
+    /// <summary>Ghidra: le motif de détection de front des quatre touches d'action.</summary>
+    private static uint UiEdge(bool down, uint edges, uint bit, ref uint result, uint resultBit)
+    {
+        if (!down) return edges & ~bit;
+        if ((edges & bit) == 0) result |= resultBit;
+        return edges | bit;
+    }
+
+    private static int s_UiRepeatActive_005d9e00;    // Ghidra: DAT_005d9e00
+    private static uint s_UiKeyEdges_005d9e04;       // Ghidra: DAT_005d9e04
+    private static int s_UiRepeatCounter_005d9e08;   // Ghidra: DAT_005d9e08
+    private static int s_UiOptionsSelection_005d9e48;// Ghidra: DAT_005d9e48
+
+    // Ghidra: DAT_005d9df8 — la couleur-clé que la restauration réapplique. Comme ses voisines,
+    // elle n'est écrite nulle part dans le graphe reconstruit et vaut donc zéro.
+    private static readonly uint* s_UiRestoreColourKey_005d9df8 = (uint*)NativeMemory.AllocZeroed(2, sizeof(uint));
+    private static uint* s_UiFrameColourKey_005d9df8 => s_UiRestoreColourKey_005d9df8;
+
+    // =====================================================================
+    // The options page's setup (Ghidra: FUN_0050fab0 and its chain)
+    //
+    // Everything this page shows is built once, on first entry, out of files on the CD:
+    //
+    //     DATA/FONT.PIC       the 8-bit font sheet, 31 glyphs per row, cells 10 x 14
+    //     DATA/CONFIG.TXT     the option labels          -> three 256x256 atlases
+    //     DATA/ACTION.TXT     the action names           -> one atlas, negative label ids
+    //     DATA/JOYSTICK.TXT   the joystick button names  -> one atlas
+    //     DATA/KEYBOARD.TXT   the key names              -> one atlas, packed into rows
+    //     DATA/BACKGRND.PIC   the page background        -> one texture
+    //     DATA/FRAMEMOD.PIC   the window frame and cursor sheet
+    //
+    // The labels are **rasterised in software** — glyph by glyph, through wsyskern's DIBCopyBlock,
+    // into 256x256 8-bit buffers — and only then handed to the device as textures via the texture
+    // class's `[2]` slot. That is the path this file wrongly recorded as never taken; see
+    // Documentation/DLL/3dhelp.md, correction of 2026-08-14.
+    // =====================================================================
+
+    // wsyskern exports, all by name, on the same footing as LoadBitmapFile.
+    [DllImport("wsyskern.dll", ExactSpelling = true)]
+    private static extern int DIBCopyBlock(void* destinationBits, void* destinationInfo,
+                                           int destinationX, int destinationY, uint width, uint height,
+                                           void* sourceBits, void* sourceInfo,
+                                           int sourceX, int sourceY);
+
+    /// <summary>wsyskern ordinal 91. Ghidra types it `void`; it returns the adjusted byte in AL.</summary>
+    [DllImport("wsyskern.dll", ExactSpelling = true)]
+    private static extern byte Gamma(int value, double gamma);
+
+    [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void* CreateArray(int kind, void* capacity);
+    [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void* LoadArray(void* array, byte* path, int startIndex, int maxLines, int skip, int flags);
+    [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void ArrayToString(void* array, int index, byte* buffer, int size);
+    [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void DeleteArray(void* array);
+
+    // =====================================================================
+    // DEVIATION, mesurée et bornée : la lecture des fichiers texte ne passe plus par l'API de
+    // tableaux de `wsyskern`.
+    //
+    // Pourquoi. `LoadArray` **corrompt le tas** dans ce processus, de façon cumulative avec le
+    // nombre de lignes lues : 1 ligne passe, 4 lignes font tomber le processus plus loin, le
+    // fichier entier le fait tomber tout de suite — et toujours à la première allocation qui suit,
+    // signature d'une corruption causée ailleurs. Ce qui a été écarté par la mesure, et n'est donc
+    // pas à rouvrir :
+    //
+    //   - l'appel est conforme : `RET 0x18` dans la DLL, donc 6 arguments stdcall, et le sens de
+    //     chacun est lu dans `FUN_10004060` (index de départ, plafond de lignes, lignes à sauter,
+    //     drapeaux) ; `ArrayToString` de même, `RET 0x10` ;
+    //   - l'objet est valide : `CreateArray` pose le tag « ARAY » que le validateur exige, et
+    //     `LoadArray` sortirait proprement s'il ne l'était pas — ce qu'il fait avec un fichier
+    //     absent, cas où **toute la mise en place s'exécute jusqu'au bout** ;
+    //   - ce n'est ni la capacité initiale (0 comme 0x80 échouent), ni la croissance (le drapeau
+    //     « ne pas agrandir » n'y change rien), ni le chemin (correct, fichier présent).
+    //
+    // Ce que le tableau apporte ici se réduit à « rendre la ligne i d'un fichier texte ». On le
+    // fait donc nous-mêmes. C'est la même nature de déviation que le remplacement de DirectDraw
+    // par Direct3D 11, en beaucoup plus petit, et elle ne touche aucune logique du jeu.
+    //
+    // `OPENFORESIA_WSYSKERN_ARRAYS=1` rétablit le chemin d'origine, pour qui voudra reprendre le
+    // diagnostic côté DLL.
+    // =====================================================================
+
+    private sealed class UiTextFile
+    {
+        internal readonly List<byte[]> Lines = [];
+    }
+
+    private static readonly bool s_UseWsyskernArrays =
+        Environment.GetEnvironmentVariable("OPENFORESIA_WSYSKERN_ARRAYS") == "1";
+
+    /// <summary>Ghidra: LoadArray — lit tout le fichier et le découpe en lignes.</summary>
+    private static void ReadUiTextFile(UiTextFile file, string name)
+    {
+        file.Lines.Clear();
+
+        byte* fileName = ToAnsiZ(name);
+        byte* pathAnsi = BuildCdPath(fileName);
+        // Le tampon fait 64 octets et n'est zéro que jusqu'au terminateur : couper au premier zéro,
+        // pas à la fin, sinon la queue non initialisée se retrouve dans le chemin.
+        int length = 0;
+        while (length < 64 && pathAnsi[length] != 0) length++;
+        string path = System.Text.Encoding.Latin1.GetString(pathAnsi, length);
+        Free(pathAnsi);
+        Free(fileName);
+
+        byte[] bytes;
+        try { bytes = System.IO.File.ReadAllBytes(path); }
+        catch (System.IO.IOException) { return; }
+        catch (UnauthorizedAccessException) { return; }
+
+        int start = 0;
+        for (int i = 0; i <= bytes.Length; i++)
+        {
+            if (i != bytes.Length && bytes[i] != (byte)'\n') continue;
+
+            int end = i;
+            if (end > start && bytes[end - 1] == (byte)'\r') end--;
+            if (end > start || i != bytes.Length) file.Lines.Add(bytes[start..end]);
+            start = i + 1;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: ArrayToString — copie la ligne demandée dans un tampon ANSI terminé par zéro. Un
+    /// index hors du fichier rend une chaîne vide, ce que la boucle appelante traite déjà comme
+    /// « rien à dessiner ».
+    /// </summary>
+    private static void UiLineToBuffer(UiTextFile file, int index, byte* buffer, int size)
+    {
+        buffer[0] = 0;
+        if ((uint)index >= (uint)file.Lines.Count) return;
+
+        byte[] line = file.Lines[index];
+        int n = Math.Min(line.Length, size - 1);
+        for (int i = 0; i < n; i++) buffer[i] = line[i];
+        buffer[n] = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050f560 @ 0x0050f560 — character to glyph index. The five ranges skip the
+    /// punctuation gaps of the cp1252 layout the font sheet is laid out in; six accented capitals
+    /// and the currency sign all fold onto index 0xa5.
+    /// </summary>
+    private static int GlyphIndex(int character)
+    {
+        switch (character)
+        {
+            case 0x40: case 0x80: case 0x8a: case 0x9a: case 0xc0: case 0xe0:
+                character = 0xa5;
+                break;
+        }
+
+        if (character > 0xe0) return character - 0x46;
+        if (character > 0xc0) return character - 0x45;
+        if (character > 0xa0) return character - 0x44;
+        if (character > 0x60) return character - 0x23;
+        if (character > 0x40) return character - 0x22;
+        return character - 0x21;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050f770 @ 0x0050f770 — the width a string will occupy, in the same terms
+    /// FUN_0050f680 advances by: a space is 4, anything else its glyph's width, control characters
+    /// nothing.
+    /// </summary>
+    private static int MeasureLabel(byte* text)
+    {
+        int width = 0;
+        for (int i = 0; text[i] != 0; i++)
+        {
+            byte c = text[i];
+            // Ghidra rend le caractère en `char` **signé**, ce qui est un artefact : `FUN_0050f560`
+            // compare son paramètre à 0x80, 0x8a, 0x9a, 0xc0 et 0xe0, valeurs qu'un char signé ne
+            // peut jamais prendre. Le test des caractères de contrôle, lui, est bien signé dans
+            // l'original — les deux formulations y sont équivalentes.
+            if ((sbyte)c is > 0 and < 0x20) continue;
+            if (c == ' ') { width += 4; continue; }
+
+            int glyph = GlyphIndex(c);
+            if ((uint)glyph >= (uint)s_GlyphWidths_0056e7b0.Length) continue;
+            width += s_GlyphWidths_0056e7b0[glyph];
+        }
+        return width;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050f680 @ 0x0050f680 — draws one string into a DIB at row
+    /// <paramref name="row"/> (rows are 14 texels tall), starting at <paramref name="x"/>, and
+    /// returns the pen position it ended at. Each glyph is one DIBCopyBlock out of the font sheet,
+    /// whose cells are 10 wide and 14 tall, 31 to a row.
+    /// </summary>
+    private static int RasteriseLabel(void* destinationBits, void* destinationInfo,
+                                      int row, byte* text, int x)
+    {
+        byte* font = s_UiFontFile_00589c74;
+        if (font == null) return x;
+
+        void* fontBits = font + *(int*)(font + 10);   // BITMAPFILEHEADER::bfOffBits
+        void* fontInfo = font + 0xe;                  // the BITMAPINFO that follows it
+
+        for (int i = 0; text[i] != 0; i++)
+        {
+            byte c = text[i];
+            if ((sbyte)c is > 0 and < 0x20) continue;
+
+            if (c == ' ') { x += 4; continue; }
+
+            int glyph = GlyphIndex(c);
+            if ((uint)glyph >= (uint)s_GlyphWidths_0056e7b0.Length)
+            {
+                UiStage($"    glyphe hors table : car=0x{(byte)c:X2} index={glyph} " +
+                        $"(table={s_GlyphWidths_0056e7b0.Length})");
+                continue;
+            }
+
+            int width = s_GlyphWidths_0056e7b0[glyph];
+
+            // GARDE-FOU, et instrument. La cible fait 256x256 en 8 bits, soit exactement les
+            // 64 Kio du tampon. `DIBCopyBlock` ne clippe pas de manière sûre : un blit qui sort
+            // écrit hors du tampon et corrompt le tas — le symptôme observé. On refuse le blit et
+            // on le signale, ce qui dit du même coup s'il arrive vraiment.
+            if (x < 0 || row < 0 || x + width > 0x100 || row * 0xe + 0xe > 0x100)
+            {
+                UiStage($"    blit REFUSE hors cible : ({x},{row * 0xe}) l={width} " +
+                        $"car=0x{(byte)c:X2} glyphe={glyph}");
+                x += width;
+                continue;
+            }
+
+            if (s_TraceGlyphs)
+                UiStage($"    blit car=0x{(byte)c:X2} glyphe={glyph} l={width} -> ({x},{row * 0xe}) " +
+                        $"source=({(glyph % 0x1f) * 10},{(glyph / 0x1f) * 0xe})");
+            DIBCopyBlock(destinationBits, destinationInfo, x, row * 0xe, (uint)width, 0xe,
+                         fontBits, fontInfo, (glyph % 0x1f) * 10, (glyph / 0x1f) * 0xe);
+            x += width;
+        }
+
+        return x;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050f9b0 @ 0x0050f9b0 — the key names, which unlike the other label sets do not
+    /// get one row each: they are packed left to right and wrapped at 253 texels, each entry's
+    /// (x, row, width) recorded in the placement table at DAT_00599c80.
+    /// </summary>
+    private static void RasteriseKeyLabels(UiTextFile array)
+    {
+        NativeMemory.Fill(s_UiKeyboardBits_005a9de0, UiAtlasBytes, 0);
+
+        byte* placement = s_UiKeyPlacement_00599c80;
+        byte* text = stackalloc byte[0x20];
+        int x = 0, row = 0;
+
+        for (int i = 0; i < UiKeyLabelCount; i++, placement += 4)
+        {
+            UiLineToBuffer(array, i, text, 0x20);
+            int width = MeasureLabel(text);
+
+            if (width + x > 0xfd) { x = 0; row++; }
+
+            placement[0] = (byte)x;
+            placement[1] = (byte)row;
+            *(short*)(placement + 2) = (short)width;
+
+            RasteriseLabel(s_UiKeyboardBits_005a9de0, s_UiTargetInfo_00579278, row, text, x);
+            x += width;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050f7d0 @ 0x0050f7d0 — the two .PIC-backed textures. Both bitmaps' headers are
+    /// copied out of the loaded file, their 256-entry palettes passed through wsyskern's
+    /// <c>Gamma</c> at the ini's gamma setting, and the result handed to a texture object.
+    /// </summary>
+    private static void BuildPictureTextures()
+    {
+        byte* background = s_UiBackgroundFile_00579264;
+        byte* frame = s_UiFrameFile_00589838;
+        if (background == null || frame == null) return;
+
+        // Ghidra: 10 dwords — the BITMAPINFOHEADER alone; the palette that follows is rebuilt.
+        NativeMemory.Copy(background + 0xe, s_UiBackgroundInfo_00578e30, 40);
+        NativeMemory.Copy(frame + 0xe, s_UiFrameInfo_00589840, 40);
+
+        double gamma = (float)s_Unknown_005d9de0 * s_GammaScale_0054d000;
+
+        // Ghidra: the palettes start at file + 0x36 (0x0e + 0x28) and are walked as B, G, R with
+        // the fourth byte forced to zero. The three reads are at +0x36/+0x37/+0x38 of the file,
+        // which is that same triple.
+        for (int i = 0; i < 0x400; i += 4)
+        {
+            s_UiBackgroundInfo_00578e30[0x28 + i + 2] = Gamma(background[0x38 + i], gamma);
+            s_UiBackgroundInfo_00578e30[0x28 + i + 1] = Gamma(background[0x37 + i], gamma);
+            s_UiBackgroundInfo_00578e30[0x28 + i + 0] = Gamma(background[0x36 + i], gamma);
+            s_UiBackgroundInfo_00578e30[0x28 + i + 3] = 0;
+
+            s_UiFrameInfo_00589840[0x28 + i + 2] = Gamma(frame[0x38 + i], gamma);
+            s_UiFrameInfo_00589840[0x28 + i + 1] = Gamma(frame[0x37 + i], gamma);
+            s_UiFrameInfo_00589840[0x28 + i + 0] = Gamma(frame[0x36 + i], gamma);
+            s_UiFrameInfo_00589840[0x28 + i + 3] = 0;
+        }
+
+        s_UiBackgroundTexture_0057926c = UiCreateTexture(
+            s_UiBackgroundInfo_00578e30, background + *(int*)(background + 10), null);
+        s_UiFrameAtlas_00599ddc = UiCreateTexture(
+            s_UiFrameInfo_00589840, frame + *(int*)(frame + 10), s_UiFrameColourKey_005d9de8);
+    }
+
+    /// <summary>
+    /// Ghidra: the three-call idiom this page repeats for every texture — create through the
+    /// device's `+0x10` factory, load through the texture class's `[2]` slot, and, when it has one,
+    /// set a colour key through `[6]`.
+    /// </summary>
+    private static void* UiCreateTexture(byte* bitmapInfo, void* bits, uint* colourKey)
+    {
+        void* device = Ordinal_750();
+        void* texture = ((delegate* unmanaged[Thiscall]<void*, void*>)UiDeviceVtable[0x10 / 4])(device);
+        if (texture == null) return null;
+
+        void** vtable = *(void***)texture;
+        ((delegate* unmanaged[Thiscall]<void*, void*, void*, int>)vtable[2])(texture, bitmapInfo, bits);
+        if (colourKey != null)
+            ((delegate* unmanaged[Thiscall]<void*, void*, int>)vtable[6])(texture, colourKey);
+        return texture;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050fab0 @ 0x0050fab0 — the options page's one-time setup, guarded by
+    /// DAT_005d9de4 so it runs on first entry only, followed by the texture creation that runs
+    /// every time (the gamma may have changed).
+    /// </summary>
+    private static void OptionsSetup()
+    {
+        if (s_UiSetupDone_005d9de4 == 0)
+        {
+            s_UiSetupDone_005d9de4 = 1;
+
+            s_UiBackgroundFile_00579264 = LoadUiFile(s_UiFileBackground, silent: true);
+            s_UiFrameFile_00589838 = LoadUiFile(s_UiFileFrame, silent: true);
+            UiStage($"BACKGRND.PIC=0x{(nint)s_UiBackgroundFile_00579264:X8} " +
+                    $"FRAMEMOD.PIC=0x{(nint)s_UiFrameFile_00589838:X8}");
+
+            UiStage("lecture CONFIG.TXT");
+            var array = new UiTextFile();
+            ReadUiTextFile(array, s_UiFileConfigText);
+            UiStage($"  {array.Lines.Count} lignes");
+
+            UiStage("chargement FONT.PIC");
+            s_UiFontFile_00589c74 = LoadUiFile(s_UiFileFont, silent: true);
+
+            // Ghidra: 0x10a dwords out of the font file at +0xe — a BITMAPINFOHEADER plus its
+            // 256-entry palette, 1064 bytes — reused as the header of every rasterisation target,
+            // with the dimensions forced to 256x256. Measured on the disc's FONT.PIC: 312x84, 8
+            // bits, so the copy covers a real 256-colour palette and the target is exactly the
+            // 64 KiB the buffers provide.
+            if (s_UiFontFile_00589c74 != null)
+                NativeMemory.Copy(s_UiFontFile_00589c74 + 0xe, s_UiTargetInfo_00579278, 0x10a * 4);
+
+            *(int*)(s_UiTargetInfo_00579278 + 4) = 0x100;    // biWidth
+            *(int*)(s_UiTargetInfo_00579278 + 8) = 0x100;    // biHeight, positive: bottom-up
+
+            UiStage("rastérisation CONFIG.TXT (3 atlas)");
+            RasteriseLabelSet(array, s_UiAtlas0Bits_00589c80, 0, 0, 0x12);
+            RasteriseLabelSet(array, s_UiAtlas1Bits_005b9de0, 0x12, 0x12, 0x12);
+            RasteriseLabelSet(array, s_UiAtlas2Bits_005c9de0, 0x24, 0x24, 0x12);
+
+            // Ghidra: ACTION.TXT's widths are written **downward** from DAT_00589754, which is what
+            // makes FUN_005108f0's negative label ids resolve.
+            UiStage("rastérisation ACTION.TXT");
+            ReadUiTextFile(array, s_UiFileActionText);
+            NativeMemory.Fill(s_UiAtlasNegativeBits_00579708, UiAtlasBytes, 0);
+            byte* text = stackalloc byte[0x20];
+            for (int i = 0; i < 0x12; i++)
+            {
+                UiLineToBuffer(array, i, text, 0x20);
+                s_UiLabelWidths_00589758[-1 - i] =
+                    RasteriseLabel(s_UiAtlasNegativeBits_00579708, s_UiTargetInfo_00579278, i, text, 0);
+            }
+
+            // Ghidra: the joystick set is the only one drawn twice — 0x24 entries folded onto 0x12
+            // rows, the second half offset by 0x80. Its widths are not recorded.
+            UiStage("rastérisation JOYSTICK.TXT");
+            ReadUiTextFile(array, s_UiFileJoystickText);
+            NativeMemory.Fill(s_UiAtlasJoystickBits_00599de0, UiAtlasBytes, 0);
+            for (int i = 0; i < 0x24; i++)
+            {
+                UiLineToBuffer(array, i, text, 0x20);
+                RasteriseLabel(s_UiAtlasJoystickBits_00599de0, s_UiTargetInfo_00579278,
+                               i % 0x12, text, i < 0x12 ? 0 : 0x80);
+            }
+
+            UiStage("rastérisation KEYBOARD.TXT");
+            ReadUiTextFile(array, s_UiFileKeyboardText);
+            RasteriseKeyLabels(array);
+        }
+
+        UiStage("textures BACKGRND/FRAMEMOD");
+        BuildPictureTextures();
+        UiStage("textures des atlas");
+
+        s_UiAtlas0_00589c6c = UiCreateTexture(s_UiTargetInfo_00579278, s_UiAtlas0Bits_00589c80, s_UiAtlasColourKey_005d9df0);
+        s_UiAtlas1_00589830 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiAtlas1Bits_005b9de0, s_UiAtlasColourKey_005d9df0);
+        s_UiAtlas2_00589834 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiAtlas2Bits_005c9de0, s_UiAtlasColourKey_005d9df0);
+        s_UiAtlasNegative_00589708 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiAtlasNegativeBits_00579708, s_UiAtlasColourKey_005d9df0);
+        s_UiAtlasJoystick_00599dd8 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiAtlasJoystickBits_00599de0, s_UiAtlasColourKey_005d9df0);
+        s_UiAtlasKeyboard_00589c78 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiKeyboardBits_005a9de0, s_UiAtlasColourKey_005d9df0);
+    }
+
+    /// <summary>One of the three CONFIG.TXT label runs: clear the atlas, draw 18 rows, record 18 widths.</summary>
+    private static void RasteriseLabelSet(UiTextFile array, void* bits, int firstEntry, int firstWidth, int count)
+    {
+        NativeMemory.Fill(bits, UiAtlasBytes, 0);
+        byte* text = stackalloc byte[0x20];
+
+        for (int i = 0; i < count; i++)
+        {
+            UiLineToBuffer(array, firstEntry + i, text, 0x20);
+            s_UiLabelWidths_00589758[firstWidth + i] =
+                RasteriseLabel(bits, s_UiTargetInfo_00579278, i, text, 0);
+        }
+    }
+
+    /// <summary>
+    /// ECHAFAUDAGE TEMPORAIRE. Jalonne la mise en place : le tas s'est corrompu quelque part dans
+    /// cette chaîne au premier essai, et une corruption de tas ne lève pas là où elle est causée.
+    /// La dernière étape journalisée avant la mort nomme la coupable.
+    /// </summary>
+    private static void UiStage(string stage)
+    {
+        if (s_RunOptionsSetup) Console.Error.WriteLine($"[UI] {stage}");
+    }
+
+    /// <summary>Ghidra: FUN_0050fa50 — the CD path, then LoadBitmapFile in its silent mode.</summary>
+    private static byte* LoadUiFile(string name, bool silent)
+    {
+        byte* fileName = ToAnsiZ(name);
+        byte* path = BuildCdPath(fileName);
+        byte* file = LoadBitmapFile(path, silent ? 0u : 1u);
+        Free(path);
+        Free(fileName);
+        return file;
+    }
+
+    private static void LoadUiArray(void* array, string name)
+    {
+        byte* fileName = ToAnsiZ(name);
+        byte* path = BuildCdPath(fileName);
+        // ECHAFAUDAGE : OPENFORESIA_OPTIONS_BADPATH=1 remplace le chemin par un fichier absent,
+        // ce qui fait sortir le chargeur juste après l'ouverture ratée. Sépare « la faute est dans
+        // l'ouverture » de « la faute est dans la lecture des lignes ».
+        if (Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_BADPATH") == "1")
+        {
+            byte* absent = ToAnsiZ("Z:/pas-de-fichier.txt");
+            UiStage("  LoadArray(chemin absent)");
+            LoadArray(array, absent, 0, 0, 0, 0);
+            UiStage("  LoadArray revenu (chemin absent)");
+            Free(absent);
+            Free(path);
+            Free(fileName);
+            return;
+        }
+
+        // ECHAFAUDAGE : OPENFORESIA_OPTIONS_NOGROW=1 met le drapeau 8 (« ne pas agrandir »), ce qui
+        // court-circuite l'appel de croissance du chargeur. Sépare « la croissance corrompt » de
+        // « la lecture/stockage des lignes corrompt ».
+        int flags = Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_NOGROW") == "1" ? 8 : 0;
+
+        // ECHAFAUDAGE : le 4e argument du chargeur est un **plafond de lignes** (0 = illimité).
+        // OPENFORESIA_OPTIONS_MAXLINES borne la lecture, pour trouver à quelle ligne ça casse.
+        _ = int.TryParse(Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_MAXLINES"), out int maxLines);
+
+        UiStage($"  LoadArray(\"{System.Text.Encoding.Latin1.GetString(path, 40).TrimEnd('\0', ' ')}\") lignes<={maxLines} drapeaux={flags}");
+        LoadArray(array, path, 0, maxLines, 0, flags);
+        UiStage("  LoadArray revenu");
+        Free(path);
+        Free(fileName);
+        UiStage("  libéré");
+    }
+
+    // Ghidra: the seven file names at 0x005630c8..0x00563134, read verbatim from Legacy/Blaze.exe —
+    // forward slashes, like every other CD path this reconstruction builds.
+    private const string s_UiFileKeyboardText = "DATA/KEYBOARD.TXT";
+    private const string s_UiFileJoystickText = "DATA/JOYSTICK.TXT";
+    private const string s_UiFileActionText = "DATA/ACTION.TXT";
+    private const string s_UiFileFont = "DATA/FONT.PIC";
+    private const string s_UiFileConfigText = "DATA/CONFIG.TXT";
+    private const string s_UiFileFrame = "DATA/FRAMEMOD.PIC";
+    private const string s_UiFileBackground = "DATA/BACKGRND.PIC";
+
+    /// <summary>Ghidra: the 0x4000-dword clears — 64 KB, one 256x256 8-bit page.</summary>
+    private const nuint UiAtlasBytes = 0x4000 * 4;
+
+    /// <summary>
+    /// Ghidra: la borne de boucle de FUN_0050f9b0 — de `0x599c81` à `0x599dd6` par pas de 4, soit
+    /// **86** entrées. Les 85 premières sont les noms de touches de KEYBOARD.TXT ; la 86ᵉ est
+    /// l'invite que l'éditeur affiche à la place d'une touche pendant la capture.
+    /// </summary>
+    private const int UiKeyLabelCount = 0x56;
+
+    private static int s_UiSetupDone_005d9de4;                  // Ghidra: DAT_005d9de4
+    private static byte* s_UiBackgroundFile_00579264;           // Ghidra: DAT_00579264
+    private static byte* s_UiFrameFile_00589838;                // Ghidra: DAT_00589838
+    private static byte* s_UiFontFile_00589c74;                 // Ghidra: DAT_00589c74
+
+    private static readonly byte* s_UiTargetInfo_00579278 = (byte*)NativeMemory.AllocZeroed(0x10a * 4);
+    private static readonly byte* s_UiBackgroundInfo_00578e30 = (byte*)NativeMemory.AllocZeroed(0x10a * 4);
+    private static readonly byte* s_UiFrameInfo_00589840 = (byte*)NativeMemory.AllocZeroed(0x10a * 4);
+
+    private static readonly void* s_UiAtlas0Bits_00589c80 = NativeMemory.AllocZeroed(UiAtlasBytes);
+    private static readonly void* s_UiAtlas1Bits_005b9de0 = NativeMemory.AllocZeroed(UiAtlasBytes);
+    private static readonly void* s_UiAtlas2Bits_005c9de0 = NativeMemory.AllocZeroed(UiAtlasBytes);
+    private static readonly void* s_UiAtlasNegativeBits_00579708 = NativeMemory.AllocZeroed(UiAtlasBytes);
+    private static readonly void* s_UiAtlasJoystickBits_00599de0 = NativeMemory.AllocZeroed(UiAtlasBytes);
+    private static readonly void* s_UiKeyboardBits_005a9de0 = NativeMemory.AllocZeroed(UiAtlasBytes);
+    private static readonly byte* s_UiKeyPlacement_00599c80 = (byte*)NativeMemory.AllocZeroed(UiKeyLabelCount * 4 + 8);
+
+    // Ghidra: DAT_005d9de8 and DAT_005d9df0 — the two colour keys, DDCOLORKEY pairs of palette
+    // indices. TODO(REVERSE): neither is written anywhere in the reconstructed graph and both read
+    // as uninitialised data in the binary, so they are zero — index 0 transparent, which is the
+    // usual convention for these sheets but is not confirmed.
+    private static readonly uint* s_UiFrameColourKey_005d9de8 = (uint*)NativeMemory.AllocZeroed(2, sizeof(uint));
+    private static readonly uint* s_UiAtlasColourKey_005d9df0 = (uint*)NativeMemory.AllocZeroed(2, sizeof(uint));
+
+    // Ghidra: &DAT_0056e7b0, the glyph widths, is **already reconstructed** further up this file
+    // for the UI text engine. A second copy transcribed here from the same hex dump carried one
+    // 0x06 too many — the duplicate-symbol error is what caught it. One table, one definition.
+
+    // Ghidra: the texture objects this layer draws from, and the label-width table. All are built
+    // at runtime by FUN_0050fab0 — 0x00589758 reads as uninitialised data in the binary, which is
+    // an answer rather than a gap: nothing but code can fill it.
+    private static void* s_UiAtlas0_00589c6c;
+    private static void* s_UiAtlas1_00589830;
+    private static void* s_UiAtlas2_00589834;
+    private static void* s_UiAtlasNegative_00589708;
+    private static void* s_UiAtlasJoystick_00599dd8;
+    private static void* s_UiAtlasKeyboard_00589c78;
+    private static void* s_UiBackgroundTexture_0057926c;
+    private static void* s_UiFrameAtlas_00599ddc;
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00589758 — the label widths, **indexed on both sides of that address**.
+    /// FUN_0050fab0 writes three contiguous 18-entry runs upward from it (0x00589758, 0x005897a0,
+    /// 0x005897e8) for label ids 0..0x35, and a fourth run **downward** from 0x00589754 for the
+    /// ACTION.TXT labels, which FUN_005108f0 reaches with negative ids. One block with the base
+    /// pointer placed inside it reproduces that exactly; two arrays would not.
+    /// </summary>
+    private static readonly int* s_UiLabelWidths_00589758 =
+        (int*)NativeMemory.AllocZeroed(0x100, sizeof(int)) + 0x20;
+
     // ---------------------------------------------------------------------------------------
     // Deliberately deferred. Each has a decompiled body in Blaze.c and is ordinary uncovered
     // code, not blocked work; they are stubbed so the frame structure above can be exercised and
@@ -6994,11 +8021,941 @@ public static unsafe partial class Blaze
     // ---------------------------------------------------------------------------------------
 
 
+    /// <summary>
+    /// Ghidra: FUN_00512320 @ 0x00512320 — the options page. Its first statement is
+    /// <c>FUN_0050fab0()</c>, which is reconstructed, so the setup runs for real here; the page's
+    /// own loop is not, and says so.
+    /// </summary>
     private static void OptionsScreenStub()
-        => throw new NotImplementedException("FUN_00512320: the options page (80 lines)");
+    {
+        OptionsSetup();     // Ghidra: FUN_0050fab0
 
-    private static int InputDrainStub()
-        => throw new NotImplementedException("FUN_005048f0: joystick state processing (76 lines)");
+        // Ghidra: la boucle de page. Quatre entrées, sélectionnées entre 0 et 3 ; la quatrième
+        // quitte par une exception logicielle, échap quitte en libérant les huit textures.
+        while (true)
+        {
+            RestoreLostUiTextures();                                    // FUN_0050fe90
+            UiBeginScene();                                             // (*device + 0xb0)
+            DrawUiBackground();                                         // FUN_005101c0
+
+            UiDrawFrame(0x4c, 0x20, 0xa8, 100);                         // FUN_00510740
+            UiDrawLabel(0xa0, 0x32, 0, 1, 0xffffff);                    // FUN_005108f0
+            UiDrawLabel(0x5c, 0x48, 1, 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x54, 2, 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x60, 3, 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x6c, 0x10, 0, 0xffffff);
+            UiDrawCursor(0x4b, (s_UiOptionsSelection_005d9e48 + 6) * 0xc);   // FUN_00510a70
+
+            UiEndScene();                                               // (*device + 0xb4)
+            UiPresent();                                                // (*device + 0xb8)
+
+            uint action;
+            fixed (int* selection = &s_UiOptionsSelection_005d9e48)
+                action = UiSelect(selection, 0, 3);                     // FUN_00510aa0
+
+            if (action == 0xffffffff)
+            {
+                ReleaseUiTextures();
+                return;
+            }
+
+            if ((action & 1) != 0)
+            {
+                switch (s_UiOptionsSelection_005d9e48)
+                {
+                    case 0: PlayUiSound38(); DisplayOptionsPage(); break;    // FUN_005110b0
+                    case 1: PlayUiSound38(); SoundOptionsPage(); break;      // FUN_005113d0
+                    case 2: PlayUiSound38(); ControlOptionsPage(); break;    // FUN_00512220
+                    case 3:
+                        PlayUiSound38();
+                        // Ghidra: RaiseException(0xe0000001, 0, 0, NULL) — la sortie du jeu depuis
+                        // la page d'options, la même exception logicielle que le lecteur de vidéo
+                        // utilise pour WM_QUIT.
+                        RaiseException(0xe0000001, 0, 0, null);
+                        break;
+                }
+            }
+
+            Ordinal_132(2);
+        }
+    }
+
+    /// <summary>Ghidra: les trois slots de scène que la page emprunte, sur le même device.</summary>
+    private static void UiBeginScene()
+        => ((delegate* unmanaged[Thiscall]<void*, void>)UiDeviceVtable[0xb0 / 4])(Ordinal_750());
+
+    private static void UiEndScene()
+        => ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xb4 / 4])(Ordinal_750());
+
+    private static void UiPresent()
+        => ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xb8 / 4])(Ordinal_750());
+
+    /// <summary>
+    /// Ghidra: la sortie par échap libère les huit textures de la page — chacune par le slot
+    /// <c>[0]</c> de sa classe, avec le drapeau 1 des destructeurs C++ de l'époque.
+    /// </summary>
+    private static void ReleaseUiTextures()
+    {
+        ReleaseUiTexture(ref s_UiAtlas0_00589c6c);
+        ReleaseUiTexture(ref s_UiAtlas1_00589830);
+        ReleaseUiTexture(ref s_UiAtlasJoystick_00599dd8);
+        ReleaseUiTexture(ref s_UiBackgroundTexture_0057926c);
+        ReleaseUiTexture(ref s_UiAtlas2_00589834);
+        ReleaseUiTexture(ref s_UiAtlasNegative_00589708);
+        ReleaseUiTexture(ref s_UiFrameAtlas_00599ddc);
+        ReleaseUiTexture(ref s_UiAtlasKeyboard_00589c78);
+    }
+
+    private static void ReleaseUiTexture(ref void* texture)
+    {
+        if (texture == null) return;
+        ((delegate* unmanaged[Thiscall]<void*, uint, int>)(*(void***)texture)[0])(texture, 1);
+        texture = null;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00510a00 @ 0x00510a00 — une jauge : la glissière (0x86 x 10, prise en
+    /// <c>(0, 0x20)</c> de la planche du cadre) puis le curseur (8 x 10, pris en <c>(0x8e, 0x20)</c>)
+    /// posé à <c>x + valeur + 1</c>.
+    /// </summary>
+    private static void UiDrawGauge(int x, int y, int value)
+    {
+        UiBlit(x, y, 0x86, 10, 0, 0x20, s_UiFrameAtlas_00599ddc, 0x86, 10, 0xffffff);
+        UiBlit(x + value + 1, y, 8, 10, 0x8e, 0x20, s_UiFrameAtlas_00599ddc, 8, 10, 0xffffff);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050f980 @ 0x0050f980 — réapplique le gamma : détruit les deux textures issues
+    /// des `.PIC` et les refabrique, palettes repassées dans <c>Gamma</c> au nouveau réglage.
+    /// </summary>
+    private static void RebuildGammaTextures()
+    {
+        ReleaseUiTexture(ref s_UiBackgroundTexture_0057926c);
+        ReleaseUiTexture(ref s_UiFrameAtlas_00599ddc);
+        BuildPictureTextures();     // Ghidra: FUN_0050f7d0
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005110b0 @ 0x005110b0 — la page « Affichage ». Cinq réglages, six quand le
+    /// device annonce la capacité que son slot <c>+0xE0</c> rapporte : taille de l'écran, gamma,
+    /// filtrage de texture, affichage de statut, puis deux pages filles.
+    /// </summary>
+    private static void DisplayOptionsPage()
+    {
+        // Ghidra: le slot +0xE0 décide si la sixième ligne existe. Non porté par le device
+        // synthétique, il rend zéro — donc cinq lignes, ce qui est le cas nominal.
+        int extra = ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xe0 / 4])(Ordinal_750()) != 0 ? 1 : 0;
+
+        while (true)
+        {
+            RestoreLostUiTextures();
+            UiBeginScene();
+            DrawUiBackground();
+
+            UiDrawFrame(0x4c, 0x20, 0xa8, extra * 0xc + 0x88);
+            UiDrawLabel(0xa0, 0x32, 4, 1, 0xffffff);
+            UiDrawLabel(0x5c, 0x48, 5, 0, 0xffffff);
+            UiDrawGauge(100, 0x55, (int)(s_SizeSetting_005de160 * 0x79) / UiDetailLimit + 4);
+            UiDrawLabel(0x5c, 0x60, 7, 0, 0xffffff);
+            UiDrawGauge(100, 0x6d, s_Unknown_005d9de0 - 8);
+            UiDrawLabel(0x5c, 0x78, 9 - (*GetTexFilterPossiblePtr() != 0 ? 1 : 0), 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x84, 0xb - (s_SmallTextureFlag != 0 ? 1 : 0), 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x90, 0x25, 0, 0xffffff);
+            if (extra != 0) UiDrawLabel(0x5c, 0x9c, 0x24, 0, 0xffffff);
+
+            // Ghidra: la position du curseur saute une ligne au-delà de l'entrée 1 — les deux
+            // premières portent une jauge, donc occupent deux crans chacune.
+            int line = (s_UiDisplaySelection_005d9e10 > 1 ? 1 : 0) + 6 + s_UiDisplaySelection_005d9e10
+                       + (s_UiDisplaySelection_005d9e10 > 0 ? 1 : 0);
+            UiDrawCursor(0x4b, line * 0xc);
+
+            UiEndScene();
+            UiPresent();
+
+            uint action;
+            fixed (int* selection = &s_UiDisplaySelection_005d9e10)
+                action = UiSelect(selection, 0, 4 + extra);
+
+            if (action == 0xffffffff) return;
+
+            if ((action & 1) != 0)
+            {
+                if (s_UiDisplaySelection_005d9e10 == 4) TimingPage();        // FUN_00510d40
+                if (s_UiDisplaySelection_005d9e10 == 5) ResolutionPage();    // FUN_00510e60
+            }
+
+            if ((action & 7) != 0)
+            {
+                if (s_UiDisplaySelection_005d9e10 == 2)
+                {
+                    PlayUiSound38();
+                    uint* filter = GetTexFilterPossiblePtr();
+                    *filter = *filter == 0 ? 1u : 0u;
+                }
+                else if (s_UiDisplaySelection_005d9e10 == 3 && s_SizeSetting_005de160 > 6)
+                {
+                    PlayUiSound38();
+                    s_SmallTextureFlag = s_SmallTextureFlag == 0 ? 1u : 0u;
+                }
+            }
+
+            if ((action & 2) != 0)
+            {
+                if (s_UiDisplaySelection_005d9e10 == 0)
+                {
+                    if (s_SizeSetting_005de160 != 0)
+                    {
+                        PlayUiSound3A();
+                        s_SizeSetting_005de160--;
+                        SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
+                                 (int)((0xb - s_SizeSetting_005de160) * 0xc),
+                                 (int)s_SizeSetting_005de160, 0);
+                        if (s_SizeSetting_005de160 < 8) s_SmallTextureFlag = 1;
+                    }
+                }
+                else if (s_UiDisplaySelection_005d9e10 == 1 && s_Unknown_005d9de0 > 8)
+                {
+                    PlayUiSound3A();
+                    s_GammaIni -= 8;
+                    RebuildGammaTextures();
+                }
+            }
+
+            if ((action & 4) != 0)
+            {
+                if (s_UiDisplaySelection_005d9e10 == 0)
+                {
+                    if (s_SizeSetting_005de160 < UiDetailLimit)
+                    {
+                        PlayUiSound3A();
+                        s_SizeSetting_005de160++;
+                        SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
+                                 (int)((0xb - s_SizeSetting_005de160) * 0xc),
+                                 (int)s_SizeSetting_005de160, 0);
+                    }
+                }
+                else if (s_UiDisplaySelection_005d9e10 == 1 && s_Unknown_005d9de0 < 0x88)
+                {
+                    PlayUiSound3A();
+                    s_GammaIni += 8;
+                    RebuildGammaTextures();
+                }
+            }
+
+            Ordinal_132(2);
+        }
+    }
+
+    /// <summary>Ghidra: `*(int *)(&DAT_00562e00 + DAT_00566cc4 * 4)` — le plafond de détail de la résolution courante.</summary>
+    private static int UiDetailLimit
+        => s_ResolutionIndex < (uint)s_ResolutionDetailLimit.Length
+            ? s_ResolutionDetailLimit[s_ResolutionIndex]
+            : 1;
+
+    /// <summary>
+    /// Ghidra: FUN_005113d0 @ 0x005113d0 — la page « Son » : volume CD, volume des effets, et
+    /// l'interrupteur de musique. Les deux volumes bougent par pas de 8 entre 0 et 0x80, et chaque
+    /// changement est appliqué immédiatement.
+    /// </summary>
+    private static void SoundOptionsPage()
+    {
+        while (true)
+        {
+            RestoreLostUiTextures();
+            UiBeginScene();
+            DrawUiBackground();
+
+            UiDrawFrame(0x4c, 0x20, 0xa8, 0x70);
+            UiDrawLabel(0xa0, 0x32, 0xc, 1, 0xffffff);
+            UiDrawLabel(0x5c, 0x48, 0xd, 0, 0xffffff);
+            UiDrawGauge(100, 0x55, (int)s_CdVolumeIni);
+            UiDrawLabel(0x5c, 0x60, 0xe, 0, 0xffffff);
+            UiDrawGauge(100, 0x6d, (int)s_SoundVolumeIni);
+            UiDrawLabel(0x5c, 0x78, 0x28 - (s_MusicEnabled != 0 ? 1 : 0), 0, 0xffffff);
+            UiDrawCursor(0x4b, (s_UiSoundSelection_005d9e14 + 3) * 0x18);
+
+            UiEndScene();
+            UiPresent();
+
+            uint action;
+            fixed (int* selection = &s_UiSoundSelection_005d9e14)
+                action = UiSelect(selection, 0, 2);
+
+            if (action == 0xffffffff) return;
+
+            if ((action & 7) != 0 && s_UiSoundSelection_005d9e14 == 2)
+            {
+                PlayUiSound38();
+                ToggleMusicEnabled();       // Ghidra: FUN_00513860
+            }
+
+            if ((action & 2) != 0)
+            {
+                if (s_UiSoundSelection_005d9e14 == 0 && s_CdVolumeIni != 0)
+                {
+                    PlayUiSound3A();
+                    s_CdVolumeIni -= 8;
+                    ApplyCdVolume();
+                }
+                else if (s_UiSoundSelection_005d9e14 == 1 && s_SoundVolumeIni != 0)
+                {
+                    PlayUiSound3A();
+                    s_SoundVolumeIni -= 8;
+                    ApplyAllSoundBufferVolumes();
+                }
+            }
+
+            if ((action & 4) != 0)
+            {
+                if (s_UiSoundSelection_005d9e14 == 0 && s_CdVolumeIni < 0x80)
+                {
+                    PlayUiSound3A();
+                    s_CdVolumeIni += 8;
+                    ApplyCdVolume();
+                }
+                else if (s_UiSoundSelection_005d9e14 == 1 && s_SoundVolumeIni < 0x80)
+                {
+                    PlayUiSound3A();
+                    s_SoundVolumeIni += 8;
+                    ApplyAllSoundBufferVolumes();
+                }
+            }
+
+            Ordinal_132(2);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00512220 @ 0x00512220 — la page « Contrôle », deux entrées qui ouvrent chacune
+    /// une page de configuration.
+    /// </summary>
+    private static void ControlOptionsPage()
+    {
+        while (true)
+        {
+            RestoreLostUiTextures();
+            UiBeginScene();
+            DrawUiBackground();
+
+            UiDrawFrame(0x4c, 0x20, 0xa8, 0x4c);
+            UiDrawLabel(0xa0, 0x32, 0xf, 1, 0xffffff);
+            UiDrawLabel(0x5c, 0x48, 0x11, 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x54, 0x12, 0, 0xffffff);
+            UiDrawCursor(0x4b, (s_UiControlSelection_005d9e44 + 6) * 0xc);
+
+            UiEndScene();
+            UiPresent();
+
+            uint action;
+            fixed (int* selection = &s_UiControlSelection_005d9e44)
+                action = UiSelect(selection, 0, 1);
+
+            if (action == 0xffffffff) return;
+
+            if ((action & 1) != 0)
+            {
+                if (s_UiControlSelection_005d9e44 == 0) { PlayUiSound38(); KeyConfigPage(); }
+                else if (s_UiControlSelection_005d9e44 == 1) { PlayUiSound38(); JoystickAssignmentPage(); }
+            }
+
+            Ordinal_132(2);
+        }
+    }
+
+    private static int s_UiDisplaySelection_005d9e10;   // Ghidra: DAT_005d9e10
+    private static int s_UiSoundSelection_005d9e14;     // Ghidra: DAT_005d9e14
+    private static int s_UiControlSelection_005d9e44;   // Ghidra: DAT_005d9e44
+
+    // Les quatre pages filles. Toutes ont un corps décompilé et aucune dépendance bloquée ; elles
+    // sont nommées pour que le runtime désigne la suivante.
+    /// <summary>
+    /// Ghidra: FUN_00510d40 @ 0x00510d40 — la page **Timing**, quatre choix. La sélection est
+    /// initialisée depuis le réglage courant à la première ouverture seulement (bit 0 de
+    /// DAT_00579260), et n'est appliquée qu'à la validation.
+    /// </summary>
+    private static void TimingPage()
+    {
+        if ((s_UiPageFlags_00579260 & 1) == 0)
+        {
+            s_UiPageFlags_00579260 |= 1;
+            s_UiTimingSelection_00579268 = (int)s_TimingMode;
+        }
+
+        while (true)
+        {
+            RestoreLostUiTextures();
+            UiBeginScene();
+            DrawUiBackground();
+
+            UiDrawFrame(0x4c, 0x20, 0xa8, 100);
+            UiDrawLabel(0xa0, 0x32, 0x29, 1, 0xffffff);
+            UiDrawLabel(0x5c, 0x48, 0x32, 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x54, 0x2a, 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x60, 0x2b, 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x6c, 0x31, 0, 0xffffff);
+            UiDrawCursor(0x4b, (s_UiTimingSelection_00579268 + 6) * 0xc);
+
+            UiEndScene();
+            UiPresent();
+
+            uint action;
+            fixed (int* selection = &s_UiTimingSelection_00579268)
+                action = UiSelect(selection, 0, 3);
+
+            if (action == 0xffffffff) return;
+
+            if ((action & 1) != 0)
+            {
+                s_TimingMode = (uint)s_UiTimingSelection_00579268;
+                SetTimingMode(s_UiTimingSelection_00579268);
+                return;
+            }
+
+            Ordinal_132(2);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00510e60 @ 0x00510e60 — la page **résolution**. Le device annonce les modes
+    /// qu'il accepte par un masque de bits (slot <c>+0x1c</c>), la page en fait une liste, et une
+    /// validation qui change réellement de mode détruit les huit textures, refait la mise en place
+    /// et recale le zoom.
+    /// <para>
+    /// TODO(REVERSE): le device synthétique ne porte ni <c>+0x1c</c> (le masque des modes) ni
+    /// <c>+0xE8</c> (le changement effectif, qui est ce que <c>ChangeResolution</c> appelle). Le
+    /// masque revient donc à zéro, la liste est vide, et la page n'affiche que son titre. C'est
+    /// une dégradation visible et sans risque : le garde ci-dessous empêche d'indexer une liste
+    /// vide, ce que l'original n'a pas à faire puisque son device annonce toujours au moins un
+    /// mode.
+    /// </para>
+    /// </summary>
+    private static void ResolutionPage()
+    {
+        int* modes = stackalloc int[32];
+        int count = 0;
+
+        uint mask = (uint)((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0x1c / 4])(Ordinal_750());
+        for (int bit = 0; mask != 0; mask >>= 1, bit++)
+            if ((mask & 1) != 0) modes[count++] = bit;
+
+        while (true)
+        {
+            RestoreLostUiTextures();
+            UiBeginScene();
+            DrawUiBackground();
+
+            UiDrawFrame(0x4c, 0x20, 0xa8, count * 0xc + 0x38);
+            UiDrawLabel(0xa0, 0x32, 0x26, 1, 0xffffff);
+            for (int i = 0, y = 0x48; i < count; i++, y += 0xc)
+                UiDrawLabel(0x5c, y, modes[i] + 0x2c, 0, 0xffffff);
+            UiDrawCursor(0x4b, (s_UiResolutionSelection_005d9e0c + 6) * 0xc);
+
+            UiEndScene();
+            UiPresent();
+
+            uint action;
+            fixed (int* selection = &s_UiResolutionSelection_005d9e0c)
+                action = UiSelect(selection, 0, count - 1);
+
+            if (action == 0xffffffff) return;
+
+            // Le garde : sans mode annoncé il n'y a rien à choisir.
+            if ((action & 1) != 0 && count > 0
+                && (uint)s_UiResolutionSelection_005d9e0c < (uint)count
+                && modes[s_UiResolutionSelection_005d9e0c] != (int)s_ResolutionIndex)
+            {
+                ReleaseUiTextures();
+                ReInitializeAllTextures();
+
+                s_ResolutionIndex = (uint)modes[s_UiResolutionSelection_005d9e0c];
+                ChangeResolution((int)s_ResolutionIndex);
+
+                // Ghidra: la file est vidée de ses WM_QUIT (0x12) avant de continuer.
+                MSG message;
+                while (PeekMessageA(&message, IntPtr.Zero, 0x12, 0x12, 1) != 0) { }
+
+                s_SizeSetting_005de160 = UiDetailLimit;
+                SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
+                         (int)((0xb - s_SizeSetting_005de160) * 0xc),
+                         (int)s_SizeSetting_005de160, 0);
+                if (s_SizeSetting_005de160 < 8) s_SmallTextureFlag = 1;
+
+                OptionsSetup();     // Ghidra: DAT_00578e28 = Ordinal_750(); FUN_0050fab0();
+            }
+
+            Ordinal_132(2);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005119c0 @ 0x005119c0 — l'affectation des manettes. Quatre lignes « joueur N »
+    /// suivies du numéro de manette attribué, puis quatre lignes « configurer », grisées
+    /// (0x5f5f5f au lieu de 0xffffff) tant que le joueur correspondant n'a pas de manette.
+    /// <para>
+    /// L'affectation est un rang compact : attribuer à un joueur lui donne le rang suivant libre et
+    /// décale ceux d'après ; le retirer les décale en arrière. Les quatre lignes du bas sont
+    /// sautées à la navigation quand elles sont inactives.
+    /// </para>
+    /// </summary>
+    private static void JoystickAssignmentPage()
+    {
+        while (true)
+        {
+            RestoreLostUiTextures();
+            UiBeginScene();
+            DrawUiBackground();
+
+            UiDrawFrame(0x4c, 0x20, 0xa8, 0x94);
+            UiDrawLabel(0xa0, 0x32, 0x20, 1, 0xffffff);
+
+            for (int player = 0; player < 4; player++)
+            {
+                int y = 0x48 + player * 0xc;
+                int label = 0x13 + player;
+                UiDrawLabel(0x5c, y, label, 0, 0xffffff);
+                // Ghidra: DAT_005897a4 + player*4 — la largeur du libellé qu'on vient de poser,
+                // prise dans la table des largeurs, sert de décalage pour la valeur.
+                UiDrawLabel(s_UiLabelWidths_00589758[label] + 0x5c, y,
+                            s_JoystickSlot[player] + 0x18, 0, 0xffffff);
+            }
+
+            for (int player = 0; player < 4; player++)
+            {
+                uint colour = s_JoystickSlot[player] != -1 ? 0xffffffu : 0x5f5f5fu;
+                UiDrawLabel(0x5c, 0x78 + player * 0xc, 0x1c + player, 0, colour);
+            }
+
+            UiDrawCursor(0x4b, (s_UiJoystickSelection_005d9e38 + 6) * 0xc);
+            UiEndScene();
+            UiPresent();
+
+            int before = s_UiJoystickSelection_005d9e38;
+            uint action;
+            fixed (int* selection = &s_UiJoystickSelection_005d9e38)
+                action = UiSelect(selection, 0, 7);
+
+            SkipInactiveJoystickRows(before);
+            if (action == 0xffffffff) return;
+
+            int row = s_UiJoystickSelection_005d9e38;
+
+            if ((action & 7) != 0 && row is >= 0 and < 4)
+            {
+                PlayUiSound3A();
+                ToggleJoystickAssignment(row);
+            }
+
+            if ((action & 1) != 0 && row is >= 4 and <= 7)
+            {
+                if (s_JoystickSlot[row - 4] < 0) PlayUiSoundError();
+                else { PlayUiSound38(); JoystickButtonsPageStub(row - 4); }
+            }
+
+            Ordinal_132(2);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: la boucle qui repousse le curseur hors des quatre lignes « configurer » inactives —
+    /// vers le haut si on y arrivait en descendant... et l'inverse, selon le sens du mouvement.
+    /// </summary>
+    private static void SkipInactiveJoystickRows(int before)
+    {
+        int row = s_UiJoystickSelection_005d9e38;
+        if (row < 4 || s_JoystickSlot[row - 4] != -1) return;
+
+        if (row < before)
+        {
+            int candidate = row;
+            while (candidate > 3 && s_JoystickSlot[candidate - 4] == -1) candidate--;
+            s_UiJoystickSelection_005d9e38 = candidate;
+            return;
+        }
+
+        while (row < 8 && s_JoystickSlot[row - 4] == -1) row++;
+        s_UiJoystickSelection_005d9e38 = row == 8 ? before : row;
+    }
+
+    /// <summary>
+    /// Ghidra: attribuer donne au joueur le rang égal au nombre de joueurs déjà servis avant lui et
+    /// incrémente ceux d'après ; retirer met -1 et décrémente ceux d'après. Les rangs restent donc
+    /// toujours compacts.
+    /// </summary>
+    private static void ToggleJoystickAssignment(int player)
+    {
+        if (s_JoystickSlot[player] == -1)
+        {
+            int rank = 0;
+            for (int i = 0; i < player; i++) if (s_JoystickSlot[i] >= 0) rank++;
+            s_JoystickSlot[player] = rank;
+            for (int i = player + 1; i < 4; i++) if (s_JoystickSlot[i] != -1) s_JoystickSlot[i]++;
+        }
+        else
+        {
+            s_JoystickSlot[player] = -1;
+            for (int i = player + 1; i < 4; i++) if (s_JoystickSlot[i] != -1) s_JoystickSlot[i]--;
+        }
+    }
+
+    private static int s_UiPageFlags_00579260;            // Ghidra: DAT_00579260
+    private static int s_UiTimingSelection_00579268;      // Ghidra: DAT_00579268
+    private static int s_UiResolutionSelection_005d9e0c;  // Ghidra: DAT_005d9e0c
+    private static int s_UiJoystickSelection_005d9e38;    // Ghidra: DAT_005d9e38
+
+    /// <summary>Ghidra: FUN_0053dbc0 — le bip d'action refusée.</summary>
+    private static void PlayUiSoundError() => PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
+
+    private static void JoystickButtonsPageStub(int player)
+        => throw new NotImplementedException(
+            $"FUN_005115c0 : les boutons de la manette du joueur {player + 1} (168 lignes)");
+
+    /// <summary>
+    /// Ghidra: FUN_005115a0 @ 0x005115a0 — retrouve l'index du nom d'une touche à partir de son
+    /// scancode, en cherchant dans la table des 85 scancodes. -1 si la touche n'est pas listée.
+    /// </summary>
+    private static int KeyLabelForScancode(int scancode)
+    {
+        for (int i = 0; i < 0x55; i++)
+            if (s_KeyScancodes_00562e18[i] == scancode) return i;
+        return -1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005109c0 @ 0x005109c0 puis FUN_005108b0 — dessine un nom de touche depuis
+    /// l'atlas clavier, en lisant sa position dans la table de placement que
+    /// <see cref="RasteriseKeyLabels"/> a remplie : x en <c>+0</c>, ligne en <c>+1</c>, largeur en
+    /// <c>+2</c>.
+    /// </summary>
+    private static void DrawKeyName(int x, int y, int keyIndex, uint colour)
+    {
+        byte* placement = s_UiKeyPlacement_00599c80 + keyIndex * 4;
+        int sourceX = placement[0];
+        int row = placement[1];
+        int width = *(short*)(placement + 2);
+        UiBlit(x, y, width, 0xe, sourceX, row * 0xe, s_UiAtlasKeyboard_00589c78, width, 0xe, colour);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00511d40 @ 0x00511d40 — l'éditeur de touches. Une liste de 0x31 lignes défilant
+    /// par fenêtre de onze, bâtie sur la table de descripteurs `DAT_00562ed8` : huit actions
+    /// globales, puis quatre blocs « Joueur N » (un en-tête coloré et neuf actions), et une
+    /// dernière ligne qui remet les liaisons par défaut.
+    /// <para>
+    /// Chaque ligne d'action montre jusqu'à deux touches. Ce sont les catégories 0 et 1 de la même
+    /// table de liaisons — `DAT_00564ba8` est `DAT_00564b58` décalé de vingt entrées — c'est-à-dire
+    /// les deux jeux clavier que <see cref="FoldKeyboardIntoPadState"/> lit déjà. Assigner une
+    /// touche pousse l'ancienne en second et efface ce scancode partout ailleurs.
+    /// </para>
+    /// </summary>
+    private static void KeyConfigPage()
+    {
+        int capturing = -1;
+        bool drainAfterCapture = false;
+
+        while (true)
+        {
+            RestoreLostUiTextures();
+            UiBeginScene();
+            DrawUiBackground();
+
+            UiDrawFrame(0x10, 0x20, 0x120, 0xb8);
+            UiDrawLabel(0xa0, 0x32, 0x22, 1, 0xffffff);
+
+            for (int slot = 0, y = 0x48; y < 0xcc; slot++, y += 0xc)
+            {
+                int row = slot + s_UiKeyScroll_005d9e40;
+                if ((uint)row >= KeyRowCount) continue;
+
+                byte* desc = s_KeyRowTable_00562ed8 + row * 8;
+                uint colour = *(uint*)desc;
+                int kind = (sbyte)desc[4];
+
+                // Ghidra: un `kind` négatif est une ligne d'en-tête — elle ne porte qu'un libellé.
+                if (kind < 0) { UiDrawLabel(0x20, y, (sbyte)desc[6], 0, colour); continue; }
+
+                UiDrawLabel(0x20, y, -1 - kind, 0, colour);
+
+                // Ghidra: les quatre directions portent une flèche prise dans la planche du cadre.
+                if (kind is > 3 and < 8)
+                {
+                    UiBlit(s_UiLabelWidths_00589758[-kind] + 0x20, y + 2, 8, 9,
+                           s_KeyArrowColumn_00563060[kind - 4] * 8 + 0x98, 0x20,
+                           s_UiFrameAtlas_00599ddc, 8, 9, 0xffffff);
+                }
+
+                int group = (sbyte)desc[5];
+                if (group == -1) group = 0;
+                int binding = s_KeyActionIndex_00562ec0[kind] + group * 0x3c;
+
+                int x = 0xb9;
+                int primary = KeyLabelForScancode(s_KeyBindings[binding]);
+                if (primary != -1) { DrawKeyName(0xb9, y, primary, colour); x = 0xf3; }
+
+                if (row != capturing || x == 0xb9)
+                {
+                    int secondary = KeyLabelForScancode(s_KeyBindings[binding + 20]);
+                    if (secondary != -1) { DrawKeyName(x, y, secondary, colour); x += 0x3a; }
+                }
+
+                if (row == capturing) DrawKeyName(x, y, 0x55, colour);
+                else if (x == 0xb9) UiDrawLabel(0xb9, y, 6, 0, colour);
+            }
+
+            UiDrawCursor(0xf, (s_UiKeySelection_005d9e3c - s_UiKeyScroll_005d9e40 + 6) * 0xc);
+            UiEndScene();
+            UiPresent();
+
+            if (drainAfterCapture) { WaitForAllKeysReleased(); drainAfterCapture = false; }
+
+            int before = s_UiKeySelection_005d9e3c;
+            uint action;
+            fixed (int* selection = &s_UiKeySelection_005d9e3c)
+                action = UiSelect(selection, 0, 0x30);
+
+            // Ghidra: page précédente / page suivante déplacent de dix, curseur et fenêtre ensemble.
+            if ((action & 8) != 0)
+            {
+                s_UiKeySelection_005d9e3c -= 10;
+                s_UiKeyScroll_005d9e40 -= 10;
+                if (s_UiKeySelection_005d9e3c < 0) s_UiKeySelection_005d9e3c = 0;
+                if (s_UiKeyScroll_005d9e40 < 0) s_UiKeyScroll_005d9e40 = 0;
+            }
+            if ((action & 0x10) != 0)
+            {
+                s_UiKeySelection_005d9e3c += 10;
+                s_UiKeyScroll_005d9e40 += 10;
+                if (s_UiKeySelection_005d9e3c > 0x30) s_UiKeySelection_005d9e3c = 0x30;
+                if (s_UiKeyScroll_005d9e40 > 0x26) s_UiKeyScroll_005d9e40 = 0x26;
+            }
+
+            FollowKeyCursor();
+
+            // Ghidra: une ligne d'en-tête (kind == -1, mais pas -2) est franchie dans le sens du
+            // déplacement. La dernière ligne, de type -2, reste sélectionnable.
+            if ((sbyte)s_KeyRowTable_00562ed8[s_UiKeySelection_005d9e3c * 8 + 4] == -1)
+                s_UiKeySelection_005d9e3c += s_UiKeySelection_005d9e3c > before ? 1 : -1;
+
+            FollowKeyCursor();
+
+            if (capturing == -1)
+            {
+                if ((action & 1) != 0)
+                {
+                    if (s_UiKeySelection_005d9e3c < 0x30)
+                    {
+                        PlayUiSound38();
+                        capturing = s_UiKeySelection_005d9e3c;
+                        WaitForAllKeysReleased();
+                    }
+                    else if (s_UiKeySelection_005d9e3c == 0x30)
+                    {
+                        PlayUiSound38();
+                        ResetKeyBindings();
+                    }
+                }
+
+                if (action == 0xffffffff) return;
+                Ordinal_132(2);
+                continue;
+            }
+
+            // Mode capture : la première touche listée qu'on trouve enfoncée devient la liaison.
+            PollJoystickState();
+            int pressed = -1;
+            for (int i = 0; i < 0x55; i++)
+            {
+                if ((s_KeyboardState_00604b50[s_KeyScancodes_00562e18[i]] & 0x80) == 0) continue;
+                pressed = i;
+                break;
+            }
+
+            if (pressed == -1) { Ordinal_132(2); continue; }
+
+            int scancode = s_KeyScancodes_00562e18[pressed];
+            ClearScancodeEverywhere(scancode);
+            PlayUiSound38();
+
+            byte* captured = s_KeyRowTable_00562ed8 + capturing * 8;
+            int capturedGroup = (sbyte)captured[5];
+            if (capturedGroup == -1) capturedGroup = 0;
+            int target = s_KeyActionIndex_00562ec0[(sbyte)captured[4]] + capturedGroup * 0x3c;
+
+            capturing = -1;
+            drainAfterCapture = true;
+
+            // L'ancienne liaison devient la seconde ; la nouvelle prend la première place.
+            s_KeyBindings[target + 20] = s_KeyBindings[target];
+            s_KeyBindings[target] = scancode;
+            Ordinal_132(2);
+        }
+    }
+
+    /// <summary>Ghidra: la fenêtre suit le curseur, une ligne à la fois, deux fois par tour.</summary>
+    private static void FollowKeyCursor()
+    {
+        if (s_UiKeySelection_005d9e3c < s_UiKeyScroll_005d9e40) s_UiKeyScroll_005d9e40--;
+        else if (s_UiKeyScroll_005d9e40 + 10 < s_UiKeySelection_005d9e3c) s_UiKeyScroll_005d9e40++;
+    }
+
+    /// <summary>
+    /// Ghidra: la boucle d'attente qui suit une validation — tant qu'une touche listée est
+    /// enfoncée, on repolle. Elle empêche la touche de validation d'être capturée aussitôt.
+    /// </summary>
+    private static void WaitForAllKeysReleased()
+    {
+        while (true)
+        {
+            PollJoystickState();
+            byte any = 0;
+            for (int i = 0; i < 0x55; i++)
+                any |= (byte)(s_KeyboardState_00604b50[s_KeyScancodes_00562e18[i]] & 0x80);
+            Ordinal_132(0);
+            if (any == 0) return;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: le scancode retenu est effacé de **toutes** les liaisons clavier — les deux
+    /// catégories des quatre groupes, soit 2 x 20 entiers par groupe de 0x3c. La troisième
+    /// catégorie, celle de la manette, n'est pas touchée.
+    /// </summary>
+    private static void ClearScancodeEverywhere(int scancode)
+    {
+        for (int group = 0; group < 4; group++)
+            for (int i = 0; i < 40; i++)
+                if (s_KeyBindings[group * 0x3c + i] == scancode) s_KeyBindings[group * 0x3c + i] = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: la dernière ligne rétablit les liaisons du joueur 1 depuis la table de défauts et
+    /// efface celles des trois autres.
+    /// </summary>
+    private static void ResetKeyBindings()
+    {
+        for (int i = 0; i < 0x28; i++) s_KeyBindings[i] = s_KeyBindingDefaults_00564ab8[i];
+        for (int group = 1; group < 4; group++)
+            for (int i = 0; i < 0x28; i++) s_KeyBindings[group * 0x3c + i] = 0;
+    }
+
+    private static int s_UiKeySelection_005d9e3c;   // Ghidra: DAT_005d9e3c
+    private static int s_UiKeyScroll_005d9e40;      // Ghidra: DAT_005d9e40
+
+    private const int KeyRowCount = 0x31;
+
+    // =====================================================================
+    // Les cinq tables de l'éditeur de touches, relevées dans Legacy/Blaze.exe.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00562e18 — les 85 scancodes DirectInput que l'éditeur sait nommer, dans le
+    /// même ordre que les lignes de KEYBOARD.TXT. Le 0xff qui suit est un terminateur.
+    /// </summary>
+    private static readonly byte[] s_KeyScancodes_00562e18 =
+    [
+        0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08, 0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,
+        0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18, 0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,0x20,
+        0x21,0x22,0x23,0x24,0x25,0x26,0x27,0x28, 0x29,0x2a,0x2b,0x2c,0x2d,0x2e,0x2f,0x30,
+        0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38, 0x39,0x47,0x48,0x49,0x4a,0x4b,0x4c,0x4d,
+        0x4e,0x4f,0x50,0x51,0x52,0x53,0x9d,0x56, 0xb5,0xb8,0xc7,0xc8,0xc9,0xcb,0xcd,0xcf,
+        0xd0,0xd1,0xd2,0xd3,0x3b,
+    ];
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00562ec0 — l'action d'une ligne vers son rang dans le bloc de vingt liaisons.
+    /// </summary>
+    private static readonly byte[] s_KeyActionIndex_00562ec0 =
+    [
+        0x0c,0x0e,0x0f,0x0d,0x07,0x05,0x06,0x04, 0x03,0x02,0x01,0x00,0x0b,0x08,0x12,0x13,
+        0x10,0x11,0x00,0x00,0x03,0x01,0x02,0x00,
+    ];
+
+    /// <summary>
+    /// Ghidra: `(&amp;DAT_0056305c)[kind]` pour kind 4..7 — la colonne de la flèche de direction dans
+    /// la planche du cadre. Les quatre octets utiles sont ceux de 0x00563060.
+    /// </summary>
+    private static readonly byte[] s_KeyArrowColumn_00563060 = [0x03, 0x01, 0x02, 0x00];
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00564ab8 — les liaisons par défaut du joueur 1, quarante entiers : les deux
+    /// jeux clavier. Ils correspondent exactement aux clés `K0000`..`K0113` du BLAZE.cfg installé,
+    /// ce qui les confirme.
+    /// </summary>
+    private static readonly int[] s_KeyBindingDefaults_00564ab8 =
+    [
+        0x47, 0x4f, 0x51, 0x49, 0x39, 0x2a, 0x38, 0x1d, 0x3b, 0x00,
+        0x00, 0x3c, 0x48, 0x4d, 0x50, 0x4b, 0x00, 0x00, 0x0c, 0x0d,
+        0xc7, 0xcf, 0xd1, 0xc9, 0x00, 0x00, 0x01, 0x1c, 0x00, 0x00,
+        0x00, 0x00, 0xc8, 0xcd, 0xd0, 0xcb, 0xd2, 0xd3, 0x4a, 0x4e,
+    ];
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00562ed8 — les 0x31 lignes de l'éditeur, huit octets chacune : couleur sur
+    /// quatre octets, puis l'action, le groupe et le libellé, tous trois signés.
+    /// <para>
+    /// Transcrites en octets bruts plutôt qu'interprétées : la table se relit alors ligne à ligne
+    /// contre le vidage du binaire, ce qu'une reconstruction structurée ne permet pas. La structure
+    /// s'y lit quand même — huit actions globales en blanc, puis quatre blocs « Joueur N » dans les
+    /// quatre teintes `FFBFBF`, `BFFFBF`, `BFBFFF`, `FFFFBF`, chacun un en-tête (action -1) et neuf
+    /// actions, et une dernière ligne d'action -2 : la remise aux valeurs par défaut.
+    /// </para>
+    /// </summary>
+    private static readonly byte* s_KeyRowTable_00562ed8 = BuildKeyRowTable();
+
+    private static byte* BuildKeyRowTable()
+    {
+        ReadOnlySpan<byte> rows =
+        [
+            0xff,0xff,0xff,0x00, 0x08,0xff,0x00,0x00,   0xff,0xff,0xff,0x00, 0x09,0xff,0x00,0x00,
+            0xff,0xff,0xff,0x00, 0x0a,0xff,0x00,0x00,   0xff,0xff,0xff,0x00, 0x0b,0xff,0x00,0x00,
+            0xff,0xff,0xff,0x00, 0x0e,0xff,0x00,0x00,   0xff,0xff,0xff,0x00, 0x0f,0xff,0x00,0x00,
+            0xff,0xff,0xff,0x00, 0x10,0xff,0x00,0x00,   0xff,0xff,0xff,0x00, 0x11,0xff,0x00,0x00,
+
+            0xbf,0xbf,0xff,0x00, 0xff,0xff,0x13,0x00,   0xbf,0xbf,0xff,0x00, 0x00,0x00,0x00,0x00,
+            0xbf,0xbf,0xff,0x00, 0x01,0x00,0x00,0x00,   0xbf,0xbf,0xff,0x00, 0x02,0x00,0x00,0x00,
+            0xbf,0xbf,0xff,0x00, 0x03,0x00,0x00,0x00,   0xbf,0xbf,0xff,0x00, 0x04,0x00,0x00,0x00,
+            0xbf,0xbf,0xff,0x00, 0x05,0x00,0x00,0x00,   0xbf,0xbf,0xff,0x00, 0x06,0x00,0x00,0x00,
+            0xbf,0xbf,0xff,0x00, 0x07,0x00,0x00,0x00,   0xbf,0xbf,0xff,0x00, 0x0d,0x00,0x00,0x00,
+
+            0xbf,0xff,0xbf,0x00, 0xff,0xff,0x14,0x00,   0xbf,0xff,0xbf,0x00, 0x00,0x01,0x00,0x00,
+            0xbf,0xff,0xbf,0x00, 0x01,0x01,0x00,0x00,   0xbf,0xff,0xbf,0x00, 0x02,0x01,0x00,0x00,
+            0xbf,0xff,0xbf,0x00, 0x03,0x01,0x00,0x00,   0xbf,0xff,0xbf,0x00, 0x04,0x01,0x00,0x00,
+            0xbf,0xff,0xbf,0x00, 0x05,0x01,0x00,0x00,   0xbf,0xff,0xbf,0x00, 0x06,0x01,0x00,0x00,
+            0xbf,0xff,0xbf,0x00, 0x07,0x01,0x00,0x00,   0xbf,0xff,0xbf,0x00, 0x0d,0x01,0x00,0x00,
+
+            0xff,0xbf,0xbf,0x00, 0xff,0xff,0x15,0x00,   0xff,0xbf,0xbf,0x00, 0x00,0x02,0x00,0x00,
+            0xff,0xbf,0xbf,0x00, 0x01,0x02,0x00,0x00,   0xff,0xbf,0xbf,0x00, 0x02,0x02,0x00,0x00,
+            0xff,0xbf,0xbf,0x00, 0x03,0x02,0x00,0x00,   0xff,0xbf,0xbf,0x00, 0x04,0x02,0x00,0x00,
+            0xff,0xbf,0xbf,0x00, 0x05,0x02,0x00,0x00,   0xff,0xbf,0xbf,0x00, 0x06,0x02,0x00,0x00,
+            0xff,0xbf,0xbf,0x00, 0x07,0x02,0x00,0x00,   0xff,0xbf,0xbf,0x00, 0x0d,0x02,0x00,0x00,
+
+            0xbf,0xff,0xff,0x00, 0xff,0xff,0x16,0x00,   0xbf,0xff,0xff,0x00, 0x00,0x03,0x00,0x00,
+            0xbf,0xff,0xff,0x00, 0x01,0x03,0x00,0x00,   0xbf,0xff,0xff,0x00, 0x02,0x03,0x00,0x00,
+            0xbf,0xff,0xff,0x00, 0x03,0x03,0x00,0x00,   0xbf,0xff,0xff,0x00, 0x04,0x03,0x00,0x00,
+            0xbf,0xff,0xff,0x00, 0x05,0x03,0x00,0x00,   0xbf,0xff,0xff,0x00, 0x06,0x03,0x00,0x00,
+            0xbf,0xff,0xff,0x00, 0x07,0x03,0x00,0x00,   0xbf,0xff,0xff,0x00, 0x0d,0x03,0x00,0x00,
+
+            0xff,0xff,0xff,0x00, 0xfe,0xff,0x23,0x00,
+        ];
+
+        byte* table = (byte*)NativeMemory.AllocZeroed((nuint)rows.Length);
+        for (int i = 0; i < rows.Length; i++) table[i] = rows[i];
+        return table;
+    }
+
+    /// <summary>Journalisation des étapes de la mise en place : <c>OPENFORESIA_OPTIONS_SETUP=1</c>.</summary>
+    private static readonly bool s_RunOptionsSetup =
+        Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_SETUP") == "1";
+
+    private static readonly bool s_TraceGlyphs =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_GLYPHS") == "1";
+
+    /// <summary>
+    /// Ghidra: the menu's options branch drains input with `while (FUN_005048f0() != 0)` — it waits
+    /// until nothing is held before opening the page, so the keypress that chose "Options" is not
+    /// still down inside it. `FUN_005048f0` is <see cref="PollJoystickState"/>, reconstructed on
+    /// 2026-08-14; this stub predates it and was never anything else.
+    /// </summary>
+    private static int InputDrainStub() => PollJoystickState();
 
     // Ghidra: &DAT_0056e670 — the menu's label table, recovered verbatim from Legacy/Blaze.exe.
     // A 0x0c length byte, then five cp1252 labels separated by carriage returns, ending 0x09 '?'.
@@ -7622,9 +9579,15 @@ public static unsafe partial class Blaze
     // Third instance of this shape today, after DAT_0056e61f and DAT_005e8fc0.
     private static int s_ResolutionIndexForClamp => (int)s_ResolutionIndex;
 
-    // Ghidra: _DAT_0054d000 — the gamma scale this hotkey path uses. Distinct from _DAT_0054d074.
-    // TODO(REVERSE): .rdata content; 1.0f leaves the product equal to the raw setting.
-    private const float s_GammaScale_0054d000 = 1.0f;
+    // Ghidra: _DAT_0054d000 — **lu dans Legacy/Blaze.exe : 0x3C800000, soit 1/64**, et non 1.0f
+    // comme un TODO le supposait ici. C'est aussi le même symbole que `GammaIniScale` déclaré plus
+    // haut dans ce fichier, qui portait déjà la bonne valeur par déduction ; huitième global
+    // reconstruit sous deux noms.
+    //
+    // La valeur compte : la page d'options passe ses palettes dans `Gamma(valeur, réglage * ce
+    // facteur)`. À 1.0f le produit valait 64 et rendait toutes les palettes blanches — fond et
+    // cadre invisibles. À 1/64 le réglage par défaut de l'ini (64) donne 1.0, le gamma neutre.
+    private const float s_GammaScale_0054d000 = 1.0f / 64.0f;
 
     /// <summary>Ghidra: the four calls guarded by arg5 in FUN_0052a280.</summary>
     private static void PollInputAndAudio()

@@ -896,6 +896,257 @@ width against 45 %). That is **not** a porting defect: `3dhelp`, run on the same
 `Resolution=4`, produces the same proportions. The game's UI does not scale with the resolution
 while its background does. Any change here would be a deliberate improvement, not a fidelity fix.
 
+## 2026-08-14 — the menu's confirm is wired to the wrong variable (measured)
+
+Trying to reach the options page turned up a defect in the main menu that the earlier "confirm
+works" check had hidden. Instrumenting the frame loop (`OPENFORESIA_TRACE_MENU=1`) gives, per
+frame:
+
+```
+[MENU] pad=0x0040 fade=9 sélection=0 drapeaux=0x05
+```
+
+Three facts, and each one matters:
+
+- **`pad=0x0040` is DOWN** — input reaches the menu correctly, and the cursor does move on screen.
+- **`sélection` never leaves 0**, even as the cursor walks down the entries. `DAT_005e909f`, the
+  variable the frame loop's `switch` reads, is **never written to a non-zero value anywhere in
+  `Blaze.c`** — 18 reads, two writes, both `= 0`. So the switch can only ever pick case 0. The
+  cursor's real position lives elsewhere, almost certainly in the menu context descriptor, exactly
+  as `DAT_0056e61f` turned out to be `menuContext[0x8c7]`. **This is the fifth instance of that
+  shape**, and the reason "Options" cannot be opened.
+- **`drapeaux` goes 0x01 → 0x05** after a few frames — bit 2 rises when the text stream ends — and
+  the switch is gated on `(flags & 4) == 0`. So confirm only ever fires during the first frames,
+  which is why one earlier test appeared to work: it pressed confirm inside that window and got
+  case 0, "Début du jeu", regardless of where the cursor was.
+
+Consequence for the record: the earlier note "the confirm key leaves the menu" is true but
+misleading. Confirm left the menu **to game state 1 only**, whatever the cursor showed.
+
+### Answered the same day: the cursor index is `menuContext[0x8c4]`
+
+Found by diffing the whole descriptor between frames (`OPENFORESIA_TRACE_MENU=1`), which is the
+same instrument that identified `menuContext[0x8c7]`:
+
+```
+[MENU] pad=0x0040 ... changés=1 +0x8C4:00->01
+[MENU] pad=0x0040 ... changés=1 +0x8C4:01->02
+[MENU] pad=0x0040 ... changés=1 +0x8C4:02->03
+```
+
+One byte moves, in exact step with the arrow presses that move the cursor on screen, and no other.
+The selector is therefore `menuContext[0x8c4]` — address **0x0056e61c**, three bytes before the
+flags byte the same `if` reads. One dword, two fields.
+
+**Ghidra never named 0x0056e61c**, because nothing in the program reaches it as an absolute
+address: it is only ever `descriptor + 0x8c4`. That is why the decompiler attributed the switch to
+`DAT_005e909f`, an unrelated global that happens to be live nearby — the same failure mode as
+`unaff_retaddr` in `FUN_00544150`, and the sixth instance in this project of a `DAT_` that is
+really a structure field.
+
+**Verified end to end**: with the selector corrected, walking the cursor to "Options" and confirming
+now dispatches to the **Options** case instead of case 0. The menu is genuinely navigable.
+
+## 2026-08-14 — the options page: its drawing layer is in, the rest is mapped
+
+The main menu's "Options" entry opens a **second UI layer**, unrelated to the display-list renderer
+every other screen uses. It talks to the 3D device directly: each widget ends in `FUN_00510500`
+(textured quad) or `FUN_00510330` (flat fill), which build four `D3DTLVERTEX` on the stack and
+submit one `DrawPrimitive(TRIANGLEFAN, TLVERTEX, …, 4, 0)`. The device is what `Ordinal_750`
+returns — `DAT_011be760`, the object `DeviceShim` already faces — so **this layer renders through
+the Direct3D 11 backend with no further plumbing**.
+
+Reconstructed and compiling: `FUN_00510110` (resolution mapping), `FUN_00510330`, `FUN_00510500`,
+`FUN_005108f0` (label strip), `FUN_00510740` (nine-patch frame), `FUN_00510a70` (cursor).
+
+Two things settled by reading rather than assumed:
+
+- **The vertex order.** In both builders the address passed to `DrawPrimitive` disagrees by 16
+  bytes with the one passed to the scaling helper, so the slot names cannot be trusted alone.
+  Grouping the assignments by the 32-byte `TLVERTEX` stride resolves it: the array starts where the
+  scaling helper points, and the four vertices are `(x1,y1) (x2,y1) (x2,y2) (x1,y2)`.
+- **The resolution tables** at `0x00566c98` / `0x00566cb0` are `{-160,-64,0,80,192}` and
+  `{-120,-48,0,60,144}`. Entry 4 is `(192, 144)` — exactly the "base" the `[SHIFT]` runtime trace
+  prints, which is what confirms they are the right tables.
+
+**A correction to this morning's note on the texture class.** `Documentation/DLL/3dhelp.md` was
+told that slot `[2]` — the `BITMAPINFO` loader — is never called. That holds for the main menu and
+is false in general: **the options page uses it**, for four 256x256 8-bit atlases it rasterises
+itself from `FONT.PIC` and the CD's `CONFIG.TXT` / `ACTION.TXT` / `JOYSTICK.TXT`, followed by a
+colour key through slot `[6]`. Both slots are now implemented on the synthetic device (bottom-up
+DIB, 4- and 8-bit palettised, colour key applied by re-expanding the kept indices). The general
+lesson is the one `+0xDC` already taught: *zero calls measured* means in the measured phase, never
+*never*.
+
+**The setup chain is reconstructed too** (second pass, same day): `FUN_0050fab0`, `FUN_0050f7d0`,
+`FUN_0050f9b0`, `FUN_0050f680` (the software text rasteriser), `FUN_0050f770`, `FUN_0050f560`, and
+`FUN_0050fa50` — which turned out to be `BuildCdPath`, already present. Everything it needs from
+`wsyskern` is a **named export**: `DIBCopyBlock`, `Gamma`, `CreateArray`, `LoadArray`,
+`ArrayToString`, `DeleteArray`, alongside `LoadBitmapFile`.
+
+What it does, worth knowing before touching it: the page's labels are **rasterised in software**,
+glyph by glyph, out of `DATA/FONT.PIC` (cells 10x14, 31 to a row) into six 256x256 8-bit buffers,
+from four text files on the CD — `CONFIG.TXT`, `ACTION.TXT`, `JOYSTICK.TXT`, `KEYBOARD.TXT`. Only
+then are those buffers handed to the device as textures.
+
+One structural detail that a straight reading would get wrong: the three 18-entry label-width runs
+are **contiguous** from `0x00589758`, and `ACTION.TXT`'s widths are written **downward** from
+`0x00589754` — which is what makes `FUN_005108f0`'s negative label ids resolve. One block with the
+base pointer placed inside it reproduces that; two arrays would not.
+
+**It runs to completion.** Getting there took two distinct bugs, one in `wsyskern` and one of ours.
+
+### Bug 1 — `wsyskern`'s `LoadArray` corrupts the heap here, and is now bypassed
+
+Symptom: the process dies with `0xC0000374` (heap corruption), **cumulatively with the number of
+lines read** — 1 line is fine, 4 lines kill it a few stages later, the whole 51-line file kills it
+immediately — and always at the next allocation, which is what a corruption *detection* looks like.
+
+Ruled out by measurement, so not worth reopening:
+
+- the call is correct: `LoadArray` ends in `RET 0x18`, so **6 stdcall arguments**, and each one's
+  meaning was read from `FUN_10004060` (start index, line cap, lines to skip, flags);
+  `ArrayToString` likewise, `RET 0x10`, 4 arguments;
+- the object is valid: `CreateArray` writes the `"ARAY"` tag (`0x59415241`) that the validator
+  `FUN_10003f10` demands, and `LoadArray` returns *cleanly* when it is not — which is exactly what
+  it does with a missing file, a case where **the entire setup then runs to the end**;
+- it is neither the initial capacity (0 and 0x80 both fail), nor the growth path (the "do not grow"
+  flag changes nothing), nor the path (correct, file present).
+
+Since what the array provides here is only "give me line *i* of a text file", the reconstruction now
+reads the files itself. That is the same nature of deviation as replacing DirectDraw with Direct3D
+11, several orders of magnitude smaller, and it touches no game logic.
+`OPENFORESIA_WSYSKERN_ARRAYS=1` restores the original path for whoever wants to resume the
+DLL-side diagnosis.
+
+### Bug 2 — the glyph index was signed, and should not be
+
+Ours, and the same shape as several before it. `FUN_0050f560` takes the character as an `int`;
+Ghidra types the caller's variable as `char`, and transcribing that literally makes `'ô'` (0xF4)
+arrive as **-12**, so the index comes out **-45** and every accented label indexes before the width
+table.
+
+**The pseudocode itself proves the parameter is unsigned**: the function compares it against
+`0x80`, `0x8a`, `0x9a`, `0xc0` and `0xe0` — values a signed `char` can never hold. Read as
+unsigned, `0xF4` gives glyph 174 and `0xE9` gives 167, both inside the 186-entry table and inside
+the 312x84 font sheet's 31x6 grid. The control-character test in the caller genuinely is signed;
+the two are not the same test.
+
+Measured after the fix: all four label sets rasterise, the six atlases and the two `.PIC` textures
+are created (`256x256`, 8-bit, bottom-up, through the texture class's `[2]` slot), and execution
+stops on the page loop's own `NotImplementedException`. The setup is **on by default** again.
+
+### The key editor
+
+`FUN_00511d40` is reconstructed, with its two helpers (`FUN_005115a0` scancode→name index,
+`FUN_005109c0`/`FUN_005108b0` draw a key name) and its five data tables, all read out of
+`Legacy/Blaze.exe`:
+
+| table | size | content |
+|---|---|---|
+| `DAT_00562e18` | 85 bytes | the DirectInput scancodes the editor can name, in KEYBOARD.TXT's order |
+| `DAT_00562ec0` | 24 bytes | action → its rank in the 20-entry binding block |
+| `DAT_0056305c+4` | 4 bytes | the direction arrow's column, for actions 4..7 |
+| `DAT_00564ab8` | 40 ints | player 1's default bindings — they match `K0000`..`K0113` in the installed BLAZE.cfg exactly, which confirms them |
+| `DAT_00562ed8` | 49 x 8 bytes | the rows: colour, action, group, label |
+
+The row table is transcribed as raw bytes rather than as an interpreted structure, so it can be
+re-read line by line against the dump. Its shape is still legible: eight global actions in white,
+then four "Joueur N" blocks in `FFBFBF` / `BFFFBF` / `BFBFFF` / `FFFFBF`, each a header plus nine
+actions, and a last row of action −2 — the reset to defaults.
+
+**The "second key" is not a second table.** `DAT_00564ba8` is `DAT_00564b58` offset by twenty
+entries: it is **category 1 of the same binding table**, i.e. the alternate keyboard layout that
+`FUN_00523660` already reads alongside category 0. Assigning a key pushes the old one into that
+slot and clears the new scancode from every keyboard binding of all four groups — the joystick
+category is deliberately left alone.
+
+Verified on screen: the eight global actions with both their keys ("NumPad 9" + "Pg up", …), the
+coloured "Joueur 1" header, the scrolling window and the cursor.
+
+**One defect of ours, found by looking at the screen.** `UiDrawLabel` still clamped negative label
+ids to 0 when reading the width table — a leftover from when that table was an `int[]` rather than
+the pointer placed inside its block. Every ACTION.TXT label was therefore drawn with label 0's
+width and truncated to the same short length. The clamp is gone; the labels render in full. Worth
+remembering as a category: **a guard written for an older representation outlives it silently**,
+because it never throws.
+
+### Three of the four leaves, and what the fourth really costs
+
+`FUN_00510d40` (Timing), `FUN_00510e60` (résolution) and `FUN_005119c0` (joystick assignment) are
+reconstructed. The joystick page was verified on screen: four "Joueur N: Joystick N" rows — the
+value positioned by the width of the label just drawn, which is what the width table is for — then
+four "Configuration joueur N" rows, white because all four players are assigned and grey when they
+are not.
+
+Two things worth recording:
+
+- **`FUN_00510d40` is the Timing page, not a screen-adjust page** as its stub had guessed from the
+  call site. It writes the ini's `Timing` key and calls `SetTimingMode`.
+- **The resolution page cannot do anything yet, and says so.** It needs two device slots the
+  synthetic device does not port: `+0x1c`, the bitmask of accepted display modes, and `+0xE8`, the
+  actual mode change that `ChangeResolution` drives. The mask comes back zero, so the list is empty
+  and only the title draws. A guard was added that the original does not need — its device always
+  advertises at least one mode — and it is marked as such.
+
+**The fourth leaf is bigger than its line count suggests.** `FUN_00511d40`, the key editor, is 230
+lines *plus* a scrolling list over the descriptor table at `DAT_00562ed8` (8 bytes per row), a
+"press a key" capture mode, two helpers (`FUN_005115a0` scancode→label, `FUN_005109c0` draw a key
+name) and four `.data` tables to recover (`DAT_00562ed8`, `DAT_00562ec0`, `DAT_00562e18`,
+`DAT_0056305c`). Reading it also surfaced a fifth leaf that was not on the list: `FUN_005115c0`,
+the per-player joystick button config, 168 lines, reached from the page above. Both are stubbed
+with their dependencies named.
+
+### The three submenus run too
+
+`FUN_005110b0` (Affichage), `FUN_005113d0` (Son) and `FUN_00512220` (Contrôle) are reconstructed,
+plus the gauge widget `FUN_00510a00` and the gamma reapply `FUN_0050f980`. All three draw and
+navigate; verified on screen:
+
+- **Son** — "Volume musique" and "Volume effets" with working gauges, "Musique activé". Right
+  twice on the first entry moves its knob and leaves the second alone, i.e. the ±8 step, the
+  0..0x80 clamp and the immediate `ApplyCdVolume` all behave.
+- **Affichage** — "Dimensions de l'écran" and "Clarté" with their gauges (the first near maximum at
+  `Size=21`, the second mid-range at the ini's gamma of 64), then the filter, status-size and
+  timing lines. Two Downs land the cursor on the filter line, which exercises the awkward part:
+  the cursor's row is `(sel > 1) + 6 + sel + (sel > 0)`, because the two gauge entries occupy two
+  rows each.
+- **Contrôle** — its two entries, each opening a page that is still a named stub.
+
+Everything they depend on was already reconstructed — `ApplyCdVolume`, `ApplyAllSoundBufferVolumes`,
+`ToggleMusicEnabled`, `SetShift`, the detail-limit table, `TexFilterPossible`. Four leaves remain
+stubbed, all with decompiled bodies and no blocked dependency: `FUN_00510d40` (36), `FUN_00510e60`
+(95), `FUN_00511d40` (230, the key config) and `FUN_005119c0` (122, the joystick config).
+
+### The page runs
+
+`FUN_0050fe90`, `FUN_005101c0`, `FUN_00510aa0` and the loop `FUN_00512320` are reconstructed, and
+the page draws: background picture, framed panel, the "OPTIONS" title, its four entries with their
+accents, and a cursor that moves with the arrow keys (verified by frame diff — the change is
+confined to the cursor column). Only the three submenus remain stubs (`FUN_005110b0`,
+`FUN_005113d0`, `FUN_00512220`, 90+64+39 lines).
+
+Three defects had to be cleared along the way, and all three are worth remembering:
+
+- **The texture class has more slots than this file recorded.** Re-read at `0x0FFE61F8`, its vtable
+  carries at least eleven entries, not six. `FUN_0050fe90` calls slot **8** once per texture per
+  frame — `mov eax,[ecx+8]` then the surface's `+0x60`, i.e.
+  `IDirectDrawSurface::IsLost` — and the synthetic class only had eight slots, so the call would
+  have jumped past the end of its own vtable. It now has twelve and answers "not lost", a Direct3D
+  11 texture having no equivalent loss.
+- **`DAT_005d9de0` is `s_GammaIni`**, the ini's "Gamma" key, already reconstructed — the comment on
+  `LoadOptionsIni` said so, and it had been redeclared anyway. Never assigned, it read 0.
+- **`_DAT_0054d000` is `1/64`, read from the binary** (`0x3C800000` at `0x0054d000`), not the
+  `1.0f` a TODO had assumed — and it is the same symbol as `GammaIniScale`, which already carried
+  the right value by inference. Together those two made the page compute `Gamma(value, 64.0)`, which
+  whitens every palette: the background and the frame were drawn pure white and looked absent,
+  while the labels — which do not pass through `Gamma` — were fine. Setting the scale to `1/64`
+  turns the ini's default 64 into a neutral gamma of 1.0 and the picture appears.
+
+That is the seventh and eighth global reconstructed under two names. The pattern is stable enough
+to be worth stating as a rule: **before declaring a `DAT_` field, grep the file for its address** —
+half of them are already there under another name, and the older one is not always the wrong one.
+
 ## 2026-08-14 — `FUN_0052a440` is the loading screen, and its frame is lost
 
 Reconstructed and running. **It is not the "per-game-state dispatcher"** this file used to call it;

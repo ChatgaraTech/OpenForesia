@@ -80,7 +80,107 @@ annonçait, mais **l'écran de chargement inter-états** : il charge une entrée
 décode, et l'affiche 150 images, passable avec START ou CARRÉ (au relâchement). Il tourne ; le
 blocage est désormais **l'état de jeu 1** (`thunk_FUN_00536180`).
 
-Deux réserves, toutes deux dues à une frame que Ghidra n'a pas récupérée sur cette fonction :
+**La page d'options : couche de dessin et mise en place reconstruites.** Le dessin
+(`FUN_00510110`, `FUN_00510330`, `FUN_00510500`, `FUN_005108f0`, `FUN_00510740`, `FUN_00510a70`)
+rend à travers notre backend, et la mise en place (`FUN_0050fab0` et sa chaîne : `FUN_0050f7d0`,
+`FUN_0050f9b0`, `FUN_0050f680`, `FUN_0050f770`, `FUN_0050f560`) rastérise en logiciel les libellés
+depuis `DATA/FONT.PIC` et les quatre fichiers texte du CD. Le chemin de texture par DIB (slots
+`[2]` et `[6]`) est posé aussi, puisque c'est cette page qui l'emprunte.
+
+**Non vérifié au runtime**, et c'est le point important ci-dessous : la page ne s'atteint pas.
+Reste `FUN_0050fe90`, `FUN_005101c0`, `FUN_00510aa0` et la boucle `FUN_00512320`.
+
+## L'index du curseur du menu — **trouvé**
+
+C'est `menuContext[0x8c4]`, soit l'adresse **0x0056e61c**, trois octets avant l'octet de drapeaux
+déjà identifié. Trouvé en comparant tout le descripteur d'une image à l'autre
+(`OPENFORESIA_TRACE_MENU=1`) : un seul octet bouge, en cadence exacte avec les flèches.
+
+Ghidra n'a **jamais nommé** cette adresse — rien n'y accède en absolu, c'est toujours
+`descripteur + 0x8c4` — et il a donc attribué le `switch` à `DAT_005e909f`, un global sans rapport
+qui n'est écrit qu'à zéro dans tout `Blaze.c`. Sixième occurrence dans ce projet d'un `DAT_` qui est
+en réalité un champ de structure.
+
+**Vérifié de bout en bout** : le curseur amené sur « Options », la validation ouvre bien Options et
+non l'entrée 0. Le menu se navigue pour de vrai.
+
+## La mise en place de la page d'options s'exécute de bout en bout
+
+Il a fallu lever deux défauts distincts.
+
+**1. `LoadArray` (wsyskern) corrompt le tas, et est contourné.** La corruption est *cumulative avec
+le nombre de lignes lues* — 1 ligne passe, 4 tuent plus loin, le fichier entier tue tout de suite —
+et toujours à l'allocation suivante. Écarté par la mesure : l'appel est conforme (`RET 0x18`, donc
+6 arguments stdcall, sens de chacun lu dans `FUN_10004060`), l'objet est valide (`CreateArray` pose
+le tag « ARAY » que le validateur exige, et `LoadArray` sort proprement s'il manque — avec un
+fichier absent **toute la mise en place va au bout**), ce n'est ni la capacité, ni la croissance,
+ni le chemin. Comme le tableau ne sert ici qu'à « rendre la ligne *i* d'un fichier texte », la
+reconstruction lit désormais les fichiers elle-même. `OPENFORESIA_WSYSKERN_ARRAYS=1` rétablit le
+chemin d'origine pour qui voudra reprendre le diagnostic côté DLL.
+
+**2. L'index de glyphe était signé.** Défaut de notre côté : Ghidra type le caractère en `char`, et
+transcrit tel quel, « ô » (0xF4) arrivait à **-12**, donc index **-45**. Le pseudocode prouve
+pourtant que le paramètre est non signé — `FUN_0050f560` le compare à `0x80`, `0x8a`, `0x9a`,
+`0xc0`, `0xe0`, valeurs qu'un `char` signé ne peut jamais prendre. Lu en non signé, 0xF4 donne le
+glyphe 174, dans la grille 31x6 de la planche.
+
+Vérifié : les quatre jeux de libellés se rastérisent, les six atlas et les deux textures `.PIC`
+sont créés (256x256, 8 bits, bas-haut, par le slot `[2]` de la classe texture).
+
+## La page d'options s'affiche et se navigue
+
+`FUN_0050fe90`, `FUN_005101c0`, `FUN_00510aa0` et la boucle `FUN_00512320` sont reconstruites. À
+l'écran : le fond, le panneau encadré, le titre « OPTIONS », les quatre entrées avec leurs accents,
+et un curseur qui descend aux flèches (vérifié par différence d'images — le changement est confiné
+à sa colonne).
+
+**Les trois sous-menus fonctionnent aussi** — `FUN_005110b0` (Affichage), `FUN_005113d0` (Son),
+`FUN_00512220` (Contrôle), plus la jauge `FUN_00510a00` et la réapplication du gamma
+`FUN_0050f980`. Vérifié à l'écran : « Volume musique » et « Volume effets » avec des jauges qui
+bougent par pas de 8 et s'appliquent aussitôt ; « Dimensions de l'écran » et « Clarté » avec leurs
+jauges, puis filtre, taille d'affichage et timing. Tout ce dont ils dépendaient était déjà
+reconstruit.
+
+**Trois des quatre feuilles sont faites** : `FUN_00510d40` (la page **Timing** — et non un
+recadrage, comme son stub le supposait), `FUN_00510e60` (résolution) et `FUN_005119c0`
+(affectation des manettes, vérifiée à l'écran : quatre joueurs, quatre lignes de configuration
+grisées quand le joueur n'a pas de manette).
+
+Deux réserves à connaître :
+
+- **la page résolution ne peut rien faire** tant que le device synthétique ne porte pas ses deux
+  slots : `+0x1c` (le masque des modes acceptés) et `+0xE8` (le changement effectif, que
+  `ChangeResolution` pilote). Le masque revient nul, la liste est vide, seul le titre s'affiche ;
+- **l'éditeur de touches est fait aussi.** `FUN_00511d40`, ses deux helpers et ses cinq tables de
+  données (85 scancodes, 24 index d'action, 4 colonnes de flèche, 40 liaisons par défaut, et les
+  49 descripteurs de ligne) sont reconstruits ; les défauts correspondent exactement aux clés
+  `K0000`..`K0113` du BLAZE.cfg installé. Vérifié à l'écran : les huit actions globales avec leurs
+  **deux** touches, l'en-tête « Joueur 1 » coloré, le défilement et le curseur.
+
+  Deux points de structure : la « seconde touche » n'est pas une seconde table — `DAT_00564ba8` est
+  `DAT_00564b58` décalé de vingt entrées, c'est-à-dire la **catégorie 1** de la même table, le
+  second jeu clavier que `FUN_00523660` lit déjà ; et assigner une touche l'efface de toutes les
+  liaisons clavier des quatre groupes, en laissant la catégorie manette intacte.
+
+Reste **une** feuille, apparue en lisant la page manettes : `FUN_005115c0`, la configuration des
+boutons d'un joueur, 168 lignes.
+
+Trois défauts levés au passage, tous les trois instructifs :
+
+- **la classe texture a plus de slots que ce fichier n'en listait** — la vtable réelle en porte au
+  moins onze, et `FUN_0050fe90` appelle le slot **8** (`IDirectDrawSurface::IsLost`) une fois par
+  texture et par image ; la classe synthétique en avait huit et serait sortie de sa propre vtable ;
+- **`DAT_005d9de0` est `s_GammaIni`**, déjà reconstruit, redéclaré et jamais écrit — donc nul ;
+- **`_DAT_0054d000` vaut `1/64`**, lu dans le binaire (`0x3C800000`), et non le `1.0f` qu'un TODO
+  supposait. Ensemble, ces deux-là faisaient calculer `Gamma(valeur, 64.0)`, ce qui blanchit toutes
+  les palettes : fond et cadre sortaient blancs donc invisibles, alors que les libellés, qui ne
+  passent pas par `Gamma`, étaient corrects.
+
+Septième et huitième globals reconstruits sous deux noms. La règle qui s'en dégage :
+**avant de déclarer un champ `DAT_`, chercher son adresse dans le fichier** — la moitié y sont déjà
+sous un autre nom, et l'ancien n'est pas toujours le mauvais.
+
+Deux réserves sur `FUN_0052a440`, toutes deux dues à une frame que Ghidra n'a pas récupérée :
 la source du second `MoveImage`, et le pointeur du descripteur de sprite — laissé nul, donc
 **l'écran de chargement est vide pour l'instant**. Un listing désassemblé de `0x0052a440` referme
 les deux ; il n'y a pas de désassembleur ici, il faut un export Ghidra comme ceux de

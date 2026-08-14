@@ -309,10 +309,20 @@ La route **B** ne dépend d'aucun état DirectDraw et réutilise le mécanisme d
 
 ### Correction du 2026-08-14 — **le chargeur emprunté est le slot `[3]`, pas le `[2]`**
 
-Tout ce qui précède décrit le slot `[2]` (`FUN_0ffe2d10`, chargement depuis un `BITMAPINFO`). Cette
-description est exacte mais **porte sur un chemin que le jeu n'emprunte pas**. Relevé au runtime :
-sur un démarrage complet jusqu'au menu, le slot `[2]` reçoit **zéro appel**, et le slot `[3]` — noté
-« rôle non établi » dans la table de la classe — en reçoit **un par objet texture créé**.
+Tout ce qui précède décrit le slot `[2]` (`FUN_0ffe2d10`, chargement depuis un `BITMAPINFO`). Relevé
+au runtime : sur un démarrage complet jusqu'au menu, le slot `[2]` reçoit **zéro appel**, et le slot
+`[3]` — noté « rôle non établi » dans la table de la classe — en reçoit **un par objet texture
+créé**.
+
+> **Correction du même jour, plus tard.** Une première rédaction de ce paragraphe concluait de là
+> que `[2]` « porte sur un chemin que le jeu n'emprunte pas ». C'est trop fort : le relevé ne
+> couvrait que le menu principal. **La page d'options emprunte bien `[2]`** — `FUN_0050fab0`
+> rastérise ses quatre atlas de libellés en 256x256 8 bits à partir de `FONT.PIC` et des fichiers
+> texte du CD, puis les charge par `vtable[2](BITMAPINFO*, pixels*)` avant de poser une couleur-clé
+> par `vtable[6]`. Les deux chemins coexistent : `[3]` pour la géométrie du jeu, `[2]` pour
+> l'interface de configuration. Les deux sont désormais implémentés côté device synthétique.
+> Leçon générale, la même que pour `+0xDC` : « zéro appel mesuré » veut dire *dans la phase
+> mesurée*, jamais *jamais*.
 
 La lecture de `winsys3d.c` le confirme et l'explique. Deux fabriques de textures y coexistent :
 
