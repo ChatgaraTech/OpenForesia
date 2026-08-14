@@ -132,3 +132,14 @@
       du jeu à cette résolution. Ce qui reste éventuellement à décider est un choix de présentation
       (jouer à une `Resolution` plus basse, ou présenter un sous-rectangle agrandi), pas une
       correction de fidélité. À rouvrir sous cet angle ou à clore.
+      → **Contre-épreuve du 2026-08-14, une fois le fond du menu réparé.** La première réfutation
+      ci-dessus comparait deux images qui n'avaient **ni l'une ni l'autre** de fond — donc rien qui
+      donne l'échelle. Avec le fond, l'écart saute aux yeux : le panneau occupe 30 % de la largeur
+      chez nous contre **45 % sur la capture officielle en 640x480**, mesuré, le panneau faisant
+      `290x144` dans les deux cas. Mais `3dhelp`, relancé sur le même build à la même
+      `Resolution=4`, donne **les mêmes proportions que nous** — fond à l'échelle, interface non.
+      La réfutation tient donc, et pour une meilleure raison qu'avant : ce n'est pas que l'échelle
+      soit correcte, c'est que **le jeu lui-même ne met pas son interface à l'échelle** au-delà de
+      640x480. Comparaison plein cadre des deux rendus : écart moyen **4/255 par canal**, une fois
+      pris en compte le décalage `(32,24)` que la façade abandonne délibérément — l'alignement
+      optimal, cherché sans a priori, tombe exactement sur l'origine du viewport.

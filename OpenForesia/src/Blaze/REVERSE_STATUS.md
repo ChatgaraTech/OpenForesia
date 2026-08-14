@@ -860,6 +860,105 @@ picked off any time; of them, the level-load path at `Blaze.c:63354` (TODO #29)
 is the cheapest genuinely useful one, since it is what makes the reconstructed
 sound-effect layer able to reach its second sample bank.
 
+## 2026-08-14 — the menu background, and a fifth structure split in two
+
+**The main menu's background image was missing, and the cause was in the reconstruction, not the
+backend.** `FUN_00542250`'s per-frame draw builds a 20-byte sprite descriptor on its stack and
+passes **its address** to both renderers:
+
+```c
+local_10 = uVar3 * 0x10101;                          /* +0x04  colour, the fade's grey  */
+local_c  = 0xa0;  local_a = 0x78;                    /* +0x08  x = 160, y = 120         */
+local_8  = 0x1420; local_6 = 0x1149;                 /* +0x0c  tpage, +0x0e  clut       */
+local_14 = *(*(DAT_005e97c4 + 0x94) + 4);            /* +0x00  descriptor pointer       */
+FUN_00521f20(local_24, local_28, &local_14, 0, 0);   /*        ← &local_14              */
+```
+
+`local_14` .. `local_4` are **one contiguous structure**; the reconstruction had allocated
+`&local_14` and `&local_10` as two separate heap blocks, so the sprite reached the renderers with a
+null position, size and texture page and drew nothing.
+
+**This is the fifth occurrence of the same shape of bug**, after `DAT_0056e61f` = `menuContext[0x8c7]`,
+`DAT_00566cc4` = `s_ResolutionIndex`, `DAT_005e8fc0`, and the four `DRAWENV`/`DISPENV` structures
+whose contiguity the random-black-screen bug turned on. The lesson has now earned a rule: **a `DAT_`
+or a stack local whose address is taken is a suspect** — check what lies immediately after it before
+modelling it as an independent entity.
+
+Fixed; the background renders. Verified against the original renderer
+(`OPENFORESIA_LEGACY_3DHELP=1`) on the same build: same image, mean difference **4/255 per channel**
+once the deliberate viewport-origin difference is accounted for — the alignment search finds the
+best match at exactly `(32, 24)`, the origin `SetViewport(32, 24, 960x720)` poses and which
+`DeviceShim` drops on purpose.
+
+**A consequence for the coordinate-scale question (task 4.5).** With the background present, the
+menu panel is visibly smaller, relative to it, than in the retail 640x480 screenshot (30 % of the
+width against 45 %). That is **not** a porting defect: `3dhelp`, run on the same build at the same
+`Resolution=4`, produces the same proportions. The game's UI does not scale with the resolution
+while its background does. Any change here would be a deliberate improvement, not a fidelity fix.
+
+## 2026-08-14 — DirectInput bring-up, and TODO #6 stops mattering
+
+`FUN_00523120` and its whole init chain are reconstructed: `FUN_00522dc0` (the constructor,
+`DirectInputCreateA` version 5), `FUN_00522eb0` (init), `FUN_005233c0` (keyboard) and
+`FUN_00523470` (mouse). Measured at runtime: **the keyboard is created, formatted, cooperative and
+acquired**, the mouse likewise, no failing HRESULT, and the menu renders exactly as before.
+
+**`DAT_005db85c` (TODO #6) is no longer a blocker, and never was one for this call.** The handle
+that was searched for exhaustively and never found is used for exactly two things, both read out of
+the chain rather than assumed:
+
+- it is the `HINSTANCE` argument of `DirectInputCreateA` — and `FUN_00522dc0` **handles the null
+  case explicitly**, substituting `GetModuleHandleA(NULL)`, which is what the single call site
+  passes anyway (`FUN_00523120(0, DAT_005db85c, …)` passes 0 as the instance);
+- it is the window given to `SetCooperativeLevel`.
+
+The reconstruction now owns a real window — the Direct3D 11 backend's — which did not exist when
+TODO #6 was written and declared blocked behind a Ghidra re-run. There is therefore a legitimate
+handle to pass, and it works.
+
+Everything the DLL side needed came out of `Legacy/Blaze.exe` rather than out of guesswork:
+`GUID_SysKeyboard` (0x0054db58), `GUID_SysMouse` (0x0054db48), `GUID_Key` (0x0054db18), the three
+axis GUIDs (0x0054da98..b8), and both `DIDATAFORMAT`s with their object tables (0x00546f60 /
+0x00545f60 for the keyboard, 0x00546ff0 / 0x00546f80 for the mouse). The tables are rebuilt field
+for field rather than copied, because every entry holds a pointer into `Blaze.exe`'s image, which is
+not mapped in this process.
+
+**The menu is navigable.** `FUN_005048f0` and everything under it are reconstructed too —
+`FUN_005231f0`/`FUN_005230b0` (read every acquired device), `FUN_00523410`/`FUN_005234c0`
+(`GetDeviceState` with a re-`Acquire` retry, the same body twice with different sizes),
+`FUN_00523660` (keyboard → pad state) and the two-block folding loop that closes `FUN_005048f0`.
+
+Verified at runtime by injecting real key events: the cursor moves exactly one entry per arrow
+press and back up, the difference between frames confined to the cursor column (`x=[24..52]`,
+the y-band stepping down and back), and the confirm key leaves the menu — landing on
+`FUN_0052a440`, the per-game-state dispatcher, as a descriptive exception. **That is the new
+blocking point, and it is ordinary uncovered code.**
+
+Three things worth carrying forward from `FUN_00523660`:
+
+- **The button convention is active low.** A player's word starts at `0xffff` and every bound key
+  that is down clears its bit. The 20 masks come from `DAT_00564f18`, read out of
+  `Legacy/Blaze.exe`: unmistakably a PlayStation pad — `0x0010` up, `0x0020` right, `0x0040` down,
+  `0x0080` left, `0x0008` start, `0x0001` select, the face buttons at `0x1000..0x8000`, the
+  shoulders at `0x0100..0x0800`, and four two-button combinations closing the table.
+- **`state[0x1c] |= state[0x9c]`** is `DIK_RETURN |= DIK_NUMPADENTER` — the keypad's Enter folded
+  into the main one. A one-line operation that reads as noise until the scancodes are named.
+- **Scancode `0x3e` is `DIK_F4`**: held down, it silences the keyboard for every player. Worth
+  knowing before chasing an input bug.
+
+**Two gaps left on this path, both named:**
+
+- `FUN_00523230` (per-joystick device creation) — Ghidra's decompilation is unusable: the entire
+  frame is `puStack_`/`piStack_` temporaries and every vtable call has lost its arguments. This is
+  the "read the disassembly" class, not the reading class. The enumeration still runs and counts
+  attached sticks; the 16 device cells stay null, which every consumer already tests for.
+- `FUN_00523340` / `FUN_00522fe0` (reading one joystick's state) — unreachable while no joystick
+  device is created, and left as a loud throw rather than a silent skip for the day one is.
+
+Also fixed here: `DAT_00604b54` had been reconstructed under **three** names
+(`s_JoystickDevice`, `s_JoystickDevice_00604b54`, and a third added while writing the creation
+chain). One address, one field — the same defect as `DAT_00566cc4` / `s_ResolutionIndex`.
+
 ## 2026-08-12 — DLL-side findings behind the two open rendering tasks
 
 Nothing here changes a numbered `TODO(REVERSE)` or the current blocking point:

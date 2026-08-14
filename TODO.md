@@ -34,9 +34,70 @@ boîte englobante `290x148` **des deux côtés**, **écart moyen 0,2/255 par can
 franchement différents. Tenu sur 1021 images consécutives sans exception. Détail et hypothèses
 corrigées dans `tasks.md` de la change et dans `Documentation/DLL/3dhelp.md`.
 
-~~**tâche 4.5** — l'échelle~~ — **prémisse réfutée par la même mesure.** Le rendu d'origine cantonne
-le menu exactement au même endroit et à la même taille ; il n'y a pas de facteur d'échelle manquant.
-Ce qui reste éventuellement à décider est un choix de présentation, pas une correction de fidélité.
+**Le fond du menu s'affiche depuis le 2026-08-14** — le parchemin, la plume, l'encrier. La cause
+n'était pas dans le backend : `FUN_00542250` monte un descripteur de sprite de 20 octets d'un seul
+tenant et en passe l'adresse aux deux émetteurs, alors que la reconstruction l'avait coupé en deux
+blocs de tas. **Cinquième occurrence** de ce défaut ; détail et règle qui en découle dans
+`REVERSE_STATUS.md`, section du 2026-08-14.
+
+~~**tâche 4.5** — l'échelle~~ — **prémisse réfutée, et la réfutation tient une fois le fond présent.**
+Le panneau du menu est bien plus petit, relativement au fond, que sur la capture officielle en
+640x480 (30 % de la largeur contre 45 %) — mais `3dhelp`, sur le même build et à la même
+`Resolution=4`, donne exactement les mêmes proportions. L'interface du jeu ne suit pas la
+résolution alors que son fond la suit : c'est le comportement du jeu, pas un défaut de portage.
+Y toucher serait une amélioration délibérée.
+
+---
+
+## La suite : interagir avec le menu
+
+Le chemin est cartographié, et un blocage supposé n'en est pas un.
+
+```
+FUN_00504460  SetupJoystickHandlers        [FAIT — appelle la création]
+  └─ FUN_00523120  création du device d'entrée              [FAIT le 2026-08-14]
+       ├─ FUN_00522dc0  DirectInputCreateA(hInstance, 0x500) [FAIT]
+       └─ FUN_00522eb0  init                                 [FAIT]
+            ├─ FUN_005233c0  clavier : CreateDevice(GUID_SysKeyboard) + SetDataFormat
+            │                + SetCooperativeLevel(hwnd, 6) + Acquire      [FAIT, acquis]
+            ├─ FUN_00523470  souris  : même séquence, GUID_SysMouse        [FAIT]
+            ├─ EnumDevices(DIDEVTYPE_JOYSTICK, ATTACHEDONLY)               [FAIT, compte]
+            └─ FUN_00523230  création d'une manette par stick   [GHIDRA INEXPLOITABLE —
+                                                                 à lire en désassemblé]
+FUN_005048f0  PollJoystickState            [FAIT le 2026-08-14]
+  ├─ FUN_005231f0 / FUN_005230b0  lecture de tous les devices acquis  [FAIT]
+  ├─ FUN_00523410 / FUN_005234c0  GetDeviceState + reprise d'Acquire  [FAIT]
+  ├─ FUN_00523660  clavier -> état pad, via la table [Controls]       [FAIT]
+  └─ la boucle de repliage de bits sur deux emplacements              [FAIT]
+FUN_00504a30  UpdateButtonEdges            [FAIT]
+```
+
+**Le menu se navigue.** Vérifié en injectant de vraies frappes : le curseur descend d'un item par
+flèche et remonte, et la touche de validation quitte le menu. La reconstruction bute alors sur
+`FUN_0052a440`, le répartiteur d'états de jeu — **nouveau point de blocage, et du code ordinaire.**
+
+Trois choses à savoir avant de toucher à l'entrée :
+
+- la convention des boutons est **active basse** — le mot part de `0xffff` et chaque touche
+  enfoncée éteint son bit ; les 20 masques (`DAT_00564f18`, lus dans le binaire) sont ceux d'une
+  manette PlayStation : `0x0010` haut, `0x0020` droite, `0x0040` bas, `0x0080` gauche, `0x0008`
+  start ;
+- `state[0x1c] |= state[0x9c]` est `DIK_RETURN |= DIK_NUMPADENTER` — l'Entrée du pavé numérique
+  repliée sur l'autre ;
+- le scancode `0x3e` est `DIK_F4` : maintenu, il coupe le clavier pour tous les joueurs.
+
+**Le clavier passe par DirectInput** : le GUID lu à `0x0054db58` dans `Legacy/Blaze.exe` est
+`{6F1D2B61-D5A0-11CF-BFC7-444553540000}` = `GUID_SysKeyboard`. Les touches sont déjà chargées depuis
+le `[Controls]` du `.cfg` par `LoadKeyBindings` (table `DAT_00564b58`).
+
+**`DAT_005db85c` (TODO #6) ne bloque plus — vérifié au runtime.** Ce handle jamais trouvé sert à
+deux choses seulement : l'`hInstance` de `DirectInputCreateA` — dont le code traite explicitement le
+cas nul par `GetModuleHandleA(NULL)`, et dont l'unique site d'appel passe justement 0 — et le `hwnd`
+de `SetCooperativeLevel`. La fenêtre du backend Direct3D 11, qui n'existait pas quand ce TODO a été
+déclaré bloqué, fournit ce second handle. Le clavier est acquis sans erreur.
+
+Reste aussi stubbée sur ce chemin : `FUN_00512320`, la page d'options (80 lignes), atteignable
+depuis l'entrée « Options » du menu.
 
 **Une autre observation du même jour, non expliquée**, à ne pas confondre avec ce qui précède : sans
 frappe clavier sur l'écran-titre, le processus **sort de lui-même après exactement 60 images de

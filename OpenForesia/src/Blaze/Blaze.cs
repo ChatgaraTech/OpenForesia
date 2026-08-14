@@ -3760,15 +3760,371 @@ public static unsafe partial class Blaze
         Ordinal_10(h1); Ordinal_10(h2); Ordinal_10(h3); Ordinal_10(h4);
         Ordinal_10(h5); Ordinal_10(h6); Ordinal_10(h7); Ordinal_10(h8);
 
-        // Ghidra: DAT_00604b54 = FUN_00523120(0, DAT_005db85c, &DAT_00604b50, 0, 0); DAT_005db85c
-        // is the not-yet-reconstructed main window HWND (see REVERSE_STATUS.md item on it).
-        // TODO(REVERSE): FUN_00523120 (DirectInput joystick device creation) not yet reconstructed —
-        // next frontier. Skipped here rather than guessed.
+        // Ghidra: DAT_00604b54 = FUN_00523120(0, DAT_005db85c, &DAT_00604b50, 0, 0)
+        //
+        // `DAT_005db85c` is the main window handle that TODO #6 searched for exhaustively and never
+        // found. It does not block this call, for two reasons established by reading the chain:
+        // the first argument is an `HINSTANCE` whose null case the constructor handles explicitly
+        // (`GetModuleHandleA(NULL)`), and the handle itself is only ever used as the window of
+        // `SetCooperativeLevel`. The reconstruction now owns a real window — the Direct3D 11
+        // backend's — so there is a legitimate handle to give, which was not true when TODO #6 was
+        // declared blocked.
+        fixed (byte** keyboardState = &s_KeyboardState_00604b50)
+            s_JoystickDevice_00604b54 = CreateInputDevice(IntPtr.Zero, D3D11Window.Handle,
+                                                         keyboardState, null, null);
+
         Ordinal_63(0);
         Ordinal_64();
         Ordinal_66();
         JoystickResetState(true);
     }
+
+    // =====================================================================
+    // DirectInput bring-up — Ghidra: FUN_00523120 and its init chain
+    //
+    // The game's entire input path hangs off one 0x8c4-byte object. `SetupJoystickHandlers`
+    // creates it; `PollJoystickState` (FUN_005048f0) reads it every frame; `ShutdownStage1`
+    // destroys it. Its layout, recovered from the constructor's zeroing runs and from the three
+    // out-pointers FUN_00523120 hands back:
+    //
+    //     +0x000  IDirectInputA*
+    //     +0x004  HWND — the window given to SetCooperativeLevel
+    //     +0x008  keyboard device cell (a pointer to a pointer, allocated separately)
+    //     +0x00c  16 joystick device cells
+    //     +0x04c  mouse device cell
+    //     +0x050  keyboard state area, 0x360 bytes   <- out-pointer 1 (DAT_00604b50)
+    //     +0x3b0  joystick state area, 0x500 bytes   <- out-pointer 2
+    //     +0x8b0  number of attached joysticks
+    //     +0x8b4  mouse state area                   <- out-pointer 3
+    //
+    // Everything the DLL side needs was recovered from `Legacy/Blaze.exe` rather than assumed:
+    // the two device GUIDs (`GUID_SysKeyboard` at 0x0054db58, `GUID_SysMouse` at 0x0054db48),
+    // both DIDATAFORMATs (0x00546f60 = the 256-object keyboard format, 0x00546ff0 = the 7-object
+    // mouse format) and the keyboard object table at 0x00545f60, whose entries are exactly
+    // `{ &GUID_Key, i, DIDFT_OPTIONAL | DIDFT_BUTTON | (i << 8), 0 }`.
+    // =====================================================================
+
+    [DllImport("dinput.dll", ExactSpelling = true)]
+    private static extern int DirectInputCreateA(IntPtr hinst, uint version, void** ppDI, void* unkOuter);
+
+    // IDirectInputA — byte offsets divided by 4, checked against the call sites in Blaze.c.
+    private const int IDirectInput_CreateDevice = 0x0c / 4;
+    private const int IDirectInput_EnumDevices = 0x10 / 4;
+
+    // IDirectInputDeviceA — likewise; SetDataFormat at +0x2c, SetCooperativeLevel at +0x34 and
+    // Acquire at +0x1c are what FUN_005233c0/FUN_00523470 call, in that order.
+    private const int IDirectInputDevice_Acquire = 0x1c / 4;
+    private const int IDirectInputDevice_GetDeviceState = 0x24 / 4;
+    private const int IDirectInputDevice_SetDataFormat = 0x2c / 4;
+    private const int IDirectInputDevice_SetCooperativeLevel = 0x34 / 4;
+
+    /// <summary>DISCL_FOREGROUND | DISCL_NONEXCLUSIVE — the literal 6 both device setups pass.</summary>
+    private const uint DiscLevel_ForegroundNonExclusive = 6;
+
+    private static readonly Guid s_GuidSysKeyboard =            // Ghidra: DAT_0054db58
+        new(0x6F1D2B61, 0xD5A0, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
+    private static readonly Guid s_GuidSysMouse =               // Ghidra: DAT_0054db48
+        new(0x6F1D2B60, 0xD5A0, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
+    private static readonly Guid s_GuidKey =                    // Ghidra: DAT_0054db18
+        new(0x55728220, 0xD33C, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DIDATAFORMAT
+    {
+        public uint Size, ObjSize, Flags, DataSize, NumObjs;
+        public void* Rgodf;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DIOBJECTDATAFORMAT
+    {
+        public Guid* Guid;
+        public uint Ofs, Type, Flags;
+    }
+
+    /// <summary>
+    /// Ghidra: the keyboard DIDATAFORMAT at 0x00546f60 and its object table at 0x00545f60, rebuilt
+    /// in this process's memory. The table cannot be copied verbatim: every entry holds a pointer
+    /// to a GUID at `Blaze.exe`'s own image base, which is not mapped here — so the bytes are
+    /// reproduced field for field with our copy of `GUID_Key` substituted.
+    /// </summary>
+    private static DIDATAFORMAT* BuildKeyboardDataFormat()
+    {
+        const int objects = 0x100;
+        var format = (DIDATAFORMAT*)NativeMemory.AllocZeroed((nuint)sizeof(DIDATAFORMAT));
+        var table = (DIOBJECTDATAFORMAT*)NativeMemory.AllocZeroed(objects, (nuint)sizeof(DIOBJECTDATAFORMAT));
+        var guid = (Guid*)NativeMemory.Alloc((nuint)sizeof(Guid));
+        *guid = s_GuidKey;
+
+        for (int i = 0; i < objects; i++)
+        {
+            table[i].Guid = guid;
+            table[i].Ofs = (uint)i;
+            table[i].Type = 0x8000000C | ((uint)i << 8);   // DIDFT_OPTIONAL | DIDFT_BUTTON | instance
+            table[i].Flags = 0;
+        }
+
+        format->Size = 0x18;          // relevé verbatim à 0x00546f60
+        format->ObjSize = 0x10;
+        format->Flags = 2;            // DIDF_ABSAXIS
+        format->DataSize = objects;   // 256 octets d'état clavier
+        format->NumObjs = objects;
+        format->Rgodf = table;
+        return format;
+    }
+
+    private static DIDATAFORMAT* s_KeyboardDataFormat;
+
+    private static readonly Guid s_GuidXAxis =                  // Ghidra: DAT_0054da98
+        new(0xA36D02E0, 0xC9F3, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
+    private static readonly Guid s_GuidYAxis =                  // Ghidra: DAT_0054daa8
+        new(0xA36D02E1, 0xC9F3, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
+    private static readonly Guid s_GuidZAxis =                  // Ghidra: DAT_0054dab8
+        new(0xA36D02E2, 0xC9F3, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
+
+    /// <summary>
+    /// Ghidra: the mouse DIDATAFORMAT at 0x00546ff0 and its 7-object table at 0x00546f80, rebuilt
+    /// the same way as the keyboard's. The table is transcribed entry for entry from the binary:
+    /// three axes carrying the X/Y/Z axis GUIDs, then four buttons with a null GUID, the Z axis and
+    /// the last two buttons flagged optional.
+    /// </summary>
+    private static DIDATAFORMAT* BuildMouseDataFormat()
+    {
+        const int objects = 7;
+        var format = (DIDATAFORMAT*)NativeMemory.AllocZeroed((nuint)sizeof(DIDATAFORMAT));
+        var table = (DIOBJECTDATAFORMAT*)NativeMemory.AllocZeroed(objects, (nuint)sizeof(DIOBJECTDATAFORMAT));
+        var axes = (Guid*)NativeMemory.Alloc(3, (nuint)sizeof(Guid));
+        axes[0] = s_GuidXAxis; axes[1] = s_GuidYAxis; axes[2] = s_GuidZAxis;
+
+        // (GUID, dwOfs, dwType) relevés à 0x00546f80 ; 0x03 = DIDFT_AXIS, 0x0c = DIDFT_BUTTON,
+        // 0xffff00 = DIDFT_ANYINSTANCE, 0x80000000 = DIDFT_OPTIONAL.
+        table[0] = new DIOBJECTDATAFORMAT { Guid = &axes[0], Ofs = 0x00, Type = 0x00FFFF03 };
+        table[1] = new DIOBJECTDATAFORMAT { Guid = &axes[1], Ofs = 0x04, Type = 0x00FFFF03 };
+        table[2] = new DIOBJECTDATAFORMAT { Guid = &axes[2], Ofs = 0x08, Type = 0x80FFFF03 };
+        table[3] = new DIOBJECTDATAFORMAT { Guid = null, Ofs = 0x0C, Type = 0x00FFFF0C };
+        table[4] = new DIOBJECTDATAFORMAT { Guid = null, Ofs = 0x0D, Type = 0x00FFFF0C };
+        table[5] = new DIOBJECTDATAFORMAT { Guid = null, Ofs = 0x0E, Type = 0x80FFFF0C };
+        table[6] = new DIOBJECTDATAFORMAT { Guid = null, Ofs = 0x0F, Type = 0x80FFFF0C };
+
+        format->Size = 0x18;          // relevé verbatim à 0x00546ff0
+        format->ObjSize = 0x10;
+        format->Flags = 2;            // DIDF_ABSAXIS
+        format->DataSize = 0x10;      // DIMOUSESTATE
+        format->NumObjs = objects;
+        format->Rgodf = table;
+        return format;
+    }
+
+    private static DIDATAFORMAT* s_MouseDataFormat;
+
+    /// <summary>
+    /// Ghidra: FUN_00523120 @ 0x00523120 — allocates the input-device object, constructs it and
+    /// runs its initialisation, handing back three pointers into it. Returns null if either step
+    /// fails, exactly as the original does (it frees the object and returns 0).
+    /// </summary>
+    private static byte* CreateInputDevice(IntPtr instance, IntPtr window,
+                                           byte** keyboardState, byte** joystickState, byte** mouseState)
+    {
+        // Ghidra: iVar1 = FUN_00547220(0x8c4) — the CRT operator new. A null return is carried
+        // through rather than short-circuited, matching the original.
+        var device = (byte*)Malloc(0x8c4);
+        if (device != null) InputDeviceConstruct(device, instance, window);
+
+        int hr = InputDeviceInitialise(device);
+        if (hr < 0)
+        {
+            if (device != null)
+            {
+                DestroyJoystickDevice((void**)device);
+                Free(device);
+            }
+            return null;
+        }
+
+        if (keyboardState != null) *keyboardState = device + 0x50;
+        if (joystickState != null) *joystickState = device + 0x3b0;
+        if (mouseState != null) *mouseState = device + 0x8b4;
+        return device;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00522dc0 @ 0x00522dc0 — the constructor. Creates the DirectInput object and
+    /// zeroes the three state areas.
+    /// </summary>
+    private static void InputDeviceConstruct(byte* device, IntPtr instance, IntPtr window)
+    {
+        // Ghidra: if (param_2 == 0) param_2 = GetModuleHandleA(NULL) — which is why the never-found
+        // DAT_005db85c never blocked this call.
+        if (instance == IntPtr.Zero) instance = GetModuleHandleA(null);
+
+        // Ghidra: DirectInputCreateA(hInstance, 0x500, this, 0) — version 5, the object receiving
+        // the interface pointer at its own offset 0.
+        int hr = DirectInputCreateA(instance, 0x500, (void**)device, null);
+        if (hr < 0)
+            Console.Error.WriteLine($"[INPUT] DirectInputCreateA -> 0x{hr:X8}");
+
+        *(IntPtr*)(device + 4) = window;
+        *(void**)(device + 8) = null;
+        NativeMemory.Fill(device + 0x0c, 0x10 * sizeof(uint), 0);     // 16 joystick cells
+        NativeMemory.Fill(device + 0x50, 0xd8 * sizeof(uint), 0);     // keyboard state area
+        NativeMemory.Fill(device + 0x3b0, 0x140 * sizeof(uint), 0);   // joystick state area
+        *(uint*)(device + 0x8b0) = 0;
+        *(uint*)(device + 0x8b4) = 0;
+        *(uint*)(device + 0x8b8) = 0;
+        *(uint*)(device + 0x8bc) = 0;
+        *(uint*)(device + 0x8c0) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00522eb0 @ 0x00522eb0 — creates the keyboard device, then the mouse device
+    /// (whose failure is tolerated and simply clears its cell), then enumerates attached joysticks.
+    /// </summary>
+    private static int InputDeviceInitialise(byte* device)
+    {
+        if (device == null || *(void**)device == null) return -1;
+
+        void* directInput = *(void**)device;
+        IntPtr window = *(IntPtr*)(device + 4);
+
+        // Ghidra: a 4-byte cell is allocated for each device pointer and stored in the object; the
+        // device interfaces themselves live one indirection further out.
+        var keyboardCell = (void**)Malloc(4);
+        if (keyboardCell != null) *keyboardCell = null;
+        *(void***)(device + 8) = keyboardCell;
+
+        int hr = CreateKeyboardDevice(keyboardCell, directInput, window);
+        if (hr < 0) return hr;
+
+        var mouseCell = (void**)Malloc(4);
+        if (mouseCell != null) *mouseCell = null;
+        *(void***)(device + 0x4c) = mouseCell;
+
+        // Ghidra: a failing mouse releases its cell and carries on — the mouse is optional.
+        if (CreateMouseDevice(mouseCell, directInput, window) < 0)
+        {
+            if (mouseCell != null) { ReleaseComObject(*mouseCell); Free(mouseCell); }
+            *(void***)(device + 0x4c) = null;
+        }
+
+        // Ghidra: (*directInput)[0x10](4, &LAB_00522d80, &count, 1) — EnumDevices over
+        // DIDEVTYPE_JOYSTICK with DIEDFL_ATTACHEDONLY, whose callback counts what is attached.
+        int joystickCount = 0;
+        var enumDevices = (delegate* unmanaged[Stdcall]<void*, uint, void*, void*, uint, int>)
+            (*(void***)directInput)[IDirectInput_EnumDevices];
+        enumDevices(directInput, 4, (delegate* unmanaged[Stdcall]<void*, void*, int>)&CountJoystickCallback,
+                    &joystickCount, 1);
+
+        // TODO(REVERSE): FUN_00523230 creates one device per enumerated joystick. Ghidra's
+        // decompilation of it is unusable — the whole frame is rendered as `puStack_`/`piStack_`
+        // temporaries and every vtable call has lost its arguments — so it belongs to the
+        // "read the disassembly" class rather than the reading class. Until it is recovered the
+        // 16 joystick cells stay null, which every consumer already tests for (FUN_005230b0 skips
+        // null cells), so the keyboard path is unaffected.
+        *(int*)(device + 0x8b0) = joystickCount;
+
+        Console.Error.WriteLine(
+            $"[INPUT] DirectInput prêt — clavier acquis, {joystickCount} manette(s) détectée(s), " +
+            "création des manettes non reconstruite (FUN_00523230)");
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: &LAB_00522d80 — the enumeration callback, address-taken only and with no decompiled
+    /// body anywhere. Its role is fixed by its use: the count it accumulates in the caller's
+    /// `pvRef` is what the loop below it iterates over. Returning DIENUM_CONTINUE (1) is what makes
+    /// the enumeration visit every attached device.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static int CountJoystickCallback(void* instance, void* context)
+    {
+        if (context != null) (*(int*)context)++;
+        return 1;   // DIENUM_CONTINUE
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005233c0 @ 0x005233c0 — CreateDevice(GUID_SysKeyboard), SetDataFormat,
+    /// SetCooperativeLevel(window, 6), Acquire. Ghidra recovered two parameters where the call site
+    /// passes three: the window it hands to SetCooperativeLevel is the one it dropped.
+    /// </summary>
+    private static int CreateKeyboardDevice(void** cell, void* directInput, IntPtr window)
+    {
+        if (cell == null) return -1;
+
+        var createDevice = (delegate* unmanaged[Stdcall]<void*, Guid*, void**, void*, int>)
+            (*(void***)directInput)[IDirectInput_CreateDevice];
+
+        Guid guid = s_GuidSysKeyboard;
+        int hr = createDevice(directInput, &guid, cell, null);
+        if (hr < 0) { Console.Error.WriteLine($"[INPUT] CreateDevice(clavier) -> 0x{hr:X8}"); return hr; }
+
+        if (s_KeyboardDataFormat == null) s_KeyboardDataFormat = BuildKeyboardDataFormat();
+
+        void* keyboard = *cell;
+        void** vtable = *(void***)keyboard;
+
+        var setDataFormat = (delegate* unmanaged[Stdcall]<void*, DIDATAFORMAT*, int>)
+            vtable[IDirectInputDevice_SetDataFormat];
+        hr = setDataFormat(keyboard, s_KeyboardDataFormat);
+        if (hr < 0) { Console.Error.WriteLine($"[INPUT] SetDataFormat(clavier) -> 0x{hr:X8}"); return hr; }
+
+        var setCooperativeLevel = (delegate* unmanaged[Stdcall]<void*, IntPtr, uint, int>)
+            vtable[IDirectInputDevice_SetCooperativeLevel];
+        hr = setCooperativeLevel(keyboard, window, DiscLevel_ForegroundNonExclusive);
+        if (hr < 0) { Console.Error.WriteLine($"[INPUT] SetCooperativeLevel(clavier) -> 0x{hr:X8}"); return hr; }
+
+        var acquire = (delegate* unmanaged[Stdcall]<void*, int>)vtable[IDirectInputDevice_Acquire];
+        acquire(keyboard);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00523470 @ 0x00523470 — the same sequence for GUID_SysMouse, with the 7-object
+    /// mouse data format at 0x00546ff0. A failure at any step is returned to the caller, which
+    /// treats a missing mouse as normal.
+    /// </summary>
+    private static int CreateMouseDevice(void** cell, void* directInput, IntPtr window)
+    {
+        if (cell == null) return -1;
+
+        var createDevice = (delegate* unmanaged[Stdcall]<void*, Guid*, void**, void*, int>)
+            (*(void***)directInput)[IDirectInput_CreateDevice];
+
+        Guid guid = s_GuidSysMouse;
+        int hr = createDevice(directInput, &guid, cell, null);
+        if (hr < 0) return hr;
+
+        if (s_MouseDataFormat == null) s_MouseDataFormat = BuildMouseDataFormat();
+
+        void* mouse = *cell;
+        void** vtable = *(void***)mouse;
+
+        var setDataFormat = (delegate* unmanaged[Stdcall]<void*, DIDATAFORMAT*, int>)
+            vtable[IDirectInputDevice_SetDataFormat];
+        hr = setDataFormat(mouse, s_MouseDataFormat);
+        if (hr < 0) { Console.Error.WriteLine($"[INPUT] SetDataFormat(souris) -> 0x{hr:X8}"); return hr; }
+
+        var setCooperativeLevel = (delegate* unmanaged[Stdcall]<void*, IntPtr, uint, int>)
+            vtable[IDirectInputDevice_SetCooperativeLevel];
+        hr = setCooperativeLevel(mouse, window, DiscLevel_ForegroundNonExclusive);
+        if (hr < 0) { Console.Error.WriteLine($"[INPUT] SetCooperativeLevel(souris) -> 0x{hr:X8}"); return hr; }
+
+        var acquire = (delegate* unmanaged[Stdcall]<void*, int>)vtable[IDirectInputDevice_Acquire];
+        acquire(mouse);
+        return 0;
+    }
+
+    /// <summary>Ghidra: the IUnknown::Release calls the device teardown paths make.</summary>
+    private static void ReleaseComObject(void* obj)
+    {
+        if (obj == null) return;
+        var release = (delegate* unmanaged[Stdcall]<void*, uint>)(*(void***)obj)[IUnknown_Release];
+        release(obj);
+    }
+
+    // Ghidra: DAT_00604b50 — the keyboard state area inside the device object, handed back as
+    // FUN_00523120's third argument. `DAT_00604b54`, the object itself, is declared with the
+    // teardown code that already owned it.
+    private static byte* s_KeyboardState_00604b50;
 
     /// <summary>
     /// Ghidra: FUN_00504b10 @ 0x00504b10 — resets the 9-slot joystick binding/state table.
@@ -4988,32 +5344,50 @@ public static unsafe partial class Blaze
 
             s_Unknown_005de15c = 0;
 
-            // Ghidra: the per-frame draw. local_10 is the grey fill (level * 0x10101), and the
-            // literals below are the sprite's position/size block the two renderers read.
-            uint* drawBlock = s_MenuDrawBlock;
-            drawBlock[0] = level * 0x10101;
-            *(ushort*)((byte*)drawBlock + 4) = 0xa0;
-            *(ushort*)((byte*)drawBlock + 6) = 0x78;
-            *(ushort*)((byte*)drawBlock + 8) = 0x1420;
-            *(ushort*)((byte*)drawBlock + 0x0a) = 0x1149;
-            *(ushort*)((byte*)drawBlock + 0x0c) = 0;
+            // Ghidra: the per-frame draw of the menu **background sprite**.
+            //
+            // `local_14` .. `local_4` are ONE contiguous 20-byte structure on the original's
+            // stack, and it is `&local_14` that both renderers receive:
+            //
+            //     +0x00  local_14  descriptor pointer, from the resource directory
+            //     +0x04  local_10  colour — the fade's grey, level * 0x10101
+            //     +0x08  local_c   x = 0xa0 (160)      +0x0a  local_a  y = 0x78 (120)
+            //     +0x0c  local_8   tpage = 0x1420      +0x0e  local_6  clut  = 0x1149
+            //     +0x10  local_4   0
+            //
+            // This had been reconstructed as **two separate heap blocks**, so the sprite reached
+            // the renderers with a null position, size and texture page — which is why no
+            // background was drawn on either rendering path. Same shape of bug as the four
+            // DRAWENV/DISPENV structures, whose contiguity is likewise a contract; it is the
+            // fifth occurrence in this project, and the second where the evidence was "a `DAT_`
+            // or a local that is really a field of a larger structure".
+            byte* sprite = s_MenuBackgroundSprite;
+            *(uint*)(sprite + 0x04) = level * 0x10101;
+            *(ushort*)(sprite + 0x08) = 0xa0;
+            *(ushort*)(sprite + 0x0a) = 0x78;
+            *(ushort*)(sprite + 0x0c) = 0x1420;
+            *(ushort*)(sprite + 0x0e) = 0x1149;
+            *(uint*)(sprite + 0x10) = 0;
 
             // Ghidra: local_14 = *(*(DAT_005e97c4 + 0x94) + 4)
-            int* sprite = s_MenuSpriteRef;
             if (s_MainResourceDirectory_005e97c4 != null)
             {
                 int* table = *(int**)(s_MainResourceDirectory_005e97c4 + 0x94);
-                if (table != null) sprite[0] = table[1];
+                if (table != null) *(int*)sprite = table[1];
             }
 
-            primCursor = DrawSpritePrimitive(otEntry, primCursor, sprite, 0, 0);
-            primCursor = DrawFlatPrimitive(otEntry, primCursor, sprite);
+            primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            primCursor = DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
             FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
         }
     }
 
-    private static readonly uint* s_MenuDrawBlock = (uint*)NativeMemory.AllocZeroed(0x20);
-    private static readonly int* s_MenuSpriteRef = (int*)NativeMemory.AllocZeroed(0x20);
+    /// <summary>
+    /// Ghidra: `&local_14` in FUN_00542250 — the menu background sprite's descriptor, 20 bytes,
+    /// **one contiguous block**. See the layout comment at its only use site; splitting it is what
+    /// kept the background from being drawn.
+    /// </summary>
+    private static readonly byte* s_MenuBackgroundSprite = (byte*)NativeMemory.AllocZeroed(0x20);
 
     /// <summary>
     /// Ghidra: the entity-slot initialisation loop at the top of FUN_00542250 — four 0x4c-byte
@@ -6828,25 +7202,269 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_005048f0 @ 0x005048f0 — polls the DirectInput joystick device and folds its
     /// state into the per-slot tables.
     /// <para>
-    /// TODO(REVERSE): its first two calls operate on the device object `FUN_00523120` creates, and
-    /// `SetupJoystickHandlers` still skips that creation — so the device pointer is null here and
-    /// dereferencing it would fault. The guard below skips exactly those two calls and lets the
-    /// rest of the polling run; it is a deviation, and it disappears once the device exists.
+    /// Three parts, all reconstructed: `FUN_005231f0`/`FUN_005230b0` read every acquired device,
+    /// `FUN_00523660` folds the keyboard into the four players' pad states through the
+    /// `[Controls]` binding table, and the loop below distributes those states across the slot
+    /// table the rest of the game reads. Verified at runtime: the menu cursor moves one entry per
+    /// arrow press and the confirm key leaves the menu.
     /// </para>
     /// </summary>
     private static int PollJoystickState()
     {
-        if (s_JoystickDevice == null)
+        if (s_JoystickDevice_00604b54 == null) return 0;
+
+        // Ghidra: FUN_005231f0(DAT_00604b54) — a one-line forwarder to FUN_005230b0.
+        PollInputDevices(s_JoystickDevice_00604b54);
+
+        // Ghidra: FUN_00523660(DAT_00604b50, &DAT_00604ac0)
+        int anyInput = FoldKeyboardIntoPadState(s_KeyboardState_00604b50,
+                                                s_InputStateBase_00604a20 + 0xa0);
+
+        // Ghidra: the two-block folding loop that closes FUN_005048f0. Its cursor starts at
+        // `&DAT_00604b0c` and advances by 9 dwords (0x24 bytes); every access below is written as
+        // the byte offset that cursor computes, so the pointer arithmetic stays checkable against
+        // the pseudocode instead of being re-expressed.
+        byte* state = s_InputStateBase_00604a20;
+        int cursor = 0xec;
+        for (int block = 0; block < 2; block++, cursor += 0x24)
         {
-            return 0;
+            uint packed = *(uint*)(state + cursor - 0x4c);       // &DAT_00604ac0 for the first block
+            uint live = (packed & 0x7777) << 1;
+
+            if ((byte)(packed >> 0x10) == 0)
+            {
+                if ((packed & 0x80000000) == 0)                  // (packed >> 0x10 & 0x8000)
+                {
+                    live |= 1;
+                    *(uint*)(state + cursor) =
+                        *(ushort*)(state + cursor - 0x4a) | (*(uint*)(state + cursor - 0x48) << 0x10);
+
+                    if ((packed & 0x30000000) != 0)              // (packed >> 0x10 & 0x3000)
+                    {
+                        *(uint*)(state + cursor + 4) =
+                            (*(uint*)(state + cursor - 0x44) << 0x10)
+                            | (*(uint*)(state + cursor - 0x48) >> 0x10);
+                    }
+                }
+                else
+                {
+                    uint bit = 1;
+                    int source = cursor - 0x48;
+                    for (int i = 0; i < 4; i++, source += 8, bit <<= 4)
+                    {
+                        uint entry = *(uint*)(state + source);
+                        if ((byte)entry != 0) continue;
+
+                        live |= bit & 0xffff;
+                        *(uint*)(state + source + 0x48) = entry;
+                        if ((entry & 0x3000) != 0)
+                            *(uint*)(state + source + 0x4c) = *(uint*)(state + source + 4);
+                    }
+                }
+            }
+
+            // Ghidra: any of the four sub-slots the folding above did not mark live is stamped
+            // with the "nothing pressed" pattern — 0xffff41ff / 0xffffffff, the same active-low
+            // convention the button masks use.
+            uint slotMask = 0xf;
+            int slot = cursor;
+            for (int i = 0; i < 4; i++, slot += 8, slotMask <<= 4)
+            {
+                if ((slotMask & 0xffff & live) != 0) continue;
+                *(uint*)(state + slot) = 0xffff41ff;
+                *(uint*)(state + slot + 4) = 0xffffffff;
+            }
+
+            *(short*)(state + cursor - 0x4c) = (short)live;
+            if ((short)live != 0)
+                *(ushort*)(state + cursor - 2) = *(ushort*)(state + cursor - 0x4a);
         }
 
-        throw new NotImplementedException(
-            "FUN_005048f0: reached with a live DirectInput device — FUN_005230b0/FUN_00523660 " +
-            "still need reconstructing");
+        return anyInput;
     }
 
-    private static void* s_JoystickDevice;      // Ghidra: DAT_00604b54 / DAT_00604b50
+    /// <summary>
+    /// Ghidra: FUN_005230b0 @ 0x005230b0 — reads the current state of every acquired device into
+    /// the object's three state areas.
+    /// </summary>
+    private static void PollInputDevices(byte* device)
+    {
+        if (device == null) return;
+
+        // Ghidra: FUN_00523410(device + 0x50) — a thiscall whose `this` is the keyboard cell;
+        // Ghidra shows only the stack argument. 0x100 bytes of keyboard state, cleared as 0x40
+        // dwords when the device is gone.
+        if (*(void**)(device + 8) != null)
+            ReadDeviceState(*(void***)(device + 8), device + 0x50, 0x100, 0x40);
+
+        // Ghidra: FUN_005234c0(device + 0x8b4) — same shape for the mouse: 0x10 bytes, 4 dwords.
+        if (*(void**)(device + 0x4c) != null)
+            ReadDeviceState(*(void***)(device + 0x4c), device + 0x8b4, 0x10, 4);
+
+        *(uint*)(device + 0x14c) = *(uint*)(device + 0x8c0);
+
+        // Ghidra: FUN_00523340 / FUN_00522fe0 per attached joystick. Every cell is null while
+        // FUN_00523230 is unreconstructed, so this cannot fire today; it is left loud rather than
+        // silently skipped so the day a stick is created the gap names itself.
+        for (int i = 0; i < 0x10; i++)
+        {
+            if (*(void**)(device + 0x0c + i * 4) != null)
+                throw new NotImplementedException(
+                    "FUN_005230b0: FUN_00523340/FUN_00522fe0 (lecture d'une manette) non reconstruites");
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00523410 @ 0x00523410 and FUN_005234c0 @ 0x005234c0 — the same function twice,
+    /// differing only in the state size they request and the number of dwords they clear on
+    /// failure. `IDirectInputDevice::GetDeviceState` is retried after re-acquiring, which is what
+    /// makes input survive the window losing and regaining the foreground.
+    /// </summary>
+    private static void ReadDeviceState(void** cell, byte* destination, uint size, int zeroDwords)
+    {
+        void* device = cell != null ? *cell : null;
+        if (device == null)
+        {
+            NativeMemory.Fill(destination, (nuint)(zeroDwords * sizeof(uint)), 0);
+            return;
+        }
+
+        void** vtable = *(void***)device;
+        var getDeviceState = (delegate* unmanaged[Stdcall]<void*, uint, void*, int>)
+            vtable[IDirectInputDevice_GetDeviceState];
+        var acquire = (delegate* unmanaged[Stdcall]<void*, int>)vtable[IDirectInputDevice_Acquire];
+
+        while (getDeviceState(device, size, destination) < 0)
+        {
+            if (acquire(device) < 0)
+            {
+                NativeMemory.Fill(destination, (nuint)(zeroDwords * sizeof(uint)), 0);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00523660 @ 0x00523660 — folds the raw keyboard (and joystick) state into the
+    /// four players' pad states, through the `[Controls]` binding table.
+    /// <para>
+    /// The convention is **active low**: a player's button word starts at 0xffff and every bound
+    /// key that is down clears its bit. The bit each binding clears comes from the 20-entry mask
+    /// table at 0x00564f18, recovered from `Legacy/Blaze.exe` and unmistakably a PlayStation pad
+    /// layout — 0x0010 up, 0x0020 right, 0x0040 down, 0x0080 left, 0x0008 start, 0x0001 select,
+    /// the four face buttons at 0x1000..0x8000, the shoulders at 0x0100..0x0800, and four
+    /// two-button combinations closing the table.
+    /// </para>
+    /// <para>
+    /// Returns non-zero if anything at all was pressed — the value FUN_005048f0 passes on.
+    /// </para>
+    /// </summary>
+    private static int FoldKeyboardIntoPadState(byte* deviceState, byte* padState)
+    {
+        if (deviceState == null || padState == null) return 0;
+
+        int anyInput = 0;
+
+        // Ghidra: if (DAT_00564a50 == 0) the raw state is zeroed before use — a keyboard-enable
+        // gate. Recovered from Legacy/Blaze.exe as 1, so the state is kept.
+        if (s_KeyboardEnabled_00564a50 == 0)
+            NativeMemory.Fill(deviceState, 0x3f * sizeof(uint), 0);
+
+        // Ghidra: state[0x1c] |= state[0x9c]; state[0x9c] = 0. Those two DirectInput scancodes are
+        // DIK_RETURN and DIK_NUMPADENTER: the keypad's Enter is folded into the main one.
+        deviceState[0x1c] |= deviceState[0x9c];
+        deviceState[0x9c] = 0;
+
+        // Ghidra: nine pairs of ushorts cleared from +0x24, then three fixed bytes.
+        NativeMemory.Fill(padState + 0x24, 9 * 4, 0);
+        padState[0x27] = 0x41;
+        padState[0x02] = 0;
+        padState[0x03] = 0x80;
+
+        for (int player = 0; player < 4; player++)
+        {
+            int bindings = player * 60;     // Ghidra: the 0x3c-int stride of DAT_00564b58
+            int entry = player * 8;         // Ghidra: iVar6, the pad-state stride
+
+            // Ghidra: scancode 0x3e is DIK_F4 — held down, it silences the keyboard entirely. The
+            // second test lets only player 0 through while DAT_005de168 is set.
+            if ((deviceState[0x3e] & 0x80) == 0 && (player == 0 || s_Unknown_005de168 == 0))
+            {
+                ushort buttons = 0xffff;
+                padState[entry + 4] = 0;
+                padState[entry + 5] = 0x41;
+
+                // Ghidra: two passes of 20 over binding categories 0 and 1 — the primary and
+                // alternate keyboard layouts. The binding cursor runs on across both.
+                for (int category = 0; category < 2; category++)
+                {
+                    for (int action = 0; action < 20; action++)
+                    {
+                        int scancode = s_KeyBindings[bindings + category * 20 + action];
+                        if (scancode == 0) continue;
+                        if ((deviceState[scancode] & 0x80) == 0) continue;
+
+                        anyInput = 1;
+                        buttons &= (ushort)~s_PadButtonMasks_00564f18[action];
+                    }
+                }
+
+                // Ghidra: the third pass reads category 2 — the joystick bindings — from the
+                // joystick button area at state + 0x100, indexed by this player's assigned stick.
+                ushort accumulated = buttons;
+                for (int action = 0; action < 20; action++)
+                {
+                    int scancode = s_KeyBindings[bindings + 40 + action];
+                    int stick = s_JoystickSlot[player];
+                    if (scancode == -1 || stick == -1) continue;
+
+                    // Transcribed in the original's order: the assignment happens whether or not
+                    // the button test passes, which is why it is inside the guard and not after.
+                    buttons = accumulated;
+                    if ((deviceState[0x100 + stick * 0x26 + scancode] & 0x80) == 0) continue;
+
+                    anyInput = 1;
+                    accumulated &= (ushort)~s_PadButtonMasks_00564f18[action];
+                    buttons = accumulated;
+                }
+
+                *(ushort*)(padState + entry + 6) = buttons;
+            }
+            else
+            {
+                ushort clear = (ushort)~(0xf << (player * 4));
+                *(ushort*)padState &= clear;
+                *(ushort*)(padState + 0x48) &= clear;
+                padState[entry + 4] = 0xff;
+                padState[entry + 5] = 0;
+                *(ushort*)(padState + entry + 6) = 0;
+            }
+        }
+
+        return anyInput;
+    }
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00564f18 — 20 PlayStation pad button masks, one per binding slot, read
+    /// verbatim out of <c>Legacy/Blaze.exe</c>. Slots 9 and 10 are genuinely zero; the last four
+    /// are two-button combinations.
+    /// </summary>
+    private static readonly ushort[] s_PadButtonMasks_00564f18 =
+    [
+        0x0100, 0x0200, 0x0400, 0x0800,     // L2, R2, L1, R1
+        0x1000, 0x2000, 0x4000, 0x8000,     // triangle, circle, cross, square
+        0x0001, 0x0000, 0x0000, 0x0008,     // select, --, --, start
+        0x0010, 0x0020, 0x0040, 0x0080,     // up, right, down, left
+        0x0500, 0x0a00, 0x0c00, 0x0300,     // L2+L1, R2+R1, L1+R1, L2+R2
+    ];
+
+    /// <summary>Ghidra: DAT_00564a50 — read from Legacy/Blaze.exe as 1.</summary>
+    private static readonly int s_KeyboardEnabled_00564a50 = 1;
+
+    // Ghidra: DAT_005de168 — gates players 2..4 in FUN_00523660. Never assigned anywhere in the
+    // reconstructed graph yet, so it stays 0 and all four players are polled, as the original does
+    // on a fresh start.
+    private static int s_Unknown_005de168;
     private static byte* s_Unknown_00579270;    // Ghidra: DAT_00579270
     private static int s_Unknown_005de554;      // Ghidra: DAT_005de554
     // Ghidra: DAT_00566cc4 — **the same global as s_ResolutionIndex**, not a second one. Blaze.c
@@ -7097,10 +7715,15 @@ public static unsafe partial class Blaze
         s_JoystickDevice_00604b54 = null;
     }
 
-    // Ghidra: DAT_00604b54 — the joystick/DirectInput device object. Created by FUN_00523120,
-    // which SetupJoystickHandlers does not call yet (see REVERSE_STATUS.md), so it stays null and
-    // ShutdownStage1 is currently a well-defined no-op rather than a crash.
-    private static void* s_JoystickDevice_00604b54;
+    // Ghidra: DAT_00604b54 — the input-device object. Created by FUN_00523120, which
+    // SetupJoystickHandlers now calls; ShutdownStage1 destroys it.
+    //
+    // **This global had been reconstructed under three different names** — `s_JoystickDevice`,
+    // `s_JoystickDevice_00604b54` and, briefly, an `s_InputDevice_00604b54` added while
+    // reconstructing the creation chain. One address, one field: the same shape of defect as
+    // DAT_00566cc4 / s_ResolutionIndex, and the reason to check for an existing name before
+    // declaring one.
+    private static byte* s_JoystickDevice_00604b54;
 
     /// <summary>
     /// Ghidra: FUN_00512ff0 @ 0x00512ff0 — post-loop teardown, stage 3: the DirectSound shutdown.

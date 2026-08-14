@@ -395,11 +395,17 @@ public static unsafe partial class Blaze
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static int Shim_SetViewport(void* self, int x, int y, int w, int h)
     {
-        // Le décalage (x, y) servait à centrer le rendu dans un mode d'affichage plus grand que
-        // lui. Le backend rend dans une cible à ses dimensions exactes et la présente centrée : le
-        // décalage n'a donc plus d'objet, seules les dimensions sont reprises.
+        // CORRECTION du 2026-08-14. Ce commentaire disait que le décalage (x, y) « n'a plus
+        // d'objet », le backend rendant dans une cible à ses dimensions exactes. C'était faux, et
+        // ça se voyait : le jeu émet ses sommets en coordonnées **absolues dans sa surface
+        // d'affichage**, pas relatives au viewport. Les verser tels quels dans une cible qui ne
+        // couvre que le viewport décale toute l'image de (x, y) — bande noire à gauche et en haut,
+        // autant de rogné à droite et en bas. Mesuré : la recherche d'alignement entre notre rendu
+        // et celui de `3dhelp` tombe exactement sur (32, 24), l'origine que le jeu pose ici.
+        // L'origine est donc transmise au backend, qui la retranche.
         s_SceneWidth = w;
         s_SceneHeight = h;
+        D3D11Backend.SetViewportOrigin(x, y);
 
         if (s_TraceViewport)
             Console.Error.WriteLine(

@@ -100,6 +100,8 @@ internal static unsafe class D3D11Backend
             float2 InvTargetSize;     // 1 / (largeur, hauteur) de la cible de rendu
             float  Modulate;          // 1 = texture x diffuse, 0 = texture seule
             float  AlphaFromTexture;  // 1 = MODULATEALPHA (alpha texture x diffuse), 0 = MODULATE
+            float2 ViewportOrigin;    // origine du viewport, à retrancher des positions
+            float2 Padding;
         };
 
         Texture2D    SourceTexture : register(t0);
@@ -124,7 +126,12 @@ internal static unsafe class D3D11Backend
         {
             VSOutput output;
 
-            float2 ndc = input.Position.xy * InvTargetSize * 2.0f - 1.0f;
+            // Le jeu émet ses sommets en coordonnées **absolues dans la surface d'affichage**, où
+            // son viewport est posé à ViewportOrigin. On rend dans une cible aux dimensions du
+            // viewport seul : il faut donc retrancher cette origine, sinon l'image se décale et
+            // sort du cadre d'autant. Mesuré : sans ce retranchement l'image est décalée de
+            // (32, 24) par rapport au rendu d'origine — exactement l'origine que le jeu pose.
+            float2 ndc = (input.Position.xy - ViewportOrigin) * InvTargetSize * 2.0f - 1.0f;
             ndc.y = -ndc.y;
 
             float rhw = input.Position.w;
@@ -373,7 +380,7 @@ internal static unsafe class D3D11Backend
 
         var cbDesc = new BufferDesc
         {
-            ByteWidth = 16,
+            ByteWidth = 32,
             Usage = Usage.Dynamic,
             BindFlags = (uint)BindFlag.ConstantBuffer,
             CPUAccessFlags = (uint)CpuAccessFlag.Write,
@@ -561,8 +568,21 @@ internal static unsafe class D3D11Backend
         UpdateConstants(s_ConstTargetW, s_ConstTargetH);
     }
 
+    /// <summary>
+    /// Origine du viewport que le jeu pose (slot <c>+0x50</c>). Les sommets qu'il émet sont en
+    /// coordonnées absolues dans sa surface d'affichage ; la cible hors écran ne couvrant que le
+    /// viewport, cette origine est retranchée au moment du rendu.
+    /// </summary>
+    internal static void SetViewportOrigin(int x, int y)
+    {
+        s_ViewportOriginX = x;
+        s_ViewportOriginY = y;
+    }
+
+    private static int s_ViewportOriginX, s_ViewportOriginY;
+
     private static void UpdateConstants(int targetWidth, int targetHeight, float modulate = 1f,
-                                        float alphaFromTexture = 0f)
+                                        float alphaFromTexture = 0f, bool applyViewportOrigin = false)
     {
         MappedSubresource mapped = default;
         SilkMarshal.ThrowHResult(s_Context.Map(
@@ -572,6 +592,10 @@ internal static unsafe class D3D11Backend
         c[1] = 1f / targetHeight;
         c[2] = modulate;
         c[3] = alphaFromTexture;
+        c[4] = applyViewportOrigin ? s_ViewportOriginX : 0f;
+        c[5] = applyViewportOrigin ? s_ViewportOriginY : 0f;
+        c[6] = 0f;
+        c[7] = 0f;
         s_Context.Unmap(s_ConstantBuffer, 0);
 
         var cb = s_ConstantBuffer;
@@ -600,7 +624,8 @@ internal static unsafe class D3D11Backend
     /// </summary>
     internal static void DrawTriangles(
         ReadOnlySpan<TlVertex> vertices, ComPtr<ID3D11ShaderResourceView> texture,
-        bool alphaBlend = false, float modulate = 1f, float alphaFromTexture = 0f)
+        bool alphaBlend = false, float modulate = 1f, float alphaFromTexture = 0f,
+        bool applyViewportOrigin = false)
     {
         if (vertices.Length < 3) return;
 
@@ -611,12 +636,13 @@ internal static unsafe class D3D11Backend
             for (int start = 0; start < vertices.Length; start += chunk)
             {
                 int len = Math.Min(chunk, vertices.Length - start);
-                DrawTriangles(vertices.Slice(start, len), texture, alphaBlend, modulate, alphaFromTexture);
+                DrawTriangles(vertices.Slice(start, len), texture, alphaBlend, modulate,
+                              alphaFromTexture, applyViewportOrigin);
             }
             return;
         }
 
-        UpdateConstants(s_ConstTargetW, s_ConstTargetH, modulate, alphaFromTexture);
+        UpdateConstants(s_ConstTargetW, s_ConstTargetH, modulate, alphaFromTexture, applyViewportOrigin);
 
         MappedSubresource mapped = default;
         SilkMarshal.ThrowHResult(s_Context.Map(s_VertexBuffer, 0, Map.WriteDiscard, 0, ref mapped));
@@ -703,7 +729,8 @@ internal static unsafe class D3D11Backend
                 break;
         }
 
-        DrawTriangles(s_Expanded.AsSpan(0, n), texture, alphaBlend, 1f, alphaFromTexture ? 1f : 0f);
+        DrawTriangles(s_Expanded.AsSpan(0, n), texture, alphaBlend, 1f, alphaFromTexture ? 1f : 0f,
+                      applyViewportOrigin: true);
 
         void Emit(TlVertex a, TlVertex b, TlVertex c)
         {
