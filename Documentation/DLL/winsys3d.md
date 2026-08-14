@@ -510,3 +510,96 @@ architecture (Direct3D helper vs. OpenGL helper) selected somewhere in the
 not-yet-reconstructed engine/device init, not from `Setup3DDevice` itself
 (which lives in `winsys3d.dll`, not either helper DLL). Revisit once
 device/window creation is reconstructed.
+
+## The libgte family (ordinals 376 / 377 / 378 / 379 / 457) — **IDENTIFIED**
+
+Sibling of the libgpu family above: where 658/661/665/674 are the PlayStation SDK's **libgpu**,
+these are its **libgte** (geometry engine). Identified from their bodies in `winsys3d.c`, all
+found by grepping the ordinal with surrounding spaces as the DLL embeds it in a comment.
+
+| ordinal | `winsys3d.c` | libgte name | body |
+|---|---|---|---|
+| 376 | `FUN_00a20fe0` @ `0x20fe0` | `SetBackColor(r,g,b)` | three bytes into `DAT_011f0898` |
+| 377 | `FUN_00a21000` @ `0x21000` | `SetFarColor(r,g,b)` | three bytes into `DAT_011f0ec8` — same shape, different target |
+| 378 | `FUN_00a21020` @ `0x21020` | `SetGeomOffset(x,y)` | stores the pair into `EXT_011cb414`/`EXT_011cb410` |
+| 379 | `FUN_00a21040` @ `0x21040` | `SetGeomScreen(h)` | stores `h`, then rebuilds the reciprocal table at `EXT_011d0898` for every divisor in `-0x8000 .. 0x7fff`, saturating to `0x7fff`; then calls `FUN_00a1dbc0(h)` |
+| 457 | `FUN_00a25d10` @ `0x25d10` | `ratan2(y,x)` | `fpatan` then `__ftol` |
+
+Ordinal 378's semantics were previously marked `TODO(REVERSE)` in `Blaze.cs`. The call site settles
+it: `FUN_00506880` calls `Ordinal_379(400); Ordinal_378(0xa0, 0x78);` back to back, and
+`(0xa0, 0x78)` is `(160, 120)` — the centre of a 320×240 screen. Projection distance then
+projection centre, the standard libgte setup pair.
+
+Ordinal 457's return value is **dropped by Ghidra in the DLL body** (`fpatan` leaves its result on
+the x87 stack and `__ftol` converts it, but the decompiler typed the function `void`). `Blaze.c`
+assigns it — `sVar3 = Ordinal_457((int)sVar3, (int)sVar6)` at `Blaze.c:55814` — so it does return
+one. Declared `int` on the C# side.
+
+## The emulated GTE register file is exported as DATA (ordinals 799–821) — **IDENTIFIED**
+
+This is the third and largest PlayStation SDK family in `winsys3d.dll`, after libgpu
+(658/661/665/674) and libgte's function half (376–379, 450–457). It is not a function family at
+all: **the registers of the emulated GTE — the PlayStation's geometry coprocessor — are exported
+as data**, and `Blaze.exe` does its geometry by writing and reading those addresses directly
+rather than by calling anything.
+
+That is why the decompilation of every 3D routine is littered with `Ordinal_814_exref`,
+`Ordinal_802_exref` and friends instead of recognisable calls, and why those routines look
+impenetrable until the register map is known.
+
+Addresses from `winsys3d.dll`'s export table (image base `0x00a00000`; all of these land in
+`.data`, so they are live state, not code):
+
+| ordinal | RVA | address | role |
+|---|---|---|---|
+| 801 | `0x007f0e98` | `0x011f0e98` | `MAC1..MAC3` — the 32-bit accumulators |
+| 802 | `0x007f0c80` | `0x011f0c80` | the input vector (`SVECTOR`) |
+| 805 | `0x007f0ea8` | `0x011f0ea8` | `SXY0` — projected screen XY, vertex 0 |
+| 806 | `0x007f0eac` | `0x011f0eac` | `SXY1` |
+| 807 | `0x007f0eb0` | `0x011f0eb0` | `SXY2` |
+| 808 | `0x007cb418` | `0x011cb418` | `MAC0` — where `NCLIP` leaves its cross product |
+| 813 | `0x007d0848` | `0x011d0848` | `IR1..IR3` — the MACs saturated to 16 bits |
+| 814 | `0x007d0870` | `0x011d0870` | the current `MATRIX`: `short m[3][3]` then `long t[3]` |
+| 816 | `0x007d0828` | `0x011d0828` | the 8-dword block ordinal 368 writes |
+| 819 | `0x007cb410` | `0x011cb410` | projection offset, set by `SetGeomOffset` |
+| 820 | `0x007cb414` | `0x011cb414` | projection offset, second component |
+| 821 | `0x007d0898` | `0x011d0898` | the reciprocal table `SetGeomScreen` rebuilds |
+
+**Three independent cross-checks land exactly**, which is what makes this reading safe rather
+than plausible:
+
+- Ordinal 378's body (`SetGeomOffset`) writes `EXT_011cb414` and `EXT_011cb410` — ordinals 820
+  and 819.
+- Ordinal 379's body (`SetGeomScreen`) rebuilds the table at `EXT_011d0898` — ordinal 821.
+- Ordinal 368's body copies eight dwords into `EXT_011d0828` — ordinal 816.
+
+A fourth confirmation comes from the shape of the writes rather than from the DLL: `FUN_0051d1f0`
+fills ordinal 814 with four dwords, one short at `+0x10`, then three dwords at `+0x14`/`+0x18`/
+`+0x1c`. That is `short m[3][3]` (18 bytes, padded to 20) followed by `long t[3]` — the PlayStation
+SDK's `MATRIX`, 32 bytes, field for field.
+
+**Still unidentified**: 799, 800, 803, 804, 809, 810, 811, 812, 815, 817, 818. `FUN_0051d1f0`
+touches 805–811, 815, 817 and 819–821, so reconstructing it will pin most of them down.
+
+### The three consumers reconstructed so far
+
+| Ghidra | SDK name | what it does |
+|---|---|---|
+| `FUN_0051c300` | `RotMatrix` | three angles → a 3×3 short matrix |
+| `FUN_0051c280` | `NormalClip` | 2D cross product of SXY0/1/2 → MAC0; its sign is the facing test |
+| `FUN_0051c2f0` | — | re-reads MAC0 without recomputing |
+
+`RotMatrix` does not call `rsin`/`rcos` per angle. It indexes `DAT_00600920`, the 0x1000-entry
+table the startup path builds once, each entry packing `rsin(i)` in the low half and `rcos(i)` in
+the high half. Ghidra renders the indexing as `(angle << 2) & 0x3ffc` — a byte offset already
+multiplied by four — which is `angle & 0xfff` on the entry index, written differently.
+
+`NormalClip`'s six terms were checked one by one against the SDK formula
+`SX0*SY1 + SX1*SY2 + SX2*SY0 - SX0*SY2 - SX1*SY0 - SX2*SY1`. Ghidra emits them in a different
+order and folds three of the subtractions together, which hides the symmetry, but the expression
+is identical.
+
+### Reaching them from C#
+
+These exports have no names, so `GetProcAddress` is called with the ordinal in the low word of the
+name pointer — the `MAKEINTRESOURCE` convention. See `EnsureGteRegisters` in `Blaze.cs`.

@@ -789,12 +789,17 @@ being a reading task.
   itself remains blocked.
 - **`FUN_00537ca0`'s eleven state handlers** — the real per-state work, now that
   the tick is wired (#15). All eleven have decompiled bodies in `Blaze.c` and
-  none is blocked on anything: `FUN_00542130` (state 0), `thunk_FUN_00536180`
-  (1), `FUN_00542160`+`FUN_00537da0` (2), `thunk_FUN_00516020` (3),
-  `FUN_005066d0` (4), `FUN_00504c90` (5), `FUN_00524180` (6), `FUN_00531b40`
-  (7), `FUN_005315d0` (8), `FUN_0051bb00` (9), `FUN_00513ba0` (10). This is the
-  largest body of straightforwardly readable code reachable from the spine.
-  Note it is gated behind #19 at runtime, but not for reading.
+  none is blocked at the top level: `FUN_00542130` (state 0),
+  `thunk_FUN_00536180` (1), `FUN_00542160`+`FUN_00537da0` (2),
+  `thunk_FUN_00516020` (3), `FUN_005066d0` (4), `FUN_00504c90` (5),
+  `FUN_00524180` (6), `FUN_00531b40` (7), `FUN_005315d0` (8), `FUN_0051bb00`
+  (9), `FUN_00513ba0` (10). This is the largest body of straightforwardly
+  readable code reachable from the spine. Note it is gated behind #19 at
+  runtime, but not for reading. **Correction (2026-08-14):** "none is blocked"
+  held only one level deep. State 4 (`FUN_005066d0`) splits into a loader
+  (`FUN_005066e0`, now reconstructed) and a frame loop (`FUN_00506880`) whose
+  eight sub-state handlers are *not* in `Blaze.c` — see the dated section below.
+  The other ten have not been checked one level down.
 - **`FUN_0052a440`** — **not the per-game-state dispatcher** after all; the tick
   pointer reaches `FUN_00537ca0` instead (#15). Kept here because it is still
   reached from `RunGameLoop`'s own state handling. (~100 lines, already read,
@@ -1389,3 +1394,544 @@ build the tool with the x64 SDK but **run the `net9.0` apphost** (the `net10.0`
 output hits the same `0x800700C1` bad-image-format wall described at the top of
 this file), and an address landing in a `.data` region that reads as zero on disk
 means the table is built at runtime — an answer, not a failure.
+
+## 2026-08-14 — game state 4: the loader is in, the frame loop is a hole
+
+`FUN_005066d0` (state 4, character select) is two halves:
+
+```
+FUN_005066d0
+  ├── FUN_005066e0   the resource load          → reconstructed
+  └── FUN_00506880   the frame loop             → not reconstructed
+        └── (*PTR_LAB_00560708[DAT_00578de8])() → eight handlers, none in Blaze.c
+```
+
+### The loader — `LoadCharacterSelectResources`
+
+Faithful transcription of `FUN_005066e0`. Same opening as `LoadMenuResources` (state entry, then
+header relocation), followed by **four** directory lists instead of one: `+0x10` TIMs decoded into
+emulated VRAM, `+0x2c` model bundles, `+0x7c` animation bundles, `+0xb0` raw blocks every `0x2000`
+bytes. The `+0x2c` and `+0x7c` loops share one cursor from `MainMem + 0x138000`, so the bundles
+stack without gaps.
+
+Two deviations from the original, both commented at the call sites rather than left implicit:
+
+- `null` guards on the directory and on `MainMem` that the original does not have.
+- `FUN_0040a600()` is not transcribed. Its decompiled body is **empty** (`Blaze.c:4319`), so this
+  is behaviourally neutral — but Ghidra's signature for it is wrong (other sites pass arguments).
+  Recorded in `Documentation/DataSymbols.md`.
+
+### Two globals were about to be misnamed
+
+`DAT_005e96a0` and `DAT_005e9640` were first written as `s_SelectSpriteTable_*` /
+`s_SelectPaletteTable_*`, as if they belonged to this screen. They do not: `FUN_005069e0` fills
+them identically (`Blaze.c:78876`) and ~30 sites read them across `Blaze.c`. They are the global
+**model** and **animation** tables — `DAT_005e9640` holds animations (frame counter wraps on the
+entry's `+0x16` field, `Blaze.c:55840`; count read at `[-4]`, `Blaze.c:79042`), `DAT_005e96a0`
+holds models (16-byte primitive records bucketed by type, vertex counts divided by three).
+Renamed to `s_ModelTable_005e96a0` / `s_AnimationTable_005e9640` before the thirty read sites
+arrive. Capacity is 24, not `0x40`: the two symbols are `0x60` bytes apart. Full layout in
+`Documentation/DataSymbols.md`.
+
+### The frame loop's eight handlers need a Ghidra re-run
+
+`FUN_00506880` dispatches through `PTR_LAB_00560708`, an eight-entry table read out of
+`Legacy/Blaze.exe`:
+
+| index | target | index | target |
+|---|---|---|---|
+| 0 | `0x00507010` | 4 | `0x00508E00` |
+| 1 | `0x00507CB0` | 5 | `0x00509470` |
+| 2 | `0x00508410` | 6 | `0x005098F0` |
+| 3 | `0x00508860` | 7 | `0x0050A910` |
+
+**The `PTR_LAB_…` blocker no longer applies** — the binary is in the repo and the section map is in
+`DataSymbols.md`, so the table resolves by hand (file offset `0x15ED08`). What remains is the
+*other* blocker class: none of the eight bodies is in `Blaze.c`. The decompilation jumps from
+`FUN_00506880` to `FUN_00507870`, skipping them entirely, because nothing calls them directly.
+A scoped Ghidra re-run at those eight addresses produces all of them at once.
+
+Verified from the binary: all eight are genuine function prologues, and seven of the eight open on
+`mov eax, [0x00562A48]` — the "first frame in this sub-state" flag that `FUN_005066e0` sets to 1
+and that `FUN_00506880` re-raises on every sub-state change.
+
+`FUN_00506880` itself is reconstructible today, with the eight handlers as named stubs, but two
+things about it need flagging:
+
+- Ghidra failed to recover its parameters: `unaff_EBX`, `unaff_EBP`, `unaff_ESI` are passed
+  straight through to `FUN_0051d1f0`, `FUN_0051be20`, `FUN_00545340`, `FUN_00521f20` and others.
+  Same re-run would fix this.
+- It calls a long tail of not-yet-reconstructed rendering functions (`FUN_0051d1f0`,
+  `FUN_0051be20`/`FUN_0051bdb0`, `FUN_00521df0`/`FUN_00521f20`, `FUN_0051f9c0`, `FUN_00545340`,
+  `FUN_005443a0`, `FUN_00544350`, `FUN_0052a1e0`/`FUN_0052a280`, `FUN_00547140`, `FUN_00520ae0`,
+  `FUN_00504b10`) plus `winsys3d` ordinals 376/378/379/457.
+
+## 2026-08-14 — the Ghidra re-run happened, and it moved three walls at once
+
+### How to re-run (the recipe, because it changed)
+
+Ghidra is at `F:\Open Foresia Project\Tool\ghidra_12.1.2_PUBLIC`, project
+`F:\Open Foresia Project\Ghidra Project\Open Foresia`.
+
+**The `.py` scripts in `~/ghidra_scripts` no longer run.** Ghidra 12 ships PyGhidra and demotes
+Jython to an *uninstalled* extension zip (`Extensions/Ghidra/…_Jython.zip` is present but never
+extracted). `ForceFunctions.py` and `ExportFunction.py` are therefore dead until Jython is
+installed or they are ported. The replacement is a Java `GhidraScript`, which headless always
+supports: `~/ghidra_scripts/ForceDecompileCharacterSelect.java`.
+
+```powershell
+$gh = "F:\Open Foresia Project\Tool\ghidra_12.1.2_PUBLIC\support\analyzeHeadless.bat"
+& $gh "F:\Open Foresia Project\Ghidra Project" "Open Foresia" -process "Blaze.exe" `
+      -noanalysis -readOnly `
+      -scriptPath "C:\Users\Sagara\ghidra_scripts" `
+      -postScript ForceDecompileCharacterSelect.java
+```
+
+Two things matter in that invocation:
+
+- **Invoke it from PowerShell, not Git Bash.** The `.bat` mangles its own path when bash launches
+  it through a directory containing spaces (`'F:\Open' n'est pas reconnu`).
+- **`-readOnly` keeps the project untouched.** Functions are created in memory, decompiled, and
+  discarded. Drop the flag only when the created functions are wanted permanently.
+
+The script's own shape matters as much as the flags: it creates **all** the missing functions
+first, then calls `analyzeChanges(currentProgram)`, and only then decompiles. Skipping the
+`analyzeChanges` step is not cosmetic — on the first attempt the bodies came out riddled with
+`func_0x0053db80(…)` (unresolved call targets) and several were 2–5× too short, because the newly
+disassembled code's outgoing references had never been analysed. With the analysis pass:
+`FUN_005098f0` went 713 → 3660 bytes, `FUN_0050a910` 2522 → 5425, and `func_0x…` dropped to zero.
+
+Output lands in `Legacy/Raw/Blaze/FUN_<addr>.c` and `.asm`.
+
+### The eight sub-states are decompiled
+
+All eight entries of `PTR_LAB_00560708` now have bodies and listings in `Legacy/Raw/Blaze/`:
+
+| index | address | pseudo-C lines |
+|---|---|---|
+| 0 | `0x00507010` | 303 |
+| 1 | `0x00507CB0` | 285 |
+| 2 | `0x00508410` | 143 |
+| 3 | `0x00508860` | 178 |
+| 4 | `0x00508E00` | 203 |
+| 5 | `0x00509470` | 177 |
+| 6 | `0x005098F0` | 542 |
+| 7 | `0x0050A910` | 711 |
+
+None is transcribed into `Blaze.cs` yet. `InvokeCharacterSelectSubState` throws with the address
+and the file name so the next one to do is obvious.
+
+### The handler signature, recovered from the disassembly
+
+Ghidra's pseudo-C for the dispatch is **wrong** and would have produced a broken reconstruction:
+
+```c
+(**(code **)(&DAT_00560708 + DAT_00578de8 * 4))
+    (unaff_EBP, unaff_EBX, unaff_ESI, &DAT_00604a20 + i * 4);
+```
+
+The listing at `0x00506a42`–`0x00506a52` shows four `PUSH`es and `ADD ESP,0x10` — cdecl, four
+arguments — and the first three are **stack locals**, not registers. Tracing the offsets against
+the frame (`SUB ESP,0x20` then four register pushes, so locals start at `E+0x10`):
+
+| arg | slot | what it is |
+|---|---|---|
+| 1 | `[E+0x14]` | `FUN_0052a1e0`'s 1st out-param — `otBase` |
+| 2 | `[E+0x18]` | its 2nd out-param — `otEntry` |
+| 3 | `[E+0x10]` | its 3rd out-param — `primCursor` |
+| 4 | `EAX` | the pad record the exit test just read |
+
+and the return value is written back to `[E+0x10]`. So:
+
+```
+uint* handler(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+```
+
+The handlers corroborate it independently: `FUN_00509470` reads `*(ushort *)(in_stack_00000010 + 2)`
+and masks button bits — `in_stack_00000010` is argument 4 at `[ESP+0x10]`.
+
+This also decodes the `unaff_*` names inside the body, confirmed at two call sites each:
+**`unaff_EBP` is `otBase`** (`FUN_00545340` at `0x00506e9d` and `0x00506f44` both take `[E+0x14]`)
+and **`unaff_EBX` is `otEntry`** (`FUN_00521f20` at `0x00506f9e` takes `[E+0x18]`). `EBP` itself is
+zeroed at `0x00506953` and used as a zero register for the rest of the function, which is what
+confused the decompiler.
+
+### A latent 4× addressing bug in already-shipped code
+
+`CurrentPadWord()` computed `s_InputStateBase_00604a20 + slot * 4`. **The stride is `0x10`.** Every
+call site disassembles to `SHL EAX,0x4` then `ADD EAX,0x604a20`:
+
+| function | address |
+|---|---|
+| `FUN_0052a440` | `0x0052a60b` |
+| `FUN_00545340` | `0x00545423` |
+| `FUN_00506880` | `0x005069fa` |
+
+Ghidra's pseudo-C loses the shift and prints `* 4` in all of them, which is where the reconstruction
+got it. The bug is **latent**: at slot 0 — the single-controller case everything has been exercised
+with — `0 * 4` and `0 * 0x10` are the same address, so nothing ever misbehaved. It would have
+surfaced the moment a second pad slot was used. Now `CurrentPadState()` returns the record pointer
+and `CurrentPadWord()` reads the halfword at its offset 0, which is the form `FUN_0052a440` uses
+(`MOV AX, word ptr [EAX]`, then `AND AX,0x8008`). `FUN_00506880` instead reads the **byte at +2**
+and masks `9`.
+
+### What now runs, and what still stops
+
+`RunCharacterSelectFrameLoop` is reconstructed end to end except for one branch. Reaching the
+screen needs sub-state 0, and the `DAT_00578de8 != 0 && < 7` block — camera damping, the particle
+loop through `FUN_00520ae0`, and the animated-model draw through `FUN_0051d1f0` — is **skipped at
+sub-state 0**, so it is not on the critical path. It throws with an inventory rather than being
+silently dropped.
+
+`FUN_00521df0` was the last missing helper on that path and is now reconstructed as
+`DrawSpriteVariant`: the five-word sister of `DrawSpritePrimitive` (tag `0x04000000` against
+`0x09000000`), same header decode, one corner instead of four. Note its scale field treats 0 as
+`0x100` where the long sister falls back to `0xff` — that asymmetry is in the original.
+
+**Open question it surfaced**: `DrawSpritePrimitive` uses `s_SmallTextureFlag` where Ghidra has
+`DAT_00564a4c`, but `s_SmallTextureFlag` is `DAT_00564a38` (`AU_00564a05._51_4_`) — two different
+addresses. `DrawSpriteVariant` declares the proper `s_Unknown_00564a4c` rather than propagate the
+conflation. Which of the two is right needs settling, and it affects the long sister too. There is
+a second, unrelated duplication at the same address block: both `s_DeviceCapFlag_00564a48` (bool)
+and `s_Unknown_00564a48` (int) exist for `DAT_00564a48`.
+
+### The route to the screen
+
+`RunGameStateTick`'s state 4 no longer throws — it calls `RunCharacterSelectState`. Two ways in:
+
+- **From the main menu, entry index 1**: the already-reconstructed menu does `case 1: s_GameStateId = 4;`.
+- `FUN_00536ea0` sets `DAT_005de510 = 4` when `DAT_00604980._1_1_ == 0` — no saved games, so the
+  save-slot screen falls straight through to character creation.
+
+The remaining work to actually see it is transcribing `FUN_00507010` (sub-state 0), whose
+decompilation is now sitting in `Legacy/Raw/Blaze/FUN_00507010.c`.
+
+## 2026-08-14 — sub-state 0: input, setup and the phase machine are in
+
+`CharacterSelectSubState0` (`FUN_00507010`) is reconstructed up to its render pass.
+
+**The carousel is confirmed geometry, not a guess.** The first-frame block places sixteen slots
+with `Ordinal_451(i << 8) * -0x96` and `Ordinal_450(i << 8) * 0x96`. Ordinals 450/451 are libgte
+`rcos`/`rsin` over a `0x1000`-step turn (`winsys3d.c` `FUN_00a25c20`/`FUN_00a25c40`, plain table
+lookups at `DAT_011cb420`, with 452/453 aliasing the same entries). So `i << 8` is exactly one
+sixteenth of a turn per slot and `0x96` = 150 is the radius: sixteen characters on a circle.
+
+The slot stride is `0x9c`, corroborated three ways: Ghidra's `ushort *` step of `0x4e`, the
+`0x27`-dword copy at the confirm branch, and the `* 0x9c` that `CurrentPadState` already uses on
+`DAT_005e93c8`.
+
+**The goto mesh collapses.** The phase machine's `LAB_00507438` / `LAB_0050743d` /
+`joined_r0x00507423` tangle reduces to two cancel variants that differ only in which byte they zero
+(`DAT_0056075b` vs `DAT_00560763`) and which bit of `DAT_00560fef` they clear (`0xfd` vs `0xfb`).
+Rebuilt as a `switch` plus one shared tail flag.
+
+**Two pad scales in one function.** Ghidra types the pad pointer `ushort *`, so
+`in_stack_00000010[1]` and `[3]` are the words at byte 2 and byte 6, while
+`*(byte *)((int)in_stack_00000010 + 3)` is byte 3 — the high half of the first. Both forms appear
+in `FUN_00507010`. The reconstruction keeps them apart as `padWords[…]` and `pad[3]`.
+
+### What sub-state 0 still needs
+
+The render pass, from the `FUN_0051c300` call onward — the sixteen-slot damping loop, the model
+draw and the two sprite passes. Four helpers, none reconstructed:
+
+| function | role |
+|---|---|
+| `FUN_0051c300` | camera matrix from `DAT_00604928` into `DAT_006008e0` |
+| `FUN_005352e0` | the copy used for both the slot freeze (`0x27`) and the transform (`10`) |
+| `FUN_0051f650` | projection; its zero return culls the slot |
+| `FUN_0051d1f0` | the animated model draw — also the blocker for `FUN_00506880`'s in-scene block |
+
+`FUN_0051d1f0` is the one that matters: it is the single remaining dependency shared by both the
+frame loop's in-scene branch and sub-state 0's carousel. `FUN_005352e0` is currently reconstructed
+as `CopyDwords` **on the strength of its call sites only** — its body has not been read, and that
+assumption is flagged inline.
+
+### Two more symbol duplications found
+
+Same class as the `DAT_00564a48` pair noted above: `DAT_005633a8` has both
+`s_Unknown_005633a8` and `s_UnknownModeFlag_005633a8`. Sub-state 0 uses the latter. These want a
+sweep at some point — two names for one address is a drift waiting to happen.
+
+## 2026-08-14 — `FUN_0051d1f0`: the blocker was the GTE register map, and it is now mapped
+
+`FUN_0051d1f0` is 689 lines and is **not** reconstructed. What stopped anyone reading it was not
+its length: its dependency surface is **sixteen distinct data exports** of `winsys3d.dll`
+(`Ordinal_801_exref` … `Ordinal_821_exref`), none of which was documented, plus five functions.
+Without knowing what those addresses are, the body is unreadable.
+
+They are now identified — the emulated **GTE register file**, exported as data. Full map, three
+independent cross-checks and the C# access convention are in
+`Documentation/DLL/winsys3d.md`, section "The emulated GTE register file is exported as DATA".
+
+### Getting the export table when `OpenForesia.Tools` will not run
+
+`OpenForesia.Tools` is pinned to `PlatformTarget=x86`/`Prefer32Bit=true` and **cannot run on this
+machine** — only the x64 .NET 10 runtime is installed, so the apphost fails with
+`hostfxr` `0x800700C1`. Overriding `-p:PlatformTarget=x64` on the command line does not help:
+`Prefer32Bit` still stamps the 32-bit flag on the assembly.
+
+Rather than change the project, the export table was dumped with a standalone PowerShell PE
+parser, kept at `scratchpad/exports.ps1`:
+
+```powershell
+& exports.ps1 -Path winsys3d.dll -From 790 -To 825 -ImageBase 0x00a00000
+```
+
+It prints ordinal, RVA, VA and section, and resolves names where they exist. Worth folding into
+`OpenForesia.Tools` — or fixing that project's architecture — at some point.
+
+### Reconstructed on the way
+
+Three small consumers, all complete:
+
+| C# | Ghidra | note |
+|---|---|---|
+| `RotMatrix` | `FUN_0051c300` | nine coefficients verified one by one against the pseudo-C |
+| `NormalClip` | `FUN_0051c280` | six terms verified against the SDK formula |
+| `ReadMac0` | `FUN_0051c2f0` | trivial |
+
+`RotMatrix` matters beyond `FUN_0051d1f0`: sub-state 0 calls it too, so
+`CharacterSelectSubState0` now runs one step further — through the camera matrix and
+`SetBackColor` — before throwing at its sixteen-slot render loop.
+
+### A duplicate P/Invoke, caught before it landed
+
+Ordinals 450/451 were already declared as `GetCosTableEntry`/`GetSinTableEntry`. A second pair of
+`Ordinal_450`/`Ordinal_451` declarations was added while reading `FUN_00507010` and then removed;
+the libgte identification was folded into the existing declarations instead. This is the same
+drift class as the `DAT_00564a48` and `DAT_005633a8` duplicate pairs already noted — the file is
+big enough now that grepping for the address before declaring a symbol is worth doing every time.
+
+### What `FUN_0051d1f0` still needs
+
+The register map removes the blocker; the work itself remains. Its function dependencies are
+`FUN_005327b0`, `FUN_0051e700` and the three above, and it touches ordinals 805–811, 815, 817 and
+819–821 — so transcribing it should also pin down most of the eleven still-unidentified exports.
+It stays the single shared dependency of both the frame loop's in-scene branch and sub-state 0's
+carousel.
+
+## 2026-08-14 — `FUN_0051d1f0` fully mapped, not yet written
+
+Every dependency is now identified and every branch understood. The transcription itself has not
+been started, deliberately — see the closing note.
+
+### The seven winsys3d entry points it needs
+
+| ordinal | `winsys3d.c` | role |
+|---|---|---|
+| 360 | `FUN_00a20630` | composes two matrices; own MMX/scalar split |
+| 418 | `FUN_00a22010` | batch `RotTransPers`: N vertices through the MATRIX register into screen-XY and depth arrays |
+| 793 | `FUN_00a03e70` | batch lighting; gated on the DLL's `Elo_NoLighting`, writes zeroes when set. Consumes `EXT_00b6d198` = data export **817** |
+| 794 | `FUN_00a20540` | libgte `ScaleMatrix` — scales each matrix column by one scale component |
+| 795 | `FUN_00a226c0` | the depth-less sibling of 418 |
+
+Plus the GTE register file (801/802/805–808/813/814/815/817) already documented.
+
+### Structure
+
+```
+FUN_0051d1f0(otBase, prim, model, entity, transform, boneIndices, colourArg)
+  |
+  |-- prologue: copy DAT_006008e0.. into the MATRIX register (814), build the input
+  |   vector (802), do the 3x3 multiply by hand into MAC (801) and IR (813),
+  |   RotMatrix the entity pose, ScaleMatrix it (794)
+  |
+  |-- per-bone loop, `*(ushort*)(model + 0x12)` iterations:
+  |     RotMatrix each bone, ScaleMatrix (794), compose into MainMem + 0x1ba000 (360)
+  |
+  `-- main loop, `*(ushort*)(model + 0x14)` iterations:
+        |-- matrix concat, TWO PATHS on MMXInstalled_exref:
+        |     scalar: nine explicit `>> 0xc` dot products
+        |     MMX:    three `pmaddwd` triples over the same operands
+        |-- load result into MATRIX (814)
+        |-- transform + light, on the model's 0x400 flag (field +0x3c):
+        |     clear -> Ordinal_418 (perspective, emits per-vertex depth) + Ordinal_793
+        |     set   -> Ordinal_795 (no depth)
+        `-- emit primitives from two buckets, counts at model +0x1a and +0x1e:
+              +0x1a -> 10-word textured quad, tag 0x9000000, subtag 0x2c000000
+              +0x1e -> 13-word Gouraud quad,  tag 0xc000000, subtag 0x3c000000
+```
+
+**The 0x400 flag drives two complete regimes**, which is what makes the function look like it has
+four near-identical loops. It does not: it has two, written twice.
+
+- **clear** — per-polygon depth sort. The OT slot is the max of the four vertices' depths read
+  from `MainMem + 0x1b4000`, clamped by `slot - 0x50 < 0xec0`, linked at `otBase + (slot & 0xfffc)`.
+- **set** — one fixed slot for the whole model, `otBase + sStack_38 * 4`, computed once. No max, no
+  clamp. Billboard/flat geometry.
+
+Both regimes run the same backface test first: the six-term cross product is **hand-inlined**,
+character for character the same expression as `FUN_0051c280`, then `FUN_0051c2f0` re-reads MAC0.
+That inlining is independent confirmation that the `NormalClip` reconstruction is right.
+
+Two guards bound the work per call: a vertex is skipped unless one of the four screen X values is
+below `0x140`, and the global budget `DAT_005e9818` decrements per emitted primitive and stops the
+loop at zero.
+
+### Two things to settle before trusting a transcription
+
+1. **The MMX path.** `MMXInstalled_exref` selects between nine scalar dot products and three
+   `pmaddwd` triples. A reconstruction that only takes the scalar path is behaviour-preserving
+   *if* the two agree — which is the point of a CPU-capability branch — but that has not been
+   verified operand by operand, and it is a stated deviation either way. Writing the MMX path in
+   C# intrinsics would be no more faithful and much harder to check.
+2. **`FUN_005352e0`.** Still reconstructed as `CopyDwords` from its call sites alone; its body has
+   not been read. It is used by sub-state 0 as well.
+
+### Why it is not written yet
+
+This is the largest function in the reconstruction so far — ~690 lines of pseudo-C emitting
+PlayStation display-list primitives with exact bit packing, on top of seven DLL entry points that
+were undocumented at the start of this session. The project already has one worked example of what
+rushing exactly this kind of code costs: `DrawFlatPrimitive`'s `*prim = *otEntry | 0x2000000` was
+transcribed faithfully and still crashed, because the convention it belonged to lived on the DLL
+side. A day went to it.
+
+The map above is the part that could not be recovered by reading harder, and it is now recorded.
+The transcription is a focused sitting of its own, and it is no longer blocked on anything.
+
+## 2026-08-14 — `FUN_0051d1f0` is written: `DrawAnimatedModel`
+
+The animated-model draw is reconstructed end to end, in four pieces:
+
+| C# | covers |
+|---|---|
+| `DrawAnimatedModel` | prologue, bone loop, part loop, matrix concat |
+| `PartIsOnScreen` | the `local_94` branch — per-part frustum cull |
+| `DrawModelPart` | `LAB_0051db61` — transform, lighting, bucket dispatch |
+| `EmitModelQuads` | the four emission loops, which are two written twice |
+| `ScaleMatrixSaturating` | `FUN_005327b0`, the hand-rolled `ScaleMatrix` |
+
+### What the asm settled that the pseudo-C could not
+
+- **The depth clamp.** Ghidra renders it as `puVar20 + -0x50 < (uint *)0xec0` — pointer arithmetic
+  on a `uint *`. Taking `0x50` literally would have been wrong by a factor of four. The listing at
+  `0x0051e32a` is `LEA ECX,[EAX + 0xfffffec0]` then `CMP ECX,0xec0` unsigned, so the test is
+  `(uint)(zmax - 0x140) < 0xec0`. The OT slot immediately after is `otBase + (zmax & 0xfffc)` as a
+  **byte** offset, which is what the pseudo-C shows.
+- **`FUN_005352e0` is confirmed.** Its 32-byte body is a plain dword copy,
+  `(source, destination, count)` — the `CopyDwords` assumption from the previous session was
+  right, and is now a fact rather than an inference.
+
+### Two findings that reach back into existing code
+
+**`DAT_005e9818` is the per-frame primitive budget, and `FrameBegin` already resets it to
+`0x9c4`.** It is never assigned anywhere in `Blaze.c`; its address is in `.data`'s uninitialised
+tail, so it loads as zero. Had `FrameBegin`'s reconstruction not already carried that line, every
+emission loop here would have exited immediately and nothing would ever have drawn. Now labelled.
+
+**`DAT_006008fc` is not a standalone variable.** It is the Z translation of the camera matrix at
+`DAT_006008e0` — a single 0x20-byte `MATRIX`, nine rotation shorts then three translations at
+`+0x14`/`+0x18`/`+0x1c`. The frame loop's `DAT_006008fc = DAT_006008fc + (800 - DAT_006008fc >> 2)`
+is the camera dollying in. It had been declared as an isolated `int`, which would have made
+`DrawAnimatedModel` copy a half-wrong matrix into the GTE register. Same structure-split class as
+the menu background bug. Now one block with a `CameraTranslation` accessor.
+
+### Structure worth remembering
+
+- The **0x400** bit of the model's `+0x3c` picks the regime: clear → perspective transform
+  (ordinal 418, emits per-vertex depth) and per-polygon depth sort; set → ordinal 795 and one
+  fixed OT slot for the whole part.
+- **Bit 0** of the transform block's `+0x1a` is not that — it enables the **per-part cull**, which
+  projects the part origin (a zero vector, so only the translation survives) through the
+  reciprocal table at ordinal 821 and tests screen bounds. Side effect: the projected depth,
+  divided by four, becomes the fixed OT slot.
+- **Bit 2** of the same field replaces lighting with a flat colour written three times per triangle.
+- `param_4` advances per part: **each part has its own model entry**. But the texture-page words
+  are computed once from the *first* part's model and reused — an original quirk, transcribed.
+- The per-part matrix goes into register 814 (transform) while the scene×bone product goes into
+  815 (normals). 815's translation row is never rewritten by that product and keeps whatever the
+  bone loop last left; harmless, lighting only needs the rotation. Transcribed as-is.
+
+### Stated deviation
+
+Only the **scalar** matrix-concat path is transcribed. The original branches on
+`MMXInstalled_exref` between nine dot products and three `pmaddwd` triples. A CPU-capability
+branch should compute the same thing, but that has **not** been verified operand by operand.
+Marked `TODO(REVERSE)` at the site.
+
+### A third duplicate symbol, caught the same way as the previous two
+
+`s_PrimitiveBudget_005e9818` was declared before noticing `s_Unknown_005e9818` already existed;
+removed. That is three in three sessions (`DAT_00564a48`, ordinals 450/451, now this). The file is
+past the size where a new symbol should be declared without grepping its address first.
+
+### What is left for the character-select screen
+
+Neither render path is fully open yet, and the remainders are now small and named:
+
+- **Sub-state 0's carousel** needs `FUN_0051f650`, the per-slot projection whose zero return culls
+  the slot. It is decompiled (`Legacy/Raw/Blaze/FUN_0051f650.c`), has the same lost-parameter
+  problem, and pulls in two more unidentified ordinals, **366** and **369**.
+- **The frame loop's in-scene branch** needs `FUN_00520ae0` (the particle pass) and the
+  `0x00572b40` globals.
+
+Nothing has been run. No test of the game has been attempted this session.
+
+## 2026-08-14 — `FUN_0051f650` and the carousel: sub-state 0 no longer throws
+
+### `ProjectPoint` (`FUN_0051f650`)
+
+Loads the camera matrix into the GTE register through **ordinal 366 (`SetRotMatrix`)** and
+**ordinal 369 (`SetTransMatrix`)** — both write into the MATRIX register at ordinal 814, the
+rotation at +0 and the translation row at +0x14, which is what confirms them. It then transforms
+a world position, makes that the matrix's translation, and projects the origin.
+
+That last step is character-for-character the projection `FUN_0051d1f0`'s cull branch already
+does, so the two now share `ProjectOriginThroughMatrix`.
+
+Parameters came from the listing, Ghidra having lost the frame and rendered the output as
+`unaff_retaddr`: arg1 at `[ESP+0x1c]` is the position, arg2 at `[ESP+0x20]` is the output buffer
+(written at `0x0051f8e5`). Returns 1 when the projected point is on screen.
+
+Ordinal 803 is identified in passing as the second input vector register.
+
+### The carousel is wired
+
+`CharacterSelectSubState0` now has **no `throw` left**. Its sixteen-slot loop damps each slot
+(the selected one straightens and lights up, the others tilt away and dim — all by quarters),
+advances the animation frame with wraparound on the animation's `+0x16` length, draws the model
+through `DrawAnimatedModel`, then projects the slot position raised by `0x3c000` and, if it lands
+on screen, draws its label twice one pixel apart.
+
+Every offset in that loop was verified against `FUN_00507010.asm` rather than taken from the
+pseudo-C, because Ghidra walks the slot through a `short *` parked 0x2a bytes past the base and so
+renders every field as a negative index. Recentred on the slot base, they line up exactly with the
+first-frame init block written in the previous session — which is a good independent check that
+both readings are right. In particular the transform passed to the model draw is `slot + 0x1c`,
+which is precisely where that init writes the circle position.
+
+Two details the listing settled and the pseudo-C could not:
+
+- The label's screen position is the projection output's x **and** y (slot struct `+8` and `+0xa`),
+  written from `[ESP+0x1c]` and `[ESP+0x22]`. Ghidra folds both into one `unaff_EBP`.
+- The label's OT slot is `otBase + projectedZ + 0x14` — from `LEA EDX,[EBX + ECX*0x4 + 0x50]`,
+  where `EBX` is the handler's first argument.
+
+### `DAT_005606f8`
+
+Sixteen bytes at file offset `0x15ECF8`: `{0x0000000c, 0, 0x005066c0, 0}`, sitting immediately
+before `PTR_LAB_00560708`. The third field is a **code pointer**, `0x005066c0` — right before
+`FUN_005066d0` and, like the eight sub-states were, absent from `Blaze.c`. Modelled with the
+recovered bytes. If `BindMenuLabels` ever calls through it, that will surface at runtime and want
+one more scoped Ghidra re-run.
+
+### State of the path to the screen
+
+```
+RunGameStateTick case 4
+  -> RunCharacterSelectState
+       -> LoadCharacterSelectResources      complete
+       -> RunCharacterSelectFrameLoop       complete except the in-scene block
+            -> CharacterSelectSubState0     complete, no throws
+                 -> DrawAnimatedModel       complete (scalar matrix path only)
+                 -> ProjectPoint            complete
+```
+
+The two `throw`s left in the frame loop are the null-`MainMem` guard and the in-scene block, which
+only sub-states 1–6 reach. Sub-state 0 is the entry sub-state, so **the screen is reachable on
+paper for the first time**.
+
+Nothing has been run. This is the point at which running the game is worth doing: main menu,
+entry 1.

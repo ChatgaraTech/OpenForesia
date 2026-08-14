@@ -1,343 +1,164 @@
 # TODO
 
-Point d'entrée entre deux sessions. Ce fichier ne contient pas le plan — il dit où il est.
+Point d'entrée entre deux sessions. État au soir du 2026-08-14.
 
 ---
 
-## Le plan est dans la change OpenSpec active
+## Où on en est
+
+L'écran de sélection des personnages est **atteint pour la première fois**. Le jeu démarre, passe
+le menu, entre dans l'état 4, charge ses ressources, entre dans la boucle de frame, exécute le
+sous-état 0 et son carrousel — puis plante à la passe de texte finale.
+
+Chaîne reconstruite et exercée :
 
 ```
-openspec/changes/replace-3d-backend-with-d3d11/
+RunGameStateTick case 4
+  └─ RunCharacterSelectState
+       ├─ LoadCharacterSelectResources     OK
+       └─ RunCharacterSelectFrameLoop      OK (sauf le bloc « en scène », sous-états 1 à 6)
+            └─ CharacterSelectSubState0    OK, zéro throw
+                 ├─ DrawAnimatedModel      s'exécute sans faute
+                 └─ ProjectPoint           OK
 ```
 
-`tasks.md` fait foi : 27 tâches faites, 4 restantes, formulées précisément. `proposal.md` dit
-pourquoi, `design.md` dit comment et liste les risques.
-
-```powershell
-openspec status --change "replace-3d-backend-with-d3d11" --json
-```
-
-Ne pas recopier ces tâches ici : deux listes divergent toujours.
+Rien n'est commité. Le build est vert (0 erreur, seuls les `NETSDK1189` habituels).
 
 ---
 
-## Où en est le rendu
-
-Le jeu rend par un backend **Direct3D 11** (Silk.NET), dans une **fenêtre**, sans changement de mode
-d'affichage. `3dhelp.dll` n'est plus sur le chemin d'affichage et n'est même plus initialisée : un
-device synthétique répond à sa place (`SyntheticDevice.cs`).
-
-**Le menu s'affiche texturé dans la fenêtre depuis le 2026-08-14** — tâche 3.5 faite : textures,
-modulation par la couleur diffuse, mélange alpha et transparence par couleur-clé. Vérifié par
-comparaison automatisée de deux captures du même binaire, l'une avec `OPENFORESIA_LEGACY_3DHELP=1` :
-boîte englobante `290x148` **des deux côtés**, **écart moyen 0,2/255 par canal**, 0,1 % de pixels
-franchement différents. Tenu sur 1021 images consécutives sans exception. Détail et hypothèses
-corrigées dans `tasks.md` de la change et dans `Documentation/DLL/3dhelp.md`.
-
-**Le fond du menu s'affiche depuis le 2026-08-14** — le parchemin, la plume, l'encrier. La cause
-n'était pas dans le backend : `FUN_00542250` monte un descripteur de sprite de 20 octets d'un seul
-tenant et en passe l'adresse aux deux émetteurs, alors que la reconstruction l'avait coupé en deux
-blocs de tas. **Cinquième occurrence** de ce défaut ; détail et règle qui en découle dans
-`REVERSE_STATUS.md`, section du 2026-08-14.
-
-~~**tâche 4.5** — l'échelle~~ — **prémisse réfutée, et la réfutation tient une fois le fond présent.**
-Le panneau du menu est bien plus petit, relativement au fond, que sur la capture officielle en
-640x480 (30 % de la largeur contre 45 %) — mais `3dhelp`, sur le même build et à la même
-`Resolution=4`, donne exactement les mêmes proportions. L'interface du jeu ne suit pas la
-résolution alors que son fond la suit : c'est le comportement du jeu, pas un défaut de portage.
-Y toucher serait une amélioration délibérée.
-
----
-
-## La suite : interagir avec le menu
-
-Le chemin est cartographié, et un blocage supposé n'en est pas un.
+## 1. Le plantage — à corriger en premier, c'est mécanique
 
 ```
-FUN_00504460  SetupJoystickHandlers        [FAIT — appelle la création]
-  └─ FUN_00523120  création du device d'entrée              [FAIT le 2026-08-14]
-       ├─ FUN_00522dc0  DirectInputCreateA(hInstance, 0x500) [FAIT]
-       └─ FUN_00522eb0  init                                 [FAIT]
-            ├─ FUN_005233c0  clavier : CreateDevice(GUID_SysKeyboard) + SetDataFormat
-            │                + SetCooperativeLevel(hwnd, 6) + Acquire      [FAIT, acquis]
-            ├─ FUN_00523470  souris  : même séquence, GUID_SysMouse        [FAIT]
-            ├─ EnumDevices(DIDEVTYPE_JOYSTICK, ATTACHEDONLY)               [FAIT, compte]
-            └─ FUN_00523230  création d'une manette par stick   [GHIDRA INEXPLOITABLE —
-                                                                 à lire en désassemblé]
-FUN_005048f0  PollJoystickState            [FAIT le 2026-08-14]
-  ├─ FUN_005231f0 / FUN_005230b0  lecture de tous les devices acquis  [FAIT]
-  ├─ FUN_00523410 / FUN_005234c0  GetDeviceState + reprise d'Acquire  [FAIT]
-  ├─ FUN_00523660  clavier -> état pad, via la table [Controls]       [FAIT]
-  └─ la boucle de repliage de bits sur deux emplacements              [FAIT]
-FUN_00504a30  UpdateButtonEdges            [FAIT]
+System.InvalidOperationException: FUN_005443a0 masks its descriptor to 24 bits,
+but this one is at 0x02D2C3B8. Allocate it with AllocLowZeroed.
+
+   at RunTextEngine                 Blaze.cs:8525
+   at CharacterSelectSubState0      Blaze.cs:7038
+   at InvokeCharacterSelectSubState Blaze.cs:6686
+   at RunCharacterSelectFrameLoop   Blaze.cs:6555
 ```
 
-**Le menu se navigue.** Vérifié en injectant de vraies frappes : le curseur descend d'un item par
-flèche et remonte, et la touche de validation quitte le menu.
+C'est un garde-fou que le projet avait **déjà** posé, et dans lequel je suis tombé de plein fouet.
+La liste d'affichage est adressée sur 24 bits (voir `CLAUDE.md`, section sur `DrawFlatPrimitive`) ;
+`AllocLowZeroed` existe précisément pour ça et alloue sous `0x01000000`.
 
-**`FUN_0052a440` est reconstruite** — ce n'est pas le « répartiteur d'états de jeu » que ce fichier
-annonçait, mais **l'écran de chargement inter-états** : il charge une entrée de ressource, la
-décode, et l'affiche 150 images, passable avec START ou CARRÉ (au relâchement). Il tourne ; le
-blocage est désormais **l'état de jeu 1** (`thunk_FUN_00536180`).
+**À faire** : reprendre tous les blocs que j'ai alloués hier avec `NativeMemory.AllocZeroed` et qui
+finissent dans du code de liste d'affichage, et les passer à `AllocLowZeroed` :
 
-**La page d'options : couche de dessin et mise en place reconstruites.** Le dessin
-(`FUN_00510110`, `FUN_00510330`, `FUN_00510500`, `FUN_005108f0`, `FUN_00510740`, `FUN_00510a70`)
-rend à travers notre backend, et la mise en place (`FUN_0050fab0` et sa chaîne : `FUN_0050f7d0`,
-`FUN_0050f9b0`, `FUN_0050f680`, `FUN_0050f770`, `FUN_0050f560`) rastérise en logiciel les libellés
-depuis `DATA/FONT.PIC` et les quatre fichiers texte du CD. Le chemin de texture par DIB (slots
-`[2]` et `[6]`) est posé aussi, puisque c'est cette page qui l'emprunte.
-
-**Non vérifié au runtime**, et c'est le point important ci-dessous : la page ne s'atteint pas.
-Reste `FUN_0050fe90`, `FUN_005101c0`, `FUN_00510aa0` et la boucle `FUN_00512320`.
-
-## L'index du curseur du menu — **trouvé**
-
-C'est `menuContext[0x8c4]`, soit l'adresse **0x0056e61c**, trois octets avant l'octet de drapeaux
-déjà identifié. Trouvé en comparant tout le descripteur d'une image à l'autre
-(`OPENFORESIA_TRACE_MENU=1`) : un seul octet bouge, en cadence exacte avec les flèches.
-
-Ghidra n'a **jamais nommé** cette adresse — rien n'y accède en absolu, c'est toujours
-`descripteur + 0x8c4` — et il a donc attribué le `switch` à `DAT_005e909f`, un global sans rapport
-qui n'est écrit qu'à zéro dans tout `Blaze.c`. Sixième occurrence dans ce projet d'un `DAT_` qui est
-en réalité un champ de structure.
-
-**Vérifié de bout en bout** : le curseur amené sur « Options », la validation ouvre bien Options et
-non l'entrée 0. Le menu se navigue pour de vrai.
-
-## La mise en place de la page d'options s'exécute de bout en bout
-
-Il a fallu lever deux défauts distincts.
-
-**1. `LoadArray` (wsyskern) corrompt le tas, et est contourné.** La corruption est *cumulative avec
-le nombre de lignes lues* — 1 ligne passe, 4 tuent plus loin, le fichier entier tue tout de suite —
-et toujours à l'allocation suivante. Écarté par la mesure : l'appel est conforme (`RET 0x18`, donc
-6 arguments stdcall, sens de chacun lu dans `FUN_10004060`), l'objet est valide (`CreateArray` pose
-le tag « ARAY » que le validateur exige, et `LoadArray` sort proprement s'il manque — avec un
-fichier absent **toute la mise en place va au bout**), ce n'est ni la capacité, ni la croissance,
-ni le chemin. Comme le tableau ne sert ici qu'à « rendre la ligne *i* d'un fichier texte », la
-reconstruction lit désormais les fichiers elle-même. `OPENFORESIA_WSYSKERN_ARRAYS=1` rétablit le
-chemin d'origine pour qui voudra reprendre le diagnostic côté DLL.
-
-**2. L'index de glyphe était signé.** Défaut de notre côté : Ghidra type le caractère en `char`, et
-transcrit tel quel, « ô » (0xF4) arrivait à **-12**, donc index **-45**. Le pseudocode prouve
-pourtant que le paramètre est non signé — `FUN_0050f560` le compare à `0x80`, `0x8a`, `0x9a`,
-`0xc0`, `0xe0`, valeurs qu'un `char` signé ne peut jamais prendre. Lu en non signé, 0xF4 donne le
-glyphe 174, dans la grille 31x6 de la planche.
-
-Vérifié : les quatre jeux de libellés se rastérisent, les six atlas et les deux textures `.PIC`
-sont créés (256x256, 8 bits, bas-haut, par le slot `[2]` de la classe texture).
-
-## La page d'options s'affiche et se navigue
-
-`FUN_0050fe90`, `FUN_005101c0`, `FUN_00510aa0` et la boucle `FUN_00512320` sont reconstruites. À
-l'écran : le fond, le panneau encadré, le titre « OPTIONS », les quatre entrées avec leurs accents,
-et un curseur qui descend aux flèches (vérifié par différence d'images — le changement est confiné
-à sa colonne).
-
-**Les trois sous-menus fonctionnent aussi** — `FUN_005110b0` (Affichage), `FUN_005113d0` (Son),
-`FUN_00512220` (Contrôle), plus la jauge `FUN_00510a00` et la réapplication du gamma
-`FUN_0050f980`. Vérifié à l'écran : « Volume musique » et « Volume effets » avec des jauges qui
-bougent par pas de 8 et s'appliquent aussitôt ; « Dimensions de l'écran » et « Clarté » avec leurs
-jauges, puis filtre, taille d'affichage et timing. Tout ce dont ils dépendaient était déjà
-reconstruit.
-
-**Trois des quatre feuilles sont faites** : `FUN_00510d40` (la page **Timing** — et non un
-recadrage, comme son stub le supposait), `FUN_00510e60` (résolution) et `FUN_005119c0`
-(affectation des manettes, vérifiée à l'écran : quatre joueurs, quatre lignes de configuration
-grisées quand le joueur n'a pas de manette).
-
-Deux réserves à connaître :
-
-- **la page résolution ne peut rien faire** tant que le device synthétique ne porte pas ses deux
-  slots : `+0x1c` (le masque des modes acceptés) et `+0xE8` (le changement effectif, que
-  `ChangeResolution` pilote). Le masque revient nul, la liste est vide, seul le titre s'affiche ;
-- **l'éditeur de touches est fait aussi.** `FUN_00511d40`, ses deux helpers et ses cinq tables de
-  données (85 scancodes, 24 index d'action, 4 colonnes de flèche, 40 liaisons par défaut, et les
-  49 descripteurs de ligne) sont reconstruits ; les défauts correspondent exactement aux clés
-  `K0000`..`K0113` du BLAZE.cfg installé. Vérifié à l'écran : les huit actions globales avec leurs
-  **deux** touches, l'en-tête « Joueur 1 » coloré, le défilement et le curseur.
-
-  Deux points de structure : la « seconde touche » n'est pas une seconde table — `DAT_00564ba8` est
-  `DAT_00564b58` décalé de vingt entrées, c'est-à-dire la **catégorie 1** de la même table, le
-  second jeu clavier que `FUN_00523660` lit déjà ; et assigner une touche l'efface de toutes les
-  liaisons clavier des quatre groupes, en laissant la catégorie manette intacte.
-
-**Sortir de la page d'options rebouclait sur elle-même** — Échap faisait clignoter le menu
-principal et revenait aussitôt. Deux causes cumulées, toutes deux mesurées :
-
-- la touche est **encore enfoncée** au retour, et le menu la prend pour une validation. Le jeu a son
-  idiome pour ça (la vidange `while (FUN_005048f0() != 0)` qu'il fait déjà *avant* d'ouvrir la
-  page) ; elle est maintenant appliquée aussi à la sortie, **cadencée** — sans cadence, l'état
-  DirectInput ne se rafraîchit pas et la boucle ne se termine jamais ;
-- la **garde de validation reste ouverte** : le `switch` est conditionné par
-  `menuContext[0x8c7] & 4`, qui reste à zéro au retour, donc l'image suivante rouvre la même
-  entrée. Le signe qui l'a montré : `Clear(TARGET)` figé pendant que `BeginScene` continuait de
-  compter ;
-- et l'état interactif du menu est un **couple**, pas un bit : `[0x3b] == 1` **et** bit 2 levé. Ne
-  relever que le bit 2 ramenait le menu à l'écran mais sans curseur. Le relevé par image le disait
-  déjà — une validation fait tomber les deux ensemble (`+0x03B:1->0`, `+0x8C7:05->01`) — et je
-  l'avais mal lu la première fois. On restaure les deux, sans remettre le curseur à zéro comme le
-  fait `Handler_00544b10`, pour que la sélection du joueur survive à l'aller-retour.
-
-Ce sont **deux déviations**, et elles désignent la même lecture inachevée : l'original n'en a besoin
-d'aucune, donc son panneau distingue un bouton *nouvellement* enfoncé d'un bouton maintenu, là où
-cette reconstruction lit le mot d'état et non le mot de fronts. C'est là qu'est le correctif propre.
-
-Fait récupéré au passage : `DAT_005e9960` n'est pas un compteur de fondu mais un **compteur de
-frames global**, incrémenté par `FrameEnd`. Le test du menu avec son `counter--` est donc un
-*maintien* dans une bande, pas un décompte.
-
-**Échap et « Quitter le jeu » sont réparés.**
-
-- Échap quittait le jeu au lieu de revenir en arrière, et la cause n'était pas dans le jeu :
-  `D3D11Window` fermait la fenêtre sur cette touche — un confort du banc de test — d'où un
-  `WM_QUIT` que la pompe du jeu convertit en `RaiseException(0xE0000001)`. Retiré ; la fenêtre se
-  ferme sur `WM_CLOSE`. Échap remonte maintenant d'une page à la fois, vérifié sur deux niveaux.
-  À retenir : **un confort de développement dans la couche hôte peut imiter un comportement du jeu**
-  au point que l'indice (le code d'exception du jeu) désigne le jeu.
-- « Quitter le jeu » levait `RaiseException(0xE0000001)` tel quel — fidèle, mais rien ne le
-  rattrape côté managé : le processus tombait par le rapport d'erreurs Windows et aucune des cinq
-  étapes d'arrêt ne tournait. C'est désormais une exception managée rattrapée dans
-  `RunApplication`, juste devant le `finally` qui les porte déjà — là où le gestionnaire SEH de
-  l'original reprend la main. Vérifié : sortie propre, aucun plantage journalisé.
-
-Reste **une** feuille, apparue en lisant la page manettes : `FUN_005115c0`, la configuration des
-boutons d'un joueur, 168 lignes.
-
-Trois défauts levés au passage, tous les trois instructifs :
-
-- **la classe texture a plus de slots que ce fichier n'en listait** — la vtable réelle en porte au
-  moins onze, et `FUN_0050fe90` appelle le slot **8** (`IDirectDrawSurface::IsLost`) une fois par
-  texture et par image ; la classe synthétique en avait huit et serait sortie de sa propre vtable ;
-- **`DAT_005d9de0` est `s_GammaIni`**, déjà reconstruit, redéclaré et jamais écrit — donc nul ;
-- **`_DAT_0054d000` vaut `1/64`**, lu dans le binaire (`0x3C800000`), et non le `1.0f` qu'un TODO
-  supposait. Ensemble, ces deux-là faisaient calculer `Gamma(valeur, 64.0)`, ce qui blanchit toutes
-  les palettes : fond et cadre sortaient blancs donc invisibles, alors que les libellés, qui ne
-  passent pas par `Gamma`, étaient corrects.
-
-Septième et huitième globals reconstruits sous deux noms. La règle qui s'en dégage :
-**avant de déclarer un champ `DAT_`, chercher son adresse dans le fichier** — la moitié y sont déjà
-sous un autre nom, et l'ancien n'est pas toujours le mauvais.
-
-Deux réserves sur `FUN_0052a440`, toutes deux dues à une frame que Ghidra n'a pas récupérée :
-la source du second `MoveImage`, et le pointeur du descripteur de sprite — laissé nul, donc
-**l'écran de chargement est vide pour l'instant**. Un listing désassemblé de `0x0052a440` referme
-les deux ; il n'y a pas de désassembleur ici, il faut un export Ghidra comme ceux de
-`Legacy/Raw/Blaze/`.
-
-Trois choses à savoir avant de toucher à l'entrée :
-
-- la convention des boutons est **active basse** — le mot part de `0xffff` et chaque touche
-  enfoncée éteint son bit ; les 20 masques (`DAT_00564f18`, lus dans le binaire) sont ceux d'une
-  manette PlayStation : `0x0010` haut, `0x0020` droite, `0x0040` bas, `0x0080` gauche, `0x0008`
-  start ;
-- `state[0x1c] |= state[0x9c]` est `DIK_RETURN |= DIK_NUMPADENTER` — l'Entrée du pavé numérique
-  repliée sur l'autre ;
-- le scancode `0x3e` est `DIK_F4` : maintenu, il coupe le clavier pour tous les joueurs.
-
-**Le clavier passe par DirectInput** : le GUID lu à `0x0054db58` dans `Legacy/Blaze.exe` est
-`{6F1D2B61-D5A0-11CF-BFC7-444553540000}` = `GUID_SysKeyboard`. Les touches sont déjà chargées depuis
-le `[Controls]` du `.cfg` par `LoadKeyBindings` (table `DAT_00564b58`).
-
-**`DAT_005db85c` (TODO #6) ne bloque plus — vérifié au runtime.** Ce handle jamais trouvé sert à
-deux choses seulement : l'`hInstance` de `DirectInputCreateA` — dont le code traite explicitement le
-cas nul par `GetModuleHandleA(NULL)`, et dont l'unique site d'appel passe justement 0 — et le `hwnd`
-de `SetCooperativeLevel`. La fenêtre du backend Direct3D 11, qui n'existait pas quand ce TODO a été
-déclaré bloqué, fournit ce second handle. Le clavier est acquis sans erreur.
-
-Reste aussi stubbée sur ce chemin : `FUN_00512320`, la page d'options (80 lignes), atteignable
-depuis l'entrée « Options » du menu.
-
-**Une autre observation du même jour, non expliquée**, à ne pas confondre avec ce qui précède : sans
-frappe clavier sur l'écran-titre, le processus **sort de lui-même après exactement 60 images de
-menu**, sans exception ni entrée dans le journal d'événements. Avec une frappe (le jeu attend une
-touche pour passer au menu), il tourne indéfiniment — 301 images et plus. Reproductible dans les
-deux sens.
-
----
-
-## Demande du responsable — **traitée le 2026-08-12**, un résiduel
-
-La change `render-title-screen-in-window` est implémentée. Ce qu'on voit maintenant au lancement :
-une seule fenêtre, l'écran-titre dedans, le bureau intact.
-
-| | avant | après |
-|---|---|---|
-| plein écran exclusif 640x480 | ~9 s | supprimé |
-| fenêtre `VfwClass` 2000x2000 `WS_EX_TOPMOST` | visible | jamais affichée |
-| écran-titre | plein écran | dans la fenêtre du jeu |
-| fenêtres visibles | 2 | **1** |
-| rendu du menu | — | identique au bit près |
-
-**Le clignotement est supprimé.** `3dhelp` n'est plus initialisé du tout : `winsys3d` le charge
-dynamiquement, on détourne son `GetProcAddress` et on lui rend un **device synthétique**
-(`OpenForesia/src/Blaze/SyntheticDevice.cs`). Mesuré : 500 ms de bascule de mode sur le chemin
-d'origine, **0 ms** désormais, et le rendu du menu est identique au bit près — 0 pixel différent sur
-172 800. Actif par défaut ; `OPENFORESIA_LEGACY_STARTUP=1` rétablit le chemin d'origine.
-
-Ce que le device synthétique ne fait **pas** : porter les textures. Les objets qu'il rend existent
-et répondent, mais leur handle vaut zéro, soit « aucune texture liée » — l'état que le backend
-traite déjà en rendant les primitives en aplats blancs. Le portage réel reste la tâche 3.5 de
-`replace-3d-backend-with-d3d11`.
-
-## Demande d'origine (2026-08-10), conservée pour mémoire
-
-> « J'aimerai qu'on ait qu'une fenêtre, point barre : plus d'affichage en plein écran du titre puis
-> basculement sur la fenêtre. »
-
-Constat exact. Aujourd'hui l'écran-titre s'affiche encore dans l'affichage exclusif de `3dhelp`, et
-la fenêtre n'apparaît qu'ensuite. La raison est dans le code : la reprise de l'affichage
-(`D3D11Window.ReleaseLegacyDisplay`) est appelée au moment où le backend est créé, c'est-à-dire au
-**premier début de scène** — donc après le titre.
-
-Ce que ça implique, à vérifier avant de chiffrer :
-
-1. Découpler la reprise de l'affichage de la création du device. La reprise peut sans doute avoir
-   lieu tôt ; la création du device, **non** — c'est mesuré, la faire pendant l'initialisation
-   empêche le jeu d'atteindre sa boucle de rendu (voir le commentaire sur `EnsureBackend`).
-2. L'écran-titre et l'attract ne passent pas par `DrawPrimitive` : ils passent par un
-   `GetDC` / `StretchDIBits` sur une surface DirectDraw. Les afficher dans la fenêtre demande de
-   porter ce chemin-là aussi, ce n'est pas un simple déplacement d'appel.
-
-   **Corrigé le 2026-08-12** — ce portage est plus petit qu'estimé ici. Il passe par trois slots de
-   la vtable device, `+0xC4` / `+0xCC` / `+0xD0`, que `DeviceShim` intercepte déjà, et il ne demande
-   **pas** de lire une surface DirectDraw : rendre le HDC d'une DIB section à nous suffit. Voir
-   `Documentation/DLL/3dhelp.md`, section « L'écran-titre et l'attract ». Ce sujet est donc
-   **indépendant de la tâche 3.5**, contrairement à ce que cette page laissait entendre.
-
----
-
-## Résolu, ne pas rouvrir
-
-L'**écran noir intermittent** est corrigé (10 lancements sur 10). Cause : les structures
-DRAWENV/DISPENV sont contiguës dans le binaire et `FrameEnd` lit le DISPENV à `DrawEnv + 0x5C` ; les
-allouer séparément faisait lire du tas quelconque. Détail et preuves en tête de
-`ANALYSE_ECRAN_NOIR_MENU.md`.
-
-L'hypothèse « affichage exclusif DirectDraw » qui occupait ce fichier était **fausse** : le bug a
-survécu au changement complet de backend, au même taux.
-
----
-
-## Build, run, mesure
-
-```powershell
-$env:DOTNET_ROOT = "C:\Users\Sagara\.dotnet"
-$env:PATH = "C:\Users\Sagara\.dotnet;$env:PATH"
-dotnet build OpenForesia.sln
-
-# Lancer le jeu : vider DOTNET_ROOT d'abord, le processus est 32 bits
-$env:DOTNET_ROOT = $null
-dotnet run --project OpenForesia
-```
-
-Variables d'environnement utiles :
-
-| variable | effet |
+| symbole | pourquoi |
 |---|---|
-| `OPENFORESIA_LEGACY_3DHELP=1` | rétablit l'ancien chemin `3dhelp` intégral |
-| `OPENFORESIA_DUMP_GEOMETRY=1` | relève sommets et décalages sur quelques primitives |
+| `s_UiDescriptors_00560ff0` | passé à `RunTextEngine` — c'est celui qui plante |
+| `s_StatusDescriptor_00560728` | passé à `RunTextEngine` par la boucle de frame |
+| `s_Unknown_005606f8` | passé à `BindMenuLabels` |
+| `s_CharacterSlots_00578420` | son `+0x1c` part dans `DrawAnimatedModel` |
+| `s_SceneEntity_00572b48` | destination de la copie à la validation |
+| `s_CameraMatrix_006008e0` | recopié dans le registre MATRIX du GTE |
+| `s_ModelTable_005e96a0`, `s_AnimationTable_005e9640` | leurs entrées sont déréférencées par le rendu |
+| `s_SelectSubStateBytes_00562a98`, `s_CameraVector_00604928` | par cohérence, à vérifier au cas par cas |
 
-Le taux d'affichage se mesure automatiquement (capture de la zone cliente, comptage des pixels
-allumés) — script dans le bloc-notes de session, à reconstituer au besoin : trouver la fenêtre par
-sa classe `OpenForesiaWindow` via `EnumWindows` (`FindWindowA` échoue avec `CharSet.Ansi`).
+Attention : `AllocLowZeroed` prend une `uint` (une taille en octets), pas le couple
+`(count, size)` de `NativeMemory.AllocZeroed`. Et elle appelle `EnsureDisplayListArena()` en
+entrée — l'ordre d'initialisation des champs statiques compte, le commentaire de la fonction
+l'explique.
+
+**Ne pas** se contenter de corriger `s_UiDescriptors_00560ff0` pour faire taire l'exception : le
+garde-fou n'existe que sur `RunTextEngine`, les autres blocs corrompraient silencieusement.
+
+---
+
+## 2. Vérifier que quelque chose se dessine vraiment
+
+Observation à creuser dans la trace : les compteurs du shim se figent une fois l'état 4 entré.
+
+```
+[SHIM] bilan : ... BeginScene=361 EndScene=360 DrawPrimitive=34545
+[SHIM] bilan : ... BeginScene=421 EndScene=420 DrawPrimitive=34545
+```
+
+`DrawPrimitive` n'augmente plus alors que les frames continuent. Deux lectures possibles, à
+départager :
+
+- les primitives sont émises mais dans un emplacement d'OT que `DrawOTag` ne parcourt pas ;
+- rien n'est émis du tout — par exemple parce que `*glowR > 0xff` n'est vrai pour aucun
+  emplacement, ou parce que le budget `DAT_005e9818` est déjà épuisé quand on arrive là.
+
+Le plus rapide : poser une trace temporaire comptant les appels à `DrawAnimatedModel`, les
+primitives émises par `EmitModelQuads` et la valeur de `s_Unknown_005e9818` en fin de frame. Le
+projet a déjà l'idiome (`OPENFORESIA_TRACE_MENU`), s'en inspirer et **retirer l'échafaudage après**.
+
+---
+
+## 3. Les deux réserves connues sur `DrawAnimatedModel`
+
+À garder en tête si l'image est fausse plutôt qu'absente :
+
+- **Chemin MMX non transcrit.** Seul le chemin scalaire du produit de matrices est écrit ; l'original
+  branche sur `MMXInstalled_exref`. L'équivalence des deux n'a **pas** été vérifiée opérande par
+  opérande. `TODO(REVERSE)` posé sur place.
+- **Quirk des pages de texture.** `tpageWord` et `uvWord` sont calculés une seule fois depuis le
+  **premier** modèle du paquet, alors que chaque partie relit ses propres attributs. C'est dans
+  l'original, transcrit tel quel — mais si les parties sortent avec la mauvaise texture, c'est là
+  qu'il faut regarder d'abord.
+
+---
+
+## 4. Ensuite seulement : le reste de l'écran
+
+Une fois quelque chose de visible à l'écran :
+
+- **`FUN_00520ae0`** + le bloc de globales `0x00572b40` — c'est tout ce qui manque au bloc
+  « en scène » de la boucle de frame (sous-états 1 à 6).
+- **Les sept autres sous-états** (1 à 7). Tous décompilés, dans `Legacy/Raw/Blaze/FUN_*.c`.
+  `InvokeCharacterSelectSubState` lève une exception qui nomme le fichier exact.
+- **`FUN_005066c0`** — pointeur de code trouvé dans `DAT_005606f8`, absent de `Blaze.c`. S'il est
+  appelé, ça se verra ; il faudra alors un re-run Ghidra ciblé de plus.
+
+---
+
+## Rappels d'outillage (ils ont coûté du temps hier)
+
+**Lancer le jeu.** `dotnet run --project OpenForesia` **ne marche pas** depuis le shell : l'app est
+en x86 et le SDK sur le PATH n'a que le runtime x64. Lancer l'exe directement, il trouve le
+runtime x86 (9.0.8) de `C:\Program Files (x86)\dotnet` :
+
+```
+OpenForesia/bin/Debug/net9.0/OpenForesia.exe
+```
+
+Même cause pour `OpenForesia.Tools`, qui ne tourne pas du tout. Palliatif écrit hier :
+`OpenForesia.Tools/exports.ps1`, un parseur de table d'exports PE en PowerShell.
+
+**Re-run Ghidra.** Les scripts `.py` de `~/ghidra_scripts` sont morts (Ghidra 12 rétrograde Jython
+en extension non installée). Utiliser `~/ghidra_scripts/ForceDecompileCharacterSelect.java`,
+**depuis PowerShell** (le `.bat` casse son propre chemin sous Git Bash), avec `-readOnly` :
+
+```powershell
+$gh = "F:\Open Foresia Project\Tool\ghidra_12.1.2_PUBLIC\support\analyzeHeadless.bat"
+& $gh "F:\Open Foresia Project\Ghidra Project" "Open Foresia" -process "Blaze.exe" `
+      -noanalysis -readOnly -scriptPath "C:\Users\Sagara\ghidra_scripts" `
+      -postScript ForceDecompileCharacterSelect.java
+```
+
+Le script crée **toutes** les fonctions manquantes avant d'appeler `analyzeChanges` puis de
+décompiler. Ne pas inverser : sans la passe d'analyse, les corps sortent tronqués et pleins de
+`func_0x005…`.
+
+**Avant de déclarer un symbole, greper son adresse.** Trois doublons créés en trois séances
+(`DAT_00564a48`, ordinaux 450/451, `DAT_005e9818`). Le fichier a dépassé la taille où on peut s'en
+passer.
+
+**Quand le pseudo-C fait de l'arithmétique de pointeur, aller voir l'assembleur.** Deux pièges
+évités hier de cette manière : le seuil de profondeur (`-0x50` sur un `uint*` = `-0x140` octets) et
+le pas des manettes (`* 4` dans le pseudo-C, `SHL 4` dans le listing).
+
+---
+
+## Contexte accumulé
+
+Tout le détail est dans `OpenForesia/src/Blaze/REVERSE_STATUS.md`, sections datées du 2026-08-14 —
+la carte du banc de registres GTE, la structure de `FUN_0051d1f0`, les signatures reconstruites
+depuis l'assembleur. `Documentation/DLL/winsys3d.md` a les familles libgpu / libgte / registres GTE.
+`Documentation/DataSymbols.md` a les tables relevées dans le binaire.
+
+Change OpenSpec close et validée : `openspec/changes/finalize-character-select-loading/`.
+Le travail depuis n'est pas couvert par une change — à décider s'il en faut une.

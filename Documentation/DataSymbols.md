@@ -311,3 +311,192 @@ pbVar5 = (byte *)((iVar15 >> 3) + (iVar9 / 0x1f) * 0x230 + 0x1ad8f0 + *(int *)Ma
 i.e. **`MainMem + 0x1ad8f0`**, rows `0x28` bytes apart, 31 glyphs per `0x230`-byte band, 1 bit per
 pixel unpacked into a 4bpp staging buffer. This sits inside the `0x280000` arena and is a further
 reason the arena has to be placed correctly before anything draws.
+
+## `PTR_LAB_00560708` — the character-select sub-state table (state 4)
+
+`FUN_00506880`, the frame loop of game state 4, dispatches every frame through
+
+```c
+(*(code *)(&PTR_LAB_00560708)[DAT_00578de8])(...)
+```
+
+Read verbatim from `Legacy/Blaze.exe` at **file offset `0x15ED08`** (`.data`: VA `0x0054F000` →
+raw `0x0014D600`, so `0x00560708 - 0x0054F000 + 0x0014D600`):
+
+| index | target | index | target |
+|---|---|---|---|
+| 0 | `0x00507010` | 4 | `0x00508E00` |
+| 1 | `0x00507CB0` | 5 | `0x00509470` |
+| 2 | `0x00508410` | 6 | `0x005098F0` |
+| 3 | `0x00508860` | 7 | `0x0050A910` |
+
+**Exactly eight entries.** The table stops at `0x00560728`, where `DAT_00560728` begins — a
+primitive descriptor whose first dword is `0x00000031`, the very value `FUN_00506880` writes as
+`puVar4[-2] = 0x31`. Eight is corroborated by the loop's own tests (`DAT_00578de8 < 7`, `!= 7`,
+and `== -1` for "leave the state").
+
+**None of the eight exists in `Blaze.c`.** The decompilation jumps from `FUN_00506880` (ending
+around `0x00506FE7`) straight to `FUN_00507870`. Nothing calls them directly — only this table
+points at them — so Ghidra never disassembled those regions. This is the "address-taken-only
+bodies" class: it needs a scoped Ghidra re-run at the eight addresses above, not more reading of
+`Blaze.c`.
+
+All eight are real functions. Their first bytes, and a notable pattern — **seven of the eight open
+on the same instruction**:
+
+| address | first bytes | disassembly |
+|---|---|---|
+| `0x00507010` | `a1 a8 33 56 00` | `mov eax, [0x005633A8]` |
+| `0x00507CB0` | `a1 48 2a 56 00` | `mov eax, [0x00562A48]` |
+| `0x00508410` | `a1 48 2a 56 00` | `mov eax, [0x00562A48]` |
+| `0x00508860` | `a1 48 2a 56 00` | `mov eax, [0x00562A48]` |
+| `0x00508E00` | `a1 48 2a 56 00` | `mov eax, [0x00562A48]` |
+| `0x00509470` | `a1 48 2a 56 00` | `mov eax, [0x00562A48]` |
+| `0x005098F0` | `a1 48 2a 56 00` | `mov eax, [0x00562A48]` |
+| `0x0050A910` | `a1 48 2a 56 00` | `mov eax, [0x00562A48]` |
+
+`DAT_00562A48` is one of the three flags `FUN_005066e0` sets to 1 on entering the state, and which
+`FUN_00506880` sets back to 1 whenever the sub-state changes:
+
+```c
+if (DAT_00578dec != DAT_00578de8) { DAT_00578dec = DAT_00578de8; DAT_00562a48 = 1; DAT_00562a4c = 1; }
+```
+
+So it is the **"first frame in this sub-state"** flag, and each handler tests it on entry to do its
+one-off setup. `FUN_00506880` clears `DAT_00562a4c` right after each dispatch, so that one is
+"first frame" as seen by the loop; `DAT_00562a48` is cleared by the handlers themselves.
+
+## `DAT_00562a98` — four bytes per character-select sub-state
+
+Indexed `(&DAT_00562a98)[DAT_00578de8 * 4 + i]` for `i` in `0 .. DAT_00562a50-1`, the value being
+sign-extended into a field of the struct `FUN_00506880` passes to `FUN_0051be20`. Read at file
+offset `0x161098`:
+
+| sub-state | bytes |
+|---|---|
+| 0 | `00 01 02 00` |
+| 1 | `00 01 02 00` |
+| 2 | `00 01 02 00` |
+| 3 | `00 01 02 00` |
+| 4 | `00 01 02 00` |
+| 5 | `00 01 03 00` |
+| 6 | `00 01 03 00` |
+| 7 | `00 01 03 00` |
+
+`DAT_00562a50` — the third flag `FUN_005066e0` sets to 1 — is the row length actually consumed, so
+only the first column is read until something raises it. Only the third byte varies across
+sub-states (`02` for 0–4, `03` for 5–7). Its meaning is not yet established.
+
+The bytes immediately following are separate symbols, not a ninth row: `03 00 00 02 01 02 03 06
+05 04 07 08` (a permutation) then `01 00 00 80 00 40 00 20 00 10 00 08 00 04 00 02` (a bitmask
+ladder).
+
+## `DAT_005e96a0` and `DAT_005e9640` — the global model and animation tables
+
+Both sit in `.data`'s uninitialised tail, so there is **nothing to recover from the binary** — they
+are filled at load time. What matters is their scope and the layout they imply.
+
+They are **not** specific to the character-select screen, even though `FUN_005066e0` is the first
+filler to be reconstructed. `FUN_005069e0` fills them identically (`Blaze.c:78876`), and around
+thirty sites index them across `Blaze.c` — 2043, 14900, 19190, 23424, 25455, 52332, 64765, 79042 —
+usually by a byte taken from an entity (`*(byte *)(param_1 + 4) * 4`).
+
+**Capacity is 24 entries**: `0x005e96a0 - 0x005e9640 = 0x60` bytes = 24 pointers at 32 bits.
+
+Their roles, established from the read sites rather than from the fillers:
+
+- **`DAT_005e9640` — animations.** `Blaze.c:55840` increments a frame counter, compares it against
+  field `+0x16` of the entry and wraps to zero: that field is the animation length.
+  `Blaze.c:79042` reads the published pointer at `[-4]`, which is exactly the bundle's `count` —
+  confirming that `FUN_005326d0` publishes a pointer to the *offset array*, not to the count.
+- **`DAT_005e96a0` — models.** `FUN_0051d1f0` (which returns a `uint *` OT pointer, i.e. the
+  animated-model renderer) receives both together at `Blaze.c:55845`: the animation entry indexed
+  by the current frame, and the model bundle alongside it.
+
+### Model entry layout (from `FUN_00532450` + `FUN_00532530`)
+
+Beware the scale: Ghidra types the same pointer `ushort *` in `FUN_00532450` and `int` in
+`FUN_00532530`, so `param_1 + 0x12` means byte `0x24` in the first and byte `0x12` in the second.
+Byte offsets below.
+
+| offset | kind | role |
+|---|---|---|
+| `0x00` | `ushort` | entry count of the table at `0x30` |
+| `0x08`, `0x0a` | `ushort` | vertex counts — **divided by 3** on relocation (→ triangles) |
+| `0x0e` | `ushort` | written back: measured length of the `-1`-terminated list at `0x38` |
+| `0x10`–`0x16` | 4 × `ushort` | records to **skip**, one counter per primitive type |
+| `0x18`–`0x1e` | 4 × `ushort` | records to **repage**, one counter per primitive type |
+| `0x24`, `0x28`, `0x2c` | ptr | relocated by adding the entry base; `0x28` is the record array |
+| `0x30` | ptr | table of `[0x00]` ints, each relocated against the table base |
+| `0x34` | ptr | table of `0x400` ints, each relocated against the table base |
+| `0x38` | ptr | `-1`-terminated int list; non-zero elements relocated; length → `0x0e` |
+| `0x3c` | `uint` | texture-page bits, copied from the directory descriptor's `+4` |
+
+`FUN_00532530` then walks 16-byte records starting at `*(int *)(entry + 0x28) + 0xc`, skipping
+`sum(0x10..0x16)` of them and adjusting `sum(0x18..0x1e)`, adding `(field_0x3c >> 8) & 0xc0` to two
+bytes of each. 16-byte records bucketed by primitive type, each carrying a texture page, is the
+layout of a PSX model — which is what pins down `DAT_005e96a0`'s role.
+
+The `0x55555556` multiplications on `0x08`/`0x0a` are the signed divide-by-3 idiom. Its sign
+correction is absent and unnecessary here: both fields are `ushort`, so `n + 2` is always positive
+and the idiom reduces exactly to `/ 3`.
+
+### Animation bundle layout (from `FUN_005326d0` + `FUN_005326b0`)
+
+Same shape as the model bundle — a count, then that many relative offsets — but with no descriptor
+array, and each entry carries **eight pointers** at `entry + 0x20`, each relocated against
+`entry + entry[0]`.
+
+## `FUN_0040a600` is empty
+
+`Blaze.c:4319` decompiles it as `void FUN_0040a600(void) { return; }`. It is called from ~20 sites,
+several of which pass arguments (`FUN_0040a600(0x25)`, `FUN_0040a600(4)`,
+`FUN_0040a600(DAT_005de534)`), so Ghidra's recovered signature is wrong — but the body really is
+empty in the image. Almost certainly a PSX libgpu stub (`VSync`-like) gutted during the port.
+Omitting it from a reconstruction is behaviourally neutral; it should still be noted rather than
+silently dropped.
+
+## `DAT_00560728` and `DAT_00560ff0` — two static instances of the UI descriptor struct
+
+`FUN_00506880`'s prologue initialises **nine** structures of `0x8c8` bytes starting at
+`0x00573518` (Ghidra writes them through `&DAT_00573520`, which is the base plus 8 — hence its
+negative indices). Only the first `0x68` bytes of each are written.
+
+Two statically initialised instances of the **same type** live in `.data` and are readable from
+`Legacy/Blaze.exe`: `DAT_00560728` (file offset `0x15ED28`) and `DAT_00560ff0` (`0x15F5F0`).
+
+| offset | `FUN_00506880` writes | `DAT_00560728` | `DAT_00560ff0` |
+|---|---|---|---|
+| `0x00` | `0x00000031` | `0x00000031` | `0x00000031` |
+| `0x04` | `0` | `0x00A80028` | `0x00180028` |
+| `0x08` | `0` | `0x002800E0` | `0x00180048` |
+| `0x0C` | `0` | `0x00000000` | `0x00000000` |
+| `0x10` | `0x10180000` | `0x021A0000` | `0x01080000` |
+| `0x14` | `slot + 3` | `0x0000000C` | `0x00000000` |
+| `0x18` | `0x010F0808` | `0x010F0808` | `0x010F0808` |
+| `0x1C` | `0x02CF1020` | `0x02CF1020` | `0x02CF1020` |
+| `0x20` | `0x01070C10` | `0x01070C10` | `0x01070C10` |
+| `0x24` | `0x01000000` | `0x01000000` | `0x01000000` |
+| `0x28` | `0` | `0x00000000` | `0x00000000` |
+| `0x2C` | `0x01000000` | `0x01000000` | `0x01000000` |
+| `0x30` | `0x000F0000` | `0x000F28D4` | `0x000F00D0` |
+| `0x34` | `0x01000000` | `0x01000000` | `0x01000000` |
+| `0x38` | `0x000F0C00` | `0x000F0A00` | `0x000F0A00` |
+| `0x3C` | `0x01000000` | `0x01000000` | `0x01000000` |
+
+Fourteen of the first twenty-six dwords match exactly, including the `0x31` header and the
+alternating `0x01000000` at every other slot. The type is the same beyond reasonable doubt.
+
+**What the struct is**: `FUN_005443a0` — the UI text engine already documented above — is called
+with `&DAT_00560728` (`Blaze.c:55881`), as is `FUN_00545340` (`Blaze.c:55882`). So these are the
+descriptors that engine consumes.
+
+**Field `0x04` is a packed `(x, y)` pair.** `FUN_00506880` walks a second array from
+`&DAT_00560ff6` with a stride of `0x464` shorts = `0x8c8` bytes — the same stride — and reads
+`psVar11[-1] + 0xc` and `*psVar11 + 4` as two screen coordinates. Those are the low and high
+shorts of field `0x04`: `0x0028` and `0x0018`, i.e. `(0x28, 0x18)` → `(0x34, 0x1c)`. Field `0x08`
+is plausibly the matching size pair (`0x48 × 0x18` for `DAT_00560ff0`, `0xE0 × 0x28` for
+`DAT_00560728`) but that is a hypothesis, not confirmed.
+
+The remaining fields are not interpreted. The reconstruction transcribes the raw constants rather
+than naming them, since naming them would be inventing.

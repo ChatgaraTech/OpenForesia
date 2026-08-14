@@ -161,6 +161,11 @@ public static unsafe partial class Blaze
     //     (Ghidra: &LAB_00512ef0) has no decompiled function body in Blaze.c (Ghidra only saw it
     //     addressed-of, never as a call target), so it cannot be reconstructed yet.
     [DllImport("winsys3d.dll", EntryPoint = "#337")] private static extern void InitTrigTables();
+    // libgte rcos/rsin. Bodies: winsys3d.c FUN_00a25c20 / FUN_00a25c40 â€” both plain lookups into the
+    // same 0x1000-entry table at DAT_011cb420, rcos being rsin shifted a quarter turn
+    // (`table[(a + 0x400) & 0xfff]`). 0x1000 steps per full turn, the PlayStation convention, which
+    // is what makes `i << 8` sixteen evenly spaced positions in the character carousel.
+    // Ordinals 452/453 are aliases of these same two entries.
     [DllImport("winsys3d.dll", EntryPoint = "#450")] private static extern int GetCosTableEntry(int index);
     [DllImport("winsys3d.dll", EntryPoint = "#451")] private static extern uint GetSinTableEntry(int index);
     [DllImport("winsys3d.dll", EntryPoint = "#790")] private static extern void SetDeviceLostCallback(void* callback);
@@ -184,6 +189,21 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#138")] private static extern void Ordinal_138(); // confirmed no-op (FUN_00a26470)
     [DllImport("winsys3d.dll", EntryPoint = "#368")] private static extern void Ordinal_368(void* eightDwordStruct); // real: winsys3d.c FUN_00a20ed0, copies 8 dwords into DLL-internal "shading defaults" state (EXT_011d0828); exact field semantics TODO(REVERSE)
     [DllImport("winsys3d.dll", EntryPoint = "#378")] private static extern void Ordinal_378(int a, int b); // real: winsys3d.c FUN_00a21020, stores (a,b) into DLL-internal state (EXT_011cb414/EXT_011cb410); exact semantics TODO(REVERSE)
+    // Ordinals 376/379/457 are winsys3d.dll's port of the PlayStation SDK's **libgte** (the
+    // geometry engine), the sibling of the libgpu ordinals below. Identified from their bodies:
+    [DllImport("winsys3d.dll", EntryPoint = "#376")] private static extern void Ordinal_376(byte r, byte g, byte b); // real: winsys3d.c FUN_00a20fe0 â€” libgte SetBackColor: three bytes into DAT_011f0898
+    [DllImport("winsys3d.dll", EntryPoint = "#379")] private static extern void Ordinal_379(int h); // real: winsys3d.c FUN_00a21040 â€” libgte SetGeomScreen: stores the projection distance, then rebuilds the 0x10000-entry reciprocal table at EXT_011d0898
+    [DllImport("winsys3d.dll", EntryPoint = "#457")] private static extern int Ordinal_457(int y, int x); // real: winsys3d.c FUN_00a25d10 â€” libgte ratan2
+    // The five entry points FUN_0051d1f0 (the animated-model draw) needs. Identified from their
+    // bodies; see Documentation/DLL/winsys3d.md. Declared ahead of that reconstruction so the
+    // identification is not lost.
+    [DllImport("winsys3d.dll", EntryPoint = "#366")] private static extern void Ordinal_366(void* matrix); // real: winsys3d.c FUN_00a20e70 â€” libgte SetRotMatrix: copies the nine rotation shorts into the MATRIX register (ordinal 814, offset 0)
+    [DllImport("winsys3d.dll", EntryPoint = "#369")] private static extern void Ordinal_369(void* matrix); // real: winsys3d.c FUN_00a20ef0 â€” libgte SetTransMatrix: copies the three translations from the matrix's +0x14/+0x18/+0x1c into the same register's translation row
+    [DllImport("winsys3d.dll", EntryPoint = "#360")] private static extern void Ordinal_360(void* destMatrix, void* a, void* b); // real: winsys3d.c FUN_00a20630 â€” composes two matrices (libgte CompMatrix family), with its own MMX/scalar split
+    [DllImport("winsys3d.dll", EntryPoint = "#418")] private static extern void Ordinal_418(void* vertices, void* outScreenXy, void* outDepth, void* outFlags, uint count); // real: winsys3d.c FUN_00a22010 â€” batch RotTransPers: transforms `count` vertices through the MATRIX register (ordinal 814) into screen XY and depth arrays. MMX/scalar split inside.
+    [DllImport("winsys3d.dll", EntryPoint = "#793")] private static extern void Ordinal_793(void* normals, void* outColours, uint triangleCount); // real: winsys3d.c FUN_00a03e70 â€” batch lighting. Gated on the DLL's `Elo_NoLighting`, which when set writes zeroes instead. Consumes EXT_00b6d198, i.e. data export ordinal 817.
+    [DllImport("winsys3d.dll", EntryPoint = "#794")] private static extern void Ordinal_794(void* matrix, void* scale); // real: winsys3d.c FUN_00a20540 â€” libgte ScaleMatrix: scales each of the matrix's three columns by one component of `scale`.
+    [DllImport("winsys3d.dll", EntryPoint = "#795")] private static extern void Ordinal_795(void* vertices, void* outScreenXy); // real: winsys3d.c FUN_00a226c0 â€” the depth-less sibling of ordinal 418, taken when the model's 0x400 flag is set.: `fpatan` then `__ftol`. Ghidra dropped the return value in the DLL body, but Blaze.c assigns it (`sVar3 = Ordinal_457(...)`), so it does return one.
     // Ordinals 658/661/665/674 are winsys3d.dll's port of the PlayStation SDK's **libgpu** â€” which
     // is what the sibling `playst.dll` ("PlayStation") is named after, and unsurprising for a PSX
     // game ported to Windows. The two below are identified beyond doubt by their bodies: they write
@@ -587,6 +607,759 @@ public static unsafe partial class Blaze
         EnsureDisplayListArena();
         return s_MainMemExref != null ? *s_MainMemExref : null;
     }
+
+    // =====================================================================
+    // Le banc de registres GTE de winsys3d.dll
+    //
+    // La DLL n'expose pas seulement des fonctions : les **registres du GTE émulé** — le
+    // coprocesseur géométrique de la PlayStation — sortent en exports de **données**, ordinaux
+    // 799 à 821. Blaze.exe fait donc sa géométrie en écrivant et relisant ces adresses
+    // directement, sans passer par un appel. C'est pour ça que Ghidra montre des
+    // `Ordinal_814_exref` partout dans le code de rendu au lieu d'appels reconnaissables.
+    //
+    // Les adresses viennent de la table d'exports de winsys3d.dll (base 0x00a00000) :
+    //
+    //   801 -> 0x011f0e98   MAC1..MAC3, les accumulateurs 32 bits
+    //   802 -> 0x011f0c80   le vecteur d'entrée (SVECTOR)
+    //   805 -> 0x011f0ea8   SXY0 |
+    //   806 -> 0x011f0eac   SXY1 |  les trois sommets projetés à l'écran
+    //   807 -> 0x011f0eb0   SXY2 |
+    //   808 -> 0x011cb418   MAC0, où NCLIP dépose son produit vectoriel
+    //   813 -> 0x011d0848   IR1..IR3, les MAC saturés sur 16 bits
+    //   814 -> 0x011d0870   la MATRIX courante : short m[3][3] puis long t[3], 0x20 octets
+    //   816 -> 0x011d0828   le bloc de 8 dwords que l'ordinal 368 écrit
+    //   819 -> 0x011cb410 | le décalage de projection posé par SetGeomOffset (ordinal 378)
+    //   820 -> 0x011cb414 |
+    //   821 -> 0x011d0898   la table de réciproques que SetGeomScreen (ordinal 379) reconstruit
+    //
+    // Recoupements qui confirment la lecture : 819/820 sont exactement les deux cibles du corps
+    // de l'ordinal 378 dans winsys3d.c, 821 celle de l'ordinal 379, et 816 celle de l'ordinal
+    // 368 — trois identifications indépendantes qui tombent juste.
+    //
+    // TODO(REVERSE): 799, 800, 803, 804, 809, 810, 811, 812, 815, 817, 818 sont exportés au même
+    // endroit mais leur rôle n'est pas établi. FUN_0051d1f0 lit 805..811, 815, 817, 819..821.
+    // =====================================================================
+
+    private static byte* s_GteVector802, s_GteVector803, s_GteMac801, s_GteSxy805, s_GteSxy806, s_GteSxy807;
+    private static byte* s_GteMac0808, s_GteIr813, s_GteMatrix814;
+    private static byte* s_GteSxy809, s_GteSz810, s_GteSz811, s_GteLightMatrix815;
+    private static byte* s_GteOfx819, s_GteOfy820, s_GteRecip821, s_GteLightColour817;
+    private static bool s_GteResolved;
+
+    private static void EnsureGteRegisters()
+    {
+        if (s_GteResolved) return;
+
+        IntPtr module = LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+        if (module == IntPtr.Zero)
+        {
+            throw new NotImplementedException(
+                "EnsureGteRegisters: winsys3d.dll could not be loaded, so the emulated GTE " +
+                "register file (data exports 801..814) cannot be resolved.");
+        }
+
+        // GetProcAddress accepte un ordinal à la place d'un nom quand le pointeur tient dans son
+        // mot bas — la convention MAKEINTRESOURCE. Ces exports n'ont pas de nom.
+        s_GteMac801 = (byte*)GetProcAddress(module, (byte*)801);
+        s_GteVector802 = (byte*)GetProcAddress(module, (byte*)802);
+        s_GteVector803 = (byte*)GetProcAddress(module, (byte*)803);   // le second vecteur d'entrée, celui que FUN_0051f650 utilise
+        s_GteSxy805 = (byte*)GetProcAddress(module, (byte*)805);
+        s_GteSxy806 = (byte*)GetProcAddress(module, (byte*)806);
+        s_GteSxy807 = (byte*)GetProcAddress(module, (byte*)807);
+        s_GteMac0808 = (byte*)GetProcAddress(module, (byte*)808);
+        s_GteIr813 = (byte*)GetProcAddress(module, (byte*)813);
+        s_GteMatrix814 = (byte*)GetProcAddress(module, (byte*)814);
+
+        // Les registres du chemin de projection, utilisés par le cull par partie de
+        // FUN_0051d1f0. 809 reçoit le (x | y<<16) projeté, 811 la profondeur, 810 sa version
+        // divisée par 4 qui sert d'emplacement d'OT, 815 la matrice de normales, 819/820 le
+        // décalage écran posé par SetGeomOffset et 821 la table de réciproques de SetGeomScreen.
+        s_GteSxy809 = (byte*)GetProcAddress(module, (byte*)809);
+        s_GteSz810 = (byte*)GetProcAddress(module, (byte*)810);
+        s_GteSz811 = (byte*)GetProcAddress(module, (byte*)811);
+        s_GteLightMatrix815 = (byte*)GetProcAddress(module, (byte*)815);
+        s_GteOfx819 = (byte*)GetProcAddress(module, (byte*)819);
+        s_GteOfy820 = (byte*)GetProcAddress(module, (byte*)820);
+        s_GteRecip821 = (byte*)GetProcAddress(module, (byte*)821);
+
+        // Ghidra: EXT_00b6d198, la couleur que la passe d'éclairage (ordinal 793) consomme.
+        // Identifié par le corps de l'ordinal 793 lui-même, qui la passe à FUN_00a24000.
+        s_GteLightColour817 = (byte*)GetProcAddress(module, (byte*)817);
+
+        if (s_GteMatrix814 == null || s_GteMac0808 == null)
+        {
+            throw new NotImplementedException(
+                "EnsureGteRegisters: winsys3d.dll resolved but its GTE data exports did not — " +
+                "ordinals 808/814 came back null.");
+        }
+
+        s_GteResolved = true;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051c300 @ 0x0051c300 — le <c>RotMatrix</c> du SDK PlayStation : trois angles
+    /// vers une matrice de rotation 3×3 de shorts.
+    ///
+    /// <para><paramref name="angles"/> pointe trois shorts (X, Y, Z) et <paramref name="matrix"/>
+    /// reçoit neuf shorts. Chaque angle indexe <see cref="s_LookupTable00600920"/>, la table de
+    /// 0x1000 entrées bâtie au démarrage, qui empaquette <c>rsin</c> dans le mot bas et
+    /// <c>rcos</c> dans le mot haut — d'où les deux extractions par entrée.</para>
+    ///
+    /// <para>L'original indexe par <c>(angle &lt;&lt; 2) &amp; 0x3ffc</c>, soit une indexation en
+    /// octets déjà multipliée par 4 : c'est le même <c>&amp; 0xfff</c> sur l'indice, écrit
+    /// autrement. Transcrit ici en indices d'entrée.</para>
+    /// </summary>
+    private static void RotMatrix(short* angles, short* matrix)
+    {
+        uint packedX = s_LookupTable00600920[angles[0] & 0xfff];
+        uint packedY = s_LookupTable00600920[angles[1] & 0xfff];
+        uint packedZ = s_LookupTable00600920[angles[2] & 0xfff];
+
+        int sinX = (short)packedX;
+        int cosX = (short)(packedX >> 0x10);
+        int sinY = (short)packedY;
+        int cosY = (short)(packedY >> 0x10);
+        int sinZ = (short)packedZ;
+        int cosZ = (short)(packedZ >> 0x10);
+
+        matrix[0] = (short)(cosY * cosZ >> 0xc);
+        matrix[1] = (short)(-(sinZ * cosY) >> 0xc);
+        matrix[2] = (short)sinY;
+
+        int sinXsinY = sinX * sinY;
+        matrix[3] = (short)(sinZ * cosX + (sinXsinY >> 0xc) * cosZ >> 0xc);
+        matrix[4] = (short)((-sinXsinY >> 0xc) * sinZ + cosX * cosZ >> 0xc);
+        matrix[5] = (short)(-(sinX * cosY) >> 0xc);
+
+        int cosXsinY = sinY * cosX;
+        matrix[6] = (short)(sinX * sinZ + (-cosXsinY >> 0xc) * cosZ >> 0xc);
+        matrix[7] = (short)(sinX * cosZ + (cosXsinY >> 0xc) * sinZ >> 0xc);
+        matrix[8] = (short)(cosX * cosY >> 0xc);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051c280 @ 0x0051c280 — le <c>NormalClip</c> du SDK : le produit vectoriel 2D
+    /// des trois sommets projetés (SXY0/1/2, ordinaux 805/806/807), déposé dans MAC0 (ordinal 808)
+    /// et rendu. Son signe donne l'orientation de la face, d'où l'élimination des faces arrière.
+    ///
+    /// <para>Les six termes ont été vérifiés un à un contre la formule du SDK
+    /// (<c>SX0*SY1 + SX1*SY2 + SX2*SY0 - SX0*SY2 - SX1*SY0 - SX2*SY1</c>) : Ghidra les émet dans
+    /// un ordre différent et avec un regroupement de soustractions qui masque la symétrie, mais
+    /// l'expression est la même.</para>
+    /// </summary>
+    private static int NormalClip()
+    {
+        EnsureGteRegisters();
+
+        int x0 = *(short*)s_GteSxy805, y0 = *(short*)(s_GteSxy805 + 2);
+        int x1 = *(short*)s_GteSxy806, y1 = *(short*)(s_GteSxy806 + 2);
+        int x2 = *(short*)s_GteSxy807, y2 = *(short*)(s_GteSxy807 + 2);
+
+        int result = x0 * y1 + x1 * y2 + x2 * y0
+                   - x0 * y2 - x1 * y0 - x2 * y1;
+
+        *(int*)s_GteMac0808 = result;
+        return result;
+    }
+
+    /// <summary>Ghidra: FUN_0051c2f0 @ 0x0051c2f0 — relit MAC0 sans le recalculer.</summary>
+    private static int ReadMac0()
+    {
+        EnsureGteRegisters();
+        return *(int*)s_GteMac0808;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005327b0 @ 0x005327b0 — un <c>ScaleMatrix</c> fait à la main : chaque colonne de
+    /// la matrice est mise à l'échelle par une composante du vecteur.
+    ///
+    /// <para>C'est la même opération que l'ordinal 794 de winsys3d, à deux détails près qui font
+    /// qu'on ne peut pas substituer l'un à l'autre : celui-ci passe par les registres du GTE (donc
+    /// il sature en 16 bits à chaque étape via IR) et il lit le facteur **non signé**
+    /// (<c>(uint)(ushort)</c>), là où l'ordinal 794 le lit signé. Pour des facteurs positifs les
+    /// deux coïncident.</para>
+    ///
+    /// <para>Il identifie au passage l'ordinal 812 (<c>0x011f0c70</c>) comme le registre de
+    /// facteur d'échelle du GTE émulé.</para>
+    /// </summary>
+    private static void ScaleMatrixSaturating(short* matrix, ushort* scale)
+    {
+        EnsureGteRegisters();
+
+        short* ir = (short*)s_GteIr813;
+        int* mac = (int*)s_GteMac801;
+
+        for (int column = 0; column < 3; column++)
+        {
+            uint factor = scale[column];
+
+            ir[0] = matrix[column];
+            ir[1] = matrix[column + 3];
+            ir[2] = matrix[column + 6];
+
+            mac[0] = (int)(factor * ir[0]) >> 0xc; ir[0] = (short)mac[0];
+            mac[1] = (int)(ir[1] * factor) >> 0xc; ir[1] = (short)mac[1];
+            mac[2] = (int)(ir[2] * factor) >> 0xc; ir[2] = (short)mac[2];
+
+            matrix[column] = ir[0];
+            matrix[column + 3] = ir[1];
+            matrix[column + 6] = ir[2];
+        }
+    }
+
+    // =====================================================================
+    // FUN_0051d1f0 — le rendu de modèle animé
+    //
+    // La plus grosse fonction reconstruite à ce jour. C'est elle qui dessine un personnage : elle
+    // compose la pose de caméra avec la pose de l'entité, déroule le squelette de l'animation en
+    // matrices d'os, transforme et éclaire les sommets par lot côté DLL, puis émet les primitives
+    // dans la liste d'affichage.
+    //
+    // Deux régimes complets, commandés par le bit 0x400 du champ +0x3c du modèle :
+    //   dégagé — transformation perspective (ordinal 418, qui produit une profondeur par sommet),
+    //            puis **tri en profondeur par polygone** : l'emplacement d'OT est le maximum des
+    //            quatre profondeurs, borné par `slot - 0x50 < 0xec0`.
+    //   posé   — transformation sans profondeur (ordinal 795) et **un emplacement fixe** pour tout
+    //            le modèle. C'est le chemin des géométries plates ou en panneau.
+    //
+    // C'est ce drapeau qui donne à l'original son air d'avoir quatre boucles d'émission presque
+    // identiques : il en a deux, écrites deux fois.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0051d1f0 @ 0x0051d1f0.
+    ///
+    /// <para>Les sept paramètres, d'après les deux sites d'appel (<c>FUN_00506880</c> et
+    /// <c>FUN_00507010</c>) : la base de l'OT, le curseur de primitives, l'entrée d'animation,
+    /// l'entrée de la table de modèles, le bloc de transformation de l'entité, l'indice de frame
+    /// et le mot d'attributs supplémentaire. Rend le curseur avancé.</para>
+    /// </summary>
+    private static uint* DrawAnimatedModel(
+        uint* otBase, uint* prim, byte* animation, int* modelBundle,
+        int* transform, int frameIndex, uint extra)
+    {
+        EnsureGteRegisters();
+
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null)
+        {
+            throw new NotImplementedException(
+                "DrawAnimatedModel: winsys3d.dll's MainMem export resolves to null, so the bone " +
+                "matrix arena at MainMem + 0x1ba000 cannot be placed.");
+        }
+
+        short* matrix814 = (short*)s_GteMatrix814;
+        short* vector802 = (short*)s_GteVector802;
+        int* mac801 = (int*)s_GteMac801;
+        short* ir813 = (short*)s_GteIr813;
+
+        // Ghidra: la matrice de caméra entre dans le registre MATRIX du GTE — les neuf shorts de
+        // rotation puis les trois translations, d'un bloc.
+        for (int i = 0; i < 9; i++) matrix814[i] = ((short*)s_CameraMatrix_006008e0)[i];
+        *(int*)(s_GteMatrix814 + 0x14) = CameraTranslation[0];
+        *(int*)(s_GteMatrix814 + 0x18) = CameraTranslation[1];
+        *(int*)(s_GteMatrix814 + 0x1c) = CameraTranslation[2];
+
+        // Ghidra: la position de l'entité, décalée par DAT_006008d0..d8 et ramenée en unités de
+        // 1/0x1000. Noter que Y est **soustrait** — l'axe est inversé par rapport aux deux autres.
+        vector802[0] = (short)((transform[0] + s_Unknown_006008d0) >> 0xc);
+        vector802[1] = (short)((s_Unknown_006008d4 - transform[1]) >> 0xc);
+        vector802[2] = (short)((transform[2] + s_Unknown_006008d8) >> 0xc);
+
+        // Ghidra: le produit matrice-vecteur écrit à la main, accumulateurs 32 bits (MAC) puis
+        // versions saturées 16 bits (IR) — exactement ce que ferait RotTrans sur la console.
+        mac801[0] = (vector802[1] * matrix814[1] + vector802[2] * matrix814[2]
+                     + matrix814[0] * vector802[0] >> 0xc) + *(int*)(s_GteMatrix814 + 0x14);
+        ir813[0] = (short)mac801[0];
+        mac801[1] = (vector802[1] * matrix814[4] + vector802[2] * matrix814[5]
+                     + matrix814[3] * vector802[0] >> 0xc) + *(int*)(s_GteMatrix814 + 0x18);
+        ir813[1] = (short)mac801[1];
+        mac801[2] = (vector802[1] * matrix814[7] + vector802[2] * matrix814[8]
+                     + matrix814[6] * vector802[0] >> 0xc) + *(int*)(s_GteMatrix814 + 0x1c);
+        ir813[2] = (short)mac801[2];
+
+        // Ghidra: local_3c / sStack_3a / sStack_38 — l'orientation de l'entité, décalée par la pose
+        // de caméra DAT_00604928. sStack_38 sert aussi d'emplacement d'OT dans le régime « fixe ».
+        short* entityAngles = stackalloc short[3];
+        entityAngles[0] = (short)((short)transform[5] + *(short*)(s_CameraVector_00604928 + 0));
+        entityAngles[1] = (short)(*(short*)((byte*)transform + 0x16) + *(short*)(s_CameraVector_00604928 + 2));
+        entityAngles[2] = (short)((short)transform[6] + *(short*)(s_CameraVector_00604928 + 4));
+
+        // Ghidra: local_bc / local_b8 / local_b4 — la position transformée, mise de côté.
+        int translatedX = mac801[0], translatedY = mac801[1], translatedZ = mac801[2];
+
+        // Ghidra: local_d0 — la matrice de l'entité : rotation depuis ses angles, puis mise à
+        // l'échelle par transform[3..5] (les trois ushorts à +0xc).
+        byte* entityMatrix = stackalloc byte[0x20];
+        NativeMemory.Clear(entityMatrix, 0x20);
+        RotMatrix(entityAngles, (short*)entityMatrix);
+        ScaleMatrixSaturating((short*)entityMatrix, (ushort*)(transform + 3));
+
+        *(int*)(entityMatrix + 0x14) = translatedX;
+        *(int*)(entityMatrix + 0x18) = translatedY;
+        *(int*)(entityMatrix + 0x1c) = translatedZ;
+
+        // Ghidra: local_68.. — la rotation de scène, celle que le pilotage libre du sous-état 0
+        // fait tourner.
+        short* sceneAngles = stackalloc short[3];
+        sceneAngles[0] = (short)s_ScenePitch_005e9308;
+        sceneAngles[1] = (short)s_SceneYaw_005e930a;
+        sceneAngles[2] = (short)s_SceneRoll_005e930c;
+        short* sceneMatrix = stackalloc short[9];
+        RotMatrix(sceneAngles, sceneMatrix);
+
+        // === Les constantes de page de texture, calculées une fois ===
+        //
+        // Quirk de l'original, transcrit tel quel : elles sont dérivées du **premier** modèle du
+        // paquet, alors que la boucle de parties plus bas relit les attributs de chaque partie.
+        // Les parties suivantes réutilisent donc la page de la première.
+        byte* firstModel = (byte*)(nint)modelBundle[0];
+        uint modelAttributes = *(uint*)(firstModel + 0x3c);
+
+        if (s_Unknown_00564a48 != 0 && (modelAttributes & 0x200) != 0)
+        {
+            if (s_Unknown_00564a4c == 0) return prim;
+            modelAttributes &= 0xfffffdff;
+        }
+
+        ushort* skipCounters = (ushort*)(firstModel + 0x10);
+        int skipped = skipCounters[0] + skipCounters[1] + skipCounters[2] + skipCounters[3];
+        byte* firstRecords = *(byte**)(firstModel + 0x28);
+
+        uint clut = *(uint*)(s_EntityDecodeTable_005e8f00 + ((modelAttributes >> 0x10) & 0xff) * 4);
+
+        uint tpageWord = ((*(ushort*)(firstRecords + skipped * 0x10 + 8) & 0xfffff800u)
+                          | ((((modelAttributes & 0xff) | 0x1c0) << 5))
+                          | clut) << 0x10;
+
+        uint uv = (clut >> 0x10)
+                + (uint)(((short)extra >> 2) & unchecked((int)0xffffffc0))
+                + (extra & 0xff);
+        if (uv > 0x7ec0) uv = 0x7ec0;
+        uint uvWord = uv << 0x10;
+
+        // === La boucle d'os : le squelette de la frame devient des matrices monde ===
+        //
+        // Chaque os prend sa pose dans la frame courante, la tourne, la met à l'échelle (uniforme)
+        // et la compose avec celle de son parent. Le résultat s'empile dans MainMem + 0x1ba000,
+        // un slot de 0x20 octets par os — que l'original adresse par `(index + 0xdd00) * 0x20`,
+        // ce qui est la même chose.
+        int boneCount = *(ushort*)(animation + 0x12);
+        byte* poseBase = *(byte**)(animation + 0x20);
+        ushort* boneIndices = *(ushort**)(animation + 0x24);
+        ushort* poseIndices = (ushort*)(*(byte**)(animation + 0x28) + frameIndex * boneCount * 2);
+
+        byte* boneSlot = mainMem + 0x1ba000;
+        byte* parentMatrix = entityMatrix;
+        byte* boneMatrix = stackalloc byte[0x20];
+        ushort* uniformScale = stackalloc ushort[3];
+
+        // local_50 dans l'original : là où le curseur s'arrête. Ce n'est pas une lecture hors
+        // bornes — la table d'animation +0x24 est en deux parties, les parents des os suivis des
+        // indices d'os par partie, et la boucle laisse le curseur pile sur la seconde.
+        ushort* partBones = boneIndices;
+
+        if (boneCount != 0)
+        {
+            for (int remaining = boneCount; remaining != 0; remaining--)
+            {
+                byte* pose = poseBase + *poseIndices * 0x10;
+
+                NativeMemory.Clear(boneMatrix, 0x20);
+                RotMatrix((short*)pose, (short*)boneMatrix);
+
+                // Ghidra: local_48 / local_46 / la moitié basse de local_44 reçoivent toutes le
+                // même short — l'échelle est uniforme, pas un vecteur.
+                ushort scale = *(ushort*)(pose + 0xe);
+                uniformScale[0] = scale;
+                uniformScale[1] = scale;
+                uniformScale[2] = scale;
+                Ordinal_794(boneMatrix, uniformScale);
+
+                *(int*)(boneMatrix + 0x14) = *(short*)(pose + 8);
+                *(int*)(boneMatrix + 0x18) = *(short*)(pose + 10);
+                *(int*)(boneMatrix + 0x1c) = *(short*)(pose + 0xc);
+
+                Ordinal_360(parentMatrix, boneMatrix, boneSlot);
+
+                boneIndices++;
+                poseIndices++;
+                boneSlot += 0x20;
+                parentMatrix = mainMem + (*boneIndices + 0xdd00) * 0x20;
+            }
+
+            partBones = boneIndices;
+        }
+
+        // === La boucle de parties ===
+        int transformFlags = *(short*)((byte*)transform + 0x1a);
+        int partCount = *(ushort*)(animation + 0x14);
+        if (partCount == 0) return prim;
+
+        bool cullParts = (transformFlags & 1) != 0;
+        bool skipLighting = (transformFlags & 4) != 0;
+
+        short* composed = stackalloc short[9];
+        short otSlotFixed = entityAngles[2];   // sStack_38, réécrit par le cull quand il tourne
+
+        for (; partCount != 0; partCount--, modelBundle++, partBones++)
+        {
+            short* partMatrix = (short*)(mainMem + (*partBones + 0xdd00) * 0x20);
+
+            // Ghidra: deux chemins sur MMXInstalled_exref — neuf produits scalaires, ou trois
+            // triplets de `pmaddwd` sur les mêmes opérandes.
+            //
+            // DÉVIATION ASSUMÉE : seul le chemin scalaire est transcrit. Le branchement de
+            // l'original est une optimisation sur capacité CPU, donc les deux chemins doivent
+            // calculer la même chose — mais cette équivalence n'a **pas** été vérifiée opérande
+            // par opérande. TODO(REVERSE): la vérifier, ou transcrire le chemin MMX.
+            for (int row = 0; row < 3; row++)
+            {
+                for (int col = 0; col < 3; col++)
+                {
+                    composed[row * 3 + col] =
+                        (short)((sceneMatrix[row * 3 + 0] * partMatrix[0 * 3 + col]
+                               + sceneMatrix[row * 3 + 1] * partMatrix[1 * 3 + col]
+                               + sceneMatrix[row * 3 + 2] * partMatrix[2 * 3 + col]) >> 0xc);
+                }
+            }
+
+            // Ghidra: la matrice composée part dans le registre de normales (815), la matrice de
+            // l'os — translation comprise — dans le registre de transformation (814).
+            //
+            // L'original copie 0x20 octets vers 815 depuis local_88, dont la rangée de translation
+            // n'est **pas** réécrite par le produit ci-dessus : elle garde ce que la boucle d'os y
+            // a laissé au dernier tour. Reproduit tel quel, c'est sans effet — l'éclairage n'a
+            // besoin que de la rotation.
+            for (int i = 0; i < 9; i++) ((short*)s_GteLightMatrix815)[i] = composed[i];
+            *(int*)(s_GteLightMatrix815 + 0x14) = *(int*)(boneMatrix + 0x14);
+            *(int*)(s_GteLightMatrix815 + 0x18) = *(int*)(boneMatrix + 0x18);
+            *(int*)(s_GteLightMatrix815 + 0x1c) = *(int*)(boneMatrix + 0x1c);
+
+            for (int i = 0; i < 8; i++) ((uint*)s_GteMatrix814)[i] = ((uint*)partMatrix)[i];
+
+            if (cullParts && !PartIsOnScreen(ref otSlotFixed)) continue;
+
+            prim = DrawModelPart(otBase, prim, (byte*)(nint)modelBundle[0], mainMem,
+                                 transform, tpageWord, uvWord, skipLighting, otSlotFixed);
+        }
+
+        return prim;
+    }
+
+    /// <summary>
+    /// Ghidra: la branche <c>local_94 != 0</c> de FUN_0051d1f0 — le rejet des parties hors écran.
+    ///
+    /// <para>Elle projette l'origine de la partie, c'est-à-dire le vecteur nul : tous les produits
+    /// par la rotation s'annulent et il ne reste que la translation de la matrice courante, lue en
+    /// <c>short</c>. La division perspective passe par la table de réciproques de l'ordinal 821,
+    /// indexée par la profondeur, puis le décalage écran des ordinaux 819/820 est ajouté.</para>
+    ///
+    /// <para>Effet de bord voulu : la profondeur projetée, divisée par quatre, devient
+    /// l'emplacement d'OT du régime « fixe ». D'où le <c>ref</c>.</para>
+    /// </summary>
+    private static bool PartIsOnScreen(ref short otSlot)
+    {
+        ProjectOriginThroughMatrix();
+
+        short x = (short)*(uint*)s_GteSxy809;
+        short y = (short)(*(uint*)s_GteSxy809 >> 0x10);
+        short z = (short)*(int*)s_GteSz810;
+
+        otSlot = z;
+
+        return (ushort)(x + 0x18) < 0x170
+            && (ushort)(y + 0x18) < 0x120
+            && (uint)(z - 0x58) < 0x3a0;
+    }
+
+    /// <summary>
+    /// Ghidra: le cœur de projection partagé par la branche de cull de FUN_0051d1f0 et par
+    /// <see cref="ProjectPoint"/> — les deux l'écrivent en toutes lettres, à l'identique.
+    ///
+    /// <para>Le vecteur d'entrée est mis à zéro, donc tous les produits par la rotation
+    /// s'annulent : seule la translation de la matrice courante survit. Ce que l'original écrit
+    /// quand même en entier, et qu'on garde ici sous la forme courte — la version longue ne ferait
+    /// qu'ajouter des zéros. La division perspective passe par la table de réciproques de
+    /// l'ordinal 821, indexée par la profondeur, puis le décalage écran des ordinaux 819/820.</para>
+    /// </summary>
+    private static void ProjectOriginThroughMatrix()
+    {
+        short* vector = (short*)s_GteVector802;
+        vector[0] = 0;
+        vector[1] = 0;
+        vector[2] = 0;
+
+        short depth = *(short*)(s_GteMatrix814 + 0x1c);
+        *(int*)s_GteSz811 = depth;
+
+        int reciprocal = *(short*)(s_GteRecip821 + (ushort)depth * 2);
+        short screenY = *(short*)(s_GteMatrix814 + 0x18);
+        short screenX = *(short*)(s_GteMatrix814 + 0x14);
+
+        *(uint*)s_GteSxy809 = (uint)(
+              ((reciprocal * screenY & unchecked((int)0xfffff000)) + *(int*)s_GteOfx819 * 0x1000) * 0x10
+            + ((reciprocal * screenX) >> 0xc) + *(int*)s_GteOfy820);
+
+        *(int*)s_GteSz810 = *(int*)s_GteSz811 >> 2;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051f650 @ 0x0051f650 — projette une position monde et dit si elle est à
+    /// l'écran. C'est le filtre que le carrousel du sous-état 0 applique à chacun de ses seize
+    /// emplacements : un retour nul écarte l'emplacement.
+    ///
+    /// <para>Elle charge la matrice de caméra dans le registre du GTE par
+    /// <c>SetRotMatrix</c>/<c>SetTransMatrix</c> (ordinaux 366 et 369), transforme la position, en
+    /// fait la nouvelle translation de la matrice, puis projette l'origine — le même tour que la
+    /// branche de cull de FUN_0051d1f0.</para>
+    ///
+    /// <para>Les deux paramètres viennent de l'assembleur, Ghidra ayant perdu le cadre de pile et
+    /// rendu la sortie en <c>unaff_retaddr</c> : arg1 en <c>[ESP+0x1c]</c> (la position), arg2 en
+    /// <c>[ESP+0x20]</c> (le tampon de sortie, écrit en <c>0x0051f8e5</c>).</para>
+    /// </summary>
+    private static int ProjectPoint(int* position, short* outScreen)
+    {
+        EnsureGteRegisters();
+
+        Ordinal_366(s_CameraMatrix_006008e0);
+        Ordinal_369(s_CameraMatrix_006008e0);
+
+        short* input = (short*)s_GteVector803;
+        input[0] = (short)((position[0] + s_Unknown_006008d0) >> 0xc);
+        input[1] = (short)((s_Unknown_006008d4 - position[1]) >> 0xc);
+        input[2] = (short)((position[2] + s_Unknown_006008d8) >> 0xc);
+
+        short* m = (short*)s_GteMatrix814;
+        int* mac = (int*)s_GteMac801;
+        short* ir = (short*)s_GteIr813;
+
+        mac[0] = (input[1] * m[1] + input[2] * m[2] + m[0] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x14);
+        mac[1] = (input[1] * m[4] + input[2] * m[5] + m[3] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x18);
+        mac[2] = (input[1] * m[7] + input[2] * m[8] + m[6] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x1c);
+
+        ir[0] = (short)mac[0];
+        ir[1] = (short)mac[1];
+        ir[2] = (short)mac[2];
+
+        // La position transformée devient la translation de la matrice — c'est ce qui fait que la
+        // projection de l'origine, juste après, projette bien ce point-là.
+        *(int*)(s_GteMatrix814 + 0x14) = mac[0];
+        *(int*)(s_GteMatrix814 + 0x18) = mac[1];
+        *(int*)(s_GteMatrix814 + 0x1c) = mac[2];
+
+        ProjectOriginThroughMatrix();
+
+        *(uint*)outScreen = *(uint*)s_GteSxy809;
+        *(uint*)(outScreen + 2) = (uint)*(int*)s_GteSz810;
+
+        return (ushort)(outScreen[0] + 0x18) < 0x170
+            && (ushort)(outScreen[1] + 0x18) < 0x120
+            && (uint)(outScreen[2] - 0x58) < 0x3a0 ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Ghidra: LAB_0051db61 — le corps d'une partie : transformation et éclairage des sommets côté
+    /// DLL, puis émission des primitives.
+    ///
+    /// <para>Le bit <c>0x400</c> des attributs commande les deux régimes. Dégagé : transformation
+    /// perspective par l'ordinal 418, qui produit une profondeur par sommet, et **tri en profondeur
+    /// par polygone**. Posé : ordinal 795, sans profondeur, et **un emplacement d'OT fixe** pour
+    /// toute la partie.</para>
+    /// </summary>
+    private static uint* DrawModelPart(
+        uint* otBase, uint* prim, byte* model, byte* mainMem, int* transform,
+        uint tpageWord, uint uvWord, bool skipLighting, short fixedOtSlot)
+    {
+        uint attributes = *(uint*)(model + 0x3c);
+
+        if (s_Unknown_00564a48 != 0 && (attributes & 0x2000000) != 0)
+        {
+            if (s_Unknown_00564a4c == 0) return prim;
+            attributes &= 0xfdffffff;
+        }
+
+        uint vertexCount = *(uint*)(model + 8) >> 0x10;
+        bool depthSorted = (attributes & 0x400) == 0;
+
+        // Ghidra: la transformation par lot. Le chemin avec profondeur remplit aussi le tableau
+        // à MainMem + 0x1b4000, que le tri par polygone relit.
+        if (depthSorted)
+        {
+            Ordinal_418(model + 0x40, mainMem + 0x1b0000, mainMem + 0x1b4000, mainMem,
+                        *(uint*)(model + 8) & 0xffff);
+        }
+        else
+        {
+            Ordinal_795(model + 0x40, mainMem + 0x1b0000);
+        }
+
+        // Ghidra: l'éclairage — soit la passe de la DLL, soit une couleur plate recopiée trois fois
+        // par triangle quand le bit 4 du bloc de transformation est posé.
+        uint* colours = (uint*)(mainMem + 0x1b8000);
+        uint flatColour = (uint)transform[7] & 0x3ffffff ^ (attributes & 0x300) << 0x10;
+
+        if (skipLighting)
+        {
+            // Curseur distinct : `colours` sert encore à l'émission plus bas. L'original a le
+            // même découplage (puVar15 est réassigné, pas la base).
+            uint* fill = colours;
+            for (uint i = vertexCount * 3; i != 0; i--) *fill++ = flatColour;
+        }
+        else
+        {
+            *(uint*)s_GteLightColour817 = flatColour;
+            Ordinal_793(*(void**)(model + 0x24), colours, vertexCount);
+        }
+
+        byte* records = *(byte**)(model + 0x28);
+        ushort* counters = (ushort*)(model + 0x10);
+        int skipped = counters[0] + counters[1] + counters[2] + counters[3];
+        uint* record = (uint*)(records + skipped * 0x10);
+
+        uint* screen = (uint*)(mainMem + 0x1b0000);
+        int* depths = (int*)(mainMem + 0x1b4000);
+
+        // Ghidra: les deux seaux, comptés en +0x1a puis +0x1e. Le premier émet des quads texturés
+        // de 10 mots, le second des quads texturés dégradés de 13.
+        prim = EmitModelQuads(otBase, prim, ref record, *(ushort*)(model + 0x1a),
+                              screen, depths, colours, tpageWord, uvWord,
+                              depthSorted, fixedOtSlot, gouraud: false);
+
+        prim = EmitModelQuads(otBase, prim, ref record, *(ushort*)(model + 0x1e),
+                              screen, depths, colours, tpageWord, uvWord,
+                              depthSorted, fixedOtSlot, gouraud: true);
+
+        return prim;
+    }
+
+    /// <summary>
+    /// Ghidra: les quatre boucles d'émission de FUN_0051d1f0, qui n'en sont que deux écrites deux
+    /// fois — le régime de tri ne change que le calcul de l'emplacement d'OT.
+    ///
+    /// <para>Chaque enregistrement de 16 octets porte quatre indices de sommet empaquetés dans son
+    /// premier mot. Deux garde-fous bornent le travail : un quad n'est considéré que si l'un de ses
+    /// quatre X écran tombe sous <c>0x140</c>, et le budget global <c>DAT_005e9818</c> décroît à
+    /// chaque primitive émise et arrête la boucle à zéro.</para>
+    ///
+    /// <para>Le rejet des faces arrière est **inliné** dans l'original — la même expression à six
+    /// termes que <see cref="NormalClip"/>, recopiée à la main. Le premier test porte sur les trois
+    /// premiers sommets ; s'il passe, le quatrième remplace SXY2 et le test est refait, cette fois
+    /// par un vrai appel.</para>
+    /// </summary>
+    private static uint* EmitModelQuads(
+        uint* otBase, uint* prim, ref uint* record, int count,
+        uint* screen, int* depths, uint* colours,
+        uint tpageWord, uint uvWord, bool depthSorted, short fixedOtSlot, bool gouraud)
+    {
+        int stride = gouraud ? 0xd : 10;
+
+        for (; count != 0 && s_Unknown_005e9818 != 0; count--, record += 4)
+        {
+            uint packed = record[0];
+            int i0 = (int)(packed & 0xff);
+            int i1 = (int)(packed >> 8 & 0xff);
+            int i2 = (int)(packed >> 0x10 & 0xff);
+            int i3 = (int)(packed >> 0x18);
+
+            uint v0 = screen[i0], v1 = screen[i1], v2 = screen[i2], v3 = screen[i3];
+
+            *(uint*)s_GteSxy805 = v0;
+            *(uint*)s_GteSxy806 = v1;
+            *(uint*)s_GteSxy807 = v2;
+
+            if ((ushort)v0 >= 0x140 && (ushort)v1 >= 0x140
+                && (ushort)v2 >= 0x140 && (ushort)v3 >= 0x140) continue;
+
+            // Ghidra: le produit vectoriel écrit à la main, identique à NormalClip.
+            int x0 = *(short*)s_GteSxy805, y0 = *(short*)(s_GteSxy805 + 2);
+            int x1 = *(short*)s_GteSxy806, y1 = *(short*)(s_GteSxy806 + 2);
+            int x2 = *(short*)s_GteSxy807, y2 = *(short*)(s_GteSxy807 + 2);
+            *(int*)s_GteMac0808 = x0 * y1 + x1 * y2 + x2 * y0
+                                - x0 * y2 - x1 * y0 - x2 * y1;
+
+            if ((v0 & 0xffff0000) >= 0xf00000 && (v1 & 0xffff0000) >= 0xf00000
+                && (v2 & 0xffff0000) >= 0xf00000 && (v3 & 0xffff0000) >= 0xf00000) continue;
+
+            if (ReadMac0() >= 0)
+            {
+                *(uint*)s_GteSxy807 = v3;
+                if (NormalClip() >= 0) continue;
+            }
+
+            uint* slot;
+            if (depthSorted)
+            {
+                int zmax = depths[i0];
+                if (zmax < depths[i1]) zmax = depths[i1];
+                if (zmax < depths[i2]) zmax = depths[i2];
+                if (zmax < depths[i3]) zmax = depths[i3];
+
+                // Ghidra rend ce test en arithmétique de pointeur (`puVar20 + -0x50` sur un
+                // `uint *`). L'assembleur tranche : `LEA ECX,[EAX + 0xfffffec0]` puis
+                // `CMP ECX,0xec0` non signé — c'est bien 0x140 octets, pas 0x50.
+                if ((uint)(zmax - 0x140) >= 0xec0) continue;
+
+                slot = (uint*)((byte*)otBase + ((uint)zmax & 0xfffc));
+            }
+            else
+            {
+                slot = otBase + fixedOtSlot;
+            }
+
+            uint previous = *slot;
+            *slot = (uint)(nuint)prim;
+
+            if (!gouraud)
+            {
+                uint colour = colours[record[1] & 0xff];
+                if (s_Unknown_00564a48 != 0) colour &= 0xfdffffff;
+
+                prim[0] = previous | 0x9000000;
+                prim[1] = colour | 0x2c000000;
+                prim[2] = v1;
+                prim[3] = record[2] >> 0x10 | uvWord;
+                prim[4] = v0;
+                prim[5] = tpageWord | record[2] & 0xffff;
+                prim[6] = v2;
+                prim[7] = record[3] & 0xffff;
+                prim[8] = v3;
+                prim[9] = record[3] >> 0x10;
+            }
+            else
+            {
+                uint indices = record[1];
+                uint c0 = colours[indices & 0xff];
+                uint c1 = colours[indices >> 8 & 0xff];
+                uint c2 = colours[indices >> 0x10 & 0xff];
+                uint c3 = colours[indices >> 0x18];
+                if (s_Unknown_00564a48 != 0) c1 &= 0xfdffffff;
+
+                prim[0] = previous | 0xc000000;
+                prim[1] = c1 | 0x3c000000;
+                prim[2] = v1;
+                prim[3] = record[2] >> 0x10 | uvWord;
+                prim[4] = c0;
+                prim[5] = v0;
+                prim[6] = tpageWord | record[2] & 0xffff;
+                prim[7] = c2;
+                prim[8] = v2;
+                prim[9] = record[3] & 0xffff;
+                prim[10] = c3;
+                prim[11] = v3;
+                prim[12] = record[3] >> 0x10;
+            }
+
+            prim += stride;
+            s_Unknown_005e9818--;
+        }
+
+        return prim;
+    }
+
 
     // =====================================================================
     // CRT support (MSVC 6 / "Visual Studio 1998" runtime startup, confirmed by several
@@ -5146,17 +5919,31 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: the pad-word expression shared by FUN_00512520, FUN_00545340 and FUN_0052a440 â€”
-    /// <c>*(ushort *)(&amp;DAT_00604a20 + DAT_005e9188[DAT_005e93c8[(DAT_005de538 &amp; 0xff) * 0x9c] * 0x4c] * 4)</c>.
-    /// Factored because it had already been transcribed twice and drifted once: one copy hardcoded
-    /// the outer index to 0 instead of reading DAT_005de538.
+    /// Ghidra: the pad-state expression shared by FUN_00512520, FUN_00545340, FUN_0052a440 and
+    /// FUN_00506880. Factored because it had already been transcribed twice and drifted once: one
+    /// copy hardcoded the outer index to 0 instead of reading DAT_005de538.
+    ///
+    /// <para><b>The stride is 0x10, not 4.</b> Ghidra's pseudo-C renders the final scaling as
+    /// <c>&amp;DAT_00604a20 + slot * 4</c>, which is wrong — the decompiler lost the shift. All three
+    /// call sites disassemble to <c>SHL EAX,0x4</c> followed by <c>ADD EAX,0x604a20</c>:
+    /// <c>FUN_0052a440</c> at <c>0x0052a60b</c>, <c>FUN_00545340</c> at <c>0x00545423</c>, and
+    /// <c>FUN_00506880</c> at <c>0x005069fa</c> (see <c>Legacy/Raw/Blaze/*.asm</c>). Each pad slot
+    /// is a 16-byte record. The earlier <c>* 4</c> here was a latent 4× address error: it only
+    /// agreed with the original at slot 0, which is the single-controller case everything has been
+    /// exercised with so far.</para>
     /// </summary>
-    private static ushort CurrentPadWord()
+    private static byte* CurrentPadState()
     {
         int slot = s_PlayerSlots_005e9188[
             s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
-        return *(ushort*)(s_InputStateBase_00604a20 + slot * 4);
+        return s_InputStateBase_00604a20 + slot * 0x10;
     }
+
+    /// <summary>
+    /// Ghidra: the halfword at offset 0 of the current pad record — the form FUN_0052a440 reads
+    /// (<c>MOV AX, word ptr [EAX]</c> at <c>0x0052a613</c>, then <c>AND AX,0x8008</c>).
+    /// </summary>
+    private static ushort CurrentPadWord() => *(ushort*)CurrentPadState();
 
     /// <summary>
     /// Ghidra: the loading screen's sprite descriptor â€” 20 bytes, **one contiguous block**. Split
@@ -5182,6 +5969,11 @@ public static unsafe partial class Blaze
     // Ghidra: DAT_005e9300 â€” which of the two draw envs is current, i.e. the back/front selector.
     private static byte* s_CurrentDrawEnv;
     private static int s_Unknown_005e8310;
+    // Ghidra: DAT_005e9818 — le **budget de primitives par frame**, identifié en reconstruisant
+    // FUN_0051d1f0. FrameBegin le recharge à 0x9c4 (2500) et chaque primitive émise le décrémente ;
+    // à zéro, les boucles d'émission s'arrêtent net. Il n'est écrit nulle part ailleurs, et son
+    // adresse tombe dans la queue non initialisée de .data — donc sans la remise à 2500 de
+    // FrameBegin, plus rien ne se dessinerait du tout.
     private static int s_Unknown_005e9818;
     private static uint s_FadeCounter_005e9960;      // Ghidra: DAT_005e9960
     private static uint s_Unknown_005e9814;
@@ -5220,6 +6012,11 @@ public static unsafe partial class Blaze
     private static int s_Unknown_005d9de0 => (int)s_GammaIni;
 
     private static int s_Unknown_00564a48, s_Unknown_00571a3c;
+
+    // Ghidra: DAT_00564a4c — le second drapeau des deux émetteurs de sprite. Jamais écrit par le
+    // code reconstruit pour l'instant : FUN_00537ca0 le pose autour de FUN_00537da0 (état 2), qui
+    // n'est pas reconstruit. Voir DrawSpriteVariant pour la divergence avec s_SmallTextureFlag.
+    private static int s_Unknown_00564a4c;
 
     /// <summary>
     /// Ghidra: FUN_0052a1e0 @ 0x0052a1e0 â€” begins a frame: picks the scratch bases out of MainMem
@@ -5377,6 +6174,1126 @@ public static unsafe partial class Blaze
 
     private static readonly uint* s_MenuScreenBlock_00566c48 = (uint*)NativeMemory.AllocZeroed(0x40);
     private static readonly uint* s_MenuRenderBlock_00566c70 = (uint*)NativeMemory.AllocZeroed(0x40);
+
+    // =====================================================================
+    // Game state 4 — la sélection des personnages (Ghidra: FUN_005066d0)
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_005066e0 @ 0x005066e0 — le chargement des ressources de l'écran. Même entame que
+    /// <see cref="LoadMenuResources"/> — l'entrée de l'état puis la relocalisation de son en-tête —
+    /// suivie de **quatre** listes du répertoire au lieu d'une :
+    ///
+    /// <list type="bullet">
+    /// <item><c>+0x10</c> : les TIM, décodées vers la VRAM émulée, comme partout ailleurs.</item>
+    /// <item><c>+0x2c</c> : des paquets de modèles, relocalisés puis repaginés.</item>
+    /// <item><c>+0x7c</c> : des paquets d'animations, relocalisés.</item>
+    /// <item><c>+0xb0</c> : des blocs bruts, chargés bout à bout tous les 0x2000 octets.</item>
+    /// </list>
+    ///
+    /// Écart assumé avec l'original : les gardes <c>null</c> sur le répertoire et sur
+    /// <c>MainMem</c> ci-dessous sont un ajout. <c>FUN_005066e0</c> déréférence les deux sans filet.
+    ///
+    /// Écart assumé n°2 : <c>FUN_0040a600()</c>, appelé entre la mise à 1 des drapeaux et le
+    /// chargement de l'en-tête, n'est pas transcrit. Son corps décompilé est **vide**
+    /// (<c>Blaze.c:4319</c>), donc l'omission est comportementalement neutre — mais la signature
+    /// que Ghidra lui recompose est fausse, puisque d'autres sites l'appellent avec des arguments
+    /// (<c>FUN_0040a600(0x25)</c>, <c>FUN_0040a600(4)</c>). Vraisemblablement un stub libgpu vidé
+    /// au portage depuis la PlayStation.
+    /// </summary>
+    private static void LoadCharacterSelectResources()
+    {
+        for (int i = 0; i < 9; i++) s_SelectState_00578de8[i] = 0;
+        for (int i = 0; i < 3; i++) s_SelectFlags_00562a48[i] = 1;
+
+        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
+        FixupResourceHeader(s_MainResourceDirectory_005e97c4);
+
+        byte* directoryBase = s_MainResourceDirectory_005e97c4;
+        byte* mainMem = GetMainMemPtr();
+        if (directoryBase == null || mainMem == null) return;
+
+        // Ghidra: la liste +0x10 — chaque entrée est chargée dans le tampon de travail puis décodée
+        // dans son emplacement de la table de pages.
+        int* textures = *(int**)(directoryBase + 0x10);
+        if (textures != null)
+        {
+            byte* scratch = mainMem + 0x1b0000;
+            byte* slot = s_EntityDecodeTable_005e8f00;
+            for (int* entry = textures; *entry != 0; entry += 2, slot += 4)
+            {
+                LoadResourceEntry((int*)(nint)(*entry), scratch);
+                DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+            }
+        }
+
+        // Ghidra: la liste +0x2c — les paquets de modèles. Chaque chargement rend la fin du bloc,
+        // qui devient la destination du suivant : ils s'empilent sans trou.
+        byte* cursor = mainMem + 0x138000;
+        int* models = *(int**)(directoryBase + 0x2c);
+        if (models != null)
+        {
+            byte** table = (byte**)s_ModelTable_005e96a0;
+            for (int* entry = models; *entry != 0; entry += 2, table++)
+            {
+                byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                RelocateModelBundle((int*)cursor, (byte*)entry, table);
+                cursor = next;
+            }
+        }
+
+        // Ghidra: la liste +0x7c — les paquets d'animations, empilés à la suite des précédents.
+        // Le curseur est partagé avec la boucle ci-dessus : si la liste +0x2c était vide, la
+        // première animation atterrit bien à MainMem + 0x138000.
+        int* animations = *(int**)(directoryBase + 0x7c);
+        if (animations != null)
+        {
+            byte** table = (byte**)s_AnimationTable_005e9640;
+            for (int* entry = animations; *entry != 0; entry++, table++)
+            {
+                byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                RelocateAnimationBundle((int*)cursor, table);
+                cursor = next;
+            }
+        }
+
+        // Ghidra: la liste +0xb0 — des blocs bruts, un tous les 0x2000 octets, sans relocalisation.
+        int* raw = *(int**)(directoryBase + 0xb0);
+        if (raw != null)
+        {
+            byte* destination = mainMem + 0xf8000;
+            for (int* entry = raw; *entry != 0; entry++, destination += 0x2000)
+                LoadResourceEntry((int*)(nint)(*entry), destination);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00532640 @ 0x00532640 — un paquet de modèles : un compte, puis autant d'offsets
+    /// relatifs suivis d'autant de descripteurs de 8 octets. Chaque offset devient un pointeur
+    /// absolu, et chaque entrée reçoit ensuite sa relocalisation propre et sa repagination.
+    ///
+    /// Le pointeur publié dans <paramref name="result"/> vise le **tableau d'offsets**, pas le
+    /// compte : c'est ce qui rend le compte lisible à <c>[-4]</c>, comme le fait le code de rendu
+    /// en <c>Blaze.c:79042</c>.
+    /// </summary>
+    private static int RelocateModelBundle(int* bundle, byte* metadata, byte** result)
+    {
+        uint pageBits = *(uint*)(metadata + 4);
+        int count = bundle[0];
+        int* offsets = bundle + 1;
+        int* descriptors = bundle + count;
+
+        *result = (byte*)offsets;
+
+        for (int i = count; i != 0; i--, offsets++, descriptors++)
+        {
+            int absolute = (int)(nint)bundle + *offsets + count * 8 + 4;
+            *offsets = absolute;
+            descriptors[1] |= (int)pageBits;
+            RelocateModelEntry((ushort*)(nint)absolute, (byte*)descriptors);
+            AdjustModelTexturePages((byte*)(nint)absolute);
+        }
+
+        return count;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00532450 @ 0x00532450 — une entrée de modèle. Trois pointeurs simples, deux
+    /// tables d'entiers (l'une de taille variable, l'autre de 0x400) et une liste terminée par -1
+    /// dont la longueur est rangée dans l'entrée. Les deux derniers champs sont divisés par trois —
+    /// la multiplication par 0x55555556 de Ghidra.
+    ///
+    /// Cette division par trois est l'un des deux indices qui font de cette structure un modèle et
+    /// non un paquet de sprites : trois sommets par triangle. L'autre est la repagination de
+    /// <see cref="AdjustModelTexturePages"/>.
+    ///
+    /// Le <c>0x55555556</c> de Ghidra est l'idiome de division signée par 3, dont la correction de
+    /// signe est ici inutile : <c>entry[4]</c> et <c>entry[5]</c> sont des <c>ushort</c>, donc
+    /// <c>n + 2</c> est toujours positif et l'idiome se réduit exactement à <c>/ 3</c>.
+    ///
+    /// Attention à l'échelle des indices : Ghidra type ce paramètre <c>ushort*</c> ici et <c>int</c>
+    /// dans <c>FUN_00532530</c>, alors que les deux reçoivent le **même** pointeur. Les décalages
+    /// ci-dessous sont donc en <c>ushort</c> (<c>entry + 0x12</c> = octet 0x24), ceux de
+    /// <see cref="AdjustModelTexturePages"/> en octets.
+    /// </summary>
+    private static void RelocateModelEntry(ushort* entry, byte* descriptor)
+    {
+        byte* baseAddress = (byte*)entry;
+
+        *(int*)(entry + 0x12) += (int)(nint)baseAddress;
+        *(uint*)(entry + 0x1e) = *(uint*)(descriptor + 4);
+        *(int*)(entry + 0x14) += (int)(nint)baseAddress;
+        *(int*)(entry + 0x16) += (int)(nint)baseAddress;
+
+        if (*(int*)(entry + 0x18) != 0)
+        {
+            int* table = (int*)(nint)(*(int*)(entry + 0x18) + (int)(nint)baseAddress);
+            *(int**)(entry + 0x18) = table;
+            for (uint n = entry[0]; n != 0; n--, table++) *table += *(int*)(entry + 0x18);
+        }
+
+        if (*(int*)(entry + 0x1a) != 0)
+        {
+            int* table = (int*)(nint)(*(int*)(entry + 0x1a) + (int)(nint)baseAddress);
+            *(int**)(entry + 0x1a) = table;
+            for (int n = 0x400; n != 0; n--, table++) *table += *(int*)(entry + 0x1a);
+        }
+
+        ushort length = 0;
+        if (*(int*)(entry + 0x1c) != 0)
+        {
+            int* list = (int*)(nint)((int)(nint)baseAddress + *(int*)(entry + 0x1c));
+            *(int**)(entry + 0x1c) = list;
+            for (; *list != -1; list++, length++)
+                if (*list != 0) *list += *(int*)(entry + 0x1c);
+        }
+
+        entry[7] = length;
+        entry[4] = (ushort)((entry[4] + 2) / 3);
+        entry[5] = (ushort)((entry[5] + 2) / 3);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00532530 @ 0x00532530 — repagine une entrée : le décalage de page, pris dans les
+    /// bits 8..15 du champ 0x3c, est ajouté à deux octets de chaque enregistrement de 16 octets. Le
+    /// nombre d'enregistrements et leur origine se lisent dans les huit compteurs de l'en-tête —
+    /// quatre à sauter (0x10..0x16), quatre à traiter (0x18..0x1e), un par type de primitive.
+    ///
+    /// Des enregistrements de 16 octets rangés par type de primitive, dont deux octets portent une
+    /// page de texture : c'est la disposition d'un modèle PSX, ce qui confirme le rôle de la table
+    /// que <see cref="RelocateModelBundle"/> remplit.
+    ///
+    /// Le champ 0x3c est celui que <see cref="RelocateModelEntry"/> vient d'écrire depuis le
+    /// descripteur, après que <see cref="RelocateModelBundle"/> y a fusionné les bits de page de la
+    /// liste. Les trois fonctions se referment sur la même convention.
+    /// </summary>
+    private static void AdjustModelTexturePages(byte* entry)
+    {
+        uint adjust = (*(uint*)(entry + 0x3c) >> 8) & 0xc0;
+
+        int count = *(ushort*)(entry + 0x1e) + *(ushort*)(entry + 0x1c)
+                  + *(ushort*)(entry + 0x1a) + *(ushort*)(entry + 0x18);
+        if (count == 0) return;
+
+        int skipped = *(ushort*)(entry + 0x16) + *(ushort*)(entry + 0x14)
+                    + *(ushort*)(entry + 0x12) + *(ushort*)(entry + 0x10);
+
+        uint* record = (uint*)(nint)(skipped * 0x10 + *(int*)(entry + 0x28) + 0xc);
+        for (; count != 0; count--, record += 4)
+        {
+            uint high = record[0];
+            uint low = record[-1];
+            record[-1] = (((((low >> 0x18) + adjust) & 0xff) << 0x10)
+                          | (((low >> 8) + adjust) & 0xff)) << 8 | (low & 0xff00ff);
+            record[0] = (((((high >> 0x18) + adjust) & 0xff) << 0x10)
+                         | ((((high >> 8) & 0xff) + adjust) & 0xff)) << 8 | (high & 0xff00ff);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005326d0 @ 0x005326d0 — un paquet d'animations : même forme que celui des
+    /// modèles, sans descripteurs, et huit pointeurs à relocaliser par entrée.
+    ///
+    /// Comme pour les modèles, le pointeur publié vise le tableau d'offsets et non le compte, que
+    /// <c>Blaze.c:79042</c> relit à <c>[-4]</c>.
+    /// </summary>
+    private static void RelocateAnimationBundle(int* bundle, byte** result)
+    {
+        int count = bundle[0];
+        int stride = count * 4;
+        int* offsets = bundle + 1;
+
+        *result = (byte*)offsets;
+
+        for (; count != 0; count--, offsets++)
+        {
+            int absolute = (int)(nint)bundle + *offsets + stride + 4;
+            *offsets = absolute;
+            RelocateAnimationEntry((int*)(nint)absolute);
+        }
+    }
+
+    /// <summary>Ghidra: FUN_005326b0 @ 0x005326b0 — huit pointeurs, tous relatifs à l'entrée.</summary>
+    private static void RelocateAnimationEntry(int* entry)
+    {
+        int origin = entry[0];
+        int* slot = entry + 8;
+        for (int i = 8; i != 0; i--, slot++) *slot += (int)(nint)entry + origin;
+    }
+
+    // Ghidra: DAT_00578de8..DAT_00578e08 — neuf entiers **contigus**, remis à zéro d'un bloc au
+    // début de FUN_005066e0 ; et DAT_00562a48..DAT_00562a50, trois autres mis à 1. Déclarés comme
+    // les blocs qu'ils sont, plutôt qu'en douze champs isolés.
+    private static readonly int* s_SelectState_00578de8 = (int*)NativeMemory.AllocZeroed(9, sizeof(int));
+    private static readonly int* s_SelectFlags_00562a48 = (int*)NativeMemory.AllocZeroed(3, sizeof(int));
+
+    // Ghidra: &DAT_005e96a0 et &DAT_005e9640 — les deux tables de pointeurs que les relocalisations
+    // ci-dessus remplissent, une entrée par paquet chargé.
+    //
+    // Ces tables ne sont **pas** propres à la sélection des personnages, malgré le fait que
+    // FUN_005066e0 soit le premier site qui les remplisse à être reconstruit. FUN_005069e0 les
+    // remplit exactement de la même manière (Blaze.c:78876), et une trentaine de sites les indexent
+    // dans tout Blaze.c — 2043, 14900, 19190, 23424, 25455, 52332, 64765, 79042 — le plus souvent
+    // par un octet pris dans une entité (`*(byte*)(param_1 + 4) * 4`). D'où le nom générique.
+    //
+    // Leur rôle respectif, établi par les sites de lecture :
+    //   005e9640 — animations. En Blaze.c:55840 un compteur de frame est incrémenté puis comparé au
+    //              champ +0x16 de l'entrée et remis à zéro : c'est la longueur de l'animation.
+    //   005e96a0 — modèles. FUN_0051d1f0 reçoit les deux ensemble (Blaze.c:55845) : l'entrée
+    //              d'animation indexée par la frame, et le paquet de modèles en regard.
+    //
+    // Capacité : 0x005e96a0 - 0x005e9640 = 0x60 octets, soit 24 pointeurs en 32 bits. Les deux
+    // symboles tombent dans la queue non initialisée de .data, donc il n'y a aucun contenu à
+    // récupérer du binaire — seulement cette borne à respecter.
+    private const int AssetTableCapacity = 24;
+    private static readonly byte* s_ModelTable_005e96a0 = (byte*)NativeMemory.AllocZeroed((nuint)AssetTableCapacity, (nuint)sizeof(nint));
+    private static readonly byte* s_AnimationTable_005e9640 = (byte*)NativeMemory.AllocZeroed((nuint)AssetTableCapacity, (nuint)sizeof(nint));
+
+    /// <summary>
+    /// Ghidra: FUN_005066d0 @ 0x005066d0 — le point d'entrée de l'état 4, la sélection des
+    /// personnages. Deux moitiés, comme <see cref="RunMainMenuState"/> : le chargement puis la
+    /// boucle de frame.
+    /// </summary>
+    private static void RunCharacterSelectState()
+    {
+        LoadCharacterSelectResources();   // Ghidra: FUN_005066e0()
+        RunCharacterSelectFrameLoop();    // Ghidra: FUN_00506880()
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00506880 @ 0x00506880 — la boucle de frame de l'écran. Le prologue ci-dessous est
+    /// intégralement déterminable et transcrit tel quel ; la boucle elle-même ne l'est pas encore,
+    /// pour deux raisons distinctes qu'il faut garder séparées :
+    ///
+    /// <para><b>1. Les huit sous-états ne sont pas dans <c>Blaze.c</c>.</b> La boucle répartit
+    /// chaque frame par <c>(*(code *)(&amp;PTR_LAB_00560708)[DAT_00578de8])(...)</c>. Les huit
+    /// cibles ont été relevées dans <c>Legacy/Blaze.exe</c> (décalage fichier <c>0x15ED08</c>) et
+    /// sont déclarées en talons ci-dessous — mais aucun de leurs corps n'a été décompilé : la
+    /// décompilation saute de <c>FUN_00506880</c> à <c>FUN_00507870</c>. Rien ne les appelle
+    /// directement, seule cette table les désigne, donc Ghidra n'a jamais désassemblé ces régions.
+    /// C'est la classe « corps uniquement adressés » : il faut un re-run Ghidra ciblé sur les huit
+    /// adresses, pas une relecture de <c>Blaze.c</c>.</para>
+    ///
+    /// <para><b>2. Ghidra a raté les paramètres de <c>FUN_00506880</c> elle-même.</b> Son corps
+    /// utilise <c>unaff_EBX</c>, <c>unaff_EBP</c> et <c>unaff_ESI</c>, et les passe tels quels à
+    /// <c>FUN_0051d1f0</c>, <c>FUN_0051be20</c>, <c>FUN_00545340</c>, <c>FUN_00521f20</c> et
+    /// d'autres. Ces sites d'appel ne sont pas transcriptibles sans re-run : inventer une signature
+    /// violerait la règle du projet.</para>
+    ///
+    /// <para>Reste, indépendamment du re-run, une liste de fonctions de rendu non reconstruites que
+    /// la boucle appelle : <c>FUN_0051d1f0</c> (le rendu de modèle animé), <c>FUN_0051be20</c> /
+    /// <c>FUN_0051bdb0</c>, <c>FUN_00521df0</c> / <c>FUN_00521f20</c>, <c>FUN_0051f9c0</c>,
+    /// <c>FUN_00545340</c>, <c>FUN_00544350</c>, <c>FUN_00520ae0</c>.</para>
+    /// </summary>
+    private static void RunCharacterSelectFrameLoop()
+    {
+        uint* otBase, otEntry, primCursor;
+        FrameBegin(&otBase, &otEntry, &primCursor);   // Ghidra: FUN_0052a1e0(&local_1c,&local_18,&local_20)
+
+        // Ghidra: Ordinal_379(400); Ordinal_378(0xa0,0x78) — libgte SetGeomScreen / SetGeomOffset.
+        // (0xa0, 0x78) = (160, 120), le centre d'un écran 320x240 : la projection est recentrée sur
+        // l'écran avant que quoi que ce soit ne soit projeté.
+        Ordinal_379(400);
+        Ordinal_378(0xa0, 0x78);
+
+        PlayMusicTrack(4);   // Ghidra: FUN_00529ad0(4)
+
+        InitialiseCharacterSelectSlots();
+
+        // Ghidra: DAT_00573338 = MainMem + 0xf0000, puis 0x2000 octets remis à zéro d'un bloc.
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null)
+        {
+            throw new NotImplementedException(
+                "RunCharacterSelectFrameLoop: winsys3d.dll's MainMem export resolves to null, so " +
+                "the state's 0x2000-byte scratch block at MainMem + 0xf0000 cannot be placed.");
+        }
+        s_SelectScratch_00573338 = mainMem + 0xf0000;
+        NativeMemory.Clear(s_SelectScratch_00573338, 0x2000);
+
+        JoystickResetState(false);   // Ghidra: FUN_00504b10(0)
+
+        // Ghidra: la sortie normale passe par `DAT_005de510 = 0` avant LAB_00506fe7 ; la sortie par
+        // sous-état -1 y saute directement (`goto LAB_00506fe7`) et laisse donc l'état du jeu
+        // intact. Le drapeau reproduit cette différence, que le `goto` de l'original masque.
+        bool resetGameState = true;
+
+        while (true)
+        {
+            s_Unknown_005de15c = 1;
+
+            if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+            {
+                s_Unknown_005de158 = 0;
+                s_Unknown_005de154 = 0;
+            }
+            else
+            {
+                s_Unknown_005de154 = 0xa0;
+                s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0xc;
+            }
+
+            // Ghidra: FUN_0040a600(4) — corps vide, voir LoadCharacterSelectResources.
+
+            byte* pad = CurrentPadState();
+
+            // Ghidra: le test de sortie. Les deux bits 9 = 0b1001 du champ +2, sauf au sous-état 7
+            // tant que DAT_00562b68 est positif.
+            if ((pad[2] & 9) == 9
+                && (s_SelectState_00578de8[0] != 7 || s_Unknown_00562b68 < 0))
+            {
+                break;
+            }
+
+            if (s_SelectState_00578de8[1] != s_SelectState_00578de8[0])
+            {
+                s_SelectState_00578de8[1] = s_SelectState_00578de8[0];
+                s_SelectFlags_00562a48[0] = 1;
+                s_SelectFlags_00562a48[1] = 1;
+            }
+
+            primCursor = InvokeCharacterSelectSubState(
+                s_SelectState_00578de8[0], otBase, otEntry, primCursor, pad);
+
+            if (s_SelectState_00578de8[0] == -1)
+            {
+                resetGameState = false;
+                break;
+            }
+
+            s_SelectFlags_00562a48[1] = 0;
+
+            if (s_SelectState_00578de8[0] != 0 && s_SelectState_00578de8[0] < 7)
+            {
+                // TODO(REVERSE): le bloc « un personnage est en scène » — amortissement de caméra
+                // sur DAT_00572b64..DAT_00572b74, boucle de particules sur DAT_00572c34 (pas 0x27
+                // ints, borne 0x572ea4) via FUN_00520ae0, puis le rendu du modèle animé, qui est
+                // désormais DrawAnimatedModel. Entièrement lisible dans
+                // Legacy/Raw/Blaze/FUN_00506880.c ; il ne reste que FUN_00520ae0 et le bloc de
+                // globales à 0x00572b40, non modélisé.
+                // Le sous-état 0 ne passe jamais ici, donc ce trou ne bloque pas l'entrée à l'écran.
+                throw new NotImplementedException(
+                    $"RunCharacterSelectFrameLoop: sub-state {s_SelectState_00578de8[0]} needs the " +
+                    "in-scene block of FUN_00506880. Its model draw is now DrawAnimatedModel; what " +
+                    "remains is FUN_00520ae0 (the particle pass) and the 0x00572b40 globals.");
+            }
+
+            // Ghidra: DAT_006008fc — la translation Z de la matrice de caméra, amortie vers 800.
+            CameraTranslation[2] += (800 - CameraTranslation[2]) >> 2;
+
+            // Ghidra: le descripteur de sprite de 20 octets, monté sur la pile — un seul bloc
+            // contigu, comme s_LoadingScreenSprite. Le champ 0 vient du répertoire de ressources.
+            byte* sprite = stackalloc byte[20];
+            NativeMemory.Clear(sprite, 20);
+            *(uint**)sprite = *(uint**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x30);
+            *(uint*)(sprite + 4) = 0x1000000;
+
+            // Ghidra: la rangée de descripteurs d'interface — DAT_00560ff0 et ses suivants, pas
+            // 0x8c8 octets. Le compte est DAT_00562a50, que les handlers ajustent (3 au maximum
+            // observé). Les coordonnées se lisent dans le descripteur et sont décalées de (0xc, 4).
+            for (int i = 0; i < s_SelectFlags_00562a48[2]; i++)
+            {
+                byte* descriptor = s_UiDescriptors_00560ff0 + i * UiDescriptorStride;
+
+                *(short*)(sprite + 8) = (short)(*(short*)(descriptor + 4) + 0xc);
+                *(short*)(sprite + 0xa) = (short)(*(short*)(descriptor + 6) + 4);
+                *(short*)(sprite + 0x10) =
+                    (sbyte)s_SelectSubStateBytes_00562a98[s_SelectState_00578de8[0] * 4 + i];
+
+                EmitViewportRect(otBase, &primCursor);                              // FUN_0051be20
+                primCursor = DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);  // FUN_00521df0
+                primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)sprite); // FUN_0051f9c0
+                EmitClipRect(otBase, &primCursor);                                  // FUN_0051bdb0
+                primCursor = DrawUiPanel(otBase, primCursor, descriptor);           // FUN_00545340
+            }
+
+            if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+            {
+                s_Unknown_005de158 = s_SizeSetting_005de160 * 0xc - 0x70;
+            }
+            else if (s_SizeSetting_005de160 < 1)
+            {
+                s_Unknown_005de158 -= 8;
+            }
+            else
+            {
+                s_Unknown_005de158 = (s_SizeSetting_005de160 + 9) * 0xc;
+            }
+
+            if (s_SelectState_00578de8[2] >= 0)
+            {
+                // Ghidra: FUN_00544350(directory[0x70][DAT_00578df0], 0, &DAT_00560728, 0)
+                BindMenuLabels(
+                    *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                              + s_SelectState_00578de8[2] * 4),
+                    0, s_StatusDescriptor_00560728, 0);
+            }
+
+            primCursor = RunTextEngine(primCursor, s_StatusDescriptor_00560728);       // FUN_005443a0
+            primCursor = DrawUiPanel(otBase, primCursor, s_StatusDescriptor_00560728);
+
+            s_Unknown_005de15c = 0;
+
+            // Ghidra: le plein écran de fin de frame — (0xa0, 0x78) est le centre, (0x1420, 0x1149)
+            // les deux mots de texture, et le champ 0 vient cette fois du premier slot de +0x94.
+            *(short*)(sprite + 8) = 0xa0;
+            *(short*)(sprite + 0xa) = 0x78;
+            *(ushort*)(sprite + 0xc) = 0x1420;
+            *(ushort*)(sprite + 0xe) = 0x1149;
+            *(short*)(sprite + 0x10) = 0;
+            *(uint**)sprite = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+            *(uint*)(sprite + 4) = 0x1000000;
+
+            primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
+
+            FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+        }
+
+        if (resetGameState) s_GameStateId = 0;
+
+        // Ghidra: LAB_00506fe7 — les deux sorties se rejoignent ici.
+        FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+        s_Unknown_005de15c = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>(*(code *)(&amp;PTR_LAB_00560708)[DAT_00578de8])(...)</c> @ 0x00506a52.
+    ///
+    /// <para>La signature est <b>reconstruite depuis l'assembleur</b>, parce que le pseudo-C de
+    /// Ghidra est faux ici : il rend les trois premiers arguments en <c>unaff_EBP</c>,
+    /// <c>unaff_EBX</c>, <c>unaff_ESI</c>, alors que l'assembleur empile quatre valeurs et restaure
+    /// par <c>ADD ESP,0x10</c> — donc cdecl à quatre arguments, et les trois premiers sont des
+    /// <b>locaux de pile</b>, pas des registres. En suivant les décalages : <c>[E+0x14]</c>,
+    /// <c>[E+0x18]</c> et <c>[E+0x10]</c>, qui sont exactement les trois out-params de
+    /// <c>FUN_0052a1e0</c> — <see cref="FrameBegin"/>. La valeur de retour est réécrite dans
+    /// <c>[E+0x10]</c>, le curseur de primitives.</para>
+    ///
+    /// <para>Le quatrième argument est le même pointeur de manette que le test de sortie vient
+    /// d'utiliser (<c>PUSH EAX</c> en 0x00506a46). Le pseudo-C le rend <c>&amp;DAT_00604a20 + i * 4</c>
+    /// alors que l'assembleur fait <c>SHL EAX,0x4</c> : voir <see cref="CurrentPadState"/>.</para>
+    /// </summary>
+    private static uint* InvokeCharacterSelectSubState(
+        int index, uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        if ((uint)index >= (uint)s_CharacterSelectSubStateAddresses.Length)
+        {
+            throw new NotImplementedException(
+                $"Character-select sub-state index {index} is outside PTR_LAB_00560708's eight " +
+                "entries; the original would call through whatever the table's neighbour holds.");
+        }
+
+        if (index == 0) return CharacterSelectSubState0(otBase, otEntry, primCursor, pad);
+
+        throw new NotImplementedException(
+            $"Character-select sub-state {index} (0x{s_CharacterSelectSubStateAddresses[index]:x8}) " +
+            "is decompiled but not yet transcribed — see Legacy/Raw/Blaze/FUN_" +
+            $"{s_CharacterSelectSubStateAddresses[index]:x8}.c. Signature: " +
+            "uint* handler(uint* otBase, uint* otEntry, uint* primCursor, byte* pad).");
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00507010 @ 0x00507010 — <c>PTR_LAB_00560708[0]</c>, le sous-état d'entrée : le
+    /// carrousel de personnages.
+    ///
+    /// <para>Attention aux deux échelles sur le pointeur de manette. Ghidra le type <c>ushort *</c>,
+    /// donc <c>in_stack_00000010[1]</c> et <c>[3]</c> sont les mots aux octets 2 et 6, tandis que
+    /// <c>*(byte *)((int)in_stack_00000010 + 3)</c> est l'octet 3 — la moitié haute du premier. Les
+    /// deux formes coexistent dans la même fonction ; elles sont distinguées ci-dessous par
+    /// <c>padWords</c> et <c>pad</c>.</para>
+    /// </summary>
+    private static uint* CharacterSelectSubState0(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        ushort* padWords = (ushort*)pad;
+        byte* scratch = s_SelectScratch_00573338;
+
+        // Ghidra: le pilotage libre, actif tant que DAT_005633a8 vaut 0. Le bit 1 du premier mot
+        // choisit la cible : couleur de fond au pas de 8 (bornée à 8 bits), sinon rotation de la
+        // scène au pas de 0x40 (bornée au tour complet de 0x1000).
+        if (s_UnknownModeFlag_005633a8 == 0)
+        {
+            ushort buttons = padWords[0];
+            if ((buttons & 1) == 0)
+            {
+                if ((buttons & 0x400) != 0) s_SceneYaw_005e930a -= 0x40;
+                if ((padWords[0] & 0x800) != 0) s_SceneYaw_005e930a += 0x40;
+                if ((padWords[0] & 0x100) != 0) s_SceneRoll_005e930c -= 0x40;
+                if ((padWords[0] & 0x200) != 0) s_SceneRoll_005e930c += 0x40;
+                if ((padWords[0] & 0x1000) != 0) s_ScenePitch_005e9308 += 0x40;
+                if ((padWords[0] & 0x4000) != 0) s_ScenePitch_005e9308 -= 0x40;
+                s_ScenePitch_005e9308 &= 0xfff;
+                s_SceneYaw_005e930a &= 0xfff;
+                s_SceneRoll_005e930c &= 0xfff;
+            }
+            else
+            {
+                if ((buttons & 0x400) != 0) s_BackColourG_005e93a2 -= 8;
+                if ((padWords[0] & 0x800) != 0) s_BackColourG_005e93a2 += 8;
+                if ((padWords[0] & 0x100) != 0) s_BackColourB_005e93a4 -= 8;
+                if ((padWords[0] & 0x200) != 0) s_BackColourB_005e93a4 += 8;
+                if ((padWords[0] & 0x1000) != 0) s_BackColourR_005e93a0 += 8;
+                if ((padWords[0] & 0x4000) != 0) s_BackColourR_005e93a0 -= 8;
+                s_BackColourR_005e93a0 &= 0xff;
+                s_BackColourG_005e93a2 &= 0xff;
+                s_BackColourB_005e93a4 &= 0xff;
+            }
+        }
+
+        // Ghidra: la première frame du sous-état — le drapeau que FUN_00506880 relève.
+        if (s_SelectFlags_00562a48[0] != 0)
+        {
+            s_SelectFlags_00562a48[0] = 0;
+
+            s_BackColourR_005e93a0 = 0x60;
+            s_BackColourG_005e93a2 = 0x60;
+            s_BackColourB_005e93a4 = 0x60;
+            s_ScenePitch_005e9308 = 0x200;
+            s_SceneYaw_005e930a = 0x380;
+            s_SceneRoll_005e930c = 0;
+
+            // Ghidra: DAT_00604928 — un vecteur de trois shorts. Le troisième cadre la caméra sur
+            // le personnage courant : (index - 8) * 0x100, soit un seizième de tour par cran.
+            *(short*)(s_CameraVector_00604928 + 0) = 0x15e;
+            *(short*)(s_CameraVector_00604928 + 4) = 0;
+            *(short*)(s_CameraVector_00604928 + 2) = (short)((scratch[0x150] - 8 & 0xf) << 8);
+
+            s_Unknown_006008d0 = 0;
+            s_Unknown_006008d4 = 0;
+            s_Unknown_006008d8 = 0;
+            CameraTranslation[0] = 0;
+            CameraTranslation[1] = 0;
+            CameraTranslation[2] = 0;
+
+            // Ghidra: les seize emplacements de personnage, posés sur un cercle. Ordinal_451/450
+            // sont rsin/rcos en 0x1000 pas par tour, donc `i << 8` répartit exactement seize
+            // positions, et 0x96 = 150 est le rayon.
+            for (int i = 0; i < CharacterSlotCount; i++)
+            {
+                byte* slot = s_CharacterSlots_00578420 + i * CharacterSlotStride;
+
+                *(uint*)(slot + 0x00) = 0x800000;
+                slot[0x04] = (byte)i;
+                slot[0x08] = 0;
+                slot[0x0a] = 0;
+                slot[0x0b] = (byte)(i & 3);
+                *(ushort*)(slot + 0x10) = 0;
+                *(ushort*)(slot + 0x12) = 0;
+                *(ushort*)(slot + 0x18) = 0;
+                *(ushort*)(slot + 0x1a) = 0;
+                *(int*)(slot + 0x1c) = (int)GetSinTableEntry(i << 8) * -0x96;
+                *(int*)(slot + 0x20) = 0;
+                *(int*)(slot + 0x24) = GetCosTableEntry(i << 8) * 0x96;
+                *(ushort*)(slot + 0x28) = 0;
+                *(ushort*)(slot + 0x2a) = 0;
+                *(ushort*)(slot + 0x2c) = 0;
+                *(ushort*)(slot + 0x30) = 0;
+                *(ushort*)(slot + 0x34) = 0;
+                *(ushort*)(slot + 0x36) = 1;
+                *(uint*)(slot + 0x38) = 0xffffff;
+            }
+
+            s_SelectFlags_00562a48[2] = 1;
+        }
+
+        // Ghidra: la machine à phases sur DAT_00578df0, sautée entièrement quand DAT_00562a4c est
+        // encore posé. L'original la referme par un maillage de `goto` (LAB_00507438, LAB_0050743d,
+        // joined_r0x00507423) ; il se réduit à deux variantes d'annulation qui ne diffèrent que par
+        // l'octet remis à zéro et le bit effacé de DAT_00560fef.
+        if (s_SelectFlags_00562a48[1] == 0)
+        {
+            bool sharedCancel = false;
+
+            switch (s_SelectState_00578de8[2])
+            {
+                case 0:
+                {
+                    sbyte before = (sbyte)scratch[0x150];
+                    if ((padWords[3] & 0x80) != 0) scratch[0x150] = (byte)(before - 1);
+                    if ((padWords[3] & 0x20) != 0) scratch[0x150]++;
+                    scratch[0x150] &= 0xf;
+                    if (before != (sbyte)scratch[0x150]) PlayUiSound3A();   // FUN_0053db60
+
+                    ushort word = padWords[1];
+                    if ((word & 0x8000) == 0)
+                    {
+                        if ((word & 0x4000) != 0)
+                        {
+                            padWords[1] = (ushort)(word & 0xbfff);
+                            PlayUiSound39();                                // FUN_0053dba0
+                            s_SelectState_00578de8[2] = 0x77;
+                        }
+                    }
+                    else
+                    {
+                        padWords[1] = (ushort)(word & 0x7fff);
+                        PlayUiSound38();                                     // FUN_0053db80
+                        s_SelectState_00578de8[2]++;
+                    }
+                    break;
+                }
+
+                case 1:
+                    if ((s_Unknown_00560fef & 2) == 0)
+                    {
+                        padWords[1] &= 0x7fff;
+                        s_SelectState_00578de8[2]++;
+                    }
+                    else sharedCancel = true;
+                    break;
+
+                case 2:
+                    if ((s_Unknown_00560fef & 4) == 0)
+                    {
+                        if (s_Unknown_005e909f == 0)
+                        {
+                            // Ghidra: FUN_005352e0(&DAT_00578420 + index * 0x27, &DAT_00572b48, 0x27)
+                            // — 0x27 dwords = 0x9c octets, soit l'emplacement entier recopié vers le
+                            // bloc de scène. Le sous-état suivant travaille sur cette copie.
+                            CopyDwords(
+                                (uint*)(s_CharacterSlots_00578420 + scratch[0x150] * CharacterSlotStride),
+                                (uint*)s_SceneEntity_00572b48, 0x27);
+
+                            s_SelectState_00578de8[0]++;
+                            s_SelectState_00578de8[2] = 0x13;
+                            scratch[0x100] = 0;
+                            s_SelectState_00578de8[6] = 0;
+                        }
+                        else s_SelectState_00578de8[2] = 0;
+                    }
+                    else if ((pad[3] & 0x40) != 0)
+                    {
+                        s_Unknown_00560763 = 0;
+                        s_Unknown_00560fef &= 0xfb;
+                        PlayUiSound39();
+                        s_SelectState_00578de8[2] = 0;
+                    }
+                    break;
+
+                case 0x59:
+                    if ((s_Unknown_00560fef & 4) != 0)
+                    {
+                        if ((pad[3] & 0x40) != 0)
+                        {
+                            s_Unknown_00560763 = 0;
+                            s_Unknown_00560fef &= 0xfb;
+                            PlayUiSound39();
+                            s_SelectState_00578de8[2] = 0;
+                        }
+                    }
+                    else if (s_Unknown_005e909f == 0)
+                    {
+                        // La sortie de l'écran : le sous-état -1 fait sortir FUN_00506880 par son
+                        // `goto`, qui saute la remise à zéro de l'état de jeu — celle-ci est faite
+                        // ici à la place.
+                        s_SelectState_00578de8[0] = -1;
+                        s_GameStateId = 0;
+                    }
+                    else s_SelectState_00578de8[2] = 0;
+                    break;
+
+                case 0x77:
+                    if ((s_Unknown_00560fef & 2) == 0)
+                    {
+                        padWords[1] &= 0x7fff;
+                        s_SelectState_00578de8[2] = 0x59;
+                    }
+                    else sharedCancel = true;
+                    break;
+            }
+
+            if (sharedCancel && (pad[3] & 0x40) != 0)
+            {
+                s_Unknown_0056075b = 0;
+                s_Unknown_00560fef &= 0xfd;
+                PlayUiSound39();
+                s_SelectState_00578de8[2] = 0;
+            }
+        }
+
+        // Ghidra: l'amortissement de la rotation vers le personnage courant, par quarts, sur le
+        // chemin le plus court du tour de 0x1000.
+        ushort delta = (ushort)(((scratch[0x150] - 8) * 0x100
+                                 - *(short*)(s_CameraVector_00604928 + 2)) & 0xfff);
+        short step = delta < 0x800
+            ? (short)((short)delta >> 2)
+            : (short)-(short)((0x1000 - (short)delta) >> 2);
+        *(short*)(s_CameraVector_00604928 + 2) += step;
+
+        // Ghidra: FUN_0051c300(&DAT_00604928, &DAT_006008e0) — la pose de caméra devient la matrice
+        // que FUN_0051d1f0 recopiera ensuite dans le registre MATRIX du GTE.
+        RotMatrix((short*)s_CameraVector_00604928, (short*)s_CameraMatrix_006008e0);
+
+        // Ghidra: Ordinal_376 — libgte SetBackColor.
+        Ordinal_376((byte)s_BackColourR_005e93a0,
+                    (byte)s_BackColourG_005e93a2,
+                    (byte)s_BackColourB_005e93a4);
+
+        // === Le carrousel : seize emplacements amortis, dessinés puis étiquetés ===
+        //
+        // Les décalages ci-dessous sont ceux de l'emplacement (base 0x00578420), pas ceux de
+        // `psVar11` : l'original promène un `short *` calé 0x2a octets après la base, ce qui rend
+        // tous ses indices négatifs. Recalés ici sur la base, où ils recoupent exactement le bloc
+        // d'initialisation de la première frame plus haut.
+        short* projected = stackalloc short[4];
+        byte* slotCopy = stackalloc byte[40];
+        int angleStep = 0;
+        int lift = 0x2000;
+
+        for (int i = 0; i < CharacterSlotCount; i++, angleStep += 0x100, lift -= 0x100)
+        {
+            byte* slot = s_CharacterSlots_00578420 + i * CharacterSlotStride;
+
+            short* yaw = (short*)(slot + 0x32);
+            short* glowR = (short*)(slot + 0x28);
+            short* glowG = (short*)(slot + 0x2a);
+            short* glowB = (short*)(slot + 0x2c);
+            short* tiltX = (short*)(slot + 0x10);
+            short* tiltY = (short*)(slot + 0x12);
+
+            // L'emplacement choisi se redresse et s'illumine ; les autres s'inclinent et
+            // s'éteignent. Toujours par quarts — l'amortissement standard du jeu.
+            if (i == scratch[0x150])
+            {
+                *yaw += (short)(-(*yaw + angleStep) >> 2);
+                *glowR += (short)((0x1800 - *glowR) >> 2);
+                *glowG += (short)((0x1800 - *glowG) >> 2);
+                *glowB += (short)((0x1800 - *glowB) >> 2);
+                *tiltX += (short)(-*tiltX >> 2);
+                *tiltY += (short)(-*tiltY >> 2);
+            }
+            else
+            {
+                *yaw += (short)((lift - *yaw) >> 2);
+                *glowR += (short)(-*glowR >> 2);
+                *glowG += (short)(-*glowG >> 2);
+                *glowB += (short)(-*glowB >> 2);
+                *tiltX += (short)((0x1000 - *tiltX) >> 2);
+                *tiltY += (short)((0x1000 - *tiltY) >> 2);
+            }
+
+            // Sous 0x100 de luminosité, l'emplacement n'est pas dessiné du tout.
+            if (*glowR > 0xff)
+            {
+                byte assetIndex = slot[0x04];
+                short* animIndex = (short*)(slot + 0x18);
+                short* frame = (short*)(slot + 0x1a);
+
+                byte* bundle = ((byte**)s_AnimationTable_005e9640)[assetIndex];
+                byte* animEntry = *(byte**)(bundle + *animIndex * 4);
+
+                // Avance de frame, bouclée sur la longueur de l'animation (+0x16).
+                (*frame)++;
+                if (*(ushort*)(animEntry + 0x16) <= *frame) *frame = 0;
+
+                // Ghidra: CONCAT22(psVar11[-9] >> 0xf, psVar11[-0x10]) — la moitié haute est le
+                // signe de l'indice d'animation, la basse un champ de l'emplacement.
+                // TODO(REVERSE): ce panachage sent l'artefact de reconstruction ; transcrit tel
+                // quel faute de mieux.
+                uint modelExtra = (uint)((*animIndex >> 0xf) << 0x10)
+                                | *(ushort*)(slot + 0x0a);
+
+                primCursor = DrawAnimatedModel(
+                    otBase, primCursor, animEntry,
+                    (int*)(((byte**)s_ModelTable_005e96a0)[assetIndex]),
+                    (int*)(slot + 0x1c), *frame, modelExtra);
+            }
+
+            // L'étiquette : on projette la position de l'emplacement, relevée de 0x3c000, et on
+            // ne dessine que si elle tombe à l'écran.
+            CopyDwords((uint*)(slot + 0x1c), (uint*)slotCopy, 10);
+            *(int*)(slotCopy + 4) += 0x3c000;
+
+            if (ProjectPoint((int*)slotCopy, projected) == 0) continue;
+
+            byte* labelSprite = stackalloc byte[20];
+            NativeMemory.Clear(labelSprite, 20);
+
+            byte* atlas = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x28);
+            *(byte**)labelSprite = atlas;
+            *(uint*)(labelSprite + 4) = 0x1000000;
+            *(short*)(labelSprite + 8) = projected[0];
+            *(short*)(labelSprite + 0xa) = projected[1];
+            *(short*)(labelSprite + 0xc) = *(short*)(slot + 0x10);
+            *(short*)(labelSprite + 0xe) = *(short*)(slot + 0x12);
+            *(short*)(labelSprite + 0x10) = (short)i;
+
+            // Ghidra décrémente deux octets de l'entrée d'atlas, dessine, puis les restaure — un
+            // décalage d'un pixel appliqué le temps des deux passes.
+            atlas[i * 8 + 2]--;
+            atlas[i * 8 + 3]--;
+
+            // Deux passes décalées d'un pixel en X : l'ombre puis le texte.
+            uint* labelOt = otBase + projected[2] + 0x14;
+            primCursor = DrawSpritePrimitive(labelOt, primCursor, (int*)labelSprite, 2, 0);
+            *(short*)(labelSprite + 8) -= 1;
+            primCursor = DrawSpritePrimitive(labelOt, primCursor, (int*)labelSprite, 2, 0);
+
+            atlas[i * 8 + 2]++;
+            atlas[i * 8 + 3]++;
+        }
+
+        // Ghidra: les deux passes de texte finales — le nom de la classe puis celui du
+        // personnage courant, toutes deux dans le premier descripteur d'interface.
+        BindMenuLabels(s_Unknown_005606f8, 0, s_UiDescriptors_00560ff0, 0);
+        primCursor = RunTextEngine(primCursor, s_UiDescriptors_00560ff0);
+
+        BindMenuLabels(
+            *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0xc + scratch[0x150] * 4),
+            0, s_UiDescriptors_00560ff0, 0);
+        primCursor = RunTextEngine(primCursor, s_UiDescriptors_00560ff0);
+
+        return primCursor;
+    }
+
+    /// <summary>
+    /// Ghidra: la boucle d'initialisation en tête de FUN_00506880 — neuf structures de 0x8c8 octets
+    /// à partir de 0x00573518, dont seuls les 0x68 premiers octets sont écrits.
+    ///
+    /// <para>Le type est identifiable : <c>DAT_00560728</c> et <c>DAT_00560ff0</c> sont deux
+    /// instances **statiques** du même type, lisibles dans <c>Legacy/Blaze.exe</c>, et 14 des 26
+    /// premiers dwords y sont identiques à ce que cette boucle écrit — dont le <c>0x31</c> de tête
+    /// et l'alternance de <c>0x01000000</c>. <c>FUN_005443a0</c>, le moteur de texte de l'interface,
+    /// reçoit <c>DAT_00560728</c> (<c>Blaze.c:55881</c>), donc ces structures sont les descripteurs
+    /// que ce moteur consomme. Leur disposition champ par champ reste à établir, d'où les
+    /// constantes brutes ci-dessous : les transcrire telles quelles est fidèle, les nommer serait
+    /// inventer.</para>
+    /// </summary>
+    private static void InitialiseCharacterSelectSlots()
+    {
+        for (int slot = 0; slot < CharacterSelectSlotCount; slot++)
+        {
+            uint* entry = (uint*)(s_SelectSlots_00573518 + slot * CharacterSelectSlotStride);
+
+            // Ghidra: puVar4 pointe 8 octets après la base, d'où les indices négatifs de l'original.
+            // Réécrits ici en décalages depuis la base, dans l'ordre des octets plutôt que dans
+            // l'ordre — arbitraire — où Ghidra les a émis.
+            entry[0] = 0x31;
+            entry[1] = 0;
+            entry[2] = 0;
+            entry[3] = 0;
+            entry[4] = 0x10180000;
+            entry[5] = (uint)(slot + 3);
+            entry[6] = 0x010f0808;
+            entry[7] = 0x02cf1020;
+            entry[8] = 0x01070c10;
+            entry[9] = 0x01000000;
+            entry[10] = 0;
+            entry[11] = 0x01000000;
+            entry[12] = 0x000f0000;
+            entry[13] = 0x01000000;
+            entry[14] = 0x000f0c00;
+            entry[15] = 0x01000000;
+            entry[16] = 0x010f0000;
+            entry[17] = 0x01000000;
+
+            // Ghidra: la queue — quatre paires (0x000f0000, 0x01000000) consécutives.
+            for (int i = 0; i < 4; i++)
+            {
+                entry[18 + i * 2] = 0x000f0000;
+                entry[19 + i * 2] = 0x01000000;
+            }
+        }
+    }
+
+    // Ghidra: &DAT_00573518 — neuf structures contiguës de 0x8c8 octets (le pas 0x232 dwords de la
+    // boucle). L'original les prend dans .data ; ici c'est un bloc alloué, comme les autres.
+    private const int CharacterSelectSlotCount = 9;
+    private const int CharacterSelectSlotStride = 0x8c8;
+    private static readonly byte* s_SelectSlots_00573518 =
+        (byte*)NativeMemory.AllocZeroed(CharacterSelectSlotCount, CharacterSelectSlotStride);
+
+    // Ghidra: DAT_00573338 — le bloc de 0x2000 octets que la boucle place à MainMem + 0xf0000.
+    // C'est la même adresse que la destination de la liste +0xb0 de LoadCharacterSelectResources :
+    // le chargement y dépose des blocs bruts, la boucle de frame l'efface puis le relit
+    // (`*(byte *)(DAT_00573338 + 0x151)` sert d'index dans la table de couleurs DAT_00562a58).
+    private static byte* s_SelectScratch_00573338;
+
+    // =====================================================================
+    // Les huit sous-états de la sélection des personnages
+    //
+    // Ghidra: PTR_LAB_00560708 @ 0x00560708 — table de huit pointeurs relevée dans
+    // Legacy/Blaze.exe au décalage fichier 0x15ED08. FUN_00506880 y répartit chaque frame par
+    // DAT_00578de8. Aucun de ces huit corps n'existe dans Blaze.c : seule cette table les désigne,
+    // donc Ghidra ne les a jamais désassemblés. Un re-run ciblé sur ces huit adresses les produit
+    // d'un coup.
+    //
+    // Vérifié dans le binaire : les huit sont de vrais prologues de fonction, et **sept sur huit**
+    // ouvrent sur la même instruction, `mov eax, [0x00562A48]` — le drapeau « première frame de ce
+    // sous-état » que LoadCharacterSelectResources met à 1 et que FUN_00506880 relève à chaque
+    // changement de sous-état. Le premier lit `[0x005633A8]` à la place.
+    // =====================================================================
+
+    // Ghidra: &DAT_00560708 — la table elle-même, relevée dans Legacy/Blaze.exe au décalage
+    // fichier 0x15ED08. Les huit corps sont désormais décompilés et rangés dans
+    // Legacy/Raw/Blaze/FUN_<adresse>.c ; il reste à les transcrire.
+    private static readonly int[] s_CharacterSelectSubStateAddresses =
+    {
+        0x00507010, 0x00507cb0, 0x00508410, 0x00508860,
+        0x00508e00, 0x00509470, 0x005098f0, 0x0050a910,
+    };
+
+    // Ghidra: &DAT_00560ff0 et suivants — la rangée de descripteurs d'interface que la boucle de
+    // frame dessine, pas 0x8c8 octets. Trois instances statiques, relevées dans Legacy/Blaze.exe
+    // aux décalages 0x15F5F0, 0x15FEB8 et 0x160780 ; FUN_00509470 confirme la troisième en
+    // référençant 0x00562180 = 0x00560ff0 + 2 * 0x8c8. Seuls les 0x68 premiers octets de chaque
+    // sont initialisés — la queue est nulle dans le fichier, vérifié.
+    //
+    // Le champ +4 est une paire (x, y) empaquetée : les trois boîtes sont à x = 0x28, 0x78, 0xd0
+    // pour un même y = 0x18, et le champ +0x14 vaut leur index 0, 1, 2.
+    private const int UiDescriptorStride = 0x8c8;
+    private const int UiDescriptorCount = 3;
+    private static readonly byte* s_UiDescriptors_00560ff0 = BuildUiDescriptors();
+
+    private static byte* BuildUiDescriptors()
+    {
+        byte* block = (byte*)NativeMemory.AllocZeroed(UiDescriptorCount, UiDescriptorStride);
+
+        ReadOnlySpan<uint> headers = new uint[]
+        {
+            // 0x00560ff0
+            0x00000031, 0x00180028, 0x00180048, 0x00000000,
+            0x01080000, 0x00000000, 0x010f0808, 0x02cf1020,
+            // 0x005618b8
+            0x00000031, 0x00180078, 0x00180050, 0x00000000,
+            0x01080000, 0x00000001, 0x010f0808, 0x02cf1020,
+            // 0x00562180
+            0x00000031, 0x001800d0, 0x00180038, 0x00000000,
+            0x021a0000, 0x00000002, 0x010f0808, 0x02cf1020,
+        };
+
+        for (int i = 0; i < UiDescriptorCount; i++)
+        {
+            uint* dest = (uint*)(block + i * UiDescriptorStride);
+            for (int f = 0; f < 8; f++) dest[f] = headers[i * 8 + f];
+        }
+
+        return block;
+    }
+
+    // Ghidra: &DAT_00560728 — une neuvième instance du même type, celle que la boucle de frame
+    // passe au moteur de texte (FUN_005443a0) puis dessine. Relevée au décalage fichier 0x15ED28.
+    private static readonly byte* s_StatusDescriptor_00560728 = BuildStatusDescriptor();
+
+    private static byte* BuildStatusDescriptor()
+    {
+        byte* block = (byte*)NativeMemory.AllocZeroed((nuint)UiDescriptorStride, 1);
+        uint* f = (uint*)block;
+
+        f[0] = 0x00000031; f[1] = 0x00a80028; f[2] = 0x002800e0; f[3] = 0x00000000;
+        f[4] = 0x021a0000; f[5] = 0x0000000c; f[6] = 0x010f0808; f[7] = 0x02cf1020;
+        f[8] = 0x01070c10; f[9] = 0x01000000; f[10] = 0x00000000; f[11] = 0x01000000;
+        f[12] = 0x000f28d4; f[13] = 0x01000000; f[14] = 0x000f0a00; f[15] = 0x01000000;
+        f[16] = 0x010f0000; f[17] = 0x01000000; f[19] = 0x01000000; f[21] = 0x01000000;
+        f[23] = 0x01000000;
+
+        return block;
+    }
+
+    // Ghidra: &DAT_00562a98 — quatre octets par sous-état, relevés au décalage fichier 0x161098.
+    // Seul le troisième varie (0x02 pour les sous-états 0 à 4, 0x03 pour 5 à 7).
+    private static readonly byte* s_SelectSubStateBytes_00562a98 = BuildSelectSubStateBytes();
+
+    private static byte* BuildSelectSubStateBytes()
+    {
+        byte* table = (byte*)NativeMemory.AllocZeroed(8, 4);
+        for (int row = 0; row < 8; row++)
+        {
+            table[row * 4 + 0] = 0x00;
+            table[row * 4 + 1] = 0x01;
+            table[row * 4 + 2] = (byte)(row < 5 ? 0x02 : 0x03);
+            table[row * 4 + 3] = 0x00;
+        }
+        return table;
+    }
+
+    // Ghidra: DAT_00562b68 — le compteur que le test de sortie consulte au sous-état 7. Jamais
+    // écrit par le code reconstruit pour l'instant, donc il lit 0.
+    private static int s_Unknown_00562b68;
+
+    // Ghidra: &DAT_005606f8 — le descripteur d'étiquette que le carrousel lie avant sa première
+    // passe de texte. Seize octets relevés dans Legacy/Blaze.exe au décalage fichier 0x15ECF8 :
+    // {0x0000000c, 0, 0x005066c0, 0}. Il précède immédiatement PTR_LAB_00560708.
+    //
+    // TODO(REVERSE): le troisième champ est un **pointeur de code**, 0x005066c0 — juste avant
+    // FUN_005066d0, et absent de Blaze.c comme les huit sous-états l'étaient. Si BindMenuLabels
+    // appelle à travers, ça se verra à l'exécution ; il faudra alors un re-run Ghidra ciblé de
+    // plus sur cette adresse.
+    private static readonly byte* s_Unknown_005606f8 = BuildLabelDescriptor005606f8();
+
+    private static byte* BuildLabelDescriptor005606f8()
+    {
+        byte* block = (byte*)NativeMemory.AllocZeroed(0x10);
+        ((uint*)block)[0] = 0x0000000c;
+        ((uint*)block)[1] = 0;
+        ((uint*)block)[2] = 0x005066c0;
+        ((uint*)block)[3] = 0;
+        return block;
+    }
+
+
+    // Ghidra: DAT_005e9308 / 930a / 930c — l'orientation de la scène, en pas de 0x1000 par tour
+    // (la convention des tables rsin/rcos de winsys3d, ordinaux 450/451).
+    private static int s_ScenePitch_005e9308, s_SceneYaw_005e930a, s_SceneRoll_005e930c;
+
+    // Ghidra: DAT_005e93a0 / 93a2 / 93a4 — la couleur de fond passée à Ordinal_376 (SetBackColor).
+    private static int s_BackColourR_005e93a0, s_BackColourG_005e93a2, s_BackColourB_005e93a4;
+
+    // Ghidra: DAT_00604928 — trois shorts contigus, la pose de caméra. Le troisième (+2) est
+    // l'angle amorti vers le personnage courant ; FUN_0051c300 consomme le tout.
+    private static readonly byte* s_CameraVector_00604928 = (byte*)NativeMemory.AllocZeroed(8);
+
+    // Ghidra: DAT_006008d0 / d4 / d8 — le décalage monde appliqué à la position de l'entité avant
+    // projection. Remis à zéro à l'entrée du sous-état 0.
+    private static int s_Unknown_006008d0, s_Unknown_006008d4, s_Unknown_006008d8;
+
+    // Ghidra: &DAT_006008e0 — la matrice de caméra, **un seul bloc de 0x20 octets**, exactement la
+    // MATRIX du SDK PlayStation : neuf shorts de rotation (0x006008e0..0x006008f1) puis les trois
+    // translations à +0x14, +0x18 et +0x1c, que Ghidra nomme DAT_006008f4, DAT_006008f8 et
+    // **DAT_006008fc**.
+    //
+    // Ce dernier point mérite d'être explicite : DAT_006008fc n'est pas une variable isolée. C'est
+    // la translation Z de cette matrice, et la boucle de frame l'amortit vers 800 à chaque image
+    // (`DAT_006008fc = DAT_006008fc + (800 - DAT_006008fc >> 2)`) — autrement dit elle fait avancer
+    // la caméra. Déclarer les trois translations à part de la rotation couperait la structure en
+    // deux et FUN_0051d1f0 recopierait une matrice à moitié fausse dans le registre du GTE.
+    private static readonly byte* s_CameraMatrix_006008e0 = (byte*)NativeMemory.AllocZeroed(0x20);
+
+    /// <summary>Ghidra: DAT_006008f4 / f8 / fc — la rangée de translation de la matrice ci-dessus.</summary>
+    private static int* CameraTranslation => (int*)(s_CameraMatrix_006008e0 + 0x14);
+
+    // Ghidra: &DAT_00578420 — les seize emplacements de personnage du carrousel, pas 0x9c octets
+    // (le 0x4e du pas `ushort *` de Ghidra, et le 0x27 de la copie par dwords en case 2). C'est le
+    // même pas 0x9c que la table DAT_005e93c8 que CurrentPadState indexe.
+    private const int CharacterSlotCount = 16;
+    private const int CharacterSlotStride = 0x9c;
+    private static readonly byte* s_CharacterSlots_00578420 =
+        (byte*)NativeMemory.AllocZeroed(CharacterSlotCount, CharacterSlotStride);
+
+    // Ghidra: &DAT_00572b48 — la destination de la copie faite à la validation : l'emplacement
+    // choisi devient l'entité de scène que le sous-état suivant anime.
+    private static readonly byte* s_SceneEntity_00572b48 =
+        (byte*)NativeMemory.AllocZeroed((nuint)CharacterSlotStride, 1);
+
+    // Ghidra: DAT_00560fef, DAT_0056075b, DAT_00560763 — l'état des boîtes de dialogue modales que
+    // le sous-état 0 ouvre puis attend. TODO(REVERSE): elles sont posées par le code de dialogue,
+    // non reconstruit, donc elles lisent 0 et les branches d'annulation ne sont pas encore
+    // atteignables.
+    private static byte s_Unknown_00560fef, s_Unknown_0056075b, s_Unknown_00560763;
+
+    // Ghidra: DAT_005e909f — testé contre 0 avant chaque transition. Écrit par FUN_00509470
+    // (sous-état 5), non reconstruit.
+    private static byte s_Unknown_005e909f;
+
+    /// <summary>
+    /// Ghidra: FUN_005352e0 @ 0x005352e0 — la recopie par dwords que le sous-état 0 utilise pour
+    /// figer l'emplacement choisi. TODO(REVERSE): le corps de FUN_005352e0 n'est pas lu ; il est
+    /// pris ici pour un `memcpy` de `count` dwords parce que les deux sites d'appel du sous-état 0
+    /// passent 0x27 (= 0x9c octets, l'emplacement entier) et 10. À confirmer avant de s'y fier.
+    /// </summary>
+    private static void CopyDwords(uint* source, uint* destination, int count)
+    {
+        for (int i = 0; i < count; i++) destination[i] = source[i];
+    }
 
     /// <summary>
     /// Ghidra: FUN_00542160 @ 0x00542160 â€” reloads the state's resources. Its directory loop is the
@@ -5782,6 +7699,62 @@ public static unsafe partial class Blaze
         prim[9] = packed | alphaSum;
 
         return prim + 10;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00521df0 @ 0x00521df0 — la sœur courte de <see cref="DrawSpritePrimitive"/> :
+    /// une primitive de **cinq** mots (longueur de tag 0x04000000) au lieu de dix. Même en-tête —
+    /// même lecture du couple couleur/attributs à <c>sprite[0] + (short)sprite[4] * 8</c>, même
+    /// garde sur les deux drapeaux — mais elle ne pose qu'un seul coin au lieu de quatre.
+    ///
+    /// <para>Le champ d'échelle se lit à <c>(colour >> 0x10) &amp; 0xff</c> et **0 y signifie
+    /// 0x100**, pas 0xff : la sœur longue teste la même chose mais retombe sur 0xff. L'écart est
+    /// dans l'original, transcrit tel quel.</para>
+    ///
+    /// <para>TODO(REVERSE) : le second drapeau est <c>DAT_00564a4c</c>, qui n'a pas de symbole
+    /// reconstruit. <see cref="DrawSpritePrimitive"/> lui substitue <c>s_SmallTextureFlag</c>, mais
+    /// celui-ci est <c>DAT_00564a38</c> (soit <c>AU_00564a05._51_4_</c>) — deux adresses
+    /// différentes. Plutôt que de propager un rapprochement douteux, on déclare ici le symbole
+    /// propre ; la divergence est à trancher, et elle touche aussi la sœur longue.</para>
+    /// </summary>
+    private static uint* DrawSpriteVariant(uint* otEntry, uint* prim, int* sprite, uint flags, uint extra)
+    {
+        uint* source = (uint*)(*(int*)sprite + (short)sprite[4] * 8);
+        uint colour = source[0];
+        uint posX = (uint)sprite[2];
+        uint attributes = source[1];
+
+        if (s_Unknown_00564a48 != 0)
+        {
+            if ((attributes & 0x200) != 0)
+            {
+                if (s_Unknown_00564a4c == 0) return prim;
+                attributes &= 0xfffffdff;
+            }
+            if ((flags & 2) != 0)
+            {
+                if (s_Unknown_00564a4c == 0) return prim;
+                flags = (byte)flags & 0xfdu;
+            }
+        }
+
+        uint scale = (colour >> 0x10) & 0xff;
+        if ((short)scale == 0) scale = 0x100;
+
+        // Ghidra: &DAT_005e8f02 — la moitié haute de l'entrée de la table de pages, d'où le +2 sur
+        // la même table que DrawSpritePrimitive indexe à &DAT_005e8f00.
+        ushort page = *(ushort*)(s_EntityDecodeTable_005e8f00 + 2 + ((attributes >> 0x10) & 0xff) * 4);
+
+        prim[1] = ((attributes >> 8) | (flags & 0xff) | 100) << 0x18 | ((uint)sprite[1] & 0x3ffffff);
+        prim[3] = (uint)(((((ushort)((short)extra >> 2)) & 0xffc0) | (extra & 0xff)) + page + (attributes >> 0x18))
+                  * 0x10000 | (colour & 0xffff);
+        prim[2] = posX;
+        prim[4] = (colour >> 0x18) << 0x10 | scale;
+
+        *prim = *otEntry | 0x4000000;
+        *otEntry = (uint)(nuint)prim;
+
+        return prim + 5;
     }
 
     // =====================================================================
@@ -9849,7 +11822,10 @@ public static unsafe partial class Blaze
                 // Ghidra: sets Zoom8BitTextures back to 1 before dispatching.
                 throw new NotImplementedException("thunk_FUN_00516020 (game state 3) not yet reconstructed");
             case 4:
-                throw new NotImplementedException("FUN_005066d0 (game state 4) not yet reconstructed");
+                // Ghidra: FUN_005066d0() â€” le chargement est reconstruit, la boucle de frame
+                // s'arrête sur ses huit sous-états non décompilés. Voir REVERSE_STATUS.md.
+                RunCharacterSelectState();
+                break;
             case 5:
                 throw new NotImplementedException("FUN_00504c90 (game state 5) not yet reconstructed");
             case 6:
