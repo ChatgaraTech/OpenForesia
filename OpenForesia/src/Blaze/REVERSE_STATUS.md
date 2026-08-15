@@ -14,19 +14,22 @@ recovered from its data sections. Read more with
 `OpenForesia.Tools at Legacy/Blaze.exe <va>`.
 
 Build: `dotnet build OpenForesia.sln` — builds clean as of this update.
-Run: the app targets **x86** but the only SDK here is x64, so building and
-running need *different* environments and cannot share one shell:
+Run: the app targets **x86**. Whether a plain `dotnet build`/`dotnet run` works
+depends on the machine — check `dotnet --list-sdks` first:
 
-- **Build** needs `DOTNET_ROOT=C:\Users\Sagara\.dotnet` on the x64 SDK.
-- **Run** needs that variable **unset**. Launch the built x86 apphost directly —
-  `OpenForesia\bin\Debug\net9.0\OpenForesia.exe` — and it resolves against the
-  x86 runtime in `C:\Program Files (x86)\dotnet` (Microsoft.NETCore.App 9.0.8,
-  runtime-only). `dotnet run`, or any launch with `DOTNET_ROOT` still pointing
-  at the x64 install, fails with `0x800700C1` (bad image format) because the
-  x86 apphost tries to load the x64 `hostfxr.dll`.
-Note for this machine: the .NET SDK is not on PATH / not in the usual install
-locations; a working SDK was found at `C:\Users\Sagara\.dotnet` (prepend it to
-`PATH` and set `DOTNET_ROOT` before calling `dotnet`).
+- If the `dotnet` on PATH already has an SDK (true on the machine this was last
+  run on: `C:\Program Files (x86)\dotnet`, SDK 9.0.317, **x86**), `dotnet build`
+  and `dotnet run --project OpenForesia` both work directly, no environment
+  juggling needed.
+- If PATH only carries a runtime (true on an earlier machine used for this
+  project, x64-only), building and running need *different* environments:
+  build with `DOTNET_ROOT` pointed at a real SDK, then **unset it** before
+  launching — `OpenForesia\bin\Debug\net9.0\OpenForesia.exe` directly, or via
+  `playtest.ps1`. A leftover x64 `DOTNET_ROOT` makes the x86 apphost fail with
+  `0x800700C1` trying to load the x64 `hostfxr.dll`.
+
+`playtest.ps1 -Build` already detects which case applies — see its "construction"
+section — so prefer it over reproducing this logic by hand.
 
 ## Call graph covered so far
 
@@ -2553,3 +2556,101 @@ Handlers now available on the render side: `544810`, `5449f0`, `544b10`, `544c50
 
 Sub-states **2** (143 lines, reached only as sub-state 3's back-step), **6** (545) and **7** (713).
 Reaching 6 will finally exercise `EmitParticle`.
+
+## 2026-08-15 — new machine, then `FUN_005098f0`: sub-state 6, the stat-allocation screen
+
+Picked up on a fresh machine (see the top of this file and `CLAUDE.md` for what changed: the
+`dotnet` on this PATH already carries an x86 SDK, no `DOTNET_ROOT` juggling needed; `playtest.ps1`
+now detects which case applies instead of hardcoding the previous machine's paths). Ghidra itself
+is present (`D:\Open Foresia Project\Tool\ghidra_12.1.2_PUBLIC`) but `~/ghidra_scripts` is empty —
+the two force-decompile scripts were never committed, only their source is preserved in this file's
+"The re-run" / "All eight handlers re-decompiled" sections above. Not needed this session: the
+forced-signature body for `FUN_005098f0` was already committed from an earlier session.
+
+### The screen: seven stats fanned around the character, plus two extra slots
+
+`FUN_005098f0` is the point-allocation screen reached right after the dice roll. Seven stat rows
+(Force, ...) laid out on `s_SelectSlots_00573518` (already allocated at nine records of `0x8c8` —
+clearly sized for this function by an earlier session, before it was transcribed) via
+`GetCosTableEntry`/`GetSinTableEntry` at `i * 0x155`, a fan covering a bit over a third of a turn —
+same shape as sub-state 0's full-circle carousel, smaller step. State fields:
+
+- `state[2]` (`DAT_00578df0`) — the phase, same convention as sub-state 5's `StepSubState5Phase`.
+- `state[8]` (`DAT_00578e08`) — the row cursor, 0..6. Already implicit in the nine-`int` sizing of
+  `s_SelectState_00578de8`, just not read through the array anywhere until now (contrast
+  `s_DiceRolled_00578e04`, which duplicates `state[7]` as its own field instead — an existing
+  inconsistency, left alone rather than refactored out of scope).
+
+### Two data-table reads confirmed at the binary, and one resolved by cross-reference instead of the `.asm`
+
+`FUN_005098f0.asm` turned out to be **incomplete** — Ghidra's linear disassembly stops right after
+the two-level jump table dispatch (`JMP [ECX*4 + 0x50a75c]`) and resumes at `LAB_0050a5e0`, roughly
+0xB40 bytes later; none of the individual case bodies have corresponding assembly in the file. That
+made the usual "count the pushes, read the listing" cross-check unavailable for this function's
+switch body.
+
+One place this mattered: the C renders `uStack_14 = **(undefined4 **)(_DAT_005e97c0 + 0x94)`, four
+bytes off `s_MainResourceDirectory_005e97c4` used identically three lines later in the shared tail —
+looked exactly like the kind of decompiler aliasing glitch documented elsewhere in this file. It
+isn't one. `grep -c DAT_005e97c0 Blaze.c` returns 40 hits across the whole game, and line 74556
+(`DAT_005e97c0 = *(int *)MainMem_exref + 0xe0000;`) then line 74793
+(`DAT_005e97c4 = FUN_00529b00(&local_3c,DAT_005e97c0);`) shows they're two genuinely distinct
+globals — `s_MainResourceBuffer_005e97c0` (already declared, from `RunMainLoop`) feeds the
+construction of `s_MainResourceDirectory_005e97c4`. Lesson: a "these two DAT_ symbols look like the
+same thing four bytes apart" hunch is exactly the case that needs a whole-file `grep`, not a
+shrug — Ghidra was right and the hunch was wrong.
+
+The other two tables (`&DAT_00562ab8`, eight bytes; `&DAT_00562ac0`/`&DAT_00562ac8`, eight bytes
+and nine words) had no `.asm` to check against at all, so they were read straight from
+`Legacy/Blaze.exe` with `OpenForesia.Tools -- at` and recorded as `s_ClassStartIcon_00562ab8`,
+`s_StatBitRemap_00562ac0`, `s_StatBitTable_00562ac8`.
+
+### What's transcribed, and where it stops
+
+Cursor movement, point spend/refund (capped at 99, floored at the class's rolled baseline via
+`s_StatSource_00578de4`), the row header icon + description panel, the nine-row tail render, and
+the phase state machine (including the dialog-gate branches that are dead under the always-closed
+`s_Unknown_00560fef`/`s_Unknown_005e909f` gates, transcribed anyway per the project's own
+precedent in `StepSubState5Phase`) are all done and confirmed working at runtime (see below).
+
+**`FinalizeCharacterStats` stops at five unresolved calls.** When the pool reaches zero and the
+confirm button is pressed, the original resets a large swath of `scratch` (character record
+fields, a texture copy from `MainMem + (class+0x7c)*0x2000` into `scratch+0x300`, flag tables) and
+then calls `FUN_00538ab0`, `FUN_00538c50`, `FUN_00538e20`, `FUN_00538f50`, `FUN_00538fa0` — none of
+which have decompiled bodies at those addresses in `Blaze.c`. Everything before those calls is
+transcribed and throws precisely there, naming all five, rather than guessing what a seven-character
+checksum-code generator that never runs would need. The **cancel** path (`case 0x5d`'s
+`DAT_005e909f == 0` branch) doesn't depend on those functions and is fully transcribed — it writes a
+"0000000" placeholder code and exits via `state[0] = -1`, which `RunCharacterSelectFrameLoop`
+already handles correctly (that check predates this session, evidently written in anticipation of
+this exact function).
+
+One quirk kept rather than resolved: the "animated header tint" written to `s_PanelSelection_005e9060[7]`/`[8]`
+(a `CONCAT13`-style two-tap blend of two stat bytes, offset by `scratch[0x148]`/`[0x14a]`) has no
+reader anywhere in this function. The render loop happens to print it as if it were a stat value for
+the two extra rows, which is why they showed plausible small numbers in testing rather than reading
+as clearly a "total" or "confirm" label — that assumption from the row count turned out unconfirmed;
+transcribed as read, not renamed to fit the guess.
+
+### Confirmed at runtime
+
+`playtest.ps1 -Entry 1` with nine `ENTER`s (name entry, language, element, dice roll, confirm) reaches
+the screen cleanly: no crash, 644.1 `DrawPrimitive`/frame (well above every prior screen, consistent
+with `EmitParticle` finally running per the dispatcher wiring already in place), all seven stats and
+the two extra rows rendered with plausible values, header icon and description panel tracking the
+cursor. A follow-up run added `DOWN,DOWN,RIGHT,RIGHT,UP,LEFT` after arrival: cursor moved (icon
+repositioned, description text changed to match), one stat's value changed — `EditCharacterStats`'s
+input handling confirmed working, no crash.
+
+One unrelated crash surfaced by chance during this testing, **not a regression**: control code
+`0x14` in the shared UI text engine throws its generic "never emitted, needs a scoped Ghidra re-run"
+message (`Blaze.cs` around line 10267) when the always-on "Bonus" panel's text happens to contain
+that escape — pre-existing (confirmed via `git show HEAD:...`, present before this session's 516
+added lines), timing-dependent on the dice roll's RNG, and orthogonal to character-select work.
+
+### Remaining
+
+Sub-state **2** (143 lines, reached only as sub-state 3's back-step) and **7** (713 lines, next on
+the path — `state[2] = 0x6e` when sub-state 6 hands off via `state[0]++`). `FinalizeCharacterStats`'s
+five missing functions block only the real confirm-and-continue path, not reaching or using the
+screen.

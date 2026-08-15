@@ -75,24 +75,40 @@ Get-ChildItem $runs -Filter 'playtest-*' -ErrorAction SilentlyContinue |
     ForEach-Object { Remove-Item $_.FullName -ErrorAction SilentlyContinue }
 
 # --------------------------------------------------------------------------------------------
-# Construction optionnelle. Le dotnet du PATH n'a que le runtime : le SDK est chez l'utilisateur.
+# Construction optionnelle. Sur certaines machines le dotnet du PATH n'a que le runtime (le SDK
+# est alors ailleurs, chez l'utilisateur) ; sur d'autres le PATH porte deja un SDK x86 utilisable
+# tel quel. On detecte le cas plutot que de suivre en dur le chemin d'une machine passee.
 # --------------------------------------------------------------------------------------------
 if ($Build) {
-    # DOTNET_ROOT ne vaut QUE pour la construction, et doit etre retire ensuite : le SDK est x64,
-    # le jeu est x86, et un processus x86 qui herite de ce DOTNET_ROOT meurt sur
-    # "Failed to load hostfxr.dll ... 0x800700C1" avant meme d'ouvrir sa fenetre.
-    $savedRoot = $env:DOTNET_ROOT
-    $savedPath = $env:PATH
-    try {
-        $env:DOTNET_ROOT = 'C:\Users\Sagara\.dotnet'
-        $env:PATH = "C:\Users\Sagara\.dotnet;$env:PATH"
-        Write-Host '== construction =='
+    Write-Host '== construction =='
+    $pathHasSdk = $false
+    try { $pathHasSdk = [bool](& dotnet --list-sdks 2>$null) } catch {}
+
+    if ($pathHasSdk) {
         & dotnet build (Join-Path $repo 'OpenForesia.sln') | Select-String -Pattern 'Erreur\(s\)|error ' | ForEach-Object { Write-Host "   $_" }
         $failed = ($LASTEXITCODE -ne 0)
-    } finally {
-        if ($null -eq $savedRoot) { Remove-Item Env:DOTNET_ROOT -ErrorAction SilentlyContinue }
-        else { $env:DOTNET_ROOT = $savedRoot }
-        $env:PATH = $savedPath
+    } else {
+        # DOTNET_ROOT ne vaut QUE pour la construction, et doit etre retire ensuite : le SDK connu
+        # ici est x64, le jeu est x86, et un processus x86 qui herite de ce DOTNET_ROOT meurt sur
+        # "Failed to load hostfxr.dll ... 0x800700C1" avant meme d'ouvrir sa fenetre.
+        $fallbackSdk = 'C:\Users\Sagara\.dotnet'
+        if (-not (Test-Path $fallbackSdk)) {
+            Write-Host "!! aucun SDK sur le PATH et le repli connu ($fallbackSdk) n'existe pas sur cette machine"
+            Write-Host '!! renseigner le chemin du SDK .NET local dans playtest.ps1'
+            return
+        }
+        $savedRoot = $env:DOTNET_ROOT
+        $savedPath = $env:PATH
+        try {
+            $env:DOTNET_ROOT = $fallbackSdk
+            $env:PATH = "$fallbackSdk;$env:PATH"
+            & dotnet build (Join-Path $repo 'OpenForesia.sln') | Select-String -Pattern 'Erreur\(s\)|error ' | ForEach-Object { Write-Host "   $_" }
+            $failed = ($LASTEXITCODE -ne 0)
+        } finally {
+            if ($null -eq $savedRoot) { Remove-Item Env:DOTNET_ROOT -ErrorAction SilentlyContinue }
+            else { $env:DOTNET_ROOT = $savedRoot }
+            $env:PATH = $savedPath
+        }
     }
     if ($failed) { Write-Host '!! construction en echec, arret'; return }
 }

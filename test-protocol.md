@@ -22,7 +22,8 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 
 ## Ce que `playtest.ps1` fait
 
-1. Construit si on lui passe `-Build` (avec le bon `DOTNET_ROOT` — le `dotnet` du PATH n'a pas de SDK).
+1. Construit si on lui passe `-Build` (bascule sur un SDK connu via `DOTNET_ROOT` seulement si le
+   `dotnet` du PATH n'en a pas déjà un — voir le piège d'outillage plus bas).
 2. Lance `OpenForesia.exe` en redirigeant stdout et stderr dans `scratchpad/`.
 3. Attend le menu principal, prend le focus, **navigue en boucle fermée** jusqu'à l'entrée demandée.
 4. Valide, en s'assurant que le jeu a bien vu la frappe.
@@ -156,15 +157,16 @@ projet). Ceux listés ici sont permanents.
 
 ## Pièges d'outillage, hors du jeu
 
-- **`dotnet run --project OpenForesia` ne marche pas.** L'app est en x86, le SDK du PATH n'a que le
-  runtime x64. Lancer l'exe directement (`OpenForesia/bin/Debug/net9.0/OpenForesia.exe`), il trouve
-  le runtime x86. Pour construire : `$env:DOTNET_ROOT = "C:\Users\Sagara\.dotnet"` d'abord.
-- **…et le retirer aussitôt après.** Un processus **x86** qui hérite de ce `DOTNET_ROOT` (x64) meurt
-  avant d'ouvrir sa fenêtre, sur `Failed to load hostfxr.dll … 0x800700C1`. `playtest.ps1 -Build`
-  restaure donc l'environnement entre la construction et le lancement — piège rencontré, pas
-  théorique.
-- **`OpenForesia.Tools` ne tourne pas du tout**, même cause. Palliatif pour la table d'exports :
-  `OpenForesia.Tools/exports.ps1`.
+- **Le comportement de `dotnet run --project OpenForesia` dépend de la machine.** Vérifier
+  `dotnet --list-sdks` : s'il liste un SDK, le `dotnet` du PATH suffit tel quel (cas de la machine
+  actuelle — SDK x86 9.0.317 directement sur le PATH). S'il est vide, le PATH ne porte qu'un
+  runtime et il faut pointer `DOTNET_ROOT` vers le vrai SDK avant de construire, puis **le retirer
+  aussitôt après** : un processus **x86** qui hérite d'un `DOTNET_ROOT` x64 meurt avant d'ouvrir sa
+  fenêtre, sur `Failed to load hostfxr.dll … 0x800700C1`. `playtest.ps1 -Build` fait cette
+  détection automatiquement (voir sa section « construction »).
+- **`OpenForesia.Tools` suit la même règle** que `dotnet run` ci-dessus — marche directement si le
+  PATH a un SDK, sinon même contournement `DOTNET_ROOT`. Palliatif de secours pour la table
+  d'exports sans passer par dotnet du tout : `OpenForesia.Tools/exports.ps1`.
 - **Lire le binaire ne demande aucun outil.** `od -A x -t x4 -j <offset> -N <taille> Legacy/Blaze.exe`
   suffit, et se diffe contre les constantes du source — c'est ainsi que les 26 dwords du descripteur
   d'interface ont été établis.

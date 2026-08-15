@@ -14,23 +14,31 @@ documents — read them before doing reconstruction work. The summary below is n
 
 ## Build and run
 
-**The `dotnet` on PATH (`C:\Program Files\dotnet`) is runtime-only — it has no SDK.** The only SDK
-on this machine is at `C:\Users\Sagara\.dotnet` (10.0.302). Every `dotnet` invocation must point at
-it, or it fails with "No .NET SDKs were found":
+**Whether the `dotnet` on PATH carries an SDK is machine-dependent — check before assuming.** On
+the current machine, `C:\Program Files (x86)\dotnet` is on PATH and already ships an x86 SDK
+(9.0.317), so a plain `dotnet build OpenForesia.sln` / `dotnet run --project OpenForesia` works
+with no `DOTNET_ROOT` juggling. An earlier machine used for this project had only an x64
+*runtime* on PATH, with the actual SDK installed separately under the user profile; on a machine
+like that, every `dotnet` invocation needs to point at the real SDK first:
 
 ```powershell
-$env:DOTNET_ROOT = "C:\Users\Sagara\.dotnet"
-$env:PATH = "C:\Users\Sagara\.dotnet;$env:PATH"
+$env:DOTNET_ROOT = "<path to the real SDK>"
+$env:PATH = "<path to the real SDK>;$env:PATH"
 dotnet build OpenForesia.sln
-dotnet run --project OpenForesia          # runs Blaze.entry()
 ```
+
+Verify with `dotnet --list-sdks`: an empty/failing result means PATH is runtime-only and the SDK
+needs to be located and pointed at explicitly. `playtest.ps1`'s `-Build` switch already detects
+this (tries a plain build first, falls back to a known SDK path if PATH has none) — extend that
+fallback path if it's stale rather than hardcoding a new one elsewhere.
 
 Two `NETSDK1189` warnings about `Prefer32Bit` are expected and harmless. There is no test project;
 verification is `dotnet build` plus reading the reconstruction against `Blaze.c`.
 
-`dotnet run --project OpenForesia` **fails from the shell** — the app is x86 and the SDK on PATH
-only carries the x64 runtime. Launch `OpenForesia/bin/Debug/net9.0/OpenForesia.exe` directly, or use
-`playtest.ps1` below, which handles it.
+`dotnet run --project OpenForesia` can fail from the shell on machines where the SDK on PATH only
+carries an x64 runtime while the game is x86 — in that case launch
+`OpenForesia/bin/Debug/net9.0/OpenForesia.exe` directly, or use `playtest.ps1` below, which handles
+it either way.
 
 ## Running the game — always via `test-protocol.md`
 

@@ -7001,6 +7001,7 @@ public static unsafe partial class Blaze
         if (index == 3) return CharacterSelectSubState3(otBase, otEntry, primCursor, pad);
         if (index == 4) return CharacterSelectSubState4(otBase, otEntry, primCursor, pad);
         if (index == 5) return CharacterSelectSubState5(otBase, otEntry, primCursor, pad);
+        if (index == 6) return CharacterSelectSubState6(otBase, otEntry, primCursor, pad);
 
         throw new NotImplementedException(
             $"Character-select sub-state {index} (0x{s_CharacterSelectSubStateAddresses[index]:x8}) " +
@@ -7359,6 +7360,521 @@ public static unsafe partial class Blaze
                 s_SelectFlags_00562a48[0] = 1;
                 break;
         }
+    }
+
+    // Ghidra: &DAT_00562ab8 — huit octets, un par classe (&7), relevés au décalage fichier
+    // 0x1610b8. Utilisé pour DAT_00573338+0x2b5 à la finalisation de la répartition.
+    private static readonly byte[] s_ClassStartIcon_00562ab8 = [0, 1, 0, 0, 3, 0, 0, 2];
+
+    // Ghidra: &DAT_00562ac0 (huit octets, décalage fichier 0x1610c0) et &DAT_00562ac8 (neuf mots,
+    // décalage fichier 0x1610c8). La finalisation copie huit drapeaux dans DAT_00573338+0x1fc0 en
+    // suivant cet ordre fixe : DAT_00573338[0x1fc0 + i*2] = table[remap[i]], indépendamment du
+    // personnage. La table est une puissance de deux décroissante à partir du bit 15, sauf
+    // l'entrée 0 qui vaut 1 — un jeu de drapeaux bit à bit dont le rôle exact (probablement des
+    // emplacements d'équipement ou de sorts) n'est pas établi.
+    private static readonly byte[] s_StatBitRemap_00562ac0 = [1, 2, 3, 6, 5, 4, 7, 8];
+    private static readonly ushort[] s_StatBitTable_00562ac8 =
+        [1, 0x8000, 0x4000, 0x2000, 0x1000, 0x800, 0x400, 0x200, 0x100];
+
+    // Ghidra: &DAT_00566bc0 — tampon partagé où la finalisation compose le code de personnage à
+    // sept caractères avant de le recopier dans DAT_00573338+0x1fd0. La copie part de l'octet 0 du
+    // tampon (pas de l'octet 0xc où les caractères sont écrits) ; comme rien dans cette fonction
+    // n'écrit les octets 0..0xb, ils restent à zéro comme au chargement, et la copie s'arrête donc
+    // immédiatement. TODO(REVERSE) : rôle exact des douze premiers octets — peut-être un préfixe
+    // posé par une fonction non reconstruite. Transcrit tel quel plutôt que corrigé.
+    private static readonly byte* s_CharCodeScratch_00566bc0 = (byte*)NativeMemory.AllocZeroed(32);
+
+    /// <summary>
+    /// Ghidra: FUN_005098f0 @ 0x005098f0 — <c>PTR_LAB_00560708[6]</c>, la répartition des points de
+    /// statistiques : sept lignes de compteurs (Force, ...), plus deux lignes partagées pour le
+    /// total restant et la confirmation, disposées en éventail sur <see cref="s_SelectSlots_00573518"/>
+    /// (neuf enregistrements, comme <see cref="s_UiDescriptors_00560ff0"/>).
+    ///
+    /// <para>Signature confirmée par le re-run à signature forcée
+    /// (<c>~/ghidra_scripts/ForceDecompileSubStates.java</c>). Ce sous-état termine l'écran entier
+    /// en posant <c>state[0] = -1</c> et <see cref="s_GameStateId"/> — le retour vers le jeu, pas
+    /// seulement un pas de la machine à sous-états ; voir le commentaire sur ce test dans
+    /// <c>RunCharacterSelectFrameLoop</c>.</para>
+    ///
+    /// <para>La machine à phases sur <c>state[2]</c> (<c>DAT_00578df0</c>) comporte plusieurs
+    /// branches de boîte de dialogue modale gardées par <see cref="s_Unknown_00560fef"/> et
+    /// <see cref="s_Unknown_005e909f"/>, toujours à zéro tant que le code qui les pose n'est pas
+    /// reconstruit (TODO.md §5) : elles sont transcrites mais actuellement mortes, comme dans
+    /// <c>StepSubState5Phase</c>.</para>
+    /// </summary>
+    private static uint* CharacterSelectSubState6(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        byte* scratch = s_SelectScratch_00573338;
+        int* state = s_SelectState_00578de8;
+
+        if (s_SelectFlags_00562a48[0] != 0)
+        {
+            s_SelectFlags_00562a48[0] = 0;
+            state[8] = 0;   // DAT_00578e08 — le rang du curseur de statistique, 0..6
+
+            // Ghidra: sept lignes disposées en éventail — Ordinal_450/451 (cos/rsin) à l'angle
+            // i*0x155, comme le cercle du sous-état 0 mais sur un pas plus grand et sans tour
+            // complet (7*0x155 = 0x953, un peu plus d'un tiers de tour sur 0x1000).
+            int angle = 0;
+            for (int i = 0; i < 7; i++, angle += 0x155)
+            {
+                byte* row = s_SelectSlots_00573518 + i * CharacterSelectSlotStride;
+                *(short*)(row + 0x04) = (short)(((GetCosTableEntry(angle) * -0x58) >> 0xc) + 0x88);
+                *(short*)(row + 0x06) = (short)((((int)GetSinTableEntry(angle) << 6) >> 0xc) + 0x48);
+                *(short*)(row + 0x08) = 0x20;
+                *(short*)(row + 0x0a) = 0x18;
+                *(uint*)(row + 0x10) = 0x1180000;
+                *(int*)(row + 0x14) = i + 3;
+                *(uint*)(row + 0x18) = 0x10f0808;
+                *(uint*)(row + 0x1c) = 0x2cf1020;
+                *(uint*)(row + 0x20) = 0x1070c10;
+                *(uint*)(row + 0x24) = 0x1000000;
+                *(uint*)(row + 0x28) = 0;
+                *(uint*)(row + 0x30) = 0;
+                *(uint*)(row + 0x38) = 0;
+                *(uint*)(row + 0x40) = 0x10f0000;
+                *(uint*)(row + 0x44) = 0x1000000;
+                *(uint*)(row + 0x48) = 0;
+                *(uint*)(row + 0x50) = 0;
+                *(uint*)(row + 0x58) = 0;
+                *(uint*)(row + 0x60) = 0;
+            }
+
+            // Lignes 7 et 8 : le total restant et la confirmation, suite immédiate du tableau.
+            byte* totalRow = s_SelectSlots_00573518 + 7 * CharacterSelectSlotStride;
+            *(short*)(totalRow + 0x04) = 0x58;
+            *(short*)(totalRow + 0x06) = 0x38;
+            *(short*)(totalRow + 0x08) = 0x28;
+            *(short*)(totalRow + 0x0a) = 0x18;
+            totalRow[0x20] = 0x10;
+            *(uint*)(totalRow + 0x14) = 10;
+
+            byte* confirmRow = s_SelectSlots_00573518 + 8 * CharacterSelectSlotStride;
+            *(short*)(confirmRow + 0x04) = 0xb0;
+            *(short*)(confirmRow + 0x06) = 0x38;
+            *(short*)(confirmRow + 0x08) = 0x28;
+            *(short*)(confirmRow + 0x0a) = 0x18;
+            confirmRow[0x20] = 0x10;
+            *(uint*)(confirmRow + 0x14) = 0xb;
+
+            SetClassHighlightColour(scratch);
+        }
+
+        // Ghidra: `if (DAT_00562a4c != 0) goto LAB_0050a5e0` — pendant le fondu d'entrée, aucune
+        // entrée n'est lue ; on va directement au rendu, comme dans les autres sous-états.
+        if (s_SelectFlags_00562a48[1] == 0)
+        {
+            primCursor = StepSubState6Phase(pad, state, scratch, otBase, primCursor);
+        }
+
+        return RenderStatRows(otBase, primCursor);
+    }
+
+    /// <summary>Bascule DAT_00573338+0x148/0x14a selon la classe. Répété quatre fois dans
+    /// l'original (entrée du sous-état, et trois points de retour à la phase 0x3e) ; extrait ici
+    /// comme dans les autres sous-états.</summary>
+    private static void SetClassHighlightColour(byte* scratch)
+    {
+        switch (scratch[0x150] & 7)
+        {
+            case 0:
+            case 6:
+                *(short*)(scratch + 0x148) = 0x10;
+                *(short*)(scratch + 0x14a) = 2;
+                break;
+            case 1:
+            case 3:
+            case 7:
+                *(short*)(scratch + 0x148) = 0xe;
+                *(short*)(scratch + 0x14a) = 8;
+                break;
+            case 2:
+            case 4:
+            case 5:
+                *(short*)(scratch + 0x148) = 0xf;
+                *(short*)(scratch + 0x14a) = 4;
+                break;
+        }
+    }
+
+    private static uint* StepSubState6Phase(byte* pad, int* state, byte* scratch, uint* otBase, uint* primCursor)
+    {
+        switch (state[2])
+        {
+            case 0x3e:
+            {
+                int rowBefore = state[8];
+                ushort buttons = *(ushort*)(pad + 2);
+                if ((buttons & 0x4000) == 0)
+                {
+                    if ((buttons & 0x8000) == 0 || s_StatTotal_005e906a != 0)
+                    {
+                        primCursor = EditCharacterStats(pad, state, scratch, otBase, primCursor, rowBefore);
+                    }
+                    else
+                    {
+                        FinalizeCharacterStats(pad, scratch, state);
+                    }
+                }
+                else
+                {
+                    PlayUiSound39();
+                    state[2]++;             // 0x3e -> 0x3f
+                }
+                break;
+            }
+
+            // Ghidra: `(DAT_00560fef & 2) == 0` est toujours vrai — la boîte de confirmation n'est
+            // pas reconstruite (TODO.md §5) — donc la branche `pad[3] & 0x40` qui suit reste morte
+            // dans ce port, comme dans StepSubState5Phase.
+            case 0x3f:
+            case 0x41:
+                if ((s_Unknown_00560fef & 2) == 0)
+                {
+                    *(ushort*)(pad + 2) &= 0x7fff;
+                    state[2]++;             // 0x3f->0x40, 0x41->0x42
+                    break;
+                }
+                if ((pad[3] & 0x40) != 0)
+                {
+                    s_Unknown_0056075b = 0;
+                    s_Unknown_00560fef &= 0xfd;
+                    PlayUiSound39();
+                    state[2] = 0x3e;
+                }
+                break;
+
+            case 0x40:
+                if ((s_Unknown_00560fef & 4) == 0)
+                {
+                    if (s_Unknown_005e909f == 0) { state[2] = 0x39; state[0]--; }
+                    else state[2] = 0x3e;
+                    break;
+                }
+                if ((pad[3] & 0x40) != 0)
+                {
+                    s_Unknown_00560763 = 0;
+                    s_Unknown_00560fef &= 0xfb;
+                    PlayUiSound39();
+                    state[2] = 0x3e;
+                }
+                break;
+
+            case 0x42:
+                if ((s_Unknown_00560fef & 4) == 0)
+                {
+                    if (s_Unknown_005e909f != 0) { state[2] = 0x3e; break; }
+                    state[2] = 0x6e;
+                    state[0]++;
+                    break;
+                }
+                if ((pad[3] & 0x40) != 0)
+                {
+                    s_Unknown_00560763 = 0;
+                    s_Unknown_00560fef &= 0xfb;
+                    PlayUiSound39();
+                    state[2] = 0x3e;
+                }
+                break;
+
+            case 0x5d:
+                if ((s_Unknown_00560fef & 4) == 0)
+                {
+                    if (s_Unknown_005e909f == 0)
+                    {
+                        CancelCharacterCreation(scratch, state);
+                    }
+                    else
+                    {
+                        state[2] = 0x3e;
+                        SetClassHighlightColour(scratch);
+                    }
+                    break;
+                }
+                if ((pad[3] & 0x40) != 0)
+                {
+                    s_Unknown_00560763 = 0;
+                    s_Unknown_00560fef &= 0xfb;
+                    PlayUiSound39();
+                    state[2] = 0x81;
+                }
+                break;
+
+            case 0x7f:
+                if ((s_Unknown_00560fef & 2) == 0)
+                {
+                    *(ushort*)(pad + 2) &= 0x7fff;
+                    state[2] = 0x5d;
+                    break;
+                }
+                if ((pad[3] & 0x40) != 0)
+                {
+                    s_Unknown_0056075b = 0;
+                    s_Unknown_00560fef &= 0xfd;
+                    PlayUiSound39();
+                    state[2] = 0x81;
+                }
+                break;
+
+            case 0x80:
+                if ((s_Unknown_00560fef & 2) == 0)
+                {
+                    *(ushort*)(pad + 2) &= 0x7fff;
+                    state[2]--;             // 0x80 -> 0x7f
+                    break;
+                }
+                if ((pad[3] & 0x40) != 0)
+                {
+                    s_Unknown_0056075b = 0;
+                    s_Unknown_00560fef &= 0xfd;
+                    PlayUiSound39();
+                    state[2]++;             // 0x80 -> 0x81
+                }
+                break;
+
+            case 0x81:
+                if ((s_Unknown_00560fef & 4) != 0)
+                {
+                    if ((pad[3] & 0x40) != 0)
+                    {
+                        s_Unknown_00560763 = 0;
+                        s_Unknown_00560fef &= 0xfb;
+                        PlayUiSound39();
+                        state[2] = 0x3e;
+                        SetClassHighlightColour(scratch);
+                    }
+                    break;
+                }
+                if (s_Unknown_005e909f != 0) { state[2] = 0x80; break; }
+                state[2] = 0x6e;
+                state[0]++;                 // vers le sous-état 7
+                break;
+        }
+
+        return primCursor;
+    }
+
+    /// <summary>Déplacement du curseur, dépense/remboursement d'un point, et dessin de l'en-tête
+    /// de ligne (icône + texte de statut). Ghidra: le corps du bloc « if (bit0x8000==0 ||
+    /// total!=0) » de <c>case 0x3e</c>.</summary>
+    private static uint* EditCharacterStats(
+        byte* pad, int* state, byte* scratch, uint* otBase, uint* primCursor, int rowBefore)
+    {
+        if ((pad[6] & 0x80) != 0 && state[8] != 0) state[8]--;
+        if ((pad[6] & 0x20) != 0 && state[8] < 6) state[8]++;
+        if (rowBefore != state[8]) PlayUiSound3A();
+
+        byte* stats = s_PanelSelection_005e9060;
+        if ((pad[6] & 0x10) != 0 && s_StatTotal_005e906a != 0 && stats[state[8]] < 99)
+        {
+            s_StatTotal_005e906a--;
+            stats[state[8]]++;
+            PlayUiSound38();
+        }
+        if ((pad[6] & 0x40) != 0 && s_StatSource_00578de4[state[8]] < stats[state[8]])
+        {
+            stats[state[8]]--;
+            s_StatTotal_005e906a++;
+            PlayUiSound39();
+        }
+
+        // Ghidra: DAT_005e9064/68 — une teinte animée vers une moyenne glissante de deux
+        // statistiques, écrite dans les octets 7 et 8 du même tampon que les valeurs (0x100
+        // octets, réutilisé). Aucune lecture de ces deux octets n'apparaît dans cette fonction.
+        // TODO(REVERSE) : rôle exact non établi, probablement un fondu consommé ailleurs.
+        byte oldByte4 = stats[4];
+        byte oldByte5 = stats[5];
+        stats[7] = (byte)((byte)((stats[0] + oldByte4) >> 1) + scratch[0x148]);
+        stats[8] = (byte)((byte)((stats[2] + oldByte5) >> 1) + scratch[0x14a]);
+
+        EmitViewportRect(otBase, &primCursor);
+
+        byte* row = s_SelectSlots_00573518 + state[8] * CharacterSelectSlotStride;
+        byte* box = stackalloc byte[20];
+        NativeMemory.Clear(box, 20);
+        *(uint**)box = ((uint**)*(byte**)(s_MainResourceBuffer_005e97c0 + 0x94))[0];
+        *(uint*)(box + 4) = 0x1000000;
+        *(short*)(box + 8) = *(short*)(row + 4);
+        *(short*)(box + 0xa) = (short)(*(short*)(row + 6) + 0xc);
+        *(short*)(box + 0x10) = 0x18;
+
+        primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
+        primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)box);
+        EmitClipRect(otBase, &primCursor);
+
+        BindMenuLabels(
+            *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0x1e0 + state[8] * 4),
+            0, s_StatusDescriptor_00560728, 0);
+        return RunTextEngine(primCursor, s_StatusDescriptor_00560728);
+    }
+
+    /// <summary>Ghidra: la branche « confirmer » de <c>case 0x3e</c>, atteinte quand le pool de
+    /// points est à zéro et que le bouton de confirmation est pressé. Prépare l'enregistrement du
+    /// personnage (mêmes conventions que <c>s_UiDescriptors_00560ff0</c>), copie le portrait, puis
+    /// s'arrête aux cinq appels non reconstruits qui le complètent.</summary>
+    private static void FinalizeCharacterStats(byte* pad, byte* scratch, int* state)
+    {
+        *(ushort*)(pad + 2) &= 0x7fff;
+        PlayUiSound38();
+        state[2] = 0x81;
+
+        *(uint*)scratch = 0;
+        *(uint*)(scratch + 0x140) = 0;
+        *(short*)(scratch + 0x144) = 1;
+        *(short*)(scratch + 0x146) = 1;
+        *(uint*)(scratch + 0x158) = 0;
+        *(uint*)(scratch + 0x15c) = 0;
+        *(uint*)(scratch + 0x114) = (uint)(1 << (scratch[0x151] & 0x1f)) | 0x800;
+        *(short*)(scratch + 0x112) = (short)(1 << (scratch[0x150] & 7));
+
+        for (int i = 0; i < 7; i++)
+        {
+            ushort value = s_PanelSelection_005e9060[i];
+            *(ushort*)(scratch + 0x280 + i * 2) = value;
+            *(ushort*)(scratch + 0x2a0 + i * 2) = value;
+        }
+
+        byte* stats = s_PanelSelection_005e9060;
+        *(ushort*)(scratch + 0x148) = stats[7];   // la teinte animée par EditCharacterStats
+        *(ushort*)(scratch + 0x14a) = stats[8];
+        *(ushort*)(scratch + 0x14c) = *(ushort*)(scratch + 0x148);
+        *(ushort*)(scratch + 0x14e) = *(ushort*)(scratch + 0x14a);
+
+        *(uint*)(scratch + 0x26c) = 0;
+        scratch[0x2b0] = 0;
+        scratch[0x2b1] = 1;
+        scratch[0x2b2] = (byte)(((scratch[0x150] & 7) == 0 || (scratch[0x150] & 7) == 6) ? 2 : 0xff);
+        scratch[0x2b3] = 0xff;
+        scratch[0x2b4] = 0xff;
+        scratch[0x2b5] = s_ClassStartIcon_00562ab8[scratch[0x150] & 7];
+        scratch[0x2b6] = 0; scratch[0x2b7] = 0; scratch[0x2b8] = 0; scratch[0x2b9] = 0;
+        scratch[0x2ba] = 0; scratch[0x2bb] = 0;
+
+        scratch[0x160] = 1; scratch[0x161] = 0; scratch[0x162] = 0; scratch[0x163] = 0;
+        scratch[0x168] = 1; scratch[0x169] = 0; scratch[0x16a] = 0; scratch[0x16b] = 0;
+        scratch[0x170] = 1; scratch[0x171] = 0; scratch[0x172] = 0; scratch[0x173] = 0;
+        scratch[0x178] = 3; scratch[0x179] = 3; scratch[0x17a] = 3; scratch[0x17b] = 3;
+        scratch[0x17c] = 3; scratch[0x17d] = 3; scratch[0x17e] = 3;
+
+        NativeMemory.Clear(scratch + 0x1f00, 4);
+        NativeMemory.Clear(scratch + 0x1d00, 0x40);
+        NativeMemory.Clear(scratch + 0x1d40, 0x40);
+        NativeMemory.Clear(scratch + 0x1d80, 0x40);
+        NativeMemory.Clear(scratch + 0x1dc0, 0x40);
+        NativeMemory.Clear(scratch + 0x1e00, 0x40);
+        NativeMemory.Clear(scratch + 0x1e40, 0x40);
+        NativeMemory.Clear(scratch + 0x1e80, 0x40);
+        NativeMemory.Clear(scratch + 0x1ec0, 0x40);
+
+        for (int i = 0; i < 0x40; i += 8)
+        {
+            *(uint*)(scratch + 0x1f04 + i) = 0;
+            *(uint*)(scratch + 0x1f08 + i) = 0xffffffff;
+        }
+
+        NativeMemory.Clear(scratch + 0x2e0, 0x20);
+
+        for (int i = 0; i < 8; i++)
+        {
+            *(ushort*)(scratch + 0x1fc0 + i * 2) = s_StatBitTable_00562ac8[s_StatBitRemap_00562ac0[i]];
+        }
+
+        byte* texture = GetMainMemPtr() + ((scratch[0x150] & 7) + 0x7c) * 0x2000;
+        CopyDwords((uint*)texture, (uint*)(scratch + 0x300), 0x640);
+
+        for (int i = 0; i < 0x1900; i += 0x280)
+        {
+            *(ushort*)(scratch + i + 0x312) |= 0x8000;
+        }
+
+        throw new NotImplementedException(
+            "CharacterSelectSubState6/FinalizeCharacterStats: FUN_00538ab0, FUN_00538c50, " +
+            "FUN_00538e20 (appelées sur `scratch`) et FUN_00538f50, FUN_00538fa0 (sur " +
+            "`scratch+0x100`) ne sont pas décompilées à ces adresses dans Blaze.c. Elles closent " +
+            "la fiche de personnage construite ci-dessus (vraisemblablement l'initialisation du " +
+            "modèle/animation depuis le portrait copié à scratch+0x300) avant que le code à sept " +
+            "caractères ne soit généré et que l'écran ne se termine via state[0] = -1. Voir " +
+            "Legacy/Raw/Blaze/FUN_005098f0.c lignes 298-340 pour ce qui reste : la somme de " +
+            "contrôle sur scratch[0x100..0x110) et scratch[0x280..0x28e), repliée avec " +
+            "scratch[0x150..0x153], encodée en sept caractères via WriteCharacterCode.");
+    }
+
+    /// <summary>Ghidra: la branche « annuler » de <c>case 0x5d</c> — un code placeholder
+    /// "0000000" (pas de vraie somme de contrôle disponible sans les cinq fonctions manquantes de
+    /// <see cref="FinalizeCharacterStats"/>) puis la sortie de l'écran entier.</summary>
+    private static void CancelCharacterCreation(byte* scratch, int* state)
+    {
+        byte* code = s_CharCodeScratch_00566bc0;
+        for (int i = 0; i < 7; i++) code[0xc + i] = (byte)'0';
+        code[0x13] = 0;
+
+        WriteCharacterCode(scratch, code);
+
+        s_Unknown_005de51c = 1;
+        state[0] = -1;
+        s_GameStateId = 1;
+    }
+
+    /// <summary>Ghidra: la boucle de recopie partagée par les deux branches ci-dessus — copie
+    /// depuis le début de <c>code</c> jusqu'au premier octet nul, vers DAT_00573338+0x1fd0.</summary>
+    private static void WriteCharacterCode(byte* scratch, byte* code)
+    {
+        int i = 0;
+        byte* cursor = code;
+        while (*cursor != 0)
+        {
+            scratch[0x1fd0 + i] = *cursor;
+            i++;
+            cursor++;
+        }
+        scratch[0x1fd0 + i] = 0;
+    }
+
+    /// <summary>Le rendu partagé de fin de fonction (<c>LAB_0050a5e0</c>) : l'en-tête, puis les
+    /// neuf lignes (sept statistiques, le total, la confirmation).</summary>
+    private static uint* RenderStatRows(uint* otBase, uint* primCursor)
+    {
+        byte* directory = s_MainResourceDirectory_005e97c4;
+
+        byte* label = s_UiDescriptors_00560ff0 + 2 * UiDescriptorStride;   // &DAT_00562180
+        BindMenuLabels(*(byte**)(*(byte**)(directory + 0x70) + 0x10c), 0, label, 0);
+        primCursor = RunTextEngine(primCursor, label);
+
+        byte* box = stackalloc byte[20];
+        NativeMemory.Clear(box, 20);
+        byte* atlasPtr = *(byte**)(directory + 0x94);
+        *(uint*)box = *(uint*)(atlasPtr + 0x30);
+        *(uint*)(box + 4) = 0x1000000;
+
+        byte* labelTable = *(byte**)(directory + 0x70);
+        int labelOffset = 0x110;
+
+        for (int i = 0; i < 9; i++)
+        {
+            byte* row = s_SelectSlots_00573518 + i * CharacterSelectSlotStride;
+            *(short*)(box + 8) = (short)(*(short*)(row + 4) + 0xc);
+            *(short*)(box + 0xa) = (short)(*(short*)(row + 6) + 4);
+            *(short*)(box + 0x10) = (short)(i + 4);
+
+            EmitViewportRect(otBase, &primCursor);
+            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
+            primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)box);
+            EmitClipRect(otBase, &primCursor);
+
+            byte funcByte = (byte)(i <= 6 ? 0x08 : 0x10);
+            byte statValue = s_PanelSelection_005e9060[i];
+            if (statValue < 100) funcByte += 8;
+            if (statValue < 10) funcByte += 8;
+            row[0x20] = funcByte;
+
+            BindMenuLabels(*(byte**)(labelTable + labelOffset), 0, row, 0);
+            primCursor = RunTextEngine(primCursor, row);
+            primCursor = DrawUiPanel(otBase, primCursor, row);
+
+            labelOffset += 4;
+        }
+
+        return primCursor;
     }
 
     // Ghidra: &DAT_00572e58 — huit enregistrements de 0x9c octets, du même type que l'entité de
