@@ -27,38 +27,27 @@ Rien n'est commité — c'est l'affaire de Vincent.
 
 ---
 
-## 1. À faire maintenant : le corps de `FUN_00520ae0`, puis les sous-états 2, 5, 6, 7
+## 1. À faire maintenant : les sous-états 2, 6, 7
 
-**`FUN_00520ae0` n'est plus un mystère de signature.** Un re-run Ghidra avec la signature forcée
-(`~/ghidra_scripts/ForceDecompileParticlePass.java`) a produit
-`Legacy/Raw/Blaze/FUN_00520ae0.c` et son `.asm`. La signature est établie instruction par
-instruction :
-
-```
-uint* FUN_00520ae0(uint* otEntry, uint* prim, int* particle, uint flags, uint extra)
-```
-
-C'est la même famille que `DrawSpritePrimitive` : une primitive de dix dwords liée dans l'OT.
-
-**Mais forcer la signature n'a pas corrigé l'attribution des variables dans le corps.** Ghidra
-nomme encore `particle` ce qui est `extra` (prim[3]), `primCursor` ce qui est `flags` (prim[1]),
-et rend `otEntry` en local `iStack_4`. La transcription demande un recoupement **ligne à ligne**
-avec le listing — c'est le seul travail qui reste dessus, et il n'est pas mécanique.
-
-Il est bloquant pour voir le sous-état 5 : la boucle de frame lance la passe de particules dès
-`sous-état > 4`, avant tout ce que le sous-état 5 dessine.
-
-## 1ter. Ensuite : les sous-états 2, 5, 6, 7
-
-Les **sous-états 3** (style de langage) et **4** (carrousel des éléments) sont reconstruits et
-tournent. La chaîne va donc 0 → 1 → 3 → 4 → *5*. Reproduction :
+Les sous-états **3** (style de langage), **4** (carrousel des éléments) et **5** (tirage du bonus,
+trois cartes) sont reconstruits et tournent. La chaîne va donc 0 → 1 → 3 → 4 → 5 → *6*.
+Reproduction :
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 1 -Then ENTER,WAIT3,ENTER,WAIT3,ENTER -Seconds 12 -Shot
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Then ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT2,ENTER -Seconds 12 -Shot
 ```
 
 Le sous-état 2 (143 lignes) n'est atteint qu'en retour arrière depuis le 3. Les 6 et 7 font 545 et
 713 lignes : ce ne sera pas une seule séance.
+
+**Atteindre le 6 exercera enfin `EmitParticle`** (`FUN_00520ae0`), transcrit mais jamais exécuté :
+la passe de particules est lancée par le bloc « en scène » de la boucle de frame, qui vient **après**
+le dispatch — donc tant qu'un sous-état lève, elle ne tourne pas.
+
+**Outil décisif pour la suite** : `~/ghidra_scripts/ForceDecompileSubStates.java` re-décompile les
+huit handlers avec leur vraie signature forcée. Ça confirme l'arité, mais **ça ne récupère pas les
+locaux de pile** — les descripteurs de sprite de 20 octets sortent encore en `&stack0xffffffdc` et
+demandent le listing.
 
 ## 1bis. Rappel de méthode pour les suivants
 
@@ -67,6 +56,11 @@ Le sous-état 2 (143 lignes) n'est atteint qu'en retour arrière depuis le 3. Le
 tableau de particules (fausse de 0x1c) et `MOV ECX,[ESI + 0x10]` du sous-état 4, où `ESI` vaut
 `icône + 0x28` — c'est donc `+0x38`, le mot d'attribut. Lu à `+0x10` il vaut zéro et les huit
 médaillons sortaient en **disques noirs**, sans que les compteurs ne bougent d'un poil. Seule la
+**Compter les `PUSH` avant de lire un `[ESP+n]`.** `MOV [ESP+0x24],AX` après un `PUSH` vise
+`clean + 0x20`, pas `clean + 0x28`. Se tromper là faisait croire que le sprite du sous-état 5
+chevauchait la zone des arguments et qu'une écriture était morte. Le nombre de `POP` de l'épilogue
+fixe le cadre sans ambiguïté — c'est la vérification qui coûte le moins.
+
 capture l'a montré : quand la géométrie est bonne mais l'image fausse, regarder l'écran, pas les
 chiffres.
 

@@ -1147,6 +1147,48 @@ public static unsafe partial class Blaze
     /// qu'ajouter des zéros. La division perspective passe par la table de réciproques de
     /// l'ordinal 821, indexée par la profondeur, puis le décalage écran des ordinaux 819/820.</para>
     /// </summary>
+    /// <summary>
+    /// Charge la matrice de caméra dans le GTE, y transforme une position monde, et **fait de la
+    /// position transformée la translation de la matrice** — après quoi projeter l'origine projette
+    /// ce point-là.
+    ///
+    /// <para>Bloc identique, instruction pour instruction, dans <see cref="ProjectPoint"/>
+    /// (<c>FUN_0051f650</c>) et dans l'émetteur de particules (<c>FUN_00520ae0</c>) ; la branche de
+    /// cull de <c>FUN_0051d1f0</c> fait le même tour. Extrait à ce titre : unité indépendante
+    /// répétée telle quelle, pas un découpage d'un corps unique.</para>
+    /// </summary>
+    private static void LoadPointAsMatrixTranslation(int* position)
+    {
+        EnsureGteRegisters();
+
+        Ordinal_366(s_CameraMatrix_006008e0);
+        Ordinal_369(s_CameraMatrix_006008e0);
+
+        short* input = (short*)s_GteVector803;
+        input[0] = (short)((position[0] + s_Unknown_006008d0) >> 0xc);
+        input[1] = (short)((s_Unknown_006008d4 - position[1]) >> 0xc);
+        input[2] = (short)((position[2] + s_Unknown_006008d8) >> 0xc);
+
+        short* m = (short*)s_GteMatrix814;
+        int* mac = (int*)s_GteMac801;
+        short* ir = (short*)s_GteIr813;
+
+        mac[0] = (input[1] * m[1] + input[2] * m[2] + m[0] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x14);
+        mac[1] = (input[1] * m[4] + input[2] * m[5] + m[3] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x18);
+        mac[2] = (input[1] * m[7] + input[2] * m[8] + m[6] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x1c);
+
+        ir[0] = (short)mac[0];
+        ir[1] = (short)mac[1];
+        ir[2] = (short)mac[2];
+
+        *(int*)(s_GteMatrix814 + 0x14) = mac[0];
+        *(int*)(s_GteMatrix814 + 0x18) = mac[1];
+        *(int*)(s_GteMatrix814 + 0x1c) = mac[2];
+    }
+
     private static void ProjectOriginThroughMatrix()
     {
         short* vector = (short*)s_GteVector802;
@@ -1184,37 +1226,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static int ProjectPoint(int* position, short* outScreen)
     {
-        EnsureGteRegisters();
-
-        Ordinal_366(s_CameraMatrix_006008e0);
-        Ordinal_369(s_CameraMatrix_006008e0);
-
-        short* input = (short*)s_GteVector803;
-        input[0] = (short)((position[0] + s_Unknown_006008d0) >> 0xc);
-        input[1] = (short)((s_Unknown_006008d4 - position[1]) >> 0xc);
-        input[2] = (short)((position[2] + s_Unknown_006008d8) >> 0xc);
-
-        short* m = (short*)s_GteMatrix814;
-        int* mac = (int*)s_GteMac801;
-        short* ir = (short*)s_GteIr813;
-
-        mac[0] = (input[1] * m[1] + input[2] * m[2] + m[0] * input[0] >> 0xc)
-               + *(int*)(s_GteMatrix814 + 0x14);
-        mac[1] = (input[1] * m[4] + input[2] * m[5] + m[3] * input[0] >> 0xc)
-               + *(int*)(s_GteMatrix814 + 0x18);
-        mac[2] = (input[1] * m[7] + input[2] * m[8] + m[6] * input[0] >> 0xc)
-               + *(int*)(s_GteMatrix814 + 0x1c);
-
-        ir[0] = (short)mac[0];
-        ir[1] = (short)mac[1];
-        ir[2] = (short)mac[2];
-
-        // La position transformée devient la translation de la matrice — c'est ce qui fait que la
-        // projection de l'origine, juste après, projette bien ce point-là.
-        *(int*)(s_GteMatrix814 + 0x14) = mac[0];
-        *(int*)(s_GteMatrix814 + 0x18) = mac[1];
-        *(int*)(s_GteMatrix814 + 0x1c) = mac[2];
-
+        LoadPointAsMatrixTranslation(position);
         ProjectOriginThroughMatrix();
 
         *(uint*)outScreen = *(uint*)s_GteSxy809;
@@ -6789,6 +6801,115 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: FUN_00520ae0 @ 0x00520ae0 — l'émetteur d'une particule : il projette sa position,
+    /// écarte ce qui sort du champ, et émet la même primitive de dix mots que
+    /// <see cref="DrawSpritePrimitive"/>, mise à l'échelle par la perspective.
+    ///
+    /// <para><b>Signature établie par re-run Ghidra à signature forcée</b>
+    /// (<c>~/ghidra_scripts/ForceDecompileParticlePass.java</c>), Ghidra ne lui recouvrant que
+    /// trois paramètres seul. cdecl à cinq arguments, chacun épinglé à une instruction :
+    /// <c>[ESP+0x2C]</c> otEntry (l'écriture du lien d'OT en 0x520eb8), <c>[ESP+0x30]</c> prim
+    /// (l'écriture de la primitive en 0x520ea8, et ce que rendent les sorties anticipées),
+    /// <c>[ESP+0x34]</c> particle (0x520ae7), <c>[ESP+0x38]</c> flags (0x520ec3, <c>OR 0x2c</c> —
+    /// l'octet de commande GPU), <c>[ESP+0x3C]</c> extra (0x520f5b, l'idiome
+    /// <c>((short)x >> 2) &amp; 0xffc0 + (x &amp; 0xff)</c>).</para>
+    ///
+    /// <para><b>Le pseudo-C ne peut pas être recopié, même signature forcée.</b> Les **quatre**
+    /// emplacements d'arguments sont réutilisés comme scratch dès l'émission commencée — écrasés en
+    /// 0x520e89, 0x520efa, 0x520f08 et 0x520f26 — si bien que Ghidra rend <c>flags</c> sous le nom
+    /// <c>primCursor</c>, <c>extra</c> sous le nom <c>particle</c>, <c>otEntry</c> en local
+    /// <c>iStack_4</c>, <c>prim</c> en <c>unaff_retaddr</c>, et <c>particle+0x1c/0x24</c> en
+    /// <c>otEntry[7]</c>/<c>otEntry[9]</c>. Ce corps est donc écrit depuis le listing et depuis la
+    /// structure de <see cref="DrawSpritePrimitive"/>, à laquelle sa queue est identique mot pour
+    /// mot.</para>
+    ///
+    /// <para>TODO(REVERSE): les attributs sont lus à <c>atlas[1]</c>, c'est-à-dire à l'**image 0**,
+    /// alors que la couleur est relue à l'image courante (<c>atlas[frame * 2]</c>). C'est le même
+    /// panachage que le quirk de pages de texture de <see cref="DrawAnimatedModel"/> ; transcrit
+    /// tel quel, et c'est le premier endroit à regarder si les particules sortent avec la mauvaise
+    /// texture.</para>
+    /// </summary>
+    private static uint* EmitParticle(uint* otEntry, uint* prim, int* particle, uint flags, uint extra)
+    {
+        // Ghidra: particle[8], soit particle + 0x20 — le descripteur d'atlas.
+        uint* atlas = *(uint**)((byte*)particle + 0x20);
+        if (atlas == null) return prim;
+
+        uint attributes = atlas[1];
+
+        if (s_Unknown_00564a48 != 0 && (attributes & 0x200) != 0)
+        {
+            if (s_Unknown_00564a4c == 0) return prim;
+            attributes &= 0xfffffdff;
+        }
+
+        LoadPointAsMatrixTranslation(particle);
+
+        // Ghidra lit ce mot **avant** de projeter, et c'est ce qui commande le test d'écran.
+        ushort cullFlags = *(ushort*)((byte*)particle + 0x1a);
+
+        ProjectOriginThroughMatrix();
+
+        uint screen = *(uint*)s_GteSxy809;
+        short screenX = (short)screen;
+        short screenY = (short)(screen >> 0x10);
+        short depth = (short)*(int*)s_GteSz811;
+        int otSlot = depth >> 2;
+
+        if ((uint)(otSlot - 0x58) > 0x39f) return prim;
+
+        if ((cullFlags & 1) != 0
+            && ((ushort)(screenX + 0x18) > 0x16f || (ushort)(screenY + 0x18) > 0x11f))
+        {
+            return prim;
+        }
+
+        uint baseWord = *(uint*)((byte*)particle + 0x1c);
+        byte frame = *((byte*)particle + 0x24);
+        uint colour = atlas[frame * 2];
+
+        int halfW = (int)((colour >> 0x10) & 0xff) - 1;
+        int halfH = (int)(colour >> 0x18) - 1;
+
+        // La mise à l'échelle par la perspective : 0x190000 divisé par la profondeur en OT.
+        int scale = otSlot != 0 ? (int)(0x190000L / otSlot) : 0x190000;
+
+        short sizeX = *(short*)((byte*)particle + 0x0c);
+        short sizeY = *(short*)((byte*)particle + 0x0e);
+        uint spanX = (uint)(short)((uint)(sizeX * halfW) >> 0xc) * (uint)scale >> 0xc;
+        uint spanY = (uint)(short)((uint)(sizeY * halfH) >> 0xc) * (uint)scale >> 0xc;
+
+        uint clut = *(uint*)(s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
+
+        // Le lien d'OT. Le décalage de -0x28 octets est dans l'original : l'appelant passe
+        // `otBase + 0x14`, et l'emplacement visé est `otEntry - 0x28 + otSlot * 4`.
+        uint* slot = (uint*)((byte*)otEntry - 0x28 + otSlot * 4);
+        *prim = *slot | 0x9000000;
+        *slot = (uint)(nuint)prim;
+
+        prim[1] = ((flags & 0xff) | 0x2c | (attributes >> 8)) << 0x18 | (baseWord & 0x3ffffff);
+
+        uint rightU = (uint)halfW + (colour & 0xff);
+        uint bottomV = (uint)halfH * 0x100 + (colour & 0xff00);
+        uint left = (screen - (spanX >> 1)) & 0xffff;
+        uint right = (left + spanX) & 0xffff;
+        uint top = (uint)(screenY - (spanY >> 1)) * 0x10000;
+        uint bottom = spanY * 0x10000 + top;
+
+        prim[2] = top | left;
+        prim[3] = (uint)(((((ushort)((short)extra >> 2)) & 0xffc0) + (extra & 0xff)) * 0x10000)
+                  + (clut & 0xffff0000) + ((attributes >> 8) & 0xff0000) | (colour & 0xffff);
+        prim[4] = right | top;
+        prim[5] = (((attributes & 0xff) << 5) | clut) << 0x10 | rightU | (colour & 0xff00);
+        prim[6] = bottom | left;
+        prim[7] = bottomV | (colour & 0xff);
+        prim[8] = bottom | right;
+        prim[9] = bottomV | rightU;
+
+        return prim + 10;
+    }
+
+    /// <summary>
     /// Ghidra: la boucle de particules de FUN_00506880, atteinte aux seuls sous-états 5 et 6.
     /// Chaque record subit une marche aléatoire bornée : trois axes, chacun poussé de ±0x2000 vers
     /// l'entité de scène et saturé à ±0x19000, puis la position intègre la vitesse.
@@ -6837,24 +6958,13 @@ public static unsafe partial class Blaze
             *(short*)((byte*)particle + 0x10) = 0x640;
             *((byte*)particle + 0x24) = (byte)((s_FadeCounter_005e9960 >> 1) % 6);
 
-            throw new NotImplementedException(
-                "FUN_00520ae0 (la passe de particules) : signature RÉSOLUE, corps non transcrit.\n" +
-                "  uint* FUN_00520ae0(uint* otEntry, uint* prim, int* particle, uint flags, uint extra)\n" +
-                "cdecl, cinq arguments — établi depuis l'assembleur : le site d'appel empile cinq " +
-                "valeurs et nettoie par ADD ESP,0x14 ; le prologue (SUB ESP,0x18 + quatre PUSH = " +
-                "0x28) les place en [ESP+0x2C..0x3C], et les cinq emplacements sont lus. " +
-                "0x00520ea8 charge [ESP+0x30] et écrit la primitive à travers (c'est le curseur), " +
-                "0x00520ec3 charge [ESP+0x38] et l'OR avec 0x2c (l'octet de commande GPU, donc " +
-                "`flags`), 0x00520f5b charge [ESP+0x3C] dans l'idiome `((short)x >> 2) & 0xffc0 + " +
-                "(x & 0xff)` (donc `extra`). C'est la même famille que DrawSpritePrimitive : une " +
-                "primitive de dix dwords liée dans l'OT.\n" +
-                "Re-décompilé avec la signature forcée par ~/ghidra_scripts/" +
-                "ForceDecompileParticlePass.java, résultat dans Legacy/Raw/Blaze/FUN_00520ae0.c " +
-                "(+ .asm). ATTENTION : même avec la signature forcée, Ghidra attribue mal les " +
-                "variables dans le corps — il nomme `particle` ce qui est `extra` dans prim[3], " +
-                "`primCursor` ce qui est `flags` dans prim[1], et rend otEntry en local " +
-                "`iStack_4`. La transcription demande donc un recoupement ligne à ligne avec le " +
-                "listing. Chemin atteint aux seuls sous-états 5 et 6.");
+            // Ghidra: FUN_00520ae0(iVar13 + 0x14, uVar12, piVar1, 0, 0). Le premier argument est
+            // **otBase + 0x14 octets**, tranché par analyse de plage plutôt que par le pseudo-C :
+            // l'emplacement visé à l'intérieur est `arg1 - 0x28 + otSlot * 4`, avec otSlot dans
+            // [0x58, 0x3f7] d'après le test de cull. Cela ne reste dans la table de 0x400 entrées
+            // qu'avec otBase ; avec otEntry (soit otBase + 0xffc) on écrirait un millier d'octets
+            // au-delà de la table.
+            primCursor = EmitParticle(otBase + 5, primCursor, particle, 0, 0);
         }
 
         return primCursor;
@@ -6890,6 +7000,7 @@ public static unsafe partial class Blaze
         if (index == 1) return CharacterSelectSubState1(otBase, otEntry, primCursor, pad);
         if (index == 3) return CharacterSelectSubState3(otBase, otEntry, primCursor, pad);
         if (index == 4) return CharacterSelectSubState4(otBase, otEntry, primCursor, pad);
+        if (index == 5) return CharacterSelectSubState5(otBase, otEntry, primCursor, pad);
 
         throw new NotImplementedException(
             $"Character-select sub-state {index} (0x{s_CharacterSelectSubStateAddresses[index]:x8}) " +
@@ -7016,6 +7127,239 @@ public static unsafe partial class Blaze
         0x08, 0x02, 0x00, 0x04, 0x0a, 0x02, 0x04, 0x06,
         0x09, 0x03, 0x0f, 0x0d, 0x01, 0x03, 0x05, 0x07,
     ];
+
+    // Ghidra: &DAT_00573350 — les trois dés, pas 0x9c octets, encore le même type d'enregistrement.
+    // Seuls les cinq premiers champs servent : +0x00 l'angle de rotation, +0x18 son cosinus,
+    // +0x1a un facteur figé à 0x1000, +0x28 le mot d'attribut, +0x30 la face tirée.
+    //
+    // Les trois records s'étendent jusqu'à 0x573524 et **chevauchent** donc DAT_00573518 sur douze
+    // octets. Ce n'est pas une erreur de relevé : le pas de 0x9c est confirmé par les trois
+    // adresses que le code compare entre elles (0x573380, 0x57341c, 0x5734b8), et aucun champ
+    // touché ne dépasse +0x30, soit 0x5734e8 au plus loin. Le chevauchement est dans l'original et
+    // reste inoffensif.
+    private const int DiceCount = 3;
+    private const int DiceStride = 0x9c;
+    private static readonly byte* s_Dice_00573350 =
+        (byte*)NativeMemory.AllocZeroed(DiceCount, DiceStride);
+
+    // Ghidra: DAT_00578e04 — le nombre de dés déjà lancés, et DAT_005e906a le total de points.
+    private static int s_DiceRolled_00578e04;
+    private static sbyte s_StatTotal_005e906a;
+
+    // Ghidra: DAT_00578de4 — la source des sept octets recopiés dans s_PanelSelection_005e9060.
+    private static byte* s_StatSource_00578de4;
+
+    /// <summary>
+    /// Ghidra: FUN_00509470 @ 0x00509470 — <c>PTR_LAB_00560708[5]</c>, le **lancer des trois dés**
+    /// qui fixe le total de points du personnage.
+    ///
+    /// <para>Chaque dé tourne de 0 à <c>0x800</c> par pas de <c>0x100</c> ; à mi-course
+    /// (<c>0x400</c>) sa face est tirée entre 1 et 6. Quand les trois sont arrivés, leurs faces
+    /// s'ajoutent au total (parti de 15, plafonné à 99). **Trois faces identiques et un total
+    /// encore sous 99 donnent droit à un relancer** — c'est le seul rôle de la phase
+    /// <c>0x3a</c>.</para>
+    ///
+    /// <para>Signature confirmée par le re-run à signature forcée
+    /// (<c>~/ghidra_scripts/ForceDecompileSubStates.java</c>), qui rend maintenant <c>pad[3]</c>
+    /// tel quel. Le cadre reste à reconstruire à la main pour le sprite : <c>SUB ESP,0x14</c> puis
+    /// quatre <c>PUSH</c> (comptés sur les quatre <c>POP</c> de l'épilogue), donc les locaux sont
+    /// en <c>[ESP+0x10..0x23]</c> et le descripteur de sprite occupe exactement ces vingt
+    /// octets.</para>
+    /// </summary>
+    private static uint* CharacterSelectSubState5(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        byte* scratch = s_SelectScratch_00573338;
+        int* state = s_SelectState_00578de8;
+
+        if (s_SelectFlags_00562a48[0] != 0)
+        {
+            s_SelectFlags_00562a48[0] = 0;
+            s_StatTotal_005e906a = 0xf;
+            s_Unknown_005e909f = 0;
+            s_DiceRolled_00578e04 = 0;
+            ResetDice();
+
+            // Les sept octets de statistiques de la classe choisie.
+            s_StatSource_00578de4 =
+                *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x74))
+                + (scratch[0x150] & 7) * 8;
+            for (int i = 0; i < 7; i++)
+            {
+                s_PanelSelection_005e9060[i] = s_StatSource_00578de4[i];
+            }
+
+            s_SelectFlags_00562a48[2] = 3;
+        }
+
+        if (s_SelectFlags_00562a48[1] == 0) StepSubState5Phase(pad, state);
+
+        s_BackColourR_005e93a0 += (short)((0x60 - s_BackColourR_005e93a0) >> 2);
+        s_BackColourG_005e93a2 += (short)((0x60 - s_BackColourG_005e93a2) >> 2);
+        s_BackColourB_005e93a4 += (short)((0x60 - s_BackColourB_005e93a4) >> 2);
+        Ordinal_376((byte)s_BackColourR_005e93a0,
+                    (byte)s_BackColourG_005e93a2,
+                    (byte)s_BackColourB_005e93a4);
+
+        // Les trois dés. Le sprite est le bloc de vingt octets des locaux : atlas, attribut,
+        // position, les deux facteurs d'échelle, et la face.
+        byte* sprite = stackalloc byte[20];
+        NativeMemory.Clear(sprite, 20);
+        *(uint**)sprite = ((uint**)*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94))[1];
+
+        for (int i = 0, spin = 0; spin < 0x4b0; i++, spin += 400)
+        {
+            byte* die = s_Dice_00573350 + i * DiceStride;
+            short angle = *(short*)(die + 0x00);
+
+            *(uint*)(sprite + 4) = *(uint*)(die + 0x28);
+            *(short*)(sprite + 0x0c) = (short)(*(short*)(die + 0x18) - (angle >> 1));
+            *(short*)(sprite + 0x0e) = (short)((angle >> 1) + *(short*)(die + 0x1a));
+            *(short*)(sprite + 0x10) = die[0x30];
+            *(short*)(sprite + 0x0a) = 0x78;
+
+            // Ghidra: `LEA ECX,[EDI + EDI*2] ; SHL ECX,4 ; ADD ECX,0x6e` — trois dés espacés de
+            // 48 pixels à partir de 0x6e, plus un balancement proportionnel à l'angle.
+            short x = (short)(i * 48 + 0x6e);
+            x += (short)((int)GetSinTableEntry(spin - 400) * angle >> 0x13);
+            *(short*)(sprite + 8) = x;
+
+            primCursor = DrawSpritePrimitive(otBase, primCursor, (int*)sprite, 0, 0);
+        }
+
+        byte* label = s_UiDescriptors_00560ff0 + 2 * UiDescriptorStride;   // &DAT_00562180
+        BindMenuLabels(
+            *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0xf4), 0, label, 0);
+        return RunTextEngine(primCursor, label);
+    }
+
+    /// <summary>Remet les trois dés à l'arrêt — répété à l'entrée et au relancer.</summary>
+    private static void ResetDice()
+    {
+        for (int i = 0; i < DiceCount; i++)
+        {
+            byte* die = s_Dice_00573350 + i * DiceStride;
+            *(short*)(die + 0x00) = 0;
+            *(short*)(die + 0x18) = 0x1000;
+            *(short*)(die + 0x1a) = 0x1000;
+            *(uint*)(die + 0x28) = 0x1000000;
+            die[0x30] = 0;
+        }
+    }
+
+    private static void StepSubState5Phase(byte* pad, int* state)
+    {
+        switch (state[2])
+        {
+            case 0x39:
+            {
+                // Annulation : possible seulement tant qu'aucun dé n'est lancé.
+                if ((*(ushort*)(pad + 2) & 0x4000) != 0 && s_DiceRolled_00578e04 == 0)
+                {
+                    PlayUiSound39();
+                    state[2] = 0x2e;
+                    state[0]--;
+                    break;
+                }
+
+                if ((*(ushort*)(pad + 2) & 0x8000) != 0 && s_DiceRolled_00578e04 < 3)
+                {
+                    PlayUiSound38();
+                    *(short*)(s_Dice_00573350 + s_DiceRolled_00578e04 * DiceStride) = 0;
+                    s_DiceRolled_00578e04++;
+                }
+
+                // Les dés déjà lancés tournent.
+                for (int i = 0; i < s_DiceRolled_00578e04; i++)
+                {
+                    byte* die = s_Dice_00573350 + i * DiceStride;
+                    short angle = *(short*)(die + 0x00);
+
+                    *(short*)(die + 0x18) = (short)GetCosTableEntry(angle);
+                    if (angle == 0x400) die[0x30] = (byte)(CrtRand() % 6 + 1);
+                    if (angle < 0x800) *(short*)(die + 0x00) = (short)(angle + 0x100);
+                }
+
+                if (s_DiceRolled_00578e04 != 3) break;
+
+                // Les trois sont-ils arrêtés ? On somme les faces au passage.
+                int stopped = 0;
+                sbyte sum = 0;
+                for (; stopped < 3; stopped++)
+                {
+                    byte* die = s_Dice_00573350 + stopped * DiceStride;
+                    if (*(short*)(die + 0x00) != 0x800) break;
+                    sum += (sbyte)die[0x30];
+                }
+                if (stopped != 3) break;
+
+                s_StatTotal_005e906a += sum;
+
+                byte f0 = s_Dice_00573350[0x30];
+                byte f1 = (s_Dice_00573350 + DiceStride)[0x30];
+                byte f2 = (s_Dice_00573350 + 2 * DiceStride)[0x30];
+
+                if (f0 == f1 && f1 == f2 && s_StatTotal_005e906a < 99)
+                {
+                    state[2]++;                     // 0x3a — un relancer est offert
+                }
+                else
+                {
+                    if (s_StatTotal_005e906a > 99) s_StatTotal_005e906a = 99;
+                    state[2] += 2;                  // 0x3b — on passe à la confirmation
+                }
+                break;
+            }
+
+            case 0x3a:
+                // Le relancer : on remet les trois dés à zéro et on repart en 0x39.
+                if ((s_Unknown_00560fef & 2) == 0)
+                {
+                    *(ushort*)(pad + 2) &= 0x7fff;
+                    state[2] = 0x39;
+                    s_DiceRolled_00578e04 = 0;
+                    ResetDice();
+                }
+                break;
+
+            case 0x3b:
+                if ((s_Unknown_00560fef & 2) == 0)
+                {
+                    *(ushort*)(pad + 2) &= 0x7fff;
+                    state[2]++;
+                    break;
+                }
+                if ((pad[3] & 0x40) == 0) break;
+                s_Unknown_0056075b = 0;
+                s_Unknown_00560fef &= 0xfd;
+                PlayUiSound39();
+                state[2] = 0x39;
+                s_SelectFlags_00562a48[0] = 1;
+                break;
+
+            case 0x3c:
+                if ((s_Unknown_00560fef & 4) == 0)
+                {
+                    if (s_Unknown_005e909f == 0)
+                    {
+                        state[2] = 0x3e;
+                        state[0]++;
+                    }
+                    else
+                    {
+                        state[2] = 0x39;
+                        s_SelectFlags_00562a48[0] = 1;
+                    }
+                    break;
+                }
+                if ((pad[3] & 0x40) == 0) break;
+                s_Unknown_00560763 = 0;
+                s_Unknown_00560fef &= 0xfb;
+                PlayUiSound39();
+                state[2] = 0x39;
+                s_SelectFlags_00562a48[0] = 1;
+                break;
+        }
+    }
 
     // Ghidra: &DAT_00572e58 — huit enregistrements de 0x9c octets, du même type que l'entité de
     // scène et que les emplacements du carrousel : les huit icônes que le sous-état 4 dispose en
@@ -9329,6 +9673,57 @@ public static unsafe partial class Blaze
         return *(byte**)(*(byte**)(root + 0x70) + index * 4);
     }
 
+    /// <summary>
+    /// Handler for control code <c>0x06</c> — <c>0x005449f0</c>, decoded by hand from
+    /// Legacy/Blaze.exe (file offset <c>0x143df0</c>). It **prints a number in decimal**, which is
+    /// what the dice screen needs for the stat total and the seven class figures.
+    ///
+    /// <para>Two operand bytes, matching the pass-1 stub for this code (<c>0x00543960</c>, "skip
+    /// two"). <c>text[0]</c> is a byte offset into <c>DAT_005e9060</c> — the player-stat block —
+    /// and <c>text[1]</c> the width to read there: <c>2</c> a word, <c>4</c> a dword, anything else
+    /// a single byte.</para>
+    ///
+    /// <para>The value is then walked against the ten-entry divisor table at <c>DAT_00566be8</c>
+    /// (1e9 down to 1) and each digit emitted through <see cref="RasterizeGlyph"/>. Leading zeros
+    /// are suppressed by <c>EBP</c>, which only latches once a non-zero digit has been seen **or**
+    /// the last divisor is reached — so a value of zero still prints one <c>'0'</c>.</para>
+    /// </summary>
+    private static byte* Handler_005449f0(byte* text, byte* descriptor)
+    {
+        byte* source = s_PanelSelection_005e9060 + text[0];
+
+        uint value = text[1] switch
+        {
+            2 => *(ushort*)source,
+            4 => *(uint*)source,
+            _ => *source,
+        };
+
+        bool started = false;
+        for (int i = 0; i < s_DecimalDivisors_00566be8.Length; i++)
+        {
+            uint divisor = s_DecimalDivisors_00566be8[i];
+            uint digit = value / divisor;
+            value -= digit * divisor;
+
+            // Ghidra: `TEST EAX,EAX / JNZ / CMP EBX,1 / JNZ / INC EBP` — le drapeau se lève sur le
+            // premier chiffre non nul, ou d'office sur le dernier diviseur.
+            if (digit != 0 || divisor == 1) started = true;
+            if (!started) continue;
+
+            RasterizeGlyph(descriptor, digit + 0x30, 0);
+        }
+
+        return text + 2;
+    }
+
+    // Ghidra: &DAT_00566be8 — dix diviseurs décimaux, relevés au décalage fichier 0x1651e8.
+    private static readonly uint[] s_DecimalDivisors_00566be8 =
+    [
+        1000000000, 100000000, 10000000, 1000000, 100000,
+        10000, 1000, 100, 10, 1,
+    ];
+
     // The four pass-1 stubs, decoded from the binary. They are not semantic handlers: they declare
     // how many operand bytes a control code consumes so the scan can skip without drawing.
     private static byte* Advance0(byte* p, byte* descriptor) => p;        // 0x00543940  8B 44 24 04 C3
@@ -9376,6 +9771,7 @@ public static unsafe partial class Blaze
         }
         else
         {
+            t[0x06] = Handler_005449f0;   // 0x005449f0, decoded here — nombre en décimal
             t[0x09] = Handler_00544b10;   // 0x00544b10, decoded here
             t[0x0c] = Handler_00544c50;   // 0x00544c50, decompiled
             t[0x0d] = Handler_00544d90;   // 0x00544d90, decompiled

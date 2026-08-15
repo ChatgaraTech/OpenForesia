@@ -2467,3 +2467,89 @@ session starts from the answer rather than the question. The body itself is not 
 
 Remaining on the screen: the body of `FUN_00520ae0`, then sub-states **5** (175 lines), **2** (143,
 reached only as sub-state 3's back-step), **6** (545) and **7** (713).
+
+## 2026-08-15 — the particle emitter, forced signatures for all eight handlers, and sub-state 5
+
+The chain now runs 0 → 1 → 3 → 4 → 5. Sub-state 5 is the **bonus draw**: three cards, turned over
+one at a time, with a "Bonus" panel counting the total and the banner "Tu reçois un bonus.".
+
+### `FUN_00520ae0` is transcribed — `EmitParticle`
+
+Written from the forced-signature re-run plus the listing. It is the same shape as
+`DrawSpritePrimitive`: transform the position, cull, then emit a ten-dword primitive linked into the
+ordering table, scaled by perspective (`0x190000 / otSlot`).
+
+Two things settled that the pseudo-C could not give:
+
+- **The OT pointer the caller passes is `otBase + 0x14` bytes, not `otEntry`.** Settled by range:
+  the slot written is `arg1 - 0x28 + otSlot * 4` with `otSlot ∈ [0x58, 0x3f7]` from the cull test.
+  With `otBase` every write lands inside the 0x400-entry table; with `otEntry` (`otBase + 0xffc`) it
+  would run about a thousand bytes past the end.
+- **All four argument slots are reused as scratch** once emission starts — overwritten at
+  `0x520e89`, `0x520efa`, `0x520f08`, `0x520f26`. That is why Ghidra calls `flags` "primCursor",
+  `extra` "particle", `otEntry` a local `iStack_4`, and `particle+0x1c/0x24`
+  "otEntry[7]/otEntry[9]". A forced signature fixes the *prototype*; it does not fix attribution
+  inside the body.
+
+`TODO(REVERSE)` left in place: the attributes are read at `atlas[1]`, i.e. **frame 0**, while the
+colour is read at the current frame. Same shape as the texture-page quirk in `DrawAnimatedModel`.
+
+**Not yet exercised at runtime.** The frame loop's in-scene block runs *after* the handler dispatch,
+and sub-states 6 and 7 still throw there, so the particle path has not actually executed. Said
+plainly rather than counted as done.
+
+### `LoadPointAsMatrixTranslation` extracted
+
+`ProjectPoint` and `FUN_00520ae0` share the preamble instruction for instruction — load the camera
+matrix, transform the point, make the result the matrix translation. Extracted on that basis. The
+carousel still renders at 433.1 primitives/frame after the change, unchanged.
+
+### All eight handlers re-decompiled with forced signatures
+
+`~/ghidra_scripts/ForceDecompileSubStates.java`, the batch form of the particle script. It sets
+
+```
+uint* handler(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+```
+
+on all eight before decompiling. Worth knowing what it does and does not buy:
+
+- **It confirms the hand-derived signature** — `pad[3]` now appears as written, where before it was
+  `*(byte *)(in_stack_00000010 + 3)`.
+- **It does not recover stack locals.** The 20-byte sprite descriptors still come out as
+  `&stack0xffffffdc`. Those still need the listing.
+
+### Sub-state 5 — `FUN_00509470`, the bonus draw
+
+Three cards on a `0x9c` stride at `DAT_00573350` — the same record type as everything else on this
+screen. Each turns from angle 0 to `0x800` in steps of `0x100`, its face drawn at `0x400`, and the
+three faces add into `DAT_005e906a` (starting at 15, capped at 99). Three identical faces with the
+total still under 99 earn a re-draw; that is the whole purpose of phase `0x3a`.
+
+The three records run to `0x573524` and so **overlap `DAT_00573518` by twelve bytes**. Not a
+mis-read: the `0x9c` stride is confirmed by the three addresses the code compares
+(`0x573380`, `0x57341c`, `0x5734b8`), and no field touched goes past `+0x30`. The overlap is in the
+original and is harmless.
+
+**A push-accounting error nearly cost a wrong transcription.** Reading `MOV [ESP+0x24],AX` after one
+`PUSH`, the address is `(ESP-4) + 0x24 = clean + 0x20` — not `clean + 0x28`. Getting that wrong made
+the sprite look like it overlapped the argument area and made one store look dead. Counting the four
+`POP`s in the epilogue fixed the frame, and with the arithmetic done properly every write lands
+inside the twenty bytes at `clean + 0x10`, with no dead store at all.
+
+### Control code `0x06` — print a number in decimal
+
+`FUN_005449f0`, decoded by hand like `0x0f` and `0x1c`. Two operand bytes: `text[0]` is a byte offset
+into `DAT_005e9060`, the player-stat block, and `text[1]` the width to read (2 word, 4 dword, else
+byte). The value is walked against a ten-entry divisor table at `DAT_00566be8` (1e9 down to 1) and
+each digit emitted through `RasterizeGlyph`. Leading zeros are suppressed by a latch that also fires
+on the last divisor, so zero still prints one `'0'` — which is exactly what the "Bonus" panel shows
+before the first card is turned.
+
+Handlers now available on the render side: `544810`, `5449f0`, `544b10`, `544c50`, `544d90`,
+`544e50`, `544e80`, `544fb0`.
+
+### Remaining
+
+Sub-states **2** (143 lines, reached only as sub-state 3's back-step), **6** (545) and **7** (713).
+Reaching 6 will finally exercise `EmitParticle`.
