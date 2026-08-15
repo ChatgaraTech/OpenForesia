@@ -6284,6 +6284,15 @@ public static unsafe partial class Blaze
         for (int i = 0; i < 9; i++) s_SelectState_00578de8[i] = 0;
         for (int i = 0; i < 3; i++) s_SelectFlags_00562a48[i] = 1;
 
+        // ECHAFAUDAGE TEMPORAIRE : OPENFORESIA_FORCE_SUBSTATE=N saute directement au sous-état N
+        // de la sélection de personnage, pour tester un sous-état sans traverser ceux qui le
+        // précèdent (utile tant qu'un blocage plus tôt dans la chaîne empêche d'y arriver
+        // normalement, par ex. les cinq appels non reconstruits de FinalizeCharacterStats).
+        if (int.TryParse(Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_SUBSTATE"), out int forced))
+        {
+            s_SelectState_00578de8[0] = forced;
+        }
+
         s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
         FixupResourceHeader(s_MainResourceDirectory_005e97c4);
 
@@ -7002,6 +7011,7 @@ public static unsafe partial class Blaze
         if (index == 4) return CharacterSelectSubState4(otBase, otEntry, primCursor, pad);
         if (index == 5) return CharacterSelectSubState5(otBase, otEntry, primCursor, pad);
         if (index == 6) return CharacterSelectSubState6(otBase, otEntry, primCursor, pad);
+        if (index == 7) return CharacterSelectSubState7(otBase, otEntry, primCursor, pad);
 
         throw new NotImplementedException(
             $"Character-select sub-state {index} (0x{s_CharacterSelectSubStateAddresses[index]:x8}) " +
@@ -7875,6 +7885,571 @@ public static unsafe partial class Blaze
         }
 
         return primCursor;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Sous-état 7 — l'écran de sauvegarde/chargement (carte mémoire)
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Ghidra: DAT_00578de0 — le résultat du dernier appel carte (FUN_00504820), -3/-4 étant des
+    // codes d'erreur spécifiques. Jamais écrit par du code déjà reconstruit ; lit 0.
+    private static int s_CardLoadResult_00578de0;
+    // Ghidra: DAT_00578e0c — la phase, indexée directement (contrairement au sous-état 6, la table
+    // de saut à deux niveaux qui la lit s'est révélée n'être qu'une implémentation de compilateur
+    // pour un switch clairsemé ; chaque valeur de phase correspond un pour un à un cas du switch
+    // ci-dessous, confirmé en lisant &DAT_0050bea8 dans le binaire).
+    private static int s_CardPhase_00578e0c;
+    private static int s_CardPrevPhase_00578e10;
+    private static int s_CardPhaseChanged_00578e14;
+    // Ghidra: DAT_00578e18 — le curseur (emplacement de sauvegarde en surbrillance).
+    private static int s_CardCursor_00578e18;
+    // Ghidra: DAT_00578e20 — 0..3 selon quelles manettes sont branchées (ports 1 et 2), sélectionne
+    // laquelle des quatre entrées de s_CardDirectorySize_00562b08 / s_CardSlotFlags_00562adc lire.
+    private static int s_CardPort_00578e20;
+
+    // Ghidra: &DAT_00562b30 (quatre pointeurs) → &DAT_00562b08 (les quatre blocs eux-mêmes, pas de
+    // pointeurs intermédiaires ici : la mémoire est statique, jamais réécrite par du code non
+    // reconstruit). Premier octet de chaque bloc = le nombre d'emplacements de sauvegarde ; le
+    // reste, non lu par cette fonction. Relevé au décalage fichier 0x161108.
+    private static readonly byte[][] s_CardDirectorySize_00562b08 =
+    [
+        [0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00],
+        [0x05, 0x02, 0x03, 0x04, 0x05, 0x01, 0x00, 0x00],
+        [0x05, 0x00, 0x06, 0x07, 0x08, 0x09, 0x00, 0x00],
+        [0x08, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08],
+    ];
+
+    // Ghidra: &DAT_00562af8 (quatre pointeurs) → &DAT_00562adc, même remarque. Un octet de
+    // drapeaux par emplacement de sauvegarde. Relevé au décalage fichier 0x1610dc.
+    private static readonly byte[][] s_CardSlotFlags_00562adc =
+    [
+        [0x00, 0x04, 0x00, 0x00],
+        [0x00, 0x01, 0x02, 0x03, 0x04, 0x00, 0x00, 0x00],
+        [0x00, 0x04, 0x05, 0x06, 0x07, 0x00, 0x00, 0x00],
+        [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07],
+    ];
+
+    // Ghidra: &DAT_00572b40 — seize octets juste avant s_SceneEntity_00572b48, confirmés distincts
+    // de cette entité (voir son commentaire). Relevés au décalage fichier 0x172740 ; passés tels
+    // quels à BindMenuLabels comme une étiquette « vide » par défaut à plusieurs points de
+    // FUN_0050a910.
+    private static readonly byte* s_EmptyLabel_00572b40 = BuildEmptyLabel00572b40();
+
+    private static byte* BuildEmptyLabel00572b40()
+    {
+        byte[] bytes = [0x00, 0x18, 0x18, 0x00, 0x10, 0x29, 0xac, 0x00,
+                        0x31, 0x29, 0x31, 0x00, 0x52, 0x7b, 0x7b, 0x00];
+        byte* buffer = (byte*)NativeMemory.Alloc((nuint)bytes.Length);
+        for (int i = 0; i < bytes.Length; i++) buffer[i] = bytes[i];
+        return buffer;
+    }
+
+    /// <summary>Un point d'arrêt commun pour tout ce qui touche la carte mémoire : les fonctions
+    /// PS1-style de bas niveau (<c>FUN_00504690</c>/<c>6c0</c>/<c>730</c>/<c>770</c>/<c>7e0</c>/<c>820</c>,
+    /// <c>FUN_00504b40</c>/<c>70</c>/<c>90</c>/<c>c20</c>, <c>FUN_00512900</c>, <c>FUN_005128e0</c>)
+    /// bouclent sur les ordinaux winsys3d 9/21/22/23/24/25/67/68/69/72/684 avec des boucles de
+    /// nouvelle tentative — aucun n'est lu ni transcrit ici : c'est tout un sous-système à part,
+    /// pas quelques appels isolés, et il mérite sa propre séance plutôt qu'une transcription
+    /// hâtive de code jamais exercé.</summary>
+    private static void ThrowSaveCardUnresolved(string context)
+    {
+        throw new NotImplementedException(
+            $"CharacterSelectSubState7 : la sous-couche carte mémoire ({context}) n'est pas " +
+            "reconstruite. FUN_00504690/6c0/730/770/7e0/820, FUN_00504b40/70/90/c20, " +
+            "FUN_00512900, FUN_005128e0 bouclent sur les ordinaux winsys3d 9/21/22/23/24/25/" +
+            "67/68/69/72/684 — voir Legacy/Raw/Blaze/FUN_0050a910.c pour le site d'appel exact.");
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050a910 @ 0x0050a910 — <c>PTR_LAB_00560708[7]</c>, l'écran de sauvegarde : neuf
+    /// cases de statut fixe (<see cref="s_SelectSlots_00573518"/>+1, réutilisé comme dans
+    /// <c>CharacterSelectSubState3</c>) plus, si la phase est en 10..13, un carrousel de cartes
+    /// dont chaque icône passe par <c>FUN_0051be90</c> — jamais décompilée par Ghidra (appelée mais
+    /// sans corps nulle part dans <c>Blaze.c</c>), donc **tout rendu de cet écran s'arrête là** ; un
+    /// re-run Ghidra à signature forcée (six paramètres observés aux sites d'appel :
+    /// <c>otEntry, prim, sprite, value, mode, extra</c>, <c>mode</c> valant toujours <c>0x82</c>
+    /// ici) est le levier le plus utile pour la prochaine séance sur cet écran.
+    /// </summary>
+    private static uint* CharacterSelectSubState7(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        byte* scratch = s_SelectScratch_00573338;
+        int* cardTransferPhase = (int*)(scratch + 4);   // DAT_0057333c — dans le bloc scratch
+
+        int previousCursor = s_CardCursor_00578e18;
+
+        if (s_SelectFlags_00562a48[0] != 0)
+        {
+            s_SelectFlags_00562a48[0] = 0;
+
+            byte* box = s_SelectSlots_00573518;
+            *(short*)(box + 0x04) = 0xa0;
+            *(short*)(box + 0x06) = 0x18;
+            *(short*)(box + 0x08) = 0x68;
+            *(short*)(box + 0x0a) = 0x88;
+            box[0x23] = 0;
+
+            byte* panel = s_SelectSlots_00573518 + CharacterSelectSlotStride;   // DAT_00573de0
+            *(short*)(panel + 0x04) = 0x28;
+            *(short*)(panel + 0x06) = 0x18;
+            *(short*)(panel + 0x08) = 0x78;
+            *(short*)(panel + 0x0a) = 0x88;
+            panel[0x14] = 3;
+            panel[0x12] = 0x1a;
+            panel[0x13] = 6;
+            panel[0x22] = 7;
+            panel[0x23] = 1;
+
+            s_SelectFlags_00562a48[2] = 0;
+            s_CardPhase_00578e0c = -1;
+            s_Unknown_00562b68 = -1;
+            s_CardPrevPhase_00578e10 = 0;
+            s_CardPhaseChanged_00578e14 = 0;
+        }
+
+        if (s_Unknown_00562b68 < 0)
+        {
+            if ((pad[6] & 0x80) != 0) s_CardCursor_00578e18--;
+            if ((pad[6] & 0x20) != 0) s_CardCursor_00578e18++;
+            BindMenuLabels(s_EmptyLabel_00572b40, 0, s_StatusDescriptor_00560728, 0);
+        }
+
+        int port1Missing = *(short*)s_JoyAxis1_00604b0a == -0x8000 ? 1 : 0;
+        s_CardPort_00578e20 = *(short*)s_JoyAxis2_00604b2e == -0x8000 ? port1Missing + 2 : port1Missing;
+
+        byte[] directory = s_CardDirectorySize_00562b08[s_CardPort_00578e20];
+        if (s_CardCursor_00578e18 < 0) s_CardCursor_00578e18 = directory[0] - 1;
+        if (directory[0] <= s_CardCursor_00578e18) s_CardCursor_00578e18 = 0;
+
+        if (previousCursor != s_CardCursor_00578e18) PlayUiSound3A();
+
+        if (s_Unknown_00562b68 < 0)
+        {
+            *cardTransferPhase = 0;
+            s_CardLoadResult_00578de0 = 0;
+            s_CardCursorSlot_00604984 = 0;
+            s_CardPhase_00578e0c = 0;
+            s_Unknown_00562b68 = s_CardCursor_00578e18;
+            PlayUiSound38();
+        }
+
+        if (s_CardPrevPhase_00578e10 != s_CardPhase_00578e0c)
+        {
+            s_CardPrevPhase_00578e10 = s_CardPhase_00578e0c;
+            s_CardPhaseChanged_00578e14 = 1;
+        }
+
+        if (-1 < s_Unknown_00562b68 && s_SelectFlags_00562a48[1] == 0)
+        {
+            StepSubState7Phase(pad, cardTransferPhase);
+        }
+
+        return RenderSaveScreen(otBase, primCursor);
+    }
+
+    // Ghidra: DAT_00604984 — l'octet de bas de DAT_00604980, l'index de carte en surbrillance dans
+    // la sous-boîte « quel port ». DAT_00604981 (le compte) n'est jamais posé par du code déjà
+    // reconstruit ; à zéro il ramène systématiquement le curseur à 0, ce qui est un état sûr.
+    private static byte s_CardCursorSlot_00604984;
+
+    // Ghidra: DAT_006049bc — pointeur vers la table des répertoires de sauvegarde, peuplé par la
+    // sous-couche carte (FUN_00504820 et consorts, non reconstruite). Reste null tant qu'elle ne
+    // tourne pas ; voir RenderSaveScreen pour l'unique lecteur, dans un bloc actuellement mort.
+    private static byte* s_CardDirectoryEntries_006049bc;
+
+    // Ghidra: DAT_005e909a..e — un descripteur de mini-jeu/animation lié au « Bonus » choisi,
+    // posé par RenderSaveScreen. Jamais lu ailleurs dans le code déjà reconstruit.
+    private static byte s_Unknown_005e909a, s_Unknown_005e909b, s_Unknown_005e909c,
+                         s_Unknown_005e909d, s_Unknown_005e909e;
+
+    // Ghidra: iRam00560fd4 — jamais posé par du code reconstruit, lit 0. La branche `case 0` qui le
+    // teste reste donc morte, comme les portes de dialogue.
+    private static int s_Unknown_00560fd4;
+
+    private static void StepSubState7Phase(byte* pad, int* cardTransferPhase)
+    {
+        // Ghidra: le sondage de transfert en cours (`_DAT_0057333c == 1` un chargement,
+        // `== 2` une écriture) tourne ici, avant le switch. En pratique jamais atteint dans ce
+        // port : les deux seuls points qui posent `_DAT_0057333c` à 1/2 (cases 1 et 6) lancent
+        // ThrowSaveCardUnresolved avant d'y arriver.
+        if (*cardTransferPhase != 0)
+        {
+            ThrowSaveCardUnresolved("sondage du transfert en cours (FUN_00504820 / Ordinal_67)");
+        }
+
+        ushort buttons = *(ushort*)(pad + 2);
+        byte dialogGate = s_Unknown_00560fef;
+        byte confirmGate = s_Unknown_005e909f;
+
+        // Ghidra: `uVar17` — quand un cas se contente de `break` plutôt que de sauter directement
+        // au rendu, l'original enchaîne sur `func_0x00544350(uVar17,...); DAT_00578e0c++;` juste
+        // après le switch. Reproduit ici par ce label différé plutôt que par sept copies du même
+        // couple d'appels.
+        byte* pendingLabel = null;
+
+        switch (s_CardPhase_00578e0c)
+        {
+            case 0:
+                if (s_Unknown_00560fd4 != 0)
+                {
+                    // Ghidra: `iRam00560fd4 != 0` — jamais posé par du code reconstruit, lit 0 ;
+                    // cette branche reste donc morte.
+                    s_Unknown_00560fef = (byte)(dialogGate & 0xfd);
+                    s_Unknown_0056075b = 0;
+                    goto case 1;
+                }
+                s_CardCursorSlot_00604984 = s_CardSlotFlags_00562adc[s_CardPort_00578e20][s_CardCursor_00578e18];
+                s_CardPhase_00578e0c++;
+                break;
+
+            case 1:
+                ThrowSaveCardUnresolved("case 1 — ouverture de la carte pour charger l'emplacement choisi");
+                break;
+
+            case 2:
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((dialogGate & 2) != 0) break;
+                pendingLabel = LabelAt(0x1b0);
+                break;
+
+            case 3:
+            case 8:
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((dialogGate & 2) != 0) break;
+                pendingLabel = LabelAt(400);
+                break;
+
+            case 7:
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((dialogGate & 2) != 0) break;
+                pendingLabel = LabelAt(0x1bc);
+                break;
+
+            case 0xb:
+                if ((buttons & 0x4000) != 0)
+                {
+                    s_Unknown_00560fef = (byte)(dialogGate & 0xfd);
+                    s_CardPhase_00578e0c--;
+                    s_Unknown_0056075b = 0;
+                    break;
+                }
+                if ((dialogGate & 2) != 0) break;
+                pendingLabel = LabelAt(400);
+                break;
+
+            case 4:
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((dialogGate & 4) != 0) break;
+                ThrowSaveCardUnresolved("case 4 — réinitialisation de la carte avant confirmation");
+                break;
+
+            case 5:
+                if (s_CardPhaseChanged_00578e14 == 0) { s_CardPhase_00578e0c = 0; }
+                else { s_CardPhaseChanged_00578e14 = 0; }
+                *cardTransferPhase = 0;
+                break;
+
+            case 6:
+                ThrowSaveCardUnresolved(
+                    "case 6 — construction de l'en-tête \"SC\" puis écriture de l'emplacement");
+                break;
+
+            case 9:
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((dialogGate & 4) != 0) break;
+                if (confirmGate == 0) { s_CardPhase_00578e0c++; break; }
+                s_CardPhase_00578e0c = -5;
+                break;
+
+            case 0xa:
+            {
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x8000) != 0)
+                {
+                    BindMenuLabels(LabelAt(0x1c0), 0, s_StatusDescriptor_00560728, 0);
+                    *(ushort*)(pad + 2) = (ushort)(buttons & 0x7fff);
+                    s_CardPhase_00578e0c++;
+                    PlayUiSound38();
+                    break;
+                }
+                byte before = s_CardCursorSlot_00604984;
+                byte slot = s_CardCursorSlot_00604984;
+                if ((pad[6] & 0x80) != 0) slot--;
+                if ((pad[6] & 0x20) != 0) slot++;
+                // Ghidra: `DAT_00604981` — jamais posé par du code reconstruit, lit 0 ; le curseur
+                // retombe donc systématiquement à 0, un état sûr plutôt qu'un plantage.
+                byte cardCount = 0;
+                if (slot == 0xff) slot = (byte)(cardCount - 1);
+                if (cardCount <= slot) slot = 0;
+                s_CardCursorSlot_00604984 = slot;
+                if (before != slot) PlayUiSound3A();
+
+                BindMenuLabels(s_Unknown_005606f8, 0, s_StatusDescriptor_00560728, 0);
+                // Le reste de la case (deux textes tirés de MainMem+0x1c0004+slot*0x100) touche
+                // une zone jamais peuplée par du code reconstruit ; rendu laissé de côté ici.
+                break;
+            }
+
+            case 0xc:
+                if ((buttons & 0x4000) != 0)
+                {
+                    s_Unknown_00560fef = (byte)(dialogGate & 0xfb);
+                    s_Unknown_00560763 = 0;
+                    s_CardPhase_00578e0c = 10;
+                    break;
+                }
+                if ((dialogGate & 4) != 0) break;
+                if (confirmGate != 0)
+                {
+                    // Ghidra: re-rentre immédiatement dans le switch via `code_r0x0050ad53` avec
+                    // la phase 10 — mort tant que confirmGate (toujours à zéro) ne change pas.
+                    s_CardPhase_00578e0c = 10;
+                    break;
+                }
+                pendingLabel = s_EmptyLabel_00572b40;
+                break;
+
+            case 0xd:
+                if (s_CardPhaseChanged_00578e14 != 0) { s_CardPhaseChanged_00578e14 = 0; *cardTransferPhase = 0; break; }
+                ThrowSaveCardUnresolved("case 0xd — vérification avant suppression");
+                break;
+
+            case 0xe:
+            case 0xf:
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((dialogGate & 2) != 0) break;
+                BindMenuLabels(LabelAt(s_CardPhase_00578e0c == 0xe ? 0x1c8 : 400),
+                    0, s_StatusDescriptor_00560728, 0);
+                s_CardPhase_00578e0c++;
+                break;
+
+            case 0x10:
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((dialogGate & 4) != 0) break;
+                if (confirmGate != 0) { s_CardPhase_00578e0c = -5; break; }
+                ThrowSaveCardUnresolved("case 0x10 — vérification avant formatage");
+                break;
+
+            case 0x11:
+                if ((dialogGate & 2) != 0) break;
+                pendingLabel = LabelAt(0x1d8);
+                break;
+
+            case 0x12:
+                if ((dialogGate & 4) == 0)
+                {
+                    if (confirmGate == 0)
+                    {
+                        s_SelectState_00578de8[0] = 0;
+                        s_SelectState_00578de8[2] = 0;
+                    }
+                    else
+                    {
+                        s_Unknown_005de51c = 0;
+                        s_SelectState_00578de8[0] = -1;
+                        s_GameStateId = 1;
+                    }
+                }
+                break;
+
+            case -5:
+                ThrowSaveCardUnresolved("case -5 — réinitialisation avant annulation");
+                break;
+
+            case -4:
+                s_Unknown_00560fef = (byte)(dialogGate & 0xf9);
+                s_Unknown_00560763 = 0;
+                s_Unknown_0056075b = 0;
+                s_Unknown_00562b68 = -1;
+                PlayUiSound39();
+                break;
+
+            case -3:
+            case -2:
+                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if (s_CardLoadResult_00578de0 == -3) { *cardTransferPhase = 0; s_CardPhase_00578e0c = 0; break; }
+                if ((dialogGate & 2) != 0) break;
+                ThrowSaveCardUnresolved("case -3/-2 — réinitialisation de la carte avant confirmation d'erreur");
+                break;
+
+            case -1:
+            case 99:
+                if ((dialogGate & 2) == 0) s_Unknown_00562b68 = -1;
+                break;
+
+            default:
+                // Ghidra: toutes les valeurs 19..98 de la phase retombent sur le défaut — table de
+                // saut à deux niveaux confirmée par lecture du binaire (&DAT_0050bea8), voir la
+                // note sur s_CardPhase_00578e0c plus haut.
+                break;
+        }
+
+        if (pendingLabel != null)
+        {
+            BindMenuLabels(pendingLabel, 0, s_StatusDescriptor_00560728, 0);
+            s_CardPhase_00578e0c++;
+        }
+    }
+
+    /// <summary>Raccourci pour <c>*(byte**)(*(int*)(s_MainResourceDirectory_005e97c4 + 0x70) + offset)</c>,
+    /// répété tel quel à chaque case de navigation du sous-état 7.</summary>
+    private static byte* LabelAt(int offset) =>
+        *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + offset);
+
+    /// <summary>Ghidra: <c>FUN_0051be90</c> — jamais décompilée (appelée depuis plusieurs fonctions
+    /// dont celle-ci, sans corps nulle part dans <c>Blaze.c</c>). Signature observée aux sites
+    /// d'appel : six paramètres cdecl, <c>(otEntry, prim, sprite, value, mode, extra)</c>, toujours
+    /// appelée ici avec <c>mode = 0x82</c>. Vu son usage (une valeur d'un octet, à côté d'un
+    /// <c>DrawSpriteVariant</c>/<c>DrawFlatPrimitive</c> sur le même descripteur), c'est
+    /// probablement une tuile numérique — mais deviner son corps irait contre la méthodologie du
+    /// projet (§"Fidélité avant compilabilité") : elle a besoin d'un re-run Ghidra à signature
+    /// forcée, pas d'une lecture supplémentaire.</summary>
+    private static uint* EmitCardGlyphTile(uint* otEntry, uint* prim, int* sprite, uint value, uint mode, uint extra)
+    {
+        throw new NotImplementedException(
+            "CharacterSelectSubState7/RenderSaveScreen : FUN_0051be90 @ 0x0051be90 n'a jamais été " +
+            "décompilée par Ghidra (appelée sans corps nulle part dans Blaze.c). Six paramètres " +
+            "observés aux sites d'appel : (otEntry, prim, sprite, value, mode, extra), mode=0x82 " +
+            "ici. Un re-run Ghidra à signature forcée est le levier le plus utile pour débloquer " +
+            "le rendu de cet écran.");
+    }
+
+    /// <summary>Le rendu de fin de fonction, toujours exécuté : neuf cases fixes plus, si la phase
+    /// est en 10..13, un carrousel de cartes. Ghidra: <c>LAB_0050b71b</c> à la fin de
+    /// <c>FUN_0050a910</c>.</summary>
+    private static uint* RenderSaveScreen(uint* otBase, uint* primCursor)
+    {
+        if (-1 < s_Unknown_00562b68 && s_CardPhase_00578e0c is > 9 and < 0xe)
+        {
+            // Ghidra: le carrousel de cartes — une icône par port, sur le même cercle que les
+            // sous-états 0/6 (Ordinal_450/451). Bloqué par FUN_0051be90 dès la première icône.
+            byte* directory = s_MainResourceDirectory_005e97c4;
+            byte* box = stackalloc byte[20];
+            NativeMemory.Clear(box, 20);
+            *(uint*)(box + 4) = 0x1000000;
+            *(uint*)box = *(uint*)(*(byte**)(directory + 0x94) + 0x38);
+            *(short*)(box + 0x0a) = 0x30;
+
+            *(short*)(box + 0x10) = 0;
+            *(short*)(box + 8) = 0xb4;
+            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
+            *(short*)(box + 0x10) = 1;
+            *(short*)(box + 8) = 0xe8;
+            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
+            primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)box);
+
+            *(uint*)box = 0x566c30;
+            *(short*)(box + 8) = 0xbc;
+            *(short*)(box + 0xa) = 0x38;
+            // Ghidra: `*(undefined4 *)(_DAT_006049bc + 0x18 + (_DAT_00604984 & 0xff) * 0x28)` — un
+            // enregistrement de la table des répertoires que la sous-couche carte (jamais
+            // reconstruite) est censée peupler. Inatteignable en pratique : la phase ne dépasse
+            // jamais 1 tant que ThrowSaveCardUnresolved y coupe court, donc ce bloc (phase 10..13)
+            // n'est jamais exécuté pour l'instant.
+            uint entryValue = s_CardDirectoryEntries_006049bc != null
+                ? *(uint*)(s_CardDirectoryEntries_006049bc + 0x18 + s_CardCursorSlot_00604984 * 0x28)
+                : 0;
+            primCursor = EmitCardGlyphTile(otBase, primCursor, (int*)box, entryValue, 0x82, 0);
+        }
+
+        EmitViewportRect(otBase, &primCursor);
+
+        byte* label = stackalloc byte[20];
+        NativeMemory.Clear(label, 20);
+        *(uint*)(label + 4) = 0x1000000;
+        *(uint*)label = *(uint*)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x34);
+
+        if (*(short*)s_JoyAxis1_00604b0a == -0x8000)
+        {
+            *(short*)(label + 0x10) = 1;
+            *(short*)(label + 8) = 0xa9;
+            *(short*)(label + 0xa) = 0x6e;
+            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)label, 0, 0);
+        }
+        if (*(short*)s_JoyAxis2_00604b2e == -0x8000)
+        {
+            *(short*)(label + 0x10) = 2;
+            *(short*)(label + 8) = 0xdd;
+            *(short*)(label + 0xa) = 0x6e;
+            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)label, 0, 0);
+        }
+
+        *(short*)(label + 0x10) = 0;
+        *(short*)(label + 8) = 0xbd;
+        *(short*)(label + 0xa) = 0x48;
+        EmitClipRect(otBase, &primCursor);
+        primCursor = DrawUiPanel(otBase, primCursor, s_SelectSlots_00573518);
+
+        byte* panel = s_SelectSlots_00573518 + CharacterSelectSlotStride;
+        BindMenuLabels(LabelAt(0x158), 0, panel, 0);
+        primCursor = RunTextEngine(primCursor, panel);
+        BindMenuLabels(s_SelectScratch_00573338 + 0x100, 0, panel, 0);
+        primCursor = RunTextEngine(primCursor, panel);
+        BindMenuLabels(LabelAt(0x15c), 0, panel, 0);
+        primCursor = RunTextEngine(primCursor, panel);
+        BindMenuLabels(LabelAt(0xc + (s_SelectScratch_00573338[0x150] & 7) * 4), 0, panel, 0);
+        primCursor = RunTextEngine(primCursor, panel);
+
+        // Ghidra: DAT_005e909a..e — un descripteur de mini-jeu/animation lié au « Bonus » choisi.
+        // Jamais lu ailleurs dans le code déjà reconstruit ; transcrit tel quel.
+        s_Unknown_005e909a = 1;
+        s_Unknown_005e909b = 0xf;
+        s_Unknown_005e909d = 0x10;
+        s_Unknown_005e909c = (byte)((s_FadeCounter_005e9960 >> 2 & 0x1fffffff) % 3
+            + s_SelectScratch_00573338[0x151] * 3);
+        s_Unknown_005e909e = s_SelectScratch_00573338[0x150];
+
+        BindMenuLabels(LabelAt(0x160), 0, panel, 0);
+        primCursor = RunTextEngine(primCursor, panel);
+
+        short panelX = *(short*)(panel + 4);
+        byte* atlas94 = *(byte**)(s_MainResourceDirectory_005e97c4 + 0x94);
+        byte* glyph = stackalloc byte[20];
+        NativeMemory.Clear(glyph, 20);
+        *(uint*)(glyph + 4) = 0x1000000;
+
+        // Ghidra: deux petites cases (le « Bonus » tiré), rangées en damier de deux colonnes.
+        short y = (short)(*(short*)(panel + 6) + 0x52);
+        for (uint i = 0; i < 2; i++)
+        {
+            EmitViewportRect(otBase, &primCursor);
+            *(short*)(glyph + 0x10) = (short)(i + 0xb);
+            *(uint*)glyph = *(uint*)(atlas94 + 0x30);
+            short x = (short)(((i & 1) != 0 ? 0x38 : 0) + 0x12 + panelX);
+            *(short*)(glyph + 8) = x;
+            *(short*)(glyph + 0xa) = y;
+            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)glyph, 0, 0);
+            primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)glyph);
+            EmitClipRect(otBase, &primCursor);
+
+            *(short*)(glyph + 8) = (short)(x + 0x1c);
+            *(uint*)glyph = 0x566c30;
+            primCursor = EmitCardGlyphTile(
+                otBase, primCursor, (int*)glyph, s_PanelSelection_005e9060[7 + i], 0x82, 0);
+        }
+
+        // Ghidra: les sept statistiques, même disposition en damier, colonne suivante.
+        y = (short)(*(short*)(panel + 6) + 0x60);
+        for (uint i = 0; i < 7; i++)
+        {
+            EmitViewportRect(otBase, &primCursor);
+            *(short*)(glyph + 0x10) = (short)(i + 4);
+            *(uint*)glyph = *(uint*)(atlas94 + 0x30);
+            short x = (short)(((i & 1) != 0 ? 0x38 : 0) + 0x12 + panelX);
+            *(short*)(glyph + 8) = x;
+            *(short*)(glyph + 0xa) = y;
+            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)glyph, 0, 0);
+            primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)glyph);
+            EmitClipRect(otBase, &primCursor);
+
+            *(short*)(glyph + 8) = (short)(x + 0x1c);
+            *(uint*)glyph = 0x566c30;
+            primCursor = EmitCardGlyphTile(
+                otBase, primCursor, (int*)glyph, s_PanelSelection_005e9060[i], 0x82, 0);
+
+            y += (short)((i & 1) != 0 ? 9 : 0);
+        }
+
+        return DrawUiPanel(otBase, primCursor, panel);
     }
 
     // Ghidra: &DAT_00572e58 — huit enregistrements de 0x9c octets, du même type que l'entité de

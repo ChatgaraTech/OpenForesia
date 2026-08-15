@@ -2654,3 +2654,95 @@ Sub-state **2** (143 lines, reached only as sub-state 3's back-step) and **7** (
 the path — `state[2] = 0x6e` when sub-state 6 hands off via `state[0]++`). `FinalizeCharacterStats`'s
 five missing functions block only the real confirm-and-continue path, not reaching or using the
 screen.
+
+## 2026-08-15 — `FUN_0050a910`: sub-state 7, the memory-card save screen
+
+Continued the same session (see above for the machine notes). This is a different kind of
+sub-state from 0–6: not just UI over the character record, but a save/load screen built on a
+PS1-BIOS-flavoured memory-card layer — `Ordinal_9/21/22/23/24/25/67/68/69/72/684` wrapped in retry
+loops (`FUN_00504690/6c0/730/770/7e0/820`, `FUN_00504b40/70/90/c20`, `FUN_00512900`,
+`FUN_005128e0`), none of it read this session. That subsystem is its own coherent unit of work —
+see "What's stubbed" below.
+
+### The two-level jump table was, again, just a compiler artifact
+
+`FUN_0050a910`'s C renders `switch((&UNK_0050bea8)[uVar5])` with `/* WARNING: Could not find
+normalized switch variable to match jumptable */`, the same red flag as sub-state 6's incomplete
+`.asm`. This time the `.asm` **was** complete (688 lines against 719 of C, ending on the function's
+own `RET`), and it showed a genuine two-level indirection: `MOV BL,[EAX+0x50bea8]` then
+`JMP [EBX*4+0x50be44]`. Read `&DAT_0050bea8` directly from the binary (105 bytes,
+`OpenForesia.Tools -- at`) rather than guess: it's the identity map `phase+5 → phase+5` for every
+case that's actually spelled out in the C (`-5..18` and `99`), collapsed to one shared filler value
+`0x18` for the ~80 unused phase numbers, with `-3` and `-2` sharing a slot (matching the C's own
+`case 0xfffffffd: case 0xfffffffe:`). **The C's case structure is exactly the real control flow** —
+the compiler's sparse-switch lowering just looked like a hostile jump table to Ghidra. A plain C#
+`switch` on the phase int reproduces it with no remap table needed in the port at all.
+
+### Two more static tables, at addresses that turned out not to be pointers-into-nowhere
+
+`_DAT_00578e18 = **(char**)(port*4 + 0x562b30) - 1` looked at first like another "pointer into
+memory the unresolved I/O layer would populate" — until dumping `0x562b30`'s four pointers and then
+the bytes *at* those targets showed real, non-zero, baked-in demo data: port 0 has two pre-existing
+save slots. Recorded as `s_CardDirectorySize_00562b08` and `s_CardSlotFlags_00562adc` (both
+`byte[][]`, one row per port). This means the idle render of this screen shows a small existing
+save directory, not an empty one — worth knowing before reading a future capture of it.
+
+### `FUN_0051be90` is the one real blocker, and it's a `.asm`-can't-help-either case
+
+Distinct from sub-state 6's blockers: `FUN_0051be90` has **no decompiled body anywhere in
+`Blaze.c`**, only call sites (confirmed by grep — same class of gap as an unnamed DLL ordinal, but
+this one's an internal `Blaze.exe` function Ghidra never recovered at all, most likely because none
+of its callers gave it a resolvable prototype either). Six cdecl parameters are visible from every
+call site: `(otEntry, prim, sprite, value, mode, extra)`, `mode` always `0x82` in this function. It
+sits in the same family as `DrawSpriteVariant`/`DrawFlatPrimitive` (same 20-byte sprite descriptor)
+and is called with a single-byte `value` pulled from the same stat-value buffer sub-state 6 uses —
+strongly suggestive of a numeric-tile primitive, but CLAUDE.md is explicit that this class of gap
+"needs a Ghidra re-run, not more reading," so it's stubbed (`EmitCardGlyphTile`) rather than
+guessed. **It sits in the unconditional part of the render tail** (the two "current stats" glyph
+rows run every frame, not just when browsing cards), so unlike sub-state 6's blockers, this one
+blocks *all* rendering of this screen, confirmed by test (below).
+
+### What's stubbed, and why as one unit rather than piecemeal
+
+`ThrowSaveCardUnresolved(context)` is the single throw point for every phase that touches the card
+layer (cases `1`, `4`, `6`, `0xd`, `0x10`, `-5`, `-3`/`-2`, plus the every-frame transfer-poll that
+precedes the switch). Cases that only touch already-known state (`0`, `2`, `3`, `5`, `7`, `8`, `9`,
+`0xa`, `0xb`, `0xc`'s dead branch aside, `0xe`, `0xf`, `0x11`, `0x12`, `99`, `-4`, `-1`) are fully
+transcribed, including the dialog-gate branches that are dead under the always-closed
+`s_Unknown_00560fef`/`s_Unknown_005e909f` gates (same convention as sub-states 5 and 6). Case `0`
+turned up its own never-set gate, `iRam00560fd4` → `s_Unknown_00560fd4`, a new address, not a
+rename of an existing one — checked before declaring it, per the standing rule.
+
+The `uVar17` idiom (several cases just set a label pointer and `break` into a shared
+`BindMenuLabels` + phase-increment tail) is reproduced with a `pendingLabel` local rather than
+duplicating the pair of calls at every site — first-draft duplicated it inline and **missed the
+phase increment at four of the six sites**, caught by re-diffing each case against the raw C
+line-by-line rather than trusting the first pass. Worth remembering: merging near-identical cases
+by eye is exactly where a shared field (here, the phase-advance) silently drops out.
+
+### Confirmed at runtime — with a new tool for reaching a not-yet-connected sub-state
+
+Sub-state 7 cannot be reached through the normal chain: sub-state 6's `FinalizeCharacterStats`
+throws before it ever sets `state[0]++`. Added a **temporary, clearly marked** hook —
+`OPENFORESIA_FORCE_SUBSTATE=N` in `LoadCharacterSelectResources` — to set `state[0]` directly for
+testing a sub-state in isolation, the same scaffolding pattern already used elsewhere
+(`OPENFORESIA_TRACE_MENU`, `OPENFORESIA_OPTIONS_BADPATH`, etc.).
+
+`OPENFORESIA_FORCE_SUBSTATE=7` plus a single `ENTER` into the character-select menu: **no crash**
+through the init block, the port/cursor computation, and the full phase state machine — confirmed
+the two-level-table reasoning and the stubs are wired correctly. Rendering gets past
+`EmitViewportRect`/`DrawUiPanel`/the first `BindMenuLabels` call and throws inside `RunTextEngine`
+on **control code `0x04`**, a pre-existing gap (confirmed via `git show HEAD:...`, present before
+this session) in the same "never emitted, needs a scoped Ghidra re-run" family as the `0x14` gap
+sub-state 6's testing turned up — unrelated to anything written this session, just the next
+unresolved text control code down the line. `FUN_0051be90` was never reached because this earlier,
+unrelated gap fires first; it remains the real blocker for this screen once `0x04` is dealt with.
+
+### Remaining
+
+Sub-state **2** (143 lines, back-step only). For sub-state 7: the text-engine control code `0x04`
+gap (quick — same shape as the already-fixed ones, needs its handler read from
+`Legacy/Blaze.exe`/`Documentation/DataSymbols.md`), then `FUN_0051be90` (needs a forced-signature
+Ghidra re-run, six params, see above), then the memory-card subsystem itself if save/load is ever
+to actually work. None of these block sub-state 6 from being finished first instead, via its own
+five missing functions — the two blockers are independent.
