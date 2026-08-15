@@ -73,6 +73,8 @@ which is an answer, not an error.
 | `Blaze.c` (98k lines) | Ghidra decompilation of `Blaze.exe`. **Source of truth. Never modify.** |
 | `Legacy/Blaze.exe` | The game binary itself (MD5 `46d90d1b4526f4a9a441f851c77179b3`). Same build as `Blaze.c`: image base `0x400000` + entry RVA `0x147D40` = `0x00547D40` = `entry`. |
 | `Documentation/DataSymbols.md` | Values recovered from the binary's data sections, keyed by Ghidra VA. |
+| `legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect, and the project reproduces those rather than repairing them. |
+| `test-protocol.md` | How to exercise the game. Read it before any run — see "Running the game" above. |
 | `winsys3d.c`, `wsyskern.c`, `playst.c`, `3dhelp.c`, `gldhelp.c` | Ghidra decompilations of the five helper DLLs. **Secondary references, read-only.** |
 | `*.dll` (repo root) | The actual DLL binaries — this is what makes ordinal-only imports resolvable. |
 | `OpenForesia/src/Blaze/Blaze.cs` | The entire reconstruction (one file, by design — see "Phase 1"). |

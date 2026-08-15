@@ -256,6 +256,12 @@ le pas des manettes (`* 4` dans le pseudo-C, `SHL 4` dans le listing).
 
 ---
 
+## Bugs du jeu d'origine
+
+`legacy-bug.md` à la racine. Une bizarrerie constatée dans OpenForesia peut être la transcription
+**fidèle** d'un défaut de 1998 — à vérifier là avant de corriger quoi que ce soit. Première entrée :
+sortir de la saisie du nom par Échap bloque tout l'écran de sélection, au clavier.
+
 ## Contexte accumulé
 
 Tout le détail est dans `OpenForesia/src/Blaze/REVERSE_STATUS.md`, sections datées des 2026-08-14
