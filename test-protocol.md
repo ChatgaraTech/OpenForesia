@@ -118,6 +118,11 @@ Précédents : `Ordinal_795`, `FUN_0052a1e0`, `FUN_0052a280`.
 - **Le premier appui après `SetForegroundWindow` est toujours avalé.** Le script envoie donc un
   appui d'échauffement — et la validation, elle, ne se rattrape pas si on la laisse être ce premier
   appui.
+- **Attendre la fenêtre, ne pas la supposer prête.** Avec `-Build`, ou après une relance, elle peut
+  arriver plusieurs secondes après `-MenuDelay`. Sans attente le focus échoue en silence et la
+  navigation part dans le vide : mesuré, 11 appuis au lieu de 2. Le script sonde jusqu'à 20 s une
+  fenêtre **dont le titre est exactement `OpenForesia`** — un jeu relancé porte aussi une console
+  dont le titre est le chemin de l'exe, et la prendre envoie toutes les frappes ailleurs.
 - **Le curseur du menu butte sur la première et la dernière entrée, il ne boucle pas.** Un
   dépassement est donc sans retour si on ne tape que vers le bas : la navigation doit être
   bidirectionnelle (`DIK_UP` = `0xc8`, scancode `0x48` étendu).

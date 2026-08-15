@@ -202,20 +202,28 @@ Start-Sleep -Seconds $MenuDelay
 # Le titre compte : un processus relance porte aussi une fenetre de console, dont le titre est le
 # chemin de l'exe. La prendre pour la fenetre du jeu envoie toutes les frappes dans le vide --
 # mesure, la capture montrait la console et la navigation ne bougeait pas.
-function Get-GameWindow($parent) {
-    $parent.Refresh()
-    if ($parent.MainWindowHandle -ne [IntPtr]::Zero -and $parent.MainWindowTitle -eq 'OpenForesia') {
-        return $parent
-    }
-    $kids = @(Get-Process -Name 'OpenForesia' -ErrorAction SilentlyContinue |
-              Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero -and $_.MainWindowTitle -eq 'OpenForesia' })
-    if ($kids.Count -gt 0) {
-        if ($kids[0].Id -ne $parent.Id) {
-            Write-Host "   (relance detectee : fenetre portee par le PID $($kids[0].Id))"
+# Attend la fenetre plutot que de la supposer prete : avec -Build, ou apres une relance, elle peut
+# arriver plusieurs secondes apres MenuDelay. Sans cette attente le focus echoue en silence et la
+# navigation part dans le vide -- mesure : 11 appuis au lieu de 2.
+function Get-GameWindow($parent, [int]$WaitSeconds = 20) {
+    for ($t = 0; $t -lt $WaitSeconds * 2; $t++) {
+        $parent.Refresh()
+        if ($parent.MainWindowHandle -ne [IntPtr]::Zero -and $parent.MainWindowTitle -eq 'OpenForesia') {
+            return $parent
         }
-        return $kids[0]
+        $kids = @(Get-Process -Name 'OpenForesia' -ErrorAction SilentlyContinue |
+                  Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero -and $_.MainWindowTitle -eq 'OpenForesia' })
+        if ($kids.Count -gt 0) {
+            if ($kids[0].Id -ne $parent.Id) {
+                Write-Host "   (relance detectee : fenetre portee par le PID $($kids[0].Id))"
+            }
+            if ($t -gt 0) { Write-Host "   (fenetre apparue apres $([math]::Round($t / 2.0, 1)) s d'attente)" }
+            return $kids[0]
+        }
+        if ($parent.HasExited) { break }
+        Start-Sleep -Milliseconds 500
     }
-    Write-Host "!! aucune fenetre intitulee 'OpenForesia' trouvee"
+    Write-Host "!! aucune fenetre intitulee 'OpenForesia' apres $WaitSeconds s"
     return $parent
 }
 
