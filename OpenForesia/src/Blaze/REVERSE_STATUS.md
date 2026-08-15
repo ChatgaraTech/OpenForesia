@@ -2402,3 +2402,68 @@ the capture showed a black console and the menu never moved. It now requires
 
 Sub-states **2, 5, 6, 7**. Sub-state 2 (143 lines) is reached only as sub-state 3's back-step.
 Sub-states 6 and 7 are 545 and 713 lines.
+
+## 2026-08-15 — `FUN_00520ae0`: signature resolved by a forced-signature Ghidra re-run
+
+Sub-state 5 cannot be seen without this: the frame loop runs the particle pass for every sub-state
+above 4, before anything sub-state 5 draws. So the particle emitter had to be unblocked first.
+
+### The re-run
+
+`~/ghidra_scripts/ForceDecompileParticlePass.java`, a variant of `ForceDecompileCharacterSelect`
+that **sets the function's prototype before decompiling** rather than only creating it:
+
+```java
+fn.setCallingConvention("__cdecl");
+fn.updateFunction("__cdecl", new ReturnParameterImpl(uintPtr, currentProgram), params,
+                  Function.FunctionUpdateType.DYNAMIC_STORAGE_FORMAL_PARAMS, true,
+                  SourceType.USER_DEFINED);
+```
+
+Run the same way as the other one (`-noanalysis -readOnly`, from PowerShell). It reported
+`undefined FUN_00520ae0()` before and the five-parameter prototype after, and rewrote
+`Legacy/Raw/Blaze/FUN_00520ae0.c` and `.asm`.
+
+### The signature
+
+```
+uint* FUN_00520ae0(uint* otEntry, uint* prim, int* particle, uint flags, uint extra)
+```
+
+Every parameter is pinned to an instruction rather than inferred:
+
+| arg | slot | evidence |
+|---|---|---|
+| 1 `otEntry` | `[ESP+0x2C]` | `0x520eb8 MOV ECX,[ESP+0x2c]` then `MOV [ECX+EBP*4-0x28],EAX` — the OT link write |
+| 2 `prim` | `[ESP+0x30]` | `0x520ea8 MOV EAX,[ESP+0x30]`, then `MOV [EAX],ECX` writes `otSlot \| 0x9000000`; also what the early exits return |
+| 3 `particle` | `[ESP+0x34]` | `0x520ae7 MOV EDI,[ESP+0x34]`, then `[EDI+0x20]` = the `particle[8]` guard |
+| 4 `flags` | `[ESP+0x38]` | `0x520ec3 MOV EBP,[ESP+0x38]` then `OR EBP,0x2c` — the GPU command byte |
+| 5 `extra` | `[ESP+0x3C]` | `0x520f5b`, feeding `((short)x >> 2) & 0xffc0 + (x & 0xff)` — the project's known `extra` idiom |
+
+So it is the same family as `DrawSpritePrimitive` and `DrawFlatPrimitive`: a ten-dword primitive
+linked into the ordering table.
+
+### The pseudo-C is still not trustworthy line by line
+
+This is the part worth remembering. Forcing the signature fixed the *prototype* but **not** the
+variable attribution inside the body. In the freshly decompiled output:
+
+- `prim[1] = ((uint)primCursor & 0xff | 0x2c | …)` — that `& 0xff` term is **arg4**, not arg2. The
+  assembly reads `[ESP+0x38]`.
+- `prim[3] = (((ushort)((short)particle >> 2) & 0xffc0) + ((uint)particle & 0xff)) * 0x10000 …` —
+  that is **arg5**, not arg3. The assembly reads `[ESP+0x3C]`.
+- `iStack_4`, used as `iStack_4 - 0x28 + iVar19 * 4` for the OT link, is **arg1**, rendered as a
+  local.
+- `unaff_retaddr`, through which the whole primitive is written and which the function returns `+10`,
+  is **arg2**.
+
+A forced signature makes the body *readable*; it does not make it *copyable*. Transcribing this one
+needs a line-by-line cross-check against `FUN_00520ae0.asm`, which the script now writes alongside.
+
+### State
+
+The signature and the evidence are recorded in the `EmitSceneParticles` throw message, so the next
+session starts from the answer rather than the question. The body itself is not transcribed.
+
+Remaining on the screen: the body of `FUN_00520ae0`, then sub-states **5** (175 lines), **2** (143,
+reached only as sub-state 3's back-step), **6** (545) and **7** (713).

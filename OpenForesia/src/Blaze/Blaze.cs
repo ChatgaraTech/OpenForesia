@@ -6838,15 +6838,23 @@ public static unsafe partial class Blaze
             *((byte*)particle + 0x24) = (byte)((s_FadeCounter_005e9960 >> 1) % 6);
 
             throw new NotImplementedException(
-                "FUN_00520ae0 (la passe de particules) : signature non établie. L'assembleur donne " +
-                "cdecl à **cinq** arguments — le site d'appel empile PUSH EBP, PUSH EBP, PUSH EDI, " +
-                "PUSH EDX, PUSH EAX puis nettoie par ADD ESP,0x14 — soit " +
-                "(otBase + 0x14, primCursor, particule, 0, 0). Le prologue " +
-                "(SUB ESP,0x18 + quatre PUSH = 0x28) place les arguments en [ESP+0x2C..0x3C], et " +
-                "les cinq emplacements sont lus, dont [ESP+0x38] et [ESP+0x3C]. Mais Ghidra ne lui " +
-                "donne que trois paramètres et rend le curseur de primitives en `unaff_retaddr`, " +
-                "donc son corps n'est pas transcriptible en l'état : il faut un re-run Ghidra avec " +
-                "la signature forcée. Chemin atteint aux seuls sous-états 5 et 6.");
+                "FUN_00520ae0 (la passe de particules) : signature RÉSOLUE, corps non transcrit.\n" +
+                "  uint* FUN_00520ae0(uint* otEntry, uint* prim, int* particle, uint flags, uint extra)\n" +
+                "cdecl, cinq arguments — établi depuis l'assembleur : le site d'appel empile cinq " +
+                "valeurs et nettoie par ADD ESP,0x14 ; le prologue (SUB ESP,0x18 + quatre PUSH = " +
+                "0x28) les place en [ESP+0x2C..0x3C], et les cinq emplacements sont lus. " +
+                "0x00520ea8 charge [ESP+0x30] et écrit la primitive à travers (c'est le curseur), " +
+                "0x00520ec3 charge [ESP+0x38] et l'OR avec 0x2c (l'octet de commande GPU, donc " +
+                "`flags`), 0x00520f5b charge [ESP+0x3C] dans l'idiome `((short)x >> 2) & 0xffc0 + " +
+                "(x & 0xff)` (donc `extra`). C'est la même famille que DrawSpritePrimitive : une " +
+                "primitive de dix dwords liée dans l'OT.\n" +
+                "Re-décompilé avec la signature forcée par ~/ghidra_scripts/" +
+                "ForceDecompileParticlePass.java, résultat dans Legacy/Raw/Blaze/FUN_00520ae0.c " +
+                "(+ .asm). ATTENTION : même avec la signature forcée, Ghidra attribue mal les " +
+                "variables dans le corps — il nomme `particle` ce qui est `extra` dans prim[3], " +
+                "`primCursor` ce qui est `flags` dans prim[1], et rend otEntry en local " +
+                "`iStack_4`. La transcription demande donc un recoupement ligne à ligne avec le " +
+                "listing. Chemin atteint aux seuls sous-états 5 et 6.");
         }
 
         return primCursor;

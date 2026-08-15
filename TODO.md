@@ -27,7 +27,28 @@ Rien n'est commité — c'est l'affaire de Vincent.
 
 ---
 
-## 1. À faire maintenant : les sous-états 2, 5, 6, 7
+## 1. À faire maintenant : le corps de `FUN_00520ae0`, puis les sous-états 2, 5, 6, 7
+
+**`FUN_00520ae0` n'est plus un mystère de signature.** Un re-run Ghidra avec la signature forcée
+(`~/ghidra_scripts/ForceDecompileParticlePass.java`) a produit
+`Legacy/Raw/Blaze/FUN_00520ae0.c` et son `.asm`. La signature est établie instruction par
+instruction :
+
+```
+uint* FUN_00520ae0(uint* otEntry, uint* prim, int* particle, uint flags, uint extra)
+```
+
+C'est la même famille que `DrawSpritePrimitive` : une primitive de dix dwords liée dans l'OT.
+
+**Mais forcer la signature n'a pas corrigé l'attribution des variables dans le corps.** Ghidra
+nomme encore `particle` ce qui est `extra` (prim[3]), `primCursor` ce qui est `flags` (prim[1]),
+et rend `otEntry` en local `iStack_4`. La transcription demande un recoupement **ligne à ligne**
+avec le listing — c'est le seul travail qui reste dessus, et il n'est pas mécanique.
+
+Il est bloquant pour voir le sous-état 5 : la boucle de frame lance la passe de particules dès
+`sous-état > 4`, avant tout ce que le sous-état 5 dessine.
+
+## 1ter. Ensuite : les sous-états 2, 5, 6, 7
 
 Les **sous-états 3** (style de langage) et **4** (carrousel des éléments) sont reconstruits et
 tournent. La chaîne va donc 0 → 1 → 3 → 4 → *5*. Reproduction :
