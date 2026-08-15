@@ -28,6 +28,30 @@ dotnet run --project OpenForesia          # runs Blaze.entry()
 Two `NETSDK1189` warnings about `Prefer32Bit` are expected and harmless. There is no test project;
 verification is `dotnet build` plus reading the reconstruction against `Blaze.c`.
 
+`dotnet run --project OpenForesia` **fails from the shell** — the app is x86 and the SDK on PATH
+only carries the x64 runtime. Launch `OpenForesia/bin/Debug/net9.0/OpenForesia.exe` directly, or use
+`playtest.ps1` below, which handles it.
+
+## Running the game — always via `test-protocol.md`
+
+**Before exercising the game in any way — launching it, reaching a screen, reproducing a crash,
+capturing a screenshot — read `test-protocol.md` (repo root) and drive the run with
+`OpenForesia.Tools/playtest.ps1`.** This is not optional and does not need to be asked for.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 25 -Shot   # character select, with a capture
+```
+
+The game's keyboard goes through DirectInput and its menu cannot be driven by timed keystrokes, so
+every ad-hoc launcher written from scratch has had to rediscover the same half-dozen traps.
+`playtest.ps1` navigates the menu in closed loop, confirms the validation was seen, captures the
+window and prints a verdict (crash with its stack, or primitives-per-frame). Read the capture it
+writes to `scratchpad/`.
+
+If a run needs something the script does not do, **extend the script and note it in
+`test-protocol.md`** rather than working around it. Anything a test session learns about *how to
+test* belongs in that file, the same way findings about the binary belong in `Documentation/`.
+
 PE inspector. A bare path keeps the original export-table dump (ordinal → RVA → name); the two
 verbs read the binary's data sections:
 

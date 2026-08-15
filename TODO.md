@@ -115,24 +115,15 @@ OpenForesia/bin/Debug/net9.0/OpenForesia.exe
 Même cause pour `OpenForesia.Tools`, qui ne tourne pas du tout. Palliatif :
 `OpenForesia.Tools/exports.ps1`, un parseur de table d'exports PE en PowerShell.
 
-**Piloter le menu depuis un script** (pour atteindre l'état 4 sans les mains). Ça a coûté six
-essais, voici ce qui marche :
+**Tester le jeu : voir `test-protocol.md`**, à la racine. Un seul point d'entrée :
 
-- Le clavier passe par **DirectInput**, donc `SendKeys` (messages de fenêtre) est invisible.
-  `SendInput` avec `KEYEVENTF_SCANCODE` fonctionne.
-- Les liaisons vivantes sont les **flèches** (`DIK_DOWN` = `0xd0`, scancode `0x50` étendu) et
-  `DIK_RETURN` (`0x1c`). La moitié pavé numérique de la table par défaut ne répond pas :
-  `OpenForesia.cfg` la remplace.
-- Le menu tourne à ~6 images/s et sonde une fois par image. Un appui de moins de ~200 ms tombe
-  entre deux sondages ; un appui de plus de ~450 ms se répète et le curseur s'emballe. **Le premier
-  appui après `SetForegroundWindow` est toujours avalé.**
-- Chronométrer l'appui est donc sans issue. Ce qui marche est la **boucle fermée** : lancer avec
-  `OPENFORESIA_TRACE_MENU=1`, taper, puis relire `+0x8C4:xx->yy` dans le stderr redirigé (ouvert en
-  `FileShare.ReadWrite`, le jeu le tient encore) et retaper jusqu'à la bonne entrée. L'entrée 1 est
-  « Sélection des personnages ».
-- `CurrentPadWord()` continue de rendre le dernier mot non nul après relâchement : la valeur `pad=`
-  de la trace n'est **pas** un indicateur fiable de « touche tenue ». Ce sont les transitions
-  `+0x8C4` qui font foi.
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 25 -Shot
+```
+
+Il construit, lance, navigue jusqu'à l'écran voulu, capture et rend un verdict. Tout ce qui a été
+appris sur le pilotage du jeu (DirectInput, cadence, boucle fermée sur la trace du menu) est dans ce
+fichier et dans le script — ne pas le réinventer, l'étendre si besoin.
 
 **Lire le binaire sans outil.** `od -A x -t x4 -j <offset> -N <taille> Legacy/Blaze.exe` suffit pour
 relever une table de `.data`, et se diffe contre les constantes du source. C'est ce qui a établi
