@@ -7417,6 +7417,18 @@ public static unsafe partial class Blaze
         byte* scratch = s_SelectScratch_00573338;
         int* state = s_SelectState_00578de8;
 
+        // ECHAFAUDAGE TEMPORAIRE : OPENFORESIA_FORCE_CONFIRM_STATS=1 appelle
+        // FinalizeCharacterStats directement au premier passage, sans dépendre du mappage
+        // clavier→manette réel (non élucidé pour le bouton de confirmation, `pad+2 & 0x8000`) ni
+        // du nombre de points à dépenser avant de pouvoir confirmer.
+        if (s_SelectFlags_00562a48[0] != 0
+            && Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_CONFIRM_STATS") == "1")
+        {
+            byte* syntheticPad = stackalloc byte[16];
+            NativeMemory.Clear(syntheticPad, 16);
+            FinalizeCharacterStats(syntheticPad, scratch, state);
+        }
+
         if (s_SelectFlags_00562a48[0] != 0)
         {
             s_SelectFlags_00562a48[0] = 0;
@@ -7718,10 +7730,32 @@ public static unsafe partial class Blaze
         return RunTextEngine(primCursor, s_StatusDescriptor_00560728);
     }
 
+    /// <summary>
+    /// Ghidra: FUN_00538ab0 @ 0x00538ab0 — copie quatre dwords de <c>param+0x280</c> vers
+    /// <c>param+0x120</c>. Corps trivial et autonome (pas d'appel, pas de branche), donc
+    /// transcrit directement plutôt que déclaré non résolu comme ses quatre voisins.
+    ///
+    /// <para>Appelée à plusieurs dizaines de sites dans <c>Blaze.c</c> sur toutes sortes
+    /// d'enregistrements (pas seulement le personnage en cours de création) : un « commit » de
+    /// portée générale, probablement la copie du bloc de statistiques préparé (<c>+0x280</c>,
+    /// posé juste avant par <see cref="FinalizeCharacterStats"/>) vers l'emplacement que le reste
+    /// du moteur relit (<c>+0x120</c>). Nommée sur ce rôle plutôt que sur sa seule occurrence
+    /// ici ; à revoir si un autre site l'utilise autrement.</para>
+    /// </summary>
+    private static void CommitStagedStatBlock(byte* record)
+    {
+        *(uint*)(record + 0x120) = *(uint*)(record + 0x280);
+        *(uint*)(record + 0x124) = *(uint*)(record + 0x284);
+        *(uint*)(record + 0x128) = *(uint*)(record + 0x288);
+        *(uint*)(record + 0x12c) = *(uint*)(record + 0x28c);
+    }
+
     /// <summary>Ghidra: la branche « confirmer » de <c>case 0x3e</c>, atteinte quand le pool de
     /// points est à zéro et que le bouton de confirmation est pressé. Prépare l'enregistrement du
-    /// personnage (mêmes conventions que <c>s_UiDescriptors_00560ff0</c>), copie le portrait, puis
-    /// s'arrête aux cinq appels non reconstruits qui le complètent.</summary>
+    /// personnage (mêmes conventions que <c>s_UiDescriptors_00560ff0</c>), copie le portrait,
+    /// calcule les statistiques dérivées et le code à sept caractères. Ne fait <b>pas</b> sortir
+    /// l'écran elle-même : <c>state[2]</c> passe à <c>0x81</c>, et c'est ce sous-état de phase
+    /// (déjà câblé) qui avance <c>state[0]</c> vers le sous-état 7 à l'image suivante.</summary>
     private static void FinalizeCharacterStats(byte* pad, byte* scratch, int* state)
     {
         *(ushort*)(pad + 2) &= 0x7fff;
@@ -7797,21 +7831,293 @@ public static unsafe partial class Blaze
             *(ushort*)(scratch + i + 0x312) |= 0x8000;
         }
 
-        throw new NotImplementedException(
-            "CharacterSelectSubState6/FinalizeCharacterStats: FUN_00538ab0, FUN_00538c50, " +
-            "FUN_00538e20 (appelées sur `scratch`) et FUN_00538f50, FUN_00538fa0 (sur " +
-            "`scratch+0x100`) ne sont pas décompilées à ces adresses dans Blaze.c. Elles closent " +
-            "la fiche de personnage construite ci-dessus (vraisemblablement l'initialisation du " +
-            "modèle/animation depuis le portrait copié à scratch+0x300) avant que le code à sept " +
-            "caractères ne soit généré et que l'écran ne se termine via state[0] = -1. Voir " +
-            "Legacy/Raw/Blaze/FUN_005098f0.c lignes 298-340 pour ce qui reste : la somme de " +
-            "contrôle sur scratch[0x100..0x110) et scratch[0x280..0x28e), repliée avec " +
-            "scratch[0x150..0x153], encodée en sept caractères via WriteCharacterCode.");
+        CommitStagedStatBlock(scratch);
+        ScaleStatBlockByDifficulty(scratch + 0x100);
+        ComputeDerivedStats(scratch);
+        ApplyEquipmentStatBonuses(scratch);
+        FinalizeEquipmentEffects(scratch + 0x100);
+
+        // Ghidra: la somme de contrôle du code à sept caractères — un accumulateur
+        // « + puis ×2 » sur scratch[0x100..0x110) (toujours nul ici : cette plage n'est écrite
+        // par aucun code déjà reconstruit) puis sur les sept statistiques brutes à
+        // scratch+0x280, repliée avec la classe/l'élément/le style choisis.
+        int hash = 0;
+        for (int i = 0; i < 0x10; i++) hash = (hash + scratch[0x100 + i]) * 2;
+
+        short* stagedStats = (short*)(scratch + 0x280);
+        for (int i = 0; i < 7; i++) hash = (hash + stagedStats[i]) * 2;
+
+        int folded = (scratch[0x150] + hash) * 2;
+        folded = (scratch[0x151] + folded) * 2;
+        folded = (scratch[0x152] + folded) * 2;
+        folded = (scratch[0x153] + folded) * 2;
+
+        // Sept caractères, cinq bits de `folded` à la fois. Ghidra vérifie aussi l'octet juste
+        // après le septième contre '\\' avant de l'écraser par le terminateur nul qui suit
+        // immédiatement — un test dont le résultat est toujours effacé par l'écriture d'après,
+        // donc sans effet observable ; élidé ici plutôt que transcrit pour rien.
+        byte* code = s_CharCodeScratch_00566bc0;
+        for (int i = 0; i < 7; i++)
+        {
+            byte c = (byte)((folded & 0x1f) + 0x40);
+            code[0xc + i] = c == (byte)'\\' ? (byte)'7' : c;
+            folded >>= 5;
+        }
+        code[0x13] = 0;
+
+        WriteCharacterCode(scratch, code);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00538f50 @ 0x00538f50 — remet à l'échelle huit statistiques à
+    /// <c>record+0x20</c> selon un facteur de difficulté à <c>record+0xec</c> :
+    /// <c>valeur *= (0x1000 - facteur*0x200) / 0x1000</c>, bornée à <c>[0, 999]</c>. Facteur à
+    /// zéro (rien n'écrit encore <c>DAT_005de034</c>/<c>scratch+0x1ec</c> dans le code déjà
+    /// reconstruit) laisse les valeurs inchangées : la multiplication par <c>0x1000</c> suivie du
+    /// décalage de 12 bits est l'identité.
+    /// </summary>
+    private static void ScaleStatBlockByDifficulty(byte* record)
+    {
+        ushort factor = *(ushort*)(record + 0xec);
+        short* stats = (short*)(record + 0x20);
+        for (int i = 0; i < 8; i++)
+        {
+            int scaled = ((0x1000 - factor * 0x200) * stats[i]) >> 0xc;
+            if (scaled < 0) scaled = 0;
+            if (scaled > 999) scaled = 999;
+            stats[i] = (short)scaled;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00538c50 @ 0x00538c50 — calcule huit statistiques dérivées à
+    /// <c>record+0x290..0x29f</c> à partir des huit statistiques primaires à
+    /// <c>record+0x120..0x12f</c> (celles que <see cref="CommitStagedStatBlock"/> vient d'y
+    /// déposer), les borne à 999, puis les recopie sur <c>record+0x130..0x13f</c>.
+    ///
+    /// <para>Chaque formule est une combinaison pondérée de deux ou trois statistiques primaires
+    /// plus <c>record+0x144</c> (une neuvième valeur, hors du bloc de sept), transcrite opération
+    /// pour opération — la précédence de <c>&gt;&gt;</c> sous celle de <c>+</c> en C comme en C#
+    /// donne le même groupement, explicité ici par des parenthèses plutôt que laissé implicite.
+    /// Aucune ne correspond à une formule de jeu connue par ailleurs ; nommer les statistiques
+    /// dérivées attendra qu'on les voie affichées quelque part.</para>
+    /// </summary>
+    private static void ComputeDerivedStats(byte* record)
+    {
+        int extra = *(ushort*)(record + 0x144);
+        int dword1 = *(int*)(record + 0x124);
+        int stat0 = *(ushort*)(record + 0x120);
+        int stat1 = *(ushort*)(record + 0x122);
+        int stat6 = *(ushort*)(record + 0x12c);
+        int dword2 = *(int*)(record + 0x128);
+        int stat3 = dword1 >> 0x10;
+        int stat4 = dword2 & 0xffff;
+        int stat5 = dword2 >> 0x10;
+
+        *(short*)(record + 0x290) = (short)((extra + stat0) >> 2);
+        *(short*)(record + 0x292) =
+            (short)((((stat4 >> 2) + stat3 + stat4) >> 2) + extra >> 2);
+        *(short*)(record + 0x294) = (short)(((stat0 + stat3) >> 1) + extra >> 2);
+
+        int halfExtra = extra >> 1;
+        *(short*)(record + 0x296) =
+            (short)((((dword1 >> 0x12) + stat3 + stat4) >> 1) + halfExtra >> 2);
+        *(short*)(record + 0x298) = (short)((extra + stat5) >> 2);
+
+        int stat2 = dword1 & 0xffff;
+        *(short*)(record + 0x29e) =
+            (short)((((stat2 >> 2) + stat2 + stat1) >> 1) + halfExtra >> 2);
+        *(short*)(record + 0x29a) =
+            (short)((((stat1 >> 2) + stat2 + stat1) >> 2) + extra >> 2);
+        *(short*)(record + 0x29c) = (short)(((stat5 + stat2) >> 1) + extra >> 2);
+
+        short* derived = (short*)(record + 0x290);
+        for (int i = 0; i < 8; i++)
+        {
+            if (derived[i] > 999) derived[i] = 999;
+        }
+
+        *(uint*)(record + 0x210) = 0;
+        *(uint*)(record + 0x214) = 0;
+        *(uint*)(record + 0x218) = 0;
+        *(uint*)(record + 0x21c) = 0;
+
+        int slot7 = (stat6 >> 5) + (*(short*)(record + 0x2a6) >> 3);
+        *(ushort*)(record + 0x28e) = (ushort)slot7;
+        if (slot7 > 0xf) *(ushort*)(record + 0x28e) = 0xf;
+
+        *(ushort*)(record + 0x154) = (ushort)(*(short*)(record + 0x2a2) + (stat1 >> 3));
+        *(short*)(record + 0x156) = (short)(*(short*)(record + 0x2aa) >> 2);
+
+        CopyDwords((uint*)(record + 0x290), (uint*)(record + 0x130), 4);
+    }
+
+    // Ghidra: &DAT_0056d2c0 — seize octets, une prime en pourcent par palier de difficulté,
+    // indexée par DAT_005de034. Relevé au décalage fichier 0x16D2C0.
+    private static readonly byte[] s_DifficultyBonus_0056d2c0 =
+        [0x00, 0x00, 0x0a, 0x14, 0x1e, 0x00, 0x00, 0x00, 0x00, 0x02, 0x03, 0x01, 0x04, 0x01, 0x00, 0x00];
+
+    // Ghidra: DAT_005de034 — le palier de difficulté courant. Jamais posé par du code déjà
+    // reconstruit, donc toujours 0 (aucune prime) pour l'instant.
+    private static int s_Unknown_005de034;
+
+    /// <summary>
+    /// Ghidra: FUN_00538e20 @ 0x00538e20 — applique les bonus des cinq emplacements d'équipement
+    /// à <c>record+0x2b0..0x2b4</c> (<c>0xff</c> = vide) puis remet à l'échelle par le palier de
+    /// difficulté. Chaque emplacement pointe, via <c>record+0x300+id*0x280</c>, dans le bloc
+    /// texture/objet chargé plus tôt par <see cref="FinalizeCharacterStats"/> (le même
+    /// <c>CopyDwords</c> qui copie <c>0x640</c> dwords depuis <c>MainMem</c>) : ce n'est pas
+    /// seulement une texture, c'est un tableau d'enregistrements de <c>0x280</c> octets, un par
+    /// objet, dont les seize premiers mots à <c>+0x20</c> sont des bonus de statistiques.
+    ///
+    /// <para>Avec l'équipement par défaut posé par <c>FinalizeCharacterStats</c>
+    /// (<c>scratch[0x2b0..1]=0,1</c> toujours actifs, <c>[0x2b2]</c> selon la classe,
+    /// <c>[0x2b3..4]=0xff</c> toujours vides), les deux derniers emplacements — et donc la
+    /// branche des huit octets à <c>+0x210</c> qui ne se déclenche que pour eux — restent morts
+    /// tant qu'aucun autre code ne pose un objet dans ces emplacements.</para>
+    /// </summary>
+    private static void ApplyEquipmentStatBonuses(byte* record)
+    {
+        byte* slots = record + 0x2b0;
+        for (int i = 0; i < 5; i++)
+        {
+            byte itemId = slots[i];
+            if (itemId == 0xff) continue;
+
+            byte* item = record + 0x300 + itemId * 0x280;
+            short* primary = (short*)(record + 0x120);
+            short* bonus = (short*)(item + 0x20);
+            for (int k = 0; k < 0x10; k++) primary[k] += bonus[k];
+
+            if (i == 3 || i == 4)
+            {
+                short* extra = (short*)(record + 0x210);
+                for (int k = 0; k < 8; k++) extra[k] += (sbyte)item[0x18 + k];
+            }
+
+            *(short*)(record + 0x156) += *(short*)(item + 0x8a);
+        }
+
+        byte difficultyBonus = s_DifficultyBonus_0056d2c0[s_Unknown_005de034];
+        int scale = difficultyBonus + 100;
+        short* stats = (short*)(record + 0x130);
+        for (int k = 0; k < 8; k++) stats[k] = DivideRoundedBy100(scale * stats[k]);
+
+        int finalScaled = scale * *(short*)(record + 0x156);
+        *(short*)(record + 0x12e) += (short)(difficultyBonus >> 3);
+        short result = DivideRoundedBy100(finalScaled);
+        if (result < 0) result = 0;
+        if (result > 99) result = 99;
+        *(short*)(record + 0x156) = result;
+    }
+
+    /// <summary>L'idiome de division par 100 signée que Ghidra reconstruit avec un multiplicateur
+    /// magique et une correction de signe — transcrit terme à terme plutôt que simplifié, cette
+    /// famille de fonctions n'ayant pas été vérifiée pour tous les cas limites (négatifs,
+    /// débordement).</summary>
+    private static short DivideRoundedBy100(int value)
+    {
+        return (short)(((short)(value / 100) + (short)(value >> 0x1f))
+            - (short)(((long)value * 0x51eb851f) >> 0x3f));
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00538fa0 @ 0x00538fa0 — appelée sur <c>scratch+0x100</c>, donc les décalages
+    /// ci-dessous (relatifs à <c>record</c>) tombent sur <c>scratch+0x108..0x156</c>. Choisit un
+    /// octet de remplissage (0x00, 0x01 ou 0xff, répété sur quatre octets) selon deux bits de
+    /// <c>record+0x40</c> (= <c>scratch+0x140</c>, mis à zéro par <c>FinalizeCharacterStats</c> —
+    /// donc toujours le cas « 0 » ici), pose huit compteurs à <c>record+0x108..0x10f</c> que
+    /// d'autres bits du même mot incrémentent ou décrémentent, puis relit ces compteurs pour
+    /// mettre à l'échelle (×1,5 ou ×0,5) les huit statistiques dérivées à <c>record+0x30</c>
+    /// (<c>scratch+0x130</c>, celles que <see cref="ApplyEquipmentStatBonuses"/> vient de
+    /// calculer). Termine par un dernier plafonnement <c>[0, 999]</c> des seize statistiques à
+    /// <c>record+0x20..0x3f</c>.
+    ///
+    /// <para>Tous les octets sources (<c>record+0x40</c>, <c>+0x86..0x8a</c>, <c>+0xba</c>) sont
+    /// à zéro tant que rien d'autre ne les pose — <c>scratch+0x100..0x1ff</c> reste vierge après
+    /// le nettoyage de <c>RunCharacterSelectFrameLoop</c>, aucun sous-état ne l'utilise encore.
+    /// La fonction est donc actuellement un plafonnement pur, mais transcrite branche pour
+    /// branche plutôt que réduite à ça : rien ne garantit que ce sera encore vrai une fois
+    /// l'équipement ou un autre sous-état câblés dessus.</para>
+    /// </summary>
+    private static void FinalizeEquipmentEffects(byte* record)
+    {
+        uint flags = *(uint*)(record + 0x40);
+        uint masked = flags & 0x10200000;
+        // Les quatre valeurs possibles de `masked` (deux bits) sont toutes couvertes ; le `_`
+        // reproduit le `iVar7 = param_1` initial de l'original, qu'aucune branche n'atteint.
+        int fill = masked switch
+        {
+            0 => 0,
+            0x200000 => 0x1010101,
+            0x10000000 => -1,
+            0x10200000 => 0,
+            _ => 0,
+        };
+
+        byte* counters = record + 0x108;
+        *(int*)(record + 0x10c) = fill;
+        *(int*)counters = fill;
+
+        if ((flags & 0x400) != 0) counters[0]++;
+        if ((flags & 0x1000) != 0) counters[1]++;
+        if ((flags & 0x10000) != 0) counters[4]++;
+        if ((flags & 0x40000) != 0) counters[5]++;
+        if ((flags & 0x800) != 0) counters[0]--;
+        if ((flags & 0x2000) != 0) counters[1]--;
+        if ((flags & 0x20000) != 0) counters[4]--;
+        if ((flags & 0x80000) != 0) counters[5]--;
+        if ((flags & 0x200) != 0) { counters[0]++; counters[1]--; }
+
+        if (*(short*)(record + 0x86) != 0) *(short*)(record + 0x110) += *(short*)(record + 0xe4);
+        if (*(short*)(record + 0x8c) != 0) *(short*)(record + 0x112) += *(short*)(record + 0xea);
+        if (*(short*)(record + 0x88) != 0) *(short*)(record + 0x114) += *(short*)(record + 0xe6);
+        if (*(short*)(record + 0x8a) != 0) *(short*)(record + 0x116) += *(short*)(record + 0xe8);
+
+        short* derived = (short*)(record + 0x30);
+        for (int i = 0; i < 8; i++)
+        {
+            if (counters[i] == 0) continue;
+            derived[i] = (counters[i] & 0x80) == 0
+                ? (short)((derived[i] >> 1) + derived[i])
+                : (short)(derived[i] >> 1);
+        }
+
+        if (*(short*)(record + 0xba) != 0)
+        {
+            ushort index = *(ushort*)(record + 0xf8);
+            short delta = *(short*)(record + 0xfa);
+            if (index < 7)
+            {
+                *(short*)(record + 0x20 + index * 2) += delta;
+            }
+            else if (index < 8)
+            {
+                *(short*)(record + 0x2e) += delta;
+            }
+            else if (index < 0x10)
+            {
+                *(short*)(record + 0x20 + index * 2) += delta;
+            }
+            else if (index < 0x18)
+            {
+                *(short*)(record + 0xf0 + index * 2) += delta;
+            }
+        }
+
+        short* primary = (short*)(record + 0x20);
+        for (int i = 0; i < 0x10; i++)
+        {
+            short value = primary[i];
+            if (value < 0) value = 0;
+            if (value > 999) value = 999;
+            primary[i] = value;
+        }
     }
 
     /// <summary>Ghidra: la branche « annuler » de <c>case 0x5d</c> — un code placeholder
-    /// "0000000" (pas de vraie somme de contrôle disponible sans les cinq fonctions manquantes de
-    /// <see cref="FinalizeCharacterStats"/>) puis la sortie de l'écran entier.</summary>
+    /// "0000000" puis la sortie de l'écran entier. Chemin qui n'a jamais eu besoin des cinq
+    /// fonctions de <see cref="FinalizeCharacterStats"/>, désormais toutes transcrites.</summary>
     private static void CancelCharacterCreation(byte* scratch, int* state)
     {
         byte* code = s_CharCodeScratch_00566bc0;

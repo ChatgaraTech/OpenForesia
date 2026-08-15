@@ -2746,3 +2746,110 @@ gap (quick — same shape as the already-fixed ones, needs its handler read from
 Ghidra re-run, six params, see above), then the memory-card subsystem itself if save/load is ever
 to actually work. None of these block sub-state 6 from being finished first instead, via its own
 five missing functions — the two blockers are independent.
+
+## 2026-08-15 — `FinalizeCharacterStats`'s five functions, one at a time
+
+Same day, continued after a commit. The user asked for the five blockers to be closed one function
+at a time, committing between each — so this section covers all five together but each was written,
+built, and (where possible) checked before moving to the next.
+
+### `FUN_00538ab0` — `CommitStagedStatBlock`
+
+Trivial: four dwords copied from `param+0x280` to `param+0x120`. Called at dozens of sites across
+`Blaze.c` on all sorts of records (not just this one), so named on its apparent role — "commit the
+staged stat block" — rather than on this single call site; flagged in its doc comment as open to
+renaming if another site turns out to use it differently.
+
+### `FUN_00538f50` — `ScaleStatBlockByDifficulty`
+
+Also trivial: eight shorts at `record+0x20`, each multiplied by `(0x1000 - factor*0x200)/0x1000`
+and clamped to `[0, 999]`, where `factor` comes from `record+0xec`. Called with `scratch+0x100`, so
+`factor` reads `scratch+0x1ec` — never written by any reconstructed code, always 0, which makes the
+whole scaling formula the identity (`0x1000 * x >> 12 == x`). Verified that identity by hand rather
+than assuming it, since silently trusting "it's probably fine" is exactly how the wrong half of a
+shift expression slips through unnoticed.
+
+### `FUN_00538c50` — `ComputeDerivedStats`
+
+The first one worth real care: eight derived stats computed from the eight primary stats
+`CommitStagedStatBlock` just wrote, each formula a `>>`/`+` combination whose grouping depends on
+`>>` binding *looser* than `+` in both C and C# — same precedence table, so the original's implicit
+parenthesization carries over, made explicit here rather than relied on silently. Clamped to 999,
+then copied back with a single `CopyDwords(source: +0x290, dest: +0x130, count: 4)` — the original
+does this as four dword copies, and since the four dwords are contiguous on both ends it collapses
+to one call without changing behavior.
+
+### `FUN_00538e20` — `ApplyEquipmentStatBonuses`
+
+Iterates five equipment-slot bytes at `record+0x2b0..0x2b4` (`0xff` = empty slot). Each populated
+slot indexes `record+0x300+id*0x280` — which is **the same texture blob**
+`FinalizeCharacterStats` already copies in via `CopyDwords` from `MainMem+(class+0x7c)*0x2000` —
+confirming that blob isn't just a portrait texture, it's a `0x280`-byte-stride array of item
+records with embedded stat bonuses at `+0x20`. With the current default equipment
+(`scratch[0x2b0..1]` always active, `[0x2b2]` class-gated, `[0x2b3..4]` always `0xff`), two of the
+five slots and the branch gated on them stay dead — transcribed anyway, per the project's own
+precedent elsewhere. Also introduced `DivideRoundedBy100`, the signed-division-by-100 idiom (magic
+multiply + sign correction) Ghidra reconstructs from the compiler's optimized division — transcribed
+term for term rather than simplified, since nothing here proves the simplification would be bit-
+identical for negative inputs. New table read from the binary: `s_DifficultyBonus_0056d2c0` (16
+bytes), indexed by `DAT_005de034` (always 0 — no reconstructed code sets a difficulty tier yet).
+
+### `FUN_00538fa0` — `FinalizeEquipmentEffects`
+
+The last and largest: called on `scratch+0x100`, so its offsets land on `scratch+0x108..0x156`, a
+region nothing else in this session's work touches — confirmed by checking, not assumed. Picks a
+4-byte fill pattern (`0x00`, `0x01010101`, or `0xffffffff`) from two flag bits, seeds two counter
+dwords with it, nudges eight individual counter bytes up or down from further flag bits, then uses
+those counters to scale (`×1.5` or `×0.5`) the eight derived stats `ApplyEquipmentStatBonuses` just
+computed. Every source byte it reads (`record+0x40`, `+0x86..0x8a`, `+0xba`) is zero in this port's
+current state — `scratch+0x100..0x1ff` stays untouched by anything reconstructed so far — so the
+function is presently a pure `[0, 999]` clamp of sixteen stats, but transcribed branch for branch
+rather than reduced to that, since nothing here guarantees it stays that way once equipment or
+another sub-state writes into that range.
+
+### The checksum tail that was hiding behind the throw
+
+With all five functions in, the code that builds the seven-character save code (previously
+unreachable, so never transcribed) had to be written too — `FinalizeCharacterStats` doesn't exit
+the screen on its own, it sets `state[2] = 0x81` and lets the phase state machine (already wired)
+advance `state[0]` to sub-state 7 on a later frame. Two things worth remembering from writing it:
+
+- **A four-level nested `(a + (b + (c + (d + x) * 2) * 2) * 2) * 2` needs a stack-based paren count,
+  not a glance.** First reading dropped the outermost `* 2`, which would have silently produced a
+  checksum half the intended magnitude. Caught by mechanically parsing the parens with a stack
+  before writing any C#, not by re-reading the C faster.
+- **A dead check silently overwritten one line later is safe to elide, not just safe to keep.**
+  `pcRam00566bc0[iVar13+0xd]` is tested against `'\\'` and conditionally rewritten to `'7'`, then
+  unconditionally overwritten with `0` on the very next line — the test's result is provably never
+  observed. Elided with a comment saying so, rather than transcribed for the sake of transcribing;
+  this is different from the "dead under always-closed dialog gates" branches kept elsewhere,
+  because here the deadness is a *local, provable* write-then-clobber, not a runtime condition that
+  could change.
+
+Reused the existing `WriteCharacterCode` helper (written for the sub-state 5/6 cancel path) for the
+final copy — same "copies from byte 0 of a buffer that's only ever written from byte 0xc onward, so
+currently produces an empty string" quirk noted back when that helper was first written applies
+here too, now confirmed by a second call site rather than just inferred.
+
+### Confirmed at runtime — the sub-state 6 → 7 transition now works for real
+
+Added one more piece of temporary scaffolding, `OPENFORESIA_FORCE_CONFIRM_STATS=1`: calls
+`FinalizeCharacterStats` directly on sub-state 6's first frame, sidestepping two unknowns that
+aren't this task's concern — which physical key drives `pad+2 & 0x8000` (the confirm bit;
+`FoldKeyboardIntoPadState`'s exact bit-packing wasn't traced) and how many points the dice roll
+leaves in the pool to spend before confirming is even allowed. A `playtest.ps1` run with this set,
+nine `ENTER`s and nothing else, produced a crash — but the stack trace is the actual finding: it
+shows `RunCharacterSelectFrameLoop → InvokeCharacterSelectSubState → CharacterSelectSubState7`,
+i.e. the **normal dispatcher reached sub-state 7 on its own**, not through the
+`OPENFORESIA_FORCE_SUBSTATE` hook. All five functions and the checksum tail ran with no exception;
+the crash itself is the *same* pre-existing control-code `0x04` gap already documented above,
+confirming sub-state 7's earlier testing found the real next blocker, not an artifact of the
+force-substate hook used at the time.
+
+### Remaining
+
+Sub-state **6 is now fully transcribed**, confirm path included. Sub-state **7**'s two blockers
+(control code `0x04`, then `FUN_0051be90`) are unchanged by this session — see the entry above.
+Sub-state **2** (143 lines, back-step only) is still open. The keyboard-to-`pad+2`-bit mapping for
+sub-state 6's confirm button was deliberately not traced (out of scope here); worth doing before
+relying on `OPENFORESIA_FORCE_CONFIRM_STATS` becomes inconvenient.

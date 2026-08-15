@@ -1,18 +1,20 @@
 # TODO
 
-Point d'entrée entre deux sessions. État au 2026-08-15, fin de séance (troisième bloc de travail de
-la journée : nouvelle machine, sous-état 6, puis sous-état 7). Le build est vert.
+Point d'entrée entre deux sessions. État au 2026-08-15, fin de séance (quatrième bloc de travail de
+la journée : nouvelle machine, sous-état 6, sous-état 7, puis les cinq fonctions de
+`FinalizeCharacterStats`). Le build est vert.
 
-Non commité à ce stade : ce `TODO.md`, plus le sous-état 7 et le hook `OPENFORESIA_FORCE_SUBSTATE`
-dans `Blaze.cs`. Le reste (nouvelle machine, sous-état 6) est déjà commité (`62c1461`).
+Non commité à ce stade : ce `TODO.md`, plus les cinq fonctions et le hook
+`OPENFORESIA_FORCE_CONFIRM_STATS` dans `Blaze.cs`. Le reste (nouvelle machine, sous-états 6 et 7)
+est déjà commité (`871cc8d`).
 
 ---
 
 ## Où on en est
 
-L'écran de sélection des personnages (état de jeu 4) se traverse jusqu'au sous-état 6 inclus par le
-jeu normal ; le sous-état 7 est transcrit mais **pas atteignable en jouant** (voir §1) et se teste
-via un hook dédié.
+**La chaîne complète 0→6 se traverse en jeu normal, confirmation de personnage incluse.** Le
+sous-état 7 est atteint pour de vrai (pas seulement via un hook) mais son rendu bute sur deux
+blocages extérieurs à ce travail — voir §2.
 
 ```
 0  carrousel des 16 personnages          OK
@@ -25,9 +27,9 @@ via un hook dédié.
 │
 5  tirage du bonus (trois cartes)        OK
 │
-6  répartition des points de stats       transcrit ; la confirmation finale bloque (§2)
+6  répartition des points de stats       OK — confirmation incluse, **débloqué cette séance**
 │
-7  écran de sauvegarde/chargement        transcrit ; le rendu bloque (§3) — **nouveau cette séance**
+7  écran de sauvegarde/chargement        atteint ; le rendu bloque (§2)
 ```
 
 Le sous-état 2 n'est atteint qu'en retour arrière depuis le 3.
@@ -43,93 +45,73 @@ Débit de rendu par écran, utile comme repère de non-régression :
 | carrousel des éléments | ~433 |
 | tirage du bonus | ~429 |
 | répartition des points | ~644 |
-| sauvegarde | pas mesuré — le rendu plante avant la fin de l'image (§3) |
+| sauvegarde | pas mesuré — le rendu plante avant la fin de l'image (§2) |
 
 ---
 
-## 1. Sous-état 6 → 7 : la chaîne normale ne passe pas encore
+## 1. Sous-état 6 — `FinalizeCharacterStats` complet
 
-`FinalizeCharacterStats` (sous-état 6, confirmation quand le pool de points est à zéro) s'arrête
-sur cinq fonctions non reconstruites (`FUN_00538ab0`, `538c50`, `538e20`, `538f50`, `538fa0`) —
-c'est le SEUL chemin qui fait avancer `state[0]` de 6 à 7. Tant qu'il n'est pas débloqué, le
-sous-état 7 ne se voit jamais en jouant normalement.
+Les cinq fonctions bloquantes (`FUN_00538ab0`, `538f50`, `538c50`, `538e20`, `538fa0`) sont toutes
+transcrites : commit du bloc de stats, mise à l'échelle par difficulté (identité pour l'instant,
+rien ne pose de palier), calcul de huit statistiques dérivées, bonus d'équipement (deux des cinq
+emplacements toujours vides avec l'équipement par défaut), plafonnement final. La somme de contrôle
+à sept caractères qui restait derrière l'exception (jamais transcrite faute d'être atteignable) est
+maintenant écrite aussi.
 
-**Pour tester le sous-état 7 quand même**, un hook temporaire existe désormais dans
-`LoadCharacterSelectResources` :
+**Confirmé en jeu normal** : neuf `ENTER` avec le hook `OPENFORESIA_FORCE_CONFIRM_STATS=1` (voir
+§3) déclenchent `FinalizeCharacterStats` sans exception, et la pile d'appel du crash suivant montre
+`RunCharacterSelectFrameLoop → CharacterSelectSubState7` — la transition sous-état 6 → 7 passe
+désormais par le dispatcher normal, pas par un hook de saut.
 
-```powershell
-$env:OPENFORESIA_FORCE_SUBSTATE = "7"
-OpenForesia.Tools\playtest.ps1 -Build -Entry 1 -Then ENTER -Seconds 10 -Shot
-Remove-Item Env:OPENFORESIA_FORCE_SUBSTATE
-```
+**Non élucidé, volontairement laissé de côté** : quelle touche physique pose le bit de confirmation
+réel (`pad+2 & 0x8000`) en jeu, et combien de points le lancer de dés laisse à dépenser avant que
+la confirmation ne soit acceptée. Le hook `OPENFORESIA_FORCE_CONFIRM_STATS` contourne les deux ;
+tracer `FoldKeyboardIntoPadState` réglerait la question si `playtest.ps1` en a besoin un jour.
 
-Saute directement au sous-état N à l'entrée dans la sélection de personnage, sans traverser les
-précédents. Utile pour n'importe quel sous-état bloqué en amont, pas seulement le 7 — même famille
-que `OPENFORESIA_TRACE_MENU`/`OPENFORESIA_OPTIONS_BADPATH` déjà dans le code.
-
----
-
-## 2. Sous-état 6 — ce qui marche, ce qui s'arrête
-
-`CharacterSelectSubState6` (`FUN_005098f0`) est transcrit et confirmé par playtest en jeu normal :
-sept lignes de statistiques en éventail, curseur, dépense/remboursement de points, icône + texte de
-description. **`EmitParticle` tourne enfin** (débit ~644 prim/image).
-
-Le chemin **annulation** (`case 0x5d`) est complet et sort l'écran via `state[0] = -1`. Le chemin
-**confirmation** (`FinalizeCharacterStats`) s'arrête aux cinq fonctions citées en §1 — tout ce qui
-précède (reset de la fiche personnage, copie du portrait) est transcrit et testé.
-
-Détail complet dans `REVERSE_STATUS.md`, section « 2026-08-15 — new machine, then `FUN_005098f0` ».
+Détail complet, fonction par fonction : `REVERSE_STATUS.md`, section « 2026-08-15 —
+`FinalizeCharacterStats`'s five functions, one at a time ».
 
 ---
 
-## 3. Sous-état 7 — l'écran de sauvegarde, ce qui marche, ce qui bloque
+## 2. Sous-état 7 — l'écran de sauvegarde, ce qui bloque
 
-`CharacterSelectSubState7` (`FUN_0050a910`) est transcrit : machine à phases (init, navigation du
-curseur, dix-neuf cas), rendu de fin de fonction. **Confirmé sans plantage jusque dans le rendu**
-via le hook du §1 — init, calcul du port, machine à phases : rien à y redire. Deux blocages, tous
-deux extérieurs à ce qui a été écrit cette séance :
+Toujours les deux mêmes blocages, confirmés une seconde fois cette séance via la chaîne normale
+(pas seulement `OPENFORESIA_FORCE_SUBSTATE`) :
 
-1. **Control code texte `0x04`** — un gap préexistant (comme le `0x14` trouvé en testant le
-   sous-état 6), pas quelque chose d'introduit ici. Rapide à corriger : lire son gestionnaire dans
-   `Legacy/Blaze.exe` comme les autres codes déjà faits (`0x06`, `0x09`, `0x1c`).
-2. **`FUN_0051be90`** — jamais décompilée par Ghidra nulle part dans `Blaze.c` (juste des sites
-   d'appel), donc pas un problème de `.asm` incomplet cette fois : il faut un re-run Ghidra à
-   signature forcée. Six paramètres cdecl observés : `(otEntry, prim, sprite, value, mode, extra)`.
-   Elle est dans la partie **inconditionnelle** du rendu (les cases de stats courantes tournent à
-   chaque image, pas seulement en parcourant les cartes), donc bloque tout le rendu de cet écran
-   une fois le point 1 réglé.
+1. **Control code texte `0x04`** — un gap préexistant (même famille que le `0x14` du sous-état 6),
+   pas quelque chose introduit ici. Rapide à corriger : lire son gestionnaire dans `Legacy/Blaze.exe`
+   comme les autres codes déjà faits (`0x06`, `0x09`, `0x1c`).
+2. **`FUN_0051be90`** — jamais décompilée par Ghidra nulle part dans `Blaze.c`, besoin d'un re-run
+   Ghidra à signature forcée (six paramètres cdecl observés : `otEntry, prim, sprite, value, mode,
+   extra`). Dans la partie **inconditionnelle** du rendu, donc bloque tout l'écran une fois le
+   point 1 réglé.
 
-La sous-couche carte mémoire elle-même (`Ordinal_9/21/22/23/24/25/67/68/69/72/684`, encapsulés dans
-`FUN_00504690/6c0/730/770/7e0/820`, `FUN_00504b40/70/90/c20`, `FUN_00512900`, `FUN_005128e0`) n'a
-**pas été lue** cette séance — c'est tout un sous-système à part (chargement/écriture réels sur la
-carte), volontairement laissé pour une séance dédiée plutôt que refait à la hâte. Un seul point
-d'arrêt (`ThrowSaveCardUnresolved`) couvre tous les cas qui la touchent (`1`, `4`, `6`, `0xd`,
-`0x10`, `-5`, `-3`/`-2`).
+La sous-couche carte mémoire (`Ordinal_9/21/22/23/24/25/67/68/69/72/684`, encapsulés dans
+`FUN_00504690/6c0/730/770/7e0/820`, `FUN_00504b40/70/90/c20`, `FUN_00512900`, `FUN_005128e0`) reste
+volontairement non lue — un sous-système à part pour une séance dédiée. Un seul point d'arrêt
+(`ThrowSaveCardUnresolved`) couvre tous les cas qui la touchent.
 
-Détail complet, y compris la table de saut (encore un artefact de compilateur, pas une vraie table
-de saut — voir §5) et les deux tables statiques de répertoire de sauvegarde (données réelles, pas
-des pointeurs vers de la mémoire jamais peuplée) : `REVERSE_STATUS.md`, section « 2026-08-15 —
-`FUN_0050a910`: sub-state 7, the memory-card save screen ».
+Détail complet : `REVERSE_STATUS.md`, section « 2026-08-15 — `FUN_0050a910`: sub-state 7, the
+memory-card save screen ».
 
 ---
 
-## 4. La suite
+## 3. La suite
 
 | sous-état / fonction | note |
 |---|---|
-| `FinalizeCharacterStats` (§2) | 5 fonctions à lire — le plus direct pour rendre le sous-état 6 traversable en jeu normal |
-| Control code `0x04` (§3) | rapide, même recette que `0x06`/`0x09`/`0x1c` |
-| `FUN_0051be90` (§3) | a besoin d'un re-run Ghidra à signature forcée, pas de lecture de `.asm` |
+| Control code `0x04` (§2) | rapide, même recette que `0x06`/`0x09`/`0x1c` |
+| `FUN_0051be90` (§2) | a besoin d'un re-run Ghidra à signature forcée, pas de lecture de `.asm` |
 | Sous-état 2 (`FUN_00508410`, 146 lignes) | retour arrière depuis le 3, pas urgent |
 | Sous-couche carte mémoire | grosse pièce à part, séance dédiée |
+| Mappage clavier → `pad+2` (§1) | seulement si on veut se passer d'`OPENFORESIA_FORCE_CONFIRM_STATS` |
 
 `InvokeCharacterSelectSubState` lève une exception qui nomme le fichier exact pour tout sous-état
 pas encore câblé.
 
 ---
 
-## 5. Comment tester — `test-protocol.md`
+## 4. Comment tester — `test-protocol.md`
 
 **Lire `test-protocol.md` avant tout lancement.** Pour atteindre le sous-état 6 en jeu normal :
 
@@ -142,17 +124,35 @@ dés. **Le minutage est sensible au hasard du lancer de dés** — si la capture
 des dés ou un plantage sur un control-code texte (0x14, 0x04, ...), relancer ou ajuster les `WAIT`.
 
 Pour exercer les entrées du sous-état 6 une fois arrivé : ajouter
-`DOWN,WAIT1,DOWN,WAIT1,RIGHT,WAIT1,RIGHT,WAIT1,UP,WAIT1,LEFT` à la suite.
+`DOWN,WAIT1,DOWN,WAIT1,RIGHT,WAIT1,RIGHT,WAIT1,UP,WAIT1,LEFT` à la suite — mais le mappage exact
+touche→bit n'est pas fiable (voir §1) ; pour aller jusqu'à la confirmation à coup sûr, préférer :
 
-Pour le sous-état 7, ou tout sous-état bloqué en amont : voir le hook `OPENFORESIA_FORCE_SUBSTATE`
-au §1.
+```powershell
+$env:OPENFORESIA_FORCE_CONFIRM_STATS = "1"
+OpenForesia.Tools\playtest.ps1 -Build -Entry 1 -Then ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3 -Seconds 15 -Shot
+Remove-Item Env:OPENFORESIA_FORCE_CONFIRM_STATS
+```
+
+Appelle `FinalizeCharacterStats` directement à la première image du sous-état 6, sans dépendre du
+lancer de dés ni de la touche de confirmation réelle.
+
+Pour le sous-état 7 isolément, ou tout sous-état bloqué en amont :
+
+```powershell
+$env:OPENFORESIA_FORCE_SUBSTATE = "7"
+OpenForesia.Tools\playtest.ps1 -Build -Entry 1 -Then ENTER -Seconds 10 -Shot
+Remove-Item Env:OPENFORESIA_FORCE_SUBSTATE
+```
+
+Les deux hooks sont dans la même famille qu'`OPENFORESIA_TRACE_MENU`/`OPENFORESIA_OPTIONS_BADPATH`,
+déjà dans le code.
 
 Si le script ne couvre pas un cas, **l'étendre** et le noter dans `test-protocol.md`, ne pas le
 contourner.
 
 ---
 
-## 6. Re-run Ghidra à signature forcée
+## 5. Re-run Ghidra à signature forcée
 
 Deux scripts, **jamais commités** — seul leur code source est préservé dans `REVERSE_STATUS.md`
 (§"The re-run" et §"All eight handlers re-decompiled") :
@@ -183,7 +183,7 @@ $gh = "D:\Open Foresia Project\Tool\ghidra_12.1.2_PUBLIC\support\analyzeHeadless
 
 ---
 
-## 7. Pièges de méthode
+## 6. Pièges de méthode
 
 **Compter les `PUSH` avant de lire un `[ESP+n]`, et vérifier via le nombre de `POP` de
 l'épilogue.**
@@ -221,7 +221,7 @@ la procédure de fenêtre de la DLL**, que ce portage ne fait pas tourner.
 
 ---
 
-## 8. Réserves connues (à regarder si l'image est fausse plutôt qu'absente)
+## 7. Réserves connues (à regarder si l'image est fausse plutôt qu'absente)
 
 - **Chemin MMX non transcrit** dans `DrawAnimatedModel`.
 - **Quirk des pages de texture**, deux occurrences dans `DrawAnimatedModel`/`EmitParticle`.
@@ -234,7 +234,7 @@ la procédure de fenêtre de la DLL**, que ce portage ne fait pas tourner.
 
 ---
 
-## 9. Bugs du jeu d'origine — `legacy-bug.md`
+## 8. Bugs du jeu d'origine — `legacy-bug.md`
 
 Une bizarrerie constatée dans OpenForesia peut être la transcription **fidèle** d'un défaut de 1998.
 Vérifier `legacy-bug.md` avant de corriger quoi que ce soit.
@@ -244,7 +244,7 @@ clavier. Reproduit à l'identique dans le portage.
 
 ---
 
-## 10. Rappels d'outillage — nouvelle machine
+## 9. Rappels d'outillage — nouvelle machine
 
 - Le `dotnet` du PATH (`C:\Program Files (x86)\dotnet`) porte déjà un SDK **x86** (9.0.317) :
   `dotnet build`/`dotnet run --project OpenForesia` marchent tel quels, **aucun** `DOTNET_ROOT` à
@@ -291,7 +291,7 @@ Deux inventaires utiles dans `Blaze.cs` :
 
 ```bash
 grep -n "TODO(REVERSE)" OpenForesia/src/Blaze/Blaze.cs        # 85 — ce qui reste à établir
-grep -n "NotImplementedException" OpenForesia/src/Blaze/Blaze.cs   # 29 — ce qui lève à l'exécution
+grep -n "NotImplementedException" OpenForesia/src/Blaze/Blaze.cs   # 28 — ce qui lève à l'exécution
 ```
 
 Les seconds sont les vrais murs : chacun porte un message qui nomme précisément ce qui manque, et
