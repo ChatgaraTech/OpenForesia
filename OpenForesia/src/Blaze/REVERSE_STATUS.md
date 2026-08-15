@@ -2099,3 +2099,306 @@ Reaching state 4 from a script is not obvious and cost several attempts, so the 
   wanted entry. Entry 1 is "Sélection des personnages".
 - `CurrentPadWord()` keeps returning the last non-zero word after the key is released, so the pad
   value in the trace is not a reliable "is it held" signal — the `+0x8C4` transitions are.
+
+## 2026-08-15 — validating a character: control code `0x0f`
+
+Pressing Enter on the carousel threw the text engine's "unreconstructed control code" guard:
+
+```
+UI text control code 0x0f dispatches to FUN_00544e50, which Ghidra never emitted
+   at BuildTextTable lambda -> RunTextEngine -> RunCharacterSelectFrameLoop
+```
+
+Validating a character rebinds the status descriptor to a different label stream, and that one
+opens with control code `0x0f`.
+
+### It did not need a Ghidra re-run
+
+The guard's message says "needs a scoped Ghidra re-run", and that is the right default for this
+class — but it is worth checking the body's size first. `0x00544e50` is **33 bytes**, decodable by
+hand exactly like the four scan stubs and `0x00544b10` before it. Full listing in
+`Documentation/DataSymbols.md`; the reconstruction is `Handler_00544e50`.
+
+Registered in **both** tables: slot 15 holds `0x00544e50` on the scan side as well as the render
+side, unlike the codes whose pass 1 substitutes an advance stub.
+
+### It confirms the (parameter, enable) reading of the header
+
+The two byte writes in these handlers are not loose flags. `[+0x33] = 1` and `[+0x3b] = 1` are the
+**top byte of a feature dword** — `0x000F28D4` → `0x010F28D4` — i.e. the `0x1000000` enable bit that
+every `DrawUiPanel` test reads. So `0x0f` **switches the cursor on** and `0x09` switches the scroll
+arrows on, which is the same structure the 26-dword header established this morning, arrived at
+from the opposite direction. Two independent readings agreeing is worth more than either alone.
+
+Semantically `0x0f` means **stop here and show the cursor**: flag bit 1 makes every later
+`FUN_005443a0` call return at once, so the descriptor freezes with a selection cursor displayed —
+a prompt awaiting a choice, which is exactly what validating a character opens.
+
+### Where the screen stops now
+
+Sub-state 0 hands over correctly; the loop advances to **sub-state 1** and stops on the gap that was
+already documented:
+
+```
+RunCharacterSelectFrameLoop: sub-state 1 needs the in-scene block of FUN_00506880.
+What remains is FUN_00520ae0 (the particle pass) and the 0x00572b40 globals.
+```
+
+Three pieces, all readable, none blocked on a re-run:
+
+1. **The in-scene block of `FUN_00506880`** — camera damping on `DAT_00572b64..74`, the particle
+   loop, then the model draw (already `DrawAnimatedModel`). Readable in
+   `Legacy/Raw/Blaze/FUN_00506880.c` around lines 128–210, plus the `0x00572b40` globals to model.
+2. **`FUN_00520ae0`** — the particle pass. Its body **is** in `Blaze.c` at line 69030, but Ghidra
+   gives it **three** parameters where every call site passes **five**
+   (`FUN_00520ae0(iVar13 + 0x14, uVar12, piVar1, 0, 0)`). Same arity class as ordinal 795 and as
+   `FUN_0052a1e0`/`FUN_0052a280`: settle it from the disassembly before transcribing, not from the
+   pseudo-C.
+3. **Sub-state 1** — `Legacy/Raw/Blaze/FUN_00507cb0.c`, 284 lines.
+
+### Tooling
+
+`playtest.ps1` gained `-Then`, a key sequence played once the screen is reached
+(`-Then ENTER` reproduces this crash in one command). Writing it also caught a real trap: `-Build`
+was leaving `DOTNET_ROOT` pointing at the x64 SDK, and the **x86** game then died on
+`Failed to load hostfxr.dll … 0x800700C1` before opening its window. The build environment is now
+restored before launch. Both are recorded in `test-protocol.md`.
+
+## 2026-08-15 — the in-scene block and sub-state 1: the name-entry screen draws
+
+Three pieces were outstanding. Two are done and running; the third is scoped down to a single
+function that genuinely needs a Ghidra re-run.
+
+### The "0x00572b40 globals" do not exist
+
+`FUN_00506880`'s in-scene block reads `DAT_00572b4c`, `52`, `60`, `62`, `64..6c` and `70..74`, and
+the previous entry listed modelling them as work. They are all fields of
+**`s_SceneEntity_00572b48`**, at `+0x04`, `+0x0a`, `+0x18`, `+0x1a`, `+0x1c..+0x24` and
+`+0x28..+0x2c`. Six offsets, six matches against the 0x9c-byte record a carousel slot already uses —
+which is exactly right, since validating a character copies the chosen slot into this one. Nothing
+new to declare.
+
+The same held for sub-state 1: `DAT_00578df4/df8/dfc/e00` are `s_SelectState_00578de8[3..6]`,
+`DAT_0057351c..3c` are fields of the **first** descriptor of `s_SelectSlots_00573518`,
+`DAT_00572b7a` is the scene entity's yaw at `+0x32`, and `DAT_0060492a` is
+`s_CameraVector_00604928 + 2`. Only two genuinely new symbols turned up, both tiny.
+
+Worth generalising: **a `DAT_` cluster inside a known record's span is a field, not a global.**
+Subtracting the nearest declared base first would have saved the detour both times.
+
+### The particle pass is gated to sub-states 5 and 6
+
+`FUN_00520ae0` sits inside `if (4 < DAT_00578de8)`. Sub-state 1 never reaches it, so it never
+blocked the path the way the previous entry assumed. The loop is transcribed —the bounded random
+walk on three axes, ±0x2000 per step saturated at ±0x19000, then position integrating velocity —
+and only the draw call throws.
+
+### `FUN_00520ae0` needs a re-run with its signature forced
+
+Settled from the disassembly, not from the pseudo-C:
+
+- The call site pushes **five** arguments (`PUSH EBP, PUSH EBP, PUSH EDI, PUSH EDX, PUSH EAX`) and
+  cleans with `ADD ESP,0x14`. cdecl, so `(otBase + 0x14, primCursor, particle, 0, 0)`.
+- The prologue is `SUB ESP,0x18` plus four `PUSH`es = `0x28`, putting the arguments at
+  `[ESP+0x2C..0x3C]`. A byte scan for `MOV r32,[ESP+disp8]` shows **all five slots are read**,
+  including `[ESP+0x38]` and `[ESP+0x3C]`.
+- Ghidra declares three parameters and renders the primitive cursor as `unaff_retaddr`, writing a
+  10-dword primitive through it and returning `+10`.
+
+So the body is not transcribable as it stands: the two extra parameters are live and unattributed.
+This is the one place in the three pieces where a scoped Ghidra re-run, with the signature forced to
+five arguments, is the right tool rather than more reading.
+
+### Sub-state 1 — `FUN_00507cb0`, the name-entry screen
+
+Runs. The capture shows the virtual keyboard (upper case, lower case, accented rows, `FIN`), the
+"Nom" box with its `_` cursor, and the status banner. `DrawPrimitive` goes from ~382 to ~593 per
+frame, which is the eight grid rows arriving.
+
+Its signature was lost by Ghidra the same way the dispatch table's was, and recovered the same way:
+prologue `SUB ESP,0x28` plus four `PUSH`es = `0x38`, so arguments sit at `[ESP+0x3C..0x48]`.
+`[ESP+0x3C]` is Ghidra's `uStack_8` (otBase), `[ESP+0x44]` its `unaff_retaddr` (the primitive
+cursor, eight accesses), `[ESP+0x48]` its `param_1` (the pad). Bare `RET` confirms cdecl.
+
+**It closes an open TODO.** `FUN_00507870` and `FUN_00507890` — the fixed-width and proportional
+glyph-width table setters — were recorded as having no call site anywhere in `Blaze.c`, so which one
+ran when was unknown. This sub-state calls **both**: fixed-width immediately before laying out the
+eight-row grid, proportional immediately after. The grid needs equal cells to line up. The table is
+therefore mutable, not the constant it had been modelled as.
+
+Two new symbols, both recovered from the binary:
+
+- `DAT_00562c98` — the string `"_"`, appended to the name while the cursor is not on the `FIN` cell.
+- `DAT_00562c9c` — the bytes `81 40`, i.e. Shift-JIS `0x8140`, the ideographic space, read back as
+  the dword `0x4081`.
+
+`TODO(REVERSE)` left on the second: the original compares a **byte** against
+`DAT_00562c9c & 0xffff` = `0x4081`, which a byte cannot equal, so that branch never fires as
+written. It is most likely a two-byte read Ghidra narrowed. Transcribed as-is rather than repaired
+on a guess.
+
+Also settled: `FUN_00523520` and `FUN_00523530` are one-liners setting `DAT_00564a50` to 1 and 0 —
+the gate on `FoldKeyboardIntoPadState`. The screen clears it while raw characters are being typed so
+the pad mapping does not fight the keyboard, and restores it on the way out. `EnableKBInput` and
+`GetKBChar` are winsys3d named exports (ordinals 775 and 778), a ring buffer of typed characters;
+`GetKBChar` returns `undefined1`, i.e. a byte.
+
+### One thing to check on the capture
+
+The grid cursor sprite draws as a dark disc over the first cell, hiding the `A`. Its position is
+transcribed straight from the disassembly —
+`x = box+0x04 + column * 16 + (column < 5 ? 0 : 8) + 0x18`, `y = box+0x06 + (row + 1) * 12` — and
+its texture is `**(directory + 0x94)`, its `+0x10` field `0x18`, both as the machine code builds
+them. Whether that is the intended marker or a wrong sub-image is not established; it is the first
+thing to look at if the grid highlight turns out wrong.
+
+## 2026-08-15 — sub-state 3, and the typed-character queue that was blocking everything after it
+
+Sub-state 3 runs: the speech-style grid (Neutre / Courtois / Suranné / Enfantin over Excité /
+Flegmatique / Direct / Taciturne), the name box showing the loaded default, the substituted panel
+under it, and the banner "Sélectionne le style de langage.". Two prerequisites had to be solved
+first, and both are more interesting than the sub-state itself.
+
+### The name screen had no input at all, and it was architectural
+
+Sub-state 1 disables the pad→keyboard mapping (`DAT_00564a50 = 0`) and reads only `GetKBChar`. That
+queue is filled by `FUN_00a03f50` in winsys3d — and **that function is not exported**: a scan of all
+830 export RVAs finds no entry for its RVA `0x3f50`. It is reached only from winsys3d's own window
+procedure, on `WM_CHAR`.
+
+In this port the window belongs to `D3D11Window`, so that procedure never runs. Calling the two
+exported halves (`EnableKBInput`, `GetKBChar`) therefore left the queue permanently empty, and with
+the pad mapping switched off the name screen accepted **nothing**. Measured: the name box stayed
+empty and no key advanced the state.
+
+The queue is eight lines and fully readable, so it is now reconstructed in `Blaze.cs` and fed from
+our own `WM_CHAR`. That is a deliberate deviation from "call winsys3d where winsys3d does", and the
+only one of its kind; the alternative was calling an internal address at `base + 0x3f50`, which
+assumes a stable non-exported entry point. Both halves and the writer are transcribed verbatim from
+`winsys3d.c`.
+
+This is worth generalising: **a winsys3d function with no export and no caller in its own
+decompilation is fed by the DLL's window procedure**, which this port does not run. Any other
+feature that depends on one will fail the same silent way.
+
+### Control code `0x1c` — a subroutine jump inside the text stream
+
+`FUN_00544e80`, 0x82 bytes at file offset `0x144280`, decoded by hand like `0x0f` before it.
+
+It pushes `text + 3` onto the descriptor's stack at `+0x8b4`, bumps the depth counter at `+0x15`,
+and returns a **different** string. The matching pop was already reconstructed — `RunTextEngine`
+unwinds that stack on a NUL — so only the push side was missing, which is why the stack had looked
+write-only.
+
+The string is chosen by `text[0]` (which resource root), `text[1..2]` (a little-endian index into
+its `+0x70` label table) **plus a substituted value**:
+
+```
+MOV ECX,[0x006087B4]   ; an IAT slot, so *(*(…)) is winsys3d's exported MainMem
+SHL EDX,0xD            ; owner[8] * 0x2000
+MOV DL,[EDX+ECX+0xF0153]
+```
+
+`MainMem + 0xf0000` is `DAT_00573338`, and `+0x153` is exactly the byte sub-state 3 writes. So the
+code substitutes the chosen speech style from the player's own 0x2000 block, selected through the
+panel's owner. That owner path (`*owner & 0xfc0000 == 0x800000`) is the one `DrawUiPanel` had
+modelled but never exercised — sub-state 3 is the first caller to pass `&DAT_00572b48` as
+`BindMenuLabels`' flags argument, which is what puts the scene entity at `descriptor + 0x8b0`.
+
+### Sub-state 3 itself
+
+`FUN_00508860`. Signature recovered at the prologue as before (`SUB ESP,0x14` + three `PUSH` =
+`0x20`, so arguments at `[ESP+0x24..0x30]`). Ghidra declares it `void`; the epilogue leaves the last
+`FUN_00545340` result in `EAX`, so it does return the primitive cursor.
+
+`DAT_00573de0` is `DAT_00573518 + 0x8c8` — the second descriptor of the same array, not a new
+symbol. `DAT_00562b70` is sixteen bytes at file offset `0x161170`, one per character, pre-arming
+`scratch[0x153]`.
+
+The opening block — camera settling toward the current character, background fading to grey 0x60,
+`RotMatrix`, scene yaw — is identical in sub-states 1 and 3 and is now
+`SettleSceneCamera`. Extracted because it is a repeated independent unit, not to slice one body.
+
+### A correction to yesterday's particle array
+
+Reading sub-state 4 turned up an error in what was written earlier today. The particle array's base
+is **`0x00572be4`**, not `0x00572c00`. Two loops walk it and they disagree by `0x1c`:
+
+| loop | starts at | works on | records |
+|---|---|---|---|
+| `FUN_00506880` | `&DAT_00572c34` | `piVar10 - 0xd` = `0x572c00, 0x572c9c, 0x572d38, 0x572dd4` | 4 |
+| `FUN_00508e00` | `&DAT_00572c20` | `puVar6 - 0xf` = `0x572be4, 0x572c80, 0x572d1c, 0x572db8` | 4 |
+
+The second set is the first minus `0x1c`: the frame loop manipulates the **position field**, not the
+record base. And `0x00572b48 + 0x9c = 0x00572be4` — the array begins exactly where the scene entity
+ends, which settles it. Corrected, and `EmitSceneParticles` now offsets by `+0x1c` explicitly.
+
+### Tooling
+
+Two robustness bugs in `playtest.ps1`, both found by being bitten:
+
+- **The relaunch was not handled.** When the game loses the race for low memory it re-executes
+  itself as a child (about one run in four) and the parent then waits, holding no window. The script
+  drove the parent, focus silently failed, and thirty taps moved nothing. It now picks the
+  `OpenForesia` process that actually owns a window, and kills the whole tree rather than the parent
+  alone.
+- `-Then` added earlier now covers the sequences these sub-states need.
+
+### Where this stops
+
+Sub-states **2, 4, 5, 6 and 7** are still not transcribed. Sub-state 4 is read and understood — it
+is the eight-item element carousel on a circle of radius 0x78, keyed on `scratch[0x151]`, using the
+`DAT_00562a58` tone table already recovered, with its own array of eight `0x9c` records at
+`0x00572e58`. Its Ghidra signature is lost the usual way (`unaff_retaddr`, `iStack_8`, `unaff_BP`,
+`in_stack_00000010`) and its prologue is `SUB ESP,0x44` plus four `PUSH`es = `0x54`, so its arguments
+sit at `[ESP+0x58..0x64]`. Sub-states 6 and 7 are 545 and 713 lines and will not be one sitting.
+
+## 2026-08-15 — sub-state 4: the element carousel
+
+`FUN_00508e00` runs. Eight medallions on a circle of radius `0x78` around the character, the front
+one lit with its glyph, the "Elé. / Feu" panel following the selection. The chain is now
+0 → 1 → 3 → 4.
+
+### Signature, again from the prologue
+
+`SUB ESP,0x44` plus four `PUSH`es = `0x54`, so arguments sit at `[ESP+0x58..0x64]`. `EBP` takes the
+primitive cursor from `[ESP+0x60]` before the draw loop — that is Ghidra's `unaff_retaddr` — and the
+epilogue returns the last `FUN_005443a0` result.
+
+One trap worth recording: after the input phase the original **reuses its fourth argument's stack
+slot as the loop counter** (`INC EBX ; MOV [ESP+0x64],EBX`), which is what Ghidra renders as
+`uStack00000004`. Reading that slot as "the pad" past the input phase would be wrong.
+
+### The icon array
+
+`DAT_00572e58`, eight records of `0x9c` — the same record type as the scene entity and the carousel
+slots, laid out on a circle exactly as sub-state 0 lays out its sixteen characters, with a step of
+`0x200` and radius `0x78` instead of `0x100` and `0x96`. It follows the particle array:
+`0x00572be4 + 4 * 0x9c = 0x00572e54`, then `0x00572e58`.
+
+Ghidra names it `DAT_00572e78` in the init loop and `DAT_00572e80` in the draw loop, because each
+walks it from a different field — `+0x20` and `+0x28`. Same array.
+
+### Two mistakes of mine, both caught by looking
+
+- **`MOV ECX,[ESI + 0x10]` is not `icon + 0x10`.** `ESI` walks the array at `base + 0x28`, so that
+  read is `icon + 0x38` — the attribute word set to `0x1000000` at init. Taken as `+0x10` it reads
+  zero, and every medallion drew as a **black disc**. The screenshot is what caught it; the numbers
+  were unchanged, since the primitives were emitted either way.
+- The particle array base was corrected the same session (`0x00572be4`, see the previous entry),
+  which is what made this sub-state's copy loop line up at all.
+
+Both share a lesson: when a loop walks a record array from an interior field, every `[reg + n]` in
+its body is offset by that field, and Ghidra's `DAT_` name for the base hides it.
+
+### Tooling: the window title matters
+
+`playtest.ps1`'s relaunch handling picked the wrong window. A relaunched game also carries a
+**console** window whose title is the exe path, and taking that one sent every keystroke nowhere —
+the capture showed a black console and the menu never moved. It now requires
+`MainWindowTitle -eq 'OpenForesia'`.
+
+### Remaining
+
+Sub-states **2, 5, 6, 7**. Sub-state 2 (143 lines) is reached only as sub-state 3's back-step.
+Sub-states 6 and 7 are 545 and 713 lines.

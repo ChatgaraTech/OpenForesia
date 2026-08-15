@@ -22,6 +22,7 @@ internal static unsafe class D3D11Window
     private const uint WmDestroy = 0x0002;
     private const uint WmClose = 0x0010;
     private const uint WmSize = 0x0005;
+    private const uint WmChar = 0x0102;
     private const uint WmKeyDown = 0x0100;
     private const uint WmSysKeyDown = 0x0104;
     private const int VkEscape = 0x1B;
@@ -126,6 +127,16 @@ internal static unsafe class D3D11Window
 
             case WmSize:
                 s_Resized = true;
+                return IntPtr.Zero;
+
+            // La file de caractères tapés. Dans l'original c'est la **procédure de fenêtre interne
+            // de winsys3d** qui la remplit, en appelant FUN_00a03f50 — une fonction non exportée,
+            // donc inatteignable depuis ici. Comme la fenêtre nous appartient et que cette
+            // procédure ne tourne jamais, la file resterait vide à jamais : l'écran de saisie du
+            // nom coupe la traduction manette→clavier et n'a alors plus aucune entrée du tout.
+            // On alimente donc la file reconstruite, cf. Blaze.PushTypedCharacter.
+            case WmChar:
+                Blaze.PushTypedCharacter((byte)wParam);
                 return IntPtr.Zero;
 
 

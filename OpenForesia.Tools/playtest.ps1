@@ -33,6 +33,11 @@ param(
     # Exemple : -Trace GLYPHS,VP  ->  OPENFORESIA_TRACE_GLYPHS=1, OPENFORESIA_TRACE_VP=1
     [string[]]$Trace = @(),
 
+    # Touches a jouer une fois l'ecran atteint, dans l'ordre. Jetons reconnus :
+    # ENTER ESC UP DOWN LEFT RIGHT, et WAIT<n> pour patienter n secondes.
+    # Exemple : -Then DOWN,WAIT2,ENTER
+    [string[]]$Then = @(),
+
     # Reconstruit la solution avant de lancer.
     [switch]$Build,
 
@@ -73,11 +78,23 @@ Get-ChildItem $runs -Filter 'playtest-*' -ErrorAction SilentlyContinue |
 # Construction optionnelle. Le dotnet du PATH n'a que le runtime : le SDK est chez l'utilisateur.
 # --------------------------------------------------------------------------------------------
 if ($Build) {
-    $env:DOTNET_ROOT = 'C:\Users\Sagara\.dotnet'
-    $env:PATH = "C:\Users\Sagara\.dotnet;$env:PATH"
-    Write-Host '== construction =='
-    & dotnet build (Join-Path $repo 'OpenForesia.sln') | Select-String -Pattern 'Erreur\(s\)|error ' | ForEach-Object { Write-Host "   $_" }
-    if ($LASTEXITCODE -ne 0) { Write-Host '!! construction en echec, arret'; return }
+    # DOTNET_ROOT ne vaut QUE pour la construction, et doit etre retire ensuite : le SDK est x64,
+    # le jeu est x86, et un processus x86 qui herite de ce DOTNET_ROOT meurt sur
+    # "Failed to load hostfxr.dll ... 0x800700C1" avant meme d'ouvrir sa fenetre.
+    $savedRoot = $env:DOTNET_ROOT
+    $savedPath = $env:PATH
+    try {
+        $env:DOTNET_ROOT = 'C:\Users\Sagara\.dotnet'
+        $env:PATH = "C:\Users\Sagara\.dotnet;$env:PATH"
+        Write-Host '== construction =='
+        & dotnet build (Join-Path $repo 'OpenForesia.sln') | Select-String -Pattern 'Erreur\(s\)|error ' | ForEach-Object { Write-Host "   $_" }
+        $failed = ($LASTEXITCODE -ne 0)
+    } finally {
+        if ($null -eq $savedRoot) { Remove-Item Env:DOTNET_ROOT -ErrorAction SilentlyContinue }
+        else { $env:DOTNET_ROOT = $savedRoot }
+        $env:PATH = $savedPath
+    }
+    if ($failed) { Write-Host '!! construction en echec, arret'; return }
 }
 
 if (-not (Test-Path $exe)) { Write-Host "!! introuvable : $exe  (lancer avec -Build)"; return }
@@ -178,12 +195,36 @@ $p = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru 
 Write-Host "== PID $($p.Id) ; attente $MenuDelay s pour le menu"
 Start-Sleep -Seconds $MenuDelay
 
+# Le jeu se **relance en processus fils** quand il perd la course pour la memoire basse (environ
+# une fois sur quatre, voir EnsureDisplayListArena). Le parent attend alors son fils et n'a pas de
+# fenetre : piloter $p directement echoue silencieusement. On prend donc le processus OpenForesia
+# qui a reellement une fenetre.
+# Le titre compte : un processus relance porte aussi une fenetre de console, dont le titre est le
+# chemin de l'exe. La prendre pour la fenetre du jeu envoie toutes les frappes dans le vide --
+# mesure, la capture montrait la console et la navigation ne bougeait pas.
+function Get-GameWindow($parent) {
+    $parent.Refresh()
+    if ($parent.MainWindowHandle -ne [IntPtr]::Zero -and $parent.MainWindowTitle -eq 'OpenForesia') {
+        return $parent
+    }
+    $kids = @(Get-Process -Name 'OpenForesia' -ErrorAction SilentlyContinue |
+              Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero -and $_.MainWindowTitle -eq 'OpenForesia' })
+    if ($kids.Count -gt 0) {
+        if ($kids[0].Id -ne $parent.Id) {
+            Write-Host "   (relance detectee : fenetre portee par le PID $($kids[0].Id))"
+        }
+        return $kids[0]
+    }
+    Write-Host "!! aucune fenetre intitulee 'OpenForesia' trouvee"
+    return $parent
+}
+
 $hwnd = [IntPtr]::Zero
 if ($p.HasExited) {
     Write-Host "!! sorti avant toute frappe (code $($p.ExitCode))"
 } else {
-    $p.Refresh()
-    $hwnd = $p.MainWindowHandle
+    $game = Get-GameWindow $p
+    $hwnd = $game.MainWindowHandle
     if ($hwnd -ne [IntPtr]::Zero) { [PlayTestInput]::Focus($hwnd) }
     Start-Sleep -Milliseconds 1200
 
@@ -235,6 +276,31 @@ if ($p.HasExited) {
             }
             if ($ok) { Write-Host "== validation vue, observation $Seconds s" }
             else { Write-Host '!! validation jamais vue par le jeu' }
+
+            # Sequence libre une fois l'ecran atteint. Laisser l'ecran s'installer d'abord : le
+            # chargement des ressources prend plusieurs secondes et rien ne repond pendant.
+            if ($Then.Count -gt 0) {
+                Start-Sleep -Seconds 6
+                foreach ($k in $Then) {
+                    if ($p.HasExited) { Write-Host "   (sorti avant '$k')"; break }
+                    if ($k -match '^WAIT(\d+)$') {
+                        Start-Sleep -Seconds ([int]$Matches[1])
+                        continue
+                    }
+                    switch ($k.ToUpper()) {
+                        'ENTER' { [PlayTestInput]::Tap(0x1C, $false, 400) }
+                        'ESC'   { [PlayTestInput]::Tap(0x01, $false, 400) }
+                        'UP'    { [PlayTestInput]::Tap(0x48, $true,  $TapMs) }
+                        'DOWN'  { [PlayTestInput]::Tap(0x50, $true,  $TapMs) }
+                        'LEFT'  { [PlayTestInput]::Tap(0x4B, $true,  $TapMs) }
+                        'RIGHT' { [PlayTestInput]::Tap(0x4D, $true,  $TapMs) }
+                        default { Write-Host "!! jeton inconnu : $k"; continue }
+                    }
+                    Write-Host "   -> $k"
+                    Start-Sleep -Milliseconds 900
+                }
+            }
+
             Start-Sleep -Seconds $Seconds
         }
     }
@@ -248,7 +314,13 @@ if ($Shot -and -not $p.HasExited -and $hwnd -ne [IntPtr]::Zero) {
 $p.Refresh()
 if (-not $p.HasExited) {
     if ($KeepOpen) { Write-Host "== laisse ouvert (PID $($p.Id))" }
-    else { try { $p.Kill() } catch {}; Start-Sleep -Seconds 2 }
+    else {
+        # Tout l'arbre : en cas de relance le parent attend son fils, et le tuer seul laisserait
+        # le jeu ouvert derriere.
+        Get-Process -Name 'OpenForesia' -ErrorAction SilentlyContinue |
+            ForEach-Object { try { $_.Kill() } catch {} }
+        Start-Sleep -Seconds 2
+    }
 }
 
 # --------------------------------------------------------------------------------------------

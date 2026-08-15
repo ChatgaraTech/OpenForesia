@@ -286,6 +286,59 @@ five times as separators, `0x09` as terminator. Their handlers are `543940`/`544
 `543940`/`544D90` and `543950`/`544B10` — **all five bodies are available**, three decompiled and
 two decoded above. The main menu therefore needs no Ghidra re-run.
 
+
+### `0x00544e50` — handler for control code `0x0f`, decoded by hand (2026-08-15)
+
+Slot 15 of **both** tables, so the same body serves the scan and the render pass. 33 bytes at file
+offset `0x144250`, followed by `0x90` padding.
+
+```
+8B 4C 24 08          MOV ECX,[ESP+8]        ; descriptor
+8A 81 C7 08 00 00    MOV AL,[ECX+0x8C7]     ; flags
+C6 41 33 01          MOV byte [ECX+0x33],1
+0C 02                OR  AL,2
+88 81 C7 08 00 00    MOV [ECX+0x8C7],AL
+8B 44 24 04          MOV EAX,[ESP+4]        ; text cursor, returned unchanged
+89 81 AC 08 00 00    MOV [ECX+0x8AC],EAX
+C3                   RET
+```
+
+It is the sibling of `0x00544b10` (code `0x09`) and reads best against it. Three differences: flag
+bit **1** rather than bit 2, byte `+0x33` rather than `+0x3b`, and **no operand byte consumed** —
+the returned cursor is the one it was handed.
+
+**The two byte writes are enable bits, not loose flags.** This closes a loop with the descriptor
+header documented above: the header is a row of *(parameter, enable)* pairs whose enable is the
+`0x1000000` bit, i.e. the dword's **top byte**. The cursor's parameter is at `+0x30` and the scroll
+arrows' at `+0x38`. So:
+
+| handler | write | effect on the header |
+|---|---|---|
+| `544e50` (code `0x0f`) | `[+0x33] = 1` | `0x000F28D4` → `0x010F28D4` — **switches the cursor on** |
+| `544b10` (code `0x09`) | `[+0x3b] = 1` | `0x000F0A00` → `0x010F0A00` — switches the scroll arrows on |
+
+Flag bit 1 is tested at the top of `FUN_005443a0`, which returns immediately when it is set. Code
+`0x0f` therefore means **stop here and show the cursor**: a prompt awaiting a choice. It is what the
+character-select screen reaches the moment a character is validated, and it needed no Ghidra re-run
+after all — the body was short enough to read straight out of the binary, like the four scan stubs
+and `544b10` before it.
+
+Twenty-five of the thirty-one distinct handlers remain unreconstructed. The three now available on
+the render side are `544b10`, `544c50`, `544d90`, plus `544810` and `544fb0` from `Blaze.c`, and
+`544e50` here.
+
+#### Converting a `.text` address to a file offset
+
+Needed to decode these bodies and not written down anywhere until now. `Legacy/Blaze.exe` has five
+sections; `.text` runs `VA 0x00401000..0x0054C270` from file offset `0x400`, so for any address in
+it:
+
+```
+offset = VA - 0x00401000 + 0x400
+```
+
+`0x00544e50` → `0x144250`. The other sections: `.rdata` `0x0054D000` → `0x14B800`, `.data`
+`0x0054F000` → `0x14D600`, `.idata` `0x00608000` → `0x16FA00`, `.rsrc` `0x0060A000` → `0x170C00`.
 ## `DAT_0056e7b0` — proportional glyph widths
 
 186 bytes, one per glyph slot, indexed by the folded character code `FUN_00543b20` computes
@@ -569,3 +622,41 @@ This applies to `DAT_00560728`, the `DAT_00560ff0` row and the nine instances at
 It does **not** apply to the label tables they point at through `+0x8ac`: those are read back as
 full 32-bit pointers (`Blaze.c:91094`, and `Blaze.cs`'s `RunTextEngine`), which is why
 `DAT_0056e670` has always worked as an ordinary allocation.
+
+## Two small symbols behind the name-entry screen (2026-08-15)
+
+| symbol | file offset | bytes | reading |
+|---|---|---|---|
+| `DAT_00562c98` | `0x161298` | `5F 00` | the string `"_"`, appended to the name in progress while the grid cursor is off the `FIN` cell |
+| `DAT_00562c9c` | `0x16129c` | `81 40` | Shift-JIS `0x8140`, the ideographic space; the code reads it as a dword, giving `0x4081` |
+
+`FUN_00507cb0` compares a **byte** against `DAT_00562c9c & 0xffff`, which no byte can equal, so
+that branch is unreachable as decompiled. Most likely a two-byte read that Ghidra narrowed.
+
+## `DAT_00562a58` — eight scene tones (2026-08-15)
+
+Eight entries of three shorts plus a padding word, at file offset `0x161058`, ending exactly where
+`DAT_00562a98` begins — which is what fixes the count at eight. `FUN_00506880` damps the scene's
+background colour toward the entry selected by the byte at `DAT_00573338 + 0x151`, but only at
+sub-states 5 and 6.
+
+```
+[0] 192  96   0     [4] 192 192 192
+[1]   0  96 192     [5]   0   0   0
+[2] 128  96  64     [6] 128 128  96
+[3]  64 128  96     [7]  64  32 128
+```
+
+## A `DAT_` cluster inside a known record is a field, not a global (2026-08-15)
+
+Twice in one session a list of "globals still to model" dissolved on subtraction:
+
+| cluster | actually |
+|---|---|
+| `DAT_00572b4c / 52 / 60 / 62 / 64..6c / 70..74` | `DAT_00572b48 + 0x04 / 0x0a / 0x18 / 0x1a / 0x1c..0x24 / 0x28..0x2c` — the 0x9c-byte entity record |
+| `DAT_00578df0 / df4 / df8 / dfc / e00` | `DAT_00578de8[2..6]` |
+| `DAT_0057351c / 1e / 20 / 22 / 28 / 38 / 3c` | fields of the first `0x8c8` descriptor at `DAT_00573518` |
+| `DAT_0060492a` | `DAT_00604928 + 2` |
+
+Subtracting the nearest already-declared base before declaring anything new is the cheap check,
+and it is worth doing before writing "globals still to model" into a plan.

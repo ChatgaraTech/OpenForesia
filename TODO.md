@@ -27,10 +27,48 @@ Rien n'est commité — c'est l'affaire de Vincent.
 
 ---
 
-## 1. À faire maintenant : les sous-états 1 à 7
+## 1. À faire maintenant : les sous-états 2, 5, 6, 7
 
-L'entrée dans l'écran est acquise ; ce qui manque, c'est ce qui vient **après** la validation d'un
-personnage. Voir §4.
+Les **sous-états 3** (style de langage) et **4** (carrousel des éléments) sont reconstruits et
+tournent. La chaîne va donc 0 → 1 → 3 → 4 → *5*. Reproduction :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Then ENTER,WAIT3,ENTER,WAIT3,ENTER -Seconds 12 -Shot
+```
+
+Le sous-état 2 (143 lignes) n'est atteint qu'en retour arrière depuis le 3. Les 6 et 7 font 545 et
+713 lignes : ce ne sera pas une seule séance.
+
+## 1bis. Rappel de méthode pour les suivants
+
+**Quand une boucle parcourt un tableau d'enregistrements depuis un champ intérieur, tous les
+`[reg + n]` de son corps sont décalés d'autant.** Deux erreurs coûtées de cette façon : la base du
+tableau de particules (fausse de 0x1c) et `MOV ECX,[ESI + 0x10]` du sous-état 4, où `ESI` vaut
+`icône + 0x28` — c'est donc `+0x38`, le mot d'attribut. Lu à `+0x10` il vaut zéro et les huit
+médaillons sortaient en **disques noirs**, sans que les compteurs ne bougent d'un poil. Seule la
+capture l'a montré : quand la géométrie est bonne mais l'image fausse, regarder l'écran, pas les
+chiffres.
+
+Le bloc « en scène » et le **sous-état 1** (la saisie du nom) sont reconstruits et tournent : le
+clavier virtuel s'affiche, la boîte « Nom » aussi, ~593 primitives par image. Reproduction :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Then ENTER,WAIT3,ENTER -Seconds 12 -Shot
+```
+
+Ce qui reste :
+
+1. **Les sous-états 2 à 7**, tous décompilés dans `Legacy/Raw/Blaze/FUN_*.c`.
+   `InvokeCharacterSelectSubState` lève une exception qui nomme le fichier exact. Le sous-état 1
+   confirme la méthode : la signature de Ghidra est fausse à chaque fois, il faut la reprendre au
+   prologue (`SUB ESP,n` + les `PUSH`, puis les décalages observés dans le corps).
+2. **`FUN_00520ae0`**, la passe de particules — atteinte aux seuls sous-états 5 et 6, donc pas
+   bloquante avant. C'est le seul point des trois pièces qui demande vraiment un **re-run Ghidra
+   avec la signature forcée à cinq arguments** : l'assembleur prouve que les cinq emplacements sont
+   lus, Ghidra n'en déclare que trois et rend le curseur de primitives en `unaff_retaddr`.
+3. **Le sprite de curseur de la grille** dessine un disque sombre sur la première case. Position et
+   texture sont transcrites telles que l'assembleur les construit ; à regarder en premier si le
+   surlignage de la grille est faux.
 
 Si l'image paraît fausse plutôt qu'absente, les deux réserves connues sur `DrawAnimatedModel` sont
 en §3.
@@ -38,6 +76,44 @@ en §3.
 ---
 
 ## 2. Ce qui a été corrigé (pour mémoire)
+
+**La file de caractères tapés est reconstruite, pas appelée dans la DLL.** C'est la seule déviation
+de ce genre du portage, et elle était bloquante : `FUN_00a03f50`, qui remplit la file que
+`GetKBChar` dépile, **n'est pas exportée** (aucune des 830 entrées d'export ne porte son RVA
+`0x3f50`) — seule la procédure de fenêtre interne de winsys3d l'appelle, et notre fenêtre est la
+nôtre. La saisie du nom coupant par ailleurs la traduction manette→clavier, l'écran n'avait
+**aucune entrée du tout**. Règle à retenir : *une fonction winsys3d sans export et sans appelant
+dans sa propre décompilation est nourrie par la procédure de fenêtre de la DLL*, que ce portage ne
+fait pas tourner.
+
+**Le code de contrôle `0x1c` du moteur de texte** — `FUN_00544e80`, décodé à la main : un saut de
+sous-chaîne qui empile un retour à `+0x8b4` et substitue une valeur prise dans le bloc de 0x2000 du
+joueur. Le dépilement était déjà reconstruit, seul l'empilement manquait.
+
+**La base du tableau de particules était fausse de 0x1c** : c'est `0x00572be4`, pas `0x00572c00` —
+la boucle de frame manipule le champ de position (+0x1c), pas la base. `0x00572b48 + 0x9c =
+0x00572be4` : le tableau commence exactement où finit l'entité de scène.
+
+**Un amas de `DAT_` dans l'étendue d'un enregistrement connu est un champ, pas une globale.** Deux
+listes de « globales encore à modéliser » se sont dissoutes par simple soustraction : les
+`DAT_00572b4c..74` sont les champs de `s_SceneEntity_00572b48`, les `DAT_00578df0..e00` sont
+`s_SelectState_00578de8[2..6]`, les `DAT_0057351c..3c` sont ceux du premier descripteur de
+`s_SelectSlots_00573518`. Soustraire la base déjà déclarée la plus proche avant de déclarer quoi
+que ce soit — c'est la vérification qui coûte le moins.
+
+**Les deux poseurs de table de largeurs de glyphes ont enfin un site d'appel.** `FUN_00507870`
+(fixe) et `FUN_00507890` (proportionnel) étaient notés « aucun site d'appel dans `Blaze.c` ». Le
+sous-état 1 appelle les **deux** : fixe juste avant la grille de caractères, proportionnel juste
+après — il faut des cases de largeur égale pour qu'elles s'alignent. La table est donc mutable, pas
+la constante qu'on en avait fait.
+
+**Le code de contrôle `0x0f` du moteur de texte.** Valider un personnage relie l'étiquette d'état à
+un autre flux, qui ouvre sur `0x0f` — un des 26 gestionnaires que Ghidra n'a jamais émis. Le garde
+du projet conseille un re-run ciblé, mais le corps ne fait que **33 octets** : décodé à la main
+comme les talons de la passe 1 et `0x00544b10`. Il signifie « arrête-toi ici et montre le curseur ».
+Au passage, il **confirme** la lecture du matin : l'octet qu'il écrit (`+0x33`) est le haut du dword
+de fonction du curseur, c'est-à-dire son bit d'activation `0x1000000`. Détail dans
+`Documentation/DataSymbols.md`, avec la conversion adresse `.text` → offset fichier.
 
 **Ordinal 795 était déclaré avec deux arguments et en prend trois.** C'était le plantage suivant,
 une violation d'accès native (`0xC0000005`) au premier modèle dessiné par le carrousel :

@@ -211,6 +211,57 @@ public static unsafe partial class Blaze
     // MMX path runs `for (iVar4 = (int)param_3 * 3; iVar4 != 0; iVar4--)` without swapping. Same
     // count as ordinal 418, and three vertices consumed per unit in both.
     [DllImport("winsys3d.dll", EntryPoint = "#795")] private static extern void Ordinal_795(void* vertices, void* outScreenXy, uint count);
+
+    // =====================================================================
+    // La file de caractères tapés — **reconstruite plutôt qu'appelée dans la DLL**, et c'est le
+    // seul endroit du portage où l'on s'écarte de « appeler winsys3d quand winsys3d le fait ».
+    //
+    // Les trois pièces sont EnableKBInput (0x00a03ef0, ordinal 775), GetKBChar (0x00a03f10,
+    // ordinal 778) et l'écrivain FUN_00a03f50. Les deux premières sont exportées, la troisième
+    // **ne l'est pas** : la table d'exports de winsys3d.dll ne contient nulle part son RVA
+    // 0x3f50. Elle n'est appelée que par la procédure de fenêtre interne de la DLL, sur WM_CHAR.
+    //
+    // Or dans ce portage la fenêtre est la nôtre (D3D11Window) et cette procédure ne tourne
+    // jamais. Appeler les deux exports laisserait donc GetKBChar rendre 0 pour toujours — et
+    // l'écran de saisie du nom, qui coupe la traduction manette→clavier par DAT_00564a50, n'aurait
+    // alors **plus aucune entrée**. Mesuré : le nom restait vide et aucune touche ne passait.
+    //
+    // La file fait huit lignes et se lit entièrement dans winsys3d.c ; la transcrire ici, alimentée
+    // par notre WM_CHAR, reproduit exactement ce que fait la DLL. La solution de rechange aurait
+    // été d'appeler FUN_00a03f50 à `base + 0x3f50`, ce qui suppose une adresse interne stable.
+    // =====================================================================
+    private static readonly byte[] s_TypedRing = new byte[0x400];   // &DAT_00b6d1a0
+    private static int s_TypedRingRead;                             // DAT_00b6d5a0
+    private static int s_TypedRingWrite;                            // DAT_00b6d5a4
+    private static uint s_TypedRingArmed;                           // DAT_00b6dbcc
+
+    /// <summary>winsys3d.c @ 0x00a03ef0 — arme ou désarme la file et remet ses deux curseurs.</summary>
+    private static uint EnableKBInput(uint enable)
+    {
+        uint previous = s_TypedRingArmed;
+        s_TypedRingRead = 0;
+        s_TypedRingWrite = 0;
+        s_TypedRingArmed = enable;
+        return previous;
+    }
+
+    /// <summary>winsys3d.c @ 0x00a03f10 — dépile un caractère, ou 0 si désarmée ou vide.</summary>
+    private static byte GetKBChar()
+    {
+        if (s_TypedRingArmed == 0) return 0;
+        if (s_TypedRingRead == s_TypedRingWrite) return 0;
+        byte value = s_TypedRing[s_TypedRingRead];
+        s_TypedRingRead = s_TypedRingRead + 1 & 0x3ff;
+        return value;
+    }
+
+    /// <summary>winsys3d.c @ 0x00a03f50 — l'écrivain, appelé par notre WM_CHAR.</summary>
+    internal static void PushTypedCharacter(byte value)
+    {
+        if (s_TypedRingArmed == 0) return;
+        s_TypedRing[s_TypedRingWrite] = value;
+        s_TypedRingWrite = s_TypedRingWrite + 1 & 0x3ff;
+    }
     // Ordinals 658/661/665/674 are winsys3d.dll's port of the PlayStation SDK's **libgpu** â€” which
     // is what the sibling `playst.dll` ("PlayStation") is named after, and unsurprising for a PSX
     // game ported to Windows. The two below are identified beyond doubt by their bodies: they write
@@ -6578,19 +6629,84 @@ public static unsafe partial class Blaze
 
             s_SelectFlags_00562a48[1] = 0;
 
+            // =========================================================================
+            // Le bloc « un personnage est en scène », sous-états 1 à 6.
+            //
+            // Les globales que Ghidra nomme DAT_00572b4c, 52, 60, 62, 64..6c et 70..74 ne sont
+            // pas un bloc à part : ce sont les champs de s_SceneEntity_00572b48, à +0x04, +0x0a,
+            // +0x18, +0x1a, +0x1c..+0x24 et +0x28..+0x2c. Six sur six correspondent au même
+            // enregistrement de 0x9c octets qu'un emplacement du carrousel — ce qui est attendu,
+            // puisque la validation y recopie l'emplacement choisi.
+            // =========================================================================
             if (s_SelectState_00578de8[0] != 0 && s_SelectState_00578de8[0] < 7)
             {
-                // TODO(REVERSE): le bloc « un personnage est en scène » — amortissement de caméra
-                // sur DAT_00572b64..DAT_00572b74, boucle de particules sur DAT_00572c34 (pas 0x27
-                // ints, borne 0x572ea4) via FUN_00520ae0, puis le rendu du modèle animé, qui est
-                // désormais DrawAnimatedModel. Entièrement lisible dans
-                // Legacy/Raw/Blaze/FUN_00506880.c ; il ne reste que FUN_00520ae0 et le bloc de
-                // globales à 0x00572b40, non modélisé.
-                // Le sous-état 0 ne passe jamais ici, donc ce trou ne bloque pas l'entrée à l'écran.
-                throw new NotImplementedException(
-                    $"RunCharacterSelectFrameLoop: sub-state {s_SelectState_00578de8[0]} needs the " +
-                    "in-scene block of FUN_00506880. Its model draw is now DrawAnimatedModel; what " +
-                    "remains is FUN_00520ae0 (the particle pass) and the 0x00572b40 globals.");
+                byte* entity = s_SceneEntity_00572b48;
+                int* scenePos = (int*)(entity + 0x1c);     // DAT_00572b64 / 68 / 6c
+                short* sceneGlow = (short*)(entity + 0x28); // DAT_00572b70 / 72 / 74
+
+                // Les particules et la teinte de fond ne concernent que les sous-états 5 et 6.
+                if (s_SelectState_00578de8[0] > 4)
+                {
+                    // Ghidra: &DAT_00562a58 indexé par l'octet +0x151 du bloc de travail.
+                    short* tone = (short*)(s_SceneToneTable_00562a58
+                                           + s_SelectScratch_00573338[0x151] * SceneToneStride);
+                    s_BackColourR_005e93a0 += (short)((tone[0] - s_BackColourR_005e93a0) >> 2);
+                    s_BackColourG_005e93a2 += (short)((tone[1] - s_BackColourG_005e93a2) >> 2);
+                    s_BackColourB_005e93a4 += (short)((tone[2] - s_BackColourB_005e93a4) >> 2);
+                    Ordinal_376((byte)s_BackColourR_005e93a0,
+                                (byte)s_BackColourG_005e93a2,
+                                (byte)s_BackColourB_005e93a4);
+
+                    primCursor = EmitSceneParticles(otBase, primCursor);
+
+                    // Ghidra: Ordinal_457 est l'atan2 de libgte. La scène se tourne vers la
+                    // première particule, l'angle étant pris entre elle et l'entité.
+                    s_ScenePitch_005e9308 = 0;
+                    // DAT_00572c00 et DAT_00572c08 sont le x et le z de la **position** du premier
+                    // record, donc sa base + 0x1c.
+                    int* firstParticle = (int*)(s_SceneParticles_00572be4 + 0x1c);
+                    short dz = (short)((scenePos[2] - firstParticle[2]) >> 0xc);
+                    short dx = (short)((scenePos[0] - firstParticle[0]) >> 0xc);
+                    s_SceneYaw_005e930a = -Ordinal_457(dx, dz);
+                    s_SceneRoll_005e930c = 0;
+                }
+
+                // L'éclat de l'entité remonte vers 0x1e00, sa position retombe vers (0, -0x64000, 0)
+                // — toujours par quarts. Sous 0x1000 en valeur absolue, x et z sont collés à zéro
+                // pour que l'amortissement finisse net plutôt qu'asymptotiquement.
+                sceneGlow[0] += (short)((0x1e00 - sceneGlow[0]) >> 2);
+                sceneGlow[1] += (short)((0x1e00 - sceneGlow[1]) >> 2);
+                sceneGlow[2] += (short)((0x1e00 - sceneGlow[2]) >> 2);
+
+                scenePos[0] += -scenePos[0] >> 2;
+                scenePos[1] += -0x64000 - scenePos[1] >> 2;
+                scenePos[2] += -scenePos[2] >> 2;
+
+                if ((scenePos[0] < 0 ? -scenePos[0] : scenePos[0]) < 0x1000) scenePos[0] = 0;
+                if ((scenePos[2] < 0 ? -scenePos[2] : scenePos[2]) < 0x1000) scenePos[2] = 0;
+
+                // Avance de frame, exactement comme au carrousel : le compteur boucle sur la
+                // longueur de l'animation, lue à +0x16 de son entrée.
+                byte assetIndex = entity[0x04];                     // DAT_00572b4c
+                short* sceneAnimIndex = (short*)(entity + 0x18);    // DAT_00572b60
+                short* sceneFrame = (short*)(entity + 0x1a);        // DAT_00572b62
+
+                byte* bundle = ((byte**)s_AnimationTable_005e9640)[assetIndex];
+                byte* animEntry = *(byte**)(bundle + *sceneAnimIndex * 4);
+
+                short advanced = (short)(*sceneFrame + 1);
+                *sceneFrame = advanced;
+                if (*(ushort*)(animEntry + 0x16) <= advanced) *sceneFrame = 0;
+
+                // Ghidra: CONCAT22(sVar3 >> 0xf, DAT_00572b52) — la moitié haute est le signe du
+                // compteur **avant** bouclage, la basse le champ +0x0a. Même panachage qu'au
+                // carrousel, transcrit tel quel.
+                uint sceneExtra = (uint)((advanced >> 0xf) << 0x10) | *(ushort*)(entity + 0x0a);
+
+                primCursor = DrawAnimatedModel(
+                    otBase, primCursor, animEntry,
+                    (int*)(((byte**)s_ModelTable_005e96a0)[assetIndex]),
+                    scenePos, *sceneFrame, sceneExtra);
             }
 
             // Ghidra: DAT_006008fc — la translation Z de la matrice de caméra, amortie vers 800.
@@ -6673,6 +6789,70 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: la boucle de particules de FUN_00506880, atteinte aux seuls sous-états 5 et 6.
+    /// Chaque record subit une marche aléatoire bornée : trois axes, chacun poussé de ±0x2000 vers
+    /// l'entité de scène et saturé à ±0x19000, puis la position intègre la vitesse.
+    ///
+    /// <para><b>Le corps est transcrit, l'émission ne l'est pas.</b> Le tirage, la saturation et
+    /// l'intégration sont entièrement lisibles ; ce qui manque est l'appel de dessin,
+    /// <c>FUN_00520ae0</c>, dont la signature n'est pas établie — voir le <c>throw</c> ci-dessous.
+    /// Écrire la boucle sans son émission donnerait un rendu silencieusement faux, ce que le projet
+    /// interdit ; l'écrire avec un trou nommé situe la lacune exactement.</para>
+    /// </summary>
+    private static uint* EmitSceneParticles(uint* otBase, uint* primCursor)
+    {
+        for (int i = 0; i < SceneParticleCount; i++)
+        {
+            // La boucle travaille sur le champ de position (+0x1c), pas sur la base du record.
+            int* particle = (int*)(s_SceneParticles_00572be4 + i * SceneParticleStride + 0x1c);
+            int* velocity = particle + 0xd;         // +0x50 du record, la vitesse des trois axes
+            int* target = (int*)(s_SceneEntity_00572b48 + 0x1c);
+
+            // Ghidra: trois blocs identiques, l'un par axe, à deux détails près — le second se
+            // compare à -0x88001 au lieu de +0x3fff. Le tirage (FUN_00547140 = rand) décide du
+            // sens, la borne 0x19000 de l'amplitude.
+            ReadOnlySpan<int> bias = [0x3fff, -0x88001, 0x3fff];
+            for (int axis = 0; axis < 3; axis++)
+            {
+                int roll = CrtRand();
+                int v = velocity[axis];
+                if (particle[axis] - target[axis] + bias[axis] - roll < 0)
+                {
+                    if (v < 0x19000) velocity[axis] = v + 0x2000;
+                }
+                else if (-0x19000 < v)
+                {
+                    velocity[axis] = v - 0x2000;
+                }
+            }
+
+            particle[0] += velocity[0];
+            particle[1] += velocity[1];
+            particle[2] += velocity[2];
+
+            // Ghidra: trois shorts à 0x640 puis un octet cyclique de période 6, pris sur le
+            // compteur de frames décalé d'un bit.
+            *(short*)((byte*)particle + 0x0c) = 0x640;
+            *(short*)((byte*)particle + 0x0e) = 0x640;
+            *(short*)((byte*)particle + 0x10) = 0x640;
+            *((byte*)particle + 0x24) = (byte)((s_FadeCounter_005e9960 >> 1) % 6);
+
+            throw new NotImplementedException(
+                "FUN_00520ae0 (la passe de particules) : signature non établie. L'assembleur donne " +
+                "cdecl à **cinq** arguments — le site d'appel empile PUSH EBP, PUSH EBP, PUSH EDI, " +
+                "PUSH EDX, PUSH EAX puis nettoie par ADD ESP,0x14 — soit " +
+                "(otBase + 0x14, primCursor, particule, 0, 0). Le prologue " +
+                "(SUB ESP,0x18 + quatre PUSH = 0x28) place les arguments en [ESP+0x2C..0x3C], et " +
+                "les cinq emplacements sont lus, dont [ESP+0x38] et [ESP+0x3C]. Mais Ghidra ne lui " +
+                "donne que trois paramètres et rend le curseur de primitives en `unaff_retaddr`, " +
+                "donc son corps n'est pas transcriptible en l'état : il faut un re-run Ghidra avec " +
+                "la signature forcée. Chemin atteint aux seuls sous-états 5 et 6.");
+        }
+
+        return primCursor;
+    }
+
+    /// <summary>
     /// Ghidra: <c>(*(code *)(&amp;PTR_LAB_00560708)[DAT_00578de8])(...)</c> @ 0x00506a52.
     ///
     /// <para>La signature est <b>reconstruite depuis l'assembleur</b>, parce que le pseudo-C de
@@ -6699,6 +6879,9 @@ public static unsafe partial class Blaze
         }
 
         if (index == 0) return CharacterSelectSubState0(otBase, otEntry, primCursor, pad);
+        if (index == 1) return CharacterSelectSubState1(otBase, otEntry, primCursor, pad);
+        if (index == 3) return CharacterSelectSubState3(otBase, otEntry, primCursor, pad);
+        if (index == 4) return CharacterSelectSubState4(otBase, otEntry, primCursor, pad);
 
         throw new NotImplementedException(
             $"Character-select sub-state {index} (0x{s_CharacterSelectSubStateAddresses[index]:x8}) " +
@@ -6717,6 +6900,832 @@ public static unsafe partial class Blaze
     /// deux formes coexistent dans la même fonction ; elles sont distinguées ci-dessous par
     /// <c>padWords</c> et <c>pad</c>.</para>
     /// </summary>
+    /// <summary>
+    /// Ghidra: FUN_00507cb0 @ 0x00507cb0 — <c>PTR_LAB_00560708[1]</c>, la **saisie du nom** : un
+    /// clavier virtuel de huit lignes que la manette parcourt, doublé de la frappe réelle que
+    /// winsys3d met en file.
+    ///
+    /// <para><b>Signature reconstruite depuis l'assembleur</b>, comme pour la table de répartition.
+    /// Ghidra ne récupère qu'un paramètre et rend les deux autres en <c>unaff_retaddr</c> et
+    /// <c>uStack_8</c>. Le prologue est <c>SUB ESP,0x28</c> puis quatre <c>PUSH</c>, soit 0x38 :
+    /// les arguments sont donc en <c>[ESP+0x3C..0x48]</c>, et les décalages observés dans le corps
+    /// tombent juste — <c>[ESP+0x3C]</c> est <c>uStack_8</c> (otBase), <c>[ESP+0x44]</c> est
+    /// <c>unaff_retaddr</c> (le curseur de primitives, huit accès), <c>[ESP+0x48]</c> est
+    /// <c>param_1</c> (la manette). Le <c>RET</c> nu confirme cdecl.</para>
+    ///
+    /// <para>Les globales que Ghidra nomme <c>DAT_00578df4</c>, <c>df8</c>, <c>dfc</c> et
+    /// <c>e00</c> sont les entrées 3 à 6 de <see cref="s_SelectState_00578de8"/> ; celles en
+    /// <c>DAT_0057351c..3c</c> sont les champs du **premier** descripteur de
+    /// <see cref="s_SelectSlots_00573518"/> ; <c>DAT_00572b7a</c> est le lacet de l'entité de
+    /// scène. Aucune n'est un nouveau bloc.</para>
+    /// </summary>
+    private static uint* CharacterSelectSubState1(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        byte* scratch = s_SelectScratch_00573338;
+        int* state = s_SelectState_00578de8;   // [3] page, [4] colonne, [5] ligne, [6] longueur
+
+        // Première frame du sous-état : on arme la frappe réelle, on coupe la traduction
+        // manette→clavier, et on installe le descripteur de la boîte de saisie.
+        if (s_SelectFlags_00562a48[0] != 0)
+        {
+            EnableKBInput(1);
+            DisablePadKeyboard();              // Ghidra: FUN_00523530
+            s_SelectFlags_00562a48[0] = 0;
+            state[4] = 0;
+            state[5] = 0;
+            state[3] = 0;
+
+            byte* box = s_SelectSlots_00573518;
+            *(short*)(box + 0x04) = 0x28;      // DAT_0057351c
+            *(short*)(box + 0x06) = 0x38;      // DAT_0057351e
+            *(short*)(box + 0x08) = 0xe0;      // DAT_00573520
+            *(short*)(box + 0x0a) = 0x68;      // DAT_00573522
+            box[0x12] = 0x20;                  // DAT_00573528 + 2
+            *(uint*)(box + 0x20) = 0x1070c28;  // DAT_00573538 — le mot de fonction « texte »
+            *(uint*)(box + 0x24) = 0x1000000;  // DAT_0057353c — son activation
+            s_SelectFlags_00562a48[2] = 2;
+        }
+
+        SettleSceneCamera(scratch);
+
+        // Ghidra: `if (DAT_00562a4c != 0) goto LAB_0050820a` — pendant le fondu d'entrée du
+        // sous-état, aucune entrée n'est lue ; on va directement au dessin.
+        if (s_SelectFlags_00562a48[1] == 0)
+        {
+            int typed = GetKBChar();
+
+            // Les deux chemins de sortie de l'original se rejoignent juste avant EnableKBInput(0) :
+            // le drapeau rendu ici tient lieu de ce point de jonction, que le `goto` masquait.
+            bool leaving = typed == 0
+                ? HandlePadNameEntry(pad, scratch, state)
+                : HandleTypedNameEntry(typed, scratch, state);
+
+            if (leaving) EnableKBInput(0);
+        }
+
+        return DrawNameEntryScreen(otBase, primCursor, scratch, state);
+    }
+
+    /// <summary>
+    /// Le bloc d'ouverture que **tous** les sous-états « un personnage est en scène » répètent mot
+    /// pour mot : la caméra rejoint l'angle du personnage courant, la teinte de fond revient au
+    /// gris 0x60, la pose devient une matrice, et l'entité de scène tourne vers le joueur.
+    ///
+    /// <para>Extrait parce que c'est une unité indépendante répétée telle quelle d'un sous-état à
+    /// l'autre, pas pour découper un corps unique.</para>
+    /// </summary>
+    private static void SettleSceneCamera(byte* scratch)
+    {
+        // Un seizième de tour par cran, par le chemin court : au-delà d'un demi-tour on tourne
+        // dans l'autre sens plutôt que de traverser tout le cercle.
+        ushort delta = (ushort)(((scratch[0x150] - 8) * 0x100
+                                 - *(short*)(s_CameraVector_00604928 + 2)) & 0xfff);
+        short step = delta < 0x800
+            ? (short)((short)delta >> 2)
+            : (short)-((short)(0x1000 - (short)delta) >> 2);
+        *(short*)(s_CameraVector_00604928 + 2) += step;
+
+        s_BackColourR_005e93a0 += (short)((0x60 - s_BackColourR_005e93a0) >> 2);
+        s_BackColourG_005e93a2 += (short)((0x60 - s_BackColourG_005e93a2) >> 2);
+        s_BackColourB_005e93a4 += (short)((0x60 - s_BackColourB_005e93a4) >> 2);
+
+        // Ghidra: FUN_0051c300(&DAT_00604928, &DAT_006008e0) — la pose de caméra devient la matrice.
+        RotMatrix((short*)s_CameraVector_00604928, (short*)s_CameraMatrix_006008e0);
+        Ordinal_376((byte)s_BackColourR_005e93a0,
+                    (byte)s_BackColourG_005e93a2,
+                    (byte)s_BackColourB_005e93a4);
+
+        // DAT_00572b7a — le lacet de l'entité de scène, à +0x32, amené vers l'angle du personnage.
+        short* sceneYaw = (short*)(s_SceneEntity_00572b48 + 0x32);
+        *sceneYaw += (short)((scratch[0x150] * -0x100 - *sceneYaw) >> 2);
+    }
+
+    // Ghidra: &DAT_00562b70 — seize octets relevés au décalage fichier 0x161170, un par personnage.
+    // Le sous-état 3 s'en sert pour préarmer scratch[0x153] selon la classe choisie. La table
+    // s'arrête net sur celle de 0x00562b80, ce qui en fixe la taille.
+    private static readonly byte[] s_ClassDefault_00562b70 =
+    [
+        0x08, 0x02, 0x00, 0x04, 0x0a, 0x02, 0x04, 0x06,
+        0x09, 0x03, 0x0f, 0x0d, 0x01, 0x03, 0x05, 0x07,
+    ];
+
+    // Ghidra: &DAT_00572e58 — huit enregistrements de 0x9c octets, du même type que l'entité de
+    // scène et que les emplacements du carrousel : les huit icônes que le sous-état 4 dispose en
+    // cercle. Ghidra les désigne par DAT_00572e78 (+0x20) et DAT_00572e80 (+0x28) selon la boucle.
+    // Elles suivent le tableau de particules (0x00572be4 + 4 * 0x9c = 0x00572e54, puis 0x00572e58).
+    private const int SceneIconCount = 8;
+    private const int SceneIconStride = 0x9c;
+    private static readonly byte* s_SceneIcons_00572e58 =
+        (byte*)NativeMemory.AllocZeroed(SceneIconCount, SceneIconStride);
+
+    /// <summary>
+    /// Ghidra: FUN_00508e00 @ 0x00508e00 — <c>PTR_LAB_00560708[4]</c>, le carrousel des huit
+    /// éléments, disposés sur un cercle de rayon <c>0x78</c> et choisis par <c>scratch[0x151]</c>.
+    ///
+    /// <para><b>Signature reprise au prologue</b> : <c>SUB ESP,0x44</c> plus quatre <c>PUSH</c> =
+    /// <c>0x54</c>, donc les arguments sont en <c>[ESP+0x58..0x64]</c>. <c>EBP</c> reçoit le
+    /// curseur de primitives depuis <c>[ESP+0x60]</c> avant la boucle de dessin (d'où le
+    /// <c>unaff_retaddr</c> de Ghidra), et l'épilogue renvoie le résultat du dernier
+    /// <c>FUN_005443a0</c>.</para>
+    ///
+    /// <para>Détail à ne pas rater : après la phase d'entrée, l'original **réutilise l'emplacement
+    /// de son quatrième argument comme compteur de boucle** (<c>INC EBX ; MOV [ESP+0x64],EBX</c>),
+    /// ce que Ghidra rend en <c>uStack00000004</c>. Ici c'est une variable locale.</para>
+    /// </summary>
+    private static uint* CharacterSelectSubState4(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        byte* scratch = s_SelectScratch_00573338;
+        int* state = s_SelectState_00578de8;
+
+        if (s_SelectFlags_00562a48[0] != 0)
+        {
+            s_SelectFlags_00562a48[0] = 0;
+
+            // La caméra saute directement à l'angle de l'élément courant, sans amortissement.
+            ushort turn = (ushort)((scratch[0x151] - 4) & 7);
+            *(short*)(s_CameraVector_00604928 + 0) = 0x15e;
+            *(short*)(s_CameraVector_00604928 + 2) = (short)(turn * 0x200);
+            *(short*)(s_CameraVector_00604928 + 4) = 0;
+
+            *(short*)(s_SceneEntity_00572b48 + 0x30) = 0;                          // DAT_00572b78
+            *(short*)(s_SceneEntity_00572b48 + 0x32) = (short)(turn * -0x200 + 0x800); // DAT_00572b7a
+            *(short*)(s_SceneEntity_00572b48 + 0x34) = 0;                          // DAT_00572b7c
+
+            // Les huit icônes sur un cercle : même disposition qu'au carrousel des personnages,
+            // avec un pas de 0x200 (huit positions) et un rayon de 0x78 au lieu de 0x96.
+            for (int i = 0; i < SceneIconCount; i++)
+            {
+                byte* icon = s_SceneIcons_00572e58 + i * SceneIconStride;
+                *(int*)(icon + 0x1c) = (int)GetSinTableEntry(i << 9) * -0x78;
+                *(int*)(icon + 0x20) = 0;
+                *(int*)(icon + 0x24) = GetCosTableEntry(i << 9) * 0x78;
+                *(ushort*)(icon + 0x28) = 0;
+                *(ushort*)(icon + 0x2a) = 0;
+                *(ushort*)(icon + 0x2c) = 0;
+                *(ushort*)(icon + 0x36) = 1;
+                *(uint*)(icon + 0x38) = 0x1000000;
+            }
+
+            s_SelectFlags_00562a48[2] = 3;
+        }
+
+        if (s_SelectFlags_00562a48[1] == 0) StepSubState4Phase(pad, scratch, state);
+
+        // L'amortissement propre à ce sous-état : il vise scratch[0x151] par pas de 0x200 (huit
+        // crans), redresse l'orientation de scène vers (0x200, 0x380, 0) et prend sa teinte de fond
+        // dans la table des huit tons.
+        ushort delta = (ushort)(((scratch[0x151] - 4) * 0x200
+                                 - *(short*)(s_CameraVector_00604928 + 2)) & 0xfff);
+        short step = delta < 0x800
+            ? (short)((short)delta >> 2)
+            : (short)-((short)(0x1000 - (short)delta) >> 2);
+        *(short*)(s_CameraVector_00604928 + 2) += step;
+
+        s_ScenePitch_005e9308 += (short)((0x200 - s_ScenePitch_005e9308) >> 2);
+        s_SceneYaw_005e930a += (short)((0x380 - s_SceneYaw_005e930a) >> 2);
+        s_SceneRoll_005e930c += (short)(-s_SceneRoll_005e930c >> 2);
+
+        short* tone = (short*)(s_SceneToneTable_00562a58 + scratch[0x151] * SceneToneStride);
+        s_BackColourR_005e93a0 += (short)((tone[0] - s_BackColourR_005e93a0) >> 2);
+        s_BackColourG_005e93a2 += (short)((tone[1] - s_BackColourG_005e93a2) >> 2);
+        s_BackColourB_005e93a4 += (short)((tone[2] - s_BackColourB_005e93a4) >> 2);
+
+        RotMatrix((short*)s_CameraVector_00604928, (short*)s_CameraMatrix_006008e0);
+        Ordinal_376((byte)s_BackColourR_005e93a0,
+                    (byte)s_BackColourG_005e93a2,
+                    (byte)s_BackColourB_005e93a4);
+
+        *(short*)(s_SceneEntity_00572b48 + 0x32) =
+            (short)(0x800 - *(short*)(s_CameraVector_00604928 + 2));
+
+        return DrawSubState4Icons(otBase, primCursor, scratch);
+    }
+
+    /// <summary>
+    /// La machine à phases du sous-état 4 : <c>0x2e</c> pendant le choix, <c>0x2f</c> et
+    /// <c>0x30</c> le temps de la boîte de confirmation.
+    /// </summary>
+    private static void StepSubState4Phase(byte* pad, byte* scratch, int* state)
+    {
+        if (state[2] == 0x2e)
+        {
+            ushort buttons = *(ushort*)(pad + 2);
+
+            if ((buttons & 0x8000) != 0)          // validation
+            {
+                *(ushort*)(pad + 2) = (ushort)(buttons & 0x7fff);
+                PlayUiSound38();
+                state[2]++;
+                return;
+            }
+
+            if ((buttons & 0x4000) != 0)          // annulation : retour au sous-état 3
+            {
+                short angle = (short)(scratch[0x150] + 8);
+                *(short*)(s_CameraVector_00604928 + 2) = (short)(angle * 0x100);
+                *(short*)(s_SceneEntity_00572b48 + 0x32) = (short)(angle * -0x100 + 0x800);
+                state[2] = 0x5f;
+                PlayUiSound39();
+                state[0]--;
+                return;
+            }
+
+            // Le choix tourne en boucle sur huit crans — le masque & 7 s'en charge, sans borne.
+            sbyte before = (sbyte)scratch[0x151];
+            if ((pad[6] & 0x80) != 0) scratch[0x151] = (byte)(before - 1);
+            if ((pad[6] & 0x20) != 0) scratch[0x151]++;
+            scratch[0x151] &= 7;
+            if (before != (sbyte)scratch[0x151]) PlayUiSound3A();
+            return;
+        }
+
+        if (state[2] == 0x2f)
+        {
+            if ((s_Unknown_00560fef & 2) == 0)
+            {
+                *(ushort*)(pad + 2) &= 0x7fff;
+                state[2]++;
+            }
+            else if ((pad[3] & 0x40) != 0)
+            {
+                s_Unknown_0056075b = 0;
+                s_Unknown_00560fef &= 0xfd;
+                PlayUiSound39();
+                state[2] = 0x2e;
+            }
+            return;
+        }
+
+        if (state[2] != 0x30) return;
+
+        if ((s_Unknown_00560fef & 4) != 0)
+        {
+            if ((pad[3] & 0x40) == 0) return;
+            s_Unknown_00560763 = 0;
+            s_Unknown_00560fef &= 0xfb;
+            PlayUiSound39();
+            state[2] = 0x2e;
+            return;
+        }
+
+        if (s_Unknown_005e909f != 0) { state[2] = 0x2e; return; }
+
+        // Confirmé : l'icône choisie est recopiée dans chacune des quatre particules, qui partent
+        // ensuite d'une position et d'une vitesse tirées au sort.
+        state[2] = 0x39;
+        for (int i = 0; i < SceneParticleCount; i++)
+        {
+            byte* particle = s_SceneParticles_00572be4 + i * SceneParticleStride;
+
+            CopyDwords((uint*)(s_SceneIcons_00572e58 + scratch[0x151] * SceneIconStride),
+                       (uint*)particle, 0x27);
+
+            // Ghidra: puVar6 pointe la base + 0x3c, d'où les indices 0, 5, 6, 7 ci-dessous.
+            uint* fields = (uint*)(particle + 0x3c);
+            fields[0] = *(uint*)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94)
+                                 + 8 + scratch[0x151] * 4);
+
+            short spread = (short)CrtRand();
+            fields[5] = (uint)(GetSinTableEntry(spread) * 0x1e);
+            fields[6] = (uint)(CrtRand() * 8 - 0x1fff8);
+            fields[7] = (uint)(GetCosTableEntry(spread) * 0x1e);
+        }
+        state[0]++;
+    }
+
+    /// <summary>
+    /// Le dessin des huit icônes. Chacune est projetée depuis une copie de dix dwords de sa
+    /// position, relevée de <c>0x28000</c>, et n'est dessinée que si la projection tombe à l'écran.
+    /// L'emplacement d'OT est la profondeur rendue par <see cref="ProjectPoint"/>.
+    /// </summary>
+    private static uint* DrawSubState4Icons(uint* otBase, uint* primCursor, byte* scratch)
+    {
+        for (int i = 0; i < SceneIconCount; i++)
+        {
+            byte* icon = s_SceneIcons_00572e58 + i * SceneIconStride;
+            short* glow = (short*)(icon + 0x28);
+
+            byte* copy = stackalloc byte[40];
+            CopyDwords((uint*)(icon + 0x1c), (uint*)copy, 10);
+            *(int*)(copy + 4) += 0x28000;
+
+            // L'icône choisie brille plus fort et tourne moins vite que les autres.
+            *(short*)(icon + 0x38) = 0;
+            if (i == scratch[0x151])
+            {
+                *(short*)(icon + 0x3a) = 0x100;
+                glow[0] += (short)((0x1800 - glow[0]) >> 2);
+                glow[1] += (short)((0x1800 - glow[1]) >> 2);
+            }
+            else
+            {
+                *(short*)(icon + 0x3a) = 0x300;
+                glow[0] += (short)((0x1000 - glow[0]) >> 2);
+                glow[1] += (short)((0x1000 - glow[1]) >> 2);
+            }
+
+            short* projected = stackalloc short[4];
+            if (ProjectPoint((int*)copy, projected) == 0) continue;
+
+            byte* atlas = ((byte**)*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94))[2 + i];
+            short frame = (short)((s_FadeCounter_005e9960 >> 1) % 6);
+
+            byte* sprite = stackalloc byte[20];
+            NativeMemory.Clear(sprite, 20);
+            *(byte**)sprite = atlas;
+            // Ghidra: MOV ECX,[ESI + 0x10] — mais ESI vaut icône + 0x28, donc c'est **icône + 0x38**,
+            // le mot d'attribut posé à 0x1000000 à l'initialisation. Le lire à +0x10 donne zéro, et
+            // le sprite sort en disque noir : mesuré.
+            *(uint*)(sprite + 4) = *(uint*)(icon + 0x38);
+            *(short*)(sprite + 8) = projected[0];
+            *(short*)(sprite + 0x0a) = projected[1];
+            *(short*)(sprite + 0x0c) = glow[0];
+            *(short*)(sprite + 0x0e) = glow[1];
+            *(short*)(sprite + 0x10) = frame;
+
+            // Le même décalage d'un pixel que le carrousel applique le temps du dessin.
+            atlas[frame * 8 + 2]--;
+            atlas[frame * 8 + 3]--;
+            primCursor = DrawSpritePrimitive(otBase + projected[2], primCursor, (int*)sprite, 0, 0);
+            atlas[frame * 8 + 2]++;
+            atlas[frame * 8 + 3]++;
+        }
+
+        // Le libellé de l'élément courant, dans le troisième descripteur d'interface.
+        byte* label = s_UiDescriptors_00560ff0 + 2 * UiDescriptorStride;   // &DAT_00562180
+        BindMenuLabels(
+            *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                      + 0xc4 + scratch[0x151] * 4),
+            0, label, 0);
+        return RunTextEngine(primCursor, label);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00508860 @ 0x00508860 — <c>PTR_LAB_00560708[3]</c>, le choix sur une grille de
+    /// quatre par deux, dont le résultat est empaqueté dans <c>scratch[0x153]</c>.
+    ///
+    /// <para><b>Signature reprise au prologue</b>, comme les précédentes : <c>SUB ESP,0x14</c> plus
+    /// trois <c>PUSH</c> = <c>0x20</c>, donc les arguments sont en <c>[ESP+0x24..0x30]</c> —
+    /// <c>[ESP+0x24]</c> otBase (Ghidra: <c>uStack_8</c>), <c>[ESP+0x2C]</c> le curseur de
+    /// primitives (<c>unaff_retaddr</c>), <c>[ESP+0x30]</c> la manette (<c>param_1</c>). Le
+    /// pseudo-C rend la fonction <c>void</c>, mais l'épilogue laisse dans <c>EAX</c> le résultat du
+    /// dernier <c>FUN_00545340</c> : la valeur de retour existe, Ghidra l'a perdue.</para>
+    ///
+    /// <para><c>DAT_00573de0</c> est <c>DAT_00573518 + 0x8c8</c> : le **deuxième** descripteur du
+    /// même tableau, pas un nouveau symbole.</para>
+    /// </summary>
+    private static uint* CharacterSelectSubState3(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        byte* scratch = s_SelectScratch_00573338;
+        int* state = s_SelectState_00578de8;
+        byte* box = s_SelectSlots_00573518;                                  // DAT_00573518
+        byte* panel = s_SelectSlots_00573518 + CharacterSelectSlotStride;    // DAT_00573de0
+
+        if (s_SelectFlags_00562a48[0] != 0)
+        {
+            s_SelectFlags_00562a48[0] = 0;
+
+            // Écrit ici dans l'ordre des adresses ; Ghidra les rend dans un ordre arbitraire.
+            *(uint*)(box + 0x04) = 0x380028;      // DAT_0057351c — position (0x28, 0x38)
+            *(short*)(box + 0x08) = 0xe0;         // DAT_00573520
+            *(short*)(box + 0x0a) = 0x28;         // DAT_00573522
+            *(uint*)(box + 0x20) = 0x1070c24;     // DAT_00573538 — texte, bit d'activation posé
+            *(uint*)(box + 0x24) = 0x1000000;     // DAT_0057353c
+
+            *(short*)(panel + 0x04) = 0x68;       // DAT_00573de4
+            *(short*)(panel + 0x06) = 0x68;       // DAT_00573de6
+            *(short*)(panel + 0x08) = 0x60;       // DAT_00573de8
+            *(short*)(panel + 0x0a) = 0x18;       // DAT_00573dea
+            panel[0x12] = 0x0b;                   // DAT_00573df0._2_1_
+            panel[0x14] = 0x05;                   // DAT_00573df4._0_1_
+            *(uint*)(panel + 0x20) = 0x1070c10;   // DAT_00573e00
+            *(uint*)(panel + 0x24) = 0x1000000;   // DAT_00573e04
+
+            state[4] = 0;
+            state[5] = 0;
+            s_SelectFlags_00562a48[2] = 2;
+            scratch[0x153] = s_ClassDefault_00562b70[scratch[0x150]];
+        }
+
+        SettleSceneCamera(scratch);
+
+        if (s_SelectFlags_00562a48[1] == 0) StepSubState3Phase(pad, scratch, state);
+
+        return DrawSubState3(otBase, primCursor, state, box, panel);
+    }
+
+    /// <summary>
+    /// La machine à phases du sous-état 3. <c>state[2]</c> vaut <c>0x5f</c> pendant le choix, puis
+    /// <c>0x60</c>, <c>0x61</c>, <c>0x62</c> le temps d'une boîte de dialogue de confirmation.
+    /// </summary>
+    private static void StepSubState3Phase(byte* pad, byte* scratch, int* state)
+    {
+        switch (state[2])
+        {
+            case 0x5f:
+            {
+                ushort buttons = *(ushort*)(pad + 2);
+
+                if ((buttons & 8) != 0)          // saut direct à la confirmation
+                {
+                    PlayUiSound38();
+                    state[2] = 0x61;
+                    break;
+                }
+
+                if ((buttons & 0x4000) != 0)     // annulation : retour au sous-état 1
+                {
+                    PlayUiSound39();
+                    state[2] = 0x13;
+                    state[0] -= 2;
+                    break;
+                }
+
+                if ((buttons & 0x8000) != 0)     // validation
+                {
+                    *(ushort*)(pad + 2) = (ushort)(buttons & 0x7fff);
+                    PlayUiSound38();
+                    state[2] = 0x61;
+                    // Le choix s'empaquette sur les bits 1..3, le bit 0 étant conservé.
+                    scratch[0x153] = (byte)((((byte)state[5] << 2 | (byte)state[4]) << 1)
+                                            | (scratch[0x153] & 1));
+                    break;
+                }
+
+                // Déplacement dans la grille. Les quatre bits testés sont ceux de
+                // s_PadButtonMasks_00564f18 ; le son ne part que si la position a bougé.
+                uint before = (uint)(state[5] << 8 | state[4]);
+
+                if ((pad[6] & 0x10) != 0 && state[5] != 0) state[5]--;
+                if ((pad[6] & 0x40) != 0 && state[5] < 1) state[5]++;
+
+                if ((pad[6] & 0x80) != 0)
+                {
+                    if (state[4] == 0)
+                    {
+                        if (state[5] != 0) { state[5]--; state[4] = 3; }
+                    }
+                    else state[4]--;
+                }
+
+                if ((pad[6] & 0x20) != 0)
+                {
+                    if (state[4] < 3) state[4]++;
+                    else if (state[5] < 1) { state[5]++; state[4] = 0; }
+                }
+
+                if (before != (uint)(state[5] << 8 | state[4])) PlayUiSound3A();
+                break;
+            }
+
+            case 0x60:
+                // TODO(REVERSE): DAT_00560fef et ses voisins sont posés par le code de boîte de
+                // dialogue, non reconstruit, donc ils lisent 0 et seule la première branche est
+                // atteignable pour l'instant.
+                if ((s_Unknown_00560fef & 4) == 0)
+                {
+                    *(ushort*)(pad + 2) &= 0x7fff;
+                    state[2]++;
+                    scratch[0x153] = (byte)((((byte)state[5] << 2 | (byte)state[4]) << 1)
+                                            | s_Unknown_005e909f);
+                }
+                else if ((pad[3] & 0x40) != 0)
+                {
+                    s_Unknown_00560763 = 0;
+                    s_Unknown_00560fef &= 0xfb;
+                    PlayUiSound39();
+                    state[2]--;
+                }
+                break;
+
+            case 0x61:
+                if ((s_Unknown_00560fef & 2) == 0)
+                {
+                    *(ushort*)(pad + 2) &= 0x7fff;
+                    state[2]++;
+                    break;
+                }
+                if ((pad[3] & 0x40) == 0) break;
+                s_Unknown_0056075b = 0;
+                s_Unknown_00560fef &= 0xfd;
+                PlayUiSound39();
+                state[2] = 0x5f;
+                break;
+
+            case 0x62:
+                if ((s_Unknown_00560fef & 4) != 0)
+                {
+                    if ((pad[3] & 0x40) == 0) break;
+                    s_Unknown_00560763 = 0;
+                    s_Unknown_00560fef &= 0xfb;
+                    PlayUiSound39();
+                    state[2] = 0x5f;
+                    break;
+                }
+                if (s_Unknown_005e909f == 0)
+                {
+                    // Confirmé : on passe au sous-état suivant.
+                    *(byte*)(s_SelectSlots_00573518 + CharacterSelectSlotStride + 0x14) = 4;
+                    state[0]++;
+                    state[2] = 0x2e;
+                    break;
+                }
+                state[2] = 0x5f;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Le dessin du sous-état 3. Le curseur de grille est relevé dans l'assembleur :
+    /// <c>x = boîte+0x04 + colonne * 48 + 0x14</c>, <c>y = boîte+0x06 + ligne * 16 + 0x0a</c>.
+    /// <para>Le second panneau reçoit <c>&amp;DAT_00572b48</c> **en guise de drapeaux** — c'est-à-dire
+    /// que l'entité de scène devient le « propriétaire » que <see cref="DrawUiPanel"/> relit à
+    /// <c>+0x8b0</c>. Son champ 0 valant <c>0x800000</c>, le panneau prend son emplacement joueur
+    /// dans <c>owner[2]</c> : c'est le chemin `kind == 0x800000` de DrawUiPanel, jusqu'ici jamais
+    /// emprunté.</para>
+    /// </summary>
+    private static uint* DrawSubState3(uint* otBase, uint* primCursor, int* state, byte* box, byte* panel)
+    {
+        byte* sprite = stackalloc byte[20];
+        NativeMemory.Clear(sprite, 20);
+        *(uint**)sprite = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+        *(uint*)(sprite + 4) = 0x1000000;
+        *(short*)(sprite + 8) = (short)(*(short*)(box + 0x04) + state[4] * 48 + 0x14);
+        *(short*)(sprite + 0x0a) = (short)(*(short*)(box + 0x06) + state[5] * 16 + 0x0a);
+        *(short*)(sprite + 0x10) = 0x18;
+
+        EmitViewportRect(otBase, &primCursor);
+        primCursor = DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);
+        primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)sprite);
+        EmitClipRect(otBase, &primCursor);
+
+        BindMenuLabels(s_Unknown_005606f8, 0, box, 0);
+        primCursor = RunTextEngine(primCursor, box);
+
+        for (int offset = 0x500; offset < 0x508; offset += 4)
+        {
+            BindMenuLabels(
+                *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + offset),
+                0, box, 0);
+            primCursor = RunTextEngine(primCursor, box);
+        }
+        primCursor = DrawUiPanel(otBase, primCursor, box);
+
+        if (state[2] != 0x2e)
+        {
+            BindMenuLabels(
+                *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0x18c),
+                (uint)(nuint)s_SceneEntity_00572b48, panel, 0);
+            primCursor = RunTextEngine(primCursor, panel);
+            primCursor = DrawUiPanel(otBase, primCursor, panel);
+        }
+
+        return primCursor;
+    }
+
+    /// <summary>
+    /// Le nom par défaut de la classe choisie, copié dans le tampon de saisie quand le joueur
+    /// valide sans avoir rien tapé. Ghidra: <c>directory[0x70][0x208 + scratch[0x150] * 4]</c>.
+    /// La longueur retenue est **la moitié** du nombre d'octets : les noms sont en Shift-JIS sur
+    /// deux octets, et le compteur compte des caractères.
+    /// </summary>
+    private static void LoadDefaultName(byte* scratch, int* state)
+    {
+        byte* source = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                                 + 0x208 + scratch[0x150] * 4);
+        int length = 0;
+        while (source[length] != 0)
+        {
+            scratch[0x100 + length] = source[length];
+            length++;
+        }
+        scratch[0x100 + length] = 0;
+        state[6] = length >> 1;
+    }
+
+    /// <summary>
+    /// Le clavier virtuel à la manette. <c>state[3]</c> est la page, <c>state[4]</c> la colonne
+    /// (0..9), <c>state[5]</c> la ligne (0..7) — la ligne 7 étant la colonne « fin de saisie » —
+    /// et <c>state[6]</c> le nombre de caractères déjà posés.
+    /// <para>Retourne <c>true</c> quand le sous-état se termine, ce qui fait désarmer la file de
+    /// frappe par l'appelant — l'original y arrive par deux chemins qui se rejoignent avant
+    /// <c>EnableKBInput(0)</c>.</para>
+    /// </summary>
+    private static bool HandlePadNameEntry(byte* pad, byte* scratch, int* state)
+    {
+        // Ghidra relit la même composition avant et après pour décider du clic de déplacement.
+        uint before = (uint)((state[3] << 8 | state[5]) << 8 | state[4]);
+
+        if ((pad[2] & 8) != 0) { state[4] = 0; state[5] = 7; }
+
+        if ((pad[6] & 0x80) != 0)          // haut
+        {
+            if (state[4] == 0)
+            {
+                // En haut de colonne : on remonte en bas, mais seulement s'il y a où aller —
+                // et l'original **repose le bit gauche** pour que la frappe se propage.
+                if (state[5] != 0 || state[3] != 0) { state[4] = 9; pad[6] |= 0x10; }
+            }
+            else state[4]--;
+        }
+
+        if ((pad[6] & 0x20) != 0)          // bas
+        {
+            if (state[4] < 9) state[4]++;
+            else if (state[5] < 7 || state[3] < 7)
+            {
+                state[4] = 0;
+                *(ushort*)(pad + 6) |= 0x40;   // idem, en reposant le bit droit
+            }
+        }
+
+        if ((pad[6] & 0x10) != 0)          // gauche
+        {
+            if (state[5] == 0) { if (state[3] != 0) state[3]--; }
+            else state[5]--;
+        }
+
+        if ((pad[6] & 0x40) != 0 && state[5] < 7) state[5]++;   // droite
+
+        if (state[5] == 7) state[4] = 0;
+
+        if (before != (uint)((state[3] << 8 | state[5]) << 8 | state[4])) PlayUiSound3A();
+
+        if ((*(ushort*)(pad + 2) & 0x8000) == 0)
+        {
+            if ((*(ushort*)(pad + 2) & 0x4000) == 0) return false;
+
+            // Annulation : efface le dernier caractère, ou quitte si le tampon est déjà vide et
+            // que le curseur est sur la case de fin.
+            if (state[6] != 0)
+            {
+                state[6]--;
+                scratch[0x100 + state[6]] = 0;
+                PlayUiSound39();
+                return false;
+            }
+            if (state[5] != 7 || state[3] != 7) return false;
+
+            PlayUiSound39();
+            state[2] = 0;
+            state[0]--;
+            return true;
+        }
+
+        if (state[5] != 7)
+        {
+            // Validation d'une case : le caractère se lit dans la table de la page courante.
+            if (state[6] > 7) return false;
+
+            byte* row = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                                  + 0x50 + (state[5] + state[3]) * 4);
+            byte glyph = row[state[4] * 3 + (((state[4] < 5 ? 1 : 0) - 1) & 2)];
+
+            // TODO(REVERSE): le test de l'original compare un **octet** à DAT_00562c9c & 0xffff,
+            // soit 0x4081 — le caractère Shift-JIS 0x8140 (espace idéographique) relu en
+            // petit-boutien. Un octet ne peut pas valoir 0x4081, donc cette branche ne se
+            // déclenche jamais telle qu'écrite ; c'est probablement une lecture sur deux octets
+            // que Ghidra a rétrécie. Transcrit tel quel plutôt que corrigé au jugé.
+            if (state[6] == 0 && glyph == (s_IdeographicSpace_00562c9c & 0xffff))
+            {
+                PlayUiSound3B();
+                return false;
+            }
+
+            PlayUiSound38();
+            scratch[0x100 + state[6]] = glyph;
+            state[6]++;
+            scratch[0x100 + state[6]] = 0;
+            if (state[6] == 8) { state[4] = 0; state[5] = 7; }
+            return false;
+        }
+
+        // Case « fin » : on confirme, en retombant sur le nom par défaut si rien n'a été saisi.
+        if (state[6] == 0) LoadDefaultName(scratch, state);
+        PlayUiSound38();
+        state[2] = 0x5f;
+        state[0] += 2;
+        return true;
+    }
+
+    /// <summary>La frappe réelle, dépilée de la file de winsys3d par <c>GetKBChar</c>.</summary>
+    private static bool HandleTypedNameEntry(int typed, byte* scratch, int* state)
+    {
+        if (typed == 0x0d)                 // Entrée : confirme, comme la case « fin »
+        {
+            state[5] = 7;
+            if (state[6] == 0) LoadDefaultName(scratch, state);
+            PlayUiSound38();
+            state[0] += 2;
+            state[2] = 0x5f;
+            EnableKBInput(0);
+            EnablePadKeyboard();           // Ghidra: FUN_00523520
+            return false;                  // le désarmement est déjà fait ici
+        }
+
+        if (typed == 0x08)                 // retour arrière
+        {
+            if (state[6] != 0)
+            {
+                state[6]--;
+                scratch[0x100 + state[6]] = 0;
+                PlayUiSound39();
+            }
+            return false;
+        }
+
+        if (typed != 0x1b)
+        {
+            // Les codes de contrôle et la plage 0x80..0x9f sont ignorés, et le tampon est plein
+            // à huit caractères.
+            if (typed < 0x20 || (typed > 0x7f && typed < 0xa0) || state[6] > 7) return false;
+
+            PlayUiSound38();
+            scratch[0x100 + state[6]] = (byte)typed;
+            state[6]++;
+            scratch[0x100 + state[6]] = 0;
+            if (state[6] == 8) { state[4] = 0; state[5] = 7; }
+            return false;
+        }
+
+        PlayUiSound39();                   // Échap : retour au sous-état précédent
+        state[2] = 0;
+        state[0]--;
+        return true;
+    }
+
+    /// <summary>
+    /// Le dessin de l'écran : la boîte de saisie, le curseur sur la grille, puis les huit lignes
+    /// du clavier virtuel.
+    /// <para>Coordonnées du curseur, relevées dans l'assembleur plutôt que dans le pseudo-C, qui
+    /// avait perdu le cadre de pile : <c>x = 0x40 + colonne * 16 + (colonne &lt; 5 ? 0 : 8)</c> et
+    /// <c>y = boîte+0x06 + (ligne + 1) * 12</c>. Le décrochage de 8 pixels au-delà de la
+    /// cinquième colonne est le même que celui du choix du caractère, deux lignes plus haut.</para>
+    /// </summary>
+    private static uint* DrawNameEntryScreen(uint* otBase, uint* primCursor, byte* scratch, int* state)
+    {
+        byte* box = s_UiDescriptors_00560ff0 + 1 * UiDescriptorStride;   // &DAT_005618b8
+
+        BindMenuLabels(s_Unknown_005606f8, 0, box, 0);
+        primCursor = RunTextEngine(primCursor, box);
+
+        // Le nom en cours, recopié sur la pile puis suffixé d'un « _ » tant que le curseur n'est
+        // pas sur la case de fin. L'original recopie de la même façon, dans un local de 24 octets.
+        byte* typedName = stackalloc byte[24];
+        int length = 0;
+        while (scratch[0x100 + length] != 0) { typedName[length] = scratch[0x100 + length]; length++; }
+        typedName[length] = 0;
+
+        if (state[5] != 7)
+        {
+            typedName[length] = 0x5f;      // Ghidra: &DAT_00562c98, la chaîne "_"
+            typedName[length + 1] = 0;
+        }
+
+        BindMenuLabels(typedName, 0, box, 0);
+        primCursor = RunTextEngine(primCursor, box);
+
+        // Le curseur de la grille : un sprite de 20 octets monté sur la pile, comme partout.
+        byte* cursor = stackalloc byte[20];
+        NativeMemory.Clear(cursor, 20);
+        *(uint**)cursor = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+        *(uint*)(cursor + 4) = 0x1000000;
+
+        byte* grid = s_SelectSlots_00573518;
+        *(short*)(cursor + 8) =
+            (short)(*(short*)(grid + 0x04) + state[4] * 16 + (state[4] < 5 ? 0 : 8) + 0x18);
+        *(short*)(cursor + 0x0a) = (short)(*(short*)(grid + 0x06) + (state[5] + 1) * 12);
+        *(short*)(cursor + 0x10) = 0x18;
+
+        EmitViewportRect(otBase, &primCursor);
+        primCursor = DrawSpriteVariant(otBase, primCursor, (int*)cursor, 0, 0);
+        primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)cursor);
+        EmitClipRect(otBase, &primCursor);
+
+        // Les huit lignes du clavier virtuel. La table de largeurs passe en **fixe** le temps de
+        // la grille — c'est ce qui aligne les colonnes — et revient au proportionnel après.
+        BindMenuLabels(s_Unknown_005606f8, 0, grid, 0);
+        primCursor = RunTextEngine(primCursor, grid);
+
+        UseFixedGlyphWidths();             // Ghidra: FUN_00507870
+        for (int i = 0; i < 8; i++)
+        {
+            BindMenuLabels(
+                *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                          + 0x50 + (i + state[3]) * 4),
+                0, grid, 0);
+            primCursor = RunTextEngine(primCursor, grid);
+        }
+        primCursor = DrawUiPanel(otBase, primCursor, grid);
+        UseProportionalGlyphWidths();      // Ghidra: FUN_00507890
+
+        return primCursor;
+    }
+
+    // Ghidra: DAT_00562c9c — deux octets 81 40 relevés au décalage fichier 0x16129c : le caractère
+    // Shift-JIS 0x8140, l'espace idéographique. Le code le relit en dword, d'où le 0x4081.
+    private const uint s_IdeographicSpace_00562c9c = 0x00004081;
+
     private static uint* CharacterSelectSubState0(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
         ushort* padWords = (ushort*)pad;
@@ -7344,8 +8353,51 @@ public static unsafe partial class Blaze
 
     // Ghidra: &DAT_00572b48 — la destination de la copie faite à la validation : l'emplacement
     // choisi devient l'entité de scène que le sous-état suivant anime.
+    //
+    // Tout ce que FUN_00506880 nomme DAT_00572b4c / 52 / 60 / 62 / 64..6c / 70..74 tombe dedans :
+    // ce sont ses champs +0x04, +0x0a, +0x18, +0x1a, +0x1c..+0x24 et +0x28..+0x2c. Il n'y a donc
+    // aucun « bloc de globales 0x00572b40 » à modéliser à côté — c'est le même enregistrement de
+    // 0x9c octets qu'un emplacement du carrousel, et les six décalages le confirment un à un.
     private static readonly byte* s_SceneEntity_00572b48 =
         (byte*)NativeMemory.AllocZeroed((nuint)CharacterSlotStride, 1);
+
+    // Ghidra: &DAT_00562a58 — huit teintes de fond, trois shorts et un mot de bourrage chacune,
+    // relevées au décalage fichier 0x161058. La table s'arrête net sur DAT_00562a98, huit entrées
+    // plus loin, ce qui en donne la taille sans avoir à la deviner.
+    private const int SceneToneStride = 8;
+    private static readonly byte* s_SceneToneTable_00562a58 = BuildSceneToneTable();
+
+    private static byte* BuildSceneToneTable()
+    {
+        ReadOnlySpan<short> tones =
+        [
+            192,  96,   0, 0,      0,  96, 192, 0,
+            128,  96,  64, 0,     64, 128,  96, 0,
+            192, 192, 192, 0,      0,   0,   0, 0,
+            128, 128,  96, 0,     64,  32, 128, 0,
+        ];
+
+        byte* block = (byte*)NativeMemory.AllocZeroed(8, SceneToneStride);
+        for (int i = 0; i < tones.Length; i++) ((short*)block)[i] = tones[i];
+        return block;
+    }
+
+    // Ghidra: &DAT_00572be4 — les particules de la scène : quatre enregistrements de 0x9c octets,
+    // du même type que l'entité ci-dessus, et **contigus avec elle** (0x00572b48 + 0x9c = 0x00572be4).
+    //
+    // La base a demandé deux lectures croisées, parce que les deux boucles qui parcourent ce
+    // tableau ne le désignent pas au même endroit :
+    //   FUN_00506880  part de &DAT_00572c34, pas 0x27 ints, borne 0x572ea4, et travaille sur
+    //                 `piVar10 - 0xd` — soit 0x572c00, 0x572c9c, 0x572d38, 0x572dd4 ;
+    //   FUN_00508e00  part de &DAT_00572c20, même pas, borne 0x572e90, et recopie 0x27 dwords vers
+    //                 `puVar6 - 0xf` — soit 0x572be4, 0x572c80, 0x572d1c, 0x572db8.
+    // Les secondes valent les premières moins 0x1c : la boucle de frame manipule le **champ de
+    // position** (+0x1c), pas la base. Quatre records dans les deux cas, et la contiguïté avec
+    // l'entité confirme le tout.
+    private const int SceneParticleCount = 4;
+    private const int SceneParticleStride = 0x9c;
+    private static readonly byte* s_SceneParticles_00572be4 =
+        (byte*)NativeMemory.AllocZeroed(SceneParticleCount, SceneParticleStride);
 
     // Ghidra: DAT_00560fef, DAT_0056075b, DAT_00560763 — l'état des boîtes de dialogue modales que
     // le sous-état 0 ouvre puis attend. TODO(REVERSE): elles sont posées par le code de dialogue,
@@ -7936,8 +8988,16 @@ public static unsafe partial class Blaze
     /// an address-taken table, so which one runs when is not established. The proportional one is
     /// installed here because the original demonstrably renders proportional text.
     /// </para>
+    /// <para>
+    /// **Both setters now have a call site**, which settles the TODO above: the name-entry
+    /// sub-state (<c>FUN_00507cb0</c>) calls <c>FUN_00507870</c> before laying out its
+    /// eight-row character grid and <c>FUN_00507890</c> immediately after. The grid needs every
+    /// cell the same width to line up, so the screen switches to the fixed-width table for the
+    /// grid and back to the proportional one for everything else. The table is therefore mutable,
+    /// not a constant.
+    /// </para>
     /// </summary>
-    private static readonly byte[] s_GlyphWidths_0056e7b0 =
+    private static readonly byte[] s_GlyphWidthsProportional =
     [
         0x02,0x04,0x08,0x06,0x0a,0x08,0x02,0x04,0x04,0x06,0x06,0x02,0x04,0x02,0x04,0x06,
         0x04,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x02,0x02,0x04,0x06,0x04,0x06,0x06,
@@ -7952,6 +9012,21 @@ public static unsafe partial class Blaze
         0x08,0x05,0x05,0x05,0x06,0x06,0x03,0x03,0x04,0x04,0x07,0x05,0x06,0x06,0x06,0x06,
         0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,
     ];
+
+    // La table réellement consultée. Déclarée **après** la table proportionnelle : les
+    // initialiseurs de champs statiques s'exécutent dans l'ordre du texte, et l'inverse donnerait
+    // un Clone() sur null au constructeur de type.
+    private static readonly byte[] s_GlyphWidths_0056e7b0 = (byte[])s_GlyphWidthsProportional.Clone();
+
+    /// <summary>Ghidra: FUN_00507870 @ 0x00507870 — installe la table fixe, toutes les entrées à 8.</summary>
+    private static void UseFixedGlyphWidths()
+    {
+        for (int i = 0; i < s_GlyphWidths_0056e7b0.Length; i++) s_GlyphWidths_0056e7b0[i] = 8;
+    }
+
+    /// <summary>Ghidra: FUN_00507890 @ 0x00507890 — restaure la table proportionnelle.</summary>
+    private static void UseProportionalGlyphWidths()
+        => s_GlyphWidthsProportional.CopyTo(s_GlyphWidths_0056e7b0, 0);
 
     // Ghidra: memmove â€” FUN_00547a00 is 420 lines of unrolled MSVC block copy. Per the project's
     // rule, a recognised CRT routine is called rather than transcribed.
@@ -8147,6 +9222,105 @@ public static unsafe partial class Blaze
         return text;
     }
 
+    /// <summary>
+    /// Handler for control code <c>0x0f</c>, in **both** passes â€” the table has <c>0x00544e50</c>
+    /// at slot 15 on the scan side as well as the render side. **Decoded by hand from
+    /// Legacy/Blaze.exe** (file offset <c>0x144250</c>, 33 bytes then <c>0x90</c> padding); Ghidra
+    /// never emitted it, since it is reached only through the two tables.
+    /// <code>
+    /// 8B 4C 24 08        MOV ECX,[ESP+8]      ; descriptor
+    /// 8A 81 C7 08 00 00  MOV AL,[ECX+0x8C7]   ; flags
+    /// C6 41 33 01        MOV byte [ECX+0x33],1
+    /// 0C 02              OR  AL,2
+    /// 88 81 C7 08 00 00  MOV [ECX+0x8C7],AL
+    /// 8B 44 24 04        MOV EAX,[ESP+4]      ; text cursor, returned unchanged
+    /// 89 81 AC 08 00 00  MOV [ECX+0x8AC],EAX
+    /// C3                 RET
+    /// </code>
+    /// <para>Sibling of <see cref="Handler_00544b10"/> (code <c>0x09</c>) and it reads best against
+    /// it. Three differences: it raises flag bit **1** rather than bit 2, it writes <c>+0x33</c>
+    /// rather than <c>+0x3b</c>, and it consumes **no operand byte** â€” the returned cursor is the
+    /// one it was handed.</para>
+    /// <para><b>What the two byte writes are.</b> Neither is a loose flag: they are the **top byte
+    /// of a feature dword** in the descriptor header, i.e. its <c>0x1000000</c> enable bit. The
+    /// header is a row of (parameter, enable) pairs â€” see Documentation/DataSymbols.md â€” with the
+    /// cursor's parameter at <c>+0x30</c> and the scroll arrows' at <c>+0x38</c>. So
+    /// <c>[ECX+0x33] = 1</c> turns <c>0x000F28D4</c> into <c>0x010F28D4</c>: it **switches the
+    /// cursor on**, exactly as code <c>0x09</c> switches the scroll arrows on through
+    /// <c>+0x3b</c>.</para>
+    /// <para>Flag bit 1 is tested at the top of <see cref="RunTextEngine"/>, which returns at once
+    /// when it is set. Code <c>0x0f</c> therefore means <b>stop here and show the cursor</b> â€” a
+    /// prompt awaiting a choice, which is what the character-select screen reaches on validating a
+    /// character.</para>
+    /// </summary>
+    private static byte* Handler_00544e50(byte* text, byte* descriptor)
+    {
+        byte flags = descriptor[0x8c7];
+        descriptor[0x33] = 1;               // le bit 0x1000000 du dword de curseur, à +0x30
+        flags |= 2;
+        descriptor[0x8c7] = flags;
+
+        *(byte**)(descriptor + 0x8ac) = text;
+        return text;                        // aucun octet d'opérande consommé
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x1c</c>, in both passes — <c>0x00544e80</c>, decoded by hand
+    /// from Legacy/Blaze.exe (file offset <c>0x144280</c>). It is a **subroutine jump inside the
+    /// text stream**: it pushes a return pointer onto the descriptor's stack at <c>+0x8b4</c> and
+    /// returns a different string, chosen by a byte of the player's saved block.
+    ///
+    /// <para>The matching **pop** was already reconstructed — <see cref="RunTextEngine"/> unwinds
+    /// <c>descriptor[0x15]</c> and resumes from <c>+0x8b4 + depth * 4</c> when it meets a NUL. Only
+    /// the push side was missing, which is why the stack looked write-only until now.</para>
+    ///
+    /// <para><b>The substituted value.</b> <c>[0x006087b4]</c> is an IAT slot, so
+    /// <c>*(*(0x006087b4))</c> is winsys3d's exported <c>MainMem</c> — the same pointer
+    /// <see cref="GetMainMemPtr"/> returns. The offset <c>slot * 0x2000 + 0xF0153</c> is then
+    /// exactly <c>DAT_00573338[0x153]</c> for that player, i.e. the byte sub-state 3 writes: the
+    /// arena's per-player 0x2000 block at <c>MainMem + 0xf0000</c>.</para>
+    ///
+    /// <para>Operand: three bytes. <c>text[0]</c> picks the resource root, <c>text[1..2]</c> a
+    /// little-endian index into its <c>+0x70</c> label table, to which the substituted value is
+    /// added — so one control code selects one of a run of consecutive strings.</para>
+    /// </summary>
+    private static byte* Handler_00544e80(byte* text, byte* descriptor)
+    {
+        byte value = 0;
+        uint* owner = *(uint**)(descriptor + 0x8b0);
+        if (owner != null && (*owner & 0xfc0000) == 0x800000)
+        {
+            byte* mainMem = GetMainMemPtr();
+            if (mainMem == null)
+            {
+                throw new NotImplementedException(
+                    "FUN_00544e80: winsys3d's MainMem resolves to null, so the per-player block " +
+                    "this control code substitutes from cannot be located.");
+            }
+            value = mainMem[*((byte*)owner + 8) * 0x2000 + 0xF0153];
+        }
+
+        // Ghidra: descriptor[0x8b4 + descriptor[0x15] * 4] = text + 3, puis le compteur avance.
+        byte depth = descriptor[0x15];
+        *(byte**)(descriptor + 0x8b4 + depth * 4) = text + 3;
+        descriptor[0x15] = (byte)(depth + 1);
+
+        uint index = (uint)((text[2] << 8) | text[1]) + value;
+
+        // Ghidra: *(int *)(&DAT_005e97c0 + text[0] * 4). Les deux racines sont des champs séparés
+        // ici, pas un tableau, donc le choix est explicite plutôt qu'indexé.
+        byte* root = text[0] switch
+        {
+            0 => s_MainResourceBuffer_005e97c0,
+            1 => s_MainResourceDirectory_005e97c4,
+            _ => throw new NotImplementedException(
+                     $"FUN_00544e80: resource root {text[0]} — the original indexes " +
+                     "&DAT_005e97c0 by four bytes, and only slots 0 and 1 are modelled."),
+        };
+
+        return *(byte**)(*(byte**)(root + 0x70) + index * 4);
+    }
+
     // The four pass-1 stubs, decoded from the binary. They are not semantic handlers: they declare
     // how many operand bytes a control code consumes so the scan can skip without drawing.
     private static byte* Advance0(byte* p, byte* descriptor) => p;        // 0x00543940  8B 44 24 04 C3
@@ -8198,6 +9372,11 @@ public static unsafe partial class Blaze
             t[0x0c] = Handler_00544c50;   // 0x00544c50, decompiled
             t[0x0d] = Handler_00544d90;   // 0x00544d90, decompiled
         }
+
+        // Les deux tables portent le même corps à ces deux emplacements : il sert aux deux passes,
+        // contrairement aux codes dont la passe 1 substitue un talon d'avance.
+        t[0x0f] = Handler_00544e50;   // 0x00544e50
+        t[0x1c] = Handler_00544e80;   // 0x00544e80
 
         return t;
     }
@@ -11707,8 +12886,20 @@ public static unsafe partial class Blaze
         0x0500, 0x0a00, 0x0c00, 0x0300,     // L2+L1, R2+R1, L1+R1, L2+R2
     ];
 
-    /// <summary>Ghidra: DAT_00564a50 â€” read from Legacy/Blaze.exe as 1.</summary>
-    private static readonly int s_KeyboardEnabled_00564a50 = 1;
+    /// <summary>
+    /// Ghidra: DAT_00564a50 â€” read from Legacy/Blaze.exe as 1. **Not read-only**: the two
+    /// one-line functions <c>FUN_00523520</c> and <c>FUN_00523530</c> exist for nothing else than
+    /// to set it to 1 and 0, and the name-entry sub-state calls both. It gates
+    /// <see cref="FoldKeyboardIntoPadState"/>, so clearing it silences the pad mapping while raw
+    /// characters are being typed.
+    /// </summary>
+    private static int s_KeyboardEnabled_00564a50 = 1;
+
+    /// <summary>Ghidra: FUN_00523520 @ 0x00523520 â€” <c>DAT_00564a50 = 1</c>, nothing else.</summary>
+    private static void EnablePadKeyboard() => s_KeyboardEnabled_00564a50 = 1;
+
+    /// <summary>Ghidra: FUN_00523530 @ 0x00523530 â€” <c>DAT_00564a50 = 0</c>, nothing else.</summary>
+    private static void DisablePadKeyboard() => s_KeyboardEnabled_00564a50 = 0;
 
     // Ghidra: DAT_005de168 â€” gates players 2..4 in FUN_00523660. Never assigned anywhere in the
     // reconstructed graph yet, so it stays 0 and all four players are polled, as the original does

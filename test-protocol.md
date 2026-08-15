@@ -38,6 +38,7 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 | `-Seconds <n>` | durée d'observation après validation (défaut 25) |
 | `-Shot` | capture la fenêtre en PNG à la fin |
 | `-Build` | reconstruit la solution d'abord |
+| `-Then A,B` | touches à jouer **une fois l'écran atteint**, dans l'ordre. Jetons : `ENTER` `ESC` `UP` `DOWN` `LEFT` `RIGHT`, et `WAIT<n>` pour patienter n secondes. Exemple : `-Then DOWN,WAIT2,ENTER` |
 | `-Trace A,B` | pose `OPENFORESIA_TRACE_A=1`, `OPENFORESIA_TRACE_B=1` (voir plus bas) |
 | `-KeepOpen` | laisse le jeu ouvert |
 | `-MenuDelay`, `-TapMs`, `-MaxTaps` | réglages fins, rarement utiles |
@@ -153,6 +154,10 @@ projet). Ceux listés ici sont permanents.
 - **`dotnet run --project OpenForesia` ne marche pas.** L'app est en x86, le SDK du PATH n'a que le
   runtime x64. Lancer l'exe directement (`OpenForesia/bin/Debug/net9.0/OpenForesia.exe`), il trouve
   le runtime x86. Pour construire : `$env:DOTNET_ROOT = "C:\Users\Sagara\.dotnet"` d'abord.
+- **…et le retirer aussitôt après.** Un processus **x86** qui hérite de ce `DOTNET_ROOT` (x64) meurt
+  avant d'ouvrir sa fenêtre, sur `Failed to load hostfxr.dll … 0x800700C1`. `playtest.ps1 -Build`
+  restaure donc l'environnement entre la construction et le lancement — piège rencontré, pas
+  théorique.
 - **`OpenForesia.Tools` ne tourne pas du tout**, même cause. Palliatif pour la table d'exports :
   `OpenForesia.Tools/exports.ps1`.
 - **Lire le binaire ne demande aucun outil.** `od -A x -t x4 -j <offset> -N <taille> Legacy/Blaze.exe`
