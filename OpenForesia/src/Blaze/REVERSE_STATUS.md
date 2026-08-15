@@ -1935,3 +1935,167 @@ paper for the first time**.
 
 Nothing has been run. This is the point at which running the game is worth doing: main menu,
 entry 1.
+
+## 2026-08-15 — the first run of state 4, and what it actually said
+
+The screen was reached and it threw. Two defects behind it, both now fixed, and one reported
+symptom that turned out not to be a defect at all.
+
+### The UI descriptors carry an ordering table, so they must live low
+
+The exception was the guard in `RunTextEngine`:
+
+```
+FUN_005443a0 masks its descriptor to 24 bits, but this one is at 0x02D2C3B8.
+```
+
+The obvious reading — "the parameter is masked, so keep the argument low" — is true but shallow,
+and taken alone it invites fixing only the symbol that happens to throw. The real constraint is
+one level down: **the descriptor contains its own ordering table at `+0xa4`**. `FUN_005443a0`
+clears it with `ClearOTagR` on control code `0x0c`, which stores every link as
+`address & 0xffffff`; `FUN_00545340` (`DrawUiPanel`) then walks it under the same mask until the
+`0xffffff` sentinel. A descriptor above `0x01000000` therefore relinks its own text list onto
+truncated addresses, and the parameter mask is just the first place that shows.
+
+In the original the question never arises: these are `.data` globals of an image based at
+`0x00400000`. It only arises here because the reconstruction models `.data` globals as
+allocations.
+
+Converted to `AllocLowZeroed`, as lazy properties rather than field initialisers — the reason is
+the one already written on `s_MenuContext_0056dd58`: a field initialiser turns a lost race for low
+memory into `TypeInitializationException`, outside the module initializer's `try`/`catch` and so
+not recoverable by relaunching. They are also claimed eagerly in `TryPrepareDisplayListArena`,
+next to the menu descriptor, for the same measured reason recorded there.
+
+- `s_UiDescriptors_00560ff0` — three instances, passed to `RunTextEngine` and `DrawUiPanel`.
+- `s_StatusDescriptor_00560728` — same, from the frame loop.
+- `s_SelectSlots_00573518` — nine instances of the same type. No transcribed sub-state passes one
+  to the text engine yet, but they are the same struct with the same `+0xa4`; twenty kilobytes of
+  the low window now beats finding this again from sub-state 3.
+
+### What did *not* need converting
+
+The evening's note listed nine symbols "to convert by coherence". Six of them do not need it, and
+converting them would have spent low memory on nothing:
+
+| symbol | why not |
+|---|---|
+| `s_Unknown_005606f8` | a label table. Stored at `descriptor + 0x8ac` and read back as a **full 32-bit pointer** (`Blaze.c:91094`). `s_MenuLabels_0056e670` has always been an ordinary allocation and the main menu draws. |
+| `s_CameraMatrix_006008e0` | copied **by value** into the GTE matrix register; its address is never stored anywhere. |
+| `s_CharacterSlots_00578420` | `slot + 0x1c` reaches `DrawAnimatedModel` as a vector source, not as a link. |
+| `s_ModelTable_005e96a0`, `s_AnimationTable_005e9640` | only their contents are dereferenced. |
+| `s_SelectSubStateBytes_00562a98`, `s_CameraVector_00604928` | plain data. |
+
+The usable rule is not "does this block end up near display-list code" but **"is this block a
+`0x8c8` descriptor that traverses `FUN_005443a0` / `FUN_00545340`"**.
+
+### `BuildUiDescriptors` was writing 8 of its 26 dwords
+
+Found while checking the first defect, and it would have produced a blank screen right after
+fixing it — the same failure mode already recorded for `DAT_0056dd58`.
+
+The initialised prefix of one of these structures is `0x68` bytes = 26 dwords, and the builder
+carried only the first 8. Everything from `f8` on was zero, including:
+
+- `f8` = `0x01070C10`, the **text** feature word;
+- `f16` = `0x010F0000`, the **frame** feature word.
+
+Every feature test in `DrawUiPanel` is `field & 0x1000000`, so a descriptor missing those draws
+neither text nor frame. `BuildStatusDescriptor` had the same shape of gap, one dword wide: `f25`.
+
+All four instances are now written from the binary, and the transcription was verified
+mechanically rather than by eye — the dwords in `Blaze.cs` were extracted and diffed against
+`od` output at file offsets `0x15ED28`, `0x15F5F0`, `0x15FEB8` and `0x160780`: 78/78 and 26/26
+identical. The full table is now in `Documentation/DataSymbols.md`, along with the reading of the
+odd dwords as *enable* halves of *(parameter, enable)* pairs.
+
+### The frozen `DrawPrimitive` counter was a misreading
+
+The evening's note flagged this as a second defect to investigate:
+
+```
+[SHIM] bilan : ... BeginScene=361 EndScene=360 DrawPrimitive=34545
+[SHIM] bilan : ... BeginScene=421 EndScene=420 DrawPrimitive=34545
+```
+
+Sixty frames with nothing drawn. But `ShimReport` fires every 60 `Flip`s (`DeviceShim.cs`), and
+the stack trace shows the loop dying in the **first** frame of sub-state 0 — it never ran sixty
+times. Those sixty silent frames are the resource-loading phase, not the render loop. Putting a
+trace on `EmitModelQuads` and `s_Unknown_005e9818` before re-running would have been instrumenting
+a hypothesis that cannot be true.
+
+To re-measure after the fix, not before.
+
+### State
+
+`dotnet build` is green. The startup low-memory claim now includes the three descriptor blocks and
+succeeds (no relaunch on the run tested). What has **not** been verified is the screen itself:
+reaching it needs manual navigation through the main menu, which no environment switch shortcuts.
+That is the next thing to do, and the `[SHIM] bilan` line is the measurement to read once there.
+
+## 2026-08-15 — the character-select screen draws
+
+It runs. Reached from the main menu, 2400+ frames without a fault, and the capture shows the
+carousel of sixteen portraits, the animated model, the "Classe / Guerrier" panel and the
+"Sélectionne un personnage." banner. Both text panels rendering is the direct confirmation that the
+26-dword header fix was the right one — a descriptor missing `f8`/`f16` would have drawn neither.
+
+Three defects stood between the first run and this, and only the first was known in advance.
+
+### 1 and 2 — the descriptors (see the entry above)
+
+Fixed before the run: low allocation, and the truncated `0x68`-byte header.
+
+### 3 — ordinal 795 was declared with two arguments and takes three
+
+With the descriptors fixed the loop got as far as the carousel's first model draw and took a native
+access violation:
+
+```
+Fatal error. 0xC0000005
+   at Ordinal_795(Void*, Void*)
+   at DrawModelPart(...)
+   at DrawAnimatedModel(...)
+   at CharacterSelectSubState0(...)
+```
+
+`FUN_00a226c0` is `void f(vertices, outScreenXy, count)`. The P/Invoke had only the first two, so
+cdecl handed the DLL whatever the caller had left on the stack as its count, and it wrote through
+it. The full reading, including why the pseudo-C reads as a two-argument function if you miss the
+swap in its scalar path, is now in `Documentation/DLL/winsys3d.md`.
+
+This is the third time Ghidra's parameter recovery has been wrong on a call this screen makes —
+`FUN_0052a1e0` and `FUN_0052a280` were the other two, both settled from the disassembly. The
+pattern is worth naming: **a native fault in a winsys3d call is an arity question before it is
+anything else.**
+
+### The `DrawPrimitive` counter, re-measured
+
+The previous entry predicted that the frozen counter was a loading-phase artifact. Confirmed:
+
+```
+[SHIM] bilan : ... BeginScene=241  DrawPrimitive=23330
+[SHIM] bilan : ... BeginScene=301  DrawPrimitive=46270
+[SHIM] bilan : ... BeginScene=361  DrawPrimitive=69210
+```
+
+About 382 primitives per frame, steady. No investigation of `EmitModelQuads` or the
+`s_Unknown_005e9818` budget was needed.
+
+### Driving the game without hands, for future runs
+
+Reaching state 4 from a script is not obvious and cost several attempts, so the working recipe:
+
+- The keyboard goes through **DirectInput**, so `SendKeys` (window messages) is invisible to it.
+  `SendInput` with `KEYEVENTF_SCANCODE` works.
+- The default bindings that matter are the **arrow keys** (`DIK_DOWN` `0xd0`) and `DIK_RETURN`
+  (`0x1c`). The numpad half of the default table is not live — `OpenForesia.cfg` overrides it.
+- The menu runs at roughly 6 frames per second here, and it polls once per frame. A press shorter
+  than ~200 ms falls between two polls and is lost; a press longer than ~450 ms auto-repeats and
+  the cursor runs away. **The first press after `SetForegroundWindow` is always swallowed.**
+- Timing the press is therefore hopeless. What works is closed-loop: run with
+  `OPENFORESIA_TRACE_MENU=1`, tap, then read `+0x8C4:xx->yy` back out of the redirected stderr
+  (opened `FileShare.ReadWrite`, the game still holds it) and tap again until the cursor is on the
+  wanted entry. Entry 1 is "Sélection des personnages".
+- `CurrentPadWord()` keeps returning the last non-zero word after the key is released, so the pad
+  value in the trace is not a reliable "is it held" signal — the `+0x8C4` transitions are.

@@ -603,3 +603,55 @@ is identical.
 
 These exports have no names, so `GetProcAddress` is called with the ordinal in the low word of the
 name pointer — the `MAKEINTRESOURCE` convention. See `EnsureGteRegisters` in `Blaze.cs`.
+
+## Ordinal 795 (`FUN_00a226c0`) takes **three** arguments — **CONFIRMED**, 2026-08-15
+
+The depth-less sibling of ordinal 418, taken when a model's `0x400` attribute bit is set. It was
+first declared with two parameters, which faulted natively (`0xC0000005`) the moment the
+character-select carousel drew its first model: the missing third argument was read off the
+caller's stack as a count and the DLL wrote through it.
+
+```c
+void FUN_00a226c0(ulonglong *param_1, int *param_2, int *param_3)   /* 0x226c0  795 */
+```
+
+| parameter | role |
+|---|---|
+| `param_1` | source vertices, three per unit |
+| `param_2` | destination screen-XY array, three ints written per unit |
+| `param_3` | **the count** |
+
+Reading this off the pseudo-C needs one caution. The scalar path opens with a swap:
+
+```c
+iVar4 = (int)param_3;
+if (MMXInstalled == 0) {
+  if (param_3 != (int *)0x0) {
+    param_3 = param_2;            /* <- from here on, param_3 is the OUTPUT */
+    param_2 = (int *)iVar4;       /* <- and param_2 is the COUNT */
+    do { ... param_3 = param_3 + 3; param_2 = (int *)((int)param_2 + -1);
+    } while (param_2 != (int *)0x0);
+```
+
+Skip the swap and the function reads as though it took two arguments and ran an unbounded loop.
+The MMX path settles it without any swap at all:
+
+```c
+for (iVar4 = (int)param_3 * 3; iVar4 != 0; iVar4 = iVar4 + -1) {
+    ... param_2[local_8] = ... ; local_8 = local_8 + 1;
+}
+```
+
+`param_3` used directly as a count, `param_2` directly as the output. The two paths agree, and the
+`* 3` confirms that one unit of the count is three vertices — the same unit ordinal 418 uses, so
+the call site passes the same expression:
+
+```csharp
+Ordinal_795(model + 0x40, mainMem + 0x1b0000, *(uint*)(model + 8) & 0xffff);
+```
+
+**The lesson generalises.** Ghidra's parameter recovery for this DLL is not trustworthy on its own:
+ordinal 795 has a real argument it dropped, and `FUN_0052a1e0`/`FUN_0052a280` on the Blaze side had
+the same problem. When a winsys3d call faults natively rather than misbehaving, an arity mismatch
+is the first thing to check — cdecl means a missing argument is silently read from whatever the
+caller left on the stack.

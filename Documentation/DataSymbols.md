@@ -500,3 +500,72 @@ is plausibly the matching size pair (`0x48 × 0x18` for `DAT_00560ff0`, `0xE0 ×
 
 The remaining fields are not interpreted. The reconstruction transcribes the raw constants rather
 than naming them, since naming them would be inventing.
+
+### The full `0x68`-byte header — all four static instances (2026-08-15)
+
+The table above stops at `0x3C`; the initialised prefix is `0x68` bytes, i.e. **26 dwords**. Read
+back from `Legacy/Blaze.exe` at the four file offsets, they are:
+
+| dword | offset | `DAT_00560728` @`0x15ED28` | `DAT_00560ff0` @`0x15F5F0` | `DAT_005618b8` @`0x15FEB8` | `DAT_00562180` @`0x160780` |
+|---|---|---|---|---|---|
+| f0  | `0x00` | `0x00000031` | `0x00000031` | `0x00000031` | `0x00000031` |
+| f1  | `0x04` | `0x00A80028` | `0x00180028` | `0x00180078` | `0x001800D0` |
+| f2  | `0x08` | `0x002800E0` | `0x00180048` | `0x00180050` | `0x00180038` |
+| f3  | `0x0C` | `0x00000000` | `0x00000000` | `0x00000000` | `0x00000000` |
+| f4  | `0x10` | `0x021A0000` | `0x01080000` | `0x01080000` | `0x021A0000` |
+| f5  | `0x14` | `0x0000000C` | `0x00000000` | `0x00000001` | `0x00000002` |
+| f6  | `0x18` | `0x010F0808` | `0x010F0808` | `0x010F0808` | `0x010F0808` |
+| f7  | `0x1C` | `0x02CF1020` | `0x02CF1020` | `0x02CF1020` | `0x02CF1020` |
+| f8  | `0x20` | `0x01070C10` | `0x01070C10` | `0x01070C10` | `0x01070C10` |
+| f9  | `0x24` | `0x01000000` | `0x01000000` | `0x01000000` | `0x01000000` |
+| f10 | `0x28` | `0x00000000` | `0x00000000` | `0x00000000` | `0x00000000` |
+| f11 | `0x2C` | `0x01000000` | `0x01000000` | `0x01000000` | `0x01000000` |
+| f12 | `0x30` | `0x000F28D4` | `0x000F00D0` | `0x000F00D0` | `0x000F00D0` |
+| f13 | `0x34` | `0x01000000` | `0x01000000` | `0x01000000` | `0x01000000` |
+| f14 | `0x38` | `0x000F0A00` | `0x000F0A00` | `0x000F0A00` | `0x000F0A00` |
+| f15 | `0x3C` | `0x01000000` | `0x01000000` | `0x01000000` | `0x01000000` |
+| f16 | `0x40` | `0x010F0000` | `0x010F0000` | `0x010F0000` | `0x010F0000` |
+| f17 | `0x44` | `0x01000000` | `0x01000000` | `0x01000000` | `0x01000000` |
+| f18, f20, f22, f24 | `0x48`..`0x60` | `0x00000000` | `0x00000000` | `0x00000000` | `0x00000000` |
+| f19, f21, f23, f25 | `0x4C`..`0x64` | `0x01000000` | `0x01000000` | `0x01000000` | `0x01000000` |
+
+`DAT_005618b8` and `DAT_00562180` are `DAT_00560ff0 + 1 * 0x8c8` and `+ 2 * 0x8c8`: the three form
+the contiguous row the frame loop walks, and f5 is their index `0, 1, 2`. `FUN_00509470` confirms
+the third by referencing `0x00562180` directly.
+
+Note that the earlier table's `0x30`/`0x38` column for `DAT_00560ff0` read `0x000F00D0` and
+`0x000F0A00`; both are confirmed here against the binary.
+
+**The odd dwords are not padding.** Every second dword from f9 on is `0x01000000`, and every
+feature test in `FUN_00545340` (`DrawUiPanel`) is `field & 0x1000000`. The header is therefore a
+row of *(parameter, enable)* pairs:
+
+| pair | what `FUN_00545340` draws from it | state in the four instances |
+|---|---|---|
+| f8 / f9   | text                | enabled, parameter `0x01070C10` |
+| f10 / f11 | — (zero parameter)  | enabled, parameter zero |
+| f12 / f13 | cursor              | enabled; parameter `0x000F…`, whose own `0x1000000` bit is clear |
+| f14 / f15 | scroll arrows       | same shape as the cursor pair |
+| f16 / f17 | frame               | enabled, parameter `0x010F0000` |
+| f18..f25  | four unused pairs   | parameter zero, enable set |
+
+Consequence for the reconstruction: an instance built with only the first eight dwords has f8 and
+f16 zero and **draws nothing at all** — no text, no frame. That is the same silent failure already
+recorded for `DAT_0056dd58`, the main menu's descriptor.
+
+### These structures must be allocated below `0x01000000` (2026-08-15)
+
+`FUN_005443a0` masks its descriptor argument with `& 0xffffff`, which is the identity in the
+original because the whole image is based at `0x00400000`. That mask is only the visible half of
+the constraint. The real reason is that **the descriptor carries its own ordering table at
+`+0xa4`**: `FUN_005443a0` clears it with `ClearOTagR` (control code `0x0c` at the head of the
+label stream), which writes every link as `address & 0xffffff`, and `FUN_00545340` later walks it
+under the same mask until the `0xffffff` sentinel.
+
+So any reconstruction that models one of these `.data` globals as a heap allocation has to place
+it below `0x01000000`, or the internal ordering table relinks itself onto truncated addresses.
+This applies to `DAT_00560728`, the `DAT_00560ff0` row and the nine instances at `DAT_00573518`.
+
+It does **not** apply to the label tables they point at through `+0x8ac`: those are read back as
+full 32-bit pointers (`Blaze.c:91094`, and `Blaze.cs`'s `RunTextEngine`), which is why
+`DAT_0056e670` has always worked as an ordinary allocation.

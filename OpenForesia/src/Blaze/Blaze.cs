@@ -203,7 +203,14 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#418")] private static extern void Ordinal_418(void* vertices, void* outScreenXy, void* outDepth, void* outFlags, uint count); // real: winsys3d.c FUN_00a22010 â€” batch RotTransPers: transforms `count` vertices through the MATRIX register (ordinal 814) into screen XY and depth arrays. MMX/scalar split inside.
     [DllImport("winsys3d.dll", EntryPoint = "#793")] private static extern void Ordinal_793(void* normals, void* outColours, uint triangleCount); // real: winsys3d.c FUN_00a03e70 â€” batch lighting. Gated on the DLL's `Elo_NoLighting`, which when set writes zeroes instead. Consumes EXT_00b6d198, i.e. data export ordinal 817.
     [DllImport("winsys3d.dll", EntryPoint = "#794")] private static extern void Ordinal_794(void* matrix, void* scale); // real: winsys3d.c FUN_00a20540 â€” libgte ScaleMatrix: scales each of the matrix's three columns by one component of `scale`.
-    [DllImport("winsys3d.dll", EntryPoint = "#795")] private static extern void Ordinal_795(void* vertices, void* outScreenXy); // real: winsys3d.c FUN_00a226c0 â€” the depth-less sibling of ordinal 418, taken when the model's 0x400 flag is set.: `fpatan` then `__ftol`. Ghidra dropped the return value in the DLL body, but Blaze.c assigns it (`sVar3 = Ordinal_457(...)`), so it does return one.
+    // real: winsys3d.c FUN_00a226c0 â€” the depth-less sibling of ordinal 418, taken when the model's
+    // 0x400 flag is set. **Three** parameters, not two: Ghidra names them (param_1, param_2,
+    // param_3) and then swaps two of them inside the scalar path (`param_3 = param_2; param_2 =
+    // iVar4`), which reads as a two-argument function if the swap is skipped. Both paths agree that
+    // the third is the count: the scalar loop ends on `while (param_2 != 0)` after the swap, and the
+    // MMX path runs `for (iVar4 = (int)param_3 * 3; iVar4 != 0; iVar4--)` without swapping. Same
+    // count as ordinal 418, and three vertices consumed per unit in both.
+    [DllImport("winsys3d.dll", EntryPoint = "#795")] private static extern void Ordinal_795(void* vertices, void* outScreenXy, uint count);
     // Ordinals 658/661/665/674 are winsys3d.dll's port of the PlayStation SDK's **libgpu** â€” which
     // is what the sibling `playst.dll` ("PlayStation") is named after, and unsurprising for a PSX
     // game ported to Windows. The two below are identified beyond doubt by their bodies: they write
@@ -470,6 +477,12 @@ public static unsafe partial class Blaze
             // meant competing with a runtime that had had seconds to grow into the same window â€”
             // measured: the arena succeeded and the descriptor then failed.
             _ = s_MenuContext_0056dd58;
+
+            // Les descripteurs de la sélection des personnages relèvent de la même contrainte :
+            // chacun porte son ordering table à +0xa4, que ClearOTagR masque à 0xffffff.
+            _ = s_UiDescriptors_00560ff0;
+            _ = s_StatusDescriptor_00560728;
+            _ = s_SelectSlots_00573518;
             return true;
         }
         catch (InvalidOperationException) { return false; }
@@ -1194,7 +1207,9 @@ public static unsafe partial class Blaze
         }
         else
         {
-            Ordinal_795(model + 0x40, mainMem + 0x1b0000);
+            // Même compteur que la branche avec profondeur : les deux ordinaux consomment le
+            // champ +8 du modèle sur ses seize bits bas.
+            Ordinal_795(model + 0x40, mainMem + 0x1b0000, *(uint*)(model + 8) & 0xffff);
         }
 
         // Ghidra: l'éclairage — soit la passe de la DLL, soit une couleur plate recopiée trois fois
@@ -7099,8 +7114,18 @@ public static unsafe partial class Blaze
     // boucle). L'original les prend dans .data ; ici c'est un bloc alloué, comme les autres.
     private const int CharacterSelectSlotCount = 9;
     private const int CharacterSelectSlotStride = 0x8c8;
-    private static readonly byte* s_SelectSlots_00573518 =
-        (byte*)NativeMemory.AllocZeroed(CharacterSelectSlotCount, CharacterSelectSlotStride);
+
+    // Alloué bas : ce sont neuf instances du type de s_UiDescriptors_00560ff0, en-tête compris
+    // (InitialiseCharacterSelectSlots écrit les mêmes 26 dwords). Aucun des sous-états déjà
+    // transcrits ne les passe encore au moteur de texte, mais dès qu'un le fera l'ordering
+    // table de +0xa4 y sera masquée à 0xffffff comme sur les autres. Vingt kilo-octets de la
+    // fenêtre basse, contre une panne à retrouver plus tard.
+    private static byte* s_SelectSlotsStorage;
+    private static byte* s_SelectSlots_00573518
+        => s_SelectSlotsStorage != null
+            ? s_SelectSlotsStorage
+            : (s_SelectSlotsStorage =
+                   AllocLowZeroed((uint)(CharacterSelectSlotCount * CharacterSelectSlotStride)));
 
     // Ghidra: DAT_00573338 — le bloc de 0x2000 octets que la boucle place à MainMem + 0xf0000.
     // C'est la même adresse que la destination de la liste +0xb0 de LoadCharacterSelectResources :
@@ -7142,29 +7167,69 @@ public static unsafe partial class Blaze
     // pour un même y = 0x18, et le champ +0x14 vaut leur index 0, 1, 2.
     private const int UiDescriptorStride = 0x8c8;
     private const int UiDescriptorCount = 3;
-    private static readonly byte* s_UiDescriptors_00560ff0 = BuildUiDescriptors();
+    // Alloué bas. Ces descripteurs portent leur **propre** ordering table à +0xa4, que
+    // ClearOTagR remplit de liens masqués à 0xffffff (voir la marche de liens dans
+    // DrawUiPanel) : au-dessus de 0x01000000 cette table se relit sur des adresses tronquées.
+    // Le masque de RunTextEngine n'est que le premier symptôme du même problème. Dans
+    // l'original la question ne se pose pas, ces structures sont des globales de .data.
+    //
+    // Paresseux plutôt qu'initialiseur de champ, pour la raison exposée sur
+    // s_MenuContext_0056dd58 : un échec d'allocation basse doit rester rattrapable par relance,
+    // pas se présenter en TypeInitializationException.
+    private static byte* s_UiDescriptorsStorage;
+    private static byte* s_UiDescriptors_00560ff0
+        => s_UiDescriptorsStorage != null
+            ? s_UiDescriptorsStorage
+            : (s_UiDescriptorsStorage = BuildUiDescriptors());
 
     private static byte* BuildUiDescriptors()
     {
-        byte* block = (byte*)NativeMemory.AllocZeroed(UiDescriptorCount, UiDescriptorStride);
+        byte* block = AllocLowZeroed((uint)(UiDescriptorCount * UiDescriptorStride));
 
+        // Les 0x68 octets initialisés de chaque instance, relevés dans Legacy/Blaze.exe aux
+        // décalages 0x15F5F0, 0x15FEB8 et 0x160780 — 26 dwords, pas 8. Les mots de fonction
+        // sont testés par DrawUiPanel en `champ & 0x1000000` : sans f8 (texte) ni f16 (cadre),
+        // le panneau se dessine vide, exactement comme le descripteur du menu principal quand il
+        // était laissé à zéro.
+        //   f5   l'index de la boîte (0, 1, 2)      f12  curseur      — bit 0x1000000 absent
+        //   f8   texte        — bit présent         f14  flèches      — bit absent
+        //   f16  cadre        — bit présent
+        const int UiDescriptorHeaderDwords = 26;
         ReadOnlySpan<uint> headers = new uint[]
         {
             // 0x00560ff0
             0x00000031, 0x00180028, 0x00180048, 0x00000000,
             0x01080000, 0x00000000, 0x010f0808, 0x02cf1020,
+            0x01070c10, 0x01000000, 0x00000000, 0x01000000,
+            0x000f00d0, 0x01000000, 0x000f0a00, 0x01000000,
+            0x010f0000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000,
             // 0x005618b8
             0x00000031, 0x00180078, 0x00180050, 0x00000000,
             0x01080000, 0x00000001, 0x010f0808, 0x02cf1020,
+            0x01070c10, 0x01000000, 0x00000000, 0x01000000,
+            0x000f00d0, 0x01000000, 0x000f0a00, 0x01000000,
+            0x010f0000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000,
             // 0x00562180
             0x00000031, 0x001800d0, 0x00180038, 0x00000000,
             0x021a0000, 0x00000002, 0x010f0808, 0x02cf1020,
+            0x01070c10, 0x01000000, 0x00000000, 0x01000000,
+            0x000f00d0, 0x01000000, 0x000f0a00, 0x01000000,
+            0x010f0000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000,
         };
 
         for (int i = 0; i < UiDescriptorCount; i++)
         {
             uint* dest = (uint*)(block + i * UiDescriptorStride);
-            for (int f = 0; f < 8; f++) dest[f] = headers[i * 8 + f];
+            for (int f = 0; f < UiDescriptorHeaderDwords; f++)
+            {
+                dest[f] = headers[i * UiDescriptorHeaderDwords + f];
+            }
         }
 
         return block;
@@ -7172,19 +7237,27 @@ public static unsafe partial class Blaze
 
     // Ghidra: &DAT_00560728 — une neuvième instance du même type, celle que la boucle de frame
     // passe au moteur de texte (FUN_005443a0) puis dessine. Relevée au décalage fichier 0x15ED28.
-    private static readonly byte* s_StatusDescriptor_00560728 = BuildStatusDescriptor();
+    //
+    // Alloué bas et paresseux pour la même raison que s_UiDescriptors_00560ff0 : il traverse
+    // RunTextEngine puis DrawUiPanel, donc il porte une ordering table à +0xa4.
+    private static byte* s_StatusDescriptorStorage;
+    private static byte* s_StatusDescriptor_00560728
+        => s_StatusDescriptorStorage != null
+            ? s_StatusDescriptorStorage
+            : (s_StatusDescriptorStorage = BuildStatusDescriptor());
 
     private static byte* BuildStatusDescriptor()
     {
-        byte* block = (byte*)NativeMemory.AllocZeroed((nuint)UiDescriptorStride, 1);
+        byte* block = AllocLowZeroed((uint)UiDescriptorStride);
         uint* f = (uint*)block;
 
+        // Les 26 dwords du décalage fichier 0x15ED28, queue comprise : f25 manquait.
         f[0] = 0x00000031; f[1] = 0x00a80028; f[2] = 0x002800e0; f[3] = 0x00000000;
         f[4] = 0x021a0000; f[5] = 0x0000000c; f[6] = 0x010f0808; f[7] = 0x02cf1020;
         f[8] = 0x01070c10; f[9] = 0x01000000; f[10] = 0x00000000; f[11] = 0x01000000;
         f[12] = 0x000f28d4; f[13] = 0x01000000; f[14] = 0x000f0a00; f[15] = 0x01000000;
         f[16] = 0x010f0000; f[17] = 0x01000000; f[19] = 0x01000000; f[21] = 0x01000000;
-        f[23] = 0x01000000;
+        f[23] = 0x01000000; f[25] = 0x01000000;
 
         return block;
     }

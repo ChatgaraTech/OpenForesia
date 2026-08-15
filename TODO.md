@@ -1,90 +1,77 @@
 # TODO
 
-Point d'entrée entre deux sessions. État au soir du 2026-08-14.
+Point d'entrée entre deux sessions. État du 2026-08-15.
 
 ---
 
 ## Où on en est
 
-L'écran de sélection des personnages est **atteint pour la première fois**. Le jeu démarre, passe
-le menu, entre dans l'état 4, charge ses ressources, entre dans la boucle de frame, exécute le
-sous-état 0 et son carrousel — puis plante à la passe de texte finale.
+**L'écran de sélection des personnages fonctionne.** Atteint depuis le menu, 2400+ images sans
+faute, et la capture montre le carrousel des seize portraits, le modèle animé, le panneau
+« Classe / Guerrier » et la bannière « Sélectionne un personnage. ».
 
-Chaîne reconstruite et exercée :
+Chaîne reconstruite :
 
 ```
 RunGameStateTick case 4
   └─ RunCharacterSelectState
        ├─ LoadCharacterSelectResources     OK
        └─ RunCharacterSelectFrameLoop      OK (sauf le bloc « en scène », sous-états 1 à 6)
-            └─ CharacterSelectSubState0    OK, zéro throw
-                 ├─ DrawAnimatedModel      s'exécute sans faute
+            └─ CharacterSelectSubState0    OK, dessine
+                 ├─ DrawAnimatedModel      OK
                  └─ ProjectPoint           OK
 ```
 
-Rien n'est commité. Le build est vert (0 erreur, seuls les `NETSDK1189` habituels).
+`DrawPrimitive` monte d'environ **382 primitives par image**, régulier. Build vert (0 erreur).
+Rien n'est commité — c'est l'affaire de Vincent.
 
 ---
 
-## 1. Le plantage — à corriger en premier, c'est mécanique
+## 1. À faire maintenant : les sous-états 1 à 7
 
-```
-System.InvalidOperationException: FUN_005443a0 masks its descriptor to 24 bits,
-but this one is at 0x02D2C3B8. Allocate it with AllocLowZeroed.
+L'entrée dans l'écran est acquise ; ce qui manque, c'est ce qui vient **après** la validation d'un
+personnage. Voir §4.
 
-   at RunTextEngine                 Blaze.cs:8525
-   at CharacterSelectSubState0      Blaze.cs:7038
-   at InvokeCharacterSelectSubState Blaze.cs:6686
-   at RunCharacterSelectFrameLoop   Blaze.cs:6555
-```
-
-C'est un garde-fou que le projet avait **déjà** posé, et dans lequel je suis tombé de plein fouet.
-La liste d'affichage est adressée sur 24 bits (voir `CLAUDE.md`, section sur `DrawFlatPrimitive`) ;
-`AllocLowZeroed` existe précisément pour ça et alloue sous `0x01000000`.
-
-**À faire** : reprendre tous les blocs que j'ai alloués hier avec `NativeMemory.AllocZeroed` et qui
-finissent dans du code de liste d'affichage, et les passer à `AllocLowZeroed` :
-
-| symbole | pourquoi |
-|---|---|
-| `s_UiDescriptors_00560ff0` | passé à `RunTextEngine` — c'est celui qui plante |
-| `s_StatusDescriptor_00560728` | passé à `RunTextEngine` par la boucle de frame |
-| `s_Unknown_005606f8` | passé à `BindMenuLabels` |
-| `s_CharacterSlots_00578420` | son `+0x1c` part dans `DrawAnimatedModel` |
-| `s_SceneEntity_00572b48` | destination de la copie à la validation |
-| `s_CameraMatrix_006008e0` | recopié dans le registre MATRIX du GTE |
-| `s_ModelTable_005e96a0`, `s_AnimationTable_005e9640` | leurs entrées sont déréférencées par le rendu |
-| `s_SelectSubStateBytes_00562a98`, `s_CameraVector_00604928` | par cohérence, à vérifier au cas par cas |
-
-Attention : `AllocLowZeroed` prend une `uint` (une taille en octets), pas le couple
-`(count, size)` de `NativeMemory.AllocZeroed`. Et elle appelle `EnsureDisplayListArena()` en
-entrée — l'ordre d'initialisation des champs statiques compte, le commentaire de la fonction
-l'explique.
-
-**Ne pas** se contenter de corriger `s_UiDescriptors_00560ff0` pour faire taire l'exception : le
-garde-fou n'existe que sur `RunTextEngine`, les autres blocs corrompraient silencieusement.
+Si l'image paraît fausse plutôt qu'absente, les deux réserves connues sur `DrawAnimatedModel` sont
+en §3.
 
 ---
 
-## 2. Vérifier que quelque chose se dessine vraiment
+## 2. Ce qui a été corrigé (pour mémoire)
 
-Observation à creuser dans la trace : les compteurs du shim se figent une fois l'état 4 entré.
+**Ordinal 795 était déclaré avec deux arguments et en prend trois.** C'était le plantage suivant,
+une violation d'accès native (`0xC0000005`) au premier modèle dessiné par le carrousel :
+`FUN_00a226c0(vertices, outScreenXy, count)`. En cdecl, l'argument manquant se lit sur la pile de
+l'appelant et la DLL écrit à travers. Le détail — dont pourquoi le pseudo-C se lit comme une
+fonction à deux arguments si on rate l'échange dans son chemin scalaire — est dans
+`Documentation/DLL/winsys3d.md`.
 
-```
-[SHIM] bilan : ... BeginScene=361 EndScene=360 DrawPrimitive=34545
-[SHIM] bilan : ... BeginScene=421 EndScene=420 DrawPrimitive=34545
-```
+C'est la **troisième** fois que la récupération de paramètres de Ghidra est fausse sur un appel de
+cet écran (`FUN_0052a1e0` et `FUN_0052a280` étaient les deux autres). Règle à retenir : *une faute
+native dans un appel winsys3d est une question d'arité avant d'être autre chose.*
 
-`DrawPrimitive` n'augmente plus alors que les frames continuent. Deux lectures possibles, à
-départager :
+**Les descripteurs d'interface sont alloués bas.** Le plantage `FUN_005443a0 masks its descriptor
+to 24 bits` n'était que le symptôme visible : un descripteur **porte sa propre ordering table à
++0xa4**, que `ClearOTagR` remplit de liens masqués à `0xffffff`. Trois symboles convertis à
+`AllocLowZeroed`, en propriétés paresseuses et réclamés d'avance dans
+`TryPrepareDisplayListArena` : `s_UiDescriptors_00560ff0`, `s_StatusDescriptor_00560728`,
+`s_SelectSlots_00573518`.
 
-- les primitives sont émises mais dans un emplacement d'OT que `DrawOTag` ne parcourt pas ;
-- rien n'est émis du tout — par exemple parce que `*glowR > 0xff` n'est vrai pour aucun
-  emplacement, ou parce que le budget `DAT_005e9818` est déjà épuisé quand on arrive là.
+Six des neuf symboles listés hier soir **n'en avaient pas besoin** — le détail est dans
+`REVERSE_STATUS.md`, entrée du 2026-08-15. La règle utile : « est-ce une structure `0x8c8` qui
+traverse `FUN_005443a0` / `FUN_00545340` ? », pas « est-ce proche du code de liste d'affichage ? ».
 
-Le plus rapide : poser une trace temporaire comptant les appels à `DrawAnimatedModel`, les
-primitives émises par `EmitModelQuads` et la valeur de `s_Unknown_005e9818` en fin de frame. Le
-projet a déjà l'idiome (`OPENFORESIA_TRACE_MENU`), s'en inspirer et **retirer l'échafaudage après**.
+**`BuildUiDescriptors` n'écrivait que 8 de ses 26 dwords.** Il manquait `f8` (mot de fonction
+« texte ») et `f16` (« cadre ») ; tous les tests de `DrawUiPanel` étant `champ & 0x1000000`, le
+panneau se serait dessiné vide juste après avoir corrigé le plantage. `BuildStatusDescriptor`
+avait le même trou d'un dword (`f25`). Les quatre instances sont relues du binaire et **diffées
+mécaniquement** contre `od` : 78/78 et 26/26 identiques. Table complète dans
+`Documentation/DataSymbols.md`.
+
+**Le gel de `DrawPrimitive` n'était pas un défaut.** `ShimReport` sort toutes les 60 images, et la
+boucle mourait à la **première** frame du sous-état 0 : les soixante images muettes étaient celles
+du chargement, pas du rendu. Re-mesuré depuis : ~382 primitives par image, régulier. Aucune trace
+sur `EmitModelQuads` n'a été nécessaire.
 
 ---
 
@@ -102,20 +89,20 @@ projet a déjà l'idiome (`OPENFORESIA_TRACE_MENU`), s'en inspirer et **retirer 
 
 ---
 
-## 4. Ensuite seulement : le reste de l'écran
-
-Une fois quelque chose de visible à l'écran :
+## 4. Ensuite : le reste de l'écran
 
 - **`FUN_00520ae0`** + le bloc de globales `0x00572b40` — c'est tout ce qui manque au bloc
   « en scène » de la boucle de frame (sous-états 1 à 6).
 - **Les sept autres sous-états** (1 à 7). Tous décompilés, dans `Legacy/Raw/Blaze/FUN_*.c`.
   `InvokeCharacterSelectSubState` lève une exception qui nomme le fichier exact.
+  Attention : dès qu'un d'eux passe une structure de `DAT_00573518` au moteur de texte, elle est
+  déjà allouée bas — c'était le but de la conversion préventive.
 - **`FUN_005066c0`** — pointeur de code trouvé dans `DAT_005606f8`, absent de `Blaze.c`. S'il est
   appelé, ça se verra ; il faudra alors un re-run Ghidra ciblé de plus.
 
 ---
 
-## Rappels d'outillage (ils ont coûté du temps hier)
+## Rappels d'outillage (ils ont coûté du temps)
 
 **Lancer le jeu.** `dotnet run --project OpenForesia` **ne marche pas** depuis le shell : l'app est
 en x86 et le SDK sur le PATH n'a que le runtime x64. Lancer l'exe directement, il trouve le
@@ -125,8 +112,36 @@ runtime x86 (9.0.8) de `C:\Program Files (x86)\dotnet` :
 OpenForesia/bin/Debug/net9.0/OpenForesia.exe
 ```
 
-Même cause pour `OpenForesia.Tools`, qui ne tourne pas du tout. Palliatif écrit hier :
+Même cause pour `OpenForesia.Tools`, qui ne tourne pas du tout. Palliatif :
 `OpenForesia.Tools/exports.ps1`, un parseur de table d'exports PE en PowerShell.
+
+**Piloter le menu depuis un script** (pour atteindre l'état 4 sans les mains). Ça a coûté six
+essais, voici ce qui marche :
+
+- Le clavier passe par **DirectInput**, donc `SendKeys` (messages de fenêtre) est invisible.
+  `SendInput` avec `KEYEVENTF_SCANCODE` fonctionne.
+- Les liaisons vivantes sont les **flèches** (`DIK_DOWN` = `0xd0`, scancode `0x50` étendu) et
+  `DIK_RETURN` (`0x1c`). La moitié pavé numérique de la table par défaut ne répond pas :
+  `OpenForesia.cfg` la remplace.
+- Le menu tourne à ~6 images/s et sonde une fois par image. Un appui de moins de ~200 ms tombe
+  entre deux sondages ; un appui de plus de ~450 ms se répète et le curseur s'emballe. **Le premier
+  appui après `SetForegroundWindow` est toujours avalé.**
+- Chronométrer l'appui est donc sans issue. Ce qui marche est la **boucle fermée** : lancer avec
+  `OPENFORESIA_TRACE_MENU=1`, taper, puis relire `+0x8C4:xx->yy` dans le stderr redirigé (ouvert en
+  `FileShare.ReadWrite`, le jeu le tient encore) et retaper jusqu'à la bonne entrée. L'entrée 1 est
+  « Sélection des personnages ».
+- `CurrentPadWord()` continue de rendre le dernier mot non nul après relâchement : la valeur `pad=`
+  de la trace n'est **pas** un indicateur fiable de « touche tenue ». Ce sont les transitions
+  `+0x8C4` qui font foi.
+
+**Lire le binaire sans outil.** `od -A x -t x4 -j <offset> -N <taille> Legacy/Blaze.exe` suffit pour
+relever une table de `.data`, et se diffe contre les constantes du source. C'est ce qui a établi
+les 26 dwords ce matin.
+
+**Éditer `Blaze.cs` depuis bash.** Le fichier est en UTF-8 avec BOM. Les heredocs de ce shell
+n'honorent pas toujours le délimiteur quoté : les backticks y sont évalués et les `\xNN` d'un
+heredoc simple-quoté ne le sont pas. Passer par un fichier temporaire écrit directement, ou par
+l'outil d'édition, plutôt que par `cat <<EOF`.
 
 **Re-run Ghidra.** Les scripts `.py` de `~/ghidra_scripts` sont morts (Ghidra 12 rétrograde Jython
 en extension non installée). Utiliser `~/ghidra_scripts/ForceDecompileCharacterSelect.java`,
@@ -148,17 +163,19 @@ décompiler. Ne pas inverser : sans la passe d'analyse, les corps sortent tronqu
 passer.
 
 **Quand le pseudo-C fait de l'arithmétique de pointeur, aller voir l'assembleur.** Deux pièges
-évités hier de cette manière : le seuil de profondeur (`-0x50` sur un `uint*` = `-0x140` octets) et
+évités de cette manière : le seuil de profondeur (`-0x50` sur un `uint*` = `-0x140` octets) et
 le pas des manettes (`* 4` dans le pseudo-C, `SHL 4` dans le listing).
 
 ---
 
 ## Contexte accumulé
 
-Tout le détail est dans `OpenForesia/src/Blaze/REVERSE_STATUS.md`, sections datées du 2026-08-14 —
-la carte du banc de registres GTE, la structure de `FUN_0051d1f0`, les signatures reconstruites
-depuis l'assembleur. `Documentation/DLL/winsys3d.md` a les familles libgpu / libgte / registres GTE.
-`Documentation/DataSymbols.md` a les tables relevées dans le binaire.
+Tout le détail est dans `OpenForesia/src/Blaze/REVERSE_STATUS.md`, sections datées des 2026-08-14
+et 2026-08-15 — la carte du banc de registres GTE, la structure de `FUN_0051d1f0`, les signatures
+reconstruites depuis l'assembleur, et l'analyse des deux défauts corrigés ce matin.
+`Documentation/DLL/winsys3d.md` a les familles libgpu / libgte / registres GTE.
+`Documentation/DataSymbols.md` a les tables relevées dans le binaire, dont les 26 dwords du
+descripteur d'interface.
 
 Change OpenSpec close et validée : `openspec/changes/finalize-character-select-loading/`.
 Le travail depuis n'est pas couvert par une change — à décider s'il en faut une.
