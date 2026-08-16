@@ -7438,6 +7438,18 @@ public static unsafe partial class Blaze
     // n'écrit les octets 0..0xb, ils restent à zéro comme au chargement, et la copie s'arrête donc
     // immédiatement. TODO(REVERSE) : rôle exact des douze premiers octets — peut-être un préfixe
     // posé par une fonction non reconstruite. Transcrit tel quel plutôt que corrigé.
+    //
+    // 2026-08-16 : les octets bruts au chargement (lus directement dans Legacy/Blaze.exe, décalage
+    // fichier 0x165bc0) NE sont PAS zéro — ce sont sept dwords qui ressemblent à une table de
+    // pointeurs (0x568498, 0, 0x568488, 0x568478... espacés de 0x10) suivis d'un 1 :
+    // 98 84 56 00 00 00 00 00 88 84 56 00 78 84 56 00 68 84 56 00 58 84 56 00 48 84 56 00 01 00 00 00.
+    // Délibérément PAS utilisé comme correctif : `DAT_00566bc0` n'apparaît nulle part ailleurs dans
+    // les 98 000 lignes de Blaze.c, donc rien ne prouve que ces octets d'état de CHARGEMENT sont
+    // encore ceux présents à l'exécution une fois qu'on atteint ce point (la forme « table de
+    // pointeurs » suggère plutôt une globale sans rapport, logée juste avant en mémoire, dont le
+    // vrai contenu à ce moment dépendrait de code non reconstruit). L'utiliser tel quel donnerait
+    // une fausse impression de correction plutôt qu'une vraie. Rester à zéro en attendant de trouver
+    // le vrai site d'écriture.
     private static readonly byte* s_CharCodeScratch_00566bc0 = (byte*)NativeMemory.AllocZeroed(32);
 
     /// <summary>
@@ -9092,7 +9104,15 @@ public static unsafe partial class Blaze
             case 0x12:
                 if ((dialogGate & 4) == 0)
                 {
-                    if (confirmGate == 0)
+                    // ECHAFAUDAGE TEMPORAIRE : OPENFORESIA_FORCE_CARD_CONFIRM=1 traite confirmGate
+                    // comme non nul rien qu'ici, sans toucher au drapeau global
+                    // s_Unknown_005e909f (lu par de nombreux autres sous-états) — sa vraie source
+                    // (un système de boîte de dialogue modale « OK » générique, déjà signalé
+                    // TODO.md §1 pour l'écran de confirmation des stats) n'a été trouvée nulle
+                    // part dans les 98 000 lignes de Blaze.c ; voir REVERSE_STATUS.md.
+                    bool confirmed = confirmGate != 0
+                        || Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_CARD_CONFIRM") == "1";
+                    if (!confirmed)
                     {
                         s_SelectState_00578de8[0] = 0;
                         s_SelectState_00578de8[2] = 0;

@@ -3301,3 +3301,190 @@ descriptor probes, the hex-dump and path/handle/result traces) has been removed;
 
 Cases 4, 0xd, 0x10, -5, -3/-2 remain behind `ThrowSaveCardUnresolved`, each smaller than case 6 but
 each with its own sequence to read.
+
+## 2026-08-16 — traced "stuck after saving" to the missing modal-confirm subsystem; reached a real new boundary (game state 1)
+
+User reported the game stays stuck right after a save completes, and asked whether the save
+filename is coherent with the character name. Both led somewhere useful.
+
+### The filename is not the typed name — it's a 7-character stat-derived code, and that part is correct
+
+`SetCardFileName`'s source (`s_SelectScratch_00573338+0x1fd0`) is populated by `WriteCharacterCode`
+(Ghidra: the tail of `FUN_005098f0`, `case 0x5d`/`FinalizeCharacterStats`'s finalization path,
+`Legacy/Raw/Blaze/FUN_005098f0.c:277-340`), **not** by whatever the player typed at the name-entry
+screen. It's a checksum-style fold over the character's stats/class/element/style (`+= value; *= 2`
+accumulator, then 5 bits at a time into 7 chars in `['@'..'_']`-ish range, `\` mapped to `'7'`),
+written into `s_CharCodeScratch_00566bc0+0xc..+0x13`. Confirmed byte-identical control flow against
+the raw decompile. So: two characters with identical stats/class/element/style **would** collide on
+the same save file (a variant of LB-002, arguably less likely in practice than a name collision
+since it also requires an identical build) — noted, not fixed, matches original.
+
+**A real, still-open gap found while checking this**: `WriteCharacterCode` copies from
+`s_CharCodeScratch_00566bc0[0]`, not `[0xc]` — matching the raw decompile exactly
+(`cVar3 = *pcRam00566bc0;`, not `pcRam00566bc0+0xc`). Since nothing anywhere in the 98k-line
+`Blaze.c` writes bytes `0..0xb` of this buffer, and our port zero-initializes it, the copy loop
+exits immediately on the leading zero, before ever reaching the real 7-char code — the effective
+filename is currently always empty in this port. Read the real on-disk bytes at that address
+directly from `Legacy/Blaze.exe` (file offset `0x165bc0`) to check whether they'd fix it: they're
+**not zero** — `98 84 56 00 00 00 00 00 88 84 56 00 78 84 56 00 68 84 56 00 58 84 56 00 48 84 56 00
+01 00 00 00`, a shape that reads as seven dwords `0x568498, 0, 0x568488, 0x568478, 0x568468,
+0x568458, 0x568448` (spaced `0x10` apart — pointer-table-shaped) plus a trailing `1`. **Deliberately
+not used as a fix**: `DAT_00566bc0` appears nowhere else in `Blaze.c`, so nothing confirms this
+load-time snapshot is still what's there once gameplay actually reaches this code — the
+pointer-table shape suggests an unrelated global sitting next-door in memory, whose real runtime
+content at this point would come from code we haven't found. Using the disk bytes anyway would just
+trade a known-wrong answer for a plausible-looking wrong one. Left at zero; documented in the field's
+comment in `Blaze.cs` for whoever finds the real writer next.
+
+### The actual "stuck" — a cross-cutting missing subsystem, not a save bug
+
+Traced `case 0x12` of `StepSubState7Phase` (right after the one-frame `case 0x11` success message —
+confirmed that one auto-advances every frame via the shared `pendingLabel != null` → phase-increment
+tail, so it is *not* the stuck point). `case 0x12` waits for `confirmGate`
+(`s_Unknown_005e909f`) to go nonzero before setting `s_GameStateId = 1` (leave character-select for
+real gameplay). Searched all of `Blaze.c` for writes to `DAT_005e909f`: **every single one sets it
+to 0**; nothing anywhere sets it nonzero. Same for `DAT_00560fef` (`dialogGate`) — checked in
+`FUN_0050a910`'s own raw decompile, only ever bit-cleared, never bit-set, and the symbol doesn't
+even appear in the normal `Blaze.c` pass at all (raw-redecompile-only symbol). This is the *exact*
+same root cause already flagged in `TODO.md` §1 for the stat-allocation confirm screen
+(`OPENFORESIA_FORCE_CONFIRM_STATS`'s reason for existing) — a generic modal "OK dialog" subsystem
+that sets these two flags from real input is used all over the game (`s_Unknown_005e909f` alone has
+~10 read sites across unrelated substates) and has not been located anywhere in the decompiled call
+graph. Likely candidate for the "Ghidra re-run" bucket (an address-taken-only function, matching
+`REVERSE_STATUS.md`'s systemic-blocker pattern) rather than something sitting unread in `Blaze.c`.
+
+**Added a scoped test hook** rather than inventing behavior: `OPENFORESIA_FORCE_CARD_CONFIRM=1`
+treats `confirmGate` as nonzero *only* inside this one `case 0x12` check, without touching the
+global `s_Unknown_005e909f` (which many unrelated substates also read — forcing it globally would
+have side effects well beyond this screen). Confirmed in game: with the hook set, the phase
+progresses past `0x12`, `s_GameStateId` becomes `1`, and the game throws a new, clean, precisely
+named exception — `RunGameStateTick` reaches `case 1` and throws
+`"thunk_FUN_00536180 (game state 1) not yet reconstructed"` (`Blaze.cs:15656`). Per
+`RunGameStateTick`'s own doc comment, every one of its eleven state handlers already has a
+decompiled body in `Blaze.c` — genuinely just not transcribed yet, not blocked on anything. This is
+real dungeon-crawling gameplay, a separate subsystem entirely from character-select/save, and a
+natural next call-graph target whenever that's the priority.
+
+Detail on the save-write investigation this same session: see the case 6 entry directly above.
+
+## 2026-08-16 — hunting the generic "OK dialog" subsystem: real ground covered, real dead end
+
+User asked to keep pursuing the missing modal-confirm subsystem (`OPENFORESIA_FORCE_CARD_CONFIRM`'s
+reason for existing), since it gates several screens at once, not just the save screen. This section
+is the full trail — worth reading before re-attempting any of it, so a future session doesn't
+re-walk the same dead ends.
+
+### Environment fix: the Ghidra project needed re-owning
+
+`D:\Open Foresia Project\Ghidra Project\Open Foresia` still had `OWNER="Sagara"` in
+`Open Foresia.rep\project.prp` (a plain XML property file, not analysis data) from the machine this
+project was created on. `analyzeHeadless.bat` refuses to open a project it doesn't own
+(`NotOwnerException`) even read-only. Fixed by editing that one attribute to `VALUE="Vincent"` — low
+risk (plaintext metadata, not the disassembly database), confirmed working immediately after.
+
+### Ghidra is runnable headless from this session, and a new re-run script now exists
+
+`C:\Users\Vincent\ghidra_scripts\ForceDecompileConfirmDialog.java` — not committed (matches the
+project convention that these scripts live outside the repo; only their source and recipe are
+preserved here), takes a list of target addresses, disassembles + creates a function at each,
+runs `analyzeChanges` so outgoing references resolve, decompiles, and writes `.c`/`.asm` to
+`Legacy/Raw/Blaze/`. Invocation matches `TODO.md` §5's existing recipe:
+
+```powershell
+$gh = "D:\Open Foresia Project\Tool\ghidra_12.1.2_PUBLIC\support\analyzeHeadless.bat"
+& $gh "D:\Open Foresia Project\Ghidra Project" "Open Foresia" -process "Blaze.exe" `
+      -noanalysis -readOnly -scriptPath "C:\Users\Vincent\ghidra_scripts" `
+      -postScript ForceDecompileConfirmDialog.java
+```
+
+### Finding `FUN_0053dd20`: the only real write to confirmGate anywhere in the binary
+
+Scanned the whole `.text` section (`0x401000`-`0x54c400`) for every instruction referencing
+`DAT_005e909f`'s address (35 total) and classified each by its preceding opcode bytes (read vs.
+write, and — for writes — the literal value). Exactly one writes a nonzero value:
+`C6 05 9F 90 5E 00 01` (`MOV byte ptr [0x5e909f],1`) at VA `0x53DE43`, sitting in a gap between two
+already-known functions (`FUN_0053dc30` ends well before it, `FUN_0053e0a0` starts at `0x53e0a0`) —
+never disassembled as code in the normal pass. Manually found the real function start at `0x53DD20`
+(a clean `PUSH EBX; MOV ECX,[...]; PUSH EBP; PUSH ESI; PUSH EDI` prologue) and force-decompiled it
+with the script above. Also found and decompiled its two siblings, `FUN_0053dea0`/`FUN_0053df20`,
+via a second raw-byte scan: the same three addresses (`0x53DD20`/`0x53DEA0`/`0x53DF20`) appear
+twice, 0x20 bytes apart, inside a much larger function-pointer table in `.data` at `0x553480`+
+(mostly filled with a shared default handler, `0x00401fa0`).
+
+**What the three actually do, and why none of them is the fix**: `FUN_0053dd20` scans up to 10
+records of `0x280` bytes starting at `MainMem+0xf0000+index*0x2000+0x300` (index 0 lands exactly on
+`s_SelectScratch_00573338+0x300`, the same icon-frame table `WriteCardSaveFile` compacts) for one
+matching, claims it, formats its name via `FUN_0051bd30`/`FUN_0051bcc0` (small, self-contained,
+not yet transcribed) into a label slot at `*(int*)(DAT_005e97cc+0x70)+4`, fills
+`s_Unknown_005e909a..e`, and only then sets confirmGate. `FUN_0053dea0`/`FUN_0053df20` are its two
+"entry mode" initializers (`DAT_005de548=0` or `1`), consumed by the huge `FUN_0053e0a0` — read in
+full and confirmed to be a genuine, pad-driven, unrelated menu handler (up/down navigation with
+`FUN_0053db60` sounds, item-slot browsing) that has nothing to do with character-select's own state
+fields (`s_CardPhase_00578e0c`/`s_SelectState_00578de8` never appear in it). Two independent reasons
+this cannot be the save-screen's mechanism even if wired in: **(1)** `DAT_005e97cc` — a *second*
+resource directory FUN_0053dd20 needs — is never initialized anywhere in this port (only referenced
+by real-gameplay code, ~11 call sites, likely populated by game-state-1 init,
+`thunk_FUN_00536180`, itself not reconstructed); calling through it today is a null-pointer crash,
+not a fix. **(2)** `RenderSaveScreen` already writes `s_Unknown_005e909a..e` unconditionally every
+frame with values derived from the current character, so anything `FUN_0053dd20` computed there
+would be overwritten immediately after. Concluded: real code, real understanding gained, but the
+wrong subsystem — a coincidental reuse of the same global byte, 1998-memory-economy style. Not
+called from anywhere in `Blaze.cs`.
+
+### Two exhaustive dead-end scans: neither confirmGate nor dialogGate has a real "set" site by literal address
+
+Repeated the same byte-scan-and-classify technique for `DAT_00560fef` (dialogGate): 63 occurrences
+in `.text`, every one either a read or the already-known `AND al,0xFD/0xFB/0xF9` mask-clear pattern
+(matches `case -4` and the dead `iRam00560fd4` branch, both already correctly transcribed). No
+occurrence sets a bit. Combined with confirmGate's own scan, this means: **searching for literal
+4-byte address references in `.text` — which covers direct/absolute addressing, `MOV reg,imm32`,
+and `LEA reg,[imm32]` alike — finds no code anywhere that arms either flag.**
+
+### The actual reason the literal scan was blind: both flags are struct fields, not just bare globals
+
+User's instinct (work from the raw machine code, not Ghidra's inferred C) pointed at the right
+question and immediately paid off. `DAT_00560fef` is exactly `0x560728 + 0x8c7`, and `0x560728` is
+`s_StatusDescriptor_00560728` — the descriptor already passed everywhere via `BindMenuLabels`. Once
+a compiler (or Ghidra) treats an access as `struct_base_register + 0x8c7` rather than a folded
+constant, the literal bytes `EF 0F 56 00` never appear in the instruction at all, so no amount of
+literal scanning can find it. This immediately explained a second thing: `FUN_00544350`
+(`BindMenuLabels`, already transcribed) itself contains a real, direct write —
+`*(byte*)(param_3+0x8c7) = *(byte*)(param_3+0x8c7) | 1;` — setting **bit 0** of dialogGate on every
+single label bind. Confirmed already present, correctly transcribed, in `BindMenuLabels`.
+
+### `DrawUiPanel` (`FUN_00545340`) has a real, pad-driven "confirm cursor" — and it's already wired to the right descriptor
+
+Re-read `DrawUiPanel`'s already-transcribed body (`Blaze.cs:12679`) end to end rather than skimming
+it, and found the "---- the confirm cursor ----" block (`Blaze.cs:12821-12832`, already commented
+as such): gated on `cursorFlags = descriptor[0x30]` having bit `0x1000000` set, it reads a **real
+pad-edge check** — `*(ushort*)(s_InputStateBase_00604a20 + buttons + 2) & 0x8000` — the genuine
+controller input table, not a stand-in — and on a real press clears **bit 1** of `descriptor[0x8c7]`
+(`&= 0xfd`) plus plays `PlayUiSound38()`. Bit 1 is exactly what `case 0x11`/`case 4` test
+(`bVar1 & 2`). Checked every call site of `FUN_00545340` in `Blaze.c`: one of them
+(`FUN_00506880`, line `55882`) calls it with `&DAT_00560728` — the real dialogGate descriptor —
+and `FUN_00506880` is `RunCharacterSelectFrameLoop`, already reconstructed. Confirmed the
+equivalent call is **already present and unconditional, every frame**, in our port
+(`Blaze.cs:6831`: `primCursor = DrawUiPanel(otBase, primCursor, s_StatusDescriptor_00560728);`).
+
+**The dead end**: the confirm-cursor branch only runs if `s_StatusDescriptor_00560728[0x30]` has bit
+`0x1000000` set, and nothing sets it. Read the real static bytes at that exact address
+(`Legacy/Blaze.exe`, VA `0x560758`) directly: `0x000F28D4` — bit 24 clear. Grepped both `Blaze.c`
+and every `Legacy/Raw/Blaze/*.c` for any write to `0x560758`: none. So even on its real,
+already-correctly-wired path, this specific descriptor's confirm cursor cannot currently activate —
+neither the code nor the static data arms it. Whatever *does* arm it in the original (almost
+certainly the same not-yet-located subsystem, or a sibling of `FUN_0053dd20`'s never-analyzed gap)
+remains unfound.
+
+### Where this leaves things
+
+The generic "OK dialog" subsystem is now understood in far more detail than before — confirmed to
+be a real, pad-driven, otherwise-fully-wired mechanism (`BindMenuLabels` arms bit 0, `DrawUiPanel`'s
+confirm cursor clears bit 1 on a real button edge, both already correctly transcribed and connected
+to the right descriptor) — but its *activation switch*
+(`s_StatusDescriptor_00560728+0x30`'s bit `0x1000000`) has no discoverable writer anywhere in
+`Blaze.c`, any existing `Legacy/Raw/Blaze/*.c`, or a from-scratch `.text` literal-address scan.
+`OPENFORESIA_FORCE_CARD_CONFIRM` remains the pragmatic way to test past `case 0x12`. A future
+attempt should assume the writer is in another Ghidra-unanalyzed gap (same shape as
+`FUN_0053dd20`'s), and would need either a live debugger (to catch the actual write at runtime) or a
+full (not `-noanalysis`) Ghidra re-analysis pass to have a chance of surfacing it — static
+literal-address scanning has now been tried twice and is exhausted for this specific question.

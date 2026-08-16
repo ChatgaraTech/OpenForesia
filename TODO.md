@@ -1,20 +1,44 @@
 # TODO
 
-Point d'entrée entre deux sessions. État au 2026-08-16, cinquième passe de la journée. Quatre passes
-précédentes (rendu complet du sous-état 7, régression du carrousel, cas 1 de la carte mémoire)
-**commitées par l'utilisateur**. Cette passe : cas 6 de la sous-couche carte mémoire (écriture du
-fichier de sauvegarde) transcrit, débogué et **confirmé en jeu** — un vrai fichier de 24576 octets,
-correctement structuré et sommé, est produit dans `save\`. Le build est vert. Détail complet en §2bis.
+Point d'entrée entre deux sessions. État au 2026-08-16, sixième passe de la journée. Cinq passes
+précédentes (rendu complet du sous-état 7, régression du carrousel, cas 1 et 6 de la carte mémoire)
+**commitées par l'utilisateur**. Cette passe : diagnostiqué le blocage juste après une sauvegarde
+réussie — **pas un bug de sauvegarde**, mais le même sous-système transversal manquant déjà signalé
+§1 (la boîte de dialogue modale « OK » générique qui pose `confirmGate`/`dialogGate`, introuvable
+dans les 98 000 lignes de `Blaze.c`). Ajouté un échafaudage de test scoped
+(`OPENFORESIA_FORCE_CARD_CONFIRM`), confirmé que la chaîne complète va maintenant jusqu'à une
+**toute nouvelle limite propre** : `RunGameStateTick`, état de jeu 1 (le vrai jeu, donjon), pas
+encore transcrit (`thunk_FUN_00536180`). Aussi clarifié : le nom du fichier de sauvegarde n'est PAS
+le nom tapé par le joueur, c'est un code à 7 caractères dérivé des stats/classe/élément/style —
+confirmé correct, mais avec un TODO(REVERSE) existant toujours ouvert (préfixe de 12 octets jamais
+peuplé). Détail complet en §2bis. Le build est vert.
+
+**Chasse approfondie à la boîte de dialogue générique cette même passe** — repartie du binaire brut
+plutôt que du C déduit par Ghidra, sur suggestion de l'utilisateur. Corrigé un souci d'environnement
+(le projet Ghidra appartenait encore à `Sagara`, l'ancienne machine — `project.prp` corrigé),
+relancé Ghidra en headless, trouvé et décompilé `FUN_0053dd20`/`dea0`/`df20` (jamais vues avant,
+seule vraie écriture de `confirmGate` dans tout `.text`) — écartées comme non pertinentes ici (sous-
+système sans rapport, dépendance jamais initialisée, effets écrasés par le rendu). Deux scans
+exhaustifs de `.text` (confirmGate et dialogGate) ne trouvent aucune pose par adresse littérale.
+**Percée méthodologique** : les deux drapeaux sont en fait des champs de structure
+(`s_StatusDescriptor_00560728 + 0x8c7`), invisibles à toute recherche par adresse littérale —
+`BindMenuLabels` pose déjà réellement le bit 0, et `DrawUiPanel` contient un vrai « curseur de
+confirmation » piloté par un vrai bouton manette qui efface le bit 1, déjà câblé sur le bon
+descripteur chaque image. Seul l'interrupteur d'activation (`+0x30`, bit `0x1000000`) reste
+introuvable — ni en code, ni dans les données statiques réelles du binaire. Détail complet :
+`REVERSE_STATUS.md`, section « 2026-08-16 — hunting the generic "OK dialog" subsystem: real ground
+covered, real dead end ».
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée. Consigné en mémoire
 pour ne plus le proposer.
 
-Non commité à ce stade : `TODO.md`, `REVERSE_STATUS.md`, et les changements dans `Blaze.cs` (en plus
-du cas 1 déjà listé la passe précédente : `WriteCardSaveFile` — le corps complet du cas 6 —,
-`NameEncodeChar` + ses trois tables Shift-JIS, le correctif de `SetCardPathDeviceFields` — copie des
-octets littéraux du chemin plutôt que des pointeurs, trouvé par désassemblage direct de
-`FUN_005128e0` —, et le déplacement de l'échafaudage `OPENFORESIA_FORCE_CARD_NAME` du cas 6 vers le
-cas 1 pour que les deux phases voient le même nom).
+Non commité à ce stade : `TODO.md`, `REVERSE_STATUS.md`, `legacy-bug.md`, `test-protocol.md`,
+`OpenForesia.Tools/playtest.ps1` (nouveau paramètre `-WorkingDir`), `OpenForesia/save/.gitkeep`
+(nouveau dossier suivi par git — le jeu original ne crée jamais `save\` lui-même), et les
+changements dans `Blaze.cs` (en plus du cas 1/6 déjà listés : le hook
+`OPENFORESIA_FORCE_CARD_CONFIRM` dans `case 0x12`, le commentaire enrichi sur
+`s_CharCodeScratch_00566bc0` avec les vrais octets lus dans `Legacy/Blaze.exe`, l'échafaudage
+`OPENFORESIA_FORCE_CARD_NAME` déplacé du cas 6 vers le cas 1).
 
 ---
 
@@ -216,13 +240,38 @@ Détail complet : `REVERSE_STATUS.md`, sections « 2026-08-16 — the memory-car
 hardware, just Win32 file I/O — case 1 done » et « 2026-08-16 — case 6 (save write): transcribed,
 and a real end-to-end save file confirmed on disk ».
 
+### Après la sauvegarde : pas un bug, la boîte de dialogue « OK » générique manque
+
+`case 0x12` de `StepSubState7Phase` (juste après le message de succès, `case 0x11`, qui lui avance
+tout seul chaque image) attend que `confirmGate` (`DAT_005e909f`) devienne non-nul avant de faire
+passer le jeu en état de jeu réel (`s_GameStateId = 1`). Recherché **toutes** les écritures de
+`DAT_005e909f`/`DAT_00560fef` (`dialogGate`) dans `Blaze.c` : aucune ne pose jamais ces drapeaux à
+une valeur non nulle — seulement des remises à zéro. Même cause racine que le hook
+`OPENFORESIA_FORCE_CONFIRM_STATS` du §1 (boîte de dialogue modale « OK » générique, utilisée par une
+dizaine d'écrans sans rapport, jamais localisée dans le graphe reconstruit — probable candidat pour
+un re-run Ghidra, §5).
+
+Ajouté `OPENFORESIA_FORCE_CARD_CONFIRM=1`, scopé à ce seul `case 0x12` (ne touche pas le drapeau
+global, lu ailleurs par des écrans sans rapport). Confirmé en jeu : la chaîne va maintenant jusqu'à
+une **toute nouvelle limite**, propre : `RunGameStateTick` (`Blaze.cs:15642`), état de jeu 1, lève
+`"thunk_FUN_00536180 (game state 1) not yet reconstructed"`. D'après le commentaire de
+`RunGameStateTick` lui-même, ses onze gestionnaires d'état ont tous un corps décompilé dans
+`Blaze.c` — c'est juste pas encore transcrit, pas bloqué. C'est le vrai jeu (donjon), un sous-système
+séparé de la sélection/sauvegarde de personnage.
+
+Détail complet : `REVERSE_STATUS.md`, section « 2026-08-16 — traced "stuck after saving" to the
+missing modal-confirm subsystem; reached a real new boundary (game state 1) ».
+
 ---
 
 ## 3. La suite
 
 | sous-état / fonction | note |
 |---|---|
+| `RunGameStateTick`, état de jeu 1 (`thunk_FUN_00536180`) | **nouvelle limite** — le vrai jeu (donjon), corps décompilé dispo dans `Blaze.c`, gros morceau séparé de la sélection de personnage |
+| L'interrupteur d'activation du curseur de confirmation (`s_StatusDescriptor_00560728+0x30`, bit `0x1000000`) | racine commune du hook `OPENFORESIA_FORCE_CONFIRM_STATS` (§1) et du nouveau `OPENFORESIA_FORCE_CARD_CONFIRM` (§2) ; mécanisme lui-même compris et déjà câblé (`BindMenuLabels`/`DrawUiPanel`), seul le poseur du bit reste introuvable statiquement — besoin d'un debugger ou d'une analyse Ghidra complète, voir `REVERSE_STATUS.md` |
 | Cas 4, 0xd, 0x10, -5, -3/-2 de la carte mémoire (§2bis) | plus petits que le cas 6 mais chacun sa propre séquence |
+| Préfixe de 12 octets de `s_CharCodeScratch_00566bc0` (§2bis) | vrai TODO(REVERSE) ouvert — les octets au chargement dans `Legacy/Blaze.exe` ressemblent à une table de pointeurs sans rapport, pas de quoi trancher |
 | Sous-état 2 (`FUN_00508410`, 146 lignes) | retour arrière depuis le 3, pas urgent |
 | Mappage clavier → `pad+2` (§1) | seulement si on veut se passer d'`OPENFORESIA_FORCE_CONFIRM_STATS` |
 | Recapturer carrousel des éléments / tirage du bonus | carrousel des personnages déjà confirmé **visuellement** (382,3, portraits inclus) ; les deux autres écrans à entités multiples n'ont été ni recapturés ni revérifiés — un chiffre qui colle ne suffit pas, voir la mésaventure de la séance précédente |
