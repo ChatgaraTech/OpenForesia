@@ -1,30 +1,21 @@
 # TODO
 
-Point d'entrée entre deux sessions. État au 2026-08-16, fin de séance (troisième passe de la
-journée) : **le rendu complet de l'écran de sauvegarde (sous-état 7) est terminé.** `FUN_0051be90`
-n'avait pas besoin d'un re-run Ghidra — elle était déjà décompilée, juste ratée par une recherche
-antérieure. Le seul blocage restant sur cet écran est la sous-couche carte mémoire, un sous-système
-volontairement hors scope depuis le début. Le build est vert.
+Point d'entrée entre deux sessions. État au 2026-08-16, quatrième passe de la journée. Trois passes
+précédentes (rendu complet du sous-état 7, régression du carrousel) **commitées par l'utilisateur**.
+Cette passe : début de la sous-couche carte mémoire — **ce n'est pas une émulation de carte PS1,
+juste des fichiers Win32 ordinaires dans un dossier `save\`**. Le cas 1 (ouverture pour charger) est
+transcrit et confirmé en jeu ; le cas 6 (écriture, gros morceau — en-tête + icône VRAM + somme de
+contrôle) reste à faire. Le build est vert. Détail complet en §2bis.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée. Consigné en mémoire
 pour ne plus le proposer.
 
-**Régression du carrousel corrigée — deux bugs distincts, pas un.** Premier tour faux (noté
-« comportement normal » par erreur). Deuxième tour, avec les chiffres de primitives à l'appui,
-toujours incomplet : `s_Unknown_00564a4c` (garde de réentrance, stable à `1` dans `Blaze.c`, restée
-à `0` dans ce port) corrigée, débit revenu à la référence historique — mais **l'utilisateur a
-fourni une capture du jeu original** montrant que les portraits des 15 autres personnages
-manquaient toujours, preuve qu'un chiffre qui « colle » ne suffit pas à valider un rendu. Creusé
-jusqu'à trouver un **second** bug, indépendant : `DrawSpritePrimitive`/`DrawFlatPrimitive`
-utilisaient `s_SmallTextureFlag` (réglage ini, `0` par défaut) au lieu de `s_Unknown_00564a4c` —
-confirmé contre `Blaze.c:69625-69638`/`68565-68569`. Corrigé ; les portraits s'affichent maintenant,
-capture contre capture. Détail complet en §2.
-
-Non commité à ce stade : `TODO.md`, `REVERSE_STATUS.md`, et les changements dans `Blaze.cs`
-(`Handler_005449b0`, `Handler_00544810`, `s_CdCheckFileSize_0056321c`, `cdCheckPath` rempli, fusion
-`s_Unknown_00564a48`→`s_DeviceCapFlag_00564a48`, `s_Unknown_00564a4c` initialisé à `1`,
-`EmitCardGlyphTile` transcrite, `s_NumeralTileRecord_00566c30`, correctif
-`s_SmallTextureFlag`→`s_Unknown_00564a4c` dans `DrawSpritePrimitive`/`DrawFlatPrimitive`).
+Non commité à ce stade : `TODO.md`, `REVERSE_STATUS.md`, et les changements dans `Blaze.cs` (dix
+P/Invoke `Ordinal_9/21/22/23/24/25/67/68/69/72`, `SetCardPathDeviceFields`/`SetCardFileName`/
+`ResetCardTransferStatus`/`ResetCardReadEvents`/`ResetCardWriteEvents`/`PollCardWriteStatus`/
+`PollCardReadStatus`/`PollCardTransfer`/`RetryOpenCardFile`/`RetryCloseCardFile`/`CardSlotSelector`,
+nouveau champ `s_CardSlotIndex_00604980` + correctif du case 0 qui écrivait dans le mauvais champ,
+case 1 de `StepSubState7Phase` transcrit, sondage de transfert en tête de fonction transcrit).
 
 ---
 
@@ -153,10 +144,8 @@ image tombe systématiquement sur `case 1` de la sous-couche carte mémoire
 (`ThrowSaveCardUnresolved`), le même point d'arrêt documenté depuis la toute première séance sur ce
 sous-état, jamais dans le rendu lui-même.
 
-La sous-couche carte mémoire (`Ordinal_9/21/22/23/24/25/67/68/69/72/684`, encapsulés dans
-`FUN_00504690/6c0/730/770/7e0/820`, `FUN_00504b40/70/90/c20`, `FUN_00512900`, `FUN_005128e0`) reste
-volontairement non lue — un sous-système à part pour une séance dédiée. Un seul point d'arrêt
-(`ThrowSaveCardUnresolved`) couvre tous les cas qui la touchent.
+La sous-couche carte mémoire a commencé à être lue cette séance — voir §2bis. Un seul point d'arrêt
+(`ThrowSaveCardUnresolved`) couvre encore tous les cas non traités.
 
 Détail complet : `REVERSE_STATUS.md`, sections « 2026-08-15 — `FUN_0050a910`: sub-state 7, the
 memory-card save screen », « 2026-08-16 — control codes `0x04` and `0x01`... », « 2026-08-16 — same
@@ -165,14 +154,60 @@ pass: `FUN_0051be90` needed no Ghidra re-run at all... ».
 
 ---
 
+## 2bis. La sous-couche carte mémoire — pas une émulation PS1, des fichiers Win32 ordinaires
+
+**Ce n'est pas ce que son nom laisse penser.** `winsys3d.c` (ordinaux 9/21/22/23/24/25/67/68/69/72)
+montre de simples wrappers `CreateFileA`/`CloseHandle`/`SetFilePointer`/`ReadFile`/`WriteFile` sur
+un dossier **`save\`** — le port PC n'émule aucune vraie carte mémoire. Le gabarit de chemin
+(`DAT_00563158`) relu directement dans `Legacy/Blaze.exe` (décalage `0x161758`) : deux chaînes,
+`"save\"` et `"Blaze-Saving*"`.
+
+**Un vrai piège d'arité, attrapé avant d'écrire le P/Invoke plutôt qu'après un plantage natif** :
+les ordinaux 67/68/69/72 partagent tous un seul corps que Ghidra décompile en `(void)`, alors que
+chaque site d'appel lui passe un argument. Lu les octets bruts directement dans `winsys3d.dll`
+(`OpenForesia.Tools -- at winsys3d.dll <va>`) avant de faire confiance à Ghidra : les quatre font
+`RET 4` — un vrai paramètre stdcall, juste ignoré par le corps. Confirmé aussi : 67/68/69 rendent
+toujours 1, et 72 (le talon partagé par ~50 ordinaux) rend toujours 0 — ce qui dégénère tout le
+mécanisme de statut de transfert asynchrone en « toujours prêt », puisque rien dans ce port ne crée
+le worker asynchrone qui l'utiliserait pour de vrai (`FUN_00a04320`/`4390` dans `winsys3d.c`,
+jamais appelées).
+
+**Un vrai bug préexistant trouvé en câblant le cas 1** : le case 0 (déjà transcrit, déjà commité)
+écrivait dans `s_CardCursorSlot_00604984`, mais la source brute écrit dans `_DAT_00604980` — une
+adresse **différente** (4 octets plus tôt), confirmé en comparant au `.c` forcé
+(`Legacy/Raw/Blaze/FUN_0050a910.c:131-133`). Le cas 1 a besoin de la vraie valeur de `DAT_00604980`
+pendant que `DAT_00604984` est remise à zéro juste avant — les deux champs ne pouvaient pas être le
+même. Corrigé : nouveau champ `s_CardSlotIndex_00604980`, case 0 repointé dessus,
+`s_CardCursorSlot_00604984` inchangée ailleurs.
+
+**Cas 1 (ouverture pour charger) transcrit et confirmé en jeu.** `OPENFORESIA_FORCE_SUBSTATE=7` +
+un `ENTER` : plus de plantage sur le cas 1 — il détecte correctement qu'aucune sauvegarde n'existe
+encore (dossier `save\` vide dans ce port) et bascule proprement vers le cas 6, pas encore
+implémenté. C'est le blocage suivant, réel, atteint par le vrai dispatcher plutôt que par un ancien
+point d'arrêt générique.
+
+**Reste à faire** : cas 6 (écriture — en-tête `"SC"`, nom, titre converti en Shift-JIS, nom de
+classe, **icône de sauvegarde capturée depuis la VRAM** via `func_0x00545ac4`/`abe`
+(vraisemblablement Ordinal_684, `FUN_00a05f50`, déjà lue et confirmée comme une copie rectangulaire
+VRAM→mémoire, pas de l'E/S fichier), somme de contrôle sur `0x1ffc` octets, puis quatre
+`FUN_00504c20` seek+écriture+vérif) — un morceau nettement plus gros que le cas 1, volontairement
+pas commencé cette passe. Cas 4, 0xd, 0x10, -5, -3/-2 restent aussi derrière
+`ThrowSaveCardUnresolved`, chacun plus petit que le cas 6 mais avec sa propre séquence à lire.
+
+Détail complet : `REVERSE_STATUS.md`, section « 2026-08-16 — the memory-card subsystem: not PS1
+hardware, just Win32 file I/O — case 1 done ».
+
+---
+
 ## 3. La suite
 
 | sous-état / fonction | note |
 |---|---|
-| Sous-couche carte mémoire (§2) | **seul blocage restant du sous-état 7** ; grosse pièce à part, séance dédiée |
+| Cas 6 de la carte mémoire (§2bis) | le morceau le plus gros restant sur cet écran — en-tête + icône VRAM + somme de contrôle + écriture |
+| Cas 4, 0xd, 0x10, -5, -3/-2 de la carte mémoire (§2bis) | plus petits que le cas 6 mais chacun sa propre séquence |
 | Sous-état 2 (`FUN_00508410`, 146 lignes) | retour arrière depuis le 3, pas urgent |
 | Mappage clavier → `pad+2` (§1) | seulement si on veut se passer d'`OPENFORESIA_FORCE_CONFIRM_STATS` |
-| Recapturer carrousel des éléments / tirage du bonus | carrousel des personnages déjà confirmé **visuellement** (382,3, portraits inclus) ; les deux autres écrans à entités multiples n'ont été ni recapturés ni revérifiés — un chiffre qui colle ne suffit pas, voir la mésaventure de cette séance |
+| Recapturer carrousel des éléments / tirage du bonus | carrousel des personnages déjà confirmé **visuellement** (382,3, portraits inclus) ; les deux autres écrans à entités multiples n'ont été ni recapturés ni revérifiés — un chiffre qui colle ne suffit pas, voir la mésaventure de la séance précédente |
 | Balayer les autres sites `DrawSpritePrimitive`/`DrawFlatPrimitive` | le correctif `s_SmallTextureFlag`→`s_Unknown_00564a4c` peut réveiller d'autres sprites ailleurs qui se taisaient silencieusement pour la même raison |
 
 `InvokeCharacterSelectSubState` lève une exception qui nomme le fichier exact pour tout sous-état

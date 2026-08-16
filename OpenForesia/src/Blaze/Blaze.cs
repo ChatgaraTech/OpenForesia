@@ -177,6 +177,25 @@ public static unsafe partial class Blaze
     // declared and called for real (rather than special-cased away) so the call graph stays
     // traceable to Blaze.c 1:1, and because "does nothing" is itself the DLL's real, confirmed
     // behavior here, not an assumption.
+    // La sous-couche carte mémoire (winsys3d.c FUN_00a041d0/04600/04650/04660/04680/046b0/050d0/
+    // 050f0/02e20) : de vrais CreateFileA/CloseHandle/SetFilePointer/ReadFile/WriteFile sur un
+    // dossier "save\" — pas d'émulation de carte mémoire PS1, malgré le nom. Chaque arité relue
+    // directement dans winsys3d.dll (RET n) plutôt que déduite de Ghidra : les ordinaux 67/68/69/72
+    // partagent tous un corps qui ignore son argument mais le retire quand même de la pile
+    // (RET 4), alors que Ghidra les avait décompilés en (void) — la même classe de piège que
+    // documente déjà test-protocol.md, attrapée ici avant d'écrire le P/Invoke plutôt qu'après un
+    // plantage natif.
+    [DllImport("winsys3d.dll", EntryPoint = "#9")] private static extern int Ordinal_9(int* transferState); // real: FUN_00a041d0, ResetEvent + un contrôle d'état sur *param_1
+    [DllImport("winsys3d.dll", EntryPoint = "#21")] private static extern IntPtr Ordinal_21(void* pathDescriptor, uint flags); // real: FUN_00a04600, CreateFileA
+    [DllImport("winsys3d.dll", EntryPoint = "#22")] private static extern int Ordinal_22(IntPtr handle); // real: FUN_00a04650, CloseHandle
+    [DllImport("winsys3d.dll", EntryPoint = "#23")] private static extern int Ordinal_23(IntPtr handle, int offset, uint method); // real: FUN_00a04660, SetFilePointer
+    [DllImport("winsys3d.dll", EntryPoint = "#24")] private static extern uint Ordinal_24(IntPtr handle, void* buffer, uint size); // real: FUN_00a04680, ReadFile (0xffffffff sur échec)
+    [DllImport("winsys3d.dll", EntryPoint = "#25")] private static extern uint Ordinal_25(IntPtr handle, void* buffer, uint size); // real: FUN_00a046b0, WriteFile (0xffffffff sur échec)
+    [DllImport("winsys3d.dll", EntryPoint = "#67")] private static extern int Ordinal_67(int unused); // real: FUN_00a050f0, RET 4 confirmé — un paramètre ignoré ; rend toujours 1
+    [DllImport("winsys3d.dll", EntryPoint = "#68")] private static extern int Ordinal_68(int unused); // real: FUN_00a050d0, même famille qu'Ordinal_67/69
+    [DllImport("winsys3d.dll", EntryPoint = "#69")] private static extern int Ordinal_69(int unused); // real: FUN_00a050f0 — même corps qu'Ordinal_67, deux ordinaux pour la même adresse
+    [DllImport("winsys3d.dll", EntryPoint = "#72")] private static extern uint Ordinal_72(int unused); // real: FUN_00a02e20, le talon partagé par ~50 ordinaux ; rend toujours 0
+
     [DllImport("winsys3d.dll", EntryPoint = "#41")] private static extern void Ordinal_41(); // real: LeaveCriticalSection on the DLL's internal device lock
     [DllImport("winsys3d.dll", EntryPoint = "#45")] private static extern int Ordinal_45(void* a, byte* b); // confirmed no-op (winsys3d.c: FUN_00a02e20)
     [DllImport("winsys3d.dll", EntryPoint = "#92")] private static extern void* Ordinal_92(void* a, void* b); // confirmed no-op (FUN_00a05160 ignores its args)
@@ -8287,9 +8306,189 @@ public static unsafe partial class Blaze
     {
         throw new NotImplementedException(
             $"CharacterSelectSubState7 : la sous-couche carte mémoire ({context}) n'est pas " +
-            "reconstruite. FUN_00504690/6c0/730/770/7e0/820, FUN_00504b40/70/90/c20, " +
-            "FUN_00512900, FUN_005128e0 bouclent sur les ordinaux winsys3d 9/21/22/23/24/25/" +
-            "67/68/69/72/684 — voir Legacy/Raw/Blaze/FUN_0050a910.c pour le site d'appel exact.");
+            "reconstruite. FUN_00504b90/c20, FUN_00512930/542160 bouclent sur les ordinaux " +
+            "winsys3d 684 et consorts — voir Legacy/Raw/Blaze/FUN_0050a910.c pour le site d'appel " +
+            "exact. La partie ouverture/lecture (case 1) est faite ; voir plus haut dans ce fichier.");
+    }
+
+    // =====================================================================
+    // La sous-couche carte mémoire — ouverture/fermeture de fichier, 2026-08-16.
+    //
+    // De vrais Win32 CreateFileA/CloseHandle/SetFilePointer/ReadFile/WriteFile sur un dossier
+    // "save\", à travers winsys3d.dll (FUN_00a04600 et consorts) — pas d'émulation de carte
+    // mémoire PS1. Portée de cette passe : ce que le cas 1 (ouverture pour charger) exige, plus le
+    // sondage de transfert commun à tous les cas. Les cas 4/6/0xd/0x10/-5/-3/-2 restent derrière
+    // ThrowSaveCardUnresolved — chacun a sa propre séquence à lire.
+    // =====================================================================
+
+    // Ghidra: DAT_00563158 — deux pointeurs de chaîne ANSI statiques, relus directement dans
+    // Legacy/Blaze.exe (décalage fichier 0x161758) plutôt que déréférencés à l'adresse d'origine,
+    // qui n'a pas de sens dans ce port — même précédent que le gabarit du fichier de vérification
+    // CD plus tôt cette séance.
+    private static readonly byte* s_SaveFolderName_00563170 = ToAnsiZ("save\\");
+    private static readonly byte* s_SaveDeviceName_00563160 = ToAnsiZ("Blaze-Saving*");
+
+    // Ghidra: DAT_00604940.. — le descripteur de chemin qu'Ordinal_21 lit par pointeur (dans
+    // winsys3d.dll, FUN_00a03f80, jamais relu en détail ici : ce port ne fait que lui fournir des
+    // données réelles à la bonne adresse, comme pour tout appel de DLL). Disposition tassée :
+    // [0..3] pointeur du nom de dossier, [4..7] pointeur du nom de « périphérique », le nom de
+    // fichier écrit par SetCardFileName commençant à l'octet [5] et chevauchant donc la queue du
+    // second pointeur — fidèle à l'original, pas une erreur de recouvrement.
+    private static readonly byte* s_CardPathDescriptor_00604940 = (byte*)NativeMemory.AllocZeroed(0x100);
+
+    // Ghidra: DAT_00604ab0 / DAT_00604a00 — les drapeaux d'état de transfert écriture/lecture que
+    // FUN_005046c0/FUN_00504770 sondent. 4 = prêt/inactif.
+    private static int s_CardWriteStatus_00604ab0 = 4, s_CardReadStatus_00604a00 = 4;
+
+    // Ghidra: DAT_00604b58/5c/60/64 (lecture) et DAT_00604b68/6c/70/74 (écriture) — huit petits
+    // blocs d'état d'événement qu'Ordinal_9 lit par pointeur (trois dwords : voir sa note plus
+    // haut). Aucun code reconstruit ne crée le worker asynchrone qui les peuplerait
+    // (FUN_00a04320/4390 dans winsys3d.c), donc ces branches sont mortes en pratique — mais de
+    // vrais buffers plutôt que null, pour ne pas convertir une branche morte en null-deref si elle
+    // est atteinte un jour par erreur.
+    private static readonly int*[] s_CardReadEventSlots =
+        [(int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12),
+         (int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12)];
+    private static readonly int*[] s_CardWriteEventSlots =
+        [(int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12),
+         (int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12)];
+
+    /// <summary>Ghidra: FUN_005128e0 @ 0x005128e0 — écrit les deux pointeurs de nom fixes dans le
+    /// descripteur de chemin. Ghidra ne récupère aucun paramètre alors que chaque site d'appel en
+    /// passe un ; le corps l'ignore et écrit toujours les deux mêmes globales — transcrit tel
+    /// quel.</summary>
+    private static void SetCardPathDeviceFields()
+    {
+        *(byte**)s_CardPathDescriptor_00604940 = s_SaveFolderName_00563170;
+        *(byte**)(s_CardPathDescriptor_00604940 + 4) = s_SaveDeviceName_00563160;
+    }
+
+    /// <summary>Ghidra: FUN_00512900 @ 0x00512900 — copie une chaîne NUL-terminée dans le champ nom
+    /// de fichier du descripteur, à l'octet 5 (chevauchement volontaire avec la queue du pointeur
+    /// à +4..+7, fidèle à l'original).</summary>
+    private static void SetCardFileName(byte* name)
+    {
+        byte* dest = s_CardPathDescriptor_00604940 + 5;
+        byte c;
+        do { c = *name++; *dest++ = c; } while (c != 0);
+    }
+
+    /// <summary>Ghidra: FUN_00504690 @ 0x00504690 — remet les deux drapeaux de statut à 4 puis émet
+    /// un signal de complétion Ordinal_67. Confirmé dans le binaire (winsys3d.dll, FUN_00a050f0,
+    /// <c>RET 4</c>) qu'Ordinal_67 rend toujours 1 — la boucle ci-dessous ne boucle donc jamais
+    /// vraiment dans cette version de la DLL.</summary>
+    private static void ResetCardTransferStatus(int slot)
+    {
+        s_CardWriteStatus_00604ab0 = 4;
+        s_CardReadStatus_00604a00 = 4;
+        int result = Ordinal_67(slot);
+        while (result == 0) result = Ordinal_67(slot);
+    }
+
+    /// <summary>Ghidra: FUN_005047e0 @ 0x005047e0 — réinitialise les quatre créneaux d'événement de
+    /// lecture puis le drapeau de statut lecture.</summary>
+    private static void ResetCardReadEvents()
+    {
+        foreach (int* slot in s_CardReadEventSlots) Ordinal_9(slot);
+        s_CardReadStatus_00604a00 = 4;
+    }
+
+    /// <summary>Ghidra: FUN_00504730 @ 0x00504730 — la sœur écriture de <see cref="ResetCardReadEvents"/>.</summary>
+    private static void ResetCardWriteEvents()
+    {
+        foreach (int* slot in s_CardWriteEventSlots) Ordinal_9(slot);
+        s_CardWriteStatus_00604ab0 = 4;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005046c0 @ 0x005046c0 — sonde le statut d'écriture. Transcrit tel quel, y
+    /// compris son risque de boucle infinie si <paramref name="wait"/> est vrai et que le statut
+    /// ne bouge jamais : dans ce port, Ordinal_72 rend toujours 0 (winsys3d.dll, FUN_00a02e20,
+    /// talon partagé), donc la branche <c>(uVar1 &amp; 1) != 0</c> ne se déclenche jamais — ce qui
+    /// est exactement le cas qui boucle si personne d'autre ne change
+    /// <see cref="s_CardWriteStatus_00604ab0"/>. Sans conséquence pour le cas 1 (toujours appelé
+    /// avec <paramref name="wait"/> à faux) ; à traiter explicitement plutôt que transcrit tel
+    /// quel le jour où un appelant passera vrai.
+    /// </summary>
+    private static int PollCardWriteStatus(int slot, bool wait)
+    {
+        if (s_CardWriteStatus_00604ab0 != 4) return s_CardWriteStatus_00604ab0;
+        if (!wait) return 4;
+
+        throw new NotImplementedException(
+            "PollCardWriteStatus: appelé avec wait=vrai — dans ce port, Ordinal_72 rend toujours " +
+            "0 (winsys3d.dll, FUN_00a02e20), donc la boucle d'attente de l'original ne se termine " +
+            "jamais ici. Original : FUN_005046c0, boucle sur Ordinal_72(slot >> 4) jusqu'à ce que " +
+            "DAT_00604ab0 change ou 500000 tentatives s'épuisent.");
+    }
+
+    /// <summary>Ghidra: FUN_00504770 @ 0x00504770 — la sœur lecture de <see cref="PollCardWriteStatus"/>,
+    /// même structure et même risque de boucle infinie transcrit de la même façon.</summary>
+    private static int PollCardReadStatus(int slot, bool wait)
+    {
+        if (s_CardReadStatus_00604a00 != 4) return s_CardReadStatus_00604a00;
+        if (!wait) return 4;
+
+        throw new NotImplementedException(
+            "PollCardReadStatus: appelé avec wait=vrai — même risque de boucle infinie que " +
+            "PollCardWriteStatus, voir sa note. Original : FUN_00504770.");
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00504820 @ 0x00504820 — attend/relit le statut de transfert d'un créneau et le
+    /// traduit en résultat de chargement (-3/-2 erreur, 1 « rien en cours »). Les branches 1/2/3
+    /// (via <see cref="ResetCardReadEvents"/>/<see cref="ResetCardWriteEvents"/>) ne sont
+    /// atteintes que si <see cref="s_CardWriteStatus_00604ab0"/> quitte 4 — provablement jamais le
+    /// cas ici puisque rien dans ce port ne crée le worker asynchrone qui le ferait. Transcrites
+    /// quand même plutôt qu'omises ; le <c>case 3</c> tombe dans <c>default</c> sans <c>break</c>
+    /// dans l'original (pas une coquille — reproduit tel quel).
+    /// </summary>
+    private static int PollCardTransfer(int slot, bool startTransfer)
+    {
+        if (startTransfer) ResetCardTransferStatus(slot);
+
+        int status = PollCardWriteStatus(slot, startTransfer);
+        if (status == 1) return -3;
+        if (status == 2) return -2;
+        if (status == 4) return 1;
+
+        if (status == 3)
+        {
+            ResetCardReadEvents();
+            int r = Ordinal_68(slot);
+            while (r == 0) r = Ordinal_68(slot);
+            PollCardReadStatus(slot, true);   // valeur de retour ignorée, fidèle à l'original
+        }
+        ResetCardWriteEvents();
+        int r2 = Ordinal_69(slot);
+        while (r2 == 0) r2 = Ordinal_69(slot);
+
+        status = PollCardWriteStatus(slot, startTransfer);
+        return status switch { 1 => -3, 2 => -2, 3 => -1, 4 => 1, _ => 0 };
+    }
+
+    /// <summary>Ghidra: FUN_00504b40 @ 0x00504b40 — ouvre le fichier décrit par le descripteur de
+    /// chemin, dix tentatives. Déclaré <c>void</c> par Ghidra, mais le site d'appel utilise sa
+    /// valeur de retour (<c>iVar4 = func_0x00504b40(...)</c>) : EAX porte le dernier résultat
+    /// d'Ordinal_21 à la sortie, un simple defaut de récupération de type de retour côté
+    /// Ghidra.</summary>
+    private static IntPtr RetryOpenCardFile(void* pathDescriptor, uint flags)
+    {
+        IntPtr result = (IntPtr)(-1);
+        for (int attempts = 10; attempts != 0 && result == (IntPtr)(-1); attempts--)
+            result = Ordinal_21(pathDescriptor, flags);
+        return result;
+    }
+
+    /// <summary>Ghidra: FUN_00504b70 @ 0x00504b70 — ferme un handle, dix tentatives. Même défaut de
+    /// type de retour que <see cref="RetryOpenCardFile"/> ; la valeur n'est utilisée par aucun site
+    /// d'appel connu, donc <c>int</c> suffit.</summary>
+    private static int RetryCloseCardFile(IntPtr handle)
+    {
+        int result = -1;
+        for (int attempts = 10; attempts != 0 && result == -1; attempts--)
+            result = Ordinal_22(handle);
+        return result;
     }
 
     /// <summary>
@@ -8378,9 +8577,12 @@ public static unsafe partial class Blaze
         return RenderSaveScreen(otBase, primCursor);
     }
 
-    // Ghidra: DAT_00604984 — l'octet de bas de DAT_00604980, l'index de carte en surbrillance dans
-    // la sous-boîte « quel port ». DAT_00604981 (le compte) n'est jamais posé par du code déjà
-    // reconstruit ; à zéro il ramène systématiquement le curseur à 0, ce qui est un état sûr.
+    // Ghidra: DAT_00604984 — l'index de carte en surbrillance dans la sous-boîte « quel port ».
+    // **Correction 2026-08-16** : le commentaire disait « l'octet de bas de DAT_00604980 » ; c'est
+    // faux, ce sont deux adresses distinctes (DAT_00604984 = DAT_00604980 + 4), confirmé en lisant
+    // Legacy/Raw/Blaze/FUN_0050a910.c — voir s_CardSlotIndex_00604980 pour l'adresse que le case 1
+    // relit réellement. DAT_00604981 (le compte, sur l'autre champ) n'est jamais posé par du code
+    // déjà reconstruit ; à zéro il ramène systématiquement le curseur à 0, ce qui est un état sûr.
     private static byte s_CardCursorSlot_00604984;
 
     // Ghidra: DAT_006049bc — pointeur vers la table des répertoires de sauvegarde, peuplé par la
@@ -8397,15 +8599,41 @@ public static unsafe partial class Blaze
     // teste reste donc morte, comme les portes de dialogue.
     private static int s_Unknown_00560fd4;
 
+    // Ghidra: DAT_00604980 — l'octet sélectionnant l'emplacement de carte (posé par le case 0,
+    // relu par le case 1 et le sondage de transfert). **Distinct de**
+    // <see cref="s_CardCursorSlot_00604984"/>, une adresse différente (+4 octets) malgré la
+    // ressemblance des deux noms : le case 0 de la transcription précédente écrivait par erreur
+    // dans s_CardCursorSlot_00604984 au lieu de ce champ — trouvé en câblant le case 1, qui a
+    // besoin de la vraie valeur de DAT_00604980 pendant que DAT_00604984 est remise à 0 juste
+    // avant. Seul l'octet bas compte : DAT_00604981 (les 3 octets hauts du `CONCAT31`) n'est posé
+    // par aucun code reconstruit et lit 0.
+    private static byte s_CardSlotIndex_00604980;
+
+    /// <summary>Ghidra: `(_DAT_00604980 &amp; 3) + (_DAT_00604980 &amp; 4) * 4`, répété tel quel à
+    /// plusieurs sites de <c>FUN_0050a910</c> plutôt que factorisé dans l'original — un seul point
+    /// ici, comme pour <see cref="LabelAt"/>.</summary>
+    private static int CardSlotSelector() =>
+        (s_CardSlotIndex_00604980 & 3) + (s_CardSlotIndex_00604980 & 4) * 4;
+
     private static void StepSubState7Phase(byte* pad, int* cardTransferPhase)
     {
-        // Ghidra: le sondage de transfert en cours (`_DAT_0057333c == 1` un chargement,
-        // `== 2` une écriture) tourne ici, avant le switch. En pratique jamais atteint dans ce
-        // port : les deux seuls points qui posent `_DAT_0057333c` à 1/2 (cases 1 et 6) lancent
-        // ThrowSaveCardUnresolved avant d'y arriver.
-        if (*cardTransferPhase != 0)
+        // Ghidra: le sondage de transfert en cours — FUN_0050a910.c:100-116. `_DAT_0057333c == 1`
+        // un chargement, `== 2` une écriture. Ne remet jamais `_DAT_0057333c` à 0 lui-même (seul
+        // le case 5 le fait) : il continue donc de tourner, sans effet une fois le statut retombé
+        // à « prêt », tant que la phase 5 n'est pas atteinte — fidèle à l'original, pas un défaut
+        // de ce port.
+        if (*cardTransferPhase == 1)
         {
-            ThrowSaveCardUnresolved("sondage du transfert en cours (FUN_00504820 / Ordinal_67)");
+            int slot = CardSlotSelector();
+            s_CardLoadResult_00578de0 = PollCardTransfer(slot, false);
+            if (s_CardLoadResult_00578de0 < -1) s_CardPhase_00578e0c = -4;
+        }
+        else if (*cardTransferPhase == 2)
+        {
+            int slot = CardSlotSelector();
+            int r = Ordinal_67(slot);
+            while (r == 0) r = Ordinal_67(slot);
+            s_CardLoadResult_00578de0 = PollCardTransfer(slot, false);
         }
 
         ushort buttons = *(ushort*)(pad + 2);
@@ -8429,12 +8657,34 @@ public static unsafe partial class Blaze
                     s_Unknown_0056075b = 0;
                     goto case 1;
                 }
-                s_CardCursorSlot_00604984 = s_CardSlotFlags_00562adc[s_CardPort_00578e20][s_CardCursor_00578e18];
+                s_CardSlotIndex_00604980 = s_CardSlotFlags_00562adc[s_CardPort_00578e20][s_CardCursor_00578e18];
                 s_CardPhase_00578e0c++;
                 break;
 
             case 1:
-                ThrowSaveCardUnresolved("case 1 — ouverture de la carte pour charger l'emplacement choisi");
+                // Ghidra: FUN_0050a910.c:136-155 (`case_r0x0050ae60`, aussi la cible du `goto`
+                // depuis le case 0). Ouvre le fichier de sauvegarde pour lecture ; échec → l'écran
+                // de « pas de sauvegarde ici » (phase 6, pas encore transcrite) ; succès → lance le
+                // chargement (phase 0xe, déjà câblée) et pose le sondage de transfert ci-dessus.
+                s_CardCursorSlot_00604984 = 0;
+                SetCardFileName(s_SelectScratch_00573338 + 0x1fd0);
+                SetCardPathDeviceFields();
+                IntPtr fileHandle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
+                RetryCloseCardFile(fileHandle);
+                if ((long)fileHandle < 0)
+                {
+                    BindMenuLabels(s_EmptyLabel_00572b40, 0, s_StatusDescriptor_00560728, 0);
+                    IntPtr createHandle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 0x30200);
+                    RetryCloseCardFile(createHandle);
+                    s_CardPhase_00578e0c = 6;
+                }
+                else
+                {
+                    BindMenuLabels(LabelAt(0x1ac), 0, s_StatusDescriptor_00560728, 0);
+                    ResetCardTransferStatus(CardSlotSelector());
+                    *cardTransferPhase = 1;
+                    s_CardPhase_00578e0c = 0xe;
+                }
                 break;
 
             case 2:

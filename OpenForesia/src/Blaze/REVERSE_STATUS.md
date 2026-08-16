@@ -3155,9 +3155,87 @@ number is corroborating evidence now, not the sole proof.
 ### Remaining
 
 Sub-state 7's **entire render path is done**, and so — as best confirmed — is the character
-carousel's. The one remaining blocker on sub-state 7 is the memory-card subsystem itself
-(`Ordinal_9/21/22/23/24/25/67/68/69/72/684`, `FUN_00504690/6c0/730/770/7e0/820`,
-`FUN_00504b40/70/90/c20`, `FUN_00512900`, `FUN_005128e0`) — unchanged, still its own dedicated
-session per earlier scoping. Sub-state 2 (143 lines, back-step only) is still open and unrelated.
-Worth a sweep of other `DrawSpritePrimitive`/`DrawFlatPrimitive` call sites now that the guard is
-fixed — anything else that silently no-op'd behind `s_SmallTextureFlag` should start drawing too.
+carousel's. Sub-state 2 (143 lines, back-step only) is still open and unrelated. Worth a sweep of
+other `DrawSpritePrimitive`/`DrawFlatPrimitive` call sites now that the guard is fixed — anything
+else that silently no-op'd behind `s_SmallTextureFlag` should start drawing too. The memory-card
+subsystem started this same day — see the next entry.
+
+## 2026-08-16 — the memory-card subsystem: not PS1 hardware, just Win32 file I/O — case 1 done
+
+User committed the day's rendering fixes and asked to keep going on the save screen. The one
+remaining blocker was the memory-card subsystem behind `ThrowSaveCardUnresolved`, previously scoped
+as "its own dedicated session." Started that session.
+
+### It isn't a memory-card emulator — it's `CreateFileA` on a `save\` folder
+
+The name ("PS1-BIOS-flavoured") oversold it. Reading `winsys3d.c`'s actual bodies for ordinals
+9/21/22/23/24/25/67/68/69/72 (`FUN_00a041d0`/`04600`/`04650`/`04660`/`04680`/`046b0`/`050d0`/
+`050f0`/`02e20`) shows ordinary `CreateFileA`/`CloseHandle`/`SetFilePointer`/`ReadFile`/`WriteFile`
+wrappers, plus a device-path builder (`FUN_00a03f80`) that reads two static ANSI strings —
+`"save\"` and `"Blaze-Saving*"` — recovered directly from `Legacy/Blaze.exe` (`DAT_00563158`, file
+offset `0x161758`). This PC port never emulates real memory-card hardware; it just writes ordinary
+files to a `save\` folder next to the executable.
+
+### A real arity trap, caught before it became a native crash
+
+Ordinals 67, 68, 69 and 72 all share one body (`FUN_00a050f0`/`00a050d0`/`00a02e20`) that Ghidra
+decompiled as taking **no parameters**, even though every call site passes one. Before writing the
+P/Invoke declarations, read the raw bytes at each address in `winsys3d.dll` directly
+(`OpenForesia.Tools -- at winsys3d.dll <va>`) and found `RET 4` on all four — genuinely one
+stdcall parameter, silently ignored by the body (which just pushes hardcoded constants to a shared
+dispatcher, `FUN_00a04270`, and returns a fixed value). This is exactly the "Ghidra arity" trap
+`test-protocol.md` already warns about, caught here at declaration time instead of as a
+`0xC0000005` after the fact. Ordinals 9/21/22/23/24/25's Ghidra-declared arities were all
+cross-checked the same way and found correct.
+
+Also confirmed from the same reads: ordinals 67/68/69 always return `1`, and ordinal 72 (shared by
+~50 unrelated ordinals as a generic stub) always returns `0`. This degenerates the whole
+async-transfer-status machinery in `FUN_00504690`/`FUN_005046c0`/`FUN_00504820` to something that
+always reports "idle" — the real async worker thread (`FUN_00a04320`/`4390` in `winsys3d.c`) is
+never created anywhere in the reconstructed call graph, so its completion callbacks never fire.
+Transcribed the polling logic faithfully anyway (`PollCardWriteStatus`/`PollCardReadStatus`,
+`PollCardTransfer` — Ghidra: `FUN_005046c0`/`FUN_00504770`/`FUN_00504820`), including the genuine
+infinite-loop shape of the original when called in blocking mode with a status that never changes —
+but guarded it behind a clear `NotImplementedException` instead of actually hanging, since nothing
+currently exercises that path (case 1 always polls non-blocking) and a silent hang would be far
+worse to debug later than a named exception now.
+
+### A real, pre-existing bug found while wiring case 1: `DAT_00604980` vs `DAT_00604984`
+
+Case 0 (already transcribed, working, committed in an earlier session) writes
+`s_CardCursorSlot_00604984` — but the raw source (`Legacy/Raw/Blaze/FUN_0050a910.c:131-133`) writes
+`_DAT_00604980`, a **different address**, four bytes earlier. Confirmed genuinely different fields,
+not a decompiler aliasing artifact: case 1 (`Blaze.c`/raw line 138: `_DAT_00604984 = 0;`) zeroes
+`DAT_00604984` at its very start, then separately reads `DAT_00604980` later
+(`(DAT_00604980 & 3) + (DAT_00604980 & 4) * 4`) to select the save slot for the file open — if
+these were the same field, that read would always see `0`. Case 0's existing write was simply
+aliased to the wrong one of the two, unnoticed until this session needed the real
+`DAT_00604980` value for case 1. Fixed by adding a proper `s_CardSlotIndex_00604980` field and
+repointing case 0 at it; `s_CardCursorSlot_00604984` (case 0xa's port-cursor navigation, and case
+1's own zeroing) is untouched.
+
+### Case 1 — transcribed and confirmed working in-game
+
+`SetCardPathDeviceFields`/`SetCardFileName` (Ghidra: `FUN_005128e0`/`FUN_00512900`) build the path
+descriptor; `RetryOpenCardFile`/`RetryCloseCardFile` (`FUN_00504b40`/`FUN_00504b70`, ten attempts
+each) open/close it. Both retry wrappers are declared `void` by Ghidra but their call sites use the
+return value (`iVar4 = func_0x00504b40(...)`) — the same "EAX survives past an unwritten return
+statement" pattern seen elsewhere in this project; declared `IntPtr`/`int` here instead of trusting
+the `void`.
+
+Confirmed at runtime, `OPENFORESIA_FORCE_SUBSTATE=7`: no crash, no exception from case 1 itself —
+it correctly detects that no save file exists yet (expected: this port's `save\` folder is empty)
+and transitions cleanly to case 6 (**not yet implemented** — a new, clean `NotImplementedException`
+naming it precisely), rather than the old blanket case-1 throw. This is the intended kind of
+progress: the *next* real gap, reached through the real dispatcher.
+
+### Remaining
+
+Case 6 (`FUN_0050a910.c:198-338`) is the write path — building a full save-file blob (a 4-byte
+`"SC\x11\x03"` header, name, a Shift-JIS-converted title via `func_0x0050a810`, a class-name string
+padded to `0x40` bytes, a save-icon thumbnail captured from VRAM via `func_0x00545ac4`/`abe`
+— presumably wrapping ordinal 684, `FUN_00a05f50`, already read and confirmed to be a VRAM
+rectangle copy, not file I/O — a checksum summed over `0x1ffc` bytes, then four
+`FUN_00504c20` seek+write+verify calls) — a substantially bigger, self-contained unit than case 1,
+deliberately not started this pass. Cases 4, 0xd, 0x10, -5, -3/-2 remain behind
+`ThrowSaveCardUnresolved` too, each smaller than case 6 but each with its own sequence to read.
