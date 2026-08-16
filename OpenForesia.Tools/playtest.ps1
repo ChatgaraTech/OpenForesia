@@ -51,7 +51,13 @@ param(
     # trop long = le curseur s'emballe.
     [int]$TapMs = 150,
 
-    [int]$MaxTaps = 30
+    [int]$MaxTaps = 30,
+
+    # Dossier de travail du processus lance. Par defaut celui de l'exe (comme un double-clic
+    # Explorer) -- utile pour reproduire un lancement dont le CWD differe (ex. Rider "Run", ou
+    # "dotnet run", mettent par defaut le dossier du .csproj), ce qui compte pour tout chemin
+    # relatif que le jeu ouvre (ex. "save\...").
+    [string]$WorkingDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -206,7 +212,8 @@ foreach ($t in $Trace) { Set-Item -Path "Env:OPENFORESIA_TRACE_$t" -Value '1' }
 
 Remove-Item $err, $out -ErrorAction SilentlyContinue
 
-$p = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru `
+$cwd = if ($WorkingDir) { $WorkingDir } else { Split-Path $exe }
+$p = Start-Process -FilePath $exe -WorkingDirectory $cwd -PassThru `
         -RedirectStandardError $err -RedirectStandardOutput $out
 Write-Host "== PID $($p.Id) ; attente $MenuDelay s pour le menu"
 Start-Sleep -Seconds $MenuDelay

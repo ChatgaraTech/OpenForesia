@@ -43,6 +43,7 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 | `-Trace A,B` | pose `OPENFORESIA_TRACE_A=1`, `OPENFORESIA_TRACE_B=1` (voir plus bas) |
 | `-KeepOpen` | laisse le jeu ouvert |
 | `-MenuDelay`, `-TapMs`, `-MaxTaps` | réglages fins, rarement utiles |
+| `-WorkingDir <chemin>` | dossier de travail du processus lancé. Par défaut celui de l'exe (comme un double-clic Explorer). À poser pour reproduire un lancement dont le CWD diffère — **Rider "Run" et `dotnet run` mettent tous deux par défaut le dossier du `.csproj`**, pas celui de l'exe compilé — ce qui change la résolution de tout chemin relatif que le jeu ouvre (`save\...` notamment, voir plus bas) |
 
 ### Sorties
 
@@ -152,6 +153,30 @@ Poser avec `-Trace <nom sans le préfixe>` :
 
 Un échafaudage ajouté pour une enquête ponctuelle **se retire une fois l'enquête close** (règle du
 projet). Ceux listés ici sont permanents.
+
+---
+
+## L'écran de sauvegarde a besoin d'un dossier `save\` déjà présent
+
+Le jeu original (ni `Blaze.c` ni `winsys3d.c`) n'appelle jamais `CreateDirectory` : la sauvegarde
+passe par un simple `CreateFileA("save\<nom>", ...)`, qui échoue silencieusement (bascule propre sur
+l'écran d'erreur, pas de plantage) si le dossier `save\` n'existe pas déjà — fidèle à l'original, qui
+partait du principe que le dossier était déjà là (fourni à l'installation en 1998).
+
+`OpenForesia/save/` (à côté du `.csproj`, avec un `.gitkeep` pour rester suivi par git) existe donc
+dans le dépôt pour cette raison. **C'est l'endroit qui compte** : Rider « Run » et `dotnet run`
+lancent tous deux le process avec ce dossier comme répertoire de travail par défaut — pas
+`bin/Debug/net9.0/`, où se trouve l'exe compilé mais où `playtest.ps1` pointe par défaut. Pour
+tester le chemin d'écriture dans les mêmes conditions que Rider, passer
+`-WorkingDir OpenForesia` :
+
+```powershell
+$env:OPENFORESIA_FORCE_SUBSTATE = '7'; $env:OPENFORESIA_FORCE_CONFIRM_STATS = '1'
+$env:OPENFORESIA_FORCE_CARD_NAME = '1'   # sinon le nom du personnage est vide (voir plus haut)
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 15 -WorkingDir OpenForesia
+```
+
+Puis lire le fichier écrit dans `OpenForesia/save/<nom>`.
 
 ---
 

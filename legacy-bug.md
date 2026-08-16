@@ -89,3 +89,48 @@ d'annulation) rendent tous deux `true`, ce que l'appelant traduit par `EnableKBI
 **Où porterait un correctif** : un appel à `EnablePadKeyboard()` (`FUN_00523520`) à côté du
 `EnableKBInput(0)` de `CharacterSelectSubState1`, ce qui couvrirait les trois sorties d'un coup.
 Une ligne. Non appliqué — ce serait une déviation par rapport à 1998.
+
+---
+
+## LB-002 — Le nom du personnage sert de seul identifiant de sauvegarde
+
+**Repéré** le 2026-08-16 en lisant `FUN_0050a910` (la logique de phase de l'écran de sauvegarde)
+pendant la reconstruction du cas 6 (écriture). **Pas encore constaté sur le jeu officiel** — à
+vérifier avec un jeu réel avant de le considérer confirmé, contrairement à LB-001 ci-dessus.
+
+### Symptôme (attendu, à confirmer)
+
+Créer un personnage avec le même nom qu'un personnage déjà sauvegardé ne crée pas un second fichier
+de sauvegarde. L'écran de sauvegarde/chargement bascule à la place sur le chemin **chargement** de
+l'ancienne sauvegarde, au lieu d'écrire les données du nouveau personnage.
+
+### Cause
+
+`case 1` de `FUN_0050a910` (transcrit en C# dans `Blaze.cs`, voir « La sous-couche carte mémoire »)
+construit le chemin de sauvegarde uniquement à partir du nom tapé (`save\<nom>`, aucun numéro de
+slot ni port distinct), puis teste si le fichier existe déjà :
+
+```
+ouvre "save\<nom>" en lecture
+  → échec (fichier absent)  : crée un fichier vide, phase 6 (écriture — nouvelle sauvegarde)
+  → succès (fichier existe) : phase 0xe (chargement de la sauvegarde existante)
+```
+
+Aucune vérification d'unicité au-delà de ce test d'existence : deux personnages tapant le même nom
+partagent le même fichier, et le second tombe systématiquement sur le chemin chargement.
+
+### Portée
+
+Concerne uniquement des personnages **au même nom exact** ; des noms différents produisent des
+fichiers séparés dans `save\` sans problème.
+
+### Dans OpenForesia
+
+Transcrit fidèlement (`RetryOpenCardFile(s_CardPathDescriptor_00604940, 1)` puis branchement sur le
+handle, `Blaze.cs`, `case 1:` de `StepSubState7Phase`) — comportement hérité tel quel, pas introduit
+par le portage.
+
+**Où porterait un correctif** : ajouter un identifiant supplémentaire (numéro de slot/port, horodatage,
+etc.) à la construction du chemin dans `SetCardFileName`/`SetCardPathDeviceFields`, ou détecter la
+collision et proposer un choix au joueur avant d'écraser/charger. Non appliqué — décision reportée
+par Vincent le 2026-08-16 (« on verra ça plus tard »).
