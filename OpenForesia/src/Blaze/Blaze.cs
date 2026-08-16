@@ -11658,6 +11658,44 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: FUN_00544fb0 @ 0x00544fb0 â€” handler for control code <c>0x14</c>, render pass only
+    /// (the scan pass uses the generic "skip one operand byte" stub, matching the single byte this
+    /// consumes). Fully decompiled, unlike most of its neighbours.
+    ///
+    /// <para>If a sprite run is pending (<c>descriptor[0x0e] != 0</c>), flushes it
+    /// (<see cref="EmitTextSprite"/>), folds its width into the pen column at <c>+0x0c</c>, and
+    /// snapshots the current break state (<see cref="s_BreakStaging_005e02fc"/>,
+    /// <see cref="s_BreakColumn_005e8300"/>, <see cref="s_BreakPen_005e8328"/>) â€” the same
+    /// bookkeeping <see cref="FlushLine"/> reads back on a word-wrap. The last of the three reads
+    /// <c>descriptor[0x0e]</c> **after** it was just cleared two lines above, so it is always 0;
+    /// transcribed as the literal read anyway, matching this project's fidelity rule, rather than
+    /// folded to a constant.</para>
+    ///
+    /// <para>Unconditionally writes one text byte into <c>descriptor[0x22]</c> â€” the upper word of
+    /// the same <c>+0x20</c> "rect" dword <see cref="Handler_005449b0"/> (code <c>0x04</c>) writes
+    /// the lower word of, and <see cref="EmitTextSprite"/> reads back whole. Bits 0-3 there fold
+    /// into the sprite's page term and bits 5-6 into its blend-mode term, so this sets a
+    /// page/blend byte for the sprite about to be flushed â€” consistent with this code appearing in
+    /// the "Bonus spécial !" text the user's behavioural reference notes as rendered in gold.</para>
+    /// </summary>
+    private static byte* Handler_00544fb0(byte* text, byte* descriptor)
+    {
+        if (descriptor[0x0e] != 0)
+        {
+            EmitTextSprite(descriptor);
+            byte pending = descriptor[0x0e];
+            descriptor[0x0e] = 0;
+            descriptor[0x0c] = (byte)(descriptor[0x0c] + pending);
+            s_BreakStaging_005e02fc = s_StagingWrite_005e8304;
+            s_BreakColumn_005e8300 = s_PenX_005e8320;
+            s_BreakPen_005e8328 = descriptor[0x0e];
+        }
+
+        descriptor[0x22] = *text;
+        return text + 1;
+    }
+
+    /// <summary>
     /// Handler for control code <c>0x0f</c>, in **both** passes â€” the table has <c>0x00544e50</c>
     /// at slot 15 on the scan side as well as the render side. **Decoded by hand from
     /// Legacy/Blaze.exe** (file offset <c>0x144250</c>, 33 bytes then <c>0x90</c> padding); Ghidra
@@ -11966,6 +12004,7 @@ public static unsafe partial class Blaze
             t[0x09] = Handler_00544b10;   // 0x00544b10, decoded here
             t[0x0c] = Handler_00544c50;   // 0x00544c50, decompiled
             t[0x0d] = Handler_00544d90;   // 0x00544d90, decompiled
+            t[0x14] = Handler_00544fb0;   // 0x00544fb0, decompiled
         }
 
         // Les deux tables portent le même corps à ces deux emplacements : il sert aux deux passes,

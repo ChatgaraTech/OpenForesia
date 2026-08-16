@@ -3666,3 +3666,77 @@ adjacent fields gate the "OK"/"Oui-Non" dialog flow on **every** character-selec
 matching what the game was actually doing) should be fixed everywhere this pattern occurs, not just
 on the save screen. Worth a full pass replaying `Analyse/Comportement Legacy/Selection des
 personnages.md`'s documented flow end to end to confirm each screen now matches.
+
+## 2026-08-16 — same aliasing bug, two more instances, found by replaying the reference document
+
+User committed the fix above, then replayed `Analyse/Comportement Legacy/Selection des
+personnages.md`'s flow and reported the "Bonus" screen's point counter stayed at `0` even though
+points could still be spent afterward — the same *symptom shape* as the confirmGate bug (logic
+works, display doesn't), so checked for the same *cause* first.
+
+### `s_StatTotal_005e906a` — the bonus total
+
+`0x5e906a - 0x5e9060 = 0xa`. Same table as `confirmGate`. `Handler_005449f0` (control code `0x06`,
+decimal number display, already correctly transcribed) reads
+`s_PanelSelection_005e9060 + text[0]` — so any label whose embedded operand byte is `0xa` was
+already reading the right memory. The dice-roll accumulation (`Blaze.cs`, sub-state 5) wrote to a
+standalone `sbyte s_StatTotal_005e906a` field instead, never touching the table. Point allocation
+later in sub-state 6 read/wrote that same standalone field consistently with itself, which is why
+spending points worked — it just never showed a value the display could see.
+
+Fixed the same way: `private static ref byte s_StatTotal_005e906a => ref
+s_PanelSelection_005e9060[0xa];`. One call site (`Blaze.cs:7359`) needed a cast
+(`s_StatTotal_005e906a = (byte)(s_StatTotal_005e906a + sum);`) since the local accumulator `sum` is
+`sbyte` and compound `+=` against a `ref byte`-returning property doesn't implicitly narrow the way
+a plain field did.
+
+**Confirmed visually** (`playtest.ps1 -Shot`, natural flow, `-WorkingDir OpenForesia`): "Bonus"
+reads `15` on first reaching the screen (the dice-roll starting value), and `24` after revealing
+three cards summing to `9`.
+
+### Control code `0x14` → `FUN_00544fb0`: a genuine, previously-unimplemented gap, not aliasing
+
+Separately, reaching the three-identical-cards "Bonus spécial !" case threw
+`System.NotImplementedException: UI text control code 0x14 dispatches to FUN_00544fb0`.
+Unlike most of its `0x544xxx` neighbours, `FUN_00544fb0` has a **complete, normal Ghidra
+decompilation** already sitting in `Blaze.c:91445` — no re-run or hand-disassembly needed this
+time:
+
+```c
+undefined1 * FUN_00544fb0(undefined1 *param_1,int param_2)
+{
+  char cVar1;
+  if (*(char *)(param_2 + 0xe) != '\0') {
+    FUN_00543a10(param_2);                                       // EmitTextSprite
+    cVar1 = *(char *)(param_2 + 0xe);
+    *(undefined1 *)(param_2 + 0xe) = 0;
+    *(char *)(param_2 + 0xc) = *(char *)(param_2 + 0xc) + cVar1;
+    DAT_005e02fc = DAT_005e8304;                                  // break-staging snapshot
+    _DAT_005e8300 = DAT_005e8320;
+    DAT_005e8328 = (uint)*(byte *)(param_2 + 0xe);                // always 0, just cleared above
+  }
+  *(undefined1 *)(param_2 + 0x22) = *param_1;
+  return param_1 + 1;
+}
+```
+
+Every global it touches already had an established symbol from earlier text-engine work
+(`EmitTextSprite`, `s_BreakStaging_005e02fc`, `s_StagingWrite_005e8304`, `s_PenX_005e8320`,
+`s_BreakColumn_005e8300`, `s_BreakPen_005e8328` — the same break-point bookkeeping `FlushLine`
+reads back on a word-wrap), so this was a mechanical transcription, not new investigation. Registered
+as `Handler_00544fb0`, render-pass-only table slot `0x14` (the scan pass already used the generic
+"skip one operand byte" stub there, matching this handler consuming exactly one).
+
+`descriptor[0x22]` is the upper word of the same `+0x20` "rect" dword `Handler_005449b0` (code
+`0x04`) writes the lower word of, and `EmitTextSprite` reads whole — bits 0-3 fold into the
+sprite's page term, bits 5-6 into its blend-mode term. Consistent with this code appearing
+specifically in text the reference document notes as rendered in gold.
+
+**Confirmed visually**: added a scoped, temporary test hook
+(`OPENFORESIA_FORCE_TRIPLE`, at the `f0==f1==f2` check in sub-state 5) to force the triple-match
+branch without depending on the frame-timing-seeded dice RNG landing on it by chance; captured a
+screenshot showing "Bonus spécial !" in gold followed by "Tu peux retourner les cartes encore une
+fois." — byte-for-byte the same text the user's reference document recorded from the real game,
+**literal mid-sentence `n` included** (so that is a faithful transcription of the original's own
+text data, not a line-break bug). Removed the test hook once confirmed, per the project's
+scaffolding convention.

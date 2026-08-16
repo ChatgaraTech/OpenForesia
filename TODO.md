@@ -1,5 +1,33 @@
 # TODO
 
+**Neuvième passe, 2026-08-16, après le commit utilisateur de la passe précédente (correctif
+d'aliasing dialogGate/confirmGate).** Deux bugs supplémentaires du même type trouvés et corrigés,
+signalés par l'utilisateur après avoir rejoué l'écran Bonus :
+
+1. **Le compteur « Bonus » restait affiché à 0** alors que l'attribution des points fonctionnait.
+   Même défaut d'aliasing que la veille, un champ voisin : `s_StatTotal_005e906a` était un `sbyte`
+   isolé au lieu d'être l'octet `+0xa` du même tableau `DAT_005e9060`/`s_PanelSelection_005e9060`
+   que `confirmGate`. `Handler_005449f0` (affichage décimal) lisait déjà le vrai tableau ; seule
+   l'écriture (le tirage des dés) visait la mauvaise mémoire. Corrigé en propriété `ref byte`,
+   confirmé visuellement (capture d'écran : « Bonus » passe de 15 à 24 après avoir retourné trois
+   cartes totalisant 9).
+2. **`System.NotImplementedException: UI text control code 0x14 dispatches to FUN_00544fb0`**,
+   atteint sur le triplet de cartes identiques (« Bonus spécial ! »). Contrairement à la plupart de
+   ses voisins, `FUN_00544fb0` a une décompilation Ghidra normale et complète dans `Blaze.c` — pas
+   besoin de re-run ni de désassemblage à la main. Transcrite (`Handler_00544fb0`,
+   `Blaze.cs`), câblée dans la table de rendu à l'index `0x14`. Rôle : vide un morceau de texte en
+   attente et note le point de césure (même bloc que `FlushLine` lit), puis pose un octet
+   page/mode-de-fondu dans le mot haut du dword `+0x20` que `Handler_005449b0` (code `0x04`)
+   remplit déjà pour le mot bas — cohérent avec son usage pour le texte doré. Confirmé visuellement
+   avec un échafaudage de test temporaire (triplet forcé, retiré après vérification) : le message
+   « Bonus spécial ! » s'affiche bien en jaune-doré, texte identique à celui noté dans
+   `Analyse/Comportement Legacy/Selection des personnages.md` (« n » littéral inclus — fidèle à
+   l'original, pas un artefact).
+
+**Ne pas commit** — seul l'utilisateur commit.
+
+---
+
 Point d'entrée entre deux sessions. État au 2026-08-16, sixième passe de la journée. Cinq passes
 précédentes (rendu complet du sous-état 7, régression du carrousel, cas 1 et 6 de la carte mémoire)
 **commitées par l'utilisateur**. Cette passe : diagnostiqué le blocage juste après une sauvegarde
