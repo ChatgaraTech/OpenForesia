@@ -980,7 +980,7 @@ public static unsafe partial class Blaze
         byte* firstModel = (byte*)(nint)modelBundle[0];
         uint modelAttributes = *(uint*)(firstModel + 0x3c);
 
-        if (s_Unknown_00564a48 != 0 && (modelAttributes & 0x200) != 0)
+        if (s_DeviceCapFlag_00564a48 && (modelAttributes & 0x200) != 0)
         {
             if (s_Unknown_00564a4c == 0) return prim;
             modelAttributes &= 0xfffffdff;
@@ -1252,7 +1252,7 @@ public static unsafe partial class Blaze
     {
         uint attributes = *(uint*)(model + 0x3c);
 
-        if (s_Unknown_00564a48 != 0 && (attributes & 0x2000000) != 0)
+        if (s_DeviceCapFlag_00564a48 && (attributes & 0x2000000) != 0)
         {
             if (s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfdffffff;
@@ -1394,7 +1394,7 @@ public static unsafe partial class Blaze
             if (!gouraud)
             {
                 uint colour = colours[record[1] & 0xff];
-                if (s_Unknown_00564a48 != 0) colour &= 0xfdffffff;
+                if (s_DeviceCapFlag_00564a48) colour &= 0xfdffffff;
 
                 prim[0] = previous | 0x9000000;
                 prim[1] = colour | 0x2c000000;
@@ -1414,7 +1414,7 @@ public static unsafe partial class Blaze
                 uint c1 = colours[indices >> 8 & 0xff];
                 uint c2 = colours[indices >> 0x10 & 0xff];
                 uint c3 = colours[indices >> 0x18];
-                if (s_Unknown_00564a48 != 0) c1 &= 0xfdffffff;
+                if (s_DeviceCapFlag_00564a48) c1 &= 0xfdffffff;
 
                 prim[0] = previous | 0xc000000;
                 prim[1] = c1 | 0x3c000000;
@@ -1918,11 +1918,18 @@ public static unsafe partial class Blaze
         driveRoot[2] = (byte)'\\';
         driveRoot[3] = 0;
 
-        // TODO(REVERSE): DAT_00563280.._0056328c (the CD-check filename template copied into
-        // local_2c/local_28/local_24/local_20 in the original) are 16 bytes of initialized data
-        // not present in Blaze.c's text â€” only Ghidra's derived symbol names survive. The drive
-        // letter substitution below is faithful; the rest of the template is a placeholder.
+        // Ghidra: DAT_00563280.._0056328c, copied into local_2c/local_28/local_24/local_20 in the
+        // original. Read directly from Legacy/Blaze.exe's .data (file offset 0x161880): "@:\cd.idx".
+        // Confirmed against the real disc, too â€” its root has a `cd.idx` file whose size (671088640
+        // bytes = 0x28000000 = 640 MiB) is exactly what Handler_00544810's TODO(REVERSE) predicted
+        // s_CdCheckFileSize_0056321c needs to be for that handler's return-value multiply to reduce
+        // to identity. Only the drive letter at index 0 is substituted per candidate, same as
+        // driveRoot above.
         byte* cdCheckPath = stackalloc byte[16];
+        cdCheckPath[1] = (byte)':'; cdCheckPath[2] = (byte)'\\';
+        cdCheckPath[3] = (byte)'c'; cdCheckPath[4] = (byte)'d'; cdCheckPath[5] = (byte)'.';
+        cdCheckPath[6] = (byte)'i'; cdCheckPath[7] = (byte)'d'; cdCheckPath[8] = (byte)'x';
+        cdCheckPath[9] = 0;
 
         bool foundDriveX = false;
         bool foundDriveZ = false;
@@ -5054,7 +5061,11 @@ public static unsafe partial class Blaze
         s_DeviceCapFlag_00564a48 = result == 0;
     }
 
-    // Ghidra: DAT_00564a48 â€” boolean capability flag set by CheckDeviceCapabilityFlag.
+    // Ghidra: DAT_00564a48 â€” boolean capability flag set by CheckDeviceCapabilityFlag, read
+    // throughout the renderer (DrawAnimatedModel, EmitParticle, DrawUiPanel's neighbours,
+    // Handler_00544810) to gate a colour/attribute masking step. Was briefly duplicated under a
+    // second, dead field (s_Unknown_00564a48, always 0 because nothing ever wrote it) that every
+    // one of those call sites read instead of this one â€” merged back onto this field 2026-08-16.
     private static bool s_DeviceCapFlag_00564a48;
 
     /// <summary>
@@ -6096,12 +6107,20 @@ public static unsafe partial class Blaze
     /// </summary>
     private static int s_Unknown_005d9de0 => (int)s_GammaIni;
 
-    private static int s_Unknown_00564a48, s_Unknown_00571a3c;
+    private static int s_Unknown_00571a3c;
 
-    // Ghidra: DAT_00564a4c — le second drapeau des deux émetteurs de sprite. Jamais écrit par le
-    // code reconstruit pour l'instant : FUN_00537ca0 le pose autour de FUN_00537da0 (état 2), qui
-    // n'est pas reconstruit. Voir DrawSpriteVariant pour la divergence avec s_SmallTextureFlag.
-    private static int s_Unknown_00564a4c;
+    // Ghidra: DAT_00564a4c — une garde de réentrance, pas un drapeau statique. Dans Blaze.c, chaque
+    // site qui l'écrit suit exactement le même motif : `DAT_00564a4c = 0; <appel réentrant>;
+    // DAT_00564a4c = 1;` (au moins quatre paires : FUN_00520ae0/EmitParticle à trois endroits,
+    // FUN_00537da0 dans le case 2 de FUN_00542ab0). Sa valeur stable dans le jeu original est donc
+    // **1**, jamais 0 — le passage à 0 n'existe que pendant la fenêtre de l'appel imbriqué. Aucun de
+    // ces sites n'est encore câblé dans ce port, donc la valeur par défaut de C# (0) était fausse :
+    // elle inversait le culling que DrawAnimatedModel/EmitParticle/DrawSpriteVariant/DrawFlatPrimitive
+    // testent (`if (s_Unknown_00564a4c == 0) return prim;`), faisant sauter des modèles qui, dans
+    // l'original, seraient dessinés (juste avec le bit d'attribut nettoyé). Régression confirmée en
+    // jeu le 2026-08-16 : le carrousel de personnages n'affichait plus que l'entité sélectionnée.
+    // Voir DrawSpriteVariant pour la divergence avec s_SmallTextureFlag.
+    private static int s_Unknown_00564a4c = 1;
 
     /// <summary>
     /// Ghidra: FUN_0052a1e0 @ 0x0052a1e0 â€” begins a frame: picks the scratch bases out of MainMem
@@ -6853,7 +6872,7 @@ public static unsafe partial class Blaze
 
         uint attributes = atlas[1];
 
-        if (s_Unknown_00564a48 != 0 && (attributes & 0x200) != 0)
+        if (s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
         {
             if (s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfffffdff;
@@ -8608,22 +8627,111 @@ public static unsafe partial class Blaze
     private static byte* LabelAt(int offset) =>
         *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + offset);
 
-    /// <summary>Ghidra: <c>FUN_0051be90</c> — jamais décompilée (appelée depuis plusieurs fonctions
-    /// dont celle-ci, sans corps nulle part dans <c>Blaze.c</c>). Signature observée aux sites
-    /// d'appel : six paramètres cdecl, <c>(otEntry, prim, sprite, value, mode, extra)</c>, toujours
-    /// appelée ici avec <c>mode = 0x82</c>. Vu son usage (une valeur d'un octet, à côté d'un
-    /// <c>DrawSpriteVariant</c>/<c>DrawFlatPrimitive</c> sur le même descripteur), c'est
-    /// probablement une tuile numérique — mais deviner son corps irait contre la méthodologie du
-    /// projet (§"Fidélité avant compilabilité") : elle a besoin d'un re-run Ghidra à signature
-    /// forcée, pas d'une lecture supplémentaire.</summary>
+    /// <summary>
+    /// Ghidra: <c>FUN_0051be90</c> @ 0x0051be90 — dessine un nombre décimal comme une rangée de
+    /// tuiles numériques (pas des glyphes du moteur de texte), cinq mots par chiffre, chaînée dans
+    /// <c>otEntry</c>. C'est l'affichage des « statistiques actuelles » que <see cref="RenderSaveScreen"/>
+    /// utilise. **Corrige une note antérieure** : contrairement à ce qui était noté (« jamais
+    /// décompilée, besoin d'un re-run Ghidra »), le corps est bien présent dans <c>Blaze.c</c>
+    /// (ligne 66710) — juste assez loin dans les 98 000 lignes du fichier pour qu'une recherche
+    /// d'une séance antérieure soit passée à côté. Pas de re-run nécessaire ; simple transcription.
+    ///
+    /// <para>Le nibble bas de <c>mode</c> est le nombre de chiffres : seules les <c>N</c> dernières
+    /// entrées de la table de diviseurs décimaux à dix entrées <see cref="s_DecimalDivisors_00566be8"/>
+    /// (la même que <see cref="Handler_005449f0"/>) sont parcourues — donc <c>mode=0x82</c> dessine
+    /// exactement deux chiffres (dizaines, unités). Aucune division n'a lieu pour les diviseurs de
+    /// tête sautés, donc une valeur atteignant ou dépassant l'ordre de grandeur du nombre de
+    /// chiffres demandé tronque plutôt que de déborder proprement sur plus de tuiles ; tous les
+    /// sites d'appel de cet écran gardent leurs valeurs sous ce seuil, donc ça ne devrait pas
+    /// mordre en pratique. Le bit <c>0x80</c> de <c>mode</c> est un drapeau « dessiner les zéros de
+    /// tête » : sans lui, un chiffre de tête à zéro est sauté **et sa largeur de colonne n'avance
+    /// pas non plus** la position X ; avec lui, le zéro avance la position sans être dessiné (pas de
+    /// tuile zéro visible — juste un espace).</para>
+    ///
+    /// <para><c>sprite[0]</c> est lui-même un pointeur vers un enregistrement de deux mots
+    /// (couleur, attributs), lu **sans décalage de frame** — contrairement aux fonctions sœurs
+    /// <see cref="DrawSpriteVariant"/>/<see cref="DrawFlatPrimitive"/>, qui ajoutent toutes deux
+    /// <c>(short)sprite[4] * 8</c>. Transcrit exactement comme Ghidra le montre, sans supposer que
+    /// ça suit ses sœurs.</para>
+    /// </summary>
+    // Ghidra: &DAT_00566c30 â€” l'enregistrement (couleur, attributs) partagé que les trois sites
+    // d'appel de FUN_0051be90 dans RenderSaveScreen posent dans sprite[0] via l'adresse brute
+    // 0x566c30, valable seulement parce que l'exécutable d'origine se charge à cette adresse. Relu
+    // directement dans Legacy/Blaze.exe (décalage fichier 0x165230) plutôt que déréférencé tel
+    // quel, qui aurait fauté nativement dans ce port. Largeur de colonne ~8 px, page 0x30 â€” des
+    // valeurs sensées, cohérentes avec une tuile numérique.
+    private static readonly uint* s_NumeralTileRecord_00566c30 = AllocNumeralTileRecord();
+
+    private static uint* AllocNumeralTileRecord()
+    {
+        uint* record = (uint*)NativeMemory.Alloc(2, sizeof(uint));
+        record[0] = 0x08504800;
+        record[1] = 0x02300000;
+        return record;
+    }
+
     private static uint* EmitCardGlyphTile(uint* otEntry, uint* prim, int* sprite, uint value, uint mode, uint extra)
     {
-        throw new NotImplementedException(
-            "CharacterSelectSubState7/RenderSaveScreen : FUN_0051be90 @ 0x0051be90 n'a jamais été " +
-            "décompilée par Ghidra (appelée sans corps nulle part dans Blaze.c). Six paramètres " +
-            "observés aux sites d'appel : (otEntry, prim, sprite, value, mode, extra), mode=0x82 " +
-            "ici. Un re-run Ghidra à signature forcée est le levier le plus utile pour débloquer " +
-            "le rendu de cet écran.");
+        EmitViewportRect(otEntry, &prim);   // Ghidra: FUN_0051be20(param_1, &param_2)
+
+        uint packedPos = (uint)sprite[2];        // Ghidra: local_20 = param_3[2]
+        uint yPart = packedPos & 0xffff0000;
+
+        uint* record = (uint*)*(int*)sprite;     // Ghidra: *param_3, pas de décalage de frame
+        uint colour = record[0];
+        uint attrs = record[1];
+        if (s_DeviceCapFlag_00564a48) attrs &= 0xfffffdff;
+
+        uint digitWidth = ((colour >> 0x10) & 0xff) / 10;
+        byte digitsStarted = 0;
+        short extraShort = (short)extra;
+        uint extraByte = extra & 0xff;
+
+        // Ghidra: &DAT_005e8f02 â€” même table que DrawSpriteVariant/DrawFlatPrimitive, décalée de
+        // deux octets (mot haut de l'entrée).
+        ushort page = *(ushort*)(s_EntityDecodeTable_005e8f00 + 2 + ((attrs >> 0x10) & 0xff) * 4);
+        uint spriteAttrs = (uint)sprite[1];
+
+        int divisorIndex = 0;
+        for (uint remaining = 10; remaining != 0; remaining--, divisorIndex++)
+        {
+            if (s_Unknown_005e9818 == 0) break;
+
+            if (remaining <= (mode & 0xf))
+            {
+                uint divisor = s_DecimalDivisors_00566be8[divisorIndex];
+                uint digit = value / divisor;
+                value -= digit * divisor;
+
+                if (digit != 0 || remaining == 1) digitsStarted++;
+
+                if (digitsStarted == 0)
+                {
+                    if ((mode & 0x80) == 0) continue;   // ni dessin, ni avance
+                }
+                else
+                {
+                    prim[1] = (((attrs >> 8) & 0xff) << 8 | 0x6400) << 0x10 | (spriteAttrs & 0x3ffffff);
+                    prim[2] = yPart | (packedPos & 0xffff);
+                    prim[3] = (digit * digitWidth + (colour & 0xff))
+                              | (((uint)((ushort)(extraShort >> 2) & 0xffc0) | extraByte) + page + (attrs >> 0x18)) * 0x10000
+                              | (colour & 0xff00);
+                    prim[4] = ((colour >> 0x18) << 0x10) | digitWidth;
+
+                    prim[0] = *otEntry | 0x4000000;
+                    *otEntry = (uint)(nuint)prim;
+                    prim += 5;
+                    s_Unknown_005e9818--;
+                }
+
+                packedPos += digitWidth;
+            }
+        }
+
+        *(short*)(sprite + 4) = 0;               // Ghidra: *(undefined2*)(param_3 + 4) = 0
+        prim = DrawFlatPrimitive(otEntry, prim, sprite);   // Ghidra: FUN_0051f9c0
+        EmitClipRect(otEntry, &prim);                       // Ghidra: FUN_0051bdb0
+        return prim;
     }
 
     /// <summary>Le rendu de fin de fonction, toujours exécuté : neuf cases fixes plus, si la phase
@@ -8650,7 +8758,7 @@ public static unsafe partial class Blaze
             primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
             primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)box);
 
-            *(uint*)box = 0x566c30;
+            *(uint*)box = (uint)(nuint)s_NumeralTileRecord_00566c30;
             *(short*)(box + 8) = 0xbc;
             *(short*)(box + 0xa) = 0x38;
             // Ghidra: `*(undefined4 *)(_DAT_006049bc + 0x18 + (_DAT_00604984 & 0xff) * 0x28)` — un
@@ -8735,7 +8843,7 @@ public static unsafe partial class Blaze
             EmitClipRect(otBase, &primCursor);
 
             *(short*)(glyph + 8) = (short)(x + 0x1c);
-            *(uint*)glyph = 0x566c30;
+            *(uint*)glyph = (uint)(nuint)s_NumeralTileRecord_00566c30;
             primCursor = EmitCardGlyphTile(
                 otBase, primCursor, (int*)glyph, s_PanelSelection_005e9060[7 + i], 0x82, 0);
         }
@@ -8755,7 +8863,7 @@ public static unsafe partial class Blaze
             EmitClipRect(otBase, &primCursor);
 
             *(short*)(glyph + 8) = (short)(x + 0x1c);
-            *(uint*)glyph = 0x566c30;
+            *(uint*)glyph = (uint)(nuint)s_NumeralTileRecord_00566c30;
             primCursor = EmitCardGlyphTile(
                 otBase, primCursor, (int*)glyph, s_PanelSelection_005e9060[i], 0x82, 0);
 
@@ -10503,9 +10611,10 @@ public static unsafe partial class Blaze
     {
         uint attributes = *(uint*)(*(int*)sprite + 4 + (short)sprite[4] * 8);
 
-        if (s_Unknown_00564a48 != 0 && (attributes & 0x200) != 0)
+        if (s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
         {
-            if (s_SmallTextureFlag == 0) return prim;
+            // Ghidra: DAT_00564a4c, not the ini "Small" setting â€” see DrawSpritePrimitive's note.
+            if (s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfffffdff;
         }
 
@@ -10536,16 +10645,22 @@ public static unsafe partial class Blaze
         uint size = (uint)(halfH * 0x10000 + halfW);
         uint attributes = source[1];
 
-        if (s_Unknown_00564a48 != 0)
+        if (s_DeviceCapFlag_00564a48)
         {
             if ((attributes & 0x200) != 0)
             {
-                if (s_SmallTextureFlag == 0) return prim;
+                // Ghidra: DAT_00564a4c both times here â€” confirmed against FUN_00521f20. This
+                // function previously read s_SmallTextureFlag (the ini "Small" setting) instead,
+                // which stayed 0 by default and silently dropped every sprite that took this path
+                // â€” including the character-select carousel's portrait cards. Found 2026-08-16
+                // while chasing exactly that: DrawSpriteVariant already had the correct symbol,
+                // this sibling and DrawFlatPrimitive did not.
+                if (s_Unknown_00564a4c == 0) return prim;
                 attributes &= 0xfffffdff;
             }
             if ((flags & 2) != 0)
             {
-                if (s_SmallTextureFlag == 0) return prim;
+                if (s_Unknown_00564a4c == 0) return prim;
                 flags = (byte)flags & 0xfdu;
             }
         }
@@ -10605,7 +10720,7 @@ public static unsafe partial class Blaze
         uint posX = (uint)sprite[2];
         uint attributes = source[1];
 
-        if (s_Unknown_00564a48 != 0)
+        if (s_DeviceCapFlag_00564a48)
         {
             if ((attributes & 0x200) != 0)
             {
@@ -11094,21 +11209,20 @@ public static unsafe partial class Blaze
     /// six-word sprite primitive <see cref="EmitTextSprite"/> builds, just fed from this record
     /// instead of the descriptor's own line state.</para>
     ///
-    /// <para><b>TODO(REVERSE) — the return value.</b> Ghidra's own read, confirmed by hand against
-    /// the bytes at file offset <c>0x143c10</c> (there is no branch after it, so this is
-    /// unconditional): <c>return (DAT_0056321c + 1) * (int)(param_1 + 3)</c>. Every sibling handler
-    /// just returns the advanced cursor; this one is a genuine integer multiply of it by
-    /// <c>DAT_0056321c + 1</c> (<see cref="s_CdCheckFileSize_0056321c"/>, wired up this session — the
-    /// CD-check file's size plus a fixed <c>0xd8000000</c>, set once in
-    /// <see cref="RunApplication"/>). Since <see cref="RunTextEngine"/> feeds this return value
-    /// straight back in as the next parse cursor, correctness for *any* text pointer requires the
-    /// multiplier to be exactly <c>1</c>, i.e. <c>DAT_0056321c == 0</c> exactly — which in turn
-    /// requires the CD-check file to be **exactly 0x28000000 (640 MiB)**, an oddly specific number
-    /// for the era's copy-protection schemes that quietly corrupt execution later rather than fail
-    /// up front. Transcribed verbatim regardless, per the project's fidelity rule; our own
-    /// <c>cdCheckPath</c> is still the TODO #2 placeholder filename, so the file never opens, and
-    /// <see cref="s_CdCheckFileSize_0056321c"/> ends up far from <c>0</c> — meaning hitting this
-    /// control code in text is currently expected to hand back a corrupted cursor.</para>
+    /// <para><b>The return value — resolved, not just faithfully transcribed.</b> Ghidra's own
+    /// read, confirmed by hand against the bytes at file offset <c>0x143c10</c> (there is no branch
+    /// after it, so this is unconditional): <c>return (DAT_0056321c + 1) * (int)(param_1 + 3)</c>.
+    /// Every sibling handler just returns the advanced cursor; this one is a genuine integer
+    /// multiply of it by <c>DAT_0056321c + 1</c> (<see cref="s_CdCheckFileSize_0056321c"/>). Since
+    /// <see cref="RunTextEngine"/> feeds this return value straight back in as the next parse
+    /// cursor, correctness for *any* text pointer requires the multiplier to be exactly <c>1</c>,
+    /// i.e. <c>DAT_0056321c == 0</c> exactly — which in turn requires the CD-check file
+    /// (<see cref="RunApplication"/>'s <c>cdCheckPath</c>, TODO #2, now resolved — see there) to be
+    /// **exactly 0x28000000 (640 MiB)**. It is: the real disc's <c>cd.idx</c> is exactly that size,
+    /// confirming this was copy protection all along — an authentic disc makes the multiplier
+    /// silently reduce to identity; anything else corrupts the text cursor several control codes
+    /// later, far from the tamper site. With the real filename wired up and the CD mounted, this
+    /// now returns a correct cursor and rendering proceeds past this control code.</para>
     /// </summary>
     private static byte* Handler_00544810(byte* text, byte* descriptor)
     {
@@ -11998,7 +12112,7 @@ public static unsafe partial class Blaze
         prim[2] = ((((((tint >> 8) & 0xff) >> 3 | 0xffffc400) << 5 | (tint & 0xff) >> 3) << 5
                     | (uint)((byte)(-(sbyte)(tint >> 0x18)) >> 3)) << 5)
                   | (uint)((byte)(-(sbyte)(tint >> 0x10)) >> 3);
-        if (s_Unknown_00564a48 != 0) clut &= 0xfdffffff;
+        if (s_DeviceCapFlag_00564a48) clut &= 0xfdffffff;
         prim[3] = clut | 0x64000000;
         prim[4] = ((position >> 0x10) + ((offset >> 8) & 0xff)) * 0x10000
                   | (position + (offset & 0xff)) & 0xffff;

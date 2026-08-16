@@ -2958,3 +2958,206 @@ it — not attempted this session, per "never substitute to make things compile"
 (unchanged, still needs a forced-signature Ghidra re-run). The dead `s_Unknown_00564a48` duplicate
 (above) is independent of both and can be fixed any time — nine call sites, nothing sub-state-7-
 specific about it.
+
+## 2026-08-16 — same day, continued: the copy-protection hypothesis confirmed, both remaining loose ends closed
+
+User mounted the real CD (drive `E:`, label `BLAZE_BLAZE_F`) between sessions and asked for the
+`s_Unknown_00564a48` duplicate to be fixed. Both closed the same sitting.
+
+### `s_Unknown_00564a48` merged into `s_DeviceCapFlag_00564a48`
+
+Same fix shape as the `s_Unknown_005d9de0`/`s_GammaIni` precedent above, but simpler: rather than
+turning the dead name into a forwarding property, all nine call sites (`983`, `1255`, `1397`,
+`1417`, `6856`, `10506`, `10539`, `10608`, `12001`) were repointed straight at
+`s_DeviceCapFlag_00564a48` (a global find/replace of `s_Unknown_00564a48 != 0` →
+`s_DeviceCapFlag_00564a48`, since every occurrence had that exact `!= 0` suffix — checked first),
+and the dead `int` field's declaration removed from its shared line with `s_Unknown_00571a3c`
+(which stays; still genuinely unresolved). No behavioural precedent to preserve here, unlike
+`s_GammaIni`, since the "wrong" field was never correct to begin with.
+
+### The 640 MiB was never a coincidence — `cd.idx` on the real disc
+
+With the CD mounted, `Get-ChildItem E:\` turned up `cd.idx`, size **671,088,640 bytes — exactly
+`0x28000000`**, exactly the value the previous session's write-up predicted from
+`Handler_00544810`'s return-value multiply without being able to check it. Reading
+`Legacy/Blaze.exe`'s `.data` directly at `DAT_00563280` (file offset `0x161880`) confirmed the
+template text itself: **`"@:\cd.idx"`** — TODO #2 is fully resolved, not just narrowed. This was
+1998-era copy protection: an authentic disc's `cd.idx` is exactly 640 MiB, which makes
+`DAT_0056321c` land on exactly `0` and the text-cursor multiply in `Handler_00544810` reduce to
+identity; anything else corrupts the cursor several control codes downstream of the actual check,
+which is what made this so opaque without the disc in hand.
+
+`RunApplication`'s `cdCheckPath` now fills bytes 1-9 with the confirmed template (only the drive
+letter at index 0 is still substituted per candidate, same convention as `driveRoot`) instead of
+being left as an unfilled placeholder buffer.
+
+### Confirmed at runtime — clean hand-off to the next, already-known blocker
+
+`OPENFORESIA_FORCE_SUBSTATE=7` plus one `ENTER`, same as both prior sessions' tests: **no native
+crash this time.** `Handler_00544810` now returns a correct cursor, `RunTextEngine` keeps parsing
+normally, and rendering reaches — and cleanly throws on — `FUN_0051be90` via `EmitCardGlyphTile`,
+exactly the blocker documented since the very first sub-state-7 session, now reached through the
+*real* dispatch path instead of a forced jump past a crash. This is the intended kind of "gap":
+loud, a managed `NotImplementedException` naming the exact function and its six-parameter
+signature, not a wild pointer three call frames away from its cause.
+
+### Remaining
+
+Sub-state 7 has exactly **one** blocker left: `FUN_0051be90` (needs a forced-signature Ghidra
+re-run — six cdecl params, see `TODO.md` §5 for the script). Nothing else in this screen's render
+path is currently known to be broken. Sub-state 2 (143 lines, back-step only) and the memory-card
+subsystem remain open but are unrelated, pre-existing scope.
+
+## 2026-08-16 — same day, third pass: `FUN_0051be90` needed no Ghidra re-run at all, and one more raw-VA gap
+
+User asked to launch the forced-signature Ghidra re-run this entry recommends. **Before doing
+that, grepped `Blaze.c` for the address first** (lesson from the previous pass, finally applied) —
+and the body was there all along, at line 66710, complete and correct. The "never decompiled by
+Ghidra" claim in every prior write-up (this file, `TODO.md`, the `EmitCardGlyphTile` stub's own
+exception message) was wrong: a search miss somewhere in a 98,000-line file, not a real gap. No
+re-run needed; the two other unresolved TODO-script entries in `TODO.md` §5
+(`ForceDecompileSubStates.java`/`ForceDecompileParticlePass.java`) were never even invoked this
+session.
+
+### `FUN_0051be90` — `EmitCardGlyphTile`, transcribed
+
+Draws a decimal number as a row of numeral-tile sprites (five words each, linked into `otEntry`) —
+not through the text engine at all, a separate primitive-emission path. Everything it calls was
+already reconstructed: `FUN_0051be20` → `EmitViewportRect`, `FUN_0051f9c0` → `DrawFlatPrimitive`,
+`FUN_0051bdb0` → `EmitClipRect`. So once read, this was a same-shot transcription, no cascading
+gaps.
+
+Two things worth remembering from the read:
+
+- **`mode`'s low nibble is a digit count, and it only skips *processing* the leading divisors, not
+  the accumulated value.** The ten-entry decimal divisor table (`s_DecimalDivisors_00566be8`, the
+  same one `Handler_005449f0` uses) is always walked start to finish, but the loop body — the
+  actual `value / divisor` — only executes once the remaining-iterations counter drops to `mode &
+  0xf`. For `mode = 0x82` (two digits) that means the *tens* divisor absorbs whatever accumulated
+  in the seven skipped leading divisors, so a value at or above 100 truncates into whatever the
+  tens/units math happens to produce rather than overflowing cleanly into more tiles. Every call
+  site in this screen keeps its values under 100, so this is not expected to bite — flagged rather
+  than "fixed," since fixing an original truncation quirk that never fires isn't this project's job.
+- **`sprite[0]` here is read with no per-frame offset**, unlike `DrawSpriteVariant`/
+  `DrawFlatPrimitive`, which both add `(short)sprite[4] * 8`. Ghidra's literal `*(uint *)*param_3`
+  has no such term. Assumed-by-analogy would have been wrong; read, not guessed.
+
+### A second raw-VA-as-pointer gap, same shape as the CD-check multiply — found by actually running it
+
+Transcribing `EmitCardGlyphTile` alone still crashed natively, *inside* it this time. Cause:
+`RenderSaveScreen`'s three call sites (pre-existing code, not written this session) do `*(uint*)box
+= 0x566c30;` — a **literal absolute address**, `DAT_00566c30`, baked into the original because that
+binary loads at a fixed base and can afford to. Our port doesn't map anything at `0x566c30`;
+dereferencing it as `EmitCardGlyphTile`'s `sprite[0]` faulted immediately. Same species of bug as
+last entry's `cdCheckPath` placeholder, different manifestation: a hardcoded `.data` address used
+as a live pointer rather than a filename template.
+
+Read the real 8 bytes straight from `Legacy/Blaze.exe` (file offset `0x165230`): `{ 0x08504800,
+0x02300000 }` — a plausible (colour, attributes) pair (digit column width computes to 8px, texture
+page index 0x30, both sane). Allocated a real 8-byte buffer,
+`s_NumeralTileRecord_00566c30`, and repointed all three call sites at it instead of the literal.
+**Worth a grep pass for other bare `0x56xxxx`/`0x60xxxx`-shaped literals assigned into a `sprite[0]`
+slot elsewhere in the file** — this pattern is easy to miss by reading alone (it looks like an
+ordinary immediate, not a bug) and only announces itself by crashing once actually exercised.
+
+### Confirmed at runtime — the full render path now completes
+
+`OPENFORESIA_FORCE_SUBSTATE=7`, first frame: `RenderSaveScreen` runs start to finish, no exception,
+no native fault — the entire chain fixed across this session's three passes (`0x04`, `0x01`,
+`DAT_0056321c`/the CD file, `s_Unknown_00564a48`, `DAT_00566c30`) actually renders now. What was
+not anticipated: `CharacterSelectSubState7` calls `StepSubState7Phase` **before**
+`RenderSaveScreen` every frame, and the phase counter (`s_CardPhase_00578e0c`) advances from `0` to
+`1` on that very first frame — so the *second* frame lands on `StepSubState7Phase`'s `case 1`,
+which throws `ThrowSaveCardUnresolved`, the pre-existing, deliberately-out-of-scope memory-card
+gate documented since the very first sub-state-7 session. Confirmed twice: once via
+`OPENFORESIA_FORCE_SUBSTATE=7`, once via the full nine-`ENTER` normal chain (781 frames, 429.1
+primitives/frame average before the throw) — same throw, same case, stable. This is not a new
+blocker, just the render path finally being complete enough to reach the *next* one.
+
+### An unrelated visible change, caused by this session's `s_Unknown_00564a48` fix — first mis-read, then actually fixed
+
+The character-select carousel (and any other screen drawing multiple `DrawAnimatedModel`/
+`EmitParticle` entities) started showing only the **selected** entity, where earlier sessions'
+captures showed all of them. Traced to the duplicate-global fix earlier this session:
+`DrawAnimatedModel` has a culling branch — `if (s_DeviceCapFlag_00564a48 && (attributes & 0x200) !=
+0) { if (s_Unknown_00564a4c == 0) return prim; ... }` (`Blaze.cs` ~line 983) — that was dead code
+while `s_DeviceCapFlag_00564a48` read from the never-written duplicate. With the duplicate merged
+away, the flag is live (true in this port's normal no-3D-device case), exposing this branch for the
+first time.
+
+**First pass got this wrong**: assumed the resulting cull was intentional and recorded it as
+"confirmed correct by the user." It was not — the user came back and called it a real regression.
+Re-reading `Blaze.c` found the actual bug, in the *second* condition of that same branch:
+`s_Unknown_00564a4c`. Every one of its write sites in `Blaze.c` (at least four: three around
+`FUN_00520ae0`/`EmitParticle`, one around `FUN_00537da0` in `FUN_00542ab0`'s `case 2`) follows the
+identical shape `DAT_00564a4c = 0; <reentrant call>; DAT_00564a4c = 1;` — a **reentrancy guard**,
+not a persistent flag, whose steady-state value is `1`. None of those call sites are wired up in
+this port, so the field just needed the right default. It had been declared as a bare `int`
+(C# default `0`) — backwards from the original's steady state — so the branch's inner check `if
+(s_Unknown_00564a4c == 0) return prim;` always took the early-return (skip drawing) instead of the
+far more common fallthrough (`attributes &= 0xfffffdff;`, clear the bit, draw normally). Fixed with
+one line: `private static int s_Unknown_00564a4c = 1;`.
+
+**Confirmed by primitive count, not just by re-reading.** `REVERSE_STATUS.md`'s original carousel
+write-up (2026-08-14, long before either bug existed) already documents the intended design: all
+sixteen slots call `DrawAnimatedModel` every frame, "the selected one straightens and lights up,
+the others tilt away and dim." A model rotated near edge-on toward a fixed camera contributes
+almost no visible pixels while still genuinely drawing — so a static screenshot showing one
+prominent character is not itself evidence of anything. What is evidence: primitive count. Post-fix
+measurement on the carousel: **~350/frame**, against the pre-regression historical baseline of
+**~382/frame** (`TODO.md`) — consistent with all sixteen slots drawing again, not just one. Also
+confirmed interactively: pressing `RIGHT` three times changes the displayed character (Guerrier →
+Magicien), so slot selection and animation were never broken, only this cull branch was.
+
+**The primitive-count match was a false all-clear — the user's reference screenshot caught what it
+missed.** Matching the historical ~382/frame baseline felt like sufficient proof at the time; it
+was not. The user pushed back a second time with a real screenshot of the original 1998 game
+showing something this port still didn't: a scattered wall of the other fifteen characters'
+**portrait cards** behind the 3D model. A single prominent character is not, on its own, evidence
+of correctness — matching a historical number is not the same as matching the reference image, and
+this session had the reference image the whole time and didn't check against it first.
+
+### The portrait cards — a second, unrelated bug, traced by elimination
+
+`CharacterSelectSubState0`'s per-slot loop (`Blaze.cs` ~9894-9944) already draws one: a
+`DrawSpritePrimitive` call per slot, `atlas+0x28` indexed by character `i` (a genuine 16-entry,
+8-byte-stride portrait table — confirmed distinct, non-zero UV data per slot via a temporary trace),
+positioned by the same `ProjectPoint` the name label uses, sized from the slot's own `tiltX`/`tiltY`
+reinterpreted as `halfWidth`/`halfHeight` (a real repurposing, not a bug — bigger for
+non-selected/tilted-away slots, ~0 for the selected one, whose 3D model already covers that spot).
+None of this was missing code; it was already there, unconditional on the model's own glow gate,
+and firing every frame.
+
+Instrumented step by step (`OPENFORESIA_TRACE_CAROUSEL`, temporary, removed after) to rule things
+out in order: real atlas data (not null, not zeroed) → plausible on-screen positions and sizes for
+several slots per frame → confirmed `DrawSpritePrimitive` actually gets called. Even an extreme
+forced test (fixed size well past anything naturally occurring, a guaranteed-in-bounds OT slot, a
+guaranteed-on-screen position) still drew nothing. That ruled out geometry, OT range, and resource
+loading all at once and pointed at the primitive-building code itself.
+
+Found there: `DrawSpritePrimitive` (`FUN_00521f20`) and `DrawFlatPrimitive` (`FUN_0051f9c0`) both
+gate their attribute-clearing branch behind a "second flag," and both had it wired to
+`s_SmallTextureFlag` — the ini `"Small"` texture-quality setting, `0` unless the user's `Blaze.ini`
+sets it. Cross-checked byte for byte against `Blaze.c:69625-69638` and `:68565-68569`: the real
+global in both is `DAT_00564a4c`, i.e. `s_Unknown_00564a4c` — the *same* reentrancy guard fixed
+earlier this session, now defaulting to `1`. `DrawSpriteVariant`, the third sibling, already had
+this right; its own doc comment even flagged the divergence ("`DrawSpritePrimitive` lui substitue
+`s_SmallTextureFlag`... deux adresses différentes") without anyone following up on which side was
+wrong. With `s_SmallTextureFlag` defaulting to `0`, every sprite that went through either wrong
+branch — the portrait cards among them — silently returned without drawing. Fixed by replacing
+`s_SmallTextureFlag` with `s_Unknown_00564a4c` in both functions' guards (three call sites total).
+
+Confirmed visually, not just by primitive count this time: the capture now shows all fifteen
+non-selected characters' portrait cards scattered behind the model, matching the user's reference
+screenshot. Primitive count also landed exactly on the historical baseline (382.3/frame), but that
+number is corroborating evidence now, not the sole proof.
+
+### Remaining
+
+Sub-state 7's **entire render path is done**, and so — as best confirmed — is the character
+carousel's. The one remaining blocker on sub-state 7 is the memory-card subsystem itself
+(`Ordinal_9/21/22/23/24/25/67/68/69/72/684`, `FUN_00504690/6c0/730/770/7e0/820`,
+`FUN_00504b40/70/90/c20`, `FUN_00512900`, `FUN_005128e0`) — unchanged, still its own dedicated
+session per earlier scoping. Sub-state 2 (143 lines, back-step only) is still open and unrelated.
+Worth a sweep of other `DrawSpritePrimitive`/`DrawFlatPrimitive` call sites now that the guard is
+fixed — anything else that silently no-op'd behind `s_SmallTextureFlag` should start drawing too.

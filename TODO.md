@@ -1,19 +1,41 @@
 # TODO
 
-Point d'entrée entre deux sessions. État au 2026-08-16 : contrôle de texte `0x04` réglé (comme
-prévu), puis `0x01` (imprévu, mais entièrement décompilé par Ghidra — voir §2). Le build est vert.
+Point d'entrée entre deux sessions. État au 2026-08-16, fin de séance (troisième passe de la
+journée) : **le rendu complet de l'écran de sauvegarde (sous-état 7) est terminé.** `FUN_0051be90`
+n'avait pas besoin d'un re-run Ghidra — elle était déjà décompilée, juste ratée par une recherche
+antérieure. Le seul blocage restant sur cet écran est la sous-couche carte mémoire, un sous-système
+volontairement hors scope depuis le début. Le build est vert.
 
-Non commité à ce stade : ce `TODO.md`, `REVERSE_STATUS.md`, et les changements dans `Blaze.cs`
-(`Handler_005449b0`, `Handler_00544810`, `s_CdCheckFileSize_0056321c`). La séance précédente
-(871cc8d, 846dab7) est déjà commitée.
+**Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée. Consigné en mémoire
+pour ne plus le proposer.
+
+**Régression du carrousel corrigée — deux bugs distincts, pas un.** Premier tour faux (noté
+« comportement normal » par erreur). Deuxième tour, avec les chiffres de primitives à l'appui,
+toujours incomplet : `s_Unknown_00564a4c` (garde de réentrance, stable à `1` dans `Blaze.c`, restée
+à `0` dans ce port) corrigée, débit revenu à la référence historique — mais **l'utilisateur a
+fourni une capture du jeu original** montrant que les portraits des 15 autres personnages
+manquaient toujours, preuve qu'un chiffre qui « colle » ne suffit pas à valider un rendu. Creusé
+jusqu'à trouver un **second** bug, indépendant : `DrawSpritePrimitive`/`DrawFlatPrimitive`
+utilisaient `s_SmallTextureFlag` (réglage ini, `0` par défaut) au lieu de `s_Unknown_00564a4c` —
+confirmé contre `Blaze.c:69625-69638`/`68565-68569`. Corrigé ; les portraits s'affichent maintenant,
+capture contre capture. Détail complet en §2.
+
+Non commité à ce stade : `TODO.md`, `REVERSE_STATUS.md`, et les changements dans `Blaze.cs`
+(`Handler_005449b0`, `Handler_00544810`, `s_CdCheckFileSize_0056321c`, `cdCheckPath` rempli, fusion
+`s_Unknown_00564a48`→`s_DeviceCapFlag_00564a48`, `s_Unknown_00564a4c` initialisé à `1`,
+`EmitCardGlyphTile` transcrite, `s_NumeralTileRecord_00566c30`, correctif
+`s_SmallTextureFlag`→`s_Unknown_00564a4c` dans `DrawSpritePrimitive`/`DrawFlatPrimitive`).
 
 ---
 
 ## Où on en est
 
 **La chaîne complète 0→6 se traverse en jeu normal, confirmation de personnage incluse.** Le
-sous-état 7 est atteint pour de vrai (pas seulement via un hook) mais son rendu bute sur deux
-blocages extérieurs à ce travail — voir §2.
+sous-état 7 est atteint pour de vrai, et **son rendu se termine désormais sans exception ni
+plantage** — vérifié en jeu, chaîne normale complète comme via le hook. Le seul blocage restant sur
+cet écran n'est plus dans le rendu : c'est la logique de phase de la sous-couche carte mémoire
+(`ThrowSaveCardUnresolved`), qui se déclenche systématiquement à la deuxième image (le compteur de
+phase passe de 0 à 1 dès la première). Voir §2.
 
 ```
 0  carrousel des 16 personnages          OK
@@ -28,7 +50,7 @@ blocages extérieurs à ce travail — voir §2.
 │
 6  répartition des points de stats       OK — confirmation incluse
 │
-7  écran de sauvegarde/chargement        atteint ; le rendu bloque un cran plus loin (§2)
+7  écran de sauvegarde/chargement        rendu terminé ; bloque à la 2e image, carte mémoire (§2)
 ```
 
 Le sous-état 2 n'est atteint qu'en retour arrière depuis le 3.
@@ -38,13 +60,13 @@ Débit de rendu par écran, utile comme repère de non-régression :
 | écran | primitives / image |
 |---|---|
 | menu principal | ~110 |
-| carrousel des personnages | ~382 |
+| carrousel des personnages | **382,3 mesuré, confirmé visuellement** (portraits inclus) après les trois correctifs de cette séance (`s_Unknown_00564a48`, `s_Unknown_00564a4c`, `s_SmallTextureFlag`→`s_Unknown_00564a4c` dans `DrawSpritePrimitive`/`DrawFlatPrimitive`) — colle exactement à la référence historique |
 | saisie du nom | ~593 |
 | style de langage | ~555 |
-| carrousel des éléments | ~433 |
-| tirage du bonus | ~429 |
+| carrousel des éléments | ~433 (pas re-mesuré ni re-capturé — même famille de correctifs applicable, à vérifier visuellement, pas seulement par le chiffre) |
+| tirage du bonus | ~429 (idem) |
 | répartition des points | ~644 |
-| sauvegarde | pas mesuré — le rendu plante avant la fin de l'image (§2) |
+| sauvegarde | pas mesuré — la logique de phase (pas le rendu) plante à la 2e image (§2) |
 
 ---
 
@@ -72,36 +94,64 @@ Détail complet, fonction par fonction : `REVERSE_STATUS.md`, section « 2026-08
 
 ---
 
-## 2. Sous-état 7 — l'écran de sauvegarde, ce qui bloque
+## 2. Sous-état 7 — l'écran de sauvegarde : le rendu est terminé
 
-**`0x04` est réglé cette séance** (`Handler_005449b0`, décodé à la main depuis `Legacy/Blaze.exe`,
-même recette que `0x06`/`0x09`/`0x1c`). Ça a fait avancer le rendu d'un cran, pas jusqu'au bout :
+**Cinq choses réglées cette séance, dans l'ordre où elles se sont débloquées l'une l'autre :**
 
-1. **Control code texte `0x01`** — pas un gap comme les autres : entièrement décompilé par Ghidra
-   (`Blaze.c:91274`, `FUN_00544810`), transcrit cette séance (`Handler_00544810`). C'est un
-   **deuxième chemin d'icône-dans-texte**, indépendant de `FUN_0051be90` (point 2 ci-dessous).
-   Son dernier `return` est une vraie multiplication (`(DAT_0056321c + 1) * (param_1 + 3)`,
-   confirmée octet par octet dans le binaire) qui ressemble fort à une protection anti-copie : elle
-   ne rend un pointeur de curseur valide que si `DAT_0056321c` vaut exactement `0`, ce qui exige que
-   le fichier de vérification CD fasse exactement `0x28000000` octets (640 Mio). Notre
-   `cdCheckPath` reste le placeholder du point 3 ci-dessous, donc `GetFileSize` échoue et le curseur
-   ressort corrompu — plantage natif `0xC0000005` **dans `RunTextEngine`, une itération plus loin**,
-   pas dans le handler lui-même (confirmé en jeu). Pas de correctif tenté : deviner la bonne valeur
-   irait contre la règle de fidélité. Détail complet, avec l'hypothèse et son raisonnement :
-   `REVERSE_STATUS.md`, section « 2026-08-16 ».
-2. **`FUN_0051be90`** — jamais décompilée par Ghidra nulle part dans `Blaze.c`, besoin d'un re-run
-   Ghidra à signature forcée (six paramètres cdecl observés : `otEntry, prim, sprite, value, mode,
-   extra`). Dans la partie **inconditionnelle** du rendu ; toujours pas atteint, `0x01` bloque avant.
-3. **Gabarit de nom du fichier de vérification CD** (`DAT_00563280`..`_0056328c`) — TODO #2 plus
-   ancien, jusqu'ici sans conséquence visible ; c'est lui qui bloque maintenant le point 1.
+1. **Control code texte `0x04`** — `Handler_005449b0`, décodé à la main depuis `Legacy/Blaze.exe`,
+   même recette que `0x06`/`0x09`/`0x1c`.
+2. **Control code texte `0x01`** — entièrement décompilé par Ghidra (`Blaze.c:91274`,
+   `FUN_00544810`). Un deuxième chemin d'icône-dans-texte, indépendant de `FUN_0051be90`.
+3. **Gabarit du fichier de vérification CD** (TODO #2, ancien) — **résolu**, pas contourné. Le CD
+   réel monté (`E:`) : son fichier racine `cd.idx` fait **exactement 671 088 640 octets =
+   0x28000000**, confirmant que le `return` de `FUN_00544810` (`(DAT_0056321c + 1) * (param_1 + 3)`)
+   est bien une protection anti-copie de 1998 — une image authentique fait tomber la multiplication
+   sur l'identité. Le gabarit lui-même relu directement dans `Legacy/Blaze.exe` (`DAT_00563280`,
+   décalage fichier `0x161880`) : `"@:\cd.idx"`. `cdCheckPath` dans `RunApplication` en est
+   maintenant rempli.
+4. **`s_Unknown_00564a48`** — doublon mort de `DAT_00564a48` à côté de `s_DeviceCapFlag_00564a48`
+   (`bool`, câblé correctement). Neuf sites d'appel (`DrawAnimatedModel`, `EmitParticle`, voisins de
+   `DrawUiPanel`) testaient le mauvais champ et prenaient toujours la branche « désactivée ».
+   Fusionné sur `s_DeviceCapFlag_00564a48`. **A réveillé une vraie régression du carrousel, en deux
+   couches :**
+   - `s_Unknown_00564a4c` (une garde de réentrance, pas un drapeau — sa valeur stable dans `Blaze.c`
+     est `1`, jamais `0`) restait à son défaut C# de `0`, ce qui faisait sauter le dessin de tout
+     modèle 3D au lieu de simplement lui nettoyer un bit d'attribut. Corrigé (`= 1`).
+   - **Insuffisant à lui seul** : le débit de primitives (~350/image) collait déjà à peu près à la
+     référence historique (~382/image), ce qui a fait conclure trop vite que c'était réglé. C'est
+     une capture du **jeu original**, fournie par l'utilisateur après un deuxième désaccord, qui a
+     montré ce qui manquait encore : les cartes-portrait des 15 autres personnages, en éventail
+     derrière le modèle 3D. `DrawSpritePrimitive`/`DrawFlatPrimitive` utilisaient `s_SmallTextureFlag`
+     (réglage ini « Small », `0` par défaut) au lieu de `s_Unknown_00564a4c` pour leur garde
+     secondaire — confirmé octet pour octet contre `Blaze.c:69625-69638`/`68565-68569`.
+     `DrawSpriteVariant`, la fonction sœur, avait déjà le bon symbole ; un TODO déjà posé signalait
+     la divergence sans trancher lequel des deux avait tort. Corrigé aux trois sites concernés.
 
-**Trouvé en cours de route, non corrigé** : `s_Unknown_00564a48` (`int`, jamais assigné, toujours
-`0`) est un doublon mort de `DAT_00564a48` à côté de `s_DeviceCapFlag_00564a48` (`bool`, câblé
-correctement). Neuf sites d'appel (`DrawAnimatedModel`, `EmitParticle`, voisins de `DrawUiPanel`)
-testent le mauvais champ et prennent donc toujours la branche « désactivée », alors que la valeur
-compilée de `DAT_00564a48` dans le `.data` est `1`. Portée réelle mais indépendante du reste — voir
-`REVERSE_STATUS.md` avant de le corriger, et regarder cette piste en premier si un rendu « géométrie
-bonne, image fausse » (§7) est un jour signalé.
+   Confirmé **visuellement, capture contre capture**, pas seulement par un chiffre qui colle : les
+   15 portraits sont maintenant à l'écran, et le débit tombe pile sur 382,3/image. Détail complet et
+   raisonnement (y compris la méthode d'élimination par instrumentation temporaire) :
+   `REVERSE_STATUS.md`, sections « An unrelated visible change... » et « The portrait cards — a
+   second, unrelated bug... » ; mémoire dédiée mise à jour en conséquence.
+5. **`FUN_0051be90` / `EmitCardGlyphTile`** — **n'avait pas besoin d'un re-run Ghidra.** La note
+   précédente (« jamais décompilée ») était fausse — le corps est à `Blaze.c:66710`, complet, juste
+   raté par une recherche antérieure dans les 98 000 lignes du fichier. Dessine un nombre décimal en
+   tuiles numériques (pas via le moteur de texte) ; tout ce qu'elle appelle
+   (`EmitViewportRect`/`FUN_0051be20`, `DrawFlatPrimitive`/`FUN_0051f9c0`,
+   `EmitClipRect`/`FUN_0051bdb0`) était déjà reconstruit. Transcrite d'un coup.
+
+   En la testant, un **second bug latent** est apparu (préexistant, pas introduit ici) :
+   `RenderSaveScreen` posait `*(uint*)box = 0x566c30;` — une **adresse mémoire brute de 1998**
+   utilisée comme pointeur, invalide dans ce port. Relu les 8 vrais octets dans `Legacy/Blaze.exe`
+   (décalage `0x165230`) et créé `s_NumeralTileRecord_00566c30`, un vrai buffer, à la place du
+   littéral, aux trois sites d'appel.
+
+**Résultat en jeu, confirmé deux fois (hook et chaîne normale complète)** : `RenderSaveScreen`
+s'exécute maintenant **entièrement sans exception ni plantage natif**. Le seul blocage restant
+n'est plus le rendu : `CharacterSelectSubState7` appelle `StepSubState7Phase` avant le rendu à
+chaque image, et son compteur de phase passe de 0 à 1 dès la première image — donc la **deuxième**
+image tombe systématiquement sur `case 1` de la sous-couche carte mémoire
+(`ThrowSaveCardUnresolved`), le même point d'arrêt documenté depuis la toute première séance sur ce
+sous-état, jamais dans le rendu lui-même.
 
 La sous-couche carte mémoire (`Ordinal_9/21/22/23/24/25/67/68/69/72/684`, encapsulés dans
 `FUN_00504690/6c0/730/770/7e0/820`, `FUN_00504b40/70/90/c20`, `FUN_00512900`, `FUN_005128e0`) reste
@@ -109,7 +159,9 @@ volontairement non lue — un sous-système à part pour une séance dédiée. U
 (`ThrowSaveCardUnresolved`) couvre tous les cas qui la touchent.
 
 Détail complet : `REVERSE_STATUS.md`, sections « 2026-08-15 — `FUN_0050a910`: sub-state 7, the
-memory-card save screen » et « 2026-08-16 — control codes `0x04` and `0x01`... ».
+memory-card save screen », « 2026-08-16 — control codes `0x04` and `0x01`... », « 2026-08-16 — same
+day, continued: the copy-protection hypothesis confirmed... » et « 2026-08-16 — same day, third
+pass: `FUN_0051be90` needed no Ghidra re-run at all... ».
 
 ---
 
@@ -117,12 +169,11 @@ memory-card save screen » et « 2026-08-16 — control codes `0x04` and `0x01`.
 
 | sous-état / fonction | note |
 |---|---|
-| `DAT_0056321c` / mystère 640 Mio (§2) | besoin du vrai nom+taille de fichier CD (data-section) ou d'une décision assumée — pas une lecture de code |
-| `FUN_0051be90` (§2) | a besoin d'un re-run Ghidra à signature forcée, pas de lecture de `.asm` ; bloqué derrière le point ci-dessus |
-| `s_Unknown_00564a48` doublon (§2) | neuf sites d'appel à corriger, indépendant du reste |
+| Sous-couche carte mémoire (§2) | **seul blocage restant du sous-état 7** ; grosse pièce à part, séance dédiée |
 | Sous-état 2 (`FUN_00508410`, 146 lignes) | retour arrière depuis le 3, pas urgent |
-| Sous-couche carte mémoire | grosse pièce à part, séance dédiée |
 | Mappage clavier → `pad+2` (§1) | seulement si on veut se passer d'`OPENFORESIA_FORCE_CONFIRM_STATS` |
+| Recapturer carrousel des éléments / tirage du bonus | carrousel des personnages déjà confirmé **visuellement** (382,3, portraits inclus) ; les deux autres écrans à entités multiples n'ont été ni recapturés ni revérifiés — un chiffre qui colle ne suffit pas, voir la mésaventure de cette séance |
+| Balayer les autres sites `DrawSpritePrimitive`/`DrawFlatPrimitive` | le correctif `s_SmallTextureFlag`→`s_Unknown_00564a4c` peut réveiller d'autres sprites ailleurs qui se taisaient silencieusement pour la même raison |
 
 `InvokeCharacterSelectSubState` lève une exception qui nomme le fichier exact pour tout sous-état
 pas encore câblé.
@@ -139,7 +190,8 @@ OpenForesia.Tools\playtest.ps1 -Build -Entry 1 -Then ENTER,WAIT2,ENTER,WAIT2,ENT
 
 Neuf `ENTER` avec `WAIT2` entre chaque : nom, style de langage, élément, puis le tirage des trois
 dés. **Le minutage est sensible au hasard du lancer de dés** — si la capture montre encore l'écran
-des dés ou un plantage sur un control-code texte (0x14, 0x04, ...), relancer ou ajuster les `WAIT`.
+des dés ou un plantage sur un control-code texte (0x14 au sous-état 6 reste ouvert ; 0x04/0x01 sont
+réglés depuis le 2026-08-16), relancer ou ajuster les `WAIT`.
 
 Pour exercer les entrées du sous-état 6 une fois arrivé : ajouter
 `DOWN,WAIT1,DOWN,WAIT1,RIGHT,WAIT1,RIGHT,WAIT1,UP,WAIT1,LEFT` à la suite — mais le mappage exact
@@ -178,7 +230,7 @@ Deux scripts, **jamais commités** — seul leur code source est préservé dans
 | script | rôle |
 |---|---|
 | `ForceDecompileSubStates.java` | les huit handlers de sous-état, signature `uint* h(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)` |
-| `ForceDecompileParticlePass.java` | une fonction seule, signature à cinq paramètres (gabarit à adapter — `FUN_0051be90` en aurait besoin à six) |
+| `ForceDecompileParticlePass.java` | une fonction seule, signature à cinq paramètres |
 
 **Sur cette machine, `~/ghidra_scripts` n'existe pas** : recopier les deux scripts depuis
 `REVERSE_STATUS.md` avant le premier lancement. Ghidra est installé sous
@@ -195,9 +247,14 @@ $gh = "D:\Open Foresia Project\Tool\ghidra_12.1.2_PUBLIC\support\analyzeHeadless
 
 - ✅ le prototype et l'arité, donc `pad[3]` au lieu de `*(byte *)(in_stack_00000010 + 3)` ;
 - ❌ **les locaux de pile**. Pour ceux-là il faut lire le `.asm` — **sauf si le `.asm` lui-même est
-  incomplet** (arrivé une fois sur deux cette séance) ou **si Ghidra n'a jamais rien décompilé du
-  tout pour la fonction** (`FUN_0051be90`, cas différent des deux autres) : dans ces cas, un re-run
-  à signature forcée est le seul levier, la lecture manuelle ne peut rien apporter de plus.
+  incomplet** (arrivé une fois sur deux dans une séance antérieure) ou si Ghidra n'a vraiment jamais
+  rien décompilé pour la fonction : dans ces cas, un re-run à signature forcée est le seul levier.
+
+**`FUN_0051be90` (2026-08-16) était un faux négatif** — noté pendant plusieurs séances comme
+« jamais décompilée par Ghidra », alors que son corps complet était bien dans `Blaze.c` (ligne
+66710), juste raté par une recherche antérieure dans les 98 000 lignes du fichier. **Toujours
+`grep` l'adresse exacte sur `Blaze.c` en entier avant de conclure qu'un re-run est nécessaire** —
+un re-run coûte du temps (Ghidra headless, plusieurs minutes) qu'un grep de deux secondes évite.
 
 ---
 
