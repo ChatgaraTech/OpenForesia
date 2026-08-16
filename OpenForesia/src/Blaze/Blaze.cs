@@ -7201,7 +7201,14 @@ public static unsafe partial class Blaze
 
     // Ghidra: DAT_00578e04 — le nombre de dés déjà lancés, et DAT_005e906a le total de points.
     private static int s_DiceRolled_00578e04;
-    private static sbyte s_StatTotal_005e906a;
+
+    // **Corrigé 2026-08-16** : même défaut d'aliasing que dialogGate/confirmGate (voir plus bas) —
+    // DAT_005e906a est l'octet +0xa du même tableau DAT_005e9060, pas une globale isolée.
+    // Handler_005449f0 (l'affichage décimal, code de contrôle 0x06) lit déjà
+    // s_PanelSelection_005e9060+offset ; un `sbyte` séparé ici faisait que le panneau « Bonus »
+    // affichait toujours 0 alors que la répartition des points fonctionnait (elle lisait/écrivait
+    // ce même `sbyte`, juste jamais le tableau que l'affichage regarde).
+    private static ref byte s_StatTotal_005e906a => ref s_PanelSelection_005e9060[0xa];
 
     // Ghidra: DAT_00578de4 — la source des sept octets recopiés dans s_PanelSelection_005e9060.
     private static byte* s_StatSource_00578de4;
@@ -7349,7 +7356,7 @@ public static unsafe partial class Blaze
                 }
                 if (stopped != 3) break;
 
-                s_StatTotal_005e906a += sum;
+                s_StatTotal_005e906a = (byte)(s_StatTotal_005e906a + sum);
 
                 byte f0 = s_Dice_00573350[0x30];
                 byte f1 = (s_Dice_00573350 + DiceStride)[0x30];
