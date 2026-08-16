@@ -1969,6 +1969,7 @@ public static unsafe partial class Blaze
                 cdCheckPath[0] = (byte)foundLetter;
                 IntPtr hFile = OpenExistingFileReadOnly(cdCheckPath);
                 uint fileSize = GetFileSize(hFile, null);
+                s_CdCheckFileSize_0056321c = fileSize;   // Ghidra: DAT_0056321c = fileSize
 
                 IntPtr hBitmap = LoadBitmapEx(hInstance, (IntPtr)0x66 /* MAKEINTRESOURCE */, out IntPtr hPalette);
                 Setup3DDevice(hBitmap, hPalette, GetRendererDialogStrings());
@@ -1999,6 +2000,7 @@ public static unsafe partial class Blaze
                 SetDeviceLostCallback(null);
 
                 LoadOptionsIni(); // Ghidra: FUN_0050f140 @ 0x0050f140
+                s_CdCheckFileSize_0056321c += 0xd8000000;   // Ghidra: DAT_0056321c = DAT_0056321c + 0xd8000000
 
                 try
                 {
@@ -5224,6 +5226,11 @@ public static unsafe partial class Blaze
     // (s____Blaze_Blade_005631e8 = "@:\Blaze&Blade"). Conflating the two is what made every
     // CD-relative path resolve one directory too high and find nothing.
     private static readonly byte* s_CdDataRootPath = ToAnsiZ("@:\\FRENCH\\");
+
+    // Ghidra: DAT_0056321c â€” the CD-check file's size, plus a fixed 0xd8000000 added once right
+    // before RunMainLoop. Read back by Handler_00544810 (UI text control code 0x01), where
+    // `(DAT_0056321c + 1)` multiplies a returned text-cursor pointer â€” see the TODO(REVERSE) there.
+    private static uint s_CdCheckFileSize_0056321c;
 
     /// <summary>
     /// Ghidra: FUN_00529c10 @ 0x00529c10 â€” Blaze &amp; Blade's own "RunMainLoop": plays the four
@@ -11071,6 +11078,113 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: FUN_00544810 @ 0x00544810 — pass-2 handler for control code <c>0x01</c>: draws an
+    /// inline icon glyph, fully decompiled (unlike <c>FUN_0051be90</c>, the *other* icon path — see
+    /// <see cref="RenderSaveScreen"/>'s banner comment — which never got a body at all).
+    ///
+    /// <para>Three operand bytes select (category, sub-category, index), each remapped through
+    /// <see cref="s_PanelSelection_005e9060"/> exactly like <see cref="Handler_005449f0"/>'s single
+    /// operand, then chase the same nested atlas <see cref="DrawUiPanel"/> and
+    /// <see cref="Handler_00544e80"/> already use: root (slot 0 or 1) → <c>+0x94</c> (atlas) →
+    /// <c>[selector1]</c> (a sub-table pointer) → <c>[selector2 * 8]</c> (an 8-byte
+    /// <c>(uv, flags)</c> record). <c>flags</c>' byte at bits 16-23 then indexes
+    /// <see cref="s_EntityDecodeTable_005e8f00"/> — the same 1024-entry tpage/clut table
+    /// <see cref="DecodeSlot"/> reads elsewhere, always in-bounds here since the index is an
+    /// explicit <c>&amp; 0xff</c>. The five <c>DAT_005e8324[...]</c> stores that follow are the same
+    /// six-word sprite primitive <see cref="EmitTextSprite"/> builds, just fed from this record
+    /// instead of the descriptor's own line state.</para>
+    ///
+    /// <para><b>TODO(REVERSE) — the return value.</b> Ghidra's own read, confirmed by hand against
+    /// the bytes at file offset <c>0x143c10</c> (there is no branch after it, so this is
+    /// unconditional): <c>return (DAT_0056321c + 1) * (int)(param_1 + 3)</c>. Every sibling handler
+    /// just returns the advanced cursor; this one is a genuine integer multiply of it by
+    /// <c>DAT_0056321c + 1</c> (<see cref="s_CdCheckFileSize_0056321c"/>, wired up this session — the
+    /// CD-check file's size plus a fixed <c>0xd8000000</c>, set once in
+    /// <see cref="RunApplication"/>). Since <see cref="RunTextEngine"/> feeds this return value
+    /// straight back in as the next parse cursor, correctness for *any* text pointer requires the
+    /// multiplier to be exactly <c>1</c>, i.e. <c>DAT_0056321c == 0</c> exactly — which in turn
+    /// requires the CD-check file to be **exactly 0x28000000 (640 MiB)**, an oddly specific number
+    /// for the era's copy-protection schemes that quietly corrupt execution later rather than fail
+    /// up front. Transcribed verbatim regardless, per the project's fidelity rule; our own
+    /// <c>cdCheckPath</c> is still the TODO #2 placeholder filename, so the file never opens, and
+    /// <see cref="s_CdCheckFileSize_0056321c"/> ends up far from <c>0</c> — meaning hitting this
+    /// control code in text is currently expected to hand back a corrupted cursor.</para>
+    /// </summary>
+    private static byte* Handler_00544810(byte* text, byte* descriptor)
+    {
+        FlushLine(descriptor);
+        if (s_PenX_005e8320 != 0) EnqueueGlyphUpload(descriptor);
+        if ((sbyte)descriptor[0x0e] != 0) EmitTextSprite(descriptor);
+        s_PenX_005e8320 = 0;
+        descriptor[0x0c] = 0;
+
+        byte selector0 = s_PanelSelection_005e9060[text[0]];
+        byte* root = selector0 switch
+        {
+            0 => s_MainResourceBuffer_005e97c0,
+            1 => s_MainResourceDirectory_005e97c4,
+            _ => throw new NotImplementedException(
+                     $"FUN_00544810: resource root {selector0} â€” the original indexes " +
+                     "&DAT_005e97c0 by four bytes, and only slots 0 and 1 are modelled, same as " +
+                     "FUN_00544e80."),
+        };
+        byte* atlas = *(byte**)(root + 0x94);
+
+        byte selector1 = s_PanelSelection_005e9060[text[1]];
+        byte* subTable = *(byte**)(atlas + selector1 * 4);
+
+        byte selector2 = s_PanelSelection_005e9060[text[2]];
+        uint uv = *(uint*)(subTable + selector2 * 8);
+        uint flags = *(uint*)(subTable + selector2 * 8 + 4);
+        if (s_DeviceCapFlag_00564a48) flags &= 0xfffffdff;
+
+        uint rect = *(uint*)(descriptor + 0x20);
+        uint clutEntry = *(uint*)(s_EntityDecodeTable_005e8f00 + ((flags >> 0x10) & 0xff) * 4);
+
+        uint* prim = s_SpriteCursor_005e8324;
+        prim[2] = 0x65ffffff;
+        prim[1] = (rect >> 0x10 & 0x60) | (clutEntry & 0xffff) | 0xe1000000;
+        prim[3] = ((rect >> 8 & 0xff) << 0x10) | (rect & 0xff);
+        prim[4] = (clutEntry & 0xffff0000) + (flags >> 6 & 0x3c00000) + (flags >> 8 & 0xf0000) | (uv & 0xffff);
+        prim[5] = (uv >> 0x10 & 0xff) | (uv >> 8 & 0xff0000);
+
+        prim[0] = *s_OtCursor_005e8314 | 0x5000000;
+        *s_OtCursor_005e8314 = (uint)(nuint)prim;
+        s_SpriteCursor_005e8324 = prim + 6;
+
+        return (byte*)((s_CdCheckFileSize_0056321c + 1) * (uint)(nuint)(text + 3));
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x04</c> — <c>0x005449b0</c>, decoded by hand from
+    /// Legacy/Blaze.exe (file offset <c>0x143db0</c>).
+    /// <code>
+    /// 8B 44 24 04  MOV EAX,[ESP+4]      ; text cursor
+    /// 8B 54 24 08  MOV EDX,[ESP+8]      ; descriptor
+    /// 33 C9        XOR ECX,ECX
+    /// 8A 68 01     MOV CH,[EAX+1]
+    /// 8A 08        MOV CL,[EAX]
+    /// 83 C0 02     ADD EAX,2
+    /// 66 89 4A 20  MOV [EDX+0x20],CX
+    /// C3           RET
+    /// </code>
+    /// <para>Two operand bytes, matching the pass-1 stub for this code (<c>0x00543960</c>, "skip
+    /// two"). It writes both verbatim into the low word of the descriptor's own <c>rect</c> dword
+    /// at <c>+0x20</c> â€” the same field <see cref="EmitTextSprite"/> reads back to place the
+    /// finished line's sprite: <c>text[0]</c> lands in the byte <c>rect &amp; 0xff</c>, folded into
+    /// the sprite's X-ish term there, and <c>text[1]</c> in the next byte, <c>(rect &gt;&gt; 8) &amp;
+    /// 0xff</c>, folded into its Y-ish term. The dword's upper word â€” including the
+    /// <c>0x1000000</c> enable bit <see cref="DrawUiPanel"/> tests before it copies this
+    /// descriptor's finished text into the panel's own display list â€” is left untouched, so this
+    /// code only ever nudges a position something else has already turned on.</para>
+    /// </summary>
+    private static byte* Handler_005449b0(byte* text, byte* descriptor)
+    {
+        *(ushort*)(descriptor + 0x20) = (ushort)(text[0] | (text[1] << 8));
+        return text + 2;
+    }
+
+    /// <summary>
     /// Handler for control code <c>0x06</c> — <c>0x005449f0</c>, decoded by hand from
     /// Legacy/Blaze.exe (file offset <c>0x143df0</c>). It **prints a number in decimal**, which is
     /// what the dice screen needs for the stat total and the seven class figures.
@@ -11168,6 +11282,8 @@ public static unsafe partial class Blaze
         }
         else
         {
+            t[0x01] = Handler_00544810;   // 0x00544810, decompiled
+            t[0x04] = Handler_005449b0;   // 0x005449b0, decoded here
             t[0x06] = Handler_005449f0;   // 0x005449f0, decoded here — nombre en décimal
             t[0x09] = Handler_00544b10;   // 0x00544b10, decoded here
             t[0x0c] = Handler_00544c50;   // 0x00544c50, decompiled

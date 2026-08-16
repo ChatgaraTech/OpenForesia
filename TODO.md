@@ -1,12 +1,11 @@
 # TODO
 
-Point d'entrée entre deux sessions. État au 2026-08-15, fin de séance (quatrième bloc de travail de
-la journée : nouvelle machine, sous-état 6, sous-état 7, puis les cinq fonctions de
-`FinalizeCharacterStats`). Le build est vert.
+Point d'entrée entre deux sessions. État au 2026-08-16 : contrôle de texte `0x04` réglé (comme
+prévu), puis `0x01` (imprévu, mais entièrement décompilé par Ghidra — voir §2). Le build est vert.
 
-Non commité à ce stade : ce `TODO.md`, plus les cinq fonctions et le hook
-`OPENFORESIA_FORCE_CONFIRM_STATS` dans `Blaze.cs`. Le reste (nouvelle machine, sous-états 6 et 7)
-est déjà commité (`871cc8d`).
+Non commité à ce stade : ce `TODO.md`, `REVERSE_STATUS.md`, et les changements dans `Blaze.cs`
+(`Handler_005449b0`, `Handler_00544810`, `s_CdCheckFileSize_0056321c`). La séance précédente
+(871cc8d, 846dab7) est déjà commitée.
 
 ---
 
@@ -27,9 +26,9 @@ blocages extérieurs à ce travail — voir §2.
 │
 5  tirage du bonus (trois cartes)        OK
 │
-6  répartition des points de stats       OK — confirmation incluse, **débloqué cette séance**
+6  répartition des points de stats       OK — confirmation incluse
 │
-7  écran de sauvegarde/chargement        atteint ; le rendu bloque (§2)
+7  écran de sauvegarde/chargement        atteint ; le rendu bloque un cran plus loin (§2)
 ```
 
 Le sous-état 2 n'est atteint qu'en retour arrière depuis le 3.
@@ -75,24 +74,42 @@ Détail complet, fonction par fonction : `REVERSE_STATUS.md`, section « 2026-08
 
 ## 2. Sous-état 7 — l'écran de sauvegarde, ce qui bloque
 
-Toujours les deux mêmes blocages, confirmés une seconde fois cette séance via la chaîne normale
-(pas seulement `OPENFORESIA_FORCE_SUBSTATE`) :
+**`0x04` est réglé cette séance** (`Handler_005449b0`, décodé à la main depuis `Legacy/Blaze.exe`,
+même recette que `0x06`/`0x09`/`0x1c`). Ça a fait avancer le rendu d'un cran, pas jusqu'au bout :
 
-1. **Control code texte `0x04`** — un gap préexistant (même famille que le `0x14` du sous-état 6),
-   pas quelque chose introduit ici. Rapide à corriger : lire son gestionnaire dans `Legacy/Blaze.exe`
-   comme les autres codes déjà faits (`0x06`, `0x09`, `0x1c`).
+1. **Control code texte `0x01`** — pas un gap comme les autres : entièrement décompilé par Ghidra
+   (`Blaze.c:91274`, `FUN_00544810`), transcrit cette séance (`Handler_00544810`). C'est un
+   **deuxième chemin d'icône-dans-texte**, indépendant de `FUN_0051be90` (point 2 ci-dessous).
+   Son dernier `return` est une vraie multiplication (`(DAT_0056321c + 1) * (param_1 + 3)`,
+   confirmée octet par octet dans le binaire) qui ressemble fort à une protection anti-copie : elle
+   ne rend un pointeur de curseur valide que si `DAT_0056321c` vaut exactement `0`, ce qui exige que
+   le fichier de vérification CD fasse exactement `0x28000000` octets (640 Mio). Notre
+   `cdCheckPath` reste le placeholder du point 3 ci-dessous, donc `GetFileSize` échoue et le curseur
+   ressort corrompu — plantage natif `0xC0000005` **dans `RunTextEngine`, une itération plus loin**,
+   pas dans le handler lui-même (confirmé en jeu). Pas de correctif tenté : deviner la bonne valeur
+   irait contre la règle de fidélité. Détail complet, avec l'hypothèse et son raisonnement :
+   `REVERSE_STATUS.md`, section « 2026-08-16 ».
 2. **`FUN_0051be90`** — jamais décompilée par Ghidra nulle part dans `Blaze.c`, besoin d'un re-run
    Ghidra à signature forcée (six paramètres cdecl observés : `otEntry, prim, sprite, value, mode,
-   extra`). Dans la partie **inconditionnelle** du rendu, donc bloque tout l'écran une fois le
-   point 1 réglé.
+   extra`). Dans la partie **inconditionnelle** du rendu ; toujours pas atteint, `0x01` bloque avant.
+3. **Gabarit de nom du fichier de vérification CD** (`DAT_00563280`..`_0056328c`) — TODO #2 plus
+   ancien, jusqu'ici sans conséquence visible ; c'est lui qui bloque maintenant le point 1.
+
+**Trouvé en cours de route, non corrigé** : `s_Unknown_00564a48` (`int`, jamais assigné, toujours
+`0`) est un doublon mort de `DAT_00564a48` à côté de `s_DeviceCapFlag_00564a48` (`bool`, câblé
+correctement). Neuf sites d'appel (`DrawAnimatedModel`, `EmitParticle`, voisins de `DrawUiPanel`)
+testent le mauvais champ et prennent donc toujours la branche « désactivée », alors que la valeur
+compilée de `DAT_00564a48` dans le `.data` est `1`. Portée réelle mais indépendante du reste — voir
+`REVERSE_STATUS.md` avant de le corriger, et regarder cette piste en premier si un rendu « géométrie
+bonne, image fausse » (§7) est un jour signalé.
 
 La sous-couche carte mémoire (`Ordinal_9/21/22/23/24/25/67/68/69/72/684`, encapsulés dans
 `FUN_00504690/6c0/730/770/7e0/820`, `FUN_00504b40/70/90/c20`, `FUN_00512900`, `FUN_005128e0`) reste
 volontairement non lue — un sous-système à part pour une séance dédiée. Un seul point d'arrêt
 (`ThrowSaveCardUnresolved`) couvre tous les cas qui la touchent.
 
-Détail complet : `REVERSE_STATUS.md`, section « 2026-08-15 — `FUN_0050a910`: sub-state 7, the
-memory-card save screen ».
+Détail complet : `REVERSE_STATUS.md`, sections « 2026-08-15 — `FUN_0050a910`: sub-state 7, the
+memory-card save screen » et « 2026-08-16 — control codes `0x04` and `0x01`... ».
 
 ---
 
@@ -100,8 +117,9 @@ memory-card save screen ».
 
 | sous-état / fonction | note |
 |---|---|
-| Control code `0x04` (§2) | rapide, même recette que `0x06`/`0x09`/`0x1c` |
-| `FUN_0051be90` (§2) | a besoin d'un re-run Ghidra à signature forcée, pas de lecture de `.asm` |
+| `DAT_0056321c` / mystère 640 Mio (§2) | besoin du vrai nom+taille de fichier CD (data-section) ou d'une décision assumée — pas une lecture de code |
+| `FUN_0051be90` (§2) | a besoin d'un re-run Ghidra à signature forcée, pas de lecture de `.asm` ; bloqué derrière le point ci-dessus |
+| `s_Unknown_00564a48` doublon (§2) | neuf sites d'appel à corriger, indépendant du reste |
 | Sous-état 2 (`FUN_00508410`, 146 lignes) | retour arrière depuis le 3, pas urgent |
 | Sous-couche carte mémoire | grosse pièce à part, séance dédiée |
 | Mappage clavier → `pad+2` (§1) | seulement si on veut se passer d'`OPENFORESIA_FORCE_CONFIRM_STATS` |

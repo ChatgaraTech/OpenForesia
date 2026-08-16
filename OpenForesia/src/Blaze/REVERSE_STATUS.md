@@ -2853,3 +2853,108 @@ Sub-state **6 is now fully transcribed**, confirm path included. Sub-state **7**
 Sub-state **2** (143 lines, back-step only) is still open. The keyboard-to-`pad+2`-bit mapping for
 sub-state 6's confirm button was deliberately not traced (out of scope here); worth doing before
 relying on `OPENFORESIA_FORCE_CONFIRM_STATS` becomes inconvenient.
+
+## 2026-08-16 — control codes `0x04` and `0x01`, and a genuine copy-protection tripwire
+
+New session, continuing straight from the `0x04` gap TODO.md left as "quick, same shape as the
+already-fixed ones."
+
+### Control code `0x04` — `Handler_005449b0`, as expected
+
+Decoded by hand from `Legacy/Blaze.exe` (file offset `0x143db0`, 21 bytes to the `RET`), same
+recipe as `0x06`/`0x09`/`0x1c`. Two operand bytes, writing verbatim into the low word of the
+descriptor's `+0x20` "rect" dword that `EmitTextSprite` reads back to place the finished line's
+sprite — `text[0]` becomes `rect & 0xff`, `text[1]` becomes `(rect >> 8) & 0xff`. The dword's upper
+word (including the `0x1000000` enable bit `DrawUiPanel` tests before copying this descriptor's
+text into a panel) is left untouched. Confirmed by build; wired into `BuildTextTable`'s render pass.
+
+### Control code `0x01` was the *next* gap down, not a stub — a lesson in checking `Blaze.c` first
+
+Fixing `0x04` let `playtest.ps1 -Trace` (via `OPENFORESIA_FORCE_SUBSTATE=7`) advance further into
+the same text stream and crash on control code `0x01` instead, dispatching to `FUN_00544810`.
+**Wasted real effort hand-disassembling it from `Legacy/Blaze.exe` before thinking to grep
+`Blaze.c` for the address** — it was fully decompiled all along (`Blaze.c:91274`), unlike
+`FUN_0051be90`. **Lesson for next time: always grep `Blaze.c` for the target `FUN_` address before
+reaching for the binary.** The half-finished hand-disassembly did turn out useful for one thing: it
+independently confirmed byte-for-byte that the C's odd final line really is the machine code (see
+below), which is the kind of claim worth double-checking before trusting Ghidra on a stack-slot
+tail read.
+
+`Handler_00544810` draws an **inline icon glyph** — a second, independent icon-in-text path from
+`FUN_0051be90`, and one that Ghidra could actually decompile. Three operand bytes select
+(category, sub-category, index), each remapped through `s_PanelSelection_005e9060` exactly like
+`Handler_005449f0`'s single operand, then chase the same nested atlas `DrawUiPanel` and
+`Handler_00544e80` already use: `root[selector0]` (slot 0 or 1) → `+0x94` (atlas) → `[selector1]`
+(sub-table pointer) → `[selector2 * 8]` (an 8-byte `(uv, flags)` record). `flags`' byte at bits
+16-23 indexes `s_EntityDecodeTable_005e8f00` — already known in this port as the 1024-entry
+tpage/clut table `DecodeSlot` reads elsewhere; safe here since the index is an explicit `& 0xff`.
+The five stores that follow are the same six-word sprite primitive `EmitTextSprite` builds, fed
+from this record instead of the descriptor's own line state. Wired to the correctly-live
+`s_DeviceCapFlag_00564a48` (not the dead duplicate — see below) for the conditional `flags &=
+0xfffffdff`.
+
+**Found, and left alone: `s_Unknown_00564a48` is a dead duplicate of `DAT_00564a48`.** Two separate
+C# fields exist for the same Ghidra global — `s_DeviceCapFlag_00564a48` (`bool`, correctly wired,
+set by `CheckDeviceCapabilityFlag`) and `s_Unknown_00564a48` (`int`, declared standalone, never
+assigned by anything, so always `0`). The second one gates real rendering paths in at least nine
+call sites (`DrawAnimatedModel`, `EmitParticle`, `DrawUiPanel` neighbours, lines 983/1255/1397/
+1417/6849/10499/10532/10601/11915) — every one of those `if (s_Unknown_00564a48 != 0)` branches is
+silently dead in the current port, always taking the "false" side. `DAT_00564a48`'s *compiled*
+`.data` value is `1` (confirmed by reading `Legacy/Blaze.exe` directly), so in the original this
+gate was live far more often than our port currently reproduces. **Not fixed this session** — nine
+call sites is real scope, and merging the two needs re-checking each site's branch against what the
+capability bit is actually supposed to mean (still TODO(REVERSE) itself, per `CheckDeviceCapabilityFlag`'s
+own entry above) rather than just renaming. Flagged here per the "grep the whole file before
+declaring a symbol" rule this project already keeps failing to fully apply — worth a dedicated pass,
+and worth checking first if any "geometry right, image wrong" report ever comes in (§7 of `TODO.md`).
+
+### The return value is a real integer multiply, confirmed down to the byte, and looks like copy protection
+
+`Blaze.c:91310`: `return (DAT_0056321c + 1) * (int)(param_1 + 3);` — every sibling text-control
+handler just returns the advanced cursor; this one multiplies it. Confirmed byte-for-byte against
+`Legacy/Blaze.exe` (file offset `0x143c10`..`0x143d6b`, no branch after the load, so this really is
+unconditional): `MOV EAX,[DAT_0056321c]; INC EAX; IMUL EAX,[ESP+4]; RET`. The `[ESP+4]` read really
+does resolve to `param_1 + 3` — the function spills its updated cursor into its own incoming
+argument's stack slot mid-body (`MOV [ESP+0x14], EAX` while 4 callee-saved registers are still
+pushed, which is the *same* absolute stack address as `[ESP+4]` after they're popped back off in
+the epilogue) specifically so it can read it back here. This is exactly the "arguments reused as
+scratch, trust nothing near the tail without counting pushes" trap `TODO.md` §6 already warns
+about — except here it turned out to be *correct*, not a trap, which is its own lesson: the
+warning means "verify," not "assume it's wrong."
+
+Since `RunTextEngine` feeds this return value straight back in as its next parse cursor, the
+multiplier has to be exactly `1` for *any* text pointer to survive — i.e. `DAT_0056321c` must be
+exactly `0`. `DAT_0056321c` is set in `RunApplication` (`Blaze.c:61774/61795`, now wired up in this
+session as `s_CdCheckFileSize_0056321c`, previously a dropped local — see below) to `GetFileSize`
+of the CD-check file, plus a fixed `0xd8000000`. For the sum to land back on exactly `0`, the file
+has to be **exactly 0x28000000 bytes (640 MiB)** — an oddly specific, round number for this era's
+"corrupt something subtle later instead of refusing to run" style of copy protection, rather than a
+coincidence. Left as a hypothesis, not fact — recorded as a TODO(REVERSE) at the call site rather
+than asserted, since it can't be confirmed without the real CD-check filename (`TODO.md` #2/#4,
+still a data-section gap) or the real disc.
+
+**Also fixed in passing**: `RunApplication`'s `uint fileSize = GetFileSize(hFile, null);` computed
+the value and then threw it away — neither `Blaze.c` write to `DAT_0056321c` (the initial set, or
+the later `+= 0xd8000000`) had ever been transcribed. Both are now wired to the new
+`s_CdCheckFileSize_0056321c` field, faithfully, independent of whatever the multiply in
+`FUN_00544810` turns out to mean.
+
+### Confirmed at runtime — same shape of finding as `0x04`, one level deeper
+
+`OPENFORESIA_FORCE_SUBSTATE=7` plus one `ENTER`: no managed exception this time — a native
+`0xC0000005`, with the stack topping out inside `RunTextEngine` itself rather than inside the new
+handler. That matches the theory exactly: `Handler_00544810` runs to completion and returns a
+corrupted cursor (our `cdCheckPath` is still the TODO #2 placeholder, so the CD-check file never
+opens, `GetFileSize` returns `0xFFFFFFFF`, and `s_CdCheckFileSize_0056321c` ends up nowhere near
+`0`); the crash then happens one `RunTextEngine` loop iteration later, dereferencing that garbage
+pointer. Not a new independent blocker so much as TODO #2 finally being reachable in a place that
+bites.
+
+### Remaining
+
+Sub-state 7's blocker list grows by one, in order: the `DAT_0056321c`/`0x28000000` mystery (needs
+either the real CD-check filename+size from a `.data`-section source, or a decision to special-case
+it — not attempted this session, per "never substitute to make things compile"), then `FUN_0051be90`
+(unchanged, still needs a forced-signature Ghidra re-run). The dead `s_Unknown_00564a48` duplicate
+(above) is independent of both and can be fixed any time — nine call sites, nothing sub-state-7-
+specific about it.
