@@ -6670,6 +6670,11 @@ public static unsafe partial class Blaze
 
             byte* pad = CurrentPadState();
 
+            if (Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_CARDPHASE") == "1")
+                Console.Error.WriteLine(
+                    $"[FRAMELOOP] state0={s_SelectState_00578de8[0]} unk62b68={s_Unknown_00562b68} " +
+                    $"flags1={s_SelectFlags_00562a48[1]} pad2=0x{pad[2]:x2} pad3=0x{pad[3]:x2}");
+
             // Ghidra: le test de sortie. Les deux bits 9 = 0b1001 du champ +2, sauf au sous-état 7
             // tant que DAT_00562b68 est positif.
             if ((pad[2] & 9) == 9
@@ -8914,6 +8919,12 @@ public static unsafe partial class Blaze
         ushort buttons = *(ushort*)(pad + 2);
         byte dialogGate = s_Unknown_00560fef;
         byte confirmGate = s_Unknown_005e909f;
+
+        if (Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_CARDPHASE") == "1")
+            Console.Error.WriteLine(
+                $"[CARDPHASE] phase={s_CardPhase_00578e0c} dialogGate=0x{dialogGate:x2} " +
+                $"confirmGate=0x{confirmGate:x2} buttons=0x{buttons:x4} gameState={s_GameStateId} " +
+                $"cursorFlags=0x{*(uint*)(s_StatusDescriptor_00560728 + 0x30):x8}");
 
         // Ghidra: `uVar17` — quand un cas se contente de `break` plutôt que de sauter directement
         // au rendu, l'original enchaîne sur `func_0x00544350(uVar17,...); DAT_00578e0c++;` juste

@@ -29,6 +29,33 @@ introuvable — ni en code, ni dans les données statiques réelles du binaire. 
 `REVERSE_STATUS.md`, section « 2026-08-16 — hunting the generic "OK dialog" subsystem: real ground
 covered, real dead end ».
 
+**Septième passe, même jour** — l'utilisateur a posé un vrai point d'arrêt matériel (x32dbg) sur le
+jeu de 1998 tournant sur son autre machine (Windows 10 ; `Legacy/Blaze.exe` ne se lance pas sur cette
+machine-ci, Windows 11). Deux runs dans `Analyse/x32dbg/POINT_ARRET_0x00560758/`. Ça a résolu le
+mécanisme au complet : trouvé et décompilé `FUN_00544e50` (encore un trou jamais analysé), qui pose
+le bit `0x1000000` **et** le bit 1 de dialogGate. Découverte : c'est **déjà câblé** depuis une
+séance antérieure (`t[0x0f] = Handler_00544e50` dans `BuildTextTable`, avec un commentaire qui
+avait déjà tout compris) — armé par un octet de contrôle `0x0f` intégré dans le texte d'un label,
+pas par un appel séparé. Trouvé aussi la vraie touche (`Ctrl gauche`, `K0007=29` dans
+`OpenForesia.cfg`), ajoutée à `playtest.ps1` (`-Then LCTRL`).
+
+**Testé avec la vraie touche : toujours pas de transition.** Deux traces temporaires ajoutées
+(`OPENFORESIA_TRACE_CARDPHASE`) ont montré que `cursorFlags` ne bouge jamais de sa valeur statique
+par défaut — et surtout, que `case 0x12` **réinitialise le sous-état au carrousel** (`state[0]=0`)
+à chaque image tant que `confirmGate` reste à zéro. Comme `confirmGate` n'a **aucun autre poseur**
+atteignable depuis la création de personnage (scan exhaustif de la veille), **le jeu original fait
+probablement exactement la même chose** : retour au carrousel après la sauvegarde, avec le vrai
+démarrage de partie déclenché séparément depuis le carrousel sur un personnage déjà sauvegardé —
+piste jamais explorée. `OPENFORESIA_FORCE_CARD_CONFIRM` masquait donc un comportement réel plutôt
+que de contourner un vrai trou.
+
+**Bug séparé découvert en testant** : recharger un personnage existant (cas 1, branche « le fichier
+existe déjà ») plante avec `0xC0000005` dans `ResetCardTransferStatus`/`Ordinal_67` — jamais testé
+avant puisque tous les essais précédents partaient d'un dossier `save\` vide.
+
+Détail complet : `REVERSE_STATUS.md`, section « 2026-08-16 — a real hardware breakpoint (x32dbg,
+user's Windows 10 machine) resolves the whole mechanism, and reframes the "stuck" screen entirely ».
+
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée. Consigné en mémoire
 pour ne plus le proposer.
 

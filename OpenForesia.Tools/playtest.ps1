@@ -325,6 +325,10 @@ if ($p.HasExited) {
                         'DOWN'  { [PlayTestInput]::Tap(0x50, $true,  $TapMs) }
                         'LEFT'  { [PlayTestInput]::Tap(0x4B, $true,  $TapMs) }
                         'RIGHT' { [PlayTestInput]::Tap(0x4D, $true,  $TapMs) }
+                        # DIK_LCONTROL (0x1D) -- action 7 ("carre", masque pad 0x8000) dans
+                        # OpenForesia.cfg K0007=29. C'est le bouton que DrawUiPanel teste pour son
+                        # "curseur de confirmation" (voir REVERSE_STATUS.md, code de controle 0x0f).
+                        'LCTRL' { [PlayTestInput]::Tap(0x1D, $false, 400) }
                         default { Write-Host "!! jeton inconnu : $k"; continue }
                     }
                     Write-Host "   -> $k"

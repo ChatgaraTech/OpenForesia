@@ -1,0 +1,137 @@
+ID du thread        Addresse À        De       Tai Party       Commentaire                                      
+22400 - Main Thread                                            
+                    00000004 00000000 00544E5E     Utilisateur blaze.00544E5E
+1496                                                           
+                    0096FF74 7626FCC9 77154D2C 10  Système     ntdll.ZwWaitForWorkViaWorkerFactory+C
+                    0096FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0096FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0096FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+4084                                                           
+                    0134FF74 7626FCC9 77154D2C 10  Système     ntdll.ZwWaitForWorkViaWorkerFactory+C
+                    0134FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0134FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0134FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+18032                                                          
+                    0144FF74 7626FCC9 77154D2C 10  Système     ntdll.ZwWaitForWorkViaWorkerFactory+C
+                    0144FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0144FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0144FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+22824                                                          
+                    0343FF74 7626FCC9 77154D2C 10  Système     ntdll.ZwWaitForWorkViaWorkerFactory+C
+                    0343FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0343FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0343FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+5380                                                           
+                    0353FAE0 74FDC9FC 758B586C 20  Système     win32u.NtUserMsgWaitForMultipleObjectsEx+C
+                    0353FB00 6571CDD0 74FDC9FC C4  Système     user32.MsgWaitForMultipleObjectsEx+4C
+                    0353FBC4 6571D8ED 6571CDD0 64  Système     coremessaging.CoreUIConfigureUserIntegration+E10
+                    0353FC28 6570C214 6571D8ED 70  Système     coremessaging.CoreUIConfigureUserIntegration+192D
+                    0353FC98 656FF0BF 6570C214 84  Système     coremessaging.MsgRelease+14514
+                    0353FD1C 6571DBE7 656FF0BF 3C  Système     coremessaging.MsgRelease+73BF
+                    0353FD58 6570214B 6571DBE7 2C  Système     coremessaging.CoreUIConfigureUserIntegration+1C27
+                    0353FD84 6571DB68 6570214B 30  Système     coremessaging.MsgRelease+A44B
+                    0353FDB4 65702103 6571DB68 28  Système     coremessaging.CoreUIConfigureUserIntegration+1BA8
+                    0353FDDC 6571D712 65702103 70  Système     coremessaging.MsgRelease+A403
+                    0353FE4C 656FEB43 6571D712 3C  Système     coremessaging.CoreUIConfigureUserIntegration+1752
+                    0353FE88 6571950E 656FEB43 2C  Système     coremessaging.MsgRelease+6E43
+                    0353FEB4 656E1C1F 6571950E 74  Système     coremessaging.MsgRelease+2180E
+                    0353FF28 571128F3 656E1C1F 44  Système     coremessaging.656E1C1F
+                    0353FF6C 5711277D 571128F3 8   Système     inputhost.CreateHeatGripServiceClient+1513
+                    0353FF74 7626FCC9 5711277D 10  Système     inputhost.CreateHeatGripServiceClient+139D
+                    0353FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0353FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0353FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+4816                                                           
+                    0485FF74 7626FCC9 77154D2C 10  Système     ntdll.ZwWaitForWorkViaWorkerFactory+C
+                    0485FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0485FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0485FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+18500                                                          
+                    04B5FF74 7626FCC9 77154D2C 10  Système     ntdll.ZwWaitForWorkViaWorkerFactory+C
+                    04B5FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    04B5FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    04B5FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+11508                                                          
+                    04C5FF74 7626FCC9 77154D2C 10  Système     ntdll.ZwWaitForWorkViaWorkerFactory+C
+                    04C5FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    04C5FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    04C5FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+17648                                                          
+                    0464FF74 7626FCC9 77154D2C 10  Système     ntdll.ZwWaitForWorkViaWorkerFactory+C
+                    0464FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0464FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0464FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+7664                                                           
+                    079EFF34 52EC0A45 758B106C 40  Système     win32u.NtUserGetMessage+C
+                    079EFF74 7626FCC9 52EC0A45 10  Système     quartz.AMGetErrorTextW+DFD5
+                    079EFF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    079EFFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    079EFFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+10168                                                          
+                    0815FF28 75CF24A2 77152FFC 14  Système     ntdll.NtWaitForSingleObject+C
+                    0815FF3C 52EB9679 75CF24A2 10  Système     kernelbase.WaitForSingleObject+12
+                    0815FF4C 52F8E165 52EB9679 28  Système     quartz.AMGetErrorTextW+6C09
+                    0815FF74 7626FCC9 52F8E165 10  Système     quartz.AMGetErrorTextW+DB6F5
+                    0815FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0815FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0815FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+25512                                                          
+                    0825FF28 75CF24A2 77152FFC 14  Système     ntdll.NtWaitForSingleObject+C
+                    0825FF3C 52EB9679 75CF24A2 10  Système     kernelbase.WaitForSingleObject+12
+                    0825FF4C 52F8E165 52EB9679 28  Système     quartz.AMGetErrorTextW+6C09
+                    0825FF74 7626FCC9 52F8E165 10  Système     quartz.AMGetErrorTextW+DB6F5
+                    0825FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0825FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0825FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+25580                                                          
+                    0767FF74 7626FCC9 7715358C 10  Système     ntdll.ZwWaitForMultipleObjects+C
+                    0767FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0767FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0767FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+3556                                                           
+                    0504FE3C 75D0A708 7715358C 1C  Système     ntdll.ZwWaitForMultipleObjects+C
+                    0504FE58 544B2814 75D0A708 D4  Système     kernelbase.WaitForMultipleObjects+18
+                    0504FF2C 5437BD97 544B2814 10  Système     nvd3dum.SetDependencyInfo+89224
+                    0504FF3C 54689A40 5437BD97 38  Système     nvd3dum.5437BD97
+                    0504FF74 7626FCC9 54689A40 10  Système     nvd3dum.SetDependencyInfo+260450
+                    0504FF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0504FFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0504FFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+25296                                                          
+                    0E8BFDF0 75D0A708 7715358C 1C  Système     ntdll.ZwWaitForMultipleObjects+C
+                    0E8BFE0C 57F3A2C1 75D0A708 12C Système     kernelbase.WaitForMultipleObjects+18
+                    0E8BFF38 57F471AC 57F3A2C1 28  Système     dsound.DllCanUnloadNow+5261
+                    0E8BFF60 57F39FB6 57F471AC 14  Système     dsound.DllCanUnloadNow+1214C
+                    0E8BFF74 7626FCC9 57F39FB6 10  Système     dsound.DllCanUnloadNow+4F56
+                    0E8BFF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0E8BFFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0E8BFFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+16608                                                          
+                    0E9BFDB4 75D0A708 7715358C 1C  Système     ntdll.ZwWaitForMultipleObjects+C
+                    0E9BFDD0 57F3A2C1 75D0A708 12C Système     kernelbase.WaitForMultipleObjects+18
+                    0E9BFEFC 57F2979B 57F3A2C1 50  Système     dsound.DllCanUnloadNow+5261
+                    0E9BFF4C 57F3A1E9 57F2979B 14  Système     dsound.DirectSoundCreate8+94CB
+                    0E9BFF60 57F39FB6 57F3A1E9 14  Système     dsound.DllCanUnloadNow+5189
+                    0E9BFF74 7626FCC9 57F39FB6 10  Système     dsound.DllCanUnloadNow+4F56
+                    0E9BFF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0E9BFFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0E9BFFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+13636                                                          
+                    0EABFF10 74FDC9FC 758B586C 20  Système     win32u.NtUserMsgWaitForMultipleObjectsEx+C
+                    0EABFF30 57EC8BE3 74FDC9FC 44  Système     user32.MsgWaitForMultipleObjectsEx+4C
+                    0EABFF74 7626FCC9 57EC8BE3 10  Système     dinput.57EC8BE3
+                    0EABFF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0EABFFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0EABFFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+10272                                                          
+                    0F0CFF00 75D0A708 7715358C 1C  Système     ntdll.ZwWaitForMultipleObjects+C
+                    0F0CFF1C 57F4E87C 75D0A708 44  Système     kernelbase.WaitForMultipleObjects+18
+                    0F0CFF60 57F4E576 57F4E87C 14  Système     dsound.DllCanUnloadNow+1981C
+                    0F0CFF74 7626FCC9 57F4E576 10  Système     dsound.DllCanUnloadNow+19516
+                    0F0CFF84 7714809E 7626FCC9 5C  Système     kernel32.BaseThreadInitThunk+19
+                    0F0CFFE0 7714806E 7714809E 10  Système     ntdll.RtlGetAppContainerNamedObjectPath+11E
+                    0F0CFFF0 00000000 7714806E     Utilisateur ntdll.RtlGetAppContainerNamedObjectPath+EE
+20560                                                          
+                    0F40FF2C 75D0A708 7715358C 1C  Système     ntdll.ZwWaitForMultipleObjects+C
+                    0F40FF48 0051367B 75D0A708 4   Utilisateur kernelbase.WaitForMultipleObjects+18
+                    0F40FF4C 00000000 0051367B     Utilisateur blaze.0051367B

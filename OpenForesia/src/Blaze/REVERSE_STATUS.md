@@ -3488,3 +3488,107 @@ attempt should assume the writer is in another Ghidra-unanalyzed gap (same shape
 `FUN_0053dd20`'s), and would need either a live debugger (to catch the actual write at runtime) or a
 full (not `-noanalysis`) Ghidra re-analysis pass to have a chance of surfacing it — static
 literal-address scanning has now been tried twice and is exhausted for this specific question.
+
+## 2026-08-16 — a real hardware breakpoint (x32dbg, user's Windows 10 machine) resolves the whole mechanism, and reframes the "stuck" screen entirely
+
+`Legacy/Blaze.exe` does not run on this machine's Windows 11 (untested territory, still unresolved),
+but does on the user's other, Windows 10 machine. Set a hardware write breakpoint on
+`0x00560758` (`s_StatusDescriptor_00560728+0x30`) there with x32dbg and drove the real 1998 game
+through character creation to the save screen. Two runs, both archived under
+`Analyse/x32dbg/POINT_ARRET_0x00560758/` (first attempt, then "Tentative 2").
+
+### First hit: a save/restore round-trip inside `RunTextEngine` itself — a red herring, but a confirming one
+
+The breakpoint's first, most frequent hit was `0x005445B2`, a `rep movsd` copying `0x232` dwords
+(`0x8c8` bytes — exactly the descriptor's size) from a stack-local buffer into
+`s_StatusDescriptor_00560728`. Traced this address to inside `FUN_005443a0` (`RunTextEngine`,
+already transcribed) via `Blaze.c:91112-91118` (a snapshot of the *live* descriptor into
+`local_8c8`, taken at the function's own entry) and `:91155-91162` (the exact matching restore,
+right before the label the breakpoint caught). Since the source of this specific write is the
+function's *own* entry-time snapshot of the *same* field, this hit doesn't introduce a new value —
+it just proves `RunTextEngine`'s save/restore shape is exactly what the decompiled `Blaze.c` already
+showed, and explains why it fires so often (once per label processed, many per frame).
+
+### Second hit, after conditioning the breakpoint (`bphwcond 560758,eip!=5445B2`): the real writer
+
+A second, rarer hit landed at `0x00544E5E` (`or al,2`), inside a **6-line, never-before-seen
+function at `0x00544E50`** — sitting, like `FUN_0053dd20` before it, in an unanalyzed gap between
+two already-known functions (`FUN_00544d90` ends at `0x544E4D`, `FUN_00544fb0` starts at
+`0x544fb0`). Force-decompiled it with the same Ghidra headless recipe:
+
+```c
+void FUN_00544e50(undefined4 param_1,int param_2)
+{
+  *(undefined1 *)(param_2 + 0x33) = 1;
+  *(byte *)(param_2 + 0x8c7) = *(byte *)(param_2 + 0x8c7) | 2;
+  *(undefined4 *)(param_2 + 0x8ac) = param_1;
+  return;
+}
+```
+
+`param_2+0x33` is the **top byte of the dword at `+0x30`** — writing `1` there turns
+`0x000f28d4` into `0x010f28d4`, i.e. sets exactly the `0x1000000` bit `DrawUiPanel`'s confirm-cursor
+block requires. `param_2+0x8c7 |= 2` sets **bit 1** of dialogGate — the same bit `case 0x11`/`case 4`
+test. Confirmed via a raw-pointer scan of the whole file that this function is referenced, twice, as
+data — at index **15 (`0x0f`)** in *both* `PTR_LAB_0056e870` and `PTR_FUN_0056e728`, the two
+32-entry control-code dispatch tables `RunTextEngine` already indexes by an in-band byte (`< 0x20`)
+found while walking a label's text. So the whole mechanism is **data-driven**: a label string
+carrying byte `0x0f` embedded in it is what arms the confirm cursor, not a separate call from the
+screen's own logic.
+
+**Already fully and correctly transcribed, from an earlier session, before any of today's
+investigation**: `Blaze.cs`'s `BuildTextTable` already has `t[0x0f] = Handler_00544e50;`
+(`Blaze.cs:11954`), and `Handler_00544e50` (`Blaze.cs:11672`) matches the real disassembly exactly,
+down to a doc comment already stating "code `0x0f` therefore means stop here and show the cursor —
+a prompt awaiting a choice, which is what the character-select screen reaches on validating a
+character." Combined with `BindMenuLabels` (arms bit 0) and `DrawUiPanel`'s confirm-cursor (already
+wired to `s_StatusDescriptor_00560728`, every frame, `Blaze.cs:6831`) — **every piece of this
+mechanism was already correctly built.** Today's contribution is knowing what the pieces are *for*,
+plus one thing that was still missing: the physical button. Cross-checked `OpenForesia.cfg`'s
+`[Controls]` section — action slot 7 ("square", pad mask `0x8000`, the bit `DrawUiPanel` tests) is
+bound to scancode `29` = **Left Ctrl**. Added an `LCTRL` token to `playtest.ps1`'s `-Then` (`0x1D`,
+non-extended) since only `ENTER`/`ESC`/arrows existed before.
+
+### Testing it exposed the real remaining gap — and it reframes "stuck" entirely
+
+Pressing the *correct* button (`LCTRL`) still didn't reach game state 1. Added two temporary traces
+(`OPENFORESIA_TRACE_CARDPHASE`, in `StepSubState7Phase` and `RunCharacterSelectFrameLoop`) and found
+`s_StatusDescriptor_00560728+0x30` (`cursorFlags`) **never changes from its static default
+`0x000f28d4`** across the whole run — meaning `Handler_00544e50` never actually fires, meaning the
+real resource text for the label shown at `case 0x11` (`LabelAt(0x1d8)`) apparently does not carry
+the `0x0f` byte in this port (or `case 0x11`'s one-frame lifetime, see the case-6 entry above, never
+gives `RunTextEngine` a chance to reach it — not yet distinguished).
+
+**But the far more important finding**: after a few frames stuck at phase `0x12` with
+`confirmGate` staying `0`, `s_SelectState_00578de8[0]` (the *top-level* substate index) silently
+becomes `1` — i.e. `CharacterSelectSubState7`'s own `case 0x12` (`Blaze.cs:9109-9130`) is doing
+exactly what its code says: `if (!confirmed) { state[0] = 0; state[2] = 0; }` resets the whole
+screen back to the character carousel every single frame `confirmGate` is zero. Given yesterday's
+exhaustive scan already proved `confirmGate` (`DAT_005e909f`) has **no other writer anywhere in the
+game reachable from character creation** (its one real setter, `FUN_0053dd20`, belongs to an
+unrelated item-menu subsystem — see the entry above), **the original, shipped 1998 game almost
+certainly takes this exact same reset-to-carousel branch too.** This may not be a bug or a gap at
+all: returning to the carousel after saving, rather than continuing straight into gameplay, could be
+the actual, intended design — with actually *starting* the game a separate action taken from
+substate 0 (the carousel) on an already-saved character slot, a path this session never exercised.
+
+### Where this leaves things
+
+- The generic "OK dialog" mechanism (`BindMenuLabels`, `Handler_00544e50`, `DrawUiPanel`'s confirm
+  cursor) is now **fully understood and confirmed already correctly transcribed** — nothing left to
+  fix there.
+- `OPENFORESIA_FORCE_CARD_CONFIRM` was masking the real behavior rather than working around a gap:
+  forcing `confirmGate` nonzero made the save screen jump straight to game state 1, which the real
+  game may never do from this exact point.
+- **Next real question, not yet investigated**: does substate 0 (the character carousel) have its
+  own path from "select an already-saved character slot" to `s_GameStateId = 1`? That would be the
+  actual, correct way to reach real gameplay, and is a different call graph entirely from anything
+  this session traced.
+- A genuine, separate, still-open bug surfaced as a side effect of this testing: reaching `case 1`
+  of `StepSubState7Phase` when a save file *already exists* for the current name (the "load" branch,
+  `ResetCardTransferStatus` → `Ordinal_67`) crashes with `0xC0000005` — never exercised before today
+  since every prior test used a fresh, empty `save\` folder. Not investigated further this session;
+  reproduce with a pre-existing `save\TEST` file and `OPENFORESIA_FORCE_CARD_NAME=1`.
+- Two temporary diagnostics remain in `Blaze.cs`, gated behind `OPENFORESIA_TRACE_CARDPHASE`
+  (`StepSubState7Phase` and `RunCharacterSelectFrameLoop`) — remove once the carousel-path question
+  above is settled, per the project's scaffolding convention.
