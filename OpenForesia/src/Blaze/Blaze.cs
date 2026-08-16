@@ -186,6 +186,13 @@ public static unsafe partial class Blaze
     // documente déjà test-protocol.md, attrapée ici avant d'écrire le P/Invoke plutôt qu'après un
     // plantage natif.
     [DllImport("winsys3d.dll", EntryPoint = "#9")] private static extern int Ordinal_9(int* transferState); // real: FUN_00a041d0, ResetEvent + un contrôle d'état sur *param_1
+    [DllImport("winsys3d.dll", EntryPoint = "#18")] private static extern byte* Ordinal_18(void* pathDescriptor, byte* dest); // real: FUN_00a044c0, FindFirstFileA + copie du nom tronqué et de la taille dans *dest ; null si aucune entrée
+    // real: FUN_00a04560, FindNextFileA + même copie. Ghidra le décompile `void`, mais FUN_005126c0
+    // (Legacy/Raw/Blaze/FUN_005126c0.asm:36, `TEST EAX,EAX` juste après le CALL) teste bien EAX au
+    // retour : le premier `return;` de la fonction laisse BVar2(=le FindNextFileA FALSE) dans EAX par
+    // convention de code-gen, donc EAX vaut 0 exactement quand il n'y a plus d'entrée — déclaré `int`
+    // ici pour pouvoir lire cette valeur, même si le vrai prototype ne la nomme pas.
+    [DllImport("winsys3d.dll", EntryPoint = "#19")] private static extern int Ordinal_19(byte* dest);
     [DllImport("winsys3d.dll", EntryPoint = "#21")] private static extern IntPtr Ordinal_21(void* pathDescriptor, uint flags); // real: FUN_00a04600, CreateFileA
     [DllImport("winsys3d.dll", EntryPoint = "#22")] private static extern int Ordinal_22(IntPtr handle); // real: FUN_00a04650, CloseHandle
     [DllImport("winsys3d.dll", EntryPoint = "#23")] private static extern int Ordinal_23(IntPtr handle, int offset, uint method); // real: FUN_00a04660, SetFilePointer
@@ -8878,13 +8885,15 @@ public static unsafe partial class Blaze
     // **Correction 2026-08-16** : le commentaire disait « l'octet de bas de DAT_00604980 » ; c'est
     // faux, ce sont deux adresses distinctes (DAT_00604984 = DAT_00604980 + 4), confirmé en lisant
     // Legacy/Raw/Blaze/FUN_0050a910.c — voir s_CardSlotIndex_00604980 pour l'adresse que le case 1
-    // relit réellement. DAT_00604981 (le compte, sur l'autre champ) n'est jamais posé par du code
-    // déjà reconstruit ; à zéro il ramène systématiquement le curseur à 0, ce qui est un état sûr.
+    // relit réellement.
     private static byte s_CardCursorSlot_00604984;
 
-    // Ghidra: DAT_006049bc — pointeur vers la table des répertoires de sauvegarde, peuplé par la
-    // sous-couche carte (FUN_00504820 et consorts, non reconstruite). Reste null tant qu'elle ne
-    // tourne pas ; voir RenderSaveScreen pour l'unique lecteur, dans un bloc actuellement mort.
+    // Ghidra: DAT_006049bc — pointeur vers la table des répertoires de sauvegarde. **Corrigé
+    // 2026-08-16** : le rédacteur réel est FUN_005126c0 (LoadSaveDirectory ci-dessous), pas
+    // FUN_00504820 (qui est PollCardTransfer, sans rapport) comme le disait ce commentaire — trouvé
+    // en cherchant le pas 0x28 déjà utilisé par le lecteur (voir RenderSaveScreen). Alloué par
+    // LoadSaveDirectory elle-même (0x20 entrées maximum, l'original pointe sur un DAT_005d9e50 fixe
+    // que ce port ne peut pas reproduire à la même adresse).
     private static byte* s_CardDirectoryEntries_006049bc;
 
     // **Corrigé 2026-08-16** : DAT_005e909a..e sont les octets +0x3a..+0x3e du même tableau
@@ -8907,9 +8916,149 @@ public static unsafe partial class Blaze
     // ressemblance des deux noms : le case 0 de la transcription précédente écrivait par erreur
     // dans s_CardCursorSlot_00604984 au lieu de ce champ — trouvé en câblant le case 1, qui a
     // besoin de la vraie valeur de DAT_00604980 pendant que DAT_00604984 est remise à 0 juste
-    // avant. Seul l'octet bas compte : DAT_00604981 (les 3 octets hauts du `CONCAT31`) n'est posé
-    // par aucun code reconstruit et lit 0.
+    // avant. Seul l'octet bas compte ; les trois octets suivants (0x604981/82/83, que la pseudo-C
+    // de FUN_0050a910 lit comme un `CONCAT31` du même dword) sont en fait des adresses séparées,
+    // le même genre de recouvrement que d'autres DAT_ de ce fichier — voir
+    // <see cref="s_CardEntryCount_00604981"/>.
     private static byte s_CardSlotIndex_00604980;
+
+    // Ghidra: DAT_00604981 — **corrigé 2026-08-16** : n'est plus « jamais posé ». C'est le compte
+    // d'entrées que <see cref="LoadSaveDirectory"/> (FUN_005126c0) remplit en énumérant le
+    // répertoire de sauvegarde ; le case 0xa de RenderSaveScreen le relit pour borner le curseur.
+    private static byte s_CardEntryCount_00604981;
+
+    // Ghidra: DAT_00604982 — un octet posé à 0xf par FUN_005126c0, jamais relu ailleurs dans le
+    // code déjà reconstruit. TODO(REVERSE) : rôle exact non établi.
+    private static byte s_Unknown_00604982;
+
+    // Ghidra: DAT_00604960 — un drapeau (dword complet) posé à 0 ou 1 à une bonne dizaine de sites
+    // à travers le jeu, dont FUN_005126c0. TODO(REVERSE) : rôle exact non établi ; probablement un
+    // état « chargement de carte en cours », mais pas confirmé par la lecture d'un seul site.
+    private static int s_Unknown_00604960;
+
+    // Ghidra: &DAT_0060498c — un octet par entrée de répertoire (jusqu'à 0x20), le nombre de
+    // personnages que contient ce fichier de sauvegarde (`meta[2] & 0xf` lu à l'ouverture du
+    // fichier). Utilisé ailleurs (Blaze.c:55417, 77618) comme diviseur d'une animation cyclique du
+    // sélecteur — pas encore reconstruit.
+    private static readonly byte* s_CardSlotCharacterCount_0060498c = (byte*)NativeMemory.AllocZeroed(0x20);
+
+    /// <summary>
+    /// Ghidra: FUN_005126c0 @ 0x005126c0 — énumère les fichiers de sauvegarde du dossier
+    /// <c>save\</c> correspondant au motif <c>s_SaveDeviceName_00563160</c> (« Blaze-Saving* »),
+    /// jusqu'à 0x20 entrées, puis ouvre et lit l'en-tête (0x100 octets) de chacune pour peupler
+    /// <see cref="s_CardDirectoryEntries_006049bc"/>, <see cref="s_CardEntryCount_00604981"/> et
+    /// <see cref="s_CardSlotCharacterCount_0060498c"/>.
+    /// <para>
+    /// Reconstruit depuis le désassemblage brut (<c>Legacy/Raw/Blaze/FUN_005126c0.asm</c>) plutôt
+    /// que la pseudo-C Ghidra, qui enveloppe cette fonction dans un habillage SEH (<c>puStack_20</c>,
+    /// adresses de continuation littérales <c>0x5126f1</c>...) qui rend l'ordre réel des arguments
+    /// ambigu à la lecture. L'assembleur, lui, est direct — pas de gestion d'exception réelle dans
+    /// le code machine, juste l'artefact de décompilation habituel pour les fonctions compilées avec
+    /// <c>/EHa</c>. Deux confirmations obtenues en le lisant :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><c>PUSH EAX</c> (asm 0x5126df, avant même le prologue standard) pousse la valeur chargée
+    /// en tout premier lieu — <c>[0x56315c]</c>, qui pointe directement sur
+    /// <see cref="s_SaveDeviceName_00563160"/> (confirmé par lecture directe des octets du binaire :
+    /// <c>0x56315c</c> contient la valeur <c>0x563160</c>) — donc le premier appel à
+    /// <see cref="SetCardFileName"/> pose bien le motif <c>"Blaze-Saving*"</c>, pas un chemin encore
+    /// à déterminer.</item>
+    /// <item>Les deux rectangles d'icône en fin de boucle (<c>Ordinal_674</c>) ont chacun leurs 4
+    /// champs à des décalages <c>[ESP+n]</c> qui ne semblent PAS contigus avec l'adresse passée au
+    /// premier coup d'œil, à cause d'un <c>PUSH</c> intercalé entre l'écriture du premier champ et le
+    /// calcul de l'adresse de la structure (<c>LEA ECX,[ESP+0x18]</c> après un <c>PUSH ECX</c> décale
+    /// tout de 4 octets). Recalculé précisément : les deux structures sont en fait complètes (4 mots
+    /// chacune), rien n'est laissé de côté.</item>
+    /// </list>
+    /// <para>
+    /// TODO(REVERSE) : rôle exact de <see cref="s_Unknown_00604982"/> et <see cref="s_Unknown_00604960"/>
+    /// non établi (voir leurs commentaires). Le type de retour Ghidra (<c>undefined4</c>) est
+    /// toujours 0 sur tous les chemins observés (trois <c>return 0</c> explicites, dont deux issus
+    /// d'un échec précoce) — traduit en <c>void</c>, aucun appelant n'a de raison d'en lire le
+    /// résultat.
+    /// </para>
+    /// </summary>
+    private static void LoadSaveDirectory()
+    {
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null) return;
+
+        if (s_CardDirectoryEntries_006049bc == null)
+            s_CardDirectoryEntries_006049bc = (byte*)NativeMemory.AllocZeroed(0x20 * 0x28);
+        s_Unknown_00604982 = 0xf;
+        s_Unknown_00604960 = 0;
+        s_CardEntryCount_00604981 = 0;
+
+        SetCardFileName(s_SaveDeviceName_00563160);
+        SetCardPathDeviceFields();
+
+        byte* entry = s_CardDirectoryEntries_006049bc;
+        if (Ordinal_18(s_CardPathDescriptor_00604940, entry) != null)
+        {
+            while (true)
+            {
+                *(int*)(entry + 0x18) = *(int*)(entry + 0x18) >> 0xd;
+                entry += 0x28;
+                s_CardEntryCount_00604981++;
+                if (Ordinal_19(entry) == 0) break;
+                if (s_CardEntryCount_00604981 >= 0x20) break;
+            }
+        }
+
+        if (s_CardEntryCount_00604981 == 0) return;
+
+        byte* cursor = s_CardDirectoryEntries_006049bc;
+        for (uint i = 0; i < s_CardEntryCount_00604981; i++, cursor += 0x28)
+        {
+            SetCardFileName(cursor);
+
+            IntPtr handle = Ordinal_21(s_CardPathDescriptor_00604940, 1);
+            if ((int)handle < 0) return;
+
+            Ordinal_23(handle, 0, 0 /* FILE_BEGIN */);
+
+            uint slotBase = i * 0x100;
+            int read = (int)Ordinal_24(handle, mainMem + 0x1c0000 + slotBase, 0x100);
+            if (read >= 0)
+            {
+                byte charCount = (byte)(mainMem[0x1c0002 + slotBase] & 0xf);
+                s_CardSlotCharacterCount_0060498c[i] = charCount;
+                if (charCount != 1)
+                {
+                    read = (int)Ordinal_24(handle, mainMem + 0x1c0100 + slotBase, (uint)((charCount - 1) * 0x80));
+                }
+            }
+            Ordinal_22(handle);
+            if (read < 0) return;
+
+            // Ghidra 0x5127f0-0512819 — marque d'un bit haut (0x8000) les seize ushorts non nuls de
+            // MainMem+0x1c0060+slotBase..0x1c007e+slotBase. Rôle exact non établi (peut-être un
+            // marqueur "case occupée" pour l'inventaire du personnage).
+            for (int j = 0; j < 16; j++)
+            {
+                ushort* field = (ushort*)(mainMem + 0x1c0060 + slotBase + j * 2);
+                if (*field != 0) *field |= 0x8000;
+            }
+
+            // Ghidra 0x51281f-0512863 — icône 1 : une case fixe de 0x10x1, positionnée en grille de
+            // 16 colonnes (bas octet de l'index) sur autant de lignes que nécessaire.
+            short* rect1 = stackalloc short[4];
+            rect1[0] = (short)((i & 0xf) * 0x10);
+            rect1[1] = (short)((i >> 4) + 0x1fe);
+            rect1[2] = 0x10;
+            rect1[3] = 1;
+            Ordinal_674(rect1, mainMem + 0x1c0060 + slotBase);
+
+            // Ghidra 0x51286e-05128ab — icône 2 : hauteur proportionnelle au nombre de personnages
+            // du fichier (charCount*16), même grille de colonnes.
+            short* rect2 = stackalloc short[4];
+            rect2[0] = (short)((i & 0xf) * 4 + 0x3c0);
+            rect2[1] = (short)(((i >> 4) << 6) + 0x20);
+            rect2[2] = 4;
+            rect2[3] = (short)(s_CardSlotCharacterCount_0060498c[i] * 16);
+            Ordinal_674(rect2, mainMem + 0x1c0080 + slotBase);
+        }
+    }
 
     /// <summary>Ghidra: `(_DAT_00604980 &amp; 3) + (_DAT_00604980 &amp; 4) * 4`, répété tel quel à
     /// plusieurs sites de <c>FUN_0050a910</c> plutôt que factorisé dans l'original — un seul point
@@ -9069,9 +9218,9 @@ public static unsafe partial class Blaze
                 byte slot = s_CardCursorSlot_00604984;
                 if ((pad[6] & 0x80) != 0) slot--;
                 if ((pad[6] & 0x20) != 0) slot++;
-                // Ghidra: `DAT_00604981` — jamais posé par du code reconstruit, lit 0 ; le curseur
-                // retombe donc systématiquement à 0, un état sûr plutôt qu'un plantage.
-                byte cardCount = 0;
+                // Ghidra: `DAT_00604981` — posé par LoadSaveDirectory (FUN_005126c0, transcrite
+                // 2026-08-16), plus jamais figé à 0 depuis.
+                byte cardCount = s_CardEntryCount_00604981;
                 if (slot == 0xff) slot = (byte)(cardCount - 1);
                 if (cardCount <= slot) slot = 0;
                 s_CardCursorSlot_00604984 = slot;

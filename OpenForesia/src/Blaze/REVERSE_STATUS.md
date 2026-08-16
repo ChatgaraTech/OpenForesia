@@ -3902,3 +3902,60 @@ function rather than guessed at, per the same discipline as `FUN_00537a20` in `R
 Not yet reachable from any call site (same situation as `RefreshPartyAbilityMask`): both remaining
 orchestrators still throw before reaching this function, so nothing to visually confirm yet beyond
 the regression check (`playtest.ps1`, no crash, primitive count unchanged).
+
+### The three `FUN_00536ea0`-only dependencies, closed out
+
+`FUN_00529ad0` was already `PlayMusicTrack` (confirmed earlier this arc). The other two:
+
+**`FUN_005126c0` → `LoadSaveDirectory`.** Turned into its own side quest: this function enumerates
+the `save\` folder for `Blaze-Saving*` files (up to 32), opens and reads each one's header, and — this
+is the actually valuable part — it's the **previously-unknown writer** of `DAT_00604981`, a field
+`RenderSaveScreen`'s case `0xa` (the memory-card port cursor) already referenced but could only read
+as a hardcoded `0` with a comment saying "never set by any reconstructed code." Found by recognizing
+the `puVar6 = puVar6 + 0x28` stride matching a `TODO` already sitting in `s_CardDirectoryEntries_006049bc`'s
+doc comment. Wired the fix into that existing case-0xa code too, correcting the stale comment there.
+
+Needed the same raw-disassembly treatment as `FUN_00536ba0` — Ghidra wraps this one in SEH
+try/except-shaped pseudo-C (`puStack_20`, literal continuation addresses like `0x5126f1` standing in
+for real locals), which makes argument order to its handful of calls actively misleading to read
+directly. The asm is completely ordinary underneath (no real exception handling in the machine code,
+just the decompiler's standard artifact for `/EHa`-compiled functions) and resolved cleanly. Two
+findings worth keeping in mind for the next SEH-shaped function:
+- The very first instruction, before the prologue, loads `[0x56315c]` and that value gets pushed as
+  the sole argument to what's already `SetCardFileName` — confirmed by reading the raw bytes at
+  `0x56315c` (`at Legacy/Blaze.exe`), which hold exactly `0x563160`, the address of the already-declared
+  `s_SaveDeviceName_00563160` ("Blaze-Saving*"). A `PTR_xxx` name in Ghidra's pseudo-C is worth
+  resolving the same way `DAT_` globals already are — it may just be a pointer *to* something already
+  named.
+- Two `Ordinal_674` (LoadImage) calls near the end each build a 4-field rect, and a first pass at
+  tracing them by hand seemed to leave the first two fields of one rect unexplained. Recomputing more
+  carefully found the gap was a **self-inflicted version of the deferred-cleanup trap**: a `PUSH`
+  between a field write and the `LEA` that computes the struct's own address shifts what `[ESP+0x18]`
+  means by 4 bytes, so a write that looked like it was 4 bytes *before* the struct was actually its
+  first field. Both rects turned out fully accounted for once re-derived against the post-push `ESP`.
+- Along the way, declared two new `winsys3d.dll` ordinals (`Ordinal_18`/`Ordinal_19` — `FindFirstFileA`/
+  `FindNextFileA` wrappers, confirmed by reading `winsys3d.c` directly). `Ordinal_19` is declared
+  `void` in `winsys3d.c` but its caller here tests `EAX` after the call anyway — traced why that's not
+  a mistake: the wrapper's own early `return;` leaves `FindNextFileA`'s `BOOL` result sitting in `EAX`
+  by ordinary x86 code-gen, so the caller's test is reading a real (if undeclared) success flag. Kept
+  the P/Invoke declared as returning `int` with a comment explaining the discrepancy, same resolution
+  style as the `FrameBegin`/`FrameEnd` arity notes.
+
+Not wired into any caller yet, so `s_CardEntryCount_00604981` stays `0` until `FUN_00536ea0` (or
+whatever else calls `LoadSaveDirectory`) actually runs — the case-0xa fix is correct but currently
+inert. Builds clean; regression-checked with `playtest.ps1`.
+
+**`FUN_00547960`**: read, not transcribed. It's the CRT's variadic `sprintf`-equivalent (calls into
+`FUN_00549380`, the real varargs formatting engine, with a raw `&stack0x0000000c` pointer as the args
+list) — a generic printf-family function, not game logic. Implementing a faithful C varargs engine
+generically would be real scope for no immediate benefit; the one call site that needs it is inside
+`FUN_00536ea0` itself, not yet read. Plan: when `FUN_00536ea0`'s body is transcribed and that call
+site's actual format string and arguments are known, write the specific `string.Format`/manual
+formatting equivalent for *that* call rather than a general-purpose sprintf.
+
+### Where this leaves `FUN_00536270`/`FUN_00536ea0`
+
+Every dependency either function calls has now been resolved one way or another (already done,
+newly transcribed this arc, or explicitly deferred with a plan). Next step is the two orchestrators
+themselves — 361 and 494 lines, not yet read in full by me directly (only surveyed for call targets
+via research agents earlier this arc, plus the first 140 lines of `FUN_00536270` read directly).
