@@ -10099,9 +10099,16 @@ public static unsafe partial class Blaze
         primCursor = RunTextEngine(primCursor, box);
 
         // Le curseur de la grille : un sprite de 20 octets monté sur la pile, comme partout.
+        // **Corrigé 2026-08-16** : le désassemblage (FUN_00507cb0.asm:403-408) lit
+        // [0x005e97c0] puis +0x94 puis un déréférencement — c'est s_MainResourceBuffer_005e97c0
+        // (déjà le bon symbole dans DrawUiPanel pour ce même `+0x94`), pas
+        // s_MainResourceDirectory_005e97c4 (décalée de 4 octets). Avec le mauvais symbole, le
+        // sprite lisait l'atlas au mauvais décalage et affichait une icône d'élément (terre) à la
+        // place du curseur du clavier virtuel, cachant la lettre A — bug purement visuel signalé
+        // par l'utilisateur.
         byte* cursor = stackalloc byte[20];
         NativeMemory.Clear(cursor, 20);
-        *(uint**)cursor = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+        *(uint**)cursor = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
         *(uint*)(cursor + 4) = 0x1000000;
 
         byte* grid = s_SelectSlots_00573518;
