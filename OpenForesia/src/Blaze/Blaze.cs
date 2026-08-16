@@ -6242,7 +6242,18 @@ public static unsafe partial class Blaze
         // Ghidra: if (DAT_00571a3c != 0) draw the "Veuillez connecter la manette !" banner.
         if (s_Unknown_00571a3c != 0)
         {
-            ControllerBannerStub();            // Ghidra: FUN_0051c120(...)
+            // Ghidra: DAT_00566c28 @ 0x00566c28 â€” confirmed via the `at` PE-inspector verb against
+            // Legacy/Blaze.exe (.data, not a code-only-decompile gap): dword0 packs an 8x8 glyph
+            // cell (origin Y=0x30, cell 8x8), dword1=0x02300000 is the atlas attributes/texture-page
+            // word DrawTextRun forwards into DrawSpriteVariant.
+            uint* bannerAtlas = stackalloc uint[2] { 0x40803000, 0x02300000 };
+            int* bannerCursor = stackalloc int[3];
+            bannerCursor[0] = (int)(nint)bannerAtlas;
+            bannerCursor[1] = 0x01000000;
+            bannerCursor[2] = 0x00640010;
+
+            *primCursor = DrawTextRun(*otBase, *primCursor, bannerCursor,
+                s_ControllerBannerText_00568510, 0, 0, -1);
         }
     }
 
@@ -8348,6 +8359,10 @@ public static unsafe partial class Blaze
     // CD plus tôt cette séance.
     private static readonly byte* s_SaveFolderName_00563170 = ToAnsiZ("save\\");
     private static readonly byte* s_SaveDeviceName_00563160 = ToAnsiZ("Blaze-Saving*");
+
+    // Ghidra: s_Veuillez_connecter_la_manette___00568510 @ 0x00568510 (Documentation/DataSymbols.md).
+    private static readonly byte* s_ControllerBannerText_00568510 =
+        ToAnsiZ("Veuillez connecter la manette !");
 
     // Ghidra: DAT_00604940.. — le descripteur de chemin qu'Ordinal_21 lit par pointeur (dans
     // winsys3d.dll, FUN_00a03f80, jamais relu en détail ici : ce port ne fait que lui fournir des
@@ -10562,6 +10577,46 @@ public static unsafe partial class Blaze
     // (`*(byte *)(DAT_00573338 + 0x151)` sert d'index dans la table de couleurs DAT_00562a58).
     private static byte* s_SelectScratch_00573338;
 
+    // Ghidra: DAT_005e9020 â€” read at ~60 sites across the game, essentially always as a party-size
+    // bound: loop upper limit over active characters, "current player slot" modulo divisor, and
+    // compared/assigned from DAT_005dbc18 (a save-slot-derived count). Declared now because
+    // RefreshPartyAbilityMask (FUN_00535710) needs it; the role is inferred from cross-referencing
+    // those call sites, not yet confirmed by tracing a single one end to end.
+    private static int s_PartySize_005e9020;
+
+    // Ghidra: DAT_005e9000 â€” elsewhere indexed byte-at-a-time (up to `& 0xff`) with individual bits
+    // set/cleared via `1 << (someIndex & 0x1f)`, read as "does any party member know skill/spell N"
+    // (bit = member slot). RefreshPartyAbilityMask only touches the first 8 dwords (32 bytes) â€” the
+    // OR-accumulator this function recomputes from each character's own flag block. Sized at 0x100
+    // bytes to safely cover every observed `& 0xff` index; true extent in the original .data section
+    // not confirmed.
+    private static readonly byte* s_PartyAbilityMask_005e9000 = (byte*)NativeMemory.AllocZeroed(0x100);
+
+    /// <summary>
+    /// Ghidra: FUN_00535710 @ 0x00535710 â€” recomputes the party-wide combined ability/skill bitmask
+    /// (<see cref="s_PartyAbilityMask_005e9000"/>) by OR-ing together the per-character 32-byte flag
+    /// block at offset 0x2e0 of each of the <see cref="s_PartySize_005e9020"/> active characters'
+    /// 0x2000-byte record in the character-select scratch area
+    /// (<see cref="s_SelectScratch_00573338"/> + <c>i * 0x2000</c>; Ghidra reads this relative to
+    /// MainMem directly as <c>MainMem + 0xf02e0</c>, which is exactly
+    /// <c>s_SelectScratch_00573338 (= MainMem + 0xf0000) + 0x2e0</c>).
+    /// </summary>
+    private static void RefreshPartyAbilityMask()
+    {
+        uint* accumulator = (uint*)s_PartyAbilityMask_005e9000;
+        for (int i = 0; i < 8; i++) accumulator[i] = 0;
+
+        int partySize = s_PartySize_005e9020;
+        if (partySize == 0) return;
+
+        byte* source = s_SelectScratch_00573338 + 0x2e0;
+        for (; partySize != 0; partySize--, source += 0x2000)
+        {
+            uint* src = (uint*)source;
+            for (int i = 0; i < 8; i++) accumulator[i] |= src[i];
+        }
+    }
+
     // =====================================================================
     // Les huit sous-états de la sélection des personnages
     //
@@ -10856,11 +10911,15 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00542160 @ 0x00542160 â€” reloads the state's resources. Its directory loop is the
-    /// same one <see cref="LoadFirstLevelResources"/> already runs, so it reuses the same three
-    /// reconstructed helpers rather than duplicating them.
+    /// Ghidra: the directory-reload prefix shared verbatim by <see cref="LoadMenuResources"/>
+    /// (<c>FUN_00542160</c>) and <see cref="ReloadGameplayResources"/> (<c>FUN_00504ca0</c>) â€”
+    /// confirmed byte-for-byte identical in both raw bodies, not just the same shape. Reloads the
+    /// resource entry for the current state id (<see cref="s_Unknown_005e92b0"/>), fixes up its
+    /// header, then walks the directory's entry list decoding each chunk into
+    /// <see cref="s_EntityDecodeTable_005e8f00"/> â€” the same loop <see cref="LoadFirstLevelResources"/>
+    /// already runs, reusing its three helpers rather than duplicating them a third time.
     /// </summary>
-    private static void LoadMenuResources()
+    private static void ReloadStateResources()
     {
         s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
         FixupResourceHeader(s_MainResourceDirectory_005e97c4);
@@ -10886,6 +10945,25 @@ public static unsafe partial class Blaze
                 } while (entryPtrValue != 0);
             }
         }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00504ca0 @ 0x00504ca0 â€” called at the very start of game-state 1's entry
+    /// (<c>thunk_FUN_00536180</c>). Confirmed byte-for-byte the same directory-reload prefix as
+    /// <see cref="LoadMenuResources"/> (<c>FUN_00542160</c>), just without that function's
+    /// menu-specific tail (the six render-block ordinals) â€” extracted as
+    /// <see cref="ReloadStateResources"/> once a third call site needed the identical loop. The
+    /// leading <c>FUN_0040a600()</c> is the confirmed no-op already elided at every other call site.
+    /// </summary>
+    private static void ReloadGameplayResources() => ReloadStateResources();
+
+    /// <summary>
+    /// Ghidra: FUN_00542160 @ 0x00542160 â€” reloads the state's resources, then reconfigures the
+    /// menu's own render block. See <see cref="ReloadStateResources"/> for the shared prefix.
+    /// </summary>
+    private static void LoadMenuResources()
+    {
+        ReloadStateResources();
 
         // Ghidra: _DAT_00566c74 = 0x100; _DAT_00566c78 = 0; _DAT_00566c7a = 0; then six ordinals.
         uint* block = s_MenuRenderBlock_00566c70;
@@ -11322,6 +11400,90 @@ public static unsafe partial class Blaze
         *otEntry = (uint)(nuint)prim;
 
         return prim + 5;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051c120 @ 0x0051c120 — draws a run of bytes from a nibble-indexed glyph atlas:
+    /// the low nibble of each character selects the atlas column, the high nibble the row. Called
+    /// from roughly 50 sites across the game (menus, HUD, the party screen) — it is the flat,
+    /// unwrapped text primitive, distinct from the wrapping/paginating dialog-box engine built on
+    /// <see cref="EmitTextSprite"/>. Each character is also probed for the cheat-code sequence via
+    /// <see cref="CheatCodeProbe"/>.
+    /// <para>
+    /// <c>cursor</c> is a caller-built 3-int block, resolved from the raw disassembly (Ghidra's
+    /// pseudo-C names it <c>int *param_3</c> without revealing the layout):
+    /// cursor[0] = pointer to a 2-dword atlas descriptor — dword0 packs origin X (low byte),
+    /// origin Y (byte 1), cell width (byte 2, i.e. <c>&gt;&gt;0x14</c>) and cell height (top 5 bits,
+    /// <c>&gt;&gt;0x1b</c>); dword1 is forwarded verbatim as the "attributes" half of the sprite
+    /// passed to <see cref="DrawSpriteVariant"/>. cursor[1] is forwarded as that sprite's
+    /// texture/flags dword. cursor[2] is the starting screen position, X packed in the low word
+    /// and Y in the high word — only the low word (X) advances as characters are drawn, matching
+    /// the packed-position convention documented on <see cref="DrawSpritePrimitive"/>; neither the
+    /// advanced X nor the loop's own local copy is written back to the caller's cursor[2].
+    /// </para>
+    /// <para>
+    /// The on-stack "sprite" Ghidra shows as <c>local_14 = &amp;local_1c</c> is a pointer-to-a-
+    /// pointer in the real stack layout (confirmed in <c>Legacy/Raw/Blaze/FUN_0051c120.asm</c>):
+    /// the struct that <see cref="DrawSpriteVariant"/>/<see cref="DrawFlatPrimitive"/> actually read
+    /// sits 8 bytes below the pointer that gets passed, and the intervening slot holds a
+    /// self-reference back to that struct's own address — reproduced here with <c>frame[2]</c>.
+    /// </para>
+    /// <para>
+    /// Previously mis-stubbed as a single-purpose "controller banner" helper
+    /// (<c>ControllerBannerStub</c>) after only its first call site (<see cref="FrameEnd"/>'s
+    /// "Veuillez connecter la manette !" message) had been read; this is the real, generic
+    /// primitive underneath it.
+    /// </para>
+    /// </summary>
+    private static uint* DrawTextRun(uint* otEntry, uint* prim, int* cursor, byte* text, uint flags, uint extra, int maxChars)
+    {
+        EmitViewportRect(otEntry, &prim);
+
+        uint* atlas = (uint*)*cursor;
+        uint packing = *atlas;
+        uint attributes = atlas[1];
+
+        byte originX = (byte)packing;
+        byte originY = (byte)(packing >> 8);
+        byte cellW = (byte)(packing >> 0x14);
+        byte cellH = (byte)(packing >> 0x1b);
+
+        uint* frame = stackalloc uint[7];
+        frame[1] = attributes;
+        frame[2] = (uint)(nuint)frame;
+        frame[3] = (uint)cursor[1];
+        frame[4] = (uint)cursor[2];
+        frame[6] = 0;
+
+        byte ch = *text;
+        byte* p = text;
+        int remaining = maxChars;
+
+        if (ch != 0)
+        {
+            while (remaining != 0)
+            {
+                byte x = (byte)((ch & 0xf) * cellW + originX);
+                byte y = (byte)((ch >> 4) * cellH + originY);
+                frame[0] = (uint)x | ((uint)y << 8) | 0x07070000u;
+
+                prim = DrawSpriteVariant(otEntry, prim, (int*)(frame + 2), flags, extra);
+
+                frame[4] = (frame[4] & 0xffff0000u) | (uint)(ushort)((short)(ushort)frame[4] + cellW);
+
+                CheatCodeProbe(*p);
+
+                ch = p[1];
+                if (ch == 0) break;
+                p++;
+                remaining--;
+            }
+        }
+
+        prim = DrawFlatPrimitive(otEntry, prim, (int*)(frame + 2));
+        EmitClipRect(otEntry, &prim);
+
+        return prim;
     }
 
     // =====================================================================
@@ -15581,10 +15743,6 @@ public static unsafe partial class Blaze
         AssignControllersToSlots();
     }
 
-    private static void ControllerBannerStub()
-        => throw new NotImplementedException(
-            "FUN_0051c120: the \"Veuillez connecter la manette !\" banner");
-
     /// <summary>
     /// Ghidra: FUN_00533000 @ 0x00533000 â€” per-frame **palette animation** (CLUT cycling). Walks a
     /// list of animation descriptors and, for each one whose counter has reached its period,
@@ -15718,7 +15876,8 @@ public static unsafe partial class Blaze
                 RunMainMenuState();
                 return;
             case 1:
-                throw new NotImplementedException("thunk_FUN_00536180 (game state 1) not yet reconstructed");
+                RunGameState1Entry();
+                return;
             case 2:
                 // Ghidra: FUN_00542160(); DAT_00564a4c = 0; FUN_00537da0(); DAT_00564a4c = 1;
                 //         DAT_005de510 = 3;   <- the one case that advances the state itself
@@ -15752,9 +15911,265 @@ public static unsafe partial class Blaze
                     "than by writing to a null pointer.");
         }
     }
+
+    /// <summary>
+    /// Ghidra: <c>thunk_FUN_00536180</c> @ 0x00536260 â€” byte-for-byte identical to
+    /// <c>FUN_00536180</c> @ 0x00536180 (the usual linker-folded duplicate; only one body
+    /// transcribed). Game state 1's entry point â€” real gameplay, reached once per tick while
+    /// <see cref="s_GameStateId"/> == 1. First area of the call graph reached from the character
+    /// creation flow this project has not touched before.
+    /// </summary>
+    private static void RunGameState1Entry()
+    {
+        // Ghidra: a block of miscellaneous globals reset to idle values, first encountered here â€”
+        // roles not yet established. Transcribed as-is rather than guessed at.
+        s_Unknown_005de7e8 = 0;
+        s_Unknown_005de7ec = 0;
+        s_Unknown_005de7f0 = 0;
+        s_Unknown_005de7f4 = 0;
+        s_Unknown_005de7f8 = 0;
+        s_Unknown_005de7fc = 0;
+        s_Unknown_0056c778 = -1;
+        s_Unknown_005de800 = 0;
+        s_Unknown_0056be1c = 0;
+        s_Unknown_0056be1f = 0;
+        s_Unknown_0056be1d = 0;
+        s_Unknown_0056b593 = 0;
+        s_Unknown_0056c6e4 = 0;
+        s_Unknown_0056c6e7 = 0;
+        s_Unknown_0056c6e5 = 0;
+        s_Unknown_0056be5b = 0;
+
+        ReloadGameplayResources();     // Ghidra: FUN_00504ca0
+        SetupMenuScreen();             // Ghidra: FUN_00529a80
+
+        if (s_Unknown_005de51c != 0)
+        {
+            // Ghidra: FUN_00537a20() â€” not yet read. Currently unreachable in practice: every
+            // known writer of s_Unknown_005de51c (case 0x12 of StepSubState7Phase, on confirm)
+            // sets it to 0 immediately before entering this state.
+            throw new NotImplementedException(
+                "thunk_FUN_00536180: FUN_00537a20 (DAT_005de51c != 0 branch) not yet reconstructed");
+        }
+
+        // Ghidra: `for (iVar1 = 0x2000; ...) *puVar2++ = 0;` on dwords â€” 0x2000 * 4 = 0x8000 bytes,
+        // not the 0x2000 this project has treated s_SelectScratch_00573338 as elsewhere. The base
+        // address is confirmed the same (MainMem + 0xf0000); the true extent of that scratch block
+        // is larger than previously assumed. Left as a plain NativeMemory.Clear here rather than
+        // retrofitting every earlier reference, since nothing so far has needed past +0x2000.
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem != null) NativeMemory.Clear(s_SelectScratch_00573338, 0x8000);
+
+        // Ghidra: the same "current player slot" idiom as PollInputAndAudio/FUN_00545340 â€” see the
+        // comment there for how DAT_005e93c8/DAT_005e9188 were settled as
+        // s_SlotArea_005e9180+0x248 and s_PlayerSlots_005e9188.
+        int slotIndex = s_PlayerSlots_005e9188[
+            s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
+        bool slotJoined = (s_InputStateBase_00604a20[slotIndex * 4] & 1) != 0;
+
+        if (s_UnknownModeFlag_005633a8 == 0 && slotJoined)
+        {
+            throw new NotImplementedException(
+                "thunk_FUN_00536180: FUN_00536270 (game state 1, path A) not yet reconstructed");
+        }
+
+        throw new NotImplementedException(
+            "thunk_FUN_00536180: FUN_00536ea0 (game state 1, path B) not yet reconstructed");
+    }
+
+    private static int s_Unknown_005de7e8, s_Unknown_005de7ec, s_Unknown_005de7f0, s_Unknown_005de7f4,
+                        s_Unknown_005de7f8, s_Unknown_005de7fc, s_Unknown_0056c778, s_Unknown_005de800;
+    private static byte s_Unknown_0056be1c, s_Unknown_0056be1f, s_Unknown_0056be1d, s_Unknown_0056b593,
+                         s_Unknown_0056c6e4, s_Unknown_0056c6e7, s_Unknown_0056c6e5, s_Unknown_0056be5b;
+
     // Ghidra: DAT_005e92b0 â€” per-game-state value read from the loaded resource file's own table
     // at offset 0x48; read again by not-yet-reconstructed code (e.g. FUN_00542160).
     private static int s_Unknown_005e92b0;
+
+    // Ghidra: &DAT_005e9680 â€” 4 pointeurs de sortie, un par emplacement de groupe, remplis par
+    // RelocateAnimationBundle. Jamais lu dans FUN_00536ba0 lui-mÃªme (seule son ADRESSE sert de borne
+    // de boucle) â€” Ã©crit uniquement.
+    private static readonly byte* s_PartyAnimationResult_005e9680 =
+        (byte*)NativeMemory.AllocZeroed(4, (nuint)sizeof(nint));
+
+    // Ghidra: &DAT_005e9800 â€” 4 pointeurs de sortie, un par emplacement de groupe, remplis par
+    // RelocateModelBundle.
+    private static readonly byte* s_PartyModelResult_005e9800 =
+        (byte*)NativeMemory.AllocZeroed(4, (nuint)sizeof(nint));
+
+    // Ghidra: DAT_005de738 â€” le curseur d'accumulation final (Ghidra: EBP) aprÃ¨s le chargement des
+    // quatre emplacements ; probablement lu par FUN_00535500 ou par un code de rendu pas encore
+    // atteint.
+    private static byte* s_Unknown_005de738;
+
+    /// <summary>
+    /// Ghidra: FUN_00536ba0 @ 0x00536ba0 â€” charge et relocalise les ressources des quatre
+    /// emplacements du groupe pour le rendu de l'Ã©tat de jeu 1 : deux textures, un paquet de modÃ¨le
+    /// et un paquet d'animation par emplacement, indexÃ©s par l'identitÃ© de personnage que
+    /// <c>s_SelectScratch_00573338[0x150 + i*0x2000]</c> stocke pour cet emplacement (le mÃªme champ
+    /// que le code voisin de <c>StepSubState5Phase</c> lit dÃ©jÃ  comme Â« personnage courant Â»).
+    /// <para>
+    /// ReconstruitÂ depuis le dÃ©sassemblage brut (<c>Legacy/Raw/Blaze/FUN_00536ba0.asm</c>), pas le
+    /// pseudo-code Ghidra : plusieurs locales <c>undefined4</c> y cachent des pointeurs, et au moins
+    /// un nom de variable du pseudo-code ne correspond pas Ã  ce que montrent les vrais dÃ©calages de
+    /// pile. Deux piÃ¨ges rÃ©currents, rÃ©solus en calculant le delta de pile instruction par
+    /// instruction :
+    /// </para>
+    /// <list type="bullet">
+    /// <item>Le nettoyage de pile aprÃ¨s un appel <b>cdecl</b> est parfois diffÃ©rÃ© de plusieurs
+    /// instructions â€” ex. l'appel Ã  <see cref="DecodeResourceChunk"/> (asm 0x536c9c) : son
+    /// <c>ADD ESP,0xc</c> n'arrive qu'Ã  0x536cba, cinq instructions plus loin. Toute lecture
+    /// <c>[ESP+n]</c> dans cette fenÃªtre pointe donc plus loin que ne le suggÃ¨re le dÃ©calage
+    /// post-prologue.</item>
+    /// <item>Les deux thunks winsys3d appelÃ©s directement ici (<c>CALL 0x545c50</c> /
+    /// <c>CALL 0x545c4a</c>, qui correspondent Ã  <c>Ordinal_677</c>/<c>Ordinal_662</c> dans la passe
+    /// d'analyse complÃ¨te de <c>Blaze.c</c>, ligne ~82714) sont <b>stdcall</b> : l'appelÃ© dÃ©pile
+    /// lui-mÃªme ses arguments, donc aucun <c>ADD ESP</c> explicite ne suit et le delta de pile revient
+    /// silencieusement Ã  zÃ©ro.</item>
+    /// </list>
+    /// <para>
+    /// <c>EBP</c> dÃ©marre Ã  <c>MainMem + 0xf8000</c> â€” la mÃªme base que la liste Â« blocs bruts Â» de
+    /// <see cref="LoadCharacterSelectResources"/> â€” et s'accumule exactement comme le <c>cursor</c>
+    /// de cette fonction sÅ“ur : le paquet de modÃ¨le puis le paquet d'animation de chaque emplacement
+    /// s'empilent cÃ´te Ã  cÃ´te dans cette rÃ©gion ; un emplacement dupliquÃ© ne consomme aucun espace et
+    /// laisse le curseur intact pour le suivant.
+    /// </para>
+    /// <para>
+    /// TODO(REVERSE) : <see cref="s_PartySize_005e9020"/> n'est PAS utilisÃ© ici â€” la boucle est
+    /// bornÃ©e en dur sur les 4 dwords de <c>DAT_005e9680</c>, indÃ©pendamment de la taille rÃ©elle du
+    /// groupe. RÃ´le exact des bits du dword de <see cref="s_SlotFlags_005e93c0"/>
+    /// (<c>0xefffdff9</c>/<c>0x81808a00</c>) non Ã©tabli. Absence de garde
+    /// <c>ClutData != null</c>/<c>PixelData != null</c> pour la texture 2 (contrairement Ã
+    /// <see cref="DecodeResourceChunk"/>) confirmÃ©e dans l'asm, pas une omission de ce portage.
+    /// </para>
+    /// </summary>
+    private static void LoadPartyMemberResources()
+    {
+        byte* mainMem = GetMainMemPtr();
+        byte* directoryBase = s_MainResourceDirectory_005e97c4;
+        if (mainMem == null || directoryBase == null) return;
+
+        byte* modelAnimCursor = mainMem + 0xf8000;   // Ghidra: EBP
+
+        for (int i = 0; i < 4; i++)
+        {
+            byte* charBlock = mainMem + 0xf02bd + i * 0x2000;      // Ghidra: pcVar2
+            byte* record = s_SlotFlags_005e93c0 + i * 0x9c;        // Ghidra: &DAT_005e93c0 + i*0x9c
+            byte* recordTail = record + 4;                          // Ghidra: EDI ("&DAT_005e93c4 + i*0x9c")
+
+            // Ghidra: uVar8 = pcVar2[-0x16d] == s_SelectScratch_00573338[0x150 + i*0x2000].
+            byte characterId = charBlock[-0x16d];
+
+            // Ghidra: le balayage des emplacements dÃ©jÃ  traitÃ©s (j < i) portant la mÃªme identitÃ©.
+            int duplicateOf = -1;
+            for (int j = 0; j < i; j++)
+            {
+                if ((mainMem + 0xf0000 + 0x150 + j * 0x2000)[0] == characterId) { duplicateOf = j; break; }
+            }
+
+            if (duplicateOf != -1)
+            {
+                recordTail[0] = (byte)duplicateOf;
+                continue;
+            }
+
+            // Ghidra: *(EDI-4) = (*(EDI-4) & 0xefffdff9) | 0x81808a00 â€” drapeaux d'Ã©tat, rÃ´le des
+            // bits non Ã©tabli.
+            uint* recordFlags = (uint*)record;
+            *recordFlags = (*recordFlags & 0xefffdff9u) | 0x81808a00u;
+            recordTail[7] = charBlock[0];   // Ghidra: EDI[7] = *pcVar2  (record+4+7 = record+0xB)
+
+            // ---- texture 1 : LoadResourceEntry + DecodeResourceChunk, table +0x84, pas 8 octets ----
+            int* texDir1Entry = (int*)(directoryBase + 0x84 + characterId * 8);
+            uint texMeta1 = (uint)texDir1Entry[1];
+            byte* meta1 = stackalloc byte[4];
+            meta1[0] = (byte)texMeta1;
+            meta1[1] = (byte)((byte)(texMeta1 >> 8) + i * 4);
+            meta1[2] = (byte)i;
+
+            LoadResourceEntry((int*)(nint)texDir1Entry[0], mainMem + 0x1b0000);
+            DecodeResourceChunk(mainMem + 0x1b0000,
+                (ushort*)(s_EntityDecodeTable_005e8f00 + 0x80 + i * 4), meta1);
+
+            // ---- texture 2 : LoadResourceEntry + OpenTim/ReadTim manuel (pas DecodeResourceChunk â€”
+            // le rectangle CLUT est une bande fixe 64x1 par emplacement le long de X, pas une taille
+            // calculÃ©e). Table +0x84, dÃ©calÃ©e de 0x80 octets = 16 entrÃ©es aprÃ¨s la texture 1.
+            int* texDir2Entry = (int*)((byte*)texDir1Entry + 0x80);
+            uint texMeta2 = (uint)texDir2Entry[1];
+            byte meta2_0 = (byte)texMeta2;
+            byte meta2_1 = (byte)((byte)(texMeta2 >> 8) + 0x10);
+            const byte meta2_2 = 3;
+
+            LoadResourceEntry((int*)(nint)texDir2Entry[0], mainMem + 0x1b0000);
+
+            TimImage tim;
+            OpenTim(mainMem + 0x1b0000);
+            ReadTim(&tim);
+
+            short* clutRect = tim.ClutRect;
+            clutRect[0] = (short)(i * 0x40);
+            clutRect[1] = (short)(meta2_1 + 0x1c0);
+            clutRect[2] = 0x40;
+            clutRect[3] = 1;
+            Ordinal_674(clutRect, tim.ClutData);
+
+            short* pixelRect = tim.PixelRect;
+            pixelRect[0] = (short)(((meta2_0 & 0xf) << 6) + (i << 4));
+            pixelRect[1] = (short)(((meta2_0 & 0x10) + meta2_2 * 4) << 4);
+            Ordinal_674(pixelRect, tim.PixelData);
+
+            // Ghidra 0x536d91-dc7 â€” mÃªme formule de tpage que DecodeResourceChunk.
+            int x = pixelRect[0];
+            int y = pixelRect[1];
+            int tpage = ((x >> 2) & 0xf0) | (y & 0x100);
+            tpage |= 0x2000;
+            tpage = (short)tpage >> 4;
+            tpage |= ((int)tim.Mode & 3) << 7;
+            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0x90 + i * 4) = (ushort)tpage;
+            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0x92 + i * 4) = (ushort)((meta2_1 + 0x1c0) << 6);
+
+            // ---- paquet de modÃ¨le : LoadResourceEntry (dans la rÃ©gion partagÃ©e et cumulative
+            // modelAnimCursor) + RelocateModelBundle, table +0x2c, pas 8 octets ----
+            int* modelEntry = (int*)(*(int*)(directoryBase + 0x2c) + characterId * 8);
+            int modelResPtr = modelEntry[0];
+            uint pageBits = (uint)modelEntry[1];
+            byte pb1 = (byte)(i * 0x40);                              // Ã©crasÃ©, pas additionnÃ©
+            byte pb2 = (byte)((byte)(pageBits >> 16) + i);            // += i
+            uint adjustedPageBits = (pageBits & 0xff0000ffu) | ((uint)pb1 << 8) | ((uint)pb2 << 16);
+            byte* modelMeta = stackalloc byte[8];
+            *(uint*)(modelMeta + 4) = adjustedPageBits;
+
+            byte* afterModel = LoadResourceEntry((int*)(nint)modelResPtr, modelAnimCursor);
+            RelocateModelBundle((int*)modelAnimCursor, modelMeta, (byte**)s_PartyModelResult_005e9800 + i);
+
+            // ---- paquet d'animation : LoadResourceEntry (juste aprÃ¨s le modÃ¨le) +
+            // RelocateAnimationBundle, table +0x7c, pas 4 octets (indexÃ©e par l'identitÃ©, pas par
+            // l'emplacement) ----
+            int animResPtr = (*(int**)(directoryBase + 0x7c))[characterId];
+            byte* afterAnim = LoadResourceEntry((int*)(nint)animResPtr, afterModel);
+            RelocateAnimationBundle((int*)afterModel, (byte**)s_PartyAnimationResult_005e9680 + i);
+
+            modelAnimCursor = afterAnim;
+            recordTail[0] = (byte)i;
+        }
+
+        s_Unknown_005de738 = modelAnimCursor;
+        FinalizePartyResourceUpload();   // Ghidra: FUN_00535500
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00535500 @ 0x00535500 â€” pas encore transcrit. Pseudo-code lisible (pas de piÃ¨ge
+    /// de type apparent) : deux boucles imbriquÃ©es sur mainMem+0xf0440 (4 emplacements, pas 0x2000 ;
+    /// 14 lignes internes, pas 0x280), test d'un octet Ã  -0x140, deux paires
+    /// Ordinal_667(0)+Ordinal_674 par ligne active, puis DAT_005e8fa0 = {0x216, 0x7c40}. Ressemble Ã
+    /// un envoi de sprites de portrait vers la VRAM. LaissÃ© en NotImplementedException plutÃ´t que
+    /// devinÃ© â€” la prochaine session peut le reprendre directement depuis Blaze.c:81583.
+    /// </summary>
+    private static void FinalizePartyResourceUpload()
+    {
+        throw new NotImplementedException(
+            "FUN_00535500 (appelÃ© depuis LoadPartyMemberResources) pas encore reconstruit");
+    }
 
     // =====================================================================
     // Not yet reconstructed â€” large subsystems reached directly from RunApplication.

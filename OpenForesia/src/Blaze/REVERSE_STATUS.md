@@ -3740,3 +3740,165 @@ fois." — byte-for-byte the same text the user's reference document recorded fr
 **literal mid-sentence `n` included** (so that is a faithful transcription of the original's own
 text data, not a line-break bug). Removed the test hook once confirmed, per the project's
 scaffolding convention.
+
+## 2026-08-16 — third visual bug fixed (name-entry cursor icon), then the first step into game state 1
+
+### The name-entry keyboard cursor showed the wrong sprite
+
+User spotted an earth-element icon sitting over the "A" key on the name-entry virtual keyboard.
+`DrawNameEntryScreen`'s cursor sprite (`Blaze.cs`, ~line 10101) built its atlas pointer from
+`s_MainResourceDirectory_005e97c4 + 0x94` — but the real disassembly (`FUN_00507cb0.asm:403-408`,
+`MOV EDX,[0x005e97c0]` then `+0x94` then one more dereference) reads from
+`s_MainResourceBuffer_005e97c0` instead, the same symbol `DrawUiPanel` already uses correctly for
+the identical `+0x94` lookup. Two separate, real globals 4 bytes apart — using the wrong one landed
+the read on an adjacent atlas entry. One-line fix (swap the symbol), confirmed visually: the cursor
+now shows the expected pointer-hand icon and the "A" is visible.
+
+### First step into game state 1 (real gameplay) — RunGameState1Entry
+
+User asked to continue past the save screen into game state 1 itself (`thunk_FUN_00536180`, never
+touched before this project). Traced the call graph with two research agents before writing
+anything:
+
+- `thunk_FUN_00536180` (`0x536260`) is byte-for-byte identical to `FUN_00536180` (`0x536180`) — the
+  usual linker-folded duplicate.
+- Its two direct helper calls, `FUN_00504ca0` and `FUN_00529a80`, turned out to already be **fully
+  available**: `FUN_00529a80` is already transcribed as `SetupMenuScreen`, and `FUN_00504ca0` is
+  **byte-for-byte the same directory-reload prefix** `LoadMenuResources` (`FUN_00542160`) already
+  runs, just without that function's menu-specific tail. Extracted the shared prefix into
+  `ReloadStateResources`, added `ReloadGameplayResources` as the thin wrapper `FUN_00504ca0` needs,
+  and left `LoadMenuResources` calling the same shared method for its own use.
+- Also discovered along the way: `DecodeResourceChunk` (`FUN_005322f0`) — long tracked in this
+  file's older entries as the project's one deliberately-unrecoverable "systemic blocker" — has in
+  fact been **fully reconstructed** in an intervening session not covered by this one's context.
+  Worth updating any stale "STUB, throws" notes elsewhere in this file the next time they're
+  touched; it is not a blocker for anything anymore.
+- The branch between `FUN_00536270`/`FUN_00536ea0` needed one more not-yet-decoded idiom: the
+  "current player slot" pattern already settled for `PollInputAndAudio`
+  (`s_SlotArea_005e9180[0x248 + slot*0x9c]` then `s_PlayerSlots_005e9188[...]`) reused verbatim
+  here, plus `s_UnknownModeFlag_005633a8` (already known from the sub-state-0 free-camera flag).
+
+Transcribed `RunGameState1Entry` faithfully: the block of sixteen miscellaneous globals reset to
+idle values (first encountered here, roles not yet established, declared as `s_Unknown_*` rather
+than guessed), the two now-available helper calls, the `DAT_005de51c` branch (kept as a named
+`NotImplementedException` for `FUN_00537a20` — currently unreachable in practice since every known
+writer of that flag sets it to `0` immediately before entering this state), a `0x8000`-byte clear at
+`s_SelectScratch_00573338` (note: **0x2000 dwords, not the 0x2000 bytes this project has assumed
+that scratch block's extent to be elsewhere** — the base address is confirmed the same, just a
+larger true extent than previously needed), and finally the branch to `FUN_00536270` or
+`FUN_00536ea0`.
+
+**Confirmed in game**: the full create-character-and-save flow now runs past the save screen,
+through `RunGameState1Entry` end to end with no crash, and lands cleanly on
+`"thunk_FUN_00536180: FUN_00536ea0 (game state 1, path B) not yet reconstructed"` — a new, one
+function deeper, precisely named boundary.
+
+### Scope of what's next
+
+Surveyed (not transcribed) `FUN_00536270` (361 lines, `Blaze.c:82277-82637`) and `FUN_00536ea0`
+(494 lines, `Blaze.c:82764-83257`) with research agents. Every function either one calls resolves to
+a real line in `Blaze.c` — no Ghidra gaps detected in this immediate scope — and the two share many
+call targets. Most of those targets are **already reconstructed**: all five `FinalizeCharacterStats`
+helpers, `BindMenuLabels`, `RunTextEngine`, `DrawUiPanel`, the `PlayUiSound*` family,
+`EmitViewportRect`/`EmitClipRect`, `DrawSpriteVariant`/`DrawFlatPrimitive`/`DrawSpritePrimitive`,
+`LoadResourceEntry`, `JoystickResetState`, `SetCardFileName`/`SetCardPathDeviceFields`, the
+`Retry*CardFile` family, `ControllerBannerStub`. The genuinely new pieces are `FUN_00536ba0`
+(shared by both), `FUN_00535710` (shared by both), and — `FUN_00536ea0` only —
+`FUN_00529ad0`, `FUN_005126c0`, `FUN_00547960`. A substantial but tractable next session.
+
+## 2026-08-16 — `FUN_0051c120` was never "the controller banner": it's a ~50-call-site text primitive
+
+Before touching `FUN_00536270`/`FUN_00536ea0` for real, ran the systematic check the previous entry
+recommends (grep every claimed dependency against `Blaze.cs` before doing fresh disassembly). Most
+of them checked out. `ControllerBannerStub` did not: it was a `NotImplementedException` placeholder
+covering `FUN_0051c120`, written after reading only `FrameEnd`'s one call site. Grepping `Blaze.c`
+for `FUN_0051c120(` turns up **~50 call sites** — menus, the party screen, `FUN_00536270` itself —
+so it needed a real implementation before any of those orchestrators could be transcribed honestly.
+
+Ghidra decompiles the body cleanly as pseudo-C (`Blaze.c:66809-66862`), but the "sprite" struct it
+passes to `DrawSpriteVariant`/`DrawFlatPrimitive` (`local_14 = &local_1c`) is exactly the kind of
+stack-shape pseudo-C tends to get subtly wrong, and this primitive is reused too widely to guess.
+Force-exported the raw disassembly (`ForceDecompileConfirmDialog.java`, retargeted to
+`0x0051c120` this run → `Legacy/Raw/Blaze/FUN_0051c120.asm`) and walked every `[ESP+N]` by hand.
+Result: the pointer actually passed to `DrawSpriteVariant`/`DrawFlatPrimitive` sits **8 bytes below**
+where Ghidra's `local_14` naming suggests, and the slot in between holds a self-reference back to
+the struct's own address — i.e. pseudo-C's "`local_14` = a pointer variable, itself passed by
+address" is a real pointer-to-pointer in memory, not a naming quirk. Reproduced faithfully in C# with
+a 7-`uint` `frame` buffer and `frame[2] = (uint)(nuint)frame` as the self-reference.
+
+Also resolved the bit-packing of the "atlas" dword (`packing = *cursor[0]`) against a real call site:
+`FrameEnd`'s banner passes `&DAT_00566c28` as that pointer. **The binary is in the repo now**
+(`REVERSE_STATUS.md` line 11 already says so — this was the first time this session actually needed
+it), so `DAT_00566c28`'s bytes aren't a systemic-blocker case at all:
+`dotnet run --project OpenForesia.Tools -- at Legacy/Blaze.exe 0x00566c28 32` reads `0x40803000` /
+`0x02300000` straight off disk, which decodes to a clean 8×8 glyph cell (origin Y=0x30, cell 8×8) —
+confirming the derived bit layout (`origin X/Y` in the low two bytes, cell `W`/`H` at `>>0x14`/`>>0x1b`)
+independently of the asm reading.
+
+Named the result `DrawTextRun`, wired `FrameEnd`'s controller-banner call site to it for real (was
+the only call site with a concrete addressable argument available before `FUN_00536270`/`FUN_00536ea0`
+are transcribed), and removed `ControllerBannerStub`. Builds clean. **Not yet visually confirmed**:
+`s_Unknown_00571a3c` (the banner's gate) needs a controller connected-then-disconnected mid-session
+to go non-zero, which `playtest.ps1` has no lever for yet — TODO next session, either add one or
+verify by other means before trusting this path beyond the disassembly-level cross-check above.
+
+Every other `FUN_0051c120` call site (the party screen included) can now call `DrawTextRun` directly
+once its own `cursor`/text arguments are transcribed — no more placeholder blocking that path.
+
+### `FUN_00535710` → `RefreshPartyAbilityMask`, the first of the two shared genuinely-new pieces
+
+Transcribed directly from the full body a research agent retrieved earlier this session (35 lines,
+no sub-calls — the simplest of the remaining unknowns in `FUN_00536270`/`FUN_00536ea0`'s dependency
+list). OR-accumulates each active party member's 32-byte flag block into a shared party-wide mask.
+Declared two new globals it needs (`s_PartySize_005e9020`, `s_PartyAbilityMask_005e9000`) — both
+widely cross-referenced elsewhere in `Blaze.c` (`DAT_005e9020` alone at ~60 sites) but only given the
+conservative role this one function requires; **not** a full reconstruction of either global's
+complete behavior, flagged as such in their doc comments. Builds clean; confirmed no regression via
+`playtest.ps1` (this function isn't reachable yet from any transcribed call site, so there's nothing
+to visually confirm until `FUN_00536270`/`FUN_00536ea0` actually call it).
+
+Remaining before those two orchestrators: `FUN_00536ba0` (110 lines, dense bit-packing, shared by
+both — full body already retrieved via agent), then `FUN_00529ad0`/`FUN_005126c0`/`FUN_00547960`
+(`FUN_00536ea0`-only, not yet read), then the two orchestrators themselves.
+
+### `FUN_00536ba0` → `LoadPartyMemberResources`
+
+This one earned the raw-disassembly treatment `FUN_0051c120` got two entries back: Ghidra's
+pseudo-C types several genuine pointers as `undefined4`, and at least one pseudo-C variable name
+doesn't line up with what the real stack offsets show. Delegated the mechanical trace (a forked
+agent, same context, kept the tedious instruction-by-instruction ESP-delta bookkeeping out of the
+main conversation) after finding the trap myself first: **stack cleanup after a cdecl `CALL` is
+sometimes deferred several instructions** (the `DecodeResourceChunk` call at asm `0x536c9c` isn't
+cleaned up until `0x536cba`, five instructions later — any `[ESP+n]` read in that window is off by
+the pending push count from a naïve post-prologue offset). The fork found a second trap in the same
+family: the two winsys3d calls this function makes directly (`OpenTim`/`ReadTim`, called here
+through their raw thunk addresses rather than the `Ordinal_677`/`Ordinal_662` names the full-analysis
+`Blaze.c` gives them) are **stdcall** — the callee pops its own arguments, so no `ADD ESP` follows
+and a naïve trace silently misreads the next variable.
+
+Cross-checked a meaningful chunk of the fork's output by hand (the two texture-loading blocks, where
+I'd already partially traced the asm myself before delegating) — it matched independently derived
+bit-packing exactly, including a subtle one (`pixelRect[1]`'s 16-bit truncated `LEA` with garbage in
+the upper bytes of `ECX` that turns out not to matter because the final store only keeps the low 16
+bits). Confirmed `s_SlotFlags_005e93c0` (the `DAT_005e93c0`/stride-`0x9c` per-slot record table this
+function writes into) was **already declared** — reused rather than redeclared.
+
+Per-party-slot (fixed 4 slots, **not** gated by `s_PartySize_005e9020` — confirmed by reading the
+whole function, a real TODO(REVERSE) left in the docstring): reads the slot's character identity from
+`s_SelectScratch_00573338[0x150 + i*0x2000]`, checks it against every earlier slot for a duplicate
+(skips the heavy load if found, just records which slot to mirror), then loads and decodes two
+textures, a model bundle and an animation bundle, each indexed by that identity into
+`s_MainResourceDirectory_005e97c4`'s per-character tables — the same `LoadResourceEntry` +
+`Relocate*Bundle` idiom `LoadCharacterSelectResources` already uses for its own directory-list-driven
+loading, just indexed directly instead of walked as a list. Builds clean (two new `CA2014`
+stackalloc-in-loop warnings, same pre-existing pattern as five other spots in this file).
+
+Tail call `FUN_00535500` read (pseudo-C is clean, no traps apparent) but not transcribed — stubbed as
+`FinalizePartyResourceUpload` with a named exception and the exact `Blaze.c:81583` line to resume
+from. Looks like a portrait-sprite VRAM upload pass (loops over `mainMem+0xf0440`, `Ordinal_667`/
+`Ordinal_674` pairs), not obviously coupled to anything already established — left for the next
+function rather than guessed at, per the same discipline as `FUN_00537a20` in `RunGameState1Entry`.
+
+Not yet reachable from any call site (same situation as `RefreshPartyAbilityMask`): both remaining
+orchestrators still throw before reaching this function, so nothing to visually confirm yet beyond
+the regression check (`playtest.ps1`, no crash, primitive count unchanged).

@@ -1,5 +1,21 @@
 # TODO
 
+**Dixième passe, 2026-08-16.** Corrigé un troisième bug visuel (curseur du clavier de saisie du nom
+affichait une icône d'élément terre — mauvais symbole `s_MainResourceDirectory_005e97c4` au lieu de
+`s_MainResourceBuffer_005e97c0`, décalé de 4 octets ; un seul appel à corriger). Puis premier pas
+dans l'état de jeu 1 (le vrai jeu, jamais touché avant) : `RunGameState1Entry`
+(`thunk_FUN_00536180`) transcrite et **confirmée en jeu** — la chaîne complète création + sauvegarde
+va maintenant jusqu'à une nouvelle limite propre, un cran plus loin :
+`"FUN_00536ea0 (game state 1, path B) not yet reconstructed"`. Découvert au passage que
+`DecodeResourceChunk`, longtemps documenté comme bloqueur systémique, est en fait déjà entièrement
+reconstruit (probablement depuis une séance dont le contexte n'a pas été relu). Prochaine étape :
+`FUN_00536270` (361 lignes) et `FUN_00536ea0` (494 lignes) — gros morceau mais la plupart de leurs
+dépendances sont déjà transcrites, voir `REVERSE_STATUS.md` pour le détail. Détail complet :
+`REVERSE_STATUS.md`, section « 2026-08-16 — third visual bug fixed (name-entry cursor icon), then
+the first step into game state 1 ».
+
+---
+
 **Neuvième passe, 2026-08-16, après le commit utilisateur de la passe précédente (correctif
 d'aliasing dialogGate/confirmGate).** Deux bugs supplémentaires du même type trouvés et corrigés,
 signalés par l'utilisateur après avoir rejoué l'écran Bonus :
