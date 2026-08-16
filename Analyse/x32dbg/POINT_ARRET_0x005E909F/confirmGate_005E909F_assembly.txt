@@ -1,0 +1,61 @@
+0054558A | C645 3B 00               | mov byte ptr ss:[ebp+3B],0
+0054558E | 8AC2                     | mov al,dl
+00545590 | 8895 C7080000            | mov byte ptr ss:[ebp+8C7],dl
+00545596 | 84C3                     | test bl,al
+00545598 | 74 16                    | je blaze.5455B0
+0054559A | 8A85 C4080000            | mov al,byte ptr ss:[ebp+8C4]
+005455A0 | D0E8                     | shr al,1
+005455A2 | 33C9                     | xor ecx,ecx
+005455A4 | 8A8D C5080000            | mov cl,byte ptr ss:[ebp+8C5]
+005455AA | 8881 60905E00            | mov byte ptr ds:[ecx+5E9060],al
+005455B0 | F685 C7080000 80         | test byte ptr ss:[ebp+8C7],80
+005455B7 | 74 24                    | je blaze.5455DD
+005455B9 | 33C9                     | xor ecx,ecx
+005455BB | B8 56555555              | mov eax,55555556
+005455C0 | 8A8D C4080000            | mov cl,byte ptr ss:[ebp+8C4]
+005455C6 | F7E9                     | imul ecx
+005455C8 | 8BC2                     | mov eax,edx
+005455CA | C1E8 1F                  | shr eax,1F
+005455CD | 03D0                     | add edx,eax
+005455CF | 33C9                     | xor ecx,ecx
+005455D1 | 8A8D C5080000            | mov cl,byte ptr ss:[ebp+8C5]
+005455D7 | 8891 60905E00            | mov byte ptr ds:[ecx+5E9060],dl
+005455DD | F685 C7080000 C0         | test byte ptr ss:[ebp+8C7],C0
+005455E4 | 75 14                    | jne blaze.5455FA
+005455E6 | 8A85 C4080000            | mov al,byte ptr ss:[ebp+8C4]
+005455EC | 33D2                     | xor edx,edx
+005455EE | 8A95 C5080000            | mov dl,byte ptr ss:[ebp+8C5]
+005455F4 | 8882 60905E00            | mov byte ptr ds:[edx+5E9060],al
+005455FA | E8 8185FFFF              | call blaze.53DB80
+005455FF | 80A5 C7080000 3F         | and byte ptr ss:[ebp+8C7],3F
+00545606 | 33C0                     | xor eax,eax
+00545608 | 8B5424 2C                | mov edx,dword ptr ss:[esp+2C]
+0054560C | 8A85 C4080000            | mov al,byte ptr ss:[ebp+8C4]
+00545612 | 8B5D 3C                  | mov ebx,dword ptr ss:[ebp+3C]
+00545615 | 05 55551500              | add eax,155555
+0054561A | 8D0C40                   | lea ecx,dword ptr ds:[eax+eax*2]
+0054561D | 8B4424 14                | mov eax,dword ptr ss:[esp+14]
+00545621 | C1E1 0A                  | shl ecx,A
+00545624 | 03C1                     | add eax,ecx
+00545626 | 8B4C24 1C                | mov ecx,dword ptr ss:[esp+1C]
+0054562A | 894424 14                | mov dword ptr ss:[esp+14],eax
+0054562E | 8B94CA D8000000          | mov edx,dword ptr ds:[edx+ecx*8+D8]
+00545635 | 8B4C24 34                | mov ecx,dword ptr ss:[esp+34]
+00545639 | 52                       | push edx
+0054563A | 8B5424 34                | mov edx,dword ptr ss:[esp+34]
+0054563E | 53                       | push ebx
+0054563F | 50                       | push eax
+00545640 | 8B4424 1C                | mov eax,dword ptr ss:[esp+1C]
+00545644 | 50                       | push eax
+00545645 | 51                       | push ecx
+00545646 | 52                       | push edx
+00545647 | 56                       | push esi
+00545648 | E8 13FBFFFF              | call blaze.545160
+0054564D | 8B4C24 48                | mov ecx,dword ptr ss:[esp+48]
+00545651 | 894424 4C                | mov dword ptr ss:[esp+4C],eax
+00545655 | 83C4 1C                  | add esp,1C
+00545658 | 8B91 C0000000            | mov edx,dword ptr ds:[ecx+C0]
+0054565E | 8B4C24 14                | mov ecx,dword ptr ss:[esp+14]
+00545662 | 52                       | push edx
+00545663 | 8B5424 14                | mov edx,dword ptr ss:[esp+14]
+00545667 | 81C1 00040000            | add ecx,400

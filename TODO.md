@@ -56,6 +56,33 @@ avant puisque tous les essais précédents partaient d'un dossier `save\` vide.
 Détail complet : `REVERSE_STATUS.md`, section « 2026-08-16 — a real hardware breakpoint (x32dbg,
 user's Windows 10 machine) resolves the whole mechanism, and reframes the "stuck" screen entirely ».
 
+**Huitième passe, même jour — cause racine trouvée et corrigée.** L'utilisateur a fourni un
+document de référence précieux (`Analyse/Comportement Legacy/Selection des personnages.md`,
+comportement exact du jeu officiel de 1998, écran par écran) qui a confirmé que `case 0x12` est un
+vrai choix à deux lignes (« Définir de nouveaux personnages » / « Constituer un groupe »), pas un
+simple appui pour continuer — donc PAS un comportement « déjà correct », contrairement à l'hypothèse
+de la passe précédente. Un second point d'arrêt matériel (écriture sur `confirmGate` lui-même,
+`Analyse/x32dbg/POINT_ARRET_0x005E909F/`) a trouvé la vraie cause : **`DAT_005e9060` et
+`DAT_005e909f` sont la même mémoire contiguë** (`confirmGate` = l'entrée `0x3f` d'un tableau de
+0x100 octets) dans le jeu original, mais notre port les avait comme **deux allocations séparées** —
+`s_PanelSelection_005e9060` (déjà correctement écrite par `DrawUiPanel`) et `s_Unknown_005e909f`
+(un champ indépendant que toute la logique de sous-état lisait). Écrire l'un ne touchait jamais
+l'autre. Même défaut trouvé et corrigé sur quatre autres champs sœurs
+(`s_Unknown_00560fef`/`dialogGate`, `s_Unknown_0056075b`, `s_Unknown_00560763`,
+`s_Unknown_005e909a..e`) — tous des décalages dans `s_StatusDescriptor_00560728` ou
+`DAT_005e9060`, jamais aliasés. Corrigés en propriétés `ref byte` pointant vers le vrai stockage ;
+aucun site d'appel (~40) n'a eu besoin d'être modifié. Retiré `OPENFORESIA_FORCE_CARD_CONFIRM` et
+les traces `OPENFORESIA_TRACE_CARDPHASE`, devenus inutiles. **Confirmé en jeu, deux fois** : la
+chaîne complète va maintenant jusqu'à l'état de jeu 1 sans aucun raccourci de contournement.
+
+C'est un correctif systémique, pas propre à l'écran de sauvegarde : ces cinq champs gouvernent le
+dialogue « Oui/Non » sur **tous** les sous-états (0, 1, 3, 4, 5, 6, 7) — les boîtes de dialogue
+désynchronisées que l'utilisateur observait devraient être corrigées partout, pas seulement à la
+sauvegarde. Reste à vérifier en rejouant le document de référence écran par écran.
+
+Détail complet : `REVERSE_STATUS.md`, section « 2026-08-16 — root cause found and fixed: five
+"globals" were never aliased to the real descriptor memory ».
+
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée. Consigné en mémoire
 pour ne plus le proposer.
 

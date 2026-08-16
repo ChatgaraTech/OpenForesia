@@ -6670,11 +6670,6 @@ public static unsafe partial class Blaze
 
             byte* pad = CurrentPadState();
 
-            if (Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_CARDPHASE") == "1")
-                Console.Error.WriteLine(
-                    $"[FRAMELOOP] state0={s_SelectState_00578de8[0]} unk62b68={s_Unknown_00562b68} " +
-                    $"flags1={s_SelectFlags_00562a48[1]} pad2=0x{pad[2]:x2} pad3=0x{pad[3]:x2}");
-
             // Ghidra: le test de sortie. Les deux bits 9 = 0b1001 du champ +2, sauf au sous-état 7
             // tant que DAT_00562b68 est positif.
             if ((pad[2] & 9) == 9
@@ -8870,10 +8865,15 @@ public static unsafe partial class Blaze
     // tourne pas ; voir RenderSaveScreen pour l'unique lecteur, dans un bloc actuellement mort.
     private static byte* s_CardDirectoryEntries_006049bc;
 
-    // Ghidra: DAT_005e909a..e — un descripteur de mini-jeu/animation lié au « Bonus » choisi,
-    // posé par RenderSaveScreen. Jamais lu ailleurs dans le code déjà reconstruit.
-    private static byte s_Unknown_005e909a, s_Unknown_005e909b, s_Unknown_005e909c,
-                         s_Unknown_005e909d, s_Unknown_005e909e;
+    // **Corrigé 2026-08-16** : DAT_005e909a..e sont les octets +0x3a..+0x3e du même tableau
+    // DAT_005e9060 que confirmGate (+0x3f) — voir le commentaire sur s_Unknown_005e909f plus bas
+    // pour le détail de la découverte. Cinq `byte` séparés ici les rendait invisibles au widget de
+    // sélection réel.
+    private static ref byte s_Unknown_005e909a => ref s_PanelSelection_005e9060[0x3a];
+    private static ref byte s_Unknown_005e909b => ref s_PanelSelection_005e9060[0x3b];
+    private static ref byte s_Unknown_005e909c => ref s_PanelSelection_005e9060[0x3c];
+    private static ref byte s_Unknown_005e909d => ref s_PanelSelection_005e9060[0x3d];
+    private static ref byte s_Unknown_005e909e => ref s_PanelSelection_005e9060[0x3e];
 
     // Ghidra: iRam00560fd4 — jamais posé par du code reconstruit, lit 0. La branche `case 0` qui le
     // teste reste donc morte, comme les portes de dialogue.
@@ -8919,12 +8919,6 @@ public static unsafe partial class Blaze
         ushort buttons = *(ushort*)(pad + 2);
         byte dialogGate = s_Unknown_00560fef;
         byte confirmGate = s_Unknown_005e909f;
-
-        if (Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_CARDPHASE") == "1")
-            Console.Error.WriteLine(
-                $"[CARDPHASE] phase={s_CardPhase_00578e0c} dialogGate=0x{dialogGate:x2} " +
-                $"confirmGate=0x{confirmGate:x2} buttons=0x{buttons:x4} gameState={s_GameStateId} " +
-                $"cursorFlags=0x{*(uint*)(s_StatusDescriptor_00560728 + 0x30):x8}");
 
         // Ghidra: `uVar17` — quand un cas se contente de `break` plutôt que de sauter directement
         // au rendu, l'original enchaîne sur `func_0x00544350(uVar17,...); DAT_00578e0c++;` juste
@@ -9115,15 +9109,7 @@ public static unsafe partial class Blaze
             case 0x12:
                 if ((dialogGate & 4) == 0)
                 {
-                    // ECHAFAUDAGE TEMPORAIRE : OPENFORESIA_FORCE_CARD_CONFIRM=1 traite confirmGate
-                    // comme non nul rien qu'ici, sans toucher au drapeau global
-                    // s_Unknown_005e909f (lu par de nombreux autres sous-états) — sa vraie source
-                    // (un système de boîte de dialogue modale « OK » générique, déjà signalé
-                    // TODO.md §1 pour l'écran de confirmation des stats) n'a été trouvée nulle
-                    // part dans les 98 000 lignes de Blaze.c ; voir REVERSE_STATUS.md.
-                    bool confirmed = confirmGate != 0
-                        || Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_CARD_CONFIRM") == "1";
-                    if (!confirmed)
+                    if (confirmGate == 0)
                     {
                         s_SelectState_00578de8[0] = 0;
                         s_SelectState_00578de8[2] = 0;
@@ -10819,15 +10805,30 @@ public static unsafe partial class Blaze
     private static readonly byte* s_SceneParticles_00572be4 =
         (byte*)NativeMemory.AllocZeroed(SceneParticleCount, SceneParticleStride);
 
-    // Ghidra: DAT_00560fef, DAT_0056075b, DAT_00560763 — l'état des boîtes de dialogue modales que
-    // le sous-état 0 ouvre puis attend. TODO(REVERSE): elles sont posées par le code de dialogue,
-    // non reconstruit, donc elles lisent 0 et les branches d'annulation ne sont pas encore
-    // atteignables.
-    private static byte s_Unknown_00560fef, s_Unknown_0056075b, s_Unknown_00560763;
+    // **Corrigé 2026-08-16** : DAT_00560fef, DAT_0056075b, DAT_00560763 ne sont PAS des globales
+    // isolées — ce sont des décalages dans le MÊME descripteur que s_StatusDescriptor_00560728
+    // (0x560fef-0x560728=0x8c7, 0x56075b-0x560728=0x33, 0x560763-0x560728=0x3b), exactement les
+    // champs que BindMenuLabels/RunTextEngine/DrawUiPanel manipulent déjà via ce même pointeur
+    // (`descriptor[0x8c7]`, `descriptor[0x33]`, `descriptor[0x3b]`). Déclarées comme trois `byte`
+    // séparés, ces trois globales ne partageaient jamais la mémoire du vrai descripteur : chaque
+    // appel à BindMenuLabels/DrawUiPanel armait ou effaçait des bits sur une copie fantôme que
+    // StepSubState7Phase (et les sous-états 1/3/4/6 sœurs) ne voyait jamais — d'où des boîtes de
+    // dialogue dont l'état affiché ne correspondait jamais à ce que la logique de phase lisait.
+    // Trouvé par point d'arrêt matériel (x32dbg, Analyse/x32dbg/POINT_ARRET_0x00560758) : voir
+    // REVERSE_STATUS.md, section « the generic OK dialog subsystem ».
+    private static ref byte s_Unknown_00560fef => ref s_StatusDescriptor_00560728[0x8c7];
+    private static ref byte s_Unknown_0056075b => ref s_StatusDescriptor_00560728[0x33];
+    private static ref byte s_Unknown_00560763 => ref s_StatusDescriptor_00560728[0x3b];
 
-    // Ghidra: DAT_005e909f — testé contre 0 avant chaque transition. Écrit par FUN_00509470
-    // (sous-état 5), non reconstruit.
-    private static byte s_Unknown_005e909f;
+    // **Corrigé 2026-08-16**, même défaut : DAT_005e909f (confirmGate) est le champ +0x3f d'un
+    // tableau, pas une globale isolée — DAT_005e9060 et DAT_005e909f sont la MÊME mémoire
+    // contiguë (0x5e909f - 0x5e9060 = 0x3f), confirmé par point d'arrêt matériel
+    // (Analyse/x32dbg/POINT_ARRET_0x005E909F) : `DrawUiPanel` (le widget « flèches de défilement »,
+    // Blaze.cs plus bas) écrit déjà `s_PanelSelection_005e9060[descriptor[0x8c5]]` au moment de la
+    // validation — ce qui, pour tout écran armant `descriptor[0x8c5]=0x3f`, doit retomber
+    // exactement sur cet octet. Séparé comme un `byte` isolé, ce champ ne recevait jamais
+    // l'écriture réelle du widget.
+    private static ref byte s_Unknown_005e909f => ref s_PanelSelection_005e9060[0x3f];
 
     /// <summary>
     /// Ghidra: FUN_005352e0 @ 0x005352e0 — la recopie par dwords que le sous-état 0 utilise pour

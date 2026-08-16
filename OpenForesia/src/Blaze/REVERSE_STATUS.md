@@ -3592,3 +3592,77 @@ substate 0 (the carousel) on an already-saved character slot, a path this sessio
 - Two temporary diagnostics remain in `Blaze.cs`, gated behind `OPENFORESIA_TRACE_CARDPHASE`
   (`StepSubState7Phase` and `RunCharacterSelectFrameLoop`) — remove once the carousel-path question
   above is settled, per the project's scaffolding convention.
+
+## 2026-08-16 — root cause found and fixed: five "globals" were never aliased to the real descriptor memory
+
+User pushed back on the "maybe it's intended design" theory with a concrete, first-hand behavioral
+reference (`Analyse/Comportement Legacy/Selection des personnages.md` — every dialog box's exact
+text and the input flow through the whole character-creation sequence, recorded from the real 1998
+game). Section VI (the save screen) confirms `case 0x11`/`case 0x12` is a genuine **two-line Oui/Non
+choice** ("Définir de nouveaux personnages" / "Constituer un groupe"), not a plain
+press-to-continue — which reopened the question properly rather than closing it as "working as
+intended".
+
+### Second hardware breakpoint (write to `0x005E909F`, `confirmGate` itself) finds the real writer — and the real bug
+
+`Analyse/x32dbg/POINT_ARRET_0x005E909F/` — breakpoint hit inside `DrawUiPanel`
+(`FUN_00545340`, VA `0x5455F4`, `mov byte ptr [edx+5E9060],al` with `edx=0x3f`), in a section of
+that function **already transcribed** in `Blaze.cs` but that a first read had skipped over: the
+"scroll arrows" widget's confirm-commit step (`Blaze.cs:12804-12822` before this session's fix),
+already correctly writing `s_PanelSelection_005e9060[descriptor[0x8c5]] = descriptor[0x8c4]` (three
+variants depending on flag bits — halved, divided by three, or verbatim). `Handler_00544b10`
+(control code `0x09`, also already correctly transcribed, `Blaze.cs:11658`) is what arms this
+widget and sets `descriptor[0x8c5]` from an operand byte in the label text — for a prompt whose
+result should land on `confirmGate`, that operand byte is `0x3f`.
+
+**The actual bug**: `0x5e909f - 0x5e9060 = 0x3f` — `DAT_005e9060` and `DAT_005e909f` are **the same
+contiguous memory** in the original (a 0x100-byte table; `confirmGate` is just entry `0x3f`). This
+port had them as two *separate* allocations — `s_PanelSelection_005e9060` (a real `NativeMemory`
+buffer, already correctly written by `DrawUiPanel`) and `s_Unknown_005e909f` (an independent `byte`
+field that `StepSubState7Phase` and its four sibling substates read). Writing one never touched the
+other. Every `if (confirmGate == ...)` check in the whole character-select flow was reading a byte
+that the real widget code could never reach — a genuine aliasing bug, not a missing mechanism.
+
+**Checked for siblings rather than patching just this one field**: `s_Unknown_00560fef`
+(`dialogGate`) and two more single-byte fields, `s_Unknown_0056075b`/`s_Unknown_00560763`, had the
+exact same problem. `0x560fef - 0x560728 = 0x8c7`, `0x56075b - 0x560728 = 0x33`,
+`0x560763 - 0x560728 = 0x3b` — all three are fields of `s_StatusDescriptor_00560728` (the descriptor
+`BindMenuLabels`/`RunTextEngine`/`DrawUiPanel` already operate on correctly), declared a second time
+as standalone globals that the *reading* side (all the character-select substates) used instead.
+Same for `s_Unknown_005e909a..e` (`0x5e909a..e - 0x5e9060 = 0x3a..0x3e`) — the same
+`DAT_005e9060` table, adjacent entries to `confirmGate`.
+
+### The fix
+
+All six fields are now `ref`-returning properties into the real backing storage instead of
+standalone `byte`s:
+
+```csharp
+private static ref byte s_Unknown_00560fef => ref s_StatusDescriptor_00560728[0x8c7];
+private static ref byte s_Unknown_0056075b => ref s_StatusDescriptor_00560728[0x33];
+private static ref byte s_Unknown_00560763 => ref s_StatusDescriptor_00560728[0x3b];
+private static ref byte s_Unknown_005e909a => ref s_PanelSelection_005e9060[0x3a];
+// ...905e909b..e likewise...
+private static ref byte s_Unknown_005e909f => ref s_PanelSelection_005e9060[0x3f];
+```
+
+Every existing call site (~40 across `StepSubState7Phase` and the substate-1/3/4/6 siblings) needed
+no changes at all — reads and `= value` writes both work transparently through a `ref`-returning
+property in an unsafe context, since the right-hand side is a real pointer dereference either way.
+Removed `OPENFORESIA_FORCE_CARD_CONFIRM` and the `OPENFORESIA_TRACE_CARDPHASE` diagnostics that were
+scaffolded around the *symptom* now that the *cause* is fixed.
+
+### Confirmed in game
+
+Rebuilt, cleared `save\`, ran the full create-character-and-save flow with no force hooks beyond the
+existing `OPENFORESIA_FORCE_SUBSTATE`/`OPENFORESIA_FORCE_CONFIRM_STATS`/`OPENFORESIA_FORCE_CARD_NAME`
+(none of which touch this mechanism) — the save screen now reaches `case 0x12`, reads a real
+(non-stale) `confirmGate`, and transitions to `s_GameStateId = 1`, landing on the clean
+`"thunk_FUN_00536180 (game state 1) not yet reconstructed"` exception. Reproduced twice.
+
+This is a systemic fix, not a save-screen-only one: `dialogGate`, `confirmGate`, and the three
+adjacent fields gate the "OK"/"Oui-Non" dialog flow on **every** character-select substate (0, 1,
+3, 4, 5, 6, 7) — the desynchronized dialog boxes the user had been observing (text/state not
+matching what the game was actually doing) should be fixed everywhere this pattern occurs, not just
+on the save screen. Worth a full pass replaying `Analyse/Comportement Legacy/Selection des
+personnages.md`'s documented flow end to end to confirm each screen now matches.
