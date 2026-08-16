@@ -195,6 +195,7 @@ public static unsafe partial class Blaze
     [DllImport("winsys3d.dll", EntryPoint = "#68")] private static extern int Ordinal_68(int unused); // real: FUN_00a050d0, même famille qu'Ordinal_67/69
     [DllImport("winsys3d.dll", EntryPoint = "#69")] private static extern int Ordinal_69(int unused); // real: FUN_00a050f0 — même corps qu'Ordinal_67, deux ordinaux pour la même adresse
     [DllImport("winsys3d.dll", EntryPoint = "#72")] private static extern uint Ordinal_72(int unused); // real: FUN_00a02e20, le talon partagé par ~50 ordinaux ; rend toujours 0
+    [DllImport("winsys3d.dll", EntryPoint = "#684")] private static extern uint Ordinal_684(short* rect, void* destination); // real: FUN_00a05f50, copie rectangulaire VRAM→mémoire (icône de sauvegarde) ; rect = {x,y,w,h}
 
     [DllImport("winsys3d.dll", EntryPoint = "#41")] private static extern void Ordinal_41(); // real: LeaveCriticalSection on the DLL's internal device lock
     [DllImport("winsys3d.dll", EntryPoint = "#45")] private static extern int Ordinal_45(void* a, byte* b); // confirmed no-op (winsys3d.c: FUN_00a02e20)
@@ -8295,20 +8296,20 @@ public static unsafe partial class Blaze
         return buffer;
     }
 
-    /// <summary>Un point d'arrêt commun pour tout ce qui touche la carte mémoire : les fonctions
-    /// PS1-style de bas niveau (<c>FUN_00504690</c>/<c>6c0</c>/<c>730</c>/<c>770</c>/<c>7e0</c>/<c>820</c>,
-    /// <c>FUN_00504b40</c>/<c>70</c>/<c>90</c>/<c>c20</c>, <c>FUN_00512900</c>, <c>FUN_005128e0</c>)
-    /// bouclent sur les ordinaux winsys3d 9/21/22/23/24/25/67/68/69/72/684 avec des boucles de
-    /// nouvelle tentative — aucun n'est lu ni transcrit ici : c'est tout un sous-système à part,
-    /// pas quelques appels isolés, et il mérite sa propre séance plutôt qu'une transcription
-    /// hâtive de code jamais exercé.</summary>
+    /// <summary>Point d'arrêt pour les cases de <c>FUN_0050a910</c> pas encore transcrites : 4
+    /// (réinitialisation avant confirmation), 0xd (vérification avant suppression), 0x10
+    /// (vérification avant formatage), -5 et -3/-2 (réinitialisations avant annulation/erreur).
+    /// Les cases 0/1 (navigation, ouverture/lecture) et 6 (écriture, <see cref="WriteCardSaveFile"/>)
+    /// sont faites — voir « La sous-couche carte mémoire » plus haut dans ce fichier — et confirmées
+    /// en jeu : un fichier de sauvegarde réel, correctement structuré et sommé, est produit dans
+    /// <c>save\</c>.</summary>
     private static void ThrowSaveCardUnresolved(string context)
     {
         throw new NotImplementedException(
             $"CharacterSelectSubState7 : la sous-couche carte mémoire ({context}) n'est pas " +
-            "reconstruite. FUN_00504b90/c20, FUN_00512930/542160 bouclent sur les ordinaux " +
-            "winsys3d 684 et consorts — voir Legacy/Raw/Blaze/FUN_0050a910.c pour le site d'appel " +
-            "exact. La partie ouverture/lecture (case 1) est faite ; voir plus haut dans ce fichier.");
+            "reconstruite. Voir Legacy/Raw/Blaze/FUN_0050a910.c pour le site d'appel exact. Les " +
+            "cases 0/1 (ouverture/lecture) et 6 (écriture) sont faites ; voir plus haut dans ce " +
+            "fichier.");
     }
 
     // =====================================================================
@@ -8316,9 +8317,10 @@ public static unsafe partial class Blaze
     //
     // De vrais Win32 CreateFileA/CloseHandle/SetFilePointer/ReadFile/WriteFile sur un dossier
     // "save\", à travers winsys3d.dll (FUN_00a04600 et consorts) — pas d'émulation de carte
-    // mémoire PS1. Portée de cette passe : ce que le cas 1 (ouverture pour charger) exige, plus le
-    // sondage de transfert commun à tous les cas. Les cas 4/6/0xd/0x10/-5/-3/-2 restent derrière
-    // ThrowSaveCardUnresolved — chacun a sa propre séquence à lire.
+    // mémoire PS1. Cas 1 (ouverture pour charger) et 6 (écriture, WriteCardSaveFile) faits et
+    // confirmés en jeu, plus le sondage de transfert commun à tous les cas. Les cas
+    // 4/0xd/0x10/-5/-3/-2 restent derrière ThrowSaveCardUnresolved — chacun a sa propre séquence
+    // à lire.
     // =====================================================================
 
     // Ghidra: DAT_00563158 — deux pointeurs de chaîne ANSI statiques, relus directement dans
@@ -8353,19 +8355,30 @@ public static unsafe partial class Blaze
         [(int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12),
          (int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12)];
 
-    /// <summary>Ghidra: FUN_005128e0 @ 0x005128e0 — écrit les deux pointeurs de nom fixes dans le
-    /// descripteur de chemin. Ghidra ne récupère aucun paramètre alors que chaque site d'appel en
-    /// passe un ; le corps l'ignore et écrit toujours les deux mêmes globales — transcrit tel
-    /// quel.</summary>
+    /// <summary>
+    /// Ghidra: FUN_005128e0 @ 0x005128e0 — écrit les cinq premiers octets du chemin dans le
+    /// descripteur. **Corrigé après désassemblage direct** (<c>Legacy/Blaze.exe</c>, décalage
+    /// fichier <c>0x111ce0</c>) : la pseudo-C laissait croire que <c>DAT_00604940</c>/
+    /// <c>DAT_00604944</c> recevaient les *pointeurs* de <see cref="s_SaveFolderName_00563170"/>,
+    /// mais l'assembleur montre <c>MOV ECX,[EAX]</c> puis <c>MOV [0x604940],ECX</c> — une
+    /// déréférence de plus que la pseudo-C ne le montre : ce sont les **quatre octets littéraux**
+    /// <c>"save"</c> qui sont copiés dans le descripteur, suivis d'un cinquième octet, <c>'\'</c>
+    /// seul (pas deux, contrairement à ce que la pseudo-C `undefined2` suggérait). Le descripteur
+    /// est donc simplement la chaîne C <c>"save\"</c> suivie du nom de fichier que
+    /// <see cref="SetCardFileName"/> écrit à partir de l'octet 5 — pas de recouvrement, juste une
+    /// concaténation directe. <see cref="s_SaveDeviceName_00563160"/> (<c>"Blaze-Saving*"</c>)
+    /// n'est **pas** utilisée ici du tout, contrairement à l'hypothèse initiale ; gardée déclarée
+    /// au cas où un autre site s'en sert, non encore trouvé.
+    /// </summary>
     private static void SetCardPathDeviceFields()
     {
-        *(byte**)s_CardPathDescriptor_00604940 = s_SaveFolderName_00563170;
-        *(byte**)(s_CardPathDescriptor_00604940 + 4) = s_SaveDeviceName_00563160;
+        *(uint*)s_CardPathDescriptor_00604940 = *(uint*)s_SaveFolderName_00563170;   // "save"
+        s_CardPathDescriptor_00604940[4] = s_SaveFolderName_00563170[4];             // '\'
     }
 
     /// <summary>Ghidra: FUN_00512900 @ 0x00512900 — copie une chaîne NUL-terminée dans le champ nom
-    /// de fichier du descripteur, à l'octet 5 (chevauchement volontaire avec la queue du pointeur
-    /// à +4..+7, fidèle à l'original).</summary>
+    /// de fichier du descripteur, à l'octet 5 — juste après le <c>'\'</c> que
+    /// <see cref="SetCardPathDeviceFields"/> écrit à l'octet 4, pas un chevauchement.</summary>
     private static void SetCardFileName(byte* name)
     {
         byte* dest = s_CardPathDescriptor_00604940 + 5;
@@ -8471,7 +8484,15 @@ public static unsafe partial class Blaze
     /// chemin, dix tentatives. Déclaré <c>void</c> par Ghidra, mais le site d'appel utilise sa
     /// valeur de retour (<c>iVar4 = func_0x00504b40(...)</c>) : EAX porte le dernier résultat
     /// d'Ordinal_21 à la sortie, un simple defaut de récupération de type de retour côté
-    /// Ghidra.</summary>
+    /// Ghidra.
+    ///
+    /// <para><c>flags</c> passe directement à Ordinal_21 (<c>FUN_00a04600</c> dans
+    /// <c>winsys3d.c</c>), qui calcule <c>disposition = ((flags &amp; 0x200) != 0) + 3</c> — donc
+    /// <c>OPEN_EXISTING</c> (3) pour un <c>flags</c> sans le bit 0x200 (cas 6, écriture — le
+    /// fichier doit déjà exister), <c>OPEN_ALWAYS</c> (4) avec ce bit (cas 1, création de
+    /// secours). Vérifié par test : Ordinal_21 échoue bien avec <c>OPEN_EXISTING</c> sur un
+    /// fichier absent et réussit sur le même chemin une fois créé — comportement correct, pas un
+    /// défaut de portage.</para></summary>
     private static IntPtr RetryOpenCardFile(void* pathDescriptor, uint flags)
     {
         IntPtr result = (IntPtr)(-1);
@@ -8491,15 +8512,257 @@ public static unsafe partial class Blaze
         return result;
     }
 
+    /// <summary>Ghidra: FUN_00504b90 @ 0x00504b90 — repositionne le curseur de fichier, dix
+    /// tentatives. Même défaut de type de retour <c>void</c> que <see cref="RetryOpenCardFile"/>.</summary>
+    private static int RetrySeekCardFile(IntPtr handle, int offset, uint method)
+    {
+        int result = -1;
+        for (int attempts = 10; attempts != 0 && result == -1; attempts--)
+            result = Ordinal_23(handle, offset, method);
+        return result;
+    }
+
+    /// <summary>Ghidra: FUN_00504bc0 @ 0x00504bc0 — repositionne puis lit, en vérifiant que le
+    /// nombre d'octets lus correspond à la taille demandée ; dix tentatives globales (une par
+    /// couple seek+lecture, pas dix lectures après un seul seek).</summary>
+    private static int RetrySeekAndReadCardFile(IntPtr handle, void* buffer, int offset, int size)
+    {
+        int result = -1;
+        int attempts = 10;
+        while (true)
+        {
+            if (result >= 0) return result;
+            int seek = RetrySeekCardFile(handle, offset, 0);
+            if (seek < 0) return seek;
+            int read = (int)Ordinal_24(handle, buffer, (uint)size) - 1;
+            result = read == size - 1 ? read : -1;
+            attempts--;
+            if (attempts == 0) return result;
+        }
+    }
+
+    /// <summary>Ghidra: FUN_00504c20 @ 0x00504c20 — la sœur écriture de
+    /// <see cref="RetrySeekAndReadCardFile"/>, même structure avec Ordinal_25.</summary>
+    private static int RetrySeekAndWriteCardFile(IntPtr handle, void* buffer, int offset, int size)
+    {
+        int result = -1;
+        int attempts = 10;
+        while (true)
+        {
+            if (result >= 0) return result;
+            int seek = RetrySeekCardFile(handle, offset, 0);
+            if (seek < 0) return seek;
+            int written = (int)Ordinal_25(handle, buffer, (uint)size) - 1;
+            result = written == size - 1 ? written : -1;
+            attempts--;
+            if (attempts == 0) return result;
+        }
+    }
+
+    // Ghidra: DAT_00562b52 — 134 octets, relus directement dans Legacy/Blaze.exe (décalage fichier
+    // 0x161152). Une seule zone de données que FUN_0050a810 adresse avec des formules différentes
+    // selon la classe de caractère : table directe pour la ponctuation/l'espace (indices 0..0x2d),
+    // puis à partir de l'indice 0x2e un triplet {code Shift-JIS de base, base ASCII} de 4 octets
+    // par catégorie alphanumérique (chiffres/majuscules/minuscules) — Ghidra nomme ces deux champs
+    // DAT_00562b80/DAT_00562b82, mais ce sont des décalages dans ce même tableau, pas des globales
+    // séparées.
+    private static readonly byte[] s_NameEncodeTable_00562b52 =
+    [
+        0x49,0x00,0x0b,0x00,0x43,0x00,0x23,0x00,0x43,0x00,0x2a,0x00,0x49,0x00,0x38,0x00,
+        0x49,0x00,0x3f,0x00,0x43,0x00,0xff,0xff,0xff,0xff,0x00,0x00,0x00,0x00,0x08,0x02,
+        0x00,0x04,0x0a,0x02,0x04,0x06,0x09,0x03,0x0f,0x0d,0x01,0x03,0x05,0x07,0x82,0x4f,
+        0x30,0x00,0x82,0x60,0x41,0x00,0x82,0x81,0x61,0x00,0x00,0x00,0x00,0x00,0x81,0x40,
+        0x81,0x49,0x81,0x68,0x81,0x94,0x81,0x90,0x81,0x93,0x81,0x95,0x81,0x66,0x81,0x69,
+        0x81,0x6a,0x81,0x96,0x81,0x7b,0x81,0x43,0x81,0x7c,0x81,0x44,0x81,0x5e,0x81,0x46,
+        0x81,0x47,0x81,0x71,0x81,0x81,0x81,0x72,0x81,0x48,0x81,0x97,0x81,0x6d,0x81,0x8f,
+        0x81,0x6e,0x81,0x4f,0x81,0x51,0x81,0x65,0x81,0x6f,0x81,0x62,0x81,0x70,0x81,0x50,
+        0x00,0x00,0x00,0x00,0x00,0x00,
+    ];
+
+    // Ghidra: DAT_00562bd8 — 62 octets étendus (accents latin-1, 0xC0-0xFF), relevés au même
+    // décalage. Terminés par '.' dans l'original (utilisé comme sentinelle « table vide » quand le
+    // premier octet est déjà '.') ; pas reproduit ici puisque la table est réelle et non vide.
+    private static readonly byte[] s_AccentSourceTable_00562bd8 =
+    [
+        0xc0,0xc1,0xc2,0xc3,0xc4,0xc5,0xc6,0xc7,0xc8,0xc9,0xca,0xcb,0xcc,0xcd,0xce,0xcf,
+        0xd1,0xd2,0xd3,0xd4,0xd5,0xd6,0x8c,0xd8,0xd9,0xda,0xdb,0xdc,0xdd,0xdf,0x8a,0xe0,
+        0xe1,0xe2,0xe3,0xe4,0xe5,0xe6,0xe7,0xe8,0xe9,0xea,0xeb,0xec,0xed,0xee,0xef,0xf1,
+        0xf2,0xf3,0xf4,0xf5,0xf6,0x9c,0xf8,0xf9,0xfa,0xfb,0xfc,0xfd,0xff,0x9a,
+    ];
+
+    // Ghidra: DAT_00562c18 — les 62 codes Shift-JIS correspondants, un par entrée de la table
+    // ci-dessus, même ordre.
+    private static readonly ushort[] s_AccentTargetTable_00562c18 =
+    [
+        0x6082,0x6082,0x6082,0x6082,0x6082,0x6082,0x6082,0x6282,0x6482,0x6482,0x6482,0x6482,
+        0x6882,0x6882,0x6882,0x6882,0x6d82,0x6e82,0x6e82,0x6e82,0x6e82,0x6e82,0x7282,0x6e82,
+        0x7482,0x7482,0x7482,0x7482,0x7882,0x9382,0x9382,0x8182,0x8182,0x8182,0x8182,0x8182,
+        0x8182,0x8182,0x8382,0x8582,0x8582,0x8582,0x8582,0x8982,0x8982,0x8982,0x8982,0x8e82,
+        0x8f82,0x8f82,0x8f82,0x8f82,0x8f82,0x9382,0x8f82,0x9582,0x9582,0x9582,0x9582,0x7882,
+        0x7882,0x7282,
+    ];
+
+    /// <summary>
+    /// Ghidra: FUN_0050a810 @ 0x0050a810 — convertit un octet ASCII/Latin-1 en code Shift-JIS
+    /// demi/pleine-largeur pour le champ nom du fichier de sauvegarde. Chiffres/majuscules/
+    /// minuscules passent par le triplet {code, base} de <see cref="s_NameEncodeTable_00562b52"/>
+    /// indexé par catégorie ; ponctuation/espace par la même table en lecture directe ; les octets
+    /// étendus (accents latin-1) par une recherche linéaire dans
+    /// <see cref="s_AccentSourceTable_00562bd8"/>/<see cref="s_AccentTargetTable_00562c18"/> ; tout
+    /// le reste rend <c>0x8140</c> (l'espace pleine largeur Shift-JIS), en <c>short</c> signé comme
+    /// l'original.
+    /// </summary>
+    private static short NameEncodeChar(byte c)
+    {
+        int category;
+        if (c is >= 0x30 and <= 0x39) category = 0;         // chiffres
+        else if (c is >= 0x41 and <= 0x5a) category = 1;    // majuscules
+        else if (c is >= 0x61 and <= 0x7a) category = 2;    // minuscules
+        else
+        {
+            int baseOffset;
+            if (c is >= 0x7b and <= 0x7e) baseOffset = 0x3f;
+            else if (c is >= 0x5b and <= 0x60) baseOffset = 0x25;
+            else if (c is >= 0x3a and <= 0x40) baseOffset = 0xb;
+            else if (c is >= 0x20 and <= 0x2f) baseOffset = 1;
+            else
+            {
+                for (int i = 0; i < s_AccentSourceTable_00562bd8.Length; i++)
+                {
+                    if (s_AccentSourceTable_00562bd8[i] == c) return (short)s_AccentTargetTable_00562c18[i];
+                }
+                return unchecked((short)0x8140);
+            }
+            return (short)BitConverter.ToUInt16(s_NameEncodeTable_00562b52, (c - baseOffset) * 2);
+        }
+
+        // Ghidra: (DAT_00562b82[cat] * 0xff + c) * 0x100 + DAT_00562b80[cat] — DAT_00562b80 à
+        // l'indice 0x2e+cat*4, DAT_00562b82 à 0x30+cat*4 (deux octets plus loin).
+        int entry = 0x2e + category * 4;
+        ushort baseValue = BitConverter.ToUInt16(s_NameEncodeTable_00562b52, entry);
+        ushort strideValue = BitConverter.ToUInt16(s_NameEncodeTable_00562b52, entry + 2);
+        return (short)((strideValue * 0xff + c) * 0x100 + baseValue);
+    }
+
+    /// <summary>
+    /// Ghidra: le corps du <c>case 6</c> de <c>FUN_0050a910</c> (construction puis écriture du
+    /// fichier de sauvegarde), <c>Legacy/Raw/Blaze/FUN_0050a910.c:198-338</c>. Extrait pour la
+    /// lisibilité plutôt que laissé en ligne dans le <c>switch</c> de
+    /// <see cref="StepSubState7Phase"/>.
+    ///
+    /// <para><b>TODO(REVERSE)</b> : le second appel à <see cref="Ordinal_684"/> (destination
+    /// <c>+0x80</c>) réutilise le même rectangle de capture que le premier (<c>+0x60</c>) — Ghidra
+    /// ne montre aucune réécriture du rectangle entre les deux appels, seulement une adresse de
+    /// pile différente (<c>&amp;stack0xffffffd4</c> contre <c>&amp;stack0xffffffe0</c>, 0xC octets
+    /// d'écart — exactement la taille du rectangle) sans écriture visible entre les deux, un
+    /// artefact classique du désassemblage forcé sur cette fonction (voir <c>TODO.md</c> §6).
+    /// <see cref="Ordinal_667"/>, appelé deux fois avec <c>0</c> entre les deux captures, est
+    /// confirmé no-op dans cette DLL — donc quel que soit son rôle dans l'original, il ne change
+    /// rien ici. Transcrit comme une réutilisation du même rectangle plutôt que deviné différent ;
+    /// à revoir si l'icône affichée dans un futur navigateur de sauvegardes sort visiblement
+    /// fausse.</para>
+    /// </summary>
+    private static void WriteCardSaveFile(int* cardTransferPhase)
+    {
+        byte* scratch = s_SelectScratch_00573338;
+        int count = 0;
+
+        scratch[0] = (byte)'S';
+        scratch[1] = (byte)'C';
+        scratch[2] = 0x11;
+        scratch[3] = 0x03;
+        byte* dest = scratch + 4;
+
+        // Ghidra: LabelAt(0x134) — un intitulé fixe copié tel quel dans l'en-tête.
+        for (byte* src = LabelAt(0x134); *src != 0; src++, dest++, count++) *dest = *src;
+
+        // Ghidra: jusqu'à 16 caractères du nom du personnage (scratch+0x100), un par un via
+        // NameEncodeChar — chacun compte pour 1 dans `count` bien qu'il écrive 2 octets, fidèle à
+        // l'original.
+        byte* namePtr = scratch + 0x100;
+        for (int i = 0; i < 0x10 && *namePtr != 0; i++, namePtr++, dest += 2, count++)
+            *(short*)dest = NameEncodeChar(*namePtr);
+
+        // Ghidra: le nom de classe, indexé par scratch[0x150] & 7.
+        for (byte* src = LabelAt(0x138 + (scratch[0x150] & 7) * 4); *src != 0; src++, dest++, count++) *dest = *src;
+
+        // Ghidra: complète à 0x40 octets depuis scratch+4 avec des zéros — si les trois chaînes
+        // dépassent déjà 0x40 octets, l'original ne tronque pas non plus, transcrit tel quel.
+        for (int i = count; i < 0x40; i++) dest[i - count] = 0;
+
+        // Ghidra: 0x1c octets à zéro à partir de +0x44.
+        NativeMemory.Clear(scratch + 0x44, 0x1c);
+
+        // Ghidra: l'icône de sauvegarde, capturée depuis la VRAM (Ordinal_684) en deux fois — voir
+        // le TODO(REVERSE) au-dessus sur le second rectangle. DAT_005e8f16 est un champ de
+        // s_EntityDecodeTable_005e8f00 (décalage +0x16), pas une globale séparée.
+        ushort iconSlot = *(ushort*)(s_EntityDecodeTable_005e8f00 + 0x16);
+        short* rect = stackalloc short[4];
+        rect[0] = (short)(((uint)(byte)scratch[0x150] + (uint)(iconSlot & 0x3f)) * 0x10);
+        rect[1] = (short)(iconSlot >> 6);
+        rect[2] = 0x10;
+        rect[3] = 1;
+        Ordinal_667(0);
+        Ordinal_684(rect, scratch + 0x60);
+        Ordinal_667(0);
+        Ordinal_684(rect, scratch + 0x80);
+
+        // Ghidra: 0x2000 octets à zéro à partir de +0x2000.
+        NativeMemory.Clear(scratch + 0x2000, 0x2000);
+
+        // Ghidra: la table de frames d'icône à +0x4000, compactée depuis +0x300 par blocs de
+        // 0x280 octets tant que l'octet-drapeau en tête de bloc est non nul ; sinon 16 octets à
+        // zéro sans avancer la source (fidèle à l'original — dans ce port, la table source vient du
+        // bloc de travail remis à zéro en tête de trame, donc cette boucle dégénère en un simple
+        // zérotage de 0x2000 octets tant que rien ne la peuple, ce qui n'est pas encore le cas).
+        int sourceOffset = 0;
+        byte* frameDest = scratch + 0x4000;
+        for (int i = 0; i < 0x200; i++, frameDest += 16)
+        {
+            if (scratch[sourceOffset + 0x300] == 0)
+            {
+                NativeMemory.Clear(frameDest, 16);
+            }
+            else
+            {
+                CopyDwords((uint*)(scratch + sourceOffset + 0x300), (uint*)frameDest, 4);
+                sourceOffset += 0x280;
+            }
+        }
+
+        // Ghidra: somme de contrôle signée sur les 0x1ffc premiers octets, stockée juste après.
+        int checksum = 0;
+        for (int i = 0; i < 0x1ffc; i++) checksum += (sbyte)scratch[i];
+        *(int*)(scratch + 0x1ffc) = checksum;
+
+        IntPtr handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 2);
+        int r1 = RetrySeekAndWriteCardFile(handle, scratch, 0, 0x2000);
+        int r2 = RetrySeekAndWriteCardFile(handle, scratch + 0x2000, 0x2000, 0x1f00);
+        int r3 = RetrySeekAndWriteCardFile(handle, scratch + 0x1f00, 0x3f00, 0x100);
+        int r4 = RetrySeekAndWriteCardFile(handle, scratch + 0x4000, 0x4000, 0x2000);
+        RetryCloseCardFile(handle);
+
+        if ((r1 | r2 | r3 | r4) < 0)
+        {
+            BindMenuLabels(LabelAt(0x178), 0, s_StatusDescriptor_00560728, 0);
+            s_CardPhase_00578e0c = 99;
+        }
+        else
+        {
+            BindMenuLabels(LabelAt(0x1b8), 0, s_StatusDescriptor_00560728, 0);
+            *cardTransferPhase = 0;
+            s_CardPhase_00578e0c = 0x11;
+        }
+    }
+
     /// <summary>
     /// Ghidra: FUN_0050a910 @ 0x0050a910 — <c>PTR_LAB_00560708[7]</c>, l'écran de sauvegarde : neuf
     /// cases de statut fixe (<see cref="s_SelectSlots_00573518"/>+1, réutilisé comme dans
     /// <c>CharacterSelectSubState3</c>) plus, si la phase est en 10..13, un carrousel de cartes
-    /// dont chaque icône passe par <c>FUN_0051be90</c> — jamais décompilée par Ghidra (appelée mais
-    /// sans corps nulle part dans <c>Blaze.c</c>), donc **tout rendu de cet écran s'arrête là** ; un
-    /// re-run Ghidra à signature forcée (six paramètres observés aux sites d'appel :
-    /// <c>otEntry, prim, sprite, value, mode, extra</c>, <c>mode</c> valant toujours <c>0x82</c>
-    /// ici) est le levier le plus utile pour la prochaine séance sur cet écran.
+    /// dont chaque icône passe par <see cref="EmitCardGlyphTile"/> (Ghidra: <c>FUN_0051be90</c>,
+    /// résolue et transcrite le 2026-08-16 — le rendu de cet écran est complet). Le blocage restant
+    /// est dans la logique de phase de <see cref="StepSubState7Phase"/>, pas ici : la sous-couche
+    /// carte mémoire (§ « La sous-couche carte mémoire » plus haut dans ce fichier).
     /// </summary>
     private static uint* CharacterSelectSubState7(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
@@ -8663,10 +8926,16 @@ public static unsafe partial class Blaze
 
             case 1:
                 // Ghidra: FUN_0050a910.c:136-155 (`case_r0x0050ae60`, aussi la cible du `goto`
-                // depuis le case 0). Ouvre le fichier de sauvegarde pour lecture ; échec → l'écran
-                // de « pas de sauvegarde ici » (phase 6, pas encore transcrite) ; succès → lance le
-                // chargement (phase 0xe, déjà câblée) et pose le sondage de transfert ci-dessus.
+                // depuis le case 0). Ouvre le fichier de sauvegarde pour lecture ; échec → tente de
+                // le créer vide puis passe en phase 6 (écriture) ; succès → lance le chargement
+                // (phase 0xe, déjà câblée) et pose le sondage de transfert ci-dessus.
                 s_CardCursorSlot_00604984 = 0;
+                if (Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_CARD_NAME") == "1"
+                    && s_SelectScratch_00573338[0x1fd0] == 0)
+                {
+                    byte* forcedName = ToAnsiZ("TEST");
+                    for (int i = 0; forcedName[i] != 0; i++) s_SelectScratch_00573338[0x1fd0 + i] = forcedName[i];
+                }
                 SetCardFileName(s_SelectScratch_00573338 + 0x1fd0);
                 SetCardPathDeviceFields();
                 IntPtr fileHandle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
@@ -8731,8 +9000,12 @@ public static unsafe partial class Blaze
                 break;
 
             case 6:
-                ThrowSaveCardUnresolved(
-                    "case 6 — construction de l'en-tête \"SC\" puis écriture de l'emplacement");
+                // Ghidra: `iVar4 = 0; if (_DAT_00578e14 == 0) { <corps> } else { _DAT_00578e14 = 0; }`
+                // — la première image après le changement de phase se contente de purger le
+                // drapeau (laisse à l'affichage une image pour se stabiliser) ; la suivante lance
+                // vraiment l'écriture.
+                if (s_CardPhaseChanged_00578e14 == 0) WriteCardSaveFile(cardTransferPhase);
+                else s_CardPhaseChanged_00578e14 = 0;
                 break;
 
             case 9:
@@ -9012,10 +9285,12 @@ public static unsafe partial class Blaze
             *(short*)(box + 8) = 0xbc;
             *(short*)(box + 0xa) = 0x38;
             // Ghidra: `*(undefined4 *)(_DAT_006049bc + 0x18 + (_DAT_00604984 & 0xff) * 0x28)` — un
-            // enregistrement de la table des répertoires que la sous-couche carte (jamais
-            // reconstruite) est censée peupler. Inatteignable en pratique : la phase ne dépasse
-            // jamais 1 tant que ThrowSaveCardUnresolved y coupe court, donc ce bloc (phase 10..13)
-            // n'est jamais exécuté pour l'instant.
+            // enregistrement de la table des répertoires, jamais peuplé par du code reconstruit
+            // (aucun site d'écriture connu de s_CardDirectoryEntries_006049bc). Les cases 1 et 6
+            // (ouverture/écriture) progressent maintenant bien au-delà de la phase 1, mais le
+            // chemin qui mène ici (phase 10..13, cases 0xc/0xa) passe par des cases encore
+            // derrière ThrowSaveCardUnresolved (4, 0xd, 0x10) — donc ce bloc reste inatteignable
+            // en pratique pour l'instant.
             uint entryValue = s_CardDirectoryEntries_006049bc != null
                 ? *(uint*)(s_CardDirectoryEntries_006049bc + 0x18 + s_CardCursorSlot_00604984 * 0x28)
                 : 0;

@@ -1,21 +1,20 @@
 # TODO
 
-Point d'entrée entre deux sessions. État au 2026-08-16, quatrième passe de la journée. Trois passes
-précédentes (rendu complet du sous-état 7, régression du carrousel) **commitées par l'utilisateur**.
-Cette passe : début de la sous-couche carte mémoire — **ce n'est pas une émulation de carte PS1,
-juste des fichiers Win32 ordinaires dans un dossier `save\`**. Le cas 1 (ouverture pour charger) est
-transcrit et confirmé en jeu ; le cas 6 (écriture, gros morceau — en-tête + icône VRAM + somme de
-contrôle) reste à faire. Le build est vert. Détail complet en §2bis.
+Point d'entrée entre deux sessions. État au 2026-08-16, cinquième passe de la journée. Quatre passes
+précédentes (rendu complet du sous-état 7, régression du carrousel, cas 1 de la carte mémoire)
+**commitées par l'utilisateur**. Cette passe : cas 6 de la sous-couche carte mémoire (écriture du
+fichier de sauvegarde) transcrit, débogué et **confirmé en jeu** — un vrai fichier de 24576 octets,
+correctement structuré et sommé, est produit dans `save\`. Le build est vert. Détail complet en §2bis.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée. Consigné en mémoire
 pour ne plus le proposer.
 
-Non commité à ce stade : `TODO.md`, `REVERSE_STATUS.md`, et les changements dans `Blaze.cs` (dix
-P/Invoke `Ordinal_9/21/22/23/24/25/67/68/69/72`, `SetCardPathDeviceFields`/`SetCardFileName`/
-`ResetCardTransferStatus`/`ResetCardReadEvents`/`ResetCardWriteEvents`/`PollCardWriteStatus`/
-`PollCardReadStatus`/`PollCardTransfer`/`RetryOpenCardFile`/`RetryCloseCardFile`/`CardSlotSelector`,
-nouveau champ `s_CardSlotIndex_00604980` + correctif du case 0 qui écrivait dans le mauvais champ,
-case 1 de `StepSubState7Phase` transcrit, sondage de transfert en tête de fonction transcrit).
+Non commité à ce stade : `TODO.md`, `REVERSE_STATUS.md`, et les changements dans `Blaze.cs` (en plus
+du cas 1 déjà listé la passe précédente : `WriteCardSaveFile` — le corps complet du cas 6 —,
+`NameEncodeChar` + ses trois tables Shift-JIS, le correctif de `SetCardPathDeviceFields` — copie des
+octets littéraux du chemin plutôt que des pointeurs, trouvé par désassemblage direct de
+`FUN_005128e0` —, et le déplacement de l'échafaudage `OPENFORESIA_FORCE_CARD_NAME` du cas 6 vers le
+cas 1 pour que les deux phases voient le même nom).
 
 ---
 
@@ -23,10 +22,11 @@ case 1 de `StepSubState7Phase` transcrit, sondage de transfert en tête de fonct
 
 **La chaîne complète 0→6 se traverse en jeu normal, confirmation de personnage incluse.** Le
 sous-état 7 est atteint pour de vrai, et **son rendu se termine désormais sans exception ni
-plantage** — vérifié en jeu, chaîne normale complète comme via le hook. Le seul blocage restant sur
-cet écran n'est plus dans le rendu : c'est la logique de phase de la sous-couche carte mémoire
-(`ThrowSaveCardUnresolved`), qui se déclenche systématiquement à la deuxième image (le compteur de
-phase passe de 0 à 1 dès la première). Voir §2.
+plantage** — vérifié en jeu, chaîne normale complète comme via le hook. La sous-couche carte mémoire
+avance maintenant jusqu'à écrire un vrai fichier de sauvegarde (cas 1 → 6 → phase 0x11) sans
+exception ; le blocage restant sur cet écran est la logique de phase des cas encore non transcrits
+(4, 0xd, 0x10, -5, -3/-2 — `ThrowSaveCardUnresolved`), atteinte selon le chemin emprunté (annulation,
+suppression, formatage...). Voir §2bis.
 
 ```
 0  carrousel des 16 personnages          OK
@@ -41,7 +41,7 @@ phase passe de 0 à 1 dès la première). Voir §2.
 │
 6  répartition des points de stats       OK — confirmation incluse
 │
-7  écran de sauvegarde/chargement        rendu terminé ; bloque à la 2e image, carte mémoire (§2)
+7  écran de sauvegarde/chargement        rendu terminé ; cas 1/6 de la carte mémoire OK, reste 4/0xd/0x10/-5/-3/-2 (§2bis)
 ```
 
 Le sous-état 2 n'est atteint qu'en retour arrière depuis le 3.
@@ -182,20 +182,39 @@ même. Corrigé : nouveau champ `s_CardSlotIndex_00604980`, case 0 repointé des
 
 **Cas 1 (ouverture pour charger) transcrit et confirmé en jeu.** `OPENFORESIA_FORCE_SUBSTATE=7` +
 un `ENTER` : plus de plantage sur le cas 1 — il détecte correctement qu'aucune sauvegarde n'existe
-encore (dossier `save\` vide dans ce port) et bascule proprement vers le cas 6, pas encore
-implémenté. C'est le blocage suivant, réel, atteint par le vrai dispatcher plutôt que par un ancien
-point d'arrêt générique.
+encore (dossier `save\` vide dans ce port), crée le fichier vide de secours, et bascule vers le cas 6.
 
-**Reste à faire** : cas 6 (écriture — en-tête `"SC"`, nom, titre converti en Shift-JIS, nom de
-classe, **icône de sauvegarde capturée depuis la VRAM** via `func_0x00545ac4`/`abe`
-(vraisemblablement Ordinal_684, `FUN_00a05f50`, déjà lue et confirmée comme une copie rectangulaire
-VRAM→mémoire, pas de l'E/S fichier), somme de contrôle sur `0x1ffc` octets, puis quatre
-`FUN_00504c20` seek+écriture+vérif) — un morceau nettement plus gros que le cas 1, volontairement
-pas commencé cette passe. Cas 4, 0xd, 0x10, -5, -3/-2 restent aussi derrière
-`ThrowSaveCardUnresolved`, chacun plus petit que le cas 6 mais avec sa propre séquence à lire.
+**Cas 6 (écriture) transcrit, débogué et confirmé en jeu.** `WriteCardSaveFile` construit le blob
+complet (en-tête `"SC\x11\x03"`, titre, jusqu'à 16 caractères de nom convertis en Shift-JIS via
+`NameEncodeChar`/`FUN_0050a810`, nom de classe, icône VRAM via `Ordinal_684`, somme de contrôle
+signée sur `0x1ffc` octets) puis l'écrit en quatre `RetrySeekAndWriteCardFile`. Une longue chasse
+(`Ordinal_21` semblait échouer à l'ouverture alors qu'un `CreateFileA` direct identique réussissait)
+s'est révélée être **deux choses, aucun vrai bug de portage** :
+1. `SetCardPathDeviceFields` recopiait des *pointeurs* dans le descripteur plutôt que les octets
+   littéraux `"save\"` — trouvé par désassemblage direct de `FUN_005128e0` (décalage fichier
+   `0x111ce0`) : `MOV ECX,[EAX]` puis `MOV [DAT_00604940],ECX` est une déréférence de plus que la
+   pseudo-C ne le montre. Corrigé.
+2. `Ordinal_21` (`FUN_00a04600`) calcule `disposition = ((flags & 0x200)!=0) + 3` — toujours
+   `OPEN_EXISTING` (3) ou `OPEN_ALWAYS` (4), jamais `CREATE_ALWAYS`. Le cas 6 appelle avec
+   `flags=2` (`OPEN_EXISTING`, fidèle à `FUN_0050a910.c:320`) : il *exige* que le fichier existe déjà
+   — c'est le cas 1 qui le crée d'abord (`flags=0x30200`) avant de passer en phase 6. L'échafaudage
+   de test (`OPENFORESIA_FORCE_CARD_NAME`) injectait son nom de test **après** que le cas 1 ait déjà
+   pré-créé un fichier sous l'ancien nom (vide) — les deux phases voyaient des noms différents.
+   Déplacé l'injection en tête du cas 1 ; les deux phases sont maintenant cohérentes.
 
-Détail complet : `REVERSE_STATUS.md`, section « 2026-08-16 — the memory-card subsystem: not PS1
-hardware, just Win32 file I/O — case 1 done ».
+Confirmé de bout en bout (`OPENFORESIA_FORCE_SUBSTATE=7` + `OPENFORESIA_FORCE_CARD_NAME=1`) : un
+fichier `save\TEST` de 24576 octets (`0x6000`, exactement la somme des quatre écritures) apparaît,
+en-tête et somme de contrôle corrects. Tout l'échafaudage de diagnostic ponctuel (`GetLastError`,
+`DirectCreateFileA`, sondes de descripteur isolé, traces hex/chemin/handle/résultats) a été retiré ;
+seul `OPENFORESIA_FORCE_CARD_NAME` subsiste, à côté de `OPENFORESIA_FORCE_SUBSTATE`/
+`OPENFORESIA_FORCE_CONFIRM_STATS`.
+
+**Reste à faire** : cas 4, 0xd, 0x10, -5, -3/-2, tous derrière `ThrowSaveCardUnresolved`, chacun plus
+petit que le cas 6 mais avec sa propre séquence à lire.
+
+Détail complet : `REVERSE_STATUS.md`, sections « 2026-08-16 — the memory-card subsystem: not PS1
+hardware, just Win32 file I/O — case 1 done » et « 2026-08-16 — case 6 (save write): transcribed,
+and a real end-to-end save file confirmed on disk ».
 
 ---
 
@@ -203,7 +222,6 @@ hardware, just Win32 file I/O — case 1 done ».
 
 | sous-état / fonction | note |
 |---|---|
-| Cas 6 de la carte mémoire (§2bis) | le morceau le plus gros restant sur cet écran — en-tête + icône VRAM + somme de contrôle + écriture |
 | Cas 4, 0xd, 0x10, -5, -3/-2 de la carte mémoire (§2bis) | plus petits que le cas 6 mais chacun sa propre séquence |
 | Sous-état 2 (`FUN_00508410`, 146 lignes) | retour arrière depuis le 3, pas urgent |
 | Mappage clavier → `pad+2` (§1) | seulement si on veut se passer d'`OPENFORESIA_FORCE_CONFIRM_STATS` |

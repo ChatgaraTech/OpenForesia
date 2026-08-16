@@ -3229,7 +3229,7 @@ and transitions cleanly to case 6 (**not yet implemented** — a new, clean `Not
 naming it precisely), rather than the old blanket case-1 throw. This is the intended kind of
 progress: the *next* real gap, reached through the real dispatcher.
 
-### Remaining
+### Remaining (superseded — see 2026-08-16 case 6 entry below)
 
 Case 6 (`FUN_0050a910.c:198-338`) is the write path — building a full save-file blob (a 4-byte
 `"SC\x11\x03"` header, name, a Shift-JIS-converted title via `func_0x0050a810`, a class-name string
@@ -3239,3 +3239,65 @@ rectangle copy, not file I/O — a checksum summed over `0x1ffc` bytes, then fou
 `FUN_00504c20` seek+write+verify calls) — a substantially bigger, self-contained unit than case 1,
 deliberately not started this pass. Cases 4, 0xd, 0x10, -5, -3/-2 remain behind
 `ThrowSaveCardUnresolved` too, each smaller than case 6 but each with its own sequence to read.
+
+## 2026-08-16 — case 6 (save write): transcribed, and a real end-to-end save file confirmed on disk
+
+Continued straight from case 1. Transcribed `WriteCardSaveFile` (Ghidra: the `case 6` body of
+`FUN_0050a910`, `Legacy/Raw/Blaze/FUN_0050a910.c:198-338`) faithfully: header, `LabelAt(0x134)`
+title, up to 16 Shift-JIS-encoded name characters, class name via `LabelAt(0x138 + (class&7)*4)`,
+zero-pad to `0x40`, `0x1c` zero bytes at `+0x44`, the VRAM icon capture (`Ordinal_684`, twice, same
+rect both times — see the `TODO(REVERSE)` on the function about the second call's stack-address
+discrepancy in Ghidra's forced decompile), `0x2000` zero bytes at `+0x2000`, the icon-frame
+compaction loop at `+0x4000` (degenerates to an all-zero table here since nothing populates
+`+0x300` yet — transcribed as-is, not invented), a signed-byte checksum over the first `0x1ffc`
+bytes, then four `RetrySeekAndWriteCardFile` calls and a close, branching to phase 99 (error) or
+phase `0x11` (success).
+
+Also transcribed `NameEncodeChar` (Ghidra: `FUN_0050a810`) — the ASCII/Latin-1 → Shift-JIS
+half/full-width encoder for the on-disk name field — using the three data tables read directly out
+of `Legacy/Blaze.exe` (`s_NameEncodeTable_00562b52` at file offset `0x161152`, plus the two accent
+tables). Hand-verified against known Shift-JIS full-width digit codes (`'0'` → `0x4F82`, `'1'` →
+`0x5082`) before trusting it.
+
+### The `Ordinal_21` "mystery" — not a bug, a test-harness artifact
+
+First pass at testing case 6 via `OPENFORESIA_FORCE_SUBSTATE=7` showed `Ordinal_21` (the
+`CreateFileA` wrapper `FUN_00a04600` in `winsys3d.c`) consistently failing (`handle=0xffffffff`)
+for the save-write open, while an equivalent direct `CreateFileA` P/Invoke with the identical path
+and flags succeeded reliably. Spent a long stretch on this: re-verified `SetCardPathDeviceFields`
+by disassembling `FUN_005128e0` directly at file offset `0x111ce0` (confirming it copies the
+**literal bytes** `"save\"` into the descriptor, not pointers — the earlier implementation had it
+backwards and got a garbage path; fixed), ruled out a stale/mismatched `winsys3d.dll` copy
+(`md5sum` on all three copies in the repo: identical, `c2f82301d9b68f010770eb25ec6f27b8`), and ruled
+out the specific `access=0`/`CREATE_ALWAYS` flag combination being rejected by modern Windows
+(direct `CreateFileA` with that exact combination succeeded).
+
+The actual answer was in `FUN_00a04600` itself, read more carefully:
+`CreateFileA(path, (flags*4 | flags&2) << 0x1d, 0, 0, ((flags & 0x200) != 0) + 3, 0, 0)`. The
+disposition term only ever evaluates to **3 (`OPEN_EXISTING`)** or **4 (`OPEN_ALWAYS`)**, never
+`CREATE_ALWAYS`/`CREATE_NEW`. Case 6 calls `RetryOpenCardFile(descriptor, 2)` — bit `0x200` clear,
+so `OPEN_EXISTING` — meaning it **requires the file to already exist**; it is case 1 that creates it
+first (`RetryOpenCardFile(descriptor, 0x30200)`, bit `0x200` set → `OPEN_ALWAYS`) when its own
+read-open fails, immediately before falling through to phase 6. This is exactly the original
+PS1-derived flow: reserve/create the slot, then write into it. `Ordinal_21` and
+`WriteCardSaveFile` were both already correct.
+
+The reason it looked broken under test: the `OPENFORESIA_FORCE_CARD_NAME` scaffolding (needed
+because the forced-substate test path skips real name entry, leaving the name field all zeros) was
+injecting its test name **inside `WriteCardSaveFile`**, i.e. after case 1 had already pre-created a
+file under the *old* (empty) name. Case 6 then correctly failed to `OPEN_EXISTING` a file that, under
+the corrected name, had never been created. Moved the injection to fire once, before case 1 builds
+the path descriptor (`Blaze.cs`, start of `case 1:`), so both phases agree on the same name — after
+which a full run (`OPENFORESIA_FORCE_SUBSTATE=7`, `OPENFORESIA_FORCE_CONFIRM_STATS=1`,
+`OPENFORESIA_FORCE_CARD_NAME=1`) produced a real 24576-byte (`0x6000`) file in `save\TEST`, exactly
+matching the sum of the four write extents (`0x2000+0x1f00+0x100+0x2000`), with the expected
+`"SC\x11\x03"` header and a non-zero computed checksum at `+0x1ffc`. All temporary trace/diagnostic
+scaffolding from this investigation (`GetLastError`/`DirectCreateFileA` P/Invokes, the isolated-
+descriptor probes, the hex-dump and path/handle/result traces) has been removed; only the
+(permanent-style) `OPENFORESIA_FORCE_CARD_NAME` name injection remains, alongside
+`OPENFORESIA_FORCE_SUBSTATE`/`OPENFORESIA_FORCE_CONFIRM_STATS`.
+
+### Remaining
+
+Cases 4, 0xd, 0x10, -5, -3/-2 remain behind `ThrowSaveCardUnresolved`, each smaller than case 6 but
+each with its own sequence to read.
