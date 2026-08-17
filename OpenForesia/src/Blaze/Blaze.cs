@@ -5241,8 +5241,65 @@ public static unsafe partial class Blaze
     // sÃ©parÃ©s faisait lire 20 octets de tas quelconque Ã  la place du DISPENV â€” d'oÃ¹ un Ã©cran noir
     // intermittent, mesurÃ© Ã  7 lancements sur 10, selon ce que le tas contenait Ã  cet endroit.
     // Voir ANALYSE_ECRAN_NOIR_MENU.md pour la mesure qui a isolÃ© la cause.
+    // =====================================================================
+    // L'arène 0x005e9000 – 0x005e9a00
+    //
+    // Dans le binaire c'est **une seule région contiguë** de globales. Ce portage l'avait découpée
+    // en une dizaine d'allocations indépendantes, ce qui a produit à répétition la même famille de
+    // défauts : deux symboles voisins déclarés séparément ne partagent plus leur mémoire, et une
+    // écriture faite par un bout n'est jamais lue par l'autre. Quatorze champs corrigés ainsi le
+    // 2026-08-16 et le 2026-08-17, plus les trois recouvrements que le regroupement lui-même met au
+    // jour (voir plus bas). Un seul bloc, et chaque symbole devient un décalage dedans.
+    //
+    // **La disposition n'est pas choisie, elle est déduite** : chaque symbole s'arrête là où
+    // commence son voisin d'adresse. Le recoupement décisif vient des huit banques de 0x40 octets
+    // que `FUN_00536ea0` restaure depuis une sauvegarde — 0x5e9060, 0x5e92c0, 0x5e9360, 0x5e96e0,
+    // 0x5e9720, 0x5e9780, 0x5e9840, 0x5e9980. Sept d'entre elles butent exactement sur un symbole
+    // déjà connu ; la huitième (0x5e96e0) ne tombait juste qu'en ramenant les tables d'actifs de 24
+    // à 16 entrées, ce qui du même coup fait tenir `s_PartyAnimationResult_005e9680` dans
+    // l'intervalle où il doit être. Trois bornes fausses tombent ensemble, ce qui vaut confirmation.
+    //
+    //   +0x000  0x5e9000  s_PartyAbilityMask      0x060   (0x100 déclarés, donc débordait sur le suivant)
+    //   +0x060  0x5e9060  s_PanelSelection        0x120   (banque 0 sur ses 0x40 premiers octets)
+    //   +0x180  0x5e9180  s_SlotArea              0x4c0   (banques à +0x2c0 et +0x360 ; drapeaux à +0x240)
+    //   +0x640  0x5e9640  s_AnimationTable        0x040   (16 pointeurs, pas 24)
+    //   +0x680  0x5e9680  s_PartyAnimationResult  0x020
+    //   +0x6a0  0x5e96a0  s_ModelTable            0x040   (16 pointeurs, pas 24)
+    //   +0x6e0  0x5e96e0  banque
+    //   +0x720  0x5e9720  banque
+    //   +0x780  0x5e9780  banque
+    //   +0x7c0  0x5e97c0  scalaires (tampon et répertoire de ressources, pas d'entrelacs)
+    //   +0x800  0x5e9800  s_PartyModelResult      0x010
+    //   +0x840  0x5e9840  banque
+    //   +0x880  0x5e9880  s_EnvBlock              0x0e0
+    //   +0x960  0x5e9960  s_FadeCounter
+    //   +0x980  0x5e9980  banque
+    //
+    // Les scalaires isolés de la région (0x5e97c0..0x5e9824, 0x5e9960) restent pour l'instant des
+    // champs C# : aucune banque ni aucun bloc ne les recouvre, donc ils ne peuvent pas produire le
+    // défaut ci-dessus. TODO(REVERSE) : les ramener dans l'arène quand un site les lira par adresse
+    // plutôt que par nom.
+    private const int GameArenaBase = 0x005e9000;
+    private const int GameArenaSize = 0x0a00;
+    private static readonly byte* s_GameArena_005e9000 = (byte*)NativeMemory.AllocZeroed(GameArenaSize);
+
+    /// <summary>Le symbole d'adresse Ghidra <paramref name="va"/> dans l'arène.</summary>
+    private static byte* Arena(int va) => s_GameArena_005e9000 + (va - GameArenaBase);
+
+    // Les huit banques de 0x40 octets, dans l'ordre où le bloc de restauration de FUN_00536ea0 les
+    // recopie depuis la sauvegarde (source : enregistrement +0x1d00..+0x1eff, huit banques
+    // contiguës là-bas, dispersées ici).
+    private static byte* s_StateBank0_005e96e0 => Arena(0x005e96e0);
+    private static byte* s_StateBank1_005e9780 => Arena(0x005e9780);
+    private static byte* s_StateBank2_005e9060 => Arena(0x005e9060);
+    private static byte* s_StateBank3_005e9840 => Arena(0x005e9840);
+    private static byte* s_StateBank4_005e9720 => Arena(0x005e9720);
+    private static byte* s_StateBank5_005e92c0 => Arena(0x005e92c0);
+    private static byte* s_StateBank6_005e9980 => Arena(0x005e9980);
+    private static byte* s_StateBank7_005e9360 => Arena(0x005e9360);
+
     private const int EnvBlockSize = 224;   // 0x005e9960 - 0x005e9880
-    private static readonly byte* s_EnvBlock_005e9880 = (byte*)NativeMemory.AllocZeroed(EnvBlockSize);
+    private static readonly byte* s_EnvBlock_005e9880 = Arena(0x005e9880);
 
     private static readonly byte* s_DrawEnv0_005e9880 = s_EnvBlock_005e9880 + 0x00;
     private static readonly byte* s_DispEnv0_005e98dc = s_EnvBlock_005e9880 + 0x5C;
@@ -5812,7 +5869,11 @@ public static unsafe partial class Blaze
     // Ghidra: &DAT_005e9180 â€” small per-slot table reset at the end of FUN_0052a030 (4 entries of
     // 0x4c/76 bytes: 0x13 dwords zeroed, byte[-1]=8, byte[0]=incrementing slot id). Also touched
     // (not yet reconstructed) by FUN_00542160's near-identical loop elsewhere.
-    private static readonly byte* s_EntitySlotTable_005e9180 = (byte*)NativeMemory.AllocZeroed(0x140);
+    // **La même mémoire que <see cref="s_SlotArea_005e9180"/>**, qui déclarait déjà cette adresse de
+    // son côté. Séparés, <see cref="InitialiseEntitySlots"/> écrivait dans l'un pendant que
+    // <see cref="CurrentPadState"/> lisait l'autre : l'initialisation des emplacements manette
+    // n'atteignait jamais son lecteur. Fusionnés le 2026-08-17 en un alias sur l'arène.
+    private static byte* s_EntitySlotTable_005e9180 => Arena(0x005e9180);
 
     /// <summary>
     /// Ghidra: FUN_0052a030 @ 0x0052a030. Loads the "&lt;cd-drive-root&gt;SYSTEM.INI"-equivalent
@@ -6630,12 +6691,22 @@ public static unsafe partial class Blaze
     //   005e96a0 — modèles. FUN_0051d1f0 reçoit les deux ensemble (Blaze.c:55845) : l'entrée
     //              d'animation indexée par la frame, et le paquet de modèles en regard.
     //
-    // Capacité : 0x005e96a0 - 0x005e9640 = 0x60 octets, soit 24 pointeurs en 32 bits. Les deux
-    // symboles tombent dans la queue non initialisée de .data, donc il n'y a aucun contenu à
-    // récupérer du binaire — seulement cette borne à respecter.
-    private const int AssetTableCapacity = 24;
-    private static readonly byte* s_ModelTable_005e96a0 = (byte*)NativeMemory.AllocZeroed((nuint)AssetTableCapacity, (nuint)sizeof(nint));
-    private static readonly byte* s_AnimationTable_005e9640 = (byte*)NativeMemory.AllocZeroed((nuint)AssetTableCapacity, (nuint)sizeof(nint));
+    // Capacité : **16** pointeurs chacune, pas 24. La borne 0x5e96a0 - 0x5e9640 = 0x60 laissait
+    // croire à 24 pour la table d'animations, mais elle ignorait que `DAT_005e9680` — les quatre
+    // pointeurs de sortie de RelocateAnimationBundle — se loge entre les deux. Corrigé le
+    // 2026-08-17 en regroupant la région dans une arène : la table d'animations s'arrête à 0x5e9680,
+    // celle des modèles à 0x5e96e0 (la première des huit banques d'état). Les deux bornes tombent
+    // juste du même coup, ce qui les confirme l'une l'autre.
+    //
+    // Conséquence assumée : un index ≥ 16 déborde sur le voisin — exactement comme dans l'original,
+    // puisque la disposition est désormais la sienne. TODO(REVERSE) : aucun site connu ne dépasse 15,
+    // mais rien ne le garantit.
+    //
+    // Les deux symboles tombent dans la queue non initialisée de .data, donc il n'y a aucun contenu
+    // à récupérer du binaire.
+    private const int AssetTableCapacity = 16;
+    private static readonly byte* s_ModelTable_005e96a0 = Arena(0x005e96a0);
+    private static readonly byte* s_AnimationTable_005e9640 = Arena(0x005e9640);
 
     /// <summary>
     /// Ghidra: FUN_005066d0 @ 0x005066d0 — le point d'entrée de l'état 4, la sélection des
@@ -7858,6 +7929,37 @@ public static unsafe partial class Blaze
             *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0x1e0 + state[8] * 4),
             0, s_StatusDescriptor_00560728, 0);
         return RunTextEngine(primCursor, s_StatusDescriptor_00560728);
+    }
+
+    // Ghidra: &DAT_005ea560 — la table des blocs de statistiques des entités **hors groupe**
+    // (monstres, PNJ), 0x120 octets par entrée. Deux bornes concordantes donnent 32 entrées :
+    //  - le voisinage dans .data — les symboles vont de 0x5ea560 à 0x5ea663 (tous dans la première
+    //    entrée, 0x5ea663 étant son décalage +0x103, celui que FUN_00538830 écrit), et le groupe
+    //    suivant ne reprend qu'à 0x5eca80 ; 32 * 0x120 = 0x2400 tient exactement dans l'intervalle ;
+    //  - la boucle d'initialisation en tête de FUN_00537da0, qui parcourt **0x20** emplacements
+    //    d'entité de 0x9c octets.
+    private static readonly byte* s_EntityStatBlocks_005ea560 =
+        (byte*)NativeMemory.AllocZeroed(0x20 * 0x120);
+
+    /// <summary>
+    /// Ghidra: FUN_00538780 @ 0x00538780 — rend le bloc de statistiques d'une entité, en choisissant
+    /// entre les deux endroits où ils vivent : le bit <c>0x800000</c> du mot d'état de l'entité
+    /// distingue un **membre du groupe**, dont le bloc est dans son enregistrement de 0x2000 octets
+    /// (<c>MainMem + 0xf0100 + index * 0x2000</c>), de toute autre entité, logée dans la table
+    /// compacte <see cref="s_EntityStatBlocks_005ea560"/> à 0x120 octets par entrée.
+    ///
+    /// <para>L'index est l'octet de poids faible du dword <c>+8</c> de l'entité, le même que
+    /// <c>FUN_005387c0</c> et <c>FUN_00538830</c> lisent. Recoupement utile : <c>FUN_005387c0</c>
+    /// écrit la même adresse sous la forme <c>(index + 0x78) * 0x2000 + MainMem</c>, et
+    /// 0x78 * 0x2000 vaut précisément 0xf0000 — les deux formes désignent bien le même
+    /// enregistrement.</para>
+    /// </summary>
+    private static byte* GetEntityStatBlock(uint* entity)
+    {
+        if ((entity[0] & 0x800000) != 0)
+            return GetMainMemPtr() + 0xf0100 + (byte)entity[2] * 0x2000;
+
+        return s_EntityStatBlocks_005ea560 + (byte)entity[2] * 0x120;
     }
 
     /// <summary>
@@ -10786,7 +10888,9 @@ public static unsafe partial class Blaze
     // OR-accumulator this function recomputes from each character's own flag block. Sized at 0x100
     // bytes to safely cover every observed `& 0xff` index; true extent in the original .data section
     // not confirmed.
-    private static readonly byte* s_PartyAbilityMask_005e9000 = (byte*)NativeMemory.AllocZeroed(0x100);
+    // 0x60 utiles, borné par s_PanelSelection_005e9060 — les 0x100 déclarés jusqu'ici débordaient
+    // sur lui.
+    private static readonly byte* s_PartyAbilityMask_005e9000 = Arena(0x005e9000);
 
     /// <summary>
     /// Ghidra: FUN_00535710 @ 0x00535710 â€” recomputes the party-wide combined ability/skill bitmask
@@ -13185,7 +13289,9 @@ public static unsafe partial class Blaze
     }
 
     // Ghidra: &DAT_005e9060 â€” the per-panel selection index the scroll handling writes back.
-    private static readonly byte* s_PanelSelection_005e9060 = (byte*)NativeMemory.AllocZeroed(0x100);
+    // 0x120 utiles, borné par s_SlotArea_005e9180. Ses 0x40 premiers octets sont aussi la banque 2
+    // (voir s_StateBank2_005e9060) — c'est la même mémoire, comme dans l'original.
+    private static readonly byte* s_PanelSelection_005e9060 = Arena(0x005e9060);
 
     /// <summary>
     /// Ghidra: FUN_00545340 @ 0x00545340 â€” draws one UI panel and returns the advanced primitive
@@ -15513,7 +15619,9 @@ public static unsafe partial class Blaze
     private static uint* s_JoyBlock1_00604b0c => (uint*)(s_InputStateBase_00604a20 + 0xec);
     private static ushort* s_JoyAxis2_00604b2e => (ushort*)(s_InputStateBase_00604a20 + 0x10e);
 
-    private static readonly byte* s_SlotArea_005e9180 = (byte*)NativeMemory.AllocZeroed(0x500);
+    // 0x4c0 utiles, borné par s_AnimationTable_005e9640 — ce qui couvre bien le plus grand décalage
+    // lu (0x240 + 4 * 0x9c = 0x4bc).
+    private static readonly byte* s_SlotArea_005e9180 = Arena(0x005e9180);
     private static byte* s_PlayerSlots_005e9188 => s_SlotArea_005e9180 + 8;
     private static byte* s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240;
 
@@ -16777,13 +16885,11 @@ public static unsafe partial class Blaze
     // Ghidra: &DAT_005e9680 â€” 4 pointeurs de sortie, un par emplacement de groupe, remplis par
     // RelocateAnimationBundle. Jamais lu dans FUN_00536ba0 lui-mÃªme (seule son ADRESSE sert de borne
     // de boucle) â€” Ã©crit uniquement.
-    private static readonly byte* s_PartyAnimationResult_005e9680 =
-        (byte*)NativeMemory.AllocZeroed(4, (nuint)sizeof(nint));
+    private static readonly byte* s_PartyAnimationResult_005e9680 = Arena(0x005e9680);
 
     // Ghidra: &DAT_005e9800 â€” 4 pointeurs de sortie, un par emplacement de groupe, remplis par
     // RelocateModelBundle.
-    private static readonly byte* s_PartyModelResult_005e9800 =
-        (byte*)NativeMemory.AllocZeroed(4, (nuint)sizeof(nint));
+    private static readonly byte* s_PartyModelResult_005e9800 = Arena(0x005e9800);
 
     // Ghidra: DAT_005de738 â€” le curseur d'accumulation final (Ghidra: EBP) aprÃ¨s le chargement des
     // quatre emplacements ; probablement lu par FUN_00535500 ou par un code de rendu pas encore
@@ -16949,21 +17055,85 @@ public static unsafe partial class Blaze
         }
 
         s_Unknown_005de738 = modelAnimCursor;
-        FinalizePartyResourceUpload();   // Ghidra: FUN_00535500
+        UploadPartyIconTextures();   // Ghidra: FUN_00535500
     }
 
     /// <summary>
-    /// Ghidra: FUN_00535500 @ 0x00535500 â€” pas encore transcrit. Pseudo-code lisible (pas de piÃ¨ge
-    /// de type apparent) : deux boucles imbriquÃ©es sur mainMem+0xf0440 (4 emplacements, pas 0x2000 ;
-    /// 14 lignes internes, pas 0x280), test d'un octet Ã  -0x140, deux paires
-    /// Ordinal_667(0)+Ordinal_674 par ligne active, puis DAT_005e8fa0 = {0x216, 0x7c40}. Ressemble Ã
-    /// un envoi de sprites de portrait vers la VRAM. LaissÃ© en NotImplementedException plutÃ´t que
-    /// devinÃ© â€” la prochaine session peut le reprendre directement depuis Blaze.c:81583.
+    /// Ghidra: FUN_00535500 @ 0x00535500 — téléverse en VRAM les dix vignettes de chacun des quatre
+    /// emplacements du groupe : une palette de seize couleurs et une image de 24x24 en 4 bits par
+    /// pixel chacune. Appelée en toute fin de <see cref="LoadPartyMemberResources"/>.
+    ///
+    /// <para><b>Reconstruite depuis le désassemblage brut</b>
+    /// (<c>Legacy/Raw/Blaze/FUN_00535500.asm</c>), et il le fallait : la pseudo-C passe
+    /// <c>&amp;local_c</c> au premier <c>Ordinal_674</c> alors que les quatre champs du rectangle
+    /// sont écrits dans <c>local_8</c>/<c>local_6</c>/<c>local_4</c>/<c>local_2</c>, et elle donne
+    /// au second appel un <c>&amp;stack0xffffffe8</c> que rien ne remplit. Deux artefacts, une seule
+    /// cause : le <c>PUSH 0x0</c> de l'appel à <see cref="Ordinal_667"/> est émis <b>avant</b> les
+    /// quatre écritures, si bien que les <c>[ESP+0x18..0x1e]</c> de l'assembleur et le
+    /// <c>LEA EAX,[ESP+0x14]</c> qui suit l'appel désignent la même structure de quatre mots. C'est
+    /// exactement le piège déjà rencontré dans <c>FUN_005126c0</c>. Les deux rectangles réutilisent
+    /// d'ailleurs le <b>même</b> emplacement de pile, ce que la pseudo-C perd complètement.</para>
+    ///
+    /// <para>La disposition d'un sous-bloc se déduit alors entièrement, et elle boucle : les dix
+    /// sous-blocs de 0x280 octets qui composent la région <c>+0x300</c> de l'enregistrement (0x640
+    /// dwords, celle que <see cref="InitialiseDebugPartyRecord"/> et
+    /// <see cref="FinalizeCharacterStats"/> remplissent depuis une ressource par classe) se lisent
+    /// <c>0x140</c> d'en-tête + <c>0x20</c> de palette + <c>0x120</c> de pixels = <c>0x280</c>,
+    /// sans reste.</para>
+    ///
+    /// <para>Le couple posé à la fin se recalcule et tombe juste, ce qui confirme tout le reste :
+    /// <c>DAT_005e8fa0</c> est l'entrée 0x28 de <see cref="s_EntityDecodeTable_005e8f00"/>, et
+    /// <c>0x7c40</c> est bien l'identifiant de palette de l'emplacement 0 (<c>(0x1f1 &lt;&lt; 6) | (0 &gt;&gt; 4)</c>),
+    /// tandis que <c>0x216</c> porte la page de texture de la zone pixels
+    /// (<c>(0x180 &gt;&gt; 6) | ((0x100 &amp; 0x100) &gt;&gt; 4)</c> = 0x16).</para>
+    ///
+    /// <para>TODO(REVERSE) : ce que représentent les dix vignettes par personnage (objets équipés ?
+    /// sorts ?) n'est pas établi — seul leur format l'est.</para>
     /// </summary>
-    private static void FinalizePartyResourceUpload()
+    private static void UploadPartyIconTextures()
     {
-        throw new NotImplementedException(
-            "FUN_00535500 (appelÃ© depuis LoadPartyMemberResources) pas encore reconstruit");
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null) return;
+
+        // Ghidra: ESI démarre à MainMem + 0xf0440, soit l'enregistrement + 0x440 : la palette du
+        // premier sous-bloc (0x300 + 0x140).
+        byte* slotBase = mainMem + 0xf0440;
+
+        // Le rectangle de quatre mots que les deux téléversements se partagent.
+        short* rect = stackalloc short[4];
+
+        for (int slot = 0; slot < 4; slot++, slotBase += 0x2000)
+        {
+            byte* row = slotBase;
+            for (int icon = 0; icon < 10; icon++, row += 0x280)
+            {
+                // L'octet de tête du sous-bloc (row - 0x140 = enregistrement + 0x300 + icon*0x280).
+                if (row[-0x140] == 0) continue;
+
+                // La palette : seize couleurs sur une ligne, rangée par emplacement dans la bande
+                // de CLUT en bas de VRAM.
+                rect[0] = (short)(icon * 16);        // x
+                rect[1] = (short)(0x1f1 + slot);     // y
+                rect[2] = 0x10;                      // largeur
+                rect[3] = 1;                         // hauteur
+                Ordinal_667(0);
+                Ordinal_674(rect, row);
+
+                // Les pixels : 6 unités de 16 bits de large (donc 24 pixels en 4 bits) sur 24
+                // lignes, les emplacements empilés verticalement et les vignettes côte à côte.
+                rect[0] = (short)(0x180 + icon * 6);   // x
+                rect[1] = (short)(0x100 + slot * 0x18);// y
+                rect[2] = 6;                           // largeur, en unités de 16 bits
+                rect[3] = 0x18;                        // hauteur
+                Ordinal_667(0);
+                Ordinal_674(rect, row + 0x20);
+            }
+        }
+
+        // Ghidra: DAT_005e8fa0 / DAT_005e8fa2 — l'entrée 0x28 de la table de décodage : la page de
+        // texture et la palette que le rendu de ces vignettes ira chercher.
+        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xa0) = 0x216;
+        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xa2) = 0x7c40;
     }
 
     // =====================================================================

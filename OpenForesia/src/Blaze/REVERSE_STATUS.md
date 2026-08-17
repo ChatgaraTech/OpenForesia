@@ -4270,3 +4270,100 @@ Trois pièges de pilotage trouvés en chemin, tous consignés dans `test-protoco
 Ajouts durables à `playtest.ps1` : `-Hold`, les jetons `HOLD:`/`FREE:`, et la frappe de texte
 `TYPE:`/`KBENTER` par `KEYEVENTF_UNICODE` (et non par scancode : un scancode dépend de la
 disposition clavier, or l'écran de saisie du nom veut un vrai caractère).
+
+---
+
+## 2026-08-17 — suite : `FUN_00535500`, `FUN_00538780`, et l'arène 0x5e9000–0x5e9a00
+
+Trois unités, chacune construite et testée avant de passer à la suivante.
+
+### `FUN_00535500` → `UploadPartyIconTextures`
+
+Le mur immédiat du chemin ouvert plus tôt dans la journée. Trente-cinq lignes, mais il fallait le
+désassemblage brut : la pseudo-C passe `&local_c` au premier `Ordinal_674` alors que les quatre
+champs du rectangle sont écrits dans `local_8`/`local_6`/`local_4`/`local_2`, et donne au second
+appel un `&stack0xffffffe8` que rien ne remplit. Deux artefacts, **une seule cause** : le `PUSH 0x0`
+de l'appel à `Ordinal_667` est émis *avant* les quatre écritures, si bien que les `[ESP+0x18..0x1e]`
+de l'assembleur et le `LEA EAX,[ESP+0x14]` d'après l'appel désignent la même structure. C'est le
+piège déjà rencontré dans `FUN_005126c0`, et les deux rectangles réutilisent en plus le **même**
+emplacement de pile — ce que la pseudo-C perd complètement.
+
+Une fois l'assembleur lu, la fonction se referme sur elle-même. Elle téléverse, pour chacun des
+quatre emplacements du groupe et chacune de ses dix vignettes, une palette de seize couleurs
+(16x1 à `x = vignette*16`, `y = 0x1f1 + emplacement`) et une image de 24x24 en 4 bits par pixel
+(6 unités de 16 bits sur 24 lignes, à `x = 0x180 + vignette*6`, `y = 0x100 + emplacement*0x18`).
+
+Trois recoupements indépendants la confirment :
+- la disposition d'un sous-bloc tombe juste **sans reste** : 0x140 d'en-tête + 0x20 de palette +
+  0x120 de pixels = 0x280, et dix sous-blocs font les 0x640 dwords de la région `+0x300` de
+  l'enregistrement — celle que `InitialiseDebugPartyRecord` et `FinalizeCharacterStats` remplissent ;
+- le couple posé en sortie se recalcule : `0x7c40` est exactement l'identifiant de palette de
+  l'emplacement 0 (`(0x1f1 << 6) | (0 >> 4)`), et `0x216` porte la page de texture de la zone pixels
+  (`(0x180 >> 6) | ((0x100 & 0x100) >> 4)` = 0x16) ;
+- l'octet testé en tête de boucle est celui que `record[0x313 + i*0x280] |= 0x80` voisine.
+
+Confirmé en jeu : le chemin de mise au point traverse maintenant `RunDebugPartySelect` en entier et
+s'arrête sur l'**état de jeu 2**, la borne nommée suivante. Aucune faute native.
+
+TODO(REVERSE) : ce que représentent les dix vignettes par personnage (objets équipés ? sorts ?) reste
+à établir — seul leur format l'est.
+
+### `FUN_00538780` → `GetEntityStatBlock`
+
+Quatre lignes, trois sites d'appel ailleurs dans le jeu. Le bit `0x800000` du mot d'état d'une entité
+distingue un **membre du groupe**, dont le bloc de statistiques vit dans son enregistrement de 0x2000
+octets (`MainMem + 0xf0100 + index * 0x2000`), de toute autre entité, logée dans une table compacte à
+`DAT_005ea560`, 0x120 octets par entrée.
+
+Recoupement : `FUN_005387c0` écrit la même adresse sous la forme `(index + 0x78) * 0x2000 + MainMem`,
+et 0x78 * 0x2000 vaut précisément 0xf0000.
+
+La table fait **32 entrées**, borné deux fois : les symboles `.data` vont de 0x5ea560 à 0x5ea663 —
+tous dans la première entrée, 0x5ea663 étant son décalage +0x103, celui que `FUN_00538830` écrit —
+et le groupe suivant ne reprend qu'à 0x5eca80, où 32 * 0x120 = 0x2400 tient exactement ; par
+ailleurs `FUN_00537da0` parcourt 0x20 emplacements d'entité en tête de fonction.
+
+### L'arène 0x5e9000–0x5e9a00, et les quatre défauts qu'elle met au jour
+
+C'était l'obstacle annoncé devant `FUN_00536ea0`, et il s'est avéré bloquer aussi `FUN_00537da0` :
+les deux écrivent dans les huit banques de 0x40 octets dispersées dans cette région. Dans le binaire
+c'est une seule zone contiguë ; ce portage l'avait découpée en une dizaine d'allocations
+indépendantes, la fabrique même du défaut d'aliasing corrigé quatorze fois ce jour-là.
+
+**La disposition n'a pas été choisie, elle a été déduite** : chaque symbole s'arrête là où commence
+son voisin d'adresse. Le levier a été les huit banques de `FUN_00536ea0` (0x5e9060, 0x5e92c0,
+0x5e9360, 0x5e96e0, 0x5e9720, 0x5e9780, 0x5e9840, 0x5e9980) : **sept butent exactement** sur un
+symbole déjà connu, et la huitième ne tombait juste qu'en corrigeant une borne — laquelle en a
+entraîné deux autres. Trois erreurs qui se résolvent ensemble, c'est ce qui vaut confirmation.
+
+Les quatre défauts trouvés en posant l'arène :
+
+| défaut | conséquence |
+|---|---|
+| `s_EntitySlotTable_005e9180` et `s_SlotArea_005e9180` : **deux allocations pour la même adresse** | `InitialiseEntitySlots` écrivait dans l'une, `CurrentPadState` lisait l'autre — l'initialisation des emplacements manette n'atteignait jamais son lecteur |
+| `s_PartyAbilityMask_005e9000` déclaré 0x100 | débordait sur `s_PanelSelection_005e9060` |
+| `AssetTableCapacity = 24` | la table de modèles débordait sur la banque 0x5e96e0 ; la table d'animations recouvrait `s_PartyAnimationResult_005e9680`. La vraie capacité est **16** pour les deux — la borne « 0x60 = 24 pointeurs » ignorait que `DAT_005e9680` se loge entre les deux tables |
+| `s_SlotArea_005e9180` déclaré 0x500 | déborde sur la table d'animations ; 0x4c0 suffit et couvre le plus grand décalage lu (0x240 + 4 * 0x9c = 0x4bc) |
+
+Conséquence assumée du regroupement : un index hors borne déborde désormais **sur le voisin réel**,
+exactement comme dans l'original, au lieu de rester confiné à une allocation isolée. C'est plus
+fidèle, pas moins sûr.
+
+Les scalaires isolés de la région (0x5e97c0..0x5e9824, 0x5e9960) restent des champs C# : aucune
+banque ni aucun bloc ne les recouvre, donc ils ne peuvent pas produire ce défaut. À ramener dans
+l'arène le jour où un site les lira par adresse.
+
+Non-régression vérifiée sur les trois chemins exerçables — menu principal, sélection des personnages
+(382.3 primitives par image, capture identique à la référence), et le chemin de mise au point
+(68 par image, même borne à l'état de jeu 2).
+
+### État du front
+
+`FUN_00537da0` (l'état de jeu 2, 360 lignes) est lu en entier et son unique dépendance manquante
+(`FUN_00538780`) est faite. C'est l'écran de choix de destination : 32 particules animées, une caméra
+qui glisse vers la destination visée, un masque de destinations débloquées construit à partir de
+`DAT_005e901e`, le modèle 3D du groupe, et la sortie qui pose `DAT_005de528` puis nettoie quatre des
+huit banques. Il lui reste à récupérer un paquet de tables `.data` : `DAT_0056d240` (positions des
+icônes), `DAT_0056d270`/`272` (caméra par zone), `DAT_0056d2a0` (zone → index de menu),
+`DAT_0056d2b0` (index → zone), `DAT_0056c978` (un descripteur d'interface de plus), et le bloc de
+particules à `DAT_005de824` (32 entrées de 0x9c).

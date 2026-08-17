@@ -42,26 +42,26 @@ sélection des personnages, capture identique à la référence).
 
 ---
 
+## Fait en fin de journée (voir `REVERSE_STATUS.md`, section « suite »)
+
+- **`FUN_00535500` → `UploadPartyIconTextures`** : téléverse les dix vignettes (palette 16 couleurs +
+  image 24x24 en 4 bpp) de chacun des quatre membres. Il fallait le désassemblage brut — même piège
+  du `PUSH` avant les écritures de champs que dans `FUN_005126c0`. Le chemin de mise au point va
+  maintenant jusqu'à l'**état de jeu 2**.
+- **`FUN_00538780` → `GetEntityStatBlock`** : quatre lignes, choisit entre le bloc d'un membre du
+  groupe et la table compacte des autres entités (`DAT_005ea560`, 32 entrées de 0x120).
+- **L'arène `0x5e9000`–`0x5e9a00` est posée** (l'ancienne étape 1 ci-dessous). Elle a mis au jour
+  quatre défauts d'un coup : un symbole déclaré **deux fois** (`s_EntitySlotTable_005e9180` /
+  `s_SlotArea_005e9180` — l'initialisation des emplacements manette n'atteignait pas son lecteur) et
+  trois bornes de blocs trop larges, dont `AssetTableCapacity` qui vaut **16** et non 24.
+
+Non-régression vérifiée sur les trois chemins exerçables après chaque étape.
+
+---
+
 ## La suite, dans l'ordre
 
-### 1. Poser le bloc de fond `0x5e9060`–`0x5e99c0` — **préalable à tout le reste**
-
-C'est le seul obstacle réel devant `FUN_00536ea0`. Son bloc de restauration d'état du monde recopie
-huit banques de 0x40 octets vers `DAT_005e96e0`, `005e9780`, `005e9060`, `005e9840`, `005e9720`,
-`005e92c0`, `005e9980`, `005e9360`. Dans l'original c'est **une seule région contiguë** ; ici elle
-est éparpillée en allocations indépendantes (`s_PanelSelection_005e9060`, `s_SlotArea_005e9180`,
-`s_PartyAnimationResult_005e9680`, `s_PartyModelResult_005e9800`…), dont quatre banques tombent à
-l'intérieur et quatre à cheval.
-
-Déclarer huit nouveaux blocs isolés reproduirait exactement le défaut d'aliasing corrigé quatorze
-fois à ce jour. La bonne étape est **un seul bloc de fond, et les symboles existants réexprimés
-comme des décalages dedans** — le modèle est déjà là :
-`s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240`.
-
-Remaniement mesuré, à faire **avant** `FUN_00536ea0` et pas pendant. Reconstruire souvent ; si le
-nombre d'erreurs explose, revenir en arrière et réexaminer le découpage plutôt que de rustiner.
-
-### 2. `FUN_00536ea0` — le chemin normal de l'état de jeu 1
+### 1. `FUN_00536ea0` — le chemin normal de l'état de jeu 1
 
 `Blaze.c` 82764–83257 (494 lignes). C'est **lui** que le jeu prend (le verrou vaut 1). Un écran de
 chargement de sauvegarde : liste des fichiers, sélection numérotée de 1 à 4, puis chargement et
@@ -80,18 +80,35 @@ Sa fin est **presque identique** à celle de `RunDebugPartySelect` (mêmes drape
 garde-fou de dépassement, même boucle « BUFFER OVER ») à l'état de jeu final près — 3 au lieu de 2.
 Regarder `RunDebugPartySelect` avant d'écrire cette partie.
 
-### 3. `FUN_00535500` — la borne où s'arrête maintenant le chemin A
+### 2. `FUN_00537da0` — l'état de jeu 2, l'écran de choix de destination
 
-Trente-cinq lignes seulement, mais **il faut le désassemblage brut** : la pseudo-C passe `&local_c`
-au premier `Ordinal_674` alors que le rectangle est écrit dans `local_8`/`local_6`/`local_4`/`local_2`
-(décalage de 4), et le second appel reçoit un `&stack0xffffffe8` que rien ne remplit visiblement.
-Deux rectangles, un seul lisible. Recette Ghidra plus bas.
+`Blaze.c` 83427–83782 (356 lignes). C'est là que débouche maintenant le chemin de mise au point. Son
+autre moitié, `FUN_00542160`, existe déjà (`LoadMenuResources`), et sa seule dépendance manquante
+(`FUN_00538780`) est faite : **plus aucun blocage indirect**.
 
-### 4. Plus loin
+Ce qu'il fait : 32 particules animées initialisées au hasard (bloc `DAT_005de824`, 32 entrées de
+0x9c), une caméra qui glisse par quarts vers la destination visée, un masque de destinations
+débloquées construit bit à bit depuis `DAT_005e901e`, le modèle 3D animé du groupe, les icônes de
+destination, puis un panneau d'interface. Sortie sur START ou CARRÉ : pose `DAT_005de528`, remet
+`DAT_00566c84`/`88` à 0xff, nettoie quatre des huit banques et les paires à `0x5e9320`, et — si la
+zone vaut 0 et que le groupe n'est pas vide — remet à zéro quelques champs par membre. C'est
+l'appelant qui pose l'état de jeu 3.
+
+Tables `.data` à relever avant de commencer (aucune n'est encore déclarée) : `DAT_0056d240`
+(positions des icônes), `DAT_0056d270`/`272` (caméra par zone, pas de 4), `DAT_0056d2a0`
+(zone → index de menu), `DAT_0056d2b0` (index → zone), `DAT_0056c978` (un descripteur d'interface de
+plus — vérifier d'abord s'il n'est pas voisin d'un `0x8c8` déjà connu), `DAT_00604928` et
+`DAT_006008d0..fc` (le bloc de caméra que `FUN_0051c300` consomme).
+
+Le bloc de dessin sur pile est **le même à sept champs** que celui de `RunDebugPartySelect` et de
+`FUN_00536ea0` — s'en inspirer directement.
+
+### 3. Plus loin
 
 - `FUN_00537a20`, la branche `DAT_005de51c != 0` de `RunGameState1Entry`, jamais lue.
-- L'état de jeu 2 (`FUN_00542160`/`FUN_00537da0`), où `RunDebugPartySelect` débouche maintenant.
 - L'état de jeu 3 (`thunk_FUN_00516020`), où `FUN_00536ea0` débouchera.
+- Ramener dans l'arène les scalaires isolés de `0x5e97c0..0x5e9824` et `0x5e9960` — sans urgence,
+  aucun bloc ne les recouvre.
 
 ---
 
