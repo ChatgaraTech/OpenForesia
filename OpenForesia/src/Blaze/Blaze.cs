@@ -16261,7 +16261,11 @@ public static unsafe partial class Blaze
         // Pas 4 : `0x0053623f  C1 E0 04  SHL EAX,0x4` puis
         // `0x00536242  F6 80 20 4A 60 00 01  TEST byte [EAX + 0x604a20],0x1` â€” octets lus
         // directement dans Legacy/Blaze.exe. Même correction que dans PollInputAndAudio.
-        bool slotJoined = (s_InputStateBase_00604a20[slotIndex * 0x10] & 1) != 0;
+        // Bit 0 du mot « tenu » = **SELECT** (masque 0x0001, action 8 de
+        // s_PadButtonMasks_00564f18). Confirmé en jeu le 2026-08-17 : avec F1 maintenu de la prise
+        // de focus jusqu'ici, la trace posée à ce branchement lisait `pad0=0x01`. Le chemin A veut
+        // donc SELECT **maintenu** à l'entrée de l'état de jeu 1, pas un appui.
+        bool selectHeld = (s_InputStateBase_00604a20[slotIndex * 0x10] & 1) != 0;
 
         // ECHAFAUDAGE : OPENFORESIA_FORCE_DEBUG_PARTY=1 force le chemin A. Les deux conditions
         // réelles sont difficiles à réunir depuis playtest.ps1 : il faut que le moteur de texte ait
@@ -16271,7 +16275,7 @@ public static unsafe partial class Blaze
         bool forceDebugParty =
             Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_DEBUG_PARTY") == "1";
 
-        if (forceDebugParty || (s_DebugModeLatch_005633a8 == 0 && slotJoined))
+        if (forceDebugParty || (s_DebugModeLatch_005633a8 == 0 && selectHeld))
         {
             RunDebugPartySelect();     // Ghidra: FUN_00536270
             return;

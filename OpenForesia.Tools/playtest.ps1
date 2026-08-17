@@ -57,7 +57,13 @@ param(
     # Explorer) -- utile pour reproduire un lancement dont le CWD differe (ex. Rider "Run", ou
     # "dotnet run", mettent par defaut le dossier du .csproj), ce qui compte pour tout chemin
     # relatif que le jeu ouvre (ex. "save\...").
-    [string]$WorkingDir = ''
+    [string]$WorkingDir = '',
+    # Touche maintenue enfoncee de la prise de focus jusqu'a la fin du run, y compris pendant la
+    # navigation du menu et sa validation. Sert aux conditions que le jeu lit sur l'etat *tenu* a un
+    # instant precoce -- typiquement SELECT a l'entree de l'etat de jeu 1, que la sequence -Then ne
+    # peut pas atteindre puisqu'elle ne demarre qu'apres la validation.
+    # Jetons : SELECT START LCTRL LALT ENTER ESC UP DOWN LEFT RIGHT
+    [string]$Hold = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -149,7 +155,7 @@ public static class PlayTestInput {
     [DllImport("user32.dll")] static extern uint SendInput(uint n, INPUT[] p, int cb);
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int n);
-    const uint EXT = 0x0001, UP = 0x0002, SCAN = 0x0008;
+    const uint EXT = 0x0001, UP = 0x0002, UNICODE = 0x0004, SCAN = 0x0008;
 
     static void Send(ushort scan, uint flags) {
         INPUT[] i = new INPUT[1];
@@ -164,6 +170,33 @@ public static class PlayTestInput {
         Send(scan, f);
         System.Threading.Thread.Sleep(hold);
         Send(scan, f | UP);
+        System.Threading.Thread.Sleep(40);
+        Send(scan, SCAN | UP);
+    }
+
+    // Frappe de TEXTE, par KEYEVENTF_UNICODE (0x0004) et non par scancode. Deux raisons :
+    //  - l'ecran de saisie du nom ne lit pas DirectInput mais la file WM_CHAR de winsys3d, donc il
+    //    faut un vrai caractere, pas une touche physique ;
+    //  - un scancode depend de la disposition clavier (sur AZERTY, le scancode de 'a' QWERTY donne
+    //    'q'), alors qu'UNICODE injecte le caractere voulu quelle que soit la disposition.
+    // Le systeme synthetise WM_KEYDOWN/VK_PACKET, et le TranslateMessage de D3D11Window en fait le
+    // WM_CHAR que le jeu consomme.
+    public static void TypeText(string s, int perChar) {
+        foreach (char c in s) {
+            INPUT[] i = new INPUT[2];
+            i[0].type = 1; i[0].ki.wScan = (ushort)c; i[0].ki.dwFlags = UNICODE;
+            i[1].type = 1; i[1].ki.wScan = (ushort)c; i[1].ki.dwFlags = UNICODE | UP;
+            SendInput(2, i, Marshal.SizeOf(typeof(INPUT)));
+            System.Threading.Thread.Sleep(perChar);
+        }
+    }
+
+    // Maintien d'une touche a travers plusieurs images. Necessaire pour les conditions que le jeu
+    // lit sur l'etat *tenu* de la manette (mot [0x604a20], actif haut) et non sur un front --
+    // par exemple SELECT maintenu a l'entree de l'etat de jeu 1.
+    public static void Hold(ushort scan, bool ext) { Send(scan, SCAN | (ext ? EXT : 0)); }
+    public static void Free(ushort scan, bool ext) {
+        Send(scan, SCAN | (ext ? EXT : 0) | UP);
         System.Threading.Thread.Sleep(40);
         Send(scan, SCAN | UP);
     }
@@ -214,7 +247,13 @@ function Get-Cursor([string]$path) {
 # Nombre de fois que le jeu a vu le bouton de validation. C'est lui qui nous dit si une frappe
 # est passee : rien d'autre ne le fait, et le premier appui apres la prise de focus est avale.
 function Get-ValidateCount([string]$path) {
-    return ([regex]::Matches((Read-Live $path), 'pad=0x8000')).Count
+    # Le bit qui compte est 0x8000 (carre) ; les autres bits du mot peuvent etre poses en meme temps
+    # -- avec -Hold SELECT la trace dit pad=0x8001, et une comparaison exacte ratait la validation.
+    $n = 0
+    foreach ($m in [regex]::Matches((Read-Live $path), 'pad=0x([0-9a-f]{4})')) {
+        if (([Convert]::ToInt32($m.Groups[1].Value, 16) -band 0x8000) -ne 0) { $n++ }
+    }
+    return $n
 }
 
 # --------------------------------------------------------------------------------------------
@@ -271,6 +310,27 @@ if ($p.HasExited) {
     $hwnd = $game.MainWindowHandle
     if ($hwnd -ne [IntPtr]::Zero) { [PlayTestInput]::Focus($hwnd) }
     Start-Sleep -Milliseconds 1200
+
+    $holdScan = $null
+    if ($Hold -ne '') {
+        $holdMap = @{ 'START'=@(0x3C,$false); 'SELECT'=@(0x3B,$false); 'LCTRL'=@(0x1D,$false);
+                      'LALT'=@(0x38,$false);  'ENTER'=@(0x1C,$false); 'ESC'=@(0x01,$false);
+                      'UP'=@(0x48,$true); 'DOWN'=@(0x50,$true); 'LEFT'=@(0x4B,$true); 'RIGHT'=@(0x4D,$true) }
+        $hk = $Hold.ToUpper()
+        if ($holdMap.ContainsKey($hk)) {
+            $holdScan = @([uint16]$holdMap[$hk][0], [bool]$holdMap[$hk][1])
+            # Le premier appui apres SetForegroundWindow est toujours avale (voir test-protocol.md).
+            # Ici c'en est un : on le depense volontairement, puis on enfonce pour de bon.
+            [PlayTestInput]::Hold($holdScan[0], $holdScan[1])
+            Start-Sleep -Milliseconds 300
+            [PlayTestInput]::Free($holdScan[0], $holdScan[1])
+            Start-Sleep -Milliseconds 300
+            [PlayTestInput]::Hold($holdScan[0], $holdScan[1])
+            Write-Host "== $hk maintenu pour toute la duree du run"
+        } else {
+            Write-Host "!! -Hold : jeton inconnu ($Hold)"
+        }
+    }
 
     if ($Entry -lt 0) {
         Write-Host "== pas de validation demandee, observation du menu pendant $Seconds s"
@@ -331,6 +391,36 @@ if ($p.HasExited) {
                         Start-Sleep -Seconds ([int]$Matches[1])
                         continue
                     }
+                    # TYPE:xxx -- frappe du texte litteral dans la file WM_CHAR. Sert a l'ecran de
+                    # saisie du nom, seul endroit du jeu qui lit de vrais caracteres.
+                    # HOLD:xxx / FREE:xxx -- enfonce ou relache sans relacher tout de suite, pour les
+                    # conditions que le jeu lit sur l'etat tenu et non sur un front.
+                    if ($k -match '^(HOLD|FREE):(.+)$') {
+                        $act = $Matches[1]; $key = $Matches[2].ToUpper()
+                        $map = @{ 'START'=@(0x3C,$false); 'SELECT'=@(0x3B,$false); 'LCTRL'=@(0x1D,$false);
+                                  'LALT'=@(0x38,$false);  'ENTER'=@(0x1C,$false); 'ESC'=@(0x01,$false);
+                                  'UP'=@(0x48,$true); 'DOWN'=@(0x50,$true); 'LEFT'=@(0x4B,$true); 'RIGHT'=@(0x4D,$true) }
+                        if (-not $map.ContainsKey($key)) { Write-Host "!! jeton inconnu : $k"; continue }
+                        $sc = [uint16]$map[$key][0]; $ex = [bool]$map[$key][1]
+                        if ($act -eq 'HOLD') { [PlayTestInput]::Hold($sc, $ex) } else { [PlayTestInput]::Free($sc, $ex) }
+                        Write-Host "   -> $k"
+                        continue
+                    }
+                    # KBENTER -- le caractere 0x0d dans la file WM_CHAR. L'ecran de saisie du nom le
+                    # traite comme la case "fin" : il confirme et passe au sous-etat suivant. A ne
+                    # pas confondre avec ENTER, qui est le bouton carre de la manette.
+                    if ($k -eq 'KBENTER') {
+                        [PlayTestInput]::TypeText([string][char]13, 250)
+                        Write-Host '   -> KBENTER'
+                        Start-Sleep -Milliseconds 900
+                        continue
+                    }
+                    if ($k -match '^TYPE:(.+)$') {
+                        [PlayTestInput]::TypeText($Matches[1], 250)
+                        Write-Host "   -> TYPE '$($Matches[1])'"
+                        Start-Sleep -Milliseconds 900
+                        continue
+                    }
                     switch ($k.ToUpper()) {
                         'ENTER' { [PlayTestInput]::Tap(0x1C, $false, 400) }
                         'ESC'   { [PlayTestInput]::Tap(0x01, $false, 400) }
@@ -361,6 +451,8 @@ if ($p.HasExited) {
         }
     }
 }
+
+if ($null -ne $holdScan) { [PlayTestInput]::Free($holdScan[0], $holdScan[1]) }
 
 if ($Shot -and -not $p.HasExited -and $hwnd -ne [IntPtr]::Zero) {
     try { [PlayTestShot]::Grab($hwnd, $png); Write-Host "== capture -> $png" }

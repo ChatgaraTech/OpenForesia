@@ -4215,3 +4215,58 @@ remaniement mesuré, à faire avant `FUN_00536ea0` et pas pendant.
 3. `FUN_00535500`, après désassemblage brut (disposition de pile ambiguë).
 4. `FUN_00537a20`, la branche `DAT_005de51c != 0` de `RunGameState1Entry`, jamais lue.
 5. L'état de jeu 2 (`FUN_00542160`/`FUN_00537da0`), où le chemin A débouche maintenant.
+
+### Le déclencheur « Gurkha », vérifié en jeu (même journée, après coup)
+
+La question « comment y accède-t-on vraiment ? » méritait mieux qu'une déduction. Les deux
+conditions du chemin A ont été mesurées séparément dans le jeu qui tourne, avec deux traces
+temporaires depuis retirées.
+
+**1. Taper « Gurkha » bascule bien le verrou.** Chemin exact : écran de sélection des personnages →
+valider un portrait (trois validations : le portrait, la question « Ton choix se porte-t-il sur ce
+personnage ? », puis « Oui ») → écran de saisie du nom → taper les six lettres. La trace posée dans
+`CheatCodeProbe` tombe immédiatement : `DAT_005633a8 -> 0`.
+
+Le mécanisme se referme proprement : `DrawNameEntryScreen` lie le nom tapé puis appelle
+`RunTextEngine`, donc chaque caractère passe par `RasterizeGlyph` → `CheatCodeProbe`, dans l'ordre et
+sans rien d'intercalé. Et l'octet `0x5f` (le curseur `_`) que l'écran écrit **juste après** le nom
+est exactement le « caractère suivant » dont la sonde a besoin pour franchir le terminateur et poser
+le verrou. Rien à confirmer, rien à valider : la bascule a lieu pendant la frappe.
+
+Deux détails qui auraient pu tout empêcher, et qui tiennent :
+- le clavier virtuel de l'écran porte les minuscules **et** les majuscules, donc « Gurkha » est
+  saisissable à la manette seule ;
+- l'écran lit aussi la frappe réelle (file `WM_CHAR` de winsys3d via `GetKBChar`), ce qui a permis de
+  le tester au clavier.
+
+**2. Le verrou est à sens unique.** `DAT_005633a8` n'a qu'un seul écrivain dans les 98 000 lignes de
+`Blaze.c` — la ligne 66792, qui le met à 0 — contre **22 lecteurs** répartis dans tout le jeu
+(rendu, caméra, combat, terrain), presque toujours appariés à `DAT_005de020`. Ce n'est donc pas le
+verrou d'un écran : c'est **le** mode de mise au point du jeu, et une fois « Gurkha » affiché il
+reste actif jusqu'à la fermeture.
+
+**3. SELECT maintenu, lu au branchement même.** Le bit 0 du mot « tenu » à `0x604a20` est bien
+SELECT (masque 0x0001, action 8 de `s_PadButtonMasks_00564f18`). Mesuré de deux façons : une trace
+sur le mot complet donne `0x0001` avec F1 enfoncé, `0x0008` avec F2, `0x8000` avec Entrée,
+`0x0040` avec Bas ; et une trace posée sur le branchement de `RunGameState1Entry` lit `pad0=0x01`
+quand F1 est maintenu depuis la prise de focus. C'est un **état tenu**, pas un front : un appui
+ponctuel ne suffit pas.
+
+**Ce qui n'a pas été fait** : réunir les deux dans un même run scripté. La création de personnage
+complète passe par le dé de bonus puis la répartition d'une vingtaine de points, soit une trentaine
+d'appuis à enchaîner dans un `-Then`, pour prouver un `&&` de deux lignes dont les deux opérandes
+sont déjà vérifiés au bon endroit. À la main, l'utilisateur y arrive en quelques secondes.
+
+Trois pièges de pilotage trouvés en chemin, tous consignés dans `test-protocol.md` :
+- `-Then` ne démarre **qu'après** la validation du menu, or la chaîne forcée
+  (`OPENFORESIA_FORCE_SUBSTATE=7`) atteint l'état de jeu 1 en quelques images — d'où le nouveau
+  paramètre `-Hold`, qui enfonce une touche dès la prise de focus.
+- Le « premier appui après `SetForegroundWindow` est avalé » vaut aussi pour un maintien : `-Hold`
+  dépense donc volontairement un appui avant d'enfoncer pour de bon. Sans ça, la trace lisait
+  obstinément `pad0=0x00`.
+- La détection de validation cherchait `pad=0x8000` **exact** ; avec `-Hold SELECT` le jeu trace
+  `pad=0x8001` et la validation n'était jamais vue. Passée en test de bit.
+
+Ajouts durables à `playtest.ps1` : `-Hold`, les jetons `HOLD:`/`FREE:`, et la frappe de texte
+`TYPE:`/`KBENTER` par `KEYEVENTF_UNICODE` (et non par scancode : un scancode dépend de la
+disposition clavier, or l'écran de saisie du nom veut un vrai caractère).

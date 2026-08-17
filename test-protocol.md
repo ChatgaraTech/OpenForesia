@@ -39,7 +39,8 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 | `-Seconds <n>` | durée d'observation après validation (défaut 25) |
 | `-Shot` | capture la fenêtre en PNG à la fin |
 | `-Build` | reconstruit la solution d'abord |
-| `-Then A,B` | touches à jouer **une fois l'écran atteint**, dans l'ordre. Jetons : `ENTER` `ESC` `UP` `DOWN` `LEFT` `RIGHT` `LCTRL` `START` `SELECT` `LALT`, et `WAIT<n>` pour patienter n secondes. Exemple : `-Then DOWN,WAIT2,ENTER` |
+| `-Then A,B` | touches à jouer **une fois l'écran atteint**, dans l'ordre. Jetons : `ENTER` `ESC` `UP` `DOWN` `LEFT` `RIGHT` `LCTRL` `START` `SELECT` `LALT` ; `TYPE:texte` et `KBENTER` pour la frappe clavier ; `HOLD:x`/`FREE:x` pour enfoncer et relâcher ; `WAIT<n>` pour patienter n secondes. Exemple : `-Then DOWN,WAIT2,ENTER` |
+| `-Hold <jeton>` | touche maintenue **de la prise de focus jusqu'à la fin du run**, navigation du menu comprise. Indispensable pour les conditions que le jeu lit sur l'état *tenu* à un instant précoce : `-Then` ne démarre qu'après la validation du menu, et certains écrans sont atteints avant |
 | `-Trace A,B` | pose `OPENFORESIA_TRACE_A=1`, `OPENFORESIA_TRACE_B=1` (voir plus bas) |
 | `-KeepOpen` | laisse le jeu ouvert |
 | `-MenuDelay`, `-TapMs`, `-MaxTaps` | réglages fins, rarement utiles |
@@ -155,6 +156,28 @@ Chaque action a deux liaisons clavier, la primaire dans `K00xx` et la secondaire
 les deux touches sur les deux premières lignes. **Préférer `ESC` à `LALT` pour la croix** : les deux
 donnent le même masque manette, mais Alt fait perdre le focus (voir le piège ci-dessus).
 
+Le tableau est **vérifié en jeu** : une trace posée sur le mot « tenu » (`0x604a20`) montre
+`0x0001` avec F1 enfoncé, `0x0008` avec F2, `0x8000` avec Entrée, `0x0040` avec Bas. Refaire cette
+mesure plutôt que de supposer, si un doute revient.
+
+Attention : **`OpenForesia/` ne contient pas de `.cfg`**, donc avec `-WorkingDir OpenForesia` ce sont
+les liaisons **par défaut** (`s_KeyBindingDefaults_00564ab8`) qui s'appliquent, pas le
+`bin/Debug/net9.0/OpenForesia.cfg`. Les deux tables se trouvent être identiques ici, mais la
+distinction compte dès que l'une des deux change.
+
+### Taper du texte : `TYPE:` et `KBENTER`
+
+L'écran de saisie du nom est le seul du jeu à lire de **vrais caractères** : il coupe la traduction
+manette→clavier et dépile la file `WM_CHAR` de winsys3d par `GetKBChar`. Les jetons `TYPE:` et
+`KBENTER` passent donc par `KEYEVENTF_UNICODE` et non par un scancode. Deux raisons :
+
+- un scancode dépend de la disposition clavier — sur AZERTY, le scancode du `a` QWERTY donne `q` ;
+- `KEYEVENTF_UNICODE` injecte le caractère voulu, le système synthétise `VK_PACKET`, et le
+  `TranslateMessage` de `D3D11Window` en fait le `WM_CHAR` que le jeu consomme.
+
+`KBENTER` envoie `0x0d`, que l'écran traite comme la case « fin » : il confirme le nom et passe au
+sous-état suivant. À ne pas confondre avec `ENTER`, qui est le bouton **carré** de la manette.
+
 D'où la seule méthode fiable : **la boucle fermée**. `OPENFORESIA_TRACE_MENU=1` fait écrire au jeu
 la position de son curseur (`+0x8C4:xx->yy`) ; le script relit le stderr redirigé pendant que le jeu
 tourne (ouverture en `FileShare.ReadWrite`, le jeu tient encore le fichier) et retape jusqu'à
@@ -218,11 +241,27 @@ Remove-Item 'OpenForesia\save\TEST' -Force -ErrorAction SilentlyContinue
 
 ## Atteindre l'écran de groupe de mise au point (`RunDebugPartySelect`)
 
-Cet écran est le chemin A de l'état de jeu 1. Ses deux conditions réelles sont des **états**, pas des
-frappes, donc hors de portée du pilotage clavier : il faut que le moteur de texte ait déjà dessiné le
-mot « Gurkha » quelque part (c'est le code de triche qui ouvre le mode développeur — nommer un
-personnage ainsi suffit), **et** que SELECT soit maintenu à l'entrée de l'état 1. D'où
-l'échafaudage `OPENFORESIA_FORCE_DEBUG_PARTY=1`, qui force la branche.
+Cet écran est le chemin A de l'état de jeu 1, gardé par `DAT_005633a8 == 0 && SELECT maintenu`.
+
+**La vraie manière, celle de 1998** — les deux moitiés sont vérifiées en jeu séparément :
+
+1. **Faire afficher le mot « Gurkha »**. `CheatCodeProbe` file la séquence `DAT_00564a40` sur chaque
+   caractère *dessiné* (par `DrawTextRun` comme par `RasterizeGlyph`), pas sur une saisie. Nommer un
+   personnage « Gurkha » suffit : le nom est dessiné pendant la frappe, et le curseur `_` tracé juste
+   derrière est le caractère qui déclenche la bascule. Mesuré : la trace tombe dès la frappe du `a`.
+   Le clavier virtuel de l'écran porte majuscules **et** minuscules, et la frappe réelle marche
+   aussi (`-Then TYPE:Gurkha`).
+2. **Maintenir SELECT (F1) à l'entrée de l'état de jeu 1** — pas un appui, l'état tenu. Mesuré : avec
+   `-Hold SELECT`, la trace posée au branchement lit `pad0=0x01`.
+
+Le verrou est **à sens unique** : `DAT_005633a8` n'a qu'un seul écrivain dans les 98 000 lignes de
+`Blaze.c` (ligne 66792, qui le met à 0) et 22 lecteurs. Une fois « Gurkha » tapé, le mode
+développeur reste actif jusqu'à la fermeture du jeu — inutile de le refaire entre deux écrans.
+
+Réunir les deux dans **un même run scripté** bute sur la longueur de la création de personnage (la
+répartition des points demande une trentaine d'appuis) ; à la main c'est l'affaire de quelques
+secondes. D'où l'échafaudage `OPENFORESIA_FORCE_DEBUG_PARTY=1`, qui force la branche pour les tests
+automatisés.
 
 ```powershell
 Remove-Item 'OpenForesia\save\TEST' -Force -ErrorAction SilentlyContinue
