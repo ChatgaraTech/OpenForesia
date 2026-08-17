@@ -5123,7 +5123,9 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00529eb0 @ 0x00529eb0 â€” initializes several on-screen viewport/surface
     /// descriptors (via ordinals 658/661) and either fills the main render buffer with a
     /// checkerboard pattern + tiled blit (ordinals 674/667), or clears it to black (ordinals
-    /// 665/667), depending on DAT_005633a8 (an unrecovered global â€” TODO(REVERSE) exact meaning).
+    /// 665/667), depending on <see cref="s_DebugModeLatch_005633a8"/> â€” le damier est la branche de
+    /// mise au point (verrou à 0), l'effacement en noir la branche normale (verrou à 1, sa valeur
+    /// au chargement).
     /// </summary>
     private static void InitViewportSurfaces()
     {
@@ -5179,7 +5181,7 @@ public static unsafe partial class Blaze
         byte* mainMem = GetMainMemPtr();
         if (mainMem == null) return; // TODO(REVERSE): winsys3d.dll's MainMem not yet resolvable in this environment
 
-        if (s_UnknownModeFlag_005633a8 == 0)
+        if (s_DebugModeLatch_005633a8 == 0)
         {
             // Ghidra: two runs of `*(undefined4*)(mainMem + 4 + off) = 0x80008000;` â€” a checkerboard fill.
             for (int off = 0x1c3ffc - 4; off >= 0x1c1ffc; off -= 4)
@@ -5247,9 +5249,31 @@ public static unsafe partial class Blaze
     private static readonly byte* s_DrawEnv1_005e98f0 = s_EnvBlock_005e9880 + 0x70;
     private static readonly byte* s_DispEnv1_005e994c = s_EnvBlock_005e9880 + 0xCC;
 
-    // Ghidra: DAT_005633a8 â€” read pervasively as a mode flag (movie-intro skip / safe-mode?);
-    // TODO(REVERSE): exact meaning not confirmed, no assignment site reached yet from RunMainLoop.
-    private static int s_UnknownModeFlag_005633a8;
+    // Ghidra: DAT_005633a8 â€” **le verrou du mode de mise au point**, résolu le 2026-08-17.
+    //
+    // Valeur au chargement relevée dans le binaire (`at Legacy/Blaze.exe 0x005633a8`, .data) : **1**.
+    // Largeur confirmée par le code machine : `0x00536218  39 1D A8 33 56 00  CMP dword [0x5633a8],EBX`
+    // â€” un dword, donc bien un `int`.
+    //
+    // Le seul écrivain de tout le binaire est <see cref="CheatCodeProbe"/> (FUN_0051c0e0), qui le
+    // met à **0** une fois la séquence "Gurkha" entièrement filée. Les trois lecteurs testent
+    // tous `== 0`, et chacun active alors un comportement de développeur :
+    // <list type="bullet">
+    // <item><see cref="InitViewportSurfaces"/> : damier de mise au point dans le tampon de rendu
+    // au lieu d'un effacement en noir ;</item>
+    // <item>le pilotage libre de la caméra (voir <c>StepSubState7Phase</c>) ;</item>
+    // <item><see cref="RunGameState1Entry"/> : bascule vers <see cref="RunDebugPartySelect"/>
+    // (FUN_00536270), l'écran de composition de groupe de mise au point, au lieu du chemin
+    // normal FUN_00536ea0.</item>
+    // </list>
+    // Donc 0 = mise au point active, 1 = jeu normal. Initialisé à 1 comme dans .data : les trois
+    // lecteurs prenaient jusqu'ici la branche « développeur » par le seul effet du zéro par défaut
+    // de C#.
+    //
+    // **Fusionné avec l'ancien `s_Unknown_005633a8`**, qui déclarait la même adresse une seconde
+    // fois (celui-là recevait l'écriture de CheatCodeProbe, celui-ci portait les lectures : la
+    // même classe de défaut d'aliasing que les six champs corrigés le 2026-08-16).
+    private static int s_DebugModeLatch_005633a8 = 1;
 
     // Ghidra: DAT_005631f8 â€” the game's **data root** on the CD. Recovered from Legacy/Blaze.exe at
     // VA 0x005631f8: the bytes are "@:\FRENCH\", NOT the bare drive root this was previously assumed
@@ -6249,19 +6273,32 @@ public static unsafe partial class Blaze
         // Ghidra: if (DAT_00571a3c != 0) draw the "Veuillez connecter la manette !" banner.
         if (s_Unknown_00571a3c != 0)
         {
-            // Ghidra: DAT_00566c28 @ 0x00566c28 â€” confirmed via the `at` PE-inspector verb against
-            // Legacy/Blaze.exe (.data, not a code-only-decompile gap): dword0 packs an 8x8 glyph
-            // cell (origin Y=0x30, cell 8x8), dword1=0x02300000 is the atlas attributes/texture-page
-            // word DrawTextRun forwards into DrawSpriteVariant.
-            uint* bannerAtlas = stackalloc uint[2] { 0x40803000, 0x02300000 };
             int* bannerCursor = stackalloc int[3];
-            bannerCursor[0] = (int)(nint)bannerAtlas;
+            bannerCursor[0] = (int)(nint)s_GlyphAtlas_00566c28;
             bannerCursor[1] = 0x01000000;
             bannerCursor[2] = 0x00640010;
 
             *primCursor = DrawTextRun(*otBase, *primCursor, bannerCursor,
                 s_ControllerBannerText_00568510, 0, 0, -1);
         }
+    }
+
+    // Ghidra: &DAT_00566c28 â€” confirmed via the `at` PE-inspector verb against Legacy/Blaze.exe
+    // (.data, not a code-only-decompile gap): dword0 packs an 8x8 glyph cell (origin Y=0x30, cell
+    // 8x8), dword1=0x02300000 is the atlas attributes/texture-page word DrawTextRun forwards into
+    // DrawSpriteVariant.
+    //
+    // Promu en global 2026-08-17 : c'est l'atlas de texte partagé du jeu, pas une donnée propre à
+    // la bannière manette — RunDebugPartySelect s'en sert pour ses dix appels à DrawTextRun, et il
+    // le réécrit dans son bloc de dessin exactement comme l'original recopie l'adresse.
+    private static readonly uint* s_GlyphAtlas_00566c28 = AllocGlyphAtlas(0x40803000, 0x02300000);
+
+    private static uint* AllocGlyphAtlas(uint packing, uint attributes)
+    {
+        uint* p = (uint*)NativeMemory.Alloc(8);
+        p[0] = packing;
+        p[1] = attributes;
+        return p;
     }
 
     /// <summary>Ghidra: FUN_00529a80 @ 0x00529a80 â€” screen/viewport setup for the menu state.</summary>
@@ -7562,7 +7599,7 @@ public static unsafe partial class Blaze
             confirmRow[0x20] = 0x10;
             *(uint*)(confirmRow + 0x14) = 0xb;
 
-            SetClassHighlightColour(scratch);
+            SetClassBaseHpMp(scratch);
         }
 
         // Ghidra: `if (DAT_00562a4c != 0) goto LAB_0050a5e0` — pendant le fondu d'entrée, aucune
@@ -7575,10 +7612,20 @@ public static unsafe partial class Blaze
         return RenderStatRows(otBase, primCursor);
     }
 
-    /// <summary>Bascule DAT_00573338+0x148/0x14a selon la classe. Répété quatre fois dans
-    /// l'original (entrée du sous-état, et trois points de retour à la phase 0x3e) ; extrait ici
-    /// comme dans les autres sous-états.</summary>
-    private static void SetClassHighlightColour(byte* scratch)
+    /// <summary>Pose les <b>points de vie et de magie de départ</b> de la classe dans
+    /// <c>+0x148</c> / <c>+0x14a</c>. Répété quatre fois dans l'original (entrée du sous-état, et
+    /// trois points de retour à la phase 0x3e) ; extrait ici comme dans les autres sous-états.
+    ///
+    /// <para>Renommé le 2026-08-17 (il s'appelait <c>SetClassHighlightColour</c>, un rôle
+    /// simplement supposé). Trois recoupements le fixent :
+    /// <see cref="FinalizeCharacterStats"/> recopie <c>+0x148</c>/<c>+0x14a</c> dans
+    /// <c>+0x14c</c>/<c>+0x14e</c> â€” la paire courant/maximum classique ; l'accumulateur qui
+    /// prépare ces valeurs les calcule en <c>(stat + stat) / 2 + base</c>, la formule usuelle
+    /// PV/PM ; et <see cref="RunDebugPartySelect"/> écrase les quatre champs par 9000/9000/200/200,
+    /// ce qui n'a de sens que pour des PV et des PM. Les valeurs par classe sont d'ailleurs
+    /// cohérentes : 16 PV / 2 PM pour le Guerrier et le Nain, 14/8 pour le Prêtre, le Sorcier et
+    /// la Fée, 15/4 pour le Voleur, le Chasseur et l'Elfe.</para></summary>
+    private static void SetClassBaseHpMp(byte* scratch)
     {
         switch (scratch[0x150] & 7)
         {
@@ -7692,7 +7739,7 @@ public static unsafe partial class Blaze
                     else
                     {
                         state[2] = 0x3e;
-                        SetClassHighlightColour(scratch);
+                        SetClassBaseHpMp(scratch);
                     }
                     break;
                 }
@@ -7746,7 +7793,7 @@ public static unsafe partial class Blaze
                         s_Unknown_00560fef &= 0xfb;
                         PlayUiSound39();
                         state[2] = 0x3e;
-                        SetClassHighlightColour(scratch);
+                        SetClassBaseHpMp(scratch);
                     }
                     break;
                 }
@@ -10318,7 +10365,7 @@ public static unsafe partial class Blaze
         // Ghidra: le pilotage libre, actif tant que DAT_005633a8 vaut 0. Le bit 1 du premier mot
         // choisit la cible : couleur de fond au pas de 8 (bornée à 8 bits), sinon rotation de la
         // scène au pas de 0x40 (bornée au tour complet de 0x1000).
-        if (s_UnknownModeFlag_005633a8 == 0)
+        if (s_DebugModeLatch_005633a8 == 0)
         {
             ushort buttons = padWords[0];
             if ((buttons & 1) == 0)
@@ -10895,6 +10942,83 @@ public static unsafe partial class Blaze
         return block;
     }
 
+    // Ghidra: &DAT_0056b558 et &DAT_0056be20 — **deux** instances du même type, contiguës
+    // (0x56b558 + 0x8c8 = 0x56be20), celles de l'écran de chargement de sauvegarde
+    // (<c>FUN_00536ea0</c>, l'état de jeu 1 normal). Sa boucle de rendu les parcourt exactement
+    // ainsi : <c>do { RunTextEngine; DrawUiPanel; p += 0x8c8; } while (p &lt; 0x56c6e8)</c>, et
+    // 0x56c6e8 est bien 0x56b558 + 2 * 0x8c8 — ce qui borne le tableau à deux entrées.
+    //
+    // Relevées dans Legacy/Blaze.exe : mêmes 26 dwords initialisés que les autres instances, queue
+    // nulle. Allouées bas et paresseusement pour la même raison que s_UiDescriptors_00560ff0 : elles
+    // traversent RunTextEngine puis DrawUiPanel, donc portent une ordering table à +0xa4.
+    private const int LoadScreenDescriptorCount = 2;
+    private static byte* s_LoadScreenDescriptorsStorage;
+    private static byte* s_LoadScreenDescriptors_0056b558
+        => s_LoadScreenDescriptorsStorage != null
+            ? s_LoadScreenDescriptorsStorage
+            : (s_LoadScreenDescriptorsStorage = BuildLoadScreenDescriptors());
+
+    private static byte* BuildLoadScreenDescriptors()
+    {
+        byte* block = AllocLowZeroed((uint)(LoadScreenDescriptorCount * UiDescriptorStride));
+
+        ReadOnlySpan<uint> headers = new uint[]
+        {
+            // 0x0056b558
+            0x00000031, 0x00a80028, 0x002800e0, 0x00000000,
+            0x021a0000, 0x0000000c, 0x010f0808, 0x02cf1020,
+            0x01070c10, 0x01000000, 0x00000000, 0x01000000,
+            0x000f28d4, 0x01000000, 0x000f0c00, 0x01000000,
+            0x010f0000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000,
+            // 0x0056be20
+            0x00000031, 0x00100028, 0x009000e0, 0x00000000,
+            0x081a0000, 0x00000004, 0x010f0808, 0x02cf1020,
+            0x01071018, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000, 0x00000000, 0x01000000,
+            0x010f0000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000, 0x00000000, 0x01000000,
+            0x00000000, 0x01000000,
+        };
+
+        for (int i = 0; i < LoadScreenDescriptorCount; i++)
+        {
+            uint* dest = (uint*)(block + i * UiDescriptorStride);
+            for (int f = 0; f < 26; f++) dest[f] = headers[i * 26 + f];
+        }
+
+        return block;
+    }
+
+    private static byte* s_LoadScreenDescriptor2_0056be20 => s_LoadScreenDescriptors_0056b558 + UiDescriptorStride;
+
+    // **Huit champs de ces deux descripteurs, jusqu'ici déclarés comme des octets isolés** —
+    // la même classe de défaut d'aliasing que les six corrigés le 2026-08-16, trouvée le
+    // 2026-08-17 en lisant FUN_00536ea0. Les adresses le disent d'elles-mêmes une fois la taille du
+    // descripteur (0x8c8) posée, et la symétrie est parfaite : quatre champs par descripteur, aux
+    // mêmes décalages que ceux déjà nommés sur les autres instances
+    // (<see cref="s_Unknown_00560763"/> = +0x3b, <see cref="s_MenuSelection_0056e61c"/> = +0x8c4,
+    // <see cref="s_Unknown_0056e61f"/> = +0x8c7).
+    //
+    //   0x56b593 = descripteur 1 + 0x3b     0x56be5b = descripteur 2 + 0x3b
+    //   0x56be1c = descripteur 1 + 0x8c4    0x56c6e4 = descripteur 2 + 0x8c4
+    //   0x56be1d = descripteur 1 + 0x8c5    0x56c6e5 = descripteur 2 + 0x8c5
+    //   0x56be1f = descripteur 1 + 0x8c7    0x56c6e7 = descripteur 2 + 0x8c7
+    //
+    // Séparés, les huit ne recevaient jamais les écritures réelles de DrawUiPanel/RunTextEngine, et
+    // les remises à zéro de RunGameState1Entry tombaient dans le vide (les huit avertissements
+    // CS0414 « assigné mais jamais utilisé » qu'ils produisaient en étaient le symptôme visible).
+    private static ref byte s_Unknown_0056b593 => ref s_LoadScreenDescriptors_0056b558[0x3b];
+    private static ref byte s_Unknown_0056b58b => ref s_LoadScreenDescriptors_0056b558[0x33];
+    private static ref byte s_Unknown_0056be1c => ref s_LoadScreenDescriptors_0056b558[0x8c4];
+    private static ref byte s_Unknown_0056be1d => ref s_LoadScreenDescriptors_0056b558[0x8c5];
+    private static ref byte s_Unknown_0056be1f => ref s_LoadScreenDescriptors_0056b558[0x8c7];
+    private static ref byte s_Unknown_0056be5b => ref s_LoadScreenDescriptor2_0056be20[0x3b];
+    private static ref byte s_Unknown_0056c6e4 => ref s_LoadScreenDescriptor2_0056be20[0x8c4];
+    private static ref byte s_Unknown_0056c6e5 => ref s_LoadScreenDescriptor2_0056be20[0x8c5];
+    private static ref byte s_Unknown_0056c6e7 => ref s_LoadScreenDescriptor2_0056be20[0x8c7];
+
     // Ghidra: &DAT_00562a98 — quatre octets par sous-état, relevés au décalage fichier 0x161098.
     // Seul le troisième varie (0x02 pour les sous-états 0 à 4, 0x03 pour 5 à 7).
     private static readonly byte* s_SelectSubStateBytes_00562a98 = BuildSelectSubStateBytes();
@@ -11049,10 +11173,16 @@ public static unsafe partial class Blaze
     private static ref byte s_Unknown_005e909f => ref s_PanelSelection_005e9060[0x3f];
 
     /// <summary>
-    /// Ghidra: FUN_005352e0 @ 0x005352e0 — la recopie par dwords que le sous-état 0 utilise pour
-    /// figer l'emplacement choisi. TODO(REVERSE): le corps de FUN_005352e0 n'est pas lu ; il est
-    /// pris ici pour un `memcpy` de `count` dwords parce que les deux sites d'appel du sous-état 0
-    /// passent 0x27 (= 0x9c octets, l'emplacement entier) et 10. À confirmer avant de s'y fier.
+    /// Ghidra: FUN_005352e0 @ 0x005352e0 — recopie de <c>count</c> **dwords** de
+    /// <c>source</c> vers <c>destination</c>.
+    ///
+    /// <para>**Confirmé** le 2026-08-17 sur le désassemblage complet
+    /// (<c>Legacy/Raw/Blaze/FUN_005352e0.asm</c>, 32 octets en tout) : sortie immédiate si le
+    /// compteur est nul, puis une boucle <c>MOV ESI,[EAX] / ADD EAX,4 / MOV [ECX],ESI /
+    /// ADD ECX,4 / DEC EDX / JNZ</c>. C'était jusqu'ici une hypothèse déduite des deux sites
+    /// d'appel du sous-état 0 (0x27 = 0x9c octets, et 10) ; l'ordre des arguments
+    /// (source, destination, nombre) est lui aussi confirmé par les <c>[ESP+4]</c>/<c>[ESP+8]</c>/
+    /// <c>[ESP+0xc]</c>.</para>
     /// </summary>
     private static void CopyDwords(uint* source, uint* destination, int count)
     {
@@ -11792,16 +11922,19 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void CheatCodeProbe(byte ch)
     {
-        // TODO(REVERSE): DAT_00564a40 is the expected sequence and DAT_005633a8 the latch it
-        // clears. Both live in initialised .data; recovering them only changes whether a cheat
-        // can be entered, never whether text draws, so the matcher is kept structurally faithful
-        // with an empty sequence â€” which simply never matches.
-        if (s_CheatSequence_00564a40.Length == 0 ||
-            s_CheatSequence_00564a40[s_CheatIndex_005de164] == 0)
+        // 2026-08-17 : les deux inconnues de cette fonction sont résolues â€” la séquence est
+        // "Gurkha" (voir s_CheatSequence_00564a40) et le verrou est
+        // <see cref="s_DebugModeLatch_005633a8"/>, dont la valeur .data au chargement est 1.
+        //
+        // **Pas de `return` dans cette première branche** : l'original enchaîne sur la comparaison
+        // qui suit (Blaze.c 66791-66799 â€” le `if` n'a pas de `return`), si bien qu'après avoir
+        // atteint le terminateur il recompare immédiatement le caractère courant à la première
+        // lettre. Le `return` que cette reconstruction avait ajouté empêchait toute reprise du
+        // filage sur le caractère qui déclenche la remise à zéro.
+        if (s_CheatSequence_00564a40[s_CheatIndex_005de164] == 0)
         {
-            s_Unknown_005633a8 = 0;
+            s_DebugModeLatch_005633a8 = 0;
             s_CheatIndex_005de164 = 0;
-            return;
         }
 
         if (ch == s_CheatSequence_00564a40[s_CheatIndex_005de164])
@@ -11813,9 +11946,15 @@ public static unsafe partial class Blaze
         s_CheatIndex_005de164 = 0;
     }
 
-    private static readonly byte[] s_CheatSequence_00564a40 = [0];  // TODO(REVERSE): .data content
+    // Ghidra: &DAT_00564a40 â€” relevé dans le binaire (`at Legacy/Blaze.exe 0x00564a40`, .data,
+    // décalage fichier 0x163040) : les octets sont `47 75 72 6b 68 61 00 00`, soit **"Gurkha"**.
+    // Il est logé juste après les trois étiquettes de mise au point "DPT"/"LOC"/"ANG" (0x564a20),
+    // ce qui conforte la lecture. La séquence n'est PAS comparée à une saisie clavier/manette :
+    // CheatCodeProbe est appelée sur chaque caractère que DrawTextRun **dessine**, donc le code
+    // s'arme quand le jeu affiche ce texte quelque part â€” typiquement un personnage nommé
+    // « Gurkha » sur l'écran de saisie du nom.
+    private static readonly byte[] s_CheatSequence_00564a40 = "Gurkha\0"u8.ToArray();
     private static int s_CheatIndex_005de164;   // Ghidra: DAT_005de164
-    private static int s_Unknown_005633a8;      // Ghidra: DAT_005633a8
 
     /// <summary>
     /// Ghidra: FUN_00543980 @ 0x00543980 â€” enqueues the finished line's staging bank as a VRAM
@@ -15885,7 +16024,12 @@ public static unsafe partial class Blaze
         // which is what settled it.
         int slotIndex = s_PlayerSlots_005e9188[
             s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
-        PollDebugHotkeys(s_InputStateBase_00604a20 + slotIndex * 4);
+        // Pas â€‹**0x10**, pas 4 : `Legacy/Raw/Blaze/FUN_0052a280.asm` 0x0052a34c montre
+        // `SHL ECX,0x4` puis `ADD ECX,0x604a20`. Même piège que celui documenté sur
+        // <see cref="CurrentPadState"/> â€” la pseudo-C écrit `&DAT_00604a20 + n * 4` parce que le
+        // symbole est typé `undefined4`, ce qui vaut n*0x10 en octets. Corrigé 2026-08-17 ; le
+        // décalage n'était juste que pour l'emplacement 0.
+        PollDebugHotkeys(s_InputStateBase_00604a20 + slotIndex * 0x10);
 
         PollJoystickState();
         UpdateButtonEdges();
@@ -16114,12 +16258,23 @@ public static unsafe partial class Blaze
         // s_SlotArea_005e9180+0x248 and s_PlayerSlots_005e9188.
         int slotIndex = s_PlayerSlots_005e9188[
             s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
-        bool slotJoined = (s_InputStateBase_00604a20[slotIndex * 4] & 1) != 0;
+        // Pas 4 : `0x0053623f  C1 E0 04  SHL EAX,0x4` puis
+        // `0x00536242  F6 80 20 4A 60 00 01  TEST byte [EAX + 0x604a20],0x1` â€” octets lus
+        // directement dans Legacy/Blaze.exe. Même correction que dans PollInputAndAudio.
+        bool slotJoined = (s_InputStateBase_00604a20[slotIndex * 0x10] & 1) != 0;
 
-        if (s_UnknownModeFlag_005633a8 == 0 && slotJoined)
+        // ECHAFAUDAGE : OPENFORESIA_FORCE_DEBUG_PARTY=1 force le chemin A. Les deux conditions
+        // réelles sont difficiles à réunir depuis playtest.ps1 : il faut que le moteur de texte ait
+        // déjà dessiné "Gurkha" quelque part (donc un personnage portant ce nom) **et** que SELECT
+        // soit maintenu à l'entrée de l'état de jeu 1 — or SELECT n'est pas lié au clavier. Sans ce
+        // raccourci, RunDebugPartySelect n'a aucun moyen d'être exercée. Voir test-protocol.md.
+        bool forceDebugParty =
+            Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_DEBUG_PARTY") == "1";
+
+        if (forceDebugParty || (s_DebugModeLatch_005633a8 == 0 && slotJoined))
         {
-            throw new NotImplementedException(
-                "thunk_FUN_00536180: FUN_00536270 (game state 1, path A) not yet reconstructed");
+            RunDebugPartySelect();     // Ghidra: FUN_00536270
+            return;
         }
 
         throw new NotImplementedException(
@@ -16128,8 +16283,488 @@ public static unsafe partial class Blaze
 
     private static int s_Unknown_005de7e8, s_Unknown_005de7ec, s_Unknown_005de7f0, s_Unknown_005de7f4,
                         s_Unknown_005de7f8, s_Unknown_005de7fc, s_Unknown_0056c778, s_Unknown_005de800;
-    private static byte s_Unknown_0056be1c, s_Unknown_0056be1f, s_Unknown_0056be1d, s_Unknown_0056b593,
-                         s_Unknown_0056c6e4, s_Unknown_0056c6e7, s_Unknown_0056c6e5, s_Unknown_0056be5b;
+    // Les huit octets que ce bloc remet à zéro ne sont PAS des globales isolées : ce sont quatre
+    // champs de chacun des deux descripteurs de l'écran de chargement — voir
+    // s_LoadScreenDescriptors_0056b558 pour la démonstration par les adresses.
+
+    // =====================================================================
+    // Écran de composition de groupe de mise au point (Ghidra: FUN_00536270)
+    //
+    // Chemin A de l'état de jeu 1, atteint uniquement quand
+    // <see cref="s_DebugModeLatch_005633a8"/> vaut 0, c'est-à-dire après que le moteur de texte a
+    // dessiné la séquence "Gurkha" (voir <see cref="CheatCodeProbe"/>). Ce n'est pas l'écran de
+    // création de personnage du jeu vendu : c'est un outil de développeur qui compose un groupe de
+    // quatre personnages en deux clics, avec 9000 PV et 200 PM chacun, et qui affiche
+    // « BUFFER OVER » en boucle si le chargement des ressources déborde.
+    //
+    // Toutes les données ci-dessous sont relevées directement dans `.data` de Legacy/Blaze.exe
+    // (`OpenForesia.Tools -- at`), pas devinées.
+    // =====================================================================
+
+    /// <summary>Copie Latin-1 **sans** ajouter de terminateur, pour reproduire un bloc `.data` dont
+    /// le remplissage et les octets nuls comptent (contrairement à <see cref="ToAnsiZ"/>).</summary>
+    private static byte* ToAnsiBlock(string s)
+    {
+        byte* p = (byte*)NativeMemory.Alloc((nuint)s.Length);
+        for (int i = 0; i < s.Length; i++) p[i] = (byte)s[i];
+        return p;
+    }
+
+    // Ghidra: 0x0056c894..0x0056c8d3 — les huit noms de classe, 64 octets contigus dans .data
+    // (décalage fichier 0x16b094). Reproduits comme un seul bloc plutôt que huit chaînes
+    // indépendantes : le remplissage variable (« Elf » n'occupe que 4 octets, « Sorcerer » 12) fait
+    // partie de la disposition d'origine, et PTR_s_Fighter_0056c7c0 est un vrai tableau de
+    // pointeurs dedans.
+    private static readonly byte* s_ClassNameBlock_0056c894 = ToAnsiBlock(
+        "Fairy\0\0\0" + "Dwarf\0\0\0" + "Elf\0" + "Hunter\0\0" +
+        "Sorcerer\0\0\0\0" + "Rogue\0\0\0" + "Priest\0\0" + "Fighter\0");
+
+    // Ghidra: &PTR_s_Fighter_0056c7c0 — huit pointeurs vers le bloc ci-dessus, dans l'ordre des
+    // identifiants de classe (les trois bits bas de l'octet d'identité +0x150).
+    private static readonly int[] s_ClassNameOffsets_0056c7c0 =
+        [0x38, 0x30, 0x28, 0x1c, 0x14, 0x10, 0x08, 0x00];
+
+    /// <summary>Ghidra: <c>(&amp;PTR_s_Fighter_0056c7c0)[classe]</c>.</summary>
+    private static byte* ClassName_0056c7c0(int classIndex)
+        => s_ClassNameBlock_0056c894 + s_ClassNameOffsets_0056c7c0[classIndex];
+
+    // Ghidra: 0x0056c8d4..0x0056c96b — 152 octets contigus : seize noms de personnage par défaut de
+    // huit octets chacun (index décroissant : 0x56c8d4 = identité 15), puis « BUFFER OVER »,
+    // « FEMALE » et « MALE ». Reproduits d'un bloc parce que la copie de nom lit **seize** octets
+    // dans des enregistrements de **huit** (voir DebugPartyName_0056c780) : le débordement doit
+    // tomber sur les mêmes octets que dans le binaire.
+    //
+    // L'identité 9 est « Süßi » (Latin-1 : 53 FC DF 69) — les noms sont allemands, ce qui
+    // colle avec le studio T&E Soft / l'édition européenne.
+    private static readonly byte* s_DebugNameBlock_0056c8d4 = ToAnsiBlock(
+        "Dina\0\0\0\0" + "Dora\0\0\0\0" + "Erna\0\0\0\0" + "Tussi\0\0\0" +
+        "Nicola\0\0" + "Mimi\0\0\0\0" + "Süßi\0\0\0\0" + "Bella\0\0\0" +
+        "Tommi\0\0\0" + "Matze\0\0\0" + "Egon\0\0\0\0" + "Willi\0\0\0" +
+        "Werner\0\0" + "Hugo\0\0\0\0" + "Hansi\0\0\0" + "Elo\0" +
+        "BUFFER OVER\0" + "FEMALE\0" + "\0" + "MALE\0" + "\0\0\0");
+
+    // Ghidra: &PTR_DAT_0056c780 — seize pointeurs vers les noms ci-dessus. Un index hors de 0..15
+    // lèverait ici, là où l'original lirait silencieusement à côté ; tous les écrivains connus de
+    // l'octet d'identité le plafonnent à 15 (`(genre << 3) | classe`).
+    private static readonly int[] s_DebugPartyNameOffsets_0056c780 =
+        [0x78, 0x70, 0x68, 0x60, 0x58, 0x50, 0x48, 0x40,
+         0x38, 0x30, 0x28, 0x20, 0x18, 0x10, 0x08, 0x00];
+
+    /// <summary>Ghidra: <c>(&amp;PTR_DAT_0056c780)[identité]</c>.</summary>
+    private static byte* DebugPartyName_0056c780(int identity)
+        => s_DebugNameBlock_0056c8d4 + s_DebugPartyNameOffsets_0056c780[identity];
+
+    private static byte* s_FemaleLabel_0056c95c => s_DebugNameBlock_0056c8d4 + 0x88;
+    private static byte* s_MaleLabel_0056c964 => s_DebugNameBlock_0056c8d4 + 0x90;
+    private static byte* s_BufferOverLabel_0056c950 => s_DebugNameBlock_0056c8d4 + 0x7c;
+
+    // Ghidra: 0x00564a2c — quatre octets `3E 00 00 00`, soit la chaîne « > » : le curseur de
+    // sélection de cet écran. Un simple caractère, pas un glyphe dédié.
+    private static readonly byte* s_CursorGlyph_00564a2c = ToAnsiZ(">");
+
+    // Ghidra: &DAT_0056c7e0 — huit lignes de huit octets, une par classe. Les sept premiers octets
+    // sont les statistiques de départ (recopiées à la fois dans +0x280 et +0x2a0, la paire
+    // préparé/courant que <see cref="CommitStagedStatBlock"/> fige) ; le huitième est l'élément,
+    // qui atterrit dans +0x151.
+    private static readonly byte[] s_ClassBaseStats_0056c7e0 =
+    [
+        0x18, 0x08, 0x08, 0x10, 0x10, 0x08, 0x10, 0x00,   // 0 Fighter
+        0x08, 0x10, 0x18, 0x08, 0x08, 0x10, 0x10, 0x06,   // 1 Priest
+        0x08, 0x08, 0x08, 0x18, 0x10, 0x08, 0x18, 0x05,   // 2 Rogue
+        0x08, 0x10, 0x10, 0x08, 0x08, 0x18, 0x10, 0x04,   // 3 Sorcerer
+        0x10, 0x08, 0x08, 0x14, 0x14, 0x08, 0x10, 0x03,   // 4 Hunter
+        0x08, 0x14, 0x10, 0x08, 0x08, 0x14, 0x10, 0x01,   // 5 Elf
+        0x14, 0x08, 0x08, 0x10, 0x14, 0x08, 0x10, 0x02,   // 6 Dwarf
+        0x08, 0x14, 0x14, 0x08, 0x08, 0x10, 0x10, 0x07,   // 7 Fairy
+    ];
+
+    // Ghidra: &DAT_0056c820 / &DAT_0056c828 / &DAT_0056c830. **Contenu identique**, octet pour
+    // octet, à s_ClassStartIcon_00562ab8 / s_StatBitRemap_00562ac0 / s_StatBitTable_00562ac8, qui
+    // servent au même calcul dans FinalizeCharacterStats — le binaire porte les deux jeux de tables
+    // à deux adresses différentes. Déclarés séparément plutôt que réutilisés : la traçabilité par
+    // adresse Ghidra est ce qui permettra plus tard de dire si c'est une duplication du compilateur
+    // ou deux tables qu'un correctif ferait diverger.
+    private static readonly byte[] s_ClassStartIcon_0056c820 = [0, 1, 0, 0, 3, 0, 0, 2];
+    private static readonly byte[] s_StatBitRemap_0056c828 = [1, 2, 3, 6, 5, 4, 7, 8];
+    private static readonly ushort[] s_StatBitTable_0056c830 =
+        [1, 0x8000, 0x4000, 0x2000, 0x1000, 0x800, 0x400, 0x200, 0x100, 0, 0, 0];
+
+    // Ghidra: &DAT_0056c848 / &DAT_0056c858 — seize octets chacun, indexés par l'identité complète
+    // (genre compris, contrairement aux tables ci-dessus). Ils alimentent +0x153 et +0x152, les deux
+    // champs que le sous-état 3 de la création de personnage compose autrement (apparence /
+    // style) — voir s_ClassDefault_00562b70.
+    private static readonly byte[] s_DebugAppearanceA_0056c848 =
+        [0x08, 0x02, 0x00, 0x04, 0x0a, 0x02, 0x04, 0x06, 0x09, 0x03, 0x0f, 0x0d, 0x01, 0x03, 0x05, 0x07];
+    private static readonly byte[] s_DebugAppearanceB_0056c858 =
+        [0x0c, 0x0f, 0x09, 0x02, 0x0d, 0x0e, 0x04, 0x0f, 0x00, 0x0f, 0x0e, 0x10, 0x0b, 0x0d, 0x04, 0x0f];
+
+    // Ghidra: DAT_00566c84 / DAT_00566c88 / DAT_00566c8c / DAT_00566c90 / DAT_00566c94 — cinq
+    // champs espacés de quatre octets. Les valeurs que cette fonction leur pose (0xff, 0xff, 0xff,
+    // 1, 1) sont **exactement** leurs valeurs au chargement, relevées dans le binaire : c'est une
+    // remise à l'état initial, pas une configuration.
+    //
+    // Largeur : les trois premiers sont lus ailleurs dans Blaze.c comme des `char`
+    // (`DAT_00566c8c != DAT_005de534`, lui-même `(char)param_4`), donc `byte`.
+    // TODO(REVERSE) : 0x00566c90 et 0x00566c94 n'ont aucun autre site de lecture dans les
+    // 98 000 lignes de Blaze.c ; leur largeur réelle reste à confirmer.
+    private static byte s_Unknown_00566c84 = 0xff, s_Unknown_00566c88 = 0xff, s_Unknown_00566c8c = 0xff;
+    private static byte s_Unknown_00566c90 = 1, s_Unknown_00566c94 = 1;
+
+    // Ghidra: DAT_005de53c — recopie d'une entrée de la table d'emplacements
+    // (`DAT_005de53c = (&DAT_005e93c8)[i]`, Blaze.c 57361), relue en `uint` plus loin. Octet.
+    private static byte s_Unknown_005de53c;
+
+    /// <summary>
+    /// Ghidra: FUN_00536270 @ 0x00536270 — le <b>chemin A</b> de l'état de jeu 1 : l'écran de
+    /// composition de groupe de mise au point.
+    ///
+    /// <para>Deux moitiés bien distinctes. La première est une boucle d'image classique : une
+    /// colonne « MALE / FEMALE » et une colonne des huit classes, un curseur « &gt; » sur chacune,
+    /// et la liste du groupe déjà composé en bas. Carré ajoute le personnage courant, Croix retire
+    /// le dernier, Start valide, Select+Start abandonne vers le menu principal. Le groupe est
+    /// écrit directement dans les octets d'identité <c>MainMem+0xf0150 + n*0x2000</c>, les mêmes
+    /// que la création de personnage normale remplit.</para>
+    ///
+    /// <para>La seconde moitié initialise les <b>quatre</b> enregistrements de personnage d'un
+    /// coup (voir <see cref="InitialiseDebugPartyRecord"/>) — c'est le pendant de
+    /// <see cref="FinalizeCharacterStats"/>, en plus expéditif — puis vérifie que le chargement des
+    /// ressources n'a pas dépassé <c>MainMem+0x138000</c> avant de passer à l'état de jeu 2. En cas
+    /// de dépassement, l'original affiche « BUFFER OVER » dans une boucle infinie dont il ne sort
+    /// jamais ; transcrit tel quel.</para>
+    ///
+    /// <para>Valider avec un groupe vide n'annule pas : l'écran retombe sur un groupe par défaut
+    /// câblé en dur — Guerrier masculin, Prêtre féminin, Voleur masculin, Sorcier féminin.</para>
+    /// </summary>
+    private static void RunDebugPartySelect()
+    {
+        // Ghidra: _DAT_005e9898 = 1; _DAT_005e9908 = 1 — le champ `isbg` des deux draw envs, comme
+        // en tête de RunMainMenuFrameLoop.
+        *(s_DrawEnv0_005e9880 + 0x18) = 1;
+        *(s_DrawEnv1_005e98f0 + 0x18) = 1;
+
+        uint classIndex = 0;      // Ghidra: uVar8    — 0..7, la classe sous le curseur
+        uint gender = 0;          // Ghidra: local_18 — 0 = MALE, 1 = FEMALE
+
+        uint* otBase, otEntry, primCursor;
+        FrameBegin(&otBase, &otEntry, &primCursor);   // Ghidra: FUN_0052a1e0
+
+        int partyCount = 0;       // Ghidra: local_24
+
+        // Le groupe par défaut, posé avant même la première image : Guerrier masculin (0),
+        // Prêtre féminin (9 = 8|1), Voleur masculin (2), Sorcier féminin (0xb = 8|3).
+        byte* mainMem = GetMainMemPtr();
+        mainMem[0xf0150] = 0;
+        byte* member = mainMem + 0xf0150;    // Ghidra: local_1c — le curseur d'écriture du groupe
+        mainMem[0xf2150] = 9;
+        mainMem[0xf4150] = 2;
+        mainMem[0xf6150] = 0xb;
+
+        // Ghidra: local_14/local_10/local_c/local_a/local_8/local_6/local_4 — sept locales
+        // contiguës dont l'adresse est passée telle quelle à FUN_0051c120, FUN_00521f20 et
+        // FUN_0051f9c0. Les trois premiers dwords forment le « curseur de texte » décrit sur
+        // DrawTextRun ; les mêmes octets relus comme une primitive sprite donnent la position
+        // empaquetée (+8), les deux demi-tailles (+0xc, +0xe) et l'index de texture (+0x10).
+        // Alloué une seule fois hors boucle, comme le cadre de pile de l'original.
+        int* draw = stackalloc int[8];
+        byte* d = (byte*)draw;
+
+        bool partyFull = false;
+
+        while (true)
+        {
+            // Ghidra: l'expression d'emplacement manette habituelle, mise à l'échelle 0x10 —
+            // voir CurrentPadState.
+            byte* pad = CurrentPadState();
+            ushort pressed = *(ushort*)(pad + 2);     // fronts « vient d'être pressé »
+
+            // SELECT (0x0001) + START (0x0008) ensemble : abandon vers le menu principal. Le garde
+            // sur DAT_0056c778 (posé à -1 juste avant par RunGameState1Entry) empêche qu'une
+            // manette encore enfoncée en arrivant déclenche la sortie.
+            if (((byte)pressed & 9) == 9 && s_Unknown_0056c778 < 0)
+            {
+                s_GameStateId = 0;
+                return;
+            }
+
+            // START seul : valider le groupe.
+            if ((pressed & 8) != 0) break;
+
+            // Ghidra: *(ushort *)(&DAT_00604a24 + iVar9 + 2), soit pad+6 — le masque de répétition
+            // automatique que UpdateButtonEdges entretient, limité aux quatre directions.
+            ushort repeat = *(ushort*)(pad + 6);
+            uint before = gender * 8 | classIndex;
+
+            // DROITE recule le genre et GAUCHE l'avance — l'inverse de l'écran de création normal
+            // (voir CharacterSelectSubState7, qui lit les mêmes bits dans l'autre sens). Transcrit
+            // tel quel : c'est un écran de mise au point, personne ne l'a corrigé.
+            if ((repeat & 0x20) != 0) gender--;
+            if ((repeat & 0x80) != 0) gender++;
+            gender &= 1;
+            if ((repeat & 0x10) != 0) classIndex--;
+            if ((repeat & 0x40) != 0) classIndex++;
+            classIndex &= 7;
+            if (before != (gender * 8 | classIndex)) PlayUiSound3A();   // Ghidra: FUN_0053db60
+
+            // CARRÉ (0x8000, donc le bit 0x80 de l'octet pad+3) : ajouter le personnage courant.
+            if ((pad[3] & 0x80) != 0)
+            {
+                PlayUiSound38();                        // Ghidra: FUN_0053db80
+                if (partyCount == 4) { partyFull = true; break; }
+                *member = (byte)((gender << 3) | classIndex);
+                member += 0x2000;
+                partyCount++;
+            }
+
+            // CROIX (0x4000) : retirer le dernier.
+            if ((pad[3] & 0x40) != 0 && partyCount != 0)
+            {
+                PlayUiSound39();                        // Ghidra: FUN_0053dba0
+                member -= 0x2000;
+                partyCount--;
+            }
+
+            *(uint*)(d + 4) = 0x1000000;
+            *(short*)(d + 8) = 0x38;
+            *(short*)(d + 0xa) = 0x20;
+            *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
+            primCursor = DrawTextRun(otBase, primCursor, draw, s_MaleLabel_0056c964, 0, 0, -1);
+            *(short*)(d + 8) += 0x40;
+            primCursor = DrawTextRun(otBase, primCursor, draw, s_FemaleLabel_0056c95c, 0, 0, -1);
+
+            // Le curseur de genre : 0x2c devant MALE (x=0x38), 0x6c devant FEMALE (x=0x78).
+            *(short*)(d + 0xa) = 0x20;
+            *(short*)(d + 8) = (short)((gender << 6) + 0x2c);
+            primCursor = DrawTextRun(otBase, primCursor, draw, s_CursorGlyph_00564a2c, 0, 0, -1);
+
+            // Les huit classes, une par ligne de onze pixels.
+            *(short*)(d + 8) = 0x38;
+            *(short*)(d + 0xa) = 0x2e;
+            *(byte**)d = (byte*)s_GlyphAtlas_00566c28;    // réécrit alors qu'il n'a pas changé
+            for (int i = 0; i < 8; i++)
+            {
+                primCursor = DrawTextRun(otBase, primCursor, draw, ClassName_0056c7c0(i), 0, 0, -1);
+                *(short*)(d + 0xa) += 0xb;
+            }
+            *(short*)(d + 0xa) = (short)(classIndex * 0xb + 0x2e);
+            *(short*)(d + 8) = 0x2c;
+            primCursor = DrawTextRun(otBase, primCursor, draw, s_CursorGlyph_00564a2c, 0, 0, -1);
+
+            // Le groupe déjà composé, relu depuis les octets d'identité eux-mêmes.
+            *(short*)(d + 0xa) = 0x94;
+            if (partyCount != 0)
+            {
+                byte* entry = GetMainMemPtr() + 0xf0150;
+                for (int i = partyCount; i != 0; i--)
+                {
+                    *(short*)(d + 8) = 0x46;
+                    primCursor = DrawTextRun(otBase, primCursor, draw,
+                        ClassName_0056c7c0(*entry & 7), 0, 0, -1);
+                    *(short*)(d + 8) += 0x40;
+                    primCursor = DrawTextRun(otBase, primCursor, draw,
+                        (*entry & 8) != 0 ? s_FemaleLabel_0056c95c : s_MaleLabel_0056c964, 0, 0, -1);
+                    *(short*)(d + 0xa) += 0xb;
+                    entry += 0x2000;
+                }
+            }
+
+            // Le même bloc relu comme une primitive sprite : le fond de l'écran, pris à la première
+            // entrée de la table +0x94 du répertoire de ressources (même idiome que le carrousel).
+            *(short*)(d + 8) = 0xa0;
+            *(short*)(d + 0xa) = 0x78;
+            *(short*)(d + 0xc) = 0x1420;
+            *(short*)(d + 0xe) = 0x1149;
+            *(short*)(d + 0x10) = 0;
+            *(uint**)d = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+            *(uint*)(d + 4) = 0x1000000;
+            primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);   // FUN_00521f20
+            primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);           // FUN_0051f9c0
+
+            FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+        }
+
+        int partySize;
+        if (partyFull)
+        {
+            // Sortie « groupe déjà plein » : Ghidra pose iVar3 = 4 avant de sauter à LAB_00536694,
+            // sans repasser par le groupe par défaut.
+            partySize = 4;
+        }
+        else
+        {
+            partySize = partyCount;
+            if (partyCount == 0)
+            {
+                // Valider sans avoir rien ajouté ne renvoie pas au menu : on repose le groupe par
+                // défaut (identique à celui écrit à l'entrée) et on force la taille à 4.
+                mainMem = GetMainMemPtr();
+                mainMem[0xf0150] = 0;
+                mainMem[0xf2150] = 9;
+                mainMem[0xf4150] = 2;
+                mainMem[0xf6150] = 0xb;
+                s_PartySize_005e9020 = 4;
+                partySize = s_PartySize_005e9020;
+            }
+        }
+
+        s_PartySize_005e9020 = partySize;
+        FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+
+        byte* record = GetMainMemPtr() + 0xf0000;
+        for (int i = 0; i < 4; i++, record += 0x2000) InitialiseDebugPartyRecord(record);
+
+        RefreshPartyAbilityMask();       // Ghidra: FUN_00535710
+        LoadPartyMemberResources();      // Ghidra: FUN_00536ba0
+
+        // Le garde-fou : LoadPartyMemberResources laisse son curseur d'accumulation dans
+        // DAT_005de738, et il ne doit pas avoir dépassé MainMem+0x138000.
+        if ((int)((nint)GetMainMemPtr() - (nint)s_Unknown_005de738) + 0x138000 >= 0)
+        {
+            // Ghidra: `*puVar13 = (iVar9 <= iVar3) - 1 & 0x80010000;` — 0x80010000 pour les
+            // emplacements couverts par la taille du groupe, 0 au-delà. L'emplacement 0 est un cas
+            // à part et vaut toujours 0x80000000.
+            byte* slotFlags = s_SlotFlags_005e93c0;
+            for (int i = 0; i < 4; i++, slotFlags += 0x9c)
+            {
+                *(uint*)slotFlags = i == 0
+                    ? 0x80000000u
+                    : (partySize <= i ? 0u : 0x80010000u);
+            }
+
+            s_Unknown_00566c84 = 0xff;
+            s_Unknown_00566c88 = 0xff;
+            s_Unknown_00566c8c = 0xff;
+            s_Unknown_00566c90 = 1;
+            s_Unknown_00566c94 = 1;
+            s_Unknown_005de53c = 0;
+            s_GameStateId = 2;
+            return;
+        }
+
+        // Dépassement : l'original reste ici pour toujours, à réafficher « BUFFER OVER » image après
+        // image. Aucune sortie, aucun test — transcrit tel quel, comme la boucle d'attente de
+        // LoadResourceEntry quand le CD manque.
+        while (true)
+        {
+            *(short*)(d + 8) = 0x38;
+            *(short*)(d + 0xa) = 0x20;
+            *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
+            *(uint*)(d + 4) = 0x1000000;
+            primCursor = DrawTextRun(otBase, primCursor, draw, s_BufferOverLabel_0056c950, 0, 0, -1);
+            FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: le corps de la boucle `local_18 = 4` de FUN_00536270 — l'initialisation d'un des
+    /// quatre enregistrements de personnage de 0x2000 octets, à partir du seul octet d'identité
+    /// déjà posé en <c>+0x150</c>.
+    ///
+    /// <para>C'est le pendant « développeur » de <see cref="FinalizeCharacterStats"/> : mêmes
+    /// champs, mêmes cinq fonctions de calcul en fin de parcours, mais les statistiques viennent
+    /// d'une table par classe au lieu de la répartition de points, et les points de vie et de magie
+    /// sont écrasés par 9000 / 200.</para>
+    /// </summary>
+    private static void InitialiseDebugPartyRecord(byte* record)
+    {
+        *(uint*)record = 0;
+
+        for (int i = 0; i < 8; i++)
+        {
+            *(ushort*)(record + 0x1fc0 + i * 2) =
+                s_StatBitTable_0056c830[s_StatBitRemap_0056c828[i]];
+        }
+
+        // Le nom par défaut. Seize octets copiés depuis un enregistrement qui n'en fait que huit :
+        // le débordement est dans l'original, et il est inoffensif puisque tout affichage s'arrête
+        // au premier octet nul. s_DebugNameBlock_0056c8d4 reproduit les octets qui suivent.
+        byte* name = DebugPartyName_0056c780(record[0x150]);
+        for (int i = 0; i < 0x10; i++) record[0x100 + i] = name[i];
+
+        for (int i = 0; i < 7; i++)
+        {
+            ushort value = s_ClassBaseStats_0056c7e0[(record[0x150] & 7) * 8 + i];
+            *(ushort*)(record + 0x280 + i * 2) = value;
+            *(ushort*)(record + 0x2a0 + i * 2) = value;
+        }
+
+        byte identity = record[0x150];
+        record[0x151] = s_ClassBaseStats_0056c7e0[(identity & 7) * 8 + 7];   // l'élément
+        record[0x153] = s_DebugAppearanceA_0056c848[identity];
+        record[0x152] = s_DebugAppearanceB_0056c858[identity];
+
+        // Les PV/PM de départ de la classe, **immédiatement écrasés** par les six écritures qui
+        // suivent. Ce n'est pas une erreur de lecture : l'original appelle bien les deux, et c'est
+        // précisément cette paire (valeur par classe, puis 9000/200) qui a permis d'établir que
+        // +0x148/+0x14a sont des PV et des PM.
+        SetClassBaseHpMp(record);
+        *(ushort*)(record + 0x148) = 9000;
+        *(ushort*)(record + 0x14c) = 9000;
+        *(ushort*)(record + 0x14a) = 200;
+        *(ushort*)(record + 0x14e) = 200;
+        *(ushort*)(record + 0x144) = 1;
+        *(ushort*)(record + 0x146) = 1;
+
+        byte classIndex = (byte)(record[0x150] & 7);
+        *(uint*)(record + 0x26c) = 0;
+        *(uint*)(record + 0x140) = 0;
+        *(uint*)(record + 0x114) = (uint)(1 << (record[0x151] & 0x1f)) | 0x800;
+        record[0x2b0] = 0;
+        record[0x2b1] = 1;
+        *(short*)(record + 0x112) = (short)(1 << classIndex);
+        record[0x2b2] = (byte)(((record[0x150] & 7) == 0 || classIndex == 6) ? 2 : 0xff);
+        record[0x2b3] = 0xff;
+        record[0x2b4] = 0xff;
+        record[0x2b5] = s_ClassStartIcon_0056c820[record[0x150] & 7];
+        record[0x2b6] = 0;
+        record[0x2b7] = 0;
+        record[0x2b8] = 0;
+        record[0x2b9] = 0;
+        record[0x2ba] = 0;
+        record[0x2bb] = 0;
+        record[0x2be] = 0;
+        record[0x2bf] = 0;
+        record[0x2bd] = 0;   // 0x2bc n'est pas écrit — comme dans l'original
+
+        // Dix octets isolés, un tous les 0x280 à partir de +0x300 : intégralement recouverts par la
+        // copie de portrait juste en dessous. Mort dans l'original, conservé tel quel.
+        for (int i = 0; i < 0x1900; i += 0x280) record[0x300 + i] = 0;
+
+        // Le portrait. Contrairement à FinalizeCharacterStats, qui le prend dans une zone déjà
+        // chargée de MainMem, ce chemin va le relire depuis BLAZE.ALL via l'entrée +0xb0 du
+        // répertoire de ressources, indexée par la classe.
+        byte* scratch = GetMainMemPtr() + 0x1b0000;
+        int* entry = *(int**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0xb0) + classIndex * 4);
+        LoadResourceEntry(entry, scratch);                             // Ghidra: FUN_00529b50
+        CopyDwords((uint*)scratch, (uint*)(record + 0x300), 0x640);    // Ghidra: FUN_005352e0
+
+        // L'équipement de départ du mode de mise au point : trois emplacements à 0xff (contre 1 et
+        // trois zéros dans le jeu normal) et sept objets 0x0b, 0x16, 0x21, 0x2c, 0x37, 0x42, 0x4d —
+        // une progression régulière de 0xb, donc un objet sur onze de la table, pas un choix
+        // d'équilibrage.
+        record[0x160] = 0xff; record[0x161] = 0xff; record[0x162] = 0xff; record[0x163] = 0xff;
+        record[0x168] = 0xff; record[0x169] = 0xff; record[0x16a] = 0xff; record[0x16b] = 0xff;
+        record[0x170] = 0xff; record[0x171] = 0xff; record[0x172] = 0xff; record[0x173] = 0xff;
+        record[0x178] = 0x0b; record[0x179] = 0x16; record[0x17a] = 0x21; record[0x17b] = 0x2c;
+        record[0x17c] = 0x37; record[0x17d] = 0x42; record[0x17e] = 0x4d;
+
+        for (int i = 0; i < 0x1900; i += 0x280) record[0x313 + i] |= 0x80;
+
+        CommitStagedStatBlock(record);              // Ghidra: FUN_00538ab0
+        ScaleStatBlockByDifficulty(record + 0x100); // Ghidra: FUN_00538f50
+        ComputeDerivedStats(record);                // Ghidra: FUN_00538c50
+        ApplyEquipmentStatBonuses(record);          // Ghidra: FUN_00538e20
+        FinalizeEquipmentEffects(record + 0x100);   // Ghidra: FUN_00538fa0
+
+        NativeMemory.Clear(record + 0x2e0, 0x20);
+        record[0x2fe] = 0xff;
+
+        // Huit banques de 0x40 octets contiguës (0x1d00..0x1eff) — le compilateur a déroulé huit
+        // effacements séparés, exactement comme dans FinalizeCharacterStats.
+        for (int bank = 0; bank < 8; bank++) NativeMemory.Clear(record + 0x1d00 + bank * 0x40, 0x40);
+
+        NativeMemory.Clear(record + 0x180, 0x80);
+        *(uint*)(record + 0x158) = 0;
+    }
 
     // Ghidra: DAT_005e92b0 â€” per-game-state value read from the loaded resource file's own table
     // at offset 0x48; read again by not-yet-reconstructed code (e.g. FUN_00542160).
@@ -16229,7 +16864,14 @@ public static unsafe partial class Blaze
             recordTail[7] = charBlock[0];   // Ghidra: EDI[7] = *pcVar2  (record+4+7 = record+0xB)
 
             // ---- texture 1 : LoadResourceEntry + DecodeResourceChunk, table +0x84, pas 8 octets ----
-            int* texDir1Entry = (int*)(directoryBase + 0x84 + characterId * 8);
+            // **Un déréférencement, pas une adresse inline** : `0x00536c42 MOV ESI,[EAX+0x84]` puis
+            // `MOV EAX,[ESI + EDI*1]` (Legacy/Raw/Blaze/FUN_00536ba0.asm), et la pseudo-C dit la
+            // même chose (`*(int *)(DAT_005e97c4 + 0x84) + iVar9`). Ce portage lisait la table
+            // **à** +0x84 au lieu de suivre le pointeur qui s'y trouve ; corrigé le 2026-08-17,
+            // après que RunDebugPartySelect a rendu cette fonction atteignable pour la première
+            // fois et qu'elle a fauté ici sur-le-champ. Comparer avec le paquet de modèle plus bas,
+            // qui déréférence bien `*(int*)(directoryBase + 0x2c)`.
+            int* texDir1Entry = (int*)(*(int*)(directoryBase + 0x84) + characterId * 8);
             uint texMeta1 = (uint)texDir1Entry[1];
             byte* meta1 = stackalloc byte[4];
             meta1[0] = (byte)texMeta1;

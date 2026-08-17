@@ -39,7 +39,7 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 | `-Seconds <n>` | durée d'observation après validation (défaut 25) |
 | `-Shot` | capture la fenêtre en PNG à la fin |
 | `-Build` | reconstruit la solution d'abord |
-| `-Then A,B` | touches à jouer **une fois l'écran atteint**, dans l'ordre. Jetons : `ENTER` `ESC` `UP` `DOWN` `LEFT` `RIGHT`, et `WAIT<n>` pour patienter n secondes. Exemple : `-Then DOWN,WAIT2,ENTER` |
+| `-Then A,B` | touches à jouer **une fois l'écran atteint**, dans l'ordre. Jetons : `ENTER` `ESC` `UP` `DOWN` `LEFT` `RIGHT` `LCTRL` `START` `SELECT` `LALT`, et `WAIT<n>` pour patienter n secondes. Exemple : `-Then DOWN,WAIT2,ENTER` |
 | `-Trace A,B` | pose `OPENFORESIA_TRACE_A=1`, `OPENFORESIA_TRACE_B=1` (voir plus bas) |
 | `-KeepOpen` | laisse le jeu ouvert |
 | `-MenuDelay`, `-TapMs`, `-MaxTaps` | réglages fins, rarement utiles |
@@ -82,6 +82,7 @@ images 481 ; DrawPrimitive 116451 (+22940 sur 60 images = 382.3 par image)
 |---|---|
 | menu principal | ~110 |
 | sélection des personnages | ~382 |
+| groupe de mise au point (`RunDebugPartySelect`) | 58 à vide, +10 par membre |
 
 Un écart franc par rapport à ces valeurs est en soi une information.
 
@@ -130,6 +131,29 @@ Précédents : `Ordinal_795`, `FUN_0052a1e0`, `FUN_0052a280`.
   bidirectionnelle (`DIK_UP` = `0xc8`, scancode `0x48` étendu).
 - **`CurrentPadWord()` reste figé sur la dernière valeur non nulle après relâchement.** La valeur
   `pad=` de la trace n'est donc *pas* un indicateur de « touche tenue ».
+- **`LALT` (la croix) fait perdre le focus.** Windows ouvre le menu système de la fenêtre sur Alt, et
+  toutes les frappes suivantes de la séquence `-Then` partent ailleurs — silencieusement, le script
+  les annonce quand même. Symptôme observé : une capture qui ne montre aucun des effets attendus
+  alors que le débit de primitives, lui, en montrait pendant la mesure. **Utiliser `ESC` à la
+  place** : c'est la liaison secondaire de la même action, donc le même masque manette, sans le
+  problème.
+
+### Quel bouton pour quel jeton
+
+Établi en croisant `s_PadButtonMasks_00564f18` (l'action → masque manette) avec la section
+`[Controls]` d'`OpenForesia.cfg` (l'action → scancode). À refaire ainsi plutôt qu'à tâtonner.
+
+| jeton | action | masque manette | scancode | touche |
+|---|---|---|---|---|
+| `LCTRL` / `ENTER` | 7 | `0x8000` carré | 29 / 28 | Ctrl gauche, Entrée |
+| `ESC` / `LALT` | 6 | `0x4000` croix | 1 / 56 | **Échap**, Alt gauche |
+| `SELECT` | 8 | `0x0001` select | 59 | F1 |
+| `START` | 11 | `0x0008` start | 60 | F2 |
+| `UP`/`RIGHT`/`DOWN`/`LEFT` | 12–15 | `0x10`/`0x20`/`0x40`/`0x80` | 72/77/80/75 | flèches |
+
+Chaque action a deux liaisons clavier, la primaire dans `K00xx` et la secondaire dans `K01xx` — d'où
+les deux touches sur les deux premières lignes. **Préférer `ESC` à `LALT` pour la croix** : les deux
+donnent le même masque manette, mais Alt fait perdre le focus (voir le piège ci-dessus).
 
 D'où la seule méthode fiable : **la boucle fermée**. `OPENFORESIA_TRACE_MENU=1` fait écrire au jeu
 la position de son curseur (`+0x8C4:xx->yy`) ; le script relit le stderr redirigé pendant que le jeu
@@ -178,6 +202,43 @@ OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 15 -WorkingDir OpenForesia
 
 Puis lire le fichier écrit dans `OpenForesia/save/<nom>`.
 
+**Nettoyer `OpenForesia/save/TEST` entre deux essais.** Sinon le second run trouve une sauvegarde
+déjà là, part dans la branche « écraser ? » et se termine par un `0xC0000005` dans
+`ResetCardTransferStatus`/`Ordinal_67`. Coûté trois essais le 2026-08-17, dont deux passés à
+soupçonner à tort le code de la séance : la trace est identique d'un run à l'autre (même numéro
+d'image, même compteur de primitives), ce qui **ressemble** à un défaut déterministe du code alors
+que c'est simplement le même état de disque. Un plantage parfaitement reproductible qui n'apparaît
+qu'à partir du deuxième lancement doit faire regarder ce que le premier a laissé derrière lui.
+
+```powershell
+Remove-Item 'OpenForesia\save\TEST' -Force -ErrorAction SilentlyContinue
+```
+
+---
+
+## Atteindre l'écran de groupe de mise au point (`RunDebugPartySelect`)
+
+Cet écran est le chemin A de l'état de jeu 1. Ses deux conditions réelles sont des **états**, pas des
+frappes, donc hors de portée du pilotage clavier : il faut que le moteur de texte ait déjà dessiné le
+mot « Gurkha » quelque part (c'est le code de triche qui ouvre le mode développeur — nommer un
+personnage ainsi suffit), **et** que SELECT soit maintenu à l'entrée de l'état 1. D'où
+l'échafaudage `OPENFORESIA_FORCE_DEBUG_PARTY=1`, qui force la branche.
+
+```powershell
+Remove-Item 'OpenForesia\save\TEST' -Force -ErrorAction SilentlyContinue
+$env:OPENFORESIA_FORCE_SUBSTATE='7'; $env:OPENFORESIA_FORCE_CONFIRM_STATS='1'
+$env:OPENFORESIA_FORCE_CARD_NAME='1'; $env:OPENFORESIA_FORCE_DEBUG_PARTY='1'
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 34 -Shot -WorkingDir OpenForesia `
+    -Then WAIT14,DOWN,WAIT1,ENTER,WAIT3,START,WAIT6
+```
+
+Le `WAIT14` n'est pas négociable : la chaîne création + sauvegarde forcée occupe encore l'écran
+pendant une douzaine de secondes après la validation du menu, et une frappe qui tombe là-dedans part
+dans l'écran de sauvegarde, pas dans celui qu'on veut tester.
+
+Repères mesurés : **58** primitives par image sur l'écran à vide, environ 10 de plus par membre
+ajouté au groupe.
+
 ---
 
 ## Pièges d'outillage, hors du jeu
@@ -188,7 +249,11 @@ Puis lire le fichier écrit dans `OpenForesia/save/<nom>`.
   runtime et il faut pointer `DOTNET_ROOT` vers le vrai SDK avant de construire, puis **le retirer
   aussitôt après** : un processus **x86** qui hérite d'un `DOTNET_ROOT` x64 meurt avant d'ouvrir sa
   fenêtre, sur `Failed to load hostfxr.dll … 0x800700C1`. `playtest.ps1 -Build` fait cette
-  détection automatiquement (voir sa section « construction »).
+  détection automatiquement (voir sa section « construction »). Son repli est désormais une **liste**
+  de chemins candidats (`$fallbackCandidates`), `C:\Program Files (x86)\dotnet` en tête — y ajouter
+  un chemin plutôt que d'en coder un ailleurs. Noter aussi que le PATH d'une fenêtre PowerShell
+  n'est pas forcément celui d'une fenêtre Bash : `dotnet` peut être introuvable d'un côté et présent
+  de l'autre dans la même session de travail.
 - **`OpenForesia.Tools` suit la même règle** que `dotnet run` ci-dessus — marche directement si le
   PATH a un SDK, sinon même contournement `DOTNET_ROOT`. Palliatif de secours pour la table
   d'exports sans passer par dotnet du tout : `OpenForesia.Tools/exports.ps1`.

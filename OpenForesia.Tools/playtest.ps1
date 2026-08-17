@@ -97,12 +97,25 @@ if ($Build) {
         # DOTNET_ROOT ne vaut QUE pour la construction, et doit etre retire ensuite : le SDK connu
         # ici est x64, le jeu est x86, et un processus x86 qui herite de ce DOTNET_ROOT meurt sur
         # "Failed to load hostfxr.dll ... 0x800700C1" avant meme d'ouvrir sa fenetre.
-        $fallbackSdk = 'C:\Users\Sagara\.dotnet'
-        if (-not (Test-Path $fallbackSdk)) {
-            Write-Host "!! aucun SDK sur le PATH et le repli connu ($fallbackSdk) n'existe pas sur cette machine"
-            Write-Host '!! renseigner le chemin du SDK .NET local dans playtest.ps1'
+        # Plusieurs replis connus, essayes dans l'ordre. Le premier est le SDK x86 installe sur la
+        # machine courante : etant x86 comme le jeu, il ne pose meme pas le probleme hostfxr
+        # ci-dessus. Ajouter un chemin ici plutot que d'en coder un ailleurs.
+        $fallbackCandidates = @(
+            'C:\Program Files (x86)\dotnet',
+            'C:\Program Files\dotnet',
+            "$env:USERPROFILE\.dotnet",
+            'C:\Users\Sagara\.dotnet'
+        )
+        $fallbackSdk = $fallbackCandidates |
+            Where-Object { Test-Path (Join-Path $_ 'sdk') } |
+            Select-Object -First 1
+        if (-not $fallbackSdk) {
+            Write-Host '!! aucun SDK sur le PATH et aucun des replis connus ne porte de dossier sdk :'
+            $fallbackCandidates | ForEach-Object { Write-Host "     $_" }
+            Write-Host '!! ajouter le chemin du SDK .NET local a $fallbackCandidates dans playtest.ps1'
             return
         }
+        Write-Host "   SDK de repli : $fallbackSdk"
         $savedRoot = $env:DOTNET_ROOT
         $savedPath = $env:PATH
         try {
@@ -329,6 +342,14 @@ if ($p.HasExited) {
                         # OpenForesia.cfg K0007=29. C'est le bouton que DrawUiPanel teste pour son
                         # "curseur de confirmation" (voir REVERSE_STATUS.md, code de controle 0x0f).
                         'LCTRL' { [PlayTestInput]::Tap(0x1D, $false, 400) }
+                        # Les trois boutons restants, lus dans s_PadButtonMasks_00564f18 croisee
+                        # avec la section [Controls] d'OpenForesia.cfg : action 11 = START (masque
+                        # 0x0008) -> K000b=60 = F2 ; action 8 = SELECT (0x0001) -> K0008=59 = F1 ;
+                        # action 6 = CROIX (0x4000) -> K0006=56 = Alt gauche. Ajoutes pour piloter
+                        # RunDebugPartySelect, qui valide sur START et retire un membre sur CROIX.
+                        'START'  { [PlayTestInput]::Tap(0x3C, $false, 400) }
+                        'SELECT' { [PlayTestInput]::Tap(0x3B, $false, 400) }
+                        'LALT'   { [PlayTestInput]::Tap(0x38, $false, 400) }
                         default { Write-Host "!! jeton inconnu : $k"; continue }
                     }
                     Write-Host "   -> $k"

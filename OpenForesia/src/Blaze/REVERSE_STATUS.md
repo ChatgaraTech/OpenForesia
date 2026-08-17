@@ -3959,3 +3959,259 @@ Every dependency either function calls has now been resolved one way or another 
 newly transcribed this arc, or explicitly deferred with a plan). Next step is the two orchestrators
 themselves — 361 and 494 lines, not yet read in full by me directly (only surveyed for call targets
 via research agents earlier this arc, plus the first 140 lines of `FUN_00536270` read directly).
+
+---
+
+## 2026-08-17 — `FUN_00536270` transcrite et confirmée en jeu : c'est un écran de développeur, et la clé qui l'ouvre est le mot « Gurkha »
+
+Objectif de la séance : les deux orchestrateurs restants de l'état de jeu 1. Le premier
+(`FUN_00536270`, chemin A) est fait, vérifié à l'écran, et a entraîné cinq corrections de fond
+ailleurs dans la reconstruction. Le second (`FUN_00536ea0`, chemin B) est intégralement analysé mais
+pas encore écrit — l'analyse est consignée plus bas pour que la prochaine séance n'ait pas à la
+refaire, ainsi que le seul obstacle réel qui reste devant lui.
+
+### Ce qui décide entre les deux chemins : `DAT_005633a8`, et il valait 0 par accident
+
+`RunGameState1Entry` branche sur `DAT_005633a8 == 0 && manette_connectée`. Trois choses étaient
+fausses d'un coup, et elles se répondent :
+
+- **La valeur au chargement est 1**, relevée dans le binaire (`at Legacy/Blaze.exe 0x005633a8`,
+  `.data`). La reconstruction la laissait au zéro par défaut de C#, donc le chemin A était le chemin
+  pris — l'inverse de la réalité. Largeur confirmée par le code machine
+  (`0x00536218 39 1D A8 33 56 00 CMP dword [0x5633a8],EBX`).
+- **Le symbole était déclaré deux fois** : `s_UnknownModeFlag_005633a8` portait les trois lectures,
+  `s_Unknown_005633a8` recevait l'unique écriture. Exactement la classe de défaut d'aliasing trouvée
+  six fois le 2026-08-16. Fusionnés en `s_DebugModeLatch_005633a8`, initialisé à 1.
+- **`DAT_00564a40`, la séquence de triche, est lisible dans le binaire** : `47 75 72 6b 68 61 00`,
+  soit **« Gurkha »**, logée juste après les trois étiquettes de mise au point « DPT »/« LOC »/« ANG »
+  à 0x564a20. Elle était déclarée vide avec un `TODO(REVERSE)` disant que la retrouver ne changerait
+  rien d'observable ; c'est faux, elle ouvre un écran entier.
+
+Le mécanisme complet, une fois les trois recollés : `CheatCodeProbe` (`FUN_0051c0e0`) est appelée sur
+chaque caractère **dessiné** — par `DrawTextRun` et par `RasterizeGlyph`, donc par les deux moteurs de
+texte — et non sur une saisie. Quand le filage atteint le terminateur de « Gurkha », elle met le
+verrou à 0. Autrement dit : **faire afficher le mot « Gurkha » quelque part** (nommer un personnage
+ainsi, l'écran de saisie du nom le dessine) allume le mode développeur. Les trois lecteurs du verrou
+sont cohérents avec cette lecture — damier de mise au point dans le tampon de rendu
+(`InitViewportSurfaces`), pilotage libre de la caméra, et l'écran de composition de groupe ci-dessous.
+
+Corrigé au passage dans `CheatCodeProbe` : un `return` que la reconstruction avait ajouté dans la
+première branche et que l'original n'a pas (`Blaze.c` 66791-66799). Sans lui, après la remise à zéro
+la fonction recompare aussitôt le caractère courant à la première lettre ; avec lui, le filage ne
+pouvait jamais repartir sur ce caractère-là.
+
+### `FUN_00536270` → `RunDebugPartySelect` : composition de groupe de mise au point
+
+Deux moitiés. La première est une boucle d'image : colonne « MALE / FEMALE », colonne des huit
+classes, un curseur « > » sur chacune, la liste du groupe composé en bas. Carré ajoute, Croix retire,
+Start valide, Select+Start abandonne vers le menu principal. Le groupe s'écrit directement dans les
+octets d'identité `MainMem+0xf0150 + n*0x2000`, les mêmes que la création de personnage normale.
+
+La seconde moitié initialise les quatre enregistrements de personnage d'un coup
+(`InitialiseDebugPartyRecord`). C'est le pendant expéditif de `FinalizeCharacterStats` : mêmes
+champs, mêmes cinq fonctions de calcul en fin de parcours, mais les statistiques viennent d'une table
+par classe et **les PV/PM sont écrasés par 9000 / 200**. Puis le garde-fou de dépassement de tampon,
+et l'état de jeu 2.
+
+Trois particularités transcrites telles quelles parce qu'elles sont dans l'original :
+
+- `SetClassBaseHpMp` est appelée puis **immédiatement écrasée** par les 9000/200. Ce n'est pas une
+  erreur de lecture, et c'est précisément cette paire qui a permis de renommer la fonction (voir plus
+  bas).
+- Dix octets isolés remis à zéro à `+0x300 + i*0x280` sont intégralement recouverts par la copie de
+  portrait de la ligne suivante. Mort dans l'original.
+- La copie du nom par défaut lit **seize** octets dans des enregistrements qui n'en font que **huit**.
+  Inoffensif (tout affichage s'arrête au premier nul), mais le bloc `.data` est reproduit tel quel
+  côté C# pour que le débordement tombe sur les mêmes octets.
+
+### Les données `.data` relevées pour cet écran
+
+Toutes lues avec `OpenForesia.Tools -- at`, aucune devinée.
+
+| adresse | contenu |
+|---|---|
+| `0x0056c894`..`0x0056c8d3` | les huit noms de classe, 64 octets contigus : Fighter, Priest, Rogue, Sorcerer, Hunter, Elf, Dwarf, Fairy |
+| `0x0056c7c0` | les huit pointeurs dedans (`PTR_s_Fighter_0056c7c0`) |
+| `0x0056c8d4`..`0x0056c96b` | seize noms de personnage par défaut de 8 octets (index décroissant), puis « BUFFER OVER », « FEMALE », « MALE » |
+| `0x0056c780` | les seize pointeurs vers ces noms |
+| `0x0056c7e0` | 8 lignes de 8 octets : sept statistiques de départ + l'élément, par classe |
+| `0x0056c820`/`828`/`830` | **identiques** à `s_ClassStartIcon_00562ab8`/`s_StatBitRemap_00562ac0`/`s_StatBitTable_00562ac8` — le binaire porte les deux jeux à deux adresses |
+| `0x0056c848`/`858` | 16 octets chacun, indexés par l'identité complète (genre compris) → `+0x153` / `+0x152` |
+| `0x00564a2c` | `3E 00 00 00`, la chaîne « > » : le curseur de sélection |
+| `0x00566c84`..`0x00566c94` | les cinq champs que la fin de fonction repose à 0xff/0xff/0xff/1/1 — **exactement** leurs valeurs au chargement, donc une remise à l'état initial |
+
+Les seize noms par défaut sont allemands (Elo, Hansi, Hugo, Werner, Willi, Egon, Matze, Tommi pour
+les masculins ; Bella, Süßi, Mimi, Nicola, Tussi, Erna, Dora, Dina pour les féminins) — cohérent avec
+l'édition européenne. L'identité 9 (`53 FC DF 69`) est « Süßi » en Latin-1.
+
+### Confirmé à l'écran, les deux moitiés
+
+`playtest.ps1 -Entry 1 -Then WAIT14,DOWN,WAIT1,DOWN,WAIT1,ENTER,WAIT2,RIGHT,WAIT1,ENTER` sur
+l'échafaudage décrit plus bas : les huit classes s'affichent dans l'ordre exact de la table, le
+curseur suit les flèches, Carré ajoute bien « Rogue MALE » puis « Rogue FEMALE » à la liste du bas,
+Croix retire, et Start sort de la boucle. Débit : 58 primitives par image à vide, ~10 de plus par
+ligne de groupe. Aucune régression sur l'écran de sélection des personnages (382.3 par image, capture
+identique à la référence).
+
+Une nuance sur les directions : le pseudo-code fait bien reculer le genre sur DROITE et l'avancer sur
+GAUCHE, l'inverse de `CharacterSelectSubState7` qui lit les mêmes bits. Transcrit tel quel — et
+c'est **inobservable**, parce qu'un cycle à deux valeurs donne le même résultat dans les deux sens.
+La liste des classes, elle, a huit valeurs et va bien dans le bon sens.
+
+### `SetClassHighlightColour` → `SetClassBaseHpMp`
+
+Le nom précédent n'était qu'une supposition. Trois recoupements le fixent :
+`FinalizeCharacterStats` recopie `+0x148`/`+0x14a` dans `+0x14c`/`+0x14e` (la paire
+courant/maximum) ; l'accumulateur qui les prépare calcule `(stat + stat) / 2 + base` ; et le chemin
+de mise au point écrase les quatre par 9000/9000/200/200. Les valeurs par classe sont cohérentes :
+16 PV / 2 PM pour le Guerrier et le Nain, 14/8 pour le Prêtre, le Sorcier et la Fée, 15/4 pour le
+Voleur, le Chasseur et l'Elfe.
+
+### Deux pas de manette encore à 4 au lieu de 0x10
+
+Le piège documenté sur `CurrentPadState` (la pseudo-C écrit `&DAT_00604a20 + n * 4` parce que le
+symbole est typé `undefined4`, ce qui vaut n*0x10 en octets) subsistait à deux endroits. Les deux
+confirmés par le code machine, pas par analogie :
+
+- `PollInputAndAudio` : `Legacy/Raw/Blaze/FUN_0052a280.asm` 0x0052a34c, `SHL ECX,0x4` puis
+  `ADD ECX,0x604a20`.
+- `RunGameState1Entry` : octets lus directement, `0x0053623f C1 E0 04 SHL EAX,0x4` puis
+  `0x00536242 F6 80 20 4A 60 00 01 TEST byte [EAX + 0x604a20],0x1`.
+
+Latents jusqu'ici : le décalage n'était juste que pour l'emplacement 0, le seul exercé.
+
+### `FUN_005352e0` : hypothèse close
+
+Le `TODO(REVERSE)` sur `CopyDwords` (« pris pour un memcpy de count dwords, à confirmer ») est levé.
+`Legacy/Raw/Blaze/FUN_005352e0.asm` fait 32 octets en tout : sortie immédiate si le compteur est nul,
+puis `MOV ESI,[EAX] / ADD EAX,4 / MOV [ECX],ESI / ADD ECX,4 / DEC EDX / JNZ`. L'ordre des arguments
+(source, destination, nombre) est confirmé par les `[ESP+4]`/`[ESP+8]`/`[ESP+0xc]`.
+
+### Un vrai bug dans `LoadPartyMemberResources`, trouvé en l'exécutant pour la première fois
+
+`FUN_00536ba0` avait été transcrite le 2026-08-16 mais n'était atteignable depuis aucun site
+d'appel — la note de l'époque le disait explicitement. `RunDebugPartySelect` l'appelle, donc elle a
+tourné pour la première fois cette séance, et elle a fauté aussitôt (`0xC0000005` dans
+`DecodeResourceChunk`).
+
+Cause : **un déréférencement manquant**. La table de textures se lit `*(int*)(directoryBase + 0x84)`
+puis `+ identité * 8` ; la reconstruction lisait la table **à** `directoryBase + 0x84`. Le
+désassemblage est sans ambiguïté (`0x00536c42 MOV ESI,[EAX+0x84]` puis `MOV EAX,[ESI + EDI*1]`), et
+la pseudo-C disait déjà la même chose. Le paquet de modèle, dix lignes plus bas, déréférençait bien
+son `*(int*)(directoryBase + 0x2c)` — c'est l'incohérence entre les deux qui saute aux yeux une fois
+qu'on la cherche.
+
+Corrigé, `LoadPartyMemberResources` traverse maintenant ses quatre emplacements en entier (deux
+textures, un modèle, une animation chacun) et s'arrête sur une borne **nommée**, pas sur une faute :
+`FUN_00535500`, pas encore reconstruite.
+
+**Ce que ça dit de la méthode** : une fonction transcrite avec soin depuis l'assembleur, relue,
+documentée, et qui contenait quand même un défaut d'une ligne — invisible tant qu'elle n'était pas
+exécutée. Le fait d'ouvrir un chemin d'appel vaut autant qu'une relecture.
+
+### `FUN_00535500` — la borne suivante du chemin A, et pourquoi elle n'est pas faite
+
+Trente-cinq lignes, deux boucles imbriquées qui téléversent en VRAM des bandes de 16x1 pixels
+(`Ordinal_674`) pour 4 emplacements × 10 lignes, puis posent `DAT_005e8fa0 = 0x7c400216`. Le corps
+est simple **sauf** la disposition de pile : la pseudo-C passe `&local_c` au premier `Ordinal_674`
+alors que les quatre champs du rectangle sont écrits dans `local_8`/`local_6`/`local_4`/`local_2`
+(décalage de 4), et le second appel reçoit un `&stack0xffffffe8` que rien dans la pseudo-C ne
+remplit. Deux rectangles, un seul visible. C'est exactement le cas où le projet exige un
+désassemblage brut plutôt qu'une lecture — la recette Ghidra headless est dans `TODO.md`.
+
+### `FUN_00536ea0` (chemin B) — analyse complète, transcription à faire
+
+C'est **le chemin normal** : le verrou étant à 1, c'est lui que le jeu prend. Toutes ses dépendances
+existent déjà côté C# (vérifié une par une) sauf `FUN_00547960`, le `sprintf` du CRT, dont le format
+est maintenant connu : `DAT_005630c4` vaut `"%d"`, donc le site d'appel se transcrit en un simple
+formatage décimal, pas en moteur variadique.
+
+**Structure.** Un prologue qui énumère les sauvegardes, puis une boucle d'image avec une petite
+machine à états sur `local_38` (0 = parcours de la liste, 1 = confirmation d'abandon, 2/5 = boîte
+modale, 3 = sortie, 4 = confirmation de départ).
+
+Prologue : `PlayMusicTrack(0x25)`, `JoystickResetState`, `LoadSaveDirectory`, puis pour chaque entrée
+du répertoire — ouverture, lecture de 0x2000 octets, et composition d'une ligne d'affichage de
+**0x16 octets** à `DAT_005e8640 + n*0x16` :
+
+| plage | contenu |
+|---|---|
+| `[0x00..0x0a]` | le nom du personnage (lu à `+0x100` du fichier), complété à 11 par des espaces |
+| `[0x0b..0x0e]` | l'abréviation de classe, table `0x0056c868` de pas 5 : `Gue.` `Pre.` `Vol.` `Mag.` `Cha.` `Elf ` `Nai.` `Lut.` |
+| `[0x0f]` | `DAT_0056c890` = `'N'` (Niveau) |
+| `[0x10..0x15]` | le niveau (`+0x144` du fichier), formaté `"%d"` |
+
+Si l'ouverture échoue, la ligne reçoit `s__________00566b8c` = `"--------"` (huit tirets). S'il n'y a
+aucune sauvegarde, la fonction pose l'état de jeu 4 (sélection des personnages) et rend la main.
+
+Boucle : jusqu'à six lignes visibles, défilement par `local_34`, sélection numérotée de 1 à 4 dans
+`DAT_005e85c0` (Carré bascule, la désélection renumérote les suivantes). Les lignes non sélectionnées
+sont dessinées avec `puStack_10 = 0x404040` au lieu de `0x1000000` — Ghidra rend ça
+`&LAB_00404040 + (-(sel != 0) & 0xbfbfc0)`, ce qui est simplement la constante 0x404040 lue comme une
+étiquette, plus le complément qui la ramène à 0x1000000. Un gris pour « non retenu ».
+
+Sortie : Start avec au moins un personnage retenu → état 4 → Carré → `local_38 = 5` → `DAT_005de510 = 3`
+→ l'itération suivante prend le bloc de chargement, qui relit chaque fichier retenu, vérifie une somme
+de contrôle par octets sur 0x1ffc octets, restaure l'état du monde depuis le premier, puis appelle
+`RefreshPartyAbilityMask` / `LoadPartyMemberResources` et finit **exactement** comme le chemin A
+(mêmes drapeaux d'emplacement, même garde-fou, même boucle « BUFFER OVER »), à ceci près qu'il laisse
+l'état de jeu à **3** là où le chemin A pose **2**.
+
+### Deux descripteurs d'interface de plus, et huit champs qui étaient encore des octets isolés
+
+En lisant la boucle de rendu de `FUN_00536ea0`
+(`do { RunTextEngine; DrawUiPanel; p += 0x8c8; } while (p < 0x56c6e8)`), il devient évident que
+`DAT_0056b558` et `DAT_0056be20` sont **deux instances contiguës** du type de descripteur déjà connu
+(0x56b558 + 0x8c8 = 0x56be20, + 0x8c8 = 0x56c6e8, la borne exacte de la boucle). Leurs 26 dwords
+initialisés sont relevés dans le binaire et déclarés.
+
+Et alors huit « globales » de la liste de remise à zéro de `RunGameState1Entry` tombent en place,
+avec une symétrie parfaite de quatre champs par descripteur, aux mêmes décalages que ceux déjà
+nommés sur les autres instances (`+0x3b`, `+0x8c4`, `+0x8c5`, `+0x8c7`) :
+
+```
+0x56b593 = descripteur 1 + 0x3b      0x56be5b = descripteur 2 + 0x3b
+0x56be1c = descripteur 1 + 0x8c4     0x56c6e4 = descripteur 2 + 0x8c4
+0x56be1d = descripteur 1 + 0x8c5     0x56c6e5 = descripteur 2 + 0x8c5
+0x56be1f = descripteur 1 + 0x8c7     0x56c6e7 = descripteur 2 + 0x8c7
+```
+
+Septième à quatorzième instances du même défaut d'aliasing. Le symptôme était visible depuis le
+début sans être lu : les huit produisaient un avertissement CS0414 « assigné mais jamais utilisé ».
+Recâblés en propriétés `ref byte`, ils disparaissent.
+
+### Le vrai obstacle devant `FUN_00536ea0` : la région 0x5e9060–0x5e99c0 est découpée en morceaux
+
+Le bloc de restauration d'état du monde recopie huit banques de 0x40 octets de la sauvegarde vers
+`DAT_005e96e0`, `005e9780`, `005e9060`, `005e9840`, `005e9720`, `005e92c0`, `005e9980`, `005e9360` —
+les huit mêmes que `InitialiseDebugPartyRecord` efface à `+0x1d00..0x1eff`. Quatre d'entre elles
+tombent à l'intérieur d'allocations existantes (`s_PanelSelection_005e9060`,
+`s_SlotArea_005e9180 + 0x140 / +0x1a0 / +0x1e0`), les quatre autres dans la zone que
+`s_PartyAnimationResult_005e9680` / `s_PartyModelResult_005e9800` occupent nominalement.
+
+Dans l'original c'est **une seule région contiguë** ; ici elle est éparpillée en allocations
+indépendantes. Écrire le bloc de restauration en déclarant huit nouveaux blocs isolés reproduirait
+exactement le défaut d'aliasing corrigé quatorze fois. **La bonne étape préalable est de poser un
+seul bloc de fond pour 0x5e9060–0x5e99c0 et de réexprimer les symboles existants comme des décalages
+dedans** — comme `s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240` le fait déjà. C'est un
+remaniement mesuré, à faire avant `FUN_00536ea0` et pas pendant.
+
+### Outillage
+
+- `playtest.ps1 -Build` : le repli SDK codé en dur (`C:\Users\Sagara\.dotnet`) n'existe plus sur
+  cette machine. Remplacé par une **liste** de candidats essayés dans l'ordre, `C:\Program Files
+  (x86)\dotnet` en tête (SDK x86, donc sans le problème hostfxr habituel).
+- Trois jetons `-Then` ajoutés, lus dans `s_PadButtonMasks_00564f18` croisée avec la section
+  `[Controls]` d'`OpenForesia.cfg` : `START` (action 11, masque 0x0008, K000b=60 = F2),
+  `SELECT` (action 8, 0x0001, K0008=59 = F1), `LALT` (action 6, croix, 0x4000, K0006=56).
+- Échafaudage `OPENFORESIA_FORCE_DEBUG_PARTY=1` : les deux conditions réelles du chemin A sont
+  hors de portée du script (il faut que « Gurkha » ait été dessiné, **et** que SELECT soit maintenu à
+  l'entrée de l'état 1 — or ce sont des conditions d'état, pas de frappe ponctuelle).
+
+### Reste à faire
+
+1. Poser le bloc de fond 0x5e9060–0x5e99c0 (voir ci-dessus) — préalable à `FUN_00536ea0`.
+2. `FUN_00536ea0`, avec l'analyse ci-dessus.
+3. `FUN_00535500`, après désassemblage brut (disposition de pile ambiguë).
+4. `FUN_00537a20`, la branche `DAT_005de51c != 0` de `RunGameState1Entry`, jamais lue.
+5. L'état de jeu 2 (`FUN_00542160`/`FUN_00537da0`), où le chemin A débouche maintenant.

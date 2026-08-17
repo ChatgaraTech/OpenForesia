@@ -660,3 +660,153 @@ Twice in one session a list of "globals still to model" dissolved on subtraction
 
 Subtracting the nearest already-declared base before declaring anything new is the cheap check,
 and it is worth doing before writing "globals still to model" into a plan.
+
+## The debug party-select screen's tables (2026-08-17)
+
+Everything `FUN_00536270` (`RunDebugPartySelect`) reads out of `.data`, recovered with
+`OpenForesia.Tools -- at Legacy/Blaze.exe`. None of it is inferred.
+
+### `0x0056c894`..`0x0056c8d3` — the eight class names, 64 contiguous bytes
+
+Padding is uneven, so the block is reproduced verbatim rather than as eight independent strings:
+
+```
+0x56c894  "Fairy\0\0\0"        0x56c8a8  "Hunter\0\0"
+0x56c89c  "Dwarf\0\0\0"        0x56c8b0  "Sorcerer\0\0\0\0"
+0x56c8a4  "Elf\0"              0x56c8bc  "Rogue\0\0\0"
+                               0x56c8c4  "Priest\0\0"
+                               0x56c8cc  "Fighter\0"
+```
+
+`PTR_s_Fighter_0056c7c0` is the eight pointers into it, in class-id order (the low three bits of the
+identity byte at record `+0x150`):
+
+| class | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| name | Fighter | Priest | Rogue | Sorcerer | Hunter | Elf | Dwarf | Fairy |
+| offset from `0x56c894` | 0x38 | 0x30 | 0x28 | 0x1c | 0x14 | 0x10 | 0x08 | 0x00 |
+
+### `0x0056c8d4`..`0x0056c96b` — sixteen default character names, then three labels
+
+Sixteen 8-byte records in **descending** identity order (`0x56c8d4` is identity 15), immediately
+followed by the screen's three labels. `PTR_DAT_0056c780` holds the sixteen pointers.
+
+| identity | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| male | Elo | Hansi | Hugo | Werner | Willi | Egon | Matze | Tommi |
+
+| identity | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|
+| female | Bella | Süßi | Mimi | Nicola | Tussi | Erna | Dora | Dina |
+
+Identity 9 is `53 FC DF 69` — "Süßi" in Latin-1. The names are German throughout.
+
+The three labels, at fixed offsets from `0x56c8d4`:
+
+| offset | address | string |
+|---|---|---|
+| `+0x7c` | `0x56c950` | `"BUFFER OVER"` |
+| `+0x88` | `0x56c95c` | `"FEMALE"` |
+| `+0x90` | `0x56c964` | `"MALE"` |
+
+**The name copy reads sixteen bytes out of eight-byte records.** For identity 0 that means
+`"Elo\0"` followed by the first twelve bytes of `"BUFFER OVER\0"`. Harmless (every consumer stops at
+the first NUL) but the reason the block must be reproduced contiguously rather than string by string.
+
+### `0x0056c7e0` — eight rows of eight bytes, the per-class starting stats
+
+Bytes 0..6 go to record `+0x280` *and* `+0x2a0` (the staged/current pair); byte 7 is the element,
+and lands in `+0x151`.
+
+```
+class 0 Fighter   18 08 08 10 10 08 10 | 00
+class 1 Priest    08 10 18 08 08 10 10 | 06
+class 2 Rogue     08 08 08 18 10 08 18 | 05
+class 3 Sorcerer  08 10 10 08 08 18 10 | 04
+class 4 Hunter    10 08 08 14 14 08 10 | 03
+class 5 Elf       08 14 10 08 08 14 10 | 01
+class 6 Dwarf     14 08 08 10 14 08 10 | 02
+class 7 Fairy     08 14 14 08 08 10 10 | 07
+```
+
+### `0x0056c820` / `0x0056c828` / `0x0056c830` — duplicates of an already-known set
+
+Byte for byte identical to `s_ClassStartIcon_00562ab8` / `s_StatBitRemap_00562ac0` /
+`s_StatBitTable_00562ac8`, which serve the same computation in `FinalizeCharacterStats`. The binary
+carries both sets at two addresses. Declared separately on the C# side so the Ghidra-address
+traceability survives — if a patch ever makes them diverge, that will be visible.
+
+```
+0x56c820  00 01 00 00 03 00 00 02                         (per class)
+0x56c828  01 02 03 06 05 04 07 08                         (per class, a remap)
+0x56c830  0001 8000 4000 2000 1000 0800 0400 0200 0100 0000 0000 0000   (ushorts)
+```
+
+### `0x0056c848` / `0x0056c858` — sixteen bytes each, indexed by the full identity
+
+Gender included, unlike the tables above. They feed record `+0x153` and `+0x152` — the two fields
+character-creation sub-state 3 composes by hand.
+
+```
+0x56c848  08 02 00 04 0a 02 04 06 09 03 0f 0d 01 03 05 07   -> +0x153
+0x56c858  0c 0f 09 02 0d 0e 04 0f 00 0f 0e 10 0b 0d 04 0f   -> +0x152
+```
+
+### Small ones
+
+| address | bytes | meaning |
+|---|---|---|
+| `0x00564a2c` | `3E 00 00 00` | the string `">"` — this screen's selection cursor |
+| `0x00564a40` | `47 75 72 6b 68 61 00 00` | **`"Gurkha"`** — the cheat sequence `CheatCodeProbe` matches (see below) |
+| `0x005633a8` | `01 00 00 00` | `DAT_005633a8` at load: **1**. Width confirmed by `0x00536218 CMP dword [0x5633a8],EBX` |
+| `0x00566c84`..`0x94` | `ff`, `ff`, `ff`, `01`, `01` (4 bytes apart) | exactly what `FUN_00536270` writes back — a reset to load state, not a configuration |
+| `0x00566c28` | `00 30 80 40 / 00 00 30 02` | the shared 8x8 glyph atlas descriptor (origin Y=0x30, cell 8x8; attributes `0x02300000`) |
+| `0x0056315c` | `60 31 56 00` | a pointer to `s_SaveDeviceName_00563160` |
+| `0x00563158` | `70 31 56 00` | a pointer to `s_SaveFolderName_00563170` — what `FUN_005128e0` dereferences |
+
+`"Gurkha"` sits immediately after the three debug labels `"DPT"`/`"LOC"`/`"ANG"` at `0x00564a20`,
+which is corroborating: the whole neighbourhood is developer material.
+
+## The save-load screen's tables (2026-08-17)
+
+Read while analysing `FUN_00536ea0`; the function itself is not transcribed yet.
+
+| address | contents |
+|---|---|
+| `0x00563148` | the row sprite's 2-dword texture record: `0x10102000`, `0x003e0000`. The `0x3e` selects table entry `0x5e8f00 + 0x3e*4 = 0x5e8ff8`, which the same code writes just before drawing |
+| `0x005630c4` | `"%d"` — the format `FUN_00547960` (the CRT `sprintf`) is called with. The one call site can therefore be written as a plain decimal format, with no variadic engine |
+| `0x00566b8c` | `"--------"` (eight dashes) — the placeholder row for a save file that fails to open |
+| `0x0056c868` | the class abbreviations, stride 5: `Gue.` `Pre.` `Vol.` `Mag.` `Cha.` `Elf ` `Nai.` `Lut.` (French: Guerrier, Prêtre, Voleur, Magicien, Chasseur, Elfe, Nain, Lutin) |
+| `0x0056c890` | `'N'` — the `Niveau` prefix printed before the level number |
+
+### `0x0056b558` and `0x0056be20` — two more `0x8c8` UI descriptors
+
+Contiguous (`0x56b558 + 0x8c8 = 0x56be20`), and `FUN_00536ea0`'s render loop bounds itself at
+`0x56c6e8 = 0x56b558 + 2 * 0x8c8`, which settles the count at two. First 26 dwords initialised, tail
+zero — the same shape as `DAT_00560ff0` and `DAT_00560728`.
+
+```
+0x56b558  00000031 00a80028 002800e0 00000000  021a0000 0000000c 010f0808 02cf1020
+          01070c10 01000000 00000000 01000000  000f28d4 01000000 000f0c00 01000000
+          010f0000 01000000 00000000 01000000  00000000 01000000 00000000 01000000
+          00000000 01000000
+
+0x56be20  00000031 00100028 009000e0 00000000  081a0000 00000004 010f0808 02cf1020
+          01071018 01000000 00000000 01000000  00000000 01000000 00000000 01000000
+          010f0000 01000000 00000000 01000000  00000000 01000000 00000000 01000000
+          00000000 01000000
+```
+
+**Eight more `DAT_` clusters dissolve on subtraction** — the same check as the 2026-08-15 entry
+above, applied once the descriptor size is known:
+
+| cluster | actually |
+|---|---|
+| `DAT_0056b58b` / `DAT_0056b593` | `0x56b558 + 0x33` / `+ 0x3b` |
+| `DAT_0056be1c` / `1d` / `1f` | `0x56b558 + 0x8c4` / `+ 0x8c5` / `+ 0x8c7` |
+| `DAT_0056be5b` | `0x56be20 + 0x3b` |
+| `DAT_0056c6e4` / `e5` / `e7` | `0x56be20 + 0x8c4` / `+ 0x8c5` / `+ 0x8c7` |
+
+Four fields per descriptor, at the offsets already named on the other instances
+(`s_Unknown_00560763` = `+0x3b`, `s_MenuSelection_0056e61c` = `+0x8c4`, `s_Unknown_0056e61f` =
+`+0x8c7`). The symmetry is what makes it certain.
