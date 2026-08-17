@@ -4367,3 +4367,59 @@ huit banques. Il lui reste à récupérer un paquet de tables `.data` : `DAT_005
 icônes), `DAT_0056d270`/`272` (caméra par zone), `DAT_0056d2a0` (zone → index de menu),
 `DAT_0056d2b0` (index → zone), `DAT_0056c978` (un descripteur d'interface de plus), et le bloc de
 particules à `DAT_005de824` (32 entrées de 0x9c).
+
+### `FUN_00537da0` → `RunDestinationSelect` : l'état de jeu 2, confirmé à l'écran
+
+La carte du monde. Le chemin de mise au point y débouche directement, donc elle a pu être vérifiée
+tout de suite : le fond de carte s'affiche, le modèle 3D du groupe se tient dessus, le panneau
+annonce « L'auberge », et une pression à droite fait glisser la caméra jusqu'à « La mine
+abandonnée » en repositionnant le modèle. 231 primitives par image.
+
+Ce que la vérification prouve d'un coup : le masque de navigation, la table index de menu → zone, le
+lissage de caméra par quarts, la recherche du libellé dans la table `+0x70` du répertoire de
+ressources, et le rendu de modèle animé. Sans progression `DAT_005e901e` vaut 0, donc le masque de
+navigation vaut exactement 9 — seuls les index 0 et 3 sont atteignables, et c'est bien ce que fait
+le curseur.
+
+**Le désassemblage était nécessaire pour un point précis.** Ghidra rend l'appel au rendu de modèle
+`unaff_EBP = FUN_0051d1f0(local_40, unaff_EBP, ...)`, ce qui laisse croire à un second curseur de
+primitives qui ne reviendrait jamais dans le vrai. L'assembleur dit autre chose : les deux derniers
+`PUSH` avant le `CALL` sont `[ESP+0x30]` et `[ESP+0x24]`, soit otBase et primCursor — les deux
+emplacements sont bien distants de 0xc, ce que le cadre de pile confirme — et le
+`MOV [ESP+0x14],EAX` qui suit le `ADD ESP,0x1c` réécrit le résultat dans primCursor. Convention
+habituelle, rien de spécial ; c'est la pseudo-C qui se trompait.
+
+**Un piège de lecture que j'ai d'abord raté**, et qui aurait donné des particules figées : la boucle
+d'initialisation part de `&DAT_005de828` (base+4) et celle de mise à jour de `&DAT_005de82c`
+(base+8). Les mêmes indices `piVar11[n]` y désignent donc des champs différents, et j'avais pris le
+compteur avancé de 0x4000 par image pour une durée de vie alors que c'est le **Z** — les particules
+dérivent en profondeur et sont resemées au-delà de 0x7fffff. La couleur est en `+0x1c`, pas `+0x18`.
+Corrigé avant le premier lancement, mais c'est exactement le genre d'écart qu'un pseudo-code à deux
+bases voisines fabrique.
+
+Les deux corrections d'aspect appliquées aux icônes sont de simples divisions entières une fois le
+codage MSVC démêlé : `x = (x - 0x80) * 320 / 256 + 0x80` (que Ghidra rend avec son correctif de
+signe `+ (v >> 31 & 0xff)`) et `y = (y - 0x70) * 242 / 224 + 0x70` (rendu par une multiplication
+magique par 0x92492493). Elles ramènent une carte cadrée en 256x224 au 320x240 de l'écran — et la
+fonction rétrécit d'ailleurs les deux DISPENV à 256x224 le temps de l'envoi de chaque image avant de
+les remettre à 320x240.
+
+Tables `.data` relevées pour l'occasion : `DAT_0056d240` (12 positions d'icône empaquetées),
+`DAT_0056d270`/`272` (pose de caméra par zone), `DAT_0056d2a0`/`DAT_0056d2b0` (zone ↔ index de menu,
+**vérifiées réciproques** sur 0..9, ce qui les confirme l'une l'autre), et `DAT_0056c978` — une
+instance de plus du descripteur d'interface à 0x8c8 octets, dont `DAT_0056c97c` et `DAT_0056c980` ne
+sont pas des globales isolées mais ses champs `+4` (x du panneau) et `+8` (sa largeur) : la boucle
+les lit et les réécrit chaque image pour faire glisser le panneau du bord opposé à la caméra.
+Quinzième et seizième instances du défaut d'aliasing, évitées d'emblée cette fois.
+
+**Un sens enfin tranché** : la sortie vers la zone 0 recopie `+0x148` → `+0x14c` et `+0x14a` →
+`+0x14e` pour chaque membre du groupe. `FinalizeCharacterStats` donnait la même valeur aux deux
+paires, ce qui laissait indécidable laquelle était le maximum ; ici c'est le soin au retour en ville,
+donc **`+0x148`/`+0x14a` sont le maximum et `+0x14c`/`+0x14e` le courant**.
+
+La borne suivante est l'état de jeu 3 (`thunk_FUN_00516020`).
+
+Restent non confirmées visuellement : les icônes de destination elles-mêmes. Avec une progression
+nulle, les deux seules dessinées (index 0 et 3) ont la même entrée `0x00000000` dans la table de
+positions, donc elles se superposent au même endroit — il faudra une sauvegarde avancée, ou forcer
+`DAT_005e901e`, pour les voir séparément.

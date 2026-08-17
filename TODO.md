@@ -80,7 +80,13 @@ Sa fin est **presque identique** à celle de `RunDebugPartySelect` (mêmes drape
 garde-fou de dépassement, même boucle « BUFFER OVER ») à l'état de jeu final près — 3 au lieu de 2.
 Regarder `RunDebugPartySelect` avant d'écrire cette partie.
 
-### 2. `FUN_00537da0` — l'état de jeu 2, l'écran de choix de destination
+### ~~2. `FUN_00537da0`~~ — **fait**, confirmé à l'écran
+
+La carte du monde s'affiche, le modèle du groupe se tient dessus, et le curseur passe bien de
+« L'auberge » à « La mine abandonnée » en faisant glisser la caméra. La borne suivante sur ce chemin
+est l'**état de jeu 3** (`thunk_FUN_00516020`). Détail dans `REVERSE_STATUS.md`.
+
+<details><summary>notes de préparation, conservées</summary>
 
 `Blaze.c` 83427–83782 (356 lignes). C'est là que débouche maintenant le chemin de mise au point. Son
 autre moitié, `FUN_00542160`, existe déjà (`LoadMenuResources`), et sa seule dépendance manquante
@@ -103,10 +109,15 @@ plus — vérifier d'abord s'il n'est pas voisin d'un `0x8c8` déjà connu), `DA
 Le bloc de dessin sur pile est **le même à sept champs** que celui de `RunDebugPartySelect` et de
 `FUN_00536ea0` — s'en inspirer directement.
 
+</details>
+
 ### 3. Plus loin
 
+- **L'état de jeu 3 (`thunk_FUN_00516020`)** — la borne où s'arrête maintenant le chemin de mise au
+  point, et où `FUN_00536ea0` débouchera aussi. C'est donc le prochain candidat naturel.
 - `FUN_00537a20`, la branche `DAT_005de51c != 0` de `RunGameState1Entry`, jamais lue.
-- L'état de jeu 3 (`thunk_FUN_00516020`), où `FUN_00536ea0` débouchera.
+- Voir les icônes de destination séparément : avec une progression nulle, les deux seules dessinées
+  ont la même position dans la table. Il faut une sauvegarde avancée ou forcer `DAT_005e901e`.
 - Ramener dans l'arène les scalaires isolés de `0x5e97c0..0x5e9824` et `0x5e9960` — sans urgence,
   aucun bloc ne les recouvre.
 
