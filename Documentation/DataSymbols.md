@@ -790,7 +790,8 @@ filename-pointer table.
 
 ## The save-load screen's tables (2026-08-17)
 
-Read while analysing `FUN_00536ea0`; the function itself is not transcribed yet.
+Read while analysing `FUN_00536ea0` — the party-constitution screen, **transcribed 2026-08-18** as
+`RunPartyConstitution`. Every table below is now wired to a call site.
 
 | address | contents |
 |---|---|

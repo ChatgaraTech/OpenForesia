@@ -534,6 +534,58 @@ call address 0 the first time `Ordinal_67` ran. Fixed by transcribing the eight 
 `DAT_00604b58/5c/60/64` (read), and `FUN_00504730`/`FUN_005047e0` pass **those very handles** back
 to ordinal 9. They are not caller-allocated structures.
 
+## Ordinals 6–25 are PSY-Q `libapi`, in the library's own order — **CONFIRMED**, 2026-08-18
+
+This is the single most useful thing to know about the low-numbered ordinals: `winsys3d.dll` is a
+Win32 reimplementation of the PlayStation BIOS API that the original PS1 build linked against, and
+its ordinal numbering follows `libapi`'s own declaration order. Two contiguous runs:
+
+| Ordinal | `libapi` | RVA | Win32 realisation |
+|---|---|---|---|
+| 6 | `OpenEvent(class, spec, mode, func)` | `0x40d0` | mallocs a node, links it, state `EvStWAIT` |
+| 7 | `CloseEvent(ev)` | `0x4130` | unlinks and frees |
+| 8 | `WaitEvent(ev)` | `0x4180` | `WaitForSingleObject` on the DLL's shared event |
+| 9 | `TestEvent(ev)` | `0x41d0` | `EvStALREADY` → `EvStACTIVE`, returns 1 |
+| 10 | `EnableEvent(ev)` | `0x4220` | `EvStWAIT` → `EvStACTIVE` |
+| 11 | `DisableEvent(ev)` | `0x4250` | → `EvStWAIT` |
+| 12 | `DeliverEvent(class, spec)` | `0x4270` | dispatch: set `EvStALREADY` + `SetEvent`, **or** call the node's `func` |
+| 13 | `UndeliverEvent(class, spec)` | `0x42d0` | `ResetEvent` + `EvStALREADY` → `EvStACTIVE` |
+| 14–16 | `OpenTh` / `CloseTh` / `ChangeTh` | `0x4320`+ | thread-control block over Win32 threads |
+| 18 | `firstfile(name, dir)` | `0x44c0` | `FindFirstFileA` + fills the caller's directory entry |
+| 19 | `nextfile(dir)` | `0x4560` | `FindNextFileA` |
+| 20 | `erase(name)` | `0x45e0` | `DeleteFileA` (inverted return, see above) |
+| 21 | `open(name, flags)` | `0x4600` | `CreateFileA` |
+| 22 | `close(fd)` | `0x4650` | `CloseHandle` |
+| 23 | `lseek(fd, off, whence)` | `0x4660` | `SetFilePointer` |
+| 24 | `read(fd, buf, n)` | `0x4680` | `ReadFile` |
+| 25 | `write(fd, buf, n)` | `0x46b0` | `WriteFile` |
+
+The constants used at the call sites are `libapi`'s, one for one:
+
+| Constant | Value | Where it shows up |
+|---|---|---|
+| `SwCARD` | `0xf4000001` | the software memory-card event class — the write channel |
+| `HwCARD` | `0xf0000011` | the hardware memory-card event class — the read channel |
+| `EvSpIOE` | `0x0004` | end of I/O — the mode ordinals 67/68/69 deliver |
+| `EvSpERROR` | `0x8000` | error |
+| `EvSpTIMOUT` | `0x0100` | timeout |
+| `EvSpNEW` | `0x2000` | new device |
+| `EvMdINTR` | `0x1000` | callback mode — the third argument of all eight `OpenEvent` calls |
+| `EvStWAIT` / `EvStACTIVE` / `EvStALREADY` | `0x1000` / `0x2000` / `0x4000` | the node states ordinals 9/10/11/12 shuffle |
+
+Practical consequences when reading `Blaze.c`:
+
+- A "slot" argument like `DAT_00604980` is a PlayStation **`chan`**: `port * 16 + card`. That is why
+  `FUN_0050a910` decomposes it as `(x & 3) + (x & 4) * 4` in some places and `(x & 4) << 2` (the port
+  alone) in others.
+- The `"Blaze-Saving*"` string is a `firstfile` glob, not a device name.
+- The eight `&LAB_00504610..680` stubs are `OpenEvent` callbacks — ordinary event handlers, which is
+  why they are three instructions long.
+- The produced save file is a **genuine PS1 memory-card save**, title frame and all: `"SC"`, icon
+  flag `0x11..0x13`, block count, Shift-JIS title at `+0x04`, 16-colour CLUT at `+0x60`, 16×16 4bpp
+  icon frames from `+0x80`. `WriteCardSaveFile` composes exactly that, and `FUN_005126c0` parses it
+  back.
+
 ## Confirmed unnamed pair (both DLLs), noted for context
 
 `3dhelp.dll` and `gldhelp.dll` each export exactly one function, both named

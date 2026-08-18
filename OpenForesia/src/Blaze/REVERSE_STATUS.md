@@ -4594,3 +4594,172 @@ OpenForesia/save/Blaze-Saving@MJA@]A   24576   (PAUL, nouveau)
 ```
 
 Restent derrière `ThrowSaveCardUnresolved` : les cas 4, 0xd, -5 et -3/-2.
+
+## 2026-08-18 — la sous-couche carte mémoire est du PlayStation littéral ; les six cases restantes sont transcrites
+
+Vincent a demandé les cas 4, 0xd, -5 et -3/-2, et avant ça d'où venait l'impression que « cette
+fonction a des noms de carte mémoire PS1 ». La réponse à la seconde question a rendu la première
+beaucoup plus simple.
+
+### Ce n'est pas une ressemblance : winsys3d.dll est une réimplémentation de PSY-Q `libapi`
+
+Les ordinaux bas de la DLL suivent l'ordre de déclaration de `libapi`, sur deux séries contiguës :
+6..13 sont les huit fonctions d'événement (`OpenEvent`, `CloseEvent`, `WaitEvent`, `TestEvent`,
+`EnableEvent`, `DisableEvent`, `DeliverEvent`, `UndeliverEvent`), 14..16 les trois fonctions de
+thread, 18..25 les huit fonctions de fichier (`firstfile`, `nextfile`, `erase`, `open`, `close`,
+`lseek`, `read`, `write`). Chaque corps est le Win32 correspondant. Tableau complet dans
+`Documentation/DLL/winsys3d.md`.
+
+Les constantes le confirment une à une, sans place pour la coïncidence : `0xf4000001` = `SwCARD`,
+`0xf0000011` = `HwCARD`, les modes `4 / 0x8000 / 0x100 / 0x2000` = `EvSpIOE / EvSpERROR / EvSpTIMOUT
+/ EvSpNEW`, le troisième argument `0x1000` = `EvMdINTR`, et les états de nœud `0x1000 / 0x2000 /
+0x4000` = `EvStWAIT / EvStACTIVE / EvStALREADY`.
+
+Trois choses qui semblaient arbitraires deviennent lisibles d'un coup :
+
+- **`DAT_00604980` est un `chan` PlayStation**, `port * 16 + carte`. D'où `(x & 3) + (x & 4) * 4`
+  (le canal complet) à certains sites et `(x & 4) << 2` (le port seul) à d'autres — deux extractions
+  du même encodage, pas deux formules concurrentes.
+- **`"Blaze-Saving*"` est un motif de `firstfile`**, pas un nom de périphérique.
+- **Les huit talons `&LAB_00504610..680` sont des rappels d'`OpenEvent`** — ce qui explique qu'ils
+  fassent trois instructions.
+
+### Et le fichier de sauvegarde est un vrai fichier de carte mémoire PS1
+
+`WriteCardSaveFile` compose la « title frame » standard sans jamais la nommer, et tout ce qu'on
+avait relevé au fil des séances s'y range :
+
+```
++0x00  "SC"                 signature
++0x02  0x11                 drapeau d'icône ; nibble bas = nombre d'images (1..3)
++0x03  0x03                 nombre de blocs de 8 Kio → 3 * 0x2000 = 0x6000 = la taille observée
++0x04  titre Shift-JIS      pleine chasse, deux octets par caractère → c'est ça, NameEncodeChar
++0x60  CLUT 16 couleurs     capturée en VRAM par Ordinal_684
++0x80  icône 16x16 en 4 bpp 128 octets par image
+```
+
+Deux corrections de lecture en découlent, toutes deux dans `LoadSaveDirectory` :
+
+- `DAT_0060498c` n'est **pas** un « nombre de personnages » du fichier mais le **nombre d'images de
+  l'icône** — renommé `s_CardIconFrameCount_0060498c`. Les `(n-1)*0x80` octets lus ensuite sont les
+  images 2 et 3, et la hauteur du rectangle VRAM (`n * 16` lignes) le confirme. Son autre usage
+  connu dans `Blaze.c` (diviseur d'une animation cyclique) corrobore : c'est le cycle d'animation de
+  l'icône.
+- La boucle qui pose le bit `0x8000` sur seize ushorts à `+0x60` n'est pas un « marqueur de case
+  d'inventaire » : c'est le correctif **STP** habituel sur une CLUT PS1 (couleur 15 bits + bit de
+  semi-transparence ; `0x0000` = transparent, toute autre couleur doit avoir le bit 15 levé).
+
+### Les six cases restantes, transcrites
+
+Toutes lues dans `Legacy/Raw/Blaze/FUN_0050a910.c`. `ThrowSaveCardUnresolved` n'a plus aucun site
+d'appel et a été retiré.
+
+| case | ce que c'est |
+|---|---|
+| 4 | attente de fin de transfert + réarmement, puis intitulé vide ou drapeau de sortie selon la réponse |
+| 0xd | **la même suppression que 0x10, mais sur l'entrée choisie dans le navigateur** (`DAT_006049bc + curseur * 0x28`), pas sur le personnage courant |
+| 0x10 | suppression de la sauvegarde du personnage courant, puis retour phase 0 (fait la veille) |
+| -5 | attente + réarmement + relecture de `dialogGate`, puis **chute délibérée sans `break` dans le case -4** |
+| -3 / -2 | sur résultat -3 on repart à la phase 0 ; sinon attente + réarmement + drapeau de sortie |
+
+La boucle de dix suppressions apparaissait à l'identique dans 0xd et 0x10 : extraite en
+`DeleteCardFileRetrying`, au même titre que les `Retry…CardFile` voisines.
+
+`PollCardWriteStatus(..., wait: true)` est appelée par quatre de ces cinq cases et **ne touche plus
+sa garde** : depuis que les huit gestionnaires publient vraiment un statut, la valeur a déjà quitté
+4 quand on arrive là. La garde ne subsiste que pour le cas réellement bloquant.
+
+### Vérifié en jeu
+
+Personnage neuf puis le même rejoué à l'identique : aucun plantage dans les deux cas, fichier créé
+puis réécrit sur place. Aucune régression du parcours normal.
+
+### Ce qui reste ouvert sur cet écran
+
+Un seul point, et ce n'est plus une case : **rien n'appelle `LoadSaveDirectory`** (FUN_005126c0).
+Aucun appelant dans `Blaze.c` ni dans les re-décompilations brutes — la fonction est probablement
+prise par adresse depuis du code non reconstruit. Conséquence visible : la table des répertoires
+reste à zéro, donc le navigateur de sauvegardes (phases 10..13, cases 0xa/0xc) s'affiche vide au
+lieu de lister les fichiers réellement présents dans `save\`. C'est aussi ce qui rend le cas 0xd
+inatteignable en pratique pour l'instant, bien qu'il soit transcrit.
+
+## 2026-08-18 — l'écran de constitution du groupe (FUN_00536ea0), et « Début du jeu » branché
+
+Vincent a proposé de repartir du menu principal et de brancher l'entrée « Début du jeu », en
+pariant que `LoadSaveDirectory` y serait utilisée. **Le pari était bon** : `FUN_00536ea0` appelle
+`FUN_005126c0` à sa quatrième ligne, et c'est son **seul appelant dans tout le binaire**. Le point
+laissé ouvert à la fin de la séance précédente se referme donc de lui-même : la table des
+répertoires n'était vide que parce que l'écran qui la remplit n'était pas transcrit.
+
+### Où ça se branche
+
+L'état de jeu 1 a deux chemins, et les deux entrées que Vincent a repérées sur le jeu de 1998 —
+« Début du jeu » au menu principal et « Constituer un groupe » à la fin de la création — y mènent
+toutes les deux :
+
+```
+menu principal, entrée 0 ──┐
+                           ├──► état de jeu 1 ──┬─► chemin A : RunDebugPartySelect  (Gurkha + SELECT tenu)
+« Constituer un groupe » ──┘                    └─► chemin B : RunPartyConstitution (le cas normal)
+```
+
+Le chemin B était le dernier `NotImplementedException` de `RunGameState1Entry`. Brancher plus tard
+« Constituer un groupe » sur l'écran de sélection des personnages ne demandera donc plus que de
+poser `s_GameStateId = 1` au bon endroit.
+
+### Ce que fait l'écran
+
+Trois temps. **Un** : `LoadSaveDirectory` énumère `save\Blaze-Saving*`, puis une ligne de 0x16
+octets est composée par fichier — nom sur 11 caractères complété d'espaces, abréviation de classe
+sur 4 (`DAT_0056c868`, pas de 5), `'N'`, puis le niveau en décimal. Un fichier qui ne s'ouvre pas
+donne une ligne de huit tirets. **Deux** : une boucle d'image avec une machine à six sous-phases
+(navigation, deux boîtes de dialogue de confirmation) et une fenêtre de six lignes qui défile.
+**Trois** : à la sortie, chaque membre retenu est relu depuis son fichier, sa somme de contrôle
+vérifiée, et le premier d'entre eux restaure l'état partagé du groupe.
+
+**Aucune sauvegarde du tout** : la fonction pose `s_GameStateId = 4` et revient aussitôt — l'écran
+de sélection des personnages. C'est le parcours « premier lancement », et il explique pourquoi
+« Début du jeu » mène directement à la création tant que `save\` est vide. Vérifié en jeu.
+
+### `RestorePartyGlobals` : l'autre moitié du format de sauvegarde
+
+Le bloc `DAT_005e9020 == 0` restaure, depuis le seul enregistrement du premier membre, huit banques
+de 0x40 octets prises à `+0x1d00..+0x1efc`, trois compteurs à `+0x1f01..+0x1f03`, et huit paires de
+mots à `+0x1f04`. Ce sont **exactement** les zones que `FinalizeCharacterStats` remet à zéro à la
+création, dans le même ordre et avec les mêmes tailles — les deux fonctions sont les deux moitiés du
+même format, et se confirment mutuellement. Les huit banques tombent toutes dans l'arène 0x5e9000
+déjà modélisée, donc pas une seule nouvelle allocation à risque d'aliasing.
+
+### Un défaut de portage exposé par le nouveau chemin
+
+`s_SelectScratch_00573338` était un **champ affecté une seule fois**, par
+`LoadCharacterSelectResources`. Atteindre l'état de jeu 1 sans être passé par l'écran de sélection
+des personnages — ce que fait précisément « Début du jeu » — le laissait donc nul, et le
+`NativeMemory.Clear` de `RunGameState1Entry` partait en `NullReferenceException` à la première
+image. L'original n'a pas ce problème : il recalcule `*MainMem + 0xf0000` sur place à chaque site
+(visible tel quel dans `FUN_00536ea0`). Converti en propriété dérivée de MainMem.
+
+C'est la forme la plus courante de défaut que ce projet produit : **une valeur que l'original
+recalcule et que le port met en cache**. Le cache est correct tant qu'un seul chemin y mène ; le
+second chemin le prend en défaut.
+
+### Vérifié en jeu, de bout en bout
+
+Menu principal → « Début du jeu » → la liste, montrant `ARTHUR      Gue. N1` sous le titre
+« - Organisation du groupe - » → CARRÉ pour retenir le personnage → START → « Veux-tu jouer avec ce
+groupe? » → CARRÉ → la boîte Oui/Non → Oui → le fichier est relu, le groupe monté, et le jeu avance
+jusqu'à `thunk_FUN_00516020 (game state 3) not yet reconstructed`.
+
+Deux choses valent d'être notées au passage :
+
+- la boîte **Oui/Non répond bien** sur cet écran, sans échafaudage : le widget de `DrawUiPanel`
+  dépose la réponse là où `confirmGate` la lit. Le blocage de l'écran de sauvegarde (case 0x12) n'est
+  donc pas « le sous-système de dialogue manque » en général — il faudra le reprendre avec ce
+  contre-exemple en main ;
+- l'état de jeu 3 (`thunk_FUN_00516020`) est la nouvelle frontière, et elle est atteinte par le
+  parcours normal du jeu, pas par un raccourci.
+
+### Ce qui reste ouvert ici
+
+Le titre de la ligne affiche l'icône de sauvegarde depuis la VRAM, dont la capture n'est pas encore
+peuplée : la tuile s'affiche mais son contenu est un aplat. Sans conséquence sur le reste.

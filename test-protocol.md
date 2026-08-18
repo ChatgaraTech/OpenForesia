@@ -288,11 +288,56 @@ dossiers avant de conclure.
 
 ---
 
+## Atteindre l'écran de constitution du groupe (`RunPartyConstitution`)
+
+C'est le chemin B de l'état de jeu 1, et il est **directement accessible depuis le menu principal** :
+entrée 0, « Début du jeu ». Aucun échafaudage.
+
+Le seul prérequis est qu'il existe au moins une sauvegarde dans le `save\` du répertoire de travail
+(voir le tableau plus haut) — sinon l'écran bascule aussitôt vers la sélection des personnages, ce
+qui est le comportement correct et vaut d'être testé aussi.
+
+```powershell
+# 1. produire une sauvegarde (voir « Le parcours de création complet est scriptable »)
+# 2. puis, avec cette sauvegarde en place :
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -Shot -WorkingDir OpenForesia `
+    -Then WAIT4,ENTER,WAIT3,START,WAIT4,ENTER,WAIT4,ENTER,WAIT8
+```
+
+Ce que la séquence joue : `ENTER` (carré) retient le personnage sous le curseur, `START` demande la
+confirmation (« Veux-tu jouer avec ce groupe? »), `ENTER` ouvre la boîte Oui/Non, `ENTER` répond
+Oui. Le run se termine alors sur `thunk_FUN_00516020 (game state 3) not yet reconstructed` — c'est
+le **résultat attendu**, la frontière actuelle, pas un défaut.
+
+Repère mesuré : environ 384 primitives par image sur cet écran.
+
+---
+
 ## Atteindre l'écran de groupe de mise au point (`RunDebugPartySelect`)
 
 Cet écran est le chemin A de l'état de jeu 1, gardé par `DAT_005633a8 == 0 && SELECT maintenu`.
 
-**La vraie manière, celle de 1998** — les deux moitiés sont vérifiées en jeu séparément :
+### La recette complète, relevée sur le jeu officiel par Vincent (2026-08-18)
+
+La séquence exacte, de bout en bout, telle qu'elle marche sur le jeu de 1998 :
+
+1. Créer un nouveau personnage nommé **Gurkha**.
+2. **Sauvegarder** ce personnage.
+3. À la fin, choisir **« Constituer un groupe »** (et non « Commencer à jouer malgré tout »).
+4. **Maintenir F1 pendant le chargement** qui suit.
+5. On arrive sur l'écran de groupe de mise au point — celui que `RunDebugPartySelect` dessine.
+6. Après le choix fait sur cet écran, le jeu démarre **en mode développeur**, avec les fonctions de
+   debug actives.
+7. Et il arrive sur la **mappemonde avec absolument tout débloqué** — très utile pour tester les
+   écrans qui dépendent de la progression (les icônes de destination, notamment, qui se superposent
+   toutes à l'origine quand la progression est nulle).
+
+Ce que ça apprend au-delà de la recette : « Constituer un groupe » et « Début du jeu » mènent au
+**même endroit**, l'état de jeu 1, dont le chemin A est cet écran et le chemin B l'écran de
+constitution du groupe (`FUN_00536ea0`). L'étape 4 n'est pas un appui mais bien un maintien, ce qui
+concorde avec la lecture du branchement (`RunGameState1Entry` teste l'état *tenu* de SELECT).
+
+**Les deux moitiés du verrou, vérifiées séparément dans notre port :**
 
 1. **Faire afficher le mot « Gurkha »**. `CheatCodeProbe` file la séquence `DAT_00564a40` sur chaque
    caractère *dessiné* (par `DrawTextRun` comme par `RasterizeGlyph`), pas sur une saisie. Nommer un

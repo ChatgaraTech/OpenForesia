@@ -6792,7 +6792,6 @@ public static unsafe partial class Blaze
                 "RunCharacterSelectFrameLoop: winsys3d.dll's MainMem export resolves to null, so " +
                 "the state's 0x2000-byte scratch block at MainMem + 0xf0000 cannot be placed.");
         }
-        s_SelectScratch_00573338 = mainMem + 0xf0000;
         NativeMemory.Clear(s_SelectScratch_00573338, 0x2000);
 
         JoystickResetState(false);   // Ghidra: FUN_00504b10(0)
@@ -8524,35 +8523,62 @@ public static unsafe partial class Blaze
         return buffer;
     }
 
-    /// <summary>Point d'arrêt pour les cases de <c>FUN_0050a910</c> pas encore transcrites : 4
-    /// (réinitialisation avant confirmation), 0xd (vérification avant suppression), 0x10
-    /// (vérification avant formatage), -5 et -3/-2 (réinitialisations avant annulation/erreur).
-    /// Les cases 0/1 (navigation, ouverture/lecture) et 6 (écriture, <see cref="WriteCardSaveFile"/>)
-    /// sont faites — voir « La sous-couche carte mémoire » plus haut dans ce fichier — et confirmées
-    /// en jeu : un fichier de sauvegarde réel, correctement structuré et sommé, est produit dans
-    /// <c>save\</c>.</summary>
-    private static void ThrowSaveCardUnresolved(string context)
-    {
-        throw new NotImplementedException(
-            $"CharacterSelectSubState7 : la sous-couche carte mémoire ({context}) n'est pas " +
-            "reconstruite. Voir Legacy/Raw/Blaze/FUN_0050a910.c pour le site d'appel exact. Les " +
-            "cases 0/1 (ouverture/lecture) et 6 (écriture) sont faites ; voir plus haut dans ce " +
-            "fichier.");
-    }
+    // `ThrowSaveCardUnresolved` a été retiré le 2026-08-18 : ses six sites d'appel (cases 4, 0xd,
+    // 0x10, -5, -3/-2 de FUN_0050a910) sont tous transcrits, la machine à phases de l'écran de
+    // sauvegarde n'a plus de trou.
 
     // =====================================================================
     // La sous-couche carte mémoire — ouverture/fermeture de fichier, 2026-08-16.
     //
     // De vrais Win32 CreateFileA/CloseHandle/SetFilePointer/ReadFile/WriteFile sur un dossier
     // "save\", à travers winsys3d.dll (FUN_00a04600 et consorts) — pas d'émulation de carte
-    // mémoire PS1. Cas 1 (ouverture pour charger), 6 (écriture, WriteCardSaveFile) et 0x10
-    // (suppression de la sauvegarde existante, 2026-08-18) faits et confirmés en jeu, plus le
-    // sondage de transfert commun à tous les cas. Les cas 4/0xd/-5/-3/-2 restent derrière
-    // ThrowSaveCardUnresolved — chacun a sa propre séquence à lire.
+    // mémoire PS1 — mais l'API imitée en est bien une : voir la note « L'héritage PlayStation »
+    // juste en dessous. **Toutes les phases sont transcrites depuis le 2026-08-18** ; il ne reste
+    // aucun ThrowSaveCardUnresolved sur cet écran.
     //
     // Le cycle complet de réécriture d'une sauvegarde existante est donc câblé :
     //   case 1 (le fichier existe) → 0xe → 0xf → 0x10 (DeleteFileA) → phase 0
     //   → case 1 (le fichier n'existe plus) → création → case 6 (écriture).
+    //
+    // ---------------------------------------------------------------------
+    // L'héritage PlayStation (établi le 2026-08-18)
+    //
+    // Cet écran n'« a pas l'air » d'une carte mémoire PS1 : c'en est une, portée telle quelle.
+    // winsys3d.dll réimplémente sur Win32 la BIBLIOTHÈQUE PSY-Q (libapi) du BIOS PlayStation, et
+    // ses ordinaux 6 à 25 en reprennent l'ordre exact :
+    //
+    //   6  OpenEvent      7  CloseEvent    8  WaitEvent     9  TestEvent
+    //   10 EnableEvent    11 DisableEvent  12 DeliverEvent  13 UndeliverEvent
+    //   14 OpenTh         15 CloseTh       16 ChangeTh
+    //   18 firstfile      19 nextfile      20 erase         21 open
+    //   22 close          23 lseek         24 read          25 write
+    //
+    // Les constantes le confirment une à une, ce sont celles de libapi :
+    //   ids d'événement   0xf4000001 = SwCARD (logiciel), 0xf0000011 = HwCARD (matériel)
+    //   spécifications    0x0004 EvSpIOE (fin d'E/S), 0x8000 EvSpERROR,
+    //                     0x0100 EvSpTIMOUT, 0x2000 EvSpNEW
+    //   mode              0x1000 EvMdINTR (rappel), 0x2000 EvMdNOINTR (drapeau)
+    //   états d'un nœud   0x1000 EvStWAIT → 0x2000 EvStACTIVE → 0x4000 EvStALREADY
+    //
+    // D'où la forme de tout le reste : DAT_00604980 est un `chan` PlayStation, `port * 16 + carte`
+    // (CardSlotSelector le décompose en `(x & 3) + (x & 4) * 4`) ; le motif "Blaze-Saving*" est
+    // l'argument de `firstfile` ; les huit talons &LAB_00504610..680 sont les gestionnaires
+    // d'événement qui publient l'état du transfert.
+    //
+    // Et le fichier produit est un vrai fichier de sauvegarde PS1, avec sa « title frame »
+    // standard en tête de bloc 0 — ce que WriteCardSaveFile compose sans le nommer :
+    //   +0x00  "SC"                  la signature
+    //   +0x02  0x11                  drapeau d'icône : nibble bas = nombre d'images (1 ici)
+    //   +0x03  0x03                  nombre de blocs de 8 Kio → 3 * 0x2000 = 0x6000, la taille
+    //   +0x04  titre en Shift-JIS    pleine chasse, deux octets par caractère (NameEncodeChar)
+    //   +0x60  CLUT 16 couleurs      capturée en VRAM (Ordinal_684), 16x1 en 16 bits
+    //   +0x80  icône 16x16 en 4 bpp  128 octets par image, jusqu'à trois images
+    //
+    // C'est aussi ce qui explique la lecture de LoadSaveDirectory : le champ qu'elle nomme
+    // « nombre de personnages » est en réalité le nombre d'images de l'icône, et les
+    // `(n - 1) * 0x80` octets qu'elle lit ensuite sont les images 2 et 3 — voir la note sur
+    // s_CardIconFrameCount_0060498c.
+    // ---------------------------------------------------------------------
     // =====================================================================
 
     // Ghidra: DAT_00563158 — deux pointeurs de chaîne ANSI statiques, relus directement dans
@@ -8725,6 +8751,28 @@ public static unsafe partial class Blaze
         throw new NotImplementedException(
             "PollCardReadStatus: appelé avec wait=vrai — même risque de boucle infinie que " +
             "PollCardWriteStatus, voir sa note. Original : FUN_00504770.");
+    }
+
+    /// <summary>
+    /// Ghidra: la boucle de dix tentatives de suppression, écrite deux fois à l'identique dans
+    /// <c>FUN_0050a910</c> (cas 0xd sur l'entrée choisie dans le navigateur, cas 0x10 sur le
+    /// personnage courant) — un même bloc, comme les <c>Retry…CardFile</c> voisins, donc extrait
+    /// ici plutôt que recopié.
+    ///
+    /// <para><b>La polarité surprend et elle est bien celle de l'original.</b> <c>Ordinal_20</c>
+    /// (<c>FUN_00a045e0</c>) rend <b>1 quand DeleteFileA a échoué</b> et 0 quand il a réussi — la
+    /// boucle relance donc tant que l'appel rend 0, c'est-à-dire tant qu'il supprime. En pratique
+    /// la première tentative supprime (0, on continue) et la seconde échoue sur un fichier
+    /// désormais absent (1, on sort) : deux appels, puis la branche « fait ». La branche d'échec
+    /// exigerait dix suppressions réussies d'affilée, ce qui ne peut pas arriver.</para>
+    /// </summary>
+    /// <returns><c>true</c> pour la branche « fait » de l'original (<c>iVar4 != 0</c>).</returns>
+    private static bool DeleteCardFileRetrying()
+    {
+        int result = 0;
+        for (int attempts = 10; attempts != 0 && result == 0; attempts--)
+            result = Ordinal_20(s_CardPathDescriptor_00604940);
+        return result != 0;
     }
 
     /// <summary>
@@ -9175,18 +9223,25 @@ public static unsafe partial class Blaze
     // état « chargement de carte en cours », mais pas confirmé par la lecture d'un seul site.
     private static int s_Unknown_00604960;
 
-    // Ghidra: &DAT_0060498c — un octet par entrée de répertoire (jusqu'à 0x20), le nombre de
-    // personnages que contient ce fichier de sauvegarde (`meta[2] & 0xf` lu à l'ouverture du
-    // fichier). Utilisé ailleurs (Blaze.c:55417, 77618) comme diviseur d'une animation cyclique du
-    // sélecteur — pas encore reconstruit.
-    private static readonly byte* s_CardSlotCharacterCount_0060498c = (byte*)NativeMemory.AllocZeroed(0x20);
+    // Ghidra: &DAT_0060498c — un octet par entrée de répertoire (jusqu'à 0x20).
+    //
+    // **Renommé le 2026-08-18** : ce n'est pas un « nombre de personnages » mais le **nombre
+    // d'images de l'icône** du fichier de sauvegarde. `meta[2] & 0xf` lit le nibble bas de l'octet
+    // +0x02 de la « title frame » PlayStation, dont les seules valeurs légales sont 0x11, 0x12 et
+    // 0x13 — une, deux ou trois images. Les `(n - 1) * 0x80` octets lus juste après sont les images
+    // 2 et 3 (128 octets chacune, 16x16 en 4 bpp), et la hauteur du rectangle VRAM plus bas vaut
+    // `n * 16` : autant de lignes que d'images. Voir « L'héritage PlayStation » plus haut.
+    //
+    // Utilisé ailleurs (Blaze.c:55417, 77618) comme diviseur d'une animation cyclique — ce qui
+    // corrobore la lecture : c'est le cycle d'animation de l'icône, pas un décompte de personnages.
+    private static readonly byte* s_CardIconFrameCount_0060498c = (byte*)NativeMemory.AllocZeroed(0x20);
 
     /// <summary>
     /// Ghidra: FUN_005126c0 @ 0x005126c0 — énumère les fichiers de sauvegarde du dossier
     /// <c>save\</c> correspondant au motif <c>s_SaveDeviceName_00563160</c> (« Blaze-Saving* »),
     /// jusqu'à 0x20 entrées, puis ouvre et lit l'en-tête (0x100 octets) de chacune pour peupler
     /// <see cref="s_CardDirectoryEntries_006049bc"/>, <see cref="s_CardEntryCount_00604981"/> et
-    /// <see cref="s_CardSlotCharacterCount_0060498c"/>.
+    /// <see cref="s_CardIconFrameCount_0060498c"/>.
     /// <para>
     /// Reconstruit depuis le désassemblage brut (<c>Legacy/Raw/Blaze/FUN_005126c0.asm</c>) plutôt
     /// que la pseudo-C Ghidra, qui enveloppe cette fonction dans un habillage SEH (<c>puStack_20</c>,
@@ -9260,27 +9315,31 @@ public static unsafe partial class Blaze
             int read = (int)Ordinal_24(handle, mainMem + 0x1c0000 + slotBase, 0x100);
             if (read >= 0)
             {
-                byte charCount = (byte)(mainMem[0x1c0002 + slotBase] & 0xf);
-                s_CardSlotCharacterCount_0060498c[i] = charCount;
-                if (charCount != 1)
+                byte frameCount = (byte)(mainMem[0x1c0002 + slotBase] & 0xf);
+                s_CardIconFrameCount_0060498c[i] = frameCount;
+                if (frameCount != 1)
                 {
-                    read = (int)Ordinal_24(handle, mainMem + 0x1c0100 + slotBase, (uint)((charCount - 1) * 0x80));
+                    read = (int)Ordinal_24(handle, mainMem + 0x1c0100 + slotBase, (uint)((frameCount - 1) * 0x80));
                 }
             }
             Ordinal_22(handle);
             if (read < 0) return;
 
-            // Ghidra 0x5127f0-0512819 — marque d'un bit haut (0x8000) les seize ushorts non nuls de
-            // MainMem+0x1c0060+slotBase..0x1c007e+slotBase. Rôle exact non établi (peut-être un
-            // marqueur "case occupée" pour l'inventaire du personnage).
+            // Ghidra 0x5127f0-0512819 — les seize ushorts de MainMem+0x1c0060+slotBase sont la
+            // **CLUT de l'icône** (offset +0x60 de la title frame PlayStation, 16 couleurs en
+            // 16 bits). Poser le bit 15 sur les entrées non nulles est le correctif STP habituel du
+            // format : dans une couleur PS1 15 bits + STP, 0x0000 vaut « transparent » et toute
+            // autre couleur doit avoir son bit 15 levé pour être dessinée opaque. Rôle établi le
+            // 2026-08-18 ; ce n'est pas un marqueur d'inventaire comme supposé jusqu'ici.
             for (int j = 0; j < 16; j++)
             {
                 ushort* field = (ushort*)(mainMem + 0x1c0060 + slotBase + j * 2);
                 if (*field != 0) *field |= 0x8000;
             }
 
-            // Ghidra 0x51281f-0512863 — icône 1 : une case fixe de 0x10x1, positionnée en grille de
-            // 16 colonnes (bas octet de l'index) sur autant de lignes que nécessaire.
+            // Ghidra 0x51281f-0512863 — le téléversement de la CLUT en VRAM : seize mots sur une
+            // seule ligne (0x10 x 1), positionnés en grille de 16 colonnes (bas octet de l'index)
+            // sur autant de lignes que nécessaire.
             short* rect1 = stackalloc short[4];
             rect1[0] = (short)((i & 0xf) * 0x10);
             rect1[1] = (short)((i >> 4) + 0x1fe);
@@ -9288,13 +9347,14 @@ public static unsafe partial class Blaze
             rect1[3] = 1;
             Ordinal_674(rect1, mainMem + 0x1c0060 + slotBase);
 
-            // Ghidra 0x51286e-05128ab — icône 2 : hauteur proportionnelle au nombre de personnages
-            // du fichier (charCount*16), même grille de colonnes.
+            // Ghidra 0x51286e-05128ab — le téléversement des images d'icône elles-mêmes, depuis
+            // l'offset +0x80 de la title frame : hauteur `nombre d'images * 16` lignes, largeur 4
+            // mots de 16 bits (= 16 pixels en 4 bpp), même grille de colonnes que la CLUT.
             short* rect2 = stackalloc short[4];
             rect2[0] = (short)((i & 0xf) * 4 + 0x3c0);
             rect2[1] = (short)(((i >> 4) << 6) + 0x20);
             rect2[2] = 4;
-            rect2[3] = (short)(s_CardSlotCharacterCount_0060498c[i] * 16);
+            rect2[3] = (short)(s_CardIconFrameCount_0060498c[i] * 16);
             Ordinal_674(rect2, mainMem + 0x1c0080 + slotBase);
         }
     }
@@ -9414,9 +9474,17 @@ public static unsafe partial class Blaze
                 break;
 
             case 4:
+                // Ghidra: Legacy/Raw/Blaze/FUN_0050a910.c:172-187. Transcrit le 2026-08-18.
+                // Attend la fin du transfert d'écriture en cours (`WaitEvent` côté PS1), réarme les
+                // quatre événements d'écriture, puis se sépare sur la réponse du joueur : sans
+                // confirmation, l'intitulé vide (l'écran reste en attente) ; avec, on lève le
+                // drapeau de sortie partagé.
                 if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 4) != 0) break;
-                ThrowSaveCardUnresolved("case 4 — réinitialisation de la carte avant confirmation");
+                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                ResetCardWriteEvents();
+                if (confirmGate == 0) { pendingLabel = s_EmptyLabel_00572b40; break; }
+                s_Unknown_00562b68 = -1;   // Ghidra: code_r0x0050b711
                 break;
 
             case 5:
@@ -9490,9 +9558,31 @@ public static unsafe partial class Blaze
                 break;
 
             case 0xd:
+            {
+                // Ghidra: Legacy/Raw/Blaze/FUN_0050a910.c:430-455. Transcrit le 2026-08-18. Même
+                // suppression que le cas 0x10, mais sur **l'entrée choisie dans le navigateur de
+                // sauvegardes** (cas 0xa) et non sur le personnage courant : le nom vient de la
+                // table des répertoires, à l'entrée du curseur, pas de DAT_00573338+0x1fd0.
                 if (s_CardPhaseChanged_00578e14 != 0) { s_CardPhaseChanged_00578e14 = 0; *cardTransferPhase = 0; break; }
-                ThrowSaveCardUnresolved("case 0xd — vérification avant suppression");
+
+                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                ResetCardWriteEvents();
+                SetCardFileName(s_CardDirectoryEntries_006049bc + s_CardCursorSlot_00604984 * 0x28);
+                SetCardPathDeviceFields();
+
+                if (DeleteCardFileRetrying())
+                {
+                    BindMenuLabels(LabelAt(0x198), 0, s_StatusDescriptor_00560728, 0);
+                    *cardTransferPhase = 0;
+                    s_CardPhase_00578e0c = 0;
+                }
+                else
+                {
+                    BindMenuLabels(LabelAt(0x1c4), 0, s_StatusDescriptor_00560728, 0);
+                    s_CardPhase_00578e0c = -1;
+                }
                 break;
+            }
 
             case 0xe:
             case 0xf:
@@ -9520,17 +9610,7 @@ public static unsafe partial class Blaze
                 SetCardFileName(s_SelectScratch_00573338 + 0x1fd0);
                 SetCardPathDeviceFields();
 
-                // Ghidra: dix tentatives, sortie dès que l'appel rend non nul. Ordinal_20 rendant
-                // 1 sur ÉCHEC de DeleteFileA, la première suppression réussie rend 0 et la boucle
-                // repart ; c'est la seconde tentative, sur un fichier désormais absent, qui rend 1
-                // et fait sortir. La branche d'erreur ne se déclenche donc que si les dix appels
-                // ont tous réussi à supprimer — inatteignable en pratique. Transcrit tel quel,
-                // polarité comprise : ce n'est pas une coquille de lecture, c'est l'original.
-                int deleteResult = 0;
-                for (int attempts = 10; attempts != 0 && deleteResult == 0; attempts--)
-                    deleteResult = Ordinal_20(s_CardPathDescriptor_00604940);
-
-                if (deleteResult == 0)
+                if (!DeleteCardFileRetrying())
                 {
                     BindMenuLabels(LabelAt(0x1c4), 0, s_StatusDescriptor_00560728, 0);
                     s_CardPhase_00578e0c = -1;
@@ -9568,8 +9648,15 @@ public static unsafe partial class Blaze
                 break;
 
             case -5:
-                ThrowSaveCardUnresolved("case -5 — réinitialisation avant annulation");
-                break;
+                // Ghidra: Legacy/Raw/Blaze/FUN_0050a910.c:537-547. Transcrit le 2026-08-18. Le cas
+                // -5 attend la fin du transfert, réarme les événements d'écriture, **relit
+                // dialogGate** (l'original recharge `bVar1 = DAT_00560fef` juste avant), puis
+                // **enchaîne sans `break`** sur le cas -4 — une chute délibérée dans le `switch`
+                // d'origine, pas deux cas indépendants.
+                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                ResetCardWriteEvents();
+                dialogGate = s_Unknown_00560fef;
+                goto case -4;
 
             case -4:
                 s_Unknown_00560fef = (byte)(dialogGate & 0xf9);
@@ -9581,10 +9668,17 @@ public static unsafe partial class Blaze
 
             case -3:
             case -2:
+                // Ghidra: Legacy/Raw/Blaze/FUN_0050a910.c:548-563. Transcrit le 2026-08-18. Les
+                // deux phases d'erreur partagent un corps : sur un résultat de chargement -3 on
+                // repart proprement à la phase 0 ; sinon on attend la fin du transfert, on réarme
+                // les événements d'écriture et on lève le drapeau de sortie partagé
+                // (code_r0x0050b711), le même que les cas 4, -1 et 99.
                 if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
                 if (s_CardLoadResult_00578de0 == -3) { *cardTransferPhase = 0; s_CardPhase_00578e0c = 0; break; }
                 if ((dialogGate & 2) != 0) break;
-                ThrowSaveCardUnresolved("case -3/-2 — réinitialisation de la carte avant confirmation d'erreur");
+                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                ResetCardWriteEvents();
+                s_Unknown_00562b68 = -1;
                 break;
 
             case -1:
@@ -9746,12 +9840,13 @@ public static unsafe partial class Blaze
             *(short*)(box + 8) = 0xbc;
             *(short*)(box + 0xa) = 0x38;
             // Ghidra: `*(undefined4 *)(_DAT_006049bc + 0x18 + (_DAT_00604984 & 0xff) * 0x28)` — un
-            // enregistrement de la table des répertoires, jamais peuplé par du code reconstruit
-            // (aucun site d'écriture connu de s_CardDirectoryEntries_006049bc). Les cases 1 et 6
-            // (ouverture/écriture) progressent maintenant bien au-delà de la phase 1, mais le
-            // chemin qui mène ici (phase 10..13, cases 0xc/0xa) passe par des cases encore
-            // derrière ThrowSaveCardUnresolved (4, 0xd, 0x10) — donc ce bloc reste inatteignable
-            // en pratique pour l'instant.
+            // enregistrement de la table des répertoires. Son rédacteur est transcrit
+            // (<see cref="LoadSaveDirectory"/>, FUN_005126c0), mais **rien ne l'appelle encore** :
+            // aucun appelant de FUN_005126c0 n'apparaît dans Blaze.c ni dans les re-décompilations
+            // brutes, donc la fonction est probablement prise par adresse depuis du code non
+            // reconstruit. C'est le seul point qui reste ouvert sur cet écran depuis que les cases
+            // 4/0xd/0x10/-5/-3/-2 sont transcrites (2026-08-18) : la table reste à zéro, donc le
+            // navigateur de sauvegardes s'affiche vide au lieu de lister les fichiers présents.
             uint entryValue = s_CardDirectoryEntries_006049bc != null
                 ? *(uint*)(s_CardDirectoryEntries_006049bc + 0x18 + s_CardCursorSlot_00604984 * 0x28)
                 : 0;
@@ -10993,11 +11088,25 @@ public static unsafe partial class Blaze
             : (s_SelectSlotsStorage =
                    AllocLowZeroed((uint)(CharacterSelectSlotCount * CharacterSelectSlotStride)));
 
-    // Ghidra: DAT_00573338 — le bloc de 0x2000 octets que la boucle place à MainMem + 0xf0000.
-    // C'est la même adresse que la destination de la liste +0xb0 de LoadCharacterSelectResources :
-    // le chargement y dépose des blocs bruts, la boucle de frame l'efface puis le relit
+    // Ghidra: DAT_00573338 — le bloc que la boucle place à MainMem + 0xf0000. C'est la même adresse
+    // que la destination de la liste +0xb0 de LoadCharacterSelectResources : le chargement y dépose
+    // des blocs bruts, la boucle de frame l'efface puis le relit
     // (`*(byte *)(DAT_00573338 + 0x151)` sert d'index dans la table de couleurs DAT_00562a58).
-    private static byte* s_SelectScratch_00573338;
+    //
+    // **Dérivé de MainMem plutôt qu'affecté une fois (2026-08-18).** C'était un champ posé par le
+    // seul LoadCharacterSelectResources, donc encore nul pour qui atteignait l'état de jeu 1 sans
+    // être passé par l'écran de sélection des personnages — exactement ce que fait « Début du jeu »
+    // au menu principal, et ce qui faisait échouer le `NativeMemory.Clear` de RunGameState1Entry sur
+    // un pointeur nul. L'original n'a pas ce problème : il recalcule `*MainMem + 0xf0000` sur place
+    // à chaque site (voir FUN_00536ea0, `iVar17 = *(int *)MainMem_exref + 0xf0000;`). On fait pareil.
+    private static byte* s_SelectScratch_00573338
+    {
+        get
+        {
+            byte* mainMem = GetMainMemPtr();
+            return mainMem != null ? mainMem + 0xf0000 : null;
+        }
+    }
 
     // Ghidra: DAT_005e9020 â€” read at ~60 sites across the game, essentially always as a party-size
     // bound: loop upper limit over active characters, "current player slot" modulo divisor, and
@@ -16518,8 +16627,575 @@ public static unsafe partial class Blaze
             return;
         }
 
-        throw new NotImplementedException(
-            "thunk_FUN_00536180: FUN_00536ea0 (game state 1, path B) not yet reconstructed");
+        RunPartyConstitution();        // Ghidra: FUN_00536ea0
+    }
+
+    // =====================================================================
+    // Écran de constitution du groupe — l'état de jeu 1, chemin B (Ghidra: FUN_00536ea0)
+    //
+    // La liste des personnages sauvegardés, dans laquelle le joueur en choisit jusqu'à quatre pour
+    // former son groupe. C'est l'écran auquel mènent **les deux** entrées que Vincent a identifiées
+    // sur le jeu de 1998 : « Début du jeu » au menu principal, et « Constituer un groupe » à la fin
+    // de la création d'un personnage — toutes deux passent par l'état de jeu 1, dont le chemin A
+    // est l'écran de mise au point (RunDebugPartySelect) et le chemin B celui-ci.
+    //
+    // C'est aussi **le seul appelant de LoadSaveDirectory** (FUN_005126c0) : le point qui restait
+    // ouvert après la séance sur la sauvegarde. La table des répertoires n'était vide que parce que
+    // rien ne remplissait son rôle d'appelant.
+    // =====================================================================
+
+    // Ghidra: DAT_005e85c0 (l'ordre de sélection, un octet par entrée : 0 = non retenu, 1..4 = la
+    // place dans le groupe) et DAT_005e8640 (les libellés de ligne, 0x16 octets par entrée). Deux
+    // symboles voisins d'une même région, déclarés ensemble plutôt que séparément — c'est le défaut
+    // d'aliasing que ce projet a déjà rencontré deux douzaines de fois. Le bloc s'arrête bien avant
+    // 0x5e8f00 (s_EntityDecodeTable) et commence après 0x5e85a8, fin de la table des sons.
+    private const int PartyListBase = 0x005e85c0;
+    private static readonly byte* s_PartyListArena_005e85c0 = (byte*)NativeMemory.AllocZeroed(0x340);
+    private static byte* s_PartySelectionOrder_005e85c0 => s_PartyListArena_005e85c0;
+    private static byte* s_PartyRowText_005e8640 => s_PartyListArena_005e85c0 + (0x005e8640 - PartyListBase);
+    private const int PartyRowStride = 0x16;
+
+    // Ghidra: &DAT_0056c868 — les abréviations de classe, pas de 5, huit entrées (décalage fichier
+    // 0x16b068). L'original les indexe depuis &DAT_0056c85d avec un compteur qui vaut 0xb..0xe, ce
+    // qui retombe exactement sur cette base ; ici l'index est ramené à 0..3.
+    private static readonly byte* s_ClassAbbrev_0056c868 =
+        ToAnsiZ("Gue.\0Pre.\0Vol.\0Mag.\0Cha.\0Elf \0Nai.\0Lut.");
+
+    // Ghidra: DAT_0056c890 — l'octet 'N' (Niveau) posé juste avant le nombre.
+    private const byte LevelPrefix_0056c890 = (byte)'N';
+
+    // Ghidra: s__________00566b8c — huit tirets, la ligne de remplacement quand le fichier de
+    // sauvegarde d'une entrée ne s'ouvre pas.
+    private static readonly byte* s_DashesLabel_00566b8c = ToAnsiZ("--------");
+
+    // Ghidra: &DAT_00563148 — l'enregistrement de texture à deux dwords de la ligne de liste,
+    // 0x10102000 / 0x003e0000 (décalage fichier 0x161748). **Mutable** : la boucle de rendu réécrit
+    // ses octets 0 et 1 à chaque ligne pour déplacer la fenêtre de texture. Le 0x3e du second dword
+    // désigne l'entrée 0x3e de la table de pages, soit s_EntityDecodeTable_005e8f00 + 0xf8, que la
+    // même boucle écrit juste avant de dessiner.
+    private static readonly byte* s_RowSpriteRecord_00563148 = BuildRowSpriteRecord();
+
+    private static byte* BuildRowSpriteRecord()
+    {
+        uint* record = (uint*)NativeMemory.AllocZeroed(8);
+        record[0] = 0x10102000;
+        record[1] = 0x003e0000;
+        return (byte*)record;
+    }
+
+    // Ghidra: les huit banques de 0x40 octets que le chargement d'un membre restaure depuis
+    // l'enregistrement de sauvegarde (+0x1d00..+0x1efc) — les mêmes que FinalizeCharacterStats
+    // remet à zéro à la création. Toutes dans l'arène 0x5e9000, donc de simples alias.
+    private static byte* s_Bank_005e96e0 => Arena(0x005e96e0);
+    private static byte* s_Bank_005e9720 => Arena(0x005e9720);
+    private static byte* s_Bank_005e9780 => Arena(0x005e9780);
+    private static byte* s_Bank_005e9840 => Arena(0x005e9840);
+    private static byte* s_Bank_005e9980 => Arena(0x005e9980);
+    private static byte* s_Bank_005e92c0 => Arena(0x005e92c0);
+    private static byte* s_Bank_005e9360 => Arena(0x005e9360);
+    private static byte* s_EquipPairs_005e9320 => Arena(0x005e9320);
+
+    /// <summary>
+    /// Ghidra: <c>FUN_00547960(dest, &amp;DAT_005630c4, valeur)</c> — le <c>sprintf</c> de la CRT,
+    /// appelé avec le format <c>"%d"</c> et un seul argument entier. Écrit ici en formatage décimal
+    /// direct plutôt qu'en transcrivant un moteur variadique : c'est la décision déjà consignée
+    /// dans <c>Documentation/DataSymbols.md</c> pour ce site, qui est le seul.
+    /// </summary>
+    private static void FormatDecimal(byte* destination, int value)
+    {
+        byte* cursor = destination;
+        if (value < 0) { *cursor++ = (byte)'-'; value = -value; }
+
+        byte* digits = stackalloc byte[12];
+        int count = 0;
+        do { digits[count++] = (byte)('0' + value % 10); value /= 10; } while (value != 0);
+        while (count != 0) *cursor++ = digits[--count];
+        *cursor = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00536ea0 @ 0x00536ea0 — l'écran de constitution du groupe. Trois temps :
+    /// l'énumération des sauvegardes et la composition d'une ligne de texte par fichier ; une boucle
+    /// d'image avec une petite machine à sous-phases (navigation, deux boîtes de dialogue de
+    /// confirmation) ; puis, à la sortie, le rechargement effectif des membres retenus.
+    ///
+    /// <para><b>Aucune sauvegarde du tout</b> : la fonction pose <see cref="s_GameStateId"/> à 4 et
+    /// revient aussitôt — l'écran de sélection des personnages. C'est le parcours « premier
+    /// lancement » du jeu, et il explique pourquoi « Début du jeu » mène directement à la création
+    /// tant que le dossier <c>save\</c> est vide.</para>
+    /// </summary>
+    private static void RunPartyConstitution()
+    {
+        uint* otBase, otEntry, primCursor;
+        FrameBegin(&otBase, &otEntry, &primCursor);              // Ghidra: FUN_0052a1e0
+        FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);          // Ghidra: FUN_0052a280
+
+        s_PartySize_005e9020 = 0;
+        byte* scratch = GetMainMemPtr() + 0xf0000;
+
+        PlayMusicTrack(0x25);          // Ghidra: FUN_00529ad0(0x25)
+        JoystickResetState(false);     // Ghidra: FUN_00504b10(0)
+
+        // Ghidra: `FUN_005126c0(1)`. L'argument est poussé par l'appelant mais **jamais lu** par la
+        // fonction (vérifié dans Legacy/Raw/Blaze/FUN_005126c0.asm : elle attaque directement sur
+        // `MOV EAX,[0x0056315c]`, sans toucher à la pile d'arguments) — d'où la signature sans
+        // paramètre côté port.
+        LoadSaveDirectory();           // Ghidra: FUN_005126c0
+
+        // --- Une ligne de texte par sauvegarde : nom, classe, niveau -----------------------
+        int entryCount = s_CardEntryCount_00604981;
+        for (int entry = 0, rowOffset = 0; entry < entryCount; entry++, rowOffset += PartyRowStride)
+        {
+            byte* row = s_PartyRowText_005e8640 + rowOffset;
+
+            SetCardFileName(s_CardDirectoryEntries_006049bc + entry * 0x28);
+            SetCardPathDeviceFields();
+
+            IntPtr handle = Ordinal_21(s_CardPathDescriptor_00604940, 1);
+            int written;
+            if ((long)handle < 0)
+            {
+                // Ghidra: neuf octets copiés depuis s__________00566b8c (deux dwords puis l'octet
+                // 8) — la ligne « fichier illisible ».
+                for (int i = 0; i < 9; i++) row[i] = s_DashesLabel_00566b8c[i];
+                written = 9;
+            }
+            else
+            {
+                Ordinal_24(handle, scratch, 0x2000);
+                Ordinal_22(handle);
+                // Les seize octets du nom, à +0x100 de l'enregistrement — le même champ que
+                // WriteCardSaveFile encode dans l'en-tête du fichier.
+                for (int i = 0; i < 16; i++) row[i] = scratch[0x100 + i];
+                written = 16;
+            }
+
+            // Ghidra: la longueur utile s'arrête au premier octet nul, plafonnée à 0xb.
+            int length = 0;
+            while (length < 0xb && row[length] != 0) length++;
+            _ = written;
+            for (int i = length; i < 0xb; i++) row[i] = (byte)' ';
+
+            // Quatre octets d'abréviation de classe en 0xb..0xe, puis 'N' en 0xf et le niveau en
+            // décimal à partir de 0x10.
+            int classIndex = scratch[0x150] & 7;
+            for (int i = 0; i < 4; i++) row[0xb + i] = s_ClassAbbrev_0056c868[classIndex * 5 + i];
+            row[0xf] = LevelPrefix_0056c890;
+            FormatDecimal(row + 0x10, *(ushort*)(scratch + 0x144));
+        }
+
+        // Ghidra: 0x19 dwords à zéro depuis &DAT_005e85c0 — l'ordre de sélection, remis à neuf.
+        NativeMemory.Clear(s_PartySelectionOrder_005e85c0, 0x64);
+
+        if (entryCount == 0)
+        {
+            // Aucune sauvegarde : on bascule vers l'écran de sélection des personnages.
+            s_GameStateId = 4;
+            return;
+        }
+
+        BindMenuLabels(s_Unknown_005606f8, 0, s_LoadScreenDescriptors_0056b558, 0);
+        BindMenuLabels(LabelAt(0x34), 0, s_LoadScreenDescriptor2_0056be20, 0);
+
+        int cursorRow = 0;         // Ghidra: iVar12 — la ligne sous le curseur
+        int windowTop = 0;         // Ghidra: local_34 — la première ligne affichée
+        int windowOffset = 0;      // Ghidra: local_24 — windowTop * 0x16
+        int cursorOffset = 0;      // Ghidra: local_30 — cursorRow * 0x16
+        int partyCount = 0;        // Ghidra: iVar11
+        int pendingPartyCount = 0; // Ghidra: local_28 — repris dans partyCount en fin d'image
+        int phase = 0;             // Ghidra: local_38
+
+        // Le même bloc de sept locales contiguës que RunDebugPartySelect — voir sa note.
+        int* draw = stackalloc int[8];
+        byte* d = (byte*)draw;
+
+        while (true)
+        {
+            s_Unknown_005de15c = 1;
+
+            // Ghidra: la marge d'affichage, comme en tête de RunMainMenuFrameLoop mais avec une
+            // largeur figée à 0xa0 dès que l'option « Small » est active en grande taille.
+            if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+            {
+                s_Unknown_005de158 = 0;
+                s_Unknown_005de154 = 0;
+            }
+            else
+            {
+                s_Unknown_005de154 = 0xa0;
+                s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0xc;
+            }
+
+            byte* pad = CurrentPadState();
+
+            if (s_GameStateId != 1)
+            {
+                // --- La sortie : recharger les membres retenus -----------------------------
+                s_Unknown_005de15c = 0;
+                s_PartySize_005e9020 = 0;
+
+                byte* member = GetMainMemPtr() + 0xf0000;
+                while (s_PartySize_005e9020 < partyCount)
+                {
+                    // L'entrée dont l'ordre de sélection vaut la place courante + 1. Si aucune ne
+                    // correspond, l'original retombe sur l'entrée 0 — transcrit tel quel.
+                    int index = 0;
+                    while (index < entryCount
+                        && s_PartySelectionOrder_005e85c0[index] != s_PartySize_005e9020 + 1) index++;
+                    if (index == entryCount) index = 0;
+
+                    SetCardFileName(s_CardDirectoryEntries_006049bc + index * 0x28);
+                    SetCardPathDeviceFields();
+
+                    *(uint*)(member + 0x1ffc) = 0;
+                    IntPtr handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
+                    RetrySeekAndReadCardFile(handle, member, 0, 0x2000);
+                    RetryCloseCardFile(handle);
+
+                    // La même somme de contrôle signée sur 0x1ffc octets que WriteCardSaveFile
+                    // calcule à l'écriture.
+                    int checksum = 0;
+                    for (int i = 0; i < 0x1ffc; i++) checksum += (sbyte)member[i];
+
+                    if (*(int*)(member + 0x1ffc) == checksum)
+                    {
+                        member[0x2bc] = 0;
+                        member[0x2be] = 0;
+                        member[0x2bf] = 0;
+
+                        // Seul le premier membre restaure l'état partagé du groupe (inventaire,
+                        // équipement, drapeaux) : les suivants n'apportent que leur enregistrement.
+                        if (s_PartySize_005e9020 == 0) RestorePartyGlobals(member);
+                    }
+
+                    s_PartySize_005e9020++;
+                    member += 0x2000;
+                }
+
+                RefreshPartyAbilityMask();       // Ghidra: FUN_00535710
+                LoadPartyMemberResources();      // Ghidra: FUN_00536ba0
+
+                if ((int)((nint)GetMainMemPtr() - (nint)s_Unknown_005de738) + 0x138000 >= 0)
+                {
+                    // Le même bloc de fin que RunDebugPartySelect — voir sa note sur 0x80010000.
+                    byte* slotFlags = s_SlotFlags_005e93c0;
+                    for (int i = 0; i < 4; i++, slotFlags += 0x9c)
+                    {
+                        *(uint*)slotFlags = i == 0
+                            ? 0x80000000u
+                            : (s_PartySize_005e9020 <= i ? 0u : 0x80010000u);
+                    }
+
+                    s_Unknown_00566c90 = 1;
+                    s_Unknown_00566c94 = 1;
+                    s_Unknown_00566c84 = 0xff;
+                    s_Unknown_00566c88 = 0xff;
+                    s_Unknown_00566c8c = 0xff;
+                    s_Unknown_005de53c = 0;
+                    return;
+                }
+
+                // Débordement : comme dans RunDebugPartySelect, l'original reste ici pour toujours.
+                while (true)
+                {
+                    *(short*)(d + 8) = 0x38;
+                    *(short*)(d + 0xa) = 0x20;
+                    *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
+                    *(uint*)(d + 4) = 0x1000000;
+                    primCursor = DrawTextRun(otBase, primCursor, draw, s_BufferOverLabel_0056c950, 0, 0, -1);
+                    FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+                }
+            }
+
+            // --- La machine à sous-phases ------------------------------------------------
+            byte* pendingLabel = null;   // Ghidra: puVar15, lié en fin de case (LAB_00537335)
+
+            switch (phase)
+            {
+                case 0:
+                {
+                    // Ghidra: le mot de répétition automatique (pad+6), pas les fronts.
+                    ushort repeat = *(ushort*)(pad + 6);
+                    int nextRow = -1, nextOffset = 0;
+
+                    if ((repeat & 0x40) != 0)
+                    {
+                        if (cursorRow < entryCount - 1)
+                        {
+                            nextRow = cursorRow + 1;
+                            nextOffset = cursorOffset + PartyRowStride;
+                            if (windowTop + 5 < nextRow)
+                            {
+                                windowTop = cursorRow - 4;
+                                windowOffset = cursorOffset - 4 * PartyRowStride;
+                            }
+                        }
+                    }
+                    else if ((repeat & 0x10) != 0 && cursorOffset > 0)
+                    {
+                        nextRow = cursorRow - 1;
+                        nextOffset = cursorOffset - PartyRowStride;
+                        if (nextRow < windowTop) { windowTop = nextRow; windowOffset = nextOffset; }
+                    }
+
+                    if (nextRow >= 0)
+                    {
+                        cursorOffset = nextOffset;
+                        PlayUiSound3A();          // Ghidra: FUN_0053db60
+                        cursorRow = nextRow;
+                    }
+
+                    // START, avec au moins un membre retenu : passer à la confirmation.
+                    if ((pad[2] & 8) != 0 && partyCount > 0)
+                    {
+                        PlayUiSound38();          // Ghidra: FUN_0053db80
+                        phase = 4;
+                    }
+
+                    // CARRÉ : retenir ou retirer la ligne courante.
+                    if ((pad[3] & 0x80) != 0)
+                    {
+                        if (s_PartySelectionOrder_005e85c0[cursorRow] == 0)
+                        {
+                            if (partyCount < 4)
+                            {
+                                partyCount++;
+                                s_PartySelectionOrder_005e85c0[cursorRow] = (byte)partyCount;
+                                pendingPartyCount = partyCount;
+                                PlayUiSound38();
+                                if (partyCount == 4) phase = 4;
+                            }
+                            else
+                            {
+                                PlayUiSound3B();  // Ghidra: FUN_0053dbc0 — le refus
+                            }
+                        }
+                        else
+                        {
+                            // Retirer resserre les rangs : toute place supérieure recule d'un cran.
+                            byte removed = s_PartySelectionOrder_005e85c0[cursorRow];
+                            for (int i = 0; i < entryCount; i++)
+                                if (removed < s_PartySelectionOrder_005e85c0[i])
+                                    s_PartySelectionOrder_005e85c0[i]--;
+                            pendingPartyCount = partyCount - 1;
+                            s_PartySelectionOrder_005e85c0[cursorRow] = 0;
+                            PlayUiSound38();
+                        }
+                    }
+
+                    // CROIX : demander à quitter.
+                    if ((pad[3] & 0x40) != 0) phase = 1;
+                    break;
+                }
+
+                case 1:
+                    if ((pad[3] & 0x80) != 0) phase = 2;
+                    pendingLabel = LabelAt(0x38);
+                    break;
+
+                case 2:
+                case 5:
+                    if ((pad[3] & 0x40) != 0)
+                    {
+                        // CROIX pendant la boîte de dialogue : on annule et on revient à la liste.
+                        s_Unknown_0056b593 = 0;
+                        s_Unknown_0056be1f = (byte)(s_Unknown_0056be1f & 0xfb);
+                        PlayUiSound39();          // Ghidra: FUN_0053dba0
+                        phase = 0;
+                        pendingLabel = s_Unknown_005606f8;
+                        break;
+                    }
+
+                    if ((s_Unknown_0056be1f & 4) == 0)
+                    {
+                        if (s_Unknown_005e909f != 0)
+                        {
+                            phase = 0;
+                            pendingLabel = s_Unknown_005606f8;
+                            break;
+                        }
+                        // La phase 2 est la sortie vers le menu principal, la 5 le lancement de la
+                        // partie. Le `return` de la première est celui de l'original : elle ne
+                        // repasse pas par le bloc de rechargement.
+                        if (phase == 2) { s_GameStateId = 0; return; }
+                        s_GameStateId = 3;
+                        break;
+                    }
+                    pendingLabel = LabelAt(0);
+                    break;
+
+                case 3:
+                    if ((pad[3] & 0xc0) != 0) { s_GameStateId = 0; return; }
+                    break;
+
+                case 4:
+                {
+                    // Ici l'original lit les **fronts** (pad+2), pas la répétition.
+                    ushort pressed = *(ushort*)(pad + 2);
+                    if ((pressed & 0x4000) != 0)
+                    {
+                        s_Unknown_0056b58b = 0;
+                        s_Unknown_0056be1f = (byte)(s_Unknown_0056be1f & 0xfd);
+                        PlayUiSound39();
+                        phase = 0;
+                        pendingLabel = s_Unknown_005606f8;
+                        break;
+                    }
+                    if ((pressed & 0x8000) != 0)
+                    {
+                        s_Unknown_0056b58b = 0;
+                        s_Unknown_0056be1f = (byte)(s_Unknown_0056be1f & 0xfd);
+                        phase = 5;
+                        *(ushort*)(pad + 2) = (ushort)(pressed & 0x7fff);
+                        pendingLabel = LabelAt(0);
+                        break;
+                    }
+                    pendingLabel = LabelAt(0x30);
+                    break;
+                }
+            }
+
+            if (pendingLabel != null)
+                BindMenuLabels(pendingLabel, 0, s_LoadScreenDescriptors_0056b558, 0);
+
+            // --- Les six lignes visibles --------------------------------------------------
+            int windowEnd = windowTop + 6;
+            if (entryCount < windowEnd) windowEnd = entryCount;
+
+            *(short*)(d + 0x10) = 0;
+            *(byte**)d = s_RowSpriteRecord_00563148;
+
+            for (int i = windowTop, offset = windowOffset; i < windowEnd; i++, offset += PartyRowStride)
+            {
+                byte* row = s_PartyRowText_005e8640 + offset;
+                bool chosen = s_PartySelectionOrder_005e85c0[i] != 0;
+
+                EmitViewportRect(otBase, &primCursor);          // Ghidra: FUN_0051be20
+
+                // La fenêtre de texture de la ligne : l'index parcourt une grille de 16 colonnes,
+                // et les deux octets de tête de l'enregistrement de texture la déplacent.
+                int bank = i >> 4;
+                *(short*)(d + 0x10) = 0;
+                s_RowSpriteRecord_00563148[0] = (byte)(i << 4);
+                s_RowSpriteRecord_00563148[1] = (byte)(bank * 0x40 + 0x20);
+                *(byte**)d = s_RowSpriteRecord_00563148;
+                *(uint*)(d + 4) = 0x1000000;
+                *(short*)(d + 8) = 0x48;
+                *(short*)(d + 0xa) = (short)((i - windowTop) * 0x14 + 0x32);
+
+                // L'entrée 0x3e de la table de pages, celle que le second dword de
+                // l'enregistrement désigne — écrite juste avant le tracé, comme EmitCardGlyphTile.
+                *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xf8) = 0xf;
+                *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xfa) =
+                    (ushort)(((i << 4) >> 4) & 0xf | (bank + 0x1fe) * 0x40);
+
+                primCursor = DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
+                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                EmitClipRect(otBase, &primCursor);              // Ghidra: FUN_0051bdb0
+
+                // Le texte de la ligne, décalé de 0x1e à droite et de 4 vers le bas. La teinte
+                // Ghidra `&LAB_00404040 + (-(sel != 0) & 0xbfbfc0)` vaut 0x404040 (gris éteint)
+                // pour une ligne non retenue et 0x1000000 (pas de teinte) pour une retenue.
+                *(short*)(d + 8) += 0x1e;
+                *(short*)(d + 0xa) += 4;
+                *(uint*)(d + 4) = chosen ? 0x1000000u : 0x404040u;
+                *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
+                primCursor = DrawTextRun(otBase, primCursor, draw, row, 0, 0, PartyRowStride);
+
+                if (cursorRow == i)
+                {
+                    EmitViewportRect(otBase, &primCursor);
+                    *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                    *(short*)(d + 0xa) -= 2;
+                    *(short*)(d + 0x10) = 0x18;
+                    *(uint*)(d + 4) = 0x1000000;
+                    *(short*)(d + 8) = 0x34;
+                    primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                    primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                    EmitClipRect(otBase, &primCursor);
+                }
+            }
+
+            // Les deux descripteurs d'interface de l'écran, l'un après l'autre.
+            for (int i = 0; i < 2; i++)
+            {
+                byte* panel = s_LoadScreenDescriptors_0056b558 + i * UiDescriptorStride;
+                primCursor = RunTextEngine(primCursor, panel);            // Ghidra: FUN_005443a0
+                primCursor = DrawUiPanel(otBase, primCursor, panel);      // Ghidra: FUN_00545340
+            }
+
+            // Le fond, comme partout ailleurs : la première entrée de la table +0x94.
+            s_Unknown_005de15c = 0;
+            *(short*)(d + 0x10) = 0;
+            *(short*)(d + 8) = 0xa0;
+            *(short*)(d + 0xa) = 0x78;
+            *(short*)(d + 0xc) = 0x1420;
+            *(short*)(d + 0xe) = 0x1149;
+            *(uint**)d = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+            *(uint*)(d + 4) = 0x1000000;
+            primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);   // Ghidra: FUN_00521f20
+            primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);
+
+            FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+            partyCount = pendingPartyCount;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: le bloc <c>DAT_005e9020 == 0</c> de FUN_00536ea0 — l'état **partagé** du groupe,
+    /// restauré depuis le seul enregistrement du premier membre : huit banques de 0x40 octets
+    /// prises à <c>+0x1d00..+0x1efc</c>, trois octets de compteurs à <c>+0x1f01..+0x1f03</c>, et
+    /// huit paires de mots à <c>+0x1f04</c>. Exactement les zones que
+    /// <see cref="FinalizeCharacterStats"/> remet à zéro à la création — les deux fonctions sont les
+    /// deux moitiés du même format.
+    ///
+    /// <para>L'octet <c>+0x1f00</c> décide : à zéro, l'état est présent et recopié ; sinon tout est
+    /// remis à l'état neuf (banques à zéro, paires à <c>0 / -1</c>).</para>
+    /// </summary>
+    private static void RestorePartyGlobals(byte* record)
+    {
+        byte*[] banks =
+        [
+            s_Bank_005e96e0, s_Bank_005e9780, s_PanelSelection_005e9060, s_Bank_005e9840,
+            s_Bank_005e9720, s_Bank_005e92c0, s_Bank_005e9980, s_Bank_005e9360,
+        ];
+
+        if (record[0x1f00] == 0)
+        {
+            s_Unknown_005de528 = record[0x1f01];
+            s_Unknown_005de52c = record[0x1f02];
+            s_Unknown_005de530 = record[0x1f03];
+
+            for (int bank = 0; bank < banks.Length; bank++)
+                for (int i = 0; i < 0x40; i += 4)
+                    *(uint*)(banks[bank] + i) = *(uint*)(record + 0x1d00 + bank * 0x40 + i);
+
+            for (int i = 0; i < 8; i++)
+            {
+                byte* destination = s_EquipPairs_005e9320 + i * 8;
+                byte* source = record + 0x1f04 + i * 8;
+                *(ushort*)destination = *(ushort*)source;
+                *(ushort*)(destination + 2) = *(ushort*)(source + 2);
+                *(ushort*)(destination + 4) = *(ushort*)(source + 4);
+            }
+        }
+        else
+        {
+            s_Unknown_005de528 = 0;
+            s_Unknown_005de52c = 0;
+            s_Unknown_005de530 = 0;
+
+            foreach (byte* bank in banks) NativeMemory.Clear(bank, 0x40);
+
+            for (int i = 0; i < 8; i++)
+            {
+                *(uint*)(s_EquipPairs_005e9320 + i * 8) = 0;
+                *(uint*)(s_EquipPairs_005e9320 + i * 8 + 4) = 0xffffffff;
+            }
+        }
+
+        s_Unknown_00566c84 = 0xff;
+        s_Unknown_00566c88 = 0xff;
     }
 
     private static int s_Unknown_005de7e8, s_Unknown_005de7ec, s_Unknown_005de7f0, s_Unknown_005de7f4,
