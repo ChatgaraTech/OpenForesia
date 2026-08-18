@@ -5516,3 +5516,87 @@ somme fait exactement les 5000 de départ. CARRÉ adjuge, le cas 3 transfère, e
 choix du propriétaire avec `246` chez le vendeur, `4754` chez l'acheteur, et le meilleur objet passé
 de l'un à l'autre (36 contre 46). Les trois arithmétiques — montée de la mise, or restant, transfert
 — se recoupent, ce qui est une vérification bien plus forte qu'un simple « ça s'affiche ».
+
+---
+
+## 2026-08-18 — L'état de jeu 3 (la carte du monde) : entrée ouverte, nouveau point de blocage
+
+Le menu objets étant terminé, le graphe d'appel reprend à l'**état de jeu 3**, atteint directement
+par « Début du jeu » → constitution du groupe → lancement (`RunPartyConstitution` pose
+`s_GameStateId = 3`), et aussi depuis l'état 2 qui y avance de lui-même.
+
+### La taille du morceau, mesurée avant d'écrire
+
+Un balayage transitif du sous-graphe depuis les quatre appelées de `FUN_00516020` :
+**516 fonctions atteintes, 164 manquantes, ~17 400 lignes**. C'est tout le moteur de jeu. Il n'est
+donc pas question de le prendre d'un bloc ; ce tour ouvre l'entrée et le socle, et situe précisément
+le premier vrai obstacle.
+
+Transcrit : `RunWorldMapState` (`FUN_00516020`, les deux boucles imbriquées),
+`LoadWorldMapResources` (`FUN_005160e0`) et `LoadWorldMapArea` (`FUN_00516250`) — **aucune de leurs
+dépendances ne manquait**. Laissées en exception nommée : `FUN_00516350` (455 lignes, la mise en
+place d'image) et `FUN_00516fc0` (1226 lignes, la logique par image, celle qui pose `DAT_005645f8`
+et décide de la sortie).
+
+### Une note du fichier qui était fausse, et ce qu'elle cachait
+
+`IsKnownOverrideDestination` (`FUN_0052a660`) portait : *« none of the three comparison targets
+(DAT_006008c8/DAT_00604930/DAT_00600904) have an assignment site anywhere in the reconstructed call
+graph yet »*. C'est faux. `RunApplication` — reconstruite de longue date — les assigne juste avant
+le balayage des lecteurs (`Blaze.c:61733`) :
+
+```c
+DAT_006008c8 = 1;
+DAT_00604930 = 2;
+DAT_00600904 = 3;
+```
+
+**Ce ne sont pas des pointeurs, ce sont trois sentinelles entières.** `LoadResourceEntry` compare son
+argument `dest` à ces valeurs, et une égalité veut dire « installe une table de sauts native » au
+lieu de « écris les octets du fichier ici ». Tant qu'elles restaient nulles côté port, l'unique site
+qui les utilisait (`LoadFirstLevelResources`, avec la sentinelle A) fonctionnait **par accident** :
+`null == null`. Le comportement était le bon, la raison ne l'était pas — et le second site, celui de
+l'état 3, aurait matché la mauvaise branche.
+
+### Ce qu'est vraiment la branche 0x00604930
+
+Lue à l'occasion : elle copie **0x20 dwords** depuis `(&PTR_PTR_00566d68)[zone]` vers
+`&PTR_FUN_0056b4d0`. La table d'entrée compte **onze** zones, relevées à 0x00566d68 : 0x55e8a8,
+0x55e8e8, 0x55e928 … 0x55eb28, puis un dword nul. `PTR_FUN_0056b4f0` — l'appel indirect que
+`FUN_00516250` fait juste après — est **l'entrée 8 de la table de destination**, et vaut
+`FUN_00401fa0`, un corps vide, avant toute installation.
+
+**TODO(REVERSE)** : les onze tables sont espacées de **0x40** octets alors que la copie en transfère
+**0x80**. Chaque zone déborde donc sur la suivante. Défaut d'origine ou tables volontairement à
+moitié partagées — non tranché, il faut lire le contenu de 0x0055e8a8 avant de conclure.
+
+L'installation n'est **pas** transcrite, délibérément : les 32 valeurs sont des adresses de code, et
+les rendre appelables demande un mécanisme de table de sauts que rien de reconstruit n'exerce
+aujourd'hui. L'inventer maintenant serait de l'échafaudage spéculatif — exactement ce que
+`Strategy.md` proscrit. C'est la première fois que ce projet bute sur ce besoin ; il faudra le
+concevoir explicitement, pas en passant.
+
+### Vérifié en jeu
+
+« Début du jeu » → un personnage retenu → START → « Veux-tu jouer avec ce groupe? » → Oui : l'état 3
+démarre, `LoadWorldMapResources` s'exécute en entier, et l'arrêt tombe exactement où il est prévu —
+
+```
+NotImplementedException: FUN_0052a660, branche DAT_00604930 : l'installation de la table de sauts
+de la zone courante ... Atteinte depuis FUN_00516250, l'etat de jeu 3
+  at IsKnownOverrideDestination -> LoadResourceEntry -> LoadWorldMapArea -> RunWorldMapState
+  -> RunGameStateTick -> RunGameLoop -> RunMainLoop -> RunApplication -> entry
+```
+
+Non-régression contrôlée sur le menu objets après la correction des sentinelles : ~374 primitives
+par image, identique à avant.
+
+### Le prochain pas
+
+Deux chemins possibles, dans cet ordre de coût :
+
+1. **Concevoir le mécanisme de table de sauts** et transcrire la branche 0x00604930. C'est le
+   blocage dur, et il reviendra pour la branche 0x00600904 (trois tables, +11 fonctions).
+2. Transcrire `FUN_00516350` (455 lignes) sans attendre : elle est en aval du blocage, donc
+   invérifiable pour l'instant, mais ses dépendances sont peut-être déjà là — à mesurer avant de
+   s'y mettre, comme on l'a fait ici.

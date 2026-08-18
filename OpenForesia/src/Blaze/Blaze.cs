@@ -1959,6 +1959,15 @@ public static unsafe partial class Blaze
         cdCheckPath[6] = (byte)'i'; cdCheckPath[7] = (byte)'d'; cdCheckPath[8] = (byte)'x';
         cdCheckPath[9] = 0;
 
+        // Ghidra: `DAT_006008c8 = 1; DAT_00604930 = 2; DAT_00600904 = 3;` juste avant la boucle de
+        // balayage (Blaze.c:61733). **Ce ne sont pas des pointeurs**, ce sont trois sentinelles de
+        // destination : LoadResourceEntry compare son argument `dest` à ces trois valeurs, et une
+        // égalité veut dire « installe une table de sauts native » au lieu de « écris les octets
+        // du fichier de ressources ici ». Voir IsKnownOverrideDestination.
+        s_OverrideDestA_006008c8 = (void*)1;
+        s_OverrideDestB_00604930 = (void*)2;
+        s_OverrideDestC_00600904 = (void*)3;
+
         bool foundDriveX = false;
         bool foundDriveZ = false;
         char foundLetter = '@';
@@ -5628,27 +5637,51 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0052a660 @ 0x0052a660 â€” checks whether `dest` is one of three well-known
-    /// "class override table" destinations; if so, substitutes hardcoded native function-pointer
-    /// tables instead of loading resource-file bytes into it. TODO(REVERSE): none of the three
-    /// comparison targets (Ghidra: DAT_006008c8/DAT_00604930/DAT_00600904) have an assignment site
-    /// anywhere in the reconstructed call graph yet, so they're always null here and every real
-    /// call site's `dest` (always a valid non-null scratch-buffer pointer) can never match â€” this
-    /// always returns false in the current reconstruction. The three true-branch bodies (the
-    /// DAT_00600904 one alone pulls in 11 further FUN_ calls, presumably per-entity-class native
-    /// vtable installers) are out of scope for this pass and stubbed loudly rather than guessed.
+    /// Ghidra: FUN_0052a660 @ 0x0052a660 — teste si <paramref name="dest"/> est l'une des trois
+    /// destinations « table de sauts » ; si oui, il installe une table de pointeurs de code au lieu
+    /// de charger les octets du fichier de ressources.
+    ///
+    /// <para><b>Correction du 2026-08-18 : les trois cibles ne sont pas des pointeurs et elles
+    /// sont bel et bien assignées.</b> La note précédente disait « never assigned anywhere reached
+    /// yet » ; c'est faux. <see cref="RunApplication"/> — reconstruite depuis longtemps — les pose
+    /// juste avant le balayage des lecteurs (<c>Blaze.c:61733</c>) :
+    /// <c>DAT_006008c8 = 1; DAT_00604930 = 2; DAT_00600904 = 3;</c>. Ce sont trois **sentinelles
+    /// entières**, pas des adresses. Tant qu'elles restaient nulles côté port, la comparaison
+    /// `dest == null` réussissait par accident sur la première et le mécanisme entier était faux.</para>
+    ///
+    /// <para><b>Anatomie de la branche 0x00604930</b>, lue le 2026-08-18 : elle copie
+    /// <b>0x20 dwords</b> depuis <c>(&amp;PTR_PTR_00566d68)[DAT_005de528 &amp; 0xff]</c> — la zone
+    /// courante — vers <c>&amp;PTR_FUN_0056b4d0</c>. La table d'entrée compte <b>onze</b> zones,
+    /// relevées à 0x00566d68 : 0x55e8a8, 0x55e8e8, 0x55e928 … 0x55eb28, puis un dword nul.
+    /// <c>PTR_FUN_0056b4f0</c>, que <c>FUN_00516250</c> appelle indirectement, est l'entrée 8 de la
+    /// table de destination — et vaut <c>FUN_00401fa0</c>, un corps vide, avant toute installation.</para>
+    ///
+    /// <para>TODO(REVERSE) : les onze tables sont espacées de <b>0x40</b> octets alors que la copie
+    /// en transfère <b>0x80</b> ; chaque zone déborde donc sur la suivante. Défaut d'origine ou
+    /// tables volontairement à moitié partagées, non tranché — il faut lire le contenu de
+    /// 0x0055e8a8 avant de conclure. Le port ne transcrit pas encore l'installation : les 32
+    /// pointeurs sont des adresses de code, et les rendre appelables demande un mécanisme de
+    /// vtable que rien de reconstruit n'exerce pour l'instant. L'inventer maintenant serait de
+    /// l'échafaudage spéculatif.</para>
     /// </summary>
     private static bool IsKnownOverrideDestination(void* dest)
     {
-        if (dest == s_OverrideDestA_006008c8) return true; // Ghidra: no body at all for this case â€” just `return 1;`
+        if (dest == s_OverrideDestA_006008c8) return true; // Ghidra: pas de corps du tout ici — juste `return 1;`
         if (dest == s_OverrideDestB_00604930)
-            throw new NotImplementedException("FUN_0052a660: DAT_00604930 override-table branch not reconstructed â€” see REVERSE_STATUS.md");
+            throw new NotImplementedException(
+                "FUN_0052a660, branche DAT_00604930 : l'installation de la table de sauts de la " +
+                "zone courante (0x20 dwords depuis PTR_PTR_00566d68[zone] vers PTR_FUN_0056b4d0). " +
+                "Atteinte depuis FUN_00516250, l'etat de jeu 3 — voir REVERSE_STATUS.md");
         if (dest == s_OverrideDestC_00600904)
-            throw new NotImplementedException("FUN_0052a660: DAT_00600904 override-table branch (+11 dependent FUN_ calls) not reconstructed â€” see REVERSE_STATUS.md");
+            throw new NotImplementedException(
+                "FUN_0052a660, branche DAT_00600904 : trois tables de sauts d'affilee (+11 appels " +
+                "FUN_ dependants) — voir REVERSE_STATUS.md");
         return false;
     }
 
-    // Ghidra: DAT_006008c8 / DAT_00604930 / DAT_00600904 â€” never assigned anywhere reached yet.
+    // Ghidra: DAT_006008c8 / DAT_00604930 / DAT_00600904 — les trois sentinelles de destination,
+    // posées à 1, 2 et 3 par RunApplication. Typées `void*` parce que c'est à un `void*` qu'elles
+    // sont comparées, pas parce qu'elles pointent sur quoi que ce soit.
     private static void* s_OverrideDestA_006008c8;
     private static void* s_OverrideDestB_00604930;
     private static void* s_OverrideDestC_00600904;
@@ -16908,7 +16941,8 @@ public static unsafe partial class Blaze
                 break;
             case 3:
                 // Ghidra: sets Zoom8BitTextures back to 1 before dispatching.
-                throw new NotImplementedException("thunk_FUN_00516020 (game state 3) not yet reconstructed");
+                RunWorldMapState();     // Ghidra: thunk_FUN_00516020 -> FUN_00516020
+                break;
             case 4:
                 // Ghidra: FUN_005066d0() â€” le chargement est reconstruit, la boucle de frame
                 // s'arrête sur ses huit sous-états non décompilés. Voir REVERSE_STATUS.md.
@@ -16936,6 +16970,253 @@ public static unsafe partial class Blaze
                     "than by writing to a null pointer.");
         }
     }
+
+    // =======================================================================================
+    // L'etat de jeu 3 — la carte du monde. Ghidra: thunk_FUN_00516020 @ 0x005160d0.
+    // =======================================================================================
+
+    /// <summary>Ghidra: DAT_005e97cc et DAT_005e97e8 — les deux pointeurs de fin que le chargeur
+    /// empile apres <see cref="s_Unknown_005e97c8"/> : la zone, puis son ecran.</summary>
+    private static byte* s_Unknown_005e97cc;
+    private static uint s_Unknown_005e97e8;
+
+    /// <summary>Ghidra: _DAT_005e9828 — le nombre d'emplacements de la table de pages occupes a la
+    /// fin du chargement de l'etat 3. Part de 0x10, la ou &amp;DAT_005e8f40 commence.</summary>
+    private static int s_Unknown_005e9828;
+
+    /// <summary>Ghidra: DAT_005e9760 et DAT_005f7b44 — les longueurs des deux listes <c>+0x48</c>,
+    /// celle du repertoire d'etat et celle de la zone.</summary>
+    private static byte s_Unknown_005e9760;
+    private static byte s_Unknown_005f7b44;
+
+    /// <summary>Ghidra: DAT_005fa584 — le curseur d'empilement laisse par la seconde serie de
+    /// paquets de modeles, et DAT_005edec4, le premier octet du dernier paquet de la premiere
+    /// serie. TODO(REVERSE) : leurs lecteurs sont dans FUN_00516350/FUN_00516fc0, non transcrites.</summary>
+    private static byte* s_Unknown_005fa584;
+    private static byte s_Unknown_005edec4;
+
+    /// <summary>Ghidra: &amp;DAT_005fa588 et &amp;DAT_005f7b40 — les deux emplacements de resultat que
+    /// <see cref="RelocateModelBundle"/> remplit. **Ils ne sont pas avances d'un paquet a l'autre**,
+    /// contrairement a ceux de <see cref="LoadCharacterSelectResources"/> : chaque paquet ecrase le
+    /// precedent, et seul le dernier survit. Transcrit tel quel.</summary>
+    private static readonly byte* s_ModelResultA_005fa588 = (byte*)NativeMemory.AllocZeroed(4);
+    private static readonly byte* s_ModelResultB_005f7b40 = (byte*)NativeMemory.AllocZeroed(4);
+
+    /// <summary>Ghidra: DAT_005645f8 — l'etat du pas de boucle de la carte du monde. La boucle
+    /// interne tourne tant qu'il vaut autre chose que -1, -2 ou -3 ; -1 relance le tour exterieur
+    /// (donc reinitialise le pas), -2 et -3 rendent la main a RunGameStateTick.</summary>
+    private static sbyte s_WorldMapStep_005645f8 = 2;
+
+    /// <summary>Ghidra: &amp;DAT_00564650 — six champs contigus remis a l'etat neuf a chaque tour
+    /// exterieur. Releves a 0x00564650 : 0x017c, 0, 0, 0, 0x50, 0x280. Le code y ecrit des zeros
+    /// partout sauf le dernier, qui recoit 900. TODO(REVERSE) : leurs roles ne sont pas etablis,
+    /// leurs lecteurs sont dans FUN_00516350/FUN_00516fc0.</summary>
+    private static readonly byte* s_WorldMapCamera_00564650 = (byte*)NativeMemory.AllocZeroed(0x14);
+
+    /// <summary>Ghidra: &amp;DAT_00566c10 — le rectangle VRAM ou l'image de la carte est envoyee a
+    /// chaque image : x 0, y 0x1c0, 0x100 de large, 0x10 de haut. Releve dans Legacy/Blaze.exe.</summary>
+    private static readonly short* s_WorldMapUploadRect_00566c10 =
+        (short*)AllocBytes([0x00, 0x00, 0xc0, 0x01, 0x00, 0x01, 0x10, 0x00]);
+
+    /// <summary>Ghidra: &amp;DAT_005633b0 — le descripteur d'interface de la carte du monde. Ses 26
+    /// dwords d'en-tete sont releves dans Legacy/Blaze.exe. Alloue bas et paresseusement pour la
+    /// meme raison que les autres : il traverse RunTextEngine puis DrawUiPanel.</summary>
+    private static byte* s_WorldMapDescriptorStorage;
+    private static byte* s_WorldMapDescriptor_005633b0
+        => s_WorldMapDescriptorStorage != null
+            ? s_WorldMapDescriptorStorage
+            : (s_WorldMapDescriptorStorage = BuildWorldMapDescriptor());
+
+    private static byte* BuildWorldMapDescriptor()
+    {
+        byte* block = AllocLowZeroed(UiDescriptorStride);
+        uint* a = (uint*)block;
+        a[0] = 0x00000031; a[1] = 0xffb00030; a[2] = 0x004000d0; a[3] = 0x00000000;
+        a[4] = 0x04180000; a[5] = 0x00000000; a[6] = 0x010f0808; a[7] = 0x02cf1020;
+        a[8] = 0x01071010; a[9] = 0x01000000; a[10] = 0x00000000; a[11] = 0x01000000;
+        a[12] = 0x010f40c4; a[13] = 0x01000000; a[14] = 0x000f1000; a[15] = 0x01000000;
+        a[16] = 0x010f0000; a[17] = 0x01000000; a[19] = 0x01000000; a[21] = 0x01000000;
+        a[23] = 0x01000000; a[25] = 0x01000000;
+        return block;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00516020 @ 0x00516020 (atteint par <c>thunk_FUN_00516020</c>) — l'etat de jeu 3,
+    /// la carte du monde. Deux boucles imbriquees : la sortie de l'interne par -1 relance
+    /// l'externe, qui remet le pas et la camera a neuf ; -2 et -3 rendent la main.
+    ///
+    /// <para>Atteint depuis « Debut du jeu » → constitution du groupe → lancement
+    /// (<see cref="RunPartyConstitution"/> pose <c>s_GameStateId = 3</c>), et aussi depuis l'etat 2
+    /// qui y avance de lui-meme.</para>
+    /// </summary>
+    private static void RunWorldMapState()
+    {
+        LoadWorldMapResources();     // Ghidra: FUN_005160e0
+        BindMenuLabels(s_Unknown_005606f8, 0, s_WorldMapDescriptor_005633b0, 0);
+
+        while (true)
+        {
+            s_WorldMapStep_005645f8 = 2;
+            s_Unknown_00566c88 = 0xff;
+            *(short*)(s_WorldMapCamera_00564650 + 0) = 0;
+            *(short*)(s_WorldMapCamera_00564650 + 2) = 0;
+            *(short*)(s_WorldMapCamera_00564650 + 4) = 0;
+            *(short*)(s_CameraVector_00604928 + 0) = 0;
+            *(short*)(s_CameraVector_00604928 + 2) = 0;
+            *(int*)(s_CameraVector_00604928 + 4) = 0;
+            *(short*)(s_WorldMapCamera_00564650 + 8) = 0;
+            *(short*)(s_WorldMapCamera_00564650 + 0xc) = 0;
+            *(short*)(s_WorldMapCamera_00564650 + 0x10) = 900;
+
+            while (true)
+            {
+                LoadWorldMapArea();               // Ghidra: FUN_00516250
+                RunWorldMapFrame();               // Ghidra: FUN_00516350
+                ReInitializeAllTextures();
+                Ordinal_674(s_WorldMapUploadRect_00566c10, GetMainMemPtr() + 0x1c2000);
+                RunWorldMapTick();                // Ghidra: FUN_00516fc0
+
+                if (s_WorldMapStep_005645f8 == -1) break;
+                if (s_WorldMapStep_005645f8 == -2 || s_WorldMapStep_005645f8 == -3) return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005160e0 @ 0x005160e0 — le chargement des ressources de l'etat 3. La meme forme
+    /// que <see cref="LoadCharacterSelectResources"/>, sur d'autres listes : <c>+0x10</c> les
+    /// textures (decodees a partir de l'emplacement 0x10 de la table de pages, d'ou le compteur qui
+    /// part de 0x10), <c>+0xac</c> puis <c>+0x24</c> deux series de paquets de modeles empilees
+    /// bout a bout, et <c>+0x48</c> qui n'est que comptee.
+    ///
+    /// <para>Ghidra donne a cette fonction un parametre <c>__fastcall</c> qu'elle n'a pas : le
+    /// <c>param_1</c> dont il lit <c>DAT_005edec4 = *param_1</c> est en realite la destination du
+    /// **dernier** paquet de la serie <c>+0xac</c>, reaffectee dans la boucle. Si la liste est
+    /// vide, l'original lit ECX tel quel — un vrai indefini, laisse ici sur le curseur de depart.</para>
+    /// </summary>
+    private static void LoadWorldMapResources()
+    {
+        // Ghidra: FUN_0040a600() — corps vide.
+        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
+        FixupResourceHeader(s_MainResourceDirectory_005e97c4);
+
+        byte* directoryBase = s_MainResourceDirectory_005e97c4;
+        byte* mainMem = GetMainMemPtr();
+        if (directoryBase == null || mainMem == null) return;
+
+        int slotCount = 0x10;
+        int* textures = *(int**)(directoryBase + 0x10);
+        if (textures != null)
+        {
+            byte* scratch = mainMem + 0x1b0000;
+            byte* slot = s_EntityDecodeTable_005e8f00 + 0x40;   // Ghidra: &DAT_005e8f40
+            for (int* entry = textures; *entry != 0; entry += 2, slot += 4, slotCount++)
+            {
+                LoadResourceEntry((int*)(nint)(*entry), scratch);
+                DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+            }
+        }
+
+        s_Unknown_005e97e8 = s_Unknown_005e97e4;
+        s_Unknown_005e9828 = slotCount;
+
+        byte* cursor = mainMem + 0x138000;
+        byte* lastBundle = cursor;
+
+        int* bundlesA = *(int**)(directoryBase + 0xac);
+        if (bundlesA != null)
+        {
+            for (int* entry = bundlesA; *entry != 0; entry += 2)
+            {
+                byte* start = cursor;
+                cursor = LoadResourceEntry((int*)(nint)(*entry), start);
+                RelocateModelBundle((int*)start, (byte*)entry, (byte**)s_ModelResultA_005fa588);
+                lastBundle = start;
+            }
+        }
+        s_Unknown_005edec4 = *lastBundle;
+
+        int* bundlesB = *(int**)(directoryBase + 0x24);
+        if (bundlesB != null)
+        {
+            for (int* entry = bundlesB; *entry != 0; entry += 2)
+            {
+                byte* start = cursor;
+                cursor = LoadResourceEntry((int*)(nint)(*entry), start);
+                RelocateModelBundle((int*)start, (byte*)entry, (byte**)s_ModelResultB_005f7b40);
+            }
+        }
+        s_Unknown_005fa584 = cursor;
+
+        s_Unknown_005e9810 = *(int*)(directoryBase + 100);
+
+        s_Unknown_005e9760 = 0;
+        int* areas = *(int**)(directoryBase + 0x48);
+        if (areas != null)
+            for (int* entry = areas; *entry != 0; entry++) s_Unknown_005e9760++;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00516250 @ 0x00516250 — recharge la zone courante, et **seulement quand elle
+    /// change** : la garde compare <c>DAT_00566c84</c> a <c>DAT_005de528</c>. Le repertoire de la
+    /// zone est empile juste apres celui de l'etat, et ses textures se decodent a partir de
+    /// l'emplacement 0x18 de la table de pages (<c>&amp;DAT_005e8f60</c>).
+    /// </summary>
+    private static void LoadWorldMapArea()
+    {
+        if (s_Unknown_00566c84 == (byte)s_Unknown_005de528) return;
+
+        s_Unknown_00566c84 = (byte)s_Unknown_005de528;
+        s_Unknown_00566c94 = 1;
+        RunLoadingScreen();          // Ghidra: FUN_0052a440
+        // Ghidra: FUN_0040a600() — corps vide.
+
+        byte* directoryBase = s_MainResourceDirectory_005e97c4;
+        byte* mainMem = GetMainMemPtr();
+        if (directoryBase == null || mainMem == null) return;
+
+        int areaEntry = ((int*)(*(byte**)(directoryBase + 0x48)))[(uint)s_Unknown_005de528];
+        s_Unknown_005e97cc = LoadResourceEntry((int*)(nint)areaEntry, s_Unknown_005e97c8);
+        FixupResourceHeader(s_Unknown_005e97c8);
+
+        int* textures = *(int**)(s_Unknown_005e97c8 + 0x10);
+        if (textures != null)
+        {
+            byte* scratch = mainMem + 0x1b0000;
+            byte* slot = s_EntityDecodeTable_005e8f00 + 0x60;   // Ghidra: &DAT_005e8f60
+            for (int* entry = textures; *entry != 0; entry += 2, slot += 4)
+            {
+                LoadResourceEntry((int*)(nint)(*entry), scratch);
+                DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+            }
+        }
+
+        s_Unknown_005f7b44 = 0;
+        int* list = *(int**)(s_Unknown_005e97c8 + 0x48);
+        if (list != null)
+            for (int* entry = list; *entry != 0; entry++) s_Unknown_005f7b44++;
+
+        // La destination est la **sentinelle 2**, pas un tampon : LoadResourceEntry la reconnait et
+        // installe la table de sauts de la zone au lieu de lire des octets. Voir
+        // IsKnownOverrideDestination — c'est la que l'etat 3 s'arrete aujourd'hui.
+        LoadResourceEntry(*(int**)(*(byte**)(s_Unknown_005e97c8 + 0x6c)), (byte*)s_OverrideDestB_00604930);
+
+        // Ghidra: `(*(code *)PTR_FUN_0056b4f0)()` — l'entree 8 de la table de sauts. Avant toute
+        // installation elle vaut FUN_00401fa0, dont le corps est vide (verifie dans Legacy/Blaze.exe
+        // a 0x0056b4f0 : quatre emplacements consecutifs pointant tous sur 0x00401fa0).
+    }
+
+    /// <summary>Ghidra: FUN_00516350 @ 0x00516350 — 455 lignes, la mise en place de l'image de la
+    /// carte du monde.</summary>
+    private static void RunWorldMapFrame() =>
+        throw new NotImplementedException(
+            "FUN_00516350 : la mise en place d'image de la carte du monde (455 lignes) — voir REVERSE_STATUS.md");
+
+    /// <summary>Ghidra: FUN_00516fc0 @ 0x00516fc0 — 1226 lignes, la logique par image de la carte
+    /// du monde ; c'est elle qui pose DAT_005645f8 et decide de la sortie.</summary>
+    private static void RunWorldMapTick() =>
+        throw new NotImplementedException(
+            "FUN_00516fc0 : la logique par image de la carte du monde (1226 lignes) — voir REVERSE_STATUS.md");
 
     /// <summary>
     /// Ghidra: <c>thunk_FUN_00536180</c> @ 0x00536260 â€” byte-for-byte identical to

@@ -858,3 +858,17 @@ Four fields per descriptor, at the offsets already named on the other instances
 | `0x00566B48` | `00 00 18 18 00 00 3E 00` | l'enregistrement de sprite d'une icône d'objet ; ses deux premiers octets sont réécrits à chaque tracé |
 | `0x00566B80` | `"???"` | ce qu'affiche une caractéristique d'objet non identifié |
 | `0x00566B84` | `"????"` | ce qu'affiche le nom d'un objet non identifié |
+
+## L'état de jeu 3, la carte du monde (`FUN_00516020`) — relevé le 2026-08-18
+
+| VA | contenu | rôle |
+|---|---|---|
+| `0x005633b0` | en-tête de descripteur, 26 dwords ; `+4` = `0xFFB00030` | le descripteur d'interface de la carte du monde |
+| `0x005645F8` | `02 00 00 00 FF 00 00 00 …` | `DAT_005645f8` = 2 : le pas de boucle ; `DAT_005645fc` = 0xff |
+| `0x00564650` | `7C 01 00 00 00 00 00 00 00 00 00 00 50 00 00 00 80 02 00 00` | six champs de caméra remis à neuf à chaque tour |
+| `0x00566C10` | `00 00 C0 01 00 01 10 00` | le rectangle VRAM d'envoi par image : (0, 0x1c0) 0x100×0x10 |
+| `0x00566D68` | 11 pointeurs → `0x55e8a8`, `0x55e8e8`, … `0x55eb28`, puis un dword nul | `PTR_PTR_00566d68` : une table de sauts par zone, espacées de 0x40 |
+| `0x0056B4F0` | quatre dwords, tous `0x00401FA0` | `PTR_FUN_0056b4f0` — l'entrée 8 de `PTR_FUN_0056b4d0` ; `FUN_00401fa0` a un **corps vide** |
+| `0x00604928` | (queue non initialisée de `.data`) | zéro au chargement, écrit par le code seulement |
+| `0x00604930` | (queue non initialisée) | posé à **2** par `RunApplication` — une sentinelle de destination, pas un pointeur |
+| `0x006008C8` / `0x00600904` | (queue non initialisée) | posés à **1** et **3** par `RunApplication`, mêmes sentinelles |
