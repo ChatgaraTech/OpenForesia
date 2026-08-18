@@ -5302,3 +5302,143 @@ Menu objets → « Enchère » : la liste des sauvegardes s'affiche avec portrai
 niveaux (`ARTHUR Gue. N1`, `MERLIN Vol. N1`), curseur compris, aux coordonnées propres à cet écran.
 ~398 primitives par image, aucun plantage. L'écran d'organisation du groupe (entrée « Début du jeu »)
 est revérifié après l'extraction du helper.
+
+## 2026-08-18 — menu objets : `FUN_00527e30`, l'écran d'utilisation d'objet (partiel, et pourquoi)
+
+Demandé après « Enchère » et la fermeture. **Transcrit en partie** : les phases d'entrée, de
+transfert et de dialogue ; les deux phases centrales restent gardées. Le découpage n'est pas un
+choix de confort, il suit une différence réelle de lisibilité de la pseudo-C.
+
+### Ce qui est fait
+
+| phase | rôle | état |
+|---|---|---|
+| prologue | reconstruit l'index des emplacements occupés des quatre membres (`+0x2c0`, `+0x2c1`) | fait |
+| 0 | choix du membre, entrée dans sa grille, les deux sorties | fait |
+| 3 | le transfert effectif d'un objet vers un autre membre | fait |
+| -1, -2 | les deux boîtes de confirmation | fait |
+| 1 | la grille d'objets d'un membre (165 lignes) | **gardé** |
+| 2 | le choix de la cible du transfert (330 lignes) | **gardé** |
+
+Avec `FUN_00529590` (121 lignes), le bandeau du groupe que trois phases dessinent : par membre, son
+portrait, son or et l'emplacement d'objet de plus grande valeur qu'il porte.
+
+Deux extractions au passage, chacune recopiée à l'identique à trois endroits de l'original :
+`ComputeItemValue` (le repliement « somme des valeurs absolues doublées » sur un emplacement) et
+`RebuildItemIndex`.
+
+**Le trio de champs de descripteur, pour la troisième fois.** `DAT_005658a7`, `DAT_0056501b` et
+`DAT_00565013` sont les champs `+0x8c7`, `+0x3b` et `+0x33` du **premier** descripteur du menu
+objets (0x564fe0 + ces décalages). Exactement le même trio que sur l'écran de sauvegarde
+(`DAT_00560728`) et sur l'écran d'organisation du groupe (`DAT_0056b558`). Quand trois adresses
+« isolées » se présentent ensemble avec ces trois écarts, ce sont des champs de descripteur.
+
+### Pourquoi les cas 1 et 2 sont gardés plutôt que transcrits
+
+Le cas 2 n'est **pas relisible en l'état** : Ghidra y a perdu l'adressage et rend des indices en
+constantes 64 bits — `pbVar14[-0xffffffff00000008] = 1;` par exemple, qui n'a pas de sens dans un
+programme 32 bits. Il y a plusieurs occurrences de cette forme, plus une boucle de sélection de
+cible où le décompilateur a mélangé quatre variables de travail. Le transcrire demande une passe de
+désassemblage soutenue, du même ordre que celles qui ont tranché aujourd'hui le préfixe `0C 04 18 10`
+ou le pas de 0x4c — mais sur trois cents lignes, pas sur trois.
+
+Le cas 1 est lisible, mais il appelle `FUN_005276c0`, `FUN_00529070` et `FUN_00529290` (248 lignes),
+dont `FUN_00529070` souffre du même défaut d'adressage, et il tire une demi-douzaine de symboles
+`.data` encore à relever.
+
+**Et surtout, rien de tout cela n'est exerçable aujourd'hui** : la grille d'objets suppose un
+inventaire, que seul `FUN_00524880` (1377 lignes, non transcrit) peuple. Transcrire mille lignes
+qu'aucun run ne peut traverser, c'est exactement la façon dont sont nés les deux défauts de cette
+journée — le pas de 0x9c au lieu de 0x4c et le type de retour perdu — tous deux dans du code qu'on
+ne voyait pas tourner. Ce qui est livré ici est ce qui a pu être vérifié à l'écran.
+
+### Vérifié en jeu
+
+Menu objets → « Enchère » → sélection d'un personnage → START : l'écran d'utilisation s'affiche avec
+le portrait du membre, son or, son meilleur objet et sa valeur, et l'invite « Sélectionne le
+propriétaire. » — soit le bandeau de `FUN_00529590` et la phase 0 au complet. ~368 primitives par
+image.
+
+---
+
+## 2026-08-18 — `FUN_00524880`, le sous-écran « Invertaire » (1377 lignes)
+
+Transcrit **en entier**, les 26 phases. `ItemMenuInventoryScreen`, plus trois aides :
+`BuildItemDisplayName` (`FUN_0051bcc0`), `ItemDisplayName` (`FUN_0051bd30`) et `DrawPanelIconRow`
+(`FUN_005276c0`) — ce dernier était l'un des trois helpers gardés de la veille.
+
+### Ce que l'écran fait
+
+Il choisit une sauvegarde, charge son inventaire et l'affiche. La disposition d'un inventaire, qui
+n'était pas connue jusqu'ici : **vingt-deux emplacements de 0x280 octets**, `+0x00` la fiche (nom
+court sur 0x10, nom long en `+0x41` terminé par `'/'`, quantité en `+0x10`, attributs en `+0x12` et
+`+0x13`), `+0x140` une palette de seize couleurs, `+0x160` une icône 24×24 en 4 bits. Les **dix**
+premiers vivent dans le premier bloc du fichier de sauvegarde à `+0x300`, les **douze** suivants
+dans son second bloc — d'où les trois lectures de la phase 5 et les deux boucles de comptage.
+
+**La somme de contrôle est stockée deux fois dans le fichier**, à `0x1ffc` et à `0x3ffc` : la phase
+0x11 réécrit `record[0x1f00..0x1fff]` à l'offset `0x3f00`, ce qui y recopie le même dword. La phase
+5 compare donc d'abord les deux exemplaires, puis recalcule la somme sur les `0x1ffc` premiers
+octets. La garde qui ressemblait à un artefact Ghidra (`*(record+0x1ffc) == *(MainMem+0x1b38fc)`)
+est en fait cohérente avec l'écriture — les deux se recoupent exactement.
+
+### Trois choses que la pseudo-C cachait
+
+**Le tampon de pile de 188 octets du prologue est deux locales fusionnées.** Ghidra montre un
+`builtin_strncpy` de 186 octets qui sont, à l'octet près, la table des largeurs de glyphes
+proportionnelles — et le même tampon sert ensuite de tampon de commande texte aux phases 8 et à la
+queue. Ce n'est pas une contradiction : la phase 10 passe la table globale `DAT_0056e7b0` en chasse
+fixe (0x08 partout) pour aligner sa grille de caractères, et la **restaure depuis cette copie** en
+fin de phase. Le prologue la refaisant à chaque image, les deux usages ne sont jamais vivants
+ensemble. Sans cette lecture de la phase 10, le `strncpy` du prologue restait inexplicable.
+
+**Un troisième descripteur d'interface.** `0x564fe0 + 0x8c8 = 0x5658a8 + 0x8c8 = 0x566170`. La
+boucle de rendu de la page n'en parcourt que deux ; le troisième n'appartient qu'à ce sous-écran,
+qui le lie et le dessine lui-même. Son en-tête est relevé dans `Legacy/Blaze.exe`, et son `+4`
+vaut `0x00640014` — exactement ce que la phase 9 y réécrit, ce qui confirme le relevé.
+
+**`DAT_005de4e8` porte deux rôles.** Drapeau « liste déjà chargée » dans « Enchère »
+(`FUN_005277b0`), curseur d'emplacement de carte mémoire ici. Les deux sous-écrans ne coexistent
+jamais et `FUN_00524210` remet la plage à zéro à l'entrée du menu. Deux accesseurs nommés plutôt
+qu'un nom faux sur l'un des deux sites.
+
+L'arène d'état descend de `0x005de410` à **`0x005de100`** (0x420 octets) : cet écran atteint
+`DAT_005de110`, `DAT_005de2d8`, `DAT_005de390` et `DAT_005de428`.
+
+### Deux défauts du binaire, notés dans `legacy-bug.md`
+
+* **LB-004** — les phases 9 (fiche détaillée) et 10 (clavier de renommage) n'ont **aucun
+  prédécesseur**. Vérifié à l'octet sur les 46 instructions qui référencent `0x005de4d4` : aucun
+  site n'y écrit 9 ni 10. La phase 8 sort vers l'écran racine sur CARRÉ comme sur CROIX. Toute la
+  boucle de réécriture du fichier (phases 7, 0xb..0x12, 0x5e..0x62, négatives) est morte par
+  ricochet, puisqu'elle exige `DAT_005de508`, que seul le renommage lève.
+* **LB-005** — le refus de premier caractère du renommage compare un glyphe sur un octet à
+  `0x4081`. Désassemblé à `0x005266A7` : `XOR EBX,EBX / MOV BL,[EAX]`, puis `CMP EBX,EDX` avec
+  `EDX = [0x562c9c] & 0xffff`. Jamais vrai.
+
+Tout est transcrit malgré tout — le projet reconstruit le binaire, pas seulement ses chemins
+vivants — mais **rien de la phase 9 vers le bas n'est exerçable**, donc rien de tout cela n'a pu
+être vérifié à l'écran. C'est le seul gros bloc de la journée dans ce cas, et il l'est pour une
+raison établie, pas par manque de temps.
+
+### Vérifié en jeu
+
+Menu objets → « Invertaire » → la liste des sauvegardes (portrait, nom, classe, niveau, curseur) →
+CARRÉ sur une ligne → le fichier est lu, les deux gardes de somme de contrôle passent, et la liste
+d'objets s'affiche : « Epée normale / Armure de cuir / Bouclier de cuir / Petite potion », le
+portrait et le nom du personnage, le compteur « 4/403 ». CARRÉ ou CROIX ramène à l'écran racine, et
+« Enchère » n'a pas régressé. ~374 primitives par image sur la liste d'objets, ~416 sur la liste des
+sauvegardes.
+
+Le prérequis est qu'il existe au moins une sauvegarde dans le `save\` du répertoire de travail —
+sans quoi la phase 0 rebondit aussitôt vers l'écran racine, exactement comme l'original.
+
+### Une observation laissée ouverte
+
+Sur la liste d'objets, un petit témoin d'attente subsiste en bas à droite de la boîte de message.
+Il vient du couple `0x0c 0x0f` (« début de page », « attente ») que la phase 5 lie dans le premier
+descripteur **dans l'image même où elle passe à la phase 8** : le joueur n'a jamais l'occasion de
+le consommer. La séquence d'appels du port est identique à celle de l'original (`FUN_00544350`
+avec `0x564a10`, puis `&DAT_005606f8` à l'entrée de la phase 8), et la boîte est propre sur
+« Enchère », qui ne lie pas de page en attente. Ce n'est donc pas une erreur de transcription ;
+savoir si le jeu de 1998 affiche le même témoin demanderait une capture de référence.

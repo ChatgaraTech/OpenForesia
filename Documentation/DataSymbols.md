@@ -832,3 +832,29 @@ above, applied once the descriptor size is known:
 Four fields per descriptor, at the offsets already named on the other instances
 (`s_Unknown_00560763` = `+0x3b`, `s_MenuSelection_0056e61c` = `+0x8c4`, `s_Unknown_0056e61f` =
 `+0x8c7`). The symmetry is what makes it certain.
+
+## Le sous-écran « Invertaire » du menu objets (`FUN_00524880`) — relevé le 2026-08-18
+
+| VA | contenu | rôle |
+|---|---|---|
+| `0x00562C9C` | `0x00004081` (dword) | comparé au glyphe de la case de clavier ; voir `legacy-bug.md` LB-005 |
+| `0x00564A0C` | `"/"` | le séparateur du compteur « n / 403 » |
+| `0x00564A10` | `0C 0F 00 00` | deux codes de contrôle : début de page, puis attente |
+| `0x00566170` | en-tête de descripteur, 26 dwords | **troisième** descripteur d'interface du menu objets ; `+4` = `0x00640014` |
+| `0x00566A38` | `00 04 00 00 …` | identifiants d'emplacement de carte, branchement 0 |
+| `0x00566A40` | `00 01 02 03 04` | idem, branchement 1 |
+| `0x00566A48` | `00 04 05 06 07` | idem, branchement 2 |
+| `0x00566A50` | `00 01 02 03 04 05 06 07` | idem, branchement 3 |
+| `0x00566A58` | 4 pointeurs → `0x566a38/40/48/50` | `PTR_DAT_00566a58` |
+| `0x00566A68` | `02 00 01 …` | liste d'emplacements, branchement 0 ; **le premier octet est le compte** |
+| `0x00566A70` | `05 02 03 04 05 01` | idem, branchement 1 |
+| `0x00566A78` | `05 00 06 07 08 09` | idem, branchement 2 |
+| `0x00566A80` | `08 02 03 04 05 06 07 08 09` | idem, branchement 3 |
+| `0x00566A90` | 4 pointeurs → `0x566a68/70/78/80` | `PTR_DAT_00566a90` |
+| `0x00566AC8` | `FF FF FF FF FF FF FF FF` | `DAT_00566ac8` / `DAT_00566acc`, tous deux à −1 au chargement |
+| `0x00566AD0` | `02 01 00 03 04 05 06 07` | l'ordre d'affichage des huit caractéristiques d'un objet |
+| `0x00566AD8` | 10 quadruplets + dword nul | la rangée d'icônes du cadre : `{descripteur, variante, dx, dy}` |
+| `0x00566B08` | 8 × 8 octets | les enregistrements de sprite des huit éléments (`80/90/a0/…/f0 E0 10 08 00 00 30 00`) |
+| `0x00566B48` | `00 00 18 18 00 00 3E 00` | l'enregistrement de sprite d'une icône d'objet ; ses deux premiers octets sont réécrits à chaque tracé |
+| `0x00566B80` | `"???"` | ce qu'affiche une caractéristique d'objet non identifié |
+| `0x00566B84` | `"????"` | ce qu'affiche le nom d'un objet non identifié |

@@ -459,3 +459,35 @@ ajouté au groupe.
 Dès qu'un test apprend quelque chose de réutilisable : un nouveau repère chiffré, un piège de
 pilotage, une famille de plantage récurrente, un échafaudage utile. Et si `playtest.ps1` gagne un
 paramètre, le tableau ci-dessus le mentionne.
+
+## Atteindre le sous-écran « Invertaire » (2026-08-18)
+
+Comme l'écran d'organisation du groupe, il exige **au moins une sauvegarde** dans le `save\` du
+répertoire de travail : sans elle, la phase 0 repart aussitôt vers l'écran racine du menu objets et
+la capture montre les trois libellés, pas la liste. Créer d'abord une sauvegarde (voir « Le parcours
+de création complet est scriptable »), puis lancer avec **le même `-WorkingDir`** :
+
+```powershell
+# la liste des sauvegardes
+OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 12 -WorkingDir OpenForesia `
+  -Then WAIT2,ENTER,WAIT6 -Shot
+
+# le fichier chargé et la liste d'objets
+OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 16 -WorkingDir OpenForesia `
+  -Then WAIT2,ENTER,WAIT3,ENTER,WAIT7 -Shot
+```
+
+`ENTER` est le bouton **carré** (`K0107=28` dans le fichier de configuration), celui que valident
+l'écran racine du menu objets et la liste des sauvegardes.
+
+**Le `WAIT3` entre les deux `ENTER` n'est pas décoratif** : la phase 5 est décalée d'une image (celle
+qui entre dans la phase se contente d'abaisser `DAT_005de4dc`, la suivante lit le fichier), et la
+lecture porte sur trois blocs. Enchaîner les deux validations sans attente laisse la capture sur la
+liste des sauvegardes.
+
+Signatures utiles : ~416 primitives par image sur la liste des sauvegardes, ~374 sur la liste
+d'objets, ~387 sur l'écran racine du menu objets.
+
+**Il n'y a rien à atteindre au-delà de la liste d'objets.** La fiche détaillée et le clavier de
+renommage sont injoignables dans le jeu de 1998 — voir `legacy-bug.md`, LB-004. Ne pas chercher une
+séquence de touches qui les ouvrirait : elle n'existe pas.

@@ -195,3 +195,84 @@ Purement cosmétique, une seule chaîne, un seul écran.
 Transcrite telle quelle dans `s_InventoryLabels_00566b58`. **Ne pas la corriger** : le projet
 reproduit les défauts d'origine plutôt que de les réparer, et une « correction » ici ferait diverger
 l'affichage du jeu de 1998 sans aucun gain.
+
+---
+
+## LB-004 — La fiche d'objet et le renommage sont injoignables
+
+**Repérée** le 2026-08-18 en transcrivant `FUN_00524880`, le sous-écran « Invertaire ».
+**Confirmée dans le binaire**, à l'octet.
+
+### Symptôme
+
+Le sous-écran « Invertaire » ne sait rien faire d'autre que **lister** les objets du personnage
+choisi. Ni la fiche détaillée (icône, quantité, huit caractéristiques, deux valeurs longues, huit
+témoins d'élément) ni le clavier de renommage d'un objet ne peuvent être atteints, alors que les
+deux sont entièrement codés dans le binaire.
+
+### Cause
+
+La machine à phases de `FUN_00524880` est pilotée par `DAT_005de4d4`. La fiche est la phase 9, le
+clavier la phase 10. Or :
+
+* dans la fonction, le seul chemin vers 9 est le décrément de la phase 10, et le seul chemin vers
+  10 est l'incrément de la phase 9 — **la paire est fermée sur elle-même** ;
+* la phase 8 (la liste), qui devrait ouvrir la fiche, sort vers l'écran racine aussi bien sur
+  CARRÉ que sur CROIX ; seul le son diffère (`FUN_0053db80` contre `FUN_0053dba0`).
+
+Vérifié dans `Legacy/Blaze.exe` en balayant les 46 instructions qui référencent `0x005de4d4` : les
+seuls immédiats écrits sont `0`, `5`, `8`, `0xb`, `0xd`, `0xe`, `0x5e`, `0x60`, `0x62`, `-1` et
+`-5`. **Aucun site n'écrit 9 ni 10.** Les écritures depuis un registre se trouvent dans
+`FUN_00524680` (l'écran racine) et `FUN_00527e30` (« Utilisation »), et la pseudo-C montre qu'elles
+posent zéro.
+
+### Portée
+
+Par ricochet, toute la boucle de réécriture du fichier de sauvegarde (phases `7`, `0xb`..`0x12`,
+`0x5e`..`0x62` et les négatives) est elle aussi morte : elle n'est empruntée que si
+`DAT_005de508` a été levé, ce que seul le renommage fait.
+
+### Dans OpenForesia
+
+Les phases 9, 10 et toute la boucle de sauvegarde sont **transcrites quand même** — le projet
+reconstruit le binaire, pas seulement ses chemins vivants — avec la note en tête de la phase 9. Ne
+pas « réparer » la sortie de la phase 8 pour les rendre accessibles : cela ferait diverger le port
+du jeu de 1998.
+
+---
+
+## LB-005 — Le refus de premier caractère du renommage ne peut pas se déclencher
+
+**Repérée** le 2026-08-18, dans la phase 10 de `FUN_00524880`. **Confirmée au désassemblage.**
+
+### Symptôme
+
+Le clavier de renommage est censé refuser un certain glyphe en première position, avec le bip
+`FUN_0053dbc0`. La comparaison ne peut jamais être vraie.
+
+### Cause
+
+`Legacy/Blaze.exe`, `0x005266A7` et suivants :
+
+```
+005266A7   8A 18               MOV   BL,[EAX]          ; le glyphe de la case visée
+005266A9   81 E3 FF FF 00 00   AND   EBX,0x0000FFFF
+005266AF   85 F6               TEST  ESI,ESI           ; la longueur déjà saisie
+005266B1   75 17               JNZ   ...
+005266B3   8B 15 9C 2C 56 00   MOV   EDX,[0x00562C9C]
+005266B9   81 E2 FF FF 00 00   AND   EDX,0x0000FFFF
+005266BF   3B DA               CMP   EBX,EDX
+```
+
+`EBX` est mis à zéro juste avant (`XOR EBX,EBX` à `0x0052669E`) puis ne reçoit qu'un **octet** :
+il vaut donc 0..255. `[0x00562C9C]` vaut `0x00004081`, soit `0x4081` après masque. L'égalité est
+impossible. Le code compare un glyphe sur un octet à une valeur sur deux.
+
+### Portée
+
+Nulle en pratique : la phase 10 est elle-même injoignable (LB-004).
+
+### Dans OpenForesia
+
+Transcrite telle quelle, avec `s_Unknown_00562c9c = 0x00004081`. La branche est présente et morte,
+comme dans l'original.
