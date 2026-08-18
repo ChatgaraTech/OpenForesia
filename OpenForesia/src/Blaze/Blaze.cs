@@ -1963,7 +1963,7 @@ public static unsafe partial class Blaze
         // balayage (Blaze.c:61733). **Ce ne sont pas des pointeurs**, ce sont trois sentinelles de
         // destination : LoadResourceEntry compare son argument `dest` à ces trois valeurs, et une
         // égalité veut dire « installe une table de sauts native » au lieu de « écris les octets
-        // du fichier de ressources ici ». Voir IsKnownOverrideDestination.
+        // du fichier de ressources ici ». Voir ApplyResourceDestinationOverride.
         s_OverrideDestA_006008c8 = (void*)1;
         s_OverrideDestB_00604930 = (void*)2;
         s_OverrideDestC_00600904 = (void*)3;
@@ -5664,19 +5664,111 @@ public static unsafe partial class Blaze
     /// vtable que rien de reconstruit n'exerce pour l'instant. L'inventer maintenant serait de
     /// l'échafaudage spéculatif.</para>
     /// </summary>
-    private static bool IsKnownOverrideDestination(void* dest)
+    private static bool ApplyResourceDestinationOverride(void* dest)
     {
         if (dest == s_OverrideDestA_006008c8) return true; // Ghidra: pas de corps du tout ici — juste `return 1;`
+
+        // **Effet de bord sur le chemin normal**, longtemps omis par le port : le nettoyage
+        // ci-dessous n'est PAS dans une branche, il court a chaque chargement de ressource dont la
+        // destination n'est pas la sentinelle A. Trente-neuf dwords remis a zero, puis le curseur
+        // de +0x6c pointe sur le debut du bloc qu'on vient d'effacer.
+        NativeMemory.Clear(s_EntityList_005de558, 0x27 * sizeof(uint));
+        *(byte**)(s_EntityList_005de558 + 0x6c) = s_EntityList_005de558;   // Ghidra: DAT_005de5c4
+
         if (dest == s_OverrideDestB_00604930)
-            throw new NotImplementedException(
-                "FUN_0052a660, branche DAT_00604930 : l'installation de la table de sauts de la " +
-                "zone courante (0x20 dwords depuis PTR_PTR_00566d68[zone] vers PTR_FUN_0056b4d0). " +
-                "Atteinte depuis FUN_00516250, l'etat de jeu 3 — voir REVERSE_STATUS.md");
+        {
+            InstallAreaHandlerTable(s_Unknown_005de528 & 0xff);
+            return true;
+        }
+
         if (dest == s_OverrideDestC_00600904)
             throw new NotImplementedException(
                 "FUN_0052a660, branche DAT_00600904 : trois tables de sauts d'affilee (+11 appels " +
                 "FUN_ dependants) — voir REVERSE_STATUS.md");
         return false;
+    }
+
+    /// <summary>Ghidra: &amp;DAT_005de558 — trente-neuf dwords remis a zero a chaque chargement de
+    /// ressource, avec un curseur a <c>+0x6c</c> (<c>DAT_005de5c4</c>) qui repointe sur leur debut.
+    /// Une douzaine de lecteurs dans le code de jeu, aucun encore transcrit.</summary>
+    private static readonly byte* s_EntityList_005de558 = (byte*)NativeMemory.AllocZeroed(0x9c);
+
+    /// <summary>
+    /// Ghidra: &amp;PTR_PTR_00566d68 et les onze tables qu'elle designe — un bloc plat de 192 dwords
+    /// a partir de 0x0055e8a8, releve dans <c>Legacy/Blaze.exe</c>. Les tables de zone y commencent
+    /// tous les <b>0x40</b> octets, et 174 des 192 entrees valent <c>FUN_00401FA0</c>, dont le corps
+    /// est vide — d'ou la construction par remplissage puis dix-huit exceptions.
+    /// </summary>
+    private static readonly uint* s_AreaHandlerSource_0055e8a8 = BuildAreaHandlerSource();
+
+    private static uint* BuildAreaHandlerSource()
+    {
+        uint* block = (uint*)NativeMemory.Alloc(192, sizeof(uint));
+        for (int i = 0; i < 192; i++) block[i] = 0x00401FA0;
+
+        block[0x020 / 4] = 0x004747F0;   // zone 0, entree 8
+        block[0x060 / 4] = 0x0040A600;   // zone 1, entree 8 — corps vide lui aussi
+
+        // Les seize fonctions qui suivent la derniere table de zone. Elles n'appartiennent a
+        // aucune zone : seul le debordement decrit ci-dessous les fait entrer dans la table.
+        uint[] tail =
+        [
+            0x005037D0, 0x005037E0, 0x00503850, 0x005038A0, 0x00503990, 0x00503B50,
+            0x00503D30, 0x00503D70, 0x00503D80, 0x00503D90, 0x00503DB0, 0x00503DD0,
+            0x00503DF0, 0x00503E10, 0x00503E50, 0x00503E80,
+        ];
+        for (int i = 0; i < tail.Length; i++) block[(0x2c0 / 4) + i] = tail[i];
+
+        return block;
+    }
+
+    /// <summary>
+    /// Ghidra: &amp;PTR_FUN_0056b4d0 — la table de sauts active. **Seize** entrees utiles : le relevé
+    /// du binaire montre 0..15 initialisees a <c>FUN_00401FA0</c> et 16..31 a zero, ce qui borne la
+    /// table sans ambiguite. Les seize suivantes sont conservees ici parce que l'installation
+    /// deborde dessus — voir <see cref="InstallAreaHandlerTable"/>.
+    /// </summary>
+    private static readonly uint* s_AreaHandlerTable_0056b4d0 = BuildAreaHandlerTable();
+
+    private static uint* BuildAreaHandlerTable()
+    {
+        uint* block = (uint*)NativeMemory.AllocZeroed(32, sizeof(uint));
+        for (int i = 0; i < 16; i++) block[i] = 0x00401FA0;
+        return block;
+    }
+
+    /// <summary>
+    /// Ghidra: la branche <c>DAT_00604930</c> de <c>FUN_0052a660</c> — installe la table de sauts
+    /// de la zone courante.
+    ///
+    /// <para><b>Elle copie 0x20 dwords alors que la table n'en fait que 0x10</b> : c'est un
+    /// depassement, des deux cotes. En lecture, chaque zone empiete sur la premiere moitie de la
+    /// suivante (les onze tables sont espacees de 0x40, la copie en prend 0x80) ; en ecriture, les
+    /// seize dwords excedentaires tombent au-dela de la table de destination. Voir
+    /// <c>legacy-bug.md</c>, LB-006 — transcrit tel quel, pas corrige.</para>
+    /// </summary>
+    private static void InstallAreaHandlerTable(int area)
+    {
+        uint* source = s_AreaHandlerSource_0055e8a8 + area * (0x40 / 4);
+        for (int i = 0; i < 0x20; i++) s_AreaHandlerTable_0056b4d0[i] = source[i];
+    }
+
+    /// <summary>
+    /// L'appel indirect a travers <see cref="s_AreaHandlerTable_0056b4d0"/>. Les deux adresses que
+    /// les zones 0 a 9 installent reellement — <c>FUN_00401FA0</c> et <c>FUN_0040A600</c> — ont un
+    /// corps <b>vide</b> dans <c>Blaze.c</c>, donc l'appel est un no-op verifiable et non une
+    /// supposition. Toute autre adresse leve, en la nommant.
+    /// </summary>
+    private static void CallAreaHandler(int slot)
+    {
+        uint target = s_AreaHandlerTable_0056b4d0[slot];
+        if (target == 0x00401FA0 || target == 0x0040A600) return;   // corps vides, verifies
+
+        throw new NotImplementedException(
+            $"Table de sauts de zone, entree {slot} = 0x{target:X6} : cette adresse **n'est pas " +
+            "decompilee par Ghidra** (aucune fonction entre FUN_004742b0 et FUN_00474ad0 dans " +
+            "Blaze.c). Corps uniquement adresse — il faut une re-passe Ghidra ciblee sur cette " +
+            "adresse, pas une relecture. Voir REVERSE_STATUS.md");
     }
 
     // Ghidra: DAT_006008c8 / DAT_00604930 / DAT_00600904 — les trois sentinelles de destination,
@@ -5718,12 +5810,12 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: FUN_00529b50 @ 0x00529b50. Loads one sector-addressed chunk (`entryPtr[0]` = sector
     /// offset, `entryPtr[1]` = byte size) out of BLAZE.ALL into `dest`, unless `dest` is one of the
-    /// IsKnownOverrideDestination special cases. Returns the next dword-aligned address past the
+    /// ApplyResourceDestinationOverride special cases. Returns the next dword-aligned address past the
     /// loaded data.
     /// </summary>
     private static byte* LoadResourceEntry(int* entryPtr, byte* dest)
     {
-        if (IsKnownOverrideDestination(dest)) return dest;
+        if (ApplyResourceDestinationOverride(dest)) return dest;
 
         byte* path = BuildCdPath(s_ArchiveFileName);
         IntPtr handle = OpenExistingFileReadOnly(path);
@@ -6090,7 +6182,7 @@ public static unsafe partial class Blaze
                     int* perStateTable2 = *(int**)(s_MainResourceBuffer_005e97c0 + 0x6c);
                     int entryPtrValue = perStateTable2[s_GameStateId];
                     // Ghidra: FUN_00529b50(entry, DAT_006008c8) â€” this destination is always
-                    // IsKnownOverrideDestination's first case *by construction* (the call site
+                    // ApplyResourceDestinationOverride's first case *by construction* (the call site
                     // passes DAT_006008c8 as both the value being compared and the comparand), so
                     // it's always a no-op here regardless of DAT_006008c8's real (never assigned
                     // in this reconstruction) value.
@@ -17197,13 +17289,12 @@ public static unsafe partial class Blaze
             for (int* entry = list; *entry != 0; entry++) s_Unknown_005f7b44++;
 
         // La destination est la **sentinelle 2**, pas un tampon : LoadResourceEntry la reconnait et
-        // installe la table de sauts de la zone au lieu de lire des octets. Voir
-        // IsKnownOverrideDestination — c'est la que l'etat 3 s'arrete aujourd'hui.
+        // installe la table de sauts de la zone au lieu de lire des octets.
         LoadResourceEntry(*(int**)(*(byte**)(s_Unknown_005e97c8 + 0x6c)), (byte*)s_OverrideDestB_00604930);
 
-        // Ghidra: `(*(code *)PTR_FUN_0056b4f0)()` — l'entree 8 de la table de sauts. Avant toute
-        // installation elle vaut FUN_00401fa0, dont le corps est vide (verifie dans Legacy/Blaze.exe
-        // a 0x0056b4f0 : quatre emplacements consecutifs pointant tous sur 0x00401fa0).
+        // Ghidra: `(*(code *)PTR_FUN_0056b4f0)()`. 0x0056b4f0 est l'entree **8** de la table de
+        // sauts (0x0056b4d0 + 8 * 4), celle que l'installation vient de renseigner.
+        CallAreaHandler(8);
     }
 
     /// <summary>Ghidra: FUN_00516350 @ 0x00516350 — 455 lignes, la mise en place de l'image de la

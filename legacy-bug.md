@@ -276,3 +276,50 @@ Nulle en pratique : la phase 10 est elle-même injoignable (LB-004).
 
 Transcrite telle quelle, avec `s_Unknown_00562c9c = 0x00004081`. La branche est présente et morte,
 comme dans l'original.
+
+---
+
+## LB-006 — L'installation des tables de sauts de zone déborde du double
+
+**Repérée** le 2026-08-18 en ouvrant l'état de jeu 3 (la carte du monde).
+**Confirmée dans le binaire**, sur les deux tables.
+
+### Symptôme
+
+`FUN_0052a660`, branche `DAT_00604930`, installe la table de sauts de la zone courante. Elle copie
+**0x20 dwords** (128 octets) alors que la table de destination n'en compte que **0x10** (64 octets).
+La copie déborde donc des deux côtés à la fois : en lecture comme en écriture.
+
+### Cause
+
+Trois relevés concordants dans `Legacy/Blaze.exe` :
+
+1. **La destination fait seize entrées.** À `0x0056b4d0`, les seize premiers dwords valent
+   `0x00401FA0` (une fonction au corps vide) et les seize suivants valent **zéro**. La frontière est
+   nette.
+2. **Les tables sources sont espacées de 0x40.** `PTR_PTR_00566d68` liste onze zones :
+   `0x55e8a8`, `0x55e8e8`, `0x55e928` … `0x55eb28`, puis un dword nul. Soit 0x40 d'écart, donc
+   seize dwords chacune.
+3. **La boucle en copie trente-deux.** `for (iVar1 = 0x20; iVar1 != 0; iVar1--)`.
+
+Conséquences mesurées :
+
+* **En lecture**, la seconde moitié de chaque zone est en réalité la première moitié de la zone
+  suivante. La zone 0 le montre : son entrée 24 vaut `0x0040A600`, qui est l'entrée 8 de la zone 1.
+  Pour la zone 10, la dernière, la copie va chercher seize fonctions (`0x5037D0`…`0x503E80`) qui ne
+  font partie d'aucune table.
+* **En écriture**, seize dwords atterrissent en `0x0056b510..0x0056b54f`.
+
+### Portée
+
+Faible en pratique. La zone écrasée (`0x0056b510`) n'est référencée nulle part dans `Blaze.c` — ce
+sont 64 octets de données inutilisées, mises à zéro au chargement. Et les entrées 16 à 31 de la
+table de destination ne sont jamais appelées : sur les onze zones, seules trois entrées ne sont pas
+le corps vide `FUN_00401FA0`, et la seule que le code atteigne est l'entrée 8.
+
+### Dans OpenForesia
+
+`InstallAreaHandlerTable` copie bien 0x20 dwords, et `s_AreaHandlerTable_0056b4d0` alloue
+trente-deux dwords pour que le débordement ait où tomber, exactement comme dans l'original. **Ne pas
+« corriger » le compte à 0x10** : cela ferait diverger le contenu des entrées 16 à 31, et surtout
+cela masquerait le défaut au lieu de le reproduire.

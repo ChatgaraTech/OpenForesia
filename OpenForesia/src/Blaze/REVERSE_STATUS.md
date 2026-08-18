@@ -5600,3 +5600,84 @@ Deux chemins possibles, dans cet ordre de coût :
 2. Transcrire `FUN_00516350` (455 lignes) sans attendre : elle est en aval du blocage, donc
    invérifiable pour l'instant, mais ses dépendances sont peut-être déjà là — à mesurer avant de
    s'y mettre, comme on l'a fait ici.
+
+---
+
+## 2026-08-18 (suite) — La table de sauts de zone est levée ; le blocage est maintenant nommé
+
+Le tour précédent s'arrêtait sur « il faudra concevoir un mécanisme de table de sauts, pas en
+passant ». **Il n'y avait pas de mécanisme à concevoir** : il suffisait de lire les données.
+
+### Ce que le relevé a donné
+
+`0x0056b4d0` contient seize dwords à `FUN_00401FA0` puis seize à zéro : la table de destination fait
+**seize entrées**, sans ambiguïté. Les onze tables sources sont espacées de 0x40, donc seize dwords
+chacune. Et sur les 192 dwords du bloc complet (`0x0055e8a8`..`0x0055eba7`), **174 valent
+`FUN_00401FA0`**, dont le corps est vide dans `Blaze.c`. Les dix-huit autres :
+
+| zone | entrée | cible |
+|---|---|---|
+| 0 | 8 | `0x004747F0` |
+| 1 | 8 | `0x0040A600` — **corps vide** lui aussi |
+| 10 | 16..31 | `0x5037D0`…`0x503E80`, seize fonctions qui ne sont dans aucune table |
+
+Autrement dit : les zones 1 à 9 n'installent **rien** d'autre que des no-ops, et le seul vrai
+handler du jeu est celui de la zone 0. Le « mécanisme de vtable » se réduit à une table de seize
+adresses, une copie, et un point d'appel qui reconnaît les deux corps vides.
+
+Transcrit : `InstallAreaHandlerTable`, `CallAreaHandler`, `s_AreaHandlerSource_0055e8a8` (le bloc
+plat de 192 dwords) et `s_AreaHandlerTable_0056b4d0`. Le débordement de la copie est reproduit tel
+quel — voir `legacy-bug.md`, **LB-006**.
+
+### Un effet de bord que le port ignorait, sur un chemin très chaud
+
+En relisant `FUN_0052a660` pour cette branche : le nettoyage de **trente-neuf dwords** à
+`0x005de558`, suivi du curseur `DAT_005de5c4` qui repointe sur leur début, **n'est pas dans une
+branche**. Il court à chaque appel de `LoadResourceEntry` dont la destination n'est pas la
+sentinelle A — c'est-à-dire à chaque chargement de ressource du jeu. Le port ne le faisait pas du
+tout. Ajouté (`s_EntityList_005de558`). Une douzaine de lecteurs existent dans `Blaze.c`, tous dans
+du code de jeu non encore transcrit, donc l'effet est pour l'instant inerte — mais c'est exactement
+le genre d'omission qui se paie trois sous-systèmes plus tard.
+
+Au passage, `ApplyResourceDestinationOverride` remplace `IsKnownOverrideDestination` : la fonction a
+maintenant des effets de bord, et l'ancien nom mentait.
+
+### Le nouveau blocage, et il est borné
+
+`CallAreaHandler(8)` pour la zone 0 tombe sur `0x004747F0`, qui **n'est pas décompilée par Ghidra** :
+il n'y a aucune fonction entre `FUN_004742b0` et `FUN_00474ad0` dans `Blaze.c`. Corps uniquement
+adressé, jamais disassemblé comme fonction.
+
+La zone vaut bien 0, et ce n'est pas un défaut de reconstruction : `RunPartyConstitution` la lit
+dans la sauvegarde (`record[0x1f01]`, l'octet `record[0x1f00]` valant zéro), le port le transcrit
+déjà, et un personnage neuf a bien `00` partout à `+0x1f00`.
+
+**Mesuré plutôt que supposé**, en désassemblant les bornes :
+
+* `FUN_004747F0` fait **242 octets**, du `SUB ESP,8` d'entrée au premier `RET` à `0x004748E2`.
+* Elle n'appelle qu'une seule fonction, `0x00514000`, qui est décompilée (12 lignes) et se réduit à
+  `FUN_00515d70(DAT_005e97cc, 0, a, b)` — un appel d'événement *dans le contexte de la zone*, ce que
+  la présence de `DAT_005e97cc` (le répertoire de zone, ajouté ce tour) confirme.
+* Le sous-arbre derrière `FUN_00515d70` : **4 fonctions atteintes, 2 manquantes, 567 lignes**
+  (`FUN_00514040` et `FUN_00535710`).
+* Son début est lisible : elle éteint le bit 8 de `DAT_005e9841`, monte un descripteur de quatre
+  octets sur la pile (`00 01 04 EF`) et le passe à `0x00514000` si le bit 2 de `DAT_005e9001` est
+  éteint, puis enchaîne sur `DAT_005e9006` et `DAT_005e9840`.
+
+### Pourquoi ce tour s'arrête là
+
+Transcrire les 242 octets à la main **plus** les 567 lignes du sous-arbre produirait ~600 lignes que
+rien ne peut exercer : `FUN_00516350` (455 lignes) et `FUN_00516fc0` (1226 lignes) sont toujours des
+exceptions, donc la carte du monde ne dessine rien de toute façon. C'est très exactement le mode
+d'échec que ce fichier documente déjà deux fois (le pas de 0x9c, le type de retour perdu), et qu'il
+s'était promis de ne plus reproduire.
+
+Le prochain tour a un choix propre, avec les deux coûts connus :
+
+1. **Le chemin de l'affichage** — `FUN_00516350` (455 lignes) puis `FUN_00516fc0` (1226). C'est ce
+   qui fait apparaître quelque chose à l'écran, donc ce qui redevient vérifiable. Mesurer d'abord
+   leurs dépendances manquantes, comme on l'a fait ici.
+2. **Le chemin du handler** — les 242 octets à la main plus le sous-arbre d'événements de 567
+   lignes. Bornée, mais aveugle tant que (1) n'existe pas.
+
+Le (1) est le bon ordre : il rend le (2) vérifiable au lieu de l'inverse.
