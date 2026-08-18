@@ -161,3 +161,37 @@ Un défaut du **portage**, distinct de celui-ci, masquait ce parcours jusqu'au 2
 `case 1` plantait en `0xC0000005` dans `ResetCardTransferStatus`/`Ordinal_67`, parce que les huit
 gestionnaires que `SetupJoystickHandlers` enregistre auprès de winsys3d.dll l'étaient avec un
 pointeur `null`. Corrigé, voir `REVERSE_STATUS.md` et `Documentation/DLL/winsys3d.md`.
+
+---
+
+## LB-003 — « Invertaire » : la faute de frappe du menu objets
+
+**Repérée** le 2026-08-18 en reconstruisant l'écran racine du menu objets (`FUN_00524680`).
+**Confirmée dans le binaire**, pas seulement à l'écran.
+
+### Symptôme
+
+La première ligne du menu objets s'intitule **« Invertaire »** au lieu d'« Inventaire ».
+
+### Cause
+
+Ce n'est pas une erreur de relevé ni un défaut d'affichage : la chaîne est écrite ainsi dans les
+données du jeu. `Legacy/Blaze.exe`, adresse virtuelle `0x00566B74` :
+
+```
+49 6e 76 65 72 74 61 69 72 65 00     I  n  v  e  r  t  a  i  r  e
+```
+
+Les trois libellés de cet écran sont pointés par `PTR_s_Invertaire_00566b58` — nom que Ghidra a
+lui-même dérivé de la chaîne, ce qui la confirme une seconde fois. Ses voisines, « Enchère » et
+« Quitter », sont correctes.
+
+### Portée
+
+Purement cosmétique, une seule chaîne, un seul écran.
+
+### Dans OpenForesia
+
+Transcrite telle quelle dans `s_InventoryLabels_00566b58`. **Ne pas la corriger** : le projet
+reproduit les défauts d'origine plutôt que de les réparer, et une « correction » ici ferait diverger
+l'affichage du jeu de 1998 sans aucun gain.

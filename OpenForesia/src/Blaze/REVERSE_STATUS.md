@@ -5171,3 +5171,85 @@ configuration porte bien `Resolution=2` / `Size=11` — la valeur de `Size` éta
 Toutes les pages sont désormais complètes et exercées : Affichage (et ses deux filles Timing et
 Définition de l'écran), Son, Contrôle (Clavier et Manettes, avec la page des boutons par joueur).
 Il ne reste aucun `TODO(REVERSE)` ni `NotImplementedException` dans cette zone.
+
+## 2026-08-18 — le menu objets (état de jeu 6) : l'entrée, la boucle et l'écran racine
+
+Vincent a demandé de passer au menu objets, après remise de la configuration d'affichage à ses
+valeurs par défaut (`Documentation/OpenForesia.cfg.default` recopiée ; `Small` était resté à 1
+après l'excursion en 320x240 de la séance précédente).
+
+### Le découpage, et le choix de portée
+
+`FUN_00524180` est un chargement (`FUN_00524210`) suivi d'une boucle d'image (`FUN_00524320`) qui
+déroule une machine à cinq sous-écrans sur `DAT_00566ac8` :
+
+| sous-état | fonction | taille |
+|---|---|---|
+| -1, l'écran racine | `FUN_00524680` | 82 lignes |
+| 0, « Invertaire » | `FUN_00524880` | **1377 lignes** |
+| 1, « Enchère » | `FUN_005277b0` | 267 lignes |
+| 3 | `FUN_00527e30` | 683 lignes |
+| 4, la fermeture | `FUN_005298c0` | 84 lignes |
+
+Environ 2600 lignes de pseudo-C en tout — l'ordre de grandeur de l'écran de sélection des
+personnages, qui a demandé plusieurs séances. Transcrits cette fois : l'entrée, le chargement, la
+boucle et l'écran racine. Les quatre sous-écrans sont nommés et gardés, chacun avec sa taille dans
+le message, pour que le prochain choix de cible soit immédiat.
+
+### Trois défauts, et ce qui les a trouvés
+
+Le menu se figeait à sa première image, écran noir, sans plantage — donc sans pile à lire. Une
+trace posée étape par étape dans l'image l'a cerné en trois runs, et a mis au jour trois erreurs
+distinctes :
+
+1. **Deux pas différents dans une même boucle.** L'initialisation des quatre emplacements avance de
+   `0x9c` sur un pointeur et de `0x26` sur un `undefined2*` — soit **0x4c octets**, pas 0x9c. Les
+   avoir écrits identiques écrasait des champs voisins de l'arène 0x5e9000, dont la table
+   d'emplacements que `CurrentPadState` indexe. La pseudo-C cache ce genre d'écart derrière ses
+   types de pointeur : deux `+= constante` qui se ressemblent n'ont pas la même unité.
+
+2. **`FUN_00524680` est typée `void` par Ghidra, mais son appelant utilise son retour**
+   (`local_20 = FUN_00524680(...)`). EAX porte à la sortie le résultat du dernier appel, celui de
+   `FUN_005443a0` — le curseur de primitives que le moteur de texte a avancé. Rendre l'ancien
+   curseur laissait les dessins suivants réécrire par-dessus les primitives du bandeau de titre, ce
+   qui casse la table d'ordonnancement : **`DrawOTag` ne revenait jamais**, et le gel se produisait
+   dans `FrameEnd`, loin de sa cause. Même défaut de type de retour que `RetryOpenCardFile`.
+
+3. **La boucle de vidange d'entrée sans cadencement.** `while (FUN_005048f0() != 0)` ne se termine
+   pas chez nous, la pompe de messages ne tournant pas — piège déjà documenté sur la page d'options,
+   et retombé dedans. Corrigé de la même façon, `Ordinal_132(0)` dans la boucle.
+
+Le premier gel a coûté trois runs de plus qu'il n'aurait fallu, faute d'avoir tracé tout de suite :
+**un écran noir sans exception ne se diagnostique pas à la lecture**, il se cerne en posant des
+jalons dans l'image.
+
+### Un piège d'outillage, à ne pas refaire
+
+Le bloc a d'abord été ajouté au fichier par un aller-retour PowerShell
+`Get-Content` / `Set-Content -Encoding UTF8`. En Windows PowerShell 5.1, **`Get-Content` lit dans la
+page de code ANSI**, pas en UTF-8 : tous les accents de la région ajoutée se sont retrouvés
+doublement encodés, ce qui s'est vu à l'écran — « Enchère » sortait mojibaké, puisque la chaîne
+elle-même était touchée. Réparé en ré-encodant la seule région concernée (`git diff --stat` a servi
+à vérifier que le reste du fichier était resté identique au commit).
+
+Pour ajouter un bloc à un fichier source, passer par `[IO.File]::ReadAllLines/WriteAllLines` avec un
+encodage explicite, ou par les outils d'édition — jamais par `Get-Content`/`Set-Content`.
+
+### Ce que l'écran fait
+
+Trois lignes tirées de `PTR_s_Invertaire_00566b58` — **« Invertaire »** (la faute de frappe est dans
+le binaire, voir `legacy-bug.md` LB-003), « Enchère », « Quitter » — un curseur qui boucle de 0 à 2,
+et la validation qui ouvre le sous-écran correspondant ; la troisième repose `s_GameStateId` à 0 et
+rend la main au menu principal. Le bandeau de titre passe par `FUN_00524190`, dont la disposition de
+pile a demandé le désassembleur : les quatre octets de tête sont `0C 04 18 10`, et le quatrième
+**écrase le premier octet du libellé copié** — lequel commence lui-même par `0x0C`, que ce préfixe
+remplace.
+
+Deux descripteurs d'interface contigus de plus relevés dans `.data` (`DAT_00564fe0` et
+`DAT_005658a8`, 0x564fe0 + 0x8c8), et le bloc d'état `DAT_005de410`..`DAT_005de50c` modélisé d'un
+seul tenant plutôt qu'en vingt champs — l'application directe de la leçon d'aliasing du projet.
+
+### Vérifié en jeu
+
+Menu principal → « Menu objets » : le titre « - Utilisation des objets - », les trois lignes avec
+leur curseur, et le panneau du bas « Sélectionne un menu. ». Environ 387 primitives par image.
