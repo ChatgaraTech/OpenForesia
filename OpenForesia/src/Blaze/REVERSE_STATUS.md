@@ -5808,3 +5808,65 @@ arguments déjà transcrit, c'est un `sprintf` variadique dont le moteur est `FU
 lignes, non transcrit). Le seul format utilisé ici, `"q:\snd\Q%02d_%02d.snd"` (relevé à
 0x005649f4), est posé directement plutôt que de tirer tout le moteur pour deux entiers — à
 remplacer le jour où un autre format apparaît.
+
+---
+
+## 2026-08-18 (suite) — La seconde moitié de `FUN_00516350`
+
+**Le corps de la fonction est transcrit en entier.** Avec elle, `FUN_005330d0` (113 lignes), qui
+était l'une des deux grosses dépendances.
+
+### `FUN_005330d0` — « sur quelle face du terrain tombe cette position ? »
+
+Elle parcourt la liste de faces du morceau et teste le point (x, z) de l'entité par trois produits
+en croix dans le plan horizontal, un quatrième pour les faces à quatre sommets. Une face retenue
+voit sa normale calculée dans le banc GTE, puis un produit scalaire décide du côté du plan. Le
+numéro de face et ses attributs partent dans l'entité à `+0x80 + type * 4` ; le compteur rendu ne
+compte que les faces dont les attributs ne rencontrent pas le masque — c'est lui que l'appelant
+boucle jusqu'à obtenir non nul.
+
+Disposition déduite des accès : **un sommet fait huit octets** (`x` et `y` dans le dword de tête,
+bas et haut ; `z` dans le short de `+4`), **une face en fait seize** (trois index de sommet répartis
+sur les deux premiers dwords, un index de matière au troisième, les attributs au quatrième).
+
+**Ordinaux 799 et 800 identifiés.** La table du fichier les donnait comme non établis. Cette
+fonction y écrit deux vecteurs 3D de 32 bits — les deux arêtes d'un triangle — puis dépose leur
+produit vectoriel dans 801 (`MAC1..3`) champ par champ : ce sont les **deux vecteurs d'entrée du
+produit vectoriel**, pas des registres de projection. Ajoutés à `EnsureGteRegisters`.
+
+### La seconde moitié de `FUN_00516350`
+
+Le placement du groupe au point d'entrée de la sous-zone (position imposée, ou tirage aléatoire
+autour du point jusqu'à trouver une face praticable), la recopie du membre actif sur les quatre
+emplacements, et la dérivation de tout l'état de vue depuis la fiche de sous-zone.
+
+**Le piège de ce bloc, et il est sérieux** : un emplacement de personnage fait **0x9c octets** à
+partir de 0x005e93c0, et Ghidra l'adresse de **trois** façons selon le type du symbole qu'il a
+choisi — `[n * 0x27]` sur un tableau de dwords, `[n * 0x4e]` sur un tableau de shorts, et
+`+ n * 0x9c` en octets. Les trois désignent le même pas. Tout passe donc ici par un unique pointeur
+`slot` et des décalages explicites, plutôt que par la forme de l'original. C'est la même famille
+d'erreur que le 0x9c/0x4c qui avait coûté une journée sur le menu objets.
+
+Nouvelles arènes : `s_EntityArena_005eca00`, `s_CameraBlock_005de030`, `s_ViewBlock_006067c0`,
+`s_ViewRect_00566c70`, `s_WorldPanels_005dbc68` (quatre descripteurs d'interface, identifiés par le
+pas de boucle de 0x464 mots = 0x8c8 octets).
+
+### Vérifié en jeu
+
+L'état 3 traverse maintenant **tout** `FUN_00516350` jusqu'à `FUN_00533940`. En particulier la
+boucle `do { position aléatoire ; TryPlaceEntity } while (rien)` **en sort** : la transcription
+géométrique trouve bien une face praticable sur les données réelles du terrain. Une erreur de pas
+ou de signe l'aurait fait tourner indéfiniment — c'est une vérification par le comportement, pas
+seulement par la compilation.
+
+(Sous `OPENFORESIA_SKIP_AREA_HANDLER=1` — tout ceci reste à re-vérifier une fois `0x004747F0`
+décompilée.)
+
+### Ce qui reste pour finir l'écran
+
+* `FUN_00533940` (375 lignes) + `FUN_00533450` (52) — la finalisation de placement. **Cinq labels
+  entrelacés** (`LAB_005339a8`, `LAB_005339b6`, `LAB_00533af7`, `LAB_00533c2a`, `LAB_00534018`)
+  sautés depuis plusieurs endroits, avec les registres GTE en scratch : c'est une reconstruction de
+  flot, pas une translittération, et ça se fait à tête reposée.
+* `FUN_005350b0` (95 lignes) — la mise en place de palette de zone.
+* Puis `FUN_00516fc0` (1226 lignes), la logique par image, qui reste le gros morceau de l'état 3.

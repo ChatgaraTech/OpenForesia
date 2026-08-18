@@ -736,6 +736,7 @@ public static unsafe partial class Blaze
     private static byte* s_GteMac0808, s_GteIr813, s_GteMatrix814;
     private static byte* s_GteSxy809, s_GteSz810, s_GteSz811, s_GteLightMatrix815;
     private static byte* s_GteOfx819, s_GteOfy820, s_GteRecip821, s_GteLightColour817;
+    private static byte* s_GteVec799, s_GteVec800;
     private static bool s_GteResolved;
 
     private static void EnsureGteRegisters()
@@ -777,6 +778,14 @@ public static unsafe partial class Blaze
         // Ghidra: EXT_00b6d198, la couleur que la passe d'éclairage (ordinal 793) consomme.
         // Identifié par le corps de l'ordinal 793 lui-même, qui la passe à FUN_00a24000.
         s_GteLightColour817 = (byte*)GetProcAddress(module, (byte*)817);
+
+        // **799 et 800 identifiés le 2026-08-18**, par leur usage dans FUN_005330d0 : la fonction
+        // y écrit deux vecteurs 3D de 32 bits (les deux aretes d'un triangle, sommet - sommet),
+        // puis dépose leur produit vectoriel dans 801 (MAC1..3) champ par champ. Ce sont donc les
+        // **deux vecteurs d'entrée du produit vectoriel**, pas des registres de projection. La
+        // table du TODO ci-dessus les donnait comme non établis.
+        s_GteVec799 = (byte*)GetProcAddress(module, (byte*)799);
+        s_GteVec800 = (byte*)GetProcAddress(module, (byte*)800);
 
         if (s_GteMatrix814 == null || s_GteMac0808 == null)
         {
@@ -17718,13 +17727,135 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: _DAT_005e97d4 — le curseur laisse par l'envoi des blocs bruts.</summary>
     private static byte* s_Unknown_005e97d4;
 
-    /// <summary>Ghidra: FUN_005330d0 @ 0x005330d0 — le test de placement d'une entite.</summary>
-    private static int TryPlaceEntity(byte* chunk, uint* slot, int radius) =>
-        throw new NotImplementedException("FUN_005330d0 : le test de placement d'entite (113 lignes)");
+    /// <summary>
+    /// Ghidra: FUN_005330d0 @ 0x005330d0 — « sur quelle face du terrain cette position tombe-t-elle,
+    /// et cette face est-elle franchissable ? ». Elle parcourt la liste de faces du morceau et, pour
+    /// chacune, teste le point (x, z) de l'entite par trois produits en croix dans le plan
+    /// horizontal ; les faces a quatre sommets ajoutent un quatrieme test.
+    ///
+    /// <para>Une face retenue voit sa normale calculee dans le banc de registres GTE — les deux
+    /// aretes dans les vecteurs 799 et 800, leur produit vectoriel dans 801 — et un dernier produit
+    /// scalaire decide de quel cote du plan l'entite se trouve. Le numero de face et ses attributs
+    /// sont alors ecrits dans l'entite a <c>+0x80 + type * 4</c>, et le compteur rendu ne compte que
+    /// les faces dont les attributs ne rencontrent pas <paramref name="mask"/> — c'est ce compteur
+    /// que l'appelant boucle jusqu'a obtenir non nul.</para>
+    ///
+    /// <para>La disposition d'un sommet, deduite des acces : huit octets, <c>x</c> et <c>y</c> dans
+    /// le dword de tete (bas et haut), <c>z</c> dans le short de <c>+4</c>. Une face fait seize
+    /// octets : trois index de sommet repartis sur les deux premiers dwords, un index de matiere
+    /// au troisieme, et les attributs au quatrieme.</para>
+    /// </summary>
+    private static int TryPlaceEntity(byte* chunk, uint* slot, ushort mask)
+    {
+        EnsureGteRegisters();
 
-    /// <summary>Ghidra: FUN_00533940 @ 0x00533940 — la mise a jour complete d'une entite placee.</summary>
-    private static void FinalizeEntityPlacement(uint* slot) =>
-        throw new NotImplementedException("FUN_00533940 : la finalisation de placement d'entite (375 lignes)");
+        byte* materials = *(byte**)(chunk + 0x24);
+        uint* face = *(uint**)(chunk + 0x28);
+        byte* vertices = chunk + 0x40;
+
+        int px = *(int*)((byte*)slot + 0x1c) >> 0xc;
+        int py = *(int*)((byte*)slot + 0x20);
+        int pz = *(int*)((byte*)slot + 0x24) >> 0xc;
+
+        int index = 0;
+        int accepted = 0;
+        int faceCount = *(short*)(chunk + 4);
+        if (faceCount == 0) return 0;
+
+        int* vec799 = (int*)s_GteVec799;
+        int* vec800 = (int*)s_GteVec800;
+        int* mac801 = (int*)s_GteMac801;
+        short* ir813 = (short*)s_GteIr813;
+
+        do
+        {
+            uint attributes = face[3];
+
+            // Seules les faces dont la matiere porte un short negatif participent au sol.
+            if (*(short*)(materials + 2 + (ushort)face[2] * 8) < 0)
+            {
+                uint i2 = face[0] >> 0x10;
+                uint i1 = face[1] & 0xffff;
+                uint i0 = face[0] & 0xffff;
+
+                int v2 = *(int*)(vertices + i2 * 8);
+                int v1 = *(int*)(vertices + i1 * 8);
+                int v0 = *(int*)(vertices + i0 * 8);
+
+                int x2 = (short)v2;
+                int x0 = (short)v0;
+                int z0 = *(short*)(vertices + i0 * 8 + 4);
+                int z2 = *(short*)(vertices + i2 * 8 + 4);
+
+                if ((pz - z0) * (x2 - x0) - (px - x0) * (z2 - z0) >= 0)
+                {
+                    int x1 = (short)v1;
+                    int z1 = *(short*)(vertices + i1 * 8 + 4);
+
+                    if ((pz - z2) * (x1 - x2) - (px - x2) * (z1 - z2) >= 0)
+                    {
+                        int third;
+                        if ((attributes & 1) == 0)
+                        {
+                            third = (pz - z1) * (x0 - x1) - (px - x1) * (z0 - z1);
+                        }
+                        else
+                        {
+                            // Face a quatre sommets : le quatrieme index vit dans le haut du
+                            // second dword, et il faut deux tests au lieu d'un.
+                            short* v3 = (short*)(vertices + (face[1] >> 0x10) * 8);
+                            int z3 = v3[2];
+                            int x3 = v3[0];
+                            if ((pz - z1) * (x3 - x1) - (px - x1) * (z3 - z1) < 0) goto next;
+                            third = (pz - z3) * (x0 - x3) - (px - x3) * (z0 - z3);
+                        }
+
+                        if (third >= 0)
+                        {
+                            int y0 = v0 >> 0x10;
+
+                            vec800[0] = x2 - x0;
+                            vec800[1] = (v2 >> 0x10) - y0;
+                            vec800[2] = z2 - z0;
+
+                            vec799[0] = x1 - x0;
+                            vec799[1] = (v1 >> 0x10) - y0;
+                            vec799[2] = z1 - z0;
+
+                            mac801[0] = vec799[2] * vec800[1] - vec799[1] * vec800[2];
+                            mac801[1] = vec800[2] * vec799[0] - vec799[2] * vec800[0];
+                            mac801[2] = vec799[1] * vec800[0] - vec800[1] * vec799[0];
+
+                            ir813[0] = (short)mac801[0];
+                            ir813[1] = (short)mac801[1];
+                            ir813[2] = (short)mac801[2];
+
+                            if (((-py >> 0xc) - y0) * mac801[1]
+                                + (pz - z0) * mac801[2]
+                                + (px - x0) * mac801[0] >= 0)
+                            {
+                                byte kind = *((byte*)face + 0xe);
+                                *(ushort*)((byte*)slot + 0x80 + kind * 4) = (ushort)index;
+                                *(short*)((byte*)slot + 0x82 + kind * 4) = (short)face[3];
+                                if ((mask & (ushort)attributes) == 0) accepted++;
+                            }
+                        }
+                    }
+                }
+            }
+
+        next:
+            index++;
+            face += 4;
+        }
+        while (index < *(ushort*)(chunk + 4));
+
+        return accepted;
+    }
+
+    // Ghidra: DAT_00563c77 et DAT_00563c5c — deux octets remis a zero en toute fin de
+    // FUN_00516350. TODO(REVERSE) : leurs lecteurs sont dans FUN_00516fc0, non transcrite.
+    private static byte s_Unknown_00563c77, s_Unknown_00563c5c;
 
     /// <summary>
     /// Ghidra: FUN_00516350 @ 0x00516350 — la mise en place d'image de la carte du monde. Trois
@@ -17939,13 +18070,311 @@ public static unsafe partial class Blaze
     private static int s_Unknown_005e9adc_count;
     private static byte* s_Unknown_005e97d0_worldmap;
 
-    /// <summary>Ghidra: la seconde moitie de <c>FUN_00516350</c> — le placement du groupe sur la
-    /// carte et la derivation de l'etat de vue.</summary>
-    private static void PlaceWorldMapParty(byte* mainMem) =>
+    /// <summary>Ghidra: FUN_00533940 @ 0x00533940 — la finalisation du placement d'une entite.</summary>
+    private static void FinalizeEntityPlacement2(uint* slot) =>
         throw new NotImplementedException(
-            "FUN_00516350, seconde moitie : le placement du groupe et la derivation de l'etat de " +
-            "vue (~200 lignes). Dependances : FUN_005330d0 (113 lignes) et FUN_00533940 (375), " +
-            "toutes deux sur le chemin chaud — voir REVERSE_STATUS.md");
+            "FUN_00533940 : la finalisation de placement d'entite (375 lignes). Cinq labels " +
+            "entrelaces (LAB_005339a8, LAB_005339b6, LAB_00533af7, LAB_00533c2a, LAB_00534018) " +
+            "sautes depuis plusieurs endroits : il faut reconstruire le flot, pas le translitterer. " +
+            "Appelle FUN_00533450 (52 lignes). Voir REVERSE_STATUS.md");
+
+    /// <summary>Ghidra: FUN_005350b0 @ 0x005350b0 — 95 lignes, non transcrite.</summary>
+    private static void ApplyAreaPalette(byte index) =>
+        throw new NotImplementedException("FUN_005350b0 : la mise en place de palette de zone (95 lignes)");
+
+    /// <summary>
+    /// Ghidra: la seconde moitie de <c>FUN_00516350</c> — le placement du groupe sur la carte, la
+    /// recopie du membre actif vers les quatre emplacements, et la derivation de tout l'etat de vue.
+    ///
+    /// <para>Un emplacement de personnage fait <b>0x9c octets</b> a partir de 0x005e93c0, et Ghidra
+    /// l'adresse de trois facons selon le type du symbole qu'il a choisi : <c>[n * 0x27]</c> sur un
+    /// tableau de dwords, <c>[n * 0x4e]</c> sur un tableau de shorts, et <c>+ n * 0x9c</c> en octets.
+    /// Les trois designent le meme pas — c'est la source d'erreur principale de ce bloc, et la
+    /// raison pour laquelle tout passe ici par un unique pointeur <c>slot</c> et des decalages
+    /// explicites.</para>
+    /// </summary>
+    private static void PlaceWorldMapParty(byte* mainMem)
+    {
+        byte* areaDir = s_Unknown_005e97cc;
+        int member = s_Unknown_005de53c;
+        byte* slot = Arena(0x005e93c0) + member * 0x9c;
+
+        if ((s_WorldMapStep_005645f8 & 0xff) == 2)
+        {
+            // Le point d'entree de la sous-zone : huit dwords a +0x40 du repertoire.
+            uint* spawn = (uint*)(*(byte**)(areaDir + 0x40) + (uint)s_Unknown_005de530 * 0x20);
+            uint identity = spawn[0];
+            int packedX = (int)spawn[1];
+            uint packedZ = spawn[2];
+            int packedY = (int)spawn[3];
+            short z = (short)packedZ;
+            short x = (short)packedX;
+
+            if (spawn[4] == 0xffffffff && spawn[5] == 0xffffffff)
+            {
+                // Pas de position imposee : on tire au hasard autour du point d'entree jusqu'a
+                // tomber sur une face franchissable.
+                *(uint*)(slot + 0x30) = 0;
+                for (int i = 0; i < 4; i++) *(uint*)(slot + 0x80 + i * 4) = 0xa0000000;
+                *(short*)(slot + 0x34) = 0;
+                *(uint*)(slot + 0x60) = 0x7fffffff;
+                *(uint*)(slot + 0x64) = 0x7fffffff;
+                *(uint*)(slot + 0x20) = 0x7fffffff;
+
+                int placed;
+                do
+                {
+                    *(int*)(slot + 0x1c) = (((CrtRand() & 0x7ff) - 0x400) + x) * 0x1000;
+                    *(int*)(slot + 0x24) = (((CrtRand() & 0x7ff) - 0x400) + z) * 0x1000;
+                    placed = TryPlaceEntity(*(byte**)Entity(0x005f7bc0), (uint*)slot, 0xa800);
+                }
+                while (placed == 0);
+
+                FinalizeEntityPlacement2((uint*)slot);
+                *(uint*)(slot + 0x20) = *(uint*)(slot + 0x60);
+            }
+            else
+            {
+                *(int*)(slot + 0x1c) = x << 0xc;
+                *(int*)(slot + 0x24) = z << 0xc;
+                uint height = (uint)(packedX >> 4) & 0xfffff000;
+                *(uint*)(slot + 0x30) = packedZ >> 0x10 | (uint)(packedY << 0x10);
+                *(uint*)(slot + 0x20) = height;
+                *(short*)(slot + 0x34) = (short)((uint)packedY >> 0x10);
+                *(uint*)(slot + 0x60) = height;
+                *(uint*)(slot + 0x64) = height;
+                CopyEntityReferences(slot, (byte*)spawn);
+                FinalizeEntityPlacement2((uint*)slot);
+            }
+
+            slot[0x09] = 0;
+            *(byte*)Camera(0x005de038) = (byte)identity;
+            *(short*)Camera(0x005de048) = (short)(identity >> 0x10);
+
+            byte* views = *(byte**)(areaDir + 0xc0);
+            if (views != null && (short)spawn[6] != -1)
+            {
+                uint index = (spawn[6] * 2) & 0xffff;
+                int* view = (int*)(views + index * 4);
+                uint first = (uint)view[0];
+
+                *(short*)(s_WorldMapCamera_00564650 + 4) = 0;
+                *(int*)s_CameraVector_00604928 = view[0];
+                *Camera(0x005de078) = *(short*)(s_WorldMapCamera_00564650 + 8) + *Camera(0x005de088);
+                *Camera(0x005de07c) = *Camera(0x005de08c) + *(short*)(s_WorldMapCamera_00564650 + 0xc);
+                *Camera(0x005de080) = *(short*)(s_WorldMapCamera_00564650 + 0x10) + *Camera(0x005de090);
+
+                *(short*)(s_WorldMapCamera_00564650 + 0) = (short)first;
+                *(short*)View(0x006067e8) = *(short*)(s_WorldMapCamera_00564650 + 0);
+                *(short*)(s_WorldMapCamera_00564650 + 2) = (short)(first >> 0x10);
+                *(short*)View(0x006067ea) = *(short*)(s_WorldMapCamera_00564650 + 2);
+                *View(0x006067c0) = *Camera(0x005de068);
+                *View(0x006067c4) = *Camera(0x005de06c);
+                *(int*)(s_CameraVector_00604928 + 4) = 0;
+                *(short*)View(0x006067ec) = 0;
+                *View(0x006067c8) = *Camera(0x005de070);
+                *(short*)(s_WorldMapCamera_00564650 + 0x10) = (short)(view[1] - *Camera(0x005de090));
+                *(uint*)(s_WorldMapCamera_00564650 + 0) = first;
+                *View(0x006067d0) = *Camera(0x005de078);
+                *View(0x006067d4) = *Camera(0x005de07c);
+                *View(0x006067d8) = *Camera(0x005de080);
+            }
+        }
+
+        // --- L'emplacement actif est remis a neuf, puis recopie sur les quatre membres ------
+        *Camera(0x005de058) = *Camera(0x005de038);
+        uint flags = *(uint*)slot;
+
+        *(uint*)(slot + 0x74) = 0;
+        *(uint*)(slot + 0x78) = 0;
+        *(uint*)(slot + 0x5c) = 0;
+        *(short*)(slot + 0x98) = 0;
+        *(short*)(slot + 0x96) = 0;
+        *(uint*)(slot + 0x10) = 0;
+        *(uint*)(slot + 0x14) = 0;
+        *(uint*)(slot + 0x50) = 0;
+        *(uint*)(slot + 0x54) = 0;
+        *(uint*)(slot + 0x58) = 0;
+        *(short*)(slot + 0x0e) = 0;
+        *(uint*)(slot + 0x28) = 0x10001000;
+        *(uint*)(slot + 0x2c) = 0x1000;
+        *(uint*)(slot + 0x38) = 0xffffff;
+        *(short*)(slot + 0x36) = 1;
+        *(uint*)(slot + 0x3c) = 0;
+        *(uint*)(slot + 0x18) = 0;
+        slot[0x0a] = 0;
+
+        *(uint*)slot = flags & 0xe3ff8f71 | 0x80800e00;
+
+        byte* record = mainMem + 0xf0000;
+        for (int i = 0; i < 4; i++, record += 0x2000)
+        {
+            byte* target = Arena(0x005e93c0) + i * 0x9c;
+
+            if ((*(uint*)target & 0x40000000) != 0)
+            {
+                *(short*)(record + 0x14c) = 1;
+                *(uint*)(record + 0x140) &= 0xbfffffff;
+            }
+
+            // Les champs +4 et +8 survivent a la recopie, et le mot d'etat est recombine plutot
+            // que remplace : le bit 0x10000 de l'ancien est conserve.
+            uint keep4 = *(uint*)(target + 4);
+            uint keep8 = *(uint*)(target + 8);
+            uint previous = *(uint*)target;
+
+            CopyDwords((uint*)slot, (uint*)target, 0x27);   // Ghidra: FUN_005352e0
+
+            *(uint*)(target + 4) = keep4;
+            *(uint*)(target + 8) = keep8;
+            *(uint*)target = *(uint*)slot & *(uint*)target & 0xbffeffff | previous & 0x10000;
+            target[9] = 0;
+            target[8] = (byte)i;
+            target[0xb] = record[0x2bd];
+
+            CommitStagedStatBlock(record);              // Ghidra: FUN_00538ab0
+            ScaleStatBlockByDifficulty(record + 0x100); // Ghidra: FUN_00538f50
+            ComputeDerivedStats(record);                // Ghidra: FUN_00538c50
+            ApplyEquipmentStatBonuses(record);          // Ghidra: FUN_00538e20
+            FinalizeEquipmentEffects(record + 0x100);   // Ghidra: FUN_00538fa0
+            record[0x206] = 100;
+
+            if (s_PartySize_005e9020 <= i) *(uint*)target &= 0x7fffffff;
+        }
+
+        // --- La derivation de l'etat de vue ------------------------------------------------
+        for (int i = 0; i < 4; i++) *(uint*)Entity(0x005f7d70 + i * 4) = *(uint*)(slot + 0x80 + i * 4);
+
+        *(int*)Arena(0x005e9a30) = *(int*)(slot + 0x1c);
+        *(int*)Arena(0x005e9a34) = *(int*)(slot + 0x20);
+        *(int*)Arena(0x005e9a38) = *(int*)(slot + 0x24);
+        *(uint*)Entity(0x005ff3e4) = *(uint*)slot;
+        *(short*)Arena(0x005e9b38) = *(short*)(slot + 0x90);
+        *(uint*)Entity(0x005f7b48) = *(uint*)(slot + 0x7c);
+
+        *Camera(0x005de068) = *(int*)(slot + 0x1c);
+        *Camera(0x005de06c) = *(int*)(slot + 0x20);
+        *Camera(0x005de070) = *(int*)(slot + 0x24);
+        *Camera(0x005de098) = *(int*)(slot + 0x1c);
+        *Camera(0x005de09c) = *(int*)(slot + 0x20);
+        *Camera(0x005de0a0) = *(int*)(slot + 0x24);
+
+        *(int*)Entity(0x006008d0) = -*(int*)(slot + 0x1c);
+        *(int*)Entity(0x006008d4) = *(int*)(slot + 0x20);
+        *(ushort*)View(0x006067ee) = (byte)s_WorldMapStep_005645f8;
+        s_Unknown_005de54c = 1;
+        *(int*)Entity(0x006008d8) = -*(int*)(slot + 0x24);
+
+        *(byte**)Arena(0x005e9ae0) = (byte*)View(0x006067e8);
+        *(byte**)Entity(0x005edebc) = (byte*)Camera(0x005de068);
+        *(byte**)Entity(0x005eca94) = (byte*)View(0x006067d0);
+
+        // La fiche de la sous-zone : une entree de la table +0x74, indexee par l'identite posee
+        // plus haut. Tout ce qui suit en decoule.
+        byte* sheet = *(byte**)(*(byte**)(areaDir + 0x74) + (*(byte*)Camera(0x005de038) & 0xff) * 4);
+        s_Unknown_005f2ce0 = sheet;
+
+        s_Unknown_005de534 = *sheet;
+        *(byte*)Camera(0x005de03c) = sheet[1];
+        s_Unknown_005645fc = sheet[2];
+
+        *Entity(0x005fa561) = sheet[10];
+        *Entity(0x005fa560) = (byte)(*(sbyte*)Entity(0x005fa561) != -1 ? 1 : 0);
+        *(ushort*)Camera(0x005de04c) = sheet[0xc] == 0xff ? (ushort)0xffff : sheet[0xc];
+        *(ushort*)Camera(0x005de050) = sheet[0xd] == 0xff ? (ushort)0xffff : sheet[0xd];
+        *Entity(0x00600841) = sheet[0xe];
+        *Entity(0x00600840) = (byte)(*(sbyte*)Entity(0x00600841) != -1 ? 1 : 0);
+        *Entity(0x00600881) = sheet[0xf];
+        *Entity(0x00600880) = (byte)(*(sbyte*)Entity(0x00600881) != -1 ? 1 : 0);
+
+        *(byte**)Arena(0x005e9b34) = *(byte**)(areaDir + 0xa0) + sheet[0xb] * 4;
+        byte* terrain = *(byte**)(areaDir + 0x44) + sheet[5];
+        *(byte**)Entity(0x005eca80) = terrain;
+
+        if ((*terrain & 0x80) == 0)
+        {
+            *(uint*)Arena(0x005e9898) &= 0xffffff00;
+            *(uint*)Arena(0x005e9908) &= 0xffffff00;
+        }
+        else
+        {
+            uint tint = (uint)((*(int*)(*(byte**)(areaDir + 0x78) + sheet[7] * 4) << 8) | 1);
+            *(uint*)Arena(0x005e9898) = tint;
+            *(uint*)Arena(0x005e9908) = tint;
+        }
+
+        byte* camera = *(byte**)(areaDir + 0x5c) + sheet[1] * 0x10;
+        *(byte**)Arena(0x005e9af0) = camera;
+        *(int*)Arena(0x005e9028) = *(int*)(camera + 4);
+        *(uint*)Arena(0x005e9164) = *(uint*)(camera + 0xc) >> 0x10;
+        *(uint*)Arena(0x005e902c) = *(uint*)(camera + 8) & 0xffff;
+        *(uint*)Arena(0x005e9160) = *(uint*)(camera + 8) >> 0x10 | *(uint*)(camera + 0xc) << 0x10;
+
+        *(uint*)Arena(0x005e9308) = 0;
+        *(uint*)Arena(0x005e930c) = 0;
+        *(uint*)Arena(0x005e93a0) = 0;
+        *(uint*)Arena(0x005e93a4) = 0;
+
+        byte* palette = *(byte**)(areaDir + 0x60) + sheet[2] * 4;
+        *(byte**)Entity(0x005eca98) = palette;
+        *(uint*)Arena(0x005e9b3c) = *(uint*)palette;
+        *(int*)Arena(0x005e9b40) = *(int*)(areaDir + 100);
+        *(uint*)Arena(0x005e92b8) = *(uint*)Arena(0x005e9160);
+        *(uint*)Arena(0x005e92bc) = *(uint*)Arena(0x005e9164);
+        *(int*)Arena(0x005e9310) = *(int*)Arena(0x005e9028);
+        *(uint*)Arena(0x005e9314) = *(uint*)Arena(0x005e902c);
+
+        int roll = CrtRand();                       // Ghidra: FUN_00547140
+        *(uint*)Arena(0x005e9ae8) = 0;
+        s_Unknown_00564540 = (roll % 6 + 6) * 0x14;
+
+        ApplyAreaPalette(sheet[6]);                 // Ghidra: FUN_005350b0
+
+        *(ushort*)(s_ViewRect_00566c70 + 4) = (ushort)(sheet[3] | 0x100);
+        *(ushort*)(s_ViewRect_00566c70 + 8) = (ushort)(sheet[4] << 6);
+        *(ushort*)(s_ViewRect_00566c70 + 0xa) = (ushort)(sheet[4] << 6);
+
+        Ordinal_770(s_ViewRect_00566c70);
+        Ordinal_769(1);
+        Ordinal_768(1);
+        Ordinal_767(0, 0xffffff);
+        Ordinal_766(s_ViewRect_00566c70);
+        Ordinal_765(1, 0xffffff);
+
+        // Les quatre descripteurs d'interface de la carte, montes a l'identique.
+        for (int i = 0; i < 4; i++)
+        {
+            byte* panel = s_WorldPanels_005dbc68 + i * UiDescriptorStride;
+            *(uint*)(panel + 0x00) = 0x31;
+            *(short*)(panel + 0x0a) = 0x54;
+            *(short*)(panel + 0x0c) = 0x1c;
+            panel[0x18] = 8;
+            panel[0x19] = 8;
+            panel[0x1a] = 0x0f;
+            panel[0x1b] = 1;
+            *(uint*)(panel + 0x1c) = 0x02cf1020;
+            panel[0x20] = 0x0c;
+            panel[0x21] = 0x0c;
+            panel[0x22] = 7;
+            panel[0x23] = 0;
+            *(uint*)(panel + 0x24) = 0x01000000;
+            panel[0x2c] = 0;
+            panel[0x34] = 0;
+            panel[0x3c] = 0;
+            panel[0x42] = 0;
+            panel[0x44] = 0x0f;
+            panel[0x45] = 1;
+            *(uint*)(panel + 0x48) = 0x01000000;
+            panel[0x50] = 0;
+            panel[0x58] = 0;
+            panel[0x60] = 0;
+            panel[0x68] = 0;
+        }
+
+        s_Unknown_00563c77 = 0;
+        s_Unknown_00563c5c = 0;
+        *(short*)(s_WorldMapDescriptor_005633b0 + 6) = unchecked((short)0xffb0);
+    }
 
     /// <summary>Ghidra: FUN_00516fc0 @ 0x00516fc0 — 1226 lignes, la logique par image de la carte
     /// du monde ; c'est elle qui pose DAT_005645f8 et decide de la sortie.</summary>
