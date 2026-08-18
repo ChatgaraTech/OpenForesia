@@ -491,3 +491,44 @@ d'objets, ~387 sur l'écran racine du menu objets.
 **Il n'y a rien à atteindre au-delà de la liste d'objets.** La fiche détaillée et le clavier de
 renommage sont injoignables dans le jeu de 1998 — voir `legacy-bug.md`, LB-004. Ne pas chercher une
 séquence de touches qui les ouvrirait : elle n'existe pas.
+
+## Exercer l'enchère du sous-écran « Utilisation » (2026-08-18)
+
+Le cas 2 de `FUN_00527e30` exige un **équipement non porté**, et un personnage fraîchement créé n'en
+a pas : ses trois pièces sont portées et sa potion n'est pas un équipement (`+0x12 & 0xf00 == 0`).
+Ce n'est pas un défaut, c'est la règle du jeu — voir `REVERSE_STATUS.md`.
+
+Pour rendre le cas atteignable, déséquiper une pièce sur une sauvegarde **de test**. La somme de
+contrôle est stockée **deux fois** (0x1ffc et 0x3ffc) et il faut recalculer les deux, sans quoi le
+sous-écran « Invertaire » refusera le fichier :
+
+```powershell
+$p = 'OpenForesia\save\Blaze-Saving<code>'
+$b = [IO.File]::ReadAllBytes($p)
+$b[0x2b2] = 0xFF          # +0x2b0..0x2b4 = les emplacements portes ; 0xFF = aucun
+$sum = 0
+for ($i = 0; $i -lt 0x1ffc; $i++) { $v = $b[$i]; if ($v -gt 127) { $v -= 256 }; $sum += $v }
+$cs = [BitConverter]::GetBytes([int]$sum)
+[Array]::Copy($cs, 0, $b, 0x1ffc, 4)
+[Array]::Copy($cs, 0, $b, 0x3ffc, 4)
+[IO.File]::WriteAllBytes($p, $b)
+```
+
+**`[sbyte]` ne convient pas en PowerShell** pour la somme : le cast lève sur toute valeur > 127. La
+somme du jeu porte bien sur des octets **signés**, d'où la soustraction de 256 à la main.
+
+Puis, avec deux personnages retenus (le vendeur d'abord, il devient le membre 0) :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 2 -Seconds 34 -WorkingDir OpenForesia -Shot `
+  -Then WAIT2,DOWN,WAIT1,ENTER,WAIT4,DOWN,WAIT1,ENTER,WAIT1,UP,WAIT1,ENTER,WAIT1,START,
+        WAIT5,ENTER,WAIT3,RIGHT,WAIT1,RIGHT,WAIT1,ENTER,WAIT5
+```
+
+Les deux `RIGHT` amènent le curseur sur la pièce déséquipée ; la grille se compacte, donc le rang
+dans la grille est celui de l'emplacement **occupé**, pas l'index brut.
+
+Signatures : ~403 primitives par image sur la grille d'objets (cas 1), ~368 sur l'enchère (cas 2).
+
+**Ne pas modifier les sauvegardes que l'on n'a pas créées soi-même** : elles sont indistinguables
+d'une partie réelle une fois dans `save\`. Créer la sienne avec le parcours scripté plus haut.

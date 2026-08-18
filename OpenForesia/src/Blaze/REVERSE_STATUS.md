@@ -5442,3 +5442,77 @@ le consommer. La séquence d'appels du port est identique à celle de l'original
 avec `0x564a10`, puis `&DAT_005606f8` à l'entrée de la phase 8), et la boîte est propre sur
 « Enchère », qui ne lie pas de page en attente. Ce n'est donc pas une erreur de transcription ;
 savoir si le jeu de 1998 affiche le même témoin demanderait une capture de référence.
+
+---
+
+## 2026-08-18 — `FUN_00527e30`, les cas 1 et 2 (les deux qui restaient gardés)
+
+Le sous-écran « Utilisation » est désormais complet. Avec eux, quatre fonctions de plus :
+`DrawMemberItemGrid` (`FUN_00529070`), `DrawItemDetailCard` (`FUN_00529290`), et deux extractions,
+`DrawItemStatRow` et `DrawItemElementRow`.
+
+### Les deux blocages de la veille sont tombés, et aucun n'était ce qu'on croyait
+
+**« FUN_005276c0, FUN_00529070 et FUN_00529290 non transcrites »** — la première l'a été en
+transcrivant `FUN_00524880`. Les deux autres se sont révélées être, pour l'essentiel, du code déjà
+écrit : `FUN_00529290` est **mot pour mot** la fiche d'objet de la phase 9 de `FUN_00524880`, plus
+un bloc de nom au milieu. Les deux moitiés communes sont extraites en `DrawItemStatRow` et
+`DrawItemElementRow`, et la phase 9 les appelle maintenant au lieu de les recopier.
+
+**« Le cas 2 perd l'adressage, il faut une passe de désassemblage »** — non. `Ghidra` rend
+`pbVar14[-0xffffffff00000008]` : c'est une constante **64 bits** dont les 32 bits bas valent
+`0xFFFFFFF8`, soit l'indice `-8`. Le même champ est relu vingt lignes plus haut sous la forme
+`*(short *)(pbVar14 + -8)`, ce qui lève l'ambiguïté sans ouvrir le binaire. Il suffisait de lire les
+deux formes côte à côte. Même chose pour le pas de `0x4e` de la boucle de remise à zéro : `puVar5`
+est un `undefined2 *`, donc 0x4e mots font bien les 0x9c octets attendus.
+
+Ce qui **a** demandé le désassembleur, en revanche : les deux `&DAT_00604a20 + slot * 4` du cas 1 et
+du cas 2. `0x005281D6` et `0x00528944` donnent tous deux `SHL EAX,0x4` puis `ADD EAX,0x604a20` — le
+pas est de **0x10**, pas de 4. C'est la quatrième et la cinquième occurrence de cette perte de
+décalage, après les trois déjà notées sur `CurrentPadState` ; il faut désormais la considérer comme
+systématique sur cette table.
+
+### Ce que les deux cas font
+
+**Cas 1** — la grille d'objets du membre : cinq colonnes de 0x1c, une icône par emplacement, la
+quantité sur les objets empilables, une pastille sur ceux qu'il porte, et la fiche détaillée en
+dessous. Chaque membre répond à **sa propre manette**, pas à celle du joueur courant.
+
+**Cas 2** — l'enchère. Chaque autre membre mise par pas de 100 avec sa manette, entre le prix de
+départ (la valeur calculée de l'objet) et son or ; GAUCHE et DROITE **passent la manette** au membre
+voisin qui n'en a pas ; CARRÉ confirme, CROIX revient sur sa décision. Le vendeur ne mise pas : sa
+manette est cédée d'office à un emplacement libre. Quand tous ceux qui tiennent une manette ont
+confirmé, la meilleure mise l'emporte — **une égalité ne départage pas**, le gagnant redevient le
+vendeur, ce que la résolution traite comme un refus. Refus aussi si le gagnant porte déjà dix objets.
+
+### Un défaut d'aliasing de plus, attrapé à l'écran
+
+`DAT_005e9080` (la valeur de l'objet, que le bandeau affiche en « Au prix de: ») a d'abord été
+déclaré en champ C# isolé. `0x5e9080 = 0x5e9060 + 0x20` : c'est un champ de l'arène déjà modélisée
+par `s_PanelSelection_005e9060`. Écrit ailleurs qu'où le moteur de texte le lit, le bandeau affichait
+« Au prix de: 0 » quelle que soit la valeur. Corrigé en `Arena(0x005e9080)` : « Au prix de: 24 ».
+C'est exactement le défaut que ce projet a déjà rencontré une vingtaine de fois, et il ne s'est vu
+qu'en regardant l'écran — le compte de primitives, lui, était identique.
+
+### Vérifié en jeu
+
+Menu objets → « Enchère » → deux personnages retenus → START → l'écran d'utilisation → CARRÉ :
+**le cas 1** affiche la grille d'ARTHUR (épée, armure, bouclier avec leur pastille d'équipement,
+potion avec sa quantité 5), la fiche « Epée normale / ATT 7 / DEF 0 », les huit témoins d'élément
+avec leurs libellés de classe, le portrait, et « Sélectionne l'objet. / Au prix de: 24 ».
+
+**Le cas 2** demande un équipement **non porté** : un personnage neuf n'en a pas. Vérifié dans le
+fichier de sauvegarde — les trois pièces ont bien `0x8000` et un bit de `0xf00`, mais sont portées
+(`+0x2b0..0x2b2 = 00 01 02`), et la potion a `0xf00 == 0`. Ce n'est pas un défaut de transcription
+mais la règle du jeu. En déséquipant le bouclier sur une sauvegarde de test (et en recalculant les
+deux sommes de contrôle), le cas 2 s'atteint : le lot glisse vers le gagnant courant, le vendeur est
+grisé, l'enchérisseur en clair avec son marteau et ses deux compteurs, et « Fais une offre. ».
+~403 primitives par image au cas 1, ~368 au cas 2.
+
+**L'enchère est vérifiée jusqu'à l'adjudication**, avec un enchérisseur pourvu d'or (5000 posés à
+`+0x26c` sur une sauvegarde de test) : le premier appui cale la mise sur la valeur calculée de
+l'objet (46 pour le bouclier), les suivants ajoutent 100, l'écran affiche `246` / `4754` — dont la
+somme fait exactement les 5000 de départ. CARRÉ adjuge, le cas 3 transfère, et l'écran revient au
+choix du propriétaire avec `246` chez le vendeur, `4754` chez l'acheteur, et le meilleur objet passé
+de l'un à l'autre (36 contre 46). Les trois arithmétiques — montée de la mise, or restant, transfert
+— se recoupent, ce qui est une vérification bien plus forte qu'un simple « ça s'affiche ».

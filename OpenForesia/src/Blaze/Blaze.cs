@@ -19451,6 +19451,11 @@ public static unsafe partial class Blaze
     private static readonly byte* s_ItemIconSprite_00566b48 =
         AllocBytes([0x00, 0x00, 0x18, 0x18, 0x00, 0x00, 0x3e, 0x00]);
 
+    /// <summary>Ghidra: &amp;DAT_00566b50 — la pastille posee sur un emplacement que le membre
+    /// porte reellement. Huit octets releves a 0x00566b50.</summary>
+    private static readonly byte* s_EquippedMarker_00566b50 =
+        AllocBytes([0xf8, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x03, 0x07]);
+
     /// <summary>Ghidra: &amp;DAT_00566b80 et &amp;DAT_00566b84 — <c>"???"</c> et <c>"????"</c>, ce
     /// qu'affichent les caracteristiques et le nom d'un objet non identifie (attribut 0x80 du
     /// champ +0x13 eteint).</summary>
@@ -19543,6 +19548,210 @@ public static unsafe partial class Blaze
         byte* end = BuildItemDisplayName(s_ItemNameScratch_005de110, item);
         *end = 0;
         return s_ItemNameScratch_005de110;
+    }
+
+    /// <summary>
+    /// Ghidra: les huit caracteristiques d'un objet sur deux rangees, puis ses deux valeurs
+    /// longues — **le meme bloc ecrit deux fois** dans l'original, une fois dans la phase 9 de
+    /// <c>FUN_00524880</c> et une fois en tete de <c>FUN_00529290</c>, a la virgule pres. Extrait
+    /// ici plutot que recopie, comme <see cref="BuildSaveDirectoryRows"/>.
+    ///
+    /// <para>Un objet non identifie (attribut 0x80 du champ <c>+0x13</c> eteint) affiche
+    /// <c>"???"</c> partout au lieu de ses chiffres. L'ordre des huit n'est pas 0..7 mais celui de
+    /// <see cref="s_StatSlotOrder_00566ad0"/>, et l'index sert aussi de variante de glyphe
+    /// (<c>slot + 2</c>).</para>
+    /// </summary>
+    private static uint* DrawItemStatRow(uint* otBase, uint* primCursor, int* draw, byte* item)
+    {
+        byte* d = (byte*)draw;
+
+        for (int n = 0; n < 8; n++)
+        {
+            *(short*)(d + 8) = (short)((n & 3) * 0x24 + 0x60 + 8);
+            *(short*)(d + 0xa) = (short)((n >> 2) * 10 + 0x7e);
+            if ((item[0x13] & 0x80) == 0)
+            {
+                *(uint**)d = s_GlyphAtlas_00566c28;
+                primCursor = DrawTextRun(otBase, primCursor, draw, s_UnknownStatLabel_00566b80, 0, 0, -1);
+            }
+            else
+            {
+                sbyte slot = (sbyte)s_StatSlotOrder_00566ad0[n];
+                *(uint**)d = s_NumeralTileRecord_00566c30;
+                primCursor = EmitCardGlyphTile(otBase, primCursor, draw,
+                                               (uint)(int)(sbyte)item[0x18 + slot],
+                                               3, (uint)(ushort)(slot + 2));
+            }
+        }
+
+        *(short*)(d + 8) = 0x60;
+        *(short*)(d + 0xa) = 0x70;
+        short* longStat = (short*)(item + 0x30);
+        for (int n = 0; n < 2; n++, longStat++)
+        {
+            *(short*)(d + 8) += 0x14;
+            if ((item[0x13] & 0x80) == 0)
+            {
+                *(uint**)d = s_GlyphAtlas_00566c28;
+                primCursor = DrawTextRun(otBase, primCursor, draw, s_UnknownStatLabel_00566b80, 0, 0, -1);
+            }
+            else
+            {
+                *(uint**)d = s_NumeralTileRecord_00566c30;
+                int value = *longStat;
+                if (value < 0) value = 0;
+                primCursor = EmitCardGlyphTile(otBase, primCursor, draw, (uint)value, 3, 0);
+            }
+            *(short*)(d + 8) += 0x28;
+        }
+
+        return primCursor;
+    }
+
+    /// <summary>
+    /// Ghidra: les huit temoins d'element d'un objet, second bloc partage entre la phase 9 de
+    /// <c>FUN_00524880</c> et la fin de <c>FUN_00529290</c>. Le champ <c>+0x10</c> de
+    /// l'enregistrement sert d'index dans <see cref="s_ElementIcons_00566b08"/>.
+    /// </summary>
+    private static uint* DrawItemElementRow(uint* otBase, uint* primCursor, int* draw, byte* item)
+    {
+        byte* d = (byte*)draw;
+
+        *(short*)(d + 0x10) = 0;
+        *(short*)(d + 8) = 0x60;
+        *(short*)(d + 0xa) = 0x94;
+        *(byte**)d = s_ElementIcons_00566b08;
+
+        EmitViewportRect(otBase, &primCursor);
+        for (int n = 0; n < 8; n++)
+        {
+            // Ghidra: `(-(bit != 0) & 0xfffffff9) + 9` — 2 quand l'element est present, 9 sinon ;
+            // deux variantes de la meme icone.
+            uint variant = (1 << n & *(ushort*)(item + 0x12)) != 0 ? 2u : 9u;
+            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, variant);
+            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            *(short*)(d + 8) += 0x10;
+            *(short*)(d + 0x10) += 1;
+        }
+        EmitClipRect(otBase, &primCursor);
+
+        return primCursor;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00529290 @ 0x00529290 — la fiche detaillee de l'objet sous le curseur, dans le
+    /// sous-ecran « Utilisation ». C'est <see cref="DrawItemStatRow"/> puis, entre les deux blocs
+    /// partages, le **nom** de l'objet : soit <c>"????"</c> s'il n'est pas identifie, soit le
+    /// libelle que <see cref="ItemDisplayName"/> compose, lie dans le bandeau apres un
+    /// <see cref="DrawItemMenuTitle"/>.
+    /// </summary>
+    private static uint* DrawItemDetailCard(uint* otBase, uint* primCursor, byte* record, int cursor)
+    {
+        byte* item = record + 0x300 + record[0x2c1 + cursor] * 0x280;
+
+        int* draw = stackalloc int[8];
+        byte* d = (byte*)draw;
+        NativeMemory.Clear(d, 32);
+        *(uint*)(d + 4) = 0x1000000;
+
+        primCursor = DrawItemStatRow(otBase, primCursor, draw, item);
+
+        *(short*)(d + 0xa) -= 0xc;
+        *(short*)(d + 8) = 0x60;
+        *(uint**)d = s_GlyphAtlas_00566c28;
+
+        if ((item[0x13] & 0x80) == 0)
+        {
+            primCursor = DrawTextRun(otBase, primCursor, draw, s_UnknownItemLabel_00566b84, 0, 0, 0x10);
+        }
+        else
+        {
+            primCursor = DrawItemMenuTitle(primCursor);   // Ghidra: FUN_00524190
+
+            byte* title = s_ItemMenuTitleDescriptor_005658a8;
+            byte* cmd = stackalloc byte[100];
+            NativeMemory.Clear(cmd, 100);
+            cmd[0] = 0x0d;
+            cmd[1] = 4;
+            cmd[2] = (byte)(*(sbyte*)(d + 8) - *(sbyte*)(title + 4));
+            cmd[3] = (byte)(*(sbyte*)(d + 0xa) - *(sbyte*)(title + 6) - 0x10);
+
+            byte* name = ItemDisplayName(item);
+            int length = 0;
+            while (name[length] != 0) length++;
+            for (int i = 0; i <= length; i++) cmd[4 + i] = name[i];
+
+            BindMenuLabels(cmd, 0, title, 0);
+            primCursor = RunTextEngine(primCursor, title);
+        }
+
+        return DrawItemElementRow(otBase, primCursor, draw, item);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00529070 @ 0x00529070 — la grille d'objets d'un membre du groupe : cinq
+    /// colonnes de 0x1c pixels, une icone par emplacement occupe, sa quantite si l'objet est
+    /// empilable, et une pastille sur les emplacements que le membre porte reellement (ceux que
+    /// <c>record[0x2b0..0x2b4]</c> designe).
+    ///
+    /// <para>Ghidra rend l'index de boucle par une soustraction de pointeurs
+    /// (<c>iVar7 = -0x2c1 - param_4</c> puis <c>pbVar9 + iVar7</c>) : ce n'est rien d'autre que le
+    /// rang <c>i</c> dans la liste d'emplacements occupes, compare au curseur.</para>
+    /// </summary>
+    private static uint* DrawMemberItemGrid(uint* otBase, uint* primCursor, byte* slotFlags, byte* record)
+    {
+        if (record[0x2c0] == 0) return primCursor;
+
+        int* draw = stackalloc int[8];
+        byte* d = (byte*)draw;
+        NativeMemory.Clear(d, 32);
+
+        for (int i = 0; i < record[0x2c0]; i++)
+        {
+            byte slot = record[0x2c1 + i];
+            short sx = (short)((i % 5) * 0x1c);
+            short sy = (short)((i / 5) * 0x1c);
+            byte* item = record + slot * 0x280;   // les champs utiles sont en +0x310 et +0x313
+
+            *(uint*)(d + 4) = i == s_ItemMenuCursor_005de4e0 ? s_Unknown_005e9814 : 0x1000000u;
+
+            if ((item[0x313] & 0x30) != 0)
+            {
+                *(short*)(d + 8) = (short)(sx + 0x68);
+                *(short*)(d + 0xa) = (short)(sy + 0x3c);
+                *(uint**)d = s_NumeralTileRecord_00566c30;
+                primCursor = EmitCardGlyphTile(otBase, primCursor, draw,
+                                               *(ushort*)(item + 0x310), 0x82, 0);
+            }
+
+            *(short*)(d + 0x10) = 0;
+            EmitViewportRect(otBase, &primCursor);
+
+            for (int e = 0; e < 5; e++)
+            {
+                if (record[0x2b0 + e] != slot) continue;
+                *(short*)(d + 8) = (short)(sx + 0x6c);
+                *(short*)(d + 0xa) = (short)(sy + 0x38);
+                *(byte**)d = s_EquippedMarker_00566b50;
+                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            }
+
+            // L'enregistrement d'icone partage, dont les deux premiers octets designent la case
+            // de l'atlas : la colonne par l'emplacement, la ligne par le rang du membre.
+            byte* icon = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x10);
+            icon[0] = (byte)(slot * 0x18);
+            icon[1] = (byte)(slotFlags[8] * 0x18);
+            *(byte**)d = icon;
+            *(short*)(d + 8) = (short)(sx + 0x60);
+            *(short*)(d + 0xa) = (short)(sy + 0x2c);
+            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0,
+                                           (uint)((slotFlags[8] << 8) | slot));
+            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            EmitClipRect(otBase, &primCursor);
+        }
+
+        return primCursor;
     }
 
     /// <summary>
@@ -20168,69 +20377,14 @@ public static unsafe partial class Blaze
                     }
 
                     // La fiche de l'objet sous le curseur : huit caracteristiques sur deux
-                    // rangees, deux valeurs longues, puis les huit temoins d'element.
+                    // rangees, deux valeurs longues, puis les huit temoins d'element. Les deux
+                    // blocs sont ceux que FUN_00529290 ecrit a l'identique — voir
+                    // DrawItemStatRow et DrawItemElementRow.
                     byte* detail = grid + s_ItemIndex_005de488[s_Unknown_005de4e4
                                                              + s_ItemGridScroll_005de4ec] * 0x280;
                     *(uint*)(d + 4) = 0x1000000;
-
-                    for (int n = 0; n < 8; n++)
-                    {
-                        *(short*)(d + 8) = (short)((n & 3) * 0x24 + 0x60 + 8);
-                        *(short*)(d + 0xa) = (short)((n >> 2) * 10 + 0x7e);
-                        if ((detail[0x13] & 0x80) == 0)
-                        {
-                            *(uint**)d = s_GlyphAtlas_00566c28;
-                            primCursor = DrawTextRun(otBase, primCursor, draw,
-                                                     s_UnknownStatLabel_00566b80, 0, 0, -1);
-                        }
-                        else
-                        {
-                            sbyte slot = (sbyte)s_StatSlotOrder_00566ad0[n];
-                            *(uint**)d = s_NumeralTileRecord_00566c30;
-                            primCursor = EmitCardGlyphTile(otBase, primCursor, draw,
-                                                           (uint)(int)(sbyte)detail[0x18 + slot],
-                                                           3, (uint)(ushort)(slot + 2));
-                        }
-                    }
-
-                    *(short*)(d + 8) = 0x60;
-                    *(short*)(d + 0xa) = 0x70;
-                    short* longStat = (short*)(detail + 0x30);
-                    for (int n = 0; n < 2; n++, longStat++)
-                    {
-                        *(short*)(d + 8) += 0x14;
-                        if ((detail[0x13] & 0x80) == 0)
-                        {
-                            *(uint**)d = s_GlyphAtlas_00566c28;
-                            primCursor = DrawTextRun(otBase, primCursor, draw,
-                                                     s_UnknownStatLabel_00566b80, 0, 0, -1);
-                        }
-                        else
-                        {
-                            *(uint**)d = s_NumeralTileRecord_00566c30;
-                            int value = *longStat;
-                            if (value < 0) value = 0;
-                            primCursor = EmitCardGlyphTile(otBase, primCursor, draw, (uint)value, 3, 0);
-                        }
-                        *(short*)(d + 8) += 0x28;
-                    }
-
-                    *(short*)(d + 0x10) = 0;
-                    *(short*)(d + 8) = 0x60;
-                    *(short*)(d + 0xa) = 0x94;
-                    *(byte**)d = s_ElementIcons_00566b08;
-                    EmitViewportRect(otBase, &primCursor);
-                    for (int n = 0; n < 8; n++)
-                    {
-                        // Ghidra: `(-(bit != 0) & 0xfffffff9) + 9` — 2 quand l'element est present,
-                        // 9 sinon ; deux variantes de la meme icone.
-                        uint variant = (1 << n & *(ushort*)(detail + 0x12)) != 0 ? 2u : 9u;
-                        primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, variant);
-                        primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
-                        *(short*)(d + 8) += 0x10;
-                        *(short*)(d + 0x10) += 1;
-                    }
-                    EmitClipRect(otBase, &primCursor);
+                    primCursor = DrawItemStatRow(otBase, primCursor, draw, detail);
+                    primCursor = DrawItemElementRow(otBase, primCursor, draw, detail);
                     break;
                 }
 
@@ -21249,6 +21403,105 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint s_ItemValue_005de2d0;
 
+    /// <summary>Ghidra: DAT_005de448 — la meilleure mise de l'enchere, -1 tant que personne n'a
+    /// mise. C'est le dword juste apres les quatre de <c>DAT_005de438</c>.</summary>
+    private static ref int s_Unknown_005de448 => ref *ItemMenuState(0x005de448);
+
+    /// <summary>
+    /// Ghidra: l'echange de manette entre deux emplacements, ecrit **trois fois** a l'identique
+    /// dans le cas 2 de <c>FUN_00527e30</c> : le membre cede sa manette a
+    /// <paramref name="target"/> et recupere la sienne (toujours 8, « aucune »), les seconds
+    /// octets etant permutes avec.
+    /// </summary>
+    private static void HandOverController(byte* controllerSlot, int target)
+    {
+        byte* destination = s_PlayerSlots_005e9188 + target * 0x4c;
+        destination[0] = controllerSlot[0];
+        controllerSlot[0] = 8;
+        byte swap = destination[1];
+        destination[1] = controllerSlot[1];
+        controllerSlot[1] = swap;
+    }
+
+    /// <summary>Ghidra: la recherche d'un emplacement libre **vers l'arriere** (GAUCHE), avec
+    /// bouclage. Rend 1 si la manette a bouge, 0 si aucun emplacement n'etait libre.</summary>
+    private static int MoveControllerBackward(byte* controllerSlot, int member)
+    {
+        if (s_PartySize_005e9020 == 0) return s_PartySize_005e9020;
+
+        int probe = member;
+        for (int tries = s_PartySize_005e9020; tries != 0; tries--)
+        {
+            probe--;
+            if (probe < 0) probe = s_PartySize_005e9020 - 1;
+            if (s_PlayerSlots_005e9188[probe * 0x4c] == 8 && probe != s_Unknown_005de4e4)
+            {
+                HandOverController(controllerSlot, probe);
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    /// <summary>Ghidra: la meme recherche **vers l'avant** (DROITE).</summary>
+    private static int MoveControllerForward(byte* controllerSlot, int member)
+    {
+        if (s_PartySize_005e9020 == 0) return s_PartySize_005e9020;
+
+        int probe = member;
+        for (int tries = s_PartySize_005e9020; tries != 0; tries--)
+        {
+            probe++;
+            if (probe >= s_PartySize_005e9020) probe = 0;
+            if (s_PlayerSlots_005e9188[probe * 0x4c] == 8 && probe != s_Unknown_005de4e4)
+            {
+                HandOverController(controllerSlot, probe);
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: la remise a neuf des quatre emplacements a la fin de l'enchere — **le meme bloc
+    /// ecrit deux fois** dans le cas 2, sur la sortie sans mise et sur l'adjudication.
+    ///
+    /// <para>Le pas de <c>puVar5</c> vaut 0x4e et non 0x9c parce que Ghidra le type en
+    /// <c>undefined2 *</c> : 0x4e mots de 16 bits font bien 0x9c octets. Le
+    /// <c>*(undefined4 *)(puVar5 + -9)</c> qui l'accompagne est le dword de
+    /// <c>s_SlotFlags_005e93c0 + i * 0x9c</c>, dix-huit octets en amont.</para>
+    /// </summary>
+    private static void ResetAuctionControllers()
+    {
+        byte[] slotIds = s_CardSlotIds_00566a58[s_Unknown_005de50c];
+
+        // Ghidra: `while ((int)puVar6 < 0x5e92b8)` depuis 0x5e9188 par pas de 0x4c — quatre tours.
+        for (int i = 0; i < 4; i++)
+        {
+            s_PlayerSlots_005e9188[i * 0x4c + 1] = (byte)i;
+            *(uint*)(s_SlotFlags_005e93c0 + i * 0x9c) = 0;
+            s_PlayerSlots_005e9188[i * 0x4c] = 8;
+            *(ushort*)(s_SlotFlags_005e93c0 + i * 0x9c + 0x12) = 0;
+            s_InputStateBase_00604a20[slotIds[i] * 0x10 + 0xb] = 0;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: DAT_005e9080 — la valeur de l'objet sous le curseur, recopiee la ou le bandeau va
+    /// la lire (« Au prix de: »).
+    ///
+    /// <para>C'est un champ de l'arene <c>0x005e9000</c>, pas une globale isolee :
+    /// <c>0x5e9080 = 0x5e9060 + 0x20</c>, en plein dans les 0x120 octets utiles de
+    /// <see cref="s_PanelSelection_005e9060"/>. Declare en champ C# separe, il etait ecrit dans
+    /// une memoire que le moteur de texte ne lit pas — le bandeau affichait « Au prix de: 0 »
+    /// quelle que soit la valeur calculee. Encore le defaut d'aliasing habituel du projet.</para>
+    /// </summary>
+    private static ref uint s_Unknown_005e9080 => ref *(uint*)Arena(0x005e9080);
+
+    /// <summary>Ghidra: DAT_005de2f0 — <c>membre * 0x35 + 0x24</c>, pose a l'entree du choix de
+    /// cible. TODO(REVERSE) : role exact non etabli.</summary>
+    private static ref int s_Unknown_005de2f0 => ref *ItemMenuState(0x005de2f0);
+
     /// <summary>
     /// Ghidra: DAT_005658a7, DAT_0056501b et DAT_00565013 — encore trois « globales » qui sont en
     /// fait les champs <c>+0x8c7</c>, <c>+0x3b</c> et <c>+0x33</c> du **premier** descripteur du
@@ -21479,15 +21732,412 @@ public static unsafe partial class Blaze
             }
 
             case 1:
-                throw new NotImplementedException(
-                    "FUN_00527e30 cas 1 : la grille d'objets d'un membre (165 lignes) — a besoin de " +
-                    "FUN_005276c0, FUN_00529070 et FUN_00529290, non transcrites");
+            {
+                // La grille d'objets du membre courant : on y choisit l'objet a transferer.
+                byte* slotFlags = s_SlotFlags_005e93c0 + s_Unknown_005de4e4 * 0x9c;
+                byte* record = mainMem + (s_Unknown_005de4e4 + 0x78) * 0x2000;
+                slotFlags[8] = (byte)s_Unknown_005de4e4;
+
+                // La liste des emplacements occupes, refaite a chaque image.
+                record[0x2c0] = 0;
+                for (int n = 0, off = 0; n < 10; n++, off += 0x280)
+                {
+                    if (record[0x300 + off] == 0) continue;
+                    record[0x2c1 + record[0x2c0]] = (byte)n;
+                    record[0x2c0]++;
+                }
+
+                // **La manette du membre**, pas celle du joueur courant : chaque membre du groupe
+                // repond a la sienne. Ghidra rend l'adresse `&DAT_00604a20 + slot * 4` ; le
+                // desassemblage donne `SHL EAX,0x4` puis `ADD EAX,0x604a20` (0x005281D6 et
+                // 0x00528944) — le pas est de 0x10, pas de 4. Meme perte de decalage que sur les
+                // trois sites deja corriges dans CurrentPadState.
+                byte controller = s_PlayerSlots_005e9188[s_Unknown_005de4e4 * 0x4c];
+                if (controller != 8) pad = s_InputStateBase_00604a20 + controller * 0x10;
+
+                int before = s_ItemMenuCursor_005de4e0;
+                if ((pad[6] & 0x80) != 0) s_ItemMenuCursor_005de4e0--;
+                if ((pad[6] & 0x20) != 0) s_ItemMenuCursor_005de4e0++;
+
+                // Haut et bas sautent d'une rangee de cinq, mais seulement si la grille en a deux.
+                if ((pad[6] & 0x50) != 0)
+                {
+                    if (s_ItemMenuCursor_005de4e0 < 5)
+                    {
+                        if (record[0x2c0] > 5)
+                        {
+                            s_ItemMenuCursor_005de4e0 += 5;
+                            if (record[0x2c0] <= s_ItemMenuCursor_005de4e0)
+                                s_ItemMenuCursor_005de4e0 = record[0x2c0] - 1;
+                        }
+                    }
+                    else s_ItemMenuCursor_005de4e0 -= 5;
+                }
+
+                if (s_ItemMenuCursor_005de4e0 < 0) s_ItemMenuCursor_005de4e0 = record[0x2c0] - 1;
+                if (record[0x2c0] <= s_ItemMenuCursor_005de4e0) s_ItemMenuCursor_005de4e0 = 0;
+                if (before != s_ItemMenuCursor_005de4e0) PlayUiSound3A();
+
+                byte* item = record + 0x300 + record[0x2c1 + s_ItemMenuCursor_005de4e0] * 0x280;
+                s_ItemValue_005de2d0 = ComputeItemValue(item);
+                s_Unknown_005e9080 = s_ItemValue_005de2d0;
+
+                // Le curseur de case : cinq colonnes de 0x1c (rendu par `(n*8 - n) * 4`), deux
+                // rangees de 0x1c.
+                int* draw = stackalloc int[8];
+                byte* d = (byte*)draw;
+                NativeMemory.Clear(d, 32);
+
+                EmitViewportRect(otBase, &primCursor);
+                *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                *(short*)(d + 0x10) = 0x18;
+                *(uint*)(d + 4) = 0x1000000;
+                *(short*)(d + 8) = (short)(((s_ItemMenuCursor_005de4e0 % 5 << 3)
+                                          - s_ItemMenuCursor_005de4e0 % 5) * 4 + 0x58);
+                *(short*)(d + 0xa) = (short)(s_ItemMenuCursor_005de4e0 / 5 * 0x1c + 0x30);
+                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                EmitClipRect(otBase, &primCursor);
+
+                primCursor = DrawPanelIconRow(otBase, primCursor, s_ItemPanelIcons_00566ad8);
+                primCursor = DrawMemberItemGrid(otBase, primCursor, slotFlags, record);
+                primCursor = DrawItemDetailCard(otBase, primCursor, record, s_ItemMenuCursor_005de4e0);
+
+                BindMenuLabels(LabelAt(0xe8), 0, s_ItemMenuDescriptors_00564fe0, 0);
+
+                // Le portrait et le nom du membre — le meme bandeau que la queue de
+                // FUN_00524880, aux memes coordonnees.
+                EmitViewportRect(otBase, &primCursor);
+                NativeMemory.Clear(d, 32);
+                *(uint*)(d + 4) = 0x1000000;
+                *(uint**)d = *(uint**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 8);
+                *(ushort*)(d + 0x10) = record[0x150];
+                *(short*)(d + 8) = 0x20;
+                *(short*)(d + 0xa) = 0x30;
+                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, (uint)record[0x2bd] << 8);
+                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                EmitClipRect(otBase, &primCursor);
+
+                byte* edit = s_ItemMenuEditDescriptor_00566170;
+                *(short*)(edit + 6) -= 4;
+                edit[0x12] = 9;
+                BindMenuLabels(s_Unknown_005606f8, 0, edit, 0);
+                primCursor = RunTextEngine(primCursor, edit);
+
+                byte* cmd = stackalloc byte[100];
+                NativeMemory.Clear(cmd, 100);
+                byte* memberName = record + 0x100;
+                int nameLength = 0;
+                while (memberName[nameLength] != 0) nameLength++;
+                for (int i = 0; i <= nameLength; i++) cmd[1 + i] = memberName[i];
+                cmd[0] = 0x20;
+                BindMenuLabels(cmd, 0, edit, 0);
+                primCursor = RunTextEngine(primCursor, edit);
+                primCursor = DrawUiPanel(otBase, primCursor, edit);
+
+                *(short*)(edit + 6) += 4;
+                edit[0x12] = 0x1a;
+
+                ushort pressedGrid = *(ushort*)(pad + 2);
+
+                // CROIX : revenir au choix du membre.
+                if ((pressedGrid & 0x4000) != 0)
+                {
+                    s_ItemMenuLoaded_005de4e8--;
+                    PlayUiSound39();
+                    return primCursor;
+                }
+
+                // CARRE : l'objet doit etre transferable — non porte par le membre, marque 0x8000
+                // et pourvu d'au moins un des quatre bits 0xf00.
+                if ((pressedGrid & 0x8000) != 0)
+                {
+                    int remaining = 5;
+                    for (byte* worn = record + 0x2b0; remaining != 0; remaining--, worn++)
+                        if (*worn != 0xff && item == record + 0x300 + *worn * 0x280) break;
+
+                    if (remaining == 0
+                        && (*(ushort*)(item + 0x12) & 0x8000) != 0
+                        && (*(ushort*)(item + 0x12) & 0xf00) != 0)
+                    {
+                        s_ItemMenuLoaded_005de4e8++;
+                        PlayUiSound38();
+
+                        for (int i = 0; i < s_PartySize_005e9020; i++)
+                            ItemMenuState(0x005de438)[i] = 0;
+
+                        s_Unknown_005de2f0 = s_Unknown_005de4e4 * 0x35 + 0x24;
+                        BindMenuLabels(LabelAt(0xec), 0, s_ItemMenuDescriptors_00564fe0, 0);
+                        return primCursor;
+                    }
+
+                    // Ghidra: LAB_00528dbb — le bip de refus, puis retour immediat.
+                    PlayUiSound3B();
+                    return primCursor;
+                }
+                break;
+            }
 
             case 2:
-                throw new NotImplementedException(
-                    "FUN_00527e30 cas 2 : le choix de la cible du transfert (330 lignes). La " +
-                    "pseudo-C y perd l'adressage (indices rendus en constantes 64 bits du genre " +
-                    "-0xffffffff00000008) : il faut une passe de desassemblage, pas une relecture");
+            {
+                // L'enchère proprement dite : chaque autre membre du groupe mise sur l'objet avec
+                // sa propre manette, par pas de 100, et confirme au CARRÉ. Quand tous ceux qui
+                // tiennent une manette ont confirmé, la meilleure mise l'emporte.
+                //
+                // **L'adressage « détruit » de la pseudo-C n'en était pas.** Ghidra rend
+                // `pbVar14[-0xffffffff00000008]` : c'est une constante 64 bits dont les 32 bits
+                // bas valent 0xFFFFFFF8, soit l'indice -8. Le même champ est relu quelques lignes
+                // plus haut en `*(short *)(pbVar14 + -8)`, ce qui le confirme sans ambiguïté :
+                // c'est le drapeau « mise confirmée » en tête de l'enregistrement d'emplacement,
+                // à `s_SlotArea_005e9180 + membre * 0x4c`. Aucune passe de désassemblage n'a été
+                // nécessaire, seulement lire les deux formes côte à côte.
+                primCursor = DrawItemMenuTitle(primCursor);   // Ghidra: FUN_00524190
+
+                byte* seller = mainMem + (s_Unknown_005de4e4 + 0x78) * 0x2000;
+                byte* lot = seller + 0x300 + seller[0x2c1 + s_ItemMenuCursor_005de4e0] * 0x280;
+                s_ItemValue_005de2d0 = ComputeItemValue(lot);
+
+                int* bids = ItemMenuState(0x005de438);
+
+                // La meilleure mise. Une **égalité** ne départage pas : le gagnant redevient le
+                // vendeur, ce que la résolution plus bas traite comme un refus.
+                int best = -1;
+                int winner = s_Unknown_005de4e4;
+                for (int i = 0; i < s_PartySize_005e9020; i++)
+                {
+                    int bid = bids[i];
+                    if (bid == 0 || i == s_Unknown_005de4e4) continue;
+                    if (bid > best) { best = bid; winner = i; }
+                    else if (bid == best) winner = s_Unknown_005de4e4;
+                }
+                s_Unknown_005de448 = best;
+                s_ItemMenuTarget_005de4f0 = winner;
+
+                int* draw = stackalloc int[8];
+                byte* d = (byte*)draw;
+                NativeMemory.Clear(d, 32);
+
+                // L'objet mis aux enchères glisse vers le gagnant courant : la position converge
+                // d'un quart de l'écart à chaque image.
+                int changed = 0;
+                s_Unknown_005de2f0 += (winner * 0x35 - s_Unknown_005de2f0 + 0x24) >> 2;
+
+                EmitViewportRect(otBase, &primCursor);
+                *(uint*)(d + 4) = 0x1000000;
+                byte* lotIcon = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x10);
+                lotIcon[0] = (byte)(seller[0x2c1 + s_ItemMenuCursor_005de4e0] * 0x18);
+                lotIcon[1] = (byte)(s_Unknown_005de4e4 * 0x18);
+                *(byte**)d = lotIcon;
+                *(short*)(d + 0x10) = 0;
+                *(short*)(d + 8) = (short)s_Unknown_005de2f0;
+                *(short*)(d + 0xa) = 0x30;
+                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0,
+                    (uint)((s_Unknown_005de4e4 << 8) | seller[0x2c1 + s_ItemMenuCursor_005de4e0]));
+                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                EmitClipRect(otBase, &primCursor);
+
+                // Ghidra réutilise DAT_00566acc comme compteur le temps de la boucle.
+                s_Unknown_00566acc = 0;
+                int confirmed = 0;
+
+                for (int member = 0, x = 0x1c; member < s_PartySize_005e9020; member++, x += 0x35)
+                {
+                    byte* slot = s_SlotArea_005e9180 + member * 0x4c;
+                    byte* controllerSlot = slot + 8;          // Ghidra: &DAT_005e9188 + membre*0x4c
+                    int* bid = bids + member;
+                    uint* gold = (uint*)(mainMem + 0xf026c + member * 0x2000);
+
+                    if (member == s_Unknown_005de4e4)
+                    {
+                        // Le vendeur ne mise pas sur son propre objet : sa manette est passée
+                        // d'office au premier emplacement libre.
+                        *(uint*)(d + 4) = 0x404040;
+                        if (*controllerSlot != 8 && s_PartySize_005e9020 != 0)
+                        {
+                            int probe = member;
+                            int tries = s_PartySize_005e9020;
+                            changed = s_PartySize_005e9020;
+                            while (tries != 0)
+                            {
+                                probe++;
+                                if (probe >= s_PartySize_005e9020) probe = 0;
+                                if (s_PlayerSlots_005e9188[probe * 0x4c] == 8
+                                    && probe != s_Unknown_005de4e4)
+                                {
+                                    changed = 1;
+                                    HandOverController(controllerSlot, probe);
+                                    break;
+                                }
+                                tries--;
+                            }
+                            if (tries == 0) changed = 0;
+                        }
+                    }
+                    else if (*controllerSlot == 8)
+                    {
+                        *(uint*)(d + 4) = 0x1000000;
+                    }
+                    else
+                    {
+                        // Ghidra rend l'adresse `&DAT_00604a20 + slot * 4` ; le désassemblage
+                        // donne `SHL EAX,0x4` (0x00528944) — le pas est de 0x10. Même perte de
+                        // décalage qu'au cas 1.
+                        byte* memberPad = s_InputStateBase_00604a20 + *controllerSlot * 0x10;
+                        s_Unknown_00566acc++;
+
+                        if (*(short*)slot == 0)
+                        {
+                            *(uint*)(d + 4) = s_Unknown_005e9814;
+
+                            // Monter la mise : jamais au-dessus de l'or disponible, jamais
+                            // au-dessus de 99999, et le premier cran saute au prix de départ.
+                            if ((memberPad[6] & 0x10) != 0 && s_ItemValue_005de2d0 <= *gold
+                                && (uint)*bid < *gold)
+                            {
+                                changed = 1;
+                                if ((uint)*bid < s_ItemValue_005de2d0)
+                                {
+                                    *bid = (int)s_ItemValue_005de2d0;
+                                }
+                                else
+                                {
+                                    uint raised = (uint)*bid + 100;
+                                    if (raised < *gold)
+                                    {
+                                        *bid = (int)raised;
+                                        if (raised > 99999) *bid = 99999;
+                                    }
+                                    else *bid = (int)*gold;
+                                }
+                            }
+
+                            // Baisser : on retombe sur la centaine, et sous le prix de départ la
+                            // mise est abandonnée.
+                            if ((memberPad[6] & 0x40) != 0 && *bid != 0)
+                            {
+                                changed = 1;
+                                int lowered = *bid % 100 == 0 ? *bid - 100 : *bid - *bid % 100;
+                                *bid = lowered;
+                                if (lowered < (int)s_ItemValue_005de2d0) *bid = 0;
+                            }
+
+                            if ((memberPad[6] & 0x50) != 0)
+                                BindMenuLabels(LabelAt(0xec), 0, s_ItemMenuDescriptors_00564fe0, 0);
+
+                            // GAUCHE et DROITE passent la manette au membre voisin qui n'en a pas.
+                            // Le bit est effacé dans le tampon pour que le voisin ne le rejoue pas.
+                            if ((*(ushort*)(memberPad + 6) & 0x80) != 0)
+                            {
+                                *(ushort*)(memberPad + 6) &= 0xff7f;
+                                changed = MoveControllerBackward(controllerSlot, member);
+                            }
+                            if ((*(ushort*)(memberPad + 6) & 0x20) != 0)
+                            {
+                                *(ushort*)(memberPad + 6) &= 0xffdf;
+                                changed = MoveControllerForward(controllerSlot, member);
+                            }
+
+                            // CARRÉ : confirmer sa mise.
+                            if ((memberPad[3] & 0x80) != 0)
+                            {
+                                slot[0] = 1;
+                                slot[1] = 0;
+                                PlayUiSound38();
+                            }
+                        }
+                        else
+                        {
+                            // Déjà confirmée : CROIX revient sur sa décision.
+                            *(uint*)(d + 4) = 0x1000000;
+                            if ((memberPad[3] & 0x40) != 0)
+                            {
+                                slot[0] = 0;
+                                slot[1] = 0;
+                                PlayUiSound39();
+                            }
+                            confirmed++;
+                        }
+
+                        // Le marteau, puis la mise et l'or qui resterait au membre.
+                        EmitViewportRect(otBase, &primCursor);
+                        *(uint**)d = *(uint**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x14);
+                        *(short*)(d + 8) = (short)(x - 4);
+                        *(short*)(d + 0x10) = 0x30;
+                        *(short*)(d + 0xa) = 0x84;
+                        primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                        primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                        EmitClipRect(otBase, &primCursor);
+
+                        *(short*)(d + 8) = (short)(x + 4);
+                        *(uint**)d = s_NumeralTileRecord_00566c30;
+                        *(short*)(d + 0xa) = 0x7c;
+                        primCursor = EmitCardGlyphTile(otBase, primCursor, draw, (uint)*bid, 0x85, 0);
+                        *(short*)(d + 0xa) += 8;
+                        primCursor = EmitCardGlyphTile(otBase, primCursor, draw,
+                                                       *gold - (uint)*bid, 0x85, 0);
+                    }
+
+                    if (changed != 0) PlayUiSound3A();
+
+                    // Le portrait du membre, dessiné pour tous, vendeur compris.
+                    EmitViewportRect(otBase, &primCursor);
+                    byte* portrait = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 8);
+                    portrait[5] = 0;
+                    *(byte**)d = portrait;
+                    *(ushort*)(d + 0x10) = ((byte*)gold)[-0x11c];      // record[0x150]
+                    *(short*)(d + 8) = (short)x;
+                    *(short*)(d + 0xa) = 0x48;
+                    primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0,
+                                                   (uint)((byte*)gold)[0x51] << 8);
+                    primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                    EmitClipRect(otBase, &primCursor);
+                }
+
+                // --- La résolution, une fois que tous les enchérisseurs ont confirmé ----------
+                if (confirmed != s_Unknown_00566acc) break;
+
+                for (int i = 0; i < s_PartySize_005e9020; i++)
+                    *(ushort*)(s_SlotArea_005e9180 + i * 0x4c) = 0;
+
+                if (s_Unknown_005de448 < 0)
+                {
+                    // Personne n'a misé : retour à la grille d'objets.
+                    s_ItemMenuLoaded_005de4e8--;
+                    PlayUiSound39();
+                    ResetAuctionControllers();
+                    return primCursor;
+                }
+
+                if (s_ItemMenuTarget_005de4f0 == s_Unknown_005de4e4)
+                {
+                    // Le vendeur « gagne » — c'est le cas d'égalité. Refus.
+                    BindMenuLabels(LabelAt(0xf0), 0, s_ItemMenuDescriptors_00564fe0, 0);
+                    PlayUiSound3B();
+                    return primCursor;
+                }
+
+                if (mainMem[s_ItemMenuTarget_005de4f0 * 0x2000 + 0xf02c0] >= 10)
+                {
+                    // Le gagnant a déjà dix objets : refus.
+                    BindMenuLabels(LabelAt(0xf4), 0, s_ItemMenuDescriptors_00564fe0, 0);
+                    PlayUiSound3B();
+                    return primCursor;
+                }
+
+                s_ItemMenuLoaded_005de4e8++;
+                PlayUiSound38();
+
+                // L'or change de mains, plafonné à 99999 chez le vendeur.
+                int* winnerGold = (int*)(mainMem + s_ItemMenuTarget_005de4f0 * 0x2000 + 0xf026c);
+                int* sellerGold = (int*)(mainMem + s_Unknown_005de4e4 * 0x2000 + 0xf026c);
+                *winnerGold -= bids[s_ItemMenuTarget_005de4f0];
+                *sellerGold += bids[s_ItemMenuTarget_005de4f0];
+                if (*(uint*)sellerGold > 99999) *(uint*)sellerGold = 99999;
+
+                bids[s_ItemMenuTarget_005de4f0] = 0;
+                ResetAuctionControllers();
+                return primCursor;
+            }
 
             case 3:
             {
