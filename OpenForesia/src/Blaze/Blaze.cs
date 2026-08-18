@@ -2251,7 +2251,42 @@ public static unsafe partial class Blaze
 
     // Ghidra: &DAT_00564b58, 240 ints (4 groups x 3 categories x 20 actions) â€” key-binding table.
     // Key format reconstructed as "K%01x%01x%02x" (Ghidra: s_K_01x_01x_02x_00564f6c).
-    private static readonly int[] s_KeyBindings = new int[4 * 3 * 20];
+    //
+    // **Initialisé depuis `.data`, pas à zéro (2026-08-18).** Ce tableau est pré-rempli à l'édition
+    // de liens : `LoadKeyBindings` ne fait qu'écraser les entrées dont la clé existe réellement dans
+    // le fichier (`GetPrivateProfileIntA` avec `-1` en repli, retenu seulement s'il diffère de -1).
+    // Un `new int[240]` à zéro était donc faux dès le premier lancement sans fichier de
+    // configuration : les vingt liaisons **manette** de chaque joueur, qui ont de vraies valeurs par
+    // défaut, restaient vides — et `0` y est un numéro de bouton valide, la marque « aucun » étant
+    // `-1`.
+    //
+    // Les 960 octets sont relus directement dans Legacy/Blaze.exe (`.data`, VA 0x00564B58) et
+    // correspondent **clé pour clé** aux 240 lignes `[Controls]` du BLAZE.cfg installé — les deux
+    // sources se confirment mutuellement. Copie de référence et format détaillé :
+    // Documentation/OpenForesia.cfg.default et Documentation/OpenForesia.cfg.md.
+    // Construit à la première lecture, et non dans l'initialiseur de champ : les deux tables de
+    // valeurs par défaut sont déclarées bien plus bas dans ce fichier, et les initialiseurs
+    // statiques C# s'exécutent dans l'ordre de déclaration — les lire ici les trouverait nulles.
+    // Même motif paresseux que s_LoadScreenDescriptors_0056b558.
+    private static int[] s_KeyBindingsStorage;
+    private static int[] s_KeyBindings => s_KeyBindingsStorage ??= BuildKeyBindings();
+
+    private static int[] BuildKeyBindings()
+    {
+        var bindings = new int[4 * 3 * 20];
+
+        // Joueur 1 : les deux jeux clavier, puis la manette.
+        for (int i = 0; i < 40; i++) bindings[i] = s_KeyBindingDefaults_00564ab8[i];
+
+        // Joueurs 1 à 4 : la table manette, identique pour les quatre. Les tables clavier des
+        // joueurs 2 à 4 restent à zéro, comme dans le binaire — aucun clavier ne leur est attribué
+        // par défaut.
+        for (int group = 0; group < 4; group++)
+            for (int i = 0; i < 20; i++)
+                bindings[group * 0x3c + 40 + i] = s_JoyBindingDefaults_00564a68[i];
+
+        return bindings;
+    }
 
     // =====================================================================
     // DirectSound (confirmed). The interface identities below were open questions until the
@@ -15373,7 +15408,7 @@ public static unsafe partial class Blaze
             if ((action & 1) != 0 && row is >= 4 and <= 7)
             {
                 if (s_JoystickSlot[row - 4] < 0) PlayUiSoundError();
-                else { PlayUiSound38(); JoystickButtonsPageStub(row - 4); }
+                else { PlayUiSound38(); JoystickButtonsPage(row - 4); }
             }
 
             Ordinal_132(2);
@@ -15430,9 +15465,243 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: FUN_0053dbc0 â€” le bip d'action refusÃ©e.</summary>
     private static void PlayUiSoundError() => PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
 
-    private static void JoystickButtonsPageStub(int player)
-        => throw new NotImplementedException(
-            $"FUN_005115c0 : les boutons de la manette du joueur {player + 1} (168 lignes)");
+    // Ghidra: &DAT_005d9e18 et &DAT_005d9e28 — quatre entiers chacun, le curseur et le haut de
+    // fenêtre de la page des boutons, **un par joueur**. La page est écrite une fois et paramétrée
+    // par le numéro de joueur ; c'est ce qui la rend valable pour les manettes 1 à 4 sans
+    // duplication.
+    private static readonly int[] s_UiJoySelection_005d9e18 = new int[4];
+    private static readonly int[] s_UiJoyScroll_005d9e28 = new int[4];
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00562e70 — les trente-six décalages de bouton que la page balaie dans l'état
+    /// DirectInput. La suite est <c>0x00..0x03</c> puis <c>0x06..0x25</c> : **les décalages 4 et 5
+    /// sont sautés**, et c'est aussi pourquoi les deux entrées correspondantes de
+    /// <see cref="s_JoyButtonLabel_00562e99"/> valent 0.
+    /// </summary>
+    private static readonly byte[] s_JoyButtonScan_00562e70 =
+    [
+        0x00,0x01,0x02,0x03,0x06,0x07,0x08,0x09, 0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,0x10,0x11,
+        0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19, 0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,0x20,0x21,
+        0x22,0x23,0x24,0x25,
+    ];
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00562e99 — le numéro de bouton vers son rang dans la planche de libellés.
+    ///
+    /// <para><b>L'octet qui précède la table vaut <c>0xff</c>, et c'est délibéré.</b> Le code lit
+    /// <c>(char)(&amp;DAT_00562e99)[liaison]</c> avec une liaison qui vaut <c>-1</c> quand aucun
+    /// bouton n'est affecté ; l'index -1 tombe donc sur ce <c>0xff</c>, soit <c>-1</c> une fois lu
+    /// en octet signé, ce que la ligne suivante teste pour afficher « aucun ». Reproduit ici par un
+    /// tableau décalé d'une case, comme le tampon d'échappements du moteur de texte.</para>
+    /// </summary>
+    private static readonly byte* s_JoyButtonLabelStorage_00562e98 = BuildJoyButtonLabels();
+
+    private static byte* s_JoyButtonLabel_00562e99 => s_JoyButtonLabelStorage_00562e98 + 1;
+
+    private static byte* BuildJoyButtonLabels()
+    {
+        ReadOnlySpan<byte> table =
+        [
+            0xff,                                                   // l'index -1
+            0x00,0x01,0x02,0x03,0x00,0x00,0x04,0x05, 0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,
+            0x0e,0x0f,0x10,0x11,0x12,0x13,0x14,0x15, 0x16,0x17,0x18,0x19,0x1a,0x1b,0x1c,0x1d,
+            0x1e,0x1f,0x20,0x21,0x22,0x23,0x24,
+        ];
+        byte* buffer = (byte*)NativeMemory.AllocZeroed((nuint)table.Length);
+        for (int i = 0; i < table.Length; i++) buffer[i] = table[i];
+        return buffer;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005115c0 @ 0x005115c0 — la page des **boutons de manette**, celle qu'atteint
+    /// « Joueur N » depuis l'affectation des manettes. Dix-huit actions listées par fenêtre de dix,
+    /// plus une dernière ligne qui remet les liaisons par défaut.
+    ///
+    /// <para>Elle est écrite une seule fois et prend le joueur en paramètre : les manettes 1 à 4
+    /// passent par ce même corps, avec leur propre curseur (<see cref="s_UiJoySelection_005d9e18"/>),
+    /// leur propre haut de fenêtre (<see cref="s_UiJoyScroll_005d9e28"/>) et leur propre bloc de
+    /// vingt liaisons dans <see cref="s_KeyBindings"/> — c'est exactement ce que fait l'original,
+    /// qui indexe tout par <c>iVar1 * 0x3c</c>.</para>
+    ///
+    /// <para>Deux détails que seul le désassemblage donne, la pseudo-C ayant perdu l'arité de
+    /// <c>FUN_005108b0</c> : la couleur du glyphe de bouton est <c>0xFFFFFF</c>
+    /// (<c>0x00511682  PUSH 0x00FFFFFF</c>, le septième argument que Ghidra n'affichait pas), et
+    /// l'ordonnée dans la planche est 0 pour les dix-huit premiers boutons, <c>0x80</c> au-delà
+    /// (<c>SETGE / DEC / AND 0x80 / ADD 0x80</c> à <c>0x005116B3</c>).</para>
+    /// </summary>
+    private static void JoystickButtonsPage(int player)
+    {
+        UiPageTrace($"entrée boutons manette, joueur {player + 1}");
+
+        int capturing = -1;   // Ghidra: param_1, réutilisé comme « ligne en cours de réaffectation »
+
+        while (true)
+        {
+            RestoreLostUiTextures();     // Ghidra: FUN_0050fe90
+            UiBeginScene();
+            DrawUiBackground();          // Ghidra: FUN_005101c0
+
+            UiDrawFrame(0x2e, 0x20, 0xe4, 0xb8);
+            UiDrawLabel(0xa0, 0x32, 0x21, 1, 0xffffff);
+            UiDrawLabel(0xa0, 0x3e, player + 0x13, 1, 0xffffff);   // « Joueur N »
+
+            for (int slot = 0, y = 0x54; y < 0xcc; slot++, y += 0xc)
+            {
+                int row = slot + s_UiJoyScroll_005d9e28[player];
+
+                if (row < 0x12)
+                {
+                    UiDrawLabel(0x3e, y, -1 - row, 0, 0xffffff);
+
+                    if (row == capturing)
+                    {
+                        DrawKeyName(0xd7, y, 0x55, 0xffffff);      // le libellé « ? » d'attente
+                    }
+                    else
+                    {
+                        int binding = s_KeyBindings[player * 0x3c + 40 + s_KeyActionIndex_00562ec0[row]];
+                        int label = (sbyte)s_JoyButtonLabel_00562e99[binding];
+                        if (label == -1)
+                        {
+                            UiDrawLabel(0xd7, y, 6, 0, 0xffffff);  // « aucun »
+                        }
+                        else
+                        {
+                            UiBlit(0xd7, y, 0x80, 0xe, label >= 0x12 ? 0x80 : 0, (label % 0x12) * 0xe,
+                                   s_UiAtlasJoystick_00599dd8, 0x80, 0xe, 0xffffff);
+                        }
+                    }
+                }
+                else if (row == 0x12)
+                {
+                    UiDrawLabel(0x3e, y, 0x23, 0, 0xffffff);       // « valeurs par défaut »
+                }
+
+                // Les quatre directions portent la même flèche que l'éditeur de touches, posée
+                // juste après le libellé — d'où la largeur de ce libellé comme décalage.
+                if (row is > 3 and < 8)
+                {
+                    UiBlit(s_UiLabelWidths_00589758[-1 - row] + 0x3e, y + 2, 8, 9,
+                           s_KeyArrowColumn_00563060[row - 4] * 8 + 0x98, 0x20,
+                           s_UiFrameAtlas_00599ddc, 8, 9, 0xffffff);
+                }
+            }
+
+            UiDrawCursor(0x2d, (s_UiJoySelection_005d9e18[player] - s_UiJoyScroll_005d9e28[player] + 7) * 0xc);
+            UiEndScene();
+            UiPresent();
+
+            uint action;
+            fixed (int* selection = &s_UiJoySelection_005d9e18[player])
+                action = UiSelect(selection, 0, 0x12);
+
+            // Page précédente / suivante : neuf lignes, curseur et fenêtre ensemble.
+            if ((action & 8) != 0)
+            {
+                s_UiJoySelection_005d9e18[player] -= 9;
+                s_UiJoyScroll_005d9e28[player] -= 9;
+                if (s_UiJoySelection_005d9e18[player] < 0) s_UiJoySelection_005d9e18[player] = 0;
+                if (s_UiJoyScroll_005d9e28[player] < 0) s_UiJoyScroll_005d9e28[player] = 0;
+            }
+            if ((action & 0x10) != 0)
+            {
+                s_UiJoySelection_005d9e18[player] += 9;
+                s_UiJoyScroll_005d9e28[player] += 9;
+                if (s_UiJoySelection_005d9e18[player] > 0x12) s_UiJoySelection_005d9e18[player] = 0x12;
+                if (s_UiJoyScroll_005d9e28[player] > 9) s_UiJoyScroll_005d9e28[player] = 9;
+            }
+
+            // La fenêtre suit le curseur d'une ligne à la fois.
+            if (s_UiJoySelection_005d9e18[player] < s_UiJoyScroll_005d9e28[player])
+                s_UiJoyScroll_005d9e28[player]--;
+            else if (s_UiJoyScroll_005d9e28[player] + 9 < s_UiJoySelection_005d9e18[player])
+                s_UiJoyScroll_005d9e28[player]++;
+
+            if (capturing == -1)
+            {
+                if ((action & 1) != 0)
+                {
+                    if (s_UiJoySelection_005d9e18[player] < 0x12)
+                    {
+                        PlayUiSound38();
+                        capturing = s_UiJoySelection_005d9e18[player];
+                        WaitForAllJoystickButtonsReleased(player);
+                    }
+                    else if (s_UiJoySelection_005d9e18[player] == 0x12)
+                    {
+                        // La remise aux valeurs par défaut : les vingt entiers de DAT_00564a68,
+                        // recopiés dans le bloc manette de ce joueur.
+                        PlayUiSound38();
+                        for (int i = 0; i < 20; i++)
+                            s_KeyBindings[player * 0x3c + 40 + i] = s_JoyBindingDefaults_00564a68[i];
+                    }
+                }
+
+                if (action == 0xffffffff) return;
+                Ordinal_132(2);
+            }
+            else
+            {
+                PollJoystickState();     // Ghidra: FUN_005048f0
+
+                byte* keys = s_KeyboardState_00604b50;
+                int stick = s_JoystickSlot[player];
+
+                // Échap (scancode 1) abandonne la capture sans rien affecter.
+                if (keys != null && (keys[1] & 0x80) == 0)
+                {
+                    int captured = -1;
+                    for (int i = 0; i < s_JoyButtonScan_00562e70.Length; i++)
+                    {
+                        int button = s_JoyButtonScan_00562e70[i];
+                        if (stick == -1) break;
+                        if ((keys[0x100 + stick * 0x26 + button] & 0x80) == 0) continue;
+                        captured = button;
+                        break;
+                    }
+
+                    if (captured == -1) { Ordinal_132(2); continue; }
+
+                    // Le bouton retenu est d'abord retiré de toutes les autres actions de ce
+                    // joueur : une manette ne peut pas commander deux actions à la fois.
+                    for (int i = 0; i < 20; i++)
+                    {
+                        if (s_KeyBindings[player * 0x3c + 40 + i] == captured)
+                            s_KeyBindings[player * 0x3c + 40 + i] = -1;
+                    }
+                    PlayUiSound38();
+                    s_KeyBindings[player * 0x3c + 40 + s_KeyActionIndex_00562ec0[capturing]] = captured;
+                }
+
+                capturing = -1;
+                Ordinal_132(2);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: la boucle d'attente qui suit l'ouverture d'une capture — tant qu'un des trente-six
+    /// boutons de la manette du joueur est enfoncé, on ne lit rien. Sans elle, le bouton qui vient
+    /// de valider la ligne serait aussitôt capturé comme sa nouvelle liaison.
+    /// </summary>
+    private static void WaitForAllJoystickButtonsReleased(int player)
+    {
+        while (true)
+        {
+            PollJoystickState();         // Ghidra: FUN_005048f0
+
+            byte* keys = s_KeyboardState_00604b50;
+            int stick = s_JoystickSlot[player];
+            if (keys == null || stick == -1) return;
+
+            byte held = 0;
+            for (int i = 0; i < s_JoyButtonScan_00562e70.Length; i++)
+                held |= (byte)(keys[0x100 + stick * 0x26 + s_JoyButtonScan_00562e70[i]] & 0x80);
+
+            Ordinal_132(0);
+            if (held == 0) return;
+        }
+    }
 
     /// <summary>
     /// Ghidra: FUN_005115a0 @ 0x005115a0 â€” retrouve l'index du nom d'une touche Ã  partir de son
@@ -15504,7 +15773,7 @@ public static unsafe partial class Blaze
                 // Ghidra: les quatre directions portent une flÃ¨che prise dans la planche du cadre.
                 if (kind is > 3 and < 8)
                 {
-                    UiBlit(s_UiLabelWidths_00589758[-kind] + 0x20, y + 2, 8, 9,
+                    UiBlit(s_UiLabelWidths_00589758[-1 - kind] + 0x20, y + 2, 8, 9,
                            s_KeyArrowColumn_00563060[kind - 4] * 8 + 0x98, 0x20,
                            s_UiFrameAtlas_00599ddc, 8, 9, 0xffffff);
                 }
@@ -15712,6 +15981,21 @@ public static unsafe partial class Blaze
         0x00, 0x3c, 0x48, 0x4d, 0x50, 0x4b, 0x00, 0x00, 0x0c, 0x0d,
         0xc7, 0xcf, 0xd1, 0xc9, 0x00, 0x00, 0x01, 0x1c, 0x00, 0x00,
         0x00, 0x00, 0xc8, 0xcd, 0xd0, 0xcb, 0xd2, 0xd3, 0x4a, 0x4e,
+    ];
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_00564a68 — les liaisons **manette** par défaut, vingt entiers, celles que la
+    /// dernière ligne de <see cref="JoystickButtonsPage"/> recopie. Relevées dans
+    /// <c>Legacy/Blaze.exe</c> et identiques aux clés <c>K0200</c>..<c>K0213</c> du BLAZE.cfg
+    /// installé, ainsi qu'aux quatre tables manette pré-remplies de <c>DAT_00564b58</c>.
+    ///
+    /// <para><c>-1</c> y signifie « aucun bouton », et non <c>0</c> : le bouton 0 est valide. Voir
+    /// <see cref="s_JoyButtonLabel_00562e99"/>, dont l'octet d'index -1 encode cette convention.</para>
+    /// </summary>
+    private static readonly int[] s_JoyBindingDefaults_00564a68 =
+    [
+        11, 8, 13, 12, 10, 9, 7, 6, 15, -1,
+        -1, 14, 2, 1, 3, 0, -1, -1, -1, -1,
     ];
 
     /// <summary>

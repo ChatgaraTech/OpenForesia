@@ -4981,3 +4981,82 @@ corrigé le tracé, le compteur de primitives disait « 1 par image pendant 150 
 dessinait* — alors que l'écran ne montrait rien. C'est cet écart entre « le rendu émet » et « on ne
 voit rien » qui a mené à la cadence. Un compteur qui dit oui quand l'œil dit non désigne le temps,
 pas la géométrie.
+
+## 2026-08-18 — `FUN_005115c0`, les boutons de manette, et un fichier de configuration de référence
+
+Deux demandes de Vincent : garder une trace de la version par défaut d'`OpenForesia.cfg`, et
+reconstruire la page des boutons de manette du joueur 1 — « il devrait y avoir la même chose pour
+joueur 2 / 3 / 4 ».
+
+### La page est paramétrée par le joueur, donc les quatre viennent ensemble
+
+`FUN_005115c0` prend le numéro de joueur en argument et indexe tout par `iVar1 * 0x3c` : son curseur
+(`DAT_005d9e18`), son haut de fenêtre (`DAT_005d9e28`) et son bloc de vingt liaisons. Une seule
+transcription couvre donc les manettes 1 à 4 — c'est ainsi que l'original est écrit, et l'écran
+« OPTIONS JOYSTICK » propose bien ses quatre entrées « Configuration joueur N ».
+
+### Deux détails que seul le désassemblage donne
+
+La pseudo-C perd l'arité de `FUN_005108b0` (sept paramètres, six affichés au site d'appel) :
+
+- la couleur du glyphe de bouton est `0xFFFFFF` — `0x00511682  PUSH 0x00FFFFFF`, le septième
+  argument, poussé bien avant les six autres et donc invisible dans le rendu de Ghidra. Le
+  `ADD ESP,0x1C` après l'appel (28 octets = sept arguments) le confirmait déjà par le compte ;
+- l'ordonnée dans la planche est 0 pour les dix-huit premiers boutons et `0x80` au-delà, via
+  l'idiome `SETGE / DEC / AND 0x80 / ADD 0x80` à `0x005116B3`.
+
+### `-1` veut dire « aucun », et la table de libellés l'encode par son octet précédent
+
+La table manette utilise `-1` pour « pas de liaison », pas `0` — le bouton 0 est valide. Le code
+lit `(char)(&DAT_00562e99)[liaison]`, et **l'octet qui précède la table vaut `0xff`** : l'index -1
+tombe dessus et rend -1 une fois lu en octet signé, ce que la ligne suivante teste pour afficher
+« libre ». C'est délibéré, pas un débordement — même idiome que le tampon d'échappements décalé
+d'une case du moteur de texte. Reproduit tel quel.
+
+### Le défaut que ça a mis au jour : la table de liaisons n'était pas initialisée
+
+`s_KeyBindings` était un `new int[240]` à zéro. Or `DAT_00564b58` est **pré-rempli à l'édition de
+liens**, et `LoadKeyBindings` ne fait qu'écraser les entrées dont la clé existe dans le fichier.
+Sans fichier de configuration, les vingt liaisons manette de chaque joueur — qui ont de vraies
+valeurs par défaut — restaient donc vides, et `0` y est un bouton valide : l'écran aurait affiché
+« gauche » partout au lieu de « libre ».
+
+Les 960 octets sont relus dans `Legacy/Blaze.exe` (`.data`, VA `0x00564B58`) et correspondent **clé
+pour clé** aux 240 lignes `[Controls]` du BLAZE.cfg installé. Les deux sources se confirment
+mutuellement.
+
+Piège d'ordre d'initialisation rencontré au passage : les initialiseurs de champs statiques C#
+s'exécutent dans l'ordre de déclaration, et les deux tables de valeurs par défaut sont déclarées
+bien plus bas dans le fichier. Le premier jet plantait donc en `TypeInitializationException` au
+démarrage. Passé au motif paresseux déjà utilisé pour `s_LoadScreenDescriptors_0056b558`.
+
+### Un décalage d'une case corrigé dans l'éditeur de touches, au passage
+
+`KeyConfigPage` plaçait la flèche de direction avec `s_UiLabelWidths_00589758[-kind]`. L'original
+lit `(&DAT_00589754)[-kind]`, et `DAT_00589754` vaut `DAT_00589758` **moins un dword** : c'est donc
+`[-1 - kind]`, la largeur du libellé que la même ligne vient de dessiner. Corrigé ; la page des
+boutons de manette, écrite d'emblée avec la bonne expression, servait de contre-exemple.
+
+### Le fichier de configuration de référence
+
+`Documentation/OpenForesia.cfg.default` — copie octet pour octet du BLAZE.cfg installé, dont le
+contenu est vérifié contre le binaire comme ci-dessus. `Documentation/OpenForesia.cfg.md` documente
+le format : l'encodage `K<joueur><table><action>`, les vingt actions avec leur masque manette
+(recoupé avec le tableau vérifié en jeu de `test-protocol.md`), et les pièges — clés périmées qui
+survivent parce que `WritePrivateProfileString` n'efface jamais, `Timing` sans effet hors de sa
+page, `Size` plafonné par `Resolution`.
+
+Le fichier réel vit à côté de l'exécutable et n'est pas suivi par git : c'est précisément pour ça
+qu'une référence manquait.
+
+### Vérifié en jeu
+
+Options → Contrôle → Manettes → « Configuration joueur 1 » : la liste s'affiche avec ses dix-huit
+actions par fenêtre de dix, les symboles PlayStation posés après le libellé pour les quatre
+directions, les liaisons par défaut correctes (`Touche 1` pour Attaque/□, `haut`/`bas`/`gauche`/
+`droite` pour le pavé), le défilement jusqu'à « Rétablir standard », et **« libre »** sur les quatre
+actions sans liaison.
+
+Ce dernier point n'est apparu qu'après avoir remplacé le `OpenForesia.cfg` de test, qui portait
+encore des `0` là où l'original a `-1` — écrit par une version du port antérieure aux valeurs par
+défaut manette. Première utilité concrète du fichier de référence, le jour même de sa création.
