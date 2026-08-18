@@ -532,3 +532,29 @@ Signatures : ~403 primitives par image sur la grille d'objets (cas 1), ~368 sur 
 
 **Ne pas modifier les sauvegardes que l'on n'a pas créées soi-même** : elles sont indistinguables
 d'une partie réelle une fois dans `save\`. Créer la sienne avec le parcours scripté plus haut.
+
+## L'échafaudage de la carte du monde (2026-08-18)
+
+`OPENFORESIA_SKIP_AREA_HANDLER=1` neutralise l'appel à la table de sauts de zone
+(`FUN_004747F0`, non décompilée par Ghidra) pour permettre d'exercer l'aval — le chargement de
+sous-zone de `FUN_00516350`. Sans lui, l'état de jeu 3 s'arrête sur une exception nommée.
+
+```powershell
+$env:OPENFORESIA_SKIP_AREA_HANDLER = '1'
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 24 -WorkingDir OpenForesia `
+  -Then WAIT4,ENTER,WAIT1,START,WAIT4,ENTER,WAIT3,ENTER,WAIT8
+```
+
+La séquence est : « Début du jeu » → un personnage retenu (`ENTER`) → `START` → « Veux-tu jouer
+avec ce groupe? » → `ENTER` → « Oui » → `ENTER`.
+
+**C'est une déviation de comportement, pas un raccourci de test neutre.** La fonction sautée est une
+machine de transition de sous-zone ; tout ce qu'on observe sous ce drapeau est à re-vérifier une
+fois `0x004747F0` décompilée. Ne pas le laisser posé dans une session de test ordinaire.
+
+## Le `save\` suit le répertoire de travail, pas l'exe (rappel)
+
+Symptôme classique : « Invertaire » et « Enchère » semblent ne mener nulle part. Ils rebondissent
+en fait vers l'écran racine parce que le `save\` du répertoire de travail est vide — c'est le
+comportement de l'original quand il n'y a aucune sauvegarde. Le `.cfg`, lui, suit le chemin de
+l'**exe**. Les deux ne coïncident que si l'on lance depuis `bin\Debug\net9.0\`.

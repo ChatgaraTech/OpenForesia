@@ -5358,7 +5358,9 @@ public static unsafe partial class Blaze
     // défaut ci-dessus. TODO(REVERSE) : les ramener dans l'arène quand un site les lira par adresse
     // plutôt que par nom.
     private const int GameArenaBase = 0x005e9000;
-    private const int GameArenaSize = 0x0a00;
+    // Etendue de 0x0a00 a 0x1600 le 2026-08-18 : FUN_00516350 atteint 0x005e9b87 et y efface 0x40
+    // dwords par pas de 0x28, soit jusqu'a 0x005ea587.
+    private const int GameArenaSize = 0x1600;
     private static readonly byte* s_GameArena_005e9000 = (byte*)NativeMemory.AllocZeroed(GameArenaSize);
 
     /// <summary>Le symbole d'adresse Ghidra <paramref name="va"/> dans l'arène.</summary>
@@ -6020,11 +6022,33 @@ public static unsafe partial class Blaze
         uint target = s_AreaHandlerTable_0056b4d0[slot];
         if (target == 0x00401FA0 || target == 0x0040A600) return;   // corps vides, verifies
 
+        // ECHAFAUDAGE TEMPORAIRE, et **une deviation de comportement**, pas une omission forcee par
+        // la plateforme comme les quatre documentees dans REVERSE_STATUS.md.
+        //
+        // OPENFORESIA_SKIP_AREA_HANDLER=1 fait de cet appel un no-op trace, le temps de pouvoir
+        // ecrire et exercer FUN_00516350 (la mise en place d'image de la carte du monde), qui est
+        // en aval dans la meme boucle. Sans cela rien de l'etat 3 au-dela du chargement de zone
+        // n'est atteignable.
+        //
+        // Ce n'est **pas** sans consequence : FUN_004747F0 est une machine de transition de
+        // sous-zone (elle eteint des bits dans DAT_005E9840/41 et DAT_005E9000/01/06, compte les
+        // bits leves de DAT_005E9000, et compare DAT_005DE52C/DAT_005DE530 a zero). La sauter
+        // laisse ces drapeaux dans l'etat ou le chargement les a mis. Tout ce qu'on observe sous
+        // ce drapeau est donc a re-verifier une fois la re-passe Ghidra faite.
+        //
+        // A RETIRER des que 0x004747F0 est decompilee.
+        if (Environment.GetEnvironmentVariable("OPENFORESIA_SKIP_AREA_HANDLER") == "1")
+        {
+            Console.Error.WriteLine(
+                $"[ECHAFAUDAGE] table de sauts de zone, entree {slot} = 0x{target:X6} : appel saute.");
+            return;
+        }
+
         throw new NotImplementedException(
             $"Table de sauts de zone, entree {slot} = 0x{target:X6} : cette adresse **n'est pas " +
-            "decompilee par Ghidra** (aucune fonction entre FUN_004742b0 et FUN_00474ad0 dans " +
-            "Blaze.c). Corps uniquement adresse — il faut une re-passe Ghidra ciblee sur cette " +
-            "adresse, pas une relecture. Voir REVERSE_STATUS.md");
+            "decompilee par Ghidra** (0x004747F0..0x00474AC3, ~723 octets, neuf sorties " +
+            "convergentes). Il faut une re-passe Ghidra ciblee, pas une relecture. Pour tester " +
+            "l'aval malgre tout : OPENFORESIA_SKIP_AREA_HANDLER=1. Voir REVERSE_STATUS.md");
     }
 
     // Ghidra: DAT_006008c8 / DAT_00604930 / DAT_00600904 — les trois sentinelles de destination,
@@ -17553,11 +17577,375 @@ public static unsafe partial class Blaze
         CallAreaHandler(8);
     }
 
-    /// <summary>Ghidra: FUN_00516350 @ 0x00516350 — 455 lignes, la mise en place de l'image de la
-    /// carte du monde.</summary>
-    private static void RunWorldMapFrame() =>
+    // ---------------------------------------------------------------------------------------
+    // Les arenes de la carte du monde.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Ghidra: 0x005eca00..0x00600c00 — **une seule region continue**, celle des tableaux
+    /// d'entites. Les six <c>FUN_005352c0</c> de <c>FUN_00516350</c> la couvrent bout a bout :
+    /// 0x5ecaa0 (0x20 entrees), 0x5edee0 (0x80), 0x5f2d40 (0x80), 0x5f7de0 (0x40), 0x5fa5e0 (0x80),
+    /// 0x5ff400 (0x20) — chacune de 0x9c octets, chaque bloc finissant exactement ou le suivant
+    /// commence. Une allocation, pas cinquante champs : c'est le defaut d'aliasing habituel evite
+    /// d'avance.
+    /// </summary>
+    private const int EntityArenaBase = 0x005eca00;
+    private static readonly byte* s_EntityArena_005eca00 = (byte*)NativeMemory.AllocZeroed(0x14200);
+    private static byte* Entity(int va) => s_EntityArena_005eca00 + (va - EntityArenaBase);
+
+    /// <summary>Ghidra: 0x005de030..0x005de0b0 — le bloc de camera et de position du groupe. Son
+    /// adresse est stockee telle quelle dans <c>DAT_005edebc</c>, d'ou l'allocation native.</summary>
+    private const int CameraBlockBase = 0x005de030;
+    private static readonly byte* s_CameraBlock_005de030 = (byte*)NativeMemory.AllocZeroed(0x80);
+    private static int* Camera(int va) => (int*)(s_CameraBlock_005de030 + (va - CameraBlockBase));
+
+    /// <summary>Ghidra: 0x006067c0..0x00606800 — le second bloc de vue, dont l'adresse part dans
+    /// <c>DAT_005e9ae0</c> et <c>DAT_005eca94</c>.</summary>
+    private const int ViewBlockBase = 0x006067c0;
+    private static readonly byte* s_ViewBlock_006067c0 = (byte*)NativeMemory.AllocZeroed(0x40);
+    private static int* View(int va) => (int*)(s_ViewBlock_006067c0 + (va - ViewBlockBase));
+
+    /// <summary>Ghidra: &amp;DAT_005e8520 — les 0x88 octets d'en-tete du banc de sons de la zone.</summary>
+    private static readonly byte* s_SoundBankHeader_005e8520 = (byte*)NativeMemory.AllocZeroed(0x88);
+
+    /// <summary>Ghidra: &amp;DAT_00566c70 — le rectangle de vue passe par adresse a Ordinal_770 et
+    /// Ordinal_766, d'ou le bloc natif plutot que des champs.</summary>
+    private static readonly byte* s_ViewRect_00566c70 = (byte*)NativeMemory.AllocZeroed(0x10);
+
+    /// <summary>Ghidra: &amp;DAT_005dbc68 — **quatre** descripteurs d'interface consecutifs, montes
+    /// en fin de FUN_00516350. Le pas de la boucle est 0x464 mots, soit 0x8c8 octets : la meme
+    /// taille de descripteur que partout ailleurs, ce qui identifie le bloc sans ambiguite.</summary>
+    private static byte* s_WorldPanelsStorage;
+    private static byte* s_WorldPanels_005dbc68
+        => s_WorldPanelsStorage != null
+            ? s_WorldPanelsStorage
+            : (s_WorldPanelsStorage = AllocLowZeroed(4 * UiDescriptorStride));
+
+    // Ghidra: les scalaires isoles que FUN_00516350 touche hors arene.
+    private static int s_Unknown_005645fc, s_Unknown_00564540;
+    private static byte* s_Unknown_005f2ce0;
+    private static int s_Unknown_005de534, s_Unknown_005de54c;
+
+    /// <summary>Ghidra: _DAT_005e982c et _DAT_005e97ec — le compte d'emplacements de la table de
+    /// pages occupes par la sous-zone, et la copie du pas sauvegarde.</summary>
+    private static int s_Unknown_005e982c;
+    private static uint s_Unknown_005e97ec;
+
+    /// <summary>Ghidra: FUN_00532770 @ 0x00532770 — remplit une liste d'index identite : un
+    /// en-tete de 16 bits valant <c>(compte &amp; 0xff) &lt;&lt; 8</c>, puis les octets 0, 1, 2 …
+    /// jusqu'au compte.</summary>
+    private static void BuildIdentityIndexList(byte* list, int count)
+    {
+        *(ushort*)list = (ushort)((count & 0xff) << 8);
+        for (int i = 0; i < count; i++) list[2 + i] = (byte)i;
+    }
+
+    /// <summary>Ghidra: FUN_005352c0 @ 0x005352c0 — met a zero le premier dword de
+    /// <paramref name="count"/> enregistrements consecutifs de 0x9c octets.</summary>
+    private static void ClearEntitySlots(byte* first, int count)
+    {
+        for (int i = 0; i < count; i++) *(uint*)(first + i * 0x9c) = 0;
+    }
+
+    /// <summary>Ghidra: FUN_00535050 @ 0x00535050 — recopie les quatre references de
+    /// <paramref name="source"/> (+0x10, des shorts) dans <paramref name="slot"/> (+0x80, des
+    /// dwords), en y joignant le mot lu dans la table du premier morceau charge. Un index negatif
+    /// donne le marqueur <c>0xa0000000</c>.</summary>
+    private static void CopyEntityReferences(byte* slot, byte* source)
+    {
+        byte* table = *(byte**)(Entity(0x005f7bc0)) + 0x28;
+        table = *(byte**)table;
+        for (int i = 0; i < 4; i++)
+        {
+            short reference = *(short*)(source + 0x10 + i * 2);
+            *(uint*)(slot + 0x80 + i * 4) = reference < 0
+                ? 0xa0000000u
+                : (uint)((*(ushort*)(table + reference * 0x10 + 0xc) << 16) | (ushort)reference);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005355f0 @ 0x005355f0 — l'envoi en VRAM des blocs bruts de la liste
+    /// <c>+0xb0</c> : par entree, une palette de seize couleurs et une image 24x24, puis 0x50
+    /// dwords recopies a la suite dans le tampon de la sous-zone.
+    ///
+    /// <para><b>Deux defauts de la pseudo-C, tous deux leves au desassemblage.</b> Ghidra rend la
+    /// borne de boucle <c>0x180006</c> ; a <c>0x00535619</c> c'est <c>TEST EAX,EAX / JLE</c> sur le
+    /// compte lu en tete du bloc — la borne est le compte, la constante est un artefact. Et son
+    /// second rectangle, <c>&amp;stack0xfffffff0</c>, est simplement **le meme emplacement de pile
+    /// que le premier**, reecrit entre les deux appels : les deux <c>PUSH</c> intercales decalent
+    /// les <c>[ESP+n]</c> de huit octets, ce qui a fait croire a deux adresses distinctes. Ses
+    /// champs sont montes a <c>0x00535671</c>..<c>0x005356B5</c>.</para>
+    /// </summary>
+    private static void UploadRawAreaBlocks(int* block)
+    {
+        byte* dest = s_Unknown_005e97d0;
+        *(byte**)Entity(0x00600824) = dest;
+
+        int count = block[0];
+        byte* baseAddress = (byte*)(block + 1) + count * 4;
+        int* entry = block + 1;
+
+        short* rect = stackalloc short[4];
+
+        for (int i = 0; i < count; i++, entry++)
+        {
+            byte* chunk = baseAddress + *entry;
+            *entry = (int)(nint)chunk;   // l'offset relatif devient l'adresse absolue
+
+            // La palette : seize couleurs sur une ligne, rangee 0x1dc + i/16.
+            rect[0] = (short)((i & 0xf) << 4);
+            rect[1] = (short)((i >> 4) + 0x1dc);
+            rect[2] = 0x10;
+            rect[3] = 1;
+            Ordinal_674(rect, chunk + 0x140);
+
+            // L'image : 24x24 en 4 bits, donc six mots de large, grille de dix colonnes.
+            rect[0] = (short)((i % 10) * 6 + 0x180);
+            rect[1] = (short)((i / 10) * 0x18 + 0x160);
+            rect[2] = 6;
+            rect[3] = 0x18;
+            Ordinal_674(rect, chunk + 0x160);
+
+            for (int k = 0; k < 0x50; k++, chunk += 4, dest += 4) *(uint*)dest = *(uint*)chunk;
+        }
+
+        s_Unknown_005e97d4 = dest;
+        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xa4) = 0x216;
+        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xa6) = 0x7700;
+    }
+
+    /// <summary>Ghidra: _DAT_005e97d4 — le curseur laisse par l'envoi des blocs bruts.</summary>
+    private static byte* s_Unknown_005e97d4;
+
+    /// <summary>Ghidra: FUN_005330d0 @ 0x005330d0 — le test de placement d'une entite.</summary>
+    private static int TryPlaceEntity(byte* chunk, uint* slot, int radius) =>
+        throw new NotImplementedException("FUN_005330d0 : le test de placement d'entite (113 lignes)");
+
+    /// <summary>Ghidra: FUN_00533940 @ 0x00533940 — la mise a jour complete d'une entite placee.</summary>
+    private static void FinalizeEntityPlacement(uint* slot) =>
+        throw new NotImplementedException("FUN_00533940 : la finalisation de placement d'entite (375 lignes)");
+
+    /// <summary>
+    /// Ghidra: FUN_00516350 @ 0x00516350 — la mise en place d'image de la carte du monde. Trois
+    /// temps : le nettoyage des listes d'entites, le rechargement de la sous-zone quand elle change
+    /// (textures, morceaux, modeles, animations, banc de sons), puis le placement du groupe et la
+    /// derivation de tout l'etat de vue.
+    /// </summary>
+    private static void RunWorldMapFrame()
+    {
+        byte* mainMem = GetMainMemPtr();
+
+        // Ghidra: une vidange d'entree de manette, seulement pour certaines combinaisons de
+        // sous-zone — la meme forme que les vidanges du menu objets, et le meme besoin de rendre
+        // la main a la pompe de messages (voir ItemMenuRootScreen).
+        if (s_Unknown_005de528 == 0
+            && (((s_Unknown_00566c88 & 7) == 0 && (s_Unknown_005de52c & 7) < 6 && (s_Unknown_005de52c & 7) > 2)
+             || ((s_Unknown_00566c88 & 7) != 0 && (s_Unknown_00566c88 & 7) < 5 && (s_Unknown_005de52c & 7) == 0)))
+        {
+            while (InputDrainStub() != 0) { Ordinal_132(0); }
+        }
+
+        BuildIdentityIndexList(Entity(0x005f2d00), 0x20);
+        BuildIdentityIndexList(Entity(0x005f7b60), 0x40);
+        BuildIdentityIndexList(Entity(0x005fa5a0), 0x20);
+        BuildIdentityIndexList(Entity(0x006007a0), 0x80);
+        BuildIdentityIndexList(Entity(0x005f7ce0), 0x80);
+        BuildIdentityIndexList(Arena(0x005e99e0), 0x40);
+
+        ClearEntitySlots(Entity(0x005fa5e0), 0x80);
+        ClearEntitySlots(Entity(0x005ecaa0), 0x20);
+        ClearEntitySlots(Entity(0x005f7de0), 0x40);
+        ClearEntitySlots(Entity(0x005ff400), 0x20);
+        ClearEntitySlots(Entity(0x005edee0), 0x80);
+        ClearEntitySlots(Entity(0x005f2d40), 0x80);
+
+        // Ghidra: 0x40 octets isoles, un tous les 0x28, depuis &DAT_005e9b87.
+        for (int i = 0; i < 0x40; i++) *Arena(0x005e9b87 + i * 0x28) = 0;
+
+        if (s_Unknown_00566c88 != (byte)s_Unknown_005de52c)
+        {
+            LoadWorldMapSubArea(mainMem);
+            s_Unknown_00566c8c = 0xff;
+        }
+
+        // Ghidra: 8 dwords a zero depuis &DAT_00604a2c, par pas de 0x10 — un champ par
+        // emplacement de manette.
+        for (int i = 0; i < 8; i++) *(uint*)(s_InputStateBase_00604a20 + 0xc + i * 0x10) = 0;
+
+        uint* otBase = null, otEntry = null, primCursor = null;
+        FrameBegin(&otBase, &otEntry, &primCursor);   // Ghidra: FUN_0052a1e0
+
+        PlaceWorldMapParty(mainMem);
+    }
+
+    /// <summary>
+    /// Ghidra: le bloc <c>if (DAT_00566c88 != DAT_005de52c)</c> de <c>FUN_00516350</c> — le
+    /// rechargement d'une sous-zone. Il enchaine : le repertoire de la sous-zone, l'installation
+    /// des sept tables de sauts d'entites (la sentinelle C), les textures, le **banc de sons** de
+    /// la zone, quatre listes de morceaux, les modeles, les animations, et les blocs bruts.
+    /// </summary>
+    private static void LoadWorldMapSubArea(byte* mainMem)
+    {
+        s_Unknown_00566c88 = (byte)s_Unknown_005de52c;
+        // Ghidra: FUN_0040a600() — corps vide.
+
+        byte* areaDir = s_Unknown_005e97cc;
+        int subEntry = ((int*)(*(byte**)(s_Unknown_005e97c8 + 0x48)))[(uint)(byte)s_Unknown_005de52c];
+        s_Unknown_005e97d0 = LoadResourceEntry((int*)(nint)subEntry, areaDir);
+        FixupResourceHeader(areaDir);
+
+        // La sentinelle 3 : sept tables de sauts d'entites installees d'un coup.
+        LoadResourceEntry(*(int**)(*(byte**)(areaDir + 0x6c)), (byte*)s_OverrideDestC_00600904);
+
+        // Ghidra: `(*(code *)PTR_FUN_0056afc8)()` — l'entree **0** de la table 0056afc8, qui vaut
+        // FUN_00401FA0 pour l'index 0 : un no-op verifie, pas une supposition.
+        CallEntityHandler(s_Vt_0056afc8, 0, "PTR_FUN_0056afc8");
+
+        int slotCount = 0;
+        int* textures = *(int**)(areaDir + 0x10);
+        if (textures != null)
+        {
+            byte* scratch = mainMem + 0x1b0000;
+            byte* slot = s_EntityDecodeTable_005e8f00;      // Ghidra: &DAT_005e8f00, l'emplacement 0
+            for (int* entry = textures; *entry != 0; entry += 2, slot += 4, slotCount++)
+            {
+                LoadResourceEntry((int*)(nint)(*entry), scratch);
+                DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+            }
+        }
+        s_Unknown_005e982c = slotCount;
+        s_Unknown_005e97ec = s_Unknown_005e97e8;
+
+        // --- Le banc de sons de la zone ---------------------------------------------------
+        // Ghidra: FUN_00547960(buf, &DAT_005649f4, zone, sous-zone) — un **sprintf**, pas le
+        // FormatDecimal a deux arguments deja transcrit : le site passe quatre arguments et le
+        // moteur de format complet est FUN_00549380 (424 lignes, non transcrit). Le seul format
+        // utilise ici est "q:\snd\Q%02d_%02d.snd", releve a 0x005649f4 — pose directement plutot
+        // que de tirer tout le moteur pour deux entiers. La lettre de lecteur remplace le 'q'
+        // juste apres, comme pour tous les chemins CD.
+        int subForName = s_Unknown_005de528 == 0 ? 0 : (byte)s_Unknown_005de52c;
+        byte* soundPath = stackalloc byte[100];
+        NativeMemory.Clear(soundPath, 100);
+        {
+            string name = $"q:\\snd\\Q{s_Unknown_005de528 & 0xff:D2}_{subForName:D2}.snd";
+            for (int i = 0; i < name.Length; i++) soundPath[i] = (byte)name[i];
+            soundPath[0] = s_CdDataRootPath[0];
+        }
+
+        IntPtr sound = OpenExistingFileReadOnly(soundPath);           // Ghidra: Ordinal_331
+        if ((int)sound >= 0)
+        {
+            uint read;
+            ReadFile(sound, s_SoundBankHeader_005e8520, 0x88, &read, null);       // Ordinal_334
+            ReadFile(sound, s_LevelSoundBank, 260000, &read, null);               // Ordinal_334
+            CloseHandle(sound);                                                    // Ordinal_336
+        }
+
+        // --- Les quatre listes de morceaux, empilees a la suite du curseur de l'etat ------
+        byte* cursor = s_Unknown_005fa584;
+        byte** chunkTable = (byte**)Entity(0x005f7bc0);
+        ushort* spans = (ushort*)Entity(0x00600830);
+        int start = 0;
+
+        for (int list = 0; list < 4; list++, spans++)
+        {
+            int count = 0;
+            int* entry = *(int**)(areaDir + 0x14 + list * 4);
+            while (*entry != 0)
+            {
+                *chunkTable = cursor;
+                cursor = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                RelocateModelEntry((ushort*)(*chunkTable), (byte*)entry);   // Ghidra: FUN_00532450
+                count++;
+                entry += 2;
+                chunkTable++;
+            }
+            *spans = (ushort)((count << 8) | start);
+            start += count;
+        }
+
+        // --- Les paquets de modeles de la liste +0x24 -------------------------------------
+        int lastCount = 0;
+        byte* lastResult = null;
+        int* bundles = *(int**)(areaDir + 0x24);
+        for (int* entry = bundles; ; entry += 2)
+        {
+            lastCount = s_Unknown_005e9adc_count;
+            lastResult = s_Unknown_005e9adc;
+            if (*entry == 0) break;
+
+            byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+            byte* result;
+            s_Unknown_005e9adc_count = RelocateModelBundle((int*)cursor, (byte*)entry, &result);
+            s_Unknown_005e9adc = result;
+            cursor = next;
+        }
+        for (int i = 0; i < lastCount; i++) *chunkTable++ = ((byte**)lastResult)[i];
+        *spans = (ushort)(((s_Unknown_005e9adc_count & 0xff) << 8) | start);
+        *Entity(0x005f2cec) = (byte)((s_Unknown_005e9adc_count & 0xff) + (byte)start);
+
+        byte* firstChunk = *(byte**)Entity(0x005f7bc0);
+        *(byte**)Entity(0x005f7cc0) = firstChunk + 0x40;
+        *(uint*)Entity(0x005fa508) = *(uint*)(firstChunk + 0x24);
+
+        // --- Modeles (+0x2c), animations (+0x7c), seconds modeles (+0xac) ------------------
+        int* models = *(int**)(areaDir + 0x2c);
+        if (models != null)
+        {
+            byte** table = (byte**)s_ModelTable_005e96a0;
+            for (int* entry = models; *entry != 0; entry += 2, table++)
+            {
+                byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                RelocateModelBundle((int*)cursor, (byte*)entry, table);
+                cursor = next;
+            }
+        }
+
+        int* animations = *(int**)(areaDir + 0x7c);
+        if (animations != null)
+        {
+            byte** table = (byte**)s_AnimationTable_005e9640;
+            for (int* entry = animations; *entry != 0; entry++, table++)
+            {
+                byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                RelocateAnimationBundle((int*)cursor, table);
+                cursor = next;
+            }
+        }
+
+        int* extra = *(int**)(areaDir + 0xac);
+        for (int* entry = extra; *entry != 0; entry += 2)
+        {
+            byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+            RelocateModelBundle((int*)cursor, (byte*)entry, (byte**)Entity(0x00600780));
+            cursor = next;
+        }
+
+        *(byte**)Entity(0x005f2ce8) = cursor;
+
+        int* raw = *(int**)(areaDir + 0xb0);
+        for (int* entry = raw; *entry != 0; entry++)
+        {
+            LoadResourceEntry((int*)(nint)(*entry), mainMem + 0x1b0000);
+            UploadRawAreaBlocks((int*)(mainMem + 0x1b0000));    // Ghidra: FUN_005355f0
+        }
+    }
+
+    // Ghidra: DAT_005e9adc — le pointeur de resultat que FUN_00532640 remplit, et le compte qu'il
+    // rend. Ghidra les lit tous deux en tete de boucle, donc ce sont bien les valeurs du tour
+    // precedent qui servent apres la sortie.
+    private static byte* s_Unknown_005e9adc;
+    private static int s_Unknown_005e9adc_count;
+    private static byte* s_Unknown_005e97d0_worldmap;
+
+    /// <summary>Ghidra: la seconde moitie de <c>FUN_00516350</c> — le placement du groupe sur la
+    /// carte et la derivation de l'etat de vue.</summary>
+    private static void PlaceWorldMapParty(byte* mainMem) =>
         throw new NotImplementedException(
-            "FUN_00516350 : la mise en place d'image de la carte du monde (455 lignes) — voir REVERSE_STATUS.md");
+            "FUN_00516350, seconde moitie : le placement du groupe et la derivation de l'etat de " +
+            "vue (~200 lignes). Dependances : FUN_005330d0 (113 lignes) et FUN_00533940 (375), " +
+            "toutes deux sur le chemin chaud — voir REVERSE_STATUS.md");
 
     /// <summary>Ghidra: FUN_00516fc0 @ 0x00516fc0 — 1226 lignes, la logique par image de la carte
     /// du monde ; c'est elle qui pose DAT_005645f8 et decide de la sortie.</summary>
@@ -19469,7 +19857,7 @@ public static unsafe partial class Blaze
     // DAT_005de428/430/488/4a0. La base descend donc a 0x005de100 et le bloc fait 0x420 octets ;
     // ItemMenuState() etant adresse par VA absolue, aucun site existant ne bouge.
     private const int ItemMenuArenaBase = 0x005de100;
-    private static readonly byte* s_ItemMenuArena_005de100 = (byte*)NativeMemory.AllocZeroed(0x420);
+    private static readonly byte* s_ItemMenuArena_005de100 = (byte*)NativeMemory.AllocZeroed(0x460);
     private static int* ItemMenuState(int va) => (int*)(s_ItemMenuArena_005de100 + (va - ItemMenuArenaBase));
     private static byte* ItemMenuBytes(int va) => s_ItemMenuArena_005de100 + (va - ItemMenuArenaBase);
 

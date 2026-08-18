@@ -5749,3 +5749,62 @@ L'écrire à moitié aurait été pire que ne pas l'écrire. Deux chemins propre
    d'écrire et d'exercer `FUN_00516350`. Défendable — le projet a le précédent de
    `OPENFORESIA_FORCE_SUBSTATE` — mais c'est une déviation de comportement, à décider, pas à
    prendre en passant.
+
+---
+
+## 2026-08-18 (suite) — L'échafaudage, et la première moitié de `FUN_00516350`
+
+### L'échafaudage `OPENFORESIA_SKIP_AREA_HANDLER`
+
+`CallAreaHandler` accepte `OPENFORESIA_SKIP_AREA_HANDLER=1`, qui fait de l'appel un **no-op tracé**
+au lieu de lever. C'est **une déviation de comportement**, pas une omission forcée par la
+plateforme comme les quatre documentées plus haut : elle est opt-in, le défaut reste fidèle, elle
+écrit sur stderr à chaque fois, et elle est à retirer dès que `0x004747F0` est décompilée.
+
+Ce qu'elle coûte, dit franchement : `FUN_004747F0` est une machine de transition de sous-zone (elle
+éteint des bits dans `DAT_005E9840/41` et `DAT_005E9000/01/06`, compte les bits levés de
+`DAT_005E9000`, compare `DAT_005DE52C`/`DAT_005DE530` à zéro). La sauter laisse ces drapeaux tels
+que le chargement les a posés. **Tout ce qu'on observe sous ce drapeau est à re-vérifier** une fois
+la re-passe Ghidra faite.
+
+### Ce qui tourne maintenant
+
+`FUN_00516350` est écrite jusqu'au bout de son chargement, et **tout s'exécute sur des données
+réelles** : les six listes d'index identité et les six effacements d'entités, le rechargement de
+sous-zone, l'installation des sept tables de sauts (la sentinelle C, écrite au tour précédent —
+elle est donc maintenant exercée, pas seulement compilée), les onze initialiseurs, les textures, le
+**banc de sons** de la zone, les quatre listes de morceaux, les modèles, les animations, et l'envoi
+des blocs bruts.
+
+Nouvelles arènes, chacune d'une seule pièce : `s_EntityArena_005eca00` (0x14200 octets —
+0x5eca00..0x600c00 est **une région continue**, ce que prouvent les six `FUN_005352c0` dont chaque
+bloc finit exactement où le suivant commence), `s_CameraBlock_005de030`, `s_ViewBlock_006067c0`,
+`s_ViewRect_00566c70`, plus `GameArenaSize` étendue à 0x1600 et l'arène du menu objets à 0x460.
+
+### `FUN_005355f0` : les deux défauts de la pseudo-C étaient des artefacts
+
+La note du tour précédent la donnait comme « désassemblage requis ». Fait, et les deux points
+tombent :
+
+* La borne de boucle rendue `0x180006` est un artefact. À `0x00535619` c'est `TEST EAX,EAX / JLE`
+  sur le compte lu en tête du bloc — **la borne est le compte**.
+* Le second rectangle, `&stack0xfffffff0`, n'est pas une seconde adresse : c'est **le même
+  emplacement de pile que le premier**, réécrit entre les deux appels. Les deux `PUSH` intercalés
+  décalent les `[ESP+n]` de huit octets, d'où l'illusion. Ses champs sont montés à
+  `0x00535671`..`0x005356B5` : `{ (i%10)*6 + 0x180, (i/10)*0x18 + 0x160, 6, 0x18 }`.
+
+Troisième fois ce mois-ci qu'un « il faut une re-passe Ghidra » se révèle être un « il faut lire
+vingt octets de désassemblage ». La distinction utile reste la taille : ces deux-là faisaient
+quelques instructions, `FUN_004747F0` en fait 723 avec neuf sorties convergentes.
+
+### Le reste
+
+La seconde moitié de `FUN_00516350` — le placement du groupe et la dérivation de l'état de vue,
+~200 lignes — lève une exception nommée. Elle dépend de `FUN_005330d0` (113 lignes) et
+`FUN_00533940` (375), toutes deux sur le chemin chaud : **688 lignes** pour finir la fonction.
+
+Un détail à ne pas oublier au passage : `FUN_00547960` n'est **pas** le `FormatDecimal` à deux
+arguments déjà transcrit, c'est un `sprintf` variadique dont le moteur est `FUN_00549380` (424
+lignes, non transcrit). Le seul format utilisé ici, `"q:\snd\Q%02d_%02d.snd"` (relevé à
+0x005649f4), est posé directement plutôt que de tirer tout le moteur pour deux entiers — à
+remplacer le jour où un autre format apparaît.
