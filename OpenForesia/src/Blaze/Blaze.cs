@@ -8978,17 +8978,33 @@ public static unsafe partial class Blaze
     /// lisibilité plutôt que laissé en ligne dans le <c>switch</c> de
     /// <see cref="StepSubState7Phase"/>.
     ///
-    /// <para><b>TODO(REVERSE)</b> : le second appel à <see cref="Ordinal_684"/> (destination
-    /// <c>+0x80</c>) réutilise le même rectangle de capture que le premier (<c>+0x60</c>) — Ghidra
-    /// ne montre aucune réécriture du rectangle entre les deux appels, seulement une adresse de
-    /// pile différente (<c>&amp;stack0xffffffd4</c> contre <c>&amp;stack0xffffffe0</c>, 0xC octets
-    /// d'écart — exactement la taille du rectangle) sans écriture visible entre les deux, un
-    /// artefact classique du désassemblage forcé sur cette fonction (voir <c>TODO.md</c> §6).
-    /// <see cref="Ordinal_667"/>, appelé deux fois avec <c>0</c> entre les deux captures, est
-    /// confirmé no-op dans cette DLL — donc quel que soit son rôle dans l'original, il ne change
-    /// rien ici. Transcrit comme une réutilisation du même rectangle plutôt que deviné différent ;
-    /// à revoir si l'icône affichée dans un futur navigateur de sauvegardes sort visiblement
-    /// fausse.</para>
+    /// <para><b>Corrigé le 2026-08-18 — les deux appels à <see cref="Ordinal_684"/> ont bien deux
+    /// rectangles différents.</b> La pseudo-C n'en montrait qu'un, réécrit nulle part entre les deux
+    /// appels, avec seulement deux adresses de pile distinctes
+    /// (<c>&amp;stack0xffffffd4</c> contre <c>&amp;stack0xffffffe0</c>) — et ce port avait choisi de
+    /// transcrire la réutilisation, en notant qu'il faudrait y revenir « si l'icône affichée dans un
+    /// futur navigateur de sauvegardes sort visiblement fausse ». C'est arrivé : l'écran de
+    /// constitution du groupe affichait un aplat à la place de chaque icône.
+    ///
+    /// <para>Le désassemblage direct (<c>Legacy/Blaze.exe</c>, <c>0x0050B197..0x0050B1E6</c>) montre
+    /// la seconde construction, que Ghidra avait entièrement fondue dans la première :</para>
+    /// <code>
+    /// MOV CL,[0x5E8F14]          ; l'entrée 5 de la table de pages, moitié basse
+    /// AND ECX,ESI                ; ESI = 0x10
+    /// MOV BL,[EAX+0x150]         ; l'octet d'identité du personnage
+    /// AND EDX,0x0F   AND BL,0x03
+    /// LEA EDX,[EDI + EDX*4]   SHL EDX,4      MOV [ESP+0x14],DX   ; x
+    /// MOV word [ESP+0x18],4                                      ; largeur 4
+    /// ADD ECX,EDX             SHL ECX,4      MOV [ESP+0x16],CX   ; y
+    /// MOV [ESP+0x1A],SI                                          ; hauteur 0x10
+    /// </code>
+    /// <para>Largeur 4 et hauteur 0x10 : très exactement les 4 mots de 16 bits sur 16 lignes qu'une
+    /// icône 16x16 en 4 bpp occupe, soit les 128 octets que le format de « title frame » attend à
+    /// <c>+0x80</c>. L'ancienne transcription n'en écrivait que 32 (un rectangle 0x10x1, la forme de
+    /// la CLUT), laissant <c>+0xa0..+0xff</c> à zéro — d'où l'aplat.</para>
+    ///
+    /// <para><see cref="Ordinal_667"/>, appelé avec <c>0</c> avant chaque capture, est confirmé
+    /// no-op dans cette DLL ; quel que soit son rôle dans l'original, il ne change rien ici.</para>
     /// </summary>
     private static void WriteCardSaveFile(int* cardTransferPhase)
     {
@@ -9021,19 +9037,33 @@ public static unsafe partial class Blaze
         // Ghidra: 0x1c octets à zéro à partir de +0x44.
         NativeMemory.Clear(scratch + 0x44, 0x1c);
 
-        // Ghidra: l'icône de sauvegarde, capturée depuis la VRAM (Ordinal_684) en deux fois — voir
-        // le TODO(REVERSE) au-dessus sur le second rectangle. DAT_005e8f16 est un champ de
-        // s_EntityDecodeTable_005e8f00 (décalage +0x16), pas une globale séparée.
-        ushort iconSlot = *(ushort*)(s_EntityDecodeTable_005e8f00 + 0x16);
-        short* rect = stackalloc short[4];
-        rect[0] = (short)(((uint)(byte)scratch[0x150] + (uint)(iconSlot & 0x3f)) * 0x10);
-        rect[1] = (short)(iconSlot >> 6);
-        rect[2] = 0x10;
-        rect[3] = 1;
+        // Ghidra: les deux captures VRAM→mémoire de la « title frame » PlayStation, avec **deux
+        // rectangles distincts** — voir la note de la fonction pour le désassemblage qui l'établit.
+        // DAT_005e8f14 et DAT_005e8f16 sont les deux moitiés de l'entrée 5 de
+        // s_EntityDecodeTable_005e8f00, pas des globales séparées.
+        byte identity = scratch[0x150];
+
+        // La CLUT : seize couleurs sur une ligne, vers +0x60.
+        ushort iconPage = *(ushort*)(s_EntityDecodeTable_005e8f00 + 0x16);
+        short* clutRect = stackalloc short[4];
+        clutRect[0] = (short)(((uint)identity + (uint)(iconPage & 0x3f)) * 0x10);
+        clutRect[1] = (short)(iconPage >> 6);
+        clutRect[2] = 0x10;
+        clutRect[3] = 1;
         Ordinal_667(0);
-        Ordinal_684(rect, scratch + 0x60);
+        Ordinal_684(clutRect, scratch + 0x60);
+
+        // L'icône elle-même : 4 mots de large sur 16 lignes (16x16 en 4 bpp = 128 octets), vers
+        // +0x80. La position dépend de l'octet d'identité du personnage : les deux bits bas donnent
+        // la colonne, les bits 2-3 la ligne.
+        byte iconTile = s_EntityDecodeTable_005e8f00[0x14];
+        short* iconRect = stackalloc short[4];
+        iconRect[0] = (short)((((identity & 3) + (iconTile & 0x0f) * 4)) << 4);
+        iconRect[1] = (short)((((iconTile & 0x10) + (identity & 0x0c))) << 4);
+        iconRect[2] = 4;
+        iconRect[3] = 0x10;
         Ordinal_667(0);
-        Ordinal_684(rect, scratch + 0x80);
+        Ordinal_684(iconRect, scratch + 0x80);
 
         // Ghidra: 0x2000 octets à zéro à partir de +0x2000.
         NativeMemory.Clear(scratch + 0x2000, 0x2000);

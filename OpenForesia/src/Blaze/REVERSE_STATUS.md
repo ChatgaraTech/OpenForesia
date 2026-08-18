@@ -4761,5 +4761,64 @@ Deux choses valent d'être notées au passage :
 
 ### Ce qui reste ouvert ici
 
-Le titre de la ligne affiche l'icône de sauvegarde depuis la VRAM, dont la capture n'est pas encore
-peuplée : la tuile s'affiche mais son contenu est un aplat. Sans conséquence sur le reste.
+L'icône de sauvegarde de chaque ligne s'affiche mais son contenu est un aplat.
+
+> **Réglé le jour même** — ce n'était pas une capture « pas encore peuplée » mais un rectangle de
+> capture mal deviné dans `WriteCardSaveFile`. Voir l'entrée suivante.
+
+## 2026-08-18 — les icônes de personnage : un rectangle de capture deviné, et un TODO qui avait vu juste
+
+Vincent a signalé que les icônes de l'écran de constitution du groupe sortaient buggées — un aplat
+rouge de 16x16 à la place de chaque portrait.
+
+### Le TODO du port avait annoncé exactement ce cas
+
+`WriteCardSaveFile` capture deux fois depuis la VRAM (`Ordinal_684`), vers `+0x60` (la CLUT) puis
+`+0x80` (l'icône). La pseudo-C ne montre **qu'un seul rectangle**, jamais réécrit entre les deux
+appels, avec seulement deux adresses de pile différentes (`&stack0xffffffd4` contre
+`&stack0xffffffe0`). Une séance antérieure avait transcrit la réutilisation du même rectangle, en
+notant : « à revoir si l'icône affichée dans un futur navigateur de sauvegardes sort visiblement
+fausse ». C'est arrivé, mot pour mot.
+
+### Le désassemblage montre la seconde construction, entièrement fondue par Ghidra
+
+`Legacy/Blaze.exe`, `0x0050B197..0x0050B1E6` — trouvé en cherchant les octets `16 8F 5E 00` dans
+`.text` (les deux seules lectures de `DAT_005e8f16` du binaire tombent dans ce bloc) :
+
+```
+MOV CL,[0x5E8F14]          ; l'autre moitié de l'entrée 5 de la table de pages
+AND ECX,ESI                ; ESI = 0x10
+MOV BL,[EAX+0x150]         ; l'octet d'identité du personnage
+AND EDX,0x0F   AND BL,0x03
+LEA EDX,[EDI + EDX*4]   SHL EDX,4   MOV [ESP+0x14],DX     ; x
+MOV word [ESP+0x18],4                                      ; largeur 4
+ADD ECX,EDX             SHL ECX,4   MOV [ESP+0x16],CX     ; y
+MOV [ESP+0x1A],SI                                          ; hauteur 0x10
+```
+
+**Largeur 4, hauteur 0x10** — très exactement les 4 mots de 16 bits sur 16 lignes qu'une icône
+16x16 en 4 bpp occupe, soit les 128 octets que la « title frame » attend à `+0x80`. L'ancienne
+transcription écrivait un rectangle `0x10 x 1`, la forme de la **CLUT** : 32 octets seulement,
+laissant `+0xa0..+0xff` à zéro. D'où l'aplat.
+
+Elle lit aussi `DAT_005e8f14` et non `DAT_005e8f16` — les deux moitiés de la même entrée de table,
+que la pseudo-C avait confondues en gardant la seconde.
+
+### Vérifié en jeu
+
+Un fichier produit après correction porte 112 octets non nuls sur 128 à `+0x80`, avec une structure
+de nibbles visiblement figurative. À l'écran, deux personnages de classes différentes donnent bien
+deux portraits différents et corrects (ARTHUR/Guerrier et MERLIN/Voleur) — ce qui vérifie non
+seulement que quelque chose est capturé, mais que la dérivation `x = ((identité & 3) + (tuile & 0xf)
+* 4) << 4` / `y = ((tuile & 0x10) + (identité & 0xc)) << 4` vise la bonne case.
+
+**Une sauvegarde écrite avant ce correctif garde son icône vide** : le défaut était à l'écriture,
+pas à l'affichage. Il faut recréer le personnage pour voir la correction.
+
+### La leçon, qui vaut au-delà de ce cas
+
+Quand la pseudo-C montre **deux appels avec deux adresses de pile différentes mais une seule
+structure construite**, ce n'est pas une réutilisation : c'est une seconde construction que le
+décompilateur a fondue dans la première. Le décalage entre les deux adresses (ici 0xC) est
+l'indice — il n'y aurait aucune raison de passer une adresse différente pour la même donnée. Aller
+directement à l'assembleur ; c'est vingt lignes à lire.
