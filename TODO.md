@@ -132,7 +132,7 @@ Le bloc de dessin sur pile est **le même à sept champs** que celui de `RunDebu
   fauté à la première seconde d'exécution. Ouvrir un chemin d'appel vaut autant qu'une relecture.
 - **Un plantage parfaitement reproductible qui n'apparaît qu'à partir du deuxième lancement** vient
   probablement de ce que le premier a laissé sur le disque, pas du code. Nettoyer
-  `OpenForesia/save/TEST` entre deux essais (détaillé dans `test-protocol.md`).
+  `OpenForesia/save/` entre deux essais (détaillé dans `test-protocol.md`).
 - **Un avertissement CS0414 « assigné mais jamais utilisé » sur une globale reconstruite est un
   indice d'aliasing**, pas du bruit : huit d'entre eux désignaient exactement les huit champs de
   descripteur mal déclarés.

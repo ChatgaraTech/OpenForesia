@@ -92,37 +92,52 @@ Une ligne. Non appliqué — ce serait une déviation par rapport à 1998.
 
 ---
 
-## LB-002 — Le nom du personnage sert de seul identifiant de sauvegarde
+## LB-002 — Un code dérivé du personnage sert de seul identifiant de sauvegarde
 
 **Repéré** le 2026-08-16 en lisant `FUN_0050a910` (la logique de phase de l'écran de sauvegarde)
 pendant la reconstruction du cas 6 (écriture). **Pas encore constaté sur le jeu officiel** — à
 vérifier avec un jeu réel avant de le considérer confirmé, contrairement à LB-001 ci-dessus.
 
+**Révisé le 2026-08-18** : la première rédaction disait « le nom tapé sert de nom de fichier ».
+C'est faux, et l'erreur venait d'un défaut de portage (gabarit de nom vide) depuis corrigé. Le nom
+de fichier réel est `Blaze-Saving` suivi de **sept caractères de code** — le nom tapé n'y entre que
+par le hachage décrit ci-dessous. Constaté en jeu : `save\Blaze-Saving@MJAXY_`.
+
 ### Symptôme (attendu, à confirmer)
 
-Créer un personnage avec le même nom qu'un personnage déjà sauvegardé ne crée pas un second fichier
-de sauvegarde. L'écran de sauvegarde/chargement bascule à la place sur le chemin **chargement** de
-l'ancienne sauvegarde, au lieu d'écrire les données du nouveau personnage.
+Créer un personnage dont le **code** coïncide avec celui d'un personnage déjà sauvegardé ne crée pas
+un second fichier. L'écran de sauvegarde/chargement bascule à la place sur le chemin **chargement**
+de l'ancienne sauvegarde, au lieu d'écrire les données du nouveau personnage.
 
 ### Cause
 
-`case 1` de `FUN_0050a910` (transcrit en C# dans `Blaze.cs`, voir « La sous-couche carte mémoire »)
-construit le chemin de sauvegarde uniquement à partir du nom tapé (`save\<nom>`, aucun numéro de
-slot ni port distinct), puis teste si le fichier existe déjà :
+La finalisation de la création (`FUN_005098f0`, branche « confirmer ») calcule un code à sept
+caractères par un repliement de type somme de contrôle (`hash = (hash + valeur) * 2`, puis cinq bits
+à la fois dans la plage `'@'..'_'`) sur :
+
+- les seize octets du **nom tapé** (`DAT_00573338+0x100`) ;
+- les **sept statistiques** réparties (`DAT_00573338+0x280`) ;
+- la **classe**, l'**élément**, le **style** et le quatrième champ d'identité (`+0x150..0x153`).
+
+Ce code, préfixé de `Blaze-Saving`, **est** le nom de fichier. `case 1` de `FUN_0050a910` (transcrit
+en C# dans `Blaze.cs`, voir « La sous-couche carte mémoire ») teste ensuite l'existence du fichier,
+sans autre identifiant (ni numéro de slot ni port distinct) :
 
 ```
-ouvre "save\<nom>" en lecture
+ouvre "save\Blaze-Saving<code>" en lecture
   → échec (fichier absent)  : crée un fichier vide, phase 6 (écriture — nouvelle sauvegarde)
   → succès (fichier existe) : phase 0xe (chargement de la sauvegarde existante)
 ```
 
-Aucune vérification d'unicité au-delà de ce test d'existence : deux personnages tapant le même nom
-partagent le même fichier, et le second tombe systématiquement sur le chemin chargement.
+Aucune vérification d'unicité au-delà de ce test d'existence.
 
 ### Portée
 
-Concerne uniquement des personnages **au même nom exact** ; des noms différents produisent des
-fichiers séparés dans `save\` sans problème.
+Plus étroite que ce que la première rédaction laissait croire : une collision demande **tout** à
+l'identique — même nom, même classe, même élément, même style et exactement la même répartition de
+points. Deux personnages qui diffèrent par un seul de ces éléments produisent deux fichiers séparés
+dans `save\`. À l'inverse, le repliement `*2` n'est pas injectif : rien ne garantit qu'il n'existe
+pas de collision entre deux personnages *différents*, elle est simplement improbable.
 
 ### Dans OpenForesia
 
@@ -134,3 +149,15 @@ par le portage.
 etc.) à la construction du chemin dans `SetCardFileName`/`SetCardPathDeviceFields`, ou détecter la
 collision et proposer un choix au joueur avant d'écraser/charger. Non appliqué — décision reportée
 par Vincent le 2026-08-16 (« on verra ça plus tard »).
+
+**Ce que fait réellement le chemin « fichier déjà présent »** (transcrit le 2026-08-18) : les phases
+0xe et 0xf affichent chacune un message, puis la phase 0x10 **supprime** la sauvegarde existante
+(`Ordinal_20`, `DeleteFileA`) et remet la phase à 0. Le cas 1 ne trouve alors plus de fichier et
+l'écriture normale reprend. Autrement dit, resauvegarder un personnage identique **écrase** sa
+sauvegarde — ce n'est pas un blocage, et le symptôme décrit plus haut ne se manifeste que si les
+boîtes de dialogue modales (absentes de ce port) laissent le joueur répondre autrement.
+
+Un défaut du **portage**, distinct de celui-ci, masquait ce parcours jusqu'au 2026-08-18 : le même
+`case 1` plantait en `0xC0000005` dans `ResetCardTransferStatus`/`Ordinal_67`, parce que les huit
+gestionnaires que `SetupJoystickHandlers` enregistre auprès de winsys3d.dll l'étaient avec un
+pointeur `null`. Corrigé, voir `REVERSE_STATUS.md` et `Documentation/DLL/winsys3d.md`.

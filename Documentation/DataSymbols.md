@@ -763,9 +763,30 @@ character-creation sub-state 3 composes by hand.
 | `0x00566c28` | `00 30 80 40 / 00 00 30 02` | the shared 8x8 glyph atlas descriptor (origin Y=0x30, cell 8x8; attributes `0x02300000`) |
 | `0x0056315c` | `60 31 56 00` | a pointer to `s_SaveDeviceName_00563160` |
 | `0x00563158` | `70 31 56 00` | a pointer to `s_SaveFolderName_00563170` — what `FUN_005128e0` dereferences |
+| `0x00566bc0` | `98 84 56 00` | a pointer to the save-filename template at `0x00568498` — see below |
+| `0x00568498` | `"Blaze-Saving        "` | the save-filename template: 12-byte literal prefix + eight spaces + NUL |
 
 `"Gurkha"` sits immediately after the three debug labels `"DPT"`/`"LOC"`/`"ANG"` at `0x00564a20`,
 which is corroborating: the whole neighbourhood is developer material.
+
+### `0x00566bc0` is a pointer, and it settles the save-filename question (2026-08-18)
+
+`FUN_005098f0`'s finalisation writes the seven-character character code through
+`pcRam00566bc0[0xc..0x12]`, then copies **from byte 0** into `DAT_00573338+0x1fd0`, the buffer
+`SetCardFileName` turns into the save path. A previous session read the bytes *at* `0x00566bc0`,
+found a pointer-table shape rather than a string, and correctly refused to use them.
+
+The missing step was one more dereference. All eight `.text` sites that touch the address load it
+(`8B 35 / 8B 0D / 8B 15  C0 6B 56 00` = `MOV reg,[0x566BC0]`) before writing through it
+(`88 54 30 0C` = `MOV [EAX+ESI+0xC],DL`), and **none of them ever writes the address itself** — no
+`A3 C0 6B 56 00`, no `89 xx C0 6B 56 00` anywhere in `.text` — so the pointer keeps its load-time
+value for the whole run. It points at `0x00568498`, `"Blaze-Saving"` followed by eight spaces: the
+first twelve bytes are the literal prefix the copy picks up, and the seven code characters land in
+the spaces. Hence the shape of real 1998 save filenames, `Blaze-Saving@MVB@R_` = 12 + 7.
+
+The neighbourhood corroborates it: `0x00566bb8` and `0x00566bbc` hold the pointers to
+`"SYSTEM.INI"` and `"BLAZE.ALL;1"`, so `0x00566bc0` is simply the next entry of the same
+filename-pointer table.
 
 ## The save-load screen's tables (2026-08-17)
 

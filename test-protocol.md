@@ -206,9 +206,15 @@ projet). Ceux listés ici sont permanents.
 ## L'écran de sauvegarde a besoin d'un dossier `save\` déjà présent
 
 Le jeu original (ni `Blaze.c` ni `winsys3d.c`) n'appelle jamais `CreateDirectory` : la sauvegarde
-passe par un simple `CreateFileA("save\<nom>", ...)`, qui échoue silencieusement (bascule propre sur
-l'écran d'erreur, pas de plantage) si le dossier `save\` n'existe pas déjà — fidèle à l'original, qui
-partait du principe que le dossier était déjà là (fourni à l'installation en 1998).
+passe par un simple `CreateFileA("save\Blaze-Saving<code>", ...)`, qui échoue silencieusement
+(bascule propre sur l'écran d'erreur, pas de plantage) si le dossier `save\` n'existe pas déjà —
+fidèle à l'original, qui partait du principe que le dossier était déjà là (fourni à l'installation
+en 1998).
+
+**Le nom du fichier n'est pas le nom tapé** : c'est `Blaze-Saving` suivi de sept caractères de code
+dérivés du personnage (nom, statistiques, classe, élément, style) — `Blaze-Saving@MJAXY_` par
+exemple. Un personnage = un fichier ; deux personnages qui diffèrent par n'importe lequel de ces
+éléments donnent deux fichiers. Détail dans `legacy-bug.md` (LB-002).
 
 `OpenForesia/save/` (à côté du `.csproj`, avec un `.gitkeep` pour rester suivi par git) existe donc
 dans le dépôt pour cette raison. **C'est l'endroit qui compte** : Rider « Run » et `dotnet run`
@@ -217,25 +223,68 @@ lancent tous deux le process avec ce dossier comme répertoire de travail par d�
 tester le chemin d'écriture dans les mêmes conditions que Rider, passer
 `-WorkingDir OpenForesia` :
 
-```powershell
-$env:OPENFORESIA_FORCE_SUBSTATE = '7'; $env:OPENFORESIA_FORCE_CONFIRM_STATS = '1'
-$env:OPENFORESIA_FORCE_CARD_NAME = '1'   # sinon le nom du personnage est vide (voir plus haut)
-OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 15 -WorkingDir OpenForesia
-```
+### Le parcours de création complet est scriptable (2026-08-18)
 
-Puis lire le fichier écrit dans `OpenForesia/save/<nom>`.
+`OPENFORESIA_FORCE_SUBSTATE=7` **ne sert plus à tester la sauvegarde** : il saute la finalisation
+qui compose le nom de fichier, et l'échafaudage `OPENFORESIA_FORCE_CARD_NAME` qui compensait ce
+manque avec un nom `TEST` a été retiré. `FORCE_SUBSTATE=6` ne marche pas non plus (le moteur de
+texte n'a pas mis la page en page une fois : `InvalidOperationException` dans `DrawUiPanel`).
 
-**Nettoyer `OpenForesia/save/TEST` entre deux essais.** Sinon le second run trouve une sauvegarde
-déjà là, part dans la branche « écraser ? » et se termine par un `0xC0000005` dans
-`ResetCardTransferStatus`/`Ordinal_67`. Coûté trois essais le 2026-08-17, dont deux passés à
-soupçonner à tort le code de la séance : la trace est identique d'un run à l'autre (même numéro
-d'image, même compteur de primitives), ce qui **ressemble** à un défaut déterministe du code alors
-que c'est simplement le même état de disque. Un plantage parfaitement reproductible qui n'apparaît
-qu'à partir du deuxième lancement doit faire regarder ce que le premier a laissé derrière lui.
+La bonne manière est le vrai parcours, qui tient dans un `-Then`. Vérifié en jeu, deux personnages
+de suite, deux fichiers distincts :
 
 ```powershell
-Remove-Item 'OpenForesia\save\TEST' -Force -ErrorAction SilentlyContinue
+$env:OPENFORESIA_FORCE_CONFIRM_STATS = '1'
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 55 -Shot -WorkingDir OpenForesia `
+  -Then WAIT3,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,TYPE:VINCENT,WAIT1,KBENTER,WAIT3,
+        ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,
+        ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT4,
+        ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT5
+Get-ChildItem 'OpenForesia\save'
 ```
+
+La suite d'`ENTER` correspond aux écrans décrits dans
+`Analyse/Comportement Legacy/Selection des personnages.md` : carrousel (3 validations), nom (frappe
+clavier + `KBENTER`), style de langage (3), élément de protection (3), bonus (3 cartes + 2), puis la
+répartition des points — que `OPENFORESIA_FORCE_CONFIRM_STATS=1` valide d'office — et enfin l'écran
+de sauvegarde. Compter environ 55 s ; changer le `TYPE:` suffit à obtenir un autre fichier.
+
+Puis lire le fichier écrit dans `OpenForesia/save/Blaze-Saving<code>` (24576 octets, en-tête
+`SC 11 03`, le nom tapé encodé sur deux octets par caractère à partir de l'offset 4).
+
+**Rejouer exactement le même personnage écrase sa sauvegarde**, sans plantage : le parcours
+`0xe → 0xf → 0x10` supprime le fichier existant puis repart à la phase 0, qui le récrée. Rien à
+nettoyer entre deux essais.
+
+> **Historique, à ne pas re-soupçonner** : jusqu'au 2026-08-18 ce même cas plantait en
+> `0xC0000005` dans `ResetCardTransferStatus`/`Ordinal_67` (huit gestionnaires winsys3d enregistrés
+> avec un pointeur `null` ; corrigé). Il avait coûté trois essais le 2026-08-17, dont deux passés à
+> soupçonner à tort le code de la séance : la trace était identique d'un run à l'autre (même numéro
+> d'image, même compteur de primitives), ce qui **ressemblait** à un défaut déterministe du code
+> alors que c'était l'état du disque. La leçon reste bonne — un plantage parfaitement reproductible
+> qui n'apparaît qu'à partir du deuxième lancement doit faire regarder ce que le premier a laissé
+> derrière lui.
+
+Pour repartir d'un dossier vide malgré tout :
+
+```powershell
+Get-ChildItem 'OpenForesia\save' -Filter 'Blaze-Saving*' | Remove-Item -Force
+```
+
+### Le fichier atterrit dans le `save\` du répertoire de travail, pas dans celui du dépôt
+
+Le chemin est relatif (`save\Blaze-Saving<code>`), donc il suit le **répertoire de travail du
+processus**, pas l'emplacement de l'exe ni celui du `.csproj` :
+
+| lancement | le fichier apparaît dans |
+|---|---|
+| Rider « Run », `dotnet run` | `OpenForesia\save\` |
+| double-clic sur l'exe, `bin\Debug\net9.0\OpenForesia.exe` | `OpenForesia\bin\Debug\net9.0\save\` |
+| `playtest.ps1` sans `-WorkingDir` | `OpenForesia\bin\Debug\net9.0\save\` |
+| `playtest.ps1 -WorkingDir OpenForesia` | `OpenForesia\save\` |
+
+« La sauvegarde ne crée plus de fichier » est presque toujours ce décalage-là : regarder les deux
+dossiers avant de conclure.
 
 ---
 
@@ -264,12 +313,17 @@ secondes. D'où l'échafaudage `OPENFORESIA_FORCE_DEBUG_PARTY=1`, qui force la b
 automatisés.
 
 ```powershell
-Remove-Item 'OpenForesia\save\TEST' -Force -ErrorAction SilentlyContinue
+Get-ChildItem 'OpenForesia\save' -Filter 'Blaze-Saving*' | Remove-Item -Force
 $env:OPENFORESIA_FORCE_SUBSTATE='7'; $env:OPENFORESIA_FORCE_CONFIRM_STATS='1'
-$env:OPENFORESIA_FORCE_CARD_NAME='1'; $env:OPENFORESIA_FORCE_DEBUG_PARTY='1'
+$env:OPENFORESIA_FORCE_DEBUG_PARTY='1'
 OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 34 -Shot -WorkingDir OpenForesia `
     -Then WAIT14,DOWN,WAIT1,ENTER,WAIT3,START,WAIT6
 ```
+
+> **2026-08-18** : cette recette portait aussi `OPENFORESIA_FORCE_CARD_NAME='1'`, retiré depuis avec
+> l'échafaudage. Avec `FORCE_SUBSTATE=7`, la finalisation ne tourne pas, donc le nom de fichier reste
+> vide et **l'écriture de la sauvegarde échoue** — sans conséquence pour ce test-ci, dont
+> `FORCE_DEBUG_PARTY` est le vrai levier, mais non rejoué depuis le changement.
 
 Le `WAIT14` n'est pas négociable : la chaîne création + sauvegarde forcée occupe encore l'écran
 pendant une douzaine de secondes après la validation du menu, et une frappe qui tombe là-dedans part

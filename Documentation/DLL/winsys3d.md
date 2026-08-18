@@ -477,7 +477,7 @@ an assumption.
 
 | Ordinal | RVA | `winsys3d.c` symbol | Behavior |
 |---|---|---|---|
-| 41 | `0x4fe0` | `FUN_00a04fe0` | `LeaveCriticalSection(&DAT_00b6d6d8)` — releases the DLL's own internal device lock (paired with an `EnterCriticalSection` at `FUN_00a04ff0`, not itself called from the traced graph) |
+| 41 | `0x4fe0` | `FUN_00a04fe0` | `LeaveCriticalSection(&DAT_00b6d6d8)` — releases the DLL's own internal device lock. Its `EnterCriticalSection` partner is **ordinal 40**, not `FUN_00a04ff0` (that one is the one-time `InitializeCriticalSection`); `FUN_00504460` calls 40 then 41 around the eight registrations |
 | 132 | `0x53e0` | `FUN_00a053e0` | VSync/frame-pacing wait, keyed off a DLL-internal timing-mode global (`DAT_00a2c3b0`); pumps Win32 messages internally while waiting |
 | 136 | `0x5770` | `FUN_00a05770` | Get-and-set on `DAT_011be6a4` ("frame time offset"? unconfirmed), returns the previous value |
 | 368 | `0x20ed0` | `FUN_00a20ed0` | Copies 8 dwords from the caller into DLL-internal "shading defaults" state (`EXT_011d0828`); exact per-field meaning unconfirmed |
@@ -490,16 +490,49 @@ an assumption.
 | 710 | `0x26e0` | `FUN_00a026e0` | (Re)creates the DLL's text/console overlay bitmap at a given size |
 | 789 | `0x6420` | `FUN_00a06420` | Device (re)init/teardown dispatcher keyed off its first argument; storing the 2nd argument into `DAT_00a2c49c` is its only effect when the 1st argument is 0 (the only value any traced call site passes) |
 | 796 (`SetShift`, named export) | `0x5810` | `SetShift` | Camera/view pixel-offset + zoom-level setter; with `flag==0` also calls `SetCooperativeLevel`-adjacent code on the DLL's main device interface (`DAT_011be760`) |
-| 6 | `0x40d0` | `FUN_00a040d0` | Allocates and registers a generic "handler" node (message/id, 2 extra words, callback pointer) into a DLL-internal linked list; returns an opaque handle |
-| 10 | `0x4220` | `FUN_00a04220` | Unregisters a handler node returned by ordinal 6 (marks it inactive; does not free it — see `FUN_00a04270`/`FUN_00a042d0` for the actual dispatch/free side, not yet read) |
+| 6 | `0x40d0` | `FUN_00a040d0` | Allocates and registers a "handler" node into a DLL-internal linked list; layout `[0]=id, [1]=state, [2]=mode, [3]=arg3, [4]=callback, [5]=prev, [6]=next`. Created with state `0x1000` (**registered but not armed**); returns the node as an opaque handle |
+| 7 | `0x4130` | `FUN_00a04130` | The real **unregister**: unlinks the node and `Free`s it |
+| 9 | `0x41d0` | `FUN_00a041d0` | Re-arms a node (state → `0x2000`) if it had fired (`0x4000`), or unconditionally for the two card channels (`id ∈ {0xf4000001, 0xf0000011}` with `mode == 4`) |
+| 10 | `0x4220` | `FUN_00a04220` | **Arms** a node: state `0x1000` → `0x2000`. *Not* an unregister — see the correction below |
+| 12 | `0x4270` | `FUN_00a04270` | The **dispatcher**. Walks the list for `id == p1 && mode == p2 && state == 0x2000`; on a match, either sets state `0x4000` + `SetEvent` (when `[3] == 0x2000`) or **calls the node's callback** `[4]` with no arguments. Ordinals 67/68/69 are thin wrappers over it |
+| 20 | `0x45e0` | `FUN_00a045e0` | `DeleteFileA` on the resolved path descriptor. **Inverted return**: `1` when the delete FAILED, `0` when it succeeded (`NEG EAX; SBB EAX,EAX; INC EAX`) |
+| 40 | `0x4fd0` | `FUN_00a04fd0` | `EnterCriticalSection(&DAT_00b6d6d8)` — the partner of ordinal 41. Zero arguments, `RET` |
+| 67 / 69 | `0x50f0` | `FUN_00a050f0` | `FUN_00a04270(0xf4000001, 4)` then `return 1`. **`RET 4`** — one (ignored) argument |
+| 68 | `0x50d0` | `FUN_00a050d0` | `FUN_00a04270(0xf0000011, 4)` then `return 1`. `RET 4` |
 | 750 | `0x1e30` | `FUN_00a01e30` | `return DAT_011be760;` — the DLL's main device-interface pointer |
-| 40 | `0x4fd0` | `FUN_00a04fd0` | Body not read this session (out of scope — only reached via `FUN_00504460`, which stops mattering once its own `FUN_00523120` dependency throws first) |
 
-**Open question (`Ordinal_6`'s callback targets)**: `FUN_00504460` (Ghidra) registers 8
-handlers via ordinal 6, passing `&LAB_00504610` .. `&LAB_00504680` as callbacks — none of
-these have a decompiled body anywhere in `Blaze.c` (same situation as ordinal 790's
-`&LAB_00512ef0`, see above). `Blaze.cs`'s `SetupJoystickHandlers` passes `null` for all 8
-and documents this with a TODO(REVERSE).
+### Correction (2026-08-18): ordinal 10 arms, it does not unregister — and the 8 callbacks are real
+
+Both halves of the earlier note above were wrong, and together they caused a `0xC0000005` in
+`Blaze.cs` whenever a memory-card transfer was polled:
+
+- **Ordinal 10 is an arm, not an unregister.** `FUN_00a04220` only flips state `0x1000` → `0x2000`,
+  which is exactly the state the dispatcher `FUN_00a04270` requires before it will fire a node. So
+  `FUN_00504460`'s eight `Ordinal_10` calls leave all eight handlers **live for the whole session**.
+  The genuine unregister is ordinal 7 (`FUN_00a04130`), never called from the traced graph.
+- **The 8 callback targets are readable after all.** They have no decompiled body in `Blaze.c`
+  (address-taken-only), but they are nine-byte stubs in `Legacy/Blaze.exe`, read directly on
+  2026-08-18: each is one `MOV dword [<global>], <imm>` followed by `RET`.
+
+  | stub | effect | | stub | effect |
+  |---|---|---|---|---|
+  | `0x00504610` | `DAT_00604ab0 = 0` | | `0x00504650` | `DAT_00604a00 = 0` |
+  | `0x00504620` | `DAT_00604ab0 = 1` | | `0x00504660` | `DAT_00604a00 = 1` |
+  | `0x00504630` | `DAT_00604ab0 = 2` | | `0x00504670` | `DAT_00604a00 = 2` |
+  | `0x00504640` | `DAT_00604ab0 = 3` | | `0x00504680` | `DAT_00604a00 = 3` |
+
+  `DAT_00604ab0` is the write-transfer status and `DAT_00604a00` the read-transfer status —
+  precisely the two globals `FUN_005046c0`/`FUN_00504770` poll, and `0..3` precisely the values
+  `FUN_00504820` decodes. This is the mechanism by which a transfer status ever leaves its idle
+  value of 4.
+
+Passing `null` for those callbacks (what `Blaze.cs` did until 2026-08-18) therefore had the DLL
+call address 0 the first time `Ordinal_67` ran. Fixed by transcribing the eight stubs as
+`[UnmanagedCallersOnly]` methods and passing their function pointers.
+
+`FUN_00504460` also stores the eight handles in `DAT_00604b68/6c/70/74` (write) and
+`DAT_00604b58/5c/60/64` (read), and `FUN_00504730`/`FUN_005047e0` pass **those very handles** back
+to ordinal 9. They are not caller-allocated structures.
 
 ## Confirmed unnamed pair (both DLLs), noted for context
 

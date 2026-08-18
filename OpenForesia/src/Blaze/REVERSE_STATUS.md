@@ -4423,3 +4423,174 @@ Restent non confirmées visuellement : les icônes de destination elles-mêmes. 
 nulle, les deux seules dessinées (index 0 et 3) ont la même entrée `0x00000000` dans la table de
 positions, donc elles se superposent au même endroit — il faudra une sauvegarde avancée, ou forcer
 `DAT_005e901e`, pour les voir séparément.
+
+## 2026-08-18 — le nom de fichier de sauvegarde : `DAT_00566bc0` était un pointeur, pas un tampon
+
+Vincent a signalé que la sauvegarde produisait toujours un fichier `TEST`, alors que le jeu de 1998
+écrit des noms de la forme `Blaze-Saving@MVB@R_`, et a demandé de pouvoir créer plusieurs
+personnages différents avec un fichier par sauvegarde. Les deux demandes tenaient dans le même
+défaut de portage.
+
+### Ce qui bloquait
+
+`WriteCharacterCode` recopie le nom de fichier depuis l'octet 0 de `pcRam00566bc0`, alors que la
+finalisation n'écrit les sept caractères de code qu'à partir de l'octet `0xc`. Notre port
+initialisait ce symbole à un tampon de 32 octets à zéro, donc la copie s'arrêtait sur le premier
+octet nul : nom vide, d'où l'échafaudage `OPENFORESIA_FORCE_CARD_NAME=1` qui injectait « TEST ».
+
+La séance du 2026-08-16 avait lu les octets *à* `0x00566bc0`, trouvé une forme de table de
+pointeurs plutôt qu'une chaîne, et refusé — à raison — de s'en servir tels quels.
+
+### Ce qui manquait : une déréférence
+
+`pcRam00566bc0` est un **pointeur logé à cette adresse**, pas le tampon lui-même. Tranché en
+désassemblant les huit sites de `.text` qui la touchent (recherche des motifs d'octets directement
+dans `Legacy/Blaze.exe`) : tous chargent l'adresse — `8B 35 / 8B 0D / 8B 15  C0 6B 56 00`, soit
+`MOV reg,[0x566BC0]` — avant d'écrire à travers (`88 54 30 0C` = `MOV [EAX+ESI+0xC],DL`). Et aucun
+ne l'écrit jamais : pas un seul `A3 C0 6B 56 00` ni `89 xx C0 6B 56 00` dans tout `.text`, donc le
+pointeur garde sa valeur de chargement pour toute la partie.
+
+Il vaut `0x00568498`, où se trouve `"Blaze-Saving"` suivi de huit espaces et d'un NUL. Les douze
+premiers octets, dont le rôle était noté « non établi », sont donc simplement le **préfixe
+littéral** ; les sept caractères de code atterrissent dans les espaces, et le NUL se pose à `+0x13`.
+`12 + 7` — exactement la forme que Vincent décrivait. Corroboration de voisinage : `0x00566bb8` et
+`0x00566bbc` portent les pointeurs de `"SYSTEM.INI"` et `"BLAZE.ALL;1"`, `0x00566bc0` est l'entrée
+suivante de la même table de noms de fichiers. Consigné dans `Documentation/DataSymbols.md`.
+
+Même piège, à trois symboles d'écart, que celui déjà corrigé dans `SetCardPathDeviceFields` : la
+pseudo-C de Ghidra montre une déréférence de moins que l'assembleur. Quand un symbole `DAT_`/`pcRam`
+« contient » ce qui ressemble à une adresse plausible du binaire, la question à poser n'est pas
+« que valent ces octets ? » mais « combien de déréférences le code machine fait-il ? ».
+
+### Le nom tapé entre bien dans le code
+
+Un commentaire périmé affirmait que les seize octets de `scratch+0x100` que le hachage replie
+étaient « toujours nuls, aucun code reconstruit ne les écrit ». C'est le **nom tapé** : la saisie
+(`HandlePadNameEntry`/`HandleTypedNameEntry`) les y écrit un par un, et `WriteCardSaveFile` les
+relit au même endroit pour l'en-tête du fichier. Deux personnages ne partagent donc leur fichier que
+s'ils ont à la fois le même nom, la même classe, le même élément, le même style et exactement la
+même répartition de points. `legacy-bug.md` LB-002 a été récrit en conséquence : son énoncé d'alors
+(« le nom tapé est le nom de fichier ») décrivait le défaut de portage, pas le jeu de 1998.
+
+### Vérifié en jeu, et le parcours réel est maintenant scriptable
+
+`OPENFORESIA_FORCE_SUBSTATE=7` ne convient plus pour tester la sauvegarde : il saute la
+finalisation. `=6` non plus (le moteur de texte n'a pas encore mis la page en page :
+`InvalidOperationException` dans `DrawUiPanel`). Le vrai parcours de création tient en fait dans un
+seul `-Then` — carrousel, saisie du nom au clavier, style, élément, dé de bonus, puis la répartition
+validée d'office par `OPENFORESIA_FORCE_CONFIRM_STATS=1`. Recette complète dans `test-protocol.md`.
+
+Deux runs successifs, « VINCENT » puis « MARIE », sans plantage :
+
+```
+OpenForesia/save/Blaze-Saving@MJAXY_   24576 octets
+OpenForesia/save/Blaze-Saving@MJAX]A   24576 octets
+```
+
+En-tête `53 43 11 03` (`"SC"`), puis le nom encodé sur deux octets par caractère à partir de
+l'offset 4 (`82 6C 82 60 82 71 82 68 82 64` = `MARIE`). Un personnage, un fichier — comme
+l'original.
+
+### Nettoyage
+
+- `OPENFORESIA_FORCE_CARD_NAME` retiré de `Blaze.cs` et de toutes les recettes qui s'en servaient
+  (`test-protocol.md`, `test-todo-later.md`).
+- `OpenForesia/save/TEST` — suivi par git depuis le commit « Trouvé un code triche Gurkha » —
+  supprimé de l'arbre de travail : plus rien ne le produit, et sa seule conséquence restante était
+  le plantage au deuxième lancement. La suppression reste à valider par un commit.
+- L'entrée 1 de `test-todo-later.md` (création de bout en bout sans échafaudage) est réduite à ce
+  qui reste vraiment ouvert : les appuis exacts de l'écran de répartition des points.
+
+Le plantage `0xC0000005` dans `ResetCardTransferStatus`/`Ordinal_67` quand le fichier existe déjà
+(branche « chargement » du `case 1`) reste ouvert, inchangé — il est maintenant simplement plus
+facile à éviter, un nom différent suffisant à changer le fichier.
+
+## 2026-08-18 — le 0xC0000005 « fichier déjà présent » : huit gestionnaires enregistrés avec un pointeur nul
+
+Suite directe de l'entrée précédente. Vincent a demandé de corriger le plantage sur fichier
+existant, et signalé que la sauvegarde semblait ne plus rien écrire dans `save\`.
+
+### Le fichier était bien écrit — dans l'autre `save\`
+
+`OpenForesia/bin/Debug/net9.0/save/Blaze-Saving@MZB@R_`, 24576 octets, horodaté de son propre
+lancement. Le chemin du jeu est relatif (`save\<nom>`), donc il suit le **répertoire de travail du
+processus** : un exe lancé directement écrit dans `bin/Debug/net9.0/save/`, Rider et `dotnet run`
+dans `OpenForesia/save/`. Rien de cassé, un décalage de dossier. Consigné en tableau dans
+`test-protocol.md` — c'est le genre de faux négatif qui se represente.
+
+### Le plantage : `Ordinal_10` arme, il ne désenregistre pas
+
+`FUN_00504460` enregistre huit gestionnaires auprès de winsys3d.dll (`Ordinal_6`) puis appelle
+`Ordinal_10` sur chacun. La note du port disait « registers, then immediately unregisters » — d'où
+la conclusion, jusqu'ici, que ces gestionnaires ne servaient à rien et que leurs cibles pouvaient
+rester à `null`.
+
+`FUN_00a04220` (l'ordinal 10) fait pourtant une seule chose : `état 0x1000 → 0x2000`. C'est un
+**armement**. Le vrai désenregistrement est l'ordinal 7 (`FUN_00a04130`, qui délie et `Free`), jamais
+appelé. Les huit nœuds restent donc vivants toute la partie, et le répartiteur `FUN_00a04270` — que
+`Ordinal_67/68/69` déclenchent — appelle le pointeur du nœud trouvé. Avec `null`, c'est un appel à
+l'adresse 0.
+
+Ce qui explique la forme exacte du symptôme : le plantage n'arrivait que sur la branche « fichier
+présent » du `case 1`, la seule à appeler `ResetCardTransferStatus` → `Ordinal_67`.
+
+### Les huit cibles sont lisibles : neuf octets chacune
+
+Aucun corps dans `Blaze.c` (fonctions uniquement prises par adresse — catégorie « re-run Ghidra »).
+Mais lues directement dans `Legacy/Blaze.exe`, ce sont huit talons `C7 05 <globale> <imm32>` + `C3`,
+soit une affectation et un retour :
+
+```
+0x00504610  MOV dword [0x00604AB0],0      0x00504650  MOV dword [0x00604A00],0
+0x00504620  MOV dword [0x00604AB0],1      0x00504660  MOV dword [0x00604A00],1
+0x00504630  MOV dword [0x00604AB0],2      0x00504670  MOV dword [0x00604A00],2
+0x00504640  MOV dword [0x00604AB0],3      0x00504680  MOV dword [0x00604A00],3
+```
+
+`DAT_00604ab0` est le statut d'écriture, `DAT_00604a00` celui de lecture — exactement les deux
+globales que `PollCardWriteStatus`/`PollCardReadStatus` sondent, et `0..3` exactement les valeurs
+que `PollCardTransfer` décode. C'est le chaînon qui manquait pour qu'un statut puisse quitter sa
+valeur d'inactivité, 4. Transcrits en huit méthodes `[UnmanagedCallersOnly]`.
+
+**Une adresse « sans corps décompilé » n'est pas une impasse quand elle est prise par adresse dans
+du code déjà lu** : neuf octets suffisaient. Le réflexe « ça demande un re-run Ghidra » a coûté ici
+plus cher que la lecture directe. À tenter avant de classer, au moins quand les adresses sont
+proches et régulièrement espacées — l'espacement de 0x10 disait déjà que les corps étaient minuscules.
+
+### Deux défauts d'aliasing de plus, et une section critique dépareillée
+
+- `DAT_00604b58/5c/60/64` et `DAT_00604b68/6c/70/74` ne sont pas huit petites structures à allouer :
+  ce sont **les poignées rendues par `Ordinal_6`**, que `FUN_005047e0`/`FUN_00504730` repassent à
+  `Ordinal_9`. Le port allouait huit blocs de 12 octets à zéro. Dix-septième à vingt-quatrième
+  instances du même défaut.
+- `SetupJoystickHandlers` appelait `Ordinal_41` (`LeaveCriticalSection`) sans son `Ordinal_40`
+  (`EnterCriticalSection`) — omis parce que le corps de l'ordinal 40 était noté « non lu ». Il fait
+  six octets. Rétabli.
+
+### `case 0x10` n'était pas un « formatage » mais la suppression, et c'est la réécriture
+
+Une fois le plantage levé, le parcours atteint `case 0x10`, jusque-là derrière
+`ThrowSaveCardUnresolved`. Sa lecture (`Legacy/Raw/Blaze/FUN_0050a910.c:487-511`) le rend
+entièrement : il supprime la sauvegarde existante (`Ordinal_20` = `DeleteFileA`) puis remet la phase
+à 0 — le `case 1` ne trouve alors plus de fichier et l'écriture normale reprend. **C'est comme ça
+que l'original réécrit une sauvegarde.**
+
+Deux détails transcrits tels quels plutôt que « corrigés » :
+
+- `Ordinal_20` rend **1 sur échec**, 0 sur succès (`NEG EAX; SBB EAX,EAX; INC EAX`).
+- la boucle de dix tentatives sort dès que l'appel rend non nul, donc c'est la *seconde* tentative —
+  sur un fichier désormais absent — qui la termine. La branche d'erreur ne se déclencherait que si
+  dix suppressions consécutives réussissaient : inatteignable.
+
+### Vérifié en jeu
+
+- Personnage déjà sauvegardé, rejoué à l'identique : aucun plantage, « Enregistrement achevé. » à
+  l'écran, fichier réécrit sur place (horodatage à jour, contenu à jour).
+- Personnage neuf dans la foulée : second fichier créé, le premier intact.
+
+```
+OpenForesia/save/Blaze-Saving@MJA@[_   24576   (LEA, réécrit)
+OpenForesia/save/Blaze-Saving@MJA@]A   24576   (PAUL, nouveau)
+```
+
+Restent derrière `ThrowSaveCardUnresolved` : les cas 4, 0xd, -5 et -3/-2.

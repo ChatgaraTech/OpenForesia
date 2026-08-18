@@ -9,7 +9,12 @@ Une entrée se retire quand elle est tranchée, et son résultat part dans `REVE
 
 ## 1. La chaîne complète de création de personnage, à la main, sans échafaudage
 
-**Ouvert depuis le 2026-08-17.**
+**Ouvert depuis le 2026-08-17. Réduit le 2026-08-18** : tout le parcours *sauf* la répartition des
+points est désormais joué en scripté, de bout en bout, jusqu'à l'écriture du fichier de sauvegarde —
+la recette est dans `test-protocol.md` (« Le parcours de création complet est scriptable »). Deux
+personnages de suite, deux fichiers distincts, aucun plantage. Ne reste ouvert que ce qui l'était
+vraiment : relever les appuis exacts de l'écran de répartition pour se passer de
+`OPENFORESIA_FORCE_CONFIRM_STATS`, et la conjonction « Gurkha » + SELECT maintenu.
 
 ### La question
 
@@ -19,8 +24,8 @@ clavier/manette uniquement**, jusqu'à ce que la partie démarre (état de jeu 1
 ### Pourquoi elle est ouverte
 
 Tous les parcours qui ont atteint l'état de jeu 1 jusqu'ici passaient par les raccourcis de test
-(`OPENFORESIA_FORCE_SUBSTATE=7`, `OPENFORESIA_FORCE_CONFIRM_STATS=1`,
-`OPENFORESIA_FORCE_CARD_NAME=1`), qui sautent la moitié des écrans. En pilotage manuel, les essais
+(`OPENFORESIA_FORCE_SUBSTATE=7`, `OPENFORESIA_FORCE_CONFIRM_STATS=1`, et `OPENFORESIA_FORCE_CARD_NAME=1`
+jusqu'à son retrait le 2026-08-18), qui sautent la moitié des écrans. En pilotage manuel, les essais
 du 2026-08-17 sont allés jusqu'au **dé de bonus** puis à la **répartition des points**, et se sont
 arrêtés là — non pas sur une erreur, mais parce que la séquence `-Then` devenait trop longue pour
 un test scripté (une vingtaine de points à répartir, soit une trentaine d'appuis).
@@ -52,7 +57,9 @@ En scripté, il faudrait d'abord relever les appuis exacts de l'écran de répar
 
 ### Note utile en attendant
 
-`OpenForesia/save/TEST` est **suivi par git** depuis le commit « Trouvé un code triche Gurkha ».
-Tant qu'il est là, tout essai de sauvegarde forcée plante au deuxième lancement
-(`ResetCardTransferStatus`/`Ordinal_67`) — voir le piège correspondant dans `test-protocol.md`. Le
-sortir du dépôt réglerait la gêne.
+`OpenForesia/save/TEST` était **suivi par git** depuis le commit « Trouvé un code triche Gurkha », et
+tant qu'il était là, tout essai de sauvegarde plantait au deuxième lancement
+(`ResetCardTransferStatus`/`Ordinal_67`) — voir le piège correspondant dans `test-protocol.md`.
+Supprimé de l'arbre de travail le 2026-08-18, en même temps que l'échafaudage qui le produisait ;
+**la suppression reste à valider par un commit**. Le piège lui-même n'a pas disparu : il se reproduit
+dès qu'on rejoue deux fois exactement le même personnage.

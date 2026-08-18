@@ -193,6 +193,7 @@ public static unsafe partial class Blaze
     // convention de code-gen, donc EAX vaut 0 exactement quand il n'y a plus d'entrée — déclaré `int`
     // ici pour pouvoir lire cette valeur, même si le vrai prototype ne la nomme pas.
     [DllImport("winsys3d.dll", EntryPoint = "#19")] private static extern int Ordinal_19(byte* dest);
+    [DllImport("winsys3d.dll", EntryPoint = "#20")] private static extern int Ordinal_20(void* pathDescriptor); // real: FUN_00a045e0, DeleteFileA — **polarité inversée** : rend 1 si la suppression a ÉCHOUÉ, 0 si elle a réussi (`NEG EAX; SBB EAX,EAX; INC EAX` en fin de corps)
     [DllImport("winsys3d.dll", EntryPoint = "#21")] private static extern IntPtr Ordinal_21(void* pathDescriptor, uint flags); // real: FUN_00a04600, CreateFileA
     [DllImport("winsys3d.dll", EntryPoint = "#22")] private static extern int Ordinal_22(IntPtr handle); // real: FUN_00a04650, CloseHandle
     [DllImport("winsys3d.dll", EntryPoint = "#23")] private static extern int Ordinal_23(IntPtr handle, int offset, uint method); // real: FUN_00a04660, SetFilePointer
@@ -360,8 +361,8 @@ public static unsafe partial class Blaze
     // winsys3d.dll ordinals used by FUN_00504460 (joystick/interrupt-style event-handler
     // (de)registration bookkeeping â€” see winsys3d.c FUN_00a040d0/FUN_00a04220 and neighbors).
     [DllImport("winsys3d.dll", EntryPoint = "#6")] private static extern void* Ordinal_6(uint messageId, uint p2, uint p3, void* callback); // real: winsys3d.c FUN_00a040d0, registers a handler, returns an opaque handle
-    [DllImport("winsys3d.dll", EntryPoint = "#10")] private static extern int Ordinal_10(void* handle); // real: winsys3d.c FUN_00a04220, unregisters a handler returned by ordinal 6
-    [DllImport("winsys3d.dll", EntryPoint = "#40")] private static extern void Ordinal_40(); // real: winsys3d.c FUN_00a04fd0 â€” TODO(REVERSE): body not read, opaque
+    [DllImport("winsys3d.dll", EntryPoint = "#10")] private static extern int Ordinal_10(void* handle); // real: winsys3d.c FUN_00a04220 — **arme** le gestionnaire (état 0x1000 → 0x2000), ce n'est pas un désenregistrement (celui-là est l'ordinal 7, FUN_00a04130)
+    [DllImport("winsys3d.dll", EntryPoint = "#40")] private static extern void Ordinal_40(); // real: winsys3d.c FUN_00a04fd0 — EnterCriticalSection(&DAT_00b6d6d8), la section que l'ordinal 41 relâche. Corps lu le 2026-08-18, RET sans argument
     [DllImport("winsys3d.dll", EntryPoint = "#63")] private static extern void Ordinal_63(int a); // confirmed no-op (FUN_00a02870)
     [DllImport("winsys3d.dll", EntryPoint = "#64")] private static extern int Ordinal_64(); // confirmed no-op, returns 0 (FUN_00a02490)
     [DllImport("winsys3d.dll", EntryPoint = "#66")] private static extern void Ordinal_66(); // confirmed no-op (FUN_00a26470)
@@ -4657,26 +4658,50 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     /// <summary>
-    /// Ghidra: FUN_00504460 @ 0x00504460. Registers, then immediately unregisters, a set of 8
-    /// winsys3d.dll "handler" slots (Ghidra: Ordinal_6/Ordinal_10 â€” see winsys3d.c FUN_00a040d0/
-    /// FUN_00a04220, a generic handler-table used elsewhere for DPMI/legacy-interrupt-style
-    /// callbacks), then sets up a joystick device via FUN_00523120 before resetting joystick
-    /// state (FUN_00504b10). TODO(REVERSE): the 8 callback targets (&LAB_00504610.._680) have no
-    /// decompiled bodies in Blaze.c, matching the ordinal-790/&LAB_00512ef0 situation elsewhere;
-    /// passed through as null. FUN_00523120 (DirectInput joystick device creation, tied to the
-    /// main window handle) has its own unread dependency chain (FUN_00522dc0/eb0/e40) â€” next
-    /// frontier, see REVERSE_STATUS.md.
+    /// Ghidra: FUN_00504460 @ 0x00504460. Enregistre huit « gestionnaires » auprès de winsys3d.dll
+    /// (Ordinal_6, <c>FUN_00a040d0</c>), les **active** (Ordinal_10, <c>FUN_00a04220</c>), puis met
+    /// en place le périphérique joystick via FUN_00523120 avant de réinitialiser son état
+    /// (FUN_00504b10). FUN_00523120 (création du périphérique DirectInput, liée au handle de la
+    /// fenêtre principale) a sa propre chaîne de dépendances non lue (FUN_00522dc0/eb0/e40).
+    ///
+    /// <para><b>Deux corrections le 2026-08-18</b>, toutes deux causes directes du 0xC0000005 dans
+    /// <c>ResetCardTransferStatus</c>/<c>Ordinal_67</c> quand un fichier de sauvegarde existait
+    /// déjà :</para>
+    /// <list type="number">
+    /// <item><c>Ordinal_10</c> n'est <b>pas</b> un désenregistrement, contrairement à ce que le
+    /// commentaire précédent affirmait : <c>FUN_00a04220</c> fait passer l'état du nœud de 0x1000 à
+    /// 0x2000, c'est-à-dire qu'il l'<b>arme</b>. Les huit gestionnaires restent donc actifs pour
+    /// toute la partie, et la DLL les appelle vraiment (<c>FUN_00a04270</c>, le répartiteur
+    /// qu'Ordinal_67/68/69 déclenchent).</item>
+    /// <item>Les huit cibles étaient passées à <c>null</c> faute de corps décompilés. La DLL
+    /// appelait donc l'adresse 0. Leurs corps sont désormais relus dans le binaire et transcrits —
+    /// voir <see cref="CardWriteStatusHandler0"/> et le commentaire qui les précède.</item>
+    /// </list>
     /// </summary>
     private static void SetupJoystickHandlers()
     {
-        void* h1 = Ordinal_6(0xf4000001, 4, 0x1000, null);
-        void* h2 = Ordinal_6(0xf4000001, 0x8000, 0x1000, null);
-        void* h3 = Ordinal_6(0xf4000001, 0x100, 0x1000, null);
-        void* h4 = Ordinal_6(0xf4000001, 0x2000, 0x1000, null);
-        void* h5 = Ordinal_6(0xf0000011, 4, 0x1000, null);
-        void* h6 = Ordinal_6(0xf0000011, 0x8000, 0x1000, null);
-        void* h7 = Ordinal_6(0xf0000011, 0x100, 0x1000, null);
-        void* h8 = Ordinal_6(0xf0000011, 0x2000, 0x1000, null);
+        Ordinal_40();
+
+        // Ghidra: DAT_00604b68/6c/70/74 puis DAT_00604b58/5c/60/64 — l'ordre compte, chaque
+        // gestionnaire publie l'état correspondant à son mode (4, 0x8000, 0x100, 0x2000 → 0..3).
+        void* h1 = Ordinal_6(0xf4000001, 4, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardWriteStatusHandler0);
+        void* h2 = Ordinal_6(0xf4000001, 0x8000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardWriteStatusHandler1);
+        void* h3 = Ordinal_6(0xf4000001, 0x100, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardWriteStatusHandler2);
+        void* h4 = Ordinal_6(0xf4000001, 0x2000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardWriteStatusHandler3);
+        void* h5 = Ordinal_6(0xf0000011, 4, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardReadStatusHandler0);
+        void* h6 = Ordinal_6(0xf0000011, 0x8000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardReadStatusHandler1);
+        void* h7 = Ordinal_6(0xf0000011, 0x100, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardReadStatusHandler2);
+        void* h8 = Ordinal_6(0xf0000011, 0x2000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardReadStatusHandler3);
+
+        s_CardWriteEventHandles_00604b68[0] = h1;
+        s_CardWriteEventHandles_00604b68[1] = h2;
+        s_CardWriteEventHandles_00604b68[2] = h3;
+        s_CardWriteEventHandles_00604b68[3] = h4;
+        s_CardReadEventHandles_00604b58[0] = h5;
+        s_CardReadEventHandles_00604b58[1] = h6;
+        s_CardReadEventHandles_00604b58[2] = h7;
+        s_CardReadEventHandles_00604b58[3] = h8;
+
         Ordinal_41();
         Ordinal_10(h1); Ordinal_10(h2); Ordinal_10(h3); Ordinal_10(h4);
         Ordinal_10(h5); Ordinal_10(h6); Ordinal_10(h7); Ordinal_10(h8);
@@ -7565,25 +7590,35 @@ public static unsafe partial class Blaze
     private static readonly ushort[] s_StatBitTable_00562ac8 =
         [1, 0x8000, 0x4000, 0x2000, 0x1000, 0x800, 0x400, 0x200, 0x100];
 
-    // Ghidra: &DAT_00566bc0 — tampon partagé où la finalisation compose le code de personnage à
-    // sept caractères avant de le recopier dans DAT_00573338+0x1fd0. La copie part de l'octet 0 du
-    // tampon (pas de l'octet 0xc où les caractères sont écrits) ; comme rien dans cette fonction
-    // n'écrit les octets 0..0xb, ils restent à zéro comme au chargement, et la copie s'arrête donc
-    // immédiatement. TODO(REVERSE) : rôle exact des douze premiers octets — peut-être un préfixe
-    // posé par une fonction non reconstruite. Transcrit tel quel plutôt que corrigé.
+    // Ghidra: `pcRam00566bc0` (Legacy/Raw/Blaze/FUN_005098f0.c:320-338) — **un pointeur logé à
+    // 0x00566bc0, pas un tampon**. Tranché le 2026-08-18 en désassemblant directement les huit
+    // sites qui le touchent dans Legacy/Blaze.exe : tous chargent l'adresse
+    // (`8B 35 / 8B 0D / 8B 15  C0 6B 56 00` = `MOV ESI,[0x566BC0]`) avant d'écrire à travers
+    // (`88 54 30 0C` = `MOV [EAX+ESI+0xC],DL`) — une déréférence de plus que la pseudo-C ne le
+    // montre, exactement le même piège que dans SetCardPathDeviceFields. Et aucun des huit n'écrit
+    // l'adresse elle-même (pas un seul `A3 C0 6B 56 00` ni `89 xx C0 6B 56 00` dans tout le
+    // .text) : le pointeur garde donc à l'exécution sa valeur de chargement, 0x00568498.
     //
-    // 2026-08-16 : les octets bruts au chargement (lus directement dans Legacy/Blaze.exe, décalage
-    // fichier 0x165bc0) NE sont PAS zéro — ce sont sept dwords qui ressemblent à une table de
-    // pointeurs (0x568498, 0, 0x568488, 0x568478... espacés de 0x10) suivis d'un 1 :
-    // 98 84 56 00 00 00 00 00 88 84 56 00 78 84 56 00 68 84 56 00 58 84 56 00 48 84 56 00 01 00 00 00.
-    // Délibérément PAS utilisé comme correctif : `DAT_00566bc0` n'apparaît nulle part ailleurs dans
-    // les 98 000 lignes de Blaze.c, donc rien ne prouve que ces octets d'état de CHARGEMENT sont
-    // encore ceux présents à l'exécution une fois qu'on atteint ce point (la forme « table de
-    // pointeurs » suggère plutôt une globale sans rapport, logée juste avant en mémoire, dont le
-    // vrai contenu à ce moment dépendrait de code non reconstruit). L'utiliser tel quel donnerait
-    // une fausse impression de correction plutôt qu'une vraie. Rester à zéro en attendant de trouver
-    // le vrai site d'écriture.
-    private static readonly byte* s_CharCodeScratch_00566bc0 = (byte*)NativeMemory.AllocZeroed(32);
+    // À 0x00568498 se trouve le gabarit du nom de fichier de sauvegarde : "Blaze-Saving" (12
+    // octets) suivi de huit espaces et d'un NUL. Les douze premiers octets, dont le rôle était noté
+    // « non établi » jusqu'ici, sont donc simplement le **préfixe littéral** que la copie vers
+    // DAT_00573338+0x1fd0 reprend depuis l'octet 0 ; la finalisation n'écrit que les sept
+    // caractères de code à +0xc..+0x12, puis le NUL à +0x13. D'où la forme des noms observés dans
+    // le jeu de 1998 : `Blaze-Saving@MVB@R_`, soit 12 + 7 caractères. Le voisinage confirme la
+    // lecture — 0x566bb8 et 0x566bbc portent les pointeurs de "SYSTEM.INI" et "BLAZE.ALL;1",
+    // 0x566bc0 est l'entrée suivante de la même table de noms de fichiers.
+    //
+    // Alloué à 32 octets (le gabarit en fait 21 avec son NUL) pour garder de la marge autour de
+    // l'écriture du NUL à l'indice 0x13.
+    private static readonly byte* s_SaveNameTemplate_00568498 = AllocSaveNameTemplate();
+
+    private static byte* AllocSaveNameTemplate()
+    {
+        byte* buffer = (byte*)NativeMemory.AllocZeroed(32);
+        byte* template = ToAnsiZ("Blaze-Saving        ");
+        for (int i = 0; template[i] != 0; i++) buffer[i] = template[i];
+        return buffer;
+    }
 
     /// <summary>
     /// Ghidra: FUN_005098f0 @ 0x005098f0 — <c>PTR_LAB_00560708[6]</c>, la répartition des points de
@@ -8070,9 +8105,13 @@ public static unsafe partial class Blaze
         FinalizeEquipmentEffects(scratch + 0x100);
 
         // Ghidra: la somme de contrôle du code à sept caractères — un accumulateur
-        // « + puis ×2 » sur scratch[0x100..0x110) (toujours nul ici : cette plage n'est écrite
-        // par aucun code déjà reconstruit) puis sur les sept statistiques brutes à
-        // scratch+0x280, repliée avec la classe/l'élément/le style choisis.
+        // « + puis ×2 » sur scratch[0x100..0x110), les seize octets du **nom tapé** au clavier
+        // virtuel (HandlePadNameEntry/HandleTypedNameEntry les y écrivent un par un, et
+        // WriteCardSaveFile les relit au même endroit pour l'en-tête du fichier), puis sur les sept
+        // statistiques brutes à scratch+0x280, repliée avec la classe/l'élément/le style choisis.
+        // Le nom entre donc bien dans le code : deux personnages ne partagent leur fichier de
+        // sauvegarde que s'ils ont à la fois le même nom, la même classe, le même élément, le même
+        // style et exactement la même répartition de points (legacy-bug.md, LB-002).
         int hash = 0;
         for (int i = 0; i < 0x10; i++) hash = (hash + scratch[0x100 + i]) * 2;
 
@@ -8088,7 +8127,7 @@ public static unsafe partial class Blaze
         // après le septième contre '\\' avant de l'écraser par le terminateur nul qui suit
         // immédiatement — un test dont le résultat est toujours effacé par l'écriture d'après,
         // donc sans effet observable ; élidé ici plutôt que transcrit pour rien.
-        byte* code = s_CharCodeScratch_00566bc0;
+        byte* code = s_SaveNameTemplate_00568498;
         for (int i = 0; i < 7; i++)
         {
             byte c = (byte)((folded & 0x1f) + 0x40);
@@ -8352,7 +8391,7 @@ public static unsafe partial class Blaze
     /// fonctions de <see cref="FinalizeCharacterStats"/>, désormais toutes transcrites.</summary>
     private static void CancelCharacterCreation(byte* scratch, int* state)
     {
-        byte* code = s_CharCodeScratch_00566bc0;
+        byte* code = s_SaveNameTemplate_00568498;
         for (int i = 0; i < 7; i++) code[0xc + i] = (byte)'0';
         code[0x13] = 0;
 
@@ -8364,7 +8403,10 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: la boucle de recopie partagée par les deux branches ci-dessus — copie
-    /// depuis le début de <c>code</c> jusqu'au premier octet nul, vers DAT_00573338+0x1fd0.</summary>
+    /// depuis le début de <c>code</c> jusqu'au premier octet nul, vers DAT_00573338+0x1fd0. Le
+    /// départ à l'octet 0 (et non 0xc, où les sept caractères de code viennent d'être écrits) est
+    /// bien celui de l'original : c'est ce qui emporte le préfixe « Blaze-Saving » du gabarit
+    /// <see cref="s_SaveNameTemplate_00568498"/> dans le nom de fichier final.</summary>
     private static void WriteCharacterCode(byte* scratch, byte* code)
     {
         int i = 0;
@@ -8503,10 +8545,14 @@ public static unsafe partial class Blaze
     //
     // De vrais Win32 CreateFileA/CloseHandle/SetFilePointer/ReadFile/WriteFile sur un dossier
     // "save\", à travers winsys3d.dll (FUN_00a04600 et consorts) — pas d'émulation de carte
-    // mémoire PS1. Cas 1 (ouverture pour charger) et 6 (écriture, WriteCardSaveFile) faits et
-    // confirmés en jeu, plus le sondage de transfert commun à tous les cas. Les cas
-    // 4/0xd/0x10/-5/-3/-2 restent derrière ThrowSaveCardUnresolved — chacun a sa propre séquence
-    // à lire.
+    // mémoire PS1. Cas 1 (ouverture pour charger), 6 (écriture, WriteCardSaveFile) et 0x10
+    // (suppression de la sauvegarde existante, 2026-08-18) faits et confirmés en jeu, plus le
+    // sondage de transfert commun à tous les cas. Les cas 4/0xd/-5/-3/-2 restent derrière
+    // ThrowSaveCardUnresolved — chacun a sa propre séquence à lire.
+    //
+    // Le cycle complet de réécriture d'une sauvegarde existante est donc câblé :
+    //   case 1 (le fichier existe) → 0xe → 0xf → 0x10 (DeleteFileA) → phase 0
+    //   → case 1 (le fichier n'existe plus) → création → case 6 (écriture).
     // =====================================================================
 
     // Ghidra: DAT_00563158 — deux pointeurs de chaîne ANSI statiques, relus directement dans
@@ -8532,18 +8578,52 @@ public static unsafe partial class Blaze
     // FUN_005046c0/FUN_00504770 sondent. 4 = prêt/inactif.
     private static int s_CardWriteStatus_00604ab0 = 4, s_CardReadStatus_00604a00 = 4;
 
-    // Ghidra: DAT_00604b58/5c/60/64 (lecture) et DAT_00604b68/6c/70/74 (écriture) — huit petits
-    // blocs d'état d'événement qu'Ordinal_9 lit par pointeur (trois dwords : voir sa note plus
-    // haut). Aucun code reconstruit ne crée le worker asynchrone qui les peuplerait
-    // (FUN_00a04320/4390 dans winsys3d.c), donc ces branches sont mortes en pratique — mais de
-    // vrais buffers plutôt que null, pour ne pas convertir une branche morte en null-deref si elle
-    // est atteinte un jour par erreur.
-    private static readonly int*[] s_CardReadEventSlots =
-        [(int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12),
-         (int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12)];
-    private static readonly int*[] s_CardWriteEventSlots =
-        [(int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12),
-         (int*)NativeMemory.AllocZeroed(12), (int*)NativeMemory.AllocZeroed(12)];
+    // Ghidra: DAT_00604b58/5c/60/64 (lecture) et DAT_00604b68/6c/70/74 (écriture) — **les huit
+    // poignées que rend Ordinal_6**, pas des blocs à fabriquer. `FUN_00504460` les stocke dans ces
+    // huit globales, et `FUN_005047e0`/`FUN_00504730` les repassent telles quelles à Ordinal_9.
+    //
+    // 2026-08-18 : dix-septième à vingt-quatrième instances du défaut d'aliasing déjà rencontré —
+    // ce port allouait ici huit blocs de 12 octets à zéro, sans rapport avec les nœuds que la DLL
+    // gère dans son propre tas. Ordinal_9 (winsys3d.c FUN_00a041d0) réarme un nœud en écrivant son
+    // champ +4 ; sur un faux bloc il ne faisait rien, et surtout les vrais nœuds ne redevenaient
+    // jamais actifs.
+    private static readonly void*[] s_CardReadEventHandles_00604b58 = new void*[4];
+    private static readonly void*[] s_CardWriteEventHandles_00604b68 = new void*[4];
+
+    // Ghidra: &LAB_00504610..&LAB_00504680 — les huit gestionnaires que `FUN_00504460` enregistre
+    // auprès de la DLL. Ghidra n'en donne aucun corps (fonctions uniquement prises par adresse,
+    // catégorie « re-run Ghidra » de CLAUDE.md), et ce port passait donc `null` — ce que la DLL
+    // appelle vraiment, d'où le 0xC0000005 dès qu'un transfert carte était sondé.
+    //
+    // Relus directement dans Legacy/Blaze.exe le 2026-08-18 : huit talons de neuf octets, tous de
+    // la même forme `C7 05 <adresse> <imm32>` puis `C3`, soit une seule affectation suivie d'un
+    // retour.
+    //
+    //   0x00504610  MOV dword [0x00604AB0],0     0x00504650  MOV dword [0x00604A00],0
+    //   0x00504620  MOV dword [0x00604AB0],1     0x00504660  MOV dword [0x00604A00],1
+    //   0x00504630  MOV dword [0x00604AB0],2     0x00504670  MOV dword [0x00604A00],2
+    //   0x00504640  MOV dword [0x00604AB0],3     0x00504680  MOV dword [0x00604A00],3
+    //
+    // Autrement dit : les quatre premiers publient l'état d'écriture, les quatre suivants l'état de
+    // lecture — exactement les deux globales que `PollCardWriteStatus`/`PollCardReadStatus`
+    // sondent, et les valeurs 0..3 exactement celles que `PollCardTransfer` décode. C'est le
+    // chaînon qui manquait pour que ces deux fonctions puissent quitter la valeur 4.
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void CardWriteStatusHandler0() => s_CardWriteStatus_00604ab0 = 0;
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void CardWriteStatusHandler1() => s_CardWriteStatus_00604ab0 = 1;
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void CardWriteStatusHandler2() => s_CardWriteStatus_00604ab0 = 2;
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void CardWriteStatusHandler3() => s_CardWriteStatus_00604ab0 = 3;
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void CardReadStatusHandler0() => s_CardReadStatus_00604a00 = 0;
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void CardReadStatusHandler1() => s_CardReadStatus_00604a00 = 1;
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void CardReadStatusHandler2() => s_CardReadStatus_00604a00 = 2;
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    private static void CardReadStatusHandler3() => s_CardReadStatus_00604a00 = 3;
 
     /// <summary>
     /// Ghidra: FUN_005128e0 @ 0x005128e0 — écrit les cinq premiers octets du chemin dans le
@@ -8588,18 +8668,21 @@ public static unsafe partial class Blaze
         while (result == 0) result = Ordinal_67(slot);
     }
 
-    /// <summary>Ghidra: FUN_005047e0 @ 0x005047e0 — réinitialise les quatre créneaux d'événement de
-    /// lecture puis le drapeau de statut lecture.</summary>
+    /// <summary>Ghidra: FUN_005047e0 @ 0x005047e0 — réarme les quatre gestionnaires de lecture
+    /// (<c>Ordinal_9(DAT_00604b58/5c/60/64)</c>) puis remet le drapeau de statut lecture à 4.</summary>
     private static void ResetCardReadEvents()
     {
-        foreach (int* slot in s_CardReadEventSlots) Ordinal_9(slot);
+        foreach (void* handle in s_CardReadEventHandles_00604b58)
+            if (handle != null) Ordinal_9((int*)handle);
         s_CardReadStatus_00604a00 = 4;
     }
 
-    /// <summary>Ghidra: FUN_00504730 @ 0x00504730 — la sœur écriture de <see cref="ResetCardReadEvents"/>.</summary>
+    /// <summary>Ghidra: FUN_00504730 @ 0x00504730 — la sœur écriture de <see cref="ResetCardReadEvents"/>,
+    /// sur <c>DAT_00604b68/6c/70/74</c>.</summary>
     private static void ResetCardWriteEvents()
     {
-        foreach (int* slot in s_CardWriteEventSlots) Ordinal_9(slot);
+        foreach (void* handle in s_CardWriteEventHandles_00604b68)
+            if (handle != null) Ordinal_9((int*)handle);
         s_CardWriteStatus_00604ab0 = 4;
     }
 
@@ -8612,6 +8695,13 @@ public static unsafe partial class Blaze
     /// <see cref="s_CardWriteStatus_00604ab0"/>. Sans conséquence pour le cas 1 (toujours appelé
     /// avec <paramref name="wait"/> à faux) ; à traiter explicitement plutôt que transcrit tel
     /// quel le jour où un appelant passera vrai.
+    ///
+    /// <para>2026-08-18 : le cas 0x10 appelle bien avec <paramref name="wait"/> à vrai, et il
+    /// n'atteint pourtant pas la garde — depuis que les huit gestionnaires
+    /// <c>&amp;LAB_00504610..680</c> sont réels, le statut a déjà quitté 4 quand on arrive là, donc
+    /// le premier test rend la valeur publiée. La garde ne subsiste que pour le cas réellement
+    /// bloquant (statut resté à 4 <em>et</em> attente demandée), où la transcription littérale
+    /// figerait le jeu au lieu de nommer le manque.</para>
     /// </summary>
     private static int PollCardWriteStatus(int slot, bool wait)
     {
@@ -9267,12 +9357,11 @@ public static unsafe partial class Blaze
                 // le créer vide puis passe en phase 6 (écriture) ; succès → lance le chargement
                 // (phase 0xe, déjà câblée) et pose le sondage de transfert ci-dessus.
                 s_CardCursorSlot_00604984 = 0;
-                if (Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_CARD_NAME") == "1"
-                    && s_SelectScratch_00573338[0x1fd0] == 0)
-                {
-                    byte* forcedName = ToAnsiZ("TEST");
-                    for (int i = 0; forcedName[i] != 0; i++) s_SelectScratch_00573338[0x1fd0 + i] = forcedName[i];
-                }
+                // L'échafaudage `OPENFORESIA_FORCE_CARD_NAME` qui injectait ici un nom « TEST » a
+                // été retiré le 2026-08-18 : il compensait le gabarit de nom vide (voir
+                // s_SaveNameTemplate_00568498), défaut de portage désormais corrigé. Le nom lu ici
+                // est celui que la finalisation vient d'écrire, « Blaze-Saving » + les sept
+                // caractères de code.
                 SetCardFileName(s_SelectScratch_00573338 + 0x1fd0);
                 SetCardPathDeviceFields();
                 IntPtr fileHandle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
@@ -9415,11 +9504,46 @@ public static unsafe partial class Blaze
                 break;
 
             case 0x10:
+            {
+                // Ghidra: Legacy/Raw/Blaze/FUN_0050a910.c:487-511. Transcrit le 2026-08-18 — ce
+                // n'était pas un « formatage » mais la **suppression de la sauvegarde existante**,
+                // dernière étape du parcours 0xe → 0xf → 0x10 qu'emprunte le cas 1 quand le fichier
+                // est déjà là. La phase repart ensuite à 0, le cas 1 ne trouve plus de fichier, et
+                // l'écriture normale reprend : c'est ainsi que l'original réécrit une sauvegarde.
                 if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 4) != 0) break;
                 if (confirmGate != 0) { s_CardPhase_00578e0c = -5; break; }
-                ThrowSaveCardUnresolved("case 0x10 — vérification avant formatage");
+
+                BindMenuLabels(LabelAt(0x1cc), 0, s_StatusDescriptor_00560728, 0);
+                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                ResetCardWriteEvents();
+                SetCardFileName(s_SelectScratch_00573338 + 0x1fd0);
+                SetCardPathDeviceFields();
+
+                // Ghidra: dix tentatives, sortie dès que l'appel rend non nul. Ordinal_20 rendant
+                // 1 sur ÉCHEC de DeleteFileA, la première suppression réussie rend 0 et la boucle
+                // repart ; c'est la seconde tentative, sur un fichier désormais absent, qui rend 1
+                // et fait sortir. La branche d'erreur ne se déclenche donc que si les dix appels
+                // ont tous réussi à supprimer — inatteignable en pratique. Transcrit tel quel,
+                // polarité comprise : ce n'est pas une coquille de lecture, c'est l'original.
+                int deleteResult = 0;
+                for (int attempts = 10; attempts != 0 && deleteResult == 0; attempts--)
+                    deleteResult = Ordinal_20(s_CardPathDescriptor_00604940);
+
+                if (deleteResult == 0)
+                {
+                    BindMenuLabels(LabelAt(0x1c4), 0, s_StatusDescriptor_00560728, 0);
+                    s_CardPhase_00578e0c = -1;
+                    break;
+                }
+
+                // Ghidra: code_r0x0050ad18 → code_r0x0050ad2f — message, puis retour à la phase 0
+                // avec le sondage de transfert coupé.
+                BindMenuLabels(LabelAt(0x198), 0, s_StatusDescriptor_00560728, 0);
+                *cardTransferPhase = 0;
+                s_CardPhase_00578e0c = 0;
                 break;
+            }
 
             case 0x11:
                 if ((dialogGate & 2) != 0) break;
