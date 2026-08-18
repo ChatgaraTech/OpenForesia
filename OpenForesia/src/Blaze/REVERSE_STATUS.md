@@ -4822,3 +4822,83 @@ structure construite**, ce n'est pas une réutilisation : c'est une seconde cons
 décompilateur a fondue dans la première. Le décalage entre les deux adresses (ici 0xC) est
 l'indice — il n'y aurait aucune raison de passer une adresse différente pour la même donnée. Aller
 directement à l'assembleur ; c'est vingt lignes à lire.
+
+## 2026-08-18 — le choix final de l'écran de sauvegarde : une seule ligne manquait
+
+Vincent a demandé de terminer le choix final de l'écran de sélection des personnages : « Définir de
+nouveaux personnages » (retour au début de l'écran) et « Constituer un groupe » (vers l'écran
+d'organisation du groupe fait plus tôt dans la journée).
+
+**Le code des deux branches était déjà là et correct** (`case 0x12` de `StepSubState7Phase`, à la
+virgule près de l'original). Ce qui manquait était une seule ligne, ailleurs, et elle empêchait le
+choix de jamais s'afficher.
+
+### Le symptôme, et pourquoi il trompait
+
+L'écran passait de « Enregistrement achevé. » directement au carrousel, sans montrer la boîte à deux
+lignes. La lecture naïve accusait le sous-système de dialogue modal — le suspect habituel de ce
+projet, `confirmGate` restant à zéro. C'était faux.
+
+### La trace, et ce qu'elle a montré
+
+Un échafaudage temporaire relevant la phase, les drapeaux du descripteur et le pointeur de flux du
+moteur de texte, image par image, a donné la chaîne complète :
+
+1. le libellé `LabelAt(0x1d8)` est **exactement le bon** :
+   `<0C>Définir de nouveaux personnages<0D>Constituer un groupe<0D><09>?<00>` — le `<09>` est le code
+   de contrôle « choix », son opérande `?` (0x3F) désigne l'entrée où déposer la réponse, et
+   `s_PanelSelection_005e9060[0x3f]` **est** `confirmGate` ;
+2. la phase 0x11 le liait bien (trace `[CARDBIND]`) ;
+3. mais à l'image suivante le flux du moteur de texte pointait sur la fin de
+   « Enregistrement achevé.<0F> », pas sur le nouveau libellé, et le drapeau levé était le bit 1
+   (attente d'appui) au lieu du bit 2 (choix armé).
+
+Quelque chose réécrivait le libellé entre les deux.
+
+### La cause : `state[2]` n'était jamais remis à -1
+
+La boucle d'image de l'écran de sélection relie le descripteur de statut **à chaque image**, tant que
+`state[2]` (`DAT_00578df0`) est positif :
+
+```c
+if (-1 < DAT_00578df0)
+    FUN_00544350(directory[0x70][DAT_00578df0 * 4], 0, &DAT_00560728, 0);
+```
+
+Le sous-état 6 entre dans le sous-état 7 avec `state[2] = 0x6e`, soit `LabelAt(0x1b8)`,
+« Enregistrement achevé. ». Et le bloc d'entrée du sous-état 7 remet `state[2]` à -1 pour reprendre
+la main — `_DAT_00578df0 = 0xffffffff;`, `Legacy/Raw/Blaze/FUN_0050a910.c:59`. **Cette ligne
+manquait.** Sans elle, la boucle d'image réécrasait « Enregistrement achevé. » par-dessus tout ce que
+la machine à phases liait, à chaque image, et la phase 0x12 trouvait son drapeau de choix à zéro :
+elle partait sur la première branche sans que rien ne s'affiche.
+
+Corrigé en même temps : le même bloc posait `s_CardPhase_00578e0c = -1` là où l'original pose `0`
+(sans conséquence observable — le bloc suivant le remet à 0 dans la même image — mais c'est un écart).
+
+### Ce que la correction débloque, au-delà du choix
+
+Le panneau de **récapitulatif du personnage** (portrait, nom, classe, élément, les huit statistiques)
+apparaît enfin sur l'écran de sauvegarde. Il était lié puis écrasé lui aussi, chaque image, par la
+même ligne manquante — personne ne l'avait relié au même défaut. C'est l'étape VI.1 de
+`Analyse/Comportement Legacy/Selection des personnages.md`.
+
+### Vérifié en jeu, les deux branches
+
+- **« Définir de nouveaux personnages »** (ligne 1, curseur par défaut) → retour au carrousel,
+  « Sélectionne un personnage. » — l'étape I de la création.
+- **« Constituer un groupe »** (BAS puis validation, `desc8c4` passe bien à 01) → « Organisation du
+  groupe », listant les deux personnages sauvegardés.
+
+La boîte Oui/Non répond donc correctement ici aussi, sans échafaudage. Combiné au constat de l'écran
+d'organisation du groupe, cela **retire le sous-système de dialogue modal de la liste des blocages** :
+il fonctionne partout où le libellé porte son code de contrôle et où le descripteur n'est pas
+réécrasé. Le blocage historique du `case 0x12` était ce réécrasement, pas le dialogue.
+
+### La leçon
+
+Quand un widget d'interface « ne s'arme jamais », vérifier d'abord **qui d'autre écrit dans son
+descripteur pendant la même image**, avant de soupçonner le mécanisme d'armement. Ici la machine à
+phases et la boucle d'image liaient toutes deux le même descripteur, et la seconde gagnait.
+
+L'échafaudage `OPENFORESIA_TRACE_CARDPHASE` de cette enquête a été retiré, comme le veut la règle du
+projet.

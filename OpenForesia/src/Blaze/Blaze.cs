@@ -9152,7 +9152,24 @@ public static unsafe partial class Blaze
             panel[0x23] = 1;
 
             s_SelectFlags_00562a48[2] = 0;
-            s_CardPhase_00578e0c = -1;
+
+            // Ghidra: `_DAT_00578df0 = 0xffffffff;` (Legacy/Raw/Blaze/FUN_0050a910.c:59).
+            // **Ligne manquante jusqu'au 2026-08-18, et c'est elle qui rendait le choix final
+            // invisible.** `state[2]` est l'index de libellé que la boucle d'image relie au
+            // descripteur de statut à chaque image, tant qu'il est positif :
+            //
+            //     if (-1 < DAT_00578df0)
+            //         FUN_00544350(directory[0x70][DAT_00578df0 * 4], 0, &DAT_00560728, 0);
+            //
+            // Le sous-état 6 entre ici avec `state[2] = 0x6e`, soit LabelAt(0x1b8),
+            // « Enregistrement achevé. » — donc sans cette remise à -1, la boucle d'image
+            // réécrivait ce libellé **par-dessus** tout ce que la machine à phases venait de lier,
+            // à chaque image. Le choix à deux lignes de la phase 0x11 était bien lié, puis
+            // aussitôt écrasé, et la phase 0x12 trouvait son drapeau de dialogue à zéro : elle
+            // partait sur « Définir de nouveaux personnages » sans que rien ne s'affiche.
+            s_SelectState_00578de8[2] = -1;
+
+            s_CardPhase_00578e0c = 0;   // Ghidra: `_DAT_00578e0c = 0`, pas -1
             s_Unknown_00562b68 = -1;
             s_CardPrevPhase_00578e10 = 0;
             s_CardPhaseChanged_00578e14 = 0;
@@ -9418,6 +9435,7 @@ public static unsafe partial class Blaze
 
         ushort buttons = *(ushort*)(pad + 2);
         byte dialogGate = s_Unknown_00560fef;
+
         byte confirmGate = s_Unknown_005e909f;
 
         // Ghidra: `uVar17` — quand un cas se contente de `break` plutôt que de sauter directement

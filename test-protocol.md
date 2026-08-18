@@ -288,6 +288,35 @@ dossiers avant de conclure.
 
 ---
 
+## Le choix final de l'écran de sauvegarde (2026-08-18)
+
+Après « Enregistrement achevé. », un appui de plus ouvre la boîte à deux lignes :
+
+```
+> Définir de nouveaux personnages    → retour au carrousel (étape I de la création)
+  Constituer un groupe               → l'écran « Organisation du groupe »
+```
+
+Le curseur démarre sur la première ligne ; **BAS puis validation** prend la seconde. En scripté :
+
+```powershell
+$env:OPENFORESIA_FORCE_CONFIRM_STATS = '1'
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 92 -Shot -WorkingDir OpenForesia `
+  -Then WAIT3,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,TYPE:ARTHUR,WAIT1,KBENTER,WAIT3,
+        ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT3,
+        ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT1,ENTER,WAIT4,
+        ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT5,ENTER,WAIT4,DOWN,WAIT3,ENTER,WAIT10
+```
+
+Retirer le `DOWN,WAIT3` pour tester l'autre branche.
+
+**Le nombre d'appuis de la queue n'est pas stable d'un run à l'autre** : réécrire une sauvegarde
+existante ajoute les phases de suppression, donc une ou deux validations de plus qu'une création
+neuve. Si la capture montre encore « Enregistrement achevé. », il manque un `ENTER` ; si elle montre
+déjà le carrousel, il y en a un de trop. Le repère fiable est la capture, pas le compte.
+
+---
+
 ## Atteindre l'écran de constitution du groupe (`RunPartyConstitution`)
 
 C'est le chemin B de l'état de jeu 1, et il est **directement accessible depuis le menu principal** :
