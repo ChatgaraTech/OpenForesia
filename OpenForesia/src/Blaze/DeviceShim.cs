@@ -718,7 +718,17 @@ public static unsafe partial class Blaze
 
         if (s_UseD3D11)
         {
-            if (!s_BackendLive) Guarded("Initialize", EnsureBackend);
+            // **Appelée à chaque image, pas seulement à la création (2026-08-18).** Le
+            // `if (!s_BackendLive)` d'avant rendait la seconde branche d'`EnsureBackend` — le
+            // redimensionnement de la cible sur le viewport courant — définitivement morte : la
+            // scène gardait pour toujours la taille du tout premier viewport. Ça ne se voyait pas
+            // tant que rien ne changeait de résolution en cours de partie ; la page « Définition de
+            // l'écran », une fois branchée, l'a montré aussitôt — le jeu dessinait en 320x240 dans
+            // le coin d'une cible restée en 960x720, par-dessus l'image précédente.
+            //
+            // Le coût par image est de deux comparaisons d'entiers : `EnsureBackend` sort tout de
+            // suite si la taille n'a pas bougé.
+            Guarded("EnsureBackend", EnsureBackend);
             if (s_BackendLive) { Guarded("BeginScene", D3D11Backend.BeginScene); return; }
         }
         // Avec le device synthétique il n'y a pas de vtable d'origine : le repli devient neutre.

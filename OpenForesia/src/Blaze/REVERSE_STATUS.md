@@ -5060,3 +5060,114 @@ actions sans liaison.
 Ce dernier point n'est apparu qu'après avoir remplacé le `OpenForesia.cfg` de test, qui portait
 encore des `0` là où l'original a `-1` — écrit par une version du port antérieure aux valeurs par
 défaut manette. Première utilité concrète du fichier de référence, le jour même de sa création.
+
+## 2026-08-18 — relecture de l'écran de configuration clavier : rien ne manque
+
+Vincent a demandé s'il restait des choses à terminer sur l'écran de configuration clavier.
+`FUN_00511d40` a été relue **en entier** contre la transcription, ligne à ligne. Réponse : non, et
+la vérification en jeu le confirme.
+
+### Ce qui a été recoupé
+
+| point | verdict |
+|---|---|
+| fenêtre de onze lignes, table de descripteurs `DAT_00562ed8` | conforme |
+| lignes d'en-tête (`kind < 0`) : libellé seul, rien d'autre | conforme |
+| liaison principale puis secondaire (`DAT_00564b58` / `DAT_00564ba8`, soit +0 et +20) | conforme |
+| court-circuit `(ligne != capture) || (x == 0xb9)` avant la secondaire | conforme, structure comprise |
+| « aucun » quand aucune des deux n'est liée | conforme |
+| franchissement d'un en-tête dans le sens du déplacement | conforme (`sel <= avant ? -1 : +1`) |
+| capture : la première touche listée trouvée enfoncée | conforme |
+| l'ancienne principale glisse en secondaire | conforme |
+| le scancode retenu est effacé partout ailleurs — **tables 0 et 1 seulement**, sur les quatre joueurs | conforme (bornes `0x28` et `0x564f18`) |
+| « rétablir standard » : joueur 1 depuis les défauts, joueurs 2-4 à zéro, **tables manette intactes** | conforme |
+| attente de relâchement après validation et après capture | conforme |
+
+### Un décalage d'une case, corrigé
+
+Seul écart trouvé : la flèche de direction était placée avec
+`s_UiLabelWidths_00589758[-kind]`. L'original lit `(&DAT_00589754)[-kind]`, et `DAT_00589754` vaut
+`DAT_00589758` **moins un entier** — donc `[-1 - kind]`, la largeur du libellé que la même ligne
+vient de dessiner. La table est indexée des deux côtés de son adresse de base (les libellés
+d'ACTION.TXT descendent depuis `[-1]`), ce qui rend l'erreur silencieuse : elle lisait une largeur
+voisine, plausible, jamais absurde. Corrigé aux deux sites.
+
+### Vérifié en jeu
+
+Options → Contrôle → Clavier : les huit actions globales avec leurs deux liaisons, l'en-tête
+« Joueur 1 » dans sa teinte, le défilement. Puis une capture réelle — validation sur la première
+ligne, appui sur F1 : la ligne passe de `NumPad 9 / Pg up` à **`F1 / NumPad 9`**, l'ancienne
+principale ayant glissé en seconde place et l'ancienne seconde étant tombée. C'est exactement
+`[cible+20] = [cible] ; [cible] = scancode`.
+
+### Nettoyage
+
+`OptionsScreenStub` renommée `OptionsPage`, et sa note « the page's own loop is not
+[reconstructed] » retirée : les deux dataient du premier jet, où seule la mise en place était
+transcrite. La boucle et ses quatre sous-pages le sont depuis longtemps. Un nom en « Stub » sur du
+code complet envoie chercher un trou qui n'existe plus.
+
+### Ce qui reste dans cette zone, et qui n'est pas du clavier
+
+La **page résolution** (`FUN_00510e60`) est la seule encore dégradée : le device synthétique
+n'expose ni le masque des modes (`+0x1c`) ni le changement effectif (`+0xE8`), donc la liste est
+vide et la page n'affiche que son titre. C'est une limite du shim graphique, pas un manque de
+transcription — le TODO est posé à cet endroit.
+
+## 2026-08-18 — la page « Définition de l'écran », et une branche de redimensionnement morte depuis toujours
+
+Vincent a demandé de terminer la page résolution — et où elle se trouve. Elle est sous
+**Options → Affichage → « Définition de l'écran »**, en sixième ligne. Cette ligne n'existe que si
+le device annonce sa capacité, ce qui est la première raison pour laquelle personne ne l'avait vue.
+
+### La page était transcrite en entier ; il manquait trois capacités du device
+
+`FUN_00510e60` était déjà là, fidèle jusqu'aux détails (la libération des huit textures, la vidange
+des `WM_QUIT`, le plafonnement de `Size` par la table `DAT_00562e00`). Ce qui manquait était côté
+`SyntheticDevice`, dont les slots non implémentés rendent zéro :
+
+| slot | rôle | ce qu'on rend, et pourquoi |
+|---|---|---|
+| `+0x1c` | masque des modes acceptés | `0x1f` — les cinq modes de la table de winsys3d (320x240 à 1024x768). Le rendu va dans une cible hors écran que `Present` met à l'échelle : tous sont rendables, quel que soit l'écran réel |
+| `+0xE0` | « le mode est-il changeable ? » | non nul — c'est ce que la page « Affichage » consulte pour faire exister sa sixième ligne |
+| `+0xE8(l, h)` | le changement effectif | non nul. **Doit** l'être : sur zéro, `ChangeResolution` (winsys3d, ordinal 749) abandonne sans poser `DAT_00a2c49c`, donc sans que le nouvel index prenne effet |
+
+Aucun mode d'affichage physique ne change chez nous, et c'est un progrès sur l'original plutôt qu'un
+écart : même image, sans reprise de l'affichage.
+
+### Le vrai défaut, que la page a révélé
+
+Une fois les trois slots posés, la liste s'affichait et le changement était accepté — mais l'écran
+se **dédoublait** : le jeu dessinait sa nouvelle image 320x240 dans le coin d'une cible restée en
+960x720, par-dessus l'image précédente.
+
+`Shim_BeginScene` n'appelait `EnsureBackend` que **si le backend n'était pas encore vivant** :
+
+```csharp
+if (!s_BackendLive) Guarded("Initialize", EnsureBackend);
+```
+
+Or la seconde branche d'`EnsureBackend` — `EnsureSceneTarget(s_SceneWidth, s_SceneHeight)`, le
+redimensionnement de la cible sur le viewport courant — n'est atteignable que quand le backend
+**est** vivant. Elle était donc **morte depuis qu'elle avait été écrite** : la cible de rendu gardait
+pour toujours la taille du tout premier viewport. Rien ne le montrait tant qu'aucun chemin ne
+changeait de résolution en cours de partie. Corrigé en appelant `EnsureBackend` à chaque image ; le
+coût est de deux comparaisons d'entiers, la fonction sortant aussitôt si la taille n'a pas bougé.
+
+**Une branche que sa propre garde rend inatteignable ne se voit pas à la lecture** — elle se lit
+comme du code normal. Ce qui l'a trouvée, c'est un chemin nouveau qui en avait besoin.
+
+### Vérifié en jeu
+
+Options → Affichage : la ligne « Définition de l'écran » apparaît. Elle ouvre la liste des cinq
+modes, `320 x 240` à `1024 x 768`, conforme à la table de `Documentation/DLL/winsys3d.md`. Passage
+en 320x240 : l'interface est rendue en 320x240 et mise à l'échelle plein cadre, sans dédoublement.
+Passage en 640x480 puis sortie : retour au menu principal, rendu correct, et le fichier de
+configuration porte bien `Resolution=2` / `Size=11` — la valeur de `Size` étant celle que la table
+`DAT_00562e00` impose pour cette résolution.
+
+### Où en est le menu Options
+
+Toutes les pages sont désormais complètes et exercées : Affichage (et ses deux filles Timing et
+Définition de l'écran), Son, Contrôle (Clavier et Manettes, avec la page des boutons par joueur).
+Il ne reste aucun `TODO(REVERSE)` ni `NotImplementedException` dans cette zone.

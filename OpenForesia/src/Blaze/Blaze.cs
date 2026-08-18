@@ -11805,7 +11805,7 @@ public static unsafe partial class Blaze
                             GetAbsShift(&shiftX, &shiftY);
                             SetAbsShift(0, 0);
                             if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
-                            OptionsScreenStub();                        // Ghidra: FUN_00512320
+                            OptionsPage();                        // Ghidra: FUN_00512320
 
                             // DEVIATION, une ligne, et mesurée. La page d'options se quitte par
                             // Échap, qui est lié au bouton 0x4000 de la manette. Au retour, la
@@ -14877,11 +14877,16 @@ public static unsafe partial class Blaze
 
 
     /// <summary>
-    /// Ghidra: FUN_00512320 @ 0x00512320 â€” the options page. Its first statement is
-    /// <c>FUN_0050fab0()</c>, which is reconstructed, so the setup runs for real here; the page's
-    /// own loop is not, and says so.
+    /// Ghidra: FUN_00512320 @ 0x00512320 — la page d'options : quatre entrées, dont la quatrième
+    /// quitte le jeu par une exception logicielle, et Échap qui libère les huit textures.
+    ///
+    /// <para><b>Renommée le 2026-08-18.</b> Elle s'appelait <c>OptionsScreenStub</c> et sa note
+    /// disait « the page's own loop is not [reconstructed] » — les deux dataient du premier jet, où
+    /// seule la mise en place (<c>FUN_0050fab0</c>) était transcrite. La boucle l'est depuis
+    /// longtemps, ainsi que les quatre sous-pages qu'elle ouvre. Un nom en « Stub » sur du code
+    /// complet coûte plus cher qu'il n'y paraît : il envoie chercher un trou qui n'existe plus.</para>
     /// </summary>
-    private static void OptionsScreenStub()
+    private static void OptionsPage()
     {
         OptionsSetup();     // Ghidra: FUN_0050fab0
 
@@ -15279,14 +15284,16 @@ public static unsafe partial class Blaze
     /// qu'il accepte par un masque de bits (slot <c>+0x1c</c>), la page en fait une liste, et une
     /// validation qui change rÃ©ellement de mode dÃ©truit les huit textures, refait la mise en place
     /// et recale le zoom.
-    /// <para>
-    /// TODO(REVERSE): le device synthÃ©tique ne porte ni <c>+0x1c</c> (le masque des modes) ni
-    /// <c>+0xE8</c> (le changement effectif, qui est ce que <c>ChangeResolution</c> appelle). Le
-    /// masque revient donc Ã  zÃ©ro, la liste est vide, et la page n'affiche que son titre. C'est
-    /// une dÃ©gradation visible et sans risque : le garde ci-dessous empÃªche d'indexer une liste
-    /// vide, ce que l'original n'a pas Ã  faire puisque son device annonce toujours au moins un
-    /// mode.
-    /// </para>
+    ///
+    /// <para><b>Complète depuis le 2026-08-18.</b> La page était transcrite en entier mais restait
+    /// vide : le device synthétique ne portait aucun des trois slots dont elle dépend. Ils sont
+    /// posés maintenant — <c>+0x1c</c> annonce les cinq modes, <c>+0xE0</c> la capacité qui fait
+    /// apparaître l'entrée dans la page « Affichage », et <c>+0xE8</c> consent au changement (voir
+    /// <c>SyntheticDevice.cs</c>). Chez nous aucun mode d'affichage physique ne change : la cible
+    /// de rendu suit le viewport, et <c>Present</c> la met à l'échelle dans la fenêtre.</para>
+    ///
+    /// <para>Le garde sur la liste vide est conservé : l'original n'en a pas besoin, son device
+    /// annonçant toujours au moins un mode, mais rien ne garantit ça d'un shim.</para>
     /// </summary>
     private static void ResolutionPage()
     {
@@ -16255,7 +16262,7 @@ public static unsafe partial class Blaze
             GetAbsShift(&shiftX, &shiftY);
             SetAbsShift(0, 0);
             if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
-            OptionsScreenStub();
+            OptionsPage();
             SetAbsShift(shiftX, shiftY);
             SaveOptionsIni();
             if (gammaBefore != s_Unknown_005d9de0)

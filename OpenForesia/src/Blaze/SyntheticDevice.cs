@@ -326,6 +326,12 @@ public static unsafe partial class Blaze
         // le jeu à une attente oisive perpétuelle, sans plantage ni progrès. On rend actif.
         vtable[0x3C / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_Active;
 
+        // Les trois capacités de la page « Résolution » — voir le bloc de commentaire sur
+        // Synth_DisplayModeMask pour ce qu'elles valent chez nous et pourquoi.
+        vtable[0x1C / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_DisplayModeMask;
+        vtable[0xE0 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_CanChangeDisplayMode;
+        vtable[0xE8 / 4] = (delegate* unmanaged[Thiscall]<void*, uint, uint, int>)&Synth_ChangeDisplayMode;
+
         // Chemin chaud : les thunks déjà écrits et éprouvés de la façade.
         vtable[0x50 / 4] = (delegate* unmanaged[Thiscall]<void*, int, int, int, int, int>)&Shim_SetViewport;
         vtable[0x5C / 4] = (delegate* unmanaged[Thiscall]<void*, void*, int, void>)&Shim_ClearTarget;
@@ -476,6 +482,53 @@ public static unsafe partial class Blaze
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static int Synth_Active(void* self) => 1;
+
+    // =====================================================================
+    // Les trois slots de la page « Résolution » (2026-08-18).
+    //
+    // Ils étaient neutres, donc à zéro, et la page en héritait deux dégradations qui se
+    // masquaient : sans `+0xE0` l'entrée n'apparaissait même pas dans la page « Affichage », et
+    // sans `+0x1c` la liste des modes était vide. La page était pourtant transcrite en entier.
+    //
+    // Ce que le vrai device rapportait, c'est ce que DirectDraw lui énumérait des modes de
+    // l'écran. Chez nous la question ne se pose pas dans les mêmes termes : le rendu va dans une
+    // cible hors écran que `D3D11Backend.Present` met à l'échelle dans la fenêtre, en conservant
+    // le rapport d'aspect. **Les cinq modes sont donc tous rendables**, quel que soit l'écran, et
+    // aucun changement de mode physique n'a lieu — ce qui est un progrès sur l'original, pas un
+    // écart : c'est la même image, sans reprise de l'affichage.
+    // =====================================================================
+
+    /// <summary>
+    /// `+0x1c` — le masque des modes d'affichage acceptés, un bit par index de la table de
+    /// `winsys3d` (`Documentation/DLL/winsys3d.md`) : 0 = 320x240, 1 = 512x384, 2 = 640x480,
+    /// 3 = 800x600, 4 = 1024x768. On les annonce tous les cinq.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_DisplayModeMask(void* self) => 0x1f;
+
+    /// <summary>
+    /// `+0xE0` — « le mode d'affichage est-il changeable ? ». C'est ce que la page « Affichage »
+    /// consulte pour décider si sa sixième ligne existe.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_CanChangeDisplayMode(void* self) => 1;
+
+    /// <summary>
+    /// `+0xE8(largeur, hauteur)` — le changement de mode proprement dit, appelé par
+    /// `ChangeResolution` (winsys3d ordinal 749). **Doit rendre non nul** : sur zéro, la fonction
+    /// abandonne sans poser `DAT_00a2c49c`, donc sans que le nouvel index de résolution prenne
+    /// effet.
+    ///
+    /// <para>Il n'y a rien à redimensionner ici. La cible de rendu ne suit pas le mode d'affichage
+    /// mais le **viewport**, que <c>SetShift</c> repose juste après depuis la page, et que le slot
+    /// `+0x50` relève pour <c>EnsureSceneTarget</c>. Cette fonction n'a donc qu'à consentir.</para>
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_ChangeDisplayMode(void* self, uint width, uint height)
+    {
+        Console.Error.WriteLine($"[SYNTH] +0xE8 mode {width}x{height} — accepté (mise à l'échelle en fenêtre)");
+        return 1;
+    }
 
     // =====================================================================
     // Objets texture synthétiques.
