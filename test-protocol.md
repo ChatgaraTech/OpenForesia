@@ -288,6 +288,27 @@ dossiers avant de conclure.
 
 ---
 
+## Capturer un écran de transition (2026-08-18)
+
+Entre deux états de jeu, `RunLoadingScreen` affiche une illustration plein cadre pendant **150
+images, soit environ 2,6 s**. C'est court, et `playtest.ps1` capture à la *fin* de sa fenêtre
+d'observation — en comptant environ une seconde entre la validation détectée et le début de cette
+fenêtre. Il faut donc **`-Seconds 0`** :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 1 -Seconds 0 -Shot -WorkingDir OpenForesia
+```
+
+À `-Seconds 2` on est déjà sur l'écran suivant, ce qui donne l'illusion que la transition n'existe
+pas. **Le repère fiable est le débit de primitives du verdict** : `1 par image` est la signature de
+l'écran de transition (une seule tuile plein cadre), contre ~380 pour la sélection des personnages
+et ~400 pour l'organisation du groupe.
+
+Transitions connues : à chaque changement d'état de jeu **sauf** vers 7, 9, 2 et 3 — donc menu
+principal → sélection des personnages, et sélection des personnages → organisation du groupe.
+
+---
+
 ## Le choix final de l'écran de sauvegarde (2026-08-18)
 
 Après « Enregistrement achevé. », un appui de plus ouvre la boîte à deux lignes :

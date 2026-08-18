@@ -4902,3 +4902,82 @@ phases et la boucle d'image liaient toutes deux le même descripteur, et la seco
 
 L'échafaudage `OPENFORESIA_TRACE_CARDPHASE` de cette enquête a été retiré, comme le veut la règle du
 projet.
+
+## 2026-08-18 — l'écran de transition entre états : deux défauts superposés, dont un de cadence
+
+Vincent a signalé qu'entre le menu principal et la sélection des personnages, « il y a une image
+qui est censée apparaître ». Elle ne l'était pas, pour **deux raisons indépendantes** qui se
+masquaient l'une l'autre.
+
+### Défaut 1 — l'image n'était pas dessinée du tout
+
+`RunLoadingScreen` (FUN_0052a440) chargeait et décodait bien la ressource, mais le champ 0 du
+descripteur de sprite — le pointeur vers l'enregistrement de texture — était laissé à `null`, avec
+un `TODO(REVERSE)` : la pseudo-C le fait pointer sur un emplacement de pile que **rien n'écrit**,
+symptôme du cadre de pile que Ghidra n'a pas récupéré sur cette fonction. Les deux tracés étaient
+donc sautés, et le port affichait 150 images vides.
+
+Résolu en désassemblant directement `Legacy/Blaze.exe`. L'original monte l'enregistrement octet par
+octet juste avant la boucle (`0x0052A51B..0x0052A53D`), puis relie son adresse au descripteur à
+chaque tour (`0x0052A57E`, `LEA EAX,[ESP+0x20]` → `MOV [ESP+0x3C],EAX`) :
+
+```
+0xE0000000   0x003F0100
+```
+
+Le second dword se recoupe tout seul : son octet 2 vaut `0x3F`, l'index de la table de pages, soit
+`s_EntityDecodeTable_005e8f00 + 0x3F * 4 = 0x005e8ffc` — **exactement** l'adresse où
+`DecodeResourceChunk` vient d'écrire quelques lignes plus haut. Le premier porte la hauteur,
+`0xE0` = 224 lignes, ce qui concorde avec le rectangle source `{0x380, 0, 0x80, 0xE0}` de la
+première recopie VRAM.
+
+Le second `TODO(REVERSE)` du même site — la destination de la seconde recopie VRAM — est levé par
+le même désassemblage, et **la transcription était déjà correcte** : le `LEA EDX,[ESP+0x34]` se lit
+avec un `PUSH` déjà passé, donc son décalage effectif est 0x30, soit `rect + 4`.
+
+### Défaut 2 — et surtout : le jeu n'avait aucune cadence
+
+Corriger le tracé ne suffisait pas : les 150 images passaient en **moins d'une seconde**, donc
+l'image restait invisible.
+
+La chaîne, remontée jusqu'au bout : le moteur n'attend jamais lui-même. `Ordinal_132`
+(winsys3d, `FUN_00a053e0`) est sa seule attente d'image, et son corps s'ouvre sur
+`switch (DAT_00a2c3b0)` dont le `case 0` **rend la main immédiatement**. Ce mode de cadencement
+n'est posé que par `SetTimingMode`, appelée depuis un seul endroit du binaire — la page « Timing »
+du menu de mise en route (`FUN_00510d40`) — jamais sur le chemin de démarrage. Le jeu de 1998
+tournait donc en mode 0, et **toute sa cadence venait du `Flip()` DirectDraw**, bloquant sur le
+retour de balayage.
+
+Notre `D3D11Backend.Present` présentait avec un intervalle de synchronisation de **0**. Passé à 1 :
+150 images mesurées à **2608 ms**, soit les 2,5 s attendues à 60 Hz.
+
+C'est un correctif d'un caractère dont la portée dépasse largement cet écran : **toutes** les
+animations du jeu tournaient à la vitesse que la carte graphique voulait bien leur donner. L'écran
+de transition est simplement celui où ça se voyait, parce que sa durée est comptée en images.
+
+Réserve assumée, notée dans le code : sur un écran à plus de 60 Hz le jeu tournera d'autant plus
+vite, là où l'original était calé sur le 60 Hz de son mode d'affichage. Un vrai limiteur à 60 images
+par seconde serait plus fidèle encore ; on se contente ici de restituer le comportement du `Flip`
+d'origine.
+
+### Vérifié en jeu
+
+Capture prise pendant la transition : l'illustration sépia du groupe (une fée, un guerrier, une
+voleuse, un chevalier sur des pavés) s'affiche plein cadre, pendant 2,6 s, entre le menu principal
+et le carrousel de sélection.
+
+### Comment capturer une transition (dans `test-protocol.md`)
+
+`playtest.ps1` capture à la fin de sa fenêtre d'observation, et le script met environ une seconde
+entre la validation détectée et le début de cette fenêtre. Pour une transition de 2,6 s, il faut
+donc **`-Seconds 0`** ; à `-Seconds 2` on est déjà sur l'écran suivant. Le repère fiable est le
+débit de primitives dans le verdict : **1 par image** est la signature de l'écran de transition,
+contre ~380 pour la sélection des personnages.
+
+### La leçon
+
+Deux défauts sur le même symptôme, dont le second masquait la correction du premier. Après avoir
+corrigé le tracé, le compteur de primitives disait « 1 par image pendant 150 images » — donc *ça
+dessinait* — alors que l'écran ne montrait rien. C'est cet écart entre « le rendu émet » et « on ne
+voit rien » qui a mené à la cadence. Un compteur qui dit oui quand l'œil dit non désigne le temps,
+pas la géométrie.

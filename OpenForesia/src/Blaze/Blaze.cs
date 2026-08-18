@@ -6082,12 +6082,13 @@ public static unsafe partial class Blaze
         // confirmed at winsys3d.c:5348, which copies a VRAM rectangle to another VRAM position.
         // The two rectangles are the eight ushorts the function opens with.
         //
-        // TODO(REVERSE): the destinations are what the lost stack frame costs here. The first call
-        // is preceded by `piStack_50 = 0; puStack_54 = 0`, which are its two pushed arguments, so
-        // (0, 0) is well supported; the second is rendered as `Ordinal_676(&uStack_28, 0, 0)`,
-        // whose source address is four bytes below the first rectangle and cannot be right. Both
-        // are transcribed with the rectangles as read; a Ghidra listing of 0x0052a440 settles the
-        // second one in minutes, the way it settled FUN_0052a1e0 and FUN_0052a280.
+        // **TODO(REVERSE) levé le 2026-08-18** — le désassemblage direct confirme la transcription
+        // telle qu'elle était. `0x0052A4F4..0x0052A507` :
+        //     LEA ECX,[ESP+0x28]   PUSH 0  PUSH 0  PUSH ECX   CALL Ordinal_676   ; &rect[0], (0,0)
+        //     PUSH 0   LEA EDX,[ESP+0x34]  PUSH 0  PUSH EDX   CALL Ordinal_676   ; &rect[4], (0,0)
+        // Le second `LEA` se lit avec un `PUSH` déjà passé, donc son décalage effectif est 0x30,
+        // soit exactement `rect + 4` — pas « quatre octets en dessous du premier rectangle » comme
+        // la pseudo-C le laissait croire. Les deux destinations sont bien (0, 0).
         ushort* rect = stackalloc ushort[8];
         rect[0] = 0x380; rect[1] = 0; rect[2] = 0x80; rect[3] = 0xe0;
         rect[4] = 0; rect[5] = 0x1ff; rect[6] = 0x100; rect[7] = 1;
@@ -6100,21 +6101,13 @@ public static unsafe partial class Blaze
         // Ghidra: the 20-byte sprite descriptor, the same shape as the main menu's â€” pointer,
         // colour, x/y, tpage/clut, index â€” and passed by address to both renderers.
         byte* sprite = s_LoadingScreenSprite;
+        *(uint**)sprite = s_LoadingScreenTextureRecord;
         *(uint*)(sprite + 0x04) = 0x1000000;
         *(ushort*)(sprite + 0x08) = 0xa0;
         *(ushort*)(sprite + 0x0a) = 0x80;
         *(ushort*)(sprite + 0x0c) = 0x1400;
         *(ushort*)(sprite + 0x0e) = 0x1249;
         *(uint*)(sprite + 0x10) = 0;
-
-        // TODO(REVERSE): the descriptor's pointer field. The original sets it to the address of a
-        // stack slot that **nothing in the pseudocode ever writes** â€” the second symptom of the
-        // lost frame. It has to be an array of 8-byte texture records, since DrawSpritePrimitive
-        // indexes it as `*(int*)sprite + sprite[4] * 8`; the menu's equivalent comes from the
-        // resource directory (`*(*(DAT_005e97c4 + 0x94) + 4)`). Left null rather than guessed, and
-        // the two draws are skipped while it is: a blank screen for the 150 frames is a visible,
-        // harmless degradation, whereas an invented pointer would fault or draw garbage.
-        bool spriteResolved = *(int*)sprite != 0;
 
         // Ghidra: iVar5 is a three-state gate â€” -1 until nothing is held (so a button carried in
         // from the previous screen cannot skip this one), 0 armed, 1 pressed and acknowledged.
@@ -6123,11 +6116,8 @@ public static unsafe partial class Blaze
 
         while (framesLeft != 0 || phase != 0)
         {
-            if (spriteResolved)
-            {
-                primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
-                primCursor = DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
-            }
+            primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            primCursor = DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
             FrameEnd(&otBase, &otEntry, &primCursor, 1, 1);
 
             // Ghidra: START (0x0008) or SQUARE (0x8000) of the current player's pad word. The word
@@ -6149,6 +6139,7 @@ public static unsafe partial class Blaze
 
             framesLeft--;
         }
+
     }
 
     /// <summary>
@@ -6184,6 +6175,41 @@ public static unsafe partial class Blaze
     /// main menu's background; see REVERSE_STATUS.md, 2026-08-14.
     /// </summary>
     private static readonly byte* s_LoadingScreenSprite = (byte*)NativeMemory.AllocZeroed(0x20);
+
+    /// <summary>
+    /// L'enregistrement de texture de 8 octets que le descripteur de l'écran de chargement désigne
+    /// par son champ 0 — **résolu le 2026-08-18 en désassemblant `FUN_0052a440` directement**, là où
+    /// la pseudo-C ne montrait qu'un emplacement de pile que rien n'écrivait (le cadre de pile perdu
+    /// dont parlait le TODO à ce site).
+    ///
+    /// <para>L'original le monte octet par octet juste avant la boucle d'image, puis relie son
+    /// adresse au descripteur à chaque tour (<c>Legacy/Blaze.exe</c>, <c>0x0052A51B..0x0052A53D</c>
+    /// puis <c>0x0052A57E</c>) :</para>
+    /// <code>
+    /// MOV [ESP+0x2C],BL      ; 0     MOV [ESP+0x30],BL      ; 0
+    /// MOV [ESP+0x2D],BL      ; 0     MOV byte [ESP+0x31],1
+    /// MOV [ESP+0x2E],BL      ; 0     MOV byte [ESP+0x32],0x3F
+    /// MOV byte [ESP+0x2F],0xE0       MOV [ESP+0x33],BL      ; 0
+    /// ...
+    /// LEA EAX,[ESP+0x20]   →   MOV [ESP+0x3C],EAX          ; descripteur+0 = &l'enregistrement
+    /// </code>
+    ///
+    /// <para>Soit les deux dwords <c>0xE0000000</c> et <c>0x003F0100</c>. Le second se recoupe de
+    /// lui-même : son octet 2 vaut <c>0x3F</c>, l'index que <see cref="DrawSpritePrimitive"/> utilise
+    /// dans la table de pages — <c>s_EntityDecodeTable_005e8f00 + 0x3F * 4 = 0x005e8ffc</c>, très
+    /// exactement l'adresse où <c>DecodeResourceChunk</c> vient d'écrire quelques lignes plus haut.
+    /// Le premier porte la hauteur, <c>0xE0</c> = 224 lignes, ce qui concorde avec le rectangle
+    /// source <c>{0x380, 0, 0x80, 0xE0}</c> de la première recopie VRAM.</para>
+    /// </summary>
+    private static readonly uint* s_LoadingScreenTextureRecord = BuildLoadingScreenTextureRecord();
+
+    private static uint* BuildLoadingScreenTextureRecord()
+    {
+        uint* record = (uint*)NativeMemory.AllocZeroed(8);
+        record[0] = 0xE0000000;
+        record[1] = 0x003F0100;
+        return record;
+    }
 
     // Ghidra: DAT_005de528 â€” the area index game state 3 loads its screen from. Never assigned in
     // the reconstructed graph yet, so it reads 0.

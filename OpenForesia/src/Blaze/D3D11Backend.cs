@@ -785,7 +785,27 @@ internal static unsafe class D3D11Backend
 
         DrawTriangles(quad, s_SceneSrv);
 
-        SilkMarshal.ThrowHResult(s_SwapChain.Present(0, 0));
+        // Intervalle de synchronisation **1**, pas 0 — c'est la cadence du jeu, pas un réglage de
+        // confort.
+        //
+        // Le jeu de 1998 ne se cadence pas lui-même : `Ordinal_132` (winsys3d, FUN_00a053e0) est la
+        // seule attente d'image du moteur, et son corps commence par `switch (DAT_00a2c3b0)` dont le
+        // `case 0` rend la main **immédiatement**. Or ce mode de cadencement n'est posé que par
+        // `SetTimingMode`, appelé au seul endroit du binaire qu'est la page « Timing » du menu de
+        // mise en route (FUN_00510d40) — jamais sur le chemin de démarrage normal. Le jeu tournait
+        // donc en mode 0, et toute sa cadence venait du `Flip()` DirectDraw, bloquant sur le
+        // retour de balayage.
+        //
+        // Présenter à 0 rendait tout le jeu libre : mesuré le 2026-08-18, l'écran de transition
+        // entre deux états — 150 images par construction, soit 2,5 s à 60 Hz — passait en **moins
+        // d'une seconde**, ce qui le rendait invisible. Toutes les animations du jeu étaient
+        // affectées de la même façon, l'écran de chargement étant simplement celui où ça se voyait.
+        //
+        // Réserve assumée : sur un écran à plus de 60 Hz, le jeu tournera d'autant plus vite, là où
+        // l'original était calé sur le 60 Hz de son mode d'affichage. Un vrai limiteur à 60 images
+        // par seconde serait plus fidèle encore ; ce n'est pas fait ici, où l'on se contente de
+        // restituer le comportement du `Flip` d'origine.
+        SilkMarshal.ThrowHResult(s_SwapChain.Present(1, 0));
 
         static TlVertex Vertex(float x, float y, float u, float v) => new()
         {
