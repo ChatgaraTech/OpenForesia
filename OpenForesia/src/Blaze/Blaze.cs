@@ -5682,10 +5682,266 @@ public static unsafe partial class Blaze
         }
 
         if (dest == s_OverrideDestC_00600904)
-            throw new NotImplementedException(
-                "FUN_0052a660, branche DAT_00600904 : trois tables de sauts d'affilee (+11 appels " +
-                "FUN_ dependants) — voir REVERSE_STATUS.md");
+        {
+            // Ghidra: `iVar1 = (zone & 0xff) * 0x10 + (sous-zone & 0xff)`, force a 0 quand la zone
+            // est 0, et FUN_00536170() (l'arret fatal) si la sous-zone depasse 0xf.
+            int index;
+            if ((s_Unknown_005de528 & 0xff) == 0) index = 0;
+            else
+            {
+                if ((s_Unknown_005de52c & 0xff) > 0xf)
+                    throw new NotImplementedException(
+                        "FUN_00536170 : l'arret fatal sur sous-zone > 0xf, non transcrit");
+                index = (s_Unknown_005de528 & 0xff) * 0x10 + (s_Unknown_005de52c & 0xff);
+            }
+
+            InstallEntityVTables(index);
+            return true;
+        }
         return false;
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Les sept tables de sauts d'entites (Ghidra: la branche DAT_00600904 de FUN_0052a660).
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Ghidra: les sept tables que la branche <c>DAT_00600904</c> installe d'affilee. Chacune est
+    /// choisie dans une table de pointeurs indexee par <c>zone * 0x10 + sous-zone</c> ; les valeurs
+    /// ci-dessous sont celles de l'**index 0**, la seule que la carte du monde atteint, relevees
+    /// dans <c>Legacy/Blaze.exe</c> et **generees mecaniquement** plutot que recopiees a la main.
+    ///
+    /// <para><c>0x00401FA0</c> revient partout : c'est la fonction au corps vide. La table
+    /// <c>0056adc8</c> est la seule pleine — soixante-quatre entrees, dont dix-neuf distinctes puis
+    /// <c>0x004734B0</c> repete, la forme classique d'une table virtuelle avec son gestionnaire par
+    /// defaut.</para>
+    /// </summary>
+    private static readonly uint[] s_VtSource_0056ad48 =
+    [
+        0x00486EE0, 0x00487260, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056adc8 =
+    [
+        0x004734B0, 0x004734B0, 0x004736D0, 0x004738A0, 0x00473A90, 0x00473CB0, 0x00473A70, 0x00473A70,
+        0x004508D0, 0x004509B0, 0x00450AA0, 0x00450BD0, 0x00450C60, 0x00473ED0, 0x004746C0, 0x004508B0,
+        0x00450760, 0x004502E0, 0x00450D30, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056aec8 =
+    [
+        0x00443100, 0x00443260, 0x004430B0, 0x00442F60, 0x00442F20, 0x00442E70, 0x00442EA0, 0x00442E20,
+        0x00445840, 0x004431F0, 0x004441F0, 0x00442E10, 0x00442DB0, 0x004457F0, 0x00442D90, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x0053DD20, 0x0053DEA0, 0x0053DF20, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056afc8 =
+    [
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x0053DCB0, 0x00401FA0, 0x0053DF90, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056b0c8 =
+    [
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00404EF0, 0x004055C0, 0x00405A70, 0x00405D60, 0x00405E70, 0x00405FE0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00404B90, 0x00404E50,
+    ];
+
+    private static readonly uint[] s_VtSource_0056b1c8 =
+    [
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056b2c8 =
+    [
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00404C80,
+    ];
+
+    /// <summary>Les sept tables actives, dans l'ordre ou l'original les remplit.</summary>
+    private static readonly uint[] s_Vt_0056ad48 = new uint[0x20];
+    private static readonly uint[] s_Vt_0056adc8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056aec8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056afc8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056b0c8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056b1c8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056b2c8 = new uint[0x40];
+
+    private static void InstallEntityVTables(int index)
+    {
+        if (index != 0)
+            throw new NotImplementedException(
+                $"Tables de sauts d'entites, index {index} (zone * 0x10 + sous-zone) : seules les " +
+                "valeurs de l'index 0 sont relevees dans Legacy/Blaze.exe. Relever les sept " +
+                "tables de cet index avant d'aller plus loin — voir REVERSE_STATUS.md");
+
+        Array.Copy(s_VtSource_0056ad48, s_Vt_0056ad48, s_Vt_0056ad48.Length);
+        Array.Copy(s_VtSource_0056adc8, s_Vt_0056adc8, s_Vt_0056adc8.Length);
+        Array.Copy(s_VtSource_0056aec8, s_Vt_0056aec8, s_Vt_0056aec8.Length);
+        Array.Copy(s_VtSource_0056afc8, s_Vt_0056afc8, s_Vt_0056afc8.Length);
+        Array.Copy(s_VtSource_0056b0c8, s_Vt_0056b0c8, s_Vt_0056b0c8.Length);
+        Array.Copy(s_VtSource_0056b1c8, s_Vt_0056b1c8, s_Vt_0056b1c8.Length);
+        Array.Copy(s_VtSource_0056b2c8, s_Vt_0056b2c8, s_Vt_0056b2c8.Length);
+
+        // Ghidra: les onze initialiseurs appeles a la suite des sept copies.
+        Init_004502d0(); Init_0045a220(); Init_0045c1f0(); Init_0045e200(); Init_004610a0();
+        Init_00467c00(); Init_00468570(); Init_0046a770(); Init_0046c530(); Init_0046e2b0();
+        Init_00470250();
+    }
+
+    /// <summary>L'appel indirect a travers une des sept tables. Comme
+    /// <see cref="CallAreaHandler"/> : <c>FUN_00401FA0</c> a un corps vide, tout le reste leve.</summary>
+    private static void CallEntityHandler(uint[] table, int slot, string name)
+    {
+        uint target = table[slot];
+        if (target == 0x00401FA0) return;   // corps vide, verifie dans Blaze.c
+
+        throw new NotImplementedException(
+            $"{name}, entree {slot} = 0x{target:X6} : gestionnaire d'entite non transcrit");
+    }
+
+    // Ghidra: &DAT_00551640.. et &DAT_00571500.. — les deux plages de parametres et d'etat par
+    // classe d'entite que les onze initialiseurs remettent a neuf. Une allocation chacune, pas
+    // cent champs separes : les initialiseurs les parcourent par pas de dword.
+    private const int EntityParamsBase = 0x00551640;
+    private static readonly byte* s_EntityParams_00551640 = (byte*)NativeMemory.AllocZeroed(0x200);
+    private static int* EntityParam(int va) => (int*)(s_EntityParams_00551640 + (va - EntityParamsBase));
+
+    private const int EntityStateBase = 0x00571500;
+    private static readonly byte* s_EntityState_00571500 = (byte*)NativeMemory.AllocZeroed(0x500);
+    private static int* EntityState(int va) => (int*)(s_EntityState_00571500 + (va - EntityStateBase));
+
+    private static void Init_004502d0() => *EntityState(0x00571540) = 0;
+    private static void Init_00467c00() => *EntityState(0x005717c8) = 0;
+    private static void Init_00468570() { *EntityState(0x00571828) = 0; *EntityState(0x0057182c) = 0; }
+    private static void Init_0046a770() { *EntityState(0x00571888) = 0; *EntityState(0x0057188c) = 0; }
+    private static void Init_0046c530() { *EntityState(0x005718b8) = 0; *EntityState(0x005718bc) = 0; }
+    private static void Init_0046e2b0() { *EntityState(0x00571918) = 0; *EntityState(0x0057191c) = 0; }
+    private static void Init_00470250() { *EntityState(0x00571978) = 0; *EntityState(0x0057197c) = 0; }
+
+    private static void Init_004610a0()
+    {
+        for (int i = 0; i < 8; i++) *EntityParam(0x005517e8 + i * 4) = unchecked((int)0xfffffaec);
+        for (int i = 0; i < 8; i++) *EntityParam(0x005517c8 + i * 4) = 0x25d;
+        for (int i = 0; i < 8; i++) *EntityParam(0x005517a8 + i * 4) = 100;
+    }
+
+    /// <summary>Ghidra: FUN_0045a220, FUN_0045c1f0 et FUN_0045e200 — trois blocs de parametres de
+    /// classe, les memes valeurs a des adresses decalees de 0x60 pour les deux premiers. Le
+    /// troisieme reordonne ses champs et n'est donc pas un simple decalage : transcrit separement.</summary>
+    private static void Init_0045a220()
+    {
+        *EntityParam(0x00551660) = 0x9c4;
+        *EntityParam(0x00551664) = 0x9c4;
+        *EntityState(0x00571690) = 0;
+        *EntityParam(0x00551668) = unchecked((int)0xfffff704);
+        *EntityParam(0x0055166c) = unchecked((int)0xfffff704);
+        for (int va = 0x00571694; va <= 0x005716b0; va += 4) *EntityState(va) = 0;
+        for (int va = 0x00551680; va <= 0x00551690; va += 4) *EntityParam(va) = 400;
+        *EntityParam(0x00551694) = 0;
+        *EntityParam(0x00551698) = 0;
+        *EntityParam(0x0055169c) = 400;
+        *EntityParam(0x005516a0) = unchecked((int)0xfffffed4);
+        *EntityParam(0x005516a4) = 100;
+        *EntityParam(0x005516a8) = 100;
+        *EntityParam(0x005516ac) = unchecked((int)0xfffffed4);
+        *EntityParam(0x00551670) = unchecked((int)0xfffff3e4);
+        *EntityParam(0x00551674) = unchecked((int)0xfffffa24);
+        *EntityParam(0x00551678) = 0x6a4;
+        *EntityParam(0x0055167c) = 0xce4;
+        *EntityParam(0x005516b0) = 0xb54;
+        *EntityParam(0x005516b4) = unchecked((int)0xfffff63c);
+        *EntityParam(0x005516b8) = unchecked((int)0xfffff63c);
+        *EntityParam(0x005516bc) = 0xb54;
+    }
+
+    private static void Init_0045c1f0()
+    {
+        *EntityParam(0x005516c0) = 0x9c4;
+        *EntityParam(0x005516c4) = 0x9c4;
+        *EntityState(0x005716e0) = 0;
+        *EntityParam(0x005516c8) = unchecked((int)0xfffff704);
+        *EntityParam(0x005516cc) = unchecked((int)0xfffff704);
+        for (int va = 0x005716e4; va <= 0x00571700; va += 4) *EntityState(va) = 0;
+        for (int va = 0x005516e0; va <= 0x005516f0; va += 4) *EntityParam(va) = 400;
+        *EntityParam(0x005516f4) = 0;
+        *EntityParam(0x005516f8) = 0;
+        *EntityParam(0x005516fc) = 400;
+        *EntityParam(0x00551700) = unchecked((int)0xfffffed4);
+        *EntityParam(0x00551704) = 100;
+        *EntityParam(0x00551708) = 100;
+        *EntityParam(0x0055170c) = unchecked((int)0xfffffed4);
+        *EntityParam(0x005516d0) = unchecked((int)0xfffff3e4);
+        *EntityParam(0x005516d4) = unchecked((int)0xfffffa24);
+        *EntityParam(0x005516d8) = 0x6a4;
+        *EntityParam(0x005516dc) = 0xce4;
+        *EntityParam(0x00551710) = 0xb54;
+        *EntityParam(0x00551714) = unchecked((int)0xfffff63c);
+        *EntityParam(0x00551718) = unchecked((int)0xfffff63c);
+        *EntityParam(0x0055171c) = 0xb54;
+    }
+
+    private static void Init_0045e200()
+    {
+        *EntityParam(0x00551738) = 0x9c4;
+        *EntityParam(0x0055173c) = 0x9c4;
+        for (int va = 0x00571730; va <= 0x00571750; va += 4) *EntityState(va) = 0;
+        *EntityParam(0x00551740) = unchecked((int)0xfffff704);
+        *EntityParam(0x00551744) = unchecked((int)0xfffff704);
+        *EntityParam(0x0055176c) = 0;
+        *EntityParam(0x00551770) = 0;
+        for (int va = 0x00551758; va <= 0x00551768; va += 4) *EntityParam(va) = 400;
+        *EntityParam(0x00551774) = 400;
+        *EntityParam(0x0055177c) = 100;
+        *EntityParam(0x00551780) = 100;
+        *EntityParam(0x00551748) = unchecked((int)0xfffff3e4);
+        *EntityParam(0x0055174c) = unchecked((int)0xfffffa24);
+        *EntityParam(0x00551750) = 0x6a4;
+        *EntityParam(0x00551754) = 0xce4;
+        *EntityParam(0x00551778) = unchecked((int)0xfffffed4);
+        *EntityParam(0x00551784) = unchecked((int)0xfffffed4);
+        *EntityParam(0x00551788) = 0xf3c;
+        *EntityParam(0x0055178c) = unchecked((int)0xfffff63c);
+        *EntityParam(0x00551790) = unchecked((int)0xfffff63c);
+        *EntityParam(0x00551794) = 0xb54;
     }
 
     /// <summary>Ghidra: &amp;DAT_005de558 — trente-neuf dwords remis a zero a chaque chargement de

@@ -5681,3 +5681,71 @@ Le prochain tour a un choix propre, avec les deux coûts connus :
    lignes. Bornée, mais aveugle tant que (1) n'existe pas.
 
 Le (1) est le bon ordre : il rend le (2) vérifiable au lieu de l'inverse.
+
+---
+
+## 2026-08-18 (suite) — La branche sentinelle C, et une correction de mesure
+
+### Fait : les sept tables de sauts d'entités
+
+`FUN_0052a660`, branche `DAT_00600904`, est transcrite. Ce n'était pas « trois tables + 11 appels »
+comme la note le disait, mais **sept** copies (0x20 + 0x40 × 6) suivies de onze initialiseurs.
+
+Les sept tables de l'index 0 — le seul que la carte du monde atteigne, l'index valant
+`zone * 0x10 + sous-zone` et étant forcé à 0 quand la zone est 0 — sont relevées dans
+`Legacy/Blaze.exe` et **générées mécaniquement**, pas recopiées à la main. Répartition :
+
+| table | entrées | non vides |
+|---|---|---|
+| `0056ad48` | 32 | 2 |
+| `0056adc8` | 64 | 64 (19 distinctes puis `0x004734B0` répété — un défaut par défaut) |
+| `0056aec8` | 64 | 18 |
+| `0056afc8` | 64 | 2 (entrées 8 et 10) |
+| `0056b0c8` | 64 | 8 |
+| `0056b1c8` | 64 | 0 |
+| `0056b2c8` | 64 | 1 |
+
+Les onze initialiseurs sont tous des feuilles (266 lignes en tout) qui remettent à neuf deux plages
+de paramètres par classe d'entité. Modélisées en deux arènes, `s_EntityParams_00551640` et
+`s_EntityState_00571500` — une allocation chacune, pas cent champs séparés.
+
+L'appel indirect que `FUN_00516350` fait juste après (`PTR_FUN_0056afc8`) vise l'entrée **0** de la
+table `0056afc8`, qui vaut `FUN_00401FA0` : un no-op vérifié, pas une supposition.
+
+### Correction : `FUN_004747F0` fait ~723 octets, pas 242
+
+La note précédente donnait 242 octets, « du `SUB ESP,8` d'entrée au premier `RET` ». **C'est faux** :
+ce `RET` est l'une des sorties, pas la fin. Neuf sauts `Jcc rel32` répartis sur
+`0x00474872`..`0x00474A33` convergent tous vers un épilogue commun en `0x00474ABE`, et la dernière
+sortie est en `0x00474AC3`. La fonction couvre donc **`0x004747F0`..`0x00474AC3`, soit ~723 octets**,
+et les « petites fonctions » que j'avais cru voir après le premier `RET` sont ses blocs de queue.
+
+Cela change la recommandation. 242 octets linéaires se décodent à la main ; 723 octets avec neuf
+branches convergentes et une logique de drapeaux dense, non — c'est exactement le travail d'un
+décompilateur. **C'est une demande de re-passe Ghidra ciblée sur `0x004747F0`**, pas un exercice de
+lecture.
+
+Ce que le début révèle quand même : la fonction éteint des bits dans `DAT_005E9840/41`,
+`DAT_005E9000/01/06`, compte les bits levés de `DAT_005E9000` dans ESI, et compare
+`DAT_005DE52C`/`DAT_005DE530` (sous-zone et sa voisine) à zéro — c'est une **machine de transition
+de sous-zone**, pas un rendu.
+
+### `FUN_00516350` n'est pas livrée, et pourquoi
+
+Elle est en aval de `FUN_004747F0` dans la boucle (`FUN_00516250` d'abord, elle ensuite), donc
+inexerçable aujourd'hui. Mesuré avant de renoncer : six aides directes manquantes — `FUN_00532770`
+(27), `FUN_005352c0` (15), `FUN_005355f0` (56), `FUN_005330d0` (113), `FUN_00533940` (375),
+`FUN_00535050` (33) — soit **619 lignes**, plus les 455 de la fonction, plus une trentaine de
+symboles d'arène nouveaux (`0x5f2xxx`, `0x5f7xxx`, `0x5faxxx`, `0x600xxx`, `0x5ecxxx`, `0x5edxxx`,
+`0x5ddxxx`). `FUN_005355f0` a en prime un défaut Ghidra propre : sa borne de boucle est rendue
+`0x180006` là où le compte d'entrées est attendu, et son second rectangle d'envoi VRAM est un
+`&stack0xfffffff0` non résolu.
+
+L'écrire à moitié aurait été pire que ne pas l'écrire. Deux chemins propres pour la suite :
+
+1. **Re-passe Ghidra sur `0x004747F0`** — lève le verrou pour de bon et rend `FUN_00516350`
+   vérifiable dès qu'elle est écrite. C'est le bon ordre.
+2. **Un échafaudage explicitement étiqueté** qui fait de `CallAreaHandler` un no-op tracé, le temps
+   d'écrire et d'exercer `FUN_00516350`. Défendable — le projet a le précédent de
+   `OPENFORESIA_FORCE_SUBSTATE` — mais c'est une déviation de comportement, à décider, pas à
+   prendre en passant.
