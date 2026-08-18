@@ -17114,45 +17114,7 @@ public static unsafe partial class Blaze
 
         // --- Une ligne de texte par sauvegarde : nom, classe, niveau -----------------------
         int entryCount = s_CardEntryCount_00604981;
-        for (int entry = 0, rowOffset = 0; entry < entryCount; entry++, rowOffset += PartyRowStride)
-        {
-            byte* row = s_PartyRowText_005e8640 + rowOffset;
-
-            SetCardFileName(s_CardDirectoryEntries_006049bc + entry * 0x28);
-            SetCardPathDeviceFields();
-
-            IntPtr handle = Ordinal_21(s_CardPathDescriptor_00604940, 1);
-            int written;
-            if ((long)handle < 0)
-            {
-                // Ghidra: neuf octets copiés depuis s__________00566b8c (deux dwords puis l'octet
-                // 8) — la ligne « fichier illisible ».
-                for (int i = 0; i < 9; i++) row[i] = s_DashesLabel_00566b8c[i];
-                written = 9;
-            }
-            else
-            {
-                Ordinal_24(handle, scratch, 0x2000);
-                Ordinal_22(handle);
-                // Les seize octets du nom, à +0x100 de l'enregistrement — le même champ que
-                // WriteCardSaveFile encode dans l'en-tête du fichier.
-                for (int i = 0; i < 16; i++) row[i] = scratch[0x100 + i];
-                written = 16;
-            }
-
-            // Ghidra: la longueur utile s'arrête au premier octet nul, plafonnée à 0xb.
-            int length = 0;
-            while (length < 0xb && row[length] != 0) length++;
-            _ = written;
-            for (int i = length; i < 0xb; i++) row[i] = (byte)' ';
-
-            // Quatre octets d'abréviation de classe en 0xb..0xe, puis 'N' en 0xf et le niveau en
-            // décimal à partir de 0x10.
-            int classIndex = scratch[0x150] & 7;
-            for (int i = 0; i < 4; i++) row[0xb + i] = s_ClassAbbrev_0056c868[classIndex * 5 + i];
-            row[0xf] = LevelPrefix_0056c890;
-            FormatDecimal(row + 0x10, *(ushort*)(scratch + 0x144));
-        }
+        BuildSaveDirectoryRows(scratch, entryCount);
 
         // Ghidra: 0x19 dwords à zéro depuis &DAT_005e85c0 — l'ordre de sélection, remis à neuf.
         NativeMemory.Clear(s_PartySelectionOrder_005e85c0, 0x64);
@@ -19067,14 +19029,17 @@ public static unsafe partial class Blaze
                     throw new NotImplementedException(
                         "FUN_00524880 : le sous-ecran « Invertaire » du menu objets (1377 lignes)");
                 case 1:
-                    throw new NotImplementedException(
-                        "FUN_005277b0 : le sous-ecran « Enchere » du menu objets (267 lignes)");
+                    primCursor = ItemMenuAuctionScreen(otBase, otEntry, primCursor, pad);
+                    break;
                 case 3:
                     throw new NotImplementedException(
                         "FUN_00527e30 : le troisieme sous-ecran du menu objets (683 lignes)");
                 case 4:
-                    throw new NotImplementedException(
-                        "FUN_005298c0 : la fermeture de sous-ecran du menu objets (84 lignes)");
+                    // Ghidra: FUN_005298c0(); DAT_00566ac8 = 0xffffffff; puis **pas de break** :
+                    // la fermeture retombe volontairement dans le default de l'original.
+                    CloseItemMenu();
+                    s_ItemMenuSubState_00566ac8 = -1;
+                    break;
                 default:
                     break;
             }
@@ -19239,5 +19204,358 @@ public static unsafe partial class Blaze
 
         BindMenuLabels(buffer, 0, s_ItemMenuTitleDescriptor_005658a8, 0);
         return RunTextEngine(primCursor, s_ItemMenuTitleDescriptor_005658a8);
+    }
+
+    /// <summary>
+    /// Ghidra: la construction des lignes du répertoire de sauvegardes — **le même bloc écrit deux
+    /// fois dans l'original**, une fois en tête de <c>FUN_00536ea0</c> (l'écran d'organisation du
+    /// groupe) et une fois en tête de <c>FUN_005277b0</c> (le sous-écran « Enchère » du menu
+    /// objets), à la virgule près. Extrait ici plutôt que recopié, comme les <c>Retry…CardFile</c>.
+    ///
+    /// <para>Une ligne de 0x16 octets par entrée : le nom sur 11 caractères complété d'espaces,
+    /// l'abréviation de classe sur 4, <c>'N'</c>, puis le niveau en décimal. Un fichier qui ne
+    /// s'ouvre pas donne la ligne de huit tirets.</para>
+    /// </summary>
+    private static void BuildSaveDirectoryRows(byte* scratch, int entryCount)
+    {
+        for (int entry = 0, rowOffset = 0; entry < entryCount; entry++, rowOffset += PartyRowStride)
+        {
+            byte* row = s_PartyRowText_005e8640 + rowOffset;
+
+            SetCardFileName(s_CardDirectoryEntries_006049bc + entry * 0x28);
+            SetCardPathDeviceFields();
+
+            IntPtr handle = Ordinal_21(s_CardPathDescriptor_00604940, 1);
+            if ((long)handle < 0)
+            {
+                // Ghidra: neuf octets copiés depuis s__________00566b8c (deux dwords puis l'octet
+                // 8) — la ligne « fichier illisible ».
+                for (int i = 0; i < 9; i++) row[i] = s_DashesLabel_00566b8c[i];
+            }
+            else
+            {
+                Ordinal_24(handle, scratch, 0x2000);
+                Ordinal_22(handle);
+                // Les seize octets du nom, à +0x100 de l'enregistrement — le même champ que
+                // WriteCardSaveFile encode dans l'en-tête du fichier.
+                for (int i = 0; i < 16; i++) row[i] = scratch[0x100 + i];
+            }
+
+            // Ghidra: la longueur utile s'arrête au premier octet nul, plafonnée à 0xb.
+            int length = 0;
+            while (length < 0xb && row[length] != 0) length++;
+            for (int i = length; i < 0xb; i++) row[i] = (byte)' ';
+
+            // Quatre octets d'abréviation de classe en 0xb..0xe, puis 'N' en 0xf et le niveau en
+            // décimal à partir de 0x10.
+            int classIndex = scratch[0x150] & 7;
+            for (int i = 0; i < 4; i++) row[0xb + i] = s_ClassAbbrev_0056c868[classIndex * 5 + i];
+            row[0xf] = LevelPrefix_0056c890;
+            FormatDecimal(row + 0x10, *(ushort*)(scratch + 0x144));
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Le sous-écran « Enchère » (Ghidra: FUN_005277b0) et la fermeture (FUN_005298c0).
+    // ---------------------------------------------------------------------------------------
+
+    private static ref int s_ItemMenuScroll_005de4c4 => ref *ItemMenuState(0x005de4c4);
+    private static ref int s_ItemMenuSelection_005de4c8 => ref *ItemMenuState(0x005de4c8);
+    private static ref int s_ItemMenuChosen_005de4cc => ref *ItemMenuState(0x005de4cc);
+    private static ref int s_ItemMenuPhase_005de4d0 => ref *ItemMenuState(0x005de4d0);
+    private static ref int s_Unknown_005de4e4 => ref *ItemMenuState(0x005de4e4);
+    private static ref int s_ItemMenuLoaded_005de4e8 => ref *ItemMenuState(0x005de4e8);
+
+    /// <summary>
+    /// Ghidra: FUN_005277b0 @ 0x005277b0 — le sous-écran « Enchère » : la même liste de
+    /// sauvegardes que l'écran d'organisation du groupe, dans laquelle on choisit jusqu'à quatre
+    /// personnages, mais rendue plus à gauche et plus haut (x 0x28 au lieu de 0x48, y +0x26 au lieu
+    /// de +0x32) parce que la page du menu objets est cadrée en 256x224.
+    ///
+    /// <para>Il partage sa construction de lignes avec <see cref="RunPartyConstitution"/> — voir
+    /// <see cref="BuildSaveDirectoryRows"/>. Ce qui lui est propre : il ne charge la liste qu'une
+    /// fois (<see cref="s_ItemMenuLoaded_005de4e8"/>), il sort vers le sous-écran 3 plutôt que vers
+    /// un état de jeu, et sa sortie par CROIX ramène à l'écran racine.</para>
+    ///
+    /// <para><b>Aucune sauvegarde du tout</b> : il repasse aussitôt à l'écran racine, sans rien
+    /// afficher — le pendant du <c>s_GameStateId = 4</c> de l'écran d'organisation.</para>
+    /// </summary>
+    private static uint* ItemMenuAuctionScreen(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
+    {
+        s_PartySize_005e9020 = 0;
+        byte* mainMem = GetMainMemPtr();
+
+        if (s_ItemMenuLoaded_005de4e8 == 0)
+        {
+            JoystickResetState(false);
+            LoadSaveDirectory();
+
+            int count = s_CardEntryCount_00604981;
+            BuildSaveDirectoryRows(mainMem + 0xf0000, count);
+
+            // Ghidra: 0x19 dwords à zéro depuis &DAT_005e85c0.
+            NativeMemory.Clear(s_PartySelectionOrder_005e85c0, 0x64);
+
+            if (count == 0)
+            {
+                s_ItemMenuSubState_00566ac8 = -1;
+                return primCursor;
+            }
+
+            BindMenuLabels(s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
+            BindMenuLabels(LabelAt(0x34), 0, s_ItemMenuTitleDescriptor_005658a8, 0);
+            s_ItemMenuLoaded_005de4e8++;
+            s_ItemMenuPhase_005de4d0 = 0;
+        }
+        else if (s_ItemMenuLoaded_005de4e8 != 1)
+        {
+            return primCursor;
+        }
+
+        int entryCount = s_CardEntryCount_00604981;
+
+        if (s_ItemMenuPhase_005de4d0 != 0)
+        {
+            if (s_ItemMenuPhase_005de4d0 == 3)
+            {
+                if ((pad[3] & 0xc0) != 0) { s_GameStateId = 0; return primCursor; }
+            }
+            else if (s_ItemMenuPhase_005de4d0 == 4)
+            {
+                // Le rechargement des membres retenus, dans le même ordre que l'écran
+                // d'organisation du groupe : l'entrée dont l'ordre vaut la place courante + 1, et
+                // l'entrée 0 en repli si aucune ne correspond.
+                byte* member = mainMem + 0xf0000;
+                s_PartySize_005e9020 = 0;
+                while (s_PartySize_005e9020 < s_ItemMenuChosen_005de4cc)
+                {
+                    int index = 0;
+                    while (index < entryCount
+                        && s_PartySelectionOrder_005e85c0[index] != s_PartySize_005e9020 + 1) index++;
+                    if (index == entryCount) index = 0;
+
+                    SetCardFileName(s_CardDirectoryEntries_006049bc + index * 0x28);
+                    SetCardPathDeviceFields();
+
+                    *(uint*)(member + 0x1ffc) = 0;
+                    IntPtr handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
+                    RetrySeekAndReadCardFile(handle, member, 0, 0x2000);
+                    RetryCloseCardFile(handle);
+
+                    s_PartySize_005e9020++;
+                    member += 0x2000;
+                }
+
+                // Ghidra: tout le bloc de sélection remis à zéro, puis passage au sous-écran 3.
+                s_ItemMenuScroll_005de4c4 = 0;
+                s_ItemMenuSelection_005de4c8 = 0;
+                s_ItemMenuChosen_005de4cc = 0;
+                s_ItemMenuPhase_005de4d0 = 0;
+                s_ItemMenuSubState_00566ac8 = 3;
+                s_ItemMenuCursor_005de4e0 = 0;
+                s_Unknown_005de4e4 = 0;
+                s_ItemMenuLoaded_005de4e8 = 0;
+                UploadPartyIconTextures();   // Ghidra: FUN_00535500
+            }
+        }
+        else
+        {
+            // --- La navigation, seulement hors phase ----------------------------------------
+            ushort repeat = *(ushort*)(pad + 6);
+
+            if ((repeat & 0x40) != 0)
+            {
+                if (s_ItemMenuSelection_005de4c8 < entryCount - 1)
+                {
+                    int next = s_ItemMenuSelection_005de4c8 + 1;
+                    if (s_ItemMenuScroll_005de4c4 + 5 < next)
+                        s_ItemMenuScroll_005de4c4 = s_ItemMenuSelection_005de4c8 - 4;
+                    s_ItemMenuSelection_005de4c8 = next;
+                    PlayUiSound3A();
+                }
+            }
+            else if ((repeat & 0x10) != 0 && s_ItemMenuSelection_005de4c8 > 0)
+            {
+                s_ItemMenuSelection_005de4c8--;
+                if (s_ItemMenuSelection_005de4c8 < s_ItemMenuScroll_005de4c4)
+                    s_ItemMenuScroll_005de4c4 = s_ItemMenuSelection_005de4c8;
+                PlayUiSound3A();
+            }
+
+            // START, avec au moins un personnage retenu : passer au rechargement.
+            if ((pad[2] & 8) != 0 && s_ItemMenuChosen_005de4cc > 0)
+            {
+                PlayUiSound38();
+                s_ItemMenuPhase_005de4d0 = 4;
+            }
+
+            // CARRÉ : retenir ou retirer la ligne courante — même resserrement des rangs que
+            // l'écran d'organisation du groupe.
+            if ((pad[3] & 0x80) != 0)
+            {
+                int row = s_ItemMenuSelection_005de4c8;
+                if (s_PartySelectionOrder_005e85c0[row] == 0)
+                {
+                    if (s_ItemMenuChosen_005de4cc < 4)
+                    {
+                        s_ItemMenuChosen_005de4cc++;
+                        s_PartySelectionOrder_005e85c0[row] = (byte)s_ItemMenuChosen_005de4cc;
+                        PlayUiSound38();
+                        if (s_ItemMenuChosen_005de4cc == 4) s_ItemMenuPhase_005de4d0 = 4;
+                    }
+                    else
+                    {
+                        PlayUiSound3B();
+                    }
+                }
+                else
+                {
+                    byte removed = s_PartySelectionOrder_005e85c0[row];
+                    for (int i = 0; i < entryCount; i++)
+                        if (removed < s_PartySelectionOrder_005e85c0[i])
+                            s_PartySelectionOrder_005e85c0[i]--;
+                    s_PartySelectionOrder_005e85c0[row] = 0;
+                    s_ItemMenuChosen_005de4cc--;
+                    PlayUiSound38();
+                }
+            }
+
+            // CROIX : revenir à l'écran racine.
+            if ((pad[3] & 0x40) != 0) s_ItemMenuSubState_00566ac8 = -1;
+        }
+
+        // --- Les six lignes visibles ------------------------------------------------------
+        int windowEnd = s_ItemMenuScroll_005de4c4 + 6;
+        if (entryCount < windowEnd) windowEnd = entryCount;
+
+        int* draw = stackalloc int[8];
+        byte* d = (byte*)draw;
+        NativeMemory.Clear(d, 32);
+
+        for (int i = s_ItemMenuScroll_005de4c4; i < windowEnd; i++)
+        {
+            byte* row = s_PartyRowText_005e8640 + i * PartyRowStride;
+            bool chosen = s_PartySelectionOrder_005e85c0[i] != 0;
+
+            EmitViewportRect(otBase, &primCursor);
+
+            int bank = i >> 4;
+            *(short*)(d + 0x10) = 0;
+            s_RowSpriteRecord_00563148[0] = (byte)(i << 4);
+            s_RowSpriteRecord_00563148[1] = (byte)(bank * 0x40 + 0x20);
+            *(byte**)d = s_RowSpriteRecord_00563148;
+            *(uint*)(d + 4) = 0x1000000;
+            *(short*)(d + 8) = 0x28;
+            *(short*)(d + 0xa) = (short)((i - s_ItemMenuScroll_005de4c4) * 0x14 + 0x26);
+
+            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xf8) = 0xf;
+            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xfa) =
+                (ushort)(((i << 4) >> 4) & 0xf | (bank + 0x1fe) * 0x40);
+
+            primCursor = DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
+            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            EmitClipRect(otBase, &primCursor);
+
+            *(short*)(d + 8) += 0x1e;
+            *(short*)(d + 0xa) += 4;
+            *(uint*)(d + 4) = chosen ? 0x1000000u : 0x404040u;
+            *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
+            primCursor = DrawTextRun(otBase, primCursor, draw, row, 0, 0, PartyRowStride);
+
+            if (s_ItemMenuSelection_005de4c8 == i)
+            {
+                EmitViewportRect(otBase, &primCursor);
+                *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                *(short*)(d + 0xa) -= 2;
+                *(short*)(d + 0x10) = 0x18;
+                *(uint*)(d + 4) = 0x1000000;
+                *(short*)(d + 8) = 0x14;
+                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                EmitClipRect(otBase, &primCursor);
+            }
+        }
+
+        return primCursor;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005298c0 @ 0x005298c0 — la fermeture du menu objets : les quatre membres du
+    /// groupe sont **réécrits dans leurs fichiers de sauvegarde**, chacun avec sa liste d'objets
+    /// fusionnée.
+    ///
+    /// <para>Par membre : on rouvre son fichier (le nom vient de son propre enregistrement, à
+    /// <c>+0x1fd0</c> — le même champ que la création y dépose), on relit deux extents dans le
+    /// tampon de travail, on y fusionne les objets, on recalcule la somme de contrôle, et on
+    /// réécrit trois extents.</para>
+    ///
+    /// <para><b>Deux bizarreries de l'original, transcrites telles quelles.</b> D'abord les deux
+    /// lectures visent le **même tampon** : celle de <c>0x3f00</c> sur 0x100 octets est aussitôt
+    /// écrasée par celle de <c>0x4000</c> sur 0x2000. Ensuite <c>DAT_005de4e0</c>, qui est le
+    /// curseur de l'écran racine, sert ici de compteur de membre et ressort à 4 ; l'écran racine le
+    /// ramène à 0 par son propre plafonnement à la première image suivante.</para>
+    /// </summary>
+    private static void CloseItemMenu()
+    {
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null) return;
+
+        byte* merged = mainMem + 0x1b4000;
+
+        for (s_ItemMenuCursor_005de4e0 = 0; s_ItemMenuCursor_005de4e0 < 4; s_ItemMenuCursor_005de4e0++)
+        {
+            byte* record = mainMem + (s_ItemMenuCursor_005de4e0 + 0x78) * 0x2000;
+
+            SetCardFileName(record + 0x1fd0);
+            SetCardPathDeviceFields();
+
+            IntPtr handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
+            RetrySeekAndReadCardFile(handle, merged, 0x3f00, 0x100);
+            RetryCloseCardFile(handle);
+
+            handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
+            RetrySeekAndReadCardFile(handle, merged, 0x4000, 0x2000);
+            RetryCloseCardFile(handle);
+
+            // Dix emplacements d'objet à +0x300, pas de 0x280 octets. Un emplacement n'est fusionné
+            // que si son mot de drapeaux à +0x12 porte 0x8000 sans 0x4000.
+            byte* entry = record + 0x300;
+            for (int slot = 0; slot < 10; slot++, entry += 0xa0 * sizeof(int))
+            {
+                ushort flags = *(ushort*)(entry + 0x12);
+                if ((flags & 0x4000) != 0 || (flags & 0x8000) == 0) continue;
+
+                // La liste fusionnée est une suite d'enregistrements de 0x10 octets, terminée par
+                // un premier octet nul. On y cherche les quatre premiers dwords de l'emplacement.
+                byte* candidate = merged;
+                if (*candidate != 0)
+                {
+                    bool found = false;
+                    while (true)
+                    {
+                        int same = 0;
+                        while (same < 4 && ((int*)entry)[same] == ((int*)candidate)[same]) same++;
+                        if (same == 4) { found = true; break; }
+                        candidate += 0x10;
+                        if (*candidate == 0) break;
+                    }
+                    if (found || *candidate != 0) continue;
+                }
+
+                // Absent : on l'ajoute sur place, à l'octet terminateur.
+                for (int i = 0; i < 0x10; i++) candidate[i] = entry[i];
+            }
+
+            // La même somme de contrôle signée sur 0x1ffc octets que partout ailleurs.
+            int checksum = 0;
+            for (int i = 0; i < 0x1ffc; i++) checksum += (sbyte)record[i];
+            *(int*)(record + 0x1ffc) = checksum;
+
+            handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 2);
+            RetrySeekAndWriteCardFile(handle, record, 0, 0x2000);
+            RetrySeekAndWriteCardFile(handle, record + 0x1f00, 0x3f00, 0x100);
+            RetrySeekAndWriteCardFile(handle, merged, 0x4000, 0x2000);
+            RetryCloseCardFile(handle);
+        }
     }
 }

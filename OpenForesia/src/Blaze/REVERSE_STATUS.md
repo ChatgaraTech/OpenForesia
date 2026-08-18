@@ -5253,3 +5253,52 @@ seul tenant plutôt qu'en vingt champs — l'application directe de la leçon d'
 
 Menu principal → « Menu objets » : le titre « - Utilisation des objets - », les trois lignes avec
 leur curseur, et le panneau du bas « Sélectionne un menu. ». Environ 387 primitives par image.
+
+## 2026-08-18 — menu objets : la fermeture (FUN_005298c0) et « Enchère » (FUN_005277b0)
+
+Suite de l'entrée précédente. Deux des quatre sous-écrans restants sont transcrits ; il reste
+`FUN_00524880` (1377 lignes) et `FUN_00527e30` (683).
+
+### « Enchère » est l'écran d'organisation du groupe, redessiné ailleurs
+
+`FUN_005277b0` et `FUN_00536ea0` partagent **la même construction de lignes, à la virgule près** :
+même table `DAT_005e8640`, même ordre de sélection `DAT_005e85c0`, même format « nom sur 11
+caractères, abréviation de classe, `N`, niveau ». Extraite en `BuildSaveDirectoryRows` et appelée
+des deux côtés, comme les `Retry…CardFile` l'avaient été.
+
+Ce qui diffère tient en trois points : les coordonnées (x 0x28 au lieu de 0x48, y +0x26 au lieu de
++0x32, curseur en 0x14 au lieu de 0x34 — la page du menu objets est cadrée en 256x224) ; un drapeau
+de chargement unique (`DAT_005de4e8`) qui évite de relire le répertoire à chaque image ; et la
+sortie, qui va vers le sous-écran 3 au lieu d'un état de jeu, CROIX ramenant à l'écran racine.
+
+Sans aucune sauvegarde, l'écran repasse aussitôt à la racine — le pendant du `s_GameStateId = 4` de
+son jumeau.
+
+### La fermeture est un ré-enregistrement des quatre membres
+
+`FUN_005298c0` rouvre le fichier de chaque membre (le nom vient de son propre enregistrement, à
+`+0x1fd0`), relit deux extents dans le tampon de travail, **fusionne les objets**, recalcule la
+somme de contrôle et réécrit trois extents.
+
+La fusion : dix emplacements à `+0x300`, pas de 0x280 octets, retenus si leur mot de drapeaux à
+`+0x12` porte 0x8000 sans 0x4000. Chacun est cherché dans une liste d'enregistrements de 0x10 octets
+terminée par un premier octet nul, par comparaison des quatre premiers dwords ; absent, il est
+ajouté sur place, à l'octet terminateur.
+
+Deux bizarreries de l'original transcrites telles quelles :
+
+- les **deux lectures visent le même tampon** — celle de `0x3f00` sur 0x100 octets est aussitôt
+  écrasée par celle de `0x4000` sur 0x2000. Le résultat de la première est donc perdu ;
+- `DAT_005de4e0`, qui est le curseur de l'écran racine, sert ici de compteur de membre et ressort à
+  4. L'écran racine le ramène à 0 par son propre plafonnement, à la première image suivante.
+
+**`CloseItemMenu` n'est pas encore atteignable** : le sous-état 4 n'est posé que par les deux
+sous-écrans non transcrits. Elle est écrite et compile, mais rien ne l'exerce — dit ici plutôt que
+laissé croire l'inverse.
+
+### Vérifié en jeu
+
+Menu objets → « Enchère » : la liste des sauvegardes s'affiche avec portraits, noms, classes et
+niveaux (`ARTHUR Gue. N1`, `MERLIN Vol. N1`), curseur compris, aux coordonnées propres à cet écran.
+~398 primitives par image, aucun plantage. L'écran d'organisation du groupe (entrée « Début du jeu »)
+est revérifié après l'extraction du helper.
