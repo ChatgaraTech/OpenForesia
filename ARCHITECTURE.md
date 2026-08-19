@@ -100,17 +100,18 @@ src/
 ├─ Host/  ····································· 5 fichiers   3 477 l.
 │   D3D11Backend · SyntheticDevice · DeviceShim · D3D11Window · StartupSurface
 │
-└─ Blaze/  ···································· 31 fichiers  24 447 l.
+└─ Blaze/  ···································· 31 fichiers  24 486 l.
     ├─ Blaze.cs                    17 l.   l'en-tete, les using, la declaration partielle
+    ├─ Subsystems.cs               98 l.   LE COMPOSITION ROOT. `Mem`, puis les trois
+    │                                      vraies classes, construites dans CET ordre textuel.
     │
     ├─ Interop/  ·······················    539 l.   la surface P/Invoke, hors de la classe
     │   ├─ Winsys3d.cs      309   85 declarations, commentaires d'ordinal conserves
     │   ├─ Win32.cs         165   66 declarations, huit DLL systeme
     │   └─ Wsyskern.cs       65    9 declarations
     │
-    ├─ Memory/  ························    694 l.   le modele de .data
-    │   ├─ GameMemory.cs    631   97 membres : 8 arenes, tables recouvrees, globales
-    │   └─ Globals.cs        63   le point d'acces `Mem`, avec sa condition de retrait
+    ├─ Memory/  ························    711 l.   le modele de .data
+    │   └─ GameMemory.cs    711   102 membres : 8 arenes, tables recouvrees, globales
     │
     ├─ Platform/  ······················  1 753 l.   ce qui n'est pas le jeu
     │   ├─ Startup.cs       654   entry + RunApplication + RunMainLoop + extinction
@@ -120,14 +121,14 @@ src/
     │
     ├─ Engine/  ························  7 667 l.   appele par plusieurs ecrans
     │   ├─ Audio.cs       1 255   0x00513 · 0x0053d
-    │   ├─ UiText.cs      1 345   0x00544
+    │   ├─ UiText.cs      1 344   0x00544                          VRAIE CLASSE
     │   ├─ Resources.cs   1 119   0x00529 · 0x0052a
     │   ├─ Video.cs       1 112   0x00512 · 0x00542
     │   ├─ Input.cs       1 024   0x00523 · 0x00504
-    │   ├─ SaveData.cs      602   E/S carte memoire seule
+    │   ├─ SaveData.cs      623   E/S carte memoire seule          VRAIE CLASSE (mixte)
     │   ├─ Model3d.cs       583   0x0051d
     │   ├─ UiWindow.cs      366   0x00545
-    │   └─ Primitives2d.cs  266   DrawFlatPrimitive, DrawSprite*, DrawTextRun
+    │   └─ Primitives2d.cs  284   DrawFlatPrimitive, DrawSprite*   VRAIE CLASSE
     │
     └─ Screens/  ······················· 13 777 l.   un etat de jeu par repertoire
         ├─ GameStates.cs    154   le repartiteur (FUN_00537ca0)

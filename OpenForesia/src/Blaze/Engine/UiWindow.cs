@@ -27,7 +27,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_0051bdb0 @ 0x0051bdb0 â€” links a screen-space clip rectangle, chosen by the
     /// small-texture flag and the detail level.
     /// </summary>
-    private static void EmitClipRect(uint* otEntry, uint** prim)
+    internal static void EmitClipRect(uint* otEntry, uint** prim)
     {
         if (s_Unknown_005de15c == 0) return;
 
@@ -46,7 +46,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_0051be20 @ 0x0051be20 â€” links the panel's viewport rectangle, derived from the
     /// detail level the options page and the F11/F12 hotkeys set.
     /// </summary>
-    private static void EmitViewportRect(uint* otEntry, uint** prim)
+    internal static void EmitViewportRect(uint* otEntry, uint** prim)
     {
         if (s_Unknown_005de15c == 0) return;
 

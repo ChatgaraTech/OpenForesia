@@ -245,10 +245,10 @@
       précédent.
 - [x] 5.4 Consigner dans `REVERSE_STATUS.md` une section datée : ce que le socle a changé, ce que les
       tests de disposition ont révélé, et l'état des défauts connus.
-- [ ] 5.5 **Faire le point avec l'utilisateur avant d'engager C.** Le socle a de la valeur seul ; C
+- [x] 5.5 **Faire le point avec l'utilisateur avant d'engager C.** Le socle a de la valeur seul ; C
       touche ~7 700 lignes de transcription et D ~13 800. La décision de continuer se prend sur
       pièces, pas d'avance.
-      → **Le socle est livré et vérifié. En attente de décision.**
+      → **Socle livré et vérifié ; l'utilisateur a décidé d'engager C.** Avancement en section 7.
 
 > **Relevé au titre de 5.2/5.4** : la carte des symboles de `Documentation/DataSymbols.md` pointait
 > encore vers `Arena.GameState.cs`, `Arenas.cs` et `DataTables.cs`, supprimés à l'étape A. Or son
@@ -269,3 +269,30 @@
 > **D — `Screens/` en 12 classes** (~13 800 l.), **en dernier**, quand les écrans cesseront de
 > bouger. `Screens/State03/WorldMap.cs` est le front actif de la priorité 2 : on n'y touche pas tant
 > que `FUN_00533940` n'est pas terminée.
+
+## 7. Étape C — `Engine/` en vraies classes, fichier par fichier
+
+Engagée après le point de contrôle 5.5. Un fichier à la fois, avec **build + oracle + playtest à
+chaque fichier** — jamais deux conversions avant une vérification.
+
+- [x] 7.1 `Engine/UiText.cs` → `UiText(GameMemory)`. 1 344 l., 55 membres, 0 static.
+      Point d'entrée `Ui`. Le champ injecté s'appelle `mem` **sans underscore** : le retour arrière
+      négatif de l'oracle exclut `_`, donc `_mem.` aurait été lu comme un changement de logique sur
+      des centaines de lignes.
+- [x] 7.2 `Engine/Primitives2d.cs` → `Primitives2d(GameMemory, UiText)`. 284 l., 5 membres.
+      Point d'entrée `Prims` — **et non `Prim`** : la liste blanche de l'oracle est insensible
+      à la casse et `prim` est un local dans 196 lignes.
+      La dépendance au moteur de texte (`DrawTextRun` → `CheatCodeProbe`) entre dans la signature.
+- [x] 7.3 `Engine/SaveData.cs` → `SaveData(GameMemory)`. 623 l., 33 membres dont **8 `static`
+      voulus** : `[UnmanagedCallersOnly]` exige une méthode statique. Tranche la question laissée
+      ouverte en 4.1 — pas de pont, mais un rapatriement des deux états publiés dans `GameMemory`.
+- [x] 7.4 **Refermer le piège d'ordre.** `Memory/Globals.cs` supprimé, `Mem` replié en tête de
+      `Subsystems.cs` : l'ordre d'initialisation des champs statiques n'est garanti que dans un
+      **même fichier**. L'en-tête affirmait un ordre garanti qui reposait sur la chance.
+- [ ] 7.5 `Engine/UiWindow.cs` (366 l.) — le plus petit des six restants.
+- [ ] 7.6 `Engine/Model3d.cs` (583 l.).
+- [ ] 7.7 `Engine/Input.cs` (1 024 l.) — porte `CountJoystickCallback`, second rappel natif.
+- [ ] 7.8 `Engine/Video.cs` (1 112 l.).
+- [ ] 7.9 `Engine/Resources.cs` (1 119 l.) — porte `ToAnsiZ`, appelé par plusieurs classes déjà
+      converties ; sa conversion demandera de décider où vit cette aide.
+- [ ] 7.10 `Engine/Audio.cs` (1 255 l.).

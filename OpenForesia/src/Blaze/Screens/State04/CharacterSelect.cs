@@ -366,7 +366,7 @@ public static unsafe partial class Blaze
                 "RunCharacterSelectFrameLoop: winsys3d.dll's MainMem export resolves to null, so " +
                 "the state's 0x2000-byte scratch block at MainMem + 0xf0000 cannot be placed.");
         }
-        NativeMemory.Clear(s_SelectScratch_00573338, 0x2000);
+        NativeMemory.Clear(Mem.s_SelectScratch_00573338, 0x2000);
 
         JoystickResetState(false);   // Ghidra: FUN_00504b10(0)
 
@@ -440,7 +440,7 @@ public static unsafe partial class Blaze
                 {
                     // Ghidra: &DAT_00562a58 indexé par l'octet +0x151 du bloc de travail.
                     short* tone = (short*)(Mem.s_SceneToneTable_00562a58
-                                           + s_SelectScratch_00573338[0x151] * GameMemory.SceneToneStride);
+                                           + Mem.s_SelectScratch_00573338[0x151] * GameMemory.SceneToneStride);
                     Mem.s_BackColourR_005e93a0 += (short)((tone[0] - Mem.s_BackColourR_005e93a0) >> 2);
                     Mem.s_BackColourG_005e93a2 += (short)((tone[1] - Mem.s_BackColourG_005e93a2) >> 2);
                     Mem.s_BackColourB_005e93a4 += (short)((tone[2] - Mem.s_BackColourB_005e93a4) >> 2);
@@ -523,8 +523,8 @@ public static unsafe partial class Blaze
                     (sbyte)Mem.s_SelectSubStateBytes_00562a98[s_SelectState_00578de8[0] * 4 + i];
 
                 EmitViewportRect(otBase, &primCursor);                              // FUN_0051be20
-                primCursor = DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);  // FUN_00521df0
-                primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)sprite); // FUN_0051f9c0
+                primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);  // FUN_00521df0
+                primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)sprite); // FUN_0051f9c0
                 EmitClipRect(otBase, &primCursor);                                  // FUN_0051bdb0
                 primCursor = DrawUiPanel(otBase, primCursor, descriptor);           // FUN_00545340
             }
@@ -566,8 +566,8 @@ public static unsafe partial class Blaze
             *(uint**)sprite = **(uint***)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
             *(uint*)(sprite + 4) = 0x1000000;
 
-            primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
-            DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
+            primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            Prims.DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
 
             FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
         }

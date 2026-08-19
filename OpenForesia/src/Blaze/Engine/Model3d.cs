@@ -125,7 +125,7 @@ public static unsafe partial class Blaze
 
         if (Mem.s_DeviceCapFlag_00564a48 && (modelAttributes & 0x200) != 0)
         {
-            if (s_Unknown_00564a4c == 0) return prim;
+            if (Mem.s_Unknown_00564a4c == 0) return prim;
             modelAttributes &= 0xfffffdff;
         }
 
@@ -397,7 +397,7 @@ public static unsafe partial class Blaze
 
         if (Mem.s_DeviceCapFlag_00564a48 && (attributes & 0x2000000) != 0)
         {
-            if (s_Unknown_00564a4c == 0) return prim;
+            if (Mem.s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfdffffff;
         }
 

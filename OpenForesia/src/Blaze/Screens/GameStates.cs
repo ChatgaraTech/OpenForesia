@@ -115,9 +115,9 @@ public static unsafe partial class Blaze
                 // Ghidra: FUN_00542160(); DAT_00564a4c = 0; FUN_00537da0(); DAT_00564a4c = 1;
                 //         DAT_005de510 = 3;   <- the one case that advances the state itself
                 LoadMenuResources();          // Ghidra: FUN_00542160
-                s_Unknown_00564a4c = 0;
+                Mem.s_Unknown_00564a4c = 0;
                 RunDestinationSelect();       // Ghidra: FUN_00537da0
-                s_Unknown_00564a4c = 1;
+                Mem.s_Unknown_00564a4c = 1;
                 s_GameStateId = 3;
                 break;
             case 3:

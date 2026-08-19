@@ -1133,12 +1133,12 @@ public static unsafe partial class Blaze
         }
 
         // Ghidra: `for (iVar1 = 0x2000; ...) *puVar2++ = 0;` on dwords â€” 0x2000 * 4 = 0x8000 bytes,
-        // not the 0x2000 this project has treated s_SelectScratch_00573338 as elsewhere. The base
+        // not the 0x2000 this project has treated Mem.s_SelectScratch_00573338 as elsewhere. The base
         // address is confirmed the same (MainMem + 0xf0000); the true extent of that scratch block
         // is larger than previously assumed. Left as a plain NativeMemory.Clear here rather than
         // retrofitting every earlier reference, since nothing so far has needed past +0x2000.
         byte* mainMem = GetMainMemPtr();
-        if (mainMem != null) NativeMemory.Clear(s_SelectScratch_00573338, 0x8000);
+        if (mainMem != null) NativeMemory.Clear(Mem.s_SelectScratch_00573338, 0x8000);
 
         // Ghidra: the same "current player slot" idiom as PollInputAndAudio/FUN_00545340 â€” see the
         // comment there for how DAT_005e93c8/DAT_005e9188 were settled as

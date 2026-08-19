@@ -650,4 +650,62 @@ internal sealed unsafe class GameMemory
     internal readonly byte* s_EntityDecodeTable_005e8f00 = (byte*)NativeMemory.AllocZeroed(0x1000);
 
     internal int s_Unknown_005e8310;
+
+    // =====================================================================
+    // Rapatriees le 2026-08-19 pour fermer Engine/Primitives2d.cs et Engine/SaveData.cs.
+    // s_CardWriteStatus / s_CardReadStatus sont ecrites par des rappels [UnmanagedCallersOnly]
+    // qui doivent rester statiques : ils les atteignent par le champ statique Blaze.Mem.
+    // =====================================================================
+
+    // Ghidra: DAT_00578e0c — la phase, indexée directement (contrairement au sous-état 6, la table
+    // de saut à deux niveaux qui la lit s'est révélée n'être qu'une implémentation de compilateur
+    // pour un switch clairsemé ; chaque valeur de phase correspond un pour un à un cas du switch
+    // ci-dessous, confirmé en lisant &DAT_0050bea8 dans le binaire).
+    internal int s_CardPhase_00578e0c;
+
+    // Ghidra: DAT_00573338 — le bloc que la boucle place à MainMem + 0xf0000. C'est la même adresse
+    // que la destination de la liste +0xb0 de LoadCharacterSelectResources : le chargement y dépose
+    // des blocs bruts, la boucle de frame l'efface puis le relit
+    // (`*(byte *)(DAT_00573338 + 0x151)` sert d'index dans la table de couleurs DAT_00562a58).
+    //
+    // **Dérivé de MainMem plutôt qu'affecté une fois (2026-08-18).** C'était un champ posé par le
+    // seul LoadCharacterSelectResources, donc encore nul pour qui atteignait l'état de jeu 1 sans
+    // être passé par l'écran de sélection des personnages — exactement ce que fait « Début du jeu »
+    // au menu principal, et ce qui faisait échouer le `NativeMemory.Clear` de RunGameState1Entry sur
+    // un pointeur nul. L'original n'a pas ce problème : il recalcule `*MainMem + 0xf0000` sur place
+    // à chaque site (voir FUN_00536ea0, `iVar17 = *(int *)MainMem_exref + 0xf0000;`). On fait pareil.
+    internal byte* s_SelectScratch_00573338
+    {
+        get
+        {
+            byte* mainMem = GetMainMemPtr();
+            return mainMem != null ? mainMem + 0xf0000 : null;
+        }
+    }
+
+    // Ghidra: &DAT_005e9180 â€” small per-slot table reset at the end of FUN_0052a030 (4 entries of
+    // 0x4c/76 bytes: 0x13 dwords zeroed, byte[-1]=8, byte[0]=incrementing slot id). Also touched
+    // (not yet reconstructed) by FUN_00542160's near-identical loop elsewhere.
+    // **La même mémoire que <see cref="s_SlotArea_005e9180"/>**, qui déclarait déjà cette adresse de
+    // son côté. Séparés, <see cref="InitialiseEntitySlots"/> écrivait dans l'un pendant que
+    // <see cref="CurrentPadState"/> lisait l'autre : l'initialisation des emplacements manette
+    // n'atteignait jamais son lecteur. Fusionnés le 2026-08-17 en un alias sur l'arène.
+    internal byte* s_EntitySlotTable_005e9180 => Mem.Arena(0x005e9180);
+
+    // Ghidra: DAT_00564a4c — une garde de réentrance, pas un drapeau statique. Dans Blaze.c, chaque
+    // site qui l'écrit suit exactement le même motif : `DAT_00564a4c = 0; <appel réentrant>;
+    // DAT_00564a4c = 1;` (au moins quatre paires : FUN_00520ae0/EmitParticle à trois endroits,
+    // FUN_00537da0 dans le case 2 de FUN_00542ab0). Sa valeur stable dans le jeu original est donc
+    // **1**, jamais 0 — le passage à 0 n'existe que pendant la fenêtre de l'appel imbriqué. Aucun de
+    // ces sites n'est encore câblé dans ce port, donc la valeur par défaut de C# (0) était fausse :
+    // elle inversait le culling que DrawAnimatedModel/EmitParticle/DrawSpriteVariant/DrawFlatPrimitive
+    // testent (`if (s_Unknown_00564a4c == 0) return prim;`), faisant sauter des modèles qui, dans
+    // l'original, seraient dessinés (juste avec le bit d'attribut nettoyé). Régression confirmée en
+    // jeu le 2026-08-16 : le carrousel de personnages n'affichait plus que l'entité sélectionnée.
+    // Voir DrawSpriteVariant pour la divergence avec s_SmallTextureFlag.
+    internal int s_Unknown_00564a4c = 1;
+
+    // Ghidra: DAT_00604ab0 / DAT_00604a00 — les drapeaux d'état de transfert écriture/lecture que
+    // FUN_005046c0/FUN_00504770 sondent. 4 = prêt/inactif.
+    internal int s_CardWriteStatus_00604ab0 = 4, s_CardReadStatus_00604a00 = 4;
 }

@@ -182,15 +182,15 @@ public static unsafe partial class Blaze
                         && s_PartySelectionOrder_005e85c0[index] != s_PartySize_005e9020 + 1) index++;
                     if (index == entryCount) index = 0;
 
-                    SetCardFileName(s_CardDirectoryEntries_006049bc + index * 0x28);
-                    SetCardPathDeviceFields();
+                    Saves.SetCardFileName(s_CardDirectoryEntries_006049bc + index * 0x28);
+                    Saves.SetCardPathDeviceFields();
 
                     *(uint*)(member + 0x1ffc) = 0;
-                    IntPtr handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
-                    RetrySeekAndReadCardFile(handle, member, 0, 0x2000);
-                    RetryCloseCardFile(handle);
+                    IntPtr handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+                    Saves.RetrySeekAndReadCardFile(handle, member, 0, 0x2000);
+                    Saves.RetryCloseCardFile(handle);
 
-                    // La même somme de contrôle signée sur 0x1ffc octets que WriteCardSaveFile
+                    // La même somme de contrôle signée sur 0x1ffc octets que Saves.WriteCardSaveFile
                     // calcule à l'écriture.
                     int checksum = 0;
                     for (int i = 0; i < 0x1ffc; i++) checksum += (sbyte)member[i];
@@ -240,7 +240,7 @@ public static unsafe partial class Blaze
                     *(short*)(d + 0xa) = 0x20;
                     *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
                     *(uint*)(d + 4) = 0x1000000;
-                    primCursor = DrawTextRun(otBase, primCursor, draw, s_BufferOverLabel_0056c950, 0, 0, -1);
+                    primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_BufferOverLabel_0056c950, 0, 0, -1);
                     FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
                 }
             }
@@ -427,8 +427,8 @@ public static unsafe partial class Blaze
                 *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xfa) =
                     (ushort)(((i << 4) >> 4) & 0xf | (bank + 0x1fe) * 0x40);
 
-                primCursor = DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
-                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
+                primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                 EmitClipRect(otBase, &primCursor);              // Ghidra: FUN_0051bdb0
 
                 // Le texte de la ligne, décalé de 0x1e à droite et de 4 vers le bas. La teinte
@@ -438,7 +438,7 @@ public static unsafe partial class Blaze
                 *(short*)(d + 0xa) += 4;
                 *(uint*)(d + 4) = chosen ? 0x1000000u : 0x404040u;
                 *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
-                primCursor = DrawTextRun(otBase, primCursor, draw, row, 0, 0, PartyRowStride);
+                primCursor = Prims.DrawTextRun(otBase, primCursor, draw, row, 0, 0, PartyRowStride);
 
                 if (cursorRow == i)
                 {
@@ -448,8 +448,8 @@ public static unsafe partial class Blaze
                     *(short*)(d + 0x10) = 0x18;
                     *(uint*)(d + 4) = 0x1000000;
                     *(short*)(d + 8) = 0x34;
-                    primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                    primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                    primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                    primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                     EmitClipRect(otBase, &primCursor);
                 }
             }
@@ -471,8 +471,8 @@ public static unsafe partial class Blaze
             *(short*)(d + 0xe) = 0x1149;
             *(uint**)d = **(uint***)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
             *(uint*)(d + 4) = 0x1000000;
-            primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);   // Ghidra: FUN_00521f20
-            primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);
+            primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);   // Ghidra: FUN_00521f20
+            primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, draw);
 
             FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
             partyCount = pendingPartyCount;

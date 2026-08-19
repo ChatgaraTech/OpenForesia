@@ -148,7 +148,7 @@ adding or moving code. The short version:
 
 ```
    Platform/   ce qui n'est pas le jeu : interop OS, CRT, winsys3d, demarrage/extinction
-   Memory/     l'espace d'adressage : les huit arenes, les tables .data, Globals.cs
+   Memory/     l'espace d'adressage : les huit arenes, les tables .data (GameMemory)
    Engine/     appele par plusieurs ecrans : Audio, Video, Input, Resources, SaveData,
                Model3d, UiText, UiWindow, Primitives2d
    Screens/    un repertoire par etat de jeu (State00 .. State06), plus le repartiteur

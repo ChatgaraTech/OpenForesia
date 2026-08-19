@@ -54,7 +54,7 @@ public static unsafe partial class Blaze
 
         if (Mem.s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
         {
-            if (s_Unknown_00564a4c == 0) return prim;
+            if (Mem.s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfffffdff;
         }
 
@@ -257,7 +257,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint* CharacterSelectSubState1(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
-        byte* scratch = s_SelectScratch_00573338;
+        byte* scratch = Mem.s_SelectScratch_00573338;
         int* state = s_SelectState_00578de8;   // [3] page, [4] colonne, [5] ligne, [6] longueur
 
         // Première frame du sous-état : on arme la frappe réelle, on coupe la traduction
@@ -392,7 +392,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint* CharacterSelectSubState5(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
-        byte* scratch = s_SelectScratch_00573338;
+        byte* scratch = Mem.s_SelectScratch_00573338;
         int* state = s_SelectState_00578de8;
 
         if (s_SelectFlags_00562a48[0] != 0)
@@ -447,7 +447,7 @@ public static unsafe partial class Blaze
             x += (short)((int)Winsys3d.GetSinTableEntry(spin - 400) * angle >> 0x13);
             *(short*)(sprite + 8) = x;
 
-            primCursor = DrawSpritePrimitive(otBase, primCursor, (int*)sprite, 0, 0);
+            primCursor = Prims.DrawSpritePrimitive(otBase, primCursor, (int*)sprite, 0, 0);
         }
 
         byte* label = Mem.s_UiDescriptors_00560ff0 + 2 * GameMemory.UiDescriptorStride;   // &DAT_00562180
@@ -604,7 +604,7 @@ public static unsafe partial class Blaze
     // sites qui le touchent dans Legacy/Blaze.exe : tous chargent l'adresse
     // (`8B 35 / 8B 0D / 8B 15  C0 6B 56 00` = `MOV ESI,[0x566BC0]`) avant d'écrire à travers
     // (`88 54 30 0C` = `MOV [EAX+ESI+0xC],DL`) — une déréférence de plus que la pseudo-C ne le
-    // montre, exactement le même piège que dans SetCardPathDeviceFields. Et aucun des huit n'écrit
+    // montre, exactement le même piège que dans Saves.SetCardPathDeviceFields. Et aucun des huit n'écrit
     // l'adresse elle-même (pas un seul `A3 C0 6B 56 00` ni `89 xx C0 6B 56 00` dans tout le
     // .text) : le pointeur garde donc à l'exécution sa valeur de chargement, 0x00568498.
     //
@@ -649,7 +649,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint* CharacterSelectSubState6(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
-        byte* scratch = s_SelectScratch_00573338;
+        byte* scratch = Mem.s_SelectScratch_00573338;
         int* state = s_SelectState_00578de8;
 
         // ECHAFAUDAGE TEMPORAIRE : OPENFORESIA_FORCE_CONFIRM_STATS=1 appelle
@@ -965,8 +965,8 @@ public static unsafe partial class Blaze
         *(short*)(box + 0xa) = (short)(*(short*)(row + 6) + 0xc);
         *(short*)(box + 0x10) = 0x18;
 
-        primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
-        primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)box);
+        primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
+        primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)box);
         EmitClipRect(otBase, &primCursor);
 
         BindMenuLabels(
@@ -1116,7 +1116,7 @@ public static unsafe partial class Blaze
         // Ghidra: la somme de contrôle du code à sept caractères — un accumulateur
         // « + puis ×2 » sur scratch[0x100..0x110), les seize octets du **nom tapé** au clavier
         // virtuel (HandlePadNameEntry/HandleTypedNameEntry les y écrivent un par un, et
-        // WriteCardSaveFile les relit au même endroit pour l'en-tête du fichier), puis sur les sept
+        // Saves.WriteCardSaveFile les relit au même endroit pour l'en-tête du fichier), puis sur les sept
         // statistiques brutes à scratch+0x280, repliée avec la classe/l'élément/le style choisis.
         // Le nom entre donc bien dans le code : deux personnages ne partagent leur fichier de
         // sauvegarde que s'ils ont à la fois le même nom, la même classe, le même élément, le même
@@ -1456,8 +1456,8 @@ public static unsafe partial class Blaze
             *(short*)(box + 0x10) = (short)(i + 4);
 
             EmitViewportRect(otBase, &primCursor);
-            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)box);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)box);
             EmitClipRect(otBase, &primCursor);
 
             byte funcByte = (byte)(i <= 6 ? 0x08 : 0x10);
@@ -1483,11 +1483,7 @@ public static unsafe partial class Blaze
     // Ghidra: DAT_00578de0 — le résultat du dernier appel carte (FUN_00504820), -3/-4 étant des
     // codes d'erreur spécifiques. Jamais écrit par du code déjà reconstruit ; lit 0.
     private static int s_CardLoadResult_00578de0;
-    // Ghidra: DAT_00578e0c — la phase, indexée directement (contrairement au sous-état 6, la table
-    // de saut à deux niveaux qui la lit s'est révélée n'être qu'une implémentation de compilateur
-    // pour un switch clairsemé ; chaque valeur de phase correspond un pour un à un cas du switch
-    // ci-dessous, confirmé en lisant &DAT_0050bea8 dans le binaire).
-    private static int s_CardPhase_00578e0c;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data.
     private static int s_CardPrevPhase_00578e10;
     private static int s_CardPhaseChanged_00578e14;
     // Ghidra: DAT_00578e18 — le curseur (emplacement de sauvegarde en surbrillance).

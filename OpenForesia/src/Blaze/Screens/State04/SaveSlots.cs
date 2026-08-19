@@ -26,7 +26,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint* CharacterSelectSubState7(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
-        byte* scratch = s_SelectScratch_00573338;
+        byte* scratch = Mem.s_SelectScratch_00573338;
         int* cardTransferPhase = (int*)(scratch + 4);   // DAT_0057333c — dans le bloc scratch
 
         int previousCursor = s_CardCursor_00578e18;
@@ -71,7 +71,7 @@ public static unsafe partial class Blaze
             // partait sur « Définir de nouveaux personnages » sans que rien ne s'affiche.
             s_SelectState_00578de8[2] = -1;
 
-            s_CardPhase_00578e0c = 0;   // Ghidra: `_DAT_00578e0c = 0`, pas -1
+            Mem.s_CardPhase_00578e0c = 0;   // Ghidra: `_DAT_00578e0c = 0`, pas -1
             Mem.s_Unknown_00562b68 = -1;
             s_CardPrevPhase_00578e10 = 0;
             s_CardPhaseChanged_00578e14 = 0;
@@ -98,14 +98,14 @@ public static unsafe partial class Blaze
             *cardTransferPhase = 0;
             s_CardLoadResult_00578de0 = 0;
             s_CardCursorSlot_00604984 = 0;
-            s_CardPhase_00578e0c = 0;
+            Mem.s_CardPhase_00578e0c = 0;
             Mem.s_Unknown_00562b68 = s_CardCursor_00578e18;
             PlayUiSound38();
         }
 
-        if (s_CardPrevPhase_00578e10 != s_CardPhase_00578e0c)
+        if (s_CardPrevPhase_00578e10 != Mem.s_CardPhase_00578e0c)
         {
-            s_CardPrevPhase_00578e10 = s_CardPhase_00578e0c;
+            s_CardPrevPhase_00578e10 = Mem.s_CardPhase_00578e0c;
             s_CardPhaseChanged_00578e14 = 1;
         }
 
@@ -126,7 +126,7 @@ public static unsafe partial class Blaze
 
     // Ghidra: DAT_006049bc — pointeur vers la table des répertoires de sauvegarde. **Corrigé
     // 2026-08-16** : le rédacteur réel est FUN_005126c0 (LoadSaveDirectory ci-dessous), pas
-    // FUN_00504820 (qui est PollCardTransfer, sans rapport) comme le disait ce commentaire — trouvé
+    // FUN_00504820 (qui est Saves.PollCardTransfer, sans rapport) comme le disait ce commentaire — trouvé
     // en cherchant le pas 0x28 déjà utilisé par le lecteur (voir RenderSaveScreen). Alloué par
     // LoadSaveDirectory elle-même (0x20 entrées maximum, l'original pointe sur un DAT_005d9e50 fixe
     // que ce port ne peut pas reproduire à la même adresse).
@@ -192,7 +192,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Ghidra: FUN_005126c0 @ 0x005126c0 — énumère les fichiers de sauvegarde du dossier
-    /// <c>save\</c> correspondant au motif <c>s_SaveDeviceName_00563160</c> (« Blaze-Saving* »),
+    /// <c>save\</c> correspondant au motif <c>Saves.s_SaveDeviceName_00563160</c> (« Blaze-Saving* »),
     /// jusqu'à 0x20 entrées, puis ouvre et lit l'en-tête (0x100 octets) de chacune pour peupler
     /// <see cref="s_CardDirectoryEntries_006049bc"/>, <see cref="s_CardEntryCount_00604981"/> et
     /// <see cref="s_CardIconFrameCount_0060498c"/>.
@@ -237,11 +237,11 @@ public static unsafe partial class Blaze
         s_Unknown_00604960 = 0;
         s_CardEntryCount_00604981 = 0;
 
-        SetCardFileName(s_SaveDeviceName_00563160);
-        SetCardPathDeviceFields();
+        Saves.SetCardFileName(Saves.s_SaveDeviceName_00563160);
+        Saves.SetCardPathDeviceFields();
 
         byte* entry = s_CardDirectoryEntries_006049bc;
-        if (Winsys3d.Ordinal_18(s_CardPathDescriptor_00604940, entry) != null)
+        if (Winsys3d.Ordinal_18(Saves.s_CardPathDescriptor_00604940, entry) != null)
         {
             while (true)
             {
@@ -258,9 +258,9 @@ public static unsafe partial class Blaze
         byte* cursor = s_CardDirectoryEntries_006049bc;
         for (uint i = 0; i < s_CardEntryCount_00604981; i++, cursor += 0x28)
         {
-            SetCardFileName(cursor);
+            Saves.SetCardFileName(cursor);
 
-            IntPtr handle = Winsys3d.Ordinal_21(s_CardPathDescriptor_00604940, 1);
+            IntPtr handle = Winsys3d.Ordinal_21(Saves.s_CardPathDescriptor_00604940, 1);
             if ((int)handle < 0) return 0;
 
             Winsys3d.Ordinal_23(handle, 0, 0 /* FILE_BEGIN */);
@@ -331,15 +331,15 @@ public static unsafe partial class Blaze
         if (*cardTransferPhase == 1)
         {
             int slot = CardSlotSelector();
-            s_CardLoadResult_00578de0 = PollCardTransfer(slot, false);
-            if (s_CardLoadResult_00578de0 < -1) s_CardPhase_00578e0c = -4;
+            s_CardLoadResult_00578de0 = Saves.PollCardTransfer(slot, false);
+            if (s_CardLoadResult_00578de0 < -1) Mem.s_CardPhase_00578e0c = -4;
         }
         else if (*cardTransferPhase == 2)
         {
             int slot = CardSlotSelector();
             int r = Winsys3d.Ordinal_67(slot);
             while (r == 0) r = Winsys3d.Ordinal_67(slot);
-            s_CardLoadResult_00578de0 = PollCardTransfer(slot, false);
+            s_CardLoadResult_00578de0 = Saves.PollCardTransfer(slot, false);
         }
 
         ushort buttons = *(ushort*)(pad + 2);
@@ -353,7 +353,7 @@ public static unsafe partial class Blaze
         // couple d'appels.
         byte* pendingLabel = null;
 
-        switch (s_CardPhase_00578e0c)
+        switch (Mem.s_CardPhase_00578e0c)
         {
             case 0:
                 if (s_Unknown_00560fd4 != 0)
@@ -365,7 +365,7 @@ public static unsafe partial class Blaze
                     goto case 1;
                 }
                 s_CardSlotIndex_00604980 = s_CardSlotFlags_00562adc[s_CardPort_00578e20][s_CardCursor_00578e18];
-                s_CardPhase_00578e0c++;
+                Mem.s_CardPhase_00578e0c++;
                 break;
 
             case 1:
@@ -379,41 +379,41 @@ public static unsafe partial class Blaze
                 // s_SaveNameTemplate_00568498), défaut de portage désormais corrigé. Le nom lu ici
                 // est celui que la finalisation vient d'écrire, « Blaze-Saving » + les sept
                 // caractères de code.
-                SetCardFileName(s_SelectScratch_00573338 + 0x1fd0);
-                SetCardPathDeviceFields();
-                IntPtr fileHandle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
-                RetryCloseCardFile(fileHandle);
+                Saves.SetCardFileName(Mem.s_SelectScratch_00573338 + 0x1fd0);
+                Saves.SetCardPathDeviceFields();
+                IntPtr fileHandle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+                Saves.RetryCloseCardFile(fileHandle);
                 if ((long)fileHandle < 0)
                 {
                     BindMenuLabels(s_EmptyLabel_00572b40, 0, Mem.s_StatusDescriptor_00560728, 0);
-                    IntPtr createHandle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 0x30200);
-                    RetryCloseCardFile(createHandle);
-                    s_CardPhase_00578e0c = 6;
+                    IntPtr createHandle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 0x30200);
+                    Saves.RetryCloseCardFile(createHandle);
+                    Mem.s_CardPhase_00578e0c = 6;
                 }
                 else
                 {
                     BindMenuLabels(LabelAt(0x1ac), 0, Mem.s_StatusDescriptor_00560728, 0);
-                    ResetCardTransferStatus(CardSlotSelector());
+                    Saves.ResetCardTransferStatus(CardSlotSelector());
                     *cardTransferPhase = 1;
-                    s_CardPhase_00578e0c = 0xe;
+                    Mem.s_CardPhase_00578e0c = 0xe;
                 }
                 break;
 
             case 2:
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 2) != 0) break;
                 pendingLabel = LabelAt(0x1b0);
                 break;
 
             case 3:
             case 8:
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 2) != 0) break;
                 pendingLabel = LabelAt(400);
                 break;
 
             case 7:
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 2) != 0) break;
                 pendingLabel = LabelAt(0x1bc);
                 break;
@@ -422,7 +422,7 @@ public static unsafe partial class Blaze
                 if ((buttons & 0x4000) != 0)
                 {
                     Mem.s_Unknown_00560fef = (byte)(dialogGate & 0xfd);
-                    s_CardPhase_00578e0c--;
+                    Mem.s_CardPhase_00578e0c--;
                     Mem.s_Unknown_0056075b = 0;
                     break;
                 }
@@ -436,16 +436,16 @@ public static unsafe partial class Blaze
                 // quatre événements d'écriture, puis se sépare sur la réponse du joueur : sans
                 // confirmation, l'intitulé vide (l'écran reste en attente) ; avec, on lève le
                 // drapeau de sortie partagé.
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 4) != 0) break;
-                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                ResetCardWriteEvents();
+                Saves.PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                Saves.ResetCardWriteEvents();
                 if (confirmGate == 0) { pendingLabel = s_EmptyLabel_00572b40; break; }
                 Mem.s_Unknown_00562b68 = -1;   // Ghidra: code_r0x0050b711
                 break;
 
             case 5:
-                if (s_CardPhaseChanged_00578e14 == 0) { s_CardPhase_00578e0c = 0; }
+                if (s_CardPhaseChanged_00578e14 == 0) { Mem.s_CardPhase_00578e0c = 0; }
                 else { s_CardPhaseChanged_00578e14 = 0; }
                 *cardTransferPhase = 0;
                 break;
@@ -455,25 +455,25 @@ public static unsafe partial class Blaze
                 // — la première image après le changement de phase se contente de purger le
                 // drapeau (laisse à l'affichage une image pour se stabiliser) ; la suivante lance
                 // vraiment l'écriture.
-                if (s_CardPhaseChanged_00578e14 == 0) WriteCardSaveFile(cardTransferPhase);
+                if (s_CardPhaseChanged_00578e14 == 0) Saves.WriteCardSaveFile(cardTransferPhase);
                 else s_CardPhaseChanged_00578e14 = 0;
                 break;
 
             case 9:
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 4) != 0) break;
-                if (confirmGate == 0) { s_CardPhase_00578e0c++; break; }
-                s_CardPhase_00578e0c = -5;
+                if (confirmGate == 0) { Mem.s_CardPhase_00578e0c++; break; }
+                Mem.s_CardPhase_00578e0c = -5;
                 break;
 
             case 0xa:
             {
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
                 if ((buttons & 0x8000) != 0)
                 {
                     BindMenuLabels(LabelAt(0x1c0), 0, Mem.s_StatusDescriptor_00560728, 0);
                     *(ushort*)(pad + 2) = (ushort)(buttons & 0x7fff);
-                    s_CardPhase_00578e0c++;
+                    Mem.s_CardPhase_00578e0c++;
                     PlayUiSound38();
                     break;
                 }
@@ -500,7 +500,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.s_Unknown_00560fef = (byte)(dialogGate & 0xfb);
                     Mem.s_Unknown_00560763 = 0;
-                    s_CardPhase_00578e0c = 10;
+                    Mem.s_CardPhase_00578e0c = 10;
                     break;
                 }
                 if ((dialogGate & 4) != 0) break;
@@ -508,7 +508,7 @@ public static unsafe partial class Blaze
                 {
                     // Ghidra: re-rentre immédiatement dans le switch via `code_r0x0050ad53` avec
                     // la phase 10 — mort tant que confirmGate (toujours à zéro) ne change pas.
-                    s_CardPhase_00578e0c = 10;
+                    Mem.s_CardPhase_00578e0c = 10;
                     break;
                 }
                 pendingLabel = s_EmptyLabel_00572b40;
@@ -522,32 +522,32 @@ public static unsafe partial class Blaze
                 // table des répertoires, à l'entrée du curseur, pas de DAT_00573338+0x1fd0.
                 if (s_CardPhaseChanged_00578e14 != 0) { s_CardPhaseChanged_00578e14 = 0; *cardTransferPhase = 0; break; }
 
-                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                ResetCardWriteEvents();
-                SetCardFileName(s_CardDirectoryEntries_006049bc + s_CardCursorSlot_00604984 * 0x28);
-                SetCardPathDeviceFields();
+                Saves.PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                Saves.ResetCardWriteEvents();
+                Saves.SetCardFileName(s_CardDirectoryEntries_006049bc + s_CardCursorSlot_00604984 * 0x28);
+                Saves.SetCardPathDeviceFields();
 
-                if (DeleteCardFileRetrying())
+                if (Saves.DeleteCardFileRetrying())
                 {
                     BindMenuLabels(LabelAt(0x198), 0, Mem.s_StatusDescriptor_00560728, 0);
                     *cardTransferPhase = 0;
-                    s_CardPhase_00578e0c = 0;
+                    Mem.s_CardPhase_00578e0c = 0;
                 }
                 else
                 {
                     BindMenuLabels(LabelAt(0x1c4), 0, Mem.s_StatusDescriptor_00560728, 0);
-                    s_CardPhase_00578e0c = -1;
+                    Mem.s_CardPhase_00578e0c = -1;
                 }
                 break;
             }
 
             case 0xe:
             case 0xf:
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 2) != 0) break;
-                BindMenuLabels(LabelAt(s_CardPhase_00578e0c == 0xe ? 0x1c8 : 400),
+                BindMenuLabels(LabelAt(Mem.s_CardPhase_00578e0c == 0xe ? 0x1c8 : 400),
                     0, Mem.s_StatusDescriptor_00560728, 0);
-                s_CardPhase_00578e0c++;
+                Mem.s_CardPhase_00578e0c++;
                 break;
 
             case 0x10:
@@ -557,20 +557,20 @@ public static unsafe partial class Blaze
                 // dernière étape du parcours 0xe → 0xf → 0x10 qu'emprunte le cas 1 quand le fichier
                 // est déjà là. La phase repart ensuite à 0, le cas 1 ne trouve plus de fichier, et
                 // l'écriture normale reprend : c'est ainsi que l'original réécrit une sauvegarde.
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 4) != 0) break;
-                if (confirmGate != 0) { s_CardPhase_00578e0c = -5; break; }
+                if (confirmGate != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
 
                 BindMenuLabels(LabelAt(0x1cc), 0, Mem.s_StatusDescriptor_00560728, 0);
-                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                ResetCardWriteEvents();
-                SetCardFileName(s_SelectScratch_00573338 + 0x1fd0);
-                SetCardPathDeviceFields();
+                Saves.PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                Saves.ResetCardWriteEvents();
+                Saves.SetCardFileName(Mem.s_SelectScratch_00573338 + 0x1fd0);
+                Saves.SetCardPathDeviceFields();
 
-                if (!DeleteCardFileRetrying())
+                if (!Saves.DeleteCardFileRetrying())
                 {
                     BindMenuLabels(LabelAt(0x1c4), 0, Mem.s_StatusDescriptor_00560728, 0);
-                    s_CardPhase_00578e0c = -1;
+                    Mem.s_CardPhase_00578e0c = -1;
                     break;
                 }
 
@@ -578,7 +578,7 @@ public static unsafe partial class Blaze
                 // avec le sondage de transfert coupé.
                 BindMenuLabels(LabelAt(0x198), 0, Mem.s_StatusDescriptor_00560728, 0);
                 *cardTransferPhase = 0;
-                s_CardPhase_00578e0c = 0;
+                Mem.s_CardPhase_00578e0c = 0;
                 break;
             }
 
@@ -610,8 +610,8 @@ public static unsafe partial class Blaze
                 // dialogGate** (l'original recharge `bVar1 = DAT_00560fef` juste avant), puis
                 // **enchaîne sans `break`** sur le cas -4 — une chute délibérée dans le `switch`
                 // d'origine, pas deux cas indépendants.
-                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                ResetCardWriteEvents();
+                Saves.PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                Saves.ResetCardWriteEvents();
                 dialogGate = Mem.s_Unknown_00560fef;
                 goto case -4;
 
@@ -630,11 +630,11 @@ public static unsafe partial class Blaze
                 // repart proprement à la phase 0 ; sinon on attend la fin du transfert, on réarme
                 // les événements d'écriture et on lève le drapeau de sortie partagé
                 // (code_r0x0050b711), le même que les cas 4, -1 et 99.
-                if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
-                if (s_CardLoadResult_00578de0 == -3) { *cardTransferPhase = 0; s_CardPhase_00578e0c = 0; break; }
+                if ((buttons & 0x4000) != 0) { Mem.s_CardPhase_00578e0c = -5; break; }
+                if (s_CardLoadResult_00578de0 == -3) { *cardTransferPhase = 0; Mem.s_CardPhase_00578e0c = 0; break; }
                 if ((dialogGate & 2) != 0) break;
-                PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                ResetCardWriteEvents();
+                Saves.PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                Saves.ResetCardWriteEvents();
                 Mem.s_Unknown_00562b68 = -1;
                 break;
 
@@ -646,20 +646,20 @@ public static unsafe partial class Blaze
             default:
                 // Ghidra: toutes les valeurs 19..98 de la phase retombent sur le défaut — table de
                 // saut à deux niveaux confirmée par lecture du binaire (&DAT_0050bea8), voir la
-                // note sur s_CardPhase_00578e0c plus haut.
+                // note sur Mem.s_CardPhase_00578e0c plus haut.
                 break;
         }
 
         if (pendingLabel != null)
         {
             BindMenuLabels(pendingLabel, 0, Mem.s_StatusDescriptor_00560728, 0);
-            s_CardPhase_00578e0c++;
+            Mem.s_CardPhase_00578e0c++;
         }
     }
 
     /// <summary>Raccourci pour <c>*(byte**)(*(int*)(s_MainResourceDirectory_005e97c4 + 0x70) + offset)</c>,
     /// répété tel quel à chaque case de navigation du sous-état 7.</summary>
-    private static byte* LabelAt(int offset) =>
+    internal static byte* LabelAt(int offset) =>
         *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + offset);
 
     /// <summary>
@@ -764,7 +764,7 @@ public static unsafe partial class Blaze
         }
 
         *(short*)(sprite + 4) = 0;               // Ghidra: *(undefined2*)(param_3 + 4) = 0
-        prim = DrawFlatPrimitive(otEntry, prim, sprite);   // Ghidra: FUN_0051f9c0
+        prim = Prims.DrawFlatPrimitive(otEntry, prim, sprite);   // Ghidra: FUN_0051f9c0
         EmitClipRect(otEntry, &prim);                       // Ghidra: FUN_0051bdb0
         return prim;
     }
@@ -774,7 +774,7 @@ public static unsafe partial class Blaze
     /// <c>FUN_0050a910</c>.</summary>
     private static uint* RenderSaveScreen(uint* otBase, uint* primCursor)
     {
-        if (-1 < Mem.s_Unknown_00562b68 && s_CardPhase_00578e0c is > 9 and < 0xe)
+        if (-1 < Mem.s_Unknown_00562b68 && Mem.s_CardPhase_00578e0c is > 9 and < 0xe)
         {
             // Ghidra: le carrousel de cartes — une icône par port, sur le même cercle que les
             // sous-états 0/6 (Ordinal_450/451). Bloqué par FUN_0051be90 dès la première icône.
@@ -787,11 +787,11 @@ public static unsafe partial class Blaze
 
             *(short*)(box + 0x10) = 0;
             *(short*)(box + 8) = 0xb4;
-            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
             *(short*)(box + 0x10) = 1;
             *(short*)(box + 8) = 0xe8;
-            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)box);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)box);
 
             *(uint*)box = (uint)(nuint)s_NumeralTileRecord_00566c30;
             *(short*)(box + 8) = 0xbc;
@@ -822,14 +822,14 @@ public static unsafe partial class Blaze
             *(short*)(label + 0x10) = 1;
             *(short*)(label + 8) = 0xa9;
             *(short*)(label + 0xa) = 0x6e;
-            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)label, 0, 0);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)label, 0, 0);
         }
         if (*(short*)s_JoyAxis2_00604b2e == -0x8000)
         {
             *(short*)(label + 0x10) = 2;
             *(short*)(label + 8) = 0xdd;
             *(short*)(label + 0xa) = 0x6e;
-            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)label, 0, 0);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)label, 0, 0);
         }
 
         *(short*)(label + 0x10) = 0;
@@ -841,11 +841,11 @@ public static unsafe partial class Blaze
         byte* panel = s_SelectSlots_00573518 + CharacterSelectSlotStride;
         BindMenuLabels(LabelAt(0x158), 0, panel, 0);
         primCursor = Ui.RunTextEngine(primCursor, panel);
-        BindMenuLabels(s_SelectScratch_00573338 + 0x100, 0, panel, 0);
+        BindMenuLabels(Mem.s_SelectScratch_00573338 + 0x100, 0, panel, 0);
         primCursor = Ui.RunTextEngine(primCursor, panel);
         BindMenuLabels(LabelAt(0x15c), 0, panel, 0);
         primCursor = Ui.RunTextEngine(primCursor, panel);
-        BindMenuLabels(LabelAt(0xc + (s_SelectScratch_00573338[0x150] & 7) * 4), 0, panel, 0);
+        BindMenuLabels(LabelAt(0xc + (Mem.s_SelectScratch_00573338[0x150] & 7) * 4), 0, panel, 0);
         primCursor = Ui.RunTextEngine(primCursor, panel);
 
         // Ghidra: DAT_005e909a..e — un descripteur de mini-jeu/animation lié au « Bonus » choisi.
@@ -854,8 +854,8 @@ public static unsafe partial class Blaze
         s_Unknown_005e909b = 0xf;
         s_Unknown_005e909d = 0x10;
         s_Unknown_005e909c = (byte)((s_FadeCounter_005e9960 >> 2 & 0x1fffffff) % 3
-            + s_SelectScratch_00573338[0x151] * 3);
-        s_Unknown_005e909e = s_SelectScratch_00573338[0x150];
+            + Mem.s_SelectScratch_00573338[0x151] * 3);
+        s_Unknown_005e909e = Mem.s_SelectScratch_00573338[0x150];
 
         BindMenuLabels(LabelAt(0x160), 0, panel, 0);
         primCursor = Ui.RunTextEngine(primCursor, panel);
@@ -876,8 +876,8 @@ public static unsafe partial class Blaze
             short x = (short)(((i & 1) != 0 ? 0x38 : 0) + 0x12 + panelX);
             *(short*)(glyph + 8) = x;
             *(short*)(glyph + 0xa) = y;
-            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)glyph, 0, 0);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)glyph);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)glyph, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)glyph);
             EmitClipRect(otBase, &primCursor);
 
             *(short*)(glyph + 8) = (short)(x + 0x1c);
@@ -896,8 +896,8 @@ public static unsafe partial class Blaze
             short x = (short)(((i & 1) != 0 ? 0x38 : 0) + 0x12 + panelX);
             *(short*)(glyph + 8) = x;
             *(short*)(glyph + 0xa) = y;
-            primCursor = DrawSpriteVariant(otBase, primCursor, (int*)glyph, 0, 0);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)glyph);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)glyph, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)glyph);
             EmitClipRect(otBase, &primCursor);
 
             *(short*)(glyph + 8) = (short)(x + 0x1c);
@@ -936,7 +936,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint* CharacterSelectSubState4(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
-        byte* scratch = s_SelectScratch_00573338;
+        byte* scratch = Mem.s_SelectScratch_00573338;
         int* state = s_SelectState_00578de8;
 
         if (s_SelectFlags_00562a48[0] != 0)
@@ -1148,7 +1148,7 @@ public static unsafe partial class Blaze
             // Le même décalage d'un pixel que le carrousel applique le temps du dessin.
             atlas[frame * 8 + 2]--;
             atlas[frame * 8 + 3]--;
-            primCursor = DrawSpritePrimitive(otBase + projected[2], primCursor, (int*)sprite, 0, 0);
+            primCursor = Prims.DrawSpritePrimitive(otBase + projected[2], primCursor, (int*)sprite, 0, 0);
             atlas[frame * 8 + 2]++;
             atlas[frame * 8 + 3]++;
         }
@@ -1178,7 +1178,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint* CharacterSelectSubState3(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
-        byte* scratch = s_SelectScratch_00573338;
+        byte* scratch = Mem.s_SelectScratch_00573338;
         int* state = s_SelectState_00578de8;
         byte* box = s_SelectSlots_00573518;                                  // DAT_00573518
         byte* panel = s_SelectSlots_00573518 + CharacterSelectSlotStride;    // DAT_00573de0
@@ -1357,8 +1357,8 @@ public static unsafe partial class Blaze
         *(short*)(sprite + 0x10) = 0x18;
 
         EmitViewportRect(otBase, &primCursor);
-        primCursor = DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);
-        primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)sprite);
+        primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);
+        primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)sprite);
         EmitClipRect(otBase, &primCursor);
 
         BindMenuLabels(Mem.s_Unknown_005606f8, 0, box, 0);
@@ -1607,8 +1607,8 @@ public static unsafe partial class Blaze
         *(short*)(cursor + 0x10) = 0x18;
 
         EmitViewportRect(otBase, &primCursor);
-        primCursor = DrawSpriteVariant(otBase, primCursor, (int*)cursor, 0, 0);
-        primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)cursor);
+        primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)cursor, 0, 0);
+        primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)cursor);
         EmitClipRect(otBase, &primCursor);
 
         // Les huit lignes du clavier virtuel. La table de largeurs passe en **fixe** le temps de
@@ -1638,7 +1638,7 @@ public static unsafe partial class Blaze
     private static uint* CharacterSelectSubState0(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
         ushort* padWords = (ushort*)pad;
-        byte* scratch = s_SelectScratch_00573338;
+        byte* scratch = Mem.s_SelectScratch_00573338;
 
         // Ghidra: le pilotage libre, actif tant que DAT_005633a8 vaut 0. Le bit 1 du premier mot
         // choisit la cible : couleur de fond au pas de 8 (bornée à 8 bits), sinon rotation de la
@@ -1957,9 +1957,9 @@ public static unsafe partial class Blaze
 
             // Deux passes décalées d'un pixel en X : l'ombre puis le texte.
             uint* labelOt = otBase + projected[2] + 0x14;
-            primCursor = DrawSpritePrimitive(labelOt, primCursor, (int*)labelSprite, 2, 0);
+            primCursor = Prims.DrawSpritePrimitive(labelOt, primCursor, (int*)labelSprite, 2, 0);
             *(short*)(labelSprite + 8) -= 1;
-            primCursor = DrawSpritePrimitive(labelOt, primCursor, (int*)labelSprite, 2, 0);
+            primCursor = Prims.DrawSpritePrimitive(labelOt, primCursor, (int*)labelSprite, 2, 0);
 
             atlas[i * 8 + 2]++;
             atlas[i * 8 + 3]++;
@@ -2045,25 +2045,6 @@ public static unsafe partial class Blaze
             : (s_SelectSlotsStorage =
                    AllocLowZeroed((uint)(CharacterSelectSlotCount * CharacterSelectSlotStride)));
 
-    // Ghidra: DAT_00573338 — le bloc que la boucle place à MainMem + 0xf0000. C'est la même adresse
-    // que la destination de la liste +0xb0 de LoadCharacterSelectResources : le chargement y dépose
-    // des blocs bruts, la boucle de frame l'efface puis le relit
-    // (`*(byte *)(DAT_00573338 + 0x151)` sert d'index dans la table de couleurs DAT_00562a58).
-    //
-    // **Dérivé de MainMem plutôt qu'affecté une fois (2026-08-18).** C'était un champ posé par le
-    // seul LoadCharacterSelectResources, donc encore nul pour qui atteignait l'état de jeu 1 sans
-    // être passé par l'écran de sélection des personnages — exactement ce que fait « Début du jeu »
-    // au menu principal, et ce qui faisait échouer le `NativeMemory.Clear` de RunGameState1Entry sur
-    // un pointeur nul. L'original n'a pas ce problème : il recalcule `*MainMem + 0xf0000` sur place
-    // à chaque site (voir FUN_00536ea0, `iVar17 = *(int *)MainMem_exref + 0xf0000;`). On fait pareil.
-    private static byte* s_SelectScratch_00573338
-    {
-        get
-        {
-            byte* mainMem = GetMainMemPtr();
-            return mainMem != null ? mainMem + 0xf0000 : null;
-        }
-    }
 
     // Ghidra: DAT_005e9020 â€” read at ~60 sites across the game, essentially always as a party-size
     // bound: loop upper limit over active characters, "current player slot" modulo divisor, and
@@ -2087,9 +2068,9 @@ public static unsafe partial class Blaze
     /// (<see cref="s_PartyAbilityMask_005e9000"/>) by OR-ing together the per-character 32-byte flag
     /// block at offset 0x2e0 of each of the <see cref="s_PartySize_005e9020"/> active characters'
     /// 0x2000-byte record in the character-select scratch area
-    /// (<see cref="s_SelectScratch_00573338"/> + <c>i * 0x2000</c>; Ghidra reads this relative to
+    /// (<see cref="Mem.s_SelectScratch_00573338"/> + <c>i * 0x2000</c>; Ghidra reads this relative to
     /// MainMem directly as <c>MainMem + 0xf02e0</c>, which is exactly
-    /// <c>s_SelectScratch_00573338 (= MainMem + 0xf0000) + 0x2e0</c>).
+    /// <c>Mem.s_SelectScratch_00573338 (= MainMem + 0xf0000) + 0x2e0</c>).
     /// </summary>
     private static void RefreshPartyAbilityMask()
     {
@@ -2099,7 +2080,7 @@ public static unsafe partial class Blaze
         int partySize = s_PartySize_005e9020;
         if (partySize == 0) return;
 
-        byte* source = s_SelectScratch_00573338 + 0x2e0;
+        byte* source = Mem.s_SelectScratch_00573338 + 0x2e0;
         for (; partySize != 0; partySize--, source += 0x2000)
         {
             uint* src = (uint*)source;

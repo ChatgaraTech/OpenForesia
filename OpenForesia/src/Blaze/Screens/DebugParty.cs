@@ -254,14 +254,14 @@ public static unsafe partial class Blaze
             *(short*)(d + 8) = 0x38;
             *(short*)(d + 0xa) = 0x20;
             *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
-            primCursor = DrawTextRun(otBase, primCursor, draw, s_MaleLabel_0056c964, 0, 0, -1);
+            primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_MaleLabel_0056c964, 0, 0, -1);
             *(short*)(d + 8) += 0x40;
-            primCursor = DrawTextRun(otBase, primCursor, draw, s_FemaleLabel_0056c95c, 0, 0, -1);
+            primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_FemaleLabel_0056c95c, 0, 0, -1);
 
             // Le curseur de genre : 0x2c devant MALE (x=0x38), 0x6c devant FEMALE (x=0x78).
             *(short*)(d + 0xa) = 0x20;
             *(short*)(d + 8) = (short)((gender << 6) + 0x2c);
-            primCursor = DrawTextRun(otBase, primCursor, draw, s_CursorGlyph_00564a2c, 0, 0, -1);
+            primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_CursorGlyph_00564a2c, 0, 0, -1);
 
             // Les huit classes, une par ligne de onze pixels.
             *(short*)(d + 8) = 0x38;
@@ -269,12 +269,12 @@ public static unsafe partial class Blaze
             *(byte**)d = (byte*)s_GlyphAtlas_00566c28;    // réécrit alors qu'il n'a pas changé
             for (int i = 0; i < 8; i++)
             {
-                primCursor = DrawTextRun(otBase, primCursor, draw, ClassName_0056c7c0(i), 0, 0, -1);
+                primCursor = Prims.DrawTextRun(otBase, primCursor, draw, ClassName_0056c7c0(i), 0, 0, -1);
                 *(short*)(d + 0xa) += 0xb;
             }
             *(short*)(d + 0xa) = (short)(classIndex * 0xb + 0x2e);
             *(short*)(d + 8) = 0x2c;
-            primCursor = DrawTextRun(otBase, primCursor, draw, s_CursorGlyph_00564a2c, 0, 0, -1);
+            primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_CursorGlyph_00564a2c, 0, 0, -1);
 
             // Le groupe déjà composé, relu depuis les octets d'identité eux-mêmes.
             *(short*)(d + 0xa) = 0x94;
@@ -284,10 +284,10 @@ public static unsafe partial class Blaze
                 for (int i = partyCount; i != 0; i--)
                 {
                     *(short*)(d + 8) = 0x46;
-                    primCursor = DrawTextRun(otBase, primCursor, draw,
+                    primCursor = Prims.DrawTextRun(otBase, primCursor, draw,
                         ClassName_0056c7c0(*entry & 7), 0, 0, -1);
                     *(short*)(d + 8) += 0x40;
-                    primCursor = DrawTextRun(otBase, primCursor, draw,
+                    primCursor = Prims.DrawTextRun(otBase, primCursor, draw,
                         (*entry & 8) != 0 ? s_FemaleLabel_0056c95c : s_MaleLabel_0056c964, 0, 0, -1);
                     *(short*)(d + 0xa) += 0xb;
                     entry += 0x2000;
@@ -303,8 +303,8 @@ public static unsafe partial class Blaze
             *(short*)(d + 0x10) = 0;
             *(uint**)d = **(uint***)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
             *(uint*)(d + 4) = 0x1000000;
-            primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);   // FUN_00521f20
-            primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);           // FUN_0051f9c0
+            primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);   // FUN_00521f20
+            primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, draw);           // FUN_0051f9c0
 
             FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
         }
@@ -376,7 +376,7 @@ public static unsafe partial class Blaze
             *(short*)(d + 0xa) = 0x20;
             *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
             *(uint*)(d + 4) = 0x1000000;
-            primCursor = DrawTextRun(otBase, primCursor, draw, s_BufferOverLabel_0056c950, 0, 0, -1);
+            primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_BufferOverLabel_0056c950, 0, 0, -1);
             FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
         }
     }
@@ -515,7 +515,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00536ba0 @ 0x00536ba0 â€” charge et relocalise les ressources des quatre
     /// emplacements du groupe pour le rendu de l'Ã©tat de jeu 1 : deux textures, un paquet de modÃ¨le
     /// et un paquet d'animation par emplacement, indexÃ©s par l'identitÃ© de personnage que
-    /// <c>s_SelectScratch_00573338[0x150 + i*0x2000]</c> stocke pour cet emplacement (le mÃªme champ
+    /// <c>Mem.s_SelectScratch_00573338[0x150 + i*0x2000]</c> stocke pour cet emplacement (le mÃªme champ
     /// que le code voisin de <c>StepSubState5Phase</c> lit dÃ©jÃ  comme Â« personnage courant Â»).
     /// <para>
     /// ReconstruitÂ depuis le dÃ©sassemblage brut (<c>Legacy/Raw/Blaze/FUN_00536ba0.asm</c>), pas le
@@ -566,7 +566,7 @@ public static unsafe partial class Blaze
             byte* record = s_SlotFlags_005e93c0 + i * 0x9c;        // Ghidra: &DAT_005e93c0 + i*0x9c
             byte* recordTail = record + 4;                          // Ghidra: EDI ("&DAT_005e93c4 + i*0x9c")
 
-            // Ghidra: uVar8 = pcVar2[-0x16d] == s_SelectScratch_00573338[0x150 + i*0x2000].
+            // Ghidra: uVar8 = pcVar2[-0x16d] == Mem.s_SelectScratch_00573338[0x150 + i*0x2000].
             byte characterId = charBlock[-0x16d];
 
             // Ghidra: le balayage des emplacements dÃ©jÃ  traitÃ©s (j < i) portant la mÃªme identitÃ©.

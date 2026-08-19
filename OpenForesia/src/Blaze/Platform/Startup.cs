@@ -365,7 +365,7 @@ public static unsafe partial class Blaze
     /// fenêtre principale) a sa propre chaîne de dépendances non lue (FUN_00522dc0/eb0/e40).
     ///
     /// <para><b>Deux corrections le 2026-08-18</b>, toutes deux causes directes du 0xC0000005 dans
-    /// <c>ResetCardTransferStatus</c>/<c>Ordinal_67</c> quand un fichier de sauvegarde existait
+    /// <c>Saves.ResetCardTransferStatus</c>/<c>Ordinal_67</c> quand un fichier de sauvegarde existait
     /// déjà :</para>
     /// <list type="number">
     /// <item><c>Ordinal_10</c> n'est <b>pas</b> un désenregistrement, contrairement à ce que le
@@ -384,23 +384,23 @@ public static unsafe partial class Blaze
 
         // Ghidra: DAT_00604b68/6c/70/74 puis DAT_00604b58/5c/60/64 — l'ordre compte, chaque
         // gestionnaire publie l'état correspondant à son mode (4, 0x8000, 0x100, 0x2000 → 0..3).
-        void* h1 = Winsys3d.Ordinal_6(0xf4000001, 4, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardWriteStatusHandler0);
-        void* h2 = Winsys3d.Ordinal_6(0xf4000001, 0x8000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardWriteStatusHandler1);
-        void* h3 = Winsys3d.Ordinal_6(0xf4000001, 0x100, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardWriteStatusHandler2);
-        void* h4 = Winsys3d.Ordinal_6(0xf4000001, 0x2000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardWriteStatusHandler3);
-        void* h5 = Winsys3d.Ordinal_6(0xf0000011, 4, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardReadStatusHandler0);
-        void* h6 = Winsys3d.Ordinal_6(0xf0000011, 0x8000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardReadStatusHandler1);
-        void* h7 = Winsys3d.Ordinal_6(0xf0000011, 0x100, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardReadStatusHandler2);
-        void* h8 = Winsys3d.Ordinal_6(0xf0000011, 0x2000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&CardReadStatusHandler3);
+        void* h1 = Winsys3d.Ordinal_6(0xf4000001, 4, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&SaveData.CardWriteStatusHandler0);
+        void* h2 = Winsys3d.Ordinal_6(0xf4000001, 0x8000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&SaveData.CardWriteStatusHandler1);
+        void* h3 = Winsys3d.Ordinal_6(0xf4000001, 0x100, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&SaveData.CardWriteStatusHandler2);
+        void* h4 = Winsys3d.Ordinal_6(0xf4000001, 0x2000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&SaveData.CardWriteStatusHandler3);
+        void* h5 = Winsys3d.Ordinal_6(0xf0000011, 4, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&SaveData.CardReadStatusHandler0);
+        void* h6 = Winsys3d.Ordinal_6(0xf0000011, 0x8000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&SaveData.CardReadStatusHandler1);
+        void* h7 = Winsys3d.Ordinal_6(0xf0000011, 0x100, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&SaveData.CardReadStatusHandler2);
+        void* h8 = Winsys3d.Ordinal_6(0xf0000011, 0x2000, 0x1000, (void*)(delegate* unmanaged[Stdcall]<void>)&SaveData.CardReadStatusHandler3);
 
-        s_CardWriteEventHandles_00604b68[0] = h1;
-        s_CardWriteEventHandles_00604b68[1] = h2;
-        s_CardWriteEventHandles_00604b68[2] = h3;
-        s_CardWriteEventHandles_00604b68[3] = h4;
-        s_CardReadEventHandles_00604b58[0] = h5;
-        s_CardReadEventHandles_00604b58[1] = h6;
-        s_CardReadEventHandles_00604b58[2] = h7;
-        s_CardReadEventHandles_00604b58[3] = h8;
+        Saves.s_CardWriteEventHandles_00604b68[0] = h1;
+        Saves.s_CardWriteEventHandles_00604b68[1] = h2;
+        Saves.s_CardWriteEventHandles_00604b68[2] = h3;
+        Saves.s_CardWriteEventHandles_00604b68[3] = h4;
+        Saves.s_CardReadEventHandles_00604b58[0] = h5;
+        Saves.s_CardReadEventHandles_00604b58[1] = h6;
+        Saves.s_CardReadEventHandles_00604b58[2] = h7;
+        Saves.s_CardReadEventHandles_00604b58[3] = h8;
 
         Winsys3d.Ordinal_41();
         Winsys3d.Ordinal_10(h1); Winsys3d.Ordinal_10(h2); Winsys3d.Ordinal_10(h3); Winsys3d.Ordinal_10(h4);

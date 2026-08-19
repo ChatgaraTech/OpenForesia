@@ -295,8 +295,8 @@ public static unsafe partial class Blaze
             *(ushort*)(sprite + 0xc) = 0x1420;
             *(ushort*)(sprite + 0xe) = 0x1149;
             *(short*)(sprite + 0x10) = 0;
-            primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
-            primCursor = DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
+            primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
 
             // Ghidra: les deux DISPENV rétrécis le temps de l'envoi, puis remis.
             SetDisplayEnvExtent(0x100, 0xe0);
@@ -383,7 +383,7 @@ public static unsafe partial class Blaze
         *(short*)(c + 0xa) = 0x2c;
         for (int i = 0; i < s_InventoryLabels_00566b58.Length; i++)
         {
-            primCursor = DrawTextRun(otBase, primCursor, cursor, s_InventoryLabels_00566b58[i], 0, 0, -1);
+            primCursor = Prims.DrawTextRun(otBase, primCursor, cursor, s_InventoryLabels_00566b58[i], 0, 0, -1);
             *(short*)(c + 0xa) += 0xc;
         }
 
@@ -393,8 +393,8 @@ public static unsafe partial class Blaze
         *(short*)(c + 8) = 100 - 0x10;
         *(short*)(c + 0x10) = 0x18;
         *(short*)(c + 0xa) = (short)(s_ItemMenuCursor_005de4e0 * 0xc + 0x28);
-        primCursor = DrawSpriteVariant(otBase, primCursor, cursor, 0, 0);
-        primCursor = DrawFlatPrimitive(otBase, primCursor, cursor);
+        primCursor = Prims.DrawSpriteVariant(otBase, primCursor, cursor, 0, 0);
+        primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, cursor);
         EmitClipRect(otBase, &primCursor);
 
         // Ghidra type FUN_00524680 et FUN_00524190 en `void`, mais le site d'appel fait
@@ -403,7 +403,7 @@ public static unsafe partial class Blaze
         // Rendre l'ancien curseur laisse les dessins suivants réécrire par-dessus les primitives du
         // bandeau, ce qui casse la table d'ordonnancement : mesuré le 2026-08-18, DrawOTag ne
         // revenait jamais et le menu se figeait dans FrameEnd. Même défaut de type de retour que
-        // RetryOpenCardFile.
+        // Saves.RetryOpenCardFile.
         return DrawItemMenuTitle(primCursor);
     }
 
@@ -454,10 +454,10 @@ public static unsafe partial class Blaze
         {
             byte* row = s_PartyRowText_005e8640 + rowOffset;
 
-            SetCardFileName(s_CardDirectoryEntries_006049bc + entry * 0x28);
-            SetCardPathDeviceFields();
+            Saves.SetCardFileName(s_CardDirectoryEntries_006049bc + entry * 0x28);
+            Saves.SetCardPathDeviceFields();
 
-            IntPtr handle = Winsys3d.Ordinal_21(s_CardPathDescriptor_00604940, 1);
+            IntPtr handle = Winsys3d.Ordinal_21(Saves.s_CardPathDescriptor_00604940, 1);
             if ((long)handle < 0)
             {
                 // Ghidra: neuf octets copiés depuis s__________00566b8c (deux dwords puis l'octet
@@ -469,7 +469,7 @@ public static unsafe partial class Blaze
                 Winsys3d.Ordinal_24(handle, scratch, 0x2000);
                 Winsys3d.Ordinal_22(handle);
                 // Les seize octets du nom, à +0x100 de l'enregistrement — le même champ que
-                // WriteCardSaveFile encode dans l'en-tête du fichier.
+                // Saves.WriteCardSaveFile encode dans l'en-tête du fichier.
                 for (int i = 0; i < 16; i++) row[i] = scratch[0x100 + i];
             }
 

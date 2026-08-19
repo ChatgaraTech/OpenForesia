@@ -64,7 +64,7 @@ param(
     # valeur - c'est la pente classique des fichiers de suppression.
     [string[]] $Injected = @('mem','memory','gameMemory','gfx','win32','winsys3d','wsyskern',
                              'ui','uiText','uiWindow','audio','input','resources','video',
-                             'model3d','primitives2d','saveData','host','display')
+                             'model3d','primitives2d','prims','saveData','saves','host','display')
 )
 
 $ErrorActionPreference = 'Stop'

@@ -281,7 +281,7 @@ public static unsafe partial class Blaze
             if ((item[0x13] & 0x80) == 0)
             {
                 *(uint**)d = s_GlyphAtlas_00566c28;
-                primCursor = DrawTextRun(otBase, primCursor, draw, s_UnknownStatLabel_00566b80, 0, 0, -1);
+                primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_UnknownStatLabel_00566b80, 0, 0, -1);
             }
             else
             {
@@ -302,7 +302,7 @@ public static unsafe partial class Blaze
             if ((item[0x13] & 0x80) == 0)
             {
                 *(uint**)d = s_GlyphAtlas_00566c28;
-                primCursor = DrawTextRun(otBase, primCursor, draw, s_UnknownStatLabel_00566b80, 0, 0, -1);
+                primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_UnknownStatLabel_00566b80, 0, 0, -1);
             }
             else
             {
@@ -337,8 +337,8 @@ public static unsafe partial class Blaze
             // Ghidra: `(-(bit != 0) & 0xfffffff9) + 9` — 2 quand l'element est present, 9 sinon ;
             // deux variantes de la meme icone.
             uint variant = (1 << n & *(ushort*)(item + 0x12)) != 0 ? 2u : 9u;
-            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, variant);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, variant);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
             *(short*)(d + 8) += 0x10;
             *(short*)(d + 0x10) += 1;
         }
@@ -371,7 +371,7 @@ public static unsafe partial class Blaze
 
         if ((item[0x13] & 0x80) == 0)
         {
-            primCursor = DrawTextRun(otBase, primCursor, draw, s_UnknownItemLabel_00566b84, 0, 0, 0x10);
+            primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_UnknownItemLabel_00566b84, 0, 0, 0x10);
         }
         else
         {
@@ -442,8 +442,8 @@ public static unsafe partial class Blaze
                 *(short*)(d + 8) = (short)(sx + 0x6c);
                 *(short*)(d + 0xa) = (short)(sy + 0x38);
                 *(byte**)d = s_EquippedMarker_00566b50;
-                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
             }
 
             // L'enregistrement d'icone partage, dont les deux premiers octets designent la case
@@ -454,9 +454,9 @@ public static unsafe partial class Blaze
             *(byte**)d = icon;
             *(short*)(d + 8) = (short)(sx + 0x60);
             *(short*)(d + 0xa) = (short)(sy + 0x2c);
-            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0,
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0,
                                            (uint)((slotFlags[8] << 8) | slot));
-            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
             EmitClipRect(otBase, &primCursor);
         }
 
@@ -489,11 +489,11 @@ public static unsafe partial class Blaze
             *(ushort*)(d + 0x10) = rec[1];
             *(short*)(d + 0xa) = (short)(*(short*)(panel + 6) + rec[3]);
             *(short*)(d + 8) = (short)(*(short*)(panel + 4) + rec[2]);
-            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
         }
 
         *(ushort*)(d + 0x10) = 0;
-        primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+        primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
         EmitClipRect(otBase, &primCursor);
         return primCursor;
     }
@@ -655,15 +655,15 @@ public static unsafe partial class Blaze
                         *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xfa) =
                             (ushort)(((i << 4) >> 4) & 0xf | (bank + 0x1fe) * 0x40);
 
-                        primCursor = DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
-                        primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                        primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
+                        primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                         EmitClipRect(otBase, &primCursor);
 
                         *(short*)(d + 8) += 0x1e;
                         *(short*)(d + 0xa) += 4;
                         *(uint*)(d + 4) = chosen ? 0x1000000u : 0x404040u;
                         *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
-                        primCursor = DrawTextRun(otBase, primCursor, draw, row, 0, 0, PartyRowStride);
+                        primCursor = Prims.DrawTextRun(otBase, primCursor, draw, row, 0, 0, PartyRowStride);
 
                         if (s_ItemMenuSelection_005de4c8 == i)
                         {
@@ -673,8 +673,8 @@ public static unsafe partial class Blaze
                             *(short*)(d + 0x10) = 0x18;
                             *(uint*)(d + 4) = 0x1000000;
                             *(short*)(d + 8) = 0x14;
-                            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                             EmitClipRect(otBase, &primCursor);
                         }
                     }
@@ -692,16 +692,16 @@ public static unsafe partial class Blaze
                     }
 
                     byte* entry = (byte*)(nint)s_ItemMenuChosenEntry_005de42c;
-                    SetCardFileName(entry);            // Ghidra: FUN_00512900
-                    SetCardPathDeviceFields();         // Ghidra: FUN_005128e0(&DAT_00604980)
+                    Saves.SetCardFileName(entry);            // Ghidra: FUN_00512900
+                    Saves.SetCardPathDeviceFields();         // Ghidra: FUN_005128e0(&DAT_00604980)
 
                     *(uint*)(record + 0x1ffc) = 0;
-                    IntPtr handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
-                    int r1 = RetrySeekAndReadCardFile(handle, record, 0, 0x2000);
-                    int r2 = RetrySeekAndReadCardFile(handle, mainMem + 0x1b1900, 0x2000, 0x2000);
-                    int r3 = RetrySeekAndReadCardFile(handle, record + 0x2000, 0x4000,
+                    IntPtr handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+                    int r1 = Saves.RetrySeekAndReadCardFile(handle, record, 0, 0x2000);
+                    int r2 = Saves.RetrySeekAndReadCardFile(handle, mainMem + 0x1b1900, 0x2000, 0x2000);
+                    int r3 = Saves.RetrySeekAndReadCardFile(handle, record + 0x2000, 0x4000,
                                                       (*(int*)(entry + 0x18) - 2) * 0x2000);
-                    RetryCloseCardFile(handle);
+                    Saves.RetryCloseCardFile(handle);
 
                     bool loaded = false;
 
@@ -897,7 +897,7 @@ public static unsafe partial class Blaze
                     // Le compteur « n / 403 », separe par la barre oblique de 0x00564a0c.
                     *(short*)(d + 8) = 0x38;
                     *(short*)(d + 0xa) = 0x90;
-                    primCursor = DrawTextRun(otBase, primCursor, draw, s_SlashLabel_00564a0c, 0, 0, 0x10);
+                    primCursor = Prims.DrawTextRun(otBase, primCursor, draw, s_SlashLabel_00564a0c, 0, 0, 0x10);
 
                     *(uint**)d = s_NumeralTileRecord_00566c30;
                     *(short*)(d + 8) = 0x20;
@@ -1018,8 +1018,8 @@ public static unsafe partial class Blaze
                     *(short*)(d + 0xa) = (short)((s_Unknown_005de4e4 << 4) + 0x18);
                     *(short*)(d + 0x10) = 0x18;
                     *(short*)(d + 8) = 0x58;
-                    primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                    primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                    primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                    primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                     EmitClipRect(otBase, &primCursor);
 
                     // Cinq lignes au plus : icone, quantite et nom.
@@ -1067,14 +1067,14 @@ public static unsafe partial class Blaze
                         {
                             // L'ombre portee : trois traces decales d'un pixel avant le vrai.
                             s_ItemIconSprite_00566b48[0]++;
-                            primCursor = DrawSpritePrimitive(otBase, primCursor, draw, 2, clut);
+                            primCursor = Prims.DrawSpritePrimitive(otBase, primCursor, draw, 2, clut);
                             s_ItemIconSprite_00566b48[1]++;
-                            primCursor = DrawSpritePrimitive(otBase, primCursor, draw, 2, clut);
+                            primCursor = Prims.DrawSpritePrimitive(otBase, primCursor, draw, 2, clut);
                             s_ItemIconSprite_00566b48[0]--;
-                            primCursor = DrawSpritePrimitive(otBase, primCursor, draw, 2, clut);
+                            primCursor = Prims.DrawSpritePrimitive(otBase, primCursor, draw, 2, clut);
                             s_ItemIconSprite_00566b48[1]--;
                         }
-                        primCursor = DrawSpritePrimitive(otBase, primCursor, draw, 0, clut);
+                        primCursor = Prims.DrawSpritePrimitive(otBase, primCursor, draw, 0, clut);
                         EmitClipRect(otBase, &primCursor);
 
                         *(short*)(d + 0xa) = (short)(y + 8);
@@ -1082,7 +1082,7 @@ public static unsafe partial class Blaze
                         *(uint**)d = s_GlyphAtlas_00566c28;
                         *(short*)(d + 8) = 0x78;
                         byte* label = (item[0x13] & 0x80) != 0 ? item : s_UnknownItemLabel_00566b84;
-                        primCursor = DrawTextRun(otBase, primCursor, draw, label, 0, 0, 0x10);
+                        primCursor = Prims.DrawTextRun(otBase, primCursor, draw, label, 0, 0, 0x10);
                     }
 
                     // La fiche de l'objet sous le curseur : huit caracteristiques sur deux
@@ -1300,9 +1300,9 @@ public static unsafe partial class Blaze
                     s_ItemIconSprite_00566b48[1] = (byte)((v / 10) * 0x18 - 0x78);
                     *(short*)(d + 0xa) = (short)(*(short*)(desc2 + 6) + 0xc);
                     *(short*)(d + 8) = (short)(*(short*)(desc2 + 4) + 0xc);
-                    primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0,
+                    primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0,
                                                    (uint)((v & 0xf) | ((v & 0x10) << 4)));
-                    primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                    primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
 
                     *(uint**)d = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
                     *(short*)(d + 0x10) = 0x18;
@@ -1310,8 +1310,8 @@ public static unsafe partial class Blaze
                     *(short*)(d + 8) = (short)(s_KeyColumn_005de4fc * 0x10 + 0x18
                         + *(short*)(desc1 + 4) + ((s_KeyColumn_005de4fc < 5 ? 1 : 0) - 1 & 8));
                     *(short*)(d + 0xa) = (short)((s_KeyRow_005de500 + 1) * 0xc + *(short*)(desc1 + 6));
-                    primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                    primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                    primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                    primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
 
                     if (s_ItemNameLength_005de504 < 0xe)
                     {
@@ -1319,8 +1319,8 @@ public static unsafe partial class Blaze
                         *(short*)(d + 8) = (short)(*(short*)(desc2 + 4)
                             + s_ItemNameLength_005de504 * 8 + desc2[0x20]);
                         *(short*)(d + 0xa) = (short)(*(short*)(desc2 + 6) + desc2[0x21]);
-                        primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                        primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                        primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                        primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                     }
                     EmitClipRect(otBase, &primCursor);
 
@@ -1453,15 +1453,15 @@ public static unsafe partial class Blaze
                     {
                         case 0:
                         {
-                            SetCardFileName(record + 0x1fd0);
-                            SetCardPathDeviceFields();
-                            IntPtr probe = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
-                            RetryCloseCardFile(probe);
+                            Saves.SetCardFileName(record + 0x1fd0);
+                            Saves.SetCardPathDeviceFields();
+                            IntPtr probe = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+                            Saves.RetryCloseCardFile(probe);
 
                             if ((long)probe >= 0)
                             {
                                 BindMenuLabels(LabelAt(0x18), 0, s_ItemMenuDescriptors_00564fe0, 0);
-                                ResetCardTransferStatus((s_CardSlotIndex_00604980 & 3)
+                                Saves.ResetCardTransferStatus((s_CardSlotIndex_00604980 & 3)
                                                         + (s_CardSlotIndex_00604980 & 4) * 4);
                                 s_Unknown_005de4d4++;
                                 s_CardDialogStep_005de468 = 3;
@@ -1488,7 +1488,7 @@ public static unsafe partial class Blaze
 
                         case -2:
                             BindMenuLabels(LabelAt(0x10), 0, s_ItemMenuDescriptors_00564fe0, 0);
-                            ResetCardTransferStatus((s_CardSlotIndex_00604980 & 3)
+                            Saves.ResetCardTransferStatus((s_CardSlotIndex_00604980 & 3)
                                                     + (s_CardSlotIndex_00604980 & 4) * 4);
                             s_CardDialogStep_005de468 = 2;
                             s_Unknown_005de4d4 = 0x60;
@@ -1537,10 +1537,10 @@ public static unsafe partial class Blaze
                     s_ItemMenuRecord_005de410 = (int)(nint)(mainMem + 0xf0000);
                     record = (byte*)(nint)s_ItemMenuRecord_005de410;
 
-                    SetCardFileName(mainMem + 0xf1fd0);
-                    SetCardPathDeviceFields();
-                    PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                    ResetCardWriteEvents();
+                    Saves.SetCardFileName(mainMem + 0xf1fd0);
+                    Saves.SetCardPathDeviceFields();
+                    Saves.PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                    Saves.ResetCardWriteEvents();
 
                     // Les objets retenus par le personnage repassent dans sa fiche, dans l'ordre,
                     // et les references d'equipement (+0x2b0, cinq octets) suivent leur nouveau
@@ -1586,9 +1586,9 @@ public static unsafe partial class Blaze
                     for (int i = loose; i < 0xc; i++) mainMem[0x1b0000 + i * 0x280] = 0;
 
                     // La somme de controle de reference est relue a 0x3f00 avant de recalculer.
-                    IntPtr readBack = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
-                    int verify = RetrySeekAndReadCardFile(readBack, mainMem + 0x1b4000, 0x3f00, 0x100);
-                    RetryCloseCardFile(readBack);
+                    IntPtr readBack = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+                    int verify = Saves.RetrySeekAndReadCardFile(readBack, mainMem + 0x1b4000, 0x3f00, 0x100);
+                    Saves.RetryCloseCardFile(readBack);
 
                     bool written = false;
                     byte* failLabel = LabelAt(0x48);
@@ -1601,11 +1601,11 @@ public static unsafe partial class Blaze
                             for (int i = 0; i < 0x1ffc; i++) sum += (sbyte)record[i];
                             *(int*)(record + 0x1ffc) = sum;
 
-                            IntPtr write = RetryOpenCardFile(s_CardPathDescriptor_00604940, 2);
-                            int w1 = RetrySeekAndWriteCardFile(write, record, 0, 0x2000);
-                            int w2 = RetrySeekAndWriteCardFile(write, mainMem + 0x1b0000, 0x2000, 0x1f00);
-                            int w3 = RetrySeekAndWriteCardFile(write, record + 0x1f00, 0x3f00, 0x100);
-                            RetryCloseCardFile(write);
+                            IntPtr write = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 2);
+                            int w1 = Saves.RetrySeekAndWriteCardFile(write, record, 0, 0x2000);
+                            int w2 = Saves.RetrySeekAndWriteCardFile(write, mainMem + 0x1b0000, 0x2000, 0x1f00);
+                            int w3 = Saves.RetrySeekAndWriteCardFile(write, record + 0x1f00, 0x3f00, 0x100);
+                            Saves.RetryCloseCardFile(write);
 
                             if ((w1 | w2 | w3) >= 0)
                             {
@@ -1645,8 +1645,8 @@ public static unsafe partial class Blaze
                     break;
 
                 case 0x5e:
-                    PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                    ResetCardWriteEvents();
+                    Saves.PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                    Saves.ResetCardWriteEvents();
                     goto case 0x5f;
 
                 case 0x5f:
@@ -1677,8 +1677,8 @@ public static unsafe partial class Blaze
                     {
                         s_ItemMenuDialogGate_005658a7 = (byte)(s_ItemMenuDialogGate_005658a7 & 0xfd);
                         s_Unknown_00565013 = 0;
-                        PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                        ResetCardWriteEvents();
+                        Saves.PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                        Saves.ResetCardWriteEvents();
                         s_CardDialogStep_005de468 = 0;
                         s_Unknown_005de4d4 = 0xd;
                     }
@@ -1702,8 +1702,8 @@ public static unsafe partial class Blaze
                     break;
 
                 case -5:
-                    PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                    ResetCardWriteEvents();
+                    Saves.PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                    Saves.ResetCardWriteEvents();
                     goto case -4;
 
                 case -4:
@@ -1725,8 +1725,8 @@ public static unsafe partial class Blaze
                         break;
                     }
                     if ((s_ItemMenuDialogGate_005658a7 & 2) != 0) break;
-                    PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
-                    ResetCardWriteEvents();
+                    Saves.PollCardReadStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
+                    Saves.ResetCardWriteEvents();
                     s_Unknown_005de4d4 = 0;
                     s_Unknown_00566acc = -1;
                     break;
@@ -1759,8 +1759,8 @@ public static unsafe partial class Blaze
             *(ushort*)(d + 0x10) = record[0x150];
             *(short*)(d + 8) = 0x20;
             *(short*)(d + 0xa) = 0x30;
-            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, (uint)record[0x2bd] << 8);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, (uint)record[0x2bd] << 8);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
             EmitClipRect(otBase, &primCursor);
 
             // Le bandeau de nom, remonte de quatre pixels le temps du trace puis remis.
@@ -1866,13 +1866,13 @@ public static unsafe partial class Blaze
                         && s_PartySelectionOrder_005e85c0[index] != s_PartySize_005e9020 + 1) index++;
                     if (index == entryCount) index = 0;
 
-                    SetCardFileName(s_CardDirectoryEntries_006049bc + index * 0x28);
-                    SetCardPathDeviceFields();
+                    Saves.SetCardFileName(s_CardDirectoryEntries_006049bc + index * 0x28);
+                    Saves.SetCardPathDeviceFields();
 
                     *(uint*)(member + 0x1ffc) = 0;
-                    IntPtr handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
-                    RetrySeekAndReadCardFile(handle, member, 0, 0x2000);
-                    RetryCloseCardFile(handle);
+                    IntPtr handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+                    Saves.RetrySeekAndReadCardFile(handle, member, 0, 0x2000);
+                    Saves.RetryCloseCardFile(handle);
 
                     s_PartySize_005e9020++;
                     member += 0x2000;
@@ -1984,15 +1984,15 @@ public static unsafe partial class Blaze
             *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xfa) =
                 (ushort)(((i << 4) >> 4) & 0xf | (bank + 0x1fe) * 0x40);
 
-            primCursor = DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
             EmitClipRect(otBase, &primCursor);
 
             *(short*)(d + 8) += 0x1e;
             *(short*)(d + 0xa) += 4;
             *(uint*)(d + 4) = chosen ? 0x1000000u : 0x404040u;
             *(byte**)d = (byte*)s_GlyphAtlas_00566c28;
-            primCursor = DrawTextRun(otBase, primCursor, draw, row, 0, 0, PartyRowStride);
+            primCursor = Prims.DrawTextRun(otBase, primCursor, draw, row, 0, 0, PartyRowStride);
 
             if (s_ItemMenuSelection_005de4c8 == i)
             {
@@ -2002,8 +2002,8 @@ public static unsafe partial class Blaze
                 *(short*)(d + 0x10) = 0x18;
                 *(uint*)(d + 4) = 0x1000000;
                 *(short*)(d + 8) = 0x14;
-                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                 EmitClipRect(otBase, &primCursor);
             }
         }
@@ -2038,16 +2038,16 @@ public static unsafe partial class Blaze
         {
             byte* record = mainMem + (s_ItemMenuCursor_005de4e0 + 0x78) * 0x2000;
 
-            SetCardFileName(record + 0x1fd0);
-            SetCardPathDeviceFields();
+            Saves.SetCardFileName(record + 0x1fd0);
+            Saves.SetCardPathDeviceFields();
 
-            IntPtr handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
-            RetrySeekAndReadCardFile(handle, merged, 0x3f00, 0x100);
-            RetryCloseCardFile(handle);
+            IntPtr handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+            Saves.RetrySeekAndReadCardFile(handle, merged, 0x3f00, 0x100);
+            Saves.RetryCloseCardFile(handle);
 
-            handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 1);
-            RetrySeekAndReadCardFile(handle, merged, 0x4000, 0x2000);
-            RetryCloseCardFile(handle);
+            handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+            Saves.RetrySeekAndReadCardFile(handle, merged, 0x4000, 0x2000);
+            Saves.RetryCloseCardFile(handle);
 
             // Dix emplacements d'objet à +0x300, pas de 0x280 octets. Un emplacement n'est fusionné
             // que si son mot de drapeaux à +0x12 porte 0x8000 sans 0x4000.
@@ -2083,11 +2083,11 @@ public static unsafe partial class Blaze
             for (int i = 0; i < 0x1ffc; i++) checksum += (sbyte)record[i];
             *(int*)(record + 0x1ffc) = checksum;
 
-            handle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 2);
-            RetrySeekAndWriteCardFile(handle, record, 0, 0x2000);
-            RetrySeekAndWriteCardFile(handle, record + 0x1f00, 0x3f00, 0x100);
-            RetrySeekAndWriteCardFile(handle, merged, 0x4000, 0x2000);
-            RetryCloseCardFile(handle);
+            handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 2);
+            Saves.RetrySeekAndWriteCardFile(handle, record, 0, 0x2000);
+            Saves.RetrySeekAndWriteCardFile(handle, record + 0x1f00, 0x3f00, 0x100);
+            Saves.RetrySeekAndWriteCardFile(handle, merged, 0x4000, 0x2000);
+            Saves.RetryCloseCardFile(handle);
         }
     }
 
@@ -2304,15 +2304,15 @@ public static unsafe partial class Blaze
             *(short*)(d + 0xa) = 0x30;
             *(uint*)(d + 4) = member == s_Unknown_005de4e4 ? s_Unknown_005e9814 : 0x1000000u;
             *(short*)(d + 8) = (short)y;
-            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, (uint)record[0x2bd] << 8);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, (uint)record[0x2bd] << 8);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
 
             *(byte**)d = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x14);
             *(short*)(d + 8) = (short)(y - 4);
             *(ushort*)(d + 0x10) = 0x30;
             *(short*)(d + 0xa) = 100;
-            primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-            primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+            primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
             EmitClipRect(otBase, &primCursor);
 
             // L'or, en +0x26c.
@@ -2345,9 +2345,9 @@ public static unsafe partial class Blaze
                 *(short*)(d + 8) = (short)(y + 8);
                 *(ushort*)(d + 0x10) = 0;
                 *(short*)(d + 0xa) = 0x74;
-                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0,
+                primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0,
                                                (uint)((member & 0xff) << 8 | (bestSlot & 0xffff)));
-                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                 EmitClipRect(otBase, &primCursor);
 
                 *(short*)(d + 8) = (short)(y - 4);
@@ -2504,8 +2504,8 @@ public static unsafe partial class Blaze
                 *(short*)(d + 8) = (short)(((s_ItemMenuCursor_005de4e0 % 5 << 3)
                                           - s_ItemMenuCursor_005de4e0 % 5) * 4 + 0x58);
                 *(short*)(d + 0xa) = (short)(s_ItemMenuCursor_005de4e0 / 5 * 0x1c + 0x30);
-                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                 EmitClipRect(otBase, &primCursor);
 
                 primCursor = DrawPanelIconRow(otBase, primCursor, s_ItemPanelIcons_00566ad8);
@@ -2523,8 +2523,8 @@ public static unsafe partial class Blaze
                 *(ushort*)(d + 0x10) = record[0x150];
                 *(short*)(d + 8) = 0x20;
                 *(short*)(d + 0xa) = 0x30;
-                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, (uint)record[0x2bd] << 8);
-                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, (uint)record[0x2bd] << 8);
+                primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                 EmitClipRect(otBase, &primCursor);
 
                 byte* edit = s_ItemMenuEditDescriptor_00566170;
@@ -2640,9 +2640,9 @@ public static unsafe partial class Blaze
                 *(short*)(d + 0x10) = 0;
                 *(short*)(d + 8) = (short)s_Unknown_005de2f0;
                 *(short*)(d + 0xa) = 0x30;
-                primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0,
+                primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0,
                     (uint)((s_Unknown_005de4e4 << 8) | seller[0x2c1 + s_ItemMenuCursor_005de4e0]));
-                primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                 EmitClipRect(otBase, &primCursor);
 
                 // Ghidra réutilise DAT_00566acc comme compteur le temps de la boucle.
@@ -2773,8 +2773,8 @@ public static unsafe partial class Blaze
                         *(short*)(d + 8) = (short)(x - 4);
                         *(short*)(d + 0x10) = 0x30;
                         *(short*)(d + 0xa) = 0x84;
-                        primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
-                        primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                        primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
+                        primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                         EmitClipRect(otBase, &primCursor);
 
                         *(short*)(d + 8) = (short)(x + 4);
@@ -2796,9 +2796,9 @@ public static unsafe partial class Blaze
                     *(ushort*)(d + 0x10) = ((byte*)gold)[-0x11c];      // record[0x150]
                     *(short*)(d + 8) = (short)x;
                     *(short*)(d + 0xa) = 0x48;
-                    primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0,
+                    primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0,
                                                    (uint)((byte*)gold)[0x51] << 8);
-                    primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
+                    primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
                     EmitClipRect(otBase, &primCursor);
                 }
 

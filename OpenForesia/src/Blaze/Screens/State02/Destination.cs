@@ -349,8 +349,8 @@ public static unsafe partial class Blaze
                 bool shrunk = (sbyte)record[2] != 0;
                 if (shrunk) { record[2]--; record[3]--; }
                 *(short*)(d + 0x10) = icon;
-                primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);
-                primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);
+                primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);
+                primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, draw);
                 if (shrunk) { record[2]++; record[3]++; }
             }
 
@@ -365,8 +365,8 @@ public static unsafe partial class Blaze
                 *(short*)(d + 0x0a) = (short)(((short)((record[3] >> 1) - 1) - 0x70) * 0xf2 / 0xe0 + 0x70);
                 record[2]--; record[3]--;
                 *(short*)(d + 0x10) = blink;
-                primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);
-                primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);
+                primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);
+                primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, draw);
                 record[2]++; record[3]++;
             }
 
@@ -375,8 +375,8 @@ public static unsafe partial class Blaze
             *(short*)(d + 0x0a) = 0x70;
             *(short*)(d + 0x10) = 0;
             *(byte**)d = *(byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
-            primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);
-            primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);
+            primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, draw);
 
             // Le panneau de description de la destination visée.
             BindMenuLabels(

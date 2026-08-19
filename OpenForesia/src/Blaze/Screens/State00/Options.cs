@@ -2470,7 +2470,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00544350 @ 0x00544350 â€” binds the label table and its flags into the menu
     /// context. The call site is <c>FUN_00544350(&amp;DAT_0056e670, 0, &amp;DAT_0056dd58, 0)</c>.
     /// </summary>
-    private static void BindMenuLabels(byte* labels, uint flags, byte* context, uint extra)
+    internal static void BindMenuLabels(byte* labels, uint flags, byte* context, uint extra)
     {
         *(uint*)(context + 0x8b0) = flags;
         context[0x8c7] |= 1;

@@ -6032,7 +6032,7 @@ en paramètre déclarera qu'il touche à `.data` ; jusqu'ici il le faisait en si
 Le pont statique temporaire prévu par la conception **n'a pas été écrit** : l'oracle de comparaison
 de corps normalise les qualifications, donc écrire `Mem.X` au site d'appel lui est invisible, alors
 qu'un pont aurait changé 94 corps d'accesseurs. Il ne reste qu'un champ statique, `Blaze.Mem`, avec
-sa condition de retrait écrite dans `Memory/Globals.cs`.
+sa condition de retrait écrite (déplacé dans `Subsystems.cs` le 2026-08-19, voir plus bas).
 
 **Trois choses que le compilateur a imposées**, toutes consignées dans `GameMemory.cs` :
 
@@ -6196,3 +6196,80 @@ d'abord » ont toutes payé — c'est une forme à reprendre.
   `0x00566c70` doit être traité **avant** la reprise de la carte du monde.
 * La réparation des **868 lignes à encodage double** (`repair-double-encoded-comments`, ouvert et
   non commencé).
+
+---
+
+## 2026-08-19 (étape C, 3 fichiers sur 9) — trois vraies classes, et un piège d'ordre refermé
+
+`UiText`, `Primitives2d` et `SaveData` ne sont plus des parts de `partial class Blaze`. Ce sont des
+classes d'instance, construites une fois dans `src/Blaze/Subsystems.cs`.
+
+```
+  UiText(GameMemory)                    1 344 l.   55 membres, 0 static
+  Primitives2d(GameMemory, UiText)        284 l.    5 membres, 0 static
+  SaveData(GameMemory)                    623 l.   33 membres, 8 static — voulus
+```
+
+### Ce que la conversion a rendu visible
+
+`Primitives2d` **dépend du moteur de texte** : `DrawTextRun` fait passer chaque octet par
+`CheatCodeProbe`. Ce lien existait dans le binaire ; il était invisible tant que tout vivait dans
+une seule classe. Il est maintenant dans la signature, et l'ordre de construction de
+`Subsystems.cs` le reflète — `Ui` avant `Prims`.
+
+### Une classe mixte, et pourquoi ce n'est pas un compromis
+
+`SaveData` garde **huit membres `static`** : les gestionnaires `Card{Write,Read}StatusHandler0..3`,
+porteurs de `[UnmanagedCallersOnly]`. L'attribut **exige** une méthode statique — la DLL les appelle
+par simple adresse de code, sans `this` à leur passer. Les rendre d'instance est impossible, pas
+inélégant.
+
+C'est ce qui a **tranché concrètement la question laissée ouverte par la tâche 4.1** (« le pont
+statique pour les rappels natifs — la question ne se posera qu'à l'étape C »). La réponse n'est pas
+un pont : c'est que les deux états publiés par ces rappels, `s_CardWriteStatus_00604ab0` et
+`s_CardReadStatus_00604a00`, sont des globales `.data` et devaient donc rejoindre `GameMemory`.
+**Une globale lue à la fois par un rappel natif et par du code d'instance doit vivre là où les deux
+peuvent la voir.** Cinq globales ont été rapatriées au total (les deux ci-dessus plus
+`s_CardPhase_00578e0c`, `s_SelectScratch_00573338`, `s_EntitySlotTable_005e9180`,
+`s_Unknown_00564a4c`) : `GameMemory` passe de 97 à 102 membres.
+
+Au site d'appel, les rappels s'atteignent par le **nom de type** (`SaveData.CardWriteStatusHandler0`)
+et le reste par l'instance (`Saves.PollCardTransfer`). La distinction se lit.
+
+### Le piège d'ordre, refermé pour de bon
+
+`Memory/Globals.cs` est **supprimé**, son champ `Mem` replié en tête de `Subsystems.cs`.
+
+Motif : `Saves = new SaveData(Mem)` et `Mem` étaient des champs statiques de `Blaze` déclarés dans
+**deux fichiers différents**. Or C# ne garantit l'ordre d'initialisation des champs statiques
+qu'**à l'intérieur d'un même fichier** ; entre fichiers d'une classe partielle, il n'est pas
+spécifié. C'est exactement le défaut qui a fait planter le jeu au découpage (huit champs
+`Arena(0x…)` devenus `null + offset`), et l'en-tête de `Subsystems.cs` affirmait alors un ordre
+« textuel, donc garanti » qui reposait en réalité sur la chance.
+
+Les quatre champs sont désormais dans un seul fichier, dans l'ordre : `Mem`, `Ui`, `Prims`, `Saves`.
+L'ordre est lisible **et** garanti. La contrainte d'initialisation précoce (l'arène de liste
+d'affichage sous `0x01000000`) est préservée : `Subsystems.cs` reste dans l'initialisation statique
+de `Blaze`, pas dans un composition root appelé depuis `Program.cs`.
+
+### Le nom du point d'entrée est une décision, pas une évidence
+
+`Primitives2d` s'atteint par `Prims`, **pas** `Prim`. L'oracle `compare-bodies.ps1` neutralise les
+qualifications d'après une liste blanche, et il compare **sans tenir compte de la casse** : inscrire
+`prim` y aurait fait avaler silencieusement tout `prim.` futur — or `prim` est un local dans 196
+lignes du code de dessin. Un caractère de plus supprime la classe de faux négatifs.
+Même contrôle pour `Saves` (3 occurrences, toutes en commentaire, que l'oracle retire de toute façon).
+
+### Vérification
+
+Build solution 0 erreur · oracle **« aucune logique modifiée »** sur 511 corps · tests de disposition
+inchangés (3 rouges attendus / 2 verts) · `-Entry 1` **382,3** et `-Entry 2` **387** primitives par
+image, soit les débits de référence · captures relues : carrousel, modèle 3D, panneaux et menu objets
+conformes. Fins de ligne vérifiées CRLF uniformes, région à encodage double intacte.
+
+### Reste de l'étape C
+
+`Audio`, `Resources`, `Video`, `Input`, `Model3d`, `UiWindow` — six fichiers, ~5 400 lignes.
+`UiWindow` a dû exposer `EmitClipRect`/`EmitViewportRect`, et `SaveSlots`/`Options` exposer
+`LabelAt`/`BindMenuLabels` : ces promotions `private` → `internal` marquent les coutures que les
+prochaines conversions auront à trancher.

@@ -1,7 +1,7 @@
 // OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
-// Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
+// La carte des repertoires et la regle
 // qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
 // reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
 
@@ -10,18 +10,36 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// `Blaze` porte encore les aides que cette classe appelle : EmitClipRect, EmitViewportRect.
+using static OpenForesia.Blaze.Blaze;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+/// <summary>
+/// L'emetteur de primitives 2D : les quatre routines qui poussent un polygone plat, un sprite,
+/// sa variante et une suite de caracteres dans la liste d'affichage (Ghidra: FUN_00542250 et le
+/// sous-arbre de dessin qui le suit).
+///
+/// <para>
+/// Sa signature dit ce dont le dessin 2D depend : <c>GameMemory</c> pour les tables d'entites et
+/// les capacites du peripherique, et <c>UiText</c> - parce que <see cref="DrawTextRun"/> fait
+/// passer chaque octet de texte par <c>CheatCodeProbe</c>. Ce lien-la existait deja dans le
+/// binaire ; il etait simplement invisible tant que tout vivait dans une seule classe.
+/// </para>
+/// <para>
+/// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
+/// </para>
+/// </summary>
+internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui)
 {
 
     /// <summary>
     /// Ghidra: the entity-slot initialisation loop at the top of FUN_00542250 â€” four 0x4c-byte
     /// slots, each stamped with its index and a leading 8.
     /// </summary>
-    private static void InitialiseEntitySlots()
+    internal void InitialiseEntitySlots()
     {
-        byte* slot = s_EntitySlotTable_005e9180;
+        byte* slot = mem.s_EntitySlotTable_005e9180;
         for (int i = 0; i < 4; i++, slot += 0x4c)
         {
             slot[0] = 8;
@@ -34,18 +52,18 @@ public static unsafe partial class Blaze
     /// The tag word carries the primitive length in its top byte (0x02000000), which is the
     /// PlayStation display-list convention.
     /// </summary>
-    private static uint* DrawFlatPrimitive(uint* otEntry, uint* prim, int* sprite)
+    internal uint* DrawFlatPrimitive(uint* otEntry, uint* prim, int* sprite)
     {
         uint attributes = *(uint*)(*(int*)sprite + 4 + (short)sprite[4] * 8);
 
-        if (Mem.s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
+        if (mem.s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
         {
             // Ghidra: DAT_00564a4c, not the ini "Small" setting â€” see DrawSpritePrimitive's note.
-            if (s_Unknown_00564a4c == 0) return prim;
+            if (mem.s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfffffdff;
         }
 
-        prim[1] = (uint)*(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4)
+        prim[1] = (uint)*(ushort*)(mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4)
                   | ((attributes & 0xff) << 5) | 0xe1000000;
         prim[2] = 0;
         *prim = *otEntry | 0x2000000;
@@ -58,7 +76,7 @@ public static unsafe partial class Blaze
     /// ordering table (tag length 0x09000000). The bit packing is transcribed operation for
     /// operation; the shifts mix a colour, a texture page and four corner coordinates.
     /// </summary>
-    private static uint* DrawSpritePrimitive(uint* otEntry, uint* prim, int* sprite, uint flags, uint extra)
+    internal uint* DrawSpritePrimitive(uint* otEntry, uint* prim, int* sprite, uint flags, uint extra)
     {
         uint* source = (uint*)(*(int*)sprite + (short)sprite[4] * 8);
         uint posX = (uint)sprite[2];
@@ -72,7 +90,7 @@ public static unsafe partial class Blaze
         uint size = (uint)(halfH * 0x10000 + halfW);
         uint attributes = source[1];
 
-        if (Mem.s_DeviceCapFlag_00564a48)
+        if (mem.s_DeviceCapFlag_00564a48)
         {
             if ((attributes & 0x200) != 0)
             {
@@ -82,12 +100,12 @@ public static unsafe partial class Blaze
                 // â€” including the character-select carousel's portrait cards. Found 2026-08-16
                 // while chasing exactly that: DrawSpriteVariant already had the correct symbol,
                 // this sibling and DrawFlatPrimitive did not.
-                if (s_Unknown_00564a4c == 0) return prim;
+                if (mem.s_Unknown_00564a4c == 0) return prim;
                 attributes &= 0xfffffdff;
             }
             if ((flags & 2) != 0)
             {
-                if (s_Unknown_00564a4c == 0) return prim;
+                if (mem.s_Unknown_00564a4c == 0) return prim;
                 flags = (byte)flags & 0xfdu;
             }
         }
@@ -97,7 +115,7 @@ public static unsafe partial class Blaze
 
         uint scaledW = alpha * (uint)(short)size;
         uint scaledH = (size >> 0x10) * (colour >> 0x18);
-        uint clut = *(uint*)(Mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
+        uint clut = *(uint*)(mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
 
         *prim = *otEntry | 0x9000000;
         *otEntry = (uint)(nuint)prim;
@@ -140,23 +158,23 @@ public static unsafe partial class Blaze
     /// différentes. Plutôt que de propager un rapprochement douteux, on déclare ici le symbole
     /// propre ; la divergence est à trancher, et elle touche aussi la sœur longue.</para>
     /// </summary>
-    private static uint* DrawSpriteVariant(uint* otEntry, uint* prim, int* sprite, uint flags, uint extra)
+    internal uint* DrawSpriteVariant(uint* otEntry, uint* prim, int* sprite, uint flags, uint extra)
     {
         uint* source = (uint*)(*(int*)sprite + (short)sprite[4] * 8);
         uint colour = source[0];
         uint posX = (uint)sprite[2];
         uint attributes = source[1];
 
-        if (Mem.s_DeviceCapFlag_00564a48)
+        if (mem.s_DeviceCapFlag_00564a48)
         {
             if ((attributes & 0x200) != 0)
             {
-                if (s_Unknown_00564a4c == 0) return prim;
+                if (mem.s_Unknown_00564a4c == 0) return prim;
                 attributes &= 0xfffffdff;
             }
             if ((flags & 2) != 0)
             {
-                if (s_Unknown_00564a4c == 0) return prim;
+                if (mem.s_Unknown_00564a4c == 0) return prim;
                 flags = (byte)flags & 0xfdu;
             }
         }
@@ -166,7 +184,7 @@ public static unsafe partial class Blaze
 
         // Ghidra: &DAT_005e8f02 — la moitié haute de l'entrée de la table de pages, d'où le +2 sur
         // la même table que DrawSpritePrimitive indexe à &DAT_005e8f00.
-        ushort page = *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 2 + ((attributes >> 0x10) & 0xff) * 4);
+        ushort page = *(ushort*)(mem.s_EntityDecodeTable_005e8f00 + 2 + ((attributes >> 0x10) & 0xff) * 4);
 
         prim[1] = ((attributes >> 8) | (flags & 0xff) | 100) << 0x18 | ((uint)sprite[1] & 0x3ffffff);
         prim[3] = (uint)(((((ushort)((short)extra >> 2)) & 0xffc0) | (extra & 0xff)) + page + (attributes >> 0x18))
@@ -213,7 +231,7 @@ public static unsafe partial class Blaze
     /// primitive underneath it.
     /// </para>
     /// </summary>
-    private static uint* DrawTextRun(uint* otEntry, uint* prim, int* cursor, byte* text, uint flags, uint extra, int maxChars)
+    internal uint* DrawTextRun(uint* otEntry, uint* prim, int* cursor, byte* text, uint flags, uint extra, int maxChars)
     {
         EmitViewportRect(otEntry, &prim);
 
@@ -249,7 +267,7 @@ public static unsafe partial class Blaze
 
                 frame[4] = (frame[4] & 0xffff0000u) | (uint)(ushort)((short)(ushort)frame[4] + cellW);
 
-                Ui.CheatCodeProbe(*p);
+                ui.CheatCodeProbe(*p);
 
                 ch = p[1];
                 if (ch == 0) break;

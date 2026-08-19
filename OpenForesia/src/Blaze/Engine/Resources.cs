@@ -765,14 +765,7 @@ public static unsafe partial class Blaze
     private static int s_Unknown_005e9810;
     private static IntPtr s_Unknown_005e9824;
     private static int s_Unknown_005de538;
-    // Ghidra: &DAT_005e9180 â€” small per-slot table reset at the end of FUN_0052a030 (4 entries of
-    // 0x4c/76 bytes: 0x13 dwords zeroed, byte[-1]=8, byte[0]=incrementing slot id). Also touched
-    // (not yet reconstructed) by FUN_00542160's near-identical loop elsewhere.
-    // **La même mémoire que <see cref="s_SlotArea_005e9180"/>**, qui déclarait déjà cette adresse de
-    // son côté. Séparés, <see cref="InitialiseEntitySlots"/> écrivait dans l'un pendant que
-    // <see cref="CurrentPadState"/> lisait l'autre : l'initialisation des emplacements manette
-    // n'atteignait jamais son lecteur. Fusionnés le 2026-08-17 en un alias sur l'arène.
-    private static byte* s_EntitySlotTable_005e9180 => Mem.Arena(0x005e9180);
+    // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
     /// <summary>
     /// Ghidra: FUN_0052a030 @ 0x0052a030. Loads the "&lt;cd-drive-root&gt;SYSTEM.INI"-equivalent
@@ -841,9 +834,9 @@ public static unsafe partial class Blaze
         s_Unknown_005e9824 = sndHandle;
 
         byte entryId = 0;
-        byte* slotIdByte = s_EntitySlotTable_005e9180 + 9; // Ghidra: &DAT_005e9189
-        uint* slotBase = (uint*)s_EntitySlotTable_005e9180; // Ghidra: &DAT_005e9180
-        byte* tableEnd = s_EntitySlotTable_005e9180 + (0x5e92b9 - 0x5e9180);
+        byte* slotIdByte = Mem.s_EntitySlotTable_005e9180 + 9; // Ghidra: &DAT_005e9189
+        uint* slotBase = (uint*)Mem.s_EntitySlotTable_005e9180; // Ghidra: &DAT_005e9180
+        byte* tableEnd = Mem.s_EntitySlotTable_005e9180 + (0x5e92b9 - 0x5e9180);
         do
         {
             uint* p = slotBase;
@@ -946,8 +939,8 @@ public static unsafe partial class Blaze
 
         while (framesLeft != 0 || phase != 0)
         {
-            primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
-            primCursor = DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
+            primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
             FrameEnd(&otBase, &otEntry, &primCursor, 1, 1);
 
             // Ghidra: START (0x0008) or SQUARE (0x8000) of the current player's pad word. The word

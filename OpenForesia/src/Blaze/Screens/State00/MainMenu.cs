@@ -71,18 +71,7 @@ public static unsafe partial class Blaze
 
     private static int s_Unknown_00571a3c;
 
-    // Ghidra: DAT_00564a4c — une garde de réentrance, pas un drapeau statique. Dans Blaze.c, chaque
-    // site qui l'écrit suit exactement le même motif : `DAT_00564a4c = 0; <appel réentrant>;
-    // DAT_00564a4c = 1;` (au moins quatre paires : FUN_00520ae0/EmitParticle à trois endroits,
-    // FUN_00537da0 dans le case 2 de FUN_00542ab0). Sa valeur stable dans le jeu original est donc
-    // **1**, jamais 0 — le passage à 0 n'existe que pendant la fenêtre de l'appel imbriqué. Aucun de
-    // ces sites n'est encore câblé dans ce port, donc la valeur par défaut de C# (0) était fausse :
-    // elle inversait le culling que DrawAnimatedModel/EmitParticle/DrawSpriteVariant/DrawFlatPrimitive
-    // testent (`if (s_Unknown_00564a4c == 0) return prim;`), faisant sauter des modèles qui, dans
-    // l'original, seraient dessinés (juste avec le bit d'attribut nettoyé). Régression confirmée en
-    // jeu le 2026-08-16 : le carrousel de personnages n'affichait plus que l'entité sélectionnée.
-    // Voir DrawSpriteVariant pour la divergence avec s_SmallTextureFlag.
-    private static int s_Unknown_00564a4c = 1;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
     /// <summary>
     /// Ghidra: FUN_0052a1e0 @ 0x0052a1e0 â€” begins a frame: picks the scratch bases out of MainMem
@@ -189,8 +178,8 @@ public static unsafe partial class Blaze
             bannerCursor[1] = 0x01000000;
             bannerCursor[2] = 0x00640010;
 
-            *primCursor = DrawTextRun(*otBase, *primCursor, bannerCursor,
-                s_ControllerBannerText_00568510, 0, 0, -1);
+            *primCursor = Prims.DrawTextRun(*otBase, *primCursor, bannerCursor,
+                Saves.s_ControllerBannerText_00568510, 0, 0, -1);
         }
     }
 
@@ -316,7 +305,7 @@ public static unsafe partial class Blaze
         // TODO(REVERSE): that table is .data content and its four entries are not modelled, so the
         // per-slot byte writes into DAT_00604a2a are skipped. The slot table itself is initialised
         // exactly as the original does.
-        InitialiseEntitySlots();
+        Prims.InitialiseEntitySlots();
 
         s_Unknown_005de538 = 0;
 
@@ -474,8 +463,8 @@ public static unsafe partial class Blaze
                 if (table != null) *(int*)sprite = table[1];
             }
 
-            primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
-            primCursor = DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
+            primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
             FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
         }
     }
