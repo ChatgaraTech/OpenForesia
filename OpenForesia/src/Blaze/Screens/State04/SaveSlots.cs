@@ -72,16 +72,16 @@ public static unsafe partial class Blaze
             s_SelectState_00578de8[2] = -1;
 
             s_CardPhase_00578e0c = 0;   // Ghidra: `_DAT_00578e0c = 0`, pas -1
-            s_Unknown_00562b68 = -1;
+            Mem.s_Unknown_00562b68 = -1;
             s_CardPrevPhase_00578e10 = 0;
             s_CardPhaseChanged_00578e14 = 0;
         }
 
-        if (s_Unknown_00562b68 < 0)
+        if (Mem.s_Unknown_00562b68 < 0)
         {
             if ((pad[6] & 0x80) != 0) s_CardCursor_00578e18--;
             if ((pad[6] & 0x20) != 0) s_CardCursor_00578e18++;
-            BindMenuLabels(s_EmptyLabel_00572b40, 0, s_StatusDescriptor_00560728, 0);
+            BindMenuLabels(s_EmptyLabel_00572b40, 0, Mem.s_StatusDescriptor_00560728, 0);
         }
 
         int port1Missing = *(short*)s_JoyAxis1_00604b0a == -0x8000 ? 1 : 0;
@@ -93,13 +93,13 @@ public static unsafe partial class Blaze
 
         if (previousCursor != s_CardCursor_00578e18) PlayUiSound3A();
 
-        if (s_Unknown_00562b68 < 0)
+        if (Mem.s_Unknown_00562b68 < 0)
         {
             *cardTransferPhase = 0;
             s_CardLoadResult_00578de0 = 0;
             s_CardCursorSlot_00604984 = 0;
             s_CardPhase_00578e0c = 0;
-            s_Unknown_00562b68 = s_CardCursor_00578e18;
+            Mem.s_Unknown_00562b68 = s_CardCursor_00578e18;
             PlayUiSound38();
         }
 
@@ -109,7 +109,7 @@ public static unsafe partial class Blaze
             s_CardPhaseChanged_00578e14 = 1;
         }
 
-        if (-1 < s_Unknown_00562b68 && s_SelectFlags_00562a48[1] == 0)
+        if (-1 < Mem.s_Unknown_00562b68 && s_SelectFlags_00562a48[1] == 0)
         {
             StepSubState7Phase(pad, cardTransferPhase);
         }
@@ -136,11 +136,11 @@ public static unsafe partial class Blaze
     // DAT_005e9060 que confirmGate (+0x3f) — voir le commentaire sur s_Unknown_005e909f plus bas
     // pour le détail de la découverte. Cinq `byte` séparés ici les rendait invisibles au widget de
     // sélection réel.
-    private static ref byte s_Unknown_005e909a => ref s_PanelSelection_005e9060[0x3a];
-    private static ref byte s_Unknown_005e909b => ref s_PanelSelection_005e9060[0x3b];
-    private static ref byte s_Unknown_005e909c => ref s_PanelSelection_005e9060[0x3c];
-    private static ref byte s_Unknown_005e909d => ref s_PanelSelection_005e9060[0x3d];
-    private static ref byte s_Unknown_005e909e => ref s_PanelSelection_005e9060[0x3e];
+    private static ref byte s_Unknown_005e909a => ref Mem.s_PanelSelection_005e9060[0x3a];
+    private static ref byte s_Unknown_005e909b => ref Mem.s_PanelSelection_005e9060[0x3b];
+    private static ref byte s_Unknown_005e909c => ref Mem.s_PanelSelection_005e9060[0x3c];
+    private static ref byte s_Unknown_005e909d => ref Mem.s_PanelSelection_005e9060[0x3d];
+    private static ref byte s_Unknown_005e909e => ref Mem.s_PanelSelection_005e9060[0x3e];
 
     // Ghidra: iRam00560fd4 — jamais posé par du code reconstruit, lit 0. La branche `case 0` qui le
     // teste reste donc morte, comme les portes de dialogue.
@@ -241,14 +241,14 @@ public static unsafe partial class Blaze
         SetCardPathDeviceFields();
 
         byte* entry = s_CardDirectoryEntries_006049bc;
-        if (Ordinal_18(s_CardPathDescriptor_00604940, entry) != null)
+        if (Winsys3d.Ordinal_18(s_CardPathDescriptor_00604940, entry) != null)
         {
             while (true)
             {
                 *(int*)(entry + 0x18) = *(int*)(entry + 0x18) >> 0xd;
                 entry += 0x28;
                 s_CardEntryCount_00604981++;
-                if (Ordinal_19(entry) == 0) break;
+                if (Winsys3d.Ordinal_19(entry) == 0) break;
                 if (s_CardEntryCount_00604981 >= 0x20) break;
             }
         }
@@ -260,23 +260,23 @@ public static unsafe partial class Blaze
         {
             SetCardFileName(cursor);
 
-            IntPtr handle = Ordinal_21(s_CardPathDescriptor_00604940, 1);
+            IntPtr handle = Winsys3d.Ordinal_21(s_CardPathDescriptor_00604940, 1);
             if ((int)handle < 0) return 0;
 
-            Ordinal_23(handle, 0, 0 /* FILE_BEGIN */);
+            Winsys3d.Ordinal_23(handle, 0, 0 /* FILE_BEGIN */);
 
             uint slotBase = i * 0x100;
-            int read = (int)Ordinal_24(handle, mainMem + 0x1c0000 + slotBase, 0x100);
+            int read = (int)Winsys3d.Ordinal_24(handle, mainMem + 0x1c0000 + slotBase, 0x100);
             if (read >= 0)
             {
                 byte frameCount = (byte)(mainMem[0x1c0002 + slotBase] & 0xf);
                 s_CardIconFrameCount_0060498c[i] = frameCount;
                 if (frameCount != 1)
                 {
-                    read = (int)Ordinal_24(handle, mainMem + 0x1c0100 + slotBase, (uint)((frameCount - 1) * 0x80));
+                    read = (int)Winsys3d.Ordinal_24(handle, mainMem + 0x1c0100 + slotBase, (uint)((frameCount - 1) * 0x80));
                 }
             }
-            Ordinal_22(handle);
+            Winsys3d.Ordinal_22(handle);
             if (read < 0) return 0;
 
             // Ghidra 0x5127f0-0512819 — les seize ushorts de MainMem+0x1c0060+slotBase sont la
@@ -299,7 +299,7 @@ public static unsafe partial class Blaze
             rect1[1] = (short)((i >> 4) + 0x1fe);
             rect1[2] = 0x10;
             rect1[3] = 1;
-            Ordinal_674(rect1, mainMem + 0x1c0060 + slotBase);
+            Winsys3d.Ordinal_674(rect1, mainMem + 0x1c0060 + slotBase);
 
             // Ghidra 0x51286e-05128ab — le téléversement des images d'icône elles-mêmes, depuis
             // l'offset +0x80 de la title frame : hauteur `nombre d'images * 16` lignes, largeur 4
@@ -309,7 +309,7 @@ public static unsafe partial class Blaze
             rect2[1] = (short)(((i >> 4) << 6) + 0x20);
             rect2[2] = 4;
             rect2[3] = (short)(s_CardIconFrameCount_0060498c[i] * 16);
-            Ordinal_674(rect2, mainMem + 0x1c0080 + slotBase);
+            Winsys3d.Ordinal_674(rect2, mainMem + 0x1c0080 + slotBase);
         }
 
         return 0;
@@ -337,15 +337,15 @@ public static unsafe partial class Blaze
         else if (*cardTransferPhase == 2)
         {
             int slot = CardSlotSelector();
-            int r = Ordinal_67(slot);
-            while (r == 0) r = Ordinal_67(slot);
+            int r = Winsys3d.Ordinal_67(slot);
+            while (r == 0) r = Winsys3d.Ordinal_67(slot);
             s_CardLoadResult_00578de0 = PollCardTransfer(slot, false);
         }
 
         ushort buttons = *(ushort*)(pad + 2);
-        byte dialogGate = s_Unknown_00560fef;
+        byte dialogGate = Mem.s_Unknown_00560fef;
 
-        byte confirmGate = s_Unknown_005e909f;
+        byte confirmGate = Mem.s_Unknown_005e909f;
 
         // Ghidra: `uVar17` — quand un cas se contente de `break` plutôt que de sauter directement
         // au rendu, l'original enchaîne sur `func_0x00544350(uVar17,...); DAT_00578e0c++;` juste
@@ -360,8 +360,8 @@ public static unsafe partial class Blaze
                 {
                     // Ghidra: `iRam00560fd4 != 0` — jamais posé par du code reconstruit, lit 0 ;
                     // cette branche reste donc morte.
-                    s_Unknown_00560fef = (byte)(dialogGate & 0xfd);
-                    s_Unknown_0056075b = 0;
+                    Mem.s_Unknown_00560fef = (byte)(dialogGate & 0xfd);
+                    Mem.s_Unknown_0056075b = 0;
                     goto case 1;
                 }
                 s_CardSlotIndex_00604980 = s_CardSlotFlags_00562adc[s_CardPort_00578e20][s_CardCursor_00578e18];
@@ -385,14 +385,14 @@ public static unsafe partial class Blaze
                 RetryCloseCardFile(fileHandle);
                 if ((long)fileHandle < 0)
                 {
-                    BindMenuLabels(s_EmptyLabel_00572b40, 0, s_StatusDescriptor_00560728, 0);
+                    BindMenuLabels(s_EmptyLabel_00572b40, 0, Mem.s_StatusDescriptor_00560728, 0);
                     IntPtr createHandle = RetryOpenCardFile(s_CardPathDescriptor_00604940, 0x30200);
                     RetryCloseCardFile(createHandle);
                     s_CardPhase_00578e0c = 6;
                 }
                 else
                 {
-                    BindMenuLabels(LabelAt(0x1ac), 0, s_StatusDescriptor_00560728, 0);
+                    BindMenuLabels(LabelAt(0x1ac), 0, Mem.s_StatusDescriptor_00560728, 0);
                     ResetCardTransferStatus(CardSlotSelector());
                     *cardTransferPhase = 1;
                     s_CardPhase_00578e0c = 0xe;
@@ -421,9 +421,9 @@ public static unsafe partial class Blaze
             case 0xb:
                 if ((buttons & 0x4000) != 0)
                 {
-                    s_Unknown_00560fef = (byte)(dialogGate & 0xfd);
+                    Mem.s_Unknown_00560fef = (byte)(dialogGate & 0xfd);
                     s_CardPhase_00578e0c--;
-                    s_Unknown_0056075b = 0;
+                    Mem.s_Unknown_0056075b = 0;
                     break;
                 }
                 if ((dialogGate & 2) != 0) break;
@@ -441,7 +441,7 @@ public static unsafe partial class Blaze
                 PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
                 ResetCardWriteEvents();
                 if (confirmGate == 0) { pendingLabel = s_EmptyLabel_00572b40; break; }
-                s_Unknown_00562b68 = -1;   // Ghidra: code_r0x0050b711
+                Mem.s_Unknown_00562b68 = -1;   // Ghidra: code_r0x0050b711
                 break;
 
             case 5:
@@ -471,7 +471,7 @@ public static unsafe partial class Blaze
                 if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
                 if ((buttons & 0x8000) != 0)
                 {
-                    BindMenuLabels(LabelAt(0x1c0), 0, s_StatusDescriptor_00560728, 0);
+                    BindMenuLabels(LabelAt(0x1c0), 0, Mem.s_StatusDescriptor_00560728, 0);
                     *(ushort*)(pad + 2) = (ushort)(buttons & 0x7fff);
                     s_CardPhase_00578e0c++;
                     PlayUiSound38();
@@ -489,7 +489,7 @@ public static unsafe partial class Blaze
                 s_CardCursorSlot_00604984 = slot;
                 if (before != slot) PlayUiSound3A();
 
-                BindMenuLabels(s_Unknown_005606f8, 0, s_StatusDescriptor_00560728, 0);
+                BindMenuLabels(Mem.s_Unknown_005606f8, 0, Mem.s_StatusDescriptor_00560728, 0);
                 // Le reste de la case (deux textes tirés de MainMem+0x1c0004+slot*0x100) touche
                 // une zone jamais peuplée par du code reconstruit ; rendu laissé de côté ici.
                 break;
@@ -498,8 +498,8 @@ public static unsafe partial class Blaze
             case 0xc:
                 if ((buttons & 0x4000) != 0)
                 {
-                    s_Unknown_00560fef = (byte)(dialogGate & 0xfb);
-                    s_Unknown_00560763 = 0;
+                    Mem.s_Unknown_00560fef = (byte)(dialogGate & 0xfb);
+                    Mem.s_Unknown_00560763 = 0;
                     s_CardPhase_00578e0c = 10;
                     break;
                 }
@@ -529,13 +529,13 @@ public static unsafe partial class Blaze
 
                 if (DeleteCardFileRetrying())
                 {
-                    BindMenuLabels(LabelAt(0x198), 0, s_StatusDescriptor_00560728, 0);
+                    BindMenuLabels(LabelAt(0x198), 0, Mem.s_StatusDescriptor_00560728, 0);
                     *cardTransferPhase = 0;
                     s_CardPhase_00578e0c = 0;
                 }
                 else
                 {
-                    BindMenuLabels(LabelAt(0x1c4), 0, s_StatusDescriptor_00560728, 0);
+                    BindMenuLabels(LabelAt(0x1c4), 0, Mem.s_StatusDescriptor_00560728, 0);
                     s_CardPhase_00578e0c = -1;
                 }
                 break;
@@ -546,7 +546,7 @@ public static unsafe partial class Blaze
                 if ((buttons & 0x4000) != 0) { s_CardPhase_00578e0c = -5; break; }
                 if ((dialogGate & 2) != 0) break;
                 BindMenuLabels(LabelAt(s_CardPhase_00578e0c == 0xe ? 0x1c8 : 400),
-                    0, s_StatusDescriptor_00560728, 0);
+                    0, Mem.s_StatusDescriptor_00560728, 0);
                 s_CardPhase_00578e0c++;
                 break;
 
@@ -561,7 +561,7 @@ public static unsafe partial class Blaze
                 if ((dialogGate & 4) != 0) break;
                 if (confirmGate != 0) { s_CardPhase_00578e0c = -5; break; }
 
-                BindMenuLabels(LabelAt(0x1cc), 0, s_StatusDescriptor_00560728, 0);
+                BindMenuLabels(LabelAt(0x1cc), 0, Mem.s_StatusDescriptor_00560728, 0);
                 PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
                 ResetCardWriteEvents();
                 SetCardFileName(s_SelectScratch_00573338 + 0x1fd0);
@@ -569,14 +569,14 @@ public static unsafe partial class Blaze
 
                 if (!DeleteCardFileRetrying())
                 {
-                    BindMenuLabels(LabelAt(0x1c4), 0, s_StatusDescriptor_00560728, 0);
+                    BindMenuLabels(LabelAt(0x1c4), 0, Mem.s_StatusDescriptor_00560728, 0);
                     s_CardPhase_00578e0c = -1;
                     break;
                 }
 
                 // Ghidra: code_r0x0050ad18 → code_r0x0050ad2f — message, puis retour à la phase 0
                 // avec le sondage de transfert coupé.
-                BindMenuLabels(LabelAt(0x198), 0, s_StatusDescriptor_00560728, 0);
+                BindMenuLabels(LabelAt(0x198), 0, Mem.s_StatusDescriptor_00560728, 0);
                 *cardTransferPhase = 0;
                 s_CardPhase_00578e0c = 0;
                 break;
@@ -612,14 +612,14 @@ public static unsafe partial class Blaze
                 // d'origine, pas deux cas indépendants.
                 PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
                 ResetCardWriteEvents();
-                dialogGate = s_Unknown_00560fef;
+                dialogGate = Mem.s_Unknown_00560fef;
                 goto case -4;
 
             case -4:
-                s_Unknown_00560fef = (byte)(dialogGate & 0xf9);
-                s_Unknown_00560763 = 0;
-                s_Unknown_0056075b = 0;
-                s_Unknown_00562b68 = -1;
+                Mem.s_Unknown_00560fef = (byte)(dialogGate & 0xf9);
+                Mem.s_Unknown_00560763 = 0;
+                Mem.s_Unknown_0056075b = 0;
+                Mem.s_Unknown_00562b68 = -1;
                 PlayUiSound39();
                 break;
 
@@ -635,12 +635,12 @@ public static unsafe partial class Blaze
                 if ((dialogGate & 2) != 0) break;
                 PollCardWriteStatus((s_CardSlotIndex_00604980 & 4) << 2, true);
                 ResetCardWriteEvents();
-                s_Unknown_00562b68 = -1;
+                Mem.s_Unknown_00562b68 = -1;
                 break;
 
             case -1:
             case 99:
-                if ((dialogGate & 2) == 0) s_Unknown_00562b68 = -1;
+                if ((dialogGate & 2) == 0) Mem.s_Unknown_00562b68 = -1;
                 break;
 
             default:
@@ -652,7 +652,7 @@ public static unsafe partial class Blaze
 
         if (pendingLabel != null)
         {
-            BindMenuLabels(pendingLabel, 0, s_StatusDescriptor_00560728, 0);
+            BindMenuLabels(pendingLabel, 0, Mem.s_StatusDescriptor_00560728, 0);
             s_CardPhase_00578e0c++;
         }
     }
@@ -660,7 +660,7 @@ public static unsafe partial class Blaze
     /// <summary>Raccourci pour <c>*(byte**)(*(int*)(s_MainResourceDirectory_005e97c4 + 0x70) + offset)</c>,
     /// répété tel quel à chaque case de navigation du sous-état 7.</summary>
     private static byte* LabelAt(int offset) =>
-        *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + offset);
+        *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + offset);
 
     /// <summary>
     /// Ghidra: <c>FUN_0051be90</c> @ 0x0051be90 — dessine un nombre décimal comme une rangée de
@@ -715,7 +715,7 @@ public static unsafe partial class Blaze
         uint* record = (uint*)*(int*)sprite;     // Ghidra: *param_3, pas de décalage de frame
         uint colour = record[0];
         uint attrs = record[1];
-        if (s_DeviceCapFlag_00564a48) attrs &= 0xfffffdff;
+        if (Mem.s_DeviceCapFlag_00564a48) attrs &= 0xfffffdff;
 
         uint digitWidth = ((colour >> 0x10) & 0xff) / 10;
         byte digitsStarted = 0;
@@ -724,7 +724,7 @@ public static unsafe partial class Blaze
 
         // Ghidra: &DAT_005e8f02 â€” même table que DrawSpriteVariant/DrawFlatPrimitive, décalée de
         // deux octets (mot haut de l'entrée).
-        ushort page = *(ushort*)(s_EntityDecodeTable_005e8f00 + 2 + ((attrs >> 0x10) & 0xff) * 4);
+        ushort page = *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 2 + ((attrs >> 0x10) & 0xff) * 4);
         uint spriteAttrs = (uint)sprite[1];
 
         int divisorIndex = 0;
@@ -734,7 +734,7 @@ public static unsafe partial class Blaze
 
             if (remaining <= (mode & 0xf))
             {
-                uint divisor = s_DecimalDivisors_00566be8[divisorIndex];
+                uint divisor = Ui.s_DecimalDivisors_00566be8[divisorIndex];
                 uint digit = value / divisor;
                 value -= digit * divisor;
 
@@ -774,11 +774,11 @@ public static unsafe partial class Blaze
     /// <c>FUN_0050a910</c>.</summary>
     private static uint* RenderSaveScreen(uint* otBase, uint* primCursor)
     {
-        if (-1 < s_Unknown_00562b68 && s_CardPhase_00578e0c is > 9 and < 0xe)
+        if (-1 < Mem.s_Unknown_00562b68 && s_CardPhase_00578e0c is > 9 and < 0xe)
         {
             // Ghidra: le carrousel de cartes — une icône par port, sur le même cercle que les
             // sous-états 0/6 (Ordinal_450/451). Bloqué par FUN_0051be90 dès la première icône.
-            byte* directory = s_MainResourceDirectory_005e97c4;
+            byte* directory = Mem.s_MainResourceDirectory_005e97c4;
             byte* box = stackalloc byte[20];
             NativeMemory.Clear(box, 20);
             *(uint*)(box + 4) = 0x1000000;
@@ -815,7 +815,7 @@ public static unsafe partial class Blaze
         byte* label = stackalloc byte[20];
         NativeMemory.Clear(label, 20);
         *(uint*)(label + 4) = 0x1000000;
-        *(uint*)label = *(uint*)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x34);
+        *(uint*)label = *(uint*)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x34);
 
         if (*(short*)s_JoyAxis1_00604b0a == -0x8000)
         {
@@ -840,13 +840,13 @@ public static unsafe partial class Blaze
 
         byte* panel = s_SelectSlots_00573518 + CharacterSelectSlotStride;
         BindMenuLabels(LabelAt(0x158), 0, panel, 0);
-        primCursor = RunTextEngine(primCursor, panel);
+        primCursor = Ui.RunTextEngine(primCursor, panel);
         BindMenuLabels(s_SelectScratch_00573338 + 0x100, 0, panel, 0);
-        primCursor = RunTextEngine(primCursor, panel);
+        primCursor = Ui.RunTextEngine(primCursor, panel);
         BindMenuLabels(LabelAt(0x15c), 0, panel, 0);
-        primCursor = RunTextEngine(primCursor, panel);
+        primCursor = Ui.RunTextEngine(primCursor, panel);
         BindMenuLabels(LabelAt(0xc + (s_SelectScratch_00573338[0x150] & 7) * 4), 0, panel, 0);
-        primCursor = RunTextEngine(primCursor, panel);
+        primCursor = Ui.RunTextEngine(primCursor, panel);
 
         // Ghidra: DAT_005e909a..e — un descripteur de mini-jeu/animation lié au « Bonus » choisi.
         // Jamais lu ailleurs dans le code déjà reconstruit ; transcrit tel quel.
@@ -858,10 +858,10 @@ public static unsafe partial class Blaze
         s_Unknown_005e909e = s_SelectScratch_00573338[0x150];
 
         BindMenuLabels(LabelAt(0x160), 0, panel, 0);
-        primCursor = RunTextEngine(primCursor, panel);
+        primCursor = Ui.RunTextEngine(primCursor, panel);
 
         short panelX = *(short*)(panel + 4);
-        byte* atlas94 = *(byte**)(s_MainResourceDirectory_005e97c4 + 0x94);
+        byte* atlas94 = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
         byte* glyph = stackalloc byte[20];
         NativeMemory.Clear(glyph, 20);
         *(uint*)(glyph + 4) = 0x1000000;
@@ -883,7 +883,7 @@ public static unsafe partial class Blaze
             *(short*)(glyph + 8) = (short)(x + 0x1c);
             *(uint*)glyph = (uint)(nuint)s_NumeralTileRecord_00566c30;
             primCursor = EmitCardGlyphTile(
-                otBase, primCursor, (int*)glyph, s_PanelSelection_005e9060[7 + i], 0x82, 0);
+                otBase, primCursor, (int*)glyph, Mem.s_PanelSelection_005e9060[7 + i], 0x82, 0);
         }
 
         // Ghidra: les sept statistiques, même disposition en damier, colonne suivante.
@@ -903,7 +903,7 @@ public static unsafe partial class Blaze
             *(short*)(glyph + 8) = (short)(x + 0x1c);
             *(uint*)glyph = (uint)(nuint)s_NumeralTileRecord_00566c30;
             primCursor = EmitCardGlyphTile(
-                otBase, primCursor, (int*)glyph, s_PanelSelection_005e9060[i], 0x82, 0);
+                otBase, primCursor, (int*)glyph, Mem.s_PanelSelection_005e9060[i], 0x82, 0);
 
             y += (short)((i & 1) != 0 ? 9 : 0);
         }
@@ -945,22 +945,22 @@ public static unsafe partial class Blaze
 
             // La caméra saute directement à l'angle de l'élément courant, sans amortissement.
             ushort turn = (ushort)((scratch[0x151] - 4) & 7);
-            *(short*)(s_CameraVector_00604928 + 0) = 0x15e;
-            *(short*)(s_CameraVector_00604928 + 2) = (short)(turn * 0x200);
-            *(short*)(s_CameraVector_00604928 + 4) = 0;
+            *(short*)(Mem.s_CameraVector_00604928 + 0) = 0x15e;
+            *(short*)(Mem.s_CameraVector_00604928 + 2) = (short)(turn * 0x200);
+            *(short*)(Mem.s_CameraVector_00604928 + 4) = 0;
 
-            *(short*)(s_SceneEntity_00572b48 + 0x30) = 0;                          // DAT_00572b78
-            *(short*)(s_SceneEntity_00572b48 + 0x32) = (short)(turn * -0x200 + 0x800); // DAT_00572b7a
-            *(short*)(s_SceneEntity_00572b48 + 0x34) = 0;                          // DAT_00572b7c
+            *(short*)(Mem.s_SceneEntity_00572b48 + 0x30) = 0;                          // DAT_00572b78
+            *(short*)(Mem.s_SceneEntity_00572b48 + 0x32) = (short)(turn * -0x200 + 0x800); // DAT_00572b7a
+            *(short*)(Mem.s_SceneEntity_00572b48 + 0x34) = 0;                          // DAT_00572b7c
 
             // Les huit icônes sur un cercle : même disposition qu'au carrousel des personnages,
             // avec un pas de 0x200 (huit positions) et un rayon de 0x78 au lieu de 0x96.
             for (int i = 0; i < SceneIconCount; i++)
             {
                 byte* icon = s_SceneIcons_00572e58 + i * SceneIconStride;
-                *(int*)(icon + 0x1c) = (int)GetSinTableEntry(i << 9) * -0x78;
+                *(int*)(icon + 0x1c) = (int)Winsys3d.GetSinTableEntry(i << 9) * -0x78;
                 *(int*)(icon + 0x20) = 0;
-                *(int*)(icon + 0x24) = GetCosTableEntry(i << 9) * 0x78;
+                *(int*)(icon + 0x24) = Winsys3d.GetCosTableEntry(i << 9) * 0x78;
                 *(ushort*)(icon + 0x28) = 0;
                 *(ushort*)(icon + 0x2a) = 0;
                 *(ushort*)(icon + 0x2c) = 0;
@@ -977,28 +977,28 @@ public static unsafe partial class Blaze
         // crans), redresse l'orientation de scène vers (0x200, 0x380, 0) et prend sa teinte de fond
         // dans la table des huit tons.
         ushort delta = (ushort)(((scratch[0x151] - 4) * 0x200
-                                 - *(short*)(s_CameraVector_00604928 + 2)) & 0xfff);
+                                 - *(short*)(Mem.s_CameraVector_00604928 + 2)) & 0xfff);
         short step = delta < 0x800
             ? (short)((short)delta >> 2)
             : (short)-((short)(0x1000 - (short)delta) >> 2);
-        *(short*)(s_CameraVector_00604928 + 2) += step;
+        *(short*)(Mem.s_CameraVector_00604928 + 2) += step;
 
-        s_ScenePitch_005e9308 += (short)((0x200 - s_ScenePitch_005e9308) >> 2);
-        s_SceneYaw_005e930a += (short)((0x380 - s_SceneYaw_005e930a) >> 2);
-        s_SceneRoll_005e930c += (short)(-s_SceneRoll_005e930c >> 2);
+        Mem.s_ScenePitch_005e9308 += (short)((0x200 - Mem.s_ScenePitch_005e9308) >> 2);
+        Mem.s_SceneYaw_005e930a += (short)((0x380 - Mem.s_SceneYaw_005e930a) >> 2);
+        Mem.s_SceneRoll_005e930c += (short)(-Mem.s_SceneRoll_005e930c >> 2);
 
-        short* tone = (short*)(s_SceneToneTable_00562a58 + scratch[0x151] * SceneToneStride);
-        s_BackColourR_005e93a0 += (short)((tone[0] - s_BackColourR_005e93a0) >> 2);
-        s_BackColourG_005e93a2 += (short)((tone[1] - s_BackColourG_005e93a2) >> 2);
-        s_BackColourB_005e93a4 += (short)((tone[2] - s_BackColourB_005e93a4) >> 2);
+        short* tone = (short*)(Mem.s_SceneToneTable_00562a58 + scratch[0x151] * GameMemory.SceneToneStride);
+        Mem.s_BackColourR_005e93a0 += (short)((tone[0] - Mem.s_BackColourR_005e93a0) >> 2);
+        Mem.s_BackColourG_005e93a2 += (short)((tone[1] - Mem.s_BackColourG_005e93a2) >> 2);
+        Mem.s_BackColourB_005e93a4 += (short)((tone[2] - Mem.s_BackColourB_005e93a4) >> 2);
 
-        RotMatrix((short*)s_CameraVector_00604928, (short*)s_CameraMatrix_006008e0);
-        Ordinal_376((byte)s_BackColourR_005e93a0,
-                    (byte)s_BackColourG_005e93a2,
-                    (byte)s_BackColourB_005e93a4);
+        RotMatrix((short*)Mem.s_CameraVector_00604928, (short*)Mem.s_CameraMatrix_006008e0);
+        Winsys3d.Ordinal_376((byte)Mem.s_BackColourR_005e93a0,
+                    (byte)Mem.s_BackColourG_005e93a2,
+                    (byte)Mem.s_BackColourB_005e93a4);
 
-        *(short*)(s_SceneEntity_00572b48 + 0x32) =
-            (short)(0x800 - *(short*)(s_CameraVector_00604928 + 2));
+        *(short*)(Mem.s_SceneEntity_00572b48 + 0x32) =
+            (short)(0x800 - *(short*)(Mem.s_CameraVector_00604928 + 2));
 
         return DrawSubState4Icons(otBase, primCursor, scratch);
     }
@@ -1024,8 +1024,8 @@ public static unsafe partial class Blaze
             if ((buttons & 0x4000) != 0)          // annulation : retour au sous-état 3
             {
                 short angle = (short)(scratch[0x150] + 8);
-                *(short*)(s_CameraVector_00604928 + 2) = (short)(angle * 0x100);
-                *(short*)(s_SceneEntity_00572b48 + 0x32) = (short)(angle * -0x100 + 0x800);
+                *(short*)(Mem.s_CameraVector_00604928 + 2) = (short)(angle * 0x100);
+                *(short*)(Mem.s_SceneEntity_00572b48 + 0x32) = (short)(angle * -0x100 + 0x800);
                 state[2] = 0x5f;
                 PlayUiSound39();
                 state[0]--;
@@ -1043,15 +1043,15 @@ public static unsafe partial class Blaze
 
         if (state[2] == 0x2f)
         {
-            if ((s_Unknown_00560fef & 2) == 0)
+            if ((Mem.s_Unknown_00560fef & 2) == 0)
             {
                 *(ushort*)(pad + 2) &= 0x7fff;
                 state[2]++;
             }
             else if ((pad[3] & 0x40) != 0)
             {
-                s_Unknown_0056075b = 0;
-                s_Unknown_00560fef &= 0xfd;
+                Mem.s_Unknown_0056075b = 0;
+                Mem.s_Unknown_00560fef &= 0xfd;
                 PlayUiSound39();
                 state[2] = 0x2e;
             }
@@ -1060,37 +1060,37 @@ public static unsafe partial class Blaze
 
         if (state[2] != 0x30) return;
 
-        if ((s_Unknown_00560fef & 4) != 0)
+        if ((Mem.s_Unknown_00560fef & 4) != 0)
         {
             if ((pad[3] & 0x40) == 0) return;
-            s_Unknown_00560763 = 0;
-            s_Unknown_00560fef &= 0xfb;
+            Mem.s_Unknown_00560763 = 0;
+            Mem.s_Unknown_00560fef &= 0xfb;
             PlayUiSound39();
             state[2] = 0x2e;
             return;
         }
 
-        if (s_Unknown_005e909f != 0) { state[2] = 0x2e; return; }
+        if (Mem.s_Unknown_005e909f != 0) { state[2] = 0x2e; return; }
 
         // Confirmé : l'icône choisie est recopiée dans chacune des quatre particules, qui partent
         // ensuite d'une position et d'une vitesse tirées au sort.
         state[2] = 0x39;
-        for (int i = 0; i < SceneParticleCount; i++)
+        for (int i = 0; i < GameMemory.SceneParticleCount; i++)
         {
-            byte* particle = s_SceneParticles_00572be4 + i * SceneParticleStride;
+            byte* particle = Mem.s_SceneParticles_00572be4 + i * GameMemory.SceneParticleStride;
 
-            CopyDwords((uint*)(s_SceneIcons_00572e58 + scratch[0x151] * SceneIconStride),
+            Mem.CopyDwords((uint*)(s_SceneIcons_00572e58 + scratch[0x151] * SceneIconStride),
                        (uint*)particle, 0x27);
 
             // Ghidra: puVar6 pointe la base + 0x3c, d'où les indices 0, 5, 6, 7 ci-dessous.
             uint* fields = (uint*)(particle + 0x3c);
-            fields[0] = *(uint*)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94)
+            fields[0] = *(uint*)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94)
                                  + 8 + scratch[0x151] * 4);
 
             short spread = (short)CrtRand();
-            fields[5] = (uint)(GetSinTableEntry(spread) * 0x1e);
+            fields[5] = (uint)(Winsys3d.GetSinTableEntry(spread) * 0x1e);
             fields[6] = (uint)(CrtRand() * 8 - 0x1fff8);
-            fields[7] = (uint)(GetCosTableEntry(spread) * 0x1e);
+            fields[7] = (uint)(Winsys3d.GetCosTableEntry(spread) * 0x1e);
         }
         state[0]++;
     }
@@ -1108,7 +1108,7 @@ public static unsafe partial class Blaze
             short* glow = (short*)(icon + 0x28);
 
             byte* copy = stackalloc byte[40];
-            CopyDwords((uint*)(icon + 0x1c), (uint*)copy, 10);
+            Mem.CopyDwords((uint*)(icon + 0x1c), (uint*)copy, 10);
             *(int*)(copy + 4) += 0x28000;
 
             // L'icône choisie brille plus fort et tourne moins vite que les autres.
@@ -1129,7 +1129,7 @@ public static unsafe partial class Blaze
             short* projected = stackalloc short[4];
             if (ProjectPoint((int*)copy, projected) == 0) continue;
 
-            byte* atlas = ((byte**)*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94))[2 + i];
+            byte* atlas = ((byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94))[2 + i];
             short frame = (short)((s_FadeCounter_005e9960 >> 1) % 6);
 
             byte* sprite = stackalloc byte[20];
@@ -1154,12 +1154,12 @@ public static unsafe partial class Blaze
         }
 
         // Le libellé de l'élément courant, dans le troisième descripteur d'interface.
-        byte* label = s_UiDescriptors_00560ff0 + 2 * UiDescriptorStride;   // &DAT_00562180
+        byte* label = Mem.s_UiDescriptors_00560ff0 + 2 * GameMemory.UiDescriptorStride;   // &DAT_00562180
         BindMenuLabels(
-            *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+            *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70)
                       + 0xc4 + scratch[0x151] * 4),
             0, label, 0);
-        return RunTextEngine(primCursor, label);
+        return Ui.RunTextEngine(primCursor, label);
     }
 
     /// <summary>
@@ -1284,47 +1284,47 @@ public static unsafe partial class Blaze
                 // TODO(REVERSE): DAT_00560fef et ses voisins sont posés par le code de boîte de
                 // dialogue, non reconstruit, donc ils lisent 0 et seule la première branche est
                 // atteignable pour l'instant.
-                if ((s_Unknown_00560fef & 4) == 0)
+                if ((Mem.s_Unknown_00560fef & 4) == 0)
                 {
                     *(ushort*)(pad + 2) &= 0x7fff;
                     state[2]++;
                     scratch[0x153] = (byte)((((byte)state[5] << 2 | (byte)state[4]) << 1)
-                                            | s_Unknown_005e909f);
+                                            | Mem.s_Unknown_005e909f);
                 }
                 else if ((pad[3] & 0x40) != 0)
                 {
-                    s_Unknown_00560763 = 0;
-                    s_Unknown_00560fef &= 0xfb;
+                    Mem.s_Unknown_00560763 = 0;
+                    Mem.s_Unknown_00560fef &= 0xfb;
                     PlayUiSound39();
                     state[2]--;
                 }
                 break;
 
             case 0x61:
-                if ((s_Unknown_00560fef & 2) == 0)
+                if ((Mem.s_Unknown_00560fef & 2) == 0)
                 {
                     *(ushort*)(pad + 2) &= 0x7fff;
                     state[2]++;
                     break;
                 }
                 if ((pad[3] & 0x40) == 0) break;
-                s_Unknown_0056075b = 0;
-                s_Unknown_00560fef &= 0xfd;
+                Mem.s_Unknown_0056075b = 0;
+                Mem.s_Unknown_00560fef &= 0xfd;
                 PlayUiSound39();
                 state[2] = 0x5f;
                 break;
 
             case 0x62:
-                if ((s_Unknown_00560fef & 4) != 0)
+                if ((Mem.s_Unknown_00560fef & 4) != 0)
                 {
                     if ((pad[3] & 0x40) == 0) break;
-                    s_Unknown_00560763 = 0;
-                    s_Unknown_00560fef &= 0xfb;
+                    Mem.s_Unknown_00560763 = 0;
+                    Mem.s_Unknown_00560fef &= 0xfb;
                     PlayUiSound39();
                     state[2] = 0x5f;
                     break;
                 }
-                if (s_Unknown_005e909f == 0)
+                if (Mem.s_Unknown_005e909f == 0)
                 {
                     // Confirmé : on passe au sous-état suivant.
                     *(byte*)(s_SelectSlots_00573518 + CharacterSelectSlotStride + 0x14) = 4;
@@ -1350,7 +1350,7 @@ public static unsafe partial class Blaze
     {
         byte* sprite = stackalloc byte[20];
         NativeMemory.Clear(sprite, 20);
-        *(uint**)sprite = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+        *(uint**)sprite = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
         *(uint*)(sprite + 4) = 0x1000000;
         *(short*)(sprite + 8) = (short)(*(short*)(box + 0x04) + state[4] * 48 + 0x14);
         *(short*)(sprite + 0x0a) = (short)(*(short*)(box + 0x06) + state[5] * 16 + 0x0a);
@@ -1361,24 +1361,24 @@ public static unsafe partial class Blaze
         primCursor = DrawFlatPrimitive(otBase, primCursor, (int*)sprite);
         EmitClipRect(otBase, &primCursor);
 
-        BindMenuLabels(s_Unknown_005606f8, 0, box, 0);
-        primCursor = RunTextEngine(primCursor, box);
+        BindMenuLabels(Mem.s_Unknown_005606f8, 0, box, 0);
+        primCursor = Ui.RunTextEngine(primCursor, box);
 
         for (int offset = 0x500; offset < 0x508; offset += 4)
         {
             BindMenuLabels(
-                *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + offset),
+                *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + offset),
                 0, box, 0);
-            primCursor = RunTextEngine(primCursor, box);
+            primCursor = Ui.RunTextEngine(primCursor, box);
         }
         primCursor = DrawUiPanel(otBase, primCursor, box);
 
         if (state[2] != 0x2e)
         {
             BindMenuLabels(
-                *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0x18c),
-                (uint)(nuint)s_SceneEntity_00572b48, panel, 0);
-            primCursor = RunTextEngine(primCursor, panel);
+                *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x18c),
+                (uint)(nuint)Mem.s_SceneEntity_00572b48, panel, 0);
+            primCursor = Ui.RunTextEngine(primCursor, panel);
             primCursor = DrawUiPanel(otBase, primCursor, panel);
         }
 
@@ -1393,7 +1393,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void LoadDefaultName(byte* scratch, int* state)
     {
-        byte* source = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+        byte* source = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70)
                                  + 0x208 + scratch[0x150] * 4);
         int length = 0;
         while (source[length] != 0)
@@ -1479,7 +1479,7 @@ public static unsafe partial class Blaze
             // Validation d'une case : le caractère se lit dans la table de la page courante.
             if (state[6] > 7) return false;
 
-            byte* row = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+            byte* row = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70)
                                   + 0x50 + (state[5] + state[3]) * 4);
             byte glyph = row[state[4] * 3 + (((state[4] < 5 ? 1 : 0) - 1) & 2)];
 
@@ -1566,10 +1566,10 @@ public static unsafe partial class Blaze
     /// </summary>
     private static uint* DrawNameEntryScreen(uint* otBase, uint* primCursor, byte* scratch, int* state)
     {
-        byte* box = s_UiDescriptors_00560ff0 + 1 * UiDescriptorStride;   // &DAT_005618b8
+        byte* box = Mem.s_UiDescriptors_00560ff0 + 1 * GameMemory.UiDescriptorStride;   // &DAT_005618b8
 
-        BindMenuLabels(s_Unknown_005606f8, 0, box, 0);
-        primCursor = RunTextEngine(primCursor, box);
+        BindMenuLabels(Mem.s_Unknown_005606f8, 0, box, 0);
+        primCursor = Ui.RunTextEngine(primCursor, box);
 
         // Le nom en cours, recopié sur la pile puis suffixé d'un « _ » tant que le curseur n'est
         // pas sur la case de fin. L'original recopie de la même façon, dans un local de 24 octets.
@@ -1585,7 +1585,7 @@ public static unsafe partial class Blaze
         }
 
         BindMenuLabels(typedName, 0, box, 0);
-        primCursor = RunTextEngine(primCursor, box);
+        primCursor = Ui.RunTextEngine(primCursor, box);
 
         // Le curseur de la grille : un sprite de 20 octets monté sur la pile, comme partout.
         // **Corrigé 2026-08-16** : le désassemblage (FUN_00507cb0.asm:403-408) lit
@@ -1597,7 +1597,7 @@ public static unsafe partial class Blaze
         // par l'utilisateur.
         byte* cursor = stackalloc byte[20];
         NativeMemory.Clear(cursor, 20);
-        *(uint**)cursor = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+        *(uint**)cursor = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
         *(uint*)(cursor + 4) = 0x1000000;
 
         byte* grid = s_SelectSlots_00573518;
@@ -1613,20 +1613,20 @@ public static unsafe partial class Blaze
 
         // Les huit lignes du clavier virtuel. La table de largeurs passe en **fixe** le temps de
         // la grille — c'est ce qui aligne les colonnes — et revient au proportionnel après.
-        BindMenuLabels(s_Unknown_005606f8, 0, grid, 0);
-        primCursor = RunTextEngine(primCursor, grid);
+        BindMenuLabels(Mem.s_Unknown_005606f8, 0, grid, 0);
+        primCursor = Ui.RunTextEngine(primCursor, grid);
 
-        UseFixedGlyphWidths();             // Ghidra: FUN_00507870
+        Ui.UseFixedGlyphWidths();             // Ghidra: FUN_00507870
         for (int i = 0; i < 8; i++)
         {
             BindMenuLabels(
-                *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70)
                           + 0x50 + (i + state[3]) * 4),
                 0, grid, 0);
-            primCursor = RunTextEngine(primCursor, grid);
+            primCursor = Ui.RunTextEngine(primCursor, grid);
         }
         primCursor = DrawUiPanel(otBase, primCursor, grid);
-        UseProportionalGlyphWidths();      // Ghidra: FUN_00507890
+        Ui.UseProportionalGlyphWidths();      // Ghidra: FUN_00507890
 
         return primCursor;
     }
@@ -1643,32 +1643,32 @@ public static unsafe partial class Blaze
         // Ghidra: le pilotage libre, actif tant que DAT_005633a8 vaut 0. Le bit 1 du premier mot
         // choisit la cible : couleur de fond au pas de 8 (bornée à 8 bits), sinon rotation de la
         // scène au pas de 0x40 (bornée au tour complet de 0x1000).
-        if (s_DebugModeLatch_005633a8 == 0)
+        if (Mem.s_DebugModeLatch_005633a8 == 0)
         {
             ushort buttons = padWords[0];
             if ((buttons & 1) == 0)
             {
-                if ((buttons & 0x400) != 0) s_SceneYaw_005e930a -= 0x40;
-                if ((padWords[0] & 0x800) != 0) s_SceneYaw_005e930a += 0x40;
-                if ((padWords[0] & 0x100) != 0) s_SceneRoll_005e930c -= 0x40;
-                if ((padWords[0] & 0x200) != 0) s_SceneRoll_005e930c += 0x40;
-                if ((padWords[0] & 0x1000) != 0) s_ScenePitch_005e9308 += 0x40;
-                if ((padWords[0] & 0x4000) != 0) s_ScenePitch_005e9308 -= 0x40;
-                s_ScenePitch_005e9308 &= 0xfff;
-                s_SceneYaw_005e930a &= 0xfff;
-                s_SceneRoll_005e930c &= 0xfff;
+                if ((buttons & 0x400) != 0) Mem.s_SceneYaw_005e930a -= 0x40;
+                if ((padWords[0] & 0x800) != 0) Mem.s_SceneYaw_005e930a += 0x40;
+                if ((padWords[0] & 0x100) != 0) Mem.s_SceneRoll_005e930c -= 0x40;
+                if ((padWords[0] & 0x200) != 0) Mem.s_SceneRoll_005e930c += 0x40;
+                if ((padWords[0] & 0x1000) != 0) Mem.s_ScenePitch_005e9308 += 0x40;
+                if ((padWords[0] & 0x4000) != 0) Mem.s_ScenePitch_005e9308 -= 0x40;
+                Mem.s_ScenePitch_005e9308 &= 0xfff;
+                Mem.s_SceneYaw_005e930a &= 0xfff;
+                Mem.s_SceneRoll_005e930c &= 0xfff;
             }
             else
             {
-                if ((buttons & 0x400) != 0) s_BackColourG_005e93a2 -= 8;
-                if ((padWords[0] & 0x800) != 0) s_BackColourG_005e93a2 += 8;
-                if ((padWords[0] & 0x100) != 0) s_BackColourB_005e93a4 -= 8;
-                if ((padWords[0] & 0x200) != 0) s_BackColourB_005e93a4 += 8;
-                if ((padWords[0] & 0x1000) != 0) s_BackColourR_005e93a0 += 8;
-                if ((padWords[0] & 0x4000) != 0) s_BackColourR_005e93a0 -= 8;
-                s_BackColourR_005e93a0 &= 0xff;
-                s_BackColourG_005e93a2 &= 0xff;
-                s_BackColourB_005e93a4 &= 0xff;
+                if ((buttons & 0x400) != 0) Mem.s_BackColourG_005e93a2 -= 8;
+                if ((padWords[0] & 0x800) != 0) Mem.s_BackColourG_005e93a2 += 8;
+                if ((padWords[0] & 0x100) != 0) Mem.s_BackColourB_005e93a4 -= 8;
+                if ((padWords[0] & 0x200) != 0) Mem.s_BackColourB_005e93a4 += 8;
+                if ((padWords[0] & 0x1000) != 0) Mem.s_BackColourR_005e93a0 += 8;
+                if ((padWords[0] & 0x4000) != 0) Mem.s_BackColourR_005e93a0 -= 8;
+                Mem.s_BackColourR_005e93a0 &= 0xff;
+                Mem.s_BackColourG_005e93a2 &= 0xff;
+                Mem.s_BackColourB_005e93a4 &= 0xff;
             }
         }
 
@@ -1677,32 +1677,32 @@ public static unsafe partial class Blaze
         {
             s_SelectFlags_00562a48[0] = 0;
 
-            s_BackColourR_005e93a0 = 0x60;
-            s_BackColourG_005e93a2 = 0x60;
-            s_BackColourB_005e93a4 = 0x60;
-            s_ScenePitch_005e9308 = 0x200;
-            s_SceneYaw_005e930a = 0x380;
-            s_SceneRoll_005e930c = 0;
+            Mem.s_BackColourR_005e93a0 = 0x60;
+            Mem.s_BackColourG_005e93a2 = 0x60;
+            Mem.s_BackColourB_005e93a4 = 0x60;
+            Mem.s_ScenePitch_005e9308 = 0x200;
+            Mem.s_SceneYaw_005e930a = 0x380;
+            Mem.s_SceneRoll_005e930c = 0;
 
             // Ghidra: DAT_00604928 — un vecteur de trois shorts. Le troisième cadre la caméra sur
             // le personnage courant : (index - 8) * 0x100, soit un seizième de tour par cran.
-            *(short*)(s_CameraVector_00604928 + 0) = 0x15e;
-            *(short*)(s_CameraVector_00604928 + 4) = 0;
-            *(short*)(s_CameraVector_00604928 + 2) = (short)((scratch[0x150] - 8 & 0xf) << 8);
+            *(short*)(Mem.s_CameraVector_00604928 + 0) = 0x15e;
+            *(short*)(Mem.s_CameraVector_00604928 + 4) = 0;
+            *(short*)(Mem.s_CameraVector_00604928 + 2) = (short)((scratch[0x150] - 8 & 0xf) << 8);
 
-            s_Unknown_006008d0 = 0;
-            s_Unknown_006008d4 = 0;
-            s_Unknown_006008d8 = 0;
-            CameraTranslation[0] = 0;
-            CameraTranslation[1] = 0;
-            CameraTranslation[2] = 0;
+            Mem.s_Unknown_006008d0 = 0;
+            Mem.s_Unknown_006008d4 = 0;
+            Mem.s_Unknown_006008d8 = 0;
+            Mem.CameraTranslation[0] = 0;
+            Mem.CameraTranslation[1] = 0;
+            Mem.CameraTranslation[2] = 0;
 
             // Ghidra: les seize emplacements de personnage, posés sur un cercle. Ordinal_451/450
             // sont rsin/rcos en 0x1000 pas par tour, donc `i << 8` répartit exactement seize
             // positions, et 0x96 = 150 est le rayon.
-            for (int i = 0; i < CharacterSlotCount; i++)
+            for (int i = 0; i < GameMemory.CharacterSlotCount; i++)
             {
-                byte* slot = s_CharacterSlots_00578420 + i * CharacterSlotStride;
+                byte* slot = Mem.s_CharacterSlots_00578420 + i * GameMemory.CharacterSlotStride;
 
                 *(uint*)(slot + 0x00) = 0x800000;
                 slot[0x04] = (byte)i;
@@ -1713,9 +1713,9 @@ public static unsafe partial class Blaze
                 *(ushort*)(slot + 0x12) = 0;
                 *(ushort*)(slot + 0x18) = 0;
                 *(ushort*)(slot + 0x1a) = 0;
-                *(int*)(slot + 0x1c) = (int)GetSinTableEntry(i << 8) * -0x96;
+                *(int*)(slot + 0x1c) = (int)Winsys3d.GetSinTableEntry(i << 8) * -0x96;
                 *(int*)(slot + 0x20) = 0;
-                *(int*)(slot + 0x24) = GetCosTableEntry(i << 8) * 0x96;
+                *(int*)(slot + 0x24) = Winsys3d.GetCosTableEntry(i << 8) * 0x96;
                 *(ushort*)(slot + 0x28) = 0;
                 *(ushort*)(slot + 0x2a) = 0;
                 *(ushort*)(slot + 0x2c) = 0;
@@ -1766,7 +1766,7 @@ public static unsafe partial class Blaze
                 }
 
                 case 1:
-                    if ((s_Unknown_00560fef & 2) == 0)
+                    if ((Mem.s_Unknown_00560fef & 2) == 0)
                     {
                         padWords[1] &= 0x7fff;
                         s_SelectState_00578de8[2]++;
@@ -1775,16 +1775,16 @@ public static unsafe partial class Blaze
                     break;
 
                 case 2:
-                    if ((s_Unknown_00560fef & 4) == 0)
+                    if ((Mem.s_Unknown_00560fef & 4) == 0)
                     {
-                        if (s_Unknown_005e909f == 0)
+                        if (Mem.s_Unknown_005e909f == 0)
                         {
                             // Ghidra: FUN_005352e0(&DAT_00578420 + index * 0x27, &DAT_00572b48, 0x27)
                             // — 0x27 dwords = 0x9c octets, soit l'emplacement entier recopié vers le
                             // bloc de scène. Le sous-état suivant travaille sur cette copie.
-                            CopyDwords(
-                                (uint*)(s_CharacterSlots_00578420 + scratch[0x150] * CharacterSlotStride),
-                                (uint*)s_SceneEntity_00572b48, 0x27);
+                            Mem.CopyDwords(
+                                (uint*)(Mem.s_CharacterSlots_00578420 + scratch[0x150] * GameMemory.CharacterSlotStride),
+                                (uint*)Mem.s_SceneEntity_00572b48, 0x27);
 
                             s_SelectState_00578de8[0]++;
                             s_SelectState_00578de8[2] = 0x13;
@@ -1795,25 +1795,25 @@ public static unsafe partial class Blaze
                     }
                     else if ((pad[3] & 0x40) != 0)
                     {
-                        s_Unknown_00560763 = 0;
-                        s_Unknown_00560fef &= 0xfb;
+                        Mem.s_Unknown_00560763 = 0;
+                        Mem.s_Unknown_00560fef &= 0xfb;
                         PlayUiSound39();
                         s_SelectState_00578de8[2] = 0;
                     }
                     break;
 
                 case 0x59:
-                    if ((s_Unknown_00560fef & 4) != 0)
+                    if ((Mem.s_Unknown_00560fef & 4) != 0)
                     {
                         if ((pad[3] & 0x40) != 0)
                         {
-                            s_Unknown_00560763 = 0;
-                            s_Unknown_00560fef &= 0xfb;
+                            Mem.s_Unknown_00560763 = 0;
+                            Mem.s_Unknown_00560fef &= 0xfb;
                             PlayUiSound39();
                             s_SelectState_00578de8[2] = 0;
                         }
                     }
-                    else if (s_Unknown_005e909f == 0)
+                    else if (Mem.s_Unknown_005e909f == 0)
                     {
                         // La sortie de l'écran : le sous-état -1 fait sortir FUN_00506880 par son
                         // `goto`, qui saute la remise à zéro de l'état de jeu — celle-ci est faite
@@ -1825,7 +1825,7 @@ public static unsafe partial class Blaze
                     break;
 
                 case 0x77:
-                    if ((s_Unknown_00560fef & 2) == 0)
+                    if ((Mem.s_Unknown_00560fef & 2) == 0)
                     {
                         padWords[1] &= 0x7fff;
                         s_SelectState_00578de8[2] = 0x59;
@@ -1836,8 +1836,8 @@ public static unsafe partial class Blaze
 
             if (sharedCancel && (pad[3] & 0x40) != 0)
             {
-                s_Unknown_0056075b = 0;
-                s_Unknown_00560fef &= 0xfd;
+                Mem.s_Unknown_0056075b = 0;
+                Mem.s_Unknown_00560fef &= 0xfd;
                 PlayUiSound39();
                 s_SelectState_00578de8[2] = 0;
             }
@@ -1846,20 +1846,20 @@ public static unsafe partial class Blaze
         // Ghidra: l'amortissement de la rotation vers le personnage courant, par quarts, sur le
         // chemin le plus court du tour de 0x1000.
         ushort delta = (ushort)(((scratch[0x150] - 8) * 0x100
-                                 - *(short*)(s_CameraVector_00604928 + 2)) & 0xfff);
+                                 - *(short*)(Mem.s_CameraVector_00604928 + 2)) & 0xfff);
         short step = delta < 0x800
             ? (short)((short)delta >> 2)
             : (short)-(short)((0x1000 - (short)delta) >> 2);
-        *(short*)(s_CameraVector_00604928 + 2) += step;
+        *(short*)(Mem.s_CameraVector_00604928 + 2) += step;
 
         // Ghidra: FUN_0051c300(&DAT_00604928, &DAT_006008e0) — la pose de caméra devient la matrice
         // que FUN_0051d1f0 recopiera ensuite dans le registre MATRIX du GTE.
-        RotMatrix((short*)s_CameraVector_00604928, (short*)s_CameraMatrix_006008e0);
+        RotMatrix((short*)Mem.s_CameraVector_00604928, (short*)Mem.s_CameraMatrix_006008e0);
 
         // Ghidra: Ordinal_376 — libgte SetBackColor.
-        Ordinal_376((byte)s_BackColourR_005e93a0,
-                    (byte)s_BackColourG_005e93a2,
-                    (byte)s_BackColourB_005e93a4);
+        Winsys3d.Ordinal_376((byte)Mem.s_BackColourR_005e93a0,
+                    (byte)Mem.s_BackColourG_005e93a2,
+                    (byte)Mem.s_BackColourB_005e93a4);
 
         // === Le carrousel : seize emplacements amortis, dessinés puis étiquetés ===
         //
@@ -1872,9 +1872,9 @@ public static unsafe partial class Blaze
         int angleStep = 0;
         int lift = 0x2000;
 
-        for (int i = 0; i < CharacterSlotCount; i++, angleStep += 0x100, lift -= 0x100)
+        for (int i = 0; i < GameMemory.CharacterSlotCount; i++, angleStep += 0x100, lift -= 0x100)
         {
-            byte* slot = s_CharacterSlots_00578420 + i * CharacterSlotStride;
+            byte* slot = Mem.s_CharacterSlots_00578420 + i * GameMemory.CharacterSlotStride;
 
             short* yaw = (short*)(slot + 0x32);
             short* glowR = (short*)(slot + 0x28);
@@ -1933,7 +1933,7 @@ public static unsafe partial class Blaze
 
             // L'étiquette : on projette la position de l'emplacement, relevée de 0x3c000, et on
             // ne dessine que si elle tombe à l'écran.
-            CopyDwords((uint*)(slot + 0x1c), (uint*)slotCopy, 10);
+            Mem.CopyDwords((uint*)(slot + 0x1c), (uint*)slotCopy, 10);
             *(int*)(slotCopy + 4) += 0x3c000;
 
             if (ProjectPoint((int*)slotCopy, projected) == 0) continue;
@@ -1941,7 +1941,7 @@ public static unsafe partial class Blaze
             byte* labelSprite = stackalloc byte[20];
             NativeMemory.Clear(labelSprite, 20);
 
-            byte* atlas = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x28);
+            byte* atlas = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x28);
             *(byte**)labelSprite = atlas;
             *(uint*)(labelSprite + 4) = 0x1000000;
             *(short*)(labelSprite + 8) = projected[0];
@@ -1967,13 +1967,13 @@ public static unsafe partial class Blaze
 
         // Ghidra: les deux passes de texte finales — le nom de la classe puis celui du
         // personnage courant, toutes deux dans le premier descripteur d'interface.
-        BindMenuLabels(s_Unknown_005606f8, 0, s_UiDescriptors_00560ff0, 0);
-        primCursor = RunTextEngine(primCursor, s_UiDescriptors_00560ff0);
+        BindMenuLabels(Mem.s_Unknown_005606f8, 0, Mem.s_UiDescriptors_00560ff0, 0);
+        primCursor = Ui.RunTextEngine(primCursor, Mem.s_UiDescriptors_00560ff0);
 
         BindMenuLabels(
-            *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0xc + scratch[0x150] * 4),
-            0, s_UiDescriptors_00560ff0, 0);
-        primCursor = RunTextEngine(primCursor, s_UiDescriptors_00560ff0);
+            *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0xc + scratch[0x150] * 4),
+            0, Mem.s_UiDescriptors_00560ff0, 0);
+        primCursor = Ui.RunTextEngine(primCursor, Mem.s_UiDescriptors_00560ff0);
 
         return primCursor;
     }
@@ -2080,7 +2080,7 @@ public static unsafe partial class Blaze
     // not confirmed.
     // 0x60 utiles, borné par s_PanelSelection_005e9060 — les 0x100 déclarés jusqu'ici débordaient
     // sur lui.
-    private static byte* s_PartyAbilityMask_005e9000 => Arena(0x005e9000);
+    private static byte* s_PartyAbilityMask_005e9000 => Mem.Arena(0x005e9000);
 
     /// <summary>
     /// Ghidra: FUN_00535710 @ 0x00535710 â€” recomputes the party-wide combined ability/skill bitmask

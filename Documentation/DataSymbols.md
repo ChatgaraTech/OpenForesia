@@ -919,14 +919,14 @@ symbole qui tombe dans l'une de ces étendues **ne doit jamais recevoir sa propr
 
 | Base | Taille | Nom | Accesseur | Fichier |
 |---|---|---|---|---|
-| `0x00551640` | `0x200` | EntityParams | `EntityParam(va)` | `Memory/Arenas.cs` |
-| `0x00571500` | `0x500` | EntityState | `EntityState(va)` | `Memory/Arenas.cs` |
-| `0x005de030` | `0x080` | CameraBlock | `Camera(va)` | `Memory/Arenas.cs` |
-| `0x005de100` | `0x460` | ItemMenuArena | `ItemMenuState(va)` / `ItemMenuBytes(va)` | `Memory/Arenas.cs` |
-| `0x005e85c0` | `0x340` | PartyList | — | `Memory/Arenas.cs` |
-| `0x005e9000` | `0x1600` | GameArena | `Arena(va)` | `Memory/Arena.GameState.cs` |
-| `0x005eca00` | `0x14200` | EntityArena | `Entity(va)` | `Memory/Arenas.cs` |
-| `0x006067c0` | `0x040` | ViewBlock | `View(va)` | `Memory/Arenas.cs` |
+| `0x00551640` | `0x200` | EntityParams | `EntityParam(va)` | `Memory/GameMemory.cs` |
+| `0x00571500` | `0x500` | EntityState | `EntityState(va)` | `Memory/GameMemory.cs` |
+| `0x005de030` | `0x080` | CameraBlock | `Camera(va)` | `Memory/GameMemory.cs` |
+| `0x005de100` | `0x460` | ItemMenuArena | `ItemMenuState(va)` / `ItemMenuBytes(va)` | `Memory/GameMemory.cs` |
+| `0x005e85c0` | `0x340` | PartyList | — | `Memory/GameMemory.cs` |
+| `0x005e9000` | `0x1600` | GameArena | `Arena(va)` | `Memory/GameMemory.cs` |
+| `0x005eca00` | `0x14200` | EntityArena | `Entity(va)` | `Memory/GameMemory.cs` |
+| `0x006067c0` | `0x040` | ViewBlock | `View(va)` | `Memory/GameMemory.cs` |
 
 **Quatre allocations indépendantes tombent dans l'étendue d'une arène** — constatées au découpage,
 **non corrigées** parce que les corriger changerait le comportement :
@@ -950,24 +950,24 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 |---|---|---:|---|
 | `0x0054d000` | `s_GammaScale_0054d000` | 116 | `Engine/Input.cs` |
 | `0x0054d074` | `s_GammaScale_0054d074` | 17868 | `Screens/State00/MainMenu.cs` |
-| `0x00551640` | `s_EntityParams_00551640` | 53864 | `Memory/Arenas.cs` |
+| `0x00551640` | `s_EntityParams_00551640` | 53864 | `Memory/GameMemory.cs` |
 | `0x0055e8a8` | `s_AreaHandlerSource_0055e8a8` | 7760 | `Engine/Resources.cs` |
-| `0x005606f8` | `s_Unknown_005606f8` | 48 | `Memory/DataTables.cs` |
-| `0x00560728` | `s_StatusDescriptor_00560728` | 51 | `Memory/DataTables.cs` |
-| `0x0056075b` | `s_Unknown_0056075b` | 8 | `Memory/DataTables.cs` |
-| `0x00560763` | `s_Unknown_00560763` | 2161 | `Memory/DataTables.cs` |
+| `0x005606f8` | `s_Unknown_005606f8` | 48 | `Memory/GameMemory.cs` |
+| `0x00560728` | `s_StatusDescriptor_00560728` | 51 | `Memory/GameMemory.cs` |
+| `0x0056075b` | `s_Unknown_0056075b` | 8 | `Memory/GameMemory.cs` |
+| `0x00560763` | `s_Unknown_00560763` | 2161 | `Memory/GameMemory.cs` |
 | `0x00560fd4` | `s_Unknown_00560fd4` | 27 | `Screens/State04/SaveSlots.cs` |
-| `0x00560fef` | `s_Unknown_00560fef` | 1 | `Memory/DataTables.cs` |
-| `0x00560ff0` | `s_UiDescriptors_00560ff0` | 6760 | `Memory/DataTables.cs` |
-| `0x00562a58` | `s_SceneToneTable_00562a58` | 64 | `Memory/DataTables.cs` |
-| `0x00562a98` | `s_SelectSubStateBytes_00562a98` | 32 | `Memory/DataTables.cs` |
+| `0x00560fef` | `s_Unknown_00560fef` | 1 | `Memory/GameMemory.cs` |
+| `0x00560ff0` | `s_UiDescriptors_00560ff0` | 6760 | `Memory/GameMemory.cs` |
+| `0x00562a58` | `s_SceneToneTable_00562a58` | 64 | `Memory/GameMemory.cs` |
+| `0x00562a98` | `s_SelectSubStateBytes_00562a98` | 32 | `Memory/GameMemory.cs` |
 | `0x00562ab8` | `s_ClassStartIcon_00562ab8` | 8 | `Screens/State04/CharacterCreation.cs` |
 | `0x00562ac0` | `s_StatBitRemap_00562ac0` | 8 | `Screens/State04/CharacterCreation.cs` |
 | `0x00562ac8` | `s_StatBitTable_00562ac8` | 20 | `Screens/State04/CharacterCreation.cs` |
 | `0x00562adc` | `s_CardSlotFlags_00562adc` | 44 | `Screens/State04/CharacterCreation.cs` |
 | `0x00562b08` | `s_CardDirectorySize_00562b08` | 74 | `Screens/State04/CharacterCreation.cs` |
 | `0x00562b52` | `s_NameEncodeTable_00562b52` | 22 | `Engine/SaveData.cs` |
-| `0x00562b68` | `s_Unknown_00562b68` | 8 | `Memory/DataTables.cs` |
+| `0x00562b68` | `s_Unknown_00562b68` | 8 | `Memory/GameMemory.cs` |
 | `0x00562b70` | `s_ClassDefault_00562b70` | 104 | `Screens/State04/CharacterCreation.cs` |
 | `0x00562bd8` | `s_AccentSourceTable_00562bd8` | 64 | `Engine/SaveData.cs` |
 | `0x00562c18` | `s_AccentTargetTable_00562c18` | 132 | `Engine/SaveData.cs` |
@@ -983,8 +983,8 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00563148` | `s_RowSpriteRecord_00563148` | 24 | `Screens/State01/PartySetup.cs` |
 | `0x00563160` | `s_SaveDeviceName_00563160` | 16 | `Engine/SaveData.cs` |
 | `0x00563170` | `s_SaveFolderName_00563170` | 172 | `Engine/SaveData.cs` |
-| `0x0056321c` | `s_CdCheckFileSize_0056321c` | 396 | `Memory/Arena.GameState.cs` |
-| `0x005633a8` | `s_DebugModeLatch_005633a8` | 8 | `Memory/Arena.GameState.cs` |
+| `0x0056321c` | `s_CdCheckFileSize_0056321c` | 396 | `Memory/GameMemory.cs` |
+| `0x005633a8` | `s_DebugModeLatch_005633a8` | 8 | `Memory/GameMemory.cs` |
 | `0x005633b0` | `s_WorldMapDescriptor_005633b0` | 2220 | `Screens/State03/WorldMap.cs` |
 | `0x00563c5c` | `s_Unknown_00563c5c` | 27 | `Screens/State03/WorldMap.cs` |
 | `0x00563c77` | `s_Unknown_00563c77` | 2249 | `Screens/State03/WorldMap.cs` |
@@ -1053,17 +1053,17 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x0056b2c8` | `s_VtSource_0056b2c8` | **0** | `Engine/Resources.cs` |
 | `0x0056b2c8` | `s_Vt_0056b2c8` | 520 | `Engine/Resources.cs` |
 | `0x0056b4d0` | `s_AreaHandlerTable_0056b4d0` | 136 | `Engine/Resources.cs` |
-| `0x0056b558` | `s_LoadScreenDescriptors_0056b558` | 51 | `Memory/DataTables.cs` |
-| `0x0056b58b` | `s_Unknown_0056b58b` | 8 | `Memory/DataTables.cs` |
-| `0x0056b593` | `s_Unknown_0056b593` | 2185 | `Memory/DataTables.cs` |
-| `0x0056be1c` | `s_Unknown_0056be1c` | 1 | `Memory/DataTables.cs` |
-| `0x0056be1d` | `s_Unknown_0056be1d` | 2 | `Memory/DataTables.cs` |
-| `0x0056be1f` | `s_Unknown_0056be1f` | 1 | `Memory/DataTables.cs` |
-| `0x0056be20` | `s_LoadScreenDescriptor2_0056be20` | 59 | `Memory/DataTables.cs` |
-| `0x0056be5b` | `s_Unknown_0056be5b` | 2185 | `Memory/DataTables.cs` |
-| `0x0056c6e4` | `s_Unknown_0056c6e4` | 1 | `Memory/DataTables.cs` |
-| `0x0056c6e5` | `s_Unknown_0056c6e5` | 2 | `Memory/DataTables.cs` |
-| `0x0056c6e7` | `s_Unknown_0056c6e7` | 153 | `Memory/DataTables.cs` |
+| `0x0056b558` | `s_LoadScreenDescriptors_0056b558` | 51 | `Memory/GameMemory.cs` |
+| `0x0056b58b` | `s_Unknown_0056b58b` | 8 | `Memory/GameMemory.cs` |
+| `0x0056b593` | `s_Unknown_0056b593` | 2185 | `Memory/GameMemory.cs` |
+| `0x0056be1c` | `s_Unknown_0056be1c` | 1 | `Memory/GameMemory.cs` |
+| `0x0056be1d` | `s_Unknown_0056be1d` | 2 | `Memory/GameMemory.cs` |
+| `0x0056be1f` | `s_Unknown_0056be1f` | 1 | `Memory/GameMemory.cs` |
+| `0x0056be20` | `s_LoadScreenDescriptor2_0056be20` | 59 | `Memory/GameMemory.cs` |
+| `0x0056be5b` | `s_Unknown_0056be5b` | 2185 | `Memory/GameMemory.cs` |
+| `0x0056c6e4` | `s_Unknown_0056c6e4` | 1 | `Memory/GameMemory.cs` |
+| `0x0056c6e5` | `s_Unknown_0056c6e5` | 2 | `Memory/GameMemory.cs` |
+| `0x0056c6e7` | `s_Unknown_0056c6e7` | 153 | `Memory/GameMemory.cs` |
 | `0x0056c780` | `s_DebugPartyNameOffsets_0056c780` | 64 | `Screens/DebugParty.cs` |
 | `0x0056c7c0` | `s_ClassNameOffsets_0056c7c0` | 32 | `Screens/DebugParty.cs` |
 | `0x0056c7e0` | `s_ClassBaseStats_0056c7e0` | 64 | `Screens/DebugParty.cs` |
@@ -1095,17 +1095,17 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x0056e7b0` | `s_GlyphWidths_0056e7b0` | 192 | `Engine/UiText.cs` |
 | `0x0056e870` | `s_ScanTable_0056e870` | 324 | `Engine/UiText.cs` |
 | `0x0056e9b4` | `s_HalfWidthCodes_0056e9b4` | 12 | `Engine/UiText.cs` |
-| `0x0056e9c0` | `s_RandSeed_0056e9c0` | 11072 | `Memory/Arena.GameState.cs` |
-| `0x00571500` | `s_EntityState_00571500` | 1340 | `Memory/Arenas.cs` |
+| `0x0056e9c0` | `s_RandSeed_0056e9c0` | 11072 | `Memory/GameMemory.cs` |
+| `0x00571500` | `s_EntityState_00571500` | 1340 | `Memory/GameMemory.cs` |
 | `0x00571a3c` | `s_Unknown_00571a3c` | 4356 | `Screens/State00/MainMenu.cs` |
 | `0x00572b40` | `s_EmptyLabel_00572b40` | 8 | `Screens/State04/CharacterCreation.cs` |
-| `0x00572b48` | `s_SceneEntity_00572b48` | 156 | `Memory/DataTables.cs` |
-| `0x00572be4` | `s_SceneParticles_00572be4` | 628 | `Memory/DataTables.cs` |
+| `0x00572b48` | `s_SceneEntity_00572b48` | 156 | `Memory/GameMemory.cs` |
+| `0x00572be4` | `s_SceneParticles_00572be4` | 628 | `Memory/GameMemory.cs` |
 | `0x00572e58` | `s_SceneIcons_00572e58` | 1248 | `Screens/State04/SaveSlots.cs` |
 | `0x00573338` | `s_SelectScratch_00573338` | 24 | `Screens/State04/SaveSlots.cs` |
 | `0x00573350` | `s_Dice_00573350` | 456 | `Screens/State04/CharacterCreation.cs` |
 | `0x00573518` | `s_SelectSlots_00573518` | 20232 | `Screens/State04/SaveSlots.cs` |
-| `0x00578420` | `s_CharacterSlots_00578420` | 2496 | `Memory/DataTables.cs` |
+| `0x00578420` | `s_CharacterSlots_00578420` | 2496 | `Memory/GameMemory.cs` |
 | `0x00578de0` | `s_CardLoadResult_00578de0` | 4 | `Screens/State04/CharacterCreation.cs` |
 | `0x00578de4` | `s_StatSource_00578de4` | 32 | `Screens/State04/CharacterCreation.cs` |
 | `0x00578e04` | `s_DiceRolled_00578e04` | 8 | `Screens/State04/CharacterCreation.cs` |
@@ -1156,9 +1156,9 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005d9e44` | `s_UiControlSelection_005d9e44` | 4 | `Screens/State00/Options.cs` |
 | `0x005d9e48` | `s_UiOptionsSelection_005d9e48` | 7712 | `Screens/State00/Options.cs` |
 | `0x005dbc68` | `s_WorldPanels_005dbc68` | 9160 | `Screens/State03/WorldMap.cs` |
-| `0x005de030` | `s_CameraBlock_005de030` | 4 | `Memory/Arenas.cs` |
+| `0x005de030` | `s_CameraBlock_005de030` | 4 | `Memory/GameMemory.cs` |
 | `0x005de034` | `s_Unknown_005de034` | 204 | `Screens/State04/CharacterCreation.cs` |
-| `0x005de100` | `s_ItemMenuArena_005de100` | 16 | `Memory/Arenas.cs` |
+| `0x005de100` | `s_ItemMenuArena_005de100` | 16 | `Memory/GameMemory.cs` |
 | `0x005de110` | `s_ItemNameScratch_005de110` | 68 | `Screens/State06/Inventory.cs` |
 | `0x005de154` | `s_Unknown_005de154` | 4 | `Screens/State00/MainMenu.cs` |
 | `0x005de158` | `s_Unknown_005de158` | 4 | `Screens/State00/MainMenu.cs` |
@@ -1234,16 +1234,16 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005e8324` | `s_SpriteCursor_005e8324` | 4 | `Engine/UiText.cs` |
 | `0x005e8328` | `s_BreakPen_005e8328` | 504 | `Engine/UiText.cs` |
 | `0x005e8520` | `s_SoundBankHeader_005e8520` | 160 | `Screens/State03/WorldMap.cs` |
-| `0x005e85c0` | `s_PartyListArena_005e85c0` | **0** | `Memory/Arenas.cs` |
+| `0x005e85c0` | `s_PartyListArena_005e85c0` | **0** | `Memory/GameMemory.cs` |
 | `0x005e85c0` | `s_PartySelectionOrder_005e85c0` | 128 | `Screens/State01/PartySetup.cs` |
 | `0x005e8640` | `s_PartyRowText_005e8640` | 2240 | `Screens/State01/PartySetup.cs` |
 | `0x005e8f00` | `s_EntityDecodeTable_005e8f00` | 192 | `Screens/State00/MainMenu.cs` |
 | `0x005e8fc0` | `s_EntityDecodeTable_005e8fc0` | 64 | `Engine/Resources.cs` |
-| `0x005e9000` | `s_GameArena_005e9000` | **0** | `Memory/Arena.GameState.cs` |
+| `0x005e9000` | `s_GameArena_005e9000` | **0** | `Memory/GameMemory.cs` |
 | `0x005e9000` | `s_PartyAbilityMask_005e9000` | 32 | `Screens/State04/SaveSlots.cs` |
 | `0x005e9020` | `s_PartySize_005e9020` | 64 | `Screens/State04/SaveSlots.cs` |
-| `0x005e9060` | `s_StateBank2_005e9060` | **0** | `Memory/Arena.GameState.cs` |
-| `0x005e9060` | `s_PanelSelection_005e9060` | 10 | `Engine/UiWindow.cs` |
+| `0x005e9060` | `s_StateBank2_005e9060` | **0** | `Memory/GameMemory.cs` |
+| `0x005e9060` | `s_PanelSelection_005e9060` | 10 | `Memory/GameMemory.cs` |
 | `0x005e906a` | `s_StatTotal_005e906a` | 22 | `Screens/State04/CharacterCreation.cs` |
 | `0x005e9080` | `s_Unknown_005e9080` | 26 | `Screens/State06/Inventory.cs` |
 | `0x005e909a` | `s_Unknown_005e909a` | 1 | `Screens/State04/SaveSlots.cs` |
@@ -1251,66 +1251,66 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005e909c` | `s_Unknown_005e909c` | 1 | `Screens/State04/SaveSlots.cs` |
 | `0x005e909d` | `s_Unknown_005e909d` | 1 | `Screens/State04/SaveSlots.cs` |
 | `0x005e909e` | `s_Unknown_005e909e` | 1 | `Screens/State04/SaveSlots.cs` |
-| `0x005e909f` | `s_Unknown_005e909f` | 225 | `Memory/DataTables.cs` |
+| `0x005e909f` | `s_Unknown_005e909f` | 225 | `Memory/GameMemory.cs` |
 | `0x005e9180` | `s_EntitySlotTable_005e9180` | **0** | `Engine/Resources.cs` |
 | `0x005e9180` | `s_SlotArea_005e9180` | 8 | `Engine/Input.cs` |
 | `0x005e9188` | `s_PlayerSlots_005e9188` | 296 | `Engine/Input.cs` |
 | `0x005e92b0` | `s_Unknown_005e92b0` | 16 | `Screens/DebugParty.cs` |
-| `0x005e92c0` | `s_StateBank5_005e92c0` | **0** | `Memory/Arena.GameState.cs` |
+| `0x005e92c0` | `s_StateBank5_005e92c0` | **0** | `Memory/GameMemory.cs` |
 | `0x005e92c0` | `s_Bank_005e92c0` | 72 | `Screens/State01/PartySetup.cs` |
-| `0x005e9308` | `s_ScenePitch_005e9308` | 2 | `Memory/DataTables.cs` |
-| `0x005e930a` | `s_SceneYaw_005e930a` | 2 | `Memory/DataTables.cs` |
-| `0x005e930c` | `s_SceneRoll_005e930c` | 20 | `Memory/DataTables.cs` |
+| `0x005e9308` | `s_ScenePitch_005e9308` | 2 | `Memory/GameMemory.cs` |
+| `0x005e930a` | `s_SceneYaw_005e930a` | 2 | `Memory/GameMemory.cs` |
+| `0x005e930c` | `s_SceneRoll_005e930c` | 20 | `Memory/GameMemory.cs` |
 | `0x005e9320` | `s_EquipPairs_005e9320` | 64 | `Screens/State01/PartySetup.cs` |
-| `0x005e9360` | `s_StateBank7_005e9360` | **0** | `Memory/Arena.GameState.cs` |
+| `0x005e9360` | `s_StateBank7_005e9360` | **0** | `Memory/GameMemory.cs` |
 | `0x005e9360` | `s_Bank_005e9360` | 64 | `Screens/State01/PartySetup.cs` |
-| `0x005e93a0` | `s_BackColourR_005e93a0` | 2 | `Memory/DataTables.cs` |
-| `0x005e93a2` | `s_BackColourG_005e93a2` | 2 | `Memory/DataTables.cs` |
-| `0x005e93a4` | `s_BackColourB_005e93a4` | 28 | `Memory/DataTables.cs` |
+| `0x005e93a0` | `s_BackColourR_005e93a0` | 2 | `Memory/GameMemory.cs` |
+| `0x005e93a2` | `s_BackColourG_005e93a2` | 2 | `Memory/GameMemory.cs` |
+| `0x005e93a4` | `s_BackColourB_005e93a4` | 28 | `Memory/GameMemory.cs` |
 | `0x005e93c0` | `s_SlotFlags_005e93c0` | 624 | `Engine/Input.cs` |
-| `0x005e9630` | `s_Unknown_005e9630` | 16 | `Memory/Arena.GameState.cs` |
+| `0x005e9630` | `s_Unknown_005e9630` | 16 | `Memory/GameMemory.cs` |
 | `0x005e9640` | `s_AnimationTable_005e9640` | 64 | `Screens/State04/CharacterSelect.cs` |
 | `0x005e9680` | `s_PartyAnimationResult_005e9680` | 32 | `Screens/DebugParty.cs` |
 | `0x005e96a0` | `s_ModelTable_005e96a0` | 64 | `Screens/State04/CharacterSelect.cs` |
-| `0x005e96e0` | `s_StateBank0_005e96e0` | **0** | `Memory/Arena.GameState.cs` |
+| `0x005e96e0` | `s_StateBank0_005e96e0` | **0** | `Memory/GameMemory.cs` |
 | `0x005e96e0` | `s_Bank_005e96e0` | 64 | `Screens/State01/PartySetup.cs` |
-| `0x005e9720` | `s_StateBank4_005e9720` | **0** | `Memory/Arena.GameState.cs` |
+| `0x005e9720` | `s_StateBank4_005e9720` | **0** | `Memory/GameMemory.cs` |
 | `0x005e9720` | `s_Bank_005e9720` | 64 | `Screens/State01/PartySetup.cs` |
 | `0x005e9760` | `s_Unknown_005e9760` | 32 | `Screens/State03/WorldMap.cs` |
-| `0x005e9780` | `s_StateBank1_005e9780` | **0** | `Memory/Arena.GameState.cs` |
+| `0x005e9780` | `s_StateBank1_005e9780` | **0** | `Memory/GameMemory.cs` |
 | `0x005e9780` | `s_Bank_005e9780` | 64 | `Screens/State01/PartySetup.cs` |
-| `0x005e97c0` | `s_MainResourceBuffer_005e97c0` | 4 | `Memory/Arena.GameState.cs` |
+| `0x005e97c0` | `s_MainResourceBuffer_005e97c0` | 4 | `Memory/GameMemory.cs` |
 | `0x005e97c4` | `s_MainResourceDirectory_005e97c4` | 4 | `Engine/Resources.cs` |
 | `0x005e97c8` | `s_Unknown_005e97c8` | 4 | `Screens/State00/MainMenu.cs` |
 | `0x005e97cc` | `s_Unknown_005e97cc` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005e97d0` | `s_Unknown_005e97d0` | 4 | `Screens/State00/MainMenu.cs` |
 | `0x005e97d4` | `s_Unknown_005e97d4` | 12 | `Screens/State03/WorldMap.cs` |
-| `0x005e97e0` | `s_ScreenStride_005e97e0` | 4 | `Memory/Arena.GameState.cs` |
+| `0x005e97e0` | `s_ScreenStride_005e97e0` | 4 | `Memory/GameMemory.cs` |
 | `0x005e97e4` | `s_Unknown_005e97e4` | 4 | `Engine/Resources.cs` |
 | `0x005e97e8` | `s_Unknown_005e97e8` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005e97ec` | `s_Unknown_005e97ec` | 4 | `Screens/State03/WorldMap.cs` |
-| `0x005e97f0` | `s_Unknown_005e97f0` | 16 | `Memory/Arena.GameState.cs` |
+| `0x005e97f0` | `s_Unknown_005e97f0` | 16 | `Memory/GameMemory.cs` |
 | `0x005e9800` | `s_PartyModelResult_005e9800` | 16 | `Screens/DebugParty.cs` |
 | `0x005e9810` | `s_Unknown_005e9810` | 4 | `Engine/Resources.cs` |
 | `0x005e9814` | `s_Unknown_005e9814` | 4 | `Screens/State00/MainMenu.cs` |
 | `0x005e9818` | `s_Unknown_005e9818` | 8 | `Screens/State00/MainMenu.cs` |
-| `0x005e9820` | `s_Unknown_005e9820` | 4 | `Memory/Arena.GameState.cs` |
+| `0x005e9820` | `s_Unknown_005e9820` | 4 | `Memory/GameMemory.cs` |
 | `0x005e9824` | `s_Unknown_005e9824` | 4 | `Engine/Resources.cs` |
 | `0x005e9828` | `s_Unknown_005e9828` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005e982c` | `s_Unknown_005e982c` | 20 | `Screens/State03/WorldMap.cs` |
-| `0x005e9840` | `s_StateBank3_005e9840` | **0** | `Memory/Arena.GameState.cs` |
+| `0x005e9840` | `s_StateBank3_005e9840` | **0** | `Memory/GameMemory.cs` |
 | `0x005e9840` | `s_Bank_005e9840` | 64 | `Screens/State01/PartySetup.cs` |
-| `0x005e9880` | `s_EnvBlock_005e9880` | **0** | `Memory/Arena.GameState.cs` |
-| `0x005e9880` | `s_DrawEnv0_005e9880` | 92 | `Memory/Arena.GameState.cs` |
-| `0x005e98dc` | `s_DispEnv0_005e98dc` | 20 | `Memory/Arena.GameState.cs` |
-| `0x005e98f0` | `s_DrawEnv1_005e98f0` | 92 | `Memory/Arena.GameState.cs` |
-| `0x005e994c` | `s_DispEnv1_005e994c` | 20 | `Memory/Arena.GameState.cs` |
+| `0x005e9880` | `s_EnvBlock_005e9880` | **0** | `Memory/GameMemory.cs` |
+| `0x005e9880` | `s_DrawEnv0_005e9880` | 92 | `Memory/GameMemory.cs` |
+| `0x005e98dc` | `s_DispEnv0_005e98dc` | 20 | `Memory/GameMemory.cs` |
+| `0x005e98f0` | `s_DrawEnv1_005e98f0` | 92 | `Memory/GameMemory.cs` |
+| `0x005e994c` | `s_DispEnv1_005e994c` | 20 | `Memory/GameMemory.cs` |
 | `0x005e9960` | `s_FadeCounter_005e9960` | 32 | `Screens/State00/MainMenu.cs` |
-| `0x005e9980` | `s_StateBank6_005e9980` | **0** | `Memory/Arena.GameState.cs` |
+| `0x005e9980` | `s_StateBank6_005e9980` | **0** | `Memory/GameMemory.cs` |
 | `0x005e9980` | `s_Bank_005e9980` | 348 | `Screens/State01/PartySetup.cs` |
 | `0x005e9adc` | `s_Unknown_005e9adc` | 2692 | `Screens/State03/WorldMap.cs` |
 | `0x005ea560` | `s_EntityStatBlocks_005ea560` | 9376 | `Screens/State04/CharacterCreation.cs` |
-| `0x005eca00` | `s_EntityArena_005eca00` | 5316 | `Memory/Arenas.cs` |
+| `0x005eca00` | `s_EntityArena_005eca00` | 5316 | `Memory/GameMemory.cs` |
 | `0x005edec4` | `s_Unknown_005edec4` | 19996 | `Screens/State03/WorldMap.cs` |
 | `0x005f2ce0` | `s_Unknown_005f2ce0` | 20064 | `Screens/State03/WorldMap.cs` |
 | `0x005f7b40` | `s_ModelResultB_005f7b40` | 4 | `Screens/State03/WorldMap.cs` |
@@ -1318,12 +1318,12 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005fa584` | `s_Unknown_005fa584` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005fa588` | `s_ModelResultA_005fa588` | 25408 | `Screens/State03/WorldMap.cs` |
 | `0x006008c8` | `s_OverrideDestA_006008c8` | 8 | `Engine/Resources.cs` |
-| `0x006008d0` | `s_Unknown_006008d0` | 4 | `Memory/DataTables.cs` |
-| `0x006008d4` | `s_Unknown_006008d4` | 4 | `Memory/DataTables.cs` |
-| `0x006008d8` | `s_Unknown_006008d8` | 8 | `Memory/DataTables.cs` |
-| `0x006008e0` | `s_CameraMatrix_006008e0` | 36 | `Memory/DataTables.cs` |
+| `0x006008d0` | `s_Unknown_006008d0` | 4 | `Memory/GameMemory.cs` |
+| `0x006008d4` | `s_Unknown_006008d4` | 4 | `Memory/GameMemory.cs` |
+| `0x006008d8` | `s_Unknown_006008d8` | 8 | `Memory/GameMemory.cs` |
+| `0x006008e0` | `s_CameraMatrix_006008e0` | 36 | `Memory/GameMemory.cs` |
 | `0x00600904` | `s_OverrideDestC_00600904` | 16420 | `Engine/Resources.cs` |
-| `0x00604928` | `s_CameraVector_00604928` | 8 | `Memory/DataTables.cs` |
+| `0x00604928` | `s_CameraVector_00604928` | 8 | `Memory/GameMemory.cs` |
 | `0x00604930` | `s_OverrideDestB_00604930` | 16 | `Engine/Resources.cs` |
 | `0x00604940` | `s_CardPathDescriptor_00604940` | 32 | `Engine/SaveData.cs` |
 | `0x00604960` | `s_Unknown_00604960` | 32 | `Screens/State04/SaveSlots.cs` |
@@ -1345,4 +1345,4 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00604b54` | `s_JoystickDevice_00604b54` | 4 | `Platform/Startup.cs` |
 | `0x00604b58` | `s_CardReadEventHandles_00604b58` | 16 | `Engine/SaveData.cs` |
 | `0x00604b68` | `s_CardWriteEventHandles_00604b68` | 7256 | `Engine/SaveData.cs` |
-| `0x006067c0` | `s_ViewBlock_006067c0` | — | `Memory/Arenas.cs` |
+| `0x006067c0` | `s_ViewBlock_006067c0` | — | `Memory/GameMemory.cs` |

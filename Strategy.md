@@ -464,3 +464,39 @@ Une fonction peut être considérée comme reconstruite lorsque :
 * ses dépendances externes ont été analysées lorsque nécessaire ;
 * elle ne contient pas de modification arbitraire destinée uniquement à compiler ;
 * les incertitudes restantes sont indiquées par `TODO(REVERSE)`.
+
+---
+
+## Ce que le refactor n'a pas le droit de faire
+
+Le dépôt porte **1 834 mentions** `FUN_`/`DAT_`/`LAB_`. Sa valeur tient à ce qu'on puisse poser
+`Blaze.c` et le C# côte à côte. Le critère d'acceptation d'une transformation n'est donc pas
+« est-ce du beau C# ? » mais :
+
+**Peut-on encore vérifier cette fonction contre `Blaze.c` en trente secondes ?**
+
+Trois pratiques par ailleurs saines sont **interdites dans `src/Blaze/`**, parce qu'elles détruisent
+cette correspondance :
+
+* **l'extraction de méthode** — une méthode = une `FUN_`. Découper une fonction de 1 300 lignes en
+  huit méthodes « propres » casse la correspondance 1:1 qui fait toute la valeur du projet ;
+* **le remplacement des conditions par du polymorphisme** — les `switch` sur sous-état **sont** la
+  machine à états du binaire ;
+* **le renommage sans conserver l'ancre** `// Ghidra: FUN_00XXXXXX`.
+
+Dans `src/Host/` (notre échafaudage, une seule mention Ghidra sur 3 477 lignes), les trois sont
+autorisées.
+
+### Changer la forme, pas la logique
+
+Un refactor qui déplace ou transforme du code doit pouvoir le **prouver**. Deux outils s'en
+chargent, dans `OpenForesia.Tools/` :
+
+* `verify-split.ps1` compare **octet à octet** contre une référence figée. Il vaut pour un
+  déplacement pur ;
+* `compare-bodies.ps1` compare le **corps** de chaque méthode en normalisant ce que le refactor a
+  le droit de changer — `static`, les modificateurs d'accès, les qualifications ajoutées,
+  l'indentation. Il vaut dès que la forme change.
+
+Un outil de vérification doit lui-même être vérifié : `compare-bodies.ps1 -SelfTest` prouve qu'il
+ignore bien un changement de forme et attrape bien un changement de logique.

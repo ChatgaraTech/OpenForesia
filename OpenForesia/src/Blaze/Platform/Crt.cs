@@ -57,7 +57,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static bool HeapInit()
     {
-        s_CrtHeap = HeapCreate(1 /* HEAP_NO_SERIALIZE */, 0x1000, 0);
+        s_CrtHeap = Win32.HeapCreate(1 /* HEAP_NO_SERIALIZE */, 0x1000, 0);
         return s_CrtHeap != IntPtr.Zero;
     }
 
@@ -103,7 +103,7 @@ public static unsafe partial class Blaze
     {
         if (s_CrtTerminated)
         {
-            TerminateProcess(GetCurrentProcess(), exitCode);
+            Win32.TerminateProcess(Win32.GetCurrentProcess(), exitCode);
         }
 
         if (!skipAtExit)
@@ -118,7 +118,7 @@ public static unsafe partial class Blaze
         if (!returnInsteadOfTerminate)
         {
             s_CrtTerminated = true;
-            ExitProcess(exitCode);
+            Win32.ExitProcess(exitCode);
         }
     }
 
@@ -164,7 +164,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00549fd0 -> FUN_00549ff0 @ 0x00549fd0/0x00549ff0 (`_ismbblead`-style check).</summary>
-    private static bool IsLeadByte(byte b) => IsDBCSLeadByte(b) != 0;
+    private static bool IsLeadByte(byte b) => Win32.IsDBCSLeadByte(b) != 0;
 
     /// <summary>
     /// Ghidra: FUN_0054a3d0 @ 0x0054a3d0 (CRT `_setenvp` block fetch). Retrieves the process
@@ -173,7 +173,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static byte* GetEnvironmentBlockAnsi()
     {
-        char* wide = GetEnvironmentStringsW();
+        char* wide = Win32.GetEnvironmentStringsW();
         if (wide == null) return null;
 
         char* end = wide;
@@ -184,22 +184,22 @@ public static unsafe partial class Blaze
         }
         int charCountWithTerminator = (int)(end - wide) + 1;
 
-        int bytesNeeded = WideCharToMultiByte(0, 0, wide, charCountWithTerminator, null, 0, null, null);
+        int bytesNeeded = Win32.WideCharToMultiByte(0, 0, wide, charCountWithTerminator, null, 0, null, null);
         if (bytesNeeded == 0)
         {
-            FreeEnvironmentStringsW(wide);
+            Win32.FreeEnvironmentStringsW(wide);
             return null;
         }
 
         byte* ansi = (byte*)Malloc((nuint)bytesNeeded);
         if (ansi == null)
         {
-            FreeEnvironmentStringsW(wide);
+            Win32.FreeEnvironmentStringsW(wide);
             return null;
         }
 
-        int written = WideCharToMultiByte(0, 0, wide, charCountWithTerminator, ansi, bytesNeeded, null, null);
-        FreeEnvironmentStringsW(wide);
+        int written = Win32.WideCharToMultiByte(0, 0, wide, charCountWithTerminator, ansi, bytesNeeded, null, null);
+        Win32.FreeEnvironmentStringsW(wide);
         if (written == 0)
         {
             Free(ansi);
@@ -367,7 +367,7 @@ public static unsafe partial class Blaze
     private static void SetArgv()
     {
         byte* moduleFileName = stackalloc byte[0x104];
-        GetModuleFileNameA(IntPtr.Zero, moduleFileName, 0x104);
+        Win32.GetModuleFileNameA(IntPtr.Zero, moduleFileName, 0x104);
 
         byte* cmdLineForArgv = (s_RawCommandLine != null && *s_RawCommandLine != 0)
             ? s_RawCommandLine
@@ -387,8 +387,4 @@ public static unsafe partial class Blaze
     }
 
 
-    // Ghidra: memmove â€” FUN_00547a00 is 420 lines of unrolled MSVC block copy. Per the project's
-    // rule, a recognised CRT routine is called rather than transcribed.
-    [DllImport("msvcrt.dll", EntryPoint = "memmove", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void* CrtMemMove(void* dest, void* src, nuint count);
 }

@@ -6010,3 +6010,189 @@ place), `verify-split.ps1` (comparaison octet à octet). Tout lit et écrit en I
 **La référence figée n'existe qu'en dehors de git tant que ce changement n'est pas commité.** Elle a
 été détruite une fois pendant le travail, par une seule commande PowerShell maladroite, et n'a pu
 être restaurée que grâce à une copie de circonstance.
+
+---
+
+## 2026-08-19 (suite) — `GameMemory`, et les tests de disposition trouvent deux défauts inconnus
+
+`openspec/changes/extract-real-classes-from-partial`, étapes A et A′.
+
+### `GameMemory` : le modèle de `.data` devient un objet
+
+Les quatre fichiers de `Memory/` fusionnent en `Memory/GameMemory.cs`, **97 membres** (79 d'instance
++ 18 `const`). `Arena.GameState.cs`, `Arenas.cs` et `DataTables.cs` sont supprimés. Le reste de
+`src/Blaze/` y accède par `Mem.X` (membres d'instance) et `GameMemory.X` (constantes) — **675 lignes
+qualifiées, 21 fichiers**.
+
+**Un seul objet, parce que le binaire a un seul segment `.data`.** Ce n'est pas un pis-aller : les
+~870 références croisées mesurées au découpage montrent qu'aucune frontière par sous-système ne
+tient. Ce que la classe apporte, c'est une **signature** — un sous-système qui prendra `GameMemory`
+en paramètre déclarera qu'il touche à `.data` ; jusqu'ici il le faisait en silence.
+
+Le pont statique temporaire prévu par la conception **n'a pas été écrit** : l'oracle de comparaison
+de corps normalise les qualifications, donc écrire `Mem.X` au site d'appel lui est invisible, alors
+qu'un pont aurait changé 94 corps d'accesseurs. Il ne reste qu'un champ statique, `Blaze.Mem`, avec
+sa condition de retrait écrite dans `Memory/Globals.cs`.
+
+**Trois choses que le compilateur a imposées**, toutes consignées dans `GameMemory.cs` :
+
+* les quatre vues `s_DrawEnv*`/`s_DispEnv*` deviennent des propriétés `=>` — un initialiseur de champ
+  ne peut pas lire un membre d'instance ;
+* les trois tables construites par appel montent dans le **constructeur** — en faire des propriétés
+  `=>` les reconstruirait à chaque accès, ce qui serait un changement de comportement ;
+* `s_PanelSelection_005e9060` est rapatrié depuis `Engine/UiWindow.cs` : `0x005e9060` tombe dans
+  l'étendue de `GameArena`, c'est donc une **vue** et non un stockage propre.
+
+**`RunMainLoop()` et `LoadUiFontFromCd()` ont quitté `Memory/`** pour `Platform/Startup.cs` : elles y
+avaient atterri par un point de coupe trop large au découpage. Le VA `0x00529c10` aurait envoyé
+`RunMainLoop` dans `Engine/Resources.cs` selon la règle de routage (1) — la règle a tort ici, la
+proximité d'adresse est un artefact de l'éditeur de liens sur le code de démarrage.
+
+**Vérifié** : build 0 erreur ; l'oracle rend « aucune logique modifiée » (509 → 510 corps, le nouveau
+étant le constructeur) ; 382,3 et 387 primitives par image, captures identiques.
+
+### Les premiers tests du dépôt, et ce qu'ils ont trouvé
+
+`OpenForesia.Tests`, cinq assertions de **disposition mémoire**. Elles ne testent aucun comportement :
+l'oracle de la logique transcrite reste l'écran. Elles lisent les **sources** plutôt que l'exécution,
+pour deux raisons : le défaut d'aliasing est un défaut de *déclaration*, entièrement visible dans le
+texte ; et toucher aux statiques de `Blaze` déclencherait `AllocLowZeroed`, qui dispute une fenêtre
+mémoire basse et échoue par intermittence.
+
+**Deux échecs étaient attendus, et tombent exactement sur les symboles prédits au découpage :**
+
+* aucune allocation propre dans l'étendue d'une arène → **4 symboles** : `s_EntityList_005de558`
+  (dans `ItemMenuArena`), `s_ModelResultB_005f7b40`, `s_ModelResultA_005fa588`,
+  `s_CameraMatrix_006008e0` (dans `EntityArena`) ;
+* deux symboles à la même adresse partagent leur mémoire → **1 adresse**, `0x00566c70`.
+
+**Un troisième échec n'était pas attendu, et c'est la vraie prise.** L'assertion « la taille déclarée
+ne déborde pas sur le voisin d'adresse » relève **deux recouvrements que personne n'avait vus** :
+
+| Symbole | Déclare | Écart réel au voisin | Recouvrement |
+|---|---|---|---|
+| `s_MenuScreenBlock_00566c48` (`MainMenu.cs:269`) | `0x40` | `0x28` vers `s_MenuRenderBlock_00566c70` | **0x18** |
+| `s_CardPathDescriptor_00604940` (`SaveData.cs:88`) | `0x100` | `0x4c` vers `s_CardIconFrameCount_0060498c` | **0xb4** |
+
+Le premier est deux lignes voisines du même fichier, la même taille `0x40` recopiée sans vérifier
+l'écart. Le second est plus sérieux : le descripteur de chemin **avale entièrement** le compteur
+d'images d'icône, et les deux vivent dans des fichiers différents (`Engine/SaveData.cs` et
+`Screens/State04/SaveSlots.cs`) — la forme exacte du défaut corrigé seize fois.
+
+**Aucun des trois n'est corrigé** : les corriger change le comportement, ce qui relève d'un
+changement séparé. Ils sont documentés comme échecs attendus dans le projet de tests.
+
+Ce qu'il faut en retenir : ces quatre assertions ont trouvé **deux défauts inconnus en une seconde,
+sans lancer le jeu**, alors que les seize précédents avaient tous été vus à l'écran, après coup. La
+carte des symboles reconstruits de `Documentation/DataSymbols.md` et ces tests forment ensemble le
+contrôle que le projet n'avait pas.
+
+### Trois pièges PowerShell, payés et documentés
+
+Ils sont écrits en tête des scripts qui les ont rencontrés, chacun avec le faux positif qui l'a
+révélé :
+
+* **`-replace` est insensible à la casse.** Le nom de méthode `View` mordait sur la variable locale
+  `view` de `Host/D3D11Backend.cs`. Sans l'essai à blanc, un fichier de `Host/` était corrompu.
+* **La virgule lie plus fort que `+`.** `@("a" + $x + "b", "c")` devient `"a" + $x + ("b","c")`, soit
+  `string + tableau` = **tableau**. Cent-quatre règles de remplacement se sont retrouvées imbriquées :
+  zéro correspondance, zéro message d'erreur.
+* **`^\s*\*` saute les déréférencements.** Un garde anti-commentaire ignorait les 922 lignes
+  commençant par `*(uint*)…`, laissant 194 erreurs dans `WorldMap.cs` à la première passe.
+
+---
+
+## 2026-08-19 (fin) — l'interop sort de la classe, et trois tâches s'annulent d'elles-mêmes
+
+Fin du socle de `extract-real-classes-from-partial` : étapes B et E.
+
+### B — les 160 P/Invoke quittent `partial class Blaze`
+
+`src/Blaze/Interop/` accueille `Winsys3d.cs` (85 déclarations), `Win32.cs` (66, huit DLL système)
+et `Wsyskern.cs` (9). **381 lignes qualifiées** dans 22 fichiers. Les commentaires d'ordinal partent
+avec leur déclaration : ils sont la trace vers `winsys3d.c`, au même titre qu'un `// Ghidra:` l'est
+vers `Blaze.c`.
+
+Au site d'appel, `Winsys3d.Ordinal_688(…)` dit désormais ce que `Ordinal_688(…)` taisait.
+
+Relevé au passage : **`Platform/Win32.cs` contenait 42 P/Invoke `winsys3d.dll`**. Le fichier était
+mal nommé pour son contenu depuis le découpage — l'inventaire ne l'avait pas vu parce qu'il classait
+par bandeau, pas par DLL. `Win32.cs` ne fait plus que 72 lignes, ses structures d'interop.
+
+### Aucune interface n'était justifiée, `IWinsys3d` comprise
+
+La tâche qui devait *vérifier* que `SyntheticDevice` est une seconde implémentation d'`IWinsys3d` a
+été faite **en premier**, et elle a annulé les deux tâches qui construisaient dessus.
+
+`SyntheticDevice` détourne `GetProcAddress` **dans la table d'imports de winsys3d**, pour remplacer
+`3dhelp.dll::Create3DDevice`. Il substitue le **device 3D de 3dhelp**, jamais winsys3d — qui reste
+toujours la vraie DLL, appelée par 173 `Ordinal_NNN(...)` directs.
+
+La couture substituable est donc **entre winsys3d et 3dhelp**, et elle est déjà traitée par
+`SyntheticDevice` et `DeviceShim`, deux vraies classes de `src/Host/`. Le critère du projet est
+« une interface là où un double existe déjà » : **l'appliquer correctement consistait ici à ne pas
+créer l'interface.**
+
+### E — les trois tâches ont été mesurées, aucune n'a été écrite
+
+**Le pont statique pour les rappels natifs n'est pas nécessaire.** `CountJoystickCallback` utilise
+son paramètre `context` et ne touche aucun statique ; les huit gestionnaires de carte écrivent deux
+`private static` de `Engine/SaveData.cs` qui restent statiques. La question ne se posera qu'à
+l'étape C.
+
+**Le composition root a été écrit, a fait planter le jeu, et a été reverté.** La réclamation de
+l'arène de liste d'affichage, dans le module initializer, touche **délibérément**
+`Mem.s_UiDescriptors_00560ff0` et `Mem.s_StatusDescriptor_00560728` : ces descripteurs portent leur
+ordering table à `+0xa4`, masquée sur 24 bits, donc ils doivent être pris sous `0x01000000` au même
+instant précoce que l'arène. `GameMemory` doit donc naître **pendant** l'initialisation statique de
+`Blaze`.
+
+*La justification qui m'avait poussé à le déplacer était fausse* : j'avais avancé que les 16
+allocations de `GameMemory` précédant la réclamation étaient une régression du refactor. Non — avant
+lui, ces mêmes allocations étaient déjà des initialiseurs de champ de `Blaze` et précédaient la
+réclamation exactement de la même façon. `Program.cs` porte maintenant la contrainte en commentaire.
+
+**`IDisposable` sur `src/Host/` n'est ni implémentable, ni nécessaire.** Les cinq classes y sont
+`internal static`, et une classe statique ne peut pas implémenter une interface. La libération
+existe déjà sous une forme mieux adaptée : `StartupSurface.Retire()` et
+`D3D11Window.ReleaseLegacyDisplay()` sont appelées **en cours de partie**, quand le chemin Direct3D
+11 prend le relais — un événement de cycle de vie que `Dispose()` ne modélise pas.
+`D3D11Backend.Shutdown()` n'est appelé que par l'autotest, jamais à la sortie : c'est correct, le
+système reclame GPU, fenêtre et DIB section à la fin du processus.
+
+### Ce que le socle laisse
+
+```
+  src/Blaze/Interop/      3 fichiers    539 l.   160 P/Invoke, hors de la classe
+  src/Blaze/Memory/       2 fichiers    694 l.   GameMemory + le point d'acces Mem
+  OpenForesia.Tests/      5 assertions           de disposition, 3 rouges attendus
+  OpenForesia.Tools/compare-bodies.ps1           l'oracle « forme vs logique »
+```
+
+Vérifié à chaque étape : build 0 erreur, oracle « aucune logique modifiée », **382,3 et 387**
+primitives par image, captures identiques aux références d'avant découpage.
+
+### La leçon de méthode de ce changement
+
+**Trois fois** une tâche planifiée de bonne foi s'est révélée inutile ou nuisible une fois mesurée :
+le pont statique que l'outillage rendait superflu, les interfaces sans second implémenteur, le
+`IDisposable` sur des classes qui ne peuvent pas en porter. À chaque fois l'hypothèse était
+plausible, et à chaque fois le code a répondu autre chose.
+
+Le plan a autant servi à **empêcher du travail** qu'à en produire. Les tâches formulées « mesurer
+d'abord » ont toutes payé — c'est une forme à reprendre.
+
+Écrit dans `Strategy.md` et `Prompt.md` pour que la leçon serve ailleurs.
+
+### Ce qui reste ouvert
+
+* **C** — `Engine/` en 9 classes d'instance (~7 700 l.), fichier par fichier, oracle à chaque
+  fichier. Ordre suggéré du plus fermé au moins fermé.
+* **D** — `Screens/` en 12 classes (~13 800 l.), **en dernier**, quand les écrans cesseront de
+  bouger. `Screens/State03/WorldMap.cs` est le front de la priorité 2 : on n'y touche pas tant que
+  `FUN_00533940` n'est pas terminée.
+* Les **cinq défauts d'aliasing** que les tests signalent, dont deux inconnus jusqu'ici. Leur
+  correction change le comportement, donc elle relève d'un changement séparé — et
+  `0x00566c70` doit être traité **avant** la reprise de la carte du monde.
+* La réparation des **868 lignes à encodage double** (`repair-double-encoded-comments`, ouvert et
+  non commencé).

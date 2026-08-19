@@ -33,11 +33,11 @@ public static unsafe partial class Blaze
         {
             do
             {
-                if (s_MainResourceBuffer_005e97c0 != null)
+                if (Mem.s_MainResourceBuffer_005e97c0 != null)
                 {
-                    int* perStateTable1 = *(int**)(s_MainResourceBuffer_005e97c0 + 0x48);
+                    int* perStateTable1 = *(int**)(Mem.s_MainResourceBuffer_005e97c0 + 0x48);
                     s_Unknown_005e92b0 = perStateTable1[s_GameStateId];
-                    int* perStateTable2 = *(int**)(s_MainResourceBuffer_005e97c0 + 0x6c);
+                    int* perStateTable2 = *(int**)(Mem.s_MainResourceBuffer_005e97c0 + 0x6c);
                     int entryPtrValue = perStateTable2[s_GameStateId];
                     // Ghidra: FUN_00529b50(entry, DAT_006008c8) â€” this destination is always
                     // ApplyResourceDestinationOverride's first case *by construction* (the call site
@@ -70,21 +70,16 @@ public static unsafe partial class Blaze
     // of the code honest. A managed function pointer is enough â€” there is no native caller.
     private static delegate*<void> s_MainLoopTickCallback = &RunGameStateTick;
 
-    // winsys3d.dll: ReInitializeAllTextures is a named export (called by winsys3d.c itself at
-    // winsys3d.c:4119). Zoom8BitTextures is an imported *data* symbol, same category as
-    // TexFilterPossible/MainMem â€” resolved lazily via GetProcAddress, since P/Invoke has no
-    // mechanism for imported data.
-    [DllImport("winsys3d.dll")] private static extern void ReInitializeAllTextures();
 
     private static uint* s_Zoom8BitTextures;
     private static uint* GetZoom8BitTexturesPtr()
     {
         if (s_Zoom8BitTextures == null)
         {
-            IntPtr module = LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+            IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
             if (module != IntPtr.Zero)
             {
-                s_Zoom8BitTextures = (uint*)GetProcAddress(module, ToAnsiZ("Zoom8BitTextures"));
+                s_Zoom8BitTextures = (uint*)Win32.GetProcAddress(module, ToAnsiZ("Zoom8BitTextures"));
             }
         }
         return s_Zoom8BitTextures;
@@ -106,7 +101,7 @@ public static unsafe partial class Blaze
         uint* zoom = GetZoom8BitTexturesPtr();
         if (zoom != null) *zoom = 0;
 
-        ReInitializeAllTextures();
+        Winsys3d.ReInitializeAllTextures();
 
         switch (s_GameStateId)
         {

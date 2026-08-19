@@ -35,7 +35,7 @@ public static unsafe partial class Blaze
                 for (int action = 0; action < 20; action++)
                 {
                     byte* keyAnsi = ToAnsiZ($"K{group:x1}{category:x1}{action:x2}");
-                    uint value = GetPrivateProfileIntA(sectionAnsi, keyAnsi, -1, iniPathAnsi);
+                    uint value = Win32.GetPrivateProfileIntA(sectionAnsi, keyAnsi, -1, iniPathAnsi);
                     Free(keyAnsi);
                     if (value != 0xffffffff) s_KeyBindings[index] = (int)value;
                     index++;
@@ -58,7 +58,7 @@ public static unsafe partial class Blaze
                 {
                     byte* keyAnsi = ToAnsiZ($"K{group:x1}{category:x1}{action:x2}");
                     byte* valueAnsi = ToAnsiZ(s_KeyBindings[index].ToString(System.Globalization.CultureInfo.InvariantCulture));
-                    WritePrivateProfileStringA(sectionAnsi, keyAnsi, valueAnsi, iniPathAnsi);
+                    Win32.WritePrivateProfileStringA(sectionAnsi, keyAnsi, valueAnsi, iniPathAnsi);
                     Free(keyAnsi);
                     Free(valueAnsi);
                     index++;
@@ -92,8 +92,6 @@ public static unsafe partial class Blaze
     // `{ &GUID_Key, i, DIDFT_OPTIONAL | DIDFT_BUTTON | (i << 8), 0 }`.
     // =====================================================================
 
-    [DllImport("dinput.dll", ExactSpelling = true)]
-    private static extern int DirectInputCreateA(IntPtr hinst, uint version, void** ppDI, void* unkOuter);
 
     // IDirectInputA â€” byte offsets divided by 4, checked against the call sites in Blaze.c.
     private const int IDirectInput_CreateDevice = 0x0c / 4;
@@ -243,11 +241,11 @@ public static unsafe partial class Blaze
     {
         // Ghidra: if (param_2 == 0) param_2 = GetModuleHandleA(NULL) â€” which is why the never-found
         // DAT_005db85c never blocked this call.
-        if (instance == IntPtr.Zero) instance = GetModuleHandleA(null);
+        if (instance == IntPtr.Zero) instance = Win32.GetModuleHandleA(null);
 
         // Ghidra: DirectInputCreateA(hInstance, 0x500, this, 0) â€” version 5, the object receiving
         // the interface pointer at its own offset 0.
-        int hr = DirectInputCreateA(instance, 0x500, (void**)device, null);
+        int hr = Win32.DirectInputCreateA(instance, 0x500, (void**)device, null);
         if (hr < 0)
             Console.Error.WriteLine($"[INPUT] DirectInputCreateA -> 0x{hr:X8}");
 
@@ -440,12 +438,7 @@ public static unsafe partial class Blaze
     // Ghidra: &DAT_00604a28-relative 9-entry table walked by FUN_00504b10.
     private static readonly JoystickSlotState[] s_JoystickState = new JoystickSlotState[9];
 
-    // Ghidra: DAT_00564a48 â€” boolean capability flag set by CheckDeviceCapabilityFlag, read
-    // throughout the renderer (DrawAnimatedModel, EmitParticle, DrawUiPanel's neighbours,
-    // Handler_00544810) to gate a colour/attribute masking step. Was briefly duplicated under a
-    // second, dead field (s_Unknown_00564a48, always 0 because nothing ever wrote it) that every
-    // one of those call sites read instead of this one â€” merged back onto this field 2026-08-16.
-    private static bool s_DeviceCapFlag_00564a48;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
     // The four global libgpu environment structs InitViewportSurfaces sets up (Ghidra:
     // DAT_005e9880 / DAT_005e98dc / DAT_005e98f0 / DAT_005e994c). Their **addresses prove their
@@ -499,7 +492,7 @@ public static unsafe partial class Blaze
 
     // 0x4c0 utiles, borné par s_AnimationTable_005e9640 — ce qui couvre bien le plus grand décalage
     // lu (0x240 + 4 * 0x9c = 0x4bc).
-    private static byte* s_SlotArea_005e9180 => Arena(0x005e9180);
+    private static byte* s_SlotArea_005e9180 => Mem.Arena(0x005e9180);
     private static byte* s_PlayerSlots_005e9188 => s_SlotArea_005e9180 + 8;
     private static byte* s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240;
 
@@ -534,41 +527,41 @@ public static unsafe partial class Blaze
     {
         s_Unknown_00579270 = context;
 
-        if (s_Unknown_005de554 == 0 && GetAsyncKeyState(0x72 /* VK_F3 */) < 0)
+        if (s_Unknown_005de554 == 0 && Win32.GetAsyncKeyState(0x72 /* VK_F3 */) < 0)
         {
             int gammaBefore = s_Unknown_005d9de0;
-            ReInitializeAllTextures();
+            Winsys3d.ReInitializeAllTextures();
             int shiftX, shiftY;
-            GetAbsShift(&shiftX, &shiftY);
-            SetAbsShift(0, 0);
+            Winsys3d.GetAbsShift(&shiftX, &shiftY);
+            Winsys3d.SetAbsShift(0, 0);
             if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
             OptionsPage();
-            SetAbsShift(shiftX, shiftY);
+            Winsys3d.SetAbsShift(shiftX, shiftY);
             SaveOptionsIni();
             if (gammaBefore != s_Unknown_005d9de0)
             {
                 // Note: this site scales by _DAT_0054d000, *not* the _DAT_0054d074 the menu's
                 // options case uses. Two distinct constants; kept distinct.
-                CreateTranslationTables(s_Unknown_005d9de0 * s_GammaScale_0054d000);
+                Winsys3d.CreateTranslationTables(s_Unknown_005d9de0 * s_GammaScale_0054d000);
             }
             return 1;
         }
 
-        if (GetAsyncKeyState(0x7a /* VK_F11 */) != 0)
+        if (Win32.GetAsyncKeyState(0x7a /* VK_F11 */) != 0)
         {
             if (s_SizeSetting_005de160 != 0)
             {
                 s_SizeSetting_005de160--;
-                SetShift((0xb - s_SizeSetting_005de160) * 0x10,
+                Winsys3d.SetShift((0xb - s_SizeSetting_005de160) * 0x10,
                          (0xb - s_SizeSetting_005de160) * 0x0c,
                          s_SizeSetting_005de160, 0);
                 if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
                 SaveOptionsIni();
-                do { Sleep(100); } while (GetAsyncKeyState(0x7a) < 0);
+                do { Win32.Sleep(100); } while (Win32.GetAsyncKeyState(0x7a) < 0);
                 return 0;
             }
         }
-        else if (GetAsyncKeyState(0x7b /* VK_F12 */) != 0)
+        else if (Win32.GetAsyncKeyState(0x7b /* VK_F12 */) != 0)
         {
             // The clamp table here is DAT_00562e00 â€” recovered as { 1, 7, 11, 16, 23, 0 }. F12
             // raises Size up to the ceiling for the current Resolution; at Resolution=4 that
@@ -579,19 +572,19 @@ public static unsafe partial class Blaze
             if (s_SizeSetting_005de160 < limit)
             {
                 s_SizeSetting_005de160++;
-                SetShift((0xb - s_SizeSetting_005de160) * 0x10,
+                Winsys3d.SetShift((0xb - s_SizeSetting_005de160) * 0x10,
                          (0xb - s_SizeSetting_005de160) * 0x0c,
                          s_SizeSetting_005de160, 0);
                 SaveOptionsIni();
-                do { Sleep(100); } while (GetAsyncKeyState(0x7b) < 0);
+                do { Win32.Sleep(100); } while (Win32.GetAsyncKeyState(0x7b) < 0);
                 return 0;
             }
         }
-        else if (GetAsyncKeyState(0x78 /* VK_F9 */) != 0 && s_SizeSetting_005de160 > 6)
+        else if (Win32.GetAsyncKeyState(0x78 /* VK_F9 */) != 0 && s_SizeSetting_005de160 > 6)
         {
             s_SmallTextureFlag = s_SmallTextureFlag == 0 ? 1u : 0u;
             SaveOptionsIni();
-            do { Sleep(100); } while (GetAsyncKeyState(0x78) < 0);
+            do { Win32.Sleep(100); } while (Win32.GetAsyncKeyState(0x78) < 0);
         }
 
         return 0;

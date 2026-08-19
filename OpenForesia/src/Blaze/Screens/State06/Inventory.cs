@@ -19,17 +19,17 @@ public static unsafe partial class Blaze
     // =======================================================================================
 
     /// <summary>Ghidra: DAT_005de42c — l'entree de repertoire retenue, DAT_006049bc + ligne * 0x28.</summary>
-    private static ref int s_ItemMenuChosenEntry_005de42c => ref *ItemMenuState(0x005de42c);
+    private static ref int s_ItemMenuChosenEntry_005de42c => ref *Mem.ItemMenuState(0x005de42c);
 
     /// <summary>Ghidra: DAT_005de430 — le nombre d'emplacements d'objet occupes, sur les 0x16.</summary>
-    private static ref int s_ItemCount_005de430 => ref *ItemMenuState(0x005de430);
+    private static ref int s_ItemCount_005de430 => ref *Mem.ItemMenuState(0x005de430);
 
     /// <summary>Ghidra: DAT_005de4d8 — la phase de l'image precedente, comparee a DAT_005de4d4
     /// pour lever DAT_005de4dc a chaque changement.</summary>
-    private static ref int s_ItemMenuPrevPhase_005de4d8 => ref *ItemMenuState(0x005de4d8);
+    private static ref int s_ItemMenuPrevPhase_005de4d8 => ref *Mem.ItemMenuState(0x005de4d8);
 
     /// <summary>Ghidra: DAT_005de4dc — « on vient d'entrer dans cette phase ».</summary>
-    private static ref int s_ItemMenuEntered_005de4dc => ref *ItemMenuState(0x005de4dc);
+    private static ref int s_ItemMenuEntered_005de4dc => ref *Mem.ItemMenuState(0x005de4dc);
 
     /// <summary>
     /// Ghidra: DAT_005de4e8 — <b>la meme globale porte deux roles</b>. Dans le sous-ecran
@@ -40,32 +40,32 @@ public static unsafe partial class Blaze
     /// du menu, d'ou le partage. Deux noms pour un seul entier, plutot qu'un nom faux sur l'un
     /// des deux sites.
     /// </summary>
-    private static ref int s_ItemMenuCardSlot_005de4e8 => ref *ItemMenuState(0x005de4e8);
+    private static ref int s_ItemMenuCardSlot_005de4e8 => ref *Mem.ItemMenuState(0x005de4e8);
 
     /// <summary>Ghidra: DAT_005de4ec — le decalage de la grille d'objets (phase 9).</summary>
-    private static ref int s_ItemGridScroll_005de4ec => ref *ItemMenuState(0x005de4ec);
+    private static ref int s_ItemGridScroll_005de4ec => ref *Mem.ItemMenuState(0x005de4ec);
 
     /// <summary>Ghidra: DAT_005de4f0 — le nombre d'objets listes (phase 8), puis la ligne
     /// choisie (phases 9 et suivantes). Encore une globale a deux emplois.</summary>
-    private static ref int s_ItemMenuVisible_005de4f0 => ref *ItemMenuState(0x005de4f0);
+    private static ref int s_ItemMenuVisible_005de4f0 => ref *Mem.ItemMenuState(0x005de4f0);
 
     /// <summary>Ghidra: DAT_005de504 — la longueur du nom en cours de saisie (phase 10).</summary>
-    private static ref int s_ItemNameLength_005de504 => ref *ItemMenuState(0x005de504);
+    private static ref int s_ItemNameLength_005de504 => ref *Mem.ItemMenuState(0x005de504);
 
     /// <summary>Ghidra: DAT_005de508 — leve des qu'un objet a ete renomme, ce qui fait passer la
     /// sortie par la sauvegarde au lieu du retour direct.</summary>
-    private static ref int s_ItemRenamed_005de508 => ref *ItemMenuState(0x005de508);
+    private static ref int s_ItemRenamed_005de508 => ref *Mem.ItemMenuState(0x005de508);
 
     /// <summary>Ghidra: &amp;DAT_005de488 — la liste des index d'emplacement occupes, 0x16 octets.</summary>
-    private static byte* s_ItemIndex_005de488 => ItemMenuBytes(0x005de488);
+    private static byte* s_ItemIndex_005de488 => Mem.ItemMenuBytes(0x005de488);
 
     /// <summary>Ghidra: &amp;DAT_005de2d8 — un octet par emplacement : « cet objet appartient au
     /// personnage courant ». Six dwords remis a zero d'un bloc.</summary>
-    private static byte* s_ItemHeld_005de2d8 => ItemMenuBytes(0x005de2d8);
+    private static byte* s_ItemHeld_005de2d8 => Mem.ItemMenuBytes(0x005de2d8);
 
     /// <summary>Ghidra: &amp;DAT_005de110 — le tampon ou <see cref="BuildItemDisplayName"/> compose
     /// le libelle affichable d'un objet.</summary>
-    private static byte* s_ItemNameScratch_005de110 => ItemMenuBytes(0x005de110);
+    private static byte* s_ItemNameScratch_005de110 => Mem.ItemMenuBytes(0x005de110);
 
     /// <summary>
     /// Ghidra: &amp;PTR_DAT_00566a90 — quatre listes d'emplacements de carte memoire, une par
@@ -84,12 +84,12 @@ public static unsafe partial class Blaze
 
     /// <summary>Ghidra: DAT_005de468 / DAT_005de484 — l'etape du dialogue de carte memoire et le
     /// code de retour de la derniere operation ; <c>-3</c> vaut « carte absente ».</summary>
-    private static ref int s_CardDialogStep_005de468 => ref *ItemMenuState(0x005de468);
-    private static ref int s_CardDialogResult_005de484 => ref *ItemMenuState(0x005de484);
+    private static ref int s_CardDialogStep_005de468 => ref *Mem.ItemMenuState(0x005de468);
+    private static ref int s_CardDialogResult_005de484 => ref *Mem.ItemMenuState(0x005de484);
 
     /// <summary>Ghidra: &amp;DAT_005de390 — le message de carte memoire compose en UTF-16, trois
     /// morceaux mis bout a bout : un prefixe de ressource, le nom du personnage, un suffixe.</summary>
-    private static ushort* s_CardMessage_005de390 => (ushort*)ItemMenuBytes(0x005de390);
+    private static ushort* s_CardMessage_005de390 => (ushort*)Mem.ItemMenuBytes(0x005de390);
 
     /// <summary>
     /// Ghidra: &amp;PTR_DAT_00566a58 — les identifiants d'emplacement de carte, quatre listes
@@ -107,16 +107,16 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: DAT_005de4fc / DAT_005de500 / DAT_005de4f8 — la case du clavier de
     /// renommage : colonne 0..9, ligne visible 0..7, et page de lignes 0..7. La case
     /// (ligne 7, page 7) est le « fin de saisie ».</summary>
-    private static ref int s_KeyColumn_005de4fc => ref *ItemMenuState(0x005de4fc);
-    private static ref int s_KeyRow_005de500 => ref *ItemMenuState(0x005de500);
-    private static ref int s_KeyPage_005de4f8 => ref *ItemMenuState(0x005de4f8);
+    private static ref int s_KeyColumn_005de4fc => ref *Mem.ItemMenuState(0x005de4fc);
+    private static ref int s_KeyRow_005de500 => ref *Mem.ItemMenuState(0x005de500);
+    private static ref int s_KeyPage_005de4f8 => ref *Mem.ItemMenuState(0x005de4f8);
 
     /// <summary>Ghidra: &amp;DAT_005de4a0 — le nom en cours de saisie, 0x10 caracteres au plus.</summary>
-    private static byte* s_ItemNameEdit_005de4a0 => ItemMenuBytes(0x005de4a0);
+    private static byte* s_ItemNameEdit_005de4a0 => Mem.ItemMenuBytes(0x005de4a0);
 
     /// <summary>Ghidra: DAT_005de428 — l'adresse de la case de clavier visee, gardee entre le
     /// calcul et la lecture du glyphe.</summary>
-    private static ref nint s_KeyCellAddress_005de428 => ref *(nint*)ItemMenuState(0x005de428);
+    private static ref nint s_KeyCellAddress_005de428 => ref *(nint*)Mem.ItemMenuState(0x005de428);
 
     /// <summary>
     /// Ghidra: DAT_00562c9c — le dword <c>0x00004081</c> releve dans <c>.data</c>, compare au
@@ -132,7 +132,7 @@ public static unsafe partial class Blaze
 
     /// <summary>Ghidra: DAT_005de4f4 — negatif tant que la ligne courante ne doit pas etre
     /// mise en valeur ; positif, elle est teintee par <see cref="s_Unknown_005e9814"/>.</summary>
-    private static ref int s_Unknown_005de4f4 => ref *ItemMenuState(0x005de4f4);
+    private static ref int s_Unknown_005de4f4 => ref *Mem.ItemMenuState(0x005de4f4);
 
     /// <summary>Ghidra: &amp;DAT_00566ad0 — l'ordre dans lequel les huit caracteristiques d'un
     /// objet sont affichees : la troisieme d'abord, puis la deuxieme, la premiere, et les cinq
@@ -391,7 +391,7 @@ public static unsafe partial class Blaze
             for (int i = 0; i <= length; i++) cmd[4 + i] = name[i];
 
             BindMenuLabels(cmd, 0, title, 0);
-            primCursor = RunTextEngine(primCursor, title);
+            primCursor = Ui.RunTextEngine(primCursor, title);
         }
 
         return DrawItemElementRow(otBase, primCursor, draw, item);
@@ -448,7 +448,7 @@ public static unsafe partial class Blaze
 
             // L'enregistrement d'icone partage, dont les deux premiers octets designent la case
             // de l'atlas : la colonne par l'emplacement, la ligne par le rang du membre.
-            byte* icon = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x10);
+            byte* icon = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x10);
             icon[0] = (byte)(slot * 0x18);
             icon[1] = (byte)(slotFlags[8] * 0x18);
             *(byte**)d = icon;
@@ -481,11 +481,11 @@ public static unsafe partial class Blaze
         byte* d = (byte*)draw;
         NativeMemory.Clear(d, 32);
         *(uint*)(d + 4) = 0x1000000;
-        *(uint**)d = *(uint**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x14);
+        *(uint**)d = *(uint**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x14);
 
         for (byte* rec = list; *(int*)rec != 0; rec += 4)
         {
-            byte* panel = s_ItemMenuDescriptors_00564fe0 + rec[0] * UiDescriptorStride;
+            byte* panel = s_ItemMenuDescriptors_00564fe0 + rec[0] * GameMemory.UiDescriptorStride;
             *(ushort*)(d + 0x10) = rec[1];
             *(short*)(d + 0xa) = (short)(*(short*)(panel + 6) + rec[3]);
             *(short*)(d + 8) = (short)(*(short*)(panel + 4) + rec[2]);
@@ -531,7 +531,7 @@ public static unsafe partial class Blaze
         byte* mainMem = GetMainMemPtr();
 
         byte* cmd = stackalloc byte[188];
-        for (int i = 0; i < s_GlyphWidthsProportional.Length; i++) cmd[i] = s_GlyphWidthsProportional[i];
+        for (int i = 0; i < Ui.s_GlyphWidthsProportional.Length; i++) cmd[i] = Ui.s_GlyphWidthsProportional[i];
 
         int slotBefore = s_ItemMenuCardSlot_005de4e8;
         s_ItemMenuRecord_005de410 = (int)(nint)(mainMem + 0xf0000);
@@ -573,7 +573,7 @@ public static unsafe partial class Blaze
                         return primCursor;
                     }
 
-                    BindMenuLabels(s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
+                    BindMenuLabels(Mem.s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
                     BindMenuLabels(LabelAt(0x34), 0, s_ItemMenuTitleDescriptor_005658a8, 0);
                     s_Unknown_005de4d4++;
                     s_ItemMenuPhase_005de4d0 = 0;
@@ -651,8 +651,8 @@ public static unsafe partial class Blaze
                         *(short*)(d + 8) = 0x28;
                         *(short*)(d + 0xa) = (short)((i - s_ItemMenuScroll_005de4c4) * 0x14 + 0x26);
 
-                        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xf8) = 0xf;
-                        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xfa) =
+                        *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xf8) = 0xf;
+                        *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xfa) =
                             (ushort)(((i << 4) >> 4) & 0xf | (bank + 0x1fe) * 0x40);
 
                         primCursor = DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
@@ -668,7 +668,7 @@ public static unsafe partial class Blaze
                         if (s_ItemMenuSelection_005de4c8 == i)
                         {
                             EmitViewportRect(otBase, &primCursor);
-                            *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                            *(uint**)d = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
                             *(short*)(d + 0xa) -= 2;
                             *(short*)(d + 0x10) = 0x18;
                             *(uint*)(d + 4) = 0x1000000;
@@ -747,7 +747,7 @@ public static unsafe partial class Blaze
 
                             // Les dix emplacements du personnage sont recopies au debut du bloc de
                             // travail ; les douze du fichier occupent deja la suite, a +0x1900.
-                            CopyDwords((uint*)(record + 0x300), (uint*)(mainMem + 0x1b0000), 0x640);
+                            Mem.CopyDwords((uint*)(record + 0x300), (uint*)(mainMem + 0x1b0000), 0x640);
 
                             // L'envoi en VRAM des vingt-deux icones, palette puis pixels. Le
                             // rectangle vit sur la pile ; l'original en garde l'adresse dans
@@ -772,20 +772,20 @@ public static unsafe partial class Blaze
                                 rect[1] = (short)((n >> 4) + 0x1fc);
                                 rect[2] = 0x10;
                                 rect[3] = 1;
-                                Ordinal_674(rect, slotPtr + 0x140);
+                                Winsys3d.Ordinal_674(rect, slotPtr + 0x140);
 
                                 // L'icone : 24x24 en 4 bits, soit six mots de large.
                                 rect[0] = (short)((n % 10) * 0x18 / 4 + 0x3c0);
                                 rect[1] = (short)((n / 10) * 0x18 + 0x88);
                                 rect[2] = 6;
                                 rect[3] = 0x18;
-                                Ordinal_674(rect, slotPtr + 0x160);
+                                Winsys3d.Ordinal_674(rect, slotPtr + 0x160);
                             }
 
                             // La page et la palette courantes, deduites du **dernier** rectangle
                             // envoye — l'original laisse volontairement le pointeur sur lui.
-                            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xfa) = 0x7f00;
-                            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xf8) = (ushort)(
+                            *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xfa) = 0x7f00;
+                            *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xf8) = (ushort)(
                                 (short)(((((ushort)rect[1] >> 8) << 8) | ((rect[0] >> 2) & 0xff))
                                         & 0x1f0 | 0x2000) >> 4);
 
@@ -836,7 +836,7 @@ public static unsafe partial class Blaze
                         s_ItemMenuVisible_005de4f0 = 0;
                         for (int off = 0; off < 0x1900; off += 0x280)
                             if (record[0x300 + off] != 0) s_ItemMenuVisible_005de4f0++;
-                        BindMenuLabels(s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
+                        BindMenuLabels(Mem.s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
                     }
 
                     // CROIX et CARRE sortent tous deux vers l'ecran racine, avec deux sons
@@ -891,7 +891,7 @@ public static unsafe partial class Blaze
                         for (int i = 0; i <= length; i++) cmd[4 + i] = name[i];
 
                         BindMenuLabels(cmd, 0, title, 0);
-                        primCursor = RunTextEngine(primCursor, title);
+                        primCursor = Ui.RunTextEngine(primCursor, title);
                     }
 
                     // Le compteur « n / 403 », separe par la barre oblique de 0x00564a0c.
@@ -1014,7 +1014,7 @@ public static unsafe partial class Blaze
                     // Le curseur de ligne.
                     EmitViewportRect(otBase, &primCursor);
                     *(uint*)(d + 4) = 0x1000000;
-                    *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                    *(uint**)d = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
                     *(short*)(d + 0xa) = (short)((s_Unknown_005de4e4 << 4) + 0x18);
                     *(short*)(d + 0x10) = 0x18;
                     *(short*)(d + 8) = 0x58;
@@ -1102,14 +1102,14 @@ public static unsafe partial class Blaze
                     // Injoignable comme la phase 9 — voir sa note. La grille de caracteres exige
                     // une chasse fixe : la table globale des largeurs passe a 8 partout, et la
                     // copie de pile du prologue la remet en place a la sortie de la phase.
-                    for (int i = 0; i < s_GlyphWidths_0056e7b0.Length; i++) s_GlyphWidths_0056e7b0[i] = 8;
+                    for (int i = 0; i < Ui.s_GlyphWidths_0056e7b0.Length; i++) Ui.s_GlyphWidths_0056e7b0[i] = 8;
 
                     byte* desc1 = s_ItemMenuTitleDescriptor_005658a8;
                     byte* desc2 = s_ItemMenuEditDescriptor_00566170;
                     byte* item = mainMem + 0x1b0000 + s_ItemIndex_005de488[s_ItemMenuVisible_005de4f0] * 0x280;
 
                     // La table qui traduit un octet de fiche en glyphe affichable.
-                    byte* charset = *(byte**)(*(byte**)(s_MainResourceBuffer_005e97c0 + 0x70) + 8);
+                    byte* charset = *(byte**)(*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x70) + 8);
 
                     if (s_ItemMenuEntered_005de4dc != 0)
                     {
@@ -1143,8 +1143,8 @@ public static unsafe partial class Blaze
                         desc2[0x43] = 1;
 
                         BindMenuLabels(LabelAt(0xd0), 0, s_ItemMenuDescriptors_00564fe0, 0);
-                        BindMenuLabels(s_Unknown_005606f8, 0, desc1, 0);
-                        primCursor = RunTextEngine(primCursor, desc1);
+                        BindMenuLabels(Mem.s_Unknown_005606f8, 0, desc1, 0);
+                        primCursor = Ui.RunTextEngine(primCursor, desc1);
                     }
 
                     int cellBefore = (s_KeyPage_005de4f8 << 8 | s_KeyRow_005de500) << 8 | s_KeyColumn_005de4fc;
@@ -1259,7 +1259,7 @@ public static unsafe partial class Blaze
                         // CARRE sur une lettre. L'adresse de la case : la table de la ligne, plus
                         // trois octets par colonne, plus deux au-dela de la cinquieme — la grille
                         // a une gouttiere au milieu.
-                        byte* rowTable = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                        byte* rowTable = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70)
                                                    + 0x50 + (s_KeyRow_005de500 + s_KeyPage_005de4f8) * 4);
                         s_KeyCellAddress_005de428 = (nint)(rowTable
                             + ((s_KeyColumn_005de4fc < 5 ? 1 : 0) - 1 & 2)
@@ -1304,7 +1304,7 @@ public static unsafe partial class Blaze
                                                    (uint)((v & 0xf) | ((v & 0x10) << 4)));
                     primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
 
-                    *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                    *(uint**)d = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
                     *(short*)(d + 0x10) = 0x18;
                     *(uint*)(d + 4) = 0x1000000;
                     *(short*)(d + 8) = (short)(s_KeyColumn_005de4fc * 0x10 + 0x18
@@ -1325,22 +1325,22 @@ public static unsafe partial class Blaze
                     EmitClipRect(otBase, &primCursor);
 
                     // Les huit lignes de la grille, liees une par une dans le bandeau.
-                    BindMenuLabels(s_Unknown_005606f8, 0, desc1, 0);
-                    primCursor = RunTextEngine(primCursor, desc1);
+                    BindMenuLabels(Mem.s_Unknown_005606f8, 0, desc1, 0);
+                    primCursor = Ui.RunTextEngine(primCursor, desc1);
                     for (int n = 0; n < 8; n++)
                     {
                         BindMenuLabels(LabelAt(0x50 + (n + s_KeyPage_005de4f8) * 4), 0, desc1, 0);
-                        primCursor = RunTextEngine(primCursor, desc1);
+                        primCursor = Ui.RunTextEngine(primCursor, desc1);
                     }
 
-                    BindMenuLabels(s_Unknown_005606f8, 0, desc2, 0);
-                    primCursor = RunTextEngine(primCursor, desc2);
+                    BindMenuLabels(Mem.s_Unknown_005606f8, 0, desc2, 0);
+                    primCursor = Ui.RunTextEngine(primCursor, desc2);
                     BindMenuLabels(s_ItemNameEdit_005de4a0, 0, desc2, 0);
-                    primCursor = RunTextEngine(primCursor, desc2);
+                    primCursor = Ui.RunTextEngine(primCursor, desc2);
                     primCursor = DrawUiPanel(otBase, primCursor, desc2);
 
                     // La table des largeurs remise comme le prologue l'avait relevee.
-                    for (int i = 0; i < s_GlyphWidths_0056e7b0.Length; i++) s_GlyphWidths_0056e7b0[i] = cmd[i];
+                    for (int i = 0; i < Ui.s_GlyphWidths_0056e7b0.Length; i++) Ui.s_GlyphWidths_0056e7b0[i] = cmd[i];
                     break;
                 }
 
@@ -1393,7 +1393,7 @@ public static unsafe partial class Blaze
                         PlayUiSound39();
                         goto case 0x12;
                     }
-                    if (s_Unknown_005e909f != 0) goto case 0x12;
+                    if (Mem.s_Unknown_005e909f != 0) goto case 0x12;
                     s_Unknown_005de4d4++;
                     break;
 
@@ -1483,7 +1483,7 @@ public static unsafe partial class Blaze
                         }
 
                         case -3:
-                            message = *(ushort**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0xc);
+                            message = *(ushort**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0xc);
                             break;
 
                         case -2:
@@ -1495,7 +1495,7 @@ public static unsafe partial class Blaze
                             goto tail;
 
                         case -1:
-                            message = *(ushort**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70) + 0x2c);
+                            message = *(ushort**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x2c);
                             break;
 
                         default:
@@ -1517,7 +1517,7 @@ public static unsafe partial class Blaze
                 case 0x10:
                     if ((pad[3] & 0x40) != 0) { s_Unknown_005de4d4 = 0x5e; break; }
                     if ((s_ItemMenuDialogGate_005658a7 & 4) != 0) break;
-                    if (s_Unknown_005e909f != 0) { s_Unknown_005de4d4 = 0x5e; break; }
+                    if (Mem.s_Unknown_005e909f != 0) { s_Unknown_005de4d4 = 0x5e; break; }
                     BindMenuLabels(LabelAt(0x30), 0, s_ItemMenuDescriptors_00564fe0, 0);
                     s_Unknown_005de4d4++;
                     break;
@@ -1529,7 +1529,7 @@ public static unsafe partial class Blaze
                     // restaurer si l'ecriture echoue.
                     if (s_ItemMenuEntered_005de4dc != 0)
                     {
-                        CopyDwords((uint*)(mainMem + 0x1b0000), (uint*)(mainMem + 0x1b8000), 0xdc0);
+                        Mem.CopyDwords((uint*)(mainMem + 0x1b0000), (uint*)(mainMem + 0x1b8000), 0xdc0);
                         s_ItemMenuEntered_005de4dc = 0;
                         break;
                     }
@@ -1551,7 +1551,7 @@ public static unsafe partial class Blaze
                         byte slot = s_ItemIndex_005de488[i];
                         if (s_ItemHeld_005de2d8[slot] == 0) continue;
 
-                        CopyDwords((uint*)(mainMem + 0x1b0000 + slot * 0x280),
+                        Mem.CopyDwords((uint*)(mainMem + 0x1b0000 + slot * 0x280),
                                    (uint*)(record + 0x300 + keptOffset), 0xa0);
                         for (int e = 0; e < 5; e++)
                             if (record[0x2b0 + e] == slot) record[0x2b0 + e] = (byte)kept;
@@ -1578,7 +1578,7 @@ public static unsafe partial class Blaze
                         byte slot = s_ItemIndex_005de488[i];
                         if (s_ItemHeld_005de2d8[slot] != 0) continue;
 
-                        CopyDwords((uint*)(mainMem + 0x1b0000 + slot * 0x280),
+                        Mem.CopyDwords((uint*)(mainMem + 0x1b0000 + slot * 0x280),
                                    (uint*)(mainMem + 0x1b0000 + looseOffset), 0xa0);
                         loose++;
                         looseOffset += 0x280;
@@ -1621,7 +1621,7 @@ public static unsafe partial class Blaze
                     if (!written)
                     {
                         BindMenuLabels(failLabel, 0, s_ItemMenuDescriptors_00564fe0, 0);
-                        CopyDwords((uint*)(mainMem + 0x1b8000), (uint*)(mainMem + 0x1b0000), 0xdc0);
+                        Mem.CopyDwords((uint*)(mainMem + 0x1b8000), (uint*)(mainMem + 0x1b0000), 0xdc0);
                         s_Unknown_005de4d4 = 0x62;
                         s_CardDialogStep_005de468 = 0;
                     }
@@ -1755,7 +1755,7 @@ public static unsafe partial class Blaze
             byte* d = (byte*)draw;
             NativeMemory.Clear(d, 32);
             *(uint*)(d + 4) = 0x1000000;
-            *(uint**)d = *(uint**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 8);
+            *(uint**)d = *(uint**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 8);
             *(ushort*)(d + 0x10) = record[0x150];
             *(short*)(d + 8) = 0x20;
             *(short*)(d + 0xa) = 0x30;
@@ -1768,8 +1768,8 @@ public static unsafe partial class Blaze
             *(short*)(edit + 6) -= 4;
             edit[0x12] = 9;
 
-            BindMenuLabels(s_Unknown_005606f8, 0, edit, 0);
-            primCursor = RunTextEngine(primCursor, edit);
+            BindMenuLabels(Mem.s_Unknown_005606f8, 0, edit, 0);
+            primCursor = Ui.RunTextEngine(primCursor, edit);
 
             byte* name = record + 0x100;
             int length = 0;
@@ -1778,7 +1778,7 @@ public static unsafe partial class Blaze
             cmd[0] = 0x20;
 
             BindMenuLabels(cmd, 0, edit, 0);
-            primCursor = RunTextEngine(primCursor, edit);
+            primCursor = Ui.RunTextEngine(primCursor, edit);
             primCursor = DrawUiPanel(otBase, primCursor, edit);
 
             *(short*)(edit + 6) += 4;
@@ -1791,12 +1791,12 @@ public static unsafe partial class Blaze
         return primCursor;
     }
 
-    private static ref int s_ItemMenuScroll_005de4c4 => ref *ItemMenuState(0x005de4c4);
-    private static ref int s_ItemMenuSelection_005de4c8 => ref *ItemMenuState(0x005de4c8);
-    private static ref int s_ItemMenuChosen_005de4cc => ref *ItemMenuState(0x005de4cc);
-    private static ref int s_ItemMenuPhase_005de4d0 => ref *ItemMenuState(0x005de4d0);
-    private static ref int s_Unknown_005de4e4 => ref *ItemMenuState(0x005de4e4);
-    private static ref int s_ItemMenuLoaded_005de4e8 => ref *ItemMenuState(0x005de4e8);
+    private static ref int s_ItemMenuScroll_005de4c4 => ref *Mem.ItemMenuState(0x005de4c4);
+    private static ref int s_ItemMenuSelection_005de4c8 => ref *Mem.ItemMenuState(0x005de4c8);
+    private static ref int s_ItemMenuChosen_005de4cc => ref *Mem.ItemMenuState(0x005de4cc);
+    private static ref int s_ItemMenuPhase_005de4d0 => ref *Mem.ItemMenuState(0x005de4d0);
+    private static ref int s_Unknown_005de4e4 => ref *Mem.ItemMenuState(0x005de4e4);
+    private static ref int s_ItemMenuLoaded_005de4e8 => ref *Mem.ItemMenuState(0x005de4e8);
 
     /// <summary>
     /// Ghidra: FUN_005277b0 @ 0x005277b0 — le sous-écran « Enchère » : la même liste de
@@ -1834,7 +1834,7 @@ public static unsafe partial class Blaze
                 return primCursor;
             }
 
-            BindMenuLabels(s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
+            BindMenuLabels(Mem.s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
             BindMenuLabels(LabelAt(0x34), 0, s_ItemMenuTitleDescriptor_005658a8, 0);
             s_ItemMenuLoaded_005de4e8++;
             s_ItemMenuPhase_005de4d0 = 0;
@@ -1980,8 +1980,8 @@ public static unsafe partial class Blaze
             *(short*)(d + 8) = 0x28;
             *(short*)(d + 0xa) = (short)((i - s_ItemMenuScroll_005de4c4) * 0x14 + 0x26);
 
-            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xf8) = 0xf;
-            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xfa) =
+            *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xf8) = 0xf;
+            *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xfa) =
                 (ushort)(((i << 4) >> 4) & 0xf | (bank + 0x1fe) * 0x40);
 
             primCursor = DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
@@ -1997,7 +1997,7 @@ public static unsafe partial class Blaze
             if (s_ItemMenuSelection_005de4c8 == i)
             {
                 EmitViewportRect(otBase, &primCursor);
-                *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                *(uint**)d = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
                 *(short*)(d + 0xa) -= 2;
                 *(short*)(d + 0x10) = 0x18;
                 *(uint*)(d + 4) = 0x1000000;
@@ -2097,14 +2097,14 @@ public static unsafe partial class Blaze
     // ---------------------------------------------------------------------------------------
 
     /// <summary>Ghidra: DAT_005de4f0 — le membre visé par un transfert d'objet.</summary>
-    private static ref int s_ItemMenuTarget_005de4f0 => ref *ItemMenuState(0x005de4f0);
+    private static ref int s_ItemMenuTarget_005de4f0 => ref *Mem.ItemMenuState(0x005de4f0);
 
     /// <summary>
     /// Ghidra: DAT_005de464 — **quatre octets, un par membre**, et non un entier isolé : le cas 3
     /// écrit <c>((byte*)&amp;DAT_005de464)[membre] = 1</c> tandis que le cas 0 relit le dword entier
     /// pour savoir si un transfert a eu lieu. Adressé ici des deux façons, comme l'original.
     /// </summary>
-    private static byte* ItemMenuTransferFlags_005de464 => (byte*)ItemMenuState(0x005de464);
+    private static byte* ItemMenuTransferFlags_005de464 => (byte*)Mem.ItemMenuState(0x005de464);
 
     /// <summary>
     /// Ghidra: DAT_005de2d0 — la valeur d'objet que les cas 0, 1 et 2 recalculent chacun de leur
@@ -2114,7 +2114,7 @@ public static unsafe partial class Blaze
 
     /// <summary>Ghidra: DAT_005de448 — la meilleure mise de l'enchere, -1 tant que personne n'a
     /// mise. C'est le dword juste apres les quatre de <c>DAT_005de438</c>.</summary>
-    private static ref int s_Unknown_005de448 => ref *ItemMenuState(0x005de448);
+    private static ref int s_Unknown_005de448 => ref *Mem.ItemMenuState(0x005de448);
 
     /// <summary>
     /// Ghidra: l'echange de manette entre deux emplacements, ecrit **trois fois** a l'identique
@@ -2205,11 +2205,11 @@ public static unsafe partial class Blaze
     /// une memoire que le moteur de texte ne lit pas — le bandeau affichait « Au prix de: 0 »
     /// quelle que soit la valeur calculee. Encore le defaut d'aliasing habituel du projet.</para>
     /// </summary>
-    private static ref uint s_Unknown_005e9080 => ref *(uint*)Arena(0x005e9080);
+    private static ref uint s_Unknown_005e9080 => ref *(uint*)Mem.Arena(0x005e9080);
 
     /// <summary>Ghidra: DAT_005de2f0 — <c>membre * 0x35 + 0x24</c>, pose a l'entree du choix de
     /// cible. TODO(REVERSE) : role exact non etabli.</summary>
-    private static ref int s_Unknown_005de2f0 => ref *ItemMenuState(0x005de2f0);
+    private static ref int s_Unknown_005de2f0 => ref *Mem.ItemMenuState(0x005de2f0);
 
     /// <summary>
     /// Ghidra: DAT_005658a7, DAT_0056501b et DAT_00565013 — encore trois « globales » qui sont en
@@ -2298,7 +2298,7 @@ public static unsafe partial class Blaze
 
             EmitViewportRect(otBase, &primCursor);
 
-            *(byte**)d = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 8);
+            *(byte**)d = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 8);
             (*(byte**)d)[5] = 0;
             *(ushort*)(d + 0x10) = record[0x150];
             *(short*)(d + 0xa) = 0x30;
@@ -2307,7 +2307,7 @@ public static unsafe partial class Blaze
             primCursor = DrawSpriteVariant(otBase, primCursor, draw, 0, (uint)record[0x2bd] << 8);
             primCursor = DrawFlatPrimitive(otBase, primCursor, draw);
 
-            *(byte**)d = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x14);
+            *(byte**)d = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x14);
             *(short*)(d + 8) = (short)(y - 4);
             *(ushort*)(d + 0x10) = 0x30;
             *(short*)(d + 0xa) = 100;
@@ -2338,7 +2338,7 @@ public static unsafe partial class Blaze
             if (best >= 0)
             {
                 EmitViewportRect(otBase, &primCursor);
-                byte* tile = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x10);
+                byte* tile = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x10);
                 *(byte**)d = tile;
                 tile[0] = (byte)(bestSlot * 0x18);
                 tile[1] = (byte)(member * 0x18);
@@ -2498,7 +2498,7 @@ public static unsafe partial class Blaze
                 NativeMemory.Clear(d, 32);
 
                 EmitViewportRect(otBase, &primCursor);
-                *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                *(uint**)d = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
                 *(short*)(d + 0x10) = 0x18;
                 *(uint*)(d + 4) = 0x1000000;
                 *(short*)(d + 8) = (short)(((s_ItemMenuCursor_005de4e0 % 5 << 3)
@@ -2519,7 +2519,7 @@ public static unsafe partial class Blaze
                 EmitViewportRect(otBase, &primCursor);
                 NativeMemory.Clear(d, 32);
                 *(uint*)(d + 4) = 0x1000000;
-                *(uint**)d = *(uint**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 8);
+                *(uint**)d = *(uint**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 8);
                 *(ushort*)(d + 0x10) = record[0x150];
                 *(short*)(d + 8) = 0x20;
                 *(short*)(d + 0xa) = 0x30;
@@ -2530,8 +2530,8 @@ public static unsafe partial class Blaze
                 byte* edit = s_ItemMenuEditDescriptor_00566170;
                 *(short*)(edit + 6) -= 4;
                 edit[0x12] = 9;
-                BindMenuLabels(s_Unknown_005606f8, 0, edit, 0);
-                primCursor = RunTextEngine(primCursor, edit);
+                BindMenuLabels(Mem.s_Unknown_005606f8, 0, edit, 0);
+                primCursor = Ui.RunTextEngine(primCursor, edit);
 
                 byte* cmd = stackalloc byte[100];
                 NativeMemory.Clear(cmd, 100);
@@ -2541,7 +2541,7 @@ public static unsafe partial class Blaze
                 for (int i = 0; i <= nameLength; i++) cmd[1 + i] = memberName[i];
                 cmd[0] = 0x20;
                 BindMenuLabels(cmd, 0, edit, 0);
-                primCursor = RunTextEngine(primCursor, edit);
+                primCursor = Ui.RunTextEngine(primCursor, edit);
                 primCursor = DrawUiPanel(otBase, primCursor, edit);
 
                 *(short*)(edit + 6) += 4;
@@ -2573,7 +2573,7 @@ public static unsafe partial class Blaze
                         PlayUiSound38();
 
                         for (int i = 0; i < s_PartySize_005e9020; i++)
-                            ItemMenuState(0x005de438)[i] = 0;
+                            Mem.ItemMenuState(0x005de438)[i] = 0;
 
                         s_Unknown_005de2f0 = s_Unknown_005de4e4 * 0x35 + 0x24;
                         BindMenuLabels(LabelAt(0xec), 0, s_ItemMenuDescriptors_00564fe0, 0);
@@ -2606,7 +2606,7 @@ public static unsafe partial class Blaze
                 byte* lot = seller + 0x300 + seller[0x2c1 + s_ItemMenuCursor_005de4e0] * 0x280;
                 s_ItemValue_005de2d0 = ComputeItemValue(lot);
 
-                int* bids = ItemMenuState(0x005de438);
+                int* bids = Mem.ItemMenuState(0x005de438);
 
                 // La meilleure mise. Une **égalité** ne départage pas : le gagnant redevient le
                 // vendeur, ce que la résolution plus bas traite comme un refus.
@@ -2633,7 +2633,7 @@ public static unsafe partial class Blaze
 
                 EmitViewportRect(otBase, &primCursor);
                 *(uint*)(d + 4) = 0x1000000;
-                byte* lotIcon = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x10);
+                byte* lotIcon = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x10);
                 lotIcon[0] = (byte)(seller[0x2c1 + s_ItemMenuCursor_005de4e0] * 0x18);
                 lotIcon[1] = (byte)(s_Unknown_005de4e4 * 0x18);
                 *(byte**)d = lotIcon;
@@ -2769,7 +2769,7 @@ public static unsafe partial class Blaze
 
                         // Le marteau, puis la mise et l'or qui resterait au membre.
                         EmitViewportRect(otBase, &primCursor);
-                        *(uint**)d = *(uint**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x14);
+                        *(uint**)d = *(uint**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x14);
                         *(short*)(d + 8) = (short)(x - 4);
                         *(short*)(d + 0x10) = 0x30;
                         *(short*)(d + 0xa) = 0x84;
@@ -2790,7 +2790,7 @@ public static unsafe partial class Blaze
 
                     // Le portrait du membre, dessiné pour tous, vendeur compris.
                     EmitViewportRect(otBase, &primCursor);
-                    byte* portrait = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 8);
+                    byte* portrait = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 8);
                     portrait[5] = 0;
                     *(byte**)d = portrait;
                     *(ushort*)(d + 0x10) = ((byte*)gold)[-0x11c];      // record[0x150]
@@ -2872,7 +2872,7 @@ public static unsafe partial class Blaze
 
                 if (matched >= 0)
                 {
-                    CopyDwords((uint*)item, (uint*)(targetRecord + 0x300 + matched * 0x280), 0xa0);
+                    Mem.CopyDwords((uint*)item, (uint*)(targetRecord + 0x300 + matched * 0x280), 0xa0);
                     UploadPartyIconTextures();               // Ghidra: FUN_00535500
                     PlaySoundEffect(0x29, 0x400, 0x1300, 0x1300);
                 }
@@ -2896,7 +2896,7 @@ public static unsafe partial class Blaze
 
                 if ((s_ItemMenuDialogGate_005658a7 & 4) == 0)
                 {
-                    if (s_Unknown_005e909f == 0)
+                    if (Mem.s_Unknown_005e909f == 0)
                     {
                         s_Unknown_005de4d4 = 0;
                         s_ItemMenuSubState_00566ac8 = -1;

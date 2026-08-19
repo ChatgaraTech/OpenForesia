@@ -182,7 +182,7 @@ public static unsafe partial class Blaze
 
         ApplyCdVolume();
         ApplyAllSoundBufferVolumes();
-        CreateTranslationTables(s_GammaIni * GammaIniScale);
+        Winsys3d.CreateTranslationTables(s_GammaIni * GammaIniScale);
 
         if (s_ResolutionIndex < (uint)s_ResolutionDetailLimit.Length &&
             s_ResolutionDetailLimit[s_ResolutionIndex] < s_SizeSetting_005de160)
@@ -232,12 +232,12 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void CheckDeviceCapabilityFlag()
     {
-        void* device = Ordinal_750();
-        if (device == null) { s_DeviceCapFlag_00564a48 = true; return; }
+        void* device = Winsys3d.Ordinal_750();
+        if (device == null) { Mem.s_DeviceCapFlag_00564a48 = true; return; }
         void** vtable = *(void***)device;
         var query = (delegate* unmanaged[Stdcall]<void*, int>)vtable[0x10];
         int result = query(device);
-        s_DeviceCapFlag_00564a48 = result == 0;
+        Mem.s_DeviceCapFlag_00564a48 = result == 0;
     }
     // =====================================================================
     // The options page's drawing layer (Ghidra: the FUN_00510xxx family)
@@ -258,7 +258,7 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     /// <summary>Ghidra: DAT_00578e28 â€” the device, fetched once per use through Ordinal_750.</summary>
-    private static void** UiDeviceVtable => *(void***)Ordinal_750();
+    private static void** UiDeviceVtable => *(void***)Winsys3d.Ordinal_750();
 
     private const int Device_BindTexture = 0x64 / 4;
     private const int Device_AlphaBlendEnable = 0x98 / 4;
@@ -271,14 +271,14 @@ public static unsafe partial class Blaze
     private static void UiSetState(int slot, uint value)
     {
         var method = (delegate* unmanaged[Thiscall]<void*, uint, void>)UiDeviceVtable[slot];
-        method(Ordinal_750(), value);
+        method(Winsys3d.Ordinal_750(), value);
     }
 
     private static void UiDrawFan(TlVertex* vertices)
     {
         var draw = (delegate* unmanaged[Thiscall]<void*, uint, uint, void*, uint, uint, void>)
             UiDeviceVtable[Device_DrawPrimitive];
-        draw(Ordinal_750(), 6, 3, vertices, 4, 0);   // D3DPT_TRIANGLEFAN, D3DVT_TLVERTEX
+        draw(Winsys3d.Ordinal_750(), 6, 3, vertices, 4, 0);   // D3DPT_TRIANGLEFAN, D3DVT_TLVERTEX
     }
 
     /// <summary>
@@ -331,7 +331,7 @@ public static unsafe partial class Blaze
     private static void UiFillRect(int x, int y, int width, int height, uint colour)
     {
         void* deviceDesc = ((delegate* unmanaged[Thiscall]<void*, void*>)
-            UiDeviceVtable[Device_GetDeviceDesc])(Ordinal_750());
+            UiDeviceVtable[Device_GetDeviceDesc])(Winsys3d.Ordinal_750());
 
         TlVertex* quad = stackalloc TlVertex[4];
         UiQuad(quad, x, y, width, height, colour);
@@ -382,7 +382,7 @@ public static unsafe partial class Blaze
         UiScaleVertices(quad, 4);
 
         var bind = (delegate* unmanaged[Thiscall]<void*, void*, void>)UiDeviceVtable[Device_BindTexture];
-        bind(Ordinal_750(), texture);
+        bind(Winsys3d.Ordinal_750(), texture);
 
         UiSetState(Device_AlphaBlendEnable, 0);
         UiSetState(Device_SrcBlend, 2);     // D3DBLEND_ONE
@@ -461,23 +461,9 @@ public static unsafe partial class Blaze
     private static void UiDrawCursor(int x, int y)
         => UiBlit(x, y, 0xf, 0x10, 0xf0, 0, s_UiFrameAtlas_00599ddc, 0xf, 0x10, 0xffffff);
 
-    // winsys3d, exports nommÃ©s. `ShiftVertices` (ordinal 824, winsys3d.c:4913) applique
-    // `x = dÃ©calage + (Size + 9) * 32 / 320 * x` â€” le facteur documentÃ© dans la section
-    // Â« Coordinate scaling Â». Le fond de page passe par lui ; les widgets, eux, par la mise Ã 
-    // l'Ã©chelle que le jeu fait lui-mÃªme (FUN_00510110). Les deux coexistent, c'est voulu.
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    private static extern void ShiftVertices(TlVertex* vertices, int count);
 
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    private static extern void SetTextureFilterMode(int mode);
 
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    private static extern int SetTimingMode(int mode);
 
-    // winsys3d ordinal 749 (winsys3d.c:6010) : demande au device le mode d'affichage d'index
-    // `resolution` par son slot `+0xE8`, et ne retient le changement que si le device l'accepte.
-    [DllImport("winsys3d.dll", ExactSpelling = true)]
-    private static extern int ChangeResolution(int resolution);
 
     /// <summary>
     /// Ghidra: FUN_0050fe90 @ 0x0050fe90 â€” dÃ©but d'image : chacune des huit textures de la page est
@@ -539,17 +525,17 @@ public static unsafe partial class Blaze
 
         // Ghidra perd l'argument du premier appel ; le second est SetTextureFilterMode(0), et le
         // filtrage n'aurait pas de sens laissÃ© actif aprÃ¨s un fond plein Ã©cran.
-        SetTextureFilterMode(1);
-        ShiftVertices(quad, 4);
+        Winsys3d.SetTextureFilterMode(1);
+        Winsys3d.ShiftVertices(quad, 4);
 
         var bind = (delegate* unmanaged[Thiscall]<void*, void*, void>)UiDeviceVtable[Device_BindTexture];
-        bind(Ordinal_750(), s_UiBackgroundTexture_0057926c);
+        bind(Winsys3d.Ordinal_750(), s_UiBackgroundTexture_0057926c);
 
         UiSetState(Device_AlphaBlendEnable, 0);
         UiSetState(Device_SrcBlend, 2);     // D3DBLEND_ONE
         UiSetState(Device_DestBlend, 1);    // D3DBLEND_ZERO
         UiDrawFan(quad);
-        SetTextureFilterMode(0);
+        Winsys3d.SetTextureFilterMode(0);
     }
 
     private static TlVertex UiBackgroundVertex(float x, float y, float u, float v)
@@ -697,21 +683,8 @@ public static unsafe partial class Blaze
     // Documentation/DLL/3dhelp.md, correction of 2026-08-14.
     // =====================================================================
 
-    // wsyskern exports, all by name, on the same footing as LoadBitmapFile.
-    [DllImport("wsyskern.dll", ExactSpelling = true)]
-    private static extern int DIBCopyBlock(void* destinationBits, void* destinationInfo,
-                                           int destinationX, int destinationY, uint width, uint height,
-                                           void* sourceBits, void* sourceInfo,
-                                           int sourceX, int sourceY);
 
-    /// <summary>wsyskern ordinal 91. Ghidra types it `void`; it returns the adjusted byte in AL.</summary>
-    [DllImport("wsyskern.dll", ExactSpelling = true)]
-    private static extern byte Gamma(int value, double gamma);
 
-    [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void* CreateArray(int kind, void* capacity);
-    [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void* LoadArray(void* array, byte* path, int startIndex, int maxLines, int skip, int flags);
-    [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void ArrayToString(void* array, int index, byte* buffer, int size);
-    [DllImport("wsyskern.dll", ExactSpelling = true)] private static extern void DeleteArray(void* array);
 
     // =====================================================================
     // DEVIATION, mesurÃ©e et bornÃ©e : la lecture des fichiers texte ne passe plus par l'API de
@@ -837,8 +810,8 @@ public static unsafe partial class Blaze
             if (c == ' ') { width += 4; continue; }
 
             int glyph = GlyphIndex(c);
-            if ((uint)glyph >= (uint)s_GlyphWidths_0056e7b0.Length) continue;
-            width += s_GlyphWidths_0056e7b0[glyph];
+            if ((uint)glyph >= (uint)Ui.s_GlyphWidths_0056e7b0.Length) continue;
+            width += Ui.s_GlyphWidths_0056e7b0[glyph];
         }
         return width;
     }
@@ -866,14 +839,14 @@ public static unsafe partial class Blaze
             if (c == ' ') { x += 4; continue; }
 
             int glyph = GlyphIndex(c);
-            if ((uint)glyph >= (uint)s_GlyphWidths_0056e7b0.Length)
+            if ((uint)glyph >= (uint)Ui.s_GlyphWidths_0056e7b0.Length)
             {
                 UiStage($"    glyphe hors table : car=0x{(byte)c:X2} index={glyph} " +
-                        $"(table={s_GlyphWidths_0056e7b0.Length})");
+                        $"(table={Ui.s_GlyphWidths_0056e7b0.Length})");
                 continue;
             }
 
-            int width = s_GlyphWidths_0056e7b0[glyph];
+            int width = Ui.s_GlyphWidths_0056e7b0[glyph];
 
             // GARDE-FOU, et instrument. La cible fait 256x256 en 8 bits, soit exactement les
             // 64 Kio du tampon. `DIBCopyBlock` ne clippe pas de maniÃ¨re sÃ»re : un blit qui sort
@@ -890,7 +863,7 @@ public static unsafe partial class Blaze
             if (s_TraceGlyphs)
                 UiStage($"    blit car=0x{(byte)c:X2} glyphe={glyph} l={width} -> ({x},{row * 0xe}) " +
                         $"source=({(glyph % 0x1f) * 10},{(glyph / 0x1f) * 0xe})");
-            DIBCopyBlock(destinationBits, destinationInfo, x, row * 0xe, (uint)width, 0xe,
+            Wsyskern.DIBCopyBlock(destinationBits, destinationInfo, x, row * 0xe, (uint)width, 0xe,
                          fontBits, fontInfo, (glyph % 0x1f) * 10, (glyph / 0x1f) * 0xe);
             x += width;
         }
@@ -949,14 +922,14 @@ public static unsafe partial class Blaze
         // which is that same triple.
         for (int i = 0; i < 0x400; i += 4)
         {
-            s_UiBackgroundInfo_00578e30[0x28 + i + 2] = Gamma(background[0x38 + i], gamma);
-            s_UiBackgroundInfo_00578e30[0x28 + i + 1] = Gamma(background[0x37 + i], gamma);
-            s_UiBackgroundInfo_00578e30[0x28 + i + 0] = Gamma(background[0x36 + i], gamma);
+            s_UiBackgroundInfo_00578e30[0x28 + i + 2] = Wsyskern.Gamma(background[0x38 + i], gamma);
+            s_UiBackgroundInfo_00578e30[0x28 + i + 1] = Wsyskern.Gamma(background[0x37 + i], gamma);
+            s_UiBackgroundInfo_00578e30[0x28 + i + 0] = Wsyskern.Gamma(background[0x36 + i], gamma);
             s_UiBackgroundInfo_00578e30[0x28 + i + 3] = 0;
 
-            s_UiFrameInfo_00589840[0x28 + i + 2] = Gamma(frame[0x38 + i], gamma);
-            s_UiFrameInfo_00589840[0x28 + i + 1] = Gamma(frame[0x37 + i], gamma);
-            s_UiFrameInfo_00589840[0x28 + i + 0] = Gamma(frame[0x36 + i], gamma);
+            s_UiFrameInfo_00589840[0x28 + i + 2] = Wsyskern.Gamma(frame[0x38 + i], gamma);
+            s_UiFrameInfo_00589840[0x28 + i + 1] = Wsyskern.Gamma(frame[0x37 + i], gamma);
+            s_UiFrameInfo_00589840[0x28 + i + 0] = Wsyskern.Gamma(frame[0x36 + i], gamma);
             s_UiFrameInfo_00589840[0x28 + i + 3] = 0;
         }
 
@@ -973,7 +946,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void* UiCreateTexture(byte* bitmapInfo, void* bits, uint* colourKey)
     {
-        void* device = Ordinal_750();
+        void* device = Winsys3d.Ordinal_750();
         void* texture = ((delegate* unmanaged[Thiscall]<void*, void*>)UiDeviceVtable[0x10 / 4])(device);
         if (texture == null) return null;
 
@@ -1101,7 +1074,7 @@ public static unsafe partial class Blaze
     {
         byte* fileName = ToAnsiZ(name);
         byte* path = BuildCdPath(fileName);
-        byte* file = LoadBitmapFile(path, silent ? 0u : 1u);
+        byte* file = Wsyskern.LoadBitmapFile(path, silent ? 0u : 1u);
         Free(path);
         Free(fileName);
         return file;
@@ -1117,8 +1090,8 @@ public static unsafe partial class Blaze
         if (Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_BADPATH") == "1")
         {
             byte* absent = ToAnsiZ("Z:/pas-de-fichier.txt");
-            UiStage("  LoadArray(chemin absent)");
-            LoadArray(array, absent, 0, 0, 0, 0);
+            UiStage("  Wsyskern.LoadArray(chemin absent)");
+            Wsyskern.LoadArray(array, absent, 0, 0, 0, 0);
             UiStage("  LoadArray revenu (chemin absent)");
             Free(absent);
             Free(path);
@@ -1135,8 +1108,8 @@ public static unsafe partial class Blaze
         // OPENFORESIA_OPTIONS_MAXLINES borne la lecture, pour trouver Ã  quelle ligne Ã§a casse.
         _ = int.TryParse(Environment.GetEnvironmentVariable("OPENFORESIA_OPTIONS_MAXLINES"), out int maxLines);
 
-        UiStage($"  LoadArray(\"{System.Text.Encoding.Latin1.GetString(path, 40).TrimEnd('\0', ' ')}\") lignes<={maxLines} drapeaux={flags}");
-        LoadArray(array, path, 0, maxLines, 0, flags);
+        UiStage($"  Wsyskern.LoadArray(\"{System.Text.Encoding.Latin1.GetString(path, 40).TrimEnd('\0', ' ')}\") lignes<={maxLines} drapeaux={flags}");
+        Wsyskern.LoadArray(array, path, 0, maxLines, 0, flags);
         UiStage("  LoadArray revenu");
         Free(path);
         Free(fileName);
@@ -1281,19 +1254,19 @@ public static unsafe partial class Blaze
                 }
             }
 
-            Ordinal_132(2);
+            Winsys3d.Ordinal_132(2);
         }
     }
 
     /// <summary>Ghidra: les trois slots de scÃ¨ne que la page emprunte, sur le mÃªme device.</summary>
     private static void UiBeginScene()
-        => ((delegate* unmanaged[Thiscall]<void*, void>)UiDeviceVtable[0xb0 / 4])(Ordinal_750());
+        => ((delegate* unmanaged[Thiscall]<void*, void>)UiDeviceVtable[0xb0 / 4])(Winsys3d.Ordinal_750());
 
     private static void UiEndScene()
-        => ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xb4 / 4])(Ordinal_750());
+        => ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xb4 / 4])(Winsys3d.Ordinal_750());
 
     private static void UiPresent()
-        => ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xb8 / 4])(Ordinal_750());
+        => ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xb8 / 4])(Winsys3d.Ordinal_750());
 
     /// <summary>
     /// Ghidra: la sortie par Ã©chap libÃ¨re les huit textures de la page â€” chacune par le slot
@@ -1350,7 +1323,7 @@ public static unsafe partial class Blaze
         UiPageTrace("entrée page Affichage");
         // Ghidra: le slot +0xE0 dÃ©cide si la sixiÃ¨me ligne existe. Non portÃ© par le device
         // synthÃ©tique, il rend zÃ©ro â€” donc cinq lignes, ce qui est le cas nominal.
-        int extra = ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xe0 / 4])(Ordinal_750()) != 0 ? 1 : 0;
+        int extra = ((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0xe0 / 4])(Winsys3d.Ordinal_750()) != 0 ? 1 : 0;
 
         while (true)
         {
@@ -1413,7 +1386,7 @@ public static unsafe partial class Blaze
                     {
                         PlayUiSound3A();
                         s_SizeSetting_005de160--;
-                        SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
+                        Winsys3d.SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
                                  (int)((0xb - s_SizeSetting_005de160) * 0xc),
                                  (int)s_SizeSetting_005de160, 0);
                         if (s_SizeSetting_005de160 < 8) s_SmallTextureFlag = 1;
@@ -1435,7 +1408,7 @@ public static unsafe partial class Blaze
                     {
                         PlayUiSound3A();
                         s_SizeSetting_005de160++;
-                        SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
+                        Winsys3d.SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
                                  (int)((0xb - s_SizeSetting_005de160) * 0xc),
                                  (int)s_SizeSetting_005de160, 0);
                     }
@@ -1448,7 +1421,7 @@ public static unsafe partial class Blaze
                 }
             }
 
-            Ordinal_132(2);
+            Winsys3d.Ordinal_132(2);
         }
     }
 
@@ -1528,7 +1501,7 @@ public static unsafe partial class Blaze
                 }
             }
 
-            Ordinal_132(2);
+            Winsys3d.Ordinal_132(2);
         }
     }
 
@@ -1566,7 +1539,7 @@ public static unsafe partial class Blaze
                 else if (s_UiControlSelection_005d9e44 == 1) { PlayUiSound38(); JoystickAssignmentPage(); }
             }
 
-            Ordinal_132(2);
+            Winsys3d.Ordinal_132(2);
         }
     }
 
@@ -1615,11 +1588,11 @@ public static unsafe partial class Blaze
             if ((action & 1) != 0)
             {
                 s_TimingMode = (uint)s_UiTimingSelection_00579268;
-                SetTimingMode(s_UiTimingSelection_00579268);
+                Winsys3d.SetTimingMode(s_UiTimingSelection_00579268);
                 return;
             }
 
-            Ordinal_132(2);
+            Winsys3d.Ordinal_132(2);
         }
     }
 
@@ -1644,7 +1617,7 @@ public static unsafe partial class Blaze
         int* modes = stackalloc int[32];
         int count = 0;
 
-        uint mask = (uint)((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0x1c / 4])(Ordinal_750());
+        uint mask = (uint)((delegate* unmanaged[Thiscall]<void*, int>)UiDeviceVtable[0x1c / 4])(Winsys3d.Ordinal_750());
         for (int bit = 0; mask != 0; mask >>= 1, bit++)
             if ((mask & 1) != 0) modes[count++] = bit;
 
@@ -1675,25 +1648,25 @@ public static unsafe partial class Blaze
                 && modes[s_UiResolutionSelection_005d9e0c] != (int)s_ResolutionIndex)
             {
                 ReleaseUiTextures();
-                ReInitializeAllTextures();
+                Winsys3d.ReInitializeAllTextures();
 
                 s_ResolutionIndex = (uint)modes[s_UiResolutionSelection_005d9e0c];
-                ChangeResolution((int)s_ResolutionIndex);
+                Winsys3d.ChangeResolution((int)s_ResolutionIndex);
 
                 // Ghidra: la file est vidÃ©e de ses WM_QUIT (0x12) avant de continuer.
                 MSG message;
-                while (PeekMessageA(&message, IntPtr.Zero, 0x12, 0x12, 1) != 0) { }
+                while (Win32.PeekMessageA(&message, IntPtr.Zero, 0x12, 0x12, 1) != 0) { }
 
                 s_SizeSetting_005de160 = UiDetailLimit;
-                SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
+                Winsys3d.SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
                          (int)((0xb - s_SizeSetting_005de160) * 0xc),
                          (int)s_SizeSetting_005de160, 0);
                 if (s_SizeSetting_005de160 < 8) s_SmallTextureFlag = 1;
 
-                OptionsSetup();     // Ghidra: DAT_00578e28 = Ordinal_750(); FUN_0050fab0();
+                OptionsSetup();     // Ghidra: DAT_00578e28 = Winsys3d.Ordinal_750(); FUN_0050fab0();
             }
 
-            Ordinal_132(2);
+            Winsys3d.Ordinal_132(2);
         }
     }
 
@@ -1762,7 +1735,7 @@ public static unsafe partial class Blaze
                 else { PlayUiSound38(); JoystickButtonsPage(row - 4); }
             }
 
-            Ordinal_132(2);
+            Winsys3d.Ordinal_132(2);
         }
     }
 
@@ -1986,7 +1959,7 @@ public static unsafe partial class Blaze
                 }
 
                 if (action == 0xffffffff) return;
-                Ordinal_132(2);
+                Winsys3d.Ordinal_132(2);
             }
             else
             {
@@ -2008,7 +1981,7 @@ public static unsafe partial class Blaze
                         break;
                     }
 
-                    if (captured == -1) { Ordinal_132(2); continue; }
+                    if (captured == -1) { Winsys3d.Ordinal_132(2); continue; }
 
                     // Le bouton retenu est d'abord retiré de toutes les autres actions de ce
                     // joueur : une manette ne peut pas commander deux actions à la fois.
@@ -2022,7 +1995,7 @@ public static unsafe partial class Blaze
                 }
 
                 capturing = -1;
-                Ordinal_132(2);
+                Winsys3d.Ordinal_132(2);
             }
         }
     }
@@ -2046,7 +2019,7 @@ public static unsafe partial class Blaze
             for (int i = 0; i < s_JoyButtonScan_00562e70.Length; i++)
                 held |= (byte)(keys[0x100 + stick * 0x26 + s_JoyButtonScan_00562e70[i]] & 0x80);
 
-            Ordinal_132(0);
+            Winsys3d.Ordinal_132(0);
             if (held == 0) return;
         }
     }
@@ -2198,7 +2171,7 @@ public static unsafe partial class Blaze
                 }
 
                 if (action == 0xffffffff) return;
-                Ordinal_132(2);
+                Winsys3d.Ordinal_132(2);
                 continue;
             }
 
@@ -2212,7 +2185,7 @@ public static unsafe partial class Blaze
                 break;
             }
 
-            if (pressed == -1) { Ordinal_132(2); continue; }
+            if (pressed == -1) { Winsys3d.Ordinal_132(2); continue; }
 
             int scancode = s_KeyScancodes_00562e18[pressed];
             ClearScancodeEverywhere(scancode);
@@ -2229,7 +2202,7 @@ public static unsafe partial class Blaze
             // L'ancienne liaison devient la seconde ; la nouvelle prend la premiÃ¨re place.
             s_KeyBindings[target + 20] = s_KeyBindings[target];
             s_KeyBindings[target] = scancode;
-            Ordinal_132(2);
+            Winsys3d.Ordinal_132(2);
         }
     }
 
@@ -2252,7 +2225,7 @@ public static unsafe partial class Blaze
             byte any = 0;
             for (int i = 0; i < 0x55; i++)
                 any |= (byte)(s_KeyboardState_00604b50[s_KeyScancodes_00562e18[i]] & 0x80);
-            Ordinal_132(0);
+            Winsys3d.Ordinal_132(0);
             if (any == 0) return;
         }
     }
@@ -2523,8 +2496,8 @@ public static unsafe partial class Blaze
     /// </summary>
     private static int CrtRand()
     {
-        s_RandSeed_0056e9c0 = s_RandSeed_0056e9c0 * 0x343fd + 0x269ec3;
-        return (int)((s_RandSeed_0056e9c0 >> 0x10) & 0x7fff);
+        Mem.s_RandSeed_0056e9c0 = Mem.s_RandSeed_0056e9c0 * 0x343fd + 0x269ec3;
+        return (int)((Mem.s_RandSeed_0056e9c0 >> 0x10) & 0x7fff);
     }
 
     /// <summary>
@@ -2534,11 +2507,11 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void FlushDeferredImageUploads()
     {
-        for (uint* node = (uint*)(nuint)s_Unknown_005e8310;
+        for (uint* node = (uint*)(nuint)Mem.s_Unknown_005e8310;
              node != null;
              node = (uint*)(nuint)node[0])
         {
-            Ordinal_674(node + 2, (void*)(nuint)node[1]);
+            Winsys3d.Ordinal_674(node + 2, (void*)(nuint)node[1]);
         }
     }
 }

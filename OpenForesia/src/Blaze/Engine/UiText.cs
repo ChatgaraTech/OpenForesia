@@ -10,11 +10,41 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// Blaze porte les aides que cette classe appelle encore : GetMainMemPtr.
+using static OpenForesia.Blaze.Blaze;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+/// <summary>
+/// Le moteur de texte de l'interface (Ghidra: FUN_005443a0 et son sous-arbre).
+///
+/// <para>
+/// <b>Premiere vraie classe d'instance de la transcription</b>, convertie le 2026-08-19. Sa
+/// signature declare ce qu'elle touche : <c>GameMemory</c>, et rien d'autre. Avant, elle lisait
+/// huit globales <c>.data</c> appartenant a cinq autres fichiers, sans que rien ne le dise.
+/// </para>
+/// <para>
+/// Instanciee UNE FOIS, par <c>Subsystems.cs</c>. Il n'y a qu'un moteur de texte dans le jeu :
+/// une classe d'instance modelise sa dependance, pas une multiplicite qui n'existe pas.
+/// </para>
+/// </summary>
+internal sealed unsafe class UiText
 {
-    // =====================================================================
+    private readonly GameMemory mem;
+
+    /// <summary>
+    /// Les trois tables qui se construisent par appel sont montees ici, et non en initialiseur de
+    /// champ : un initialiseur ne peut pas lire un membre d'instance. En faire des proprietes
+    /// <c>=&gt;</c> les reconstruirait a chaque acces - un changement de comportement, pas de forme.
+    /// </summary>
+    internal UiText(GameMemory memory)
+    {
+        mem = memory;
+        s_GlyphWidths_0056e7b0 = (byte[])s_GlyphWidthsProportional.Clone();
+        s_ScanHandlers   = BuildTextTable(false);
+        s_RenderHandlers = BuildTextTable(true);
+    }
+   // =====================================================================
     // The UI text engine (Ghidra: FUN_005443a0 and its subtree)
     //
     // Shared by the whole game, not just the menu: FUN_005443a0 has 49 call sites. It runs one
@@ -52,7 +82,7 @@ public static unsafe partial class Blaze
 
     // Ghidra: &DAT_005e0300 â€” the 4bpp glyph staging arena, addressed as (bank + line) * 0x800.
     // The next named global is DAT_005e8300, which puts its size at 0x8000 â€” sixteen banks.
-    private static readonly byte* s_GlyphStaging_005e0300 = (byte*)NativeMemory.AllocZeroed(0x8000);
+    private readonly byte* s_GlyphStaging_005e0300 = (byte*)NativeMemory.AllocZeroed(0x8000);
 
     /// <summary>
     /// The 4bpp glyph staging bank for one line, bounds-checked. The buffer holds 16 banks of
@@ -60,7 +90,7 @@ public static unsafe partial class Blaze
     /// so an index past it is a defect in this reconstruction rather than original behaviour â€” and
     /// has to say so rather than quietly scribble over another allocation.
     /// </summary>
-    private static byte* StagingBank(uint bank, uint line)
+    private byte* StagingBank(uint bank, uint line)
     {
         uint index = bank + line;
         if (index >= 0x10)
@@ -77,7 +107,7 @@ public static unsafe partial class Blaze
     /// One tpage/clut slot of the table at DAT_005e8f00, bounds-checked. A descriptor carries its
     /// slot as a full ushort, so a wrong or unpopulated descriptor can index far past the table.
     /// </summary>
-    private static uint* DecodeSlot(uint index)
+    internal uint* DecodeSlot(uint index)
     {
         if (index >= 0x400)
         {
@@ -85,22 +115,22 @@ public static unsafe partial class Blaze
                 $"tpage/clut slot {index} is past the 1024-entry table at DAT_005e8f00 â€” the " +
                 "descriptor asking for it is not the one this table was filled for.");
         }
-        return (uint*)(s_EntityDecodeTable_005e8f00 + index * 4);
+        return (uint*)(mem.s_EntityDecodeTable_005e8f00 + index * 4);
     }
 
-    private static byte* s_StagingWrite_005e8304;   // Ghidra: DAT_005e8304 â€” staging write pointer
-    private static int s_TextState_005e8308;        // Ghidra: DAT_005e8308 â€” 0 / 1 / 2 / -1, see below
-    private static byte* s_TrimAnchor_005e830c;     // Ghidra: DAT_005e830c â€” leading-space trim anchor
-    private static uint* s_OtCursor_005e8314;       // Ghidra: DAT_005e8314 â€” OT cursor in the descriptor
-    private static int s_LineIndex_005e8318;        // Ghidra: DAT_005e8318 â€” lines emitted this page
-    private static uint* s_UploadCursor_005e831c;   // Ghidra: DAT_005e831c â€” the node cursor, in and out
-    private static uint s_PenX_005e8320;            // Ghidra: DAT_005e8320 â€” pen X, in 4bpp columns
-    private static uint* s_SpriteCursor_005e8324;   // Ghidra: DAT_005e8324 â€” sprite cursor in the descriptor
-    private static uint s_BreakPen_005e8328;        // Ghidra: DAT_005e8328 â€” pen saved at the last break
-    private static uint s_BreakColumn_005e8300;     // Ghidra: _DAT_005e8300 â€” column saved at the last break
-    private static byte* s_BreakStaging_005e02fc;   // Ghidra: DAT_005e02fc â€” staging ptr at the last break
-    private static int s_GlyphMode_005dffd0;        // Ghidra: DAT_005dffd0 â€” 0 none / 1 latin / 2 DBCS
-    private static int s_Unknown_005dffe8;          // Ghidra: DAT_005dffe8
+    private byte* s_StagingWrite_005e8304;   // Ghidra: DAT_005e8304 â€” staging write pointer
+    private int s_TextState_005e8308;        // Ghidra: DAT_005e8308 â€” 0 / 1 / 2 / -1, see below
+    private byte* s_TrimAnchor_005e830c;     // Ghidra: DAT_005e830c â€” leading-space trim anchor
+    private uint* s_OtCursor_005e8314;       // Ghidra: DAT_005e8314 â€” OT cursor in the descriptor
+    private int s_LineIndex_005e8318;        // Ghidra: DAT_005e8318 â€” lines emitted this page
+    private uint* s_UploadCursor_005e831c;   // Ghidra: DAT_005e831c â€” the node cursor, in and out
+    private uint s_PenX_005e8320;            // Ghidra: DAT_005e8320 â€” pen X, in 4bpp columns
+    private uint* s_SpriteCursor_005e8324;   // Ghidra: DAT_005e8324 â€” sprite cursor in the descriptor
+    private uint s_BreakPen_005e8328;        // Ghidra: DAT_005e8328 â€” pen saved at the last break
+    private uint s_BreakColumn_005e8300;     // Ghidra: _DAT_005e8300 â€” column saved at the last break
+    private byte* s_BreakStaging_005e02fc;   // Ghidra: DAT_005e02fc â€” staging ptr at the last break
+    private int s_GlyphMode_005dffd0;        // Ghidra: DAT_005dffd0 â€” 0 none / 1 latin / 2 DBCS
+    private int s_Unknown_005dffe8;          // Ghidra: DAT_005dffe8
 
     /// <summary>
     /// Ghidra: &amp;DAT_0056e7b0 â€” proportional glyph widths, one byte per folded slot.
@@ -129,7 +159,7 @@ public static unsafe partial class Blaze
     /// not a constant.
     /// </para>
     /// </summary>
-    private static readonly byte[] s_GlyphWidthsProportional =
+    internal readonly byte[] s_GlyphWidthsProportional =
     [
         0x02,0x04,0x08,0x06,0x0a,0x08,0x02,0x04,0x04,0x06,0x06,0x02,0x04,0x02,0x04,0x06,
         0x04,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x02,0x02,0x04,0x06,0x04,0x06,0x06,
@@ -148,23 +178,23 @@ public static unsafe partial class Blaze
     // La table réellement consultée. Déclarée **après** la table proportionnelle : les
     // initialiseurs de champs statiques s'exécutent dans l'ordre du texte, et l'inverse donnerait
     // un Clone() sur null au constructeur de type.
-    private static readonly byte[] s_GlyphWidths_0056e7b0 = (byte[])s_GlyphWidthsProportional.Clone();
+    internal readonly byte[] s_GlyphWidths_0056e7b0;
 
     /// <summary>Ghidra: FUN_00507870 @ 0x00507870 — installe la table fixe, toutes les entrées à 8.</summary>
-    private static void UseFixedGlyphWidths()
+    internal void UseFixedGlyphWidths()
     {
         for (int i = 0; i < s_GlyphWidths_0056e7b0.Length; i++) s_GlyphWidths_0056e7b0[i] = 8;
     }
 
     /// <summary>Ghidra: FUN_00507890 @ 0x00507890 — restaure la table proportionnelle.</summary>
-    private static void UseProportionalGlyphWidths()
+    internal void UseProportionalGlyphWidths()
         => s_GlyphWidthsProportional.CopyTo(s_GlyphWidths_0056e7b0, 0);
 
     /// <summary>
     /// Ghidra: FUN_0051c0e0 @ 0x0051c0e0 â€” advances a cheat-code matcher over every character the
     /// text engine draws, against the string at <c>DAT_00564a40</c>.
     /// </summary>
-    private static void CheatCodeProbe(byte ch)
+    internal void CheatCodeProbe(byte ch)
     {
         // 2026-08-17 : les deux inconnues de cette fonction sont résolues â€” la séquence est
         // "Gurkha" (voir s_CheatSequence_00564a40) et le verrou est
@@ -177,7 +207,7 @@ public static unsafe partial class Blaze
         // filage sur le caractère qui déclenche la remise à zéro.
         if (s_CheatSequence_00564a40[s_CheatIndex_005de164] == 0)
         {
-            s_DebugModeLatch_005633a8 = 0;
+            mem.s_DebugModeLatch_005633a8 = 0;
             s_CheatIndex_005de164 = 0;
         }
 
@@ -197,14 +227,14 @@ public static unsafe partial class Blaze
     // CheatCodeProbe est appelée sur chaque caractère que DrawTextRun **dessine**, donc le code
     // s'arme quand le jeu affiche ce texte quelque part â€” typiquement un personnage nommé
     // « Gurkha » sur l'écran de saisie du nom.
-    private static readonly byte[] s_CheatSequence_00564a40 = "Gurkha\0"u8.ToArray();
-    private static int s_CheatIndex_005de164;   // Ghidra: DAT_005de164
+    private readonly byte[] s_CheatSequence_00564a40 = "Gurkha\0"u8.ToArray();
+    private int s_CheatIndex_005de164;   // Ghidra: DAT_005de164
 
     /// <summary>
     /// Ghidra: FUN_00543980 @ 0x00543980 â€” enqueues the finished line's staging bank as a VRAM
     /// upload node, onto the same list <see cref="FlushDeferredImageUploads"/> drains.
     /// </summary>
-    private static void EnqueueGlyphUpload(byte* descriptor)
+    private void EnqueueGlyphUpload(byte* descriptor)
     {
         int clut = (int)*DecodeSlot(*(ushort*)descriptor);
         uint packed = *(uint*)(descriptor + 0x0c);
@@ -217,8 +247,8 @@ public static unsafe partial class Blaze
                          ((((packed >> 4) & 0xf0) + (uint)((((clut + 1) & 0x10) + 2) * 0x10)) * 0x10000
                           | (uint)((clut + 1) & 0xf) << 6));
 
-        node[0] = (uint)(nuint)s_Unknown_005e8310;
-        s_Unknown_005e8310 = (int)(nuint)node;
+        node[0] = (uint)(nuint)mem.s_Unknown_005e8310;
+        mem.s_Unknown_005e8310 = (int)(nuint)node;
         s_UploadCursor_005e831c = node + 4;
     }
 
@@ -226,7 +256,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00543a10 @ 0x00543a10 â€” links the finished line's textured sprite into the
     /// descriptor's own 16-entry ordering table.
     /// </summary>
-    private static void EmitTextSprite(byte* descriptor)
+    internal void EmitTextSprite(byte* descriptor)
     {
         ushort bank = *(ushort*)(descriptor + 0x14);
         uint packed = *(uint*)(descriptor + 0x0c);
@@ -251,7 +281,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00544cb0 @ 0x00544cb0 â€” closes the current line: trims the leading run the
     /// engine had provisionally drawn, then grows the descriptor's height budget by one line.
     /// </summary>
-    private static void FlushLine(byte* descriptor)
+    private void FlushLine(byte* descriptor)
     {
         if (s_TextState_005e8308 == 2)
         {
@@ -261,7 +291,7 @@ public static unsafe partial class Blaze
                 uint span = (uint)((int)((trim & 0xffff) + 1) >> 1);
                 for (int row = 0xf; row != 0; row--)
                 {
-                    CrtMemMove(s_TrimAnchor_005e830c + span, s_TrimAnchor_005e830c,
+                    Win32.CrtMemMove(s_TrimAnchor_005e830c + span, s_TrimAnchor_005e830c,
                                (nuint)((s_PenX_005e8320 + 1) >> 1));
 
                     byte* fill = s_TrimAnchor_005e830c;
@@ -288,9 +318,9 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00544c50 @ 0x00544c50 â€” pass-2 handler for control code <c>0x0c</c>: begins a
     /// page. Clears the descriptor's own 16-entry ordering table and re-bases every cursor.
     /// </summary>
-    private static byte* Handler_00544c50(byte* text, byte* descriptor)
+    private byte* Handler_00544c50(byte* text, byte* descriptor)
     {
-        Ordinal_688((uint*)(descriptor + 0x68), 0x10);   // ClearOTagR on the descriptor's own OT
+        Winsys3d.Ordinal_688((uint*)(descriptor + 0x68), 0x10);   // ClearOTagR on the descriptor's own OT
         *(ushort*)(descriptor + 0x10) = 0;
         *(uint*)(descriptor + 0x0c) = 0xf000000;
         s_OtCursor_005e8314 = (uint*)(descriptor + 0xa4);
@@ -305,9 +335,9 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00544d90 @ 0x00544d90 â€” pass-2 handler for control code <c>0x0d</c>: ends the
     /// line, uploads it, emits its sprite, and re-points every cursor at the next line's slots.
     /// </summary>
-    private static byte* Handler_00544d90(byte* text, byte* descriptor) { NewLine(0, descriptor); return text; }
+    private byte* Handler_00544d90(byte* text, byte* descriptor) { NewLine(0, descriptor); return text; }
 
-    private static void NewLine(int reset, byte* descriptor)
+    private void NewLine(int reset, byte* descriptor)
     {
         FlushLine(descriptor);
         if (s_PenX_005e8320 != 0) EnqueueGlyphUpload(descriptor);
@@ -344,7 +374,7 @@ public static unsafe partial class Blaze
     /// Raising flag bit 2 is what makes every later <see cref="RunTextEngine"/> call return at
     /// once, so a finished page costs nothing on subsequent frames.
     /// </summary>
-    private static byte* Handler_00544b10(byte* text, byte* descriptor)
+    internal byte* Handler_00544b10(byte* text, byte* descriptor)
     {
         byte flags = descriptor[0x8c7];
         descriptor[0x3b] = 1;
@@ -379,7 +409,7 @@ public static unsafe partial class Blaze
     /// page/blend byte for the sprite about to be flushed â€” consistent with this code appearing in
     /// the "Bonus spécial !" text the user's behavioural reference notes as rendered in gold.</para>
     /// </summary>
-    private static byte* Handler_00544fb0(byte* text, byte* descriptor)
+    private byte* Handler_00544fb0(byte* text, byte* descriptor)
     {
         if (descriptor[0x0e] != 0)
         {
@@ -427,7 +457,7 @@ public static unsafe partial class Blaze
     /// prompt awaiting a choice, which is what the character-select screen reaches on validating a
     /// character.</para>
     /// </summary>
-    private static byte* Handler_00544e50(byte* text, byte* descriptor)
+    private byte* Handler_00544e50(byte* text, byte* descriptor)
     {
         byte flags = descriptor[0x8c7];
         descriptor[0x33] = 1;               // le bit 0x1000000 du dword de curseur, à +0x30
@@ -458,7 +488,7 @@ public static unsafe partial class Blaze
     /// little-endian index into its <c>+0x70</c> label table, to which the substituted value is
     /// added — so one control code selects one of a run of consecutive strings.</para>
     /// </summary>
-    private static byte* Handler_00544e80(byte* text, byte* descriptor)
+    private byte* Handler_00544e80(byte* text, byte* descriptor)
     {
         byte value = 0;
         uint* owner = *(uint**)(descriptor + 0x8b0);
@@ -485,8 +515,8 @@ public static unsafe partial class Blaze
         // ici, pas un tableau, donc le choix est explicite plutôt qu'indexé.
         byte* root = text[0] switch
         {
-            0 => s_MainResourceBuffer_005e97c0,
-            1 => s_MainResourceDirectory_005e97c4,
+            0 => mem.s_MainResourceBuffer_005e97c0,
+            1 => mem.s_MainResourceDirectory_005e97c4,
             _ => throw new NotImplementedException(
                      $"FUN_00544e80: resource root {text[0]} — the original indexes " +
                      "&DAT_005e97c0 by four bytes, and only slots 0 and 1 are modelled."),
@@ -527,7 +557,7 @@ public static unsafe partial class Blaze
     /// later, far from the tamper site. With the real filename wired up and the CD mounted, this
     /// now returns a correct cursor and rendering proceeds past this control code.</para>
     /// </summary>
-    private static byte* Handler_00544810(byte* text, byte* descriptor)
+    internal byte* Handler_00544810(byte* text, byte* descriptor)
     {
         FlushLine(descriptor);
         if (s_PenX_005e8320 != 0) EnqueueGlyphUpload(descriptor);
@@ -535,11 +565,11 @@ public static unsafe partial class Blaze
         s_PenX_005e8320 = 0;
         descriptor[0x0c] = 0;
 
-        byte selector0 = s_PanelSelection_005e9060[text[0]];
+        byte selector0 = mem.s_PanelSelection_005e9060[text[0]];
         byte* root = selector0 switch
         {
-            0 => s_MainResourceBuffer_005e97c0,
-            1 => s_MainResourceDirectory_005e97c4,
+            0 => mem.s_MainResourceBuffer_005e97c0,
+            1 => mem.s_MainResourceDirectory_005e97c4,
             _ => throw new NotImplementedException(
                      $"FUN_00544810: resource root {selector0} â€” the original indexes " +
                      "&DAT_005e97c0 by four bytes, and only slots 0 and 1 are modelled, same as " +
@@ -547,16 +577,16 @@ public static unsafe partial class Blaze
         };
         byte* atlas = *(byte**)(root + 0x94);
 
-        byte selector1 = s_PanelSelection_005e9060[text[1]];
+        byte selector1 = mem.s_PanelSelection_005e9060[text[1]];
         byte* subTable = *(byte**)(atlas + selector1 * 4);
 
-        byte selector2 = s_PanelSelection_005e9060[text[2]];
+        byte selector2 = mem.s_PanelSelection_005e9060[text[2]];
         uint uv = *(uint*)(subTable + selector2 * 8);
         uint flags = *(uint*)(subTable + selector2 * 8 + 4);
-        if (s_DeviceCapFlag_00564a48) flags &= 0xfffffdff;
+        if (mem.s_DeviceCapFlag_00564a48) flags &= 0xfffffdff;
 
         uint rect = *(uint*)(descriptor + 0x20);
-        uint clutEntry = *(uint*)(s_EntityDecodeTable_005e8f00 + ((flags >> 0x10) & 0xff) * 4);
+        uint clutEntry = *(uint*)(mem.s_EntityDecodeTable_005e8f00 + ((flags >> 0x10) & 0xff) * 4);
 
         uint* prim = s_SpriteCursor_005e8324;
         prim[2] = 0x65ffffff;
@@ -569,7 +599,7 @@ public static unsafe partial class Blaze
         *s_OtCursor_005e8314 = (uint)(nuint)prim;
         s_SpriteCursor_005e8324 = prim + 6;
 
-        return (byte*)((s_CdCheckFileSize_0056321c + 1) * (uint)(nuint)(text + 3));
+        return (byte*)((mem.s_CdCheckFileSize_0056321c + 1) * (uint)(nuint)(text + 3));
     }
 
     /// <summary>
@@ -595,7 +625,7 @@ public static unsafe partial class Blaze
     /// descriptor's finished text into the panel's own display list â€” is left untouched, so this
     /// code only ever nudges a position something else has already turned on.</para>
     /// </summary>
-    private static byte* Handler_005449b0(byte* text, byte* descriptor)
+    private byte* Handler_005449b0(byte* text, byte* descriptor)
     {
         *(ushort*)(descriptor + 0x20) = (ushort)(text[0] | (text[1] << 8));
         return text + 2;
@@ -616,9 +646,9 @@ public static unsafe partial class Blaze
     /// are suppressed by <c>EBP</c>, which only latches once a non-zero digit has been seen **or**
     /// the last divisor is reached — so a value of zero still prints one <c>'0'</c>.</para>
     /// </summary>
-    private static byte* Handler_005449f0(byte* text, byte* descriptor)
+    internal byte* Handler_005449f0(byte* text, byte* descriptor)
     {
-        byte* source = s_PanelSelection_005e9060 + text[0];
+        byte* source = mem.s_PanelSelection_005e9060 + text[0];
 
         uint value = text[1] switch
         {
@@ -646,7 +676,7 @@ public static unsafe partial class Blaze
     }
 
     // Ghidra: &DAT_00566be8 — dix diviseurs décimaux, relevés au décalage fichier 0x1651e8.
-    private static readonly uint[] s_DecimalDivisors_00566be8 =
+    internal readonly uint[] s_DecimalDivisors_00566be8 =
     [
         1000000000, 100000000, 10000000, 1000000, 100000,
         10000, 1000, 100, 10, 1,
@@ -654,10 +684,10 @@ public static unsafe partial class Blaze
 
     // The four pass-1 stubs, decoded from the binary. They are not semantic handlers: they declare
     // how many operand bytes a control code consumes so the scan can skip without drawing.
-    private static byte* Advance0(byte* p, byte* descriptor) => p;        // 0x00543940  8B 44 24 04 C3
-    private static byte* Advance1(byte* p, byte* descriptor) => p + 1;    // 0x00543950  ... 40 C3
-    private static byte* Advance2(byte* p, byte* descriptor) => p + 2;    // 0x00543960  ... 83 C0 02 C3
-    private static byte* Advance3(byte* p, byte* descriptor) => p + 3;    // 0x00543970  ... 83 C0 03 C3
+    private byte* Advance0(byte* p, byte* descriptor) => p;        // 0x00543940  8B 44 24 04 C3
+    private byte* Advance1(byte* p, byte* descriptor) => p + 1;    // 0x00543950  ... 40 C3
+    private byte* Advance2(byte* p, byte* descriptor) => p + 2;    // 0x00543960  ... 83 C0 02 C3
+    private byte* Advance3(byte* p, byte* descriptor) => p + 3;    // 0x00543970  ... 83 C0 03 C3
 
     private delegate byte* TextControlHandler(byte* text, byte* descriptor);
 
@@ -666,7 +696,7 @@ public static unsafe partial class Blaze
     /// because that is what the original is, and because the two differ only by substitution â€”
     /// a switch would hide that <c>0x00543950</c> alone covers six codes.
     /// </summary>
-    private static TextControlHandler[] BuildTextTable(bool renderPass)
+    private TextControlHandler[] BuildTextTable(bool renderPass)
     {
         var t = new TextControlHandler[0x20];
 
@@ -717,7 +747,7 @@ public static unsafe partial class Blaze
     }
 
     // Ghidra: PTR_LAB_0056e870 and PTR_FUN_0056e728, both recovered verbatim from Legacy/Blaze.exe.
-    private static readonly uint[] s_ScanTable_0056e870 =
+    private readonly uint[] s_ScanTable_0056e870 =
     [
         0x543950, 0x543970, 0x543960, 0x543960, 0x543960, 0x543950, 0x543960, 0x544A80,
         0x543950, 0x543950, 0x543960, 0x544C10, 0x543940, 0x543940, 0x543950, 0x544E50,
@@ -725,7 +755,7 @@ public static unsafe partial class Blaze
         0x545040, 0x545070, 0x5450A0, 0x5450D0, 0x544E80, 0x544F10, 0x545100, 0x545120,
     ];
 
-    private static readonly uint[] s_RenderTable_0056e728 =
+    private readonly uint[] s_RenderTable_0056e728 =
     [
         0x544FB0, 0x544810, 0x544970, 0x544990, 0x5449B0, 0x5449D0, 0x5449F0, 0x544A80,
         0x544AB0, 0x544B10, 0x544BC0, 0x544C10, 0x544C50, 0x544D90, 0x544B50, 0x544E50,
@@ -733,19 +763,16 @@ public static unsafe partial class Blaze
         0x545040, 0x545070, 0x5450A0, 0x5450D0, 0x544E80, 0x544F10, 0x545100, 0x545120,
     ];
 
-    private static readonly TextControlHandler[] s_ScanHandlers = BuildTextTable(false);
-    private static readonly TextControlHandler[] s_RenderHandlers = BuildTextTable(true);
+    private readonly TextControlHandler[] s_ScanHandlers;
+    private readonly TextControlHandler[] s_RenderHandlers;
 
-    // winsys3d ordinal 57 (winsys3d.c FUN_00a05060) â€” maps a Shift-JIS code to a 16x16 1bpp glyph
-    // inside the KANJI resource the DLL locks at startup, or to a blank when it is out of range.
-    [DllImport("winsys3d.dll", EntryPoint = "#57")] private static extern ushort* Ordinal_57(uint sjis);
 
     // Ghidra: DAT_0056e9b4 / _b8 / _bc â€” recovered from Legacy/Blaze.exe. Full-width Shift-JIS
     // punctuation that this renderer squeezes to half width.
-    private static readonly uint[] s_HalfWidthCodes_0056e9b4 = [0x8381, 0x7981, 0x6981];
+    private readonly uint[] s_HalfWidthCodes_0056e9b4 = [0x8381, 0x7981, 0x6981];
 
     // Ghidra: &DAT_005dffd8 â€” the 15-byte row scratch the spreading pass fills.
-    private static readonly byte* s_DbcsRowScratch_005dffd8 = (byte*)NativeMemory.AllocZeroed(0x20);
+    private readonly byte* s_DbcsRowScratch_005dffd8 = (byte*)NativeMemory.AllocZeroed(0x20);
 
     /// <summary>
     /// Ghidra: FUN_00544150 @ 0x00544150 â€” the DBCS/kanji glyph renderer. Fetches a 16x16 1bpp
@@ -759,7 +786,7 @@ public static unsafe partial class Blaze
     /// pseudocode is wrong. The fifth time this project has been saved by reading the listing.
     /// </para>
     /// </summary>
-    private static void RenderDbcsGlyph(byte* descriptor, uint codepoint)
+    private void RenderDbcsGlyph(byte* descriptor, uint codepoint)
     {
         if (s_GlyphMode_005dffd0 == 1) return;
 
@@ -771,7 +798,7 @@ public static unsafe partial class Blaze
                       || swapped == s_HalfWidthCodes_0056e9b4[1]
                       || swapped == s_HalfWidthCodes_0056e9b4[0];
 
-        ushort* rows = Ordinal_57(code);
+        ushort* rows = Winsys3d.Ordinal_57(code);
 
         uint spread = 0;
         byte* scratch = s_DbcsRowScratch_005dffd8;
@@ -838,7 +865,7 @@ public static unsafe partial class Blaze
     /// </summary>
 
 
-    private static void RasterizeGlyph(byte* descriptor, uint character, int oddAlign)
+    private void RasterizeGlyph(byte* descriptor, uint character, int oddAlign)
     {
         CheatCodeProbe((byte)character);
 
@@ -946,7 +973,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>The 15-row blank fill shared by the <c>'^'</c> rule and the space path.</summary>
-    private static void FillStagingRun(short width)
+    private void FillStagingRun(short width)
     {
         byte* row = s_StagingWrite_005e8304;
         uint pen = s_PenX_005e8320;
@@ -975,7 +1002,7 @@ public static unsafe partial class Blaze
     /// The 15-row glyph blit: one 12-bit slice per row out of the font bitmap, unpacked into
     /// 4bpp cells. Row 1 is forced solid, which is what gives the glyph its baseline.
     /// </summary>
-    private static void BlitGlyphRows(byte* rows, int bitOffset, int advance)
+    private void BlitGlyphRows(byte* rows, int bitOffset, int advance)
     {
         byte* row = s_StagingWrite_005e8304;
         uint pen = s_PenX_005e8320;
@@ -1022,7 +1049,7 @@ public static unsafe partial class Blaze
     /// The word-wrap backtrack: rewinds the pen to the last break, starts a new line, and copies
     /// the partial word's staged pixels onto it â€” byte-aligned or nibble-shifted by parity.
     /// </summary>
-    private static void ReflowPartialWord(byte* descriptor)
+    private void ReflowPartialWord(byte* descriptor)
     {
         uint carried = s_PenX_005e8320 - s_BreakColumn_005e8300;
         sbyte penBefore = (sbyte)descriptor[0x0e];
@@ -1068,41 +1095,13 @@ public static unsafe partial class Blaze
         s_BreakStaging_005e02fc = null;
     }
 
-    /// <summary>
-    /// Allocates below <c>0x01000000</c>. Text descriptors are masked to 24 bits by
-    /// <see cref="RunTextEngine"/> exactly as the original does â€” where it is the identity, since
-    /// every descriptor is a <c>.data</c> global of an image based at <c>0x00400000</c>. Keeping
-    /// them low here keeps it the identity, instead of turning a faithful mask into corruption.
-    /// </summary>
-    private static byte* AllocLowZeroed(uint size)
-    {
-        // The arena needs 2.6 MB contiguous and gets first pick. Static field initialisers run
-        // before entry()'s body, so without this a 64 KB descriptor allocated at the very bottom
-        // could split the only region large enough and starve it â€” measured, not hypothetical.
-        EnsureDisplayListArena();
-
-        nuint rounded = (size + 0xFFFu) & ~0xFFFu;
-
-        // Downward from the top of the window, for the same reason: keep the low span contiguous.
-        for (uint address = (DisplayListCeiling - AllocationGranularity) & ~(AllocationGranularity - 1);
-             address >= ArenaScanFloor; address -= AllocationGranularity)
-        {
-            if (address + rounded >= DisplayListCeiling) continue;
-            byte* block = (byte*)VirtualAlloc((void*)address, rounded, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-            if (block != null) return block;
-        }
-
-        throw new InvalidOperationException(
-            $"No free block of 0x{rounded:X} bytes below 0x{DisplayListCeiling:X8}. UI text " +
-            "descriptors are masked to 24 bits by FUN_005443a0, so they cannot live higher.");
-    }
 
     /// <summary>
     /// Ghidra: FUN_005443a0 @ 0x005443a0 â€” the UI text engine. Runs the descriptor's byte stream
     /// twice: pass 1 scans and collects <c>$</c>-escapes, pass 2 emits glyphs. Returns the advanced
     /// VRAM-upload node cursor.
     /// </summary>
-    private static uint* RunTextEngine(uint* uploadCursor, byte* descriptorArg)
+    internal uint* RunTextEngine(uint* uploadCursor, byte* descriptorArg)
     {
         // Ghidra: puVar11 = (undefined4 *)(param_2 & 0xffffff). The identity in the original; a
         // reconstruction bug here rather than original behaviour if it ever bites.
@@ -1282,7 +1281,7 @@ public static unsafe partial class Blaze
                     // Half-width kana: look the two-byte code up in the table the resource
                     // directory points at, and fall back to the DBCS renderer on a miss.
                     uint code = u | ((uint)*next << 8);
-                    short* table = *(short**)(*(byte**)(s_MainResourceBuffer_005e97c0 + 0x70));
+                    short* table = *(short**)(*(byte**)(mem.s_MainResourceBuffer_005e97c0 + 0x70));
                     int index = 0;
                     while (*table != (short)code)
                     {

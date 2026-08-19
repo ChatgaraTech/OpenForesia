@@ -38,14 +38,14 @@ public static unsafe partial class Blaze
     {
         uint attributes = *(uint*)(*(int*)sprite + 4 + (short)sprite[4] * 8);
 
-        if (s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
+        if (Mem.s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
         {
             // Ghidra: DAT_00564a4c, not the ini "Small" setting â€” see DrawSpritePrimitive's note.
             if (s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfffffdff;
         }
 
-        prim[1] = (uint)*(ushort*)(s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4)
+        prim[1] = (uint)*(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4)
                   | ((attributes & 0xff) << 5) | 0xe1000000;
         prim[2] = 0;
         *prim = *otEntry | 0x2000000;
@@ -72,7 +72,7 @@ public static unsafe partial class Blaze
         uint size = (uint)(halfH * 0x10000 + halfW);
         uint attributes = source[1];
 
-        if (s_DeviceCapFlag_00564a48)
+        if (Mem.s_DeviceCapFlag_00564a48)
         {
             if ((attributes & 0x200) != 0)
             {
@@ -97,7 +97,7 @@ public static unsafe partial class Blaze
 
         uint scaledW = alpha * (uint)(short)size;
         uint scaledH = (size >> 0x10) * (colour >> 0x18);
-        uint clut = *(uint*)(s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
+        uint clut = *(uint*)(Mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
 
         *prim = *otEntry | 0x9000000;
         *otEntry = (uint)(nuint)prim;
@@ -147,7 +147,7 @@ public static unsafe partial class Blaze
         uint posX = (uint)sprite[2];
         uint attributes = source[1];
 
-        if (s_DeviceCapFlag_00564a48)
+        if (Mem.s_DeviceCapFlag_00564a48)
         {
             if ((attributes & 0x200) != 0)
             {
@@ -166,7 +166,7 @@ public static unsafe partial class Blaze
 
         // Ghidra: &DAT_005e8f02 — la moitié haute de l'entrée de la table de pages, d'où le +2 sur
         // la même table que DrawSpritePrimitive indexe à &DAT_005e8f00.
-        ushort page = *(ushort*)(s_EntityDecodeTable_005e8f00 + 2 + ((attributes >> 0x10) & 0xff) * 4);
+        ushort page = *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 2 + ((attributes >> 0x10) & 0xff) * 4);
 
         prim[1] = ((attributes >> 8) | (flags & 0xff) | 100) << 0x18 | ((uint)sprite[1] & 0x3ffffff);
         prim[3] = (uint)(((((ushort)((short)extra >> 2)) & 0xffc0) | (extra & 0xff)) + page + (attributes >> 0x18))
@@ -249,7 +249,7 @@ public static unsafe partial class Blaze
 
                 frame[4] = (frame[4] & 0xffff0000u) | (uint)(ushort)((short)(ushort)frame[4] + cellW);
 
-                CheatCodeProbe(*p);
+                Ui.CheatCodeProbe(*p);
 
                 ch = p[1];
                 if (ch == 0) break;

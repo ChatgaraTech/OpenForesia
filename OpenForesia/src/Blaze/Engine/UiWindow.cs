@@ -87,7 +87,7 @@ public static unsafe partial class Blaze
         prim[2] = ((((((tint >> 8) & 0xff) >> 3 | 0xffffc400) << 5 | (tint & 0xff) >> 3) << 5
                     | (uint)((byte)(-(sbyte)(tint >> 0x18)) >> 3)) << 5)
                   | (uint)((byte)(-(sbyte)(tint >> 0x10)) >> 3);
-        if (s_DeviceCapFlag_00564a48) clut &= 0xfdffffff;
+        if (Mem.s_DeviceCapFlag_00564a48) clut &= 0xfdffffff;
         prim[3] = clut | 0x64000000;
         prim[4] = ((position >> 0x10) + ((offset >> 8) & 0xff)) * 0x10000
                   | (position + (offset & 0xff)) & 0xffff;
@@ -102,7 +102,9 @@ public static unsafe partial class Blaze
     // Ghidra: &DAT_005e9060 â€” the per-panel selection index the scroll handling writes back.
     // 0x120 utiles, borné par s_SlotArea_005e9180. Ses 0x40 premiers octets sont aussi la banque 2
     // (voir s_StateBank2_005e9060) — c'est la même mémoire, comme dans l'original.
-    private static byte* s_PanelSelection_005e9060 => Arena(0x005e9060);
+    // Declaration deplacee dans GameMemory le 2026-08-19 : 0x005e9060 tombe dans l'etendue de
+    // GameArena, donc c'est une VUE d'arene et non un stockage propre. Les sites d'appel d'ici
+    // l'atteignent par Mem.s_PanelSelection_005e9060.
 
     /// <summary>
     /// Ghidra: FUN_00545340 @ 0x00545340 â€” draws one UI panel and returns the advanced primitive
@@ -153,8 +155,8 @@ public static unsafe partial class Blaze
         // The original reaches this only once the resource directory is loaded. Guarding is not
         // padding: a null here faults natively inside the emitters below, several frames later,
         // with nothing naming the cause.
-        byte** atlasSlot = s_MainResourceBuffer_005e97c0 != null
-            ? *(byte***)(s_MainResourceBuffer_005e97c0 + 0x94)
+        byte** atlasSlot = Mem.s_MainResourceBuffer_005e97c0 != null
+            ? *(byte***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94)
             : null;
         if (atlasSlot == null || *atlasSlot == null)
         {
@@ -164,7 +166,7 @@ public static unsafe partial class Blaze
         }
         byte* atlas = *atlasSlot;
 
-        uint tpage = *DecodeSlot(*(ushort*)descriptor);
+        uint tpage = *Ui.DecodeSlot(*(ushort*)descriptor);
         uint extent = *(uint*)(descriptor + 8);
         // Second bound, on the value rather than the index: `buttons` addresses the per-controller
         // input table (0x140 bytes, 0x10 per entry) and is used for writes, so it must land inside
@@ -232,11 +234,11 @@ public static unsafe partial class Blaze
                 descriptor[0x8c7] = (byte)(flags & 0xfb);
 
                 if ((flags & 0x40) != 0)
-                    s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] >> 1);
+                    Mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] >> 1);
                 if ((descriptor[0x8c7] & 0x80) != 0)
-                    s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] / 3);
+                    Mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] / 3);
                 if ((descriptor[0x8c7] & 0xc0) == 0)
-                    s_PanelSelection_005e9060[descriptor[0x8c5]] = descriptor[0x8c4];
+                    Mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = descriptor[0x8c4];
 
                 PlayUiSound38();
                 descriptor[0x8c7] &= 0x3f;

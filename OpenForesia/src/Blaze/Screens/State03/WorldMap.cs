@@ -148,7 +148,7 @@ public static unsafe partial class Blaze
 
     private static byte* BuildWorldMapDescriptor()
     {
-        byte* block = AllocLowZeroed(UiDescriptorStride);
+        byte* block = AllocLowZeroed(GameMemory.UiDescriptorStride);
         uint* a = (uint*)block;
         a[0] = 0x00000031; a[1] = 0xffb00030; a[2] = 0x004000d0; a[3] = 0x00000000;
         a[4] = 0x04180000; a[5] = 0x00000000; a[6] = 0x010f0808; a[7] = 0x02cf1020;
@@ -171,7 +171,7 @@ public static unsafe partial class Blaze
     private static void RunWorldMapState()
     {
         LoadWorldMapResources();     // Ghidra: FUN_005160e0
-        BindMenuLabels(s_Unknown_005606f8, 0, s_WorldMapDescriptor_005633b0, 0);
+        BindMenuLabels(Mem.s_Unknown_005606f8, 0, s_WorldMapDescriptor_005633b0, 0);
 
         while (true)
         {
@@ -180,9 +180,9 @@ public static unsafe partial class Blaze
             *(short*)(s_WorldMapCamera_00564650 + 0) = 0;
             *(short*)(s_WorldMapCamera_00564650 + 2) = 0;
             *(short*)(s_WorldMapCamera_00564650 + 4) = 0;
-            *(short*)(s_CameraVector_00604928 + 0) = 0;
-            *(short*)(s_CameraVector_00604928 + 2) = 0;
-            *(int*)(s_CameraVector_00604928 + 4) = 0;
+            *(short*)(Mem.s_CameraVector_00604928 + 0) = 0;
+            *(short*)(Mem.s_CameraVector_00604928 + 2) = 0;
+            *(int*)(Mem.s_CameraVector_00604928 + 4) = 0;
             *(short*)(s_WorldMapCamera_00564650 + 8) = 0;
             *(short*)(s_WorldMapCamera_00564650 + 0xc) = 0;
             *(short*)(s_WorldMapCamera_00564650 + 0x10) = 900;
@@ -191,8 +191,8 @@ public static unsafe partial class Blaze
             {
                 LoadWorldMapArea();               // Ghidra: FUN_00516250
                 RunWorldMapFrame();               // Ghidra: FUN_00516350
-                ReInitializeAllTextures();
-                Ordinal_674(s_WorldMapUploadRect_00566c10, GetMainMemPtr() + 0x1c2000);
+                Winsys3d.ReInitializeAllTextures();
+                Winsys3d.Ordinal_674(s_WorldMapUploadRect_00566c10, GetMainMemPtr() + 0x1c2000);
                 RunWorldMapTick();                // Ghidra: FUN_00516fc0
 
                 if (s_WorldMapStep_005645f8 == -1) break;
@@ -216,10 +216,10 @@ public static unsafe partial class Blaze
     private static void LoadWorldMapResources()
     {
         // Ghidra: FUN_0040a600() — corps vide.
-        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
-        FixupResourceHeader(s_MainResourceDirectory_005e97c4);
+        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
+        FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
 
-        byte* directoryBase = s_MainResourceDirectory_005e97c4;
+        byte* directoryBase = Mem.s_MainResourceDirectory_005e97c4;
         byte* mainMem = GetMainMemPtr();
         if (directoryBase == null || mainMem == null) return;
 
@@ -228,7 +228,7 @@ public static unsafe partial class Blaze
         if (textures != null)
         {
             byte* scratch = mainMem + 0x1b0000;
-            byte* slot = s_EntityDecodeTable_005e8f00 + 0x40;   // Ghidra: &DAT_005e8f40
+            byte* slot = Mem.s_EntityDecodeTable_005e8f00 + 0x40;   // Ghidra: &DAT_005e8f40
             for (int* entry = textures; *entry != 0; entry += 2, slot += 4, slotCount++)
             {
                 LoadResourceEntry((int*)(nint)(*entry), scratch);
@@ -290,7 +290,7 @@ public static unsafe partial class Blaze
         RunLoadingScreen();          // Ghidra: FUN_0052a440
         // Ghidra: FUN_0040a600() — corps vide.
 
-        byte* directoryBase = s_MainResourceDirectory_005e97c4;
+        byte* directoryBase = Mem.s_MainResourceDirectory_005e97c4;
         byte* mainMem = GetMainMemPtr();
         if (directoryBase == null || mainMem == null) return;
 
@@ -302,7 +302,7 @@ public static unsafe partial class Blaze
         if (textures != null)
         {
             byte* scratch = mainMem + 0x1b0000;
-            byte* slot = s_EntityDecodeTable_005e8f00 + 0x60;   // Ghidra: &DAT_005e8f60
+            byte* slot = Mem.s_EntityDecodeTable_005e8f00 + 0x60;   // Ghidra: &DAT_005e8f60
             for (int* entry = textures; *entry != 0; entry += 2, slot += 4)
             {
                 LoadResourceEntry((int*)(nint)(*entry), scratch);
@@ -338,7 +338,7 @@ public static unsafe partial class Blaze
     private static byte* s_WorldPanels_005dbc68
         => s_WorldPanelsStorage != null
             ? s_WorldPanelsStorage
-            : (s_WorldPanelsStorage = AllocLowZeroed(4 * UiDescriptorStride));
+            : (s_WorldPanelsStorage = AllocLowZeroed(4 * GameMemory.UiDescriptorStride));
 
     // Ghidra: les scalaires isoles que FUN_00516350 touche hors arene.
     private static int s_Unknown_005645fc, s_Unknown_00564540;
@@ -372,7 +372,7 @@ public static unsafe partial class Blaze
     /// donne le marqueur <c>0xa0000000</c>.</summary>
     private static void CopyEntityReferences(byte* slot, byte* source)
     {
-        byte* table = *(byte**)(Entity(0x005f7bc0)) + 0x28;
+        byte* table = *(byte**)(Mem.Entity(0x005f7bc0)) + 0x28;
         table = *(byte**)table;
         for (int i = 0; i < 4; i++)
         {
@@ -399,7 +399,7 @@ public static unsafe partial class Blaze
     private static void UploadRawAreaBlocks(int* block)
     {
         byte* dest = s_Unknown_005e97d0;
-        *(byte**)Entity(0x00600824) = dest;
+        *(byte**)Mem.Entity(0x00600824) = dest;
 
         int count = block[0];
         byte* baseAddress = (byte*)(block + 1) + count * 4;
@@ -417,21 +417,21 @@ public static unsafe partial class Blaze
             rect[1] = (short)((i >> 4) + 0x1dc);
             rect[2] = 0x10;
             rect[3] = 1;
-            Ordinal_674(rect, chunk + 0x140);
+            Winsys3d.Ordinal_674(rect, chunk + 0x140);
 
             // L'image : 24x24 en 4 bits, donc six mots de large, grille de dix colonnes.
             rect[0] = (short)((i % 10) * 6 + 0x180);
             rect[1] = (short)((i / 10) * 0x18 + 0x160);
             rect[2] = 6;
             rect[3] = 0x18;
-            Ordinal_674(rect, chunk + 0x160);
+            Winsys3d.Ordinal_674(rect, chunk + 0x160);
 
             for (int k = 0; k < 0x50; k++, chunk += 4, dest += 4) *(uint*)dest = *(uint*)chunk;
         }
 
         s_Unknown_005e97d4 = dest;
-        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xa4) = 0x216;
-        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xa6) = 0x7700;
+        *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xa4) = 0x216;
+        *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xa6) = 0x7700;
     }
 
     /// <summary>Ghidra: _DAT_005e97d4 — le curseur laisse par l'envoi des blocs bruts.</summary>
@@ -584,25 +584,25 @@ public static unsafe partial class Blaze
             && (((s_Unknown_00566c88 & 7) == 0 && (s_Unknown_005de52c & 7) < 6 && (s_Unknown_005de52c & 7) > 2)
              || ((s_Unknown_00566c88 & 7) != 0 && (s_Unknown_00566c88 & 7) < 5 && (s_Unknown_005de52c & 7) == 0)))
         {
-            while (InputDrainStub() != 0) { Ordinal_132(0); }
+            while (InputDrainStub() != 0) { Winsys3d.Ordinal_132(0); }
         }
 
-        BuildIdentityIndexList(Entity(0x005f2d00), 0x20);
-        BuildIdentityIndexList(Entity(0x005f7b60), 0x40);
-        BuildIdentityIndexList(Entity(0x005fa5a0), 0x20);
-        BuildIdentityIndexList(Entity(0x006007a0), 0x80);
-        BuildIdentityIndexList(Entity(0x005f7ce0), 0x80);
-        BuildIdentityIndexList(Arena(0x005e99e0), 0x40);
+        BuildIdentityIndexList(Mem.Entity(0x005f2d00), 0x20);
+        BuildIdentityIndexList(Mem.Entity(0x005f7b60), 0x40);
+        BuildIdentityIndexList(Mem.Entity(0x005fa5a0), 0x20);
+        BuildIdentityIndexList(Mem.Entity(0x006007a0), 0x80);
+        BuildIdentityIndexList(Mem.Entity(0x005f7ce0), 0x80);
+        BuildIdentityIndexList(Mem.Arena(0x005e99e0), 0x40);
 
-        ClearEntitySlots(Entity(0x005fa5e0), 0x80);
-        ClearEntitySlots(Entity(0x005ecaa0), 0x20);
-        ClearEntitySlots(Entity(0x005f7de0), 0x40);
-        ClearEntitySlots(Entity(0x005ff400), 0x20);
-        ClearEntitySlots(Entity(0x005edee0), 0x80);
-        ClearEntitySlots(Entity(0x005f2d40), 0x80);
+        ClearEntitySlots(Mem.Entity(0x005fa5e0), 0x80);
+        ClearEntitySlots(Mem.Entity(0x005ecaa0), 0x20);
+        ClearEntitySlots(Mem.Entity(0x005f7de0), 0x40);
+        ClearEntitySlots(Mem.Entity(0x005ff400), 0x20);
+        ClearEntitySlots(Mem.Entity(0x005edee0), 0x80);
+        ClearEntitySlots(Mem.Entity(0x005f2d40), 0x80);
 
         // Ghidra: 0x40 octets isoles, un tous les 0x28, depuis &DAT_005e9b87.
-        for (int i = 0; i < 0x40; i++) *Arena(0x005e9b87 + i * 0x28) = 0;
+        for (int i = 0; i < 0x40; i++) *Mem.Arena(0x005e9b87 + i * 0x28) = 0;
 
         if (s_Unknown_00566c88 != (byte)s_Unknown_005de52c)
         {
@@ -648,7 +648,7 @@ public static unsafe partial class Blaze
         if (textures != null)
         {
             byte* scratch = mainMem + 0x1b0000;
-            byte* slot = s_EntityDecodeTable_005e8f00;      // Ghidra: &DAT_005e8f00, l'emplacement 0
+            byte* slot = Mem.s_EntityDecodeTable_005e8f00;      // Ghidra: &DAT_005e8f00, l'emplacement 0
             for (int* entry = textures; *entry != 0; entry += 2, slot += 4, slotCount++)
             {
                 LoadResourceEntry((int*)(nint)(*entry), scratch);
@@ -671,22 +671,22 @@ public static unsafe partial class Blaze
         {
             string name = $"q:\\snd\\Q{s_Unknown_005de528 & 0xff:D2}_{subForName:D2}.snd";
             for (int i = 0; i < name.Length; i++) soundPath[i] = (byte)name[i];
-            soundPath[0] = s_CdDataRootPath[0];
+            soundPath[0] = Mem.s_CdDataRootPath[0];
         }
 
         IntPtr sound = OpenExistingFileReadOnly(soundPath);           // Ghidra: Ordinal_331
         if ((int)sound >= 0)
         {
             uint read;
-            ReadFile(sound, s_SoundBankHeader_005e8520, 0x88, &read, null);       // Ordinal_334
-            ReadFile(sound, s_LevelSoundBank, 260000, &read, null);               // Ordinal_334
-            CloseHandle(sound);                                                    // Ordinal_336
+            Win32.ReadFile(sound, s_SoundBankHeader_005e8520, 0x88, &read, null);       // Ordinal_334
+            Win32.ReadFile(sound, s_LevelSoundBank, 260000, &read, null);               // Ordinal_334
+            Win32.CloseHandle(sound);                                                    // Ordinal_336
         }
 
         // --- Les quatre listes de morceaux, empilees a la suite du curseur de l'etat ------
         byte* cursor = s_Unknown_005fa584;
-        byte** chunkTable = (byte**)Entity(0x005f7bc0);
-        ushort* spans = (ushort*)Entity(0x00600830);
+        byte** chunkTable = (byte**)Mem.Entity(0x005f7bc0);
+        ushort* spans = (ushort*)Mem.Entity(0x00600830);
         int start = 0;
 
         for (int list = 0; list < 4; list++, spans++)
@@ -724,11 +724,11 @@ public static unsafe partial class Blaze
         }
         for (int i = 0; i < lastCount; i++) *chunkTable++ = ((byte**)lastResult)[i];
         *spans = (ushort)(((s_Unknown_005e9adc_count & 0xff) << 8) | start);
-        *Entity(0x005f2cec) = (byte)((s_Unknown_005e9adc_count & 0xff) + (byte)start);
+        *Mem.Entity(0x005f2cec) = (byte)((s_Unknown_005e9adc_count & 0xff) + (byte)start);
 
-        byte* firstChunk = *(byte**)Entity(0x005f7bc0);
-        *(byte**)Entity(0x005f7cc0) = firstChunk + 0x40;
-        *(uint*)Entity(0x005fa508) = *(uint*)(firstChunk + 0x24);
+        byte* firstChunk = *(byte**)Mem.Entity(0x005f7bc0);
+        *(byte**)Mem.Entity(0x005f7cc0) = firstChunk + 0x40;
+        *(uint*)Mem.Entity(0x005fa508) = *(uint*)(firstChunk + 0x24);
 
         // --- Modeles (+0x2c), animations (+0x7c), seconds modeles (+0xac) ------------------
         int* models = *(int**)(areaDir + 0x2c);
@@ -759,11 +759,11 @@ public static unsafe partial class Blaze
         for (int* entry = extra; *entry != 0; entry += 2)
         {
             byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
-            RelocateModelBundle((int*)cursor, (byte*)entry, (byte**)Entity(0x00600780));
+            RelocateModelBundle((int*)cursor, (byte*)entry, (byte**)Mem.Entity(0x00600780));
             cursor = next;
         }
 
-        *(byte**)Entity(0x005f2ce8) = cursor;
+        *(byte**)Mem.Entity(0x005f2ce8) = cursor;
 
         int* raw = *(int**)(areaDir + 0xb0);
         for (int* entry = raw; *entry != 0; entry++)
@@ -807,7 +807,7 @@ public static unsafe partial class Blaze
     {
         byte* areaDir = s_Unknown_005e97cc;
         int member = s_Unknown_005de53c;
-        byte* slot = Arena(0x005e93c0) + member * 0x9c;
+        byte* slot = Mem.Arena(0x005e93c0) + member * 0x9c;
 
         if ((s_WorldMapStep_005645f8 & 0xff) == 2)
         {
@@ -836,7 +836,7 @@ public static unsafe partial class Blaze
                 {
                     *(int*)(slot + 0x1c) = (((CrtRand() & 0x7ff) - 0x400) + x) * 0x1000;
                     *(int*)(slot + 0x24) = (((CrtRand() & 0x7ff) - 0x400) + z) * 0x1000;
-                    placed = TryPlaceEntity(*(byte**)Entity(0x005f7bc0), (uint*)slot, 0xa800);
+                    placed = TryPlaceEntity(*(byte**)Mem.Entity(0x005f7bc0), (uint*)slot, 0xa800);
                 }
                 while (placed == 0);
 
@@ -858,8 +858,8 @@ public static unsafe partial class Blaze
             }
 
             slot[0x09] = 0;
-            *(byte*)Camera(0x005de038) = (byte)identity;
-            *(short*)Camera(0x005de048) = (short)(identity >> 0x10);
+            *(byte*)Mem.Camera(0x005de038) = (byte)identity;
+            *(short*)Mem.Camera(0x005de048) = (short)(identity >> 0x10);
 
             byte* views = *(byte**)(areaDir + 0xc0);
             if (views != null && (short)spawn[6] != -1)
@@ -869,30 +869,30 @@ public static unsafe partial class Blaze
                 uint first = (uint)view[0];
 
                 *(short*)(s_WorldMapCamera_00564650 + 4) = 0;
-                *(int*)s_CameraVector_00604928 = view[0];
-                *Camera(0x005de078) = *(short*)(s_WorldMapCamera_00564650 + 8) + *Camera(0x005de088);
-                *Camera(0x005de07c) = *Camera(0x005de08c) + *(short*)(s_WorldMapCamera_00564650 + 0xc);
-                *Camera(0x005de080) = *(short*)(s_WorldMapCamera_00564650 + 0x10) + *Camera(0x005de090);
+                *(int*)Mem.s_CameraVector_00604928 = view[0];
+                *Mem.Camera(0x005de078) = *(short*)(s_WorldMapCamera_00564650 + 8) + *Mem.Camera(0x005de088);
+                *Mem.Camera(0x005de07c) = *Mem.Camera(0x005de08c) + *(short*)(s_WorldMapCamera_00564650 + 0xc);
+                *Mem.Camera(0x005de080) = *(short*)(s_WorldMapCamera_00564650 + 0x10) + *Mem.Camera(0x005de090);
 
                 *(short*)(s_WorldMapCamera_00564650 + 0) = (short)first;
-                *(short*)View(0x006067e8) = *(short*)(s_WorldMapCamera_00564650 + 0);
+                *(short*)Mem.View(0x006067e8) = *(short*)(s_WorldMapCamera_00564650 + 0);
                 *(short*)(s_WorldMapCamera_00564650 + 2) = (short)(first >> 0x10);
-                *(short*)View(0x006067ea) = *(short*)(s_WorldMapCamera_00564650 + 2);
-                *View(0x006067c0) = *Camera(0x005de068);
-                *View(0x006067c4) = *Camera(0x005de06c);
-                *(int*)(s_CameraVector_00604928 + 4) = 0;
-                *(short*)View(0x006067ec) = 0;
-                *View(0x006067c8) = *Camera(0x005de070);
-                *(short*)(s_WorldMapCamera_00564650 + 0x10) = (short)(view[1] - *Camera(0x005de090));
+                *(short*)Mem.View(0x006067ea) = *(short*)(s_WorldMapCamera_00564650 + 2);
+                *Mem.View(0x006067c0) = *Mem.Camera(0x005de068);
+                *Mem.View(0x006067c4) = *Mem.Camera(0x005de06c);
+                *(int*)(Mem.s_CameraVector_00604928 + 4) = 0;
+                *(short*)Mem.View(0x006067ec) = 0;
+                *Mem.View(0x006067c8) = *Mem.Camera(0x005de070);
+                *(short*)(s_WorldMapCamera_00564650 + 0x10) = (short)(view[1] - *Mem.Camera(0x005de090));
                 *(uint*)(s_WorldMapCamera_00564650 + 0) = first;
-                *View(0x006067d0) = *Camera(0x005de078);
-                *View(0x006067d4) = *Camera(0x005de07c);
-                *View(0x006067d8) = *Camera(0x005de080);
+                *Mem.View(0x006067d0) = *Mem.Camera(0x005de078);
+                *Mem.View(0x006067d4) = *Mem.Camera(0x005de07c);
+                *Mem.View(0x006067d8) = *Mem.Camera(0x005de080);
             }
         }
 
         // --- L'emplacement actif est remis a neuf, puis recopie sur les quatre membres ------
-        *Camera(0x005de058) = *Camera(0x005de038);
+        *Mem.Camera(0x005de058) = *Mem.Camera(0x005de038);
         uint flags = *(uint*)slot;
 
         *(uint*)(slot + 0x74) = 0;
@@ -919,7 +919,7 @@ public static unsafe partial class Blaze
         byte* record = mainMem + 0xf0000;
         for (int i = 0; i < 4; i++, record += 0x2000)
         {
-            byte* target = Arena(0x005e93c0) + i * 0x9c;
+            byte* target = Mem.Arena(0x005e93c0) + i * 0x9c;
 
             if ((*(uint*)target & 0x40000000) != 0)
             {
@@ -933,7 +933,7 @@ public static unsafe partial class Blaze
             uint keep8 = *(uint*)(target + 8);
             uint previous = *(uint*)target;
 
-            CopyDwords((uint*)slot, (uint*)target, 0x27);   // Ghidra: FUN_005352e0
+            Mem.CopyDwords((uint*)slot, (uint*)target, 0x27);   // Ghidra: FUN_005352e0
 
             *(uint*)(target + 4) = keep4;
             *(uint*)(target + 8) = keep8;
@@ -953,89 +953,89 @@ public static unsafe partial class Blaze
         }
 
         // --- La derivation de l'etat de vue ------------------------------------------------
-        for (int i = 0; i < 4; i++) *(uint*)Entity(0x005f7d70 + i * 4) = *(uint*)(slot + 0x80 + i * 4);
+        for (int i = 0; i < 4; i++) *(uint*)Mem.Entity(0x005f7d70 + i * 4) = *(uint*)(slot + 0x80 + i * 4);
 
-        *(int*)Arena(0x005e9a30) = *(int*)(slot + 0x1c);
-        *(int*)Arena(0x005e9a34) = *(int*)(slot + 0x20);
-        *(int*)Arena(0x005e9a38) = *(int*)(slot + 0x24);
-        *(uint*)Entity(0x005ff3e4) = *(uint*)slot;
-        *(short*)Arena(0x005e9b38) = *(short*)(slot + 0x90);
-        *(uint*)Entity(0x005f7b48) = *(uint*)(slot + 0x7c);
+        *(int*)Mem.Arena(0x005e9a30) = *(int*)(slot + 0x1c);
+        *(int*)Mem.Arena(0x005e9a34) = *(int*)(slot + 0x20);
+        *(int*)Mem.Arena(0x005e9a38) = *(int*)(slot + 0x24);
+        *(uint*)Mem.Entity(0x005ff3e4) = *(uint*)slot;
+        *(short*)Mem.Arena(0x005e9b38) = *(short*)(slot + 0x90);
+        *(uint*)Mem.Entity(0x005f7b48) = *(uint*)(slot + 0x7c);
 
-        *Camera(0x005de068) = *(int*)(slot + 0x1c);
-        *Camera(0x005de06c) = *(int*)(slot + 0x20);
-        *Camera(0x005de070) = *(int*)(slot + 0x24);
-        *Camera(0x005de098) = *(int*)(slot + 0x1c);
-        *Camera(0x005de09c) = *(int*)(slot + 0x20);
-        *Camera(0x005de0a0) = *(int*)(slot + 0x24);
+        *Mem.Camera(0x005de068) = *(int*)(slot + 0x1c);
+        *Mem.Camera(0x005de06c) = *(int*)(slot + 0x20);
+        *Mem.Camera(0x005de070) = *(int*)(slot + 0x24);
+        *Mem.Camera(0x005de098) = *(int*)(slot + 0x1c);
+        *Mem.Camera(0x005de09c) = *(int*)(slot + 0x20);
+        *Mem.Camera(0x005de0a0) = *(int*)(slot + 0x24);
 
-        *(int*)Entity(0x006008d0) = -*(int*)(slot + 0x1c);
-        *(int*)Entity(0x006008d4) = *(int*)(slot + 0x20);
-        *(ushort*)View(0x006067ee) = (byte)s_WorldMapStep_005645f8;
+        *(int*)Mem.Entity(0x006008d0) = -*(int*)(slot + 0x1c);
+        *(int*)Mem.Entity(0x006008d4) = *(int*)(slot + 0x20);
+        *(ushort*)Mem.View(0x006067ee) = (byte)s_WorldMapStep_005645f8;
         s_Unknown_005de54c = 1;
-        *(int*)Entity(0x006008d8) = -*(int*)(slot + 0x24);
+        *(int*)Mem.Entity(0x006008d8) = -*(int*)(slot + 0x24);
 
-        *(byte**)Arena(0x005e9ae0) = (byte*)View(0x006067e8);
-        *(byte**)Entity(0x005edebc) = (byte*)Camera(0x005de068);
-        *(byte**)Entity(0x005eca94) = (byte*)View(0x006067d0);
+        *(byte**)Mem.Arena(0x005e9ae0) = (byte*)Mem.View(0x006067e8);
+        *(byte**)Mem.Entity(0x005edebc) = (byte*)Mem.Camera(0x005de068);
+        *(byte**)Mem.Entity(0x005eca94) = (byte*)Mem.View(0x006067d0);
 
         // La fiche de la sous-zone : une entree de la table +0x74, indexee par l'identite posee
         // plus haut. Tout ce qui suit en decoule.
-        byte* sheet = *(byte**)(*(byte**)(areaDir + 0x74) + (*(byte*)Camera(0x005de038) & 0xff) * 4);
+        byte* sheet = *(byte**)(*(byte**)(areaDir + 0x74) + (*(byte*)Mem.Camera(0x005de038) & 0xff) * 4);
         s_Unknown_005f2ce0 = sheet;
 
         s_Unknown_005de534 = *sheet;
-        *(byte*)Camera(0x005de03c) = sheet[1];
+        *(byte*)Mem.Camera(0x005de03c) = sheet[1];
         s_Unknown_005645fc = sheet[2];
 
-        *Entity(0x005fa561) = sheet[10];
-        *Entity(0x005fa560) = (byte)(*(sbyte*)Entity(0x005fa561) != -1 ? 1 : 0);
-        *(ushort*)Camera(0x005de04c) = sheet[0xc] == 0xff ? (ushort)0xffff : sheet[0xc];
-        *(ushort*)Camera(0x005de050) = sheet[0xd] == 0xff ? (ushort)0xffff : sheet[0xd];
-        *Entity(0x00600841) = sheet[0xe];
-        *Entity(0x00600840) = (byte)(*(sbyte*)Entity(0x00600841) != -1 ? 1 : 0);
-        *Entity(0x00600881) = sheet[0xf];
-        *Entity(0x00600880) = (byte)(*(sbyte*)Entity(0x00600881) != -1 ? 1 : 0);
+        *Mem.Entity(0x005fa561) = sheet[10];
+        *Mem.Entity(0x005fa560) = (byte)(*(sbyte*)Mem.Entity(0x005fa561) != -1 ? 1 : 0);
+        *(ushort*)Mem.Camera(0x005de04c) = sheet[0xc] == 0xff ? (ushort)0xffff : sheet[0xc];
+        *(ushort*)Mem.Camera(0x005de050) = sheet[0xd] == 0xff ? (ushort)0xffff : sheet[0xd];
+        *Mem.Entity(0x00600841) = sheet[0xe];
+        *Mem.Entity(0x00600840) = (byte)(*(sbyte*)Mem.Entity(0x00600841) != -1 ? 1 : 0);
+        *Mem.Entity(0x00600881) = sheet[0xf];
+        *Mem.Entity(0x00600880) = (byte)(*(sbyte*)Mem.Entity(0x00600881) != -1 ? 1 : 0);
 
-        *(byte**)Arena(0x005e9b34) = *(byte**)(areaDir + 0xa0) + sheet[0xb] * 4;
+        *(byte**)Mem.Arena(0x005e9b34) = *(byte**)(areaDir + 0xa0) + sheet[0xb] * 4;
         byte* terrain = *(byte**)(areaDir + 0x44) + sheet[5];
-        *(byte**)Entity(0x005eca80) = terrain;
+        *(byte**)Mem.Entity(0x005eca80) = terrain;
 
         if ((*terrain & 0x80) == 0)
         {
-            *(uint*)Arena(0x005e9898) &= 0xffffff00;
-            *(uint*)Arena(0x005e9908) &= 0xffffff00;
+            *(uint*)Mem.Arena(0x005e9898) &= 0xffffff00;
+            *(uint*)Mem.Arena(0x005e9908) &= 0xffffff00;
         }
         else
         {
             uint tint = (uint)((*(int*)(*(byte**)(areaDir + 0x78) + sheet[7] * 4) << 8) | 1);
-            *(uint*)Arena(0x005e9898) = tint;
-            *(uint*)Arena(0x005e9908) = tint;
+            *(uint*)Mem.Arena(0x005e9898) = tint;
+            *(uint*)Mem.Arena(0x005e9908) = tint;
         }
 
         byte* camera = *(byte**)(areaDir + 0x5c) + sheet[1] * 0x10;
-        *(byte**)Arena(0x005e9af0) = camera;
-        *(int*)Arena(0x005e9028) = *(int*)(camera + 4);
-        *(uint*)Arena(0x005e9164) = *(uint*)(camera + 0xc) >> 0x10;
-        *(uint*)Arena(0x005e902c) = *(uint*)(camera + 8) & 0xffff;
-        *(uint*)Arena(0x005e9160) = *(uint*)(camera + 8) >> 0x10 | *(uint*)(camera + 0xc) << 0x10;
+        *(byte**)Mem.Arena(0x005e9af0) = camera;
+        *(int*)Mem.Arena(0x005e9028) = *(int*)(camera + 4);
+        *(uint*)Mem.Arena(0x005e9164) = *(uint*)(camera + 0xc) >> 0x10;
+        *(uint*)Mem.Arena(0x005e902c) = *(uint*)(camera + 8) & 0xffff;
+        *(uint*)Mem.Arena(0x005e9160) = *(uint*)(camera + 8) >> 0x10 | *(uint*)(camera + 0xc) << 0x10;
 
-        *(uint*)Arena(0x005e9308) = 0;
-        *(uint*)Arena(0x005e930c) = 0;
-        *(uint*)Arena(0x005e93a0) = 0;
-        *(uint*)Arena(0x005e93a4) = 0;
+        *(uint*)Mem.Arena(0x005e9308) = 0;
+        *(uint*)Mem.Arena(0x005e930c) = 0;
+        *(uint*)Mem.Arena(0x005e93a0) = 0;
+        *(uint*)Mem.Arena(0x005e93a4) = 0;
 
         byte* palette = *(byte**)(areaDir + 0x60) + sheet[2] * 4;
-        *(byte**)Entity(0x005eca98) = palette;
-        *(uint*)Arena(0x005e9b3c) = *(uint*)palette;
-        *(int*)Arena(0x005e9b40) = *(int*)(areaDir + 100);
-        *(uint*)Arena(0x005e92b8) = *(uint*)Arena(0x005e9160);
-        *(uint*)Arena(0x005e92bc) = *(uint*)Arena(0x005e9164);
-        *(int*)Arena(0x005e9310) = *(int*)Arena(0x005e9028);
-        *(uint*)Arena(0x005e9314) = *(uint*)Arena(0x005e902c);
+        *(byte**)Mem.Entity(0x005eca98) = palette;
+        *(uint*)Mem.Arena(0x005e9b3c) = *(uint*)palette;
+        *(int*)Mem.Arena(0x005e9b40) = *(int*)(areaDir + 100);
+        *(uint*)Mem.Arena(0x005e92b8) = *(uint*)Mem.Arena(0x005e9160);
+        *(uint*)Mem.Arena(0x005e92bc) = *(uint*)Mem.Arena(0x005e9164);
+        *(int*)Mem.Arena(0x005e9310) = *(int*)Mem.Arena(0x005e9028);
+        *(uint*)Mem.Arena(0x005e9314) = *(uint*)Mem.Arena(0x005e902c);
 
         int roll = CrtRand();                       // Ghidra: FUN_00547140
-        *(uint*)Arena(0x005e9ae8) = 0;
+        *(uint*)Mem.Arena(0x005e9ae8) = 0;
         s_Unknown_00564540 = (roll % 6 + 6) * 0x14;
 
         ApplyAreaPalette(sheet[6]);                 // Ghidra: FUN_005350b0
@@ -1044,17 +1044,17 @@ public static unsafe partial class Blaze
         *(ushort*)(s_ViewRect_00566c70 + 8) = (ushort)(sheet[4] << 6);
         *(ushort*)(s_ViewRect_00566c70 + 0xa) = (ushort)(sheet[4] << 6);
 
-        Ordinal_770(s_ViewRect_00566c70);
-        Ordinal_769(1);
-        Ordinal_768(1);
-        Ordinal_767(0, 0xffffff);
-        Ordinal_766(s_ViewRect_00566c70);
-        Ordinal_765(1, 0xffffff);
+        Winsys3d.Ordinal_770(s_ViewRect_00566c70);
+        Winsys3d.Ordinal_769(1);
+        Winsys3d.Ordinal_768(1);
+        Winsys3d.Ordinal_767(0, 0xffffff);
+        Winsys3d.Ordinal_766(s_ViewRect_00566c70);
+        Winsys3d.Ordinal_765(1, 0xffffff);
 
         // Les quatre descripteurs d'interface de la carte, montes a l'identique.
         for (int i = 0; i < 4; i++)
         {
-            byte* panel = s_WorldPanels_005dbc68 + i * UiDescriptorStride;
+            byte* panel = s_WorldPanels_005dbc68 + i * GameMemory.UiDescriptorStride;
             *(uint*)(panel + 0x00) = 0x31;
             *(short*)(panel + 0x0a) = 0x54;
             *(short*)(panel + 0x0c) = 0x1c;
@@ -1111,14 +1111,14 @@ public static unsafe partial class Blaze
         s_Unknown_005de7fc = 0;
         s_Unknown_0056c778 = -1;
         s_Unknown_005de800 = 0;
-        s_Unknown_0056be1c = 0;
-        s_Unknown_0056be1f = 0;
-        s_Unknown_0056be1d = 0;
-        s_Unknown_0056b593 = 0;
-        s_Unknown_0056c6e4 = 0;
-        s_Unknown_0056c6e7 = 0;
-        s_Unknown_0056c6e5 = 0;
-        s_Unknown_0056be5b = 0;
+        Mem.s_Unknown_0056be1c = 0;
+        Mem.s_Unknown_0056be1f = 0;
+        Mem.s_Unknown_0056be1d = 0;
+        Mem.s_Unknown_0056b593 = 0;
+        Mem.s_Unknown_0056c6e4 = 0;
+        Mem.s_Unknown_0056c6e7 = 0;
+        Mem.s_Unknown_0056c6e5 = 0;
+        Mem.s_Unknown_0056be5b = 0;
 
         ReloadGameplayResources();     // Ghidra: FUN_00504ca0
         SetupMenuScreen();             // Ghidra: FUN_00529a80
@@ -1162,7 +1162,7 @@ public static unsafe partial class Blaze
         bool forceDebugParty =
             Environment.GetEnvironmentVariable("OPENFORESIA_FORCE_DEBUG_PARTY") == "1";
 
-        if (forceDebugParty || (s_DebugModeLatch_005633a8 == 0 && selectHeld))
+        if (forceDebugParty || (Mem.s_DebugModeLatch_005633a8 == 0 && selectHeld))
         {
             RunDebugPartySelect();     // Ghidra: FUN_00536270
             return;

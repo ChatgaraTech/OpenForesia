@@ -47,7 +47,7 @@ public static unsafe partial class Blaze
     {
         byte* path = (byte*)Malloc(64);
         int i = 0;
-        for (byte* p = s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = Mem.s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = fileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
         return path;
@@ -70,7 +70,7 @@ public static unsafe partial class Blaze
         int i = 0;
         for (byte* p = absoluteTemplate; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
-        if (i > 0) path[0] = s_CdDataRootPath[0]; // the detected drive letter
+        if (i > 0) path[0] = Mem.s_CdDataRootPath[0]; // the detected drive letter
         return path;
     }
 
@@ -276,19 +276,19 @@ public static unsafe partial class Blaze
             $"{name}, entree {slot} = 0x{target:X6} : gestionnaire d'entite non transcrit");
     }
 
-    private static void Init_004502d0() => *EntityState(0x00571540) = 0;
-    private static void Init_00467c00() => *EntityState(0x005717c8) = 0;
-    private static void Init_00468570() { *EntityState(0x00571828) = 0; *EntityState(0x0057182c) = 0; }
-    private static void Init_0046a770() { *EntityState(0x00571888) = 0; *EntityState(0x0057188c) = 0; }
-    private static void Init_0046c530() { *EntityState(0x005718b8) = 0; *EntityState(0x005718bc) = 0; }
-    private static void Init_0046e2b0() { *EntityState(0x00571918) = 0; *EntityState(0x0057191c) = 0; }
-    private static void Init_00470250() { *EntityState(0x00571978) = 0; *EntityState(0x0057197c) = 0; }
+    private static void Init_004502d0() => *Mem.EntityState(0x00571540) = 0;
+    private static void Init_00467c00() => *Mem.EntityState(0x005717c8) = 0;
+    private static void Init_00468570() { *Mem.EntityState(0x00571828) = 0; *Mem.EntityState(0x0057182c) = 0; }
+    private static void Init_0046a770() { *Mem.EntityState(0x00571888) = 0; *Mem.EntityState(0x0057188c) = 0; }
+    private static void Init_0046c530() { *Mem.EntityState(0x005718b8) = 0; *Mem.EntityState(0x005718bc) = 0; }
+    private static void Init_0046e2b0() { *Mem.EntityState(0x00571918) = 0; *Mem.EntityState(0x0057191c) = 0; }
+    private static void Init_00470250() { *Mem.EntityState(0x00571978) = 0; *Mem.EntityState(0x0057197c) = 0; }
 
     private static void Init_004610a0()
     {
-        for (int i = 0; i < 8; i++) *EntityParam(0x005517e8 + i * 4) = unchecked((int)0xfffffaec);
-        for (int i = 0; i < 8; i++) *EntityParam(0x005517c8 + i * 4) = 0x25d;
-        for (int i = 0; i < 8; i++) *EntityParam(0x005517a8 + i * 4) = 100;
+        for (int i = 0; i < 8; i++) *Mem.EntityParam(0x005517e8 + i * 4) = unchecked((int)0xfffffaec);
+        for (int i = 0; i < 8; i++) *Mem.EntityParam(0x005517c8 + i * 4) = 0x25d;
+        for (int i = 0; i < 8; i++) *Mem.EntityParam(0x005517a8 + i * 4) = 100;
     }
 
     /// <summary>Ghidra: FUN_0045a220, FUN_0045c1f0 et FUN_0045e200 — trois blocs de parametres de
@@ -296,79 +296,79 @@ public static unsafe partial class Blaze
     /// troisieme reordonne ses champs et n'est donc pas un simple decalage : transcrit separement.</summary>
     private static void Init_0045a220()
     {
-        *EntityParam(0x00551660) = 0x9c4;
-        *EntityParam(0x00551664) = 0x9c4;
-        *EntityState(0x00571690) = 0;
-        *EntityParam(0x00551668) = unchecked((int)0xfffff704);
-        *EntityParam(0x0055166c) = unchecked((int)0xfffff704);
-        for (int va = 0x00571694; va <= 0x005716b0; va += 4) *EntityState(va) = 0;
-        for (int va = 0x00551680; va <= 0x00551690; va += 4) *EntityParam(va) = 400;
-        *EntityParam(0x00551694) = 0;
-        *EntityParam(0x00551698) = 0;
-        *EntityParam(0x0055169c) = 400;
-        *EntityParam(0x005516a0) = unchecked((int)0xfffffed4);
-        *EntityParam(0x005516a4) = 100;
-        *EntityParam(0x005516a8) = 100;
-        *EntityParam(0x005516ac) = unchecked((int)0xfffffed4);
-        *EntityParam(0x00551670) = unchecked((int)0xfffff3e4);
-        *EntityParam(0x00551674) = unchecked((int)0xfffffa24);
-        *EntityParam(0x00551678) = 0x6a4;
-        *EntityParam(0x0055167c) = 0xce4;
-        *EntityParam(0x005516b0) = 0xb54;
-        *EntityParam(0x005516b4) = unchecked((int)0xfffff63c);
-        *EntityParam(0x005516b8) = unchecked((int)0xfffff63c);
-        *EntityParam(0x005516bc) = 0xb54;
+        *Mem.EntityParam(0x00551660) = 0x9c4;
+        *Mem.EntityParam(0x00551664) = 0x9c4;
+        *Mem.EntityState(0x00571690) = 0;
+        *Mem.EntityParam(0x00551668) = unchecked((int)0xfffff704);
+        *Mem.EntityParam(0x0055166c) = unchecked((int)0xfffff704);
+        for (int va = 0x00571694; va <= 0x005716b0; va += 4) *Mem.EntityState(va) = 0;
+        for (int va = 0x00551680; va <= 0x00551690; va += 4) *Mem.EntityParam(va) = 400;
+        *Mem.EntityParam(0x00551694) = 0;
+        *Mem.EntityParam(0x00551698) = 0;
+        *Mem.EntityParam(0x0055169c) = 400;
+        *Mem.EntityParam(0x005516a0) = unchecked((int)0xfffffed4);
+        *Mem.EntityParam(0x005516a4) = 100;
+        *Mem.EntityParam(0x005516a8) = 100;
+        *Mem.EntityParam(0x005516ac) = unchecked((int)0xfffffed4);
+        *Mem.EntityParam(0x00551670) = unchecked((int)0xfffff3e4);
+        *Mem.EntityParam(0x00551674) = unchecked((int)0xfffffa24);
+        *Mem.EntityParam(0x00551678) = 0x6a4;
+        *Mem.EntityParam(0x0055167c) = 0xce4;
+        *Mem.EntityParam(0x005516b0) = 0xb54;
+        *Mem.EntityParam(0x005516b4) = unchecked((int)0xfffff63c);
+        *Mem.EntityParam(0x005516b8) = unchecked((int)0xfffff63c);
+        *Mem.EntityParam(0x005516bc) = 0xb54;
     }
 
     private static void Init_0045c1f0()
     {
-        *EntityParam(0x005516c0) = 0x9c4;
-        *EntityParam(0x005516c4) = 0x9c4;
-        *EntityState(0x005716e0) = 0;
-        *EntityParam(0x005516c8) = unchecked((int)0xfffff704);
-        *EntityParam(0x005516cc) = unchecked((int)0xfffff704);
-        for (int va = 0x005716e4; va <= 0x00571700; va += 4) *EntityState(va) = 0;
-        for (int va = 0x005516e0; va <= 0x005516f0; va += 4) *EntityParam(va) = 400;
-        *EntityParam(0x005516f4) = 0;
-        *EntityParam(0x005516f8) = 0;
-        *EntityParam(0x005516fc) = 400;
-        *EntityParam(0x00551700) = unchecked((int)0xfffffed4);
-        *EntityParam(0x00551704) = 100;
-        *EntityParam(0x00551708) = 100;
-        *EntityParam(0x0055170c) = unchecked((int)0xfffffed4);
-        *EntityParam(0x005516d0) = unchecked((int)0xfffff3e4);
-        *EntityParam(0x005516d4) = unchecked((int)0xfffffa24);
-        *EntityParam(0x005516d8) = 0x6a4;
-        *EntityParam(0x005516dc) = 0xce4;
-        *EntityParam(0x00551710) = 0xb54;
-        *EntityParam(0x00551714) = unchecked((int)0xfffff63c);
-        *EntityParam(0x00551718) = unchecked((int)0xfffff63c);
-        *EntityParam(0x0055171c) = 0xb54;
+        *Mem.EntityParam(0x005516c0) = 0x9c4;
+        *Mem.EntityParam(0x005516c4) = 0x9c4;
+        *Mem.EntityState(0x005716e0) = 0;
+        *Mem.EntityParam(0x005516c8) = unchecked((int)0xfffff704);
+        *Mem.EntityParam(0x005516cc) = unchecked((int)0xfffff704);
+        for (int va = 0x005716e4; va <= 0x00571700; va += 4) *Mem.EntityState(va) = 0;
+        for (int va = 0x005516e0; va <= 0x005516f0; va += 4) *Mem.EntityParam(va) = 400;
+        *Mem.EntityParam(0x005516f4) = 0;
+        *Mem.EntityParam(0x005516f8) = 0;
+        *Mem.EntityParam(0x005516fc) = 400;
+        *Mem.EntityParam(0x00551700) = unchecked((int)0xfffffed4);
+        *Mem.EntityParam(0x00551704) = 100;
+        *Mem.EntityParam(0x00551708) = 100;
+        *Mem.EntityParam(0x0055170c) = unchecked((int)0xfffffed4);
+        *Mem.EntityParam(0x005516d0) = unchecked((int)0xfffff3e4);
+        *Mem.EntityParam(0x005516d4) = unchecked((int)0xfffffa24);
+        *Mem.EntityParam(0x005516d8) = 0x6a4;
+        *Mem.EntityParam(0x005516dc) = 0xce4;
+        *Mem.EntityParam(0x00551710) = 0xb54;
+        *Mem.EntityParam(0x00551714) = unchecked((int)0xfffff63c);
+        *Mem.EntityParam(0x00551718) = unchecked((int)0xfffff63c);
+        *Mem.EntityParam(0x0055171c) = 0xb54;
     }
 
     private static void Init_0045e200()
     {
-        *EntityParam(0x00551738) = 0x9c4;
-        *EntityParam(0x0055173c) = 0x9c4;
-        for (int va = 0x00571730; va <= 0x00571750; va += 4) *EntityState(va) = 0;
-        *EntityParam(0x00551740) = unchecked((int)0xfffff704);
-        *EntityParam(0x00551744) = unchecked((int)0xfffff704);
-        *EntityParam(0x0055176c) = 0;
-        *EntityParam(0x00551770) = 0;
-        for (int va = 0x00551758; va <= 0x00551768; va += 4) *EntityParam(va) = 400;
-        *EntityParam(0x00551774) = 400;
-        *EntityParam(0x0055177c) = 100;
-        *EntityParam(0x00551780) = 100;
-        *EntityParam(0x00551748) = unchecked((int)0xfffff3e4);
-        *EntityParam(0x0055174c) = unchecked((int)0xfffffa24);
-        *EntityParam(0x00551750) = 0x6a4;
-        *EntityParam(0x00551754) = 0xce4;
-        *EntityParam(0x00551778) = unchecked((int)0xfffffed4);
-        *EntityParam(0x00551784) = unchecked((int)0xfffffed4);
-        *EntityParam(0x00551788) = 0xf3c;
-        *EntityParam(0x0055178c) = unchecked((int)0xfffff63c);
-        *EntityParam(0x00551790) = unchecked((int)0xfffff63c);
-        *EntityParam(0x00551794) = 0xb54;
+        *Mem.EntityParam(0x00551738) = 0x9c4;
+        *Mem.EntityParam(0x0055173c) = 0x9c4;
+        for (int va = 0x00571730; va <= 0x00571750; va += 4) *Mem.EntityState(va) = 0;
+        *Mem.EntityParam(0x00551740) = unchecked((int)0xfffff704);
+        *Mem.EntityParam(0x00551744) = unchecked((int)0xfffff704);
+        *Mem.EntityParam(0x0055176c) = 0;
+        *Mem.EntityParam(0x00551770) = 0;
+        for (int va = 0x00551758; va <= 0x00551768; va += 4) *Mem.EntityParam(va) = 400;
+        *Mem.EntityParam(0x00551774) = 400;
+        *Mem.EntityParam(0x0055177c) = 100;
+        *Mem.EntityParam(0x00551780) = 100;
+        *Mem.EntityParam(0x00551748) = unchecked((int)0xfffff3e4);
+        *Mem.EntityParam(0x0055174c) = unchecked((int)0xfffffa24);
+        *Mem.EntityParam(0x00551750) = 0x6a4;
+        *Mem.EntityParam(0x00551754) = 0xce4;
+        *Mem.EntityParam(0x00551778) = unchecked((int)0xfffffed4);
+        *Mem.EntityParam(0x00551784) = unchecked((int)0xfffffed4);
+        *Mem.EntityParam(0x00551788) = 0xf3c;
+        *Mem.EntityParam(0x0055178c) = unchecked((int)0xfffff63c);
+        *Mem.EntityParam(0x00551790) = unchecked((int)0xfffff63c);
+        *Mem.EntityParam(0x00551794) = 0xb54;
     }
 
     /// <summary>Ghidra: &amp;DAT_005de558 — trente-neuf dwords remis a zero a chaque chargement de
@@ -500,14 +500,14 @@ public static unsafe partial class Blaze
         IntPtr handle = OpenExistingFileReadOnly(path);
         if ((int)handle < 0) return null; // TODO(REVERSE): see summary above â€” original's real failure value unrecoverable
 
-        uint size = SetFilePointer(handle, 0, null, 2 /* FILE_END */);
-        SetFilePointer(handle, 0, null, 0 /* FILE_BEGIN */);
+        uint size = Win32.SetFilePointer(handle, 0, null, 2 /* FILE_END */);
+        Win32.SetFilePointer(handle, 0, null, 0 /* FILE_BEGIN */);
         if (dest != null)
         {
             uint bytesRead;
-            ReadFile(handle, dest, size, &bytesRead, null);
+            Win32.ReadFile(handle, dest, size, &bytesRead, null);
         }
-        CloseHandle(handle);
+        Win32.CloseHandle(handle);
 
         return (byte*)(((nint)dest + size + 5) & ~3);
     }
@@ -533,11 +533,11 @@ public static unsafe partial class Blaze
             while (true) { }
         }
 
-        SetFilePointer(handle, entryPtr[0] << 0xb, null, 0 /* FILE_BEGIN */);
+        Win32.SetFilePointer(handle, entryPtr[0] << 0xb, null, 0 /* FILE_BEGIN */);
         int size = entryPtr[1];
         uint bytesRead;
-        ReadFile(handle, dest, (uint)size, &bytesRead, null);
-        CloseHandle(handle);
+        Win32.ReadFile(handle, dest, (uint)size, &bytesRead, null);
+        Win32.CloseHandle(handle);
 
         return (byte*)(((nint)dest + size + 3) & ~3);
     }
@@ -626,7 +626,7 @@ public static unsafe partial class Blaze
     /// `SUB ESP,0x14` and hands to Ordinal_662 via `LEA ECX,[ESP+8]`.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    private struct TimImage
+    internal struct TimImage
     {
         public uint Mode;        // +0x00 â€” pixel mode; header & 7, or 2 when the TIM has no CLUT
         public short* ClutRect;  // +0x04 â€” RECT {x,y,w,h}; null when there is no CLUT
@@ -663,8 +663,8 @@ public static unsafe partial class Blaze
         // Ghidra: PUSH arg1; CALL Ordinal_677; LEA ECX,[ESP+8]; PUSH ECX; CALL Ordinal_662.
         // The 20 bytes SUB ESP,0x14 reserves are exactly this struct.
         TimImage tim;
-        OpenTim(timData);
-        ReadTim(&tim);
+        Winsys3d.OpenTim(timData);
+        Winsys3d.ReadTim(&tim);
 
         // ESI carries the CLUT's byte count from the branch below into the copy loop at the end.
         // It is only meaningful when a CLUT exists; the no-CLUT path loads arg1 into it (Ghidra:
@@ -688,7 +688,7 @@ public static unsafe partial class Blaze
             clutRect[3] = (short)(packed >> 8);                 // h = rounded / 256
             clutByteCount = packed;
 
-            Ordinal_674(clutRect, tim.ClutData);                // LoadImage(crect, caddr)
+            Winsys3d.Ordinal_674(clutRect, tim.ClutData);                // LoadImage(crect, caddr)
         }
 
         // Ghidra: MOV EAX,[ESP+0x18] â€” guarded on **paddr**, plus a skip when meta[0] == 0x1c.
@@ -703,7 +703,7 @@ public static unsafe partial class Blaze
             // which is wrong and would have corrupted the y coordinate.
             pixelRect[1] = (short)((((meta[0] & 0x10) + meta[2] * 4)) << 4);
 
-            Ordinal_674(pixelRect, tim.PixelData);              // LoadImage(prect, paddr)
+            Winsys3d.Ordinal_674(pixelRect, tim.PixelData);              // LoadImage(prect, paddr)
         }
 
         // Ghidra: 005323bf-005323f2. Packs the texture-page word out of the pixel rect and the TIM
@@ -748,7 +748,7 @@ public static unsafe partial class Blaze
     //
     // Same shape of bug as DAT_0056e61f being menuContext[0x8c7]: suspect any DAT_ that lands
     // inside a known structure's extent.
-    private static byte* s_EntityDecodeTable_005e8fc0 => s_EntityDecodeTable_005e8f00 + 0xC0;
+    private static byte* s_EntityDecodeTable_005e8fc0 => Mem.s_EntityDecodeTable_005e8f00 + 0xC0;
     // Ghidra: DAT_005e8340 (0x1e0 bytes, read from "BASE.SND" here) immediately followed by
     // DAT_005e8520 (0x88 bytes, read from the level file by FUN_00512xxx @ 0x006335x). They are
     // one contiguous array: 0x005e8520 - 0x005e8340 == 0x1e0 exactly, and PlaySoundEffect indexes
@@ -772,7 +772,7 @@ public static unsafe partial class Blaze
     // son côté. Séparés, <see cref="InitialiseEntitySlots"/> écrivait dans l'un pendant que
     // <see cref="CurrentPadState"/> lisait l'autre : l'initialisation des emplacements manette
     // n'atteignait jamais son lecteur. Fusionnés le 2026-08-17 en un alias sur l'arène.
-    private static byte* s_EntitySlotTable_005e9180 => Arena(0x005e9180);
+    private static byte* s_EntitySlotTable_005e9180 => Mem.Arena(0x005e9180);
 
     /// <summary>
     /// Ghidra: FUN_0052a030 @ 0x0052a030. Loads the "&lt;cd-drive-root&gt;SYSTEM.INI"-equivalent
@@ -784,13 +784,13 @@ public static unsafe partial class Blaze
     {
         // Ghidra: FUN_0040a600() â€” confirmed no-op.
         byte* path = BuildCdPath(s_SystemFileName);
-        s_MainResourceDirectory_005e97c4 = LoadWholeFileToBuffer(path, s_MainResourceBuffer_005e97c0);
+        Mem.s_MainResourceDirectory_005e97c4 = LoadWholeFileToBuffer(path, Mem.s_MainResourceBuffer_005e97c0);
         Free(path);
-        FixupResourceHeader(s_MainResourceBuffer_005e97c0);
+        FixupResourceHeader(Mem.s_MainResourceBuffer_005e97c0);
 
-        if (s_MainResourceBuffer_005e97c0 != null)
+        if (Mem.s_MainResourceBuffer_005e97c0 != null)
         {
-            int* directory = *(int**)(s_MainResourceBuffer_005e97c0 + 0x10);
+            int* directory = *(int**)(Mem.s_MainResourceBuffer_005e97c0 + 0x10);
             int entryPtrValue = *directory;
             if (entryPtrValue != 0)
             {
@@ -814,7 +814,7 @@ public static unsafe partial class Blaze
             }
         }
 
-        uint savedStride = s_ScreenStride_005e97e0;
+        uint savedStride = Mem.s_ScreenStride_005e97e0;
 
         // CD-root family, not data-root: the sound bank lives at E:\Snd\, beside E:\French\ rather
         // than inside it. This previously went through BuildCdPath, which prefixed the data root
@@ -826,17 +826,17 @@ public static unsafe partial class Blaze
         // handle simply fail harmlessly, matching the original's unconditional calls.
         uint sndBytesRead;
         // The first 60 directory entries, then the whole base sample bank they point into.
-        ReadFile(sndHandle, s_SoundDirectory, 0x1e0, &sndBytesRead, null);
+        Win32.ReadFile(sndHandle, s_SoundDirectory, 0x1e0, &sndBytesRead, null);
         if (s_BaseSoundBank != null)
         {
-            ReadFile(sndHandle, s_BaseSoundBank, 790000, &sndBytesRead, null);
+            Win32.ReadFile(sndHandle, s_BaseSoundBank, 790000, &sndBytesRead, null);
         }
-        CloseHandle(sndHandle);
+        Win32.CloseHandle(sndHandle);
 
         s_Unknown_005e97e4 = savedStride;
-        if (s_MainResourceBuffer_005e97c0 != null)
+        if (Mem.s_MainResourceBuffer_005e97c0 != null)
         {
-            s_Unknown_005e9810 = *(int*)(s_MainResourceBuffer_005e97c0 + 100);
+            s_Unknown_005e9810 = *(int*)(Mem.s_MainResourceBuffer_005e97c0 + 100);
         }
         s_Unknown_005e9824 = sndHandle;
 
@@ -858,9 +858,7 @@ public static unsafe partial class Blaze
         s_Unknown_005de538 = 0;
     }
 
-    // Ghidra: DAT_005e97c4 â€” the loaded resource file's own "next free address" bookkeeping value;
-    // not yet used further by any reconstructed code past LoadFirstLevelResources itself.
-    private static byte* s_MainResourceDirectory_005e97c4;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
     /// <summary>
     /// Ghidra: FUN_0052a440 @ 0x0052a440 â€” **the inter-state loading screen**, and not the
@@ -889,10 +887,10 @@ public static unsafe partial class Blaze
         // Called here and at the top of every game-loop iteration; nothing to reproduce.
 
         byte* mainMem = GetMainMemPtr();
-        if (s_MainResourceBuffer_005e97c0 == null || mainMem == null) return;
+        if (Mem.s_MainResourceBuffer_005e97c0 == null || mainMem == null) return;
 
         // Ghidra: piVar2 = *(int **)(DAT_005e97c0 + 0x84) â€” a table of (entry, metadata) pairs.
-        int* pairs = *(int**)(s_MainResourceBuffer_005e97c0 + 0x84);
+        int* pairs = *(int**)(Mem.s_MainResourceBuffer_005e97c0 + 0x84);
         if (pairs == null) return;
 
         // Ghidra: the walk to the end of the pair list. **Its result is never used** â€” transcribed
@@ -907,7 +905,7 @@ public static unsafe partial class Blaze
         byte* scratch = mainMem + 0x1b0000;
         LoadResourceEntry((int*)(nint)pairs[entryIndex * 2], scratch);
         DecodeResourceChunk(scratch,
-                            (ushort*)(s_EntityDecodeTable_005e8f00 + 0xfc),   // Ghidra: &DAT_005e8ffc
+                            (ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xfc),   // Ghidra: &DAT_005e8ffc
                             (byte*)(pairs + entryIndex * 2 + 1));
 
         // Ghidra: two Ordinal_676 calls â€” winsys3d's MoveImage(RECT* src, int dstX, int dstY),
@@ -924,8 +922,8 @@ public static unsafe partial class Blaze
         ushort* rect = stackalloc ushort[8];
         rect[0] = 0x380; rect[1] = 0; rect[2] = 0x80; rect[3] = 0xe0;
         rect[4] = 0; rect[5] = 0x1ff; rect[6] = 0x100; rect[7] = 1;
-        Ordinal_676(rect, 0, 0);
-        Ordinal_676(rect + 4, 0, 0);
+        Winsys3d.Ordinal_676(rect, 0, 0);
+        Winsys3d.Ordinal_676(rect + 4, 0, 0);
 
         uint* otBase, otEntry, primCursor;
         FrameBegin(&otBase, &otEntry, &primCursor);
@@ -1059,17 +1057,17 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void ReloadStateResources()
     {
-        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
-        FixupResourceHeader(s_MainResourceDirectory_005e97c4);
+        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
+        FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
 
-        if (s_MainResourceDirectory_005e97c4 != null)
+        if (Mem.s_MainResourceDirectory_005e97c4 != null)
         {
-            int* directory = *(int**)(s_MainResourceDirectory_005e97c4 + 0x10);
+            int* directory = *(int**)(Mem.s_MainResourceDirectory_005e97c4 + 0x10);
             int entryPtrValue = *directory;
             if (entryPtrValue != 0)
             {
                 int* metadata = directory + 1;
-                byte* destSlot = s_EntityDecodeTable_005e8f00;
+                byte* destSlot = Mem.s_EntityDecodeTable_005e8f00;
                 byte* mainMem = GetMainMemPtr();
                 do
                 {
@@ -1109,11 +1107,11 @@ public static unsafe partial class Blaze
         *(ushort*)((byte*)block + 8) = 0;
         *(ushort*)((byte*)block + 0x0a) = 0;
 
-        Ordinal_770(block);
-        Ordinal_769(1);
-        Ordinal_768(1);
-        Ordinal_767(0, 0xffffff);
-        Ordinal_766(block);
-        Ordinal_765(1, 0xffffff);
+        Winsys3d.Ordinal_770(block);
+        Winsys3d.Ordinal_769(1);
+        Winsys3d.Ordinal_768(1);
+        Winsys3d.Ordinal_767(0, 0xffffff);
+        Winsys3d.Ordinal_766(block);
+        Winsys3d.Ordinal_765(1, 0xffffff);
     }
 }

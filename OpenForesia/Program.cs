@@ -38,6 +38,24 @@ if (Environment.GetCommandLineArgs().Contains("--d3d11-selftest"))
     return 0;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Composition root : PAS ENCORE, et pour une raison mesuree.
+//
+// L'etape E du refactor prevoyait de construire ici les objets du jeu, dans un ordre explicite.
+// Essaye le 2026-08-19 avec le seul objet qui existe a ce stade, `GameMemory` : le jeu plante au
+// demarrage. Le module initializer ci-dessus reclame l'arene de liste d'affichage, et cette
+// reclamation touche DELIBEREMENT Mem.s_UiDescriptors_00560ff0 et Mem.s_StatusDescriptor_00560728
+// - ils portent leur ordering table a +0xa4, masquee sur 24 bits, donc ils doivent etre pris sous
+// 0x01000000 au meme instant precoce que l'arene.
+//
+// `GameMemory` doit donc etre construit PENDANT l'initialisation statique de Blaze, pas apres.
+// Son initialiseur reste dans src/Blaze/Memory/Globals.cs, ou la contrainte est ecrite.
+//
+// Un composition root qui ne composerait rien serait un rituel vide. Il sera ecrit quand Engine/
+// passera en classes d'instance (etape C) et qu'il y aura reellement un ordre a decider - et il
+// devra alors reprendre cette contrainte, pas la decouvrir a nouveau.
+// ---------------------------------------------------------------------------------------------
+
 Blaze.entry();
 return 0;
 

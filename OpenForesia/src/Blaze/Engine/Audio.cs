@@ -169,8 +169,6 @@ public static unsafe partial class Blaze
         }
     }
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern IntPtr LoadLibraryA(byte* lpLibFileName);
-    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern IntPtr GetProcAddress(IntPtr hModule, byte* lpProcName);
 
     // Ghidra: TexFilterPossible_exref â€” Blaze.exe imports this `uint` as DATA (not a function)
     // from winsys3d.dll. Confirmed via winsys3d.c: it defines and reads/writes a plain global
@@ -182,10 +180,10 @@ public static unsafe partial class Blaze
     {
         if (s_TexFilterPossible == null)
         {
-            IntPtr module = LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+            IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
             if (module != IntPtr.Zero)
             {
-                s_TexFilterPossible = (uint*)GetProcAddress(module, ToAnsiZ("TexFilterPossible"));
+                s_TexFilterPossible = (uint*)Win32.GetProcAddress(module, ToAnsiZ("TexFilterPossible"));
             }
         }
         return s_TexFilterPossible;
@@ -194,7 +192,7 @@ public static unsafe partial class Blaze
     private static string GetIniFilePath()
     {
         byte* buffer = stackalloc byte[0x104];
-        GetModuleFileNameA(IntPtr.Zero, buffer, 0x104);
+        Win32.GetModuleFileNameA(IntPtr.Zero, buffer, 0x104);
         string exePath = Marshal.PtrToStringAnsi((IntPtr)buffer) ?? string.Empty;
         int dot = exePath.LastIndexOf('.');
         if (dot >= 0) exePath = exePath[..dot];
@@ -205,7 +203,7 @@ public static unsafe partial class Blaze
     {
         byte* sectionAnsi = ToAnsiZ(IniSection);
         byte* keyAnsi = ToAnsiZ(key);
-        uint result = GetPrivateProfileIntA(sectionAnsi, keyAnsi, defaultValue, iniPathAnsi);
+        uint result = Win32.GetPrivateProfileIntA(sectionAnsi, keyAnsi, defaultValue, iniPathAnsi);
         Free(sectionAnsi);
         Free(keyAnsi);
         return result;
@@ -634,15 +632,15 @@ public static unsafe partial class Blaze
     {
         if (s_MusicFileBuffer == null) s_MusicFileBuffer = (byte*)Malloc(MusicFileBufferSize);
 
-        IntPtr file = CreateFileA(path, 0x80000000 /* GENERIC_READ */, 1 /* FILE_SHARE_READ */, null,
+        IntPtr file = Win32.CreateFileA(path, 0x80000000 /* GENERIC_READ */, 1 /* FILE_SHARE_READ */, null,
             3 /* OPEN_EXISTING */, 0x80 /* FILE_ATTRIBUTE_NORMAL */, IntPtr.Zero);
         if (file == (IntPtr)(-1)) return false;
 
-        lstrcpyA(s_LoadedMusicPath, path);
+        Win32.lstrcpyA(s_LoadedMusicPath, path);
 
-        uint fileSize = GetFileSize(file, null);
+        uint fileSize = Win32.GetFileSize(file, null);
         uint bytesRead;
-        ReadFile(file, s_MusicFileBuffer, 0x400, &bytesRead, null);
+        Win32.ReadFile(file, s_MusicFileBuffer, 0x400, &bytesRead, null);
 
         // "RIFF" / "WAVE" / "fmt " (little-endian dwords, exactly as compared in Blaze.c).
         if (*(uint*)s_MusicFileBuffer == 0x46464952 &&
@@ -657,7 +655,7 @@ public static unsafe partial class Blaze
                 // 0x400 bytes underflows the length, and one larger than 5 MB overruns the
                 // buffer. Both are original behaviour and are left as-is rather than "fixed",
                 // but they are why the tail-zeroing below is guarded.
-                ReadFile(file, s_MusicFileBuffer + 0x400, fileSize - 0x400, &bytesRead, null);
+                Win32.ReadFile(file, s_MusicFileBuffer + 0x400, fileSize - 0x400, &bytesRead, null);
 
                 // Walk the chunk list from `fmt ` until "data".
                 byte* chunk = s_MusicFileBuffer + 12;
@@ -665,7 +663,7 @@ public static unsafe partial class Blaze
                 s_MusicData = chunk + 8;
                 s_MusicDataSize = *(int*)(chunk + 4);
 
-                CloseHandle(file);
+                Win32.CloseHandle(file);
 
                 // Clears everything past the file so a shorter track cannot play back the tail of
                 // a longer previous one. The original does this unguarded; see the TODO above.
@@ -677,7 +675,7 @@ public static unsafe partial class Blaze
             }
         }
 
-        CloseHandle(file);
+        Win32.CloseHandle(file);
         return false;
     }
 
@@ -692,13 +690,13 @@ public static unsafe partial class Blaze
     private static int StartMusicStream(byte* path)
     {
         if (path == null) path = s_RequestedMusicPath;
-        else lstrcpyA(s_RequestedMusicPath, path);
+        else Win32.lstrcpyA(s_RequestedMusicPath, path);
 
         if (s_MusicEnabled == 0) return 1;
 
         // Ghidra: __strcmpi â€” a different track than the one currently in the scratch buffer has
         // to stop the current stream and reload before it can be started.
-        if (lstrcmpiA(path, s_LoadedMusicPath) != 0)
+        if (Win32.lstrcmpiA(path, s_LoadedMusicPath) != 0)
         {
             StopMusicStream();
             // Ghidra shows `FUN_00513470()` with no argument, but the callee's only use of its
@@ -749,12 +747,12 @@ public static unsafe partial class Blaze
 
         for (int i = 0; i < MusicNotifyCount; i++)
         {
-            IntPtr signal = CreateEventA(null, 0, 0, null);
+            IntPtr signal = Win32.CreateEventA(null, 0, 0, null);
             s_MusicNotifyPositions[i].hEventNotify = signal;
             s_MusicNotifyEvents[i] = signal;
             s_MusicNotifyPositions[i].dwOffset = (uint)(samplesPerBlock * i * 0x28);
         }
-        s_MusicStopEvent = CreateEventA(null, 0, 0, null);
+        s_MusicStopEvent = Win32.CreateEventA(null, 0, 0, null);
 
         void** notifyVtable = *(void***)notify;
         var setNotificationPositions = (delegate* unmanaged[Stdcall]<void*, uint, DSBPOSITIONNOTIFY*, int>)notifyVtable[IDirectSoundNotify_SetNotificationPositions];
@@ -807,11 +805,11 @@ public static unsafe partial class Blaze
         if (s_MusicStreamStopped == 0)
         {
             s_MusicStreamStopped = 1;
-            SetEvent(s_MusicStopEvent);
+            Win32.SetEvent(s_MusicStopEvent);
 
             // With the worker thread not created (see StartMusicStream), the handle is zero and
             // this returns WAIT_FAILED immediately instead of blocking â€” kept as decompiled.
-            WaitForSingleObject(s_MusicStreamThread, 0xffffffff);
+            Win32.WaitForSingleObject(s_MusicStreamThread, 0xffffffff);
             s_MusicStreamThread = IntPtr.Zero;
 
             if (s_MusicStreamBuffer != null) InvokeComMethod(s_MusicStreamBuffer, IDirectSoundBuffer_Release);
@@ -822,7 +820,7 @@ public static unsafe partial class Blaze
             // Only the 8 notification events are closed (Ghidra's loop bound is 0x5db85c, i.e. it
             // stops just before DAT_005db858): the stop event itself is leaked on every restart.
             // Preserved rather than corrected.
-            for (int i = 0; i < MusicNotifyCount; i++) CloseHandle(s_MusicNotifyEvents[i]);
+            for (int i = 0; i < MusicNotifyCount; i++) Win32.CloseHandle(s_MusicNotifyEvents[i]);
         }
         return 1;
     }

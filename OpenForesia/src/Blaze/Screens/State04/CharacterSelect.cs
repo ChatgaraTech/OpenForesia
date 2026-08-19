@@ -54,10 +54,10 @@ public static unsafe partial class Blaze
             s_SelectState_00578de8[0] = forced;
         }
 
-        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
-        FixupResourceHeader(s_MainResourceDirectory_005e97c4);
+        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
+        FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
 
-        byte* directoryBase = s_MainResourceDirectory_005e97c4;
+        byte* directoryBase = Mem.s_MainResourceDirectory_005e97c4;
         byte* mainMem = GetMainMemPtr();
         if (directoryBase == null || mainMem == null) return;
 
@@ -67,7 +67,7 @@ public static unsafe partial class Blaze
         if (textures != null)
         {
             byte* scratch = mainMem + 0x1b0000;
-            byte* slot = s_EntityDecodeTable_005e8f00;
+            byte* slot = Mem.s_EntityDecodeTable_005e8f00;
             for (int* entry = textures; *entry != 0; entry += 2, slot += 4)
             {
                 LoadResourceEntry((int*)(nint)(*entry), scratch);
@@ -304,8 +304,8 @@ public static unsafe partial class Blaze
     // Les deux symboles tombent dans la queue non initialisée de .data, donc il n'y a aucun contenu
     // à récupérer du binaire.
     private const int AssetTableCapacity = 16;
-    private static byte* s_ModelTable_005e96a0 => Arena(0x005e96a0);
-    private static byte* s_AnimationTable_005e9640 => Arena(0x005e9640);
+    private static byte* s_ModelTable_005e96a0 => Mem.Arena(0x005e96a0);
+    private static byte* s_AnimationTable_005e9640 => Mem.Arena(0x005e9640);
 
     /// <summary>
     /// Ghidra: FUN_005066d0 @ 0x005066d0 — le point d'entrée de l'état 4, la sélection des
@@ -351,8 +351,8 @@ public static unsafe partial class Blaze
         // Ghidra: Ordinal_379(400); Ordinal_378(0xa0,0x78) — libgte SetGeomScreen / SetGeomOffset.
         // (0xa0, 0x78) = (160, 120), le centre d'un écran 320x240 : la projection est recentrée sur
         // l'écran avant que quoi que ce soit ne soit projeté.
-        Ordinal_379(400);
-        Ordinal_378(0xa0, 0x78);
+        Winsys3d.Ordinal_379(400);
+        Winsys3d.Ordinal_378(0xa0, 0x78);
 
         PlayMusicTrack(4);   // Ghidra: FUN_00529ad0(4)
 
@@ -397,7 +397,7 @@ public static unsafe partial class Blaze
             // Ghidra: le test de sortie. Les deux bits 9 = 0b1001 du champ +2, sauf au sous-état 7
             // tant que DAT_00562b68 est positif.
             if ((pad[2] & 9) == 9
-                && (s_SelectState_00578de8[0] != 7 || s_Unknown_00562b68 < 0))
+                && (s_SelectState_00578de8[0] != 7 || Mem.s_Unknown_00562b68 < 0))
             {
                 break;
             }
@@ -431,7 +431,7 @@ public static unsafe partial class Blaze
             // =========================================================================
             if (s_SelectState_00578de8[0] != 0 && s_SelectState_00578de8[0] < 7)
             {
-                byte* entity = s_SceneEntity_00572b48;
+                byte* entity = Mem.s_SceneEntity_00572b48;
                 int* scenePos = (int*)(entity + 0x1c);     // DAT_00572b64 / 68 / 6c
                 short* sceneGlow = (short*)(entity + 0x28); // DAT_00572b70 / 72 / 74
 
@@ -439,27 +439,27 @@ public static unsafe partial class Blaze
                 if (s_SelectState_00578de8[0] > 4)
                 {
                     // Ghidra: &DAT_00562a58 indexé par l'octet +0x151 du bloc de travail.
-                    short* tone = (short*)(s_SceneToneTable_00562a58
-                                           + s_SelectScratch_00573338[0x151] * SceneToneStride);
-                    s_BackColourR_005e93a0 += (short)((tone[0] - s_BackColourR_005e93a0) >> 2);
-                    s_BackColourG_005e93a2 += (short)((tone[1] - s_BackColourG_005e93a2) >> 2);
-                    s_BackColourB_005e93a4 += (short)((tone[2] - s_BackColourB_005e93a4) >> 2);
-                    Ordinal_376((byte)s_BackColourR_005e93a0,
-                                (byte)s_BackColourG_005e93a2,
-                                (byte)s_BackColourB_005e93a4);
+                    short* tone = (short*)(Mem.s_SceneToneTable_00562a58
+                                           + s_SelectScratch_00573338[0x151] * GameMemory.SceneToneStride);
+                    Mem.s_BackColourR_005e93a0 += (short)((tone[0] - Mem.s_BackColourR_005e93a0) >> 2);
+                    Mem.s_BackColourG_005e93a2 += (short)((tone[1] - Mem.s_BackColourG_005e93a2) >> 2);
+                    Mem.s_BackColourB_005e93a4 += (short)((tone[2] - Mem.s_BackColourB_005e93a4) >> 2);
+                    Winsys3d.Ordinal_376((byte)Mem.s_BackColourR_005e93a0,
+                                (byte)Mem.s_BackColourG_005e93a2,
+                                (byte)Mem.s_BackColourB_005e93a4);
 
                     primCursor = EmitSceneParticles(otBase, primCursor);
 
                     // Ghidra: Ordinal_457 est l'atan2 de libgte. La scène se tourne vers la
                     // première particule, l'angle étant pris entre elle et l'entité.
-                    s_ScenePitch_005e9308 = 0;
+                    Mem.s_ScenePitch_005e9308 = 0;
                     // DAT_00572c00 et DAT_00572c08 sont le x et le z de la **position** du premier
                     // record, donc sa base + 0x1c.
-                    int* firstParticle = (int*)(s_SceneParticles_00572be4 + 0x1c);
+                    int* firstParticle = (int*)(Mem.s_SceneParticles_00572be4 + 0x1c);
                     short dz = (short)((scenePos[2] - firstParticle[2]) >> 0xc);
                     short dx = (short)((scenePos[0] - firstParticle[0]) >> 0xc);
-                    s_SceneYaw_005e930a = -Ordinal_457(dx, dz);
-                    s_SceneRoll_005e930c = 0;
+                    Mem.s_SceneYaw_005e930a = -Winsys3d.Ordinal_457(dx, dz);
+                    Mem.s_SceneRoll_005e930c = 0;
                 }
 
                 // L'éclat de l'entité remonte vers 0x1e00, sa position retombe vers (0, -0x64000, 0)
@@ -501,13 +501,13 @@ public static unsafe partial class Blaze
             }
 
             // Ghidra: DAT_006008fc — la translation Z de la matrice de caméra, amortie vers 800.
-            CameraTranslation[2] += (800 - CameraTranslation[2]) >> 2;
+            Mem.CameraTranslation[2] += (800 - Mem.CameraTranslation[2]) >> 2;
 
             // Ghidra: le descripteur de sprite de 20 octets, monté sur la pile — un seul bloc
             // contigu, comme s_LoadingScreenSprite. Le champ 0 vient du répertoire de ressources.
             byte* sprite = stackalloc byte[20];
             NativeMemory.Clear(sprite, 20);
-            *(uint**)sprite = *(uint**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0x30);
+            *(uint**)sprite = *(uint**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x30);
             *(uint*)(sprite + 4) = 0x1000000;
 
             // Ghidra: la rangée de descripteurs d'interface — DAT_00560ff0 et ses suivants, pas
@@ -515,12 +515,12 @@ public static unsafe partial class Blaze
             // observé). Les coordonnées se lisent dans le descripteur et sont décalées de (0xc, 4).
             for (int i = 0; i < s_SelectFlags_00562a48[2]; i++)
             {
-                byte* descriptor = s_UiDescriptors_00560ff0 + i * UiDescriptorStride;
+                byte* descriptor = Mem.s_UiDescriptors_00560ff0 + i * GameMemory.UiDescriptorStride;
 
                 *(short*)(sprite + 8) = (short)(*(short*)(descriptor + 4) + 0xc);
                 *(short*)(sprite + 0xa) = (short)(*(short*)(descriptor + 6) + 4);
                 *(short*)(sprite + 0x10) =
-                    (sbyte)s_SelectSubStateBytes_00562a98[s_SelectState_00578de8[0] * 4 + i];
+                    (sbyte)Mem.s_SelectSubStateBytes_00562a98[s_SelectState_00578de8[0] * 4 + i];
 
                 EmitViewportRect(otBase, &primCursor);                              // FUN_0051be20
                 primCursor = DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);  // FUN_00521df0
@@ -546,13 +546,13 @@ public static unsafe partial class Blaze
             {
                 // Ghidra: FUN_00544350(directory[0x70][DAT_00578df0], 0, &DAT_00560728, 0)
                 BindMenuLabels(
-                    *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                    *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70)
                               + s_SelectState_00578de8[2] * 4),
-                    0, s_StatusDescriptor_00560728, 0);
+                    0, Mem.s_StatusDescriptor_00560728, 0);
             }
 
-            primCursor = RunTextEngine(primCursor, s_StatusDescriptor_00560728);       // FUN_005443a0
-            primCursor = DrawUiPanel(otBase, primCursor, s_StatusDescriptor_00560728);
+            primCursor = Ui.RunTextEngine(primCursor, Mem.s_StatusDescriptor_00560728);       // FUN_005443a0
+            primCursor = DrawUiPanel(otBase, primCursor, Mem.s_StatusDescriptor_00560728);
 
             s_Unknown_005de15c = 0;
 
@@ -563,7 +563,7 @@ public static unsafe partial class Blaze
             *(ushort*)(sprite + 0xc) = 0x1420;
             *(ushort*)(sprite + 0xe) = 0x1149;
             *(short*)(sprite + 0x10) = 0;
-            *(uint**)sprite = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+            *(uint**)sprite = **(uint***)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
             *(uint*)(sprite + 4) = 0x1000000;
 
             primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);

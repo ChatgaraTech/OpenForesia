@@ -71,90 +71,17 @@ public static unsafe partial class Blaze
     // passes them are spaced 20 / 92 bytes apart, matching sizeof(DISPENV) / sizeof(DRAWENV) exactly.
     // Both take (env, x, y, w, h) â€” a *screen rectangle*, not four opaque shorts.
 
-    // winsys3d.c FUN_00a05ac0 â€” libgpu `SetDefDispEnv(DISPENV*, x, y, w, h)`. Writes disp={x,y,w,h},
-    // screen={0,0,0x100,0xf0}, isinter=0, isrgb24=0 (18 of the struct's 20 bytes).
-    [DllImport("winsys3d.dll", EntryPoint = "#658")] private static extern void SetDefDispEnv(void* dispEnv, short x, short y, short w, short h);
 
-    // winsys3d.c FUN_00a05b50 â€” libgpu `SetDefDrawEnv(DRAWENV*, x, y, w, h)`. Writes clip={x,y,w,h},
-    // ofs={x,y}, tw={0,0,0,0}, tpage=10, dtd=1, dfe=1, isbg=0, r0=g0=b0=0 (first 28 bytes of 92).
-    [DllImport("winsys3d.dll", EntryPoint = "#661")] private static extern void SetDefDrawEnv(void* drawEnv, short x, short y, short w, short h);
 
-    // Game-state-0 ordinals. winsys3d.c declares all of these with no parameters, but that is the
-    // same decompiler artifact seen throughout this project â€” the **call sites are authoritative**,
-    // and the argument counts below are theirs (Blaze.c: FUN_00529a80 and FUN_00542160).
-    [DllImport("winsys3d.dll", EntryPoint = "#97")] private static extern int Ordinal_97(int a, int b, int c);
-    [DllImport("winsys3d.dll", EntryPoint = "#762")] private static extern void Ordinal_762(void* p);
-    [DllImport("winsys3d.dll", EntryPoint = "#765")] private static extern int Ordinal_765(int a, uint rgb);
-    [DllImport("winsys3d.dll", EntryPoint = "#766")] private static extern int Ordinal_766(void* p);
-    [DllImport("winsys3d.dll", EntryPoint = "#767")] private static extern void Ordinal_767(int a, uint rgb);
-    [DllImport("winsys3d.dll", EntryPoint = "#768")] private static extern int Ordinal_768(int a);
-    [DllImport("winsys3d.dll", EntryPoint = "#769")] private static extern int Ordinal_769(int a);
-    [DllImport("winsys3d.dll", EntryPoint = "#770")] private static extern int Ordinal_770(void* p);
 
-    // Frame ordinals. 688 is libgpu `ClearOTagR(u_long *ot, int n)` â€” winsys3d.c FUN_00a06160 keeps
-    // both parameters, unlike its neighbours. 657/660 take a DISPENV/DRAWENV (PutDispEnv/PutDrawEnv
-    // shaped), 701 takes the ordering table (DrawOTag shaped).
-    [DllImport("winsys3d.dll", EntryPoint = "#688")] private static extern uint* Ordinal_688(uint* ot, int count);
-    [DllImport("winsys3d.dll", EntryPoint = "#657")] private static extern int Ordinal_657(void* env);
-    [DllImport("winsys3d.dll", EntryPoint = "#660")] private static extern int Ordinal_660(void* env);
-    [DllImport("winsys3d.dll", EntryPoint = "#701")] private static extern void Ordinal_701(uint* ot);
 
-    // libgpu MoveImage(RECT* src, int dstX, int dstY) â€” copies a rectangle inside the emulated
-    // VRAM. Body confirmed at winsys3d.c:5348 (`/* 0x5df0  676 */`): it walks `src->h` rows of
-    // `src->w` texels from the arena and writes them at (dstX, dstY).
-    [DllImport("winsys3d.dll", EntryPoint = "#676")] private static extern void Ordinal_676(ushort* sourceRect, int destinationX, int destinationY);
 
-    // real: winsys3d.c FUN_00a05e90 â€” libgpu `ClearImage(RECT*, r, g, b)`-shaped (takes a 4-short
-    // RECT and floods VRAM), but its colour math decompiles as
-    // `((p4 & 0xff) << (p3 + 10)) << (p2 + 5)`, which does not match ClearImage's plain (r,g,b).
-    // TODO(REVERSE): left un-renamed until that is explained rather than assumed.
-    [DllImport("winsys3d.dll", EntryPoint = "#665")] private static extern int Ordinal_665(void* rect, byte r, byte g, uint b);
-    [DllImport("winsys3d.dll", EntryPoint = "#667")] private static extern void Ordinal_667(int a); // confirmed no-op (FUN_00a02e20)
-    [DllImport("winsys3d.dll", EntryPoint = "#668")] private static extern int Ordinal_668(int a, int b, int c, int d, int e, int f); // real: winsys3d.c FUN_00a020a0, registers a debug/console text channel slot (unused feature in the shipped build)
-    // real: winsys3d.c FUN_00a05d50 â€” libgpu `LoadImage(RECT*, u_long* data)`: copies `data` row by
-    // row into the VRAM rectangle. `rect` is a 4-short RECT {x,y,w,h}, and the body early-outs on
-    // rect.y > 0x1ff, confirming a 1024x512 VRAM addressing scheme.
-    [DllImport("winsys3d.dll", EntryPoint = "#674")] private static extern int Ordinal_674(void* rect, void* srcBuffer);
 
-    // winsys3d.c FUN_00a05bb0 â€” libgpu `OpenTIM(u_long *addr)`. Parks a cursor at `addr + 4` in the
-    // DLL global DAT_011be790; ReadTIM below consumes and clears it, so the pair is one-shot.
-    [DllImport("winsys3d.dll", EntryPoint = "#677")] private static extern int OpenTim(void* timData);
 
-    // winsys3d.c FUN_00a05bd0 â€” libgpu `ReadTIM(TIM_IMAGE*)`. Parses the TIM header the cursor
-    // points at and fills the 5-dword TIM_IMAGE below. When the header's bit 3 is clear the image
-    // has no CLUT and it writes mode=2, crect=null, caddr=null.
-    [DllImport("winsys3d.dll", EntryPoint = "#662")] private static extern void ReadTim(TimImage* image);
-    [DllImport("winsys3d.dll", EntryPoint = "#681")] private static extern void Ordinal_681(int a); // confirmed no-op (FUN_00a02e20)
-    [DllImport("winsys3d.dll", EntryPoint = "#710")] private static extern void Ordinal_710(int width, int height); // real: winsys3d.c FUN_00a026e0, (re)creates the DLL's text/console overlay bitmap at the given size
-    [DllImport("winsys3d.dll", EntryPoint = "#712")] private static extern void Ordinal_712(int a); // confirmed no-op (FUN_00a02870)
-    [DllImport("winsys3d.dll", EntryPoint = "#720")] private static extern void Ordinal_720(nint a); // confirmed no-op (FUN_00a02870)
-    [DllImport("winsys3d.dll", EntryPoint = "#771")] private static extern void Ordinal_771(); // confirmed no-op (FUN_00a26470)
-    [DllImport("winsys3d.dll", EntryPoint = "#789")] private static extern int Ordinal_789(int a, int b); // real: winsys3d.c FUN_00a06420, device (re)init/teardown dispatcher; inert when a==0 besides storing b
-    [DllImport("winsys3d.dll", EntryPoint = "SetShift")] private static extern void SetShift(int x, int y, int zoomLevel, int flag); // real, named export (ordinal 796): camera/view shift+zoom, winsys3d.c confirmed
 
-    // winsys3d.dll ordinals used by FUN_00504460 (joystick/interrupt-style event-handler
-    // (de)registration bookkeeping â€” see winsys3d.c FUN_00a040d0/FUN_00a04220 and neighbors).
-    [DllImport("winsys3d.dll", EntryPoint = "#6")] private static extern void* Ordinal_6(uint messageId, uint p2, uint p3, void* callback); // real: winsys3d.c FUN_00a040d0, registers a handler, returns an opaque handle
-    [DllImport("winsys3d.dll", EntryPoint = "#10")] private static extern int Ordinal_10(void* handle); // real: winsys3d.c FUN_00a04220 — **arme** le gestionnaire (état 0x1000 → 0x2000), ce n'est pas un désenregistrement (celui-là est l'ordinal 7, FUN_00a04130)
-    [DllImport("winsys3d.dll", EntryPoint = "#40")] private static extern void Ordinal_40(); // real: winsys3d.c FUN_00a04fd0 — EnterCriticalSection(&DAT_00b6d6d8), la section que l'ordinal 41 relâche. Corps lu le 2026-08-18, RET sans argument
-    [DllImport("winsys3d.dll", EntryPoint = "#63")] private static extern void Ordinal_63(int a); // confirmed no-op (FUN_00a02870)
-    [DllImport("winsys3d.dll", EntryPoint = "#64")] private static extern int Ordinal_64(); // confirmed no-op, returns 0 (FUN_00a02490)
-    [DllImport("winsys3d.dll", EntryPoint = "#66")] private static extern void Ordinal_66(); // confirmed no-op (FUN_00a26470)
-    [DllImport("winsys3d.dll", EntryPoint = "#750")] private static extern void* Ordinal_750(); // real: winsys3d.c FUN_00a01e30, returns the DLL's main device-interface pointer (DAT_011be760)
 
-    // Win32 APIs needed by RunMainLoop's own dependency graph (movie/intro-video playback window,
-    // resource-file font loading, and the joystick/critical-section plumbing in FUN_00504460).
-    [DllImport("user32.dll", CharSet = CharSet.Ansi)] private static extern ushort RegisterClassA(WNDCLASSA* lpWndClass);
-    [DllImport("user32.dll")] private static extern int UnregisterClassA(byte* lpClassName, IntPtr hInstance);
-    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
-    private static extern IntPtr CreateWindowExA(uint dwExStyle, byte* lpClassName, byte* lpWindowName, uint dwStyle,
-        int x, int y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, void* lpParam);
-    [DllImport("user32.dll")] private static extern int ShowWindow(IntPtr hWnd, int nCmdShow);
-    [DllImport("user32.dll")] private static extern int MoveWindow(IntPtr hWnd, int x, int y, int w, int h, int bRepaint);
-    [DllImport("user32.dll", CharSet = CharSet.Ansi)] private static extern IntPtr LoadCursorA(IntPtr hInstance, IntPtr lpCursorName);
-    [DllImport("gdi32.dll")] private static extern IntPtr GetStockObject(int fnObject);
     [StructLayout(LayoutKind.Sequential)]
-    private struct WNDCLASSA
+    internal struct WNDCLASSA
     {
         public uint style;
         public IntPtr lpfnWndProc;
@@ -168,18 +95,6 @@ public static unsafe partial class Blaze
         public byte* lpszClassName;
     }
 
-    [DllImport("user32.dll")] private static extern int PeekMessageA(MSG* lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
-    [DllImport("user32.dll")] private static extern int DispatchMessageA(MSG* lpMsg);
-    [DllImport("user32.dll", CharSet = CharSet.Ansi)] private static extern nint DefWindowProcA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
-    [DllImport("user32.dll")] private static extern void PostQuitMessage(int nExitCode);
-    [DllImport("user32.dll")] private static extern IntPtr SetFocus(IntPtr hWnd);
-    [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
-    [DllImport("kernel32.dll")] private static extern void Sleep(uint milliseconds);
-    [DllImport("winmm.dll")] private static extern uint timeGetTime();
-    [DllImport("user32.dll")] private static extern IntPtr SetTimer(IntPtr hWnd, nuint nIDEvent, uint uElapse, IntPtr lpTimerFunc);
-    [DllImport("user32.dll")] private static extern int KillTimer(IntPtr hWnd, nuint uIDEvent);
-    [DllImport("user32.dll")] private static extern int PostMessageA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
-    [DllImport("kernel32.dll")] private static extern void RaiseException(uint dwExceptionCode, uint dwExceptionFlags, uint nNumberOfArguments, nint* lpArguments);
 
     /// <summary>
     /// Ghidra: <c>RaiseQuitException()</c> — l'exception logicielle par laquelle
@@ -196,22 +111,14 @@ public static unsafe partial class Blaze
     /// </summary>
     private sealed class BlazeQuitException : Exception
     {
-        internal BlazeQuitException() : base("Ghidra: RaiseException(0xE0000001) — sortie du jeu") { }
+        internal BlazeQuitException() : base("Ghidra: Win32.RaiseException(0xE0000001) — sortie du jeu") { }
     }
 
     /// <summary>Ghidra: RaiseQuitException().</summary>
     private static void RaiseQuitException() => throw new BlazeQuitException();
-    [DllImport("winmm.dll")] private static extern uint joySetCapture(IntPtr hWnd, uint uJoyID, uint uPeriod, int fChanged);
-    [DllImport("winmm.dll")] private static extern uint joyReleaseCapture(uint uJoyID);
-    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern byte* lstrcpyA(byte* lpString1, byte* lpString2);
-    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern int lstrcmpiA(byte* lpString1, byte* lpString2);
-    [DllImport("gdi32.dll")] private static extern int StretchDIBits(IntPtr hdc, int xDest, int yDest, int destW, int destH,
-        int xSrc, int ySrc, int srcW, int srcH, void* lpBits, void* lpBitsInfo, uint iUsage, uint rop);
-    [DllImport("user32.dll")] private static extern int SetRect(int* lprc, int left, int top, int right, int bottom);
-    [DllImport("ddraw.dll")] private static extern int DirectDrawCreate(void* lpGuid, out IntPtr lplpDD, void* pUnkOuter);
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct MSG
+    internal struct MSG
     {
         public IntPtr hwnd;
         public uint message;
@@ -222,14 +129,7 @@ public static unsafe partial class Blaze
         public int ptY;
     }
 
-    [DllImport("kernel32.dll")] private static extern uint SetFilePointer(IntPtr hFile, int lDistanceToMove, void* lpDistanceToMoveHigh, uint dwMoveMethod);
-    [DllImport("kernel32.dll")] private static extern int ReadFile(IntPtr hFile, void* lpBuffer, uint nNumberOfBytesToRead, uint* lpNumberOfBytesRead, void* lpOverlapped);
 
-    // Used by the music-streaming subsystem (Ghidra: FUN_005131d0 / FUN_005135d0).
-    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] private static extern IntPtr CreateEventA(void* lpEventAttributes, int bManualReset, int bInitialState, byte* lpName);
-    [DllImport("kernel32.dll")] private static extern int SetEvent(IntPtr hEvent);
-    [DllImport("kernel32.dll")] private static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
-    [DllImport("kernel32.dll")] private static extern IntPtr CreateThread(void* lpThreadAttributes, nuint dwStackSize, IntPtr lpStartAddress, void* lpParameter, uint dwCreationFlags, uint* lpThreadId);
 
     // =====================================================================
     // The winsys3d display-list arena (Ghidra: MainMem / DAT_00b6dbd8)
@@ -284,7 +184,7 @@ public static unsafe partial class Blaze
     private const uint PAGE_READWRITE = 0x04;
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct MEMORY_BASIC_INFORMATION
+    internal struct MEMORY_BASIC_INFORMATION
     {
         public IntPtr BaseAddress;
         public IntPtr AllocationBase;
@@ -295,8 +195,6 @@ public static unsafe partial class Blaze
         public uint Type;
     }
 
-    [DllImport("kernel32.dll")] internal static extern void* VirtualAlloc(void* lpAddress, nuint dwSize, uint flAllocationType, uint flProtect);
-    [DllImport("kernel32.dll")] private static extern nuint VirtualQuery(void* lpAddress, out MEMORY_BASIC_INFORMATION lpBuffer, nuint dwLength);
 
     private static byte* s_DisplayListArena;   // the base of our allocation, not MainMem itself
 
@@ -333,8 +231,8 @@ public static unsafe partial class Blaze
 
             // Les descripteurs de la sélection des personnages relèvent de la même contrainte :
             // chacun porte son ordering table à +0xa4, que ClearOTagR masque à 0xffffff.
-            _ = s_UiDescriptors_00560ff0;
-            _ = s_StatusDescriptor_00560728;
+            _ = Mem.s_UiDescriptors_00560ff0;
+            _ = Mem.s_StatusDescriptor_00560728;
             _ = s_SelectSlots_00573518;
             return true;
         }
@@ -352,7 +250,7 @@ public static unsafe partial class Blaze
         // 1. The original layout first: 0xDBD8 of lead-in so MainMem lands on 0x00B6DBD8 exactly
         //    and every address in winsys3d.c reads straight against the running process.
         nuint preferredSize = (ArenaAllocationSize + 0xFFFu) & ~0xFFFu;
-        byte* arena = (byte*)VirtualAlloc((void*)ArenaPreferredBase, preferredSize,
+        byte* arena = (byte*)Win32.VirtualAlloc((void*)ArenaPreferredBase, preferredSize,
                                           MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         byte* mainMem = arena != null ? arena + MainMemOffsetInArena : null;
 
@@ -410,7 +308,7 @@ public static unsafe partial class Blaze
 
         for (uint address = ArenaScanFloor; address <= maxBase;)
         {
-            if (VirtualQuery((void*)address, out MEMORY_BASIC_INFORMATION mbi, mbiSize) == 0) break;
+            if (Win32.VirtualQuery((void*)address, out MEMORY_BASIC_INFORMATION mbi, mbiSize) == 0) break;
 
             uint regionBase = (uint)(nint)mbi.BaseAddress;
             uint regionSize = (uint)(nint)mbi.RegionSize;
@@ -445,7 +343,7 @@ public static unsafe partial class Blaze
         // A region can be taken between the scan and the allocation; retry downward if so.
         for (uint candidate = best; candidate >= ArenaScanFloor; candidate -= AllocationGranularity)
         {
-            byte* arena = (byte*)VirtualAlloc((void*)candidate, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            byte* arena = (byte*)Win32.VirtualAlloc((void*)candidate, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
             if (arena != null) return arena;
         }
 
@@ -461,14 +359,14 @@ public static unsafe partial class Blaze
     {
         if (s_MainMemExref != null) return;
 
-        IntPtr module = LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+        IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
         if (module != IntPtr.Zero)
         {
-            s_MainMemExref = (byte**)GetProcAddress(module, ToAnsiZ("MainMem"));
+            s_MainMemExref = (byte**)Win32.GetProcAddress(module, ToAnsiZ("MainMem"));
         }
     }
 
-    private static byte* GetMainMemPtr()
+    internal static byte* GetMainMemPtr()
     {
         EnsureDisplayListArena();
         return s_MainMemExref != null ? *s_MainMemExref : null;
@@ -517,7 +415,7 @@ public static unsafe partial class Blaze
     {
         if (s_GteResolved) return;
 
-        IntPtr module = LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+        IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
         if (module == IntPtr.Zero)
         {
             throw new NotImplementedException(
@@ -527,39 +425,39 @@ public static unsafe partial class Blaze
 
         // GetProcAddress accepte un ordinal à la place d'un nom quand le pointeur tient dans son
         // mot bas — la convention MAKEINTRESOURCE. Ces exports n'ont pas de nom.
-        s_GteMac801 = (byte*)GetProcAddress(module, (byte*)801);
-        s_GteVector802 = (byte*)GetProcAddress(module, (byte*)802);
-        s_GteVector803 = (byte*)GetProcAddress(module, (byte*)803);   // le second vecteur d'entrée, celui que FUN_0051f650 utilise
-        s_GteSxy805 = (byte*)GetProcAddress(module, (byte*)805);
-        s_GteSxy806 = (byte*)GetProcAddress(module, (byte*)806);
-        s_GteSxy807 = (byte*)GetProcAddress(module, (byte*)807);
-        s_GteMac0808 = (byte*)GetProcAddress(module, (byte*)808);
-        s_GteIr813 = (byte*)GetProcAddress(module, (byte*)813);
-        s_GteMatrix814 = (byte*)GetProcAddress(module, (byte*)814);
+        s_GteMac801 = (byte*)Win32.GetProcAddress(module, (byte*)801);
+        s_GteVector802 = (byte*)Win32.GetProcAddress(module, (byte*)802);
+        s_GteVector803 = (byte*)Win32.GetProcAddress(module, (byte*)803);   // le second vecteur d'entrée, celui que FUN_0051f650 utilise
+        s_GteSxy805 = (byte*)Win32.GetProcAddress(module, (byte*)805);
+        s_GteSxy806 = (byte*)Win32.GetProcAddress(module, (byte*)806);
+        s_GteSxy807 = (byte*)Win32.GetProcAddress(module, (byte*)807);
+        s_GteMac0808 = (byte*)Win32.GetProcAddress(module, (byte*)808);
+        s_GteIr813 = (byte*)Win32.GetProcAddress(module, (byte*)813);
+        s_GteMatrix814 = (byte*)Win32.GetProcAddress(module, (byte*)814);
 
         // Les registres du chemin de projection, utilisés par le cull par partie de
         // FUN_0051d1f0. 809 reçoit le (x | y<<16) projeté, 811 la profondeur, 810 sa version
         // divisée par 4 qui sert d'emplacement d'OT, 815 la matrice de normales, 819/820 le
         // décalage écran posé par SetGeomOffset et 821 la table de réciproques de SetGeomScreen.
-        s_GteSxy809 = (byte*)GetProcAddress(module, (byte*)809);
-        s_GteSz810 = (byte*)GetProcAddress(module, (byte*)810);
-        s_GteSz811 = (byte*)GetProcAddress(module, (byte*)811);
-        s_GteLightMatrix815 = (byte*)GetProcAddress(module, (byte*)815);
-        s_GteOfx819 = (byte*)GetProcAddress(module, (byte*)819);
-        s_GteOfy820 = (byte*)GetProcAddress(module, (byte*)820);
-        s_GteRecip821 = (byte*)GetProcAddress(module, (byte*)821);
+        s_GteSxy809 = (byte*)Win32.GetProcAddress(module, (byte*)809);
+        s_GteSz810 = (byte*)Win32.GetProcAddress(module, (byte*)810);
+        s_GteSz811 = (byte*)Win32.GetProcAddress(module, (byte*)811);
+        s_GteLightMatrix815 = (byte*)Win32.GetProcAddress(module, (byte*)815);
+        s_GteOfx819 = (byte*)Win32.GetProcAddress(module, (byte*)819);
+        s_GteOfy820 = (byte*)Win32.GetProcAddress(module, (byte*)820);
+        s_GteRecip821 = (byte*)Win32.GetProcAddress(module, (byte*)821);
 
         // Ghidra: EXT_00b6d198, la couleur que la passe d'éclairage (ordinal 793) consomme.
         // Identifié par le corps de l'ordinal 793 lui-même, qui la passe à FUN_00a24000.
-        s_GteLightColour817 = (byte*)GetProcAddress(module, (byte*)817);
+        s_GteLightColour817 = (byte*)Win32.GetProcAddress(module, (byte*)817);
 
         // **799 et 800 identifiés le 2026-08-18**, par leur usage dans FUN_005330d0 : la fonction
         // y écrit deux vecteurs 3D de 32 bits (les deux aretes d'un triangle, sommet - sommet),
         // puis dépose leur produit vectoriel dans 801 (MAC1..3) champ par champ. Ce sont donc les
         // **deux vecteurs d'entrée du produit vectoriel**, pas des registres de projection. La
         // table du TODO ci-dessus les donnait comme non établis.
-        s_GteVec799 = (byte*)GetProcAddress(module, (byte*)799);
-        s_GteVec800 = (byte*)GetProcAddress(module, (byte*)800);
+        s_GteVec799 = (byte*)Win32.GetProcAddress(module, (byte*)799);
+        s_GteVec800 = (byte*)Win32.GetProcAddress(module, (byte*)800);
 
         if (s_GteMatrix814 == null || s_GteMac0808 == null)
         {
@@ -688,7 +586,7 @@ public static unsafe partial class Blaze
         byte* sectionAnsi = ToAnsiZ(IniSection);
         byte* keyAnsi = ToAnsiZ(key);
         byte* valueAnsi = ToAnsiZ(value.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        WritePrivateProfileStringA(sectionAnsi, keyAnsi, valueAnsi, iniPathAnsi);
+        Win32.WritePrivateProfileStringA(sectionAnsi, keyAnsi, valueAnsi, iniPathAnsi);
         Free(sectionAnsi);
         Free(keyAnsi);
         Free(valueAnsi);
@@ -732,8 +630,41 @@ public static unsafe partial class Blaze
     private static IntPtr OpenExistingFileReadOnly(byte* path)
     {
         byte* normalized = NormalizePath(path);
-        IntPtr handle = CreateFileA(normalized, 0x80000000 /* GENERIC_READ */, 1 /* FILE_SHARE_READ */, null, 3 /* OPEN_EXISTING */, 0x80 /* FILE_ATTRIBUTE_NORMAL */, IntPtr.Zero);
+        IntPtr handle = Win32.CreateFileA(normalized, 0x80000000 /* GENERIC_READ */, 1 /* FILE_SHARE_READ */, null, 3 /* OPEN_EXISTING */, 0x80 /* FILE_ATTRIBUTE_NORMAL */, IntPtr.Zero);
         Free(normalized);
         return handle;
+    }
+
+    // Rapatrie depuis Engine/UiText.cs le 2026-08-19 : cette methode depend de
+    // EnsureDisplayListArena, DisplayListCeiling, ArenaScanFloor et AllocationGranularity, tous
+    // declares juste au-dessus. C'est la fenetre memoire basse de la liste d'affichage qu'elle
+    // gere - une contrainte winsys3d (adressage sur 24 bits), pas une affaire de texte.
+    /// <summary>
+    /// Allocates below <c>0x01000000</c>. Text descriptors are masked to 24 bits by
+    /// <see cref="RunTextEngine"/> exactly as the original does �?" where it is the identity, since
+    /// every descriptor is a <c>.data</c> global of an image based at <c>0x00400000</c>. Keeping
+    /// them low here keeps it the identity, instead of turning a faithful mask into corruption.
+    /// </summary>
+    internal static byte* AllocLowZeroed(uint size)
+    {
+        // The arena needs 2.6 MB contiguous and gets first pick. Static field initialisers run
+        // before entry()'s body, so without this a 64 KB descriptor allocated at the very bottom
+        // could split the only region large enough and starve it �?" measured, not hypothetical.
+        EnsureDisplayListArena();
+
+        nuint rounded = (size + 0xFFFu) & ~0xFFFu;
+
+        // Downward from the top of the window, for the same reason: keep the low span contiguous.
+        for (uint address = (DisplayListCeiling - AllocationGranularity) & ~(AllocationGranularity - 1);
+             address >= ArenaScanFloor; address -= AllocationGranularity)
+        {
+            if (address + rounded >= DisplayListCeiling) continue;
+            byte* block = (byte*)Win32.VirtualAlloc((void*)address, rounded, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+            if (block != null) return block;
+        }
+
+        throw new InvalidOperationException(
+            $"No free block of 0x{rounded:X} bytes below 0x{DisplayListCeiling:X8}. UI text " +
+            "descriptors are masked to 24 bits by FUN_005443a0, so they cannot live higher.");
     }
 }

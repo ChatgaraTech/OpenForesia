@@ -62,16 +62,16 @@ public static unsafe partial class Blaze
 
         // Ghidra: la matrice de caméra entre dans le registre MATRIX du GTE — les neuf shorts de
         // rotation puis les trois translations, d'un bloc.
-        for (int i = 0; i < 9; i++) matrix814[i] = ((short*)s_CameraMatrix_006008e0)[i];
-        *(int*)(s_GteMatrix814 + 0x14) = CameraTranslation[0];
-        *(int*)(s_GteMatrix814 + 0x18) = CameraTranslation[1];
-        *(int*)(s_GteMatrix814 + 0x1c) = CameraTranslation[2];
+        for (int i = 0; i < 9; i++) matrix814[i] = ((short*)Mem.s_CameraMatrix_006008e0)[i];
+        *(int*)(s_GteMatrix814 + 0x14) = Mem.CameraTranslation[0];
+        *(int*)(s_GteMatrix814 + 0x18) = Mem.CameraTranslation[1];
+        *(int*)(s_GteMatrix814 + 0x1c) = Mem.CameraTranslation[2];
 
         // Ghidra: la position de l'entité, décalée par DAT_006008d0..d8 et ramenée en unités de
         // 1/0x1000. Noter que Y est **soustrait** — l'axe est inversé par rapport aux deux autres.
-        vector802[0] = (short)((transform[0] + s_Unknown_006008d0) >> 0xc);
-        vector802[1] = (short)((s_Unknown_006008d4 - transform[1]) >> 0xc);
-        vector802[2] = (short)((transform[2] + s_Unknown_006008d8) >> 0xc);
+        vector802[0] = (short)((transform[0] + Mem.s_Unknown_006008d0) >> 0xc);
+        vector802[1] = (short)((Mem.s_Unknown_006008d4 - transform[1]) >> 0xc);
+        vector802[2] = (short)((transform[2] + Mem.s_Unknown_006008d8) >> 0xc);
 
         // Ghidra: le produit matrice-vecteur écrit à la main, accumulateurs 32 bits (MAC) puis
         // versions saturées 16 bits (IR) — exactement ce que ferait RotTrans sur la console.
@@ -88,9 +88,9 @@ public static unsafe partial class Blaze
         // Ghidra: local_3c / sStack_3a / sStack_38 — l'orientation de l'entité, décalée par la pose
         // de caméra DAT_00604928. sStack_38 sert aussi d'emplacement d'OT dans le régime « fixe ».
         short* entityAngles = stackalloc short[3];
-        entityAngles[0] = (short)((short)transform[5] + *(short*)(s_CameraVector_00604928 + 0));
-        entityAngles[1] = (short)(*(short*)((byte*)transform + 0x16) + *(short*)(s_CameraVector_00604928 + 2));
-        entityAngles[2] = (short)((short)transform[6] + *(short*)(s_CameraVector_00604928 + 4));
+        entityAngles[0] = (short)((short)transform[5] + *(short*)(Mem.s_CameraVector_00604928 + 0));
+        entityAngles[1] = (short)(*(short*)((byte*)transform + 0x16) + *(short*)(Mem.s_CameraVector_00604928 + 2));
+        entityAngles[2] = (short)((short)transform[6] + *(short*)(Mem.s_CameraVector_00604928 + 4));
 
         // Ghidra: local_bc / local_b8 / local_b4 — la position transformée, mise de côté.
         int translatedX = mac801[0], translatedY = mac801[1], translatedZ = mac801[2];
@@ -109,9 +109,9 @@ public static unsafe partial class Blaze
         // Ghidra: local_68.. — la rotation de scène, celle que le pilotage libre du sous-état 0
         // fait tourner.
         short* sceneAngles = stackalloc short[3];
-        sceneAngles[0] = (short)s_ScenePitch_005e9308;
-        sceneAngles[1] = (short)s_SceneYaw_005e930a;
-        sceneAngles[2] = (short)s_SceneRoll_005e930c;
+        sceneAngles[0] = (short)Mem.s_ScenePitch_005e9308;
+        sceneAngles[1] = (short)Mem.s_SceneYaw_005e930a;
+        sceneAngles[2] = (short)Mem.s_SceneRoll_005e930c;
         short* sceneMatrix = stackalloc short[9];
         RotMatrix(sceneAngles, sceneMatrix);
 
@@ -123,7 +123,7 @@ public static unsafe partial class Blaze
         byte* firstModel = (byte*)(nint)modelBundle[0];
         uint modelAttributes = *(uint*)(firstModel + 0x3c);
 
-        if (s_DeviceCapFlag_00564a48 && (modelAttributes & 0x200) != 0)
+        if (Mem.s_DeviceCapFlag_00564a48 && (modelAttributes & 0x200) != 0)
         {
             if (s_Unknown_00564a4c == 0) return prim;
             modelAttributes &= 0xfffffdff;
@@ -133,7 +133,7 @@ public static unsafe partial class Blaze
         int skipped = skipCounters[0] + skipCounters[1] + skipCounters[2] + skipCounters[3];
         byte* firstRecords = *(byte**)(firstModel + 0x28);
 
-        uint clut = *(uint*)(s_EntityDecodeTable_005e8f00 + ((modelAttributes >> 0x10) & 0xff) * 4);
+        uint clut = *(uint*)(Mem.s_EntityDecodeTable_005e8f00 + ((modelAttributes >> 0x10) & 0xff) * 4);
 
         uint tpageWord = ((*(ushort*)(firstRecords + skipped * 0x10 + 8) & 0xfffff800u)
                           | ((((modelAttributes & 0xff) | 0x1c0) << 5))
@@ -181,13 +181,13 @@ public static unsafe partial class Blaze
                 uniformScale[0] = scale;
                 uniformScale[1] = scale;
                 uniformScale[2] = scale;
-                Ordinal_794(boneMatrix, uniformScale);
+                Winsys3d.Ordinal_794(boneMatrix, uniformScale);
 
                 *(int*)(boneMatrix + 0x14) = *(short*)(pose + 8);
                 *(int*)(boneMatrix + 0x18) = *(short*)(pose + 10);
                 *(int*)(boneMatrix + 0x1c) = *(short*)(pose + 0xc);
 
-                Ordinal_360(parentMatrix, boneMatrix, boneSlot);
+                Winsys3d.Ordinal_360(parentMatrix, boneMatrix, boneSlot);
 
                 boneIndices++;
                 poseIndices++;
@@ -304,13 +304,13 @@ public static unsafe partial class Blaze
     {
         EnsureGteRegisters();
 
-        Ordinal_366(s_CameraMatrix_006008e0);
-        Ordinal_369(s_CameraMatrix_006008e0);
+        Winsys3d.Ordinal_366(Mem.s_CameraMatrix_006008e0);
+        Winsys3d.Ordinal_369(Mem.s_CameraMatrix_006008e0);
 
         short* input = (short*)s_GteVector803;
-        input[0] = (short)((position[0] + s_Unknown_006008d0) >> 0xc);
-        input[1] = (short)((s_Unknown_006008d4 - position[1]) >> 0xc);
-        input[2] = (short)((position[2] + s_Unknown_006008d8) >> 0xc);
+        input[0] = (short)((position[0] + Mem.s_Unknown_006008d0) >> 0xc);
+        input[1] = (short)((Mem.s_Unknown_006008d4 - position[1]) >> 0xc);
+        input[2] = (short)((position[2] + Mem.s_Unknown_006008d8) >> 0xc);
 
         short* m = (short*)s_GteMatrix814;
         int* mac = (int*)s_GteMac801;
@@ -395,7 +395,7 @@ public static unsafe partial class Blaze
     {
         uint attributes = *(uint*)(model + 0x3c);
 
-        if (s_DeviceCapFlag_00564a48 && (attributes & 0x2000000) != 0)
+        if (Mem.s_DeviceCapFlag_00564a48 && (attributes & 0x2000000) != 0)
         {
             if (s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfdffffff;
@@ -408,14 +408,14 @@ public static unsafe partial class Blaze
         // à MainMem + 0x1b4000, que le tri par polygone relit.
         if (depthSorted)
         {
-            Ordinal_418(model + 0x40, mainMem + 0x1b0000, mainMem + 0x1b4000, mainMem,
+            Winsys3d.Ordinal_418(model + 0x40, mainMem + 0x1b0000, mainMem + 0x1b4000, mainMem,
                         *(uint*)(model + 8) & 0xffff);
         }
         else
         {
             // Même compteur que la branche avec profondeur : les deux ordinaux consomment le
             // champ +8 du modèle sur ses seize bits bas.
-            Ordinal_795(model + 0x40, mainMem + 0x1b0000, *(uint*)(model + 8) & 0xffff);
+            Winsys3d.Ordinal_795(model + 0x40, mainMem + 0x1b0000, *(uint*)(model + 8) & 0xffff);
         }
 
         // Ghidra: l'éclairage — soit la passe de la DLL, soit une couleur plate recopiée trois fois
@@ -433,7 +433,7 @@ public static unsafe partial class Blaze
         else
         {
             *(uint*)s_GteLightColour817 = flatColour;
-            Ordinal_793(*(void**)(model + 0x24), colours, vertexCount);
+            Winsys3d.Ordinal_793(*(void**)(model + 0x24), colours, vertexCount);
         }
 
         byte* records = *(byte**)(model + 0x28);
@@ -537,7 +537,7 @@ public static unsafe partial class Blaze
             if (!gouraud)
             {
                 uint colour = colours[record[1] & 0xff];
-                if (s_DeviceCapFlag_00564a48) colour &= 0xfdffffff;
+                if (Mem.s_DeviceCapFlag_00564a48) colour &= 0xfdffffff;
 
                 prim[0] = previous | 0x9000000;
                 prim[1] = colour | 0x2c000000;
@@ -557,7 +557,7 @@ public static unsafe partial class Blaze
                 uint c1 = colours[indices >> 8 & 0xff];
                 uint c2 = colours[indices >> 0x10 & 0xff];
                 uint c3 = colours[indices >> 0x18];
-                if (s_DeviceCapFlag_00564a48) c1 &= 0xfdffffff;
+                if (Mem.s_DeviceCapFlag_00564a48) c1 &= 0xfdffffff;
 
                 prim[0] = previous | 0xc000000;
                 prim[1] = c1 | 0x3c000000;

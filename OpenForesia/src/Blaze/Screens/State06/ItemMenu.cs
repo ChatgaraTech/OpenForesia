@@ -32,14 +32,14 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     /// <summary>Ghidra: DAT_005de410 — l'enregistrement courant, MainMem + 0xf0000.</summary>
-    private static ref int s_ItemMenuRecord_005de410 => ref *ItemMenuState(0x005de410);
+    private static ref int s_ItemMenuRecord_005de410 => ref *Mem.ItemMenuState(0x005de410);
 
     /// <summary>Ghidra: DAT_005de4e0 — la ligne sous le curseur de l'écran racine, 0..2.</summary>
-    private static ref int s_ItemMenuCursor_005de4e0 => ref *ItemMenuState(0x005de4e0);
+    private static ref int s_ItemMenuCursor_005de4e0 => ref *Mem.ItemMenuState(0x005de4e0);
 
-    private static ref int s_Unknown_005de4d4 => ref *ItemMenuState(0x005de4d4);
-    private static ref int s_Unknown_005de464 => ref *ItemMenuState(0x005de464);
-    private static ref int s_Unknown_005de50c => ref *ItemMenuState(0x005de50c);
+    private static ref int s_Unknown_005de4d4 => ref *Mem.ItemMenuState(0x005de4d4);
+    private static ref int s_Unknown_005de464 => ref *Mem.ItemMenuState(0x005de464);
+    private static ref int s_Unknown_005de50c => ref *Mem.ItemMenuState(0x005de50c);
 
     /// <summary>
     /// Ghidra: DAT_00566ac8 et DAT_00566acc — le sous-écran courant et son compagnon, adjacents et
@@ -77,11 +77,11 @@ public static unsafe partial class Blaze
             : (s_ItemMenuDescriptorsStorage = BuildItemMenuDescriptors());
 
     private static byte* s_ItemMenuTitleDescriptor_005658a8
-        => s_ItemMenuDescriptors_00564fe0 + UiDescriptorStride;
+        => s_ItemMenuDescriptors_00564fe0 + GameMemory.UiDescriptorStride;
 
     private static byte* BuildItemMenuDescriptors()
     {
-        byte* block = AllocLowZeroed((uint)(ItemMenuDescriptorAllocCount * UiDescriptorStride));
+        byte* block = AllocLowZeroed((uint)(ItemMenuDescriptorAllocCount * GameMemory.UiDescriptorStride));
 
         uint* a = (uint*)block;
         a[0] = 0x00000031; a[1] = 0x00a00008; a[2] = 0x002800e0; a[3] = 0x00000000;
@@ -91,7 +91,7 @@ public static unsafe partial class Blaze
         a[16] = 0x010f0000; a[17] = 0x01000000; a[19] = 0x01000000; a[21] = 0x01000000;
         a[23] = 0x01000000; a[25] = 0x01000000;
 
-        uint* b = (uint*)(block + UiDescriptorStride);
+        uint* b = (uint*)(block + GameMemory.UiDescriptorStride);
         b[0] = 0x00000031; b[1] = 0x00080008; b[2] = 0x009000e0; b[3] = 0x00000000;
         b[4] = 0x081a0000; b[5] = 0x00000003; b[6] = 0x010f0808; b[7] = 0x02cf1020;
         b[8] = 0x01071018; b[9] = 0x01000000; b[10] = 0x00000000; b[11] = 0x01000000;
@@ -101,7 +101,7 @@ public static unsafe partial class Blaze
 
         // Ghidra: &DAT_00566170 — releve dans Legacy/Blaze.exe, meme forme que les deux autres.
         // Son +4 vaut 0x00640014, exactement la valeur que la phase 9 de FUN_00524880 y reecrit.
-        uint* c = (uint*)(block + 2 * UiDescriptorStride);
+        uint* c = (uint*)(block + 2 * GameMemory.UiDescriptorStride);
         c[0] = 0x00000031; c[1] = 0x00640014; c[2] = 0x008800e0; c[3] = 0x00000000;
         c[4] = 0x081a0000; c[5] = 0x0000000b; c[6] = 0x000f0808; c[7] = 0x02cf1020;
         c[8] = 0x01070000; c[9] = 0x01000000; c[10] = 0x00000000; c[11] = 0x01000000;
@@ -115,7 +115,7 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: &amp;DAT_00566170 — le troisieme descripteur, propre au sous-ecran
     /// « Invertaire ».</summary>
     private static byte* s_ItemMenuEditDescriptor_00566170
-        => s_ItemMenuDescriptors_00564fe0 + 2 * UiDescriptorStride;
+        => s_ItemMenuDescriptors_00564fe0 + 2 * GameMemory.UiDescriptorStride;
 
     /// <summary>
     /// Ghidra: &amp;PTR_s_Invertaire_00566b58 — les trois lignes de l'écran racine, dans l'ordre où
@@ -147,24 +147,24 @@ public static unsafe partial class Blaze
     private static void LoadItemMenuResources()
     {
         // Ghidra: DAT_005de4c4..DAT_005de50c remis à zéro d'affilée — dix-neuf entiers.
-        NativeMemory.Clear(ItemMenuState(0x005de4c4), 19 * sizeof(int));
+        NativeMemory.Clear(Mem.ItemMenuState(0x005de4c4), 19 * sizeof(int));
         s_ItemMenuSubState_00566ac8 = -1;
         s_Unknown_00566acc = -1;
 
         // Ghidra: FUN_0040a600() — corps vide, rien à reproduire.
-        s_Unknown_005e97d0 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
+        s_Unknown_005e97d0 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
         // Ghidra: DAT_005e97d0 — le pendant de DAT_005e97c8 pour cet état ; voisin immédiat.
 
-        FixupResourceHeader(s_MainResourceDirectory_005e97c4);
+        FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
 
         byte* mainMem = GetMainMemPtr();
-        if (s_MainResourceDirectory_005e97c4 == null || mainMem == null) return;
+        if (Mem.s_MainResourceDirectory_005e97c4 == null || mainMem == null) return;
 
-        int* textures = *(int**)(s_MainResourceDirectory_005e97c4 + 0x10);
+        int* textures = *(int**)(Mem.s_MainResourceDirectory_005e97c4 + 0x10);
         if (textures == null) return;
 
         byte* scratch = mainMem + 0x1b0000;
-        byte* slot = s_EntityDecodeTable_005e8f00;
+        byte* slot = Mem.s_EntityDecodeTable_005e8f00;
         for (int* entry = textures; *entry != 0; entry += 2, slot += 4)
         {
             LoadResourceEntry((int*)(nint)(*entry), scratch);
@@ -278,8 +278,8 @@ public static unsafe partial class Blaze
 
             for (int i = 0; i < ItemMenuDescriptorCount; i++)
             {
-                byte* panel = s_ItemMenuDescriptors_00564fe0 + i * UiDescriptorStride;
-                primCursor = RunTextEngine(primCursor, panel);
+                byte* panel = s_ItemMenuDescriptors_00564fe0 + i * GameMemory.UiDescriptorStride;
+                primCursor = Ui.RunTextEngine(primCursor, panel);
                 primCursor = DrawUiPanel(otBase, primCursor, panel);
             }
 
@@ -288,7 +288,7 @@ public static unsafe partial class Blaze
             // Le fond, centré en (0x80, 0x70) et non (0xa0, 0x78) : la page est cadrée en 256x224.
             byte* sprite = stackalloc byte[20];
             NativeMemory.Clear(sprite, 20);
-            *(uint**)sprite = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+            *(uint**)sprite = **(uint***)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
             *(uint*)(sprite + 4) = 0x1000000;
             *(short*)(sprite + 8) = 0x80;
             *(short*)(sprite + 0xa) = 0x70;
@@ -312,10 +312,10 @@ public static unsafe partial class Blaze
     /// la hauteur des deux DISPENV, écrites ensemble.</summary>
     private static void SetDisplayEnvExtent(ushort width, ushort height)
     {
-        *(ushort*)(s_DrawEnv1_005e98f0 + 0x60) = width;
-        *(ushort*)(s_DrawEnv1_005e98f0 + 0x62) = height;
-        *(ushort*)(s_DrawEnv0_005e9880 + 0x60) = width;
-        *(ushort*)(s_DrawEnv0_005e9880 + 0x62) = height;
+        *(ushort*)(Mem.s_DrawEnv1_005e98f0 + 0x60) = width;
+        *(ushort*)(Mem.s_DrawEnv1_005e98f0 + 0x62) = height;
+        *(ushort*)(Mem.s_DrawEnv0_005e9880 + 0x60) = width;
+        *(ushort*)(Mem.s_DrawEnv0_005e9880 + 0x62) = height;
     }
 
     /// <summary>
@@ -350,7 +350,7 @@ public static unsafe partial class Blaze
             // menu objets se figeait à sa première image**, écran noir, sans plantage ni progrès.
             // `Ordinal_132(0)` rend la main à la pompe (winsys3d, FUN_00a053e0), ce qui laisse le
             // relâchement arriver.
-            while (InputDrainStub() != 0) { Ordinal_132(0); }
+            while (InputDrainStub() != 0) { Winsys3d.Ordinal_132(0); }
 
             s_ItemMenuSubState_00566ac8 = s_ItemMenuCursor_005de4e0;
             if (s_ItemMenuCursor_005de4e0 == 0)
@@ -365,7 +365,7 @@ public static unsafe partial class Blaze
                 s_ItemMenuRecord_005de410 = (int)(nint)(mainMem + 0xf0000);
                 s_PartySize_005e9020 = 0;
                 s_Unknown_005de464 = 0;
-                BindMenuLabels(s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
+                BindMenuLabels(Mem.s_Unknown_005606f8, 0, s_ItemMenuDescriptors_00564fe0, 0);
             }
             else if (s_ItemMenuCursor_005de4e0 == 2)
             {
@@ -389,7 +389,7 @@ public static unsafe partial class Blaze
 
         // Le curseur, seize pixels a gauche de la colonne de texte.
         EmitViewportRect(otBase, &primCursor);
-        *(uint**)c = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+        *(uint**)c = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
         *(short*)(c + 8) = 100 - 0x10;
         *(short*)(c + 0x10) = 0x18;
         *(short*)(c + 0xa) = (short)(s_ItemMenuCursor_005de4e0 * 0xc + 0x28);
@@ -435,7 +435,7 @@ public static unsafe partial class Blaze
         buffer[3 + length + 1] = 0;
 
         BindMenuLabels(buffer, 0, s_ItemMenuTitleDescriptor_005658a8, 0);
-        return RunTextEngine(primCursor, s_ItemMenuTitleDescriptor_005658a8);
+        return Ui.RunTextEngine(primCursor, s_ItemMenuTitleDescriptor_005658a8);
     }
 
     /// <summary>
@@ -457,7 +457,7 @@ public static unsafe partial class Blaze
             SetCardFileName(s_CardDirectoryEntries_006049bc + entry * 0x28);
             SetCardPathDeviceFields();
 
-            IntPtr handle = Ordinal_21(s_CardPathDescriptor_00604940, 1);
+            IntPtr handle = Winsys3d.Ordinal_21(s_CardPathDescriptor_00604940, 1);
             if ((long)handle < 0)
             {
                 // Ghidra: neuf octets copiés depuis s__________00566b8c (deux dwords puis l'octet
@@ -466,8 +466,8 @@ public static unsafe partial class Blaze
             }
             else
             {
-                Ordinal_24(handle, scratch, 0x2000);
-                Ordinal_22(handle);
+                Winsys3d.Ordinal_24(handle, scratch, 0x2000);
+                Winsys3d.Ordinal_22(handle);
                 // Les seize octets du nom, à +0x100 de l'enregistrement — le même champ que
                 // WriteCardSaveFile encode dans l'en-tête du fichier.
                 for (int i = 0; i < 16; i++) row[i] = scratch[0x100 + i];

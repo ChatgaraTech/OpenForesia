@@ -177,8 +177,8 @@ public static unsafe partial class Blaze
     {
         s_CardWriteStatus_00604ab0 = 4;
         s_CardReadStatus_00604a00 = 4;
-        int result = Ordinal_67(slot);
-        while (result == 0) result = Ordinal_67(slot);
+        int result = Winsys3d.Ordinal_67(slot);
+        while (result == 0) result = Winsys3d.Ordinal_67(slot);
     }
 
     /// <summary>Ghidra: FUN_005047e0 @ 0x005047e0 — réarme les quatre gestionnaires de lecture
@@ -186,7 +186,7 @@ public static unsafe partial class Blaze
     private static void ResetCardReadEvents()
     {
         foreach (void* handle in s_CardReadEventHandles_00604b58)
-            if (handle != null) Ordinal_9((int*)handle);
+            if (handle != null) Winsys3d.Ordinal_9((int*)handle);
         s_CardReadStatus_00604a00 = 4;
     }
 
@@ -195,7 +195,7 @@ public static unsafe partial class Blaze
     private static void ResetCardWriteEvents()
     {
         foreach (void* handle in s_CardWriteEventHandles_00604b68)
-            if (handle != null) Ordinal_9((int*)handle);
+            if (handle != null) Winsys3d.Ordinal_9((int*)handle);
         s_CardWriteStatus_00604ab0 = 4;
     }
 
@@ -224,7 +224,7 @@ public static unsafe partial class Blaze
         throw new NotImplementedException(
             "PollCardWriteStatus: appelé avec wait=vrai — dans ce port, Ordinal_72 rend toujours " +
             "0 (winsys3d.dll, FUN_00a02e20), donc la boucle d'attente de l'original ne se termine " +
-            "jamais ici. Original : FUN_005046c0, boucle sur Ordinal_72(slot >> 4) jusqu'à ce que " +
+            "jamais ici. Original : FUN_005046c0, boucle sur Winsys3d.Ordinal_72(slot >> 4) jusqu'à ce que " +
             "DAT_00604ab0 change ou 500000 tentatives s'épuisent.");
     }
 
@@ -258,7 +258,7 @@ public static unsafe partial class Blaze
     {
         int result = 0;
         for (int attempts = 10; attempts != 0 && result == 0; attempts--)
-            result = Ordinal_20(s_CardPathDescriptor_00604940);
+            result = Winsys3d.Ordinal_20(s_CardPathDescriptor_00604940);
         return result != 0;
     }
 
@@ -283,13 +283,13 @@ public static unsafe partial class Blaze
         if (status == 3)
         {
             ResetCardReadEvents();
-            int r = Ordinal_68(slot);
-            while (r == 0) r = Ordinal_68(slot);
+            int r = Winsys3d.Ordinal_68(slot);
+            while (r == 0) r = Winsys3d.Ordinal_68(slot);
             PollCardReadStatus(slot, true);   // valeur de retour ignorée, fidèle à l'original
         }
         ResetCardWriteEvents();
-        int r2 = Ordinal_69(slot);
-        while (r2 == 0) r2 = Ordinal_69(slot);
+        int r2 = Winsys3d.Ordinal_69(slot);
+        while (r2 == 0) r2 = Winsys3d.Ordinal_69(slot);
 
         status = PollCardWriteStatus(slot, startTransfer);
         return status switch { 1 => -3, 2 => -2, 3 => -1, 4 => 1, _ => 0 };
@@ -312,7 +312,7 @@ public static unsafe partial class Blaze
     {
         IntPtr result = (IntPtr)(-1);
         for (int attempts = 10; attempts != 0 && result == (IntPtr)(-1); attempts--)
-            result = Ordinal_21(pathDescriptor, flags);
+            result = Winsys3d.Ordinal_21(pathDescriptor, flags);
         return result;
     }
 
@@ -323,7 +323,7 @@ public static unsafe partial class Blaze
     {
         int result = -1;
         for (int attempts = 10; attempts != 0 && result == -1; attempts--)
-            result = Ordinal_22(handle);
+            result = Winsys3d.Ordinal_22(handle);
         return result;
     }
 
@@ -333,7 +333,7 @@ public static unsafe partial class Blaze
     {
         int result = -1;
         for (int attempts = 10; attempts != 0 && result == -1; attempts--)
-            result = Ordinal_23(handle, offset, method);
+            result = Winsys3d.Ordinal_23(handle, offset, method);
         return result;
     }
 
@@ -349,7 +349,7 @@ public static unsafe partial class Blaze
             if (result >= 0) return result;
             int seek = RetrySeekCardFile(handle, offset, 0);
             if (seek < 0) return seek;
-            int read = (int)Ordinal_24(handle, buffer, (uint)size) - 1;
+            int read = (int)Winsys3d.Ordinal_24(handle, buffer, (uint)size) - 1;
             result = read == size - 1 ? read : -1;
             attempts--;
             if (attempts == 0) return result;
@@ -367,7 +367,7 @@ public static unsafe partial class Blaze
             if (result >= 0) return result;
             int seek = RetrySeekCardFile(handle, offset, 0);
             if (seek < 0) return seek;
-            int written = (int)Ordinal_25(handle, buffer, (uint)size) - 1;
+            int written = (int)Winsys3d.Ordinal_25(handle, buffer, (uint)size) - 1;
             result = written == size - 1 ? written : -1;
             attempts--;
             if (attempts == 0) return result;
@@ -531,26 +531,26 @@ public static unsafe partial class Blaze
         byte identity = scratch[0x150];
 
         // La CLUT : seize couleurs sur une ligne, vers +0x60.
-        ushort iconPage = *(ushort*)(s_EntityDecodeTable_005e8f00 + 0x16);
+        ushort iconPage = *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0x16);
         short* clutRect = stackalloc short[4];
         clutRect[0] = (short)(((uint)identity + (uint)(iconPage & 0x3f)) * 0x10);
         clutRect[1] = (short)(iconPage >> 6);
         clutRect[2] = 0x10;
         clutRect[3] = 1;
-        Ordinal_667(0);
-        Ordinal_684(clutRect, scratch + 0x60);
+        Winsys3d.Ordinal_667(0);
+        Winsys3d.Ordinal_684(clutRect, scratch + 0x60);
 
         // L'icône elle-même : 4 mots de large sur 16 lignes (16x16 en 4 bpp = 128 octets), vers
         // +0x80. La position dépend de l'octet d'identité du personnage : les deux bits bas donnent
         // la colonne, les bits 2-3 la ligne.
-        byte iconTile = s_EntityDecodeTable_005e8f00[0x14];
+        byte iconTile = Mem.s_EntityDecodeTable_005e8f00[0x14];
         short* iconRect = stackalloc short[4];
         iconRect[0] = (short)((((identity & 3) + (iconTile & 0x0f) * 4)) << 4);
         iconRect[1] = (short)((((iconTile & 0x10) + (identity & 0x0c))) << 4);
         iconRect[2] = 4;
         iconRect[3] = 0x10;
-        Ordinal_667(0);
-        Ordinal_684(iconRect, scratch + 0x80);
+        Winsys3d.Ordinal_667(0);
+        Winsys3d.Ordinal_684(iconRect, scratch + 0x80);
 
         // Ghidra: 0x2000 octets à zéro à partir de +0x2000.
         NativeMemory.Clear(scratch + 0x2000, 0x2000);
@@ -570,7 +570,7 @@ public static unsafe partial class Blaze
             }
             else
             {
-                CopyDwords((uint*)(scratch + sourceOffset + 0x300), (uint*)frameDest, 4);
+                Mem.CopyDwords((uint*)(scratch + sourceOffset + 0x300), (uint*)frameDest, 4);
                 sourceOffset += 0x280;
             }
         }
@@ -589,12 +589,12 @@ public static unsafe partial class Blaze
 
         if ((r1 | r2 | r3 | r4) < 0)
         {
-            BindMenuLabels(LabelAt(0x178), 0, s_StatusDescriptor_00560728, 0);
+            BindMenuLabels(LabelAt(0x178), 0, Mem.s_StatusDescriptor_00560728, 0);
             s_CardPhase_00578e0c = 99;
         }
         else
         {
-            BindMenuLabels(LabelAt(0x1b8), 0, s_StatusDescriptor_00560728, 0);
+            BindMenuLabels(LabelAt(0x1b8), 0, Mem.s_StatusDescriptor_00560728, 0);
             *cardTransferPhase = 0;
             s_CardPhase_00578e0c = 0x11;
         }

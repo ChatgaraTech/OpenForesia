@@ -27,8 +27,8 @@ public static unsafe partial class Blaze
     // ouvert après la séance sur la sauvegarde. La table des répertoires n'était vide que parce que
     // rien ne remplissait son rôle d'appelant.
     // =====================================================================
-    private static byte* s_PartySelectionOrder_005e85c0 => s_PartyListArena_005e85c0;
-    private static byte* s_PartyRowText_005e8640 => s_PartyListArena_005e85c0 + (0x005e8640 - PartyListBase);
+    private static byte* s_PartySelectionOrder_005e85c0 => Mem.s_PartyListArena_005e85c0;
+    private static byte* s_PartyRowText_005e8640 => Mem.s_PartyListArena_005e85c0 + (0x005e8640 - GameMemory.PartyListBase);
     private const int PartyRowStride = 0x16;
 
     // Ghidra: &DAT_0056c868 — les abréviations de classe, pas de 5, huit entrées (décalage fichier
@@ -62,14 +62,14 @@ public static unsafe partial class Blaze
     // Ghidra: les huit banques de 0x40 octets que le chargement d'un membre restaure depuis
     // l'enregistrement de sauvegarde (+0x1d00..+0x1efc) — les mêmes que FinalizeCharacterStats
     // remet à zéro à la création. Toutes dans l'arène 0x5e9000, donc de simples alias.
-    private static byte* s_Bank_005e96e0 => Arena(0x005e96e0);
-    private static byte* s_Bank_005e9720 => Arena(0x005e9720);
-    private static byte* s_Bank_005e9780 => Arena(0x005e9780);
-    private static byte* s_Bank_005e9840 => Arena(0x005e9840);
-    private static byte* s_Bank_005e9980 => Arena(0x005e9980);
-    private static byte* s_Bank_005e92c0 => Arena(0x005e92c0);
-    private static byte* s_Bank_005e9360 => Arena(0x005e9360);
-    private static byte* s_EquipPairs_005e9320 => Arena(0x005e9320);
+    private static byte* s_Bank_005e96e0 => Mem.Arena(0x005e96e0);
+    private static byte* s_Bank_005e9720 => Mem.Arena(0x005e9720);
+    private static byte* s_Bank_005e9780 => Mem.Arena(0x005e9780);
+    private static byte* s_Bank_005e9840 => Mem.Arena(0x005e9840);
+    private static byte* s_Bank_005e9980 => Mem.Arena(0x005e9980);
+    private static byte* s_Bank_005e92c0 => Mem.Arena(0x005e92c0);
+    private static byte* s_Bank_005e9360 => Mem.Arena(0x005e9360);
+    private static byte* s_EquipPairs_005e9320 => Mem.Arena(0x005e9320);
 
     /// <summary>
     /// Ghidra: <c>FUN_00547960(dest, &amp;DAT_005630c4, valeur)</c> — le <c>sprintf</c> de la CRT,
@@ -132,8 +132,8 @@ public static unsafe partial class Blaze
             return;
         }
 
-        BindMenuLabels(s_Unknown_005606f8, 0, s_LoadScreenDescriptors_0056b558, 0);
-        BindMenuLabels(LabelAt(0x34), 0, s_LoadScreenDescriptor2_0056be20, 0);
+        BindMenuLabels(Mem.s_Unknown_005606f8, 0, Mem.s_LoadScreenDescriptors_0056b558, 0);
+        BindMenuLabels(LabelAt(0x34), 0, Mem.s_LoadScreenDescriptor2_0056be20, 0);
 
         int cursorRow = 0;         // Ghidra: iVar12 — la ligne sous le curseur
         int windowTop = 0;         // Ghidra: local_34 — la première ligne affichée
@@ -336,20 +336,20 @@ public static unsafe partial class Blaze
                     if ((pad[3] & 0x40) != 0)
                     {
                         // CROIX pendant la boîte de dialogue : on annule et on revient à la liste.
-                        s_Unknown_0056b593 = 0;
-                        s_Unknown_0056be1f = (byte)(s_Unknown_0056be1f & 0xfb);
+                        Mem.s_Unknown_0056b593 = 0;
+                        Mem.s_Unknown_0056be1f = (byte)(Mem.s_Unknown_0056be1f & 0xfb);
                         PlayUiSound39();          // Ghidra: FUN_0053dba0
                         phase = 0;
-                        pendingLabel = s_Unknown_005606f8;
+                        pendingLabel = Mem.s_Unknown_005606f8;
                         break;
                     }
 
-                    if ((s_Unknown_0056be1f & 4) == 0)
+                    if ((Mem.s_Unknown_0056be1f & 4) == 0)
                     {
-                        if (s_Unknown_005e909f != 0)
+                        if (Mem.s_Unknown_005e909f != 0)
                         {
                             phase = 0;
-                            pendingLabel = s_Unknown_005606f8;
+                            pendingLabel = Mem.s_Unknown_005606f8;
                             break;
                         }
                         // La phase 2 est la sortie vers le menu principal, la 5 le lancement de la
@@ -372,17 +372,17 @@ public static unsafe partial class Blaze
                     ushort pressed = *(ushort*)(pad + 2);
                     if ((pressed & 0x4000) != 0)
                     {
-                        s_Unknown_0056b58b = 0;
-                        s_Unknown_0056be1f = (byte)(s_Unknown_0056be1f & 0xfd);
+                        Mem.s_Unknown_0056b58b = 0;
+                        Mem.s_Unknown_0056be1f = (byte)(Mem.s_Unknown_0056be1f & 0xfd);
                         PlayUiSound39();
                         phase = 0;
-                        pendingLabel = s_Unknown_005606f8;
+                        pendingLabel = Mem.s_Unknown_005606f8;
                         break;
                     }
                     if ((pressed & 0x8000) != 0)
                     {
-                        s_Unknown_0056b58b = 0;
-                        s_Unknown_0056be1f = (byte)(s_Unknown_0056be1f & 0xfd);
+                        Mem.s_Unknown_0056b58b = 0;
+                        Mem.s_Unknown_0056be1f = (byte)(Mem.s_Unknown_0056be1f & 0xfd);
                         phase = 5;
                         *(ushort*)(pad + 2) = (ushort)(pressed & 0x7fff);
                         pendingLabel = LabelAt(0);
@@ -394,7 +394,7 @@ public static unsafe partial class Blaze
             }
 
             if (pendingLabel != null)
-                BindMenuLabels(pendingLabel, 0, s_LoadScreenDescriptors_0056b558, 0);
+                BindMenuLabels(pendingLabel, 0, Mem.s_LoadScreenDescriptors_0056b558, 0);
 
             // --- Les six lignes visibles --------------------------------------------------
             int windowEnd = windowTop + 6;
@@ -423,8 +423,8 @@ public static unsafe partial class Blaze
 
                 // L'entrée 0x3e de la table de pages, celle que le second dword de
                 // l'enregistrement désigne — écrite juste avant le tracé, comme EmitCardGlyphTile.
-                *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xf8) = 0xf;
-                *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xfa) =
+                *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xf8) = 0xf;
+                *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xfa) =
                     (ushort)(((i << 4) >> 4) & 0xf | (bank + 0x1fe) * 0x40);
 
                 primCursor = DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
@@ -443,7 +443,7 @@ public static unsafe partial class Blaze
                 if (cursorRow == i)
                 {
                     EmitViewportRect(otBase, &primCursor);
-                    *(uint**)d = **(uint***)(s_MainResourceBuffer_005e97c0 + 0x94);
+                    *(uint**)d = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
                     *(short*)(d + 0xa) -= 2;
                     *(short*)(d + 0x10) = 0x18;
                     *(uint*)(d + 4) = 0x1000000;
@@ -457,8 +457,8 @@ public static unsafe partial class Blaze
             // Les deux descripteurs d'interface de l'écran, l'un après l'autre.
             for (int i = 0; i < 2; i++)
             {
-                byte* panel = s_LoadScreenDescriptors_0056b558 + i * UiDescriptorStride;
-                primCursor = RunTextEngine(primCursor, panel);            // Ghidra: FUN_005443a0
+                byte* panel = Mem.s_LoadScreenDescriptors_0056b558 + i * GameMemory.UiDescriptorStride;
+                primCursor = Ui.RunTextEngine(primCursor, panel);            // Ghidra: FUN_005443a0
                 primCursor = DrawUiPanel(otBase, primCursor, panel);      // Ghidra: FUN_00545340
             }
 
@@ -469,7 +469,7 @@ public static unsafe partial class Blaze
             *(short*)(d + 0xa) = 0x78;
             *(short*)(d + 0xc) = 0x1420;
             *(short*)(d + 0xe) = 0x1149;
-            *(uint**)d = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+            *(uint**)d = **(uint***)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
             *(uint*)(d + 4) = 0x1000000;
             primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);   // Ghidra: FUN_00521f20
             primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);
@@ -494,7 +494,7 @@ public static unsafe partial class Blaze
     {
         byte*[] banks =
         [
-            s_Bank_005e96e0, s_Bank_005e9780, s_PanelSelection_005e9060, s_Bank_005e9840,
+            s_Bank_005e96e0, s_Bank_005e9780, Mem.s_PanelSelection_005e9060, s_Bank_005e9840,
             s_Bank_005e9720, s_Bank_005e92c0, s_Bank_005e9980, s_Bank_005e9360,
         ];
 

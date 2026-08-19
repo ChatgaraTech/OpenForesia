@@ -191,7 +191,7 @@ internal static unsafe class SyntheticDevice
     {
         if ((!s_UseSyntheticDevice && !s_CaptureDeviceCaps) || s_RealGetProcAddress != null) return;
 
-        IntPtr winsys3d = GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
+        IntPtr winsys3d = Win32.GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
         if (winsys3d == IntPtr.Zero)
         {
             Console.Error.WriteLine("[SYNTH] winsys3d.dll non chargé — device synthétique inactif");
@@ -301,7 +301,7 @@ internal static unsafe class SyntheticDevice
         void** vtable = (void**)NativeMemory.AllocZeroed((nuint)(DeviceVtableSlots * sizeof(void*)));
 
         s_LastSynthSlot = (int*)NativeMemory.AllocZeroed(sizeof(int));
-        byte* stubs = (byte*)VirtualAlloc(null, (nuint)(DeviceVtableSlots * StubSize),
+        byte* stubs = (byte*)Win32.VirtualAlloc(null, (nuint)(DeviceVtableSlots * StubSize),
                                           MemCommitReserve, PageExecuteReadWrite);
         if (stubs == null)
         {
@@ -485,7 +485,7 @@ internal static unsafe class SyntheticDevice
     private static int Synth_InitDisplay(void* self, uint a, uint b, uint c)
     {
         Console.Error.WriteLine($"[SYNTH] +0x30 prise d'affichage neutralisée ({a}, {b}, {c}) — rend succès");
-        return 1;   // non nul = succès, sinon winsys3d appelle ExitProcess(3)
+        return 1;   // non nul = succès, sinon winsys3d appelle Win32.ExitProcess(3)
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
@@ -599,7 +599,7 @@ internal static unsafe class SyntheticDevice
     {
         if (s_TextureVtable == null)
         {
-            s_TextureStubs = (byte*)VirtualAlloc(null, (nuint)(TextureVtableSlots * StubSize),
+            s_TextureStubs = (byte*)Win32.VirtualAlloc(null, (nuint)(TextureVtableSlots * StubSize),
                                                  MemCommitReserve, PageExecuteReadWrite);
             if (s_TextureStubs == null) return null;
 

@@ -189,7 +189,7 @@ internal static unsafe class DeviceShim
             return;
         }
 
-        IntPtr mod = GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
+        IntPtr mod = Win32.GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
         if (mod == IntPtr.Zero) return;
 
         void** device = *(void***)((byte*)mod + 0x7BE760);   // Ghidra: DAT_011be760
@@ -613,7 +613,7 @@ internal static unsafe class DeviceShim
     {
         if (s_Winsys3dBase == null)
         {
-            IntPtr mod = GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
+            IntPtr mod = Win32.GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
             if (mod == IntPtr.Zero) return int.MinValue;
             s_Winsys3dBase = (byte*)mod;
         }
@@ -650,7 +650,7 @@ internal static unsafe class DeviceShim
     /// </summary>
     private static void LogShiftGlobals()
     {
-        IntPtr mod = GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
+        IntPtr mod = Win32.GetModuleHandleA(ToAnsiZ("winsys3d.dll"));
         if (mod == IntPtr.Zero) return;
         byte* b = (byte*)mod;
 

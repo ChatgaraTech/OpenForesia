@@ -166,8 +166,8 @@ public static unsafe partial class Blaze
     {
         // Ghidra: _DAT_005e9898 = 1; _DAT_005e9908 = 1 — le champ `isbg` des deux draw envs, comme
         // en tête de RunMainMenuFrameLoop.
-        *(s_DrawEnv0_005e9880 + 0x18) = 1;
-        *(s_DrawEnv1_005e98f0 + 0x18) = 1;
+        *(Mem.s_DrawEnv0_005e9880 + 0x18) = 1;
+        *(Mem.s_DrawEnv1_005e98f0 + 0x18) = 1;
 
         uint classIndex = 0;      // Ghidra: uVar8    — 0..7, la classe sous le curseur
         uint gender = 0;          // Ghidra: local_18 — 0 = MALE, 1 = FEMALE
@@ -301,7 +301,7 @@ public static unsafe partial class Blaze
             *(short*)(d + 0xc) = 0x1420;
             *(short*)(d + 0xe) = 0x1149;
             *(short*)(d + 0x10) = 0;
-            *(uint**)d = **(uint***)(s_MainResourceDirectory_005e97c4 + 0x94);
+            *(uint**)d = **(uint***)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
             *(uint*)(d + 4) = 0x1000000;
             primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);   // FUN_00521f20
             primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);           // FUN_0051f9c0
@@ -460,9 +460,9 @@ public static unsafe partial class Blaze
         // chargée de MainMem, ce chemin va le relire depuis BLAZE.ALL via l'entrée +0xb0 du
         // répertoire de ressources, indexée par la classe.
         byte* scratch = GetMainMemPtr() + 0x1b0000;
-        int* entry = *(int**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0xb0) + classIndex * 4);
+        int* entry = *(int**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0xb0) + classIndex * 4);
         LoadResourceEntry(entry, scratch);                             // Ghidra: FUN_00529b50
-        CopyDwords((uint*)scratch, (uint*)(record + 0x300), 0x640);    // Ghidra: FUN_005352e0
+        Mem.CopyDwords((uint*)scratch, (uint*)(record + 0x300), 0x640);    // Ghidra: FUN_005352e0
 
         // L'équipement de départ du mode de mise au point : trois emplacements à 0xff (contre 1 et
         // trois zéros dans le jeu normal) et sept objets 0x0b, 0x16, 0x21, 0x2c, 0x37, 0x42, 0x4d —
@@ -500,11 +500,11 @@ public static unsafe partial class Blaze
     // Ghidra: &DAT_005e9680 â€” 4 pointeurs de sortie, un par emplacement de groupe, remplis par
     // RelocateAnimationBundle. Jamais lu dans FUN_00536ba0 lui-mÃªme (seule son ADRESSE sert de borne
     // de boucle) â€” Ã©crit uniquement.
-    private static byte* s_PartyAnimationResult_005e9680 => Arena(0x005e9680);
+    private static byte* s_PartyAnimationResult_005e9680 => Mem.Arena(0x005e9680);
 
     // Ghidra: &DAT_005e9800 â€” 4 pointeurs de sortie, un par emplacement de groupe, remplis par
     // RelocateModelBundle.
-    private static byte* s_PartyModelResult_005e9800 => Arena(0x005e9800);
+    private static byte* s_PartyModelResult_005e9800 => Mem.Arena(0x005e9800);
 
     // Ghidra: DAT_005de738 â€” le curseur d'accumulation final (Ghidra: EBP) aprÃ¨s le chargement des
     // quatre emplacements ; probablement lu par FUN_00535500 ou par un code de rendu pas encore
@@ -555,7 +555,7 @@ public static unsafe partial class Blaze
     private static void LoadPartyMemberResources()
     {
         byte* mainMem = GetMainMemPtr();
-        byte* directoryBase = s_MainResourceDirectory_005e97c4;
+        byte* directoryBase = Mem.s_MainResourceDirectory_005e97c4;
         if (mainMem == null || directoryBase == null) return;
 
         byte* modelAnimCursor = mainMem + 0xf8000;   // Ghidra: EBP
@@ -605,7 +605,7 @@ public static unsafe partial class Blaze
 
             LoadResourceEntry((int*)(nint)texDir1Entry[0], mainMem + 0x1b0000);
             DecodeResourceChunk(mainMem + 0x1b0000,
-                (ushort*)(s_EntityDecodeTable_005e8f00 + 0x80 + i * 4), meta1);
+                (ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0x80 + i * 4), meta1);
 
             // ---- texture 2 : LoadResourceEntry + OpenTim/ReadTim manuel (pas DecodeResourceChunk â€”
             // le rectangle CLUT est une bande fixe 64x1 par emplacement le long de X, pas une taille
@@ -619,20 +619,20 @@ public static unsafe partial class Blaze
             LoadResourceEntry((int*)(nint)texDir2Entry[0], mainMem + 0x1b0000);
 
             TimImage tim;
-            OpenTim(mainMem + 0x1b0000);
-            ReadTim(&tim);
+            Winsys3d.OpenTim(mainMem + 0x1b0000);
+            Winsys3d.ReadTim(&tim);
 
             short* clutRect = tim.ClutRect;
             clutRect[0] = (short)(i * 0x40);
             clutRect[1] = (short)(meta2_1 + 0x1c0);
             clutRect[2] = 0x40;
             clutRect[3] = 1;
-            Ordinal_674(clutRect, tim.ClutData);
+            Winsys3d.Ordinal_674(clutRect, tim.ClutData);
 
             short* pixelRect = tim.PixelRect;
             pixelRect[0] = (short)(((meta2_0 & 0xf) << 6) + (i << 4));
             pixelRect[1] = (short)(((meta2_0 & 0x10) + meta2_2 * 4) << 4);
-            Ordinal_674(pixelRect, tim.PixelData);
+            Winsys3d.Ordinal_674(pixelRect, tim.PixelData);
 
             // Ghidra 0x536d91-dc7 â€” mÃªme formule de tpage que DecodeResourceChunk.
             int x = pixelRect[0];
@@ -641,8 +641,8 @@ public static unsafe partial class Blaze
             tpage |= 0x2000;
             tpage = (short)tpage >> 4;
             tpage |= ((int)tim.Mode & 3) << 7;
-            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0x90 + i * 4) = (ushort)tpage;
-            *(ushort*)(s_EntityDecodeTable_005e8f00 + 0x92 + i * 4) = (ushort)((meta2_1 + 0x1c0) << 6);
+            *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0x90 + i * 4) = (ushort)tpage;
+            *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0x92 + i * 4) = (ushort)((meta2_1 + 0x1c0) << 6);
 
             // ---- paquet de modÃ¨le : LoadResourceEntry (dans la rÃ©gion partagÃ©e et cumulative
             // modelAnimCursor) + RelocateModelBundle, table +0x2c, pas 8 octets ----
@@ -731,8 +731,8 @@ public static unsafe partial class Blaze
                 rect[1] = (short)(0x1f1 + slot);     // y
                 rect[2] = 0x10;                      // largeur
                 rect[3] = 1;                         // hauteur
-                Ordinal_667(0);
-                Ordinal_674(rect, row);
+                Winsys3d.Ordinal_667(0);
+                Winsys3d.Ordinal_674(rect, row);
 
                 // Les pixels : 6 unités de 16 bits de large (donc 24 pixels en 4 bits) sur 24
                 // lignes, les emplacements empilés verticalement et les vignettes côte à côte.
@@ -740,14 +740,14 @@ public static unsafe partial class Blaze
                 rect[1] = (short)(0x100 + slot * 0x18);// y
                 rect[2] = 6;                           // largeur, en unités de 16 bits
                 rect[3] = 0x18;                        // hauteur
-                Ordinal_667(0);
-                Ordinal_674(rect, row + 0x20);
+                Winsys3d.Ordinal_667(0);
+                Winsys3d.Ordinal_674(rect, row + 0x20);
             }
         }
 
         // Ghidra: DAT_005e8fa0 / DAT_005e8fa2 — l'entrée 0x28 de la table de décodage : la page de
         // texture et la palette que le rendu de ces vignettes ira chercher.
-        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xa0) = 0x216;
-        *(ushort*)(s_EntityDecodeTable_005e8f00 + 0xa2) = 0x7c40;
+        *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xa0) = 0x216;
+        *(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0xa2) = 0x7c40;
     }
 }

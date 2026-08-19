@@ -1,0 +1,165 @@
+// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
+// in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
+//
+// La surface P/Invoke du systeme : kernel32, user32, gdi32, winmm, ole32, ddraw, msvcrt,
+// dinput.
+//
+// Une seule classe pour huit DLL, parce que la frontiere qui compte pour un lecteur est
+// "c'est le systeme", pas "c'est user32 plutot que gdi32". Aucun second implementeur : pas
+// d'interface.
+//
+// `static` par NECESSITE et non par paresse : [DllImport] exige `extern static`, et il n'y a
+// aucun etat a porter. Une classe statique est ici la forme correcte.
+
+using System;
+using System.Runtime.InteropServices;
+
+namespace OpenForesia.Blaze;
+
+internal static unsafe class Win32
+{
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr LoadLibraryA(byte* lpLibFileName);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr GetProcAddress(IntPtr hModule, byte* lpProcName);
+
+    [DllImport("dinput.dll", ExactSpelling = true)]
+    internal static extern int DirectInputCreateA(IntPtr hinst, uint version, void** ppDI, void* unkOuter);
+
+    // Ghidra: memmove â€” FUN_00547a00 is 420 lines of unrolled MSVC block copy. Per the project's
+    // rule, a recognised CRT routine is called rather than transcribed.
+    [DllImport("msvcrt.dll", EntryPoint = "memmove", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void* CrtMemMove(void* dest, void* src, nuint count);
+
+    [DllImport("kernel32.dll")] internal static extern uint GetVersion();
+
+    [DllImport("kernel32.dll")] internal static extern byte* GetCommandLineA();
+
+    [DllImport("kernel32.dll")] internal static extern void GetStartupInfoA(Blaze.STARTUPINFOA* lpStartupInfo);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr GetModuleHandleA(byte* lpModuleName);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetModuleFileNameA(IntPtr hModule, byte* lpFilename, uint nSize);
+
+    [DllImport("kernel32.dll")] internal static extern IntPtr HeapCreate(uint flOptions, nuint dwInitialSize, nuint dwMaximumSize);
+
+    [DllImport("kernel32.dll")] internal static extern IntPtr GetCurrentProcess();
+
+    [DllImport("kernel32.dll")] internal static extern int TerminateProcess(IntPtr hProcess, uint uExitCode);
+
+    [DllImport("kernel32.dll")] internal static extern void ExitProcess(uint uExitCode);
+
+    [DllImport("kernel32.dll")] internal static extern char* GetEnvironmentStringsW();
+
+    [DllImport("kernel32.dll")] internal static extern int FreeEnvironmentStringsW(char* lpszEnvironmentBlock);
+
+    [DllImport("kernel32.dll")] internal static extern int WideCharToMultiByte(uint CodePage, uint dwFlags, char* lpWideCharStr, int cchWideChar, byte* lpMultiByteStr, int cbMultiByte, byte* lpDefaultChar, int* lpUsedDefaultChar);
+
+    [DllImport("kernel32.dll")] internal static extern int IsDBCSLeadByte(byte TestChar);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetDriveTypeA(byte* lpRootPathName);
+
+    [DllImport("kernel32.dll")] internal static extern uint GetFileSize(IntPtr hFile, uint* lpFileSizeHigh);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+    internal static extern IntPtr CreateFileA(byte* lpFileName, uint dwDesiredAccess, uint dwShareMode, void* lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+
+    [DllImport("kernel32.dll")] internal static extern int CloseHandle(IntPtr hObject);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern uint GetPrivateProfileIntA(byte* lpAppName, byte* lpKeyName, int nDefault, byte* lpFileName);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int WritePrivateProfileStringA(byte* lpAppName, byte* lpKeyName, byte* lpString, byte* lpFileName);
+
+    // Ghidra: FUN_005129e0 -> DirectDrawCreate(NULL, &lpDD, NULL).
+    [DllImport("ddraw.dll")] internal static extern int DirectDrawCreate(void* lpGUID, void** lplpDD, void* pUnkOuter);
+
+    [DllImport("ole32.dll")] internal static extern int CoInitialize(void* pvReserved);
+
+    [DllImport("ole32.dll")] internal static extern void CoUninitialize();
+
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] internal static extern int MessageBoxA(IntPtr hWnd, byte* lpText, byte* lpCaption, uint uType);
+
+    [DllImport("user32.dll")] internal static extern int DestroyWindow(IntPtr hWnd);
+
+    [DllImport("gdi32.dll")] internal static extern int DeleteObject(IntPtr hObject);
+
+    [DllImport("winmm.dll")] internal static extern uint waveOutGetNumDevs();
+
+    [DllImport("winmm.dll")] internal static extern int waveOutGetVolume(IntPtr hwo, uint* pdwVolume);
+
+    [DllImport("winmm.dll")] internal static extern int waveOutSetVolume(IntPtr hwo, uint dwVolume);
+
+    // Win32 APIs needed by RunMainLoop's own dependency graph (movie/intro-video playback window,
+    // resource-file font loading, and the joystick/critical-section plumbing in FUN_00504460).
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] internal static extern ushort RegisterClassA(Blaze.WNDCLASSA* lpWndClass);
+
+    [DllImport("user32.dll")] internal static extern int UnregisterClassA(byte* lpClassName, IntPtr hInstance);
+
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
+    internal static extern IntPtr CreateWindowExA(uint dwExStyle, byte* lpClassName, byte* lpWindowName, uint dwStyle,
+    int x, int y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, void* lpParam);
+
+    [DllImport("user32.dll")] internal static extern int ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")] internal static extern int MoveWindow(IntPtr hWnd, int x, int y, int w, int h, int bRepaint);
+
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr LoadCursorA(IntPtr hInstance, IntPtr lpCursorName);
+
+    [DllImport("gdi32.dll")] internal static extern IntPtr GetStockObject(int fnObject);
+
+    [DllImport("user32.dll")] internal static extern int PeekMessageA(Blaze.MSG* lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg);
+
+    [DllImport("user32.dll")] internal static extern int DispatchMessageA(Blaze.MSG* lpMsg);
+
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] internal static extern nint DefWindowProcA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
+
+    [DllImport("user32.dll")] internal static extern void PostQuitMessage(int nExitCode);
+
+    [DllImport("user32.dll")] internal static extern IntPtr SetFocus(IntPtr hWnd);
+
+    [DllImport("user32.dll")] internal static extern short GetAsyncKeyState(int vKey);
+
+    [DllImport("kernel32.dll")] internal static extern void Sleep(uint milliseconds);
+
+    [DllImport("winmm.dll")] internal static extern uint timeGetTime();
+
+    [DllImport("user32.dll")] internal static extern IntPtr SetTimer(IntPtr hWnd, nuint nIDEvent, uint uElapse, IntPtr lpTimerFunc);
+
+    [DllImport("user32.dll")] internal static extern int KillTimer(IntPtr hWnd, nuint uIDEvent);
+
+    [DllImport("user32.dll")] internal static extern int PostMessageA(IntPtr hWnd, uint msg, nuint wParam, nint lParam);
+
+    [DllImport("kernel32.dll")] internal static extern void RaiseException(uint dwExceptionCode, uint dwExceptionFlags, uint nNumberOfArguments, nint* lpArguments);
+
+    [DllImport("winmm.dll")] internal static extern uint joySetCapture(IntPtr hWnd, uint uJoyID, uint uPeriod, int fChanged);
+
+    [DllImport("winmm.dll")] internal static extern uint joyReleaseCapture(uint uJoyID);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern byte* lstrcpyA(byte* lpString1, byte* lpString2);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern int lstrcmpiA(byte* lpString1, byte* lpString2);
+
+    [DllImport("gdi32.dll")] internal static extern int StretchDIBits(IntPtr hdc, int xDest, int yDest, int destW, int destH,
+    int xSrc, int ySrc, int srcW, int srcH, void* lpBits, void* lpBitsInfo, uint iUsage, uint rop);
+
+    [DllImport("user32.dll")] internal static extern int SetRect(int* lprc, int left, int top, int right, int bottom);
+
+    [DllImport("ddraw.dll")] internal static extern int DirectDrawCreate(void* lpGuid, out IntPtr lplpDD, void* pUnkOuter);
+
+    [DllImport("kernel32.dll")] internal static extern uint SetFilePointer(IntPtr hFile, int lDistanceToMove, void* lpDistanceToMoveHigh, uint dwMoveMethod);
+
+    [DllImport("kernel32.dll")] internal static extern int ReadFile(IntPtr hFile, void* lpBuffer, uint nNumberOfBytesToRead, uint* lpNumberOfBytesRead, void* lpOverlapped);
+
+    // Used by the music-streaming subsystem (Ghidra: FUN_005131d0 / FUN_005135d0).
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr CreateEventA(void* lpEventAttributes, int bManualReset, int bInitialState, byte* lpName);
+
+    [DllImport("kernel32.dll")] internal static extern int SetEvent(IntPtr hEvent);
+
+    [DllImport("kernel32.dll")] internal static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
+
+    [DllImport("kernel32.dll")] internal static extern IntPtr CreateThread(void* lpThreadAttributes, nuint dwStackSize, IntPtr lpStartAddress, void* lpParameter, uint dwCreationFlags, uint* lpThreadId);
+
+    [DllImport("kernel32.dll")] internal static extern void* VirtualAlloc(void* lpAddress, nuint dwSize, uint flAllocationType, uint flProtect);
+
+    [DllImport("kernel32.dll")] internal static extern nuint VirtualQuery(void* lpAddress, out Blaze.MEMORY_BASIC_INFORMATION lpBuffer, nuint dwLength);
+
+}

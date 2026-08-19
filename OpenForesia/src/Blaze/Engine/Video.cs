@@ -60,7 +60,7 @@ public static unsafe partial class Blaze
         public int TitleBitmapLoaded;       // offset 0x0c (param_1[3]) â€” nonzero once TitleBitmap is cached
         public int AttractActive;           // offset 0x04 (param_1[1]) â€” set while the title screen is up;
                                             // FUN_00542970 tests it alongside Playing
-        public int TimerArmed;              // offset 0x20 (param_1[8]) â€” nonzero once SetTimer(hwnd,1,...) ran
+        public int TimerArmed;              // offset 0x20 (param_1[8]) â€” nonzero once Win32.SetTimer(hwnd,1,...) ran
         public int Field24;                 // offset 0x24 â€” OpenMovieStream writes 2
         public int Field28;                 // offset 0x28 â€” OpenMovieStream writes 1; gates the WM_TIMER step
     }
@@ -144,7 +144,7 @@ public static unsafe partial class Blaze
     {
         // Ghidra: FUN_005129e0 â€” DirectDrawCreate(NULL, &wrapper[0], NULL), 0 on failure.
         void* directDraw;
-        int hr = DirectDrawCreate(null, &directDraw, null);
+        int hr = Win32.DirectDrawCreate(null, &directDraw, null);
         if (hr < 0 || directDraw == null) return unchecked((int)0x80004005); // E_FAIL â€” Ghidra's -0x7fffbffb
         wrapper[0] = (uint)(nuint)directDraw;
 
@@ -253,7 +253,7 @@ public static unsafe partial class Blaze
         {
             // Win32 RECT here (four LONGs at wrapper[4..7]), not the four-short libgpu RECT used by
             // the winsys3d ordinals elsewhere in this file.
-            SetRect((int*)(wrapper + 4), 0, 0, (int)width, (int)height);
+            Win32.SetRect((int*)(wrapper + 4), 0, 0, (int)width, (int)height);
             wrapper[0xe] = 0;   // Ghidra: param_1[0xe] = 0
             wrapper[0xf] = 1;   // Ghidra: param_1[0xf] = 1
             wrapper[3] = 1;     // Ghidra: param_1[3]  = 1
@@ -301,7 +301,7 @@ public static unsafe partial class Blaze
             int hr = setCooperativeLevel(directDraw, hwnd, 8);
             if (hr < 0)
             {
-                MessageBoxA(hwnd, s_SetCooperativeLevelFailed, s_ErrorCaption, 0x10);
+                Win32.MessageBoxA(hwnd, s_SetCooperativeLevelFailed, s_ErrorCaption, 0x10);
                 return hr;
             }
 
@@ -314,8 +314,8 @@ public static unsafe partial class Blaze
         }
 
         wrapper[0xd] = 0xff00ff;                       // Ghidra: param_1[0xd] = 0xff00ff
-        SetRect((int*)(wrapper + 4), 0, 0, 0, 0);
-        SetRect((int*)(wrapper + 8), 0, 0, 0, 0);
+        Win32.SetRect((int*)(wrapper + 4), 0, 0, 0, 0);
+        Win32.SetRect((int*)(wrapper + 8), 0, 0, 0, 0);
         wrapper[3] = 0;
         return 0;
     }
@@ -378,7 +378,7 @@ public static unsafe partial class Blaze
         void* bits = bmp + *(int*)(bmp + 10);   // bfOffBits
         void* info = bmp + 0xe;                 // BITMAPINFOHEADER
 
-        StretchDIBits(hdc, 0, 0, TitleScreenWidth, TitleScreenHeight,
+        Win32.StretchDIBits(hdc, 0, 0, TitleScreenWidth, TitleScreenHeight,
                       0, 0, TitleScreenWidth, TitleScreenHeight,
                       bits, info, 0 /* DIB_RGB_COLORS */, 0xcc0020 /* SRCCOPY */);
 
@@ -405,7 +405,7 @@ public static unsafe partial class Blaze
         void* bits = bmp + *(int*)(bmp + 10);   // bfOffBits
         void* info = bmp + 0xe;                 // BITMAPINFOHEADER
 
-        int scanlines = StretchDIBits(dc, 0, 0, TitleScreenWidth, TitleScreenHeight,
+        int scanlines = Win32.StretchDIBits(dc, 0, 0, TitleScreenWidth, TitleScreenHeight,
                                       0, 0, TitleScreenWidth, TitleScreenHeight,
                                       bits, info, 0 /* DIB_RGB_COLORS */, 0xcc0020 /* SRCCOPY */);
         if (scanlines > 0) StartupSurface.MarkDrawn();
@@ -453,8 +453,8 @@ public static unsafe partial class Blaze
     private static void ConstructDirectDrawWrapper(uint* wrapper)
     {
         // Ghidra: SetRect(ESI + 0x10, 0,0,0,0) and SetRect(ESI + 0x20, 0,0,0,0) â€” two Win32 RECTs.
-        SetRect((int*)(wrapper + 4), 0, 0, 0, 0);
-        SetRect((int*)(wrapper + 8), 0, 0, 0, 0);
+        Win32.SetRect((int*)(wrapper + 4), 0, 0, 0, 0);
+        Win32.SetRect((int*)(wrapper + 8), 0, 0, 0, 0);
 
         wrapper[0] = 0;          // Ghidra: MOV [ESI],EDI       â€” IDirectDraw
         wrapper[1] = 0;          // Ghidra: MOV [ESI+0x4],EDI   â€” primary surface
@@ -510,7 +510,7 @@ public static unsafe partial class Blaze
         // Ghidra: if (param_1[8] != 0) { KillTimer(param_2, 1); param_1[8] = 0; }
         if (player.TimerArmed != 0)
         {
-            KillTimer(hwnd, 1);
+            Win32.KillTimer(hwnd, 1);
             player.TimerArmed = 0;
         }
 
@@ -542,14 +542,14 @@ public static unsafe partial class Blaze
                 // Le PostMessage qui suit dÃ©clenche le redessin et reste actif dans les deux cas.
                 if (!s_WindowedStartup)
                 {
-                    SetFocus(player.HWnd);
-                    ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
+                    Win32.SetFocus(player.HWnd);
+                    Win32.ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
                 }
-                PostMessageA(player.HWnd, 0x111 /* WM_COMMAND */, 1, 1);
+                Win32.PostMessageA(player.HWnd, 0x111 /* WM_COMMAND */, 1, 1);
                 return;
             }
             StopMoviePlayback(player, player.HWnd, 1);
-            ShowWindow(player.HWnd, 2 /* SW_SHOWMINIMIZED */);
+            Win32.ShowWindow(player.HWnd, 2 /* SW_SHOWMINIMIZED */);
         }
     }
 
@@ -579,7 +579,7 @@ public static unsafe partial class Blaze
     {
         // Ghidra: if (DAT_005dffa8 == 0) return DefWindowProcA(...);
         MoviePlayerState? player = s_MoviePlayer;
-        if (player == null) return DefWindowProcA(hwnd, msg, wParam, lParam);
+        if (player == null) return Win32.DefWindowProcA(hwnd, msg, wParam, lParam);
 
         switch (msg)
         {
@@ -587,7 +587,7 @@ public static unsafe partial class Blaze
                 return 0;
 
             case 0x0010: // WM_CLOSE
-                PostQuitMessage(0);
+                Win32.PostQuitMessage(0);
                 return 0;
 
             case 0x001c: // WM_ACTIVATEAPP
@@ -621,14 +621,14 @@ public static unsafe partial class Blaze
                 return 0;
 
             default:
-                return DefWindowProcA(hwnd, msg, wParam, lParam);
+                return Win32.DefWindowProcA(hwnd, msg, wParam, lParam);
         }
     }
 
     /// <summary>Ghidra: FUN_00542740 @ 0x00542740 â€” creates the hidden window the movie player renders into.</summary>
     private static void CreateMoviePlayerWindow(MoviePlayerState player)
     {
-        IntPtr hInstance = GetModuleHandleA(null);
+        IntPtr hInstance = Win32.GetModuleHandleA(null);
         player.HInstance = hInstance;
 
         // Ghidra: SUB ESP,0x28 reserves exactly one WNDCLASSA, and the ten stores that follow are
@@ -642,18 +642,18 @@ public static unsafe partial class Blaze
             cbWndExtra = 0,
             hInstance = hInstance,
             hIcon = IntPtr.Zero,
-            hCursor = LoadCursorA(GetModuleHandleA(ToAnsiZ("WSYSKERN.DLL")), (IntPtr)10),
-            hbrBackground = GetStockObject(4 /* BLACK_BRUSH */),
+            hCursor = Win32.LoadCursorA(Win32.GetModuleHandleA(ToAnsiZ("WSYSKERN.DLL")), (IntPtr)10),
+            hbrBackground = Win32.GetStockObject(4 /* BLACK_BRUSH */),
             lpszMenuName = null,
             lpszClassName = s_VfwClassName,
         };
 
-        RegisterClassA(&wc);
+        Win32.RegisterClassA(&wc);
 
         // Ghidra: CreateWindowExA(8, "VfwClass", "Blaze & Blade", 0x80000000, 0, 0, 10, 10, 0, 0,
         //                          hInstance, 0) â€” WS_EX_TOPMOST + WS_POPUP, created tiny and
         // resized below, which is why this window is invisible in practice.
-        player.HWnd = CreateWindowExA(
+        player.HWnd = Win32.CreateWindowExA(
             8 /* WS_EX_TOPMOST */, s_VfwClassName, s_MovieWindowTitle, 0x80000000 /* WS_POPUP */,
             0, 0, 10, 10, IntPtr.Zero, IntPtr.Zero, hInstance, null);
 
@@ -670,8 +670,8 @@ public static unsafe partial class Blaze
         // faisant un `PeekMessageA(NULL, â€¦)` Ã  l'Ã©chelle du thread.
         if (s_WindowedStartup) return;
 
-        ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
-        MoveWindow(player.HWnd, 0, 0, 0x7d0, 0x7d0, 1);
+        Win32.ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE */);
+        Win32.MoveWindow(player.HWnd, 0, 0, 0x7d0, 0x7d0, 1);
     }
 
     /// <summary>Ghidra: FUN_00542940 @ 0x00542940 â€” destroys the movie player's hidden window.</summary>
@@ -679,10 +679,10 @@ public static unsafe partial class Blaze
     {
         if (player.HWnd != IntPtr.Zero)
         {
-            DestroyWindow(player.HWnd);
+            Win32.DestroyWindow(player.HWnd);
         }
         player.HWnd = IntPtr.Zero;
-        UnregisterClassA(s_VfwClassName, player.HInstance);
+        Win32.UnregisterClassA(s_VfwClassName, player.HInstance);
     }
 
     /// <summary>
@@ -743,7 +743,7 @@ public static unsafe partial class Blaze
         // DEVIATION CONDITIONNELLE â€” voir s_WindowedStartup.
         if (player.HWnd != IntPtr.Zero && !s_WindowedStartup)
         {
-            MoveWindow(player.HWnd, 0, 0, 2000, 2000, 1);
+            Win32.MoveWindow(player.HWnd, 0, 0, 2000, 2000, 1);
         }
 
         if (player.DirectDrawWrapper != null)
@@ -759,7 +759,7 @@ public static unsafe partial class Blaze
         // DEVIATION CONDITIONNELLE â€” voir s_WindowedStartup.
         if (player.HWnd != IntPtr.Zero && !s_WindowedStartup)
         {
-            ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE, per Ghidra literal */);
+            Win32.ShowWindow(player.HWnd, 3 /* SW_MAXIMIZE, per Ghidra literal */);
         }
     }
 
@@ -788,7 +788,7 @@ public static unsafe partial class Blaze
         // allocated it in LoadBitmapFile), the player struct to the CRT. The original calls this
         // unconditionally; wsyskern's Free tolerates null. Our struct is GC-managed, so only the
         // bitmap needs releasing here.
-        WsysFree(s_MoviePlayer.TitleBitmap);
+        Wsyskern.WsysFree(s_MoviePlayer.TitleBitmap);
         s_MoviePlayer.TitleBitmap = null;
         s_MoviePlayer.TitleBitmapLoaded = 0;
 
@@ -834,7 +834,7 @@ public static unsafe partial class Blaze
         if (player.TitleBitmapLoaded == 0)
         {
             byte* path = BuildCdPath(s_TitleBitmapFileName);
-            player.TitleBitmap = LoadBitmapFile(path, 0 /* silent on failure â€” see wsyskern.md */);
+            player.TitleBitmap = Wsyskern.LoadBitmapFile(path, 0 /* silent on failure â€” see wsyskern.md */);
             Free(path);
 
             // Ghidra: if (iVar3 == 0) return 1; â€” the original's own graceful degradation when the
@@ -865,27 +865,27 @@ public static unsafe partial class Blaze
 
         // Ghidra: DVar4 = timeGetTime(); *(param_1+4) = 1; joySetCapture x2; then a message pump
         // that exits with 1 on input and with 0 once 19999 ms have elapsed since the last redraw.
-        uint lastDraw = timeGetTime();
+        uint lastDraw = Win32.timeGetTime();
         player.AttractActive = 1;
-        joySetCapture(player.HWnd, 0, 0x32, 1);
-        joySetCapture(player.HWnd, 1, 0x32, 1);
+        Win32.joySetCapture(player.HWnd, 0, 0x32, 1);
+        Win32.joySetCapture(player.HWnd, 1, 0x32, 1);
 
         MSG msg;
         while (true)
         {
-            while (PeekMessageA(&msg, IntPtr.Zero, 0, 0, 1 /* PM_REMOVE */) != 0)
+            while (Win32.PeekMessageA(&msg, IntPtr.Zero, 0, 0, 1 /* PM_REMOVE */) != 0)
             {
                 // Ghidra: the key/mouse/joystick set that ends the attract screen. Handled here
                 // *and* in the window procedure â€” the original tests them in this loop directly,
                 // which is what makes the wait end even when the message is not dispatched.
                 if (msg.message is 0x100 or 0x201 or 0x204 or 0x207 or 0x3b5 or 0x3b6)
                 {
-                    WsysFree(player.TitleBitmap);
+                    Wsyskern.WsysFree(player.TitleBitmap);
                     player.TitleBitmap = null;
                     player.TitleBitmapLoaded = 0;
                     player.AttractActive = 0;
-                    joyReleaseCapture(0);
-                    joyReleaseCapture(1);
+                    Win32.joyReleaseCapture(0);
+                    Win32.joyReleaseCapture(1);
                     return 1;
                 }
 
@@ -893,7 +893,7 @@ public static unsafe partial class Blaze
                 if (msg.message == 0x111 && msg.lParam == 1)
                 {
                     BlitTitleScreen(player);
-                    lastDraw = timeGetTime();
+                    lastDraw = Win32.timeGetTime();
                 }
 
                 if (msg.message == 0x12 /* WM_QUIT */)
@@ -901,15 +901,15 @@ public static unsafe partial class Blaze
                     RaiseQuitException();
                 }
 
-                DispatchMessageA(&msg);
+                Win32.DispatchMessageA(&msg);
             }
 
             // Ghidra: if (19999 < timeGetTime() - DVar4) { *(param_1+4) = 0; joyRelease; return 0; }
-            if (timeGetTime() - lastDraw > 19999)
+            if (Win32.timeGetTime() - lastDraw > 19999)
             {
                 player.AttractActive = 0;
-                joyReleaseCapture(0);
-                joyReleaseCapture(1);
+                Win32.joyReleaseCapture(0);
+                Win32.joyReleaseCapture(1);
                 return 0;
             }
         }
@@ -941,8 +941,8 @@ public static unsafe partial class Blaze
         // object's own filename buffer; nothing to copy into without that object, so skipped.
         player.Result = 0;
 
-        joySetCapture(player.HWnd, 0, 0x32, 1);
-        joySetCapture(player.HWnd, 1, 0x32, 1);
+        Win32.joySetCapture(player.HWnd, 0, 0x32, 1);
+        Win32.joySetCapture(player.HWnd, 1, 0x32, 1);
 
         if (TrySetupMovieStream(player))
         {
@@ -958,19 +958,19 @@ public static unsafe partial class Blaze
             MSG msg;
             do
             {
-                while (PeekMessageA(&msg, IntPtr.Zero, 0, 0, 1 /* PM_REMOVE */) != 0)
+                while (Win32.PeekMessageA(&msg, IntPtr.Zero, 0, 0, 1 /* PM_REMOVE */) != 0)
                 {
                     if (msg.message == 0x12 /* WM_QUIT */)
                     {
                         RaiseQuitException();
                     }
-                    DispatchMessageA(&msg);
+                    Win32.DispatchMessageA(&msg);
                 }
             } while (player.Playing);
         }
 
-        joyReleaseCapture(0);
-        joyReleaseCapture(1);
+        Win32.joyReleaseCapture(0);
+        Win32.joyReleaseCapture(1);
         return player.Result;
     }
 
@@ -984,7 +984,7 @@ public static unsafe partial class Blaze
 
         byte* path = stackalloc byte[64];
         int i = 0;
-        for (byte* p = s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = Mem.s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = movieFileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
 
@@ -1016,10 +1016,10 @@ public static unsafe partial class Blaze
         buf[6] = 0x0000fa00; // (padding, local_10)
         buf[7] = 0;          // local_c
 
-        Ordinal_378(0, 0); // TODO(REVERSE): Ordinal_378 takes no visible args at this call site in
+        Winsys3d.Ordinal_378(0, 0); // TODO(REVERSE): Ordinal_378 takes no visible args at this call site in
                             // Blaze.c beyond an implicit/optimized-out pair; passed (0,0) as a
                             // faithful placeholder â€” see winsys3d.md.
-        Ordinal_368(buf);
+        Winsys3d.Ordinal_368(buf);
     }
 
     /// <summary>
@@ -1048,10 +1048,10 @@ public static unsafe partial class Blaze
         // The previous reconstruction had the argument order rotated, passed stack scratch buffers
         // instead of the four globals, and passed **null** for the fourth â€” which is what made
         // winsys3d.dll write through a null pointer and take down the process.
-        SetDefDispEnv(s_DispEnv0_005e98dc, 0, 0xf0, 0x140, 0xf0);
-        SetDefDispEnv(s_DispEnv1_005e994c, 0, 0, 0x140, 0xf0);
-        SetDefDrawEnv(s_DrawEnv0_005e9880, 0, 0, 0x140, 0xf0);
-        SetDefDrawEnv(s_DrawEnv1_005e98f0, 0, 0xf0, 0x140, 0xf0);
+        Winsys3d.SetDefDispEnv(Mem.s_DispEnv0_005e98dc, 0, 0xf0, 0x140, 0xf0);
+        Winsys3d.SetDefDispEnv(Mem.s_DispEnv1_005e994c, 0, 0, 0x140, 0xf0);
+        Winsys3d.SetDefDrawEnv(Mem.s_DrawEnv0_005e9880, 0, 0, 0x140, 0xf0);
+        Winsys3d.SetDefDrawEnv(Mem.s_DrawEnv1_005e98f0, 0, 0xf0, 0x140, 0xf0);
 
         // Ghidra: the 12 global stores that follow the calls. Each one lands inside one of the four
         // structs above at an offset that matches the DISPENV/DRAWENV layout exactly â€” which is the
@@ -1060,31 +1060,31 @@ public static unsafe partial class Blaze
         //
         // _DAT_005e98e4/_e6/_e8/_ea = disp env 0's `screen` rect  (0,0,320,240) â€” replaces the
         // 0x100-wide default SetDefDispEnv writes.
-        *(short*)(s_DispEnv0_005e98dc + 0x08) = 0;
-        *(short*)(s_DispEnv0_005e98dc + 0x0a) = 0;
-        *(short*)(s_DispEnv0_005e98dc + 0x0c) = 0x140;
-        *(short*)(s_DispEnv0_005e98dc + 0x0e) = 0xf0;
+        *(short*)(Mem.s_DispEnv0_005e98dc + 0x08) = 0;
+        *(short*)(Mem.s_DispEnv0_005e98dc + 0x0a) = 0;
+        *(short*)(Mem.s_DispEnv0_005e98dc + 0x0c) = 0x140;
+        *(short*)(Mem.s_DispEnv0_005e98dc + 0x0e) = 0xf0;
 
         // _DAT_005e9954/_56/_58/_5a = disp env 1's `screen` rect, same values.
-        *(short*)(s_DispEnv1_005e994c + 0x08) = 0;
-        *(short*)(s_DispEnv1_005e994c + 0x0a) = 0;
-        *(short*)(s_DispEnv1_005e994c + 0x0c) = 0x140;
-        *(short*)(s_DispEnv1_005e994c + 0x0e) = 0xf0;
+        *(short*)(Mem.s_DispEnv1_005e994c + 0x08) = 0;
+        *(short*)(Mem.s_DispEnv1_005e994c + 0x0a) = 0;
+        *(short*)(Mem.s_DispEnv1_005e994c + 0x0c) = 0x140;
+        *(short*)(Mem.s_DispEnv1_005e994c + 0x0e) = 0xf0;
 
         // DAT_005e9896 / _DAT_005e9898 and DAT_005e9906 / _DAT_005e9908 = each draw env's `dtd`
         // (dither, offset 0x16 â€” already 1 from SetDefDrawEnv, so this store is a no-op) and `isbg`
         // (offset 0x18 â€” flipped from 0 to 1, i.e. clear the framebuffer to the background colour
         // before drawing). Ghidra shows the isbg stores as 2-byte writes overlapping the adjacent
         // `r0` byte; r0 was just zeroed by SetDefDrawEnv, so a byte store is equivalent here.
-        *(s_DrawEnv0_005e9880 + 0x16) = 1;
-        *(s_DrawEnv0_005e9880 + 0x18) = 1;
-        *(s_DrawEnv1_005e98f0 + 0x16) = 1;
-        *(s_DrawEnv1_005e98f0 + 0x18) = 1;
+        *(Mem.s_DrawEnv0_005e9880 + 0x16) = 1;
+        *(Mem.s_DrawEnv0_005e9880 + 0x18) = 1;
+        *(Mem.s_DrawEnv1_005e98f0 + 0x16) = 1;
+        *(Mem.s_DrawEnv1_005e98f0 + 0x18) = 1;
 
         byte* mainMem = GetMainMemPtr();
         if (mainMem == null) return; // TODO(REVERSE): winsys3d.dll's MainMem not yet resolvable in this environment
 
-        if (s_DebugModeLatch_005633a8 == 0)
+        if (Mem.s_DebugModeLatch_005633a8 == 0)
         {
             // Ghidra: two runs of `*(undefined4*)(mainMem + 4 + off) = 0x80008000;` â€” a checkerboard fill.
             for (int off = 0x1c3ffc - 4; off >= 0x1c1ffc; off -= 4)
@@ -1096,8 +1096,8 @@ public static unsafe partial class Blaze
             short* tileRect = stackalloc short[14];
             for (int i = 0; i < 0x20; i++)
             {
-                Ordinal_674(tileRect, mainMem + 0x1b0000);
-                Ordinal_667(0);
+                Winsys3d.Ordinal_674(tileRect, mainMem + 0x1b0000);
+                Winsys3d.Ordinal_667(0);
                 frameOffset += 0x40;
                 if (frameOffset == 0x400) frameOffset = 0;
             }
@@ -1105,8 +1105,8 @@ public static unsafe partial class Blaze
         else
         {
             short* rect = stackalloc short[14];
-            Ordinal_665(rect, 0, 0, 0);
-            Ordinal_667(0);
+            Winsys3d.Ordinal_665(rect, 0, 0, 0);
+            Winsys3d.Ordinal_667(0);
         }
     }
 }

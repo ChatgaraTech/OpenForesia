@@ -26,7 +26,7 @@ public static unsafe partial class Blaze
 
     // Ghidra: DAT_005e9300 â€” which of the two draw envs is current, i.e. the back/front selector.
     private static byte* s_CurrentDrawEnv;
-    private static int s_Unknown_005e8310;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data.
     // Ghidra: DAT_005e9818 — le **budget de primitives par frame**, identifié en reconstruisant
     // FUN_0051d1f0. FrameBegin le recharge à 0x9c4 (2500) et chaque primitive émise le décrémente ;
     // à zéro, les boucles d'émission s'arrêtent net. Il n'est écrit nulle part ailleurs, et son
@@ -116,19 +116,19 @@ public static unsafe partial class Blaze
                 "TODO #33. Every frame is built inside that arena, so this cannot degrade quietly.");
         }
 
-        bool firstEnv = s_CurrentDrawEnv == s_DrawEnv0_005e9880;
+        bool firstEnv = s_CurrentDrawEnv == Mem.s_DrawEnv0_005e9880;
 
         uint* ot = (uint*)(mainMem + (firstEnv ? 0x1c7000 : 0x1c6000));
         *otBase = ot;
         *otEntry = (uint*)((byte*)ot + 0xffc);   // Ghidra: *param_2 = iVar1 + 0xffc
-        Ordinal_688(ot, 0x400);                   // ClearOTagR(ot, 1024)
-        s_Unknown_005e8310 = 0;
+        Winsys3d.Ordinal_688(ot, 0x400);                   // ClearOTagR(ot, 1024)
+        Mem.s_Unknown_005e8310 = 0;
 
         *primCursor = (uint*)(mainMem + (firstEnv ? 0x1e4000 : 0x1c8000));
         s_Unknown_005e9818 = 0x9c4;
 
         // Ghidra: FUN_00533000(DAT_005e97c0) â€” palette animation, once per frame.
-        AnimatePalettes(s_MainResourceBuffer_005e97c0);
+        AnimatePalettes(Mem.s_MainResourceBuffer_005e97c0);
     }
 
     /// <summary>
@@ -149,29 +149,29 @@ public static unsafe partial class Blaze
 
         s_FadeCounter_005e9960++;
 
-        int cosine = GetCosTableEntry((int)(s_FadeCounter_005e9960 * 0x200));
+        int cosine = Winsys3d.GetCosTableEntry((int)(s_FadeCounter_005e9960 * 0x200));
         sbyte level = (sbyte)((cosine >> 6) - 0x80);
         s_Unknown_005e9814 = (uint)(((byte)level << 16) | ((byte)level << 8) | (byte)level);
 
-        Ordinal_667(0);
+        Winsys3d.Ordinal_667(0);
 
         // Ghidra: puVar3 = &DAT_005e9880; if (DAT_005e9300 == &DAT_005e9880) puVar3 = &DAT_005e98f0;
         // â€” the buffer swap: pick the *other* draw env, then publish its matching disp env at +0x5c.
-        byte* nextDrawEnv = s_CurrentDrawEnv == s_DrawEnv0_005e9880
-            ? s_DrawEnv1_005e98f0
-            : s_DrawEnv0_005e9880;
+        byte* nextDrawEnv = s_CurrentDrawEnv == Mem.s_DrawEnv0_005e9880
+            ? Mem.s_DrawEnv1_005e98f0
+            : Mem.s_DrawEnv0_005e9880;
         s_CurrentDrawEnv = nextDrawEnv;
 
-        Ordinal_657(nextDrawEnv + 0x5c);       // the DISPENV sits 0x5c past the DRAWENV
-        Ordinal_660(nextDrawEnv);
+        Winsys3d.Ordinal_657(nextDrawEnv + 0x5c);       // the DISPENV sits 0x5c past the DRAWENV
+        Winsys3d.Ordinal_660(nextDrawEnv);
 
         FlushDeferredImageUploads();           // Ghidra: FUN_00545140()
 
-        Ordinal_701(*otEntry);                 // DrawOTag â€” asm: Ordinal_701(*arg2)
+        Winsys3d.Ordinal_701(*otEntry);                 // DrawOTag â€” asm: Winsys3d.Ordinal_701(*arg2)
 
         // asm 0052a314: MOV ECX,[ESP+0x2c] â€” that slot is **arg4**, not arg5. The `if` below tests
         // [ESP+0x30], which is arg5. An earlier reading passed the same value to both.
-        Ordinal_132(mode);
+        Winsys3d.Ordinal_132(mode);
 
         if (flag != 0)
         {
@@ -226,13 +226,11 @@ public static unsafe partial class Blaze
         *(ushort*)((byte*)block + 0x10) = 0x3fff;
         *(ushort*)((byte*)block + 0x12) = 0x3fff;
 
-        Ordinal_762(block);
-        Ordinal_97(0xc, 0, 0);
+        Winsys3d.Ordinal_762(block);
+        Winsys3d.Ordinal_97(0xc, 0, 0);
     }
 
-    // Ghidra: &DAT_005e8f00 â€” the menu state's own tpage/clut slot table, distinct from the
-    // 0x005e8fc0 one LoadFirstLevelResources fills. Same 4-byte-per-entry layout.
-    private static readonly byte* s_EntityDecodeTable_005e8f00 = (byte*)NativeMemory.AllocZeroed(0x1000);
+    // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
     // Ghidra: DAT_005e97c8 â€” the tail pointer LoadResourceEntry returns for the state's own load.
     private static byte* s_Unknown_005e97c8;
@@ -241,10 +239,6 @@ public static unsafe partial class Blaze
     /// voisin immédiat, même rôle : la poignée que le chargeur de ressources rend.</summary>
     private static byte* s_Unknown_005e97d0;
 
-    // winsys3d.dll named exports (ordinal 776 and its setter) â€” the viewport shift the options page
-    // saves and restores around its own screen.
-    [DllImport("winsys3d.dll")] private static extern void GetAbsShift(int* x, int* y);
-    [DllImport("winsys3d.dll")] private static extern void SetAbsShift(int x, int y);
 
     // Ghidra: _DAT_0054d074 â€” the float the gamma value is scaled by before CreateTranslationTables.
     // TODO(REVERSE): .rdata content; 1.0f keeps the product equal to the raw setting.
@@ -293,7 +287,7 @@ public static unsafe partial class Blaze
         if (trackIndex < 0 || trackIndex >= s_MusicTrackPaths.Length) return;
         byte* path = s_MusicTrackPaths[trackIndex];
         if (path == null) return;
-        path[0] = s_CdDataRootPath[0];
+        path[0] = Mem.s_CdDataRootPath[0];
         StartMusicStream(path);
     }
 
@@ -311,8 +305,8 @@ public static unsafe partial class Blaze
         PlayMusicTrack(6);
 
         // Ghidra: DAT_005e9898 = 1; DAT_005e9908 = 1 â€” the two draw envs' `isbg`.
-        *(s_DrawEnv0_005e9880 + 0x18) = 1;
-        *(s_DrawEnv1_005e98f0 + 0x18) = 1;
+        *(Mem.s_DrawEnv0_005e9880 + 0x18) = 1;
+        *(Mem.s_DrawEnv1_005e98f0 + 0x18) = 1;
 
         JoystickResetState(false);
 
@@ -348,7 +342,7 @@ public static unsafe partial class Blaze
                 s_FadeCounter_005e9960--;
                 level = 0x80;
 
-                primCursor = RunTextEngine(primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_005443a0
+                primCursor = Ui.RunTextEngine(primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_005443a0
                 primCursor = DrawUiPanel(otEntry, primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_00545340
 
                 int gammaBefore = s_Unknown_005d9de0;
@@ -366,10 +360,10 @@ public static unsafe partial class Blaze
                             // options UI, writes the settings back and rebuilds the gamma tables if
                             // the value changed.
                             while (InputDrainStub() != 0) { }
-                            ReInitializeAllTextures();
+                            Winsys3d.ReInitializeAllTextures();
                             int shiftX, shiftY;
-                            GetAbsShift(&shiftX, &shiftY);
-                            SetAbsShift(0, 0);
+                            Winsys3d.GetAbsShift(&shiftX, &shiftY);
+                            Winsys3d.SetAbsShift(0, 0);
                             if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
                             OptionsPage();                        // Ghidra: FUN_00512320
 
@@ -398,7 +392,7 @@ public static unsafe partial class Blaze
                             // mesuré, le jeu restait figé dans la page. C'est la même attente que
                             // l'éditeur de touches utilise entre deux captures.
                             UiPageTrace("options : retour au menu, vidange…");
-                            while (InputDrainStub() != 0) { Ordinal_132(0); }
+                            while (InputDrainStub() != 0) { Winsys3d.Ordinal_132(0); }
 
                             // …et on referme la garde de validation. Sans cela le `switch`
                             // ci-dessus se redéclenche à l'image suivante sur la même entrée :
@@ -423,11 +417,11 @@ public static unsafe partial class Blaze
                             s_MenuContext_0056dd58[0x8c7] |= 4;
                             UiPageTrace("options : vidange terminée, garde refermée");
 
-                            SetAbsShift(shiftX, shiftY);
+                            Winsys3d.SetAbsShift(shiftX, shiftY);
                             SaveOptionsIni();
                             if (gammaBefore != s_Unknown_005d9de0)
                             {
-                                CreateTranslationTables(s_Unknown_005d9de0 * s_GammaScale_0054d074);
+                                Winsys3d.CreateTranslationTables(s_Unknown_005d9de0 * s_GammaScale_0054d074);
                             }
                             break;
 
@@ -474,9 +468,9 @@ public static unsafe partial class Blaze
             *(uint*)(sprite + 0x10) = 0;
 
             // Ghidra: local_14 = *(*(DAT_005e97c4 + 0x94) + 4)
-            if (s_MainResourceDirectory_005e97c4 != null)
+            if (Mem.s_MainResourceDirectory_005e97c4 != null)
             {
-                int* table = *(int**)(s_MainResourceDirectory_005e97c4 + 0x94);
+                int* table = *(int**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
                 if (table != null) *(int*)sprite = table[1];
             }
 

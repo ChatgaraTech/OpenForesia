@@ -294,3 +294,45 @@ Le point de départ historique était `entry`, désormais reconstruit dans
 Ne fais pas seulement une analyse ou un plan.
 
 Après ton analyse initiale, commence immédiatement à écrire le code et poursuis la reconstruction.
+
+---
+
+## Ce que tu n'as PAS le droit de faire en refactorisant
+
+Le dépôt porte 1 834 mentions `FUN_`/`DAT_`/`LAB_`. Sa valeur tient à ce qu'on puisse poser
+`Blaze.c` et le C# côte à côte.
+
+Avant chaque transformation, pose-toi cette question :
+
+**Peut-on encore vérifier cette fonction contre `Blaze.c` en trente secondes ?**
+
+Trois pratiques par ailleurs saines sont **interdites dans `src/Blaze/`** :
+
+* **l'extraction de méthode** — une méthode = une `FUN_` ;
+* **le remplacement d'un `switch` par du polymorphisme** — ces `switch` **sont** la machine à états
+  du binaire ;
+* **le renommage sans conserver l'ancre** `// Ghidra: FUN_00XXXXXX`.
+
+Dans `src/Host/`, notre échafaudage, les trois sont autorisées.
+
+## Prouve que tu n'as changé que la forme
+
+Deux outils, dans `OpenForesia.Tools/` :
+
+* `verify-split.ps1` — comparaison **octet à octet** contre une référence figée, pour un
+  déplacement pur ;
+* `compare-bodies.ps1` — comparaison des **corps de méthode**, en normalisant ce qu'un refactor a
+  le droit de changer (`static`, modificateurs d'accès, qualifications ajoutées, indentation).
+
+Lance celui qui correspond après chaque étape. Et si tu écris un nouvel outil de vérification,
+**vérifie-le d'abord** : `compare-bodies.ps1 -SelfTest` existe pour cette raison.
+
+## Mesure avant d'écrire
+
+Trois fois pendant le refactor de 2026-08-19, une tâche planifiée de bonne foi s'est révélée
+inutile ou nuisible une fois mesurée : un pont statique que l'outillage rendait superflu, une
+interface sans second implémenteur, un `IDisposable` sur des classes statiques qui ne peuvent pas
+en porter.
+
+Quand une tâche dit « mesurer d'abord », c'est qu'elle peut s'annuler elle-même. **Ne construis pas
+ce que la mesure ne justifie pas**, et consigne pourquoi.

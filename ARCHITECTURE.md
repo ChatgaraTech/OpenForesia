@@ -50,6 +50,49 @@ impossible : une façade s'installe depuis le chemin qu'elle détourne.
 
 ---
 
+## Les trois couches
+
+Le refactor `extract-real-classes-from-partial` a separe trois choses que le code ecrasait l'une
+sur l'autre. C'est la lecture la plus utile de `src/Blaze/` :
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  1. INTEROP        Interop/          static PAR NECESSITE           │
+│     Win32 · Winsys3d · Wsyskern      160 P/Invoke                   │
+│     [DllImport] exige `extern static`, et il n'y a aucun etat.      │
+│     Une classe statique est ici la forme CORRECTE, pas un pis-aller.│
+└─────────────────────────────────────────────────────────────────────┘
+                                  ▲
+┌─────────────────────────────────┴───────────────────────────────────┐
+│  2. MEMOIRE        Memory/GameMemory.cs                             │
+│     UN objet, parce que le binaire a UN segment .data.              │
+│     Ce que la classe apporte : une SIGNATURE. Un sous-systeme qui   │
+│     la prend en parametre declare qu'il touche a .data ; avant, il  │
+│     le faisait en silence.                                          │
+└─────────────────────────────────────────────────────────────────────┘
+                                  ▲
+┌─────────────────────────────────┴───────────────────────────────────┐
+│  3. COMPORTEMENT   Platform/ · Engine/ · Screens/                   │
+│     Encore `partial class Blaze` aujourd'hui. C'est ici que les     │
+│     vraies classes d'instance naitront (etapes C puis D).           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Aucune interface, et c'est mesure
+
+Le critere est : **une interface la ou un double existe deja, nulle part ailleurs.** Applique
+honnetement, il n'en justifie aucune aujourd'hui.
+
+`IWinsys3d` semblait acquis — `SyntheticDevice` paraissait en etre une seconde implementation.
+Verification faite : **c'est faux.** `SyntheticDevice` detourne `GetProcAddress` dans la table
+d'imports de winsys3d pour remplacer `3dhelp.dll::Create3DDevice`. Il substitue le **device 3D de
+3dhelp**, jamais winsys3d, qui reste toujours la vraie DLL — 173 `Ordinal_NNN(...)` directs.
+
+La couture substituable est **entre winsys3d et 3dhelp**, et elle est deja traitee par
+`SyntheticDevice` et `DeviceShim`. Creer `IWinsys3d` aurait ete l'indirection sans second
+implementeur que ce critere interdit : **l'appliquer correctement consistait a ne pas creer
+l'interface.**
+
 ## L'arborescence
 
 ```
@@ -57,22 +100,25 @@ src/
 ├─ Host/  ····································· 5 fichiers   3 477 l.
 │   D3D11Backend · SyntheticDevice · DeviceShim · D3D11Window · StartupSurface
 │
-└─ Blaze/  ···································· 30 fichiers  24 185 l.
+└─ Blaze/  ···································· 31 fichiers  24 447 l.
     ├─ Blaze.cs                    17 l.   l'en-tete, les using, la declaration partielle
     │
-    ├─ Platform/  ······················  1 888 l.   ce qui n'est pas le jeu
-    │   ├─ Winsys3d.cs      739   file clavier + arene de liste d'affichage + banc GTE
-    │   ├─ Startup.cs       513   entry + RunApplication + RunMainLoop + extinction
-    │   ├─ Crt.cs           394   runtime MSVC 6
-    │   └─ Win32.cs         242   interop OS
+    ├─ Interop/  ·······················    539 l.   la surface P/Invoke, hors de la classe
+    │   ├─ Winsys3d.cs      309   85 declarations, commentaires d'ordinal conserves
+    │   ├─ Win32.cs         165   66 declarations, huit DLL systeme
+    │   └─ Wsyskern.cs       65    9 declarations
     │
-    ├─ Memory/  ························    795 l.   l'espace d'adressage
-    │   ├─ DataTables.cs    392   les Build* : tables .data recouvrees
-    │   ├─ Arena.GameState.cs 275 0x005e9000 .. 0x005ea600, en UN bloc
-    │   ├─ Arenas.cs         82   les sept autres blocs adresses par decalage
-    │   └─ Globals.cs        46   VIDE - voir la regle d'etat plus bas
+    ├─ Memory/  ························    694 l.   le modele de .data
+    │   ├─ GameMemory.cs    631   97 membres : 8 arenes, tables recouvrees, globales
+    │   └─ Globals.cs        63   le point d'acces `Mem`, avec sa condition de retrait
     │
-    ├─ Engine/  ························  7 672 l.   appele par plusieurs ecrans
+    ├─ Platform/  ······················  1 753 l.   ce qui n'est pas le jeu
+    │   ├─ Startup.cs       654   entry + RunApplication + RunMainLoop + extinction
+    │   ├─ Winsys3d.cs      637   file clavier + arene de liste d'affichage + banc GTE
+    │   ├─ Crt.cs           390   runtime MSVC 6
+    │   └─ Win32.cs          72   structures d'interop et constantes
+    │
+    ├─ Engine/  ························  7 667 l.   appele par plusieurs ecrans
     │   ├─ Audio.cs       1 255   0x00513 · 0x0053d
     │   ├─ UiText.cs      1 345   0x00544
     │   ├─ Resources.cs   1 119   0x00529 · 0x0052a
@@ -83,10 +129,10 @@ src/
     │   ├─ UiWindow.cs      366   0x00545
     │   └─ Primitives2d.cs  266   DrawFlatPrimitive, DrawSprite*, DrawTextRun
     │
-    └─ Screens/  ······················· 13 813 l.   un etat de jeu par repertoire
-        ├─ GameStates.cs    159   le repartiteur (FUN_00537ca0)
+    └─ Screens/  ······················· 13 777 l.   un etat de jeu par repertoire
+        ├─ GameStates.cs    154   le repartiteur (FUN_00537ca0)
         ├─ DebugParty.cs    753   mode de mise au point (pas un etat numerote)
-        ├─ State00/  MainMenu.cs 530 · Options.cs 2 544
+        ├─ State00/  MainMenu.cs 526 · Options.cs 2 517
         ├─ State01/  PartySetup.cs 544
         ├─ State02/  Destination.cs 451
         ├─ State03/  WorldMap.cs 1 173

@@ -58,7 +58,7 @@ public static unsafe partial class Blaze
 
     private static byte* BuildDestinationDescriptor()
     {
-        byte* block = AllocLowZeroed((uint)UiDescriptorStride);
+        byte* block = AllocLowZeroed((uint)GameMemory.UiDescriptorStride);
         uint* f = (uint*)block;
         f[0] = 0x00000031; f[1] = 0x00b00008; f[2] = 0x001800a0; f[3] = 0x00000000;
         f[4] = 0x021a0000; f[5] = 0x0000000c; f[6] = 0x010f0808; f[7] = 0x02cf1020;
@@ -143,7 +143,7 @@ public static unsafe partial class Blaze
             *(short*)(particle + 0x12) = 0;
             *(int*)(particle + 0x1c) = 0;
             particle[0x24] = (byte)(CrtRand() % 7);
-            *(int*)(particle + 0x20) = *(int*)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 0xc);
+            *(int*)(particle + 0x20) = *(int*)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0xc);
         }
 
         JoystickResetState(false);                    // Ghidra: FUN_00504b10(0)
@@ -194,7 +194,7 @@ public static unsafe partial class Blaze
             *(short*)(d + 0x0e) = 0x1149;
 
             // Ghidra: FUN_0040a600(5) — corps vide, confirmé ailleurs dans ce fichier. Non transcrit.
-            AnimatePalettes(s_MainResourceDirectory_005e97c4);   // Ghidra: FUN_00533000
+            AnimatePalettes(Mem.s_MainResourceDirectory_005e97c4);   // Ghidra: FUN_00533000
 
             byte* pad = CurrentPadState();
             ushort repeat = *(ushort*)(pad + 6);
@@ -226,23 +226,23 @@ public static unsafe partial class Blaze
             if ((*(ushort*)(pad + 2) & 0x8008) != 0) break;
 
             // La caméra glisse par quarts vers la destination visée.
-            *(short*)(s_CameraVector_00604928 + 0) = 0x200;
-            *(short*)(s_CameraVector_00604928 + 2) = 0x800;
+            *(short*)(Mem.s_CameraVector_00604928 + 0) = 0x200;
+            *(short*)(Mem.s_CameraVector_00604928 + 2) = 0x800;
             int targetArea = s_MenuIndexToArea_0056d2b0[cursor];
             int nextX = camX - ((camX - s_DestinationCamX_0056d270[targetArea]) >> 2);
             int nextY = camY - ((camY - s_DestinationCamY_0056d272[targetArea]) >> 2);
-            *(short*)(s_CameraVector_00604928 + 4) = 0;
-            s_Unknown_006008d0 = 0;
-            s_Unknown_006008d4 = 0;
-            s_Unknown_006008d8 = 0;
-            CameraTranslation[0] = 0;
-            CameraTranslation[1] = 0;
-            CameraTranslation[2] = 0x5dc;
+            *(short*)(Mem.s_CameraVector_00604928 + 4) = 0;
+            Mem.s_Unknown_006008d0 = 0;
+            Mem.s_Unknown_006008d4 = 0;
+            Mem.s_Unknown_006008d8 = 0;
+            Mem.CameraTranslation[0] = 0;
+            Mem.CameraTranslation[1] = 0;
+            Mem.CameraTranslation[2] = 0x5dc;
             camY = nextY;
             camX = nextX;
-            Ordinal_379(400);
-            Ordinal_378(nextX, nextY);
-            RotMatrix((short*)s_CameraVector_00604928, (short*)s_CameraMatrix_006008e0);
+            Winsys3d.Ordinal_379(400);
+            Winsys3d.Ordinal_378(nextX, nextY);
+            RotMatrix((short*)Mem.s_CameraVector_00604928, (short*)Mem.s_CameraMatrix_006008e0);
 
             // Le panneau d'information glisse vers le bord opposé à la caméra.
             s_PanelX_0056c97c += nextX < 0x81
@@ -278,18 +278,18 @@ public static unsafe partial class Blaze
                 (int*)(entity + 0x1c), *(short*)(entity + 0x1a), modelExtra);
 
             // La caméra revient au cadrage large pour les particules et la carte.
-            *(short*)(s_CameraVector_00604928 + 0) = 700;
-            *(short*)(s_CameraVector_00604928 + 2) = 500;
-            *(short*)(s_CameraVector_00604928 + 4) = 0;
-            s_Unknown_006008d0 = 0;
-            s_Unknown_006008d4 = 0;
-            s_Unknown_006008d8 = 0;
-            CameraTranslation[0] = 0;
-            CameraTranslation[1] = 0;
-            CameraTranslation[2] = 0x5dc;
-            Ordinal_379(400);
-            Ordinal_378(0xa0, 0x78);
-            RotMatrix((short*)s_CameraVector_00604928, (short*)s_CameraMatrix_006008e0);
+            *(short*)(Mem.s_CameraVector_00604928 + 0) = 700;
+            *(short*)(Mem.s_CameraVector_00604928 + 2) = 500;
+            *(short*)(Mem.s_CameraVector_00604928 + 4) = 0;
+            Mem.s_Unknown_006008d0 = 0;
+            Mem.s_Unknown_006008d4 = 0;
+            Mem.s_Unknown_006008d8 = 0;
+            Mem.CameraTranslation[0] = 0;
+            Mem.CameraTranslation[1] = 0;
+            Mem.CameraTranslation[2] = 0x5dc;
+            Winsys3d.Ordinal_379(400);
+            Winsys3d.Ordinal_378(0xa0, 0x78);
+            RotMatrix((short*)Mem.s_CameraVector_00604928, (short*)Mem.s_CameraMatrix_006008e0);
 
             // Les 32 particules : celles qui restent à l'écran s'éclaircissent, celles qui sortent
             // du cycle sont resemées ailleurs.
@@ -321,7 +321,7 @@ public static unsafe partial class Blaze
 
             // Les icônes de destination, une par bit posé dans iconMask.
             *(uint*)(d + 4) = 0x1000000;
-            byte* atlas = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 4);
+            byte* atlas = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 4);
             *(byte**)d = atlas;
             for (short icon = 0; icon < 12; icon++)
             {
@@ -358,7 +358,7 @@ public static unsafe partial class Blaze
             if (extraIconFlag != 0)
             {
                 short blink = (short)(fadeStep >> 2);
-                byte* blinkAtlas = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94) + 8);
+                byte* blinkAtlas = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 8);
                 *(byte**)d = blinkAtlas;
                 byte* record = blinkAtlas + blink * 8;
                 *(short*)(d + 8) = (short)(((short)((record[2] >> 1) + 0xa0) - 0x80) * 0x140 / 0x100 + 0x80);
@@ -374,30 +374,30 @@ public static unsafe partial class Blaze
             *(short*)(d + 8) = 0x80;
             *(short*)(d + 0x0a) = 0x70;
             *(short*)(d + 0x10) = 0;
-            *(byte**)d = *(byte**)*(byte**)(s_MainResourceDirectory_005e97c4 + 0x94);
+            *(byte**)d = *(byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
             primCursor = DrawSpritePrimitive(otEntry, primCursor, draw, 0, 0);
             primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);
 
             // Le panneau de description de la destination visée.
             BindMenuLabels(
-                *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x70)
+                *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70)
                           + s_MenuIndexToArea_0056d2b0[cursor] * 4),
                 0, s_DestinationDescriptor_0056c978, 0);
-            primCursor = RunTextEngine(primCursor, s_DestinationDescriptor_0056c978);
+            primCursor = Ui.RunTextEngine(primCursor, s_DestinationDescriptor_0056c978);
             primCursor = DrawUiPanel(otBase, primCursor, s_DestinationDescriptor_0056c978);
 
             // La fenêtre d'affichage rétrécit à 256x224 le temps de l'envoi, puis revient à 320x240
             // — les deux DISPENV à la fois, champs +4 (largeur) et +6 (hauteur).
-            *(short*)(s_DispEnv1_005e994c + 4) = 0x100;
-            *(short*)(s_DispEnv0_005e98dc + 4) = 0x100;
-            *(short*)(s_DispEnv1_005e994c + 6) = 0xe0;
-            *(short*)(s_DispEnv0_005e98dc + 6) = 0xe0;
+            *(short*)(Mem.s_DispEnv1_005e994c + 4) = 0x100;
+            *(short*)(Mem.s_DispEnv0_005e98dc + 4) = 0x100;
+            *(short*)(Mem.s_DispEnv1_005e994c + 6) = 0xe0;
+            *(short*)(Mem.s_DispEnv0_005e98dc + 6) = 0xe0;
             s_Unknown_005de15c = 0;
             FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
-            *(short*)(s_DispEnv1_005e994c + 4) = 0x140;
-            *(short*)(s_DispEnv0_005e98dc + 4) = 0x140;
-            *(short*)(s_DispEnv1_005e994c + 6) = 0xf0;
-            *(short*)(s_DispEnv0_005e98dc + 6) = 0xf0;
+            *(short*)(Mem.s_DispEnv1_005e994c + 4) = 0x140;
+            *(short*)(Mem.s_DispEnv0_005e98dc + 4) = 0x140;
+            *(short*)(Mem.s_DispEnv1_005e994c + 6) = 0xf0;
+            *(short*)(Mem.s_DispEnv0_005e98dc + 6) = 0xf0;
 
             fadeStep++;
             camX = nextX;
@@ -407,7 +407,7 @@ public static unsafe partial class Blaze
         PlayUiSound38();                                // Ghidra: FUN_0053db80
         s_Unknown_005de528 = s_MenuIndexToArea_0056d2b0[cursor];
         s_Unknown_00566c84 = 0xff;
-        byte* areaInfo = *(byte**)(*(byte**)(s_MainResourceDirectory_005e97c4 + 0x74)
+        byte* areaInfo = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x74)
                                    + (uint)s_Unknown_005de528 * 4);
         s_Unknown_00566c88 = 0xff;
         s_Unknown_005de52c = areaInfo[0];
@@ -415,10 +415,10 @@ public static unsafe partial class Blaze
         FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
 
         // Quatre des huit banques d'état, plus les paires de 0x5e9320.
-        NativeMemory.Clear(s_StateBank3_005e9840, 0x40);
-        NativeMemory.Clear(s_StateBank2_005e9060, 0x40);
-        NativeMemory.Clear(s_StateBank1_005e9780, 0x40);
-        NativeMemory.Clear(s_StateBank0_005e96e0, 0x40);
+        NativeMemory.Clear(Mem.s_StateBank3_005e9840, 0x40);
+        NativeMemory.Clear(Mem.s_StateBank2_005e9060, 0x40);
+        NativeMemory.Clear(Mem.s_StateBank1_005e9780, 0x40);
+        NativeMemory.Clear(Mem.s_StateBank0_005e96e0, 0x40);
         ResetScenePairs_005e9320();
 
         // Retour à la ville (zone 0) : le groupe est soigné. `+0x148`/`+0x14a` sont le maximum et
@@ -444,8 +444,8 @@ public static unsafe partial class Blaze
     {
         for (int i = 0; i < 8; i++)
         {
-            *(uint*)Arena(0x005e9320 + i * 8) = 0;
-            *(uint*)Arena(0x005e9324 + i * 8) = 0xffffffff;
+            *(uint*)Mem.Arena(0x005e9320 + i * 8) = 0;
+            *(uint*)Mem.Arena(0x005e9324 + i * 8) = 0xffffffff;
         }
     }
 }
