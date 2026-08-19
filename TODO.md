@@ -8,33 +8,35 @@ la suite à faire.
 
 ---
 
-# Priorité 1 — La refonte de `Blaze.cs` (demain, à deux)
+# Priorité 1 — ~~La refonte de `Blaze.cs`~~ **FAITE le 2026-08-19**
 
-**C'est la priorité de la prochaine session, avant toute reconstruction.** Découper `Blaze.cs` en
-plusieurs classes / fichiers.
+`Blaze.cs` est passé de **23 680 à 17 lignes**. La reconstruction vit maintenant dans 30 fichiers
+sous `OpenForesia/src/Blaze/` (`Platform/`, `Memory/`, `Engine/`, `Screens/`), plus 5 fichiers
+d'échafaudage sous `OpenForesia/src/Host/`.
 
-On en discutera ensemble demain : **ne rien découper avant cette discussion**, les axes de découpe
-(par sous-système ? par écran ? par région d'adresses ?) sont justement ce qu'il faut trancher à
-deux.
+**Lire `ARCHITECTURE.md`** (racine) avant d'ajouter ou de déplacer du code : il porte la carte des
+répertoires, la règle qui décide où va une fonction, et la règle d'état qui protège du défaut
+d'aliasing.
 
-Deux points de contexte à avoir en tête pour cette conversation :
+Le découpage est prouvé sans perte : les 28 corps réassemblés dans l'ordre du manifeste sont
+**identiques à la référence sur 23 663 lignes**, la seule différence étant l'accolade de classe
+repositionnée. Build propre, 382,3 et 387 primitives par image, captures identiques.
 
-- **C'est le passage en phase 2, et il était prévu.** `CLAUDE.md` porte une « Phase 1 constraint »
-  qui dit explicitement : tout reste dans `Blaze.cs`, et *« subsystem splitting is a deliberate
-  second phase, once enough behavior is understood »*. Le découpage n'est donc pas un revirement,
-  c'est l'étape prévue — mais **`CLAUDE.md` devra être mis à jour en même temps**, sinon il
-  contredira le dépôt dès le premier fichier créé.
-- **Taille actuelle** : `Blaze.cs` fait **23 673 lignes**. Les régions existantes sont déjà
-  marquées par des bandeaux `// ====`, ce qui donne un premier découpage naturel à examiner.
+Trois choses apprises, toutes consignées dans `ARCHITECTURE.md` et `CLAUDE.md` :
 
-Un écueil connu à garder en tête pendant la refonte : le fichier contient une région à
-**encodage double** (quelques centaines de lignes, commentaires et messages de journal seulement,
-aucun texte visible en jeu). Un déplacement en masse par script PowerShell **aggravera** le
-problème — c'est déjà arrivé une fois. Utiliser `[IO.File]::ReadAllBytes` / `WriteAllBytes`, ou les
-outils d'édition, jamais `Get-Content` / `Set-Content`.
+- **Le découpage en fichiers n'est pas sémantiquement neutre.** L'ordre d'initialisation des champs
+  statiques entre fichiers d'une classe partielle n'est pas garanti ; huit champs `= Arena(0x…)`
+  rendaient `null + décalage`. Ils sont devenus des propriétés `=>`.
+- **107 paires de symboles voisins d'adresse vivent désormais dans deux fichiers différents.** Leur
+  adjacence n'est plus visible dans le code — d'où la carte des symboles reconstruits ajoutée à
+  `Documentation/DataSymbols.md`, à consulter avant de déclarer un `DAT_` isolé.
+- **Un vrai défaut d'aliasing dormant a été trouvé** : `0x00566c70` porte deux allocations
+  indépendantes (`s_MenuRenderBlock` dans le menu principal, `s_ViewRect` dans la carte du monde).
+  **Non corrigé** — le réparer changerait le comportement. Il mordra quand la carte du monde
+  affichera quelque chose, donc à traiter avant la priorité 2.
 
----
-
+Reste à faire, hors périmètre de ce changement : la réparation des **871 lignes à encodage double**
+(commentaires et journaux seulement, aucun texte visible en jeu).
 # Priorité 2 — Finir `FUN_00533940`
 
 ## Où on en est exactement

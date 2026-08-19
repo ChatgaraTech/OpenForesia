@@ -558,3 +558,66 @@ Symptôme classique : « Invertaire » et « Enchère » semblent ne mener nulle
 en fait vers l'écran racine parce que le `save\` du répertoire de travail est vide — c'est le
 comportement de l'original quand il n'y a aucune sauvegarde. Le `.cfg`, lui, suit le chemin de
 l'**exe**. Les deux ne coïncident que si l'on lance depuis `bin\Debug\net9.0\`.
+
+---
+
+## `-Entry -1` reste sur l'écran-titre, et n'a donc aucun débit à mesurer (2026-08-19)
+
+Relevé en figeant les références d'avant-découpage. `-Entry -1` (« rester au menu ») produit une
+capture de l'**écran-titre / attract**, pas d'une liste d'entrées : l'image est **identique à
+`-Seconds 3` et à `-Seconds 25`**, donc ce n'est pas un cycle d'attract qu'on attraperait au mauvais
+moment.
+
+Sur cet écran le verdict affiche toujours :
+
+```
+pas assez de bilans [SHIM] pour mesurer la progression
+```
+
+**C'est normal, pas un échec.** Le régime titre/attract passe par `StartupSurface`
+(DIB section + `StretchDIBits`) et n'émet aucune primitive 3D ; les compteurs `[SHIM]`, alimentés
+par les slots `BeginScene` et `Flip`, restent donc à zéro. Ce n'est **pas** un effet du device
+synthétique : les entrées 1 et 2 l'utilisent aussi et comptent normalement.
+
+Conséquence pratique : pour une comparaison avant/après sur le menu principal, **le seul repère est
+la capture**, jamais le débit. Les écrans qui donnent un débit exploitable sont ceux qui empruntent
+le chemin Direct3D.
+
+### Repères mesurés le 2026-08-19, dépôt à `6cc5301`, aucune modification C#
+
+| écran | commande | débit |
+|---|---|---|
+| titre / attract | `-Entry -1 -Seconds 3` | aucun (voir ci-dessus) |
+| sélection des personnages | `-Entry 1 -Seconds 20 -WorkingDir OpenForesia` | **382,3** par image |
+| menu objets | `-Entry 2 -Seconds 20 -WorkingDir OpenForesia` | **387** par image |
+
+Les 382,3 concordent avec le repère historique (~382) mesuré sur le chemin hérité : le passage au
+device synthétique n'a pas déplacé la valeur.
+
+---
+
+## « No free block ... below 0x01000000 » : relancer, ce n'est pas une régression (2026-08-19)
+
+Un run peut échouer sur :
+
+```
+InvalidOperationException: No free block of 0x2000 bytes below 0x01000000.
+UI text descriptors are masked to 24 bits by FUN_005443a0, so they cannot live higher.
+   at AllocLowZeroed(...)
+```
+
+**C'est une course perdue pour la mémoire basse, et elle est non déterministe.** Mesuré le
+2026-08-19 : la même commande, relancée sans rien changer, passe et rend 434 primitives par image.
+
+Le mécanisme est documenté dans `REVERSE_STATUS.md`, § « The UI descriptors carry an ordering table,
+so they must live low ». Les descripteurs d'interface contiennent leur propre table d'ordonnancement
+à `+0xa4`, que `ClearOTagR` relie en masquant sur 24 bits : au-dessus de `0x01000000` le descripteur
+relie sa liste sur des adresses tronquées. Ils sont donc alloués sous cette barre, dans une fenêtre
+que l'ASLR et le chargeur laissent plus ou moins libre d'un lancement à l'autre.
+
+Ces symboles sont des **propriétés paresseuses** et non des initialiseurs de champ, précisément pour
+que la course perdue donne une exception rattrapable au lieu d'une `TypeInitializationException`
+hors du `try`/`catch` de l'initialiseur de module.
+
+**Conduite à tenir** : relancer une fois. Si l'échec se répète plusieurs fois d'affilée, alors
+seulement chercher ce qui a augmenté la pression sur la fenêtre basse.

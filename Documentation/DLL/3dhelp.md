@@ -403,7 +403,7 @@ Ces trois slots restent décrits ici pour ce qu'ils sont, sans plus leur prêter
 | `+0xD0` | `0x0FFE1DA0` | `this->+0x40 ->vtable[0x68]` — `ReleaseDC(HDC)`, 1 arg | **0** |
 
 **Où l'écran-titre dessine réellement** : dans la reconstruction elle-même, à
-`OpenForesia/src/Blaze/Blaze.cs`, méthode `BlitTitleScreen` (Ghidra `Blaze.c:89916-89929`). Elle
+`OpenForesia/src/Blaze/Engine/Video.cs`, méthode `BlitTitleScreen` (Ghidra `Blaze.c:89916-89929`). Elle
 prend la surface primaire du wrapper DirectDraw que le jeu construit lui-même
 (`FUN_00512a10`), appelle `GetDC` (surface `+0x44`), `StretchDIBits` du bitmap `TITLE640.BMP` en
 **640x480** (`0x280 × 0x1e0`, constantes de l'original), puis `ReleaseDC` (surface `+0x68`) — avec

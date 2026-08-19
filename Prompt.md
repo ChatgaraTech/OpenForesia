@@ -10,11 +10,11 @@ Il constitue notre source de référence et doit rester STRICTEMENT EN LECTURE S
 
 NE MODIFIE JAMAIS `Blaze.c`.
 
-Tout le nouveau code doit être écrit dans :
+Tout le nouveau code doit être écrit sous :
 
-`Blaze/Blaze.cs`
+`OpenForesia/src/Blaze/`
 
-Si ce fichier n'existe pas, crée-le.
+La reconstruction y est répartie en `Platform/`, `Memory/`, `Engine/` et `Screens/`, tous parts d'une même classe partielle `Blaze`. Le fichier qui accueille une fonction n'est pas au choix : il est déterminé par la règle de routage décrite dans `ARCHITECTURE.md`, à la racine du dépôt. Lis-le avant d'ajouter ou de déplacer du code.
 
 ## Objectif
 
@@ -225,7 +225,7 @@ Ne t'arrête pas après chaque fonction pour me demander si tu peux continuer.
 Tu as explicitement l'autorisation de continuer automatiquement :
 
 * lecture de `Blaze.c` ;
-* création et modification de `Blaze/Blaze.cs` ;
+* création et modification des fichiers sous `OpenForesia/src/Blaze/` ;
 * navigation dans le graphe d'appels ;
 * renommage raisonnablement certain ;
 * reconstruction du contrôle de flux ;
@@ -238,7 +238,7 @@ Dans ce cas, préfère généralement un `TODO(REVERSE)` et continue ailleurs pl
 
 ## Couverture
 
-Maintiens en haut ou en bas de `Blaze.cs` un petit bloc de suivi, ou un fichier séparé `Blaze/REVERSE_STATUS.md`, contenant notamment :
+Maintiens `REVERSE_STATUS.md`, à la racine du dépôt, contenant notamment :
 
 * fonctions Ghidra analysées ;
 * fonctions reconstruites ;
@@ -253,29 +253,43 @@ Cela permettra de reprendre facilement le travail lors d'une nouvelle session Cl
 
 ## Phase actuelle
 
-Pour cette phase, garde la reconstruction principalement dans :
+Le découpage architectural a été effectué le **2026-08-19** : `Blaze.cs` faisait 23 680 lignes, il
+est réparti en 30 fichiers. `ARCHITECTURE.md` fait autorité sur la carte et sur les règles.
 
-`Blaze/Blaze.cs`
+Ce que cela change pour toi :
 
-Ne cherche PAS encore à concevoir une architecture en dizaines de classes.
+* **Ne conçois toujours PAS une architecture en dizaines de classes.** Tout `src/Blaze/` reste une
+  seule classe partielle `Blaze`. Le fichier est une unité de navigation, pas d'encapsulation : le
+  binaire n'a aucune encapsulation à imiter.
+* **Ne crée pas de classe** nommée `Manager`, `Service`, `Controller` ou `Provider`. Ces noms
+  promettent un objet à cycle de vie que la transcription n'a pas.
+* **Range une fonction là où la règle de routage la met**, pas là où elle te paraît jolie : plage
+  d'adresses connue → `Engine/` ; un seul écran appelant → `Screens/StateNN/` ; plusieurs écrans →
+  promotion en `Engine/` ; sinon elle reste chez son appelant.
+* **Ne déplace jamais une globale pour rendre un fichier autonome**, et n'éclate jamais une arène.
+  Le code se range par responsabilité, l'état par adresse.
+* **Ne déplace pas un chantier en cours.** Un chantier terminé se range ; un chantier ouvert reste
+  où il est.
 
-Si tu identifies clairement des sous-systèmes (audio, rendu, entrée, ressources, etc.), note-les dans `REVERSE_STATUS.md`, mais conserve pour l'instant le code dans `Blaze.cs`.
-
-Le découpage architectural sera effectué dans une seconde phase.
+Si tu identifies un sous-système que la carte ne nomme pas encore, note-le dans `REVERSE_STATUS.md`
+et laisse le code chez son appelant jusqu'à ce que plusieurs écrans l'appellent — c'est cet
+événement, et lui seul, qui crée un nouveau fichier moteur.
 
 ## Démarrage
 
 Commence maintenant.
 
-1. Lis `entry` dans `Blaze.c`.
-2. Analyse son comportement et ses appels directs.
-3. Crée `Blaze/Blaze.cs`.
-4. Reconstruis `entry`.
-5. Suis récursivement ses dépendances.
-6. Continue autant que possible sans attendre une nouvelle instruction de ma part.
-7. Maintiens `REVERSE_STATUS.md` pendant ta progression.
-8. Compile régulièrement.
-9. Ne modifie jamais `Blaze.c`.
+1. Lis `REVERSE_STATUS.md` et `TODO.md` : ils disent où le travail s'est arrêté.
+2. Lis `ARCHITECTURE.md` : il dit où va le code que tu vas écrire.
+3. Reprends au point de blocage courant, en suivant le graphe d'appels.
+4. Suis récursivement les dépendances.
+5. Continue autant que possible sans attendre une nouvelle instruction de ma part.
+6. Maintiens `REVERSE_STATUS.md` pendant ta progression.
+7. Compile régulièrement.
+8. Ne modifie jamais `Blaze.c`.
+
+Le point de départ historique était `entry`, désormais reconstruit dans
+`src/Blaze/Platform/Startup.cs`. La reconstruction couvre les états de jeu 0 à 6.
 
 Ne fais pas seulement une analyse ou un plan.
 

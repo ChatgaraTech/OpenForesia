@@ -1,7 +1,10 @@
 # Blaze reverse-engineering status
 
 Tracks progress reconstructing `Blaze.c` (Ghidra pseudocode, read-only) into
-`src/Blaze/Blaze.cs`. Read `Prompt.md` and `Strategy.md` (repo root) for the
+`OpenForesia/src/Blaze/` — split on 2026-08-19 into `Platform/`, `Memory/`,
+`Engine/` and `Screens/`, all one `partial class Blaze`. **`ARCHITECTURE.md`
+(repo root) is the authority on where a function goes**; read it before adding
+or moving code. Read `Prompt.md` and `Strategy.md` (repo root) for the
 methodology before continuing this work. Strategy.md now also covers the
 decompiled DLL sources (`3dhelp.c`, `gldhelp.c`, `playst.c`, `winsys3d.c`,
 `wsyskern.c`, repo root, **read-only**) and `Documentation/DLL/<dll>.md` as
@@ -5870,3 +5873,140 @@ décompilée.)
   flot, pas une translittération, et ça se fait à tête reposée.
 * `FUN_005350b0` (95 lignes) — la mise en place de palette de zone.
 * Puis `FUN_00516fc0` (1226 lignes), la logique par image, qui reste le gros morceau de l'état 3.
+
+---
+
+## 2026-08-19 — `Blaze.cs` est découpé, et le découpage a trouvé quatre choses
+
+`openspec/changes/split-blaze-into-subsystems`. Le fichier unique de **23 680 lignes** est réparti
+en 30 fichiers sous `OpenForesia/src/Blaze/` (`Platform/`, `Memory/`, `Engine/`, `Screens/`), plus
+5 fichiers d'échafaudage sortis dans `OpenForesia/src/Host/`. Tout `src/Blaze/` reste **une seule
+classe partielle**. `ARCHITECTURE.md`, à la racine, fait autorité sur la carte et sur la règle qui
+décide où va une fonction.
+
+**Prouvé sans perte** : les 28 corps réassemblés dans l'ordre du manifeste sont identiques à la
+référence figée sur **23 663 lignes**, la seule différence étant l'accolade fermante de la classe,
+repositionnée en postambule. Chaque fichier est en outre vérifié octet à octet
+(`OpenForesia.Tools/verify-split.ps1`). Build propre à chaque étape ; 382,3 et 387 primitives par
+image, captures identiques aux références d'avant découpage.
+
+### 1. Trois bandeaux sur 37 mentaient
+
+Les bandeaux `// ====` servaient de sommaire. Le taux d'erreur mesuré est de **8 %** :
+
+| Bandeau | Annonçait | Contenait vraiment |
+|---|---|---|
+| « Not yet reconstructed » | des sous-systèmes à faire | **l'extinction**, reconstruite depuis longtemps → `Platform/Startup.cs` |
+| « Les huit sous-états » | les sous-états de l'état 4 | quatre choses sans rapport : tables `.data`, chargement de ressources, **l'état 0**, et les **émetteurs de primitives 2D** |
+| « Sous-couche carte mémoire » | l'E/S carte mémoire | l'E/S (595 l.) **plus les sous-états 0, 3, 4 et 7 de l'état 4** (2 082 l.) |
+
+Deux rangements en découlent : `Screens/GameStates.cs` extrait le répartiteur `RunGameStateTick`
+(`FUN_00537ca0`) de la queue de la scrutation d'entrées où il était classé, et
+`Engine/Primitives2d.cs` naît — `DrawFlatPrimitive`, `DrawSpritePrimitive`, `DrawSpriteVariant`,
+`DrawTextRun` sont appelés par tous les écrans et étaient enfouis sous un bandeau qui annonçait
+autre chose.
+
+### 2. Le découpage en fichiers n'est pas sémantiquement neutre
+
+Les initialiseurs de champs statiques d'une classe partielle s'exécutent dans l'ordre où le
+compilateur reçoit les **fichiers**, ordre non spécifié. Tant que tout vivait dans `Blaze.cs`,
+l'ordre textuel garantissait que l'arène `0x005e9000` (L5373) était allouée avant
+`s_SlotArea_005e9180 = Arena(0x005e9180)` (L16663). Une fois `Arena()` parti dans
+`Memory/Arena.GameState.cs`, `Blaze.cs` s'initialise d'abord : `Arena()` rendait `null + décalage`,
+et `CurrentPadState()` levait une `NullReferenceException` dès la première image du menu.
+
+**Huit champs** de la forme `static readonly … = Arena(0x…)` sont devenus des propriétés
+`=> Arena(0x…)`. La base d'arène est allouée une fois et ne change jamais, donc réévaluer
+`base + décalage` rend toujours le même pointeur — et le nombre de lignes ne bouge pas.
+
+C'est le même mécanisme que celui déjà écrit sur `s_MenuContext_0056dd58` et sur les descripteurs
+d'interface : **un initialiseur de champ transforme un problème rattrapable en problème fatal**.
+
+> **Règle** : un champ `static readonly` dont l'initialiseur lit un membre statique vivant dans un
+> **autre** fichier doit devenir une propriété calculée. Les dépendances intra-fichier sont sûres.
+
+Les 41 champs initialisés par un appel de méthode ont été croisés avec le manifeste : **chaque
+méthode atterrit dans le même fichier que son champ**, donc aucun autre cas. `ToAnsiZ`,
+`ToAnsiBlock` et `AllocBytes`, appelés depuis 26 initialiseurs répartis partout, ne lisent aucun
+statique.
+
+### 3. La frontière avec `Host/` est bidirectionnelle, et c'est inhérent
+
+Le compilateur a donné la vraie surface après extraction : **25 symboles**, pas les 4 estimés.
+
+* **Host → Blaze, 5** : `ToAnsiZ`, `RenderSizeFromSizeSetting`, `s_WindowedStartup`,
+  `GetModuleHandleA`, `VirtualAlloc` — passés `internal`, importés par `using static`.
+* **Blaze → Host, 4** : `InstallSyntheticDevice`, `InstallDeviceShim`, `CreateGameWindow`,
+  `LogDisplayMode`. **Une façade s'installe nécessairement depuis le chemin qu'elle détourne.**
+  Qualifiés explicitement au site d'appel pour rester visibles.
+* **Host ↔ Host, 16** : les thunks `Shim_*`, `Guarded`, `DeviceVtableSlots`, `s_SyntheticDevice`.
+
+La propriété à viser n'était donc pas « sens unique » mais **« couture étroite »** : les 4 appels
+de `Blaze` vers `Host` sont tous des points d'installation.
+
+`s_WindowedStartup` **n'a pas migré** vers `Host/` comme prévu : huit de ses dix sites de lecture
+sont dans la transcription (coopération DirectDraw, les quatre sites `VfwClass`). Le déplacer aurait
+inversé la dépendance.
+
+### 4. Un défaut d'aliasing dormant, et quatre allocations dans une arène
+
+L'index des globales trié par adresse — désormais en fin de `Documentation/DataSymbols.md` — a été
+construit pour rendre le contrôle d'adjacence encore possible après le découpage : **107 paires de
+symboles voisins (écart ≤ 64 octets) vivent maintenant dans deux fichiers différents**, sur
+398 déclarateurs répartis sur 375 adresses.
+
+Il a trouvé **un vrai défaut, non corrigé** :
+
+```
+L6929   s_MenuRenderBlock_00566c70 = (uint*)NativeMemory.AllocZeroed(0x40);   // 64 octets
+L17622  s_ViewRect_00566c70        = (byte*)NativeMemory.AllocZeroed(0x10);   // 16 octets
+```
+
+**Deux allocations indépendantes pour une seule adresse du binaire.** Le menu principal écrit dans
+l'une, la carte du monde lit dans l'autre. En prime, `ViewRect` est entièrement contenu dans
+l'étendue de `MenuRenderBlock` : au moins une des deux tailles est fausse en plus du partage
+manquant. **Dormant** parce que la carte du monde n'affiche rien encore — il mordra exactement quand
+la priorité 2 reprendra. À traiter **avant** `FUN_00533940`.
+
+Deux autres adresses portent deux déclarations, sans conséquence : `0x005e9180`
+(`s_EntitySlotTable` / `s_SlotArea`, tous deux `Arena(…)`, donc la mémoire est bien partagée) et
+`0x00562c9c` (deux constantes de même valeur, aucune mémoire en jeu).
+
+**Quatre allocations indépendantes tombent dans l'étendue d'une arène**, constatées et non
+corrigées :
+
+| Symbole | Adresse | Arène qui la couvre |
+|---|---|---|
+| `s_EntityList_005de558` | `0x005de558` | `ItemMenuArena` |
+| `s_ModelResultB_005f7b40` | `0x005f7b40` | `EntityArena` |
+| `s_ModelResultA_005fa588` | `0x005fa588` | `EntityArena` |
+| `s_CameraMatrix_006008e0` | `0x006008e0` | `EntityArena` |
+
+Les trois dernières sont dans le voisinage que `FUN_00533940` doit lire (`DAT_005f7bc0`,
+`DAT_005f7cc0`, `DAT_005fa508`). *(Note : `s_CameraMatrix_006008e0` est signalé plus haut dans ce
+fichier comme n'ayant pas besoin d'être bas, parce qu'il est copié par valeur dans le registre
+matrice du GTE. Les deux constats ne se contredisent pas : l'un porte sur la fenêtre basse, l'autre
+sur le recouvrement d'arène.)*
+
+### Ce que le découpage n'a pas fait
+
+* **La réparation des 871 lignes à encodage double** — commentaires et journaux uniquement, aucun
+  texte visible en jeu. Explicitement hors périmètre : mêler une réparation de contenu à un
+  déplacement rend les deux invérifiables. Changement séparé.
+* **La correction du défaut `0x00566c70`** et des quatre allocations en arène — les corriger change
+  le comportement, ce que ce changement s'interdisait.
+* **Aucune reconstruction.** `FUN_00533940` et `FUN_00516fc0` sont dans
+  `Screens/State03/WorldMap.cs`, exactement dans l'état où ils étaient.
+
+### Outillage laissé derrière
+
+`OpenForesia.Tools/` : `split-manifest.awk` (construction du manifeste, attribution ligne par
+ligne), `split-manifest.tsv` (56 plages), `blaze-baseline.txt` (la référence figée),
+`apply-split.ps1` (écrit les fichiers en **redérivant depuis la référence**, jamais d'édition en
+place), `verify-split.ps1` (comparaison octet à octet). Tout lit et écrit en ISO-8859-1 via
+`ReadAllBytes`/`WriteAllBytes` — `Get-Content` casse sur la région à encodage double, mesuré :
+19 221 lignes rendues au lieu de 21 858.
+
+**La référence figée n'existe qu'en dehors de git tant que ce changement n'est pas commité.** Elle a
+été détruite une fois pendant le travail, par une seule commande PowerShell maladroite, et n'a pu
+être restaurée que grâce à une copie de circonstance.

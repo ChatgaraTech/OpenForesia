@@ -40,6 +40,14 @@ carries an x64 runtime while the game is x86 — in that case launch
 `OpenForesia/bin/Debug/net9.0/OpenForesia.exe` directly, or use `playtest.ps1` below, which handles
 it either way.
 
+**Neither the SDK nor `node` is on the agent's PATH**, even when both are installed — same trap,
+twice. `node` lives on `D:\Logiciels\nodejs` and is needed by the `openspec` CLI. Prefix once per
+shell:
+
+```powershell
+$env:PATH = "C:\Program Files (x86)\dotnet;D:\Logiciels\nodejs;$env:PATH"
+```
+
 ## Running the game — always via `test-protocol.md`
 
 **Before exercising the game in any way — launching it, reaching a screen, reproducing a crash,
@@ -85,16 +93,20 @@ which is an answer, not an error.
 | `test-protocol.md` | How to exercise the game. Read it before any run — see "Running the game" above. |
 | `winsys3d.c`, `wsyskern.c`, `playst.c`, `3dhelp.c`, `gldhelp.c` | Ghidra decompilations of the five helper DLLs. **Secondary references, read-only.** |
 | `*.dll` (repo root) | The actual DLL binaries — this is what makes ordinal-only imports resolvable. |
-| `OpenForesia/src/Blaze/Blaze.cs` | The entire reconstruction (one file, by design — see "Phase 1"). |
-| `OpenForesia/src/Blaze/REVERSE_STATUS.md` | **Read this first.** Call-graph coverage, per-function status, 30 numbered `TODO(REVERSE)` items, current blocking point. |
+| `OpenForesia/src/Blaze/**` | The reconstruction, split into `Platform/`, `Memory/`, `Engine/`, `Screens/` — **see `ARCHITECTURE.md`**. All one `partial class Blaze`. |
+| `OpenForesia/src/Host/**` | Our 2026 scaffolding — the Direct3D 11 replacement for the 1998 display chain. **Not bound by fidelity.** |
+| `ARCHITECTURE.md` | **Read this before adding or moving code.** The directory map, the routing rule that decides where a function goes, and the state rule that protects against the aliasing defect. |
+| `REVERSE_STATUS.md` | **Read this first.** Call-graph coverage, per-function status, 30 numbered `TODO(REVERSE)` items, current blocking point. |
+| `Documentation/DataSymbols.md` | Also carries the **map of reconstructed symbols**: every VA-suffixed C# symbol, sorted by address, with its gap to the next and the file it lives in. |
 | `Documentation/DLL/<dll>.md` | Accumulated knowledge per DLL (ordinals, signatures, confirmed vs. hypothesis). |
-| `OpenForesia.Tools/` | Standalone PE export-table dumper. |
+| `OpenForesia.Tools/` | PE export-table dumper, `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`). |
 | `OpenForesia/src/DLL/*.dll` | Copies of the helper DLLs, flattened into the build output for P/Invoke. |
 
 `winsys3d.md` at the repo root is an **older, superseded** version of
 `Documentation/DLL/winsys3d.md`; prefer the latter.
 
-`openspec/` contains an initialized-but-empty OpenSpec workspace (no changes or specs yet).
+`openspec/` holds the change workflow: several completed changes, one archived, and the
+`blaze-intro-attract` spec. Use `openspec list` to see the current state.
 
 ## Working rules (condensed from Strategy.md)
 
@@ -128,13 +140,50 @@ which is an answer, not an error.
 - Gaps throw a descriptive `NotImplementedException` rather than silently no-op'ing, so a missing
   subsystem is loud at runtime.
 
-## Phase 1 constraint
+## Layout of the reconstruction
 
-All reconstruction stays in the single `Blaze.cs` file, organized by `// ====` banner regions
-(interop, CRT, entry/RunApplication, options ini, DirectSound, sound-effect layer, movie player,
-resource loader, not-yet-reconstructed). **Do not create `GraphicsService`/`AudioManager`/etc. yet** —
-subsystem splitting is a deliberate second phase, once enough behavior is understood. Identified
-subsystems get noted in `REVERSE_STATUS.md` instead.
+`Blaze.cs` was split on 2026-08-19 into 30 files under `OpenForesia/src/Blaze/`, plus
+`OpenForesia/src/Host/` for the scaffolding. **`ARCHITECTURE.md` is the authority** — read it before
+adding or moving code. The short version:
+
+```
+   Platform/   ce qui n'est pas le jeu : interop OS, CRT, winsys3d, demarrage/extinction
+   Memory/     l'espace d'adressage : les huit arenes, les tables .data, Globals.cs
+   Engine/     appele par plusieurs ecrans : Audio, Video, Input, Resources, SaveData,
+               Model3d, UiText, UiWindow, Primitives2d
+   Screens/    un repertoire par etat de jeu (State00 .. State06), plus le repartiteur
+```
+
+**Where a newly-named function goes** — the rule, in order:
+
+1. its VA falls in a known engine address range → that `Engine/` file;
+2. a **single** screen calls it → that `Screens/StateNN/` file;
+3. **several** screens call it → promote to `Engine/` and give it a subsystem name;
+4. otherwise → **it stays with its caller** until the role is established. There is no dumping
+   ground file, and deliberately so.
+
+**Naming**: neutral, descriptive, all `static`. **Never** `Manager`, `Service`, `Controller`,
+`Provider` — those names promise an object with a lifecycle that the transcription does not have,
+and invite drift towards a design the source of truth does not contain.
+
+**No maximum file size.** `Screens/State06/Inventory.cs` is 2 937 lines for three sub-screens of one
+menu, and that is coherent. The metric is coherence, not size.
+
+**Never move work in progress.** A finished piece gets filed; if nothing fits, it stays with its
+caller.
+
+### Two traps the split itself uncovered
+
+**A global never moves to make a file self-contained.** It moves only when the address map says so;
+arenas move as one block. Consult the map of reconstructed symbols in `Documentation/DataSymbols.md`
+before declaring an isolated `DAT_`: 107 pairs of address-adjacent symbols now live in two different
+files, and that adjacency is no longer visible in the code.
+
+**Splitting a partial class across files is not semantically neutral.** Static field initialisers run
+in the order the compiler receives the *files*, which is unspecified. A `static readonly` field whose
+initialiser reads a static member living in **another** file must become a computed `=>` property.
+Intra-file dependencies are safe — textual order is guaranteed within one file. This one bit: eight
+fields of the form `= Arena(0x…)` returned `null + offset` and the game threw on the first frame.
 
 ## Resolving an ordinal-only DLL import
 

@@ -1,0 +1,1119 @@
+// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
+// in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
+//
+// Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
+// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
+// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+
+using System;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+namespace OpenForesia.Blaze;
+
+public static unsafe partial class Blaze
+{
+    // =====================================================================
+    // Resource-file loader subsystem (Ghidra: FUN_00529b00/FUN_00529b50/FUN_00532070/FUN_005322f0/
+    // FUN_0052a660), used by LoadFirstLevelResources (FUN_0052a030) below. Everything here loads
+    // from "BLAZE.ALL", a monolithic resource archive on the CD (sector-addressed â€” offsets are in
+    // 2048-byte units, confirmed by the `<< 0xb` shift in LoadResourceEntry), plus a couple of
+    // standalone files ("SYSTEM.INI"-equivalent, "BASE.SND"-equivalent) loaded whole.
+    // =====================================================================
+
+    // Ghidra: PTR_s_BLAZE_ALL_1_00566bbc -> 0x005684b0, PTR_s_SYSTEM_INI_1_00566bb8 -> 0x005684bc.
+    // Recovered verbatim from Legacy/Blaze.exe â€” the `;1` is an ISO-9660 file version, and Ghidra's
+    // "_1_" in the symbol names was echoing it all along. Keep the suffix: NormalizePath truncates
+    // at ';' before the open, exactly as winsys3d.dll does. See Documentation/DataSymbols.md.
+    private static readonly byte* s_ArchiveFileName = ToAnsiZ("BLAZE.ALL;1");
+    private static readonly byte* s_SystemFileName = ToAnsiZ("SYSTEM.INI;1");
+
+    // Ghidra: s____snd_Base_snd_00568500, recovered as "@:\snd\Base.snd". A CD-**root** absolute
+    // template with its own '@' drive-letter placeholder â€” it does NOT go through the data root.
+    // Lowercase "snd", matching the disc's E:\Snd\ directory (Windows is case-insensitive here).
+    private static readonly byte* s_SoundArchiveTemplate = ToAnsiZ("@:\\snd\\Base.snd");
+
+    /// <summary>
+    /// Builds a **data-root-relative** path: the data root (Ghidra DAT_005631f8, "@:\FRENCH\" with
+    /// its drive letter patched) followed by a relative filename. This is the family that covers
+    /// BLAZE.ALL;1, SYSTEM.INI;1, DATA/Font.bmp, DATA/TITLE640.BMP and the three intro movies.
+    /// <para>
+    /// It is <b>not</b> the only family â€” see <see cref="BuildCdRootPath"/> for templates that are
+    /// already absolute and address the CD root instead.
+    /// </para>
+    /// </summary>
+    private static byte* BuildCdPath(byte* fileName)
+    {
+        byte* path = (byte*)Malloc(64);
+        int i = 0;
+        for (byte* p = s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = fileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
+        path[i] = 0;
+        return path;
+    }
+
+    /// <summary>
+    /// Builds a **CD-root** path from a template that is already absolute and carries its own '@'
+    /// drive-letter placeholder â€” e.g. "@:\snd\Base.snd" (Ghidra: s____snd_Base_snd_00568500) and
+    /// the music table's "@:/Music/Mel00_01.WAV" entries. Only index 0 is substituted; the rest of
+    /// the template is copied verbatim, separators and case included.
+    /// <para>
+    /// These live at the CD root, not under the language directory, which the disc layout confirms:
+    /// <c>E:\snd\</c> and <c>E:\Music\</c> sit beside <c>E:\French\</c> rather than inside it. Running
+    /// them through <see cref="BuildCdPath"/> would prepend the data root and never resolve.
+    /// </para>
+    /// </summary>
+    private static byte* BuildCdRootPath(byte* absoluteTemplate)
+    {
+        byte* path = (byte*)Malloc(64);
+        int i = 0;
+        for (byte* p = absoluteTemplate; *p != 0 && i < 63; p++, i++) path[i] = *p;
+        path[i] = 0;
+        if (i > 0) path[0] = s_CdDataRootPath[0]; // the detected drive letter
+        return path;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0052a660 @ 0x0052a660 — teste si <paramref name="dest"/> est l'une des trois
+    /// destinations « table de sauts » ; si oui, il installe une table de pointeurs de code au lieu
+    /// de charger les octets du fichier de ressources.
+    ///
+    /// <para><b>Correction du 2026-08-18 : les trois cibles ne sont pas des pointeurs et elles
+    /// sont bel et bien assignées.</b> La note précédente disait « never assigned anywhere reached
+    /// yet » ; c'est faux. <see cref="RunApplication"/> — reconstruite depuis longtemps — les pose
+    /// juste avant le balayage des lecteurs (<c>Blaze.c:61733</c>) :
+    /// <c>DAT_006008c8 = 1; DAT_00604930 = 2; DAT_00600904 = 3;</c>. Ce sont trois **sentinelles
+    /// entières**, pas des adresses. Tant qu'elles restaient nulles côté port, la comparaison
+    /// `dest == null` réussissait par accident sur la première et le mécanisme entier était faux.</para>
+    ///
+    /// <para><b>Anatomie de la branche 0x00604930</b>, lue le 2026-08-18 : elle copie
+    /// <b>0x20 dwords</b> depuis <c>(&amp;PTR_PTR_00566d68)[DAT_005de528 &amp; 0xff]</c> — la zone
+    /// courante — vers <c>&amp;PTR_FUN_0056b4d0</c>. La table d'entrée compte <b>onze</b> zones,
+    /// relevées à 0x00566d68 : 0x55e8a8, 0x55e8e8, 0x55e928 … 0x55eb28, puis un dword nul.
+    /// <c>PTR_FUN_0056b4f0</c>, que <c>FUN_00516250</c> appelle indirectement, est l'entrée 8 de la
+    /// table de destination — et vaut <c>FUN_00401fa0</c>, un corps vide, avant toute installation.</para>
+    ///
+    /// <para>TODO(REVERSE) : les onze tables sont espacées de <b>0x40</b> octets alors que la copie
+    /// en transfère <b>0x80</b> ; chaque zone déborde donc sur la suivante. Défaut d'origine ou
+    /// tables volontairement à moitié partagées, non tranché — il faut lire le contenu de
+    /// 0x0055e8a8 avant de conclure. Le port ne transcrit pas encore l'installation : les 32
+    /// pointeurs sont des adresses de code, et les rendre appelables demande un mécanisme de
+    /// vtable que rien de reconstruit n'exerce pour l'instant. L'inventer maintenant serait de
+    /// l'échafaudage spéculatif.</para>
+    /// </summary>
+    private static bool ApplyResourceDestinationOverride(void* dest)
+    {
+        if (dest == s_OverrideDestA_006008c8) return true; // Ghidra: pas de corps du tout ici — juste `return 1;`
+
+        // **Effet de bord sur le chemin normal**, longtemps omis par le port : le nettoyage
+        // ci-dessous n'est PAS dans une branche, il court a chaque chargement de ressource dont la
+        // destination n'est pas la sentinelle A. Trente-neuf dwords remis a zero, puis le curseur
+        // de +0x6c pointe sur le debut du bloc qu'on vient d'effacer.
+        NativeMemory.Clear(s_EntityList_005de558, 0x27 * sizeof(uint));
+        *(byte**)(s_EntityList_005de558 + 0x6c) = s_EntityList_005de558;   // Ghidra: DAT_005de5c4
+
+        if (dest == s_OverrideDestB_00604930)
+        {
+            InstallAreaHandlerTable(s_Unknown_005de528 & 0xff);
+            return true;
+        }
+
+        if (dest == s_OverrideDestC_00600904)
+        {
+            // Ghidra: `iVar1 = (zone & 0xff) * 0x10 + (sous-zone & 0xff)`, force a 0 quand la zone
+            // est 0, et FUN_00536170() (l'arret fatal) si la sous-zone depasse 0xf.
+            int index;
+            if ((s_Unknown_005de528 & 0xff) == 0) index = 0;
+            else
+            {
+                if ((s_Unknown_005de52c & 0xff) > 0xf)
+                    throw new NotImplementedException(
+                        "FUN_00536170 : l'arret fatal sur sous-zone > 0xf, non transcrit");
+                index = (s_Unknown_005de528 & 0xff) * 0x10 + (s_Unknown_005de52c & 0xff);
+            }
+
+            InstallEntityVTables(index);
+            return true;
+        }
+        return false;
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Les sept tables de sauts d'entites (Ghidra: la branche DAT_00600904 de FUN_0052a660).
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Ghidra: les sept tables que la branche <c>DAT_00600904</c> installe d'affilee. Chacune est
+    /// choisie dans une table de pointeurs indexee par <c>zone * 0x10 + sous-zone</c> ; les valeurs
+    /// ci-dessous sont celles de l'**index 0**, la seule que la carte du monde atteint, relevees
+    /// dans <c>Legacy/Blaze.exe</c> et **generees mecaniquement** plutot que recopiees a la main.
+    ///
+    /// <para><c>0x00401FA0</c> revient partout : c'est la fonction au corps vide. La table
+    /// <c>0056adc8</c> est la seule pleine — soixante-quatre entrees, dont dix-neuf distinctes puis
+    /// <c>0x004734B0</c> repete, la forme classique d'une table virtuelle avec son gestionnaire par
+    /// defaut.</para>
+    /// </summary>
+    private static readonly uint[] s_VtSource_0056ad48 =
+    [
+        0x00486EE0, 0x00487260, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056adc8 =
+    [
+        0x004734B0, 0x004734B0, 0x004736D0, 0x004738A0, 0x00473A90, 0x00473CB0, 0x00473A70, 0x00473A70,
+        0x004508D0, 0x004509B0, 0x00450AA0, 0x00450BD0, 0x00450C60, 0x00473ED0, 0x004746C0, 0x004508B0,
+        0x00450760, 0x004502E0, 0x00450D30, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056aec8 =
+    [
+        0x00443100, 0x00443260, 0x004430B0, 0x00442F60, 0x00442F20, 0x00442E70, 0x00442EA0, 0x00442E20,
+        0x00445840, 0x004431F0, 0x004441F0, 0x00442E10, 0x00442DB0, 0x004457F0, 0x00442D90, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x0053DD20, 0x0053DEA0, 0x0053DF20, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056afc8 =
+    [
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x0053DCB0, 0x00401FA0, 0x0053DF90, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056b0c8 =
+    [
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00404EF0, 0x004055C0, 0x00405A70, 0x00405D60, 0x00405E70, 0x00405FE0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00404B90, 0x00404E50,
+    ];
+
+    private static readonly uint[] s_VtSource_0056b1c8 =
+    [
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+    ];
+
+    private static readonly uint[] s_VtSource_0056b2c8 =
+    [
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
+        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00404C80,
+    ];
+
+    /// <summary>Les sept tables actives, dans l'ordre ou l'original les remplit.</summary>
+    private static readonly uint[] s_Vt_0056ad48 = new uint[0x20];
+    private static readonly uint[] s_Vt_0056adc8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056aec8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056afc8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056b0c8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056b1c8 = new uint[0x40];
+    private static readonly uint[] s_Vt_0056b2c8 = new uint[0x40];
+
+    private static void InstallEntityVTables(int index)
+    {
+        if (index != 0)
+            throw new NotImplementedException(
+                $"Tables de sauts d'entites, index {index} (zone * 0x10 + sous-zone) : seules les " +
+                "valeurs de l'index 0 sont relevees dans Legacy/Blaze.exe. Relever les sept " +
+                "tables de cet index avant d'aller plus loin — voir REVERSE_STATUS.md");
+
+        Array.Copy(s_VtSource_0056ad48, s_Vt_0056ad48, s_Vt_0056ad48.Length);
+        Array.Copy(s_VtSource_0056adc8, s_Vt_0056adc8, s_Vt_0056adc8.Length);
+        Array.Copy(s_VtSource_0056aec8, s_Vt_0056aec8, s_Vt_0056aec8.Length);
+        Array.Copy(s_VtSource_0056afc8, s_Vt_0056afc8, s_Vt_0056afc8.Length);
+        Array.Copy(s_VtSource_0056b0c8, s_Vt_0056b0c8, s_Vt_0056b0c8.Length);
+        Array.Copy(s_VtSource_0056b1c8, s_Vt_0056b1c8, s_Vt_0056b1c8.Length);
+        Array.Copy(s_VtSource_0056b2c8, s_Vt_0056b2c8, s_Vt_0056b2c8.Length);
+
+        // Ghidra: les onze initialiseurs appeles a la suite des sept copies.
+        Init_004502d0(); Init_0045a220(); Init_0045c1f0(); Init_0045e200(); Init_004610a0();
+        Init_00467c00(); Init_00468570(); Init_0046a770(); Init_0046c530(); Init_0046e2b0();
+        Init_00470250();
+    }
+
+    /// <summary>L'appel indirect a travers une des sept tables. Comme
+    /// <see cref="CallAreaHandler"/> : <c>FUN_00401FA0</c> a un corps vide, tout le reste leve.</summary>
+    private static void CallEntityHandler(uint[] table, int slot, string name)
+    {
+        uint target = table[slot];
+        if (target == 0x00401FA0) return;   // corps vide, verifie dans Blaze.c
+
+        throw new NotImplementedException(
+            $"{name}, entree {slot} = 0x{target:X6} : gestionnaire d'entite non transcrit");
+    }
+
+    private static void Init_004502d0() => *EntityState(0x00571540) = 0;
+    private static void Init_00467c00() => *EntityState(0x005717c8) = 0;
+    private static void Init_00468570() { *EntityState(0x00571828) = 0; *EntityState(0x0057182c) = 0; }
+    private static void Init_0046a770() { *EntityState(0x00571888) = 0; *EntityState(0x0057188c) = 0; }
+    private static void Init_0046c530() { *EntityState(0x005718b8) = 0; *EntityState(0x005718bc) = 0; }
+    private static void Init_0046e2b0() { *EntityState(0x00571918) = 0; *EntityState(0x0057191c) = 0; }
+    private static void Init_00470250() { *EntityState(0x00571978) = 0; *EntityState(0x0057197c) = 0; }
+
+    private static void Init_004610a0()
+    {
+        for (int i = 0; i < 8; i++) *EntityParam(0x005517e8 + i * 4) = unchecked((int)0xfffffaec);
+        for (int i = 0; i < 8; i++) *EntityParam(0x005517c8 + i * 4) = 0x25d;
+        for (int i = 0; i < 8; i++) *EntityParam(0x005517a8 + i * 4) = 100;
+    }
+
+    /// <summary>Ghidra: FUN_0045a220, FUN_0045c1f0 et FUN_0045e200 — trois blocs de parametres de
+    /// classe, les memes valeurs a des adresses decalees de 0x60 pour les deux premiers. Le
+    /// troisieme reordonne ses champs et n'est donc pas un simple decalage : transcrit separement.</summary>
+    private static void Init_0045a220()
+    {
+        *EntityParam(0x00551660) = 0x9c4;
+        *EntityParam(0x00551664) = 0x9c4;
+        *EntityState(0x00571690) = 0;
+        *EntityParam(0x00551668) = unchecked((int)0xfffff704);
+        *EntityParam(0x0055166c) = unchecked((int)0xfffff704);
+        for (int va = 0x00571694; va <= 0x005716b0; va += 4) *EntityState(va) = 0;
+        for (int va = 0x00551680; va <= 0x00551690; va += 4) *EntityParam(va) = 400;
+        *EntityParam(0x00551694) = 0;
+        *EntityParam(0x00551698) = 0;
+        *EntityParam(0x0055169c) = 400;
+        *EntityParam(0x005516a0) = unchecked((int)0xfffffed4);
+        *EntityParam(0x005516a4) = 100;
+        *EntityParam(0x005516a8) = 100;
+        *EntityParam(0x005516ac) = unchecked((int)0xfffffed4);
+        *EntityParam(0x00551670) = unchecked((int)0xfffff3e4);
+        *EntityParam(0x00551674) = unchecked((int)0xfffffa24);
+        *EntityParam(0x00551678) = 0x6a4;
+        *EntityParam(0x0055167c) = 0xce4;
+        *EntityParam(0x005516b0) = 0xb54;
+        *EntityParam(0x005516b4) = unchecked((int)0xfffff63c);
+        *EntityParam(0x005516b8) = unchecked((int)0xfffff63c);
+        *EntityParam(0x005516bc) = 0xb54;
+    }
+
+    private static void Init_0045c1f0()
+    {
+        *EntityParam(0x005516c0) = 0x9c4;
+        *EntityParam(0x005516c4) = 0x9c4;
+        *EntityState(0x005716e0) = 0;
+        *EntityParam(0x005516c8) = unchecked((int)0xfffff704);
+        *EntityParam(0x005516cc) = unchecked((int)0xfffff704);
+        for (int va = 0x005716e4; va <= 0x00571700; va += 4) *EntityState(va) = 0;
+        for (int va = 0x005516e0; va <= 0x005516f0; va += 4) *EntityParam(va) = 400;
+        *EntityParam(0x005516f4) = 0;
+        *EntityParam(0x005516f8) = 0;
+        *EntityParam(0x005516fc) = 400;
+        *EntityParam(0x00551700) = unchecked((int)0xfffffed4);
+        *EntityParam(0x00551704) = 100;
+        *EntityParam(0x00551708) = 100;
+        *EntityParam(0x0055170c) = unchecked((int)0xfffffed4);
+        *EntityParam(0x005516d0) = unchecked((int)0xfffff3e4);
+        *EntityParam(0x005516d4) = unchecked((int)0xfffffa24);
+        *EntityParam(0x005516d8) = 0x6a4;
+        *EntityParam(0x005516dc) = 0xce4;
+        *EntityParam(0x00551710) = 0xb54;
+        *EntityParam(0x00551714) = unchecked((int)0xfffff63c);
+        *EntityParam(0x00551718) = unchecked((int)0xfffff63c);
+        *EntityParam(0x0055171c) = 0xb54;
+    }
+
+    private static void Init_0045e200()
+    {
+        *EntityParam(0x00551738) = 0x9c4;
+        *EntityParam(0x0055173c) = 0x9c4;
+        for (int va = 0x00571730; va <= 0x00571750; va += 4) *EntityState(va) = 0;
+        *EntityParam(0x00551740) = unchecked((int)0xfffff704);
+        *EntityParam(0x00551744) = unchecked((int)0xfffff704);
+        *EntityParam(0x0055176c) = 0;
+        *EntityParam(0x00551770) = 0;
+        for (int va = 0x00551758; va <= 0x00551768; va += 4) *EntityParam(va) = 400;
+        *EntityParam(0x00551774) = 400;
+        *EntityParam(0x0055177c) = 100;
+        *EntityParam(0x00551780) = 100;
+        *EntityParam(0x00551748) = unchecked((int)0xfffff3e4);
+        *EntityParam(0x0055174c) = unchecked((int)0xfffffa24);
+        *EntityParam(0x00551750) = 0x6a4;
+        *EntityParam(0x00551754) = 0xce4;
+        *EntityParam(0x00551778) = unchecked((int)0xfffffed4);
+        *EntityParam(0x00551784) = unchecked((int)0xfffffed4);
+        *EntityParam(0x00551788) = 0xf3c;
+        *EntityParam(0x0055178c) = unchecked((int)0xfffff63c);
+        *EntityParam(0x00551790) = unchecked((int)0xfffff63c);
+        *EntityParam(0x00551794) = 0xb54;
+    }
+
+    /// <summary>Ghidra: &amp;DAT_005de558 — trente-neuf dwords remis a zero a chaque chargement de
+    /// ressource, avec un curseur a <c>+0x6c</c> (<c>DAT_005de5c4</c>) qui repointe sur leur debut.
+    /// Une douzaine de lecteurs dans le code de jeu, aucun encore transcrit.</summary>
+    private static readonly byte* s_EntityList_005de558 = (byte*)NativeMemory.AllocZeroed(0x9c);
+
+    /// <summary>
+    /// Ghidra: &amp;PTR_PTR_00566d68 et les onze tables qu'elle designe — un bloc plat de 192 dwords
+    /// a partir de 0x0055e8a8, releve dans <c>Legacy/Blaze.exe</c>. Les tables de zone y commencent
+    /// tous les <b>0x40</b> octets, et 174 des 192 entrees valent <c>FUN_00401FA0</c>, dont le corps
+    /// est vide — d'ou la construction par remplissage puis dix-huit exceptions.
+    /// </summary>
+    private static readonly uint* s_AreaHandlerSource_0055e8a8 = BuildAreaHandlerSource();
+
+    private static uint* BuildAreaHandlerSource()
+    {
+        uint* block = (uint*)NativeMemory.Alloc(192, sizeof(uint));
+        for (int i = 0; i < 192; i++) block[i] = 0x00401FA0;
+
+        block[0x020 / 4] = 0x004747F0;   // zone 0, entree 8
+        block[0x060 / 4] = 0x0040A600;   // zone 1, entree 8 — corps vide lui aussi
+
+        // Les seize fonctions qui suivent la derniere table de zone. Elles n'appartiennent a
+        // aucune zone : seul le debordement decrit ci-dessous les fait entrer dans la table.
+        uint[] tail =
+        [
+            0x005037D0, 0x005037E0, 0x00503850, 0x005038A0, 0x00503990, 0x00503B50,
+            0x00503D30, 0x00503D70, 0x00503D80, 0x00503D90, 0x00503DB0, 0x00503DD0,
+            0x00503DF0, 0x00503E10, 0x00503E50, 0x00503E80,
+        ];
+        for (int i = 0; i < tail.Length; i++) block[(0x2c0 / 4) + i] = tail[i];
+
+        return block;
+    }
+
+    /// <summary>
+    /// Ghidra: &amp;PTR_FUN_0056b4d0 — la table de sauts active. **Seize** entrees utiles : le relevé
+    /// du binaire montre 0..15 initialisees a <c>FUN_00401FA0</c> et 16..31 a zero, ce qui borne la
+    /// table sans ambiguite. Les seize suivantes sont conservees ici parce que l'installation
+    /// deborde dessus — voir <see cref="InstallAreaHandlerTable"/>.
+    /// </summary>
+    private static readonly uint* s_AreaHandlerTable_0056b4d0 = BuildAreaHandlerTable();
+
+    private static uint* BuildAreaHandlerTable()
+    {
+        uint* block = (uint*)NativeMemory.AllocZeroed(32, sizeof(uint));
+        for (int i = 0; i < 16; i++) block[i] = 0x00401FA0;
+        return block;
+    }
+
+    /// <summary>
+    /// Ghidra: la branche <c>DAT_00604930</c> de <c>FUN_0052a660</c> — installe la table de sauts
+    /// de la zone courante.
+    ///
+    /// <para><b>Elle copie 0x20 dwords alors que la table n'en fait que 0x10</b> : c'est un
+    /// depassement, des deux cotes. En lecture, chaque zone empiete sur la premiere moitie de la
+    /// suivante (les onze tables sont espacees de 0x40, la copie en prend 0x80) ; en ecriture, les
+    /// seize dwords excedentaires tombent au-dela de la table de destination. Voir
+    /// <c>legacy-bug.md</c>, LB-006 — transcrit tel quel, pas corrige.</para>
+    /// </summary>
+    private static void InstallAreaHandlerTable(int area)
+    {
+        uint* source = s_AreaHandlerSource_0055e8a8 + area * (0x40 / 4);
+        for (int i = 0; i < 0x20; i++) s_AreaHandlerTable_0056b4d0[i] = source[i];
+    }
+
+    /// <summary>
+    /// L'appel indirect a travers <see cref="s_AreaHandlerTable_0056b4d0"/>. Les deux adresses que
+    /// les zones 0 a 9 installent reellement — <c>FUN_00401FA0</c> et <c>FUN_0040A600</c> — ont un
+    /// corps <b>vide</b> dans <c>Blaze.c</c>, donc l'appel est un no-op verifiable et non une
+    /// supposition. Toute autre adresse leve, en la nommant.
+    /// </summary>
+    private static void CallAreaHandler(int slot)
+    {
+        uint target = s_AreaHandlerTable_0056b4d0[slot];
+        if (target == 0x00401FA0 || target == 0x0040A600) return;   // corps vides, verifies
+
+        // ECHAFAUDAGE TEMPORAIRE, et **une deviation de comportement**, pas une omission forcee par
+        // la plateforme comme les quatre documentees dans REVERSE_STATUS.md.
+        //
+        // OPENFORESIA_SKIP_AREA_HANDLER=1 fait de cet appel un no-op trace, le temps de pouvoir
+        // ecrire et exercer FUN_00516350 (la mise en place d'image de la carte du monde), qui est
+        // en aval dans la meme boucle. Sans cela rien de l'etat 3 au-dela du chargement de zone
+        // n'est atteignable.
+        //
+        // Ce n'est **pas** sans consequence : FUN_004747F0 est une machine de transition de
+        // sous-zone (elle eteint des bits dans DAT_005E9840/41 et DAT_005E9000/01/06, compte les
+        // bits leves de DAT_005E9000, et compare DAT_005DE52C/DAT_005DE530 a zero). La sauter
+        // laisse ces drapeaux dans l'etat ou le chargement les a mis. Tout ce qu'on observe sous
+        // ce drapeau est donc a re-verifier une fois la re-passe Ghidra faite.
+        //
+        // A RETIRER des que 0x004747F0 est decompilee.
+        if (Environment.GetEnvironmentVariable("OPENFORESIA_SKIP_AREA_HANDLER") == "1")
+        {
+            Console.Error.WriteLine(
+                $"[ECHAFAUDAGE] table de sauts de zone, entree {slot} = 0x{target:X6} : appel saute.");
+            return;
+        }
+
+        throw new NotImplementedException(
+            $"Table de sauts de zone, entree {slot} = 0x{target:X6} : cette adresse **n'est pas " +
+            "decompilee par Ghidra** (0x004747F0..0x00474AC3, ~723 octets, neuf sorties " +
+            "convergentes). Il faut une re-passe Ghidra ciblee, pas une relecture. Pour tester " +
+            "l'aval malgre tout : OPENFORESIA_SKIP_AREA_HANDLER=1. Voir REVERSE_STATUS.md");
+    }
+
+    // Ghidra: DAT_006008c8 / DAT_00604930 / DAT_00600904 — les trois sentinelles de destination,
+    // posées à 1, 2 et 3 par RunApplication. Typées `void*` parce que c'est à un `void*` qu'elles
+    // sont comparées, pas parce qu'elles pointent sur quoi que ce soit.
+    private static void* s_OverrideDestA_006008c8;
+    private static void* s_OverrideDestB_00604930;
+    private static void* s_OverrideDestC_00600904;
+
+    /// <summary>
+    /// Ghidra: FUN_00529b00 @ 0x00529b00. Opens `path`, reads the whole file into `dest`, closes
+    /// it, and returns the next dword-aligned address past the loaded data (bump-allocator style â€”
+    /// matches LoadResourceEntry's own return convention below). TODO(REVERSE): Ghidra's own
+    /// decompilation of this function is incomplete â€” the failure path returns `unaff_ESI` (a
+    /// register Ghidra could not attribute a value to at function entry) and the read call shows a
+    /// literal `2` where a destination-buffer argument would be expected
+    /// (`Ordinal_334(iVar1,2,iVar2)`), one parameter short of the two arguments every real call
+    /// site actually passes. Reconstructed here using `dest` as that argument (the only reading
+    /// consistent with both call sites) and 0 as a safe/explicit failure return, not Ghidra's
+    /// unrecoverable `unaff_ESI`.
+    /// </summary>
+    private static byte* LoadWholeFileToBuffer(byte* path, byte* dest)
+    {
+        IntPtr handle = OpenExistingFileReadOnly(path);
+        if ((int)handle < 0) return null; // TODO(REVERSE): see summary above â€” original's real failure value unrecoverable
+
+        uint size = SetFilePointer(handle, 0, null, 2 /* FILE_END */);
+        SetFilePointer(handle, 0, null, 0 /* FILE_BEGIN */);
+        if (dest != null)
+        {
+            uint bytesRead;
+            ReadFile(handle, dest, size, &bytesRead, null);
+        }
+        CloseHandle(handle);
+
+        return (byte*)(((nint)dest + size + 5) & ~3);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00529b50 @ 0x00529b50. Loads one sector-addressed chunk (`entryPtr[0]` = sector
+    /// offset, `entryPtr[1]` = byte size) out of BLAZE.ALL into `dest`, unless `dest` is one of the
+    /// ApplyResourceDestinationOverride special cases. Returns the next dword-aligned address past the
+    /// loaded data.
+    /// </summary>
+    private static byte* LoadResourceEntry(int* entryPtr, byte* dest)
+    {
+        if (ApplyResourceDestinationOverride(dest)) return dest;
+
+        byte* path = BuildCdPath(s_ArchiveFileName);
+        IntPtr handle = OpenExistingFileReadOnly(path);
+        Free(path);
+        if ((int)handle < 0)
+        {
+            // Ghidra: `/* WARNING: Do nothing block with infinite loop */ do {} while (true);` â€”
+            // preserved faithfully rather than silently changed to a graceful failure; the original
+            // hangs here instead of continuing with an invalid handle.
+            while (true) { }
+        }
+
+        SetFilePointer(handle, entryPtr[0] << 0xb, null, 0 /* FILE_BEGIN */);
+        int size = entryPtr[1];
+        uint bytesRead;
+        ReadFile(handle, dest, (uint)size, &bytesRead, null);
+        CloseHandle(handle);
+
+        return (byte*)(((nint)dest + size + 3) & ~3);
+    }
+
+    // Ghidra: DAT_0056aca8 â€” a ushort-driven schema table describing which fields of a loaded
+    // resource blob need base-relative-to-absolute pointer fixups (see FixupResourceHeader below).
+    // TODO(REVERSE): data-only global, byte content not present in Blaze.c's text; left empty, so
+    // the schema-driven second fixup pass below is a safe (but incomplete) no-op â€” same category of
+    // gap as s_ResolutionDetailLimit elsewhere in this file.
+    // Ghidra: DAT_0056aca8 â€” recovered from Legacy/Blaze.exe, 37 ushorts ending at the 0x0000 the
+    // original's loop terminates on. The terminator is NOT stored here; the loop below runs to the
+    // array's length instead, which is equivalent and keeps the sentinel out of the data.
+    //
+    // Each entry packs two fields, and this is confirmed by FUN_00532070's own masking rather than
+    // inferred: the **low byte is an index** into the header's already-relocated pointer array
+    // (`header[4 + index]`), and the **high byte is the byte stride** used to walk that list.
+    // The earlier "(record kind, size)" reading in an older revision of DataSymbols.md was wrong.
+    //
+    // Every index is below 0x3c, matching the 60 dwords the fixed pass relocates â€” an internal
+    // consistency check the recovered bytes pass.
+    private static readonly ushort[] s_ResourceFixupSchema_0056aca8 =
+    [
+        0x0800, 0x0801, 0x0802, 0x0803, 0x0804, 0x0805, 0x0806, 0x0807,
+        0x0408, 0x0409, 0x040a, 0x140b, 0x040e, 0x0410, 0x0411, 0x0414,
+        0x0815, 0x0417, 0x0418, 0x0419, 0x041b, 0x041c, 0x081d, 0x041e,
+        0x041f, 0x0421, 0x0423, 0x0425, 0x0426, 0x0827, 0x0428, 0x042a,
+        0x042b, 0x042d, 0x042f, 0x0430, 0x0431,
+    ];
+
+    /// <summary>
+    /// Ghidra: FUN_00532070 @ 0x00532070. Turns a just-loaded resource blob's stored
+    /// "base-relative" offsets into real pointers, now that its load address is known. Two passes:
+    /// a fixed run of 60 header dwords, then a schema-driven walk over the chained lists those
+    /// dwords point at.
+    /// <para>
+    /// The two passes use **different** relocation formulas â€” the fixed pass adds
+    /// <c>header[0]</c>, the schema pass adds <c>header[0] + header[1]</c>. That extra term is not
+    /// incidental; dropping it yields pointers that look valid and are wrong by a constant.
+    /// </para>
+    /// </summary>
+    private static void FixupResourceHeader(byte* blob)
+    {
+        if (blob == null) return;
+
+        // Ghidra: iVar1 = *param_1; the fixed 60-dword pass over blob[4..0x40).
+        int origin = *(int*)blob;
+        int* field = (int*)blob + 4;
+        for (int i = 0; i < 0x3c; i++, field++)
+        {
+            *field = (int)(nint)blob + *field + origin;
+        }
+
+        // Ghidra: iVar3 = param_1[1]; the schema pass's extra relocation term.
+        int recordOrigin = ((int*)blob)[1];
+
+        // Ghidra: the `while (uVar5 != 0)` walk over DAT_0056aca8. Each schema entry names one of
+        // the pointers the pass above just relocated, plus the stride to walk the list it heads.
+        foreach (ushort entry in s_ResourceFixupSchema_0056aca8)
+        {
+            int listIndex = entry & 0xff;
+            int stride = entry >> 8;
+
+            int* node = (int*)(nint)((int*)blob)[4 + listIndex];
+
+            // Ghidra checks both the pointer and its first dword â€” an empty list is stored as a
+            // valid pointer to a zero, not as a null.
+            if (node == null) continue;
+            int value = *node;
+            if (value == 0) continue;
+
+            // Read-then-advance, in the original's order: relocate the current dword, then take the
+            // next link from `node + stride`, then step. Reordering these changes which dword ends
+            // the walk.
+            do
+            {
+                *node = (int)(nint)blob + value + recordOrigin + origin;
+                value = *(int*)((byte*)node + stride);
+                node = (int*)((byte*)node + stride);
+            } while (value != 0);
+        }
+    }
+
+    /// <summary>
+    /// <summary>
+    /// libgpu's `TIM_IMAGE`, filled by ReadTIM. Exactly the 20 bytes FUN_005322f0 reserves with
+    /// `SUB ESP,0x14` and hands to Ordinal_662 via `LEA ECX,[ESP+8]`.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TimImage
+    {
+        public uint Mode;        // +0x00 â€” pixel mode; header & 7, or 2 when the TIM has no CLUT
+        public short* ClutRect;  // +0x04 â€” RECT {x,y,w,h}; null when there is no CLUT
+        public void* ClutData;   // +0x08 â€” palette bytes; null when there is no CLUT
+        public short* PixelRect; // +0x0c â€” RECT {x,y,w,h}
+        public void* PixelData;  // +0x10 â€” pixel bytes
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005322f0 @ 0x005322f0 â€” uploads one TIM texture (loaded by LoadResourceEntry
+    /// into a scratch buffer) into VRAM, and records its texture-page / CLUT pair in a slot.
+    /// <para>
+    /// Reconstructed from the raw disassembly in <c>Legacy/Raw/FUN_005322f0.txt</c>, because the
+    /// decompiler's output for this function was not merely unnamed but **wrong**:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>Its `puStack_14`/`psStack_10`/`iStack_c` "indeterminate" locals are the fields of the
+    /// libgpu <c>TIM_IMAGE</c> that <c>Ordinal_662</c> (ReadTIM) fills through the out-pointer
+    /// `&amp;stack0xffffffe8`. Ghidra never linked the pointer to the slots it writes.</item>
+    /// <item>`unaff_retaddr` is not a return address: it is **parameter 2**, the 2-short texture
+    /// slot. Both call sites advance their slot pointer by exactly 4 bytes, which corroborates it.</item>
+    /// <item>Every `param_1[0..2]` byte read in the decompiled body actually comes from
+    /// **`EDI` = parameter 3**, the metadata triple â€” not from the chunk pointer.</item>
+    /// <item>`(*param_1 &amp; 0xff10)` is a decompiler artifact. The instruction is `AND AL,0x10`,
+    /// a byte mask; using `0xff10` would corrupt the pixel rect's y coordinate.</item>
+    /// </list>
+    /// <para>
+    /// The `extraout_var*` values Ghidra invented for this function are simply Ordinal_674's
+    /// ignored return value and have no role at all.
+    /// </para>
+    /// </summary>
+    private static void DecodeResourceChunk(byte* timData, ushort* slot, byte* meta)
+    {
+        // Ghidra: PUSH arg1; CALL Ordinal_677; LEA ECX,[ESP+8]; PUSH ECX; CALL Ordinal_662.
+        // The 20 bytes SUB ESP,0x14 reserves are exactly this struct.
+        TimImage tim;
+        OpenTim(timData);
+        ReadTim(&tim);
+
+        // ESI carries the CLUT's byte count from the branch below into the copy loop at the end.
+        // It is only meaningful when a CLUT exists; the no-CLUT path loads arg1 into it (Ghidra:
+        // `MOV ESI,[ESP+0x20]`) but that value is dead, because ReadTIM zeroes `caddr` in the same
+        // case and `caddr` guards the loop.
+        int clutByteCount = 0;
+
+        // Ghidra: MOV EAX,[ESP+0x10]; TEST EAX,EAX; JZ â€” the test is on **caddr**, not crect.
+        if (tim.ClutData != null)
+        {
+            short* clutRect = tim.ClutRect;
+
+            clutRect[0] = 0;                                    // x = 0
+            clutRect[1] = (short)(meta[1] + 0x1c0);             // y = meta[1] + 0x1c0
+
+            // Read w and h *before* w is overwritten â€” the original does the same, and the
+            // multiply below depends on the original width.
+            int packed = clutRect[3] * clutRect[2];             // h * w
+            packed = (packed + 0xff) & unchecked((int)0xffffff00);
+            clutRect[2] = 0x100;                                // w = 256
+            clutRect[3] = (short)(packed >> 8);                 // h = rounded / 256
+            clutByteCount = packed;
+
+            Ordinal_674(clutRect, tim.ClutData);                // LoadImage(crect, caddr)
+        }
+
+        // Ghidra: MOV EAX,[ESP+0x18] â€” guarded on **paddr**, plus a skip when meta[0] == 0x1c.
+        if (tim.PixelData != null && meta[0] != 0x1c)
+        {
+            short* pixelRect = tim.PixelRect;
+
+            // Ghidra: AND AL,0xf; SHL ECX,6.
+            pixelRect[0] = (short)((meta[0] & 0x0f) << 6);
+
+            // Ghidra: AND AL,0x10 â€” a *byte* mask. The decompiler rendered this as `& 0xff10`,
+            // which is wrong and would have corrupted the y coordinate.
+            pixelRect[1] = (short)((((meta[0] & 0x10) + meta[2] * 4)) << 4);
+
+            Ordinal_674(pixelRect, tim.PixelData);              // LoadImage(prect, paddr)
+        }
+
+        // Ghidra: 005323bf-005323f2. Packs the texture-page word out of the pixel rect and the TIM
+        // mode â€” libgpu's GetTPage shape. Transcribed operation for operation rather than
+        // simplified, since the intermediate 16-bit SAR is not equivalent to a 32-bit one.
+        int x = tim.PixelRect[0];
+        int y = tim.PixelRect[1];
+        int tpage = ((x >> 2) & 0xf0) | (y & 0x100);
+        tpage |= 0x2000;                                        // Ghidra: OR CH,0x20
+        tpage = (short)tpage >> 4;                              // Ghidra: SAR CX,4 â€” 16-bit
+        tpage |= ((int)tim.Mode & 3) << 7;
+        slot[0] = (ushort)tpage;
+
+        // Ghidra: (meta[1] + 0x1c0) << 6 â€” libgpu's GetClut for x=0, matching the crect y above.
+        slot[1] = (ushort)((meta[1] + 0x1c0) << 6);
+
+        // Ghidra: 00532407-0053243c. Mirrors the CLUT into main video memory for the low banks.
+        if (meta[1] < 0x10 && tim.ClutData != null)
+        {
+            byte* mainMem = GetMainMemPtr();
+            if (mainMem != null)
+            {
+                uint* source = (uint*)tim.ClutData;
+                uint* dest = (uint*)(mainMem + ((meta[1] + 0xe10) << 9));
+                for (int remaining = clutByteCount >> 1; remaining != 0; remaining--)
+                {
+                    *dest++ = *source++;
+                }
+            }
+        }
+    }
+
+    // Ghidra: DAT_005e8fc0 â€” **not a second table**. It is DAT_005e8f00 offset by 0xC0, i.e. the
+    // same tpage/clut array starting 48 entries in, and Ghidra simply named two points inside it.
+    //
+    // Modelling them as separate allocations is what left the main menu black: its panel
+    // descriptor asks for entry 0x31 of DAT_005e8f00 = 0x31 - 0x30 = entry 1 of DAT_005e8fc0,
+    // which LoadFirstLevelResources fills. LoadMenuResources only writes entries 0..3 (measured:
+    // the menu's directory has exactly four), so entry 0x31 came back zero and every panel
+    // primitive sampled texture page 0 â€” an empty region of VRAM, hence a black screen with
+    // otherwise perfectly formed geometry.
+    //
+    // Same shape of bug as DAT_0056e61f being menuContext[0x8c7]: suspect any DAT_ that lands
+    // inside a known structure's extent.
+    private static byte* s_EntityDecodeTable_005e8fc0 => s_EntityDecodeTable_005e8f00 + 0xC0;
+    // Ghidra: DAT_005e8340 (0x1e0 bytes, read from "BASE.SND" here) immediately followed by
+    // DAT_005e8520 (0x88 bytes, read from the level file by FUN_00512xxx @ 0x006335x). They are
+    // one contiguous array: 0x005e8520 - 0x005e8340 == 0x1e0 exactly, and PlaySoundEffect indexes
+    // *both* halves off &DAT_005e8340 (`&DAT_005e8340 + soundId * 8` for ids up to 0x4c), only
+    // switching which sample bank the entry's offset is added to. 0x1e0 + 0x88 == 0x268 == 77
+    // entries of 8 bytes, and 0x4c is exactly the last valid index â€” the sizes corroborate.
+    private const int SoundDirectoryBaseCount = 0x1e0 / 8;  // 60 entries, ids 0x00..0x3b
+    private const int SoundDirectoryCount = 0x268 / 8;      // 77 entries, ids 0x00..0x4c
+    private static readonly SoundDirectoryEntry* s_SoundDirectory =
+        (SoundDirectoryEntry*)NativeMemory.AllocZeroed(SoundDirectoryCount * (nuint)sizeof(SoundDirectoryEntry));
+    // Ghidra: DAT_005e97e4 / _DAT_005e9810 / _DAT_005e9824 / DAT_005de538 â€” all read again by
+    // not-yet-reconstructed code.
+    private static uint s_Unknown_005e97e4;
+    private static int s_Unknown_005e9810;
+    private static IntPtr s_Unknown_005e9824;
+    private static int s_Unknown_005de538;
+    // Ghidra: &DAT_005e9180 â€” small per-slot table reset at the end of FUN_0052a030 (4 entries of
+    // 0x4c/76 bytes: 0x13 dwords zeroed, byte[-1]=8, byte[0]=incrementing slot id). Also touched
+    // (not yet reconstructed) by FUN_00542160's near-identical loop elsewhere.
+    // **La même mémoire que <see cref="s_SlotArea_005e9180"/>**, qui déclarait déjà cette adresse de
+    // son côté. Séparés, <see cref="InitialiseEntitySlots"/> écrivait dans l'un pendant que
+    // <see cref="CurrentPadState"/> lisait l'autre : l'initialisation des emplacements manette
+    // n'atteignait jamais son lecteur. Fusionnés le 2026-08-17 en un alias sur l'arène.
+    private static byte* s_EntitySlotTable_005e9180 => Arena(0x005e9180);
+
+    /// <summary>
+    /// Ghidra: FUN_0052a030 @ 0x0052a030. Loads the "&lt;cd-drive-root&gt;SYSTEM.INI"-equivalent
+    /// level/base resource file, fixes up its internal pointers, decodes each directory entry it
+    /// lists (throws at the first one â€” see DecodeResourceChunk above), loads the base sound
+    /// archive's header + big scratch buffer, and resets the small entity-slot table.
+    /// </summary>
+    private static void LoadFirstLevelResources()
+    {
+        // Ghidra: FUN_0040a600() â€” confirmed no-op.
+        byte* path = BuildCdPath(s_SystemFileName);
+        s_MainResourceDirectory_005e97c4 = LoadWholeFileToBuffer(path, s_MainResourceBuffer_005e97c0);
+        Free(path);
+        FixupResourceHeader(s_MainResourceBuffer_005e97c0);
+
+        if (s_MainResourceBuffer_005e97c0 != null)
+        {
+            int* directory = *(int**)(s_MainResourceBuffer_005e97c0 + 0x10);
+            int entryPtrValue = *directory;
+            if (entryPtrValue != 0)
+            {
+                int* metadata = directory + 1;
+                byte* destSlot = s_EntityDecodeTable_005e8fc0;
+                byte* mainMem = GetMainMemPtr();
+                do
+                {
+                    byte* scratch = mainMem != null ? mainMem + 0x1b0000 : null;
+                    LoadResourceEntry((int*)(nint)entryPtrValue, scratch);
+                    DecodeResourceChunk(scratch, (ushort*)destSlot, (byte*)metadata);
+                    entryPtrValue = directory[2];
+                    directory += 2;
+                    // Ghidra: `undefined *puVar13; ... puVar13 = puVar13 + 4;` â€” a **byte** pointer
+                    // advancing 4 bytes, i.e. one tpage/clut pair per entry. This was 16, a 4x
+                    // over-stride that would have scattered the texture slots; it went unnoticed
+                    // because DecodeResourceChunk threw before the loop could ever iterate.
+                    destSlot += 4;
+                    metadata += 2;
+                } while (entryPtrValue != 0);
+            }
+        }
+
+        uint savedStride = s_ScreenStride_005e97e0;
+
+        // CD-root family, not data-root: the sound bank lives at E:\Snd\, beside E:\French\ rather
+        // than inside it. This previously went through BuildCdPath, which prefixed the data root
+        // onto an already-absolute template and could never resolve.
+        byte* sndPath = BuildCdRootPath(s_SoundArchiveTemplate);
+        IntPtr sndHandle = OpenExistingFileReadOnly(sndPath);
+        Free(sndPath);
+        // Ghidra doesn't guard the open failing here either â€” ReadFile/CloseHandle on an invalid
+        // handle simply fail harmlessly, matching the original's unconditional calls.
+        uint sndBytesRead;
+        // The first 60 directory entries, then the whole base sample bank they point into.
+        ReadFile(sndHandle, s_SoundDirectory, 0x1e0, &sndBytesRead, null);
+        if (s_BaseSoundBank != null)
+        {
+            ReadFile(sndHandle, s_BaseSoundBank, 790000, &sndBytesRead, null);
+        }
+        CloseHandle(sndHandle);
+
+        s_Unknown_005e97e4 = savedStride;
+        if (s_MainResourceBuffer_005e97c0 != null)
+        {
+            s_Unknown_005e9810 = *(int*)(s_MainResourceBuffer_005e97c0 + 100);
+        }
+        s_Unknown_005e9824 = sndHandle;
+
+        byte entryId = 0;
+        byte* slotIdByte = s_EntitySlotTable_005e9180 + 9; // Ghidra: &DAT_005e9189
+        uint* slotBase = (uint*)s_EntitySlotTable_005e9180; // Ghidra: &DAT_005e9180
+        byte* tableEnd = s_EntitySlotTable_005e9180 + (0x5e92b9 - 0x5e9180);
+        do
+        {
+            uint* p = slotBase;
+            for (int k = 0; k < 0x13; k++, p++) *p = 0;
+            slotIdByte[-1] = 8;
+            *slotIdByte = entryId;
+            slotIdByte += 0x4c;
+            entryId++;
+            slotBase += 0x13;
+        } while (slotIdByte < tableEnd);
+
+        s_Unknown_005de538 = 0;
+    }
+
+    // Ghidra: DAT_005e97c4 â€” the loaded resource file's own "next free address" bookkeeping value;
+    // not yet used further by any reconstructed code past LoadFirstLevelResources itself.
+    private static byte* s_MainResourceDirectory_005e97c4;
+
+    /// <summary>
+    /// Ghidra: FUN_0052a440 @ 0x0052a440 â€” **the inter-state loading screen**, and not the
+    /// "per-game-state dispatcher" an earlier revision of this file called it. Two call sites fix
+    /// its role beyond doubt: <see cref="RunGameLoop"/> runs it whenever the game leaves a state
+    /// for one other than 7, 9, 2 or 3, and <c>FUN_00516250</c> runs it when the current area index
+    /// changes, immediately before that area's resources are loaded.
+    /// <para>
+    /// What it does: load one resource entry into the scratch at <c>MainMem + 0x1b0000</c>, decode
+    /// it, then show it for 150 frames. It is skippable â€” pressing START or SQUARE plays a UI sound
+    /// and the screen ends when that press is <em>released</em>, which is also why a button already
+    /// held on entry cannot skip it.
+    /// </para>
+    /// <para>
+    /// **Ghidra did not recover this function's stack frame.** Several calls are rendered with
+    /// their arguments as free-standing locals (<c>piStack_50</c>/<c>puStack_54</c> are argument
+    /// slots, not variables), and one slot the code reads is never written anywhere in the
+    /// pseudocode. Two consequences are marked TODO(REVERSE) below. The argument order of the two
+    /// resource calls is not among them: <c>FUN_00516250</c> calls the same
+    /// <c>FUN_00529b50(entry, destination)</c> with both arguments intact, which settles it.
+    /// </para>
+    /// </summary>
+    private static void RunLoadingScreen()
+    {
+        // Ghidra: FUN_0040a600() â€” an empty body in Blaze.c (`void FUN_0040a600(void) { return; }`).
+        // Called here and at the top of every game-loop iteration; nothing to reproduce.
+
+        byte* mainMem = GetMainMemPtr();
+        if (s_MainResourceBuffer_005e97c0 == null || mainMem == null) return;
+
+        // Ghidra: piVar2 = *(int **)(DAT_005e97c0 + 0x84) â€” a table of (entry, metadata) pairs.
+        int* pairs = *(int**)(s_MainResourceBuffer_005e97c0 + 0x84);
+        if (pairs == null) return;
+
+        // Ghidra: the walk to the end of the pair list. **Its result is never used** â€” transcribed
+        // rather than dropped, because a discarded traversal usually means Ghidra lost the use, not
+        // that the original wrote a dead loop.
+        int* walk = pairs;
+        while (*walk != 0) walk += 2;
+
+        // Ghidra: game state 3 picks its entry from DAT_005de528; every other state uses 0xb.
+        uint entryIndex = s_GameStateId == 3 ? (uint)(s_Unknown_005de528 & 0xff) : 0xb;
+
+        byte* scratch = mainMem + 0x1b0000;
+        LoadResourceEntry((int*)(nint)pairs[entryIndex * 2], scratch);
+        DecodeResourceChunk(scratch,
+                            (ushort*)(s_EntityDecodeTable_005e8f00 + 0xfc),   // Ghidra: &DAT_005e8ffc
+                            (byte*)(pairs + entryIndex * 2 + 1));
+
+        // Ghidra: two Ordinal_676 calls â€” winsys3d's MoveImage(RECT* src, int dstX, int dstY),
+        // confirmed at winsys3d.c:5348, which copies a VRAM rectangle to another VRAM position.
+        // The two rectangles are the eight ushorts the function opens with.
+        //
+        // **TODO(REVERSE) levé le 2026-08-18** — le désassemblage direct confirme la transcription
+        // telle qu'elle était. `0x0052A4F4..0x0052A507` :
+        //     LEA ECX,[ESP+0x28]   PUSH 0  PUSH 0  PUSH ECX   CALL Ordinal_676   ; &rect[0], (0,0)
+        //     PUSH 0   LEA EDX,[ESP+0x34]  PUSH 0  PUSH EDX   CALL Ordinal_676   ; &rect[4], (0,0)
+        // Le second `LEA` se lit avec un `PUSH` déjà passé, donc son décalage effectif est 0x30,
+        // soit exactement `rect + 4` — pas « quatre octets en dessous du premier rectangle » comme
+        // la pseudo-C le laissait croire. Les deux destinations sont bien (0, 0).
+        ushort* rect = stackalloc ushort[8];
+        rect[0] = 0x380; rect[1] = 0; rect[2] = 0x80; rect[3] = 0xe0;
+        rect[4] = 0; rect[5] = 0x1ff; rect[6] = 0x100; rect[7] = 1;
+        Ordinal_676(rect, 0, 0);
+        Ordinal_676(rect + 4, 0, 0);
+
+        uint* otBase, otEntry, primCursor;
+        FrameBegin(&otBase, &otEntry, &primCursor);
+
+        // Ghidra: the 20-byte sprite descriptor, the same shape as the main menu's â€” pointer,
+        // colour, x/y, tpage/clut, index â€” and passed by address to both renderers.
+        byte* sprite = s_LoadingScreenSprite;
+        *(uint**)sprite = s_LoadingScreenTextureRecord;
+        *(uint*)(sprite + 0x04) = 0x1000000;
+        *(ushort*)(sprite + 0x08) = 0xa0;
+        *(ushort*)(sprite + 0x0a) = 0x80;
+        *(ushort*)(sprite + 0x0c) = 0x1400;
+        *(ushort*)(sprite + 0x0e) = 0x1249;
+        *(uint*)(sprite + 0x10) = 0;
+
+        // Ghidra: iVar5 is a three-state gate â€” -1 until nothing is held (so a button carried in
+        // from the previous screen cannot skip this one), 0 armed, 1 pressed and acknowledged.
+        int phase = -1;
+        int framesLeft = 0x96;
+
+        while (framesLeft != 0 || phase != 0)
+        {
+            primCursor = DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            primCursor = DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
+            FrameEnd(&otBase, &otEntry, &primCursor, 1, 1);
+
+            // Ghidra: START (0x0008) or SQUARE (0x8000) of the current player's pad word. The word
+            // at DAT_00604a20 is **active high** â€” UpdateButtonEdges inverts the active-low word
+            // FUN_00523660 builds â€” so a set bit is a held button.
+            bool held = (CurrentPadWord() & 0x8008) != 0;
+
+            if (!held && phase == -1) phase = 0;
+
+            if (!held)
+            {
+                if (phase == 1) return;
+            }
+            else if (phase == 0)
+            {
+                phase = 1;
+                PlayUiSound38();        // Ghidra: FUN_0053db80
+            }
+
+            framesLeft--;
+        }
+
+    }
+
+    /// <summary>
+    /// Ghidra: the pad-state expression shared by FUN_00512520, FUN_00545340, FUN_0052a440 and
+    /// FUN_00506880. Factored because it had already been transcribed twice and drifted once: one
+    /// copy hardcoded the outer index to 0 instead of reading DAT_005de538.
+    ///
+    /// <para><b>The stride is 0x10, not 4.</b> Ghidra's pseudo-C renders the final scaling as
+    /// <c>&amp;DAT_00604a20 + slot * 4</c>, which is wrong — the decompiler lost the shift. All three
+    /// call sites disassemble to <c>SHL EAX,0x4</c> followed by <c>ADD EAX,0x604a20</c>:
+    /// <c>FUN_0052a440</c> at <c>0x0052a60b</c>, <c>FUN_00545340</c> at <c>0x00545423</c>, and
+    /// <c>FUN_00506880</c> at <c>0x005069fa</c> (see <c>Legacy/Raw/Blaze/*.asm</c>). Each pad slot
+    /// is a 16-byte record. The earlier <c>* 4</c> here was a latent 4× address error: it only
+    /// agreed with the original at slot 0, which is the single-controller case everything has been
+    /// exercised with so far.</para>
+    /// </summary>
+    private static byte* CurrentPadState()
+    {
+        int slot = s_PlayerSlots_005e9188[
+            s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
+        return s_InputStateBase_00604a20 + slot * 0x10;
+    }
+
+    /// <summary>
+    /// Ghidra: the halfword at offset 0 of the current pad record — the form FUN_0052a440 reads
+    /// (<c>MOV AX, word ptr [EAX]</c> at <c>0x0052a613</c>, then <c>AND AX,0x8008</c>).
+    /// </summary>
+    private static ushort CurrentPadWord() => *(ushort*)CurrentPadState();
+
+    /// <summary>
+    /// Ghidra: the loading screen's sprite descriptor â€” 20 bytes, **one contiguous block**. Split
+    /// into two allocations it would draw nothing at all, which is exactly what happened to the
+    /// main menu's background; see REVERSE_STATUS.md, 2026-08-14.
+    /// </summary>
+    private static readonly byte* s_LoadingScreenSprite = (byte*)NativeMemory.AllocZeroed(0x20);
+
+    /// <summary>
+    /// L'enregistrement de texture de 8 octets que le descripteur de l'écran de chargement désigne
+    /// par son champ 0 — **résolu le 2026-08-18 en désassemblant `FUN_0052a440` directement**, là où
+    /// la pseudo-C ne montrait qu'un emplacement de pile que rien n'écrivait (le cadre de pile perdu
+    /// dont parlait le TODO à ce site).
+    ///
+    /// <para>L'original le monte octet par octet juste avant la boucle d'image, puis relie son
+    /// adresse au descripteur à chaque tour (<c>Legacy/Blaze.exe</c>, <c>0x0052A51B..0x0052A53D</c>
+    /// puis <c>0x0052A57E</c>) :</para>
+    /// <code>
+    /// MOV [ESP+0x2C],BL      ; 0     MOV [ESP+0x30],BL      ; 0
+    /// MOV [ESP+0x2D],BL      ; 0     MOV byte [ESP+0x31],1
+    /// MOV [ESP+0x2E],BL      ; 0     MOV byte [ESP+0x32],0x3F
+    /// MOV byte [ESP+0x2F],0xE0       MOV [ESP+0x33],BL      ; 0
+    /// ...
+    /// LEA EAX,[ESP+0x20]   →   MOV [ESP+0x3C],EAX          ; descripteur+0 = &l'enregistrement
+    /// </code>
+    ///
+    /// <para>Soit les deux dwords <c>0xE0000000</c> et <c>0x003F0100</c>. Le second se recoupe de
+    /// lui-même : son octet 2 vaut <c>0x3F</c>, l'index que <see cref="DrawSpritePrimitive"/> utilise
+    /// dans la table de pages — <c>s_EntityDecodeTable_005e8f00 + 0x3F * 4 = 0x005e8ffc</c>, très
+    /// exactement l'adresse où <c>DecodeResourceChunk</c> vient d'écrire quelques lignes plus haut.
+    /// Le premier porte la hauteur, <c>0xE0</c> = 224 lignes, ce qui concorde avec le rectangle
+    /// source <c>{0x380, 0, 0x80, 0xE0}</c> de la première recopie VRAM.</para>
+    /// </summary>
+    private static readonly uint* s_LoadingScreenTextureRecord = BuildLoadingScreenTextureRecord();
+
+    private static uint* BuildLoadingScreenTextureRecord()
+    {
+        uint* record = (uint*)NativeMemory.AllocZeroed(8);
+        record[0] = 0xE0000000;
+        record[1] = 0x003F0100;
+        return record;
+    }
+
+    // Ghidra: DAT_005de528 â€” the area index game state 3 loads its screen from. Never assigned in
+    // the reconstructed graph yet, so it reads 0.
+    private static int s_Unknown_005de528;
+
+
+    /// <summary>
+    /// Ghidra: the directory-reload prefix shared verbatim by <see cref="LoadMenuResources"/>
+    /// (<c>FUN_00542160</c>) and <see cref="ReloadGameplayResources"/> (<c>FUN_00504ca0</c>) â€”
+    /// confirmed byte-for-byte identical in both raw bodies, not just the same shape. Reloads the
+    /// resource entry for the current state id (<see cref="s_Unknown_005e92b0"/>), fixes up its
+    /// header, then walks the directory's entry list decoding each chunk into
+    /// <see cref="s_EntityDecodeTable_005e8f00"/> â€” the same loop <see cref="LoadFirstLevelResources"/>
+    /// already runs, reusing its three helpers rather than duplicating them a third time.
+    /// </summary>
+    private static void ReloadStateResources()
+    {
+        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, s_MainResourceDirectory_005e97c4);
+        FixupResourceHeader(s_MainResourceDirectory_005e97c4);
+
+        if (s_MainResourceDirectory_005e97c4 != null)
+        {
+            int* directory = *(int**)(s_MainResourceDirectory_005e97c4 + 0x10);
+            int entryPtrValue = *directory;
+            if (entryPtrValue != 0)
+            {
+                int* metadata = directory + 1;
+                byte* destSlot = s_EntityDecodeTable_005e8f00;
+                byte* mainMem = GetMainMemPtr();
+                do
+                {
+                    byte* scratch = mainMem != null ? mainMem + 0x1b0000 : null;
+                    LoadResourceEntry((int*)(nint)entryPtrValue, scratch);
+                    DecodeResourceChunk(scratch, (ushort*)destSlot, (byte*)metadata);
+                    entryPtrValue = directory[2];
+                    directory += 2;
+                    destSlot += 4;      // same 4-byte tpage/clut stride as the other call site
+                    metadata += 2;
+                } while (entryPtrValue != 0);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00504ca0 @ 0x00504ca0 â€” called at the very start of game-state 1's entry
+    /// (<c>thunk_FUN_00536180</c>). Confirmed byte-for-byte the same directory-reload prefix as
+    /// <see cref="LoadMenuResources"/> (<c>FUN_00542160</c>), just without that function's
+    /// menu-specific tail (the six render-block ordinals) â€” extracted as
+    /// <see cref="ReloadStateResources"/> once a third call site needed the identical loop. The
+    /// leading <c>FUN_0040a600()</c> is the confirmed no-op already elided at every other call site.
+    /// </summary>
+    private static void ReloadGameplayResources() => ReloadStateResources();
+
+    /// <summary>
+    /// Ghidra: FUN_00542160 @ 0x00542160 â€” reloads the state's resources, then reconfigures the
+    /// menu's own render block. See <see cref="ReloadStateResources"/> for the shared prefix.
+    /// </summary>
+    private static void LoadMenuResources()
+    {
+        ReloadStateResources();
+
+        // Ghidra: _DAT_00566c74 = 0x100; _DAT_00566c78 = 0; _DAT_00566c7a = 0; then six ordinals.
+        uint* block = s_MenuRenderBlock_00566c70;
+        *(uint*)((byte*)block + 4) = 0x100;
+        *(ushort*)((byte*)block + 8) = 0;
+        *(ushort*)((byte*)block + 0x0a) = 0;
+
+        Ordinal_770(block);
+        Ordinal_769(1);
+        Ordinal_768(1);
+        Ordinal_767(0, 0xffffff);
+        Ordinal_766(block);
+        Ordinal_765(1, 0xffffff);
+    }
+}

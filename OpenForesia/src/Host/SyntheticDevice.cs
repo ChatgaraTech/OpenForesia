@@ -43,9 +43,14 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// `DeviceShim` etait la meme classe partielle avant le decoupage : ses thunks Shim_*, son budget
+// de journalisation et Guarded restent partages. `Blaze` porte ToAnsiZ, VirtualAlloc et le reste.
+using static OpenForesia.Blaze.Blaze;
+using static OpenForesia.Blaze.DeviceShim;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+internal static unsafe class SyntheticDevice
 {
     /// <summary>
     /// Actif par défaut : c'est lui qui supprime le clignotement d'écran au démarrage.
@@ -57,12 +62,20 @@ public static unsafe partial class Blaze
     /// passe par <c>3dhelp</c>, ce qui suppose évidemment qu'il existe.
     /// </para>
     /// <para>
-    /// Propriété calculée et non champ statique : l'ordre d'initialisation des champs statiques
-    /// entre fichiers d'une même classe partielle n'est pas garanti, et celui-ci dépend de
-    /// <c>s_WindowedStartup</c>, déclaré dans <c>Blaze.cs</c>.
+    /// Champ statique depuis la sortie de <c>partial class Blaze</c> (2026-08-19). Il devait être
+    /// une propriété calculée tant que ce fichier faisait partie de la classe partielle : l'ordre
+    /// d'initialisation des champs statiques <b>entre fichiers d'une même classe</b> n'est pas
+    /// garanti, et celui-ci dépend de <c>Blaze.s_WindowedStartup</c>. Entre deux classes
+    /// distinctes, la garantie existe — lire un membre de <c>Blaze</c> déclenche l'initialisation
+    /// de <c>Blaze</c> avant la lecture. Le contournement n'a donc plus d'objet.
+    /// </para>
+    /// <para>
+    /// Le comportement est inchangé : <c>s_WindowedStartup</c> est lui-même un champ
+    /// <c>static readonly</c>, donc les deux variables d'environnement étaient déjà lues une seule
+    /// fois à l'initialisation du type. Rien dans le projet ne les modifie en cours d'exécution.
     /// </para>
     /// </summary>
-    private static bool s_UseSyntheticDevice =>
+    private static readonly bool s_UseSyntheticDevice =
         s_WindowedStartup && Environment.GetEnvironmentVariable("OPENFORESIA_LEGACY_3DHELP") != "1";
 
     /// <summary>
@@ -93,7 +106,8 @@ public static unsafe partial class Blaze
     private static readonly bool s_CaptureDeviceCaps =
         Environment.GetEnvironmentVariable("OPENFORESIA_CAPTURE_CAPS") == "1";
 
-    private static void* s_SyntheticDevice;
+    // `internal` : DeviceShim le lit pour savoir si la facade est superflue.
+    internal static void* s_SyntheticDevice;
     private static void* s_RealGetProcAddress;
     private static void* s_RealCreate3DDevice;
     private static void** s_CaptureRealVtable;
@@ -173,7 +187,7 @@ public static unsafe partial class Blaze
     /// Détourne <c>GetProcAddress</c> dans la table d'imports de <c>winsys3d.dll</c>. À appeler
     /// **avant** <c>Ordinal_789</c>. Sans effet si le module n'est pas chargé ou l'entrée absente.
     /// </summary>
-    private static void InstallSyntheticDevice()
+    internal static void InstallSyntheticDevice()
     {
         if ((!s_UseSyntheticDevice && !s_CaptureDeviceCaps) || s_RealGetProcAddress != null) return;
 

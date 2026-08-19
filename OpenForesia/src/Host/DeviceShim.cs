@@ -22,11 +22,15 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// `Blaze` porte les aides que cette classe appelle : ToAnsiZ, VirtualAlloc, GetModuleHandleA,
+// RenderSizeFromSizeSetting, s_WindowedStartup. La dependance Host -> Blaze est assumee.
+using static OpenForesia.Blaze.Blaze;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+internal static unsafe class DeviceShim
 {
-    private const int DeviceVtableSlots = 64;     // la vtable réelle en expose 59, arrondi supérieur
+    internal const int DeviceVtableSlots = 64;     // la vtable réelle en expose 59, arrondi supérieur
 
     private static void** s_ShimRealVtable;       // la vtable d'origine, cible des réémissions
     private static void** s_ShimOurVtable;        // notre copie, installée dans device[0]
@@ -67,7 +71,7 @@ public static unsafe partial class Blaze
     /// message exploitable. La règle du dépôt veut qu'un manque soit bruyant — ici, bruyant veut
     /// dire journalisé et signalé, pas propagé.
     /// </summary>
-    private static bool Guarded(string quoi, Action action)
+    internal static bool Guarded(string quoi, Action action)
     {
         try
         {
@@ -171,7 +175,7 @@ public static unsafe partial class Blaze
         Console.Error.WriteLine($"[MODE] {label}: {w}x{h} {bpp}bpp {hz}Hz");
     }
 
-    private static void InstallDeviceShim()
+    internal static void InstallDeviceShim()
     {
         if (s_ShimOurVtable != null) return;
 
@@ -179,7 +183,7 @@ public static unsafe partial class Blaze
         // chemin chaud compris. La poser une seconde fois ferait de nos propres thunks la « vtable
         // d'origine » vers laquelle ils se replient — donc une récursion infinie, observée comme un
         // débordement de pile dans `Shim_BindTexture`.
-        if (s_SyntheticDevice != null)
+        if (SyntheticDevice.s_SyntheticDevice != null)
         {
             Console.Error.WriteLine("[SHIM] device synthétique en place — façade inutile");
             return;
@@ -241,7 +245,7 @@ public static unsafe partial class Blaze
     /// <c>Documentation/DLL/winsys3d.md</c>. La taille de la fenêtre n'est de toute façon jamais
     /// observée par le jeu ; la swap chain se dimensionnera sur la zone cliente réelle.
     /// </summary>
-    private static void CreateGameWindow()
+    internal static void CreateGameWindow()
     {
         (int width, int height) = RenderSizeFromSizeSetting();
 
@@ -393,7 +397,7 @@ public static unsafe partial class Blaze
     /// rien ne le signale. C'est le suspect direct pour « menu en haut à gauche » plutôt que centré.
     /// </summary>
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static int Shim_SetViewport(void* self, int x, int y, int w, int h)
+    internal static int Shim_SetViewport(void* self, int x, int y, int w, int h)
     {
         // CORRECTION du 2026-08-14. Ce commentaire disait que le décalage (x, y) « n'a plus
         // d'objet », le backend rendant dans une cible à ses dimensions exactes. C'était faux, et
@@ -488,7 +492,7 @@ public static unsafe partial class Blaze
     // --- thunks ---------------------------------------------------------------------------
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_ClearTarget(void* self, void* rects, int count)
+    internal static void Shim_ClearTarget(void* self, void* rects, int count)
     {
         ShimTake(0x5C);
         if (s_UseD3D11 && s_BackendLive) { D3D11Backend.ClearColor(0f, 0f, 0f); return; }
@@ -498,7 +502,7 @@ public static unsafe partial class Blaze
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_ClearZ(void* self, void* rects, int count)
+    internal static void Shim_ClearZ(void* self, void* rects, int count)
     {
         ShimTake(0x60);
         if (s_UseD3D11 && s_BackendLive) { D3D11Backend.ClearDepth(); return; }
@@ -518,7 +522,7 @@ public static unsafe partial class Blaze
     /// l'écran.
     /// </summary>
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_BindTexture(void* self, void* texture)
+    internal static void Shim_BindTexture(void* self, void* texture)
     {
         ShimTake(0x64);
         if (s_UseD3D11 && s_BackendLive) { s_BoundTexture = texture; return; }
@@ -546,7 +550,7 @@ public static unsafe partial class Blaze
     private static uint s_SrcBlend = 2, s_DestBlend = 1;
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_TextureMapBlend(void* self, uint mode)
+    internal static void Shim_TextureMapBlend(void* self, uint mode)
     {
         if (s_TextureMapBlend != mode)
             Console.Error.WriteLine($"[SHIM] TEXTUREMAPBLEND = {mode} " +
@@ -555,13 +559,13 @@ public static unsafe partial class Blaze
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_AlphaBlendEnable(void* self, uint on) => s_AlphaBlendEnable = on != 0;
+    internal static void Shim_AlphaBlendEnable(void* self, uint on) => s_AlphaBlendEnable = on != 0;
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_SrcBlend(void* self, uint blend) => s_SrcBlend = blend;
+    internal static void Shim_SrcBlend(void* self, uint blend) => s_SrcBlend = blend;
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_DestBlend(void* self, uint blend) => s_DestBlend = blend;
+    internal static void Shim_DestBlend(void* self, uint blend) => s_DestBlend = blend;
 
     /// <summary>
     /// Vrai si le mélange actif est bien celui que le backend sait poser. Le jeu n'emploie que deux
@@ -697,7 +701,7 @@ public static unsafe partial class Blaze
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_ShadeMode(void* self, uint value)
+    internal static void Shim_ShadeMode(void* self, uint value)
     {
         ShimTake(0x8C);
         if (s_UseD3D11 && s_BackendLive) { s_FlatShading = value == 1; return; }
@@ -707,7 +711,7 @@ public static unsafe partial class Blaze
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_BeginScene(void* self)
+    internal static void Shim_BeginScene(void* self)
     {
         ShimTake(0xB0);
         if (s_ShimSeen[0xB0 / 4] % 60 == 1) ShimReport();
@@ -737,7 +741,7 @@ public static unsafe partial class Blaze
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static int Shim_EndScene(void* self)
+    internal static int Shim_EndScene(void* self)
     {
         ShimTake(0xB4);
 
@@ -763,7 +767,7 @@ public static unsafe partial class Blaze
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static void Shim_DrawPrimitive(void* self, uint type, uint vertexType, void* vertices,
+    internal static void Shim_DrawPrimitive(void* self, uint type, uint vertexType, void* vertices,
                                            uint count, uint flags)
     {
         ShimTake(0xBC);
@@ -851,7 +855,7 @@ public static unsafe partial class Blaze
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
-    private static int Shim_Flip(void* self, void* target, uint flags)
+    internal static int Shim_Flip(void* self, void* target, uint flags)
     {
         ShimTake(0xDC);
 
