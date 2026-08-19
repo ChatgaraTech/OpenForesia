@@ -17,7 +17,7 @@ public static unsafe partial class Blaze
     // =====================================================================
     // Options .ini persistence (Ghidra: FUN_0050f140 "load" -> LoadOptionsIni,
     // FUN_0050f300/thunk_FUN_0050f300 "save" -> SaveOptionsIni, FUN_005235d0/FUN_00523540
-    // "key bindings load/save" -> LoadKeyBindings/SaveKeyBindings).
+    // "key bindings load/save" -> Inp.LoadKeyBindings/Inp.SaveKeyBindings).
     //
     // Section/key name strings below are reconstructed from Ghidra's auto-derived symbol names
     // (e.g. `s_SoundVol_005630b0` -> "SoundVol"), which mirror the literal string bytes closely
@@ -26,13 +26,13 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     private const string IniSection = "Options"; // Ghidra: s_Options_005630a8
-    private const string ControlsIniSection = "Controls"; // Ghidra: s_Controls_00564f60
+    internal const string ControlsIniSection = "Controls"; // Ghidra: s_Controls_00564f60
 
     // TODO(REVERSE): DAT_005630bc has no Ghidra-derived string name (short/undecoded literal);
     // ".ini" is a strong but unconfirmed guess for the settings-file extension.
     // Ghidra: DAT_005630bc â€” recovered from Legacy/Blaze.exe as ".cfg", not ".ini". The installed
     // game's own options file is BLAZE.cfg, and its [Options]/[D3DDriver]/[Controls] sections match
-    // what LoadOptionsIni/LoadKeyBindings already read â€” so those two were correct all along and
+    // what LoadOptionsIni/Inp.LoadKeyBindings already read â€” so those two were correct all along and
     // had simply never located their file.
     private const string IniFileExtension = ".cfg";
 
@@ -49,34 +49,22 @@ public static unsafe partial class Blaze
     // 64 * (1/64) == 1.0, matching the DLL's default. See Documentation/DLL/winsys3d.md.
     private const float GammaIniScale = 1.0f / 64.0f;
 
-    // Ghidra: DAT_00589c70 (ini "SoundVol") / DAT_0057925c (ini "CdVol") / DAT_005d9de0 (ini "Gamma").
-    // All three default to 0x40 (64) in GetPrivateProfileIntA.
-    private static uint s_SoundVolumeIni;
-    private static uint s_CdVolumeIni;
-    private static uint s_GammaIni;
+    // Les trois cles d'ini (DAT_00589c70 / DAT_0057925c / DAT_005d9de0) sont dans GameMemory
+    // depuis le 2026-08-19 : Mem.s_GammaIni EST s_Unknown_005d9de0, et un alias ne se separe pas.
 
     // Ghidra: AU_00564a05._51_4_ â€” a 4-byte field at offset 0x33 inside a larger, not-yet-
     // reconstructed blob (AU_00564a05). Ini key "Small", default 0.
-    private static uint s_SmallTextureFlag;
+    internal static uint s_SmallTextureFlag;
 
-    // Ghidra: DAT_005de160, ini key "Size", default 0xb (11). Clamped in LoadOptionsIni against a
-    // per-resolution table (DAT_00562e00).
-    //
-    // Role established 2026-08-12 (the earlier TODO(REVERSE) here is answered): this is the
-    // engine's render-size level. `SetShift` (winsys3d.c:4937) hands the 3D device a viewport of
-    // `(Size + 9) * 0x20` by `(Size + 9) * 0x18` and selects the vertex-scaling lookup table with
-    // the same value. So Size 11 is 640x480 â€” the engine's logical reference space â€” and the
-    // shipped `Size=21` is 960x720, which matches the render target measured at runtime. Full
-    // derivation in `Documentation/DLL/winsys3d.md`, section "Coordinate scaling".
-    private static int s_SizeSetting_005de160 = 0xb;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data lue par Engine/Input.cs.
 
     /// <summary>Taille de rendu que le rÃ©glage <c>Size</c> implique, en pixels.</summary>
     // `internal` : appele depuis src/Host/DeviceShim.cs.
     internal static (int Width, int Height) RenderSizeFromSizeSetting()
-        => ((s_SizeSetting_005de160 + 9) * 0x20, (s_SizeSetting_005de160 + 9) * 0x18);
+        => ((Mem.s_SizeSetting_005de160 + 9) * 0x20, (Mem.s_SizeSetting_005de160 + 9) * 0x18);
 
     // Ghidra: DAT_00566cc4 (ini "Resolution", default 2) / DAT_00562df8 (ini "Timing", default 1).
-    private static uint s_ResolutionIndex;
+    internal static uint s_ResolutionIndex;
     private static uint s_TimingMode;
 
     // Ghidra: &DAT_00564a58, 4 ints â€” per-joystick-slot assignment (-1 = unassigned). Ini keys
@@ -84,13 +72,13 @@ public static unsafe partial class Blaze
     // from Legacy/Blaze.exe at 0x00563064). An earlier reconstruction wrote "Joy %d", which reads
     // keys the real BLAZE.cfg does not contain: the joystick settings silently fell back to their
     // defaults instead of being loaded.
-    private static readonly int[] s_JoystickSlot = new int[4];
+    internal static readonly int[] s_JoystickSlot = new int[4];
 
-    // Ghidra: &DAT_00562e00 â€” per-resolution clamp table for s_SizeSetting_005de160.
+    // Ghidra: &DAT_00562e00 â€” per-resolution clamp table for Mem.s_SizeSetting_005de160.
     // TODO(REVERSE): actual byte content not present in Blaze.c (data-only global); sized as a
     // guess and filled with int.MaxValue as a safe (non-clamping) placeholder rather than
     // inventing real limits.
-    private static readonly int[] s_ResolutionDetailLimit = CreateUnknownResolutionLimitTable();
+    internal static readonly int[] s_ResolutionDetailLimit = CreateUnknownResolutionLimitTable();
 
     // Ghidra: DAT_00562e00 â€” recovered from Legacy/Blaze.exe as the dwords
     // { 1, 7, 11, 16, 23, 0 }. These are real per-resolution detail clamps; the table was
@@ -109,7 +97,7 @@ public static unsafe partial class Blaze
     // Key format reconstructed as "K%01x%01x%02x" (Ghidra: s_K_01x_01x_02x_00564f6c).
     //
     // **Initialisé depuis `.data`, pas à zéro (2026-08-18).** Ce tableau est pré-rempli à l'édition
-    // de liens : `LoadKeyBindings` ne fait qu'écraser les entrées dont la clé existe réellement dans
+    // de liens : `Inp.LoadKeyBindings` ne fait qu'écraser les entrées dont la clé existe réellement dans
     // le fichier (`GetPrivateProfileIntA` avec `-1` en repli, retenu seulement s'il diffère de -1).
     // Un `new int[240]` à zéro était donc faux dès le premier lancement sans fichier de
     // configuration : les vingt liaisons **manette** de chaque joueur, qui ont de vraies valeurs par
@@ -125,7 +113,7 @@ public static unsafe partial class Blaze
     // statiques C# s'exécutent dans l'ordre de déclaration — les lire ici les trouverait nulles.
     // Même motif paresseux que s_LoadScreenDescriptors_0056b558.
     private static int[] s_KeyBindingsStorage;
-    private static int[] s_KeyBindings => s_KeyBindingsStorage ??= BuildKeyBindings();
+    internal static int[] s_KeyBindings => s_KeyBindingsStorage ??= BuildKeyBindings();
 
     private static int[] BuildKeyBindings()
     {
@@ -154,16 +142,16 @@ public static unsafe partial class Blaze
     {
         byte* iniPathAnsi = ToAnsiZ(GetIniFilePath());
 
-        s_SoundVolumeIni = ReadIniInt("SoundVol", 0x40, iniPathAnsi);
-        s_CdVolumeIni = ReadIniInt("CdVol", 0x40, iniPathAnsi);
-        s_GammaIni = ReadIniInt("Gamma", 0x40, iniPathAnsi);
+        Mem.s_SoundVolumeIni = ReadIniInt("SoundVol", 0x40, iniPathAnsi);
+        Mem.s_CdVolumeIni = ReadIniInt("CdVol", 0x40, iniPathAnsi);
+        Mem.s_GammaIni = ReadIniInt("Gamma", 0x40, iniPathAnsi);
 
         uint filter = ReadIniInt("Filter", 1, iniPathAnsi);
         uint* texFilterPossible = GetTexFilterPossiblePtr();
         if (texFilterPossible != null) *texFilterPossible = filter;
 
         s_SmallTextureFlag = ReadIniInt("Small", 0, iniPathAnsi);
-        s_SizeSetting_005de160 = (int)ReadIniInt(SizeIniKey, 0xb, iniPathAnsi);
+        Mem.s_SizeSetting_005de160 = (int)ReadIniInt(SizeIniKey, 0xb, iniPathAnsi);
         s_ResolutionIndex = ReadIniInt("Resolution", 2, iniPathAnsi);
         s_TimingMode = ReadIniInt("Timing", 1, iniPathAnsi);
 
@@ -171,7 +159,7 @@ public static unsafe partial class Blaze
         DeviceShim.LogDisplayMode("bureau, avant init 3D");
         Console.Error.WriteLine(
             $"[CFG] {Marshal.PtrToStringAnsi((IntPtr)iniPathAnsi)} -> Resolution={s_ResolutionIndex} " +
-            $"Size={s_SizeSetting_005de160} Small={s_SmallTextureFlag} Timing={s_TimingMode}");
+            $"Size={Mem.s_SizeSetting_005de160} Small={s_SmallTextureFlag} Timing={s_TimingMode}");
 
         int nextJoystickSlot = 0;
         for (int i = 0; i < s_JoystickSlot.Length; i++)
@@ -182,15 +170,15 @@ public static unsafe partial class Blaze
 
         ApplyCdVolume();
         ApplyAllSoundBufferVolumes();
-        Winsys3d.CreateTranslationTables(s_GammaIni * GammaIniScale);
+        Winsys3d.CreateTranslationTables(Mem.s_GammaIni * GammaIniScale);
 
         if (s_ResolutionIndex < (uint)s_ResolutionDetailLimit.Length &&
-            s_ResolutionDetailLimit[s_ResolutionIndex] < s_SizeSetting_005de160)
+            s_ResolutionDetailLimit[s_ResolutionIndex] < Mem.s_SizeSetting_005de160)
         {
-            s_SizeSetting_005de160 = s_ResolutionDetailLimit[s_ResolutionIndex];
+            Mem.s_SizeSetting_005de160 = s_ResolutionDetailLimit[s_ResolutionIndex];
         }
 
-        LoadKeyBindings(iniPathAnsi);
+        Inp.LoadKeyBindings(iniPathAnsi);
         Free(iniPathAnsi);
     }
 
@@ -199,19 +187,19 @@ public static unsafe partial class Blaze
     /// thunk_FUN_0050f300 @ 0x0050f520 (identical body â€” both map onto this one method). Mirror
     /// of <see cref="LoadOptionsIni"/>: writes every setting back to the ini file.
     /// </summary>
-    private static void SaveOptionsIni()
+    internal static void SaveOptionsIni()
     {
         byte* iniPathAnsi = ToAnsiZ(GetIniFilePath());
 
-        WriteIniInt("SoundVol", s_SoundVolumeIni, iniPathAnsi);
-        WriteIniInt("CdVol", s_CdVolumeIni, iniPathAnsi);
-        WriteIniInt("Gamma", s_GammaIni, iniPathAnsi);
+        WriteIniInt("SoundVol", Mem.s_SoundVolumeIni, iniPathAnsi);
+        WriteIniInt("CdVol", Mem.s_CdVolumeIni, iniPathAnsi);
+        WriteIniInt("Gamma", Mem.s_GammaIni, iniPathAnsi);
 
         uint* texFilterPossible = GetTexFilterPossiblePtr();
         WriteIniInt("Filter", texFilterPossible != null ? *texFilterPossible : 0, iniPathAnsi);
 
         WriteIniInt("Small", s_SmallTextureFlag, iniPathAnsi);
-        WriteIniInt(SizeIniKey, (uint)s_SizeSetting_005de160, iniPathAnsi);
+        WriteIniInt(SizeIniKey, (uint)Mem.s_SizeSetting_005de160, iniPathAnsi);
         WriteIniInt("Resolution", s_ResolutionIndex, iniPathAnsi);
         WriteIniInt("Timing", s_TimingMode, iniPathAnsi);
 
@@ -220,7 +208,7 @@ public static unsafe partial class Blaze
             WriteIniInt($"Joy{i}", s_JoystickSlot[i] != -1 ? 1u : 0u, iniPathAnsi);
         }
 
-        SaveKeyBindings(iniPathAnsi);
+        Inp.SaveKeyBindings(iniPathAnsi);
         Free(iniPathAnsi);
     }
 
@@ -294,7 +282,7 @@ public static unsafe partial class Blaze
     private static void UiScaleVertices(TlVertex* vertices, int count)
     {
         int scale, offsetX, offsetY;
-        if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+        if (s_SmallTextureFlag == 0 && Mem.s_SizeSetting_005de160 > 7)
         {
             scale = 2; offsetX = 0; offsetY = 0;
         }
@@ -550,7 +538,7 @@ public static unsafe partial class Blaze
     /// Deux sources d'entrÃ©e, lues sÃ©parÃ©ment. Le clavier est pris **directement dans le tampon
     /// DirectInput** (`DAT_00604b50`), par scancode : 0xC8 haut, 0xD0 bas, 0xCB gauche, 0xCD
     /// droite, 0x1C entrÃ©e, 0x01 Ã©chap, 0xC9 et 0xD1 page prÃ©cÃ©dente/suivante. La manette passe par
-    /// le bloc d'Ã©tat que <c>PollInputAndAudio</c> dÃ©signe (`DAT_00579270`). La rÃ©pÃ©tition tient en
+    /// le bloc d'Ã©tat que <c>Inp.PollInputAndAudio</c> dÃ©signe (`DAT_00579270`). La rÃ©pÃ©tition tient en
     /// deux compteurs : 12 images avant la premiÃ¨re rÃ©pÃ©tition, 2 ensuite.
     /// </para>
     /// </summary>
@@ -559,11 +547,11 @@ public static unsafe partial class Blaze
         uint result = 0;
         uint held = 0;
 
-        PollJoystickState();            // Ghidra: FUN_005048f0
-        UpdateButtonEdges();            // Ghidra: FUN_00504a30
-        AssignControllersToSlots();     // Ghidra: FUN_005357a0
+        Inp.PollJoystickState();            // Ghidra: FUN_005048f0
+        Inp.UpdateButtonEdges();            // Ghidra: FUN_00504a30
+        Inp.AssignControllersToSlots();     // Ghidra: FUN_005357a0
 
-        byte* keys = s_KeyboardState_00604b50;
+        byte* keys = Inp.s_KeyboardState_00604b50;
         if (keys == null) return 0;
 
         // Ghidra: haut et bas partagent le mÃªme compteur de rÃ©pÃ©tition, et s'excluent â€” le bas
@@ -611,7 +599,7 @@ public static unsafe partial class Blaze
         if (held != 0 || edges != 0) return result;
 
         // La manette, seulement si le clavier ne dit rien.
-        byte* pad = s_Unknown_00579270;
+        byte* pad = Inp.s_Unknown_00579270;
         if (pad == null) return result;
 
         ushort directions = *(ushort*)(pad + 6);
@@ -915,7 +903,7 @@ public static unsafe partial class Blaze
         NativeMemory.Copy(background + 0xe, s_UiBackgroundInfo_00578e30, 40);
         NativeMemory.Copy(frame + 0xe, s_UiFrameInfo_00589840, 40);
 
-        double gamma = (float)s_Unknown_005d9de0 * s_GammaScale_0054d000;
+        double gamma = (float)Mem.s_Unknown_005d9de0 * Input.s_GammaScale_0054d000;
 
         // Ghidra: the palettes start at file + 0x36 (0x0e + 0x28) and are walked as B, G, R with
         // the fourth byte forced to zero. The three reads are at +0x36/+0x37/+0x38 of the file,
@@ -1203,7 +1191,7 @@ public static unsafe partial class Blaze
     /// longtemps, ainsi que les quatre sous-pages qu'elle ouvre. Un nom en « Stub » sur du code
     /// complet coûte plus cher qu'il n'y paraît : il envoie chercher un trou qui n'existe plus.</para>
     /// </summary>
-    private static void OptionsPage()
+    internal static void OptionsPage()
     {
         OptionsSetup();     // Ghidra: FUN_0050fab0
 
@@ -1334,9 +1322,9 @@ public static unsafe partial class Blaze
             UiDrawFrame(0x4c, 0x20, 0xa8, extra * 0xc + 0x88);
             UiDrawLabel(0xa0, 0x32, 4, 1, 0xffffff);
             UiDrawLabel(0x5c, 0x48, 5, 0, 0xffffff);
-            UiDrawGauge(100, 0x55, (int)(s_SizeSetting_005de160 * 0x79) / UiDetailLimit + 4);
+            UiDrawGauge(100, 0x55, (int)(Mem.s_SizeSetting_005de160 * 0x79) / UiDetailLimit + 4);
             UiDrawLabel(0x5c, 0x60, 7, 0, 0xffffff);
-            UiDrawGauge(100, 0x6d, s_Unknown_005d9de0 - 8);
+            UiDrawGauge(100, 0x6d, Mem.s_Unknown_005d9de0 - 8);
             UiDrawLabel(0x5c, 0x78, 9 - (*GetTexFilterPossiblePtr() != 0 ? 1 : 0), 0, 0xffffff);
             UiDrawLabel(0x5c, 0x84, 0xb - (s_SmallTextureFlag != 0 ? 1 : 0), 0, 0xffffff);
             UiDrawLabel(0x5c, 0x90, 0x25, 0, 0xffffff);
@@ -1371,7 +1359,7 @@ public static unsafe partial class Blaze
                     uint* filter = GetTexFilterPossiblePtr();
                     *filter = *filter == 0 ? 1u : 0u;
                 }
-                else if (s_UiDisplaySelection_005d9e10 == 3 && s_SizeSetting_005de160 > 6)
+                else if (s_UiDisplaySelection_005d9e10 == 3 && Mem.s_SizeSetting_005de160 > 6)
                 {
                     PlayUiSound38();
                     s_SmallTextureFlag = s_SmallTextureFlag == 0 ? 1u : 0u;
@@ -1382,20 +1370,20 @@ public static unsafe partial class Blaze
             {
                 if (s_UiDisplaySelection_005d9e10 == 0)
                 {
-                    if (s_SizeSetting_005de160 != 0)
+                    if (Mem.s_SizeSetting_005de160 != 0)
                     {
                         PlayUiSound3A();
-                        s_SizeSetting_005de160--;
-                        Winsys3d.SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
-                                 (int)((0xb - s_SizeSetting_005de160) * 0xc),
-                                 (int)s_SizeSetting_005de160, 0);
-                        if (s_SizeSetting_005de160 < 8) s_SmallTextureFlag = 1;
+                        Mem.s_SizeSetting_005de160--;
+                        Winsys3d.SetShift((int)((0xb - Mem.s_SizeSetting_005de160) * 0x10),
+                                 (int)((0xb - Mem.s_SizeSetting_005de160) * 0xc),
+                                 (int)Mem.s_SizeSetting_005de160, 0);
+                        if (Mem.s_SizeSetting_005de160 < 8) s_SmallTextureFlag = 1;
                     }
                 }
-                else if (s_UiDisplaySelection_005d9e10 == 1 && s_Unknown_005d9de0 > 8)
+                else if (s_UiDisplaySelection_005d9e10 == 1 && Mem.s_Unknown_005d9de0 > 8)
                 {
                     PlayUiSound3A();
-                    s_GammaIni -= 8;
+                    Mem.s_GammaIni -= 8;
                     RebuildGammaTextures();
                 }
             }
@@ -1404,19 +1392,19 @@ public static unsafe partial class Blaze
             {
                 if (s_UiDisplaySelection_005d9e10 == 0)
                 {
-                    if (s_SizeSetting_005de160 < UiDetailLimit)
+                    if (Mem.s_SizeSetting_005de160 < UiDetailLimit)
                     {
                         PlayUiSound3A();
-                        s_SizeSetting_005de160++;
-                        Winsys3d.SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
-                                 (int)((0xb - s_SizeSetting_005de160) * 0xc),
-                                 (int)s_SizeSetting_005de160, 0);
+                        Mem.s_SizeSetting_005de160++;
+                        Winsys3d.SetShift((int)((0xb - Mem.s_SizeSetting_005de160) * 0x10),
+                                 (int)((0xb - Mem.s_SizeSetting_005de160) * 0xc),
+                                 (int)Mem.s_SizeSetting_005de160, 0);
                     }
                 }
-                else if (s_UiDisplaySelection_005d9e10 == 1 && s_Unknown_005d9de0 < 0x88)
+                else if (s_UiDisplaySelection_005d9e10 == 1 && Mem.s_Unknown_005d9de0 < 0x88)
                 {
                     PlayUiSound3A();
-                    s_GammaIni += 8;
+                    Mem.s_GammaIni += 8;
                     RebuildGammaTextures();
                 }
             }
@@ -1448,9 +1436,9 @@ public static unsafe partial class Blaze
             UiDrawFrame(0x4c, 0x20, 0xa8, 0x70);
             UiDrawLabel(0xa0, 0x32, 0xc, 1, 0xffffff);
             UiDrawLabel(0x5c, 0x48, 0xd, 0, 0xffffff);
-            UiDrawGauge(100, 0x55, (int)s_CdVolumeIni);
+            UiDrawGauge(100, 0x55, (int)Mem.s_CdVolumeIni);
             UiDrawLabel(0x5c, 0x60, 0xe, 0, 0xffffff);
-            UiDrawGauge(100, 0x6d, (int)s_SoundVolumeIni);
+            UiDrawGauge(100, 0x6d, (int)Mem.s_SoundVolumeIni);
             UiDrawLabel(0x5c, 0x78, 0x28 - (s_MusicEnabled != 0 ? 1 : 0), 0, 0xffffff);
             UiDrawCursor(0x4b, (s_UiSoundSelection_005d9e14 + 3) * 0x18);
 
@@ -1471,32 +1459,32 @@ public static unsafe partial class Blaze
 
             if ((action & 2) != 0)
             {
-                if (s_UiSoundSelection_005d9e14 == 0 && s_CdVolumeIni != 0)
+                if (s_UiSoundSelection_005d9e14 == 0 && Mem.s_CdVolumeIni != 0)
                 {
                     PlayUiSound3A();
-                    s_CdVolumeIni -= 8;
+                    Mem.s_CdVolumeIni -= 8;
                     ApplyCdVolume();
                 }
-                else if (s_UiSoundSelection_005d9e14 == 1 && s_SoundVolumeIni != 0)
+                else if (s_UiSoundSelection_005d9e14 == 1 && Mem.s_SoundVolumeIni != 0)
                 {
                     PlayUiSound3A();
-                    s_SoundVolumeIni -= 8;
+                    Mem.s_SoundVolumeIni -= 8;
                     ApplyAllSoundBufferVolumes();
                 }
             }
 
             if ((action & 4) != 0)
             {
-                if (s_UiSoundSelection_005d9e14 == 0 && s_CdVolumeIni < 0x80)
+                if (s_UiSoundSelection_005d9e14 == 0 && Mem.s_CdVolumeIni < 0x80)
                 {
                     PlayUiSound3A();
-                    s_CdVolumeIni += 8;
+                    Mem.s_CdVolumeIni += 8;
                     ApplyCdVolume();
                 }
-                else if (s_UiSoundSelection_005d9e14 == 1 && s_SoundVolumeIni < 0x80)
+                else if (s_UiSoundSelection_005d9e14 == 1 && Mem.s_SoundVolumeIni < 0x80)
                 {
                     PlayUiSound3A();
-                    s_SoundVolumeIni += 8;
+                    Mem.s_SoundVolumeIni += 8;
                     ApplyAllSoundBufferVolumes();
                 }
             }
@@ -1657,11 +1645,11 @@ public static unsafe partial class Blaze
                 MSG message;
                 while (Win32.PeekMessageA(&message, IntPtr.Zero, 0x12, 0x12, 1) != 0) { }
 
-                s_SizeSetting_005de160 = UiDetailLimit;
-                Winsys3d.SetShift((int)((0xb - s_SizeSetting_005de160) * 0x10),
-                         (int)((0xb - s_SizeSetting_005de160) * 0xc),
-                         (int)s_SizeSetting_005de160, 0);
-                if (s_SizeSetting_005de160 < 8) s_SmallTextureFlag = 1;
+                Mem.s_SizeSetting_005de160 = UiDetailLimit;
+                Winsys3d.SetShift((int)((0xb - Mem.s_SizeSetting_005de160) * 0x10),
+                         (int)((0xb - Mem.s_SizeSetting_005de160) * 0xc),
+                         (int)Mem.s_SizeSetting_005de160, 0);
+                if (Mem.s_SizeSetting_005de160 < 8) s_SmallTextureFlag = 1;
 
                 OptionsSetup();     // Ghidra: DAT_00578e28 = Winsys3d.Ordinal_750(); FUN_0050fab0();
             }
@@ -1963,9 +1951,9 @@ public static unsafe partial class Blaze
             }
             else
             {
-                PollJoystickState();     // Ghidra: FUN_005048f0
+                Inp.PollJoystickState();     // Ghidra: FUN_005048f0
 
-                byte* keys = s_KeyboardState_00604b50;
+                byte* keys = Inp.s_KeyboardState_00604b50;
                 int stick = s_JoystickSlot[player];
 
                 // Échap (scancode 1) abandonne la capture sans rien affecter.
@@ -2009,9 +1997,9 @@ public static unsafe partial class Blaze
     {
         while (true)
         {
-            PollJoystickState();         // Ghidra: FUN_005048f0
+            Inp.PollJoystickState();         // Ghidra: FUN_005048f0
 
-            byte* keys = s_KeyboardState_00604b50;
+            byte* keys = Inp.s_KeyboardState_00604b50;
             int stick = s_JoystickSlot[player];
             if (keys == null || stick == -1) return;
 
@@ -2176,11 +2164,11 @@ public static unsafe partial class Blaze
             }
 
             // Mode capture : la premiÃ¨re touche listÃ©e qu'on trouve enfoncÃ©e devient la liaison.
-            PollJoystickState();
+            Inp.PollJoystickState();
             int pressed = -1;
             for (int i = 0; i < 0x55; i++)
             {
-                if ((s_KeyboardState_00604b50[s_KeyScancodes_00562e18[i]] & 0x80) == 0) continue;
+                if ((Inp.s_KeyboardState_00604b50[s_KeyScancodes_00562e18[i]] & 0x80) == 0) continue;
                 pressed = i;
                 break;
             }
@@ -2221,10 +2209,10 @@ public static unsafe partial class Blaze
     {
         while (true)
         {
-            PollJoystickState();
+            Inp.PollJoystickState();
             byte any = 0;
             for (int i = 0; i < 0x55; i++)
-                any |= (byte)(s_KeyboardState_00604b50[s_KeyScancodes_00562e18[i]] & 0x80);
+                any |= (byte)(Inp.s_KeyboardState_00604b50[s_KeyScancodes_00562e18[i]] & 0x80);
             Winsys3d.Ordinal_132(0);
             if (any == 0) return;
         }
@@ -2386,7 +2374,7 @@ public static unsafe partial class Blaze
     /// still down inside it. `FUN_005048f0` is <see cref="PollJoystickState"/>, reconstructed on
     /// 2026-08-14; this stub predates it and was never anything else.
     /// </summary>
-    private static int InputDrainStub() => PollJoystickState();
+    private static int InputDrainStub() => Inp.PollJoystickState();
 
     // Ghidra: &DAT_0056e670 â€” the menu's label table, recovered verbatim from Legacy/Blaze.exe.
     // A 0x0c length byte, then five cp1252 labels separated by carriage returns, ending 0x09 '?'.

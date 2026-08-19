@@ -1,7 +1,7 @@
 // OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
-// Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
+// La carte des repertoires et la regle
 // qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
 // reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
 
@@ -10,9 +10,36 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// `Blaze` porte encore ce que cette classe appelle : les tables d'options
+// (s_KeyBindings, s_JoystickSlot, ...), les aides CRT et winsys3d.
+using static OpenForesia.Blaze.Blaze;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+/// <summary>
+/// Les entrees : DirectInput (clavier et manettes), l'etat de pad par joueur, les fronts de
+/// boutons, l'affectation des manettes aux emplacements et les raccourcis clavier
+/// (Ghidra: 0x00523 et 0x00504).
+///
+/// <para>
+/// Un seul membre reste <c>static</c> : <c>CountJoystickCallback</c>, porte par
+/// <c>[UnmanagedCallersOnly]</c> et passe a <c>EnumDevices</c>. Contrairement au rappel de
+/// <see cref="Video"/>, il n'a <b>pas</b> besoin de rejoindre l'instance : il ne touche que son
+/// parametre <c>context</c>. C'est ce que la tache 4.1 avait mesure, et qui se confirme ici.
+/// </para>
+/// <para>
+/// Ce que la signature ne dit pas encore : cette classe lit aussi quatre membres d'echafaudage de
+/// la page d'options (<c>s_KeyBindings</c>, <c>s_JoystickSlot</c>, <c>s_ResolutionDetailLimit</c>,
+/// <c>s_SmallTextureFlag</c>). Ils ne sont PAS des globales <c>.data</c> - ce sont nos propres
+/// tables de configuration - donc ils restent chez leur proprietaire plutot que de rejoindre
+/// <see cref="GameMemory"/>. Ils deviendront un parametre de constructeur quand la page d'options
+/// deviendra elle-meme une classe.
+/// </para>
+/// <para>
+/// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
+/// </para>
+/// </summary>
+internal sealed unsafe class Input(GameMemory mem)
 {
 
     // TODO(REVERSE): FUN_0053da20 @ 0x0053da20 (positional gain calculation: distance/angle ->
@@ -24,7 +51,7 @@ public static unsafe partial class Blaze
     // calling convention corrected (same class of problem as the cases listed in REVERSE_STATUS.md).
 
     /// <summary>Ghidra: FUN_005235d0 @ 0x005235d0 â€” loads the [Controls] key-binding table.</summary>
-    private static void LoadKeyBindings(byte* iniPathAnsi)
+    internal void LoadKeyBindings(byte* iniPathAnsi)
     {
         byte* sectionAnsi = ToAnsiZ(ControlsIniSection);
         int index = 0;
@@ -46,7 +73,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00523540 @ 0x00523540 â€” saves the [Controls] key-binding table.</summary>
-    private static void SaveKeyBindings(byte* iniPathAnsi)
+    internal void SaveKeyBindings(byte* iniPathAnsi)
     {
         byte* sectionAnsi = ToAnsiZ(ControlsIniSection);
         int index = 0;
@@ -107,11 +134,11 @@ public static unsafe partial class Blaze
     /// <summary>DISCL_FOREGROUND | DISCL_NONEXCLUSIVE â€” the literal 6 both device setups pass.</summary>
     private const uint DiscLevel_ForegroundNonExclusive = 6;
 
-    private static readonly Guid s_GuidSysKeyboard =            // Ghidra: DAT_0054db58
+    private readonly Guid s_GuidSysKeyboard =            // Ghidra: DAT_0054db58
         new(0x6F1D2B61, 0xD5A0, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
-    private static readonly Guid s_GuidSysMouse =               // Ghidra: DAT_0054db48
+    private readonly Guid s_GuidSysMouse =               // Ghidra: DAT_0054db48
         new(0x6F1D2B60, 0xD5A0, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
-    private static readonly Guid s_GuidKey =                    // Ghidra: DAT_0054db18
+    private readonly Guid s_GuidKey =                    // Ghidra: DAT_0054db18
         new(0x55728220, 0xD33C, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
 
     [StructLayout(LayoutKind.Sequential)]
@@ -134,7 +161,7 @@ public static unsafe partial class Blaze
     /// to a GUID at `Blaze.exe`'s own image base, which is not mapped here â€” so the bytes are
     /// reproduced field for field with our copy of `GUID_Key` substituted.
     /// </summary>
-    private static DIDATAFORMAT* BuildKeyboardDataFormat()
+    private DIDATAFORMAT* BuildKeyboardDataFormat()
     {
         const int objects = 0x100;
         var format = (DIDATAFORMAT*)NativeMemory.AllocZeroed((nuint)sizeof(DIDATAFORMAT));
@@ -159,13 +186,13 @@ public static unsafe partial class Blaze
         return format;
     }
 
-    private static DIDATAFORMAT* s_KeyboardDataFormat;
+    private DIDATAFORMAT* s_KeyboardDataFormat;
 
-    private static readonly Guid s_GuidXAxis =                  // Ghidra: DAT_0054da98
+    private readonly Guid s_GuidXAxis =                  // Ghidra: DAT_0054da98
         new(0xA36D02E0, 0xC9F3, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
-    private static readonly Guid s_GuidYAxis =                  // Ghidra: DAT_0054daa8
+    private readonly Guid s_GuidYAxis =                  // Ghidra: DAT_0054daa8
         new(0xA36D02E1, 0xC9F3, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
-    private static readonly Guid s_GuidZAxis =                  // Ghidra: DAT_0054dab8
+    private readonly Guid s_GuidZAxis =                  // Ghidra: DAT_0054dab8
         new(0xA36D02E2, 0xC9F3, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00);
 
     /// <summary>
@@ -174,7 +201,7 @@ public static unsafe partial class Blaze
     /// three axes carrying the X/Y/Z axis GUIDs, then four buttons with a null GUID, the Z axis and
     /// the last two buttons flagged optional.
     /// </summary>
-    private static DIDATAFORMAT* BuildMouseDataFormat()
+    private DIDATAFORMAT* BuildMouseDataFormat()
     {
         const int objects = 7;
         var format = (DIDATAFORMAT*)NativeMemory.AllocZeroed((nuint)sizeof(DIDATAFORMAT));
@@ -201,14 +228,14 @@ public static unsafe partial class Blaze
         return format;
     }
 
-    private static DIDATAFORMAT* s_MouseDataFormat;
+    private DIDATAFORMAT* s_MouseDataFormat;
 
     /// <summary>
     /// Ghidra: FUN_00523120 @ 0x00523120 â€” allocates the input-device object, constructs it and
     /// runs its initialisation, handing back three pointers into it. Returns null if either step
     /// fails, exactly as the original does (it frees the object and returns 0).
     /// </summary>
-    private static byte* CreateInputDevice(IntPtr instance, IntPtr window,
+    internal byte* CreateInputDevice(IntPtr instance, IntPtr window,
                                            byte** keyboardState, byte** joystickState, byte** mouseState)
     {
         // Ghidra: iVar1 = FUN_00547220(0x8c4) â€” the CRT operator new. A null return is carried
@@ -237,7 +264,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00522dc0 @ 0x00522dc0 â€” the constructor. Creates the DirectInput object and
     /// zeroes the three state areas.
     /// </summary>
-    private static void InputDeviceConstruct(byte* device, IntPtr instance, IntPtr window)
+    private void InputDeviceConstruct(byte* device, IntPtr instance, IntPtr window)
     {
         // Ghidra: if (param_2 == 0) param_2 = GetModuleHandleA(NULL) â€” which is why the never-found
         // DAT_005db85c never blocked this call.
@@ -265,7 +292,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00522eb0 @ 0x00522eb0 â€” creates the keyboard device, then the mouse device
     /// (whose failure is tolerated and simply clears its cell), then enumerates attached joysticks.
     /// </summary>
-    private static int InputDeviceInitialise(byte* device)
+    private int InputDeviceInitialise(byte* device)
     {
         if (device == null || *(void**)device == null) return -1;
 
@@ -332,7 +359,7 @@ public static unsafe partial class Blaze
     /// SetCooperativeLevel(window, 6), Acquire. Ghidra recovered two parameters where the call site
     /// passes three: the window it hands to SetCooperativeLevel is the one it dropped.
     /// </summary>
-    private static int CreateKeyboardDevice(void** cell, void* directInput, IntPtr window)
+    private int CreateKeyboardDevice(void** cell, void* directInput, IntPtr window)
     {
         if (cell == null) return -1;
 
@@ -368,7 +395,7 @@ public static unsafe partial class Blaze
     /// mouse data format at 0x00546ff0. A failure at any step is returned to the caller, which
     /// treats a missing mouse as normal.
     /// </summary>
-    private static int CreateMouseDevice(void** cell, void* directInput, IntPtr window)
+    private int CreateMouseDevice(void** cell, void* directInput, IntPtr window)
     {
         if (cell == null) return -1;
 
@@ -400,7 +427,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: the IUnknown::Release calls the device teardown paths make.</summary>
-    private static void ReleaseComObject(void* obj)
+    private void ReleaseComObject(void* obj)
     {
         if (obj == null) return;
         var release = (delegate* unmanaged[Stdcall]<void*, uint>)(*(void***)obj)[Video.IUnknown_Release];
@@ -410,14 +437,14 @@ public static unsafe partial class Blaze
     // Ghidra: DAT_00604b50 â€” the keyboard state area inside the device object, handed back as
     // FUN_00523120's third argument. `DAT_00604b54`, the object itself, is declared with the
     // teardown code that already owned it.
-    private static byte* s_KeyboardState_00604b50;
+    internal byte* s_KeyboardState_00604b50;
 
     /// <summary>
     /// Ghidra: FUN_00504b10 @ 0x00504b10 â€” resets the 9-slot joystick binding/state table.
     /// `clearName` mirrors the original's `param_1 != 0` guard around one extra field
     /// (`puVar1[1] = 0`) that's cleared only on some call sites â€” exact field meaning unconfirmed.
     /// </summary>
-    private static void JoystickResetState(bool clearName)
+    internal void JoystickResetState(bool clearName)
     {
         for (int i = 0; i < s_JoystickState.Length; i++)
         {
@@ -436,7 +463,7 @@ public static unsafe partial class Blaze
     }
 
     // Ghidra: &DAT_00604a28-relative 9-entry table walked by FUN_00504b10.
-    private static readonly JoystickSlotState[] s_JoystickState = new JoystickSlotState[9];
+    private readonly JoystickSlotState[] s_JoystickState = new JoystickSlotState[9];
 
     // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
@@ -484,22 +511,22 @@ public static unsafe partial class Blaze
     //   0x005e9180  the player-slot table and its parallel per-slot array at +0x240
     // =====================================================================
 
-    private static readonly byte* s_InputStateBase_00604a20 = (byte*)NativeMemory.AllocZeroed(0x140);
-    private static byte* s_ButtonStates_00604a2a => s_InputStateBase_00604a20 + 0x0a;
-    private static ushort* s_JoyAxis1_00604b0a => (ushort*)(s_InputStateBase_00604a20 + 0xea);
-    private static uint* s_JoyBlock1_00604b0c => (uint*)(s_InputStateBase_00604a20 + 0xec);
-    private static ushort* s_JoyAxis2_00604b2e => (ushort*)(s_InputStateBase_00604a20 + 0x10e);
+    internal readonly byte* s_InputStateBase_00604a20 = (byte*)NativeMemory.AllocZeroed(0x140);
+    internal byte* s_ButtonStates_00604a2a => s_InputStateBase_00604a20 + 0x0a;
+    internal ushort* s_JoyAxis1_00604b0a => (ushort*)(s_InputStateBase_00604a20 + 0xea);
+    internal uint* s_JoyBlock1_00604b0c => (uint*)(s_InputStateBase_00604a20 + 0xec);
+    internal ushort* s_JoyAxis2_00604b2e => (ushort*)(s_InputStateBase_00604a20 + 0x10e);
 
-    // 0x4c0 utiles, borné par s_AnimationTable_005e9640 — ce qui couvre bien le plus grand décalage
+    // 0x4c0 utiles, borné par mem.s_AnimationTable_005e9640 — ce qui couvre bien le plus grand décalage
     // lu (0x240 + 4 * 0x9c = 0x4bc).
-    private static byte* s_SlotArea_005e9180 => Mem.Arena(0x005e9180);
-    private static byte* s_PlayerSlots_005e9188 => s_SlotArea_005e9180 + 8;
-    private static byte* s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240;
+    internal byte* s_SlotArea_005e9180 => mem.Arena(0x005e9180);
+    internal byte* s_PlayerSlots_005e9188 => s_SlotArea_005e9180 + 8;
+    internal byte* s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240;
 
     // Ghidra: the four 16-byte controllerâ†’player remap rows at 0x0056acf8, reached through the
     // pointer table at 0x0056ad38. Recovered verbatim from Legacy/Blaze.exe. The row is chosen by
     // which of the two joystick axes reads the -0x8000 "absent" sentinel.
-    private static readonly byte[][] s_ControllerRemapRows =
+    private readonly byte[][] s_ControllerRemapRows =
     [
         [0x00, 0x04, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0, 0, 0, 0, 0, 0, 0],
         [0x00, 0x01, 0x02, 0x03, 0x04, 0x08, 0x08, 0x08, 0x08, 0, 0, 0, 0, 0, 0, 0],
@@ -511,7 +538,7 @@ public static unsafe partial class Blaze
     /// Ghidra: the index computation shared by FUN_00542250 and FUN_005357a0 â€” one bit per joystick,
     /// set when its axis reads the <c>-0x8000</c> sentinel.
     /// </summary>
-    private static int ControllerRemapIndex()
+    private int ControllerRemapIndex()
     {
         int index = *(short*)s_JoyAxis1_00604b0a == -0x8000 ? 1 : 0;
         if (*(short*)s_JoyAxis2_00604b2e == -0x8000) index += 2;
@@ -523,39 +550,39 @@ public static unsafe partial class Blaze
     /// F3 opens the options page, F11/F12 step the detail level, F9 toggles the small-texture flag.
     /// Returns 1 when the options page ran, 0 otherwise.
     /// </summary>
-    private static int PollDebugHotkeys(byte* context)
+    private int PollDebugHotkeys(byte* context)
     {
         s_Unknown_00579270 = context;
 
         if (s_Unknown_005de554 == 0 && Win32.GetAsyncKeyState(0x72 /* VK_F3 */) < 0)
         {
-            int gammaBefore = s_Unknown_005d9de0;
+            int gammaBefore = mem.s_Unknown_005d9de0;
             Winsys3d.ReInitializeAllTextures();
             int shiftX, shiftY;
             Winsys3d.GetAbsShift(&shiftX, &shiftY);
             Winsys3d.SetAbsShift(0, 0);
-            if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
+            if (mem.s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
             OptionsPage();
             Winsys3d.SetAbsShift(shiftX, shiftY);
             SaveOptionsIni();
-            if (gammaBefore != s_Unknown_005d9de0)
+            if (gammaBefore != mem.s_Unknown_005d9de0)
             {
                 // Note: this site scales by _DAT_0054d000, *not* the _DAT_0054d074 the menu's
                 // options case uses. Two distinct constants; kept distinct.
-                Winsys3d.CreateTranslationTables(s_Unknown_005d9de0 * s_GammaScale_0054d000);
+                Winsys3d.CreateTranslationTables(mem.s_Unknown_005d9de0 * s_GammaScale_0054d000);
             }
             return 1;
         }
 
         if (Win32.GetAsyncKeyState(0x7a /* VK_F11 */) != 0)
         {
-            if (s_SizeSetting_005de160 != 0)
+            if (mem.s_SizeSetting_005de160 != 0)
             {
-                s_SizeSetting_005de160--;
-                Winsys3d.SetShift((0xb - s_SizeSetting_005de160) * 0x10,
-                         (0xb - s_SizeSetting_005de160) * 0x0c,
-                         s_SizeSetting_005de160, 0);
-                if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
+                mem.s_SizeSetting_005de160--;
+                Winsys3d.SetShift((0xb - mem.s_SizeSetting_005de160) * 0x10,
+                         (0xb - mem.s_SizeSetting_005de160) * 0x0c,
+                         mem.s_SizeSetting_005de160, 0);
+                if (mem.s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
                 SaveOptionsIni();
                 do { Win32.Sleep(100); } while (Win32.GetAsyncKeyState(0x7a) < 0);
                 return 0;
@@ -569,18 +596,18 @@ public static unsafe partial class Blaze
             int limit = s_ResolutionIndexForClamp < s_ResolutionDetailLimit.Length
                 ? s_ResolutionDetailLimit[s_ResolutionIndexForClamp]
                 : int.MaxValue;
-            if (s_SizeSetting_005de160 < limit)
+            if (mem.s_SizeSetting_005de160 < limit)
             {
-                s_SizeSetting_005de160++;
-                Winsys3d.SetShift((0xb - s_SizeSetting_005de160) * 0x10,
-                         (0xb - s_SizeSetting_005de160) * 0x0c,
-                         s_SizeSetting_005de160, 0);
+                mem.s_SizeSetting_005de160++;
+                Winsys3d.SetShift((0xb - mem.s_SizeSetting_005de160) * 0x10,
+                         (0xb - mem.s_SizeSetting_005de160) * 0x0c,
+                         mem.s_SizeSetting_005de160, 0);
                 SaveOptionsIni();
                 do { Win32.Sleep(100); } while (Win32.GetAsyncKeyState(0x7b) < 0);
                 return 0;
             }
         }
-        else if (Win32.GetAsyncKeyState(0x78 /* VK_F9 */) != 0 && s_SizeSetting_005de160 > 6)
+        else if (Win32.GetAsyncKeyState(0x78 /* VK_F9 */) != 0 && mem.s_SizeSetting_005de160 > 6)
         {
             s_SmallTextureFlag = s_SmallTextureFlag == 0 ? 1u : 0u;
             SaveOptionsIni();
@@ -595,7 +622,7 @@ public static unsafe partial class Blaze
     /// four slots. `0x4100` marks a live entry; the XOR pair yields pressed/released masks, and the
     /// counter at +0xa runs 0xc frames before repeating every 2.
     /// </summary>
-    private static void UpdateButtonEdges()
+    internal void UpdateButtonEdges()
     {
         ushort* state = (ushort*)s_InputStateBase_00604a20;
         uint* joyBlock = s_JoyBlock1_00604b0c;
@@ -655,7 +682,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_005357a0 @ 0x005357a0 â€” assigns controllers to the four player slots through the
     /// remap row selected by <see cref="ControllerRemapIndex"/>.
     /// </summary>
-    private static void AssignControllersToSlots()
+    internal void AssignControllersToSlots()
     {
         byte[] row = s_ControllerRemapRows[ControllerRemapIndex()];
 
@@ -707,12 +734,12 @@ public static unsafe partial class Blaze
     /// arrow press and the confirm key leaves the menu.
     /// </para>
     /// </summary>
-    private static int PollJoystickState()
+    internal int PollJoystickState()
     {
-        if (s_JoystickDevice_00604b54 == null) return 0;
+        if (mem.s_JoystickDevice_00604b54 == null) return 0;
 
         // Ghidra: FUN_005231f0(DAT_00604b54) â€” a one-line forwarder to FUN_005230b0.
-        PollInputDevices(s_JoystickDevice_00604b54);
+        PollInputDevices(mem.s_JoystickDevice_00604b54);
 
         // Ghidra: FUN_00523660(DAT_00604b50, &DAT_00604ac0)
         int anyInput = FoldKeyboardIntoPadState(s_KeyboardState_00604b50,
@@ -785,7 +812,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_005230b0 @ 0x005230b0 â€” reads the current state of every acquired device into
     /// the object's three state areas.
     /// </summary>
-    private static void PollInputDevices(byte* device)
+    private void PollInputDevices(byte* device)
     {
         if (device == null) return;
 
@@ -818,7 +845,7 @@ public static unsafe partial class Blaze
     /// failure. `IDirectInputDevice::GetDeviceState` is retried after re-acquiring, which is what
     /// makes input survive the window losing and regaining the foreground.
     /// </summary>
-    private static void ReadDeviceState(void** cell, byte* destination, uint size, int zeroDwords)
+    private void ReadDeviceState(void** cell, byte* destination, uint size, int zeroDwords)
     {
         void* device = cell != null ? *cell : null;
         if (device == null)
@@ -857,7 +884,7 @@ public static unsafe partial class Blaze
     /// Returns non-zero if anything at all was pressed â€” the value FUN_005048f0 passes on.
     /// </para>
     /// </summary>
-    private static int FoldKeyboardIntoPadState(byte* deviceState, byte* padState)
+    internal int FoldKeyboardIntoPadState(byte* deviceState, byte* padState)
     {
         if (deviceState == null || padState == null) return 0;
 
@@ -947,7 +974,7 @@ public static unsafe partial class Blaze
     /// verbatim out of <c>Legacy/Blaze.exe</c>. Slots 9 and 10 are genuinely zero; the last four
     /// are two-button combinations.
     /// </summary>
-    private static readonly ushort[] s_PadButtonMasks_00564f18 =
+    internal readonly ushort[] s_PadButtonMasks_00564f18 =
     [
         0x0100, 0x0200, 0x0400, 0x0800,     // L2, R2, L1, R1
         0x1000, 0x2000, 0x4000, 0x8000,     // triangle, circle, cross, square
@@ -963,25 +990,25 @@ public static unsafe partial class Blaze
     /// <see cref="FoldKeyboardIntoPadState"/>, so clearing it silences the pad mapping while raw
     /// characters are being typed.
     /// </summary>
-    private static int s_KeyboardEnabled_00564a50 = 1;
+    private int s_KeyboardEnabled_00564a50 = 1;
 
     /// <summary>Ghidra: FUN_00523520 @ 0x00523520 â€” <c>DAT_00564a50 = 1</c>, nothing else.</summary>
-    private static void EnablePadKeyboard() => s_KeyboardEnabled_00564a50 = 1;
+    internal void EnablePadKeyboard() => s_KeyboardEnabled_00564a50 = 1;
 
     /// <summary>Ghidra: FUN_00523530 @ 0x00523530 â€” <c>DAT_00564a50 = 0</c>, nothing else.</summary>
-    private static void DisablePadKeyboard() => s_KeyboardEnabled_00564a50 = 0;
+    internal void DisablePadKeyboard() => s_KeyboardEnabled_00564a50 = 0;
 
     // Ghidra: DAT_005de168 â€” gates players 2..4 in FUN_00523660. Never assigned anywhere in the
     // reconstructed graph yet, so it stays 0 and all four players are polled, as the original does
     // on a fresh start.
-    private static int s_Unknown_005de168;
-    private static byte* s_Unknown_00579270;    // Ghidra: DAT_00579270
-    private static int s_Unknown_005de554;      // Ghidra: DAT_005de554
+    internal int s_Unknown_005de168;
+    internal byte* s_Unknown_00579270;    // Ghidra: DAT_00579270
+    private int s_Unknown_005de554;      // Ghidra: DAT_005de554
     // Ghidra: DAT_00566cc4 â€” **the same global as s_ResolutionIndex**, not a second one. Blaze.c
     // line 58267 fills it from the ini's Resolution key, exactly as LoadOptionsIni does here, and
     // the reconstruction had split one global into two fields with only one of them ever assigned.
     // Third instance of this shape today, after DAT_0056e61f and DAT_005e8fc0.
-    private static int s_ResolutionIndexForClamp => (int)s_ResolutionIndex;
+    internal int s_ResolutionIndexForClamp => (int)s_ResolutionIndex;
 
     // Ghidra: _DAT_0054d000 â€” **lu dans Legacy/Blaze.exe : 0x3C800000, soit 1/64**, et non 1.0f
     // comme un TODO le supposait ici. C'est aussi le mÃªme symbole que `GammaIniScale` dÃ©clarÃ© plus
@@ -991,10 +1018,10 @@ public static unsafe partial class Blaze
     // La valeur compte : la page d'options passe ses palettes dans `Gamma(valeur, rÃ©glage * ce
     // facteur)`. Ã€ 1.0f le produit valait 64 et rendait toutes les palettes blanches â€” fond et
     // cadre invisibles. Ã€ 1/64 le rÃ©glage par dÃ©faut de l'ini (64) donne 1.0, le gamma neutre.
-    private const float s_GammaScale_0054d000 = 1.0f / 64.0f;
+    internal const float s_GammaScale_0054d000 = 1.0f / 64.0f;
 
     /// <summary>Ghidra: the four calls guarded by arg5 in FUN_0052a280.</summary>
-    private static void PollInputAndAudio()
+    internal void PollInputAndAudio()
     {
         // Ghidra: FUN_00512520(&DAT_00604a20 +
         //   (byte)(&DAT_005e9188)[(byte)(&DAT_005e93c8)[(_DAT_005de538 & 0xff) * 0x9c] * 0x4c] * 4)
@@ -1002,7 +1029,7 @@ public static unsafe partial class Blaze
         // while that global is 0, but not faithful â€” and FUN_00545340 uses the same expression,
         // which is what settled it.
         int slotIndex = s_PlayerSlots_005e9188[
-            s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
+            s_SlotArea_005e9180[0x248 + (uint)(mem.s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
         // Pas â€‹**0x10**, pas 4 : `Legacy/Raw/Blaze/FUN_0052a280.asm` 0x0052a34c montre
         // `SHL ECX,0x4` puis `ADD ECX,0x604a20`. Même piège que celui documenté sur
         // <see cref="CurrentPadState"/> â€” la pseudo-C écrit `&DAT_00604a20 + n * 4` parce que le

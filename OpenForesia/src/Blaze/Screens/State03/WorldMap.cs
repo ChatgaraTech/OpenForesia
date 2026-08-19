@@ -612,7 +612,7 @@ public static unsafe partial class Blaze
 
         // Ghidra: 8 dwords a zero depuis &DAT_00604a2c, par pas de 0x10 — un champ par
         // emplacement de manette.
-        for (int i = 0; i < 8; i++) *(uint*)(s_InputStateBase_00604a20 + 0xc + i * 0x10) = 0;
+        for (int i = 0; i < 8; i++) *(uint*)(Inp.s_InputStateBase_00604a20 + 0xc + i * 0x10) = 0;
 
         uint* otBase = null, otEntry = null, primCursor = null;
         FrameBegin(&otBase, &otEntry, &primCursor);   // Ghidra: FUN_0052a1e0
@@ -746,7 +746,7 @@ public static unsafe partial class Blaze
         int* animations = *(int**)(areaDir + 0x7c);
         if (animations != null)
         {
-            byte** table = (byte**)s_AnimationTable_005e9640;
+            byte** table = (byte**)Mem.s_AnimationTable_005e9640;
             for (int* entry = animations; *entry != 0; entry++, table++)
             {
                 byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
@@ -1140,19 +1140,19 @@ public static unsafe partial class Blaze
         byte* mainMem = GetMainMemPtr();
         if (mainMem != null) NativeMemory.Clear(Mem.s_SelectScratch_00573338, 0x8000);
 
-        // Ghidra: the same "current player slot" idiom as PollInputAndAudio/FUN_00545340 â€” see the
+        // Ghidra: the same "current player slot" idiom as Inp.PollInputAndAudio/FUN_00545340 â€” see the
         // comment there for how DAT_005e93c8/DAT_005e9188 were settled as
-        // s_SlotArea_005e9180+0x248 and s_PlayerSlots_005e9188.
-        int slotIndex = s_PlayerSlots_005e9188[
-            s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
+        // Inp.s_SlotArea_005e9180+0x248 and Inp.s_PlayerSlots_005e9188.
+        int slotIndex = Inp.s_PlayerSlots_005e9188[
+            Inp.s_SlotArea_005e9180[0x248 + (uint)(Mem.s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
         // Pas 4 : `0x0053623f  C1 E0 04  SHL EAX,0x4` puis
         // `0x00536242  F6 80 20 4A 60 00 01  TEST byte [EAX + 0x604a20],0x1` â€” octets lus
-        // directement dans Legacy/Blaze.exe. Même correction que dans PollInputAndAudio.
+        // directement dans Legacy/Blaze.exe. Même correction que dans Inp.PollInputAndAudio.
         // Bit 0 du mot « tenu » = **SELECT** (masque 0x0001, action 8 de
-        // s_PadButtonMasks_00564f18). Confirmé en jeu le 2026-08-17 : avec F1 maintenu de la prise
+        // Inp.s_PadButtonMasks_00564f18). Confirmé en jeu le 2026-08-17 : avec F1 maintenu de la prise
         // de focus jusqu'ici, la trace posée à ce branchement lisait `pad0=0x01`. Le chemin A veut
         // donc SELECT **maintenu** à l'entrée de l'état de jeu 1, pas un appui.
-        bool selectHeld = (s_InputStateBase_00604a20[slotIndex * 0x10] & 1) != 0;
+        bool selectHeld = (Inp.s_InputStateBase_00604a20[slotIndex * 0x10] & 1) != 0;
 
         // ECHAFAUDAGE : OPENFORESIA_FORCE_DEBUG_PARTY=1 force le chemin A. Les deux conditions
         // réelles sont difficiles à réunir depuis playtest.ps1 : il faut que le moteur de texte ait

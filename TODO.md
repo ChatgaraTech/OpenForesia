@@ -1,42 +1,138 @@
 # TODO
 
-Point d'entrée entre deux sessions. Remis à plat le **2026-08-18** en fin de soirée. L'historique
+Point d'entrée entre deux sessions. Remis à plat le **2026-08-19** en fin de soirée. L'historique
 détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et
 la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
 
+**Rien n'est commité.** Tout le travail des 2026-08-19 est dans l'arbre de travail : le découpage,
+les cinq vraies classes, `OpenForesia.Tests/`, les références figées de `OpenForesia.Tools/`
+(`blaze-baseline.txt`, `bodies-baseline.txt`). Ces références n'existent **que là** — les perdre
+ferait perdre l'oracle.
+
 ---
 
-# Priorité 1 — ~~La refonte de `Blaze.cs`~~ **FAITE le 2026-08-19**
+# Priorité 1 — `Engine/` en vraies classes · **5 fichiers sur 9**
 
-`Blaze.cs` est passé de **23 680 à 17 lignes**. La reconstruction vit maintenant dans 30 fichiers
-sous `OpenForesia/src/Blaze/` (`Platform/`, `Memory/`, `Engine/`, `Screens/`), plus 5 fichiers
-d'échafaudage sous `OpenForesia/src/Host/`.
+## Reprendre ici
 
-**Lire `ARCHITECTURE.md`** (racine) avant d'ajouter ou de déplacer du code : il porte la carte des
-répertoires, la règle qui décide où va une fonction, et la règle d'état qui protège du défaut
-d'aliasing.
+Le prochain fichier est **`Engine/Audio.cs`** (1 253 l.). Ce n'est ni le plus petit ni le plus
+grand : c'est celui dont la **clôture** est la meilleure parmi les restants. Refaire la mesure
+avant de partir, elle a changé à chaque conversion :
 
-Le découpage est prouvé sans perte : les 28 corps réassemblés dans l'ordre du manifeste sont
-**identiques à la référence sur 23 663 lignes**, la seule différence étant l'accolade de classe
-repositionnée. Build propre, 382,3 et 387 primitives par image, captures identiques.
+```bash
+cd OpenForesia/src/Blaze
+for f in Engine/UiWindow.cs Engine/Model3d.cs Engine/Resources.cs Engine/Audio.cs; do
+  gm=0; ic=0; en=0; sc=0
+  for s in $(grep -oE "\bs_[A-Za-z0-9_]+" $f | sort -u); do
+    if grep -qE "^    (private|internal).*\b$s\b" $f; then ic=$((ic+1)); continue; fi
+    src=$(grep -rlE "^    (private|internal).*\b$s\b" --include=*.cs . | head -1 | sed 's|^\./||')
+    case "$src" in Memory/GameMemory.cs) gm=$((gm+1));; Screens/*) sc=$((sc+1));; "") ;; *) en=$((en+1));; esac
+  done
+  printf "%-22s %5s | GameMem %-3s ici %-3s autreEngine %-3s SCREENS %s\n" "$f" "$(wc -l < $f)" "$gm" "$ic" "$en" "$sc"
+done
+```
 
-Trois choses apprises, toutes consignées dans `ARCHITECTURE.md` et `CLAUDE.md` :
+**La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si.** État au
+2026-08-19 au soir (avant conversion d'`Audio`) :
 
-- **Le découpage en fichiers n'est pas sémantiquement neutre.** L'ordre d'initialisation des champs
-  statiques entre fichiers d'une classe partielle n'est pas garanti ; huit champs `= Arena(0x…)`
-  rendaient `null + décalage`. Ils sont devenus des propriétés `=>`.
-- **107 paires de symboles voisins d'adresse vivent désormais dans deux fichiers différents.** Leur
-  adjacence n'est plus visible dans le code — d'où la carte des symboles reconstruits ajoutée à
-  `Documentation/DataSymbols.md`, à consulter avant de déclarer un `DAT_` isolé.
-- **Un vrai défaut d'aliasing dormant a été trouvé** : `0x00566c70` porte deux allocations
-  indépendantes (`s_MenuRenderBlock` dans le menu principal, `s_ViewRect` dans la carte du monde).
-  **Non corrigé** — le réparer changerait le comportement. Il mordra quand la carte du monde
-  affichera quelque chose, donc à traiter avant la priorité 2.
+| fichier | lignes | déjà dans `GameMemory` | à lui | autre `Engine/` | `Screens/` |
+|---|---:|---:|---:|---:|---:|
+| `Audio.cs` | 1 253 | 0 | 25 | 3 | 2 |
+| `Resources.cs` | 1 110 | 5 | 34 | 4 | 6 |
+| `UiWindow.cs` | 368 | 4 | **0** | 5 | 6 |
+| `Model3d.cs` | 583 | 10 | 0 | **18** | 1 |
 
-Reste à faire, hors périmètre de ce changement : la réparation des **871 lignes à encodage double**
-(commentaires et journaux seulement, aucun texte visible en jeu).
+`UiWindow` et `Model3d` sont **à faire en dernier** : le premier ne possède aucune globale
+et n'est qu'un consommateur, le second emprunte 18 symboles à des fichiers `Engine/` non convertis.
+Les faire en dernier.
+
+## La recette, éprouvée cinq fois
+
+1. **Mesurer** : membres, `[UnmanagedCallersOnly]`, `delegate*`, et d'où vient chaque `s_*` lu.
+2. **Trancher les globales empruntées**, selon une règle simple :
+   * suffixe VA (`s_Foo_005e9180`) → c'est du `.data`, ça va dans `GameMemory` ;
+   * pas de suffixe VA → c'est notre échafaudage, ça reste chez son propriétaire, exposé `internal` ;
+   * **un symbole qui en aliase un autre déménage avec lui**, et un bloc déménage entier
+     (les trois clés d'ini `s_SoundVolumeIni`/`s_CdVolumeIni`/`s_GammaIni` sont parties ensemble
+     parce que `s_GammaIni` **est** `s_Unknown_005d9de0`).
+3. Déclaration de classe → `internal sealed unsafe class X(GameMemory mem)`, puis retirer `static`
+   des membres. Le champ injecté s'appelle **`mem`, sans underscore** : le retour arrière négatif
+   de l'oracle exclut `_`, donc `_mem.` serait lu comme un changement de logique.
+4. Les membres appelés depuis l'extérieur passent `internal`. Vérifier que chaque membre exposé a un
+   usage **réel** — plusieurs candidats n'étaient cités qu'en commentaire.
+5. `Mem.` → `mem.`, sauf dans les membres restés statiques.
+6. Ajouter `using static OpenForesia.Blaze.Blaze;` pour les aides encore dans `Blaze`.
+7. Point d'entrée **paresseux** dans `Subsystems.cs` : `internal static X Xx => s_xx ??= new X(Mem);`
+8. Qualifier les sites d'appel. **Une constante se qualifie par le nom de type**
+   (`Input.s_GammaScale_0054d000`), pas par l'instance — sinon CS0176.
+9. Vérifier : build, oracle, tests, playtest **et le taux de course** (voir plus bas).
+
+## Choisir le nom du point d'entrée — ce n'est pas cosmétique
+
+La liste blanche de `compare-bodies.ps1` est **insensible à la casse**. Y inscrire un nom qui
+ressemble à une variable locale courante rend l'oracle aveugle à de vrais changements sur ces
+lignes. `Prims` a été choisi plutôt que `Prim` parce que `prim` est un local dans 196 lignes du code
+de dessin. Vérifier avant de nommer :
+
+```bash
+grep -rn --include=*.cs -iE "\bnomcandidat\b" OpenForesia/src | wc -l
+```
+
+Les occurrences **en commentaire** sont sans risque : l'oracle retire les commentaires avant de
+normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`.
+
+## Ce qui reste statique, et pourquoi
+
+Une classe mixte n'est pas un compromis raté. Trois motifs rencontrés, tous légitimes :
+
+* **`[UnmanagedCallersOnly]`** exige une méthode statique. Si son corps est une une-ligne qui écrit
+  une globale (`SaveData`), rien d'autre à faire ; si son corps appelle d'autres membres
+  (`Video.MoviePlayerWindowProc`), il rejoint l'instance par le point d'entrée statique (`Vid.`) ;
+  s'il n'utilise que ses paramètres (`Input.CountJoystickCallback`), il reste autonome.
+* **Un lambda `static`** garde son mot-clé et passe par le point d'entrée : le `static` d'un lambda
+  est une garantie de non-capture, on ne la brade pas pour économiser une qualification.
+* **Une décision d'hôte** lue par `src/Host/` à l'initialisation de ses propres types
+  (`Video.s_WindowedStartup`) reste statique : en faire un champ d'instance coupleraient cette init
+  à la construction complète des sous-systèmes.
+
+## Le piège qui a coûté le plus cher — à ne pas rouvrir
+
+Les sous-systèmes de `Subsystems.cs` sont **paresseux**, `Mem` est **immédiat**. Ce n'est pas un
+détail de style :
+
+```
+[ModuleInitializer] → TryPrepareDisplayListArena() → lit un champ statique de Blaze
+                    → construit tout ce qui est immédiat      ← devant la course
+                    → PUIS réclame l'arène basse              ← la course
+```
+
+La réclamation ne lit que `Mem`. Tant que les quatre points d'entrée étaient `static readonly`,
+chaque conversion ajoutait son travail d'allocation devant une course non déterministe : mesuré
+**5 échecs sur 8** contre 1 sur 4 documenté. Rendus paresseux : retour à 25 %.
+
+**Toute nouvelle conversion doit donc être vérifiée sur le taux de course**, pas seulement sur le
+build et le débit — ce dernier était vert pendant toute la régression. La boucle de mesure est dans
+`test-protocol.md`, section « relance détectée ». **Seize essais minimum, machine au repos** : à ce
+taux, huit essais ne distinguent pas 25 % de 40 %, et un build concurrent fausse le résultat
+(mesuré 44 % sous charge, 12 % au repos sur le même binaire).
+
+## Ce que l'étape C laissera ouvert
+
+* **L'étape D** — `Screens/` en 12 classes (~13 800 l.), à ne commencer que quand les écrans
+  cesseront de bouger. `Screens/State03/WorldMap.cs` est le front de la priorité 2.
+* **`GameMemory` reste incomplet** : il modélise ~110 des 398 symboles `.data`. Le reste est
+  dispersé dans les fichiers qui les utilisent. Ce n'est pas bloquant, mais chaque conversion en
+  rapatrie une poignée.
+* **Les cinq défauts d'aliasing** que `OpenForesia.Tests` signale (3 tests rouges **attendus**).
+  Les corriger change le comportement → changement séparé. `0x00566c70` doit être traité **avant**
+  la reprise de la carte du monde.
+* La réparation des **~870 lignes à encodage double** (`repair-double-encoded-comments`, ouvert,
+  non commencé). Commentaires et journaux seulement, rien de visible en jeu.
+
+---
+
 # Priorité 2 — Finir `FUN_00533940`
 
 ## Où on en est exactement

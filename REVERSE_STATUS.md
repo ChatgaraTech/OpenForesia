@@ -6295,9 +6295,12 @@ a dit l'inverse :
   Audio.cs       1 253 |      0     25      3      2
 ```
 
-`UiWindow` ne possède **aucune** globale : c'est un pur consommateur, et six de ses emprunts
-pointent vers `Screens/`. Le convertir aurait obligé à rapatrier des globales d'écrans, c'est-à-dire
-à entamer l'étape D délibérément différée. `Video` n'emprunte qu'**un** symbole hors `GameMemory`.
+`UiWindow` ne possède **aucune** globale : c'est un pur consommateur, et six de ses onze emprunts
+pointent vers des fichiers d'écran. `Video` n'en emprunte qu'**un** hors `GameMemory`.
+
+*Précision apportée après coup* : rapatrier une globale `.data` vers `GameMemory` n'est **pas**
+l'étape D — c'est de l'étape A inachevée, légitime à tout moment. Le vrai coût de `UiWindow` est le
+brassage qu'il impose et le risque d'aliasing qui va avec, pas un franchissement d'étape.
 
 **La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si.**
 
@@ -6365,3 +6368,66 @@ image · captures relues et identiques aux références.
 `private` → `internal` : `RaiseQuitException`, `Malloc`, `Free`, `BuildCdPath`, `s_ErrorCaption`,
 et `Video.IUnknown_Release` — une constante de `Video` qu'`Input.cs` lisait sans que rien ne le dise.
 Chacune marque une couture que les conversions suivantes auront à trancher.
+
+---
+
+## 2026-08-19 (étape C, 5 fichiers sur 9) — `Input`, et la règle de tri des globales empruntées
+
+`Engine/Input.cs` → `Input(GameMemory)`, 1 044 l., 61 membres dont **1 statique**.
+
+`CountJoystickCallback` reste `static` et, contrairement au rappel de `Video`, **n'a pas besoin de
+rejoindre l'instance** : il ne touche que son paramètre `context`. C'est exactement ce que la
+tâche 4.1 avait mesuré cinq étapes plus tôt, confirmé sur pièces.
+
+### La règle de tri qui s'est dégagée
+
+`Input` empruntait dix symboles à cinq fichiers. Les traiter d'un seul geste aurait été une erreur —
+ils ne sont pas de même nature :
+
+* **Suffixe VA** (`s_SizeSetting_005de160`, `s_JoystickDevice_00604b54`, `s_AnimationTable_005e9640`,
+  `s_Unknown_005d9de0`, `s_Unknown_005de538`) → ce sont des globales `.data`, elles rejoignent
+  `GameMemory`. Les atteindre via `using static Blaze` aurait masqué précisément la dépendance que
+  ce refactor cherche à rendre visible.
+* **Pas de suffixe VA** (`s_KeyBindings`, `s_JoystickSlot`, `s_ResolutionDetailLimit`) → c'est notre
+  propre échafaudage de configuration, pas du `.data`. Reste chez son propriétaire, exposé
+  `internal`. Deviendra un paramètre de constructeur quand la page d'options sera une classe.
+* **`s_SmallTextureFlag`** porte une référence Ghidra — `AU_00564a05._51_4_`, un champ **à
+  l'intérieur d'un blob** non modélisé. Il ne bouge pas : le déplacer seul, détaché de son blob,
+  est exactement le geste qui fabrique le défaut d'aliasing.
+
+### Un alias rattrapé au vol
+
+`s_Unknown_005d9de0` est déclaré `=> (int)s_GammaIni` — son propre commentaire dit qu'il **est** le
+même global (`DAT_005d9de0`, la clé « Gamma » de l'ini), septième occurrence d'un global reconstruit
+sous deux noms. Le déplacer seul vers `GameMemory` aurait séparé la paire.
+
+`s_GammaIni` l'a donc suivi, **avec ses deux voisines de déclaration** `s_SoundVolumeIni`
+(`DAT_00589c70`) et `s_CdVolumeIni` (`DAT_0057925c`) : un bloc déménage entier. Vérifié à l'écran,
+pas au compteur — la page d'options affiche son fond et son cadre, ce qui est précisément le
+symptôme que la rupture de cet alias produisait (palettes passées dans `Gamma(valeur, 0.0)`, donc
+noires).
+
+`GameMemory` passe de 102 à ~110 membres.
+
+### Ce que la mesure du taux de course a appris de plus
+
+Première mesure après conversion : **7 échecs sur 16 (44 %)**, alarmante. Elle était **fausse** —
+build et tests tournaient en parallèle. Reprise machine au repos : **7 sur 32 (22 %)**, conforme à
+la référence de 25 %.
+
+**Un banc d'essai non déterministe se mesure au repos.** C'est maintenant écrit dans
+`test-protocol.md` à côté de la boucle, avec le contre-exemple chiffré : 44 % sous charge contre
+12 % au repos sur le même binaire.
+
+### Promotions d'accessibilité entraînées
+
+`private` → `internal` : `DestroyJoystickDevice` (Startup), `ControlsIniSection`, `OptionsPage`,
+`SaveOptionsIni`, `s_ResolutionIndex` (Options). Et un rappel de C# qui a coûté une passe de build :
+**une constante se qualifie par le nom de type**, `Input.s_GammaScale_0054d000` et non
+`Inp.s_GammaScale_0054d000` — sinon CS0176.
+
+### Vérification
+
+Build solution 0 erreur · oracle « aucune logique modifiée » sur 511 corps · tests de disposition
+inchangés (3 rouges attendus / 2 verts) · `-Entry 1` **382,3**, `-Entry 2` **387** primitives par
+image · `-Entry 3` (options) relu à l'écran · taux de course 22 % sur 32 essais au repos.

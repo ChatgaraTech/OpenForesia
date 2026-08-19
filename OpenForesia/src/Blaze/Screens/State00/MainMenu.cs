@@ -59,15 +59,7 @@ public static unsafe partial class Blaze
     // the confirm gate always open, so the menu selected an entry on its very first frame. Bit 2
     // is the one Handler_00544b10 raises when the text stream ends.
     private static byte s_Unknown_0056e61f => s_MenuContext_0056dd58[0x8c7];
-    /// <summary>
-    /// Ghidra: DAT_005d9de0 â€” **le mÃªme global que <see cref="s_GammaIni"/>**, la clÃ© Â« Gamma Â» de
-    /// l'ini, et non un second. Le commentaire de LoadOptionsIni le disait dÃ©jÃ  ; il avait quand
-    /// mÃªme Ã©tÃ© redÃ©clarÃ© ici, et n'Ã©tant jamais Ã©crit il valait zÃ©ro. ConsÃ©quence visible : la
-    /// page d'options passait ses palettes dans <c>Gamma(valeur, 0.0)</c>, ce qui les rendait
-    /// noires â€” fond et cadre invisibles, libellÃ©s intacts parce qu'eux n'y passent pas.
-    /// SeptiÃ¨me occurrence d'un global reconstruit sous deux noms.
-    /// </summary>
-    private static int s_Unknown_005d9de0 => (int)s_GammaIni;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data lue par Engine/Input.cs.
 
     private static int s_Unknown_00571a3c;
 
@@ -164,7 +156,7 @@ public static unsafe partial class Blaze
 
         if (flag != 0)
         {
-            PollInputAndAudio();               // Ghidra: FUN_00512520 / FUN_005048f0 /
+            Inp.PollInputAndAudio();               // Ghidra: FUN_00512520 / FUN_005048f0 /
                                                //         FUN_00504a30 / FUN_005357a0
         }
 
@@ -297,7 +289,7 @@ public static unsafe partial class Blaze
         *(Mem.s_DrawEnv0_005e9880 + 0x18) = 1;
         *(Mem.s_DrawEnv1_005e98f0 + 0x18) = 1;
 
-        JoystickResetState(false);
+        Inp.JoystickResetState(false);
 
         // Ghidra: the entity-slot table init. The table it reads from is selected by two joystick
         // axis comparisons against -0x8000 (a disconnected/centred sentinel), producing an index
@@ -307,7 +299,7 @@ public static unsafe partial class Blaze
         // exactly as the original does.
         Prims.InitialiseEntitySlots();
 
-        s_Unknown_005de538 = 0;
+        Mem.s_Unknown_005de538 = 0;
 
         // Ghidra: FUN_00544350(&DAT_0056e670, 0, &DAT_0056dd58, 0)
         BindMenuLabels(s_MenuLabels_0056e670, 0, s_MenuContext_0056dd58, 0);
@@ -319,8 +311,8 @@ public static unsafe partial class Blaze
             // Ghidra: the fade. uVar3 is the grey level; it walks down while the low nibble of the
             // frame counter is not 8 and the level is still above 0x7f.
             uint level = (s_FadeCounter_005e9960 & 0xf) * 0x10;
-            s_Unknown_005de154 = (0xb - s_SizeSetting_005de160) * 0x10;
-            s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0x0c;
+            s_Unknown_005de154 = (0xb - Mem.s_SizeSetting_005de160) * 0x10;
+            s_Unknown_005de158 = (0xb - Mem.s_SizeSetting_005de160) * 0x0c;
 
             // ECHAFAUDAGE TEMPORAIRE (OPENFORESIA_TRACE_MENU=1) : pourquoi la validation ouvre
             // l'entrÃ©e 0 mais pas l'entrÃ©e 3. On relÃ¨ve ce que la boucle voit rÃ©ellement.
@@ -334,7 +326,7 @@ public static unsafe partial class Blaze
                 primCursor = Ui.RunTextEngine(primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_005443a0
                 primCursor = DrawUiPanel(otEntry, primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_00545340
 
-                int gammaBefore = s_Unknown_005d9de0;
+                int gammaBefore = Mem.s_Unknown_005d9de0;
 
                 if ((s_Unknown_0056e61f & 4) == 0)
                 {
@@ -353,7 +345,7 @@ public static unsafe partial class Blaze
                             int shiftX, shiftY;
                             Winsys3d.GetAbsShift(&shiftX, &shiftY);
                             Winsys3d.SetAbsShift(0, 0);
-                            if (s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
+                            if (Mem.s_SizeSetting_005de160 < 7) s_SmallTextureFlag = 1;
                             OptionsPage();                        // Ghidra: FUN_00512320
 
                             // DEVIATION, une ligne, et mesurée. La page d'options se quitte par
@@ -371,7 +363,7 @@ public static unsafe partial class Blaze
                             // dire que son panneau distingue une touche *nouvellement* enfoncée
                             // d'une touche maintenue — un front — là où cette reconstruction lit
                             // l'état maintenu (`CurrentPadWord`, le mot d'état, pas le mot de
-                            // fronts que `UpdateButtonEdges` calcule juste à côté). C'est là qu'est
+                            // fronts que `Inp.UpdateButtonEdges` calcule juste à côté). C'est là qu'est
                             // le correctif propre ; celui-ci en tient lieu en attendant, et se
                             // retire d'une ligne le jour où la sémantique du panneau est établie.
                             //
@@ -408,9 +400,9 @@ public static unsafe partial class Blaze
 
                             Winsys3d.SetAbsShift(shiftX, shiftY);
                             SaveOptionsIni();
-                            if (gammaBefore != s_Unknown_005d9de0)
+                            if (gammaBefore != Mem.s_Unknown_005d9de0)
                             {
-                                Winsys3d.CreateTranslationTables(s_Unknown_005d9de0 * s_GammaScale_0054d074);
+                                Winsys3d.CreateTranslationTables(Mem.s_Unknown_005d9de0 * s_GammaScale_0054d074);
                             }
                             break;
 

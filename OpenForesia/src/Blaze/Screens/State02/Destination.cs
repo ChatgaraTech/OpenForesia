@@ -146,7 +146,7 @@ public static unsafe partial class Blaze
             *(int*)(particle + 0x20) = *(int*)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0xc);
         }
 
-        JoystickResetState(false);                    // Ghidra: FUN_00504b10(0)
+        Inp.JoystickResetState(false);                    // Ghidra: FUN_00504b10(0)
 
         // Ghidra: DAT_005e901e — l'octet de progression, éclaté en deux masques. Transcrit
         // opération par opération : le remaniement bit à bit n'a pas de forme plus courte fidèle.
@@ -179,15 +179,15 @@ public static unsafe partial class Blaze
             uint before = menuIndex;
             s_Unknown_005de15c = 1;
 
-            if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+            if (s_SmallTextureFlag == 0 && Mem.s_SizeSetting_005de160 > 7)
             {
                 s_Unknown_005de154 = 0;
-                s_Unknown_005de158 = (s_SizeSetting_005de160 - 0xb) * 0xc;
+                s_Unknown_005de158 = (Mem.s_SizeSetting_005de160 - 0xb) * 0xc;
             }
             else
             {
                 s_Unknown_005de154 = 0xa0;
-                s_Unknown_005de158 = s_SizeSetting_005de160 * 0xc + 0x76;
+                s_Unknown_005de158 = Mem.s_SizeSetting_005de160 * 0xc + 0x76;
             }
 
             *(short*)(d + 0x0c) = 0x1400;
@@ -250,8 +250,8 @@ public static unsafe partial class Blaze
                 : (short)((8 - s_PanelX_0056c97c) >> 2);
 
             // Le modèle 3D animé du groupe, sur l'emplacement d'entité courant.
-            uint slot = (uint)(s_Unknown_005de538 & 0xff);
-            byte* entity = s_SlotFlags_005e93c0 + slot * 0x9c;
+            uint slot = (uint)(Mem.s_Unknown_005de538 & 0xff);
+            byte* entity = Inp.s_SlotFlags_005e93c0 + slot * 0x9c;
             *(short*)(entity + 0x28) = 0x1000;
             *(short*)(entity + 0x2a) = 0x1000;
             *(short*)(entity + 0x2c) = 0x1000;

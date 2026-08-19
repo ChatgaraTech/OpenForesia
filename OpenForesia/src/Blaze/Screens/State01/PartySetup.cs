@@ -110,7 +110,7 @@ public static unsafe partial class Blaze
         byte* scratch = GetMainMemPtr() + 0xf0000;
 
         PlayMusicTrack(0x25);          // Ghidra: FUN_00529ad0(0x25)
-        JoystickResetState(false);     // Ghidra: FUN_00504b10(0)
+        Inp.JoystickResetState(false);     // Ghidra: FUN_00504b10(0)
 
         // Ghidra: `FUN_005126c0(1)`. L'argument est poussé par l'appelant mais **jamais lu** par la
         // fonction (vérifié dans Legacy/Raw/Blaze/FUN_005126c0.asm : elle attaque directement sur
@@ -153,7 +153,7 @@ public static unsafe partial class Blaze
 
             // Ghidra: la marge d'affichage, comme en tête de RunMainMenuFrameLoop mais avec une
             // largeur figée à 0xa0 dès que l'option « Small » est active en grande taille.
-            if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+            if (s_SmallTextureFlag == 0 && Mem.s_SizeSetting_005de160 > 7)
             {
                 s_Unknown_005de158 = 0;
                 s_Unknown_005de154 = 0;
@@ -161,7 +161,7 @@ public static unsafe partial class Blaze
             else
             {
                 s_Unknown_005de154 = 0xa0;
-                s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0xc;
+                s_Unknown_005de158 = (0xb - Mem.s_SizeSetting_005de160) * 0xc;
             }
 
             byte* pad = CurrentPadState();
@@ -216,7 +216,7 @@ public static unsafe partial class Blaze
                 if ((int)((nint)GetMainMemPtr() - (nint)s_Unknown_005de738) + 0x138000 >= 0)
                 {
                     // Le même bloc de fin que RunDebugPartySelect — voir sa note sur 0x80010000.
-                    byte* slotFlags = s_SlotFlags_005e93c0;
+                    byte* slotFlags = Inp.s_SlotFlags_005e93c0;
                     for (int i = 0; i < 4; i++, slotFlags += 0x9c)
                     {
                         *(uint*)slotFlags = i == 0

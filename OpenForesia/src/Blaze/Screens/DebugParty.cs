@@ -217,7 +217,7 @@ public static unsafe partial class Blaze
             if ((pressed & 8) != 0) break;
 
             // Ghidra: *(ushort *)(&DAT_00604a24 + iVar9 + 2), soit pad+6 — le masque de répétition
-            // automatique que UpdateButtonEdges entretient, limité aux quatre directions.
+            // automatique que Inp.UpdateButtonEdges entretient, limité aux quatre directions.
             ushort repeat = *(ushort*)(pad + 6);
             uint before = gender * 8 | classIndex;
 
@@ -349,7 +349,7 @@ public static unsafe partial class Blaze
             // Ghidra: `*puVar13 = (iVar9 <= iVar3) - 1 & 0x80010000;` — 0x80010000 pour les
             // emplacements couverts par la taille du groupe, 0 au-delà. L'emplacement 0 est un cas
             // à part et vaut toujours 0x80000000.
-            byte* slotFlags = s_SlotFlags_005e93c0;
+            byte* slotFlags = Inp.s_SlotFlags_005e93c0;
             for (int i = 0; i < 4; i++, slotFlags += 0x9c)
             {
                 *(uint*)slotFlags = i == 0
@@ -563,7 +563,7 @@ public static unsafe partial class Blaze
         for (int i = 0; i < 4; i++)
         {
             byte* charBlock = mainMem + 0xf02bd + i * 0x2000;      // Ghidra: pcVar2
-            byte* record = s_SlotFlags_005e93c0 + i * 0x9c;        // Ghidra: &DAT_005e93c0 + i*0x9c
+            byte* record = Inp.s_SlotFlags_005e93c0 + i * 0x9c;        // Ghidra: &DAT_005e93c0 + i*0x9c
             byte* recordTail = record + 4;                          // Ghidra: EDI ("&DAT_005e93c4 + i*0x9c")
 
             // Ghidra: uVar8 = pcVar2[-0x16d] == Mem.s_SelectScratch_00573338[0x150 + i*0x2000].

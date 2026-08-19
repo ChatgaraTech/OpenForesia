@@ -124,4 +124,10 @@ public static unsafe partial class Blaze
     /// </summary>
     private static Video? s_vid;
     internal static Video Vid => s_vid ??= new Video(Mem);
+    /// <summary>
+    /// Les entrees. Son rappel natif <c>CountJoystickCallback</c> ne lit PAS ce champ : il n'a
+    /// besoin que de son parametre, donc il reste un statique autonome.
+    /// </summary>
+    private static Input? s_inp;
+    internal static Input Inp => s_inp ??= new Input(Mem);
 }

@@ -291,8 +291,8 @@ chaque fichier** — jamais deux conversions avant une vérification.
       **même fichier**. L'en-tête affirmait un ordre garanti qui reposait sur la chance.
 - [x] 7.5 `Engine/Video.cs` → `Video(GameMemory)`. 1 143 l., 59 membres dont **2 statiques**.
       Choisi par **clôture mesurée**, pas par taille : `UiWindow` (368 l.) est le plus petit des
-      six mais ne possède aucune globale et en emprunte 6 à `Screens/`, donc le convertir
-      entamerait l'étape D. `Video` n'emprunte qu'un seul symbole hors `GameMemory`.
+      six mais ne possède aucune globale et en emprunte 11. `Video` n'en emprunte qu'un seul hors
+      `GameMemory` — donc bien moins de brassage, et bien moins de risque d'aliasing.
       `MoviePlayerWindowProc` reste `static` et rejoint l'instance par `Vid.` — son corps appelle
       d'autres membres, contrairement aux une-lignes de `SaveData`. `s_WindowedStartup` reste
       `static` : décision d'hôte, lue par `Host/` à l'initialisation de ses propres types.
@@ -302,11 +302,19 @@ chaque fichier** — jamais deux conversions avant une vérification.
       l'exige : mesuré **5 courses perdues sur 8**, contre 1 sur 4 documenté. Points d'entrée
       rendus paresseux (`Ui => s_ui ??= new UiText(Mem)`), `Mem` reste immédiat car lui seul porte
       la contrainte. Re-mesuré : **4 perdues sur 16 = 25 %**, le taux documenté.
-- [ ] 7.7 `Engine/UiWindow.cs` (368 l.) — à faire **après** avoir tranché ses 6 globales d'écran ;
-      sinon la conversion déborde sur l'étape D.
+- [ ] 7.7 `Engine/UiWindow.cs` (368 l.) — à faire **en dernier** : il ne possède aucune globale et
+      en emprunte 11, dont 6 à des fichiers d'écran. Ce n'est **pas** l'étape D — rapatrier une
+      globale `.data` vers `GameMemory` relève de l'étape A inachevée, légitime à tout moment.
+      C'est simplement le plus gros brassage pour le plus petit fichier, donc le pire risque
+      d'aliasing par ligne convertie.
 - [ ] 7.8 `Engine/Model3d.cs` (583 l.) — 18 emprunts à d'autres fichiers `Engine/`, donc à faire
       quand ceux-ci seront convertis.
-- [ ] 7.9 `Engine/Input.cs` (1 017 l.) — porte `CountJoystickCallback`, second rappel natif.
+- [x] 7.9 `Engine/Input.cs` → `Input(GameMemory)`. 1 044 l., 61 membres, **1 statique** :
+      `CountJoystickCallback` n'utilise que son parametre `context`, donc il n'a meme pas besoin de
+      rejoindre l'instance — ce que la tache 4.1 avait mesure se confirme.
+      A dégagé la **règle de tri des globales empruntées** : suffixe VA → `GameMemory` ; pas de
+      suffixe → échafaudage, reste chez son propriétaire ; champ d'un blob non modélisé → ne bouge
+      pas. `s_GammaIni` a suivi son alias `s_Unknown_005d9de0`, avec ses deux voisines de bloc.
 - [ ] 7.10 `Engine/Resources.cs` (1 110 l.) — porte `ToAnsiZ`, appelé par plusieurs classes déjà
       converties ; sa conversion demandera de décider où vit cette aide.
 - [ ] 7.11 `Engine/Audio.cs` (1 253 l.).

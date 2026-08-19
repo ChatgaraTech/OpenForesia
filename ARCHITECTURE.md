@@ -100,9 +100,9 @@ src/
 ├─ Host/  ····································· 5 fichiers   3 477 l.
 │   D3D11Backend · SyntheticDevice · DeviceShim · D3D11Window · StartupSurface
 │
-└─ Blaze/  ···································· 31 fichiers  24 646 l.
+└─ Blaze/  ···································· 31 fichiers  24 698 l.
     ├─ Blaze.cs                    17 l.   l'en-tete, les using, la declaration partielle
-    ├─ Subsystems.cs              127 l.   LE COMPOSITION ROOT. `Mem` immediat, les quatre
+    ├─ Subsystems.cs              133 l.   LE COMPOSITION ROOT. `Mem` immediat, les cinq
     │                                      sous-systemes PARESSEUX (voir la note du fichier).
     │
     ├─ Interop/  ·······················    539 l.   la surface P/Invoke, hors de la classe
@@ -110,8 +110,8 @@ src/
     │   ├─ Win32.cs         165   66 declarations, huit DLL systeme
     │   └─ Wsyskern.cs       65    9 declarations
     │
-    ├─ Memory/  ························    711 l.   le modele de .data
-    │   └─ GameMemory.cs    711   102 membres : 8 arenes, tables recouvrees, globales
+    ├─ Memory/  ························    758 l.   le modele de .data
+    │   └─ GameMemory.cs    758   ~110 membres : 8 arenes, tables recouvrees, globales
     │
     ├─ Platform/  ······················  1 753 l.   ce qui n'est pas le jeu
     │   ├─ Startup.cs       654   entry + RunApplication + RunMainLoop + extinction
@@ -119,12 +119,12 @@ src/
     │   ├─ Crt.cs           390   runtime MSVC 6
     │   └─ Win32.cs          72   structures d'interop et constantes
     │
-    ├─ Engine/  ························  7 725 l.   appele par plusieurs ecrans
+    ├─ Engine/  ························  7 752 l.   appele par plusieurs ecrans
     │   ├─ Audio.cs       1 253   0x00513 · 0x0053d
     │   ├─ UiText.cs      1 344   0x00544                          VRAIE CLASSE
     │   ├─ Resources.cs   1 110   0x00529 · 0x0052a
     │   ├─ Video.cs       1 143   0x00512 · 0x00542               VRAIE CLASSE (mixte)
-    │   ├─ Input.cs       1 017   0x00523 · 0x00504
+    │   ├─ Input.cs       1 044   0x00523 · 0x00504               VRAIE CLASSE (mixte)
     │   ├─ SaveData.cs      623   E/S carte memoire seule          VRAIE CLASSE (mixte)
     │   ├─ Model3d.cs       583   0x0051d
     │   ├─ UiWindow.cs      368   0x00545
@@ -213,6 +213,29 @@ de ces étendues :
 La règle protège **le stockage, pas les vues**. Mesuré : sur 142 symboles logés dans une arène,
 61 sont des vues sans risque et 11 ont leur propre allocation — dont 7 sont les arènes elles-mêmes.
 
+
+### La règle de tri d'une globale empruntée
+
+Dégagée en convertissant `Engine/` en vraies classes : quand une classe lit un symbole déclaré dans
+un autre fichier, la question « où doit-il vivre ? » se tranche sur ce que le symbole **est**, pas
+sur qui le lit.
+
+| ce que porte le symbole | où il va | pourquoi |
+|---|---|---|
+| **suffixe VA** — `s_SizeSetting_005de160` | `Memory/GameMemory.cs` | c'est du `.data`, et `GameMemory` en est le modèle. L'atteindre par `using static Blaze` masquerait la dépendance que la conversion cherche justement à rendre visible. |
+| **pas de suffixe VA** — `s_KeyBindings` | il reste chez son propriétaire, exposé `internal` | c'est notre échafaudage, pas de la mémoire du jeu. Il deviendra un paramètre de constructeur quand son propriétaire deviendra une classe. |
+| **champ d'un blob non modélisé** — `s_SmallTextureFlag` (`AU_00564a05._51_4_`) | **il ne bouge pas** | le sortir seul de son blob est exactement le geste qui fabrique le défaut d'aliasing. |
+
+Deux corollaires, appris à leurs dépens :
+
+- **Un symbole qui en aliase un autre déménage avec lui.** `s_Unknown_005d9de0` est le même global
+  que `s_GammaIni` ; déplacer le premier seul aurait rompu la paire — et le symptôme (palettes
+  d'options noires) n'apparaît qu'à l'écran, jamais au compteur de primitives.
+- **Un bloc déménage entier.** `s_GammaIni` est parti avec ses deux voisines de déclaration,
+  `s_SoundVolumeIni` et `s_CdVolumeIni`, les trois clés d'ini que le binaire garde ensemble.
+
+Ce tri est distinct de l'étape D : rapatrier une globale `.data` depuis un fichier d'écran relève de
+l'achèvement de `GameMemory`, pas de la conversion des écrans en classes.
 ---
 
 ## Pourquoi des fichiers et pas de vraies classes

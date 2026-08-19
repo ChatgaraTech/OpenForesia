@@ -690,7 +690,7 @@ internal sealed unsafe class GameMemory
     // son côté. Séparés, <see cref="InitialiseEntitySlots"/> écrivait dans l'un pendant que
     // <see cref="CurrentPadState"/> lisait l'autre : l'initialisation des emplacements manette
     // n'atteignait jamais son lecteur. Fusionnés le 2026-08-17 en un alias sur l'arène.
-    internal byte* s_EntitySlotTable_005e9180 => Mem.Arena(0x005e9180);
+    internal byte* s_EntitySlotTable_005e9180 => Arena(0x005e9180);
 
     // Ghidra: DAT_00564a4c — une garde de réentrance, pas un drapeau statique. Dans Blaze.c, chaque
     // site qui l'écrit suit exactement le même motif : `DAT_00564a4c = 0; <appel réentrant>;
@@ -708,4 +708,51 @@ internal sealed unsafe class GameMemory
     // Ghidra: DAT_00604ab0 / DAT_00604a00 — les drapeaux d'état de transfert écriture/lecture que
     // FUN_005046c0/FUN_00504770 sondent. 4 = prêt/inactif.
     internal int s_CardWriteStatus_00604ab0 = 4, s_CardReadStatus_00604a00 = 4;
+
+    // =====================================================================
+    // Rapatriees le 2026-08-19 pour fermer Engine/Input.cs : globales .data qu'il lisait
+    // dans cinq autres fichiers. Les globales PROPRES a Input restent chez lui, en champs
+    // d'instance - meme regle qu'aux quatre conversions precedentes.
+    // =====================================================================
+
+    internal byte* s_AnimationTable_005e9640 => Arena(0x005e9640);
+
+    // Ghidra: DAT_00604b54 â€” the input-device object. Created by FUN_00523120, which
+    // SetupJoystickHandlers now calls; ShutdownStage1 destroys it.
+    //
+    // **This global had been reconstructed under three different names** â€” `s_JoystickDevice`,
+    // `s_JoystickDevice_00604b54` and, briefly, an `s_InputDevice_00604b54` added while
+    // reconstructing the creation chain. One address, one field: the same shape of defect as
+    // DAT_00566cc4 / s_ResolutionIndex, and the reason to check for an existing name before
+    // declaring one.
+    internal byte* s_JoystickDevice_00604b54;
+
+    // Ghidra: DAT_005de160, ini key "Size", default 0xb (11). Clamped in LoadOptionsIni against a
+    // per-resolution table (DAT_00562e00).
+    //
+    // Role established 2026-08-12 (the earlier TODO(REVERSE) here is answered): this is the
+    // engine's render-size level. `SetShift` (winsys3d.c:4937) hands the 3D device a viewport of
+    // `(Size + 9) * 0x20` by `(Size + 9) * 0x18` and selects the vertex-scaling lookup table with
+    // the same value. So Size 11 is 640x480 â€” the engine's logical reference space â€” and the
+    // shipped `Size=21` is 960x720, which matches the render target measured at runtime. Full
+    // derivation in `Documentation/DLL/winsys3d.md`, section "Coordinate scaling".
+    internal int s_SizeSetting_005de160 = 0xb;
+
+
+    // Ghidra: DAT_00589c70 (ini "SoundVol") / DAT_0057925c (ini "CdVol") / DAT_005d9de0 (ini "Gamma").
+    // All three default to 0x40 (64) in GetPrivateProfileIntA.
+    internal uint s_SoundVolumeIni;
+    internal uint s_CdVolumeIni;
+    internal uint s_GammaIni;
+    /// <summary>
+    /// Ghidra: DAT_005d9de0 â€” **le mÃªme global que <see cref="s_GammaIni"/>**, la clÃ© Â« Gamma Â» de
+    /// l'ini, et non un second. Le commentaire de LoadOptionsIni le disait dÃ©jÃ  ; il avait quand
+    /// mÃªme Ã©tÃ© redÃ©clarÃ© ici, et n'Ã©tant jamais Ã©crit il valait zÃ©ro. ConsÃ©quence visible : la
+    /// page d'options passait ses palettes dans <c>Gamma(valeur, 0.0)</c>, ce qui les rendait
+    /// noires â€” fond et cadre invisibles, libellÃ©s intacts parce qu'eux n'y passent pas.
+    /// SeptiÃ¨me occurrence d'un global reconstruit sous deux noms.
+    /// </summary>
+    internal int s_Unknown_005d9de0 => (int)s_GammaIni;
+
+    internal int s_Unknown_005de538;
 }

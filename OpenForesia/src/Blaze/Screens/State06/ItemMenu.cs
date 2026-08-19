@@ -195,7 +195,7 @@ public static unsafe partial class Blaze
 
         // Ghidra: DAT_005e93c0 = DAT_005e93c0 & 0xe7ff8f79 | 0x80800e00 — le mot d'état de
         // l'emplacement 0, repris bit à bit.
-        uint* slot0 = (uint*)s_SlotFlags_005e93c0;
+        uint* slot0 = (uint*)Inp.s_SlotFlags_005e93c0;
         *slot0 = *slot0 & 0xe7ff8f79 | 0x80800e00;
 
         // Ghidra: les quatre emplacements repris. **Deux pas différents dans la même boucle**, ce
@@ -209,18 +209,18 @@ public static unsafe partial class Blaze
         // première image, écran noir. Mesuré le 2026-08-18.
         for (int i = 0; i < 4; i++)
         {
-            s_SlotArea_005e9180[0x248 + i * 0x9c] = (byte)i;
-            s_SlotArea_005e9180[0x0b + i * 0x4c] = (byte)i;
-            *(ushort*)(s_SlotArea_005e9180 + 0x02 + i * 0x4c) = 0;
+            Inp.s_SlotArea_005e9180[0x248 + i * 0x9c] = (byte)i;
+            Inp.s_SlotArea_005e9180[0x0b + i * 0x4c] = (byte)i;
+            *(ushort*)(Inp.s_SlotArea_005e9180 + 0x02 + i * 0x4c) = 0;
         }
 
 
         PlayMusicTrack(0x25);
-        JoystickResetState(false);
+        Inp.JoystickResetState(false);
 
         while (true)
         {
-            s_Unknown_005de168 = 0;
+            Inp.s_Unknown_005de168 = 0;
             byte* pad = CurrentPadState();
 
             // SELECT + START ensemble, et seulement hors sous-écran.
@@ -229,14 +229,14 @@ public static unsafe partial class Blaze
             if (s_GameStateId != 6)
             {
                 s_Unknown_005de15c = 0;
-                s_Unknown_005de168 = 0;
+                Inp.s_Unknown_005de168 = 0;
                 return;
             }
 
-            s_Unknown_005de168 = 1;
+            Inp.s_Unknown_005de168 = 1;
             s_Unknown_005de15c = 1;
 
-            if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+            if (s_SmallTextureFlag == 0 && Mem.s_SizeSetting_005de160 > 7)
             {
                 s_Unknown_005de158 = 0;
                 s_Unknown_005de154 = 0;
@@ -244,13 +244,13 @@ public static unsafe partial class Blaze
             else
             {
                 s_Unknown_005de154 = 0xa0;
-                s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0xc;
+                s_Unknown_005de158 = (0xb - Mem.s_SizeSetting_005de160) * 0xc;
             }
 
             // Ghidra: les deux axes de manette comparés au sentinelle « absente », comme au
             // sous-état 7 de la sélection des personnages.
-            s_Unknown_005de50c = *(short*)s_JoyAxis1_00604b0a == -0x8000 ? 1 : 0;
-            if (*(short*)s_JoyAxis2_00604b2e == -0x8000) s_Unknown_005de50c += 2;
+            s_Unknown_005de50c = *(short*)Inp.s_JoyAxis1_00604b0a == -0x8000 ? 1 : 0;
+            if (*(short*)Inp.s_JoyAxis2_00604b2e == -0x8000) s_Unknown_005de50c += 2;
 
             switch (s_ItemMenuSubState_00566ac8)
             {
@@ -345,7 +345,7 @@ public static unsafe partial class Blaze
             // DÉVIATION d'un jeton, et c'est la même que celle de la page d'options — voir sa note
             // dans RunMainMenuFrameLoop. L'original écrit cette vidange sans cadencement
             // (`iVar2 = FUN_005048f0(); while (iVar2 != 0) iVar2 = FUN_005048f0();`). Chez nous
-            // `PollJoystickState` ne fait pas tourner la pompe de messages, donc l'état DirectInput
+            // `Inp.PollJoystickState` ne fait pas tourner la pompe de messages, donc l'état DirectInput
             // ne se rafraîchit jamais et la boucle ne se termine pas : **mesuré le 2026-08-18, le
             // menu objets se figeait à sa première image**, écran noir, sans plantage ni progrès.
             // `Ordinal_132(0)` rend la main à la pompe (winsys3d, FUN_00a053e0), ce qui laisse le

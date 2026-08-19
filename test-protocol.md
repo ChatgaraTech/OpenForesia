@@ -654,3 +654,15 @@ for ($i = 1; $i -le $n; $i++) {
 
 À lancer depuis `OpenForesia/`. **Seize essais, pas huit** : à ce taux, huit ne distinguent pas 25 %
 de 40 %.
+
+### Mesurer au repos, sinon la mesure ment
+
+Contre-exemple chiffré, le 2026-08-19, **sur le même binaire** :
+
+```
+  16 essais pendant qu'un build et des tests tournaient  →  7 perdues = 44 %   (faux)
+  32 essais machine au repos                             →  7 perdues = 22 %   (juste)
+```
+
+La première mesure a fait croire à une régression et a coûté une enquête. Fermer les builds, tests
+et autres lancements avant de mesurer.

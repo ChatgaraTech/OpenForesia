@@ -63,7 +63,7 @@ param(
     # sous-systeme. Y ajouter un nom pour faire taire un signalement genant vide l'outil de sa
     # valeur - c'est la pente classique des fichiers de suppression.
     [string[]] $Injected = @('mem','memory','gameMemory','gfx','win32','winsys3d','wsyskern',
-                             'ui','uiText','uiWindow','audio','input','resources','video',
+                             'ui','uiText','uiWindow','inp','audio','input','resources','video',
                              'model3d','primitives2d','prims','vid','saveData','saves','host','display')
 )
 

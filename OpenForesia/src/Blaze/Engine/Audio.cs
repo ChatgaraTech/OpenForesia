@@ -238,8 +238,8 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void ApplyCdVolume()
     {
-        if (s_CdVolumeIni == 0) return;
-        s_MusicAttenuation = (int)(s_CdVolumeIni * 2500) / 128 - 2500;
+        if (Mem.s_CdVolumeIni == 0) return;
+        s_MusicAttenuation = (int)(Mem.s_CdVolumeIni * 2500) / 128 - 2500;
         if (s_MusicStreamBuffer != null)
         {
             // Ghidra special-cases exactly -2000 (not this function's own -2500 floor) to force
@@ -257,7 +257,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void ApplyAllSoundBufferVolumes()
     {
-        s_SoundEffectAttenuation = (int)(s_SoundVolumeIni * 2000) / 128 - 2000;
+        s_SoundEffectAttenuation = (int)(Mem.s_SoundVolumeIni * 2000) / 128 - 2000;
         foreach (void* buffer in s_SoundBuffers)
         {
             if (buffer == null) continue;

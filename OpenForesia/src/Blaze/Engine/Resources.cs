@@ -764,7 +764,7 @@ public static unsafe partial class Blaze
     private static uint s_Unknown_005e97e4;
     private static int s_Unknown_005e9810;
     private static IntPtr s_Unknown_005e9824;
-    private static int s_Unknown_005de538;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data lue par Engine/Input.cs.
     // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
     /// <summary>
@@ -848,7 +848,7 @@ public static unsafe partial class Blaze
             slotBase += 0x13;
         } while (slotIdByte < tableEnd);
 
-        s_Unknown_005de538 = 0;
+        Mem.s_Unknown_005de538 = 0;
     }
 
     // Deplace dans GameMemory le 2026-08-19 : globale .data.
@@ -944,7 +944,7 @@ public static unsafe partial class Blaze
             FrameEnd(&otBase, &otEntry, &primCursor, 1, 1);
 
             // Ghidra: START (0x0008) or SQUARE (0x8000) of the current player's pad word. The word
-            // at DAT_00604a20 is **active high** â€” UpdateButtonEdges inverts the active-low word
+            // at DAT_00604a20 is **active high** â€” Inp.UpdateButtonEdges inverts the active-low word
             // FUN_00523660 builds â€” so a set bit is a held button.
             bool held = (CurrentPadWord() & 0x8008) != 0;
 
@@ -981,9 +981,9 @@ public static unsafe partial class Blaze
     /// </summary>
     private static byte* CurrentPadState()
     {
-        int slot = s_PlayerSlots_005e9188[
-            s_SlotArea_005e9180[0x248 + (uint)(s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
-        return s_InputStateBase_00604a20 + slot * 0x10;
+        int slot = Inp.s_PlayerSlots_005e9188[
+            Inp.s_SlotArea_005e9180[0x248 + (uint)(Mem.s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
+        return Inp.s_InputStateBase_00604a20 + slot * 0x10;
     }
 
     /// <summary>

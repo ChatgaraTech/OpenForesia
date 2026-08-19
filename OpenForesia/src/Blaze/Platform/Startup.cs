@@ -415,14 +415,14 @@ public static unsafe partial class Blaze
         // `SetCooperativeLevel`. The reconstruction now owns a real window â€” the Direct3D 11
         // backend's â€” so there is a legitimate handle to give, which was not true when TODO #6 was
         // declared blocked.
-        fixed (byte** keyboardState = &s_KeyboardState_00604b50)
-            s_JoystickDevice_00604b54 = CreateInputDevice(IntPtr.Zero, D3D11Window.Handle,
+        fixed (byte** keyboardState = &Inp.s_KeyboardState_00604b50)
+            Mem.s_JoystickDevice_00604b54 = Inp.CreateInputDevice(IntPtr.Zero, D3D11Window.Handle,
                                                          keyboardState, null, null);
 
         Winsys3d.Ordinal_63(0);
         Winsys3d.Ordinal_64();
         Winsys3d.Ordinal_66();
-        JoystickResetState(true);
+        Inp.JoystickResetState(true);
     }
 
     // =====================================================================
@@ -438,7 +438,7 @@ public static unsafe partial class Blaze
     /// Frees 18 owned sub-objects (fields [2], [0x13], and [3..0x12]), releases the underlying
     /// COM device (vtable 0x08 = Release), then zeroes the struct.
     /// </summary>
-    private static void DestroyJoystickDevice(void** device)
+    internal static void DestroyJoystickDevice(void** device)
     {
         // Ghidra: each sub-object is destructed via FUN_005233a0 then freed via FUN_00547210.
         // TODO(REVERSE): FUN_005233a0 (the per-sub-object destructor) hasn't been read yet, so
@@ -468,21 +468,13 @@ public static unsafe partial class Blaze
     private static void ShutdownStage1()
     {
         // Ghidra: FUN_00523200(DAT_00604b54) â€” `if (p != 0) { FUN_00522e40(p); FUN_00547210(p); }`
-        if (s_JoystickDevice_00604b54 == null) return;
-        DestroyJoystickDevice((void**)s_JoystickDevice_00604b54);
-        Free(s_JoystickDevice_00604b54);
-        s_JoystickDevice_00604b54 = null;
+        if (Mem.s_JoystickDevice_00604b54 == null) return;
+        DestroyJoystickDevice((void**)Mem.s_JoystickDevice_00604b54);
+        Free(Mem.s_JoystickDevice_00604b54);
+        Mem.s_JoystickDevice_00604b54 = null;
     }
 
-    // Ghidra: DAT_00604b54 â€” the input-device object. Created by FUN_00523120, which
-    // SetupJoystickHandlers now calls; ShutdownStage1 destroys it.
-    //
-    // **This global had been reconstructed under three different names** â€” `s_JoystickDevice`,
-    // `s_JoystickDevice_00604b54` and, briefly, an `s_InputDevice_00604b54` added while
-    // reconstructing the creation chain. One address, one field: the same shape of defect as
-    // DAT_00566cc4 / s_ResolutionIndex, and the reason to check for an existing name before
-    // declaring one.
-    private static byte* s_JoystickDevice_00604b54;
+    // Deplace dans GameMemory le 2026-08-19 : globale .data lue par Engine/Input.cs.
 
     /// <summary>
     /// Ghidra: FUN_00512ff0 @ 0x00512ff0 â€” post-loop teardown, stage 3: the DirectSound shutdown.
@@ -579,7 +571,7 @@ public static unsafe partial class Blaze
         // `SyntheticDevice.cs` ; opt-in tant qu'il n'est pas Ã©prouvÃ©.
         SyntheticDevice.InstallSyntheticDevice();
 
-        Winsys3d.Ordinal_789(0, s_ResolutionIndexForClamp);
+        Winsys3d.Ordinal_789(0, Inp.s_ResolutionIndexForClamp);
         DeviceShim.InstallDeviceShim();   // ECHAFAUDAGE TEMPORAIRE â€” voir DeviceShim.cs
         DeviceShim.LogDisplayMode("aprÃ¨s init 3D"); // ECHAFAUDAGE TEMPORAIRE
         Vid.ShutdownMoviePlayer(); // Ghidra: FUN_00542f90()
@@ -591,7 +583,7 @@ public static unsafe partial class Blaze
         // Ghidra: FUN_0040a600() â€” confirmed no-op (`return;` with an empty body).
         SetupJoystickHandlers(); // Ghidra: FUN_00504460()
 
-        int detail = s_SizeSetting_005de160;
+        int detail = Mem.s_SizeSetting_005de160;
         Winsys3d.SetShift((0xb - detail) * 0x10, (0xb - detail) * 0xc, detail, 0);
 
         LoadUiFontFromCd();

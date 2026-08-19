@@ -84,8 +84,8 @@ public static unsafe partial class Blaze
             BindMenuLabels(s_EmptyLabel_00572b40, 0, Mem.s_StatusDescriptor_00560728, 0);
         }
 
-        int port1Missing = *(short*)s_JoyAxis1_00604b0a == -0x8000 ? 1 : 0;
-        s_CardPort_00578e20 = *(short*)s_JoyAxis2_00604b2e == -0x8000 ? port1Missing + 2 : port1Missing;
+        int port1Missing = *(short*)Inp.s_JoyAxis1_00604b0a == -0x8000 ? 1 : 0;
+        s_CardPort_00578e20 = *(short*)Inp.s_JoyAxis2_00604b2e == -0x8000 ? port1Missing + 2 : port1Missing;
 
         byte[] directory = s_CardDirectorySize_00562b08[s_CardPort_00578e20];
         if (s_CardCursor_00578e18 < 0) s_CardCursor_00578e18 = directory[0] - 1;
@@ -817,14 +817,14 @@ public static unsafe partial class Blaze
         *(uint*)(label + 4) = 0x1000000;
         *(uint*)label = *(uint*)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x34);
 
-        if (*(short*)s_JoyAxis1_00604b0a == -0x8000)
+        if (*(short*)Inp.s_JoyAxis1_00604b0a == -0x8000)
         {
             *(short*)(label + 0x10) = 1;
             *(short*)(label + 8) = 0xa9;
             *(short*)(label + 0xa) = 0x6e;
             primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)label, 0, 0);
         }
-        if (*(short*)s_JoyAxis2_00604b2e == -0x8000)
+        if (*(short*)Inp.s_JoyAxis2_00604b2e == -0x8000)
         {
             *(short*)(label + 0x10) = 2;
             *(short*)(label + 8) = 0xdd;
@@ -1255,7 +1255,7 @@ public static unsafe partial class Blaze
                 }
 
                 // Déplacement dans la grille. Les quatre bits testés sont ceux de
-                // s_PadButtonMasks_00564f18 ; le son ne part que si la position a bougé.
+                // Inp.s_PadButtonMasks_00564f18 ; le son ne part que si la position a bougé.
                 uint before = (uint)(state[5] << 8 | state[4]);
 
                 if ((pad[6] & 0x10) != 0 && state[5] != 0) state[5]--;
@@ -1521,7 +1521,7 @@ public static unsafe partial class Blaze
             state[0] += 2;
             state[2] = 0x5f;
             EnableKBInput(0);
-            EnablePadKeyboard();           // Ghidra: FUN_00523520
+            Inp.EnablePadKeyboard();           // Ghidra: FUN_00523520
             return false;                  // le désarmement est déjà fait ici
         }
 
@@ -1911,7 +1911,7 @@ public static unsafe partial class Blaze
                 short* animIndex = (short*)(slot + 0x18);
                 short* frame = (short*)(slot + 0x1a);
 
-                byte* bundle = ((byte**)s_AnimationTable_005e9640)[assetIndex];
+                byte* bundle = ((byte**)Mem.s_AnimationTable_005e9640)[assetIndex];
                 byte* animEntry = *(byte**)(bundle + *animIndex * 4);
 
                 // Avance de frame, bouclée sur la longueur de l'animation (+0x16).

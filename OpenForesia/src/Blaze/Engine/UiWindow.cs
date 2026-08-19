@@ -32,7 +32,7 @@ public static unsafe partial class Blaze
         if (s_Unknown_005de15c == 0) return;
 
         uint* p = *prim;
-        p[1] = (s_SmallTextureFlag == 0 && 7 < s_SizeSetting_005de160)
+        p[1] = (s_SmallTextureFlag == 0 && 7 < Mem.s_SizeSetting_005de160)
             ? 0xfb00000b
             : 0xfb000001;
         p[2] = (uint)s_Unknown_005de154;
@@ -51,9 +51,9 @@ public static unsafe partial class Blaze
         if (s_Unknown_005de15c == 0) return;
 
         uint* p = *prim;
-        p[1] = (uint)(s_SizeSetting_005de160 - 0x5000000);
-        p[2] = (uint)(s_SizeSetting_005de160 * -0x10 + 0xb0);
-        p[3] = (uint)(s_SizeSetting_005de160 * -0x0c + 0x84);
+        p[1] = (uint)(Mem.s_SizeSetting_005de160 - 0x5000000);
+        p[2] = (uint)(Mem.s_SizeSetting_005de160 * -0x10 + 0xb0);
+        p[3] = (uint)(Mem.s_SizeSetting_005de160 * -0x0c + 0x84);
         p[0] = *otEntry | 0x3000000;
         *otEntry = (uint)(nuint)p;
         *prim = p + 4;
@@ -100,7 +100,7 @@ public static unsafe partial class Blaze
     }
 
     // Ghidra: &DAT_005e9060 â€” the per-panel selection index the scroll handling writes back.
-    // 0x120 utiles, borné par s_SlotArea_005e9180. Ses 0x40 premiers octets sont aussi la banque 2
+    // 0x120 utiles, borné par Inp.s_SlotArea_005e9180. Ses 0x40 premiers octets sont aussi la banque 2
     // (voir s_StateBank2_005e9060) — c'est la même mémoire, comme dans l'original.
     // Declaration deplacee dans GameMemory le 2026-08-19 : 0x005e9060 tombe dans l'etendue de
     // GameArena, donc c'est une VUE d'arene et non un stockage propre. Les sites d'appel d'ici
@@ -133,7 +133,7 @@ public static unsafe partial class Blaze
         }
         else slot = 0;
 
-        if (!resolved) slot = s_SlotArea_005e9180[0x248 + (uint)s_Unknown_005de538 * 0x9c];
+        if (!resolved) slot = Inp.s_SlotArea_005e9180[0x248 + (uint)Mem.s_Unknown_005de538 * 0x9c];
         // The original indexes four player slots with a stride of 0x9c/0x4c. `slot` comes from a
         // byte in .data, so a table this reconstruction has not populated yields 0..255 and walks
         // far past both arrays â€” and the value read then becomes a *write* offset below. This was
@@ -146,12 +146,12 @@ public static unsafe partial class Blaze
                 "the original has it.");
         }
 
-        if ((*(uint*)(s_SlotFlags_005e93c0 + slot * 0x9c) & 0x10000) != 0)
+        if ((*(uint*)(Inp.s_SlotFlags_005e93c0 + slot * 0x9c) & 0x10000) != 0)
         {
-            slot = s_SlotArea_005e9180[0x248 + (uint)s_Unknown_005de538 * 0x9c];
+            slot = Inp.s_SlotArea_005e9180[0x248 + (uint)Mem.s_Unknown_005de538 * 0x9c];
         }
 
-        byte slotIndex1 = s_PlayerSlots_005e9188[slot * 0x4c + 1];
+        byte slotIndex1 = Inp.s_PlayerSlots_005e9188[slot * 0x4c + 1];
         // The original reaches this only once the resource directory is loaded. Guarding is not
         // padding: a null here faults natively inside the emitters below, several frames later,
         // with nothing naming the cause.
@@ -171,7 +171,7 @@ public static unsafe partial class Blaze
         // Second bound, on the value rather than the index: `buttons` addresses the per-controller
         // input table (0x140 bytes, 0x10 per entry) and is used for writes, so it must land inside
         // it. 8 is the original's "no controller" sentinel and is a legitimate value here.
-        int controller = s_PlayerSlots_005e9188[slot * 0x4c];
+        int controller = Inp.s_PlayerSlots_005e9188[slot * 0x4c];
         if (controller * 0x10 + 0x10 > 0x140)
         {
             throw new InvalidOperationException(
@@ -185,7 +185,7 @@ public static unsafe partial class Blaze
         // ---- the scroll arrows, four directions, each with its own repeat rule ----
         if ((scrollFlags & 0x1000000) != 0 && (descriptor[0x8c7] & 0x20) == 0)
         {
-            byte* buttonState = s_InputStateBase_00604a20 + buttons;
+            byte* buttonState = Inp.s_InputStateBase_00604a20 + buttons;
 
             if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
                 && (descriptor[0x8c7] & 0x40) != 0)
@@ -225,10 +225,10 @@ public static unsafe partial class Blaze
             }
 
             // Confirm: latch the selection back into the per-panel table and clear the edge.
-            ushort edge = *(ushort*)(s_InputStateBase_00604a20 + buttons + 2);
+            ushort edge = *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2);
             if ((edge & 0x8000) != 0)
             {
-                *(ushort*)(s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
+                *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
                 byte flags = descriptor[0x8c7];
                 descriptor[0x3b] = 0;
                 descriptor[0x8c7] = (byte)(flags & 0xfb);
@@ -256,10 +256,10 @@ public static unsafe partial class Blaze
         uint cursorFlags = *(uint*)(descriptor + 0x30);
         if ((cursorFlags & 0x1000000) != 0 && (descriptor[0x8c7] & 0x20) == 0)
         {
-            ushort edge = *(ushort*)(s_InputStateBase_00604a20 + buttons + 2);
+            ushort edge = *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2);
             if ((edge & 0x8000) != 0)
             {
-                *(ushort*)(s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
+                *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
                 descriptor[0x33] = 0;
                 descriptor[0x8c7] &= 0xfd;
                 PlayUiSound38();

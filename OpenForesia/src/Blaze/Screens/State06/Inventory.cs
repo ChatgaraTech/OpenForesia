@@ -558,7 +558,7 @@ public static unsafe partial class Blaze
             {
                 case 0:
                 {
-                    JoystickResetState(false);   // Ghidra: FUN_00504b10(0)
+                    Inp.JoystickResetState(false);   // Ghidra: FUN_00504b10(0)
                     LoadSaveDirectory();         // Ghidra: FUN_005126c0(1)
 
                     int entryCount = s_CardEntryCount_00604981;
@@ -1819,7 +1819,7 @@ public static unsafe partial class Blaze
 
         if (s_ItemMenuLoaded_005de4e8 == 0)
         {
-            JoystickResetState(false);
+            Inp.JoystickResetState(false);
             LoadSaveDirectory();
 
             int count = s_CardEntryCount_00604981;
@@ -2124,7 +2124,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void HandOverController(byte* controllerSlot, int target)
     {
-        byte* destination = s_PlayerSlots_005e9188 + target * 0x4c;
+        byte* destination = Inp.s_PlayerSlots_005e9188 + target * 0x4c;
         destination[0] = controllerSlot[0];
         controllerSlot[0] = 8;
         byte swap = destination[1];
@@ -2143,7 +2143,7 @@ public static unsafe partial class Blaze
         {
             probe--;
             if (probe < 0) probe = s_PartySize_005e9020 - 1;
-            if (s_PlayerSlots_005e9188[probe * 0x4c] == 8 && probe != s_Unknown_005de4e4)
+            if (Inp.s_PlayerSlots_005e9188[probe * 0x4c] == 8 && probe != s_Unknown_005de4e4)
             {
                 HandOverController(controllerSlot, probe);
                 return 1;
@@ -2162,7 +2162,7 @@ public static unsafe partial class Blaze
         {
             probe++;
             if (probe >= s_PartySize_005e9020) probe = 0;
-            if (s_PlayerSlots_005e9188[probe * 0x4c] == 8 && probe != s_Unknown_005de4e4)
+            if (Inp.s_PlayerSlots_005e9188[probe * 0x4c] == 8 && probe != s_Unknown_005de4e4)
             {
                 HandOverController(controllerSlot, probe);
                 return 1;
@@ -2178,7 +2178,7 @@ public static unsafe partial class Blaze
     /// <para>Le pas de <c>puVar5</c> vaut 0x4e et non 0x9c parce que Ghidra le type en
     /// <c>undefined2 *</c> : 0x4e mots de 16 bits font bien 0x9c octets. Le
     /// <c>*(undefined4 *)(puVar5 + -9)</c> qui l'accompagne est le dword de
-    /// <c>s_SlotFlags_005e93c0 + i * 0x9c</c>, dix-huit octets en amont.</para>
+    /// <c>Inp.s_SlotFlags_005e93c0 + i * 0x9c</c>, dix-huit octets en amont.</para>
     /// </summary>
     private static void ResetAuctionControllers()
     {
@@ -2187,11 +2187,11 @@ public static unsafe partial class Blaze
         // Ghidra: `while ((int)puVar6 < 0x5e92b8)` depuis 0x5e9188 par pas de 0x4c — quatre tours.
         for (int i = 0; i < 4; i++)
         {
-            s_PlayerSlots_005e9188[i * 0x4c + 1] = (byte)i;
-            *(uint*)(s_SlotFlags_005e93c0 + i * 0x9c) = 0;
-            s_PlayerSlots_005e9188[i * 0x4c] = 8;
-            *(ushort*)(s_SlotFlags_005e93c0 + i * 0x9c + 0x12) = 0;
-            s_InputStateBase_00604a20[slotIds[i] * 0x10 + 0xb] = 0;
+            Inp.s_PlayerSlots_005e9188[i * 0x4c + 1] = (byte)i;
+            *(uint*)(Inp.s_SlotFlags_005e93c0 + i * 0x9c) = 0;
+            Inp.s_PlayerSlots_005e9188[i * 0x4c] = 8;
+            *(ushort*)(Inp.s_SlotFlags_005e93c0 + i * 0x9c + 0x12) = 0;
+            Inp.s_InputStateBase_00604a20[slotIds[i] * 0x10 + 0xb] = 0;
         }
     }
 
@@ -2433,7 +2433,7 @@ public static unsafe partial class Blaze
                     // Ghidra: le mot de tête de chaque emplacement de scène remis à zéro, pas de
                     // 0x4c octets, jusqu'à 0x5e92b0 — soit les quatre emplacements.
                     for (int i = 0; i < 4; i++)
-                        *(ushort*)(s_SlotArea_005e9180 + i * 0x4c) = 0;
+                        *(ushort*)(Inp.s_SlotArea_005e9180 + i * 0x4c) = 0;
 
                     return primCursor;
                 }
@@ -2443,7 +2443,7 @@ public static unsafe partial class Blaze
             case 1:
             {
                 // La grille d'objets du membre courant : on y choisit l'objet a transferer.
-                byte* slotFlags = s_SlotFlags_005e93c0 + s_Unknown_005de4e4 * 0x9c;
+                byte* slotFlags = Inp.s_SlotFlags_005e93c0 + s_Unknown_005de4e4 * 0x9c;
                 byte* record = mainMem + (s_Unknown_005de4e4 + 0x78) * 0x2000;
                 slotFlags[8] = (byte)s_Unknown_005de4e4;
 
@@ -2461,8 +2461,8 @@ public static unsafe partial class Blaze
                 // desassemblage donne `SHL EAX,0x4` puis `ADD EAX,0x604a20` (0x005281D6 et
                 // 0x00528944) — le pas est de 0x10, pas de 4. Meme perte de decalage que sur les
                 // trois sites deja corriges dans CurrentPadState.
-                byte controller = s_PlayerSlots_005e9188[s_Unknown_005de4e4 * 0x4c];
-                if (controller != 8) pad = s_InputStateBase_00604a20 + controller * 0x10;
+                byte controller = Inp.s_PlayerSlots_005e9188[s_Unknown_005de4e4 * 0x4c];
+                if (controller != 8) pad = Inp.s_InputStateBase_00604a20 + controller * 0x10;
 
                 int before = s_ItemMenuCursor_005de4e0;
                 if ((pad[6] & 0x80) != 0) s_ItemMenuCursor_005de4e0--;
@@ -2598,7 +2598,7 @@ public static unsafe partial class Blaze
                 // bas valent 0xFFFFFFF8, soit l'indice -8. Le même champ est relu quelques lignes
                 // plus haut en `*(short *)(pbVar14 + -8)`, ce qui le confirme sans ambiguïté :
                 // c'est le drapeau « mise confirmée » en tête de l'enregistrement d'emplacement,
-                // à `s_SlotArea_005e9180 + membre * 0x4c`. Aucune passe de désassemblage n'a été
+                // à `Inp.s_SlotArea_005e9180 + membre * 0x4c`. Aucune passe de désassemblage n'a été
                 // nécessaire, seulement lire les deux formes côte à côte.
                 primCursor = DrawItemMenuTitle(primCursor);   // Ghidra: FUN_00524190
 
@@ -2651,7 +2651,7 @@ public static unsafe partial class Blaze
 
                 for (int member = 0, x = 0x1c; member < s_PartySize_005e9020; member++, x += 0x35)
                 {
-                    byte* slot = s_SlotArea_005e9180 + member * 0x4c;
+                    byte* slot = Inp.s_SlotArea_005e9180 + member * 0x4c;
                     byte* controllerSlot = slot + 8;          // Ghidra: &DAT_005e9188 + membre*0x4c
                     int* bid = bids + member;
                     uint* gold = (uint*)(mainMem + 0xf026c + member * 0x2000);
@@ -2670,7 +2670,7 @@ public static unsafe partial class Blaze
                             {
                                 probe++;
                                 if (probe >= s_PartySize_005e9020) probe = 0;
-                                if (s_PlayerSlots_005e9188[probe * 0x4c] == 8
+                                if (Inp.s_PlayerSlots_005e9188[probe * 0x4c] == 8
                                     && probe != s_Unknown_005de4e4)
                                 {
                                     changed = 1;
@@ -2691,7 +2691,7 @@ public static unsafe partial class Blaze
                         // Ghidra rend l'adresse `&DAT_00604a20 + slot * 4` ; le désassemblage
                         // donne `SHL EAX,0x4` (0x00528944) — le pas est de 0x10. Même perte de
                         // décalage qu'au cas 1.
-                        byte* memberPad = s_InputStateBase_00604a20 + *controllerSlot * 0x10;
+                        byte* memberPad = Inp.s_InputStateBase_00604a20 + *controllerSlot * 0x10;
                         s_Unknown_00566acc++;
 
                         if (*(short*)slot == 0)
@@ -2806,7 +2806,7 @@ public static unsafe partial class Blaze
                 if (confirmed != s_Unknown_00566acc) break;
 
                 for (int i = 0; i < s_PartySize_005e9020; i++)
-                    *(ushort*)(s_SlotArea_005e9180 + i * 0x4c) = 0;
+                    *(ushort*)(Inp.s_SlotArea_005e9180 + i * 0x4c) = 0;
 
                 if (s_Unknown_005de448 < 0)
                 {

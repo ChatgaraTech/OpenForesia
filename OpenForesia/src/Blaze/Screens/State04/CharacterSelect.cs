@@ -96,7 +96,7 @@ public static unsafe partial class Blaze
         int* animations = *(int**)(directoryBase + 0x7c);
         if (animations != null)
         {
-            byte** table = (byte**)s_AnimationTable_005e9640;
+            byte** table = (byte**)Mem.s_AnimationTable_005e9640;
             for (int* entry = animations; *entry != 0; entry++, table++)
             {
                 byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
@@ -305,7 +305,7 @@ public static unsafe partial class Blaze
     // à récupérer du binaire.
     private const int AssetTableCapacity = 16;
     private static byte* s_ModelTable_005e96a0 => Mem.Arena(0x005e96a0);
-    private static byte* s_AnimationTable_005e9640 => Mem.Arena(0x005e9640);
+    // Deplace dans GameMemory le 2026-08-19 : globale .data lue par Engine/Input.cs.
 
     /// <summary>
     /// Ghidra: FUN_005066d0 @ 0x005066d0 — le point d'entrée de l'état 4, la sélection des
@@ -368,7 +368,7 @@ public static unsafe partial class Blaze
         }
         NativeMemory.Clear(Mem.s_SelectScratch_00573338, 0x2000);
 
-        JoystickResetState(false);   // Ghidra: FUN_00504b10(0)
+        Inp.JoystickResetState(false);   // Ghidra: FUN_00504b10(0)
 
         // Ghidra: la sortie normale passe par `DAT_005de510 = 0` avant LAB_00506fe7 ; la sortie par
         // sous-état -1 y saute directement (`goto LAB_00506fe7`) et laisse donc l'état du jeu
@@ -379,7 +379,7 @@ public static unsafe partial class Blaze
         {
             s_Unknown_005de15c = 1;
 
-            if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+            if (s_SmallTextureFlag == 0 && Mem.s_SizeSetting_005de160 > 7)
             {
                 s_Unknown_005de158 = 0;
                 s_Unknown_005de154 = 0;
@@ -387,7 +387,7 @@ public static unsafe partial class Blaze
             else
             {
                 s_Unknown_005de154 = 0xa0;
-                s_Unknown_005de158 = (0xb - s_SizeSetting_005de160) * 0xc;
+                s_Unknown_005de158 = (0xb - Mem.s_SizeSetting_005de160) * 0xc;
             }
 
             // Ghidra: FUN_0040a600(4) — corps vide, voir LoadCharacterSelectResources.
@@ -482,7 +482,7 @@ public static unsafe partial class Blaze
                 short* sceneAnimIndex = (short*)(entity + 0x18);    // DAT_00572b60
                 short* sceneFrame = (short*)(entity + 0x1a);        // DAT_00572b62
 
-                byte* bundle = ((byte**)s_AnimationTable_005e9640)[assetIndex];
+                byte* bundle = ((byte**)Mem.s_AnimationTable_005e9640)[assetIndex];
                 byte* animEntry = *(byte**)(bundle + *sceneAnimIndex * 4);
 
                 short advanced = (short)(*sceneFrame + 1);
@@ -529,17 +529,17 @@ public static unsafe partial class Blaze
                 primCursor = DrawUiPanel(otBase, primCursor, descriptor);           // FUN_00545340
             }
 
-            if (s_SmallTextureFlag == 0 && s_SizeSetting_005de160 > 7)
+            if (s_SmallTextureFlag == 0 && Mem.s_SizeSetting_005de160 > 7)
             {
-                s_Unknown_005de158 = s_SizeSetting_005de160 * 0xc - 0x70;
+                s_Unknown_005de158 = Mem.s_SizeSetting_005de160 * 0xc - 0x70;
             }
-            else if (s_SizeSetting_005de160 < 1)
+            else if (Mem.s_SizeSetting_005de160 < 1)
             {
                 s_Unknown_005de158 -= 8;
             }
             else
             {
-                s_Unknown_005de158 = (s_SizeSetting_005de160 + 9) * 0xc;
+                s_Unknown_005de158 = (Mem.s_SizeSetting_005de160 + 9) * 0xc;
             }
 
             if (s_SelectState_00578de8[2] >= 0)

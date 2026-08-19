@@ -265,7 +265,7 @@ public static unsafe partial class Blaze
         if (s_SelectFlags_00562a48[0] != 0)
         {
             EnableKBInput(1);
-            DisablePadKeyboard();              // Ghidra: FUN_00523530
+            Inp.DisablePadKeyboard();              // Ghidra: FUN_00523530
             s_SelectFlags_00562a48[0] = 0;
             state[4] = 0;
             state[5] = 0;
