@@ -71,6 +71,26 @@ public static unsafe partial class Blaze
     /// </summary>
     internal static GameMemory Mem = new GameMemory();
 
+    // ---------------------------------------------------------------------------------------------
+    // POURQUOI LES SOUS-SYSTEMES SONT PARESSEUX ALORS QUE `Mem` NE L'EST PAS
+    //
+    // Le module initializer de Program.cs appelle TryPrepareDisplayListArena(), et son premier
+    // geste est de lire un champ statique de `Blaze` : cela declenche TOUTE l'initialisation
+    // statique de `Blaze` AVANT que l'arene basse ne soit reclamee. Tant que ces champs etaient
+    // `static readonly`, chaque sous-systeme converti ajoutait donc son travail d'allocation devant
+    // la course pour la memoire basse - les tables de UiText, les huit chaines de Video.
+    //
+    // MESURE le 2026-08-19, apres la conversion de Video : 5 courses perdues sur 8, contre environ
+    // 1 sur 4 documente. Rendus paresseux : voir le releve dans REVERSE_STATUS.md.
+    //
+    // `Mem` reste immediat parce que la reclamation le lit vraiment
+    // (s_UiDescriptors_00560ff0, s_StatusDescriptor_00560728). Les quatre autres, non : rien dans
+    // TryPrepareDisplayListArena ne les touche. Les construire avant la course etait du travail
+    // gratuit place au pire endroit possible.
+    //
+    // La paresse ici ne contredit pas la lecon « pris paresseusement, le descripteur echouait » :
+    // celle-ci porte sur les DESCRIPTEURS de memoire basse, qui restent pris immediatement.
+    // ---------------------------------------------------------------------------------------------
     /// <summary>
     /// Le moteur de texte de l'interface, premiere vraie classe d'instance de la transcription.
     ///
@@ -84,15 +104,24 @@ public static unsafe partial class Blaze
     /// d'instance modelise ici une <b>dependance</b>, pas une multiplicite.
     /// </para>
     /// </summary>
-    internal static readonly UiText Ui = new UiText(Mem);
+    private static UiText? s_ui;
+    internal static UiText Ui => s_ui ??= new UiText(Mem);
     /// <summary>
     /// L'emetteur de primitives 2D. Construit APRES <see cref="Ui"/>, dont il depend : l'ordre
     /// textuel de ce fichier est ce qui garantit l'ordre d'initialisation.
     /// </summary>
-    internal static readonly Primitives2d Prims = new Primitives2d(Mem, Ui);
+    private static Primitives2d? s_prims;
+    internal static Primitives2d Prims => s_prims ??= new Primitives2d(Mem, Ui);
     /// <summary>
     /// La sauvegarde sur carte memoire. Ses huit rappels natifs ne passent PAS par ce champ : ils
     /// sont statiques et s'atteignent par le nom de type, <c>SaveData.CardWriteStatusHandler0</c>.
     /// </summary>
-    internal static readonly SaveData Saves = new SaveData(Mem);
+    private static SaveData? s_saves;
+    internal static SaveData Saves => s_saves ??= new SaveData(Mem);
+    /// <summary>
+    /// La sortie video. Son unique rappel natif ne passe pas par ce champ au sens habituel : c'est
+    /// <c>MoviePlayerWindowProc</c>, statique, qui le LIT pour rejoindre l'instance.
+    /// </summary>
+    private static Video? s_vid;
+    internal static Video Vid => s_vid ??= new Video(Mem);
 }

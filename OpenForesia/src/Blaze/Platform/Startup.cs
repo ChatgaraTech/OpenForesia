@@ -304,7 +304,7 @@ public static unsafe partial class Blaze
     // derived by Ghidra from the actual string bytes, but those bytes aren't reproduced in
     // Blaze.c's text. TODO(REVERSE): confirm exact original text/encoding from the binary.
     private static readonly byte* s_PleaseInsertCdMessage = ToAnsiZ("Please insert the Blaze & Blade CD-ROM.");
-    private static readonly byte* s_ErrorCaption = ToAnsiZ("Erreur");
+    internal static readonly byte* s_ErrorCaption = ToAnsiZ("Erreur");
 
     // `internal` : appele depuis src/Host/ (DeviceShim, SyntheticDevice).
     internal static byte* ToAnsiZ(string s)
@@ -505,11 +505,11 @@ public static unsafe partial class Blaze
         s_DirectSound = null;
     }
 
-    /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 (-> FUN_005428d0) â€” post-loop teardown, stage 4; same function RunMainLoop uses mid-sequence, see CloseMovieStreamIfOpen.</summary>
-    private static void ShutdownStage4() => CloseMovieStreamIfOpen();
+    /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 (-> FUN_005428d0) â€” post-loop teardown, stage 4; same function RunMainLoop uses mid-sequence, see Vid.CloseMovieStreamIfOpen.</summary>
+    private static void ShutdownStage4() => Vid.CloseMovieStreamIfOpen();
 
-    /// <summary>Ghidra: FUN_00542f90 @ 0x00542f90 â€” post-loop teardown, stage 5; same function RunMainLoop uses mid-sequence, see ShutdownMoviePlayer.</summary>
-    private static void ShutdownStage5() => ShutdownMoviePlayer();
+    /// <summary>Ghidra: FUN_00542f90 @ 0x00542f90 â€” post-loop teardown, stage 5; same function RunMainLoop uses mid-sequence, see Vid.ShutdownMoviePlayer.</summary>
+    private static void ShutdownStage5() => Vid.ShutdownMoviePlayer();
 
     // ---------------------------------------------------------------------------------------
     // Deplacees depuis Memory/Arena.GameState.cs le 2026-08-19 (extract-real-classes-from-partial).
@@ -536,29 +536,29 @@ public static unsafe partial class Blaze
         // stade, il dessine dans l'affichage exclusif. Voir la change `render-title-screen-in-window`.
         DeviceShim.CreateGameWindow();
 
-        InitMoviePlayer();
-        bool streamOpened = TryOpenMovieStream();
+        Vid.InitMoviePlayer();
+        bool streamOpened = Vid.TryOpenMovieStream();
         if (streamOpened)
         {
-            if (PlayMovie(s_MovieNameTeps, 1) == 0)
+            if (Vid.PlayMovie(Vid.s_MovieNameTeps, 1) == 0)
             {
-                PlayMovie(s_MovieNameOpening, 3);
+                Vid.PlayMovie(Vid.s_MovieNameOpening, 3);
             }
 
             // Ghidra: Blaze.c:74441-74451. The attract loop has FOUR exit conditions, one per step â€”
             // title screen, ANI01, title screen, OPENING â€” and every one of them must stay, even
-            // while a step is degraded. Dropping the two ShowTitleScreenAndWait checks (Ghidra types
+            // while a step is degraded. Dropping the two Vid.ShowTitleScreenAndWait checks (Ghidra types
             // that thunk `void`, but the call site reads its result) is what previously made this
-            // loop unbreakable, since PlayMovie always reports 0 while TrySetupMovieStream is a stub.
+            // loop unbreakable, since Vid.PlayMovie always reports 0 while TrySetupMovieStream is a stub.
             while (true)
             {
-                if (ShowTitleScreenAndWait() != 0) break;
-                if (PlayMovie(s_MovieNameAni01, 3) != 0) break;
-                if (ShowTitleScreenAndWait() != 0) break;
-                if (PlayMovie(s_MovieNameOpening, 3) != 0) break;
+                if (Vid.ShowTitleScreenAndWait() != 0) break;
+                if (Vid.PlayMovie(Vid.s_MovieNameAni01, 3) != 0) break;
+                if (Vid.ShowTitleScreenAndWait() != 0) break;
+                if (Vid.PlayMovie(Vid.s_MovieNameOpening, 3) != 0) break;
             }
         }
-        CloseMovieStreamIfOpen();
+        Vid.CloseMovieStreamIfOpen();
 
         Winsys3d.Ordinal_129();
         Winsys3d.Ordinal_41();
@@ -582,12 +582,12 @@ public static unsafe partial class Blaze
         Winsys3d.Ordinal_789(0, s_ResolutionIndexForClamp);
         DeviceShim.InstallDeviceShim();   // ECHAFAUDAGE TEMPORAIRE â€” voir DeviceShim.cs
         DeviceShim.LogDisplayMode("aprÃ¨s init 3D"); // ECHAFAUDAGE TEMPORAIRE
-        ShutdownMoviePlayer(); // Ghidra: FUN_00542f90()
+        Vid.ShutdownMoviePlayer(); // Ghidra: FUN_00542f90()
         CheckDeviceCapabilityFlag(); // Ghidra: FUN_0050f120()
         Winsys3d.Ordinal_110(0);
         Winsys3d.Ordinal_681(0);
-        SetShadingDefaults(); // Ghidra: FUN_00529e40()
-        InitViewportSurfaces(); // Ghidra: FUN_00529eb0()
+        Vid.SetShadingDefaults(); // Ghidra: FUN_00529e40()
+        Vid.InitViewportSurfaces(); // Ghidra: FUN_00529eb0()
         // Ghidra: FUN_0040a600() â€” confirmed no-op (`return;` with an empty body).
         SetupJoystickHandlers(); // Ghidra: FUN_00504460()
 

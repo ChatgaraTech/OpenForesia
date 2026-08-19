@@ -1,7 +1,7 @@
 // OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
-// Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
+// La carte des repertoires et la regle
 // qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
 // reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
 
@@ -10,9 +10,40 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// `Blaze` porte encore les aides que cette classe appelle : ToAnsiZ, BuildCdPath,
+// GetMainMemPtr, Malloc/Free, RaiseQuitException, s_ErrorCaption.
+using static OpenForesia.Blaze.Blaze;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+/// <summary>
+/// La sortie video : la chaine DirectDraw, le lecteur de film VfW, l'ecran-titre et la mise en
+/// place des quatre surfaces de vue (Ghidra: 0x00512 et 0x00542).
+///
+/// <para>
+/// <b>Classe mixte, pour deux raisons distinctes et toutes deux mesurees.</b>
+/// </para>
+/// <para>
+/// 1. <c>MoviePlayerWindowProc</c> porte <c>[UnmanagedCallersOnly]</c> : l'attribut exige une
+/// methode statique, puisque Windows appelle la procedure de fenetre par simple adresse de code.
+/// Elle rejoint l'instance par le point d'entree statique <c>Blaze.Vid</c> - le seul chemin dont
+/// dispose un rappel natif. C'est le meme motif que les huit gestionnaires de <see cref="SaveData"/>,
+/// applique cette fois a un corps qui appelle d'autres membres.
+/// </para>
+/// <para>
+/// 2. <c>s_WindowedStartup</c> reste <b>statique deliberement</b>. Ce n'est pas une globale
+/// <c>.data</c> du jeu : c'est une decision d'hote, lue une fois dans l'environnement, et
+/// <c>src/Host/DeviceShim.cs</c> comme <c>src/Host/SyntheticDevice.cs</c> la lisent pendant
+/// l'initialisation de leurs propres types. En faire un champ d'instance ferait dependre cette
+/// initialisation-la de la construction complete des sous-systemes - arene basse comprise - sur le
+/// chemin de demarrage le plus fragile du projet. La modeliser comme un etat d'instance serait en
+/// faire ce qu'elle n'est pas.
+/// </para>
+/// <para>
+/// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
+/// </para>
+/// </summary>
+internal sealed unsafe class Video(GameMemory mem)
 {
     // =====================================================================
     // Movie / intro-video subsystem (Ghidra: FUN_00542xxx cluster, ~30 functions).
@@ -65,10 +96,10 @@ public static unsafe partial class Blaze
         public int Field28;                 // offset 0x28 â€” OpenMovieStream writes 1; gates the WM_TIMER step
     }
 
-    private static MoviePlayerState? s_MoviePlayer; // Ghidra: DAT_005dffa8
+    private MoviePlayerState? s_MoviePlayer; // Ghidra: DAT_005dffa8
 
-    private static readonly byte* s_VfwClassName = ToAnsiZ("VfwClass"); // Ghidra: s_VfwClass_0056e6b8 â€” TODO(REVERSE): exact bytes not recovered, name inferred from symbol
-    private static readonly byte* s_MovieWindowTitle = ToAnsiZ("Blaze & Blade"); // Ghidra: s_Blaze___Blade_005631d8 â€” TODO(REVERSE): exact bytes not recovered
+    private readonly byte* s_VfwClassName = ToAnsiZ("VfwClass"); // Ghidra: s_VfwClass_0056e6b8 â€” TODO(REVERSE): exact bytes not recovered, name inferred from symbol
+    private readonly byte* s_MovieWindowTitle = ToAnsiZ("Blaze & Blade"); // Ghidra: s_Blaze___Blade_005631d8 â€” TODO(REVERSE): exact bytes not recovered
 
     // =====================================================================
     // DirectDraw surface setup (Ghidra: FUN_005129e0 + FUN_00512a10).
@@ -140,7 +171,7 @@ public static unsafe partial class Blaze
     /// that description.
     /// </para>
     /// </summary>
-    private static int SetupDirectDrawSurfaces(uint* wrapper, IntPtr hwnd)
+    private int SetupDirectDrawSurfaces(uint* wrapper, IntPtr hwnd)
     {
         // Ghidra: FUN_005129e0 â€” DirectDrawCreate(NULL, &wrapper[0], NULL), 0 on failure.
         void* directDraw;
@@ -275,7 +306,7 @@ public static unsafe partial class Blaze
     /// (`winsys3d.c:5966`). Observed exactly that way before this was reconstructed.
     /// </para>
     /// </summary>
-    private static int ReleaseDirectDrawSurfaces(uint* wrapper, IntPtr hwnd)
+    private int ReleaseDirectDrawSurfaces(uint* wrapper, IntPtr hwnd)
     {
         // Ghidra: param_1[2] then param_1[1] â€” Release each if non-null, in that order.
         for (int slot = 2; slot >= 1; slot--)
@@ -320,7 +351,7 @@ public static unsafe partial class Blaze
         return 0;
     }
 
-    private const int IUnknown_Release = 0x08 / 4;
+    internal const int IUnknown_Release = 0x08 / 4;
     private const int IDirectDrawSurface_GetDC = 0x44 / 4;
     private const int IDirectDrawSurface_Restore = 0x6c / 4;
     private const int IDirectDrawSurface_ReleaseDC = 0x68 / 4;
@@ -335,7 +366,7 @@ public static unsafe partial class Blaze
     /// <c>+0xe</c> is the BITMAPINFOHEADER that immediately follows the 14-byte file header.
     /// </para>
     /// </summary>
-    private static void BlitTitleScreen(MoviePlayerState player)
+    private void BlitTitleScreen(MoviePlayerState player)
     {
         if (player.TitleBitmap == null) return;
 
@@ -396,7 +427,7 @@ public static unsafe partial class Blaze
     /// Ã‰crit l'Ã©cran-titre dans la surface hors Ã©cran du backend, en rÃ©utilisant le mÃªme
     /// <c>StretchDIBits</c> et les mÃªmes dimensions que le chemin d'origine.
     /// </summary>
-    private static void BlitTitleScreenToStartupSurface(MoviePlayerState player)
+    private void BlitTitleScreenToStartupSurface(MoviePlayerState player)
     {
         IntPtr dc = StartupSurface.EnsureDc(TitleScreenWidth, TitleScreenHeight);
         if (dc == IntPtr.Zero) return;
@@ -427,14 +458,14 @@ public static unsafe partial class Blaze
 
     }
 
-    private static bool s_StartupPresentReported;
+    private bool s_StartupPresentReported;
 
     /// <summary>
     /// PrÃ©sente la surface de dÃ©marrage dans la fenÃªtre du jeu. Rend faux si la fenÃªtre n'existe
     /// pas encore ou si le contexte de pÃ©riphÃ©rique est indisponible â€” l'appelant se contente alors
     /// de sauter ce redessin.
     /// </summary>
-    private static bool PresentStartupSurface()
+    private bool PresentStartupSurface()
     {
         IntPtr hwnd = D3D11Window.Handle;
         if (hwnd == IntPtr.Zero) return false;
@@ -450,7 +481,7 @@ public static unsafe partial class Blaze
     /// so `ReleaseDirectDrawSurfaces` read an uninitialised <c>wrapper[2]</c> as a COM pointer and
     /// dereferenced garbage. The original zeroes exactly these slots.
     /// </summary>
-    private static void ConstructDirectDrawWrapper(uint* wrapper)
+    private void ConstructDirectDrawWrapper(uint* wrapper)
     {
         // Ghidra: SetRect(ESI + 0x10, 0,0,0,0) and SetRect(ESI + 0x20, 0,0,0,0) â€” two Win32 RECTs.
         Win32.SetRect((int*)(wrapper + 4), 0, 0, 0, 0);
@@ -478,19 +509,19 @@ public static unsafe partial class Blaze
     // Ghidra: s_SetCooperativeLevel___failed_to_g_00563178 â€” only the truncated symbol name
     // survives in Blaze.c; the reconstructed text is a best guess, same caveat as the other
     // message strings.
-    private static readonly byte* s_SetCooperativeLevelFailed = ToAnsiZ("SetCooperativeLevel() failed to go back to normal mode.");
+    private readonly byte* s_SetCooperativeLevelFailed = ToAnsiZ("SetCooperativeLevel() failed to go back to normal mode.");
 
     // Safety net for the deviation noted above â€” not part of the original.
-    private static void* s_DisplayModeOwner;
-    private static void RegisterDisplayModeRestore(void* directDraw)
+    private void* s_DisplayModeOwner;
+    private void RegisterDisplayModeRestore(void* directDraw)
     {
         if (s_DisplayModeOwner != null) return;
         s_DisplayModeOwner = directDraw;
-        AppDomain.CurrentDomain.ProcessExit += static (_, _) => RestoreDisplayModeIfHeld();
-        AppDomain.CurrentDomain.UnhandledException += static (_, _) => RestoreDisplayModeIfHeld();
+        AppDomain.CurrentDomain.ProcessExit += static (_, _) => Vid.RestoreDisplayModeIfHeld();
+        AppDomain.CurrentDomain.UnhandledException += static (_, _) => Vid.RestoreDisplayModeIfHeld();
     }
 
-    private static void RestoreDisplayModeIfHeld()
+    private void RestoreDisplayModeIfHeld()
     {
         void* dd = s_DisplayModeOwner;
         if (dd == null) return;
@@ -505,7 +536,7 @@ public static unsafe partial class Blaze
     /// that was missing when the attract loop had no reachable exit: it clears the playing flag and
     /// publishes a result, which is what lets PlayMoviePumpLoop return and PlayMovie report non-zero.
     /// </summary>
-    private static void StopMoviePlayback(MoviePlayerState player, IntPtr hwnd, int result)
+    private void StopMoviePlayback(MoviePlayerState player, IntPtr hwnd, int result)
     {
         // Ghidra: if (param_1[8] != 0) { KillTimer(param_2, 1); param_1[8] = 0; }
         if (player.TimerArmed != 0)
@@ -529,7 +560,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00542970 @ 0x00542970 (`__thiscall`) â€” WM_ACTIVATEAPP handling.</summary>
-    private static void OnMoviePlayerActivate(MoviePlayerState player, int activated)
+    private void OnMoviePlayerActivate(MoviePlayerState player, int activated)
     {
         if (player.Playing || player.AttractActive != 0)
         {
@@ -554,7 +585,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_005429e0 @ 0x005429e0 (`__thiscall`) â€” WM_TIMER: step one movie frame.</summary>
-    private static void OnMoviePlayerTimer(MoviePlayerState player, nuint timerId)
+    private void OnMoviePlayerTimer(MoviePlayerState player, nuint timerId)
     {
         if (timerId == 1 && player.Field28 != 0)
         {
@@ -578,7 +609,7 @@ public static unsafe partial class Blaze
     private static nint MoviePlayerWindowProc(IntPtr hwnd, uint msg, nuint wParam, nint lParam)
     {
         // Ghidra: if (DAT_005dffa8 == 0) return DefWindowProcA(...);
-        MoviePlayerState? player = s_MoviePlayer;
+        MoviePlayerState? player = Vid.s_MoviePlayer;
         if (player == null) return Win32.DefWindowProcA(hwnd, msg, wParam, lParam);
 
         switch (msg)
@@ -591,18 +622,18 @@ public static unsafe partial class Blaze
                 return 0;
 
             case 0x001c: // WM_ACTIVATEAPP
-                OnMoviePlayerActivate(player, (int)wParam);
+                Vid.OnMoviePlayerActivate(player, (int)wParam);
                 return 0;
 
             case 0x0100: // WM_KEYDOWN â€” only Escape stops playback; other keys fall through to 0
                 if (wParam == 0x1b /* VK_ESCAPE */)
                 {
-                    StopMoviePlayback(player, hwnd, 1);
+                    Vid.StopMoviePlayback(player, hwnd, 1);
                 }
                 return 0;
 
             case 0x0113: // WM_TIMER
-                OnMoviePlayerTimer(player, wParam);
+                Vid.OnMoviePlayerTimer(player, wParam);
                 return 0;
 
             case 0x0201: // WM_LBUTTONDOWN
@@ -610,7 +641,7 @@ public static unsafe partial class Blaze
             case 0x0207: // WM_MBUTTONDOWN
             case 0x03b5: // MM_JOY1BUTTONDOWN
             case 0x03b6: // MM_JOY2BUTTONDOWN
-                StopMoviePlayback(player, hwnd, 1);
+                Vid.StopMoviePlayback(player, hwnd, 1);
                 return 0;
 
             case 0x0464: // MM_MCINOTIFY
@@ -626,7 +657,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00542740 @ 0x00542740 â€” creates the hidden window the movie player renders into.</summary>
-    private static void CreateMoviePlayerWindow(MoviePlayerState player)
+    private void CreateMoviePlayerWindow(MoviePlayerState player)
     {
         IntPtr hInstance = Win32.GetModuleHandleA(null);
         player.HInstance = hInstance;
@@ -675,7 +706,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00542940 @ 0x00542940 â€” destroys the movie player's hidden window.</summary>
-    private static void DestroyMoviePlayerWindow(MoviePlayerState player)
+    private void DestroyMoviePlayerWindow(MoviePlayerState player)
     {
         if (player.HWnd != IntPtr.Zero)
         {
@@ -692,7 +723,7 @@ public static unsafe partial class Blaze
     /// without failing the overall open. TODO(REVERSE): see the subsystem banner above â€” the
     /// stream object's vtable can't be faithfully constructed, so `player.Stream` stays null.
     /// </summary>
-    private static bool OpenMovieStream(MoviePlayerState player)
+    private bool OpenMovieStream(MoviePlayerState player)
     {
         // Ghidra: iVar1 = FUN_00547220(0x48); then, only if that succeeded,
         //         iVar1 = FUN_00512930(*(param_1 + 0x10));   <- the HWnd
@@ -731,7 +762,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_005428d0 @ 0x005428d0 â€” releases the sub-objects allocated by OpenMovieStream.</summary>
-    private static void CloseMovieStream(MoviePlayerState player)
+    private void CloseMovieStream(MoviePlayerState player)
     {
         if (player.Stream != null)
         {
@@ -764,7 +795,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00542f60 @ 0x00542f60 â€” allocates the movie-player struct and creates its window.</summary>
-    private static void InitMoviePlayer()
+    internal void InitMoviePlayer()
     {
         // Ghidra: the allocation is followed by an explicit *(p+0xc) = 0; *(p+8) = 0 â€” the title
         // bitmap cache starts empty. A fresh MoviePlayerState is already zeroed, so this mirrors
@@ -774,7 +805,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00542f90 @ 0x00542f90 â€” destroys the window and frees the movie-player struct.</summary>
-    private static void ShutdownMoviePlayer()
+    internal void ShutdownMoviePlayer()
     {
         if (s_MoviePlayer == null) return;
         DestroyMoviePlayerWindow(s_MoviePlayer);
@@ -796,14 +827,14 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00542f40 @ 0x00542f40 -> FUN_00542800 â€” tries to open the movie stream.</summary>
-    private static bool TryOpenMovieStream()
+    internal bool TryOpenMovieStream()
         => s_MoviePlayer != null && OpenMovieStream(s_MoviePlayer);
 
     // Ghidra: s__sDATA_TITLE640_BMP_0056e6d4 â€” the wsprintfA format string is "%sDATA\TITLE640.BMP",
     // its "%s" filled with the CD drive root (DAT_005631f8). Only Ghidra's derived symbol name
     // survives in Blaze.c, not the literal bytes, so the text below is a best guess reconstructed
     // from that name â€” same caveat as the movie filenames above and REVERSE_STATUS.md TODOs #17/#22.
-    private static readonly byte* s_TitleBitmapFileName = ToAnsiZ("DATA/TITLE640.BMP");
+    private readonly byte* s_TitleBitmapFileName = ToAnsiZ("DATA/TITLE640.BMP");
 
     /// <summary>
     /// Ghidra: FUN_00542f30 @ 0x00542f30 -> FUN_00542c40 â€” the attract-mode title screen: shows
@@ -822,7 +853,7 @@ public static unsafe partial class Blaze
     /// exits, hanging startup.
     /// </para>
     /// </summary>
-    private static int ShowTitleScreenAndWait()
+    internal int ShowTitleScreenAndWait()
     {
         if (s_MoviePlayer == null) return 1;
         MoviePlayerState player = s_MoviePlayer;
@@ -916,7 +947,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 -> FUN_005428d0 â€” closes the stream if one is open.</summary>
-    private static void CloseMovieStreamIfOpen()
+    internal void CloseMovieStreamIfOpen()
     {
         if (s_MoviePlayer != null) CloseMovieStream(s_MoviePlayer);
     }
@@ -927,7 +958,7 @@ public static unsafe partial class Blaze
     /// through the unrecoverable custom "stream"/DirectDraw-wrapper vtables (see banner above);
     /// always reports failure here, matching how the original already handles a failed open.
     /// </summary>
-    private static bool TrySetupMovieStream(MoviePlayerState player)
+    private bool TrySetupMovieStream(MoviePlayerState player)
         => false;
 
     /// <summary>
@@ -935,7 +966,7 @@ public static unsafe partial class Blaze
     /// window messages (and raising the original's WM_QUIT-triggered fatal exception faithfully)
     /// until playback finishes, with joystick input captured for skip/cancel for the duration.
     /// </summary>
-    private static int PlayMoviePumpLoop(MoviePlayerState player, byte* path)
+    private int PlayMoviePumpLoop(MoviePlayerState player, byte* path)
     {
         // Ghidra: lstrcpyA(param_1[6] + 0xc, param_2) â€” copies into the (unrecoverable) stream
         // object's own filename buffer; nothing to copy into without that object, so skipped.
@@ -978,13 +1009,13 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00542eb0 @ 0x00542eb0. Builds "&lt;cd-drive-root&gt;&lt;movieFileName&gt;" and plays it.
     /// `flag` is passed through from RunMainLoop but only reaches the (unrecoverable) stream vtable.
     /// </summary>
-    private static int PlayMovie(byte* movieFileName, int flag)
+    internal int PlayMovie(byte* movieFileName, int flag)
     {
         if (s_MoviePlayer == null) return 0;
 
         byte* path = stackalloc byte[64];
         int i = 0;
-        for (byte* p = Mem.s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
+        for (byte* p = mem.s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;
         for (byte* p = movieFileName; *p != 0 && i < 63; p++, i++) path[i] = *p;
         path[i] = 0;
 
@@ -993,16 +1024,16 @@ public static unsafe partial class Blaze
 
     // Ghidra: s_TEPS_AVI_005684f4 / s_OPENING_AVI_005684e8 / s_ANI01_AVI_005684dc â€” only Ghidra's
     // auto-derived symbol names survive in Blaze.c, not the literal bytes; best-guess filenames.
-    private static readonly byte* s_MovieNameTeps = ToAnsiZ("TEPS.AVI");
-    private static readonly byte* s_MovieNameOpening = ToAnsiZ("OPENING.AVI");
-    private static readonly byte* s_MovieNameAni01 = ToAnsiZ("ANI01.AVI");
+    internal readonly byte* s_MovieNameTeps = ToAnsiZ("TEPS.AVI");
+    internal readonly byte* s_MovieNameOpening = ToAnsiZ("OPENING.AVI");
+    internal readonly byte* s_MovieNameAni01 = ToAnsiZ("ANI01.AVI");
 
 
     /// <summary>
     /// Ghidra: FUN_00529e40 @ 0x00529e40 â€” pushes a fixed "shading defaults" struct into
     /// winsys3d.dll via ordinals 378/368. Field semantics beyond their literal values are unknown.
     /// </summary>
-    private static void SetShadingDefaults()
+    internal void SetShadingDefaults()
     {
         // Ghidra: uStack_28=0xa0, uStack_24=0x78, then 5 (short,short) pairs of (64000, 0x600),
         // laid out as 8 little-endian dwords consumed by Ordinal_368 below.
@@ -1030,7 +1061,7 @@ public static unsafe partial class Blaze
     /// mise au point (verrou à 0), l'effacement en noir la branche normale (verrou à 1, sa valeur
     /// au chargement).
     /// </summary>
-    private static void InitViewportSurfaces()
+    internal void InitViewportSurfaces()
     {
         // Ghidra renders these four calls with their arguments spilled to unattributed stack slots
         // (uStack_18..puStack_50) rather than as call arguments, and gives the fourth only three of
@@ -1048,10 +1079,10 @@ public static unsafe partial class Blaze
         // The previous reconstruction had the argument order rotated, passed stack scratch buffers
         // instead of the four globals, and passed **null** for the fourth â€” which is what made
         // winsys3d.dll write through a null pointer and take down the process.
-        Winsys3d.SetDefDispEnv(Mem.s_DispEnv0_005e98dc, 0, 0xf0, 0x140, 0xf0);
-        Winsys3d.SetDefDispEnv(Mem.s_DispEnv1_005e994c, 0, 0, 0x140, 0xf0);
-        Winsys3d.SetDefDrawEnv(Mem.s_DrawEnv0_005e9880, 0, 0, 0x140, 0xf0);
-        Winsys3d.SetDefDrawEnv(Mem.s_DrawEnv1_005e98f0, 0, 0xf0, 0x140, 0xf0);
+        Winsys3d.SetDefDispEnv(mem.s_DispEnv0_005e98dc, 0, 0xf0, 0x140, 0xf0);
+        Winsys3d.SetDefDispEnv(mem.s_DispEnv1_005e994c, 0, 0, 0x140, 0xf0);
+        Winsys3d.SetDefDrawEnv(mem.s_DrawEnv0_005e9880, 0, 0, 0x140, 0xf0);
+        Winsys3d.SetDefDrawEnv(mem.s_DrawEnv1_005e98f0, 0, 0xf0, 0x140, 0xf0);
 
         // Ghidra: the 12 global stores that follow the calls. Each one lands inside one of the four
         // structs above at an offset that matches the DISPENV/DRAWENV layout exactly â€” which is the
@@ -1060,31 +1091,31 @@ public static unsafe partial class Blaze
         //
         // _DAT_005e98e4/_e6/_e8/_ea = disp env 0's `screen` rect  (0,0,320,240) â€” replaces the
         // 0x100-wide default SetDefDispEnv writes.
-        *(short*)(Mem.s_DispEnv0_005e98dc + 0x08) = 0;
-        *(short*)(Mem.s_DispEnv0_005e98dc + 0x0a) = 0;
-        *(short*)(Mem.s_DispEnv0_005e98dc + 0x0c) = 0x140;
-        *(short*)(Mem.s_DispEnv0_005e98dc + 0x0e) = 0xf0;
+        *(short*)(mem.s_DispEnv0_005e98dc + 0x08) = 0;
+        *(short*)(mem.s_DispEnv0_005e98dc + 0x0a) = 0;
+        *(short*)(mem.s_DispEnv0_005e98dc + 0x0c) = 0x140;
+        *(short*)(mem.s_DispEnv0_005e98dc + 0x0e) = 0xf0;
 
         // _DAT_005e9954/_56/_58/_5a = disp env 1's `screen` rect, same values.
-        *(short*)(Mem.s_DispEnv1_005e994c + 0x08) = 0;
-        *(short*)(Mem.s_DispEnv1_005e994c + 0x0a) = 0;
-        *(short*)(Mem.s_DispEnv1_005e994c + 0x0c) = 0x140;
-        *(short*)(Mem.s_DispEnv1_005e994c + 0x0e) = 0xf0;
+        *(short*)(mem.s_DispEnv1_005e994c + 0x08) = 0;
+        *(short*)(mem.s_DispEnv1_005e994c + 0x0a) = 0;
+        *(short*)(mem.s_DispEnv1_005e994c + 0x0c) = 0x140;
+        *(short*)(mem.s_DispEnv1_005e994c + 0x0e) = 0xf0;
 
         // DAT_005e9896 / _DAT_005e9898 and DAT_005e9906 / _DAT_005e9908 = each draw env's `dtd`
         // (dither, offset 0x16 â€” already 1 from SetDefDrawEnv, so this store is a no-op) and `isbg`
         // (offset 0x18 â€” flipped from 0 to 1, i.e. clear the framebuffer to the background colour
         // before drawing). Ghidra shows the isbg stores as 2-byte writes overlapping the adjacent
         // `r0` byte; r0 was just zeroed by SetDefDrawEnv, so a byte store is equivalent here.
-        *(Mem.s_DrawEnv0_005e9880 + 0x16) = 1;
-        *(Mem.s_DrawEnv0_005e9880 + 0x18) = 1;
-        *(Mem.s_DrawEnv1_005e98f0 + 0x16) = 1;
-        *(Mem.s_DrawEnv1_005e98f0 + 0x18) = 1;
+        *(mem.s_DrawEnv0_005e9880 + 0x16) = 1;
+        *(mem.s_DrawEnv0_005e9880 + 0x18) = 1;
+        *(mem.s_DrawEnv1_005e98f0 + 0x16) = 1;
+        *(mem.s_DrawEnv1_005e98f0 + 0x18) = 1;
 
         byte* mainMem = GetMainMemPtr();
         if (mainMem == null) return; // TODO(REVERSE): winsys3d.dll's MainMem not yet resolvable in this environment
 
-        if (Mem.s_DebugModeLatch_005633a8 == 0)
+        if (mem.s_DebugModeLatch_005633a8 == 0)
         {
             // Ghidra: two runs of `*(undefined4*)(mainMem + 4 + off) = 0x80008000;` â€” a checkerboard fill.
             for (int off = 0x1c3ffc - 4; off >= 0x1c1ffc; off -= 4)

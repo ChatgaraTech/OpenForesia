@@ -43,7 +43,7 @@ public static unsafe partial class Blaze
     /// already absolute and address the CD root instead.
     /// </para>
     /// </summary>
-    private static byte* BuildCdPath(byte* fileName)
+    internal static byte* BuildCdPath(byte* fileName)
     {
         byte* path = (byte*)Malloc(64);
         int i = 0;

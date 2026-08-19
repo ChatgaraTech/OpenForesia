@@ -621,3 +621,36 @@ hors du `try`/`catch` de l'initialiseur de module.
 
 **Conduite à tenir** : relancer une fois. Si l'échec se répète plusieurs fois d'affilée, alors
 seulement chercher ce qui a augmenté la pression sur la fenêtre basse.
+
+## « relance détectée » : ce que cette ligne veut dire, et pourquoi il faut la lire (2026-08-19)
+
+`playtest.ps1` imprime `(relance detectee : fenetre portee par le PID N)` quand le processus qui
+porte la fenêtre n'est pas celui qu'il a lancé. C'est le chemin de récupération documenté : le jeu
+**se relance en processus fils quand il perd la course pour la mémoire basse** (voir
+`EnsureDisplayListArena`). Le journal le confirme :
+`display-list arena: lost the race for low memory, relaunching (attempt N of 3)`.
+
+Ce n'est **pas** une erreur — la partie relancée tourne normalement. Mais **le taux compte**. Le
+taux de référence est d'environ **une exécution sur quatre**. Le 2026-08-19, il est monté à cinq sur
+huit à cause d'un changement du composition root, et ni le verdict « aucun plantage » ni le débit
+par image n'ont bougé. Cette ligne d'information a été le seul signal.
+
+**Si tu la vois plusieurs fois d'affilée alors que les exécutions précédentes ne la montraient pas,
+mesure le taux avant de conclure.** Le lancement direct suffit et va plus vite que `playtest.ps1`
+(pas d'attente de menu) :
+
+```powershell
+$exe = "bin\Debug\net9.0\OpenForesia.exe"; $lost = 0; $n = 16
+for ($i = 1; $i -le $n; $i++) {
+    $o = "$env:TEMP\of_o.txt"; $e = "$env:TEMP\of_e.txt"
+    Start-Process $exe -WorkingDirectory (Get-Location) -RedirectStandardOutput $o -RedirectStandardError $e | Out-Null
+    Start-Sleep -Seconds 6
+    Get-Process -Name 'OpenForesia' -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Milliseconds 400
+    if (((Get-Content $o -Raw) + (Get-Content $e -Raw)) -match 'lost the race') { $lost++ }
+}
+"$lost perdues / $n"
+```
+
+À lancer depuis `OpenForesia/`. **Seize essais, pas huit** : à ce taux, huit ne distinguent pas 25 %
+de 40 %.

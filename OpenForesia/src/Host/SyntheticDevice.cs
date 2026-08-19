@@ -65,18 +65,18 @@ internal static unsafe class SyntheticDevice
     /// Champ statique depuis la sortie de <c>partial class Blaze</c> (2026-08-19). Il devait être
     /// une propriété calculée tant que ce fichier faisait partie de la classe partielle : l'ordre
     /// d'initialisation des champs statiques <b>entre fichiers d'une même classe</b> n'est pas
-    /// garanti, et celui-ci dépend de <c>Blaze.s_WindowedStartup</c>. Entre deux classes
+    /// garanti, et celui-ci dépend de <c>Video.s_WindowedStartup</c>. Entre deux classes
     /// distinctes, la garantie existe — lire un membre de <c>Blaze</c> déclenche l'initialisation
     /// de <c>Blaze</c> avant la lecture. Le contournement n'a donc plus d'objet.
     /// </para>
     /// <para>
-    /// Le comportement est inchangé : <c>s_WindowedStartup</c> est lui-même un champ
+    /// Le comportement est inchangé : <c>Video.s_WindowedStartup</c> est lui-même un champ
     /// <c>static readonly</c>, donc les deux variables d'environnement étaient déjà lues une seule
     /// fois à l'initialisation du type. Rien dans le projet ne les modifie en cours d'exécution.
     /// </para>
     /// </summary>
     private static readonly bool s_UseSyntheticDevice =
-        s_WindowedStartup && Environment.GetEnvironmentVariable("OPENFORESIA_LEGACY_3DHELP") != "1";
+        Video.s_WindowedStartup && Environment.GetEnvironmentVariable("OPENFORESIA_LEGACY_3DHELP") != "1";
 
     /// <summary>
     /// Octets retirés de la pile par chaque slot, indexés par <c>offset / 4</c>. Extrait du binaire ;

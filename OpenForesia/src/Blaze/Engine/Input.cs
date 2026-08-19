@@ -403,7 +403,7 @@ public static unsafe partial class Blaze
     private static void ReleaseComObject(void* obj)
     {
         if (obj == null) return;
-        var release = (delegate* unmanaged[Stdcall]<void*, uint>)(*(void***)obj)[IUnknown_Release];
+        var release = (delegate* unmanaged[Stdcall]<void*, uint>)(*(void***)obj)[Video.IUnknown_Release];
         release(obj);
     }
 
@@ -440,7 +440,7 @@ public static unsafe partial class Blaze
 
     // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
-    // The four global libgpu environment structs InitViewportSurfaces sets up (Ghidra:
+    // The four global libgpu environment structs Vid.InitViewportSurfaces sets up (Ghidra:
     // DAT_005e9880 / DAT_005e98dc / DAT_005e98f0 / DAT_005e994c). Their **addresses prove their
     // sizes**: consecutive structs sit 92 and 20 bytes apart, alternating, which is exactly
     // sizeof(DRAWENV) and sizeof(DISPENV) in the PlayStation SDK's libgpu:

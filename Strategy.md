@@ -500,3 +500,31 @@ chargent, dans `OpenForesia.Tools/` :
 
 Un outil de vérification doit lui-même être vérifié : `compare-bodies.ps1 -SelfTest` prouve qu'il
 ignore bien un changement de forme et attrape bien un changement de logique.
+
+### Ce que ces deux outils ne voient pas
+
+Ils comparent du **texte**. Ils ne voient donc rien de ce qui relève du *moment* où le code
+s'exécute : ordre d'initialisation, coût placé devant une course, allocation déplacée d'une phase à
+une autre. Le 2026-08-19, la conversion de `Engine/Video.cs` a fait passer la course pour la
+mémoire basse de 25 % à 62 % d'échec sans que l'oracle, le build, les tests de disposition ni le
+débit par image ne bougent d'un iota. Tous verts.
+
+Ce que la vérification par oracle établit, c'est : « la logique écrite est la même ». Pas : « le
+programme se comporte pareil ». Pour cette seconde question il n'y a que l'exécution répétée — et
+il faut la mesurer sur assez d'essais quand le comportement est non déterministe (ici : 8 essais
+n'auraient pas suffi à conclure, 16 ont donné les 25 % attendus).
+
+### Le composition root est devant une course
+
+`TryPrepareDisplayListArena()` est appelée par un `[ModuleInitializer]`, et son premier geste lit un
+champ statique de `Blaze` : cela déclenche **toute** l'initialisation statique de `Blaze` avant que
+l'arène basse ne soit réclamée. Tout ce qui est construit à ce moment-là est du travail placé devant
+la course.
+
+D'où la règle : **dans `Subsystems.cs`, `Mem` est immédiat, les sous-systèmes sont paresseux.** `Mem`
+l'est parce que la réclamation le lit vraiment (`s_UiDescriptors_00560ff0`,
+`s_StatusDescriptor_00560728`, qui portent leur ordering table masquée sur 24 bits). Les autres, non
+— rien dans le chemin de réclamation ne les touche.
+
+Cette paresse **ne contredit pas** la leçon « pris paresseusement, le descripteur échouait » :
+celle-ci porte sur les descripteurs de mémoire basse, pas sur les objets de sous-système.

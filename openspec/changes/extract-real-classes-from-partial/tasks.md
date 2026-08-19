@@ -289,10 +289,24 @@ chaque fichier** — jamais deux conversions avant une vérification.
 - [x] 7.4 **Refermer le piège d'ordre.** `Memory/Globals.cs` supprimé, `Mem` replié en tête de
       `Subsystems.cs` : l'ordre d'initialisation des champs statiques n'est garanti que dans un
       **même fichier**. L'en-tête affirmait un ordre garanti qui reposait sur la chance.
-- [ ] 7.5 `Engine/UiWindow.cs` (366 l.) — le plus petit des six restants.
-- [ ] 7.6 `Engine/Model3d.cs` (583 l.).
-- [ ] 7.7 `Engine/Input.cs` (1 024 l.) — porte `CountJoystickCallback`, second rappel natif.
-- [ ] 7.8 `Engine/Video.cs` (1 112 l.).
-- [ ] 7.9 `Engine/Resources.cs` (1 119 l.) — porte `ToAnsiZ`, appelé par plusieurs classes déjà
+- [x] 7.5 `Engine/Video.cs` → `Video(GameMemory)`. 1 143 l., 59 membres dont **2 statiques**.
+      Choisi par **clôture mesurée**, pas par taille : `UiWindow` (368 l.) est le plus petit des
+      six mais ne possède aucune globale et en emprunte 6 à `Screens/`, donc le convertir
+      entamerait l'étape D. `Video` n'emprunte qu'un seul symbole hors `GameMemory`.
+      `MoviePlayerWindowProc` reste `static` et rejoint l'instance par `Vid.` — son corps appelle
+      d'autres membres, contrairement aux une-lignes de `SaveData`. `s_WindowedStartup` reste
+      `static` : décision d'hôte, lue par `Host/` à l'initialisation de ses propres types.
+- [x] 7.6 **Réparer la régression de course pour la mémoire basse**, trouvée par la ligne
+      « relance détectée » du banc d'essai — pas par un plantage, pas par un débit dégradé.
+      Les quatre sous-systèmes étaient construits AVANT la réclamation de l'arène sans que rien ne
+      l'exige : mesuré **5 courses perdues sur 8**, contre 1 sur 4 documenté. Points d'entrée
+      rendus paresseux (`Ui => s_ui ??= new UiText(Mem)`), `Mem` reste immédiat car lui seul porte
+      la contrainte. Re-mesuré : **4 perdues sur 16 = 25 %**, le taux documenté.
+- [ ] 7.7 `Engine/UiWindow.cs` (368 l.) — à faire **après** avoir tranché ses 6 globales d'écran ;
+      sinon la conversion déborde sur l'étape D.
+- [ ] 7.8 `Engine/Model3d.cs` (583 l.) — 18 emprunts à d'autres fichiers `Engine/`, donc à faire
+      quand ceux-ci seront convertis.
+- [ ] 7.9 `Engine/Input.cs` (1 017 l.) — porte `CountJoystickCallback`, second rappel natif.
+- [ ] 7.10 `Engine/Resources.cs` (1 110 l.) — porte `ToAnsiZ`, appelé par plusieurs classes déjà
       converties ; sa conversion demandera de décider où vit cette aide.
-- [ ] 7.10 `Engine/Audio.cs` (1 255 l.).
+- [ ] 7.11 `Engine/Audio.cs` (1 253 l.).

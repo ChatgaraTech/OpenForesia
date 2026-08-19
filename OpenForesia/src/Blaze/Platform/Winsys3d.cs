@@ -115,7 +115,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: RaiseQuitException().</summary>
-    private static void RaiseQuitException() => throw new BlazeQuitException();
+    internal static void RaiseQuitException() => throw new BlazeQuitException();
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct MSG

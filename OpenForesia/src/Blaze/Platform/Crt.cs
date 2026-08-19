@@ -67,7 +67,7 @@ public static unsafe partial class Blaze
     /// allocator backed by the .NET native heap. Returns null on failure, matching the
     /// original malloc() contract that every call site in Blaze.c checks against.
     /// </summary>
-    private static void* Malloc(nuint size)
+    internal static void* Malloc(nuint size)
     {
         if (size == 0) size = 1;
         try { return NativeMemory.Alloc(size); }
@@ -75,7 +75,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00547f10/FUN_00548dd0/FUN_00548e30 (CRT `free` + SBH bookkeeping).</summary>
-    private static void Free(void* block)
+    internal static void Free(void* block)
     {
         if (block != null) NativeMemory.Free(block);
     }

@@ -23,7 +23,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // `Blaze` porte les aides que cette classe appelle : ToAnsiZ, VirtualAlloc, GetModuleHandleA,
-// RenderSizeFromSizeSetting, s_WindowedStartup. La dependance Host -> Blaze est assumee.
+// RenderSizeFromSizeSetting, Video.s_WindowedStartup. La dependance Host -> Blaze est assumee.
 using static OpenForesia.Blaze.Blaze;
 
 namespace OpenForesia.Blaze;
@@ -270,7 +270,7 @@ internal static unsafe class DeviceShim
             // les touches par `PeekMessageA(NULL, …)`, qui ne rapporte que les messages **du thread
             // appelant** : sans le focus, les frappes partent vers une autre application et le
             // démarrage n'atteint jamais le menu. Mesuré exactement ainsi.
-            if (s_WindowedStartup) D3D11Window.Focus();
+            if (Video.s_WindowedStartup) D3D11Window.Focus();
         });
     }
 

@@ -6273,3 +6273,95 @@ conformes. Fins de ligne vérifiées CRLF uniformes, région à encodage double 
 `UiWindow` a dû exposer `EmitClipRect`/`EmitViewportRect`, et `SaveSlots`/`Options` exposer
 `LabelAt`/`BindMenuLabels` : ces promotions `private` → `internal` marquent les coutures que les
 prochaines conversions auront à trancher.
+
+---
+
+## 2026-08-19 (étape C, 4 fichiers sur 9) — `Video`, et une régression cumulative trouvée par mesure
+
+`Engine/Video.cs` → `Video(GameMemory)`, 1 143 l., 59 membres dont **2 statiques**.
+
+### Le choix du fichier a été mesuré, pas déduit de sa taille
+
+Le plan disait « du plus petit au plus grand », donc `UiWindow.cs` (368 l.). La mesure de **clôture**
+a dit l'inverse :
+
+```
+                lignes | déjà dans GameMemory · à lui · autre Engine · SCREENS
+  UiWindow.cs      368 |      4      0      5      6      <- le PIRE
+  Model3d.cs       583 |     10      0     18      1
+  Input.cs       1 017 |      0     27      2      7
+  Video.cs       1 112 |      6     13      1      0      <- le MEILLEUR
+  Resources.cs   1 110 |      5     34      4      6
+  Audio.cs       1 253 |      0     25      3      2
+```
+
+`UiWindow` ne possède **aucune** globale : c'est un pur consommateur, et six de ses emprunts
+pointent vers `Screens/`. Le convertir aurait obligé à rapatrier des globales d'écrans, c'est-à-dire
+à entamer l'étape D délibérément différée. `Video` n'emprunte qu'**un** symbole hors `GameMemory`.
+
+**La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si.**
+
+### Deux membres restent statiques, pour deux raisons différentes
+
+`MoviePlayerWindowProc` porte `[UnmanagedCallersOnly]`. Contrairement aux huit une-lignes de
+`SaveData`, son corps **appelle d'autres membres** — il rejoint donc l'instance par le point d'entrée
+statique (`Vid.OnMoviePlayerActivate`, `Vid.StopMoviePlayback`…). Les deux lambdas de
+`RegisterDisplayModeRestore` ont gardé leur mot-clé `static` par le même chemin : le `static` d'un
+lambda est une garantie de non-capture, et on ne la brade pas pour économiser une qualification.
+
+`s_WindowedStartup` reste statique **délibérément**. Ce n'est pas une globale `.data` du jeu : c'est
+une décision d'hôte lue une fois dans l'environnement, que `Host/DeviceShim.cs` et
+`Host/SyntheticDevice.cs` lisent pendant l'initialisation de leurs propres types. En faire un champ
+d'instance ferait dépendre cette initialisation de la construction complète des sous-systèmes, sur
+le chemin de démarrage le plus fragile du projet.
+
+### La régression cumulative, et pourquoi elle n'était pas propre à `Video`
+
+`playtest.ps1` a signalé « relance détectée » trois fois sur trois, alors que les exécutions
+précédentes de la séance n'en montraient aucune. Le journal a donné la cause :
+`display-list arena: lost the race for low memory, relaunching`.
+
+Mesuré, 8 lancements : **5 courses perdues sur 8**, contre « environ une sur quatre » documenté.
+
+Le mécanisme n'est pas dans `Video` mais dans la forme du composition root :
+
+```
+  [ModuleInitializer] -> TryPrepareDisplayListArena()
+                      -> lit un champ statique de Blaze
+                      -> construit Mem, Ui, Prims, Saves, Vid       <-- tout ça d'abord
+                      -> PUIS réclame l'arène basse                 <-- la course
+```
+
+Or la réclamation ne lit que `Mem` (`s_UiDescriptors_00560ff0`, `s_StatusDescriptor_00560728`).
+**Les quatre sous-systèmes étaient construits avant la course sans que rien ne l'exige** — les
+tables de `UiText`, les huit chaînes de `Video`, autant de travail d'allocation placé au pire
+endroit possible. Chaque conversion aggravait le taux ; `Video` a été celle qui l'a rendu visible.
+
+Correction : les quatre points d'entrée deviennent **paresseux** (`Ui => s_ui ??= new UiText(Mem)`).
+`Mem` reste immédiat, puisque lui seul porte la contrainte de mémoire basse.
+
+```
+  avant correction, 8 essais  : 5 perdues  (62 %)
+  après correction, 16 essais : 4 perdues  (25 %)   = le taux documenté
+```
+
+Cette paresse **ne contredit pas** la leçon « pris paresseusement, le descripteur échouait » :
+celle-ci porte sur les *descripteurs de mémoire basse*, qui restent pris immédiatement dans
+`TryPrepareDisplayListArena`.
+
+**Ce que l'épisode enseigne** : le banc d'essai a signalé la régression par une ligne d'information
+que rien n'obligeait à lire — « relance détectée » — et non par un plantage ni par un débit
+dégradé. Les deux verdicts habituels (aucun plantage, 382,3 et 387 primitives par image) étaient
+**verts pendant toute la régression**. Un indicateur vert ne prouve que ce qu'il mesure.
+
+### Vérification
+
+Build solution 0 erreur · oracle « aucune logique modifiée » sur 511 corps · tests de disposition
+inchangés (3 rouges attendus / 2 verts) · `-Entry 1` **382,3** et `-Entry 2` **387** primitives par
+image · captures relues et identiques aux références.
+
+### Promotions d'accessibilité entraînées
+
+`private` → `internal` : `RaiseQuitException`, `Malloc`, `Free`, `BuildCdPath`, `s_ErrorCaption`,
+et `Video.IUnknown_Release` — une constante de `Video` qu'`Input.cs` lisait sans que rien ne le dise.
+Chacune marque une couture que les conversions suivantes auront à trancher.

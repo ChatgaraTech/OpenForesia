@@ -336,3 +336,24 @@ en porter.
 
 Quand une tâche dit « mesurer d'abord », c'est qu'elle peut s'annuler elle-même. **Ne construis pas
 ce que la mesure ne justifie pas**, et consigne pourquoi.
+
+La mesure sert aussi à **choisir l'ordre du travail**, pas seulement à annuler une tâche. Le 2026-08-19,
+l'ordre prévu pour convertir `Engine/` allait du plus petit fichier au plus grand ; la mesure de
+**clôture** — combien de symboles un fichier possède, combien il emprunte, et à qui — a désigné
+l'inverse. Le plus petit (`UiWindow.cs`, 368 l.) ne possède aucune globale et en emprunte six à des
+écrans, donc le convertir aurait entamé une étape délibérément différée.
+
+**La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si.**
+
+## Un indicateur vert ne prouve que ce qu'il mesure
+
+Toujours le 2026-08-19 : la conversion de `Engine/Video.cs` a fait passer la course pour la mémoire
+basse de « une fois sur quatre perdue » à cinq sur huit. Pendant toute la régression, les deux
+verdicts habituels étaient **verts** — aucun plantage, 382,3 et 387 primitives par image, captures
+conformes. Ce qui l'a révélée est une ligne d'information que rien n'obligeait à lire :
+« relance détectée », imprimée par `playtest.ps1`.
+
+Quand le banc d'essai dit quelque chose d'inhabituel, même sans le marquer comme une erreur,
+**cherche pourquoi avant de conclure**. Compare à ce que les exécutions précédentes affichaient. Un
+compteur de conformité ne surveille pas ce qu'il n'a pas été écrit pour surveiller — ici, le coût
+d'initialisation placé devant une course non déterministe.
