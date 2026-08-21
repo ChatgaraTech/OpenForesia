@@ -7733,3 +7733,62 @@ maintenant la correction la plus rentable du dépôt.**
 Build 0 erreur · 5 tests de disposition verts · oracle refigé à 554 corps, les deux seuls changements
 de logique étant ceux faits sciemment · en jeu, la frontière a reculé **trois fois** en une session :
 `FUN_00516fc0` → opcode 0 → verbe 3 → verbe 10.
+
+---
+
+## 2026-08-21 — la chaîne de verbes est bouclée : le prologue s'exécute en entier
+
+Trois maillons ont suffi, pas la quinzaine annoncée :
+
+| maillon | verdict |
+|---|---|
+| verbe 3 = `FUN_00442F60` | 336 o., absente de `Blaze.c`, transcrite |
+| verbe 10 = `FUN_004441F0` | **souche** `xor eax,eax ; ret` |
+| opcode 14 = `0x005158f0` | absent de `Blaze.c`, transcrit |
+
+Les **deux** lancements de script du prologue vont maintenant au bout, et l'exécution retombe sur la
+lacune posée en fin de prologue : la boucle par image. C'est le résultat attendu.
+
+### Deux souches, deux comportements — la distinction compte
+
+`FUN_00401FA0` est un `ret` **nu** : il ne touche pas `EAX`, qui contient encore l'indice du verbe au
+moment du `mov [ecx],eax`. `FUN_004441F0` est `xor eax,eax ; ret` : il rend **0**.
+
+Les confondre — « ce sont deux fonctions vides » — aurait donné un résultat de condition faux dans un
+cas sur deux, et donc un script qui s'arrête là où il devrait continuer. La différence ne se voit pas
+dans une décompilation : `Blaze.c` rendrait les deux par `return;` ou `return 0;` sans que la
+distinction porte à conséquence. Elle ne se voit qu'au niveau machine, parce que l'appelant lit un
+registre que le callee n'a pas écrit.
+
+Un balayage des seize adresses distinctes de `s_VtSource_0056aec8` a montré que **seule**
+`0x004441F0` est une souche : les quinze autres sont de vraies fonctions. Le balayage a coûté une
+minute et a évité de le redécouvrir une par une.
+
+### Le choix du locuteur de l'opcode 14 se lit à l'envers
+
+L'entité courante n'est remplacée **que si elle est déjà un locuteur valide**. Nulle, ou d'un genre
+autre que `0x800000`, elle est gardée telle quelle ; quand elle l'est, la fonction va chercher le
+premier membre du groupe disponible et le prend à sa place. C'est ce que disent les trois
+`jne/je 00515945` du prologue, et c'est le contraire de ce qu'on écrit spontanément.
+
+### Deux corrections dans du code existant
+
+* **`BindMenuLabels` avait un paramètre mal nommé.** Son deuxième argument s'appelait `flags` parce
+  que le seul site connu y passait 0. L'opcode 14 et `FUN_00530f20` y passent tous deux un
+  **pointeur d'entité** — le locuteur auquel la boîte est attachée. Renommé `subject`.
+* **Une lacune de `BindMenuLabels` est comblée.** Sa branche `if (*labels == 8)` levait une
+  `NotImplementedException` faute de `FUN_00535300` ; celle-ci est transcrite depuis le matin
+  (`FreezeAllEntities`). La branche est maintenant écrite. Le menu principal ne l'atteint pas — sa
+  table commence par `0x440c` — mais l'opcode 14 passe des tables de dialogue quelconques.
+
+Ce deuxième point est le troisième cas de la journée où **le dépôt contenait déjà de quoi combler un
+trou qu'il déclarait ouvert** (après le chargeur de tables de verbes et la table `s_VtSource_0056aec8`
+elle-même). Vérifier ce qui existe avant de déclarer un blocage est manifestement rentable.
+
+### La frontière
+
+`FUN_00516fc0`, boucle par image : le `do { … } while` de `0x00517163`, ~1 100 lignes. Elle commence
+par `FUN_0040a600` / `FUN_00533000` / `FUN_0053dc30` / `FUN_0050e2b0`, puis l'affichage de mise au
+point gardé par `DAT_005633a8`. C'est un autre ordre de grandeur que tout ce qui précède.
+
+Build 0 erreur · 5 tests verts · oracle refigé à 555 corps.

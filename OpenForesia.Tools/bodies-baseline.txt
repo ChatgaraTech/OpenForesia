@@ -544,15 +544,13 @@ targetSaved[1] = target[1];
 targetSaved[2] = target[2];
 *(int**)Entity(0x005eca94) = targetWork;
 ## BindMenuLabels
-*(uint*)(context + 0x8b0) = flags;
+*(uint*)(context + 0x8b0) = subject;
 context[0x8c7] |= 1;
 *(byte**)(context + 0x8ac) = labels;
 *(uint*)(context + 0x8a8) = extra;
 if (*(short*)labels == 8)
 {
-throw new NotImplementedException(
-"FUN_00535300: reached only when the bound table's first short is 8 â€” " +
-"not the case for the main menu's label table");
+FreezeAllEntities();
 }
 ## BlitGlyphRows
 byte* row = s_StagingWrite_005e8304;
@@ -11939,6 +11937,7 @@ uint target = verbs[verb];
 *result = target switch
 {
 0x00401FA0 => verb,
+0x004441F0 => 0,
 0x00442F60 => AreaVerb_00442F60(),
 _ => throw new NotImplementedException(
 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
@@ -12007,6 +12006,27 @@ return s + 2;
 return s + 2;
 ## ScriptOpSetRemove
 *result = ScriptSetRemove(Entity(setVa), s[1]);
+return s + 2;
+## ScriptOpShowMessage
+byte* speaker = ent;
+bool prefersPartyMember =
+speaker != null
+&& (*(uint*)speaker & 0xfc0000) == 0x800000
+&& ((*(uint*)speaker & 0x50000000) != 0 || *(ushort*)(speaker + 0x12) != 0);
+if (prefersPartyMember)
+{
+byte* slot = Arena(0x005e93c0);
+for (int remaining = s_PartySize_005e9020; remaining != 0; remaining--, slot += 0x9c)
+{
+if ((*(uint*)slot & 0x50010000) == 0 && *(ushort*)(slot + 0x12) == 0)
+{
+speaker = slot;
+break;
+}
+}
+}
+byte* text = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + s[1] * 4);
+BindMenuLabels(text, (uint)(nint)speaker, s_WorldMapDescriptor_005633b0, 0);
 return s + 2;
 ## ScriptOpSpawnEffect
 *result = SpawnEffectEntity(ent, s[1], s[2], s[3]) ^ 1u;

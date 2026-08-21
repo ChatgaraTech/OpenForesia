@@ -2455,24 +2455,35 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00544350 @ 0x00544350 â€” binds the label table and its flags into the menu
-    /// context. The call site is <c>FUN_00544350(&amp;DAT_0056e670, 0, &amp;DAT_0056dd58, 0)</c>.
+    /// Ghidra: FUN_00544350 @ 0x00544350 — binds the label table into the menu context. The first
+    /// call site found was <c>FUN_00544350(&amp;DAT_0056e670, 0, &amp;DAT_0056dd58, 0)</c>.
+    ///
+    /// <para>
+    /// <b>Le deuxieme parametre s'appelait <c>flags</c> jusqu'au 2026-08-21, et c'etait faux.</b> Ce
+    /// nom venait du seul site connu alors, qui y passe 0. L'opcode 14 de l'interpreteur de script
+    /// (<c>0x005158f0</c>) et <c>FUN_00530f20</c> y passent tous deux un <b>pointeur d'entite</b> :
+    /// le locuteur auquel la boite de dialogue est attachee. Renomme des que le role a ete etabli,
+    /// comme <c>Strategy.md</c> le demande. Le type reste <c>uint</c> — c'est un mot de 32 bits
+    /// range tel quel a <c>+0x8b0</c>, et le binaire est x86.
+    /// </para>
     /// </summary>
-    internal static void BindMenuLabels(byte* labels, uint flags, byte* context, uint extra)
+    internal static void BindMenuLabels(byte* labels, uint subject, byte* context, uint extra)
     {
-        *(uint*)(context + 0x8b0) = flags;
+        *(uint*)(context + 0x8b0) = subject;
         context[0x8c7] |= 1;
         *(byte**)(context + 0x8ac) = labels;
         *(uint*)(context + 0x8a8) = extra;
 
-        // Ghidra: if (*param_1 == 8) FUN_00535300(0). The label table's first short is 0x440c
-        // (recovered from the binary), so this never fires at this call site â€” but the branch is
-        // kept because other callers may pass a table that does.
+        // Ghidra: if (*param_1 == 8) FUN_00535300(0). La table du menu principal commence par
+        // 0x440c (releve dans le binaire), donc ce site-la ne declenche jamais — mais l'opcode 14
+        // passe des tables de dialogue quelconques, et celle-ci peut valoir 8.
+        //
+        // La branche levait une NotImplementedException jusqu'au 2026-08-21 ; FUN_00535300 est
+        // maintenant transcrite (FreezeAllEntities, Screens/State03/WorldMapScript.cs), donc le
+        // trou est comble.
         if (*(short*)labels == 8)
         {
-            throw new NotImplementedException(
-                "FUN_00535300: reached only when the bound table's first short is 8 â€” " +
-                "not the case for the main menu's label table");
+            FreezeAllEntities();
         }
     }
 

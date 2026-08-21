@@ -152,14 +152,52 @@ relance, il en nomme un autre.
 - [x] verbe 3 = `FUN_00442F60` (336 o., **absente de `Blaze.c`**, désassemblée — dump dans
       `Legacy/Raw/Blaze/AreaVerbs/`). Décale d'un cran les bits du banc `0x005e9000` vers
       `0x005e9840`, choisit une piste musicale d'après `0x005e96fe` et la lance. Rend 0.
-- [ ] verbe 10 = `FUN_004441F0` — **le mur actuel**, également absent de `Blaze.c`.
+- [x] verbe 10 = `FUN_004441F0` — **souche** `xor eax,eax ; ret`. À ne pas confondre avec
+      `FUN_00401FA0`, qui est un `ret` **nu** : celui-là laisse `EAX` intact, donc le résultat de
+      condition reçoit l'indice du verbe, tandis que celui-ci rend 0. Les confondre donnait un
+      script qui s'arrête là où il devrait continuer.
+- [x] opcode 14 = `0x005158f0` — affichage d'un dialogue, absent de `Blaze.c`, transcrit.
 - [ ] les treize autres verbes réels de l'index 0 (`0x00443100`, `0x00443260`, `0x004430B0`,
       `0x00442F20`, `0x00442E70`, `0x00442EA0`, `0x00442E20`, `0x00445840`, `0x004431F0`,
       `0x00442E10`, `0x00442DB0`, `0x004457F0`, `0x00442D90`), plus `0x0053DD20/DEA0/DF20` aux
-      indices 56–58. Ils seront demandés au fur et à mesure — inutile de tous les écrire d'avance.
+      indices 56–58. **Aucun n'est demandé pour l'instant** — le prologue va au bout sans eux.
+      Un balayage a confirmé que seul `0x004441F0` est une souche ; les quinze autres sont de
+      vraies fonctions.
 
 **Le retour d'un verbe devient le résultat de condition**, donc il ne peut pas être deviné : un
 verbe non transcrit lève en se nommant plutôt que de rendre une valeur plausible.
+
+### (5) La boucle par image — le prochain chantier, et il est d'un autre ordre
+
+**C'est la frontière depuis le 2026-08-21 au soir.** Le prologue s'exécute en entier, ses deux
+lancements de script vont au bout, et l'exécution s'arrête sur la lacune posée en fin de prologue.
+
+Forme : `Blaze.c` l. 63835–64929, **~1 095 lignes**, un seul `do { … } while(true)` avec **quatre
+labels** (`0x00518473`, `0x005193ff`, `0x00519455`, `0x00517a64`) — donc à reconstruire en flot, pas
+à translittérer. **Une seule sortie**, ligne 64096, gardée par `DAT_005de02c & 2` : elle relance
+deux fois `FUN_0040a600`, pose `DAT_005e9898`/`DAT_005e9908` à 1 et rend la main.
+
+L'arbre d'appelées de la seule tête de boucle :
+
+| fonction | état | taille |
+|---|---|---|
+| `FUN_0040a600` | **no-op**, `ret` nu vérifié au désassembleur | — |
+| `FUN_00533000` | déjà transcrite | — |
+| `FUN_0053dc30` | à écrire | 34 l. (tire `FUN_0053db20`, 11 l.) |
+| `FUN_0050e2b0` | à écrire | 107 l. |
+| `FUN_0050e520` | à écrire | 41 l. |
+
+Puis, plus loin dans le corps : `FUN_004011c0` (**358 l.**), `FUN_00532b40` (24 l.),
+`FUN_005320f0` (48 l.), et `FUN_0051be90` — **absente de `Blaze.c`**, à désassembler.
+
+**Découpage proposé** : (a) la tête de boucle et ses quatre appelées ; (b) l'affichage de mise au
+point (~150 l., gardé par `DAT_005633a8 == 0 && DAT_005de020 != 0`) — vérifier d'abord s'il est
+seulement atteint en jeu normal, auquel cas une lacune gardée suffit ; (c) la sortie et ce qui la
+précède, pour que le tick puisse au moins rendre la main ; (d) le reste.
+
+**Attention `FUN_0050e520`** : elle lit `DAT_005de034`, le symbole du défaut d'aliasing latent
+signalé plus bas. Passer par `s_Unknown_005de034` comme `CharacterCreation.cs`, pas par
+`Camera(0x005de034)`, tant que le doublon n'est pas résorbé.
 
 ### Ce que la vérification a déjà corrigé dans ce plan
 

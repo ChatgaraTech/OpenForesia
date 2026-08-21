@@ -124,6 +124,7 @@ public static unsafe partial class Blaze
             11 => ScriptOpPushPending(s),
             12 => ScriptOpSpawnSubArea(s),
             13 => ScriptOpSpawnFormation(ctx, s, result),
+            14 => ScriptOpShowMessage(ent, s),
             16 => ScriptOpSpawnEffect(ent, s, result),
             18 => ScriptOpFreeze(s),
             19 => ScriptOpUnfreeze(s),
@@ -1069,6 +1070,11 @@ public static unsafe partial class Blaze
             // encore l'indice de verbe au moment du `mov [ecx],eax`.
             0x00401FA0 => verb,
 
+            // 0x004441F0 : `xor eax,eax ; ret`, verifie au desassembleur. A distinguer de la souche
+            // ci-dessus — celle-ci met EAX a zero explicitement, donc le resultat de condition est
+            // 0 et non l'indice du verbe. Deux souches, deux comportements.
+            0x004441F0 => 0,
+
             0x00442F60 => AreaVerb_00442F60(),
 
             _ => throw new NotImplementedException(
@@ -1159,5 +1165,50 @@ public static unsafe partial class Blaze
         }
 
         return 0;                                          // Ghidra: xor eax,eax ; ret
+    }
+
+    /// <summary>
+    /// Ghidra: 0x005158f0 (opcode 14) — <b>affiche un dialogue</b>, attache a un locuteur. Absent de
+    /// <c>Blaze.c</c> ; releve au desassembleur.
+    ///
+    /// <para>
+    /// Le texte est pris dans la table <c>repertoire de zone + 0x70</c>, indexee par
+    /// <c>script[1]</c>, et remis a <see cref="BindMenuLabels"/> avec le descripteur de la carte du
+    /// monde.
+    /// </para>
+    /// <para>
+    /// <b>Le choix du locuteur se lit a l'envers de l'intuition.</b> L'entite courante n'est
+    /// remplacee que si elle est <i>deja</i> un locuteur valide — nulle, ou d'un genre autre que
+    /// <c>0x800000</c>, elle est gardee telle quelle. Quand elle l'est, la fonction cherche le
+    /// premier membre du groupe <b>disponible</b> (bits <c>0x50010000</c> tous eteints et champ
+    /// <c>+0x12</c> nul) et le prend a sa place ; si aucun ne convient, l'entite d'origine reste.
+    /// C'est ce que disent les trois <c>jne/je 00515945</c> du prologue, et rien d'autre.
+    /// </para>
+    /// </summary>
+    private static byte* ScriptOpShowMessage(byte* ent, byte* s)
+    {
+        byte* speaker = ent;
+
+        bool prefersPartyMember =
+            speaker != null
+            && (*(uint*)speaker & 0xfc0000) == 0x800000
+            && ((*(uint*)speaker & 0x50000000) != 0 || *(ushort*)(speaker + 0x12) != 0);
+
+        if (prefersPartyMember)
+        {
+            byte* slot = Mem.Arena(0x005e93c0);
+            for (int remaining = s_PartySize_005e9020; remaining != 0; remaining--, slot += 0x9c)
+            {
+                if ((*(uint*)slot & 0x50010000) == 0 && *(ushort*)(slot + 0x12) == 0)
+                {
+                    speaker = slot;
+                    break;
+                }
+            }
+        }
+
+        byte* text = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + s[1] * 4);
+        BindMenuLabels(text, (uint)(nint)speaker, s_WorldMapDescriptor_005633b0, 0);
+        return s + 2;
     }
 }
