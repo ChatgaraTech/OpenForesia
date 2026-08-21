@@ -558,3 +558,163 @@ Symptôme classique : « Invertaire » et « Enchère » semblent ne mener nulle
 en fait vers l'écran racine parce que le `save\` du répertoire de travail est vide — c'est le
 comportement de l'original quand il n'y a aucune sauvegarde. Le `.cfg`, lui, suit le chemin de
 l'**exe**. Les deux ne coïncident que si l'on lance depuis `bin\Debug\net9.0\`.
+
+---
+
+## `-Entry -1` reste sur l'écran-titre, et n'a donc aucun débit à mesurer (2026-08-19)
+
+Relevé en figeant les références d'avant-découpage. `-Entry -1` (« rester au menu ») produit une
+capture de l'**écran-titre / attract**, pas d'une liste d'entrées : l'image est **identique à
+`-Seconds 3` et à `-Seconds 25`**, donc ce n'est pas un cycle d'attract qu'on attraperait au mauvais
+moment.
+
+Sur cet écran le verdict affiche toujours :
+
+```
+pas assez de bilans [SHIM] pour mesurer la progression
+```
+
+**C'est normal, pas un échec.** Le régime titre/attract passe par `StartupSurface`
+(DIB section + `StretchDIBits`) et n'émet aucune primitive 3D ; les compteurs `[SHIM]`, alimentés
+par les slots `BeginScene` et `Flip`, restent donc à zéro. Ce n'est **pas** un effet du device
+synthétique : les entrées 1 et 2 l'utilisent aussi et comptent normalement.
+
+Conséquence pratique : pour une comparaison avant/après sur le menu principal, **le seul repère est
+la capture**, jamais le débit. Les écrans qui donnent un débit exploitable sont ceux qui empruntent
+le chemin Direct3D.
+
+### Repères mesurés le 2026-08-19, dépôt à `6cc5301`, aucune modification C#
+
+| écran | commande | débit |
+|---|---|---|
+| titre / attract | `-Entry -1 -Seconds 3` | aucun (voir ci-dessus) |
+| sélection des personnages | `-Entry 1 -Seconds 20 -WorkingDir OpenForesia` | **382,3** par image |
+| menu objets | `-Entry 2 -Seconds 20 -WorkingDir OpenForesia` | **387** par image |
+
+Les 382,3 concordent avec le repère historique (~382) mesuré sur le chemin hérité : le passage au
+device synthétique n'a pas déplacé la valeur.
+
+---
+
+## « No free block ... below 0x01000000 » : relancer, ce n'est pas une régression (2026-08-19)
+
+Un run peut échouer sur :
+
+```
+InvalidOperationException: No free block of 0x2000 bytes below 0x01000000.
+UI text descriptors are masked to 24 bits by FUN_005443a0, so they cannot live higher.
+   at AllocLowZeroed(...)
+```
+
+**C'est une course perdue pour la mémoire basse, et elle est non déterministe.** Mesuré le
+2026-08-19 : la même commande, relancée sans rien changer, passe et rend 434 primitives par image.
+
+Le mécanisme est documenté dans `REVERSE_STATUS.md`, § « The UI descriptors carry an ordering table,
+so they must live low ». Les descripteurs d'interface contiennent leur propre table d'ordonnancement
+à `+0xa4`, que `ClearOTagR` relie en masquant sur 24 bits : au-dessus de `0x01000000` le descripteur
+relie sa liste sur des adresses tronquées. Ils sont donc alloués sous cette barre, dans une fenêtre
+que l'ASLR et le chargeur laissent plus ou moins libre d'un lancement à l'autre.
+
+Ces symboles sont des **propriétés paresseuses** et non des initialiseurs de champ, précisément pour
+que la course perdue donne une exception rattrapable au lieu d'une `TypeInitializationException`
+hors du `try`/`catch` de l'initialiseur de module.
+
+**Conduite à tenir** : relancer une fois. Si l'échec se répète plusieurs fois d'affilée, alors
+seulement chercher ce qui a augmenté la pression sur la fenêtre basse.
+
+## « relance détectée » : ce que cette ligne veut dire, et pourquoi il faut la lire (2026-08-19)
+
+`playtest.ps1` imprime `(relance detectee : fenetre portee par le PID N)` quand le processus qui
+porte la fenêtre n'est pas celui qu'il a lancé. C'est le chemin de récupération documenté : le jeu
+**se relance en processus fils quand il perd la course pour la mémoire basse** (voir
+`EnsureDisplayListArena`). Le journal le confirme :
+`display-list arena: lost the race for low memory, relaunching (attempt N of 3)`.
+
+Ce n'est **pas** une erreur — la partie relancée tourne normalement. Mais **le taux compte**. Le
+taux de référence est d'environ **une exécution sur quatre**. Le 2026-08-19, il est monté à cinq sur
+huit à cause d'un changement du composition root, et ni le verdict « aucun plantage » ni le débit
+par image n'ont bougé. Cette ligne d'information a été le seul signal.
+
+**Si tu la vois plusieurs fois d'affilée alors que les exécutions précédentes ne la montraient pas,
+mesure le taux avant de conclure.** Le lancement direct suffit et va plus vite que `playtest.ps1`
+(pas d'attente de menu) :
+
+```powershell
+$exe = "bin\Debug\net9.0\OpenForesia.exe"; $lost = 0; $n = 16
+for ($i = 1; $i -le $n; $i++) {
+    $o = "$env:TEMP\of_o.txt"; $e = "$env:TEMP\of_e.txt"
+    Start-Process $exe -WorkingDirectory (Get-Location) -RedirectStandardOutput $o -RedirectStandardError $e | Out-Null
+    Start-Sleep -Seconds 6
+    Get-Process -Name 'OpenForesia' -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Milliseconds 400
+    if (((Get-Content $o -Raw) + (Get-Content $e -Raw)) -match 'lost the race') { $lost++ }
+}
+"$lost perdues / $n"
+```
+
+À lancer depuis `OpenForesia/`. **Seize essais, pas huit** : à ce taux, huit ne distinguent pas 25 %
+de 40 %.
+
+### Mesurer au repos, sinon la mesure ment
+
+Contre-exemple chiffré, le 2026-08-19, **sur le même binaire** :
+
+```
+  16 essais pendant qu'un build et des tests tournaient  →  7 perdues = 44 %   (faux)
+  32 essais machine au repos                             →  7 perdues = 22 %   (juste)
+```
+
+La première mesure a fait croire à une régression et a coûté une enquête. Fermer les builds, tests
+et autres lancements avant de mesurer.
+
+### Et « au repos » ne suffit pas : le taux DÉRIVE au fil d'une session (2026-08-21)
+
+Le 2026-08-21, à la conversion d'`UiWindow`, sur **le même arbre** et machine au repos à chaque
+fois :
+
+```
+  16 essais, en milieu de session   →   5 perdues = 31 %
+  16 essais, juste après            →   6 perdues = 37 %     ← « régression ! »
+  32 essais, en fin de session      →   1 perdue  =  3 %     ← même code, même machine
+```
+
+Les deux premiers lots ont fait croire à une régression franche contre les 22–25 % documentés.
+**Il n'y en avait aucune** : la troisième mesure, prise plus tard, rend 3 %.
+
+**La référence documentée est datée, donc elle ne vaut pas contrôle.** Comparer un taux d'aujourd'hui
+à un chiffre écrit un autre jour, c'est comparer deux états de machine différents.
+
+**Le contrôle, c'est l'arbre d'avant mesuré JUSTE À CÔTÉ.** La séquence qui tranche :
+
+```powershell
+# 1. arbre modifie, 32 essais
+# 2. git stash -q ; dotnet build ; 32 essais        <- le controle, adjacent dans le temps
+# 3. git stash pop -q ; dotnet build ; 32 essais    <- confirmation
+```
+
+Ce jour-là : contrôle **5/32 = 16 %**, arbre modifié mesuré juste après **1/32 = 3 %**. Le sens
+était même inverse de l'alarme, et cohérent avec le raisonnement : la conversion déplaçait des
+allocations *hors* du chemin pré-course.
+
+**Corollaire à ne pas oublier : raisonner sur le mécanisme avant de lancer une enquête.** Une
+conversion qui rend des champs paresseux ne peut que *réduire* le travail placé devant la course.
+Quand la mesure dit le contraire de ce que le code impose, suspecter la mesure d'abord — mais la
+refaire, pas l'ignorer.
+
+### Une relance perdue invalide une séquence `-Then` (2026-08-21)
+
+`playtest.ps1 -Then` envoie ses touches à la fenêtre selon un minutage fixe. **Si le jeu perd la
+course pour la mémoire basse, il se relance en processus fils et tout le minutage se décale** : la
+séquence part dans le vide et le jeu reste à l'écran où il était.
+
+Vu le 2026-08-21 en reproduisant l'arrêt de la carte du monde. Première tentative : la ligne
+`(relance detectee : fenetre portee par le PID …)` et un verdict « aucun plantage » — trompeur, la
+séquence n'avait tout simplement pas été jouée. Seconde tentative, sans relance : la pile attendue
+tombe.
+
+**Donc : quand un `-Then` ne reproduit pas ce qu'il devrait, chercher `relance detectee` dans la
+sortie AVANT de soupçonner la séquence.** Relancer suffit — le taux de relance est d'environ une
+fois sur cinq.
+
+Corollaire : un verdict « aucun plantage » sur une séquence `-Then` ne vaut que si la capture montre
+bien l'écran visé. Le compteur de primitives ne le dit pas.

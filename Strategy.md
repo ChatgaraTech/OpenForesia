@@ -10,11 +10,13 @@ Le fichier `Blaze.c` est un pseudo-code généré par Ghidra à partir du binair
 
 Il ne doit JAMAIS être modifié.
 
-Le nouveau code C# doit être écrit dans le projet OpenForesia :
+Le nouveau code C# doit être écrit dans le projet OpenForesia, sous :
 
-`src/Blaze/Blaze.cs`
+`src/Blaze/`
 
-Pour cette première phase, conserver l'ensemble de la reconstruction dans ce fichier unique. Le découpage en plusieurs classes sera effectué ultérieurement lorsque les responsabilités du code seront mieux comprises.
+La reconstruction y est répartie en `Platform/`, `Memory/`, `Engine/` et `Screens/`, tous parts
+d'une même classe partielle `Blaze`. Le fichier qui accueille une fonction est déterminé par la
+règle de routage — voir « Organisation » plus bas, et `ARCHITECTURE.md` pour la carte complète.
 
 ---
 
@@ -89,7 +91,7 @@ Commencer exclusivement par la fonction :
 
 `entry`
 
-Analyser son rôle et reconstruire son équivalent C# dans `src/Blaze/Blaze.cs`.
+Analyser son rôle et reconstruire son équivalent C# dans le fichier que la règle de routage désigne — pour `entry`, c'est `src/Blaze/Platform/Startup.cs`.
 
 Ensuite, suivre les fonctions appelées par `entry`.
 
@@ -117,7 +119,7 @@ Pour chaque fonction Ghidra rencontrée :
 5. analyser les données globales qu'elle utilise ;
 6. déterminer les types C# les plus plausibles ;
 7. reconstruire son contrôle de flux ;
-8. écrire son équivalent dans `src/Blaze/Blaze.cs`;
+8. écrire son équivalent dans le fichier que la règle de routage désigne ;
 9. compiler le projet ;
 10. corriger uniquement les erreurs liées au code nouvellement ajouté ;
 11. continuer avec les dépendances nécessaires.
@@ -264,6 +266,28 @@ Sinon conserver temporairement un nom lié à l'adresse avec un `TODO(REVERSE)`.
 
 Ne jamais décider arbitrairement qu'une adresse contient un `int`, un pointeur ou une structure simplement pour faire disparaître une erreur de compilation.
 
+### Le contrôle d'adjacence, avant de déclarer un symbole isolé
+
+Le **défaut d'aliasing** est le défaut le plus fréquent de ce projet : corrigé seize fois. Il naît
+toujours du même geste — séparer ce que le binaire garde ensemble. Deux symboles voisins d'adresse
+déclarés séparément ne partagent plus leur mémoire ; une écriture faite par un bout n'est jamais
+lue par l'autre. Aucune erreur, aucun plantage : une valeur qui reste à zéro.
+
+Avant de déclarer un `DAT_` isolé, **chercher son adresse dans la carte des symboles reconstruits**,
+en fin de `Documentation/DataSymbols.md` :
+
+* s'il tombe dans l'étendue d'une arène, il est déjà couvert — l'adresser par l'accesseur de
+  l'arène, pas par un champ neuf ;
+* s'il a un voisin à quelques octets, vérifier que la taille déclarée du voisin ne le recouvre pas ;
+* s'il n'a pas de voisin proche, un champ isolé est légitime.
+
+Ce contrôle est devenu indispensable depuis le découpage : **107 paires de symboles voisins
+d'adresse vivent maintenant dans deux fichiers différents**. Leur adjacence ne se voit plus dans le
+code, seulement dans cette carte.
+
+Un signe qui ne trompe pas : **deux allocations indépendantes à la même adresse**. Le dépôt en
+porte encore une, `0x00566c70`, constatée et non corrigée.
+
 ---
 
 ## Comportement inconnu
@@ -299,7 +323,10 @@ Ne jamais :
 * supprimer un appel de fonction inconnu ;
 * transformer tous les `goto` en appels de méthodes ;
 * inventer une architecture métier qui n'est pas encore visible dans le code ;
-* effectuer une refactorisation importante avant d'avoir compris le comportement correspondant.
+* effectuer une refactorisation importante avant d'avoir compris le comportement correspondant ;
+* déplacer une globale pour rendre un fichier autonome ;
+* éclater une arène entre plusieurs fichiers ;
+* déplacer du code dont la reconstruction est en cours.
 
 ---
 
@@ -317,25 +344,111 @@ Lorsqu'une fonction vient d'être traduite, privilégier la correction de cette 
 
 ---
 
-## Organisation — Phase 1
+## Organisation
 
-Pour le moment :
+La phase 1 — toute la reconstruction dans `src/Blaze/Blaze.cs` — **s'est achevée le 2026-08-19**.
+Le fichier faisait 23 680 lignes ; il est découpé en 30 fichiers.
 
-`src/Blaze/Blaze.cs`
+La carte détaillée est dans **`ARCHITECTURE.md`**, à la racine. À lire avant d'ajouter ou de
+déplacer du code. Ce qui suit n'en est que les principes.
 
-doit contenir toute la reconstruction.
+### Les deux moitiés du dépôt
 
-Ne pas créer prématurément :
+`src/Blaze/` est la **transcription**. `src/Host/` est **notre échafaudage** — le remplacement de
+la chaîne d'affichage de 1998 par Direct3D 11.
 
-* GraphicsService
-* AudioManager
-* GameEngine
-* ResourceManager
-* etc.
+Les deux obéissent à des règles opposées :
 
-Même si ces concepts semblent probables.
+| | `src/Blaze/` | `src/Host/` |
+|---|---|---|
+| Règle | la fidélité prime sur la compilabilité | ça doit **marcher** |
+| Source de vérité | `Blaze.c` | aucune |
+| Un `TODO(REVERSE)` y a un sens ? | oui | non |
+| Refactorisable librement ? | **non** | oui |
 
-Nous effectuerons ce découpage lors d'une seconde phase, une fois que suffisamment de fonctions auront été comprises pour identifier réellement les sous-systèmes.
+C'est la distinction que le chemin d'un fichier doit rendre évidente. Rien d'autre ne dit à un
+lecteur laquelle des deux règles s'applique à ce qu'il a sous les yeux.
+
+### Où va une fonction
+
+Quand le rôle d'une `FUN_00XXXXXX` est établi, dans cet ordre :
+
+1. son adresse tombe dans une plage moteur connue → ce fichier de `Engine/` ;
+2. un **seul** écran l'appelle → ce fichier de `Screens/StateNN/` ;
+3. **plusieurs** écrans l'appellent → promotion en `Engine/`, avec un nom de sous-système ;
+4. sinon → **elle reste chez son appelant** jusqu'à ce qu'on sache.
+
+La règle est mesurée, pas choisie : les définitions du moteur sont concentrées à 90–100 % dans une
+plage d'adresses, celles des écrans à 38–55 % seulement. Deux populations, deux critères.
+
+Le passage de (2) à (3) est le seul événement qui crée un nouveau fichier moteur. **L'architecture
+grandit sur preuve.**
+
+Il n'y a **aucun fichier de rebut**, délibérément. La branche (4) couvre même les corps seulement
+adressés : leur « appelant » est le code qui installe leur adresse.
+
+### Le nommage des fichiers
+
+Noms neutres et descriptifs, tout `static`.
+
+Ne jamais employer :
+
+* `Manager`
+* `Service`
+* `Controller`
+* `Provider`
+
+Ces noms promettent un objet avec un cycle de vie que la transcription n'a pas, et invitent à
+dériver vers un design que la source de vérité ne contient pas. C'est la même interdiction qu'avant
+le découpage, pour la même raison — seule sa formulation change.
+
+### Ce qui n'est pas un critère
+
+**La taille d'un fichier.** `Screens/State06/Inventory.cs` fait près de 3 000 lignes pour trois
+sous-écrans d'un même menu : c'est cohérent. La métrique est la cohérence, jamais la taille.
+
+**Le confort d'un fichier.** Voir la règle d'état ci-dessous.
+
+### Ne pas déplacer un chantier en cours
+
+Un chantier terminé se range. Un chantier ouvert reste où il est. Déplacer du code pendant qu'on le
+reconstruit revient à retirer l'échafaudage sous quelqu'un.
+
+---
+
+## Organisation — la règle d'état
+
+Le code se range par **responsabilité**. L'état se range par **adresse**. Les deux axes sont
+orthogonaux et ne doivent jamais être alignés de force.
+
+D'où la règle :
+
+**Une globale ne se déplace jamais pour rendre un fichier autonome.**
+
+Elle se déplace uniquement quand la carte d'adresses le dit. Les arènes se déplacent **en un seul
+bloc**.
+
+Un symbole qui tombe dans l'étendue d'une arène modélisée :
+
+* s'il passe déjà par l'accesseur de l'arène, il **reste avec son code** — il ne peut pas aliaser ;
+* s'il a sa **propre allocation**, il part dans le fichier de l'arène et devient un décalage.
+
+La règle protège **le stockage, pas les vues**.
+
+### Un piège propre aux classes partielles
+
+Le découpage en fichiers **n'est pas sémantiquement neutre**.
+
+Les initialiseurs de champs statiques s'exécutent dans l'ordre où le compilateur reçoit les
+**fichiers**, ordre qui n'est pas spécifié. Un champ `static readonly` dont l'initialiseur lit un
+membre statique vivant dans un **autre** fichier peut donc s'initialiser trop tôt.
+
+Il faut alors en faire une **propriété calculée** `=>`.
+
+Les dépendances à l'intérieur d'un même fichier sont sûres : l'ordre textuel y est garanti.
+
+Ce piège n'est pas théorique : huit champs de la forme `= Arena(0x…)` ont rendu `null + décalage`
+au moment du découpage, et le jeu levait une `NullReferenceException` dès la première image.
 
 ---
 
@@ -351,3 +464,67 @@ Une fonction peut être considérée comme reconstruite lorsque :
 * ses dépendances externes ont été analysées lorsque nécessaire ;
 * elle ne contient pas de modification arbitraire destinée uniquement à compiler ;
 * les incertitudes restantes sont indiquées par `TODO(REVERSE)`.
+
+---
+
+## Ce que le refactor n'a pas le droit de faire
+
+Le dépôt porte **1 834 mentions** `FUN_`/`DAT_`/`LAB_`. Sa valeur tient à ce qu'on puisse poser
+`Blaze.c` et le C# côte à côte. Le critère d'acceptation d'une transformation n'est donc pas
+« est-ce du beau C# ? » mais :
+
+**Peut-on encore vérifier cette fonction contre `Blaze.c` en trente secondes ?**
+
+Trois pratiques par ailleurs saines sont **interdites dans `src/Blaze/`**, parce qu'elles détruisent
+cette correspondance :
+
+* **l'extraction de méthode** — une méthode = une `FUN_`. Découper une fonction de 1 300 lignes en
+  huit méthodes « propres » casse la correspondance 1:1 qui fait toute la valeur du projet ;
+* **le remplacement des conditions par du polymorphisme** — les `switch` sur sous-état **sont** la
+  machine à états du binaire ;
+* **le renommage sans conserver l'ancre** `// Ghidra: FUN_00XXXXXX`.
+
+Dans `src/Host/` (notre échafaudage, une seule mention Ghidra sur 3 477 lignes), les trois sont
+autorisées.
+
+### Changer la forme, pas la logique
+
+Un refactor qui déplace ou transforme du code doit pouvoir le **prouver**. Deux outils s'en
+chargent, dans `OpenForesia.Tools/` :
+
+* `verify-split.ps1` compare **octet à octet** contre une référence figée. Il vaut pour un
+  déplacement pur ;
+* `compare-bodies.ps1` compare le **corps** de chaque méthode en normalisant ce que le refactor a
+  le droit de changer — `static`, les modificateurs d'accès, les qualifications ajoutées,
+  l'indentation. Il vaut dès que la forme change.
+
+Un outil de vérification doit lui-même être vérifié : `compare-bodies.ps1 -SelfTest` prouve qu'il
+ignore bien un changement de forme et attrape bien un changement de logique.
+
+### Ce que ces deux outils ne voient pas
+
+Ils comparent du **texte**. Ils ne voient donc rien de ce qui relève du *moment* où le code
+s'exécute : ordre d'initialisation, coût placé devant une course, allocation déplacée d'une phase à
+une autre. Le 2026-08-19, la conversion de `Engine/Video.cs` a fait passer la course pour la
+mémoire basse de 25 % à 62 % d'échec sans que l'oracle, le build, les tests de disposition ni le
+débit par image ne bougent d'un iota. Tous verts.
+
+Ce que la vérification par oracle établit, c'est : « la logique écrite est la même ». Pas : « le
+programme se comporte pareil ». Pour cette seconde question il n'y a que l'exécution répétée — et
+il faut la mesurer sur assez d'essais quand le comportement est non déterministe (ici : 8 essais
+n'auraient pas suffi à conclure, 16 ont donné les 25 % attendus).
+
+### Le composition root est devant une course
+
+`TryPrepareDisplayListArena()` est appelée par un `[ModuleInitializer]`, et son premier geste lit un
+champ statique de `Blaze` : cela déclenche **toute** l'initialisation statique de `Blaze` avant que
+l'arène basse ne soit réclamée. Tout ce qui est construit à ce moment-là est du travail placé devant
+la course.
+
+D'où la règle : **dans `Subsystems.cs`, `Mem` est immédiat, les sous-systèmes sont paresseux.** `Mem`
+l'est parce que la réclamation le lit vraiment (`s_UiDescriptors_00560ff0`,
+`s_StatusDescriptor_00560728`, qui portent leur ordering table masquée sur 24 bits). Les autres, non
+— rien dans le chemin de réclamation ne les touche.
+
+Cette paresse **ne contredit pas** la leçon « pris paresseusement, le descripteur échouait » :
+celle-ci porte sur les descripteurs de mémoire basse, pas sur les objets de sous-système.

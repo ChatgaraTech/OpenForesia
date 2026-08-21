@@ -228,7 +228,7 @@ internal static unsafe class D3D11Window
         // focus ici empêche le title screen de recevoir la moindre touche, et le jeu n'atteint
         // jamais sa boucle de rendu.
         //
-        // En démarrage fenêtré (`s_WindowedStartup`), cette précaution n'a plus d'objet : la
+        // En démarrage fenêtré (`Video.s_WindowedStartup`), cette précaution n'a plus d'objet : la
         // fenêtre `VfwClass` n'est plus affichée et c'est la nôtre qui doit recevoir la saisie.
         // L'activation est alors faite explicitement par l'appelant, `CreateGameWindow`, plutôt
         // qu'ici — cette méthode reste neutre pour ne pas dépendre du régime de démarrage.

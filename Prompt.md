@@ -10,11 +10,11 @@ Il constitue notre source de référence et doit rester STRICTEMENT EN LECTURE S
 
 NE MODIFIE JAMAIS `Blaze.c`.
 
-Tout le nouveau code doit être écrit dans :
+Tout le nouveau code doit être écrit sous :
 
-`Blaze/Blaze.cs`
+`OpenForesia/src/Blaze/`
 
-Si ce fichier n'existe pas, crée-le.
+La reconstruction y est répartie en `Platform/`, `Memory/`, `Engine/` et `Screens/`, tous parts d'une même classe partielle `Blaze`. Le fichier qui accueille une fonction n'est pas au choix : il est déterminé par la règle de routage décrite dans `ARCHITECTURE.md`, à la racine du dépôt. Lis-le avant d'ajouter ou de déplacer du code.
 
 ## Objectif
 
@@ -225,7 +225,7 @@ Ne t'arrête pas après chaque fonction pour me demander si tu peux continuer.
 Tu as explicitement l'autorisation de continuer automatiquement :
 
 * lecture de `Blaze.c` ;
-* création et modification de `Blaze/Blaze.cs` ;
+* création et modification des fichiers sous `OpenForesia/src/Blaze/` ;
 * navigation dans le graphe d'appels ;
 * renommage raisonnablement certain ;
 * reconstruction du contrôle de flux ;
@@ -238,7 +238,7 @@ Dans ce cas, préfère généralement un `TODO(REVERSE)` et continue ailleurs pl
 
 ## Couverture
 
-Maintiens en haut ou en bas de `Blaze.cs` un petit bloc de suivi, ou un fichier séparé `Blaze/REVERSE_STATUS.md`, contenant notamment :
+Maintiens `REVERSE_STATUS.md`, à la racine du dépôt, contenant notamment :
 
 * fonctions Ghidra analysées ;
 * fonctions reconstruites ;
@@ -253,30 +253,107 @@ Cela permettra de reprendre facilement le travail lors d'une nouvelle session Cl
 
 ## Phase actuelle
 
-Pour cette phase, garde la reconstruction principalement dans :
+Le découpage architectural a été effectué le **2026-08-19** : `Blaze.cs` faisait 23 680 lignes, il
+est réparti en 30 fichiers. `ARCHITECTURE.md` fait autorité sur la carte et sur les règles.
 
-`Blaze/Blaze.cs`
+Ce que cela change pour toi :
 
-Ne cherche PAS encore à concevoir une architecture en dizaines de classes.
+* **Ne conçois toujours PAS une architecture en dizaines de classes.** Tout `src/Blaze/` reste une
+  seule classe partielle `Blaze`. Le fichier est une unité de navigation, pas d'encapsulation : le
+  binaire n'a aucune encapsulation à imiter.
+* **Ne crée pas de classe** nommée `Manager`, `Service`, `Controller` ou `Provider`. Ces noms
+  promettent un objet à cycle de vie que la transcription n'a pas.
+* **Range une fonction là où la règle de routage la met**, pas là où elle te paraît jolie : plage
+  d'adresses connue → `Engine/` ; un seul écran appelant → `Screens/StateNN/` ; plusieurs écrans →
+  promotion en `Engine/` ; sinon elle reste chez son appelant.
+* **Ne déplace jamais une globale pour rendre un fichier autonome**, et n'éclate jamais une arène.
+  Le code se range par responsabilité, l'état par adresse.
+* **Ne déplace pas un chantier en cours.** Un chantier terminé se range ; un chantier ouvert reste
+  où il est.
 
-Si tu identifies clairement des sous-systèmes (audio, rendu, entrée, ressources, etc.), note-les dans `REVERSE_STATUS.md`, mais conserve pour l'instant le code dans `Blaze.cs`.
-
-Le découpage architectural sera effectué dans une seconde phase.
+Si tu identifies un sous-système que la carte ne nomme pas encore, note-le dans `REVERSE_STATUS.md`
+et laisse le code chez son appelant jusqu'à ce que plusieurs écrans l'appellent — c'est cet
+événement, et lui seul, qui crée un nouveau fichier moteur.
 
 ## Démarrage
 
 Commence maintenant.
 
-1. Lis `entry` dans `Blaze.c`.
-2. Analyse son comportement et ses appels directs.
-3. Crée `Blaze/Blaze.cs`.
-4. Reconstruis `entry`.
-5. Suis récursivement ses dépendances.
-6. Continue autant que possible sans attendre une nouvelle instruction de ma part.
-7. Maintiens `REVERSE_STATUS.md` pendant ta progression.
-8. Compile régulièrement.
-9. Ne modifie jamais `Blaze.c`.
+1. Lis `REVERSE_STATUS.md` et `TODO.md` : ils disent où le travail s'est arrêté.
+2. Lis `ARCHITECTURE.md` : il dit où va le code que tu vas écrire.
+3. Reprends au point de blocage courant, en suivant le graphe d'appels.
+4. Suis récursivement les dépendances.
+5. Continue autant que possible sans attendre une nouvelle instruction de ma part.
+6. Maintiens `REVERSE_STATUS.md` pendant ta progression.
+7. Compile régulièrement.
+8. Ne modifie jamais `Blaze.c`.
+
+Le point de départ historique était `entry`, désormais reconstruit dans
+`src/Blaze/Platform/Startup.cs`. La reconstruction couvre les états de jeu 0 à 6.
 
 Ne fais pas seulement une analyse ou un plan.
 
 Après ton analyse initiale, commence immédiatement à écrire le code et poursuis la reconstruction.
+
+---
+
+## Ce que tu n'as PAS le droit de faire en refactorisant
+
+Le dépôt porte 1 834 mentions `FUN_`/`DAT_`/`LAB_`. Sa valeur tient à ce qu'on puisse poser
+`Blaze.c` et le C# côte à côte.
+
+Avant chaque transformation, pose-toi cette question :
+
+**Peut-on encore vérifier cette fonction contre `Blaze.c` en trente secondes ?**
+
+Trois pratiques par ailleurs saines sont **interdites dans `src/Blaze/`** :
+
+* **l'extraction de méthode** — une méthode = une `FUN_` ;
+* **le remplacement d'un `switch` par du polymorphisme** — ces `switch` **sont** la machine à états
+  du binaire ;
+* **le renommage sans conserver l'ancre** `// Ghidra: FUN_00XXXXXX`.
+
+Dans `src/Host/`, notre échafaudage, les trois sont autorisées.
+
+## Prouve que tu n'as changé que la forme
+
+Deux outils, dans `OpenForesia.Tools/` :
+
+* `verify-split.ps1` — comparaison **octet à octet** contre une référence figée, pour un
+  déplacement pur ;
+* `compare-bodies.ps1` — comparaison des **corps de méthode**, en normalisant ce qu'un refactor a
+  le droit de changer (`static`, modificateurs d'accès, qualifications ajoutées, indentation).
+
+Lance celui qui correspond après chaque étape. Et si tu écris un nouvel outil de vérification,
+**vérifie-le d'abord** : `compare-bodies.ps1 -SelfTest` existe pour cette raison.
+
+## Mesure avant d'écrire
+
+Trois fois pendant le refactor de 2026-08-19, une tâche planifiée de bonne foi s'est révélée
+inutile ou nuisible une fois mesurée : un pont statique que l'outillage rendait superflu, une
+interface sans second implémenteur, un `IDisposable` sur des classes statiques qui ne peuvent pas
+en porter.
+
+Quand une tâche dit « mesurer d'abord », c'est qu'elle peut s'annuler elle-même. **Ne construis pas
+ce que la mesure ne justifie pas**, et consigne pourquoi.
+
+La mesure sert aussi à **choisir l'ordre du travail**, pas seulement à annuler une tâche. Le 2026-08-19,
+l'ordre prévu pour convertir `Engine/` allait du plus petit fichier au plus grand ; la mesure de
+**clôture** — combien de symboles un fichier possède, combien il emprunte, et à qui — a désigné
+l'inverse. Le plus petit (`UiWindow.cs`, 368 l.) ne possède aucune globale et en emprunte six à des
+écrans, donc le convertir aurait entamé une étape délibérément différée.
+
+**La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si.**
+
+## Un indicateur vert ne prouve que ce qu'il mesure
+
+Toujours le 2026-08-19 : la conversion de `Engine/Video.cs` a fait passer la course pour la mémoire
+basse de « une fois sur quatre perdue » à cinq sur huit. Pendant toute la régression, les deux
+verdicts habituels étaient **verts** — aucun plantage, 382,3 et 387 primitives par image, captures
+conformes. Ce qui l'a révélée est une ligne d'information que rien n'obligeait à lire :
+« relance détectée », imprimée par `playtest.ps1`.
+
+Quand le banc d'essai dit quelque chose d'inhabituel, même sans le marquer comme une erreur,
+**cherche pourquoi avant de conclure**. Compare à ce que les exécutions précédentes affichaient. Un
+compteur de conformité ne surveille pas ce qu'il n'a pas été écrit pour surveiller — ici, le coût
+d'initialisation placé devant une course non déterministe.

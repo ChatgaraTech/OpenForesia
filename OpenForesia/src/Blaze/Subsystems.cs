@@ -1,0 +1,234 @@
+// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
+// in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
+//
+// Les sous-systemes du jeu, instancies une fois.
+//
+// ---------------------------------------------------------------------------------------------
+// C'EST LE COMPOSITION ROOT, ET IL EST ICI PLUTOT QUE DANS Program.cs
+//
+// L'etape E du refactor prevoyait de composer dans `Program.cs`. Essaye le 2026-08-19 : le jeu
+// plante au demarrage. Le module initializer de `Program.cs` reclame l'arene de liste d'affichage,
+// et cette reclamation touche deliberement `Mem.s_UiDescriptors_00560ff0` - un descripteur qui doit
+// vivre sous 0x01000000 et etre pris au meme instant precoce que l'arene.
+//
+// Les sous-systemes doivent donc naitre PENDANT l'initialisation statique de `Blaze`, pas apres.
+// C'est ce que fait ce fichier. L'ordre y est textuel DANS UN SEUL FICHIER, donc garanti : `Mem`
+// est declare en tete, et les sous-systemes qui le lisent viennent apres lui.
+//
+// Ce n'est pas le composition root ideal - il ne peut pas prendre de decisions d'ordre au-dela de
+// l'ordre textuel. C'est celui que la contrainte memoire basse autorise.
+// ---------------------------------------------------------------------------------------------
+//
+// POURQUOI DES CHAMPS STATIQUES POUR ATTEINDRE DES INSTANCES
+//
+// Les ~600 fonctions transcrites sont encore statiques, et 405 membres DOIVENT le rester
+// (P/Invoke, rappels [UnmanagedCallersOnly], pointeurs de fonction). Une fonction statique ne peut
+// atteindre une instance que par un point d'entree statique. Ce sont ces points d'entree.
+//
+// Ils disparaissent au fur et a mesure : quand un sous-systeme appelant devient lui-meme une
+// classe d'instance, il recoit ses dependances par constructeur et cesse de passer par ici. Le
+// jour ou le dernier lecteur disparait, ce fichier avec.
+//
+// ---------------------------------------------------------------------------------------------
+// OU EN EST CE RETRAIT, AU 2026-08-21
+//
+// La moitie interieure est FAITE. Les neuf sous-systemes sont des classes, et plus aucun d'eux
+// n'atteint un autre par un point d'entree : les 28 qualifications croisees qui restaient sont
+// devenues des parametres de constructeur.
+//
+//     UiWindow(GameMemory, UiText, Input, Audio)
+//     Primitives2d(GameMemory, UiText, UiWindow)
+//     Resources(GameMemory, Primitives2d, Input, Audio)
+//     Video(GameMemory, Resources)
+//
+// Le graphe de dependances est un DAG - verifie avant d'ecrire, pas suppose. Les cinq autres
+// classes ne dependent d'aucune soeur.
+//
+// IL RESTE 665 LECTEURS, tous dans Screens/ et Platform/. Ce sont encore des fichiers de
+// `partial class Blaze` : ils n'ont pas de constructeur, donc rien a injecter. Ils disparaitront
+// a l'etape D, quand les douze ecrans deviendront des classes - pas avant.
+//
+// LA SEULE EXCEPTION INTERIEURE, et elle est permanente tant que la plateforme l'impose : les
+// sept `Vid.` de Engine/Video.cs. Ce sont des AUTO-references, depuis deux lambdas `static` et
+// depuis MoviePlayerWindowProc, que `[UnmanagedCallersOnly]` force a rester statique. Une methode
+// statique ne peut atteindre son instance QUE par un point d'entree. Elles ne relevent donc pas
+// du retrait ; elles sont la raison d'etre du mecanisme.
+// ---------------------------------------------------------------------------------------------
+
+using System;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+namespace OpenForesia.Blaze;
+
+public static unsafe partial class Blaze
+{
+    /// <summary>
+    /// Le modele de .data, et le point d'acces statique unique vers lui.
+    ///
+    /// <para>
+    /// <b>Il est declare ICI, en tete du fichier, et cet ordre est le sujet.</b> Les trois champs
+    /// qui suivent le lisent. Or une classe partielle ne garantit l'ordre d'initialisation de ses
+    /// champs statiques qu'A L'INTERIEUR D'UN MEME FICHIER : entre fichiers, l'ordre n'est pas
+    /// specifie. Il a fallu un plantage pour l'apprendre, le 2026-08-19 - huit champs
+    /// <c>Arena(0x...)</c> devenus <c>null + offset</c> parce que leur fichier s'initialisait avant
+    /// celui qui portait <c>Arena</c>. Composer dans un seul fichier est ce qui rend l'ordre a la
+    /// fois lisible et garanti ; c'est pourquoi <c>Memory/Globals.cs</c> a ete replie ici.
+    /// </para>
+    /// <para>
+    /// <b>Et l'initialiseur doit rester dans l'initialisation statique de Blaze</b>, pas dans un
+    /// composition root appele depuis <c>Program.cs</c> : tente le meme jour, le jeu plante au
+    /// demarrage. Le module initializer reclame l'arene de liste d'affichage, et cette reclamation
+    /// touche <b>deliberement</b> <c>Mem.s_UiDescriptors_00560ff0</c> et
+    /// <c>Mem.s_StatusDescriptor_00560728</c> : ces descripteurs portent leur ordering table a
+    /// <c>+0xa4</c>, masquee sur 24 bits, donc ils doivent vivre sous <c>0x01000000</c> et etre pris
+    /// au meme instant precoce que l'arene.
+    /// </para>
+    /// <para>
+    /// Une globale ne se deplace JAMAIS pour rendre un fichier autonome : uniquement quand la carte
+    /// d'adresses le dit. Le defaut d'aliasing a ete corrige seize fois dans ce depot, et il nait
+    /// toujours du meme geste - separer ce que le binaire garde ensemble.
+    /// </para>
+    /// <para>
+    /// Ce champ disparait quand plus aucune fonction statique ne le lira. Ce n'est pas un singleton
+    /// de confort : c'est un echafaudage date, avec une condition de retrait ecrite.
+    /// </para>
+    /// </summary>
+    internal static GameMemory Mem = new GameMemory();
+
+    // ---------------------------------------------------------------------------------------------
+    // POURQUOI LES SOUS-SYSTEMES SONT PARESSEUX ALORS QUE `Mem` NE L'EST PAS
+    //
+    // Le module initializer de Program.cs appelle TryPrepareDisplayListArena(), et son premier
+    // geste est de lire un champ statique de `Blaze` : cela declenche TOUTE l'initialisation
+    // statique de `Blaze` AVANT que l'arene basse ne soit reclamee. Tant que ces champs etaient
+    // `static readonly`, chaque sous-systeme converti ajoutait donc son travail d'allocation devant
+    // la course pour la memoire basse - les tables de UiText, les huit chaines de Video.
+    //
+    // MESURE le 2026-08-19, apres la conversion de Video : 5 courses perdues sur 8, contre environ
+    // 1 sur 4 documente. Rendus paresseux : voir le releve dans REVERSE_STATUS.md.
+    //
+    // `Mem` reste immediat parce que la reclamation le lit vraiment
+    // (s_UiDescriptors_00560ff0, s_StatusDescriptor_00560728). Les quatre autres, non : rien dans
+    // TryPrepareDisplayListArena ne les touche. Les construire avant la course etait du travail
+    // gratuit place au pire endroit possible.
+    //
+    // La paresse ici ne contredit pas la lecon � pris paresseusement, le descripteur echouait � :
+    // celle-ci porte sur les DESCRIPTEURS de memoire basse, qui restent pris immediatement.
+    // ---------------------------------------------------------------------------------------------
+    /// <summary>
+    /// Le moteur de texte de l'interface, premiere vraie classe d'instance de la transcription.
+    ///
+    /// <para>
+    /// Sa signature - <c>UiText(GameMemory)</c> - declare ce qu'il touche. C'est tout l'objet de la
+    /// conversion : avant, il lisait huit globales <c>.data</c> appartenant a cinq autres fichiers,
+    /// en silence.
+    /// </para>
+    /// <para>
+    /// Une seule instance, parce qu'il n'y a qu'un moteur de texte dans le jeu. Une classe
+    /// d'instance modelise ici une <b>dependance</b>, pas une multiplicite.
+    /// </para>
+    /// </summary>
+    private static UiText? s_ui;
+    internal static UiText Ui => s_ui ??= new UiText(Mem);
+    /// <summary>
+    /// L'emetteur de primitives 2D. Il depend de <see cref="Ui"/> et de <see cref="UiWin"/>.
+    ///
+    /// <para>
+    /// <b>L'ordre TEXTUEL de ce fichier ne garantit plus rien, et c'est voulu.</b> Ce commentaire
+    /// affirmait le contraire jusqu'au 2026-08-21 - il datait de l'epoque ou ces points d'entree
+    /// etaient des champs <c>static readonly</c>. Depuis la tache 7.6 ce sont des PROPRIETES
+    /// paresseuses : <c>UiWin</c> est declare tout en bas du fichier et cette ligne le reference
+    /// quand meme sans probleme, parce que la resolution a lieu au premier APPEL, pas a
+    /// l'initialisation statique.
+    /// </para>
+    /// <para>
+    /// La consequence pratique : <b>ne pas reintroduire de champ immediat ici</b> pour « clarifier
+    /// l'ordre ». Ce serait remettre le graphe de dependances a la merci de l'ordre des fichiers
+    /// que le compilateur recoit - le defaut qui a coute un plantage le 2026-08-19 - et remettre
+    /// leur travail d'allocation devant la course pour la memoire basse.
+    /// </para>
+    /// </summary>
+    private static Primitives2d? s_prims;
+    internal static Primitives2d Prims => s_prims ??= new Primitives2d(Mem, Ui, UiWin);
+    /// <summary>
+    /// La sauvegarde sur carte memoire. Ses huit rappels natifs ne passent PAS par ce champ : ils
+    /// sont statiques et s'atteignent par le nom de type, <c>SaveData.CardWriteStatusHandler0</c>.
+    /// </summary>
+    private static SaveData? s_saves;
+    internal static SaveData Saves => s_saves ??= new SaveData(Mem);
+    /// <summary>
+    /// La sortie video. Son unique rappel natif ne passe pas par ce champ au sens habituel : c'est
+    /// <c>MoviePlayerWindowProc</c>, statique, qui le LIT pour rejoindre l'instance.
+    /// </summary>
+    private static Video? s_vid;
+    internal static Video Vid => s_vid ??= new Video(Mem, Res);
+    /// <summary>
+    /// Les entrees. Son rappel natif <c>CountJoystickCallback</c> ne lit PAS ce champ : il n'a
+    /// besoin que de son parametre, donc il reste un statique autonome.
+    /// </summary>
+    private static Input? s_inp;
+    internal static Input Inp => s_inp ??= new Input(Mem);
+    /// <summary>
+    /// Le son. Aucun rappel natif : c'est la premiere conversion sans un seul
+    /// <c>[UnmanagedCallersOnly]</c>, et la seule dont un membre reste statique par simple portee
+    /// plutot que par contrainte de plateforme - <c>Audio.InvokeComMethod</c>, que
+    /// <c>Platform/Startup.cs</c> emploie pour liberer une manette.
+    ///
+    /// <para>
+    /// La paresse compte ici plus qu'ailleurs : cette classe alloue quatre blocs natifs a la
+    /// construction (le format de sortie, les huit positions de notification, les deux tampons de
+    /// chemin). Immediat, ce travail se serait place devant la course pour la memoire basse.
+    /// </para>
+    /// </summary>
+    private static Audio? s_aud;
+    internal static Audio Aud => s_aud ??= new Audio(Mem);
+    /// <summary>
+    /// Les ressources. Premiere classe SANS aucun membre statique - ni rappel natif, ni pointeur
+    /// de fonction, ni decision d'hote.
+    ///
+    /// <para>
+    /// La paresse referme ici un vrai piege plutot qu'elle n'evite du travail : les trois chaines
+    /// de tete de <c>Resources</c> etaient des champs <c>static readonly</c> initialises par
+    /// <c>ToAnsiZ</c>, qui vit dans <c>Platform/Startup.cs</c>. Une dependance d'initialisation
+    /// ENTRE FICHIERS, c'est-a-dire d'ordre non specifie - la forme exacte du plantage du
+    /// 2026-08-19. Construites au premier acces a <c>Res</c>, elles viennent forcement apres.
+    /// </para>
+    /// </summary>
+    private static Resources? s_res;
+    internal static Resources Res => s_res ??= new Resources(Mem, Prims, Inp, Aud);
+    /// <summary>
+    /// Le rendu de modele animé. La seule classe de l'etape C qui ne possede AUCUNE globale : sa
+    /// conversion ne deplace pas d'etat, elle rend visible ce qu'elle lit ailleurs.
+    ///
+    /// <para>
+    /// Point d'entree <c>Mdl</c> et non <c>Model</c> : <c>model</c> est un parametre vivant dans
+    /// dix lignes de ce fichier meme, et la liste blanche de l'oracle est insensible a la casse.
+    /// L'y inscrire aurait rendu l'oracle aveugle a ces lignes — le piege exact que <c>Prims</c>
+    /// avait deja evite.
+    /// </para>
+    /// </summary>
+    private static Model3d? s_mdl;
+    internal static Model3d Mdl => s_mdl ??= new Model3d(Mem);
+    /// <summary>
+    /// Les cadres de l'interface. **Neuvieme et derniere classe de l'etape C** : a partir d'ici,
+    /// tout `Engine/` est en classes d'instance.
+    ///
+    /// <para>
+    /// Point d'entree <c>UiWin</c> — <c>Panel</c> a ete ecarte apres mesure (<c>panel</c> est un
+    /// local dans 58 lignes), et <c>Win</c> / <c>Wnd</c> rejetes malgre leurs zero occurrence :
+    /// ils se lisent comme du Win32 dans un depot qui en fait beaucoup.
+    /// </para>
+    /// <para>
+    /// <b>Ce fichier a maintenant sa condition de retrait a portee.</b> Son en-tete dit que ces
+    /// points d'entree disparaissent « quand un sous-systeme appelant devient lui-meme une classe
+    /// d'instance ». C'est desormais vrai de TOUS : les qualifications croisees entre classes
+    /// (<c>Prims.</c> dans <see cref="UiWindow"/>, <c>Aud.</c>, <c>Inp.</c>, …) peuvent devenir des
+    /// parametres de constructeur. Ce n'est PAS fait ici : ce serait une neuvieme conversion
+    /// deguisee en dixieme, et elle merite d'etre mesuree et verifiee pour elle-meme.
+    /// </para>
+    /// </summary>
+    private static UiWindow? s_uiWin;
+    internal static UiWindow UiWin => s_uiWin ??= new UiWindow(Mem, Ui, Inp, Aud);
+}
