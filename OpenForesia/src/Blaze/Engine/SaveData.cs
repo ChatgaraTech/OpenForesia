@@ -108,7 +108,25 @@ internal sealed unsafe class SaveData(GameMemory mem)
     // [0..3] pointeur du nom de dossier, [4..7] pointeur du nom de « périphérique », le nom de
     // fichier écrit par SetCardFileName commençant à l'octet [5] et chevauchant donc la queue du
     // second pointeur — fidèle à l'original, pas une erreur de recouvrement.
-    internal readonly byte* s_CardPathDescriptor_00604940 = (byte*)NativeMemory.AllocZeroed(0x100);
+    //
+    // **TAILLE CORRIGEE le 2026-08-21 : 0x100 -> 0x20.** Les 0x100 declares debordaient de 0xe0 et
+    // avalaient sept globales voisines — `s_Unknown_00604960`, les cinq octets de 0x00604980 a
+    // 0x0060498b, et `s_CardIconFrameCount_0060498c`. Le voisin d'adresse reel est
+    // `DAT_00604960`, soit **0x20** exactement.
+    //
+    // Le compte tient : `SetCardPathDeviceFields` ecrit [0..4], `SetCardFileName` copie un nom
+    // NUL-termine a partir de [5], et le plus long nom du jeu de 1998 est
+    // `Blaze-Saving@MVB@R_` (19 caracteres + NUL, donc jusqu'a l'octet 0x19). Il reste sept octets
+    // de marge.
+    //
+    // TODO(REVERSE): la marge est plus mince qu'avant, et c'est le prix de la fidelite. Un nom de
+    // plus de 26 octets deborderait maintenant sur le TAS au lieu de deborder sur `DAT_00604960`
+    // comme dans l'original. **Le vrai remede est une arene** : 0x00604940..0x006049bc est une
+    // region contigue de globales de carte memoire (9 symboles, 81 sites releves), qui merite le
+    // meme traitement que l'arene 0x005e9000 — un bloc, chaque symbole une vue dedans. Un
+    // debordement y retomberait alors exactement ou l'original le met. Chantier separe : il touche
+    // le sous-systeme de sauvegarde, le plus difficile a verifier a l'ecran.
+    internal readonly byte* s_CardPathDescriptor_00604940 = (byte*)NativeMemory.AllocZeroed(0x20);
 
     // Deplace dans GameMemory le 2026-08-19 : globale .data.
 

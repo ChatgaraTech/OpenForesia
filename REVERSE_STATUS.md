@@ -6875,3 +6875,104 @@ Taux de course avec la procédure écrite le matin : **arbre modifié 2/32 = 6 %
 l'arbre d'avant mesuré adjacent 6/32 = 19 %**. Pas de régression. Le mécanisme le prédisait : tout
 reste paresseux, donc rien de neuf ne passe devant la course ; toucher `Res` construit désormais
 aussi `Prims`, `UiWin`, `Ui`, `Inp` et `Aud`, mais au premier usage, bien après.
+
+---
+
+## 2026-08-21 — les défauts d'aliasing corrigés, et deux que les tests ne voyaient pas
+
+**Premier changement de la série à modifier le comportement.** Les cinq conversions et le retrait
+des points d'entrée prouvaient « la forme a changé, pas la logique » ; celui-ci change la logique
+délibérément, et se vérifie donc à l'écran, pas au compteur.
+
+**Les cinq tests de disposition passent** — pour la première fois depuis leur écriture.
+
+### Les huit corrections
+
+| # | défaut | ce que le binaire dit | correction |
+|---|---|---|---|
+| 1 | `0x00566c70` alloué **deux fois** : `s_MenuRenderBlock_00566c70` (0x40, MainMenu) et `s_ViewRect_00566c70` (0x10, WorldMap) | `Blaze.c` 63665/63669 et 89424/89428 écrivent les **mêmes** champs puis passent `&DAT_00566c70` aux **mêmes** ordinaux | une allocation, dans `GameMemory`, **0x14** |
+| 2 | `s_MenuScreenBlock_00566c48` déclarait 0x40 | écritures jusqu'à `+0x13`, voisin à `+0x28` | 0x28 |
+| 3 | `s_SoundBankHeader_005e8520` alloué à part | `0x005e8520 == 0x005e8340 + 0x1e0` : la queue du répertoire de sons | vue : `s_SoundDirectory_005e8340 + SoundDirectoryBaseCount` |
+| 4 | `s_EntityList_005de558` dans `ItemMenuArena` | le commentaire de l'arène raisonnait « juste avant `DAT_005de510` » = 0x410 ; l'allocation demandait 0x460 | arène ramenée à **0x410** |
+| 5-7 | `s_CameraMatrix_006008e0`, `s_ModelResultA_005fa588`, `s_ModelResultB_005f7b40` : allocations propres dans `EntityArena` | l'arène 0x005eca00..0x00600c00 les couvre | devenues des **vues** |
+| 8 | `s_CardPathDescriptor_00604940` déclarait 0x100 | voisin réel `DAT_00604960`, soit **0x20** | 0x20 |
+
+**La taille n'a jamais été choisie, toujours déduite** — par les écritures observées d'un côté, par
+le symbole voisin de l'autre. Deux fois, le binaire a contredit ce que le code affirmait : `#4`
+(l'allocation contredisait son propre commentaire) et `#8`.
+
+Pour `#1`, une vérification a compté : `Ordinal_766` et `Ordinal_770` sont des **souches
+`return 0;`** côté `winsys3d.dll` (table des souches dans `Documentation/DLL/winsys3d.md`), donc la
+DLL ne contraint pas la taille. Sans ce contrôle, on aurait pu croire qu'elle imposait une
+structure.
+
+### Le défaut le plus intéressant, et les tests ne le voyaient pas
+
+`DAT_006008d0/d4/d8` — le décalage monde appliqué à la position d'une entité **avant projection**.
+
+* `Screens/State03/WorldMap.cs` l'**écrivait** par l'arène : `*(int*)Mem.Entity(0x006008d0) = …`
+* `Engine/Model3d.cs` le **lisait** dans un champ séparé : `mem.s_Unknown_006008d0`
+* `Destination.cs` et `SaveSlots.cs` remettaient à zéro le champ séparé
+
+Les deux mémoires ne se rencontraient jamais. Le décalage posé par la carte du monde était donc
+invisible à la projection qui devait s'en servir.
+
+**Pourquoi les tests étaient verts dessus** : `Aucune_allocation_propre_dans_l_etendue_d_une_arene`
+ne considère que les symboles de type `OwnAllocation`. Un simple champ `int` à une adresse qu'une
+arène couvre ne déclenche rien. **Second angle mort de l'analyseur**, écrit dans
+`OpenForesia.Tests/README.md` avec la correction proposée : étendre l'assertion aux champs de
+valeur, probablement le meilleur rapport travail/valeur qui reste à ces tests.
+
+Corrigé en **propriétés adossées à l'arène** plutôt qu'en champs, pour que les douze sites d'appel
+ne bougent pas : ils lisent et écrivent comme avant, mais dans la mémoire de l'arène.
+
+### Le renommage, et pourquoi il attendait ce changement-ci
+
+Quatre `.data` dont le nom C# ne portait pas l'adresse — donc **hors de portée des tests**, qui
+n'indexent que par le suffixe VA :
+
+```
+s_SoundDirectory  -> s_SoundDirectory_005e8340     (Blaze.c 74824)
+s_BaseSoundBank   -> s_BaseSoundBank_00604920      (Blaze.c 61791, 790000 octets)
+s_LevelSoundBank  -> s_LevelSoundBank_00600900     (Blaze.c 61792, 260000 octets)
+s_GameStateId     -> s_GameStateId_005de510
+```
+
+Un renommage est indiscernable d'un changement de logique pour l'oracle : il aurait sonné à chaque
+exécution future, sauf à refiger la référence. **Ce changement refigeait de toute façon** — d'où le
+groupement, décidé deux jours plus tôt et tenu.
+
+### Ce que l'oracle a prouvé, et comment il a été relu
+
+L'oracle a signalé **20 corps** : 19 renommages purs et **une** vraie modification,
+`LoadMenuResources`, qui est précisément la correction `#1`.
+
+Mais l'oracle ne rapporte que la **première** ligne divergente par méthode : une seconde
+modification cachée plus bas serait passée. Contrôle fait au niveau du diff — toutes les lignes de
+code modifiées, commentaires et renommages exclus — et le résultat est **exactement les huit
+corrections, rien d'autre**. C'est ce contrôle-là qui autorisait à refiger.
+
+Référence refigée : **511 corps**. L'ancienne reste dans l'historique (`95344c7`), donc aucune copie
+d'archive n'a été gardée.
+
+### Vérification — à l'écran, pas au compteur
+
+Build 0 erreur, avertissements identiques · **les 5 tests de disposition verts** · `-Entry 0` (liste
+de sauvegardes) **470** primitives/image, `-Entry 1` **382,3**, `-Entry 2` **387**, **les trois
+captures relues**.
+
+`-Entry 0` était le contrôle qui comptait : il exerce le chargement des sauvegardes, donc le
+descripteur de carte dont la taille passe de 0x100 à 0x20. Les six noms de personnage s'affichent
+correctement.
+
+Taux de course **7/32 = 22 %** contre un contrôle adjacent à **6/32 = 19 %** — indistinguable.
+
+### Ce qui reste ouvert, et c'est délibéré
+
+**L'arène de carte mémoire.** `0x00604940..0x006049bc` est une région contiguë de globales de carte
+(9 symboles, 81 sites relevés) qui mérite le traitement « un bloc, chaque symbole une vue » de
+l'arène `0x005e9000`. Tant qu'elle n'existe pas, un nom de fichier de plus de 26 octets déborderait
+sur le **tas** au lieu de déborder sur `DAT_00604960` comme dans l'original. Le plus long nom du
+jeu de 1998 fait 19 octets, donc la marge tient — mais elle est plus mince qu'avant, et c'est le
+prix de la fidélité. Chantier séparé : il touche le sous-système de sauvegarde, le plus difficile à
+vérifier à l'écran.

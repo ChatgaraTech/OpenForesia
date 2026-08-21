@@ -235,7 +235,7 @@ internal sealed unsafe class GameMemory
     // Ghidra: &DAT_005de410 — le bloc d'état du menu objets. **Une seule allocation**, pas une
     // vingtaine de champs : FUN_00524210 remet à zéro DAT_005de4c4..DAT_005de50c d'affilée, ce qui
     // les désigne comme contigus, et DAT_005de410/DAT_005de464 vivent dans le même voisinage. Le
-    // bloc s'arrête juste avant DAT_005de510, qui est s_GameStateId — d'où les 0x100 octets.
+    // bloc s'arrête juste avant DAT_005de510, qui est s_GameStateId_005de510 — d'où les 0x100 octets.
     //
     // C'est le défaut d'aliasing que ce projet a rencontré deux douzaines de fois : déclarer ces
     // adresses en champs séparés marche jusqu'au jour où un site les parcourt.
@@ -243,10 +243,21 @@ internal sealed unsafe class GameMemory
     // **Etendu vers le bas le 2026-08-18** : le sous-ecran « Invertaire » (FUN_00524880) atteint
     // DAT_005de110 (le tampon de nom d'objet que FUN_0051bcc0 remplit), DAT_005de2d8 (les vingt-
     // deux drapeaux « objet retenu »), DAT_005de390 (le titre de la carte memoire en UTF-16) et
-    // DAT_005de428/430/488/4a0. La base descend donc a 0x005de100 et le bloc fait 0x420 octets ;
+    // DAT_005de428/430/488/4a0. La base descend donc a 0x005de100 ;
     // ItemMenuState() etant adresse par VA absolue, aucun site existant ne bouge.
+    //
+    // **TAILLE CORRIGEE le 2026-08-21 : 0x460 -> 0x410.** Le commentaire ci-dessus raisonnait une
+    // etendue « juste avant DAT_005de510 », soit 0x410 exactement, mais l'allocation en demandait
+    // 0x460 — code et commentaire se contredisaient depuis avant le decoupage. Les 0x50 octets de
+    // trop avalaient DAT_005de558, c'est-a-dire s_EntityList_005de558, qui s'alloue son propre
+    // bloc : une ecriture par l'arene n'aurait jamais ete lue par la liste, et reciproquement.
+    // C'est l'un des defauts que OpenForesia.Tests signalait.
+    //
+    // 0x410 est verifie des deux cotes, pas choisi : l'adresse la plus haute qu'un site adresse
+    // par ItemMenuState()/ItemMenuBytes() est 0x005de50c (39 sites releves), soit 0x005de510 en
+    // fin d'acces ; et 0x005de510 est precisement DAT_005de510, un autre global (s_GameStateId_005de510).
     internal const int ItemMenuArenaBase = 0x005de100;
-    internal readonly byte* s_ItemMenuArena_005de100 = (byte*)NativeMemory.AllocZeroed(0x460);
+    internal readonly byte* s_ItemMenuArena_005de100 = (byte*)NativeMemory.AllocZeroed(0x410);
     internal int* ItemMenuState(int va) => (int*)(s_ItemMenuArena_005de100 + (va - ItemMenuArenaBase));
     internal byte* ItemMenuBytes(int va) => s_ItemMenuArena_005de100 + (va - ItemMenuArenaBase);
 
@@ -514,7 +525,23 @@ internal sealed unsafe class GameMemory
 
     // Ghidra: DAT_006008d0 / d4 / d8 — le décalage monde appliqué à la position de l'entité avant
     // projection. Remis à zéro à l'entrée du sous-état 0.
-    internal int s_Unknown_006008d0, s_Unknown_006008d4, s_Unknown_006008d8;
+    //
+    // **DEFAUT D'ALIASING CORRIGE le 2026-08-21, et il etait VIVANT.** Ces trois adresses tombent
+    // dans l'etendue d'EntityArena (0x005eca00..0x00600c00), et le code les atteignait des DEUX
+    // cotes : `Screens/State03/WorldMap.cs` ecrivait par l'arene (`Mem.Entity(0x006008d0)`),
+    // tandis que `Engine/Model3d.cs` LISAIT ces champs separes et que Destination/SaveSlots les
+    // remettaient a zero. Les deux memoires ne se rencontraient jamais — le decalage monde pose
+    // par la carte du monde etait donc invisible a la projection qui devait s'en servir.
+    //
+    // Les tests de disposition ne le voyaient pas : ils ne signalent qu'une ALLOCATION propre dans
+    // une arene, et ceci etait un simple champ `int`. Angle mort a ajouter a celui deja ecrit dans
+    // OpenForesia.Tests/README.md.
+    //
+    // Ecrits en proprietes plutot qu'en champs pour que les 12 sites d'appel ne bougent pas : ils
+    // lisent et ecrivent exactement comme avant, mais dans la memoire de l'arene.
+    internal int s_Unknown_006008d0 { get => *(int*)Entity(0x006008d0); set => *(int*)Entity(0x006008d0) = value; }
+    internal int s_Unknown_006008d4 { get => *(int*)Entity(0x006008d4); set => *(int*)Entity(0x006008d4) = value; }
+    internal int s_Unknown_006008d8 { get => *(int*)Entity(0x006008d8); set => *(int*)Entity(0x006008d8) = value; }
 
     // Ghidra: &DAT_006008e0 — la matrice de caméra, **un seul bloc de 0x20 octets**, exactement la
     // MATRIX du SDK PlayStation : neuf shorts de rotation (0x006008e0..0x006008f1) puis les trois
@@ -526,7 +553,11 @@ internal sealed unsafe class GameMemory
     // (`DAT_006008fc = DAT_006008fc + (800 - DAT_006008fc >> 2)`) — autrement dit elle fait avancer
     // la caméra. Déclarer les trois translations à part de la rotation couperait la structure en
     // deux et FUN_0051d1f0 recopierait une matrice à moitié fausse dans le registre du GTE.
-    internal readonly byte* s_CameraMatrix_006008e0 = (byte*)NativeMemory.AllocZeroed(0x20);
+    //
+    // **Recouvrement d'arene corrige le 2026-08-21** : 0x006008e0 tombe dans EntityArena, donc
+    // ceci s'allouait un SECOND bloc pour une adresse que l'arene couvre deja. C'est une VUE,
+    // pas un stockage propre — meme regle que s_EntitySlotTable_005e9180.
+    internal byte* s_CameraMatrix_006008e0 => Entity(0x006008e0);
 
     /// <summary>Ghidra: DAT_006008f4 / f8 / fc — la rangée de translation de la matrice ci-dessus.</summary>
     internal int* CameraTranslation => (int*)(s_CameraMatrix_006008e0 + 0x14);
@@ -795,7 +826,7 @@ internal sealed unsafe class GameMemory
     // index valide : les tailles se corroborent.
     internal const int SoundDirectoryBaseCount = 0x1e0 / 8;  // 60 entrees, ids 0x00..0x3b
     internal const int SoundDirectoryCount = 0x268 / 8;      // 77 entrees, ids 0x00..0x4c
-    internal readonly SoundDirectoryEntry* s_SoundDirectory =
+    internal readonly SoundDirectoryEntry* s_SoundDirectory_005e8340 =
         (SoundDirectoryEntry*)NativeMemory.AllocZeroed(SoundDirectoryCount * (nuint)sizeof(SoundDirectoryEntry));
 
     // Ghidra: DAT_00604920 / DAT_00600900 — les deux banques d'echantillons PCM 8 bits brutes,
@@ -809,6 +840,34 @@ internal sealed unsafe class GameMemory
     // Elles restent ALLOUEES PAR RunApplication, pas par ce constructeur : l'allocation a lieu au
     // meme instant qu'avant, seul le champ qui la recoit a demenage. Ce ne sont donc que des
     // emplacements ici, volontairement laisses nuls a la construction.
-    internal void* s_BaseSoundBank;   // 790000 octets
-    internal void* s_LevelSoundBank;  // 260000 octets
+    internal void* s_BaseSoundBank_00604920;   // 790000 octets
+    internal void* s_LevelSoundBank_00600900;  // 260000 octets
+
+    // =====================================================================
+    // Rapatriees le 2026-08-21, a la correction des defauts d'aliasing. Ce sont des globales
+    // .data que la reconstruction avait allouees DEUX FOIS, une par lecteur - le defaut que
+    // OpenForesia.Tests signalait. Les reunir ICI est ce qui garantit qu'il n'y en a plus qu'une.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00566c70</c> — le rectangle passe par adresse a <c>Ordinal_770</c> et
+    /// <c>Ordinal_766</c>.
+    ///
+    /// <para>
+    /// <b>Il etait alloue deux fois</b> : <c>s_MenuRenderBlock_00566c70</c> (0x40 octets, dans
+    /// <c>MainMenu.cs</c>, ecrit par <c>LoadMenuResources</c>) et <c>s_ViewRect_00566c70</c>
+    /// (0x10 octets, dans <c>WorldMap.cs</c>). Les deux chemins ecrivent les MEMES champs
+    /// (<c>_DAT_00566c74</c>, <c>_DAT_00566c78</c>, <c>_DAT_00566c7a</c>) puis passent
+    /// <c>&amp;DAT_00566c70</c> aux deux memes ordinaux — <c>Blaze.c</c> 63665/63669 et
+    /// 89424/89428. C'est une seule memoire dans le binaire.
+    /// </para>
+    /// <para>
+    /// <b>Taille 0x14, et elle est deduite, pas choisie.</b> La DLL ne la contraint pas : les
+    /// ordinaux 766 et 770 sont des souches <c>return 0;</c> (winsys3d.md, table des souches),
+    /// elles ne dereferencent jamais le pointeur. Restent deux bornes : les ecritures vont
+    /// jusqu'a <c>+0xb</c>, et le symbole suivant est <c>DAT_00566c84</c>, soit 0x14 plus loin.
+    /// 0x14 est donc le maximum que l'original pouvait occuper sans recouvrir son voisin.
+    /// </para>
+    /// </summary>
+    internal readonly byte* s_ViewRect_00566c70 = (byte*)NativeMemory.AllocZeroed(0x14);
 }

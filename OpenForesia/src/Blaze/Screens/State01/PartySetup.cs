@@ -95,7 +95,7 @@ public static unsafe partial class Blaze
     /// d'image avec une petite machine à sous-phases (navigation, deux boîtes de dialogue de
     /// confirmation) ; puis, à la sortie, le rechargement effectif des membres retenus.
     ///
-    /// <para><b>Aucune sauvegarde du tout</b> : la fonction pose <see cref="s_GameStateId"/> à 4 et
+    /// <para><b>Aucune sauvegarde du tout</b> : la fonction pose <see cref="s_GameStateId_005de510"/> à 4 et
     /// revient aussitôt — l'écran de sélection des personnages. C'est le parcours « premier
     /// lancement » du jeu, et il explique pourquoi « Début du jeu » mène directement à la création
     /// tant que le dossier <c>save\</c> est vide.</para>
@@ -128,7 +128,7 @@ public static unsafe partial class Blaze
         if (entryCount == 0)
         {
             // Aucune sauvegarde : on bascule vers l'écran de sélection des personnages.
-            s_GameStateId = 4;
+            s_GameStateId_005de510 = 4;
             return;
         }
 
@@ -166,7 +166,7 @@ public static unsafe partial class Blaze
 
             byte* pad = Res.CurrentPadState();
 
-            if (s_GameStateId != 1)
+            if (s_GameStateId_005de510 != 1)
             {
                 // --- La sortie : recharger les membres retenus -----------------------------
                 s_Unknown_005de15c = 0;
@@ -355,15 +355,15 @@ public static unsafe partial class Blaze
                         // La phase 2 est la sortie vers le menu principal, la 5 le lancement de la
                         // partie. Le `return` de la première est celui de l'original : elle ne
                         // repasse pas par le bloc de rechargement.
-                        if (phase == 2) { s_GameStateId = 0; return; }
-                        s_GameStateId = 3;
+                        if (phase == 2) { s_GameStateId_005de510 = 0; return; }
+                        s_GameStateId_005de510 = 3;
                         break;
                     }
                     pendingLabel = LabelAt(0);
                     break;
 
                 case 3:
-                    if ((pad[3] & 0xc0) != 0) { s_GameStateId = 0; return; }
+                    if ((pad[3] & 0xc0) != 0) { s_GameStateId_005de510 = 0; return; }
                     break;
 
                 case 4:

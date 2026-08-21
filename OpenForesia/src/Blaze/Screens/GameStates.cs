@@ -28,7 +28,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void RunGameLoop()
     {
-        s_GameStateId = 0;
+        s_GameStateId_005de510 = 0;
         while (true)
         {
             do
@@ -36,9 +36,9 @@ public static unsafe partial class Blaze
                 if (Mem.s_MainResourceBuffer_005e97c0 != null)
                 {
                     int* perStateTable1 = *(int**)(Mem.s_MainResourceBuffer_005e97c0 + 0x48);
-                    s_Unknown_005e92b0 = perStateTable1[s_GameStateId];
+                    s_Unknown_005e92b0 = perStateTable1[s_GameStateId_005de510];
                     int* perStateTable2 = *(int**)(Mem.s_MainResourceBuffer_005e97c0 + 0x6c);
-                    int entryPtrValue = perStateTable2[s_GameStateId];
+                    int entryPtrValue = perStateTable2[s_GameStateId_005de510];
                     // Ghidra: FUN_00529b50(entry, DAT_006008c8) â€” this destination is always
                     // ApplyResourceDestinationOverride's first case *by construction* (the call site
                     // passes DAT_006008c8 as both the value being compared and the comparand), so
@@ -48,9 +48,9 @@ public static unsafe partial class Blaze
                 }
 
                 s_MainLoopTickCallback();
-            } while (s_GameStateId == 0);
+            } while (s_GameStateId_005de510 == 0);
 
-            if (s_GameStateId != 7 && s_GameStateId != 9 && s_GameStateId != 2 && s_GameStateId != 3)
+            if (s_GameStateId_005de510 != 7 && s_GameStateId_005de510 != 9 && s_GameStateId_005de510 != 2 && s_GameStateId_005de510 != 3)
             {
                 Res.RunLoadingScreen();     // Ghidra: FUN_0052a440
             }
@@ -58,7 +58,7 @@ public static unsafe partial class Blaze
     }
 
     // Ghidra: DAT_005de510 â€” current game-state id, shared between RunGameLoop and the tick below.
-    internal static int s_GameStateId;
+    internal static int s_GameStateId_005de510;
 
     // Ghidra: PTR_FUN_0056c96c â€” the per-frame tick RunGameLoop calls indirectly. **Resolved**: the
     // pointer's initialised value was read out of Legacy/Blaze.exe as 0x00537CA0, and FUN_00537ca0
@@ -103,7 +103,7 @@ public static unsafe partial class Blaze
 
         Winsys3d.ReInitializeAllTextures();
 
-        switch (s_GameStateId)
+        switch (s_GameStateId_005de510)
         {
             case 0:
                 RunMainMenuState();
@@ -118,7 +118,7 @@ public static unsafe partial class Blaze
                 Mem.s_Unknown_00564a4c = 0;
                 RunDestinationSelect();       // Ghidra: FUN_00537da0
                 Mem.s_Unknown_00564a4c = 1;
-                s_GameStateId = 3;
+                s_GameStateId_005de510 = 3;
                 break;
             case 3:
                 // Ghidra: sets Zoom8BitTextures back to 1 before dispatching.
@@ -146,7 +146,7 @@ public static unsafe partial class Blaze
                 // Ghidra: `uRam00000000 = 1;` â€” a store to address 0. Not a translation artifact:
                 // the original deliberately faults on an unknown state, i.e. this is its assert.
                 throw new InvalidOperationException(
-                    $"FUN_00537ca0: unknown game state {s_GameStateId}. The original stores to " +
+                    $"FUN_00537ca0: unknown game state {s_GameStateId_005de510}. The original stores to " +
                     "address 0 here, deliberately crashing â€” reproduced as an exception rather " +
                     "than by writing to a null pointer.");
         }

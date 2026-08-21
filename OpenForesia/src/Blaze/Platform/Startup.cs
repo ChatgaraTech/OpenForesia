@@ -210,8 +210,8 @@ public static unsafe partial class Blaze
                     s_LookupTable00600920[i] = low + (uint)(high << 16);
                 }
 
-                Mem.s_BaseSoundBank = Malloc(790000);
-                Mem.s_LevelSoundBank = Malloc(260000);
+                Mem.s_BaseSoundBank_00604920 = Malloc(790000);
+                Mem.s_LevelSoundBank_00600900 = Malloc(260000);
 
                 // TODO(REVERSE): the callback (Ghidra: &LAB_00512ef0) has no decompiled body in
                 // Blaze.c (see Documentation/DLL/winsys3d.md for what SetDeviceLostCallback does
@@ -294,7 +294,7 @@ public static unsafe partial class Blaze
     // Ghidra: DAT_00604920 / DAT_00600900 - les deux banques d'echantillons ont rejoint GameMemory
     // le 2026-08-21 : deux classes converties (Audio, Resources) plus la carte du monde les
     // lisaient, et c'est du .data reel malgre l'absence de suffixe VA dans leur nom.
-    // RunApplication les alloue toujours, en ecrivant `Mem.s_BaseSoundBank` / `Mem.s_LevelSoundBank`.
+    // RunApplication les alloue toujours, en ecrivant `Mem.s_BaseSoundBank_00604920` / `Mem.s_LevelSoundBank_00600900`.
 
     // Ghidra: s_Please_insert_Blaze___Blade_CD__00563258 / s_Erreur_00563278 â€” symbol names were
     // derived by Ghidra from the actual string bytes, but those bytes aren't reproduced in

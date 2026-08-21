@@ -572,7 +572,7 @@ public static unsafe partial class Blaze
             FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
         }
 
-        if (resetGameState) s_GameStateId = 0;
+        if (resetGameState) s_GameStateId_005de510 = 0;
 
         // Ghidra: LAB_00506fe7 — les deux sorties se rejoignent ici.
         FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);

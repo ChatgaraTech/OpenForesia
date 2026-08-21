@@ -118,8 +118,10 @@ public static unsafe partial class Blaze
     /// <see cref="RelocateModelBundle"/> remplit. **Ils ne sont pas avances d'un paquet a l'autre**,
     /// contrairement a ceux de <see cref="LoadCharacterSelectResources"/> : chaque paquet ecrase le
     /// precedent, et seul le dernier survit. Transcrit tel quel.</summary>
-    private static readonly byte* s_ModelResultA_005fa588 = (byte*)NativeMemory.AllocZeroed(4);
-    private static readonly byte* s_ModelResultB_005f7b40 = (byte*)NativeMemory.AllocZeroed(4);
+    // Recouvrement d'arene corrige le 2026-08-21 : 0x005fa588 et 0x005f7b40 tombent tous deux dans
+    // EntityArena. Ce sont des VUES, pas des allocations propres.
+    private static byte* s_ModelResultA_005fa588 => Mem.Entity(0x005fa588);
+    private static byte* s_ModelResultB_005f7b40 => Mem.Entity(0x005f7b40);
 
     /// <summary>Ghidra: DAT_005645f8 — l'etat du pas de boucle de la carte du monde. La boucle
     /// interne tourne tant qu'il vaut autre chose que -1, -2 ou -3 ; -1 relance le tour exterieur
@@ -165,7 +167,7 @@ public static unsafe partial class Blaze
     /// l'externe, qui remet le pas et la camera a neuf ; -2 et -3 rendent la main.
     ///
     /// <para>Atteint depuis « Debut du jeu » → constitution du groupe → lancement
-    /// (<see cref="RunPartyConstitution"/> pose <c>s_GameStateId = 3</c>), et aussi depuis l'etat 2
+    /// (<see cref="RunPartyConstitution"/> pose <c>s_GameStateId_005de510 = 3</c>), et aussi depuis l'etat 2
     /// qui y avance de lui-meme.</para>
     /// </summary>
     private static void RunWorldMapState()
@@ -327,29 +329,27 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: &amp;DAT_005e8520 — les 0x88 octets d'en-tete du banc de sons de la zone.
     ///
     /// <para>
-    /// <b>TODO(REVERSE) — defaut d'aliasing, repere le 2026-08-21, NON corrige.</b> Ce bloc ne
-    /// devrait pas etre une allocation a part : <c>0x005e8520 == 0x005e8340 + 0x1e0</c>, c'est-a-dire
-    /// exactement la QUEUE du repertoire de sons <c>GameMemory.s_SoundDirectory</c>
-    /// (<c>DAT_005e8340</c>, 0x268 octets = 0x1e0 pour les ids 0x00..0x3b, puis 0x88 pour les ids
-    /// 0x3c..0x4c). Les tailles se corroborent exactement, et <c>PlaySoundEffect</c> indexe bien
-    /// <c>&amp;DAT_005e8340</c> pour TOUS les ids jusqu'a 0x4c.
+    /// <b>Ce n'est PAS un tableau distinct, et ce n'en a jamais ete un.</b>
+    /// <c>0x005e8520 == 0x005e8340 + 0x1e0</c> : c'est exactement la QUEUE du repertoire de sons
+    /// <c>GameMemory.s_SoundDirectory_005e8340</c> (0x268 octets = 0x1e0 pour les ids 0x00..0x3b, puis 0x88
+    /// pour les ids 0x3c..0x4c). La reconstruction en faisait une allocation separee jusqu'au
+    /// 2026-08-21 ; les 0x88 octets lus ici n'arrivaient donc jamais dans le repertoire que
+    /// <c>PlaySoundEffect</c> consulte, et les effets de niveau lisaient un decalage et une
+    /// longueur nuls — silencieux.
     /// </para>
     /// <para>
-    /// Consequence en jeu : les 0x88 octets lus ici depuis le fichier de zone n'arrivent jamais
-    /// dans le repertoire que <c>PlaySoundEffect</c> consulte, donc les effets de niveau lisent un
-    /// decalage et une longueur nuls — silencieux — alors que leurs echantillons sont bien charges
-    /// dans <c>mem.s_LevelSoundBank</c> juste en dessous.
-    /// </para>
-    /// <para>
-    /// La correction est <c>=> (byte*)(Mem.s_SoundDirectory + GameMemory.SoundDirectoryBaseCount)</c>,
-    /// mais elle CHANGE LE COMPORTEMENT : elle appartient au changement separe qui traite les
-    /// defauts d'aliasing, pas a une conversion de classe verifiee « logique inchangee ».
+    /// Verifie contre la source de verite, pas deduit : <c>Blaze.c</c> 74824 charge
+    /// <c>&amp;DAT_005e8340</c> sur 0x1e0 octets depuis BASE.SND, et 63353 charge
+    /// <c>&amp;DAT_005e8520</c> sur 0x88 depuis le fichier de zone. Deux moities d'un seul tableau
+    /// de 77 entrees, que <c>PlaySoundEffect</c> indexe depuis la premiere.
     /// </para></summary>
-    private static readonly byte* s_SoundBankHeader_005e8520 = (byte*)NativeMemory.AllocZeroed(0x88);
+    private static byte* s_SoundBankHeader_005e8520
+        => (byte*)(Mem.s_SoundDirectory_005e8340 + GameMemory.SoundDirectoryBaseCount);
 
-    /// <summary>Ghidra: &amp;DAT_00566c70 — le rectangle de vue passe par adresse a Ordinal_770 et
-    /// Ordinal_766, d'ou le bloc natif plutot que des champs.</summary>
-    private static readonly byte* s_ViewRect_00566c70 = (byte*)NativeMemory.AllocZeroed(0x10);
+    // Ghidra: &DAT_00566c70 — le rectangle de vue passe par adresse a Ordinal_770 et Ordinal_766.
+    // Reuni dans GameMemory le 2026-08-21 : MainMenu.cs en allouait un SECOND exemplaire sous le
+    // nom s_MenuRenderBlock_00566c70, et les deux chemins ecrivent les memes champs. Une seule
+    // memoire dans le binaire, une seule allocation ici.
 
     /// <summary>Ghidra: &amp;DAT_005dbc68 — **quatre** descripteurs d'interface consecutifs, montes
     /// en fin de FUN_00516350. Le pas de la boucle est 0x464 mots, soit 0x8c8 octets : la meme
@@ -699,7 +699,7 @@ public static unsafe partial class Blaze
         {
             uint read;
             Win32.ReadFile(sound, s_SoundBankHeader_005e8520, 0x88, &read, null);       // Ordinal_334
-            Win32.ReadFile(sound, Mem.s_LevelSoundBank, 260000, &read, null);               // Ordinal_334
+            Win32.ReadFile(sound, Mem.s_LevelSoundBank_00600900, 260000, &read, null);               // Ordinal_334
             Win32.CloseHandle(sound);                                                    // Ordinal_336
         }
 
@@ -1060,15 +1060,15 @@ public static unsafe partial class Blaze
 
         ApplyAreaPalette(sheet[6]);                 // Ghidra: FUN_005350b0
 
-        *(ushort*)(s_ViewRect_00566c70 + 4) = (ushort)(sheet[3] | 0x100);
-        *(ushort*)(s_ViewRect_00566c70 + 8) = (ushort)(sheet[4] << 6);
-        *(ushort*)(s_ViewRect_00566c70 + 0xa) = (ushort)(sheet[4] << 6);
+        *(ushort*)(Mem.s_ViewRect_00566c70 + 4) = (ushort)(sheet[3] | 0x100);
+        *(ushort*)(Mem.s_ViewRect_00566c70 + 8) = (ushort)(sheet[4] << 6);
+        *(ushort*)(Mem.s_ViewRect_00566c70 + 0xa) = (ushort)(sheet[4] << 6);
 
-        Winsys3d.Ordinal_770(s_ViewRect_00566c70);
+        Winsys3d.Ordinal_770(Mem.s_ViewRect_00566c70);
         Winsys3d.Ordinal_769(1);
         Winsys3d.Ordinal_768(1);
         Winsys3d.Ordinal_767(0, 0xffffff);
-        Winsys3d.Ordinal_766(s_ViewRect_00566c70);
+        Winsys3d.Ordinal_766(Mem.s_ViewRect_00566c70);
         Winsys3d.Ordinal_765(1, 0xffffff);
 
         // Les quatre descripteurs d'interface de la carte, montes a l'identique.
@@ -1116,7 +1116,7 @@ public static unsafe partial class Blaze
     /// Ghidra: <c>thunk_FUN_00536180</c> @ 0x00536260 â€” byte-for-byte identical to
     /// <c>FUN_00536180</c> @ 0x00536180 (the usual linker-folded duplicate; only one body
     /// transcribed). Game state 1's entry point â€” real gameplay, reached once per tick while
-    /// <see cref="s_GameStateId"/> == 1. First area of the call graph reached from the character
+    /// <see cref="s_GameStateId_005de510"/> == 1. First area of the call graph reached from the character
     /// creation flow this project has not touched before.
     /// </summary>
     private static void RunGameState1Entry()

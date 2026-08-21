@@ -36,73 +36,69 @@ plantage : une valeur qui reste à zéro.**
 Les seize ont tous été trouvés *après coup*, en regardant l'écran. Ces tests les prennent avant, en
 une seconde.
 
-## Les échecs attendus, au 2026-08-19
+## Les échecs attendus : IL N'Y EN A PLUS (2026-08-21)
 
-### `Aucune_allocation_propre_dans_l_etendue_d_une_arene` — 4 symboles
+**Les cinq tests passent.** Les défauts que ce fichier listait comme « attendus » depuis le
+2026-08-19 ont été corrigés le 2026-08-21, dans le changement dédié aux défauts d'aliasing. Le
+détail de chacun est dans `REVERSE_STATUS.md`, section du même jour ; en résumé :
 
-| Symbole | Adresse | Arène qui la couvre | Déclaré dans |
-|---|---|---|---|
-| `s_EntityList_005de558` | `0x005de558` | `ItemMenuArena` | `Engine/Resources.cs` |
-| `s_ModelResultB_005f7b40` | `0x005f7b40` | `EntityArena` | `Screens/State03/WorldMap.cs` |
-| `s_ModelResultA_005fa588` | `0x005fa588` | `EntityArena` | `Screens/State03/WorldMap.cs` |
-| `s_CameraMatrix_006008e0` | `0x006008e0` | `EntityArena` | `Memory/GameMemory.cs` |
+| défaut | correction |
+|---|---|
+| `0x00566c70` alloué deux fois (`s_MenuRenderBlock` / `s_ViewRect`) | une seule allocation, dans `GameMemory`, taille 0x14 déduite des écritures et du voisin |
+| `s_MenuScreenBlock_00566c48` déclarait 0x40 pour un écart de 0x28 | ramené à 0x28 |
+| `s_CardPathDescriptor_00604940` déclarait 0x100 pour un écart de 0x20 | ramené à 0x20 |
+| `s_EntityList_005de558` dans `ItemMenuArena` | l'arène passe de 0x460 à 0x410 — le code contredisait son propre commentaire |
+| `s_CameraMatrix_006008e0`, `s_ModelResultA_005fa588`, `s_ModelResultB_005f7b40` dans `EntityArena` | devenus des **vues** dans l'arène |
 
-Constatés au découpage de `Blaze.cs`. Les trois derniers sont dans le voisinage que `FUN_00533940`
-doit lire (`DAT_005f7bc0`, `DAT_005f7cc0`, `DAT_005fa508`) — **à traiter avant de reprendre la
-priorité 2**.
+Deux défauts supplémentaires, que **ces tests ne voyaient pas**, ont été trouvés et corrigés au
+passage. Ils valent plus que les cinq précédents parce qu'ils disent où l'outil est aveugle :
 
-### `Deux_symboles_a_la_meme_adresse_partagent_leur_memoire` — 1 adresse
+- **`s_SoundBankHeader_005e8520`** était une allocation séparée alors que
+  `0x005e8520 == 0x005e8340 + 0x1e0`, la queue du répertoire de sons. Invisible aux tests parce que
+  `s_SoundDirectory` n'avait pas de suffixe VA (voir « L'angle mort de l'analyseur » plus bas).
+- **`DAT_006008d0/d4/d8`**, le décalage monde appliqué avant projection. `WorldMap.cs` l'écrivait
+  **à travers `EntityArena`**, `Model3d.cs` le lisait dans un **champ séparé** : les deux mémoires
+  ne se rencontraient jamais. Invisible aux tests parce que le test « allocation propre dans une
+  arène » ne considère que les symboles qui s'allouent (`SymbolKind.OwnAllocation`) — **un simple
+  champ `int` à une adresse couverte par une arène ne déclenche rien.**
 
-`0x00566c70` porte deux allocations indépendantes :
+## Le second angle mort, à traiter
 
-```csharp
-Screens/State00/MainMenu.cs   s_MenuRenderBlock_00566c70 = AllocZeroed(0x40);
-Screens/State03/WorldMap.cs   s_ViewRect_00566c70        = AllocZeroed(0x10);
-```
+Le test `Aucune_allocation_propre_dans_l_etendue_d_une_arene` ne regarde que les allocations. Un
+champ de valeur (`int`, `byte`, …) dont l'adresse tombe dans une arène est tout aussi cassé — c'est
+exactement `DAT_006008d0` — et passe. **Étendre l'assertion aux `SymbolKind.PlainField` ferait
+remonter cette famille entière**, et c'est probablement le meilleur rapport travail/valeur que ces
+tests puissent encore rendre.
 
-Le menu principal écrit dans l'une, la carte du monde lit dans l'autre. **Défaut dormant** : il
-mordra quand la carte du monde affichera quelque chose.
+À faire avec précaution : la première exécution signalera vraisemblablement plusieurs cas, dont
+certains légitimes (un champ peut modéliser une adresse d'arène *volontairement*, si aucun site ne
+l'atteint par l'arène). Vérifier chacun avant de corriger.
 
-Les deux autres adresses à double déclaration sont bénignes et passent : `0x005e9180` (deux vues de
-la même arène, donc la mémoire est bien partagée) et `0x00562c9c` (deux constantes de même valeur,
-aucune mémoire en jeu).
-
-### `Une_taille_declaree_ne_deborde_pas_sur_le_voisin` — 2 recouvrements
-
-**Trouvés par ces tests, pas connus avant.**
-
-| Symbole | Déclare | Écart réel | Recouvrement |
-|---|---|---|---|
-| `s_MenuScreenBlock_00566c48` (`MainMenu.cs:269`) | `0x40` | `0x28` | **0x18** |
-| `s_CardPathDescriptor_00604940` (`SaveData.cs:88`) | `0x100` | `0x4c` | **0xb4** |
-
-Le premier : deux lignes voisines du même fichier, la taille `0x40` recopiée sans vérifier l'écart
-jusqu'au voisin.
-
-Le second est plus sérieux : le descripteur de chemin **avale entièrement** le compteur d'images
-d'icône `s_CardIconFrameCount_0060498c`, et les deux vivent dans des fichiers différents.
-
-## Pourquoi ils ne sont pas corrigés
+## Pourquoi ils sont restés rouges deux jours, et ce que ça valide
 
 **Corriger une taille d'allocation change le comportement.** Les changements qui ont produit ces
 tests — `split-blaze-into-subsystems` et `extract-real-classes-from-partial` — s'interdisent
 explicitement tout changement de comportement : ils déplacent et transforment des formes, et le
-prouvent octet à octet ou corps par corps.
+prouvent octet à octet ou corps par corps. Les défauts ont donc **attendu leur propre changement**,
+au lieu d'être corrigés en marge d'un refactor où rien n'aurait pu les vérifier.
 
-Chaque correction demande de retrouver la vraie taille dans `Blaze.c` ou dans le binaire, puis de
-vérifier à l'écran. C'est un travail de reconstruction, pas de refactor.
+Ça s'est révélé payant : la correction a demandé de retrouver chaque étendue réelle dans `Blaze.c`
+ou dans la carte des symboles, et **deux des huit corrections ont changé une taille sur la foi du
+binaire, contre ce que le code affirmait** (`ItemMenuArena` 0x460 → 0x410, alors que son propre
+commentaire raisonnait 0x410 ; `s_CardPathDescriptor` 0x100 → 0x20). C'est de la reconstruction,
+pas du refactor, et ça se vérifie à l'écran — pas au compteur de primitives.
 
 ## Quand un test passe au vert
 
-Vérifier que c'est parce que le **défaut** a été corrigé, et non l'assertion affaiblie. Puis retirer
-la ligne correspondante de ce fichier et consigner la correction dans `REVERSE_STATUS.md`.
+Vérifier que c'est parce que le **défaut** a été corrigé, et non l'assertion affaiblie. Puis mettre
+à jour ce fichier et consigner la correction dans `REVERSE_STATUS.md`.
 
 Le cinquième test, `L_analyseur_releve_bien_la_disposition`, existe pour ça : si un refactor cassait
 l'analyse des sources, les quatre autres passeraient sur un ensemble vide et ne prouveraient plus
-rien.
+rien. **Maintenant que les quatre autres sont verts, il est la seule chose qui distingue « aucun
+défaut » de « aucune donnée ».** Ne jamais le désactiver.
 
 ---
-
 ## L'angle mort de l'analyseur — trouvé le 2026-08-21, à connaître
 
 Ces tests ne voient un symbole **que si son nom C# porte son adresse** (`s_Role_005e8340`). C'est
@@ -122,12 +118,23 @@ que `PlaySoundEffect` indexe depuis la première.
 **Conséquence pratique** : un `.data` sans suffixe VA n'est pas seulement mal nommé, il est
 **hors de portée de l'outillage**. Le nom n'est pas décoratif ici, c'est l'index.
 
-Le renommage (`s_SoundDirectory` → `s_SoundDirectory_005e8340`, et les deux banques en
-`s_BaseSoundBank_00604920` / `s_LevelSoundBank_00600900`, adresses pinées dans `Blaze.c` 61791-2)
-**n'a pas été fait dans la conversion de `Resources`**, et pour une raison précise : l'oracle
-`compare-bodies.ps1` compare du texte normalisé, où un renommage est indiscernable d'un changement
-de logique. Renommer ferait sonner sept méthodes **à chaque exécution future**, sauf à refiger la
-référence — ce qui effacerait sa mémoire de tout ce qui précède.
+**Le renommage a été fait le 2026-08-21**, dans le changement des défauts d'aliasing — et pas
+avant, pour une raison précise : l'oracle `compare-bodies.ps1` compare du texte normalisé, où un
+renommage est indiscernable d'un changement de logique. Il aurait sonné à **chaque** exécution
+future, sauf à refiger la référence ; or ce changement-ci refigeait de toute façon.
 
-Le renommage appartient donc au changement qui corrigera l'aliasing : celui-ci change déjà le
-comportement et demandera de toute façon une nouvelle référence.
+Quatre symboles renommés, adresses pinées avant d'y toucher :
+
+| avant | après | ancre |
+|---|---|---|
+| `s_SoundDirectory` | `s_SoundDirectory_005e8340` | `Blaze.c` 74824 |
+| `s_BaseSoundBank` | `s_BaseSoundBank_00604920` | `Blaze.c` 61791 (790000 octets) |
+| `s_LevelSoundBank` | `s_LevelSoundBank_00600900` | `Blaze.c` 61792 (260000 octets) |
+| `s_GameStateId` | `s_GameStateId_005de510` | commentaire d'origine |
+
+**L'audit complet reste à faire.** Ces quatre-là sont ceux dont on avait *établi* que le nom
+mentait. Un balayage systématique des déclarations ancrées `// Ghidra: DAT_…` mais nommées sans
+suffixe VA en trouverait probablement d'autres — et chacune est, par construction, invisible à ces
+tests. C'est le prolongement naturel de « étendre l'assertion aux champs de valeur » ci-dessus :
+les deux élargissent ce que l'outil *peut voir*, ce qui vaut mieux que de corriger ce qu'il voit
+déjà.

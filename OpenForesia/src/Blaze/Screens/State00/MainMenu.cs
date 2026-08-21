@@ -241,8 +241,13 @@ public static unsafe partial class Blaze
         return table;
     }
 
-    private static readonly uint* s_MenuScreenBlock_00566c48 = (uint*)NativeMemory.AllocZeroed(0x40);
-    internal static readonly uint* s_MenuRenderBlock_00566c70 = (uint*)NativeMemory.AllocZeroed(0x40);
+    // Ghidra: DAT_00566c48 — le bloc de decoupe du menu. **0x28 et non 0x40** : la taille declaree
+    // debordait de 0x18 sur DAT_00566c70, son voisin immediat (corrige le 2026-08-21). Les
+    // ecritures de SetupMenuScreen vont jusqu'a +0x13, l'ecart au voisin est 0x28 : tout tient.
+    private static readonly uint* s_MenuScreenBlock_00566c48 = (uint*)NativeMemory.AllocZeroed(0x28);
+
+    // Ghidra: DAT_00566c70 — reuni avec s_ViewRect_00566c70 dans GameMemory le 2026-08-21 : les
+    // deux etaient deux allocations pour une seule memoire. Voir Mem.s_ViewRect_00566c70.
 
 
     /// <summary>Ghidra: FUN_00542130 @ 0x00542130 â€” game state 0's entry point: the main menu.</summary>
@@ -253,7 +258,7 @@ public static unsafe partial class Blaze
         s_FadeCounter_005e9960 = 0;
 
         // Ghidra: while (DAT_005de510 == 0) FUN_00542250();
-        while (s_GameStateId == 0)
+        while (s_GameStateId_005de510 == 0)
         {
             RunMainMenuFrameLoop();
         }
@@ -332,9 +337,9 @@ public static unsafe partial class Blaze
                 {
                     switch (s_MenuSelection_0056e61c)
                     {
-                        case 0: s_GameStateId = 1; break;
-                        case 1: s_GameStateId = 4; break;
-                        case 2: s_GameStateId = 6; break;
+                        case 0: s_GameStateId_005de510 = 1; break;
+                        case 1: s_GameStateId_005de510 = 4; break;
+                        case 2: s_GameStateId_005de510 = 6; break;
 
                         case 3:
                             // The options page. Drains the input queue, rebuilds textures, runs the
@@ -411,7 +416,7 @@ public static unsafe partial class Blaze
                             break;
                     }
 
-                    if (s_GameStateId != 0)
+                    if (s_GameStateId_005de510 != 0)
                     {
                         FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
                         s_Unknown_005de15c = 0;

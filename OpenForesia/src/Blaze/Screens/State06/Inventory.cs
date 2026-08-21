@@ -623,7 +623,7 @@ public static unsafe partial class Blaze
                     }
                     else if (s_ItemMenuPhase_005de4d0 == 3 && (pad[3] & 0xc0) != 0)
                     {
-                        s_GameStateId = 0;   // Ghidra: DAT_005de510
+                        s_GameStateId_005de510 = 0;   // Ghidra: DAT_005de510
                         return primCursor;
                     }
 
@@ -1810,7 +1810,7 @@ public static unsafe partial class Blaze
     /// un état de jeu, et sa sortie par CROIX ramène à l'écran racine.</para>
     ///
     /// <para><b>Aucune sauvegarde du tout</b> : il repasse aussitôt à l'écran racine, sans rien
-    /// afficher — le pendant du <c>s_GameStateId = 4</c> de l'écran d'organisation.</para>
+    /// afficher — le pendant du <c>s_GameStateId_005de510 = 4</c> de l'écran d'organisation.</para>
     /// </summary>
     private static uint* ItemMenuAuctionScreen(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
@@ -1850,7 +1850,7 @@ public static unsafe partial class Blaze
         {
             if (s_ItemMenuPhase_005de4d0 == 3)
             {
-                if ((pad[3] & 0xc0) != 0) { s_GameStateId = 0; return primCursor; }
+                if ((pad[3] & 0xc0) != 0) { s_GameStateId_005de510 = 0; return primCursor; }
             }
             else if (s_ItemMenuPhase_005de4d0 == 4)
             {

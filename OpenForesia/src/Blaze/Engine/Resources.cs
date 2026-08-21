@@ -842,10 +842,10 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
         // handle simply fail harmlessly, matching the original's unconditional calls.
         uint sndBytesRead;
         // The first 60 directory entries, then the whole base sample bank they point into.
-        Win32.ReadFile(sndHandle, mem.s_SoundDirectory, 0x1e0, &sndBytesRead, null);
-        if (mem.s_BaseSoundBank != null)
+        Win32.ReadFile(sndHandle, mem.s_SoundDirectory_005e8340, 0x1e0, &sndBytesRead, null);
+        if (mem.s_BaseSoundBank_00604920 != null)
         {
-            Win32.ReadFile(sndHandle, mem.s_BaseSoundBank, 790000, &sndBytesRead, null);
+            Win32.ReadFile(sndHandle, mem.s_BaseSoundBank_00604920, 790000, &sndBytesRead, null);
         }
         Win32.CloseHandle(sndHandle);
 
@@ -916,7 +916,7 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
         while (*walk != 0) walk += 2;
 
         // Ghidra: game state 3 picks its entry from DAT_005de528; every other state uses 0xb.
-        uint entryIndex = s_GameStateId == 3 ? (uint)(s_Unknown_005de528 & 0xff) : 0xb;
+        uint entryIndex = s_GameStateId_005de510 == 3 ? (uint)(s_Unknown_005de528 & 0xff) : 0xb;
 
         byte* scratch = mainMem + 0x1b0000;
         LoadResourceEntry((int*)(nint)pairs[entryIndex * 2], scratch);
@@ -1118,10 +1118,10 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
         ReloadStateResources();
 
         // Ghidra: _DAT_00566c74 = 0x100; _DAT_00566c78 = 0; _DAT_00566c7a = 0; then six ordinals.
-        uint* block = s_MenuRenderBlock_00566c70;
-        *(uint*)((byte*)block + 4) = 0x100;
-        *(ushort*)((byte*)block + 8) = 0;
-        *(ushort*)((byte*)block + 0x0a) = 0;
+        byte* block = mem.s_ViewRect_00566c70;
+        *(uint*)(block + 4) = 0x100;
+        *(ushort*)(block + 8) = 0;
+        *(ushort*)(block + 0x0a) = 0;
 
         Winsys3d.Ordinal_770(block);
         Winsys3d.Ordinal_769(1);

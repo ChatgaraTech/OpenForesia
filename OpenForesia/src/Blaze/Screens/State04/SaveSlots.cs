@@ -599,7 +599,7 @@ public static unsafe partial class Blaze
                     {
                         s_Unknown_005de51c = 0;
                         s_SelectState_00578de8[0] = -1;
-                        s_GameStateId = 1;
+                        s_GameStateId_005de510 = 1;
                     }
                 }
                 break;
@@ -1819,7 +1819,7 @@ public static unsafe partial class Blaze
                         // `goto`, qui saute la remise à zéro de l'état de jeu — celle-ci est faite
                         // ici à la place.
                         s_SelectState_00578de8[0] = -1;
-                        s_GameStateId = 0;
+                        s_GameStateId_005de510 = 0;
                     }
                     else s_SelectState_00578de8[2] = 0;
                     break;

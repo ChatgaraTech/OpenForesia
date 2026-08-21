@@ -637,7 +637,7 @@ public static unsafe partial class Blaze
     ///
     /// <para>Signature confirmée par le re-run à signature forcée
     /// (<c>~/ghidra_scripts/ForceDecompileSubStates.java</c>). Ce sous-état termine l'écran entier
-    /// en posant <c>state[0] = -1</c> et <see cref="s_GameStateId"/> — le retour vers le jeu, pas
+    /// en posant <c>state[0] = -1</c> et <see cref="s_GameStateId_005de510"/> — le retour vers le jeu, pas
     /// seulement un pas de la machine à sous-états ; voir le commentaire sur ce test dans
     /// <c>RunCharacterSelectFrameLoop</c>.</para>
     ///
@@ -1408,7 +1408,7 @@ public static unsafe partial class Blaze
 
         s_Unknown_005de51c = 1;
         state[0] = -1;
-        s_GameStateId = 1;
+        s_GameStateId_005de510 = 1;
     }
 
     /// <summary>Ghidra: la boucle de recopie partagée par les deux branches ci-dessus — copie

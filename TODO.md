@@ -9,8 +9,11 @@ Point d'entrée entre deux sessions. Mis à jour le **2026-08-21**. L'historique
 vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baseline.txt` /
 `bodies-baseline.txt`.
 **Non commité** : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
-terminée —, le rapatriement `.data` du son, le retrait intérieur des points d'entrée, et cette
-mise à jour de documentation.
+terminée —, le rapatriement `.data` du son, le retrait intérieur des points d'entrée, la correction
+des huit défauts d'aliasing (qui **change le comportement**), et cette mise à jour de documentation.
+
+**`bodies-baseline.txt` a été refigé** à 511 corps le 2026-08-21, après les corrections. L'ancienne
+référence reste dans l'historique, au commit `95344c7`.
 
 Les deux fichiers de référence de `OpenForesia.Tools/` sont l'oracle — les perdre le perdrait.
 Ils sont désormais dans l'historique, donc récupérables ; ce n'était pas le cas le 2026-08-19.
@@ -37,39 +40,30 @@ ne relèvent pas du retrait, elles sont la raison d'être du mécanisme.
 `partial class Blaze` : pas de constructeur, donc rien à injecter. `Subsystems.cs` ne disparaîtra
 qu'à l'étape D.
 
-## Reprendre ici — deux chantiers, et le choix dépend de ce qu'on veut
+## Reprendre ici — la carte du monde, `FUN_00533940`
 
-**Il n'y a plus de suite « évidente ».** L'étape C est close et son prolongement borné est fait. Les
-deux candidats ne se comparent pas sur le même axe :
+**Son préalable est levé.** Le défaut d'aliasing `0x00566c70` — deux allocations pour une seule
+mémoire, dont la carte du monde lisait la seconde — est corrigé depuis le 2026-08-21, avec les sept
+autres. Rien ne bloque plus la reprise.
 
-### (a) Priorité 2 — la carte du monde, `FUN_00533940`
+C'est aussi **le seul chantier qui fasse avancer la reconstruction elle-même** : plus de code du jeu
+transcrit, l'état 3 qui finit par afficher quelque chose. Tout est décrit en priorité 2 : les 375
+lignes déjà cartographiées de `FUN_00533940`, ses cinq labels sautés depuis plusieurs endroits, et
+sa dépendance facile `FUN_00533450` (52 lignes) à écrire en premier parce qu'elle sert de contrôle.
 
-C'est **la seule des deux qui fasse avancer la reconstruction elle-même** : plus de code du jeu
-transcrit, l'état 3 qui finit par afficher quelque chose. Tout est décrit plus bas, y compris les
-375 lignes déjà cartographiées de `FUN_00533940` et sa dépendance facile `FUN_00533450`.
+**Une chose a changé pour elle depuis la dernière fois**, et elle est bonne à savoir avant de
+mesurer quoi que ce soit : `DAT_006008d0/d4/d8`, le décalage monde appliqué avant projection, était
+écrit par `WorldMap` **à travers l'arène** et lu par `Model3d` dans un **champ séparé**. Les deux
+mémoires ne se rencontraient jamais. C'est corrigé — donc si un comportement de la carte du monde
+paraissait inexplicable auparavant, il vaut la peine d'être re-regardé plutôt que re-débogué.
 
-**Un préalable non négociable** : le défaut d'aliasing `0x00566c70` doit être traité **avant** de
-reprendre la carte du monde — `s_MenuRenderBlock_00566c70` et `s_ViewRect_00566c70` sont deux
-allocations pour une seule mémoire, et la carte du monde lit la seconde.
+**Ce qui reste hors du chemin** :
 
-### (b) Priorité 1 bis + les défauts d'aliasing en un seul changement
-
-Six défauts recensés (dont celui du 2026-08-21, que les tests ne voyaient pas), le renommage des
-`.data` sans suffixe VA, et les huit globales qui traversent encore une frontière de classe. Ils
-vont **ensemble** parce que le renommage impose de refiger `bodies-baseline.txt`, et qu'on ne refige
-qu'une fois.
-
-Ça **change le comportement** — c'est le premier changement de la série à le faire. Donc : vérifier
-à l'écran et à l'oreille, pas au compteur.
-
-### (c) L'étape D, `Screens/` en 12 classes
-
-**À ne pas commencer maintenant.** Les écrans bougent encore : `Screens/State03/WorldMap.cs` est le
-front de la priorité 2. Convertir un fichier qu'on est en train d'écrire, c'est se condamner à le
-reconvertir.
-
-**Recommandation** : (b) puis (a). Le préalable `0x00566c70` de (a) est déjà dans (b), donc les
-faire dans cet ordre évite de traiter le même défaut deux fois.
+* **L'étape D**, `Screens/` en 12 classes. Toujours à ne pas commencer : `WorldMap.cs` est
+  précisément le fichier qu'on va écrire. Le convertir maintenant, c'est se condamner à le
+  reconvertir. La recette et la matrice de dépendances l'attendent, plus bas.
+* **Les deux élargissements d'outillage** et **l'arène de carte mémoire** : voir priorité 1 bis.
+  Aucun ne bloque la carte du monde.
 
 
 ## Cinq avertissements payés comptant
@@ -359,65 +353,54 @@ taux, huit essais ne distinguent pas 25 % de 40 %, et un build concurrent fausse
 
 ---
 
-# Priorité 1 bis — le défaut d'aliasing trouvé le 2026-08-21
+# Priorité 1 bis — **SOLDÉE le 2026-08-21**
 
-**C'est un vrai bug de la reconstruction, pas un bug du jeu de 1998.** À ne pas confondre avec les
-entrées de `legacy-bug.md`.
+Les huit défauts d'aliasing sont corrigés et **les cinq tests de disposition passent**. Le détail
+complet — chaque étendue, comment elle a été déduite, et ce que le binaire a démenti — est dans
+`REVERSE_STATUS.md`, section du 2026-08-21. Résumé :
 
-`Screens/State03/WorldMap.cs` alloue `s_SoundBankHeader_005e8520` à part, sur 0x88 octets. Or
-`0x005e8520 == 0x005e8340 + 0x1e0` : c'est la **queue** du répertoire de sons
-`GameMemory.s_SoundDirectory` (`DAT_005e8340`, 0x268 octets = 0x1e0 pour les ids `0x00..0x3b`, puis
-0x88 pour les ids `0x3c..0x4c`).
+| # | défaut | correction |
+|---|---|---|
+| 1 | `0x00566c70` alloué deux fois | une allocation dans `GameMemory`, 0x14 |
+| 2 | `s_MenuScreenBlock_00566c48` 0x40 pour un écart de 0x28 | 0x28 |
+| 3 | `s_SoundBankHeader_005e8520` détaché du répertoire de sons | vue dans `s_SoundDirectory_005e8340` |
+| 4 | `s_EntityList_005de558` avalé par `ItemMenuArena` | arène 0x460 → **0x410** |
+| 5-7 | trois allocations propres dans `EntityArena` | devenues des vues |
+| 8 | `s_CardPathDescriptor_00604940` 0x100 pour un écart de 0x20 | 0x20 |
 
-**Confirmé contre `Blaze.c`, pas déduit :**
+**Deux de ces huit étaient invisibles aux tests**, et c'est le résultat le plus utile :
+`s_SoundBankHeader_005e8520` (nom sans suffixe VA) et surtout `DAT_006008d0/d4/d8`, le décalage
+monde — écrit par `WorldMap` **à travers l'arène**, lu par `Model3d` dans un **champ séparé**. Les
+deux mémoires ne se rencontraient jamais.
 
-```
-Blaze.c 74824   Ordinal_334(uVar2,  &DAT_005e8340, 0x1e0);     // BASE.SND : les 60 premières entrées
-Blaze.c 74825   Ordinal_334(uVar2,  DAT_00604920,  790000);    // ... et la banque « base »
-Blaze.c 63353   Ordinal_334(uVar10, &DAT_005e8520, 0x88);      // fichier de zone : les 17 dernières
-Blaze.c 63354   Ordinal_334(uVar10, DAT_00600900,  260000);    // ... et la banque « niveau »
-```
+La référence de l'oracle est **refigée à 511 corps**. L'ancienne est dans l'historique (`95344c7`).
 
-Un seul tableau de 77 entrées de 8 octets, chargé en deux fois. `PlaySoundEffect` indexe
-`&DAT_005e8340` pour **tous** les ids jusqu'à `0x4c`, en ne changeant que la banque à laquelle le
-décalage est ajouté. Les tailles se corroborent au bit près.
+## Ce que ça laisse ouvert — deux élargissements de l'outillage
 
-**Conséquence en jeu** : les 0x88 octets lus depuis le fichier de zone n'arrivent jamais dans le
-répertoire que `PlaySoundEffect` consulte. Les effets sonores de niveau (`0x3c..0x4c`) lisent un
-décalage et une longueur nuls — silencieux — alors que leurs échantillons sont bien chargés dans
-`mem.s_LevelSoundBank` juste en dessous. **À vérifier à l'oreille**, pas au compteur : c'est
-précisément le genre de défaut qu'un nombre de primitives identique ne montre pas.
+Les deux valent mieux que de corriger ce que l'outil voit déjà : ils élargissent ce qu'il **peut**
+voir.
 
-## Ce qu'il faut faire, et pourquoi pas maintenant
+1. **Étendre `Aucune_allocation_propre_dans_l_etendue_d_une_arene` aux champs de valeur.** Le test
+   ne considère que `SymbolKind.OwnAllocation` ; un `int` à une adresse d'arène passe — c'est
+   exactement `DAT_006008d0`. Attention : la première exécution signalera plusieurs cas, dont
+   certains légitimes (un champ peut modéliser une adresse d'arène volontairement si aucun site ne
+   l'atteint par l'arène). Vérifier chacun.
+2. **Auditer les `.data` nommés sans suffixe VA.** Quatre ont été renommés parce qu'on avait établi
+   que leur nom mentait ; un balayage systématique des déclarations ancrées `// Ghidra: DAT_…` mais
+   nommées sans adresse en trouverait d'autres, et chacune est par construction invisible aux tests.
 
-La correction tient en une ligne :
+## Et un chantier de reconstruction, mesuré
 
-```csharp
-private static byte* s_SoundBankHeader_005e8520
-    => (byte*)(Mem.s_SoundDirectory + GameMemory.SoundDirectoryBaseCount);
-```
+**L'arène de carte mémoire.** `0x00604940..0x006049bc` est une région contiguë de globales de carte
+— 9 symboles, **81 sites relevés** — qui mérite le traitement « un bloc, chaque symbole une vue »
+de l'arène `0x005e9000`.
 
-Elle **change le comportement**, donc elle n'avait pas sa place dans une conversion de classe
-vérifiée « logique inchangée ». Elle va avec :
+Tant qu'elle n'existe pas, un nom de fichier de plus de 26 octets déborderait sur le **tas** au lieu
+de déborder sur `DAT_00604960` comme dans l'original. Le plus long nom du jeu de 1998 fait 19
+octets, donc la marge tient — mais elle est plus mince qu'avant, et c'est le prix de la fidélité.
 
-1. le **renommage** `s_SoundDirectory` → `s_SoundDirectory_005e8340`, sans lequel les tests de
-   disposition resteront aveugles au recouvrement (voir ci-dessous) ; et pendant qu'on y est
-   `s_BaseSoundBank_00604920` / `s_LevelSoundBank_00600900` — adresses pinées dans `Blaze.c`
-   61791-2, `DAT_00604920` = 790000 = base, `DAT_00600900` = 260000 = niveau ;
-2. les **cinq autres défauts d'aliasing** déjà recensés, dont `0x00566c70` ;
-3. une **nouvelle référence** `bodies-baseline.txt` — inévitable dès qu'on renomme, et c'est
-   justement pour ça qu'il faut grouper.
-
-## Ce que l'affaire apprend sur les tests eux-mêmes
-
-**Les quatre tests de disposition étaient verts sur ce recouvrement.** Ils n'indexent que par le
-suffixe VA du nom C# : un `.data` nommé sans son adresse leur est totalement invisible — il ne peut
-ni entrer en collision, ni déborder, ni être signalé. Écrit dans `OpenForesia.Tests/README.md`.
-
-**Donc : un `.data` sans suffixe VA n'est pas seulement mal nommé, il est hors de portée de
-l'outillage.** Le nom est l'index.
-
----
+À faire séparément : ça touche le sous-système de sauvegarde, le plus difficile à vérifier à
+l'écran.
 
 ---
 
@@ -504,8 +487,12 @@ marche au maximum). Après elles, une **seconde boucle** appelle `FUN_00533450`.
 * `_DAT_005de730` / `_DAT_005de734` — deux shorts mis à -1 en entrée, comparés plus loin
   (`(&DAT_005de730)[local_50]`, donc un petit tableau indexé). **Pas encore modélisés, et ils
   tombent hors de tout ce qui existe** : `s_CameraBlock_005de030` s'arrête à 0x5de0b0, et l'arène
-  du menu objets à 0x5de560. Il faudra une arène de plus. Le vérifier avant d'écrire, plutôt que
-  d'ajouter deux champs C# isolés — c'est exactement la forme du défaut d'aliasing du projet.
+  du menu objets à **0x5de510** — elle a été ramenée de 0x460 à 0x410 le 2026-08-21, en corrigeant
+  les défauts d'aliasing (elle contredisait son propre commentaire, et avalait
+  `s_EntityList_005de558`). L'écart est donc encore plus grand qu'on ne le croyait.
+  Il faudra une arène de plus. Le vérifier avant d'écrire, plutôt que d'ajouter deux champs C#
+  isolés — c'est exactement la forme du défaut d'aliasing du projet, corrigé huit fois de plus ce
+  jour-là.
 * `Ordinal_807_exref` reçoit en entrée `(param_1[7] >> 0xc & 0xffff) | (param_1[9] & 0xfffff000) << 4`
   — c'est-à-dire la position (x, z) de l'entité empaquetée, `slot + 0x1c` et `slot + 0x24`.
 

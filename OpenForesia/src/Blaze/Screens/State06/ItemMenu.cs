@@ -176,7 +176,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00524320 @ 0x00524320 — la boucle d'image du menu objets.
     ///
     /// <para>Deux sorties : SELECT+START ensemble (le masque 9 sur le mot du bas) tant qu'aucun
-    /// sous-écran n'est ouvert, et le passage de <see cref="s_GameStateId"/> à autre chose que 6,
+    /// sous-écran n'est ouvert, et le passage de <see cref="s_GameStateId_005de510"/> à autre chose que 6,
     /// que la ligne « Quitter » de l'écran racine provoque.</para>
     ///
     /// <para>Le rendu de fin d'image rétrécit les deux DISPENV à 0x100 x 0xe0 le temps de l'envoi,
@@ -226,7 +226,7 @@ public static unsafe partial class Blaze
             // SELECT + START ensemble, et seulement hors sous-écran.
             if ((pad[2] & 9) == 9 && s_Unknown_00566acc < 0) break;
 
-            if (s_GameStateId != 6)
+            if (s_GameStateId_005de510 != 6)
             {
                 s_Unknown_005de15c = 0;
                 Inp.s_Unknown_005de168 = 0;
@@ -304,7 +304,7 @@ public static unsafe partial class Blaze
             SetDisplayEnvExtent(0x140, 0xf0);
         }
 
-        s_GameStateId = 0;
+        s_GameStateId_005de510 = 0;
         s_Unknown_005de15c = 0;
     }
 
@@ -321,7 +321,7 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: FUN_00524680 @ 0x00524680 — l'écran racine du menu objets : trois lignes, un curseur
     /// qui boucle, et la validation qui ouvre le sous-écran correspondant. La troisième ligne,
-    /// « Quitter », repose <see cref="s_GameStateId"/> à 0 et rend la main au menu principal.
+    /// « Quitter », repose <see cref="s_GameStateId_005de510"/> à 0 et rend la main au menu principal.
     /// </summary>
     private static uint* ItemMenuRootScreen(uint* otBase, uint* otEntry, uint* primCursor, byte* pad)
     {
@@ -369,7 +369,7 @@ public static unsafe partial class Blaze
             }
             else if (s_ItemMenuCursor_005de4e0 == 2)
             {
-                s_GameStateId = 0;
+                s_GameStateId_005de510 = 0;
             }
         }
 

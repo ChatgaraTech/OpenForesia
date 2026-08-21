@@ -209,7 +209,7 @@ public static unsafe partial class Blaze
             // manette encore enfoncée en arrivant déclenche la sortie.
             if (((byte)pressed & 9) == 9 && s_Unknown_0056c778 < 0)
             {
-                s_GameStateId = 0;
+                s_GameStateId_005de510 = 0;
                 return;
             }
 
@@ -363,7 +363,7 @@ public static unsafe partial class Blaze
             s_Unknown_00566c90 = 1;
             s_Unknown_00566c94 = 1;
             s_Unknown_005de53c = 0;
-            s_GameStateId = 2;
+            s_GameStateId_005de510 = 2;
             return;
         }
 
