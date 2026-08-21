@@ -30,7 +30,7 @@ namespace OpenForesia.Blaze;
 /// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
 /// </para>
 /// </summary>
-internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui)
+internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui, UiWindow uiWin)
 {
 
     /// <summary>
@@ -233,7 +233,7 @@ internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui)
     /// </summary>
     internal uint* DrawTextRun(uint* otEntry, uint* prim, int* cursor, byte* text, uint flags, uint extra, int maxChars)
     {
-        UiWin.EmitViewportRect(otEntry, &prim);
+        uiWin.EmitViewportRect(otEntry, &prim);
 
         uint* atlas = (uint*)*cursor;
         uint packing = *atlas;
@@ -277,7 +277,7 @@ internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui)
         }
 
         prim = DrawFlatPrimitive(otEntry, prim, (int*)(frame + 2));
-        UiWin.EmitClipRect(otEntry, &prim);
+        uiWin.EmitClipRect(otEntry, &prim);
 
         return prim;
     }

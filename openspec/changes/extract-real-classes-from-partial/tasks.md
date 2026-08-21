@@ -188,6 +188,40 @@
       `DeviceShim.cs` et `SyntheticDevice.cs` les empruntaient à `Blaze`. Traiter `Host/` en bloc
       aurait laissé quatre appels non résolus.
 
+## 3 bis. Le retrait des points d'entrée — moitié intérieure (2026-08-21)
+
+- [x] 3b.1 **Mesurer d'abord, par une matrice `depuis` × `vers`.** 28 qualifications croisées entre
+      classes converties, dans quatre fichiers seulement. La matrice est dans `TODO.md`,
+      réutilisable telle quelle à l'étape D.
+      **La première version était fausse et fermait une porte** : elle comptait une arête
+      `Input → Video` qui bouclait `Input → Video → Resources → Input`, donc « cycle, injection
+      impossible, garder les points d'entrée ». Ce `Vid.` était **dans un commentaire**. Avec le
+      filtre corrigé le matin même (7.7), l'arête disparaît et le graphe est un **DAG propre**.
+      Une conclusion architecturale entière tenait sur une ligne mal classée.
+- [x] 3b.2 Injection par constructeur pour les quatre classes concernées :
+      `UiWindow(GameMemory, UiText, Input, Audio)` · `Primitives2d(GameMemory, UiText, UiWindow)` ·
+      `Resources(GameMemory, Primitives2d, Input, Audio)` · `Video(GameMemory, Resources)`.
+      Les cinq autres ne dépendent d'aucune sœur.
+      **Les sept `Vid.` de `Engine/Video.cs` restent, et c'est définitif** : ce sont des
+      auto-références depuis deux lambdas `static` et `MoviePlayerWindowProc`, que
+      `[UnmanagedCallersOnly]` force à rester statique. Une méthode statique ne rejoint son instance
+      que par un point d'entrée — elles sont la raison d'être du mécanisme, pas sa dette.
+- [x] 3b.3 **Corriger un commentaire devenu faux.** `Subsystems.cs` affirmait que « l'ordre textuel
+      de ce fichier garantit l'ordre d'initialisation ». Vrai à l'époque des champs
+      `static readonly` ; faux depuis 7.6, où ils sont devenus des propriétés paresseuses. La preuve
+      est dans le code du jour : `Prims` référence `UiWin`, **déclaré tout en bas du fichier**, et
+      cela marche — la résolution a lieu au premier appel. Conséquence écrite sur place : **ne pas
+      réintroduire de champ immédiat** pour « clarifier l'ordre », ce serait rouvrir le défaut du
+      2026-08-19 *et* remettre l'allocation devant la course.
+- [ ] 3b.4 **La moitié extérieure attend l'étape D.** 665 lecteurs subsistent dans `Screens/` et
+      `Platform/` — encore des fichiers de `partial class Blaze`, donc sans constructeur où
+      injecter. `Subsystems.cs` maigrit de 28 usages sur ~693 ; il ne disparaîtra pas avant.
+      Le gain n'est pas la taille du fichier, c'est que **chaque signature déclare enfin ses vraies
+      dépendances**.
+      Vérifié : build 0 erreur, avertissements identiques ; oracle « aucune logique modifiée »,
+      0 méthode absente ; tests 3 rouges attendus ; `-Entry 1` **382,3** et `-Entry 2` **387**,
+      captures relues ; taux de course **2/32 = 6 %** contre un contrôle adjacent à **6/32 = 19 %**.
+
 ## 4. E — composition root et `IDisposable`
 
 - [x] 4.1 **Mesurer d'abord** : les 10 rappels `[UnmanagedCallersOnly]` de `src/Blaze/`

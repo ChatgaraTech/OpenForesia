@@ -45,7 +45,7 @@ namespace OpenForesia.Blaze;
 /// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
 /// </para>
 /// </summary>
-internal sealed unsafe class Resources(GameMemory mem)
+internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input inp, Audio aud)
 {
     // =====================================================================
     // Resource-file loader subsystem (Ghidra: FUN_00529b00/FUN_00529b50/FUN_00532070/FUN_005322f0/
@@ -962,12 +962,12 @@ internal sealed unsafe class Resources(GameMemory mem)
 
         while (framesLeft != 0 || phase != 0)
         {
-            primCursor = Prims.DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
-            primCursor = Prims.DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
+            primCursor = prims.DrawSpritePrimitive(otEntry, primCursor, (int*)sprite, 0, 0);
+            primCursor = prims.DrawFlatPrimitive(otEntry, primCursor, (int*)sprite);
             FrameEnd(&otBase, &otEntry, &primCursor, 1, 1);
 
             // Ghidra: START (0x0008) or SQUARE (0x8000) of the current player's pad word. The word
-            // at DAT_00604a20 is **active high** â€” Inp.UpdateButtonEdges inverts the active-low word
+            // at DAT_00604a20 is **active high** â€” inp.UpdateButtonEdges inverts the active-low word
             // FUN_00523660 builds â€” so a set bit is a held button.
             bool held = (CurrentPadWord() & 0x8008) != 0;
 
@@ -980,7 +980,7 @@ internal sealed unsafe class Resources(GameMemory mem)
             else if (phase == 0)
             {
                 phase = 1;
-                Aud.PlayUiSound38();        // Ghidra: FUN_0053db80
+                aud.PlayUiSound38();        // Ghidra: FUN_0053db80
             }
 
             framesLeft--;
@@ -1004,9 +1004,9 @@ internal sealed unsafe class Resources(GameMemory mem)
     /// </summary>
     internal byte* CurrentPadState()
     {
-        int slot = Inp.s_PlayerSlots_005e9188[
-            Inp.s_SlotArea_005e9180[0x248 + (uint)(mem.s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
-        return Inp.s_InputStateBase_00604a20 + slot * 0x10;
+        int slot = inp.s_PlayerSlots_005e9188[
+            inp.s_SlotArea_005e9180[0x248 + (uint)(mem.s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
+        return inp.s_InputStateBase_00604a20 + slot * 0x10;
     }
 
     /// <summary>

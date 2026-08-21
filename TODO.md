@@ -9,56 +9,70 @@ Point d'entrée entre deux sessions. Mis à jour le **2026-08-21**. L'historique
 vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baseline.txt` /
 `bodies-baseline.txt`.
 **Non commité** : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
-terminée —, le rapatriement `.data` du son vers `GameMemory`, et cette mise à jour de documentation.
+terminée —, le rapatriement `.data` du son, le retrait intérieur des points d'entrée, et cette
+mise à jour de documentation.
 
 Les deux fichiers de référence de `OpenForesia.Tools/` sont l'oracle — les perdre le perdrait.
 Ils sont désormais dans l'historique, donc récupérables ; ce n'était pas le cas le 2026-08-19.
 
 ---
 
-# Priorité 1 — `Engine/` en vraies classes · **ÉTAPE C TERMINÉE, 9 sur 9**
+# Priorité 1 — **ÉTAPE C TERMINÉE**, et la moitié intérieure des points d'entrée retirée
 
-Les neuf fichiers d'`Engine/` sont des classes d'instance. `UiWindow`, le dernier, est converti le
-2026-08-21. La recette et les pièges qu'elle a coûtés sont conservés plus bas — ils resservent à
-l'étape D.
+Les neuf fichiers d'`Engine/` sont des classes d'instance, et **aucune n'atteint plus une autre par
+`Subsystems.cs`** : les 28 qualifications croisées sont devenues des paramètres de constructeur.
 
-## Reprendre ici — retirer les points d'entrée de `Subsystems.cs`
-
-C'est la **suite directe et bornée** de l'étape C, et sa condition de retrait est écrite depuis le
-premier jour dans l'en-tête de `Subsystems.cs` :
-
-> Ils disparaissent au fur et à mesure : quand un sous-système appelant devient lui-même une classe
-> d'instance, il reçoit ses dépendances par constructeur et cesse de passer par ici. Le jour où le
-> dernier lecteur disparaît, ce fichier avec.
-
-**C'est désormais vrai de tous les appelants.** Une qualification croisée écrite *à l'intérieur*
-d'une classe convertie (`Aud.PlaySoundEffect(...)` dans `UiWindow`, `Inp.s_SlotArea…` dans
-`Resources`, `Ui.DecodeSlot(...)`, `UiWin.EmitClipRect(...)` dans `Primitives2d`) peut devenir un
-paramètre de constructeur. `Primitives2d(GameMemory, UiText)` est le précédent : sa dépendance au
-moteur de texte est déjà dans sa signature.
-
-**Ce qui reste par un point d'entrée après ça** : les qualifications écrites depuis `Screens/` et
-`Platform/`, qui sont encore des fichiers de `partial class Blaze` et n'ont pas de constructeur.
-Elles disparaîtront à l'étape D, pas avant — donc `Subsystems.cs` ne disparaît pas encore, il
-maigrit.
-
-**Mesurer d'abord** : compter les qualifications croisées *entre classes converties*, par paire, et
-**vérifier l'absence de cycle** avant de choisir les signatures. La vérification de cycle faite pour
-`UiWindow` ↔ `Primitives2d` est le modèle :
-
-```bash
-cd OpenForesia/src/Blaze
-# les membres de B, cherches dans A : si A appelle B et B appelle A, pas d'injection possible
-for m in $(grep -oE "^    (private|internal)[^(=]*\b([A-Za-z0-9_]+)\(" Engine/B.cs \
-           | sed -E 's/.*[^A-Za-z0-9_]([A-Za-z0-9_]+)\($/\1/' | sort -u); do
-  grep -qE "\b$m\s*\(" Engine/A.cs && echo "  CYCLE: $m"
-done
+```
+UiWindow(GameMemory, UiText, Input, Audio)
+Primitives2d(GameMemory, UiText, UiWindow)
+Resources(GameMemory, Primitives2d, Input, Audio)
+Video(GameMemory, Resources)
 ```
 
-**Ne pas commencer par le plus gros.** Une paire à la fois, avec build + oracle + tests + playtest,
-comme les neuf conversions — c'est ce rythme qui a tenu neuf fois de suite.
+Les cinq autres gardent `(GameMemory mem)`. Les sept `Vid.` restants dans `Engine/Video.cs` sont des
+**auto-références** depuis des membres statiques (`[UnmanagedCallersOnly]`, lambdas `static`) : elles
+ne relèvent pas du retrait, elles sont la raison d'être du mécanisme.
 
-## Quatre avertissements payés comptant
+**Il reste 665 lecteurs**, tous dans `Screens/` et `Platform/`. Ce sont encore des fichiers de
+`partial class Blaze` : pas de constructeur, donc rien à injecter. `Subsystems.cs` ne disparaîtra
+qu'à l'étape D.
+
+## Reprendre ici — deux chantiers, et le choix dépend de ce qu'on veut
+
+**Il n'y a plus de suite « évidente ».** L'étape C est close et son prolongement borné est fait. Les
+deux candidats ne se comparent pas sur le même axe :
+
+### (a) Priorité 2 — la carte du monde, `FUN_00533940`
+
+C'est **la seule des deux qui fasse avancer la reconstruction elle-même** : plus de code du jeu
+transcrit, l'état 3 qui finit par afficher quelque chose. Tout est décrit plus bas, y compris les
+375 lignes déjà cartographiées de `FUN_00533940` et sa dépendance facile `FUN_00533450`.
+
+**Un préalable non négociable** : le défaut d'aliasing `0x00566c70` doit être traité **avant** de
+reprendre la carte du monde — `s_MenuRenderBlock_00566c70` et `s_ViewRect_00566c70` sont deux
+allocations pour une seule mémoire, et la carte du monde lit la seconde.
+
+### (b) Priorité 1 bis + les défauts d'aliasing en un seul changement
+
+Six défauts recensés (dont celui du 2026-08-21, que les tests ne voyaient pas), le renommage des
+`.data` sans suffixe VA, et les huit globales qui traversent encore une frontière de classe. Ils
+vont **ensemble** parce que le renommage impose de refiger `bodies-baseline.txt`, et qu'on ne refige
+qu'une fois.
+
+Ça **change le comportement** — c'est le premier changement de la série à le faire. Donc : vérifier
+à l'écran et à l'oreille, pas au compteur.
+
+### (c) L'étape D, `Screens/` en 12 classes
+
+**À ne pas commencer maintenant.** Les écrans bougent encore : `Screens/State03/WorldMap.cs` est le
+front de la priorité 2. Convertir un fichier qu'on est en train d'écrire, c'est se condamner à le
+reconvertir.
+
+**Recommandation** : (b) puis (a). Le préalable `0x00566c70` de (a) est déjà dans (b), donc les
+faire dans cet ordre évite de traiter le même défaut deux fois.
+
+
+## Cinq avertissements payés comptant
 
 **Vérifier sa propre note avant de planifier dessus.** Ce fichier annonçait que `Resources.cs`
 « porte `ToAnsiZ` » et que sa conversion demanderait de décider où vit cette aide. C'était faux :
@@ -99,6 +113,42 @@ de ce que le code impose, suspecter la mesure, mais la refaire plutôt que l'ign
 du script de clôture, l'angle mort des tests de disposition (voir priorité 1 bis), et le filtre
 « hors commentaire » qui prenait `*(uint*)…` pour une continuation de bloc. Chacun rendait un
 chiffre plausible ou un test vert. **C'est la forme normale d'une panne d'outil dans ce dépôt.**
+
+**Et le troisième a resservi le jour même, sur la décision la plus structurante.** La matrice de
+dépendances entre classes, mesurée avant le retrait des points d'entrée, comptait d'abord une arête
+`Input → Video` — qui fermait un cycle `Input → Video → Resources → Input`. Un cycle veut dire
+« injection par constructeur impossible, garder les points d'entrée ». **Ce `Vid.` était dans un
+commentaire.** Avec le filtre corrigé, l'arête disparaît et le graphe est un DAG propre.
+
+Une conclusion architecturale entière tenait sur une ligne de commentaire mal classée. **Un chiffre
+qui ferme une porte mérite d'être vérifié à la main avant qu'on renonce.**
+
+## Mesurer les dépendances entre classes — la matrice
+
+Écrite le 2026-08-21 pour le retrait des points d'entrée, et **réutilisable telle quelle à
+l'étape D** : elle dit, pour chaque classe, laquelle elle atteint et combien de fois. Ce qui reste
+sur la diagonale est une **auto-référence** — un membre statique qui rejoint son instance — et ne
+relève pas du retrait.
+
+```bash
+cd OpenForesia/src/Blaze
+POINTS="Ui Prims Saves Vid Inp Aud Res Mdl UiWin"
+printf "%-16s" "depuis \\ vers"; for e in $POINTS; do printf "%-7s" "$e"; done; echo
+for f in Engine/*.cs; do
+  printf "%-16s" "$(basename $f .cs)"
+  for e in $POINTS; do
+    n=$(grep -nE "(^|[^A-Za-z0-9_.])$e\." "$f" \
+        | grep -vE "^[0-9]+:\s*(//|///)" | grep -vE "^[0-9]+:\s*\*\s" | wc -l)
+    [ "$n" = "0" ] && printf "%-7s" "." || printf "%-7s" "$n"
+  done
+  echo
+done
+```
+
+**Le filtre à commentaires n'est pas décoratif ici.** Sans lui, la matrice comptait une arête
+`Input → Video` qui fermait un cycle et faisait conclure « injection impossible ». Ce `Vid.` était
+dans un commentaire. Toujours ouvrir les lignes d'une arête avant d'en tirer une conclusion
+d'architecture — une seule ligne mal classée suffit à inverser la décision.
 
 ## Mesurer la clôture — la version corrigée du script
 

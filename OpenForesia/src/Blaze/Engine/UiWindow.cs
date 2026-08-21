@@ -46,7 +46,7 @@ namespace OpenForesia.Blaze;
 /// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
 /// </para>
 /// </summary>
-internal sealed unsafe class UiWindow(GameMemory mem)
+internal sealed unsafe class UiWindow(GameMemory mem, UiText ui, Input inp, Audio aud)
 {
     // =====================================================================
     // The UI window renderer (Ghidra: FUN_00545340 and its four primitive emitters)
@@ -134,7 +134,7 @@ internal sealed unsafe class UiWindow(GameMemory mem)
     }
 
     // Ghidra: &DAT_005e9060 â€” the per-panel selection index the scroll handling writes back.
-    // 0x120 utiles, borné par Inp.s_SlotArea_005e9180. Ses 0x40 premiers octets sont aussi la banque 2
+    // 0x120 utiles, borné par inp.s_SlotArea_005e9180. Ses 0x40 premiers octets sont aussi la banque 2
     // (voir s_StateBank2_005e9060) — c'est la même mémoire, comme dans l'original.
     // Declaration deplacee dans GameMemory le 2026-08-19 : 0x005e9060 tombe dans l'etendue de
     // GameArena, donc c'est une VUE d'arene et non un stockage propre. Les sites d'appel d'ici
@@ -167,7 +167,7 @@ internal sealed unsafe class UiWindow(GameMemory mem)
         }
         else slot = 0;
 
-        if (!resolved) slot = Inp.s_SlotArea_005e9180[0x248 + (uint)mem.s_Unknown_005de538 * 0x9c];
+        if (!resolved) slot = inp.s_SlotArea_005e9180[0x248 + (uint)mem.s_Unknown_005de538 * 0x9c];
         // The original indexes four player slots with a stride of 0x9c/0x4c. `slot` comes from a
         // byte in .data, so a table this reconstruction has not populated yields 0..255 and walks
         // far past both arrays â€” and the value read then becomes a *write* offset below. This was
@@ -180,12 +180,12 @@ internal sealed unsafe class UiWindow(GameMemory mem)
                 "the original has it.");
         }
 
-        if ((*(uint*)(Inp.s_SlotFlags_005e93c0 + slot * 0x9c) & 0x10000) != 0)
+        if ((*(uint*)(inp.s_SlotFlags_005e93c0 + slot * 0x9c) & 0x10000) != 0)
         {
-            slot = Inp.s_SlotArea_005e9180[0x248 + (uint)mem.s_Unknown_005de538 * 0x9c];
+            slot = inp.s_SlotArea_005e9180[0x248 + (uint)mem.s_Unknown_005de538 * 0x9c];
         }
 
-        byte slotIndex1 = Inp.s_PlayerSlots_005e9188[slot * 0x4c + 1];
+        byte slotIndex1 = inp.s_PlayerSlots_005e9188[slot * 0x4c + 1];
         // The original reaches this only once the resource directory is loaded. Guarding is not
         // padding: a null here faults natively inside the emitters below, several frames later,
         // with nothing naming the cause.
@@ -200,12 +200,12 @@ internal sealed unsafe class UiWindow(GameMemory mem)
         }
         byte* atlas = *atlasSlot;
 
-        uint tpage = *Ui.DecodeSlot(*(ushort*)descriptor);
+        uint tpage = *ui.DecodeSlot(*(ushort*)descriptor);
         uint extent = *(uint*)(descriptor + 8);
         // Second bound, on the value rather than the index: `buttons` addresses the per-controller
         // input table (0x140 bytes, 0x10 per entry) and is used for writes, so it must land inside
         // it. 8 is the original's "no controller" sentinel and is a legitimate value here.
-        int controller = Inp.s_PlayerSlots_005e9188[slot * 0x4c];
+        int controller = inp.s_PlayerSlots_005e9188[slot * 0x4c];
         if (controller * 0x10 + 0x10 > 0x140)
         {
             throw new InvalidOperationException(
@@ -219,50 +219,50 @@ internal sealed unsafe class UiWindow(GameMemory mem)
         // ---- the scroll arrows, four directions, each with its own repeat rule ----
         if ((scrollFlags & 0x1000000) != 0 && (descriptor[0x8c7] & 0x20) == 0)
         {
-            byte* buttonState = Inp.s_InputStateBase_00604a20 + buttons;
+            byte* buttonState = inp.s_InputStateBase_00604a20 + buttons;
 
             if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
                 && (descriptor[0x8c7] & 0x40) != 0)
             {
                 descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 2);
-                Aud.PlayUiSound3A();
+                aud.PlayUiSound3A();
             }
             if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
                 && (descriptor[0x8c7] & 0x80) != 0)
             {
                 descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 3);
-                Aud.PlayUiSound3A();
+                aud.PlayUiSound3A();
             }
             if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
                 && (descriptor[0x8c7] & 0xc0) == 0)
             {
                 descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 1);
-                Aud.PlayUiSound3A();
+                aud.PlayUiSound3A();
             }
             if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 2)
                 && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0x40) != 0)
             {
                 descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 2);
-                Aud.PlayUiSound3A();
+                aud.PlayUiSound3A();
             }
             if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 3)
                 && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0x80) != 0)
             {
                 descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 3);
-                Aud.PlayUiSound3A();
+                aud.PlayUiSound3A();
             }
             if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 1)
                 && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0xc0) == 0)
             {
                 descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 1);
-                Aud.PlayUiSound3A();
+                aud.PlayUiSound3A();
             }
 
             // Confirm: latch the selection back into the per-panel table and clear the edge.
-            ushort edge = *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2);
+            ushort edge = *(ushort*)(inp.s_InputStateBase_00604a20 + buttons + 2);
             if ((edge & 0x8000) != 0)
             {
-                *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
+                *(ushort*)(inp.s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
                 byte flags = descriptor[0x8c7];
                 descriptor[0x3b] = 0;
                 descriptor[0x8c7] = (byte)(flags & 0xfb);
@@ -274,7 +274,7 @@ internal sealed unsafe class UiWindow(GameMemory mem)
                 if ((descriptor[0x8c7] & 0xc0) == 0)
                     mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = descriptor[0x8c4];
 
-                Aud.PlayUiSound38();
+                aud.PlayUiSound38();
                 descriptor[0x8c7] &= 0x3f;
             }
 
@@ -290,13 +290,13 @@ internal sealed unsafe class UiWindow(GameMemory mem)
         uint cursorFlags = *(uint*)(descriptor + 0x30);
         if ((cursorFlags & 0x1000000) != 0 && (descriptor[0x8c7] & 0x20) == 0)
         {
-            ushort edge = *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2);
+            ushort edge = *(ushort*)(inp.s_InputStateBase_00604a20 + buttons + 2);
             if ((edge & 0x8000) != 0)
             {
-                *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
+                *(ushort*)(inp.s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
                 descriptor[0x33] = 0;
                 descriptor[0x8c7] &= 0xfd;
-                Aud.PlayUiSound38();
+                aud.PlayUiSound38();
             }
 
             uint clut = *(uint*)(descriptor + 0x34);

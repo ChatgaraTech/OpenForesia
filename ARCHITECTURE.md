@@ -72,11 +72,42 @@ sur l'autre. C'est la lecture la plus utile de `src/Blaze/` :
 └─────────────────────────────────────────────────────────────────────┘
                                   ▲
 ┌─────────────────────────────────┴───────────────────────────────────┐
-│  3. COMPORTEMENT   Platform/ · Engine/ · Screens/                   │
-│     Encore `partial class Blaze` aujourd'hui. C'est ici que les     │
-│     vraies classes d'instance naitront (etapes C puis D).           │
+│  3. COMPORTEMENT   Engine/ · Platform/ · Screens/                   │
+│     Engine/ : NEUF vraies classes d'instance depuis le 2026-08-21   │
+│               (etape C terminee), chacune declarant ses dependances │
+│               dans son constructeur.                                │
+│     Platform/ et Screens/ : encore `partial class Blaze`. Screens/  │
+│               deviendra douze classes a l'etape D ; Platform/ porte │
+│               l'interop et le demarrage, il n'a pas vocation a y    │
+│               passer.                                               │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+### Le graphe de dependances d'`Engine/`, et pourquoi il est un DAG
+
+Depuis le retrait interieur des points d'entree (2026-08-21), **aucune classe n'atteint une soeur
+par `Subsystems.cs`** : tout passe par le constructeur, donc le graphe est lisible dans les
+signatures.
+
+```
+   Video ──► Resources ──┬──► Primitives2d ──┬──► UiWindow ──┬──► UiText
+                         │         │         │               ├──► Input
+                         ├──► Input│         └──► UiText     └──► Audio
+                         └──► Audio│
+```
+
+Les cinq feuilles — `UiText`, `Input`, `Audio`, `SaveData`, `Model3d` — ne dependent d'aucune
+soeur et gardent `(GameMemory mem)`.
+
+**Que ce soit un DAG n'etait pas acquis** : la premiere mesure comptait une arete
+`Input → Video` qui fermait un cycle `Input → Video → Resources → Input`, et un cycle aurait
+interdit l'injection. Cette arete etait une mention **en commentaire**. Verifier les lignes d'une
+arete avant d'en tirer une conclusion d'architecture.
+
+**Une seule exception, permanente** : les sept `Vid.` de `Engine/Video.cs` sont des
+**auto-references** — deux lambdas `static` et `MoviePlayerWindowProc`, que `[UnmanagedCallersOnly]`
+force a rester statique. Une methode statique ne peut rejoindre son instance QUE par un point
+d'entree ; elles ne relevent donc pas du retrait.
 
 ### Aucune interface, et c'est mesure
 
@@ -100,9 +131,9 @@ src/
 ├─ Host/  ····································· 5 fichiers   3 477 l.
 │   D3D11Backend · SyntheticDevice · DeviceShim · D3D11Window · StartupSurface
 │
-└─ Blaze/  ···································· 31 fichiers  24 966 l.
+└─ Blaze/  ···································· 31 fichiers  25 006 l.
     ├─ Blaze.cs                    17 l.   l'en-tete, les using, la declaration partielle
-    ├─ Subsystems.cs              194 l.   LE COMPOSITION ROOT. `Mem` immediat, les NEUF
+    ├─ Subsystems.cs              234 l.   LE COMPOSITION ROOT. `Mem` immediat, les NEUF
     │                                      sous-systemes PARESSEUX (voir la note du fichier).
     │
     ├─ Interop/  ·······················    539 l.   la surface P/Invoke, hors de la classe

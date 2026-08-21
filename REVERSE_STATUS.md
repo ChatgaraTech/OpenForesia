@@ -6796,3 +6796,82 @@ modifiée » sur 511 corps, 0 méthode absente · auto-test 9/9 · tests de disp
 (3 rouges attendus / 2 verts) · `-Entry 1` **382,3** et `-Entry 2` **387** primitives par image,
 **les deux captures relues — les cadres de panneau, qui sont précisément ce que `DrawUiPanel`
 émet, sont corrects** · taux de course **1/32 = 3 %** contre un contrôle adjacent à **5/32 = 16 %**.
+
+---
+
+## 2026-08-21 — le retrait des points d'entrée, moitié intérieure
+
+Les 28 qualifications croisées **entre classes converties** sont devenues des paramètres de
+constructeur. Plus aucun sous-système n'atteint un autre par `Subsystems.cs`.
+
+```
+UiWindow(GameMemory, UiText, Input, Audio)
+Primitives2d(GameMemory, UiText, UiWindow)
+Resources(GameMemory, Primitives2d, Input, Audio)
+Video(GameMemory, Resources)
+```
+
+Les cinq autres classes ne dépendent d'aucune sœur et gardent `(GameMemory mem)`.
+
+### La mesure d'abord : une matrice, et le graphe qu'elle révèle
+
+Compter les qualifications par paire, `depuis` × `vers`, a suffi à cadrer tout le travail — et à
+éviter deux erreurs.
+
+**Première version de la matrice : fausse.** Elle comptait `Input → Video`, qui aurait fermé un
+cycle `Input → Video → Resources → Input` et rendu l'injection impossible. Ce `Vid.` était **dans un
+commentaire**. Avec le filtre corrigé le matin même (`* ` avec espace = continuation, `*(` = code),
+l'arête disparaît et le graphe devient un **DAG propre** :
+
+```
+Video → Resources → { Primitives2d → UiWindow, Input, Audio }
+                      UiWindow → { UiText, Input, Audio }
+```
+
+**Le filtre à commentaires corrigé le matin a donc servi le jour même**, sur la décision la plus
+structurante de la journée. Un cycle aurait signifié « injection impossible, garder les points
+d'entrée » — conclusion fausse tirée d'un commentaire.
+
+**Deuxième chose que la matrice a montrée** : les sept `Vid.` de `Engine/Video.cs` ne sont pas des
+dépendances mais des **auto-références**, depuis deux lambdas `static` et depuis
+`MoviePlayerWindowProc` que `[UnmanagedCallersOnly]` force à rester statique. Une méthode statique
+ne peut atteindre son instance que par un point d'entrée : elles ne relèvent pas du retrait, elles
+sont la raison d'être du mécanisme.
+
+### Ce que ce retrait ne fait PAS, et il faut le dire
+
+**665 lecteurs subsistent**, tous dans `Screens/` et `Platform/`. Ce sont encore des fichiers de
+`partial class Blaze` : ils n'ont pas de constructeur, donc rien à injecter. `Subsystems.cs` ne
+disparaît pas, il maigrit de 28 usages sur ~693.
+
+Le gain n'est donc pas la taille du fichier. C'est que **chaque signature de classe déclare
+maintenant ses vraies dépendances** — l'objectif énoncé du refactor depuis le début. `Resources`
+dit qu'il touche les primitives, les entrées et le son ; avant, il les atteignait en silence.
+
+### Un commentaire devenu faux, corrigé
+
+`Subsystems.cs` affirmait : « `Prims` construit APRÈS `Ui`, dont il dépend : **l'ordre textuel de
+ce fichier est ce qui garantit l'ordre d'initialisation** ». C'était vrai quand ces points d'entrée
+étaient des champs `static readonly` ; depuis la tâche 7.6 ce sont des **propriétés paresseuses**,
+et l'ordre textuel ne garantit plus rien.
+
+La preuve est dans le code d'aujourd'hui : `Prims` référence `UiWin`, **déclaré tout en bas du
+fichier**, et cela fonctionne — la résolution a lieu au premier appel, pas à l'initialisation
+statique. Si le commentaire avait dit vrai, cette ligne serait cassée.
+
+Corrigé, avec la conséquence pratique écrite : **ne pas réintroduire de champ immédiat ici** pour
+« clarifier l'ordre ». Ce serait remettre le graphe à la merci de l'ordre des fichiers que le
+compilateur reçoit — le défaut qui a coûté un plantage le 2026-08-19 — et remettre leur travail
+d'allocation devant la course pour la mémoire basse.
+
+### Vérification
+
+Build 0 erreur, tableau d'avertissements identique · oracle « aucune logique modifiée », 0 méthode
+absente — attendu, `Aud.` et `aud.` sont normalisés pareil, mais c'est justement ce qui rend le
+geste vérifiable · tests 3 rouges attendus · `-Entry 1` **382,3** et `-Entry 2` **387**, captures
+relues.
+
+Taux de course avec la procédure écrite le matin : **arbre modifié 2/32 = 6 %**, **contrôle de
+l'arbre d'avant mesuré adjacent 6/32 = 19 %**. Pas de régression. Le mécanisme le prédisait : tout
+reste paresseux, donc rien de neuf ne passe devant la course ; toucher `Res` construit désormais
+aussi `Prims`, `UiWin`, `Ui`, `Inp` et `Aud`, mais au premier usage, bien après.

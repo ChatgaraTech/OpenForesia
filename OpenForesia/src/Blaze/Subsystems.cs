@@ -28,6 +28,32 @@
 // Ils disparaissent au fur et a mesure : quand un sous-systeme appelant devient lui-meme une
 // classe d'instance, il recoit ses dependances par constructeur et cesse de passer par ici. Le
 // jour ou le dernier lecteur disparait, ce fichier avec.
+//
+// ---------------------------------------------------------------------------------------------
+// OU EN EST CE RETRAIT, AU 2026-08-21
+//
+// La moitie interieure est FAITE. Les neuf sous-systemes sont des classes, et plus aucun d'eux
+// n'atteint un autre par un point d'entree : les 28 qualifications croisees qui restaient sont
+// devenues des parametres de constructeur.
+//
+//     UiWindow(GameMemory, UiText, Input, Audio)
+//     Primitives2d(GameMemory, UiText, UiWindow)
+//     Resources(GameMemory, Primitives2d, Input, Audio)
+//     Video(GameMemory, Resources)
+//
+// Le graphe de dependances est un DAG - verifie avant d'ecrire, pas suppose. Les cinq autres
+// classes ne dependent d'aucune soeur.
+//
+// IL RESTE 665 LECTEURS, tous dans Screens/ et Platform/. Ce sont encore des fichiers de
+// `partial class Blaze` : ils n'ont pas de constructeur, donc rien a injecter. Ils disparaitront
+// a l'etape D, quand les douze ecrans deviendront des classes - pas avant.
+//
+// LA SEULE EXCEPTION INTERIEURE, et elle est permanente tant que la plateforme l'impose : les
+// sept `Vid.` de Engine/Video.cs. Ce sont des AUTO-references, depuis deux lambdas `static` et
+// depuis MoviePlayerWindowProc, que `[UnmanagedCallersOnly]` force a rester statique. Une methode
+// statique ne peut atteindre son instance QUE par un point d'entree. Elles ne relevent donc pas
+// du retrait ; elles sont la raison d'etre du mecanisme.
+// ---------------------------------------------------------------------------------------------
 
 using System;
 using System.IO;
@@ -107,11 +133,25 @@ public static unsafe partial class Blaze
     private static UiText? s_ui;
     internal static UiText Ui => s_ui ??= new UiText(Mem);
     /// <summary>
-    /// L'emetteur de primitives 2D. Construit APRES <see cref="Ui"/>, dont il depend : l'ordre
-    /// textuel de ce fichier est ce qui garantit l'ordre d'initialisation.
+    /// L'emetteur de primitives 2D. Il depend de <see cref="Ui"/> et de <see cref="UiWin"/>.
+    ///
+    /// <para>
+    /// <b>L'ordre TEXTUEL de ce fichier ne garantit plus rien, et c'est voulu.</b> Ce commentaire
+    /// affirmait le contraire jusqu'au 2026-08-21 - il datait de l'epoque ou ces points d'entree
+    /// etaient des champs <c>static readonly</c>. Depuis la tache 7.6 ce sont des PROPRIETES
+    /// paresseuses : <c>UiWin</c> est declare tout en bas du fichier et cette ligne le reference
+    /// quand meme sans probleme, parce que la resolution a lieu au premier APPEL, pas a
+    /// l'initialisation statique.
+    /// </para>
+    /// <para>
+    /// La consequence pratique : <b>ne pas reintroduire de champ immediat ici</b> pour « clarifier
+    /// l'ordre ». Ce serait remettre le graphe de dependances a la merci de l'ordre des fichiers
+    /// que le compilateur recoit - le defaut qui a coute un plantage le 2026-08-19 - et remettre
+    /// leur travail d'allocation devant la course pour la memoire basse.
+    /// </para>
     /// </summary>
     private static Primitives2d? s_prims;
-    internal static Primitives2d Prims => s_prims ??= new Primitives2d(Mem, Ui);
+    internal static Primitives2d Prims => s_prims ??= new Primitives2d(Mem, Ui, UiWin);
     /// <summary>
     /// La sauvegarde sur carte memoire. Ses huit rappels natifs ne passent PAS par ce champ : ils
     /// sont statiques et s'atteignent par le nom de type, <c>SaveData.CardWriteStatusHandler0</c>.
@@ -123,7 +163,7 @@ public static unsafe partial class Blaze
     /// <c>MoviePlayerWindowProc</c>, statique, qui le LIT pour rejoindre l'instance.
     /// </summary>
     private static Video? s_vid;
-    internal static Video Vid => s_vid ??= new Video(Mem);
+    internal static Video Vid => s_vid ??= new Video(Mem, Res);
     /// <summary>
     /// Les entrees. Son rappel natif <c>CountJoystickCallback</c> ne lit PAS ce champ : il n'a
     /// besoin que de son parametre, donc il reste un statique autonome.
@@ -157,7 +197,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static Resources? s_res;
-    internal static Resources Res => s_res ??= new Resources(Mem);
+    internal static Resources Res => s_res ??= new Resources(Mem, Prims, Inp, Aud);
     /// <summary>
     /// Le rendu de modele animé. La seule classe de l'etape C qui ne possede AUCUNE globale : sa
     /// conversion ne deplace pas d'etat, elle rend visible ce qu'elle lit ailleurs.
@@ -190,5 +230,5 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static UiWindow? s_uiWin;
-    internal static UiWindow UiWin => s_uiWin ??= new UiWindow(Mem);
+    internal static UiWindow UiWin => s_uiWin ??= new UiWindow(Mem, Ui, Inp, Aud);
 }
