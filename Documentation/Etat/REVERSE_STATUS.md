@@ -7336,3 +7336,98 @@ Build 0 erreur, avertissements inchanges · oracle : **deux corps signales**, to
 (`CallAreaHandler` rebranche, et le renommage au site d'appel dans `PlaceWorldMapParty`), plus une
 methode « absente » qui est l'ancien nom du stub · tests de disposition 5 verts · la reproduction
 tourne sans echafaudage et s'arrete sur `RunWorldMapTick`.
+
+---
+
+## 2026-08-21 — `FUN_00516fc0` : la clé de lecture, et une dépendance que la mesure avait ratée
+
+**Aucune ligne de `FUN_00516fc0` n'est transcrite, et c'est délibéré.** Ce qui a été fait est ce
+sans quoi la transcription aurait été fausse : établir comment lire sa pseudo-C, et refaire sa
+mesure de dépendances — la précédente en manquait une famille entière.
+
+### La clé de lecture : `piStack_74 = X;` avant un appel est un ARGUMENT PERDU
+
+Ghidra rend le corps ainsi :
+
+```c
+piStack_74 = (int *)(DAT_005de048 & 0xffff);
+FUN_00513dd0(DAT_005e97cc, &DAT_005e93c0 + uVar24 * 0x27);
+```
+
+Ça se lit naturellement comme « affecter une variable locale, puis appeler avec deux arguments ».
+**C'est faux.** Le désassemblage du site (`0x005170d5`) :
+
+```
+push eax        ; DAT_005de048 & 0xffff
+push esi        ; l'emplacement d'entite
+push ecx        ; DAT_005e97cc
+call 00513DD0h
+add esp, 0Ch    ; trois dwords, cdecl
+```
+
+Trois arguments. `piStack_74` est la fente de pile où Ghidra a vu le troisième `push` atterrir, et
+il l'a modélisée comme une variable. Le motif revient partout dans cette fonction —
+`piStack_74 = (int *)0x190; Ordinal_379();` est en réalité `Ordinal_379(0x190)`.
+
+**Une transcription faite sur la pseudo-C seule aurait perdu un argument par appel concerné, en
+silence.** Le contrôle tient en une commande, et il faut le faire pour chaque appel précédé d'une
+affectation à `piStack_74` :
+
+```powershell
+dotnet run --project OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe <va du site> 60
+```
+
+Même famille de défaut que les `unaff_EBX` / `unaff_ESI` / `unaff_EBP` / `unaff_EDI` que la fonction
+déclare (60 lignes concernées) : ce sont les **curseurs de primitives** que Ghidra n'a pas su
+rattacher. Le motif `curseur = Draw(otEntry, curseur, ...)` les identifie sans ambiguïté, et
+`local_60` est l'entrée d'ordering table — `FUN_0052a1e0` est déjà connu du projet comme un cas
+d'arité mal récupérée (`FrameBegin` prend **trois** paramètres, Ghidra en montre deux).
+
+### Une dépendance entière que la mesure précédente ne voyait pas
+
+Le relevé de la veille donnait « ~5900 lignes d'appelées directes ». Il comptait les `FUN_` cités
+dans le texte — donc il ratait tout ce qui passe par une **table de pointeurs**.
+
+Le prologue appelle `FUN_00513dd0` → `FUN_00513e40`, qui dispatche sur
+`(&PTR_LAB_00563298)[opcode]` : **l'interpréteur de script**. C'est une famille de fonctions, pas
+une ligne.
+
+Mesure faite, table lue dans le binaire :
+
+* la table a **39 entrées** — elle s'arrête à `+0x98`, le dword suivant est nul ;
+* **19 des cibles sont dans `Blaze.c`** (274 lignes au total) ;
+* **20 n'y sont pas.** Ghidra a nommé la table `PTR_LAB_`, donc il n'a pas reconnu ces corps comme
+  des fonctions du tout.
+
+**Et ces 20 sont minuscules** : 8 à 17 instructions chacune. Exemple complet, `FUN_005154c0` :
+
+```
+mov eax,[esp+0Ch]      ; le pointeur de script
+mov edx,[esp+4]
+xor ecx,ecx
+mov cl,[eax+1]         ; index sur deux octets
+mov ch,[eax+2]
+mov eax,[edx+8Ch]      ; la table de scripts de l'objet
+mov eax,[eax+ecx*4]
+ret                    ; rend le nouveau pointeur de script
+```
+
+Les vingt désassemblages sont conservés dans `Legacy/Raw/Blaze/ScriptOps/`.
+
+**Le « trou » est donc bien plus petit qu'il n'en avait l'air** — ~240 instructions au total — mais
+il n'existait pas du tout dans l'estimation précédente. C'est le prix d'une mesure qui compte les
+noms cités plutôt que les appels réels.
+
+### Pourquoi la transcription n'a pas été commencée
+
+`TODO.md` dit, de ma propre main la veille : « ne pas la commencer par le milieu ; descendre par les
+petites appelées, en exerçant à chaque fois ». Le problème est que **rien ne s'exerce tant que
+`FUN_00516fc0` elle-même n'existe pas** : ses appelées ne sont atteignables que par elle.
+
+Écrire 1225 lignes d'un coup, sur une pseudo-C dont on vient d'établir qu'elle perd des arguments,
+sans pouvoir en exercer une seule ligne, aurait produit exactement le genre de transcription
+plausible et fausse que ce projet passe son temps à rattraper. La règle du dépôt est explicite :
+« L'écrire à moitié aurait été pire que ne pas l'écrire. »
+
+Ce qui est livré à la place est ce qui rend la prochaine passe sûre : la clé de lecture, la mesure
+corrigée, et les vingt désassemblages banqués.
