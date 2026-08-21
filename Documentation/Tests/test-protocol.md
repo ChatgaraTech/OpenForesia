@@ -532,26 +532,33 @@ Signatures : ~403 primitives par image sur la grille d'objets (cas 1), ~368 sur 
 
 **Ne pas modifier les sauvegardes que l'on n'a pas créées soi-même** : elles sont indistinguables
 d'une partie réelle une fois dans `save\`. Créer la sienne avec le parcours scripté plus haut.
+## Atteindre la carte du monde (état 3)
 
-## L'échafaudage de la carte du monde (2026-08-18)
-
-`OPENFORESIA_SKIP_AREA_HANDLER=1` neutralise l'appel à la table de sauts de zone
-(`FUN_004747F0`, non décompilée par Ghidra) pour permettre d'exercer l'aval — le chargement de
-sous-zone de `FUN_00516350`. Sans lui, l'état de jeu 3 s'arrête sur une exception nommée.
+`OPENFORESIA_SKIP_AREA_HANDLER` **n'existe plus depuis le 2026-08-21** : `FUN_004747F0`, que Ghidra
+n'avait pas décompilée, est transcrite. Aucun drapeau n'est nécessaire.
 
 ```powershell
-$env:OPENFORESIA_SKIP_AREA_HANDLER = '1'
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 24 -WorkingDir OpenForesia `
-  -Then WAIT4,ENTER,WAIT1,START,WAIT4,ENTER,WAIT3,ENTER,WAIT8
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 36 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT5,ENTER,WAIT4,ENTER,WAIT16
 ```
 
 La séquence est : « Début du jeu » → un personnage retenu (`ENTER`) → `START` → « Veux-tu jouer
 avec ce groupe? » → `ENTER` → « Oui » → `ENTER`.
 
-**C'est une déviation de comportement, pas un raccourci de test neutre.** La fonction sautée est une
-machine de transition de sous-zone ; tout ce qu'on observe sous ce drapeau est à re-vérifier une
-fois `0x004747F0` décompilée. Ne pas le laisser posé dans une session de test ordinaire.
+**Prérequis** : au moins une sauvegarde dans `OpenForesia\save\`.
 
+**Cette séquence est sensible au minutage et échoue régulièrement.** Deux causes distinctes, à ne
+pas confondre :
+
+* une **relance perdue** (voir la section dédiée plus haut) décale tout — chercher
+  `relance detectee` dans la sortie ;
+* et même sans relance, la validation du groupe rate parfois. Les attentes ci-dessus sont plus
+  longues que la version d'origine pour cette raison.
+
+**Dans les deux cas le verdict affiche « aucun plantage », ce qui est trompeur.** Le contrôle qui
+tranche est le **débit** : ~434 primitives par image veut dire qu'on est resté sur l'écran
+d'organisation du groupe ; l'état 3 atteint donne ~1 par image (il ne dessine pas encore) et
+s'arrête sur l'exception nommée du prochain corps manquant. Relancer suffit.
 ## Le `save\` suit le répertoire de travail, pas l'exe (rappel)
 
 Symptôme classique : « Invertaire » et « Enchère » semblent ne mener nulle part. Ils rebondissent

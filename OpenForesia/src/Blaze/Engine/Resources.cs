@@ -480,33 +480,20 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
         uint target = s_AreaHandlerTable_0056b4d0[slot];
         if (target == 0x00401FA0 || target == 0x0040A600) return;   // corps vides, verifies
 
-        // ECHAFAUDAGE TEMPORAIRE, et **une deviation de comportement**, pas une omission forcee par
-        // la plateforme comme les quatre documentees dans REVERSE_STATUS.md.
+        // 0x004747F0 : la transition de sous-zone de la zone 0. **Elle n'est pas dans `Blaze.c`** —
+        // Ghidra ne l'a pas decompilee — et elle a ete transcrite le 2026-08-21 depuis le
+        // desassemblage produit par `OpenForesia.Tools disasm`. Voir RunArea0Handler8 dans
+        // Screens/State03/WorldMap.cs pour le detail et le releve conserve.
         //
-        // OPENFORESIA_SKIP_AREA_HANDLER=1 fait de cet appel un no-op trace, le temps de pouvoir
-        // ecrire et exercer FUN_00516350 (la mise en place d'image de la carte du monde), qui est
-        // en aval dans la meme boucle. Sans cela rien de l'etat 3 au-dela du chargement de zone
-        // n'est atteignable.
-        //
-        // Ce n'est **pas** sans consequence : FUN_004747F0 est une machine de transition de
-        // sous-zone (elle eteint des bits dans DAT_005E9840/41 et DAT_005E9000/01/06, compte les
-        // bits leves de DAT_005E9000, et compare DAT_005DE52C/DAT_005DE530 a zero). La sauter
-        // laisse ces drapeaux dans l'etat ou le chargement les a mis. Tout ce qu'on observe sous
-        // ce drapeau est donc a re-verifier une fois la re-passe Ghidra faite.
-        //
-        // A RETIRER des que 0x004747F0 est decompilee.
-        if (Environment.GetEnvironmentVariable("OPENFORESIA_SKIP_AREA_HANDLER") == "1")
-        {
-            Console.Error.WriteLine(
-                $"[ECHAFAUDAGE] table de sauts de zone, entree {slot} = 0x{target:X6} : appel saute.");
-            return;
-        }
+        // L'echafaudage OPENFORESIA_SKIP_AREA_HANDLER qui vivait ici est retire : il n'a plus
+        // d'objet, et le garder aurait laisse un moyen de sauter du code desormais present.
+        if (target == 0x004747F0) { RunArea0Handler8(); return; }
 
         throw new NotImplementedException(
-            $"Table de sauts de zone, entree {slot} = 0x{target:X6} : cette adresse **n'est pas " +
-            "decompilee par Ghidra** (0x004747F0..0x00474AC3, ~723 octets, neuf sorties " +
-            "convergentes). Il faut une re-passe Ghidra ciblee, pas une relecture. Pour tester " +
-            "l'aval malgre tout : OPENFORESIA_SKIP_AREA_HANDLER=1. Voir REVERSE_STATUS.md");
+            $"Table de sauts de zone, entree {slot} = 0x{target:X6} : cette adresse n'a pas encore " +
+            "de corps reconstruit. Si elle n'est pas dans Blaze.c non plus, la desassembler : " +
+            $"`OpenForesia.Tools disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512`. " +
+            "Voir Documentation/Etat/REVERSE_STATUS.md, section du 2026-08-21.");
     }
 
     // Ghidra: DAT_006008c8 / DAT_00604930 / DAT_00600904 — les trois sentinelles de destination,

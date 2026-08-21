@@ -135,7 +135,7 @@ public static unsafe partial class Blaze
     // TODO(REVERSE) : 0x00566c90 et 0x00566c94 n'ont aucun autre site de lecture dans les
     // 98 000 lignes de Blaze.c ; leur largeur réelle reste à confirmer.
     private static byte s_Unknown_00566c84 = 0xff, s_Unknown_00566c88 = 0xff, s_Unknown_00566c8c = 0xff;
-    private static byte s_Unknown_00566c90 = 1, s_Unknown_00566c94 = 1;
+    internal static byte s_Unknown_00566c90 = 1, s_Unknown_00566c94 = 1;
 
     // Ghidra: DAT_005de53c — recopie d'une entrée de la table d'emplacements
     // (`DAT_005de53c = (&DAT_005e93c8)[i]`, Blaze.c 57361), relue en `uint` plus loin. Octet.

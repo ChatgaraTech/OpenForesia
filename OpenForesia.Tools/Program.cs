@@ -31,6 +31,19 @@ if (args[0] is "at")
     return;
 }
 
+if (args[0] is "disasm")
+{
+    if (args.Length is < 3 or > 4) { PrintUsage(); return; }
+    var requestedBytes = 128;
+    if (args.Length == 4 && !TryParseByteCount(args[3], out requestedBytes))
+    {
+        Console.WriteLine($"Nombre d'octets invalide : {args[3]}");
+        return;
+    }
+    Disassemble(args[1], args[2], requestedBytes);
+    return;
+}
+
 if (args.Length != 1)
 {
     PrintUsage();
@@ -226,11 +239,13 @@ static void PrintUsage()
     Console.WriteLine("  OpenForesia.Tools <path>                     table d'exports (comportement d'origine)");
     Console.WriteLine("  OpenForesia.Tools sections <path>            sections PE : plages VA, offsets fichier");
     Console.WriteLine("  OpenForesia.Tools at <path> <va> [octets]    dumpe les octets a une adresse virtuelle Ghidra");
+    Console.WriteLine("  OpenForesia.Tools disasm <path> <va> [octets] desassemble x86-32 a partir d'une VA Ghidra");
     Console.WriteLine();
     Console.WriteLine("Exemples:");
     Console.WriteLine("  OpenForesia.Tools Legacy/Binaries/winsys3d.dll");
     Console.WriteLine("  OpenForesia.Tools sections Legacy/Binaries/Blaze.exe");
     Console.WriteLine("  OpenForesia.Tools at Legacy/Binaries/Blaze.exe 0x005631f8");
+    Console.WriteLine("  OpenForesia.Tools disasm Legacy/Binaries/Blaze.exe 0x004747f0 723");
     Console.WriteLine();
     Console.WriteLine("Les adresses sont lues en hexadecimal (prefixe 0x optionnel), comme dans Ghidra.");
     Console.WriteLine("Le nombre d'octets est lu en decimal (prefixer 0x pour de l'hexa).");
@@ -623,4 +638,115 @@ static uint ReadUInt32(
     return BitConverter.ToUInt32(
         data,
         offset);
+}
+
+// =================================================================================================
+// disasm — le desassembleur x86-32, ajoute le 2026-08-21.
+//
+// POURQUOI IL EXISTE. `Blaze.c` est une decompilation *incomplete* : Ghidra a laisse des corps
+// entiers non decompiles (adresses seulement prises, procedures de fenetre, et surtout
+// FUN_004747F0). Jusqu'ici la seule issue documentee etait « une re-passe Ghidra ciblee », c'est-a-
+// dire une action manuelle hors du depot, que personne ne pouvait faire depuis une session de
+// travail. Ce verbe la remplace : le binaire est dans le depot, la table des sections aussi, il ne
+// manquait que le decodeur.
+//
+// Il ne remplace PAS Ghidra — pas de reconstruction de flot, pas de types, pas de noms. Il rend le
+// desassemblage, ce qui suffit a transcrire une fonction a la main quand la pseudo-C manque.
+// =================================================================================================
+static void Disassemble(
+    string path,
+    string addressText,
+    int byteCount)
+{
+    if (!TryParseNumber(addressText, out var virtualAddress))
+    {
+        Console.WriteLine($"Adresse invalide : {addressText}");
+        return;
+    }
+
+    var opened = OpenPortableExecutable(path);
+    if (opened is null) return;
+    var (file, headers) = opened.Value;
+
+    var imageBase = (int)headers.PEHeader!.ImageBase;
+    var rva = virtualAddress - imageBase;
+    var offset = RvaToFileOffset(rva, headers);
+    if (offset < 0)
+    {
+        Console.WriteLine($"L'adresse 0x{virtualAddress:x8} ne tombe dans aucune section.");
+        return;
+    }
+
+    var available = file.Length - offset;
+    if (byteCount > available) byteCount = available;
+
+    var section = SectionNameForRva(rva, headers) ?? "?";
+    Console.WriteLine($"{path}  base 0x{imageBase:x8}");
+    Console.WriteLine($"0x{virtualAddress:x8}  section {section}  offset fichier 0x{offset:x}  {byteCount} octets");
+    Console.WriteLine();
+
+    var code = new byte[byteCount];
+    Array.Copy(file, offset, code, 0, byteCount);
+
+    var decoder = Iced.Intel.Decoder.Create(32, new Iced.Intel.ByteArrayCodeReader(code));
+    decoder.IP = (ulong)(uint)virtualAddress;
+    var end = decoder.IP + (ulong)byteCount;
+
+    var formatter = new Iced.Intel.NasmFormatter();
+    formatter.Options.DigitSeparator = "";
+    formatter.Options.FirstOperandCharIndex = 10;
+    var output = new Iced.Intel.StringOutput();
+
+    // Les cibles de saut internes, relevees en premiere passe : une fonction non decompilee se lit
+    // par ses convergences, et savoir quelles adresses sont visees est la moitie du travail.
+    var targets = new SortedSet<ulong>();
+    var firstPass = Iced.Intel.Decoder.Create(32, new Iced.Intel.ByteArrayCodeReader(code));
+    firstPass.IP = (ulong)(uint)virtualAddress;
+    while (firstPass.IP < end)
+    {
+        var probe = firstPass.Decode();
+        if (probe.IsJccShortOrNear || probe.Mnemonic == Iced.Intel.Mnemonic.Jmp)
+        {
+            if (probe.Op0Kind is Iced.Intel.OpKind.NearBranch32 or Iced.Intel.OpKind.NearBranch16)
+            {
+                var t = probe.NearBranchTarget;
+                if (t >= (ulong)(uint)virtualAddress && t < end) targets.Add(t);
+            }
+        }
+    }
+
+    while (decoder.IP < end)
+    {
+        var ip = decoder.IP;
+        var instruction = decoder.Decode();
+
+        if (targets.Contains(ip))
+        {
+            Console.WriteLine();
+            Console.WriteLine($"LAB_{ip:x8}:");
+        }
+
+        output.Reset();
+        formatter.Format(instruction, output);
+
+        var length = instruction.Length;
+        var bytes = new StringBuilder();
+        for (var i = 0; i < length; i++)
+            bytes.Append(code[(int)(ip - (ulong)(uint)virtualAddress) + i].ToString("x2"));
+
+        Console.WriteLine($"  {ip:x8}  {bytes,-20}  {output.ToStringAndReset()}");
+
+        if (instruction.Code == Iced.Intel.Code.INVALID)
+        {
+            Console.WriteLine("  (octet invalide — la plage demandee deborde probablement du code)");
+            return;
+        }
+    }
+
+    if (targets.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"{targets.Count} cible(s) de saut interne : " +
+                          string.Join(", ", targets.Select(t => $"0x{t:x8}")));
+    }
 }

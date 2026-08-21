@@ -10,8 +10,10 @@ vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baselin
 `bodies-baseline.txt`.
 **Non commité** : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
 terminée —, le rapatriement `.data` du son, le retrait intérieur des points d'entrée, la correction
-des huit défauts d'aliasing (qui **change le comportement**), la transcription de `FUN_00533940` et
-`FUN_00533450`, **la réorganisation du dépôt**, et cette mise à jour de documentation.
+des huit défauts d'aliasing (qui **change le comportement**), la transcription de `FUN_00533940`,
+`FUN_00533450` et `FUN_004747F0` (celle-ci **absente de `Blaze.c`**, désassemblée sur place),
+le verbe `disasm` d'`OpenForesia.Tools`, **la réorganisation du dépôt**, et cette mise à jour de
+documentation.
 
 **Le dépôt a été réorganisé le 2026-08-21** — la racine ne porte plus que `CLAUDE.md` et
 `OpenForesia.sln`. Ce fichier vit maintenant dans `Documentation/Etat/`. Les décompilations sont
@@ -73,7 +75,6 @@ Mesurer ses dépendances manquantes avant de s'y mettre.
 
 ```powershell
 $env:PATH = "C:\Program Files (x86)\dotnet;$env:PATH"
-$env:OPENFORESIA_SKIP_AREA_HANDLER = '1'
 OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 30 -WorkingDir OpenForesia -Shot `
   -Then WAIT4,ENTER,WAIT1,START,WAIT4,ENTER,WAIT3,ENTER,WAIT12
 ```
@@ -435,7 +436,10 @@ RunGameStateTick (état 3)
    ├─ LoadWorldMapResources    FUN_005160e0   [FAIT]
    └─ boucle par image
       ├─ LoadWorldMapArea      FUN_00516250   [FAIT]
-      │  └─ CallAreaHandler(8) → 0x004747F0   [ÉCHAFAUDÉ, voir plus bas]
+      │  └─ CallAreaHandler(8) → 0x004747F0   [FAIT le 2026-08-21 — absente de Blaze.c,
+      │        RunArea0Handler8                  desassemblee sur place ; 724 octets]
+      │        ├─ ApplyPartyScriptOp             [FAIT — FUN_00514000 + FUN_00515d70]
+      │        └─ ApplyScriptOp                  [FAIT — FUN_00514040, l'ALU du script, 190 opcodes]
       ├─ RunWorldMapFrame      FUN_00516350   [corps FAIT]
       │  ├─ LoadWorldMapSubArea                [FAIT]
       │  │  ├─ InstallEntityVTables            [FAIT — 7 tables + 11 initialiseurs]
@@ -453,7 +457,6 @@ RunGameStateTick (état 3)
 
 ```powershell
 $env:PATH = "C:\Program Files (x86)\dotnet;$env:PATH"     # le SDK n'est pas dans le PATH du shell
-$env:OPENFORESIA_SKIP_AREA_HANDLER = '1'
 OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 24 -WorkingDir OpenForesia `
   -Then WAIT4,ENTER,WAIT1,START,WAIT4,ENTER,WAIT3,ENTER,WAIT8
 ```
@@ -523,23 +526,37 @@ signe), 813 = `IR1..3`, 805/806/807 = les trois sommets projetés. Voir
 
 ---
 
-## L'échafaudage à retirer — dette assumée
+## L'échafaudage `OPENFORESIA_SKIP_AREA_HANDLER` — **RETIRÉ le 2026-08-21**
 
-`OPENFORESIA_SKIP_AREA_HANDLER=1` neutralise l'appel à `FUN_004747F0` (`0x004747F0..0x00474AC3`,
-~723 octets, neuf sorties convergentes), que **Ghidra n'a pas décompilée** : corps uniquement
-adressé, aucune fonction entre `FUN_004742b0` et `FUN_00474ad0` dans `Blaze.c`.
+Il n'existe plus, et rien ne le remplace : `FUN_004747F0` est transcrite. L'état 3 traverse la
+transition de sous-zone pour de vrai.
 
-C'est **une déviation de comportement**, pas une omission forcée par la plateforme. La fonction
-sautée est une machine de transition de sous-zone (elle éteint des bits dans `DAT_005E9840/41` et
-`DAT_005E9000/01/06`, compte les bits levés de `DAT_005E9000`, compare `DAT_005DE52C`/`DAT_005DE530`
-à zéro). **Tout ce qui a été observé sous ce drapeau est à re-vérifier** une fois la fonction
-décompilée.
+**Ce que ce blocage a appris, et qui vaut au-delà de lui.** Ce fichier disait : « ça demande une
+re-passe Ghidra ciblée — décoder 723 octets à la main serait déraisonnable ». Deux erreurs dans une
+phrase :
 
-→ **Ça demande une re-passe Ghidra ciblée sur `0x004747F0`.** Décoder 723 octets à la main avec neuf
-branches convergentes serait déraisonnable — à ne pas confondre avec les deux « re-passes requises »
-de cette semaine qui se sont révélées faire vingt octets chacune.
+1. **« Re-passe Ghidra » désignait une action hors du dépôt**, que personne ne pouvait faire depuis
+   une session de travail. Le verrou était donc permanent en pratique, pas temporaire. Or le binaire
+   est dans le dépôt : il ne manquait qu'un décodeur. `Iced` est ajouté à `OpenForesia.Tools`, et le
+   verbe `disasm` existe désormais :
+
+   ```powershell
+   dotnet run --project OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x004747f0 724
+   ```
+
+   **Toute future « re-passe Ghidra requise » est un travail interne.** Les corps que Ghidra n'a pas
+   décompilés — procédures de fenêtre, corps seulement adressés, fentes de vtable — cessent d'être
+   des impasses.
+
+2. **723 octets ne mesurent pas une difficulté.** La fonction s'est révélée être une cascade
+   parfaitement régulière : huit blocs identiques au bit près, et les « neuf sorties convergentes »
+   sont neuf `return`. Transcription : 60 lignes. Ce qui mesure la difficulté, c'est le **nombre de
+   formes distinctes** — ici deux.
+
+Relevé conservé dans `Legacy/Raw/Blaze/FUN_004747F0.asm`.
 
 ---
+
 
 ## Le reste, par ordre de valeur
 

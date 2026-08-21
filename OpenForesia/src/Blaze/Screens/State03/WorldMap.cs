@@ -1677,4 +1677,419 @@ public static unsafe partial class Blaze
 
         RunPartyConstitution();        // Ghidra: FUN_00536ea0
     }
+
+    // =============================================================================================
+    // FUN_004747F0 et sa chaine — la transition de sous-zone de la zone 0.
+    //
+    // CE BLOC EXISTE PARCE QUE GHIDRA N'A PAS DECOMPILE 0x004747F0. Pendant trois jours, la seule
+    // issue documentee etait « une re-passe Ghidra ciblee », c'est-a-dire une action manuelle hors
+    // du depot. Le verbe `disasm` d'OpenForesia.Tools (ajoute le 2026-08-21) l'a rendue inutile :
+    // le binaire est dans le depot, il ne manquait qu'un decodeur.
+    //
+    // Et ce que le desassemblage a montre contredit l'estimation qui avait fait renoncer. La note
+    // disait « 723 octets avec neuf branches convergentes et une logique de drapeaux dense, c'est
+    // le travail d'un decompilateur ». En realite c'est une **cascade parfaitement reguliere** :
+    // huit blocs identiques au bit pres, chacun « si telle condition, poser un code de destination
+    // et sortir ». Les « neuf sorties convergentes » sont neuf `return`, pas un graphe emmele.
+    //
+    // La lecon, pour la prochaine fois : **une taille en octets ne dit rien de la difficulte**. Ce
+    // qui la dit, c'est le nombre de formes distinctes. Ici il y en avait deux.
+    // =============================================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x004747F0</c> — l'entree 8 de la table de sauts de la zone 0, appelee par
+    /// <see cref="Resources.CallAreaHandler"/>. <b>Non decompilee par Ghidra</b> ; transcrite le
+    /// 2026-08-21 depuis le desassemblage (`OpenForesia.Tools disasm Legacy/Binaries/Blaze.exe
+    /// 0x004747f0 724`), releve conserve dans <c>Legacy/Raw/Blaze/FUN_004747F0.asm</c>.
+    ///
+    /// <para>
+    /// Ce qu'elle fait : elle choisit la <b>sous-zone suivante</b> de la zone 0 en fonction du
+    /// nombre de capacites que le groupe possede en commun. Elle compte les bits leves de
+    /// <c>DAT_005e9000</c> (le masque de capacites du groupe, recalcule par
+    /// <see cref="RefreshPartyAbilityMask"/>), plus le bit 0 de <c>DAT_005e9001</c>, et selon ce
+    /// compte pose un code dans <c>DAT_005de52c</c> : 0, 8, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38,
+    /// 0x40, 0x48 ou 0x50.
+    /// </para>
+    /// <para>
+    /// <b>Chaque branche appelle ensuite <c>FUN_00401FA0</c>, qui est un <c>ret</c> nu</b> —
+    /// verifie au desassembleur, pas suppose. L'appel est donc sans effet et n'est pas transcrit ;
+    /// seul le code de destination compte. C'est coherent avec la table de sauts, que
+    /// <c>BuildAreaHandlerTable</c> remplit deja de <c>0x00401FA0</c>.
+    /// </para>
+    /// <para>
+    /// <b>La garde de sortie precoce est la plus importante</b> : si <c>DAT_005de52c</c> ou
+    /// <c>DAT_005de530</c> est deja non nul, la fonction ne fait rien du tout. Une transition en
+    /// cours n'est jamais ecrasee.
+    /// </para>
+    /// </summary>
+    internal static void RunArea0Handler8()
+    {
+        // 0x004747f3 : eteint le bit 3 de DAT_005e9841.
+        *Mem.Arena(0x005e9841) &= 0xf7;
+
+        byte partyFlags = *Mem.Arena(0x005e9001);      // Ghidra: cl
+
+        // 0x0047480e : si le bit 1 est eteint, le groupe subit d'abord l'operation de script
+        // « ET 0xEF » sur l'octet +1 de son bloc de drapeaux — c'est-a-dire l'extinction du
+        // bit 0x10. Les quatre octets sont l'operande empilee par 0x0047480f..0x0047481d.
+        if ((partyFlags & 2) == 0)
+        {
+            byte* operand = stackalloc byte[4];
+            operand[0] = 0;
+            operand[1] = 1;      // decalage de l'octet vise dans le bloc de drapeaux
+            operand[2] = 4;      // opcode : ET sur un octet
+            operand[3] = 0xef;   // masque : eteint le bit 0x10
+            uint discarded;
+            ApplyPartyScriptOp(operand, &discarded);
+            partyFlags = *Mem.Arena(0x005e9001);       // Ghidra relit cl apres l'appel
+        }
+
+        byte stateFlags = *Mem.Arena(0x005e9006);      // Ghidra: dl
+
+        // 0x0047483c : sans le bit 3 de DAT_005e9006, le bit 0 de DAT_005e9840 tombe.
+        if ((stateFlags & 8) == 0)
+        {
+            byte* bank = Mem.Arena(0x005e9840);
+            if ((*bank & 1) != 0) *bank &= 0xfe;
+        }
+
+        // 0x00474857 : le mode de mise au point remet la transition a zero.
+        if (s_Unknown_00566c90 == 1)
+        {
+            s_Unknown_005de52c = 0;
+            s_Unknown_005de530 = 0;
+        }
+
+        // 0x0047486c : une transition deja engagee n'est pas touchee.
+        if (s_Unknown_005de52c != 0 || s_Unknown_005de530 != 0) return;
+
+        // 0x00474884 : le nombre de capacites communes au groupe — les huit bits de
+        // DAT_005e9000, plus le bit 0 de DAT_005e9001.
+        byte abilities = *Mem.Arena(0x005e9000);       // Ghidra: al
+        int count = 0;                                 // Ghidra: esi
+        for (int bit = 0; bit < 8; bit++)
+            if ((abilities & (1 << bit)) != 0) count++;
+        if ((partyFlags & 1) != 0) count++;
+
+        // 0x004748bd : eax vaut 1 si le bit 1 de DAT_005e9001 est leve, 0 sinon. Toutes les
+        // branches ci-dessous exigent qu'il vaille 1 — autrement dit, sans ce bit la fonction
+        // s'arrete apres la premiere.
+        int stage = (partyFlags & 2) != 0 ? 1 : 0;     // Ghidra: ax
+
+        // 0x004748c9 : sans le bit 3, la transition repart de zero.
+        if ((partyFlags & 8) == 0) { s_Unknown_005de52c = 0; return; }
+
+        // 0x004748e3 : premiere sous-zone, tant que le bit 7 n'est pas la.
+        if (stage == 0 || (partyFlags & 0x80) == 0) { s_Unknown_005de52c = 0x08; return; }
+
+        if (stage != 1) return;
+        if ((partyFlags & 0x10) == 0) { s_Unknown_005de52c = 0x10; return; }
+
+        if ((partyFlags & 0x20) == 0) { s_Unknown_005de52c = 0x18; return; }
+
+        // 0x00474955 et suivants : la cascade par palier de deux capacites.
+        if (count >= 0 && count <= stage) { s_Unknown_005de52c = 0x20; return; }
+        if (count >= 2 && count <= 3) { s_Unknown_005de52c = 0x28; return; }
+        if (count >= 4 && count <= 5) { s_Unknown_005de52c = 0x30; return; }
+        if (count >= 6 && count <= 7) { s_Unknown_005de52c = 0x38; return; }
+        if (count == 8) { s_Unknown_005de52c = 0x40; return; }
+
+        // 0x00474a60 / 0x00474a92 : a neuf capacites, le bit 7 de DAT_005e9006 depart les deux
+        // dernieres destinations.
+        if (count == 9)
+        {
+            s_Unknown_005de52c = (byte)((stateFlags & 0x80) == 0 ? 0x48 : 0x50);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00514000 @ 0x00514000 puis FUN_00515d70 @ 0x00515d70 — applique une operation
+    /// de script au bloc de drapeaux de <b>chaque membre du groupe</b>, recalcule le masque commun,
+    /// puis applique la meme operation au masque.
+    ///
+    /// <para>
+    /// Les deux fonctions sont fondues : <c>FUN_00514000</c> ne fait que passer
+    /// <c>DAT_005e97cc</c> et 0 a <c>FUN_00515d70</c>, et ces deux parametres n'y sont jamais lus.
+    /// Les garder aurait donne une signature qui ment sur ce que la fonction touche.
+    /// </para>
+    /// <para>
+    /// L'operande fait quatre octets : <c>[1]</c> le decalage de l'octet vise, <c>[2]</c> l'opcode,
+    /// <c>[3]</c> l'operande immediate. <c>[0]</c> n'est pas lu ici.
+    /// </para>
+    /// </summary>
+    private static void ApplyPartyScriptOp(byte* operand, uint* result)
+    {
+        byte* record = GetMainMemPtr() + 0xf0000;
+        for (int remaining = s_PartySize_005e9020; remaining != 0; remaining--)
+        {
+            ApplyScriptOp(record + 0x2e0 + operand[1], operand[2], operand[3]);
+            record += 0x2000;
+        }
+
+        RefreshPartyAbilityMask();                     // Ghidra: FUN_00535710
+
+        *result = ApplyScriptOp(Mem.Arena(0x005e9000) + operand[1], operand[2], operand[3])
+            ? 1u : 0u;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00514040 @ 0x00514040 — l'unite arithmetique et logique du moteur de script :
+    /// une operation entre une cible en memoire, une operande immediate, et la table de variables
+    /// <c>DAT_005e9060</c>.
+    ///
+    /// <para>
+    /// L'opcode est structure, pas arbitraire. Trois groupes selon la largeur —
+    /// <c>0x00..0x3B</c> octet, <c>0x40..0x7B</c> mot, <c>0x80..0xBB</c> double mot — et dans
+    /// chaque groupe six familles de douze :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><c>+0x00</c> : cible <c>op=</c> immediate</item>
+    /// <item><c>+0x0C</c> : variable[immediate] <c>op=</c> cible</item>
+    /// <item><c>+0x18</c> : cible <c>op=</c> variable[immediate]</item>
+    /// <item><c>+0x24</c> : comparaison cible / immediate</item>
+    /// <item><c>+0x30</c> : comparaison cible / variable[immediate]</item>
+    /// </list>
+    /// <para>
+    /// <b>La regularite est tentante et il ne faut pas y ceder.</b> Les cas ne sont PAS
+    /// interchangeables : Ghidra emet des largeurs et des signes differents d'un cas a l'autre —
+    /// <c>0x01</c> additionne en <c>char</c> signe la ou <c>0x07</c> divise en <c>byte</c> non
+    /// signe, <c>0x13</c> passe par un 64 bits la ou <c>0x07</c> reste en 32. Les replier en boucle
+    /// calculee serait une re-derivation, pas une transcription. Chaque cas est donc ecrit tel
+    /// quel, dans l'ordre de Ghidra, pour rester comparable ligne a ligne.
+    /// </para>
+    /// <para>
+    /// <b>Ou cette fonction devra vivre.</b> Le binaire l'appelle depuis <b>17</b> fonctions
+    /// distinctes, sur deux bandes d'adresses (<c>0x00515xxx</c> et <c>0x00523xxx</c>) : c'est une
+    /// primitive partagee, pas un detail de la carte du monde. Elle reste ici parce que la carte du
+    /// monde est aujourd'hui son SEUL appelant reconstruit — regle 4 d'<c>ARCHITECTURE.md</c>. Le
+    /// jour ou un second appelant apparait, elle part dans <c>Engine/</c> avec
+    /// <c>ApplyPartyScriptOp</c>.
+    /// </para>
+    /// </summary>
+    /// <returns>
+    /// Le resultat de la comparaison pour les familles <c>+0x24</c> et <c>+0x30</c> ;
+    /// <c>false</c> pour toutes les affectations, et pour tout opcode inconnu.
+    /// </returns>
+    private static bool ApplyScriptOp(byte* target, byte op, uint operand)
+    {
+        byte* vars = Mem.Arena(0x005e9060);
+        byte immediate = (byte)operand;
+
+        switch (op)
+        {
+            // ---- octet : cible op= immediate ----------------------------------------------
+            case 0x00: *target = immediate; return false;
+            case 0x01: *target = (byte)((sbyte)*target + immediate); return false;
+            case 0x02: *target = (byte)((sbyte)*target - immediate); return false;
+            case 0x03: *target |= immediate; return false;
+            case 0x04: *target &= immediate; return false;
+            case 0x05: *target ^= immediate; return false;
+            case 0x06: *target = (byte)(immediate * (sbyte)*target); return false;
+            case 0x07: *target = (byte)(*target / operand); return false;
+            case 0x08: *target = (byte)(*target % operand); return false;
+            case 0x09: *target = (byte)((sbyte)*target << (immediate & 0x1f)); return false;
+            case 0x0a: *target = (byte)(*target >> (immediate & 0x1f)); return false;
+            case 0x0b: *target = (byte)((uint)CrtRand() % operand); return false;
+
+            // ---- octet : variable[immediate] op= cible ------------------------------------
+            case 0x0c: vars[operand] = *target; return false;
+            case 0x0d: vars[operand] = (byte)((sbyte)vars[operand] + (sbyte)*target); return false;
+            case 0x0e: vars[operand] = (byte)((sbyte)vars[operand] - (sbyte)*target); return false;
+            case 0x0f: vars[operand] |= *target; return false;
+            case 0x10: vars[operand] &= *target; return false;
+            case 0x11: vars[operand] ^= *target; return false;
+            case 0x12: vars[operand] = (byte)((sbyte)*target * (sbyte)vars[operand]); return false;
+            case 0x13: vars[operand] = (byte)((ulong)vars[operand] / (ulong)(long)(int)(uint)*target); return false;
+            case 0x14: vars[operand] = (byte)((ulong)vars[operand] % (ulong)(long)(int)(uint)*target); return false;
+            case 0x15: vars[operand] = (byte)((sbyte)vars[operand] << (*target & 0x1f)); return false;
+            case 0x16: vars[operand] = (byte)(vars[operand] >> (*target & 0x1f)); return false;
+            case 0x17: vars[operand] = (byte)(CrtRand() % (int)(uint)*target); return false;
+
+            // ---- octet : cible op= variable[immediate] ------------------------------------
+            case 0x18: *target = vars[operand]; return false;
+            case 0x19: *target = (byte)((sbyte)*target + (sbyte)vars[operand]); return false;
+            case 0x1a: *target = (byte)((sbyte)*target - (sbyte)vars[operand]); return false;
+            case 0x1b: *target |= vars[operand]; return false;
+            case 0x1c: *target &= vars[operand]; return false;
+            case 0x1d: *target ^= vars[operand]; return false;
+            case 0x1e: *target = (byte)((sbyte)vars[operand] * (sbyte)*target); return false;
+            case 0x1f: *target = (byte)((ulong)*target / (ulong)(long)(int)(uint)vars[operand]); return false;
+            case 0x20: *target = (byte)((ulong)*target % (ulong)(long)(int)(uint)vars[operand]); return false;
+            case 0x21: *target = (byte)((sbyte)*target << (vars[operand] & 0x1f)); return false;
+            case 0x22: *target = (byte)(*target >> (vars[operand] & 0x1f)); return false;
+            case 0x23: *target = (byte)(CrtRand() % (int)(uint)vars[operand]); return false;
+
+            // ---- octet : comparaison avec l'immediate -------------------------------------
+            case 0x24: return *target != operand;
+            case 0x25: return *target == operand;
+            case 0x26: return operand < *target;
+            case 0x27: return *target < operand;
+            case 0x28: return operand <= *target;
+            case 0x29: return *target <= operand;
+            case 0x2a: return (*target & operand) != operand;
+            case 0x2b: return (*target & operand) == operand;
+            case 0x2c: return (immediate & *target) == 0;
+            case 0x2d: return (immediate & *target) != 0;
+            case 0x2e: return *target % operand == 0;
+            case 0x2f: return *target % operand != 0;
+
+            // ---- octet : comparaison avec variable[immediate] -----------------------------
+            case 0x30: return (sbyte)*target != (sbyte)vars[operand];
+            case 0x31: return (sbyte)*target == (sbyte)vars[operand];
+            case 0x32: return vars[operand] < *target;
+            case 0x33: return *target < vars[operand];
+            case 0x34: return vars[operand] <= *target;
+            case 0x35: return *target <= vars[operand];
+            case 0x36: return (*target & vars[operand]) != vars[operand];
+            case 0x37: return (*target & vars[operand]) == vars[operand];
+            case 0x38: return (vars[operand] & *target) == 0;
+            case 0x39: return (vars[operand] & *target) != 0;
+            case 0x3a: return (ulong)*target % (ulong)(long)(int)(uint)vars[operand] == 0;
+            case 0x3b: return (ulong)*target % (ulong)(long)(int)(uint)vars[operand] != 0;
+
+            // ---- mot : cible op= immediate ------------------------------------------------
+            case 0x40: *(ushort*)target = (ushort)operand; return false;
+            case 0x41: *(ushort*)target = (ushort)(*(ushort*)target + (ushort)operand); return false;
+            case 0x42: *(ushort*)target = (ushort)(*(ushort*)target - (ushort)operand); return false;
+            case 0x43: *(ushort*)target = (ushort)(*(ushort*)target | (ushort)operand); return false;
+            case 0x44: *(ushort*)target = (ushort)(*(ushort*)target & (ushort)operand); return false;
+            case 0x45: *(ushort*)target = (ushort)(*(ushort*)target ^ (ushort)operand); return false;
+            case 0x46: *(ushort*)target = (ushort)((ushort)operand * *(ushort*)target); return false;
+            case 0x47: *(ushort*)target = (ushort)(*(ushort*)target / operand); return false;
+            case 0x48: *(ushort*)target = (ushort)(*(ushort*)target % operand); return false;
+            case 0x49: *(ushort*)target = (ushort)(*(ushort*)target << (immediate & 0x1f)); return false;
+            case 0x4a: *(ushort*)target = (ushort)(*(ushort*)target >> (immediate & 0x1f)); return false;
+            case 0x4b: *(ushort*)target = (ushort)((uint)CrtRand() % operand); return false;
+
+            // ---- mot : variable[immediate] op= cible --------------------------------------
+            case 0x4c: *(ushort*)(vars + operand) = *(ushort*)target; return false;
+            case 0x4d: *(short*)(vars + operand) = (short)(*(short*)(vars + operand) + *(ushort*)target); return false;
+            case 0x4e: *(short*)(vars + operand) = (short)(*(short*)(vars + operand) - *(ushort*)target); return false;
+            case 0x4f: *(ushort*)(vars + operand) = (ushort)(*(ushort*)(vars + operand) | *(ushort*)target); return false;
+            case 0x50: *(ushort*)(vars + operand) = (ushort)(*(ushort*)(vars + operand) & *(ushort*)target); return false;
+            case 0x51: *(ushort*)(vars + operand) = (ushort)(*(ushort*)(vars + operand) ^ *(ushort*)target); return false;
+            case 0x52: *(ushort*)(vars + operand) = (ushort)(*(ushort*)target * *(short*)(vars + operand)); return false;
+            case 0x53: *(short*)(vars + operand) = (short)((ulong)*(ushort*)(vars + operand) / (ulong)(long)(int)(uint)*(ushort*)target); return false;
+            case 0x54: *(short*)(vars + operand) = (short)((ulong)*(ushort*)(vars + operand) % (ulong)(long)(int)(uint)*(ushort*)target); return false;
+            case 0x55: *(short*)(vars + operand) = (short)(*(short*)(vars + operand) << ((byte)*(ushort*)target & 0x1f)); return false;
+            case 0x56: *(ushort*)(vars + operand) = (ushort)(*(ushort*)(vars + operand) >> ((byte)*(ushort*)target & 0x1f)); return false;
+            case 0x57: *(short*)(vars + operand) = (short)(CrtRand() % (int)(uint)*(ushort*)target); return false;
+
+            // ---- mot : cible op= variable[immediate] --------------------------------------
+            case 0x58: *(ushort*)target = *(ushort*)(vars + operand); return false;
+            case 0x59: *(ushort*)target = (ushort)(*(ushort*)target + *(short*)(vars + operand)); return false;
+            case 0x5a: *(ushort*)target = (ushort)(*(ushort*)target - *(short*)(vars + operand)); return false;
+            case 0x5b: *(ushort*)target = (ushort)(*(ushort*)target | *(ushort*)(vars + operand)); return false;
+            case 0x5c: *(ushort*)target = (ushort)(*(ushort*)target & *(ushort*)(vars + operand)); return false;
+            case 0x5d: *(ushort*)target = (ushort)(*(ushort*)target ^ *(ushort*)(vars + operand)); return false;
+            case 0x5e: *(ushort*)target = (ushort)(*(short*)(vars + operand) * *(ushort*)target); return false;
+            case 0x5f: *(ushort*)target = (ushort)((ulong)*(ushort*)target / (ulong)(long)(int)(uint)*(ushort*)(vars + operand)); return false;
+            case 0x60: *(ushort*)target = (ushort)((ulong)*(ushort*)target % (ulong)(long)(int)(uint)*(ushort*)(vars + operand)); return false;
+            case 0x61: *(ushort*)target = (ushort)(*(ushort*)target << ((byte)*(ushort*)(vars + operand) & 0x1f)); return false;
+            case 0x62: *(ushort*)target = (ushort)(*(ushort*)target >> ((byte)*(ushort*)(vars + operand) & 0x1f)); return false;
+            case 0x63: *(ushort*)target = (ushort)(CrtRand() % (int)(uint)*(ushort*)(vars + operand)); return false;
+
+            // ---- mot : comparaison avec l'immediate ---------------------------------------
+            case 0x64: return *(ushort*)target != operand;
+            case 0x65: return *(ushort*)target == operand;
+            case 0x66: return operand < *(ushort*)target;
+            case 0x67: return *(ushort*)target < operand;
+            case 0x68: return operand <= *(ushort*)target;
+            case 0x69: return *(ushort*)target <= operand;
+            case 0x6a: return (*(ushort*)target & operand) != operand;
+            case 0x6b: return (*(ushort*)target & operand) == operand;
+            case 0x6c: return (*(ushort*)target & operand) == 0;
+            case 0x6d: return (*(ushort*)target & operand) != 0;
+            case 0x6e: return *(ushort*)target % operand == 0;
+            case 0x6f: return *(ushort*)target % operand != 0;
+
+            // ---- mot : comparaison avec variable[immediate] -------------------------------
+            case 0x70: return *(ushort*)target != *(ushort*)(vars + operand);
+            case 0x71: return *(ushort*)target == *(ushort*)(vars + operand);
+            case 0x72: return *(ushort*)(vars + operand) < *(ushort*)target;
+            case 0x73: return *(ushort*)target < *(ushort*)(vars + operand);
+            case 0x74: return *(ushort*)(vars + operand) <= *(ushort*)target;
+            case 0x75: return *(ushort*)target <= *(ushort*)(vars + operand);
+            case 0x76: return (*(ushort*)target & *(ushort*)(vars + operand)) != *(ushort*)(vars + operand);
+            case 0x77: return (*(ushort*)target & *(ushort*)(vars + operand)) == *(ushort*)(vars + operand);
+            case 0x78: return (*(ushort*)(vars + operand) & *(ushort*)target) == 0;
+            case 0x79: return (*(ushort*)(vars + operand) & *(ushort*)target) != 0;
+            case 0x7a: return (ulong)*(ushort*)target % (ulong)(long)(int)(uint)*(ushort*)(vars + operand) == 0;
+            case 0x7b: return (ulong)*(ushort*)target % (ulong)(long)(int)(uint)*(ushort*)(vars + operand) != 0;
+
+            // ---- double mot : cible op= immediate -----------------------------------------
+            case 0x80: *(uint*)target = operand; return false;
+            case 0x81: *(uint*)target += operand; return false;
+            case 0x82: *(uint*)target -= operand; return false;
+            case 0x83: *(uint*)target |= operand; return false;
+            case 0x84: *(uint*)target &= operand; return false;
+            case 0x85: *(uint*)target ^= operand; return false;
+            case 0x86: *(uint*)target = operand * *(uint*)target; return false;
+            case 0x87: *(uint*)target /= operand; return false;
+            case 0x88: *(uint*)target %= operand; return false;
+            case 0x89: *(uint*)target <<= immediate & 0x1f; return false;
+            case 0x8a: *(uint*)target >>= immediate & 0x1f; return false;
+            case 0x8b: *(uint*)target = (uint)CrtRand() % operand; return false;
+
+            // ---- double mot : variable[immediate] op= cible -------------------------------
+            case 0x8c: *(uint*)(vars + operand) = *(uint*)target; return false;
+            case 0x8d: *(uint*)(vars + operand) = (uint)(*(int*)(vars + operand) + *(uint*)target); return false;
+            case 0x8e: *(uint*)(vars + operand) = (uint)(*(int*)(vars + operand) - *(uint*)target); return false;
+            case 0x8f: *(uint*)(vars + operand) |= *(uint*)target; return false;
+            case 0x90: *(uint*)(vars + operand) &= *(uint*)target; return false;
+            case 0x91: *(uint*)(vars + operand) ^= *(uint*)target; return false;
+            case 0x92: *(uint*)(vars + operand) = (uint)(*(uint*)target * *(int*)(vars + operand)); return false;
+            case 0x93: *(uint*)(vars + operand) /= *(uint*)target; return false;
+            case 0x94: *(uint*)(vars + operand) %= *(uint*)target; return false;
+            case 0x95: *(int*)(vars + operand) = *(int*)(vars + operand) << ((byte)*(uint*)target & 0x1f); return false;
+            case 0x96: *(uint*)(vars + operand) = *(uint*)(vars + operand) >> ((byte)*(uint*)target & 0x1f); return false;
+            case 0x97: *(uint*)(vars + operand) = (uint)CrtRand() % *(uint*)target; return false;
+
+            // ---- double mot : cible op= variable[immediate] -------------------------------
+            case 0x98: *(uint*)target = *(uint*)(vars + operand); return false;
+            case 0x99: *(uint*)target = (uint)(*(uint*)target + *(int*)(vars + operand)); return false;
+            case 0x9a: *(uint*)target = (uint)(*(uint*)target - *(int*)(vars + operand)); return false;
+            case 0x9b: *(uint*)target |= *(uint*)(vars + operand); return false;
+            case 0x9c: *(uint*)target &= *(uint*)(vars + operand); return false;
+            case 0x9d: *(uint*)target ^= *(uint*)(vars + operand); return false;
+            case 0x9e: *(uint*)target = (uint)(*(int*)(vars + operand) * *(uint*)target); return false;
+            case 0x9f: *(uint*)target /= *(uint*)(vars + operand); return false;
+            case 0xa0: *(uint*)target %= *(uint*)(vars + operand); return false;
+            case 0xa1: *(uint*)target <<= (byte)*(uint*)(vars + operand) & 0x1f; return false;
+            case 0xa2: *(uint*)target >>= (byte)*(uint*)(vars + operand) & 0x1f; return false;
+            case 0xa3: *(uint*)target = (uint)CrtRand() % *(uint*)(vars + operand); return false;
+
+            // ---- double mot : comparaison avec l'immediate --------------------------------
+            case 0xa4: return *(uint*)target != operand;
+            case 0xa5: return *(uint*)target == operand;
+            case 0xa6: return operand < *(uint*)target;
+            case 0xa7: return *(uint*)target < operand;
+            case 0xa8: return operand <= *(uint*)target;
+            case 0xa9: return *(uint*)target <= operand;
+            case 0xaa: return (operand & *(uint*)target) != operand;
+            case 0xab: return (operand & *(uint*)target) == operand;
+            case 0xac: return (operand & *(uint*)target) == 0;
+            case 0xad: return (operand & *(uint*)target) != 0;
+            case 0xae: return *(uint*)target % operand == 0;
+            case 0xaf: return *(uint*)target % operand != 0;
+
+            // ---- double mot : comparaison avec variable[immediate] ------------------------
+            case 0xb0: return *(uint*)target != *(uint*)(vars + operand);
+            case 0xb1: return *(uint*)target == *(uint*)(vars + operand);
+            case 0xb2: return *(uint*)(vars + operand) < *(uint*)target;
+            case 0xb3: return *(uint*)target < *(uint*)(vars + operand);
+            case 0xb4: return *(uint*)(vars + operand) <= *(uint*)target;
+            case 0xb5: return *(uint*)target <= *(uint*)(vars + operand);
+            case 0xb6: return (*(uint*)target & *(uint*)(vars + operand)) != *(uint*)(vars + operand);
+            case 0xb7: return (*(uint*)target & *(uint*)(vars + operand)) == *(uint*)(vars + operand);
+            case 0xb8: return (*(uint*)(vars + operand) & *(uint*)target) == 0;
+            case 0xb9: return (*(uint*)(vars + operand) & *(uint*)target) != 0;
+            case 0xba: return *(uint*)target % *(uint*)(vars + operand) == 0;
+            case 0xbb: return *(uint*)target % *(uint*)(vars + operand) != 0;
+
+            // Ghidra: `default: return false;` — pose entre les cas 0x3b et 0x40, donc il couvre
+            // les trous entre les trois groupes de largeur aussi bien que les opcodes hors table.
+            default: return false;
+        }
+    }
 }

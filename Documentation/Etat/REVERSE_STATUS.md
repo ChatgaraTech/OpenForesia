@@ -7169,3 +7169,98 @@ Build 0 erreur · oracle « aucune logique modifiee » apres refreeze · tests d
 `-Entry 1` **382,3** primitives par image, capture relue · **tous les items de solution du `.sln`
 resolvent** et l'outil PE fonctionne sur les nouveaux chemins
 (`at Legacy/Binaries/Blaze.exe 0x005631f8`).
+
+---
+
+## 2026-08-21 — le verrou `FUN_004747F0` est leve, et le depot sait desassembler
+
+**`OPENFORESIA_SKIP_AREA_HANDLER` est retire.** L'etat 3 traverse desormais la transition de
+sous-zone sans aucun echafaudage, et s'arrete sur `FUN_005350b0` — le meme point qu'avec
+l'echafaudage, mais cette fois honnetement.
+
+### Ce qui a change la donne : `OpenForesia.Tools disasm`
+
+Le blocage tenait a une phrase ecrite trois jours plus tot : « c'est une demande de re-passe Ghidra
+ciblee, pas un exercice de lecture ». Elle designait une action **hors du depot**, que personne ne
+pouvait faire depuis une session de travail — donc le verrou etait permanent en pratique.
+
+Or le binaire est dans le depot, la table des sections aussi. **Il ne manquait qu'un decodeur.**
+`Iced` (NuGet, 1.21.0) est ajoute a `OpenForesia.Tools`, et le verbe `disasm` rend le
+desassemblage x86-32 a une VA Ghidra, avec les cibles de saut internes relevees en premiere passe :
+
+```
+dotnet run --project OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x004747f0 724
+```
+
+Il ne remplace pas Ghidra — pas de flot reconstruit, pas de types, pas de noms. Il rend ce qui
+suffit a transcrire a la main quand la pseudo-C manque. **Toute future « re-passe Ghidra requise »
+est desormais un travail interne.**
+
+### L'estimation qui avait fait renoncer etait fausse
+
+La note disait : « 723 octets avec neuf branches convergentes et une logique de drapeaux dense,
+c'est le travail d'un decompilateur ».
+
+Le desassemblage montre l'inverse : une **cascade parfaitement reguliere**. Huit blocs identiques au
+bit pres, chacun « si telle condition, poser un code de destination et sortir ». Les « neuf sorties
+convergentes » sont neuf `return`, pas un graphe emmele. La transcription tient en 60 lignes.
+
+**Une taille en octets ne mesure pas une difficulte.** Ce qui la mesure, c'est le nombre de formes
+distinctes — ici deux. C'est la meme lecon que « la taille d'un fichier ne dit rien de son cout de
+conversion, sa cloture si », rencontree a l'etape C.
+
+### Ce que fait `FUN_004747F0`
+
+Elle choisit la sous-zone suivante de la zone 0 selon le nombre de capacites que le groupe possede
+en commun : elle compte les bits leves de `DAT_005e9000` (le masque de groupe, recalcule par
+`RefreshPartyAbilityMask`) plus le bit 0 de `DAT_005e9001`, et pose un code dans `DAT_005de52c` —
+0, 8, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38, 0x40, 0x48 ou 0x50.
+
+Deux verifications qui evitent du faux travail :
+
+* **`FUN_00401FA0`, appele par chaque branche, est un `ret` nu** — desassemble, pas suppose. Les
+  neuf appels sont donc sans effet et ne sont pas transcrits. C'est coherent avec la table de sauts,
+  que `BuildAreaHandlerTable` remplit deja de cette adresse.
+* **La garde de sortie precoce est le point important** : si `DAT_005de52c` ou `DAT_005de530` est
+  deja non nul, la fonction ne fait rien. Une transition en cours n'est jamais ecrasee.
+
+Releve conserve dans `Legacy/Raw/Blaze/FUN_004747F0.asm`.
+
+### La chaine qu'elle a tiree derriere elle
+
+`FUN_004747F0` appelle `FUN_00514000`, qui delegue a `FUN_00515d70`, qui appelle `FUN_00514040` et
+`FUN_00535710`. Les trois premieres sont dans `Blaze.c` ; la quatriere etait deja reconstruite
+(`RefreshPartyAbilityMask`).
+
+* **`FUN_00514000` et `FUN_00515d70` sont fondues** en `ApplyPartyScriptOp`. La premiere ne fait que
+  passer `DAT_005e97cc` et 0 a la seconde, et **ces deux parametres n'y sont jamais lus** : les
+  garder aurait donne une signature qui ment sur ce que la fonction touche.
+* **`FUN_00514040` est l'ALU du moteur de script** — 190 opcodes, trois groupes de largeur
+  (octet / mot / double mot) et six familles de douze dans chacun. Transcrite **integralement**,
+  cas par cas, dans l'ordre de Ghidra.
+
+**Pourquoi ne pas l'avoir repliee en boucle calculee**, alors que la structure y invite : les cas ne
+sont pas interchangeables. Ghidra emet des largeurs et des signes differents d'un cas a l'autre —
+`0x01` additionne en `char` signe la ou `0x07` divise en `byte` non signe, `0x13` passe par un
+64 bits la ou `0x07` reste en 32. Replier aurait ete une re-derivation, pas une transcription, et
+la divergence n'aurait sonne que le jour ou l'opcode concerne serait tombe.
+
+### Ou vit l'ALU, et quand elle demenagera
+
+Elle reste dans `Screens/State03/WorldMap.cs`, son seul appelant reconstruit — regle 4
+d'`ARCHITECTURE.md`. Mais **le binaire l'appelle depuis 17 fonctions distinctes**, sur deux bandes
+d'adresses (`0x00515xxx` et `0x00523xxx`) : c'est une primitive partagee. Le jour ou un second
+appelant est reconstruit, elle part dans `Engine/` avec `ApplyPartyScriptOp`. La condition est
+ecrite sur place.
+
+### Verification
+
+Build 0 erreur · oracle : **un seul corps signale**, `CallAreaHandler`, le rebranchement voulu ·
+tests de disposition 5 verts · **la reproduction tourne sans `OPENFORESIA_SKIP_AREA_HANDLER`** et
+s'arrete sur `FUN_005350b0`, l'etape suivante.
+
+**Un signal de plus, non cherche** : les avertissements `CS0414` passent de 38 a 34.
+`s_Unknown_00566c90` — un drapeau que `DebugParty` ecrivait sans qu'aucun code ne le lise — est
+maintenant consomme par le gestionnaire de zone, exactement comme dans le binaire. **Un champ
+« assigne mais jamais utilise » est souvent le bout pendant d'une fonction non encore transcrite**,
+pas du code mort.

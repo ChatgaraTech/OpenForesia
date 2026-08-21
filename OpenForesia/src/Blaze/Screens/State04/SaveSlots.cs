@@ -2051,7 +2051,7 @@ public static unsafe partial class Blaze
     // compared/assigned from DAT_005dbc18 (a save-slot-derived count). Declared now because
     // RefreshPartyAbilityMask (FUN_00535710) needs it; the role is inferred from cross-referencing
     // those call sites, not yet confirmed by tracing a single one end to end.
-    private static int s_PartySize_005e9020;
+    internal static int s_PartySize_005e9020;
 
     // Ghidra: DAT_005e9000 â€” elsewhere indexed byte-at-a-time (up to `& 0xff`) with individual bits
     // set/cleared via `1 << (someIndex & 0x1f)`, read as "does any party member know skill/spell N"

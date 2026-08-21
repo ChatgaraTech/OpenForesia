@@ -75,12 +75,18 @@ verbs read the binary's data sections:
 dotnet run --project OpenForesia.Tools -- Legacy/Binaries/winsys3d.dll         # exports
 dotnet run --project OpenForesia.Tools -- sections Legacy/Binaries/Blaze.exe           # VA ranges
 dotnet run --project OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x005631f8 32   # bytes at a Ghidra VA
+dotnet run --project OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x004747f0 724  # x86-32
 ```
 
-`at` takes a **Ghidra virtual address** (hex, `0x` optional) and prints the resolved file offset and
-section alongside hex, C-string and dword renderings. Byte counts are decimal. An address landing in
-`.data`'s uninitialised tail is reported as such — that means "zero at load, written only by code",
-which is an answer, not an error.
+Both verbs take a **Ghidra virtual address** (hex, `0x` optional); byte counts are decimal.
+
+`at` prints the resolved file offset and section alongside hex, C-string and dword renderings. An
+address landing in `.data`'s uninitialised tail is reported as such — that means "zero at load,
+written only by code", which is an answer, not an error.
+
+`disasm` prints x86-32 instructions with internal jump targets labelled `LAB_…`. **This is what
+makes a body Ghidra never decompiled reachable** — see "When `Blaze.c` doesn't have the answer"
+below. Keep any dump you rely on under `Legacy/Raw/Blaze/`.
 
 ## Layout
 
@@ -119,7 +125,7 @@ Documentation/   tout ce que le projet a appris
 | `Documentation/DLL/<dll>.md` | Accumulated knowledge per DLL (ordinals, signatures, confirmed vs. hypothesis). |
 | `OpenForesia/src/Blaze/**` | The reconstruction, split into `Platform/`, `Memory/`, `Engine/`, `Screens/` — **see `Documentation/ARCHITECTURE.md`**. |
 | `OpenForesia/src/Host/**` | Our 2026 scaffolding — the Direct3D 11 replacement for the 1998 display chain. **Not bound by fidelity.** |
-| `OpenForesia.Tools/` | PE export-table dumper, `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
+| `OpenForesia.Tools/` | PE export-table dumper, **x86-32 disassembler** (`disasm`, via Iced), `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
 | `OpenForesia/src/DLL/*.dll` | Copies of the helper DLLs, flattened into the build output for P/Invoke. |
 | `Analyse/` | Notes d'observation du jeu original (comportement, sessions x32dbg). |
 
@@ -216,17 +222,45 @@ fields of the form `= Arena(0x…)` returned `null + offset` and the game threw 
 4. Write up whatever is learned back into `Documentation/DLL/<dll>.md`, separating confirmed
    behavior from hypotheses.
 
-## The systemic blocker
+## When `Blaze.c` doesn't have the answer — read the binary
 
-`Blaze.exe` itself is **not in the repo** — only `Blaze.c`, which is a *code-only* decompilation.
-Ghidra emitted function bodies but not the `.data`/`.rdata` sections, so every symbol whose value
-lives in initialized data (string literals, lookup tables, statically initialized function pointers
-such as the game loop's per-frame tick `PTR_FUN_0056c96c`) is **unrecoverable no matter how
-carefully `Blaze.c` is re-read**. `REVERSE_STATUS.md` lists exactly which TODOs are blocked this
-way. Do not "solve" one of them by inventing plausible content; adding the binary (or a Ghidra
-data-section export) unblocks them all at once.
+`Blaze.c` is a **code-only** decompilation: Ghidra emitted function bodies but not the
+`.data`/`.rdata` sections, and it left some bodies undecompiled entirely. Two gap classes follow,
+and **both are now solvable inside the repo** — the binary is committed at
+`Legacy/Binaries/Blaze.exe`.
 
-A related class of gaps needs a **Ghidra re-run**, not more reading: address-taken-only bodies
-(window procedures, thread procedures, C++ vtable slots that appear only as `LAB_…`) and functions
-whose parameters Ghidra failed to recover (`unaff_ESI`, `extraout_var`, fewer parameters than call
-sites pass). Flag these inline rather than guessing a signature.
+**Values that live in initialized data** (string literals, lookup tables, statically initialized
+function pointers such as `PTR_FUN_0056c96c`) are not in `Blaze.c` at any price. Read them out of
+the binary:
+
+```powershell
+dotnet run --project OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x005631f8 32
+```
+
+Record what you recover in `Documentation/Reference/DataSymbols.md`, keyed by VA. **Never invent
+plausible content** for one of these — an address that lands in `.data`'s uninitialised tail is
+reported as such, and that is an answer.
+
+**Bodies Ghidra did not decompile** — address-taken-only code (window procedures, thread procedures,
+vtable slots appearing only as `LAB_…`) and whole functions missing from `Blaze.c`. Until
+2026-08-21 the standing advice was "this needs a targeted Ghidra re-run", which meant an action
+outside the repository — so in practice it meant *blocked forever*. It no longer does:
+
+```powershell
+dotnet run --project OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x004747f0 724
+```
+
+`disasm` prints x86-32 with internal jump targets labelled. It is **not** a decompiler — no
+reconstructed control flow, no types, no names — but it is enough to transcribe a function by hand,
+and `FUN_004747F0` (723 bytes, absent from `Blaze.c`, blocking game state 3 for three days) came out
+of it in one pass. Keep the dump under `Legacy/Raw/Blaze/` next to the transcription.
+
+**A byte count is not a difficulty estimate.** That same function had been written off as
+"723 bytes with nine convergent branches — that's a decompiler's job". It turned out to be a
+perfectly regular cascade of eight near-identical blocks, and the nine "convergent exits" were nine
+`return`s. What predicts the cost is the number of *distinct shapes*, not the size.
+
+**What is still genuinely blocked**: functions whose parameters Ghidra failed to recover
+(`unaff_ESI`, `extraout_var`, fewer parameters than call sites pass). Disassembly resolves those too
+in principle, but reconstructing a calling convention from register traffic is real work — flag it
+inline rather than guessing a signature.
