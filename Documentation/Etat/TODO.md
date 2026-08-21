@@ -14,6 +14,22 @@ des huit défauts d'aliasing (qui **change le comportement**), la transcription 
 `FUN_00533450`, `FUN_004747F0` (celle-ci **absente de `Blaze.c`**, désassemblée sur place) et
 `FUN_005350b0`, le verbe `disasm` d'`OpenForesia.Tools`, les vingt désassemblages d'opcodes de
 `Legacy/Raw/Blaze/ScriptOps/`, **la réorganisation du dépôt**, et cette mise à jour de documentation.
+S'y ajoute, le 2026-08-21 au soir : l'arène des paramètres de vue (étape 1), **tout
+`Screens/State03/WorldMapScript.cs`** (étape 2), la correction du défaut de `RvaToFileOffset` dans
+`OpenForesia.Tools`, la rétractation des notes qui en découlaient, la correction de l'arité de
+`Winsys3d.Ordinal_45` et l'ajout d'`Ordinal_46`.
+
+**Où en est le jeu.** Le chemin « Début du jeu → constitution du groupe → carte du monde » va
+maintenant jusqu'au bout et s'arrête **exactement sur `FUN_00516fc0`**, c'est-à-dire l'étape (4).
+Recette de test :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 50 -Shot -WorkingDir OpenForesia `
+    -Then WAIT4,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT2,START,WAIT4,ENTER,WAIT4,ENTER,WAIT10
+```
+
+La recette de `test-protocol.md` (un seul `ENTER` avant `START`) ne suffit plus : la sauvegarde de
+test porte quatre personnages, il faut les retenir un par un.
 
 **Le dépôt a été réorganisé le 2026-08-21** — la racine ne porte plus que `CLAUDE.md` et
 `OpenForesia.sln`. Ce fichier vit maintenant dans `Documentation/Etat/`. Les décompilations sont
@@ -47,69 +63,108 @@ ne relèvent pas du retrait, elles sont la raison d'être du mécanisme.
 
 **Il reste 665 lecteurs**, tous dans `Screens/` et `Platform/`. Ce sont encore des fichiers de
 `partial class Blaze` : pas de constructeur, donc rien à injecter. `Subsystems.cs` ne disparaîtra
-## Reprendre ici — `FUN_00516fc0`, dans cet ordre
+## Reprendre ici — objectif : **le jeu atteint et exécute le prologue de `FUN_00516fc0`**
 
-**La préparation est faite ; il reste à écrire.** Rien de la fonction n'est transcrit, mais la clé
-de lecture et la mesure corrigée sont acquises (détail dans `REVERSE_STATUS.md`, 2026-08-21).
+Plan arrêté le 2026-08-21, en quatre étapes indépendamment vérifiables. **Cocher au fur et à
+mesure**, et re-mesurer avant chaque étape — les estimations se sont révélées fausses **trois**
+fois, dont une à l'étape (1) de ce plan même (voir « Cinq avertissements payés comptant »).
 
-### 1. Lire la pseudo-C avec la clé, sinon elle ment
+- [x] **(1) FAITE le 2026-08-21 — mais pas comme le plan le disait.** Le plan annonçait « étendre
+      `EntityState` vers le bas sur `0x005710f0..0x005714ff`, 231 adresses ». **Trois quarts de
+      cette région n'appartiennent pas au jeu**, et l'étendre ainsi aurait fait deux dégâts :
+      * `0x005710f0..0x00571258` est du **CRT** — `DAT_00571258` est lu par `WideCharToMultiByte`
+        (`FUN_0054B190`) et `DAT_005710F0` est sa table de pages de code, parcourue par paires.
+        Une arène d'état de jeu l'aurait avalée.
+      * ~~`0x00571400..0x00571500` est une **table initialisée** de valeurs `0x00208xxx`~~ —
+        **faux, rétracté le même jour** : défaut de l'outil `at`, voir `REVERSE_STATUS.md`.
+        `0x00571400` reste la bonne borne, mais parce que c'est la fin du contenu de `.data`
+        présent dans le fichier.
+      * `0x0057125c..0x0057126c` n'est cité nulle part.
+
+      Le bloc réel est **`0x00571270..0x00571400`**, soit 0x190 octets et **69 symboles**, vérifié
+      **intégralement nul au chargement** (384 octets relevés, zéro dword non nul). Créé sous
+      `s_ViewParams_00571270` / `ViewParams(va)` — il alimente `s_ViewBlock_006067c0` par addition,
+      reçoit la caméra en deux exemplaires parallèles, et porte des drapeaux à `0x0057139c`.
+      **Neutre en comportement** : aucune des 123 adresses n'était un champ C#, donc rien à aliaser.
+      Les deux tables flanquantes sont notées dans `Documentation/Reference/DataSymbols.md`.
+      Vérifié : build 0 erreur, avertissements inchangés, **5 tests de disposition verts**,
+      non-régression `-Entry 1` à 382,3.
+- [x] **(2) L'interpréteur de script — FAITE le 2026-08-21, la machine est complète.**
+      `OpenForesia/src/Blaze/Screens/State03/WorldMapScript.cs`, ~1 000 lignes.
+
+      Écrit : la boucle (`FUN_00513dd0` + `FUN_00513e40`), le répartiteur, **22 opcodes sur 39**
+      (1, 2, 3–10, 11, 12, 13, 16, 18, 19, 23–26, 28, 29) et **huit appelées**
+      (`FUN_00532740`, `FUN_00538980`, `FUN_005389e0`, `FUN_0051b850`, `FUN_0047a9d0`,
+      `FUN_005035c0`, `FUN_00535300`, `FUN_00535400`).
+
+      **Les opcodes 1 et 2 sont la pièce qui rendait la boucle lisible** : saut, et saut
+      conditionnel qui *remet le résultat à zéro*. C'est pour ça que la boucle laisse passer
+      l'opcode 2 alors qu'un résultat est posé — sans lui, un test de script arrêterait le script
+      pour de bon. Aucun des deux n'est dans `Blaze.c`.
+
+      **Les 17 opcodes restants lèvent une lacune nommée**, pas un trou muet. Deux ont un blocage
+      établi, écrit dans le message d'exception :
+
+      * **opcode 0** — appelle `(&PTR_FUN_0056aec8)[script[1]]`. Les 256 entrées du binaire pointent
+        toutes vers `FUN_00401fa0`, un `ret` nu, **mais ce n'est que le défaut** : `Blaze.c` l. 75143
+        remplit la table à l'exécution, 0x40 entrées à la fois, depuis `(&PTR_PTR_00567318)[zone]`.
+        Il faut ce chargeur et les jeux de fonctions par zone, pas une relecture du gestionnaire.
+      * **opcode 27** — laissé de côté sciemment : tire `FUN_00530f20` (153 l.) et `FUN_005312d0`
+        (109 l., criblée d'artefacts de pile), qui tirent à leur tour `FUN_00544350`, `FUN_0051bcc0`,
+        `FUN_00530ed0`, `FUN_0053db20`, `FUN_00532710`. C'est la cascade d'affichage des nombres de
+        dégâts, hors du chemin vers le prologue.
+
+      Les quinze autres (11 écrit, restent 14, 15, 17, 20, 21, 22, 30–38) n'attendent qu'une reprise
+      du désassemblage : les relevés banqués de `Legacy/Raw/Blaze/ScriptOps/` sont **des fenêtres de
+      96 octets** et certains corps débordent — reprendre au verbe `disasm` avec une taille plus
+      large.
+
+      Trois arités de Ghidra ont été démenties au niveau machine avant transcription (`FUN_0053a920`
+      en prend 2 et non 3, `FUN_00530f20` en prend 3 et non 2, `FUN_00532740` en reçoit 2 dont une
+      morte), et un défaut d'aliasing a été évité de justesse : `s_PartySize_005e9020` est un
+      `static int` **hors arène**, donc lire `0x005e9020` par adresse aurait rendu zéro en silence.
+- [ ] **(3) `FUN_00401000` (15 l.) et `FUN_00401080` (39 l.)** — de purs brassages de globales,
+      triviaux une fois (1) faite.
+- [ ] **(4) Le prologue de `FUN_00516fc0`** — ~70 lignes de pseudo-C, à lire avec la clé
+      `piStack_74` ci-dessous. La boucle par image reste un trou sonore après lui.
+
+**Total estimé : ~700 lignes de C#.**
+
+### Ce que la vérification a déjà corrigé dans ce plan
+
+J'espérais que le prologue saute l'interpréteur. **Faux, vérifié** : `DAT_005645f8` vaut **2** au
+chargement (lu dans le binaire à `0x005645f8`) et `RunWorldMapState` le remet à 2, donc la branche
+`== 2` est prise dès la première image et appelle `FUN_00513dd0` deux fois. L'interpréteur est
+incontournable — d'où sa place en (2) et non en option.
+
+### Et ce qui rend l'objectif plus intéressant qu'il n'en a l'air
+
+Juste après le prologue, la boucle appelle `FUN_0040a600` (corps vide, vérifié), `FUN_00533000`
+(déjà écrite), puis **`FUN_0053dc30` (34 l.)** et **`FUN_0050e2b0` (107 l.)**. Ce ne sont pas les
+monstres de 999 et 591 lignes — ceux-là sont plus loin dans la boucle.
+
+Une fois le prologue franchi, on est donc probablement à **~150 lignes des premières images de la
+carte du monde**, pas à 5900. **L'estimation « ~5900 lignes » compte tout l'arbre, pas le chemin
+chaud** — et l'expérience du 2026-08-21 montre que le chemin chaud est bien plus court (une seule
+fonction, `FUN_00533940`, a débloqué trois étapes d'affilée).
+
+### La clé de lecture, sans laquelle la pseudo-C ment
 
 **`piStack_74 = X;` juste avant un appel est le DERNIER ARGUMENT EMPILÉ, pas une affectation.**
 Vérifié au désassembleur : `FUN_00513dd0` reçoit **trois** arguments là où Ghidra en montre deux, et
 `piStack_74 = (int *)0x190; Ordinal_379();` est en réalité `Ordinal_379(0x190)`.
 
-Contrôler chaque appel précédé d'une telle affectation :
+Contrôler chaque appel précédé d'une telle affectation — le compte se lit sur le `add esp,N` qui
+suit le `call` (`N/4` arguments, cdecl) :
 
 ```powershell
 dotnet run --project OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe <va du site> 60
 ```
 
-Le compte d'arguments se lit sur le `add esp,N` qui suit le `call` : `N/4` arguments, cdecl.
-
 Même chose pour les `unaff_EBX` / `unaff_ESI` / `unaff_EBP` / `unaff_EDI` (60 lignes) : ce sont les
 **curseurs de primitives**, reconnaissables au motif `curseur = Draw(otEntry, curseur, …)`.
 `local_60` est l'entrée d'ordering table ; `FUN_0052a1e0` (`FrameBegin`) prend **trois** paramètres
-là où Ghidra en montre deux — c'est un précédent déjà documenté du dépôt.
-
-### 2. Écrire l'interpréteur de script d'abord
-
-Le prologue y tombe immédiatement : `FUN_00513dd0` → `FUN_00513e40` → dispatch sur
-`(&PTR_LAB_00563298)[opcode]`.
-
-| | |
-|---|---:|
-| entrées de la table (0x00563298, s'arrête à `+0x98`) | **39** |
-| cibles présentes dans `Blaze.c` | 19 (274 l.) |
-| cibles **absentes** de `Blaze.c` | **20** |
-| taille de chacune des absentes | 8 à 17 instructions |
-
-**Les vingt désassemblages sont déjà banqués** dans `Legacy/Raw/Blaze/ScriptOps/` — il n'y a plus
-qu'à les transcrire. Elles sont triviales : la plupart lisent deux octets du script et rendent un
-pointeur.
-
-C'est un bloc cohérent, petit, et il déverrouille tout le reste du prologue.
-
-### 3. Puis le prologue, puis la boucle
-
-Le prologue (jusqu'au `do { … } while`) ne demande, après l'interpréteur, que `FUN_00401000` (15 l.)
-et `FUN_00401080` (39 l.) — deux brassages de globales sans appel. **Attention** : ils touchent la
-région `0x0057xxxx` (`DAT_0057139c`, `DAT_005712f8`, `DAT_00571300`…), qui n'est **pas** couverte
-par `s_EntityState_00571500`. Vérifier la carte des symboles avant de déclarer des champs isolés —
-c'est la forme habituelle du défaut d'aliasing.
-
-La boucle par image vient après, et c'est là que sont les ~5900 lignes d'appelées.
-
-### Ce que la mesure de la veille avait raté, et la leçon
-
-Le relevé « ~5900 lignes d'appelées » comptait les `FUN_` **cités dans le texte**. Il ne voyait donc
-aucun appel passant par une table de pointeurs — d'où l'interpréteur entier absent du compte.
-
-**Un compte de dépendances par grep sous-estime toujours** : il rate les appels indirects. Croiser
-avec les `PTR_`/`(*(code *)…)` du corps :
-
-```bash
-grep -oE "\(\*\(code \*\)[^)]*\)" /tmp/f16fc0.c | sort -u
-```
+là où Ghidra en montre deux — précédent déjà documenté du dépôt.
 
 ### Reproduire l'arrêt
 
@@ -122,18 +177,6 @@ OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 36 -WorkingDir OpenForesia -Sho
 Aucun drapeau d'échafaudage. Si ça ne reproduit rien : chercher `relance detectee`, et vérifier le
 **débit** — ~434 primitives/image veut dire qu'on est resté sur l'écran de groupe, l'état 3 atteint
 donne ~1. Relancer suffit.
-
-
-**Aucun drapeau d'échafaudage n'est nécessaire.** Deux causes d'échec à distinguer avant de
-soupçonner la séquence : une `relance detectee` dans la sortie, ou une validation de groupe ratée.
-Dans les deux cas le verdict dit « aucun plantage », ce qui est trompeur — le contrôle qui tranche
-est le **débit** : ~434 primitives/image veut dire qu'on est resté sur l'écran de groupe, l'état 3
-atteint donne ~1. Relancer suffit. Détail dans `Documentation/Tests/test-protocol.md`.
-
-**Prérequis** : au moins une sauvegarde dans `OpenForesia\save\`. Il y en a quatre.
-
-
-**Prérequis** : au moins une sauvegarde dans `OpenForesia\save\`. Il y en a quatre.
 
 ## Cinq avertissements payés comptant
 

@@ -125,7 +125,13 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#41")] internal static extern void Ordinal_41(); // real: LeaveCriticalSection on the DLL's internal device lock
 
-    [DllImport("winsys3d.dll", EntryPoint = "#45")] internal static extern int Ordinal_45(void* a, byte* b); // confirmed no-op (winsys3d.c: FUN_00a02e20)
+    // Ordinal_45 : souche `xor eax,eax; ret 4` (0x00a02e20). **UN seul argument** — le `ret 4` le dit
+    // sans ambiguite. Il en portait DEUX ici jusqu'au 2026-08-21, ce qui laissait 4 octets sur la pile
+    // a chaque appel en stdcall. Corrige sur la foi du code machine, pas de la pseudo-C.
+    [DllImport("winsys3d.dll", EntryPoint = "#45")] internal static extern int Ordinal_45(void* a);
+    // Ordinal_46 : souche `xor eax,eax; ret` (0x00a02490), cdecl sans argument. Rend toujours 0,
+    // donc le test `Ordinal_46() < 0` de FUN_00513dd0 est toujours faux dans cette version de la DLL.
+    [DllImport("winsys3d.dll", EntryPoint = "#46", CallingConvention = CallingConvention.Cdecl)] internal static extern int Ordinal_46();
 
     [DllImport("winsys3d.dll", EntryPoint = "#92")] internal static extern void* Ordinal_92(void* a, void* b); // confirmed no-op (FUN_00a05160 ignores its args)
 

@@ -359,6 +359,25 @@ confirmation (« Veux-tu jouer avec ce groupe? »), `ENTER` ouvre la boîte Oui/
 Oui. Le run se termine alors sur `thunk_FUN_00516020 (game state 3) not yet reconstructed` — c'est
 le **résultat attendu**, la frontière actuelle, pas un défaut.
 
+#### Il faut retenir AUTANT de personnages que la sauvegarde en porte (2026-08-21)
+
+La séquence ci-dessus n'a marché que tant que le `save\` de test ne portait **qu'un** personnage.
+Avec quatre, elle reste bloquée sur l'écran « Organisation du groupe » : un seul `ENTER` ne retient
+qu'un personnage, et le `START` qui suit ne déclenche pas la confirmation. Le run ne plante pas — il
+finit sa fenêtre d'observation sur le même écran, ce qui se lit « aucun plantage » au verdict et
+peut passer pour un succès. **Regarder la capture**, pas seulement le verdict.
+
+La forme qui marche descend d'un cran entre chaque prise :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 50 -Shot -WorkingDir OpenForesia `
+    -Then WAIT4,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT2,START,WAIT4,ENTER,WAIT4,ENTER,WAIT10
+```
+
+Elle mène jusqu'à l'état de jeu 3 et s'arrête sur `FUN_00516fc0` — la frontière du 2026-08-21.
+Repère mesuré sur ce chemin : **1 primitive par image** une fois la carte du monde atteinte (l'écran
+n'est plus dessiné puisque le tick lève), contre ~434 sur l'écran d'organisation.
+
 Repère mesuré : environ 384 primitives par image sur cet écran.
 
 ---

@@ -56,6 +56,15 @@ return -1;
 byte* p = (byte*)NativeMemory.Alloc((nuint)bytes.Length);
 for (int i = 0; i < bytes.Length; i++) p[i] = bytes[i];
 return p;
+## AllocEntitySlot
+ushort header = *pool;
+if ((byte)header >= (byte)(header >> 8))
+{
+return -1;
+}
+byte index = *((byte*)pool + (header & 0xff) + 2);
+*(byte*)pool = (byte)((byte)header + 1);
+return index;
 ## AllocGlyphAtlas
 uint* p = (uint*)NativeMemory.Alloc(8);
 p[0] = packing;
@@ -139,8 +148,6 @@ if (buffer == null) continue;
 int applied = s_SoundEffectAttenuation == -2000 ? -10000 : s_SoundEffectAttenuation;
 InvokeSetVolume(buffer, applied);
 }
-## ApplyAreaPalette
-throw new NotImplementedException("FUN_005350b0 : la mise en place de palette de zone (95 lignes)");
 ## ApplyCdVolume
 if (s_CdVolumeIni == 0) return;
 s_MusicAttenuation = (int)(s_CdVolumeIni * 2500) / 128 - 2500;
@@ -176,6 +183,22 @@ short result = DivideRoundedBy100(finalScaled);
 if (result < 0) result = 0;
 if (result > 99) result = 99;
 *(short*)(record + 0x156) = result;
+## ApplyFlagToSlots
+uint* slot = (uint*)first;
+for (int i = count; i != 0; i--, slot += 0x27)
+{
+*slot = *slot & ~clear | set;
+}
+## ApplyPartyScriptOp
+byte* record = GetMainMemPtr() + 0xf0000;
+for (int remaining = s_PartySize_005e9020; remaining != 0; remaining--)
+{
+ApplyScriptOp(record + 0x2e0 + operand[1], operand[2], operand[3]);
+record += 0x2000;
+}
+RefreshPartyAbilityMask();
+*result = ApplyScriptOp(Arena(0x005e9000) + operand[1], operand[2], operand[3])
+? 1u : 0u;
 ## ApplyResourceDestinationOverride
 if (dest == s_OverrideDestA_006008c8) return true;
 NativeMemory.Clear(s_EntityList_005de558, 0x27 * sizeof(uint));
@@ -200,6 +223,193 @@ InstallEntityVTables(index);
 return true;
 }
 return false;
+## ApplyScriptOp
+byte* vars = Arena(0x005e9060);
+byte immediate = (byte)operand;
+switch (op)
+{
+case 0x00: *target = immediate; return false;
+case 0x01: *target = (byte)((sbyte)*target + immediate); return false;
+case 0x02: *target = (byte)((sbyte)*target - immediate); return false;
+case 0x03: *target |= immediate; return false;
+case 0x04: *target &= immediate; return false;
+case 0x05: *target ^= immediate; return false;
+case 0x06: *target = (byte)(immediate * (sbyte)*target); return false;
+case 0x07: *target = (byte)(*target / operand); return false;
+case 0x08: *target = (byte)(*target % operand); return false;
+case 0x09: *target = (byte)((sbyte)*target << (immediate & 0x1f)); return false;
+case 0x0a: *target = (byte)(*target >> (immediate & 0x1f)); return false;
+case 0x0b: *target = (byte)((uint)CrtRand() % operand); return false;
+case 0x0c: vars[operand] = *target; return false;
+case 0x0d: vars[operand] = (byte)((sbyte)vars[operand] + (sbyte)*target); return false;
+case 0x0e: vars[operand] = (byte)((sbyte)vars[operand] - (sbyte)*target); return false;
+case 0x0f: vars[operand] |= *target; return false;
+case 0x10: vars[operand] &= *target; return false;
+case 0x11: vars[operand] ^= *target; return false;
+case 0x12: vars[operand] = (byte)((sbyte)*target * (sbyte)vars[operand]); return false;
+case 0x13: vars[operand] = (byte)((ulong)vars[operand] / (ulong)(long)(int)(uint)*target); return false;
+case 0x14: vars[operand] = (byte)((ulong)vars[operand] % (ulong)(long)(int)(uint)*target); return false;
+case 0x15: vars[operand] = (byte)((sbyte)vars[operand] << (*target & 0x1f)); return false;
+case 0x16: vars[operand] = (byte)(vars[operand] >> (*target & 0x1f)); return false;
+case 0x17: vars[operand] = (byte)(CrtRand() % (int)(uint)*target); return false;
+case 0x18: *target = vars[operand]; return false;
+case 0x19: *target = (byte)((sbyte)*target + (sbyte)vars[operand]); return false;
+case 0x1a: *target = (byte)((sbyte)*target - (sbyte)vars[operand]); return false;
+case 0x1b: *target |= vars[operand]; return false;
+case 0x1c: *target &= vars[operand]; return false;
+case 0x1d: *target ^= vars[operand]; return false;
+case 0x1e: *target = (byte)((sbyte)vars[operand] * (sbyte)*target); return false;
+case 0x1f: *target = (byte)((ulong)*target / (ulong)(long)(int)(uint)vars[operand]); return false;
+case 0x20: *target = (byte)((ulong)*target % (ulong)(long)(int)(uint)vars[operand]); return false;
+case 0x21: *target = (byte)((sbyte)*target << (vars[operand] & 0x1f)); return false;
+case 0x22: *target = (byte)(*target >> (vars[operand] & 0x1f)); return false;
+case 0x23: *target = (byte)(CrtRand() % (int)(uint)vars[operand]); return false;
+case 0x24: return *target != operand;
+case 0x25: return *target == operand;
+case 0x26: return operand < *target;
+case 0x27: return *target < operand;
+case 0x28: return operand <= *target;
+case 0x29: return *target <= operand;
+case 0x2a: return (*target & operand) != operand;
+case 0x2b: return (*target & operand) == operand;
+case 0x2c: return (immediate & *target) == 0;
+case 0x2d: return (immediate & *target) != 0;
+case 0x2e: return *target % operand == 0;
+case 0x2f: return *target % operand != 0;
+case 0x30: return (sbyte)*target != (sbyte)vars[operand];
+case 0x31: return (sbyte)*target == (sbyte)vars[operand];
+case 0x32: return vars[operand] < *target;
+case 0x33: return *target < vars[operand];
+case 0x34: return vars[operand] <= *target;
+case 0x35: return *target <= vars[operand];
+case 0x36: return (*target & vars[operand]) != vars[operand];
+case 0x37: return (*target & vars[operand]) == vars[operand];
+case 0x38: return (vars[operand] & *target) == 0;
+case 0x39: return (vars[operand] & *target) != 0;
+case 0x3a: return (ulong)*target % (ulong)(long)(int)(uint)vars[operand] == 0;
+case 0x3b: return (ulong)*target % (ulong)(long)(int)(uint)vars[operand] != 0;
+case 0x40: *(ushort*)target = (ushort)operand; return false;
+case 0x41: *(ushort*)target = (ushort)(*(ushort*)target + (ushort)operand); return false;
+case 0x42: *(ushort*)target = (ushort)(*(ushort*)target - (ushort)operand); return false;
+case 0x43: *(ushort*)target = (ushort)(*(ushort*)target | (ushort)operand); return false;
+case 0x44: *(ushort*)target = (ushort)(*(ushort*)target & (ushort)operand); return false;
+case 0x45: *(ushort*)target = (ushort)(*(ushort*)target ^ (ushort)operand); return false;
+case 0x46: *(ushort*)target = (ushort)((ushort)operand * *(ushort*)target); return false;
+case 0x47: *(ushort*)target = (ushort)(*(ushort*)target / operand); return false;
+case 0x48: *(ushort*)target = (ushort)(*(ushort*)target % operand); return false;
+case 0x49: *(ushort*)target = (ushort)(*(ushort*)target << (immediate & 0x1f)); return false;
+case 0x4a: *(ushort*)target = (ushort)(*(ushort*)target >> (immediate & 0x1f)); return false;
+case 0x4b: *(ushort*)target = (ushort)((uint)CrtRand() % operand); return false;
+case 0x4c: *(ushort*)(vars + operand) = *(ushort*)target; return false;
+case 0x4d: *(short*)(vars + operand) = (short)(*(short*)(vars + operand) + *(ushort*)target); return false;
+case 0x4e: *(short*)(vars + operand) = (short)(*(short*)(vars + operand) - *(ushort*)target); return false;
+case 0x4f: *(ushort*)(vars + operand) = (ushort)(*(ushort*)(vars + operand) | *(ushort*)target); return false;
+case 0x50: *(ushort*)(vars + operand) = (ushort)(*(ushort*)(vars + operand) & *(ushort*)target); return false;
+case 0x51: *(ushort*)(vars + operand) = (ushort)(*(ushort*)(vars + operand) ^ *(ushort*)target); return false;
+case 0x52: *(ushort*)(vars + operand) = (ushort)(*(ushort*)target * *(short*)(vars + operand)); return false;
+case 0x53: *(short*)(vars + operand) = (short)((ulong)*(ushort*)(vars + operand) / (ulong)(long)(int)(uint)*(ushort*)target); return false;
+case 0x54: *(short*)(vars + operand) = (short)((ulong)*(ushort*)(vars + operand) % (ulong)(long)(int)(uint)*(ushort*)target); return false;
+case 0x55: *(short*)(vars + operand) = (short)(*(short*)(vars + operand) << ((byte)*(ushort*)target & 0x1f)); return false;
+case 0x56: *(ushort*)(vars + operand) = (ushort)(*(ushort*)(vars + operand) >> ((byte)*(ushort*)target & 0x1f)); return false;
+case 0x57: *(short*)(vars + operand) = (short)(CrtRand() % (int)(uint)*(ushort*)target); return false;
+case 0x58: *(ushort*)target = *(ushort*)(vars + operand); return false;
+case 0x59: *(ushort*)target = (ushort)(*(ushort*)target + *(short*)(vars + operand)); return false;
+case 0x5a: *(ushort*)target = (ushort)(*(ushort*)target - *(short*)(vars + operand)); return false;
+case 0x5b: *(ushort*)target = (ushort)(*(ushort*)target | *(ushort*)(vars + operand)); return false;
+case 0x5c: *(ushort*)target = (ushort)(*(ushort*)target & *(ushort*)(vars + operand)); return false;
+case 0x5d: *(ushort*)target = (ushort)(*(ushort*)target ^ *(ushort*)(vars + operand)); return false;
+case 0x5e: *(ushort*)target = (ushort)(*(short*)(vars + operand) * *(ushort*)target); return false;
+case 0x5f: *(ushort*)target = (ushort)((ulong)*(ushort*)target / (ulong)(long)(int)(uint)*(ushort*)(vars + operand)); return false;
+case 0x60: *(ushort*)target = (ushort)((ulong)*(ushort*)target % (ulong)(long)(int)(uint)*(ushort*)(vars + operand)); return false;
+case 0x61: *(ushort*)target = (ushort)(*(ushort*)target << ((byte)*(ushort*)(vars + operand) & 0x1f)); return false;
+case 0x62: *(ushort*)target = (ushort)(*(ushort*)target >> ((byte)*(ushort*)(vars + operand) & 0x1f)); return false;
+case 0x63: *(ushort*)target = (ushort)(CrtRand() % (int)(uint)*(ushort*)(vars + operand)); return false;
+case 0x64: return *(ushort*)target != operand;
+case 0x65: return *(ushort*)target == operand;
+case 0x66: return operand < *(ushort*)target;
+case 0x67: return *(ushort*)target < operand;
+case 0x68: return operand <= *(ushort*)target;
+case 0x69: return *(ushort*)target <= operand;
+case 0x6a: return (*(ushort*)target & operand) != operand;
+case 0x6b: return (*(ushort*)target & operand) == operand;
+case 0x6c: return (*(ushort*)target & operand) == 0;
+case 0x6d: return (*(ushort*)target & operand) != 0;
+case 0x6e: return *(ushort*)target % operand == 0;
+case 0x6f: return *(ushort*)target % operand != 0;
+case 0x70: return *(ushort*)target != *(ushort*)(vars + operand);
+case 0x71: return *(ushort*)target == *(ushort*)(vars + operand);
+case 0x72: return *(ushort*)(vars + operand) < *(ushort*)target;
+case 0x73: return *(ushort*)target < *(ushort*)(vars + operand);
+case 0x74: return *(ushort*)(vars + operand) <= *(ushort*)target;
+case 0x75: return *(ushort*)target <= *(ushort*)(vars + operand);
+case 0x76: return (*(ushort*)target & *(ushort*)(vars + operand)) != *(ushort*)(vars + operand);
+case 0x77: return (*(ushort*)target & *(ushort*)(vars + operand)) == *(ushort*)(vars + operand);
+case 0x78: return (*(ushort*)(vars + operand) & *(ushort*)target) == 0;
+case 0x79: return (*(ushort*)(vars + operand) & *(ushort*)target) != 0;
+case 0x7a: return (ulong)*(ushort*)target % (ulong)(long)(int)(uint)*(ushort*)(vars + operand) == 0;
+case 0x7b: return (ulong)*(ushort*)target % (ulong)(long)(int)(uint)*(ushort*)(vars + operand) != 0;
+case 0x80: *(uint*)target = operand; return false;
+case 0x81: *(uint*)target += operand; return false;
+case 0x82: *(uint*)target -= operand; return false;
+case 0x83: *(uint*)target |= operand; return false;
+case 0x84: *(uint*)target &= operand; return false;
+case 0x85: *(uint*)target ^= operand; return false;
+case 0x86: *(uint*)target = operand * *(uint*)target; return false;
+case 0x87: *(uint*)target /= operand; return false;
+case 0x88: *(uint*)target %= operand; return false;
+case 0x89: *(uint*)target <<= immediate & 0x1f; return false;
+case 0x8a: *(uint*)target >>= immediate & 0x1f; return false;
+case 0x8b: *(uint*)target = (uint)CrtRand() % operand; return false;
+case 0x8c: *(uint*)(vars + operand) = *(uint*)target; return false;
+case 0x8d: *(uint*)(vars + operand) = (uint)(*(int*)(vars + operand) + *(uint*)target); return false;
+case 0x8e: *(uint*)(vars + operand) = (uint)(*(int*)(vars + operand) - *(uint*)target); return false;
+case 0x8f: *(uint*)(vars + operand) |= *(uint*)target; return false;
+case 0x90: *(uint*)(vars + operand) &= *(uint*)target; return false;
+case 0x91: *(uint*)(vars + operand) ^= *(uint*)target; return false;
+case 0x92: *(uint*)(vars + operand) = (uint)(*(uint*)target * *(int*)(vars + operand)); return false;
+case 0x93: *(uint*)(vars + operand) /= *(uint*)target; return false;
+case 0x94: *(uint*)(vars + operand) %= *(uint*)target; return false;
+case 0x95: *(int*)(vars + operand) = *(int*)(vars + operand) << ((byte)*(uint*)target & 0x1f); return false;
+case 0x96: *(uint*)(vars + operand) = *(uint*)(vars + operand) >> ((byte)*(uint*)target & 0x1f); return false;
+case 0x97: *(uint*)(vars + operand) = (uint)CrtRand() % *(uint*)target; return false;
+case 0x98: *(uint*)target = *(uint*)(vars + operand); return false;
+case 0x99: *(uint*)target = (uint)(*(uint*)target + *(int*)(vars + operand)); return false;
+case 0x9a: *(uint*)target = (uint)(*(uint*)target - *(int*)(vars + operand)); return false;
+case 0x9b: *(uint*)target |= *(uint*)(vars + operand); return false;
+case 0x9c: *(uint*)target &= *(uint*)(vars + operand); return false;
+case 0x9d: *(uint*)target ^= *(uint*)(vars + operand); return false;
+case 0x9e: *(uint*)target = (uint)(*(int*)(vars + operand) * *(uint*)target); return false;
+case 0x9f: *(uint*)target /= *(uint*)(vars + operand); return false;
+case 0xa0: *(uint*)target %= *(uint*)(vars + operand); return false;
+case 0xa1: *(uint*)target <<= (byte)*(uint*)(vars + operand) & 0x1f; return false;
+case 0xa2: *(uint*)target >>= (byte)*(uint*)(vars + operand) & 0x1f; return false;
+case 0xa3: *(uint*)target = (uint)CrtRand() % *(uint*)(vars + operand); return false;
+case 0xa4: return *(uint*)target != operand;
+case 0xa5: return *(uint*)target == operand;
+case 0xa6: return operand < *(uint*)target;
+case 0xa7: return *(uint*)target < operand;
+case 0xa8: return operand <= *(uint*)target;
+case 0xa9: return *(uint*)target <= operand;
+case 0xaa: return (operand & *(uint*)target) != operand;
+case 0xab: return (operand & *(uint*)target) == operand;
+case 0xac: return (operand & *(uint*)target) == 0;
+case 0xad: return (operand & *(uint*)target) != 0;
+case 0xae: return *(uint*)target % operand == 0;
+case 0xaf: return *(uint*)target % operand != 0;
+case 0xb0: return *(uint*)target != *(uint*)(vars + operand);
+case 0xb1: return *(uint*)target == *(uint*)(vars + operand);
+case 0xb2: return *(uint*)(vars + operand) < *(uint*)target;
+case 0xb3: return *(uint*)target < *(uint*)(vars + operand);
+case 0xb4: return *(uint*)(vars + operand) <= *(uint*)target;
+case 0xb5: return *(uint*)target <= *(uint*)(vars + operand);
+case 0xb6: return (*(uint*)target & *(uint*)(vars + operand)) != *(uint*)(vars + operand);
+case 0xb7: return (*(uint*)target & *(uint*)(vars + operand)) == *(uint*)(vars + operand);
+case 0xb8: return (*(uint*)(vars + operand) & *(uint*)target) == 0;
+case 0xb9: return (*(uint*)(vars + operand) & *(uint*)target) != 0;
+case 0xba: return *(uint*)target % *(uint*)(vars + operand) == 0;
+case 0xbb: return *(uint*)target % *(uint*)(vars + operand) != 0;
+default: return false;
+}
 ## ApplySoundGain
 int value = (sample - 0x80) * gain >> 0xc;
 if (value > 0x7f) value = 0x7f;
@@ -251,6 +461,52 @@ slot += 0x4c;
 }
 ## BeginScene
 SetSceneTargetAndState();
+## BeginScriptedCamera
+if (script > 0xfffe)
+{
+*(byte**)EntityStateBytes(0x005719b4) = null;
+return;
+}
+if (s_Unknown_005de54c != 2)
+{
+s_SavedViewMode_00604b7c = s_Unknown_005de54c;
+s_Unknown_005de54c = 2;
+}
+*(byte**)EntityStateBytes(0x005719c4) = entity;
+*EntityState(0x00571a34) = 0;
+s_CutsceneActive_00604b78 = 1;
+*(ushort*)EntityStateBytes(0x005719d8) = mode;
+*(byte**)EntityStateBytes(0x005719b4) =
+*(byte**)(*(byte**)(s_Unknown_005e97cc + 0xbc) + script * 4);
+short* view = *(short**)Arena(0x005e9ae0);
+short* viewWork = (short*)EntityStateBytes(0x005719e8);
+short* viewSaved = (short*)EntityStateBytes(0x005719f0);
+viewWork[0] = view[0];
+viewWork[1] = view[1];
+viewWork[2] = view[2];
+viewSaved[2] = view[2];
+viewSaved[0] = view[0];
+viewSaved[1] = view[1];
+*(short**)Arena(0x005e9ae0) = viewWork;
+int* camera = *(int**)Entity(0x005edebc);
+int* cameraWork = EntityState(0x00571a18);
+cameraWork[0] = camera[0];
+cameraWork[1] = camera[1];
+cameraWork[2] = camera[2];
+*EntityState(0x00571a00) = camera[2];
+*EntityState(0x005719f8) = camera[0];
+*EntityState(0x005719fc) = camera[1];
+*(int**)Entity(0x005edebc) = cameraWork;
+int* target = *(int**)Entity(0x005eca94);
+int* targetWork = EntityState(0x00571a08);
+int* targetSaved = EntityState(0x00571a28);
+targetWork[0] = target[0];
+targetWork[1] = target[1];
+targetWork[2] = target[2];
+targetSaved[0] = target[0];
+targetSaved[1] = target[1];
+targetSaved[2] = target[2];
+*(int**)Entity(0x005eca94) = targetWork;
 ## BindMenuLabels
 *(uint*)(context + 0x8b0) = flags;
 context[0x8c7] |= 1;
@@ -710,6 +966,45 @@ ReadOnlySpan<short> tones =
 byte* block = (byte*)NativeMemory.AllocZeroed(8, SceneToneStride);
 for (int i = 0; i < tones.Length; i++) ((short*)block)[i] = tones[i];
 return block;
+## BuildScriptOpGap
+uint[] table = ScriptOpTable;
+if (op >= table.Length)
+{
+return $"Interpreteur de script : opcode {op} hors de la table de 39 entrees " +
+"(0x00563298..+0x98). Le script lu est probablement corrompu, ou le pointeur de " +
+"script est faux — verifier context + 0x8c avant de chercher un gestionnaire.";
+}
+uint address = table[op];
+if (op == 0)
+{
+return "Interpreteur de script : opcode 0 = FUN_00515490 (appel de verbe de zone), " +
+"**bloque pour une raison connue**. Il appelle `table[script[1]]` ou la table " +
+"est &PTR_FUN_0056aec8, 256 entrees. Dans le binaire elles pointent TOUTES vers " +
+"FUN_00401fa0, un `ret` nu — mais ce n'est que le contenu par defaut : " +
+"Blaze.c l. 75143 la remplit a l'execution, 0x40 entrees a la fois, depuis " +
+"(&PTR_PTR_00567318)[zone]. Transcrire cet opcode demande d'abord ce chargeur " +
+"et les jeux de fonctions par zone, pas la relecture du gestionnaire.";
+}
+if (op == 27)
+{
+return "Interpreteur de script : opcode 27 = FUN_00515d30, **laisse de cote " +
+"sciemment**. Son corps est court, mais il tire FUN_00530f20 (153 l., avec un " +
+"troisieme argument que Ghidra perd — verifie a `add esp,0Ch`) et FUN_005312d0 " +
+"(109 l., criblee d'artefacts de pile), lesquelles tirent a leur tour " +
+"FUN_00544350, FUN_0051bcc0, FUN_00530ed0, FUN_0053db20 et FUN_00532710. " +
+"C'est la cascade d'affichage des nombres de degats, sans rapport avec le " +
+"chemin vers le prologue. Voir Documentation/Etat/TODO.md, etape (2).";
+}
+bool inBlazeC = ScriptOpInBlazeC(op);
+return $"Interpreteur de script : opcode {op} = FUN_{address:x8}, pas encore transcrit. " +
+(inBlazeC
+? "Son corps est dans Legacy/Decompiled/Blaze.c ; il tire des appelees encore " +
+"manquantes, listees dans Documentation/Etat/TODO.md, etape (2)."
+: "**Son corps n'est pas dans Blaze.c** — Ghidra a nomme la table `PTR_LAB_`, " +
+"donc il n'a pas reconnu ces corps comme des fonctions. Le desassemblage est " +
+$"deja releve : Legacy/Raw/Blaze/ScriptOps/FUN_{address:x8}.asm (fenetre de " +
+"96 octets ; en reprendre un plus large avec le verbe `disasm` si le corps " +
+"deborde).");
 ## BuildSelectSubStateBytes
 byte* table = (byte*)NativeMemory.AllocZeroed(8, 4);
 for (int row = 0; row < 8; row++)
@@ -817,17 +1112,12 @@ return block;
 ## CallAreaHandler
 uint target = s_AreaHandlerTable_0056b4d0[slot];
 if (target == 0x00401FA0 || target == 0x0040A600) return;
-if (Environment.GetEnvironmentVariable("OPENFORESIA_SKIP_AREA_HANDLER") == "1")
-{
-Console.Error.WriteLine(
-$"[ECHAFAUDAGE] table de sauts de zone, entree {slot} = 0x{target:X6} : appel saute.");
-return;
-}
+if (target == 0x004747F0) { RunArea0Handler8(); return; }
 throw new NotImplementedException(
-$"Table de sauts de zone, entree {slot} = 0x{target:X6} : cette adresse **n'est pas " +
-"decompilee par Ghidra** (0x004747F0..0x00474AC3, ~723 octets, neuf sorties " +
-"convergentes). Il faut une re-passe Ghidra ciblee, pas une relecture. Pour tester " +
-"l'aval malgre tout : OPENFORESIA_SKIP_AREA_HANDLER=1. Voir REVERSE_STATUS.md");
+$"Table de sauts de zone, entree {slot} = 0x{target:X6} : cette adresse n'a pas encore " +
+"de corps reconstruit. Si elle n'est pas dans Blaze.c non plus, la desassembler : " +
+$"`OpenForesia.Tools disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512`. " +
+"Voir Documentation/Etat/REVERSE_STATUS.md, section du 2026-08-21.");
 ## CallEntityHandler
 uint target = table[slot];
 if (target == 0x00401FA0) return;
@@ -3435,6 +3725,8 @@ s_EntityArena_005eca00 + (va - EntityArenaBase);
 (int*)(s_EntityParams_00551640 + (va - EntityParamsBase));
 ## EntityState
 (int*)(s_EntityState_00571500 + (va - EntityStateBase));
+## EntityStateBytes
+s_EntityState_00571500 + (va - EntityStateBase);
 ## entry
 EnsureDisplayListArena();
 uint version = GetVersion();
@@ -4150,6 +4442,9 @@ s_ControllerBannerText_00568510, 0, 0, -1);
 }
 ## Free
 if (block != null) NativeMemory.Free(block);
+## FreezeAllEntities
+SetEntityFlagBit(0x00000000, 0x4000000);
+s_WorldFlags_005de02c |= 0x10;
 ## GameMemory
 s_SelectSubStateBytes_00562a98 = BuildSelectSubStateBytes();
 s_Unknown_005606f8 = BuildLabelDescriptor005606f8();
@@ -8236,7 +8531,7 @@ byte* palette = *(byte**)(areaDir + 0x60) + sheet[2] * 4;
 int roll = CrtRand();
 *(uint*)Arena(0x005e9ae8) = 0;
 s_Unknown_00564540 = (roll % 6 + 6) * 0x14;
-ApplyAreaPalette(sheet[6]);
+SpawnSubAreaEntities(sheet[6]);
 *(ushort*)(s_ViewRect_00566c70 + 4) = (ushort)(sheet[3] | 0x100);
 *(ushort*)(s_ViewRect_00566c70 + 8) = (ushort)(sheet[4] << 6);
 *(ushort*)(s_ViewRect_00566c70 + 0xa) = (ushort)(sheet[4] << 6);
@@ -9478,6 +9773,43 @@ byte* die = s_Dice_00573350 + i * DiceStride;
 *(uint*)(die + 0x28) = 0x1000000;
 die[0x30] = 0;
 }
+## ResetEntityStats
+_ = species;
+for (int i = 0; i < 0x48; i++)
+{
+((uint*)stats)[i] = 0;
+}
+for (int i = 0; i < 0x10; i++)
+{
+stats[i] = model[i];
+}
+for (int i = 0; i < 8; i++)
+{
+stats[0x18 + i] = model[0x28 + i];
+}
+for (int i = 0; i < 8; i++)
+{
+*(ushort*)(stats + 0x110 + i * 2) = model[0x28 + i];
+}
+for (int i = 0; i < 8; i++)
+{
+*(ushort*)(stats + 0x30 + i * 2) = *(ushort*)(model + 0x30 + i * 2);
+}
+*(ushort*)(stats + 0x10) = *(ushort*)(model + 0x12);
+*(uint*)(stats + 0x14) = *(uint*)(model + 0x24);
+*(ushort*)(stats + 0x2e) = *(ushort*)(model + 0x1a);
+*(uint*)(stats + 0x58) = *(uint*)(model + 0x1c);
+*(uint*)(stats + 0x5c) = *(uint*)(model + 0x20);
+*(ushort*)(stats + 0x48) = *(ushort*)(model + 0x14);
+*(ushort*)(stats + 0x4c) = *(ushort*)(model + 0x14);
+*(ushort*)(stats + 0x4a) = *(ushort*)(model + 0x16);
+*(ushort*)(stats + 0x4e) = *(ushort*)(model + 0x16);
+*(ushort*)(stats + 0x44) = *(ushort*)(model + 0x10);
+*(uint*)(stats + 0x40) = 0;
+for (int i = 0; i < 0x10; i++)
+{
+*(uint*)(stats + 0x80 + i * 4) = 0;
+}
 ## ResetKeyBindings
 for (int i = 0; i < 0x28; i++) s_KeyBindings[i] = s_KeyBindingDefaults_00564ab8[i];
 for (int group = 1; group < 4; group++)
@@ -9529,6 +9861,10 @@ OptionsSetup();
 }
 Ordinal_132(2);
 }
+## ResolveEntityBlocks
+stats = Arena(0x005ea560) + slot[8] * 0x120;
+species = *(byte**)(s_Unknown_005e97cc + 0x4c) + slot[0xc] * 8;
+model = *(byte**)(s_Unknown_005e97cc + 0x98) + species[4] * 0x60;
 ## RestoreDisplayModeIfHeld
 void* dd = s_DisplayModeOwner;
 if (dd == null) return;
@@ -9762,6 +10098,52 @@ if (choice == 2 /* IDCANCEL */)
 {
 Exit(1);
 }
+}
+## RunArea0Handler8
+*Arena(0x005e9841) &= 0xf7;
+byte partyFlags = *Arena(0x005e9001);
+if ((partyFlags & 2) == 0)
+{
+byte* operand = stackalloc byte[4];
+operand[0] = 0;
+operand[1] = 1;
+operand[2] = 4;
+operand[3] = 0xef;
+uint discarded;
+ApplyPartyScriptOp(operand, &discarded);
+partyFlags = *Arena(0x005e9001);
+}
+byte stateFlags = *Arena(0x005e9006);
+if ((stateFlags & 8) == 0)
+{
+byte* bank = Arena(0x005e9840);
+if ((*bank & 1) != 0) *bank &= 0xfe;
+}
+if (s_Unknown_00566c90 == 1)
+{
+s_Unknown_005de52c = 0;
+s_Unknown_005de530 = 0;
+}
+if (s_Unknown_005de52c != 0 || s_Unknown_005de530 != 0) return;
+byte abilities = *Arena(0x005e9000);
+int count = 0;
+for (int bit = 0; bit < 8; bit++)
+if ((abilities & (1 << bit)) != 0) count++;
+if ((partyFlags & 1) != 0) count++;
+int stage = (partyFlags & 2) != 0 ? 1 : 0;
+if ((partyFlags & 8) == 0) { s_Unknown_005de52c = 0; return; }
+if (stage == 0 || (partyFlags & 0x80) == 0) { s_Unknown_005de52c = 0x08; return; }
+if (stage != 1) return;
+if ((partyFlags & 0x10) == 0) { s_Unknown_005de52c = 0x10; return; }
+if ((partyFlags & 0x20) == 0) { s_Unknown_005de52c = 0x18; return; }
+if (count >= 0 && count <= stage) { s_Unknown_005de52c = 0x20; return; }
+if (count >= 2 && count <= 3) { s_Unknown_005de52c = 0x28; return; }
+if (count >= 4 && count <= 5) { s_Unknown_005de52c = 0x30; return; }
+if (count >= 6 && count <= 7) { s_Unknown_005de52c = 0x38; return; }
+if (count == 8) { s_Unknown_005de52c = 0x40; return; }
+if (count == 9)
+{
+s_Unknown_005de52c = (byte)((stateFlags & 0x80) == 0 ? 0x48 : 0x50);
 }
 ## RunCharacterSelectFrameLoop
 uint* otBase, otEntry, primCursor;
@@ -10312,6 +10694,16 @@ for (int i = s_PartySize_005e9020; i != 0; i--, member += 0x2000)
 NativeMemory.Clear(member + 0x40, 0x80);
 }
 }
+## RunEntityScript
+if (Ordinal_46() < 0)
+{
+RunScript(context, entity, scriptIndex);
+return;
+}
+*(int*)Arena(0x005e9318) = Ordinal_46();
+Ordinal_45(GetMainMemPtr() + 0x1c0000);
+RunScript(context, entity, scriptIndex);
+Ordinal_45((void*)(nint)(*(int*)Arena(0x005e9318)));
 ## RunGameLoop
 s_GameStateId_005de510 = 0;
 while (true)
@@ -10573,7 +10965,7 @@ if (PlayMovie(s_MovieNameOpening, 3) != 0) break;
 CloseMovieStreamIfOpen();
 Ordinal_129();
 Ordinal_41();
-Ordinal_45(null, s_CdDataRootPath);
+Ordinal_45(null);
 Ordinal_136(0);
 s_RandSeed_0056e9c0 = 1;
 s_Unknown_005e9630 = Ordinal_116();
@@ -10983,6 +11375,13 @@ primCursor = DrawFlatPrimitive(otEntry, primCursor, draw);
 FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
 partyCount = pendingPartyCount;
 }
+## RunScript
+uint condition = 0;
+*(uint*)Entity(0x00600860) = scriptIndex;
+if (scriptIndex >= 0xffff) return;
+byte* script = *(byte**)(*(byte**)(context + 0x8c) + scriptIndex * 4);
+for (uint op = *script; op != 0xff && (op == 2 || condition == 0); op = *script)
+script = DispatchScriptOp(op, context, entity, script, &condition);
 ## RunTextEngine
 byte* descriptor = (byte*)((nuint)descriptorArg & 0xffffff);
 if (descriptor != descriptorArg)
@@ -11350,6 +11749,134 @@ byte* arena = (byte*)VirtualAlloc((void*)candidate, size, MEM_COMMIT | MEM_RESER
 if (arena != null) return arena;
 }
 return null;
+## ScriptOpAluArena
+*result = ApplyScriptOp(Arena(bankVa) + s[1], s[2], s[3]) ? 1u : 0u;
+return s + 4;
+## ScriptOpAluChunkRecords
+byte stride = ScriptRecordStrides[s[1]];
+byte** chunkTable = (byte**)Entity(0x005f7bc0);
+uint chunk = (uint)*(byte*)(Entity(0x00600830) + (uint)s[1] * 2) + s[2];
+byte* records = *(byte**)(chunkTable[chunk] + 0x28);
+short* list = *(short**)(*(byte**)(chunkTable[chunk] + 0x38) + (uint)s[3] * 4);
+for (short index = *list; index >= 0; index = *++list)
+ApplyScriptOp(records + index * stride + s[4], s[5], s[6]);
+return s + 7;
+## ScriptOpAluEntity
+*result = ApplyScriptOp(ent + s[1], s[2], s[3]) ? 1u : 0u;
+return s + 4;
+## ScriptOpAluEntityBank
+byte* target = ent;
+switch ((sbyte)s[1])
+{
+case 0: target = Arena(0x005e93c0) + (uint)s[2] * 0x9c; break;
+case 1: target = Entity(0x005ecaa0) + (uint)s[2] * 0x9c; break;
+case 2: target = Entity(0x005fa5e0) + (uint)s[2] * 0x9c; break;
+}
+*result = ApplyScriptOp(target + s[3], s[4], s[5]) ? 1u : 0u;
+return s + 6;
+## ScriptOpAluParty
+ApplyPartyScriptOp(s, result);
+return s + 4;
+## ScriptOpBeginScriptedCamera
+BeginScriptedCamera(ent, s[1], *(ushort*)(s + 2));
+return s + 4;
+## ScriptOpEnterSubArea
+byte area = s[2];
+byte* record = *(byte**)(*(byte**)(((byte**)Arena(0x005e97c0))[s[1]] + 0x74) + area * 4);
+*result = ApplyScriptOp(record + s[3], s[4], s[5]) ? 1u : 0u;
+if (*Camera(0x005de058) == area)
+{
+s_Unknown_005de534 = record[0];
+*(byte*)Camera(0x005de03c) = record[1];
+s_Unknown_005645fc = record[2];
+if (s_Unknown_00566c8c != s_Unknown_005de534)
+{
+s_Unknown_00566c8c = (byte)s_Unknown_005de534;
+PlayMusicTrack(s_Unknown_005de534);
+}
+byte* view = *(byte**)(s_Unknown_005e97cc + 0x5c)
++ (uint)*(byte*)Camera(0x005de03c) * 0x10;
+*(byte**)Arena(0x005e9af0) = view;
+*(uint*)Arena(0x005e9310) = *(uint*)(view + 4);
+*(uint*)Arena(0x005e9314) = *(uint*)(view + 8) & 0xffff;
+*(uint*)Arena(0x005e92b8) = *(uint*)(view + 8) >> 0x10 | *(uint*)(view + 0xc) << 0x10;
+*(uint*)Arena(0x005e92bc) = *(uint*)(view + 0xc) >> 0x10;
+byte* palette = *(byte**)(s_Unknown_005e97cc + 0x60) + (uint)s_Unknown_005645fc * 4;
+*(byte**)Entity(0x005eca98) = palette;
+*(uint*)Arena(0x005e9b3c) = *(uint*)palette;
+}
+return s + 6;
+## ScriptOpFreeze
+FreezeAllEntities();
+return s + 2;
+## ScriptOpInBlazeC
+op switch
+{
+3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 12 or 13 or 16 or 18 or 23 or 24 or 25 or 26
+or 27 or 28 or 29 => true,
+_ => false,
+};
+## ScriptOpJumpIf
+if (*result == 0)
+{
+return s + 3;
+}
+byte* target = *(byte**)(*(byte**)(ctx + 0x8c) + (s[1] | s[2] << 8) * 4);
+*result = 0;
+return target;
+## ScriptOpPushPending
+byte* pending = Entity(0x005fa560);
+byte count = (byte)(*pending + 1);
+*pending = count;
+pending[count] = s[1];
+return s + 2;
+## ScriptOpSetAdd
+*result = ScriptSetAdd(Entity(setVa), s[1]);
+return s + 2;
+## ScriptOpSetRemove
+*result = ScriptSetRemove(Entity(setVa), s[1]);
+return s + 2;
+## ScriptOpSpawnEffect
+*result = SpawnEffectEntity(ent, s[1], s[2], s[3]) ^ 1u;
+return s + 4;
+## ScriptOpSpawnFormation
+int* formation = *(int**)(*(byte**)(ctx + 0x34) + s[1] * 4);
+int spawned = SpawnEntityFormation(ctx, formation, 0, s[4]);
+*result = ApplyScriptOp((byte*)&spawned, s[2], s[3]) ? 1u : 0u;
+return s + 5;
+## ScriptOpSpawnSubArea
+SpawnSubAreaEntities(s[1]);
+return s + 2;
+## ScriptOpUnfreeze
+UnfreezeAllEntities();
+return s + 1;
+## ScriptSetAdd
+byte count = set[0];
+if (count == 0)
+{
+set[0] = (byte)(count + 1);
+set[(byte)(count + 1)] = value;
+return 0;
+}
+for (int i = 1; i <= count; i++)
+if (set[i] == value) return 1;
+set[0] = (byte)(count + 1);
+set[(byte)(count + 1)] = value;
+return 0;
+## ScriptSetRemove
+uint count = set[0];
+if (count == 0) return 0;
+int index = 1;
+while (index <= (int)count && set[index] != value) index++;
+if (index > (int)count) return 0;
+int tail = (int)count - index;
+if (tail != 0)
+{
+byte* p = set + index;
+for (int i = 0; i < tail; i++, p++) *p = p[1];
+}
+set[0] = (byte)(count - 1);
+return 1;
 ## SelfTest
 Initialize(sceneWidth, sceneHeight, "OpenForesia — test du backend Direct3D 11");
 using ComPtr<ID3D11ShaderResourceView> checker = CreateCheckerTexture(64);
@@ -11431,6 +11958,14 @@ break;
 *(ushort*)(s_DrawEnv1_005e98f0 + 0x62) = height;
 *(ushort*)(s_DrawEnv0_005e9880 + 0x60) = width;
 *(ushort*)(s_DrawEnv0_005e9880 + 0x62) = height;
+## SetEntityFlagBit
+ApplyFlagToSlots(Arena(0x005e93c0), s_PartySize_005e9020, clear, set);
+ApplyFlagToSlots(Entity(0x005fa5e0), 0x80, clear, set);
+ApplyFlagToSlots(Entity(0x005ecaa0), 0x20, clear, set);
+ApplyFlagToSlots(Entity(0x005f7de0), 0x40, clear, set);
+ApplyFlagToSlots(Entity(0x005ff400), 0x20, clear, set);
+ApplyFlagToSlots(Entity(0x005edee0), 0x80, clear, set);
+ApplyFlagToSlots(Entity(0x005f2d40), 0x80, clear, set);
 ## SetSceneTargetAndState
 var view = s_SceneView;
 var depth = s_DepthView;
@@ -11841,6 +12376,199 @@ ApplyAllSoundBufferVolumes();
 }
 Ordinal_132(2);
 }
+## SpawnEffectEntity
+int index = AllocEntitySlot((ushort*)Entity(0x005fa5a0));
+if (index < 0)
+{
+return 0;
+}
+byte* slot = Entity(0x005ff400) + index * 0x9c;
+for (int i = 0; i < 0x27; i++)
+{
+((uint*)slot)[i] = ((uint*)source)[i];
+}
+slot[0x08] = (byte)index;
+slot[0x05] = param2;
+*(ushort*)(slot + 0x36) = (ushort)(*(ushort*)(slot + 0x36) & 0xfffb | 2);
+slot[0x0b] = param3;
+*(byte**)(slot + 0x6c) = source;
+*(ushort*)(slot + 0x2e) = 0;
+if (param4 >= 0)
+{
+slot[0x0a] = (byte)param4;
+}
+*(uint*)(slot + 0x10) = 0;
+*(uint*)(slot + 0x14) = 0;
+uint flags = *(uint*)slot;
+*(uint*)(slot + 0x38) = 0x808080;
+*(uint*)slot = flags & 0xe80800 | 0x80100000;
+return 1;
+## SpawnEntityFormation
+int spawned = 0;
+int* record = formation;
+int kind = *record;
+while (kind != -1)
+{
+int index = AllocEntitySlot((ushort*)Entity(0x005f2d00));
+if (index < 0)
+{
+break;
+}
+byte* slot = Entity(0x005ecaa0) + index * 0x9c;
+slot[0x08] = (byte)index;
+*(int*)(slot + 0x0c) = kind;
+ResolveEntityBlocks(slot, out byte* stats, out byte* species, out byte* model);
+*(byte**)(slot + 0x6c) = Arena(0x005e93c0) + CrtRand() % s_PartySize_005e9020 * 0x9c;
+*(int*)(slot + 0x74) = 0;
+*(uint*)(slot + 0x78) = 0;
+kind = *(int*)species;
+*(int*)(slot + 0x04) = kind;
+slot[0x0a] = (byte)((uint)kind >> 0x18);
+slot[0x0b] = (byte)((uint)kind >> 0x10);
+*(ushort*)(slot + 0x30) = *(ushort*)((byte*)record + 10);
+*(short*)(slot + 0x32) = (short)record[3];
+*(ushort*)(slot + 0x34) = *(ushort*)((byte*)record + 0xe);
+*(int*)(slot + 0x1c) = (short)record[1] << 0xc;
+int y = *(short*)((byte*)record + 6) << 0xc;
+*(int*)(slot + 0x20) = y;
+*(int*)(slot + 0x24) = (short)record[2] << 0xc;
+*(uint*)(slot + 0x40) = 0;
+*(short*)(slot + 0x36) = 1;
+*(int*)(slot + 0x60) = y;
+*(int*)(slot + 0x64) = y;
+*(int*)(slot + 0x5c) = 0x5000;
+*(uint*)(slot + 0x18) = 0;
+*(int*)(slot + 0x50) = 0;
+*(uint*)(slot + 0x54) = 0;
+*(int*)(slot + 0x58) = 0;
+*(ushort*)(slot + 0x9a) = 0x3000;
+*(short*)(slot + 0x96) = 0;
+*(ushort*)(slot + 0x98) = param3;
+uint flags = ((uint)*(ushort*)(species + 6) | 0xff810080u) << 8;
+*(uint*)slot = flags;
+if (mode == 0)
+{
+*(short*)(slot + 0x28) = 0;
+*(uint*)slot = flags | 0x10000000;
+*(short*)(slot + 0x2a) = 0x4000;
+*(short*)(slot + 0x2c) = 0;
+*(uint*)(slot + 0x38) = 0;
+}
+else
+{
+*(uint*)(slot + 0x38) = 0xffffff;
+*(short*)(slot + 0x28) = 0x1000;
+*(short*)(slot + 0x2a) = 0x1000;
+*(short*)(slot + 0x2c) = 0x1000;
+}
+*(uint*)(slot + 0x10) = 0;
+*(int*)(slot + 0x14) = record[6];
+if (record[4] == -1 && record[5] == -1 || record[4] == 0 && record[5] == 0)
+{
+*(int*)(slot + 0x60) = y;
+*(uint*)(slot + 0x80) = 0xa0000000;
+*(uint*)(slot + 0x84) = 0xa0000000;
+*(uint*)(slot + 0x88) = 0xa0000000;
+*(uint*)(slot + 0x8c) = 0xa0000000;
+*(int*)(slot + 0x64) = y;
+TryPlaceEntity(*(byte**)Entity(0x005f7bc0), (uint*)slot, 0x8000);
+}
+else
+{
+CopyEntityReferences(slot, (byte*)record);
+}
+FinalizeEntityPlacement2((uint*)slot);
+if (*(int*)(ctx + 0x98) != 0)
+{
+ResetEntityStats(stats, species, model);
+}
+kind = record[8];
+record += 8;
+spawned++;
+}
+return spawned;
+## SpawnSubAreaEntities
+uint* slot = (uint*)Entity(0x005fa5e0) + *(uint*)Arena(0x005e9ae8) * 0x27;
+byte* spawnLists = *(byte**)(s_Unknown_005e97cc + 0x30);
+uint* record = *(uint**)(spawnLists + subArea * 4);
+int spawned = subArea;
+if (record != null && subArea != 0xff)
+{
+int remaining = 0x80 - (int)*(uint*)Arena(0x005e9ae8);
+spawned = (int)*(uint*)Arena(0x005e9ae8);
+byte** chunkTable = (byte**)Entity(0x005f7bc0);
+for (; remaining > 0; record += 8, remaining--, spawned++, slot += 0x27)
+{
+uint kind = record[0];
+if (kind == 0xffffffff) break;
+uint packedFacing = record[3];
+uint packedX = record[1];
+uint packedZ = record[2];
+*((byte*)slot + 7) = (byte)kind;
+*(byte*)(slot + 2) = (byte)spawned;
+slot[3] = kind;
+*(ushort*)((byte*)slot + 0x96) = 0;
+*((byte*)slot + 9) = 0;
+slot[4] = 0;
+slot[5] = record[6];
+uint model = record[7];
+*(short*)(slot + 1) = (short)model;
+*slot = 0xc0200000;
+*(short*)((byte*)slot + 10) = (short)(model >> 0x10);
+slot[0xe] = 0xffffff;
+slot[8] = (uint)((int)packedX >> 4 & unchecked((int)0xfffff000));
+slot[7] = (uint)((short)packedX << 0xc);
+slot[9] = (uint)((short)packedZ << 0xc);
+ushort facingHigh = (ushort)(packedFacing >> 0x10);
+if ((kind & 3) != 0)
+{
+byte* chunk = chunkTable[(byte)*Entity(0x00600838) + (byte)slot[1]];
+if ((kind & 0x80) == 0
+|| *(ushort*)(chunk + 0xe) < 2
+|| *(int*)(*(int*)(chunk + 0x38) + 4) == 0)
+{
+*slot |= 0x2000;
+}
+slot[10] = 0x10001000;
+slot[0xc] = packedFacing << 0x10 | packedZ >> 0x10;
+slot[0xb] = 0x1000;
+*(ushort*)(slot + 0xd) = facingHigh;
+}
+switch (kind & 3)
+{
+case 0:
+*(ushort*)((byte*)slot + 0x36) = 1;
+*(byte*)(slot + 0x10) = 0;
+slot[0xf] = *(uint*)(*(int*)(s_Unknown_005e97cc + 0x38) + (byte)slot[1] * 4);
+*slot |= 0x2000;
+slot[10] = packedFacing << 0x10 | packedZ >> 0x10;
+*(ushort*)((byte*)slot + 0x2e) = facingHigh;
+break;
+case 1:
+*(ushort*)((byte*)slot + 0x36) = 2;
+break;
+case 2:
+*(ushort*)((byte*)slot + 0x36) = 0;
+break;
+}
+slot[0x14] = 0;
+slot[0x20] = 0xa0000000;
+slot[0x21] = 0xa0000000;
+slot[0x22] = 0xa0000000;
+slot[0x23] = 0xa0000000;
+slot[0x15] = 0;
+slot[0x16] = 0;
+slot[0x1b] = 0;
+slot[0x1c] = 0;
+slot[0x1d] = 0;
+slot[0x1e] = 0;
+slot[0x18] = slot[8];
+slot[0x19] = slot[8];
+TryPlaceEntity(*(byte**)Entity(0x005f7bc0), slot, 0x8000);
+FinalizeEntityPlacement2(slot);
+}
+}
+*(uint*)Arena(0x005e9ae8) = (uint)spawned;
 ## StagingBank
 uint index = bank + line;
 if (index >= 0x10)
@@ -13127,6 +13855,9 @@ mem = memory;
 s_GlyphWidths_0056e7b0 = (byte[])s_GlyphWidthsProportional.Clone();
 s_ScanHandlers = BuildTextTable(false);
 s_RenderHandlers = BuildTextTable(true);
+## UnfreezeAllEntities
+SetEntityFlagBit(0x4000000, 0x00000000);
+s_WorldFlags_005de02c &= 0xffffffef;
 ## UnlockSoundBuffer
 void* buffer = s_SoundBuffers[slot];
 if (buffer == null) return;
@@ -13239,6 +13970,8 @@ s_Unknown_005e97d4 = dest;
 for (int i = 0; i < s_GlyphWidths_0056e7b0.Length; i++) s_GlyphWidths_0056e7b0[i] = 8;
 ## View
 (int*)(s_ViewBlock_006067c0 + (va - ViewBlockBase));
+## ViewParams
+s_ViewParams_00571270 + (va - ViewParamsBase);
 ## WaitForAllJoystickButtonsReleased
 while (true)
 {

@@ -137,8 +137,40 @@ disagreement is settled against the bytes rather than against a guess.
 then a zero. The reconstruction currently fills this with `int.MaxValue`, making the clamp a no-op;
 these are real limits and the no-op is wrong.
 
-**`AU_00564A05`** is the only remaining uninterpreted blob here; `DAT_0056ACA8` moved to the
-confirmed section below once `FUN_00532070` settled its reading.
+**`AU_00564A05`** est l'autre blob non interprete ici ; `DAT_0056ACA8` est passe dans la section
+confirmee ci-dessous une fois sa lecture etablie par `FUN_00532070`.
+
+**`DAT_005710F0`..`DAT_00571258`** (releve le 2026-08-21) — **ce n'est pas du jeu, c'est du CRT.**
+`FUN_0054B190` lit `DAT_00571258` comme argument de `WideCharToMultiByte`, et `DAT_005710F0` est la
+table de pages de code qui va avec, parcourue **par paires de dwords** jusqu'a `&DAT_00571258` :
+`(1, 0x16), (2, 2), (3, 2), (4, 0x18), ...`. En-tete a `0x00571258` : `1, 0x2E, 1`.
+A recuperer entierement le jour ou le CRT multi-octets sera transcrit. **Ne pas l'englober dans une
+arene d'etat de jeu** : c'est ce que la delimitation de `s_ViewParams_00571270` a evite de peu.
+
+**`DAT_00571400` — RETRACTATION DU 2026-08-21, le meme jour que le releve.**
+
+Une entree de ce fichier annoncait ici une « table **initialisee** de valeurs de la forme
+`0x00208xxx` » a `0x00571400..0x00571500`, avec ses premiers dwords releves. **Cette table n'existe
+pas.** Elle etait le produit d'un defaut de l'outil `at` : `RvaToFileOffset` ne bornait pas la
+conversion a la `SizeOfRawData` de la section, de sorte qu'une adresse tombant dans la queue **non
+initialisee** de `.data` recevait quand meme un offset — lequel atterrissait dans les octets bruts
+de `.idata`. D'ou les valeurs en `0x00208xxx` : c'est la RVA de `.idata` (`0x00208000`), pas une
+donnee du jeu. Le garde-fou existant ne testait que `offset >= file.Length`, et cet offset-la est
+parfaitement dans le fichier. Corrige dans `OpenForesia.Tools/Program.cs`.
+
+Ce qui reste vrai, et qui est **la** frontiere a retenir pour tout le reste de `.data` :
+
+> le contenu de `.data` present dans le fichier s'arrete a `PointerToRawData 0x0014D600 +
+> SizeOfRawData 0x22400 = 0x0016FA00`, soit **VA `0x00571400`**. Au-dessus, la section n'existe
+> qu'en memoire et vaut zero au chargement.
+
+La borne haute de `s_ViewParams_00571270` tient donc toujours — mais parce que c'est cette
+frontiere-la, pas parce qu'une table s'y trouvait. `Blaze.c` cite des adresses jusqu'a `0x005714FC` :
+elles sont toutes ecrites par le code, jamais par la section.
+
+**Lecon d'outillage** : un dump qui rend des octets plausibles n'est pas une preuve qu'ils
+appartiennent a l'adresse demandee. Comparer l'`Offset` affiche aux bornes de la section dans
+`sections` avant de tirer une conclusion d'un releve situe haut dans `.data`.
 
 ## `DAT_0056ACA8` — resource-fixup schema (TODO #20), reading CONFIRMED
 
@@ -920,13 +952,27 @@ symbole qui tombe dans l'une de ces étendues **ne doit jamais recevoir sa propr
 | Base | Taille | Nom | Accesseur | Fichier |
 |---|---|---|---|---|
 | `0x00551640` | `0x200` | EntityParams | `EntityParam(va)` | `Memory/GameMemory.cs` |
-| `0x00571500` | `0x500` | EntityState | `EntityState(va)` | `Memory/GameMemory.cs` |
+| `0x00571270` | `0x190` | ViewParams | `ViewParams(va)` | `Memory/GameMemory.cs` |
+| `0x00571500` | `0x538` | EntityState | `EntityState(va)` / `EntityStateBytes(va)` | `Memory/GameMemory.cs` |
 | `0x005de030` | `0x080` | CameraBlock | `Camera(va)` | `Memory/GameMemory.cs` |
-| `0x005de100` | `0x460` | ItemMenuArena | `ItemMenuState(va)` / `ItemMenuBytes(va)` | `Memory/GameMemory.cs` |
+| `0x005de100` | `0x410` | ItemMenuArena | `ItemMenuState(va)` / `ItemMenuBytes(va)` | `Memory/GameMemory.cs` |
 | `0x005e85c0` | `0x340` | PartyList | — | `Memory/GameMemory.cs` |
 | `0x005e9000` | `0x1600` | GameArena | `Arena(va)` | `Memory/GameMemory.cs` |
 | `0x005eca00` | `0x14200` | EntityArena | `Entity(va)` | `Memory/GameMemory.cs` |
 | `0x006067c0` | `0x040` | ViewBlock | `View(va)` | `Memory/GameMemory.cs` |
+
+**Mis à jour le 2026-08-21** : `ViewParams` ajoutée (étape 1 du plan « atteindre le prologue »),
+`EntityState` étendue de `0x500` à `0x538` pour `FUN_005035c0`, et `ItemMenuArena` ramenée de
+`0x460` à `0x410`. Trois symboles simples se sont ajoutés hors arène le même jour, tous nuls au
+chargement : `s_WorldFlags_005de02c` (`Memory/GameMemory.cs`, quatre octets juste avant
+`CameraBlock`), `s_CutsceneActive_00604b78` et `s_SavedViewMode_00604b7c` (`Engine/SaveData.cs`,
+immédiatement après `s_CardWriteEventHandles_00604b68` qui s'arrête pile à `0x00604b78`).
+
+**Avertissement sur cette table** : elle ne recense que les étendues d'arène. Un `static int`
+ordinaire dont l'adresse tombe dans l'une d'elles n'y apparaît pas et **les tests de disposition ne
+le voient pas non plus** — c'est le cas de `s_PartySize_005e9020` (`Screens/State04/SaveSlots.cs`),
+qui double `GameArena`. Lire `0x005e9020` par `Arena(va)` rend donc zéro en silence. Avant d'écrire
+`Arena(0x005e9…)` pour une adresse nouvelle, chercher un champ nommé à cette VA.
 
 **Quatre allocations indépendantes tombent dans l'étendue d'une arène** — constatées au découpage,
 **non corrigées** parce que les corriger changerait le comportement :

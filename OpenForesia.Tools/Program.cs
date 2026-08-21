@@ -577,8 +577,28 @@ static int RvaToFileOffset(
         if (rva >= sectionStart &&
             rva < sectionEnd)
         {
+            var rvaInSection = rva - sectionStart;
+
+            // DEFAUT CORRIGE LE 2026-08-21, et il rendait des reponses fausses avec aplomb.
+            //
+            // Sans ce test, une RVA tombant dans la QUEUE NON INITIALISEE d'une section
+            // (VirtualSize > SizeOfRawData) donnait quand meme PointerToRawData + decalage — un
+            // offset qui atterrit dans les octets bruts de la section SUIVANTE. L'appelant ne
+            // rattrapait rien : il ne testait que `offset >= file.Length`, or cet offset-la est
+            // parfaitement dans le fichier.
+            //
+            // Concretement, `at Blaze.exe 0x00571500` rendait une table dense de valeurs
+            // 0x00208xxx qui n'a jamais existe a cette adresse : c'etait .idata (RVA 0x00208000),
+            // lue par accident. Une note du depot en avait tire une « TABLE INITIALISEE a
+            // 0x00571400 » et s'en etait servi pour borner une arene. Rendre -1 ici fait dire a
+            // l'appelant ce qui est vrai : zero au chargement.
+            if (rvaInSection >= section.SizeOfRawData)
+            {
+                return -1;
+            }
+
             return section.PointerToRawData
-                   + (rva - sectionStart);
+                   + rvaInSection;
         }
     }
 

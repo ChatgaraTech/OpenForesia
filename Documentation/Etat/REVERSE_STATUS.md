@@ -7431,3 +7431,211 @@ plausible et fausse que ce projet passe son temps à rattraper. La règle du dé
 
 Ce qui est livré à la place est ce qui rend la prochaine passe sûre : la clé de lecture, la mesure
 corrigée, et les vingt désassemblages banqués.
+
+---
+
+## 2026-08-21 — étape (1) du plan « atteindre le prologue » : l'arène des paramètres de vue
+
+Faite, mais **pas comme le plan l'annonçait** — et l'écart valait la mesure.
+
+### Ce que le plan disait, et pourquoi c'était faux
+
+« Étendre `EntityState` vers le bas sur `0x005710f0..0x005714ff` ; `Blaze.c` y cite 231 adresses. »
+Le chiffre était juste, la conclusion non : **trois quarts de cette région n'appartiennent pas au
+jeu.**
+
+* **`0x005710f0..0x00571258` est du CRT.** `FUN_0054B190` lit `DAT_00571258` comme argument de
+  `WideCharToMultiByte`, et `DAT_005710F0` est la table de pages de code qui va avec — parcourue
+  **par paires de dwords** jusqu'à `&DAT_00571258`, ce que le code de la boucle dit littéralement.
+  L'englober dans une arène d'état de jeu aurait mélangé deux propriétaires.
+* ~~**`0x00571400..0x00571500` est une table initialisée** de valeurs `0x00208xxx`~~ — **FAUX,
+  rétracté le même jour.** Cette table n'existe pas : c'était un défaut de l'outil `at`. Voir
+  « L'outil `at` rendait les octets d'une autre section » plus bas. Ce qui subsiste est que
+  `0x00571400` est la **fin du contenu de `.data` présent dans le fichier**, donc une vraie borne.
+* `0x0057125c..0x0057126c` n'est cité nulle part.
+
+Le bloc réel est **`0x00571270..0x00571400`** : 0x190 octets, **69 symboles**, et la première
+adresse du jeu est `0x00571270` parce que `FUN_004011c0` l'ajoute à `s_ViewBlock_006067c0`.
+
+### Les deux bornes sont déduites, pas choisies
+
+* borne basse — la dernière adresse CRT (`0x00571258`) puis un trou non cité ;
+* borne haute — `0x00571400`, qui est la **fin du contenu de `.data` présent dans le fichier**
+  (`PointerToRawData 0x0014D600 + SizeOfRawData 0x22400 = 0x0016FA00`). Le chiffre est le bon ;
+  la justification d'origine (« le premier dword non nul de la table ») ne l'était pas ;
+* et le bloc entre les deux est **intégralement nul au chargement** : 384 octets relevés en trois
+  passes, zéro dword non nul. Une `AllocZeroed` est donc fidèle, sans valeur à semer.
+
+### Neutre en comportement, et vérifié comme tel
+
+**Aucune des 123 adresses de la région n'était un champ C#.** Il n'y avait donc rien à aliaser :
+créer l'arène ne peut pas changer ce que le code fait aujourd'hui. C'est le contrôle qui manquait
+au rapatriement du son, et il a été fait avant d'écrire cette fois.
+
+Créée sous `s_ViewParams_00571270` / `ViewParams(va)`. Le nom dit ce qui est observé et pas plus :
+le bloc alimente `s_ViewBlock_006067c0` par addition, reçoit la caméra (`0x005de068/06c/070`) en
+deux exemplaires parallèles, et porte des bits de drapeau à `0x0057139c`. Le détail de ses 69 champs
+n'est pas tracé.
+
+### La leçon, qui est la même que les deux précédentes
+
+**Un compte d'adresses ne dit pas à qui elles appartiennent.** « 231 adresses dans 0x00571xxx » est
+un fait ; « donc c'est une région d'état de jeu » est une inférence, et elle était fausse. Ce qui a
+tranché, c'est de regarder **qui lit chaque adresse** (une ligne de `grep` par borne) et **ce que le
+binaire y contient** (une commande `at` par borne).
+
+Troisième estimation démentie par la vérification en deux jours, après « `Resources.cs` porte
+`ToAnsiZ` » et « 18 emprunts à `Engine/` ».
+
+### Vérification
+
+Build 0 erreur · avertissements inchangés · **les 5 tests de disposition restent verts** — c'était
+le contrôle attendu de cette étape, puisqu'ils signalent précisément les recouvrements d'arène ·
+oracle sans changement inattendu · non-régression `-Entry 1` à **382,3** primitives par image.
+
+---
+
+## 2026-08-21 — l'outil `at` rendait les octets d'une autre section
+
+**Le pire genre de défaut d'outillage : il ne plantait pas, il répondait.**
+
+`RvaToFileOffset` (`OpenForesia.Tools/Program.cs`) convertissait une RVA en offset fichier par
+`PointerToRawData + (rva - VirtualAddress)`, **sans jamais la borner à la `SizeOfRawData` de la
+section**. Or la `VirtualSize` d'une section peut largement dépasser sa taille brute : `.data` de
+`Blaze.exe` occupe `0xB8958` octets en mémoire pour `0x22400` dans le fichier. Toute adresse dans
+cette queue recevait donc un offset — qui tombait droit dans les octets bruts de la section
+**suivante**.
+
+Le garde-fou existant ne rattrapait rien : il ne testait que `offset >= file.Length`, et cet
+offset-là est parfaitement dans le fichier.
+
+### Ce que ça a coûté
+
+`at Blaze.exe 0x00571400` rendait une table dense et crédible de valeurs `0x00208xxx`. C'était
+`.idata` — dont la RVA est justement `0x00208000`. Trois notes du dépôt, écrites **le même jour**,
+en ont tiré une « table initialisée à `0x00571400..0x00571500` » et s'en sont servi pour justifier
+la borne haute de `s_ViewParams_00571270` (`DataSymbols.md`, `TODO.md`, et le bloc de commentaire de
+`GameMemory.cs`). Toutes trois sont rétractées.
+
+Le défaut a été trouvé en essayant d'étendre `s_EntityState_00571500` vers le haut : le dump
+prétendait que l'arène **déjà en place** recouvrait une table initialisée, ce qui aurait été un
+défaut sérieux et ancien. La contradiction — une arène validée par les tests de disposition posée
+sur des données du fichier — est ce qui a mené à l'outil plutôt qu'au code.
+
+### La correction, et la frontière qui reste
+
+`RvaToFileOffset` rend maintenant `-1` quand `rva - VirtualAddress >= SizeOfRawData`, ce qui fait
+dire à l'appelant ce qui est vrai : *données non initialisées, zéro au chargement*.
+
+Ce qu'il faut retenir de `.data` :
+
+| | valeur |
+|---|---|
+| VA de début | `0x0054F000` |
+| offset fichier | `0x0014D600` |
+| taille brute | `0x22400` |
+| **dernière VA présente dans le fichier** | **`0x00571400`** |
+| VA de fin (mémoire) | `0x00607958` |
+
+**Au-dessus de `0x00571400`, aucune valeur de `.data` ne vient de la section.** Cela couvre
+l'essentiel des `DAT_005e…`, `DAT_005f…` et `DAT_006…` du jeu : ils sont tous à zéro au chargement
+et écrits par le code. Un `at` qui répond « non initialisé » sur l'un d'eux est donc la réponse
+normale, pas un échec.
+
+Le chiffre `0x00571400` restait par ailleurs la bonne borne haute pour `s_ViewParams_00571270` —
+mais parce que c'est cette frontière-là, pas parce qu'une table s'y trouvait.
+
+### Leçon
+
+Un dump qui rend des octets plausibles ne prouve pas qu'ils appartiennent à l'adresse demandée.
+Avant de tirer une conclusion d'un relevé situé haut dans `.data`, comparer l'`Offset` affiché aux
+bornes de section que donne `sections`. C'est le pendant exact de la leçon déjà inscrite pour le
+jeu : *vérifier contre la référence, pas contre un nombre qui a l'air juste*.
+
+---
+
+## 2026-08-21 — étape (2) : l'interpréteur de script
+
+`OpenForesia/src/Blaze/Screens/State03/WorldMapScript.cs`, ~1 000 lignes. La machine est complète :
+boucle, répartiteur, **22 opcodes sur 39** et huit appelées. Le jeu va maintenant jusqu'à l'état 3
+et s'arrête **exactement sur `FUN_00516fc0`**, c'est-à-dire l'étape (4).
+
+### Les opcodes 1 et 2 étaient la pièce manquante de la boucle
+
+Aucun des deux n'est dans `Blaze.c` — Ghidra a nommé la table `PTR_LAB_00563298` et n'a donc pas
+reconnu ces corps comme des fonctions. Relevés au désassembleur, ils font six et neuf instructions :
+
+* **opcode 1** — saut inconditionnel vers `scripts[ushort(script[1], script[2])]` ;
+* **opcode 2** — saut conditionnel, **et il remet le résultat à zéro**.
+
+C'est ce `mov dword [ecx],0` qui explique la condition d'arrêt de `RunScript`, écrite plus tôt sans
+qu'on sache pourquoi elle traitait l'opcode 2 à part : tous les autres opcodes arrêtent la boucle
+dès qu'ils posent un résultat, celui-ci est le seul à la reprendre. Sans lui, un test de script
+arrêterait le script pour de bon.
+
+### Trois arités de Ghidra démenties au niveau machine
+
+Le comptage se lit sur l'`add esp,N` qui suit l'appel (cdecl, N/4 arguments). Chaque fois, la
+pseudo-C disait autre chose :
+
+| fonction | Ghidra | réel | ce que ça change |
+|---|---|---|---|
+| `FUN_0053a920` | 3 arguments | **2** (`add esp,8`) | le `push 5312D0h` n'était pas le sien |
+| `FUN_00530f20` | 2 arguments | **3** (`add esp,0Ch`) | …il appartenait à celle-ci — un pointeur de fonction |
+| `FUN_00532740` | 1 argument | **2 poussés, 1 lu** | la capacité passée en second est morte |
+
+Le cas `FUN_00530f20` est le plus instructif : l'argument perdu par Ghidra était poussé **avant**
+l'appel intermédiaire et récupéré après, une forme que la décompilation ne sait pas rendre. C'est le
+même défaut que le `piStack_74 = X` de `FUN_00516fc0`, sous un autre déguisement.
+
+### Un défaut d'aliasing évité de justesse
+
+`FreezeAllEntities` (`FUN_00535300`) balaie sept tables d'entités, dont la première a un compte
+variable : `DAT_005e9020`. Écrit d'abord `*(int*)Mem.Arena(0x005e9020)` — ce qui **aurait rendu
+zéro en silence** et fait sauter le gel du groupe entier, parce que cette adresse est doublée par
+`s_PartySize_005e9020`, un `static int` ordinaire déclaré dans `Screens/State04/SaveSlots.cs`, hors
+de l'arène.
+
+Les cinq tests de disposition **ne l'auraient pas vu** : ils comparent des symboles à suffixe de VA
+entre eux, pas un champ simple à une étendue d'arène. C'est exactement le manque déjà noté « étendre
+le test de disposition aux champs de valeur simples » — il vient de coûter une vérification
+manuelle, et il en coûtera d'autres.
+
+À l'inverse, `0x005e93c0` est **sans danger** : `Inp.s_SlotFlags_005e93c0` n'est pas une allocation
+propre mais une vue (`mem.Arena(0x005e9180) + 0x240`). La différence entre les deux cas ne se voit
+qu'en lisant la déclaration ; l'adjacence ne suffit pas à conclure.
+
+### Deux opcodes bloqués pour des raisons établies
+
+Le message d'exception les porte, pour ne pas refaire l'enquête :
+
+* **opcode 0** — appelle `(&PTR_FUN_0056aec8)[script[1]]`. Les 256 entrées du binaire pointent
+  toutes vers `FUN_00401fa0`, un `ret` nu. **Ce n'est que le contenu par défaut** : `Blaze.c`
+  l. 75143 remplit la table à l'exécution, 0x40 entrées à la fois, depuis
+  `(&PTR_PTR_00567318)[zone]` — et quatre autres tables voisines avec elle. Il faut ce chargeur et
+  les jeux de fonctions par zone. *A failli être transcrit comme « appelle un no-op »* : la lecture
+  du binaire seule donnait cette réponse, et elle était fausse.
+* **opcode 27** — laissé de côté sciemment. Cascade d'affichage des nombres de dégâts
+  (`FUN_00530f20`, `FUN_005312d0` et cinq sous-appelées), hors du chemin vers le prologue.
+
+### Deux corrections d'interop
+
+* **`Winsys3d.Ordinal_45` était déclaré avec deux arguments.** Son corps est
+  `xor eax,eax ; ret 4` : le `ret 4` dit **un seul** argument, en stdcall. Deux laissaient quatre
+  octets sur la pile à chaque appel. Corrigé, ainsi que le site d'appel de `RunMainLoop`.
+* **`Ordinal_46` ajouté** : `xor eax,eax ; ret`, cdecl sans argument. Il rend donc toujours 0, ce
+  qui rend le test `Ordinal_46() < 0` de `FUN_00513dd0` toujours faux dans cette version de la DLL.
+
+### Reste à faire sur l'interpréteur
+
+Quinze opcodes (14, 15, 17, 20, 21, 22, 30–38) n'attendent qu'une reprise du désassemblage. Les
+relevés banqués de `Legacy/Raw/Blaze/ScriptOps/` sont **des fenêtres de 96 octets** et certains
+corps débordent — reprendre au verbe `disasm` avec une taille plus large, sinon le dernier
+mnémonique lu est un `(bad)`.
+
+### Contrôles
+
+Build 0 erreur · **les 5 tests de disposition restent verts**, y compris après l'extension de
+`s_EntityState_00571500` de 0x500 à 0x538 · oracle refigé à 550 corps, les deux seuls changements de
+logique étant les corrections faites sciemment · non-régression en jeu : même frontière
+`FUN_00516fc0`, atteinte trois fois de suite.

@@ -473,6 +473,28 @@ These are declared as real P/Invokes in `Blaze.cs` and called for real (not spec
 skipped) — "does nothing" is the DLL's actual, confirmed behavior at these ordinals, not
 an assumption.
 
+#### A stub still has an arity, and getting it wrong leaks the stack (2026-08-21)
+
+"It does nothing" is not the whole signature. These stubs are not all the same shape, and the
+`ret` instruction says which:
+
+| ordinal | body at | machine code | convention | arguments |
+|---|---|---|---|---|
+| 45 | `0x00a02e20` | `xor eax,eax ; ret 4` | **stdcall** | **exactly one** |
+| 46 | `0x00a02490` | `xor eax,eax ; ret` | **cdecl** | none |
+
+`Ordinal_45` was declared here with **two** parameters until 2026-08-21. Under stdcall the caller
+pushed 8 bytes and the callee popped 4, leaving 4 bytes on the stack at every call. Corrected in
+`Interop/Winsys3d.cs`, along with the one call site in `RunMainLoop` (`Platform/Startup.cs`).
+
+`Ordinal_46` was not declared at all; added for `FUN_00513dd0`, which tests `Ordinal_46() < 0` to
+decide whether the DLL allocator has anything worth preserving. It returns 0, so **that test is
+always false in this build** and the interpreter always takes the save/restore path.
+
+Read the `ret` before writing a `[DllImport]` for an ordinal-only export. `dotnet run --project
+OpenForesia.Tools -- disasm Legacy/Binaries/winsys3d.dll 0x00a02e20 8` answers it in one line, and
+the export table maps ordinal → RVA (`+ 0x00a00000`) to find the body.
+
 ### Confirmed real behavior
 
 | Ordinal | RVA | `winsys3d.c` symbol | Behavior |

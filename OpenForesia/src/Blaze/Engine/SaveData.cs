@@ -142,6 +142,14 @@ internal sealed unsafe class SaveData(GameMemory mem)
     internal readonly void*[] s_CardReadEventHandles_00604b58 = new void*[4];
     internal readonly void*[] s_CardWriteEventHandles_00604b68 = new void*[4];
 
+    /// <summary>Ghidra: DAT_00604b78 et DAT_00604b7c @ 0x00604b78 — les deux mots que la camera de
+    /// scenette (<c>FUN_005035c0</c>) pose en entrant : le premier est un drapeau « une scenette est
+    /// en cours », le second met de cote le mode de vue precedent (<c>DAT_005de54c</c>) pour
+    /// pouvoir le rendre. Ils suivent immediatement les quatre poignees ci-dessus, qui s'arretent
+    /// exactement a 0x00604b78. Nuls au chargement (queue non initialisee de .data).</summary>
+    internal int s_CutsceneActive_00604b78;
+    internal int s_SavedViewMode_00604b7c;
+
     // Ghidra: &LAB_00504610..&LAB_00504680 — les huit gestionnaires que `FUN_00504460` enregistre
     // auprès de la DLL. Ghidra n'en donne aucun corps (fonctions uniquement prises par adresse,
     // catégorie « re-run Ghidra » de CLAUDE.md), et ce port passait donc `null` — ce que la DLL

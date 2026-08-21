@@ -193,8 +193,60 @@ internal sealed unsafe class GameMemory
     internal int* EntityParam(int va) => (int*)(s_EntityParams_00551640 + (va - EntityParamsBase));
 
     internal const int EntityStateBase = 0x00571500;
-    internal readonly byte* s_EntityState_00571500 = (byte*)NativeMemory.AllocZeroed(0x500);
+
+    // Etendue de 0x500 a 0x538 le 2026-08-21 : FUN_005035c0 (la camera de scenette, opcode 29 de
+    // l'interpreteur de script) sauvegarde trois blocs de vue jusqu'a 0x00571a34 inclus, soit
+    // 0x00571a38 en borne. Les deux bornes restent tenues :
+    //   au-dessus, s_Unknown_00571a3c (Screens/State00/MainMenu.cs) commence quatre octets plus
+    //   loin — pas de recouvrement, et les tests de disposition le verifient ;
+    //   la region est au-dessus de 0x00571400, donc dans la queue non initialisee de .data : zero
+    //   au chargement, ecrit uniquement par le code. Une AllocZeroed est fidele.
+    internal readonly byte* s_EntityState_00571500 = (byte*)NativeMemory.AllocZeroed(0x538);
     internal int* EntityState(int va) => (int*)(s_EntityState_00571500 + (va - EntityStateBase));
+    internal byte* EntityStateBytes(int va) => s_EntityState_00571500 + (va - EntityStateBase);
+
+    // =====================================================================
+    // Ghidra: 0x00571270..0x00571400 — les parametres de vue, ajoutes le 2026-08-21 pour
+    // FUN_00401000 / FUN_00401080, sur le chemin du prologue de la carte du monde.
+    //
+    // **69 symboles**, et ce sont des VUES dans un bloc, pas 69 champs. La region est atteinte
+    // par decalage constant depuis plusieurs fonctions, et le projet a corrige ce defaut
+    // d'aliasing une vingtaine de fois : declarer les adresses une a une marche jusqu'au jour ou
+    // un site les parcourt.
+    //
+    // LES DEUX BORNES SONT DEDUITES, PAS CHOISIES — et la region n'est PAS celle qu'on croyait.
+    //
+    //   en dessous  0x005710f0..0x00571258  n'est pas du jeu : c'est du CRT. DAT_00571258 est lu
+    //               par WideCharToMultiByte (FUN_0054b190), et DAT_005710f0 est la table de pages
+    //               de code qui va avec, parcourue par paires jusqu'a &DAT_00571258. Y etendre une
+    //               arene d'etat de jeu aurait melange deux proprietaires.
+    //   0x0057125c..0x0057126c  n'est cite nulle part. La premiere adresse du jeu est 0x00571270,
+    //               que FUN_004011c0 ajoute a s_ViewBlock_006067c0 — un vecteur de decalage.
+    //   au-dessus   0x00571400 est exactement la fin du contenu de .data present dans le FICHIER :
+    //               PointerToRawData 0x0014D600 + SizeOfRawData 0x22400 = 0x0016FA00, l'offset ou
+    //               commence .idata. Au-dela, la section n'existe qu'en memoire et vaut zero au
+    //               chargement. La borne est donc reelle, et c'est la seule du binaire ici.
+    //
+    // CORRECTION DU 2026-08-21, LE MEME JOUR : cette borne etait d'abord justifiee par « au-dessus
+    // de 0x00571400 commence une TABLE INITIALISEE de valeurs 0x00208xxx ». **Cette table n'existe
+    // pas.** C'etait un defaut de l'outil `at`, qui ne bornait pas la conversion VA -> offset a la
+    // SizeOfRawData de la section : pour une adresse dans la queue non initialisee de .data, il
+    // rendait un offset tombant dans les octets bruts de .idata (RVA 0x00208000 — d'ou les valeurs
+    // 0x00208xxx) et les affichait sans broncher. Corrige dans OpenForesia.Tools/Program.cs
+    // (RvaToFileOffset). Le chiffre 0x00571400 tenait par coincidence : c'est la meme frontiere.
+    //
+    // Et le bloc lui-meme est **integralement nul au chargement**, ce qui reste vrai apres la
+    // correction : 0x00571270 est en-deca de la frontiere, donc reellement present dans le fichier,
+    // et ses dwords y sont nuls. Une AllocZeroed est fidele, sans valeur a semer.
+    //
+    // Le nom dit ce qui est observe, pas plus : le bloc alimente s_ViewBlock_006067c0 par addition,
+    // recoit des valeurs de camera (0x005de068/06c/070) en deux exemplaires paralleles
+    // (0x00571300.. et 0x00571370..), et porte des bits de drapeau a 0x0057139c. Le detail de ses
+    // 69 champs n'est pas trace.
+    // =====================================================================
+    internal const int ViewParamsBase = 0x00571270;
+    internal readonly byte* s_ViewParams_00571270 = (byte*)NativeMemory.AllocZeroed(0x190);
+    internal byte* ViewParams(int va) => s_ViewParams_00571270 + (va - ViewParamsBase);
 
     // ---------------------------------------------------------------------------------------
     // Les arenes de la carte du monde.
@@ -211,6 +263,25 @@ internal sealed unsafe class GameMemory
     internal const int EntityArenaBase = 0x005eca00;
     internal readonly byte* s_EntityArena_005eca00 = (byte*)NativeMemory.AllocZeroed(0x14200);
     internal byte* Entity(int va) => s_EntityArena_005eca00 + (va - EntityArenaBase);
+
+    /// <summary>
+    /// Ghidra: DAT_005de02c @ 0x005de02c — <b>les drapeaux de la boucle de monde</b>, quatre octets
+    /// isoles juste avant le bloc de camera.
+    ///
+    /// <para>
+    /// Le seul bit dont le role soit etabli est <c>0x10</c> : il gele la simulation. Il est pose par
+    /// <c>FreezeAllEntities</c> (opcode 18 de l'interpreteur de script) et leve par
+    /// <c>UnfreezeAllEntities</c> (opcode 19), et les deux boucles de mise a jour du monde le testent
+    /// avant de faire avancer quoi que ce soit (Blaze.c l. 57957 et 63975). Les bits 1, 2, 4, 8 et
+    /// 0x40 sont manipules ailleurs sans que leur role soit encore lisible.
+    /// </para>
+    /// <para>
+    /// Non initialise dans <c>.data</c> : l'octet est au-dela de la queue presente dans le fichier,
+    /// donc zero au chargement, ecrit uniquement par le code. Champ simple et non arene — c'est un
+    /// mot isole, et le bloc de camera commence quatre octets plus loin.
+    /// </para>
+    /// </summary>
+    internal uint s_WorldFlags_005de02c;
 
     /// <summary>Ghidra: 0x005de030..0x005de0b0 — le bloc de camera et de position du groupe. Son
     /// adresse est stockee telle quelle dans <c>DAT_005edebc</c>, d'ou l'allocation native.</summary>

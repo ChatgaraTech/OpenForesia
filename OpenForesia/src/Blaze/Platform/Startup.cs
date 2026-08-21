@@ -534,7 +534,7 @@ public static unsafe partial class Blaze
 
         Winsys3d.Ordinal_129();
         Winsys3d.Ordinal_41();
-        Winsys3d.Ordinal_45(null, Mem.s_CdDataRootPath); // Ghidra: apcStack_54[1]="j" â€” TODO(REVERSE): odd literal, but Ordinal_45 is a confirmed no-op regardless
+        Winsys3d.Ordinal_45(null); // Ghidra: apcStack_54[1]="j" - le second argument a ete retire le 2026-08-21 : le `ret 4` de la souche 0x00a02e20 prouve qu'elle n'en prend qu'un, et deux en stdcall laissaient 4 octets sur la pile a chaque appel
         Winsys3d.Ordinal_136(0);
         Mem.s_RandSeed_0056e9c0 = 1; // Ghidra: FUN_00547130(1) â€” srand(1); see CrtRand
         Mem.s_Unknown_005e9630 = Winsys3d.Ordinal_116();
