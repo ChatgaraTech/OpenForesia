@@ -522,11 +522,11 @@ public static unsafe partial class Blaze
                 *(short*)(sprite + 0x10) =
                     (sbyte)Mem.s_SelectSubStateBytes_00562a98[s_SelectState_00578de8[0] * 4 + i];
 
-                EmitViewportRect(otBase, &primCursor);                              // FUN_0051be20
+                UiWin.EmitViewportRect(otBase, &primCursor);                              // FUN_0051be20
                 primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);  // FUN_00521df0
                 primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)sprite); // FUN_0051f9c0
-                EmitClipRect(otBase, &primCursor);                                  // FUN_0051bdb0
-                primCursor = DrawUiPanel(otBase, primCursor, descriptor);           // FUN_00545340
+                UiWin.EmitClipRect(otBase, &primCursor);                                  // FUN_0051bdb0
+                primCursor = UiWin.DrawUiPanel(otBase, primCursor, descriptor);           // FUN_00545340
             }
 
             if (s_SmallTextureFlag == 0 && Mem.s_SizeSetting_005de160 > 7)
@@ -552,7 +552,7 @@ public static unsafe partial class Blaze
             }
 
             primCursor = Ui.RunTextEngine(primCursor, Mem.s_StatusDescriptor_00560728);       // FUN_005443a0
-            primCursor = DrawUiPanel(otBase, primCursor, Mem.s_StatusDescriptor_00560728);
+            primCursor = UiWin.DrawUiPanel(otBase, primCursor, Mem.s_StatusDescriptor_00560728);
 
             s_Unknown_005de15c = 0;
 

@@ -384,7 +384,7 @@ public static unsafe partial class Blaze
                           + s_MenuIndexToArea_0056d2b0[cursor] * 4),
                 0, s_DestinationDescriptor_0056c978, 0);
             primCursor = Ui.RunTextEngine(primCursor, s_DestinationDescriptor_0056c978);
-            primCursor = DrawUiPanel(otBase, primCursor, s_DestinationDescriptor_0056c978);
+            primCursor = UiWin.DrawUiPanel(otBase, primCursor, s_DestinationDescriptor_0056c978);
 
             // La fenêtre d'affichage rétrécit à 256x224 le temps de l'envoi, puis revient à 320x240
             // — les deux DISPENV à la fois, champs +4 (largeur) et +6 (hauteur).

@@ -100,9 +100,9 @@ src/
 ├─ Host/  ····································· 5 fichiers   3 477 l.
 │   D3D11Backend · SyntheticDevice · DeviceShim · D3D11Window · StartupSurface
 │
-└─ Blaze/  ···································· 31 fichiers  24 912 l.
+└─ Blaze/  ···································· 31 fichiers  24 966 l.
     ├─ Blaze.cs                    17 l.   l'en-tete, les using, la declaration partielle
-    ├─ Subsystems.cs              174 l.   LE COMPOSITION ROOT. `Mem` immediat, les huit
+    ├─ Subsystems.cs              194 l.   LE COMPOSITION ROOT. `Mem` immediat, les NEUF
     │                                      sous-systemes PARESSEUX (voir la note du fichier).
     │
     ├─ Interop/  ·······················    539 l.   la surface P/Invoke, hors de la classe
@@ -119,16 +119,18 @@ src/
     │   ├─ Crt.cs           390   runtime MSVC 6
     │   └─ Win32.cs          72   structures d'interop et constantes
     │
-    ├─ Engine/  ························  7 869 l.   appele par plusieurs ecrans
-    │   ├─ Audio.cs       1 315   0x00513 · 0x0053d               VRAIE CLASSE (mixte)
-    │   ├─ UiText.cs      1 344   0x00544                          VRAIE CLASSE
-    │   ├─ Resources.cs   1 133   0x00529 · 0x0052a               VRAIE CLASSE (pure)
-    │   ├─ Video.cs       1 143   0x00512 · 0x00542               VRAIE CLASSE (mixte)
-    │   ├─ Input.cs       1 044   0x00523 · 0x00504               VRAIE CLASSE (mixte)
-    │   ├─ SaveData.cs      623   E/S carte memoire seule          VRAIE CLASSE (mixte)
-    │   ├─ Model3d.cs       615   0x0051d                          VRAIE CLASSE (pure)
-    │   ├─ UiWindow.cs      368   0x00545
-    │   └─ Primitives2d.cs  284   DrawFlatPrimitive, DrawSprite*   VRAIE CLASSE
+    ├─ Engine/  ························  7 903 l.   appele par plusieurs ecrans
+    │   Les NEUF sont des classes d'instance depuis le 2026-08-21 (etape C terminee).
+    │   « pure » = aucun membre statique ; « mixte » = quelques-uns, chacun justifie sur place.
+    │   ├─ UiText.cs      1 344   0x00544                          VRAIE CLASSE (pure)   -> Ui
+    │   ├─ Audio.cs       1 315   0x00513 · 0x0053d               VRAIE CLASSE (mixte)  -> Aud
+    │   ├─ Video.cs       1 143   0x00512 · 0x00542               VRAIE CLASSE (mixte)  -> Vid
+    │   ├─ Resources.cs   1 133   0x00529 · 0x0052a               VRAIE CLASSE (pure)   -> Res
+    │   ├─ Input.cs       1 044   0x00523 · 0x00504               VRAIE CLASSE (mixte)  -> Inp
+    │   ├─ SaveData.cs      623   E/S carte memoire seule          VRAIE CLASSE (mixte)  -> Saves
+    │   ├─ Model3d.cs       615   0x0051d                          VRAIE CLASSE (pure)   -> Mdl
+    │   ├─ UiWindow.cs      402   0x00545                          VRAIE CLASSE (pure)   -> UiWin
+    │   └─ Primitives2d.cs  284   DrawFlatPrimitive, DrawSprite*   VRAIE CLASSE (pure)   -> Prims
     │
     └─ Screens/  ······················· 13 741 l.   un etat de jeu par repertoire
         ├─ GameStates.cs    154   le repartiteur (FUN_00537ca0)

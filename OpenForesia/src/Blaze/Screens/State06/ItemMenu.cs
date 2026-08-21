@@ -280,7 +280,7 @@ public static unsafe partial class Blaze
             {
                 byte* panel = s_ItemMenuDescriptors_00564fe0 + i * GameMemory.UiDescriptorStride;
                 primCursor = Ui.RunTextEngine(primCursor, panel);
-                primCursor = DrawUiPanel(otBase, primCursor, panel);
+                primCursor = UiWin.DrawUiPanel(otBase, primCursor, panel);
             }
 
             s_Unknown_005de15c = 0;
@@ -388,14 +388,14 @@ public static unsafe partial class Blaze
         }
 
         // Le curseur, seize pixels a gauche de la colonne de texte.
-        EmitViewportRect(otBase, &primCursor);
+        UiWin.EmitViewportRect(otBase, &primCursor);
         *(uint**)c = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
         *(short*)(c + 8) = 100 - 0x10;
         *(short*)(c + 0x10) = 0x18;
         *(short*)(c + 0xa) = (short)(s_ItemMenuCursor_005de4e0 * 0xc + 0x28);
         primCursor = Prims.DrawSpriteVariant(otBase, primCursor, cursor, 0, 0);
         primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, cursor);
-        EmitClipRect(otBase, &primCursor);
+        UiWin.EmitClipRect(otBase, &primCursor);
 
         // Ghidra type FUN_00524680 et FUN_00524190 en `void`, mais le site d'appel fait
         // `local_20 = FUN_00524680(...)` : EAX porte à la sortie le résultat du dernier appel, qui

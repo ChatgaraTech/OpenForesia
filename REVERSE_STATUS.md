@@ -6702,3 +6702,97 @@ plantage à **382,3** primitives par image, **capture relue — le modèle 3D an
 bien à l'écran**, ce qui est le contrôle qui compte ici puisque `DrawAnimatedModel` est précisément
 ce qui le dessine · `-Entry 2` à **387** · **taux de course 3/16 = 19 %**, machine au repos, sous la
 référence de 22–25 %.
+
+---
+
+## 2026-08-21 — `UiWindow` : l'étape C est terminée, et une fausse alerte instructive
+
+`Engine/UiWindow.cs` → `UiWindow(GameMemory)`, 368 → 411 l., **5 membres, 0 statique, 0 champ**.
+Neuvième et dernière classe de l'étape C. **Tout `Engine/` est désormais en classes d'instance.**
+
+Comme `Model3d`, ce fichier ne possède aucune globale : sa conversion ne déplace pas d'état, elle
+rend visible ce qu'il lit. Six symboles de `GameMemory` (déjà via `mem.`), quatre d'`Input` (déjà
+via `Inp.`), quatre d'écrans.
+
+### La mesure « hors commentaire » avait un défaut, et le compilateur l'a rattrapée
+
+Le relevé d'emprunts annonçait `s_FadeCounter_005e9960` « cité en commentaire seulement ». Faux :
+`DrawUiPanel` le lit. Le filtre en cause :
+
+```bash
+grep -vE "^[0-9]+:\s*(//|///|\*)"   # le `\*` vise les continuations de bloc /** … */
+```
+
+Dans du code à pointeurs, `*` en début de ligne est aussi un **déréférencement** — ici
+`*(uint*)(atlas + (s_FadeCounter_005e9960 >> 1 & 3) * 8))`. Le filtre l'a pris pour un commentaire.
+Corrigé dans `TODO.md` : `* ` suivi d'une espace est une continuation, `*(` est du code.
+
+C'est le troisième défaut d'outillage de la journée, après le seau fourre-tout du script de clôture
+et l'angle mort des tests de disposition. **Aucun des trois ne produisait d'erreur** — seulement un
+chiffre plausible, ou un test vert.
+
+### Le nom du point d'entrée, quatrième fois que la mesure décide
+
+`UiWin`. `Panel` était le nom naturel — le membre principal est `DrawUiPanel` — mais `panel` est un
+local dans **58 lignes**. `Win` et `Wnd` mesuraient zéro occurrence et ont quand même été écartés :
+dans un dépôt qui fait beaucoup de Win32, ils se lisent comme de l'interop.
+
+Sur les quatre conversions de la journée, **trois fois la mesure a changé le nom retenu**
+(`mdl` contre `model`, `uiWin` contre `panel`, et `res` retenu contre toute attente).
+
+### Un recouvrement d'arène relevé, latent, non corrigé
+
+Les trois dwords `s_Unknown_005de154/158/15c` que cette classe lit vivent en champs séparés dans
+`MainMenu.cs`, alors que leurs adresses tombent **à l'intérieur** de
+`GameMemory.s_ItemMenuArena_005de100` (0x460 octets, donc jusqu'à `0x005de560`). Idem pour
+`s_CheatIndex_005de164` (`UiText.cs`) et `s_Unknown_005de168` (`Input.cs`).
+
+**Vérifié : aucun site n'adresse l'arène entre `0x005de154` et `0x005de170`.** Le recouvrement ne
+se manifeste donc pas aujourd'hui — c'est un risque de structure, pas un défaut observable.
+
+Deux raisons de ne pas y toucher : le corriger changerait le comportement, et **l'étendue de
+l'arène est elle-même douteuse** — son commentaire annonce 0x420 octets, son allocation en fait
+0x460. Ces 0x40 d'écart sont exactement ce qui rend vrai ou faux le signalement de
+`s_EntityList_005de558` par les tests. Trancher demande de retrouver l'étendue réelle dans
+`Blaze.c` : c'est de la reconstruction, pas du refactor. Consigné dans l'en-tête d'`UiWindow.cs`.
+
+### La fausse alerte sur le taux de course — et ce qu'elle apprend
+
+Deux lots de 16 essais ont rendu **5/16 puis 6/16 (31 % et 37 %)**, contre les 22–25 % documentés.
+Alarme franche, sur la mesure même qui avait attrapé la régression du 2026-08-19.
+
+**Il n'y avait pas de régression.** Le raisonnement mécanique le disait déjà : cette conversion, et
+celles de la journée, ne font que *retirer* du travail du chemin pré-course — les chaînes `ToAnsiZ`,
+les sept tables `s_Vt_*`, les tables de zone de `Resources` passent d'une initialisation statique de
+`Blaze` (avant la course) à des champs d'instance paresseux (après). Le taux ne pouvait pas monter
+de ce fait.
+
+Le contrôle l'a confirmé : **arbre d'avant, 32 essais, 5 perdues = 16 %** ; **arbre modifié mesuré
+juste après, 32 essais, 1 perdue = 3 %**. Le sens était inverse de l'alarme.
+
+**La leçon : la référence documentée est datée, donc elle ne vaut pas contrôle.** Le taux dérive au
+fil d'une session — 31 %, 37 % puis 3 % sur le même code. Le seul contrôle valable est l'arbre
+d'avant mesuré **adjacent dans le temps** (`git stash` + build + 32 essais). Écrit dans
+`test-protocol.md`, avec le contre-exemple chiffré.
+
+Corollaire : **raisonner sur le mécanisme avant de lancer une enquête.** Quand la mesure contredit
+ce que le code impose, suspecter la mesure — mais la refaire, pas l'ignorer.
+
+### Ce que l'étape C laisse en place, avec sa condition de retrait
+
+Les neuf sous-systèmes sont des classes ; les **points d'entrée de `Subsystems.cs` sont maintenant
+le dernier échafaudage**. L'en-tête de ce fichier dit depuis le début qu'ils disparaissent « quand
+un sous-système appelant devient lui-même une classe d'instance ». C'est désormais vrai de tous :
+les qualifications croisées entre classes (`Aud.`, `Inp.`, `Ui.`, `UiWin.` à l'intérieur d'une
+classe) peuvent devenir des paramètres de constructeur.
+
+Non fait ici, délibérément : ce serait une dixième conversion déguisée en neuvième, et elle mérite
+d'être mesurée et vérifiée pour elle-même.
+
+### Vérification
+
+Build 0 erreur, **tableau d'avertissements identique** avant/après · oracle « aucune logique
+modifiée » sur 511 corps, 0 méthode absente · auto-test 9/9 · tests de disposition inchangés
+(3 rouges attendus / 2 verts) · `-Entry 1` **382,3** et `-Entry 2` **387** primitives par image,
+**les deux captures relues — les cadres de panneau, qui sont précisément ce que `DrawUiPanel`
+émet, sont corrects** · taux de course **1/32 = 3 %** contre un contrôle adjacent à **5/32 = 16 %**.

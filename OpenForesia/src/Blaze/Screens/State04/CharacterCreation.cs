@@ -954,7 +954,7 @@ public static unsafe partial class Blaze
         stats[7] = (byte)((byte)((stats[0] + oldByte4) >> 1) + scratch[0x148]);
         stats[8] = (byte)((byte)((stats[2] + oldByte5) >> 1) + scratch[0x14a]);
 
-        EmitViewportRect(otBase, &primCursor);
+        UiWin.EmitViewportRect(otBase, &primCursor);
 
         byte* row = s_SelectSlots_00573518 + state[8] * CharacterSelectSlotStride;
         byte* box = stackalloc byte[20];
@@ -967,7 +967,7 @@ public static unsafe partial class Blaze
 
         primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
         primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)box);
-        EmitClipRect(otBase, &primCursor);
+        UiWin.EmitClipRect(otBase, &primCursor);
 
         BindMenuLabels(
             *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x1e0 + state[8] * 4),
@@ -1455,10 +1455,10 @@ public static unsafe partial class Blaze
             *(short*)(box + 0xa) = (short)(*(short*)(row + 6) + 4);
             *(short*)(box + 0x10) = (short)(i + 4);
 
-            EmitViewportRect(otBase, &primCursor);
+            UiWin.EmitViewportRect(otBase, &primCursor);
             primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)box, 0, 0);
             primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)box);
-            EmitClipRect(otBase, &primCursor);
+            UiWin.EmitClipRect(otBase, &primCursor);
 
             byte funcByte = (byte)(i <= 6 ? 0x08 : 0x10);
             byte statValue = Mem.s_PanelSelection_005e9060[i];
@@ -1468,7 +1468,7 @@ public static unsafe partial class Blaze
 
             BindMenuLabels(*(byte**)(labelTable + labelOffset), 0, row, 0);
             primCursor = Ui.RunTextEngine(primCursor, row);
-            primCursor = DrawUiPanel(otBase, primCursor, row);
+            primCursor = UiWin.DrawUiPanel(otBase, primCursor, row);
 
             labelOffset += 4;
         }

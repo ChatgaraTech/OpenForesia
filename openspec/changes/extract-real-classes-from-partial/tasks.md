@@ -302,11 +302,36 @@ chaque fichier** — jamais deux conversions avant une vérification.
       l'exige : mesuré **5 courses perdues sur 8**, contre 1 sur 4 documenté. Points d'entrée
       rendus paresseux (`Ui => s_ui ??= new UiText(Mem)`), `Mem` reste immédiat car lui seul porte
       la contrainte. Re-mesuré : **4 perdues sur 16 = 25 %**, le taux documenté.
-- [ ] 7.7 `Engine/UiWindow.cs` (368 l.) — à faire **en dernier** : il ne possède aucune globale et
-      en emprunte 11, dont 6 à des fichiers d'écran. Ce n'est **pas** l'étape D — rapatrier une
-      globale `.data` vers `GameMemory` relève de l'étape A inachevée, légitime à tout moment.
-      C'est simplement le plus gros brassage pour le plus petit fichier, donc le pire risque
-      d'aliasing par ligne convertie.
+- [x] 7.7 `Engine/UiWindow.cs` → `UiWindow(GameMemory)`. 368 → 402 l., **5 membres, 0 statique,
+      0 champ**. Point d'entrée `UiWin`. **Dernier fichier : l'étape C est terminée, 9 sur 9.**
+      Le « pire brassage » annoncé n'a pas eu lieu : la moitié de ses emprunts passaient déjà par
+      `Inp.` et `mem.`, et seuls quatre symboles d'écran ont dû être exposés.
+      **Le relevé d'emprunts avait un faux négatif** : `s_FadeCounter_005e9960` était annoncé « cité
+      en commentaire seulement » alors que `DrawUiPanel` le lit. Le filtre
+      `grep -vE "^[0-9]+:\s*(//|///|\*)"` prend un déréférencement `*(uint*)…` en début de ligne
+      pour une continuation de bloc. Le compilateur l'a rattrapé. Corrigé dans `TODO.md`.
+      Nom `UiWin` et non `Panel` : `panel` est un local dans **58 lignes**. `Win`/`Wnd` mesuraient
+      zéro mais se lisent comme du Win32. **Trois fois sur quatre aujourd'hui, la mesure a changé
+      le nom retenu.**
+      **Recouvrement d'arène relevé, latent, non corrigé** : `s_Unknown_005de154/158/15c`
+      (`MainMenu.cs`) tombent dans l'étendue de `s_ItemMenuArena_005de100` (0x460 octets). Vérifié
+      qu'aucun site n'adresse l'arène dans cette plage — risque de structure, pas défaut
+      observable. Et l'étendue de l'arène est elle-même douteuse : commentaire 0x420, allocation
+      0x460, et ces 0x40 décident du signalement de `s_EntityList_005de558` par les tests.
+      Vérifié : build 0 erreur, avertissements identiques ; oracle « aucune logique modifiée »,
+      0 méthode absente ; tests 3 rouges attendus ; `-Entry 1` **382,3** et `-Entry 2` **387**, les
+      deux captures relues — **les cadres de panneau, ce que `DrawUiPanel` émet, sont corrects**.
+- [x] 7.14 **La fausse alerte sur le taux de course, et ce qu'elle a corrigé au protocole.**
+      Deux lots ont rendu **5/16 puis 6/16** (31 %, 37 %) contre les 22–25 % documentés — sur la
+      mesure même qui avait attrapé la régression de 7.6. **Aucune régression** : le contrôle de
+      l'arbre d'avant, mesuré adjacent, rend **5/32 = 16 %**, et l'arbre modifié mesuré juste après
+      **1/32 = 3 %**.
+      Le raisonnement mécanique le disait déjà : ces conversions ne font que *retirer* du travail
+      du chemin pré-course (chaînes `ToAnsiZ`, tables `s_Vt_*`, tables de zone passent d'une init
+      statique de `Blaze` à des champs d'instance paresseux).
+      **Correctif de méthode : une référence datée ne vaut pas contrôle.** Le taux dérive au fil
+      d'une session. Le seul contrôle valable est `git stash` + build + 32 essais **adjacents dans
+      le temps**. Écrit dans `test-protocol.md` avec le contre-exemple chiffré.
 - [x] 7.8 `Engine/Model3d.cs` → `Model3d(GameMemory)`. 583 → 622 l., **7 membres, 0 statique,
       0 champ** — la seule classe de l'étape C qui ne possède aucune globale. Point d'entrée `Mdl`.
       **La raison de le repousser n'a jamais existé.** Ce fichier portait depuis trois jours

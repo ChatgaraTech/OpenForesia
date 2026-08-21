@@ -33,9 +33,9 @@ public static unsafe partial class Blaze
     // adresse tombe dans la queue non initialisée de .data — donc sans la remise à 2500 de
     // FrameBegin, plus rien ne se dessinerait du tout.
     internal static int s_Unknown_005e9818;
-    private static uint s_FadeCounter_005e9960;      // Ghidra: DAT_005e9960
+    internal static uint s_FadeCounter_005e9960;      // Ghidra: DAT_005e9960
     private static uint s_Unknown_005e9814;
-    private static int s_Unknown_005de154, s_Unknown_005de158, s_Unknown_005de15c;
+    internal static int s_Unknown_005de154, s_Unknown_005de158, s_Unknown_005de15c;
     private static int s_Unknown_005de51c;
     /// <summary>
     /// The menu's selected entry â€” <c>menuContext[0x8c4]</c>, i.e. address 0x0056e61c.
@@ -324,7 +324,7 @@ public static unsafe partial class Blaze
                 level = 0x80;
 
                 primCursor = Ui.RunTextEngine(primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_005443a0
-                primCursor = DrawUiPanel(otEntry, primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_00545340
+                primCursor = UiWin.DrawUiPanel(otEntry, primCursor, s_MenuContext_0056dd58);  // Ghidra: FUN_00545340
 
                 int gammaBefore = Mem.s_Unknown_005d9de0;
 

@@ -233,7 +233,7 @@ internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui)
     /// </summary>
     internal uint* DrawTextRun(uint* otEntry, uint* prim, int* cursor, byte* text, uint flags, uint extra, int maxChars)
     {
-        EmitViewportRect(otEntry, &prim);
+        UiWin.EmitViewportRect(otEntry, &prim);
 
         uint* atlas = (uint*)*cursor;
         uint packing = *atlas;
@@ -277,7 +277,7 @@ internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui)
         }
 
         prim = DrawFlatPrimitive(otEntry, prim, (int*)(frame + 2));
-        EmitClipRect(otEntry, &prim);
+        UiWin.EmitClipRect(otEntry, &prim);
 
         return prim;
     }

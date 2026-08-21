@@ -8,37 +8,57 @@ Point d'entrée entre deux sessions. Mis à jour le **2026-08-21**. L'historique
 **État git au 2026-08-21.** Commité jusqu'à `2d5bb36` (« Refacto Audio.cs ») : les six premières
 vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baseline.txt` /
 `bodies-baseline.txt`.
-**Non commité** : les conversions de `Resources.cs` et de `Model3d.cs`, le rapatriement `.data` du son
-vers `GameMemory`, et cette mise à jour de documentation — 13 fichiers.
+**Non commité** : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
+terminée —, le rapatriement `.data` du son vers `GameMemory`, et cette mise à jour de documentation.
 
 Les deux fichiers de référence de `OpenForesia.Tools/` sont l'oracle — les perdre le perdrait.
 Ils sont désormais dans l'historique, donc récupérables ; ce n'était pas le cas le 2026-08-19.
 
 ---
 
-# Priorité 1 — `Engine/` en vraies classes · **8 fichiers sur 9**
+# Priorité 1 — `Engine/` en vraies classes · **ÉTAPE C TERMINÉE, 9 sur 9**
 
-## Reprendre ici
+Les neuf fichiers d'`Engine/` sont des classes d'instance. `UiWindow`, le dernier, est converti le
+2026-08-21. La recette et les pièges qu'elle a coûtés sont conservés plus bas — ils resservent à
+l'étape D.
 
-Il ne reste que **`Engine/UiWindow.cs`** (368 l.), le plus petit fichier d'`Engine/` et le dernier
-de l'étape C. Il ne possède **aucune** globale : sa conversion n'est pas un déménagement d'état
-mais une mise au net de ce qu'il lit. Mesuré le 2026-08-21 avec le script **corrigé** (voir plus
-bas), détail des emprunts déjà relevé :
+## Reprendre ici — retirer les points d'entrée de `Subsystems.cs`
 
-| symbole | usages hors commentaire | vit dans |
-|---|---:|---|
-| `s_SlotArea_005e9180`, `s_PlayerSlots_005e9188`, `s_SlotFlags_005e93c0`, `s_InputStateBase_00604a20` | 8 | `Engine/Input.cs` — **déjà une classe**, atteignable par `Inp.` |
-| `s_DeviceCapFlag_00564a48`, `s_MainResourceBuffer_005e97c0`, `s_PanelSelection_005e9060`, `s_SizeSetting_005de160`, `s_Unknown_005de538` | 12 | `Memory/GameMemory.cs` — rien à faire, `mem.` |
-| `s_Unknown_005de154`, `s_Unknown_005de158`, `s_Unknown_005de15c` | 4 | `Screens/State00/MainMenu.cs` |
-| `s_SmallTextureFlag` | 1 | `Screens/State00/Options.cs` — échafaudage, déjà `internal` |
-| `s_FadeCounter_005e9960`, `s_StateBank2_005e9060` | **0** | cités en commentaire seulement |
+C'est la **suite directe et bornée** de l'étape C, et sa condition de retrait est écrite depuis le
+premier jour dans l'en-tête de `Subsystems.cs` :
 
-**À regarder avant d'écrire** : `s_Unknown_005de154/158/15c` sont trois dwords adjacents dans
-`MainMenu.cs`, et `s_SizeSetting_005de160` — qui les suit **immédiatement** — est déjà dans
-`GameMemory`. Un bloc de `.data` coupé en deux fichiers, donc, exactement la forme du défaut
-d'aliasing. Vérifier la carte des symboles avant de décider s'ils déménagent ensemble.
+> Ils disparaissent au fur et à mesure : quand un sous-système appelant devient lui-même une classe
+> d'instance, il reçoit ses dépendances par constructeur et cesse de passer par ici. Le jour où le
+> dernier lecteur disparaît, ce fichier avec.
 
-## Trois avertissements payés comptant
+**C'est désormais vrai de tous les appelants.** Une qualification croisée écrite *à l'intérieur*
+d'une classe convertie (`Aud.PlaySoundEffect(...)` dans `UiWindow`, `Inp.s_SlotArea…` dans
+`Resources`, `Ui.DecodeSlot(...)`, `UiWin.EmitClipRect(...)` dans `Primitives2d`) peut devenir un
+paramètre de constructeur. `Primitives2d(GameMemory, UiText)` est le précédent : sa dépendance au
+moteur de texte est déjà dans sa signature.
+
+**Ce qui reste par un point d'entrée après ça** : les qualifications écrites depuis `Screens/` et
+`Platform/`, qui sont encore des fichiers de `partial class Blaze` et n'ont pas de constructeur.
+Elles disparaîtront à l'étape D, pas avant — donc `Subsystems.cs` ne disparaît pas encore, il
+maigrit.
+
+**Mesurer d'abord** : compter les qualifications croisées *entre classes converties*, par paire, et
+**vérifier l'absence de cycle** avant de choisir les signatures. La vérification de cycle faite pour
+`UiWindow` ↔ `Primitives2d` est le modèle :
+
+```bash
+cd OpenForesia/src/Blaze
+# les membres de B, cherches dans A : si A appelle B et B appelle A, pas d'injection possible
+for m in $(grep -oE "^    (private|internal)[^(=]*\b([A-Za-z0-9_]+)\(" Engine/B.cs \
+           | sed -E 's/.*[^A-Za-z0-9_]([A-Za-z0-9_]+)\($/\1/' | sort -u); do
+  grep -qE "\b$m\s*\(" Engine/A.cs && echo "  CYCLE: $m"
+done
+```
+
+**Ne pas commencer par le plus gros.** Une paire à la fois, avec build + oracle + tests + playtest,
+comme les neuf conversions — c'est ce rythme qui a tenu neuf fois de suite.
+
+## Quatre avertissements payés comptant
 
 **Vérifier sa propre note avant de planifier dessus.** Ce fichier annonçait que `Resources.cs`
 « porte `ToAnsiZ` » et que sa conversion demanderait de décider où vit cette aide. C'était faux :
@@ -63,6 +83,23 @@ ceux-ci seront convertis », alors que 17 des 18 étaient les registres GTE de `
 réalité le **plus fermé** des deux restants. Script corrigé ci-dessous ; la leçon générale est de
 se méfier d'un seau fourre-tout dans un `case`, parce qu'il ne se signale jamais.
 
+**Une référence datée ne vaut pas contrôle.** Le 2026-08-21, la conversion d'`UiWindow` a rendu
+**5/16 puis 6/16** au taux de course, contre les 22–25 % documentés : alarme franche sur la mesure
+même qui avait attrapé la régression du 19. Il n'y avait **aucune** régression — 32 essais plus
+tard, le même code rendait **1/32 = 3 %**, contre un contrôle de l'arbre d'avant à **5/32 = 16 %**
+mesuré juste à côté.
+
+Le taux **dérive au fil d'une session**, même machine au repos. Le seul contrôle valable est
+`git stash` + build + 32 essais, **adjacent dans le temps**. Procédure écrite dans
+`test-protocol.md`. Et raisonner sur le mécanisme d'abord : une conversion qui rend des champs
+paresseux ne peut que *réduire* le travail placé devant la course — quand la mesure dit l'inverse
+de ce que le code impose, suspecter la mesure, mais la refaire plutôt que l'ignorer.
+
+**Trois défauts d'outillage en une journée, et aucun ne produisait d'erreur** : le seau fourre-tout
+du script de clôture, l'angle mort des tests de disposition (voir priorité 1 bis), et le filtre
+« hors commentaire » qui prenait `*(uint*)…` pour une continuation de bloc. Chacun rendait un
+chiffre plausible ou un test vert. **C'est la forme normale d'une panne d'outil dans ce dépôt.**
+
 ## Mesurer la clôture — la version corrigée du script
 
 Refaire la mesure avant de partir : elle a changé à chaque conversion. **Utiliser cette version-ci**,
@@ -70,7 +107,7 @@ celle du 2026-08-21 avec les branches `Platform/` et `Engine/` séparées.
 
 ```bash
 cd OpenForesia/src/Blaze
-for f in Engine/UiWindow.cs; do
+for f in Screens/State03/WorldMap.cs; do   # etape D : remplacer par le fichier vise
   gm=0; ic=0; en=0; pf=0; sc=0
   for s in $(grep -oE "\bs_[A-Za-z0-9_]+" $f | sort -u); do
     if grep -qE "^    (private|internal).*\b$s\b" $f; then ic=$((ic+1)); continue; fi
@@ -87,21 +124,40 @@ for f in Engine/UiWindow.cs; do
 done
 ```
 
-**Et le compte agrégé ment sur un point** : il inclut les symboles cités **en commentaire**. Deux
-des « 5 emprunts à `Screens/` » de `UiWindow` sont dans ce cas. Lister le détail avant de conclure
-(boucle identique, en imprimant `$s` et sa source au lieu de compter).
+**Et le compte agrégé ment sur un point** : il inclut les symboles cités **en commentaire**. Lister
+le détail avant de conclure (boucle identique, en imprimant `$s` et sa source au lieu de compter).
 
-**La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si — encore
-faut-il la mesurer juste.** État au 2026-08-21 au soir, après `Audio`, `Resources` et `Model3d` :
+**Pour distinguer code et commentaire, ne pas filtrer sur `*` en début de ligne.** Le réflexe est
+d'écrire `grep -vE "^[0-9]+:\s*(//|///|\*)"` pour retirer les lignes de commentaire, `*` visant les
+continuations de bloc `/** … */`. Dans ce dépôt c'est **faux** : une ligne de code qui commence par
+un déréférencement — `*(uint*)(atlas + …)` — est alors comptée comme un commentaire. Ça a fait
+déclarer `s_FadeCounter_005e9960` « cité en commentaire seulement » alors qu'il est lu par
+`DrawUiPanel` ; le compilateur l'a rattrapé, pas la mesure. Filtrer ainsi :
 
-| fichier | lignes | `GameMemory` | à lui | `Engine/` | `Platform/` | `Screens/` |
-|---|---:|---:|---:|---:|---:|---:|
-| ~~`Audio.cs`~~ | ~~1 253~~ | — | — | — | — | **fait** |
-| ~~`Resources.cs`~~ | ~~1 110~~ | — | — | — | — | **fait** |
-| ~~`Model3d.cs`~~ | ~~583~~ | — | — | — | — | **fait** |
-| `UiWindow.cs` | 368 | 6 | **0** | 4 | 0 | 4 (dont 2 en commentaire) |
+```bash
+grep -vE "^[0-9]+:\s*(//|///)" | grep -vE "^[0-9]+:\s*\*\s"
+```
 
-## La recette, éprouvée huit fois
+`* ` **suivi d'une espace** est une continuation de commentaire ; `*(` est un déréférencement.
+Dans du code à pointeurs, la nuance n'est pas cosmétique.
+
+**La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si — encore faut-il
+la mesurer juste.** Les neuf fichiers d'`Engine/` sont convertis ; le script reste ici parce qu'il
+sert tel quel à l'étape D, sur les douze fichiers de `Screens/`.
+
+| classe | point d'entrée | membres | statiques | champs |
+|---|---|---:|---:|---:|
+| `UiText` | `Ui` | 55 | 0 | — |
+| `Primitives2d` | `Prims` | 5 | 0 | — |
+| `SaveData` | `Saves` | 33 | **8** (rappels natifs) | — |
+| `Video` | `Vid` | 59 | 2 | — |
+| `Input` | `Inp` | 61 | 1 | — |
+| `Audio` | `Aud` | 76 | 1 (par **portée**) | — |
+| `Resources` | `Res` | 67 | 0 | — |
+| `Model3d` | `Mdl` | 7 | 0 | **0** |
+| `UiWindow` | `UiWin` | 5 | 0 | **0** |
+
+## La recette, éprouvée neuf fois — elle resservira à l'étape D
 
 1. **Mesurer** : membres, `[UnmanagedCallersOnly]`, `delegate*`, et d'où vient chaque `s_*` lu.
 2. **Trancher les globales empruntées.** La règle porte sur l'**ancre `// Ghidra:`**, pas sur le
@@ -146,7 +202,7 @@ grep -rn --include=*.cs -iE "\bnomcandidat\b" OpenForesia/src | wc -l
 ```
 
 Les occurrences **en commentaire** sont sans risque : l'oracle retire les commentaires avant de
-normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`, `Aud`, `Res`, `Mdl`.
+normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`, `Aud`, `Res`, `Mdl`, `UiWin`.
 
 **Et ne jamais donner au point d'entrée le nom de son propre type.** `Audio` était disponible et
 lisible ; il a été écarté au profit de `Aud` parce qu'une propriété homonyme de son type déclenche
@@ -218,7 +274,7 @@ build et le débit — ce dernier était vert pendant toute la régression. La b
 taux, huit essais ne distinguent pas 25 % de 40 %, et un build concurrent fausse le résultat
 (mesuré 44 % sous charge, 12 % au repos sur le même binaire).
 
-## Ce que l'étape C laissera ouvert
+## Ce que l'étape C laisse ouvert
 
 * **L'étape D** — `Screens/` en 12 classes (~13 800 l.), à ne commencer que quand les écrans
   cesseront de bouger. `Screens/State03/WorldMap.cs` est le front de la priorité 2.
@@ -230,7 +286,7 @@ taux, huit essais ne distinguent pas 25 % de 40 %, et un build concurrent fausse
   voir la priorité 1 bis. Les corriger change le comportement → changement séparé. `0x00566c70`
   doit être traité **avant** la reprise de la carte du monde, et `0x005e8520` va avec le
   renommage qui refige la référence de l'oracle.
-* **Six globales `.data` traversent encore la frontière d'une classe convertie** sans passer par
+* **Huit globales `.data` traversent encore la frontière d'une classe convertie** sans passer par
   `GameMemory`, exposées `internal` chez leur propriétaire :
 
   | symbole | vit dans | lue par |
@@ -241,6 +297,8 @@ taux, huit essais ne distinguent pas 25 % de 40 %, et un build concurrent fausse
   | `s_Unknown_005e9818` | `MainMenu.cs` | `Model3d` |
   | `s_Unknown_005de52c` | `Destination.cs` | `Resources` |
   | `s_Unknown_005e92b0` | `DebugParty.cs` | `Resources` |
+  | `s_Unknown_005de154/158/15c` | `MainMenu.cs` | `UiWindow` |
+  | `s_FadeCounter_005e9960` | `MainMenu.cs` | `UiWindow` |
 
   `s_MenuRenderBlock_00566c70` est **bloquée** par le défaut d'aliasing de la même adresse ; les
   cinq autres relèvent de l'étape A ordinaire, à rapatrier en un seul geste vérifié plutôt qu'en

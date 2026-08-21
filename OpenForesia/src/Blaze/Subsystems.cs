@@ -171,4 +171,24 @@ public static unsafe partial class Blaze
     /// </summary>
     private static Model3d? s_mdl;
     internal static Model3d Mdl => s_mdl ??= new Model3d(Mem);
+    /// <summary>
+    /// Les cadres de l'interface. **Neuvieme et derniere classe de l'etape C** : a partir d'ici,
+    /// tout `Engine/` est en classes d'instance.
+    ///
+    /// <para>
+    /// Point d'entree <c>UiWin</c> — <c>Panel</c> a ete ecarte apres mesure (<c>panel</c> est un
+    /// local dans 58 lignes), et <c>Win</c> / <c>Wnd</c> rejetes malgre leurs zero occurrence :
+    /// ils se lisent comme du Win32 dans un depot qui en fait beaucoup.
+    /// </para>
+    /// <para>
+    /// <b>Ce fichier a maintenant sa condition de retrait a portee.</b> Son en-tete dit que ces
+    /// points d'entree disparaissent « quand un sous-systeme appelant devient lui-meme une classe
+    /// d'instance ». C'est desormais vrai de TOUS : les qualifications croisees entre classes
+    /// (<c>Prims.</c> dans <see cref="UiWindow"/>, <c>Aud.</c>, <c>Inp.</c>, …) peuvent devenir des
+    /// parametres de constructeur. Ce n'est PAS fait ici : ce serait une neuvieme conversion
+    /// deguisee en dixieme, et elle merite d'etre mesuree et verifiee pour elle-meme.
+    /// </para>
+    /// </summary>
+    private static UiWindow? s_uiWin;
+    internal static UiWindow UiWin => s_uiWin ??= new UiWindow(Mem);
 }

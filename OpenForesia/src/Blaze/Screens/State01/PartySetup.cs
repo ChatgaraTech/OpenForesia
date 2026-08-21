@@ -408,7 +408,7 @@ public static unsafe partial class Blaze
                 byte* row = s_PartyRowText_005e8640 + offset;
                 bool chosen = s_PartySelectionOrder_005e85c0[i] != 0;
 
-                EmitViewportRect(otBase, &primCursor);          // Ghidra: FUN_0051be20
+                UiWin.EmitViewportRect(otBase, &primCursor);          // Ghidra: FUN_0051be20
 
                 // La fenêtre de texture de la ligne : l'index parcourt une grille de 16 colonnes,
                 // et les deux octets de tête de l'enregistrement de texture la déplacent.
@@ -429,7 +429,7 @@ public static unsafe partial class Blaze
 
                 primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, chosen ? 0u : 3u, 0);
                 primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
-                EmitClipRect(otBase, &primCursor);              // Ghidra: FUN_0051bdb0
+                UiWin.EmitClipRect(otBase, &primCursor);              // Ghidra: FUN_0051bdb0
 
                 // Le texte de la ligne, décalé de 0x1e à droite et de 4 vers le bas. La teinte
                 // Ghidra `&LAB_00404040 + (-(sel != 0) & 0xbfbfc0)` vaut 0x404040 (gris éteint)
@@ -442,7 +442,7 @@ public static unsafe partial class Blaze
 
                 if (cursorRow == i)
                 {
-                    EmitViewportRect(otBase, &primCursor);
+                    UiWin.EmitViewportRect(otBase, &primCursor);
                     *(uint**)d = **(uint***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
                     *(short*)(d + 0xa) -= 2;
                     *(short*)(d + 0x10) = 0x18;
@@ -450,7 +450,7 @@ public static unsafe partial class Blaze
                     *(short*)(d + 8) = 0x34;
                     primCursor = Prims.DrawSpriteVariant(otBase, primCursor, draw, 0, 0);
                     primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, draw);
-                    EmitClipRect(otBase, &primCursor);
+                    UiWin.EmitClipRect(otBase, &primCursor);
                 }
             }
 
@@ -459,7 +459,7 @@ public static unsafe partial class Blaze
             {
                 byte* panel = Mem.s_LoadScreenDescriptors_0056b558 + i * GameMemory.UiDescriptorStride;
                 primCursor = Ui.RunTextEngine(primCursor, panel);            // Ghidra: FUN_005443a0
-                primCursor = DrawUiPanel(otBase, primCursor, panel);      // Ghidra: FUN_00545340
+                primCursor = UiWin.DrawUiPanel(otBase, primCursor, panel);      // Ghidra: FUN_00545340
             }
 
             // Le fond, comme partout ailleurs : la première entrée de la table +0x94.

@@ -666,3 +666,37 @@ Contre-exemple chiffré, le 2026-08-19, **sur le même binaire** :
 
 La première mesure a fait croire à une régression et a coûté une enquête. Fermer les builds, tests
 et autres lancements avant de mesurer.
+
+### Et « au repos » ne suffit pas : le taux DÉRIVE au fil d'une session (2026-08-21)
+
+Le 2026-08-21, à la conversion d'`UiWindow`, sur **le même arbre** et machine au repos à chaque
+fois :
+
+```
+  16 essais, en milieu de session   →   5 perdues = 31 %
+  16 essais, juste après            →   6 perdues = 37 %     ← « régression ! »
+  32 essais, en fin de session      →   1 perdue  =  3 %     ← même code, même machine
+```
+
+Les deux premiers lots ont fait croire à une régression franche contre les 22–25 % documentés.
+**Il n'y en avait aucune** : la troisième mesure, prise plus tard, rend 3 %.
+
+**La référence documentée est datée, donc elle ne vaut pas contrôle.** Comparer un taux d'aujourd'hui
+à un chiffre écrit un autre jour, c'est comparer deux états de machine différents.
+
+**Le contrôle, c'est l'arbre d'avant mesuré JUSTE À CÔTÉ.** La séquence qui tranche :
+
+```powershell
+# 1. arbre modifie, 32 essais
+# 2. git stash -q ; dotnet build ; 32 essais        <- le controle, adjacent dans le temps
+# 3. git stash pop -q ; dotnet build ; 32 essais    <- confirmation
+```
+
+Ce jour-là : contrôle **5/32 = 16 %**, arbre modifié mesuré juste après **1/32 = 3 %**. Le sens
+était même inverse de l'alarme, et cohérent avec le raisonnement : la conversion déplaçait des
+allocations *hors* du chemin pré-course.
+
+**Corollaire à ne pas oublier : raisonner sur le mécanisme avant de lancer une enquête.** Une
+conversion qui rend des champs paresseux ne peut que *réduire* le travail placé devant la course.
+Quand la mesure dit le contraire de ce que le code impose, suspecter la mesure d'abord — mais la
+refaire, pas l'ignorer.

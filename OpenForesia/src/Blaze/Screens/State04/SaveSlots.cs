@@ -707,7 +707,7 @@ public static unsafe partial class Blaze
 
     private static uint* EmitCardGlyphTile(uint* otEntry, uint* prim, int* sprite, uint value, uint mode, uint extra)
     {
-        EmitViewportRect(otEntry, &prim);   // Ghidra: FUN_0051be20(param_1, &param_2)
+        UiWin.EmitViewportRect(otEntry, &prim);   // Ghidra: FUN_0051be20(param_1, &param_2)
 
         uint packedPos = (uint)sprite[2];        // Ghidra: local_20 = param_3[2]
         uint yPart = packedPos & 0xffff0000;
@@ -765,7 +765,7 @@ public static unsafe partial class Blaze
 
         *(short*)(sprite + 4) = 0;               // Ghidra: *(undefined2*)(param_3 + 4) = 0
         prim = Prims.DrawFlatPrimitive(otEntry, prim, sprite);   // Ghidra: FUN_0051f9c0
-        EmitClipRect(otEntry, &prim);                       // Ghidra: FUN_0051bdb0
+        UiWin.EmitClipRect(otEntry, &prim);                       // Ghidra: FUN_0051bdb0
         return prim;
     }
 
@@ -810,7 +810,7 @@ public static unsafe partial class Blaze
             primCursor = EmitCardGlyphTile(otBase, primCursor, (int*)box, entryValue, 0x82, 0);
         }
 
-        EmitViewportRect(otBase, &primCursor);
+        UiWin.EmitViewportRect(otBase, &primCursor);
 
         byte* label = stackalloc byte[20];
         NativeMemory.Clear(label, 20);
@@ -835,8 +835,8 @@ public static unsafe partial class Blaze
         *(short*)(label + 0x10) = 0;
         *(short*)(label + 8) = 0xbd;
         *(short*)(label + 0xa) = 0x48;
-        EmitClipRect(otBase, &primCursor);
-        primCursor = DrawUiPanel(otBase, primCursor, s_SelectSlots_00573518);
+        UiWin.EmitClipRect(otBase, &primCursor);
+        primCursor = UiWin.DrawUiPanel(otBase, primCursor, s_SelectSlots_00573518);
 
         byte* panel = s_SelectSlots_00573518 + CharacterSelectSlotStride;
         BindMenuLabels(LabelAt(0x158), 0, panel, 0);
@@ -870,7 +870,7 @@ public static unsafe partial class Blaze
         short y = (short)(*(short*)(panel + 6) + 0x52);
         for (uint i = 0; i < 2; i++)
         {
-            EmitViewportRect(otBase, &primCursor);
+            UiWin.EmitViewportRect(otBase, &primCursor);
             *(short*)(glyph + 0x10) = (short)(i + 0xb);
             *(uint*)glyph = *(uint*)(atlas94 + 0x30);
             short x = (short)(((i & 1) != 0 ? 0x38 : 0) + 0x12 + panelX);
@@ -878,7 +878,7 @@ public static unsafe partial class Blaze
             *(short*)(glyph + 0xa) = y;
             primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)glyph, 0, 0);
             primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)glyph);
-            EmitClipRect(otBase, &primCursor);
+            UiWin.EmitClipRect(otBase, &primCursor);
 
             *(short*)(glyph + 8) = (short)(x + 0x1c);
             *(uint*)glyph = (uint)(nuint)s_NumeralTileRecord_00566c30;
@@ -890,7 +890,7 @@ public static unsafe partial class Blaze
         y = (short)(*(short*)(panel + 6) + 0x60);
         for (uint i = 0; i < 7; i++)
         {
-            EmitViewportRect(otBase, &primCursor);
+            UiWin.EmitViewportRect(otBase, &primCursor);
             *(short*)(glyph + 0x10) = (short)(i + 4);
             *(uint*)glyph = *(uint*)(atlas94 + 0x30);
             short x = (short)(((i & 1) != 0 ? 0x38 : 0) + 0x12 + panelX);
@@ -898,7 +898,7 @@ public static unsafe partial class Blaze
             *(short*)(glyph + 0xa) = y;
             primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)glyph, 0, 0);
             primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)glyph);
-            EmitClipRect(otBase, &primCursor);
+            UiWin.EmitClipRect(otBase, &primCursor);
 
             *(short*)(glyph + 8) = (short)(x + 0x1c);
             *(uint*)glyph = (uint)(nuint)s_NumeralTileRecord_00566c30;
@@ -908,7 +908,7 @@ public static unsafe partial class Blaze
             y += (short)((i & 1) != 0 ? 9 : 0);
         }
 
-        return DrawUiPanel(otBase, primCursor, panel);
+        return UiWin.DrawUiPanel(otBase, primCursor, panel);
     }
 
     // Ghidra: &DAT_00572e58 — huit enregistrements de 0x9c octets, du même type que l'entité de
@@ -1356,10 +1356,10 @@ public static unsafe partial class Blaze
         *(short*)(sprite + 0x0a) = (short)(*(short*)(box + 0x06) + state[5] * 16 + 0x0a);
         *(short*)(sprite + 0x10) = 0x18;
 
-        EmitViewportRect(otBase, &primCursor);
+        UiWin.EmitViewportRect(otBase, &primCursor);
         primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)sprite, 0, 0);
         primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)sprite);
-        EmitClipRect(otBase, &primCursor);
+        UiWin.EmitClipRect(otBase, &primCursor);
 
         BindMenuLabels(Mem.s_Unknown_005606f8, 0, box, 0);
         primCursor = Ui.RunTextEngine(primCursor, box);
@@ -1371,7 +1371,7 @@ public static unsafe partial class Blaze
                 0, box, 0);
             primCursor = Ui.RunTextEngine(primCursor, box);
         }
-        primCursor = DrawUiPanel(otBase, primCursor, box);
+        primCursor = UiWin.DrawUiPanel(otBase, primCursor, box);
 
         if (state[2] != 0x2e)
         {
@@ -1379,7 +1379,7 @@ public static unsafe partial class Blaze
                 *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x18c),
                 (uint)(nuint)Mem.s_SceneEntity_00572b48, panel, 0);
             primCursor = Ui.RunTextEngine(primCursor, panel);
-            primCursor = DrawUiPanel(otBase, primCursor, panel);
+            primCursor = UiWin.DrawUiPanel(otBase, primCursor, panel);
         }
 
         return primCursor;
@@ -1606,10 +1606,10 @@ public static unsafe partial class Blaze
         *(short*)(cursor + 0x0a) = (short)(*(short*)(grid + 0x06) + (state[5] + 1) * 12);
         *(short*)(cursor + 0x10) = 0x18;
 
-        EmitViewportRect(otBase, &primCursor);
+        UiWin.EmitViewportRect(otBase, &primCursor);
         primCursor = Prims.DrawSpriteVariant(otBase, primCursor, (int*)cursor, 0, 0);
         primCursor = Prims.DrawFlatPrimitive(otBase, primCursor, (int*)cursor);
-        EmitClipRect(otBase, &primCursor);
+        UiWin.EmitClipRect(otBase, &primCursor);
 
         // Les huit lignes du clavier virtuel. La table de largeurs passe en **fixe** le temps de
         // la grille — c'est ce qui aligne les colonnes — et revient au proportionnel après.
@@ -1625,7 +1625,7 @@ public static unsafe partial class Blaze
                 0, grid, 0);
             primCursor = Ui.RunTextEngine(primCursor, grid);
         }
-        primCursor = DrawUiPanel(otBase, primCursor, grid);
+        primCursor = UiWin.DrawUiPanel(otBase, primCursor, grid);
         Ui.UseProportionalGlyphWidths();      // Ghidra: FUN_00507890
 
         return primCursor;

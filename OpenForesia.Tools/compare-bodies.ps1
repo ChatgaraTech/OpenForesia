@@ -62,19 +62,22 @@ param(
     # N'y ajouter un nom QUE s'il designe une dependance injectee ou un point d'entree de
     # sous-systeme. Y ajouter un nom pour faire taire un signalement genant vide l'outil de sa
     # valeur - c'est la pente classique des fichiers de suppression.
-    # `aud`, `res` et `mdl` (ajoutes le 2026-08-21 pour les conversions du son, des ressources et
-    # du rendu de modele) : verifies AVANT de les inscrire, comme la note de TODO.md l'exige -
-    # `grep -rn --include=*.cs -iE "\b(aud|res|mdl)\b" OpenForesia/src` rend zero occurrence hors
-    # commentaire pour les trois. Ils ne peuvent donc masquer aucune ligne de logique existante.
+    # `aud`, `res`, `mdl` et `uiWin` (ajoutes le 2026-08-21 pour les quatre dernieres conversions
+    # de l'etape C) : verifies AVANT de les inscrire, comme la note de TODO.md l'exige -
+    # `grep -rn --include=*.cs -iE "\b(aud|res|mdl|uiwin)\b" OpenForesia/src` rend zero occurrence
+    # hors commentaire pour les quatre. Aucun ne peut masquer une ligne de logique existante.
     #
-    # `res` meritait la verification plus que tout autre : c'est un nom de local extremement
-    # courant en general, il se trouve qu'il est inutilise ICI. Et `mdl` a ete choisi PARCE QUE
-    # `model` ne passait pas : ce dernier est un parametre vivant dans dix lignes de
-    # Engine/Model3d.cs, l'inscrire aurait rendu l'oracle aveugle a ces lignes.
+    # DEUX de ces quatre noms ont ete choisis PARCE QUE le nom evident echouait a la mesure :
+    #   - `mdl` plutot que `model` : `model` est un parametre vivant dans dix lignes de
+    #     Engine/Model3d.cs, l'inscrire aurait rendu l'oracle aveugle a ces lignes ;
+    #   - `uiWin` plutot que `panel` : `panel` est un local dans 58 lignes.
+    # `res` etait le plus surprenant : nom de local extremement courant en general, il se trouve
+    # qu'il est inutilise ICI. Trois cas sur quatre ou la mesure a change la decision - d'ou
+    # l'insistance de TODO.md a la refaire plutot qu'a supposer.
     [string[]] $Injected = @('mem','memory','gameMemory','gfx','win32','winsys3d','wsyskern',
-                             'ui','uiText','uiWindow','inp','aud','audio','input','res','resources',
-                             'video','mdl','model3d','primitives2d','prims','vid','saveData','saves',
-                             'host','display')
+                             'ui','uiText','uiWindow','uiWin','inp','aud','audio','input',
+                             'res','resources','video','mdl','model3d','primitives2d','prims',
+                             'vid','saveData','saves','host','display')
 )
 
 $ErrorActionPreference = 'Stop'

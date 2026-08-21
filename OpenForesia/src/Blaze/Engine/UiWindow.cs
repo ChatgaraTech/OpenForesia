@@ -1,7 +1,7 @@
 // OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
-// Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
+// La carte des repertoires et la regle
 // qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
 // reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
 
@@ -10,9 +10,43 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// `Blaze` porte encore ce que cette classe lit : le drapeau de petite texture de la page
+// d'options, et les trois dwords de MainMenu.cs decrits plus bas.
+using static OpenForesia.Blaze.Blaze;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+/// <summary>
+/// Les cadres de l'interface : rectangles de decoupe et de vue, sprites de coin et de bord, et le
+/// panneau complet que tous les ecrans dessinent (Ghidra: 0x00545).
+///
+/// <para>
+/// <b>Dernier fichier de l'etape C</b>, et le seul choisi par elimination plutot que par cloture.
+/// Comme <see cref="Model3d"/>, il ne possede AUCUNE globale : cinq methodes, zero champ. Sa
+/// conversion ne deplace pas d'etat, elle rend visible ce qu'il lit ailleurs.
+/// </para>
+/// <para>
+/// <b>TODO(REVERSE) — recouvrement d'arene, latent, releve le 2026-08-21, NON corrige.</b>
+/// Les trois dwords <c>s_Unknown_005de154</c> / <c>_158</c> / <c>_15c</c> que cette classe lit
+/// vivent dans <c>Screens/State00/MainMenu.cs</c> en champs separes, alors que leurs adresses
+/// tombent A L'INTERIEUR de <c>GameMemory.s_ItemMenuArena_005de100</c> — 0x460 octets, donc
+/// jusqu'a <c>0x005de560</c>. Idem pour <c>s_CheatIndex_005de164</c> (<c>UiText.cs</c>) et
+/// <c>s_Unknown_005de168</c> (<c>Input.cs</c>).
+/// </para>
+/// <para>
+/// Verifie : <b>aucun site n'adresse l'arene entre 0x005de154 et 0x005de170</b>, donc le
+/// recouvrement ne se manifeste pas aujourd'hui — c'est un risque de structure, pas un defaut
+/// observable. Deux raisons de ne pas y toucher ici : le corriger changerait le comportement, et
+/// l'etendue reelle de l'arene est elle-meme douteuse (son commentaire annonce 0x420 octets, son
+/// allocation en fait 0x460, et ces 0x40 d'ecart sont exactement ce qui rend vrai ou faux le
+/// signalement de <c>s_EntityList_005de558</c> par les tests). Trancher demande de retrouver
+/// l'etendue dans <c>Blaze.c</c> : c'est de la reconstruction, pas du refactor.
+/// </para>
+/// <para>
+/// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
+/// </para>
+/// </summary>
+internal sealed unsafe class UiWindow(GameMemory mem)
 {
     // =====================================================================
     // The UI window renderer (Ghidra: FUN_00545340 and its four primitive emitters)
@@ -27,12 +61,12 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_0051bdb0 @ 0x0051bdb0 â€” links a screen-space clip rectangle, chosen by the
     /// small-texture flag and the detail level.
     /// </summary>
-    internal static void EmitClipRect(uint* otEntry, uint** prim)
+    internal void EmitClipRect(uint* otEntry, uint** prim)
     {
         if (s_Unknown_005de15c == 0) return;
 
         uint* p = *prim;
-        p[1] = (s_SmallTextureFlag == 0 && 7 < Mem.s_SizeSetting_005de160)
+        p[1] = (s_SmallTextureFlag == 0 && 7 < mem.s_SizeSetting_005de160)
             ? 0xfb00000b
             : 0xfb000001;
         p[2] = (uint)s_Unknown_005de154;
@@ -46,14 +80,14 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_0051be20 @ 0x0051be20 â€” links the panel's viewport rectangle, derived from the
     /// detail level the options page and the F11/F12 hotkeys set.
     /// </summary>
-    internal static void EmitViewportRect(uint* otEntry, uint** prim)
+    internal void EmitViewportRect(uint* otEntry, uint** prim)
     {
         if (s_Unknown_005de15c == 0) return;
 
         uint* p = *prim;
-        p[1] = (uint)(Mem.s_SizeSetting_005de160 - 0x5000000);
-        p[2] = (uint)(Mem.s_SizeSetting_005de160 * -0x10 + 0xb0);
-        p[3] = (uint)(Mem.s_SizeSetting_005de160 * -0x0c + 0x84);
+        p[1] = (uint)(mem.s_SizeSetting_005de160 - 0x5000000);
+        p[2] = (uint)(mem.s_SizeSetting_005de160 * -0x10 + 0xb0);
+        p[3] = (uint)(mem.s_SizeSetting_005de160 * -0x0c + 0x84);
         p[0] = *otEntry | 0x3000000;
         *otEntry = (uint)(nuint)p;
         *prim = p + 4;
@@ -62,7 +96,7 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: FUN_00545160 @ 0x00545160 â€” a six-word textured sprite (tag 0x05000000).
     /// </summary>
-    private static uint* EmitSprite(uint* otEntry, uint* prim, uint tpage, uint position,
+    private uint* EmitSprite(uint* otEntry, uint* prim, uint tpage, uint position,
                                     uint offset, uint clut, uint size)
     {
         prim[1] = (offset >> 0x10) & 0x60 | tpage & 0xffff | 0xe1000000;
@@ -80,14 +114,14 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00545220 @ 0x00545220 â€” an eight-word tinted sprite (tag 0x07000000), the
     /// frame edges. Its colour word is built by packing three 5-bit channels.
     /// </summary>
-    private static uint* EmitTintedSprite(uint* otEntry, uint* prim, uint tpage, uint position,
+    private uint* EmitTintedSprite(uint* otEntry, uint* prim, uint tpage, uint position,
                                           uint offset, uint clut, uint tint, uint size)
     {
         prim[1] = (offset >> 0x10) & 0x60 | tpage & 0xffff | 0xe1000000;
         prim[2] = ((((((tint >> 8) & 0xff) >> 3 | 0xffffc400) << 5 | (tint & 0xff) >> 3) << 5
                     | (uint)((byte)(-(sbyte)(tint >> 0x18)) >> 3)) << 5)
                   | (uint)((byte)(-(sbyte)(tint >> 0x10)) >> 3);
-        if (Mem.s_DeviceCapFlag_00564a48) clut &= 0xfdffffff;
+        if (mem.s_DeviceCapFlag_00564a48) clut &= 0xfdffffff;
         prim[3] = clut | 0x64000000;
         prim[4] = ((position >> 0x10) + ((offset >> 8) & 0xff)) * 0x10000
                   | (position + (offset & 0xff)) & 0xffff;
@@ -104,13 +138,13 @@ public static unsafe partial class Blaze
     // (voir s_StateBank2_005e9060) — c'est la même mémoire, comme dans l'original.
     // Declaration deplacee dans GameMemory le 2026-08-19 : 0x005e9060 tombe dans l'etendue de
     // GameArena, donc c'est une VUE d'arene et non un stockage propre. Les sites d'appel d'ici
-    // l'atteignent par Mem.s_PanelSelection_005e9060.
+    // l'atteignent par mem.s_PanelSelection_005e9060.
 
     /// <summary>
     /// Ghidra: FUN_00545340 @ 0x00545340 â€” draws one UI panel and returns the advanced primitive
     /// cursor. 17 call sites across the game; this is the shared window layer, not menu-specific.
     /// </summary>
-    private static uint* DrawUiPanel(uint* otEntry, uint* prim, byte* descriptor)
+    internal uint* DrawUiPanel(uint* otEntry, uint* prim, byte* descriptor)
     {
         EmitViewportRect(otEntry, &prim);
 
@@ -133,7 +167,7 @@ public static unsafe partial class Blaze
         }
         else slot = 0;
 
-        if (!resolved) slot = Inp.s_SlotArea_005e9180[0x248 + (uint)Mem.s_Unknown_005de538 * 0x9c];
+        if (!resolved) slot = Inp.s_SlotArea_005e9180[0x248 + (uint)mem.s_Unknown_005de538 * 0x9c];
         // The original indexes four player slots with a stride of 0x9c/0x4c. `slot` comes from a
         // byte in .data, so a table this reconstruction has not populated yields 0..255 and walks
         // far past both arrays â€” and the value read then becomes a *write* offset below. This was
@@ -148,15 +182,15 @@ public static unsafe partial class Blaze
 
         if ((*(uint*)(Inp.s_SlotFlags_005e93c0 + slot * 0x9c) & 0x10000) != 0)
         {
-            slot = Inp.s_SlotArea_005e9180[0x248 + (uint)Mem.s_Unknown_005de538 * 0x9c];
+            slot = Inp.s_SlotArea_005e9180[0x248 + (uint)mem.s_Unknown_005de538 * 0x9c];
         }
 
         byte slotIndex1 = Inp.s_PlayerSlots_005e9188[slot * 0x4c + 1];
         // The original reaches this only once the resource directory is loaded. Guarding is not
         // padding: a null here faults natively inside the emitters below, several frames later,
         // with nothing naming the cause.
-        byte** atlasSlot = Mem.s_MainResourceBuffer_005e97c0 != null
-            ? *(byte***)(Mem.s_MainResourceBuffer_005e97c0 + 0x94)
+        byte** atlasSlot = mem.s_MainResourceBuffer_005e97c0 != null
+            ? *(byte***)(mem.s_MainResourceBuffer_005e97c0 + 0x94)
             : null;
         if (atlasSlot == null || *atlasSlot == null)
         {
@@ -234,11 +268,11 @@ public static unsafe partial class Blaze
                 descriptor[0x8c7] = (byte)(flags & 0xfb);
 
                 if ((flags & 0x40) != 0)
-                    Mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] >> 1);
+                    mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] >> 1);
                 if ((descriptor[0x8c7] & 0x80) != 0)
-                    Mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] / 3);
+                    mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] / 3);
                 if ((descriptor[0x8c7] & 0xc0) == 0)
-                    Mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = descriptor[0x8c4];
+                    mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = descriptor[0x8c4];
 
                 Aud.PlayUiSound38();
                 descriptor[0x8c7] &= 0x3f;
