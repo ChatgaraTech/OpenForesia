@@ -627,7 +627,7 @@ public static unsafe partial class Blaze
     /// CreateFileA(NormalizePath(path), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
     /// FILE_ATTRIBUTE_NORMAL, NULL).
     /// </summary>
-    private static IntPtr OpenExistingFileReadOnly(byte* path)
+    internal static IntPtr OpenExistingFileReadOnly(byte* path)
     {
         byte* normalized = NormalizePath(path);
         IntPtr handle = Win32.CreateFileA(normalized, 0x80000000 /* GENERIC_READ */, 1 /* FILE_SHARE_READ */, null, 3 /* OPEN_EXISTING */, 0x80 /* FILE_ATTRIBUTE_NORMAL */, IntPtr.Zero);

@@ -315,8 +315,46 @@ chaque fichier** — jamais deux conversions avant une vérification.
       A dégagé la **règle de tri des globales empruntées** : suffixe VA → `GameMemory` ; pas de
       suffixe → échafaudage, reste chez son propriétaire ; champ d'un blob non modélisé → ne bouge
       pas. `s_GammaIni` a suivi son alias `s_Unknown_005d9de0`, avec ses deux voisines de bloc.
-- [ ] 7.10 `Engine/Resources.cs` (1 110 l.) — porte `ToAnsiZ`, appelé par plusieurs classes déjà
-      converties ; sa conversion demandera de décider où vit cette aide.
+- [x] 7.10 `Engine/Resources.cs` → `Resources(GameMemory)`. 1 110 → 1 152 l., 67 membres,
+      **0 statique** — la première classe entièrement d'instance. Point d'entrée `Res`
+      (`res` vérifié à 0 occurrence hors commentaire, ce qui ne coulait pas de source pour un nom
+      de local aussi banal).
+      **La difficulté annoncée n'existait pas** : `ToAnsiZ` ne vit pas dans ce fichier mais dans
+      `Platform/Startup.cs:310`, déjà `internal static`. La note du TODO était fausse ; vérifier
+      avant de planifier, même sa propre note.
+      **Ce que la conversion a réparé sans le chercher** : les trois chaînes de tête
+      (`s_ArchiveFileName`, `s_SystemFileName`, `s_SoundArchiveTemplate`) étaient des champs
+      `static readonly` initialisés par `ToAnsiZ` — une méthode d'un **autre fichier**. C'est la
+      forme exacte du plantage de la tâche 7.4. Devenues champs d'instance construits au premier
+      accès à `Res`, la dépendance d'ordre entre fichiers disparaît au lieu d'être documentée.
+      Trois `Build*` sont **repassées `static`** : ce sont des initialiseurs de champ, et C# les
+      interdit d'appeler une méthode d'instance. Elles sont pures (allocation + littéraux), donc
+      c'est le bon correctif et non un contournement.
+      Vérifié : build 0 erreur, tableau d'avertissements identique avant/après (`git stash` +
+      reconstruction) ; oracle « aucune logique modifiée », 0 méthode absente ; tests 3 rouges
+      attendus ; playtest `-Entry 1` **382,3** et `-Entry 2` **387** primitives par image, les deux
+      captures relues ; **taux de course 4/16 = 25 %**, le taux de référence exactement.
+- [x] 7.12 **Solder la dette `.data` du son** (ouverte par 7.11, prévue ici). `s_BaseSoundBank`,
+      `s_LevelSoundBank` (`Platform/Startup.cs`) et `s_SoundDirectory` + la structure
+      `SoundDirectoryEntry` (`Engine/Resources.cs`) rejoignent `GameMemory`. Deux classes
+      converties se les partageaient, plus Startup et la carte du monde.
+      Les banques restent **allouées par `RunApplication`** : seul le champ qui les reçoit a
+      déménagé, l'allocation a lieu au même instant. La structure suit son tableau, sinon
+      `Memory/` dépendrait d'`Engine/`.
+      Re-vérifié entièrement : build, avertissements, oracle, tests, `-Entry 1` et `-Entry 2`,
+      **taux de course 1/16**.
+- [ ] 7.13 **Le défaut d'aliasing trouvé en chemin** — `s_SoundBankHeader_005e8520`
+      (`Screens/State03/WorldMap.cs`) est une allocation séparée alors que
+      `0x005e8520 == 0x005e8340 + 0x1e0` : c'est la **queue** de `s_SoundDirectory`. Confirmé
+      contre `Blaze.c` (74824 charge `&DAT_005e8340` sur 0x1e0, 63353 charge `&DAT_005e8520` sur
+      0x88 — un seul tableau de 77 entrées), pas déduit. Conséquence : les effets sonores de
+      niveau (ids `0x3c..0x4c`) lisent un décalage et une longueur nuls.
+      **Non corrigé ici** : la correction change le comportement. Elle va avec le renommage
+      `s_SoundDirectory` → `s_SoundDirectory_005e8340` (et les deux banques, adresses pinées dans
+      `Blaze.c` 61791-2), lui-même impossible sans refiger la référence de l'oracle — les deux
+      appartiennent au même changement.
+      **Les quatre tests de disposition étaient verts sur ce point** : ils ne voient que les
+      symboles dont le nom porte l'adresse. Angle mort écrit dans `OpenForesia.Tests/README.md`.
 - [x] 7.11 `Engine/Audio.cs` → `Audio(GameMemory)`. 1 253 l., 76 membres, **1 statique**.
       Choisi par clôture mesurée : 25 globales à lui, 3 empruntées hors `GameMemory`, **0 à
       `Screens/`** — le seul des quatre restants dans ce cas.

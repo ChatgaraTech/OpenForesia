@@ -715,7 +715,7 @@ public static unsafe partial class Blaze
         file.Lines.Clear();
 
         byte* fileName = ToAnsiZ(name);
-        byte* pathAnsi = BuildCdPath(fileName);
+        byte* pathAnsi = Res.BuildCdPath(fileName);
         // Le tampon fait 64 octets et n'est zÃ©ro que jusqu'au terminateur : couper au premier zÃ©ro,
         // pas Ã  la fin, sinon la queue non initialisÃ©e se retrouve dans le chemin.
         int length = 0;
@@ -1061,7 +1061,7 @@ public static unsafe partial class Blaze
     private static byte* LoadUiFile(string name, bool silent)
     {
         byte* fileName = ToAnsiZ(name);
-        byte* path = BuildCdPath(fileName);
+        byte* path = Res.BuildCdPath(fileName);
         byte* file = Wsyskern.LoadBitmapFile(path, silent ? 0u : 1u);
         Free(path);
         Free(fileName);
@@ -1071,7 +1071,7 @@ public static unsafe partial class Blaze
     private static void LoadUiArray(void* array, string name)
     {
         byte* fileName = ToAnsiZ(name);
-        byte* path = BuildCdPath(fileName);
+        byte* path = Res.BuildCdPath(fileName);
         // ECHAFAUDAGE : OPENFORESIA_OPTIONS_BADPATH=1 remplace le chemin par un fichier absent,
         // ce qui fait sortir le chargeur juste aprÃ¨s l'ouverture ratÃ©e. SÃ©pare Â« la faute est dans
         // l'ouverture Â» de Â« la faute est dans la lecture des lignes Â».

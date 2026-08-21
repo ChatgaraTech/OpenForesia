@@ -864,7 +864,7 @@ internal sealed unsafe class Video(GameMemory mem)
         // Ghidra: if (*(param_1+0xc) == 0) { ... } â€” load the title bitmap once, then cache it.
         if (player.TitleBitmapLoaded == 0)
         {
-            byte* path = BuildCdPath(s_TitleBitmapFileName);
+            byte* path = Res.BuildCdPath(s_TitleBitmapFileName);
             player.TitleBitmap = Wsyskern.LoadBitmapFile(path, 0 /* silent on failure â€” see wsyskern.md */);
             Free(path);
 

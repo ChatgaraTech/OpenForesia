@@ -144,4 +144,18 @@ public static unsafe partial class Blaze
     /// </summary>
     private static Audio? s_aud;
     internal static Audio Aud => s_aud ??= new Audio(Mem);
+    /// <summary>
+    /// Les ressources. Premiere classe SANS aucun membre statique - ni rappel natif, ni pointeur
+    /// de fonction, ni decision d'hote.
+    ///
+    /// <para>
+    /// La paresse referme ici un vrai piege plutot qu'elle n'evite du travail : les trois chaines
+    /// de tete de <c>Resources</c> etaient des champs <c>static readonly</c> initialises par
+    /// <c>ToAnsiZ</c>, qui vit dans <c>Platform/Startup.cs</c>. Une dependance d'initialisation
+    /// ENTRE FICHIERS, c'est-a-dire d'ordre non specifie - la forme exacte du plantage du
+    /// 2026-08-19. Construites au premier acces a <c>Res</c>, elles viennent forcement apres.
+    /// </para>
+    /// </summary>
+    private static Resources? s_res;
+    internal static Resources Res => s_res ??= new Resources(Mem);
 }

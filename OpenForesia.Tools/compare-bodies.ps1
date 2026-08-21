@@ -62,12 +62,16 @@ param(
     # N'y ajouter un nom QUE s'il designe une dependance injectee ou un point d'entree de
     # sous-systeme. Y ajouter un nom pour faire taire un signalement genant vide l'outil de sa
     # valeur - c'est la pente classique des fichiers de suppression.
-    # `aud` (ajoute le 2026-08-21 pour la conversion du son) : verifie AVANT de l'inscrire, comme
-    # la note de TODO.md l'exige - `grep -rn --include=*.cs -iE "\baud\b" OpenForesia/src` rend zero
-    # occurrence hors commentaire. Il ne peut donc masquer aucune ligne de logique existante.
+    # `aud` et `res` (ajoutes le 2026-08-21 pour les conversions du son et des ressources) :
+    # verifies AVANT de les inscrire, comme la note de TODO.md l'exige -
+    # `grep -rn --include=*.cs -iE "\b(aud|res)\b" OpenForesia/src` rend zero occurrence hors
+    # commentaire pour l'un comme pour l'autre. Ils ne peuvent donc masquer aucune ligne de logique
+    # existante. `res` meritait la verification plus que tout autre : c'est un nom de local
+    # extremement courant en general, il se trouve qu'il est inutilise ICI.
     [string[]] $Injected = @('mem','memory','gameMemory','gfx','win32','winsys3d','wsyskern',
-                             'ui','uiText','uiWindow','inp','aud','audio','input','resources','video',
-                             'model3d','primitives2d','prims','vid','saveData','saves','host','display')
+                             'ui','uiText','uiWindow','inp','aud','audio','input','res','resources',
+                             'video','model3d','primitives2d','prims','vid','saveData','saves',
+                             'host','display')
 )
 
 $ErrorActionPreference = 'Stop'

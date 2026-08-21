@@ -6520,3 +6520,107 @@ qu'un qui apparaît · oracle « aucune logique modifiée » sur 511 corps, 0 m�
 disposition inchangés (3 rouges attendus / 2 verts) · `-Entry 1` sans plantage à **382,3**
 primitives par image, capture relue : carrousel de portraits, modèle 3D et fenêtre de classe à
 l'écran · **taux de course 3/16 = 19 %**, machine au repos, sous la référence de 22–25 %.
+
+---
+
+## 2026-08-21 (suite) — `Resources`, et un défaut d'aliasing que les tests ne pouvaient pas voir
+
+`Engine/Resources.cs` → `Resources(GameMemory)`, 1 110 → 1 152 l., 67 membres, **0 statique**.
+C'est la première classe entièrement d'instance : aucun rappel natif, aucun pointeur de fonction,
+aucune décision d'hôte à préserver.
+
+### La difficulté annoncée n'existait pas
+
+`TODO.md` prévenait que ce fichier « porte `ToAnsiZ` », appelé par toutes les classes converties, et
+que sa conversion demanderait de décider où vit cette aide. **C'était faux** : `ToAnsiZ` est dans
+`Platform/Startup.cs:310`, déjà `internal static`, et n'a jamais été ailleurs. Trente secondes de
+`grep` ont annulé une difficulté qui figurait dans le plan depuis deux jours.
+
+**Vérifier sa propre note avant de planifier dessus** — c'est la deuxième fois en deux jours qu'une
+affirmation de `TODO.md` se révèle fausse, après la règle de tri des globales.
+
+### Ce que la conversion a réparé sans le chercher
+
+`s_ArchiveFileName`, `s_SystemFileName` et `s_SoundArchiveTemplate` étaient des champs
+`static readonly` initialisés par `ToAnsiZ(...)` — une méthode vivant dans un **autre fichier**.
+C'est exactement la forme du défaut qui a coûté un plantage au démarrage le 2026-08-19 (tâche 7.4) :
+entre fichiers, l'ordre d'initialisation des champs statiques d'une classe partielle n'est pas
+spécifié. Ils marchaient par chance.
+
+Devenus champs d'instance, ils sont construits au premier accès à `Res`, donc nécessairement après
+l'initialisation statique de `Blaze`. Le risque **disparaît** au lieu d'être documenté. C'est un
+bénéfice de la conversion qui n'était pas dans ses objectifs.
+
+Trois méthodes `Build*` sont **repassées `static`** dans le mouvement inverse : ce sont des
+initialiseurs de champ, et C# interdit à un initialiseur d'appeler une méthode d'instance (CS0236).
+Elles sont pures — allocation plus littéraux — donc `static` est le bon correctif et non un
+contournement de compilateur.
+
+### Le rapatriement `.data` du son, soldé
+
+La dette ouverte la veille par `Audio` est fermée : `s_BaseSoundBank`, `s_LevelSoundBank`
+(`Platform/Startup.cs`), `s_SoundDirectory` et la structure `SoundDirectoryEntry`
+(`Engine/Resources.cs`) rejoignent `GameMemory`. Deux classes converties se les partageaient, plus
+`Startup` et la carte du monde.
+
+Deux précautions qui comptent :
+
+* les banques restent **allouées par `RunApplication`** (`Mem.s_BaseSoundBank = Malloc(790000)`) :
+  seul le champ qui les reçoit a déménagé, l'allocation a lieu au même instant qu'avant ;
+* la structure suit son tableau. La laisser dans `Audio` aurait fait dépendre `Memory/` d'`Engine/`.
+
+Fait en **étape séparée** de la conversion, chacune vérifiée entièrement — c'est la raison pour
+laquelle la dette avait été laissée ouverte la veille plutôt que soldée en marge.
+
+### Le défaut d'aliasing trouvé en chemin — et pourquoi les tests l'avaient manqué
+
+En requalifiant les sites, `Screens/State03/WorldMap.cs:328` est apparu :
+
+```csharp
+private static readonly byte* s_SoundBankHeader_005e8520 = (byte*)NativeMemory.AllocZeroed(0x88);
+```
+
+Or `0x005e8520 == 0x005e8340 + 0x1e0`. C'est la **queue** du répertoire de sons, allouée à part.
+Vérifié contre la source de vérité plutôt que déduit — `Blaze.c` 74824 charge `&DAT_005e8340` sur
+0x1e0 octets depuis `BASE.SND`, et 63353 charge `&DAT_005e8520` sur 0x88 depuis le fichier de zone :
+un seul tableau de 77 entrées de 8 octets, chargé en deux fois, que `PlaySoundEffect` indexe depuis
+`&DAT_005e8340` pour **tous** les ids jusqu'à `0x4c`.
+
+Conséquence attendue en jeu : les effets sonores de niveau (`0x3c..0x4c`) lisent un décalage et une
+longueur nuls — silencieux — alors que leurs échantillons sont bien chargés juste en dessous.
+**Non corrigé** : la correction change le comportement, et appartient au changement qui traite les
+cinq autres défauts d'aliasing. Consigné aux deux endroits où il se lit, `Audio.cs` et `WorldMap.cs`.
+
+**Le point vraiment instructif est que les quatre tests de disposition étaient verts dessus.** Ils
+n'indexent que par le **suffixe VA du nom C#** : un `.data` nommé sans son adresse leur est
+totalement invisible — il ne peut ni entrer en collision, ni déborder, ni être signalé.
+`s_SoundDirectory`, nommé sans suffixe, a masqué un recouvrement réel dont les tailles se
+corroborent au bit près.
+
+**Un `.data` sans suffixe VA n'est donc pas seulement mal nommé : il est hors de portée de
+l'outillage.** Le nom est l'index, pas une décoration. Écrit dans `OpenForesia.Tests/README.md`.
+
+Le renommage qui réparerait ça (`s_SoundDirectory` → `s_SoundDirectory_005e8340`, et les banques en
+`s_BaseSoundBank_00604920` / `s_LevelSoundBank_00600900` — adresses pinées dans `Blaze.c` 61791-2)
+**n'a pas été fait** : l'oracle compare du texte normalisé, où un renommage est indiscernable d'un
+changement de logique. Il ferait sonner sept méthodes à chaque exécution future, sauf à refiger la
+référence — ce qui effacerait sa mémoire. Le renommage va donc avec la correction, qui refige de
+toute façon.
+
+### Vérification
+
+Les deux étapes ont été vérifiées séparément et intégralement.
+
+| | conversion | rapatriement `.data` |
+|---|---|---|
+| build | 0 erreur | 0 erreur |
+| avertissements | identiques avant/après (`git stash` + reconstruction) | identiques |
+| oracle | « aucune logique modifiée », 0 méthode absente | idem |
+| tests | 3 rouges attendus / 2 verts | idem |
+| `-Entry 1` | **382,3** primitives/image, capture relue | **382,3**, capture relue |
+| `-Entry 2` | **387** primitives/image, capture relue | **387** |
+| taux de course | **4/16 = 25 %** | **1/16** |
+
+`-Entry 2` a été ajouté au protocole de cette conversion parce que `Resources` porte l'écran de
+chargement et les ressources de menu : conclure sur un seul écran aurait laissé ce chemin non
+exercé.

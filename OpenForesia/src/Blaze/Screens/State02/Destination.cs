@@ -94,7 +94,7 @@ public static unsafe partial class Blaze
 
     // Ghidra: DAT_005de52c / DAT_005de530 — les deux octets que la sortie de cet écran prend dans la
     // table +0x74 du répertoire de ressources, à côté de DAT_005de528 (la zone choisie).
-    private static byte s_Unknown_005de52c, s_Unknown_005de530;
+    internal static byte s_Unknown_005de52c, s_Unknown_005de530;
 
     /// <summary>
     /// Ghidra: FUN_00537da0 @ 0x00537da0 — l'état de jeu 2 : le choix de la destination sur la carte
@@ -163,7 +163,7 @@ public static unsafe partial class Blaze
         if ((spread & 0x80) != 0) navMask |= 0x40;
         if ((spread & 0x100) != 0) navMask |= 0x100;
 
-        uint menuIndex = s_AreaToMenuIndex_0056d2a0[s_Unknown_005de528 & 0xff];
+        uint menuIndex = s_AreaToMenuIndex_0056d2a0[Res.s_Unknown_005de528 & 0xff];
         int camY = s_DestinationCamY_0056d272[s_MenuIndexToArea_0056d2b0[menuIndex]];
         int camX = s_DestinationCamX_0056d270[s_MenuIndexToArea_0056d2b0[menuIndex]];
 
@@ -196,7 +196,7 @@ public static unsafe partial class Blaze
             // Ghidra: FUN_0040a600(5) — corps vide, confirmé ailleurs dans ce fichier. Non transcrit.
             AnimatePalettes(Mem.s_MainResourceDirectory_005e97c4);   // Ghidra: FUN_00533000
 
-            byte* pad = CurrentPadState();
+            byte* pad = Res.CurrentPadState();
             ushort repeat = *(ushort*)(pad + 6);
             cursor = before;
 
@@ -405,10 +405,10 @@ public static unsafe partial class Blaze
         }
 
         Aud.PlayUiSound38();                                // Ghidra: FUN_0053db80
-        s_Unknown_005de528 = s_MenuIndexToArea_0056d2b0[cursor];
+        Res.s_Unknown_005de528 = s_MenuIndexToArea_0056d2b0[cursor];
         s_Unknown_00566c84 = 0xff;
         byte* areaInfo = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x74)
-                                   + (uint)s_Unknown_005de528 * 4);
+                                   + (uint)Res.s_Unknown_005de528 * 4);
         s_Unknown_00566c88 = 0xff;
         s_Unknown_005de52c = areaInfo[0];
         s_Unknown_005de530 = areaInfo[1];
@@ -424,7 +424,7 @@ public static unsafe partial class Blaze
         // Retour à la ville (zone 0) : le groupe est soigné. `+0x148`/`+0x14a` sont le maximum et
         // `+0x14c`/`+0x14e` le courant — c'est cette recopie-là qui tranche le sens des deux paires,
         // que FinalizeCharacterStats laissait indécidable en leur donnant la même valeur.
-        if (s_Unknown_005de528 == 0 && s_PartySize_005e9020 != 0)
+        if (Res.s_Unknown_005de528 == 0 && s_PartySize_005e9020 != 0)
         {
             byte* member = GetMainMemPtr() + 0xf0140;
             for (int i = s_PartySize_005e9020; i != 0; i--, member += 0x2000)

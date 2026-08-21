@@ -35,13 +35,22 @@ namespace OpenForesia.Blaze;
 /// change ; l'oracle indexe par nom seul, un demenagement ne le fait donc pas sonner.
 /// </para>
 /// <para>
-/// Ce que la signature ne dit pas encore : cette classe lit trois membres restes chez leur
-/// proprietaire - <c>s_BaseSoundBank</c> et <c>s_LevelSoundBank</c> (<c>Platform/Startup.cs</c>),
-/// <c>s_SoundDirectory</c> (<c>Engine/Resources.cs</c>). Ils n'ont pas de suffixe VA, mais ce sont
-/// bel et bien du <c>.data</c> (<c>DAT_00604920</c>, <c>DAT_00600900</c>, <c>DAT_005e8340</c>) :
-/// leur nom ment sur leur nature. Ils sont candidats a rejoindre <see cref="GameMemory"/>, mais ce
-/// demenagement touche aussi Startup, Resources et la carte du monde - il se fera separement, pas
-/// en marge d'une conversion de classe.
+/// <b>La signature dit maintenant tout ce que cette classe touche.</b> Les trois globales de son
+/// qu'elle empruntait a d'autres fichiers - <c>s_BaseSoundBank</c>, <c>s_LevelSoundBank</c> et
+/// <c>s_SoundDirectory</c> - ont rejoint <see cref="GameMemory"/> le 2026-08-21, a la conversion
+/// de <see cref="Resources"/>. Elles n'ont pas de suffixe VA dans leur nom C# et la regle de tri
+/// les avait donc classees « echafaudage » ; ce sont pourtant <c>DAT_00604920</c>,
+/// <c>DAT_00600900</c> et <c>DAT_005e8340</c>, du <c>.data</c> pur. C'est le nom qui mentait.
+/// </para>
+/// <para>
+/// <b>TODO(REVERSE) — defaut d'aliasing connu, volontairement NON corrige ici :</b>
+/// <c>Screens/State03/WorldMap.cs</c> alloue <c>s_SoundBankHeader_005e8520</c> a part, alors que
+/// <c>0x005e8520</c> vaut exactement <c>0x005e8340 + 0x1e0</c> - c'est la queue du repertoire de
+/// sons, pas un tableau distinct. Consequence attendue : <see cref="PlaySoundEffect"/> indexe
+/// <c>mem.s_SoundDirectory</c> jusqu'a l'id <c>0x4c</c>, donc dans une queue que rien ne remplit,
+/// et les effets de niveau (<c>0x3c..0x4c</c>) lisent un decalage et une longueur nuls. Le
+/// reparer CHANGE le comportement : cela releve d'un changement separe, comme les cinq autres
+/// defauts d'aliasing recenses.
 /// </para>
 /// <para>
 /// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
@@ -918,16 +927,6 @@ internal sealed unsafe class Audio(GameMemory mem)
     // before use; call sites pass unequal values to pan and values above 0x1000 to over-drive.
     // =====================================================================
 
-    /// <summary>
-    /// One entry of the sound directory at Ghidra `DAT_005e8340`: a byte offset into the sample
-    /// bank selected by the sound id, and the sample's length in bytes.
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    internal struct SoundDirectoryEntry
-    {
-        public int Offset;
-        public int Length;
-    }
 
     private const int SoundGainUnity = 0x1000;
 
@@ -1242,15 +1241,15 @@ internal sealed unsafe class Audio(GameMemory mem)
         gainRight >>= 1;
 
         void* bank;
-        if (soundId < SoundDirectoryBaseCount) bank = s_BaseSoundBank;
-        else if (soundId <= 0x4c) bank = s_LevelSoundBank;
+        if (soundId < GameMemory.SoundDirectoryBaseCount) bank = mem.s_BaseSoundBank;
+        else if (soundId <= 0x4c) bank = mem.s_LevelSoundBank;
         else return; // ids past the end of the directory are silently ignored
 
         // Both halves of the directory are indexed off the same base; only the bank differs.
         // No null check on the bank here â€” the original has none either, and none is needed: the
         // pointer is only ever dereferenced after a sound buffer has been allocated successfully,
         // which cannot happen before RunApplication has allocated both banks.
-        SoundDirectoryEntry entry = s_SoundDirectory[soundId];
+        GameMemory.SoundDirectoryEntry entry = mem.s_SoundDirectory[soundId];
         byte* src = (byte*)bank + entry.Offset;
         int srcLength = entry.Length;
 

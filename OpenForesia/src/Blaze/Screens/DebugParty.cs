@@ -201,7 +201,7 @@ public static unsafe partial class Blaze
         {
             // Ghidra: l'expression d'emplacement manette habituelle, mise à l'échelle 0x10 —
             // voir CurrentPadState.
-            byte* pad = CurrentPadState();
+            byte* pad = Res.CurrentPadState();
             ushort pressed = *(ushort*)(pad + 2);     // fronts « vient d'être pressé »
 
             // SELECT (0x0001) + START (0x0008) ensemble : abandon vers le menu principal. Le garde
@@ -461,7 +461,7 @@ public static unsafe partial class Blaze
         // répertoire de ressources, indexée par la classe.
         byte* scratch = GetMainMemPtr() + 0x1b0000;
         int* entry = *(int**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0xb0) + classIndex * 4);
-        LoadResourceEntry(entry, scratch);                             // Ghidra: FUN_00529b50
+        Res.LoadResourceEntry(entry, scratch);                             // Ghidra: FUN_00529b50
         Mem.CopyDwords((uint*)scratch, (uint*)(record + 0x300), 0x640);    // Ghidra: FUN_005352e0
 
         // L'équipement de départ du mode de mise au point : trois emplacements à 0xff (contre 1 et
@@ -495,7 +495,7 @@ public static unsafe partial class Blaze
 
     // Ghidra: DAT_005e92b0 â€” per-game-state value read from the loaded resource file's own table
     // at offset 0x48; read again by not-yet-reconstructed code (e.g. FUN_00542160).
-    private static int s_Unknown_005e92b0;
+    internal static int s_Unknown_005e92b0;
 
     // Ghidra: &DAT_005e9680 â€” 4 pointeurs de sortie, un par emplacement de groupe, remplis par
     // RelocateAnimationBundle. Jamais lu dans FUN_00536ba0 lui-mÃªme (seule son ADRESSE sert de borne
@@ -603,8 +603,8 @@ public static unsafe partial class Blaze
             meta1[1] = (byte)((byte)(texMeta1 >> 8) + i * 4);
             meta1[2] = (byte)i;
 
-            LoadResourceEntry((int*)(nint)texDir1Entry[0], mainMem + 0x1b0000);
-            DecodeResourceChunk(mainMem + 0x1b0000,
+            Res.LoadResourceEntry((int*)(nint)texDir1Entry[0], mainMem + 0x1b0000);
+            Res.DecodeResourceChunk(mainMem + 0x1b0000,
                 (ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0x80 + i * 4), meta1);
 
             // ---- texture 2 : LoadResourceEntry + OpenTim/ReadTim manuel (pas DecodeResourceChunk â€”
@@ -616,9 +616,9 @@ public static unsafe partial class Blaze
             byte meta2_1 = (byte)((byte)(texMeta2 >> 8) + 0x10);
             const byte meta2_2 = 3;
 
-            LoadResourceEntry((int*)(nint)texDir2Entry[0], mainMem + 0x1b0000);
+            Res.LoadResourceEntry((int*)(nint)texDir2Entry[0], mainMem + 0x1b0000);
 
-            TimImage tim;
+            Resources.TimImage tim;
             Winsys3d.OpenTim(mainMem + 0x1b0000);
             Winsys3d.ReadTim(&tim);
 
@@ -655,14 +655,14 @@ public static unsafe partial class Blaze
             byte* modelMeta = stackalloc byte[8];
             *(uint*)(modelMeta + 4) = adjustedPageBits;
 
-            byte* afterModel = LoadResourceEntry((int*)(nint)modelResPtr, modelAnimCursor);
+            byte* afterModel = Res.LoadResourceEntry((int*)(nint)modelResPtr, modelAnimCursor);
             RelocateModelBundle((int*)modelAnimCursor, modelMeta, (byte**)s_PartyModelResult_005e9800 + i);
 
             // ---- paquet d'animation : LoadResourceEntry (juste aprÃ¨s le modÃ¨le) +
             // RelocateAnimationBundle, table +0x7c, pas 4 octets (indexÃ©e par l'identitÃ©, pas par
             // l'emplacement) ----
             int animResPtr = (*(int**)(directoryBase + 0x7c))[characterId];
-            byte* afterAnim = LoadResourceEntry((int*)(nint)animResPtr, afterModel);
+            byte* afterAnim = Res.LoadResourceEntry((int*)(nint)animResPtr, afterModel);
             RelocateAnimationBundle((int*)afterModel, (byte**)s_PartyAnimationResult_005e9680 + i);
 
             modelAnimCursor = afterAnim;

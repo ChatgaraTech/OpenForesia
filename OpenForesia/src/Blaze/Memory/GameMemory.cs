@@ -755,4 +755,60 @@ internal sealed unsafe class GameMemory
     internal int s_Unknown_005d9de0 => (int)s_GammaIni;
 
     internal int s_Unknown_005de538;
+
+    // =====================================================================
+    // Rapatriees le 2026-08-21, a la conversion d'Engine/Audio.cs puis d'Engine/Resources.cs :
+    // trois globales .data que DEUX classes converties se partageaient, plus Startup et la carte
+    // du monde. Elles etaient restees chez leur proprietaire en `internal` le temps que les deux
+    // conversions soient verifiables separement.
+    //
+    // ELLES ETAIENT MAL CLASSEES, ET C'EST LA LECON. La regle de tri du 2026-08-19 dit :
+    // « suffixe VA -> GameMemory ; pas de suffixe -> echafaudage, reste chez son proprietaire ».
+    // Ces trois-la n'ont pas de suffixe VA et sont pourtant du .data pur - c'est le NOM qui ment,
+    // pas la regle qui manque un cas. L'ancre `// Ghidra: DAT_...` du commentaire tranche, le nom
+    // C# n'est qu'un indice. Corrige dans TODO.md.
+    // =====================================================================
+
+    /// <summary>
+    /// One entry of the sound directory at Ghidra <c>DAT_005e8340</c>: a byte offset into the
+    /// sample bank selected by the sound id, and the sample's length in bytes.
+    ///
+    /// <para>
+    /// La structure suit son tableau : elle decrit la disposition d'une entree de <c>.data</c>,
+    /// donc sa place est ici et non dans l'un des deux consommateurs. La laisser dans
+    /// <c>Audio</c> aurait oblige <c>Memory/</c> a dependre d'<c>Engine/</c>.
+    /// </para>
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    internal struct SoundDirectoryEntry
+    {
+        public int Offset;
+        public int Length;
+    }
+
+    // Ghidra: DAT_005e8340 (0x1e0 octets, lus depuis "BASE.SND") immediatement suivi de
+    // DAT_005e8520 (0x88 octets, lus depuis le fichier de niveau par FUN_00512xxx @ 0x006335x).
+    // C'est UN SEUL tableau contigu : 0x005e8520 - 0x005e8340 == 0x1e0 exactement, et
+    // PlaySoundEffect indexe les DEUX moities depuis &DAT_005e8340 (`&DAT_005e8340 + soundId * 8`
+    // jusqu'a l'id 0x4c), en ne changeant que la banque a laquelle le decalage de l'entree est
+    // ajoute. 0x1e0 + 0x88 == 0x268 == 77 entrees de 8 octets, et 0x4c est exactement le dernier
+    // index valide : les tailles se corroborent.
+    internal const int SoundDirectoryBaseCount = 0x1e0 / 8;  // 60 entrees, ids 0x00..0x3b
+    internal const int SoundDirectoryCount = 0x268 / 8;      // 77 entrees, ids 0x00..0x4c
+    internal readonly SoundDirectoryEntry* s_SoundDirectory =
+        (SoundDirectoryEntry*)NativeMemory.AllocZeroed(SoundDirectoryCount * (nuint)sizeof(SoundDirectoryEntry));
+
+    // Ghidra: DAT_00604920 / DAT_00600900 — les deux banques d'echantillons PCM 8 bits brutes,
+    // allouees dans RunApplication et remplies directement depuis le disque. Leur role est etabli
+    // par PlaySoundEffect (FUN_0053cea0), qui ajoute le decalage d'une entree de repertoire a
+    // l'une de ces deux bases pour obtenir l'adresse de l'echantillon : la banque « base » porte
+    // les ids 0..0x3b (chargee depuis "\SND\BASE.SND", avec les 0x1e0 premiers octets du
+    // repertoire), la banque « niveau » porte les ids 0x3c..0x4c (chargee par FUN_00512xxx avec
+    // les 0x88 octets restants).
+    //
+    // Elles restent ALLOUEES PAR RunApplication, pas par ce constructeur : l'allocation a lieu au
+    // meme instant qu'avant, seul le champ qui la recoit a demenage. Ce ne sont donc que des
+    // emplacements ici, volontairement laisses nuls a la construction.
+    internal void* s_BaseSoundBank;   // 790000 octets
+    internal void* s_LevelSoundBank;  // 260000 octets
 }

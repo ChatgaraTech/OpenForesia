@@ -139,9 +139,9 @@ public static unsafe partial class Blaze
         // destination : LoadResourceEntry compare son argument `dest` à ces trois valeurs, et une
         // égalité veut dire « installe une table de sauts native » au lieu de « écris les octets
         // du fichier de ressources ici ». Voir ApplyResourceDestinationOverride.
-        s_OverrideDestA_006008c8 = (void*)1;
-        s_OverrideDestB_00604930 = (void*)2;
-        s_OverrideDestC_00600904 = (void*)3;
+        Res.s_OverrideDestA_006008c8 = (void*)1;
+        Res.s_OverrideDestB_00604930 = (void*)2;
+        Res.s_OverrideDestC_00600904 = (void*)3;
 
         bool foundDriveX = false;
         bool foundDriveZ = false;
@@ -210,8 +210,8 @@ public static unsafe partial class Blaze
                     s_LookupTable00600920[i] = low + (uint)(high << 16);
                 }
 
-                s_BaseSoundBank = Malloc(790000);
-                s_LevelSoundBank = Malloc(260000);
+                Mem.s_BaseSoundBank = Malloc(790000);
+                Mem.s_LevelSoundBank = Malloc(260000);
 
                 // TODO(REVERSE): the callback (Ghidra: &LAB_00512ef0) has no decompiled body in
                 // Blaze.c (see Documentation/DLL/winsys3d.md for what SetDeviceLostCallback does
@@ -291,14 +291,10 @@ public static unsafe partial class Blaze
     // Ghidra: DAT_00600920, a 0x1000-entry (0x4000-byte) table populated in RunApplication.
     private static readonly uint[] s_LookupTable00600920 = new uint[0x1000];
 
-    // Ghidra: DAT_00604920 / DAT_00600900 â€” the two raw 8-bit-PCM sample banks, allocated in
-    // RunApplication and filled straight from disk. Their role is settled by PlaySoundEffect
-    // (FUN_0053cea0), which adds a directory entry's offset to one of these two bases to get the
-    // sample's address: the "base" bank holds sound ids 0..0x3b (loaded from "\SND\BASE.SND"
-    // alongside the first 0x1e0 bytes of the directory), the "level" bank holds ids 0x3c..0x4c
-    // (loaded by FUN_00512xxx alongside the remaining 0x88 bytes of the directory).
-    internal static void* s_BaseSoundBank;   // 790000 bytes
-    internal static void* s_LevelSoundBank;  // 260000 bytes
+    // Ghidra: DAT_00604920 / DAT_00600900 - les deux banques d'echantillons ont rejoint GameMemory
+    // le 2026-08-21 : deux classes converties (Audio, Resources) plus la carte du monde les
+    // lisaient, et c'est du .data reel malgre l'absence de suffixe VA dans leur nom.
+    // RunApplication les alloue toujours, en ecrivant `Mem.s_BaseSoundBank` / `Mem.s_LevelSoundBank`.
 
     // Ghidra: s_Please_insert_Blaze___Blade_CD__00563258 / s_Erreur_00563278 â€” symbol names were
     // derived by Ghidra from the actual string bytes, but those bytes aren't reproduced in
@@ -585,7 +581,7 @@ public static unsafe partial class Blaze
         Winsys3d.Ordinal_132(0);
         Winsys3d.Ordinal_712(1);
 
-        LoadFirstLevelResources(); // Ghidra: FUN_0052a030()
+        Res.LoadFirstLevelResources(); // Ghidra: FUN_0052a030()
         RunGameLoop();            // Ghidra: FUN_0052a3d0()
 
         Winsys3d.Ordinal_138();

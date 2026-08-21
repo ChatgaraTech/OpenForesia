@@ -5,52 +5,59 @@ Point d'entrée entre deux sessions. Mis à jour le **2026-08-21**. L'historique
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
 
-**État git au 2026-08-21.** Le travail du 2026-08-19 est commité jusqu'à `d557955`
-(« Conversion de Input.cs »), les cinq premières vraies classes comprises, ainsi que
-`OpenForesia.Tests/` et les références figées `blaze-baseline.txt` / `bodies-baseline.txt`.
-**Non commité** : la conversion d'`Audio.cs` de ce jour (14 fichiers) et cette mise à jour de
-documentation.
+**État git au 2026-08-21.** Commité jusqu'à `2d5bb36` (« Refacto Audio.cs ») : les six premières
+vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baseline.txt` /
+`bodies-baseline.txt`.
+**Non commité** : la conversion de `Resources.cs` (septième classe), le rapatriement `.data` du son
+vers `GameMemory`, et cette mise à jour de documentation — 23 fichiers.
 
 Les deux fichiers de référence de `OpenForesia.Tools/` sont l'oracle — les perdre le perdrait.
 Ils sont désormais dans l'historique, donc récupérables ; ce n'était pas le cas le 2026-08-19.
 
 ---
 
-# Priorité 1 — `Engine/` en vraies classes · **6 fichiers sur 9**
+# Priorité 1 — `Engine/` en vraies classes · **7 fichiers sur 9**
 
 ## Reprendre ici
 
-Le prochain fichier est **`Engine/Resources.cs`** (1 110 l.). C'est maintenant le seul choix
-raisonnable : `UiWindow` et `Model3d` sont explicitement à faire en dernier (voir plus bas), donc
-il ne reste que lui. Sa clôture n'est pas mauvaise — **33 globales à lui** — mais il emprunte à
-6 fichiers d'écran, contre 0 pour `Audio`.
+Il ne reste que **`Engine/UiWindow.cs`** (368 l.) et **`Engine/Model3d.cs`** (583 l.), les deux
+que la mesure de clôture désigne depuis le début comme « à faire en dernier ». Le choix entre eux
+n'est plus une question de clôture mais de nature :
 
-**Deux difficultés connues, à traiter avant d'ouvrir le fichier :**
+* **`UiWindow`** ne possède **aucune** globale et en emprunte 15 (6 à `GameMemory`, 4 à `Engine/`,
+  5 à `Screens/`). C'est un pur consommateur : sa conversion est presque entièrement du brassage
+  de globales d'autrui, donc le pire risque d'aliasing par ligne convertie. Mais `Prims` et `Ui`,
+  dont il dépend, sont déjà des classes — l'essentiel de ce qu'il emprunte est déjà atteignable
+  proprement.
+* **`Model3d`** emprunte 18 symboles à d'autres fichiers `Engine/`. Ils sont **tous convertis
+  maintenant** sauf `UiWindow` : la raison de le repousser a donc largement disparu. Vérifier
+  lesquels des 18 viennent encore d'`UiWindow` avant de choisir l'ordre.
 
-1. **`ToAnsiZ` vit dedans** et est appelé par toutes les classes déjà converties. Il faut décider
-   où cette aide habite *avant* de convertir, pas pendant. Ce n'est pas du `.data` : c'est une
-   aide CRT, donc sa place naturelle est `Platform/`, pas une classe d'instance. La déplacer est
-   gratuit pour l'oracle (indexation par nom seul), mais elle doit rester joignable par
-   `using static ... Blaze;` depuis les six classes converties.
-2. **`s_SoundDirectory` et `SoundDirectoryBaseCount` sont passés `internal`** à la conversion
-   d'`Audio` — ils sont lus par `Audio.PlaySoundEffect`. Quand `Resources` deviendra une classe,
-   ils deviendront un emprunt d'instance à instance : `Audio` prendra probablement `Resources` en
-   paramètre de constructeur, ou ces deux membres rejoindront `GameMemory` (voir la dette ci-après).
+**Mesurer avant de trancher** — la clôture a changé à chaque conversion, et deux notes de ce
+fichier se sont révélées fausses en deux jours (voir l'encadré ci-dessous).
 
-**Dette ouverte par la conversion d'`Audio`, à solder de préférence pendant celle de `Resources`** :
-`s_BaseSoundBank`, `s_LevelSoundBank` (`Platform/Startup.cs`) et `s_SoundDirectory`
-(`Engine/Resources.cs`) sont **du `.data` réel** — `DAT_00604920`, `DAT_00600900`, `DAT_005e8340` —
-mais leur nom C# n'a **pas de suffixe VA**. La règle de tri de 7.9 les classe donc « échafaudage »,
-à tort : c'est le nom qui ment, pas la règle. Ils sont restés chez leur propriétaire en `internal`
-faute de vouloir mêler un rapatriement `GameMemory` à une conversion de classe.
-**Leçon à inscrire dans la règle** : le suffixe VA est un *indice*, pas la preuve. Vérifier
-l'ancre `// Ghidra: DAT_…` du commentaire avant de conclure « échafaudage ».
+## Deux avertissements payés comptant
 
-Refaire la mesure de clôture avant de partir, elle a changé à chaque conversion :
+**Vérifier sa propre note avant de planifier dessus.** Ce fichier annonçait que `Resources.cs`
+« porte `ToAnsiZ` » et que sa conversion demanderait de décider où vit cette aide. C'était faux :
+`ToAnsiZ` est dans `Platform/Startup.cs:310`, déjà `internal static`, et n'a jamais bougé. Une
+difficulté annoncée qui n'existait pas a failli dicter l'ordre de travail.
+
+**Le suffixe VA n'est pas la preuve, c'est l'ancre `// Ghidra: DAT_…` qui tranche.** La règle de
+tri de 7.9 (« pas de suffixe VA → échafaudage ») a mal classé quatre symboles en deux jours :
+`s_BaseSoundBank`, `s_LevelSoundBank`, `s_SoundDirectory` et `s_GameStateId` (`DAT_005de510`) sont
+du `.data` pur dont le nom C# ne dit pas l'adresse. Les trois premiers sont maintenant dans
+`GameMemory` ; `s_GameStateId` reste chez `GameStates.cs`, exposé `internal`.
+
+Et ce n'est pas qu'une question de rangement : **un `.data` sans suffixe VA est hors de portée de
+l'outillage.** Les tests de disposition n'indexent que par le suffixe du nom, donc ils étaient
+verts sur un recouvrement bien réel (voir la priorité 1 bis). Le nom est l'index, pas une décoration.
+
+Refaire la mesure de clôture avant de partir :
 
 ```bash
 cd OpenForesia/src/Blaze
-for f in Engine/UiWindow.cs Engine/Model3d.cs Engine/Resources.cs Engine/Audio.cs; do
+for f in Engine/UiWindow.cs Engine/Model3d.cs; do
   gm=0; ic=0; en=0; sc=0
   for s in $(grep -oE "\bs_[A-Za-z0-9_]+" $f | sort -u); do
     if grep -qE "^    (private|internal).*\b$s\b" $f; then ic=$((ic+1)); continue; fi
@@ -62,28 +69,36 @@ done
 ```
 
 **La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si.** État au
-2026-08-21, après conversion d'`Audio` :
+2026-08-21 au soir, après `Audio` **et** `Resources` :
 
 | fichier | lignes | déjà dans `GameMemory` | à lui | autre `Engine/` | `Screens/` |
 |---|---:|---:|---:|---:|---:|
 | ~~`Audio.cs`~~ | ~~1 253~~ | — | — | — | **fait le 2026-08-21** |
-| `Resources.cs` | 1 110 | 6 | 33 | 4 | 6 |
+| ~~`Resources.cs`~~ | ~~1 110~~ | — | — | — | **fait le 2026-08-21** |
 | `UiWindow.cs` | 368 | 6 | **0** | 4 | 5 |
 | `Model3d.cs` | 583 | 10 | 0 | **18** | 1 |
 
-`UiWindow` et `Model3d` sont **à faire en dernier** : le premier ne possède aucune globale
-et n'est qu'un consommateur, le second emprunte 18 symboles à des fichiers `Engine/` non convertis.
-Les faire en dernier.
-
-## La recette, éprouvée six fois
+## La recette, éprouvée sept fois
 
 1. **Mesurer** : membres, `[UnmanagedCallersOnly]`, `delegate*`, et d'où vient chaque `s_*` lu.
-2. **Trancher les globales empruntées**, selon une règle simple :
-   * suffixe VA (`s_Foo_005e9180`) → c'est du `.data`, ça va dans `GameMemory` ;
-   * pas de suffixe VA → c'est notre échafaudage, ça reste chez son propriétaire, exposé `internal` ;
+2. **Trancher les globales empruntées.** La règle porte sur l'**ancre `// Ghidra:`**, pas sur le
+   nom C# — corrigé le 2026-08-21 après quatre mauvais classements :
+   * le commentaire ancre un `DAT_…`/`PTR_…` → c'est du `.data`, ça va dans `GameMemory`, **même
+     si le nom C# n'a pas de suffixe VA**. Le suffixe est un indice commode, pas la preuve ;
+     `s_BaseSoundBank` **est** `DAT_00604920` et `s_GameStateId` **est** `DAT_005de510` ;
+   * aucune ancre `DAT_…` → c'est notre échafaudage, ça reste chez son propriétaire, exposé
+     `internal` (les tables d'options `s_KeyBindings`, `s_JoystickSlot`, …) ;
    * **un symbole qui en aliase un autre déménage avec lui**, et un bloc déménage entier
      (les trois clés d'ini `s_SoundVolumeIni`/`s_CdVolumeIni`/`s_GammaIni` sont parties ensemble
-     parce que `s_GammaIni` **est** `s_Unknown_005d9de0`).
+     parce que `s_GammaIni` **est** `s_Unknown_005d9de0`) ;
+   * **exception** : un symbole engagé dans un défaut d'aliasing recensé ne bouge pas — le
+     déplacer obligerait à trancher l'alias, donc à changer le comportement. `0x00566c70` est
+     dans ce cas.
+
+   **Et si le nom manque son suffixe VA, ne pas le renommer en passant** : l'oracle compare du
+   texte, un renommage y est indiscernable d'un changement de logique et ferait sonner ses lignes
+   à chaque exécution future, sauf à refiger la référence. Le renommage va avec un changement qui
+   refige de toute façon.
 3. Déclaration de classe → `internal sealed unsafe class X(GameMemory mem)`, puis retirer `static`
    des membres. Le champ injecté s'appelle **`mem`, sans underscore** : le retour arrière négatif
    de l'oracle exclut `_`, donc `_mem.` serait lu comme un changement de logique.
@@ -108,7 +123,7 @@ grep -rn --include=*.cs -iE "\bnomcandidat\b" OpenForesia/src | wc -l
 ```
 
 Les occurrences **en commentaire** sont sans risque : l'oracle retire les commentaires avant de
-normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`, `Aud`.
+normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`, `Aud`, `Res`.
 
 **Et ne jamais donner au point d'entrée le nom de son propre type.** `Audio` était disponible et
 lisible ; il a été écarté au profit de `Aud` parce qu'une propriété homonyme de son type déclenche
@@ -184,14 +199,85 @@ taux, huit essais ne distinguent pas 25 % de 40 %, et un build concurrent fausse
 
 * **L'étape D** — `Screens/` en 12 classes (~13 800 l.), à ne commencer que quand les écrans
   cesseront de bouger. `Screens/State03/WorldMap.cs` est le front de la priorité 2.
-* **`GameMemory` reste incomplet** : il modélise ~110 des 398 symboles `.data`. Le reste est
+* **`GameMemory` reste incomplet** : il modélise ~115 des 398 symboles `.data`. Le reste est
   dispersé dans les fichiers qui les utilisent. Ce n'est pas bloquant, mais chaque conversion en
   rapatrie une poignée.
-* **Les cinq défauts d'aliasing** que `OpenForesia.Tests` signale (3 tests rouges **attendus**).
-  Les corriger change le comportement → changement séparé. `0x00566c70` doit être traité **avant**
-  la reprise de la carte du monde.
+* **Les défauts d'aliasing.** Cinq sont signalés par `OpenForesia.Tests` (3 tests rouges
+  **attendus**) ; un **sixième** a été trouvé le 2026-08-21 et les tests étaient verts dessus —
+  voir la priorité 1 bis. Les corriger change le comportement → changement séparé. `0x00566c70`
+  doit être traité **avant** la reprise de la carte du monde, et `0x005e8520` va avec le
+  renommage qui refige la référence de l'oracle.
+* **Cinq globales `.data` traversent encore la frontière de `Resources`** sans passer par
+  `GameMemory`, exposées `internal` chez leur propriétaire : `s_GameStateId` (`GameStates.cs`),
+  `s_MenuRenderBlock_00566c70` et `s_Unknown_005e97c8` (`MainMenu.cs`), `s_Unknown_005de52c`
+  (`Destination.cs`), `s_Unknown_005e92b0` (`DebugParty.cs`).
+  `s_MenuRenderBlock_00566c70` est **bloquée** par le défaut d'aliasing de la même adresse ; les
+  quatre autres relèvent de l'étape A ordinaire, à rapatrier quand l'occasion se présente.
 * La réparation des **~870 lignes à encodage double** (`repair-double-encoded-comments`, ouvert,
   non commencé). Commentaires et journaux seulement, rien de visible en jeu.
+
+
+---
+
+# Priorité 1 bis — le défaut d'aliasing trouvé le 2026-08-21
+
+**C'est un vrai bug de la reconstruction, pas un bug du jeu de 1998.** À ne pas confondre avec les
+entrées de `legacy-bug.md`.
+
+`Screens/State03/WorldMap.cs` alloue `s_SoundBankHeader_005e8520` à part, sur 0x88 octets. Or
+`0x005e8520 == 0x005e8340 + 0x1e0` : c'est la **queue** du répertoire de sons
+`GameMemory.s_SoundDirectory` (`DAT_005e8340`, 0x268 octets = 0x1e0 pour les ids `0x00..0x3b`, puis
+0x88 pour les ids `0x3c..0x4c`).
+
+**Confirmé contre `Blaze.c`, pas déduit :**
+
+```
+Blaze.c 74824   Ordinal_334(uVar2,  &DAT_005e8340, 0x1e0);     // BASE.SND : les 60 premières entrées
+Blaze.c 74825   Ordinal_334(uVar2,  DAT_00604920,  790000);    // ... et la banque « base »
+Blaze.c 63353   Ordinal_334(uVar10, &DAT_005e8520, 0x88);      // fichier de zone : les 17 dernières
+Blaze.c 63354   Ordinal_334(uVar10, DAT_00600900,  260000);    // ... et la banque « niveau »
+```
+
+Un seul tableau de 77 entrées de 8 octets, chargé en deux fois. `PlaySoundEffect` indexe
+`&DAT_005e8340` pour **tous** les ids jusqu'à `0x4c`, en ne changeant que la banque à laquelle le
+décalage est ajouté. Les tailles se corroborent au bit près.
+
+**Conséquence en jeu** : les 0x88 octets lus depuis le fichier de zone n'arrivent jamais dans le
+répertoire que `PlaySoundEffect` consulte. Les effets sonores de niveau (`0x3c..0x4c`) lisent un
+décalage et une longueur nuls — silencieux — alors que leurs échantillons sont bien chargés dans
+`mem.s_LevelSoundBank` juste en dessous. **À vérifier à l'oreille**, pas au compteur : c'est
+précisément le genre de défaut qu'un nombre de primitives identique ne montre pas.
+
+## Ce qu'il faut faire, et pourquoi pas maintenant
+
+La correction tient en une ligne :
+
+```csharp
+private static byte* s_SoundBankHeader_005e8520
+    => (byte*)(Mem.s_SoundDirectory + GameMemory.SoundDirectoryBaseCount);
+```
+
+Elle **change le comportement**, donc elle n'avait pas sa place dans une conversion de classe
+vérifiée « logique inchangée ». Elle va avec :
+
+1. le **renommage** `s_SoundDirectory` → `s_SoundDirectory_005e8340`, sans lequel les tests de
+   disposition resteront aveugles au recouvrement (voir ci-dessous) ; et pendant qu'on y est
+   `s_BaseSoundBank_00604920` / `s_LevelSoundBank_00600900` — adresses pinées dans `Blaze.c`
+   61791-2, `DAT_00604920` = 790000 = base, `DAT_00600900` = 260000 = niveau ;
+2. les **cinq autres défauts d'aliasing** déjà recensés, dont `0x00566c70` ;
+3. une **nouvelle référence** `bodies-baseline.txt` — inévitable dès qu'on renomme, et c'est
+   justement pour ça qu'il faut grouper.
+
+## Ce que l'affaire apprend sur les tests eux-mêmes
+
+**Les quatre tests de disposition étaient verts sur ce recouvrement.** Ils n'indexent que par le
+suffixe VA du nom C# : un `.data` nommé sans son adresse leur est totalement invisible — il ne peut
+ni entrer en collision, ni déborder, ni être signalé. Écrit dans `OpenForesia.Tests/README.md`.
+
+**Donc : un `.data` sans suffixe VA n'est pas seulement mal nommé, il est hors de portée de
+l'outillage.** Le nom est l'index.
+
+---
 
 ---
 

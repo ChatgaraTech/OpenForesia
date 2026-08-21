@@ -100,3 +100,34 @@ la ligne correspondante de ce fichier et consigner la correction dans `REVERSE_S
 Le cinquième test, `L_analyseur_releve_bien_la_disposition`, existe pour ça : si un refactor cassait
 l'analyse des sources, les quatre autres passeraient sur un ensemble vide et ne prouveraient plus
 rien.
+
+---
+
+## L'angle mort de l'analyseur — trouvé le 2026-08-21, à connaître
+
+Ces tests ne voient un symbole **que si son nom C# porte son adresse** (`s_Role_005e8340`). C'est
+leur seule source d'adresse : `MemoryLayout.cs` lit les sources et extrait le suffixe VA du nom.
+
+**Un symbole `.data` nommé sans son adresse est donc totalement invisible pour eux**, et pas
+seulement absent d'un relevé : il ne peut ni entrer en collision, ni déborder, ni être signalé.
+C'est exactement ce qui s'est produit avec `s_SoundDirectory` (`DAT_005e8340`, 0x268 octets) :
+nommé sans suffixe, il a masqué un recouvrement réel avec `s_SoundBankHeader_005e8520`
+(`Screens/State03/WorldMap.cs`), alors que `0x005e8340 + 0x1e0 == 0x005e8520` et que les tailles
+se corroborent au bit près. Les quatre tests étaient verts sur ce point, et le défaut existait.
+
+Vérifié contre la source de vérité, pas déduit — `Blaze.c` 74824 charge `&DAT_005e8340` sur 0x1e0
+octets, et 63353 charge `&DAT_005e8520` sur 0x88 : deux moitiés d'un seul tableau de 77 entrées,
+que `PlaySoundEffect` indexe depuis la première.
+
+**Conséquence pratique** : un `.data` sans suffixe VA n'est pas seulement mal nommé, il est
+**hors de portée de l'outillage**. Le nom n'est pas décoratif ici, c'est l'index.
+
+Le renommage (`s_SoundDirectory` → `s_SoundDirectory_005e8340`, et les deux banques en
+`s_BaseSoundBank_00604920` / `s_LevelSoundBank_00600900`, adresses pinées dans `Blaze.c` 61791-2)
+**n'a pas été fait dans la conversion de `Resources`**, et pour une raison précise : l'oracle
+`compare-bodies.ps1` compare du texte normalisé, où un renommage est indiscernable d'un changement
+de logique. Renommer ferait sonner sept méthodes **à chaque exécution future**, sauf à refiger la
+référence — ce qui effacerait sa mémoire de tout ce qui précède.
+
+Le renommage appartient donc au changement qui corrigera l'aliasing : celui-ci change déjà le
+comportement et demandera de toute façon une nouvelle référence.

@@ -164,7 +164,7 @@ public static unsafe partial class Blaze
                 s_Unknown_005de158 = (0xb - Mem.s_SizeSetting_005de160) * 0xc;
             }
 
-            byte* pad = CurrentPadState();
+            byte* pad = Res.CurrentPadState();
 
             if (s_GameStateId != 1)
             {
@@ -500,7 +500,7 @@ public static unsafe partial class Blaze
 
         if (record[0x1f00] == 0)
         {
-            s_Unknown_005de528 = record[0x1f01];
+            Res.s_Unknown_005de528 = record[0x1f01];
             s_Unknown_005de52c = record[0x1f02];
             s_Unknown_005de530 = record[0x1f03];
 
@@ -519,7 +519,7 @@ public static unsafe partial class Blaze
         }
         else
         {
-            s_Unknown_005de528 = 0;
+            Res.s_Unknown_005de528 = 0;
             s_Unknown_005de52c = 0;
             s_Unknown_005de530 = 0;
 

@@ -152,10 +152,10 @@ public static unsafe partial class Blaze
         s_Unknown_00566acc = -1;
 
         // Ghidra: FUN_0040a600() — corps vide, rien à reproduire.
-        s_Unknown_005e97d0 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
+        s_Unknown_005e97d0 = Res.LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
         // Ghidra: DAT_005e97d0 — le pendant de DAT_005e97c8 pour cet état ; voisin immédiat.
 
-        FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
+        Res.FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
 
         byte* mainMem = GetMainMemPtr();
         if (Mem.s_MainResourceDirectory_005e97c4 == null || mainMem == null) return;
@@ -167,8 +167,8 @@ public static unsafe partial class Blaze
         byte* slot = Mem.s_EntityDecodeTable_005e8f00;
         for (int* entry = textures; *entry != 0; entry += 2, slot += 4)
         {
-            LoadResourceEntry((int*)(nint)(*entry), scratch);
-            DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+            Res.LoadResourceEntry((int*)(nint)(*entry), scratch);
+            Res.DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
         }
     }
 
@@ -221,7 +221,7 @@ public static unsafe partial class Blaze
         while (true)
         {
             Inp.s_Unknown_005de168 = 0;
-            byte* pad = CurrentPadState();
+            byte* pad = Res.CurrentPadState();
 
             // SELECT + START ensemble, et seulement hors sous-écran.
             if ((pad[2] & 9) == 9 && s_Unknown_00566acc < 0) break;

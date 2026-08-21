@@ -54,8 +54,8 @@ public static unsafe partial class Blaze
             s_SelectState_00578de8[0] = forced;
         }
 
-        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
-        FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
+        s_Unknown_005e97c8 = Res.LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
+        Res.FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
 
         byte* directoryBase = Mem.s_MainResourceDirectory_005e97c4;
         byte* mainMem = GetMainMemPtr();
@@ -70,8 +70,8 @@ public static unsafe partial class Blaze
             byte* slot = Mem.s_EntityDecodeTable_005e8f00;
             for (int* entry = textures; *entry != 0; entry += 2, slot += 4)
             {
-                LoadResourceEntry((int*)(nint)(*entry), scratch);
-                DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+                Res.LoadResourceEntry((int*)(nint)(*entry), scratch);
+                Res.DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
             }
         }
 
@@ -84,7 +84,7 @@ public static unsafe partial class Blaze
             byte** table = (byte**)s_ModelTable_005e96a0;
             for (int* entry = models; *entry != 0; entry += 2, table++)
             {
-                byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                byte* next = Res.LoadResourceEntry((int*)(nint)(*entry), cursor);
                 RelocateModelBundle((int*)cursor, (byte*)entry, table);
                 cursor = next;
             }
@@ -99,7 +99,7 @@ public static unsafe partial class Blaze
             byte** table = (byte**)Mem.s_AnimationTable_005e9640;
             for (int* entry = animations; *entry != 0; entry++, table++)
             {
-                byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                byte* next = Res.LoadResourceEntry((int*)(nint)(*entry), cursor);
                 RelocateAnimationBundle((int*)cursor, table);
                 cursor = next;
             }
@@ -111,7 +111,7 @@ public static unsafe partial class Blaze
         {
             byte* destination = mainMem + 0xf8000;
             for (int* entry = raw; *entry != 0; entry++, destination += 0x2000)
-                LoadResourceEntry((int*)(nint)(*entry), destination);
+                Res.LoadResourceEntry((int*)(nint)(*entry), destination);
         }
     }
 
@@ -392,7 +392,7 @@ public static unsafe partial class Blaze
 
             // Ghidra: FUN_0040a600(4) — corps vide, voir LoadCharacterSelectResources.
 
-            byte* pad = CurrentPadState();
+            byte* pad = Res.CurrentPadState();
 
             // Ghidra: le test de sortie. Les deux bits 9 = 0b1001 du champ +2, sauf au sous-état 7
             // tant que DAT_00562b68 est positif.

@@ -78,7 +78,7 @@ public static unsafe partial class Blaze
     /// makes it cdecl with three arguments.
     /// </para>
     /// </summary>
-    private static void FrameBegin(uint** otBase, uint** otEntry, uint** primCursor)
+    internal static void FrameBegin(uint** otBase, uint** otEntry, uint** primCursor)
     {
         // Every caller uses all three out-parameters immediately, so they must be written on every
         // path. Returning early without setting them left uninitialised stack in the caller and
@@ -124,7 +124,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
 
-    private static void FrameEnd(uint** otBase, uint** otEntry, uint** primCursor, int mode, int flag)
+    internal static void FrameEnd(uint** otBase, uint** otEntry, uint** primCursor, int mode, int flag)
     {
         CrtRand();                             // Ghidra: FUN_00547140() â€” result discarded here
 
@@ -214,7 +214,7 @@ public static unsafe partial class Blaze
     // Deplace dans GameMemory le 2026-08-19 : globale .data.
 
     // Ghidra: DAT_005e97c8 â€” the tail pointer LoadResourceEntry returns for the state's own load.
-    private static byte* s_Unknown_005e97c8;
+    internal static byte* s_Unknown_005e97c8;
 
     /// <summary>Ghidra: DAT_005e97d0 — le pendant de s_Unknown_005e97c8 pour le menu objets ;
     /// voisin immédiat, même rôle : la poignée que le chargeur de ressources rend.</summary>
@@ -242,13 +242,13 @@ public static unsafe partial class Blaze
     }
 
     private static readonly uint* s_MenuScreenBlock_00566c48 = (uint*)NativeMemory.AllocZeroed(0x40);
-    private static readonly uint* s_MenuRenderBlock_00566c70 = (uint*)NativeMemory.AllocZeroed(0x40);
+    internal static readonly uint* s_MenuRenderBlock_00566c70 = (uint*)NativeMemory.AllocZeroed(0x40);
 
 
     /// <summary>Ghidra: FUN_00542130 @ 0x00542130 â€” game state 0's entry point: the main menu.</summary>
     private static void RunMainMenuState()
     {
-        LoadMenuResources();      // Ghidra: FUN_00542160()
+        Res.LoadMenuResources();      // Ghidra: FUN_00542160()
         SetupMenuScreen();        // Ghidra: FUN_00529a80()
         s_FadeCounter_005e9960 = 0;
 
@@ -483,7 +483,7 @@ public static unsafe partial class Blaze
         byte* context = s_MenuContext_0056dd58;
         s_MenuTraceSnapshot ??= new byte[extent];
 
-        ushort pad = CurrentPadWord();
+        ushort pad = Res.CurrentPadWord();
         var changes = new System.Text.StringBuilder();
         int changed = 0;
 

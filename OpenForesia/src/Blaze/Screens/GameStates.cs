@@ -44,7 +44,7 @@ public static unsafe partial class Blaze
                     // passes DAT_006008c8 as both the value being compared and the comparand), so
                     // it's always a no-op here regardless of DAT_006008c8's real (never assigned
                     // in this reconstruction) value.
-                    LoadResourceEntry((int*)(nint)entryPtrValue, (byte*)s_OverrideDestA_006008c8);
+                    Res.LoadResourceEntry((int*)(nint)entryPtrValue, (byte*)Res.s_OverrideDestA_006008c8);
                 }
 
                 s_MainLoopTickCallback();
@@ -52,13 +52,13 @@ public static unsafe partial class Blaze
 
             if (s_GameStateId != 7 && s_GameStateId != 9 && s_GameStateId != 2 && s_GameStateId != 3)
             {
-                RunLoadingScreen();     // Ghidra: FUN_0052a440
+                Res.RunLoadingScreen();     // Ghidra: FUN_0052a440
             }
         }
     }
 
     // Ghidra: DAT_005de510 â€” current game-state id, shared between RunGameLoop and the tick below.
-    private static int s_GameStateId;
+    internal static int s_GameStateId;
 
     // Ghidra: PTR_FUN_0056c96c â€” the per-frame tick RunGameLoop calls indirectly. **Resolved**: the
     // pointer's initialised value was read out of Legacy/Blaze.exe as 0x00537CA0, and FUN_00537ca0
@@ -114,7 +114,7 @@ public static unsafe partial class Blaze
             case 2:
                 // Ghidra: FUN_00542160(); DAT_00564a4c = 0; FUN_00537da0(); DAT_00564a4c = 1;
                 //         DAT_005de510 = 3;   <- the one case that advances the state itself
-                LoadMenuResources();          // Ghidra: FUN_00542160
+                Res.LoadMenuResources();          // Ghidra: FUN_00542160
                 Mem.s_Unknown_00564a4c = 0;
                 RunDestinationSelect();       // Ghidra: FUN_00537da0
                 Mem.s_Unknown_00564a4c = 1;

@@ -216,8 +216,8 @@ public static unsafe partial class Blaze
     private static void LoadWorldMapResources()
     {
         // Ghidra: FUN_0040a600() — corps vide.
-        s_Unknown_005e97c8 = LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
-        FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
+        s_Unknown_005e97c8 = Res.LoadResourceEntry((int*)(nint)s_Unknown_005e92b0, Mem.s_MainResourceDirectory_005e97c4);
+        Res.FixupResourceHeader(Mem.s_MainResourceDirectory_005e97c4);
 
         byte* directoryBase = Mem.s_MainResourceDirectory_005e97c4;
         byte* mainMem = GetMainMemPtr();
@@ -231,12 +231,12 @@ public static unsafe partial class Blaze
             byte* slot = Mem.s_EntityDecodeTable_005e8f00 + 0x40;   // Ghidra: &DAT_005e8f40
             for (int* entry = textures; *entry != 0; entry += 2, slot += 4, slotCount++)
             {
-                LoadResourceEntry((int*)(nint)(*entry), scratch);
-                DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+                Res.LoadResourceEntry((int*)(nint)(*entry), scratch);
+                Res.DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
             }
         }
 
-        s_Unknown_005e97e8 = s_Unknown_005e97e4;
+        s_Unknown_005e97e8 = Res.s_Unknown_005e97e4;
         s_Unknown_005e9828 = slotCount;
 
         byte* cursor = mainMem + 0x138000;
@@ -248,7 +248,7 @@ public static unsafe partial class Blaze
             for (int* entry = bundlesA; *entry != 0; entry += 2)
             {
                 byte* start = cursor;
-                cursor = LoadResourceEntry((int*)(nint)(*entry), start);
+                cursor = Res.LoadResourceEntry((int*)(nint)(*entry), start);
                 RelocateModelBundle((int*)start, (byte*)entry, (byte**)s_ModelResultA_005fa588);
                 lastBundle = start;
             }
@@ -261,13 +261,13 @@ public static unsafe partial class Blaze
             for (int* entry = bundlesB; *entry != 0; entry += 2)
             {
                 byte* start = cursor;
-                cursor = LoadResourceEntry((int*)(nint)(*entry), start);
+                cursor = Res.LoadResourceEntry((int*)(nint)(*entry), start);
                 RelocateModelBundle((int*)start, (byte*)entry, (byte**)s_ModelResultB_005f7b40);
             }
         }
         s_Unknown_005fa584 = cursor;
 
-        s_Unknown_005e9810 = *(int*)(directoryBase + 100);
+        Res.s_Unknown_005e9810 = *(int*)(directoryBase + 100);
 
         s_Unknown_005e9760 = 0;
         int* areas = *(int**)(directoryBase + 0x48);
@@ -283,20 +283,20 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void LoadWorldMapArea()
     {
-        if (s_Unknown_00566c84 == (byte)s_Unknown_005de528) return;
+        if (s_Unknown_00566c84 == (byte)Res.s_Unknown_005de528) return;
 
-        s_Unknown_00566c84 = (byte)s_Unknown_005de528;
+        s_Unknown_00566c84 = (byte)Res.s_Unknown_005de528;
         s_Unknown_00566c94 = 1;
-        RunLoadingScreen();          // Ghidra: FUN_0052a440
+        Res.RunLoadingScreen();          // Ghidra: FUN_0052a440
         // Ghidra: FUN_0040a600() — corps vide.
 
         byte* directoryBase = Mem.s_MainResourceDirectory_005e97c4;
         byte* mainMem = GetMainMemPtr();
         if (directoryBase == null || mainMem == null) return;
 
-        int areaEntry = ((int*)(*(byte**)(directoryBase + 0x48)))[(uint)s_Unknown_005de528];
-        s_Unknown_005e97cc = LoadResourceEntry((int*)(nint)areaEntry, s_Unknown_005e97c8);
-        FixupResourceHeader(s_Unknown_005e97c8);
+        int areaEntry = ((int*)(*(byte**)(directoryBase + 0x48)))[(uint)Res.s_Unknown_005de528];
+        s_Unknown_005e97cc = Res.LoadResourceEntry((int*)(nint)areaEntry, s_Unknown_005e97c8);
+        Res.FixupResourceHeader(s_Unknown_005e97c8);
 
         int* textures = *(int**)(s_Unknown_005e97c8 + 0x10);
         if (textures != null)
@@ -305,8 +305,8 @@ public static unsafe partial class Blaze
             byte* slot = Mem.s_EntityDecodeTable_005e8f00 + 0x60;   // Ghidra: &DAT_005e8f60
             for (int* entry = textures; *entry != 0; entry += 2, slot += 4)
             {
-                LoadResourceEntry((int*)(nint)(*entry), scratch);
-                DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+                Res.LoadResourceEntry((int*)(nint)(*entry), scratch);
+                Res.DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
             }
         }
 
@@ -317,14 +317,34 @@ public static unsafe partial class Blaze
 
         // La destination est la **sentinelle 2**, pas un tampon : LoadResourceEntry la reconnait et
         // installe la table de sauts de la zone au lieu de lire des octets.
-        LoadResourceEntry(*(int**)(*(byte**)(s_Unknown_005e97c8 + 0x6c)), (byte*)s_OverrideDestB_00604930);
+        Res.LoadResourceEntry(*(int**)(*(byte**)(s_Unknown_005e97c8 + 0x6c)), (byte*)Res.s_OverrideDestB_00604930);
 
         // Ghidra: `(*(code *)PTR_FUN_0056b4f0)()`. 0x0056b4f0 est l'entree **8** de la table de
         // sauts (0x0056b4d0 + 8 * 4), celle que l'installation vient de renseigner.
-        CallAreaHandler(8);
+        Res.CallAreaHandler(8);
     }
 
-    /// <summary>Ghidra: &amp;DAT_005e8520 — les 0x88 octets d'en-tete du banc de sons de la zone.</summary>
+    /// <summary>Ghidra: &amp;DAT_005e8520 — les 0x88 octets d'en-tete du banc de sons de la zone.
+    ///
+    /// <para>
+    /// <b>TODO(REVERSE) — defaut d'aliasing, repere le 2026-08-21, NON corrige.</b> Ce bloc ne
+    /// devrait pas etre une allocation a part : <c>0x005e8520 == 0x005e8340 + 0x1e0</c>, c'est-a-dire
+    /// exactement la QUEUE du repertoire de sons <c>GameMemory.s_SoundDirectory</c>
+    /// (<c>DAT_005e8340</c>, 0x268 octets = 0x1e0 pour les ids 0x00..0x3b, puis 0x88 pour les ids
+    /// 0x3c..0x4c). Les tailles se corroborent exactement, et <c>PlaySoundEffect</c> indexe bien
+    /// <c>&amp;DAT_005e8340</c> pour TOUS les ids jusqu'a 0x4c.
+    /// </para>
+    /// <para>
+    /// Consequence en jeu : les 0x88 octets lus ici depuis le fichier de zone n'arrivent jamais
+    /// dans le repertoire que <c>PlaySoundEffect</c> consulte, donc les effets de niveau lisent un
+    /// decalage et une longueur nuls — silencieux — alors que leurs echantillons sont bien charges
+    /// dans <c>mem.s_LevelSoundBank</c> juste en dessous.
+    /// </para>
+    /// <para>
+    /// La correction est <c>=> (byte*)(Mem.s_SoundDirectory + GameMemory.SoundDirectoryBaseCount)</c>,
+    /// mais elle CHANGE LE COMPORTEMENT : elle appartient au changement separe qui traite les
+    /// defauts d'aliasing, pas a une conversion de classe verifiee « logique inchangee ».
+    /// </para></summary>
     private static readonly byte* s_SoundBankHeader_005e8520 = (byte*)NativeMemory.AllocZeroed(0x88);
 
     /// <summary>Ghidra: &amp;DAT_00566c70 — le rectangle de vue passe par adresse a Ordinal_770 et
@@ -580,7 +600,7 @@ public static unsafe partial class Blaze
         // Ghidra: une vidange d'entree de manette, seulement pour certaines combinaisons de
         // sous-zone — la meme forme que les vidanges du menu objets, et le meme besoin de rendre
         // la main a la pompe de messages (voir ItemMenuRootScreen).
-        if (s_Unknown_005de528 == 0
+        if (Res.s_Unknown_005de528 == 0
             && (((s_Unknown_00566c88 & 7) == 0 && (s_Unknown_005de52c & 7) < 6 && (s_Unknown_005de52c & 7) > 2)
              || ((s_Unknown_00566c88 & 7) != 0 && (s_Unknown_00566c88 & 7) < 5 && (s_Unknown_005de52c & 7) == 0)))
         {
@@ -633,15 +653,15 @@ public static unsafe partial class Blaze
 
         byte* areaDir = s_Unknown_005e97cc;
         int subEntry = ((int*)(*(byte**)(s_Unknown_005e97c8 + 0x48)))[(uint)(byte)s_Unknown_005de52c];
-        s_Unknown_005e97d0 = LoadResourceEntry((int*)(nint)subEntry, areaDir);
-        FixupResourceHeader(areaDir);
+        s_Unknown_005e97d0 = Res.LoadResourceEntry((int*)(nint)subEntry, areaDir);
+        Res.FixupResourceHeader(areaDir);
 
         // La sentinelle 3 : sept tables de sauts d'entites installees d'un coup.
-        LoadResourceEntry(*(int**)(*(byte**)(areaDir + 0x6c)), (byte*)s_OverrideDestC_00600904);
+        Res.LoadResourceEntry(*(int**)(*(byte**)(areaDir + 0x6c)), (byte*)Res.s_OverrideDestC_00600904);
 
         // Ghidra: `(*(code *)PTR_FUN_0056afc8)()` — l'entree **0** de la table 0056afc8, qui vaut
         // FUN_00401FA0 pour l'index 0 : un no-op verifie, pas une supposition.
-        CallEntityHandler(s_Vt_0056afc8, 0, "PTR_FUN_0056afc8");
+        Res.CallEntityHandler(Res.s_Vt_0056afc8, 0, "PTR_FUN_0056afc8");
 
         int slotCount = 0;
         int* textures = *(int**)(areaDir + 0x10);
@@ -651,8 +671,8 @@ public static unsafe partial class Blaze
             byte* slot = Mem.s_EntityDecodeTable_005e8f00;      // Ghidra: &DAT_005e8f00, l'emplacement 0
             for (int* entry = textures; *entry != 0; entry += 2, slot += 4, slotCount++)
             {
-                LoadResourceEntry((int*)(nint)(*entry), scratch);
-                DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
+                Res.LoadResourceEntry((int*)(nint)(*entry), scratch);
+                Res.DecodeResourceChunk(scratch, (ushort*)slot, (byte*)(entry + 1));
             }
         }
         s_Unknown_005e982c = slotCount;
@@ -665,11 +685,11 @@ public static unsafe partial class Blaze
         // utilise ici est "q:\snd\Q%02d_%02d.snd", releve a 0x005649f4 — pose directement plutot
         // que de tirer tout le moteur pour deux entiers. La lettre de lecteur remplace le 'q'
         // juste apres, comme pour tous les chemins CD.
-        int subForName = s_Unknown_005de528 == 0 ? 0 : (byte)s_Unknown_005de52c;
+        int subForName = Res.s_Unknown_005de528 == 0 ? 0 : (byte)s_Unknown_005de52c;
         byte* soundPath = stackalloc byte[100];
         NativeMemory.Clear(soundPath, 100);
         {
-            string name = $"q:\\snd\\Q{s_Unknown_005de528 & 0xff:D2}_{subForName:D2}.snd";
+            string name = $"q:\\snd\\Q{Res.s_Unknown_005de528 & 0xff:D2}_{subForName:D2}.snd";
             for (int i = 0; i < name.Length; i++) soundPath[i] = (byte)name[i];
             soundPath[0] = Mem.s_CdDataRootPath[0];
         }
@@ -679,7 +699,7 @@ public static unsafe partial class Blaze
         {
             uint read;
             Win32.ReadFile(sound, s_SoundBankHeader_005e8520, 0x88, &read, null);       // Ordinal_334
-            Win32.ReadFile(sound, s_LevelSoundBank, 260000, &read, null);               // Ordinal_334
+            Win32.ReadFile(sound, Mem.s_LevelSoundBank, 260000, &read, null);               // Ordinal_334
             Win32.CloseHandle(sound);                                                    // Ordinal_336
         }
 
@@ -696,7 +716,7 @@ public static unsafe partial class Blaze
             while (*entry != 0)
             {
                 *chunkTable = cursor;
-                cursor = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                cursor = Res.LoadResourceEntry((int*)(nint)(*entry), cursor);
                 RelocateModelEntry((ushort*)(*chunkTable), (byte*)entry);   // Ghidra: FUN_00532450
                 count++;
                 entry += 2;
@@ -716,7 +736,7 @@ public static unsafe partial class Blaze
             lastResult = s_Unknown_005e9adc;
             if (*entry == 0) break;
 
-            byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+            byte* next = Res.LoadResourceEntry((int*)(nint)(*entry), cursor);
             byte* result;
             s_Unknown_005e9adc_count = RelocateModelBundle((int*)cursor, (byte*)entry, &result);
             s_Unknown_005e9adc = result;
@@ -737,7 +757,7 @@ public static unsafe partial class Blaze
             byte** table = (byte**)s_ModelTable_005e96a0;
             for (int* entry = models; *entry != 0; entry += 2, table++)
             {
-                byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                byte* next = Res.LoadResourceEntry((int*)(nint)(*entry), cursor);
                 RelocateModelBundle((int*)cursor, (byte*)entry, table);
                 cursor = next;
             }
@@ -749,7 +769,7 @@ public static unsafe partial class Blaze
             byte** table = (byte**)Mem.s_AnimationTable_005e9640;
             for (int* entry = animations; *entry != 0; entry++, table++)
             {
-                byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+                byte* next = Res.LoadResourceEntry((int*)(nint)(*entry), cursor);
                 RelocateAnimationBundle((int*)cursor, table);
                 cursor = next;
             }
@@ -758,7 +778,7 @@ public static unsafe partial class Blaze
         int* extra = *(int**)(areaDir + 0xac);
         for (int* entry = extra; *entry != 0; entry += 2)
         {
-            byte* next = LoadResourceEntry((int*)(nint)(*entry), cursor);
+            byte* next = Res.LoadResourceEntry((int*)(nint)(*entry), cursor);
             RelocateModelBundle((int*)cursor, (byte*)entry, (byte**)Mem.Entity(0x00600780));
             cursor = next;
         }
@@ -768,7 +788,7 @@ public static unsafe partial class Blaze
         int* raw = *(int**)(areaDir + 0xb0);
         for (int* entry = raw; *entry != 0; entry++)
         {
-            LoadResourceEntry((int*)(nint)(*entry), mainMem + 0x1b0000);
+            Res.LoadResourceEntry((int*)(nint)(*entry), mainMem + 0x1b0000);
             UploadRawAreaBlocks((int*)(mainMem + 0x1b0000));    // Ghidra: FUN_005355f0
         }
     }
@@ -1120,7 +1140,7 @@ public static unsafe partial class Blaze
         Mem.s_Unknown_0056c6e5 = 0;
         Mem.s_Unknown_0056be5b = 0;
 
-        ReloadGameplayResources();     // Ghidra: FUN_00504ca0
+        Res.ReloadGameplayResources();     // Ghidra: FUN_00504ca0
         SetupMenuScreen();             // Ghidra: FUN_00529a80
 
         if (s_Unknown_005de51c != 0)

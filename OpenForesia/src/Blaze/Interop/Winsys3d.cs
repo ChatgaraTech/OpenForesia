@@ -244,7 +244,7 @@ internal static unsafe class Winsys3d
     // winsys3d.c FUN_00a05bd0 â€” libgpu `ReadTIM(TIM_IMAGE*)`. Parses the TIM header the cursor
     // points at and fills the 5-dword TIM_IMAGE below. When the header's bit 3 is clear the image
     // has no CLUT and it writes mode=2, crect=null, caddr=null.
-    [DllImport("winsys3d.dll", EntryPoint = "#662")] internal static extern void ReadTim(Blaze.TimImage* image);
+    [DllImport("winsys3d.dll", EntryPoint = "#662")] internal static extern void ReadTim(Resources.TimImage* image);
 
     [DllImport("winsys3d.dll", EntryPoint = "#681")] internal static extern void Ordinal_681(int a); // confirmed no-op (FUN_00a02e20)
 
