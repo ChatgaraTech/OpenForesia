@@ -583,6 +583,80 @@ public static unsafe partial class Blaze
         return accepted;
     }
 
+    /// <summary>
+    /// Ghidra: FUN_00533450 @ 0x00533450 — la <b>hauteur du sol</b> sous un point (x, z), obtenue
+    /// en interpolant le plan de la face passée en paramètre.
+    ///
+    /// <para>
+    /// Même géométrie que <see cref="TryPlaceEntity"/>, dont elle reprend exactement les
+    /// conventions : un sommet fait 8 octets (x et y dans les deux moitiés du dword de tête, z dans
+    /// le short de +4), les deux arêtes vont dans les vecteurs GTE 799 et 800, leur produit
+    /// vectoriel dans 801, et sa troncature en 16 bits dans 813 — le même ordre de facteurs, pas un
+    /// équivalent réécrit.
+    /// </para>
+    /// <para>
+    /// La table de sommets vient de <c>DAT_005f7cc0</c>, que <see cref="LoadWorldMapSubArea"/> pose
+    /// à <c>premierMorceau + 0x40</c> ; ici elle est déjà chargée, la fonction ne la dérive pas.
+    /// </para>
+    /// <para>
+    /// <b>Le zéro de sortie n'est pas un cas d'erreur mais un cas géométrique</b> : si la composante
+    /// Y de la normale est nulle, le plan est vertical et n'a pas de hauteur au-dessus de (x, z).
+    /// L'original rend 0 sans le signaler, et c'est transcrit tel quel.
+    /// </para>
+    /// </summary>
+    /// <param name="face">La face du terrain, un enregistrement de 16 octets.</param>
+    /// <param name="position">La position, en 20.12 ; seules ses composantes x ([0]) et z ([2]) sont lues.</param>
+    private static int GroundHeightOnFace(uint* face, int* position)
+    {
+        EnsureGteRegisters();
+
+        byte* vertices = *(byte**)Mem.Entity(0x005f7cc0);
+
+        int* v0 = (int*)(vertices + (face[0] & 0xffff) * 8);
+        int* v2 = (int*)(vertices + (face[0] >> 0x10) * 8);
+        int* v1 = (int*)(vertices + (face[1] & 0xffff) * 8);
+
+        int head0 = *v0;
+        int x0 = (short)head0;
+        int y0 = head0 >> 0x10;
+        int z0 = (short)v0[1];
+
+        int head2 = *v2;
+        int head1 = *v1;
+
+        int* vec799 = (int*)s_GteVec799;
+        int* vec800 = (int*)s_GteVec800;
+        int* mac801 = (int*)s_GteMac801;
+        short* ir813 = (short*)s_GteIr813;
+
+        vec800[0] = (short)head2 - x0;
+        vec800[1] = (head2 >> 0x10) - y0;
+        vec800[2] = (short)v2[1] - z0;
+
+        vec799[0] = (short)head1 - x0;
+        vec799[1] = (head1 >> 0x10) - y0;
+        vec799[2] = (short)v1[1] - z0;
+
+        mac801[0] = vec799[2] * vec800[1] - vec799[1] * vec800[2];
+        mac801[1] = vec800[2] * vec799[0] - vec799[2] * vec800[0];
+        mac801[2] = vec799[1] * vec800[0] - vec800[1] * vec799[0];
+
+        ir813[0] = (short)mac801[0];
+        ir813[1] = (short)mac801[1];
+        ir813[2] = (short)mac801[2];
+
+        // Plan vertical : pas de hauteur au-dessus de (x, z).
+        if (mac801[1] == 0) return 0;
+
+        // Les parentheses autour de la soustraction ne sont PAS decoratives : `*` lie plus fort
+        // que `-`, donc les omettre calculerait `A/B - (y0 * 0x1000)` au lieu de
+        // `(A/B - y0) * 0x1000`. Ghidra ecrit bien la seconde forme.
+        int planeHeight = (((position[0] >> 0xc) - x0) * mac801[0]
+                         + ((position[2] >> 0xc) - z0) * mac801[2]) / mac801[1];
+
+        return (planeHeight - y0) * 0x1000;
+    }
+
     // Ghidra: DAT_00563c77 et DAT_00563c5c — deux octets remis a zero en toute fin de
     // FUN_00516350. TODO(REVERSE) : leurs lecteurs sont dans FUN_00516fc0, non transcrite.
     private static byte s_Unknown_00563c77, s_Unknown_00563c5c;
@@ -800,13 +874,426 @@ public static unsafe partial class Blaze
     private static int s_Unknown_005e9adc_count;
     private static byte* s_Unknown_005e97d0_worldmap;
 
-    /// <summary>Ghidra: FUN_00533940 @ 0x00533940 — la finalisation du placement d'une entite.</summary>
-    private static void FinalizeEntityPlacement2(uint* slot) =>
-        throw new NotImplementedException(
-            "FUN_00533940 : la finalisation de placement d'entite (375 lignes). Cinq labels " +
-            "entrelaces (LAB_005339a8, LAB_005339b6, LAB_00533af7, LAB_00533c2a, LAB_00534018) " +
-            "sautes depuis plusieurs endroits : il faut reconstruire le flot, pas le translitterer. " +
-            "Appelle FUN_00533450 (52 lignes). Voir REVERSE_STATUS.md");
+    /// <summary>
+    /// Ghidra: FUN_00533940 @ 0x00533940 — la finalisation du placement d'une entite : partant des
+    /// quatre references de face de l'emplacement, elle <b>marche de proche en proche</b> a travers
+    /// le maillage du terrain, en franchissant les aretes partagees, jusqu'a trouver la face qui
+    /// contient reellement la position — puis en deduit la hauteur du sol et l'etat de vue.
+    ///
+    /// <para>
+    /// <b>Le flot a ete reconstruit, pas translittere.</b> Ghidra en rend sept labels sautes depuis
+    /// plusieurs endroits (<c>LAB_005339a8</c>, <c>LAB_005339b6</c>, <c>LAB_00533af7</c>,
+    /// <c>LAB_00533b96</c>, <c>LAB_00533c2a</c>, <c>LAB_00533e9f</c>, <c>LAB_0053430a</c>) plus un
+    /// <c>joined_r0x005342c7</c>, ce qui donne l'impression d'un graphe irreductible. Il ne l'est
+    /// pas : c'est <b>une boucle sur les aretes de la face courante</b>.
+    /// </para>
+    /// <para>
+    /// Les aretes sont, dans l'ordre : <c>(i0,i2)</c>, <c>(i2,i1)</c>, puis <c>(i1,i0)</c> pour un
+    /// triangle, ou <c>(i1,i3)</c> et <c>(i3,i0)</c> pour une face a quatre sommets (bit 1 des
+    /// attributs). Chaque arete est testee par un <c>NormalClip</c> ; un signe negatif veut dire
+    /// « le point est de l'autre cote », donc on franchit CETTE arete vers la face voisine et on
+    /// reprend a l'arete suivante. Les trois destinations de saut de Ghidra
+    /// (<c>LAB_00533af7</c>, <c>LAB_00533b96</c>, <c>LAB_00533e9f</c>) sont exactement
+    /// « reprendre a l'arete 1, 2, ou 2-quad » : le code y compare la cle de l'arete franchie pour
+    /// savoir laquelle, ce qui se resume a <c>arete suivante = arete franchie + 1</c>.
+    /// </para>
+    /// <para>
+    /// Si toutes les aretes passent, le point est dans la face et la marche s'arrete. Si la marche
+    /// depose la meilleure face dans un AUTRE emplacement que celui qu'on parcourt, le curseur y
+    /// demenage et le budget de pas repart a 0x10 — c'est le <c>goto LAB_005339a8</c>. Le budget
+    /// vaut seize pas au maximum, et l'epuiser leve le bit 8 du short de <c>+2</c>.
+    /// </para>
+    /// <para>
+    /// <b>Les deux boucles sont dans la MEME methode, et il ne faut pas les separer</b> : la
+    /// seconde lit trois locales que la premiere laisse derriere elle (<c>local_30</c>,
+    /// <c>local_40</c>, <c>local_1c</c>). Les extraire demanderait de les passer en parametres, ce
+    /// qui donnerait une signature mensongere — elles ne sont pas des entrees, ce sont des restes.
+    /// </para>
+    /// <para>
+    /// L'expression a six termes que Ghidra inline six fois est le <c>NormalClip</c> du SDK, deja
+    /// reconstruit sous ce nom dans <c>Platform/Winsys3d.cs</c> (FUN_0051c280) : les six termes ont
+    /// ete recoupes un a un, c'est la meme expression, sur les memes registres 805/806/807/808.
+    /// </para>
+    /// </summary>
+    private static void FinalizeEntityPlacement2(uint* slot)
+    {
+        EnsureGteRegisters();
+
+        byte* firstChunk = *(byte**)Mem.Entity(0x005f7bc0);
+        byte* faces = *(byte**)(firstChunk + 0x28);            // Ghidra: iVar7
+        short** adjacency = *(short***)(firstChunk + 0x30);
+        byte* vertices = *(byte**)Mem.Entity(0x005f7cc0);
+        byte* materials = *(byte**)Mem.Entity(0x005fa508);
+
+        // La position (x, z) de l'entite, empaquetee comme un SXY : x dans le short bas, z dans le
+        // haut. Ghidra: `(int)param_1[7] >> 0xc & 0xffff | (param_1[9] & 0xfffff000) << 4`.
+        *(uint*)s_GteSxy807 = ((uint)((int)slot[7] >> 0xc) & 0xffff)
+                            | ((slot[9] & 0xfffff000) << 4);
+
+        short* history = Mem.s_FaceWalkHistory_005de730;
+        *(int*)history = -1;
+        *(int*)(history + 2) = -1;
+
+        uint* cursor = slot + 0x20;          // Ghidra: local_5c
+        int remaining = 4;                   // Ghidra: local_4c
+
+        // TODO(REVERSE): la seconde boucle lit `local_1c` et `local_30` sans qu'ils soient
+        // forcement ecrits — `local_1c` ne l'est que par la branche « face a quatre sommets » de la
+        // premiere boucle, et `local_30` y garde le sommet 2 de la derniere face examinee, ce qui
+        // n'a aucun sens comme hauteur. C# exige une affectation definie ; 0 est retenu ici, la ou
+        // l'original lirait la pile. Les deux ne sont lus qu'a travers `previousFace != null`,
+        // faux au premier tour, donc la valeur n'a pas d'effet observable — mais elle est bien
+        // indeterminee dans l'original, et c'est note plutot que masque.
+        uint quadPacked = 0;                 // Ghidra: local_1c
+        uint carriedPacked = 0;              // Ghidra: local_30
+
+        while (remaining != 0)
+        {
+            // Ghidra: LAB_005339a8 — tete du corps externe.
+            *(ushort*)((byte*)cursor + 2) &= 0xfff7;
+            int steps = 0x10;                // Ghidra: local_48
+            bool relocated = false;
+            bool stop = false;
+
+            while (steps != 0 && !relocated && !stop)
+            {
+                // Ghidra: LAB_005339b6 — tete de la boucle interne : (re)lecture de la face.
+                uint slotRef = *cursor;                    // Ghidra: uVar21
+                uint slotAttributes = slotRef >> 0x10;     // Ghidra: uVar19
+                if ((slotAttributes & 0x8000) != 0) break;
+
+                uint* face = (uint*)(faces + (slotRef & 0xffff) * 0x10);   // Ghidra: puVar13
+                uint f0 = face[0];                          // Ghidra: uVar8
+                uint f1 = face[1];                          // Ghidra: uVar17
+                uint i0 = f0 & 0xffff;
+                uint i2 = f0 >> 0x10;                       // Ghidra: uVar26
+                uint i1 = f1 & 0xffff;
+                uint i3 = f1 >> 0x10;                       // Ghidra: uVar22
+                bool quad = (slotAttributes & 1) != 0;
+                int lastEdge = quad ? 3 : 2;
+
+                uint p0 = PackedXz(vertices, i0);           // Ghidra: uVar23
+                uint p1 = PackedXz(vertices, i1);           // Ghidra: uVar27
+                uint p2 = PackedXz(vertices, i2);           // Ghidra: local_30
+                uint p3 = quad ? PackedXz(vertices, i3) : 0;
+                carriedPacked = p2;
+                if (quad) quadPacked = p3;
+
+                int edge = 0;
+                bool reload = false;
+
+                while (!reload && !relocated && !stop)
+                {
+                    // Les deux extremites de l'arete courante, et sa cle : l'indice de depart dans
+                    // le short haut, celui d'arrivee dans le bas.
+                    uint a, b, fromIndex, toIndex;
+                    switch (edge)
+                    {
+                        case 0:
+                            a = p0; b = p2; fromIndex = i0; toIndex = i2; break;
+                        case 1:
+                            a = p2; b = p1; fromIndex = i2; toIndex = i1; break;
+                        case 2:
+                            if (quad) { a = p1; b = p3; fromIndex = i1; toIndex = i3; }
+                            else { a = p1; b = p0; fromIndex = i1; toIndex = i0; }
+                            break;
+                        default:
+                            a = p3; b = p0; fromIndex = i3; toIndex = i0; break;
+                    }
+
+                    *(uint*)s_GteSxy805 = a;
+                    *(uint*)s_GteSxy806 = b;
+                    if (NormalClip() >= 0)
+                    {
+                        // Le point est du bon cote de cette arete. Toutes passees : il est DANS la
+                        // face, et la marche s'arrete — Ghidra tombe alors sur LAB_00534010.
+                        edge++;
+                        if (edge > lastEdge) stop = true;
+                        continue;
+                    }
+
+                    // Ghidra: LAB_00533c2a — la marche vers la face voisine, a travers l'arete.
+                    uint edgeKey = (fromIndex << 0x10) | (toIndex & 0xffff);
+                    uint bestKind = (uint)(4 - remaining);   // Ghidra: local_50
+                    uint* bestSlot = null;                   // Ghidra: local_2c, usage emplacement
+
+                    short* neighbour = adjacency[fromIndex & 0xffff];
+                    for (short other = *neighbour; other >= 0; other = *++neighbour)
+                    {
+                        uint* candidate = (uint*)(faces + other * 0x10);   // Ghidra: puVar15
+                        if (candidate == face) continue;
+
+                        uint c0 = candidate[0];
+                        uint c1 = candidate[1];
+                        uint cAttributes = candidate[3];
+                        bool cQuad = (cAttributes & 1) != 0;
+
+                        // La face voisine porte-t-elle la meme arete ? Quatre dispositions possibles,
+                        // selon qu'elle est triangle ou quadrilatere.
+                        bool shares = edgeKey == c0
+                                   || edgeKey == ((c1 << 0x10) | (c0 >> 0x10))
+                                   || (!cQuad && edgeKey == ((c0 << 0x10) | (c1 & 0xffff)))
+                                   || (cQuad && (edgeKey == c1 || edgeKey == ((c0 << 0x10) | (c1 >> 0x10))));
+                        if (!shares) continue;
+
+                        uint kind = (cAttributes >> 0x10) & 0xff;
+                        uint* target = slot + kind + 0x20;
+                        uint written = cAttributes;
+
+                        // Le short de +2 de la matiere decide si la face participe au sol.
+                        if (*(short*)(materials + 2 + (ushort)candidate[2] * 8) >= 0)
+                        {
+                            if ((cAttributes & 0x2000) == 0) *(ushort*)((byte*)cursor + 2) &= 0xdfff;
+                            else written = cAttributes | 4;
+                        }
+
+                        written |= *(ushort*)((byte*)cursor + 2) & 0x2086u;
+                        byte zone = *((byte*)candidate + 0xf);
+                        if (zone != 0 && zone - 1u != (uint)*Mem.Camera(0x005de058)) written |= 2;
+                        if (cursor == target) written |= *(ushort*)((byte*)cursor + 2) & 0x800u;
+
+                        byte kindByte = (byte)(cAttributes >> 0x10);
+                        // Ghidra ecrit `uVar20 << 0x10 | (int)sVar4`, une extension de signe. Elle
+                        // est inoffensive parce que la boucle garantit `other >= 0` — mais la
+                        // laisser telle quelle vaut un CS0675, et un avertissement de signe qu'on
+                        // apprend a ignorer est le debut d'un vrai bug de signe. Le cast par
+                        // `ushort` calcule exactement la meme chose pour un `other` positif.
+                        if ((written & 0x800) == 0 || *((byte*)slot + 0x95) != kindByte)
+                            *target = (written << 0x10) | (uint)(ushort)other;
+                        else
+                            *((byte*)target + 3) |= 8;
+
+                        if (kindByte < (byte)bestKind) { bestKind = kind; bestSlot = target; }
+                    }
+
+                    if (slotRef == *cursor)
+                    {
+                        *(ushort*)((byte*)cursor + 2) =
+                            (ushort)((*(ushort*)((byte*)cursor + 2) & 0xdfff) | 0x8000);
+                    }
+
+                    // La meilleure face trouvee vit dans un AUTRE emplacement, et ce n'est pas celle
+                    // qu'on y avait deja mise : le curseur y demenage et le budget repart.
+                    if (bestSlot != null
+                        && history[bestKind] != (short)*bestSlot
+                        && bestKind != (uint)(4 - remaining))
+                    {
+                        byte carried = *((byte*)bestSlot + 2);
+                        remaining = 4 - (int)bestKind;
+                        ushort previous = *(ushort*)((byte*)cursor + 2);
+                        history[bestKind] = (short)*bestSlot;
+                        ushort fresh = *(ushort*)(faces + (ushort)*bestSlot * 0x10 + 0xc);
+                        *(ushort*)((byte*)bestSlot + 2) =
+                            (ushort)(fresh | (previous & 0x82) | (carried & 0x82));
+                        cursor = bestSlot;
+                        if ((fresh & 0x800) != 0) stop = true;
+                        else relocated = true;
+                        break;
+                    }
+
+                    // Ghidra: LAB_0053430a — l'indice de face de l'emplacement a change sous nous :
+                    // il faut relire la face et repartir de sa premiere arete.
+                    if ((short)slotRef != (short)*cursor)
+                    {
+                        if ((*cursor & 0x8000000) != 0) { stop = true; break; }
+                        steps--;
+                        reload = true;
+                        break;
+                    }
+
+                    // Rien n'a bouge : on reprend a l'arete SUIVANTE. Si on vient de franchir la
+                    // derniere, la marche s'arrete.
+                    edge++;
+                    if (edge > lastEdge) stop = true;
+                }
+            }
+
+            // Ghidra: LAB_00534010 / LAB_00534018 — le budget epuise leve le bit 8.
+            if (relocated) continue;
+            if (steps == 0) *((byte*)cursor + 2) |= 8;
+            cursor++;
+            remaining--;
+        }
+
+        // =========================================================================================
+        // Seconde boucle : les quatre references sont parcourues A L'ENVERS, et la premiere face
+        // dont la hauteur de sol est atteignable fixe l'altitude de l'entite.
+        // =========================================================================================
+        remaining = 4;                       // Ghidra: local_4c
+        uint sinkFlag = 0;                   // Ghidra: local_48, reutilise ici comme drapeau 0x2000
+        uint previousFace = 0;               // Ghidra: local_40
+        uint refAttributes = 0;              // Ghidra: uVar21 a la sortie de la boucle
+        uint* lastRef = null;                // Ghidra: puVar13
+
+        do
+        {
+            lastRef = cursor - 1;
+            refAttributes = cursor[-1] >> 0x10;
+            uint faceAddress = (uint)(nuint)(faces + (cursor[-1] & 0xffff) * 0x10);
+            slot[0x1f] = faceAddress;
+
+            uint nextQuadPacked = quadPacked;    // Ghidra: uVar19
+            uint nextPreviousFace = previousFace; // Ghidra: uVar8
+            uint height;                          // Ghidra: uVar17
+
+            if ((refAttributes & 0x8000) == 0)
+            {
+                height = (uint)GroundHeightOnFace((uint*)(nuint)faceAddress, (int*)(slot + 7));
+
+                if ((int)height <= (int)slot[8])
+                {
+                    if (previousFace != 0)
+                    {
+                        refAttributes = quadPacked & 0xffffdfff;
+                        slot[0x1f] = previousFace;
+                        height = carriedPacked;
+                    }
+                    slot[0x18] = height;
+                    break;
+                }
+
+                if ((int)slot[8] < (int)(height - 0x32000))
+                {
+                    // La face est trop haute : soit on la refuse tout net, soit on la marque comme
+                    // franchissable et on continue vers la reference suivante.
+                    if ((refAttributes & 0x2000) == 0)
+                    {
+                        refAttributes |= 0x804;
+                        break;
+                    }
+                    *((byte*)cursor - 1) |= 0x80;
+                    uint marked = refAttributes | 0x8000;
+                    uint wasStepped = refAttributes & 4;
+                    refAttributes = marked;
+                    height = carriedPacked;
+                    if (wasStepped == 0) sinkFlag = 0x2000;
+                }
+                else
+                {
+                    nextQuadPacked = refAttributes;
+                    nextPreviousFace = slot[0x1f];
+                    if ((*((byte*)(nuint)slot[0x1f] + 0xd) & 0x20) == 0)
+                    {
+                        if (previousFace != 0 && 0x32000 < (int)(carriedPacked - slot[0x18]))
+                        {
+                            refAttributes = quadPacked & 0xffffdfff;
+                            slot[0x1f] = previousFace;
+                            height = carriedPacked;
+                        }
+                        nextQuadPacked = (height + slot[0x15]) - slot[8];
+                        if ((int)nextQuadPacked < 0) slot[0x15] = nextQuadPacked;
+                        slot[0x18] = height;
+                        slot[8] = height;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                *(ushort*)((byte*)cursor - 2) |= (ushort)sinkFlag;
+                refAttributes |= sinkFlag;
+                height = carriedPacked;
+            }
+
+            carriedPacked = height;
+            previousFace = nextPreviousFace;
+            remaining--;
+            quadPacked = nextQuadPacked;
+            cursor = lastRef;
+        }
+        while (remaining != 0);
+
+        *((sbyte*)slot + 0x95) = (sbyte)(remaining - 1);
+
+        if ((refAttributes & 0x8000) != 0 && (refAttributes & 0x2000) == 0
+            && (**(byte**)Mem.Entity(0x005eca80) & 0x20) != 0)
+        {
+            refAttributes = 0x40000800;
+        }
+        if ((refAttributes & 0x800) != 0) refAttributes |= 0x10000000;
+
+        if (slot[0x1f] != 0)
+        {
+            if ((*((byte*)(nuint)slot[0x1f] + 0xd) & 0x20) == 0) refAttributes &= 0xffffdfff;
+            else refAttributes |= 0x2000;
+        }
+        slot[0x24] = refAttributes;
+
+        // Les references restantes recoivent les attributs frais de leur face, et la premiere qui
+        // n'est pas masquee par le bit 0x1000 donne la hauteur de reference secondaire.
+        bool noneUsable;                     // Ghidra: bVar10
+        if ((refAttributes & 0x800) == 0)
+        {
+            bool wantHeight = true;          // Ghidra: bVar11
+            noneUsable = true;
+            for (int left = remaining; left != 0; left--)
+            {
+                if ((*lastRef & 0x80000000) == 0)
+                {
+                    uint* refFace = (uint*)(faces + (*lastRef & 0xffff) * 0x10);
+                    ushort fresh = *(ushort*)((byte*)refFace + 0xc);
+                    *(ushort*)((byte*)lastRef + 2) = (ushort)((*((byte*)lastRef + 2) & 8) | fresh);
+                    if (wantHeight && (fresh & 0x1000) == 0)
+                    {
+                        if ((slot[0x24] & 0x800) == 0)
+                            slot[0x19] = (uint)GroundHeightOnFace(refFace, (int*)(slot + 7));
+                        wantHeight = false;
+                    }
+                }
+                lastRef--;
+                noneUsable = wantHeight;
+            }
+        }
+        else
+        {
+            noneUsable = false;
+        }
+
+        if (noneUsable)
+        {
+            slot[0x19] = 0x80000000;
+            slot[0x24] |= 0x20001000;
+        }
+        else
+        {
+            slot[0x24] &= 0xffffefff;
+        }
+
+        // Le compteur de +0x94 amortit le basculement du bit 0x20000000 de l'etat de l'entite.
+        if ((slot[0x24] & 0x8000) == 0)
+        {
+            *(byte*)(slot + 0x25) = 0x20;
+            slot[0] &= 0xdfffffff;
+        }
+        else if ((sbyte)slot[0x25] != 0)
+        {
+            *(sbyte*)(slot + 0x25) = (sbyte)((sbyte)slot[0x25] - 1);
+        }
+        else
+        {
+            slot[0] |= 0x20000000;
+        }
+
+        // Ghidra: LAB_00534272 — tombee sous le plancher, l'entite est reinitialisee.
+        if ((int)slot[8] < -0x4e20000)
+        {
+            *(byte*)(slot + 0x25) = 0;
+            *(ushort*)((byte*)slot + 0x82) = 0xa000;
+            *(ushort*)((byte*)slot + 0x86) = 0xa000;
+            *(ushort*)((byte*)slot + 0x8a) = 0xa000;
+            *(ushort*)((byte*)slot + 0x8e) = 0xa000;
+            slot[0] |= 0x20000000;
+        }
+    }
+
+    /// <summary>Ghidra: <c>&amp;DAT_005f7cc0 + i * 8</c> — un sommet fait 8 octets : x dans le short
+    /// bas du dword de tete, y dans le haut, z dans le short de <c>+4</c>. Empaquete ici comme un
+    /// SXY (x bas, z haut), la forme que les registres 805/806/807 attendent.</summary>
+    private static uint PackedXz(byte* vertices, uint index)
+    {
+        byte* v = vertices + index * 8;
+        return (uint)(ushort)*(short*)v | ((uint)(ushort)*(short*)(v + 4) << 0x10);
+    }
 
     /// <summary>Ghidra: FUN_005350b0 @ 0x005350b0 — 95 lignes, non transcrite.</summary>
     private static void ApplyAreaPalette(byte index) =>

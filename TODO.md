@@ -10,7 +10,8 @@ vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baselin
 `bodies-baseline.txt`.
 **Non commité** : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
 terminée —, le rapatriement `.data` du son, le retrait intérieur des points d'entrée, la correction
-des huit défauts d'aliasing (qui **change le comportement**), et cette mise à jour de documentation.
+des huit défauts d'aliasing (qui **change le comportement**), la transcription de `FUN_00533940` et
+`FUN_00533450`, et cette mise à jour de documentation.
 
 **`bodies-baseline.txt` a été refigé** à 511 corps le 2026-08-21, après les corrections. L'ancienne
 référence reste dans l'historique, au commit `95344c7`.
@@ -40,31 +41,43 @@ ne relèvent pas du retrait, elles sont la raison d'être du mécanisme.
 `partial class Blaze` : pas de constructeur, donc rien à injecter. `Subsystems.cs` ne disparaîtra
 qu'à l'étape D.
 
-## Reprendre ici — la carte du monde, `FUN_00533940`
+## Reprendre ici — `FUN_005350b0`, la palette de zone (95 lignes)
 
-**Son préalable est levé.** Le défaut d'aliasing `0x00566c70` — deux allocations pour une seule
-mémoire, dont la carte du monde lisait la seconde — est corrigé depuis le 2026-08-21, avec les sept
-autres. Rien ne bloque plus la reprise.
+**Le front a bougé le 2026-08-21.** `FUN_00533940` et sa dépendance `FUN_00533450` sont transcrites
+et s'exécutent sur les vraies données du maillage. La pile de la reproduction documentée s'arrête
+maintenant une étape plus loin, et c'est un fait mesuré, pas une prévision :
 
-C'est aussi **le seul chantier qui fasse avancer la reconstruction elle-même** : plus de code du jeu
-transcrit, l'état 3 qui finit par afficher quelque chose. Tout est décrit en priorité 2 : les 375
-lignes déjà cartographiées de `FUN_00533940`, ses cinq labels sautés depuis plusieurs endroits, et
-sa dépendance facile `FUN_00533450` (52 lignes) à écrire en premier parce qu'elle sert de contrôle.
+```
+NotImplementedException: FUN_005350b0 : la mise en place de palette de zone (95 lignes)
+   at ApplyAreaPalette(Byte)        WorldMap.cs:1300
+   at PlaceWorldMapParty(Byte*)     WorldMap.cs:1548
+   at RunWorldMapFrame()            RunWorldMapState()   RunGameStateTick()
+```
 
-**Une chose a changé pour elle depuis la dernière fois**, et elle est bonne à savoir avant de
-mesurer quoi que ce soit : `DAT_006008d0/d4/d8`, le décalage monde appliqué avant projection, était
-écrit par `WorldMap` **à travers l'arène** et lu par `Model3d` dans un **champ séparé**. Les deux
-mémoires ne se rencontraient jamais. C'est corrigé — donc si un comportement de la carte du monde
-paraissait inexplicable auparavant, il vaut la peine d'être re-regardé plutôt que re-débogué.
+`FUN_005350b0` est petite et sur le chemin chaud. Ce qu'un premier coup d'œil montre : elle remplit
+des entités à partir de `&DAT_005fa5e0 + DAT_005e9ae8 * 0x27` (donc des enregistrements de 0x9c
+octets dans `EntityArena`), en lisant une liste prise dans `*(DAT_005e97cc + 0x30)`. Vérifier
+lesquelles de `DAT_005e9ae8`, `DAT_00600838` et `DAT_005fa5e0` sont déjà modélisées avant d'écrire.
 
-**Ce qui reste hors du chemin** :
+**Ensuite** : `FUN_00516fc0` (1226 lignes), la logique par image de la carte du monde — c'est elle
+qui pose `DAT_005645f8`, décide des sorties, et fera enfin apparaître quelque chose à l'écran.
+Mesurer ses dépendances manquantes avant de s'y mettre.
 
-* **L'étape D**, `Screens/` en 12 classes. Toujours à ne pas commencer : `WorldMap.cs` est
-  précisément le fichier qu'on va écrire. Le convertir maintenant, c'est se condamner à le
-  reconvertir. La recette et la matrice de dépendances l'attendent, plus bas.
-* **Les deux élargissements d'outillage** et **l'arène de carte mémoire** : voir priorité 1 bis.
-  Aucun ne bloque la carte du monde.
+### Reproduire l'arrêt — et un piège du banc d'essai
 
+```powershell
+$env:PATH = "C:\Program Files (x86)\dotnet;$env:PATH"
+$env:OPENFORESIA_SKIP_AREA_HANDLER = '1'
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 30 -WorkingDir OpenForesia -Shot `
+  -Then WAIT4,ENTER,WAIT1,START,WAIT4,ENTER,WAIT3,ENTER,WAIT12
+```
+
+**Si ça ne reproduit rien, chercher `relance detectee` dans la sortie avant de soupçonner la
+séquence.** Une course perdue pour la mémoire basse relance le jeu en processus fils et décale tout
+le minutage des touches : la séquence part dans le vide et le verdict affiche « aucun plantage »,
+ce qui est trompeur. Relancer suffit (environ une fois sur cinq). Écrit dans `test-protocol.md`.
+
+**Prérequis** : au moins une sauvegarde dans `OpenForesia\save\`. Il y en a quatre.
 
 ## Cinq avertissements payés comptant
 
@@ -404,7 +417,7 @@ l'écran.
 
 ---
 
-# Priorité 2 — Finir `FUN_00533940`
+# Priorité 2 — Finir l'état 3, la carte du monde
 
 ## Où on en est exactement
 
@@ -423,8 +436,9 @@ RunGameStateTick (état 3)
       │  │  └─ UploadRawAreaBlocks FUN_005355f0 [FAIT]
       │  └─ PlaceWorldMapParty                 [FAIT]
       │     ├─ TryPlaceEntity   FUN_005330d0   [FAIT]
-      │     ├─ FUN_00533940                    ←←← ON S'ARRÊTE ICI
-      │     └─ ApplyAreaPalette FUN_005350b0   [à faire, 95 lignes]
+      │     ├─ FinalizeEntityPlacement2       [FAIT le 2026-08-21 — FUN_00533940, 375 l.]
+      │     │  └─ GroundHeightOnFace          [FAIT le 2026-08-21 — FUN_00533450, 52 l.]
+      │     └─ ApplyAreaPalette FUN_005350b0   ←←← ON S'ARRÊTE ICI (95 lignes)
       ├─ ReInitializeAllTextures / Ordinal_674 [FAIT]
       └─ RunWorldMapTick       FUN_00516fc0    [à faire, 1226 lignes — le gros morceau]
 ```
@@ -443,70 +457,48 @@ groupe? » → `ENTER` → « Oui » → `ENTER`. L'exception nommée tombe avec
 
 **Prérequis** : au moins une sauvegarde dans `OpenForesia\save\`. Il y en a quatre.
 
-## `FUN_00533940` — ce qu'on sait déjà, pour ne pas le refaire
+## `FUN_00533940` — **FAITE le 2026-08-21**, et ce qu'elle a appris
 
-`Blaze.c` **80454..80827** (375 lignes). Signature : `FUN_00533940(uint *param_1)` où `param_1` est
-l'**emplacement de personnage** de 0x9c octets (celui que `PlaceWorldMapParty` vient de remplir).
+Transcrite sous le nom `FinalizeEntityPlacement2`, avec sa dépendance `FUN_00533450`
+(`GroundHeightOnFace`). Le détail est dans `REVERSE_STATUS.md`. Trois choses valent d'être retenues
+ici parce qu'elles resserviront :
 
-**Ce que la fonction fait, en une phrase** : elle part de la face du terrain sous l'entité et
-**marche de proche en proche** à travers le maillage, en franchissant les arêtes partagées, jusqu'à
-trouver la face qui contient réellement la position — puis elle en déduit la hauteur du sol.
-
-### La structure de flot, déjà cartographiée
-
-C'est le point difficile : **cinq labels sautés depuis plusieurs endroits**. Il faut reconstruire
-le flot en `while`/`break`/`continue`, pas le translittérer (règle de `Strategy.md`).
-
-| label | rôle |
-|---|---|
-| `LAB_005339a8` | tête du corps externe : éteint le bit 8 du short `+2` du curseur, remet le compteur `local_48` à 0x10 |
-| `LAB_005339b6` | tête de la boucle interne : sort vers `LAB_00534018` si `local_48` est nul |
-| `LAB_00533af7` | ré-entrée après un premier test de signe (`Ordinal_808` = MAC0, le NCLIP) |
-| `LAB_00533b96` | ré-entrée pour le troisième côté |
-| `LAB_00533c2a` | la **marche vers la face voisine** — c'est la boucle centrale |
-| `LAB_00533e9f` | branche des faces à quatre sommets |
-| `LAB_0053430a` | ré-entrée vers `LAB_005339b6` |
-| `LAB_00534010` / `LAB_00534018` | les deux sorties |
-
-Deux boucles imbriquées cadrent le tout : `for (local_4c = 4; local_4c != 0; local_4c--)` (les
-**quatre** références de face de l'entité, à `slot + 0x80`), et `local_48 = 0x10` (seize pas de
-marche au maximum). Après elles, une **seconde boucle** appelle `FUN_00533450`.
-
-### Les données
-
-* `iVar7 = *(int *)(DAT_005f7bc0 + 0x28)` — la liste de faces du premier morceau chargé. Côté port :
-  `*(byte**)Entity(0x005f7bc0)`, puis `+0x28`.
-* `DAT_005f7cc0` — la table de sommets, déjà posée par `LoadWorldMapSubArea`
-  (`premierMorceau + 0x40`). **Un sommet fait 8 octets** : `x` et `y` dans le dword de tête (bas et
-  haut), `z` dans le short de `+4`.
-* `DAT_005fa508` — la table de matières (`premierMorceau + 0x24`). Le short de `+2` d'une entrée
-  décide si la face participe au sol.
-* **Une face fait 16 octets** : trois index de sommet répartis sur les deux premiers dwords, un
-  index de matière au troisième, les attributs au quatrième. Le bit 1 des attributs = face à
-  quatre sommets. L'octet `+0xe` est le *type* de face, qui indexe `slot + 0x80 + type * 4`.
-* `_DAT_005de730` / `_DAT_005de734` — deux shorts mis à -1 en entrée, comparés plus loin
-  (`(&DAT_005de730)[local_50]`, donc un petit tableau indexé). **Pas encore modélisés, et ils
-  tombent hors de tout ce qui existe** : `s_CameraBlock_005de030` s'arrête à 0x5de0b0, et l'arène
-  du menu objets à **0x5de510** — elle a été ramenée de 0x460 à 0x410 le 2026-08-21, en corrigeant
-  les défauts d'aliasing (elle contredisait son propre commentaire, et avalait
-  `s_EntityList_005de558`). L'écart est donc encore plus grand qu'on ne le croyait.
-  Il faudra une arène de plus. Le vérifier avant d'écrire, plutôt que d'ajouter deux champs C#
-  isolés — c'est exactement la forme du défaut d'aliasing du projet, corrigé huit fois de plus ce
-  jour-là.
-* `Ordinal_807_exref` reçoit en entrée `(param_1[7] >> 0xc & 0xffff) | (param_1[9] & 0xfffff000) << 4`
-  — c'est-à-dire la position (x, z) de l'entité empaquetée, `slot + 0x1c` et `slot + 0x24`.
-
-### `FUN_00533450` — sa dépendance, 52 lignes, facile
-
-`FUN_00533450(face, position)` rend la **hauteur du sol** au point (x, z), par interpolation de
-plan : mêmes deux arêtes dans les vecteurs GTE 799 et 800, produit vectoriel dans 801, puis
+**Le graphe n'était pas irréductible.** Ce fichier annonçait « cinq labels sautés depuis plusieurs
+endroits : il faut reconstruire le flot ». C'est vrai, mais la reconstruction est simple une fois
+qu'on voit ce que les labels sont : **une boucle sur les arêtes de la face**.
 
 ```
-((px>>0xc - x0) * N.x + (pz>>0xc - z0) * N.z) / N.y - y0    puis * 0x1000
+triangle : (i0,i2)  (i2,i1)  (i1,i0)
+quad     : (i0,i2)  (i2,i1)  (i1,i3)  (i3,i0)
 ```
 
-et **0 si `N.y` est nul**. À écrire en premier, elle est indépendante et elle sert de vérification :
-si la hauteur rendue est absurde, c'est la géométrie qui est fausse, pas le flot.
+Chaque arête est testée par un `NormalClip` ; un signe négatif fait franchir **cette** arête vers la
+face voisine, puis on reprend à l'arête suivante. `LAB_00533af7`, `LAB_00533b96` et `LAB_00533e9f`
+sont exactement « reprendre à l'arête 1, 2, ou 2-quad ». La comparaison de clés d'arête qui suit la
+marche est une **table de correspondance déguisée** : elle se résume à
+`arête suivante = arête franchie + 1`.
+
+**Une expression inlinée peut être une fonction déjà reconstruite.** Les six termes que Ghidra
+répète six fois sont le `NormalClip` du SDK, déjà écrit dans `Platform/Winsys3d.cs` sous
+`FUN_0051c280`. Recouper terme à terme avant d'appeler : Ghidra les émet dans un autre ordre.
+
+**Un remplacement « plus fidèle » peut changer le sens.** Ghidra écrit `(… / N.y - y0) * 0x1000`.
+Écrit `… - y0 << 0xc`, c'est juste. Remplacer `<< 0xc` par `* 0x1000` pour coller au texte de Ghidra
+casse tout : `*` lie plus **fort** que `-`, `<<` plus lâche. **Vérifier la classe de précédence
+avant de substituer un opérateur à un autre.**
+
+### Ce que ce fichier annonçait et qui s'est révélé faux
+
+> `_DAT_005de730` / `_DAT_005de734` … **Pas encore modélisés, et ils tombent hors de tout ce qui
+> existe** … Il faudra une arène de plus.
+
+**Non.** C'est un bloc de 8 octets, et la taille se déduit de trois côtés qui concordent : deux
+écritures de dword mais des relectures en shorts (donc quatre shorts), un indice borné à 0..3 des
+deux façons dont il est calculé, et le symbole suivant `s_Unknown_005de738` à exactement 8 octets.
+Ajouté à `GameMemory` sous `s_FaceWalkHistory_005de730`.
+
+**C'est la troisième note de ce fichier démentie par la vérification en trois jours.** Les deux
+autres sont dans « Cinq avertissements payés comptant ».
 
 ### Le modèle à suivre
 

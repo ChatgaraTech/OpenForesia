@@ -700,3 +700,21 @@ allocations *hors* du chemin pré-course.
 conversion qui rend des champs paresseux ne peut que *réduire* le travail placé devant la course.
 Quand la mesure dit le contraire de ce que le code impose, suspecter la mesure d'abord — mais la
 refaire, pas l'ignorer.
+
+### Une relance perdue invalide une séquence `-Then` (2026-08-21)
+
+`playtest.ps1 -Then` envoie ses touches à la fenêtre selon un minutage fixe. **Si le jeu perd la
+course pour la mémoire basse, il se relance en processus fils et tout le minutage se décale** : la
+séquence part dans le vide et le jeu reste à l'écran où il était.
+
+Vu le 2026-08-21 en reproduisant l'arrêt de la carte du monde. Première tentative : la ligne
+`(relance detectee : fenetre portee par le PID …)` et un verdict « aucun plantage » — trompeur, la
+séquence n'avait tout simplement pas été jouée. Seconde tentative, sans relance : la pile attendue
+tombe.
+
+**Donc : quand un `-Then` ne reproduit pas ce qu'il devrait, chercher `relance detectee` dans la
+sortie AVANT de soupçonner la séquence.** Relancer suffit — le taux de relance est d'environ une
+fois sur cinq.
+
+Corollaire : un verdict « aucun plantage » sur une séquence `-Then` ne vaut que si la capture montre
+bien l'écran visé. Le compteur de primitives ne le dit pas.

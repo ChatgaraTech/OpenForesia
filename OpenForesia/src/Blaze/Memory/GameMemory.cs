@@ -870,4 +870,27 @@ internal sealed unsafe class GameMemory
     /// </para>
     /// </summary>
     internal readonly byte* s_ViewRect_00566c70 = (byte*)NativeMemory.AllocZeroed(0x14);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005de730</c> — les quatre dernieres faces retenues, une par emplacement
+    /// de reference de face de l'entite. <c>FUN_00533940</c> les met a -1 en entree et s'en sert
+    /// pour ne pas repartir en boucle sur une face deja visitee.
+    ///
+    /// <para>
+    /// <b>Quatre shorts, et la taille est deduite de trois cotes qui concordent.</b> L'original
+    /// initialise par DEUX ecritures de dword (<c>_DAT_005de730 = -1</c>, <c>_DAT_005de734 = -1</c>)
+    /// mais relit par <c>(&amp;DAT_005de730)[local_50]</c> en shorts — donc 8 octets vus comme
+    /// quatre shorts. L'indice <c>local_50</c> vaut <c>4 - local_4c</c> avec <c>local_4c</c> dans
+    /// [1,4], ou le type de face qui indexe <c>slot + 0x80 + type * 4</c>, lui aussi borne a 4
+    /// entrees : dans les deux cas 0..3. Et le symbole suivant, <c>s_Unknown_005de738</c>, est a
+    /// exactement 8 octets.
+    /// </para>
+    /// <para>
+    /// TODO(REVERSE): la region 0x005de700..0x005de72f est referencee par <c>Blaze.c</c> (une
+    /// dizaine de <c>DAT_</c>) mais pas encore reconstruite. Si un site venait a l'indexer d'un
+    /// bout a l'autre, ce bloc devrait la rejoindre plutot que rester isole — c'est la forme
+    /// habituelle du defaut d'aliasing de ce depot.
+    /// </para>
+    /// </summary>
+    internal readonly short* s_FaceWalkHistory_005de730 = (short*)NativeMemory.AllocZeroed(8);
 }

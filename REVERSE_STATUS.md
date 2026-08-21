@@ -6976,3 +6976,117 @@ sur le **tas** au lieu de déborder sur `DAT_00604960` comme dans l'original. Le
 jeu de 1998 fait 19 octets, donc la marge tient — mais elle est plus mince qu'avant, et c'est le
 prix de la fidélité. Chantier séparé : il touche le sous-système de sauvegarde, le plus difficile à
 vérifier à l'écran.
+
+---
+
+## 2026-08-21 — `FUN_00533940` et `FUN_00533450` : le front de la carte du monde avance
+
+Deux fonctions transcrites, et **le point d'arrêt de l'état 3 s'est déplacé** : la pile ne s'arrête
+plus sur `FUN_00533940` mais sur `FUN_005350b0`, la palette de zone.
+
+### `FUN_00533450` → `GroundHeightOnFace` (52 lignes)
+
+La hauteur du sol sous un point (x, z), par interpolation du plan de la face. Écrite en premier
+parce qu'elle est indépendante et qu'elle sert de contrôle, exactement comme le prévoyait `TODO.md`.
+
+Reprend à l'identique les conventions de `TryPlaceEntity` — sommet de 8 octets (x et y dans les
+deux moitiés du dword de tête, z dans le short de `+4`), les deux arêtes dans les vecteurs GTE 799
+et 800, leur produit vectoriel dans 801 avec **le même ordre de facteurs**, la troncature 16 bits
+dans 813.
+
+**Une erreur de précédence attrapée en la relisant, et elle vaut d'être notée.** Ghidra écrit
+`(… / N.y - y0) * 0x1000`. Écrit d'abord `… / mac801[1] - y0 << 0xc`, c'était juste — `<<` lie plus
+lâche que `-`. En remplaçant `<< 0xc` par `* 0x1000` pour coller à Ghidra, la précédence bascule :
+`*` lie plus **fort** que `-`, donc l'expression devenait `A/B - (y0 * 0x1000)`. Corrigé par une
+variable intermédiaire et un commentaire sur place. **Un remplacement « plus fidèle » peut changer
+le sens** quand il change la classe de précédence de l'opérateur.
+
+### `FUN_00533940` → `FinalizeEntityPlacement2` (375 lignes)
+
+Partant des quatre références de face de l'emplacement, elle marche de proche en proche à travers
+le maillage en franchissant les arêtes partagées, jusqu'à trouver la face qui contient la position.
+
+**Le graphe n'est pas irréductible, contrairement à ce qu'il paraît.** Ghidra en rend sept labels
+sautés depuis plusieurs endroits plus un `joined_r0x005342c7`. En les suivant un à un, la structure
+se révèle simple : **c'est une boucle sur les arêtes de la face courante**.
+
+```
+triangle : (i0,i2)  (i2,i1)  (i1,i0)
+quad     : (i0,i2)  (i2,i1)  (i1,i3)  (i3,i0)
+```
+
+Chaque arête est testée par un `NormalClip` ; un signe négatif veut dire « le point est de l'autre
+côté », donc on franchit **cette** arête vers la face voisine et on reprend à l'arête suivante.
+
+Ce qui a débloqué la lecture : les trois destinations de saut `LAB_00533af7`, `LAB_00533b96` et
+`LAB_00533e9f` sont exactement « reprendre à l'arête 1, 2, ou 2-quad ». Le code compare la clé de
+l'arête franchie pour savoir laquelle — mais la comparaison est une **table de correspondance
+déguisée**, et elle se résume à `arête suivante = arête franchie + 1`. Une fois ça vu, les sept
+labels deviennent un `while` sur un compteur d'arête.
+
+**L'expression à six termes inlinée six fois est le `NormalClip` du SDK**, déjà reconstruit sous ce
+nom dans `Platform/Winsys3d.cs` (FUN_0051c280). Les six termes ont été recoupés un à un contre la
+version inlinée avant de l'appeler — Ghidra les émet dans un ordre différent, mais c'est la même
+expression sur les mêmes registres 805/806/807/808.
+
+### Trois décisions de transcription
+
+**Les deux boucles restent dans la même méthode.** La seconde lit trois locales que la première
+laisse derrière elle (`local_30`, `local_40`, `local_1c`). Les extraire aurait demandé de les
+passer en paramètres, donc une signature mensongère : ce ne sont pas des entrées, ce sont des
+restes.
+
+**Deux locales que l'original lit sans les avoir écrites.** `local_1c` n'est assigné que par la
+branche « face à quatre sommets » de la première boucle, et `local_30` y garde le sommet 2 de la
+dernière face examinée — ce qui n'a aucun sens comme hauteur. C# exige une affectation définie ;
+0 est retenu, avec un `TODO(REVERSE)` sur place. Les deux ne sont lus qu'à travers
+`previousFace != 0`, faux au premier tour, donc sans effet observable — mais l'indétermination est
+notée plutôt que masquée.
+
+**Une extension de signe rendue explicite.** Ghidra écrit `uVar20 << 0x10 | (int)sVar4` ; la boucle
+garantit `sVar4 >= 0`, donc c'est inoffensif, mais ça valait un CS0675. Remplacé par
+`(uint)(ushort)other`, qui calcule exactement la même chose — **un avertissement de signe qu'on
+apprend à ignorer est le début d'un vrai bug de signe.**
+
+### La globale qui manquait, et pourquoi elle n'a pas demandé d'arène
+
+`TODO.md` annonçait que `_DAT_005de730` / `_DAT_005de734` « tombent hors de tout ce qui existe » et
+qu'« il faudra une arène de plus ». Vérification faite : **non**. C'est un bloc de 8 octets, et la
+taille est déduite de trois côtés qui concordent :
+
+* l'original initialise par **deux écritures de dword** mais relit par
+  `(&DAT_005de730)[local_50]` en **shorts** — donc 8 octets vus comme quatre shorts ;
+* l'indice `local_50` vaut `4 - local_4c` (avec `local_4c` dans [1,4]) ou le type de face qui
+  indexe `slot + 0x80 + type * 4`, lui aussi borné à 4 entrées : **0..3** dans les deux cas ;
+* le symbole suivant, `s_Unknown_005de738`, est à **exactement 8 octets**.
+
+Ajouté à `GameMemory` sous le nom `s_FaceWalkHistory_005de730`, avec un `TODO(REVERSE)` : la région
+0x005de700..0x005de72f est référencée par `Blaze.c` mais pas encore reconstruite ; si un site venait
+à l'indexer d'un bout à l'autre, ce bloc devrait la rejoindre.
+
+### Vérification — le front a bougé, et c'est la preuve
+
+Build 0 erreur, avertissements inchangés (le CS0675 introduit a été résorbé) · oracle : **un seul
+corps signalé**, `FinalizeEntityPlacement2`, le stub devenu implémentation — donc rien d'autre n'a
+bougé · tests de disposition 5 verts.
+
+**Le contrôle qui compte** : la reproduction documentée (`OPENFORESIA_SKIP_AREA_HANDLER=1`, entrée 0,
+`WAIT4,ENTER,WAIT1,START,WAIT4,ENTER,WAIT3,ENTER,WAIT12`) ne s'arrête plus sur `FUN_00533940`. La
+pile pointe maintenant sur :
+
+```
+NotImplementedException: FUN_005350b0 : la mise en place de palette de zone (95 lignes)
+   at ApplyAreaPalette(Byte) ... WorldMap.cs:1300
+   at PlaceWorldMapParty(Byte*) ... WorldMap.cs:1548
+   at RunWorldMapFrame() ... RunWorldMapState() ... RunGameStateTick()
+```
+
+C'est-à-dire **exactement l'étape suivante que `TODO.md` annonçait**. La marche fait seize pas
+d'arithmétique de pointeurs sur un maillage réel : une foulée ou un index faux fauterait ou
+boucherait, donc passer au travers est un signal, même s'il ne prouve pas la justesse numérique.
+
+**Un piège du banc d'essai, à connaître** : la première tentative n'a rien reproduit du tout et
+s'est arrêtée à l'écran d'organisation du groupe. Cause : `(relance detectee)` — le jeu avait perdu
+la course pour la mémoire basse et s'était relancé en processus fils, ce qui **décale toute la
+séquence de touches** de `-Then`. Relancer suffit. À ne pas confondre avec « la séquence est
+fausse ».
