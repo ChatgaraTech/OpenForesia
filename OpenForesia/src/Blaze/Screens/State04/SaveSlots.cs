@@ -91,7 +91,7 @@ public static unsafe partial class Blaze
         if (s_CardCursor_00578e18 < 0) s_CardCursor_00578e18 = directory[0] - 1;
         if (directory[0] <= s_CardCursor_00578e18) s_CardCursor_00578e18 = 0;
 
-        if (previousCursor != s_CardCursor_00578e18) PlayUiSound3A();
+        if (previousCursor != s_CardCursor_00578e18) Aud.PlayUiSound3A();
 
         if (Mem.s_Unknown_00562b68 < 0)
         {
@@ -100,7 +100,7 @@ public static unsafe partial class Blaze
             s_CardCursorSlot_00604984 = 0;
             Mem.s_CardPhase_00578e0c = 0;
             Mem.s_Unknown_00562b68 = s_CardCursor_00578e18;
-            PlayUiSound38();
+            Aud.PlayUiSound38();
         }
 
         if (s_CardPrevPhase_00578e10 != Mem.s_CardPhase_00578e0c)
@@ -474,7 +474,7 @@ public static unsafe partial class Blaze
                     BindMenuLabels(LabelAt(0x1c0), 0, Mem.s_StatusDescriptor_00560728, 0);
                     *(ushort*)(pad + 2) = (ushort)(buttons & 0x7fff);
                     Mem.s_CardPhase_00578e0c++;
-                    PlayUiSound38();
+                    Aud.PlayUiSound38();
                     break;
                 }
                 byte before = s_CardCursorSlot_00604984;
@@ -487,7 +487,7 @@ public static unsafe partial class Blaze
                 if (slot == 0xff) slot = (byte)(cardCount - 1);
                 if (cardCount <= slot) slot = 0;
                 s_CardCursorSlot_00604984 = slot;
-                if (before != slot) PlayUiSound3A();
+                if (before != slot) Aud.PlayUiSound3A();
 
                 BindMenuLabels(Mem.s_Unknown_005606f8, 0, Mem.s_StatusDescriptor_00560728, 0);
                 // Le reste de la case (deux textes tirés de MainMem+0x1c0004+slot*0x100) touche
@@ -620,7 +620,7 @@ public static unsafe partial class Blaze
                 Mem.s_Unknown_00560763 = 0;
                 Mem.s_Unknown_0056075b = 0;
                 Mem.s_Unknown_00562b68 = -1;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
                 break;
 
             case -3:
@@ -1016,7 +1016,7 @@ public static unsafe partial class Blaze
             if ((buttons & 0x8000) != 0)          // validation
             {
                 *(ushort*)(pad + 2) = (ushort)(buttons & 0x7fff);
-                PlayUiSound38();
+                Aud.PlayUiSound38();
                 state[2]++;
                 return;
             }
@@ -1027,7 +1027,7 @@ public static unsafe partial class Blaze
                 *(short*)(Mem.s_CameraVector_00604928 + 2) = (short)(angle * 0x100);
                 *(short*)(Mem.s_SceneEntity_00572b48 + 0x32) = (short)(angle * -0x100 + 0x800);
                 state[2] = 0x5f;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
                 state[0]--;
                 return;
             }
@@ -1037,7 +1037,7 @@ public static unsafe partial class Blaze
             if ((pad[6] & 0x80) != 0) scratch[0x151] = (byte)(before - 1);
             if ((pad[6] & 0x20) != 0) scratch[0x151]++;
             scratch[0x151] &= 7;
-            if (before != (sbyte)scratch[0x151]) PlayUiSound3A();
+            if (before != (sbyte)scratch[0x151]) Aud.PlayUiSound3A();
             return;
         }
 
@@ -1052,7 +1052,7 @@ public static unsafe partial class Blaze
             {
                 Mem.s_Unknown_0056075b = 0;
                 Mem.s_Unknown_00560fef &= 0xfd;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
                 state[2] = 0x2e;
             }
             return;
@@ -1065,7 +1065,7 @@ public static unsafe partial class Blaze
             if ((pad[3] & 0x40) == 0) return;
             Mem.s_Unknown_00560763 = 0;
             Mem.s_Unknown_00560fef &= 0xfb;
-            PlayUiSound39();
+            Aud.PlayUiSound39();
             state[2] = 0x2e;
             return;
         }
@@ -1230,14 +1230,14 @@ public static unsafe partial class Blaze
 
                 if ((buttons & 8) != 0)          // saut direct à la confirmation
                 {
-                    PlayUiSound38();
+                    Aud.PlayUiSound38();
                     state[2] = 0x61;
                     break;
                 }
 
                 if ((buttons & 0x4000) != 0)     // annulation : retour au sous-état 1
                 {
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2] = 0x13;
                     state[0] -= 2;
                     break;
@@ -1246,7 +1246,7 @@ public static unsafe partial class Blaze
                 if ((buttons & 0x8000) != 0)     // validation
                 {
                     *(ushort*)(pad + 2) = (ushort)(buttons & 0x7fff);
-                    PlayUiSound38();
+                    Aud.PlayUiSound38();
                     state[2] = 0x61;
                     // Le choix s'empaquette sur les bits 1..3, le bit 0 étant conservé.
                     scratch[0x153] = (byte)((((byte)state[5] << 2 | (byte)state[4]) << 1)
@@ -1276,7 +1276,7 @@ public static unsafe partial class Blaze
                     else if (state[5] < 1) { state[5]++; state[4] = 0; }
                 }
 
-                if (before != (uint)(state[5] << 8 | state[4])) PlayUiSound3A();
+                if (before != (uint)(state[5] << 8 | state[4])) Aud.PlayUiSound3A();
                 break;
             }
 
@@ -1295,7 +1295,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.s_Unknown_00560763 = 0;
                     Mem.s_Unknown_00560fef &= 0xfb;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2]--;
                 }
                 break;
@@ -1310,7 +1310,7 @@ public static unsafe partial class Blaze
                 if ((pad[3] & 0x40) == 0) break;
                 Mem.s_Unknown_0056075b = 0;
                 Mem.s_Unknown_00560fef &= 0xfd;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
                 state[2] = 0x5f;
                 break;
 
@@ -1320,7 +1320,7 @@ public static unsafe partial class Blaze
                     if ((pad[3] & 0x40) == 0) break;
                     Mem.s_Unknown_00560763 = 0;
                     Mem.s_Unknown_00560fef &= 0xfb;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2] = 0x5f;
                     break;
                 }
@@ -1451,7 +1451,7 @@ public static unsafe partial class Blaze
 
         if (state[5] == 7) state[4] = 0;
 
-        if (before != (uint)((state[3] << 8 | state[5]) << 8 | state[4])) PlayUiSound3A();
+        if (before != (uint)((state[3] << 8 | state[5]) << 8 | state[4])) Aud.PlayUiSound3A();
 
         if ((*(ushort*)(pad + 2) & 0x8000) == 0)
         {
@@ -1463,12 +1463,12 @@ public static unsafe partial class Blaze
             {
                 state[6]--;
                 scratch[0x100 + state[6]] = 0;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
                 return false;
             }
             if (state[5] != 7 || state[3] != 7) return false;
 
-            PlayUiSound39();
+            Aud.PlayUiSound39();
             state[2] = 0;
             state[0]--;
             return true;
@@ -1490,11 +1490,11 @@ public static unsafe partial class Blaze
             // que Ghidra a rétrécie. Transcrit tel quel plutôt que corrigé au jugé.
             if (state[6] == 0 && glyph == (s_IdeographicSpace_00562c9c & 0xffff))
             {
-                PlayUiSound3B();
+                Aud.PlayUiSound3B();
                 return false;
             }
 
-            PlayUiSound38();
+            Aud.PlayUiSound38();
             scratch[0x100 + state[6]] = glyph;
             state[6]++;
             scratch[0x100 + state[6]] = 0;
@@ -1504,7 +1504,7 @@ public static unsafe partial class Blaze
 
         // Case « fin » : on confirme, en retombant sur le nom par défaut si rien n'a été saisi.
         if (state[6] == 0) LoadDefaultName(scratch, state);
-        PlayUiSound38();
+        Aud.PlayUiSound38();
         state[2] = 0x5f;
         state[0] += 2;
         return true;
@@ -1517,7 +1517,7 @@ public static unsafe partial class Blaze
         {
             state[5] = 7;
             if (state[6] == 0) LoadDefaultName(scratch, state);
-            PlayUiSound38();
+            Aud.PlayUiSound38();
             state[0] += 2;
             state[2] = 0x5f;
             EnableKBInput(0);
@@ -1531,7 +1531,7 @@ public static unsafe partial class Blaze
             {
                 state[6]--;
                 scratch[0x100 + state[6]] = 0;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
             }
             return false;
         }
@@ -1542,7 +1542,7 @@ public static unsafe partial class Blaze
             // à huit caractères.
             if (typed < 0x20 || (typed > 0x7f && typed < 0xa0) || state[6] > 7) return false;
 
-            PlayUiSound38();
+            Aud.PlayUiSound38();
             scratch[0x100 + state[6]] = (byte)typed;
             state[6]++;
             scratch[0x100 + state[6]] = 0;
@@ -1550,7 +1550,7 @@ public static unsafe partial class Blaze
             return false;
         }
 
-        PlayUiSound39();                   // Échap : retour au sous-état précédent
+        Aud.PlayUiSound39();                   // Échap : retour au sous-état précédent
         state[2] = 0;
         state[0]--;
         return true;
@@ -1744,7 +1744,7 @@ public static unsafe partial class Blaze
                     if ((padWords[3] & 0x80) != 0) scratch[0x150] = (byte)(before - 1);
                     if ((padWords[3] & 0x20) != 0) scratch[0x150]++;
                     scratch[0x150] &= 0xf;
-                    if (before != (sbyte)scratch[0x150]) PlayUiSound3A();   // FUN_0053db60
+                    if (before != (sbyte)scratch[0x150]) Aud.PlayUiSound3A();   // FUN_0053db60
 
                     ushort word = padWords[1];
                     if ((word & 0x8000) == 0)
@@ -1752,14 +1752,14 @@ public static unsafe partial class Blaze
                         if ((word & 0x4000) != 0)
                         {
                             padWords[1] = (ushort)(word & 0xbfff);
-                            PlayUiSound39();                                // FUN_0053dba0
+                            Aud.PlayUiSound39();                                // FUN_0053dba0
                             s_SelectState_00578de8[2] = 0x77;
                         }
                     }
                     else
                     {
                         padWords[1] = (ushort)(word & 0x7fff);
-                        PlayUiSound38();                                     // FUN_0053db80
+                        Aud.PlayUiSound38();                                     // FUN_0053db80
                         s_SelectState_00578de8[2]++;
                     }
                     break;
@@ -1797,7 +1797,7 @@ public static unsafe partial class Blaze
                     {
                         Mem.s_Unknown_00560763 = 0;
                         Mem.s_Unknown_00560fef &= 0xfb;
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         s_SelectState_00578de8[2] = 0;
                     }
                     break;
@@ -1809,7 +1809,7 @@ public static unsafe partial class Blaze
                         {
                             Mem.s_Unknown_00560763 = 0;
                             Mem.s_Unknown_00560fef &= 0xfb;
-                            PlayUiSound39();
+                            Aud.PlayUiSound39();
                             s_SelectState_00578de8[2] = 0;
                         }
                     }
@@ -1838,7 +1838,7 @@ public static unsafe partial class Blaze
             {
                 Mem.s_Unknown_0056075b = 0;
                 Mem.s_Unknown_00560fef &= 0xfd;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
                 s_SelectState_00578de8[2] = 0;
             }
         }

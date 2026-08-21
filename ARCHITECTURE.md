@@ -100,9 +100,9 @@ src/
 ├─ Host/  ····································· 5 fichiers   3 477 l.
 │   D3D11Backend · SyntheticDevice · DeviceShim · D3D11Window · StartupSurface
 │
-└─ Blaze/  ···································· 31 fichiers  24 698 l.
+└─ Blaze/  ···································· 31 fichiers  24 759 l.
     ├─ Blaze.cs                    17 l.   l'en-tete, les using, la declaration partielle
-    ├─ Subsystems.cs              133 l.   LE COMPOSITION ROOT. `Mem` immediat, les cinq
+    ├─ Subsystems.cs              147 l.   LE COMPOSITION ROOT. `Mem` immediat, les six
     │                                      sous-systemes PARESSEUX (voir la note du fichier).
     │
     ├─ Interop/  ·······················    539 l.   la surface P/Invoke, hors de la classe
@@ -113,14 +113,14 @@ src/
     ├─ Memory/  ························    758 l.   le modele de .data
     │   └─ GameMemory.cs    758   ~110 membres : 8 arenes, tables recouvrees, globales
     │
-    ├─ Platform/  ······················  1 753 l.   ce qui n'est pas le jeu
-    │   ├─ Startup.cs       654   entry + RunApplication + RunMainLoop + extinction
-    │   ├─ Winsys3d.cs      637   file clavier + arene de liste d'affichage + banc GTE
+    ├─ Platform/  ······················  1 762 l.   ce qui n'est pas le jeu
+    │   ├─ Startup.cs       630   entry + RunApplication + RunMainLoop + extinction
+    │   ├─ Winsys3d.cs      670   file clavier + arene de liste d'affichage + banc GTE
     │   ├─ Crt.cs           390   runtime MSVC 6
     │   └─ Win32.cs          72   structures d'interop et constantes
     │
-    ├─ Engine/  ························  7 752 l.   appele par plusieurs ecrans
-    │   ├─ Audio.cs       1 253   0x00513 · 0x0053d
+    ├─ Engine/  ························  7 815 l.   appele par plusieurs ecrans
+    │   ├─ Audio.cs       1 316   0x00513 · 0x0053d               VRAIE CLASSE (mixte)
     │   ├─ UiText.cs      1 344   0x00544                          VRAIE CLASSE
     │   ├─ Resources.cs   1 110   0x00529 · 0x0052a
     │   ├─ Video.cs       1 143   0x00512 · 0x00542               VRAIE CLASSE (mixte)
@@ -130,7 +130,7 @@ src/
     │   ├─ UiWindow.cs      368   0x00545
     │   └─ Primitives2d.cs  284   DrawFlatPrimitive, DrawSprite*   VRAIE CLASSE
     │
-    └─ Screens/  ······················· 13 777 l.   un etat de jeu par repertoire
+    └─ Screens/  ······················· 13 721 l.   un etat de jeu par repertoire
         ├─ GameStates.cs    154   le repartiteur (FUN_00537ca0)
         ├─ DebugParty.cs    753   mode de mise au point (pas un etat numerote)
         ├─ State00/  MainMenu.cs 526 · Options.cs 2 517

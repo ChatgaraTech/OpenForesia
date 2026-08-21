@@ -317,4 +317,26 @@ chaque fichier** — jamais deux conversions avant une vérification.
       pas. `s_GammaIni` a suivi son alias `s_Unknown_005d9de0`, avec ses deux voisines de bloc.
 - [ ] 7.10 `Engine/Resources.cs` (1 110 l.) — porte `ToAnsiZ`, appelé par plusieurs classes déjà
       converties ; sa conversion demandera de décider où vit cette aide.
-- [ ] 7.11 `Engine/Audio.cs` (1 253 l.).
+- [x] 7.11 `Engine/Audio.cs` → `Audio(GameMemory)`. 1 253 l., 76 membres, **1 statique**.
+      Choisi par clôture mesurée : 25 globales à lui, 3 empruntées hors `GameMemory`, **0 à
+      `Screens/`** — le seul des quatre restants dans ce cas.
+      Point d'entrée `Aud`, et **non `Audio`** : une propriété homonyme de son type déclenche la
+      règle « Color Color » de C#, qui résout `Audio.X` différemment selon le site d'appel. Les
+      autres points d'entrée sont déjà des abréviations pour la même raison de lisibilité ; ici
+      c'est en plus une question de correction. `aud` vérifié à **0 occurrence** hors commentaire
+      avant d'entrer dans la liste blanche de l'oracle.
+      **Première conversion sans aucun `[UnmanagedCallersOnly]`** : `InvokeComMethod` reste
+      `static` pour une raison inédite dans cette étape — non pas une contrainte de plateforme,
+      mais une **portée** : `Platform/Startup.cs` s'en sert pour libérer le périphérique
+      DirectInput, qui n'a rien à voir avec le son. Le rendre d'instance ferait naître tout le
+      sous-système audio pour libérer une manette.
+      **`ShutdownStage3` (`FUN_00512ff0`) a déménagé** de `Platform/Startup.cs` vers ce fichier.
+      Il était le seul écrivain externe de `s_DirectSound` ; le laisser dehors aurait obligé à
+      exposer ce champ `internal` **et modifiable de loin**, soit précisément la fuite que la
+      conversion supprime. Le déménagement est gratuit pour l'oracle, qui indexe par nom seul —
+      confirmé : aucune méthode « absente de l'arbre courant ».
+      Vérifié : build 0 erreur et **tableau d'avertissements identique** à l'arbre d'avant
+      (20 CA2014 / 2 CS0169 / 38 CS0414 / 10 CS0649 / 2 CS0652 / 2 CS0675 / 2 CS8618 /
+      4 NETSDK1189, avant comme après) ; oracle « aucune logique modifiée » ; tests 3 rouges
+      attendus ; playtest sans plantage à 382,3 primitives par image, carrousel et modèle 3D à
+      l'écran ; **taux de course 3/16 = 19 %**, sous la référence de 22–25 %.

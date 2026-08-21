@@ -62,8 +62,11 @@ param(
     # N'y ajouter un nom QUE s'il designe une dependance injectee ou un point d'entree de
     # sous-systeme. Y ajouter un nom pour faire taire un signalement genant vide l'outil de sa
     # valeur - c'est la pente classique des fichiers de suppression.
+    # `aud` (ajoute le 2026-08-21 pour la conversion du son) : verifie AVANT de l'inscrire, comme
+    # la note de TODO.md l'exige - `grep -rn --include=*.cs -iE "\baud\b" OpenForesia/src` rend zero
+    # occurrence hors commentaire. Il ne peut donc masquer aucune ligne de logique existante.
     [string[]] $Injected = @('mem','memory','gameMemory','gfx','win32','winsys3d','wsyskern',
-                             'ui','uiText','uiWindow','inp','audio','input','resources','video',
+                             'ui','uiText','uiWindow','inp','aud','audio','input','resources','video',
                              'model3d','primitives2d','prims','vid','saveData','saves','host','display')
 )
 

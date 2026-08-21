@@ -25,7 +25,7 @@ public static unsafe partial class Blaze
     // them as printable text) and are marked TODO(REVERSE) below.
     // =====================================================================
 
-    private const string IniSection = "Options"; // Ghidra: s_Options_005630a8
+    internal const string IniSection = "Options"; // Ghidra: s_Options_005630a8
     internal const string ControlsIniSection = "Controls"; // Ghidra: s_Controls_00564f60
 
     // TODO(REVERSE): DAT_005630bc has no Ghidra-derived string name (short/undecoded literal);
@@ -34,7 +34,7 @@ public static unsafe partial class Blaze
     // game's own options file is BLAZE.cfg, and its [Options]/[D3DDriver]/[Controls] sections match
     // what LoadOptionsIni/Inp.LoadKeyBindings already read â€” so those two were correct all along and
     // had simply never located their file.
-    private const string IniFileExtension = ".cfg";
+    internal const string IniFileExtension = ".cfg";
 
     // Ghidra: &DAT_00563080 (Blaze.c:58266) â€” Ghidra gave it no string name, but the literal is
     // present in Legacy/Blaze.exe: "Size". It sits in the .data key block exactly where the call
@@ -140,20 +140,20 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void LoadOptionsIni()
     {
-        byte* iniPathAnsi = ToAnsiZ(GetIniFilePath());
+        byte* iniPathAnsi = ToAnsiZ(Aud.GetIniFilePath());
 
-        Mem.s_SoundVolumeIni = ReadIniInt("SoundVol", 0x40, iniPathAnsi);
-        Mem.s_CdVolumeIni = ReadIniInt("CdVol", 0x40, iniPathAnsi);
-        Mem.s_GammaIni = ReadIniInt("Gamma", 0x40, iniPathAnsi);
+        Mem.s_SoundVolumeIni = Aud.ReadIniInt("SoundVol", 0x40, iniPathAnsi);
+        Mem.s_CdVolumeIni = Aud.ReadIniInt("CdVol", 0x40, iniPathAnsi);
+        Mem.s_GammaIni = Aud.ReadIniInt("Gamma", 0x40, iniPathAnsi);
 
-        uint filter = ReadIniInt("Filter", 1, iniPathAnsi);
-        uint* texFilterPossible = GetTexFilterPossiblePtr();
+        uint filter = Aud.ReadIniInt("Filter", 1, iniPathAnsi);
+        uint* texFilterPossible = Aud.GetTexFilterPossiblePtr();
         if (texFilterPossible != null) *texFilterPossible = filter;
 
-        s_SmallTextureFlag = ReadIniInt("Small", 0, iniPathAnsi);
-        Mem.s_SizeSetting_005de160 = (int)ReadIniInt(SizeIniKey, 0xb, iniPathAnsi);
-        s_ResolutionIndex = ReadIniInt("Resolution", 2, iniPathAnsi);
-        s_TimingMode = ReadIniInt("Timing", 1, iniPathAnsi);
+        s_SmallTextureFlag = Aud.ReadIniInt("Small", 0, iniPathAnsi);
+        Mem.s_SizeSetting_005de160 = (int)Aud.ReadIniInt(SizeIniKey, 0xb, iniPathAnsi);
+        s_ResolutionIndex = Aud.ReadIniInt("Resolution", 2, iniPathAnsi);
+        s_TimingMode = Aud.ReadIniInt("Timing", 1, iniPathAnsi);
 
         // ECHAFAUDAGE TEMPORAIRE : trace du fichier d'options rÃ©ellement lu et des valeurs prises.
         DeviceShim.LogDisplayMode("bureau, avant init 3D");
@@ -164,12 +164,12 @@ public static unsafe partial class Blaze
         int nextJoystickSlot = 0;
         for (int i = 0; i < s_JoystickSlot.Length; i++)
         {
-            uint enabled = ReadIniInt($"Joy{i}", 1, iniPathAnsi);
+            uint enabled = Aud.ReadIniInt($"Joy{i}", 1, iniPathAnsi);
             s_JoystickSlot[i] = enabled == 0 ? -1 : nextJoystickSlot++;
         }
 
-        ApplyCdVolume();
-        ApplyAllSoundBufferVolumes();
+        Aud.ApplyCdVolume();
+        Aud.ApplyAllSoundBufferVolumes();
         Winsys3d.CreateTranslationTables(Mem.s_GammaIni * GammaIniScale);
 
         if (s_ResolutionIndex < (uint)s_ResolutionDetailLimit.Length &&
@@ -189,13 +189,13 @@ public static unsafe partial class Blaze
     /// </summary>
     internal static void SaveOptionsIni()
     {
-        byte* iniPathAnsi = ToAnsiZ(GetIniFilePath());
+        byte* iniPathAnsi = ToAnsiZ(Aud.GetIniFilePath());
 
         WriteIniInt("SoundVol", Mem.s_SoundVolumeIni, iniPathAnsi);
         WriteIniInt("CdVol", Mem.s_CdVolumeIni, iniPathAnsi);
         WriteIniInt("Gamma", Mem.s_GammaIni, iniPathAnsi);
 
-        uint* texFilterPossible = GetTexFilterPossiblePtr();
+        uint* texFilterPossible = Aud.GetTexFilterPossiblePtr();
         WriteIniInt("Filter", texFilterPossible != null ? *texFilterPossible : 0, iniPathAnsi);
 
         WriteIniInt("Small", s_SmallTextureFlag, iniPathAnsi);
@@ -559,24 +559,24 @@ public static unsafe partial class Blaze
         if (keys[0xc8] != 0)
         {
             held = UiRepeat();
-            if ((held & 2) != 0 && *selection > min) { (*selection)--; PlayUiSound3A(); }
+            if ((held & 2) != 0 && *selection > min) { (*selection)--; Aud.PlayUiSound3A(); }
         }
         else if (keys[0xd0] != 0)
         {
             held = UiRepeat();
-            if ((held & 2) != 0 && *selection < max) { (*selection)++; PlayUiSound3A(); }
+            if ((held & 2) != 0 && *selection < max) { (*selection)++; Aud.PlayUiSound3A(); }
         }
 
         if (keys[0xcb] != 0)
         {
             held = UiRepeat();
-            if ((held & 2) != 0) { result = 2; PlayUiSound3A(); }
+            if ((held & 2) != 0) { result = 2; Aud.PlayUiSound3A(); }
         }
 
         if (keys[0xcd] != 0)
         {
             held = UiRepeat();
-            if ((held & 2) != 0) { result |= 4; PlayUiSound3A(); }
+            if ((held & 2) != 0) { result |= 4; Aud.PlayUiSound3A(); }
         }
 
         if (held == 0) { s_UiRepeatCounter_005d9e08 = 0; s_UiRepeatActive_005d9e00 = 0; }
@@ -603,8 +603,8 @@ public static unsafe partial class Blaze
         if (pad == null) return result;
 
         ushort directions = *(ushort*)(pad + 6);
-        if ((directions & 0x10) != 0 && *selection > min) { (*selection)--; PlayUiSound3A(); }
-        else if ((directions & 0x40) != 0 && *selection < max) { (*selection)++; PlayUiSound3A(); }
+        if ((directions & 0x10) != 0 && *selection > min) { (*selection)--; Aud.PlayUiSound3A(); }
+        else if ((directions & 0x40) != 0 && *selection < max) { (*selection)++; Aud.PlayUiSound3A(); }
 
         if ((directions & 0x80) != 0) result |= 2;
         if ((directions & 0x20) != 0) result |= 4;
@@ -1228,12 +1228,12 @@ public static unsafe partial class Blaze
             {
                 switch (s_UiOptionsSelection_005d9e48)
                 {
-                    case 0: PlayUiSound38(); DisplayOptionsPage(); break;    // FUN_005110b0
-                    case 1: PlayUiSound38(); SoundOptionsPage(); break;      // FUN_005113d0
-                    case 2: PlayUiSound38(); ControlOptionsPage(); break;    // FUN_00512220
+                    case 0: Aud.PlayUiSound38(); DisplayOptionsPage(); break;    // FUN_005110b0
+                    case 1: Aud.PlayUiSound38(); SoundOptionsPage(); break;      // FUN_005113d0
+                    case 2: Aud.PlayUiSound38(); ControlOptionsPage(); break;    // FUN_00512220
                     case 3:
                         UiPageTrace("Quitter le jeu");
-                        PlayUiSound38();
+                        Aud.PlayUiSound38();
                         // Ghidra: RaiseQuitException() â€” la sortie du jeu depuis
                         // la page d'options, la mÃªme exception logicielle que le lecteur de vidÃ©o
                         // utilise pour WM_QUIT.
@@ -1325,7 +1325,7 @@ public static unsafe partial class Blaze
             UiDrawGauge(100, 0x55, (int)(Mem.s_SizeSetting_005de160 * 0x79) / UiDetailLimit + 4);
             UiDrawLabel(0x5c, 0x60, 7, 0, 0xffffff);
             UiDrawGauge(100, 0x6d, Mem.s_Unknown_005d9de0 - 8);
-            UiDrawLabel(0x5c, 0x78, 9 - (*GetTexFilterPossiblePtr() != 0 ? 1 : 0), 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x78, 9 - (*Aud.GetTexFilterPossiblePtr() != 0 ? 1 : 0), 0, 0xffffff);
             UiDrawLabel(0x5c, 0x84, 0xb - (s_SmallTextureFlag != 0 ? 1 : 0), 0, 0xffffff);
             UiDrawLabel(0x5c, 0x90, 0x25, 0, 0xffffff);
             if (extra != 0) UiDrawLabel(0x5c, 0x9c, 0x24, 0, 0xffffff);
@@ -1355,13 +1355,13 @@ public static unsafe partial class Blaze
             {
                 if (s_UiDisplaySelection_005d9e10 == 2)
                 {
-                    PlayUiSound38();
-                    uint* filter = GetTexFilterPossiblePtr();
+                    Aud.PlayUiSound38();
+                    uint* filter = Aud.GetTexFilterPossiblePtr();
                     *filter = *filter == 0 ? 1u : 0u;
                 }
                 else if (s_UiDisplaySelection_005d9e10 == 3 && Mem.s_SizeSetting_005de160 > 6)
                 {
-                    PlayUiSound38();
+                    Aud.PlayUiSound38();
                     s_SmallTextureFlag = s_SmallTextureFlag == 0 ? 1u : 0u;
                 }
             }
@@ -1372,7 +1372,7 @@ public static unsafe partial class Blaze
                 {
                     if (Mem.s_SizeSetting_005de160 != 0)
                     {
-                        PlayUiSound3A();
+                        Aud.PlayUiSound3A();
                         Mem.s_SizeSetting_005de160--;
                         Winsys3d.SetShift((int)((0xb - Mem.s_SizeSetting_005de160) * 0x10),
                                  (int)((0xb - Mem.s_SizeSetting_005de160) * 0xc),
@@ -1382,7 +1382,7 @@ public static unsafe partial class Blaze
                 }
                 else if (s_UiDisplaySelection_005d9e10 == 1 && Mem.s_Unknown_005d9de0 > 8)
                 {
-                    PlayUiSound3A();
+                    Aud.PlayUiSound3A();
                     Mem.s_GammaIni -= 8;
                     RebuildGammaTextures();
                 }
@@ -1394,7 +1394,7 @@ public static unsafe partial class Blaze
                 {
                     if (Mem.s_SizeSetting_005de160 < UiDetailLimit)
                     {
-                        PlayUiSound3A();
+                        Aud.PlayUiSound3A();
                         Mem.s_SizeSetting_005de160++;
                         Winsys3d.SetShift((int)((0xb - Mem.s_SizeSetting_005de160) * 0x10),
                                  (int)((0xb - Mem.s_SizeSetting_005de160) * 0xc),
@@ -1403,7 +1403,7 @@ public static unsafe partial class Blaze
                 }
                 else if (s_UiDisplaySelection_005d9e10 == 1 && Mem.s_Unknown_005d9de0 < 0x88)
                 {
-                    PlayUiSound3A();
+                    Aud.PlayUiSound3A();
                     Mem.s_GammaIni += 8;
                     RebuildGammaTextures();
                 }
@@ -1439,7 +1439,7 @@ public static unsafe partial class Blaze
             UiDrawGauge(100, 0x55, (int)Mem.s_CdVolumeIni);
             UiDrawLabel(0x5c, 0x60, 0xe, 0, 0xffffff);
             UiDrawGauge(100, 0x6d, (int)Mem.s_SoundVolumeIni);
-            UiDrawLabel(0x5c, 0x78, 0x28 - (s_MusicEnabled != 0 ? 1 : 0), 0, 0xffffff);
+            UiDrawLabel(0x5c, 0x78, 0x28 - (Aud.s_MusicEnabled != 0 ? 1 : 0), 0, 0xffffff);
             UiDrawCursor(0x4b, (s_UiSoundSelection_005d9e14 + 3) * 0x18);
 
             UiEndScene();
@@ -1453,23 +1453,23 @@ public static unsafe partial class Blaze
 
             if ((action & 7) != 0 && s_UiSoundSelection_005d9e14 == 2)
             {
-                PlayUiSound38();
-                ToggleMusicEnabled();       // Ghidra: FUN_00513860
+                Aud.PlayUiSound38();
+                Aud.ToggleMusicEnabled();       // Ghidra: FUN_00513860
             }
 
             if ((action & 2) != 0)
             {
                 if (s_UiSoundSelection_005d9e14 == 0 && Mem.s_CdVolumeIni != 0)
                 {
-                    PlayUiSound3A();
+                    Aud.PlayUiSound3A();
                     Mem.s_CdVolumeIni -= 8;
-                    ApplyCdVolume();
+                    Aud.ApplyCdVolume();
                 }
                 else if (s_UiSoundSelection_005d9e14 == 1 && Mem.s_SoundVolumeIni != 0)
                 {
-                    PlayUiSound3A();
+                    Aud.PlayUiSound3A();
                     Mem.s_SoundVolumeIni -= 8;
-                    ApplyAllSoundBufferVolumes();
+                    Aud.ApplyAllSoundBufferVolumes();
                 }
             }
 
@@ -1477,15 +1477,15 @@ public static unsafe partial class Blaze
             {
                 if (s_UiSoundSelection_005d9e14 == 0 && Mem.s_CdVolumeIni < 0x80)
                 {
-                    PlayUiSound3A();
+                    Aud.PlayUiSound3A();
                     Mem.s_CdVolumeIni += 8;
-                    ApplyCdVolume();
+                    Aud.ApplyCdVolume();
                 }
                 else if (s_UiSoundSelection_005d9e14 == 1 && Mem.s_SoundVolumeIni < 0x80)
                 {
-                    PlayUiSound3A();
+                    Aud.PlayUiSound3A();
                     Mem.s_SoundVolumeIni += 8;
-                    ApplyAllSoundBufferVolumes();
+                    Aud.ApplyAllSoundBufferVolumes();
                 }
             }
 
@@ -1523,8 +1523,8 @@ public static unsafe partial class Blaze
 
             if ((action & 1) != 0)
             {
-                if (s_UiControlSelection_005d9e44 == 0) { PlayUiSound38(); KeyConfigPage(); }
-                else if (s_UiControlSelection_005d9e44 == 1) { PlayUiSound38(); JoystickAssignmentPage(); }
+                if (s_UiControlSelection_005d9e44 == 0) { Aud.PlayUiSound38(); KeyConfigPage(); }
+                else if (s_UiControlSelection_005d9e44 == 1) { Aud.PlayUiSound38(); JoystickAssignmentPage(); }
             }
 
             Winsys3d.Ordinal_132(2);
@@ -1713,14 +1713,14 @@ public static unsafe partial class Blaze
 
             if ((action & 7) != 0 && row is >= 0 and < 4)
             {
-                PlayUiSound3A();
+                Aud.PlayUiSound3A();
                 ToggleJoystickAssignment(row);
             }
 
             if ((action & 1) != 0 && row is >= 4 and <= 7)
             {
-                if (s_JoystickSlot[row - 4] < 0) PlayUiSoundError();
-                else { PlayUiSound38(); JoystickButtonsPage(row - 4); }
+                if (s_JoystickSlot[row - 4] < 0) Aud.PlayUiSoundError();
+                else { Aud.PlayUiSound38(); JoystickButtonsPage(row - 4); }
             }
 
             Winsys3d.Ordinal_132(2);
@@ -1932,7 +1932,7 @@ public static unsafe partial class Blaze
                 {
                     if (s_UiJoySelection_005d9e18[player] < 0x12)
                     {
-                        PlayUiSound38();
+                        Aud.PlayUiSound38();
                         capturing = s_UiJoySelection_005d9e18[player];
                         WaitForAllJoystickButtonsReleased(player);
                     }
@@ -1940,7 +1940,7 @@ public static unsafe partial class Blaze
                     {
                         // La remise aux valeurs par défaut : les vingt entiers de DAT_00564a68,
                         // recopiés dans le bloc manette de ce joueur.
-                        PlayUiSound38();
+                        Aud.PlayUiSound38();
                         for (int i = 0; i < 20; i++)
                             s_KeyBindings[player * 0x3c + 40 + i] = s_JoyBindingDefaults_00564a68[i];
                     }
@@ -1978,7 +1978,7 @@ public static unsafe partial class Blaze
                         if (s_KeyBindings[player * 0x3c + 40 + i] == captured)
                             s_KeyBindings[player * 0x3c + 40 + i] = -1;
                     }
-                    PlayUiSound38();
+                    Aud.PlayUiSound38();
                     s_KeyBindings[player * 0x3c + 40 + s_KeyActionIndex_00562ec0[capturing]] = captured;
                 }
 
@@ -2147,13 +2147,13 @@ public static unsafe partial class Blaze
                 {
                     if (s_UiKeySelection_005d9e3c < 0x30)
                     {
-                        PlayUiSound38();
+                        Aud.PlayUiSound38();
                         capturing = s_UiKeySelection_005d9e3c;
                         WaitForAllKeysReleased();
                     }
                     else if (s_UiKeySelection_005d9e3c == 0x30)
                     {
-                        PlayUiSound38();
+                        Aud.PlayUiSound38();
                         ResetKeyBindings();
                     }
                 }
@@ -2177,7 +2177,7 @@ public static unsafe partial class Blaze
 
             int scancode = s_KeyScancodes_00562e18[pressed];
             ClearScancodeEverywhere(scancode);
-            PlayUiSound38();
+            Aud.PlayUiSound38();
 
             byte* captured = s_KeyRowTable_00562ed8 + capturing * 8;
             int capturedGroup = (sbyte)captured[5];

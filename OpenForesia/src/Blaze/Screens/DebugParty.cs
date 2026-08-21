@@ -230,12 +230,12 @@ public static unsafe partial class Blaze
             if ((repeat & 0x10) != 0) classIndex--;
             if ((repeat & 0x40) != 0) classIndex++;
             classIndex &= 7;
-            if (before != (gender * 8 | classIndex)) PlayUiSound3A();   // Ghidra: FUN_0053db60
+            if (before != (gender * 8 | classIndex)) Aud.PlayUiSound3A();   // Ghidra: FUN_0053db60
 
             // CARRÉ (0x8000, donc le bit 0x80 de l'octet pad+3) : ajouter le personnage courant.
             if ((pad[3] & 0x80) != 0)
             {
-                PlayUiSound38();                        // Ghidra: FUN_0053db80
+                Aud.PlayUiSound38();                        // Ghidra: FUN_0053db80
                 if (partyCount == 4) { partyFull = true; break; }
                 *member = (byte)((gender << 3) | classIndex);
                 member += 0x2000;
@@ -245,7 +245,7 @@ public static unsafe partial class Blaze
             // CROIX (0x4000) : retirer le dernier.
             if ((pad[3] & 0x40) != 0 && partyCount != 0)
             {
-                PlayUiSound39();                        // Ghidra: FUN_0053dba0
+                Aud.PlayUiSound39();                        // Ghidra: FUN_0053dba0
                 member -= 0x2000;
                 partyCount--;
             }

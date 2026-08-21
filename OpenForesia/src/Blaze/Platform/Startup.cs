@@ -237,7 +237,7 @@ public static unsafe partial class Blaze
                 {
                     ShutdownStage1(); // Ghidra: FUN_00504600 @ 0x00504600
                     SaveOptionsIni(); // Ghidra: thunk_FUN_0050f300 @ 0x0050f520 -> FUN_0050f300
-                    ShutdownStage3(); // Ghidra: FUN_00512ff0 @ 0x00512ff0
+                    Aud.ShutdownStage3(); // Ghidra: FUN_00512ff0 @ 0x00512ff0
                     // Ghidra: DestroyWindow(DAT_005db85c) â€” main window handle global not yet reconstructed.
                     // TODO(REVERSE): DAT_005db85c (main HWND) needs to be threaded through from window creation.
                     ShutdownStage4(); // Ghidra: FUN_00542f50 @ 0x00542f50
@@ -297,8 +297,8 @@ public static unsafe partial class Blaze
     // sample's address: the "base" bank holds sound ids 0..0x3b (loaded from "\SND\BASE.SND"
     // alongside the first 0x1e0 bytes of the directory), the "level" bank holds ids 0x3c..0x4c
     // (loaded by FUN_00512xxx alongside the remaining 0x88 bytes of the directory).
-    private static void* s_BaseSoundBank;   // 790000 bytes
-    private static void* s_LevelSoundBank;  // 260000 bytes
+    internal static void* s_BaseSoundBank;   // 790000 bytes
+    internal static void* s_LevelSoundBank;  // 260000 bytes
 
     // Ghidra: s_Please_insert_Blaze___Blade_CD__00563258 / s_Erreur_00563278 â€” symbol names were
     // derived by Ghidra from the actual string bytes, but those bytes aren't reproduced in
@@ -456,7 +456,7 @@ public static unsafe partial class Blaze
             if (sub != null) Free(sub);
         }
 
-        if (device[0] != null) InvokeComMethod(device[0], IDirectSound_Release /* 0x08, generic COM Release */);
+        if (device[0] != null) Audio.InvokeComMethod(device[0], Audio.IDirectSound_Release /* 0x08, generic COM Release */);
 
         for (int i = 0; i < 0x231; i++) device[i] = null;
     }
@@ -476,26 +476,10 @@ public static unsafe partial class Blaze
 
     // Deplace dans GameMemory le 2026-08-19 : globale .data lue par Engine/Input.cs.
 
-    /// <summary>
-    /// Ghidra: FUN_00512ff0 @ 0x00512ff0 â€” post-loop teardown, stage 3: the DirectSound shutdown.
-    /// Releases the primary/listener object, then every sound buffer (stopping any that are still
-    /// playing), then the IDirectSound device itself.
-    /// </summary>
-    private static void ShutdownStage3()
-    {
-        if (s_DirectSound == null) return;
-
-        if (s_DirectSoundPrimary != null)
-        {
-            InvokeComMethod(s_DirectSoundPrimary, IDirectSoundBuffer_Release);
-            // Ghidra does not null DAT_005db754 here â€” preserved as-is.
-        }
-
-        ReleaseAllSoundBuffers(stopPlayingBuffers: true);
-
-        InvokeComMethod(s_DirectSound, IDirectSound_Release);
-        s_DirectSound = null;
-    }
+    // Ghidra: FUN_00512ff0 @ 0x00512ff0 - l'etape 3 de l'extinction (l'arret de DirectSound) a
+    // rejoint Engine/Audio.cs le 2026-08-21, a la conversion du son en vraie classe. Son adresse
+    // tombe dans la plage audio et elle etait le seul ecrivain externe de s_DirectSound. Le site
+    // d'appel de la sequence d'extinction est reste ici : voir `Aud.ShutdownStage3()` plus haut.
 
     /// <summary>Ghidra: FUN_00542f50 @ 0x00542f50 (-> FUN_005428d0) â€” post-loop teardown, stage 4; same function RunMainLoop uses mid-sequence, see Vid.CloseMovieStreamIfOpen.</summary>
     private static void ShutdownStage4() => Vid.CloseMovieStreamIfOpen();

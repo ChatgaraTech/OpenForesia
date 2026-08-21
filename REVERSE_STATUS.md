@@ -6431,3 +6431,92 @@ la référence de 25 %.
 Build solution 0 erreur · oracle « aucune logique modifiée » sur 511 corps · tests de disposition
 inchangés (3 rouges attendus / 2 verts) · `-Entry 1` **382,3**, `-Entry 2` **387** primitives par
 image · `-Entry 3` (options) relu à l'écran · taux de course 22 % sur 32 essais au repos.
+
+---
+
+## 2026-08-21 (étape C, 6 fichiers sur 9) — `Audio`, un statique de portée et une fonction mal placée
+
+`Engine/Audio.cs` → `Audio(GameMemory)`, 1 253 → 1 316 l., 76 membres dont **1 statique**.
+
+Choisi par clôture mesurée, comme les cinq précédents : 25 globales à lui, 3 empruntées hors
+`GameMemory`, et surtout **0 emprunt à `Screens/`** — le seul des quatre fichiers restants dans ce
+cas. C'est aussi la **première conversion sans un seul `[UnmanagedCallersOnly]`** : le son du jeu
+n'a aucun rappel natif, ce qui a retiré d'un coup le motif le plus coûteux des étapes précédentes.
+
+### Un quatrième motif de `static`, et il ne repose sur aucune contrainte
+
+Les trois motifs connus étaient tous subis : `[UnmanagedCallersOnly]`, un lambda `static`, une
+décision d'hôte lue avant la construction. `InvokeComMethod` en révèle un quatrième, **choisi** :
+
+C'est une invocation COM générique de sept lignes, qui ne touche que ses paramètres. Elle est
+appelée depuis `Platform/Startup.cs` — mais pour libérer le **périphérique DirectInput**, dans
+`DestroyJoystickDevice`. Rien à voir avec le son : la fonction ne partage avec l'audio que le fait
+d'avoir été écrite dans le même fichier, parce que c'est là qu'un vtable COM a été déplié en
+premier.
+
+La rendre membre d'instance aurait donc fait construire tout le sous-système audio — quatre
+allocations natives — **pour libérer une manette**, et aurait placé ce travail devant la course pour
+la mémoire basse que l'étape 7.6 venait tout juste de dégager. Elle reste `internal static`, appelée
+par nom de type (`Audio.InvokeComMethod`).
+
+**La leçon générale** : retirer `static` n'est pas l'objectif, c'est le moyen. La question à poser
+devant chaque membre est « qui l'appelle, et est-ce que ça a un sens qu'il dépende de ce
+sous-système ? ». Une dépendance fausse coûte plus cher qu'une qualification.
+
+### Quand un membre doit être exposé, c'est souvent la *fonction* qui est mal placée
+
+`ShutdownStage3` (`FUN_00512ff0`) vivait dans `Platform/Startup.cs`, aux côtés des trois autres
+étapes numérotées d'extinction. Son corps ne touche que des membres d'`Audio`, et il est **le seul
+écrivain externe de `s_DirectSound`**.
+
+Le geste réflexe — exposer `s_DirectSound` en `internal` — aurait laissé un champ COM modifiable
+depuis un autre fichier, c'est-à-dire conservé exactement la fuite que la conversion existe pour
+supprimer. Le VA `0x00512ff0` tombe dans la plage audio, donc la règle de routage (1)
+d'`ARCHITECTURE.md` place la fonction dans `Engine/Audio.cs` : elle y a déménagé, corps inchangé.
+
+`s_DirectSound`, `s_DirectSoundPrimary`, `ReleaseAllSoundBuffers` et deux constantes de vtable sont
+restés **privés** en conséquence. Le site d'appel de la séquence d'extinction, lui, n'a pas bougé —
+`Startup.cs` appelle `Aud.ShutdownStage3()` et garde un commentaire disant où la fonction est
+partie.
+
+**Le déménagement est gratuit pour l'oracle**, et c'est ce qui rend la manœuvre praticable :
+`compare-bodies.ps1` indexe par **nom de méthode seul**, jamais par fichier+nom. Vérifié sur pièces
+— aucune méthode signalée « absente de l'arbre courant ».
+
+### Le nom du point d'entrée : `Aud`, pas `Audio`
+
+`Audio` était disponible et se lisait bien. Il a été écarté : une propriété qui porte le nom de son
+propre type déclenche la règle **« Color Color »** de C#, où `Audio.PlaySoundEffect(...)` se résout
+tantôt comme un accès statique, tantôt comme un accès d'instance **selon la classe où la ligne est
+écrite**. Ça compile, et c'est une ambiguïté qu'une transcription relue à la main contre `Blaze.c`
+n'a aucune raison de porter.
+
+`aud` est entré dans la liste blanche de l'oracle après la vérification que `TODO.md` exige :
+**0 occurrence** hors commentaire dans tout `OpenForesia/src`. Il ne peut donc masquer aucune ligne
+de logique existante.
+
+### Une dette laissée ouverte, et pourquoi elle n'a pas été soldée ici
+
+Trois symboles restent chez leur propriétaire en `internal` : `s_BaseSoundBank`, `s_LevelSoundBank`
+(`Platform/Startup.cs`) et `s_SoundDirectory` (`Engine/Resources.cs`).
+
+La règle de tri dégagée en 7.9 les classe « échafaudage » parce qu'ils n'ont **pas de suffixe VA**.
+C'est faux : leurs commentaires les ancrent à `DAT_00604920`, `DAT_00600900` et `DAT_005e8340` —
+c'est du `.data` réel, et `s_SoundDirectory` porte même une réparation d'aliasing déjà faite
+(`DAT_005e8340` et `DAT_005e8520` fusionnés en un seul tableau de 77 entrées).
+
+**Correction à apporter à la règle** : *le suffixe VA est un indice, pas la preuve ; l'ancre
+`// Ghidra: DAT_…` du commentaire tranche.* Ils n'ont pas été rapatriés vers `GameMemory` dans cette
+étape parce que le déménagement touche aussi `Startup.cs`, `Resources.cs` et
+`Screens/State03/WorldMap.cs` : mêler un rapatriement `.data` à une conversion de classe rendrait
+les deux invérifiables séparément. À faire pendant la conversion de `Resources`.
+
+### Vérification
+
+Build solution 0 erreur, et **tableau d'avertissements identique avant/après** (20 CA2014,
+2 CS0169, 38 CS0414, 10 CS0649, 2 CS0652, 2 CS0675, 2 CS8618, 4 NETSDK1189) — comparé par
+`git stash` + reconstruction complète, parce qu'un avertissement qui disparaît est un signal autant
+qu'un qui apparaît · oracle « aucune logique modifiée » sur 511 corps, 0 méthode absente · tests de
+disposition inchangés (3 rouges attendus / 2 verts) · `-Entry 1` sans plantage à **382,3**
+primitives par image, capture relue : carrousel de portraits, modèle 3D et fenêtre de classe à
+l'écran · **taux de course 3/16 = 19 %**, machine au repos, sous la référence de 22–25 %.

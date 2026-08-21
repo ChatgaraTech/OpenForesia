@@ -269,7 +269,7 @@ public static unsafe partial class Blaze
         byte* path = s_MusicTrackPaths[trackIndex];
         if (path == null) return;
         path[0] = Mem.s_CdDataRootPath[0];
-        StartMusicStream(path);
+        Aud.StartMusicStream(path);
     }
 
     /// <summary>

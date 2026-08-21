@@ -540,7 +540,7 @@ public static unsafe partial class Blaze
         sbyte slotCount = (sbyte)s_CardSlotLists_00566a90[s_Unknown_005de50c][0];
         if (s_ItemMenuCardSlot_005de4e8 < 0) s_ItemMenuCardSlot_005de4e8 = slotCount - 1;
         if (slotCount <= s_ItemMenuCardSlot_005de4e8) s_ItemMenuCardSlot_005de4e8 = 0;
-        if (slotBefore != s_ItemMenuCardSlot_005de4e8) PlayUiSound3A();
+        if (slotBefore != s_ItemMenuCardSlot_005de4e8) Aud.PlayUiSound3A();
 
         if (s_Unknown_00566acc < 0 && s_Unknown_005de4d4 == 0) s_Unknown_00566acc = 0;
 
@@ -598,7 +598,7 @@ public static unsafe partial class Blaze
                                 if (s_ItemMenuScroll_005de4c4 + 5 < next)
                                     s_ItemMenuScroll_005de4c4 = s_ItemMenuSelection_005de4c8 - 4;
                                 s_ItemMenuSelection_005de4c8 = next;
-                                PlayUiSound3A();
+                                Aud.PlayUiSound3A();
                             }
                         }
                         else if ((repeat & 0x10) != 0 && s_ItemMenuSelection_005de4c8 > 0)
@@ -606,12 +606,12 @@ public static unsafe partial class Blaze
                             s_ItemMenuSelection_005de4c8--;
                             if (s_ItemMenuSelection_005de4c8 < s_ItemMenuScroll_005de4c4)
                                 s_ItemMenuScroll_005de4c4 = s_ItemMenuSelection_005de4c8;
-                            PlayUiSound3A();
+                            Aud.PlayUiSound3A();
                         }
 
                         if ((pad[3] & 0x80) != 0)
                         {
-                            PlayUiSound38();
+                            Aud.PlayUiSound38();
                             s_Unknown_005de4d4 = 5;
                             s_ItemMenuChosenEntry_005de42c = (int)(nint)(s_CardDirectoryEntries_006049bc
                                 + s_ItemMenuSelection_005de4c8 * 0x28);
@@ -843,7 +843,7 @@ public static unsafe partial class Blaze
                     // differents — le seul detail qui les distingue ici.
                     if ((pad[3] & 0x40) != 0 || (pad[3] & 0x80) != 0)
                     {
-                        if ((pad[3] & 0x40) != 0) PlayUiSound39(); else PlayUiSound38();
+                        if ((pad[3] & 0x40) != 0) Aud.PlayUiSound39(); else Aud.PlayUiSound38();
                         s_Unknown_005de4d4 = 0;
                         s_ItemMenuSubState_00566ac8 = -1;
                         s_Unknown_00566acc = -1;
@@ -854,7 +854,7 @@ public static unsafe partial class Blaze
                     if ((pad[6] & 0x10) != 0 && s_Unknown_005de4e4 != 0) s_Unknown_005de4e4--;
                     if ((pad[6] & 0x40) != 0 && s_Unknown_005de4e4 + 7 < s_ItemMenuVisible_005de4f0)
                         s_Unknown_005de4e4++;
-                    if (scrollBefore != s_Unknown_005de4e4) PlayUiSound3A();
+                    if (scrollBefore != s_Unknown_005de4e4) Aud.PlayUiSound3A();
 
                     int* draw = stackalloc int[8];
                     byte* d = (byte*)draw;
@@ -959,7 +959,7 @@ public static unsafe partial class Blaze
                         // Ghidra: `_DAT_005658c8 = CONCAT13(1,_DAT_005658c8)` — le seul octet de
                         // poids fort du dword de +0x20, pas le dword entier.
                         desc1[0x23] = 1;
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         s_Unknown_005de4d4 = 0;
                         s_ItemMenuSubState_00566ac8 = -1;
                         s_Unknown_00566acc = -1;
@@ -985,7 +985,7 @@ public static unsafe partial class Blaze
                               && s_ItemCount_005de430 > 4) s_ItemGridScroll_005de4ec++;
                     }
                     if (gridBefore != (s_ItemGridScroll_005de4ec << 8 | s_Unknown_005de4e4))
-                        PlayUiSound3A();
+                        Aud.PlayUiSound3A();
 
                     byte* grid = mainMem + 0x1b0000;
 
@@ -995,12 +995,12 @@ public static unsafe partial class Blaze
                         byte chosen = s_ItemIndex_005de488[s_Unknown_005de4e4 + s_ItemGridScroll_005de4ec];
                         if ((*(ushort*)(grid + chosen * 0x280 + 0x12) & 0x8000) == 0)
                         {
-                            PlayUiSound3B();
+                            Aud.PlayUiSound3B();
                         }
                         else
                         {
                             s_ItemMenuVisible_005de4f0 = s_ItemGridScroll_005de4ec + s_Unknown_005de4e4;
-                            PlayUiSound38();
+                            Aud.PlayUiSound38();
                             s_Unknown_005de4d4++;
                         }
                     }
@@ -1197,7 +1197,7 @@ public static unsafe partial class Blaze
                     if (s_KeyRow_005de500 == 7 && s_KeyPage_005de4f8 == 7) s_KeyColumn_005de4fc = 0;
 
                     if (cellBefore != ((s_KeyPage_005de4f8 << 8 | s_KeyRow_005de500) << 8 | s_KeyColumn_005de4fc))
-                        PlayUiSound3A();
+                        Aud.PlayUiSound3A();
 
                     bool onEndCell = s_KeyRow_005de500 == 7 && s_KeyPage_005de4f8 == 7;
 
@@ -1210,11 +1210,11 @@ public static unsafe partial class Blaze
                             {
                                 s_ItemNameLength_005de504--;
                                 s_ItemNameEdit_005de4a0[s_ItemNameLength_005de504] = 0x20;
-                                PlayUiSound39();
+                                Aud.PlayUiSound39();
                             }
                             else if (onEndCell)
                             {
-                                PlayUiSound39();
+                                Aud.PlayUiSound39();
                                 s_Unknown_005de4d4--;
                             }
                         }
@@ -1224,11 +1224,11 @@ public static unsafe partial class Blaze
                         s_Unknown_005de4d4--;
                         if (s_ItemNameLength_005de504 == 0)
                         {
-                            PlayUiSound39();
+                            Aud.PlayUiSound39();
                         }
                         else
                         {
-                            PlayUiSound38();
+                            Aud.PlayUiSound38();
 
                             // Le chemin inverse de l'entree : chaque glyphe saisi est retrouve
                             // par sa position dans la table de caracteres, et cet index est
@@ -1269,11 +1269,11 @@ public static unsafe partial class Blaze
 
                         if (s_ItemNameLength_005de504 == 0 && glyph == (s_Unknown_00562c9c & 0xffff))
                         {
-                            PlayUiSound3B();
+                            Aud.PlayUiSound3B();
                         }
                         else
                         {
-                            PlayUiSound38();
+                            Aud.PlayUiSound38();
                             s_ItemNameEdit_005de4a0[s_ItemNameLength_005de504] = (byte)glyph;
                             s_ItemNameLength_005de504++;
                             s_ItemNameEdit_005de4a0[s_ItemNameLength_005de504] = 0x20;
@@ -1356,7 +1356,7 @@ public static unsafe partial class Blaze
                     {
                         s_Unknown_0056501b = 0;
                         s_ItemMenuDialogGate_005658a7 = (byte)(s_ItemMenuDialogGate_005658a7 & 0xfb);
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         if (s_ItemRenamed_005de508 != 0) { s_Unknown_005de4d4 = 0xb; break; }
                     }
                     else if ((s_ItemMenuDialogGate_005658a7 & 2) != 0) break;
@@ -1374,7 +1374,7 @@ public static unsafe partial class Blaze
                         if ((pad[3] & 0x40) == 0) break;
                         s_Unknown_00565013 = 0;
                         s_ItemMenuDialogGate_005658a7 = (byte)(s_ItemMenuDialogGate_005658a7 & 0xfd);
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         s_Unknown_005de4d4 = 0;
                         s_ItemMenuSubState_00566ac8 = -1;
                         s_Unknown_00566acc = -1;
@@ -1390,7 +1390,7 @@ public static unsafe partial class Blaze
                         if ((pad[3] & 0x40) == 0) break;
                         s_Unknown_0056501b = 0;
                         s_ItemMenuDialogGate_005658a7 = (byte)(s_ItemMenuDialogGate_005658a7 & 0xfb);
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         goto case 0x12;
                     }
                     if (Mem.s_Unknown_005e909f != 0) goto case 0x12;
@@ -1410,7 +1410,7 @@ public static unsafe partial class Blaze
                     sbyte count = (sbyte)s_CardSlotLists_00566a90[s_Unknown_005de50c][0];
                     if (s_ItemMenuCardSlot_005de4e8 < 0) s_ItemMenuCardSlot_005de4e8 = count - 1;
                     if (count <= s_ItemMenuCardSlot_005de4e8) s_ItemMenuCardSlot_005de4e8 = 0;
-                    if (slotBefore2 != s_ItemMenuCardSlot_005de4e8) PlayUiSound3A();
+                    if (slotBefore2 != s_ItemMenuCardSlot_005de4e8) Aud.PlayUiSound3A();
 
                     if ((pad[3] & 0x80) != 0)
                     {
@@ -1419,14 +1419,14 @@ public static unsafe partial class Blaze
                         s_CardDialogResult_005de484 = 0;
                         s_Unknown_00604960 = 0;
                         s_Unknown_0060498a = 0;
-                        PlayUiSound38();
+                        Aud.PlayUiSound38();
                         s_CardSlotIndex_00604980 =
                             s_CardSlotIds_00566a58[s_Unknown_005de50c][s_ItemMenuCardSlot_005de4e8];
                         BindMenuLabels(LabelAt(8), 0, s_ItemMenuDescriptors_00564fe0, 0);
                     }
                     else if ((pad[3] & 0x40) != 0)
                     {
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         s_Unknown_005de4d4 = 0;
                         s_ItemMenuSubState_00566ac8 = -1;
                         s_Unknown_00566acc = -1;
@@ -1655,7 +1655,7 @@ public static unsafe partial class Blaze
                     s_Unknown_00565013 = 0;
                     s_Unknown_005de4d4 = 0xd;
                     s_CardDialogStep_005de468 = 0;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     break;
 
                 case 0x60:
@@ -1712,7 +1712,7 @@ public static unsafe partial class Blaze
                     s_Unknown_00565013 = 0;
                     s_Unknown_005de4d4 = 0;
                     s_Unknown_00566acc = -1;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     break;
 
                 case -3:
@@ -1903,7 +1903,7 @@ public static unsafe partial class Blaze
                     if (s_ItemMenuScroll_005de4c4 + 5 < next)
                         s_ItemMenuScroll_005de4c4 = s_ItemMenuSelection_005de4c8 - 4;
                     s_ItemMenuSelection_005de4c8 = next;
-                    PlayUiSound3A();
+                    Aud.PlayUiSound3A();
                 }
             }
             else if ((repeat & 0x10) != 0 && s_ItemMenuSelection_005de4c8 > 0)
@@ -1911,13 +1911,13 @@ public static unsafe partial class Blaze
                 s_ItemMenuSelection_005de4c8--;
                 if (s_ItemMenuSelection_005de4c8 < s_ItemMenuScroll_005de4c4)
                     s_ItemMenuScroll_005de4c4 = s_ItemMenuSelection_005de4c8;
-                PlayUiSound3A();
+                Aud.PlayUiSound3A();
             }
 
             // START, avec au moins un personnage retenu : passer au rechargement.
             if ((pad[2] & 8) != 0 && s_ItemMenuChosen_005de4cc > 0)
             {
-                PlayUiSound38();
+                Aud.PlayUiSound38();
                 s_ItemMenuPhase_005de4d0 = 4;
             }
 
@@ -1932,12 +1932,12 @@ public static unsafe partial class Blaze
                     {
                         s_ItemMenuChosen_005de4cc++;
                         s_PartySelectionOrder_005e85c0[row] = (byte)s_ItemMenuChosen_005de4cc;
-                        PlayUiSound38();
+                        Aud.PlayUiSound38();
                         if (s_ItemMenuChosen_005de4cc == 4) s_ItemMenuPhase_005de4d0 = 4;
                     }
                     else
                     {
-                        PlayUiSound3B();
+                        Aud.PlayUiSound3B();
                     }
                 }
                 else
@@ -1948,7 +1948,7 @@ public static unsafe partial class Blaze
                             s_PartySelectionOrder_005e85c0[i]--;
                     s_PartySelectionOrder_005e85c0[row] = 0;
                     s_ItemMenuChosen_005de4cc--;
-                    PlayUiSound38();
+                    Aud.PlayUiSound38();
                 }
             }
 
@@ -2390,7 +2390,7 @@ public static unsafe partial class Blaze
                 if ((pad[2] & 0x20) != 0) s_Unknown_005de4e4++;
                 if (s_Unknown_005de4e4 < 0) s_Unknown_005de4e4 = s_PartySize_005e9020 - 1;
                 if (s_Unknown_005de4e4 >= s_PartySize_005e9020) s_Unknown_005de4e4 = 0;
-                if (before != s_Unknown_005de4e4) PlayUiSound3A();
+                if (before != s_Unknown_005de4e4) Aud.PlayUiSound3A();
 
                 primCursor = DrawPartyItemSummary(otBase, primCursor);
                 BindMenuLabels(LabelAt(0xe4), 0, s_ItemMenuDescriptors_00564fe0, 0);
@@ -2408,7 +2408,7 @@ public static unsafe partial class Blaze
                         s_ItemMenuSubState_00566ac8 = -1;
                         s_Unknown_00566acc = -1;
                         s_ItemMenuLoaded_005de4e8 = 0;
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         return primCursor;
                     }
 
@@ -2416,7 +2416,7 @@ public static unsafe partial class Blaze
                     s_ItemMenuTarget_005de4f0 = -1;
                     s_Unknown_00566acc = -1;
                     s_ItemMenuCursor_005de4e0 = 0;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     return primCursor;
                 }
 
@@ -2424,11 +2424,11 @@ public static unsafe partial class Blaze
                 if ((pressed & 0x8000) != 0)
                 {
                     byte* record = mainMem + 0xf0000 + s_Unknown_005de4e4 * 0x2000;
-                    if (record[0x2c0] == 0) { PlayUiSound3B(); return primCursor; }
+                    if (record[0x2c0] == 0) { Aud.PlayUiSound3B(); return primCursor; }
 
                     s_ItemMenuCursor_005de4e0 = 0;
                     s_ItemMenuLoaded_005de4e8++;
-                    PlayUiSound38();
+                    Aud.PlayUiSound38();
 
                     // Ghidra: le mot de tête de chaque emplacement de scène remis à zéro, pas de
                     // 0x4c octets, jusqu'à 0x5e92b0 — soit les quatre emplacements.
@@ -2485,7 +2485,7 @@ public static unsafe partial class Blaze
 
                 if (s_ItemMenuCursor_005de4e0 < 0) s_ItemMenuCursor_005de4e0 = record[0x2c0] - 1;
                 if (record[0x2c0] <= s_ItemMenuCursor_005de4e0) s_ItemMenuCursor_005de4e0 = 0;
-                if (before != s_ItemMenuCursor_005de4e0) PlayUiSound3A();
+                if (before != s_ItemMenuCursor_005de4e0) Aud.PlayUiSound3A();
 
                 byte* item = record + 0x300 + record[0x2c1 + s_ItemMenuCursor_005de4e0] * 0x280;
                 s_ItemValue_005de2d0 = ComputeItemValue(item);
@@ -2553,7 +2553,7 @@ public static unsafe partial class Blaze
                 if ((pressedGrid & 0x4000) != 0)
                 {
                     s_ItemMenuLoaded_005de4e8--;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     return primCursor;
                 }
 
@@ -2570,7 +2570,7 @@ public static unsafe partial class Blaze
                         && (*(ushort*)(item + 0x12) & 0xf00) != 0)
                     {
                         s_ItemMenuLoaded_005de4e8++;
-                        PlayUiSound38();
+                        Aud.PlayUiSound38();
 
                         for (int i = 0; i < s_PartySize_005e9020; i++)
                             Mem.ItemMenuState(0x005de438)[i] = 0;
@@ -2581,7 +2581,7 @@ public static unsafe partial class Blaze
                     }
 
                     // Ghidra: LAB_00528dbb — le bip de refus, puis retour immediat.
-                    PlayUiSound3B();
+                    Aud.PlayUiSound3B();
                     return primCursor;
                 }
                 break;
@@ -2751,7 +2751,7 @@ public static unsafe partial class Blaze
                             {
                                 slot[0] = 1;
                                 slot[1] = 0;
-                                PlayUiSound38();
+                                Aud.PlayUiSound38();
                             }
                         }
                         else
@@ -2762,7 +2762,7 @@ public static unsafe partial class Blaze
                             {
                                 slot[0] = 0;
                                 slot[1] = 0;
-                                PlayUiSound39();
+                                Aud.PlayUiSound39();
                             }
                             confirmed++;
                         }
@@ -2786,7 +2786,7 @@ public static unsafe partial class Blaze
                                                        *gold - (uint)*bid, 0x85, 0);
                     }
 
-                    if (changed != 0) PlayUiSound3A();
+                    if (changed != 0) Aud.PlayUiSound3A();
 
                     // Le portrait du membre, dessiné pour tous, vendeur compris.
                     EmitViewportRect(otBase, &primCursor);
@@ -2812,7 +2812,7 @@ public static unsafe partial class Blaze
                 {
                     // Personne n'a misé : retour à la grille d'objets.
                     s_ItemMenuLoaded_005de4e8--;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     ResetAuctionControllers();
                     return primCursor;
                 }
@@ -2821,7 +2821,7 @@ public static unsafe partial class Blaze
                 {
                     // Le vendeur « gagne » — c'est le cas d'égalité. Refus.
                     BindMenuLabels(LabelAt(0xf0), 0, s_ItemMenuDescriptors_00564fe0, 0);
-                    PlayUiSound3B();
+                    Aud.PlayUiSound3B();
                     return primCursor;
                 }
 
@@ -2829,12 +2829,12 @@ public static unsafe partial class Blaze
                 {
                     // Le gagnant a déjà dix objets : refus.
                     BindMenuLabels(LabelAt(0xf4), 0, s_ItemMenuDescriptors_00564fe0, 0);
-                    PlayUiSound3B();
+                    Aud.PlayUiSound3B();
                     return primCursor;
                 }
 
                 s_ItemMenuLoaded_005de4e8++;
-                PlayUiSound38();
+                Aud.PlayUiSound38();
 
                 // L'or change de mains, plafonné à 99999 chez le vendeur.
                 int* winnerGold = (int*)(mainMem + s_ItemMenuTarget_005de4f0 * 0x2000 + 0xf026c);
@@ -2874,7 +2874,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.CopyDwords((uint*)item, (uint*)(targetRecord + 0x300 + matched * 0x280), 0xa0);
                     UploadPartyIconTextures();               // Ghidra: FUN_00535500
-                    PlaySoundEffect(0x29, 0x400, 0x1300, 0x1300);
+                    Aud.PlaySoundEffect(0x29, 0x400, 0x1300, 0x1300);
                 }
 
                 // L'emplacement source est libéré, et les deux membres marqués « modifié ».
@@ -2930,7 +2930,7 @@ public static unsafe partial class Blaze
         s_ItemMenuDialogGate_005658a7 = (byte)(s_ItemMenuDialogGate_005658a7 & 0xf9);
         s_Unknown_0056501b = 0;
         s_Unknown_00565013 = 0;
-        PlayUiSound39();
+        Aud.PlayUiSound39();
         s_ItemMenuLoaded_005de4e8 = 0;
         return primCursor;
     }

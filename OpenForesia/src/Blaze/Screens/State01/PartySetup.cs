@@ -279,14 +279,14 @@ public static unsafe partial class Blaze
                     if (nextRow >= 0)
                     {
                         cursorOffset = nextOffset;
-                        PlayUiSound3A();          // Ghidra: FUN_0053db60
+                        Aud.PlayUiSound3A();          // Ghidra: FUN_0053db60
                         cursorRow = nextRow;
                     }
 
                     // START, avec au moins un membre retenu : passer à la confirmation.
                     if ((pad[2] & 8) != 0 && partyCount > 0)
                     {
-                        PlayUiSound38();          // Ghidra: FUN_0053db80
+                        Aud.PlayUiSound38();          // Ghidra: FUN_0053db80
                         phase = 4;
                     }
 
@@ -300,12 +300,12 @@ public static unsafe partial class Blaze
                                 partyCount++;
                                 s_PartySelectionOrder_005e85c0[cursorRow] = (byte)partyCount;
                                 pendingPartyCount = partyCount;
-                                PlayUiSound38();
+                                Aud.PlayUiSound38();
                                 if (partyCount == 4) phase = 4;
                             }
                             else
                             {
-                                PlayUiSound3B();  // Ghidra: FUN_0053dbc0 — le refus
+                                Aud.PlayUiSound3B();  // Ghidra: FUN_0053dbc0 — le refus
                             }
                         }
                         else
@@ -317,7 +317,7 @@ public static unsafe partial class Blaze
                                     s_PartySelectionOrder_005e85c0[i]--;
                             pendingPartyCount = partyCount - 1;
                             s_PartySelectionOrder_005e85c0[cursorRow] = 0;
-                            PlayUiSound38();
+                            Aud.PlayUiSound38();
                         }
                     }
 
@@ -338,7 +338,7 @@ public static unsafe partial class Blaze
                         // CROIX pendant la boîte de dialogue : on annule et on revient à la liste.
                         Mem.s_Unknown_0056b593 = 0;
                         Mem.s_Unknown_0056be1f = (byte)(Mem.s_Unknown_0056be1f & 0xfb);
-                        PlayUiSound39();          // Ghidra: FUN_0053dba0
+                        Aud.PlayUiSound39();          // Ghidra: FUN_0053dba0
                         phase = 0;
                         pendingLabel = Mem.s_Unknown_005606f8;
                         break;
@@ -374,7 +374,7 @@ public static unsafe partial class Blaze
                     {
                         Mem.s_Unknown_0056b58b = 0;
                         Mem.s_Unknown_0056be1f = (byte)(Mem.s_Unknown_0056be1f & 0xfd);
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         phase = 0;
                         pendingLabel = Mem.s_Unknown_005606f8;
                         break;

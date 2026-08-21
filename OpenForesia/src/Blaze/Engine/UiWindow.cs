@@ -191,37 +191,37 @@ public static unsafe partial class Blaze
                 && (descriptor[0x8c7] & 0x40) != 0)
             {
                 descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 2);
-                PlayUiSound3A();
+                Aud.PlayUiSound3A();
             }
             if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
                 && (descriptor[0x8c7] & 0x80) != 0)
             {
                 descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 3);
-                PlayUiSound3A();
+                Aud.PlayUiSound3A();
             }
             if ((sbyte)descriptor[0x8c4] != 0 && (buttonState[6] & 0x10) != 0
                 && (descriptor[0x8c7] & 0xc0) == 0)
             {
                 descriptor[0x8c4] = (byte)((sbyte)descriptor[0x8c4] - 1);
-                PlayUiSound3A();
+                Aud.PlayUiSound3A();
             }
             if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 2)
                 && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0x40) != 0)
             {
                 descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 2);
-                PlayUiSound3A();
+                Aud.PlayUiSound3A();
             }
             if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 3)
                 && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0x80) != 0)
             {
                 descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 3);
-                PlayUiSound3A();
+                Aud.PlayUiSound3A();
             }
             if ((int)(uint)descriptor[0x8c4] < (int)(descriptor[0x11] - 1)
                 && (buttonState[6] & 0x40) != 0 && (descriptor[0x8c7] & 0xc0) == 0)
             {
                 descriptor[0x8c4] = (byte)(descriptor[0x8c4] + 1);
-                PlayUiSound3A();
+                Aud.PlayUiSound3A();
             }
 
             // Confirm: latch the selection back into the per-panel table and clear the edge.
@@ -240,7 +240,7 @@ public static unsafe partial class Blaze
                 if ((descriptor[0x8c7] & 0xc0) == 0)
                     Mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = descriptor[0x8c4];
 
-                PlayUiSound38();
+                Aud.PlayUiSound38();
                 descriptor[0x8c7] &= 0x3f;
             }
 
@@ -262,7 +262,7 @@ public static unsafe partial class Blaze
                 *(ushort*)(Inp.s_InputStateBase_00604a20 + buttons + 2) = (ushort)(edge & 0x7fff);
                 descriptor[0x33] = 0;
                 descriptor[0x8c7] &= 0xfd;
-                PlayUiSound38();
+                Aud.PlayUiSound38();
             }
 
             uint clut = *(uint*)(descriptor + 0x34);

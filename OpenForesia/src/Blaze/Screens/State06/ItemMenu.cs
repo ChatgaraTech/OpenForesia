@@ -335,12 +335,12 @@ public static unsafe partial class Blaze
         if ((pad[6] & 0x40) != 0) s_ItemMenuCursor_005de4e0++;
         if (s_ItemMenuCursor_005de4e0 < 0) s_ItemMenuCursor_005de4e0 = 2;
         if (s_ItemMenuCursor_005de4e0 > 2) s_ItemMenuCursor_005de4e0 = 0;
-        if (before != s_ItemMenuCursor_005de4e0) PlayUiSound3A();
+        if (before != s_ItemMenuCursor_005de4e0) Aud.PlayUiSound3A();
 
         // CARRE : ouvrir la ligne choisie, apres avoir attendu le relachement.
         if ((pad[3] & 0x80) != 0)
         {
-            PlayUiSound38();
+            Aud.PlayUiSound38();
 
             // DÉVIATION d'un jeton, et c'est la même que celle de la page d'options — voir sa note
             // dans RunMainMenuFrameLoop. L'original écrit cette vidange sans cadencement

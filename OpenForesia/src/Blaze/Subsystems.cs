@@ -88,7 +88,7 @@ public static unsafe partial class Blaze
     // TryPrepareDisplayListArena ne les touche. Les construire avant la course etait du travail
     // gratuit place au pire endroit possible.
     //
-    // La paresse ici ne contredit pas la lecon « pris paresseusement, le descripteur echouait » :
+    // La paresse ici ne contredit pas la lecon ï¿½ pris paresseusement, le descripteur echouait ï¿½ :
     // celle-ci porte sur les DESCRIPTEURS de memoire basse, qui restent pris immediatement.
     // ---------------------------------------------------------------------------------------------
     /// <summary>
@@ -130,4 +130,18 @@ public static unsafe partial class Blaze
     /// </summary>
     private static Input? s_inp;
     internal static Input Inp => s_inp ??= new Input(Mem);
+    /// <summary>
+    /// Le son. Aucun rappel natif : c'est la premiere conversion sans un seul
+    /// <c>[UnmanagedCallersOnly]</c>, et la seule dont un membre reste statique par simple portee
+    /// plutot que par contrainte de plateforme - <c>Audio.InvokeComMethod</c>, que
+    /// <c>Platform/Startup.cs</c> emploie pour liberer une manette.
+    ///
+    /// <para>
+    /// La paresse compte ici plus qu'ailleurs : cette classe alloue quatre blocs natifs a la
+    /// construction (le format de sortie, les huit positions de notification, les deux tampons de
+    /// chemin). Immediat, ce travail se serait place devant la course pour la memoire basse.
+    /// </para>
+    /// </summary>
+    private static Audio? s_aud;
+    internal static Audio Aud => s_aud ??= new Audio(Mem);
 }

@@ -1,7 +1,7 @@
 // OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
-// Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
+// La carte des repertoires et la regle
 // qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
 // reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
 
@@ -10,9 +10,44 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// `Blaze` porte encore ce que cette classe appelle : les aides CRT (Malloc, ToAnsiZ, ...), les
+// enveloppes Win32, et les deux banques d'echantillons declarees dans Platform/Startup.cs.
+using static OpenForesia.Blaze.Blaze;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+/// <summary>
+/// Le son : DirectSound, les 50 tampons d'effets, le flux de musique MS-ADPCM et les quatre bips
+/// d'interface (Ghidra: 0x00512ea0..0x00513880, 0x00531bb0/0x00531f70, 0x0053cea0..0x0053dbc0).
+///
+/// <para>
+/// Un seul membre reste <c>static</c> : <c>InvokeComMethod</c>. Ce n'est pas une contrainte de
+/// plateforme mais un fait de portee - il ne touche que ses parametres, et
+/// <c>Platform/Startup.cs</c> s'en sert pour liberer le peripherique DirectInput, qui n'a rien a
+/// voir avec le son. Le garder statique evite de faire naitre tout le sous-systeme audio pour
+/// liberer une manette.
+/// </para>
+/// <para>
+/// <c>ShutdownStage3</c> (<c>FUN_00512ff0</c>) a rejoint ce fichier depuis
+/// <c>Platform/Startup.cs</c> : son adresse tombe dans la plage audio, et son corps ne touche que
+/// des membres prives d'ici. L'y laisser aurait oblige a exposer <c>s_DirectSound</c> EN ECRITURE
+/// a un autre fichier - exactement la fuite que cette conversion supprime. Le corps n'a pas
+/// change ; l'oracle indexe par nom seul, un demenagement ne le fait donc pas sonner.
+/// </para>
+/// <para>
+/// Ce que la signature ne dit pas encore : cette classe lit trois membres restes chez leur
+/// proprietaire - <c>s_BaseSoundBank</c> et <c>s_LevelSoundBank</c> (<c>Platform/Startup.cs</c>),
+/// <c>s_SoundDirectory</c> (<c>Engine/Resources.cs</c>). Ils n'ont pas de suffixe VA, mais ce sont
+/// bel et bien du <c>.data</c> (<c>DAT_00604920</c>, <c>DAT_00600900</c>, <c>DAT_005e8340</c>) :
+/// leur nom ment sur leur nature. Ils sont candidats a rejoindre <see cref="GameMemory"/>, mais ce
+/// demenagement touche aussi Startup, Resources et la carte du monde - il se fera separement, pas
+/// en marge d'une conversion de classe.
+/// </para>
+/// <para>
+/// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
+/// </para>
+/// </summary>
+internal sealed unsafe class Audio(GameMemory mem)
 {
     // =====================================================================
     // DirectSound (confirmed). The interface identities below were open questions until the
@@ -37,7 +72,7 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     private const int IUnknown_QueryInterface = 0x00 / 4;
-    private const int IDirectSound_Release = 0x08 / 4;
+    internal const int IDirectSound_Release = 0x08 / 4;
     private const int IDirectSound_CreateSoundBuffer = 0x0c / 4;
     private const int IDirectSoundBuffer_Release = 0x08 / 4;
     private const int IDirectSoundBuffer_GetStatus = 0x24 / 4;
@@ -111,29 +146,29 @@ public static unsafe partial class Blaze
     // TODO(REVERSE): nothing in the reconstructed call graph assigns it â€” no DirectSoundCreate
     // call site has been located yet, so it is still null at runtime and every entry point below
     // takes its "no device" early-out. Same category of coverage gap as DAT_005db85c (TODO #6).
-    private static void* s_DirectSound;
+    private void* s_DirectSound;
 
     // Ghidra: DAT_005db754 â€” a second COM object released just before the IDirectSound device in
     // FUN_00512ff0. TODO(REVERSE): only ever seen through Release (vtable 0x08), so its concrete
     // type isn't pinned down; position in the teardown order suggests the primary/listener buffer.
-    private static void* s_DirectSoundPrimary;
+    private void* s_DirectSoundPrimary;
 
     // Ghidra: DAT_005db900 â€” the streaming-music IDirectSoundBuffer created by FUN_005131d0.
     // (The ini key that drives its volume is "CdVol", hence ApplyCdVolume's name, but the buffer
     // itself is the ADPCM music stream, not a CD-audio object â€” FUN_005131d0 fills it from a
     // .WAV file on disk.)
-    private static void* s_MusicStreamBuffer;
+    private void* s_MusicStreamBuffer;
 
     // Ghidra: DAT_005db904 â€” the IDirectSoundNotify of the buffer above.
-    private static void* s_MusicStreamNotify;
+    private void* s_MusicStreamNotify;
 
     // Ghidra: &DAT_005db758, 50 IDirectSoundBuffer pointers. The count is confirmed by
     // FUN_00512ea0's loop bound (`while ((int)piVar3 <= 0x5db81f)` starting at 0x005db758 â€”
     // exactly 50 dword slots).
-    private static readonly void*[] s_SoundBuffers = new void*[50];
+    private readonly void*[] s_SoundBuffers = new void*[50];
 
     /// <summary>Invokes a no-argument <c>HRESULT</c> method at <paramref name="vtableSlot"/> on a COM object.</summary>
-    private static int InvokeComMethod(void* comObject, int vtableSlot)
+    internal static int InvokeComMethod(void* comObject, int vtableSlot)
     {
         void** vtable = *(void***)comObject;
         var method = (delegate* unmanaged[Stdcall]<void*, int>)vtable[vtableSlot];
@@ -146,7 +181,7 @@ public static unsafe partial class Blaze
     /// then released; when it is clear, a still-playing buffer is skipped entirely and left
     /// allocated (Ghidra: the `goto LAB_00512edf` path) â€” reproduced exactly.
     /// </summary>
-    private static void ReleaseAllSoundBuffers(bool stopPlayingBuffers)
+    private void ReleaseAllSoundBuffers(bool stopPlayingBuffers)
     {
         for (int i = 0; i < s_SoundBuffers.Length; i++)
         {
@@ -169,14 +204,42 @@ public static unsafe partial class Blaze
         }
     }
 
+    /// <summary>
+    /// Ghidra: FUN_00512ff0 @ 0x00512ff0 - post-loop teardown, stage 3: the DirectSound shutdown.
+    /// Releases the primary/listener object, then every sound buffer (stopping any that are still
+    /// playing), then the IDirectSound device itself.
+    ///
+    /// <para>
+    /// Vivait dans <c>Platform/Startup.cs</c> jusqu'au 2026-08-21, aux cotes des trois autres
+    /// etapes d'extinction. Rapatrie ici a la conversion : son adresse tombe dans la plage audio,
+    /// et il est le SEUL ecrivain externe de <c>s_DirectSound</c>. Le laisser dehors aurait force
+    /// ce champ a rester <c>internal</c> et modifiable de loin.
+    /// </para>
+    /// </summary>
+    internal void ShutdownStage3()
+    {
+        if (s_DirectSound == null) return;
+
+        if (s_DirectSoundPrimary != null)
+        {
+            InvokeComMethod(s_DirectSoundPrimary, IDirectSoundBuffer_Release);
+            // Ghidra does not null DAT_005db754 here â€” preserved as-is.
+        }
+
+        ReleaseAllSoundBuffers(stopPlayingBuffers: true);
+
+        InvokeComMethod(s_DirectSound, IDirectSound_Release);
+        s_DirectSound = null;
+    }
+
 
     // Ghidra: TexFilterPossible_exref â€” Blaze.exe imports this `uint` as DATA (not a function)
     // from winsys3d.dll. Confirmed via winsys3d.c: it defines and reads/writes a plain global
     // `TexFilterPossible` (see Documentation/DLL/winsys3d.md). P/Invoke has no direct mechanism
     // for an imported data symbol, so it's resolved lazily via GetProcAddress instead.
-    private static uint* s_TexFilterPossible;
+    private uint* s_TexFilterPossible;
 
-    private static uint* GetTexFilterPossiblePtr()
+    internal uint* GetTexFilterPossiblePtr()
     {
         if (s_TexFilterPossible == null)
         {
@@ -189,7 +252,7 @@ public static unsafe partial class Blaze
         return s_TexFilterPossible;
     }
 
-    private static string GetIniFilePath()
+    internal string GetIniFilePath()
     {
         byte* buffer = stackalloc byte[0x104];
         Win32.GetModuleFileNameA(IntPtr.Zero, buffer, 0x104);
@@ -199,7 +262,7 @@ public static unsafe partial class Blaze
         return exePath + IniFileExtension;
     }
 
-    private static uint ReadIniInt(string key, int defaultValue, byte* iniPathAnsi)
+    internal uint ReadIniInt(string key, int defaultValue, byte* iniPathAnsi)
     {
         byte* sectionAnsi = ToAnsiZ(IniSection);
         byte* keyAnsi = ToAnsiZ(key);
@@ -215,7 +278,7 @@ public static unsafe partial class Blaze
     /// DSBVOLUME_MIN/DSBVOLUME_MAX. The interface identity â€” an open question when those two
     /// functions were first reconstructed â€” is now confirmed; see the DirectSound banner above.
     /// </summary>
-    private static void InvokeSetVolume(void* comObject, int attenuationHundredthDb)
+    private void InvokeSetVolume(void* comObject, int attenuationHundredthDb)
     {
         if (comObject == null) return;
         void** vtable = *(void***)comObject;
@@ -225,21 +288,21 @@ public static unsafe partial class Blaze
 
     // Ghidra: DAT_005db8ec â€” the current music-stream attenuation, computed by FUN_005137b0 and
     // read back by FUN_005131d0 when it starts a new stream.
-    private static int s_MusicAttenuation;
+    private int s_MusicAttenuation;
 
     // Ghidra: DAT_005db8e8 â€” the current sound-effect attenuation, computed by FUN_00513800 and
     // read back by FUN_00513180 every time an effect is played.
-    private static int s_SoundEffectAttenuation;
+    private int s_SoundEffectAttenuation;
 
     /// <summary>
     /// Ghidra: FUN_005137b0 @ 0x005137b0. Converts the "CdVol" ini setting (0..128-ish) into a
     /// DirectSound-style attenuation, stores it as the current music attenuation and applies it
     /// to the streaming-music buffer, if one exists yet.
     /// </summary>
-    private static void ApplyCdVolume()
+    internal void ApplyCdVolume()
     {
-        if (Mem.s_CdVolumeIni == 0) return;
-        s_MusicAttenuation = (int)(Mem.s_CdVolumeIni * 2500) / 128 - 2500;
+        if (mem.s_CdVolumeIni == 0) return;
+        s_MusicAttenuation = (int)(mem.s_CdVolumeIni * 2500) / 128 - 2500;
         if (s_MusicStreamBuffer != null)
         {
             // Ghidra special-cases exactly -2000 (not this function's own -2500 floor) to force
@@ -255,9 +318,9 @@ public static unsafe partial class Blaze
     /// DirectSound-style attenuation, stores it as the current effect attenuation and applies it
     /// to every allocated sound buffer.
     /// </summary>
-    private static void ApplyAllSoundBufferVolumes()
+    internal void ApplyAllSoundBufferVolumes()
     {
-        s_SoundEffectAttenuation = (int)(Mem.s_SoundVolumeIni * 2000) / 128 - 2000;
+        s_SoundEffectAttenuation = (int)(mem.s_SoundVolumeIni * 2000) / 128 - 2000;
         foreach (void* buffer in s_SoundBuffers)
         {
             if (buffer == null) continue;
@@ -289,7 +352,7 @@ public static unsafe partial class Blaze
     /// cannot be what the binary does. Transcribed as the evident intent: the *created buffer*
     /// is what gets stored and released.
     /// </summary>
-    private static int AllocateSoundBuffer(uint bufferBytes)
+    private int AllocateSoundBuffer(uint bufferBytes)
     {
         if (s_DirectSound == null) return -1;
 
@@ -336,7 +399,7 @@ public static unsafe partial class Blaze
     /// (dwFlags 2 == DSBLOCK_ENTIREBUFFER; the second pointer/size pair is passed as NULL, which
     /// is legal precisely because the entire buffer is locked from offset 0).
     /// </summary>
-    private static bool LockSoundBuffer(int slot, void** audioPtr, uint* audioBytes)
+    private bool LockSoundBuffer(int slot, void** audioPtr, uint* audioBytes)
     {
         void* buffer = s_SoundBuffers[slot];
         if (buffer == null) return false;
@@ -347,7 +410,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_00513150 @ 0x00513150 â€” <c>IDirectSoundBuffer::Unlock</c>.</summary>
-    private static void UnlockSoundBuffer(int slot, void* audioPtr, uint audioBytes)
+    private void UnlockSoundBuffer(int slot, void* audioPtr, uint audioBytes)
     {
         void* buffer = s_SoundBuffers[slot];
         if (buffer == null) return;
@@ -365,7 +428,7 @@ public static unsafe partial class Blaze
     /// attribute to a parameter); all five call sites pass a literal second argument of 0, which
     /// is what identifies it as a real parameter rather than garbage.
     /// </summary>
-    private static void PlaySoundBuffer(int slot, bool looping)
+    private void PlaySoundBuffer(int slot, bool looping)
     {
         void* buffer = s_SoundBuffers[slot];
         if (buffer == null || s_SoundEffectAttenuation <= -2000) return;
@@ -394,42 +457,42 @@ public static unsafe partial class Blaze
     // by the options UI at 0x0050f2xx). Recovered from Legacy/Blaze.exe @ 0x005631d4 as **1**:
     // music ships **enabled**. This previously defaulted to 0 on the assumption that the value was
     // unrecoverable, which silently made StartMusicStream take its early-out forever.
-    private static uint s_MusicEnabled = 1;
+    internal uint s_MusicEnabled = 1;
 
     // Ghidra: DAT_005631d0 â€” nonzero while no stream is running. Note the inverted sense: it is
     // *cleared* at the end of a successful start and *set* at the top of a stop. Left at 0 (its
     // .bss default): a first StartMusicStream always takes the "different track" path, which
     // calls StopMusicStream and so sets the flag before it is tested.
-    private static uint s_MusicStreamStopped;
+    private uint s_MusicStreamStopped;
 
     // Ghidra: DAT_005db8f0 â€” the whole-file scratch buffer. Its size is the literal 0x004c4b40
     // (5,000,000), which Ghidra rendered as `&LAB_004c4b40` because the constant happens to fall
     // inside the .text range; it is used identically as a plain size in the tail-zeroing loop.
     private const uint MusicFileBufferSize = 0x004c4b40;
-    private static byte* s_MusicFileBuffer;
+    private byte* s_MusicFileBuffer;
 
     // Ghidra: DAT_005db8f4 / DAT_005db8f8 / DAT_005db8fc â€” the `fmt ` chunk body, the `data`
     // chunk body and the `data` chunk size, all pointing into s_MusicFileBuffer.
-    private static ADPCMWAVEFORMAT* s_MusicFormat;
-    private static byte* s_MusicData;
-    private static int s_MusicDataSize;
+    private ADPCMWAVEFORMAT* s_MusicFormat;
+    private byte* s_MusicData;
+    private int s_MusicDataSize;
 
     // Ghidra: DAT_005db820 â€” the PCM WAVEFORMATEX describing the *decoded* stream. Kept in native
     // memory because the original is a .bss global whose address is handed to DirectSound.
-    private static readonly WAVEFORMATEX* s_MusicOutputFormat = (WAVEFORMATEX*)NativeMemory.AllocZeroed((nuint)sizeof(WAVEFORMATEX));
+    private readonly WAVEFORMATEX* s_MusicOutputFormat = (WAVEFORMATEX*)NativeMemory.AllocZeroed((nuint)sizeof(WAVEFORMATEX));
 
     // Ghidra: DAT_005db8a0 (DSBPOSITIONNOTIFY[8]) and DAT_005db838 (the same 8 event handles,
     // kept separately so FUN_005135d0 can close them without walking the notify structs).
     private const int MusicNotifyCount = 8;
-    private static readonly DSBPOSITIONNOTIFY* s_MusicNotifyPositions = (DSBPOSITIONNOTIFY*)NativeMemory.AllocZeroed(MusicNotifyCount * (nuint)sizeof(DSBPOSITIONNOTIFY));
-    private static readonly IntPtr[] s_MusicNotifyEvents = new IntPtr[MusicNotifyCount];
+    private readonly DSBPOSITIONNOTIFY* s_MusicNotifyPositions = (DSBPOSITIONNOTIFY*)NativeMemory.AllocZeroed(MusicNotifyCount * (nuint)sizeof(DSBPOSITIONNOTIFY));
+    private readonly IntPtr[] s_MusicNotifyEvents = new IntPtr[MusicNotifyCount];
 
     // Ghidra: DAT_005db858 â€” the "please exit" event signalled by FUN_005135d0.
-    private static IntPtr s_MusicStopEvent;
+    private IntPtr s_MusicStopEvent;
 
     // Ghidra: DAT_005db880 / DAT_005db8e0 â€” the streaming worker thread and its thread id.
-    private static IntPtr s_MusicStreamThread;
-    private static uint s_MusicStreamThreadId;
+    private IntPtr s_MusicStreamThread;
+    private uint s_MusicStreamThreadId;
 
     // Ghidra: DAT_005db860 / DAT_005db750 / DAT_005db89c. The first two are the streaming
     // worker's cursor (source block index reached so far) and its end marker (total number of
@@ -438,22 +501,22 @@ public static unsafe partial class Blaze
     // live in the missing worker thread body (LAB_00513660), so their exact roles above are read
     // off the values written (0x50 == the 80 blocks pre-decoded, and a block count derived from
     // the data-chunk size / nBlockAlign) rather than from consuming code.
-    private static int s_MusicSourceBlockCursor;
-    private static int s_MusicTotalBlocks;
-    private static int s_MusicPlaying;
+    private int s_MusicSourceBlockCursor;
+    private int s_MusicTotalBlocks;
+    private int s_MusicPlaying;
 
     // Ghidra: DAT_005db908 (the file currently loaded into s_MusicFileBuffer) and DAT_005dba08
     // (the most recently requested file, replayed when FUN_005131d0 is called with a null path).
     // 0x100 is the exact gap between DAT_005db908 and the next referenced global, DAT_005dba08.
     private const nuint MusicPathBufferSize = 0x100;
-    private static readonly byte* s_LoadedMusicPath = (byte*)NativeMemory.AllocZeroed(MusicPathBufferSize);
-    private static readonly byte* s_RequestedMusicPath = (byte*)NativeMemory.AllocZeroed(MusicPathBufferSize);
+    private readonly byte* s_LoadedMusicPath = (byte*)NativeMemory.AllocZeroed(MusicPathBufferSize);
+    private readonly byte* s_RequestedMusicPath = (byte*)NativeMemory.AllocZeroed(MusicPathBufferSize);
 
     // Ghidra: DAT_0054ded8, the riid handed to QueryInterface in FUN_005131d0. The GUID *bytes*
     // are .rdata and therefore absent from Blaze.c (same systemic blocker as the other data-only
     // symbols), but the interface identity is pinned by how the returned object is used â€” see the
     // DirectSound banner above. The value below is the documented IID_IDirectSoundNotify.
-    private static readonly Guid IID_IDirectSoundNotify = new Guid("b0210783-89cd-11d0-af08-00a0c925cd16");
+    private readonly Guid IID_IDirectSoundNotify = new Guid("b0210783-89cd-11d0-af08-00a0c925cd16");
 
     // Ghidra: DAT_0056ac60 (16 shorts), DAT_0056ac80 and DAT_0056ac90 (7 shorts each) â€” read by
     // FUN_00531bb0 and FUN_00531f70 respectively.
@@ -467,19 +530,19 @@ public static unsafe partial class Blaze
     // 16 shorts at 0x0056ac60 end at 0x0056ac80, and 7 shorts at 0x0056ac80 end at 0x0056ac8e,
     // padded to the next entry at 0x0056ac90.
     // TODO(REVERSE): confirm the byte values against the binary if it ever becomes available.
-    private static readonly short[] MsAdpcmAdaptationTable =
+    private readonly short[] MsAdpcmAdaptationTable =
     {
         230, 230, 230, 230, 307, 409, 512, 614,
         768, 614, 512, 409, 307, 230, 230, 230,
     };
-    private static readonly short[] MsAdpcmCoefficient1 = { 256, 512, 0, 192, 240, 460, 392 };
-    private static readonly short[] MsAdpcmCoefficient2 = { 0, -256, 0, 64, 0, -208, -232 };
+    private readonly short[] MsAdpcmCoefficient1 = { 256, 512, 0, 192, 240, 460, 392 };
+    private readonly short[] MsAdpcmCoefficient2 = { 0, -256, 0, 64, 0, -208, -232 };
 
     /// <summary>
     /// Ghidra: FUN_00531f70 @ 0x00531f70. Accepts only a `fmt ` chunk that is mono/stereo
     /// 4-bit Microsoft ADPCM using the standard 7-entry coefficient set.
     /// </summary>
-    private static bool IsStandardMsAdpcmFormat(ADPCMWAVEFORMAT* format)
+    private bool IsStandardMsAdpcmFormat(ADPCMWAVEFORMAT* format)
     {
         if (format == null) return false;
         if (format->wfx.wFormatTag != WAVE_FORMAT_ADPCM) return false;
@@ -502,7 +565,7 @@ public static unsafe partial class Blaze
     /// `(char)(sample >> 8) + -0x80` is the usual signed-16 to unsigned-8 rebias
     /// (0x8000 -&gt; 0x00, 0x0000 -&gt; 0x80, 0x7fff -&gt; 0xff).
     /// </summary>
-    private static byte* WriteDecodedSample(byte* dest, short sample, int destBitsPerSample)
+    private byte* WriteDecodedSample(byte* dest, short sample, int destBitsPerSample)
     {
         if (destBitsPerSample == 8)
         {
@@ -527,7 +590,7 @@ public static unsafe partial class Blaze
     /// this to at most 2 channels those regions never overlap, so they are split into separate
     /// per-channel arrays here without changing behaviour.
     /// </summary>
-    private static int DecodeMsAdpcm(ADPCMWAVEFORMAT* srcFormat, byte* src, WAVEFORMATEX* destFormat, byte* dest, uint srcByteBudget)
+    private int DecodeMsAdpcm(ADPCMWAVEFORMAT* srcFormat, byte* src, WAVEFORMATEX* destFormat, byte* dest, uint srcByteBudget)
     {
         int numCoef = srcFormat->wNumCoef & 0xff;      // Ghidra reads only the low byte
         int channels = srcFormat->wfx.nChannels & 0xff;
@@ -628,7 +691,7 @@ public static unsafe partial class Blaze
     /// scratch buffer and locates its `fmt ` and `data` chunks. The header is read first (0x400
     /// bytes) so the format can be rejected before paying for the rest of the file.
     /// </summary>
-    private static bool LoadMusicWaveFile(byte* path)
+    private bool LoadMusicWaveFile(byte* path)
     {
         if (s_MusicFileBuffer == null) s_MusicFileBuffer = (byte*)Malloc(MusicFileBufferSize);
 
@@ -687,7 +750,7 @@ public static unsafe partial class Blaze
     /// the requested track is already streaming), 0 when a stream was set up or the file failed to
     /// load, and -1 when there is no DirectSound device.
     /// </summary>
-    private static int StartMusicStream(byte* path)
+    internal int StartMusicStream(byte* path)
     {
         if (path == null) path = s_RequestedMusicPath;
         else Win32.lstrcpyA(s_RequestedMusicPath, path);
@@ -800,7 +863,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_005135d0 @ 0x005135d0. Signals the worker thread to exit, waits for it, then
     /// tears down the streaming buffer, its notify interface and the 8 notification events.
     /// </summary>
-    private static int StopMusicStream()
+    private int StopMusicStream()
     {
         if (s_MusicStreamStopped == 0)
         {
@@ -829,7 +892,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00513860 @ 0x00513860. Flips the music-enabled flag and either stops the
     /// current stream or restarts the last requested track.
     /// </summary>
-    private static void ToggleMusicEnabled()
+    internal void ToggleMusicEnabled()
     {
         s_MusicEnabled = s_MusicEnabled == 0 ? 1u : 0u;
         if (s_MusicEnabled == 0) StopMusicStream();
@@ -860,7 +923,7 @@ public static unsafe partial class Blaze
     /// bank selected by the sound id, and the sample's length in bytes.
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    private struct SoundDirectoryEntry
+    internal struct SoundDirectoryEntry
     {
         public int Offset;
         public int Length;
@@ -873,7 +936,7 @@ public static unsafe partial class Blaze
     /// a dozen times across the five resamplers, always with the same asymmetric clamp to
     /// [-0x7f, +0x7f] (not [-0x80, +0x7f]) before re-biasing by 0x80.
     /// </summary>
-    private static byte ApplySoundGain(byte sample, int gain)
+    private byte ApplySoundGain(byte sample, int gain)
     {
         int value = (sample - 0x80) * gain >> 0xc;
         if (value > 0x7f) value = 0x7f;
@@ -890,7 +953,7 @@ public static unsafe partial class Blaze
     /// entirely, leaving the buffer locked and silent. The size formulas all carry a +100 sample
     /// slack that normally keeps this from happening.
     /// </summary>
-    private static void FinishAndPlayResampledBuffer(int slot, byte* dest, byte* cursor, int bufferBytes)
+    private void FinishAndPlayResampledBuffer(int slot, byte* dest, byte* cursor, int bufferBytes)
     {
         if (cursor >= dest + bufferBytes) return;
 
@@ -908,7 +971,7 @@ public static unsafe partial class Blaze
     /// stack slots for the Lock output pointer and byte count; only <paramref name="src"/> is
     /// really a pointer.
     /// </summary>
-    private static void PlaySampleDecimated(int stepMinusOne, byte* src, int srcLength, int gainLeft, int gainRight)
+    private void PlaySampleDecimated(int stepMinusOne, byte* src, int srcLength, int gainLeft, int gainRight)
     {
         int step = stepMinusOne + 1;
         int bufferBytes = (int)((srcLength / step + 100U) & 0xffffffe) * 2;
@@ -955,7 +1018,7 @@ public static unsafe partial class Blaze
     /// pointer advances as part of the *condition*, so each emitted frame reads the already
     /// advanced sample and the loop leaves the pointer one past the n frames it wrote.
     /// </summary>
-    private static void PlaySampleDroppingOneIn(int n, byte* src, int srcLength, int gainLeft, int gainRight)
+    private void PlaySampleDroppingOneIn(int n, byte* src, int srcLength, int gainLeft, int gainRight)
     {
         int bufferBytes = (int)((uint)(srcLength + (100 - srcLength / (n + 1))) & 0xffffffe) * 2;
 
@@ -1002,7 +1065,7 @@ public static unsafe partial class Blaze
     /// first sample, an interpolated frame midway to the next, then n more â€” i.e. plays back at
     /// ratio (n+1)/(n+2), the fine pitch-*down* steps between unity and half speed.
     /// </summary>
-    private static void PlaySampleInsertingOneIn(int n, byte* src, int srcLength, int gainLeft, int gainRight)
+    private void PlaySampleInsertingOneIn(int n, byte* src, int srcLength, int gainLeft, int gainRight)
     {
         int bufferBytes = (int)((uint)(srcLength + srcLength / (n + 1) + 100) & 0xffffffe) * 2;
 
@@ -1066,7 +1129,7 @@ public static unsafe partial class Blaze
     /// plain frame, then n-1 pairs of (sample, interpolated midpoint) â€” i.e. ratio n/(2n-1), the
     /// fine steps just above half speed.
     /// </summary>
-    private static void PlaySampleDoubledExceptOneIn(int n, byte* src, int srcLength, int gainLeft, int gainRight)
+    private void PlaySampleDoubledExceptOneIn(int n, byte* src, int srcLength, int gainLeft, int gainRight)
     {
         int bufferBytes = (int)((uint)(srcLength * 2 + 100 - srcLength / (n + 1)) & 0xffffffe) * 2;
 
@@ -1129,7 +1192,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_0053d880 @ 0x0053d880. Emits two frames per source sample (the sample and an
     /// interpolated midpoint) â€” exactly half speed, one octave down.
     /// </summary>
-    private static void PlaySampleDoubled(byte* src, int srcLength, int gainLeft, int gainRight)
+    private void PlaySampleDoubled(byte* src, int srcLength, int gainLeft, int gainRight)
     {
         int bufferBytes = (srcLength * 2 + 100) * 2;
 
@@ -1173,7 +1236,7 @@ public static unsafe partial class Blaze
     /// <paramref name="soundId"/> in the sound directory and dispatches to the resampler whose
     /// rate ratio matches <paramref name="pitch"/> (1.10 fixed point, 0x400 == unity).
     /// </summary>
-    private static void PlaySoundEffect(int soundId, int pitch, int gainLeft, int gainRight)
+    internal void PlaySoundEffect(int soundId, int pitch, int gainLeft, int gainRight)
     {
         gainLeft >>= 1;
         gainRight >>= 1;
@@ -1237,17 +1300,17 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_0053db80 @ 0x0053db80 â€” fixed UI sound, id 0x38.</summary>
-    private static void PlayUiSound38() => PlaySoundEffect(0x38, 0x400, 0x2000, 0x2000);
+    internal void PlayUiSound38() => PlaySoundEffect(0x38, 0x400, 0x2000, 0x2000);
 
     /// <summary>Ghidra: FUN_0053dba0 @ 0x0053dba0 â€” fixed UI sound, id 0x39.</summary>
-    private static void PlayUiSound39() => PlaySoundEffect(0x39, 0x400, 0x2000, 0x2000);
+    internal void PlayUiSound39() => PlaySoundEffect(0x39, 0x400, 0x2000, 0x2000);
 
     /// <summary>Ghidra: FUN_0053db60 @ 0x0053db60 â€” fixed UI sound, id 0x3a.</summary>
-    private static void PlayUiSound3A() => PlaySoundEffect(0x3a, 0x400, 0x2000, 0x2000);
+    internal void PlayUiSound3A() => PlaySoundEffect(0x3a, 0x400, 0x2000, 0x2000);
 
     /// <summary>Ghidra: FUN_0053dbc0 @ 0x0053dbc0 â€” fixed UI sound, id 0x3b.</summary>
-    private static void PlayUiSound3B() => PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
+    internal void PlayUiSound3B() => PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
 
     /// <summary>Ghidra: FUN_0053dbc0 â€” le bip d'action refusÃ©e.</summary>
-    private static void PlayUiSoundError() => PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
+    internal void PlayUiSoundError() => PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
 }

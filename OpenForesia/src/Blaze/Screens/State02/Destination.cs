@@ -220,7 +220,7 @@ public static unsafe partial class Blaze
                     cursor = menuIndex;
                 } while ((navMask & (1u << (int)(menuIndex & 0x1f))) == 0);
             }
-            if (before != cursor) PlayUiSound3A();     // Ghidra: FUN_0053db60
+            if (before != cursor) Aud.PlayUiSound3A();     // Ghidra: FUN_0053db60
 
             // START (0x0008) ou CARRÉ (0x8000) : valider.
             if ((*(ushort*)(pad + 2) & 0x8008) != 0) break;
@@ -404,7 +404,7 @@ public static unsafe partial class Blaze
             if (fadeStep > 0x17) fadeStep = 0;
         }
 
-        PlayUiSound38();                                // Ghidra: FUN_0053db80
+        Aud.PlayUiSound38();                                // Ghidra: FUN_0053db80
         s_Unknown_005de528 = s_MenuIndexToArea_0056d2b0[cursor];
         s_Unknown_00566c84 = 0xff;
         byte* areaInfo = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x74)

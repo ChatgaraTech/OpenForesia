@@ -755,10 +755,10 @@ public static unsafe partial class Blaze
     // *both* halves off &DAT_005e8340 (`&DAT_005e8340 + soundId * 8` for ids up to 0x4c), only
     // switching which sample bank the entry's offset is added to. 0x1e0 + 0x88 == 0x268 == 77
     // entries of 8 bytes, and 0x4c is exactly the last valid index â€” the sizes corroborate.
-    private const int SoundDirectoryBaseCount = 0x1e0 / 8;  // 60 entries, ids 0x00..0x3b
+    internal const int SoundDirectoryBaseCount = 0x1e0 / 8;  // 60 entries, ids 0x00..0x3b
     private const int SoundDirectoryCount = 0x268 / 8;      // 77 entries, ids 0x00..0x4c
-    private static readonly SoundDirectoryEntry* s_SoundDirectory =
-        (SoundDirectoryEntry*)NativeMemory.AllocZeroed(SoundDirectoryCount * (nuint)sizeof(SoundDirectoryEntry));
+    internal static readonly Audio.SoundDirectoryEntry* s_SoundDirectory =
+        (Audio.SoundDirectoryEntry*)NativeMemory.AllocZeroed(SoundDirectoryCount * (nuint)sizeof(Audio.SoundDirectoryEntry));
     // Ghidra: DAT_005e97e4 / _DAT_005e9810 / _DAT_005e9824 / DAT_005de538 â€” all read again by
     // not-yet-reconstructed code.
     private static uint s_Unknown_005e97e4;
@@ -957,7 +957,7 @@ public static unsafe partial class Blaze
             else if (phase == 0)
             {
                 phase = 1;
-                PlayUiSound38();        // Ghidra: FUN_0053db80
+                Aud.PlayUiSound38();        // Ghidra: FUN_0053db80
             }
 
             framesLeft--;

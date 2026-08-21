@@ -479,7 +479,7 @@ public static unsafe partial class Blaze
                 // Annulation : possible seulement tant qu'aucun dé n'est lancé.
                 if ((*(ushort*)(pad + 2) & 0x4000) != 0 && s_DiceRolled_00578e04 == 0)
                 {
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2] = 0x2e;
                     state[0]--;
                     break;
@@ -487,7 +487,7 @@ public static unsafe partial class Blaze
 
                 if ((*(ushort*)(pad + 2) & 0x8000) != 0 && s_DiceRolled_00578e04 < 3)
                 {
-                    PlayUiSound38();
+                    Aud.PlayUiSound38();
                     *(short*)(s_Dice_00573350 + s_DiceRolled_00578e04 * DiceStride) = 0;
                     s_DiceRolled_00578e04++;
                 }
@@ -555,7 +555,7 @@ public static unsafe partial class Blaze
                 if ((pad[3] & 0x40) == 0) break;
                 Mem.s_Unknown_0056075b = 0;
                 Mem.s_Unknown_00560fef &= 0xfd;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
                 state[2] = 0x39;
                 s_SelectFlags_00562a48[0] = 1;
                 break;
@@ -578,7 +578,7 @@ public static unsafe partial class Blaze
                 if ((pad[3] & 0x40) == 0) break;
                 Mem.s_Unknown_00560763 = 0;
                 Mem.s_Unknown_00560fef &= 0xfb;
-                PlayUiSound39();
+                Aud.PlayUiSound39();
                 state[2] = 0x39;
                 s_SelectFlags_00562a48[0] = 1;
                 break;
@@ -785,7 +785,7 @@ public static unsafe partial class Blaze
                 }
                 else
                 {
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2]++;             // 0x3e -> 0x3f
                 }
                 break;
@@ -806,7 +806,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.s_Unknown_0056075b = 0;
                     Mem.s_Unknown_00560fef &= 0xfd;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2] = 0x3e;
                 }
                 break;
@@ -822,7 +822,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.s_Unknown_00560763 = 0;
                     Mem.s_Unknown_00560fef &= 0xfb;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2] = 0x3e;
                 }
                 break;
@@ -839,7 +839,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.s_Unknown_00560763 = 0;
                     Mem.s_Unknown_00560fef &= 0xfb;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2] = 0x3e;
                 }
                 break;
@@ -862,7 +862,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.s_Unknown_00560763 = 0;
                     Mem.s_Unknown_00560fef &= 0xfb;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2] = 0x81;
                 }
                 break;
@@ -878,7 +878,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.s_Unknown_0056075b = 0;
                     Mem.s_Unknown_00560fef &= 0xfd;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2] = 0x81;
                 }
                 break;
@@ -894,7 +894,7 @@ public static unsafe partial class Blaze
                 {
                     Mem.s_Unknown_0056075b = 0;
                     Mem.s_Unknown_00560fef &= 0xfd;
-                    PlayUiSound39();
+                    Aud.PlayUiSound39();
                     state[2]++;             // 0x80 -> 0x81
                 }
                 break;
@@ -906,7 +906,7 @@ public static unsafe partial class Blaze
                     {
                         Mem.s_Unknown_00560763 = 0;
                         Mem.s_Unknown_00560fef &= 0xfb;
-                        PlayUiSound39();
+                        Aud.PlayUiSound39();
                         state[2] = 0x3e;
                         SetClassBaseHpMp(scratch);
                     }
@@ -929,20 +929,20 @@ public static unsafe partial class Blaze
     {
         if ((pad[6] & 0x80) != 0 && state[8] != 0) state[8]--;
         if ((pad[6] & 0x20) != 0 && state[8] < 6) state[8]++;
-        if (rowBefore != state[8]) PlayUiSound3A();
+        if (rowBefore != state[8]) Aud.PlayUiSound3A();
 
         byte* stats = Mem.s_PanelSelection_005e9060;
         if ((pad[6] & 0x10) != 0 && s_StatTotal_005e906a != 0 && stats[state[8]] < 99)
         {
             s_StatTotal_005e906a--;
             stats[state[8]]++;
-            PlayUiSound38();
+            Aud.PlayUiSound38();
         }
         if ((pad[6] & 0x40) != 0 && s_StatSource_00578de4[state[8]] < stats[state[8]])
         {
             stats[state[8]]--;
             s_StatTotal_005e906a++;
-            PlayUiSound39();
+            Aud.PlayUiSound39();
         }
 
         // Ghidra: DAT_005e9064/68 — une teinte animée vers une moyenne glissante de deux
@@ -1035,7 +1035,7 @@ public static unsafe partial class Blaze
     private static void FinalizeCharacterStats(byte* pad, byte* scratch, int* state)
     {
         *(ushort*)(pad + 2) &= 0x7fff;
-        PlayUiSound38();
+        Aud.PlayUiSound38();
         state[2] = 0x81;
 
         *(uint*)scratch = 0;

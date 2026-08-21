@@ -1,25 +1,52 @@
 # TODO
 
-Point d'entrée entre deux sessions. Remis à plat le **2026-08-19** en fin de soirée. L'historique
-détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et
-la suite à faire.
+Point d'entrée entre deux sessions. Mis à jour le **2026-08-21**. L'historique détaillé est dans
+`REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
 
-**Rien n'est commité.** Tout le travail des 2026-08-19 est dans l'arbre de travail : le découpage,
-les cinq vraies classes, `OpenForesia.Tests/`, les références figées de `OpenForesia.Tools/`
-(`blaze-baseline.txt`, `bodies-baseline.txt`). Ces références n'existent **que là** — les perdre
-ferait perdre l'oracle.
+**État git au 2026-08-21.** Le travail du 2026-08-19 est commité jusqu'à `d557955`
+(« Conversion de Input.cs »), les cinq premières vraies classes comprises, ainsi que
+`OpenForesia.Tests/` et les références figées `blaze-baseline.txt` / `bodies-baseline.txt`.
+**Non commité** : la conversion d'`Audio.cs` de ce jour (14 fichiers) et cette mise à jour de
+documentation.
+
+Les deux fichiers de référence de `OpenForesia.Tools/` sont l'oracle — les perdre le perdrait.
+Ils sont désormais dans l'historique, donc récupérables ; ce n'était pas le cas le 2026-08-19.
 
 ---
 
-# Priorité 1 — `Engine/` en vraies classes · **5 fichiers sur 9**
+# Priorité 1 — `Engine/` en vraies classes · **6 fichiers sur 9**
 
 ## Reprendre ici
 
-Le prochain fichier est **`Engine/Audio.cs`** (1 253 l.). Ce n'est ni le plus petit ni le plus
-grand : c'est celui dont la **clôture** est la meilleure parmi les restants. Refaire la mesure
-avant de partir, elle a changé à chaque conversion :
+Le prochain fichier est **`Engine/Resources.cs`** (1 110 l.). C'est maintenant le seul choix
+raisonnable : `UiWindow` et `Model3d` sont explicitement à faire en dernier (voir plus bas), donc
+il ne reste que lui. Sa clôture n'est pas mauvaise — **33 globales à lui** — mais il emprunte à
+6 fichiers d'écran, contre 0 pour `Audio`.
+
+**Deux difficultés connues, à traiter avant d'ouvrir le fichier :**
+
+1. **`ToAnsiZ` vit dedans** et est appelé par toutes les classes déjà converties. Il faut décider
+   où cette aide habite *avant* de convertir, pas pendant. Ce n'est pas du `.data` : c'est une
+   aide CRT, donc sa place naturelle est `Platform/`, pas une classe d'instance. La déplacer est
+   gratuit pour l'oracle (indexation par nom seul), mais elle doit rester joignable par
+   `using static ... Blaze;` depuis les six classes converties.
+2. **`s_SoundDirectory` et `SoundDirectoryBaseCount` sont passés `internal`** à la conversion
+   d'`Audio` — ils sont lus par `Audio.PlaySoundEffect`. Quand `Resources` deviendra une classe,
+   ils deviendront un emprunt d'instance à instance : `Audio` prendra probablement `Resources` en
+   paramètre de constructeur, ou ces deux membres rejoindront `GameMemory` (voir la dette ci-après).
+
+**Dette ouverte par la conversion d'`Audio`, à solder de préférence pendant celle de `Resources`** :
+`s_BaseSoundBank`, `s_LevelSoundBank` (`Platform/Startup.cs`) et `s_SoundDirectory`
+(`Engine/Resources.cs`) sont **du `.data` réel** — `DAT_00604920`, `DAT_00600900`, `DAT_005e8340` —
+mais leur nom C# n'a **pas de suffixe VA**. La règle de tri de 7.9 les classe donc « échafaudage »,
+à tort : c'est le nom qui ment, pas la règle. Ils sont restés chez leur propriétaire en `internal`
+faute de vouloir mêler un rapatriement `GameMemory` à une conversion de classe.
+**Leçon à inscrire dans la règle** : le suffixe VA est un *indice*, pas la preuve. Vérifier
+l'ancre `// Ghidra: DAT_…` du commentaire avant de conclure « échafaudage ».
+
+Refaire la mesure de clôture avant de partir, elle a changé à chaque conversion :
 
 ```bash
 cd OpenForesia/src/Blaze
@@ -35,20 +62,20 @@ done
 ```
 
 **La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si.** État au
-2026-08-19 au soir (avant conversion d'`Audio`) :
+2026-08-21, après conversion d'`Audio` :
 
 | fichier | lignes | déjà dans `GameMemory` | à lui | autre `Engine/` | `Screens/` |
 |---|---:|---:|---:|---:|---:|
-| `Audio.cs` | 1 253 | 0 | 25 | 3 | 2 |
-| `Resources.cs` | 1 110 | 5 | 34 | 4 | 6 |
-| `UiWindow.cs` | 368 | 4 | **0** | 5 | 6 |
+| ~~`Audio.cs`~~ | ~~1 253~~ | — | — | — | **fait le 2026-08-21** |
+| `Resources.cs` | 1 110 | 6 | 33 | 4 | 6 |
+| `UiWindow.cs` | 368 | 6 | **0** | 4 | 5 |
 | `Model3d.cs` | 583 | 10 | 0 | **18** | 1 |
 
 `UiWindow` et `Model3d` sont **à faire en dernier** : le premier ne possède aucune globale
 et n'est qu'un consommateur, le second emprunte 18 symboles à des fichiers `Engine/` non convertis.
 Les faire en dernier.
 
-## La recette, éprouvée cinq fois
+## La recette, éprouvée six fois
 
 1. **Mesurer** : membres, `[UnmanagedCallersOnly]`, `delegate*`, et d'où vient chaque `s_*` lu.
 2. **Trancher les globales empruntées**, selon une règle simple :
@@ -81,7 +108,42 @@ grep -rn --include=*.cs -iE "\bnomcandidat\b" OpenForesia/src | wc -l
 ```
 
 Les occurrences **en commentaire** sont sans risque : l'oracle retire les commentaires avant de
-normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`.
+normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`, `Aud`.
+
+**Et ne jamais donner au point d'entrée le nom de son propre type.** `Audio` était disponible et
+lisible ; il a été écarté au profit de `Aud` parce qu'une propriété homonyme de son type déclenche
+la règle « Color Color » de C# — `Audio.PlaySoundEffect(...)` se résout alors tantôt comme un accès
+statique, tantôt comme un accès d'instance, **selon la classe où la ligne est écrite**. Ça compile,
+et c'est exactement le genre d'ambiguïté qu'une transcription vérifiée à la main ne doit pas avoir
+à porter. Les abréviations ne sont donc pas qu'un confort de frappe.
+
+## Un membre peut rester statique par PORTÉE, pas seulement par contrainte
+
+La liste des trois motifs ci-dessus était incomplète ; `Audio` en a ajouté un quatrième, et c'est le
+plus facile à manquer parce que rien ne le force :
+
+* **Un membre qu'un autre sous-système appelle sans avoir rien à faire de celui-ci.**
+  `Audio.InvokeComMethod` est une invocation COM générique de sept lignes. `Platform/Startup.cs`
+  s'en sert pour libérer le **périphérique DirectInput** — qui n'a aucun rapport avec le son. Le
+  rendre d'instance ferait construire tout le sous-système audio (quatre allocations natives) pour
+  libérer une manette, et placerait ce travail devant la course pour la mémoire basse.
+  Le garder `internal static` coûte une qualification par nom de type ; l'alternative coûte une
+  dépendance fausse. **Se poser la question « qui l'appelle, et est-ce que ça a un sens qu'il
+  dépende de ce sous-système ? » avant de retirer un `static` par réflexe.**
+
+## Un déménagement de fonction est gratuit pour l'oracle — s'en servir
+
+`ShutdownStage3` (`FUN_00512ff0`) vivait dans `Platform/Startup.cs` avec les trois autres étapes
+d'extinction, et il était **le seul écrivain externe de `s_DirectSound`**. Deux issues :
+
+* l'exposer `internal` et modifiable de loin — c'est-à-dire garder la fuite que la conversion existe
+  pour supprimer ;
+* le déménager dans `Audio`, où son adresse le place de toute façon (règle de routage 1).
+
+Le deuxième choix a été pris, et il n'a **rien coûté** : l'oracle indexe par **nom seul**, un corps
+inchangé qui change de classe ne sonne pas — vérifié, zéro méthode « absente de l'arbre courant ».
+**Quand un membre doit être exposé uniquement pour une fonction extérieure, regarder d'abord si
+c'est la fonction qui est mal placée.** C'est souvent le cas, et le déménagement est vérifiable.
 
 ## Ce qui reste statique, et pourquoi
 
