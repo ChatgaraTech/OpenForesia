@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -112,7 +112,7 @@ internal sealed unsafe class Input(GameMemory mem)
     //     +0x8b0  number of attached joysticks
     //     +0x8b4  mouse state area                   <- out-pointer 3
     //
-    // Everything the DLL side needs was recovered from `Legacy/Blaze.exe` rather than assumed:
+    // Everything the DLL side needs was recovered from `Legacy/Binaries/Blaze.exe` rather than assumed:
     // the two device GUIDs (`GUID_SysKeyboard` at 0x0054db58, `GUID_SysMouse` at 0x0054db48),
     // both DIDATAFORMATs (0x00546f60 = the 256-object keyboard format, 0x00546ff0 = the 7-object
     // mouse format) and the keyboard object table at 0x00545f60, whose entries are exactly
@@ -524,7 +524,7 @@ internal sealed unsafe class Input(GameMemory mem)
     internal byte* s_SlotFlags_005e93c0 => s_SlotArea_005e9180 + 0x240;
 
     // Ghidra: the four 16-byte controllerâ†’player remap rows at 0x0056acf8, reached through the
-    // pointer table at 0x0056ad38. Recovered verbatim from Legacy/Blaze.exe. The row is chosen by
+    // pointer table at 0x0056ad38. Recovered verbatim from Legacy/Binaries/Blaze.exe. The row is chosen by
     // which of the two joystick axes reads the -0x8000 "absent" sentinel.
     private readonly byte[][] s_ControllerRemapRows =
     [
@@ -875,7 +875,7 @@ internal sealed unsafe class Input(GameMemory mem)
     /// <para>
     /// The convention is **active low**: a player's button word starts at 0xffff and every bound
     /// key that is down clears its bit. The bit each binding clears comes from the 20-entry mask
-    /// table at 0x00564f18, recovered from `Legacy/Blaze.exe` and unmistakably a PlayStation pad
+    /// table at 0x00564f18, recovered from `Legacy/Binaries/Blaze.exe` and unmistakably a PlayStation pad
     /// layout â€” 0x0010 up, 0x0020 right, 0x0040 down, 0x0080 left, 0x0008 start, 0x0001 select,
     /// the four face buttons at 0x1000..0x8000, the shoulders at 0x0100..0x0800, and four
     /// two-button combinations closing the table.
@@ -891,7 +891,7 @@ internal sealed unsafe class Input(GameMemory mem)
         int anyInput = 0;
 
         // Ghidra: if (DAT_00564a50 == 0) the raw state is zeroed before use â€” a keyboard-enable
-        // gate. Recovered from Legacy/Blaze.exe as 1, so the state is kept.
+        // gate. Recovered from Legacy/Binaries/Blaze.exe as 1, so the state is kept.
         if (s_KeyboardEnabled_00564a50 == 0)
             NativeMemory.Fill(deviceState, 0x3f * sizeof(uint), 0);
 
@@ -971,7 +971,7 @@ internal sealed unsafe class Input(GameMemory mem)
 
     /// <summary>
     /// Ghidra: &amp;DAT_00564f18 â€” 20 PlayStation pad button masks, one per binding slot, read
-    /// verbatim out of <c>Legacy/Blaze.exe</c>. Slots 9 and 10 are genuinely zero; the last four
+    /// verbatim out of <c>Legacy/Binaries/Blaze.exe</c>. Slots 9 and 10 are genuinely zero; the last four
     /// are two-button combinations.
     /// </summary>
     internal readonly ushort[] s_PadButtonMasks_00564f18 =
@@ -984,7 +984,7 @@ internal sealed unsafe class Input(GameMemory mem)
     ];
 
     /// <summary>
-    /// Ghidra: DAT_00564a50 â€” read from Legacy/Blaze.exe as 1. **Not read-only**: the two
+    /// Ghidra: DAT_00564a50 â€” read from Legacy/Binaries/Blaze.exe as 1. **Not read-only**: the two
     /// one-line functions <c>FUN_00523520</c> and <c>FUN_00523530</c> exist for nothing else than
     /// to set it to 1 and 0, and the name-entry sub-state calls both. It gates
     /// <see cref="FoldKeyboardIntoPadState"/>, so clearing it silences the pad mapping while raw
@@ -1010,7 +1010,7 @@ internal sealed unsafe class Input(GameMemory mem)
     // Third instance of this shape today, after DAT_0056e61f and DAT_005e8fc0.
     internal int s_ResolutionIndexForClamp => (int)s_ResolutionIndex;
 
-    // Ghidra: _DAT_0054d000 â€” **lu dans Legacy/Blaze.exe : 0x3C800000, soit 1/64**, et non 1.0f
+    // Ghidra: _DAT_0054d000 â€” **lu dans Legacy/Binaries/Blaze.exe : 0x3C800000, soit 1/64**, et non 1.0f
     // comme un TODO le supposait ici. C'est aussi le mÃªme symbole que `GammaIniScale` dÃ©clarÃ© plus
     // haut dans ce fichier, qui portait dÃ©jÃ  la bonne valeur par dÃ©duction ; huitiÃ¨me global
     // reconstruit sous deux noms.

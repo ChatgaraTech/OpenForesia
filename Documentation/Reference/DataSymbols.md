@@ -1,17 +1,17 @@
 # Recovered data symbols
 
-Values read out of `Legacy/Blaze.exe`'s initialised data, keyed by the **Ghidra virtual address**
+Values read out of `Legacy/Binaries/Blaze.exe`'s initialised data, keyed by the **Ghidra virtual address**
 `Blaze.c` uses. This is lookup material: an entry stops changing once its bytes are read.
 `REVERSE_STATUS.md` keeps the narrative and the per-TODO status and links here.
 
-Binary: `Legacy/Blaze.exe`, 1,589,760 bytes, MD5 `46d90d1b4526f4a9a441f851c77179b3`.
+Binary: `Legacy/Binaries/Blaze.exe`, 1,589,760 bytes, MD5 `46d90d1b4526f4a9a441f851c77179b3`.
 Identity check — image base `0x400000` + entry RVA `0x147D40` = `0x00547D40`, which is exactly
 `entry`'s address in `Blaze.c`. Same build, confirmed.
 
-Read with `OpenForesia.Tools at Legacy/Blaze.exe <va> [bytes]`.
+Read with `OpenForesia.Tools at Legacy/Binaries/Blaze.exe <va> [bytes]`.
 
-**The same tool works on the helper DLLs**, which sit in the repo root — `at winsys3d.dll <va>`,
-`at 3dhelp.dll <va>`, and so on, using the very `@ 0xXXXXXXXX` addresses their `.c` files carry.
+**The same tool works on the helper DLLs**, which sit in `Legacy/Binaries/` — `at Legacy/Binaries/winsys3d.dll <va>`,
+`at Legacy/Binaries/3dhelp.dll <va>`, and so on, using the very `@ 0xXXXXXXXX` addresses their `.c` files carry.
 The "code-only decompilation" blocker described in `CLAUDE.md` is specific to `Blaze.c`; a DLL
 symbol whose value lives in initialised data is **not** blocked, it is one command away. Findings
 from a DLL belong in `Documentation/DLL/<dll>.md`, not in this file, which stays `Blaze.exe`-only.
@@ -220,7 +220,7 @@ below `0x20` through a **different table per pass**:
 | 1 (scan) | `PTR_LAB_0056e870` | measure/skip — collects `$`-escapes, draws nothing |
 | 2 (render) | `PTR_FUN_0056e728` | emit glyphs |
 
-Both are 32 entries of 4 bytes, recovered verbatim from `Legacy/Blaze.exe`. **They are the same
+Both are 32 entries of 4 bytes, recovered verbatim from `Legacy/Binaries/Blaze.exe`. **They are the same
 table except where pass 1 substitutes a cursor-advance stub** for a handler that would draw.
 
 | code | pass 1 | pass 2 | code | pass 1 | pass 2 |
@@ -329,7 +329,7 @@ the render side are `544b10`, `544c50`, `544d90`, plus `544810` and `544fb0` fro
 
 #### Converting a `.text` address to a file offset
 
-Needed to decode these bodies and not written down anywhere until now. `Legacy/Blaze.exe` has five
+Needed to decode these bodies and not written down anywhere until now. `Legacy/Binaries/Blaze.exe` has five
 sections; `.text` runs `VA 0x00401000..0x0054C270` from file offset `0x400`, so for any address in
 it:
 
@@ -373,7 +373,7 @@ reason the arena has to be placed correctly before anything draws.
 (*(code *)(&PTR_LAB_00560708)[DAT_00578de8])(...)
 ```
 
-Read verbatim from `Legacy/Blaze.exe` at **file offset `0x15ED08`** (`.data`: VA `0x0054F000` →
+Read verbatim from `Legacy/Binaries/Blaze.exe` at **file offset `0x15ED08`** (`.data`: VA `0x0054F000` →
 raw `0x0014D600`, so `0x00560708 - 0x0054F000 + 0x0014D600`):
 
 | index | target | index | target |
@@ -516,7 +516,7 @@ silently dropped.
 negative indices). Only the first `0x68` bytes of each are written.
 
 Two statically initialised instances of the **same type** live in `.data` and are readable from
-`Legacy/Blaze.exe`: `DAT_00560728` (file offset `0x15ED28`) and `DAT_00560ff0` (`0x15F5F0`).
+`Legacy/Binaries/Blaze.exe`: `DAT_00560728` (file offset `0x15ED28`) and `DAT_00560ff0` (`0x15F5F0`).
 
 | offset | `FUN_00506880` writes | `DAT_00560728` | `DAT_00560ff0` |
 |---|---|---|---|
@@ -557,7 +557,7 @@ than naming them, since naming them would be inventing.
 ### The full `0x68`-byte header — all four static instances (2026-08-15)
 
 The table above stops at `0x3C`; the initialised prefix is `0x68` bytes, i.e. **26 dwords**. Read
-back from `Legacy/Blaze.exe` at the four file offsets, they are:
+back from `Legacy/Binaries/Blaze.exe` at the four file offsets, they are:
 
 | dword | offset | `DAT_00560728` @`0x15ED28` | `DAT_00560ff0` @`0x15F5F0` | `DAT_005618b8` @`0x15FEB8` | `DAT_00562180` @`0x160780` |
 |---|---|---|---|---|---|
@@ -664,7 +664,7 @@ and it is worth doing before writing "globals still to model" into a plan.
 ## The debug party-select screen's tables (2026-08-17)
 
 Everything `FUN_00536270` (`RunDebugPartySelect`) reads out of `.data`, recovered with
-`OpenForesia.Tools -- at Legacy/Blaze.exe`. None of it is inferred.
+`OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe`. None of it is inferred.
 
 ### `0x0056c894`..`0x0056c8d3` — the eight class names, 64 contiguous bytes
 

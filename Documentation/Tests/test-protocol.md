@@ -445,7 +445,7 @@ ajouté au groupe.
 - **`OpenForesia.Tools` suit la même règle** que `dotnet run` ci-dessus — marche directement si le
   PATH a un SDK, sinon même contournement `DOTNET_ROOT`. Palliatif de secours pour la table
   d'exports sans passer par dotnet du tout : `OpenForesia.Tools/exports.ps1`.
-- **Lire le binaire ne demande aucun outil.** `od -A x -t x4 -j <offset> -N <taille> Legacy/Blaze.exe`
+- **Lire le binaire ne demande aucun outil.** `od -A x -t x4 -j <offset> -N <taille> Legacy/Binaries/Blaze.exe`
   suffit, et se diffe contre les constantes du source — c'est ainsi que les 26 dwords du descripteur
   d'interface ont été établis.
 - **Les heredocs de bash sont peu fiables ici** : les backticks y sont évalués même avec un

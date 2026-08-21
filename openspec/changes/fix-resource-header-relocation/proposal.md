@@ -17,9 +17,9 @@ The binary is now in the repo, and the table is recovered.
 ## What Changes
 
 - Fill `s_ResourceFixupSchema_0056aca8` with the 37 `ushort` entries recovered from
-  `Legacy/Blaze.exe` at VA `0x0056ACA8`, terminated by the `0x0000` that ends the original's loop.
+  `Legacy/Binaries/Blaze.exe` at VA `0x0056ACA8`, terminated by the `0x0000` that ends the original's loop.
 - Reconstruct `FUN_00532070`'s schema-driven pass faithfully, replacing the documented no-op.
-- Correct the recorded reading of the table. `Documentation/DataSymbols.md` currently offers
+- Correct the recorded reading of the table. `Documentation/Reference/DataSymbols.md` currently offers
   `(record kind, size)` as a hypothesis. Reading `FUN_00532070` disproves it: each entry is
   **`(low byte = index, high byte = stride)`**, and it is not a hypothesis any more — the code
   masks and shifts exactly that way.
@@ -60,7 +60,7 @@ behaviour, so `.openspec.yaml` sets `skip_specs: true`.
 ## Impact
 
 - `OpenForesia/src/Blaze/Blaze.cs` — `s_ResourceFixupSchema_0056aca8` and `FixupResourceHeader`.
-- `Documentation/DataSymbols.md` — replace the `(kind, size)` hypothesis with the confirmed
+- `Documentation/Reference/DataSymbols.md` — replace the `(kind, size)` hypothesis with the confirmed
   `(index, stride)` reading, and record the full table.
 - `REVERSE_STATUS.md` — resolve TODO #20, update TODO #35.
 - **Expected outcome is a new failure, not a clean run.** Clearing this should let the directory

@@ -14,7 +14,7 @@ Tout le nouveau code doit être écrit sous :
 
 `OpenForesia/src/Blaze/`
 
-La reconstruction y est répartie en `Platform/`, `Memory/`, `Engine/` et `Screens/`, tous parts d'une même classe partielle `Blaze`. Le fichier qui accueille une fonction n'est pas au choix : il est déterminé par la règle de routage décrite dans `ARCHITECTURE.md`, à la racine du dépôt. Lis-le avant d'ajouter ou de déplacer du code.
+La reconstruction y est répartie en `Platform/`, `Memory/`, `Engine/` et `Screens/`, tous parts d'une même classe partielle `Blaze`. Le fichier qui accueille une fonction n'est pas au choix : il est déterminé par la règle de routage décrite dans `Documentation/ARCHITECTURE.md`. Lis-le avant d'ajouter ou de déplacer du code.
 
 ## Objectif
 
@@ -238,7 +238,7 @@ Dans ce cas, préfère généralement un `TODO(REVERSE)` et continue ailleurs pl
 
 ## Couverture
 
-Maintiens `REVERSE_STATUS.md`, à la racine du dépôt, contenant notamment :
+Maintiens `Documentation/Etat/REVERSE_STATUS.md`, contenant notamment :
 
 * fonctions Ghidra analysées ;
 * fonctions reconstruites ;

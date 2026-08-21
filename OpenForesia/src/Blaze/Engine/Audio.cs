@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -463,7 +463,7 @@ internal sealed unsafe class Audio(GameMemory mem)
     // =====================================================================
 
     // Ghidra: DAT_005631d4 â€” nonzero while music is enabled (toggled by FUN_00513860, and read
-    // by the options UI at 0x0050f2xx). Recovered from Legacy/Blaze.exe @ 0x005631d4 as **1**:
+    // by the options UI at 0x0050f2xx). Recovered from Legacy/Binaries/Blaze.exe @ 0x005631d4 as **1**:
     // music ships **enabled**. This previously defaulted to 0 on the assumption that the value was
     // unrecoverable, which silently made StartMusicStream take its early-out forever.
     internal uint s_MusicEnabled = 1;

@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -692,7 +692,7 @@ public static unsafe partial class Blaze
     // Ghidra: &DAT_00566c30 â€” l'enregistrement (couleur, attributs) partagé que les trois sites
     // d'appel de FUN_0051be90 dans RenderSaveScreen posent dans sprite[0] via l'adresse brute
     // 0x566c30, valable seulement parce que l'exécutable d'origine se charge à cette adresse. Relu
-    // directement dans Legacy/Blaze.exe (décalage fichier 0x165230) plutôt que déréférencé tel
+    // directement dans Legacy/Binaries/Blaze.exe (décalage fichier 0x165230) plutôt que déréférencé tel
     // quel, qui aurait fauté nativement dans ce port. Largeur de colonne ~8 px, page 0x30 â€” des
     // valeurs sensées, cohérentes avec une tuile numérique.
     private static readonly uint* s_NumeralTileRecord_00566c30 = AllocNumeralTileRecord();
@@ -1983,7 +1983,7 @@ public static unsafe partial class Blaze
     /// à partir de 0x00573518, dont seuls les 0x68 premiers octets sont écrits.
     ///
     /// <para>Le type est identifiable : <c>DAT_00560728</c> et <c>DAT_00560ff0</c> sont deux
-    /// instances **statiques** du même type, lisibles dans <c>Legacy/Blaze.exe</c>, et 14 des 26
+    /// instances **statiques** du même type, lisibles dans <c>Legacy/Binaries/Blaze.exe</c>, et 14 des 26
     /// premiers dwords y sont identiques à ce que cette boucle écrit — dont le <c>0x31</c> de tête
     /// et l'alternance de <c>0x01000000</c>. <c>FUN_005443a0</c>, le moteur de texte de l'interface,
     /// reçoit <c>DAT_00560728</c> (<c>Blaze.c:55881</c>), donc ces structures sont les descripteurs

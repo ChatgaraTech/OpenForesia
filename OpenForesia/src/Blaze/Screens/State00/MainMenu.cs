@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -175,7 +175,7 @@ public static unsafe partial class Blaze
         }
     }
 
-    // Ghidra: &DAT_00566c28 â€” confirmed via the `at` PE-inspector verb against Legacy/Blaze.exe
+    // Ghidra: &DAT_00566c28 â€” confirmed via the `at` PE-inspector verb against Legacy/Binaries/Blaze.exe
     // (.data, not a code-only-decompile gap): dword0 packs an 8x8 glyph cell (origin Y=0x30, cell
     // 8x8), dword1=0x02300000 is the atlas attributes/texture-page word DrawTextRun forwards into
     // DrawSpriteVariant.
@@ -226,7 +226,7 @@ public static unsafe partial class Blaze
     private const float s_GammaScale_0054d074 = 1.0f;
 
     // Ghidra: PTR_s____Music_Mel00_01_WAV_00566cc8 â€” the music filename table. Entries recovered
-    // from Legacy/Blaze.exe are CD-root absolute templates; see Documentation/DataSymbols.md.
+    // from Legacy/Binaries/Blaze.exe are CD-root absolute templates; see Documentation/Reference/DataSymbols.md.
     // TODO(REVERSE): only the sampled entries are transcribed. Call sites index up to at least
     // 0x26, so the remaining slots stay null and PlayMusicTrack returns without starting anything
     // rather than indexing past the table.
@@ -269,7 +269,7 @@ public static unsafe partial class Blaze
     {
         // Ghidra: patches the path's first character with the CD drive letter, then starts the
         // stream. The table entries are CD-**root** absolute templates ("@:/Music/Mel00_01.WAV"),
-        // recovered at PTR_s____Music_Mel00_01_WAV_00566cc8 â€” see Documentation/DataSymbols.md.
+        // recovered at PTR_s____Music_Mel00_01_WAV_00566cc8 â€” see Documentation/Reference/DataSymbols.md.
         if (trackIndex < 0 || trackIndex >= s_MusicTrackPaths.Length) return;
         byte* path = s_MusicTrackPaths[trackIndex];
         if (path == null) return;

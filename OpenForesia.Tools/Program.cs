@@ -228,9 +228,9 @@ static void PrintUsage()
     Console.WriteLine("  OpenForesia.Tools at <path> <va> [octets]    dumpe les octets a une adresse virtuelle Ghidra");
     Console.WriteLine();
     Console.WriteLine("Exemples:");
-    Console.WriteLine("  OpenForesia.Tools winsys3d.dll");
-    Console.WriteLine("  OpenForesia.Tools sections Legacy/Blaze.exe");
-    Console.WriteLine("  OpenForesia.Tools at Legacy/Blaze.exe 0x005631f8");
+    Console.WriteLine("  OpenForesia.Tools Legacy/Binaries/winsys3d.dll");
+    Console.WriteLine("  OpenForesia.Tools sections Legacy/Binaries/Blaze.exe");
+    Console.WriteLine("  OpenForesia.Tools at Legacy/Binaries/Blaze.exe 0x005631f8");
     Console.WriteLine();
     Console.WriteLine("Les adresses sont lues en hexadecimal (prefixe 0x optionnel), comme dans Ghidra.");
     Console.WriteLine("Le nombre d'octets est lu en decimal (prefixer 0x pour de l'hexa).");

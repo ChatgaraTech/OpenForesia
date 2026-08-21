@@ -9,7 +9,7 @@ OpenForesia is a **reverse-engineering reconstruction** of *Blaze & Blade* (`Bla
 faithful, understandable C# transcription of Ghidra pseudocode, built up function by function
 along the call graph.
 
-`Prompt.md` and `Strategy.md` (repo root, both in French) are the authoritative methodology
+`Documentation/Methode/Prompt.md` and `Strategy.md` (both in French) are the authoritative methodology
 documents — read them before doing reconstruction work. The summary below is not a substitute.
 
 ## Build and run
@@ -51,7 +51,7 @@ $env:PATH = "C:\Program Files (x86)\dotnet;D:\Logiciels\nodejs;$env:PATH"
 ## Running the game — always via `test-protocol.md`
 
 **Before exercising the game in any way — launching it, reaching a screen, reproducing a crash,
-capturing a screenshot — read `test-protocol.md` (repo root) and drive the run with
+capturing a screenshot — read `Documentation/Tests/test-protocol.md` and drive the run with
 `OpenForesia.Tools/playtest.ps1`.** This is not optional and does not need to be asked for.
 
 ```powershell
@@ -72,9 +72,9 @@ PE inspector. A bare path keeps the original export-table dump (ordinal → RVA 
 verbs read the binary's data sections:
 
 ```powershell
-dotnet run --project OpenForesia.Tools -- winsys3d.dll                        # exports
-dotnet run --project OpenForesia.Tools -- sections Legacy/Blaze.exe           # VA ranges
-dotnet run --project OpenForesia.Tools -- at Legacy/Blaze.exe 0x005631f8 32   # bytes at a Ghidra VA
+dotnet run --project OpenForesia.Tools -- Legacy/Binaries/winsys3d.dll         # exports
+dotnet run --project OpenForesia.Tools -- sections Legacy/Binaries/Blaze.exe           # VA ranges
+dotnet run --project OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x005631f8 32   # bytes at a Ghidra VA
 ```
 
 `at` takes a **Ghidra virtual address** (hex, `0x` optional) and prints the resolved file offset and
@@ -84,26 +84,44 @@ which is an answer, not an error.
 
 ## Layout
 
+**The repository root holds exactly two files** — `CLAUDE.md` and `OpenForesia.sln`. Everything
+else lives under one of the directories below. Reorganised 2026-08-21; before that, the
+decompilations, the DLL binaries and eleven `.md` files were all loose at the root.
+
+```
+Legacy/          tout ce qui vient de 1998, rien d'ecrit par nous
+  Binaries/      Blaze.exe, Blaze.cfg, et les cinq DLL d'aide
+  Decompiled/    Blaze.c et les cinq .c de DLL — sortie Ghidra, LECTURE SEULE
+  Raw/           relevés bruts par fonction (desassemblage, exports Ghidra)
+
+Documentation/   tout ce que le projet a appris
+  ARCHITECTURE.md
+  DLL/           un fichier par DLL d'aide
+  Etat/          TODO.md, REVERSE_STATUS.md, HISTORY.md
+  Methode/       Prompt.md, Strategy.md
+  Reference/     DataSymbols.md, legacy-bug.md, OpenForesia.cfg.md
+  Tests/         test-protocol.md, test-todo-later.md, et les analyses ponctuelles
+```
+
 | Path | Role |
 |---|---|
-| `Blaze.c` (98k lines) | Ghidra decompilation of `Blaze.exe`. **Source of truth. Never modify.** |
-| `Legacy/Blaze.exe` | The game binary itself (MD5 `46d90d1b4526f4a9a441f851c77179b3`). Same build as `Blaze.c`: image base `0x400000` + entry RVA `0x147D40` = `0x00547D40` = `entry`. |
-| `Documentation/DataSymbols.md` | Values recovered from the binary's data sections, keyed by Ghidra VA. |
-| `legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect, and the project reproduces those rather than repairing them. |
-| `test-protocol.md` | How to exercise the game. Read it before any run — see "Running the game" above. |
-| `winsys3d.c`, `wsyskern.c`, `playst.c`, `3dhelp.c`, `gldhelp.c` | Ghidra decompilations of the five helper DLLs. **Secondary references, read-only.** |
-| `*.dll` (repo root) | The actual DLL binaries — this is what makes ordinal-only imports resolvable. |
-| `OpenForesia/src/Blaze/**` | The reconstruction, split into `Platform/`, `Memory/`, `Engine/`, `Screens/` — **see `ARCHITECTURE.md`**. All one `partial class Blaze`. |
-| `OpenForesia/src/Host/**` | Our 2026 scaffolding — the Direct3D 11 replacement for the 1998 display chain. **Not bound by fidelity.** |
-| `ARCHITECTURE.md` | **Read this before adding or moving code.** The directory map, the routing rule that decides where a function goes, and the state rule that protects against the aliasing defect. |
-| `REVERSE_STATUS.md` | **Read this first.** Call-graph coverage, per-function status, 30 numbered `TODO(REVERSE)` items, current blocking point. |
-| `Documentation/DataSymbols.md` | Also carries the **map of reconstructed symbols**: every VA-suffixed C# symbol, sorted by address, with its gap to the next and the file it lives in. |
+| `Legacy/Decompiled/Blaze.c` (98k lines) | Ghidra decompilation of `Blaze.exe`. **Source of truth. Never modify.** |
+| `Legacy/Binaries/Blaze.exe` | The game binary itself (MD5 `46d90d1b4526f4a9a441f851c77179b3`). Same build as `Blaze.c`: image base `0x400000` + entry RVA `0x147D40` = `0x00547D40` = `entry`. |
+| `Legacy/Decompiled/winsys3d.c`, `wsyskern.c`, `playst.c`, `3dhelp.c`, `gldhelp.c` | Ghidra decompilations of the five helper DLLs. **Secondary references, read-only.** |
+| `Legacy/Binaries/*.dll` | The actual DLL binaries — this is what makes ordinal-only imports resolvable. |
+| `Documentation/ARCHITECTURE.md` | **Read this before adding or moving code.** The directory map, the routing rule that decides where a function goes, and the state rule that protects against the aliasing defect. |
+| `Documentation/Etat/REVERSE_STATUS.md` | **Read this first.** Call-graph coverage, per-function status, numbered `TODO(REVERSE)` items, current blocking point. |
+| `Documentation/Etat/TODO.md` | The between-sessions entry point: current state and what to do next. |
+| `Documentation/Methode/Prompt.md`, `Strategy.md` | The authoritative methodology documents, both in French. |
+| `Documentation/Reference/DataSymbols.md` | Values recovered from the binary's data sections, keyed by Ghidra VA. Also carries the **map of reconstructed symbols**: every VA-suffixed C# symbol, sorted by address, with its gap to the next and the file it lives in. |
+| `Documentation/Reference/legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect, and the project reproduces those rather than repairing them. |
+| `Documentation/Tests/test-protocol.md` | How to exercise the game. Read it before any run — see "Running the game" above. |
 | `Documentation/DLL/<dll>.md` | Accumulated knowledge per DLL (ordinals, signatures, confirmed vs. hypothesis). |
-| `OpenForesia.Tools/` | PE export-table dumper, `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`). |
+| `OpenForesia/src/Blaze/**` | The reconstruction, split into `Platform/`, `Memory/`, `Engine/`, `Screens/` — **see `Documentation/ARCHITECTURE.md`**. |
+| `OpenForesia/src/Host/**` | Our 2026 scaffolding — the Direct3D 11 replacement for the 1998 display chain. **Not bound by fidelity.** |
+| `OpenForesia.Tools/` | PE export-table dumper, `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
 | `OpenForesia/src/DLL/*.dll` | Copies of the helper DLLs, flattened into the build output for P/Invoke. |
-
-`winsys3d.md` at the repo root is an **older, superseded** version of
-`Documentation/DLL/winsys3d.md`; prefer the latter.
+| `Analyse/` | Notes d'observation du jeu original (comportement, sessions x32dbg). |
 
 `openspec/` holds the change workflow: several completed changes, one archived, and the
 `blaze-intro-attract` spec. Use `openspec list` to see the current state.
@@ -175,7 +193,7 @@ caller.
 ### Two traps the split itself uncovered
 
 **A global never moves to make a file self-contained.** It moves only when the address map says so;
-arenas move as one block. Consult the map of reconstructed symbols in `Documentation/DataSymbols.md`
+arenas move as one block. Consult the map of reconstructed symbols in `Documentation/Reference/DataSymbols.md`
 before declaring an isolated `DAT_`: 107 pairs of address-adjacent symbols now live in two different
 files, and that adjacency is no longer visible in the code.
 

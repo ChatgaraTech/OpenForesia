@@ -11,10 +11,16 @@ vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baselin
 **Non commité** : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
 terminée —, le rapatriement `.data` du son, le retrait intérieur des points d'entrée, la correction
 des huit défauts d'aliasing (qui **change le comportement**), la transcription de `FUN_00533940` et
-`FUN_00533450`, et cette mise à jour de documentation.
+`FUN_00533450`, **la réorganisation du dépôt**, et cette mise à jour de documentation.
 
-**`bodies-baseline.txt` a été refigé** à 511 corps le 2026-08-21, après les corrections. L'ancienne
-référence reste dans l'historique, au commit `95344c7`.
+**Le dépôt a été réorganisé le 2026-08-21** — la racine ne porte plus que `CLAUDE.md` et
+`OpenForesia.sln`. Ce fichier vit maintenant dans `Documentation/Etat/`. Les décompilations sont
+dans `Legacy/Decompiled/`, les binaires dans `Legacy/Binaries/`. Tout est passé par `git mv`, donc
+l'historique de chaque fichier suit. Détail dans `REVERSE_STATUS.md`, section du même jour.
+
+**`bodies-baseline.txt` a été refigé** à **513 corps** le 2026-08-21, après les corrections
+d'aliasing puis après `FUN_00533940` et les deux messages d'exception dont le chemin a changé.
+L'ancienne référence d'avant les corrections reste dans l'historique, au commit `95344c7`.
 
 Les deux fichiers de référence de `OpenForesia.Tools/` sont l'oracle — les perdre le perdrait.
 Ils sont désormais dans l'historique, donc récupérables ; ce n'était pas le cas le 2026-08-19.

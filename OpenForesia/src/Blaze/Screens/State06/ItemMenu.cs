@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -56,7 +56,7 @@ public static unsafe partial class Blaze
     /// <c>p = &amp;DAT_00564fe0; deux tours { RunTextEngine; DrawUiPanel; p += 0x8c8; }</c>, et le
     /// bandeau de titre lie dans le second.
     ///
-    /// <para>Les 26 dwords d'en-tête de chacun sont relevés dans <c>Legacy/Blaze.exe</c>. Alloués
+    /// <para>Les 26 dwords d'en-tête de chacun sont relevés dans <c>Legacy/Binaries/Blaze.exe</c>. Alloués
     /// bas et paresseusement pour la même raison que les autres : ils traversent
     /// <see cref="RunTextEngine"/> puis <see cref="DrawUiPanel"/>, donc portent une table
     /// d'ordonnancement à +0xa4.</para>
@@ -99,7 +99,7 @@ public static unsafe partial class Blaze
         b[16] = 0x010f0000; b[17] = 0x01000000; b[19] = 0x01000000; b[21] = 0x01000000;
         b[23] = 0x01000000; b[25] = 0x01000000;
 
-        // Ghidra: &DAT_00566170 — releve dans Legacy/Blaze.exe, meme forme que les deux autres.
+        // Ghidra: &DAT_00566170 — releve dans Legacy/Binaries/Blaze.exe, meme forme que les deux autres.
         // Son +4 vaut 0x00640014, exactement la valeur que la phase 9 de FUN_00524880 y reecrit.
         uint* c = (uint*)(block + 2 * GameMemory.UiDescriptorStride);
         c[0] = 0x00000031; c[1] = 0x00640014; c[2] = 0x008800e0; c[3] = 0x00000000;
@@ -119,7 +119,7 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Ghidra: &amp;PTR_s_Invertaire_00566b58 — les trois lignes de l'écran racine, dans l'ordre où
-    /// la boucle les dessine. Les chaînes sont relevées dans <c>Legacy/Blaze.exe</c> à 0x00566b64.
+    /// la boucle les dessine. Les chaînes sont relevées dans <c>Legacy/Binaries/Blaze.exe</c> à 0x00566b64.
     ///
     /// <para><b>« Invertaire » est bien la faute de frappe de 1998</b>, pas une erreur de relevé :
     /// les octets sont <c>49 6e 76 65 72 74 61 69 72 65 00</c>. Voir <c>legacy-bug.md</c> — ne pas

@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -92,13 +92,13 @@ internal sealed unsafe class SaveData(GameMemory mem)
     // =====================================================================
 
     // Ghidra: DAT_00563158 — deux pointeurs de chaîne ANSI statiques, relus directement dans
-    // Legacy/Blaze.exe (décalage fichier 0x161758) plutôt que déréférencés à l'adresse d'origine,
+    // Legacy/Binaries/Blaze.exe (décalage fichier 0x161758) plutôt que déréférencés à l'adresse d'origine,
     // qui n'a pas de sens dans ce port — même précédent que le gabarit du fichier de vérification
     // CD plus tôt cette séance.
     private readonly byte* s_SaveFolderName_00563170 = ToAnsiZ("save\\");
     internal readonly byte* s_SaveDeviceName_00563160 = ToAnsiZ("Blaze-Saving*");
 
-    // Ghidra: s_Veuillez_connecter_la_manette___00568510 @ 0x00568510 (Documentation/DataSymbols.md).
+    // Ghidra: s_Veuillez_connecter_la_manette___00568510 @ 0x00568510 (Documentation/Reference/DataSymbols.md).
     internal readonly byte* s_ControllerBannerText_00568510 =
         ToAnsiZ("Veuillez connecter la manette !");
 
@@ -147,7 +147,7 @@ internal sealed unsafe class SaveData(GameMemory mem)
     // catégorie « re-run Ghidra » de CLAUDE.md), et ce port passait donc `null` — ce que la DLL
     // appelle vraiment, d'où le 0xC0000005 dès qu'un transfert carte était sondé.
     //
-    // Relus directement dans Legacy/Blaze.exe le 2026-08-18 : huit talons de neuf octets, tous de
+    // Relus directement dans Legacy/Binaries/Blaze.exe le 2026-08-18 : huit talons de neuf octets, tous de
     // la même forme `C7 05 <adresse> <imm32>` puis `C3`, soit une seule affectation suivie d'un
     // retour.
     //
@@ -179,7 +179,7 @@ internal sealed unsafe class SaveData(GameMemory mem)
 
     /// <summary>
     /// Ghidra: FUN_005128e0 @ 0x005128e0 — écrit les cinq premiers octets du chemin dans le
-    /// descripteur. **Corrigé après désassemblage direct** (<c>Legacy/Blaze.exe</c>, décalage
+    /// descripteur. **Corrigé après désassemblage direct** (<c>Legacy/Binaries/Blaze.exe</c>, décalage
     /// fichier <c>0x111ce0</c>) : la pseudo-C laissait croire que <c>DAT_00604940</c>/
     /// <c>DAT_00604944</c> recevaient les *pointeurs* de <see cref="s_SaveFolderName_00563170"/>,
     /// mais l'assembleur montre <c>MOV ECX,[EAX]</c> puis <c>MOV [0x604940],ECX</c> — une
@@ -413,7 +413,7 @@ internal sealed unsafe class SaveData(GameMemory mem)
         }
     }
 
-    // Ghidra: DAT_00562b52 — 134 octets, relus directement dans Legacy/Blaze.exe (décalage fichier
+    // Ghidra: DAT_00562b52 — 134 octets, relus directement dans Legacy/Binaries/Blaze.exe (décalage fichier
     // 0x161152). Une seule zone de données que FUN_0050a810 adresse avec des formules différentes
     // selon la classe de caractère : table directe pour la ponctuation/l'espace (indices 0..0x2d),
     // puis à partir de l'indice 0x2e un triplet {code Shift-JIS de base, base ASCII} de 4 octets
@@ -512,7 +512,7 @@ internal sealed unsafe class SaveData(GameMemory mem)
     /// futur navigateur de sauvegardes sort visiblement fausse ». C'est arrivé : l'écran de
     /// constitution du groupe affichait un aplat à la place de chaque icône.
     ///
-    /// <para>Le désassemblage direct (<c>Legacy/Blaze.exe</c>, <c>0x0050B197..0x0050B1E6</c>) montre
+    /// <para>Le désassemblage direct (<c>Legacy/Binaries/Blaze.exe</c>, <c>0x0050B197..0x0050B1E6</c>) montre
     /// la seconde construction, que Ghidra avait entièrement fondue dans la première :</para>
     /// <code>
     /// MOV CL,[0x5E8F14]          ; l'entrée 5 de la table de pages, moitié basse

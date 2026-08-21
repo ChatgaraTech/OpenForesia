@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -122,7 +122,7 @@ public static unsafe partial class Blaze
         driveRoot[3] = 0;
 
         // Ghidra: DAT_00563280.._0056328c, copied into local_2c/local_28/local_24/local_20 in the
-        // original. Read directly from Legacy/Blaze.exe's .data (file offset 0x161880): "@:\cd.idx".
+        // original. Read directly from Legacy/Binaries/Blaze.exe's .data (file offset 0x161880): "@:\cd.idx".
         // Confirmed against the real disc, too â€” its root has a `cd.idx` file whose size (671088640
         // bytes = 0x28000000 = 640 MiB) is exactly what Handler_00544810's TODO(REVERSE) predicted
         // s_CdCheckFileSize_0056321c needs to be for that handler's return-value multiply to reduce
@@ -604,7 +604,7 @@ public static unsafe partial class Blaze
     private static void LoadUiFontFromCd()
     {
         // Ghidra: s_DATA_Font_bmp_005684cc â€” only the derived symbol name survives; best guess below.
-        byte* fontFileName = ToAnsiZ("DATA/Font.bmp"); // recovered verbatim from Legacy/Blaze.exe @ 0x005684cc â€” forward slash, mixed case
+        byte* fontFileName = ToAnsiZ("DATA/Font.bmp"); // recovered verbatim from Legacy/Binaries/Blaze.exe @ 0x005684cc â€” forward slash, mixed case
         byte* path = stackalloc byte[64];
         int i = 0;
         for (byte* p = Mem.s_CdDataRootPath; *p != 0 && i < 60; p++, i++) path[i] = *p;

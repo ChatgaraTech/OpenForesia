@@ -123,7 +123,7 @@ Le descripteur de panneau `DAT_0056dd58` est **statiquement initialisé dans la 
 reconstruction l'alimentait avec des zéros. Chaque test de fonctionnalité de `DrawUiPanel` étant de
 la forme `champ & 0x1000000`, un descripteur nul ne dessinait strictement rien.
 
-Corrigé en récupérant les 35 octets non nuls depuis `Legacy/Blaze.exe`. Puis un second défaut du
+Corrigé en récupérant les 35 octets non nuls depuis `Legacy/Binaries/Blaze.exe`. Puis un second défaut du
 même ordre : `DAT_005e8fc0` n'est pas une seconde table de tpage/CLUT mais **`DAT_005e8f00`
 décalée de 48 entrées** (`0x005e8fc0 - 0x005e8f00 = 0xC0`). Modélisées séparément, l'entrée `0x31`
 que réclame le panneau revenait à zéro et toutes les primitives échantillonnaient la page de

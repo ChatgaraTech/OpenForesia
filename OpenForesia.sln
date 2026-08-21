@@ -6,43 +6,46 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Tools", "OpenFo
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Legacy", "Legacy", "{642FD3DE-4255-4A69-8FB2-76FF09CA0B38}"
 	ProjectSection(SolutionItems) = preProject
-		Legacy\Blaze.exe = Legacy\Blaze.exe
+		Legacy\Binaries\Blaze.exe = Legacy\Binaries\Blaze.exe
+		Legacy\Binaries\Blaze.cfg = Legacy\Binaries\Blaze.cfg
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Decompiled", "Decompiled", "{4FA8626D-A4FF-4E82-9126-F3F89E7131D9}"
 	ProjectSection(SolutionItems) = preProject
-		Blaze.c = Blaze.c
+		Legacy\Decompiled\Blaze.c = Legacy\Decompiled\Blaze.c
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Claude", "Claude", "{7828CE86-792B-4791-A20E-1D42D903C21B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Blaze", "Blaze", "{F774B4A0-B0D4-41B2-BB29-3B67C8FEDEEC}"
 	ProjectSection(SolutionItems) = preProject
-		Prompt.md = Prompt.md
-		Strategy.md = Strategy.md
+		Documentation\Methode\Prompt.md = Documentation\Methode\Prompt.md
+		Documentation\Methode\Strategy.md = Documentation\Methode\Strategy.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{B0137B08-526E-46A9-B606-20DE4AE9DB46}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DLL", "DLL", "{89A8BCD3-3CEF-400A-B48E-0002B8B6130C}"
 	ProjectSection(SolutionItems) = preProject
-		winsys3d.md = winsys3d.md
+		Documentation\DLL\winsys3d.md = Documentation\DLL\winsys3d.md
+		Documentation\DLL\wsyskern.md = Documentation\DLL\wsyskern.md
+		Documentation\DLL\3dhelp.md = Documentation\DLL\3dhelp.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DLL", "DLL", "{EDDF5C9F-CFC4-4408-9EFD-D781AF85FEF3}"
 	ProjectSection(SolutionItems) = preProject
-		winsys3d.c = winsys3d.c
-		gldhelp.c = gldhelp.c
-		3dhelp.c = 3dhelp.c
-		playst.c = playst.c
-		wsyskern.c = wsyskern.c
+		Legacy\Decompiled\winsys3d.c = Legacy\Decompiled\winsys3d.c
+		Legacy\Decompiled\gldhelp.c = Legacy\Decompiled\gldhelp.c
+		Legacy\Decompiled\3dhelp.c = Legacy\Decompiled\3dhelp.c
+		Legacy\Decompiled\playst.c = Legacy\Decompiled\playst.c
+		Legacy\Decompiled\wsyskern.c = Legacy\Decompiled\wsyskern.c
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Raw", "Raw", "{B1BCCA8C-ABD2-43AD-9FAA-CD18504B7AD6}"
 	ProjectSection(SolutionItems) = preProject
-		Legacy\Raw\FUN_005322f0.txt = Legacy\Raw\FUN_005322f0.txt
-		Legacy\Raw\FUN_00512930.txt = Legacy\Raw\FUN_00512930.txt
-		Legacy\Raw\FUN_00542740.txt = Legacy\Raw\FUN_00542740.txt
+		Legacy\Raw\Blaze\FUN_005322f0.txt = Legacy\Raw\Blaze\FUN_005322f0.txt
+		Legacy\Raw\Blaze\FUN_00512930.txt = Legacy\Raw\Blaze\FUN_00512930.txt
+		Legacy\Raw\Blaze\FUN_00542740.txt = Legacy\Raw\Blaze\FUN_00542740.txt
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenForesia.Tests", "OpenForesia.Tests\OpenForesia.Tests.csproj", "{BB80E53F-DAD7-4B1D-BE86-8F04D42B414E}"

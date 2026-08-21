@@ -27,7 +27,7 @@ data but a **repeatable way to get at it**.
   at a VA as hex, as a C string, or as a little-endian dword. VA→offset is the operation every
   blocked TODO needs, since `Blaze.c` names its data symbols by VA (`DAT_005631f8`, `PTR_FUN_0056c96c`).
 - Resolve the data-blocked TODOs and record the recovered values as **reference documentation**,
-  not as code edits: a new `Documentation/DataSymbols.md` keyed by Ghidra VA, plus the corresponding
+  not as code edits: a new `Documentation/Reference/DataSymbols.md` keyed by Ghidra VA, plus the corresponding
   `REVERSE_STATUS.md` updates marking each item resolved and correcting the "Systemic blocker"
   section, which is factually wrong as written.
 - Specifically resolve **TODO #15** (`PTR_FUN_0056c96c`): read the function pointer, and check
@@ -54,6 +54,13 @@ this change creates a real `Legacy/` directory on disk and registers the binary 
 there. Existing files are not moved — `Blaze.c`'s path is referenced throughout the documentation
 and relocating it is out of scope.
 
+> **Note du 2026-08-21** : les deux paragraphes ci-dessus décrivent la disposition d'alors et sont
+> conservés tels quels comme trace du raisonnement. Depuis, le dépôt a été réorganisé : `Blaze.c` et
+> les cinq `.c` de DLL vivent dans `Legacy/Decompiled/`, les binaires dans `Legacy/Binaries/`, et le
+> dossier virtuel du `.sln` coïncide donc enfin avec le disque. La réserve « relocating it is out of
+> scope » n'a plus cours ; le déplacement s'est révélé peu coûteux parce que les 371 mentions de
+> `Blaze.c` sont toutes en prose, jamais des chemins.
+
 ## Capabilities
 
 ### New Capabilities
@@ -70,7 +77,7 @@ behaviour of the reconstruction — `Blaze.cs` is not touched. `.openspec.yaml` 
 
 - `OpenForesia.Tools/Program.cs` — grows a small subcommand surface. Its existing export-dump path
   must keep working; it is how the ordinal-only DLL imports were resolved and is still needed.
-- New `Documentation/DataSymbols.md`.
+- New `Documentation/Reference/DataSymbols.md`.
 - `OpenForesia/src/Blaze/REVERSE_STATUS.md` — the "Systemic blocker" section is rewritten from
   "blocked, needs the binary" to "resolved, here is where the binary is and what it yielded"; the
   14 affected TODOs are updated individually.

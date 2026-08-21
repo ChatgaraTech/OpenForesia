@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -61,9 +61,9 @@ public static unsafe partial class Blaze
     internal static int s_GameStateId_005de510;
 
     // Ghidra: PTR_FUN_0056c96c â€” the per-frame tick RunGameLoop calls indirectly. **Resolved**: the
-    // pointer's initialised value was read out of Legacy/Blaze.exe as 0x00537CA0, and FUN_00537ca0
+    // pointer's initialised value was read out of Legacy/Binaries/Blaze.exe as 0x00537CA0, and FUN_00537ca0
     // already has a decompiled body in Blaze.c (line 83364), so no Ghidra re-run was needed. See
-    // Documentation/DataSymbols.md.
+    // Documentation/Reference/DataSymbols.md.
     //
     // Kept as a function pointer rather than a direct call: the original really does dispatch
     // through a statically initialised .data slot, and preserving that indirection keeps the shape

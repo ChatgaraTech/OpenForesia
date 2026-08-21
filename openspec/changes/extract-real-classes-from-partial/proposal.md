@@ -132,4 +132,4 @@ la machine à états du binaire), et le renommage sans conserver l'ancre.
 transformer du statique en instance change les octets par construction. D'où l'outil de comparaison
 de corps, à écrire **avant** C.
 
-**Non touché** : `Blaze.c`, `Legacy/Blaze.exe`, les `.c` des DLL, `Screens/**` (étape D).
+**Non touché** : `Blaze.c`, `Legacy/Binaries/Blaze.exe`, les `.c` des DLL, `Screens/**` (étape D).

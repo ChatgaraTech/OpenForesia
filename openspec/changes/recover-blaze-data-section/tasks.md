@@ -5,13 +5,13 @@
       solution folder, so the directory does not exist on disk yet.
 - [x] 1.2 Verify the copy is byte-identical: MD5 must be `46d90d1b4526f4a9a441f851c77179b3`
       (1,589,760 bytes).
-- [x] 1.3 Register `Legacy/Blaze.exe` as a solution item under the existing `Legacy` solution folder
+- [x] 1.3 Register `Legacy/Binaries/Blaze.exe` as a solution item under the existing `Legacy` solution folder
       in `OpenForesia.sln`, alongside how `Blaze.c` is registered under `Legacy/Decompiled`. Do not
       move `Blaze.c` — its repo-root path is referenced throughout the documentation.
 - [x] 1.4 Confirm `.gitignore` does not exclude it. The `[Bb]in/` and `[Oo]bj/` rules are the ones to
-      check against a path like `Legacy/Blaze.exe`; no `*.exe` rule currently exists.
+      check against a path like `Legacy/Binaries/Blaze.exe`; no `*.exe` rule currently exists.
 - [x] 1.5 Record in `CLAUDE.md` and `REVERSE_STATUS.md` that the binary is now in the repo at
-      `Legacy/Blaze.exe`, with its MD5 and the identity check that proves it matches `Blaze.c`
+      `Legacy/Binaries/Blaze.exe`, with its MD5 and the identity check that proves it matches `Blaze.c`
       (image base `0x400000` + entry RVA `0x147D40` = `0x00547D40` = `entry`).
 
 ## 2. Extend OpenForesia.Tools
@@ -74,7 +74,7 @@ them; do **not** edit `Blaze.cs`.
 
 ## 5. Document
 
-- [x] 5.1 Create `Documentation/DataSymbols.md`, keyed by Ghidra VA. Per entry: VA, file offset,
+- [x] 5.1 Create `Documentation/Reference/DataSymbols.md`, keyed by Ghidra VA. Per entry: VA, file offset,
       containing section, raw bytes, and — separately labelled — any interpretation of those bytes.
       Keep raw and interpreted distinct, as `Documentation/DLL/*.md` already does for confirmed vs
       hypothesised behaviour.

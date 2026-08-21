@@ -1,6 +1,6 @@
 ## 1. Recover the dispatch tables
 
-- [x] 1.1 Record both 32-entry tables verbatim in `Documentation/DataSymbols.md`:
+- [x] 1.1 Record both 32-entry tables verbatim in `Documentation/Reference/DataSymbols.md`:
       `PTR_LAB_0056e870` (pass 1) and `PTR_FUN_0056e728` (pass 2), with the note that they
       differ only where pass 1 substitutes a cursor-advance stub
 - [x] 1.2 Record the five decoded bodies (`0x00543940/50/60/70`, `0x00544b10`) with their
@@ -64,7 +64,7 @@
 
 ## 4. Needs a Ghidra export (for the user)
 
-- [x] 4.0 `FUN_00544150` — export its disassembly to `Legacy/Raw/FUN_00544150.asm`. Ghidra
+- [x] 4.0 `FUN_00544150` — export its disassembly to `Legacy/Raw/Blaze/FUN_00544150.asm`. Ghidra
       lost its stack frame, so the argument mapping cannot be trusted from the pseudocode.
       Not on the main menu's path, so this does not block stages 1 or 2.
 

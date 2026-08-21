@@ -739,7 +739,7 @@ uint address = (renderPass ? s_RenderTable_0056e728 : s_ScanTable_0056e870)[i];
 t[i] = (text, descriptor) => throw new NotImplementedException(
 $"UI text control code 0x{code:x2} dispatches to FUN_{address:x8}, which Ghidra " +
 $"never emitted (reached only through {(renderPass ? "PTR_FUN_0056e728" : "PTR_LAB_0056e870")}). " +
-"It needs a scoped Ghidra re-run at that address â€” see Documentation/DataSymbols.md.");
+"It needs a scoped Ghidra re-run at that address â€” see Documentation/Reference/DataSymbols.md.");
 }
 if (!renderPass)
 {
@@ -3614,11 +3614,292 @@ folded >>= 5;
 code[0x13] = 0;
 WriteCharacterCode(scratch, code);
 ## FinalizeEntityPlacement2
-throw new NotImplementedException(
-"FUN_00533940 : la finalisation de placement d'entite (375 lignes). Cinq labels " +
-"entrelaces (LAB_005339a8, LAB_005339b6, LAB_00533af7, LAB_00533c2a, LAB_00534018) " +
-"sautes depuis plusieurs endroits : il faut reconstruire le flot, pas le translitterer. " +
-"Appelle FUN_00533450 (52 lignes). Voir REVERSE_STATUS.md");
+EnsureGteRegisters();
+byte* firstChunk = *(byte**)Entity(0x005f7bc0);
+byte* faces = *(byte**)(firstChunk + 0x28);
+short** adjacency = *(short***)(firstChunk + 0x30);
+byte* vertices = *(byte**)Entity(0x005f7cc0);
+byte* materials = *(byte**)Entity(0x005fa508);
+*(uint*)s_GteSxy807 = ((uint)((int)slot[7] >> 0xc) & 0xffff)
+| ((slot[9] & 0xfffff000) << 4);
+short* history = s_FaceWalkHistory_005de730;
+*(int*)history = -1;
+*(int*)(history + 2) = -1;
+uint* cursor = slot + 0x20;
+int remaining = 4;
+uint quadPacked = 0;
+uint carriedPacked = 0;
+while (remaining != 0)
+{
+*(ushort*)((byte*)cursor + 2) &= 0xfff7;
+int steps = 0x10;
+bool relocated = false;
+bool stop = false;
+while (steps != 0 && !relocated && !stop)
+{
+uint slotRef = *cursor;
+uint slotAttributes = slotRef >> 0x10;
+if ((slotAttributes & 0x8000) != 0) break;
+uint* face = (uint*)(faces + (slotRef & 0xffff) * 0x10);
+uint f0 = face[0];
+uint f1 = face[1];
+uint i0 = f0 & 0xffff;
+uint i2 = f0 >> 0x10;
+uint i1 = f1 & 0xffff;
+uint i3 = f1 >> 0x10;
+bool quad = (slotAttributes & 1) != 0;
+int lastEdge = quad ? 3 : 2;
+uint p0 = PackedXz(vertices, i0);
+uint p1 = PackedXz(vertices, i1);
+uint p2 = PackedXz(vertices, i2);
+uint p3 = quad ? PackedXz(vertices, i3) : 0;
+carriedPacked = p2;
+if (quad) quadPacked = p3;
+int edge = 0;
+bool reload = false;
+while (!reload && !relocated && !stop)
+{
+uint a, b, fromIndex, toIndex;
+switch (edge)
+{
+case 0:
+a = p0; b = p2; fromIndex = i0; toIndex = i2; break;
+case 1:
+a = p2; b = p1; fromIndex = i2; toIndex = i1; break;
+case 2:
+if (quad) { a = p1; b = p3; fromIndex = i1; toIndex = i3; }
+else { a = p1; b = p0; fromIndex = i1; toIndex = i0; }
+break;
+default:
+a = p3; b = p0; fromIndex = i3; toIndex = i0; break;
+}
+*(uint*)s_GteSxy805 = a;
+*(uint*)s_GteSxy806 = b;
+if (NormalClip() >= 0)
+{
+edge++;
+if (edge > lastEdge) stop = true;
+continue;
+}
+uint edgeKey = (fromIndex << 0x10) | (toIndex & 0xffff);
+uint bestKind = (uint)(4 - remaining);
+uint* bestSlot = null;
+short* neighbour = adjacency[fromIndex & 0xffff];
+for (short other = *neighbour; other >= 0; other = *++neighbour)
+{
+uint* candidate = (uint*)(faces + other * 0x10);
+if (candidate == face) continue;
+uint c0 = candidate[0];
+uint c1 = candidate[1];
+uint cAttributes = candidate[3];
+bool cQuad = (cAttributes & 1) != 0;
+bool shares = edgeKey == c0
+|| edgeKey == ((c1 << 0x10) | (c0 >> 0x10))
+|| (!cQuad && edgeKey == ((c0 << 0x10) | (c1 & 0xffff)))
+|| (cQuad && (edgeKey == c1 || edgeKey == ((c0 << 0x10) | (c1 >> 0x10))));
+if (!shares) continue;
+uint kind = (cAttributes >> 0x10) & 0xff;
+uint* target = slot + kind + 0x20;
+uint written = cAttributes;
+if (*(short*)(materials + 2 + (ushort)candidate[2] * 8) >= 0)
+{
+if ((cAttributes & 0x2000) == 0) *(ushort*)((byte*)cursor + 2) &= 0xdfff;
+else written = cAttributes | 4;
+}
+written |= *(ushort*)((byte*)cursor + 2) & 0x2086u;
+byte zone = *((byte*)candidate + 0xf);
+if (zone != 0 && zone - 1u != (uint)*Camera(0x005de058)) written |= 2;
+if (cursor == target) written |= *(ushort*)((byte*)cursor + 2) & 0x800u;
+byte kindByte = (byte)(cAttributes >> 0x10);
+if ((written & 0x800) == 0 || *((byte*)slot + 0x95) != kindByte)
+*target = (written << 0x10) | (uint)(ushort)other;
+else
+*((byte*)target + 3) |= 8;
+if (kindByte < (byte)bestKind) { bestKind = kind; bestSlot = target; }
+}
+if (slotRef == *cursor)
+{
+*(ushort*)((byte*)cursor + 2) =
+(ushort)((*(ushort*)((byte*)cursor + 2) & 0xdfff) | 0x8000);
+}
+if (bestSlot != null
+&& history[bestKind] != (short)*bestSlot
+&& bestKind != (uint)(4 - remaining))
+{
+byte carried = *((byte*)bestSlot + 2);
+remaining = 4 - (int)bestKind;
+ushort previous = *(ushort*)((byte*)cursor + 2);
+history[bestKind] = (short)*bestSlot;
+ushort fresh = *(ushort*)(faces + (ushort)*bestSlot * 0x10 + 0xc);
+*(ushort*)((byte*)bestSlot + 2) =
+(ushort)(fresh | (previous & 0x82) | (carried & 0x82));
+cursor = bestSlot;
+if ((fresh & 0x800) != 0) stop = true;
+else relocated = true;
+break;
+}
+if ((short)slotRef != (short)*cursor)
+{
+if ((*cursor & 0x8000000) != 0) { stop = true; break; }
+steps--;
+reload = true;
+break;
+}
+edge++;
+if (edge > lastEdge) stop = true;
+}
+}
+if (relocated) continue;
+if (steps == 0) *((byte*)cursor + 2) |= 8;
+cursor++;
+remaining--;
+}
+remaining = 4;
+uint sinkFlag = 0;
+uint previousFace = 0;
+uint refAttributes = 0;
+uint* lastRef = null;
+do
+{
+lastRef = cursor - 1;
+refAttributes = cursor[-1] >> 0x10;
+uint faceAddress = (uint)(nuint)(faces + (cursor[-1] & 0xffff) * 0x10);
+slot[0x1f] = faceAddress;
+uint nextQuadPacked = quadPacked;
+uint nextPreviousFace = previousFace;
+uint height;
+if ((refAttributes & 0x8000) == 0)
+{
+height = (uint)GroundHeightOnFace((uint*)(nuint)faceAddress, (int*)(slot + 7));
+if ((int)height <= (int)slot[8])
+{
+if (previousFace != 0)
+{
+refAttributes = quadPacked & 0xffffdfff;
+slot[0x1f] = previousFace;
+height = carriedPacked;
+}
+slot[0x18] = height;
+break;
+}
+if ((int)slot[8] < (int)(height - 0x32000))
+{
+if ((refAttributes & 0x2000) == 0)
+{
+refAttributes |= 0x804;
+break;
+}
+*((byte*)cursor - 1) |= 0x80;
+uint marked = refAttributes | 0x8000;
+uint wasStepped = refAttributes & 4;
+refAttributes = marked;
+height = carriedPacked;
+if (wasStepped == 0) sinkFlag = 0x2000;
+}
+else
+{
+nextQuadPacked = refAttributes;
+nextPreviousFace = slot[0x1f];
+if ((*((byte*)(nuint)slot[0x1f] + 0xd) & 0x20) == 0)
+{
+if (previousFace != 0 && 0x32000 < (int)(carriedPacked - slot[0x18]))
+{
+refAttributes = quadPacked & 0xffffdfff;
+slot[0x1f] = previousFace;
+height = carriedPacked;
+}
+nextQuadPacked = (height + slot[0x15]) - slot[8];
+if ((int)nextQuadPacked < 0) slot[0x15] = nextQuadPacked;
+slot[0x18] = height;
+slot[8] = height;
+break;
+}
+}
+}
+else
+{
+*(ushort*)((byte*)cursor - 2) |= (ushort)sinkFlag;
+refAttributes |= sinkFlag;
+height = carriedPacked;
+}
+carriedPacked = height;
+previousFace = nextPreviousFace;
+remaining--;
+quadPacked = nextQuadPacked;
+cursor = lastRef;
+}
+while (remaining != 0);
+*((sbyte*)slot + 0x95) = (sbyte)(remaining - 1);
+if ((refAttributes & 0x8000) != 0 && (refAttributes & 0x2000) == 0
+&& (**(byte**)Entity(0x005eca80) & 0x20) != 0)
+{
+refAttributes = 0x40000800;
+}
+if ((refAttributes & 0x800) != 0) refAttributes |= 0x10000000;
+if (slot[0x1f] != 0)
+{
+if ((*((byte*)(nuint)slot[0x1f] + 0xd) & 0x20) == 0) refAttributes &= 0xffffdfff;
+else refAttributes |= 0x2000;
+}
+slot[0x24] = refAttributes;
+bool noneUsable;
+if ((refAttributes & 0x800) == 0)
+{
+bool wantHeight = true;
+noneUsable = true;
+for (int left = remaining; left != 0; left--)
+{
+if ((*lastRef & 0x80000000) == 0)
+{
+uint* refFace = (uint*)(faces + (*lastRef & 0xffff) * 0x10);
+ushort fresh = *(ushort*)((byte*)refFace + 0xc);
+*(ushort*)((byte*)lastRef + 2) = (ushort)((*((byte*)lastRef + 2) & 8) | fresh);
+if (wantHeight && (fresh & 0x1000) == 0)
+{
+if ((slot[0x24] & 0x800) == 0)
+slot[0x19] = (uint)GroundHeightOnFace(refFace, (int*)(slot + 7));
+wantHeight = false;
+}
+}
+lastRef--;
+noneUsable = wantHeight;
+}
+}
+else
+{
+noneUsable = false;
+}
+if (noneUsable)
+{
+slot[0x19] = 0x80000000;
+slot[0x24] |= 0x20001000;
+}
+else
+{
+slot[0x24] &= 0xffffefff;
+}
+if ((slot[0x24] & 0x8000) == 0)
+{
+*(byte*)(slot + 0x25) = 0x20;
+slot[0] &= 0xdfffffff;
+}
+else if ((sbyte)slot[0x25] != 0)
+{
+*(sbyte*)(slot + 0x25) = (sbyte)((sbyte)slot[0x25] - 1);
+}
+else
+{
+slot[0] |= 0x20000000;
+}
+if ((int)slot[8] < -0x4e20000)
+{
+*(byte*)(slot + 0x25) = 0;
+*(ushort*)((byte*)slot + 0x82) = 0xa000;
+*(ushort*)((byte*)slot + 0x86) = 0xa000;
+*(ushort*)((byte*)slot + 0x8a) = 0xa000;
+*(ushort*)((byte*)slot + 0x8e) = 0xa000;
+slot[0] |= 0x20000000;
+}
 ## FinalizeEquipmentEffects
 uint flags = *(uint*)(record + 0x40);
 uint masked = flags & 0x10200000;
@@ -3982,6 +4263,38 @@ if (character > 0xa0) return character - 0x44;
 if (character > 0x60) return character - 0x23;
 if (character > 0x40) return character - 0x22;
 return character - 0x21;
+## GroundHeightOnFace
+EnsureGteRegisters();
+byte* vertices = *(byte**)Entity(0x005f7cc0);
+int* v0 = (int*)(vertices + (face[0] & 0xffff) * 8);
+int* v2 = (int*)(vertices + (face[0] >> 0x10) * 8);
+int* v1 = (int*)(vertices + (face[1] & 0xffff) * 8);
+int head0 = *v0;
+int x0 = (short)head0;
+int y0 = head0 >> 0x10;
+int z0 = (short)v0[1];
+int head2 = *v2;
+int head1 = *v1;
+int* vec799 = (int*)s_GteVec799;
+int* vec800 = (int*)s_GteVec800;
+int* mac801 = (int*)s_GteMac801;
+short* ir813 = (short*)s_GteIr813;
+vec800[0] = (short)head2 - x0;
+vec800[1] = (head2 >> 0x10) - y0;
+vec800[2] = (short)v2[1] - z0;
+vec799[0] = (short)head1 - x0;
+vec799[1] = (head1 >> 0x10) - y0;
+vec799[2] = (short)v1[1] - z0;
+mac801[0] = vec799[2] * vec800[1] - vec799[1] * vec800[2];
+mac801[1] = vec800[2] * vec799[0] - vec799[2] * vec800[0];
+mac801[2] = vec799[1] * vec800[0] - vec800[1] * vec799[0];
+ir813[0] = (short)mac801[0];
+ir813[1] = (short)mac801[1];
+ir813[2] = (short)mac801[2];
+if (mac801[1] == 0) return 0;
+int planeHeight = (((position[0] >> 0xc) - x0) * mac801[0]
++ ((position[2] >> 0xc) - z0) * mac801[2]) / mac801[1];
+return (planeHeight - y0) * 0x1000;
 ## Guarded
 try
 {
@@ -4601,7 +4914,7 @@ InstallInnerShims(device);
 if (index != 0)
 throw new NotImplementedException(
 $"Tables de sauts d'entites, index {index} (zone * 0x10 + sous-zone) : seules les " +
-"valeurs de l'index 0 sont relevees dans Legacy/Blaze.exe. Relever les sept " +
+"valeurs de l'index 0 sont relevees dans Legacy/Binaries/Blaze.exe. Relever les sept " +
 "tables de cet index avant d'aller plus loin — voir REVERSE_STATUS.md");
 Array.Copy(s_VtSource_0056ad48, s_Vt_0056ad48, s_Vt_0056ad48.Length);
 Array.Copy(s_VtSource_0056adc8, s_Vt_0056adc8, s_Vt_0056adc8.Length);
@@ -7614,6 +7927,9 @@ s_UiAtlas2_00589834 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiAtlas2Bits_00
 s_UiAtlasNegative_00589708 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiAtlasNegativeBits_00579708, s_UiAtlasColourKey_005d9df0);
 s_UiAtlasJoystick_00599dd8 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiAtlasJoystickBits_00599de0, s_UiAtlasColourKey_005d9df0);
 s_UiAtlasKeyboard_00589c78 = UiCreateTexture(s_UiTargetInfo_00579278, s_UiKeyboardBits_005a9de0, s_UiAtlasColourKey_005d9df0);
+## PackedXz
+byte* v = vertices + index * 8;
+return (uint)(ushort)*(short*)v | ((uint)(ushort)*(short*)(v + 4) << 0x10);
 ## ParseCmdLine
 int nArgs = 1;
 int nChars = 0;

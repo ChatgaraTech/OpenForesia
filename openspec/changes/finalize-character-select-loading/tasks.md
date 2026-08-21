@@ -34,15 +34,15 @@
 
 ## 4. Consigner les trouvailles
 
-- [x] 4.1 `Documentation/DataSymbols.md` : la table `PTR_LAB_00560708`, ses huit entrées
+- [x] 4.1 `Documentation/Reference/DataSymbols.md` : la table `PTR_LAB_00560708`, ses huit entrées
       (`0x00507010`, `0x00507cb0`, `0x00508410`, `0x00508860`, `0x00508e00`, `0x00509470`,
       `0x005098f0`, `0x0050a910`), le décalage fichier `0x15ED08` d'où elles sortent, et la borne
       supérieure donnée par `DAT_00560728`
-- [x] 4.2 `Documentation/DataSymbols.md` : la table d'octets `DAT_00562a98`, neuf rangées de quatre
-- [x] 4.3 `Documentation/DataSymbols.md` : la disposition de l'entrée de modèle déduite de
+- [x] 4.2 `Documentation/Reference/DataSymbols.md` : la table d'octets `DAT_00562a98`, neuf rangées de quatre
+- [x] 4.3 `Documentation/Reference/DataSymbols.md` : la disposition de l'entrée de modèle déduite de
       `FUN_00532450` et `FUN_00532530` (compteurs `+0x10`…`+0x1e`, pointeurs `+0x24`…`+0x38`, bits
       de page `+0x3c`) et celle du paquet d'animations
-- [x] 4.4 `Documentation/DataSymbols.md` : noter que les sept handlers sur huit ouvrent sur
+- [x] 4.4 `Documentation/Reference/DataSymbols.md` : noter que les sept handlers sur huit ouvrent sur
       `mov eax, [0x00562a48]`, ce qui identifie ce drapeau comme « première frame du sous-état »
 - [x] 4.5 `REVERSE_STATUS.md` : l'état 4 passe de « non couvert » à « chargement reconstruit, boucle
       de frame `FUN_00506880` à venir »

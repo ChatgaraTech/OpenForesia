@@ -14,7 +14,7 @@ layer, so reconstructing them unblocks far more than game state 0.
   "menu background renderer" the current stub claims. Pass 1 scans the byte stream and
   collects `$`-escapes; pass 2 emits glyphs.
 - Reconstruct both control-code dispatch tables, 32 entries each, read from
-  `Legacy/Blaze.exe`: `PTR_LAB_0056e870` (pass 1) and `PTR_FUN_0056e728` (pass 2).
+  `Legacy/Binaries/Blaze.exe`: `PTR_LAB_0056e870` (pass 1) and `PTR_FUN_0056e728` (pass 2).
 - Implement the handlers the main menu's own label stream reaches — control codes `0x0c`,
   `0x0d` and `0x09` — and make every other entry throw naming its address and code, so an
   unreconstructed handler is loud rather than silent.
@@ -49,7 +49,7 @@ other reconstruction changes in this project.
 
 - `OpenForesia/src/Blaze/Blaze.cs` — the text engine, the two dispatch tables, the window
   renderer and its dependencies.
-- `Documentation/DataSymbols.md` — both dispatch tables, recovered verbatim.
+- `Documentation/Reference/DataSymbols.md` — both dispatch tables, recovered verbatim.
 - `Documentation/DLL/winsys3d.md` — the ~30 newly used ordinals.
 - `OpenForesia/src/Blaze/REVERSE_STATUS.md` — coverage, and the corrected role of
   `FUN_005443a0`.

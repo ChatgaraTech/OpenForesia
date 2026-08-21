@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -325,7 +325,7 @@ public static unsafe partial class Blaze
     ///
     /// <para><b>1. Les huit sous-états ne sont pas dans <c>Blaze.c</c>.</b> La boucle répartit
     /// chaque frame par <c>(*(code *)(&amp;PTR_LAB_00560708)[DAT_00578de8])(...)</c>. Les huit
-    /// cibles ont été relevées dans <c>Legacy/Blaze.exe</c> (décalage fichier <c>0x15ED08</c>) et
+    /// cibles ont été relevées dans <c>Legacy/Binaries/Blaze.exe</c> (décalage fichier <c>0x15ED08</c>) et
     /// sont déclarées en talons ci-dessous — mais aucun de leurs corps n'a été décompilé : la
     /// décompilation saute de <c>FUN_00506880</c> à <c>FUN_00507870</c>. Rien ne les appelle
     /// directement, seule cette table les désigne, donc Ghidra n'a jamais désassemblé ces régions.

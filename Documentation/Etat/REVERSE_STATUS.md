@@ -3,18 +3,18 @@
 Tracks progress reconstructing `Blaze.c` (Ghidra pseudocode, read-only) into
 `OpenForesia/src/Blaze/` — split on 2026-08-19 into `Platform/`, `Memory/`,
 `Engine/` and `Screens/`, all one `partial class Blaze`. **`ARCHITECTURE.md`
-(repo root) is the authority on where a function goes**; read it before adding
-or moving code. Read `Prompt.md` and `Strategy.md` (repo root) for the
+(`Documentation/`) is the authority on where a function goes**; read it before adding
+or moving code. Read `Prompt.md` and `Strategy.md` (`Documentation/Methode/`) for the
 methodology before continuing this work. Strategy.md now also covers the
 decompiled DLL sources (`3dhelp.c`, `gldhelp.c`, `playst.c`, `winsys3d.c`,
-`wsyskern.c`, repo root, **read-only**) and `Documentation/DLL/<dll>.md` as
+`wsyskern.c`, `Legacy/Decompiled/`, **read-only**) and `Documentation/DLL/<dll>.md` as
 the running memory of what's been learned about each — check there before
 re-analyzing an external call, and update it when a new one is understood.
 
-**The binary is now in the repo at `Legacy/Blaze.exe`** — the "systemic blocker"
-section below is resolved, and `Documentation/DataSymbols.md` holds every value
+**The binary is now in the repo at `Legacy/Binaries/Blaze.exe`** — the "systemic blocker"
+section below is resolved, and `Documentation/Reference/DataSymbols.md` holds every value
 recovered from its data sections. Read more with
-`OpenForesia.Tools at Legacy/Blaze.exe <va>`.
+`OpenForesia.Tools at Legacy/Binaries/Blaze.exe <va>`.
 
 Build: `dotnet build OpenForesia.sln` — builds clean as of this update.
 Run: the app targets **x86**. Whether a plain `dotnet build`/`dotnet run` works
@@ -341,11 +341,11 @@ transcribed, with Ghidra addresses kept in comments for traceability:
 8. **Ordinal 790's callback** (`Blaze.c`: `&LAB_00512ef0`, passed to `SetDeviceLostCallback`): no decompiled function body anywhere in `Blaze.c` — Ghidra only ever saw it address-taken. Cannot be reconstructed without further disassembly. `winsys3d.c` confirms the DLL does call it back later (see `Documentation/DLL/winsys3d.md`), so this matters once device-loss/reset handling comes up.
 9. ~~**`DAT_005db900`/`DAT_005db758[50]`** interface identity~~ — **RESOLVED**. Reading the shutdown path (`FUN_00512ff0`/`FUN_00512ea0`) and the buffer-creation path (`FUN_00513030`, `FUN_005133xx`) exercises enough distinct vtable slots to pin both interfaces against the documented DirectX 3–5 COM layouts with no ambiguity: `DAT_005db8e4` is **`IDirectSound`** (0x08 Release, 0x0c CreateSoundBuffer) and `DAT_005db900`/`DAT_005db758[50]` are **`IDirectSoundBuffer`** (0x08 Release, 0x24 GetStatus, 0x2c Lock, 0x30 Play, 0x3c SetVolume, 0x48 Stop, 0x4c Unlock). This retroactively confirms the 0x3c=SetVolume reading in `ApplyCdVolume`/`ApplyAllSoundBufferVolumes`. The 50-slot count is confirmed independently by `FUN_00512ea0`'s loop bound (`0x005db758`..`0x005db81f`). *Update, this session*: the **buffer**-creation paths are now reconstructed (`AllocateSoundBuffer`, `StartMusicStream`), and a third interface was added to the set — `DAT_005db904` is **`IDirectSoundNotify`** (0x08 Release, 0x0c SetNotificationPositions), pinned by `StartMusicStream` obtaining it via `QueryInterface` on the streaming buffer and then using it only with the argument pair `(8, &DAT_005db8a0)` where `DAT_005db8a0`..`DAT_005db8df` has just been filled as exactly 8 `{ dwOffset, hEventNotify }` pairs. *Still open*: the **device** itself (`DAT_005db8e4`) still has no assignment site anywhere in the reconstructed graph — no `DirectSoundCreate` call has been located — so every entry point still takes its "no device" early-out at runtime. See TODO #26.
 10. **AU_00564a05 blob**: `s_SmallTextureFlag` only reconstructs one 4-byte field (`._51_4_`) of what's clearly a larger structure/array (`AU_00564a05`) — the rest of that blob hasn't been characterized.
-11. **RESOLVED** — recovered from `Legacy/Blaze.exe`, see `Documentation/DataSymbols.md`. The options-file extension (`DAT_005630bc`) is **`.cfg`, not `.ini`**, which is why `LoadOptionsIni` had never found a file; `DAT_005630a0` is `CdVol` (the former `UnknownIniKey_005630a0` placeholder); `DAT_005630c4` is `%d`. The full key set is `Size`, `Small`, `Filter`, `Gamma`, `CdVol`, `SoundVol` under section `Options`, corroborated by the installed game's own `BLAZE.cfg`. Original note kept below for context.
+11. **RESOLVED** — recovered from `Legacy/Binaries/Blaze.exe`, see `Documentation/Reference/DataSymbols.md`. The options-file extension (`DAT_005630bc`) is **`.cfg`, not `.ini`**, which is why `LoadOptionsIni` had never found a file; `DAT_005630a0` is `CdVol` (the former `UnknownIniKey_005630a0` placeholder); `DAT_005630c4` is `%d`. The full key set is `Size`, `Small`, `Filter`, `Gamma`, `CdVol`, `SoundVol` under section `Options`, corroborated by the installed game's own `BLAZE.cfg`. Original note kept below for context.
 
     *Update, this session*: this entry was marked RESOLVED but the finding had **never been carried into `Blaze.cs`**, which kept emitting the placeholder key `UNKNOWN_REVERSE_005630a0` — so the reconstruction wrote a duplicate of `Size` into the options file and read its own copy instead of the game's. Now applied (`SizeIniKey = "Size"`, `DAT_00563080` re-read from the binary to confirm). Two further corrections found while verifying: `s_Joy_d_00563064` is **`"Joy%d"` with no space** (the reconstruction used `"Joy %d"`, so every joystick setting silently fell back to its default), and the address in the old placeholder name was `CdVol`'s, not the key's. **Lesson: a RESOLVED entry here is not evidence the code applies it** — check the call site, not only the note.
     ~~**`DAT_00563080` ini key / `DAT_005630bc` ini extension / `DAT_005630c4` format string**: none of these three have a Ghidra-derived string name (unlike e.g. `s_SoundVol_005630b0`), so their exact text is a placeholder/guess in `Blaze.cs` (`UnknownIniKey_005630a0`, `IniFileExtension = ".ini"`) — see inline TODOs.~~
-12. ~~**`DAT_00562e00` per-resolution clamp table**: content unknown; `s_ResolutionDetailLimit` in `Blaze.cs` is a placeholder filled with `int.MaxValue` (i.e. the clamp is currently a no-op).~~ — **RESOLVED**, read back from `Legacy/Blaze.exe` as `{ 1, 7, 11, 16, 23, 0 }` and applied. Cross-checked against the installed `BLAZE.cfg`, which pairs `Resolution=4` with `Size=23`: index 4 is 23, so the clamp is a no-op on a file the game itself wrote — exactly as expected. The bytes immediately after (`01 02 03 04 05 06 07 08`) are a different table, so the array ends at six entries. The trailing `0` is a **terminator, not a sixth entry**: running with `Resolution=5` makes `winsys3d`'s base-offset table (`DAT_00a2c49c`, indexed by the same value) return junk — viewport `(176,133) 288x216` against the clean progression `320x240 / 512x384 / 640x480 / 800x600 / 1024x768` for indices 0..4. Five valid entries, indexed 0..4.
+12. ~~**`DAT_00562e00` per-resolution clamp table**: content unknown; `s_ResolutionDetailLimit` in `Blaze.cs` is a placeholder filled with `int.MaxValue` (i.e. the clamp is currently a no-op).~~ — **RESOLVED**, read back from `Legacy/Binaries/Blaze.exe` as `{ 1, 7, 11, 16, 23, 0 }` and applied. Cross-checked against the installed `BLAZE.cfg`, which pairs `Resolution=4` with `Size=23`: index 4 is 23, so the clamp is a no-op on a file the game itself wrote — exactly as expected. The bytes immediately after (`01 02 03 04 05 06 07 08`) are a different table, so the array ends at six entries. The trailing `0` is a **terminator, not a sixth entry**: running with `Resolution=5` makes `winsys3d`'s base-offset table (`DAT_00a2c49c`, indexed by the same value) return junk — viewport `(176,133) 288x216` against the clean progression `320x240 / 512x384 / 640x480 / 800x600 / 1024x768` for indices 0..4. Five valid entries, indexed 0..4.
 13. **Vtables now fully identified — the subsystem is DirectShow, and none of it is unrecoverable.** All fifteen previously-undisassembled targets were forced in Ghidra and exported to `Legacy/Raw/*.c`. What they show:
     - **The movie player is DirectShow / ActiveMovie, not VfW.** `FUN_00543230` calls `CoCreateInstance` with the GUIDs at `DAT_0054e8a8` / `DAT_0054e8b8`, dumped from the binary as **`{E436EBB3-524F-11CE-9F53-0020AF0BA770}` = `CLSID_FilterGraph`** and **`{56A868A9-0AD4-11CE-B03A-0020AF0BA770}` = `IID_IGraphBuilder`**. That also explains `RunApplication`'s `CoInitialize`, and the objects at `+0x11c` whose vtable slots `0x1c`/`0x20`/`0x24` are used by `FUN_005438a0`/`FUN_005438f0`/`FUN_00543920` — an `IVideoWindow`-shaped interface.
     - **The overlay object (vtable `0x0054D028`) is a COM callback sink**: slots 0-2 are adjustor thunks (`FUN_00512E60`/`E80`/`E90`, all forwarding to `this - 8`, i.e. multiple inheritance), slot 3 is the real callback (`FUN_00512DD0`, returning `E_POINTER` on a null inner pointer), slot 4 a no-op, slot 5 posts `0x465` to the player window.
@@ -353,26 +353,26 @@ transcribed, with Ghidra addresses kept in comments for traceability:
     - `FUN_00512a10`, `FUN_00512b40`, `FUN_00512c80` and `FUN_005431e0` all already had bodies in `Blaze.c`.
     **Correction to an earlier claim in this file and in session notes**: recovering the overlay vtable does *not* by itself make anything appear on screen. `FUN_00542c40`'s blit dereferences `*(wrapper + 4)`, which `FUN_00512930` explicitly sets to **0**; it is `FUN_00512a10` — the real DirectDraw surface/cooperative-level sequence — that populates it. The display path is `FUN_00512a10`, not these callbacks.
     Original note: ~~**Movie/intro-video subsystem's two custom C++ vtables** (`PTR_LAB_0054d078` — the DirectDraw-wrapper class constructed by `FUN_00512930`/`FUN_00512d10`, and `PTR_LAB_0054d0a0` — the video-stream class constructed by `FUN_005431e0`/`FUN_00542fc0`): every vtable slot these point at (`LAB_0054dxxx` targets) has no decompiled body anywhere in `Blaze.c` — same class of gap as ordinal 790's `&LAB_00512ef0` callback, just a whole class's worth at once. `TrySetupMovieStream`/`OpenMovieStream`/`RewindMovieFallbackFrame` in `Blaze.cs` stop exactly at these vtable calls; see the "Movie / intro-video subsystem" banner comment in `Blaze.cs` for the full writeup of what *is* independently confirmed (real DirectDraw vtable offsets matching the public `IDirectDraw`/`IDirectDrawSurface` v1 layout, real Win32 window/message-pump/joystick-capture behavior).~~
-14. **RESOLVED.** `0x00542600` was never *called*, only stored into `WNDCLASSA.lpfnWndProc`, so Ghidra labelled it and left the bytes undisassembled. Forcing disassembly (`G` → address → `D` → `F`) produced a clean decompilation immediately — see `Legacy/Raw/FUN_00542600.txt`. It is an ordinary window procedure, and its message set (WM_KEYDOWN/Esc, the three mouse buttons, both joystick buttons, WM_TIMER, WM_ACTIVATEAPP, WM_CLOSE, MM_MCINOTIFY) is exactly the set the attract screen waits on. All four of its handlers — `FUN_00542970`, `FUN_005429e0`, `FUN_00542a00`, `FUN_00542560` — already had bodies in `Blaze.c`. `CreateMoviePlayerWindow` now registers the class and creates the window for real; the full `FUN_00542740` listing supplied the cursor (wsyskern resource 10), `WS_EX_TOPMOST`/`WS_POPUP`, and the `ShowWindow`/`MoveWindow` tail. Original note: ~~**Movie window procedure** (`Blaze.c`: `&LAB_00542600`, the `WNDPROC` for window class `"VfwClass"`): no decompiled body. `CreateMoviePlayerWindow` in `Blaze.cs` therefore does not actually call `RegisterClassA`/`CreateWindowExA` (would crash on the first dispatched message with no real `WndProc`); `HWnd` stays `IntPtr.Zero`. This is also *why* `DAT_005db85c` (TODO #6 above) still can't be threaded through — the movie window isn't the main window anyway (it's a separate 2000x2000 hidden helper window), so the real main-window creation is presumably elsewhere, still unlocated.~~
+14. **RESOLVED.** `0x00542600` was never *called*, only stored into `WNDCLASSA.lpfnWndProc`, so Ghidra labelled it and left the bytes undisassembled. Forcing disassembly (`G` → address → `D` → `F`) produced a clean decompilation immediately — see `Legacy/Raw/Blaze/FUN_00542600.txt`. It is an ordinary window procedure, and its message set (WM_KEYDOWN/Esc, the three mouse buttons, both joystick buttons, WM_TIMER, WM_ACTIVATEAPP, WM_CLOSE, MM_MCINOTIFY) is exactly the set the attract screen waits on. All four of its handlers — `FUN_00542970`, `FUN_005429e0`, `FUN_00542a00`, `FUN_00542560` — already had bodies in `Blaze.c`. `CreateMoviePlayerWindow` now registers the class and creates the window for real; the full `FUN_00542740` listing supplied the cursor (wsyskern resource 10), `WS_EX_TOPMOST`/`WS_POPUP`, and the `ShowWindow`/`MoveWindow` tail. Original note: ~~**Movie window procedure** (`Blaze.c`: `&LAB_00542600`, the `WNDPROC` for window class `"VfwClass"`): no decompiled body. `CreateMoviePlayerWindow` in `Blaze.cs` therefore does not actually call `RegisterClassA`/`CreateWindowExA` (would crash on the first dispatched message with no real `WndProc`); `HWnd` stays `IntPtr.Zero`. This is also *why* `DAT_005db85c` (TODO #6 above) still can't be threaded through — the movie window isn't the main window anyway (it's a separate 2000x2000 hidden helper window), so the real main-window creation is presumably elsewhere, still unlocated.~~
     *Still true and worth keeping*: this is the **movie player's** window, not the main game window. `DAT_005db85c` (#6) remains unlocated.
 15. **RESOLVED AND WIRED.** `s_MainLoopTickCallback` now points at `RunGameStateTick`, the reconstruction of `FUN_00537ca0`, so `RunGameLoop` no longer throws on its indirect call. The tick's prologue is real (`Zoom8BitTextures = 0` via the winsys3d data export, then `ReInitializeAllTextures()`), and its eleven state handlers are named stubs — **all eleven have decompiled bodies in `Blaze.c`**, so they are ordinary uncovered code rather than blocked work, and each stub names its Ghidra function so the next state to reconstruct is obvious from the exception text. The `default:` case reproduces the original's deliberate store to address 0 as an exception rather than by faulting. *Not yet reachable at runtime*: `LoadFirstLevelResources` throws at `DecodeResourceChunk` (#19) before `RunGameLoop` is entered. Original note: ~~**`PTR_FUN_0056c96c`** — **The pointer holds `0x00537CA0`, and `FUN_00537ca0` is already decompiled in `Blaze.c` at line 83364** — so the game loop's tick needs no Ghidra re-run at all. It is the **per-game-state dispatcher**: it clears `Zoom8BitTextures`, calls `ReInitializeAllTextures()`, then switches on `DAT_005de510` across at least 7 states (`FUN_00542130`, `thunk_FUN_00536180`, `FUN_00542160`+`FUN_00537da0`, `thunk_FUN_00516020`, `FUN_005066d0`, `FUN_00504c90`, `FUN_00524180`). Note this makes `FUN_0052a440` — long assumed to be the state dispatcher — not the one the tick actually reaches. The adjacent pointer at `0x0056c970` holds `0x00537d50`, which is **not** in `Blaze.c` and would need a scoped re-run if it matters. Wiring the tick into `RunGameLoop` is a separate change; `RunGameLoop` still throws until then. Historical reasoning that led here, kept because it was sound: `0x0056c96c` occurs exactly once in all 98k lines of `Blaze.c`: at the call site itself. It is therefore not a runtime-assigned variable at all but a **statically initialised `.data` function pointer** — the linker wrote the target address into the image, and Ghidra's `PTR_<KIND>_<address-of-pointer>` naming (compare the confirmed `PTR_s_Blaze___Blade_00563208`, `PTR_PTR_00566d68`, `PTR_FUN_0056b4d0`) tells us the slot holds an unnamed function pointer but not *which* function. Its neighbours (`s_FEMALE_0056c95c`, `DAT_0056c964`, `DAT_0056c978`) confirm it sits in initialised data. **No amount of further reading of `Blaze.c` can recover it** — see the "Systemic blocker" section below. Guessing a plausible target would violate Strategy.md's "ne jamais inventer une signature/un comportement", so `RunGameLoop` throws rather than silently skipping the tick.~~
 16. **`DAT_005633a8`** (mode flag read pervasively, including by `FUN_00529eb0`/`InitViewportSurfaces`): no assignment site reached yet either; always 0 (its default) in the current reconstruction.
 17. **Font-loading filename** (`Blaze.c`: `s_DATA_Font_bmp_005684cc`) and the three intro-movie filenames (`s_TEPS_AVI_005684f4`/`s_OPENING_AVI_005684e8`/`s_ANI01_AVI_005684dc`): only Ghidra's auto-derived symbol names survive, not the literal bytes — `"DATA\FONT.BMP"`/`"TEPS.AVI"`/`"OPENING.AVI"`/`"ANI01.AVI"` in `Blaze.cs` are best guesses from the symbol names, same caveat as TODO #4's message strings.
 18. **`FUN_00529b00`/`LoadWholeFileToBuffer`'s incomplete Ghidra analysis**: the failure path returns `unaff_ESI` (a register Ghidra never attributed a value to at function entry — genuinely indeterminate, not just unnamed) and the read call shows a literal `2` (`Ordinal_334(iVar1,2,iVar2)`) exactly where a destination-buffer argument should be, one parameter short of the two arguments both real call sites actually pass. Reconstructed using the evident 2-argument intent (`dest` as that argument, `0` as an explicit safe failure return) — flagged rather than presented as certain.
-19. **RESOLVED — and the "genuinely unrecoverable" claim below was wrong.** Reconstructed in full from the raw disassembly (`Legacy/Raw/FUN_005322f0.txt`, exported from Ghidra). The function uploads a **TIM texture** to VRAM and records its texture-page / CLUT pair in a slot: `Ordinal_677`/`Ordinal_662` are libgpu's `OpenTIM`/`ReadTIM`, and the 20 bytes the prologue reserves (`SUB ESP,0x14`, handed over as `LEA ECX,[ESP+8]`) are a `TIM_IMAGE` — which is what the "indeterminate" `puStack_14`/`psStack_10`/`iStack_c` locals really were.
+19. **RESOLVED — and the "genuinely unrecoverable" claim below was wrong.** Reconstructed in full from the raw disassembly (`Legacy/Raw/Blaze/FUN_005322f0.txt`, exported from Ghidra). The function uploads a **TIM texture** to VRAM and records its texture-page / CLUT pair in a slot: `Ordinal_677`/`Ordinal_662` are libgpu's `OpenTIM`/`ReadTIM`, and the 20 bytes the prologue reserves (`SUB ESP,0x14`, handed over as `LEA ECX,[ESP+8]`) are a `TIM_IMAGE` — which is what the "indeterminate" `puStack_14`/`psStack_10`/`iStack_c` locals really were.
     **What the decompiler got wrong, beyond naming**: `unaff_retaddr` is parameter 2 (the 2-short slot, corroborated by both call sites' 4-byte stride); every `param_1[0..2]` byte read actually comes from `EDI` = parameter 3, the metadata triple, *not* the chunk pointer; and `(*param_1 & 0xff10)` is an artifact of a `AND AL,0x10` byte mask — using it would corrupt the pixel rect's y coordinate. The `extraout_var*` values were just `Ordinal_674`'s ignored return.
     **Lesson**: "Ghidra's own analysis is incomplete" was a correct observation turned into a wrong conclusion. Incomplete decompilation meant *read the disassembly*, not *give up*. Three of this file's remaining blockers (#13/#14/#23) are the same shape and should be treated the same way. Original note: ~~**`FUN_005322f0`/`DecodeResourceChunk` — genuinely unrecoverable, not just unread**: several of its inputs are `unaff_ESI`/`unaff_DI`/`unaff_retaddr` and outputs `extraout_var`/`extraout_var_00`/`extraout_var_01` in Ghidra's own decompilation — register-allocated values Ghidra could never tie to a defining instruction or a real variable. This is a stronger category of gap than the usual "not yet read": Ghidra's *own* static analysis of this function is incomplete, so no amount of re-reading `Blaze.c` will resolve it without disassembling the raw instructions. **Current blocking point** for `LoadFirstLevelResources` (thrown on the first directory entry, if the loaded "SYSTEM.INI"-equivalent file lists any).~~
-20. **RESOLVED — schema recovered *and* its reading confirmed.** `DAT_0056aca8` holds 37 `ushort`s ending at a `0x0000` terminator. Each entry is **`(low byte = index, high byte = stride)`**: the low byte selects `header[4 + index]` (a pointer the fixed pass already relocated) and the high byte is the byte stride for walking the chained list it heads. This is settled by `FUN_00532070`'s own `& 0xff` / `>> 8`, not inferred from the byte pattern — an earlier `(kind, size)` guess was wrong. The schema-driven pass is now reconstructed and is no longer a no-op. **Watch the two relocation formulas**: the fixed pass adds `header[0]`, the schema pass adds `header[0] + header[1]`; using the shorter one yields plausible-looking pointers that are off by a constant. Full table and analysis in `Documentation/DataSymbols.md`. Original note: ~~**`DAT_0056aca8`** (resource-fixup schema table read by `FixupResourceHeader`/`FUN_00532070`): data-only global, byte content not present in `Blaze.c`'s text (same category as `DAT_00562e00`/TODO #12) — `s_ResourceFixupSchema_0056aca8` is an empty array, so the schema-driven fixup pass is a safe no-op rather than a guess.~~
+20. **RESOLVED — schema recovered *and* its reading confirmed.** `DAT_0056aca8` holds 37 `ushort`s ending at a `0x0000` terminator. Each entry is **`(low byte = index, high byte = stride)`**: the low byte selects `header[4 + index]` (a pointer the fixed pass already relocated) and the high byte is the byte stride for walking the chained list it heads. This is settled by `FUN_00532070`'s own `& 0xff` / `>> 8`, not inferred from the byte pattern — an earlier `(kind, size)` guess was wrong. The schema-driven pass is now reconstructed and is no longer a no-op. **Watch the two relocation formulas**: the fixed pass adds `header[0]`, the schema pass adds `header[0] + header[1]`; using the shorter one yields plausible-looking pointers that are off by a constant. Full table and analysis in `Documentation/Reference/DataSymbols.md`. Original note: ~~**`DAT_0056aca8`** (resource-fixup schema table read by `FixupResourceHeader`/`FUN_00532070`): data-only global, byte content not present in `Blaze.c`'s text (same category as `DAT_00562e00`/TODO #12) — `s_ResourceFixupSchema_0056aca8` is an empty array, so the schema-driven fixup pass is a safe no-op rather than a guess.~~
 21. **`DAT_006008c8`/`DAT_00604930`/`DAT_00600904`** (the 3 comparison targets in `IsKnownOverrideDestination`/`FUN_0052a660`): none have an assignment site anywhere in the reconstructed call graph yet, so they're always null/zero; the 2 true-branch bodies (native override-table installers, one pulling in 11 further `FUN_` calls) are stubbed rather than translated.
 22. **`PTR_s_BLAZE_ALL_1_00566bbc`/`PTR_s_SYSTEM_INI_1_00566bb8`/`s____snd_Base_snd_00568500`** filenames used by the resource-loader subsystem: same category as TODO #17 — only Ghidra's derived symbol names survive; `"BLAZE.ALL"`/`"SYSTEM.INI"`/`"\SND\BASE.SND"` in `Blaze.cs` are best guesses.
-23. **Body recovered — reconstructible whenever wanted.** `0x00513660` was forced in Ghidra and decompiled cleanly to `Legacy/Raw/FUN_00513660.c`. It is a straightforward streaming pump: `WaitForMultipleObjects(9, &DAT_005db838, FALSE, INFINITE)` over the 8 notification events plus the stop event (index 8 breaks and `ExitThread`s), then `IDirectSoundBuffer::Lock` (vtable `0x2c`), a decode of 10 MS-ADPCM blocks through `FUN_00531bb0` — **already reconstructed as `DecodeMsAdpcm`** — and `Unlock` (vtable `0x4c`), with explicit wraparound handling when fewer than 10 blocks remain. Every dependency exists. *Note*: reconstructing it would have no observable effect yet, because `StartMusicStream` early-outs without an `IDirectSound` device (#26). Original note: ~~**Music-streaming worker thread** (`Blaze.c`: `&LAB_00513660`, passed to `CreateThread` by `FUN_005131d0`): no decompiled body anywhere in `Blaze.c` — address-taken only, exactly the same class of gap as the movie `WNDPROC` (#14) and ordinal 790's callback (#8). `StartMusicStream` therefore does **not** call `CreateThread` (jumping to an address we cannot reconstruct would crash), same precedent as `CreateMoviePlayerWindow` skipping `CreateWindowExA`; `s_MusicStreamThread` stays `IntPtr.Zero`. Consequence: everything else in the start path is real, so a track *would* begin playing, but nothing ever refills the buffer — the pre-decoded 80 blocks would loop forever instead of streaming on. This is also why `DAT_005db860`/`DAT_005db750`/`DAT_005db89c` (source-block cursor, total block count, playing flag) and the 8 notification events are written but never read in the reconstruction: the worker is their only consumer. Resolvable by re-running Ghidra with `0x00513660` forced to "disassemble as function".~~ — which is exactly what was done.
+23. **Body recovered — reconstructible whenever wanted.** `0x00513660` was forced in Ghidra and decompiled cleanly to `Legacy/Raw/Blaze/FUN_00513660.c`. It is a straightforward streaming pump: `WaitForMultipleObjects(9, &DAT_005db838, FALSE, INFINITE)` over the 8 notification events plus the stop event (index 8 breaks and `ExitThread`s), then `IDirectSoundBuffer::Lock` (vtable `0x2c`), a decode of 10 MS-ADPCM blocks through `FUN_00531bb0` — **already reconstructed as `DecodeMsAdpcm`** — and `Unlock` (vtable `0x4c`), with explicit wraparound handling when fewer than 10 blocks remain. Every dependency exists. *Note*: reconstructing it would have no observable effect yet, because `StartMusicStream` early-outs without an `IDirectSound` device (#26). Original note: ~~**Music-streaming worker thread** (`Blaze.c`: `&LAB_00513660`, passed to `CreateThread` by `FUN_005131d0`): no decompiled body anywhere in `Blaze.c` — address-taken only, exactly the same class of gap as the movie `WNDPROC` (#14) and ordinal 790's callback (#8). `StartMusicStream` therefore does **not** call `CreateThread` (jumping to an address we cannot reconstruct would crash), same precedent as `CreateMoviePlayerWindow` skipping `CreateWindowExA`; `s_MusicStreamThread` stays `IntPtr.Zero`. Consequence: everything else in the start path is real, so a track *would* begin playing, but nothing ever refills the buffer — the pre-decoded 80 blocks would loop forever instead of streaming on. This is also why `DAT_005db860`/`DAT_005db750`/`DAT_005db89c` (source-block cursor, total block count, playing flag) and the 8 notification events are written but never read in the reconstruction: the worker is their only consumer. Resolvable by re-running Ghidra with `0x00513660` forced to "disassemble as function".~~ — which is exactly what was done.
 24. **`DAT_0056ac60` (16 shorts) / `DAT_0056ac80` and `DAT_0056ac90` (7 shorts each)** — the MS-ADPCM adaptation table and the two coefficient tables. Data-only globals, so the bytes aren't in `Blaze.c` (same systemic blocker as #12/#20), but unlike those two the *identity* here is not a guess: `FUN_00531f70` only accepts a `fmt ` chunk with `wFormatTag == 2` (WAVE_FORMAT_ADPCM), `wBitsPerSample == 4` and `wNumCoef == 7`, then compares `aCoef[0..6]` against `DAT_0056ac80`/`DAT_0056ac90` — i.e. it verifies the file uses the *standard* coefficient set so the decoder's hardcoded tables apply. The addresses corroborate the sizes exactly (16 shorts at `0x0056ac60` end at `0x0056ac80`; 7 shorts at `0x0056ac80` end at `0x0056ac8e`, padded to `0x0056ac90`). `Blaze.cs` uses the documented standard MS-ADPCM values. Still worth confirming byte-for-byte if the binary appears.
 25. **`FUN_00513030`'s register-attribution bug**: Ghidra writes `piVar3` (loaded from `DAT_005db8e4`, the *device*) into the slot table and releases that same pointer when the table is full, while the newly created buffer sits unused in `CreateSoundBuffer`'s `local_2c` output parameter. Storing the device in a buffer slot would make `ReleaseAllSoundBuffers` call `IDirectSoundBuffer` methods on an `IDirectSound` and release the device up to 50 times, so the decompiled text cannot be what the binary does. `AllocateSoundBuffer` transcribes the evident intent (the *created buffer* is stored and released) — flagged rather than presented as certain.
 26. **`DAT_005db8e4` (the `IDirectSound` device) has no creation site**: read in four places, assigned nowhere in all of `Blaze.c`'s reconstructed graph, and no `DirectSoundCreate` call site has been located. Same shape as `DAT_005db85c` (#6, the main window handle) and quite possibly the same root cause — both would plausibly be created by whatever code also creates the main window, which #6 established is not present in any available source. Until it is found, the whole audio subsystem is correct but inert: every entry point takes its "no device" early-out.
 27. **`DAT_005631d4` initial value** (music enabled/disabled at startup): data-section content, so unavailable; `s_MusicEnabled` defaults to 0, meaning music starts disabled and `StartMusicStream` early-outs until `ToggleMusicEnabled` flips it. Note `DAT_005631d0` (the "no stream running" flag) needed no such assumption — a first `StartMusicStream` always routes through `StopMusicStream`, which sets the flag before it is tested.
 28. **`FUN_0053da20`/`FUN_0053db20` (positional sound gain)** — the remaining members of the sound-effect family, deliberately left untranslated. `FUN_0053da20` computes a left/right gain pair from a world position via the cos table (ordinal 450) and `FUN_0053db20` feeds the result to `PlaySoundEffect`, but Ghidra declares `FUN_0053da20` with **2** parameters while `FUN_0053db20` calls it with **3**, and its body reads `unaff_SI` and `unaff_retaddr` — register-passed values never tied to a parameter. Reconstructing it would mean inventing a signature, which Strategy.md forbids; it needs a Ghidra re-run with the calling convention corrected (same class as the `__fastcall`/`__thiscall` cases noted under the systemic blocker).
 29. **Sound-directory second half (`DAT_005e8520`, entries `0x3c`..`0x4c`)** is loaded by `FUN_00512xxx` (`Blaze.c:63354`), which is not reconstructed — so those 17 entries stay zero and sound ids `0x3c`..`0x4c` (which include the four fixed UI sounds `PlayUiSound38`..`3B`) currently resolve to a zero-length sample and play silence. Not a data-availability problem: it is ordinary uncovered code, and the same call site also fills the level sample bank `DAT_00600900`.
-30. **RESOLVED — table recovered and `PlayMusicTrack` reconstructed.** The entries are CD-**root** absolute templates (`@:/Music/Mel00_01.WAV`), drive-letter patched at index 0, recorded in `Documentation/DataSymbols.md`. Only the sampled entries are transcribed so far; call sites index up to at least `0x26`, and unsampled slots stay null so `PlayMusicTrack` returns rather than reading past the table. **Nothing is audible yet**: no `DirectSoundCreate` site exists (#26), so `StartMusicStream` takes its no-device early-out. Silence here is expected, not a defect. Original note: ~~**`PTR_s____Music_Mel00_01_WAV_00566cc8`** — the music-filename pointer table indexed by `FUN_00529ad0`/`PlayMusicTrack`, the only caller of `StartMusicStream`. Call sites pass indices up to at least `0x26`, and `FUN_00529ad0` patches each path's first character with the CD drive letter (`s____Blaze_Blade_005631e8[0]`) before playing. Data-only table, so it is not reconstructed and `FUN_00529ad0` is deliberately left untranslated rather than filled with invented filenames — same category as #17/#22, but a whole table rather than single strings.~~
+30. **RESOLVED — table recovered and `PlayMusicTrack` reconstructed.** The entries are CD-**root** absolute templates (`@:/Music/Mel00_01.WAV`), drive-letter patched at index 0, recorded in `Documentation/Reference/DataSymbols.md`. Only the sampled entries are transcribed so far; call sites index up to at least `0x26`, and unsampled slots stay null so `PlayMusicTrack` returns rather than reading past the table. **Nothing is audible yet**: no `DirectSoundCreate` site exists (#26), so `StartMusicStream` takes its no-device early-out. Silence here is expected, not a defect. Original note: ~~**`PTR_s____Music_Mel00_01_WAV_00566cc8`** — the music-filename pointer table indexed by `FUN_00529ad0`/`PlayMusicTrack`, the only caller of `StartMusicStream`. Call sites pass indices up to at least `0x26`, and `FUN_00529ad0` patches each path's first character with the CD drive letter (`s____Blaze_Blade_005631e8[0]`) before playing. Data-only table, so it is not reconstructed and `FUN_00529ad0` is deliberately left untranslated rather than filled with invented filenames — same category as #17/#22, but a whole table rather than single strings.~~
 
 36. **`FUN_00545340` — the menu/UI engine, deliberately deferred.** 1742 lines, three parameters, 25 calls, reached twice per menu frame alongside `FUN_005443a0` (233 lines). It is ordinary uncovered code with a full decompiled body, not blocked work, but it is a project in its own right and reconstructing it blind — with no way to observe whether the surrounding frame order is right — would have been the wrong order of operations. Stubbed along with `FUN_005443a0`, `FUN_00512320` (the options page) and `FUN_005048f0` (joystick state processing, which pulls in `FUN_005231f0`/`FUN_00523660`).
 
@@ -387,20 +387,20 @@ transcribed, with Ghidra addresses kept in comments for traceability:
 
 33. **`GetMainMemPtr()` returns null** — winsys3d.dll's `MainMem` export is not yet resolved, so the entire second half of `InitViewportSurfaces` (the framebuffer checkerboard fill and the 0x20-iteration `LoadImage` tile upload loop) is skipped by an early return, and any other code reading main video memory will do the same. Now that startup runs end to end this is the most visible remaining gap below the game loop itself.
 
-34. **RESOLVED — properly this time, and the deviation is gone.** With `FUN_00542600` disassembled (`Legacy/Raw/FUN_00542600.txt`) the movie player's window procedure is reconstructed, so `CreateMoviePlayerWindow` now performs the real `RegisterClassA`/`CreateWindowExA` and the attract screen can receive input. The piece that had been missing all along is `FUN_00542a00`: on WM_KEYDOWN(Esc), any mouse button, or either joystick button it sets `*player = 0` (Playing) and `player[0xb] = 1` (Result) — which is precisely what lets `PlayMoviePumpLoop` return and `PlayMovie` report non-zero, giving the attract loop its exits. `ShowTitleScreenAndWait`'s 20-second `timeGetTime` wait and message pump are reconstructed too. `OpenMovieStream` is back to its faithful `return true`.
+34. **RESOLVED — properly this time, and the deviation is gone.** With `FUN_00542600` disassembled (`Legacy/Raw/Blaze/FUN_00542600.txt`) the movie player's window procedure is reconstructed, so `CreateMoviePlayerWindow` now performs the real `RegisterClassA`/`CreateWindowExA` and the attract screen can receive input. The piece that had been missing all along is `FUN_00542a00`: on WM_KEYDOWN(Esc), any mouse button, or either joystick button it sets `*player = 0` (Playing) and `player[0xb] = 1` (Result) — which is precisely what lets `PlayMoviePumpLoop` return and `PlayMovie` report non-zero, giving the attract loop its exits. `ShowTitleScreenAndWait`'s 20-second `timeGetTime` wait and message pump are reconstructed too. `OpenMovieStream` is back to its faithful `return true`.
     Measured: the attract sequence runs for real and terminates, and startup proceeds into the game loop. *Not yet determined*: which of the exits fires in practice — a joystick event (`joySetCapture` now succeeds against a real window) or the 20 s timeout. Worth instrumenting if the intro timing ever matters.
-    Superseded note: ~~**Startup unblocked, but by a deliberate deviation — and the earlier justification here was wrong.** `OpenMovieStream` now reports failure, which makes `RunMainLoop` skip the intro movies and the attract loop, so startup proceeds. An earlier revision of this entry claimed that *was* the original's own no-DirectDraw path. **It is not.** `FUN_00512930`'s disassembly (`Legacy/Raw/FUN_00512930.txt`) ends `MOV EAX,ESI; RET 0x4` — it returns `this` unconditionally, even when its internal `Malloc` fails — so `FUN_00542800`'s `if (iVar1 == 0) return 0` only fires when the 0x48-byte allocation fails. In the original, the open succeeds.~~
+    Superseded note: ~~**Startup unblocked, but by a deliberate deviation — and the earlier justification here was wrong.** `OpenMovieStream` now reports failure, which makes `RunMainLoop` skip the intro movies and the attract loop, so startup proceeds. An earlier revision of this entry claimed that *was* the original's own no-DirectDraw path. **It is not.** `FUN_00512930`'s disassembly (`Legacy/Raw/Blaze/FUN_00512930.txt`) ends `MOV EAX,ESI; RET 0x4` — it returns `this` unconditionally, even when its internal `Malloc` fails — so `FUN_00542800`'s `if (iVar1 == 0) return 0` only fires when the 0x48-byte allocation fails. In the original, the open succeeds.~~
     So this is a **known deviation**, kept because it is the only workable behaviour while the movie window cannot be created. It disappears once #13/#14 are disassembled. The diagnostic throw in `ShowTitleScreenAndWait` is retained as a backstop for exactly that moment: if the open is made to succeed without the window and input handling, the attract loop again has no exit and must say so rather than spin. Original note: ~~**The attract loop has no reachable exit once the CD is present — now a loud throw.** With the data root corrected, `ShowTitleScreenAndWait` loads `DATA/TITLE640.BMP` successfully and returns 0, and `PlayMovie` is pinned at 0 while `TrySetupMovieStream` is stubbed (#13). All four of the loop's exits therefore depend on unreconstructed subsystems, and the process spins at 100% CPU with no message pump — the same silent-misbehaviour shape as #31, arriving from the opposite direction. `ShowTitleScreenAndWait` now throws a descriptive `NotImplementedException` at the point where the original's 20-second `timeGetTime` wait and its key/mouse/joystick handling would be, rather than returning 0. The degradation is targeted: with no CD the bitmap load still fails, the function returns 1, the loop exits on iteration 1 and startup proceeds. **To clear this**, the real fix is the main window + `WNDPROC` (#6/#14) so input can actually arrive; reconstructing the 20 s timeout alone would produce a faithfully-infinite loop, which is no better.~~
     The guard itself is kept in `ShowTitleScreenAndWait` as a backstop: if a future change makes `OpenMovieStream` succeed again without also supplying the window and input handling, the attract loop would once more have no exit, and it should say so rather than spin.
 
-35. **RESOLVED** — the schema-driven relocation pass is reconstructed (TODO #20), `LoadResourceEntry` no longer faults, and the directory walk now reaches `DecodeResourceChunk`. Original diagnosis kept below; it was correct. ~~**`LoadResourceEntry` faults on unrelocated directory pointers against real game data.** Measured with the CD mounted and the attract loop temporarily bypassed: `LoadFirstLevelResources` loads `SYSTEM.INI;1`, enters its directory-entry loop, and dereferences `entryPtrValue` — a raw value read straight out of the file — as a pointer, giving a `NullReferenceException`/AV in `LoadResourceEntry`. Cause is upstream and already documented: `FixupResourceHeader`'s schema-driven relocation pass is a no-op because `s_ResourceFixupSchema_0056aca8` is an empty array, so the file's internal offsets are never turned into real pointers. **This is now fixable** — `DAT_0056aca8`'s bytes were recovered and are recorded in `Documentation/DataSymbols.md` (#20); the `(kind, size)` reading of them is still a hypothesis and needs confirming against `FUN_00532070`'s use of the table. Until then `DecodeResourceChunk` (#19) cannot be reached, so it stays untested.~~
+35. **RESOLVED** — the schema-driven relocation pass is reconstructed (TODO #20), `LoadResourceEntry` no longer faults, and the directory walk now reaches `DecodeResourceChunk`. Original diagnosis kept below; it was correct. ~~**`LoadResourceEntry` faults on unrelocated directory pointers against real game data.** Measured with the CD mounted and the attract loop temporarily bypassed: `LoadFirstLevelResources` loads `SYSTEM.INI;1`, enters its directory-entry loop, and dereferences `entryPtrValue` — a raw value read straight out of the file — as a pointer, giving a `NullReferenceException`/AV in `LoadResourceEntry`. Cause is upstream and already documented: `FixupResourceHeader`'s schema-driven relocation pass is a no-op because `s_ResourceFixupSchema_0056aca8` is an empty array, so the file's internal offsets are never turned into real pointers. **This is now fixable** — `DAT_0056aca8`'s bytes were recovered and are recorded in `Documentation/Reference/DataSymbols.md` (#20); the `(kind, size)` reading of them is still a hypothesis and needs confirming against `FUN_00532070`'s use of the table. Until then `DecodeResourceChunk` (#19) cannot be reached, so it stays untested.~~
 
 ## ~~Systemic blocker~~ — RESOLVED: `Blaze.exe` is now in the repo
 
 **This section previously said a whole class of work was impossible. It was wrong, and it
 was the most misleading thing in this file** — it told every future session not to try.
 
-`Blaze.exe` is now committed at **`Legacy/Blaze.exe`** (1,589,760 bytes, MD5
+`Blaze.exe` is now committed at **`Legacy/Binaries/Blaze.exe`** (1,589,760 bytes, MD5
 `46d90d1b4526f4a9a441f851c77179b3`), registered as a solution item under the
 existing `Legacy` solution folder. It is provably the same build `Blaze.c` came
 from: image base `0x400000` + entry RVA `0x147D40` = `0x00547D40`, exactly
@@ -415,11 +415,11 @@ it was getting the bytes.
 Read them with:
 
 ```
-OpenForesia.Tools sections Legacy/Blaze.exe
-OpenForesia.Tools at Legacy/Blaze.exe 0x005631f8 [bytes]
+OpenForesia.Tools sections Legacy/Binaries/Blaze.exe
+OpenForesia.Tools at Legacy/Binaries/Blaze.exe 0x005631f8 [bytes]
 ```
 
-All recovered values are recorded in **`Documentation/DataSymbols.md`**, keyed by
+All recovered values are recorded in **`Documentation/Reference/DataSymbols.md`**, keyed by
 Ghidra VA. Every TODO below that was blocked on data is now resolved there:
 
 | TODO | Symbol(s) | Outcome |
@@ -618,7 +618,7 @@ Three things worth carrying forward from that work:
 
 - **The UI text engine is two passes over one dispatch mechanism.** Pass 1 scans
   through `PTR_LAB_0056e870`, pass 2 renders through `PTR_FUN_0056e728`; both
-  tables are recovered verbatim in `Documentation/DataSymbols.md`. Only 5 of the
+  tables are recovered verbatim in `Documentation/Reference/DataSymbols.md`. Only 5 of the
   31 distinct pass-2 handlers exist in `Blaze.c` — the rest are address-taken-only
   and need a scoped Ghidra re-run. **The main menu reaches none of them**: its
   three control codes are covered, two decompiled and one decoded by hand.
@@ -696,7 +696,7 @@ OT and returns the advanced cursor, and `FUN_0052a280` walks the OT
 through return values — that threading *is* the display list.
 
 **Both frame functions' parameters are now confirmed against disassembly**
-(`Legacy/Raw/FUN_0052a1e0.asm`, `FUN_0052a280.asm`). Ghidra gives `FUN_0052a1e0`
+(`Legacy/Raw/Blaze/FUN_0052a1e0.asm`, `FUN_0052a280.asm`). Ghidra gives `FUN_0052a1e0`
 two parameters where the call sites pass three, and `FUN_0052a280` **none** where
 they pass five. The listings settle both, and found one real error the reasoning
 had missed:
@@ -778,7 +778,7 @@ being a reading task.
 
 - **`DecodeResourceChunk` (Ghidra: `FUN_005322f0`)** — **now genuinely reached
   at runtime** against real game data, and the blocker on the resource path.
-  Recovering it needs a **Ghidra re-run** on `Legacy/Blaze.exe` with corrected
+  Recovering it needs a **Ghidra re-run** on `Legacy/Binaries/Blaze.exe` with corrected
   calling conventions, which is possible now that the binary is in the repo —
   it is no longer gated on anything external. Reached from
   `LoadFirstLevelResources`'s directory-entry loop
@@ -1120,7 +1120,7 @@ resumes. Verified: the entry exits the game, and no crash is recorded in the eve
 
 `FUN_00511d40` is reconstructed, with its two helpers (`FUN_005115a0` scancode→name index,
 `FUN_005109c0`/`FUN_005108b0` draw a key name) and its five data tables, all read out of
-`Legacy/Blaze.exe`:
+`Legacy/Binaries/Blaze.exe`:
 
 | table | size | content |
 |---|---|---|
@@ -1284,7 +1284,7 @@ The reconstruction now owns a real window — the Direct3D 11 backend's — whic
 TODO #6 was written and declared blocked behind a Ghidra re-run. There is therefore a legitimate
 handle to pass, and it works.
 
-Everything the DLL side needed came out of `Legacy/Blaze.exe` rather than out of guesswork:
+Everything the DLL side needed came out of `Legacy/Binaries/Blaze.exe` rather than out of guesswork:
 `GUID_SysKeyboard` (0x0054db58), `GUID_SysMouse` (0x0054db48), `GUID_Key` (0x0054db18), the three
 axis GUIDs (0x0054da98..b8), and both `DIDATAFORMAT`s with their object tables (0x00546f60 /
 0x00545f60 for the keyboard, 0x00546ff0 / 0x00546f80 for the mouse). The tables are rebuilt field
@@ -1306,7 +1306,7 @@ Three things worth carrying forward from `FUN_00523660`:
 
 - **The button convention is active low.** A player's word starts at `0xffff` and every bound key
   that is down clears its bit. The 20 masks come from `DAT_00564f18`, read out of
-  `Legacy/Blaze.exe`: unmistakably a PlayStation pad — `0x0010` up, `0x0020` right, `0x0040` down,
+  `Legacy/Binaries/Blaze.exe`: unmistakably a PlayStation pad — `0x0010` up, `0x0020` right, `0x0040` down,
   `0x0080` left, `0x0008` start, `0x0001` select, the face buttons at `0x1000..0x8000`, the
   shoulders at `0x0100..0x0800`, and four two-button combinations closing the table.
 - **`state[0x1c] |= state[0x9c]`** is `DIK_RETURN |= DIK_NUMPADENTER` — the keypad's Enter folded
@@ -1390,7 +1390,7 @@ faster than round-tripping through the PE export table at all — see
 worked examples of both workflows.
 
 **`OpenForesia.Tools at` works on the helper DLLs too**, not just
-`Legacy/Blaze.exe` — `at winsys3d.dll <va>`, `at 3dhelp.dll <va>`, using the
+`Legacy/Binaries/Blaze.exe` — `at winsys3d.dll <va>`, `at 3dhelp.dll <va>`, using the
 very `@ 0xXXXXXXXX` addresses those `.c` files carry. Unlike `Blaze.c`, the DLLs
 ship with their data sections in the repo, so a DLL symbol whose value lives in
 initialised data is **never** blocked the way a `Blaze.c` one used to be: it is
@@ -1425,7 +1425,7 @@ Two deviations from the original, both commented at the call sites rather than l
 - `null` guards on the directory and on `MainMem` that the original does not have.
 - `FUN_0040a600()` is not transcribed. Its decompiled body is **empty** (`Blaze.c:4319`), so this
   is behaviourally neutral — but Ghidra's signature for it is wrong (other sites pass arguments).
-  Recorded in `Documentation/DataSymbols.md`.
+  Recorded in `Documentation/Reference/DataSymbols.md`.
 
 ### Two globals were about to be misnamed
 
@@ -1437,12 +1437,12 @@ entry's `+0x16` field, `Blaze.c:55840`; count read at `[-4]`, `Blaze.c:79042`), 
 holds models (16-byte primitive records bucketed by type, vertex counts divided by three).
 Renamed to `s_ModelTable_005e96a0` / `s_AnimationTable_005e9640` before the thirty read sites
 arrive. Capacity is 24, not `0x40`: the two symbols are `0x60` bytes apart. Full layout in
-`Documentation/DataSymbols.md`.
+`Documentation/Reference/DataSymbols.md`.
 
 ### The frame loop's eight handlers need a Ghidra re-run
 
 `FUN_00506880` dispatches through `PTR_LAB_00560708`, an eight-entry table read out of
-`Legacy/Blaze.exe`:
+`Legacy/Binaries/Blaze.exe`:
 
 | index | target | index | target |
 |---|---|---|---|
@@ -2012,7 +2012,7 @@ neither text nor frame. `BuildStatusDescriptor` had the same shape of gap, one d
 All four instances are now written from the binary, and the transcription was verified
 mechanically rather than by eye — the dwords in `Blaze.cs` were extracted and diffed against
 `od` output at file offsets `0x15ED28`, `0x15F5F0`, `0x15FEB8` and `0x160780`: 78/78 and 26/26
-identical. The full table is now in `Documentation/DataSymbols.md`, along with the reading of the
+identical. The full table is now in `Documentation/Reference/DataSymbols.md`, along with the reading of the
 odd dwords as *enable* halves of *(parameter, enable)* pairs.
 
 ### The frozen `DrawPrimitive` counter was a misreading
@@ -2123,7 +2123,7 @@ opens with control code `0x0f`.
 The guard's message says "needs a scoped Ghidra re-run", and that is the right default for this
 class — but it is worth checking the body's size first. `0x00544e50` is **33 bytes**, decodable by
 hand exactly like the four scan stubs and `0x00544b10` before it. Full listing in
-`Documentation/DataSymbols.md`; the reconstruction is `Handler_00544e50`.
+`Documentation/Reference/DataSymbols.md`; the reconstruction is `Handler_00544e50`.
 
 Registered in **both** tables: slot 15 holds `0x00544e50` on the scan side as well as the render
 side, unlike the codes whose pass 1 substitutes an advance stub.
@@ -2605,7 +2605,7 @@ shrug — Ghidra was right and the hunch was wrong.
 
 The other two tables (`&DAT_00562ab8`, eight bytes; `&DAT_00562ac0`/`&DAT_00562ac8`, eight bytes
 and nine words) had no `.asm` to check against at all, so they were read straight from
-`Legacy/Blaze.exe` with `OpenForesia.Tools -- at` and recorded as `s_ClassStartIcon_00562ab8`,
+`Legacy/Binaries/Blaze.exe` with `OpenForesia.Tools -- at` and recorded as `s_ClassStartIcon_00562ab8`,
 `s_StatBitRemap_00562ac0`, `s_StatBitTable_00562ac8`.
 
 ### What's transcribed, and where it stops
@@ -2745,7 +2745,7 @@ unrelated gap fires first; it remains the real blocker for this screen once `0x0
 
 Sub-state **2** (143 lines, back-step only). For sub-state 7: the text-engine control code `0x04`
 gap (quick — same shape as the already-fixed ones, needs its handler read from
-`Legacy/Blaze.exe`/`Documentation/DataSymbols.md`), then `FUN_0051be90` (needs a forced-signature
+`Legacy/Binaries/Blaze.exe`/`Documentation/Reference/DataSymbols.md`), then `FUN_0051be90` (needs a forced-signature
 Ghidra re-run, six params, see above), then the memory-card subsystem itself if save/load is ever
 to actually work. None of these block sub-state 6 from being finished first instead, via its own
 five missing functions — the two blockers are independent.
@@ -2864,7 +2864,7 @@ already-fixed ones."
 
 ### Control code `0x04` — `Handler_005449b0`, as expected
 
-Decoded by hand from `Legacy/Blaze.exe` (file offset `0x143db0`, 21 bytes to the `RET`), same
+Decoded by hand from `Legacy/Binaries/Blaze.exe` (file offset `0x143db0`, 21 bytes to the `RET`), same
 recipe as `0x06`/`0x09`/`0x1c`. Two operand bytes, writing verbatim into the low word of the
 descriptor's `+0x20` "rect" dword that `EmitTextSprite` reads back to place the finished line's
 sprite — `text[0]` becomes `rect & 0xff`, `text[1]` becomes `(rect >> 8) & 0xff`. The dword's upper
@@ -2875,7 +2875,7 @@ text into a panel) is left untouched. Confirmed by build; wired into `BuildTextT
 
 Fixing `0x04` let `playtest.ps1 -Trace` (via `OPENFORESIA_FORCE_SUBSTATE=7`) advance further into
 the same text stream and crash on control code `0x01` instead, dispatching to `FUN_00544810`.
-**Wasted real effort hand-disassembling it from `Legacy/Blaze.exe` before thinking to grep
+**Wasted real effort hand-disassembling it from `Legacy/Binaries/Blaze.exe` before thinking to grep
 `Blaze.c` for the address** — it was fully decompiled all along (`Blaze.c:91274`), unlike
 `FUN_0051be90`. **Lesson for next time: always grep `Blaze.c` for the target `FUN_` address before
 reaching for the binary.** The half-finished hand-disassembly did turn out useful for one thing: it
@@ -2903,7 +2903,7 @@ assigned by anything, so always `0`). The second one gates real rendering paths 
 call sites (`DrawAnimatedModel`, `EmitParticle`, `DrawUiPanel` neighbours, lines 983/1255/1397/
 1417/6849/10499/10532/10601/11915) — every one of those `if (s_Unknown_00564a48 != 0)` branches is
 silently dead in the current port, always taking the "false" side. `DAT_00564a48`'s *compiled*
-`.data` value is `1` (confirmed by reading `Legacy/Blaze.exe` directly), so in the original this
+`.data` value is `1` (confirmed by reading `Legacy/Binaries/Blaze.exe` directly), so in the original this
 gate was live far more often than our port currently reproduces. **Not fixed this session** — nine
 call sites is real scope, and merging the two needs re-checking each site's branch against what the
 capability bit is actually supposed to mean (still TODO(REVERSE) itself, per `CheckDeviceCapabilityFlag`'s
@@ -2915,7 +2915,7 @@ and worth checking first if any "geometry right, image wrong" report ever comes 
 
 `Blaze.c:91310`: `return (DAT_0056321c + 1) * (int)(param_1 + 3);` — every sibling text-control
 handler just returns the advanced cursor; this one multiplies it. Confirmed byte-for-byte against
-`Legacy/Blaze.exe` (file offset `0x143c10`..`0x143d6b`, no branch after the load, so this really is
+`Legacy/Binaries/Blaze.exe` (file offset `0x143c10`..`0x143d6b`, no branch after the load, so this really is
 unconditional): `MOV EAX,[DAT_0056321c]; INC EAX; IMUL EAX,[ESP+4]; RET`. The `[ESP+4]` read really
 does resolve to `param_1 + 3` — the function spills its updated cursor into its own incoming
 argument's stack slot mid-body (`MOV [ESP+0x14], EAX` while 4 callee-saved registers are still
@@ -2983,7 +2983,7 @@ and the dead `int` field's declaration removed from its shared line with `s_Unkn
 With the CD mounted, `Get-ChildItem E:\` turned up `cd.idx`, size **671,088,640 bytes — exactly
 `0x28000000`**, exactly the value the previous session's write-up predicted from
 `Handler_00544810`'s return-value multiply without being able to check it. Reading
-`Legacy/Blaze.exe`'s `.data` directly at `DAT_00563280` (file offset `0x161880`) confirmed the
+`Legacy/Binaries/Blaze.exe`'s `.data` directly at `DAT_00563280` (file offset `0x161880`) confirmed the
 template text itself: **`"@:\cd.idx"`** — TODO #2 is fully resolved, not just narrowed. This was
 1998-era copy protection: an authentic disc's `cd.idx` is exactly 640 MiB, which makes
 `DAT_0056321c` land on exactly `0` and the text-cursor multiply in `Handler_00544810` reduce to
@@ -3055,7 +3055,7 @@ dereferencing it as `EmitCardGlyphTile`'s `sprite[0]` faulted immediately. Same 
 last entry's `cdCheckPath` placeholder, different manifestation: a hardcoded `.data` address used
 as a live pointer rather than a filename template.
 
-Read the real 8 bytes straight from `Legacy/Blaze.exe` (file offset `0x165230`): `{ 0x08504800,
+Read the real 8 bytes straight from `Legacy/Binaries/Blaze.exe` (file offset `0x165230`): `{ 0x08504800,
 0x02300000 }` — a plausible (colour, attributes) pair (digit column width computes to 8px, texture
 page index 0x30, both sane). Allocated a real 8-byte buffer,
 `s_NumeralTileRecord_00566c30`, and repointed all three call sites at it instead of the literal.
@@ -3175,7 +3175,7 @@ The name ("PS1-BIOS-flavoured") oversold it. Reading `winsys3d.c`'s actual bodie
 9/21/22/23/24/25/67/68/69/72 (`FUN_00a041d0`/`04600`/`04650`/`04660`/`04680`/`046b0`/`050d0`/
 `050f0`/`02e20`) shows ordinary `CreateFileA`/`CloseHandle`/`SetFilePointer`/`ReadFile`/`WriteFile`
 wrappers, plus a device-path builder (`FUN_00a03f80`) that reads two static ANSI strings —
-`"save\"` and `"Blaze-Saving*"` — recovered directly from `Legacy/Blaze.exe` (`DAT_00563158`, file
+`"save\"` and `"Blaze-Saving*"` — recovered directly from `Legacy/Binaries/Blaze.exe` (`DAT_00563158`, file
 offset `0x161758`). This PC port never emulates real memory-card hardware; it just writes ordinary
 files to a `save\` folder next to the executable.
 
@@ -3184,7 +3184,7 @@ files to a `save\` folder next to the executable.
 Ordinals 67, 68, 69 and 72 all share one body (`FUN_00a050f0`/`00a050d0`/`00a02e20`) that Ghidra
 decompiled as taking **no parameters**, even though every call site passes one. Before writing the
 P/Invoke declarations, read the raw bytes at each address in `winsys3d.dll` directly
-(`OpenForesia.Tools -- at winsys3d.dll <va>`) and found `RET 4` on all four — genuinely one
+(`OpenForesia.Tools -- at Legacy/Binaries/winsys3d.dll <va>`) and found `RET 4` on all four — genuinely one
 stdcall parameter, silently ignored by the body (which just pushes hardcoded constants to a shared
 dispatcher, `FUN_00a04270`, and returns a fixed value). This is exactly the "Ghidra arity" trap
 `test-protocol.md` already warns about, caught here at declaration time instead of as a
@@ -3258,7 +3258,7 @@ phase `0x11` (success).
 
 Also transcribed `NameEncodeChar` (Ghidra: `FUN_0050a810`) — the ASCII/Latin-1 → Shift-JIS
 half/full-width encoder for the on-disk name field — using the three data tables read directly out
-of `Legacy/Blaze.exe` (`s_NameEncodeTable_00562b52` at file offset `0x161152`, plus the two accent
+of `Legacy/Binaries/Blaze.exe` (`s_NameEncodeTable_00562b52` at file offset `0x161152`, plus the two accent
 tables). Hand-verified against known Shift-JIS full-width digit codes (`'0'` → `0x4F82`, `'1'` →
 `0x5082`) before trusting it.
 
@@ -3328,7 +3328,7 @@ since it also requires an identical build) — noted, not fixed, matches origina
 `Blaze.c` writes bytes `0..0xb` of this buffer, and our port zero-initializes it, the copy loop
 exits immediately on the leading zero, before ever reaching the real 7-char code — the effective
 filename is currently always empty in this port. Read the real on-disk bytes at that address
-directly from `Legacy/Blaze.exe` (file offset `0x165bc0`) to check whether they'd fix it: they're
+directly from `Legacy/Binaries/Blaze.exe` (file offset `0x165bc0`) to check whether they'd fix it: they're
 **not zero** — `98 84 56 00 00 00 00 00 88 84 56 00 78 84 56 00 68 84 56 00 58 84 56 00 48 84 56 00
 01 00 00 00`, a shape that reads as seven dwords `0x568498, 0, 0x568488, 0x568478, 0x568468,
 0x568458, 0x568448` (spaced `0x10` apart — pointer-table-shaped) plus a trailing `1`. **Deliberately
@@ -3471,7 +3471,7 @@ equivalent call is **already present and unconditional, every frame**, in our po
 
 **The dead end**: the confirm-cursor branch only runs if `s_StatusDescriptor_00560728[0x30]` has bit
 `0x1000000` set, and nothing sets it. Read the real static bytes at that exact address
-(`Legacy/Blaze.exe`, VA `0x560758`) directly: `0x000F28D4` — bit 24 clear. Grepped both `Blaze.c`
+(`Legacy/Binaries/Blaze.exe`, VA `0x560758`) directly: `0x000F28D4` — bit 24 clear. Grepped both `Blaze.c`
 and every `Legacy/Raw/Blaze/*.c` for any write to `0x560758`: none. So even on its real,
 already-correctly-wired path, this specific descriptor's confirm cursor cannot currently activate —
 neither the code nor the static data arms it. Whatever *does* arm it in the original (almost
@@ -3494,7 +3494,7 @@ literal-address scanning has now been tried twice and is exhausted for this spec
 
 ## 2026-08-16 — a real hardware breakpoint (x32dbg, user's Windows 10 machine) resolves the whole mechanism, and reframes the "stuck" screen entirely
 
-`Legacy/Blaze.exe` does not run on this machine's Windows 11 (untested territory, still unresolved),
+`Legacy/Binaries/Blaze.exe` does not run on this machine's Windows 11 (untested territory, still unresolved),
 but does on the user's other, Windows 10 machine. Set a hardware write breakpoint on
 `0x00560758` (`s_StatusDescriptor_00560728+0x30`) there with x32dbg and drove the real 1998 game
 through character creation to the save screen. Two runs, both archived under
@@ -3833,7 +3833,7 @@ Also resolved the bit-packing of the "atlas" dword (`packing = *cursor[0]`) agai
 `FrameEnd`'s banner passes `&DAT_00566c28` as that pointer. **The binary is in the repo now**
 (`REVERSE_STATUS.md` line 11 already says so — this was the first time this session actually needed
 it), so `DAT_00566c28`'s bytes aren't a systemic-blocker case at all:
-`dotnet run --project OpenForesia.Tools -- at Legacy/Blaze.exe 0x00566c28 32` reads `0x40803000` /
+`dotnet run --project OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00566c28 32` reads `0x40803000` /
 `0x02300000` straight off disk, which decodes to a clean 8×8 glyph cell (origin Y=0x30, cell 8×8) —
 confirming the derived bit layout (`origin X/Y` in the low two bytes, cell `W`/`H` at `>>0x14`/`>>0x1b`)
 independently of the asm reading.
@@ -3926,7 +3926,7 @@ just the decompiler's standard artifact for `/EHa`-compiled functions) and resol
 findings worth keeping in mind for the next SEH-shaped function:
 - The very first instruction, before the prologue, loads `[0x56315c]` and that value gets pushed as
   the sole argument to what's already `SetCardFileName` — confirmed by reading the raw bytes at
-  `0x56315c` (`at Legacy/Blaze.exe`), which hold exactly `0x563160`, the address of the already-declared
+  `0x56315c` (`at Legacy/Binaries/Blaze.exe`), which hold exactly `0x563160`, the address of the already-declared
   `s_SaveDeviceName_00563160` ("Blaze-Saving*"). A `PTR_xxx` name in Ghidra's pseudo-C is worth
   resolving the same way `DAT_` globals already are — it may just be a pointer *to* something already
   named.
@@ -3978,7 +3978,7 @@ refaire, ainsi que le seul obstacle réel qui reste devant lui.
 `RunGameState1Entry` branche sur `DAT_005633a8 == 0 && manette_connectée`. Trois choses étaient
 fausses d'un coup, et elles se répondent :
 
-- **La valeur au chargement est 1**, relevée dans le binaire (`at Legacy/Blaze.exe 0x005633a8`,
+- **La valeur au chargement est 1**, relevée dans le binaire (`at Legacy/Binaries/Blaze.exe 0x005633a8`,
   `.data`). La reconstruction la laissait au zéro par défaut de C#, donc le chemin A était le chemin
   pris — l'inverse de la réalité. Largeur confirmée par le code machine
   (`0x00536218 39 1D A8 33 56 00 CMP dword [0x5633a8],EBX`).
@@ -4448,7 +4448,7 @@ pointeurs plutôt qu'une chaîne, et refusé — à raison — de s'en servir te
 
 `pcRam00566bc0` est un **pointeur logé à cette adresse**, pas le tampon lui-même. Tranché en
 désassemblant les huit sites de `.text` qui la touchent (recherche des motifs d'octets directement
-dans `Legacy/Blaze.exe`) : tous chargent l'adresse — `8B 35 / 8B 0D / 8B 15  C0 6B 56 00`, soit
+dans `Legacy/Binaries/Blaze.exe`) : tous chargent l'adresse — `8B 35 / 8B 0D / 8B 15  C0 6B 56 00`, soit
 `MOV reg,[0x566BC0]` — avant d'écrire à travers (`88 54 30 0C` = `MOV [EAX+ESI+0xC],DL`). Et aucun
 ne l'écrit jamais : pas un seul `A3 C0 6B 56 00` ni `89 xx C0 6B 56 00` dans tout `.text`, donc le
 pointeur garde sa valeur de chargement pour toute la partie.
@@ -4458,7 +4458,7 @@ premiers octets, dont le rôle était noté « non établi », sont donc simplem
 littéral** ; les sept caractères de code atterrissent dans les espaces, et le NUL se pose à `+0x13`.
 `12 + 7` — exactement la forme que Vincent décrivait. Corroboration de voisinage : `0x00566bb8` et
 `0x00566bbc` portent les pointeurs de `"SYSTEM.INI"` et `"BLAZE.ALL;1"`, `0x00566bc0` est l'entrée
-suivante de la même table de noms de fichiers. Consigné dans `Documentation/DataSymbols.md`.
+suivante de la même table de noms de fichiers. Consigné dans `Documentation/Reference/DataSymbols.md`.
 
 Même piège, à trois symboles d'écart, que celui déjà corrigé dans `SetCardPathDeviceFields` : la
 pseudo-C de Ghidra montre une déréférence de moins que l'assembleur. Quand un symbole `DAT_`/`pcRam`
@@ -4540,7 +4540,7 @@ présent » du `case 1`, la seule à appeler `ResetCardTransferStatus` → `Ordi
 ### Les huit cibles sont lisibles : neuf octets chacune
 
 Aucun corps dans `Blaze.c` (fonctions uniquement prises par adresse — catégorie « re-run Ghidra »).
-Mais lues directement dans `Legacy/Blaze.exe`, ce sont huit talons `C7 05 <globale> <imm32>` + `C3`,
+Mais lues directement dans `Legacy/Binaries/Blaze.exe`, ce sont huit talons `C7 05 <globale> <imm32>` + `C3`,
 soit une affectation et un retour :
 
 ```
@@ -4785,7 +4785,7 @@ fausse ». C'est arrivé, mot pour mot.
 
 ### Le désassemblage montre la seconde construction, entièrement fondue par Ghidra
 
-`Legacy/Blaze.exe`, `0x0050B197..0x0050B1E6` — trouvé en cherchant les octets `16 8F 5E 00` dans
+`Legacy/Binaries/Blaze.exe`, `0x0050B197..0x0050B1E6` — trouvé en cherchant les octets `16 8F 5E 00` dans
 `.text` (les deux seules lectures de `DAT_005e8f16` du binaire tombent dans ce bloc) :
 
 ```
@@ -4920,7 +4920,7 @@ un `TODO(REVERSE)` : la pseudo-C le fait pointer sur un emplacement de pile que 
 symptôme du cadre de pile que Ghidra n'a pas récupéré sur cette fonction. Les deux tracés étaient
 donc sautés, et le port affichait 150 images vides.
 
-Résolu en désassemblant directement `Legacy/Blaze.exe`. L'original monte l'enregistrement octet par
+Résolu en désassemblant directement `Legacy/Binaries/Blaze.exe`. L'original monte l'enregistrement octet par
 octet juste avant la boucle (`0x0052A51B..0x0052A53D`), puis relie son adresse au descripteur à
 chaque tour (`0x0052A57E`, `LEA EAX,[ESP+0x20]` → `MOV [ESP+0x3C],EAX`) :
 
@@ -5024,7 +5024,7 @@ Sans fichier de configuration, les vingt liaisons manette de chaque joueur — q
 valeurs par défaut — restaient donc vides, et `0` y est un bouton valide : l'écran aurait affiché
 « gauche » partout au lieu de « libre ».
 
-Les 960 octets sont relus dans `Legacy/Blaze.exe` (`.data`, VA `0x00564B58`) et correspondent **clé
+Les 960 octets sont relus dans `Legacy/Binaries/Blaze.exe` (`.data`, VA `0x00564B58`) et correspondent **clé
 pour clé** aux 240 lignes `[Controls]` du BLAZE.cfg installé. Les deux sources se confirment
 mutuellement.
 
@@ -5042,8 +5042,8 @@ boutons de manette, écrite d'emblée avec la bonne expression, servait de contr
 
 ### Le fichier de configuration de référence
 
-`Documentation/OpenForesia.cfg.default` — copie octet pour octet du BLAZE.cfg installé, dont le
-contenu est vérifié contre le binaire comme ci-dessus. `Documentation/OpenForesia.cfg.md` documente
+`Documentation/Reference/OpenForesia.cfg.default` — copie octet pour octet du BLAZE.cfg installé, dont le
+contenu est vérifié contre le binaire comme ci-dessus. `Documentation/Reference/OpenForesia.cfg.md` documente
 le format : l'encodage `K<joueur><table><action>`, les vingt actions avec leur masque manette
 (recoupé avec le tableau vérifié en jeu de `test-protocol.md`), et les pièges — clés périmées qui
 survivent parce que `WritePrivateProfileString` n'efface jamais, `Timing` sans effet hors de sa
@@ -5178,7 +5178,7 @@ Il ne reste aucun `TODO(REVERSE)` ni `NotImplementedException` dans cette zone.
 ## 2026-08-18 — le menu objets (état de jeu 6) : l'entrée, la boucle et l'écran racine
 
 Vincent a demandé de passer au menu objets, après remise de la configuration d'affichage à ses
-valeurs par défaut (`Documentation/OpenForesia.cfg.default` recopiée ; `Small` était resté à 1
+valeurs par défaut (`Documentation/Reference/OpenForesia.cfg.default` recopiée ; `Small` était resté à 1
 après l'excursion en 320x240 de la séance précédente).
 
 ### Le découpage, et le choix de portée
@@ -5397,7 +5397,7 @@ ensemble. Sans cette lecture de la phase 10, le `strncpy` du prologue restait in
 
 **Un troisième descripteur d'interface.** `0x564fe0 + 0x8c8 = 0x5658a8 + 0x8c8 = 0x566170`. La
 boucle de rendu de la page n'en parcourt que deux ; le troisième n'appartient qu'à ce sous-écran,
-qui le lie et le dessine lui-même. Son en-tête est relevé dans `Legacy/Blaze.exe`, et son `+4`
+qui le lie et le dessine lui-même. Son en-tête est relevé dans `Legacy/Binaries/Blaze.exe`, et son `+4`
 vaut `0x00640014` — exactement ce que la phase 9 y réécrit, ce qui confirme le relevé.
 
 **`DAT_005de4e8` porte deux rôles.** Drapeau « liste déjà chargée » dans « Enchère »
@@ -5696,7 +5696,7 @@ comme la note le disait, mais **sept** copies (0x20 + 0x40 × 6) suivies de onze
 
 Les sept tables de l'index 0 — le seul que la carte du monde atteigne, l'index valant
 `zone * 0x10 + sous-zone` et étant forcé à 0 quand la zone est 0 — sont relevées dans
-`Legacy/Blaze.exe` et **générées mécaniquement**, pas recopiées à la main. Répartition :
+`Legacy/Binaries/Blaze.exe` et **générées mécaniquement**, pas recopiées à la main. Répartition :
 
 | table | entrées | non vides |
 |---|---|---|
@@ -5881,7 +5881,7 @@ décompilée.)
 `openspec/changes/split-blaze-into-subsystems`. Le fichier unique de **23 680 lignes** est réparti
 en 30 fichiers sous `OpenForesia/src/Blaze/` (`Platform/`, `Memory/`, `Engine/`, `Screens/`), plus
 5 fichiers d'échafaudage sortis dans `OpenForesia/src/Host/`. Tout `src/Blaze/` reste **une seule
-classe partielle**. `ARCHITECTURE.md`, à la racine, fait autorité sur la carte et sur la règle qui
+classe partielle**. `Documentation/ARCHITECTURE.md` fait autorité sur la carte et sur la règle qui
 décide où va une fonction.
 
 **Prouvé sans perte** : les 28 corps réassemblés dans l'ordre du manifeste sont identiques à la
@@ -5950,7 +5950,7 @@ inversé la dépendance.
 
 ### 4. Un défaut d'aliasing dormant, et quatre allocations dans une arène
 
-L'index des globales trié par adresse — désormais en fin de `Documentation/DataSymbols.md` — a été
+L'index des globales trié par adresse — désormais en fin de `Documentation/Reference/DataSymbols.md` — a été
 construit pour rendre le contrôle d'adjacence encore possible après le découpage : **107 paires de
 symboles voisins (écart ≤ 64 octets) vivent maintenant dans deux fichiers différents**, sur
 398 déclarateurs répartis sur 375 adresses.
@@ -6084,7 +6084,7 @@ changement séparé. Ils sont documentés comme échecs attendus dans le projet 
 
 Ce qu'il faut en retenir : ces quatre assertions ont trouvé **deux défauts inconnus en une seconde,
 sans lancer le jeu**, alors que les seize précédents avaient tous été vus à l'écran, après coup. La
-carte des symboles reconstruits de `Documentation/DataSymbols.md` et ces tests forment ensemble le
+carte des symboles reconstruits de `Documentation/Reference/DataSymbols.md` et ces tests forment ensemble le
 contrôle que le projet n'avait pas.
 
 ### Trois pièges PowerShell, payés et documentés
@@ -7090,3 +7090,82 @@ s'est arrêtée à l'écran d'organisation du groupe. Cause : `(relance detectee
 la course pour la mémoire basse et s'était relancé en processus fils, ce qui **décale toute la
 séquence de touches** de `-Then`. Relancer suffit. À ne pas confondre avec « la séquence est
 fausse ».
+
+---
+
+## 2026-08-21 — reorganisation du depot : la racine ne porte plus que deux fichiers
+
+Aucun changement de code, aucun changement de comportement. La racine portait six decompilations
+Ghidra (6,9 Mo), cinq DLL et onze fichiers `.md` en vrac ; elle ne porte plus que `CLAUDE.md` et
+`OpenForesia.sln`.
+
+```
+Legacy/Binaries/     Blaze.exe  Blaze.cfg  + les cinq DLL d'aide
+Legacy/Decompiled/   Blaze.c  winsys3d.c  wsyskern.c  playst.c  3dhelp.c  gldhelp.c
+Legacy/Raw/          (inchange)
+
+Documentation/ARCHITECTURE.md
+Documentation/Etat/        TODO.md  REVERSE_STATUS.md  HISTORY.md
+Documentation/Methode/     Prompt.md  Strategy.md
+Documentation/Reference/   DataSymbols.md  legacy-bug.md  OpenForesia.cfg.md  .cfg.default
+Documentation/Tests/       test-protocol.md  test-todo-later.md  ANALYSE_ECRAN_NOIR_MENU.md
+Documentation/DLL/         (inchange)
+```
+
+Tout est passe par `git mv`, donc l'historique de chaque fichier suit.
+
+### Ce qui a rendu le deplacement de `Blaze.c` peu couteux
+
+Sa taille (3,1 Mo) et ses **371 mentions** dans le depot le faisaient paraitre intouchable — c'est
+d'ailleurs ce qu'affirmait la proposition `recover-blaze-data-section` : « relocating it is out of
+scope ».
+
+Mesure faite avant d'agir : **les 371 mentions sont toutes en prose** (« `Blaze.c` 74824 »), aucune
+n'est un chemin. Et **aucun outil ne l'ouvre** — ni `playtest.ps1`, ni `compare-bodies.ps1`, ni
+`split-manifest.awk`. Le seul endroit qui portait un chemin etait `OpenForesia.sln`.
+
+**Une taille de fichier n'est pas une mesure de couplage.** Ce qui compte est le nombre de
+references *par chemin*, et ici il valait un.
+
+### `Legacy/Decompiled` etait deja le nom prevu
+
+Le `.sln` rangeait `Blaze.c` sous un dossier virtuel `Legacy/Decompiled` **tout en le laissant
+physiquement a la racine** — l'ecart etait explicitement note dans
+`openspec/changes/recover-blaze-data-section/proposal.md`. Le disque coincide desormais avec la
+solution, et le nom n'a pas eu a etre invente.
+
+### Trois references cassees trouvees en chemin, anterieures a ce rangement
+
+Le controle « chaque chemin cite existe-t-il ? » a leve trois erreurs qui n'avaient rien a voir
+avec ce changement :
+
+* les trois items `Legacy\Raw\FUN_*.txt` du `.sln` pointaient a cote — ces fichiers avaient
+  emmenage dans `Legacy/Raw/Blaze/` sans que la solution suive ;
+* les memes chemins etaient perimes dans `REVERSE_STATUS.md` et deux changements openspec ;
+* `winsys3d.md` a la racine etait documente comme « ancienne version remplacee » depuis un moment.
+  Supprime — git le garde.
+
+**Un rangement est une occasion de verifier les chemins, pas seulement de les changer.** Le controle
+tient en une ligne et vaut d'etre refait apres tout deplacement :
+
+```bash
+grep -rhoE "(Documentation|Legacy|OpenForesia|openspec)[A-Za-z0-9_/.-]*\.(md|exe|dll|cfg|txt)" \
+  --include=*.md . | sort -u | while IFS= read -r p; do [ -e "$p" ] || echo "MANQUANT $p"; done
+```
+
+### La portee a debordee sur le code, et c'etait justifie
+
+La demande portait sur les liens des `.md`. Mais l'ancien chemin du binaire apparaissait aussi dans **47
+fichiers** dont des commentaires et deux **messages d'exception** C#. Un message d'execution qui
+nomme un fichier inexistant est un defaut du message, pas de la documentation : les deux ont ete
+corriges (`BuildTextTable`, `InstallEntityVTables`).
+
+Consequence assumee : l'oracle a signale ces deux corps, a juste titre. Verifie ligne a ligne — ce
+sont bien les seuls, et seul le chemin change dans la chaine. Reference refigee a **513 corps**.
+
+### Verification
+
+Build 0 erreur · oracle « aucune logique modifiee » apres refreeze · tests de disposition 5 verts ·
+`-Entry 1` **382,3** primitives par image, capture relue · **tous les items de solution du `.sln`
+resolvent** et l'outil PE fonctionne sur les nouveaux chemins
+(`at Legacy/Binaries/Blaze.exe 0x005631f8`).

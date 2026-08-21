@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -72,7 +72,7 @@ public static unsafe partial class Blaze
     /// configuration de manettes branchees (l'index est <see cref="s_Unknown_005de50c"/>, calcule
     /// dans la boucle d'image a partir des deux axes « absents »). Le <b>premier octet</b> de
     /// chaque liste en donne le nombre : c'est tout ce que le prologue et la phase 0xd lisent.
-    /// Releve dans <c>Legacy/Blaze.exe</c> a 0x00566a68.
+    /// Releve dans <c>Legacy/Binaries/Blaze.exe</c> a 0x00566a68.
     /// </summary>
     private static readonly byte[][] s_CardSlotLists_00566a90 =
     [
@@ -913,7 +913,7 @@ public static unsafe partial class Blaze
                 case 9:
                 {
                     // ATTENTION : phase **sans predecesseur**. Aucun site du binaire n'ecrit 9 dans
-                    // DAT_005de4d4 (verifie a l'octet sur Legacy/Blaze.exe : les seuls immediats
+                    // DAT_005de4d4 (verifie a l'octet sur Legacy/Binaries/Blaze.exe : les seuls immediats
                     // sont 0, 5, 8, 0xb, 0xd, 0xe, 0x5e, 0x60, 0x62, -1 et -5), et dans cette
                     // fonction le seul chemin est 10 -> 9 par decrement, la phase 10 n'etant
                     // elle-meme atteinte que depuis 9. La paire est donc fermee sur elle-meme :

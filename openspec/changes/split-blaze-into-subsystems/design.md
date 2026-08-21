@@ -300,7 +300,7 @@ Donc la **tâche 1 est un inventaire des 600 fonctions** — nom, adresse virtue
 actuelle, fichier cible — généré puis **relu et validé avant qu'une seule ligne bouge**. C'est
 l'application directe de la règle de méthode du dépôt : *mesurer avant d'écrire*.
 
-### D7 — L'index d'adresses rejoint `Documentation/DataSymbols.md`
+### D7 — L'index d'adresses rejoint `Documentation/Reference/DataSymbols.md`
 
 `DataSymbols.md` (874 l.) est déjà **clé par l'adresse virtuelle Ghidra**. L'index dont le découpage
 a besoin l'est aussi. Ils sont complémentaires, pas redondants :

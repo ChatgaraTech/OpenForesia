@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -75,7 +75,7 @@ public static unsafe partial class Blaze
     /// Ghidra: <c>FUN_00547960(dest, &amp;DAT_005630c4, valeur)</c> — le <c>sprintf</c> de la CRT,
     /// appelé avec le format <c>"%d"</c> et un seul argument entier. Écrit ici en formatage décimal
     /// direct plutôt qu'en transcrivant un moteur variadique : c'est la décision déjà consignée
-    /// dans <c>Documentation/DataSymbols.md</c> pour ce site, qui est le seul.
+    /// dans <c>Documentation/Reference/DataSymbols.md</c> pour ce site, qui est le seul.
     /// </summary>
     private static void FormatDecimal(byte* destination, int value)
     {

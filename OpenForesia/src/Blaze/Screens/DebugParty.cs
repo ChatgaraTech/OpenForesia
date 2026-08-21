@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -24,7 +24,7 @@ public static unsafe partial class Blaze
     // quatre personnages en deux clics, avec 9000 PV et 200 PM chacun, et qui affiche
     // « BUFFER OVER » en boucle si le chargement des ressources déborde.
     //
-    // Toutes les données ci-dessous sont relevées directement dans `.data` de Legacy/Blaze.exe
+    // Toutes les données ci-dessous sont relevées directement dans `.data` de Legacy/Binaries/Blaze.exe
     // (`OpenForesia.Tools -- at`), pas devinées.
     // =====================================================================
 

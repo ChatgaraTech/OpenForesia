@@ -139,7 +139,7 @@
       `BuildSelectSubStateBytes`, `BuildLabelDescriptor005606f8`, `BuildSceneToneTable`).
 - [x] 4.3 Créer `Memory/Globals.cs` **vide**, avec en en-tête la règle : une globale n'y entre que
       si un contrôle d'adjacence l'y envoie, jamais pour fermer un fichier.
-- [x] 4.4 Ajouter à `Documentation/DataSymbols.md` la section « carte des symboles reconstruits » :
+- [x] 4.4 Ajouter à `Documentation/Reference/DataSymbols.md` la section « carte des symboles reconstruits » :
       l'index de 1.2, trié par adresse, colonnes VA / symbole C# / fichier. Documenter en tête que
       le contrôle anti-aliasing se fait en lisant les deux tables du fichier ensemble.
 - [x] 4.5 Build + vérification + `playtest.ps1`.

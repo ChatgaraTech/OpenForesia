@@ -173,7 +173,7 @@ aujourd'hui sur des cas connus, ce qui est la meilleure preuve qu'elles servent 
 qu'un changement ultérieur corrige les défauts. Un test qui passe tout de suite ne prouverait rien.
 
 *Source de vérité des tests* : la carte des symboles reconstruits en fin de
-`Documentation/DataSymbols.md`, produite au découpage.
+`Documentation/Reference/DataSymbols.md`, produite au découpage.
 
 ### D6 — L'oracle de remplacement, avant C
 

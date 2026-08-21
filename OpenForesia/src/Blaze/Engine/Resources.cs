@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -56,9 +56,9 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
     // =====================================================================
 
     // Ghidra: PTR_s_BLAZE_ALL_1_00566bbc -> 0x005684b0, PTR_s_SYSTEM_INI_1_00566bb8 -> 0x005684bc.
-    // Recovered verbatim from Legacy/Blaze.exe â€” the `;1` is an ISO-9660 file version, and Ghidra's
+    // Recovered verbatim from Legacy/Binaries/Blaze.exe â€” the `;1` is an ISO-9660 file version, and Ghidra's
     // "_1_" in the symbol names was echoing it all along. Keep the suffix: NormalizePath truncates
-    // at ';' before the open, exactly as winsys3d.dll does. See Documentation/DataSymbols.md.
+    // at ';' before the open, exactly as winsys3d.dll does. See Documentation/Reference/DataSymbols.md.
     private readonly byte* s_ArchiveFileName = ToAnsiZ("BLAZE.ALL;1");
     private readonly byte* s_SystemFileName = ToAnsiZ("SYSTEM.INI;1");
 
@@ -180,7 +180,7 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
     /// Ghidra: les sept tables que la branche <c>DAT_00600904</c> installe d'affilee. Chacune est
     /// choisie dans une table de pointeurs indexee par <c>zone * 0x10 + sous-zone</c> ; les valeurs
     /// ci-dessous sont celles de l'**index 0**, la seule que la carte du monde atteint, relevees
-    /// dans <c>Legacy/Blaze.exe</c> et **generees mecaniquement** plutot que recopiees a la main.
+    /// dans <c>Legacy/Binaries/Blaze.exe</c> et **generees mecaniquement** plutot que recopiees a la main.
     ///
     /// <para><c>0x00401FA0</c> revient partout : c'est la fonction au corps vide. La table
     /// <c>0056adc8</c> est la seule pleine — soixante-quatre entrees, dont dix-neuf distinctes puis
@@ -281,7 +281,7 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
         if (index != 0)
             throw new NotImplementedException(
                 $"Tables de sauts d'entites, index {index} (zone * 0x10 + sous-zone) : seules les " +
-                "valeurs de l'index 0 sont relevees dans Legacy/Blaze.exe. Relever les sept " +
+                "valeurs de l'index 0 sont relevees dans Legacy/Binaries/Blaze.exe. Relever les sept " +
                 "tables de cet index avant d'aller plus loin — voir REVERSE_STATUS.md");
 
         Array.Copy(s_VtSource_0056ad48, s_Vt_0056ad48, s_Vt_0056ad48.Length);
@@ -411,7 +411,7 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
 
     /// <summary>
     /// Ghidra: &amp;PTR_PTR_00566d68 et les onze tables qu'elle designe — un bloc plat de 192 dwords
-    /// a partir de 0x0055e8a8, releve dans <c>Legacy/Blaze.exe</c>. Les tables de zone y commencent
+    /// a partir de 0x0055e8a8, releve dans <c>Legacy/Binaries/Blaze.exe</c>. Les tables de zone y commencent
     /// tous les <b>0x40</b> octets, et 174 des 192 entrees valent <c>FUN_00401FA0</c>, dont le corps
     /// est vide — d'ou la construction par remplissage puis dix-huit exceptions.
     /// </summary>
@@ -580,7 +580,7 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
     // TODO(REVERSE): data-only global, byte content not present in Blaze.c's text; left empty, so
     // the schema-driven second fixup pass below is a safe (but incomplete) no-op â€” same category of
     // gap as s_ResolutionDetailLimit elsewhere in this file.
-    // Ghidra: DAT_0056aca8 â€” recovered from Legacy/Blaze.exe, 37 ushorts ending at the 0x0000 the
+    // Ghidra: DAT_0056aca8 â€” recovered from Legacy/Binaries/Blaze.exe, 37 ushorts ending at the 0x0000 the
     // original's loop terminates on. The terminator is NOT stored here; the loop below runs to the
     // array's length instead, which is equivalent and keeps the sentinel out of the data.
     //
@@ -1029,7 +1029,7 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
     /// dont parlait le TODO à ce site).
     ///
     /// <para>L'original le monte octet par octet juste avant la boucle d'image, puis relie son
-    /// adresse au descripteur à chaque tour (<c>Legacy/Blaze.exe</c>, <c>0x0052A51B..0x0052A53D</c>
+    /// adresse au descripteur à chaque tour (<c>Legacy/Binaries/Blaze.exe</c>, <c>0x0052A51B..0x0052A53D</c>
     /// puis <c>0x0052A57E</c>) :</para>
     /// <code>
     /// MOV [ESP+0x2C],BL      ; 0     MOV [ESP+0x30],BL      ; 0

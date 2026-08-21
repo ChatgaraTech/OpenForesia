@@ -7,7 +7,7 @@ encodage des liaisons de touches. Le jeu le lit au démarrage (`LoadOptionsIni`,
 
 **La version par défaut est conservée ici : [`OpenForesia.cfg.default`](OpenForesia.cfg.default).**
 C'est une copie octet pour octet du `BLAZE.cfg` installé par le jeu d'origine
-(`Legacy/Blaze.cfg`), et son contenu est **vérifié contre le binaire** — voir « D'où viennent les
+(`Legacy/Binaries/Blaze.cfg`), et son contenu est **vérifié contre le binaire** — voir « D'où viennent les
 valeurs par défaut » plus bas. Le fichier réellement utilisé vit à côté de l'exécutable et n'est
 pas suivi par git ; c'est pour ça qu'une référence était nécessaire.
 
@@ -100,7 +100,7 @@ pré-initialisé à l'édition de liens avec les 240 valeurs, et `LoadKeyBinding
 écraser pour les clés effectivement présentes dans le fichier (`GetPrivateProfileIntA` avec `-1`
 comme valeur de repli, et le résultat n'est retenu que s'il diffère de `-1`).
 
-Lues directement dans `Legacy/Blaze.exe` le 2026-08-18 (`.data`, VA `0x00564B58`, 960 octets) :
+Lues directement dans `Legacy/Binaries/Blaze.exe` le 2026-08-18 (`.data`, VA `0x00564B58`, 960 octets) :
 
 ```
 J0 T0 : 71, 79, 81, 73, 57, 42, 56, 29, 59, 0, 0, 60, 72, 77, 80, 75, 0, 0, 12, 13

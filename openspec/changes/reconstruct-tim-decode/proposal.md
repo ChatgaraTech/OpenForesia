@@ -6,7 +6,7 @@ in principle, because Ghidra's own decompilation left inputs as `unaff_ESI`/`una
 `unaff_retaddr` and outputs as `extraout_var*`.
 
 That was a correct observation turned into a wrong conclusion. Incomplete decompilation meant *read
-the disassembly*, not *give up*. With the listing exported to `Legacy/Raw/FUN_005322f0.txt`, the
+the disassembly*, not *give up*. With the listing exported to `Legacy/Raw/Blaze/FUN_005322f0.txt`, the
 function resolves completely — about 60 instructions, no ambiguity left.
 
 ## What the function actually is

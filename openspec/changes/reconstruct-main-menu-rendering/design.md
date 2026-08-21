@@ -18,7 +18,7 @@ Both passes read a byte, advance past it, and dispatch when it is below `0x20`; 
 `0xe` and `0xf` end the pass. Bytes `0x80..0x9f` are DBCS lead bytes (Shift-JIS heritage),
 `0x24` (`$`) marks an escape, `0x26` (`&`) a conditional, `0x5b`/`0x5d` its brackets.
 
-**Both dispatch tables were read from `Legacy/Blaze.exe`**, 32 entries each. They share most
+**Both dispatch tables were read from `Legacy/Binaries/Blaze.exe`**, 32 entries each. They share most
 handlers; pass 1 substitutes trivial cursor-advance stubs wherever pass 2 would draw. Only
 five of pass 2's 31 distinct handlers are decompiled in `Blaze.c` — the rest are reached only
 through these tables, so Ghidra never emitted them as functions.
@@ -84,7 +84,7 @@ it** — a descriptive throw is the correct stage-1 treatment.
 staging buffer at `DAT_005e8304`, tracks the pen in `DAT_005e8320`, and implements word wrap by
 backtracking to the last space (`DAT_005e02fc`) and re-flowing the partial word onto the next
 line, with two copy paths depending on nibble parity. Its glyph widths come from `DAT_0056e7b0`
-and its bitmap from `MainMem + 0x1ad8f0`. Both are recovered in `Documentation/DataSymbols.md`.
+and its bitmap from `MainMem + 0x1ad8f0`. Both are recovered in `Documentation/Reference/DataSymbols.md`.
 
 ## Goals / Non-Goals
 
@@ -105,7 +105,7 @@ and its bitmap from `MainMem + 0x1ad8f0`. Both are recovered in `Documentation/D
 ### Model both tables as arrays of delegates, not a `switch`
 
 The original *is* a data table, both tables are recovered verbatim, and they overlap. An
-array keeps the correspondence to `Documentation/DataSymbols.md` visible and makes an
+array keeps the correspondence to `Documentation/Reference/DataSymbols.md` visible and makes an
 unimplemented slot a one-line fill. A `switch` would hide which slots share a handler —
 `0x00543950` alone covers six codes.
 

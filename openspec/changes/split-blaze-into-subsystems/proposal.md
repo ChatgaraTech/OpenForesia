@@ -65,7 +65,7 @@ reconstruction est ouverte reviendrait à déplacer un échafaudage sous quelqu'
 
 - **La documentation quitte les répertoires sources.** `REVERSE_STATUS.md` remonte à la racine,
   `ARCHITECTURE.md` y est créé, et l'index des symboles reconstruits devient une **section de
-  `Documentation/DataSymbols.md`** — même clé (l'adresse virtuelle Ghidra), donc une seule
+  `Documentation/Reference/DataSymbols.md`** — même clé (l'adresse virtuelle Ghidra), donc une seule
   consultation pour le contrôle d'adjacence qui détecte l'aliasing.
 
 - **`CLAUDE.md` est mis à jour dans le même changement**, sans quoi il contredit le dépôt dès le
@@ -120,12 +120,12 @@ reconstruction qui l'ont précédé.
   dépendance devient à sens unique, `Blaze` ne lit rien de `Host`.
 
 **Documentation** : `REVERSE_STATUS.md` (déplacé), `ARCHITECTURE.md` (créé), `CLAUDE.md` (réécrit
-partiellement), `Documentation/DataSymbols.md` (nouvelle section). Deux références de chemin
+partiellement), `Documentation/Reference/DataSymbols.md` (nouvelle section). Deux références de chemin
 explicite à corriger — `CLAUDE.md:89` et l'en-tête de `Blaze.cs:6`. Les cinq autres vivent dans des
 changements openspec **archivés ou terminés** : ce sont des documents historiques, à ne pas
 réécrire.
 
-**Non touché** : `Blaze.c`, `Legacy/Blaze.exe`, les `.c` des DLL, `OpenForesia.Tools/`,
+**Non touché** : `Blaze.c`, `Legacy/Binaries/Blaze.exe`, les `.c` des DLL, `OpenForesia.Tools/`,
 `playtest.ps1`, `Prompt.md`, `Strategy.md`, `legacy-bug.md`.
 
 **Risque principal** : le découpage par bandeau est faux — trois bandeaux sur 37 sont déjà démontrés

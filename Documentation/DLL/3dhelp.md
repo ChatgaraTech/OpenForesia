@@ -190,7 +190,7 @@ Le chemin par frame se réduit à : **`Clear` ×2 → `BeginScene` → `DrawPrim
 
 > Établi le 2026-08-12, en préparation de la tâche 3.5 de `replace-3d-backend-with-d3d11`.
 > Chaque maillon est vérifié soit dans `3dhelp.c`, soit directement dans les octets de
-> `3dhelp.dll` (`OpenForesia.Tools -- at 3dhelp.dll <VA> <n>`).
+> `3dhelp.dll` (`OpenForesia.Tools -- at Legacy/Binaries/3dhelp.dll <VA> <n>`).
 
 ### Correction — ce que `+0x64` reçoit
 

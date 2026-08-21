@@ -35,12 +35,12 @@ See proposal.md — Why. Three facts shape the approach:
 
 ### 1. Commit the binary under `Legacy/`, but keep the tool path-agnostic
 
-Storage is settled in proposal.md (committed, `Legacy/Blaze.exe`). The technical consequence is
+Storage is settled in proposal.md (committed, `Legacy/Binaries/Blaze.exe`). The technical consequence is
 narrower than it sounds: the tool still takes the binary path as an **argument** and never assumes a
 repo-relative location. That keeps it usable against the helper DLLs — which is its existing job —
 and against any other build of the executable that turns up later, without a code change.
 
-*Alternative considered*: hardcode `Legacy/Blaze.exe` as a default. Rejected — the same tool already
+*Alternative considered*: hardcode `Legacy/Binaries/Blaze.exe` as a default. Rejected — the same tool already
 serves five DLLs at a different path, and a default that silently applies to the wrong file is worse
 than an explicit argument.
 
@@ -80,7 +80,7 @@ Mixing them makes both worse. `REVERSE_STATUS.md` keeps the per-TODO status and 
 ### 6. Distinguish "recovered" from "interpreted"
 
 A dump gives bytes. Deciding that a 16-byte blob is "seven `short` coefficient pairs" is
-interpretation, and interpretation can be wrong. `Documentation/DataSymbols.md` records the raw
+interpretation, and interpretation can be wrong. `Documentation/Reference/DataSymbols.md` records the raw
 bytes alongside any reading of them, so a later disagreement can be settled against the bytes rather
 than against a previous guess. This is the same confirmed-vs-hypothesis discipline
 `Documentation/DLL/*.md` already uses.

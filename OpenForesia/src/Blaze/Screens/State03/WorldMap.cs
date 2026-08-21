@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -135,12 +135,12 @@ public static unsafe partial class Blaze
     private static readonly byte* s_WorldMapCamera_00564650 = (byte*)NativeMemory.AllocZeroed(0x14);
 
     /// <summary>Ghidra: &amp;DAT_00566c10 — le rectangle VRAM ou l'image de la carte est envoyee a
-    /// chaque image : x 0, y 0x1c0, 0x100 de large, 0x10 de haut. Releve dans Legacy/Blaze.exe.</summary>
+    /// chaque image : x 0, y 0x1c0, 0x100 de large, 0x10 de haut. Releve dans Legacy/Binaries/Blaze.exe.</summary>
     private static readonly short* s_WorldMapUploadRect_00566c10 =
         (short*)AllocBytes([0x00, 0x00, 0xc0, 0x01, 0x00, 0x01, 0x10, 0x00]);
 
     /// <summary>Ghidra: &amp;DAT_005633b0 — le descripteur d'interface de la carte du monde. Ses 26
-    /// dwords d'en-tete sont releves dans Legacy/Blaze.exe. Alloue bas et paresseusement pour la
+    /// dwords d'en-tete sont releves dans Legacy/Binaries/Blaze.exe. Alloue bas et paresseusement pour la
     /// meme raison que les autres : il traverse RunTextEngine puis DrawUiPanel.</summary>
     private static byte* s_WorldMapDescriptorStorage;
     private static byte* s_WorldMapDescriptor_005633b0
@@ -1654,7 +1654,7 @@ public static unsafe partial class Blaze
             Inp.s_SlotArea_005e9180[0x248 + (uint)(Mem.s_Unknown_005de538 & 0xff) * 0x9c] * 0x4c];
         // Pas 4 : `0x0053623f  C1 E0 04  SHL EAX,0x4` puis
         // `0x00536242  F6 80 20 4A 60 00 01  TEST byte [EAX + 0x604a20],0x1` â€” octets lus
-        // directement dans Legacy/Blaze.exe. Même correction que dans Inp.PollInputAndAudio.
+        // directement dans Legacy/Binaries/Blaze.exe. Même correction que dans Inp.PollInputAndAudio.
         // Bit 0 du mot « tenu » = **SELECT** (masque 0x0001, action 8 de
         // Inp.s_PadButtonMasks_00564f18). Confirmé en jeu le 2026-08-17 : avec F1 maintenu de la prise
         // de focus jusqu'ici, la trace posée à ce branchement lisait `pad0=0x01`. Le chemin A veut

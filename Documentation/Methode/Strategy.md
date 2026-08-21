@@ -274,7 +274,7 @@ déclarés séparément ne partagent plus leur mémoire ; une écriture faite pa
 lue par l'autre. Aucune erreur, aucun plantage : une valeur qui reste à zéro.
 
 Avant de déclarer un `DAT_` isolé, **chercher son adresse dans la carte des symboles reconstruits**,
-en fin de `Documentation/DataSymbols.md` :
+en fin de `Documentation/Reference/DataSymbols.md` :
 
 * s'il tombe dans l'étendue d'une arène, il est déjà couvert — l'adresser par l'accesseur de
   l'arène, pas par un champ neuf ;
@@ -349,7 +349,7 @@ Lorsqu'une fonction vient d'être traduite, privilégier la correction de cette 
 La phase 1 — toute la reconstruction dans `src/Blaze/Blaze.cs` — **s'est achevée le 2026-08-19**.
 Le fichier faisait 23 680 lignes ; il est découpé en 30 fichiers.
 
-La carte détaillée est dans **`ARCHITECTURE.md`**, à la racine. À lire avant d'ajouter ou de
+La carte détaillée est dans **`Documentation/ARCHITECTURE.md`**. À lire avant d'ajouter ou de
 déplacer du code. Ce qui suit n'en est que les principes.
 
 ### Les deux moitiés du dépôt

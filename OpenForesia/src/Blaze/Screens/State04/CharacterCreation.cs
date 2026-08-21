@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -601,7 +601,7 @@ public static unsafe partial class Blaze
 
     // Ghidra: `pcRam00566bc0` (Legacy/Raw/Blaze/FUN_005098f0.c:320-338) — **un pointeur logé à
     // 0x00566bc0, pas un tampon**. Tranché le 2026-08-18 en désassemblant directement les huit
-    // sites qui le touchent dans Legacy/Blaze.exe : tous chargent l'adresse
+    // sites qui le touchent dans Legacy/Binaries/Blaze.exe : tous chargent l'adresse
     // (`8B 35 / 8B 0D / 8B 15  C0 6B 56 00` = `MOV ESI,[0x566BC0]`) avant d'écrire à travers
     // (`88 54 30 0C` = `MOV [EAX+ESI+0xC],DL`) — une déréférence de plus que la pseudo-C ne le
     // montre, exactement le même piège que dans Saves.SetCardPathDeviceFields. Et aucun des huit n'écrit

@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -54,9 +54,9 @@ internal sealed unsafe class UiText
     //   pass 1  scan    PTR_LAB_0056e870   measures and skips; collects '$'-escapes, draws nothing
     //   pass 2  render  PTR_FUN_0056e728   emits glyphs
     //
-    // Both tables are recovered verbatim in Documentation/DataSymbols.md, along with the five
+    // Both tables are recovered verbatim in Documentation/Reference/DataSymbols.md, along with the five
     // handler bodies Ghidra never emitted (they are reached only through these tables) which were
-    // decoded by hand from Legacy/Blaze.exe.
+    // decoded by hand from Legacy/Binaries/Blaze.exe.
     //
     // What it produces is **not** ordinary primitives. Glyphs are rasterised into a staging buffer
     // (DAT_005e0300, 4 bits per pixel), and each finished line is enqueued as a VRAM upload node
@@ -220,7 +220,7 @@ internal sealed unsafe class UiText
         s_CheatIndex_005de164 = 0;
     }
 
-    // Ghidra: &DAT_00564a40 â€” relevé dans le binaire (`at Legacy/Blaze.exe 0x00564a40`, .data,
+    // Ghidra: &DAT_00564a40 â€” relevé dans le binaire (`at Legacy/Binaries/Blaze.exe 0x00564a40`, .data,
     // décalage fichier 0x163040) : les octets sont `47 75 72 6b 68 61 00 00`, soit **"Gurkha"**.
     // Il est logé juste après les trois étiquettes de mise au point "DPT"/"LOC"/"ANG" (0x564a20),
     // ce qui conforte la lecture. La séquence n'est PAS comparée à une saisie clavier/manette :
@@ -361,8 +361,8 @@ internal sealed unsafe class UiText
 
     /// <summary>
     /// Pass-2 handler for control code <c>0x09</c> â€” end of page / wait. **Decoded by hand from
-    /// Legacy/Blaze.exe**: Ghidra never emitted this body, since it is reached only through
-    /// PTR_FUN_0056e728. Bytes and full listing in Documentation/DataSymbols.md.
+    /// Legacy/Binaries/Blaze.exe**: Ghidra never emitted this body, since it is reached only through
+    /// PTR_FUN_0056e728. Bytes and full listing in Documentation/Reference/DataSymbols.md.
     /// <code>
     /// 8B 4C 24 08  MOV ECX,[ESP+8]     8B 44 24 04  MOV EAX,[ESP+4]
     /// 8A 81 ..     MOV AL,[ECX+0x8C7]  8A 10        MOV DL,[EAX]
@@ -429,7 +429,7 @@ internal sealed unsafe class UiText
     /// <summary>
     /// Handler for control code <c>0x0f</c>, in **both** passes â€” the table has <c>0x00544e50</c>
     /// at slot 15 on the scan side as well as the render side. **Decoded by hand from
-    /// Legacy/Blaze.exe** (file offset <c>0x144250</c>, 33 bytes then <c>0x90</c> padding); Ghidra
+    /// Legacy/Binaries/Blaze.exe** (file offset <c>0x144250</c>, 33 bytes then <c>0x90</c> padding); Ghidra
     /// never emitted it, since it is reached only through the two tables.
     /// <code>
     /// 8B 4C 24 08        MOV ECX,[ESP+8]      ; descriptor
@@ -447,7 +447,7 @@ internal sealed unsafe class UiText
     /// one it was handed.</para>
     /// <para><b>What the two byte writes are.</b> Neither is a loose flag: they are the **top byte
     /// of a feature dword** in the descriptor header, i.e. its <c>0x1000000</c> enable bit. The
-    /// header is a row of (parameter, enable) pairs â€” see Documentation/DataSymbols.md â€” with the
+    /// header is a row of (parameter, enable) pairs â€” see Documentation/Reference/DataSymbols.md â€” with the
     /// cursor's parameter at <c>+0x30</c> and the scroll arrows' at <c>+0x38</c>. So
     /// <c>[ECX+0x33] = 1</c> turns <c>0x000F28D4</c> into <c>0x010F28D4</c>: it **switches the
     /// cursor on**, exactly as code <c>0x09</c> switches the scroll arrows on through
@@ -470,7 +470,7 @@ internal sealed unsafe class UiText
 
     /// <summary>
     /// Handler for control code <c>0x1c</c>, in both passes — <c>0x00544e80</c>, decoded by hand
-    /// from Legacy/Blaze.exe (file offset <c>0x144280</c>). It is a **subroutine jump inside the
+    /// from Legacy/Binaries/Blaze.exe (file offset <c>0x144280</c>). It is a **subroutine jump inside the
     /// text stream**: it pushes a return pointer onto the descriptor's stack at <c>+0x8b4</c> and
     /// returns a different string, chosen by a byte of the player's saved block.
     ///
@@ -604,7 +604,7 @@ internal sealed unsafe class UiText
 
     /// <summary>
     /// Handler for control code <c>0x04</c> — <c>0x005449b0</c>, decoded by hand from
-    /// Legacy/Blaze.exe (file offset <c>0x143db0</c>).
+    /// Legacy/Binaries/Blaze.exe (file offset <c>0x143db0</c>).
     /// <code>
     /// 8B 44 24 04  MOV EAX,[ESP+4]      ; text cursor
     /// 8B 54 24 08  MOV EDX,[ESP+8]      ; descriptor
@@ -633,7 +633,7 @@ internal sealed unsafe class UiText
 
     /// <summary>
     /// Handler for control code <c>0x06</c> — <c>0x005449f0</c>, decoded by hand from
-    /// Legacy/Blaze.exe (file offset <c>0x143df0</c>). It **prints a number in decimal**, which is
+    /// Legacy/Binaries/Blaze.exe (file offset <c>0x143df0</c>). It **prints a number in decimal**, which is
     /// what the dice screen needs for the stat total and the seven class figures.
     ///
     /// <para>Two operand bytes, matching the pass-1 stub for this code (<c>0x00543960</c>, "skip
@@ -709,7 +709,7 @@ internal sealed unsafe class UiText
             t[i] = (text, descriptor) => throw new NotImplementedException(
                 $"UI text control code 0x{code:x2} dispatches to FUN_{address:x8}, which Ghidra " +
                 $"never emitted (reached only through {(renderPass ? "PTR_FUN_0056e728" : "PTR_LAB_0056e870")}). " +
-                "It needs a scoped Ghidra re-run at that address â€” see Documentation/DataSymbols.md.");
+                "It needs a scoped Ghidra re-run at that address â€” see Documentation/Reference/DataSymbols.md.");
         }
 
         if (!renderPass)
@@ -746,7 +746,7 @@ internal sealed unsafe class UiText
         return t;
     }
 
-    // Ghidra: PTR_LAB_0056e870 and PTR_FUN_0056e728, both recovered verbatim from Legacy/Blaze.exe.
+    // Ghidra: PTR_LAB_0056e870 and PTR_FUN_0056e728, both recovered verbatim from Legacy/Binaries/Blaze.exe.
     private readonly uint[] s_ScanTable_0056e870 =
     [
         0x543950, 0x543970, 0x543960, 0x543960, 0x543960, 0x543950, 0x543960, 0x544A80,
@@ -767,7 +767,7 @@ internal sealed unsafe class UiText
     private readonly TextControlHandler[] s_RenderHandlers;
 
 
-    // Ghidra: DAT_0056e9b4 / _b8 / _bc â€” recovered from Legacy/Blaze.exe. Full-width Shift-JIS
+    // Ghidra: DAT_0056e9b4 / _b8 / _bc â€” recovered from Legacy/Binaries/Blaze.exe. Full-width Shift-JIS
     // punctuation that this renderer squeezes to half width.
     private readonly uint[] s_HalfWidthCodes_0056e9b4 = [0x8381, 0x7981, 0x6981];
 

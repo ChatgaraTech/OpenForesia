@@ -1,6 +1,6 @@
 # winsys3d.dll
 
-Decompiled source: `winsys3d.c` (repo root, Ghidra output, **read-only**). Base load
+Decompiled source: `Legacy/Decompiled/winsys3d.c` (Ghidra output, **read-only**). Base load
 address used throughout that file's `@ 0xXXXXXXXX` comments: `0x00a00000`
 (i.e. `winsys3d.c address = 0x00a00000 + export RVA`).
 
@@ -10,7 +10,7 @@ small number are named exports, generally higher-level entry points.
 
 Export table was resolved with a small pure-Python PE32 export-directory parser
 (session scratchpad `pe_exports.py`, not committed) run directly against
-`winsys3d.dll` sitting in the repo root, then cross-checked against the matching
+`winsys3d.dll` in `Legacy/Binaries/`, then cross-checked against the matching
 function body in `winsys3d.c` by RVA.
 
 ## The display list is addressed on 24 bits — **CONFIRMED**, and it constrains the whole port
@@ -131,7 +131,7 @@ like `ClearImage`, but its colour math decompiles as
 
 Established 2026-08-12 while investigating task 4.5 of `replace-3d-backend-with-d3d11`
 ("geometry lands in a ~320x240 space inside a 960x720 target"). Values below were read out
-of `winsys3d.dll` itself with `OpenForesia.Tools -- at winsys3d.dll <VA> <n>`, not inferred.
+of `winsys3d.dll` itself with `OpenForesia.Tools -- at Legacy/Binaries/winsys3d.dll <VA> <n>`, not inferred.
 
 ### One variable drives both the viewport and the vertex scale
 
@@ -511,7 +511,7 @@ Both halves of the earlier note above were wrong, and together they caused a `0x
   `FUN_00504460`'s eight `Ordinal_10` calls leave all eight handlers **live for the whole session**.
   The genuine unregister is ordinal 7 (`FUN_00a04130`), never called from the traced graph.
 - **The 8 callback targets are readable after all.** They have no decompiled body in `Blaze.c`
-  (address-taken-only), but they are nine-byte stubs in `Legacy/Blaze.exe`, read directly on
+  (address-taken-only), but they are nine-byte stubs in `Legacy/Binaries/Blaze.exe`, read directly on
   2026-08-18: each is one `MOV dword [<global>], <imm>` followed by `RET`.
 
   | stub | effect | | stub | effect |

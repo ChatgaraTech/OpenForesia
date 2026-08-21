@@ -43,7 +43,7 @@
 
 - [x] 1.1 Relever l'inventaire exact des 99 membres des quatre fichiers de `Memory/` : nom, type,
       arène d'appartenance ou symbole isolé, adresse. Source : la carte des symboles reconstruits en
-      fin de `Documentation/DataSymbols.md`.
+      fin de `Documentation/Reference/DataSymbols.md`.
       → **`Memory/` contenait du comportement**, dont la boucle de démarrage. `RunMainLoop()`
       (`FUN_00529c10`, 97 l.) et `LoadUiFontFromCd()` (31 l.) y avaient atterri par un point de
       coupe trop large au changement précédent. Déplacées vers `Platform/Startup.cs`, aux côtés de
@@ -284,7 +284,7 @@
       pièces, pas d'avance.
       → **Socle livré et vérifié ; l'utilisateur a décidé d'engager C.** Avancement en section 7.
 
-> **Relevé au titre de 5.2/5.4** : la carte des symboles de `Documentation/DataSymbols.md` pointait
+> **Relevé au titre de 5.2/5.4** : la carte des symboles de `Documentation/Reference/DataSymbols.md` pointait
 > encore vers `Arena.GameState.cs`, `Arenas.cs` et `DataTables.cs`, supprimés à l'étape A. Or son
 > objet même est de dire **où** chaque symbole est modélisé. Colonne fichier régénérée depuis
 > l'arbre courant pour les 398 symboles, plus les 8 lignes du tableau des arènes. Zéro référence

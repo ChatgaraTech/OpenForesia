@@ -59,7 +59,7 @@ Aucune. `.openspec.yaml` porte `skip_specs: true`, comme les changements de reco
 
 **Touché** : 28 fichiers de `OpenForesia/src/Blaze/`, 868 lignes.
 
-**Non touché** : `src/Host/` (déjà propre), `Blaze.c`, `Legacy/Blaze.exe`, les `.c` des DLL, la
+**Non touché** : `src/Host/` (déjà propre), `Blaze.c`, `Legacy/Binaries/Blaze.exe`, les `.c` des DLL, la
 documentation.
 
 **Risque principal — une chaîne visible en jeu prise pour un commentaire.** Le contrôle est de

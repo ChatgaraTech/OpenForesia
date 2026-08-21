@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -30,14 +30,14 @@ public static unsafe partial class Blaze
 
     // TODO(REVERSE): DAT_005630bc has no Ghidra-derived string name (short/undecoded literal);
     // ".ini" is a strong but unconfirmed guess for the settings-file extension.
-    // Ghidra: DAT_005630bc â€” recovered from Legacy/Blaze.exe as ".cfg", not ".ini". The installed
+    // Ghidra: DAT_005630bc â€” recovered from Legacy/Binaries/Blaze.exe as ".cfg", not ".ini". The installed
     // game's own options file is BLAZE.cfg, and its [Options]/[D3DDriver]/[Controls] sections match
     // what LoadOptionsIni/Inp.LoadKeyBindings already read â€” so those two were correct all along and
     // had simply never located their file.
     internal const string IniFileExtension = ".cfg";
 
     // Ghidra: &DAT_00563080 (Blaze.c:58266) â€” Ghidra gave it no string name, but the literal is
-    // present in Legacy/Blaze.exe: "Size". It sits in the .data key block exactly where the call
+    // present in Legacy/Binaries/Blaze.exe: "Size". It sits in the .data key block exactly where the call
     // order puts it, between "Small" (0x00563088) and "Resolution" (0x00563074), and the installed
     // game's BLAZE.cfg carries Size=23 alongside Resolution=4 â€” which is precisely
     // s_ResolutionDetailLimit[4]. Three independent confirmations; no longer a TODO.
@@ -69,7 +69,7 @@ public static unsafe partial class Blaze
 
     // Ghidra: &DAT_00564a58, 4 ints â€” per-joystick-slot assignment (-1 = unassigned). Ini keys
     // built from format string "Joy%d" â€” no space (Ghidra: s_Joy_d_00563064; literal read back
-    // from Legacy/Blaze.exe at 0x00563064). An earlier reconstruction wrote "Joy %d", which reads
+    // from Legacy/Binaries/Blaze.exe at 0x00563064). An earlier reconstruction wrote "Joy %d", which reads
     // keys the real BLAZE.cfg does not contain: the joystick settings silently fell back to their
     // defaults instead of being loaded.
     internal static readonly int[] s_JoystickSlot = new int[4];
@@ -80,7 +80,7 @@ public static unsafe partial class Blaze
     // inventing real limits.
     internal static readonly int[] s_ResolutionDetailLimit = CreateUnknownResolutionLimitTable();
 
-    // Ghidra: DAT_00562e00 â€” recovered from Legacy/Blaze.exe as the dwords
+    // Ghidra: DAT_00562e00 â€” recovered from Legacy/Binaries/Blaze.exe as the dwords
     // { 1, 7, 11, 16, 23, 0 }. These are real per-resolution detail clamps; the table was
     // previously filled with int.MaxValue on the assumption that its content was unrecoverable,
     // which turned the clamp into a silent no-op.
@@ -104,10 +104,10 @@ public static unsafe partial class Blaze
     // défaut, restaient vides — et `0` y est un numéro de bouton valide, la marque « aucun » étant
     // `-1`.
     //
-    // Les 960 octets sont relus directement dans Legacy/Blaze.exe (`.data`, VA 0x00564B58) et
+    // Les 960 octets sont relus directement dans Legacy/Binaries/Blaze.exe (`.data`, VA 0x00564B58) et
     // correspondent **clé pour clé** aux 240 lignes `[Controls]` du BLAZE.cfg installé — les deux
     // sources se confirment mutuellement. Copie de référence et format détaillé :
-    // Documentation/OpenForesia.cfg.default et Documentation/OpenForesia.cfg.md.
+    // Documentation/Reference/OpenForesia.cfg.default et Documentation/Reference/OpenForesia.cfg.md.
     // Construit à la première lecture, et non dans l'initialiseur de champ : les deux tables de
     // valeurs par défaut sont déclarées bien plus bas dans ce fichier, et les initialiseurs
     // statiques C# s'exécutent dans l'ordre de déclaration — les lire ici les trouverait nulles.
@@ -273,7 +273,7 @@ public static unsafe partial class Blaze
     /// Ghidra: FUN_00510110 @ 0x00510110 â€” maps the layer's own 320x240-ish coordinates onto the
     /// current resolution, in place, for <paramref name="count"/> vertices.
     /// <para>
-    /// The two offset tables were read out of <c>Legacy/Blaze.exe</c>: X at 0x00566c98 is
+    /// The two offset tables were read out of <c>Legacy/Binaries/Blaze.exe</c>: X at 0x00566c98 is
     /// <c>{-160, -64, 0, 80, 192}</c> and Y at 0x00566cb0 is <c>{-120, -48, 0, 60, 144}</c>,
     /// indexed by the ini's Resolution. Entry 4 is `(192, 144)` â€” exactly the "base" the
     /// `[SHIFT]` runtime trace reports, which is what confirms the tables are the right ones.
@@ -300,7 +300,7 @@ public static unsafe partial class Blaze
         }
     }
 
-    // Ghidra: the tables at 0x00566c98 and 0x00566cb0, read verbatim from Legacy/Blaze.exe.
+    // Ghidra: the tables at 0x00566c98 and 0x00566cb0, read verbatim from Legacy/Binaries/Blaze.exe.
     private static readonly int[] s_UiOffsetX_00566c98 = [-160, -64, 0, 80, 192];
     private static readonly int[] s_UiOffsetY_00566cb0 = [-120, -48, 0, 60, 144];
 
@@ -1104,7 +1104,7 @@ public static unsafe partial class Blaze
         UiStage("  libÃ©rÃ©");
     }
 
-    // Ghidra: the seven file names at 0x005630c8..0x00563134, read verbatim from Legacy/Blaze.exe â€”
+    // Ghidra: the seven file names at 0x005630c8..0x00563134, read verbatim from Legacy/Binaries/Blaze.exe â€”
     // forward slashes, like every other CD path this reconstruction builds.
     private const string s_UiFileKeyboardText = "DATA/KEYBOARD.TXT";
     private const string s_UiFileJoystickText = "DATA/JOYSTICK.TXT";
@@ -2247,7 +2247,7 @@ public static unsafe partial class Blaze
     private const int KeyRowCount = 0x31;
 
     // =====================================================================
-    // Les cinq tables de l'Ã©diteur de touches, relevÃ©es dans Legacy/Blaze.exe.
+    // Les cinq tables de l'Ã©diteur de touches, relevÃ©es dans Legacy/Binaries/Blaze.exe.
     // =====================================================================
 
     /// <summary>
@@ -2295,7 +2295,7 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: &amp;DAT_00564a68 — les liaisons **manette** par défaut, vingt entiers, celles que la
     /// dernière ligne de <see cref="JoystickButtonsPage"/> recopie. Relevées dans
-    /// <c>Legacy/Blaze.exe</c> et identiques aux clés <c>K0200</c>..<c>K0213</c> du BLAZE.cfg
+    /// <c>Legacy/Binaries/Blaze.exe</c> et identiques aux clés <c>K0200</c>..<c>K0213</c> du BLAZE.cfg
     /// installé, ainsi qu'aux quatre tables manette pré-remplies de <c>DAT_00564b58</c>.
     ///
     /// <para><c>-1</c> y signifie « aucun bouton », et non <c>0</c> : le bouton 0 est valide. Voir
@@ -2376,7 +2376,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static int InputDrainStub() => Inp.PollJoystickState();
 
-    // Ghidra: &DAT_0056e670 â€” the menu's label table, recovered verbatim from Legacy/Blaze.exe.
+    // Ghidra: &DAT_0056e670 â€” the menu's label table, recovered verbatim from Legacy/Binaries/Blaze.exe.
     // A 0x0c length byte, then five cp1252 labels separated by carriage returns, ending 0x09 '?'.
     // They match the five switch cases in RunMainMenuFrameLoop one for one and in order:
     //   "DÃ©but du jeu"                -> game state 1
@@ -2408,7 +2408,7 @@ public static unsafe partial class Blaze
     // offset is 0x8c7, and the next named global sits at 0x0056e670, so it spans 0x918 bytes.
     /// <summary>
     /// Ghidra: &amp;DAT_0056dd58 â€” the main menu's panel descriptor, **statically initialised in
-    /// `.data`** and recovered verbatim from `Legacy/Blaze.exe`. Only 35 of its bytes are
+    /// `.data`** and recovered verbatim from `Legacy/Binaries/Blaze.exe`. Only 35 of its bytes are
     /// non-zero; the rest is the scratch the text engine and the renderer fill in.
     /// <para>
     /// Leaving it zeroed is what produced a black screen: every feature test in

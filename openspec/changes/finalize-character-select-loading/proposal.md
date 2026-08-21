@@ -50,7 +50,7 @@ desquels la table de répartition `PTR_LAB_00560708`, longtemps classée « irr�
   donc comportementalement neutre — mais dont Ghidra recompose une signature fausse, puisqu'il est
   appelé avec des arguments ailleurs (`FUN_0040a600(0x25)`, `FUN_0040a600(4)`).
 
-- **Consignation dans `Documentation/DataSymbols.md`** des valeurs relevées dans `Legacy/Blaze.exe` :
+- **Consignation dans `Documentation/Reference/DataSymbols.md`** des valeurs relevées dans `Legacy/Binaries/Blaze.exe` :
   la table `PTR_LAB_00560708` (huit entrées, résolue au décalage fichier `0x15ED08`), la table
   d'octets `DAT_00562a98`, et la disposition des structures de modèle et d'animation déduite des
   relocalisations.
@@ -75,7 +75,7 @@ desquels la table de répartition `PTR_LAB_00560708`, longtemps classée « irr�
 - `OpenForesia/src/Blaze/Blaze.cs` — le bloc « Game state 4 » (~215 lignes, actuellement non
   commité et non compilable). Aucune autre région n'est touchée : les deux tables renommées ne sont
   encore lues par aucun autre code reconstruit.
-- `Documentation/DataSymbols.md` — ajouts seulement.
+- `Documentation/Reference/DataSymbols.md` — ajouts seulement.
 - `OpenForesia/src/Blaze/REVERSE_STATUS.md` — ajouts et mise à jour de l'état 4.
 - `Blaze.c` et les `.c` des DLL : **non modifiés**, conformément à la règle du projet.
 - Aucune dépendance nouvelle. Aucun effet à l'exécution pour l'instant : rien n'appelle encore

@@ -176,7 +176,7 @@ La première ligne du menu objets s'intitule **« Invertaire »** au lieu d'« I
 ### Cause
 
 Ce n'est pas une erreur de relevé ni un défaut d'affichage : la chaîne est écrite ainsi dans les
-données du jeu. `Legacy/Blaze.exe`, adresse virtuelle `0x00566B74` :
+données du jeu. `Legacy/Binaries/Blaze.exe`, adresse virtuelle `0x00566B74` :
 
 ```
 49 6e 76 65 72 74 61 69 72 65 00     I  n  v  e  r  t  a  i  r  e
@@ -220,7 +220,7 @@ clavier la phase 10. Or :
 * la phase 8 (la liste), qui devrait ouvrir la fiche, sort vers l'écran racine aussi bien sur
   CARRÉ que sur CROIX ; seul le son diffère (`FUN_0053db80` contre `FUN_0053dba0`).
 
-Vérifié dans `Legacy/Blaze.exe` en balayant les 46 instructions qui référencent `0x005de4d4` : les
+Vérifié dans `Legacy/Binaries/Blaze.exe` en balayant les 46 instructions qui référencent `0x005de4d4` : les
 seuls immédiats écrits sont `0`, `5`, `8`, `0xb`, `0xd`, `0xe`, `0x5e`, `0x60`, `0x62`, `-1` et
 `-5`. **Aucun site n'écrit 9 ni 10.** Les écritures depuis un registre se trouvent dans
 `FUN_00524680` (l'écran racine) et `FUN_00527e30` (« Utilisation »), et la pseudo-C montre qu'elles
@@ -252,7 +252,7 @@ Le clavier de renommage est censé refuser un certain glyphe en première positi
 
 ### Cause
 
-`Legacy/Blaze.exe`, `0x005266A7` et suivants :
+`Legacy/Binaries/Blaze.exe`, `0x005266A7` et suivants :
 
 ```
 005266A7   8A 18               MOV   BL,[EAX]          ; le glyphe de la case visée
@@ -292,7 +292,7 @@ La copie déborde donc des deux côtés à la fois : en lecture comme en écritu
 
 ### Cause
 
-Trois relevés concordants dans `Legacy/Blaze.exe` :
+Trois relevés concordants dans `Legacy/Binaries/Blaze.exe` :
 
 1. **La destination fait seize entrées.** À `0x0056b4d0`, les seize premiers dwords valent
    `0x00401FA0` (une fonction au corps vide) et les seize suivants valent **zéro**. La frontière est

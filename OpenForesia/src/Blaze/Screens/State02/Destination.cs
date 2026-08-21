@@ -2,8 +2,8 @@
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
-// qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
-// reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
+// qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
+// reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 
 using System;
 using System.IO;
@@ -21,7 +21,7 @@ public static unsafe partial class Blaze
     // glisse vers celle que vise le curseur, le modèle 3D animé du groupe, et 32 particules en fond.
     // Sortie sur START ou CARRÉ, vers l'état de jeu 3.
     //
-    // Toutes les tables ci-dessous sont relevées dans `.data` de Legacy/Blaze.exe.
+    // Toutes les tables ci-dessous sont relevées dans `.data` de Legacy/Binaries/Blaze.exe.
     // =====================================================================
 
     // Ghidra: &DAT_0056d240 — douze positions d'icône empaquetées (x en mot bas, y en mot haut). La

@@ -5,7 +5,7 @@
 - [x] 1.2 Sanity-check the recovered entries against the code before using them: every low byte
       (index) must be below `0x3c`, since the fixed pass only relocates `header[4..63]`. An index at
       or above that would mean the reading is wrong.
-- [x] 1.3 Correct `Documentation/DataSymbols.md`: replace the `(record kind, size)` hypothesis with
+- [x] 1.3 Correct `Documentation/Reference/DataSymbols.md`: replace the `(record kind, size)` hypothesis with
       the confirmed `(index, stride)` reading, note that `FUN_00532070`'s masking and shifting is
       what settles it, and record the full table.
 

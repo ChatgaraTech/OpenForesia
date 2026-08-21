@@ -1,6 +1,6 @@
 # wsyskern.dll
 
-Decompiled source: `wsyskern.c` (repo root, Ghidra output, **read-only**). Base
+Decompiled source: `Legacy/Decompiled/wsyskern.c` (Ghidra output, **read-only**). Base
 load address used throughout that file's `@ 0xXXXXXXXX` comments: `0x10000000`
 (i.e. `wsyskern.c address = 0x10000000 + export RVA`).
 

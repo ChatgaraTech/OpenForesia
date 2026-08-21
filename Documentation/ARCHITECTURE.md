@@ -124,7 +124,36 @@ La couture substituable est **entre winsys3d et 3dhelp**, et elle est deja trait
 implementeur que ce critere interdit : **l'appliquer correctement consistait a ne pas creer
 l'interface.**
 
-## L'arborescence
+## L'arborescence du depot
+
+Reorganisee le **2026-08-21**. Avant, les six decompilations Ghidra, les cinq DLL et onze fichiers
+`.md` etaient poses en vrac a la racine. **La racine ne porte plus que deux fichiers** :
+`CLAUDE.md` et `OpenForesia.sln`.
+
+```
+Legacy/          tout ce qui vient de 1998 — rien d'ecrit par nous, tout en LECTURE SEULE
+  Binaries/      Blaze.exe, Blaze.cfg, et les cinq DLL d'aide
+  Decompiled/    Blaze.c et les cinq .c de DLL — la sortie Ghidra
+  Raw/           releves bruts par fonction (desassemblage, exports)
+
+Documentation/   tout ce que le projet a appris
+  ARCHITECTURE.md
+  DLL/           un fichier par DLL d'aide
+  Etat/          TODO.md, REVERSE_STATUS.md, HISTORY.md
+  Methode/       Prompt.md, Strategy.md
+  Reference/     DataSymbols.md, legacy-bug.md, OpenForesia.cfg.md
+  Tests/         test-protocol.md, test-todo-later.md, analyses ponctuelles
+
+Analyse/         observations du jeu original (comportement, sessions x32dbg)
+OpenForesia/     la reconstruction et l'echafaudage d'hote — detaille ci-dessous
+OpenForesia.Tools/ · OpenForesia.Tests/ · openspec/
+```
+
+**`Legacy/Decompiled` n'est pas un nom neuf** : c'etait deja le dossier virtuel du `.sln`, ou
+`Blaze.c` etait range « tout en vivant physiquement a la racine » (voir
+`openspec/changes/recover-blaze-data-section`). Le disque coincide enfin avec la solution.
+
+## L'arborescence de `src/`
 
 ```
 src/
@@ -231,7 +260,7 @@ moins, et **107 paires adjacentes atterrissent dans deux fichiers différents**.
 vivait dans `Blaze.cs`, cette adjacence se voyait en faisant défiler le fichier. Elle ne se voit
 plus.
 
-→ **La carte des symboles reconstruits, dans `Documentation/DataSymbols.md`, est ce qui la rend
+→ **La carte des symboles reconstruits, dans `Documentation/Reference/DataSymbols.md`, est ce qui la rend
 encore consultable.** Y chercher une adresse avant de déclarer un `DAT_` isolé.
 
 ### La règle d'étendue d'arène

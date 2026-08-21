@@ -17,7 +17,7 @@
 // RunMainLoop et LoadUiFontFromCd ont ete sortis vers Platform/Startup.cs pour cette raison.
 //
 // Voir ARCHITECTURE.md (racine) pour la regle d'etat, et la carte des symboles reconstruits en
-// fin de Documentation/DataSymbols.md pour le controle d'adjacence.
+// fin de Documentation/Reference/DataSymbols.md pour le controle d'adjacence.
 
 using System;
 using System.IO;
@@ -119,7 +119,7 @@ internal sealed unsafe class GameMemory
 
     // Ghidra: DAT_005633a8 â€” **le verrou du mode de mise au point**, résolu le 2026-08-17.
     //
-    // Valeur au chargement relevée dans le binaire (`at Legacy/Blaze.exe 0x005633a8`, .data) : **1**.
+    // Valeur au chargement relevée dans le binaire (`at Legacy/Binaries/Blaze.exe 0x005633a8`, .data) : **1**.
     // Largeur confirmée par le code machine : `0x00536218  39 1D A8 33 56 00  CMP dword [0x5633a8],EBX`
     // â€” un dword, donc bien un `int`.
     //
@@ -143,9 +143,9 @@ internal sealed unsafe class GameMemory
     // même classe de défaut d'aliasing que les six champs corrigés le 2026-08-16).
     internal int s_DebugModeLatch_005633a8 = 1;
 
-    // Ghidra: DAT_005631f8 â€” the game's **data root** on the CD. Recovered from Legacy/Blaze.exe at
+    // Ghidra: DAT_005631f8 â€” the game's **data root** on the CD. Recovered from Legacy/Binaries/Blaze.exe at
     // VA 0x005631f8: the bytes are "@:\FRENCH\", NOT the bare drive root this was previously assumed
-    // to be. See Documentation/DataSymbols.md.
+    // to be. See Documentation/Reference/DataSymbols.md.
     //
     // '@' (0x40, 'A'-1) is the drive-letter placeholder; RunApplication's scan writes the detected
     // letter into index 0 and resets it to '@' when nothing matches. Only index 0 is ever patched â€”
@@ -268,7 +268,7 @@ internal sealed unsafe class GameMemory
     // Les huit sous-états de la sélection des personnages
     //
     // Ghidra: PTR_LAB_00560708 @ 0x00560708 — table de huit pointeurs relevée dans
-    // Legacy/Blaze.exe au décalage fichier 0x15ED08. FUN_00506880 y répartit chaque frame par
+    // Legacy/Binaries/Blaze.exe au décalage fichier 0x15ED08. FUN_00506880 y répartit chaque frame par
     // DAT_00578de8. Aucun de ces huit corps n'existe dans Blaze.c : seule cette table les désigne,
     // donc Ghidra ne les a jamais désassemblés. Un re-run ciblé sur ces huit adresses les produit
     // d'un coup.
@@ -279,7 +279,7 @@ internal sealed unsafe class GameMemory
     // changement de sous-état. Le premier lit `[0x005633A8]` à la place.
     // =====================================================================
 
-    // Ghidra: &DAT_00560708 — la table elle-même, relevée dans Legacy/Blaze.exe au décalage
+    // Ghidra: &DAT_00560708 — la table elle-même, relevée dans Legacy/Binaries/Blaze.exe au décalage
     // fichier 0x15ED08. Les huit corps sont désormais décompilés et rangés dans
     // Legacy/Raw/Blaze/FUN_<adresse>.c ; il reste à les transcrire.
     internal readonly int[] s_CharacterSelectSubStateAddresses =
@@ -289,7 +289,7 @@ internal sealed unsafe class GameMemory
     };
 
     // Ghidra: &DAT_00560ff0 et suivants — la rangée de descripteurs d'interface que la boucle de
-    // frame dessine, pas 0x8c8 octets. Trois instances statiques, relevées dans Legacy/Blaze.exe
+    // frame dessine, pas 0x8c8 octets. Trois instances statiques, relevées dans Legacy/Binaries/Blaze.exe
     // aux décalages 0x15F5F0, 0x15FEB8 et 0x160780 ; FUN_00509470 confirme la troisième en
     // référençant 0x00562180 = 0x00560ff0 + 2 * 0x8c8. Seuls les 0x68 premiers octets de chaque
     // sont initialisés — la queue est nulle dans le fichier, vérifié.
@@ -317,7 +317,7 @@ internal sealed unsafe class GameMemory
     {
         byte* block = AllocLowZeroed((uint)(UiDescriptorCount * UiDescriptorStride));
 
-        // Les 0x68 octets initialisés de chaque instance, relevés dans Legacy/Blaze.exe aux
+        // Les 0x68 octets initialisés de chaque instance, relevés dans Legacy/Binaries/Blaze.exe aux
         // décalages 0x15F5F0, 0x15FEB8 et 0x160780 — 26 dwords, pas 8. Les mots de fonction
         // sont testés par DrawUiPanel en `champ & 0x1000000` : sans f8 (texte) ni f16 (cadre),
         // le panneau se dessine vide, exactement comme le descripteur du menu principal quand il
@@ -399,7 +399,7 @@ internal sealed unsafe class GameMemory
     // ainsi : <c>do { RunTextEngine; DrawUiPanel; p += 0x8c8; } while (p &lt; 0x56c6e8)</c>, et
     // 0x56c6e8 est bien 0x56b558 + 2 * 0x8c8 — ce qui borne le tableau à deux entrées.
     //
-    // Relevées dans Legacy/Blaze.exe : mêmes 26 dwords initialisés que les autres instances, queue
+    // Relevées dans Legacy/Binaries/Blaze.exe : mêmes 26 dwords initialisés que les autres instances, queue
     // nulle. Allouées bas et paresseusement pour la même raison que s_UiDescriptors_00560ff0 : elles
     // traversent RunTextEngine puis DrawUiPanel, donc portent une ordering table à +0xa4.
     internal const int LoadScreenDescriptorCount = 2;
@@ -492,7 +492,7 @@ internal sealed unsafe class GameMemory
     internal int s_Unknown_00562b68;
 
     // Ghidra: &DAT_005606f8 — le descripteur d'étiquette que le carrousel lie avant sa première
-    // passe de texte. Seize octets relevés dans Legacy/Blaze.exe au décalage fichier 0x15ECF8 :
+    // passe de texte. Seize octets relevés dans Legacy/Binaries/Blaze.exe au décalage fichier 0x15ECF8 :
     // {0x0000000c, 0, 0x005066c0, 0}. Il précède immédiatement PTR_LAB_00560708.
     //
     // TODO(REVERSE): le troisième champ est un **pointeur de code**, 0x005066c0 — juste avant
