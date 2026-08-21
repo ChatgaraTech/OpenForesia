@@ -11,9 +11,9 @@ vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baselin
 **Non commité** : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
 terminée —, le rapatriement `.data` du son, le retrait intérieur des points d'entrée, la correction
 des huit défauts d'aliasing (qui **change le comportement**), la transcription de `FUN_00533940`,
-`FUN_00533450` et `FUN_004747F0` (celle-ci **absente de `Blaze.c`**, désassemblée sur place),
-le verbe `disasm` d'`OpenForesia.Tools`, **la réorganisation du dépôt**, et cette mise à jour de
-documentation.
+`FUN_00533450`, `FUN_004747F0` (celle-ci **absente de `Blaze.c`**, désassemblée sur place) et
+`FUN_005350b0`, le verbe `disasm` d'`OpenForesia.Tools`, **la réorganisation du dépôt**, et cette
+mise à jour de documentation.
 
 **Le dépôt a été réorganisé le 2026-08-21** — la racine ne porte plus que `CLAUDE.md` et
 `OpenForesia.sln`. Ce fichier vit maintenant dans `Documentation/Etat/`. Les décompilations sont
@@ -47,42 +47,78 @@ ne relèvent pas du retrait, elles sont la raison d'être du mécanisme.
 
 **Il reste 665 lecteurs**, tous dans `Screens/` et `Platform/`. Ce sont encore des fichiers de
 `partial class Blaze` : pas de constructeur, donc rien à injecter. `Subsystems.cs` ne disparaîtra
-qu'à l'étape D.
+## Reprendre ici — `FUN_00516fc0`, et **mesurer avant de s'engager**
 
-## Reprendre ici — `FUN_005350b0`, la palette de zone (95 lignes)
-
-**Le front a bougé le 2026-08-21.** `FUN_00533940` et sa dépendance `FUN_00533450` sont transcrites
-et s'exécutent sur les vraies données du maillage. La pile de la reproduction documentée s'arrête
-maintenant une étape plus loin, et c'est un fait mesuré, pas une prévision :
+**Le front est arrivé au dernier gros morceau.** `PlaceWorldMapParty` est complète de bout en bout
+depuis le 2026-08-21 ; la pile s'arrête maintenant sur :
 
 ```
-NotImplementedException: FUN_005350b0 : la mise en place de palette de zone (95 lignes)
-   at ApplyAreaPalette(Byte)        WorldMap.cs:1300
-   at PlaceWorldMapParty(Byte*)     WorldMap.cs:1548
-   at RunWorldMapFrame()            RunWorldMapState()   RunGameStateTick()
+NotImplementedException: FUN_00516fc0 : la logique par image de la carte du monde (1226 lignes)
+   at RunWorldMapTick()   WorldMap.cs:1733
+   at RunWorldMapState()  RunGameStateTick()
 ```
 
-`FUN_005350b0` est petite et sur le chemin chaud. Ce qu'un premier coup d'œil montre : elle remplit
-des entités à partir de `&DAT_005fa5e0 + DAT_005e9ae8 * 0x27` (donc des enregistrements de 0x9c
-octets dans `EntityArena`), en lisant une liste prise dans `*(DAT_005e97cc + 0x30)`. Vérifier
-lesquelles de `DAT_005e9ae8`, `DAT_00600838` et `DAT_005fa5e0` sont déjà modélisées avant d'écrire.
+C'est **elle** qui pose `DAT_005645f8`, décide des sorties, et fera enfin apparaître quelque chose
+à l'écran.
 
-**Ensuite** : `FUN_00516fc0` (1226 lignes), la logique par image de la carte du monde — c'est elle
-qui pose `DAT_005645f8`, décide des sorties, et fera enfin apparaître quelque chose à l'écran.
-Mesurer ses dépendances manquantes avant de s'y mettre.
+### La mesure est déjà faite, et elle dit d'y aller prudemment
 
-### Reproduire l'arrêt — et un piège du banc d'essai
+**1225 lignes pour elle-même, et ~5900 lignes d'appelées directes non écrites.** Les grosses :
+
+| fonction | lignes | | fonction | lignes |
+|---|---:|---|---|---:|
+| `FUN_0050bf20` | 999 | | `FUN_004011c0` | 360 |
+| `FUN_0051aa30` | 591 | | `FUN_00522140` | 312 |
+| `FUN_0051fa40` | 438 | | `FUN_0050e680` | 194 |
+| `FUN_0051e700` | 420 | | `FUN_005309b0` | 144 |
+| `FUN_00521000` | 362 | | `FUN_00532bf0` | 143 |
+| `FUN_0051c420` | 371 | | `FUN_0050eb20` | 113 |
+
+Une trentaine d'autres font moins de 50 lignes. Refaire la mesure avant de partir — elle change à
+chaque fonction écrite :
+
+```bash
+S=$(grep -n "FUN_00516fc0 @ " Legacy/Decompiled/Blaze.c | cut -d: -f1)
+E=$(awk -v s=$S 'NR>s+2 && /^\/\* ===/ {print NR; exit}' Legacy/Decompiled/Blaze.c)
+sed -n "$((S+3)),$((E-4))p" Legacy/Decompiled/Blaze.c \
+  | grep -oE "FUN_[0-9a-f]{8}" | sort -u \
+  | while read f; do grep -qr "$f" OpenForesia/src --include=*.cs || echo "  manque $f"; done
+```
+
+**Ne pas la commencer par le milieu.** Le bon ordre est de descendre par les petites appelées, en
+exerçant à chaque fois — c'est ce qui a marché pour `FUN_00533940` et `FUN_005350b0`.
+
+### Deux pièges de cette mesure, déjà payés
+
+**Un `FUN_xxxxxxxx` absent de `Blaze.c` n'est pas forcément du code manquant.** La mesure signalait
+`FUN_0056aff0` et `FUN_0056afe8` comme absentes, donc candidates au désassemblage. Ce ne sont pas
+des fonctions : ce sont les entrées 8 et 10 de la table de sauts `s_Vt_0056afc8`, garnies du `ret`
+nu `0x00401FA0`. Ghidra les rend `(*(code *)PTR_FUN_0056afe8)()` et le préfixe `FUN_` d'un
+`PTR_FUN_` trompe le comptage. **Vérifier l'adresse avant de conclure :**
+
+```powershell
+dotnet run --project OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x0056afe8 16
+```
+
+**Et si c'est bien du code manquant, il n'y a plus de mur** — voir la section
+`OPENFORESIA_SKIP_AREA_HANDLER` plus bas : `disasm` existe désormais.
+
+### Reproduire l'arrêt
 
 ```powershell
 $env:PATH = "C:\Program Files (x86)\dotnet;$env:PATH"
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 30 -WorkingDir OpenForesia -Shot `
-  -Then WAIT4,ENTER,WAIT1,START,WAIT4,ENTER,WAIT3,ENTER,WAIT12
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 36 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT5,ENTER,WAIT4,ENTER,WAIT16
 ```
 
-**Si ça ne reproduit rien, chercher `relance detectee` dans la sortie avant de soupçonner la
-séquence.** Une course perdue pour la mémoire basse relance le jeu en processus fils et décale tout
-le minutage des touches : la séquence part dans le vide et le verdict affiche « aucun plantage »,
-ce qui est trompeur. Relancer suffit (environ une fois sur cinq). Écrit dans `test-protocol.md`.
+**Aucun drapeau d'échafaudage n'est nécessaire.** Deux causes d'échec à distinguer avant de
+soupçonner la séquence : une `relance detectee` dans la sortie, ou une validation de groupe ratée.
+Dans les deux cas le verdict dit « aucun plantage », ce qui est trompeur — le contrôle qui tranche
+est le **débit** : ~434 primitives/image veut dire qu'on est resté sur l'écran de groupe, l'état 3
+atteint donne ~1. Relancer suffit. Détail dans `Documentation/Tests/test-protocol.md`.
+
+**Prérequis** : au moins une sauvegarde dans `OpenForesia\save\`. Il y en a quatre.
+
 
 **Prérequis** : au moins une sauvegarde dans `OpenForesia\save\`. Il y en a quatre.
 
@@ -448,9 +484,10 @@ RunGameStateTick (état 3)
       │     ├─ TryPlaceEntity   FUN_005330d0   [FAIT]
       │     ├─ FinalizeEntityPlacement2       [FAIT le 2026-08-21 — FUN_00533940, 375 l.]
       │     │  └─ GroundHeightOnFace          [FAIT le 2026-08-21 — FUN_00533450, 52 l.]
-      │     └─ ApplyAreaPalette FUN_005350b0   ←←← ON S'ARRÊTE ICI (95 lignes)
+      │     └─ SpawnSubAreaEntities FUN_005350b0 [FAIT le 2026-08-21 — le peuplement de
+      │           sous-zone ; l'ancien nom ApplyAreaPalette etait faux]
       ├─ ReInitializeAllTextures / Ordinal_674 [FAIT]
-      └─ RunWorldMapTick       FUN_00516fc0    [à faire, 1226 lignes — le gros morceau]
+      └─ RunWorldMapTick       FUN_00516fc0    ←←← ON S'ARRÊTE ICI (1226 l. + ~5900 d'appelees)
 ```
 
 ## Comment reproduire l'arrêt en trente secondes

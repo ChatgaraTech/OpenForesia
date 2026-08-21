@@ -7264,3 +7264,75 @@ s'arrete sur `FUN_005350b0`, l'etape suivante.
 maintenant consomme par le gestionnaire de zone, exactement comme dans le binaire. **Un champ
 « assigne mais jamais utilise » est souvent le bout pendant d'une fonction non encore transcrite**,
 pas du code mort.
+
+---
+
+## 2026-08-21 — `FUN_005350b0` : `PlaceWorldMapParty` est complete de bout en bout
+
+Transcrite sous le nom **`SpawnSubAreaEntities`**. Le front passe a `FUN_00516fc0`, la logique par
+image — la derniere piece avant que la carte du monde dessine quelque chose.
+
+### Le nom precedent etait faux, et il faisait croire a autre chose
+
+Le stub s'appelait `ApplyAreaPalette` et son message parlait de « mise en place de palette de zone ».
+Le corps ne touche a aucune palette : il **peuple la sous-zone**. Il parcourt une liste
+d'enregistrements de 0x20 octets (prise dans le repertoire de zone, table `+0x30`, indexee par la
+sous-zone), en derive une entite de 0x9c octets par enregistrement, et pose chacune sur le terrain
+via `TryPlaceEntity` puis `FinalizeEntityPlacement2`.
+
+Le nom datait du moment ou seule la **taille** de la fonction etait connue. Renomme des que le corps
+a ete lu — c'est ce que `Strategy.md` demande, et c'est le second nom trompeur corrige ce jour-la
+apres les quatre `.data` dont le nom taisait l'adresse.
+
+### Un defaut probable de l'original, transcrit tel quel
+
+L'ecriture finale du compte d'entites est **hors du bloc garde**, alors que la variable qui la porte
+n'est initialisee qu'a l'interieur :
+
+```c
+if ((puVar9 != 0) && (param_1 != 0xff)) {
+   param_1 = DAT_005e9ae8;          // le compte
+   for (...) { ...; param_1 = param_1 + 1; }
+}
+DAT_005e9ae8 = param_1;             // <- hors du if
+```
+
+Si la liste d'apparitions est nulle, ou si la sous-zone vaut `0xff`, le compte d'entites recoit donc
+l'**index de sous-zone**. Non corrige : le projet reproduit les defauts de 1998. Marque
+`TODO(REVERSE)` sur place, et a verser dans `legacy-bug.md` le jour ou on l'observe en jeu — on ne
+sait pas encore si le cas est atteignable.
+
+### Ce que ce pas a vraiment exerce
+
+`SpawnSubAreaEntities` fait tourner `TryPlaceEntity` **et** `FinalizeEntityPlacement2` sur jusqu'a
+**128 entites**, pas seulement sur les quatre du groupe. Les deux fonctions ecrites plus tot dans la
+journee — dont celle que Ghidra n'avait pas decompilee — sont donc bien plus eprouvees qu'a leur
+premiere verification, et rien ne faute.
+
+### La mesure de `FUN_00516fc0`, faite avant de s'y engager
+
+`TODO.md` impose de mesurer les dependances manquantes avant d'attaquer une grosse fonction. Fait :
+**1225 lignes pour elle-meme, et ~5900 lignes d'appelees directes non ecrites**, dont
+`FUN_0050bf20` (999), `FUN_0051aa30` (591), `FUN_0051fa40` (438), `FUN_0051e700` (420),
+`FUN_0051c420` (371), `FUN_004011c0` (360), `FUN_00521000` (362), `FUN_00522140` (312).
+
+C'est un chantier a part entiere, pas la suite naturelle d'une seance. **Mesurer a evite de le
+commencer par le milieu.**
+
+### Deux « fonctions absentes de Blaze.c » qui n'en etaient pas
+
+La mesure signalait `FUN_0056aff0` et `FUN_0056afe8` comme absentes du fichier, donc candidates au
+desassemblage. Trente secondes de `at` ont montre que ce ne sont **pas des fonctions** : ce sont les
+entrees 8 et 10 de la table de sauts `s_Vt_0056afc8`, toutes deux garnies de `0x00401FA0` — le `ret`
+nu deja verifie. Ghidra les rend `(*(code *)PTR_FUN_0056afe8)()`, un appel indirect, et le prefixe
+`FUN_` d'un `PTR_FUN_` trompe le comptage.
+
+**Un `FUN_xxxxxxxx` absent de `Blaze.c` n'est pas forcement du code manquant** : verifier a quoi
+l'adresse correspond avant de conclure. Ici la table est deja modelisee par `CallEntityHandler`.
+
+### Verification
+
+Build 0 erreur, avertissements inchanges · oracle : **deux corps signales**, tous deux voulus
+(`CallAreaHandler` rebranche, et le renommage au site d'appel dans `PlaceWorldMapParty`), plus une
+methode « absente » qui est l'ancien nom du stub · tests de disposition 5 verts · la reproduction
+tourne sans echafaudage et s'arrete sur `RunWorldMapTick`.

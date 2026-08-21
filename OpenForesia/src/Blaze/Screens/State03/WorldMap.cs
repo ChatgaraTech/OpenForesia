@@ -1295,9 +1295,143 @@ public static unsafe partial class Blaze
         return (uint)(ushort)*(short*)v | ((uint)(ushort)*(short*)(v + 4) << 0x10);
     }
 
-    /// <summary>Ghidra: FUN_005350b0 @ 0x005350b0 — 95 lignes, non transcrite.</summary>
-    private static void ApplyAreaPalette(byte index) =>
-        throw new NotImplementedException("FUN_005350b0 : la mise en place de palette de zone (95 lignes)");
+    /// <summary>
+    /// Ghidra: FUN_005350b0 @ 0x005350b0 — <b>le peuplement d'une sous-zone</b> : parcourt la liste
+    /// d'apparitions de la sous-zone <paramref name="subArea"/> et remplit un emplacement d'entite
+    /// par enregistrement, en placant chacune sur le terrain.
+    ///
+    /// <para>
+    /// <b>Elle s'appelait <c>ApplyAreaPalette</c> jusqu'au 2026-08-21, et ce nom etait faux.</b> Il
+    /// datait du moment ou seule sa taille etait connue. Rien ici ne touche a une palette : la
+    /// fonction lit une liste d'enregistrements de 0x20 octets et en derive des entites de 0x9c
+    /// octets. Renommee des que le corps a ete lu, comme <c>Strategy.md</c> le demande.
+    /// </para>
+    /// <para>
+    /// La liste vient du repertoire de zone, table <c>+0x30</c>, indexee par la sous-zone. Elle est
+    /// terminee par <c>0xffffffff</c>, et le remplissage s'arrete aussi quand les 128 emplacements
+    /// de <c>DAT_005fa5e0</c> sont pleins.
+    /// </para>
+    /// <para>
+    /// Chaque entite est ensuite posee sur le sol par <see cref="TryPlaceEntity"/> puis
+    /// <see cref="FinalizeEntityPlacement2"/> — les deux transcrites plus tot le meme jour, dont
+    /// celle que Ghidra n'avait pas decompilee.
+    /// </para>
+    /// </summary>
+    /// <param name="subArea">L'index de sous-zone ; <c>0xff</c> veut dire « aucune ».</param>
+    private static void SpawnSubAreaEntities(int subArea)
+    {
+        uint* slot = (uint*)Mem.Entity(0x005fa5e0) + *(uint*)Mem.Arena(0x005e9ae8) * 0x27;
+
+        // L'original lit la table AVANT de tester `subArea != 0xff` : l'index 0xff provoque donc
+        // une lecture de `table[255]` dont le resultat est ensuite jete. Transcrit dans cet ordre.
+        byte* spawnLists = *(byte**)(s_Unknown_005e97cc + 0x30);
+        uint* record = *(uint**)(spawnLists + subArea * 4);
+
+        int spawned = subArea;                        // Ghidra reutilise param_1 comme compteur
+
+        if (record != null && subArea != 0xff)
+        {
+            int remaining = 0x80 - (int)*(uint*)Mem.Arena(0x005e9ae8);
+            spawned = (int)*(uint*)Mem.Arena(0x005e9ae8);
+
+            byte** chunkTable = (byte**)Mem.Entity(0x005f7bc0);
+
+            for (; remaining > 0; record += 8, remaining--, spawned++, slot += 0x27)
+            {
+                uint kind = record[0];
+                if (kind == 0xffffffff) break;
+
+                uint packedFacing = record[3];        // Ghidra: uVar1
+                uint packedX = record[1];             // Ghidra: uVar2
+                uint packedZ = record[2];             // Ghidra: uVar3
+
+                *((byte*)slot + 7) = (byte)kind;
+                *(byte*)(slot + 2) = (byte)spawned;
+                slot[3] = kind;
+
+                *(ushort*)((byte*)slot + 0x96) = 0;
+                *((byte*)slot + 9) = 0;
+                slot[4] = 0;
+                slot[5] = record[6];
+
+                uint model = record[7];               // Ghidra: uVar4
+                *(short*)(slot + 1) = (short)model;
+                *slot = 0xc0200000;
+                *(short*)((byte*)slot + 10) = (short)(model >> 0x10);
+
+                slot[0xe] = 0xffffff;
+                slot[8] = (uint)((int)packedX >> 4 & unchecked((int)0xfffff000));
+                slot[7] = (uint)((short)packedX << 0xc);
+                slot[9] = (uint)((short)packedZ << 0xc);
+
+                ushort facingHigh = (ushort)(packedFacing >> 0x10);   // Ghidra: uVar5
+
+                if ((kind & 3) != 0)
+                {
+                    // Le morceau de terrain sous l'entite decide si elle est visible d'emblee.
+                    byte* chunk = chunkTable[(byte)*Mem.Entity(0x00600838) + (byte)slot[1]];
+                    if ((kind & 0x80) == 0
+                        || *(ushort*)(chunk + 0xe) < 2
+                        || *(int*)(*(int*)(chunk + 0x38) + 4) == 0)
+                    {
+                        *slot |= 0x2000;
+                    }
+
+                    slot[10] = 0x10001000;
+                    slot[0xc] = packedFacing << 0x10 | packedZ >> 0x10;
+                    slot[0xb] = 0x1000;
+                    *(ushort*)(slot + 0xd) = facingHigh;
+                }
+
+                switch (kind & 3)
+                {
+                    case 0:
+                        *(ushort*)((byte*)slot + 0x36) = 1;
+                        *(byte*)(slot + 0x10) = 0;
+                        slot[0xf] = *(uint*)(*(int*)(s_Unknown_005e97cc + 0x38) + (byte)slot[1] * 4);
+                        *slot |= 0x2000;
+                        slot[10] = packedFacing << 0x10 | packedZ >> 0x10;
+                        *(ushort*)((byte*)slot + 0x2e) = facingHigh;
+                        break;
+                    case 1:
+                        *(ushort*)((byte*)slot + 0x36) = 2;
+                        break;
+                    case 2:
+                        *(ushort*)((byte*)slot + 0x36) = 0;
+                        break;
+                }
+
+                slot[0x14] = 0;
+                slot[0x20] = 0xa0000000;
+                slot[0x21] = 0xa0000000;
+                slot[0x22] = 0xa0000000;
+                slot[0x23] = 0xa0000000;
+                slot[0x15] = 0;
+                slot[0x16] = 0;
+                slot[0x1b] = 0;
+                slot[0x1c] = 0;
+                slot[0x1d] = 0;
+                slot[0x1e] = 0;
+                slot[0x18] = slot[8];
+                slot[0x19] = slot[8];
+
+                TryPlaceEntity(*(byte**)Mem.Entity(0x005f7bc0), slot, 0x8000);
+                FinalizeEntityPlacement2(slot);
+            }
+        }
+
+        // TODO(REVERSE): **defaut probable de l'original, transcrit tel quel.** Cette affectation
+        // est HORS du `if`, et `spawned` n'a ete initialise au compte d'entites qu'A L'INTERIEUR.
+        // Si la liste est nulle ou si `subArea` vaut 0xff, le compte d'entites recoit donc l'INDEX
+        // DE SOUS-ZONE — une valeur qui n'a rien a y faire. Ghidra le rend sans ambiguite (le
+        // `param_1 = DAT_005e9ae8` est bien dans le bloc garde), et la reecriture du compte est
+        // bien apres l'accolade fermante.
+        //
+        // Non « corrige » : le projet reproduit les defauts de 1998 plutot que de les reparer. A
+        // verser dans legacy-bug.md le jour ou on l'observe en jeu — pour l'instant on ne sait pas
+        // si le cas est atteignable.
+        *(uint*)Mem.Arena(0x005e9ae8) = (uint)spawned;
+    }
 
     /// <summary>
     /// Ghidra: la seconde moitie de <c>FUN_00516350</c> — le placement du groupe sur la carte, la
@@ -1545,7 +1679,7 @@ public static unsafe partial class Blaze
         *(uint*)Mem.Arena(0x005e9ae8) = 0;
         s_Unknown_00564540 = (roll % 6 + 6) * 0x14;
 
-        ApplyAreaPalette(sheet[6]);                 // Ghidra: FUN_005350b0
+        SpawnSubAreaEntities(sheet[6]);             // Ghidra: FUN_005350b0
 
         *(ushort*)(Mem.s_ViewRect_00566c70 + 4) = (ushort)(sheet[3] | 0x100);
         *(ushort*)(Mem.s_ViewRect_00566c70 + 8) = (ushort)(sheet[4] << 6);
