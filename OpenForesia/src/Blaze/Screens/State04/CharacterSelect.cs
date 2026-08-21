@@ -494,7 +494,7 @@ public static unsafe partial class Blaze
                 // carrousel, transcrit tel quel.
                 uint sceneExtra = (uint)((advanced >> 0xf) << 0x10) | *(ushort*)(entity + 0x0a);
 
-                primCursor = DrawAnimatedModel(
+                primCursor = Mdl.DrawAnimatedModel(
                     otBase, primCursor, animEntry,
                     (int*)(((byte**)s_ModelTable_005e96a0)[assetIndex]),
                     scenePos, *sceneFrame, sceneExtra);

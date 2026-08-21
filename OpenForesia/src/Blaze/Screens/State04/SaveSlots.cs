@@ -1127,7 +1127,7 @@ public static unsafe partial class Blaze
             }
 
             short* projected = stackalloc short[4];
-            if (ProjectPoint((int*)copy, projected) == 0) continue;
+            if (Mdl.ProjectPoint((int*)copy, projected) == 0) continue;
 
             byte* atlas = ((byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94))[2 + i];
             short frame = (short)((s_FadeCounter_005e9960 >> 1) % 6);
@@ -1925,7 +1925,7 @@ public static unsafe partial class Blaze
                 uint modelExtra = (uint)((*animIndex >> 0xf) << 0x10)
                                 | *(ushort*)(slot + 0x0a);
 
-                primCursor = DrawAnimatedModel(
+                primCursor = Mdl.DrawAnimatedModel(
                     otBase, primCursor, animEntry,
                     (int*)(((byte**)s_ModelTable_005e96a0)[assetIndex]),
                     (int*)(slot + 0x1c), *frame, modelExtra);
@@ -1936,7 +1936,7 @@ public static unsafe partial class Blaze
             Mem.CopyDwords((uint*)(slot + 0x1c), (uint*)slotCopy, 10);
             *(int*)(slotCopy + 4) += 0x3c000;
 
-            if (ProjectPoint((int*)slotCopy, projected) == 0) continue;
+            if (Mdl.ProjectPoint((int*)slotCopy, projected) == 0) continue;
 
             byte* labelSprite = stackalloc byte[20];
             NativeMemory.Clear(labelSprite, 20);

@@ -32,7 +32,7 @@ public static unsafe partial class Blaze
     // à zéro, les boucles d'émission s'arrêtent net. Il n'est écrit nulle part ailleurs, et son
     // adresse tombe dans la queue non initialisée de .data — donc sans la remise à 2500 de
     // FrameBegin, plus rien ne se dessinerait du tout.
-    private static int s_Unknown_005e9818;
+    internal static int s_Unknown_005e9818;
     private static uint s_FadeCounter_005e9960;      // Ghidra: DAT_005e9960
     private static uint s_Unknown_005e9814;
     private static int s_Unknown_005de154, s_Unknown_005de158, s_Unknown_005de15c;

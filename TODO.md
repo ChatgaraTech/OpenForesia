@@ -8,35 +8,37 @@ Point d'entrée entre deux sessions. Mis à jour le **2026-08-21**. L'historique
 **État git au 2026-08-21.** Commité jusqu'à `2d5bb36` (« Refacto Audio.cs ») : les six premières
 vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baseline.txt` /
 `bodies-baseline.txt`.
-**Non commité** : la conversion de `Resources.cs` (septième classe), le rapatriement `.data` du son
-vers `GameMemory`, et cette mise à jour de documentation — 23 fichiers.
+**Non commité** : les conversions de `Resources.cs` et de `Model3d.cs`, le rapatriement `.data` du son
+vers `GameMemory`, et cette mise à jour de documentation — 13 fichiers.
 
 Les deux fichiers de référence de `OpenForesia.Tools/` sont l'oracle — les perdre le perdrait.
 Ils sont désormais dans l'historique, donc récupérables ; ce n'était pas le cas le 2026-08-19.
 
 ---
 
-# Priorité 1 — `Engine/` en vraies classes · **7 fichiers sur 9**
+# Priorité 1 — `Engine/` en vraies classes · **8 fichiers sur 9**
 
 ## Reprendre ici
 
-Il ne reste que **`Engine/UiWindow.cs`** (368 l.) et **`Engine/Model3d.cs`** (583 l.), les deux
-que la mesure de clôture désigne depuis le début comme « à faire en dernier ». Le choix entre eux
-n'est plus une question de clôture mais de nature :
+Il ne reste que **`Engine/UiWindow.cs`** (368 l.), le plus petit fichier d'`Engine/` et le dernier
+de l'étape C. Il ne possède **aucune** globale : sa conversion n'est pas un déménagement d'état
+mais une mise au net de ce qu'il lit. Mesuré le 2026-08-21 avec le script **corrigé** (voir plus
+bas), détail des emprunts déjà relevé :
 
-* **`UiWindow`** ne possède **aucune** globale et en emprunte 15 (6 à `GameMemory`, 4 à `Engine/`,
-  5 à `Screens/`). C'est un pur consommateur : sa conversion est presque entièrement du brassage
-  de globales d'autrui, donc le pire risque d'aliasing par ligne convertie. Mais `Prims` et `Ui`,
-  dont il dépend, sont déjà des classes — l'essentiel de ce qu'il emprunte est déjà atteignable
-  proprement.
-* **`Model3d`** emprunte 18 symboles à d'autres fichiers `Engine/`. Ils sont **tous convertis
-  maintenant** sauf `UiWindow` : la raison de le repousser a donc largement disparu. Vérifier
-  lesquels des 18 viennent encore d'`UiWindow` avant de choisir l'ordre.
+| symbole | usages hors commentaire | vit dans |
+|---|---:|---|
+| `s_SlotArea_005e9180`, `s_PlayerSlots_005e9188`, `s_SlotFlags_005e93c0`, `s_InputStateBase_00604a20` | 8 | `Engine/Input.cs` — **déjà une classe**, atteignable par `Inp.` |
+| `s_DeviceCapFlag_00564a48`, `s_MainResourceBuffer_005e97c0`, `s_PanelSelection_005e9060`, `s_SizeSetting_005de160`, `s_Unknown_005de538` | 12 | `Memory/GameMemory.cs` — rien à faire, `mem.` |
+| `s_Unknown_005de154`, `s_Unknown_005de158`, `s_Unknown_005de15c` | 4 | `Screens/State00/MainMenu.cs` |
+| `s_SmallTextureFlag` | 1 | `Screens/State00/Options.cs` — échafaudage, déjà `internal` |
+| `s_FadeCounter_005e9960`, `s_StateBank2_005e9060` | **0** | cités en commentaire seulement |
 
-**Mesurer avant de trancher** — la clôture a changé à chaque conversion, et deux notes de ce
-fichier se sont révélées fausses en deux jours (voir l'encadré ci-dessous).
+**À regarder avant d'écrire** : `s_Unknown_005de154/158/15c` sont trois dwords adjacents dans
+`MainMenu.cs`, et `s_SizeSetting_005de160` — qui les suit **immédiatement** — est déjà dans
+`GameMemory`. Un bloc de `.data` coupé en deux fichiers, donc, exactement la forme du défaut
+d'aliasing. Vérifier la carte des symboles avant de décider s'ils déménagent ensemble.
 
-## Deux avertissements payés comptant
+## Trois avertissements payés comptant
 
 **Vérifier sa propre note avant de planifier dessus.** Ce fichier annonçait que `Resources.cs`
 « porte `ToAnsiZ` » et que sa conversion demanderait de décider où vit cette aide. C'était faux :
@@ -53,32 +55,53 @@ Et ce n'est pas qu'une question de rangement : **un `.data` sans suffixe VA est 
 l'outillage.** Les tests de disposition n'indexent que par le suffixe du nom, donc ils étaient
 verts sur un recouvrement bien réel (voir la priorité 1 bis). Le nom est l'index, pas une décoration.
 
-Refaire la mesure de clôture avant de partir :
+**Un outil de mesure qui range mal fabrique un plan faux, et personne ne le relit.** Le script de
+clôture n'avait pas de branche pour `Platform/` : ses symboles tombaient dans « autre Engine ».
+`Model3d` a donc porté pendant trois jours l'étiquette « 18 emprunts à `Engine/`, à faire quand
+ceux-ci seront convertis », alors que 17 des 18 étaient les registres GTE de `Platform/Winsys3d.cs`
+— de l'interop vers `winsys3d.dll`, qui n'allait jamais devenir une classe. Le fichier était en
+réalité le **plus fermé** des deux restants. Script corrigé ci-dessous ; la leçon générale est de
+se méfier d'un seau fourre-tout dans un `case`, parce qu'il ne se signale jamais.
+
+## Mesurer la clôture — la version corrigée du script
+
+Refaire la mesure avant de partir : elle a changé à chaque conversion. **Utiliser cette version-ci**,
+celle du 2026-08-21 avec les branches `Platform/` et `Engine/` séparées.
 
 ```bash
 cd OpenForesia/src/Blaze
-for f in Engine/UiWindow.cs Engine/Model3d.cs; do
-  gm=0; ic=0; en=0; sc=0
+for f in Engine/UiWindow.cs; do
+  gm=0; ic=0; en=0; pf=0; sc=0
   for s in $(grep -oE "\bs_[A-Za-z0-9_]+" $f | sort -u); do
     if grep -qE "^    (private|internal).*\b$s\b" $f; then ic=$((ic+1)); continue; fi
     src=$(grep -rlE "^    (private|internal).*\b$s\b" --include=*.cs . | head -1 | sed 's|^\./||')
-    case "$src" in Memory/GameMemory.cs) gm=$((gm+1));; Screens/*) sc=$((sc+1));; "") ;; *) en=$((en+1));; esac
+    case "$src" in
+      Memory/GameMemory.cs) gm=$((gm+1));;
+      Platform/*|Interop/*)  pf=$((pf+1));;
+      Screens/*)             sc=$((sc+1));;
+      Engine/*)              en=$((en+1));;
+    esac
   done
-  printf "%-22s %5s | GameMem %-3s ici %-3s autreEngine %-3s SCREENS %s\n" "$f" "$(wc -l < $f)" "$gm" "$ic" "$en" "$sc"
+  printf "%-22s %5s | GameMem %-3s ici %-3s Engine %-3s Platform %-3s SCREENS %s\n" \
+    "$f" "$(wc -l < $f)" "$gm" "$ic" "$en" "$pf" "$sc"
 done
 ```
 
-**La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si.** État au
-2026-08-21 au soir, après `Audio` **et** `Resources` :
+**Et le compte agrégé ment sur un point** : il inclut les symboles cités **en commentaire**. Deux
+des « 5 emprunts à `Screens/` » de `UiWindow` sont dans ce cas. Lister le détail avant de conclure
+(boucle identique, en imprimant `$s` et sa source au lieu de compter).
 
-| fichier | lignes | déjà dans `GameMemory` | à lui | autre `Engine/` | `Screens/` |
-|---|---:|---:|---:|---:|---:|
-| ~~`Audio.cs`~~ | ~~1 253~~ | — | — | — | **fait le 2026-08-21** |
-| ~~`Resources.cs`~~ | ~~1 110~~ | — | — | — | **fait le 2026-08-21** |
-| `UiWindow.cs` | 368 | 6 | **0** | 4 | 5 |
-| `Model3d.cs` | 583 | 10 | 0 | **18** | 1 |
+**La taille d'un fichier ne dit rien de son coût de conversion ; sa clôture, si — encore
+faut-il la mesurer juste.** État au 2026-08-21 au soir, après `Audio`, `Resources` et `Model3d` :
 
-## La recette, éprouvée sept fois
+| fichier | lignes | `GameMemory` | à lui | `Engine/` | `Platform/` | `Screens/` |
+|---|---:|---:|---:|---:|---:|---:|
+| ~~`Audio.cs`~~ | ~~1 253~~ | — | — | — | — | **fait** |
+| ~~`Resources.cs`~~ | ~~1 110~~ | — | — | — | — | **fait** |
+| ~~`Model3d.cs`~~ | ~~583~~ | — | — | — | — | **fait** |
+| `UiWindow.cs` | 368 | 6 | **0** | 4 | 0 | 4 (dont 2 en commentaire) |
+
+## La recette, éprouvée huit fois
 
 1. **Mesurer** : membres, `[UnmanagedCallersOnly]`, `delegate*`, et d'où vient chaque `s_*` lu.
 2. **Trancher les globales empruntées.** La règle porte sur l'**ancre `// Ghidra:`**, pas sur le
@@ -123,7 +146,7 @@ grep -rn --include=*.cs -iE "\bnomcandidat\b" OpenForesia/src | wc -l
 ```
 
 Les occurrences **en commentaire** sont sans risque : l'oracle retire les commentaires avant de
-normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`, `Aud`, `Res`.
+normaliser. Noms pris : `Ui`, `Prims`, `Saves`, `Vid`, `Inp`, `Aud`, `Res`, `Mdl`.
 
 **Et ne jamais donner au point d'entrée le nom de son propre type.** `Audio` était disponible et
 lisible ; il a été écarté au profit de `Aud` parce qu'une propriété homonyme de son type déclenche
@@ -207,12 +230,21 @@ taux, huit essais ne distinguent pas 25 % de 40 %, et un build concurrent fausse
   voir la priorité 1 bis. Les corriger change le comportement → changement séparé. `0x00566c70`
   doit être traité **avant** la reprise de la carte du monde, et `0x005e8520` va avec le
   renommage qui refige la référence de l'oracle.
-* **Cinq globales `.data` traversent encore la frontière de `Resources`** sans passer par
-  `GameMemory`, exposées `internal` chez leur propriétaire : `s_GameStateId` (`GameStates.cs`),
-  `s_MenuRenderBlock_00566c70` et `s_Unknown_005e97c8` (`MainMenu.cs`), `s_Unknown_005de52c`
-  (`Destination.cs`), `s_Unknown_005e92b0` (`DebugParty.cs`).
+* **Six globales `.data` traversent encore la frontière d'une classe convertie** sans passer par
+  `GameMemory`, exposées `internal` chez leur propriétaire :
+
+  | symbole | vit dans | lue par |
+  |---|---|---|
+  | `s_GameStateId` (`DAT_005de510`) | `GameStates.cs` | `Resources` |
+  | `s_MenuRenderBlock_00566c70` | `MainMenu.cs` | `Resources` |
+  | `s_Unknown_005e97c8` | `MainMenu.cs` | `Resources` |
+  | `s_Unknown_005e9818` | `MainMenu.cs` | `Model3d` |
+  | `s_Unknown_005de52c` | `Destination.cs` | `Resources` |
+  | `s_Unknown_005e92b0` | `DebugParty.cs` | `Resources` |
+
   `s_MenuRenderBlock_00566c70` est **bloquée** par le défaut d'aliasing de la même adresse ; les
-  quatre autres relèvent de l'étape A ordinaire, à rapatrier quand l'occasion se présente.
+  cinq autres relèvent de l'étape A ordinaire, à rapatrier en un seul geste vérifié plutôt qu'en
+  marge d'une conversion — c'est ce qui a bien marché pour la dette du son (tâche 7.12).
 * La réparation des **~870 lignes à encodage double** (`repair-double-encoded-comments`, ouvert,
   non commencé). Commentaires et journaux seulement, rien de visible en jeu.
 

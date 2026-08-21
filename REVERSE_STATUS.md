@@ -6624,3 +6624,81 @@ Les deux étapes ont été vérifiées séparément et intégralement.
 `-Entry 2` a été ajouté au protocole de cette conversion parce que `Resources` porte l'écran de
 chargement et les ressources de menu : conclure sur un seul écran aurait laissé ce chemin non
 exercé.
+
+---
+
+## 2026-08-21 (fin) — `Model3d`, et un outil de mesure qui fabriquait un faux plan
+
+`Engine/Model3d.cs` → `Model3d(GameMemory)`, 583 → 622 l., **7 membres, 0 statique, 0 champ**.
+Huitième vraie classe sur neuf.
+
+C'est la seule classe de l'étape C qui ne possède **aucune** globale. Sa conversion n'a donc rien
+déménagé : elle a rendu visible ce qu'elle lit ailleurs — 11 symboles de `GameMemory`, 17 registres
+GTE, un compteur d'écran.
+
+### Le vrai sujet : le script de clôture rangeait mal, et le plan s'en est trouvé faux
+
+`TODO.md` classait `Model3d` « à faire en dernier » depuis trois jours, au motif qu'il empruntait
+**18 symboles à d'autres fichiers `Engine/`**, donc qu'il fallait attendre leur conversion.
+
+C'était faux. **17 des 18 sont les registres GTE de `Platform/Winsys3d.cs`** — des pointeurs dans le
+segment de données de `winsys3d.dll`, résolus par `GetProcAddress` sur des ordinaux sans nom. Ce ne
+sont ni des globales de `Blaze.exe`, ni du code destiné à devenir une classe. Le fichier était en
+réalité le **plus fermé** des deux restants, et sa conversion a tenu en une passe.
+
+L'erreur venait du script de mesure, dont le `case` n'avait de branche que pour `GameMemory` et
+`Screens/` :
+
+```bash
+case "$src" in Memory/GameMemory.cs) gm=…;; Screens/*) sc=…;; "") ;; *) en=…;; esac
+#                                                                     ^^^ tout le reste, y
+#                                                                     compris Platform/ et Interop/
+```
+
+Le seau fourre-tout `*)` absorbait `Platform/` et `Interop/` sous l'étiquette « autre Engine ».
+
+**Un seau fourre-tout dans un `case` ne se signale jamais** : il ne produit ni erreur, ni valeur
+aberrante, seulement un chiffre plausible dans la mauvaise colonne. Et un chiffre plausible produit
+par un outil ne se relit pas. Corrigé dans `TODO.md`, avec les branches `Platform/*|Interop/*` et
+`Engine/*` séparées — et `UiWindow`, le dernier fichier, a été remesuré avec la bonne version.
+
+Deuxième défaut du même script, plus bénin : le compte agrégé **inclut les symboles cités en
+commentaire**. Deux des « 5 emprunts à `Screens/` » de `UiWindow` sont dans ce cas. Lister le détail
+avant de conclure, pas seulement compter.
+
+### Pourquoi les 17 registres GTE restent dans `Platform/`
+
+Ce n'est pas un compromis mais l'application de la règle corrigée le matin même : **aucune ancre
+`// Ghidra: DAT_…` ne les désigne**, donc ils ne sont pas du `.data` de `Blaze.exe` et n'ont rien à
+faire dans `GameMemory`. Ce sont les registres du GTE émulé par la DLL, documentés dans
+`Documentation/DLL/winsys3d.md`. Trois autres fichiers les lisent (`Model3d`, `WorldMap`,
+`CharacterCreation`) : c'est de l'interop partagée, pas l'état privé d'un rendu.
+
+Ils passent `internal`, avec cinq aides du même fichier (`EnsureGteRegisters`, `RotMatrix`,
+`ScaleMatrixSaturating`, `NormalClip`, `ReadMac0`).
+
+### Le nom du point d'entrée, encore une fois décisif
+
+`Mdl`, et **non `Model`** : `model` est un paramètre vivant dans dix lignes de `Model3d.cs`
+lui-même. La liste blanche de l'oracle étant insensible à la casse, inscrire `model` aurait rendu
+l'outil aveugle à ces dix lignes — exactement le piège que `Prims` (contre `Prim`) avait déjà évité.
+`mdl` vérifié à 0 occurrence avant inscription.
+
+C'est la troisième fois que ce contrôle change le nom retenu. Il vaut ses trente secondes.
+
+### Une dette laissée ouverte
+
+`s_Unknown_005e9818` (`DAT_005e9818`, le budget de primitives par image) reste chez
+`Screens/State00/MainMenu.cs`, exposé `internal`. C'est du `.data` et il devrait rejoindre
+`GameMemory` ; comme les cinq de `Resources`, ce rapatriement est de l'étape A et se fera
+séparément.
+
+### Vérification
+
+Build 0 erreur, **tableau d'avertissements identique** avant/après (`git stash` + reconstruction
+complète) · oracle « aucune logique modifiée » sur 511 corps, 0 méthode absente · auto-test de
+l'oracle 9/9 · tests de disposition inchangés (3 rouges attendus / 2 verts) · `-Entry 1` sans
+plantage à **382,3** primitives par image, **capture relue — le modèle 3D animé du personnage est
+bien à l'écran**, ce qui est le contrôle qui compte ici puisque `DrawAnimatedModel` est précisément
+ce qui le dessine · `-Entry 2` à **387** · **taux de course 3/16 = 19 %**, machine au repos, sous la
+référence de 22–25 %.

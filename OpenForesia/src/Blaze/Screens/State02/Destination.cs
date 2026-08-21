@@ -272,7 +272,7 @@ public static unsafe partial class Blaze
             if (advanced >= *(ushort*)(animEntry + 0x16)) *(short*)(entity + 0x1a) = 0;
 
             uint modelExtra = (uint)((advanced >> 0xf) << 0x10) | *(ushort*)(entity + 0x0a);
-            primCursor = DrawAnimatedModel(
+            primCursor = Mdl.DrawAnimatedModel(
                 otBase, primCursor, animEntry,
                 *(int**)(s_PartyModelResult_005e9800 + assetIndex),
                 (int*)(entity + 0x1c), *(short*)(entity + 0x1a), modelExtra);
@@ -297,7 +297,7 @@ public static unsafe partial class Blaze
             for (int i = 0; i < ParticleCount; i++, particle += ParticleStride)
             {
                 // Une particule visible s'éclaircit jusqu'au gris 0x808080.
-                if (ProjectPoint((int*)particle, projected) != 0
+                if (Mdl.ProjectPoint((int*)particle, projected) != 0
                     && *(int*)(particle + 0x1c) != 0x808080)
                 {
                     *(int*)(particle + 0x1c) += 0x80808;

@@ -58,12 +58,12 @@ public static unsafe partial class Blaze
             attributes &= 0xfffffdff;
         }
 
-        LoadPointAsMatrixTranslation(particle);
+        Mdl.LoadPointAsMatrixTranslation(particle);
 
         // Ghidra lit ce mot **avant** de projeter, et c'est ce qui commande le test d'écran.
         ushort cullFlags = *(ushort*)((byte*)particle + 0x1a);
 
-        ProjectOriginThroughMatrix();
+        Mdl.ProjectOriginThroughMatrix();
 
         uint screen = *(uint*)s_GteSxy809;
         short screenX = (short)screen;

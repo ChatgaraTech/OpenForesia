@@ -158,4 +158,17 @@ public static unsafe partial class Blaze
     /// </summary>
     private static Resources? s_res;
     internal static Resources Res => s_res ??= new Resources(Mem);
+    /// <summary>
+    /// Le rendu de modele animé. La seule classe de l'etape C qui ne possede AUCUNE globale : sa
+    /// conversion ne deplace pas d'etat, elle rend visible ce qu'elle lit ailleurs.
+    ///
+    /// <para>
+    /// Point d'entree <c>Mdl</c> et non <c>Model</c> : <c>model</c> est un parametre vivant dans
+    /// dix lignes de ce fichier meme, et la liste blanche de l'oracle est insensible a la casse.
+    /// L'y inscrire aurait rendu l'oracle aveugle a ces lignes — le piege exact que <c>Prims</c>
+    /// avait deja evite.
+    /// </para>
+    /// </summary>
+    private static Model3d? s_mdl;
+    internal static Model3d Mdl => s_mdl ??= new Model3d(Mem);
 }

@@ -1,7 +1,7 @@
 // OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
-// Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
+// La carte des repertoires et la regle
 // qui decide ou va une fonction sont dans ARCHITECTURE.md, a la racine du depot. L etat de la
 // reconstruction et les questions ouvertes sont dans REVERSE_STATUS.md, a la racine egalement.
 
@@ -10,9 +10,41 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// `Blaze` porte encore ce que cette classe lit : le banc de registres GTE de Platform/Winsys3d.cs
+// (voir plus bas) et le compteur d'emission s_Unknown_005e9818 de Screens/State00/MainMenu.cs.
+using static OpenForesia.Blaze.Blaze;
+
 namespace OpenForesia.Blaze;
 
-public static unsafe partial class Blaze
+/// <summary>
+/// Le rendu de modele anime : la projection d'un personnage a travers le GTE emule et l'emission
+/// de ses faces dans la liste d'affichage (Ghidra: 0x0051d).
+///
+/// <para>
+/// <b>Elle ne possede aucune globale.</b> Sept methodes, zero champ - c'est la seule classe de
+/// l'etape C dans ce cas. Sa conversion n'est donc pas un demenagement d'etat mais une mise au
+/// net de ce qu'elle LIT : 11 symboles de <see cref="GameMemory"/>, 17 registres GTE, et un
+/// compteur d'ecran.
+/// </para>
+/// <para>
+/// <b>Les 17 registres GTE restent dans <c>Platform/Winsys3d.cs</c>, et ce n'est pas un
+/// compromis.</b> Ce ne sont pas des globales de <c>Blaze.exe</c> : ce sont des pointeurs dans le
+/// segment de donnees de <c>winsys3d.dll</c>, resolus par <c>GetProcAddress</c> sur des ordinaux
+/// sans nom (voir <c>EnsureGteRegisters</c>). Aucune ancre <c>DAT_</c> ne les designe, ils
+/// n'appartiennent donc pas a <see cref="GameMemory"/> ; et trois autres fichiers les lisent, ce
+/// qui en fait de l'interop partagee, pas l'etat prive de ce rendu.
+/// </para>
+/// <para>
+/// Ce que la signature ne dit pas encore : <c>s_Unknown_005e9818</c> (<c>DAT_005e9818</c>, le
+/// budget de primitives par image) reste chez <c>Screens/State00/MainMenu.cs</c>, expose
+/// <c>internal</c>. C'est du <c>.data</c> et il devrait rejoindre <see cref="GameMemory"/> ; ce
+/// rapatriement est de l'etape A et se fera separement, comme les cinq de <see cref="Resources"/>.
+/// </para>
+/// <para>
+/// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
+/// </para>
+/// </summary>
+internal sealed unsafe class Model3d(GameMemory mem)
 {
     // =====================================================================
     // FUN_0051d1f0 — le rendu de modèle animé
@@ -41,7 +73,7 @@ public static unsafe partial class Blaze
     /// l'entrée de la table de modèles, le bloc de transformation de l'entité, l'indice de frame
     /// et le mot d'attributs supplémentaire. Rend le curseur avancé.</para>
     /// </summary>
-    private static uint* DrawAnimatedModel(
+    internal uint* DrawAnimatedModel(
         uint* otBase, uint* prim, byte* animation, int* modelBundle,
         int* transform, int frameIndex, uint extra)
     {
@@ -62,16 +94,16 @@ public static unsafe partial class Blaze
 
         // Ghidra: la matrice de caméra entre dans le registre MATRIX du GTE — les neuf shorts de
         // rotation puis les trois translations, d'un bloc.
-        for (int i = 0; i < 9; i++) matrix814[i] = ((short*)Mem.s_CameraMatrix_006008e0)[i];
-        *(int*)(s_GteMatrix814 + 0x14) = Mem.CameraTranslation[0];
-        *(int*)(s_GteMatrix814 + 0x18) = Mem.CameraTranslation[1];
-        *(int*)(s_GteMatrix814 + 0x1c) = Mem.CameraTranslation[2];
+        for (int i = 0; i < 9; i++) matrix814[i] = ((short*)mem.s_CameraMatrix_006008e0)[i];
+        *(int*)(s_GteMatrix814 + 0x14) = mem.CameraTranslation[0];
+        *(int*)(s_GteMatrix814 + 0x18) = mem.CameraTranslation[1];
+        *(int*)(s_GteMatrix814 + 0x1c) = mem.CameraTranslation[2];
 
         // Ghidra: la position de l'entité, décalée par DAT_006008d0..d8 et ramenée en unités de
         // 1/0x1000. Noter que Y est **soustrait** — l'axe est inversé par rapport aux deux autres.
-        vector802[0] = (short)((transform[0] + Mem.s_Unknown_006008d0) >> 0xc);
-        vector802[1] = (short)((Mem.s_Unknown_006008d4 - transform[1]) >> 0xc);
-        vector802[2] = (short)((transform[2] + Mem.s_Unknown_006008d8) >> 0xc);
+        vector802[0] = (short)((transform[0] + mem.s_Unknown_006008d0) >> 0xc);
+        vector802[1] = (short)((mem.s_Unknown_006008d4 - transform[1]) >> 0xc);
+        vector802[2] = (short)((transform[2] + mem.s_Unknown_006008d8) >> 0xc);
 
         // Ghidra: le produit matrice-vecteur écrit à la main, accumulateurs 32 bits (MAC) puis
         // versions saturées 16 bits (IR) — exactement ce que ferait RotTrans sur la console.
@@ -88,9 +120,9 @@ public static unsafe partial class Blaze
         // Ghidra: local_3c / sStack_3a / sStack_38 — l'orientation de l'entité, décalée par la pose
         // de caméra DAT_00604928. sStack_38 sert aussi d'emplacement d'OT dans le régime « fixe ».
         short* entityAngles = stackalloc short[3];
-        entityAngles[0] = (short)((short)transform[5] + *(short*)(Mem.s_CameraVector_00604928 + 0));
-        entityAngles[1] = (short)(*(short*)((byte*)transform + 0x16) + *(short*)(Mem.s_CameraVector_00604928 + 2));
-        entityAngles[2] = (short)((short)transform[6] + *(short*)(Mem.s_CameraVector_00604928 + 4));
+        entityAngles[0] = (short)((short)transform[5] + *(short*)(mem.s_CameraVector_00604928 + 0));
+        entityAngles[1] = (short)(*(short*)((byte*)transform + 0x16) + *(short*)(mem.s_CameraVector_00604928 + 2));
+        entityAngles[2] = (short)((short)transform[6] + *(short*)(mem.s_CameraVector_00604928 + 4));
 
         // Ghidra: local_bc / local_b8 / local_b4 — la position transformée, mise de côté.
         int translatedX = mac801[0], translatedY = mac801[1], translatedZ = mac801[2];
@@ -109,9 +141,9 @@ public static unsafe partial class Blaze
         // Ghidra: local_68.. — la rotation de scène, celle que le pilotage libre du sous-état 0
         // fait tourner.
         short* sceneAngles = stackalloc short[3];
-        sceneAngles[0] = (short)Mem.s_ScenePitch_005e9308;
-        sceneAngles[1] = (short)Mem.s_SceneYaw_005e930a;
-        sceneAngles[2] = (short)Mem.s_SceneRoll_005e930c;
+        sceneAngles[0] = (short)mem.s_ScenePitch_005e9308;
+        sceneAngles[1] = (short)mem.s_SceneYaw_005e930a;
+        sceneAngles[2] = (short)mem.s_SceneRoll_005e930c;
         short* sceneMatrix = stackalloc short[9];
         RotMatrix(sceneAngles, sceneMatrix);
 
@@ -123,9 +155,9 @@ public static unsafe partial class Blaze
         byte* firstModel = (byte*)(nint)modelBundle[0];
         uint modelAttributes = *(uint*)(firstModel + 0x3c);
 
-        if (Mem.s_DeviceCapFlag_00564a48 && (modelAttributes & 0x200) != 0)
+        if (mem.s_DeviceCapFlag_00564a48 && (modelAttributes & 0x200) != 0)
         {
-            if (Mem.s_Unknown_00564a4c == 0) return prim;
+            if (mem.s_Unknown_00564a4c == 0) return prim;
             modelAttributes &= 0xfffffdff;
         }
 
@@ -133,7 +165,7 @@ public static unsafe partial class Blaze
         int skipped = skipCounters[0] + skipCounters[1] + skipCounters[2] + skipCounters[3];
         byte* firstRecords = *(byte**)(firstModel + 0x28);
 
-        uint clut = *(uint*)(Mem.s_EntityDecodeTable_005e8f00 + ((modelAttributes >> 0x10) & 0xff) * 4);
+        uint clut = *(uint*)(mem.s_EntityDecodeTable_005e8f00 + ((modelAttributes >> 0x10) & 0xff) * 4);
 
         uint tpageWord = ((*(ushort*)(firstRecords + skipped * 0x10 + 8) & 0xfffff800u)
                           | ((((modelAttributes & 0xff) | 0x1c0) << 5))
@@ -265,7 +297,7 @@ public static unsafe partial class Blaze
     /// <para>Effet de bord voulu : la profondeur projetée, divisée par quatre, devient
     /// l'emplacement d'OT du régime « fixe ». D'où le <c>ref</c>.</para>
     /// </summary>
-    private static bool PartIsOnScreen(ref short otSlot)
+    private bool PartIsOnScreen(ref short otSlot)
     {
         ProjectOriginThroughMatrix();
 
@@ -300,17 +332,17 @@ public static unsafe partial class Blaze
     /// cull de <c>FUN_0051d1f0</c> fait le même tour. Extrait à ce titre : unité indépendante
     /// répétée telle quelle, pas un découpage d'un corps unique.</para>
     /// </summary>
-    private static void LoadPointAsMatrixTranslation(int* position)
+    internal void LoadPointAsMatrixTranslation(int* position)
     {
         EnsureGteRegisters();
 
-        Winsys3d.Ordinal_366(Mem.s_CameraMatrix_006008e0);
-        Winsys3d.Ordinal_369(Mem.s_CameraMatrix_006008e0);
+        Winsys3d.Ordinal_366(mem.s_CameraMatrix_006008e0);
+        Winsys3d.Ordinal_369(mem.s_CameraMatrix_006008e0);
 
         short* input = (short*)s_GteVector803;
-        input[0] = (short)((position[0] + Mem.s_Unknown_006008d0) >> 0xc);
-        input[1] = (short)((Mem.s_Unknown_006008d4 - position[1]) >> 0xc);
-        input[2] = (short)((position[2] + Mem.s_Unknown_006008d8) >> 0xc);
+        input[0] = (short)((position[0] + mem.s_Unknown_006008d0) >> 0xc);
+        input[1] = (short)((mem.s_Unknown_006008d4 - position[1]) >> 0xc);
+        input[2] = (short)((position[2] + mem.s_Unknown_006008d8) >> 0xc);
 
         short* m = (short*)s_GteMatrix814;
         int* mac = (int*)s_GteMac801;
@@ -332,7 +364,7 @@ public static unsafe partial class Blaze
         *(int*)(s_GteMatrix814 + 0x1c) = mac[2];
     }
 
-    private static void ProjectOriginThroughMatrix()
+    internal void ProjectOriginThroughMatrix()
     {
         short* vector = (short*)s_GteVector802;
         vector[0] = 0;
@@ -367,7 +399,7 @@ public static unsafe partial class Blaze
     /// rendu la sortie en <c>unaff_retaddr</c> : arg1 en <c>[ESP+0x1c]</c> (la position), arg2 en
     /// <c>[ESP+0x20]</c> (le tampon de sortie, écrit en <c>0x0051f8e5</c>).</para>
     /// </summary>
-    private static int ProjectPoint(int* position, short* outScreen)
+    internal int ProjectPoint(int* position, short* outScreen)
     {
         LoadPointAsMatrixTranslation(position);
         ProjectOriginThroughMatrix();
@@ -389,15 +421,15 @@ public static unsafe partial class Blaze
     /// par polygone**. Posé : ordinal 795, sans profondeur, et **un emplacement d'OT fixe** pour
     /// toute la partie.</para>
     /// </summary>
-    private static uint* DrawModelPart(
+    private uint* DrawModelPart(
         uint* otBase, uint* prim, byte* model, byte* mainMem, int* transform,
         uint tpageWord, uint uvWord, bool skipLighting, short fixedOtSlot)
     {
         uint attributes = *(uint*)(model + 0x3c);
 
-        if (Mem.s_DeviceCapFlag_00564a48 && (attributes & 0x2000000) != 0)
+        if (mem.s_DeviceCapFlag_00564a48 && (attributes & 0x2000000) != 0)
         {
-            if (Mem.s_Unknown_00564a4c == 0) return prim;
+            if (mem.s_Unknown_00564a4c == 0) return prim;
             attributes &= 0xfdffffff;
         }
 
@@ -471,7 +503,7 @@ public static unsafe partial class Blaze
     /// premiers sommets ; s'il passe, le quatrième remplace SXY2 et le test est refait, cette fois
     /// par un vrai appel.</para>
     /// </summary>
-    private static uint* EmitModelQuads(
+    private uint* EmitModelQuads(
         uint* otBase, uint* prim, ref uint* record, int count,
         uint* screen, int* depths, uint* colours,
         uint tpageWord, uint uvWord, bool depthSorted, short fixedOtSlot, bool gouraud)
@@ -537,7 +569,7 @@ public static unsafe partial class Blaze
             if (!gouraud)
             {
                 uint colour = colours[record[1] & 0xff];
-                if (Mem.s_DeviceCapFlag_00564a48) colour &= 0xfdffffff;
+                if (mem.s_DeviceCapFlag_00564a48) colour &= 0xfdffffff;
 
                 prim[0] = previous | 0x9000000;
                 prim[1] = colour | 0x2c000000;
@@ -557,7 +589,7 @@ public static unsafe partial class Blaze
                 uint c1 = colours[indices >> 8 & 0xff];
                 uint c2 = colours[indices >> 0x10 & 0xff];
                 uint c3 = colours[indices >> 0x18];
-                if (Mem.s_DeviceCapFlag_00564a48) c1 &= 0xfdffffff;
+                if (mem.s_DeviceCapFlag_00564a48) c1 &= 0xfdffffff;
 
                 prim[0] = previous | 0xc000000;
                 prim[1] = c1 | 0x3c000000;

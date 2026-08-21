@@ -62,15 +62,18 @@ param(
     # N'y ajouter un nom QUE s'il designe une dependance injectee ou un point d'entree de
     # sous-systeme. Y ajouter un nom pour faire taire un signalement genant vide l'outil de sa
     # valeur - c'est la pente classique des fichiers de suppression.
-    # `aud` et `res` (ajoutes le 2026-08-21 pour les conversions du son et des ressources) :
-    # verifies AVANT de les inscrire, comme la note de TODO.md l'exige -
-    # `grep -rn --include=*.cs -iE "\b(aud|res)\b" OpenForesia/src` rend zero occurrence hors
-    # commentaire pour l'un comme pour l'autre. Ils ne peuvent donc masquer aucune ligne de logique
-    # existante. `res` meritait la verification plus que tout autre : c'est un nom de local
-    # extremement courant en general, il se trouve qu'il est inutilise ICI.
+    # `aud`, `res` et `mdl` (ajoutes le 2026-08-21 pour les conversions du son, des ressources et
+    # du rendu de modele) : verifies AVANT de les inscrire, comme la note de TODO.md l'exige -
+    # `grep -rn --include=*.cs -iE "\b(aud|res|mdl)\b" OpenForesia/src` rend zero occurrence hors
+    # commentaire pour les trois. Ils ne peuvent donc masquer aucune ligne de logique existante.
+    #
+    # `res` meritait la verification plus que tout autre : c'est un nom de local extremement
+    # courant en general, il se trouve qu'il est inutilise ICI. Et `mdl` a ete choisi PARCE QUE
+    # `model` ne passait pas : ce dernier est un parametre vivant dans dix lignes de
+    # Engine/Model3d.cs, l'inscrire aurait rendu l'oracle aveugle a ces lignes.
     [string[]] $Injected = @('mem','memory','gameMemory','gfx','win32','winsys3d','wsyskern',
                              'ui','uiText','uiWindow','inp','aud','audio','input','res','resources',
-                             'video','model3d','primitives2d','prims','vid','saveData','saves',
+                             'video','mdl','model3d','primitives2d','prims','vid','saveData','saves',
                              'host','display')
 )
 

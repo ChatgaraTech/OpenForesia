@@ -404,14 +404,14 @@ public static unsafe partial class Blaze
     // endroit mais leur rôle n'est pas établi. FUN_0051d1f0 lit 805..811, 815, 817, 819..821.
     // =====================================================================
 
-    private static byte* s_GteVector802, s_GteVector803, s_GteMac801, s_GteSxy805, s_GteSxy806, s_GteSxy807;
-    private static byte* s_GteMac0808, s_GteIr813, s_GteMatrix814;
-    private static byte* s_GteSxy809, s_GteSz810, s_GteSz811, s_GteLightMatrix815;
-    private static byte* s_GteOfx819, s_GteOfy820, s_GteRecip821, s_GteLightColour817;
-    private static byte* s_GteVec799, s_GteVec800;
+    internal static byte* s_GteVector802, s_GteVector803, s_GteMac801, s_GteSxy805, s_GteSxy806, s_GteSxy807;
+    internal static byte* s_GteMac0808, s_GteIr813, s_GteMatrix814;
+    internal static byte* s_GteSxy809, s_GteSz810, s_GteSz811, s_GteLightMatrix815;
+    internal static byte* s_GteOfx819, s_GteOfy820, s_GteRecip821, s_GteLightColour817;
+    internal static byte* s_GteVec799, s_GteVec800;
     private static bool s_GteResolved;
 
-    private static void EnsureGteRegisters()
+    internal static void EnsureGteRegisters()
     {
         if (s_GteResolved) return;
 
@@ -482,7 +482,7 @@ public static unsafe partial class Blaze
     /// octets déjà multipliée par 4 : c'est le même <c>&amp; 0xfff</c> sur l'indice, écrit
     /// autrement. Transcrit ici en indices d'entrée.</para>
     /// </summary>
-    private static void RotMatrix(short* angles, short* matrix)
+    internal static void RotMatrix(short* angles, short* matrix)
     {
         uint packedX = s_LookupTable00600920[angles[0] & 0xfff];
         uint packedY = s_LookupTable00600920[angles[1] & 0xfff];
@@ -520,7 +520,7 @@ public static unsafe partial class Blaze
     /// un ordre différent et avec un regroupement de soustractions qui masque la symétrie, mais
     /// l'expression est la même.</para>
     /// </summary>
-    private static int NormalClip()
+    internal static int NormalClip()
     {
         EnsureGteRegisters();
 
@@ -536,7 +536,7 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>Ghidra: FUN_0051c2f0 @ 0x0051c2f0 — relit MAC0 sans le recalculer.</summary>
-    private static int ReadMac0()
+    internal static int ReadMac0()
     {
         EnsureGteRegisters();
         return *(int*)s_GteMac0808;
@@ -555,7 +555,7 @@ public static unsafe partial class Blaze
     /// <para>Il identifie au passage l'ordinal 812 (<c>0x011f0c70</c>) comme le registre de
     /// facteur d'échelle du GTE émulé.</para>
     /// </summary>
-    private static void ScaleMatrixSaturating(short* matrix, ushort* scale)
+    internal static void ScaleMatrixSaturating(short* matrix, ushort* scale)
     {
         EnsureGteRegisters();
 

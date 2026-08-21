@@ -100,9 +100,9 @@ src/
 ├─ Host/  ····································· 5 fichiers   3 477 l.
 │   D3D11Backend · SyntheticDevice · DeviceShim · D3D11Window · StartupSurface
 │
-└─ Blaze/  ···································· 31 fichiers  24 867 l.
+└─ Blaze/  ···································· 31 fichiers  24 912 l.
     ├─ Blaze.cs                    17 l.   l'en-tete, les using, la declaration partielle
-    ├─ Subsystems.cs              161 l.   LE COMPOSITION ROOT. `Mem` immediat, les sept
+    ├─ Subsystems.cs              174 l.   LE COMPOSITION ROOT. `Mem` immediat, les huit
     │                                      sous-systemes PARESSEUX (voir la note du fichier).
     │
     ├─ Interop/  ·······················    539 l.   la surface P/Invoke, hors de la classe
@@ -119,14 +119,14 @@ src/
     │   ├─ Crt.cs           390   runtime MSVC 6
     │   └─ Win32.cs          72   structures d'interop et constantes
     │
-    ├─ Engine/  ························  7 837 l.   appele par plusieurs ecrans
+    ├─ Engine/  ························  7 869 l.   appele par plusieurs ecrans
     │   ├─ Audio.cs       1 315   0x00513 · 0x0053d               VRAIE CLASSE (mixte)
     │   ├─ UiText.cs      1 344   0x00544                          VRAIE CLASSE
     │   ├─ Resources.cs   1 133   0x00529 · 0x0052a               VRAIE CLASSE (pure)
     │   ├─ Video.cs       1 143   0x00512 · 0x00542               VRAIE CLASSE (mixte)
     │   ├─ Input.cs       1 044   0x00523 · 0x00504               VRAIE CLASSE (mixte)
     │   ├─ SaveData.cs      623   E/S carte memoire seule          VRAIE CLASSE (mixte)
-    │   ├─ Model3d.cs       583   0x0051d
+    │   ├─ Model3d.cs       615   0x0051d                          VRAIE CLASSE (pure)
     │   ├─ UiWindow.cs      368   0x00545
     │   └─ Primitives2d.cs  284   DrawFlatPrimitive, DrawSprite*   VRAIE CLASSE
     │

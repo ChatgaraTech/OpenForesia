@@ -307,8 +307,30 @@ chaque fichier** — jamais deux conversions avant une vérification.
       globale `.data` vers `GameMemory` relève de l'étape A inachevée, légitime à tout moment.
       C'est simplement le plus gros brassage pour le plus petit fichier, donc le pire risque
       d'aliasing par ligne convertie.
-- [ ] 7.8 `Engine/Model3d.cs` (583 l.) — 18 emprunts à d'autres fichiers `Engine/`, donc à faire
-      quand ceux-ci seront convertis.
+- [x] 7.8 `Engine/Model3d.cs` → `Model3d(GameMemory)`. 583 → 622 l., **7 membres, 0 statique,
+      0 champ** — la seule classe de l'étape C qui ne possède aucune globale. Point d'entrée `Mdl`.
+      **La raison de le repousser n'a jamais existé.** Ce fichier portait depuis trois jours
+      l'étiquette « 18 emprunts à d'autres fichiers `Engine/` » ; **17 des 18 sont les registres
+      GTE de `Platform/Winsys3d.cs`**, des pointeurs dans le segment de données de `winsys3d.dll`
+      résolus par `GetProcAddress` sur ordinal. Ni des globales du jeu, ni du code destiné à
+      devenir une classe. Le fichier était le **plus fermé** des deux restants.
+      L'erreur venait du **script de mesure** : son `case` n'avait de branche que pour
+      `GameMemory` et `Screens/`, et le seau fourre-tout `*)` absorbait `Platform/` et `Interop/`
+      sous « autre Engine ». Un seau fourre-tout ne se signale jamais — il rend un chiffre
+      plausible dans la mauvaise colonne, et un chiffre plausible ne se relit pas. Script corrigé
+      dans `TODO.md` ; `UiWindow` remesuré avec la bonne version.
+      Les 17 registres restent dans `Platform/`, par application de la règle corrigée en 7.12 :
+      **aucune ancre `// Ghidra: DAT_…`** ne les désigne, donc ce n'est pas du `.data`. Ils passent
+      `internal` avec cinq aides du même fichier.
+      Point d'entrée `Mdl` et **non `Model`** : `model` est un paramètre vivant dans dix lignes du
+      fichier même, et la liste blanche de l'oracle est insensible à la casse. Troisième fois que
+      ce contrôle change le nom retenu.
+      Vérifié : build 0 erreur, avertissements identiques avant/après ; oracle « aucune logique
+      modifiée », 0 méthode absente ; tests 3 rouges attendus ; `-Entry 1` **382,3** avec **capture
+      relue — le modèle 3D animé est bien à l'écran**, ce qui est le contrôle qui compte puisque
+      `DrawAnimatedModel` est ce qui le dessine ; `-Entry 2` **387** ; **taux de course 3/16 = 19 %**.
+      Dette laissée ouverte : `s_Unknown_005e9818` (`DAT_005e9818`) reste chez `MainMenu.cs` en
+      `internal` — étape A, à rapatrier avec les cinq de 7.10.
 - [x] 7.9 `Engine/Input.cs` → `Input(GameMemory)`. 1 044 l., 61 membres, **1 statique** :
       `CountJoystickCallback` n'utilise que son parametre `context`, donc il n'a meme pas besoin de
       rejoindre l'instance — ce que la tache 4.1 avait mesure se confirme.
