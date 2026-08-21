@@ -415,6 +415,42 @@ int value = (sample - 0x80) * gain >> 0xc;
 if (value > 0x7f) value = 0x7f;
 if (value < -0x7f) value = -0x7f;
 return (byte)(value + 0x80);
+## AreaVerb_00442F60
+byte* flags = Arena(0x005e9000);
+byte* bank = Arena(0x005e9840);
+if ((flags[1] & 0x10) != 0)
+{
+bank[0] &= 1;
+bank[1] &= 0xf8;
+}
+else
+{
+byte low = flags[0];
+for (int bit = 0; bit < 7; bit++)
+{
+if ((low & 1 << bit) != 0) bank[0] |= (byte)(1 << bit + 1);
+}
+if ((low & 0x80) != 0) bank[1] |= 0x01;
+if ((flags[1] & 0x01) != 0) bank[1] |= 0x02;
+if ((flags[1] & 0x02) != 0) bank[1] |= 0x04;
+}
+if ((flags[6] & 8) != 0)
+{
+bank[0] |= 1;
+}
+byte source = *Arena(0x005e96fe);
+byte track = source <= 2 ? source : (byte)0;
+s_Unknown_005de534 = track;
+s_Unknown_00566c8c = track;
+PlayMusicTrack(track);
+byte subArea = s_Unknown_005de52c;
+if (subArea <= 0x50 && (subArea & 7) == 0)
+{
+byte** slots = *(byte***)(s_Unknown_005e97cc + 0x74);
+*slots[0] = track;
+*slots[1] = track;
+}
+return 0;
 ## Arena
 s_GameArena_005e9000 + (va - GameArenaBase);
 ## AsciiEqualsIgnoreCase
@@ -975,16 +1011,6 @@ return $"Interpreteur de script : opcode {op} hors de la table de 39 entrees " +
 "script est faux — verifier context + 0x8c avant de chercher un gestionnaire.";
 }
 uint address = table[op];
-if (op == 0)
-{
-return "Interpreteur de script : opcode 0 = FUN_00515490 (appel de verbe de zone), " +
-"**bloque pour une raison connue**. Il appelle `table[script[1]]` ou la table " +
-"est &PTR_FUN_0056aec8, 256 entrees. Dans le binaire elles pointent TOUTES vers " +
-"FUN_00401fa0, un `ret` nu — mais ce n'est que le contenu par defaut : " +
-"Blaze.c l. 75143 la remplit a l'execution, 0x40 entrees a la fois, depuis " +
-"(&PTR_PTR_00567318)[zone]. Transcrire cet opcode demande d'abord ce chargeur " +
-"et les jeux de fonctions par zone, pas la relecture du gestionnaire.";
-}
 if (op == 27)
 {
 return "Interpreteur de script : opcode 27 = FUN_00515d30, **laisse de cote " +
@@ -9112,6 +9138,51 @@ ProjectOriginThroughMatrix();
 return (ushort)(outScreen[0] + 0x18) < 0x170
 && (ushort)(outScreen[1] + 0x18) < 0x120
 && (uint)(outScreen[2] - 0x58) < 0x3a0 ? 1 : 0;
+## PublishFrameView
+short* view = *(short**)Arena(0x005e9ae0);
+int* camera = *(int**)Entity(0x005edebc);
+int* target = *(int**)Entity(0x005eca94);
+view[0] = *(short*)(*(byte**)Arena(0x005e9b34) + 2);
+short* current = (short*)View(0x006067e0);
+short* previous = (short*)View(0x006067e8);
+short* saved = (short*)ViewParams(0x005712f8);
+saved[0] = previous[0];
+saved[1] = previous[1];
+saved[2] = previous[2];
+previous[0] = current[0];
+previous[1] = current[1];
+previous[2] = current[2];
+int* cameraParams = (int*)ViewParams(0x00571360);
+cameraParams[0] = camera[0];
+cameraParams[1] = camera[1];
+cameraParams[2] = camera[2];
+int* targetView = View(0x006067d0);
+targetView[0] = target[0];
+targetView[1] = target[1];
+targetView[2] = target[2];
+int* targetViewCopy = View(0x006067f0);
+targetViewCopy[0] = target[0];
+targetViewCopy[1] = target[1];
+targetViewCopy[2] = target[2];
+int* cameraView = View(0x006067c0);
+cameraView[0] = camera[0];
+cameraView[1] = camera[1];
+*ViewParams(0x0057139c) |= 0x40;
+cameraView[2] = camera[2];
+int* frameCamera = (int*)ViewParams(0x00571300);
+frameCamera[0] = *Camera(0x005de068);
+frameCamera[1] = *Camera(0x005de06c) + 0xc8000;
+int* frameCameraCopy = (int*)ViewParams(0x00571370);
+frameCameraCopy[0] = *Camera(0x005de068);
+frameCameraCopy[1] = *Camera(0x005de06c) + 0xc8000;
+frameCamera[2] = *Camera(0x005de070);
+frameCameraCopy[2] = *Camera(0x005de070);
+*(int*)ViewParams(0x00571380) = 0;
+*(ushort*)ViewParams(0x0057128e) = 0xffff;
+*(ushort*)ViewParams(0x00571276) = 0xffff;
+*(int*)ViewParams(0x005713a0) = 10;
+*(int*)ViewParams(0x005713b0) = 0;
+*(int*)ViewParams(0x005713a8) = 0;
 ## PumpMessages
 Msg msg;
 while (PeekMessageA(&msg, IntPtr.Zero, 0, 0, PmRemove) != 0)
@@ -11633,8 +11704,83 @@ if (s_WorldMapStep_005645f8 == -2 || s_WorldMapStep_005645f8 == -3) return;
 }
 }
 ## RunWorldMapTick
+if (s_DebugModeLatch_005633a8 == 0)
+{
+s_Unknown_005dbc14 = (byte)s_Unknown_005de528;
+s_Unknown_005ddfd0 = s_Unknown_005de52c;
+s_Unknown_005dbc18 = (byte)s_PartySize_005e9020;
+}
+uint* otBase;
+uint* otEntry;
+uint* primCursor;
+FrameBegin(&otBase, &otEntry, &primCursor);
+s_Unknown_00566c90 = 0;
+*(uint*)Entity(0x005f2cf0) = 0;
+s_WorldFlags_005de02c = 0;
+*Arena(0x005e9ae4) = 0;
+*Camera(0x005de0a8) = 0;
+*Camera(0x005de0ac) = 0;
+*Camera(0x005de0b0) = 0;
+s_Unknown_005de024 = 0;
+s_Unknown_005de028 = 0;
+byte* mainMem = GetMainMemPtr();
+for (int i = 0; i < 0x400; i++)
+{
+((uint*)(mainMem + 0x1c5000))[i] = 0;
+}
+for (int i = 0; i < 0x400; i++)
+{
+((uint*)(mainMem + 0x1c4000))[i] = 0;
+}
+if (s_Unknown_00566c8c != (byte)s_Unknown_005de534)
+{
+s_Unknown_00566c8c = (byte)s_Unknown_005de534;
+PlayMusicTrack(s_Unknown_00566c8c);
+}
+byte* leader = Arena(0x005e93c0) + (byte)s_Unknown_005de538 * 0x9c;
+int step = s_WorldMapStep_005645f8 & 0xff;
+if (step == 2)
+{
+PublishFrameView();
+if (s_Unknown_00566c94 != 0)
+{
+s_Unknown_00566c94 = 0;
+SnapshotViewVector();
+}
+RunEntityScript(s_Unknown_005e97cc, leader, (uint)(*Camera(0x005de048) & 0xffff));
+}
+if (step == 1 || step == 2)
+{
+RunEntityScript(s_Unknown_005e97cc, leader, (uint)(*Camera(0x005de04c) & 0xffff));
+}
+byte* pending = Entity(0x005fa560);
+if (*pending >= 1)
+{
+for (int i = 1; i <= (*pending & 0xff); i++)
+{
+int* record = *(int**)(*(byte**)(s_Unknown_005e97cc + 0x88) + pending[i] * 4);
+if (record == null || *record == -1)
+{
+continue;
+}
+int next;
+do
+{
+*(byte*)record = 0;
+next = record[4];
+record += 4;
+}
+while (next != -1);
+}
+}
+Ordinal_379(0x190);
+JoystickResetState(false);
 throw new NotImplementedException(
-"FUN_00516fc0 : la logique par image de la carte du monde (1226 lignes) — voir REVERSE_STATUS.md");
+"FUN_00516fc0 : le prologue est transcrit et vient de s'executer ; c'est la BOUCLE PAR " +
+"IMAGE qui manque — le `do { … } while` de 0x00517163, ~1 100 lignes de pseudo-C. " +
+"Elle commence par FUN_0040a600 / FUN_00533000 / FUN_0053dc30 / FUN_0050e2b0, puis " +
+"l'affichage de mise au point garde par DAT_005633a8. Voir REVERSE_STATUS.md et " +
+"Legacy/Raw/Blaze/FUN_00516FC0-prologue.asm.");
 ## SaveAndMaxWaveOutVolume
 uint deviceCount = waveOutGetNumDevs();
 for (uint device = 0; device < deviceCount; device++)
@@ -11776,6 +11922,32 @@ case 2: target = Entity(0x005fa5e0) + (uint)s[2] * 0x9c; break;
 return s + 6;
 ## ScriptOpAluParty
 ApplyPartyScriptOp(s, result);
+return s + 4;
+## ScriptOpAreaVerb
+uint[] verbs = s_Vt_0056aec8;
+byte verb = s[1];
+if (verb >= verbs.Length)
+{
+throw new NotImplementedException(
+$"Interpreteur de script, opcode 0 : verbe {verb} au-dela des 0x40 entrees de la " +
+"table 0x0056aec8. Dans le binaire cette lecture tombe dans 0x0056afc8, la table " +
+"suivante, car les six sont contigues ; ici elles sont des tableaux separes. " +
+"Etablir si le debordement est voulu avant de le reproduire — voir " +
+"Documentation/Reference/legacy-bug.md, LB-006 pour un cas analogue deja tranche.");
+}
+uint target = verbs[verb];
+*result = target switch
+{
+0x00401FA0 => verb,
+0x00442F60 => AreaVerb_00442F60(),
+_ => throw new NotImplementedException(
+$"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
+"reconstruit. Son adresse vient de s_VtSource_0056aec8 (Engine/cs), deja " +
+"relevee dans le binaire pour l'index 0. La transcrire, puis la brancher ici : " +
+$"`OpenForesia.Tools disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512` si elle " +
+"n'est pas dans Blaze.c. L'argument passe est (entite, ushort(script[2], script[3])), " +
+"et la valeur de retour devient le resultat de condition."),
+};
 return s + 4;
 ## ScriptOpBeginScriptedCamera
 BeginScriptedCamera(ent, s[1], *(ushort*)(s + 2));
@@ -12318,6 +12490,17 @@ return;
 }
 while (row < 8 && s_JoystickSlot[row - 4] == -1) row++;
 s_UiJoystickSelection_005d9e38 = row == 8 ? before : row;
+## SnapshotViewVector
+short* view = *(short**)Arena(0x005e9ae0);
+short* first = (short*)View(0x006067e0);
+short* second = (short*)View(0x006067e8);
+first[0] = view[0];
+first[1] = view[1];
+first[2] = view[2];
+second[0] = view[0];
+second[1] = view[1];
+second[2] = view[2];
+*ViewParams(0x0057139c) |= 0x20;
 ## SoundOptionsPage
 UiPageTrace("entrée page Son");
 while (true)

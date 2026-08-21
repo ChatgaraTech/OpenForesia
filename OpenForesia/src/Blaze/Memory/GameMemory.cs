@@ -283,10 +283,33 @@ internal sealed unsafe class GameMemory
     /// </summary>
     internal uint s_WorldFlags_005de02c;
 
-    /// <summary>Ghidra: 0x005de030..0x005de0b0 — le bloc de camera et de position du groupe. Son
-    /// adresse est stockee telle quelle dans <c>DAT_005edebc</c>, d'ou l'allocation native.</summary>
+    /// <summary>Ghidra: DAT_005de024 et DAT_005de028 — deux mots que le prologue de
+    /// <c>FUN_00516fc0</c> remet a zero juste avant <see cref="s_WorldFlags_005de02c"/>, dans la
+    /// meme rafale de <c>mov [.],ebx</c>. Trois dwords contigus, trois champs : rien n'y accede par
+    /// arithmetique de pointeur, ni dans le binaire ni ici. Role non etabli.</summary>
+    internal uint s_Unknown_005de024;
+    internal uint s_Unknown_005de028;
+
+    /// <summary>
+    /// Ghidra: 0x005de030..0x005de0b4 — le bloc de camera et de position du groupe. Son adresse est
+    /// stockee telle quelle dans <c>DAT_005edebc</c>, d'ou l'allocation native.
+    ///
+    /// <para>
+    /// Etendu de 0x80 a 0x84 le 2026-08-21 : le prologue de <c>FUN_00516fc0</c> ecrit
+    /// <c>DAT_005de0b0</c>, qui tombait exactement sur l'ancienne borne de fin. Rien ne suit
+    /// jusqu'a <c>ItemMenuArena</c> (0x005de100), la place etait libre.
+    /// </para>
+    /// <para>
+    /// TODO(REVERSE): <b>defaut d'aliasing latent</b> — <c>s_Unknown_005de034</c>
+    /// (<c>Screens/State04/CharacterCreation.cs</c>) est un <c>static int</c> ordinaire dont
+    /// l'adresse tombe DANS ce bloc. Il ne fait pas de degat aujourd'hui parce qu'aucun site
+    /// n'ecrit <c>Camera(0x005de034)</c> — le premier qui le fera lira une autre memoire. Les tests
+    /// de disposition ne le voient pas : ils comparent des symboles a suffixe de VA entre eux, pas
+    /// un champ de valeur a une etendue d'arene. A resorber avec les autres.
+    /// </para>
+    /// </summary>
     internal const int CameraBlockBase = 0x005de030;
-    internal readonly byte* s_CameraBlock_005de030 = (byte*)NativeMemory.AllocZeroed(0x80);
+    internal readonly byte* s_CameraBlock_005de030 = (byte*)NativeMemory.AllocZeroed(0x84);
     internal int* Camera(int va) => (int*)(s_CameraBlock_005de030 + (va - CameraBlockBase));
 
     /// <summary>Ghidra: 0x006067c0..0x00606800 — le second bloc de vue, dont l'adresse part dans

@@ -123,12 +123,43 @@ fois, dont une à l'étape (1) de ce plan même (voir « Cinq avertissements pay
       en prend 2 et non 3, `FUN_00530f20` en prend 3 et non 2, `FUN_00532740` en reçoit 2 dont une
       morte), et un défaut d'aliasing a été évité de justesse : `s_PartySize_005e9020` est un
       `static int` **hors arène**, donc lire `0x005e9020` par adresse aurait rendu zéro en silence.
-- [ ] **(3) `FUN_00401000` (15 l.) et `FUN_00401080` (39 l.)** — de purs brassages de globales,
-      triviaux une fois (1) faite.
-- [ ] **(4) Le prologue de `FUN_00516fc0`** — ~70 lignes de pseudo-C, à lire avec la clé
-      `piStack_74` ci-dessous. La boucle par image reste un trou sonore après lui.
+- [x] **(3) `FUN_00401000` et `FUN_00401080` — FAITE le 2026-08-21.** Transcrites dans
+      `Screens/State03/WorldMap.cs` sous `SnapshotViewVector` et `PublishFrameView` : elles ne sont
+      appelées que par le prologue de (4). Comme annoncé, purs brassages de globales une fois (1)
+      faite — le seul calcul est `0x005de06c + 0xc8000`, appliqué deux fois.
+- [x] **(4) Le prologue de `FUN_00516fc0` — FAITE le 2026-08-21. L'exception a disparu.**
+      Écrit contre `Legacy/Raw/Blaze/FUN_00516FC0-prologue.asm`, pas contre la pseudo-C seule.
+      **La clé `piStack_74` est maintenant confirmée au niveau machine** : la valeur posée avant un
+      appel est bien le *dernier* argument, celui que Ghidra a perdu (`FUN_0052a1e0` en prend trois,
+      `add esp,0Ch`) — sauf quand c'est une adresse de code, auquel cas c'est l'adresse de retour et
+      l'appel ne prend rien.
 
-**Total estimé : ~700 lignes de C#.**
+      **La boucle par image reste un trou sonore**, comme prévu : le `do { … } while` de
+      `0x00517163`, ~1 100 lignes.
+
+### La frontière est maintenant la chaîne de verbes de l'opcode 0
+
+Le prologue s'exécute et lance l'interpréteur, qui bute sur l'opcode 0 — l'appel de verbe de zone.
+**Ce n'était pas le mur annoncé.** La note de l'étape (2) disait « il faut d'abord le chargeur et
+les jeux de fonctions par zone » ; en réalité le chargeur existe déjà
+(`InstallEntityVTables`, `Engine/Resources.cs`) et la table de l'index 0 y est relevée depuis
+longtemps sous `s_VtSource_0056aec8`. Il ne manquait que le répartiteur, écrit sur le patron de
+`CallAreaHandler`.
+
+Le travail restant est **mécanique et répétitif** : le jeu nomme un verbe, on le transcrit, on
+relance, il en nomme un autre.
+
+- [x] verbe 3 = `FUN_00442F60` (336 o., **absente de `Blaze.c`**, désassemblée — dump dans
+      `Legacy/Raw/Blaze/AreaVerbs/`). Décale d'un cran les bits du banc `0x005e9000` vers
+      `0x005e9840`, choisit une piste musicale d'après `0x005e96fe` et la lance. Rend 0.
+- [ ] verbe 10 = `FUN_004441F0` — **le mur actuel**, également absent de `Blaze.c`.
+- [ ] les treize autres verbes réels de l'index 0 (`0x00443100`, `0x00443260`, `0x004430B0`,
+      `0x00442F20`, `0x00442E70`, `0x00442EA0`, `0x00442E20`, `0x00445840`, `0x004431F0`,
+      `0x00442E10`, `0x00442DB0`, `0x004457F0`, `0x00442D90`), plus `0x0053DD20/DEA0/DF20` aux
+      indices 56–58. Ils seront demandés au fur et à mesure — inutile de tous les écrire d'avance.
+
+**Le retour d'un verbe devient le résultat de condition**, donc il ne peut pas être deviné : un
+verbe non transcrit lève en se nommant plutôt que de rendre une valeur plausible.
 
 ### Ce que la vérification a déjà corrigé dans ce plan
 

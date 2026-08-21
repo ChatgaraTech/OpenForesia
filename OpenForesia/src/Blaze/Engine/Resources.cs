@@ -270,7 +270,7 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
     /// <summary>Les sept tables actives, dans l'ordre ou l'original les remplit.</summary>
     private readonly uint[] s_Vt_0056ad48 = new uint[0x20];
     private readonly uint[] s_Vt_0056adc8 = new uint[0x40];
-    private readonly uint[] s_Vt_0056aec8 = new uint[0x40];
+    internal readonly uint[] s_Vt_0056aec8 = new uint[0x40];   // lue par l opcode 0 de l interpreteur
     internal readonly uint[] s_Vt_0056afc8 = new uint[0x40];
     private readonly uint[] s_Vt_0056b0c8 = new uint[0x40];
     private readonly uint[] s_Vt_0056b1c8 = new uint[0x40];

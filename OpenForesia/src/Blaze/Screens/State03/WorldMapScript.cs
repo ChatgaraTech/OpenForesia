@@ -110,6 +110,7 @@ public static unsafe partial class Blaze
     private static byte* DispatchScriptOp(uint op, byte* ctx, byte* ent, byte* s, uint* result)
         => op switch
         {
+            0  => ScriptOpAreaVerb(ent, s, result),
             1  => ScriptOpJump(ctx, s),
             2  => ScriptOpJumpIf(ctx, s, result),
             3  => ScriptOpAluEntity(ctx, ent, s, result),
@@ -152,18 +153,8 @@ public static unsafe partial class Blaze
 
         uint address = table[op];
 
-        // Deux opcodes ont un blocage precis, etabli le 2026-08-21 : le dire ici evite de refaire
-        // l'enquete le jour ou l'un des deux tombe.
-        if (op == 0)
-        {
-            return "Interpreteur de script : opcode 0 = FUN_00515490 (appel de verbe de zone), " +
-                   "**bloque pour une raison connue**. Il appelle `table[script[1]]` ou la table " +
-                   "est &PTR_FUN_0056aec8, 256 entrees. Dans le binaire elles pointent TOUTES vers " +
-                   "FUN_00401fa0, un `ret` nu — mais ce n'est que le contenu par defaut : " +
-                   "Blaze.c l. 75143 la remplit a l'execution, 0x40 entrees a la fois, depuis " +
-                   "(&PTR_PTR_00567318)[zone]. Transcrire cet opcode demande d'abord ce chargeur " +
-                   "et les jeux de fonctions par zone, pas la relecture du gestionnaire.";
-        }
+        // Un opcode a un blocage precis, etabli le 2026-08-21 : le dire ici evite de refaire
+        // l'enquete le jour ou il tombe.
 
         if (op == 27)
         {
@@ -1023,5 +1014,150 @@ public static unsafe partial class Blaze
         *pending = count;
         pending[count] = s[1];
         return s + 2;
+    }
+
+    /// <summary>
+    /// Ghidra: 0x00515490 (opcode 0) — <b>appelle un verbe de zone</b>, choisi dans la table
+    /// <c>&amp;PTR_FUN_0056aec8</c> par <c>script[1]</c>, avec l'entite et un <c>ushort</c> forme de
+    /// <c>script[2]</c> et <c>script[3]</c>.
+    ///
+    /// <para>
+    /// La table n'est pas celle du binaire : <c>InstallEntityVTables</c> (branche
+    /// <c>DAT_00600904</c> de <c>FUN_0052a660</c>) la remplit au chargement de zone depuis
+    /// <c>(&amp;PTR_PTR_00567318)[zone * 0x10 + sous-zone]</c>. Le contenu de l'index 0 — le seul que
+    /// la carte du monde atteint — est deja releve dans <c>Engine/Resources.cs</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le resultat de condition est un reste de registre, et c'est verifiable.</b> Le
+    /// gestionnaire fait <c>xor eax,eax ; mov al,[esi+1]</c> pour construire l'index, puis
+    /// <c>call dword [eax*4+56AEC8h]</c> et <c>mov [ecx],eax</c>. Ni le <c>call</c> ni un corps
+    /// <c>ret</c> nu ne touchent <c>EAX</c> : quand le verbe est la souche <c>FUN_00401FA0</c>, le
+    /// resultat recoit donc <b>l'indice du verbe lui-meme</b>. Ce n'est pas une reconstruction
+    /// hasardeuse — c'est ce que le processeur fait, et la boucle s'arrete ou non selon que cet
+    /// indice est nul.
+    /// </para>
+    /// <para>
+    /// Tout verbe qui n'est pas la souche leve en se nommant, comme
+    /// <see cref="Resources.CallAreaHandler"/> le fait pour la table de zone : la valeur de retour
+    /// d'une vraie fonction ne peut pas etre devinee.
+    /// </para>
+    /// </summary>
+    private static byte* ScriptOpAreaVerb(byte* ent, byte* s, uint* result)
+    {
+        uint[] verbs = Res.s_Vt_0056aec8;
+        byte verb = s[1];
+
+        // L'indice est un octet, la table n'a que 0x40 entrees — et dans le binaire les six tables
+        // sont CONTIGUES (0x0056aec8 + 0x40*4 = 0x0056afc8). Un indice de 0x40 ou plus lisait donc
+        // la table suivante, ce qui est peut-etre voulu et peut-etre un debordement. Ici les tables
+        // sont des tableaux separes : on ne peut pas reproduire la lecture, alors on le dit.
+        if (verb >= verbs.Length)
+        {
+            throw new NotImplementedException(
+                $"Interpreteur de script, opcode 0 : verbe {verb} au-dela des 0x40 entrees de la " +
+                "table 0x0056aec8. Dans le binaire cette lecture tombe dans 0x0056afc8, la table " +
+                "suivante, car les six sont contigues ; ici elles sont des tableaux separes. " +
+                "Etablir si le debordement est voulu avant de le reproduire — voir " +
+                "Documentation/Reference/legacy-bug.md, LB-006 pour un cas analogue deja tranche.");
+        }
+
+        uint target = verbs[verb];
+
+        *result = target switch
+        {
+            // Souche `ret` nu, verifiee au desassembleur : elle ne touche pas EAX, qui contient
+            // encore l'indice de verbe au moment du `mov [ecx],eax`.
+            0x00401FA0 => verb,
+
+            0x00442F60 => AreaVerb_00442F60(),
+
+            _ => throw new NotImplementedException(
+                $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
+                "reconstruit. Son adresse vient de s_VtSource_0056aec8 (Engine/Resources.cs), deja " +
+                "relevee dans le binaire pour l'index 0. La transcrire, puis la brancher ici : " +
+                $"`OpenForesia.Tools disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512` si elle " +
+                "n'est pas dans Blaze.c. L'argument passe est (entite, ushort(script[2], script[3])), " +
+                "et la valeur de retour devient le resultat de condition."),
+        };
+
+        return s + 4;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00442F60 @ 0x00442f60 — <b>le verbe 3 de la table de zone</b>, celui que le
+    /// premier script de la carte du monde appelle. 336 octets, <b>absente de <c>Blaze.c</c></b> :
+    /// relevee au desassembleur, dump conserve dans
+    /// <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00442F60.asm</c>.
+    ///
+    /// <para>
+    /// Deux moities. La premiere <b>decale d'un cran</b> les dix bits bas du banc
+    /// <c>0x005e9000</c> vers le banc <c>0x005e9840</c> — celui-la meme sur lequel porte l'opcode 7
+    /// de l'interpreteur. Le bit <c>0x10</c> de <c>0x005e9001</c> commute vers l'autre branche, qui
+    /// ne garde qu'un bit de chaque octet au lieu de les propager.
+    /// </para>
+    /// <para>
+    /// La seconde choisit une piste musicale d'apres <c>0x005e96fe</c> et la lance. Le calcul est
+    /// une identite bornee : 0, 1 et 2 se rendent eux-memes, <b>toute autre valeur rend 0</b>. Le
+    /// <c>setne / dec / and 2</c> de l'original est une facon sans branchement d'ecrire ca, et il
+    /// est rendu ici par ce qu'il calcule, pas par sa forme.
+    /// </para>
+    /// <para>
+    /// La piste est enfin recopiee dans deux octets designes par le repertoire de zone, mais
+    /// <b>seulement si la sous-zone est un multiple de 8 jusqu'a 0x50</b> — l'original le teste par
+    /// onze comparaisons successives, rendues ici par le predicat qu'elles forment.
+    /// </para>
+    /// <para>
+    /// Elle rend <b>0</b> (<c>xor eax,eax ; ret</c>), donc le resultat de condition est nul et le
+    /// script continue. C'est le seul verbe dont on connaisse la valeur de retour pour l'instant.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00442F60()
+    {
+        byte* flags = Mem.Arena(0x005e9000);
+        byte* bank = Mem.Arena(0x005e9840);
+
+        if ((flags[1] & 0x10) != 0)
+        {
+            // Branche de repli : on ne garde que le bit 0 du premier octet et les bits hauts du
+            // second. Le reste du banc est abandonne.
+            bank[0] &= 1;
+            bank[1] &= 0xf8;
+        }
+        else
+        {
+            // Chaque bit arme le bit SUIVANT du banc de destination ; le bit 7 deborde sur l'octet
+            // d'apres, et les deux bits bas de flags[1] suivent dans la meme foulee.
+            byte low = flags[0];
+            for (int bit = 0; bit < 7; bit++)
+            {
+                if ((low & 1 << bit) != 0) bank[0] |= (byte)(1 << bit + 1);
+            }
+
+            if ((low & 0x80) != 0) bank[1] |= 0x01;
+            if ((flags[1] & 0x01) != 0) bank[1] |= 0x02;
+            if ((flags[1] & 0x02) != 0) bank[1] |= 0x04;
+        }
+
+        if ((flags[6] & 8) != 0)
+        {
+            bank[0] |= 1;
+        }
+
+        byte source = *Mem.Arena(0x005e96fe);
+        byte track = source <= 2 ? source : (byte)0;       // Ghidra: `setne bl ; dec ebx ; and ebx,2`
+
+        s_Unknown_005de534 = track;
+        s_Unknown_00566c8c = track;
+        PlayMusicTrack(track);                             // Ghidra: FUN_00529ad0
+
+        byte subArea = s_Unknown_005de52c;
+        if (subArea <= 0x50 && (subArea & 7) == 0)         // Ghidra: onze `cmp al,N ; je`
+        {
+            byte** slots = *(byte***)(s_Unknown_005e97cc + 0x74);
+            *slots[0] = track;
+            *slots[1] = track;
+        }
+
+        return 0;                                          // Ghidra: xor eax,eax ; ret
     }
 }

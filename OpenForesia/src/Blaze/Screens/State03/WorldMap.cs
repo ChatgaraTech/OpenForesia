@@ -1727,13 +1727,251 @@ public static unsafe partial class Blaze
         *(short*)(s_WorldMapDescriptor_005633b0 + 6) = unchecked((short)0xffb0);
     }
 
-    /// <summary>Ghidra: FUN_00516fc0 @ 0x00516fc0 — 1226 lignes, la logique par image de la carte
-    /// du monde ; c'est elle qui pose DAT_005645f8 et decide de la sortie.</summary>
-    private static void RunWorldMapTick() =>
-        throw new NotImplementedException(
-            "FUN_00516fc0 : la logique par image de la carte du monde (1226 lignes) — voir REVERSE_STATUS.md");
+
+    /// <summary>Ghidra: DAT_005dbc14, DAT_005dbc18 et DAT_005ddfd0 — trois octets que le prologue
+    /// de <c>FUN_00516fc0</c> remplit d'un instantane (zone, sous-zone, taille du groupe) quand le
+    /// verrou de mode de mise au point est leve. Ce ne sont pas de purs temoins : <c>Blaze.c</c>
+    /// l. 65818 decremente <c>DAT_005dbc14</c>, donc le nom reste neutre tant que ce site n'est pas
+    /// lu. Les trois sont des <b>octets</b> — le code machine les charge en <c>al</c>/<c>cl</c>/
+    /// <c>dl</c> et les range en <c>mov [.],r8</c>, la ou la pseudo-C laisse croire a des mots.
+    /// Ils ne sont pas voisins entre eux : 0x005dbc14 et 0x005dbc18 le sont, 0x005ddfd0 est
+    /// ailleurs.</summary>
+    private static byte s_Unknown_005dbc14, s_Unknown_005dbc18, s_Unknown_005ddfd0;
 
     /// <summary>
+    /// Ghidra: FUN_00401000 @ 0x00401000 — <b>fige le vecteur de vue courant</b> dans le bloc de
+    /// vue, en deux exemplaires, et marque le bloc comme rafraichi.
+    ///
+    /// <para>
+    /// Les deux copies (<c>0x006067e0</c> et <c>0x006067e8</c>) recoivent les memes trois
+    /// <c>short</c> ; <see cref="PublishFrameView"/> s'en sert ensuite comme d'un couple
+    /// « courant / precedent ». L'appel final va a <c>FUN_00401fa0</c>, un <c>ret</c> nu : une
+    /// souche, transcrite comme telle plutot que passee sous silence.
+    /// </para>
+    /// </summary>
+    private static void SnapshotViewVector()
+    {
+        short* view = *(short**)Mem.Arena(0x005e9ae0);
+        short* first = (short*)Mem.View(0x006067e0);
+        short* second = (short*)Mem.View(0x006067e8);
+
+        first[0] = view[0];
+        first[1] = view[1];
+        first[2] = view[2];
+        second[0] = view[0];
+        second[1] = view[1];
+        second[2] = view[2];
+
+        *Mem.ViewParams(0x0057139c) |= 0x20;
+
+        // Ghidra: FUN_00401fa0() — corps `ret` nu (verifie au desassembleur). Sans effet.
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00401080 @ 0x00401080 — <b>publie la camera et la vue pour l'image</b> : recopie
+    /// les blocs pointes vers le bloc de vue et les parametres de vue, fait glisser le vecteur
+    /// courant vers la place du precedent, et pose les valeurs fixes de debut d'image.
+    ///
+    /// <para>
+    /// Le seul calcul de la fonction est <c>DAT_00571304 = DAT_005de06c + 0xc8000</c>, applique deux
+    /// fois : la hauteur de camera recoit un decalage constant. Tout le reste est du transport.
+    /// </para>
+    /// <para>
+    /// L'ordre des ecritures est conserve tel quel, y compris la ligne <c>0x0057139c |= 0x40</c>
+    /// glissee au milieu du bloc de camera : elle n'a pas de dependance, mais rien ne justifie de
+    /// la deplacer.
+    /// </para>
+    /// </summary>
+    private static void PublishFrameView()
+    {
+        short* view = *(short**)Mem.Arena(0x005e9ae0);
+        int* camera = *(int**)Mem.Entity(0x005edebc);
+        int* target = *(int**)Mem.Entity(0x005eca94);
+
+        view[0] = *(short*)(*(byte**)Mem.Arena(0x005e9b34) + 2);
+
+        short* current = (short*)Mem.View(0x006067e0);
+        short* previous = (short*)Mem.View(0x006067e8);
+        short* saved = (short*)Mem.ViewParams(0x005712f8);
+
+        saved[0] = previous[0];
+        saved[1] = previous[1];
+        saved[2] = previous[2];
+        previous[0] = current[0];
+        previous[1] = current[1];
+        previous[2] = current[2];
+
+        int* cameraParams = (int*)Mem.ViewParams(0x00571360);
+        cameraParams[0] = camera[0];
+        cameraParams[1] = camera[1];
+        cameraParams[2] = camera[2];
+
+        int* targetView = Mem.View(0x006067d0);
+        targetView[0] = target[0];
+        targetView[1] = target[1];
+        targetView[2] = target[2];
+
+        int* targetViewCopy = Mem.View(0x006067f0);
+        targetViewCopy[0] = target[0];
+        targetViewCopy[1] = target[1];
+        targetViewCopy[2] = target[2];
+
+        int* cameraView = Mem.View(0x006067c0);
+        cameraView[0] = camera[0];
+        cameraView[1] = camera[1];
+        *Mem.ViewParams(0x0057139c) |= 0x40;      // Ghidra: pose au milieu du bloc, conserve ici
+        cameraView[2] = camera[2];
+
+        // La hauteur de camera (0x005de06c) part decalee de 0xc8000 dans les deux exemplaires.
+        int* frameCamera = (int*)Mem.ViewParams(0x00571300);
+        frameCamera[0] = *Mem.Camera(0x005de068);
+        frameCamera[1] = *Mem.Camera(0x005de06c) + 0xc8000;
+
+        int* frameCameraCopy = (int*)Mem.ViewParams(0x00571370);
+        frameCameraCopy[0] = *Mem.Camera(0x005de068);
+        frameCameraCopy[1] = *Mem.Camera(0x005de06c) + 0xc8000;
+
+        frameCamera[2] = *Mem.Camera(0x005de070);
+        frameCameraCopy[2] = *Mem.Camera(0x005de070);
+
+        *(int*)Mem.ViewParams(0x00571380) = 0;
+        *(ushort*)Mem.ViewParams(0x0057128e) = 0xffff;
+        *(ushort*)Mem.ViewParams(0x00571276) = 0xffff;
+        *(int*)Mem.ViewParams(0x005713a0) = 10;
+        *(int*)Mem.ViewParams(0x005713b0) = 0;
+        *(int*)Mem.ViewParams(0x005713a8) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00516fc0 @ 0x00516fc0 — la logique par image de la carte du monde. <b>Seul le
+    /// prologue est transcrit</b> (2026-08-21) ; la boucle par image qui le suit reste un trou
+    /// sonore.
+    ///
+    /// <para>
+    /// Le prologue va de l'entree jusqu'au <c>do { … }</c> de <c>0x00517163</c> : instantane de mise
+    /// au point, ouverture d'image, remise a zero d'une dizaine de mots et de deux pages de 4 Kio
+    /// dans MainMem, changement de musique si la zone a change, puis le pas de boucle — c'est lui
+    /// qui lance les scripts — et enfin la purge de la liste d'attente.
+    /// </para>
+    /// <para>
+    /// <b>Ecrit contre le desassemblage</b> (<c>Legacy/Raw/Blaze/FUN_00516FC0-prologue.asm</c>), pas
+    /// contre la pseudo-C seule, parce que celle-ci est truffee de <c>piStack_74 = X;</c>. La cle
+    /// est confirmee au niveau machine : <b><c>piStack_74 = X</c> avant un appel est le DERNIER
+    /// argument, celui que Ghidra a perdu</b> — <c>FUN_0052a1e0</c> en prend trois
+    /// (<c>add esp,0Ch</c>) la ou la pseudo-C en montre deux. Quand la valeur posee est une adresse
+    /// de code (0x5170bb, 0x5170d0), ce n'est pas un argument mais l'adresse de retour de l'appel :
+    /// ces deux-la ne prennent rien.
+    /// </para>
+    /// <para>
+    /// Le pas de boucle <see cref="s_WorldMapStep_005645f8"/> vaut <b>2</b> au chargement, donc la
+    /// premiere image passe par la branche complete : vue publiee, puis <b>deux</b> lancements de
+    /// script. L'interpreteur n'est pas contournable, ce qui est exactement ce que l'etape (2)
+    /// anticipait.
+    /// </para>
+    /// </summary>
+    private static void RunWorldMapTick()
+    {
+        if (Mem.s_DebugModeLatch_005633a8 == 0)
+        {
+            s_Unknown_005dbc14 = (byte)Res.s_Unknown_005de528;
+            s_Unknown_005ddfd0 = s_Unknown_005de52c;
+            s_Unknown_005dbc18 = (byte)s_PartySize_005e9020;
+        }
+
+        uint* otBase;
+        uint* otEntry;
+        uint* primCursor;
+        FrameBegin(&otBase, &otEntry, &primCursor);   // Ghidra: FUN_0052a1e0, trois arguments
+
+        s_Unknown_00566c90 = 0;
+        *(uint*)Mem.Entity(0x005f2cf0) = 0;
+        Mem.s_WorldFlags_005de02c = 0;
+        *Mem.Arena(0x005e9ae4) = 0;                   // Ghidra: `& 0xffffff00` — un `mov byte [.],0`
+        *Mem.Camera(0x005de0a8) = 0;
+        *Mem.Camera(0x005de0ac) = 0;
+        *Mem.Camera(0x005de0b0) = 0;
+        Mem.s_Unknown_005de024 = 0;
+        Mem.s_Unknown_005de028 = 0;
+
+        // Deux pages de 0x400 dwords dans MainMem : les tampons de travail de l'image.
+        byte* mainMem = GetMainMemPtr();
+        for (int i = 0; i < 0x400; i++)
+        {
+            ((uint*)(mainMem + 0x1c5000))[i] = 0;
+        }
+
+        for (int i = 0; i < 0x400; i++)
+        {
+            ((uint*)(mainMem + 0x1c4000))[i] = 0;
+        }
+
+        if (s_Unknown_00566c8c != (byte)s_Unknown_005de534)
+        {
+            s_Unknown_00566c8c = (byte)s_Unknown_005de534;
+            PlayMusicTrack(s_Unknown_00566c8c);       // Ghidra: FUN_00529ad0, un argument
+        }
+
+        byte* leader = Mem.Arena(0x005e93c0) + (byte)Mem.s_Unknown_005de538 * 0x9c;
+
+        // Le `dec eax ; je … ; dec eax ; jne …` du binaire se lit : 1 ne fait que le second script,
+        // 2 fait tout, et toute autre valeur ne fait rien. Rendu en deux `if` plutot qu'en cascade
+        // de sauts.
+        int step = s_WorldMapStep_005645f8 & 0xff;
+
+        if (step == 2)
+        {
+            PublishFrameView();                       // Ghidra: FUN_00401080
+
+            if (s_Unknown_00566c94 != 0)
+            {
+                s_Unknown_00566c94 = 0;
+                SnapshotViewVector();                 // Ghidra: FUN_00401000
+            }
+
+            RunEntityScript(s_Unknown_005e97cc, leader, (uint)(*Mem.Camera(0x005de048) & 0xffff));
+        }
+
+        if (step == 1 || step == 2)
+        {
+            RunEntityScript(s_Unknown_005e97cc, leader, (uint)(*Mem.Camera(0x005de04c) & 0xffff));
+        }
+
+        // La liste d'attente que l'opcode 11 remplit. Son premier octet est le compte, et il est
+        // **relu a chaque tour** par le binaire ; conserve tel quel. Pour chaque entree, la liste
+        // d'enregistrements de 0x10 octets qu'elle designe est marquee consommee (premier octet a
+        // zero) jusqu'au terminateur -1.
+        byte* pending = Mem.Entity(0x005fa560);
+        if (*pending >= 1)
+        {
+            for (int i = 1; i <= (*pending & 0xff); i++)
+            {
+                int* record = *(int**)(*(byte**)(s_Unknown_005e97cc + 0x88) + pending[i] * 4);
+                if (record == null || *record == -1)
+                {
+                    continue;
+                }
+
+                int next;
+                do
+                {
+                    *(byte*)record = 0;
+                    next = record[4];
+                    record += 4;
+                }
+                while (next != -1);
+            }
+        }
+
+        Winsys3d.Ordinal_379(0x190);                  // libgte SetGeomScreen(400)
+        Inp.JoystickResetState(false);                // Ghidra: FUN_00504b10(0)
+
+        throw new NotImplementedException(
+            "FUN_00516fc0 : le prologue est transcrit et vient de s'executer ; c'est la BOUCLE PAR " +
+            "IMAGE qui manque — le `do { … } while` de 0x00517163, ~1 100 lignes de pseudo-C. " +
+            "Elle commence par FUN_0040a600 / FUN_00533000 / FUN_0053dc30 / FUN_0050e2b0, puis " +
+            "l'affichage de mise au point garde par DAT_005633a8. Voir REVERSE_STATUS.md et " +
+            "Legacy/Raw/Blaze/FUN_00516FC0-prologue.asm.");
+    }
     /// Ghidra: <c>thunk_FUN_00536180</c> @ 0x00536260 â€” byte-for-byte identical to
     /// <c>FUN_00536180</c> @ 0x00536180 (the usual linker-folded duplicate; only one body
     /// transcribed). Game state 1's entry point â€” real gameplay, reached once per tick while

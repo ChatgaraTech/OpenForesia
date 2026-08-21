@@ -7639,3 +7639,97 @@ Build 0 erreur · **les 5 tests de disposition restent verts**, y compris après
 `s_EntityState_00571500` de 0x500 à 0x538 · oracle refigé à 550 corps, les deux seuls changements de
 logique étant les corrections faites sciemment · non-régression en jeu : même frontière
 `FUN_00516fc0`, atteinte trois fois de suite.
+
+---
+
+## 2026-08-21 — étapes (3) et (4) : `FUN_00516fc0` ne lève plus
+
+Le prologue de `FUN_00516fc0` est transcrit, et avec lui les deux fonctions de l'étape (3)
+(`SnapshotViewVector` / `PublishFrameView`, ex-`FUN_00401000` / `FUN_00401080`). L'exception qui
+bloquait la carte du monde depuis le début a disparu ; le jeu exécute maintenant le prologue, lance
+l'interpréteur de script, et s'arrête plus loin.
+
+### La clé `piStack_74` est confirmée, et elle a une exception
+
+Écrit contre `Legacy/Raw/Blaze/FUN_00516FC0-prologue.asm` plutôt que contre la pseudo-C. La règle,
+vérifiée au niveau machine :
+
+> `piStack_74 = X;` avant un appel est le **dernier argument**, celui que Ghidra a perdu.
+
+`FUN_0052a1e0` le montre sans ambiguïté : `add esp,0Ch` après l'appel, trois `push`, et la pseudo-C
+n'en montre que deux. Le troisième est bien `piStack_74`. *Le même défaut avait déjà été trouvé et
+documenté sur cette fonction en la transcrivant, dans l'autre sens.*
+
+**L'exception** : quand la valeur posée est une **adresse de code** (`0x5170bb`, `0x5170d0`), ce
+n'est pas un argument mais l'adresse de retour du `call`, et la fonction ne prend rien. Les deux
+appels concernés — `FUN_00401080` et `FUN_00401000` — n'ont effectivement aucun paramètre. Sans
+cette distinction on leur en inventait un.
+
+### Ce que le prologue fait
+
+Instantané de mise au point, ouverture d'image (`FrameBegin`), remise à zéro d'une dizaine de mots
+et de **deux pages de 4 Kio** dans MainMem (`+0x1c5000` et `+0x1c4000`), changement de musique si la
+zone a changé, puis le pas de boucle `DAT_005645f8` — qui vaut **2** au chargement, donc la première
+image publie la vue et lance **deux** scripts —, et enfin la purge de la liste d'attente.
+
+Cette purge répond à une question laissée ouverte le matin même : **c'est elle qui consomme la pile
+que l'opcode 11 remplit** (`0x005fa560`). Le `TODO(REVERSE)` posé sur `ScriptOpPushPending` a donc
+son consommateur, trouvé sans le chercher.
+
+### La frontière suivante n'était pas celle qu'on avait annoncée
+
+L'interpréteur bute sur l'opcode 0, l'appel de verbe de zone. La note écrite le matin disait :
+
+> « Transcrire cet opcode demande d'abord ce chargeur et les jeux de fonctions par zone. »
+
+**C'était trop pessimiste, et vérifiable en trente secondes.** Le chargeur existait déjà
+(`InstallEntityVTables`, `Engine/Resources.cs`), et la table de l'index 0 était relevée dans le
+dépôt depuis longtemps sous `s_VtSource_0056aec8`. Il ne manquait que le répartiteur, écrit sur le
+patron exact de `CallAreaHandler` : dispatch sur la **valeur d'adresse**, souche vérifiée
+court-circuitée, tout le reste lève en se nommant.
+
+La leçon est symétrique de celle du matin sur l'outil `at` : une note du dépôt — y compris une note
+qu'on vient d'écrire soi-même — n'est pas une preuve. Celle-ci a été écrite en lisant le binaire
+(les 256 entrées y sont bien des souches) sans vérifier ce que le port contenait déjà.
+
+### Un reste de registre, et pourquoi il est transcriptible
+
+L'opcode 0 fait `xor eax,eax ; mov al,[esi+1]` pour construire l'indice, puis
+`call dword [eax*4+56AEC8h]` et `mov [ecx],eax`. Ni le `call` ni un corps `ret` nu ne touchent
+`EAX` : quand le verbe est la souche `FUN_00401FA0`, **le résultat de condition reçoit l'indice du
+verbe lui-même**. Ce n'est pas une reconstruction hasardeuse mais ce que le processeur fait, et la
+boucle s'arrête ou non selon que cet indice est nul. Transcrit comme tel, avec le raisonnement écrit
+sur place.
+
+### Le verbe 3, premier de la chaîne
+
+`FUN_00442F60`, 336 octets, **absente de `Blaze.c`** — désassemblée, dump conservé dans
+`Legacy/Raw/Blaze/AreaVerbs/`. Deux moitiés : un décalage d'un cran des bits du banc `0x005e9000`
+vers `0x005e9840` (celui de l'opcode 7), puis le choix d'une piste musicale d'après `0x005e96fe`.
+
+Deux formes sans branchement rendues par ce qu'elles calculent, pas par leur forme :
+`setne / dec / and 2` est l'identité bornée à {0,1,2}, et onze `cmp al,N ; je` successifs testent
+« multiple de 8 jusqu'à 0x50 ».
+
+Le mur est maintenant le **verbe 10** (`FUN_004441F0`, également absent de `Blaze.c`). Le travail
+est devenu mécanique : le jeu nomme un verbe, on le transcrit, on relance.
+
+### Deux places mémoire, et un défaut latent trouvé au passage
+
+* `CameraBlock` étendu de `0x80` à `0x84` — le prologue écrit `DAT_005de0b0`, qui tombait
+  exactement sur l'ancienne borne. Rien ne suit jusqu'à `ItemMenuArena`.
+* `DAT_005de024` et `DAT_005de028` ajoutés à côté de `s_WorldFlags_005de02c`.
+
+**Défaut d'aliasing latent, à résorber** : `s_Unknown_005de034`
+(`Screens/State04/CharacterCreation.cs`) est un `static int` ordinaire dont l'adresse tombe **dans**
+`CameraBlock`. Il ne fait pas de dégât aujourd'hui — aucun site n'écrit `Camera(0x005de034)` — mais
+le premier qui le fera lira une autre mémoire. C'est le **deuxième** cas du même genre trouvé dans
+la journée, après `s_PartySize_005e9020`, et les deux fois par lecture manuelle : les tests de
+disposition ne comparent pas un champ de valeur à une étendue d'arène. **Étendre le test est
+maintenant la correction la plus rentable du dépôt.**
+
+### Contrôles
+
+Build 0 erreur · 5 tests de disposition verts · oracle refigé à 554 corps, les deux seuls changements
+de logique étant ceux faits sciemment · en jeu, la frontière a reculé **trois fois** en une session :
+`FUN_00516fc0` → opcode 0 → verbe 3 → verbe 10.
