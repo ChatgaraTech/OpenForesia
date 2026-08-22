@@ -8379,3 +8379,242 @@ Build 0 erreur, 42 avertissements (inchangé). Oracle : **un seul corps signalé
 et c'est le changement voulu ; 30 méthodes nouvelles. Tests de disposition : les trois rouges
 attendus, 39 champs. Playtest `-Entry 0` : le jeu traverse le pas par personnage jusqu'au
 gestionnaire de commande.
+
+---
+
+## 2026-08-22 (nuit) — sept appelées de `FUN_0050bf20`, et un paramètre perdu qui aurait tourné en silence
+
+Le chemin traverse maintenant la queue commune. Écrites dans cette passe :
+
+| Ghidra | nom | note |
+|---|---|---|
+| `FUN_0050e140` | `HandleDirectionalInput_0050E140` | la marche à la croix directionnelle |
+| `FUN_0051a020` | `ApplyGroundMotion_0051A020` | 221 l., cinq postures |
+| `FUN_0047aae0` | `SpawnCastEntity_0047AAE0` | jumelle de `SpawnEffectEntity` |
+| `FUN_0051a670` | `PostureHandler_0051A670` | 14 l. |
+| `FUN_00519f50` | `PullEntityTowardCameraTarget_00519F50` | **paramètre perdu, voir plus bas** |
+| `FUN_00519df0` | `ApplyEntityMotion_00519DF0` | balayage 3×3 de la grille de `0x1c4000` |
+| `FUN_00519ee0` | `UpdateEntityShadow_00519EE0` | le clignotement d'invulnérabilité |
+
+Le front est `FUN_00534330` (277 l., dans `Blaze.c`) — le contact entre deux entités voisines.
+
+### Le paramètre perdu le plus dangereux des cinq
+
+`FUN_00519f50` est déclarée `void FUN_00519f50(uint *param_1)` alors que son site d'appel en empile
+deux. Jusque-là, rien de nouveau — c'est le cinquième cas de cet arbre. **Ce qui change, c'est où
+Ghidra fait atterrir l'écriture** :
+
+```c
+uVar2 = Ordinal_442(iVar3 * iVar3 + iVar5 * iVar5);
+*(undefined2 *)param_1 = uVar2;        // dans la moitie basse du mot d'etat de l'entite ?
+```
+
+Écrire la distance à l'offset 0 de l'entité écraserait **seize drapeaux** à chaque image. Le
+désassemblage tranche :
+
+```
+00519f96  call 00545A10h            ; Ordinal_442, stdcall
+00519f9b  mov  ecx,[esp+18h]        ; quatre push au prologue -> [esp+18h] = ARG 2
+00519f9f  mov  [ecx],ax             ; la distance va dans l'entree d'emplacement
+```
+
+**Les quatre parametres perdus précédents se signalaient** : la pseudo-C lisait une variable jamais
+écrite (`iStack_4`) ou un registre non attribué (`unaff_EBP`, `unaff_EBX`), et le compilateur C#
+aurait refusé de compiler une transcription naïve. **Celui-ci compile et tourne.** Il ne se serait
+manifesté que par un personnage dont les drapeaux se réinitialisent tout seuls, des heures plus
+tard, sans rien qui pointe vers cette fonction.
+
+La règle qui s'en dégage : **quand Ghidra déclare moins de paramètres que le site d'appel n'en
+empile, ne pas se contenter de rajouter les manquants — vérifier aussi que les écritures du corps
+atterrissent bien où il le dit.** Un paramètre perdu n'est pas seulement absent de la signature ; il
+est confondu avec un autre, et toutes ses déréférences le sont avec lui.
+
+### La table `0x00562dc8`, ou comment lire seize octets
+
+`FUN_0050e140` indexe une table de seize octets par le quartet haut de `manette[0]`. Le contenu
+paraît arbitraire — `0, 1, 3, 2, 5, 0, 4, 0, 7, 8, 0, 0, 6, 0, 0, 0` — jusqu'à ce qu'on remarque que
+les quatre bits sont haut, droite, bas, gauche dans cet ordre :
+
+```
+1 (haut)          -> 1        5  (haut+bas)     -> 0
+3 (haut+droite)   -> 2        10 (gauche+droite)-> 0
+2 (droite)        -> 3        7, 11, 13, 14, 15 -> 0
+6 (droite+bas)    -> 4
+```
+
+Les huit secteurs dans le sens horaire, diagonales comprises, et zéro pour tout ce qui s'annule.
+**Une table de constantes se lit en cherchant la structure, pas en la recopiant** : sans ce
+recoupement, les quatre zéros du milieu auraient eu l'air d'un trou dans la donnée.
+
+### Le rôle de `DAT_00562cc0`, établi par son deuxième lecteur
+
+La table avait été nommée `s_LeaderReachByPosture` en transcrivant `TickFollowingMember`, où elle
+sert de distance d'arrêt. `FUN_0050e140` la décale de douze bits pour en faire **directement la
+vitesse du personnage** : c'est une vitesse, et le membre suivi s'arrête à une distance égale à un
+pas de son meneur. Renommée `s_PostureSpeed_00562cc0`.
+
+**Un seul site d'appel ne suffit pas à nommer une table de constantes.** Le premier lecteur donne
+une interprétation plausible ; c'est le deuxième qui la confirme ou la corrige.
+
+### Deux vues incompatibles de la même région, conservées
+
+`FUN_0051a020` lit `bloc + 0x160 + famille * 8` de deux façons selon la posture : comme un **masque
+de bits** de 64 bits dans la branche d'incantation (`1 << (index & 0x1f)` sur le dword
+`(index >> 5)`), et comme **huit compteurs d'un octet** dans la branche d'objet consommable. Les
+deux vues se recouvrent. Transcrites telles quelles avec un `TODO(REVERSE)` : soit les deux
+`famille` ne se croisent jamais, soit c'est un défaut de 1998 — et rien dans la fonction ne permet
+de trancher.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : **un seul corps signalé**, `RunWorldMapTick`,
+et c'est le changement voulu ; 37 méthodes nouvelles. Tests de disposition : inchangés, 39 champs.
+Playtest `-Entry 0` : le jeu traverse le pas par personnage et la queue commune jusqu'à
+`FUN_00534330`.
+
+---
+
+## 2026-08-22 (tard) — `FUN_00534330` : quand la pseudo-C confond ses deux opérandes
+
+`FUN_00534330` n'est **pas** transcrite. Ce qui est fait, et c'est le verrou, c'est la
+correspondance entre les noms de Ghidra et les vrais objets — sans elle le corps est intranscriptible,
+avec elle il redevient mécanique.
+
+### Pourquoi celle-ci n'est pas comme les précédentes
+
+Elle fait **2 464 octets** (0x00534330..0x00534cd0) pour 277 lignes de pseudo-C : une boucle sur les
+faces du maillage de collision d'une entité voisine, avec par face un produit vectoriel dans les
+registres GTE émulés puis jusqu'à trois `NormalClip` pour le test d'appartenance au triangle.
+
+Ghidra la déclare `undefined4 FUN_00534330(uint *param_1)` — **un** paramètre — alors que le site
+d'appel en empile trois (`add esp,0Ch` en 0x00519e83). Jusque-là c'est le sixième cas de cette
+famille dans le même arbre. Ce qui la distingue : Ghidra ne se contente pas d'omettre les deux
+autres, **il fait porter à un même nom des accès qui visent des objets différents**.
+
+| ce que Ghidra écrit | ce que c'est |
+|---|---|
+| `param_1`, `puStack_18` | **argument 1**, l'occupant — `[esp+74h]`. Les deux noms sont le même objet (`puStack_18 = param_1` en tête de boucle, `param_1 = puStack_18` en queue) |
+| `local_14` *vu comme une entité* | **argument 2**, le personnage qui se déplace — `[esp+78h]` |
+| `local_14` *passé à `FUN_0051c300` / `FUN_005327b0` / `Ordinal_366`* | un **tampon local de neuf shorts** à `[esp+5Ch]`, la matrice de l'occupant — rien à voir |
+| `iStack_10` | **argument 3**, l'entrée d'emplacement — `[esp+7Ch]` |
+| `puStack_54` | le bloc de modèle de l'occupant, mis de côté et restauré à chaque tour |
+
+Le recoupement décisif est `0x00534778` :
+
+```
+00534778  mov  edx,[edi+1Ch]        ; edi = argument 2
+0053477e  mov  [edi+78h],esi        ; esi = argument 1  ->  entite[0x78] = occupant
+00534781  mov  ecx,[esi+1Ch]
+00534784  sub  edx,ecx
+00534786  mov  ecx,[esp+7Ch]        ; argument 3
+0053478a  mov  [ecx+1Ch],edx        ; entree[0x1c] = entite.x - occupant.x
+```
+
+que la pseudo-C rend en `local_14[0x1e] = puStack_18` et
+`*(uint *)(iStack_10 + 0x1c) = local_14[7] - puStack_18[7]`. Les trois arguments apparaissent dans
+six instructions, et les trois noms de Ghidra s'y raccrochent sans ambiguïté.
+
+### Ce que ce cas ajoute aux cinq précédents
+
+Les cinq paramètres perdus rencontrés jusqu'ici se rangeaient en deux classes : ceux qui **ne
+compilent pas** (une variable lue sans être écrite, `iStack_4`) et celui qui **compile et corrompt**
+(`FUN_00519f50`, où l'écriture atterrissait sur le mauvais objet). Celui-ci est une troisième
+classe, la pire : **deux objets du même type sous un seul nom**.
+
+Intervertir l'occupant et le personnage compile, tourne, et rend une collision qui pousse le décor
+au lieu de pousser le personnage. Aucun compteur de primitives ne le dirait, aucune capture d'écran
+non plus tant que le décor ne bouge pas visiblement. **Le seul garde-fou est de vérifier chaque
+accès contre la table ci-dessus avant de l'écrire**, et de ne jamais déduire l'objet du nom seul.
+
+C'est aussi pourquoi la table est gravée dans le résumé XML de la méthode plutôt que seulement ici :
+elle doit être sous les yeux de qui écrira le corps.
+
+### Le piège suivant est déjà connu
+
+Les six termes du `NormalClip` sont **inlinés** dans le corps, et le dépôt en porte déjà la version
+reconstruite (`FUN_0051c280`, `Platform/Winsys3d.cs`). `FinalizeEntityPlacement2` a payé ce
+précédent en août : Ghidra émet les termes dans un autre ordre, il faut les recouper terme à terme
+avant d'appeler la fonction existante.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : un seul corps signalé, `RunWorldMapTick`,
+le changement voulu. Aucun changement de comportement : seule la documentation de la lacune a
+changé.
+
+---
+
+## 2026-08-22 (très tard) — `FUN_00534330` écrite : la pseudo-C avait la logique juste, pas les noms
+
+La résolution de contact est transcrite et **le jeu l'exécute** : il traverse maintenant le pas par
+personnage, la queue commune et cette fonction, et s'arrête dans `FUN_005197d0` (62 l.), la collecte
+du coup reçu.
+
+Écrites au passage : `FUN_005327b0` (`ScaleMatrix`), et les imports `winsys3d` **792** (`RotTrans`
+par lot) et **812** (le registre de facteur d'échelle du GTE).
+
+### La correspondance a tenu, et c'est le résultat le plus utile
+
+La table établie au tour précédent — `param_1`/`puStack_18` = argument 1 (l'occupant), `local_14` =
+argument 2 (le personnage) sauf quand il est passé à `RotMatrix`/`ScaleMatrix`/`SetRotMatrix` où
+c'est un tampon local, `iStack_10` = argument 3 (l'entrée d'emplacement) — s'est vérifiée sur
+**chacun** des accès du corps. Aucune exception, aucun cas ambigu.
+
+**Ghidra avait la logique entièrement juste ; seuls les noms étaient faux.** C'est la conclusion
+pratique à retenir : sur une fonction dont le décompilateur confond les opérandes, il ne faut pas
+jeter la pseudo-C — il faut établir la table de correspondance au désassembleur, puis l'appliquer
+mécaniquement. L'analyse coûte une heure ; la transcription qui suit est directe.
+
+### L'asymétrie qui avait l'air d'un bug n'en est pas un
+
+Les trois deltas d'entrée sont pris `entité − occupant` sur X et Z, mais `occupant − entité` sur Y.
+Assez anormal pour suspecter Ghidra. Le désassemblage (0x005343ef..0x0053440a) donne :
+
+```
+005343ef  mov eax,[edi+1Ch]     ; edi = entite
+005343f2  sub eax,ecx           ; - occupant.x
+005343f4  mov ecx,[esi+20h]     ; esi = occupant
+005343f7  sub ecx,[edi+20h]     ; - entite.y      <-- vraiment inverse
+00534407  mov ecx,[edi+24h]
+0053440a  sub ecx,[esi+24h]     ; entite.z - occupant.z
+```
+
+L'asymétrie est dans le binaire. Elle se comprend une fois qu'on voit à quoi Y sert : X et Z
+servent au test d'appartenance en projection, Y à savoir de quel côté du plan on est — deux
+questions opposées, deux signes opposés. **Conservée telle quelle.**
+
+### Le `NormalClip` inliné, recoupé terme à terme
+
+Les six termes que le compilateur a inlinés sont, une fois développés,
+`x0*y1 + x1*y2 + x2*y0 − x0*y2 − x1*y0 − x2*y1` — **exactement** ceux de `Winsys3d.NormalClip`,
+déjà reconstruit en août. Recoupés avant d'appeler, comme `FinalizeEntityPlacement2` l'avait exigé :
+Ghidra les émet dans un ordre différent et avec un regroupement de soustractions qui masque la
+symétrie.
+
+Le test d'appartenance se fait **en projection XZ**, vue de dessus : trois `NormalClip` pour un
+triangle, quatre pour un quad (bit 0 des attributs, quatrième sommet dans l'octet haut du mot de
+coins).
+
+### Deux blocs identiques, factorisés une fois
+
+Les treize écritures qui publient le contact dans l'entrée d'emplacement — le vecteur de séparation,
+la pose complète de l'occupant, les deux mots de normale — apparaissent **deux fois à l'identique**
+dans le corps, aux deux points de contact. Extraites en `PublishContact` : c'est une unité
+réellement indépendante, pas un `LAB_` promu en méthode.
+
+### `FUN_005327b0` = `ScaleMatrix`, et l'ordinal 812
+
+La fonction multiplie chaque **colonne** de la matrice 3×3 par un facteur en 1.12 — indices 0/3/6,
+puis 1/4/7, puis 2/5/8. L'original passe par les registres GTE : le facteur dans **812**, la colonne
+dans IR1..3, le produit dans MAC1..3. Transcrite telle quelle plutôt qu'en arithmétique directe :
+ces registres sont observables depuis le reste du moteur.
+
+**812 identifié par ce corps** : c'est le registre de facteur scalaire, lu en `ushort`. Ajouté à
+`EnsureGteRegisters` — d'où le second corps que l'oracle signale, un ajout voulu.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, `RunWorldMapTick` (le
+changement en cours) et `EnsureGteRegisters` (l'ajout de 812) — les deux voulus ; 41 méthodes
+nouvelles. Tests de disposition : inchangés, 39 champs. Playtest `-Entry 0` : le contact s'exécute
+pour chaque occupant des neuf cellules, et l'arrêt est sur `FUN_005197d0`.

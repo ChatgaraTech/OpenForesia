@@ -2502,13 +2502,38 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     /// <summary>
-    /// Ghidra: <c>&amp;DAT_00562cc0</c> — huit entiers relevés dans le binaire
-    /// (<c>at Legacy/Binaries/Blaze.exe 0x00562cc0 32</c>). Indexes par les trois bits bas de
-    /// <c>bloc + 0x150</c>, la posture du meneur : c'est la <b>portee de detection</b> que le pas
-    /// par personnage compare a la distance au meneur.
+    /// Ghidra: <c>&amp;DAT_00562cc0</c> — huit entiers releves dans le binaire
+    /// (<c>at Legacy/Binaries/Blaze.exe 0x00562cc0 32</c>), indexes par les trois bits bas de
+    /// <c>bloc + 0x150</c>, la posture. C'est la <b>vitesse de deplacement</b> de cette posture.
+    ///
+    /// <para>
+    /// <b>Le role n'a ete etabli qu'avec le deuxieme lecteur.</b> Vu de
+    /// <see cref="TickFollowingMember"/> seul, la table ressemblait a une portee de detection ; vu
+    /// de <see cref="HandleDirectionalInput_0050E140"/>, qui la decale de 12 bits pour en faire
+    /// directement la vitesse du personnage, c'est une vitesse. Les deux se recoupent : le membre
+    /// suivi s'arrete a une distance egale a un pas de son meneur, quelle que soit la posture.
+    /// </para>
     /// </summary>
-    private static readonly int[] s_LeaderReachByPosture_00562cc0 =
+    private static readonly int[] s_PostureSpeed_00562cc0 =
         [0x13, 0x13, 0x15, 0x12, 0x14, 0x14, 0x12, 0x15];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00562dc8</c> — seize octets releves dans le binaire, juste apres la table
+    /// de pas sonores. Indexes par le <b>quartet haut</b> de <c>manette[0]</c>, c'est-a-dire la
+    /// croix directionnelle : ils rendent un <b>secteur sur huit</b>, ou zero quand la direction
+    /// est nulle ou contradictoire.
+    ///
+    /// <para>
+    /// Le contenu se lit tout seul une fois qu'on remarque que les quatre bits sont haut, droite,
+    /// bas, gauche dans cet ordre : <c>1→1</c>, <c>3→2</c>, <c>2→3</c>, <c>6→4</c>, <c>4→5</c>,
+    /// <c>12→6</c>, <c>8→7</c>, <c>9→8</c> — les huit secteurs dans le sens horaire, diagonales
+    /// comprises. Les deux paires opposees (<c>5</c> = haut+bas, <c>10</c> = gauche+droite) et
+    /// toutes les combinaisons de trois touches rendent zero : elles s'annulent, et c'est ce zero
+    /// qui fait retomber le personnage a l'arret.
+    /// </para>
+    /// </summary>
+    private static readonly sbyte[] s_PadDirection_00562dc8 =
+        [0, 1, 3, 2, 5, 0, 4, 0, 7, 8, 0, 0, 6, 0, 0, 0];
 
     /// <summary>
     /// Ghidra: <c>&amp;PTR_FUN_00562ca0</c> — huit gestionnaires de posture, releves dans le binaire.
@@ -2881,7 +2906,7 @@ public static unsafe partial class Blaze
     /// <para>
     /// La cible est le membre suivant dans la liste <c>DAT_005edec0</c> quand celui-ci est
     /// disponible, sinon le meneur ; la distance d'arret vaut 100 dans le premier cas et la portee
-    /// de posture <see cref="s_LeaderReachByPosture_00562cc0"/> dans le second.
+    /// de posture <see cref="s_PostureSpeed_00562cc0"/> dans le second.
     /// </para>
     /// </summary>
     private static void TickFollowingMember(
@@ -2899,7 +2924,7 @@ public static unsafe partial class Blaze
         byte* leaderSlot = Inp.s_SlotFlags_005e93c0 + leaderIndex * 0x9c;
         byte* leaderBlock = mainMem + 0xf0000 + leaderIndex * 0x2000;
 
-        int reach = s_LeaderReachByPosture_00562cc0[leaderBlock[0x150] & 7] * scale >> 0xc;
+        int reach = s_PostureSpeed_00562cc0[leaderBlock[0x150] & 7] * scale >> 0xc;
 
         int dx = 0;
         int dz = 0;
@@ -3195,10 +3220,335 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: FUN_0051a020 @ 0x0051a020 (221 l.) — l'integration du deplacement au sol,
     /// appelee quand le personnage n'est pas en l'air.</summary>
     private static void ApplyGroundMotion_0051A020(uint* slot, byte* entry, byte* perChar, byte* pad, byte* anim)
+    {
+        byte* s = (byte*)slot;
+
+        switch (perChar[0x150] & 7)
+        {
+            // ------------------------------------------------ la marche et sa variante
+            case 0:
+            case 6:
+                if (pad[0x0e] != 0
+                    && (sbyte)perChar[0x2b2] != -1
+                    && s_Unknown_00566c84 != 0
+                    && (*slot & 0x44) == 0
+                    && (*(uint*)(perChar + 0x140) & 0x400003c0) == 0)
+                {
+                    *(uint*)(s + 0x18) = 5;
+                    *slot = (*slot & 0xfeffffff) | 4;
+                }
+
+                if ((*(ushort*)pad & *(ushort*)(perChar + 0x1fc4)) == 0 && (*slot & 0x2000000) != 0)
+                {
+                    *slot &= 0xfffffffb;
+                }
+
+                if (*(short*)(s + 0x18) == 5)
+                {
+                    *(int*)(s + 0x5c) = 0;
+                    return;
+                }
+
+                break;
+
+            // ------------------------------------------------ les quatre postures d'incantation
+            case 1:
+            case 3:
+            case 5:
+            case 7:
+            {
+                byte* spellSet = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x9c)
+                                           + perChar[0x2b5] * 4);
+                uint held = *slot;
+
+                if ((held & 4) == 0)
+                {
+                    if ((held & 0x40) != 0) return;
+                    if ((*(uint*)(perChar + 0x140) & 0x400003e8) != 0) return;
+
+                    if ((*(ushort*)(pad + 2) & 1) != 0 && s_Unknown_00566c84 != 0)
+                    {
+                        // Annulation : l'incantation part quand meme, mais sans effet retenu.
+                        *slot = held | 0x1000004;
+                        *(uint*)(s + 0x18) = 5;
+                        entry[0x0b] = 0;
+                        *(ushort*)(pad + 0x0c) = 0;
+                        *(ushort*)(pad + 0x0e) = 0;
+                        *(short*)(s + 0x14) = 0;
+                        SpawnCastEntity_0047AAE0(s, 0xbd, 0, 0);
+                        return;
+                    }
+
+                    if ((*(ushort*)(perChar + 0x1fc4) & *(ushort*)(pad + 2)) == 0) return;
+                    if (s_Unknown_00566c84 == 0) return;
+
+                    *(uint*)(s + 0x18) = 5;
+                    *slot = held | 0x1000004;
+
+                    byte* spell = spellSet + perChar[0x2b6] * 0x30;
+                    *(ushort*)(s + 0x14) = spell[0x13];
+                    *(ushort*)(perChar + 0x204) = *(ushort*)(spell + 0x14);
+                    SpawnCastEntity_0047AAE0(s, 0xbd, 0, 0);
+                    *(uint*)Mem.Arena(0x005e99c0) = 0;
+                    SetEntityAnimationState_005238E0(slot, 5);
+                    return;
+                }
+
+                *(int*)(s + 0x5c) = 0;
+
+                if (*(short*)(s + 0x18) == 5)
+                {
+                    if (*(short*)(s + 0x14) == 0)
+                    {
+                        if ((*(ushort*)pad & 1) == 0)
+                        {
+                            // Le bouton est relache : on choisit la cible et on passe a l'etat 6.
+                            *slot = held & 0xfeffffff;
+                            *(uint*)(s + 0x18) = 6;
+                            *(short*)(s + 0x14) = 5;
+
+                            int chosen = PickCastTarget_0051A5D0(entry, perChar);
+                            bool armed = false;
+
+                            if (chosen >= 0)
+                            {
+                                uint* mask = (uint*)(perChar + ((chosen >> 5) + 0x58 + perChar[0x2b5] * 2) * 4);
+                                if ((*mask & (1u << (chosen & 0x1f))) != 0)
+                                {
+                                    *(ushort*)(perChar + 0x204) = *(ushort*)(spellSet + chosen * 0x30 + 0x14);
+                                    *(short*)(s + 0x16) = (short)chosen;
+                                    armed = true;
+                                }
+                            }
+
+                            if (!armed)
+                            {
+                                *slot = (*slot & 0xfffffffb) | 0x1000000;
+                                *(uint*)(s + 0x18) = 0;
+                            }
+                        }
+                        else if ((*(ushort*)(pad + 2) & 0xf000) != 0 && entry[0x0b] < 0x10)
+                        {
+                            // Le bouton est tenu : chaque direction s'empile dans la combinaison.
+                            entry[0x0c + entry[0x0b]] = (byte)((*(ushort*)(pad + 2) >> 8) & 0xf0);
+                            entry[0x0b]++;
+                        }
+                    }
+                    else
+                    {
+                        if ((*(ushort*)pad & *(ushort*)(perChar + 0x1fc4)) == 0)
+                        {
+                            *slot = (held & 0xfffffffb) | 0x1000000;
+                            *(uint*)(s + 0x18) = 0;
+                        }
+                        else
+                        {
+                            short remaining = (short)(*(short*)(s + 0x14) - 1);
+                            *(short*)(s + 0x14) = remaining;
+                            if (remaining == 0)
+                            {
+                                *(uint*)(s + 0x18) = 6;
+                                *slot = held & 0xfeffffff;
+                                *(short*)(s + 0x14) = 5;
+
+                                uint index = perChar[0x2b6];
+                                uint* mask = (uint*)(perChar + (((int)index >> 5) + 0x58 + perChar[0x2b5] * 2) * 4);
+                                if ((*mask & (1u << (perChar[0x2b6] & 0x1f))) == 0) index = 0xffffffff;
+                                *(short*)(s + 0x16) = (short)index;
+                            }
+                        }
+                    }
+                }
+
+                if (*(short*)(s + 0x18) == 6)
+                {
+                    held = *slot;
+                    if ((held & 0x2000000) != 0)
+                    {
+                        *(short*)(s + 0x14) = (short)(*(short*)(s + 0x14) - 1);
+                        if (*(short*)(s + 0x14) == 0)
+                        {
+                            *(uint*)(s + 0x18) = 0;
+                            *slot = (held & 0xfffffffb) | 0x1000000;
+                            return;
+                        }
+
+                        *slot = held & 0xfeffffff;
+
+                        // L'etat et l'image sont poses d'un seul dword : l'animation demarre a sa
+                        // DERNIERE image.
+                        *(uint*)(s + 0x18) = ((uint)(*(ushort*)(anim + 0x16) - 1) << 0x10) | 6;
+
+                        if (*(short*)(s + 0x16) >= 0)
+                        {
+                            *(uint*)Mem.Arena(0x005e99c0) = 0;
+                            SetEntityAnimationState_005238E0(slot, 6);
+
+                            // Le cout n'est preleve que si la reserve le couvre — sinon
+                            // l'incantation part sans rien consommer ni produire.
+                            if (*(ushort*)(perChar + 0x204) <= (int)*(short*)(perChar + 0x14e))
+                            {
+                                *(ushort*)(perChar + 0x14e) =
+                                    (ushort)(*(short*)(perChar + 0x14e) - *(ushort*)(perChar + 0x204));
+                                CastSpell_0053A980(slot, perChar[0x2b5], *(short*)(s + 0x16), -1, -1);
+                            }
+
+                            *(ushort*)(s + 0x16) = 0xffff;
+                            return;
+                        }
+                    }
+                }
+
+                break;
+            }
+
+            // ------------------------------------------------ la charge
+            case 2:
+                if (*(short*)(s + 0x18) != 5 || (*slot & 0x2000000) != 0)
+                {
+                    *(short*)(s + 0x14) = 0;
+                    *slot &= 0xfffffffb;
+                }
+
+                if (*(short*)(s + 0x14) == 0)
+                {
+                    if (pad[0x0e] != 0
+                        && (*slot & 0x44) == 0
+                        && (*(uint*)(perChar + 0x140) & 0x400003c0) == 0)
+                    {
+                        *(ushort*)(pad + 2) &= 0x7fff;
+                        *(uint*)(s + 0x18) = 5;
+                        *(short*)(s + 0x14) = 0x10;
+                        *slot = (*slot & 0xfeffffff) | 4;
+                        *(short*)(s + 0x98) = *(short*)(s + 0x32);
+                    }
+                }
+                else
+                {
+                    short remaining = (short)(*(short*)(s + 0x14) - 1);
+                    *(short*)(s + 0x14) = remaining;
+                    if (remaining == 0) *slot &= 0xfffffffb;
+                }
+
+                if (*(short*)(s + 0x18) == 5)
+                {
+                    uint posture = *(uint*)(perChar + 0x140);
+                    int scale = 0x1000;
+                    if ((posture & 0x4000) != 0) scale = 0x1333;
+                    if ((posture & 0x8000) != 0) scale = 0xccc;
+                    if ((posture & 4) != 0) scale = 0x800;
+
+                    // La charge decelere toute seule : la vitesse suit le compte a rebours.
+                    *(int*)(s + 0x5c) = *(short*)(s + 0x14) * 0x2000 * scale >> 0xc;
+                    return;
+                }
+
+                break;
+
+            // ------------------------------------------------ l'objet consommable
+            case 4:
+                if ((*slot & 0x44) == 0
+                    && (*(ushort*)pad & *(ushort*)(perChar + 0x1fc4)) != 0
+                    && (*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc4)) != 0
+                    && s_Unknown_00566c84 != 0
+                    && (*(uint*)(perChar + 0x140) & 0x400003c0) == 0)
+                {
+                    *(uint*)(s + 0x18) = 5;
+                    *slot = (*slot & 0xfcffffff) | 4;
+                    *(short*)(s + 0x14) = 5;
+                }
+
+                if ((*slot & 4) != 0)
+                {
+                    if ((*slot & 0x2000000) != 0)
+                    {
+                        if (*(short*)(s + 0x14) == 5)
+                        {
+                            // Ghidra lit ici les huit octets de +0x160 comme un COMPTE par
+                            // emplacement, la ou la posture d'incantation lit la meme region
+                            // comme un MASQUE de bits. Les deux vues coexistent dans l'original ;
+                            // transcrites telles quelles. TODO(REVERSE) : etablir laquelle est la
+                            // bonne, ou si les deux `kind` ne se recouvrent jamais.
+                            byte* charges = perChar + 0x160 + perChar[0x2b5] * 8;
+                            sbyte left = (sbyte)charges[perChar[0x2b6]];
+                            if (left != 0)
+                            {
+                                charges[perChar[0x2b6]] = (byte)(left - 1);
+                                s[6] = perChar[0x2b6];
+                                *slot |= 0x800;
+                                CastSpell_0053A980(slot, perChar[0x2b5], perChar[0x2b6], -1, -1);
+                            }
+                        }
+
+                        *(short*)(s + 0x14) = (short)(*(short*)(s + 0x14) - 1);
+                        if (*(short*)(s + 0x14) != 0)
+                        {
+                            *slot &= 0xfeffffff;
+                            ushort frames = *(ushort*)(anim + 0x16);
+                            *(int*)(s + 0x5c) = 0;
+                            *(uint*)(s + 0x18) = ((uint)(frames - 1) << 0x10) | 5;
+                            return;
+                        }
+
+                        *(uint*)(s + 0x18) = 0;
+                        *slot = (*slot & 0xfffffffb) | 0x1000000;
+                    }
+
+                    *(int*)(s + 0x5c) = 0;
+                    return;
+                }
+
+                break;
+
+            default:
+                *slot &= 0xfffffffb;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047aae0 @ 0x0047aae0 — <b>fait naitre une entite d'incantation</b> dans la table
+    /// <c>DAT_005edee0</c>, en recopiant les 0x27 dwords du lanceur puis en remplacant six champs.
+    /// Jumelle de <c>SpawnEffectEntity</c> (<c>FUN_0047a9d0</c>) a la table pres.
+    ///
+    /// <para>Le masque final <c>&amp; 0x10e82f02 | 0x80109000</c> ne garde du mot d'etat copie que ce
+    /// qui a un sens pour une entite d'effet.</para>
+    /// </summary>
+    /// <returns>1 si un emplacement etait libre, 0 sinon.</returns>
+    private static uint SpawnCastEntity_0047AAE0(byte* source, byte subtype, byte param3, int param4)
+    {
+        int index = AllocEntitySlot((ushort*)Mem.Entity(0x006007a0));
+        if (index < 0) return 0;
+
+        byte* born = Mem.Entity(0x005edee0) + index * 0x9c;
+        Mem.CopyDwords((uint*)source, (uint*)born, 0x27);
+
+        born[0x36] |= 0x80;
+        born[0x08] = (byte)index;
+        born[0x05] = subtype;
+        *(byte**)(born + 0x6c) = source;
+        born[0x0b] = param3;
+        if (param4 >= 0) born[0x0a] = (byte)param4;
+
+        *(uint*)born = (*(uint*)born & 0x10e82f02) | 0x80109000;
+        *(ushort*)(born + 0x10) = 0;
+        return 1;
+    }
+
+    /// <summary>Ghidra: FUN_0051a5d0 @ 0x0051a5d0 (46 l.) — reconnait la combinaison de directions
+    /// empilee dans l'entree d'emplacement et rend l'indice du sort correspondant, ou -1.</summary>
+    private static int PickCastTarget_0051A5D0(byte* entry, byte* perChar)
         => throw new NotImplementedException(
-            "FUN_0051a020 (0x0051a020) : non transcrite. 221 lignes dans Blaze.c — le deplacement " +
-            "au sol. Elle prend (entite, entree d'emplacement, bloc par personnage, manette, " +
-            "animation courante).");
+            "FUN_0051a5d0 (0x0051a5d0) : non transcrite. 46 lignes dans Blaze.c — la " +
+            "reconnaissance de la combinaison de directions saisie pendant l'incantation. Elle " +
+            "rend un indice de sort, ou une valeur negative si rien ne correspond.");
+
+    /// <summary>Ghidra: FUN_0053a980 @ 0x0053a980 (31 l.) — declenche le sort ou l'objet
+    /// choisi.</summary>
+    private static void CastSpell_0053A980(uint* caster, byte kind, int index, int a, int b)
+        => throw new NotImplementedException(
+            $"FUN_0053a980 (0x0053a980), famille {kind}, indice {index} : non transcrite. " +
+            "31 lignes dans Blaze.c.");
 
     /// <summary>
     /// Ghidra: <c>(*(code *)(&amp;PTR_FUN_00562ce0)[bloc + 0x2b7])(…)</c> — quatre gestionnaires de
@@ -3211,11 +3561,112 @@ public static unsafe partial class Blaze
             ? s_InputHandlers_00562ce0[index]
             : 0;
 
-        throw new NotImplementedException(
-            $"FUN_0050bf20 : le gestionnaire de commande d'indice {index} (table 0x00562ce0) vaut " +
-            $"0x{target:X6} et n'est pas transcrit. Les quatre entrees de la table sont relevees " +
-            "dans le binaire : 0x0050E140, 0x0050DE90, 0x0050DD00, 0x0050DFF0 — toutes dans " +
-            "Blaze.c. Il prend (entite, bloc par personnage, manette).");
+        switch (target)
+        {
+            case 0x0050E140: HandleDirectionalInput_0050E140(slot, perChar, pad); return;
+
+            default:
+                throw new NotImplementedException(
+                    $"FUN_0050bf20 : le gestionnaire de commande d'indice {index} (table " +
+                    $"0x00562ce0) vaut 0x{target:X6} et n'est pas transcrit. Les quatre entrees de " +
+                    "la table sont relevees dans le binaire : 0x0050E140, 0x0050DE90 (toutes deux " +
+                    "dans Blaze.c), 0x0050DD00 et 0x0050DFF0 (absentes, a desassembler). Il prend " +
+                    "(entite, bloc par personnage, manette).");
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0050e140 @ 0x0050e140 — l'entree <b>0</b> de la table de commande
+    /// <c>PTR_FUN_00562ce0</c> : <b>la marche a la croix directionnelle</b>. C'est le premier
+    /// gestionnaire que la carte du monde atteint, et le seul chemin par lequel le joueur fait
+    /// bouger son personnage.
+    ///
+    /// <para>
+    /// Trois façons d'obtenir une direction, selon le bit 3 de <c>bloc + 0x140</c> : normalement
+    /// la croix, lue a travers <see cref="s_PadDirection_00562dc8"/> ; quand le bit est pose — le
+    /// personnage est desoriente — <b>une direction tiree au sort</b> des qu'une touche est
+    /// enfoncee, et rien du tout sinon.
+    /// </para>
+    /// <para>
+    /// La direction n'est convertie en cap qu'a la <b>transition</b> de la croix (bit 1 de
+    /// <c>manette + 0xb</c>, consomme au passage), pas a chaque image : c'est ce qui empeche le
+    /// personnage de tourner en continu tant qu'une direction est tenue. Le cap est relatif a la
+    /// camera, arrondi au seizieme de tour (<c>(angle + 0x80) &amp; 0xf00</c>) — et la meme
+    /// desorientation remplace cette reference par un tirage.
+    /// </para>
+    /// <para>
+    /// La vitesse vient de <see cref="s_PostureSpeed_00562cc0"/>, sauf en mode de mise au point
+    /// avec le modificateur tenu, ou elle passe a <c>0x3c000</c> — la marche rapide. Elle est
+    /// ensuite mise a l'echelle par les memes trois drapeaux de <c>bloc + 0x140</c> que le membre
+    /// suivi utilise pour sa distance d'arret.
+    /// </para>
+    /// </summary>
+    private static void HandleDirectionalInput_0050E140(uint* slot, byte* perChar, byte* pad)
+    {
+        byte* s = (byte*)slot;
+        int direction;
+
+        if ((perChar[0x140] & 8) == 0)
+        {
+            direction = s_PadDirection_00562dc8[*pad >> 4];
+        }
+        else if ((*pad & 0xf0) == 0)
+        {
+            direction = 0;
+        }
+        else
+        {
+            direction = (CrtRand() & 7) + 1;
+        }
+
+        if (direction == 0)
+        {
+            if ((*slot & 0x47) == 0 && (*pad & 0xf0) == 0 && *(short*)(s + 0x18) != 0)
+            {
+                *(uint*)(s + 0x18) = 0;
+                *slot |= 0x1000000;
+            }
+
+            return;
+        }
+
+        if ((*slot & 0x8000047) == 0 && *(short*)(s + 0x18) != 1)
+        {
+            *(uint*)(s + 0x18) = 1;
+            *slot |= 0x1000000;
+        }
+
+        if ((pad[0x0b] & 2) != 0)
+        {
+            pad[0x0b] &= 0xfd;
+
+            short reference = (perChar[0x140] & 8) == 0
+                ? (short)((*(ushort*)(Mem.s_CameraVector_00604928 + 2) + 0x80u) & 0xf00)
+                : (short)(((short)CrtRand() + 0x80u) & 0xf00);
+
+            *(short*)(s + 0x32) = (short)((short)(direction * 0x200) - reference - 0x200);
+        }
+
+        *(short*)(s + 0x98) = *(short*)(s + 0x32);
+
+        if (Mem.s_DebugModeLatch_005633a8 == 0)
+        {
+            *(int*)(s + 0x5c) = (pad[1] & 0x20) == 0
+                ? s_PostureSpeed_00562cc0[perChar[0x150] & 7] << 0xc
+                : 0x3c000;
+        }
+        else
+        {
+            *(int*)(s + 0x5c) = s_PostureSpeed_00562cc0[perChar[0x150] & 7] << 0xc;
+        }
+
+        uint posture = *(uint*)(perChar + 0x140);
+        int scale = 0x1000;
+        if ((posture & 0x4000) != 0) scale = 0x1333;
+        if ((posture & 0x8000) != 0) scale = 0xccc;
+        if ((posture & 4) != 0) scale = 0x800;
+
+        *(int*)(s + 0x5c) = scale * *(int*)(s + 0x5c) >> 0xc;
     }
 
     /// <summary>
@@ -3228,13 +3679,50 @@ public static unsafe partial class Blaze
         byte posture, uint* slot, byte* entry, byte* perChar, byte* pad, byte* anim)
     {
         uint target = s_PostureHandlers_00562ca0[posture];
-        if (target == 0x0040A600) return;   // corps vide verifie
 
-        throw new NotImplementedException(
-            $"FUN_0050bf20 : le gestionnaire de posture {posture} (table 0x00562ca0) vaut " +
-            $"0x{target:X6} et n'est pas transcrit. Les quatre vrais sont 0x0051A670, 0x0051A6B0, " +
-            "0x0051A700 et 0x0051A710. Il prend (entite, entree d'emplacement, bloc par " +
-            "personnage, manette, animation courante).");
+        switch (target)
+        {
+            case 0x0040A600: return;   // corps vide verifie au desassembleur
+            case 0x0051A670: PostureHandler_0051A670(slot); return;
+
+            default:
+                throw new NotImplementedException(
+                    $"FUN_0050bf20 : le gestionnaire de posture {posture} (table 0x00562ca0) vaut " +
+                    $"0x{target:X6} et n'est pas transcrit. Les trois qui restent — 0x0051A6B0, " +
+                    "0x0051A700 et 0x0051A710 — sont **absentes de Blaze.c** : " +
+                    $"`OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512`. " +
+                    "Le site d'appel empile (entite, entree d'emplacement, bloc par personnage, " +
+                    "manette, animation courante), mais 0x0051A670 ne lit que le premier — " +
+                    "verifier au cas par cas ce que chacune consomme reellement.");
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051a670 @ 0x0051a670 — la posture <b>0</b>, la marche : quatorze lignes.
+    ///
+    /// <para>
+    /// Elle ne fait qu'une chose : a la <b>cinquieme image de l'etat 6</b>, elle fait naitre
+    /// l'entite d'effet <c>0xba</c> — la trainee de l'arme, dont la table 0x005ff400 porte la
+    /// duree de vie. Le test <c>param_1[6] == 0x50006</c> compare l'etat ET l'image en un seul
+    /// dword, ce qui est la forme compacte de « etat 6, image 5 » : les deux <c>short</c> de
+    /// <c>+0x18</c> et <c>+0x1a</c> lus ensemble.
+    /// </para>
+    /// <para>
+    /// <b>Ghidra ne lui donne qu'un parametre</b> alors que le site d'appel en empile cinq. Ce
+    /// n'est pas une signature manquee : le corps ne touche jamais aux quatre autres, et l'appel
+    /// est en cdecl, donc sans consequence. Meme precedent que <c>FreezeAllEntities</c>.
+    /// </para>
+    /// </summary>
+    private static void PostureHandler_0051A670(uint* slot)
+    {
+        byte* s = (byte*)slot;
+
+        if ((*slot & 2) != 0 && *(uint*)(s + 0x18) == 0x50006)
+        {
+            SpawnEffectEntity(s, 0xba, 0, 0);
+        }
+
+        if ((*slot & 1) != 0) *slot &= 0xfffffffb;
     }
 
     /// <summary>Ghidra: FUN_00474eb0 @ 0x00474eb0 (19 l.) — cherche l'entite la plus proche
@@ -3247,11 +3735,575 @@ public static unsafe partial class Blaze
 
     /// <summary>Ghidra: FUN_00519df0 @ 0x00519df0 (51 l.) — applique la vitesse a la position et
     /// met a jour les drapeaux de collision de <c>+0x90</c>.</summary>
+    /// <summary>
+    /// Ghidra: FUN_00519df0 @ 0x00519df0 — <b>la collision contre le voisinage</b> : un balayage
+    /// 3x3 des cellules de la <b>premiere</b> grille spatiale (celle de <c>0x1c4000</c>, que
+    /// <see cref="TickEntityTable_005fa5e0"/> alimente) autour de l'entite, qui soumet chaque
+    /// occupant a <c>FUN_00534330</c>.
+    ///
+    /// <para>
+    /// La constante <c>0x3880</c> de la pseudo-C est la meme que celle de
+    /// <see cref="LinkIntoWorldGrid"/> : <c>0x3880 * 0x20 * 4 = 0x1c4000</c>. Le pas de
+    /// <c>0x80</c> entre deux cellules avance d'une rangee (0x20 cellules de quatre octets).
+    /// </para>
+    /// <para>
+    /// <b>Ghidra reutilise <c>param_1</c> comme compteur de boucle</b> apres l'avoir sauve dans
+    /// <c>puVar3</c> — d'ou un corps ou le meme nom designe tantot l'entite, tantot le nombre 3.
+    /// Les deux ont ici des noms distincts.
+    /// </para>
+    /// <para>
+    /// Le porteur de <c>+0x78</c> est <b>remis a zero avant le balayage</b> et relu apres : s'il a
+    /// change, la position du nouveau porteur est recopiee dans l'entree d'emplacement. C'est ce
+    /// qui permet a <see cref="ComputeCarrierOffset"/> de travailler au tour suivant.
+    /// </para>
+    /// </summary>
     private static void ApplyEntityMotion_00519DF0(uint* entity, byte* entry)
-        => throw new NotImplementedException(
-            "FUN_00519df0 (0x00519df0) : non transcrite. 51 lignes dans Blaze.c — le pas de " +
-            "collision qui suit chaque placement. C'est elle qui pose les bits 0x800 (mur), " +
-            "0x2000 et 0x8000 que la sonde de terrain interroge.");
+    {
+        byte* e = (byte*)entity;
+        byte* mainMem = GetMainMemPtr();
+
+        uint previousCarrier = *(uint*)(e + 0x78);
+        *(uint*)(e + 0x78) = 0;
+
+        uint cellX = (uint)((((*(int*)(e + 0x1c) >> 0xc) + 0x2000) >> 9) - 1);
+        *entity &= 0xffffffcf;
+        uint cellZ = (uint)((((*(int*)(e + 0x24) >> 0xc) + 0x2000) >> 9) - 1);
+
+        for (int column = 3; column != 0; column--)
+        {
+            int offset = (int)((cellZ + 0x3880) * 0x20 + cellX) * 4;
+            uint row = cellZ;
+
+            for (int step = 3; step != 0; step--)
+            {
+                if (cellX < 0x20 && row < 0x20)
+                {
+                    for (uint* occupant = *(uint**)(mainMem + offset);
+                         occupant != null;
+                         occupant = *(uint**)((byte*)occupant + 0x68))
+                    {
+                        if ((*occupant & 0x2000) == 0)
+                        {
+                            ResolveEntityContact_00534330(occupant, entity, entry);
+                        }
+                    }
+                }
+
+                offset += 0x80;
+                row++;
+            }
+
+            cellZ = row - 3;
+            cellX++;
+        }
+
+        uint carrier = *(uint*)(e + 0x78);
+        if (carrier != 0 && carrier != previousCarrier)
+        {
+            byte* c = (byte*)(nuint)carrier;
+            *(uint*)(entry + 0x28) = *(uint*)(c + 0x1c);
+            *(uint*)(entry + 0x2c) = *(uint*)(c + 0x20);
+            *(uint*)(entry + 0x30) = *(uint*)(c + 0x24);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00534330 @ 0x00534330 — <b>le contact entre deux entites</b> : le personnage
+    /// contre le maillage de collision d'un occupant voisin. Appelee par
+    /// <see cref="ApplyEntityMotion_00519DF0"/> pour chaque occupant des neuf cellules de grille.
+    /// C'est elle qui pose le porteur de <c>+0x78</c> et les bits de <c>+0x90</c>.
+    ///
+    /// <para>
+    /// <b>2 464 octets</b> (0x00534330..0x00534cd0), 277 lignes de pseudo-C : une boucle sur les
+    /// faces du maillage, avec par face un produit vectoriel dans les registres GTE emules puis
+    /// jusqu'a trois <c>NormalClip</c> pour le test d'appartenance au triangle.
+    /// </para>
+    /// <para>
+    /// <b>La pseudo-C ne peut pas etre transcrite telle quelle : elle confond les DEUX entites.</b>
+    /// Ghidra declare <c>FUN_00534330(uint *param_1)</c> alors que le site d'appel en empile trois
+    /// (<c>add esp,0Ch</c> en 0x00519e83), et il fait porter a un meme nom des acces qui visent des
+    /// objets differents. La correspondance ci-dessous est <b>etablie au desassembleur</b> et
+    /// suffit a rendre la pseudo-C utilisable :
+    /// </para>
+    /// <list type="table">
+    /// <item><term><c>param_1</c>, <c>puStack_18</c></term><description>l'<b>argument 1</b>,
+    /// l'occupant — <c>[esp+74h]</c> apres les quatre <c>push</c> du prologue. Les deux noms
+    /// designent le meme objet : <c>puStack_18 = param_1</c> en tete de boucle et
+    /// <c>param_1 = puStack_18</c> en queue.</description></item>
+    /// <item><term><c>local_14</c> <i>vu comme une entite</i></term><description>l'<b>argument
+    /// 2</b>, le personnage qui se deplace — <c>[esp+78h]</c>.</description></item>
+    /// <item><term><c>local_14</c> <i>passe a FUN_0051c300 / FUN_005327b0 / Ordinal_366</i></term>
+    /// <description>un <b>tampon local de neuf shorts</b> a <c>[esp+5Ch]</c>, la matrice de
+    /// l'occupant. Rien a voir avec l'entite ci-dessus : Ghidra a fusionne deux emplacements de
+    /// pile voisins.</description></item>
+    /// <item><term><c>iStack_10</c></term><description>l'<b>argument 3</b>, l'entree
+    /// d'emplacement — <c>[esp+7Ch]</c>. Elle recoit le vecteur de contact a <c>+0x1c</c> et la
+    /// pose de l'occupant a <c>+0x28</c>..<c>+0x48</c>.</description></item>
+    /// <item><term><c>puStack_54</c></term><description>le bloc de modele de l'occupant, mis de
+    /// cote en tete et restaure a chaque tour de boucle.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le recoupement decisif est 0x00534778</b> : <c>mov [edi+78h],esi</c> puis
+    /// <c>mov ecx,[esp+7Ch] ; mov [ecx+1Ch],edx</c> ou <c>edx = [edi+1Ch] - [esi+1Ch]</c>. EDI est
+    /// l'argument 2 et ESI l'argument 1, donc <c>entite[0x78] = occupant</c> et
+    /// <c>entree[0x1c] = entite.x - occupant.x</c> — ce que la pseudo-C rend en
+    /// <c>local_14[0x1e] = puStack_18</c> et
+    /// <c>*(uint *)(iStack_10 + 0x1c) = local_14[7] - puStack_18[7]</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le danger de cette fonction est le silence.</b> Intervertir les deux entites compile,
+    /// tourne, et rend une collision qui pousse le decor au lieu du personnage. Aucun compteur de
+    /// primitives ne le dirait. Verifier chaque acces contre la table ci-dessus avant de
+    /// l'ecrire, et ne rien deduire du nom seul.
+    /// </para>
+    /// <para>
+    /// Les six termes du <c>NormalClip</c> sont <b>inlines</b> ici et le depot en porte deja la
+    /// version reconstruite (<c>FUN_0051c280</c>, <c>Platform/Winsys3d.cs</c>) : les recouper terme
+    /// a terme avant d'appeler, Ghidra les emet dans un autre ordre — precedent deja paye sur
+    /// <c>FinalizeEntityPlacement2</c>.
+    /// </para>
+    /// </summary>
+    private static uint ResolveEntityContact_00534330(uint* occupantPtr, uint* entityPtr, byte* entry)
+    {
+        byte* occupant = (byte*)occupantPtr;
+        byte* entity = (byte*)entityPtr;
+        byte* mainMem = GetMainMemPtr();
+
+        EnsureGteRegisters();
+
+        // Le maillage de collision de l'occupant, choisi par son type et le decalage de zone.
+        byte* model = *(byte**)(Mem.Entity(0x005f7bc0) + (occupant[4] + *Mem.Entity(0x00600838)) * 4);
+
+        // La rangee de translation du registre MATRIX est mise a zero : on travaille en repere
+        // local de l'occupant, la translation est faite a la main par les deltas ci-dessous.
+        *(int*)(s_GteMatrix814 + 0x1c) = 0;
+        *(int*)(s_GteMatrix814 + 0x18) = 0;
+        *(int*)(s_GteMatrix814 + 0x14) = 0;
+
+        short* matrix = stackalloc short[9];
+        RotMatrix((short*)(occupant + 0x30), matrix);
+        ScaleMatrix_005327B0(matrix, (ushort*)(occupant + 0x28));
+        Winsys3d.Ordinal_366(matrix);
+
+        // Les deux nappes de sommets transformes : les positions dans MainMem + 0x1b0000, les
+        // normales dans + 0x1b8000. Le mot de tete du modele porte les deux comptes.
+        uint counts = *(uint*)model;
+        Winsys3d.Ordinal_792((short*)(model + 0x40), (short*)(mainMem + 0x1b0000), counts & 0xffff);
+        Winsys3d.Ordinal_792(*(short**)(model + 0x24), (short*)(mainMem + 0x1b8000),
+            (uint)((int)counts >> 0x10) & 0xffff);
+
+        bool pushed = false;      // Ghidra: bVar6
+        bool overFace = false;    // Ghidra: bVar5
+
+        int occupantY = *(int*)(occupant + 0x20);
+        int entityY = *(int*)(entity + 0x20);
+
+        short* faceIndex = *(short**)(*(byte**)(model + 0x38) + 4);
+
+        // **L'asymetrie de ces trois deltas est reelle**, verifiee au desassembleur
+        // (0x005343ef..0x0053440a) : X et Z sont pris `entite - occupant`, mais Y
+        // `occupant - entite`. Ce n'est pas un artefact de Ghidra, et ce n'est pas corrige.
+        int deltaX = (*(int*)(entity + 0x1c) - *(int*)(occupant + 0x1c)) >> 0xc;
+        int deltaZ = (*(int*)(entity + 0x24) - *(int*)(occupant + 0x24)) >> 0xc;
+
+        *(uint*)s_GteSxy807 = ((uint)deltaZ << 0x10) | ((uint)deltaX & 0xffff);
+
+        int* vec799 = (int*)s_GteVec799;
+        int* vec800 = (int*)s_GteVec800;
+        int* mac801 = (int*)s_GteMac801;
+        short* ir813 = (short*)s_GteIr813;
+
+        while (true)
+        {
+            short index = *faceIndex;
+
+            if (index < 0)
+            {
+                if (!overFace) break;
+
+                // L'entite repose sur une face de cet occupant sans le traverser.
+                *(uint*)(occupant + 0x70) = (uint)(nuint)entity;
+                if ((*entityPtr & 0x10000) == 0)
+                {
+                    *(uint*)(occupant + 0x6c) = (uint)(nuint)entity;
+                    *occupantPtr |= 0x40;
+                }
+
+                if ((*entityPtr & 0x40012000) == 0)
+                {
+                    byte kind = (byte)(occupant[0x0d] & 0xf);
+                    if (kind == 0 || (kind == 1 && (occupant[9] & 0xf) == 0))
+                    {
+                        RunEntityScript(s_Unknown_005e97cc, entity, *(ushort*)(occupant + 0x0e));
+                    }
+                }
+
+                if (pushed)
+                {
+                    *(uint*)(entity + 0x90) |= 0x8000800;
+                    *(int*)(occupant + 0x50) += *(int*)(entity + 0x50);
+                    *(int*)(occupant + 0x58) += *(int*)(entity + 0x58);
+                }
+
+                occupant[9] |= (byte)(1 << (int)(*(uint*)(entity + 8) & 0x1f));
+                return FinishContact(occupantPtr, entityPtr);
+            }
+
+            byte* face = *(byte**)(model + 0x28) + index * 0x10;
+            uint corners = *(uint*)face;
+            ushort attributes = *(ushort*)(face + 0x0c);
+            uint* normal = (uint*)(mainMem + 0x1b8000 + face[4] * 8);
+
+            byte* cache = mainMem + 0x1b0000;
+            short* a = (short*)(cache + (corners & 0xff) * 8);
+            short* b = (short*)(cache + ((corners >> 8) & 0xff) * 8);
+            short* c = (short*)(cache + ((corners >> 0x10) & 0xff) * 8);
+
+            // Le produit vectoriel des deux aretes de la face, depose dans MAC1..3 puis recopie
+            // dans IR1..3 — la normale non normalisee.
+            vec800[0] = b[0] - a[0];
+            vec800[1] = b[1] - a[1];
+            vec800[2] = b[2] - a[2];
+            vec799[0] = c[0] - a[0];
+            vec799[1] = c[1] - a[1];
+            vec799[2] = c[2] - a[2];
+
+            mac801[0] = vec799[2] * vec800[1] - vec799[1] * vec800[2];
+            mac801[1] = vec800[2] * vec799[0] - vec799[2] * vec800[0];
+            mac801[2] = vec799[1] * vec800[0] - vec800[1] * vec799[0];
+
+            ir813[0] = (short)mac801[0];
+            ir813[1] = (short)mac801[1];
+            ir813[2] = (short)mac801[2];
+
+            int normalY = mac801[1];
+            int planar = (deltaZ - a[2]) * mac801[2] + (deltaX - a[0]) * mac801[0];
+            int side = (((occupantY - entityY) >> 0xc) - a[1]) * normalY + planar;
+
+            // De quel cote du plan de la face l'entite se trouve-t-elle ? Les faces marquees
+            // 0x2000 sont a sens unique et laissent passer par en dessous.
+            if ((normalY == 0 && side >= 0)
+                || (normalY > 0 && side > 0)
+                || (normalY < 0 && side > 0 && (attributes & 0x2000) != 0))
+            {
+                break;
+            }
+
+            if ((attributes & 0x2000) == 0)
+            {
+                // Le test d'appartenance, en projection sur le plan XZ : trois (ou quatre pour un
+                // quad) NormalClip contre les aretes. Les six termes inlines par le compilateur
+                // sont **terme a terme** ceux de Winsys3d.NormalClip, deja reconstruit — recoupes
+                // avant d'appeler, comme FinalizeEntityPlacement2 l'a exige en aout.
+                uint flatA = ((uint)a[2] << 0x10) | (ushort)a[0];
+                uint flatB = ((uint)b[2] << 0x10) | (ushort)b[0];
+                uint flatC = ((uint)c[2] << 0x10) | (ushort)c[0];
+
+                *(uint*)s_GteSxy805 = flatA;
+                *(uint*)s_GteSxy806 = flatB;
+
+                if (NormalClip() >= 0)
+                {
+                    *(uint*)s_GteSxy805 = flatB;
+                    *(uint*)s_GteSxy806 = flatC;
+
+                    if (NormalClip() >= 0)
+                    {
+                        int last;
+
+                        if ((attributes & 1) == 0)
+                        {
+                            *(uint*)s_GteSxy805 = flatC;
+                            *(uint*)s_GteSxy806 = flatA;
+                            last = NormalClip();
+                        }
+                        else
+                        {
+                            // Face a quatre sommets : le quatrieme est l'octet haut du mot de
+                            // coins, et le test se fait en deux aretes de plus.
+                            short* d = (short*)(cache + (corners >> 0x18) * 8);
+                            uint flatD = ((uint)d[2] << 0x10) | (ushort)d[0];
+
+                            *(uint*)s_GteSxy805 = flatC;
+                            *(uint*)s_GteSxy806 = flatD;
+                            if (NormalClip() < 0) goto nextFace;
+
+                            *(uint*)s_GteSxy805 = flatD;
+                            *(uint*)s_GteSxy806 = flatA;
+                            last = NormalClip();
+                        }
+
+                        if (last >= 0)
+                        {
+                            // L'entite est au-dessus de cette face : on en deduit la hauteur du
+                            // plan sous elle.
+                            int height = normalY == 0
+                                ? occupantY
+                                : (planar / normalY - a[1]) * 0x1000 + occupantY;
+
+                            int reach = -0x32000;
+                            if (*(int*)(entity + 0x54) < 0) reach = *(int*)(entity + 0x54) - 0x32000;
+
+                            if (height + reach <= entityY)
+                            {
+                                *occupantPtr |= 0x20;
+                                *entityPtr |= 0x20;
+
+                                if ((*(int*)(entity + 0x64) <= height && (attributes & 0x1000) == 0)
+                                    || (*(uint*)(entity + 0x90) & 4) != 0)
+                                {
+                                    *(int*)(entity + 0x64) = height;
+                                    *(uint*)(entity + 0x78) = (uint)(nuint)occupant;
+                                    PublishContact(entry, entity, occupant, normal);
+                                }
+
+                                if (*(int*)(entity + 0x60) <= height
+                                    || (*(uint*)(entity + 0x90) & 4) != 0)
+                                {
+                                    *(int*)(entity + 0x60) = height;
+                                    *(uint*)(entity + 0x78) = (uint)(nuint)occupant;
+
+                                    if ((*(uint*)(entity + 0x90) & 0x8800) == 0)
+                                    {
+                                        *(uint*)(entity + 0x90) = attributes;
+                                    }
+
+                                    if (entityY <= height)
+                                    {
+                                        // Contact franc : l'entite est posee dessus.
+                                        (*(short*)(occupant + 0x96))++;
+                                        *occupantPtr |= 0x10;
+                                        *(int*)(entity + 0x54) = 0;
+                                        *entityPtr |= 0x10;
+                                        PublishContact(entry, entity, occupant, normal);
+
+                                        uint slotIndex = *(uint*)(entity + 8);
+                                        *(uint*)(occupant + 0x70) = (uint)(nuint)entity;
+                                        occupant[9] |= (byte)((1 << (int)(slotIndex & 0x1f)) << 4);
+
+                                        if ((*entityPtr & 0x10000) == 0)
+                                        {
+                                            *(uint*)(occupant + 0x6c) = (uint)(nuint)entity;
+                                        }
+
+                                        if ((*entityPtr & 0x40012000) == 0
+                                            && (occupant[0x0d] & 0xf) == 4)
+                                        {
+                                            RunEntityScript(s_Unknown_005e97cc, entity,
+                                                *(ushort*)(occupant + 0x0e));
+                                        }
+
+                                        return FinishContact(occupantPtr, entityPtr);
+                                    }
+                                }
+
+                                return 0;
+                            }
+
+                            // Trop haut pour se poser : la hauteur est notee et l'entite sera
+                            // poussee au tour suivant.
+                            *(int*)(entry + 4) = height;
+                            pushed = true;
+                            overFace = true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                overFace = true;
+            }
+
+        nextFace:
+            faceIndex++;
+        }
+
+        // Ghidra: LAB_0053470b — aucune face ne porte l'entite.
+        if ((*entityPtr & 0x40012000) == 0 && (occupant[0x0d] & 0xf) == 2)
+        {
+            RunEntityScript(s_Unknown_005e97cc, entity, *(ushort*)(occupant + 0x0e));
+        }
+
+        occupant[9] &= (byte)~(1 << (int)(*(uint*)(entity + 8) & 0x1f));
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>LAB_005348d5</c> — les deux lignes communes aux deux sorties « contact » de
+    /// <see cref="ResolveEntityContact_00534330"/>.
+    /// </summary>
+    private static uint FinishContact(uint* occupantPtr, uint* entityPtr)
+    {
+        if ((*occupantPtr & 0x10000000) == 0 && (*entityPtr & 0x10000) == 0)
+        {
+            *occupantPtr &= 0xbfffffff;
+        }
+
+        return 1;
+    }
+
+    /// <summary>
+    /// Le bloc de treize ecritures que <see cref="ResolveEntityContact_00534330"/> repete
+    /// <b>a l'identique</b> a ses deux points de contact : le vecteur qui separe les deux entites,
+    /// la pose complete de l'occupant, et les deux mots de normale de la face touchee.
+    /// Factorise parce que c'est une unite reellement independante — le meme bloc, deux fois.
+    /// </summary>
+    private static void PublishContact(byte* entry, byte* entity, byte* occupant, uint* normal)
+    {
+        *(uint*)(entry + 0x1c) = (uint)(*(int*)(entity + 0x1c) - *(int*)(occupant + 0x1c));
+        *(uint*)(entry + 0x20) = (uint)(*(int*)(entity + 0x20) - *(int*)(occupant + 0x20));
+        *(uint*)(entry + 0x24) = (uint)(*(int*)(entity + 0x24) - *(int*)(occupant + 0x24));
+
+        *(uint*)(entry + 0x28) = *(uint*)(occupant + 0x1c);
+        *(uint*)(entry + 0x2c) = *(uint*)(occupant + 0x20);
+        *(uint*)(entry + 0x30) = *(uint*)(occupant + 0x24);
+        *(uint*)(entry + 0x34) = *(uint*)(occupant + 0x28);
+        *(uint*)(entry + 0x38) = *(uint*)(occupant + 0x2c);
+        *(uint*)(entry + 0x3c) = *(uint*)(occupant + 0x30);
+        *(uint*)(entry + 0x40) = *(uint*)(occupant + 0x34);
+
+        *(uint*)(entry + 0x44) = normal[0];
+        *(uint*)(entry + 0x48) = normal[1];
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005327b0 @ 0x005327b0 — le <c>ScaleMatrix</c> du SDK : chaque <b>colonne</b> de
+    /// la matrice 3x3 est multipliee par un facteur en 1.12 pris dans un triplet de
+    /// <c>ushort</c>.
+    ///
+    /// <para>
+    /// L'original passe par les registres GTE emules — le facteur dans 812, la colonne dans
+    /// IR1..3 (813), le produit dans MAC1..3 (801) — et non par des variables. Transcrit tel quel :
+    /// ces registres sont observables depuis le reste du moteur, et rien ne garantit qu'aucun
+    /// lecteur ne les regarde entre deux appels.
+    /// </para>
+    /// <para>Ce sont bien les <b>colonnes</b> et non les rangees : la fonction touche les indices
+    /// 0/3/6, puis 1/4/7, puis 2/5/8.</para>
+    /// </summary>
+    private static void ScaleMatrix_005327B0(short* matrix, ushort* scale)
+    {
+        EnsureGteRegisters();
+
+        ushort* factor = (ushort*)s_GteScale812;
+        short* ir = (short*)s_GteIr813;
+        int* mac = (int*)s_GteMac801;
+
+        for (int column = 0; column < 3; column++)
+        {
+            *factor = scale[column];
+            ir[0] = matrix[column];
+            ir[1] = matrix[column + 3];
+            ir[2] = matrix[column + 6];
+
+            mac[0] = (int)(*factor * ir[0]) >> 0xc;
+            ir[0] = (short)mac[0];
+            mac[1] = (int)(ir[1] * *factor) >> 0xc;
+            ir[1] = (short)mac[1];
+            mac[2] = (int)(ir[2] * *factor) >> 0xc;
+            ir[2] = (short)mac[2];
+
+            matrix[column] = ir[0];
+            matrix[column + 3] = ir[1];
+            matrix[column + 6] = ir[2];
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00519f50 @ 0x00519f50 — <b>la laisse</b> : l'entite est ramenee vers le point
+    /// que suit la camera des qu'elle s'en eloigne de plus de 400 unites, proportionnellement a
+    /// l'exces. En deca, elle se contente de poser le bit <c>0x100</c>.
+    ///
+    /// <para>
+    /// <b>Ghidra a fondu les deux parametres en un.</b> Il declare
+    /// <c>void FUN_00519f50(uint *param_1)</c> et rend l'ecriture de la distance comme
+    /// <c>*(undefined2 *)param_1 = …</c>, c'est-a-dire dans la moitie basse du mot d'etat de
+    /// l'entite — ce qui ecraserait seize drapeaux. Le desassemblage dit autre chose :
+    /// <c>0x00519f9b</c> lit <c>[esp+18h]</c>, soit <b>le second argument</b> apres les quatre
+    /// <c>push</c> du prologue, et ecrit la distance dans <c>[ecx]</c>. La distance va donc dans
+    /// l'<b>entree d'emplacement</b>, pas dans l'entite.
+    /// </para>
+    /// <para>
+    /// C'est le cinquieme parametre perdu de cet arbre d'appel, et le plus dangereux : les quatre
+    /// autres se voyaient parce que la pseudo-C lisait une variable jamais ecrite. Celui-ci
+    /// <b>compile et tourne</b>, en corrompant seize drapeaux a chaque image.
+    /// </para>
+    /// </summary>
+    private static void PullEntityTowardCameraTarget_00519F50(uint* entity, byte* entry)
+    {
+        byte* e = (byte*)entity;
+
+        *entity &= 0xfffffeff;
+        if ((*(uint*)(e + 0x90) & 0x8000) != 0) return;
+
+        int dx = (*Mem.Camera(0x005de098) - *(int*)(e + 0x1c)) >> 0xc;
+        int dz = (*Mem.Camera(0x005de0a0) - *(int*)(e + 0x24)) >> 0xc;
+        *(ushort*)entry = (ushort)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+        dz = (*Mem.Camera(0x005de070) - *(int*)(e + 0x24)) >> 0xc;
+        dx = (*Mem.Camera(0x005de068) - *(int*)(e + 0x1c)) >> 0xc;
+
+        int angle = Winsys3d.Ordinal_457(dx, dz);
+        int excess = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz)) - 400;
+
+        uint flags = *entity;
+        if (excess < 1)
+        {
+            if ((flags & 0x4000) == 0) *entity = flags | 0x100;
+        }
+        else if ((flags & 0x40000000) == 0)
+        {
+            *(int*)(e + 0x50) += (int)Winsys3d.GetSinTableEntry(angle) * excess;
+            *(int*)(e + 0x58) += Winsys3d.GetCosTableEntry(angle) * excess;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00519ee0 @ 0x00519ee0 — <b>le clignotement d'invulnerabilite</b>. Le compte a
+    /// rebours de <c>+0x96</c> descend, et sa parite alterne entre le rendu normal (mode 1, blanc)
+    /// et le rendu teinte (mode 5, orange <c>0x4080ff</c>). A zero, le bit <c>0x40</c> tombe.
+    ///
+    /// <para>
+    /// La garde du haut fait retomber trois etats de deplacement (0, 1 et 4) sur l'etat 2 des que
+    /// <c>0x40</c> est pose : un personnage touche ne marche plus, il encaisse.
+    /// </para>
+    /// <para>
+    /// Comme <see cref="PostureHandler_0051A670"/>, Ghidra ne lui donne qu'un parametre alors que
+    /// le site d'appel en empile deux ; le corps ne lit pas le second.
+    /// </para>
+    /// </summary>
+    private static void UpdateEntityShadow_00519EE0(uint* entity, byte* perChar)
+    {
+        byte* e = (byte*)entity;
+
+        if ((*entity & 0x40) != 0)
+        {
+            short state = *(short*)(e + 0x18);
+            if (state == 0 || state == 1 || state == 4)
+            {
+                *(uint*)(e + 0x18) = 2;
+                *entity &= 0xfefffff9;
+            }
+        }
+
+        if (*(short*)(e + 0x96) != 0)
+        {
+            ushort remaining = (ushort)(*(short*)(e + 0x96) - 1);
+            *(ushort*)(e + 0x96) = remaining;
+
+            if ((remaining & 1) == 0)
+            {
+                *(ushort*)(e + 0x36) = 1;
+                *(uint*)(e + 0x38) = 0xffffff;
+            }
+            else
+            {
+                *(ushort*)(e + 0x36) = 5;
+                *(uint*)(e + 0x38) = 0x4080ff;
+            }
+
+            if (remaining == 0) *entity &= 0xffffffbf;
+        }
+    }
 
     /// <summary>Ghidra: FUN_005335e0 @ 0x005335e0 (78 l.) — l'angle de la pente sous une
     /// position.</summary>
@@ -3497,7 +4549,7 @@ public static unsafe partial class Blaze
         *(int*)(s + 0x54) += heading[1] - carried[1];
         *(int*)(s + 0x58) += heading[2] - carried[2];
 
-        ResolveEntityCollision_00519F50(slot, entry);
+        PullEntityTowardCameraTarget_00519F50(slot, entry);
 
         uint gathered = 0;
         *slot &= 0xdfffffff;
@@ -3955,10 +5007,6 @@ public static unsafe partial class Blaze
         => throw new NotImplementedException(
             $"FUN_005397b0 (0x005397b0), pose {pose} : non transcrite. 37 lignes dans Blaze.c.");
 
-    /// <summary>Ghidra: FUN_00519f50 @ 0x00519f50 (39 l.) — resout la collision avant le pas.</summary>
-    private static void ResolveEntityCollision_00519F50(uint* entity, byte* entry)
-        => throw new NotImplementedException(
-            "FUN_00519f50 (0x00519f50) : non transcrite. 39 lignes dans Blaze.c.");
 
     /// <summary>Ghidra: FUN_005197d0 @ 0x005197d0 (62 l.) — rend l'entite qui a touche celle-ci.</summary>
     private static byte* CollectEntityHit_005197D0(uint* entity)
@@ -3976,10 +5024,6 @@ public static unsafe partial class Blaze
         => throw new NotImplementedException(
             "FUN_00519940 (0x00519940) : non transcrite. 62 lignes dans Blaze.c.");
 
-    /// <summary>Ghidra: FUN_00519ee0 @ 0x00519ee0 (31 l.) — l'ombre portee.</summary>
-    private static void UpdateEntityShadow_00519EE0(uint* entity, byte* perChar)
-        => throw new NotImplementedException(
-            "FUN_00519ee0 (0x00519ee0) : non transcrite. 31 lignes dans Blaze.c.");
 
     /// <summary>Ghidra: FUN_00534cd0 @ 0x00534cd0 (116 l.) — l'eclairage de l'entite.</summary>
     private static void UpdateEntityLighting_00534CD0(uint* entity)

@@ -25,25 +25,22 @@ quatorze appelées du cas 0** (`0x005176d5`..`0x0051776b`, le pas de simulation 
 quatre gestionnaires d'entité que la zone de départ demande réellement**. Les six passes de tables
 d'entités traversent maintenant sans lever.
 
-> **Reprendre ici — les gestionnaires de commande de `PTR_FUN_00562ce0`.**
+> **Reprendre ici — `FUN_005197d0`, la collecte du coup reçu.**
 >
-> **`FUN_0050bf20` est transcrite en entier**, queue commune comprise, et le jeu l'exécute jusqu'au
-> premier appel indirect. Il réclame maintenant `FUN_0050e140`, l'entrée 0 de la table de
-> commande — **68 lignes dans `Blaze.c`**. Les quatre entrées de la table sont relevées :
+> **`FUN_0050bf20` est transcrite en entier**, et le jeu traverse le pas par personnage, la queue
+> commune **et la résolution de contact `FUN_00534330`**. Il s'arrête dans `FUN_005197d0`
+> (62 lignes, dans `Blaze.c`), qui rend l'entité ayant touché le personnage — le dernier gros bloc
+> de la cascade de fin.
 >
-> | indice | adresse | dans `Blaze.c` ? |
-> |---:|---|---|
-> | 0 | `0x0050E140` | oui, 68 l. |
-> | 1 | `0x0050DE90` | oui, 56 l. |
-> | 2 | `0x0050DD00` | **non** |
-> | 3 | `0x0050DFF0` | **non** |
+> Onze appelées ont été écrites le 2026-08-22 : `FUN_0050e140`, `FUN_0051a020`, `FUN_0047aae0`,
+> `FUN_0051a670`, `FUN_00519f50`, `FUN_00519df0`, `FUN_00519ee0`, `FUN_00534330`, `FUN_005327b0`,
+> plus les imports `winsys3d` 439, 788, 792 et 812.
 >
-> Douze autres appelées de `FUN_0050bf20` lèvent en se nommant, **toutes dans `Blaze.c`** :
-> `FUN_005238e0`, `FUN_00530070`, `FUN_0051a020`, `FUN_00474eb0`, `FUN_005397b0`, `FUN_00519df0`,
-> `FUN_00519f50`, `FUN_005197d0`, `FUN_00519940`, `FUN_00519ee0`, `FUN_00534cd0`, `FUN_00539190`,
-> `FUN_005335e0`. Plus les quatre gestionnaires de posture de `PTR_FUN_00562ca0`
-> (`0x0051A670`, `0x0051A6B0`, `0x0051A700`, `0x0051A710`) — les quatre autres entrées sont le
-> corps vide `0x0040A600`.
+> Il en reste, toutes **dans `Blaze.c`** sauf mention : `FUN_005238e0`, `FUN_00530070`,
+> `FUN_00474eb0`, `FUN_005397b0`, `FUN_005197d0`, `FUN_00519940`, `FUN_00534cd0`, `FUN_00539190`,
+> `FUN_005335e0`, `FUN_0051a5d0`, `FUN_0053a980`, `FUN_00530f20`, `FUN_0051a740`, `FUN_0053aa10`.
+> Plus les gestionnaires **absents de `Blaze.c`** : `0x0050DD00` et `0x0050DFF0` (table de
+> commande), `0x0051A6B0`, `0x0051A700` et `0x0051A710` (postures).
 >
 > **Les quatre lectures que seule la machine donne sont résolues** — c'était le plus dur ; elles
 > sont écrites en tête de `TickPartyMember` :

@@ -408,7 +408,7 @@ public static unsafe partial class Blaze
     internal static byte* s_GteMac0808, s_GteIr813, s_GteMatrix814;
     internal static byte* s_GteSxy809, s_GteSz810, s_GteSz811, s_GteLightMatrix815;
     internal static byte* s_GteOfx819, s_GteOfy820, s_GteRecip821, s_GteLightColour817;
-    internal static byte* s_GteVec799, s_GteVec800;
+    internal static byte* s_GteVec799, s_GteVec800, s_GteScale812;
     private static bool s_GteResolved;
 
     internal static void EnsureGteRegisters()
@@ -458,6 +458,12 @@ public static unsafe partial class Blaze
         // table du TODO ci-dessus les donnait comme non établis.
         s_GteVec799 = (byte*)Win32.GetProcAddress(module, (byte*)799);
         s_GteVec800 = (byte*)Win32.GetProcAddress(module, (byte*)800);
+
+        // **812 identifié le 2026-08-22**, par le corps de FUN_005327b0 (le `ScaleMatrix` du SDK) :
+        // la fonction y dépose successivement les trois facteurs d'échelle avant de multiplier
+        // chaque colonne de la matrice. C'est donc le registre de facteur scalaire, lu en
+        // **ushort** — l'original écrit `*(undefined2 *)Ordinal_812_exref`.
+        s_GteScale812 = (byte*)Win32.GetProcAddress(module, (byte*)812);
 
         if (s_GteMatrix814 == null || s_GteMac0808 == null)
         {
@@ -641,7 +647,7 @@ public static unsafe partial class Blaze
     // gere - une contrainte winsys3d (adressage sur 24 bits), pas une affaire de texte.
     /// <summary>
     /// Allocates below <c>0x01000000</c>. Text descriptors are masked to 24 bits by
-    /// <see cref="RunTextEngine"/> exactly as the original does �?" where it is the identity, since
+    /// <see cref="RunTextEngine"/> exactly as the original does �?" where it is the identity, since
     /// every descriptor is a <c>.data</c> global of an image based at <c>0x00400000</c>. Keeping
     /// them low here keeps it the identity, instead of turning a faithful mask into corruption.
     /// </summary>
@@ -649,7 +655,7 @@ public static unsafe partial class Blaze
     {
         // The arena needs 2.6 MB contiguous and gets first pick. Static field initialisers run
         // before entry()'s body, so without this a 64 KB descriptor allocated at the very bottom
-        // could split the only region large enough and starve it �?" measured, not hypothetical.
+        // could split the only region large enough and starve it �?" measured, not hypothetical.
         EnsureDisplayListArena();
 
         nuint rounded = (size + 0xFFFu) & ~0xFFFu;

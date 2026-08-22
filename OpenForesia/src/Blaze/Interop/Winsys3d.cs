@@ -175,6 +175,12 @@ internal static unsafe class Winsys3d
     // l'ordinal 440 n'en aurait rempli que six.
     [DllImport("winsys3d.dll", EntryPoint = "#439")] internal static extern uint Ordinal_439(int* vector, int* normalized); // real: winsys3d.c FUN_00a25910
 
+    // libgte RotTrans par lot : `count` sommets passes par le registre MATRIX (ordinal 814), avec
+    // la rangee de translation, mais SANS division perspective — a la difference de l'ordinal 418.
+    // Les deux tableaux sont a pas de QUATRE shorts (huit octets), dont trois seulement sont
+    // ecrits : c'est ce qui donne la nappe {x, y, z, _} que FUN_00534330 relit ensuite.
+    [DllImport("winsys3d.dll", EntryPoint = "#792")] internal static extern void Ordinal_792(short* source, short* destination, uint count); // real: winsys3d.c FUN_00a22dd0
+
     [DllImport("winsys3d.dll", EntryPoint = "#442")] internal static extern uint Ordinal_442(uint squared); // real: winsys3d.c FUN_00a25b50 â€” libgte SquareRoot0: a four-way table lookup on the magnitude of the argument, then a single Newton step (x/g + g >> 1), masked to 16 bits. Its callers all pass a sum of squares and read a distance back.
 
     // The five entry points FUN_0051d1f0 (the animated-model draw) needs. Identified from their
