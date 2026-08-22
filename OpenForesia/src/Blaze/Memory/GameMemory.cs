@@ -300,12 +300,16 @@ internal sealed unsafe class GameMemory
     /// jusqu'a <c>ItemMenuArena</c> (0x005de100), la place etait libre.
     /// </para>
     /// <para>
-    /// TODO(REVERSE): <b>defaut d'aliasing latent</b> — <c>s_Unknown_005de034</c>
-    /// (<c>Screens/State04/CharacterCreation.cs</c>) est un <c>static int</c> ordinaire dont
-    /// l'adresse tombe DANS ce bloc. Il ne fait pas de degat aujourd'hui parce qu'aucun site
-    /// n'ecrit <c>Camera(0x005de034)</c> — le premier qui le fera lira une autre memoire. Les tests
-    /// de disposition ne le voient pas : ils comparent des symboles a suffixe de VA entre eux, pas
-    /// un champ de valeur a une etendue d'arene. A resorber avec les autres.
+    /// <b>Defaut d'aliasing resorbe le 2026-08-22</b> — <c>s_Unknown_005de034</c>
+    /// (<c>Screens/State04/CharacterCreation.cs</c>) etait un <c>static int</c> ordinaire dont
+    /// l'adresse tombe DANS ce bloc. Il n'avait pas encore fait de degat parce qu'aucun site
+    /// n'ecrivait <c>Camera(0x005de034)</c> ; <c>PrepareLeaderAndPartyFlags</c>
+    /// (<c>FUN_0050e2b0</c>) en ecrit un a chaque image, ce qui l'a rendu actif. C'est maintenant
+    /// une VUE sur ce bloc. Les tests de disposition ne l'avaient pas vu : ils comparent des
+    /// symboles a suffixe de VA entre eux, pas un champ de valeur a une etendue d'arene.
+    /// <b>TODO(REVERSE)</b> : etendre le test a cette comparaison-la, c'est ce qui reste le plus
+    /// rentable — <c>s_Unknown_005edec4</c> et <c>s_Unknown_005f2ce0</c> tombent tous deux dans
+    /// <c>EntityArena</c> de la meme facon.
     /// </para>
     /// </summary>
     internal const int CameraBlockBase = 0x005de030;
@@ -608,7 +612,29 @@ internal sealed unsafe class GameMemory
 
     // Ghidra: DAT_005e9308 / 930a / 930c — l'orientation de la scène, en pas de 0x1000 par tour
     // (la convention des tables rsin/rcos de winsys3d, ordinaux 450/451).
-    internal int s_ScenePitch_005e9308, s_SceneYaw_005e930a, s_SceneRoll_005e930c;
+    //
+    // **Recouvrement d'arene corrige le 2026-08-22.** C'etaient trois `int` autonomes, alors que
+    // leurs adresses sont espacees de DEUX octets — ce sont des `short`, et ils tombent tous les
+    // trois dans GameArena. Le defaut n'etait pas theorique : `Screens/State03/WorldMap.cs` remet
+    // deja l'orientation a zero par `*(uint*)Arena(0x005e9308) = 0`, donc la carte du monde ecrivait
+    // dans une memoire et `Engine/Model3d.cs` lisait dans l'autre. Le cas 2 du repartiteur de
+    // FUN_00516fc0 (le pilotage libre de la camera) y ajoute un troisieme ecrivain, ce qui a fait
+    // remonter le probleme. Ce sont maintenant des VUES.
+    internal short s_ScenePitch_005e9308
+    {
+        get => *(short*)Arena(0x005e9308);
+        set => *(short*)Arena(0x005e9308) = value;
+    }
+    internal short s_SceneYaw_005e930a
+    {
+        get => *(short*)Arena(0x005e930a);
+        set => *(short*)Arena(0x005e930a) = value;
+    }
+    internal short s_SceneRoll_005e930c
+    {
+        get => *(short*)Arena(0x005e930c);
+        set => *(short*)Arena(0x005e930c) = value;
+    }
 
     // Ghidra: DAT_005e93a0 / 93a2 / 93a4 — la couleur de fond passée à Ordinal_376 (SetBackColor).
     internal int s_BackColourR_005e93a0, s_BackColourG_005e93a2, s_BackColourB_005e93a4;

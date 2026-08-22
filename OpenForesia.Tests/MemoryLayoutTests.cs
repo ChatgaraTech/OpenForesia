@@ -3,7 +3,7 @@ using static OpenForesia.Tests.MemoryLayout;
 namespace OpenForesia.Tests;
 
 /// <summary>
-/// Les quatre assertions de disposition mémoire.
+/// Les cinq assertions de disposition mémoire, plus leur garde-fou.
 ///
 /// <para>
 /// <b>Ces tests ne testent pas un comportement.</b> L'oracle de la logique transcrite reste l'écran,
@@ -11,12 +11,25 @@ namespace OpenForesia.Tests;
 /// et donc vérifiable sans lancer le jeu.
 /// </para>
 /// <para>
-/// <b>Deux d'entre eux démarrent en échec, et c'est voulu.</b> Le défaut d'aliasing a été corrigé
-/// seize fois dans ce dépôt, toujours en le voyant à l'écran, jamais avant. Ces assertions le
-/// prennent avant. Elles échouent aujourd'hui parce que le dépôt porte des défauts réels, constatés
-/// et non corrigés au découpage — les corriger change le comportement, ce qui relève d'un changement
-/// séparé. <b>Un test qui passerait tout de suite ne prouverait rien.</b>
+/// <b>Certains démarrent en échec, et c'est voulu.</b> Le défaut d'aliasing a été corrigé seize fois
+/// dans ce dépôt, toujours en le voyant à l'écran, jamais avant. Ces assertions le prennent avant.
+/// Elles échouent quand le dépôt porte des défauts réels — les corriger change le comportement, ce
+/// qui relève d'un changement séparé. <b>Un test qui passerait tout de suite ne prouverait rien.</b>
 /// </para>
+/// <para>
+/// <b>État au 2026-08-22 : trois verts, trois rouges.</b> L'analyseur a été rendu plus juste ce
+/// jour-là (déclarations sur plusieurs lignes, vues posées sur d'autres vues, nom déclaré distingué
+/// d'une simple mention, surcharge <c>Alloc(compte, taille)</c>), ce qui a rendu visibles des
+/// défauts qu'il ne voyait pas — aucun n'est nouveau dans le code :
+/// </para>
+/// <list type="bullet">
+/// <item>test 2 : <c>s_EntityStatBlocks_005ea560</c> s'alloue 0x2400 octets dans <c>GameArena</c> ;</item>
+/// <item>test 3 : <c>s_UiLabelWidths_00589758</c> couvre 0x400 octets et déborde sur
+/// <c>s_UiFrameInfo_00589840</c> — sa déclaration dit que le recouvrement est voulu, donc c'est le
+/// modèle qu'il faut trancher, pas forcément le code ;</item>
+/// <item>test 5 : <b>42</b> champs de valeur simple doublent une arène. C'est le manque nommé dans
+/// <c>REVERSE_STATUS.md</c> depuis le 2026-08-19, et il est maintenant chiffré.</item>
+/// </list>
 /// <para>
 /// Voir <c>REVERSE_STATUS.md</c>, section du 2026-08-19, et <c>ARCHITECTURE.md</c> pour la règle
 /// d'état.
@@ -174,6 +187,52 @@ public class MemoryLayoutTests
             $"binaire c'est une seule memoire ; ici c'en est deux, et une ecriture par un bout " +
             $"n'est jamais lue par l'autre.{Environment.NewLine}" +
             string.Join(Environment.NewLine, report));
+    }
+
+    // =======================================================================================
+    // Test 5 - aucun champ de valeur simple a une adresse deja couverte par une arene.
+    // =======================================================================================
+    /// <summary>
+    /// La forme <b>silencieuse</b> du défaut d'aliasing, et celle que les quatre tests ci-dessus
+    /// ne voyaient pas : un <c>static int</c> ou <c>static byte</c> ordinaire dont l'adresse tombe
+    /// dans l'étendue d'une arène. Il n'alloue rien, donc le test 2 l'ignore ; il ne déclare pas de
+    /// taille, donc le test 3 l'ignore ; et tant qu'aucun site n'écrit l'arène à cette VA, rien ne
+    /// se voit. Le premier qui le fera lira une autre mémoire.
+    ///
+    /// <para>
+    /// Ce manque était nommé dans <c>REVERSE_STATUS.md</c> depuis le 2026-08-19 et a coûté trois
+    /// vérifications manuelles : <c>s_PartySize_005e9020</c> (2026-08-21, vu de justesse en
+    /// écrivant <c>FreezeAllEntities</c>), <c>s_Unknown_005de034</c> et le triplet
+    /// <c>s_ScenePitch_005e9308</c> / <c>s_SceneYaw_005e930a</c> / <c>s_SceneRoll_005e930c</c>
+    /// (2026-08-22, vus en transcrivant la boucle par image de <c>FUN_00516fc0</c>). Le dernier
+    /// n'était <b>pas</b> latent : la carte du monde écrivait déjà l'arène pendant que
+    /// <c>Engine/Model3d.cs</c> lisait les champs.
+    /// </para>
+    /// <para>
+    /// <b>Une exception légitime, et une seule :</b> une propriété <c>=&gt;</c> qui LIT déjà
+    /// l'arène est une vue, pas un doublon — mais l'analyseur la classe déjà en
+    /// <see cref="MemoryLayout.SymbolKind.ArenaView"/>, donc elle n'arrive pas ici.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Aucun_champ_simple_dans_l_etendue_d_une_arene()
+    {
+        var arenaBases = Arenas.Select(a => a.Base).ToHashSet();
+
+        var offenders = Symbols
+            .Where(s => s.Kind == SymbolKind.PlainField)
+            .Where(s => !arenaBases.Contains(s.Address))
+            .Where(s => ArenaCovering(s.Address) is not null)
+            .OrderBy(s => s.Address)
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            $"{offenders.Count} champ(s) de valeur simple portent une adresse qu'une arene couvre " +
+            $"deja. Rien ne les alloue et rien ne les relie a l'arene : une ecriture par un bout " +
+            $"n'est jamais lue par l'autre, et c'est SILENCIEUX tant que les deux bouts ne sont " +
+            $"pas exerces le meme jour.{Environment.NewLine}" +
+            Describe(offenders.Select(s =>
+                s with { Name = $"{s.Name} -> dans {ArenaCovering(s.Address)!.Name}" })));
     }
 
     // =======================================================================================

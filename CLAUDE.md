@@ -32,8 +32,17 @@ needs to be located and pointed at explicitly. `playtest.ps1`'s `-Build` switch 
 this (tries a plain build first, falls back to a known SDK path if PATH has none) — extend that
 fallback path if it's stale rather than hardcoding a new one elsewhere.
 
-Two `NETSDK1189` warnings about `Prefer32Bit` are expected and harmless. There is no test project;
-verification is `dotnet build` plus reading the reconstruction against `Blaze.c`.
+Two `NETSDK1189` warnings about `Prefer32Bit` are expected and harmless. Verification of the
+transcribed logic is `dotnet build` plus reading the reconstruction against `Blaze.c`, and then the
+screen (see "Running the game" below) — there is no behavioural test suite and there is not meant
+to be one.
+
+`OpenForesia.Tests` (`dotnet test OpenForesia.Tests`) is the one exception, and it tests **the
+memory map, not behaviour**: six assertions that read the *sources* looking for the aliasing defect
+— two names for one address of `.data`, modelled as two separate allocations. **Some of them are
+red on purpose.** A red assertion there names a real defect the repo carries and has chosen not to
+fix yet (fixing changes behaviour); the header of `MemoryLayoutTests.cs` says which and why. Do not
+"make the tests pass" — read what they name, and fix it only as a deliberate change.
 
 `dotnet run --project OpenForesia` can fail from the shell on machines where the SDK on PATH only
 carries an x64 runtime while the game is x86 — in that case launch

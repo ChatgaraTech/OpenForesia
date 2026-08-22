@@ -7792,3 +7792,117 @@ par `FUN_0040a600` / `FUN_00533000` / `FUN_0053dc30` / `FUN_0050e2b0`, puis l'af
 point gardé par `DAT_005633a8`. C'est un autre ordre de grandeur que tout ce qui précède.
 
 Build 0 erreur · 5 tests verts · oracle refigé à 555 corps.
+
+---
+
+## 2026-08-22 — l'ossature de la boucle par image, et trois recouvrements d'arène résorbés
+
+`FUN_00516fc0` a maintenant son **squelette complet**. La fonction a déménagé dans
+`Screens/State03/WorldMapTick.cs`, le fichier que le découpage lui réservait (design.md, D9), et le
+désassemblage entier des 10 256 octets est conservé sous
+`Legacy/Raw/Blaze/FUN_00516FC0-full.asm`.
+
+Ce qui est transcrit : l'entrée de boucle (quatre appels), le passage de meneur, les **quatre cas**
+du répartiteur `DAT_005e9ae4 & 3`, la sortie par `DAT_005de02c & 2`, et la queue de boucle
+(`FrameEnd` plus les quatre mots d'écran). Quatre trous restent, chacun nommé sur place avec sa
+plage d'adresses.
+
+En jeu, la frontière a reculé **deux fois** : `FUN_00516fc0` → cas 0 du répartiteur → suite du cas 0.
+
+### Ghidra nomme les mêmes emplacements de pile différemment à deux endroits de la même fonction
+
+`FUN_0052a1e0` et `FUN_0052a280` reçoivent, au niveau machine, **exactement les trois mêmes
+emplacements dans le même ordre** — `lea [esp+0x14] / [esp+0x20] / [esp+0x10]` aux deux sites. La
+pseudo-C écrit pourtant `FUN_0052a1e0(&local_5c,&local_50)` d'un côté et
+`FUN_0052a280(&local_60,&uStack_54,&stack0xffffff9c,…)` de l'autre : **un des deux jeux de noms est
+décalé de quatre octets.** Les deux sont internement cohérents (0xC d'écart entre les deux nommés
+dans les deux cas), donc rien ne les départage dans la pseudo-C seule.
+
+C'est tranché par l'usage : le corps d'affichage passe `local_60` en premier argument de
+`FUN_0051c120` et se sert de `local_5c` comme compteur de boucle. `local_60` est donc la table
+d'ordonnancement, et c'est le rendu de `FUN_0052a280` qui est juste. **Un nom de variable Ghidra
+n'est pas une donnée** — celui-ci aurait fait écrire la queue de boucle sur les mauvais
+emplacements.
+
+### `PTR_FUN_0056afe8` n'était pas une globale isolée
+
+Les deux crochets indirects de la boucle sont les entrées **8 et 10 de la table `0x0056afc8`**,
+c'est-à-dire la quatrième des sept tables de sauts d'entités que `InstallEntityVTables` recopie déjà
+au chargement de zone : `(0x0056afe8 − 0x0056afc8) / 4 = 8`. Le dépôt relevait donc leur contenu
+depuis longtemps, sous un autre nom.
+
+Pour l'index 0 elles valent `0x0053DCB0` et `0x0053DF90` — **deux vraies fonctions, pas la souche
+`0x00401FA0`**, et toutes deux **absentes de `Blaze.c`** (Ghidra ne décompile pas ce dont seule
+l'adresse est prise). `FUN_0053dcb0` est transcrite depuis son désassemblage : elle ouvre le pas de
+simulation en faisant glisser l'instantané « image précédente » de chaque membre du groupe. C'est le
+**quatrième** cas où le dépôt contenait déjà de quoi combler un trou qu'il déclarait ouvert.
+
+Note à garder pour `FUN_0053df90` : si un jour le crochet tombe sur la souche `ret` nu, `EAX` porte
+encore l'adresse du dernier argument empilé et l'appelant en fait le **curseur de primitives**. Même
+forme que le reste-de-registre déjà documenté sur `ScriptOpAreaVerb`.
+
+### La couche son gagne une dépendance, et c'est le binaire qui la pose
+
+`FUN_0053dc30` (la file des sons différés, appelée une fois par image) mène à `FUN_0053db20` puis à
+`FUN_0053da20`, qui **projette la position du son avec la caméra courante** avant de calculer le
+panoramique. `Engine/Audio.cs` prend donc `(GameMemory mem, Model3d mdl)` et cesse d'être une
+feuille du graphe. Le graphe reste un DAG.
+
+`FUN_0053da20` est un cas de plus où la pseudo-C perd le cadre de pile (`unaff_SI`,
+`unaff_retaddr`, deux paramètres au lieu de trois) et où le désassemblage tranche : `unaff_SI` est
+l'atténuation calculée juste au-dessus, `unaff_retaddr` le gain de base. Le panoramique est une
+paire de cosinus pris à l'écart horizontal, mis à l'échelle **en miroir** selon le côté — `x*8 / x*4`
+à droite du centre, `x*4 / x*8` à gauche.
+
+### Trois recouvrements d'arène résorbés, dont un qui n'était plus latent
+
+* `s_Unknown_005de034` (`Screens/State04/CharacterCreation.cs`) tombait dans `CameraBlock`. Il était
+  latent jusqu'à ce que `PrepareLeaderAndPartyFlags` (`FUN_0050e2b0`) l'écrive à chaque image.
+  Bénéfice inattendu : la table de primes qu'il indexe (0, 0, 10, 20, 30 puis des zéros) se lit
+  maintenant comme une **prime de groupe** selon le nombre de membres encore jouables, ce qui est
+  cohérent avec ce que la fonction par image y met.
+* `s_ScenePitch_005e9308` / `s_SceneYaw_005e930a` / `s_SceneRoll_005e930c` (`Memory/GameMemory.cs`)
+  étaient trois `int` autonomes à des adresses espacées de **deux** octets. Ce sont des `short`, et
+  ils doublaient `GameArena`. Celui-là **n'était pas latent** : `Screens/State03/WorldMap.cs` remet
+  déjà l'orientation à zéro par `*(uint*)Arena(0x005e9308) = 0` pendant que `Engine/Model3d.cs` lit
+  les champs. Le cas 2 du répartiteur en aurait fait un troisième écrivain.
+
+### Le test de disposition voit enfin les champs simples — et il est rouge
+
+Le manque nommé ici depuis le 2026-08-19 est comblé. `OpenForesia.Tests` passe à **six** assertions,
+et l'analyseur a été rendu plus juste sur quatre points, tous découverts en le regardant échouer :
+
+| correction | ce qu'elle débloque |
+|---|---|
+| distinguer le **nom déclaré** d'une simple mention | `internal int* CameraTranslation => (int*)(s_CameraMatrix_006008e0 + 0x14)` se déclarait comme une seconde déclaration de `s_CameraMatrix_006008e0` |
+| suivre une déclaration sur **plusieurs lignes** | tout `s_X_00y =\n    NativeMemory.Alloc…` se comptait en champ simple |
+| résoudre les vues posées sur **une autre vue** | `s_PlayerSlots_005e9188 => s_SlotArea_005e9180 + 8` et les quatre `DrawEnv`/`DispEnv` — une trentaine de faux positifs |
+| la surcharge `Alloc(compte, taille)` | `AllocZeroed(0x100, sizeof(int))` se mesurait au quart de sa taille |
+
+État : **trois verts, trois rouges**, et aucun des trois échecs n'est un défaut nouveau — ce sont
+des défauts que l'analyseur ne savait pas voir.
+
+* test 2 : `s_EntityStatBlocks_005ea560` s'alloue 0x2400 octets dans `GameArena` ;
+* test 3 : `s_UiLabelWidths_00589758` couvre 0x400 octets et déborde sur `s_UiFrameInfo_00589840` —
+  sa déclaration dit que le recouvrement est **voulu**, donc c'est le modèle qu'il faut trancher ;
+* test 5 : **42** champs de valeur simple doublent une arène. Le chiffre est le résultat le plus
+  utile de la journée : ce qui était « à résorber avec les autres » est maintenant une liste
+  nominative avec fichier et ligne.
+
+Les corriger change le comportement et relève d'un changement séparé, comme les seize corrections
+d'aliasing qui ont précédé.
+
+### Contrôles
+
+Build 0 erreur · 3 tests de disposition verts, 3 rouges **délibérément** (voir ci-dessus) · oracle
+refigé à 563 corps, les deux seuls changements de logique étant ceux faits sciemment · en jeu,
+la frontière recule deux fois : `FUN_00516fc0` → cas 0 → suite du cas 0. 1 primitive par image sur
+la carte du monde, inchangé : rien n'y est encore dessiné.
+
+### La frontière
+
+La suite du cas 0, `0x005176d5` à `0x0051776b` : quatorze appelées, ~1 850 lignes de pseudo-C au
+total, dont `FUN_0050bf20` (1 002 lignes, la mise à jour d'un personnage) à elle seule. La première,
+`FUN_00532bf0` (146 lignes), est le lissage de l'orientation de scène et de la couleur de fond —
+elle ne dépend que de ce qui est déjà là. `FUN_0050e5e0` (36 lignes) est la plus petite mais mène à
+la table `PTR_FUN_0056adc8`, la seule des sept qui soit pleine : dix-neuf gestionnaires distincts.

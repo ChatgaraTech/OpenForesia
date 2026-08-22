@@ -693,6 +693,24 @@ Twice in one session a list of "globals still to model" dissolved on subtraction
 Subtracting the nearest already-declared base before declaring anything new is the cheap check,
 and it is worth doing before writing "globals still to model" into a plan.
 
+### Same trap, with a jump table: `PTR_FUN_0056afe8` and `PTR_FUN_0056aff0` (2026-08-22)
+
+The world-map frame loop (`FUN_00516fc0`) calls two function pointers that look like isolated
+globals. They are not. `0x0056afc8` is the fourth of the **seven entity jump tables**
+`InstallEntityVTables` copies at area load, and the two "globals" are entries in it:
+
+| `PTR_…` | index | value at area index 0 | in `Blaze.c`? |
+|---|---:|---|---|
+| `PTR_FUN_0056afe8` | `(0x0056afe8 − 0x0056afc8)/4` = **8** | `0x0053DCB0` | **no** |
+| `PTR_FUN_0056aff0` | **10** | `0x0053DF90` | **no** |
+
+Both are real functions, not the `0x00401FA0` stub, and both are missing from `Blaze.c` because
+Ghidra does not decompile address-taken-only code. Dumps in `Legacy/Raw/Blaze/`.
+
+The check that would have found this in seconds: **subtract the nearest declared table base**, the
+same arithmetic as the record-field case above. A `PTR_FUN_` name is not evidence that the address
+stands alone.
+
 ## The debug party-select screen's tables (2026-08-17)
 
 Everything `FUN_00536270` (`RunDebugPartySelect`) reads out of `.data`, recovered with
@@ -954,7 +972,7 @@ symbole qui tombe dans l'une de ces étendues **ne doit jamais recevoir sa propr
 | `0x00551640` | `0x200` | EntityParams | `EntityParam(va)` | `Memory/GameMemory.cs` |
 | `0x00571270` | `0x190` | ViewParams | `ViewParams(va)` | `Memory/GameMemory.cs` |
 | `0x00571500` | `0x538` | EntityState | `EntityState(va)` / `EntityStateBytes(va)` | `Memory/GameMemory.cs` |
-| `0x005de030` | `0x080` | CameraBlock | `Camera(va)` | `Memory/GameMemory.cs` |
+| `0x005de030` | `0x084` | CameraBlock | `Camera(va)` | `Memory/GameMemory.cs` |
 | `0x005de100` | `0x410` | ItemMenuArena | `ItemMenuState(va)` / `ItemMenuBytes(va)` | `Memory/GameMemory.cs` |
 | `0x005e85c0` | `0x340` | PartyList | — | `Memory/GameMemory.cs` |
 | `0x005e9000` | `0x1600` | GameArena | `Arena(va)` | `Memory/GameMemory.cs` |
@@ -969,10 +987,15 @@ chargement : `s_WorldFlags_005de02c` (`Memory/GameMemory.cs`, quatre octets just
 immédiatement après `s_CardWriteEventHandles_00604b68` qui s'arrête pile à `0x00604b78`).
 
 **Avertissement sur cette table** : elle ne recense que les étendues d'arène. Un `static int`
-ordinaire dont l'adresse tombe dans l'une d'elles n'y apparaît pas et **les tests de disposition ne
-le voient pas non plus** — c'est le cas de `s_PartySize_005e9020` (`Screens/State04/SaveSlots.cs`),
-qui double `GameArena`. Lire `0x005e9020` par `Arena(va)` rend donc zéro en silence. Avant d'écrire
-`Arena(0x005e9…)` pour une adresse nouvelle, chercher un champ nommé à cette VA.
+ordinaire dont l'adresse tombe dans l'une d'elles n'y apparaît pas — c'est le cas de
+`s_PartySize_005e9020` (`Screens/State04/SaveSlots.cs`), qui double `GameArena`. Lire `0x005e9020`
+par `Arena(va)` rend donc zéro en silence. Avant d'écrire `Arena(0x005e9…)` pour une adresse
+nouvelle, chercher un champ nommé à cette VA.
+
+> **Depuis le 2026-08-22, le test le voit.** `OpenForesia.Tests`, test 5
+> (`Aucun_champ_simple_dans_l_etendue_d_une_arene`) liste ces champs par nom, fichier et ligne :
+> `dotnet test OpenForesia.Tests`. Il en compte **42** et il est rouge exprès. C'est devenu le moyen
+> le plus rapide de faire la vérification recommandée au paragraphe ci-dessus.
 
 **Quatre allocations indépendantes tombent dans l'étendue d'une arène** — constatées au découpage,
 **non corrigées** parce que les corriger changerait le comportement :

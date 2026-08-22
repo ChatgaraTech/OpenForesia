@@ -1147,6 +1147,31 @@ uint target = table[slot];
 if (target == 0x00401FA0) return;
 throw new NotImplementedException(
 $"{name}, entree {slot} = 0x{target:X6} : gestionnaire d'entite non transcrit");
+## CallEntityHook_0056afe8
+uint target = s_Vt_0056afc8[8];
+switch (target)
+{
+case 0x0053DCB0: ResetPerCharacterFrameState(); break;
+case 0x00401FA0: break;
+default:
+throw new NotImplementedException(
+$"FUN_00516fc0, cas 0 : le crochet PTR_FUN_0056afe8 vaut 0x{target:X6}, pas " +
+"encore reconstruit. C'est l'entree 8 de s_Vt_0056afc8 (Engine/cs) ; " +
+$"`OpenForesia.Tools disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512` si " +
+"elle n'est pas dans Blaze.c. Elle ne prend aucun argument.");
+}
+## CallEntityHook_0056aff0
+uint target = s_Vt_0056afc8[10];
+return target switch
+{
+0x00401FA0 => (uint*)slotRecord,
+_ => throw new NotImplementedException(
+$"FUN_00516fc0 : le crochet PTR_FUN_0056aff0 vaut 0x{target:X6}, pas encore " +
+"reconstruit. C'est l'entree 10 de s_Vt_0056afc8 (Engine/cs), " +
+"0x0053DF90 pour la zone d'index 0 — absente de Blaze.c, relevee dans " +
+"Legacy/Raw/Blaze/FUN_0053DF90.asm. Elle prend (otBase, primitives, " +
+"enregistrement d'emplacement, etat de manette) et rend le curseur de primitives."),
+};
 ## Camera
 (int*)(s_CameraBlock_005de030 + (va - CameraBlockBase));
 ## CancelCharacterCreation
@@ -1962,6 +1987,24 @@ for (int i = 0; i < 8; i++)
 value += (uint)((sbyte)slot[0x18 + i] * 2);
 }
 return value;
+## ComputePositionalSoundGains
+short* screen = stackalloc short[4];
+ProjectPoint(position, screen);
+short offsetX = (short)(screen[0] - 0xa0);
+screen[0] = offsetX;
+int magnitude = offsetX < 0 ? -offsetX : offsetX;
+if (magnitude >= 0x400) return 0;
+short attenuation = (short)(0x1000 - *(int*)(screen + 2) * 6);
+if (attenuation < 0) return 0;
+outGains[0] = (short)GetCosTableEntry(offsetX >= 0 ? offsetX * 8 : offsetX * 4);
+outGains[1] = (short)GetCosTableEntry(offsetX >= 0 ? offsetX * 4 : offsetX * 8);
+if (outGains[0] < 0) outGains[0] = 0;
+if (outGains[1] < 0) outGains[1] = 0;
+short right = (short)((short)((outGains[1] * attenuation) >> 0xc) * gain >> 0xc);
+short left = (short)((short)((outGains[0] * attenuation) >> 0xc) * gain >> 0xc);
+outGains[1] = right;
+outGains[0] = left;
+return (right | left) != 0 ? 1 : 0;
 ## ComResult
 if (hr != 0)
 {
@@ -8332,6 +8375,34 @@ otSlot = z;
 return (ushort)(x + 0x18) < 0x170
 && (ushort)(y + 0x18) < 0x120
 && (uint)(z - 0x58) < 0x3a0;
+## PassLeaderToNextEligible
+if (s_PartySize_005e9020 <= 1 || *(byte*)Camera(0x005de034) == 0) return;
+byte* mainMem = GetMainMemPtr();
+int index = 0;
+uint* flags = (uint*)s_SlotFlags_005e93c0;
+byte* slot = s_SlotArea_005e9180;
+uint* perCharacter = (uint*)(mainMem + 0xf0140);
+while ((*flags & mask) != 0 || (*perCharacter & 0x400001c0) != 0)
+{
+index++;
+flags = (uint*)((byte*)flags + 0x9c);
+slot += 0x4c;
+perCharacter = (uint*)((byte*)perCharacter + 0x2000);
+if (s_PartySize_005e9020 <= index) return;
+}
+s_Unknown_005de538 = (byte)index;
+*flags &= 0xf7ffffff;
+*currentFlags &= 0xf7ffffff;
+if ((*flags & 0x10000) != 0)
+{
+*flags &= 0xfffeffff;
+byte previousIndex = currentSlot[9];
+byte previousPad = currentSlot[8];
+currentSlot[8] = slot[8];
+currentSlot[9] = slot[9];
+slot[8] = previousPad;
+slot[9] = previousIndex;
+}
 ## PatchImportEntry
 original = null;
 byte* b = (byte*)module;
@@ -8633,6 +8704,12 @@ byte* path = s_MusicTrackPaths[trackIndex];
 if (path == null) return;
 path[0] = s_CdDataRootPath[0];
 StartMusicStream(path);
+## PlayPositionalSound
+int gains = gain;
+if (ComputePositionalSoundGains(position, gain, (short*)&gains) != 0)
+{
+PlaySoundEffect(soundId, pitch, (short)gains, (short)(gains >> 0x10));
+}
 ## PlaySampleDecimated
 int step = stepMinusOne + 1;
 int bufferBytes = (int)((srcLength / step + 100U) & 0xffffffe) * 2;
@@ -9047,6 +9124,96 @@ if ((short)live != 0)
 return anyInput;
 ## PrepareDisplayListArena
 EnsureDisplayListArena();
+## PrepareLeaderAndPartyFlags
+byte* mainMem = GetMainMemPtr();
+s_Unknown_005de518 = 0;
+*(byte*)Camera(0x005de030) = 0;
+s_Unknown_005de544 = 0;
+*(byte*)Camera(0x005de034) = 0;
+*Entity(0x005f2ce4) = 0;
+uint lastPlayable = (uint)(byte)s_Unknown_005de538;
+uint previousPlayable = lastPlayable;
+int firstAvailable = -1;
+for (int index = 0; index < s_PartySize_005e9020; index++)
+{
+uint* flags = (uint*)(s_SlotFlags_005e93c0 + index * 0x9c);
+byte slotKind = s_PlayerSlots_005e9188[index * 0x4c];
+byte* pad = s_InputStateBase_00604a20 + slotKind * 0x10;
+byte* perCharacter = mainMem + 0xf02b8 + index * 0x2000;
+if ((pad[0xb] & 0x80) == 0)
+{
+*flags = (*flags & 0xf7ffffff) | 0x10000;
+*perCharacter = 1;
+}
+else if (firstAvailable == -1)
+{
+firstAvailable = index;
+}
+if (slotKind < 8)
+{
+uint value = *flags | 0x20000;
+*flags = value;
+if ((value & 0x10000) != 0 && (pad[0] & 0xf0) != 0)
+{
+*flags = (value & 0xfffeffff) | 0x20000;
+*perCharacter = 0;
+}
+value = *flags;
+if ((value & 0x10000) == 0)
+{
+(*(byte*)Camera(0x005de034))++;
+lastPlayable = (uint)index;
+}
+else if ((value & 0x40000000) != 0)
+{
+*flags = value & 0xf7ffffff;
+}
+}
+else if ((byte)s_Unknown_005de538 != index)
+{
+*flags = (*flags & 0xf7ffffff) | 0x10000;
+*perCharacter = 1;
+}
+uint state = *flags;
+if ((state & 0x50200000) == 0 && *(short*)((byte*)flags + 0x12) == 0)
+{
+if ((state & 0x10000) != 0 && (*(uint*)(perCharacter - 0x178) & 0x1c0) == 0)
+{
+Entity(0x005edec0)[*Entity(0x005f2ce4)] = (byte)previousPlayable;
+(*Entity(0x005f2ce4))++;
+previousPlayable = (uint)index;
+}
+}
+else
+{
+s_Unknown_005de544++;
+if ((state & 0x40000000) != 0) s_Unknown_005de518++;
+if ((state & 0x10200000) != 0) (*(byte*)Camera(0x005de030))++;
+}
+}
+if (*(byte*)Camera(0x005de034) == 0)
+{
+byte fallback = firstAvailable < 0 ? (byte)0 : (byte)firstAvailable;
+s_Unknown_005de540 = fallback;
+s_Unknown_005de538 = fallback;
+*(uint*)(s_SlotFlags_005e93c0 + fallback * 0x9c) &= 0xfffeffff;
+*(mainMem + 0xf02b8 + fallback * 0x2000) = 0;
+*(byte*)Camera(0x005de034) = 1;
+}
+else if (*(byte*)Camera(0x005de034) == 1)
+{
+s_Unknown_005de538 = (byte)lastPlayable;
+s_Unknown_005de540 = (byte)lastPlayable;
+}
+if (*(byte*)Camera(0x005de030) >= s_PartySize_005e9020)
+{
+s_WorldFlags_005de02c |= 2;
+if (s_Unknown_005de518 >= s_PartySize_005e9020)
+{
+s_WorldMapStep_005645f8 = -2;
+s_GameStateId_005de510 = 9;
+}
+}
 ## Present
 if (D3D11Window.TakeResize()) HandleResize();
 var backBuffer = s_BackBufferView;
@@ -9883,6 +10050,18 @@ for (int i = 0; i < 0x10; i++)
 for (int i = 0; i < 0x28; i++) s_KeyBindings[i] = s_KeyBindingDefaults_00564ab8[i];
 for (int group = 1; group < 4; group++)
 for (int i = 0; i < 0x28; i++) s_KeyBindings[group * 0x3c + i] = 0;
+## ResetPerCharacterFrameState
+byte* mainMem = GetMainMemPtr();
+*(byte*)Camera(0x005de044) = 0;
+s_WorldFlags_005de02c |= 8;
+for (int i = 0; i < s_PartySize_005e9020; i++)
+{
+byte* block = mainMem + 0xf0000 + 0x148 + i * 0x2000;
+*(ushort*)(block + 4) = *(ushort*)(block + 0);
+*(ushort*)(block + 6) = *(ushort*)(block + 2);
+*(int*)(block - 8) = 0;
+for (int k = 0; k < 0x20; k++) ((uint*)(block + 0x38))[k] = 0;
+}
 ## ResetScenePairs_005e9320
 for (int i = 0; i < 8; i++)
 {
@@ -10284,7 +10463,7 @@ s_ScenePitch_005e9308 = 0;
 int* firstParticle = (int*)(s_SceneParticles_00572be4 + 0x1c);
 short dz = (short)((scenePos[2] - firstParticle[2]) >> 0xc);
 short dx = (short)((scenePos[0] - firstParticle[0]) >> 0xc);
-s_SceneYaw_005e930a = -Ordinal_457(dx, dz);
+s_SceneYaw_005e930a = (short)-Ordinal_457(dx, dz);
 s_SceneRoll_005e930c = 0;
 }
 sceneGlow[0] += (short)((0x1e00 - sceneGlow[0]) >> 2);
@@ -11773,12 +11952,187 @@ while (next != -1);
 }
 Ordinal_379(0x190);
 JoystickResetState(false);
+while (true)
+{
+AnimatePalettes(s_MainResourceDirectory_005e97c4);
+TickDelayedSounds();
+PrepareLeaderAndPartyFlags();
+uint slot = (uint)(byte)s_Unknown_005de538;
+if ((*(uint*)(s_SlotFlags_005e93c0 + slot * 0x9c) & 0x10000) != 0
+|| s_PlayerSlots_005e9188[slot * 0x4c] == 8)
+{
+PassLeaderToNextEligible(
+(uint*)(s_SlotFlags_005e93c0 + slot * 0x9c),
+s_SlotArea_005e9180 + slot * 0x4c,
+0x10000);
+}
+int debugLatch = s_DebugModeLatch_005633a8;
+if (debugLatch == 0 && s_DebugOverlayEnabled_005de020 != 0)
+{
 throw new NotImplementedException(
-"FUN_00516fc0 : le prologue est transcrit et vient de s'executer ; c'est la BOUCLE PAR " +
-"IMAGE qui manque — le `do { … } while` de 0x00517163, ~1 100 lignes de pseudo-C. " +
-"Elle commence par FUN_0040a600 / FUN_00533000 / FUN_0053dc30 / FUN_0050e2b0, puis " +
-"l'affichage de mise au point garde par DAT_005633a8. Voir REVERSE_STATUS.md et " +
-"Legacy/Raw/Blaze/FUN_00516FC0-prologue.asm.");
+"FUN_00516fc0 : l'affichage de mise au point de la carte du monde (0x0051718c " +
+"a 0x005174d0) n'est pas transcrit. Il pose une trentaine d'appels a " +
+"FUN_0051c120 / FUN_0051be90 puis recopie les trois bancs de drapeaux " +
+"(DAT_005e96e0, DAT_005e9840, DAT_005e9000) vers leurs miroirs d'image " +
+"precedente. DAT_005de020 vaut 0 au chargement — releve dans le binaire, " +
+"queue non initialisee de .data — donc ce bloc ne s'atteint que par la touche " +
+"de mise au point qui le bascule (Blaze.c 66241/66244), elle-meme non " +
+"transcrite. FUN_0051be90 est le seul appele qui manque.");
+}
+if ((s_WorldFlags_005de02c & 0x40) != 0)
+{
+primCursor = CallEntityHook_0056aff0(
+otBase,
+primCursor,
+s_SlotFlags_005e93c0 + (uint)s_Unknown_005de540 * 0x9c,
+s_InputStateBase_00604a20
++ s_PlayerSlots_005e9188[s_Unknown_005de540 * 0x4c] * 0x10);
+}
+else
+{
+switch (*(uint*)Arena(0x005e9ae4) & 3)
+{
+case 0:
+for (int i = 0; i < 0x400; i++) ((uint*)(mainMem + 0x1c5000))[i] = 0;
+for (int i = 0; i < 0x400; i++) ((uint*)(mainMem + 0x1c4000))[i] = 0;
+s_WorldFlags_005de02c &= 0xfffffff7;
+CallEntityHook_0056afe8();
+throw new NotImplementedException(
+"FUN_00516fc0 : la suite du cas 0 (0x005176d5 a 0x0051776b) n'est pas " +
+"transcrite. Il lui manque quatorze appelees : FUN_00532bf0, " +
+"FUN_00513ef0, FUN_0050e5e0, FUN_0050e680, FUN_0050eb20, FUN_0050bf20 " +
+"(1002 lignes, une par personnage), FUN_0047aa70, FUN_0047ab70, " +
+"FUN_0047acf0, FUN_0050ed70, FUN_0050f0d0, FUN_00513f20, FUN_00534f90 " +
+"et FUN_005036e0.");
+case 1:
+if (*Entity(0x005fa580) == 0)
+{
+(*Arena(0x005e9ae4))++;
+s_Unknown_005de6f8 = 0;
+s_Unknown_005de6fc = 0;
+s_Unknown_005de704 = 0;
+s_Unknown_005de70c = -1;
+s_Unknown_005de710 = -1;
+uint leaderSlot = (uint)(byte)s_Unknown_005de538;
+byte* record = s_SlotFlags_005e93c0 + leaderSlot * 0x9c;
+s_Unknown_005e8eda = (short)((*(int*)(record + 0x24) >> 0x11) & 0xfffc);
+s_Unknown_005e8ed8 = (short)((*(int*)(record + 0x1c) >> 0x11) & 0xfffc);
+s_Unknown_005de718 = -1;
+if (s_Unknown_005e8eda > 0xa0) s_Unknown_005e8eda = 0xa0;
+if (s_Unknown_005e8eda < -0xa0) s_Unknown_005e8eda = unchecked((short)0xff60);
+if (s_Unknown_005e8ed8 < -0x90) s_Unknown_005e8ed8 = unchecked((short)0xff70);
+if (s_Unknown_005e8ed8 > 0x90) s_Unknown_005e8ed8 = 0x90;
+s_WorldFlags_005de02c |= 4;
+}
+else
+{
+(*Entity(0x005fa580))--;
+}
+break;
+case 2:
+{
+int padSlot = s_PlayerSlots_005e9188[s_Unknown_005de540 * 0x4c];
+byte* pad = s_InputStateBase_00604a20 + padSlot * 0x10;
+if ((pad[2] & 1) != 0)
+{
+s_WorldFlags_005de02c ^= 1;
+}
+if (debugLatch == 0)
+{
+if (*Camera(0x005de060) == 0)
+{
+if ((*(ushort*)(pad + 2) & 0xf00) == 0xf00)
+{
+*Camera(0x005de060) = 1;
+}
+}
+else
+{
+ushort held = *(ushort*)pad;
+if ((held & 1) == 0)
+{
+if ((held & 0x20) != 0) *(short*)(s_WorldMapCamera_00564650 + 8) += 10;
+if ((*(ushort*)pad & 0x80) != 0) *(short*)(s_WorldMapCamera_00564650 + 8) -= 10;
+if ((*(ushort*)pad & 0x10) != 0) *(short*)(s_WorldMapCamera_00564650 + 0xc) -= 10;
+if ((*(ushort*)pad & 0x40) != 0) *(short*)(s_WorldMapCamera_00564650 + 0xc) += 10;
+}
+else
+{
+if ((held & 0x20) != 0) s_SceneYaw_005e930a += 0x20;
+if ((*(ushort*)pad & 0x80) != 0) s_SceneYaw_005e930a -= 0x20;
+if ((*(ushort*)pad & 0x10) != 0) s_ScenePitch_005e9308 -= 0x20;
+if ((*(ushort*)pad & 0x40) != 0) s_ScenePitch_005e9308 += 0x20;
+}
+if ((*(ushort*)(pad + 2) & 0xf00) == 0xf00)
+{
+*Camera(0x005de060) = 0;
+}
+if ((pad[3] & 0x80) != 0)
+{
+*(short*)(s_WorldMapCamera_00564650 + 0) = 500;
+*(short*)(s_WorldMapCamera_00564650 + 2) = 0;
+*(short*)(s_WorldMapCamera_00564650 + 4) = 0;
+*(short*)(s_WorldMapCamera_00564650 + 8) = 0;
+*(short*)(s_WorldMapCamera_00564650 + 0xc) = 0;
+*(short*)(s_WorldMapCamera_00564650 + 0x10) = 900;
+}
+}
+}
+break;
+}
+case 3:
+if (*Entity(0x005fa580) == 0)
+{
+*(int*)Entity(0x005f7b4c) = -1;
+(*Arena(0x005e9ae4))++;
+*(int*)Entity(0x005f7ba4) = 0;
+if (debugLatch == 0)
+{
+*Camera(0x005de060) = 0;
+}
+}
+else
+{
+(*Entity(0x005fa580))--;
+}
+break;
+}
+if ((s_WorldFlags_005de02c & 2) != 0)
+{
+if ((s_WorldMapStep_005645f8 & 0xff) == 1)
+{
+RunEntityScript(
+s_Unknown_005e97cc,
+s_SlotFlags_005e93c0 + (uint)s_Unknown_005de53c * 0x9c,
+(uint)(*Camera(0x005de050) & 0xffff));
+}
+*(uint*)Arena(0x005e9898) = 1;
+*(uint*)Arena(0x005e9908) = 1;
+return;
+}
+if ((s_WorldFlags_005de02c & 4) == 0
+|| (*Camera(0x005de060) != 0 && debugLatch == 0))
+{
+throw new NotImplementedException(
+"FUN_00516fc0 : le bloc d'affichage principal (0x00517aa7 a 0x00519703) " +
+"n'est pas transcrit — c'est le gros du corps, environ 700 lignes de " +
+"pseudo-C : lissage de camera, choix du personnage suivi, panneaux d'etat " +
+"des quatre membres, puis le balayage 8x7 des cellules de la carte qui " +
+"emet les modeles et les particules. Il commence par FUN_004011c0, " +
+"FUN_00532b40 et deux FUN_00533000. Voir " +
+"Legacy/Raw/Blaze/FUN_00516FC0-full.asm.");
+}
+throw new NotImplementedException(
+"FUN_00516fc0 : la branche courte d'affichage (0x005179da a 0x00517a77), " +
+"prise quand DAT_005de02c porte le bit 4 sans que le pilotage libre soit " +
+"actif. Il lui manque FUN_0051aa30 (594 lignes) et FUN_0052a7d0 (20 lignes).");
+}
+FrameEnd(&otBase, &otEntry, &primCursor, 3, 1);
+*(ushort*)Arena(0x005e9950) = 0x140;
+*(ushort*)Arena(0x005e98e0) = 0x140;
+*(ushort*)Arena(0x005e9952) = 0xf0;
+*(ushort*)Arena(0x005e98e2) = 0xf0;
+}
 ## SaveAndMaxWaveOutVolume
 uint deviceCount = waveOutGetNumDevs();
 for (uint device = 0; device < deviceCount; device++)
@@ -13671,6 +14025,25 @@ texture.ViewCreated = true;
 texture.Pixels = null;
 }
 return texture.View;
+## TickDelayedSounds
+byte* entry = s_DelayedSounds_005dfb90;
+for (int remaining = 0x20; remaining != 0; remaining--, entry += 0x14)
+{
+byte* script = *(byte**)(entry + 0x0c);
+if (script == null) continue;
+entry[0x10]--;
+if (entry[0x10] != 0) continue;
+byte nextDelay = script[1];
+for (uint count = script[2]; count != 0; count--)
+{
+PlayPositionalSound(
+script[0], *(ushort*)(script + 4), *(ushort*)(script + 6), (int*)entry);
+script += 8;
+}
+if (nextDelay == 0) script = null;
+else entry[0x10] = nextDelay;
+*(byte**)(entry + 0x0c) = script;
+}
 ## TimingPage
 if ((s_UiPageFlags_00579260 & 1) == 0)
 {

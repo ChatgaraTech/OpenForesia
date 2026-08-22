@@ -92,12 +92,18 @@ signatures.
 ```
    Video ──► Resources ──┬──► Primitives2d ──┬──► UiWindow ──┬──► UiText
                          │         │         │               ├──► Input
-                         ├──► Input│         └──► UiText     └──► Audio
-                         └──► Audio│
+                         ├──► Input│         └──► UiText     └──► Audio ──► Model3d
+                         └──► Audio ──► Model3d
 ```
 
-Les cinq feuilles — `UiText`, `Input`, `Audio`, `SaveData`, `Model3d` — ne dependent d'aucune
-soeur et gardent `(GameMemory mem)`.
+Les quatre feuilles — `UiText`, `Input`, `SaveData`, `Model3d` — ne dependent d'aucune soeur et
+gardent `(GameMemory mem)`.
+
+**`Audio → Model3d`, ajoutee le 2026-08-22**, en transcrivant `FUN_0053db20` : un son place dans le
+monde se **projette avec la camera courante** avant d'etre panoramique, donc la couche son appelle
+`Model3d.ProjectPoint`. `Audio` cesse d'etre une feuille et prend `(GameMemory mem, Model3d mdl)`.
+Le graphe reste un DAG : `Model3d` ne depend d'aucune soeur. C'est la premiere arete que la
+**transcription** ajoute, et non un choix de conception — elle est dans le binaire.
 
 **Que ce soit un DAG n'etait pas acquis** : la premiere mesure comptait une arete
 `Input → Video` qui fermait un cycle `Input → Video → Resources → Input`, et un cycle aurait

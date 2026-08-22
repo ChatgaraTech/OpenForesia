@@ -81,14 +81,16 @@ internal static class MemoryLayout
     // ---------------------------------------------------------------------------------------
     private static readonly Encoding Latin1 = Encoding.Latin1;
 
-    private static IEnumerable<(string File, int Line, string Text)> SourceLines()
+    private static IEnumerable<(string File, string[] Lines)> SourceFiles()
     {
         foreach (var path in Directory.EnumerateFiles(BlazeRoot, "*.cs", SearchOption.AllDirectories))
         {
             var rel = Path.GetRelativePath(BlazeRoot, path).Replace('\\', '/');
-            var lines = Latin1.GetString(File.ReadAllBytes(path)).Split('\n');
-            for (int i = 0; i < lines.Length; i++)
-                yield return (rel, i + 1, lines[i].TrimEnd('\r'));
+            var lines = Latin1.GetString(File.ReadAllBytes(path))
+                              .Split('\n')
+                              .Select(l => l.TrimEnd('\r'))
+                              .ToArray();
+            yield return (rel, lines);
         }
     }
 
@@ -101,9 +103,32 @@ internal static class MemoryLayout
     private static readonly Regex AddrRe = new(
         @"\b(s_[A-Za-z0-9_]*?_(00[0-9a-f]{6}))\b", RegexOptions.Compiled);
 
+    // `NativeMemory.AllocZeroed(n)` donne n octets ; la surcharge `(compte, taille)` donne leur
+    // produit. Sans le second groupe, `AllocZeroed(0x100, sizeof(int))` se mesurait a 0x100 au lieu
+    // de 0x400 — un quart de la taille reelle, donc un recouvrement invisible au test 3.
     private static readonly Regex AllocRe = new(
-        @"(?:NativeMemory\.Alloc(?:Zeroed)?\s*\(\s*(0x[0-9a-fA-F]+|\d+)|new\s+\w+\[\s*(0x[0-9a-fA-F]+|\d+)\s*\])",
+        @"(?:NativeMemory\.Alloc(?:Zeroed)?\s*\(\s*(0x[0-9a-fA-F]+|\d+)\s*(?:,\s*(?:(0x[0-9a-fA-F]+|\d+)|sizeof\(\s*(\w+)\s*\)))?"
+        + @"|new\s+\w+\[\s*(0x[0-9a-fA-F]+|\d+)\s*\])",
         RegexOptions.Compiled);
+
+    private static readonly Dictionary<string, uint> SizeOf = new()
+    {
+        ["byte"] = 1, ["sbyte"] = 1, ["short"] = 2, ["ushort"] = 2,
+        ["int"] = 4, ["uint"] = 4, ["long"] = 8, ["ulong"] = 8,
+    };
+
+    /// <summary>La taille en octets qu'une correspondance d'<see cref="AllocRe"/> déclare.</summary>
+    private static uint AllocSize(Match alloc)
+    {
+        if (alloc.Groups[4].Success) return ParseNum(alloc.Groups[4].Value);   // new T[n]
+        if (!alloc.Groups[1].Success) return 0;
+
+        uint count = ParseNum(alloc.Groups[1].Value);
+        if (alloc.Groups[2].Success) return count * ParseNum(alloc.Groups[2].Value);
+        if (alloc.Groups[3].Success && SizeOf.TryGetValue(alloc.Groups[3].Value, out var w))
+            return count * w;
+        return count;
+    }
 
     private static readonly Regex AccessorRe = new(
         @"\b(Arena|Entity|EntityParam|EntityState|Camera|View|ItemMenuState|ItemMenuBytes)\s*\(\s*0x([0-9a-fA-F]+)\s*\)",
@@ -119,41 +144,113 @@ internal static class MemoryLayout
     /// <summary>Tous les symboles à suffixe d'adresse déclarés dans <c>src/Blaze</c>.</summary>
     internal static IReadOnlyList<Symbol> Symbols => _symbols ??= ReadSymbols();
 
+    /// <summary>
+    /// Le symbole trouvé est-il le NOM DÉCLARÉ, ou une simple mention dans l'initialiseur ?
+    ///
+    /// <para>Un nom déclaré est immédiatement suivi de <c>;</c>, <c>=</c> (donc aussi <c>=&gt;</c>),
+    /// <c>{</c>, <c>,</c>, ou de la fin de ligne. Sans ce garde-fou,
+    /// <c>internal int* CameraTranslation =&gt; (int*)(s_CameraMatrix_006008e0 + 0x14);</c> se
+    /// déclarait comme une seconde déclaration de <c>s_CameraMatrix_006008e0</c> — un faux positif
+    /// qui a survécu jusqu'au 2026-08-22.</para>
+    /// </summary>
+    private static bool IsDeclaredName(string text, Match m)
+    {
+        int end = m.Index + m.Length;
+        while (end < text.Length && text[end] == ' ') end++;
+        if (end >= text.Length) return true;
+        char c = text[end];
+        return c is ';' or '=' or '{' or ',';
+    }
+
     private static List<Symbol> ReadSymbols()
     {
         var found = new List<Symbol>();
-        foreach (var (file, line, text) in SourceLines())
+        var tails = new List<string>();          // parallèle à `found` : ce que déclare le membre
+
+        foreach (var (file, lines) in SourceFiles())
         {
-            if (!MemberRe.IsMatch(text)) continue;
-
-            // le nom déclaré est le PREMIER symbole à suffixe d'adresse de la ligne ; ceux qui
-            // suivent appartiennent à l'initialiseur.
-            var m = AddrRe.Match(text);
-            if (!m.Success) continue;
-
-            var name = m.Groups[1].Value;
-            var addr = uint.Parse(m.Groups[2].Value.AsSpan(2), NumberStyles.HexNumber);
-
-            var tail = text[(m.Index + m.Length)..];
-
-            var acc = AccessorRe.Match(tail);
-            if (acc.Success)
+            for (int i = 0; i < lines.Length; i++)
             {
-                found.Add(new Symbol(name, addr, file, line, SymbolKind.ArenaView, 0, acc.Groups[1].Value));
-                continue;
-            }
+                var text = lines[i];
+                if (!MemberRe.IsMatch(text)) continue;
 
-            var alloc = AllocRe.Match(tail);
-            if (alloc.Success)
-            {
-                var raw = alloc.Groups[1].Success ? alloc.Groups[1].Value : alloc.Groups[2].Value;
-                found.Add(new Symbol(name, addr, file, line, SymbolKind.OwnAllocation, ParseNum(raw), null));
-                continue;
-            }
+                // Tous les noms à suffixe d'adresse de la ligne qui sont vraiment des DÉCLARANTS :
+                // une ligne peut en porter plusieurs (`private static int s_A_00x, s_B_00y;`).
+                var names = AddrRe.Matches(text)
+                                  .Where(m => IsDeclaredName(text, m))
+                                  .ToList();
+                if (names.Count == 0) continue;
 
-            found.Add(new Symbol(name, addr, file, line, SymbolKind.PlainField, 0, null));
+                var last = names[^1];
+                var tail = text[(last.Index + last.Length)..];
+
+                // Une déclaration qui ne se termine pas sur sa ligne porte un corps de propriété :
+                // c'est là que vit l'accesseur d'arène des vues écrites en `{ get => …; set => …; }`.
+                if (!tail.Contains(';'))
+                {
+                    for (int j = i + 1; j < lines.Length && j <= i + 12; j++)
+                    {
+                        if (MemberRe.IsMatch(lines[j])) break;
+                        tail += "\n" + lines[j];
+                        if (lines[j].TrimEnd() == "    }") break;
+                    }
+                }
+
+                var acc = AccessorRe.Match(tail);
+                var alloc = AllocRe.Match(tail);
+
+                foreach (var m in names)
+                {
+                    var name = m.Groups[1].Value;
+                    var addr = uint.Parse(m.Groups[2].Value.AsSpan(2), NumberStyles.HexNumber);
+
+                    if (acc.Success)
+                        found.Add(new Symbol(name, addr, file, i + 1, SymbolKind.ArenaView, 0, acc.Groups[1].Value));
+                    else if (alloc.Success)
+                    {
+                        found.Add(new Symbol(name, addr, file, i + 1, SymbolKind.OwnAllocation, AllocSize(alloc), null));
+                    }
+                    else
+                        found.Add(new Symbol(name, addr, file, i + 1, SymbolKind.PlainField, 0, null));
+
+                    tails.Add(tail);
+                }
+            }
         }
+
+        ResolveDerivedViews(found, tails);
         return found;
+    }
+
+    /// <summary>
+    /// Une vue peut se poser sur une AUTRE vue plutôt que sur l'accesseur d'arène :
+    /// <c>s_PlayerSlots_005e9188 =&gt; s_SlotArea_005e9180 + 8</c>. Sans cette passe, ces symboles
+    /// se comptaient en champs simples et noyaient le test 5 sous une trentaine de faux positifs.
+    /// Itérée jusqu'au point fixe, une vue pouvant en désigner une troisième.
+    /// </summary>
+    private static void ResolveDerivedViews(List<Symbol> found, List<string> tails)
+    {
+        for (bool changed = true; changed;)
+        {
+            changed = false;
+            var accessorOfView = found
+                .Where(s => s.Kind == SymbolKind.ArenaView && s.ViaAccessor is not null)
+                .GroupBy(s => s.Name)
+                .ToDictionary(g => g.Key, g => g.First().ViaAccessor!);
+
+            for (int k = 0; k < found.Count; k++)
+            {
+                if (found[k].Kind != SymbolKind.PlainField) continue;
+                foreach (var (viewName, accessor) in accessorOfView)
+                {
+                    if (viewName == found[k].Name) continue;
+                    if (!Regex.IsMatch(tails[k], @"\b" + Regex.Escape(viewName) + @"\b")) continue;
+                    found[k] = found[k] with { Kind = SymbolKind.ArenaView, ViaAccessor = accessor };
+                    changed = true;
+                    break;
+                }
+            }
+        }
     }
 
     private static List<Arena>? _arenas;

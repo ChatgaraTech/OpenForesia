@@ -56,7 +56,7 @@ namespace OpenForesia.Blaze;
 /// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
 /// </para>
 /// </summary>
-internal sealed unsafe class Audio(GameMemory mem)
+internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
 {
     // =====================================================================
     // DirectSound (confirmed). The interface identities below were open questions until the
@@ -1296,6 +1296,130 @@ internal sealed unsafe class Audio(GameMemory mem)
         // dropped â€” a register-attribution miss, not a different signature: it is the last arm of
         // the same ladder and every sibling arm passes the identical (src, length, gains) set.
         PlaySampleDoubledExceptOneIn(9, src, srcLength, gainLeft, gainRight);
+    }
+
+    // =====================================================================
+    // Son positionnel (Ghidra: FUN_0053da20 / FUN_0053db20 / FUN_0053dc30).
+    //
+    // C'est ce qui fait entrer `Model3d` dans le constructeur de cette classe : un son place dans
+    // le monde se projette avec la camera courante avant d'etre panoramique. L'arete Audio ->
+    // Model3d ne ferme pas de cycle, Model3d ne dependant que de GameMemory.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0053da20 @ 0x0053da20 â€” convertit une position monde en une paire de gains
+    /// gauche/droite, et rend 0 quand le son ne doit pas etre joue du tout.
+    ///
+    /// <para><b>Ecrite contre le desassemblage.</b> La pseudo-C rend cette fonction avec deux
+    /// parametres, un <c>unaff_SI</c> et un <c>unaff_retaddr</c> ; elle en prend trois, tous lus
+    /// sur la pile : arg1 en <c>[ESP+4]</c> la position, arg2 en <c>[ESP+8]</c> le gain de base,
+    /// arg3 en <c>[ESP+0xC]</c> la paire de sortie. <c>unaff_SI</c> est en realite l'attenuation
+    /// calculee juste avant, et <c>unaff_retaddr</c> le gain de base.</para>
+    ///
+    /// <para>Trois filtres, dans cet ordre : hors d'un demi-champ de <c>0x400</c> autour du centre
+    /// de l'ecran (<c>0xa0</c>, la moitie de 320) le son est mue ; au-dela de <c>0x1000/6</c> en
+    /// profondeur l'attenuation passe negative et le son est mue aussi ; enfin les deux gains sont
+    /// bornes a zero. Le panoramique est une paire de cosinus pris a l'ecart horizontal, mis a
+    /// l'echelle <b>de facon miroir</b> selon le cote : <c>x*8 / x*4</c> a droite du centre,
+    /// <c>x*4 / x*8</c> a gauche.</para>
+    /// </summary>
+    private int ComputePositionalSoundGains(int* position, int gain, short* outGains)
+    {
+        // Le tampon de projection fait 8 octets : deux short d'ecran, puis la profondeur en dword.
+        short* screen = stackalloc short[4];
+        mdl.ProjectPoint(position, screen);
+
+        short offsetX = (short)(screen[0] - 0xa0);
+        screen[0] = offsetX;
+        int magnitude = offsetX < 0 ? -offsetX : offsetX;
+        if (magnitude >= 0x400) return 0;
+
+        // `1000h - profondeur*6`, tronque a 16 bits par le `test cx,cx` qui suit dans le binaire.
+        short attenuation = (short)(0x1000 - *(int*)(screen + 2) * 6);
+        if (attenuation < 0) return 0;
+
+        outGains[0] = (short)Winsys3d.GetCosTableEntry(offsetX >= 0 ? offsetX * 8 : offsetX * 4);
+        outGains[1] = (short)Winsys3d.GetCosTableEntry(offsetX >= 0 ? offsetX * 4 : offsetX * 8);
+        if (outGains[0] < 0) outGains[0] = 0;
+        if (outGains[1] < 0) outGains[1] = 0;
+
+        // Deux mises a l'echelle 1.12 enchainees, avec troncature a 16 bits entre les deux --
+        // c'est ce que font les `movsx eax,di` / `movsx ecx,cx` intercales.
+        short right = (short)((short)((outGains[1] * attenuation) >> 0xc) * gain >> 0xc);
+        short left = (short)((short)((outGains[0] * attenuation) >> 0xc) * gain >> 0xc);
+        outGains[1] = right;
+        outGains[0] = left;
+        return (right | left) != 0 ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053db20 @ 0x0053db20 â€” joue un son a une position du monde. Plusieurs centaines
+    /// de sites d'appel dans <c>Blaze.c</c>.
+    ///
+    /// <para>La paire de gains est ecrite <b>par-dessus l'emplacement de pile de
+    /// <paramref name="gain"/></b> : le binaire passe <c>&amp;param_3</c> comme tampon de sortie.
+    /// L'argument que lit <see cref="ComputePositionalSoundGains"/> est la copie deja empilee, donc
+    /// l'ecrasement n'a pas d'effet de bord ; transcrit tel quel avec une variable locale, pour que
+    /// la relecture cote a cote avec <c>Blaze.c</c> reste immediate.</para>
+    /// </summary>
+    internal void PlayPositionalSound(int soundId, int pitch, int gain, int* position)
+    {
+        int gains = gain;
+        if (ComputePositionalSoundGains(position, gain, (short*)&gains) != 0)
+        {
+            PlaySoundEffect(soundId, pitch, (short)gains, (short)(gains >> 0x10));
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: &amp;DAT_005dfb90 â€” la file des sons differes : <b>0x20 entrees de 0x14 octets</b>.
+    /// Chaque entree porte une position monde (trois <c>int</c> a <c>+0x00</c>), un pointeur de
+    /// script a <c>+0x0c</c> et un compte a rebours d'un octet a <c>+0x10</c>.
+    ///
+    /// <para>La pseudo-C part de <c>&amp;DAT_005dfba0</c> et adresse le reste en negatif
+    /// (<c>pcVar4 - 4</c>, <c>pcVar4 - 0x10</c>) : l'entree commence bien 0x10 octets plus bas, ce
+    /// que le desassemblage confirme (<c>mov edi,5DFBA0h</c>, puis <c>lea ecx,[edi-10h]</c>).</para>
+    ///
+    /// <para>TODO(REVERSE) : rien de ce qui <b>remplit</b> cette file n'est encore transcrit. Elle
+    /// reste donc nulle et <see cref="TickDelayedSounds"/> ne fait rien â€” ce qui est fidele, pas un
+    /// contournement.</para>
+    /// </summary>
+    internal readonly byte* s_DelayedSounds_005dfb90 = (byte*)NativeMemory.AllocZeroed(0x20 * 0x14);
+
+    /// <summary>
+    /// Ghidra: FUN_0053dc30 @ 0x0053dc30 â€” le tour par image de la file des sons differes. Appele
+    /// une fois par image par la boucle de la carte du monde.
+    ///
+    /// <para>Un script est une suite d'enregistrements de 8 octets â€” identifiant, hauteur a
+    /// <c>+4</c>, gain a <c>+6</c>. Les octets 1 et 2 du <b>premier</b> enregistrement servent en
+    /// meme temps d'en-tete : combien de sons partent ensemble (<c>+2</c>) et dans combien d'images
+    /// part le lot suivant (<c>+1</c>). Un delai suivant nul termine le script et libere
+    /// l'emplacement. Ce recouvrement entre en-tete et premier enregistrement est bien ce que fait
+    /// l'original ; il n'est pas dedouble ici.</para>
+    /// </summary>
+    internal void TickDelayedSounds()
+    {
+        byte* entry = s_DelayedSounds_005dfb90;
+        for (int remaining = 0x20; remaining != 0; remaining--, entry += 0x14)
+        {
+            byte* script = *(byte**)(entry + 0x0c);
+            if (script == null) continue;
+
+            entry[0x10]--;
+            if (entry[0x10] != 0) continue;
+
+            byte nextDelay = script[1];
+            for (uint count = script[2]; count != 0; count--)
+            {
+                PlayPositionalSound(
+                    script[0], *(ushort*)(script + 4), *(ushort*)(script + 6), (int*)entry);
+                script += 8;
+            }
+
+            if (nextDelay == 0) script = null;
+            else entry[0x10] = nextDelay;
+            *(byte**)(entry + 0x0c) = script;
+        }
     }
 
     /// <summary>Ghidra: FUN_0053db80 @ 0x0053db80 â€” fixed UI sound, id 0x38.</summary>

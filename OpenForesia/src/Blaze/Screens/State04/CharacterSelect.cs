@@ -458,7 +458,7 @@ public static unsafe partial class Blaze
                     int* firstParticle = (int*)(Mem.s_SceneParticles_00572be4 + 0x1c);
                     short dz = (short)((scenePos[2] - firstParticle[2]) >> 0xc);
                     short dx = (short)((scenePos[0] - firstParticle[0]) >> 0xc);
-                    Mem.s_SceneYaw_005e930a = -Winsys3d.Ordinal_457(dx, dz);
+                    Mem.s_SceneYaw_005e930a = (short)-Winsys3d.Ordinal_457(dx, dz);
                     Mem.s_SceneRoll_005e930c = 0;
                 }
 

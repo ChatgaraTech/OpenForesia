@@ -1,6 +1,6 @@
 # TODO
 
-Point d'entrée entre deux sessions. Mis à jour le **2026-08-21**. L'historique détaillé est dans
+Point d'entrée entre deux sessions. Mis à jour le **2026-08-22**. L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -19,8 +19,26 @@ S'y ajoute, le 2026-08-21 au soir : l'arène des paramètres de vue (étape 1), 
 `OpenForesia.Tools`, la rétractation des notes qui en découlaient, la correction de l'arité de
 `Winsys3d.Ordinal_45` et l'ajout d'`Ordinal_46`.
 
-**Où en est le jeu.** Le chemin « Début du jeu → constitution du groupe → carte du monde » va
-maintenant jusqu'au bout et s'arrête **exactement sur `FUN_00516fc0`**, c'est-à-dire l'étape (4).
+**Où en est le jeu (2026-08-22).** Le chemin « Début du jeu → constitution du groupe → carte du
+monde » va jusqu'au bout, exécute le **prologue et l'ossature de la boucle par image** de
+`FUN_00516fc0`, et s'arrête dans le **cas 0 du répartiteur `DAT_005e9ae4 & 3`**, à `0x005176d5` —
+c'est-à-dire au pas de simulation du monde.
+
+> **Reprendre ici.** La suite du cas 0, `0x005176d5`..`0x0051776b` : quatorze appelées, ~1 850
+> lignes. Dans l'ordre où elles tombent — `FUN_00532bf0` (146 l., lissage de l'orientation de scène
+> et de la couleur de fond, **ne dépend que de ce qui est déjà là** : c'est la première à écrire),
+> `FUN_00513ef0` (9 l., un renvoi vers `FUN_00513eb0`), `FUN_0050e5e0` (36 l., mais elle dispatche
+> par `PTR_FUN_0056adc8`, la seule des sept tables qui soit pleine — dix-neuf gestionnaires),
+> `FUN_0050e680` (197), `FUN_0050eb20` (116), **`FUN_0050bf20` (1 002 l., une par personnage — le
+> gros morceau)**, `FUN_0047aa70/ab70/acf0` (32/46/46), `FUN_0050ed70` (110), `FUN_0050f0d0` (28),
+> `FUN_00513f20` (9), `FUN_00534f90` (35), `FUN_005036e0` (36).
+>
+> Les trois autres trous de la boucle sont nommés sur place dans
+> `Screens/State03/WorldMapTick.cs`, avec leur plage d'adresses : l'affichage de mise au point
+> (inatteignable, `DAT_005de020` vaut 0 au chargement), le bloc d'affichage principal
+> (`0x00517aa7`..`0x00519703`, ~700 lignes — c'est lui qui fera enfin apparaître quelque chose), et
+> la branche courte `DAT_005de02c & 4`.
+
 Recette de test :
 
 ```powershell
@@ -612,7 +630,14 @@ RunGameStateTick (état 3)
       │     └─ SpawnSubAreaEntities FUN_005350b0 [FAIT le 2026-08-21 — le peuplement de
       │           sous-zone ; l'ancien nom ApplyAreaPalette etait faux]
       ├─ ReInitializeAllTextures / Ordinal_674 [FAIT]
-      └─ RunWorldMapTick       FUN_00516fc0    ←←← ON S'ARRÊTE ICI (1226 l. + ~5900 d'appelees)
+      └─ RunWorldMapTick       FUN_00516fc0   [prologue + OSSATURE de la boucle FAITS 2026-08-22,
+         │                                     dans Screens/State03/WorldMapTick.cs]
+         ├─ TickDelayedSounds  FUN_0053dc30   [FAIT — + FUN_0053db20 / FUN_0053da20, Engine/Audio.cs]
+         ├─ PrepareLeaderAndPartyFlags        [FAIT — FUN_0050e2b0]
+         ├─ PassLeaderToNextEligible          [FAIT — FUN_0050e520]
+         ├─ ResetPerCharacterFrameState       [FAIT — FUN_0053dcb0, absente de Blaze.c,
+         │                                     desassemblee ; c'est PTR_FUN_0056afe8]
+         └─ cas 0 du repartiteur DAT_005e9ae4  ←←← ON S'ARRÊTE ICI (14 appelees, ~1850 l.)
 ```
 
 ## Comment reproduire l'arrêt en trente secondes
@@ -724,10 +749,15 @@ Relevé conservé dans `Legacy/Raw/Blaze/FUN_004747F0.asm`.
 
 1. **`FUN_005350b0`** (95 lignes) — la palette de zone, appelée en fin de `PlaceWorldMapParty`.
    Petite, sur le chemin chaud.
-2. **`FUN_00516fc0`** (1226 lignes) — la logique par image de la carte du monde. C'est **elle** qui
-   pose `DAT_005645f8` et décide des sorties, et c'est elle qui fera enfin apparaître quelque chose
-   à l'écran. Mesurer ses dépendances manquantes avant de s'y mettre, comme on l'a fait pour les
-   autres.
+2. **`FUN_00516fc0`** (1226 lignes) — **en cours** : prologue et ossature de la boucle faits le
+   2026-08-22, voir « Où en est le jeu » en tête de ce fichier pour la liste ordonnée de ce qui
+   reste. C'est elle qui fera enfin apparaître quelque chose à l'écran, mais pas avant le bloc
+   d'affichage principal (`0x00517aa7`), qui vient après tout le cas 0.
+
+2bis. **Les 42 champs de valeur simple qui doublent une arène**, maintenant listés nominativement
+   par le test 5 de `OpenForesia.Tests` (`dotnet test OpenForesia.Tests`). Le test est rouge
+   exprès. Les corriger **change le comportement** : c'est un changement à part entière, et il vaut
+   d'être fait avant le bloc d'affichage, qui touche largement `GameArena`.
 3. **`FUN_00549380`** (424 lignes) — le vrai moteur `sprintf`. Aujourd'hui le seul format utilisé
    (`"q:\snd\Q%02d_%02d.snd"`) est posé en dur dans `LoadWorldMapSubArea`. À généraliser le jour où
    un second format apparaît, **pas avant**.

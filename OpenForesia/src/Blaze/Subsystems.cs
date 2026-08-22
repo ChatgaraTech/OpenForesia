@@ -183,7 +183,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static Audio? s_aud;
-    internal static Audio Aud => s_aud ??= new Audio(Mem);
+    internal static Audio Aud => s_aud ??= new Audio(Mem, Mdl);
     /// <summary>
     /// Les ressources. Premiere classe SANS aucun membre statique - ni rappel natif, ni pointeur
     /// de fonction, ni decision d'hote.

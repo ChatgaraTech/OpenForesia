@@ -1237,9 +1237,22 @@ public static unsafe partial class Blaze
     private static readonly byte[] s_DifficultyBonus_0056d2c0 =
         [0x00, 0x00, 0x0a, 0x14, 0x1e, 0x00, 0x00, 0x00, 0x00, 0x02, 0x03, 0x01, 0x04, 0x01, 0x00, 0x00];
 
-    // Ghidra: DAT_005de034 — le palier de difficulté courant. Jamais posé par du code déjà
-    // reconstruit, donc toujours 0 (aucune prime) pour l'instant.
-    private static int s_Unknown_005de034;
+    // Ghidra: DAT_005de034 — l'octet indexant la table ci-dessus.
+    //
+    // **Recouvrement d'arene corrige le 2026-08-22** : 0x005de034 tombe dans CameraBlock
+    // (0x005de030..0x005de0b4). C'etait un `static int` autonome, donc une SECONDE memoire pour la
+    // meme adresse — le defaut latent signale dans REVERSE_STATUS.md le 2026-08-21. Il a cesse
+    // d'etre latent le jour ou `PrepareLeaderAndPartyFlags` (FUN_0050e2b0) a ete transcrite : elle
+    // ECRIT cet octet a chaque image, et sans cette correction elle l'aurait ecrit ailleurs.
+    //
+    // Ce que la fonction par image y met est le nombre de membres du groupe encore jouables. La
+    // table de primes se lit alors comme une prime de groupe (0, 0, 10, 20, 30 pour 0 a 4 membres),
+    // ce qui est coherent avec ses valeurs relevees — mais reste une lecture, pas une preuve.
+    private static byte s_Unknown_005de034
+    {
+        get => *(byte*)Mem.Camera(0x005de034);
+        set => *(byte*)Mem.Camera(0x005de034) = value;
+    }
 
     /// <summary>
     /// Ghidra: FUN_00538e20 @ 0x00538e20 — applique les bonus des cinq emplacements d'équipement

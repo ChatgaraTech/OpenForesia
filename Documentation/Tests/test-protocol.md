@@ -374,9 +374,16 @@ OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 50 -Shot -WorkingDir OpenForesi
     -Then WAIT4,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT1,DOWN,WAIT1,ENTER,WAIT2,START,WAIT4,ENTER,WAIT4,ENTER,WAIT10
 ```
 
-Elle mène jusqu'à l'état de jeu 3 et s'arrête sur `FUN_00516fc0` — la frontière du 2026-08-21.
-Repère mesuré sur ce chemin : **1 primitive par image** une fois la carte du monde atteinte (l'écran
-n'est plus dessiné puisque le tick lève), contre ~434 sur l'écran d'organisation.
+Elle mène jusqu'à l'état de jeu 3. Frontière au **2026-08-22** : le prologue et l'ossature de la
+boucle par image de `FUN_00516fc0` s'exécutent, et l'arrêt est dans le **cas 0 du répartiteur
+`DAT_005e9ae4 & 3`** (le pas de simulation du monde). Repère mesuré sur ce chemin : **1 primitive
+par image** une fois la carte du monde atteinte (rien n'y est encore dessiné : le bloc d'affichage
+principal est le dernier trou de la boucle), contre ~434 sur l'écran d'organisation.
+
+**Ce repère de 1 primitive par image ne bougera pas** tant que `0x00517aa7` n'est pas transcrit,
+quel que soit le nombre d'appelées du cas 0 qui s'ajoutent. Le seul indicateur de progrès sur ce
+chemin est donc **le texte de l'exception**, pas le compte de primitives — le lire, et le comparer
+à la frontière écrite ici.
 
 Repère mesuré : environ 384 primitives par image sur cet écran.
 
