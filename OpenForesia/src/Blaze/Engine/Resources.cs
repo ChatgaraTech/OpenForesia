@@ -268,8 +268,8 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
     ];
 
     /// <summary>Les sept tables actives, dans l'ordre ou l'original les remplit.</summary>
-    private readonly uint[] s_Vt_0056ad48 = new uint[0x20];
-    private readonly uint[] s_Vt_0056adc8 = new uint[0x40];
+    internal readonly uint[] s_Vt_0056ad48 = new uint[0x20];   // lue par la passe FUN_0050e680
+    internal readonly uint[] s_Vt_0056adc8 = new uint[0x40];   // lue par FUN_0050e5e0 et FUN_0047aa70
     internal readonly uint[] s_Vt_0056aec8 = new uint[0x40];   // lue par l opcode 0 de l interpreteur
     internal readonly uint[] s_Vt_0056afc8 = new uint[0x40];
     private readonly uint[] s_Vt_0056b0c8 = new uint[0x40];
@@ -307,6 +307,63 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
 
         throw new NotImplementedException(
             $"{name}, entree {slot} = 0x{target:X6} : gestionnaire d'entite non transcrit");
+    }
+
+    /// <summary>
+    /// Ghidra: <c>(&amp;PTR_FUN_00XXXXXX)[index]</c> — resout un gestionnaire d'entite <b>par
+    /// adresse</b> plutot que par tableau, parce que les sept tables sont <b>contigues</b> dans le
+    /// binaire et que le jeu s'en sert.
+    ///
+    /// <para>
+    /// 0x0056ad48 (0x20 entrees) · 0x0056adc8 · 0x0056aec8 · 0x0056afc8 · 0x0056b0c8 · 0x0056b1c8 ·
+    /// 0x0056b2c8 (0x40 chacune) se suivent sans trou. Les passes de <c>FUN_0047aa70</c>,
+    /// <c>FUN_0047ab70</c> et <c>FUN_0047acf0</c> indexent leur table avec un octet et debordent
+    /// <b>volontairement</b> : un indice de 0xc0 ou plus depasse exactement de 0x300 octets, soit
+    /// trois tables, et retombe sur l'entree <c>index - 0xc0</c> de la table trois rangs plus
+    /// loin — 0056adc8 → 0056b0c8, 0056aec8 → 0056b1c8, 0056afc8 → 0056b2c8. C'est pourquoi ces
+    /// trois passes testent <c>index &lt; 0xc0</c> : en dessous, elles vont dans une table
+    /// <b>statique</b> du binaire (<c>PTR_LAB_00551c30</c> et ses deux voisines) ; au-dessus, dans
+    /// la table installee par zone. Le meme debordement etait deja documente sur
+    /// <c>ScriptOpAreaVerb</c> pour 0056aec8 → 0056afc8.
+    /// </para>
+    /// <para>
+    /// Modeliser cela par adresse plutot que par sept tableaux independants est ce qui rend le
+    /// debordement lisible au lieu de le transformer en <c>IndexOutOfRangeException</c>.
+    /// </para>
+    /// </summary>
+    /// <param name="tableVa">L'adresse de la table nommee au site d'appel.</param>
+    /// <param name="index">L'indice non signe lu dans l'entite.</param>
+    internal uint ResolveEntityHandler(int tableVa, int index)
+    {
+        int va = tableVa + index * 4;
+
+        if (va >= 0x0056ad48 && va < 0x0056adc8) return s_Vt_0056ad48[(va - 0x0056ad48) / 4];
+        if (va >= 0x0056adc8 && va < 0x0056aec8) return s_Vt_0056adc8[(va - 0x0056adc8) / 4];
+        if (va >= 0x0056aec8 && va < 0x0056afc8) return s_Vt_0056aec8[(va - 0x0056aec8) / 4];
+        if (va >= 0x0056afc8 && va < 0x0056b0c8) return s_Vt_0056afc8[(va - 0x0056afc8) / 4];
+        if (va >= 0x0056b0c8 && va < 0x0056b1c8) return s_Vt_0056b0c8[(va - 0x0056b0c8) / 4];
+        if (va >= 0x0056b1c8 && va < 0x0056b2c8) return s_Vt_0056b1c8[(va - 0x0056b1c8) / 4];
+        if (va >= 0x0056b2c8 && va < 0x0056b3c8) return s_Vt_0056b2c8[(va - 0x0056b2c8) / 4];
+
+        throw new NotImplementedException(
+            $"Table de sauts d'entites : l'indice {index} de la table 0x{tableVa:X6} designe " +
+            $"0x{va:X6}, hors des sept tables reconstruites (0x0056AD48..0x0056B3C8). Relever ce " +
+            "que le binaire porte a cette adresse avec " +
+            $"`OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x{va:x8} 16`.");
+    }
+
+    /// <summary>
+    /// L'appel indirect, une fois la cible resolue. Meme regle que <see cref="CallAreaHandler"/> :
+    /// <c>FUN_00401FA0</c> a un corps vide, tout le reste leve en se nommant.
+    /// </summary>
+    internal void CallEntityHandler(uint target, string where)
+    {
+        if (target == 0x00401FA0) return;   // corps vide, verifie dans Blaze.c
+
+        throw new NotImplementedException(
+            $"{where} : gestionnaire d'entite 0x{target:X6} non transcrit. S'il est absent de " +
+            $"Blaze.c, `OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512`. " +
+            "Il prend l'entite en unique argument et ne rend rien.");
     }
 
     private void Init_004502d0() => *mem.EntityState(0x00571540) = 0;

@@ -637,7 +637,35 @@ internal sealed unsafe class GameMemory
     }
 
     // Ghidra: DAT_005e93a0 / 93a2 / 93a4 — la couleur de fond passée à Ordinal_376 (SetBackColor).
-    internal int s_BackColourR_005e93a0, s_BackColourG_005e93a2, s_BackColourB_005e93a4;
+    //
+    // **Recouvrement d'arene corrige le 2026-08-22, exactement comme l'orientation ci-dessus.**
+    // C'etaient trois `int` autonomes pour trois adresses espacees de DEUX octets. Le
+    // desassemblage de FUN_00532bf0 (0x00532e38..) tranche : `movsx eax,word [5E93A0h]` a la
+    // lecture, `mov [5E93A0h],ax` a l'ecriture — ce sont des `short`, et ils tombent dans
+    // GameArena. La branche `DAT_005e9166 == 1` les recopie meme par DWORD
+    // (`mov eax,[5E9160h] ; mov [5E93A0h],eax`), ce qui n'est representable qu'en vue.
+    //
+    // La correction est **neutre en comportement aujourd'hui** : avant elle, aucun site n'ecrivait
+    // ces trois symboles, ni par champ ni par arene, et les deux memoires valaient donc zero de
+    // part et d'autre. C'est le lissage de couleur de fond de FUN_00532bf0 qui allait devenir le
+    // premier ecrivain — donc le premier a rendre l'aliasing vivant, comme il l'etait pour
+    // l'orientation. Les six lecteurs existants (CharacterCreation, CharacterSelect, SaveSlots)
+    // ne changent pas : ils castent deja en `(byte)`.
+    internal short s_BackColourR_005e93a0
+    {
+        get => *(short*)Arena(0x005e93a0);
+        set => *(short*)Arena(0x005e93a0) = value;
+    }
+    internal short s_BackColourG_005e93a2
+    {
+        get => *(short*)Arena(0x005e93a2);
+        set => *(short*)Arena(0x005e93a2) = value;
+    }
+    internal short s_BackColourB_005e93a4
+    {
+        get => *(short*)Arena(0x005e93a4);
+        set => *(short*)Arena(0x005e93a4) = value;
+    }
 
     // Ghidra: DAT_00604928 — trois shorts contigus, la pose de caméra. Le troisième (+2) est
     // l'angle amorti vers le personnage courant ; FUN_0051c300 consomme le tout.

@@ -19,25 +19,117 @@ S'y ajoute, le 2026-08-21 au soir : l'arène des paramètres de vue (étape 1), 
 `OpenForesia.Tools`, la rétractation des notes qui en découlaient, la correction de l'arité de
 `Winsys3d.Ordinal_45` et l'ajout d'`Ordinal_46`.
 
-**Où en est le jeu (2026-08-22).** Le chemin « Début du jeu → constitution du groupe → carte du
-monde » va jusqu'au bout, exécute le **prologue et l'ossature de la boucle par image** de
-`FUN_00516fc0`, et s'arrête dans le **cas 0 du répartiteur `DAT_005e9ae4 & 3`**, à `0x005176d5` —
-c'est-à-dire au pas de simulation du monde.
+**Où en est le jeu (2026-08-22, soir).** Le chemin « Début du jeu → constitution du groupe → carte du
+monde » va jusqu'au bout, exécute le prologue, l'ossature de la boucle par image **et treize des
+quatorze appelées du cas 0** (`0x005176d5`..`0x0051776b`, le pas de simulation du monde). Il
+s'arrête maintenant **à l'intérieur** de la troisième d'entre elles, `FUN_0050e5e0`, sur un
+gestionnaire d'entité manquant.
 
-> **Reprendre ici.** La suite du cas 0, `0x005176d5`..`0x0051776b` : quatorze appelées, ~1 850
-> lignes. Dans l'ordre où elles tombent — `FUN_00532bf0` (146 l., lissage de l'orientation de scène
-> et de la couleur de fond, **ne dépend que de ce qui est déjà là** : c'est la première à écrire),
-> `FUN_00513ef0` (9 l., un renvoi vers `FUN_00513eb0`), `FUN_0050e5e0` (36 l., mais elle dispatche
-> par `PTR_FUN_0056adc8`, la seule des sept tables qui soit pleine — dix-neuf gestionnaires),
-> `FUN_0050e680` (197), `FUN_0050eb20` (116), **`FUN_0050bf20` (1 002 l., une par personnage — le
-> gros morceau)**, `FUN_0047aa70/ab70/acf0` (32/46/46), `FUN_0050ed70` (110), `FUN_0050f0d0` (28),
-> `FUN_00513f20` (9), `FUN_00534f90` (35), `FUN_005036e0` (36).
+> **Reprendre ici — deux chantiers indépendants, tous deux mesurés.**
+>
+> **(A) La famille des gestionnaires d'entité de `PTR_FUN_0056adc8`.** C'est ce qui bloque
+> aujourd'hui. La table de la zone d'index 0 est la seule pleine des sept : dix-neuf cibles
+> distinctes. La carte du monde les atteint **dans l'ordre des sous-types**, parce que la zone de
+> départ pose une entité de chaque type dans les emplacements 8, 9, 10… de la table
+> `DAT_005fa5e0`.
+>
+> Deux sont faites (`0x004508D0` et `0x004509B0`, toutes deux **absentes de `Blaze.c`**,
+> désassemblées sur place). Restent, dans l'ordre où le jeu les demandera :
+>
+> | sous-type | adresse | dans `Blaze.c` ? |
+> |---:|---|---|
+> | 10 | `0x00450AA0` | **non** (~304 o.) |
+> | 11 | `0x00450BD0` | **non** (~144 o.) |
+> | 12 | `0x00450C60` | oui, 36 l. |
+> | 13 | `0x00473ED0` | oui, 162 l. |
+> | 14 | `0x004746C0` | **non** |
+> | 15 | `0x004508B0` | **non** (32 o. — la plus petite) |
+> | 16 | `0x00450760` | oui, 66 l. |
+> | 17 | `0x004502E0` | **non** |
+> | 18 | `0x00450D30` | **non** |
+> | 0–7 | `0x004734B0` (×2), `0x004736D0`, `0x004738A0`, `0x00473A90`, `0x00473CB0`, `0x00473A70` (×2) | 4 sur 6 |
+>
+> Douze des dix-neuf sont absentes de `Blaze.c` : Ghidra ne décompile pas ce dont seule l'adresse
+> est prise, et ces corps ne sont atteints que par table de sauts. Le verbe `disasm` les rend
+> toutes accessibles — les deux déjà faites ont pris une passe chacune. Le travail est **mécanique
+> et répétitif**, exactement comme les verbes de zone : le jeu nomme un gestionnaire, on le
+> transcrit, on relance, il en nomme un autre. **La lacune imprime les seize premiers octets de
+> l'enregistrement**, ce qui permet de vérifier au passage que l'entité est légitime.
+>
+> Deux appelées partagées sont déjà écrites et resserviront : `TryPublishCameraEffectNearEntity`
+> (`FUN_0041be60`) et `TryPlaySoundNearEntity` (`FUN_00468080`), toutes deux des « fais X si
+> l'entité est à moins de N unités de la caméra ».
+>
+> **(B) `FUN_0050bf20`, le pas par personnage** — 1 002 lignes, la seule des quatorze appelées du
+> cas 0 qui manque encore. Elle vient après (A) dans l'ordre d'exécution. **Sa moitié basse n'est
+> pas exploitable dans la pseudo-C** : à partir de `0x0050cca1` environ, Ghidra rend une cascade de
+> `__allmul`/`__allshr` dont il a perdu les résultats, plus un `iStack_4` jamais affecté et des
+> `unaff_EBX`/`unaff_EBP`. C'est la classe de blocage nommée dans `CLAUDE.md`, celle qui demande le
+> désassemblage. Appelées manquantes déjà repérées : `FUN_005238e0`, `FUN_00530070`, `FUN_0051a020`,
+> et les deux tables de sauts statiques `PTR_FUN_00562ce0` et `PTR_FUN_00562ca0`.
+>
+> Deux petites lacunes restent aussi à l'intérieur de `FUN_0050e680`, toutes deux dans `Blaze.c` :
+> `FUN_0051a740` (mise à mort d'une entité de scène) et `FUN_0053aa10` (pas d'animation).
 >
 > Les trois autres trous de la boucle sont nommés sur place dans
 > `Screens/State03/WorldMapTick.cs`, avec leur plage d'adresses : l'affichage de mise au point
 > (inatteignable, `DAT_005de020` vaut 0 au chargement), le bloc d'affichage principal
 > (`0x00517aa7`..`0x00519703`, ~700 lignes — c'est lui qui fera enfin apparaître quelque chose), et
 > la branche courte `DAT_005de02c & 4`.
+
+### Ce que la transcription du cas 0 a appris
+
+**Six des quatorze appelées sont la même passe sur six tables différentes.** `FUN_0050e5e0`,
+`FUN_0050e680`, `FUN_0050eb20`, `FUN_0047aa70`, `FUN_0047ab70` et `FUN_0047acf0` balaient
+respectivement `0x005fa5e0`, `0x005ecaa0`, `0x005f7de0`, `0x005ff400`, `0x005edee0` et
+`0x005f2d40`. Toutes portent des enregistrements de **0x9c octets** avec la même disposition de
+tête — état à `+0x00`, sous-type à `+0x05`, indice d'emplacement à `+0x08`, position à
+`+0x1c`/`+0x20`/`+0x24`, chaînage à `+0x68` — et font les mêmes trois gestes : ignorer l'inactif,
+appeler le gestionnaire, raccrocher à la grille. **Ce qui les distingue tient dans le gestionnaire,
+pas dans la passe.** Ça fait tomber « ~1 850 lignes » à beaucoup moins.
+
+**Les deux pages de 4 Kio que le prologue efface sont deux grilles spatiales 32×32.** Les
+constantes `0x3880` et `0x38a0` de la pseudo-C valent `0x1c4000` et `0x1c5000` une fois multipliées
+par `0x20 * 4` — précisément les deux pages remises à zéro en tête d'image. Une entité y est
+raccrochée par la cellule que déduit `((position >> 12) + 0x2000) >> 9`, en tête d'une liste
+simplement chaînée. `FUN_0050e5e0` est la seule à alimenter la première grille.
+
+**Les sept tables de sauts d'entités sont contiguës, et le jeu s'en sert.** `0x0056ad48` (0x20
+entrées) puis six de 0x40 se suivent sans trou jusqu'à `0x0056b3c8`. Les trois passes
+`FUN_0047aa70/ab70/acf0` indexent leur table avec un **octet entier** et débordent volontairement :
+un indice de 0xc0 dépasse exactement de 0x300 octets, soit trois tables, et retombe sur l'entrée
+`index - 0xc0` de la table trois rangs plus loin. C'est pour ça qu'elles testent `index < 0xc0` :
+en dessous, la cible est dans une table **statique** du binaire (`PTR_LAB_00551c30` et ses deux
+voisines) ; au-dessus, dans la table installée par zone. D'où
+`Resources.ResolveEntityHandler(tableVa, index)`, qui résout **par adresse** au lieu d'indexer sept
+tableaux séparés — le débordement devient lisible au lieu de lever un `IndexOutOfRangeException`.
+Le même débordement était déjà documenté sur `ScriptOpAreaVerb` pour `0056aec8 → 0056afc8` ; il est
+maintenant compris comme une règle générale.
+
+**Un neuvième défaut d'aliasing, attrapé avant qu'il ne devienne vivant.**
+`s_BackColourR_005e93a0` / `G_93a2` / `B_93a4` étaient trois `int` autonomes pour trois adresses
+espacées de **deux** octets, à l'intérieur de GameArena. Le désassemblage de `FUN_00532bf0`
+(`0x00532e38`) tranche : `movsx eax,word [5E93A0h]` à la lecture, `mov [5E93A0h],ax` à l'écriture —
+ce sont des `short`, et la branche `DAT_005e9166 == 1` les recopie même par **dword**
+(`mov eax,[5E9160h] ; mov [5E93A0h],eax`), ce qui n'est pas représentable en champs séparés.
+Corrigés en vues, exactement comme `s_ScenePitch_005e9308` la veille. **La correction est neutre**
+aujourd'hui : avant elle, aucun site n'écrivait ces trois symboles, ni par champ ni par arène, donc
+les deux mémoires valaient zéro des deux côtés. `FUN_00532bf0` allait en être le premier écrivain,
+donc le premier à rendre l'aliasing vivant. Le test 5 tombe de **42 à 39** champs signalés.
+
+**Ghidra perd des paramètres par famille, pas par accident.** `FUN_0041be60` et `FUN_00468080` ont
+exactement le même défaut : la pseudo-C montre trois paramètres et se sert de `param_1` **à la fois
+comme entité** (`param_1 + 0x1c`) **et comme première valeur passée**, ce qui ne peut pas être. Les
+deux sites d'appel empilent **six** arguments (`add esp,18h`) et les corps lisent les arguments 2, 3
+et 4 ; les arguments 5 et 6 ne sont lus nulle part. Le contrôle est toujours le même : compter sur
+le `add esp,N` qui suit le `call`, puis retrouver les décalages `[esp+N]` après les `push` du
+prologue.
+
+**Une surcharge homonyme rend l'oracle aveugle.** `compare-bodies.ps1` indexe les corps **par nom
+seul**. Un `Blaze.CallEntityHandler` ajouté à côté de `Resources.CallEntityHandler` lui a fait
+comparer l'un à l'autre et signaler une « logique changée » qui n'existait pas. Renommé
+`DispatchEntityHandler`. Même famille de piège que la liste blanche insensible à la casse déjà
+documentée plus bas : **le nom est l'index de l'outillage, pas une décoration.**
 
 Recette de test :
 
@@ -637,7 +729,26 @@ RunGameStateTick (état 3)
          ├─ PassLeaderToNextEligible          [FAIT — FUN_0050e520]
          ├─ ResetPerCharacterFrameState       [FAIT — FUN_0053dcb0, absente de Blaze.c,
          │                                     desassemblee ; c'est PTR_FUN_0056afe8]
-         └─ cas 0 du repartiteur DAT_005e9ae4  ←←← ON S'ARRÊTE ICI (14 appelees, ~1850 l.)
+         └─ cas 0 du repartiteur DAT_005e9ae4  [13 des 14 appelees FAITES le 2026-08-22]
+            ├─ SmoothSceneOrientationAndBackColour  [FAIT — FUN_00532bf0]
+            ├─ RunLeaderScriptListEarly             [FAIT — FUN_00513ef0 + FUN_00513eb0]
+            ├─ TickEntityTable_005fa5e0             [FAIT — FUN_0050e5e0]
+            │  └─ gestionnaires de PTR_FUN_0056adc8  ←←← ON S'ARRÊTE ICI
+            │     ├─ 0x004508D0  [FAIT — absente de Blaze.c, desassemblee]
+            │     ├─ 0x004509B0  [FAIT — + FUN_00468080, arite corrigee au desassembleur]
+            │     └─ 0x00450AA0 et les seize autres  [a faire, voir le tableau plus haut]
+            ├─ TickEntityTable_005ecaa0             [FAIT — FUN_0050e680 ; deux lacunes internes,
+            │                                        FUN_0051a740 et FUN_0053aa10]
+            ├─ TickEntityTable_005f7de0             [FAIT — FUN_0050eb20]
+            ├─ TickPartyMember                      [A FAIRE — FUN_0050bf20, 1002 l.]
+            ├─ TickEntityTable_005ff400 / 005edee0 / 005f2d40
+            │                                       [FAIT — FUN_0047aa70 / ab70 / acf0]
+            ├─ TrySpawnRandomEncounter              [FAIT — FUN_0050ed70]
+            ├─ TickEffectSlots_005e9b60             [FAIT — FUN_0050f0d0]
+            ├─ RunLeaderScriptListLate              [FAIT — FUN_00513f20]
+            ├─ ResetPendingChunkRecords             [FAIT — FUN_00534f90]
+            └─ TickCutsceneCamera                   [FAIT — FUN_005036e0 ; sa boucle de verbes
+                                                     passe par PTR_LAB_0055eb68, non decompilee]
 ```
 
 ## Comment reproduire l'arrêt en trente secondes
@@ -749,12 +860,13 @@ Relevé conservé dans `Legacy/Raw/Blaze/FUN_004747F0.asm`.
 
 1. **`FUN_005350b0`** (95 lignes) — la palette de zone, appelée en fin de `PlaceWorldMapParty`.
    Petite, sur le chemin chaud.
-2. **`FUN_00516fc0`** (1226 lignes) — **en cours** : prologue et ossature de la boucle faits le
-   2026-08-22, voir « Où en est le jeu » en tête de ce fichier pour la liste ordonnée de ce qui
-   reste. C'est elle qui fera enfin apparaître quelque chose à l'écran, mais pas avant le bloc
-   d'affichage principal (`0x00517aa7`), qui vient après tout le cas 0.
+2. **`FUN_00516fc0`** (1226 lignes) — **en cours** : prologue, ossature de la boucle et **treize des
+   quatorze appelées du cas 0** faits le 2026-08-22, voir « Où en est le jeu » en tête de ce fichier
+   pour ce qui reste. C'est elle qui fera enfin apparaître quelque chose à l'écran, mais pas avant
+   le bloc d'affichage principal (`0x00517aa7`), qui vient après tout le cas 0.
 
-2bis. **Les 42 champs de valeur simple qui doublent une arène**, maintenant listés nominativement
+2bis. **Les 39 champs de valeur simple qui doublent une arène** (42 avant la correction de la
+   couleur de fond, le 2026-08-22), maintenant listés nominativement
    par le test 5 de `OpenForesia.Tests` (`dotnet test OpenForesia.Tests`). Le test est rouge
    exprès. Les corriger **change le comportement** : c'est un changement à part entière, et il vaut
    d'être fait avant le bloc d'affichage, qui touche largement `GameArena`.

@@ -94,6 +94,70 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: FUN_00513eb0 @ 0x00513eb0 — <b>lance une liste de scripts</b> d'affilee sur la meme
+    /// entite. La liste est un simple tableau d'octets dont le premier est le compte : les
+    /// <paramref name="list"/><c>[1..n]</c> qui suivent sont autant d'index de script.
+    ///
+    /// <para>
+    /// Le compte est lu <b>une fois</b>, avant la boucle, la ou l'opcode 11 relit le sien a chaque
+    /// tour ; les deux formes coexistent dans le binaire et sont transcrites telles quelles.
+    /// </para>
+    /// </summary>
+    private static void RunEntityScriptList(byte* context, byte* entity, byte* list)
+    {
+        uint count = *list;
+        for (uint i = 0; i < count; i++)
+        {
+            list++;
+            RunEntityScript(context, entity, *list);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00513ef0 @ 0x00513ef0 — la liste de scripts « avant le pas de simulation »
+    /// (<c>DAT_00600840</c>), lancee sur le meneur. Premier des deux points d'accroche du cas 0 de
+    /// <see cref="RunWorldMapTick"/> ; <see cref="RunLeaderScriptListLate"/> est le second.
+    /// </summary>
+    internal static void RunLeaderScriptListEarly(byte* context)
+        => RunEntityScriptList(
+            context,
+            Inp.s_SlotFlags_005e93c0 + (uint)(byte)Mem.s_Unknown_005de538 * 0x9c,
+            Mem.Entity(0x00600840));
+
+    /// <summary>
+    /// Ghidra: FUN_00513f20 @ 0x00513f20 — jumelle exacte de <see cref="RunLeaderScriptListEarly"/>,
+    /// a une adresse de liste pres (<c>DAT_00600880</c>), lancee en fin de pas de simulation.
+    /// </summary>
+    internal static void RunLeaderScriptListLate(byte* context)
+        => RunEntityScriptList(
+            context,
+            Inp.s_SlotFlags_005e93c0 + (uint)(byte)Mem.s_Unknown_005de538 * 0x9c,
+            Mem.Entity(0x00600880));
+
+    /// <summary>
+    /// Ghidra: FUN_00532710 @ 0x00532710 — <b>rend un emplacement</b> au pool que
+    /// <see cref="AllocEntitySlot"/> sert : le sommet redescend d'un cran et l'indice libere est
+    /// repose sur la pile.
+    ///
+    /// <para>
+    /// Comme son jumeau, ses appelants empilent la capacite en second argument et le corps ne la
+    /// lit pas — l'en-tete la porte deja. Le garde <c>*pool != 0</c> est ce qui rend l'operation
+    /// sure quand rien n'a ete pris.
+    /// </para>
+    /// </summary>
+    private static void FreeEntitySlot(byte* pool, byte index)
+    {
+        byte top = *pool;
+        if (top == 0) return;
+
+        // `pool[top + 1]`, et non `pool[top]` : la pile commence a l'octet 2 et le sommet redescend
+        // a `top - 1`, donc la case rendue est `(top - 1) + 2`. C'est bien la case que
+        // `AllocEntitySlot` reprendra — elle lit `pool[top + 2]`.
+        pool[top + 1] = index;
+        *pool = (byte)(top - 1);
+    }
+
+    /// <summary>
     /// Ghidra: <c>(*(code *)(&amp;PTR_LAB_00563298)[opcode])(…)</c> — la table de 39 gestionnaires.
     ///
     /// <para>

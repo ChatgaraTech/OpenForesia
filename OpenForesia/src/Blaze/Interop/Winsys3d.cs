@@ -161,6 +161,8 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#457")] internal static extern int Ordinal_457(int y, int x); // real: winsys3d.c FUN_00a25d10 â€” libgte ratan2
 
+    [DllImport("winsys3d.dll", EntryPoint = "#442")] internal static extern uint Ordinal_442(uint squared); // real: winsys3d.c FUN_00a25b50 â€” libgte SquareRoot0: a four-way table lookup on the magnitude of the argument, then a single Newton step (x/g + g >> 1), masked to 16 bits. Its callers all pass a sum of squares and read a distance back.
+
     // The five entry points FUN_0051d1f0 (the animated-model draw) needs. Identified from their
     // bodies; see Documentation/DLL/winsys3d.md. Declared ahead of that reconstruction so the
     // identification is not lost.
