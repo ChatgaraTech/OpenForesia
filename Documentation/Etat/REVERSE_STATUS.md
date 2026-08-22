@@ -8618,3 +8618,287 @@ Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, `R
 changement en cours) et `EnsureGteRegisters` (l'ajout de 812) — les deux voulus ; 41 méthodes
 nouvelles. Tests de disposition : inchangés, 39 champs. Playtest `-Entry 0` : le contact s'exécute
 pour chaque occupant des neuf cellules, et l'arrêt est sur `FUN_005197d0`.
+
+---
+
+## 2026-08-22 (fin de journée) — le pas de simulation du monde s'exécute en entier
+
+**L'exception a quitté la simulation.** Les quatorze appelées du cas 0 tournent, `FUN_0050bf20`
+avec elles, pour chaque membre du groupe et à chaque image. Ce qui lève maintenant est la lacune du
+**bloc d'affichage principal** (`0x00517aa7`..`0x00519703`), posée dans `RunWorldMapTick` lui-même
+il y a deux jours — c'est-à-dire que tout ce qui séparait le jeu de cette lacune est écrit.
+
+Cinq appelées de plus dans cette passe : `FUN_005197d0`, `FUN_00534cd0`, `FUN_00474eb0`,
+`FUN_00474db0`, `FUN_00474cd0`.
+
+### Deux noms corrigés, et ce que ça dit sur la méthode
+
+`FUN_00534cd0` s'appelait `UpdateEntityLighting` dans ce dépôt, et `FUN_00474eb0`
+`FindNearbyObstacle`. Les deux noms venaient d'une **supposition faite au site d'appel**, avant
+lecture du corps. Les deux étaient faux :
+
+* `FUN_00534cd0` est le **test des volumes de déclenchement** : elle parcourt la liste de morceaux
+  en attente et teste l'entité contre une suite de boîtes alignées sur les axes, chacune portant un
+  type et un index de script. Rien à voir avec l'éclairage.
+* `FUN_00474eb0` cherche **l'adversaire le plus proche** : selon le bit `0x800000`, un membre du
+  groupe balaie la table des entités de scène et une entité de scène balaie celle du groupe. Ce
+  n'est pas un obstacle, c'est une cible.
+
+**La règle que `Strategy.md` énonce déjà — ne renommer que quand le rôle est établi — a une
+contrepartie qui manquait : un nom posé trop tôt ne se signale jamais tout seul.** Il se lit comme
+un fait acquis pendant des semaines. Les deux ici n'ont été corrigés que parce qu'il a fallu ouvrir
+les corps pour les transcrire.
+
+### L'empaquetage des volumes de déclenchement
+
+Les boîtes tiennent dans 0x10 octets et leur empaquetage est irrégulier, ce qui vaut d'être écrit
+une fois : mot 1 = `{centre X, centre Y}`, mot 2 = `{centre Z, demi-étendue X}`, mot 3 =
+`{demi-étendue Y, demi-étendue Z}`. Le mot 0 porte l'état sur son octet bas, le type et ses
+drapeaux sur le suivant, l'index de script sur sa moitié haute.
+
+Cinq types se distinguent par les quatre bits bas du second octet : **1** compte les passages,
+**2** lance son script en sortant, **3** le lance à la première sortie seulement, **8** change la
+couleur de fond et pose le bit 3 du monde, **9** fait naître l'effet 0x59 quand les points de vie
+ou de magie ont bougé. Tout le reste lance son script en **entrant**.
+
+Le test `(*entité & 0xfc0000) == 0x800000` — « est-ce un membre du groupe » — revient six fois et
+conditionne la plupart des effets : une entité quelconque traverse la plupart des volumes sans rien
+déclencher.
+
+### Une constante de grille qui replie son décalage
+
+`FUN_005197d0` balaie 3×3 cellules comme `FUN_00519df0`, mais avec la constante **`0x389f`** au
+lieu de `0x38a0` : le `-1` du balayage est replié dedans plutôt qu'écrit à part. La conséquence est
+réelle et conservée — pour un personnage dans la rangée 0, la première des trois rangées balayées
+est `0x389f`, c'est-à-dire **la dernière rangée de l'autre grille**, les deux pages étant adjacentes
+(0x1c4000 et 0x1c5000). Le garde `row < 0x71800` ne borne que le haut.
+
+### Un `void` qui rend quelque chose
+
+Ghidra déclare `FUN_00474eb0` en `void` alors que son appelant lit son résultat. Ce n'est pas un
+paramètre perdu de plus : ses deux branches sont des appels **terminaux**, et le résultat de
+l'appelée traverse tel quel. Un `void` de Ghidra sur une fonction dont toutes les sorties sont des
+appels terminaux ne prouve rien.
+
+### Où en est le jeu
+
+Le débit est encore à **1 primitive par image** : la simulation tourne, mais rien n'est encore
+émis. C'est attendu — le bloc d'affichage est précisément ce qui manque, et c'est le prochain
+chantier. Il commence par `FUN_004011c0`, `FUN_00532b40` et deux `FUN_00533000`.
+
+Des lacunes subsistent **hors du chemin au repos** et ne lèveront qu'en jeu réel : les gestionnaires
+de posture `0x0051A6B0`/`0x0051A700`/`0x0051A710` et de commande `0x0050DD00`/`0x0050DFF0` (tous
+absents de `Blaze.c`), plus une douzaine d'appelées qui, elles, y sont.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, `RunWorldMapTick` (le
+changement en cours) et `EnsureGteRegisters` (l'ajout de l'ordinal 812) — les deux voulus ;
+46 méthodes nouvelles. Tests de disposition : inchangés, 39 champs.
+
+---
+
+## 2026-08-22 (fin) — le bloc d'affichage : les curseurs de primitives sont résolus
+
+Le bloc d'affichage principal **n'est pas transcrit**. Ce qui est fait, c'est la lecture que
+`CLAUDE.md` signale comme la plus chère de tout le dépôt, et sans laquelle il ne faut pas en écrire
+une ligne.
+
+### Six noms, deux objets
+
+Ghidra répand dans ce bloc des `unaff_EBX`, `unaff_ESI`, `unaff_EDI`, un `local_60` et un
+`piStack_74`. Ce ne sont que **deux** objets, et ce sont les deux emplacements de pile que
+`FrameBegin` a remplis en tête de la fonction :
+
+| emplacement | rôle | noms que Ghidra lui donne |
+|---|---|---|
+| `[esp+0x14]` | la base d'ordering table | `unaff_EBP`, `unaff_EDI`, `local_60` |
+| `[esp+0x10]` | le curseur de primitives | `unaff_ESI`, `unaff_EBX`, `piStack_74` |
+
+Le premier appel de dessin le montre en six instructions :
+
+```
+00517e95  mov  ecx,[esp+10h]        ; le curseur
+00517e99  mov  edx,[esp+14h]        ; la base d'OT
+00517eac  push ecx                  ; arg2 = curseur
+00517ead  push edx                  ; arg1 = base
+00517eae  call 0051F940h
+00517eb6  mov  [esp+10h],eax        ; le resultat REVIENT dans le curseur
+```
+
+Le motif `mov [esp+10h],eax` après l'appel se répète à tous les sites de dessin du bloc, et la base
+est systématiquement passée en `base + 8`.
+
+### Pourquoi ça valait de s'arrêter là
+
+C'est exactement le piège que `CLAUDE.md` décrit comme ayant déjà coûté une journée :
+`DrawFlatPrimitive` transcrit fidèlement plantait quand même, parce que la **convention** de la
+liste d'affichage vit du côté DLL. Un curseur mal chaîné ne lève pas une exception managée avec une
+pile lisible — il produit une violation d'accès **dans winsys3d**, sans rien qui pointe vers la
+ligne fautive.
+
+Écrire 700 lignes d'émission de primitives sans cette table sous les yeux, c'est se préparer cette
+séance de débogage. La table est donc gravée dans le pavé qui précède la lacune, là où celui qui
+écrira le corps la verra.
+
+### L'inventaire, mesuré
+
+Quinze appelées du bloc sont **déjà dans le dépôt** — le moteur de dessin a été transcrit plus tôt
+(`FUN_0051c120`, `FUN_00521df0`, `FUN_0051f9c0`, `FUN_00545340`, `FUN_005443a0`, `FUN_0051d1f0`,
+`FUN_0051f650`, `FUN_00520ae0`, `FUN_00521f20`, `FUN_0051be20`, `FUN_0051bdb0`, `FUN_00533000`,
+`FUN_0051c300`, `FUN_00544350`, `FUN_0052a280`). C'est ce qui rend ce bloc abordable malgré sa
+taille.
+
+Seize manquent, **toutes dans `Blaze.c`** — aucune ne demande de désassemblage :
+
+| | | |
+|---|---|---|
+| `FUN_0051aa30` 594 l. | `FUN_0051fa40` 441 l. | `FUN_0051e700` 423 l. |
+| `FUN_0051c420` 374 l. | `FUN_00521000` 365 l. | `FUN_004011c0` 363 l. |
+| `FUN_00522140` 315 l. | `FUN_005309b0` 147 l. | `FUN_0051be90` 74 l. |
+| `FUN_005320f0` 51 l. | `FUN_005321f0` 51 l. | `FUN_00532b40` 29 l. |
+| `FUN_0052a7d0` 20 l. | `FUN_0051f940` 18 l. | `FUN_00538bc0` 13 l. |
+| `FUN_0051c250` 10 l. | | |
+
+Le sous-bloc de mise au point (~150 l. sur les 700) est gardé par `DAT_005de020`, nul au
+chargement : à transcrire en dernier, et probablement jamais atteint en jeu normal.
+
+**La méthode qui a marché tout au long de cette carte du monde s'applique telle quelle** : écrire le
+corps, poser une lacune nommée par appelée, et laisser le jeu dire lesquelles il emprunte
+réellement. Sur les gestionnaires d'entité, quatre ont suffi là où dix-sept étaient annoncées.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
+inchangés depuis la passe précédente. **Aucun changement de comportement** : seule la documentation
+de la lacune a bougé.
+
+---
+
+## 2026-08-22 (nuit) — la tête du bloc d'affichage, et une supposition démentie par la mesure
+
+Le jeu **entre dans le bloc d'affichage**. Sa tête est transcrite — tout l'état de vue, jusqu'à la
+première primitive — et l'arrêt est maintenant sur `FUN_004011c0`, à l'intérieur du bloc.
+
+Écrites : la tête (~130 l.), `FUN_00532b40`, `FUN_005320f0`, `FUN_005321f0`, `SmoothCameraStep`.
+
+### Ce que la tête fait
+
+Mode de vue, défilement de textures sur les deux tranches de la table de morceaux, lissage de la
+pose de caméra vers `DAT_005e9ae0` (un quart de l'écart, contre un huitième pour l'orientation de
+scène), construction de la matrice de caméra, choix du **personnage suivi** — celui dont le
+compteur est le plus haut — puis du **plus éloigné de celui-là**, dont le milieu devient la cible
+de caméra. Enfin le centroïde du groupe, le décalage monde et `SetGeomOffset(160, 120)`.
+
+Le décalage monde nie X et Z mais **pas Y** — asymétrie de l'original, conservée, et de la même
+famille que celle relevée dans `FUN_00534330`.
+
+### Le mode de vue au repos est 1, pas 0
+
+Le message de lacune que je venais d'écrire annonçait « le mode 0 est la seule branche que la carte
+du monde au repos emprunte ». **Faux** : le jeu a levé avec `mode 1`. Corrigé sur place.
+
+C'est un cas d'école du travers que ce fichier documente depuis août — *une difficulté annoncée qui
+n'existait pas a failli dicter l'ordre de travail*. Ici la supposition était moins coûteuse mais de
+même nature : elle aurait fait écrire d'abord la branche courte (une trentaine de lignes) au lieu de
+la branche longue, le **pilotage manuel de la caméra**, qui est ce dont le jeu a besoin. La lacune
+porte maintenant la mesure, pas la supposition.
+
+### Trois empaquetages de `FUN_00532b40`, tous vérifiés au désassembleur
+
+Le mouvement de scène scripté lit un flux d'enregistrements de 0x10 octets et ajoute des deltas aux
+**consignes** que `SmoothSceneOrientationAndBackColour` poursuit — la boucle se referme. Trois de
+ses quatre écritures ont une forme inattendue, et il aurait été tentant de les prendre pour des
+artefacts :
+
+* `0x005e9310` reçoit **deux additions 16 bits indépendantes**, sans retenue de l'une vers l'autre.
+* `0x005e9314` et `0x005e92bc` sont lus et écrits en **dword** puis masqués à 16 bits : leur moitié
+  haute est donc **remise à zéro à chaque tour**.
+* `0x005e92b8` voit ses deux moitiés **croisées** — la nouvelle moitié basse vaut l'ancienne moitié
+  haute plus celle du flux, et réciproquement. `shr edi,10h ; add eax,edi ; shl edx,10h ; or eax,edx`
+  ne laisse aucun doute.
+
+**Ghidra avait les trois justes.** C'est le pendant utile des six cas où il avait tort : sa
+pseudo-C n'est pas suspecte partout, elle est suspecte aux endroits que le désassemblage sait
+départager — et il faut y aller pour le savoir, dans les deux sens.
+
+### Ce qui reste du bloc
+
+La **moitié dessin**, à partir de `0x00517e7c`. En plus des seize appelées déjà inventoriées, elle
+demande de relever une vingtaine de descripteurs de sprite dans le binaire (`0x00564788`,
+`0x005646b8`, `0x00566c18`..`0x00566c38`, `0x00564900`..`0x00564958`, `0x00563348`..`0x00563360`)
+et de reconstruire les blocs de trois entiers que l'appelant bâtit sur sa pile — Ghidra les rend en
+écritures `CONCAT22` éparpillées, sans jamais montrer la structure.
+
+Le premier obstacle concret est `FUN_004011c0` en mode 1 (le pilotage manuel), qui tire
+`FUN_00402410`, `FUN_004022b0`, `FUN_00401fb0` et `FUN_00401c90`.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
+inchangés ; 48 méthodes nouvelles. Tests de disposition : inchangés, 39 champs. Playtest `-Entry 0` :
+le jeu entre dans le bloc d'affichage et s'arrête sur `FUN_004011c0`, mode 1.
+
+---
+
+## 2026-08-22 (nuit) — `FUN_004011c0` mesurée : c'est un sous-système, pas une fonction
+
+`FUN_004011c0` **n'est pas transcrite**. Ce tour a mesuré ce qu'elle demande, relevé ses deux tables
+de constantes, et établi que son état est déjà modélisé — ce qui change son coût, pas sa taille.
+
+### Douze appelées, toutes petites, toutes groupées
+
+Les appelées du mode 1 tiennent entre `0x00401bf0` et `0x00402d60` : c'est **un sous-système de
+caméra contigu**, pas une dispersion.
+
+| | | | |
+|---|---|---|---|
+| `FUN_00401bf0` 38 l. | `FUN_00401c90` 121 l. | `FUN_00401fa0` 8 l. | `FUN_00401fb0` 68 l. |
+| `FUN_004022b0` 42 l. | `FUN_00402410` 66 l. | `FUN_004025a0` 16 l. | `FUN_00402610` 15 l. |
+| `FUN_00402670` 24 l. | `FUN_00402710` 40 l. | `FUN_004029e0` 75 l. | `FUN_00402d60` 24 l. |
+
+Aucune ne demande de désassemblage. Mais **les deux premières du chemin mode 1 sont
+`FUN_00402410` et `FUN_004022b0`** : elles sont appelées à la deuxième et troisième instruction de
+la branche, donc rien ne bouge sans elles. Écrire `FUN_004011c0` seule ne ferait pas avancer le jeu
+d'une image — c'est pour ça que ce tour s'arrête sur la mesure plutôt que sur un corps à moitié
+utile.
+
+Le total réel du morceau est de l'ordre de **900 lignes** : les 363 de `FUN_004011c0` plus les ~540
+de ses appelées.
+
+### L'état est déjà là, et c'est ce qui rend le morceau abordable
+
+Les globales que ce sous-système remue vivent presque toutes dans deux blocs **déjà modélisés** :
+
+* `0x005712xx`..`0x005713xx` → `GameMemory.ViewParams`, créé à l'étape (1) du plan du 2026-08-21.
+  La note de l'époque disait « il alimente `s_ViewBlock_006067c0` par addition, reçoit la caméra en
+  deux exemplaires parallèles, et porte des drapeaux à `0x0057139c` » — c'est exactement ce que
+  `FUN_004011c0` fait. **La description avait été écrite sans avoir lu la fonction qui s'en sert**,
+  et elle tombe juste.
+* `0x006067xx` → `s_ViewBlock_006067c0`.
+
+Deux tables restent à modéliser : `0x00604ba0` et `0x00604d30`, parallèles et espacées de `0x190`,
+indexées par `(cellule * 200 + n) * 4` — le cache de maillage que la caméra interroge pour ne pas
+traverser le décor. **Leur étendue n'est pas établie** et l'indexation apparente déborderait l'écart
+entre les deux bases : à trancher au désassembleur avant de les allouer, plutôt que de reproduire un
+débordement qui n'existe peut-être pas.
+
+### Deux tables de constantes relevées, et pourquoi elles étaient illisibles
+
+Écrites dans `DataSymbols.md`. `DAT_0054f040` = 1600 et `DAT_0054f044` = 900 sont les bornes haute
+et basse de la hauteur de caméra.
+
+Les deux tableaux de `0x0054f048` et `0x0054f070` sont plus intéressants : neuf `short` **à pas de
+quatre octets** chacun, valant `{-1,0,1,-1,0,1,-1,0,1}` et `{-1,-1,-1,0,0,0,1,1,1}`. Pris ensemble,
+ce sont les **neuf décalages d'un voisinage 3×3**.
+
+**Le pas de quatre octets pour des valeurs de deux est ce qui les rendait illisibles.** Lus en
+dwords — le réflexe quand on dumpe une zone — ils donnent `0xffff, 0, 1, 0xffff…`, ce qui ressemble
+à des sentinelles. C'est la lecture en `short`, celle que fait le code, qui révèle la grille. Un
+relevé de table doit se faire à la largeur que l'instruction utilise, pas à celle du dump.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
+inchangés. **Aucun changement de comportement** : le jeu s'arrête au même endroit, seules la
+documentation de la lacune et `DataSymbols.md` ont bougé.

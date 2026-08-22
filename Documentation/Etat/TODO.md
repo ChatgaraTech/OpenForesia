@@ -25,22 +25,45 @@ quatorze appelées du cas 0** (`0x005176d5`..`0x0051776b`, le pas de simulation 
 quatre gestionnaires d'entité que la zone de départ demande réellement**. Les six passes de tables
 d'entités traversent maintenant sans lever.
 
-> **Reprendre ici — `FUN_005197d0`, la collecte du coup reçu.**
+> **LE PAS DE SIMULATION DU MONDE S'EXÉCUTE EN ENTIER.** Les quatorze appelées du cas 0 tournent,
+> `FUN_0050bf20` avec elles, pour **chaque membre du groupe** et à chaque image. L'exception a
+> quitté la simulation : elle est remontée dans `RunWorldMapTick` lui-même.
 >
-> **`FUN_0050bf20` est transcrite en entier**, et le jeu traverse le pas par personnage, la queue
-> commune **et la résolution de contact `FUN_00534330`**. Il s'arrête dans `FUN_005197d0`
-> (62 lignes, dans `Blaze.c`), qui rend l'entité ayant touché le personnage — le dernier gros bloc
-> de la cascade de fin.
+> **Reprendre ici — `FUN_004011c0` en mode 1, puis la moitié dessin du bloc d'affichage.**
 >
-> Onze appelées ont été écrites le 2026-08-22 : `FUN_0050e140`, `FUN_0051a020`, `FUN_0047aae0`,
+> La **tête** du bloc d'affichage est transcrite (mode de vue, défilement de textures, lissage de
+> caméra, personnage suivi, centroïde du groupe, décalage monde, `SetGeomOffset`) : c'est elle qui
+> pose tout l'état que la moitié dessin consomme. Le jeu y entre et s'arrête sur `FUN_004011c0`.
+>
+> **Le mode de vue au repos est 1, pas 0** — mesuré, pas supposé. C'est le pilotage manuel de la
+> caméra, la plus longue des quatre branches ; elle tire `FUN_00402410`, `FUN_004022b0`,
+> `FUN_00401fb0` et `FUN_00401c90`.
+>
+> Ensuite vient la **moitié dessin** (à partir de `0x00517e7c`). En plus des seize appelées
+> inventoriées dans le pavé qui précède la lacune, elle demande de relever une vingtaine de
+> descripteurs de sprite dans le binaire (`0x00564788`, `0x005646b8`, `0x00566c18`..`0x00566c38`,
+> `0x00564900`..`0x00564958`, `0x00563348`..`0x00563360`) et de reconstruire les blocs de trois
+> entiers que l'appelant bâtit sur sa pile — Ghidra les rend en écritures `CONCAT22` éparpillées.
+>
+> **Les curseurs de primitives sont résolus** : `[esp+0x14]` est la base d'ordering table,
+> `[esp+0x10]` le curseur, et les six noms que Ghidra leur donne (`unaff_EBX`, `unaff_ESI`,
+> `unaff_EDI`, `unaff_EBP`, `local_60`, `piStack_74`) ne désignent que ces deux-là. Ne pas écrire
+> une ligne de la moitié dessin sans cette table — un curseur mal chaîné plante **dans winsys3d**,
+> sans pile utilisable.
+>
+> **C'est ce bloc qui fera enfin apparaître quelque chose à l'écran.** Le débit est encore à
+> 1 primitive par image ; il ne montera qu'avec la moitié dessin.
+>
+> Quinze appelées ont été écrites le 2026-08-22 : `FUN_0050e140`, `FUN_0051a020`, `FUN_0047aae0`,
 > `FUN_0051a670`, `FUN_00519f50`, `FUN_00519df0`, `FUN_00519ee0`, `FUN_00534330`, `FUN_005327b0`,
-> plus les imports `winsys3d` 439, 788, 792 et 812.
+> `FUN_005197d0`, `FUN_00534cd0`, `FUN_00474eb0`, `FUN_00474db0`, `FUN_00474cd0`, plus les imports
+> `winsys3d` 439, 788, 792 et 812.
 >
-> Il en reste, toutes **dans `Blaze.c`** sauf mention : `FUN_005238e0`, `FUN_00530070`,
-> `FUN_00474eb0`, `FUN_005397b0`, `FUN_005197d0`, `FUN_00519940`, `FUN_00534cd0`, `FUN_00539190`,
-> `FUN_005335e0`, `FUN_0051a5d0`, `FUN_0053a980`, `FUN_00530f20`, `FUN_0051a740`, `FUN_0053aa10`.
-> Plus les gestionnaires **absents de `Blaze.c`** : `0x0050DD00` et `0x0050DFF0` (table de
-> commande), `0x0051A6B0`, `0x0051A700` et `0x0051A710` (postures).
+> Des lacunes subsistent **hors du chemin au repos** — elles ne lèveront qu'en jeu réel : les
+> gestionnaires de posture `0x0051A6B0`/`0x0051A700`/`0x0051A710` et de commande
+> `0x0050DD00`/`0x0050DFF0` (tous **absents de `Blaze.c`**), et `FUN_005238e0`, `FUN_00530070`,
+> `FUN_005397b0`, `FUN_00519940`, `FUN_00539190`, `FUN_005335e0`, `FUN_0051a5d0`, `FUN_0053a980`,
+> `FUN_00530f20`, `FUN_0051a740`, `FUN_0053aa10` (tous dans `Blaze.c`).
 >
 > **Les quatre lectures que seule la machine donne sont résolues** — c'était le plus dur ; elles
 > sont écrites en tête de `TickPartyMember` :
@@ -765,8 +788,8 @@ RunGameStateTick (état 3)
             ├─ TickPartyMember                      [FAIT — FUN_0050bf20, 1002 l., en entier]
             │  ├─ TickPlayableMember                [FAIT]
             │  ├─ TickFollowingMember + ProbeGroundAhead  [FAIT]
-            │  └─ TickPartyMemberTail               [FAIT — + ComputeCarrierOffset]
-            │     └─ gestionnaires de PTR_FUN_00562ce0  ←←← ON S'ARRÊTE ICI (FUN_0050e140)
+            │  └─ TickPartyMemberTail               [FAIT — + ComputeCarrierOffset, FUN_00534330,
+            │                                        FUN_005197d0, FUN_00534cd0, FUN_00474eb0]
             ├─ TickEntityTable_005ff400 / 005edee0 / 005f2d40
             │                                       [FAIT — FUN_0047aa70 / ab70 / acf0]
             ├─ TrySpawnRandomEncounter              [FAIT — FUN_0050ed70]
@@ -775,6 +798,9 @@ RunGameStateTick (état 3)
             ├─ ResetPendingChunkRecords             [FAIT — FUN_00534f90]
             └─ TickCutsceneCamera                   [FAIT — FUN_005036e0 ; sa boucle de verbes
                                                      passe par PTR_LAB_0055eb68, non decompilee]
+
+         [le cas 0 s'execute ENTIEREMENT depuis le 2026-08-22]
+         └─ bloc d'affichage principal 0x00517aa7   ←←← ON S'ARRÊTE ICI (~700 l.)
 ```
 
 ## Comment reproduire l'arrêt en trente secondes

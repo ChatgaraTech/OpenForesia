@@ -1415,3 +1415,42 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00604b58` | `s_CardReadEventHandles_00604b58` | 16 | `Engine/SaveData.cs` |
 | `0x00604b68` | `s_CardWriteEventHandles_00604b68` | 7256 | `Engine/SaveData.cs` |
 | `0x006067c0` | `s_ViewBlock_006067c0` | — | `Memory/GameMemory.cs` |
+
+
+## 0x0054f040 — les constantes de la caméra de carte du monde
+
+Relevées le 2026-08-22 en mesurant `FUN_004011c0` (`at Legacy/Binaries/Blaze.exe 0x0054f040 96`).
+
+| VA | valeur | rôle |
+|---|---|---|
+| `0x0054f040` | `short` 1600 | la hauteur **maximale** de la caméra : au-delà, `FUN_004011c0` la ramène d'un huitième de l'excès par image |
+| `0x0054f044` | `short` 900 | la hauteur **minimale**, ramenée de la même façon |
+
+Deux tableaux de **neuf `short` à pas de quatre octets** suivent — c'est-à-dire neuf entrées dont
+seule la moitié basse est lue :
+
+| VA | contenu |
+|---|---|
+| `0x0054f048` | `{-1, 0, 1, -1, 0, 1, -1, 0, 1}` |
+| `0x0054f070` | `{-1, -1, -1, 0, 0, 0, 1, 1, 1}` |
+
+Pris ensemble, ce sont les **neuf décalages d'un voisinage 3×3** : `(dx, dz)` parcourant les neuf
+cellules autour de la caméra. `FUN_004011c0` les consomme par paires dans
+`FUN_00402d60(dx, dz, n)`, dont le `n` est l'indice de cellule.
+
+**Le pas de quatre octets pour des valeurs de deux est ce qui rend le contenu illisible au premier
+coup d'œil** : lu en dwords, le premier tableau donne `0xffff, 0, 1, 0xffff…`, ce qui ressemble à
+des sentinelles plutôt qu'à des offsets. C'est la lecture en `short` — celle que fait le code — qui
+révèle la grille.
+
+## 0x00604ba0 et 0x00604d30 — le cache de maillage de la caméra (non modélisé)
+
+Deux tableaux **parallèles** de pointeurs, espacés de `0x190`, indexés par
+`(cellule * 200 + n) * 4` dans `FUN_004011c0`. Le premier donne un enregistrement de face, le
+second la table de sommets qui va avec. Le compte par cellule vit dans `DAT_005712a8[cellule]`.
+
+**Leur étendue n'est pas établie** : l'indexation par `cellule * 200` suggère 9 × 200 entrées, ce
+qui déborderait largement l'écart de 0x190 entre les deux bases. Soit le compte réel par cellule est
+petit, soit l'une des deux bases est mal identifiée. À trancher au désassembleur avant de les
+modéliser — les allouer sur la foi de l'indexation apparente reproduirait un débordement qui
+n'existe peut-être pas.

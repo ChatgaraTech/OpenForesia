@@ -387,14 +387,206 @@ public static unsafe partial class Blaze
                 if ((Mem.s_WorldFlags_005de02c & 4) == 0
                     || (*Mem.Camera(0x005de060) != 0 && debugLatch == 0))
                 {
+                    // =========================================================================
+                    // LE BLOC D'AFFICHAGE PRINCIPAL — 0x00517aa7..0x00519703, ~700 lignes.
+                    //
+                    // **La lecture qui coute cher est deja faite** : les `unaff_EBX`/`unaff_ESI`/
+                    // `unaff_EDI`, le `local_60` et le `piStack_74` que Ghidra repand dans ce bloc
+                    // ne sont que DEUX objets, et ce sont les deux emplacements de pile que
+                    // FrameBegin a remplis.
+                    //
+                    //   [esp+0x14] = la base d'ordering table  -> Ghidra: unaff_EBP, unaff_EDI,
+                    //                                                     local_60
+                    //   [esp+0x10] = le curseur de primitives  -> Ghidra: unaff_ESI, unaff_EBX,
+                    //                                                     piStack_74
+                    //
+                    // Verifie au premier appel de dessin (0x00517e95..0x00517eb6) : le binaire lit
+                    // les deux emplacements, empile `(base, curseur, …)`, et **range le resultat
+                    // dans [esp+0x10]**. Le motif `mov [esp+10h],eax` apres l'appel se repete a
+                    // tous les sites, et la base est systematiquement passee en `base + 8`.
+                    //
+                    // C'est exactement le piege que CLAUDE.md signale comme ayant deja coute une
+                    // journee : un curseur mal chaine ne plante pas ici, il plante DANS LA DLL,
+                    // sans pile utilisable. Ne pas ecrire une seule ligne de ce bloc sans repasser
+                    // par cette table.
+                    //
+                    // Reste a faire : le corps lui-meme, et onze appelees. Sept sont deja dans le
+                    // depot (FUN_00533000, FUN_0051c300, FUN_00520ae0, FUN_0051f9c0, FUN_0051c120,
+                    // FUN_00521df0, FUN_00545340, FUN_0051f650, FUN_0051be20, FUN_0051bdb0,
+                    // FUN_005443a0, FUN_0051d1f0, FUN_00521f20, FUN_00544350, FUN_0052a280) ;
+                    // manquent, toutes dans Blaze.c :
+                    //
+                    //   FUN_0051aa30  594 l.   FUN_0051fa40  441 l.   FUN_0051e700  423 l.
+                    //   FUN_0051c420  374 l.   FUN_00521000  365 l.   FUN_004011c0  363 l.
+                    //   FUN_00522140  315 l.   FUN_005309b0  147 l.   FUN_0051be90   74 l.
+                    //   FUN_005320f0   51 l.   FUN_005321f0   51 l.   FUN_00532b40   29 l.
+                    //   FUN_0052a7d0   20 l.   FUN_0051f940   18 l.   FUN_00538bc0   13 l.
+                    //   FUN_0051c250   10 l.
+                    //
+                    // Le sous-bloc de mise au point (0x00518473 en amont, ~150 l.) est garde par
+                    // DAT_005de020, nul au chargement : le transcrire en dernier.
+                    // =========================================================================
+                    // -------- la tete du bloc : tout l'etat de vue, avant la premiere primitive --
+                    ApplyViewMode_004011C0(s_Unknown_005de54c);
+                    AdvanceScriptedSceneMotion_00532B40();
+                    AnimatePalettes(s_Unknown_005e97c8);
+                    AnimatePalettes(s_Unknown_005e97cc);
+
+                    // Les deux familles de defilement de texture, sur deux tranches consecutives
+                    // de la table de modeles : celles d'avant DAT_00600838 defilent par pas de
+                    // 0x20 octets, celles d'apres par pas de 0x10.
+                    byte** chunk = (byte**)Mem.Entity(0x005f7bc0)
+                        + ((*(uint*)Mem.Entity(0x00600830) >> 0x10) & 0xff);
+
+                    for (int i = (*Mem.Entity(0x00600838) & 0xff)
+                             - (int)((*(uint*)Mem.Entity(0x00600830) & 0xffff) >> 8); i != 0; i--)
+                    {
+                        ScrollTextureQuads_005320F0(*chunk);
+                        chunk++;
+                    }
+
+                    for (int i = *Mem.Entity(0x005f2cec) - (*Mem.Entity(0x00600838) & 0xff);
+                         i != 0; i--)
+                    {
+                        ScrollTextureTriangles_005321F0(*chunk);
+                        chunk++;
+                    }
+
+                    *(uint*)Mem.Arena(0x005e9b34) =
+                        (uint)(nuint)(*(byte**)(s_Unknown_005e97cc + 0xa0) + s_Unknown_005f2ce0[0x0b] * 4);
+
+                    // La pose de camera glisse d'un quart vers la consigne de DAT_005e9ae0, angle
+                    // par angle et en modulo 0x1000 — le meme pas que
+                    // SmoothSceneOrientationAndBackColour, a la profondeur pres (>> 2 au lieu de
+                    // >> 3).
+                    short* view = *(short**)Mem.Arena(0x005e9ae0);
+                    short* pose = (short*)Mem.s_CameraVector_00604928;
+
+                    pose[0] += SmoothCameraStep((ushort)((view[0] - pose[0]) & 0xfff));
+                    pose[1] += SmoothCameraStep((ushort)((view[1] - pose[1]) & 0xfff));
+                    pose[2] += SmoothCameraStep((ushort)((view[2] - pose[2]) & 0xfff));
+
+                    RotMatrix(pose, (short*)Mem.s_CameraMatrix_006008e0);
+
+                    // Le personnage suivi : celui dont le compteur de DAT_005e9180 est le plus
+                    // haut, parmi ceux qui sont encore en jeu.
+                    byte* followed = null;
+                    short bestRank = -1;
+
+                    for (int i = 0; i < s_PartySize_005e9020; i++)
+                    {
+                        byte* member = Inp.s_SlotFlags_005e93c0 + i * 0x9c;
+                        short rank = *(short*)(Inp.s_SlotArea_005e9180 + i * 0x4c);
+
+                        if ((*(uint*)member & 0x50000000) == 0
+                            && (*(uint*)(member + 0x90) & 0x8000) == 0
+                            && bestRank < rank)
+                        {
+                            followed = member;
+                            bestRank = rank;
+                        }
+                    }
+
+                    // Puis le plus eloigne de celui-la : c'est le couple qui doit tenir dans le
+                    // cadre, et le milieu des deux devient la cible de camera.
+                    byte* farthest = null;
+                    int bestDistance = -1;
+
+                    for (int i = 0; i < s_PartySize_005e9020; i++)
+                    {
+                        byte* member = Inp.s_SlotFlags_005e93c0 + i * 0x9c;
+
+                        if (member != followed
+                            && (*(uint*)member & 0x50000000) == 0
+                            && (*(uint*)(member + 0x90) & 0x8000) == 0)
+                        {
+                            int dx = (*(int*)(member + 0x1c) - *(int*)(followed + 0x1c)) >> 0xc;
+                            int dz = (*(int*)(member + 0x24) - *(int*)(followed + 0x24)) >> 0xc;
+                            int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+                            if (bestDistance < distance)
+                            {
+                                bestDistance = distance;
+                                farthest = member;
+                            }
+                        }
+                    }
+
+                    // Le centroide du groupe, et le plus haut de ses membres encore jouables.
+                    int sumX = 0;
+                    int sumZ = 0;
+                    int highest = int.MinValue;
+                    int counted = 0;
+
+                    *Mem.Camera(0x005de098) = 0;
+                    *Mem.Camera(0x005de0a0) = 0;
+
+                    for (int i = 0; i < s_PartySize_005e9020; i++)
+                    {
+                        byte* member = Inp.s_SlotFlags_005e93c0 + i * 0x9c;
+
+                        if ((*(uint*)member & 0x50000000) == 0
+                            && (*(uint*)(member + 0x90) & 0x8000) == 0)
+                        {
+                            sumX += *(int*)(member + 0x1c);
+                            sumZ += *(int*)(member + 0x24);
+
+                            if ((*(uint*)member & 0x10000) == 0 && highest < *(int*)(member + 0x20))
+                            {
+                                highest = *(int*)(member + 0x20);
+                            }
+
+                            counted++;
+                        }
+
+                        *Mem.Camera(0x005de098) = sumX;
+                        *Mem.Camera(0x005de0a0) = sumZ;
+                    }
+
+                    if (counted != 0)
+                    {
+                        byte* other = counted == 1 ? followed : farthest;
+
+                        *Mem.Camera(0x005de098) /= counted;
+                        int midX = (*(int*)(other + 0x1c) + *(int*)(followed + 0x1c)) >> 1;
+                        int midZ = (*(int*)(other + 0x24) + *(int*)(followed + 0x24)) >> 1;
+                        *Mem.Camera(0x005de0a0) /= counted;
+
+                        *Mem.Camera(0x005de068) += (midX - *Mem.Camera(0x005de068)) >> 2;
+                        *Mem.Camera(0x005de070) += (midZ - *Mem.Camera(0x005de070)) >> 2;
+
+                        if (highest != int.MinValue)
+                        {
+                            *Mem.Camera(0x005de06c) += (highest - *Mem.Camera(0x005de06c)) >> 2;
+                        }
+                    }
+
+                    // Le decalage monde glisse vers l'oppose de la camera de scenette. **Le X et
+                    // le Z sont nies, le Y ne l'est pas** — asymetrie de l'original, conservee.
+                    int* sceneCamera = *(int**)Mem.Entity(0x005edebc);
+                    Mem.s_Unknown_006008d0 += -(sceneCamera[0] + Mem.s_Unknown_006008d0) >> 2;
+                    Mem.s_Unknown_006008d4 += (sceneCamera[1] - Mem.s_Unknown_006008d4) >> 2;
+                    Mem.s_Unknown_006008d8 += -(sceneCamera[2] + Mem.s_Unknown_006008d8) >> 2;
+
+                    int* target = *(int**)Mem.Entity(0x005eca94);
+                    Mem.CameraTranslation[0] = *Mem.Camera(0x005de0a8) + target[0];
+                    Mem.CameraTranslation[1] = target[1] + *Mem.Camera(0x005de0ac);
+                    Mem.CameraTranslation[2] = target[2] + *Mem.Camera(0x005de0b0);
+
+                    Winsys3d.Ordinal_378(0xa0, 0x78);   // libgte SetGeomOffset(160, 120)
+
                     throw new NotImplementedException(
-                        "FUN_00516fc0 : le bloc d'affichage principal (0x00517aa7 a 0x00519703) " +
-                        "n'est pas transcrit — c'est le gros du corps, environ 700 lignes de " +
-                        "pseudo-C : lissage de camera, choix du personnage suivi, panneaux d'etat " +
-                        "des quatre membres, puis le balayage 8x7 des cellules de la carte qui " +
-                        "emet les modeles et les particules. Il commence par FUN_004011c0, " +
-                        "FUN_00532b40 et deux FUN_00533000. Voir " +
-                        "Legacy/Raw/Blaze/FUN_00516FC0-full.asm.");
+                        "FUN_00516fc0 : la MOITIE DESSIN du bloc d'affichage (a partir de " +
+                        "0x00517e7c) n'est pas transcrite. La tete — mode de vue, defilement de " +
+                        "textures, lissage de camera, personnage suivi, centroide du groupe, " +
+                        "decalage monde — l'est depuis le 2026-08-22, et c'est elle qui pose tout " +
+                        "l'etat que la moitie dessin consomme. **Les curseurs de primitives sont " +
+                        "resolus** : voir le pave au-dessus. Ce qui reste demande en plus de " +
+                        "relever une vingtaine de descripteurs de sprite dans le binaire " +
+                        "(0x00564788, 0x005646b8, 0x00566c18..0x00566c38, 0x00564900..0x00564958, " +
+                        "0x00563348..0x00563360) et de reconstruire les blocs de trois entiers que " +
+                        "l'appelant bâtit sur sa pile — Ghidra les rend en ecritures CONCAT22 " +
+                        "eparpillees.");
                 }
 
                 throw new NotImplementedException(
@@ -774,6 +966,177 @@ public static unsafe partial class Blaze
         *(uint*)(record + 0x68) = *(uint*)cell;
         *(uint*)cell = (uint)(nuint)record;
     }
+
+    /// <summary>Le pas d'amortissement de la pose de camera : meme forme que
+    /// <see cref="SmoothWrappedAngleStep"/> a la profondeur pres — un quart de l'ecart au lieu d'un
+    /// huitieme.</summary>
+    private static short SmoothCameraStep(ushort delta)
+        => delta < 0x800
+            ? (short)((short)delta >> 2)
+            : (short)-((0x1000 - (short)delta) >> 2);
+
+    /// <summary>
+    /// Ghidra: FUN_00532b40 @ 0x00532b40 — <b>le mouvement de scene scripte</b> : un flux
+    /// d'enregistrements de 0x10 octets, lu a <c>DAT_005e9b3c</c>, dont chaque tour ajoute des
+    /// deltas aux <b>consignes</b> que <see cref="SmoothSceneOrientationAndBackColour"/> poursuit.
+    /// Le flux boucle sur lui-meme quand son premier octet vaut -1.
+    ///
+    /// <para>
+    /// <b>Trois des quatre ecritures ont une forme inattendue, et les trois sont verifiees au
+    /// desassembleur</b> (0x00532b57..0x00532bce) :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><c>0x005e9310</c> recoit <b>deux additions 16 bits independantes</b>, sans retenue de
+    /// l'une vers l'autre — deux angles dans un dword.</item>
+    /// <item><c>0x005e9314</c> est lu et ecrit en <b>dword</b> puis masque a 16 bits : la moitie
+    /// haute (<c>0x005e9316</c>) est donc <b>remise a zero a chaque tour</b>. Idem pour
+    /// <c>0x005e92bc</c>.</item>
+    /// <item><c>0x005e92b8</c> voit ses deux moities <b>croisees</b> : la nouvelle moitie basse
+    /// vaut l'ancienne moitie haute plus celle du flux, et la nouvelle moitie haute vaut l'ancienne
+    /// moitie basse plus le mot suivant. Ghidra le rendait deja ainsi et on pouvait croire a un
+    /// artefact ; <c>shr edi,10h ; add eax,edi ; shl edx,10h ; or eax,edx</c> dit que non.</item>
+    /// </list>
+    /// </summary>
+    private static void AdvanceScriptedSceneMotion_00532B40()
+    {
+        if (*(sbyte*)Mem.Entity(0x005645fc) == -1) return;
+
+        byte* stream = *(byte**)Mem.Arena(0x005e9b3c);
+
+        uint deltaOrientation = *(uint*)(stream + 4);
+        uint deltaRoll = *(uint*)(stream + 8);
+        uint deltaColour = *(uint*)(stream + 0x0c);
+
+        *(byte**)Mem.Arena(0x005e9b3c) = stream + 0x10;
+
+        uint orientation = *(uint*)Mem.Arena(0x005e9310);
+        *(uint*)Mem.Arena(0x005e9310) =
+            ((deltaOrientation & 0xffff0000) + (orientation & 0xffff0000))
+            | ((deltaOrientation + orientation) & 0xffff);
+
+        *(uint*)Mem.Arena(0x005e9314) = (*(uint*)Mem.Arena(0x005e9314) + deltaRoll) & 0xffff;
+
+        uint colour = *(uint*)Mem.Arena(0x005e92b8);
+        *(uint*)Mem.Arena(0x005e92b8) =
+            ((deltaRoll >> 0x10) + (colour >> 0x10)) | ((colour + deltaColour) << 0x10);
+
+        *(uint*)Mem.Arena(0x005e92bc) = (deltaColour + *(uint*)Mem.Arena(0x005e92bc)) & 0xffff;
+
+        if (**(sbyte**)Mem.Arena(0x005e9b3c) == -1)
+        {
+            *(byte**)Mem.Arena(0x005e9b3c) = **(byte***)Mem.Entity(0x005eca98);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005320f0 @ 0x005320f0 — <b>le defilement de texture</b> d'un morceau de decor :
+    /// chaque face listee avance ses quatre coordonnees de texture d'une unite, et les quatre
+    /// retombent ensemble de la periode des qu'elles l'ont toutes atteinte.
+    ///
+    /// <para>
+    /// La periode est l'octet de <c>+0x3f</c> du morceau ; la liste des faces est terminee par
+    /// <c>0xffff</c>. Les quatre coordonnees vivent dans deux dwords, un octet chacune sur les
+    /// octets 0 et 2 — les octets 1 et 3 sont preserves par le masque <c>0xff00ff00</c>.
+    /// </para>
+    /// <para>
+    /// <see cref="ScrollTextureTriangles_005321F0"/> est sa jumelle a deux differences pres : le
+    /// pas d'enregistrement (0x10 au lieu de 0x20) et les deux decalages (+8/+0xc au lieu de
+    /// +0x10/+0x14). Ecrites separement, comme les deux fonctions du binaire.
+    /// </para>
+    /// </summary>
+    private static void ScrollTextureQuads_005320F0(byte* chunk)
+        => ScrollTextureCoordinates(chunk, 0x20, 0x10);
+
+    /// <summary>Ghidra: FUN_005321f0 @ 0x005321f0 — la jumelle de
+    /// <see cref="ScrollTextureQuads_005320F0"/> pour les faces a trois sommets.</summary>
+    private static void ScrollTextureTriangles_005321F0(byte* chunk)
+        => ScrollTextureCoordinates(chunk, 0x10, 0x08);
+
+    /// <summary>
+    /// Le corps commun aux deux defilements. Factorise parce que les deux fonctions de l'original
+    /// sont copie-collees a deux constantes pres — meme cas que
+    /// <c>FreezeAllEntities</c>/<c>UnfreezeAllEntities</c>.
+    /// </summary>
+    private static void ScrollTextureCoordinates(byte* chunk, int stride, int offset)
+    {
+        if (chunk == null || *(short*)(chunk + 0x0e) == 0) return;
+
+        ushort* faces = **(ushort***)(chunk + 0x38);
+        if (faces == null) return;
+
+        byte* records = *(byte**)(chunk + 0x28);
+        ushort period = chunk[0x3f];
+
+        for (ushort face = *faces; face != 0xffff; face = *(++faces))
+        {
+            byte* record = records + face * stride;
+            uint first = *(uint*)(record + offset);
+            uint second = *(uint*)(record + offset + 4);
+
+            uint u0 = (first & 0xff) + 1;
+            uint v0 = ((first >> 0x10) & 0xff) + 1;
+            uint u1 = (second & 0xff) + 1;
+            uint v1 = ((second >> 0x10) & 0xff) + 1;
+
+            if (period <= (ushort)u0 && period <= (ushort)v0
+                && period <= (ushort)u1 && period <= (ushort)v1)
+            {
+                u0 -= period;
+                v0 -= period;
+                u1 -= period;
+                v1 -= period;
+            }
+
+            *(uint*)(record + offset) = ((v0 & 0xff) << 0x10) | (u0 & 0xff) | (first & 0xff00ff00);
+            *(uint*)(record + offset + 4) = ((v1 & 0xff) << 0x10) | (u1 & 0xff) | (second & 0xff00ff00);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004011c0 @ 0x004011c0 — <b>le mode de vue</b>, 363 lignes : elle publie l'etat de
+    /// camera vers le bloc <c>0x006067e0</c> et l'arene d'etat d'entite, selon <c>DAT_005de54c</c>.
+    ///
+    /// <para>
+    /// <b>Le mode au repos est 1, pas 0.</b> Ce commentaire annonçait le contraire jusqu'a ce que
+    /// le jeu le dise : la lacune est tombee avec <c>mode 1</c>. Le mode 1 est le <b>pilotage
+    /// manuel</b> de la camera ; le mode 0 (une trentaine de lignes) et les modes 2/3 (six lignes,
+    /// la scenette) sont bien plus courts, mais ce ne sont pas eux qu'il faut ecrire en premier.
+    /// </para>
+    /// <para>
+    /// <b>C'est un sous-systeme entier, pas une fonction isolee</b> — mesure faite le 2026-08-22.
+    /// Douze appelees, toutes groupees entre 0x00401bf0 et 0x00402d60 et toutes dans
+    /// <c>Blaze.c</c> : <c>FUN_00401bf0</c> 38 l., <c>FUN_00401c90</c> 121 l., <c>FUN_00401fa0</c>
+    /// 8 l., <c>FUN_00401fb0</c> 68 l., <c>FUN_004022b0</c> 42 l., <c>FUN_00402410</c> 66 l.,
+    /// <c>FUN_004025a0</c> 16 l., <c>FUN_00402610</c> 15 l., <c>FUN_00402670</c> 24 l.,
+    /// <c>FUN_00402710</c> 40 l., <c>FUN_004029e0</c> 75 l., <c>FUN_00402d60</c> 24 l. Aucune ne
+    /// demande de desassemblage. <b>Les deux premieres du chemin mode 1 sont <c>FUN_00402410</c> et
+    /// <c>FUN_004022b0</c></b> : rien ne bouge sans elles.
+    /// </para>
+    /// <para>
+    /// <b>La bonne nouvelle est que son etat est deja modelise.</b> Les globales en
+    /// <c>0x005712xx</c>..<c>0x005713xx</c> tombent dans <see cref="GameMemory.ViewParams"/>, cree
+    /// a l'etape (1) du plan du 2026-08-21, et celles en <c>0x006067xx</c> dans
+    /// <c>s_ViewBlock_006067c0</c>. Deux tables restent a modeliser : <c>0x00604ba0</c> et
+    /// <c>0x00604d30</c>, deux tableaux paralleles de pointeurs espaces de 0x190, indexes par
+    /// <c>(cellule * 200 + n) * 4</c> — le cache de maillage que la camera interroge pour ne pas
+    /// traverser le decor. Leur etendue reelle n'est pas etablie.
+    /// </para>
+    /// <para>
+    /// Deux tables de constantes sont relevees et n'ont plus a l'etre :
+    /// <c>DAT_0054f040</c> = 1600 et <c>DAT_0054f044</c> = 900 (les bornes haute et basse de la
+    /// hauteur de camera), et surtout les deux tableaux de neuf <c>short</c> a pas de 4 octets de
+    /// <c>0x0054f048</c> et <c>0x0054f070</c>, qui valent <c>{-1,0,1,-1,0,1,-1,0,1}</c> et
+    /// <c>{-1,-1,-1,0,0,0,1,1,1}</c> : ce sont les neuf decalages d'un voisinage 3x3, et
+    /// <c>FUN_00402d60(dx, dz, n)</c> les consomme par paires.
+    /// </para>
+    /// </summary>
+    private static void ApplyViewMode_004011C0(int mode)
+        => throw new NotImplementedException(
+            $"FUN_004011c0 (0x004011c0), mode {mode} : non transcrite. 363 lignes dans Blaze.c. " +
+            "C'est la premiere appelee du bloc d'affichage, donc elle bloque tout le reste. **Le " +
+            "mode emprunte au repos est 1** — mesure, pas suppose : c'est le pilotage manuel de la " +
+            "camera, la plus longue des quatre branches. Elle tire FUN_00402410, FUN_004022b0, " +
+            "FUN_00401fb0 et FUN_00401c90, toutes dans Blaze.c.");
 
     /// <summary>Le pas d'amortissement des angles du cas 0 : le delta est deja ramene dans
     /// <c>[0, 0x1000[</c> par un <c>&amp; 0xfff</c>, et la moitie haute veut dire « dans l'autre
@@ -2993,7 +3356,7 @@ public static unsafe partial class Blaze
         }
         else if ((*slot & 0x46) == 0)
         {
-            byte* obstacle = FindNearbyObstacle_00474EB0(slot, -1, 1);
+            byte* obstacle = FindNearestOpponent_00474EB0(slot, 0xffffffff, 1);
             if (obstacle != null)
             {
                 int ox = (*(int*)(obstacle + 0x1c) - *(int*)(s + 0x1c)) >> 0xc;
@@ -3725,13 +4088,134 @@ public static unsafe partial class Blaze
         if ((*slot & 1) != 0) *slot &= 0xfffffffb;
     }
 
-    /// <summary>Ghidra: FUN_00474eb0 @ 0x00474eb0 (19 l.) — cherche l'entite la plus proche
-    /// repondant a un masque. Rend zero quand il n'y en a pas.</summary>
-    private static byte* FindNearbyObstacle_00474EB0(uint* slot, int mask, int mode)
-        => throw new NotImplementedException(
-            "FUN_00474eb0 (0x00474eb0) : non transcrite. 19 lignes dans Blaze.c — la recherche " +
-            "d'entite proche que le membre suivi interroge en arrivant. Elle rend un pointeur " +
-            "d'entite ou zero.");
+    /// <summary>
+    /// Ghidra: FUN_00474eb0 @ 0x00474eb0 — <b>cherche la cible la plus proche du camp d'en
+    /// face</b>. Dix-neuf lignes d'aiguillage : selon le mode et le bit <c>0x800000</c> qui
+    /// distingue un membre du groupe, elle balaie soit la table des entites de scene, soit celle
+    /// du groupe.
+    ///
+    /// <para>
+    /// Avec le mode <c>1</c> — le seul que la carte du monde emploie — un membre du groupe cherche
+    /// parmi les entites de scene, et une entite de scene parmi les membres du groupe. C'est donc
+    /// bien « l'adversaire le plus proche » et non un obstacle quelconque : le nom
+    /// <c>FindNearbyObstacle</c> que ce depot lui donnait d'apres son seul site d'appel etait une
+    /// supposition, corrigee ici.
+    /// </para>
+    /// <para>
+    /// <b>Ghidra la declare <c>void</c></b> alors que son appelant lit son resultat. Ce n'est pas
+    /// une signature manquee : les deux branches sont des appels <b>terminaux</b>, et le resultat
+    /// de l'appelee traverse tel quel. Rendu explicitement ici.
+    /// </para>
+    /// </summary>
+    private static byte* FindNearestOpponent_00474EB0(uint* entity, uint mask, int mode)
+    {
+        if (mode == 0)
+        {
+            if ((*entity & 0x800000) == 0) return FindNearestSceneEntity_00474DB0(entity, mask);
+        }
+        else if ((*entity & 0x800000) != 0)
+        {
+            return FindNearestSceneEntity_00474DB0(entity, mask);
+        }
+
+        return FindNearestPartyMember_00474CD0(entity);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00474db0 @ 0x00474db0 — la plus proche des 0x20 entites de scene
+    /// (<c>DAT_005ecaa0</c>) dans un rayon de <b>600 unites</b>, en excluant la demanderesse
+    /// elle-meme.
+    ///
+    /// <para>
+    /// Quatre conditions filtrent les candidates : active (<c>0x80000000</c>), sans aucun des bits
+    /// <c>0x50002040</c>, sans cible deja tenue a <c>+0x74</c>, et sans compte a rebours
+    /// d'invulnerabilite a <c>+0x96</c>.
+    /// </para>
+    /// <para>
+    /// Le <paramref name="mask"/> est teste par <c>(*bloc &amp; ~mask) == 0</c> contre le mot de
+    /// <c>+0x14</c> du bloc de statistiques. <b>Le seul appelant passe -1</b>, ce qui rend
+    /// <c>~mask</c> nul et la condition toujours vraie : le filtre existe mais dort.
+    /// </para>
+    /// </summary>
+    private static byte* FindNearestSceneEntity_00474DB0(uint* entity, uint mask)
+    {
+        byte* self = (byte*)entity;
+        int x = *(int*)(self + 0x1c);
+        int y = *(int*)(self + 0x20);
+        int z = *(int*)(self + 0x24);
+
+        int best = 600;
+        byte* found = null;
+
+        byte* candidate = Mem.Entity(0x005ecaa0);
+        byte* stats = s_EntityStatBlocks_005ea560 + 0x14;
+
+        for (int i = 0x20; i != 0; i--, candidate += 0x9c, stats += 0x120)
+        {
+            if ((*(uint*)candidate & 0x80000000) != 0
+                && (*(uint*)candidate & 0x50002040) == 0
+                && (*(uint*)stats & ~mask) == 0
+                && *(int*)(candidate + 0x74) == 0
+                && *(short*)(candidate + 0x96) == 0)
+            {
+                int dx = (x - *(int*)(candidate + 0x1c)) >> 0xc;
+                int dy = (y - *(int*)(candidate + 0x20)) >> 0xc;
+                int dz = (z - *(int*)(candidate + 0x24)) >> 0xc;
+                int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+
+                if (distance < best && self != candidate)
+                {
+                    best = distance;
+                    found = candidate;
+                }
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00474cd0 @ 0x00474cd0 — la jumelle de
+    /// <see cref="FindNearestSceneEntity_00474DB0"/> sur la table du groupe
+    /// (<c>DAT_005e93c0</c>), bornee a la taille reelle du groupe et sans le filtre de masque.
+    /// Meme rayon de 600, memes quatre conditions, meme exclusion de soi.
+    /// </summary>
+    private static byte* FindNearestPartyMember_00474CD0(uint* entity)
+    {
+        byte* self = (byte*)entity;
+        int best = 600;
+        byte* found = null;
+
+        int x = *(int*)(self + 0x1c);
+        int y = *(int*)(self + 0x20);
+        int z = *(int*)(self + 0x24);
+
+        if (s_PartySize_005e9020 == 0) return null;
+
+        byte* candidate = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = s_PartySize_005e9020; i != 0; i--, candidate += 0x9c)
+        {
+            if ((*(uint*)candidate & 0x80000000) != 0
+                && (*(uint*)candidate & 0x50002040) == 0
+                && *(int*)(candidate + 0x74) == 0
+                && *(short*)(candidate + 0x96) == 0)
+            {
+                int dx = (x - *(int*)(candidate + 0x1c)) >> 0xc;
+                int dy = (y - *(int*)(candidate + 0x20)) >> 0xc;
+                int dz = (z - *(int*)(candidate + 0x24)) >> 0xc;
+                int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+
+                if (distance < best && self != candidate)
+                {
+                    best = distance;
+                    found = candidate;
+                }
+            }
+        }
+
+        return found;
+    }
 
     /// <summary>Ghidra: FUN_00519df0 @ 0x00519df0 (51 l.) — applique la vitesse a la position et
     /// met a jour les drapeaux de collision de <c>+0x90</c>.</summary>
@@ -4885,7 +5369,7 @@ public static unsafe partial class Blaze
 
         UpdateEntityShadow_00519EE0(slot, perChar);
 
-        if ((*(uint*)(s + 0x90) & 0x8000) == 0) UpdateEntityLighting_00534CD0(slot);
+        if ((*(uint*)(s + 0x90) & 0x8000) == 0) TestTriggerVolumes_00534CD0(slot);
 
         // Le changement de sous-zone : la face foulee porte l'identifiant de la zone voisine.
         byte destination = (*(byte**)(s + 0x7c))[0x0f];
@@ -5008,11 +5492,91 @@ public static unsafe partial class Blaze
             $"FUN_005397b0 (0x005397b0), pose {pose} : non transcrite. 37 lignes dans Blaze.c.");
 
 
-    /// <summary>Ghidra: FUN_005197d0 @ 0x005197d0 (62 l.) — rend l'entite qui a touche celle-ci.</summary>
-    private static byte* CollectEntityHit_005197D0(uint* entity)
-        => throw new NotImplementedException(
-            "FUN_005197d0 (0x005197d0) : non transcrite. 62 lignes dans Blaze.c. Elle rend un " +
-            "pointeur d'entite ou zero.");
+    /// <summary>
+    /// Ghidra: FUN_005197d0 @ 0x005197d0 — <b>la collecte du coup recu</b> : un balayage 3x3 des
+    /// cellules de la seconde grille spatiale autour du personnage, qui rend la premiere entite
+    /// armee (bit <c>0x80000</c>) assez proche pour toucher, ou zero.
+    ///
+    /// <para>
+    /// « Assez proche » se lit en deux temps : moins de 0x28 unites au sol, et une difference de
+    /// hauteur dans une bande de <c>±0x50</c> — le test <c>(dy + 0x50) &lt; 0xa0</c> en <b>non
+    /// signe</b>, qui rejette les deux debordements d'un coup.
+    /// </para>
+    /// <para>
+    /// <b>Chaque entite ne touche qu'une fois.</b> L'octet <c>+0x09</c> de la candidate porte un
+    /// bit par emplacement de personnage : il est pose au moment du coup et n'est efface que
+    /// lorsque la distance repasse au-dessus du seuil. Une entite qui reste collee ne blesse donc
+    /// pas a chaque image.
+    /// </para>
+    /// <para>
+    /// <b>La constante de grille est <c>0x389f</c> et non <c>0x38a0</c></b> : le <c>-1</c> du
+    /// balayage est replie dedans, la ou <see cref="ApplyEntityMotion_00519DF0"/> l'ecrit a part.
+    /// La consequence est reelle et conservee : pour un personnage dans la rangee 0, la premiere
+    /// des trois rangees balayees est <c>0x389f</c>, c'est-a-dire <b>la derniere rangee de l'autre
+    /// grille</b> — les deux pages etant adjacentes (0x1c4000 et 0x1c5000). Le garde
+    /// <c>row &lt; 0x71800</c> ne borne que le haut.
+    /// </para>
+    /// </summary>
+    private static byte* CollectEntityHit_005197D0(uint* entityPtr)
+    {
+        byte* entity = (byte*)entityPtr;
+        byte* mainMem = GetMainMemPtr();
+
+        int y = *(int*)(entity + 0x20);
+        int x = *(int*)(entity + 0x1c);
+        int z = *(int*)(entity + 0x24);
+
+        uint cellX = (uint)(((((x >> 0xc) + 0x2000) >> 9) - 1));
+        uint row = (uint)((((z >> 0xc) + 0x2000) >> 9) + 0x389f) * 0x20;
+
+        byte mask = (byte)(1 << (entity[8] & 0x1f));
+
+        for (int outer = 3; outer != 0; outer--)
+        {
+            uint column = cellX;
+
+            for (int inner = 3; inner != 0; inner--)
+            {
+                if (column < 0x20 && row < 0x71800)
+                {
+                    for (byte* candidate = *(byte**)(mainMem + (column + row) * 4);
+                         candidate != null;
+                         candidate = *(byte**)(candidate + 0x68))
+                    {
+                        int candidateY = *(int*)(candidate + 0x20);
+                        int dx = (x - *(int*)(candidate + 0x1c)) >> 0xc;
+                        int dz = (z - *(int*)(candidate + 0x24)) >> 0xc;
+                        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+                        if ((*(uint*)candidate & 0x80000) == 0) continue;
+
+                        if (distance < 0x28 && (uint)(((y - candidateY) >> 0xc) + 0x50) < 0xa0)
+                        {
+                            if ((candidate[9] & mask) == 0)
+                            {
+                                candidate[9] |= mask;
+                                *Mem.Camera(0x005de0b8) = 1;
+                                return candidate;
+                            }
+                        }
+                        else
+                        {
+                            candidate[9] &= (byte)~mask;
+                        }
+                    }
+                }
+
+                column++;
+            }
+
+            cellX = column - 3;
+            row += 0x20;
+        }
+
+        // Ghidra: `DAT_005de0b8 = local_14;` — le compteur de boucle, nul a la sortie.
+        *Mem.Camera(0x005de0b8) = 0;
+        return null;
+    }
 
     /// <summary>Ghidra: FUN_00539190 @ 0x00539190 (20 l.) — applique des degats a un membre.</summary>
     private static void ApplyDamageToMember_00539190(uint* victim, byte* block)
@@ -5025,10 +5589,134 @@ public static unsafe partial class Blaze
             "FUN_00519940 (0x00519940) : non transcrite. 62 lignes dans Blaze.c.");
 
 
-    /// <summary>Ghidra: FUN_00534cd0 @ 0x00534cd0 (116 l.) — l'eclairage de l'entite.</summary>
-    private static void UpdateEntityLighting_00534CD0(uint* entity)
-        => throw new NotImplementedException(
-            "FUN_00534cd0 (0x00534cd0) : non transcrite. 116 lignes dans Blaze.c.");
+    /// <summary>
+    /// Ghidra: FUN_00534cd0 @ 0x00534cd0 — <b>les volumes de declenchement</b>. Le nom
+    /// « eclairage » que ce depot lui donnait d'apres son seul site d'appel etait faux : elle
+    /// parcourt la liste de morceaux en attente (<c>DAT_005fa560</c>, la meme que
+    /// <see cref="ResetPendingChunkRecords"/>) et teste l'entite contre une suite de <b>boites
+    /// alignees sur les axes</b>, chacune tenant dans un enregistrement de 0x10 octets.
+    ///
+    /// <para>
+    /// L'empaquetage des boites est irregulier et vaut d'etre ecrit une fois : le mot 1 porte
+    /// <c>{centre X, centre Y}</c>, le mot 2 <c>{centre Z, demi-etendue X}</c> et le mot 3
+    /// <c>{demi-etendue Y, demi-etendue Z}</c>. Le mot 0 porte l'etat sur son octet bas, le type
+    /// et ses drapeaux sur le suivant, et l'index de script sur sa moitie haute.
+    /// </para>
+    /// <para>
+    /// Cinq types se distinguent par les quatre bits bas du second octet : <b>1</b> compte les
+    /// passages (l'etat gagne 8 a la sortie), <b>2</b> lance son script en sortant, <b>3</b> le
+    /// lance a la premiere sortie seulement, <b>8</b> change la couleur de fond et pose le bit 3
+    /// du monde, <b>9</b> fait naitre l'effet 0x59 quand les points de vie ou de magie ont bouge
+    /// depuis la derniere image. Tout le reste lance son script en <b>entrant</b>.
+    /// </para>
+    /// <para>
+    /// Le test <c>(*entite &amp; 0xfc0000) == 0x800000</c> revient six fois : c'est « est-ce un
+    /// membre du groupe », et il conditionne la plupart des effets. Une entite quelconque traverse
+    /// donc la plupart des volumes sans rien declencher.
+    /// </para>
+    /// <para>
+    /// Le <c>uVar10 = (int)uVar2 &gt;&gt; 0xc &amp; 0xffff</c> que Ghidra place en fin de boucle exterieure
+    /// est un <b>no-op</b> : la valeur n'est jamais lue autrement qu'a travers un <c>(short)</c>.
+    /// Conserve implicitement, pas transcrit en tant que tel.
+    /// </para>
+    /// </summary>
+    private static void TestTriggerVolumes_00534CD0(uint* entityPtr)
+    {
+        if ((Mem.s_WorldFlags_005de02c & 0x10) != 0) return;
+
+        byte* entity = (byte*)entityPtr;
+        byte* pending = Mem.Entity(0x005fa560);
+
+        short count = *(short*)pending;
+        if (count == 0) return;
+
+        int worldY = *(int*)(entity + 0x20);
+        int worldX = *(int*)(entity + 0x1c);
+        int worldZ = *(int*)(entity + 0x24);
+
+        bool isPartyMember = (*entityPtr & 0xfc0000) == 0x800000;
+
+        for (int slot = 1; slot <= count; slot++)
+        {
+            uint* record = *(uint**)(*(byte**)(s_Unknown_005e97cc + 0x88) + pending[slot] * 4);
+            if (record == null) return;
+
+            for (uint header = *record; header != 0xffffffff; record += 4, header = *record)
+            {
+                if (isPartyMember) *(byte*)record = (byte)(*(byte*)record + 1);
+
+                byte kind = (byte)(header >> 8);
+                bool inside = false;
+
+                int centre = *(short*)((byte*)record + 4);
+                int delta = Math.Abs((short)(worldX >> 0xc) - centre);
+
+                if (delta < *(short*)((byte*)record + 0x0a))
+                {
+                    centre = *(short*)((byte*)record + 6);
+                    delta = Math.Abs((short)(worldY >> 0xc) - centre);
+
+                    if (delta < *(short*)((byte*)record + 0x0c))
+                    {
+                        centre = *(short*)((byte*)record + 8);
+                        delta = Math.Abs((short)(worldZ >> 0xc) - centre);
+                        inside = delta < *(short*)((byte*)record + 0x0e);
+                    }
+                }
+
+                if (inside)
+                {
+                    byte type = (byte)(kind & 0xf);
+
+                    if ((header & 0xf00) != 0
+                        && (type != 1 || (header & 0x80) != 0 || !isPartyMember))
+                    {
+                        if (type == 3 && isPartyMember) *(byte*)record = (byte)(*(byte*)record + 8);
+
+                        if (type == 8)
+                        {
+                            *(byte*)Mem.Camera(0x005de044) = (byte)(header >> 0x10);
+                            Mem.s_WorldFlags_005de02c |= 8;
+                            Mem.s_BackColourR_005e93a0 = 0xff;
+                            Mem.s_BackColourG_005e93a2 = 0xff;
+                            Mem.s_BackColourB_005e93a4 = 0xff;
+                        }
+
+                        if (kind == 9 && isPartyMember && (*entityPtr & 0x40000000) == 0)
+                        {
+                            byte* block = GetMainMemPtr() + 0xf0000 + (entity[8] * 0x2000);
+                            if (*(short*)(block + 0x14c) != *(short*)(block + 0x148)
+                                || *(short*)(block + 0x14e) != *(short*)(block + 0x14a))
+                            {
+                                *(short*)(block + 0x14c) = *(short*)(block + 0x148);
+                                *(short*)(block + 0x14e) = *(short*)(block + 0x14a);
+                                SpawnEffectEntity(entity, 0x59, 0, -1);
+                            }
+                        }
+
+                        continue;
+                    }
+
+                    RunEntityScript(s_Unknown_005e97cc, entity, header >> 0x10);
+                    *(byte*)record = (byte)(*(byte*)record | 0x80);
+                }
+                else
+                {
+                    byte type = (byte)(kind & 0xf);
+
+                    if (type == 2 || (type == 3 && (header & 0x80) == 0 && isPartyMember))
+                    {
+                        RunEntityScript(s_Unknown_005e97cc, entity, header >> 0x10);
+                        *(byte*)record = (byte)(*(byte*)record | 0x80);
+                    }
+                    else if (type == 1 && isPartyMember)
+                    {
+                        *(byte*)record = (byte)(*(byte*)record + 8);
+                    }
+                }
+            }
+        }
+    }
 
     /// <summary>
     /// Ghidra: <c>&amp;DAT_00562cf0</c> — les jeux de parametres de pas sonore, <b>0xc octets (six
