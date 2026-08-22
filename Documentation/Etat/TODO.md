@@ -25,17 +25,36 @@ quatorze appelées du cas 0** (`0x005176d5`..`0x0051776b`, le pas de simulation 
 quatre gestionnaires d'entité que la zone de départ demande réellement**. Les six passes de tables
 d'entités traversent maintenant sans lever.
 
-> **Reprendre ici — il ne reste qu'un chantier sur le pas de simulation.**
+> **Reprendre ici — `FUN_0050bf20`, la queue commune.**
 >
-> **`FUN_0050bf20`, le pas par personnage** — 1 002 lignes, la seule des quatorze appelées du cas 0
-> qui manque. **Sa moitié basse n'est pas exploitable dans la pseudo-C** : à partir de `0x0050cca1`
-> environ, Ghidra rend une cascade de `__allmul`/`__allshr` dont il a perdu les résultats, plus un
-> `iStack_4` jamais affecté et des `unaff_EBX`/`unaff_EBP`. C'est la classe de blocage nommée dans
-> `CLAUDE.md`, celle qui demande le désassemblage. Appelées manquantes déjà repérées :
-> `FUN_005238e0`, `FUN_00530070`, `FUN_0051a020`, et les deux tables de sauts statiques
-> `PTR_FUN_00562ce0` et `PTR_FUN_00562ca0`.
+> La fonction est transcrite **jusqu'à `LAB_0050caf3`** : le prologue, l'animation, l'aiguillage,
+> la branche du membre jouable, celle du membre suivi par l'IA et la sonde de terrain. Le jeu les
+> exécute pour de vrai. Reste **la queue commune** (`0x0050caf3`..`0x0050dc0d`, ~500 lignes), où
+> tous les chemins aboutissent : restitution d'état depuis un donneur ou depuis les globales,
+> intégration sin/cos de la vitesse, portage par une autre entité, publication vers
+> `DAT_005fa4e0`, cascade de fin.
 >
-> Après elle vient le **bloc d'affichage principal** (`0x00517aa7`..`0x00519703`, ~700 lignes),
+> **Les quatre lectures que seule la machine donne sont déjà résolues** — c'est le plus dur, et
+> c'est fait ; elles sont écrites en tête de `TickPartyMember` :
+>
+> | ce que Ghidra rend | ce que c'est | où on le lit |
+> |---|---|---|
+> | `iStack_4`, jamais affecté | l'entrée d'emplacement, `[esp+68h]` — le prologue **écrase la case du paramètre** avec | `mov [esp+68h],eax` en `0x0050bf52`, relu en `0x0050ce71` |
+> | `unaff_EBP` | le bloc par personnage, `MainMem + 0xf0000 + membre * 0x2000` | posé en `0x0050bf61`, sauvé en `[esp+10h]` |
+> | `unaff_EBX` | l'état de manette, `0x00604a20 + slotKind * 0x10` | posé en `0x0050bf63`, sauvé en `[esp+14h]` |
+> | la cascade `__allmul`/`__allshr` de `0x0050cfb1` | **deux produits matrice-vecteur**, décalage `>> 12` | `mov ecx,0Ch` en `0x0050d02f` et ses cinq jumeaux |
+>
+> Le bloc matriciel est la transposée du repère de l'emplacement puis le repère du porteur —
+> autrement dit « exprimer l'offset dans le repère local, puis dans celui de ce qui me porte ». Il
+> est gardé par `s[0x78] != 0` (pas de porteur au repos), donc pas sur le chemin courant.
+>
+> **Onze appelées lèvent chacune en se nommant, toutes dans `Blaze.c`** — aucune ne demande de
+> désassemblage. `FUN_0050e140` (le gestionnaire de commande d'indice 0) est celle que le jeu
+> demande en premier. Les autres : `FUN_005238e0`, `FUN_00530070`, `FUN_0051a020`, `FUN_00474eb0`,
+> `FUN_005397b0`, `FUN_00519df0`, `FUN_00519f50`, `FUN_005197d0`, `FUN_00519940`, `FUN_00519ee0`,
+> `FUN_00534cd0`, `FUN_00539190`, `FUN_005335e0`.
+>
+> Après tout cela vient le **bloc d'affichage principal** (`0x00517aa7`..`0x00519703`, ~700 lignes),
 > celui qui fera enfin apparaître quelque chose à l'écran.
 
 ### Les gestionnaires de `PTR_FUN_0056adc8` — SOLDÉS pour la zone de départ

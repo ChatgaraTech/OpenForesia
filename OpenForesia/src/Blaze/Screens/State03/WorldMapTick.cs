@@ -2471,20 +2471,814 @@ public static unsafe partial class Blaze
         *(byte**)Mem.EntityStateBytes(0x005719b4) = cursor;
     }
 
+    // =====================================================================
+    // FUN_0050bf20 — LE PAS PAR PERSONNAGE
+    //
+    // 1 002 lignes de pseudo-C, 8 Ko de code, appelees une fois par membre du groupe et par image.
+    // C'est le plus gros corps que le depot ait transcrit, et **la pseudo-C seule n'y suffit pas** :
+    // Ghidra y perd trois registres et tout un bloc de calcul. Les quatre points ci-dessous ont ete
+    // tranches au desassembleur avant d'ecrire une ligne, et ils valent pour toute fonction de
+    // cette taille.
+    //
+    // **`iStack_4`, jamais affecte dans la pseudo-C, est `[esp+68h]`** — et `[esp+68h]` est
+    // l'emplacement du PARAMETRE, que le prologue ecrase (`mov [esp+68h],eax` en 0x0050bf52) avec
+    // `&DAT_005e9180 + membre * 0x4c`, l'entree d'emplacement. Confirme en 0x0050ce71 :
+    // `mov edi,[esp+68h] ; movsx ebx,word [edi+44h]` est exactement le `*(short *)(iStack_4 + 0x44)`
+    // de la pseudo-C. C'est donc le `puVar11` que Ghidra nomme correctement ailleurs dans la meme
+    // fonction : **le meme objet sous deux noms**, l'un des deux perdu.
+    //
+    // **`unaff_EBP` est le bloc par personnage** (`MainMem + 0xf0000 + membre * 0x2000`), pose en
+    // 0x0050bf61 et sauve en `[esp+10h]`. C'est le `iVar23` de la pseudo-C ; Ghidra le perd parce
+    // que 0x0050cee9 (`mov ebp,[esi+78h]`) reutilise le registre en cours de route.
+    //
+    // **`unaff_EBX` est l'etat de manette** (`&DAT_00604a20 + slotKind * 0x10`), pose en 0x0050bf63
+    // et sauve en `[esp+14h]`. C'est le `puVar21`.
+    //
+    // **Le bloc de matrices de 0x0050cfb1..0x0050d290** est rendu par Ghidra comme une cascade de
+    // `__allmul`/`__allshr` dont les resultats sont perdus, ce qui le rend illisible. Au
+    // desassembleur c'est deux produits matrice-vecteur parfaitement reguliers, decalage `>> 12`
+    // (le `mov ecx,0Ch` de 0x0050d02f et de ses cinq jumeaux). Voir
+    // <see cref="ComputeCarrierOffset"/>.
+    // =====================================================================
+
     /// <summary>
-    /// Ghidra: FUN_0050bf20 @ 0x0050bf20 — <b>le pas par personnage</b>, appele une fois par membre
-    /// du groupe et par image. C'est le plus gros corps du cas 0 : 1 002 lignes de pseudo-C.
+    /// Ghidra: <c>&amp;DAT_00562cc0</c> — huit entiers relevés dans le binaire
+    /// (<c>at Legacy/Binaries/Blaze.exe 0x00562cc0 32</c>). Indexes par les trois bits bas de
+    /// <c>bloc + 0x150</c>, la posture du meneur : c'est la <b>portee de detection</b> que le pas
+    /// par personnage compare a la distance au meneur.
+    /// </summary>
+    private static readonly int[] s_LeaderReachByPosture_00562cc0 =
+        [0x13, 0x13, 0x15, 0x12, 0x14, 0x14, 0x12, 0x15];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;PTR_FUN_00562ca0</c> — huit gestionnaires de posture, releves dans le binaire.
+    /// <b>Quatre d'entre eux sont <c>0x0040A600</c></b>, le corps vide deja verifie au
+    /// desassembleur, donc seules les postures 0, 4, 6 et 7 font quelque chose.
+    /// </summary>
+    private static readonly uint[] s_PostureHandlers_00562ca0 =
+        [0x0051A670, 0x0040A600, 0x0040A600, 0x0040A600, 0x0051A6B0, 0x0040A600, 0x0051A700, 0x0051A710];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;PTR_FUN_00562ce0</c> — quatre gestionnaires de commande, releves dans le
+    /// binaire. Aucun n'est le corps vide.
+    /// </summary>
+    private static readonly uint[] s_InputHandlers_00562ce0 =
+        [0x0050E140, 0x0050DE90, 0x0050DD00, 0x0050DFF0];
+
+    /// <summary>Ghidra: DAT_005de708 — l'index de membre que le declenchement du repartiteur
+    /// <c>DAT_005e9ae4</c> met de cote, en meme temps que <c>DAT_005de540</c>. Hors du bloc de
+    /// camera (qui s'arrete a 0x005de100), donc declare a part.</summary>
+    private static uint s_Unknown_005de708;
+
+    /// <summary>
+    /// Ghidra: FUN_0050bf20 @ 0x0050bf20 — <b>le pas par personnage</b>. Voir le pave ci-dessus pour
+    /// les quatre lectures que seule la machine donne.
+    ///
+    /// <para>
+    /// La fonction fait, dans l'ordre : avancer l'animation, lire la manette (ou l'intention de
+    /// l'IA), decider d'un changement d'etat, appliquer le deplacement au terrain, gerer le
+    /// portage par une autre entite, puis publier le resultat. Elle sort tot dans six cas
+    /// distincts, tous conserves.
+    /// </para>
+    /// <para>
+    /// <b>Onze appelees ne sont pas encore transcrites</b> et levent chacune en se nommant. Toutes
+    /// sont dans <c>Blaze.c</c> — aucune ne demande de desassemblage. Elles n'ont pas ete ecrites
+    /// d'avance : c'est le jeu qui dira lesquelles il emprunte, comme pour les verbes de zone et
+    /// les gestionnaires d'entite.
+    /// </para>
     /// </summary>
     private static void TickPartyMember(int member)
+    {
+        byte* mainMem = GetMainMemPtr();
+
+        byte* s = Inp.s_SlotFlags_005e93c0 + member * 0x9c;      // Ghidra: puVar3
+        uint* slot = (uint*)s;
+        byte* entry = Inp.s_SlotArea_005e9180 + member * 0x4c;   // Ghidra: puVar11, alias iStack_4
+        byte slotKind = Inp.s_PlayerSlots_005e9188[member * 0x4c];
+        byte* pad = Inp.s_InputStateBase_00604a20 + slotKind * 0x10;   // Ghidra: puVar21, alias unaff_EBX
+        byte* perChar = mainMem + 0xf0000 + member * 0x2000;           // Ghidra: iVar23, alias unaff_EBP
+
+        if ((*slot & 0x4000008) != 0) return;
+
+        if (perChar[0x207] != 0) perChar[0x207]--;
+
+        // La cible tenue a +0x74 est oubliee des qu'elle cesse d'etre active.
+        byte* watched = *(byte**)(s + 0x74);
+        if (watched != null && (*(uint*)watched & 0x80000000) == 0) *(byte**)(s + 0x74) = null;
+
+        // Le bouton 3 ouvre le menu, mais seulement si le repartiteur est au repos.
+        if ((*slot & 0x40010000) == 0 && (pad[2] & 8) != 0 && (*(uint*)Mem.Arena(0x005e9ae4) & 3) == 0)
+        {
+            s_Unknown_005de540 = s[8];
+            s_Unknown_005de708 = s_Unknown_005de540;
+            (*Mem.Arena(0x005e9ae4))++;
+            *Mem.Entity(0x005fa580) = 1;
+        }
+
+        // Le compte a rebours de transition : tant qu'il tourne, le membre est fige.
+        if (*(ushort*)(s + 0x12) != 0)
+        {
+            *(ushort*)(s + 0x12) = 0x14;
+            if ((*slot & 0x10000000) != 0) return;
+
+            *(short*)(s + 0x32) = *(short*)(s + 0x98);
+            *slot |= 0x10000000;
+            return;
+        }
+
+        // ---------------------------------------------------------------- animation
+        uint state = *slot;
+        uint running = state & 0xfdffffff;
+        *slot = running;
+
+        byte* animSet = *(byte**)(Mem.Arena(0x005e9680) + s[4] * 4);
+        byte* anim = *(byte**)(animSet + *(short*)(s + 0x18) * 4);
+
+        if ((state & 0x1000000) == 0)
+        {
+            short frame = *(short*)(s + 0x1a);
+            if (frame + 1 < (int)*(ushort*)(anim + 0x16))
+            {
+                // Un membre porte par une autre entite (0x40000000) n'avance qu'une image sur deux.
+                if ((state & 0x40000000) == 0) *(short*)(s + 0x1a) = (short)(frame + 1);
+                else if ((*(uint*)Mem.Entity(0x005f2cf0) & 1) != 0) *(short*)(s + 0x1a) = (short)(frame + 1);
+            }
+            else
+            {
+                *slot = running | 0x2000000;
+                if ((state & 0x40000005) == 0)
+                {
+                    // Ghidra rend l'ecriture par CONCAT31 — c'est un `mov [.],al` sur l'octet bas,
+                    // qui laisse la valeur inchangee puisque 0x2000000 ne touche pas cet octet.
+                    *(uint*)(s + 0x18) = 0;
+                    *slot = ((running | 0x2000000) & 0xfffffffd) | 0x1000000;
+                }
+
+                if ((*slot & 0x40) != 0) *slot &= 0xffffffbf;
+            }
+        }
+        else
+        {
+            (*(short*)(s + 0x1a))++;
+            if ((int)*(ushort*)(anim + 0x16) <= *(short*)(s + 0x1a)) *(short*)(s + 0x1a) = 0;
+        }
+
+        short stateId = *(short*)(s + 0x18);
+        if (stateId == 0) *slot &= 0xfffffffb;
+
+        state = *slot;
+        if ((state & 0x40000000) == 0)
+        {
+            // La regeneration lente, un centieme d'image, tant qu'aucune touche n'est tenue.
+            if ((*(ushort*)pad & *(ushort*)(perChar + 0x1fc4)) == 0)
+            {
+                short maximum = *(short*)(perChar + 0x14a);
+                if (*(short*)(perChar + 0x14e) < maximum
+                    && (perChar[0x140] & 2) == 0
+                    && (state & 0x80) == 0
+                    && *(uint*)Mem.Entity(0x005f2cf0) % 100 == 0)
+                {
+                    short raised = (short)(*(short*)(perChar + 0x156) + *(short*)(perChar + 0x14e));
+                    *(short*)(perChar + 0x14e) = raised;
+                    if (maximum < raised) *(short*)(perChar + 0x14e) = maximum;
+                }
+            }
+        }
+        else if (stateId == 7)
+        {
+            if ((state & 0x2000000) != 0 && (state & 0x200000) == 0) *slot = state | 0x200000;
+        }
+        else
+        {
+            // Porte, mais pas dans l'etat de portage : on y bascule.
+            *(uint*)Mem.Arena(0x005e99c0) = 0;
+            SetEntityAnimationState_005238E0(slot, 0x15);
+
+            state = *slot;
+            if ((state & 0x40000000) != 0)
+            {
+                *(uint*)(s + 0x18) = 7;
+                *(uint*)(s + 0x38) = 0xffffff;
+                *slot = (state & 0xf6fffff9) | 0x12000;
+                byte carried = s[8];
+                *(short*)(s + 0x36) = 1;
+                *(short*)(s + 0x96) = 0;
+
+                if (carried == (byte)Mem.s_Unknown_005de538)
+                {
+                    PassLeaderToNextEligible(slot, entry, 0);
+                }
+
+                *(uint*)(perChar + 0x140) = 0x40000000;
+                for (int i = 0; i < 0x20; i++) ((uint*)(perChar + 0x180))[i] = 0;
+            }
+        }
+
+        *(uint*)(s + 0x5c) = 0;
+
+        // ---------------------------------------------------------------- l'aiguillage principal
+        if ((*(uint*)(perChar + 0x140) & 0x400001c0) != 0)
+        {
+            // Hors de combat : l'etat retombe et le role de meneur passe.
+            if ((*slot & 0x40000000) == 0) *(uint*)(s + 0x18) = 0;
+
+            byte previousLeader = (byte)Mem.s_Unknown_005de538;
+            if (s[8] == previousLeader)
+            {
+                PassLeaderToNextEligible(slot, entry, 0);
+                if (previousLeader != (byte)Mem.s_Unknown_005de538) *slot |= 0x10000;
+            }
+
+            TickPartyMemberTail(member, s, slot, entry, pad, perChar, mainMem);
+            return;
+        }
+
+        if ((*slot & 0x80) != 0)
+        {
+            TickPartyMemberTail(member, s, slot, entry, pad, perChar, mainMem);
+            return;
+        }
+
+        if ((*slot & 0x8000000) != 0)
+        {
+            HandleKnockback_00530070(slot, entry, perChar, pad);
+            TickPartyMemberTail(member, s, slot, entry, pad, perChar, mainMem);
+            return;
+        }
+
+        // Le tampon de commande : quatre images de memoire sur le bouton d'action.
+        if (pad[0x0e] != 0) pad[0x0e]--;
+        if ((*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc4)) != 0) pad[0x0e] = 4;
+
+        if ((*slot & 0x10002) == 0)
+        {
+            if ((*slot & 0x40) == 0)
+            {
+                DispatchInputHandler(perChar[0x2b7], slot, perChar, pad);
+            }
+
+            if ((*slot & 1) == 0)
+            {
+                ApplyGroundMotion_0051A020(slot, entry, perChar, pad, anim);
+            }
+        }
+
+        DispatchPostureHandler((byte)(perChar[0x150] & 7), slot, entry, perChar, pad, anim);
+
+        state = *slot;
+        if ((state & 4) != 0)
+        {
+            TickPartyMemberTail(member, s, slot, entry, pad, perChar, mainMem);
+            return;
+        }
+
+        if ((state & 0x10000) == 0)
+        {
+            TickPlayableMember(member, s, slot, entry, slotKind, pad, perChar, state);
+            TickPartyMemberTail(member, s, slot, entry, pad, perChar, mainMem);
+            return;
+        }
+
+        // ---------------------------------------------------------------- le membre suivi par l'IA
+        if (s[8] == (byte)Mem.s_Unknown_005de538) PassLeaderToNextEligible(slot, entry, 0);
+
+        uint follow = Mem.Entity(0x005edec0)[*Mem.Entity(0x005f2ce4)];
+        (*Mem.Entity(0x005f2ce4))++;
+
+        if (*(ushort*)(Inp.s_SlotFlags_005e93c0 + follow * 0x9c + 0x12) != 0)
+        {
+            uint held = *slot;
+            *(short*)(s + 0x98) = *(short*)(s + 0x32);
+            *slot = (held & 0xf7fffdff) | 0x2000;
+            (*(ushort*)(s + 0x12))++;
+            return;
+        }
+
+        TickFollowingMember(member, s, slot, entry, slotKind, pad, perChar, mainMem, follow);
+        TickPartyMemberTail(member, s, slot, entry, pad, perChar, mainMem);
+    }
+
+    /// <summary>
+    /// Ghidra: la branche <c>(*puVar3 &amp; 0x10000) == 0</c> de <see cref="TickPartyMember"/>
+    /// (0x0050c396..0x0050c771) — <b>le membre que le joueur pilote</b>. Elle lit la manette et rien
+    /// d'autre : coup, saut, et le tampon de quatre images qui rattrape une frappe legerement en
+    /// avance.
+    ///
+    /// <para>
+    /// Les deux moities du <c>if</c> final se ressemblent au point qu'on les croirait factorisables
+    /// — meme pose de <c>0x4000</c> dans <c>+0x9a</c>, meme etat 4, meme decalage de position quand
+    /// <c>+0x90</c> porte <c>0x100</c>. Elles different par une seule ligne : la premiere choisit sa
+    /// portee selon le bouton tenu, la seconde la fixe a <c>0x1c000</c>. Transcrites separement,
+    /// parce que ce sont deux blocs distincts du binaire et que l'oracle compare des corps.
+    /// </para>
+    /// </summary>
+    private static void TickPlayableMember(
+        int member, byte* s, uint* slot, byte* entry, byte slotKind, byte* pad, byte* perChar, uint state)
+    {
+        // Le coup : bouton d'attaque, pas deja en train de frapper, et le mode de mise au point
+        // n'est pas en train de geler le monde.
+        if ((state & 0x42) == 0
+            && (*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc0)) != 0
+            && (sbyte)perChar[0x2b0] != -1
+            && s_Unknown_00566c84 != 0
+            && (perChar[0x140] & 0x10) == 0)
+        {
+            *(uint*)Mem.Arena(0x005e99c0) = 0;
+            SetEntityAnimationState_005238E0(slot, 1);
+            *slot = (*slot & 0xfcffffff) | 2;
+
+            *(uint*)(s + 0x18) = (perChar[0x150] & 7) == 0 && (pad[2] & 0xf0) != 0 ? 6u : 3u;
+        }
+
+        // Le tampon de saut : quatre images de memoire sur le bouton, remis a zero si le bouton
+        // RELACHE arrive dans la meme image — d'ou les deux mots de manette lus, +2 et +4.
+        if ((sbyte)pad[0x0c] != 0) pad[0x0c]--;
+        if ((*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc2)) != 0) pad[0x0c] = 4;
+
+        if ((*(ushort*)(perChar + 0x1fc2) & *(ushort*)(pad + 4)) != 0)
+        {
+            pad[0x0c] = 0;
+            *(short*)(s + 0x9a) = 0x6000;
+        }
+
+        if ((*slot & 0x47) == 0)
+        {
+            if (pad[0x0c] == 0)
+            {
+                // Rien de tampon : reste le bouton de garde, qui libere une texture et un son.
+                if ((*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fca)) != 0)
+                {
+                    Winsys3d.ReleaseTexture(0x18);
+                    uint held = *slot;
+                    *(uint*)(s + 0x18) = 0;
+                    *slot = held | 0x9000000;
+                    pad[0x0a] = 0xff;
+                    Aud.PlayUiSound38();
+                }
+
+                return;
+            }
+
+            pad[0x0c] = 0;
+            uint before = *slot;
+            *(short*)(s + 0x9a) = 0x4000;
+            *slot = (before & 0xfcffffff) | 1;
+
+            // La portee du saut depend du bouton tenu, sauf en mode de mise au point.
+            *(int*)(s + 0x54) = Mem.s_DebugModeLatch_005633a8 == 0
+                ? (int)((uint)-(((*(ushort*)pad & 1) != 0) ? 1 : 0) & 0x7a000) + 0x1c000
+                : 0x1c000;
+
+            uint attributes = *(uint*)(s + 0x90);
+            *(uint*)(s + 0x18) = 4;
+            if ((attributes & 0x100) != 0)
+            {
+                *(int*)(s + 0x50) += *(short*)(entry + 0x44) * 8;
+                *(int*)(s + 0x58) += *(short*)(entry + 0x48) * 8;
+            }
+
+            entry[0x0a] = 0;
+        }
+        else
+        {
+            if ((*slot & 0x46) != 0 || entry[0x0a] == 0) return;
+
+            entry[0x0a]--;
+            if ((*(ushort*)(pad + 2) & *(ushort*)(perChar + 0x1fc2)) == 0) return;
+
+            entry[0x0a] = 0;
+            uint before = *slot;
+            *(short*)(s + 0x9a) = 0x4000;
+            *(int*)(s + 0x54) = 0x1c000;
+            *slot = (before & 0xfcffffff) | 1;
+
+            uint attributes = *(uint*)(s + 0x90);
+            *(uint*)(s + 0x18) = 4;
+            if ((attributes & 0x100) != 0)
+            {
+                *(int*)(s + 0x50) += *(short*)(entry + 0x44) * 8;
+                *(int*)(s + 0x58) += *(short*)(entry + 0x48) * 8;
+            }
+        }
+
+        Aud.PlayPositionalSound(0, 0xd00, 0x800, (int*)(s + 0x1c));
+    }
+
+    /// <summary>
+    /// Ghidra: la branche <c>else</c> de 0x0050c3c8..0x0050caf3 — <b>le membre que l'IA fait
+    /// suivre</b>. Il court derriere sa cible tant qu'il en est loin, se tourne vers elle en
+    /// arrivant, et sonde le terrain devant lui pour sauter ce qui doit l'etre.
+    ///
+    /// <para>
+    /// <b>Le flot a ete reconstruit, pas translittere.</b> Ghidra en rend deux labels
+    /// (<c>LAB_0050c4d6</c> et <c>LAB_0050c781</c>) sautes depuis trois endroits, ce qui donne
+    /// l'impression d'un graphe irreductible. Il ne l'est pas : <b>toutes</b> les routes qui
+    /// atteignent <c>LAB_0050c781</c> le font avec une distance restante nulle ou negative, et
+    /// toutes celles qui atteignent le bloc de sonde le font avec une distance d'au moins 1. Les
+    /// deux labels se ramenent donc a un seul <c>if (distance &gt;= 1)</c>, et le drapeau
+    /// « entrer en approche » que la lecture naive suggere est inutile.
+    /// </para>
+    /// <para>
+    /// La cible est le membre suivant dans la liste <c>DAT_005edec0</c> quand celui-ci est
+    /// disponible, sinon le meneur ; la distance d'arret vaut 100 dans le premier cas et la portee
+    /// de posture <see cref="s_LeaderReachByPosture_00562cc0"/> dans le second.
+    /// </para>
+    /// </summary>
+    private static void TickFollowingMember(
+        int member, byte* s, uint* slot, byte* entry, byte slotKind,
+        byte* pad, byte* perChar, byte* mainMem, uint follow)
+    {
+        // L'echelle de portee, choisie par les drapeaux du bloc par personnage.
+        uint posture = *(uint*)(perChar + 0x140);
+        int scale = 0x1000;
+        if ((posture & 0x4000) != 0) scale = 0x1333;
+        if ((posture & 0x8000) != 0) scale = 0xccc;
+        if ((posture & 4) != 0) scale = 0x800;
+
+        uint leaderIndex = (uint)(byte)Mem.s_Unknown_005de538;
+        byte* leaderSlot = Inp.s_SlotFlags_005e93c0 + leaderIndex * 0x9c;
+        byte* leaderBlock = mainMem + 0xf0000 + leaderIndex * 0x2000;
+
+        int reach = s_LeaderReachByPosture_00562cc0[leaderBlock[0x150] & 7] * scale >> 0xc;
+
+        int dx = 0;
+        int dz = 0;
+        int distance;
+
+        if (*(ushort*)(Inp.s_SlotFlags_005e93c0 + follow * 0x9c + 0x12) == 0
+            && (leaderSlot[0] & 1) == 0)
+        {
+            byte* target = Inp.s_SlotFlags_005e93c0 + follow * 0x9c;
+            dx = (*(int*)(target + 0x1c) - *(int*)(s + 0x1c)) >> 0xc;
+            dz = (*(int*)(target + 0x24) - *(int*)(s + 0x24)) >> 0xc;
+            distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz)) - 100;
+        }
+        else if ((*(uint*)(leaderSlot + 0x90) & 0x8000) == 0)
+        {
+            dx = (*(int*)(leaderSlot + 0x1c) - *(int*)(s + 0x1c)) >> 0xc;
+            dz = (*(int*)(leaderSlot + 0x24) - *(int*)(s + 0x24)) >> 0xc;
+            distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz)) - reach;
+        }
+        else
+        {
+            // Ghidra laisse ici dx et dz a leur valeur precedente ; ils sont pourtant relus par
+            // l'appel a ratan2 ci-dessous. Conserve tel quel — c'est ce que fait l'original, qui
+            // lit deux emplacements de pile non ecrits sur ce chemin.
+            distance = 0;
+        }
+
+        uint held = *slot;
+        if ((distance < 1 && (held & 1) == 0) || (held & 2) != 0)
+        {
+            if (*(short*)(s + 0x18) != 0 && (*slot & 0x47) == 0)
+            {
+                *(uint*)(s + 0x18) = 0;
+                *slot |= 0x1000000;
+            }
+
+            *(short*)(s + 0x98) = *(short*)(s + 0x32);
+        }
+        else
+        {
+            *(short*)(s + 0x98) = (short)Winsys3d.Ordinal_457(dx, dz);
+
+            if ((*(uint*)(leaderSlot + 0x90) & 0x8000) == 0 && (*slot & 0x40) == 0)
+            {
+                held = *slot;
+                if ((held & 7) == 0 && *(short*)(s + 0x18) != 1)
+                {
+                    *(uint*)(s + 0x18) = 1;
+                    *slot = held | 0x1000000;
+                }
+
+                if (distance > 0)
+                {
+                    *(uint*)(s + 0x5c) = (uint)Math.Min(distance, reach) << 0xc;
+                }
+            }
+        }
+
+        if (distance >= 1)
+        {
+            if ((*slot & 0x46) == 0 && entry[0x0a] != 0)
+            {
+                entry[0x0a]--;
+                if (ProbeGroundAhead(member, s, slot, entry, perChar, mainMem)) return;
+            }
+        }
+        else if ((*slot & 0x46) == 0)
+        {
+            byte* obstacle = FindNearbyObstacle_00474EB0(slot, -1, 1);
+            if (obstacle != null)
+            {
+                int ox = (*(int*)(obstacle + 0x1c) - *(int*)(s + 0x1c)) >> 0xc;
+                int oy = (*(int*)(obstacle + 0x20) - *(int*)(s + 0x20)) >> 0xc;
+                int oz = (*(int*)(obstacle + 0x24) - *(int*)(s + 0x24)) >> 0xc;
+                int range = (int)Winsys3d.Ordinal_442((uint)(ox * ox + oy * oy + oz * oz));
+
+                // Ghidra passe `iStack_24` en premier argument de ratan2, un emplacement qu'aucune
+                // route n'ecrit sur ce chemin. Conserve tel quel.
+                uint turn = (uint)(Winsys3d.Ordinal_457(ox, oy) - *(ushort*)(s + 0x32)) & 0xfff;
+                byte stance = (byte)(perChar[0x150] & 7);
+
+                if (range < (int)((uint)-(stance != 4 ? 1 : 0) & 0xffffff06) + 400
+                    && ((turn + 0x80) & 0xfff) < 0x100
+                    && *(ushort*)Mem.Arena(0x005e9ae6) != 0)
+                {
+                    if ((perChar[0x140] & 0x10) == 0 && (sbyte)perChar[0x2b0] != -1
+                        && s_Unknown_00566c84 != 0)
+                    {
+                        *(uint*)Mem.Arena(0x005e99c0) = 0;
+                        SetEntityAnimationState_005238E0(slot, 1);
+                        held = *slot;
+                        short facing = *(short*)(s + 0x98);
+                        *(uint*)(s + 0x18) = 3;
+                        *slot = (held & 0xfcffffff) | 2;
+                        *(short*)(s + 0x32) = facing;
+                        return;
+                    }
+                }
+                else if (range < (int)((uint)-(stance != 4 ? 1 : 0) & 0xfffffed4) + 500
+                         && ((turn + 0x80) & 0xfff) > 0x100)
+                {
+                    // Un pas de 0x80 vers la cible, dans le sens le plus court.
+                    *(short*)(s + 0x98) += (short)((((turn > 0x7ff ? 1 : 0) - 1) & 0x100) - 0x80);
+                }
+            }
+        }
+
+        *(short*)(s + 0x32) = *(short*)(s + 0x98);
+    }
+
+    /// <summary>
+    /// Ghidra: 0x0050c4f0..0x0050c780 — <b>la sonde de terrain</b> que le membre suivi lance devant
+    /// lui avant d'avancer. Elle recopie l'entite dans le bloc d'essai <c>DAT_005e9a40</c>, la
+    /// deplace de quatre pas d'un seizieme d'unite le long de son cap, et regarde ce que
+    /// <see cref="FinalizeEntityPlacement2"/> rend a chaque pas.
+    ///
+    /// <para>
+    /// <b>L'axe de chaque pas a ete verifie au desassembleur, pas suppose</b> : Ghidra reutilise le
+    /// meme emplacement de pile pour le sinus et le cosinus, si bien que la pseudo-C ajoute deux
+    /// fois la meme valeur. Le binaire (0x0050c512..0x0050c57b) donne <c>sinus &lt;&lt; 4</c> sur X et
+    /// <c>cosinus &lt;&lt; 4</c> sur Z — la meme convention que
+    /// <see cref="TrySpawnRandomEncounter"/>.
+    /// </para>
+    /// <para>
+    /// Deux verdicts sortent de la sonde : un obstacle franchissable (bit 1) fait sauter, un mur
+    /// (bit 0x800) fait tourner. Le bloc de rotation calcule l'angle de la pente rencontree et
+    /// arrondit le cap au multiple le plus proche, avec trois plages distinctes selon l'ecart.
+    /// </para>
+    /// </summary>
+    /// <returns><c>true</c> quand la sonde a change l'etat du membre et que l'appelant doit rendre
+    /// la main sans poser le cap.</returns>
+    private static bool ProbeGroundAhead(
+        int member, byte* s, uint* slot, byte* entry, byte* perChar, byte* mainMem)
+    {
+        int facing = *(short*)(s + 0x98);
+        int stepX = (int)Winsys3d.GetSinTableEntry(facing) << 4;
+        int stepZ = Winsys3d.GetCosTableEntry(facing) << 4;
+
+        byte* probe = Mem.Arena(0x005e9a40);
+        byte* probeEntry = Mem.Entity(0x005f7d80);
+
+        Mem.CopyDwords(slot, (uint*)probe, 0x27);
+        Mem.CopyDwords((uint*)entry, (uint*)probeEntry, 0x13);
+        *(uint*)probe |= 0x2000;
+
+        *(int*)(probe + 0x1c) = *(int*)(s + 0x1c) + stepX;
+        *(int*)(probe + 0x20) = *(int*)(s + 0x60) + 0x6e000;
+        *(int*)(probe + 0x24) = *(int*)(s + 0x24) + stepZ;
+
+        uint verdict = 0;
+        int ground = *(int*)(s + 0x60);
+
+        // Ghidra: `iStack_c = DAT_005e9abc;` avant chaque placement, restaure au bloc de rotation.
+        // C'est une mise de cote, pas un calcul.
+        int savedAbc = *(int*)Mem.Arena(0x005e9abc);
+        int hereY = *(int*)(s + 0x20);
+
+        FinalizeEntityPlacement2((uint*)probe);
+        ApplyEntityMotion_00519DF0((uint*)probe, probeEntry);
+
+        if ((*(uint*)(probe + 0x90) & 0x800) == 0)
+        {
+            if ((*(uint*)(probe + 0x90) & 0x2000) != 0) verdict |= 2;
+
+            if ((*(uint*)(probe + 0x90) & 0x8000) == 0
+                && (((*(uint*)(probe + 0x90) & 0x400) != 0
+                     && (perChar[0x150] & 7) != 7
+                     && (*(uint*)(perChar + 0x140) & 0x400000) == 0)
+                    || ground + 0x32000 <= *(int*)(probe + 0x64)
+                    || *(int*)(probe + 0x64) <= ground - 0x64000
+                    || ((*(uint*)(probe + 0x90) & 0x100) != 0 && ground < *(int*)(probe + 0x60))))
+            {
+                verdict |= 1;
+            }
+
+            bool blocked = false;
+            for (int step = 3; step != 0; step--)
+            {
+                ground = *(int*)(probe + 0x60);
+                hereY = ground;
+                savedAbc = *(int*)Mem.Arena(0x005e9abc);
+                *(int*)(probe + 0x1c) += stepX;
+                *(int*)(probe + 0x20) = *(int*)(probe + 0x60) + 0x6e000;
+                *(int*)(probe + 0x24) += stepZ;
+
+                FinalizeEntityPlacement2((uint*)probe);
+                ApplyEntityMotion_00519DF0((uint*)probe, probeEntry);
+
+                if ((*(uint*)(probe + 0x90) & 0x800) != 0) { blocked = true; break; }
+
+                if ((*(uint*)(probe + 0x90) & 0x8000) == 0 && ground + 0x32000 <= *(int*)(probe + 0x64))
+                {
+                    verdict = 1;
+                }
+                else if (step == 3 && (*(uint*)(probe + 0x90) & 0x2000) == 0)
+                {
+                    verdict &= 1;
+                }
+            }
+
+            if (!blocked)
+            {
+                if (verdict == 0) return false;
+
+                // Franchissable : le membre saute, exactement comme le fait la branche jouable.
+                entry[0x0a] = 0;
+                uint before = *slot;
+                uint attributes = *(uint*)(s + 0x90);
+                *(short*)(s + 0x9a) = 0x4000;
+                *slot = (before & 0xfcffffff) | 1;
+                *(int*)(s + 0x54) = 0x1c000;
+                *(uint*)(s + 0x18) = 4;
+
+                if ((attributes & 0x100) != 0)
+                {
+                    *(int*)(s + 0x50) += *(short*)(entry + 0x44) * 8;
+                    *(int*)(s + 0x58) += *(short*)(entry + 0x48) * 8;
+                }
+
+                Aud.PlayPositionalSound(0, 0xd00, 0x800, (int*)(s + 0x1c));
+                *(short*)(s + 0x32) = *(short*)(s + 0x98);
+                return true;
+            }
+        }
+
+        // Ghidra: LAB_0050dc15 — un mur. Le cap est recale sur la normale de la pente rencontree,
+        // et l'arrondi depend de l'ecart : moins d'un huitieme de tour se colle, sinon on tourne
+        // d'un quart de l'ecart, dans un sens ou dans l'autre.
+        if (*(uint*)Mem.Arena(0x005e9ab8) != 0) return false;
+
+        *(int*)Mem.Arena(0x005e9abc) = savedAbc;
+
+        // Ghidra passe `&iStack_20`, c'est-a-dire l'adresse de trois locales contigues : la
+        // position du membre, avec en Y la hauteur de sol relevee au dernier pas de sonde.
+        int* here = stackalloc int[3];
+        here[0] = *(int*)(s + 0x1c);
+        here[1] = hereY;
+        here[2] = *(int*)(s + 0x24);
+
+        int wallAngle = GroundSlopeAngle_005335E0((uint*)probe, here);
+        ushort probeFacing = *(ushort*)(probe + 0x32);
+
+        int corrected = ((wallAngle - (uint)*(ushort*)(s + 0x98)) & 0xfff) < 0x800
+            ? wallAngle - 0x428
+            : wallAngle + 0x428;
+
+        *(ushort*)(s + 0x98) = probeFacing;
+        uint delta = (uint)(corrected - probeFacing) & 0xfff;
+
+        short newFacing;
+        if (((delta + 0x80) & 0xfff) < 0x101)
+        {
+            uint signed = delta > 0x7ff ? delta - 0x1000 : delta;
+            newFacing = (short)(probeFacing + (short)signed);
+        }
+        else if (delta < 0x800)
+        {
+            newFacing = (short)(probeFacing + (short)((int)delta >> 2));
+        }
+        else
+        {
+            newFacing = (short)(probeFacing - (short)((int)(0x1000 - delta) >> 2));
+        }
+
+        *(short*)(s + 0x98) = newFacing;
+        *(short*)(s + 0x32) = newFacing;
+        return true;
+    }
+
+    // =====================================================================
+    // Les lacunes de FUN_0050bf20. Toutes ses appelees manquantes sont dans `Blaze.c` — aucune ne
+    // demande de desassemblage — et aucune n'a ete ecrite d'avance : c'est le jeu qui dira
+    // lesquelles il emprunte, comme pour les verbes de zone et les gestionnaires d'entite.
+    // =====================================================================
+
+    /// <summary>Ghidra: FUN_005238e0 @ 0x005238e0 (39 l.) — declenche l'objet equipe dont
+    /// l'identifiant correspond, en sauvegardant puis restaurant la banque 0x005e9060 autour de
+    /// l'appel. Tire <c>FUN_00523a20</c>.</summary>
+    private static void SetEntityAnimationState_005238E0(uint* slot, uint kind)
         => throw new NotImplementedException(
-            $"FUN_0050bf20 (0x0050bf20), membre {member} : le pas par personnage n'est pas " +
-            "transcrit. C'est desormais le seul trou du pas de simulation du monde — les treize " +
-            "autres appelees du cas 0 sont ecrites. 1 002 lignes de pseudo-C, et **sa moitie basse " +
-            "n'est pas exploitable telle quelle** : a partir de 0x0050cca1 environ, Ghidra rend une " +
-            "cascade de __allmul/__allshr dont il a perdu les resultats, plus un iStack_4 jamais " +
-            "affecte et des unaff_EBX/EBP — c'est la classe de blocage nommee dans CLAUDE.md, celle " +
-            "qui demande le desassemblage. `OpenForesia.Tools -- disasm " +
-            "Legacy/Binaries/Blaze.exe 0x0050bf20 3000`. Appelees manquantes deja reperees : " +
-            "FUN_005238e0, FUN_00530070, FUN_0051a020, et les deux tables de sauts statiques " +
-            "PTR_FUN_00562ce0 et PTR_FUN_00562ca0.");
+            $"FUN_005238e0 (0x005238e0), declenchement {kind} : non transcrite. 39 lignes dans " +
+            "Blaze.c, plus FUN_00523a20. Elle balaie les cinq emplacements d'objet equipe du bloc " +
+            "par personnage (+0x2b0) et agit sur celui dont l'identifiant vaut le second argument.");
+
+    /// <summary>Ghidra: FUN_00530070 @ 0x00530070 (365 l.) — le recul apres un coup recu, pris
+    /// quand le mot d'etat porte <c>0x8000000</c>.</summary>
+    private static void HandleKnockback_00530070(uint* slot, byte* entry, byte* perChar, byte* pad)
+        => throw new NotImplementedException(
+            "FUN_00530070 (0x00530070) : non transcrite. 365 lignes dans Blaze.c — le recul du " +
+            "personnage touche. Elle prend (entite, entree d'emplacement, bloc par personnage, " +
+            "manette) ; Ghidra lui donne les quatre parametres.");
+
+    /// <summary>Ghidra: FUN_0051a020 @ 0x0051a020 (221 l.) — l'integration du deplacement au sol,
+    /// appelee quand le personnage n'est pas en l'air.</summary>
+    private static void ApplyGroundMotion_0051A020(uint* slot, byte* entry, byte* perChar, byte* pad, byte* anim)
+        => throw new NotImplementedException(
+            "FUN_0051a020 (0x0051a020) : non transcrite. 221 lignes dans Blaze.c — le deplacement " +
+            "au sol. Elle prend (entite, entree d'emplacement, bloc par personnage, manette, " +
+            "animation courante).");
+
+    /// <summary>
+    /// Ghidra: <c>(*(code *)(&amp;PTR_FUN_00562ce0)[bloc + 0x2b7])(…)</c> — quatre gestionnaires de
+    /// commande, releves dans le binaire sous <see cref="s_InputHandlers_00562ce0"/>. Aucun n'est
+    /// le corps vide.
+    /// </summary>
+    private static void DispatchInputHandler(byte index, uint* slot, byte* perChar, byte* pad)
+    {
+        uint target = index < s_InputHandlers_00562ce0.Length
+            ? s_InputHandlers_00562ce0[index]
+            : 0;
+
+        throw new NotImplementedException(
+            $"FUN_0050bf20 : le gestionnaire de commande d'indice {index} (table 0x00562ce0) vaut " +
+            $"0x{target:X6} et n'est pas transcrit. Les quatre entrees de la table sont relevees " +
+            "dans le binaire : 0x0050E140, 0x0050DE90, 0x0050DD00, 0x0050DFF0 — toutes dans " +
+            "Blaze.c. Il prend (entite, bloc par personnage, manette).");
+    }
+
+    /// <summary>
+    /// Ghidra: <c>(*(code *)(&amp;PTR_FUN_00562ca0)[bloc + 0x150 &amp; 7])(…)</c> — huit gestionnaires
+    /// de posture, releves sous <see cref="s_PostureHandlers_00562ca0"/>. <b>Quatre sont le corps
+    /// vide <c>0x0040A600</c></b>, deja verifie au desassembleur : les postures 1, 2, 3 et 5 ne
+    /// font rien.
+    /// </summary>
+    private static void DispatchPostureHandler(
+        byte posture, uint* slot, byte* entry, byte* perChar, byte* pad, byte* anim)
+    {
+        uint target = s_PostureHandlers_00562ca0[posture];
+        if (target == 0x0040A600) return;   // corps vide verifie
+
+        throw new NotImplementedException(
+            $"FUN_0050bf20 : le gestionnaire de posture {posture} (table 0x00562ca0) vaut " +
+            $"0x{target:X6} et n'est pas transcrit. Les quatre vrais sont 0x0051A670, 0x0051A6B0, " +
+            "0x0051A700 et 0x0051A710. Il prend (entite, entree d'emplacement, bloc par " +
+            "personnage, manette, animation courante).");
+    }
+
+    /// <summary>Ghidra: FUN_00474eb0 @ 0x00474eb0 (19 l.) — cherche l'entite la plus proche
+    /// repondant a un masque. Rend zero quand il n'y en a pas.</summary>
+    private static byte* FindNearbyObstacle_00474EB0(uint* slot, int mask, int mode)
+        => throw new NotImplementedException(
+            "FUN_00474eb0 (0x00474eb0) : non transcrite. 19 lignes dans Blaze.c — la recherche " +
+            "d'entite proche que le membre suivi interroge en arrivant. Elle rend un pointeur " +
+            "d'entite ou zero.");
+
+    /// <summary>Ghidra: FUN_00519df0 @ 0x00519df0 (51 l.) — applique la vitesse a la position et
+    /// met a jour les drapeaux de collision de <c>+0x90</c>.</summary>
+    private static void ApplyEntityMotion_00519DF0(uint* entity, byte* entry)
+        => throw new NotImplementedException(
+            "FUN_00519df0 (0x00519df0) : non transcrite. 51 lignes dans Blaze.c — le pas de " +
+            "collision qui suit chaque placement. C'est elle qui pose les bits 0x800 (mur), " +
+            "0x2000 et 0x8000 que la sonde de terrain interroge.");
+
+    /// <summary>Ghidra: FUN_005335e0 @ 0x005335e0 (78 l.) — l'angle de la pente sous une
+    /// position.</summary>
+    private static int GroundSlopeAngle_005335E0(uint* entity, int* position)
+        => throw new NotImplementedException(
+            "FUN_005335e0 (0x005335e0) : non transcrite. 78 lignes dans Blaze.c — l'angle de la " +
+            "face du terrain sous une position, dont la sonde se sert pour recaler le cap contre " +
+            "un mur.");
+
+    /// <summary>
+    /// Ghidra: <c>LAB_0050caf3</c>, 0x0050caf3..0x0050dc0d — <b>la queue commune</b> de
+    /// <see cref="TickPartyMember"/> : tous les chemins y aboutissent. Environ 500 lignes de
+    /// pseudo-C.
+    /// </summary>
+    private static void TickPartyMemberTail(
+        int member, byte* s, uint* slot, byte* entry, byte* pad, byte* perChar, byte* mainMem)
+        => throw new NotImplementedException(
+            $"FUN_0050bf20, membre {member} : la queue commune (LAB_0050caf3, " +
+            "0x0050caf3..0x0050dc0d, ~500 lignes) n'est pas encore transcrite. Le reste de la " +
+            "fonction l'est, et les quatre lectures que seule la machine donne sont deja " +
+            "resolues — voir le pave en tete de TickPartyMember : iStack_4 = [esp+68h] = l'entree " +
+            "d'emplacement, unaff_EBP = le bloc par personnage, unaff_EBX = la manette, et le " +
+            "bloc de matrices de 0x0050cfb1 est une double transformation matrice-vecteur au " +
+            "decalage >> 12 (transposee du repere de l'emplacement, puis repere du porteur). " +
+            "Ce qui reste a ecrire : la restitution d'etat depuis un donneur ou depuis les " +
+            "globales, l'integration sin/cos de la vitesse, le portage par une autre entite, la " +
+            "publication vers DAT_005fa4e0 et la cascade de fin. Appelees manquantes : " +
+            "FUN_005397b0, FUN_00519f50, FUN_005197d0, FUN_00519940, FUN_00519ee0, FUN_00534cd0, " +
+            "FUN_00539190, FUN_0053aa10, FUN_00530f20 — toutes dans Blaze.c.");
 }

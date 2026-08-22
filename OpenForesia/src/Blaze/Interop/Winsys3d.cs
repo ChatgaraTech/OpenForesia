@@ -161,6 +161,13 @@ internal static unsafe class Winsys3d
 
     [DllImport("winsys3d.dll", EntryPoint = "#457")] internal static extern int Ordinal_457(int y, int x); // real: winsys3d.c FUN_00a25d10 â€” libgte ratan2
 
+    // Ghidra nomme ce thunk `ReleaseTexture` parce qu'il l'a resolu par la table d'imports ; le nom
+    // vient donc de la DLL elle-meme. Le corps est winsys3d.c 25890 : un renvoi d'une ligne vers
+    // FUN_00a27700, avec l'ordinal en commentaire. Le site d'appel de FUN_0050bf20 (0x0050ca48)
+    // empile un seul argument (`push 18h`), et le thunk du jeu est en 0x00545ad6 — un
+    // `jmp dword [608804h]`.
+    [DllImport("winsys3d.dll", EntryPoint = "#788")] internal static extern void ReleaseTexture(int handle); // real: winsys3d.c ReleaseTexture @ 0x00a27990
+
     [DllImport("winsys3d.dll", EntryPoint = "#442")] internal static extern uint Ordinal_442(uint squared); // real: winsys3d.c FUN_00a25b50 â€” libgte SquareRoot0: a four-way table lookup on the magnitude of the argument, then a single Newton step (x/g + g >> 1), masked to 16 bits. Its callers all pass a sum of squares and read a distance back.
 
     // The five entry points FUN_0051d1f0 (the animated-model draw) needs. Identified from their

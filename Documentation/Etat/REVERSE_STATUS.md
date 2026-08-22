@@ -8175,3 +8175,119 @@ Build 0 erreur, 42 avertissements (inchangé). Oracle : **un seul corps signalé
 et c'est le changement voulu ; 25 méthodes nouvelles. Tests de disposition : les trois rouges
 attendus, 39 champs (inchangé depuis la correction de la couleur de fond). Playtest `-Entry 0` : les
 six passes de tables traversent, et l'arrêt est désormais sur `FUN_0050bf20`, membre 0.
+
+---
+
+## 2026-08-22 (nuit) — `FUN_0050bf20` : les quatre lectures que la pseudo-C ne donne pas
+
+Le pas par personnage est transcrit **jusqu'à `LAB_0050caf3`** : le prologue, l'animation,
+l'aiguillage principal, la branche du membre jouable, celle du membre suivi par l'IA et la sonde de
+terrain. Le jeu les exécute et s'arrête maintenant sur `FUN_0050e140`, le premier gestionnaire de
+commande. Reste la queue commune, ~500 lignes.
+
+La fonction fait 8 Ko de code pour 1 002 lignes de pseudo-C. **Le coût n'est pas là où la taille le
+laisse croire** : l'essentiel du travail a été de rendre lisibles quatre endroits où Ghidra ment,
+et c'est ce qui est consigné ici parce que c'est réutilisable.
+
+### `iStack_4` : Ghidra a perdu le paramètre parce que la fonction l'écrase
+
+La pseudo-C se sert d'`iStack_4` une quinzaine de fois — `*(int *)(iStack_4 + 0x1c)`,
+`FUN_00519f50(puVar3, iStack_4)` — sans jamais l'affecter. C'est `[esp+68h]`, et `[esp+68h]` est
+**l'emplacement du paramètre entrant**, que le prologue écrase :
+
+```
+0050bf25  mov  ebp,[esp+60h]         ; ebp = param_1 (membre)
+0050bf47  imul eax,4Ch
+0050bf4a  add  eax,5E9180h           ; eax = &DAT_005e9180 + membre * 0x4c
+0050bf52  mov  [esp+68h],eax         ; ... et ecrase la case du parametre avec
+```
+
+Confirmé au premier usage : `0050ce71  mov edi,[esp+68h] ; movsx ebx,word [edi+44h]` est exactement
+le `*(short *)(iStack_4 + 0x44)` de la pseudo-C. C'est donc **le même objet que `puVar11`**, que
+Ghidra nomme correctement ailleurs dans la même fonction — un objet sous deux noms, dont l'un est
+perdu.
+
+**La leçon générale** : quand une variable de pile est lue sans jamais être écrite, regarder d'abord
+si son décalage tombe sur la zone des paramètres. Une fonction qui réutilise la case de son
+paramètre comme locale est courante en 1998, et c'est exactement le cas que le décompilateur ne sait
+pas rendre.
+
+### `unaff_EBP` et `unaff_EBX` : deux registres sauvés en pile dès le prologue
+
+`unaff_EBP` est le bloc par personnage (`MainMem + 0xf0000 + membre * 0x2000`), posé en `0x0050bf61`
+et sauvé en `[esp+10h]`. `unaff_EBX` est l'état de manette (`0x00604a20 + slotKind * 0x10`), posé en
+`0x0050bf63` et sauvé en `[esp+14h]`. Les deux sont les `iVar23` et `puVar21` que la pseudo-C nomme
+correctement en tête ; Ghidra les perd parce que `0x0050cee9` (`mov ebp,[esi+78h]`) réutilise le
+registre en cours de route.
+
+**Le prologue suffit à identifier les trois.** Il tient en quarante instructions et il pose tout ce
+que la fonction relira ensuite. Sur un corps de cette taille, le lire d'abord coûte deux minutes et
+évite de deviner pendant une heure.
+
+### Le bloc de matrices : `mov ecx,0Ch` répété six fois
+
+De `0x0050cfb1` à `0x0050d290`, Ghidra rend une cascade de `__allmul`/`__allshr` dont il a perdu
+tous les résultats — une quarantaine de lignes illisibles. Au désassembleur, c'est **deux produits
+matrice-vecteur parfaitement réguliers** : trois `__allmul` par ligne, une addition 64 bits, puis
+`mov ecx,0Ch ; call __allshr`. Le décalage est **12**, six fois de suite.
+
+La composition a un sens géométrique clair, et il se lit dans les deux `Ordinal_366` :
+`FUN_0051c300` bâtit la matrice du repère de l'emplacement, le code la **transpose** à la main
+(0x005e9b00 reçoit 0x005e9b20 dans l'ordre 0,3,6 / 1,4,7 / 2,5,8), puis bâtit celle du porteur.
+Le premier produit exprime l'offset dans le repère local de l'emplacement, le second le ré-exprime
+dans celui de ce qui le porte. C'est un attachement père-fils standard.
+
+**Ghidra brouille l'ordre des opérandes dans chaque triple**, ce qui donne l'illusion que les
+composantes sont permutées entre les deux passes. Elles ne le sont pas : la somme est commutative,
+et ce qui compte est quel `m[i]` va avec quel emplacement de pile. En suivant les décalages
+`[esp+N]` à travers les `push`, les deux passes sont `row_i = (m[3i]*x + m[3i+1]*y + m[3i+2]*z) >> 12`,
+sans surprise.
+
+### La sonde de terrain : deux axes, un seul emplacement de pile
+
+`ProbeGroundAhead` avance l'entité de quatre pas le long de son cap. La pseudo-C ajoute **deux fois
+la même valeur** à X et à Z, parce que Ghidra a fait tenir le sinus et le cosinus dans le même
+emplacement. Le binaire (`0x0050c512`..`0x0050c57b`) donne `sinus << 4` sur X et `cosinus << 4` sur
+Z — la même convention que `TrySpawnRandomEncounter`. **Vérifié, pas supposé** : un axe interverti
+aurait envoyé la sonde de côté, et rien à l'écran ne l'aurait signalé.
+
+### Deux labels qui n'en font qu'un
+
+La branche du membre suivi par l'IA porte `LAB_0050c4d6` et `LAB_0050c781`, sautés depuis trois
+endroits — l'allure d'un graphe irréductible. Il ne l'est pas : **toutes** les routes qui atteignent
+`LAB_0050c781` le font avec une distance restante nulle ou négative, et toutes celles qui atteignent
+le bloc de sonde le font avec une distance d'au moins 1. Les deux labels se ramènent à un seul
+`if (distance >= 1)`, et le drapeau « entrer en approche » que la lecture naïve suggère est inutile.
+
+C'est le même constat que sur `FUN_00533940` en août : un graphe de labels n'est presque jamais
+irréductible, il faut chercher l'invariant qui les sépare.
+
+### Deux tables statiques relevées dans le binaire
+
+`&DAT_00562cc0` porte huit entiers — `{0x13, 0x13, 0x15, 0x12, 0x14, 0x14, 0x12, 0x15}` — indexés
+par les trois bits bas de `bloc + 0x150`, la posture : c'est la **portée de détection** que le
+membre suivi compare à sa distance au meneur.
+
+`&PTR_FUN_00562ca0` porte huit gestionnaires de posture, dont **quatre sont `0x0040A600`**, le corps
+vide déjà vérifié au désassembleur : les postures 1, 2, 3 et 5 ne font rien. `&PTR_FUN_00562ce0`
+porte quatre gestionnaires de commande, tous réels.
+
+### `ReleaseTexture` était un import, pas une fonction du jeu
+
+Le thunk `0x00545ad6` est un `jmp dword [608804h]`, et le nom vient de la table d'imports : c'est
+**l'ordinal 788 de `winsys3d.dll`** (`winsys3d.c` l. 25890, un renvoi d'une ligne vers
+`FUN_00a27700`). Ajouté aux P/Invoke. Le dépôt portait déjà un `ReleaseTexture` **sans rapport**
+dans `src/Host/D3D11Backend.cs` — s'y raccrocher aurait compilé et fait n'importe quoi. Un nom qui
+existe déjà des deux côtés de la couture `Blaze`/`Host` mérite d'être vérifié avant d'être lié.
+
+### Ce qui reste
+
+La queue commune, `0x0050caf3`..`0x0050dc0d`. Onze appelées lèvent en se nommant, **toutes dans
+`Blaze.c`** — aucune ne demande de désassemblage. Le jeu réclame `FUN_0050e140` en premier.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : **un seul corps signalé**, `RunWorldMapTick`,
+et c'est le changement voulu. Tests de disposition : inchangés, 39 champs. Playtest `-Entry 0` : le
+jeu entre dans le pas par personnage, exécute le prologue, l'animation, l'aiguillage et la branche
+jouable, et s'arrête sur la lacune nommée du gestionnaire de commande.
