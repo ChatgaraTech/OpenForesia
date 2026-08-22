@@ -464,7 +464,7 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
     /// <summary>Ghidra: &amp;DAT_005de558 — trente-neuf dwords remis a zero a chaque chargement de
     /// ressource, avec un curseur a <c>+0x6c</c> (<c>DAT_005de5c4</c>) qui repointe sur leur debut.
     /// Une douzaine de lecteurs dans le code de jeu, aucun encore transcrit.</summary>
-    private readonly byte* s_EntityList_005de558 = (byte*)NativeMemory.AllocZeroed(0x9c);
+    internal readonly byte* s_EntityList_005de558 = (byte*)NativeMemory.AllocZeroed(0x9c);
 
     /// <summary>
     /// Ghidra: &amp;PTR_PTR_00566d68 et les onze tables qu'elle designe — un bloc plat de 192 dwords

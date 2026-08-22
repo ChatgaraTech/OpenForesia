@@ -19,57 +19,50 @@ S'y ajoute, le 2026-08-21 au soir : l'arène des paramètres de vue (étape 1), 
 `OpenForesia.Tools`, la rétractation des notes qui en découlaient, la correction de l'arité de
 `Winsys3d.Ordinal_45` et l'ajout d'`Ordinal_46`.
 
-**Où en est le jeu (2026-08-22, soir).** Le chemin « Début du jeu → constitution du groupe → carte du
-monde » va jusqu'au bout, exécute le prologue, l'ossature de la boucle par image **et treize des
-quatorze appelées du cas 0** (`0x005176d5`..`0x0051776b`, le pas de simulation du monde). Il
-s'arrête maintenant **à l'intérieur** de la troisième d'entre elles, `FUN_0050e5e0`, sur un
-gestionnaire d'entité manquant.
+**Où en est le jeu (2026-08-22, tard).** Le chemin « Début du jeu → constitution du groupe → carte du
+monde » va jusqu'au bout, exécute le prologue, l'ossature de la boucle par image, **treize des
+quatorze appelées du cas 0** (`0x005176d5`..`0x0051776b`, le pas de simulation du monde) **et les
+quatre gestionnaires d'entité que la zone de départ demande réellement**. Les six passes de tables
+d'entités traversent maintenant sans lever.
 
-> **Reprendre ici — deux chantiers indépendants, tous deux mesurés.**
+> **Reprendre ici — il ne reste qu'un chantier sur le pas de simulation.**
 >
-> **(A) La famille des gestionnaires d'entité de `PTR_FUN_0056adc8`.** C'est ce qui bloque
-> aujourd'hui. La table de la zone d'index 0 est la seule pleine des sept : dix-neuf cibles
-> distinctes. La carte du monde les atteint **dans l'ordre des sous-types**, parce que la zone de
-> départ pose une entité de chaque type dans les emplacements 8, 9, 10… de la table
-> `DAT_005fa5e0`.
+> **`FUN_0050bf20`, le pas par personnage** — 1 002 lignes, la seule des quatorze appelées du cas 0
+> qui manque. **Sa moitié basse n'est pas exploitable dans la pseudo-C** : à partir de `0x0050cca1`
+> environ, Ghidra rend une cascade de `__allmul`/`__allshr` dont il a perdu les résultats, plus un
+> `iStack_4` jamais affecté et des `unaff_EBX`/`unaff_EBP`. C'est la classe de blocage nommée dans
+> `CLAUDE.md`, celle qui demande le désassemblage. Appelées manquantes déjà repérées :
+> `FUN_005238e0`, `FUN_00530070`, `FUN_0051a020`, et les deux tables de sauts statiques
+> `PTR_FUN_00562ce0` et `PTR_FUN_00562ca0`.
 >
-> Deux sont faites (`0x004508D0` et `0x004509B0`, toutes deux **absentes de `Blaze.c`**,
-> désassemblées sur place). Restent, dans l'ordre où le jeu les demandera :
->
-> | sous-type | adresse | dans `Blaze.c` ? |
-> |---:|---|---|
-> | 10 | `0x00450AA0` | **non** (~304 o.) |
-> | 11 | `0x00450BD0` | **non** (~144 o.) |
-> | 12 | `0x00450C60` | oui, 36 l. |
-> | 13 | `0x00473ED0` | oui, 162 l. |
-> | 14 | `0x004746C0` | **non** |
-> | 15 | `0x004508B0` | **non** (32 o. — la plus petite) |
-> | 16 | `0x00450760` | oui, 66 l. |
-> | 17 | `0x004502E0` | **non** |
-> | 18 | `0x00450D30` | **non** |
-> | 0–7 | `0x004734B0` (×2), `0x004736D0`, `0x004738A0`, `0x00473A90`, `0x00473CB0`, `0x00473A70` (×2) | 4 sur 6 |
->
-> Douze des dix-neuf sont absentes de `Blaze.c` : Ghidra ne décompile pas ce dont seule l'adresse
-> est prise, et ces corps ne sont atteints que par table de sauts. Le verbe `disasm` les rend
-> toutes accessibles — les deux déjà faites ont pris une passe chacune. Le travail est **mécanique
-> et répétitif**, exactement comme les verbes de zone : le jeu nomme un gestionnaire, on le
-> transcrit, on relance, il en nomme un autre. **La lacune imprime les seize premiers octets de
-> l'enregistrement**, ce qui permet de vérifier au passage que l'entité est légitime.
->
-> Deux appelées partagées sont déjà écrites et resserviront : `TryPublishCameraEffectNearEntity`
-> (`FUN_0041be60`) et `TryPlaySoundNearEntity` (`FUN_00468080`), toutes deux des « fais X si
-> l'entité est à moins de N unités de la caméra ».
->
-> **(B) `FUN_0050bf20`, le pas par personnage** — 1 002 lignes, la seule des quatorze appelées du
-> cas 0 qui manque encore. Elle vient après (A) dans l'ordre d'exécution. **Sa moitié basse n'est
-> pas exploitable dans la pseudo-C** : à partir de `0x0050cca1` environ, Ghidra rend une cascade de
-> `__allmul`/`__allshr` dont il a perdu les résultats, plus un `iStack_4` jamais affecté et des
-> `unaff_EBX`/`unaff_EBP`. C'est la classe de blocage nommée dans `CLAUDE.md`, celle qui demande le
-> désassemblage. Appelées manquantes déjà repérées : `FUN_005238e0`, `FUN_00530070`, `FUN_0051a020`,
-> et les deux tables de sauts statiques `PTR_FUN_00562ce0` et `PTR_FUN_00562ca0`.
->
-> Deux petites lacunes restent aussi à l'intérieur de `FUN_0050e680`, toutes deux dans `Blaze.c` :
-> `FUN_0051a740` (mise à mort d'une entité de scène) et `FUN_0053aa10` (pas d'animation).
+> Après elle vient le **bloc d'affichage principal** (`0x00517aa7`..`0x00519703`, ~700 lignes),
+> celui qui fera enfin apparaître quelque chose à l'écran.
+
+### Les gestionnaires de `PTR_FUN_0056adc8` — SOLDÉS pour la zone de départ
+
+**Quatre des dix-neuf suffisent, pas dix-sept.** L'estimation du matin comptait toute la table en
+supposant que la zone posait une entité de chaque type — la lecture du chaînage de `DAT_005fa5e0`
+disait le contraire, et le jeu l'a confirmé : les emplacements actifs demandent les sous-types
+**8, 9, 10 et 18**, et rien d'autre.
+
+| sous-type | adresse | dans `Blaze.c` ? | rôle |
+|---:|---|---|---|
+| 8 | `0x004508D0` | **non**, 197 o. | animation de 0x28 images, angle croissant, effet de caméra |
+| 9 | `0x004509B0` | oui, 46 l. | sa jumelle en sens inverse, avec un son à l'ouverture |
+| 10 | `0x00450AA0` | **non**, 273 o. | montée puis maintien d'un niveau, gardé par le bit de type |
+| 18 | `0x00450D30` | **non**, 1 087 o. | **le coffre** : ouverture, clef, remise d'objet, fermeture |
+
+Les quinze autres restent à faire **le jour où une zone les demandera**, pas avant — et la lacune
+les nommera comme elle a nommé celles-ci. C'est la même règle que pour les verbes de zone : on ne
+transcrit pas une table entière en spéculant sur ce qui sera appelé.
+
+Appelées partagées écrites au passage, toutes réutilisables : `TryPublishCameraEffectNearEntity`
+(`FUN_0041be60`), `TryPlaySoundNearEntity` (`FUN_00468080`), `PickWeightedTableEntry`
+(`FUN_0053a920`) et l'accesseur `AreaEffectKindBits` (`DAT_00571540`).
+
+**Trois lacunes nommées restent atteignables par le jeu, mais aucune n'est sur le chemin au repos** :
+`FUN_00530f20` (la remise d'objet du coffre, la cascade déjà mise de côté pour l'opcode 27),
+`FUN_0051a740` et `FUN_0053aa10` (à l'intérieur de `FUN_0050e680`, tous deux dans `Blaze.c`).
 >
 > Les trois autres trous de la boucle sont nommés sur place dans
 > `Screens/State03/WorldMapTick.cs`, avec leur plage d'adresses : l'affichage de mise au point
@@ -733,14 +726,16 @@ RunGameStateTick (état 3)
             ├─ SmoothSceneOrientationAndBackColour  [FAIT — FUN_00532bf0]
             ├─ RunLeaderScriptListEarly             [FAIT — FUN_00513ef0 + FUN_00513eb0]
             ├─ TickEntityTable_005fa5e0             [FAIT — FUN_0050e5e0]
-            │  └─ gestionnaires de PTR_FUN_0056adc8  ←←← ON S'ARRÊTE ICI
+            │  └─ gestionnaires de PTR_FUN_0056adc8 [les QUATRE que la zone demande sont FAITS]
             │     ├─ 0x004508D0  [FAIT — absente de Blaze.c, desassemblee]
             │     ├─ 0x004509B0  [FAIT — + FUN_00468080, arite corrigee au desassembleur]
-            │     └─ 0x00450AA0 et les seize autres  [a faire, voir le tableau plus haut]
+            │     ├─ 0x00450AA0  [FAIT — absente de Blaze.c, desassemblee]
+            │     └─ 0x00450D30  [FAIT — le coffre, 1087 o. absents de Blaze.c ; lacune interne
+            │                     FUN_00530f20, hors du chemin au repos]
             ├─ TickEntityTable_005ecaa0             [FAIT — FUN_0050e680 ; deux lacunes internes,
-            │                                        FUN_0051a740 et FUN_0053aa10]
+            │                                        FUN_0051a740 et FUN_0053aa10, non atteintes]
             ├─ TickEntityTable_005f7de0             [FAIT — FUN_0050eb20]
-            ├─ TickPartyMember                      [A FAIRE — FUN_0050bf20, 1002 l.]
+            ├─ TickPartyMember                      [A FAIRE — FUN_0050bf20, 1002 l.]  ←←← ICI
             ├─ TickEntityTable_005ff400 / 005edee0 / 005f2d40
             │                                       [FAIT — FUN_0047aa70 / ab70 / acf0]
             ├─ TrySpawnRandomEncounter              [FAIT — FUN_0050ed70]

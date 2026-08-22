@@ -8066,3 +8066,112 @@ Build 0 erreur, 42 avertissements (inchangé). Oracle : **un seul corps signalé
 et c'est le changement voulu ; 22 méthodes nouvelles. Tests de disposition : les trois rouges
 attendus, dont le test 5 qui passe de 42 à 39 champs. Playtest `-Entry 0` : le jeu atteint l'état 3,
 exécute le pas de simulation et s'arrête sur la lacune nommée du gestionnaire `0x00450AA0`.
+
+---
+
+## 2026-08-22 (fin) — les gestionnaires d'entité : quatre suffisaient, pas dix-sept
+
+Les six passes de tables d'entités du cas 0 traversent maintenant sans lever. Le front est passé
+à `FUN_0050bf20`, le pas par personnage — le dernier trou du pas de simulation du monde.
+
+### La mesure du matin était pessimiste d'un facteur quatre
+
+Le relevé de la veille annonçait « dix-sept gestionnaires restants, dont douze absentes de
+`Blaze.c` », en supposant que la zone de départ posait une entité de chaque type parce que les
+emplacements 8, 9 et 10 portaient les sous-types 8, 9 et 10. **Faux.** Dès l'emplacement 11, la
+suite se casse : les emplacements actifs demandent les sous-types **8, 9, 10 et 18**, et rien
+d'autre. Quatre gestionnaires, pas dix-sept.
+
+| sous-type | adresse | dans `Blaze.c` ? | taille | rôle |
+|---:|---|---|---:|---|
+| 8 | `0x004508D0` | **non** | 197 o. | animation de 0x28 images, angle croissant, effet de caméra |
+| 9 | `0x004509B0` | oui | 46 l. | sa jumelle en sens inverse, avec un son à l'ouverture |
+| 10 | `0x00450AA0` | **non** | 273 o. | montée puis maintien d'un niveau, gardé par le bit de type |
+| 18 | `0x00450D30` | **non** | 1 087 o. | le coffre |
+
+**La leçon est celle des verbes de zone, re-vérifiée** : on ne transcrit pas une table de sauts en
+spéculant sur ce qui sera appelé. La lacune nomme, on transcrit, on relance. Le coût réel a été
+quatre passes de désassemblage au lieu des dix-sept annoncées, et les quinze gestionnaires restants
+attendront qu'une zone les demande.
+
+### `DAT_00571540` : le cycle est complet
+
+Trois des quatre gestionnaires partagent un registre de cinq bits, un par type d'effet de zone,
+dans l'octet bas de `DAT_00571540` — que `Init_004502d0` remet à zéro au chargement de zone.
+`0x004508D0` et `0x004509B0` **allument** le bit de leur type au premier tour ; `0x00450AA0` s'en
+sert comme feu vert pour avancer, puis l'**éteint** quand son effet s'achève. Rendu par
+l'accesseur `AreaEffectKindBits`.
+
+Les trois passent par la **même table de sauts à cinq entrées**, dont les cibles ne diffèrent que
+par la constante — `or 1/2/4/8/0x10` d'un côté, `and 0FEh/0FDh/0FBh/0F7h/0EFh` de l'autre. C'est
+`1 << (type - 1)`, et c'est écrit ainsi plutôt qu'en cinq branches identiques.
+
+`0x00450AA0` en donne une variante instructive : ses cinq gardes s'écrivent
+`cmp cx,N ; jne ; test dl,M ; je`, sauf la deuxième, qui est `test cl,dl`. Ce n'est **pas** un cas
+particulier — le compilateur a réutilisé `CL`, qui porte déjà le 2 de la comparaison. Les cinq
+gardes se réduisent à une ligne. **Une instruction qui a l'air différente des quatre autres mérite
+qu'on regarde ce que le registre contenait avant de conclure à une exception.**
+
+### Le coffre, et les deux registres qu'il faut suivre
+
+`FUN_00450D30` (1 087 octets, absente de `Blaze.c`) est une machine à états dont les jalons sont
+espacés — `0`, `0xFFFF`, `0xFFFE`, `1`, `2`, `0x14`, `0x28`, `0x64`, `0xC8`, `0xC9`, `0xCA`,
+`0x12C`, `0x3E7` — et dont chaque état est un `if` séparé qui **tombe dans le suivant** : plusieurs
+transitions s'enchaînent dans la même image. Transcrit tel quel plutôt qu'en `switch`, parce que le
+`switch` supprimerait précisément cet enchaînement.
+
+**Deux registres persistants portent des valeurs qui changent en cours de route, et une lecture
+naïve du désassemblage se trompe dessus :**
+
+* **`EDI`** vaut zéro à l'entrée et sert de « zéro » à plusieurs comparaisons — mais `0x00451097`
+  le recharge à `0xC8`, et cette instruction est sur **toutes** les routes qui mènent à l'état
+  `0x12C`. Le `mov [esi+10h],di` de `0x0045115d` pose donc `0xC8`, pas zéro : après le message de
+  refus, le coffre repart par la séquence de fermeture. Un zéro l'aurait fait boucler sur son
+  amorçage.
+* **`EBX`** vaut 1 en tête et `0x28` à partir de `0x00450e79`. Les `mov [esi+10h],bx` des deux
+  côtés ne posent pas la même valeur.
+
+**La règle qui s'en dégage** : dans un corps sans variables locales, un registre chargé d'une
+constante loin du point d'usage est un piège à part entière. Avant de transcrire un
+`mov [x],reg`, remonter à la dernière écriture du registre **sur chaque route** qui atteint la
+ligne, pas seulement sur la plus proche.
+
+### Un neuvième défaut de 1998, contradictoire avec lui-même
+
+`FUN_00450D30` se garde explicitement d'un `+0x6c` nul — `cmp eax,edi ; jne ; mov eax,5DE558h` —
+puis, trente instructions plus loin, écrit `mov dword [ebx+6Ch],0` par le registre **non replié**,
+et relit deux fois `[esi+6Ch]` sans repli du tout. Les deux moitiés se contredisent dans la même
+fonction : le repli n'existe que parce que l'auteur savait que le champ peut être nul.
+
+Latent, pas observé — l'état `0x28` n'est atteint qu'après un contact qui écrit `+0x6c`. Écrit dans
+`legacy-bug.md` sous **LB-007**, et transcrit tel quel : étendre le repli rendrait le code plus sûr
+que l'original et masquerait la contradiction.
+
+### Ghidra et les registres partiellement écrits, troisième et quatrième cas
+
+`FUN_004509b0` rend l'identifiant du son comme
+`CONCAT22((short)(DAT_005e97cc >> 0x10), (ushort)*(byte *)…)`, ce qui n'a aucun sens comme valeur.
+C'est un `movzx ax, byte […]` suivi d'un `push eax` : la moitié haute d'EAX est périmée, et l'appelé
+ne lit que `movsx word`. **Un `CONCAT22` dont l'une des moitiés vient d'un symbole sans rapport est
+la signature d'un registre partiellement écrit, pas d'un calcul.**
+
+Même famille dans `FUN_00450D30`, où `mov eax,[esi+44h]` puis `mov al,[eax+5E9860h]` laisse les
+trois octets hauts d'EAX porter l'index ; le `and eax,0FFh` de la branche suivante confirme la
+lecture.
+
+### Deux petites transcriptions au passage
+
+`FUN_0053a920` (`PickWeightedTableEntry`) est un tirage pondéré : il compte combien de sept seuils
+`rand() % bound` dépasse, ce qui donne une colonne de 0 à 7 dont la probabilité décroît, puis lit
+l'octet **signé** de cette colonne dans une table de huit octets par ligne prise à `ctx + 0xb4`.
+Sept comparaisons indépendantes plutôt qu'une table cumulative.
+
+`FUN_00468080` avait déjà été écrite dans la passe précédente ; le coffre l'appelle avec le même
+double déréférencement que `FUN_004509b0`, à `+8` près sur l'octet lu.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : **un seul corps signalé**, `RunWorldMapTick`,
+et c'est le changement voulu ; 25 méthodes nouvelles. Tests de disposition : les trois rouges
+attendus, 39 champs (inchangé depuis la correction de la couleur de fond). Playtest `-Entry 0` : les
+six passes de tables traversent, et l'arrêt est désormais sur `FUN_0050bf20`, membre 0.

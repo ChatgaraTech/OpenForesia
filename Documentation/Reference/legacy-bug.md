@@ -323,3 +323,63 @@ le corps vide `FUN_00401FA0`, et la seule que le code atteigne est l'entrée 8.
 trente-deux dwords pour que le débordement ait où tomber, exactement comme dans l'original. **Ne pas
 « corriger » le compte à 0x10** : cela ferait diverger le contenu des entrées 16 à 31, et surtout
 cela masquerait le défaut au lieu de le reproduire.
+
+
+---
+
+## LB-007 — Le coffre déréférence un pointeur nul là où il vient justement de se garder d'un nul
+
+**Repéré le 2026-08-22**, en transcrivant `FUN_00450D30` (l'entrée 18 de `PTR_FUN_0056adc8`, le
+gestionnaire de coffre). La fonction est **absente de `Blaze.c`** — Ghidra ne décompile pas un corps
+dont seule l'adresse est prise — donc le défaut ne se voit qu'au désassemblage.
+
+### Ce que fait le binaire
+
+Dans l'état `0x28`, le coffre a besoin de l'entité qui l'a ouvert. Elle vit dans son champ `+0x6c`,
+et le code **prévoit explicitement** qu'elle soit nulle :
+
+```
+00450fae  mov  ebx,[esi+6Ch]        ; ebx = l'entite liee
+00450fb1  mov  eax,ebx
+00450fb3  cmp  eax,edi              ; edi = 0
+00450fb5  jne  00450FBC
+00450fb7  mov  eax,5DE558h          ; nulle -> on retombe sur s_EntityList_005de558
+LAB_00450fbc:
+00450fbc  ...                       ; la suite lit [eax+8], donc le repli est bien utilise
+```
+
+Le repli n'est appliqué qu'à **`EAX`**. `EBX` garde la valeur nulle d'origine. Une trentaine
+d'instructions plus loin, après la boucle qui balaie l'inventaire :
+
+```
+00451009  mov  dword [ebx+6Ch],0    ; ecriture a l'adresse 0x6c si ebx etait nul
+```
+
+Puis, immédiatement après, deux relectures de `[esi+6Ch]` sans repli du tout :
+
+```
+00451010  mov  ecx,[esi+6Ch]
+0045101b  mov  [ecx+41h],dl
+```
+
+### Pourquoi c'est un défaut et pas une lecture erronée de notre part
+
+Les deux moitiés se contredisent dans la même fonction : le repli sur `s_EntityList_005de558`
+n'existe que parce que l'auteur savait que `+0x6c` peut être nul à ce point. S'il ne pouvait pas
+l'être, le repli serait mort. L'écriture par `EBX` — et les deux déréférencements qui suivent —
+ignorent la précaution que la ligne d'avant vient de prendre.
+
+### Portée
+
+Nulle en pratique dans le jeu de 1998, pour autant qu'on puisse en juger : l'état `0x28` n'est
+atteint qu'après que le coffre a été touché par un membre du groupe, et c'est ce contact qui écrit
+`+0x6c`. Le chemin où `+0x6c` reste nul jusqu'à l'état `0x28` n'a pas été exhibé. Le défaut est donc
+**latent**, pas observé.
+
+### Dans OpenForesia
+
+`EntityHandler_00450D30` transcrit les deux moitiés telles quelles : le repli sur `EAX`, puis
+l'écriture par le pointeur non replié. Sur une machine moderne cela lèverait une violation d'accès
+au lieu d'écrire dans la page zéro, mais c'est la bonne façon de reproduire le défaut — **ne pas
+étendre le repli à la seconde moitié**. Le faire rendrait le code plus sûr que l'original et
+masquerait la contradiction, qui est précisément ce que ce fichier existe pour conserver.
