@@ -3268,17 +3268,788 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void TickPartyMemberTail(
         int member, byte* s, uint* slot, byte* entry, byte* pad, byte* perChar, byte* mainMem)
+    {
+        // ---------------------------------------------- (A) la restitution d'etat
+        uint held = *slot;
+        uint attributes = *(uint*)(s + 0x90);
+
+        if (((held & 0x40000001) != 0 || (attributes & 0xad40) != 0)
+            && (s[0x90] & 2) == 0 && (held & 0x20000000) != 0)
+        {
+            if ((held & 0x4000) == 0) *slot = held | 0x4000;
+
+            // Le membre reprend l'etat d'un camarade valide ; a defaut, celui que la sous-zone a
+            // mis de cote en entrant. La boucle s'arrete AUSSI sur le premier camarade qui porte
+            // 0x4001 sans le bit 0x8000 — auquel cas rien n'est restitue du tout.
+            bool restored = false;
+            int index = 0;
+            uint* donor = (uint*)Inp.s_SlotFlags_005e93c0;
+
+            while (index < s_PartySize_005e9020)
+            {
+                if (donor != slot && (*donor & 0x50000000) == 0)
+                {
+                    byte* d = (byte*)donor;
+                    if ((*donor & 0x4001) == 0)
+                    {
+                        Mem.CopyDwords((uint*)(d + 0x7c), (uint*)(s + 0x7c), 7);
+                        Mem.CopyDwords((uint*)(d + 0x1c), (uint*)(s + 0x1c), 3);
+                        Mem.CopyDwords((uint*)(d + 0x60), (uint*)(s + 0x60), 2);
+                        Mem.CopyDwords(
+                            (uint*)(Inp.s_SlotArea_005e9180 + index * 0x4c + 0x1c),
+                            (uint*)(entry + 0x1c), 0xc);
+
+                        *(int*)(s + 0x78) = *(int*)(d + 0x78);
+                        *slot = (*donor & 0xc2dedf77) | (*slot & 0x49212000);
+                        *(uint*)(s + 0x90) = *(uint*)(d + 0x90) & 0xffff7eff;
+                        restored = true;
+                        break;
+                    }
+
+                    if ((*(uint*)(d + 0x90) & 0x8000) == 0) break;
+                }
+
+                index++;
+                donor = (uint*)((byte*)donor + 0x9c);
+            }
+
+            if (!restored && index == s_PartySize_005e9020)
+            {
+                *Mem.Camera(0x005de068) = *(int*)Mem.Arena(0x005e9a30);
+                *Mem.Camera(0x005de06c) = *(int*)Mem.Arena(0x005e9a34);
+                *Mem.Camera(0x005de070) = *(int*)Mem.Arena(0x005e9a38);
+
+                *(uint*)(s + 0x80) = *(uint*)Mem.Entity(0x005f7d70);
+                *(uint*)(s + 0x84) = *(uint*)Mem.Entity(0x005f7d74);
+                *(uint*)(s + 0x88) = *(uint*)Mem.Entity(0x005f7d78);
+                *(uint*)(s + 0x8c) = *(uint*)Mem.Entity(0x005f7d7c);
+
+                *(int*)(s + 0x1c) = *(int*)Mem.Arena(0x005e9a30);
+                int savedY = *(int*)Mem.Arena(0x005e9a34);
+                *(int*)(s + 0x20) = savedY;
+                *(int*)(s + 0x24) = *(int*)Mem.Arena(0x005e9a38);
+
+                // Ghidra pose la MEME valeur dans +0x60 et +0x64 : le sol et le plafond partent
+                // tous deux de la hauteur mise de cote. Transcrit tel quel.
+                *(int*)(s + 0x60) = savedY;
+                *(int*)(s + 0x64) = savedY;
+
+                *slot = (*(uint*)Mem.Entity(0x005ff3e4) & 0xc2dedf77) | (*slot & 0x49212000);
+                *(uint*)(s + 0x90) = *(ushort*)Mem.Arena(0x005e9b38) & 0xffff7effu;
+                *(uint*)(s + 0x7c) = *(uint*)Mem.Entity(0x005f7b48);
+                restored = true;
+            }
+
+            if (restored)
+            {
+                held = *slot;
+                *slot = held & 0xdfffbff8;
+                *(uint*)(s + 0x90) &= 0xffff7eff;
+
+                if ((held & 0x40000000) == 0)
+                {
+                    *(short*)(s + 0x96) = 0;
+                    SetEntityPose_005397B0(slot, 2, 0);
+                    *(short*)(s + 0x96) = 0x10;
+                    *(short*)(s + 0x14) = 0;
+                    *(uint*)(s + 0x5c) = 0;
+                    *(int*)(s + 0x50) = 0;
+                    *(int*)(s + 0x54) = 0;
+                    *(int*)(s + 0x58) = 0;
+                    s[9] = 0;
+                    *(uint*)(s + 0x18) = 0;
+                }
+            }
+        }
+
+        // ---------------------------------------------- (B) la publication vers les globales
+        Mem.CopyDwords((uint*)(s + 0x1c), (uint*)Mem.Entity(0x005fa4e0), 10);
+        *(uint*)Mem.Arena(0x005e9b4c) = *(uint*)(s + 0x80);
+        *(uint*)Mem.Arena(0x005e9b50) = *(uint*)(s + 0x84);
+        *(uint*)Mem.Arena(0x005e9b44) = *(uint*)(s + 0x88);
+        *(uint*)Mem.Arena(0x005e9b48) = *(uint*)(s + 0x8c);
+        *(int*)Mem.Entity(0x005f7cc4) = *(int*)(s + 0x78);
+
+        // Ghidra: `_DAT_005ff3e8 = *puVar3;`. L'adresse LUE plus haut est 0x005ff3e4 et celle
+        // ECRITE ici est 0x005ff3e8 — deux cases voisines et distinctes, verifie au
+        // desassembleur (`mov [5FF3E8h],eax` en 0x0050cd43).
+        *(uint*)Mem.Entity(0x005ff3e8) = *slot;
+        *(ushort*)Mem.Entity(0x0060083c) = *(ushort*)(s + 0x90);
+
+        // ---------------------------------------------- (C) l'integration de la vitesse
+        //
+        // **Le triplet est (sinus, 0, cosinus), verifie au desassembleur** (0x0050cd63..0x0050cd7e)
+        // et non deduit de la pseudo-C, qui attache les deux noms aux mauvais emplacements et rend
+        // la mise a zero de Y comme un `iStack_10 = 0` mort.
+        int facing = *(short*)(s + 0x98);
+        int* heading = stackalloc int[3];
+        heading[0] = (int)Winsys3d.GetSinTableEntry(facing);
+        heading[1] = 0;
+        heading[2] = Winsys3d.GetCosTableEntry(facing);
+
+        int* carried = stackalloc int[3];
+
+        if ((*slot & 1) == 0)
+        {
+            if ((*slot & 0x10) == 0)
+            {
+                // Le cap est bascule sur la pente : on sonde le sol un seizieme d'unite devant,
+                // et Ordinal_439 normalise le vecteur qui joint les deux points.
+                int* slope = stackalloc int[3];
+                slope[0] = heading[0] * 0x10 + *(int*)(s + 0x1c);
+                slope[2] = heading[2] * 0x10 + *(int*)(s + 0x24);
+
+                // Ghidra appelle GroundHeightOnFace AVANT d'ecrire slope[1] : la hauteur passee est
+                // celle laissee par le tour precedent. Conserve — la fonction ne lit que X et Z.
+                int groundAhead = GroundHeightOnFace(*(uint**)(s + 0x7c), slope);
+
+                slope[1] = ((groundAhead - *(int*)(s + 0x20)) >> 0xc) - 5;
+                slope[0] = (heading[0] << 4) >> 0xc;
+                slope[2] = (heading[2] << 4) >> 0xc;
+                Winsys3d.Ordinal_439(slope, heading);
+            }
+
+            int speed = *(int*)(s + 0x5c);
+            if ((*(uint*)(s + 0x90) & 0x100) == 0)
+            {
+                carried[0] = *(int*)(s + 0x50);
+                carried[2] = *(int*)(s + 0x58);
+                heading[0] = heading[0] * speed >> 0xc;
+                heading[1] = heading[1] * speed >> 0xc;
+                carried[1] = *(int*)(s + 0x54);
+                heading[2] = heading[2] * speed >> 0xc;
+            }
+            else
+            {
+                // Le regime « monte » : cinq bits de plus a l'amortissement, et le vecteur de
+                // l'entree d'emplacement s'ajoute au cap.
+                heading[0] = heading[0] * speed >> 0x11;
+                heading[1] = heading[1] * speed >> 0x11;
+                heading[2] = heading[2] * speed >> 0x11;
+
+                if ((*slot & 0x10) == 0)
+                {
+                    heading[0] += *(short*)(entry + 0x44) * 4;
+                    heading[1] += *(short*)(entry + 0x46) * 4;
+                    heading[2] += *(short*)(entry + 0x48) * 4;
+                }
+
+                carried[0] = *(int*)(s + 0x50) >> 5;
+                carried[1] = *(int*)(s + 0x54) >> 5;
+                carried[2] = *(int*)(s + 0x58) >> 5;
+            }
+        }
+        else
+        {
+            heading[0] = heading[0] * *(int*)(s + 0x5c) >> 0x10;
+            heading[2] = heading[2] * *(int*)(s + 0x5c) >> 0x10;
+            carried[0] = *(int*)(s + 0x50) >> 4;
+            carried[2] = *(int*)(s + 0x58) >> 4;
+            carried[1] = 0;
+        }
+
+        // ---------------------------------------------- (D) le porteur
+        int* push = stackalloc int[3];
+        push[0] = 0;
+        push[1] = 0;
+        push[2] = 0;
+
+        byte* carrier = *(byte**)(s + 0x78);
+        if (carrier != null)
+        {
+            if ((carrier[7] & 0x40) != 0)
+            {
+                *(short*)(s + 0x32) += (short)(*(short*)(carrier + 0x32) - *(short*)(entry + 0x3e));
+                ComputeCarrierOffset(entry, carrier, push);
+
+                if (((*(ushort*)(carrier + 0x34) | *(ushort*)(entry + 0x40)) & 0xfff) != 0)
+                {
+                    push[0] = -push[0];
+                    push[1] = -0xa000 - push[1];
+                    push[2] = -push[2];
+                }
+            }
+
+            if ((carrier[7] & 0x20) != 0)
+            {
+                push[0] += *(int*)(carrier + 0x1c) - *(int*)(entry + 0x28);
+                push[1] += *(int*)(carrier + 0x20) - *(int*)(entry + 0x2c);
+                push[2] += *(int*)(carrier + 0x24) - *(int*)(entry + 0x30);
+            }
+
+            if ((carrier[7] & 0x10) != 0)
+            {
+                push[0] += *(int*)(carrier + 0x50);
+                push[1] += *(int*)(carrier + 0x54);
+                push[2] += *(int*)(carrier + 0x58);
+            }
+
+            if ((*slot & 1) == 0 && (*slot & 0x10) != 0)
+            {
+                *(int*)(s + 0x50) += push[0];
+                *(int*)(s + 0x54) += push[1];
+                *(int*)(s + 0x58) += push[2];
+            }
+        }
+
+        // ---------------------------------------------- (E) deux demi-pas de placement
+        *(int*)(s + 0x50) += heading[0] - carried[0];
+        *(int*)(s + 0x54) += heading[1] - carried[1];
+        *(int*)(s + 0x58) += heading[2] - carried[2];
+
+        ResolveEntityCollision_00519F50(slot, entry);
+
+        uint gathered = 0;
+        *slot &= 0xdfffffff;
+
+        // Deux demi-pas plutot qu'un pas entier : le placement rattrape une marche que le pas
+        // entier aurait traversee. Le premier tour efface les trois bits de face du resultat.
+        for (int half = 2; half != 0; half--)
+        {
+            *(int*)(s + 0x1c) += *(int*)(s + 0x50) >> 1;
+            *(int*)(s + 0x20) += *(int*)(s + 0x54) >> 1;
+            *(int*)(s + 0x24) += *(int*)(s + 0x58) >> 1;
+
+            FinalizeEntityPlacement2(slot);
+            gathered |= *(uint*)(s + 0x90);
+            if (half == 2) gathered &= 0xfffff8ff;
+        }
+
+        *(uint*)(s + 0x90) = gathered;
+        ApplyEntityMotion_00519DF0(slot, entry);
+
+        // L'entree dans une zone marquee : le script d'ambiance part une fois.
+        if ((*(ushort*)Mem.Entity(0x0060083c) & 0x8000) == 0
+            && (*(uint*)(s + 0x90) & 0x8000) != 0
+            && *(sbyte*)(s_Unknown_005f2ce0 + 0x11) != -1)
+        {
+            RunEntityScript(s_Unknown_005e97cc, s, (uint)*(sbyte*)(s_Unknown_005f2ce0 + 0x11));
+        }
+
+        // ---------------------------------------------- (F) l'amortissement et le rebond
+        short gravity = *(short*)(s + 0x9a);
+        int vx = *(int*)(s + 0x50) - (*(int*)(s + 0x50) >> 8);
+        *(int*)(s + 0x50) = vx;
+
+        int vy = *(int*)(s + 0x54) + (((gravity >> 8) - (*(int*)(s + 0x54) >> 8)) - gravity);
+        int vz = *(int*)(s + 0x58) - (*(int*)(s + 0x58) >> 8);
+        *(int*)(s + 0x54) = vy;
+        *(int*)(s + 0x58) = vz;
+
+        if (vy < 1) *(short*)(s + 0x9a) = 0x6000;
+
+        attributes = *(uint*)(s + 0x90);
+        if ((attributes & 0x800) != 0)
+        {
+            // Le placement a refuse : on revient a la position d'avant, publiee en (B).
+            *(int*)(s + 0x1c) = *(int*)Mem.Entity(0x005fa4e0);
+            *(int*)(s + 0x24) = *(int*)Mem.Entity(0x005fa4e8);
+
+            uint after = *slot;
+            if ((after & 1) == 0) *(int*)(s + 0x20) = *(int*)Mem.Entity(0x005fa4e4);
+
+            *(uint*)(s + 0x80) = *(uint*)Mem.Arena(0x005e9b4c);
+            *(uint*)(s + 0x84) = *(uint*)Mem.Arena(0x005e9b50);
+            *(uint*)(s + 0x88) = *(uint*)Mem.Arena(0x005e9b44);
+            *(uint*)(s + 0x8c) = *(uint*)Mem.Arena(0x005e9b48);
+            *(int*)(s + 0x78) = *(int*)Mem.Entity(0x005f7cc4);
+
+            if ((perChar[0x150] & 7) == 2)
+            {
+                if ((after & 4) == 0)
+                {
+                    *(int*)(s + 0x50) = 0;
+                    *(int*)(s + 0x58) = 0;
+                }
+                else
+                {
+                    // Le rebond contre un mur en pleine course : la vitesse s'inverse de moitie et
+                    // le personnage est relance vers le haut.
+                    *(short*)(s + 0x9a) = 0x6000;
+                    *(uint*)(s + 0x18) = 4;
+                    *slot = (after & 0xfefffffb) | 1;
+                    *(int*)(s + 0x50) = -(vx >> 1);
+                    *(int*)(s + 0x54) = 0xe000;
+                    *(int*)(s + 0x20) += 0xe000;
+                    *(int*)(s + 0x58) = -(vz >> 1);
+                    entry[0x0a] = 0;
+                }
+            }
+            else
+            {
+                *(int*)(s + 0x50) = 0;
+                *(int*)(s + 0x58) = 0;
+            }
+
+            if ((*(uint*)(s + 0x90) & 0x10000000) == 0)
+            {
+                byte* holder = *(byte**)Mem.Entity(0x005f7cc4);
+                if (holder != null)
+                {
+                    *(int*)(s + 0x1c) += push[0];
+                    *(int*)(s + 0x24) += push[2];
+
+                    if ((*slot & 1) == 0)
+                    {
+                        if ((*slot & 0x20) != 0)
+                        {
+                            int lifted = push[1] + *(int*)(s + 0x20);
+                            *(int*)(s + 0x20) = Math.Max(lifted, *(int*)(s + 0x60));
+                        }
+                    }
+                    else
+                    {
+                        *(int*)(s + 0x50) = push[0];
+                        *(int*)(s + 0x58) = push[2];
+
+                        int drop = *(int*)(holder + 0x20) - *(int*)(s + 0x20);
+                        if (drop < -0xc7fff)
+                        {
+                            *(int*)(s + 0x54) = drop >> 4;
+                            *(int*)(s + 0x20) += drop >> 4;
+                        }
+                    }
+                }
+            }
+            else if ((*(uint*)(s + 0x90) & 0x40000000) != 0 && (*slot & 1) == 0)
+            {
+                *(int*)(s + 0x54) = 0;
+            }
+
+            FinalizeEntityPlacement2(slot);
+            ApplyEntityMotion_00519DF0(slot, entry);
+
+            attributes = *(uint*)(s + 0x90);
+            if ((attributes & 0x800) != 0)
+            {
+                if ((attributes & 0x10000000) == 0)
+                {
+                    byte* target = *(byte**)(s + 0x78);
+                    if (target != null)
+                    {
+                        // Toujours refuse : on glisse d'un seizieme vers le porteur plutot que de
+                        // rester bloque.
+                        int slideX = *(int*)(target + 0x1c) - *(int*)(s + 0x1c);
+                        int slideZ = *(int*)(target + 0x24) - *(int*)(s + 0x24);
+                        *(int*)(s + 0x1c) += slideX >> 4;
+                        *(int*)(s + 0x24) += slideZ >> 4;
+
+                        if ((*slot & 1) == 0)
+                        {
+                            if ((*slot & 0x20) != 0) *(int*)(s + 0x20) = *(int*)(s + 0x60);
+                        }
+                        else
+                        {
+                            *(int*)(s + 0x50) += slideX >> 4;
+                            *(int*)(s + 0x58) += slideZ >> 4;
+                        }
+                    }
+                }
+                else if ((attributes & 0x40000000) != 0 && (*slot & 1) == 0)
+                {
+                    *(int*)(s + 0x54) = 0;
+                }
+            }
+        }
+
+        // ---------------------------------------------- (G) le sol et le plafond
+        if (*(int*)(s + 0x64) < *(int*)(s + 0x20) || (attributes & 0xa000) != 0)
+        {
+            uint after = *slot;
+            if ((after & 1) == 0)
+            {
+                *(short*)(s + 0x9a) = 0x6000;
+                *slot = (after & 0xfffffffb) | 1;
+                if ((after & 0x40000002) == 0)
+                {
+                    *(uint*)(s + 0x18) = 4;
+                    *slot = (after & 0xfefffffb) | 1;
+                }
+            }
+        }
+        else
+        {
+            // Pose au sol : la matiere de la face devient celle des pas, et le contact peut
+            // declencher un son et une pose.
+            byte* material = Mem.Entity(0x005fa508) + *(ushort*)(*(byte**)(s + 0x7c) + 8) * 8;
+            *(uint*)(entry + 0x44) = *(uint*)material;
+            *(uint*)(entry + 0x48) = *(uint*)(material + 4);
+
+            int ground = *(int*)(s + 0x64);
+            if (*(int*)(s + 0x20) + 0xa000 < ground) *(int*)(s + 0x54) = 0;
+            *(int*)(s + 0x20) = ground;
+
+            DispatchEntityHandler(
+                Res.ResolveEntityHandler(0x0056afc8, 32), s,
+                $"FUN_0050bf20, membre {member} : le crochet de contact au sol PTR_FUN_0056b048");
+
+            if ((*(uint*)(s + 0x90) & 0x400) != 0
+                && *(short*)(s + 0x96) == 0
+                && (perChar[0x150] & 7) != 7
+                && (*(uint*)(perChar + 0x140) & 0x40400000) == 0)
+            {
+                Aud.PlayPositionalSound(5, 0xa00, 0x1800, (int*)(s + 0x1c));
+                SetEntityPose_005397B0(slot, 2, 0);
+                pad[0x0c] = 0;
+                *(short*)(s + 0x96) = 0x10;
+            }
+
+            if ((*slot & 1) != 0)
+            {
+                if (*(int*)(s + 0x54) < -0x18000)
+                {
+                    Aud.PlayPositionalSound(1, 0x400, 0x1800, (int*)(s + 0x1c));
+                }
+
+                uint landing = *slot;
+                if ((landing & 0x40000042) == 0)
+                {
+                    *(uint*)(s + 0x18) = 0;
+                    *slot = landing | 0x1000000;
+                }
+
+                *slot &= 0xfffffffe;
+            }
+
+            entry[0x0a] = 2;
+        }
+
+        // ---------------------------------------------- (H) la cascade de fin
+        held = *slot;
+        if ((held & 0x40000000) != 0)
+        {
+            *(short*)(s + 0x96) = 0;
+            return;
+        }
+
+        // L'instantane que la sous-zone relira si ce membre doit etre restitue.
+        if ((held & 0x40000001) == 0
+            && ((*(uint*)(s + 0x90) & 0xad40) == 0 || (*(uint*)(s + 0x90) & 2) != 0)
+            && (*(int*)(s + 0x78) == 0 || (held & 0x20) == 0))
+        {
+            *(uint*)Mem.Entity(0x005f7d70) = *(uint*)(s + 0x80);
+            *(uint*)Mem.Entity(0x005f7d74) = *(uint*)(s + 0x84);
+            *(uint*)Mem.Entity(0x005f7d78) = *(uint*)(s + 0x88);
+            *(uint*)Mem.Entity(0x005f7d7c) = *(uint*)(s + 0x8c);
+            *(int*)Mem.Arena(0x005e9a30) = *(int*)(s + 0x1c);
+            *(int*)Mem.Arena(0x005e9a34) = *(int*)(s + 0x20);
+            *(int*)Mem.Arena(0x005e9a38) = *(int*)(s + 0x24);
+            *(uint*)Mem.Entity(0x005ff3e4) = *slot;
+            *(short*)Mem.Arena(0x005e9b38) = *(short*)(s + 0x90);
+            *(uint*)Mem.Entity(0x005f7b48) = *(uint*)(s + 0x7c);
+        }
+
+        // Le coup recu : l'entite que la collision a designee, si elle est armee.
+        byte* hit = CollectEntityHit_005197D0(slot);
+        if (hit != null && (*(uint*)hit & 0x80080000) == 0x80080000)
+        {
+            uint kind = *(uint*)hit;
+            if ((kind & 0x8000) == 0)
+            {
+                if ((kind & 0x10000000) == 0)
+                {
+                    // Degats repartis sur tout le groupe encore debout.
+                    int index = 0;
+                    int offset = 0;
+                    uint* victim = (uint*)Inp.s_SlotFlags_005e93c0;
+                    while (index < s_PartySize_005e9020)
+                    {
+                        if ((*victim & 0x80000000) != 0 && (*victim & 0x50000000) == 0)
+                        {
+                            int share = (int)(*(uint*)((byte*)hit + 0x5c)
+                                              - *(ushort*)(mainMem + 0xf0144 + offset)) >> 1;
+                            share += (int)*(uint*)((byte*)hit + 0x5c) >> 1;
+                            if (share < 0) share = 0;
+
+                            share += (int)(*(uint*)((byte*)hit + 0x5c) + 0xf) >> 4;
+                            *(int*)(mainMem + 0xf0158 + offset) += share;
+
+                            ApplyDamageToMember_00539190(victim, mainMem + 0xf0000 + offset);
+                        }
+
+                        index++;
+                        offset += 0x2000;
+                        victim = (uint*)((byte*)victim + 0x9c);
+                    }
+                }
+                else
+                {
+                    uint purse = (uint)(*(int*)(perChar + 0x26c) + (int)(*(uint*)((byte*)hit + 0x5c) + 9) / 10);
+                    *(uint*)(perChar + 0x26c) = purse;
+                    if (purse > 99999) *(uint*)(perChar + 0x26c) = 99999;
+                }
+
+                *(uint*)hit &= 0x7fffffff;
+                FreeEntitySlot(Mem.Entity(0x005f7b60), ((byte*)hit)[8]);
+                Aud.PlayPositionalSound(7, 0x800, 0x1000, (int*)(s + 0x1c));
+            }
+            else if ((*slot & 0x10000) == 0)
+            {
+                if (((byte*)hit)[6] == 0)
+                {
+                    *(byte**)(s + 0x6c) = hit;
+                    GrantChestContents_00530F20(slot, ((byte*)hit)[7], 0x005312d0);
+                    Aud.PlayPositionalSound(0x21, 0x800, 0x1800, (int*)(s + 0x1c));
+                }
+                else
+                {
+                    byte* labels = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+                    if ((perChar[0x150] & 7) == 2)
+                    {
+                        BindMenuLabels(*(byte**)(labels + 0x5a0), (uint)(nuint)slot,
+                            s_WorldMapDescriptor_005633b0, 0);
+                    }
+                    else
+                    {
+                        BindMenuLabels(*(byte**)(labels + 0x550), (uint)(nuint)slot,
+                            s_WorldMapDescriptor_005633b0, 0);
+                        SpawnEffectEntity(s, ((byte*)hit)[6], 0, 0);
+                    }
+
+                    ((byte*)hit)[6] = 0;
+                    if (*(short*)((byte*)hit + 0x10) < 0x32) *(short*)((byte*)hit + 0x10) = 0x32;
+                }
+            }
+        }
+
+        // Le pas sonore, sur la derniere image de l'animation de marche.
+        if ((*slot & 2) != 0)
+        {
+            byte posture = perChar[0x150];
+            if ((posture & 7) != 4 && (posture & 7) != 7)
+            {
+                byte* animSet = *(byte**)(Mem.Arena(0x005e9680) + s[4] * 4);
+                byte* anim = *(byte**)(animSet + *(short*)(s + 0x18) * 4);
+
+                if ((uint)(*(short*)(s + 0x1a) + 1) == *(ushort*)(anim + 0x16))
+                {
+                    uint row = posture;
+                    if ((posture & 7) == 0 && *(short*)(s + 0x18) == 6) row = (row >> 3) + 0x10;
+
+                    EmitFootstep_00519940(slot, (int*)(s + 0x1c), FootstepParameters(row));
+                }
+            }
+        }
+
+        UpdateEntityShadow_00519EE0(slot, perChar);
+
+        if ((*(uint*)(s + 0x90) & 0x8000) == 0) UpdateEntityLighting_00534CD0(slot);
+
+        // Le changement de sous-zone : la face foulee porte l'identifiant de la zone voisine.
+        byte destination = (*(byte**)(s + 0x7c))[0x0f];
+        if (destination != 0
+            && (uint)*Mem.Camera(0x005de058) != destination - 1u
+            && (*(uint*)(s + 0x90) & 0x2000) == 0)
+        {
+            uint before = *slot;
+            *(short*)(s + 0x98) = *(short*)(s + 0x32);
+            *slot = (before & 0xf7fffdff) | 0x2000;
+            (*(ushort*)(s + 0x12))++;
+
+            Res.s_Unknown_005de528 = s_Unknown_00566c84;
+            s_Unknown_005de52c = s_Unknown_00566c88;
+            s_Unknown_005de53c = s[8];
+            *(byte*)Mem.Camera(0x005de038) = (byte)(destination - 1);
+            s_WorldMapStep_005645f8 = 1;
+        }
+
+        // L'immobilite : deux comptes a rebours descendent tant que rien ne bouge, et repartent au
+        // maximum des qu'une touche ou une vitesse apparait.
+        if (*(short*)(s + 0x32) == *(short*)Mem.Entity(0x005fa4f6)
+            && *(int*)(s + 0x5c) == 0
+            && *(short*)(s + 0x96) == 0
+            && (*slot & 6) == 0
+            && (*pad & 0xf0) == 0)
+        {
+            if (perChar[0x206] != 0) perChar[0x206]--;
+
+            if (s[8] == (byte)Mem.s_Unknown_005de538 && *(ushort*)Mem.Arena(0x005e9ae6) != 0)
+            {
+                (*(ushort*)Mem.Arena(0x005e9ae6))--;
+            }
+        }
+        else
+        {
+            perChar[0x206] = 100;
+            if (s[8] == (byte)Mem.s_Unknown_005de538) *(ushort*)Mem.Arena(0x005e9ae6) = 300;
+        }
+
+        if (s_Unknown_00566c84 != 0 && *(ushort*)(s + 0x12) == 0)
+        {
+            AdvanceSceneEntityAnimation_0053aa10(s);
+        }
+
+        *slot |= 0xe00;
+    }
+
+    /// <summary>
+    /// Ghidra: 0x0050cfb1..0x0050d290 — <b>l'offset impose par le porteur</b>, quand un membre du
+    /// groupe est transporte par une autre entite.
+    ///
+    /// <para>
+    /// Deux produits matrice-vecteur en 64 bits, decalage <c>&gt;&gt; 12</c> chacun. La premiere matrice
+    /// est la <b>transposee</b> de celle du repere de l'emplacement : le code la construit avec
+    /// <c>RotMatrix</c> puis la retourne a la main dans l'ordre 0,3,6 / 1,4,7 / 2,5,8. La seconde
+    /// est celle du porteur. Autrement dit : exprimer la position dans le repere local de
+    /// l'emplacement, puis la re-exprimer dans celui de ce qui le porte — un attachement
+    /// pere-fils. Le resultat est la difference entre la position ainsi transportee et la position
+    /// d'origine.
+    /// </para>
+    /// <para>
+    /// <b>Ghidra brouille l'ordre des operandes dans chaque triplet</b>, ce qui donne l'illusion
+    /// que les composantes sont permutees entre les deux passes. Elles ne le sont pas : la somme
+    /// est commutative, et ce qui compte est quel coefficient va avec quel emplacement de pile. En
+    /// suivant les <c>[esp+N]</c> a travers les <c>push</c>, les deux passes sont le meme
+    /// <c>ligne_i = (m[3i]*x + m[3i+1]*y + m[3i+2]*z) &gt;&gt; 12</c>.
+    /// </para>
+    /// </summary>
+    private static void ComputeCarrierOffset(byte* entry, byte* carrier, int* offset)
+    {
+        EnsureGteRegisters();
+
+        short* work = (short*)Mem.Arena(0x005e9b20);
+        short* transposed = (short*)Mem.Arena(0x005e9b00);
+
+        RotMatrix((short*)(entry + 0x3c), work);
+
+        transposed[0] = work[0]; transposed[1] = work[3]; transposed[2] = work[6];
+        transposed[3] = work[1]; transposed[4] = work[4]; transposed[5] = work[7];
+        transposed[6] = work[2]; transposed[7] = work[5]; transposed[8] = work[8];
+
+        RotMatrix((short*)(carrier + 0x30), work);
+
+        int* local = stackalloc int[3];
+        int* world = stackalloc int[3];
+
+        Winsys3d.Ordinal_366(transposed);
+        ApplyGteMatrix((int*)(entry + 0x1c), local);
+
+        Winsys3d.Ordinal_366(work);
+        ApplyGteMatrix(local, world);
+
+        offset[0] = world[0] - *(int*)(entry + 0x1c);
+        offset[1] = world[1] - *(int*)(entry + 0x20);
+        offset[2] = world[2] - *(int*)(entry + 0x24);
+    }
+
+    /// <summary>
+    /// Le produit matrice-vecteur que le binaire ecrit en <c>__allmul</c>/<c>__allshr</c> : neuf
+    /// multiplications 64 bits et un decalage de 12. La matrice est celle que le dernier
+    /// <c>Ordinal_366</c> a chargee dans le registre MATRIX de la DLL (export 814).
+    /// </summary>
+    private static void ApplyGteMatrix(int* vector, int* result)
+    {
+        short* m = (short*)s_GteMatrix814;
+
+        for (int row = 0; row < 3; row++)
+        {
+            long sum = (long)m[row * 3] * vector[0]
+                     + (long)m[row * 3 + 1] * vector[1]
+                     + (long)m[row * 3 + 2] * vector[2];
+            result[row] = (int)(sum >> 12);
+        }
+    }
+
+    /// <summary>Ghidra: FUN_005397b0 @ 0x005397b0 (37 l.) — pose une pose d'entite.</summary>
+    private static void SetEntityPose_005397B0(uint* entity, int pose, int mode)
         => throw new NotImplementedException(
-            $"FUN_0050bf20, membre {member} : la queue commune (LAB_0050caf3, " +
-            "0x0050caf3..0x0050dc0d, ~500 lignes) n'est pas encore transcrite. Le reste de la " +
-            "fonction l'est, et les quatre lectures que seule la machine donne sont deja " +
-            "resolues — voir le pave en tete de TickPartyMember : iStack_4 = [esp+68h] = l'entree " +
-            "d'emplacement, unaff_EBP = le bloc par personnage, unaff_EBX = la manette, et le " +
-            "bloc de matrices de 0x0050cfb1 est une double transformation matrice-vecteur au " +
-            "decalage >> 12 (transposee du repere de l'emplacement, puis repere du porteur). " +
-            "Ce qui reste a ecrire : la restitution d'etat depuis un donneur ou depuis les " +
-            "globales, l'integration sin/cos de la vitesse, le portage par une autre entite, la " +
-            "publication vers DAT_005fa4e0 et la cascade de fin. Appelees manquantes : " +
-            "FUN_005397b0, FUN_00519f50, FUN_005197d0, FUN_00519940, FUN_00519ee0, FUN_00534cd0, " +
-            "FUN_00539190, FUN_0053aa10, FUN_00530f20 — toutes dans Blaze.c.");
+            $"FUN_005397b0 (0x005397b0), pose {pose} : non transcrite. 37 lignes dans Blaze.c.");
+
+    /// <summary>Ghidra: FUN_00519f50 @ 0x00519f50 (39 l.) — resout la collision avant le pas.</summary>
+    private static void ResolveEntityCollision_00519F50(uint* entity, byte* entry)
+        => throw new NotImplementedException(
+            "FUN_00519f50 (0x00519f50) : non transcrite. 39 lignes dans Blaze.c.");
+
+    /// <summary>Ghidra: FUN_005197d0 @ 0x005197d0 (62 l.) — rend l'entite qui a touche celle-ci.</summary>
+    private static byte* CollectEntityHit_005197D0(uint* entity)
+        => throw new NotImplementedException(
+            "FUN_005197d0 (0x005197d0) : non transcrite. 62 lignes dans Blaze.c. Elle rend un " +
+            "pointeur d'entite ou zero.");
+
+    /// <summary>Ghidra: FUN_00539190 @ 0x00539190 (20 l.) — applique des degats a un membre.</summary>
+    private static void ApplyDamageToMember_00539190(uint* victim, byte* block)
+        => throw new NotImplementedException(
+            "FUN_00539190 (0x00539190) : non transcrite. 20 lignes dans Blaze.c.");
+
+    /// <summary>Ghidra: FUN_00519940 @ 0x00519940 (62 l.) — le pas sonore et sa poussiere.</summary>
+    private static void EmitFootstep_00519940(uint* entity, int* position, byte* parameters)
+        => throw new NotImplementedException(
+            "FUN_00519940 (0x00519940) : non transcrite. 62 lignes dans Blaze.c.");
+
+    /// <summary>Ghidra: FUN_00519ee0 @ 0x00519ee0 (31 l.) — l'ombre portee.</summary>
+    private static void UpdateEntityShadow_00519EE0(uint* entity, byte* perChar)
+        => throw new NotImplementedException(
+            "FUN_00519ee0 (0x00519ee0) : non transcrite. 31 lignes dans Blaze.c.");
+
+    /// <summary>Ghidra: FUN_00534cd0 @ 0x00534cd0 (116 l.) — l'eclairage de l'entite.</summary>
+    private static void UpdateEntityLighting_00534CD0(uint* entity)
+        => throw new NotImplementedException(
+            "FUN_00534cd0 (0x00534cd0) : non transcrite. 116 lignes dans Blaze.c.");
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00562cf0</c> — les jeux de parametres de pas sonore, <b>0xc octets (six
+    /// shorts) par entree</b>, releves dans le binaire
+    /// (<c>at Legacy/Binaries/Blaze.exe 0x00562cf0 384</c>).
+    ///
+    /// <para>
+    /// <b>La table compte dix-huit entrees</b>, pas seize ni vingt : le dword de 0x00562dc8 est
+    /// <c>0x02030100</c>, une suite d'octets croissants qui n'a plus la forme des six shorts. La
+    /// borne se lit donc dans la donnee, pas dans les sites d'appel. Quatre entrees (4, 7, 12, 15)
+    /// sont entierement nulles — les postures sans pas sonore.
+    /// </para>
+    /// <para>
+    /// L'indice est <b>l'octet de posture entier</b>, pas ses trois bits bas ; seule l'entree 6 de
+    /// la posture 0 est detournee vers <c>(posture &gt;&gt; 3) + 0x10</c>, ce qui donne exactement les
+    /// deux dernieres entrees. Un indice hors des dix-huit lit, dans l'original, la structure
+    /// suivante — la lacune le dit plutot que de rendre des octets inventes.
+    /// </para>
+    /// </summary>
+    private static readonly short[] s_FootstepTable_00562cf0 =
+    [
+        0x0000, 0x0028, 0x003c, 0x0096, unchecked((short)0xffa0), 0x006e,   //  0
+        0x0000, 0x001e, 0x001e, 0x0096, 0x0100, 0x005a,                     //  1
+        0x0000, 0x0000, 0x0046, 0x0096, unchecked((short)0xff40), 0x0064,   //  2
+        0x0000, 0x0028, 0x003c, 0x0096, unchecked((short)0xff80), 0x005a,   //  3
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,                     //  4
+        0x0000, 0x0032, 0x0032, 0x0096, 0x0000, 0x0064,                     //  5
+        0x0000, 0x0032, 0x0050, 0x0096, unchecked((short)0xff40), 0x0050,   //  6
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,                     //  7
+        0x0000, 0x001e, 0x0028, 0x0096, 0x0000, 0x0064,                     //  8
+        0x0000, 0x001e, 0x0028, 0x0096, 0x0100, 0x006e,                     //  9
+        0x0000, 0x0000, 0x0046, 0x0096, unchecked((short)0xff40), 0x005a,   // 10
+        0x0000, 0x001e, 0x0046, 0x0096, unchecked((short)0xff00), 0x005a,   // 11
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,                     // 12
+        0x0000, 0x0032, 0x0032, 0x0096, 0x0000, 0x0064,                     // 13
+        0x0000, 0x0028, 0x0050, 0x0096, unchecked((short)0xff00), 0x005a,   // 14
+        0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,                     // 15
+        0x0000, 0x0032, 0x0078, 0x0064, unchecked((short)0xfe80), 0x0082,   // 16
+        0x0000, 0x0032, 0x006e, 0x0064, unchecked((short)0xfe80), 0x006e,   // 17
+    ];
+
+    private static short* s_FootstepStorage;
+
+    /// <summary>L'entree de <see cref="s_FootstepTable_00562cf0"/> pour une posture, en memoire
+    /// native puisque l'appele la recoit par pointeur.</summary>
+    private static byte* FootstepParameters(uint row)
+    {
+        if (row >= 18)
+        {
+            throw new NotImplementedException(
+                $"FUN_0050bf20 : parametres de pas sonore d'indice {row}, hors des dix-huit " +
+                "entrees relevees a 0x00562cf0. Dans le binaire cette lecture tombe dans la " +
+                "structure suivante (0x00562dc8) ; relever ce qu'elle porte avant d'aller plus " +
+                $"loin : `OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x{0x00562cf0 + row * 0xc:x8} 12`.");
+        }
+
+        if (s_FootstepStorage == null)
+        {
+            s_FootstepStorage = (short*)NativeMemory.Alloc((nuint)s_FootstepTable_00562cf0.Length, sizeof(short));
+            for (int i = 0; i < s_FootstepTable_00562cf0.Length; i++)
+            {
+                s_FootstepStorage[i] = s_FootstepTable_00562cf0[i];
+            }
+        }
+
+        return (byte*)s_FootstepStorage + row * 0xc;
+    }
 }

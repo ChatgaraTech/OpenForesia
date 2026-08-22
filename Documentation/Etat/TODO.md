@@ -25,17 +25,28 @@ quatorze appelées du cas 0** (`0x005176d5`..`0x0051776b`, le pas de simulation 
 quatre gestionnaires d'entité que la zone de départ demande réellement**. Les six passes de tables
 d'entités traversent maintenant sans lever.
 
-> **Reprendre ici — `FUN_0050bf20`, la queue commune.**
+> **Reprendre ici — les gestionnaires de commande de `PTR_FUN_00562ce0`.**
 >
-> La fonction est transcrite **jusqu'à `LAB_0050caf3`** : le prologue, l'animation, l'aiguillage,
-> la branche du membre jouable, celle du membre suivi par l'IA et la sonde de terrain. Le jeu les
-> exécute pour de vrai. Reste **la queue commune** (`0x0050caf3`..`0x0050dc0d`, ~500 lignes), où
-> tous les chemins aboutissent : restitution d'état depuis un donneur ou depuis les globales,
-> intégration sin/cos de la vitesse, portage par une autre entité, publication vers
-> `DAT_005fa4e0`, cascade de fin.
+> **`FUN_0050bf20` est transcrite en entier**, queue commune comprise, et le jeu l'exécute jusqu'au
+> premier appel indirect. Il réclame maintenant `FUN_0050e140`, l'entrée 0 de la table de
+> commande — **68 lignes dans `Blaze.c`**. Les quatre entrées de la table sont relevées :
 >
-> **Les quatre lectures que seule la machine donne sont déjà résolues** — c'est le plus dur, et
-> c'est fait ; elles sont écrites en tête de `TickPartyMember` :
+> | indice | adresse | dans `Blaze.c` ? |
+> |---:|---|---|
+> | 0 | `0x0050E140` | oui, 68 l. |
+> | 1 | `0x0050DE90` | oui, 56 l. |
+> | 2 | `0x0050DD00` | **non** |
+> | 3 | `0x0050DFF0` | **non** |
+>
+> Douze autres appelées de `FUN_0050bf20` lèvent en se nommant, **toutes dans `Blaze.c`** :
+> `FUN_005238e0`, `FUN_00530070`, `FUN_0051a020`, `FUN_00474eb0`, `FUN_005397b0`, `FUN_00519df0`,
+> `FUN_00519f50`, `FUN_005197d0`, `FUN_00519940`, `FUN_00519ee0`, `FUN_00534cd0`, `FUN_00539190`,
+> `FUN_005335e0`. Plus les quatre gestionnaires de posture de `PTR_FUN_00562ca0`
+> (`0x0051A670`, `0x0051A6B0`, `0x0051A700`, `0x0051A710`) — les quatre autres entrées sont le
+> corps vide `0x0040A600`.
+>
+> **Les quatre lectures que seule la machine donne sont résolues** — c'était le plus dur ; elles
+> sont écrites en tête de `TickPartyMember` :
 >
 > | ce que Ghidra rend | ce que c'est | où on le lit |
 > |---|---|---|
@@ -754,7 +765,11 @@ RunGameStateTick (état 3)
             ├─ TickEntityTable_005ecaa0             [FAIT — FUN_0050e680 ; deux lacunes internes,
             │                                        FUN_0051a740 et FUN_0053aa10, non atteintes]
             ├─ TickEntityTable_005f7de0             [FAIT — FUN_0050eb20]
-            ├─ TickPartyMember                      [A FAIRE — FUN_0050bf20, 1002 l.]  ←←← ICI
+            ├─ TickPartyMember                      [FAIT — FUN_0050bf20, 1002 l., en entier]
+            │  ├─ TickPlayableMember                [FAIT]
+            │  ├─ TickFollowingMember + ProbeGroundAhead  [FAIT]
+            │  └─ TickPartyMemberTail               [FAIT — + ComputeCarrierOffset]
+            │     └─ gestionnaires de PTR_FUN_00562ce0  ←←← ON S'ARRÊTE ICI (FUN_0050e140)
             ├─ TickEntityTable_005ff400 / 005edee0 / 005f2d40
             │                                       [FAIT — FUN_0047aa70 / ab70 / acf0]
             ├─ TrySpawnRandomEncounter              [FAIT — FUN_0050ed70]

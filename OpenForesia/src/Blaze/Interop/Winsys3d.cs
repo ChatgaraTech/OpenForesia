@@ -168,6 +168,13 @@ internal static unsafe class Winsys3d
     // `jmp dword [608804h]`.
     [DllImport("winsys3d.dll", EntryPoint = "#788")] internal static extern void ReleaseTexture(int handle); // real: winsys3d.c ReleaseTexture @ 0x00a27990
 
+    // libgte VectorNormal : divise un vecteur par sa longueur en 1.12 et rend cette longueur.
+    // **La variante a trois `int` en sortie, pas la variante a trois `short`** — celle-la est
+    // l'ordinal 440 (winsys3d.c FUN_00a259d0), a l'octet pres le meme corps. La distinction n'est
+    // pas cosmetique : la sortie ecrase ici trois emplacements de pile de quatre octets, et
+    // l'ordinal 440 n'en aurait rempli que six.
+    [DllImport("winsys3d.dll", EntryPoint = "#439")] internal static extern uint Ordinal_439(int* vector, int* normalized); // real: winsys3d.c FUN_00a25910
+
     [DllImport("winsys3d.dll", EntryPoint = "#442")] internal static extern uint Ordinal_442(uint squared); // real: winsys3d.c FUN_00a25b50 â€” libgte SquareRoot0: a four-way table lookup on the magnitude of the argument, then a single Newton step (x/g + g >> 1), masked to 16 bits. Its callers all pass a sum of squares and read a distance back.
 
     // The five entry points FUN_0051d1f0 (the animated-model draw) needs. Identified from their

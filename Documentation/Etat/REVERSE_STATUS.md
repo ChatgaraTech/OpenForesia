@@ -8291,3 +8291,91 @@ Build 0 erreur, 42 avertissements (inchangé). Oracle : **un seul corps signalé
 et c'est le changement voulu. Tests de disposition : inchangés, 39 champs. Playtest `-Entry 0` : le
 jeu entre dans le pas par personnage, exécute le prologue, l'animation, l'aiguillage et la branche
 jouable, et s'arrête sur la lacune nommée du gestionnaire de commande.
+
+---
+
+## 2026-08-22 (fin) — la queue commune de `FUN_0050bf20` : la fonction est entière
+
+Les ~500 lignes de `LAB_0050caf3` sont écrites. **`FUN_0050bf20` est transcrite en entier**, ses
+1 002 lignes, et le jeu l'exécute jusqu'au premier appel indirect : il réclame maintenant
+`FUN_0050e140`, l'entrée 0 de la table de commande `PTR_FUN_00562ce0` — 68 lignes dans `Blaze.c`.
+
+La queue se lit en huit temps : restitution d'état, publication vers les globales, intégration de
+la vitesse, offset du porteur, deux demi-pas de placement, amortissement et rebond, sol et plafond,
+puis la cascade de fin (coup reçu, pas sonore, ombre, éclairage, changement de sous-zone,
+immobilité). Découpée en `TickPartyMemberTail` et `ComputeCarrierOffset` ; le reste est en flot.
+
+### Le même piège de pile, une troisième fois — et cette fois il portait sur un axe
+
+La pseudo-C de la queue écrit `uStack_14 = Ordinal_451(cap)` puis `iStack_10 = Ordinal_450(cap)`,
+précédé d'un `iStack_10 = 0` qui a tout l'air d'un magasin mort. Les trois noms sont attachés aux
+mauvais emplacements. Le binaire (`0x0050cd63`..`0x0050cd7e`) est sans ambiguïté :
+
+```
+0050cd63  mov  [esp+54h],eax          ; sinus
+0050cd67  mov  dword [esp+58h],0      ; le Y, mis a zero
+0050cd7e  mov  [esp+5Ch],eax          ; cosinus
+```
+
+Le triplet est donc **(sinus, 0, cosinus)** — un cap horizontal, avec un Y nul que Ghidra rend
+comme une affectation morte. Le recoupement décisif vient d'ailleurs dans la même fonction : le
+bloc `& 0x100` ajoute `entry+0x44`, `entry+0x46` et `entry+0x48` à ces trois emplacements dans
+l'ordre, et `0x0050ce71` montre `[esp+54h] ↔ +0x44`, `[esp+58h] ↔ +0x46`, `[esp+5Ch] ↔ +0x48`.
+X, Y, Z.
+
+**C'est le troisième emplacement de pile que Ghidra confond dans cette seule fonction** (après
+`iStack_4` et le couple sinus/cosinus de la sonde de terrain). La règle pratique qui s'en dégage :
+dans un corps où le compilateur a fait tenir plusieurs valeurs dans le même emplacement, **ne
+jamais faire confiance au nom que Ghidra donne à une variable de pile — seulement à son décalage**.
+Un axe interverti ici aurait fait marcher le groupe en crabe, et rien à l'écran ne l'aurait dit.
+
+### `Ordinal_439` : la bonne des deux variantes
+
+Le cap est ensuite basculé sur la pente par `Ordinal_439`, le `VectorNormal` de libgte. La DLL en
+porte **deux variantes à l'octet près** : l'ordinal 439 (`winsys3d.c` FUN_00a25910) écrit trois
+`int`, l'ordinal 440 (FUN_00a259d0) écrit trois `short`. La distinction n'est pas cosmétique : la
+sortie écrase ici trois emplacements de pile de quatre octets, et se tromper de variante n'aurait
+rempli que six octets sur douze, laissant le Z du cap à sa valeur précédente.
+
+### Deux tables statiques de plus, et une borne qui se lit dans la donnée
+
+`&DAT_00562cf0` porte les jeux de paramètres de pas sonore, **0xc octets (six shorts) par entrée**.
+La table compte **dix-huit entrées**, ni seize ni vingt : le dword de `0x00562dc8` vaut
+`0x02030100`, une suite d'octets croissants qui n'a plus la forme des six shorts. **La borne se lit
+dans la donnée, pas dans les sites d'appel** — et c'est ce qui la rend fiable, parce qu'aucun site
+d'appel ne la donne. Quatre entrées (4, 7, 12, 15) sont entièrement nulles : les postures sans pas
+sonore.
+
+L'indice est l'octet de posture **entier**, pas ses trois bits bas ; seule l'entrée 6 de la posture
+0 est détournée vers `(posture >> 3) + 0x10`, ce qui tombe exactement sur les deux dernières
+entrées. Un indice hors des dix-huit lève en se nommant plutôt que de rendre des octets inventés.
+
+### Le bloc de matrices, écrit
+
+`ComputeCarrierOffset` rend les deux produits matrice-vecteur de `0x0050cfb1` : la transposée du
+repère de l'emplacement, puis le repère du porteur, décalage `>> 12` chacun. Le résultat est la
+différence entre la position ainsi transportée et la position d'origine — l'offset qu'impose ce qui
+porte le personnage. C'est un attachement père-fils standard, et il ne se voyait pas du tout dans
+la cascade de `__allmul` que Ghidra rend.
+
+### Une adresse voisine qui n'est pas la même
+
+La queue lit `0x005ff3e4` dans la branche de restitution et écrit `0x005ff3e8` dans la
+publication. Ghidra préfixe la seconde d'un `_`, ce qui signale un recouvrement de symboles et
+invite à croire à une faute de frappe. Le désassembleur tranche : `mov [5FF3E8h],eax` en
+`0x0050cd43`. Ce sont bien **deux cases voisines et distinctes**, et les confondre aurait fait
+relire à la restitution ce que la publication venait d'écrire.
+
+### Ce qui reste
+
+Les quatre gestionnaires de commande de `PTR_FUN_00562ce0` (deux dans `Blaze.c`, deux absentes),
+les quatre gestionnaires de posture réels de `PTR_FUN_00562ca0`, et treize appelées nommées —
+**toutes dans `Blaze.c`**, aucune ne demandant de désassemblage. Le jeu réclame `FUN_0050e140` en
+premier.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : **un seul corps signalé**, `RunWorldMapTick`,
+et c'est le changement voulu ; 30 méthodes nouvelles. Tests de disposition : les trois rouges
+attendus, 39 champs. Playtest `-Entry 0` : le jeu traverse le pas par personnage jusqu'au
+gestionnaire de commande.
