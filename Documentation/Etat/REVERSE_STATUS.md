@@ -9107,3 +9107,83 @@ troisième.
 Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
 inchangés. Tests de disposition : inchangés, 39 champs. Playtest : le jeu s'arrête sur la lacune
 nommée, **sans corruption** — l'état d'avant l'essai est rétabli.
+
+---
+
+## 2026-08-22 (nuit, suite) — la moitié dessin est rallumée : trois défauts, tous de disposition
+
+La moitié dessin, écrite puis désactivée quelques heures plus tôt parce qu'elle corrompait la
+mémoire, **s'exécute maintenant** et s'arrête sur une lacune nommée. Ce qui la bloquait n'était pas
+du code manquant : c'étaient trois erreurs de disposition, toutes tranchées au désassembleur.
+
+### 1. Le bloc de sprite fait sept champs, pas trois
+
+Le dépôt décrivait « trois entiers consécutifs », relevés en août sur `FUN_0051c120` — qui se
+trouve être la seule de la famille à n'en lire que trois. Les autres en lisent sept, sur `0x12`
+octets : descripteur, mot de base, position X/Y, **échelle** X/Y, et un indice.
+
+Deux conséquences. `+0x0c`/`+0x0e` sont des échelles en virgule fixe (`0x1000` = 1.0), pas des
+demi-tailles comme le nom que `Primitives2d` leur donnait ; et allouer le bloc sur trois entiers
+faisait lire `+0x0c`..`+0x10` **hors de l'allocation**. `Screens/DebugParty.cs` documentait déjà la
+disposition complète, sur du code qui tourne — elle n'avait simplement jamais été rapprochée de
+celle de `DrawTextRun`.
+
+### 2. Un descripteur d'atlas ne se relève pas seul
+
+Le champ `+0x10` est un indice qui s'ajoute au descripteur passé : la fonction lit
+`bloc[0] + indice * 8`. La rose des vents passe `&DAT_005646c0` avec un indice 0..3 et lit donc
+quatre descripteurs **voisins dans le binaire**.
+
+Le relevé d'origine rangeait onze descripteurs isolés dans un tableau de onze entrées, dans l'ordre
+où je les avais rencontrés. Indexer en avant y donnait le mauvais descripteur dès l'indice 1 et
+sortait du tampon de 88 octets à partir du quatrième — d'où le couple couleur/attributs pris dans
+le tas, et la corruption. `SpriteAtlas` relève désormais **deux plages contiguës**,
+`0x00564680..0x00564900` et `0x00566c18..0x00566c40`, adressées par VA.
+
+Au passage, une ligne du relevé d'août était fausse : `0x00566c20` portait `0x28180000 /
+0x02300008`, décalage d'un octet. Le vidage aligné donne `0x08281800 / 0x02300000`.
+
+### 3. Ghidra place deux champs au mauvais décalage
+
+Dans le seul bloc d'affichage de `FUN_00516fc0` :
+
+| site | pseudo-C | désassemblage |
+|---|---|---|
+| rose des vents | `piStack_4c = CONCAT22(…, X)` → `+0x04` | `mov [esp+3Ch],cx`, bloc à `esp+34h` → **`+0x08`** |
+| indicateur d'écran | `uStack_40 = CONCAT22(…, pouls)` → `+0x08` | `[esp+40h]` et `[esp+46h]` → **`+0x0c` et `+0x0e`** |
+
+La transcription initiale avait fidèlement copié les deux erreurs. Dans les deux cas le résultat
+est absurde à la lecture — un X dans le mot de couleur, une position d'environ `0x1000` sur un
+écran de 320 pixels — et **c'est l'absurdité qui est le signal**, pas un doute sur Ghidra en
+général. La règle qui en sort : sur un bloc de pile passé par adresse, la pseudo-C ne fait pas foi.
+
+La boucle de la rose des vents fait par ailleurs **quatre** tours, pas huit : `0` à `0x1000` par
+pas de `0x400`, les quatre points cardinaux. Le commentaire disait huit.
+
+### Ce que ça a coûté, et ce que ça enseigne
+
+Le tour précédent avait conclu « ce qui manque n'est pas du code, c'est la disposition ». C'était
+juste, mais il manquait de voir que **le dépôt tenait déjà la réponse à deux endroits** :
+`DebugParty.cs` décrivait les sept champs, et la contiguïté se déduisait de
+`bloc[0] + indice * 8`, une expression déjà transcrite dans `Primitives2d`. Chercher au
+désassembleur était la bonne idée ; commencer par relire ce qui tourne déjà l'aurait été davantage.
+
+Un défaut latent de 1998 est ressorti du relevé : **LB-008**, l'indicateur d'écran émet son mot de
+base depuis une pile jamais écrite. Transcrit tel quel, non comblé.
+
+### Vérification
+
+Build 0 erreur. Oracle : trois corps signalés — les deux voulus, plus `DrawSpritePrimitive` dont
+seuls deux noms de variables changent (`halfW`/`halfH` → `scaleX`/`scaleY`, la lecture correcte).
+Playtest `-Entry 0` avec la séquence de formation du groupe : la carte du monde est atteinte
+(1 primitive par image, la signature de l'état 3), la moitié dessin s'exécute, et le jeu s'arrête
+sur `FUN_0051c420 (0x0051c420) : non transcrite` — une lacune franche, plus aucune corruption, et
+la caméra ne lève plus.
+
+### Ce qui reste sur le chemin
+
+Cinq appelées, toutes dans `Blaze.c` : `FUN_0051c420` (374 l., celle qui bloque maintenant),
+`FUN_0051e700` (423), `FUN_0051fa40` (441), `FUN_00521000` (365), `FUN_00522140` (315), plus les
+courtes `FUN_005309b0` (147), `FUN_0051be90` (74), `FUN_0051f940` (18), `FUN_00538bc0` (13),
+`FUN_0051c250` (10). Et les deux corps encore à écrire : `DrawPartyPanels` et `DrawWorldCells`,
+environ 200 lignes chacun.

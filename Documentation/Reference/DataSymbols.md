@@ -1464,10 +1464,26 @@ des **descripteurs d'atlas de 8 octets** : `dword0` empaquette l'origine X (octe
 comme moitié « attributs » du sprite. La disposition est déjà documentée sur
 `Primitives2d.EmitTextSprite` (`FUN_0051c120`), qui les consomme.
 
+> **Un descripteur ne se relève jamais seul — on relève la plage.** Le champ `+0x10` du bloc de
+> pile (voir plus bas) est un **indice qui s'ajoute au descripteur passé** : la fonction lit
+> `bloc[0] + indice * 8`. La rose des vents s'en sert pour ses quatre points cardinaux — elle
+> passe `&DAT_005646c0` et un indice 0..3, donc lit `0x005646c0`, `c8`, `d0`, `d8`. Une table
+> qui range des descripteurs isolés dans l'ordre où on les a rencontrés donne le mauvais voisin
+> dès l'indice 1 et **sort du tampon** peu après. C'est ce qui a corrompu la mémoire le
+> 2026-08-22, et le symptôme est apparu une image plus loin, dans la caméra.
+>
+> Les deux plages effectivement relevées, contiguës, sont `0x00564680..0x00564900` et
+> `0x00566c18..0x00566c40` (`0x00566c40` vaut `0x007f007f` et n'est pas un descripteur). Elles
+> sont transcrites telles quelles dans `SpriteAtlas`, qui les adresse par VA.
+>
+> La ligne `0x00566c20` du tableau ci-dessous portait `0x28180000 / 0x02300008` jusqu'au
+> 2026-08-22 : un décalage d'un octet dans le relevé d'origine. Le vidage aligné sur 16 octets
+> donne `0x08281800 / 0x02300000`, et les quatre autres lignes de la plage concordent.
+
 | VA | dword0 | dword1 |
 |---|---|---|
 | `0x00566c18` | `0x40400000` | `0x02300100` |
-| `0x00566c20` | `0x28180000` | `0x02300008` |
+| `0x00566c20` | `0x08281800` | `0x02300000` |
 | `0x00566c28` | `0x40803000` | `0x02300000` |
 | `0x00566c30` | `0x08504800` | `0x02300000` |
 | `0x00566c38` | `0x0a640880` | `0x02300100` |
@@ -1507,24 +1523,48 @@ Ce bloc ne sert qu'au sous-bloc de mise au point, gardé par `DAT_005de020` qui 
 chargement — relevé ici parce qu'il était sur le chemin de la mesure, pas parce qu'il est utile
 tout de suite.
 
-## Le bloc de trois entiers que l'appelant bâtit sur sa pile
+## Le bloc de sprite que l'appelant bâtit sur sa pile — sept champs, 0x12 octets
 
 Ce n'est pas une donnée du binaire, mais c'est la lecture sans laquelle les relevés ci-dessus ne
-servent à rien. Toutes les fonctions de dessin de la moitié dessin prennent en troisième argument
-l'adresse de **trois emplacements de pile consécutifs** :
+servent à rien. Toutes les fonctions de dessin de cette famille — `FUN_0051c120`, `FUN_00521f20`,
+`FUN_00521df0`, `FUN_0051f9c0`, `FUN_0051be90` — prennent en troisième argument l'adresse d'un
+même bloc :
 
 ```
-bloc[0]  pointeur vers un descripteur d'atlas de 8 octets (le tableau ci-dessus)
-bloc[1]  transmis verbatim comme dword de texture/drapeaux du sprite
-bloc[2]  la position ecran, X dans le mot bas et Y dans le mot haut
++0x00  int    pointeur vers un descripteur d'atlas de 8 octets (le tableau ci-dessus)
++0x04  int    mot de base : part dans prim[1] sur 26 bits (couleur / liste d'affichage)
++0x08  short  position X            +0x0a  short  position Y
++0x0c  short  echelle X             +0x0e  short  echelle Y      (0x1000 = 1.0)
++0x10  short  indice dans la suite de descripteurs qui commence a +0x00
 ```
 
-**Ghidra ne montre jamais cette structure** : il rend les trois écritures séparément, sous les noms
-de leurs décalages (`uStack_48`, `uStack_44`, `uStack_40` pour un bloc, `uStack_40`, `uStack_3c`,
-`uStack_38` pour le suivant), et la position par des `CONCAT22` sur les deux moitiés de `bloc[2]`.
-Reconnaître que trois `uStack_NN` consécutifs dont le premier reçoit une adresse de descripteur
-forment un bloc est ce qui rend la moitié dessin transcriptible ; sans cela, chaque appel a l'air
-de prendre un pointeur vers rien.
+**Ghidra ne montre jamais cette structure** : il rend chaque écriture séparément, sous le nom de
+son décalage (`uStack_48`, `uStack_44`, `uStack_40`…), et les demi-mots par des `CONCAT22`.
+Reconnaître que des `uStack_NN` consécutifs dont le premier reçoit une adresse de descripteur
+forment un bloc est ce qui rend la moitié dessin transcriptible.
 
-La disposition est celle que `Primitives2d.EmitTextSprite` documente déjà, résolue en août sur le
-désassemblage de `FUN_0051c120` — elle vaut pour toute la famille.
+### Ce que la première lecture avait manqué
+
+Jusqu'au 2026-08-22 cette section décrivait « trois entiers consécutifs » — les trois premiers
+champs seulement, tirés de `FUN_0051c120` qui est la seule de la famille à n'en lire que trois.
+Les quatre autres champs manquaient, et les conséquences n'étaient pas cosmétiques :
+
+* `+0x0c`/`+0x0e` ne sont pas des demi-tailles mais des **échelles** en virgule fixe : la largeur
+  émise vaut `largeurDeCellule * échelleX >> 12`. Les laisser à zéro donne un sprite de taille
+  nulle, et les remplir avec autre chose donne n'importe quoi.
+* `+0x10` **indexe en avant** dans les descripteurs — voir l'encadré plus haut.
+* le bloc fait `0x12` octets : l'allouer sur trois entiers (12 octets) fait lire `+0x0c`..`+0x10`
+  hors de l'allocation.
+
+### La pseudo-C ne fait pas foi sur ce bloc
+
+Deux erreurs de champ relevées au désassembleur dans le seul bloc d'affichage de `FUN_00516fc0` :
+
+| site | ce que Ghidra écrit | ce que dit le désassemblage |
+|---|---|---|
+| rose des vents, `0x005186cf` | `piStack_4c = CONCAT22(…, X)` → `+0x04` | `mov [esp+3Ch],cx` avec le bloc à `esp+34h` → **`+0x08`** |
+| indicateur d'écran, `0x00518002` | `uStack_40 = CONCAT22(…, pouls)` → `+0x08` | `mov [esp+40h],ax` → **`+0x0c`**, et `[esp+46h]` → `+0x0e` |
+
+Dans les deux cas Ghidra décale d'un champ, et dans les deux cas le résultat est absurde à la
+lecture : un X dans le mot de couleur, ou une position d'environ `0x1000` sur un écran de 320
+pixels. **L'absurdité du résultat est le signal** ; le désassembleur tranche.

@@ -75,19 +75,42 @@ internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui, UiWindow ui
     /// Ghidra: FUN_00521f20 @ 0x00521f20 â€” links a ten-word textured sprite primitive into the
     /// ordering table (tag length 0x09000000). The bit packing is transcribed operation for
     /// operation; the shifts mix a colour, a texture page and four corner coordinates.
+    ///
+    /// <para><b>La disposition complete du bloc que tout ce module recoit en troisieme argument</b>
+    /// — sept champs sur 0x12 octets, etablie au desassembleur le 2026-08-22 sur
+    /// <c>FUN_00516fc0</c> et recoupee sur <c>Screens/DebugParty.cs</c> :</para>
+    /// <code>
+    /// +0x00  int    pointeur vers un descripteur d'atlas de 8 octets
+    /// +0x04  int    mot de base : part dans prim[1] sur 26 bits (couleur/liste)
+    /// +0x08  short  position X                 +0x0a  short  position Y
+    /// +0x0c  short  echelle X (0x1000 = 1.0)   +0x0e  short  echelle Y
+    /// +0x10  short  indice dans la **suite** de descripteurs qui commence a +0x00
+    /// </code>
+    ///
+    /// <para>Deux consequences que la premiere lecture — « un bloc de trois entiers » — manquait.
+    /// D'abord, +0x0c/+0x0e sont des **echelles**, pas des demi-tailles : la largeur sort de
+    /// <c>alpha * echelleX &gt;&gt; 12</c> ou <c>alpha</c> est la largeur de cellule du descripteur.
+    /// Ensuite, +0x10 **indexe en avant** a partir du descripteur passe, ce qui interdit de relever
+    /// un descripteur isole : il faut relever la plage. Voir <c>SpriteAtlas</c> dans
+    /// <c>Screens/State03/WorldMapTick.cs</c>, ou la version indexee par numero d'ordre lisait hors
+    /// de son tampon.</para>
+    ///
+    /// <para><b>Ghidra se trompe de champ a deux endroits</b> du bloc d'affichage de la carte du
+    /// monde — une fois en mettant le X en +0x04, une fois en mettant une echelle en +0x08. Les
+    /// deux sont documentees sur leurs sites d'appel. Sur ce bloc, la pseudo-C ne fait pas foi.</para>
     /// </summary>
     internal uint* DrawSpritePrimitive(uint* otEntry, uint* prim, int* sprite, uint flags, uint extra)
     {
         uint* source = (uint*)(*(int*)sprite + (short)sprite[4] * 8);
         uint posX = (uint)sprite[2];
-        short halfW = (short)sprite[3];
-        short halfH = *(short*)((byte*)sprite + 0xe);
-        if (halfW < 0) halfW = (short)-halfW;
-        if (halfH < 0) halfH = (short)-halfH;
+        short scaleX = (short)sprite[3];
+        short scaleY = *(short*)((byte*)sprite + 0xe);
+        if (scaleX < 0) scaleX = (short)-scaleX;
+        if (scaleY < 0) scaleY = (short)-scaleY;
 
         uint baseWord = (uint)sprite[1];
         uint colour = source[0];
-        uint size = (uint)(halfH * 0x10000 + halfW);
+        uint size = (uint)(scaleY * 0x10000 + scaleX);
         uint attributes = source[1];
 
         if (mem.s_DeviceCapFlag_00564a48)

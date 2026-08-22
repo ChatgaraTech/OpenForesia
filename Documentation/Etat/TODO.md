@@ -29,12 +29,22 @@ d'entités traversent maintenant sans lever.
 > `FUN_0050bf20` avec elles, pour **chaque membre du groupe** et à chaque image. L'exception a
 > quitté la simulation : elle est remontée dans `RunWorldMapTick` lui-même.
 >
-> **Reprendre ici — la moitié dessin du bloc d'affichage.**
+> **Reprendre ici — les appelées de la moitié dessin.**
+>
+> La **moitié dessin est rallumée depuis le 2026-08-22** et s'exécute. Le jeu s'arrête désormais
+> sur `FUN_0051c420 (0x0051c420) : non transcrite` — une lacune franche, atteinte depuis
+> `DrawCompassRose`. **C'est la prochaine à écrire** (374 lignes, présente dans `Blaze.c`).
+>
+> Ce qui la bloquait n'était pas du code mais trois erreurs de disposition, toutes tranchées au
+> désassembleur et consignées dans `DataSymbols.md` : le bloc de sprite fait **sept champs sur
+> 0x12 octets** (dont deux **échelles**, pas des demi-tailles), les descripteurs d'atlas
+> **s'indexent en avant** donc se relèvent par plage et non un par un, et Ghidra place deux champs
+> au mauvais décalage. **Sur ce bloc, la pseudo-C ne fait pas foi.**
 >
 > La **tête** du bloc d'affichage est transcrite (mode de vue, défilement de textures, lissage de
 > caméra, personnage suivi, centroïde du groupe, décalage monde, `SetGeomOffset`) **et tout le
 > sous-système de caméra avec elle** (`Screens/State03/WorldMapCamera.cs`, `FUN_004011c0` et douze
-> appelées). Le jeu traverse le tout et s'arrête sur la lacune délibérée de la moitié dessin.
+> appelées).
 >
 > Du sous-système caméra il ne reste que le sous-bloc d'**occlusion**
 > (`0x00401913`..`0x00401b6d`, plus `FUN_004029e0` et `FUN_00402d60`), qui **n'est pas sur le
@@ -42,11 +52,12 @@ d'entités traversent maintenant sans lever.
 > non le code : les deux tables `0x00604ba0` / `0x00604d30` ont une étendue que l'indexation
 > apparente contredit, à trancher au désassembleur (voir `DataSymbols.md`).
 >
-> Vient donc la **moitié dessin** (à partir de `0x00517e7c`). En plus des seize appelées
-> inventoriées dans le pavé qui précède la lacune, elle demande de relever une vingtaine de
-> descripteurs de sprite dans le binaire (`0x00564788`, `0x005646b8`, `0x00566c18`..`0x00566c38`,
-> `0x00564900`..`0x00564958`, `0x00563348`..`0x00563360`) et de reconstruire les blocs de trois
-> entiers que l'appelant bâtit sur sa pile — Ghidra les rend en écritures `CONCAT22` éparpillées.
+> Les descripteurs de sprite et les tables de panneaux **sont relevés et en place**, et le bloc de
+> pile est établi (voir plus haut). Restent les appelées, toutes dans `Blaze.c` : `FUN_0051c420`
+> (374 l.), `FUN_0051e700` (423), `FUN_0051fa40` (441), `FUN_00521000` (365), `FUN_00522140` (315),
+> `FUN_005309b0` (147), `FUN_0051be90` (74), `FUN_0051f940` (18), `FUN_00538bc0` (13),
+> `FUN_0051c250` (10) ; et deux corps à écrire, `DrawPartyPanels` et `DrawWorldCells`, environ
+> 200 lignes chacun.
 >
 > **Les curseurs de primitives sont résolus** : `[esp+0x14]` est la base d'ordering table,
 > `[esp+0x10]` le curseur, et les six noms que Ghidra leur donne (`unaff_EBX`, `unaff_ESI`,

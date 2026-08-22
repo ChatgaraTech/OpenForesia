@@ -575,32 +575,17 @@ public static unsafe partial class Blaze
 
                     Winsys3d.Ordinal_378(0xa0, 0x78);   // libgte SetGeomOffset(160, 120)
 
-                    // **DrawWorldMapFrame N'EST PAS APPELEE, et c'est deliberе.** Le corps existe
-                    // plus bas et se lit, mais il a ete essaye le 2026-08-22 et il **corrompt la
-                    // memoire** : les fonctions de dessin recoivent un bloc de sprite dont tous les
-                    // champs ne sont pas encore etablis, calculent une adresse sur des zeros, et
-                    // ecrivent hors de la liste d'affichage. Le symptome observe n'etait meme pas
-                    // un plantage a l'endroit fautif — c'est l'arene d'entites qui perdait le
-                    // pointeur de 0x005eca94, et la camera levait deux images plus tard.
+                    // La moitie dessin. Elle avait ete desactivee le 2026-08-22 parce qu'elle
+                    // corrompait la memoire ; la cause est levee depuis, et elle etait triple :
+                    // le bloc de sprite fait **sept champs sur 0x12 octets** et non trois entiers,
+                    // les descripteurs d'atlas s'**indexent en avant** donc se relevent par plage,
+                    // et Ghidra place deux champs au mauvais decalage. Les trois sont etablies au
+                    // desassembleur — voir Primitives2d.DrawSpritePrimitive.
                     //
-                    // C'est le mode de defaillance que CLAUDE.md decrit sur DrawFlatPrimitive :
-                    // ici la faute a ete visible, mais la meme ecriture dans la vraie liste
-                    // d'affichage part dans winsys3d sans pile utilisable.
-                    //
-                    // **Ce qui manque n'est pas du code, c'est la disposition exacte des blocs de
-                    // pile** que chaque fonction de dessin lit. Elle se releve au desassembleur,
-                    // fonction par fonction, comme FUN_0051c120 l'a ete en aout — voir le resume de
-                    // Primitives2d.DrawTextRun, qui est le seul dont la disposition soit etablie.
-                    // Tant qu'elle ne l'est pas pour DrawSpriteVariant, DrawFlatPrimitive et
-                    // FUN_0051c420, appeler ce corps est pire que la lacune.
-                    throw new NotImplementedException(
-                        "FUN_00516fc0 : la moitie dessin est ECRITE mais DESACTIVEE — voir " +
-                        "DrawWorldMapFrame et le commentaire au-dessus de ce throw. Elle corrompt " +
-                        "la memoire tant que la disposition des blocs de pile que lisent " +
-                        "DrawSpriteVariant, DrawFlatPrimitive et FUN_0051c420 n'est pas relevee au " +
-                        "desassembleur. Celle de DrawTextRun (FUN_0051c120) l'est deja et sert de " +
-                        "modele. Les descripteurs d'atlas et les tables de panneaux, eux, sont " +
-                        "releves et en place.");
+                    // Ce qui reste est de la lacune franche : cinq appelees non transcrites qui
+                    // levent chacune sous leur nom, ce que le depot veut.
+                    DrawWorldMapFrame(otBase, otEntry, &primCursor, debugLatch, mainMem);
+                    goto frameTail;
                 }
 
                 throw new NotImplementedException(
@@ -937,8 +922,12 @@ public static unsafe partial class Blaze
     {
         uint* cursor = *cursorSlot;
 
-        // Le bloc de trois entiers que toutes les fonctions de dessin recoivent par adresse.
-        int* block = stackalloc int[3];
+        // Le bloc de **sept champs sur 0x12 octets** que toutes les fonctions de dessin recoivent
+        // par adresse — voir la disposition complete sur Primitives2d.DrawSpritePrimitive. Cinq
+        // entiers, pas trois : la premiere version en allouait trois, et DrawSpritePrimitive lisait
+        // deja l'echelle et l'indice six octets au-dela.
+        int* block = stackalloc int[5];
+        byte* b = (byte*)block;
 
         // ---------------------------------------------------------- le voile de transition
         if ((byte)(Mem.s_Unknown_005de024 >> 0x18) != 0)
@@ -979,13 +968,25 @@ public static unsafe partial class Blaze
 
         if (indicator != null)
         {
-            // L'indicateur pulse : le sinus du compteur de fondu module son echelle.
+            // L'indicateur pulse : le sinus du compteur de fondu module son **echelle**, dans les
+            // deux axes, autour de 0x1000 (= 1.0). La position (0x130, 0x10) ne bouge pas.
+            //
+            // **Ghidra se trompe ici aussi**, et dans l'autre sens que la rose des vents : il rend
+            // le premier pouls par `uStack_40 = CONCAT22(uStack_40._2_2_, pouls)`, ce qui ecraserait
+            // le X par une valeur de l'ordre de 0x1000 — hors ecran. Le desassemblage donne
+            // `[esp+3Ch]=130h`, `[esp+3Eh]=10h`, `[esp+40h]=pouls`, `[esp+46h]=pouls` avec le bloc
+            // a `esp+34h` : position conservee, pouls dans +0x0c **et** +0x0e. Releve le 2026-08-22.
             block[0] = (int)(nint)indicator;
-            block[2] = (0x10 << 0x10) | 0x130;
+            *(short*)(b + 8) = 0x130;
+            *(short*)(b + 0xa) = 0x10;
+            *(short*)(b + 0xc) = (short)(((int)Winsys3d.GetSinTableEntry(
+                (int)(s_FadeCounter_005e9960 << 9)) >> 3) + 0x1000);
+            *(short*)(b + 0xe) = (short)(((int)Winsys3d.GetSinTableEntry(
+                (int)(s_FadeCounter_005e9960 << 9)) >> 3) + 0x1000);
+            *(short*)(b + 0x10) = 0;
 
-            int pulse = (int)Winsys3d.GetSinTableEntry((int)(s_FadeCounter_005e9960 << 9));
-            block[1] = (pulse >> 3) + 0x1000;
-
+            // +0x04 n'est **pas** ecrit par l'original avant 0x0051833d : le mot de base part avec
+            // ce que la pile portait. Voir legacy-bug.md LB-008 ; on ne comble pas, on transcrit.
             cursor = Prims.DrawSpritePrimitive(otBase, cursor, block, 0, 0);
         }
 
@@ -1127,20 +1128,27 @@ public static unsafe partial class Blaze
         frame[SlotOf(0x4c)] = 0x1ffffff;
         frame[SlotOf(0x50)] = (int)(nint)SpriteAtlas(0x005646c0);
 
-        // Les huit graduations, une par huitieme de tour, placees autour du centre (0x9c, 0xc5) a
-        // vingt-deux unites de rayon.
+        // Les **quatre** graduations — la boucle va de 0 a 0x1000 par pas de 0x400, soit les quatre
+        // points cardinaux — placees autour du centre (0x9c, 0xc5) a vingt-deux unites de rayon.
+        // L'indice 0..3 designe les descripteurs 0x005646c0, c8, d0, d8 : quatre voisins de la
+        // plage relevee, d'ou l'exigence de contiguite sur SpriteAtlas.
+        //
+        // **Ghidra place le X dans le mauvais champ.** Il ecrit
+        // `piStack_4c = CONCAT22(piStack_4c._2_2_, 0x9c - ...)`, soit +0x04 — le mot de base. Le
+        // desassemblage dit `mov [esp+3Ch],cx` avec le bloc a `esp+34h`, donc **+0x08**, la moitie
+        // basse de la position, dont le Y occupe deja la moitie haute. Releve le 2026-08-22 ;
+        // la premiere transcription avait copie l'erreur, ce qui envoyait le X dans le mot de
+        // couleur et laissait la graduation sur place.
         short tick = 0;
         for (int angle = 0; angle < 0x1000; angle += 0x400, tick++)
         {
             frame[SlotOf(0x40)] = (frame[SlotOf(0x40)] & unchecked((int)0xffff0000)) | (ushort)tick;
 
             int sin = (int)Winsys3d.GetSinTableEntry(angle - pose[1]);
-            frame[SlotOf(0x4c)] = (frame[SlotOf(0x4c)] & unchecked((int)0xffff0000))
-                | (ushort)(0x9c - (short)(sin * 0x16 >> 0xc));
-
             int cos = Winsys3d.GetCosTableEntry(angle - pose[1]);
+
             frame[SlotOf(0x48)] = ((0xc5 - (cos * 0x16 >> 0xc)) << 0x10)
-                | (frame[SlotOf(0x48)] & 0xffff);
+                | (ushort)(0x9c - (short)(sin * 0x16 >> 0xc));
 
             cursor = Prims.DrawSpriteVariant(otBase + 2, cursor, frame + SlotOf(0x50), 0, 0);
         }
@@ -1228,41 +1236,105 @@ public static unsafe partial class Blaze
     /// l'ecrit encore. TODO(REVERSE) : trouver son ecrivain.</summary>
     private static int s_MenuSlideDone_00564a56;
 
+    // Les deux plages de descripteurs, relevees **contigument** dans le binaire le 2026-08-22.
+    //
+    // La contiguite n'est pas un detail de commodite, c'est la correction d'un defaut : les
+    // fonctions de dessin lisent leur descripteur a `bloc[0] + (short)bloc[4] * 8`, c'est-a-dire
+    // qu'elles **indexent en avant** a partir de l'adresse qu'on leur donne. La rose des vents s'en
+    // sert pour ses huit orientations : elle passe `&DAT_005646c0` et un indice 0..7, et lit donc
+    // 0x005646c0, c8, d0, d8, e0, e8, f0, f8 — huit descripteurs voisins dans le binaire.
+    //
+    // La premiere version de ce relevé rangeait onze descripteurs isoles dans un tableau de onze
+    // entrees, dans l'ordre ou je les avais rencontres. Indexer en avant y donnait le mauvais
+    // descripteur des l'indice 1, et **sortait du tampon** des l'indice 4 : la fonction lisait un
+    // couple couleur/attributs pris dans le tas, et la corruption se voyait une image plus loin,
+    // dans la camera. Un descripteur ne se releve pas seul — on releve la plage.
+    private const int AtlasA_Base = 0x00564680, AtlasA_End = 0x00564900;
+    private const int AtlasB_Base = 0x00566c18, AtlasB_End = 0x00566c40;
+
+    private static byte* s_AtlasBlockB;
+
     private static byte* SpriteAtlas(int va)
     {
         if (s_SpriteAtlasStorage == null)
         {
-            ReadOnlySpan<uint> relevé =
+            // 0x00564680 .. 0x00564900 — la grande plage. Elle ne contient pas que des
+            // descripteurs (0x00564740..0x00564770 sont des couples de coordonnees), mais on la
+            // releve telle quelle : c'est ce qui rend l'indexation en avant fidele.
+            ReadOnlySpan<uint> blocA =
+            [
+                0x0000f6c0, 0x00018040, 0x00018040, 0x00003c00,   // 0x00564680
+                0x10181800, 0x01100302, 0x17179060, 0x0a110301,   // 0x00564690
+                0x17179060, 0x0a110301, 0x17179060, 0x0a110301,   // 0x005646a0
+                0x17179060, 0x0a110301, 0x3030a830, 0x0e110001,   // 0x005646b0
+                0x0808f8a0, 0x0e110001, 0x0808f8b0, 0x0e110001,   // 0x005646c0
+                0x0808f8b8, 0x0e110001, 0x0808f8a8, 0x0e110001,   // 0x005646d0
+                0x17179018, 0x06110001, 0x17179030, 0x07110001,   // 0x005646e0
+                0x4000c000, 0x003f0300, 0x20207000, 0x00120001,   // 0x005646f0
+                0x20207020, 0x00120001, 0x20207040, 0x00120001,   // 0x00564700
+                0x20207060, 0x00120001, 0x20209000, 0x00120001,   // 0x00564710
+                0x20209020, 0x00120001, 0x20209040, 0x00120001,   // 0x00564720
+                0x20209060, 0x00120001, 0x2020b040, 0x00120001,   // 0x00564730
+                0x70800000, 0x00120001, 0x002c0068, 0x003c0088,   // 0x00564740
+                0x004c0098, 0x006c0090, 0x006c0068, 0x006c0048,   // 0x00564750
+                0x004c0040, 0x003c0050, 0x00540068, 0x002c0040,   // 0x00564760
+                0x2c38b000, 0x00120000, 0x2430dc00, 0x00120000,   // 0x00564770
+                0x2430dc30, 0x00120000, 0x0f0f80c0, 0x0d110000,   // 0x00564780
+                0x0f0f80d0, 0x0d110000, 0x0818a860, 0x0a110000,   // 0x00564790
+                0x0818b060, 0x0a110000, 0x0818b860, 0x0a110000,   // 0x005647a0
+                0x0818c060, 0x0a110000, 0x0818c860, 0x0a110000,   // 0x005647b0
+                0x08201880, 0x02300001, 0x082018a0, 0x02300001,   // 0x005647c0
+                0x082818c0, 0x02300001, 0x081718e8, 0x02300001,   // 0x005647d0
+                0x08222080, 0x02300001, 0x072c62c0, 0x02300001,   // 0x005647e0
+                0x082820d0, 0x02300001, 0x08202980, 0x02300001,   // 0x005647f0
+                0x081850d0, 0x02300001, 0x082428a0, 0x02300001,   // 0x00564800
+                0x082828d0, 0x02300001, 0x08283880, 0x02300001,   // 0x00564810
+                0x0728f9aa, 0x02300001, 0x083030c0, 0x02300001,   // 0x00564820
+                0x082060a0, 0x02300001, 0x081838a8, 0x02300001,   // 0x00564830
+                0x082038c0, 0x02300001, 0x081f38e0, 0x02300001,   // 0x00564840
+                0x08204080, 0x02300001, 0x083040a0, 0x02300001,   // 0x00564850
+                0x082f40d0, 0x02300001, 0x08204880, 0x02300001,   // 0x00564860
+                0x083048a0, 0x02300001, 0x082f48d0, 0x02300001,   // 0x00564870
+                0x08205080, 0x02300001, 0x083050a0, 0x02300001,   // 0x00564880
+                0x082450d0, 0x02300001, 0x08305880, 0x02300001,   // 0x00564890
+                0x082858b2, 0x02300001, 0x082758d8, 0x02300001,   // 0x005648a0
+                0x083220a2, 0x02300001, 0x0808f800, 0x06110000,   // 0x005648b0
+                0x0808f808, 0x04110000, 0x0808f810, 0x05110000,   // 0x005648c0
+                0x0808f818, 0x07110000, 0x0808f820, 0x07110000,   // 0x005648d0
+                0x0808f828, 0x09110000, 0x0808f830, 0x09110000,   // 0x005648e0
+                0x0808f838, 0x0a110000, 0x0808f848, 0x04110000,   // 0x005648f0
+            ];
+
+            // 0x00566c18 .. 0x00566c40 — cinq descripteurs. La plage s'arrete la : 0x00566c40
+            // vaut 0x007f007f, qui n'est pas un descripteur.
+            ReadOnlySpan<uint> blocB =
             [
                 0x40400000, 0x02300100,   // 0x00566c18
-                0x28180000, 0x02300008,   // 0x00566c20
+                0x08281800, 0x02300000,   // 0x00566c20
                 0x40803000, 0x02300000,   // 0x00566c28
                 0x08504800, 0x02300000,   // 0x00566c30
                 0x0a640880, 0x02300100,   // 0x00566c38
-                0x10181800, 0x01100302,   // 0x00564690
-                0x3030a830, 0x0e110001,   // 0x005646b8
-                0x0808f8a0, 0x0e110001,   // 0x005646c0
-                0x0f0f80c0, 0x0d110000,   // 0x00564788
-                0x0f0f80d0, 0x0d110000,   // 0x00564790
-                0x0808f800, 0x06110000,   // 0x005648b8
             ];
 
-            s_SpriteAtlasStorage = (byte*)NativeMemory.AllocZeroed((nuint)relevé.Length, sizeof(uint));
-            for (int i = 0; i < relevé.Length; i++) ((uint*)s_SpriteAtlasStorage)[i] = relevé[i];
+            s_SpriteAtlasStorage = (byte*)NativeMemory.AllocZeroed((nuint)blocA.Length, sizeof(uint));
+            for (int i = 0; i < blocA.Length; i++) ((uint*)s_SpriteAtlasStorage)[i] = blocA[i];
+
+            s_AtlasBlockB = (byte*)NativeMemory.AllocZeroed((nuint)blocB.Length, sizeof(uint));
+            for (int i = 0; i < blocB.Length; i++) ((uint*)s_AtlasBlockB)[i] = blocB[i];
         }
 
-        int slot = va switch
-        {
-            0x00566c18 => 0, 0x00566c20 => 1, 0x00566c28 => 2, 0x00566c30 => 3, 0x00566c38 => 4,
-            0x00564690 => 5, 0x005646b8 => 6, 0x005646c0 => 7,
-            0x00564788 => 8, 0x00564790 => 9, 0x005648b8 => 10,
-            _ => throw new NotImplementedException(
-                $"Descripteur d'atlas 0x{va:X8} non releve. Les onze connus sont dans " +
-                "DataSymbols.md ; en relever un nouveau avec " +
-                $"`OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x{va:x8} 8`."),
-        };
+        if ((uint)(va - AtlasA_Base) < (uint)(AtlasA_End - AtlasA_Base))
+            return s_SpriteAtlasStorage + (va - AtlasA_Base);
 
-        return s_SpriteAtlasStorage + slot * 8;
+        if ((uint)(va - AtlasB_Base) < (uint)(AtlasB_End - AtlasB_Base))
+            return s_AtlasBlockB + (va - AtlasB_Base);
+
+        throw new NotImplementedException(
+            $"Descripteur d'atlas 0x{va:X8} hors des deux plages relevees " +
+            $"(0x{AtlasA_Base:X8}..0x{AtlasA_End:X8} et 0x{AtlasB_Base:X8}..0x{AtlasB_End:X8}). " +
+            "Relever la plage — pas le descripteur seul — avec " +
+            $"`OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x{va:x8} 64`, et etendre les " +
+            "bornes ci-dessus ainsi que DataSymbols.md.");
     }
 
     /// <summary>

@@ -383,3 +383,48 @@ l'écriture par le pointeur non replié. Sur une machine moderne cela lèverait 
 au lieu d'écrire dans la page zéro, mais c'est la bonne façon de reproduire le défaut — **ne pas
 étendre le repli à la seconde moitié**. Le faire rendrait le code plus sûr que l'original et
 masquerait la contradiction, qui est précisément ce que ce fichier existe pour conserver.
+
+---
+
+## LB-008 — L'indicateur d'écran de la carte du monde émet son mot de base depuis une pile non initialisée
+
+**Repéré** le 2026-08-22, en relevant au désassembleur la disposition du bloc de sprite du bloc
+d'affichage de `FUN_00516fc0`. **Latent** : il produit des bits de couleur indéterminés, pas un
+plantage.
+
+### Le défaut
+
+Le bloc de sprite que les fonctions de dessin reçoivent en troisième argument a sept champs (voir
+`DataSymbols.md`). Son champ `+0x04`, le « mot de base », part dans `prim[1]` sur ses 26 bits bas :
+
+```
+prim[1] = ((attributs & 0xffffff00) | (((drapeaux & 0xff) | 0x2c) << 8)) << 0x10
+        | (motDeBase & 0x3ffffff);
+```
+
+Ce bloc vit à `esp+0x34` dans le cadre de `FUN_00516fc0`. Le désassemblage montre que **la première
+écriture de `[esp+0x38]` — donc de `+0x04` — a lieu en `0x0051833d`**, alors que le sous-bloc de
+l'indicateur d'écran appelle `FUN_00521f20` en `0x00518038`, trois cents octets plus tôt. Entre
+l'entrée de la fonction et cet appel, aucune instruction n'écrit cet emplacement.
+
+L'indicateur émet donc sa primitive avec un mot de base qui vaut ce que l'appelant avait laissé sur
+la pile. Le sous-bloc du compteur de mise au point, juste avant, a le même problème pour ses deux
+appels à `FUN_0051c120`.
+
+### Pourquoi c'est bénin
+
+Les 26 bits en question se chevauchent avec la moitié haute décalée de seize crans, et ce que
+`winsys3d` en fait est une teinte, pas une adresse. Le résultat est un indicateur dont la couleur
+dépend du contenu résiduel de la pile — stable en pratique, puisque le même chemin de code repasse
+au même endroit à chaque image, mais non défini par le programme.
+
+Ce n'est pas non plus un cas isolé de négligence : dans le même bloc, les autres sous-blocs
+écrivent bien `+0x04` avant d'appeler (`uStack_3c = 0x1000000` un peu partout). Celui-ci a été
+oublié.
+
+### Dans OpenForesia
+
+`DrawWorldMapFrame` **n'écrit pas** `+0x04` pour l'indicateur, exactement comme l'original. Le bloc
+étant un `stackalloc`, le champ y vaut zéro plutôt qu'un résidu — c'est la traduction la plus proche
+possible, et surtout il ne faut pas inventer une valeur. Écrire `0x1000000` « par cohérence avec les
+voisins » rendrait le rendu plus joli que celui de 1998 et effacerait le défaut.
