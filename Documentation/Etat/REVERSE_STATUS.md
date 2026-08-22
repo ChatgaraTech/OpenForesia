@@ -9187,3 +9187,93 @@ Cinq appelées, toutes dans `Blaze.c` : `FUN_0051c420` (374 l., celle qui bloque
 courtes `FUN_005309b0` (147), `FUN_0051be90` (74), `FUN_0051f940` (18), `FUN_00538bc0` (13),
 `FUN_0051c250` (10). Et les deux corps encore à écrire : `DrawPartyPanels` et `DrawWorldCells`,
 environ 200 lignes chacun.
+
+---
+
+## 2026-08-22 (nuit, suite) — FUN_0051c420 : le rendu de modèle statique
+
+`FUN_0051c420` est transcrite, dans `Engine/Model3d.cs` à côté de sa sœur `FUN_0051d1f0`. La carte
+du monde pose maintenant son décor et sa rose des vents, et s'arrête sur la lacune suivante,
+`DrawPartyPanels`.
+
+### Le placement : une fonction d'`Engine/`, pas d'un écran
+
+Elle va en `Engine/Model3d.cs` par les deux premières règles d'`ARCHITECTURE.md` à la fois : son VA
+tombe dans la plage de rendu de modèles, et cinq sites d'appel la sollicitent depuis plusieurs
+écrans. Elle y trouve tout ce dont elle a besoin — `LoadPointAsMatrixTranslation`,
+`ProjectOriginThroughMatrix`, `NormalClip`, `ReadMac0`, `ScaleMatrixSaturating` et les dix-sept
+registres GTE existaient déjà pour la sœur animée.
+
+C'est ce qui explique que 374 lignes de pseudo-C tiennent en une méthode et deux boucles : **la
+moitié du travail avait été faite en écrivant `FUN_0051d1f0`**, et personne ne l'avait remarqué
+parce que les deux fonctions ne se citent nulle part.
+
+### Ghidra a perdu trois paramètres sur cinq, et coupé chacun en deux
+
+Il déclare `FUN_0051c420(int param_1, int *param_2)` là où les cinq appelants poussent cinq
+arguments (`add esp,14h`). Le prologue — `sub esp,50h` puis quatre `push` — place les arguments à
+`[esp+64h..74h]`, ce qui donne :
+
+| réel | `[esp+…]` | noms Ghidra |
+|---|---|---|
+| `otEntry` | `64h` | `puStack_10` **et** `iStack_4` |
+| `prim` | `68h` | `unaff_retaddr` **et** `puStack_c` |
+| `model` | `6Ch` | `param_1` **et** `uStack_8` |
+| `placement` | `70h` | `param_2` |
+| `flags` | `74h` | aucun |
+
+**Le dédoublement est plus dangereux que la perte.** Un paramètre absent ne compile pas ; un
+paramètre sous deux noms compile et ment. On lit `uStack_8 + 0x18` à côté de `param_1 + 0x3c` et on
+croit à deux structures. Pire : les emplacements d'arguments servent de brouillon une fois leur
+valeur consommée, si bien que `iStack_4` désigne **l'entrée d'OT** au début de la fonction et un
+**temporaire du produit vectoriel** dans les boucles. Les traduire par une seule variable aurait
+détruit le pointeur d'OT à la première face émise.
+
+Deux constantes de primitive, `uStack_48` et `uStack_44`, ne sont **jamais affectées** dans la
+pseudo-C. Elles se relèvent en `0x0051c82a..0x0051c871` : le mot de CLUT et le mot de page de
+texture, plus simples que ceux de la sœur (ni terme `0x1c0`, ni relecture du premier
+enregistrement, ni borne `0x7ec0`).
+
+### Ce qui reste faux dans la moitié dessin — et ce n'était pas dans cette fonction
+
+Le premier essai a planté dans `EmitStaticTriangles`. La faute n'était pas dans la transcription
+mais au **site d'appel** : `*(byte**)s_ModelResultB_005f7b40` ne déréférence qu'une fois, alors que
+`RelocateModelBundle` range dans ce slot le **tableau d'offsets** du paquet, dont le modèle est
+l'élément 0.
+
+Ghidra écrit `*DAT_005f7b40` en typant le symbole comme un pointeur — il le passe par adresse en
+`0x00532640` et le relit `DAT_005f7b40[1]` / `[3]` ailleurs — ce qui masque un niveau. Un seul
+déréférencement donne le tableau lui-même, et son « en-tête » se lit alors comme un modèle dont
+`+0x08` est un pointeur et `+0x28` un petit entier.
+
+**C'est le vidage qui l'a tranché, pas la relecture.** Deux passes de relecture n'avaient rien
+donné ; un `File.WriteAllText` d'une ligne — l'en-tête du modèle, ses quatre compteurs et ses
+quatre seaux — a montré `+0x24 = 0x00010001` et `+0x28 = 0x00010002` là où il fallait des
+pointeurs, et la réponse était immédiate. Sur du pointeur, imprimer coûte moins cher que raisonner.
+
+### Un piège de protocole qui a failli coûter cher
+
+Deux exécutions intermédiaires ont levé un `NullReferenceException` dans
+`PublishCameraFrame_004022B0` — **exactement la signature de la corruption de la veille**. J'ai
+d'abord cru à une régression de la fonction neuve. C'était l'échec de minutage que
+`test-protocol.md` documente déjà : la validation du groupe rate, et le débit de 1 primitive par
+image ne suffit pas à le détecter puisque l'état 3 est bien atteint. Des attentes plus longues
+(`WAIT6` / `WAIT5` / `WAIT20`) ont rendu la séquence fiable, et le vidage de diagnostic n'était
+simplement pas écrit — ce qui était le vrai indice : la fonction soupçonnée n'avait pas tourné.
+
+**Un plantage identique à un plantage connu n'a pas forcément la même cause.** Le contrôle qui
+tranche est de vérifier que le code soupçonné s'est exécuté.
+
+### Vérification
+
+Build 0 erreur, compile du premier coup. Oracle : trois corps signalés, les mêmes que le tour
+précédent (les deux voulus, plus le renommage `halfW` → `scaleX`) ; `DrawStaticModel` et ses deux
+émetteurs comptent parmi les corps neufs. Tests de disposition inchangés, 3 rouges volontaires.
+Playtest : la rose des vents s'exécute, et le jeu s'arrête sur `DrawPartyPanels`.
+
+### La frontière
+
+`DrawPartyPanels` (~200 l., `0x005185f0..0x00518e60`), qui demande `FUN_0051be90` (74 l.),
+`FUN_0051c250` (10), `FUN_00538bc0` (13) et `FUN_005309b0` (147). Puis `DrawWorldCells` (~200 l.)
+et ses appelées `FUN_0051e700` (423), `FUN_0051fa40` (441), `FUN_00521000` (365), `FUN_00522140`
+(315), `FUN_0051f940` (18).

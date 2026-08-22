@@ -612,4 +612,355 @@ internal sealed unsafe class Model3d(GameMemory mem)
 
         return prim;
     }
+
+    // =====================================================================
+    // FUN_0051c420 — le rendu de modèle **statique**
+    //
+    // La sœur de FUN_0051d1f0 juste au-dessus, et elle en éclaire la lecture : même prologue, même
+    // banc GTE, mêmes primitives, mais pas de squelette. Un modèle, une pose, quatre seaux de
+    // faces. C'est elle qui pose le décor de la carte du monde et la rose des vents.
+    //
+    // Trois écarts avec la sœur, tous voulus :
+    //   * l'emplacement d'OT est **un pointeur unique** passé par l'appelant, avancé une seule fois
+    //     par la profondeur du modèle entier — pas un tri par polygone ;
+    //   * elle émet **quatre** formes (triangle plat, quad plat, triangle dégradé, quad dégradé)
+    //     là où la sœur n'en émet que deux ;
+    //   * le mot de page de texture est plus simple : ni le terme `0x1c0`, ni la relecture du
+    //     premier enregistrement, ni la borne `0x7ec0` sur l'UV.
+    //
+    // **Ghidra n'a récupéré que deux des cinq paramètres, et il a coupé chacun des trois autres en
+    // deux noms distincts.** Relevé au désassembleur le 2026-08-22 ; le détail est sur la méthode.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0051c420 @ 0x0051c420 — émet un modèle statique dans la liste d'affichage et
+    /// rend le curseur avancé.
+    ///
+    /// <para><b>La signature ne vient pas de la pseudo-C.</b> Ghidra déclare
+    /// <c>FUN_0051c420(int param_1, int *param_2)</c> ; les cinq sites d'appel poussent cinq
+    /// arguments (<c>add esp,14h</c>). Le prologue tranche : <c>sub esp,50h</c> puis quatre
+    /// <c>push</c>, donc les arguments vivent à <c>[esp+64h..74h]</c>. La correspondance, et le
+    /// dédoublement qui va avec :</para>
+    /// <code>
+    /// [esp+64h]  otEntry     Ghidra : puStack_10  ET  iStack_4   (pointeur / entier)
+    /// [esp+68h]  prim        Ghidra : unaff_retaddr  ET  puStack_c
+    /// [esp+6Ch]  model       Ghidra : param_1  ET  uStack_8
+    /// [esp+70h]  placement   Ghidra : param_2
+    /// [esp+74h]  flags       Ghidra : perdu — aucun nom
+    /// </code>
+    ///
+    /// <para><b>Le dédoublement est le vrai piège</b>, plus que la perte. Trois paramètres portent
+    /// chacun deux noms Ghidra, et rien dans la pseudo-C ne dit qu'il s'agit du même emplacement :
+    /// on lit <c>uStack_8 + 0x18</c> à côté de <c>param_1 + 0x3c</c> et on croit à deux structures.
+    /// Pire, les emplacements d'arguments servent de brouillon une fois leur valeur consommée, si
+    /// bien que le même nom <c>iStack_4</c> désigne <b>l'entrée d'OT</b> au début et un
+    /// <b>temporaire du produit vectoriel</b> dans les boucles. Les traduire par une seule variable
+    /// détruirait le pointeur d'OT à la première face ; ils sont donc séparés ici.</para>
+    ///
+    /// <para>Le bloc de placement, tel que les appelants le remplissent :</para>
+    /// <code>
+    /// +0x00..0x08  position monde X/Y/Z        +0x0c..0x10  echelle X/Y/Z (ushort)
+    /// +0x14..0x18  angles X/Y/Z                +0x1a        drapeaux
+    /// +0x1c        couleur plate (26 bits)
+    /// </code>
+    /// <para>Drapeaux : bit 0 rejette hors du cadre écran, bits 0-1 activent le tri en profondeur,
+    /// bit 2 remplace l'éclairage par la couleur plate.</para>
+    /// </summary>
+    internal uint* DrawStaticModel(uint* otEntry, uint* prim, byte* model, int* placement, uint flags)
+    {
+        EnsureGteRegisters();
+
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null)
+        {
+            throw new NotImplementedException(
+                "DrawStaticModel: l'export MainMem de winsys3d.dll rend null, donc les tampons de " +
+                "sommets a MainMem + 0x1b0000 et de couleurs a + 0x1b8000 ne peuvent pas etre places.");
+        }
+
+        // La position du modèle devient la translation de la matrice courante — bloc identique,
+        // instruction pour instruction, à celui de FUN_0051f650 et de l'émetteur de particules.
+        LoadPointAsMatrixTranslation(placement);
+
+        ushort placementFlags = *(ushort*)((byte*)placement + 0x1a);
+
+        short* vector802 = (short*)s_GteVector802;
+        vector802[0] = 0;
+        vector802[1] = 0;
+        vector802[2] = 0;
+
+        // Le rejet, et le **tri en profondeur du modèle entier**. Ghidra rend l'avance d'OT par
+        // `iStack_4 = iStack_4 + sStack_2c * 4`, sur une variable qu'il n'initialise nulle part ;
+        // le désassembleur donne `mov edx,[esp+64h] / lea eax,[edx+eax*4] / mov [esp+64h],eax`,
+        // soit l'entrée d'OT avancée de la profondeur — en dwords, d'où le `* 4` en octets.
+        if ((placementFlags & 3) != 0)
+        {
+            ProjectOriginThroughMatrix();
+
+            short screenX = (short)*(uint*)s_GteSxy809;
+            short screenY = (short)(*(uint*)s_GteSxy809 >> 0x10);
+            short depth = (short)*(int*)s_GteSz810;
+
+            if ((placementFlags & 1) != 0)
+            {
+                if ((ushort)(screenX + 0x18) >= 0x170) return prim;
+                if ((ushort)(screenY + 0x18) >= 0x120) return prim;
+            }
+            if ((uint)(depth - 0x58) >= 0x3a0) return prim;
+
+            otEntry += depth;
+        }
+
+        // === La matrice du modèle : rotation depuis ses angles décalés par la pose de caméra,
+        // puis mise à l'échelle par les trois ushorts de +0x0c ===
+        short* cameraAngles = (short*)mem.s_CameraVector_00604928;
+        short* angles = stackalloc short[3];
+        angles[0] = (short)(*(short*)((byte*)placement + 0x14) + cameraAngles[0]);
+        angles[1] = (short)(*(short*)((byte*)placement + 0x16) + cameraAngles[1]);
+        angles[2] = (short)(*(short*)((byte*)placement + 0x18) + cameraAngles[2]);
+
+        byte* matrix = stackalloc byte[0x20];
+        NativeMemory.Clear(matrix, 0x20);
+        RotMatrix(angles, (short*)matrix);
+        ScaleMatrixSaturating((short*)matrix, (ushort*)(placement + 3));
+
+        for (int i = 0; i < 9; i++) ((short*)s_GteMatrix814)[i] = ((short*)matrix)[i];
+
+        // === La matrice d'éclairage : la rotation de scène, composée avec le lacet et le roulis
+        // du modèle mais **pas avec son tangage** — l'original écrase l'angle X par
+        // DAT_005e9308 au lieu de l'additionner. Transcrit tel quel. ===
+        angles[1] += (short)mem.s_SceneYaw_005e930a;
+        angles[2] += (short)mem.s_SceneRoll_005e930c;
+        angles[0] = (short)mem.s_ScenePitch_005e9308;
+
+        NativeMemory.Clear(matrix, 0x20);
+        RotMatrix(angles, (short*)matrix);
+
+        // Huit dwords, soit 0x20 octets, alors que RotMatrix n'en écrit que neuf shorts : les
+        // quatorze octets suivants partent aussi dans le registre 815, dont ils écrasent la
+        // translation. Dans l'original ce sont des restes de pile ; ici le tampon est remis à zéro
+        // avant chaque appel, ce qui est la traduction la plus proche possible.
+        for (int i = 0; i < 8; i++) ((uint*)s_GteLightMatrix815)[i] = ((uint*)matrix)[i];
+
+        uint attributes = *(uint*)(model + 0x3c);
+        if (mem.s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
+        {
+            if (mem.s_Unknown_00564a4c == 0) return prim;
+            attributes &= 0xfffffdff;
+        }
+
+        // Les deux mots constants des primitives. Ghidra ne les montre pas du tout — il les nomme
+        // uStack_48 et uStack_44 et ne les affecte jamais. Relevés en 0x0051c82a..0x0051c871.
+        uint clut = *(uint*)(mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
+        uint tpageWord = (((attributes & 0xff) << 5) | clut) << 0x10;
+        uint uvWord = ((uint)(((ushort)((short)flags >> 2)) & 0xffc0) + (flags & 0xff)) << 0x10;
+        uvWord += clut & 0xffff0000;
+
+        uint vertexCount = *(uint*)(model + 8) >> 0x10;
+        Winsys3d.Ordinal_795(model + 0x40, mainMem + 0x1b0000, *(uint*)(model + 8) & 0xffff);
+
+        uint* colours = (uint*)(mainMem + 0x1b8000);
+        uint flatColour = (uint)placement[7] & 0x3ffffff ^ (attributes & 0x300) << 0x10;
+
+        if ((placementFlags & 4) == 0)
+        {
+            *(uint*)s_GteLightColour817 = flatColour;
+            Winsys3d.Ordinal_793(*(void**)(model + 0x24), colours, vertexCount);
+        }
+        else
+        {
+            uint* fill = colours;
+            for (uint i = vertexCount * 3; i != 0; i--) *fill++ = flatColour;
+        }
+
+        ushort* counters = (ushort*)(model + 0x10);
+        int skipped = counters[0] + counters[1] + counters[2] + counters[3];
+        uint* record = (uint*)(*(byte**)(model + 0x28) + skipped * 0x10);
+        uint* screen = (uint*)(mainMem + 0x1b0000);
+
+        prim = EmitStaticTriangles(otEntry, prim, ref record, *(ushort*)(model + 0x18),
+                                   screen, colours, tpageWord, uvWord, gouraud: false);
+        prim = EmitStaticQuads(otEntry, prim, ref record, *(ushort*)(model + 0x1a),
+                               screen, colours, tpageWord, uvWord, gouraud: false);
+        prim = EmitStaticTriangles(otEntry, prim, ref record, *(ushort*)(model + 0x1c),
+                                   screen, colours, tpageWord, uvWord, gouraud: true);
+        prim = EmitStaticQuads(otEntry, prim, ref record, *(ushort*)(model + 0x1e),
+                               screen, colours, tpageWord, uvWord, gouraud: true);
+
+        return prim;
+    }
+
+    /// <summary>
+    /// Ghidra: les seaux <c>+0x18</c> et <c>+0x1c</c> de FUN_0051c420 — les faces à trois sommets.
+    /// Le premier émet un triangle texturé plat de 8 mots (marque <c>0x7000000</c>, code
+    /// <c>0x24</c>), le second un triangle texturé dégradé de 10 mots (<c>0x9000000</c> /
+    /// <c>0x34</c>).
+    ///
+    /// <para>Le rejet des faces arrière est **inliné** dans l'original, la même expression à six
+    /// termes que <see cref="Winsys3d.NormalClip"/> recopiée à la main ; à trois sommets il n'y a
+    /// qu'un seul test, contrairement aux quads.</para>
+    /// </summary>
+    private uint* EmitStaticTriangles(
+        uint* otEntry, uint* prim, ref uint* record, int count,
+        uint* screen, uint* colours, uint tpageWord, uint uvWord, bool gouraud)
+    {
+        for (; count != 0 && s_Unknown_005e9818 != 0; count--, record += 4)
+        {
+            uint packed = record[0];
+            uint v0 = screen[packed & 0xff];
+            uint v1 = screen[packed >> 8 & 0xff];
+            uint v2 = screen[packed >> 0x10 & 0xff];
+
+            *(uint*)s_GteSxy805 = v0;
+            *(uint*)s_GteSxy806 = v1;
+            *(uint*)s_GteSxy807 = v2;
+
+            if ((ushort)v0 >= 0x140 && (ushort)v1 >= 0x140 && (ushort)v2 >= 0x140) continue;
+
+            // Le produit vectoriel écrit à la main. `iStack_4` chez Ghidra — le même nom que
+            // l'entrée d'OT du début de la fonction, et sans rapport avec elle.
+            int x0 = *(short*)s_GteSxy805, y0 = *(short*)(s_GteSxy805 + 2);
+            int x1 = *(short*)s_GteSxy806, y1 = *(short*)(s_GteSxy806 + 2);
+            int x2 = *(short*)s_GteSxy807, y2 = *(short*)(s_GteSxy807 + 2);
+            *(int*)s_GteMac0808 = x0 * y1 + x1 * y2 + x2 * y0
+                                - x0 * y2 - x1 * y0 - x2 * y1;
+
+            if ((v0 & 0xffff0000) >= 0xf00000 && (v1 & 0xffff0000) >= 0xf00000
+                && (v2 & 0xffff0000) >= 0xf00000) continue;
+
+            if (ReadMac0() >= 0) continue;
+
+            uint previous = *otEntry;
+            *otEntry = (uint)(nuint)prim;
+
+            if (!gouraud)
+            {
+                prim[0] = previous | 0x7000000;
+                prim[1] = colours[record[1] & 0xff] | 0x24000000;
+                prim[2] = v0;
+                prim[3] = uvWord | record[2] & 0xffff;
+                prim[4] = v2;
+                prim[5] = tpageWord | record[3] & 0xffff;
+                prim[6] = v1;
+                prim[7] = record[2] >> 0x10;
+                prim += 8;
+            }
+            else
+            {
+                uint indices = record[1];
+                uint c0 = colours[indices & 0xff];
+                uint c1 = colours[indices >> 8 & 0xff];
+                uint c2 = colours[indices >> 0x10 & 0xff];
+
+                prim[0] = previous | 0x9000000;
+                prim[1] = c0 | 0x34000000;
+                prim[2] = v0;
+                prim[3] = uvWord | record[2] & 0xffff;
+                prim[4] = c2;
+                prim[5] = v2;
+                prim[6] = tpageWord | record[3] & 0xffff;
+                prim[7] = c1;
+                prim[8] = v1;
+                prim[9] = record[2] >> 0x10;
+                prim += 10;
+            }
+
+            s_Unknown_005e9818--;
+        }
+
+        return prim;
+    }
+
+    /// <summary>
+    /// Ghidra: les seaux <c>+0x1a</c> et <c>+0x1e</c> de FUN_0051c420 — les faces à quatre
+    /// sommets, quad texturé plat de 10 mots (<c>0x9000000</c> / <c>0x2c</c>) puis quad texturé
+    /// dégradé de 13 (<c>0xc000000</c> / <c>0x3c</c>).
+    ///
+    /// <para>Même disposition de primitive que <see cref="EmitModelQuads"/> de la sœur animée, à
+    /// deux détails près : l'emplacement d'OT est le pointeur unique passé par l'appelant, et
+    /// <b>la couleur n'est pas masquée par <c>0xfdffffff</c></b> quand le drapeau de capacité est
+    /// posé. Cet écart est dans l'original.</para>
+    /// </summary>
+    private uint* EmitStaticQuads(
+        uint* otEntry, uint* prim, ref uint* record, int count,
+        uint* screen, uint* colours, uint tpageWord, uint uvWord, bool gouraud)
+    {
+        for (; count != 0 && s_Unknown_005e9818 != 0; count--, record += 4)
+        {
+            uint packed = record[0];
+            uint v0 = screen[packed & 0xff];
+            uint v1 = screen[packed >> 8 & 0xff];
+            uint v2 = screen[packed >> 0x10 & 0xff];
+            uint v3 = screen[packed >> 0x18];
+
+            *(uint*)s_GteSxy805 = v0;
+            *(uint*)s_GteSxy806 = v1;
+            *(uint*)s_GteSxy807 = v2;
+
+            if ((ushort)v0 >= 0x140 && (ushort)v1 >= 0x140
+                && (ushort)v2 >= 0x140 && (ushort)v3 >= 0x140) continue;
+
+            int x0 = *(short*)s_GteSxy805, y0 = *(short*)(s_GteSxy805 + 2);
+            int x1 = *(short*)s_GteSxy806, y1 = *(short*)(s_GteSxy806 + 2);
+            int x2 = *(short*)s_GteSxy807, y2 = *(short*)(s_GteSxy807 + 2);
+            *(int*)s_GteMac0808 = x0 * y1 + x1 * y2 + x2 * y0
+                                - x0 * y2 - x1 * y0 - x2 * y1;
+
+            if ((v0 & 0xffff0000) >= 0xf00000 && (v1 & 0xffff0000) >= 0xf00000
+                && (v2 & 0xffff0000) >= 0xf00000 && (v3 & 0xffff0000) >= 0xf00000) continue;
+
+            // Le quatrième sommet remplace SXY2 et le test est refait, cette fois par un vrai
+            // appel — mêmes deux passes que chez la sœur animée.
+            if (ReadMac0() >= 0)
+            {
+                *(uint*)s_GteSxy807 = v3;
+                if (NormalClip() >= 0) continue;
+            }
+
+            uint previous = *otEntry;
+            *otEntry = (uint)(nuint)prim;
+
+            if (!gouraud)
+            {
+                prim[0] = previous | 0x9000000;
+                prim[1] = colours[record[1] & 0xff] | 0x2c000000;
+                prim[2] = v1;
+                prim[3] = record[2] >> 0x10 | uvWord;
+                prim[4] = v0;
+                prim[5] = tpageWord | record[2] & 0xffff;
+                prim[6] = v2;
+                prim[7] = record[3] & 0xffff;
+                prim[8] = v3;
+                prim[9] = record[3] >> 0x10;
+                prim += 10;
+            }
+            else
+            {
+                uint indices = record[1];
+                uint c0 = colours[indices & 0xff];
+                uint c1 = colours[indices >> 8 & 0xff];
+                uint c2 = colours[indices >> 0x10 & 0xff];
+                uint c3 = colours[indices >> 0x18];
+
+                prim[0] = previous | 0xc000000;
+                prim[1] = c1 | 0x3c000000;
+                prim[2] = v1;
+                prim[3] = record[2] >> 0x10 | uvWord;
+                prim[4] = c0;
+                prim[5] = v0;
+                prim[6] = tpageWord | record[2] & 0xffff;
+                prim[7] = c2;
+                prim[8] = v2;
+                prim[9] = record[3] & 0xffff;
+                prim[10] = c3;
+                prim[11] = v3;
+                prim[12] = record[3] >> 0x10;
+                prim += 13;
+            }
+
+            s_Unknown_005e9818--;
+        }
+
+        return prim;
+    }
 }

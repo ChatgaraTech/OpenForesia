@@ -751,3 +751,47 @@ fois sur cinq.
 
 Corollaire : un verdict « aucun plantage » sur une séquence `-Then` ne vaut que si la capture montre
 bien l'écran visé. Le compteur de primitives ne le dit pas.
+
+---
+
+## Un plantage identique à un plantage connu n'a pas forcément la même cause (2026-08-22)
+
+En vérifiant `FUN_0051c420`, deux exécutions ont levé un `NullReferenceException` dans
+`PublishCameraFrame_004022B0` — **exactement la signature de la corruption mémoire de la veille**.
+La conclusion naturelle, « la fonction que je viens d'écrire régresse », était fausse : c'était
+l'échec de minutage de la séquence de formation du groupe, déjà documenté plus haut.
+
+Le piège est que **le contrôle de débit ne le détecte pas**. La section « Atteindre la carte du
+monde » dit de vérifier le débit : ~434 primitives par image = resté sur l'écran d'organisation,
+~1 par image = état 3 atteint. Ici le débit valait bien 1 par image — l'état 3 *était* atteint — et
+le jeu plantait quand même, plus tôt dans l'image que la lacune attendue.
+
+**Le contrôle qui tranche est de vérifier que le code soupçonné s'est exécuté.** Un vidage d'une
+ligne au premier passage de la fonction neuve a réglé la question en une exécution : le fichier
+n'était pas écrit, donc la fonction n'avait pas tourné, donc la faute était ailleurs.
+
+Des attentes plus longues rendent la séquence fiable :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 44 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT20
+```
+
+## Écrire un diagnostic dans un fichier, pas sur `stderr` (2026-08-22)
+
+`Console.Error.WriteLine` **ne ressort nulle part** : ni dans le journal du playtest, ni dans son
+`-stdout.log`. Une première tentative de diagnostic a été perdue de cette façon, et l'absence de
+sortie a d'abord été lue comme « la fonction n'a pas été appelée » alors que le run précédent
+prouvait le contraire.
+
+Pour instrumenter une fonction le temps d'une exécution, écrire dans un fichier du `scratchpad\`
+avec un chemin **absolu** (le répertoire de travail du jeu n'est pas celui du dépôt), et l'effacer
+avant chaque run pour qu'un fichier périmé ne se fasse pas passer pour un résultat :
+
+```powershell
+Remove-Item scratchpad\diag-xxx.txt -ErrorAction SilentlyContinue
+```
+
+Sur du code à pointeurs, ce détour coûte moins cher qu'une relecture : deux passes de relecture
+n'avaient pas trouvé un déréférencement manquant que l'impression de quatre champs d'en-tête a
+rendu évident.

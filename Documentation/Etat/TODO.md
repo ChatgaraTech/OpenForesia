@@ -31,9 +31,13 @@ d'entités traversent maintenant sans lever.
 >
 > **Reprendre ici — les appelées de la moitié dessin.**
 >
-> La **moitié dessin est rallumée depuis le 2026-08-22** et s'exécute. Le jeu s'arrête désormais
-> sur `FUN_0051c420 (0x0051c420) : non transcrite` — une lacune franche, atteinte depuis
-> `DrawCompassRose`. **C'est la prochaine à écrire** (374 lignes, présente dans `Blaze.c`).
+> La **moitié dessin est rallumée depuis le 2026-08-22** et s'exécute, `FUN_0051c420` comprise —
+> le rendu de modèle statique, transcrit dans `Engine/Model3d.cs` à côté de sa sœur animée. La
+> carte du monde pose son décor et sa rose des vents.
+>
+> Le jeu s'arrête désormais sur **`DrawPartyPanels`** (~200 l., `0x005185f0..0x00518e60`).
+> **C'est la prochaine à écrire.** Il lui manque `FUN_0051be90` (74 l.), `FUN_0051c250` (10),
+> `FUN_00538bc0` (13) et `FUN_005309b0` (147) — toutes dans `Blaze.c`.
 >
 > Ce qui la bloquait n'était pas du code mais trois erreurs de disposition, toutes tranchées au
 > désassembleur et consignées dans `DataSymbols.md` : le bloc de sprite fait **sept champs sur

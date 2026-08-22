@@ -1114,8 +1114,15 @@ public static unsafe partial class Blaze
         frame[SlotOf(0x28)] = 0;
         frame[SlotOf(0x24)] = 0x40000;
 
+        // **Deux dereferencements, pas un.** `s_ModelResultB_005f7b40` est l'adresse du slot .data ;
+        // RelocateModelBundle y range le **tableau d'offsets** du paquet, et le modele est son
+        // element 0. Ghidra ecrit `*DAT_005f7b40` en typant DAT_005f7b40 comme un pointeur (il le
+        // passe par adresse en 0x00532640, et le relit `DAT_005f7b40[1]` / `[3]` ailleurs), ce qui
+        // masque un niveau. Un seul dereferencement donne le tableau lui-meme : son « en-tete »
+        // se lit alors comme un modele dont +0x08 est un pointeur et +0x28 un petit entier, et la
+        // boucle de faces part dans le decor.
         cursor = DrawWorldModel_0051C420(otBase + 2, cursor,
-            *(byte**)s_ModelResultB_005f7b40, frame + SlotOf(0x3c), 0xe);
+            **(byte***)s_ModelResultB_005f7b40, frame + SlotOf(0x3c), 0xe);
 
         frame[SlotOf(0x40)] &= unchecked((int)0xffff0000);
         frame[SlotOf(0x50)] = (int)(nint)SpriteAtlas(0x005646b8);
@@ -1222,12 +1229,12 @@ public static unsafe partial class Blaze
         => throw new NotImplementedException(
             $"FUN_0051be90 (0x0051be90), valeur {value} : non transcrite. 74 lignes dans Blaze.c.");
 
-    /// <summary>Ghidra: FUN_0051c420 @ 0x0051c420 (374 l.) — l'emission d'un modele de decor.</summary>
+    /// <summary>Ghidra: FUN_0051c420 @ 0x0051c420 — l'emission d'un modele de decor. Transcrite
+    /// dans <c>Engine/Model3d.cs</c>, a cote de sa sœur animee FUN_0051d1f0 : meme banc GTE, memes
+    /// primitives, et plusieurs ecrans l'appellent.</summary>
     private static uint* DrawWorldModel_0051C420(
-        uint* otEntry, uint* prim, byte* model, int* placement, int flags)
-        => throw new NotImplementedException(
-            "FUN_0051c420 (0x0051c420) : non transcrite. 374 lignes dans Blaze.c — l'emission d'un " +
-            "modele de decor, appelee par la rose des vents et par le balayage des cellules.");
+        uint* otEntry, uint* prim, byte* model, int* placement, uint flags)
+        => Mdl.DrawStaticModel(otEntry, prim, model, placement, flags);
 
     private static byte* s_SpriteAtlasStorage;
 
