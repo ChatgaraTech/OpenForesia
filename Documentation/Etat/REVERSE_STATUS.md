@@ -9277,3 +9277,85 @@ Playtest : la rose des vents s'exécute, et le jeu s'arrête sur `DrawPartyPanel
 `FUN_0051c250` (10), `FUN_00538bc0` (13) et `FUN_005309b0` (147). Puis `DrawWorldCells` (~200 l.)
 et ses appelées `FUN_0051e700` (423), `FUN_0051fa40` (441), `FUN_00521000` (365), `FUN_00522140`
 (315), `FUN_0051f940` (18).
+
+---
+
+## 2026-08-22 (nuit, fin) — DrawPartyPanels : les panneaux de membre s'exécutent
+
+Le bloc des panneaux (`Blaze.c` 64485..64699, `0x005185f0`..`0x0051904e`) est transcrit et tourne.
+La frontière de la carte du monde est passée à `DrawWorldCells`, le dernier gros bloc de la moitié
+dessin.
+
+### Ce que le bloc fait
+
+Deux passes. D'abord les **nombres flottants** : soixante-quatre emplacements de `0x28` octets à
+`0x005e9b60` — ceux que `TickEffectSlots_005e9b60` fait vivre — dont chacun porte une position
+monde, une valeur et un témoin. Chacun est projeté et imprimé en décimal.
+
+Puis, **un panneau par membre** : les deux jauges (valeur courante teintée par son rapport au
+maximum, maximum en blanc), le nom, deux barres obliques, les neuf pictogrammes d'état, le
+descripteur de fenêtre, puis le membre lui-même dans le monde — son modèle animé, son ombre portée,
+son disque au sol et sa lueur.
+
+### Trois fonctions écrites au passage
+
+`FUN_0051be90` — **un nombre en décimal**, un sprite de cinq mots par chiffre, écrit dans
+`Engine/Primitives2d.cs`. Il ne passe par aucun moteur de texte : il découpe l'atlas de chiffres à
+la main, la largeur d'un chiffre étant la largeur de cellule divisée par dix. Son argument de
+chiffres porte deux choses : quatre bits de rang, et un bit `0x80` qui décide si un zéro de tête
+avance la position (cadrage à gauche) ou est entièrement sauté (le nombre se resserre à droite).
+
+`UiText.cs` affirmait que cette fonction « n'a jamais eu de corps » ; c'était faux, elle est bien
+dans `Blaze.c` à la ligne 66712. Le commentaire datait d'avant, et personne ne l'avait revérifié.
+
+`FUN_0051c250` — **un simple renvoi** vers `FUN_0051c120`. Un appel et un `ret`. Gardé sous son nom
+parce que les sites d'appel distinguent les deux.
+
+`VSyncDelayed` — un second export de **données nommé** de `winsys3d.dll`, résolu comme `MainMem`.
+Le bloc le teste avant de dessiner les membres dans le monde : non nul, l'image est en retard et
+tout le rendu 3d des membres est sauté.
+
+### Ce que la pseudo-C ne montrait pas
+
+`local_50` avance de `0x26` sur un `short*`, soit **0x4c octets** — pas 0x98 comme le donnerait la
+lecture naturelle en `int*`. La différence n'est pas cosmétique : à 0x98 les quatre entrées
+recouvrent les enregistrements de membre de `0x005e93c0`, que le même bloc lit par ailleurs. Le
+désassembleur tranche en une ligne (`add ebp,4Ch` en `0x0051903e`), et confirme au passage que le
+bloc va jusqu'à `0x0051904e` et non `0x00518e60` comme l'estimation le disait.
+
+Les quatre `psVar17` sont des **descripteurs de fenêtre** de `0x8c8` octets à `0x005dbc68` — le pas
+exact de `GameMemory.UiDescriptorStride`. Le bloc est nul au chargement (l'adresse tombe dans la
+queue non initialisée de `.data`), donc tout ce qu'il porte vient du code ; le bloc des panneaux
+n'en écrit que le coin, la teinte et la couleur de jauge.
+
+### Deux lacunes laissées, toutes deux derrière une condition
+
+`FUN_00538bc0` (13 l.) — la hauteur de la bulle d'état, prise dans l'une de deux tables selon un bit
+de l'enregistrement. Triviale en soi, mais `DAT_0056d440` est une table de pas 8 dans `.data` de
+l'exe qu'il faut relever, et le sous-bloc est gardé par `record[0x3c] != 0`.
+
+`FUN_005309b0` (147 l.) — la surimpression de dialogue, gardée par le bit `0x8000000`. Elle demande
+trois tables non relevées.
+
+Les deux lèvent sous leur nom, avec ce qui manque écrit dedans.
+
+### Une fragilité indépendante, vue en passant
+
+Une exécution a échoué dans `AllocLowZeroed` : « aucun bloc libre de 0x1000 octets sous
+0x01000000 ». La fenêtre basse fait 16 Mo et chaque descripteur y dépense un granule de 64 Ko ; le
+bloc qui a échoué était alloué **avant** le mien, donc la cause n'est pas ce tour, mais la marge
+est plus mince qu'on ne croit. L'exécution suivante est passée sans rien changer. À surveiller si
+d'autres blocs bas apparaissent.
+
+### Ce qu'on ne peut pas encore voir
+
+**Rien ne s'affiche à l'écran, et c'est normal** : `DrawWorldCells` lève avant la fin de l'image,
+donc la liste d'affichage n'est jamais soumise et le débit reste à 1 primitive par image. La
+vérification visuelle des panneaux n'est possible qu'une fois la moitié dessin complète — ce que
+`DrawWorldCells` conditionne à lui seul.
+
+### Vérification
+
+Build 0 erreur. Oracle : trois corps signalés, les mêmes que les deux tours précédents ; les
+quatre corps neufs comptent parmi les nouveaux. Tests de disposition inchangés, 3 rouges
+volontaires. Playtest : les panneaux s'exécutent, arrêt sur `DrawWorldCells`.

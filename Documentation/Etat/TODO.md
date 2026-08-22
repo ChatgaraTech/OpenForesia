@@ -1,9 +1,22 @@
 # TODO
 
-Point d'entrée entre deux sessions. Mis à jour le **2026-08-22**. L'historique détaillé est dans
-`REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
+Point d'entrée entre deux sessions. Mis à jour le **2026-08-22, tard le soir**. L'historique
+détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et
+la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
+
+> ## Pour reprendre demain, en trois lignes
+>
+> 1. `dotnet build OpenForesia.sln`, puis
+>    `OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 44 -WorkingDir OpenForesia -Shot -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT20`
+>    — le jeu doit s'arrêter sur `DrawWorldCells`. Si la validation du groupe rate, relancer :
+>    la séquence est sensible au minutage (voir `test-protocol.md`).
+> 2. Écrire **`DrawWorldCells`** et ses cinq appelées — le détail est dans l'encadré « REPRENDRE
+>    ICI » plus bas.
+> 3. Une fois qu'il passe, **regarder la capture** : ce sera la première image de la carte du monde.
+>
+> Le travail des 21 et 22 août **n'est pas commité**.
 
 **État git au 2026-08-21.** Commité jusqu'à `2d5bb36` (« Refacto Audio.cs ») : les six premières
 vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baseline.txt` /
@@ -29,21 +42,64 @@ d'entités traversent maintenant sans lever.
 > `FUN_0050bf20` avec elles, pour **chaque membre du groupe** et à chaque image. L'exception a
 > quitté la simulation : elle est remontée dans `RunWorldMapTick` lui-même.
 >
-> **Reprendre ici — les appelées de la moitié dessin.**
+> ---
 >
-> La **moitié dessin est rallumée depuis le 2026-08-22** et s'exécute, `FUN_0051c420` comprise —
-> le rendu de modèle statique, transcrit dans `Engine/Model3d.cs` à côté de sa sœur animée. La
-> carte du monde pose son décor et sa rose des vents.
+> # REPRENDRE ICI (2026-08-23) — `DrawWorldCells`, le dernier bloc de la moitié dessin
 >
-> Le jeu s'arrête désormais sur **`DrawPartyPanels`** (~200 l., `0x005185f0..0x00518e60`).
-> **C'est la prochaine à écrire.** Il lui manque `FUN_0051be90` (74 l.), `FUN_0051c250` (10),
-> `FUN_00538bc0` (13) et `FUN_005309b0` (147) — toutes dans `Blaze.c`.
+> Le jeu s'arrête sur **`DrawWorldCells`** (`WorldMapTick.cs`, `0x00518e60`..`0x00519703`,
+> ~200 l.). **C'est le dernier gros bloc**, et c'est lui qui fera enfin apparaître une image : tant
+> qu'il lève, la liste d'affichage n'est jamais soumise et le débit reste à 1 primitive par image —
+> ce qui veut dire que **rien de ce qui a été écrit ces deux jours n'a encore été vu à l'écran**.
+> C'est le premier contrôle à faire une fois qu'il passe, et un débit qui monte ne suffira pas :
+> il faudra regarder la capture.
+>
+> Ce qu'il fait : il parcourt 7×7 cellules à partir du coin que le cap désigne (`DAT_00564548`,
+> relevé), saute celles qu'une table de visibilité comprimée marque (`PTR_DAT_005645d8`, relevé),
+> et pour chaque occupant des deux grilles émet un modèle, une particule ou un sprite selon ses
+> bits d'état. Suivent les trois listes de morceaux et le ciel.
+>
+> Appelées à écrire, **toutes dans `Blaze.c`** : `FUN_0051e700` (423 l.), `FUN_0051fa40` (441),
+> `FUN_00521000` (365), `FUN_00522140` (315), `FUN_0051f940` (18, le voile de fondu plein écran).
+> `FUN_0051c420` est faite. C'est le plus gros morceau restant de la carte du monde, ~1 500 lignes
+> de pseudo-C — probablement deux séances.
+>
+> **Conseil de méthode, vérifié trois fois de suite ces deux jours :** avant d'écrire une de ces
+> appelées, chercher si le dépôt n'en tient pas déjà la moitié. `FUN_0051c420` s'est écrite en une
+> passe parce que `Engine/Model3d.cs` avait déjà tout son outillage GTE ; la disposition du bloc de
+> sprite était dans `Screens/DebugParty.cs` ; `FUN_0051be90` était réputée « sans corps » par un
+> commentaire périmé alors qu'elle est dans `Blaze.c`. **Relire ce qui tourne coûte moins cher que
+> relever au désassembleur, qui coûte lui-même moins cher que raisonner sur la pseudo-C.**
+>
+> ## Deux lacunes secondaires, laissées derrière leur condition
+>
+> * `FUN_00538bc0` (13 l.) — la hauteur de la bulle d'état. Triviale, mais demande de relever
+>   `DAT_0056d440` (table de pas 8 dans `.data`). Gardée par `record[0x3c] != 0`.
+> * `FUN_005309b0` (147 l.) — la surimpression de dialogue, gardée par le bit `0x8000000`. Demande
+>   `DAT_0056a851`, `DAT_0056aae0` et `DAT_0056ab30`, non relevées.
+>
+> ## Une fragilité à surveiller
+>
+> Une exécution sur cinq a échoué dans `AllocLowZeroed` (« aucun bloc libre de 0x1000 octets sous
+> 0x01000000 »). La fenêtre basse fait 16 Mo et chaque bloc y dépense un granule de 64 Ko. Le bloc
+> qui a échoué était alloué avant le nouveau, donc ce n'est pas une régression — mais la marge est
+> plus mince qu'il n'y paraît, et `DrawWorldCells` peut demander d'autres blocs bas.
+>
+> ---
+>
+> ## Ce qui a été fait le 2026-08-22 (contexte)
+>
+> La **moitié dessin est rallumée** et s'exécute jusqu'à `DrawWorldCells` : la rose des vents, les
+> nombres flottants, les quatre panneaux de membre avec leurs jauges, leurs pictogrammes d'état et
+> leurs modèles animés. `FUN_0051c420` (rendu de modèle statique, dans `Engine/Model3d.cs`),
+> `FUN_0051be90` (nombre décimal, dans `Engine/Primitives2d.cs`), `FUN_0051c250` et l'export de
+> données `VSyncDelayed` sont transcrits.
 >
 > Ce qui la bloquait n'était pas du code mais trois erreurs de disposition, toutes tranchées au
 > désassembleur et consignées dans `DataSymbols.md` : le bloc de sprite fait **sept champs sur
 > 0x12 octets** (dont deux **échelles**, pas des demi-tailles), les descripteurs d'atlas
 > **s'indexent en avant** donc se relèvent par plage et non un par un, et Ghidra place deux champs
-> au mauvais décalage. **Sur ce bloc, la pseudo-C ne fait pas foi.**
+> au mauvais décalage. **Sur ce bloc, la pseudo-C ne fait pas foi** — et ça vaut aussi pour les
+> signatures : `FUN_0051c420` perd trois paramètres sur cinq et donne **deux noms à chacun**.
 >
 > La **tête** du bloc d'affichage est transcrite (mode de vue, défilement de textures, lissage de
 > caméra, personnage suivi, centroïde du groupe, décalage monde, `SetGeomOffset`) **et tout le
@@ -57,20 +113,13 @@ d'entités traversent maintenant sans lever.
 > apparente contredit, à trancher au désassembleur (voir `DataSymbols.md`).
 >
 > Les descripteurs de sprite et les tables de panneaux **sont relevés et en place**, et le bloc de
-> pile est établi (voir plus haut). Restent les appelées, toutes dans `Blaze.c` : `FUN_0051c420`
-> (374 l.), `FUN_0051e700` (423), `FUN_0051fa40` (441), `FUN_00521000` (365), `FUN_00522140` (315),
-> `FUN_005309b0` (147), `FUN_0051be90` (74), `FUN_0051f940` (18), `FUN_00538bc0` (13),
-> `FUN_0051c250` (10) ; et deux corps à écrire, `DrawPartyPanels` et `DrawWorldCells`, environ
-> 200 lignes chacun.
+> pile est établi (voir plus haut).
 >
 > **Les curseurs de primitives sont résolus** : `[esp+0x14]` est la base d'ordering table,
 > `[esp+0x10]` le curseur, et les six noms que Ghidra leur donne (`unaff_EBX`, `unaff_ESI`,
 > `unaff_EDI`, `unaff_EBP`, `local_60`, `piStack_74`) ne désignent que ces deux-là. Ne pas écrire
 > une ligne de la moitié dessin sans cette table — un curseur mal chaîné plante **dans winsys3d**,
 > sans pile utilisable.
->
-> **C'est ce bloc qui fera enfin apparaître quelque chose à l'écran.** Le débit est encore à
-> 1 primitive par image ; il ne montera qu'avec la moitié dessin.
 >
 > Quinze appelées ont été écrites le 2026-08-22 : `FUN_0050e140`, `FUN_0051a020`, `FUN_0047aae0`,
 > `FUN_0051a670`, `FUN_00519f50`, `FUN_00519df0`, `FUN_00519ee0`, `FUN_00534330`, `FUN_005327b0`,

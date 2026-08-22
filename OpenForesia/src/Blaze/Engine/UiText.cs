@@ -527,8 +527,15 @@ internal sealed unsafe class UiText
 
     /// <summary>
     /// Ghidra: FUN_00544810 @ 0x00544810 — pass-2 handler for control code <c>0x01</c>: draws an
-    /// inline icon glyph, fully decompiled (unlike <c>FUN_0051be90</c>, the *other* icon path — see
-    /// <see cref="RenderSaveScreen"/>'s banner comment — which never got a body at all).
+    /// inline icon glyph. The *other* icon path is <c>FUN_0051be90</c> — see
+    /// <see cref="RenderSaveScreen"/>'s banner comment.
+    ///
+    /// <para><b>Correction du 2026-08-22</b> : ce commentaire affirmait que <c>FUN_0051be90</c>
+    /// « n'a jamais eu de corps ». C'est faux — elle est décompilée dans <c>Blaze.c</c> à la ligne
+    /// 66712, et elle est transcrite depuis, sous le nom
+    /// <c>Primitives2d.DrawDecimalNumber</c>. Les deux chemins restent bien distincts : celui-ci
+    /// passe par l'atlas imbriqué du moteur de texte, l'autre découpe un atlas de chiffres à la
+    /// main et n'imprime que des nombres.</para>
     ///
     /// <para>Three operand bytes select (category, sub-category, index), each remapped through
     /// <see cref="s_PanelSelection_005e9060"/> exactly like <see cref="Handler_005449f0"/>'s single

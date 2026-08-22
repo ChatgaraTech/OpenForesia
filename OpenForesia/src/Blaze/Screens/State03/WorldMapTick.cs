@@ -1190,15 +1190,321 @@ public static unsafe partial class Blaze
     /// Ghidra: <c>0x005185f0</c>..<c>0x00518e60</c> — <b>les panneaux des membres du groupe</b> :
     /// pour chacun, la barre de vie et de magie, les pictogrammes d'etat, puis son modele.
     /// </summary>
-    private static void DrawPartyPanels(uint* otBase, ref uint* cursor, int* unused, byte* mainMem)
+    private static void DrawPartyPanels(uint* otBase, ref uint* cursor, int* block, byte* mainMem)
+    {
+        byte* b = (byte*)block;
+
+        // ============================================================ A. les nombres flottants
+        //
+        // Soixante-quatre emplacements de 0x28 octets a 0x005e9b60 — les memes que
+        // TickEffectSlots_005e9b60 fait vivre. Chacun porte une position monde (+0x00), une valeur
+        // (+0x0c), un mot d'attributs (+0x26) et son temoin d'activite (+0x27). Ghidra adresse
+        // l'enregistrement par son octet +0x26, d'ou les decalages negatifs de la pseudo-C.
+        block[0] = (int)(nint)SpriteAtlas(0x00566c38);
+        *(short*)(b + 0x10) = 0;
+
+        short* projected = stackalloc short[4];
+        byte* slot = Mem.Arena(0x005e9b60);
+
+        for (int i = 0; i < 0x40; i++, slot += 0x28)
+        {
+            if (slot[0x27] == 0) continue;
+            if (Mdl.ProjectPoint((int*)slot, projected) == 0) continue;
+
+            *(uint*)(b + 8) = *(uint*)projected;
+            cursor = Prims.DrawDecimalNumber(
+                otBase, cursor, block, (uint)*(short*)(slot + 0xc), 5, slot[0x26]);
+        }
+
+        cursor = Prims.DrawFlatPrimitive(otBase, cursor, block);
+
+        // ============================================================ B. un panneau par membre
+        *(short*)Mem.Entity(0x005fa544) = 0;
+        *(short*)Mem.Entity(0x005fa53a) = 1;
+        *(uint*)Mem.Entity(0x005fa52c) = 0x0e000e00;
+        *(nint*)Mem.Entity(0x005fa540) = (nint)SpriteAtlas(0x00564690);
+
+        *Mem.Camera(0x005de05c) = 0;
+
+        byte* character = mainMem + 0xf0000;          // Ghidra: iVar12, +0x2000 par membre
+        short* slotEntry = (short*)Inp.s_SlotArea_005e9180;   // Ghidra: local_50, pas de 0x4c
+        byte* record = Inp.s_SlotFlags_005e93c0;      // les enregistrements de 0x9c octets
+        byte* panel = s_PartyPanelDescriptors_005dbc68;
+
+        for (int member = 0; member < s_PartySize_005e9020;
+             member++, character += 0x2000, slotEntry += 0x26, record += 0x9c,
+             panel += GameMemory.UiDescriptorStride)
+        {
+            uint recordFlags = *(uint*)record;                    // +0x00
+            uint stateFlags = *(uint*)(record + 0x90);            // +0x90
+
+            // La hauteur que la camera doit degager pour ce membre, cumulee dans DAT_005de05c.
+            if ((stateFlags & 0x8000) == 0)
+            {
+                int reach = ((int)Winsys3d.GetSinTableEntry(
+                                 *(short*)Mem.s_CameraVector_00604928) >> 3)
+                          + *slotEntry;
+                if (*Mem.Camera(0x005de05c) < reach) *Mem.Camera(0x005de05c) = reach;
+            }
+
+            s_Unknown_005de15c = 1;
+
+            // Le decalage de dessin du panneau. Trois dispositions selon l'avancement de
+            // l'animation d'ouverture du menu ; les quatre tables sont relevees dans
+            // DataSymbols.md et le choix se lit ligne a ligne.
+            if (s_MenuSlideDone_00564a56 == 0 && Mem.s_SizeSetting_005de160 > 7)
+            {
+                s_Unknown_005de154 = Mem.s_SizeSetting_005de160 < 10
+                    ? (((member & 1) != 0 ? unchecked((int)0xffffffce) : 0) + 0x19)
+                    : 0;
+                s_Unknown_005de158 = (Mem.s_SizeSetting_005de160 - 0xb) * 0xc;
+            }
+            else
+            {
+                s_Unknown_005de158 = Mem.s_SizeSetting_005de160 < 5
+                    ? (Mem.s_SizeSetting_005de160 + 9) * 0xc
+                    : (member > 1 ? -0xe : 0xe) + (Mem.s_SizeSetting_005de160 + 9) * 0xc;
+
+                if (Mem.s_SizeSetting_005de160 >= 9)
+                    s_Unknown_005de154 = s_PanelX_00564928[member];
+                else if (Mem.s_SizeSetting_005de160 >= 5)
+                    s_Unknown_005de154 = s_PanelX_00564938[member];
+                else
+                    s_Unknown_005de154 = Mem.s_SizeSetting_005de160 < 1
+                        ? s_PanelX_00564958[member]
+                        : s_PanelX_00564948[member];
+            }
+
+            // Le coin du panneau, dans le descripteur de fenetre du membre. Un membre touche
+            // tremble : deux tirages independants deplacent le panneau de -2 a +1 sur chaque axe.
+            short* corner = (short*)(panel + 4);
+            corner[0] = (short)(((member & 1) != 0 ? 0xd1 : 0) + 5);
+            corner[1] = (short)(((member & 2) != 0 ? 0x1c : 0) + 0xa6
+                                + (s_PartySize_005e9020 > 2 ? 0 : 0xe));
+
+            if ((short)*(uint*)(record + 0x96) != 0)
+            {
+                corner[0] += (short)((CrtRand() & 3) - 2);
+                corner[1] += (short)((CrtRand() & 3) - 2);
+            }
+
+            *(uint*)(panel + 0x1c) = (uint)(((recordFlags & 1) != 0
+                ? unchecked((int)0xff5100af) : 0) + 0x02cf1020);
+
+            // ---- les deux jauges : valeur courante en couleur, maximum en blanc
+            *(short*)(b + 8) = (short)(corner[0] + 10);
+            *(short*)(b + 0xa) = (short)(corner[1] + 0x12);
+
+            uint gauge = GaugeColour(*(short*)(character + 0x14c), *(short*)(character + 0x148));
+            *(uint*)(panel + 0x44) = gauge & 0xffffff;
+            *(uint*)(b + 4) = gauge;
+
+            block[0] = (int)(nint)SpriteAtlas(0x00566c20);
+            cursor = Prims.DrawDecimalNumber(otBase + 2, cursor, block,
+                (uint)*(short*)(character + 0x14c), 0x84, 0);
+
+            *(short*)(b + 8) += 0x14;
+            *(uint*)(b + 4) = 0x1000000;
+            cursor = Prims.DrawDecimalNumber(otBase + 2, cursor, block,
+                (uint)*(short*)(character + 0x148), 4, 0);
+
+            *(uint*)(b + 4) = GaugeColour(*(short*)(character + 0x14e), *(short*)(character + 0x14a));
+            *(short*)(b + 8) += 0x18;
+            cursor = Prims.DrawDecimalNumber(otBase + 2, cursor, block,
+                (uint)*(short*)(character + 0x14e), 0x84, 0);
+
+            *(short*)(b + 8) += 0x14;
+            *(uint*)(b + 4) = 0x1000000;
+            cursor = Prims.DrawDecimalNumber(otBase + 2, cursor, block,
+                (uint)*(short*)(character + 0x14a), 4, 0);
+
+            // ---- le nom, puis deux barres obliques de separation
+            *(short*)(b + 8) = (short)(corner[0] + 10);
+            *(short*)(b + 0xa) = (short)(corner[1] + 10);
+            *(uint*)(b + 4) = 0x1000000;
+            block[0] = (int)(nint)SpriteAtlas(0x00566c28);
+            cursor = Prims.DrawTextRunAlias(otBase + 2, cursor, block, character + 0x100, 0, 0, 8);
+
+            *(short*)(b + 8) += 0x10;
+            *(short*)(b + 0xa) += 8;
+            block[0] = (int)(nint)SpriteAtlas(0x00566c18);
+            cursor = Prims.DrawTextRun(otBase + 2, cursor, block, s_SlashLabel_00564a0c, 0, 0, -1);
+
+            *(short*)(b + 8) += 0x2c;
+            cursor = Prims.DrawTextRun(otBase + 2, cursor, block, s_SlashLabel_00564a0c, 0, 0, -1);
+
+            // ---- les neuf pictogrammes d'etat, un par bit de s_StatusBits_00564900
+            //
+            // L'indice +0x10 avance a chaque rang, **qu'il soit dessine ou non** : les neuf
+            // descripteurs sont contigus a partir de 0x005648b8, et c'est le rang qui choisit
+            // lequel — pas l'ordre d'emission.
+            *(short*)(b + 0x10) = 0;
+            block[0] = (int)(nint)SpriteAtlas(0x005648b8);
+            *(short*)(b + 8) = (short)(corner[0] + 10);
+            *(short*)(b + 0xa) = (short)(corner[1] + 0x1a);
+
+            // `cursor` est un parametre `ref`, dont on ne peut pas prendre l'adresse ; le curseur
+            // passe par une locale le temps des deux encadrements, comme ailleurs dans ce fichier.
+            uint* pen = cursor;
+            UiWin.EmitViewportRect(otBase + 2, &pen);
+
+            uint status = *(uint*)(character + 0x140);
+            for (int bit = 0; bit < s_StatusBits_00564900.Length; bit++)
+            {
+                if ((status & s_StatusBits_00564900[bit]) != 0)
+                    pen = Prims.DrawSpriteVariant(otBase + 2, pen, block, 0, 0);
+
+                *(short*)(b + 8) += 8;
+                (*(short*)(b + 0x10))++;
+            }
+
+            UiWin.EmitClipRect(otBase + 2, &pen);
+            cursor = pen;
+
+            *(short*)(b + 0x10) = 0;
+            cursor = Prims.DrawFlatPrimitive(otBase + 2, cursor, block);
+            cursor = UiWin.DrawUiPanel(otBase + 2, cursor, panel);
+
+            s_Unknown_005de154 = 0;
+            s_Unknown_005de158 = 0;
+            s_Unknown_005de15c = 0;
+
+            // ---- le membre lui-meme dans le monde
+            if (VSyncDelayed() != 0) continue;
+
+            if ((recordFlags & 0x4000) == 0)
+            {
+                int kind = record[4] * 4;
+                int* transform = (int*)(record + 0x1c);
+
+                cursor = Mdl.DrawAnimatedModel(otBase, cursor,
+                    *(byte**)(*(int**)(Mem.Arena(0x005e9680) + kind)
+                              + *(short*)(record + 0x18)),
+                    *(int**)(Mem.Arena(0x005e9800) + kind),
+                    transform,
+                    *(short*)(record + 0x1a),
+                    (uint)*(short*)(record + 0x0a));
+
+                // L'ombre portee, si le decor la demande et si le membre est a l'ecran.
+                if (character[0x2b9] != 0 && Mdl.ProjectPoint(transform, projected) != 0)
+                {
+                    block[0] = (recordFlags & 0x10000) == 0 && (byte)slotEntry[4] != 8
+                        ? (int)(nint)SpriteAtlas(0x00564798 + *((byte*)slotEntry + 9) * 8)
+                        : (int)(nint)SpriteAtlas(0x005647b8);
+
+                    *(short*)(b + 8) = (short)(projected[0] - 0xc);
+                    *(short*)(b + 0xa) = projected[1];
+
+                    cursor = Prims.DrawSpriteVariant(otBase + 3, cursor, block, 0, 0);
+                    cursor = Prims.DrawFlatPrimitive(otBase + 3, cursor, block);
+                }
+
+                if (character[0x2ba] != 0)
+                {
+                    cursor = DrawGroundDisc(otBase, cursor, transform, member);
+                }
+
+                if (*(int*)(record + 0x3c) != 0)
+                {
+                    cursor = DrawStatusBubble(otBase, cursor, transform, record);
+                }
+            }
+
+            // La lueur du membre : sa position devient celle de la particule partagee.
+            if ((stateFlags & 0x9000) == 0 && (recordFlags & 0x1000) == 0)
+            {
+                *(uint*)Mem.Entity(0x005fa524) = *(uint*)(record + 0x64);
+                *(uint*)Mem.Entity(0x005fa520) = *(uint*)(record + 0x1c);
+                *(uint*)Mem.Entity(0x005fa528) = *(uint*)(record + 0x24);
+
+                // Ghidra: la paire `DAT_00564a4c = 0 / = 1` autour de l'appel, quatre fois dans le
+                // binaire — elle force le chemin « sans capacite » de l'emetteur pour cette seule
+                // primitive. Voir GameMemory, qui recense les paires.
+                Mem.s_Unknown_00564a4c = 0;
+                cursor = EmitParticle(otBase + 5, cursor, (int*)Mem.Entity(0x005fa520), 0, 0);
+                Mem.s_Unknown_00564a4c = 1;
+            }
+
+            if ((recordFlags & 0x8000000) != 0)
+            {
+                cursor = DrawSpeechOverlay_005309B0(otBase, cursor, record, slotEntry, character);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: les deux moities identiques du calcul de couleur de jauge, dans le bloc des
+    /// panneaux. Le rapport <c>courant * 0xff / maximum</c> passe par deux regimes : sous la
+    /// moitie il monte le vert en gardant le rouge sature, au-dessus il baisse le rouge. Le
+    /// resultat sert deux fois — masque sur 24 bits dans le descripteur de fenetre, entier comme
+    /// mot de base du sprite.
+    /// </summary>
+    private static uint GaugeColour(short current, short maximum)
+    {
+        int ratio = current * 0xff / maximum;
+        return ratio < 0x80
+            ? ((uint)(ratio << 9) >> 8 & 0xffffff) << 8 | 0xff
+            : (uint)(ratio + 0x7f80) * 0x20000 | 0xffff;
+    }
+
+    /// <summary>Ghidra: le sous-bloc <c>character[0x2ba]</c> — le disque au sol sous le membre,
+    /// pose par <c>FUN_0051c420</c> sur le modele <c>DAT_005f7b40[3]</c>.</summary>
+    private static uint* DrawGroundDisc(uint* otBase, uint* cursor, int* transform, int member)
+    {
+        int* placement = stackalloc int[10];
+        for (int i = 0; i < 10; i++) placement[i] = 0;
+
+        Mem.CopyDwords((uint*)transform, (uint*)placement, 10);
+        placement[1] += 0x32000;
+
+        *(short*)((byte*)placement + 0x18) = (short)(s_FadeCounter_005e9960 << 6);
+        placement[7] = (int)s_Unknown_005e9814;
+
+        return DrawWorldModel_0051C420(otBase, cursor,
+            ((byte**)*(byte***)s_ModelResultB_005f7b40)[3], placement,
+            (uint)((s_FadeCounter_005e9960 << 6) & 0xffff0000) | s_PanelExtra_00563348[member]);
+    }
+
+    /// <summary>Ghidra: le sous-bloc <c>record[0x3c] != 0</c> — la bulle au-dessus du membre, dont
+    /// la hauteur sort de <c>FUN_00538bc0</c>.</summary>
+    private static uint* DrawStatusBubble(uint* otBase, uint* cursor, int* transform, byte* record)
         => throw new NotImplementedException(
-            "FUN_00516fc0 : les panneaux de membre (0x005185f0..0x00518e60, ~200 l.) ne sont pas " +
-            "transcrits. Chaque membre y recoit sa barre de vie et de magie — un DrawIconGlyph par " +
-            "valeur, teinte par le rapport a son maximum —, les neuf pictogrammes d'etat de " +
-            "s_StatusBits_00564900, puis son modele par DrawAnimatedModel. Les trois dispositions " +
-            "en X sont relevees (s_PanelX_00564928/38/48/58) et choisies par s_SizeSetting_005de160. " +
-            "Appelees manquantes : FUN_0051be90 (74 l.), FUN_0051c250 (10 l.), FUN_00538bc0 (13 l.), " +
-            "FUN_005309b0 (147 l.) — toutes dans Blaze.c.");
+            "FUN_00516fc0 : la bulle d'etat au-dessus du membre n'est pas transcrite. Elle a " +
+            "besoin de FUN_00538bc0 (13 l., Blaze.c:84048), qui rend une hauteur prise dans l'une " +
+            "de deux tables selon le bit 0x800000 de l'enregistrement : DAT_0056d440 (pas de 8, " +
+            "dans .data de l'exe, a relever) ou DAT_005ea5b8 (pas de 0x120, dans l'arene de jeu). " +
+            "Le reste du sous-bloc est un EmitParticle a l'emplacement 0x10001000.");
+
+    /// <summary>Ghidra: FUN_005309b0 @ 0x005309b0 (147 l.) — la surimpression de dialogue.</summary>
+    private static uint* DrawSpeechOverlay_005309B0(
+        uint* otBase, uint* cursor, byte* record, short* slotEntry, byte* character)
+        => throw new NotImplementedException(
+            "FUN_005309b0 (0x005309b0) : non transcrite. 147 lignes dans Blaze.c — la " +
+            "surimpression de dialogue, gardee par le bit 0x8000000 de l'enregistrement de membre. " +
+            "Elle demande les tables DAT_0056a851 (choix d'icone), DAT_0056aae0 et DAT_0056ab30 " +
+            "(descripteurs), toutes dans .data de l'exe et non relevees.");
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005dbc68</c> — <b>quatre descripteurs de fenetre</b>, un par membre du
+    /// groupe, au meme pas <c>0x8c8</c> que ceux de <see cref="GameMemory.UiDescriptorStride"/>.
+    /// Le bloc est **nul au chargement** (verifie : l'adresse tombe dans la queue non initialisee
+    /// de <c>.data</c>), donc tout ce qu'il porte vient du code ; le bloc des panneaux n'en ecrit
+    /// que le coin (+4/+6), la teinte (+0x1c) et la couleur de jauge (+0x44).
+    ///
+    /// <para>Alloue bas comme les trois de <see cref="GameMemory"/> : un descripteur de fenetre
+    /// porte sa propre table d'affichage a +0xa4, que <c>ClearOTagR</c> chaine sur 24 bits.</para>
+    /// </summary>
+    private static byte* s_PartyPanelDescriptorsStorage;
+
+    private static byte* s_PartyPanelDescriptors_005dbc68
+        => s_PartyPanelDescriptorsStorage != null
+            ? s_PartyPanelDescriptorsStorage
+            : (s_PartyPanelDescriptorsStorage =
+                   AllocLowZeroed(4 * (uint)GameMemory.UiDescriptorStride));
+
+    /// <summary>Ghidra: <c>&amp;DAT_00563348</c> — quatre demi-mots, un par membre, qui forment la
+    /// moitie basse du mot d'attributs passe au disque au sol. Releves dans le binaire.</summary>
+    private static readonly ushort[] s_PanelExtra_00563348 = [0x000c, 0x0002, 0x0003, 0x000e];
 
     /// <summary>
     /// Ghidra: <c>0x00518e60</c>..<c>0x00519703</c> — <b>le balayage des cellules de decor</b>, le

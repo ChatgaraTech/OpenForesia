@@ -166,6 +166,109 @@ internal sealed unsafe class Primitives2d(GameMemory mem, UiText ui, UiWindow ui
     }
 
     /// <summary>
+    /// Ghidra: FUN_0051be90 @ 0x0051be90 — <b>un nombre en décimal</b>, un sprite de cinq mots par
+    /// chiffre. C'est le second chemin de pictogramme du moteur, distinct du glyphe en ligne de
+    /// <c>UiText.Handler_00544810</c> : celui-ci ne passe par aucun moteur de texte, il découpe
+    /// l'atlas de chiffres à la main.
+    ///
+    /// <para>Le <b>descripteur est lu directement</b> à <c>bloc[0]</c>, sans le
+    /// <c>+ indice * 8</c> du reste de la famille — et le champ d'indice <c>+0x10</c> est remis à
+    /// zéro à la sortie, pour l'appelant suivant. La largeur d'un chiffre sort de la largeur de
+    /// cellule divisée par dix : l'atlas range les dix chiffres côte à côte, et
+    /// <c>chiffre * largeur</c> devient l'abscisse U dans la texture.</para>
+    ///
+    /// <para><paramref name="digits"/> porte deux choses : ses quatre bits bas donnent le nombre de
+    /// rangs à considérer (la boucle ignore les diviseurs au-delà), et son bit <c>0x80</c> décide du
+    /// sort des zéros de tête. Sans lui, un rang non encore significatif est **entièrement sauté**,
+    /// position comprise, et le nombre est cadré à droite en se resserrant ; avec lui, le rang
+    /// avance la position sans rien émettre, ce qui aligne le nombre en laissant du blanc. Un zéro
+    /// s'affiche quand même : le drapeau de significativité se lève d'office au dernier diviseur.</para>
+    ///
+    /// <para>Ghidra recycle deux paramètres en variables locales — <c>param_1</c> devient le
+    /// compteur de chiffres émis (<c>param_1._0_1_</c>) et <c>param_6</c> le compteur de boucle —
+    /// après avoir sauvegardé leurs valeurs. Il double aussi le curseur en <c>param_2</c> et
+    /// <c>puVar10</c>, qui restent égaux d'un bout à l'autre : un seul suffit.</para>
+    /// </summary>
+    internal uint* DrawDecimalNumber(
+        uint* otEntry, uint* prim, int* sprite, uint value, byte digits, uint extra)
+    {
+        uiWin.EmitViewportRect(otEntry, &prim);
+
+        uint position = (uint)sprite[2];
+        uint positionY = position & 0xffff0000;
+
+        uint* descriptor = (uint*)(nint)sprite[0];
+        uint colour = descriptor[0];
+        uint attributes = descriptor[1];
+
+        // Ghidra masque ici sans tester le second drapeau, contrairement aux trois sœurs qui
+        // rendent la main quand DAT_00564a4c est nul. Écart de l'original, transcrit tel quel.
+        if (mem.s_DeviceCapFlag_00564a48) attributes &= 0xfffffdff;
+
+        uint digitWidth = (colour >> 0x10 & 0xff) / 10;
+        uint baseWord = (uint)sprite[1];
+        ushort page = *(ushort*)(mem.s_EntityDecodeTable_005e8f00 + 2 + (attributes >> 0x10 & 0xff) * 4);
+
+        short extraSigned = (short)extra;
+        uint extraLow = extra & 0xff;
+
+        byte emitted = 0;
+
+        for (int i = 0; i < 10; i++)
+        {
+            if (s_Unknown_005e9818 == 0) break;
+
+            // Ghidra compte de 10 vers 1 dans param_6 ; le rang courant est ce compte.
+            int rank = 10 - i;
+            if (rank > (digits & 0xf)) continue;
+
+            uint divisor = ui.s_DecimalDivisors_00566be8[i];
+            uint digit = value / divisor;
+            value -= digit * divisor;
+
+            if (digit != 0 || rank == 1) emitted++;
+
+            if (emitted == 0)
+            {
+                // Rang non significatif : sans le bit 0x80 on ne bouge même pas la position.
+                if ((digits & 0x80) == 0) continue;
+            }
+            else
+            {
+                prim[1] = ((attributes >> 8 & 0xff) << 8 | 0x6400) << 0x10 | baseWord & 0x3ffffff;
+                prim[2] = positionY | position & 0xffff;
+                prim[3] = digit * digitWidth + (colour & 0xff)
+                        | ((uint)((ushort)(extraSigned >> 2) & 0xffc0) | extraLow)
+                          + page + (attributes >> 0x18)
+                          << 0x10
+                        | colour & 0xff00;
+                prim[4] = (colour >> 0x18) << 0x10 | digitWidth;
+
+                prim[0] = *otEntry | 0x4000000;
+                *otEntry = (uint)(nuint)prim;
+
+                prim += 5;
+                s_Unknown_005e9818--;
+            }
+
+            position += digitWidth;
+        }
+
+        *(short*)(sprite + 4) = 0;
+        prim = DrawFlatPrimitive(otEntry, prim, sprite);
+        uiWin.EmitClipRect(otEntry, &prim);
+        return prim;
+    }
+
+    /// <summary>Ghidra: FUN_0051c250 @ 0x0051c250 — **un simple renvoi** vers
+    /// <see cref="DrawTextRun"/>, sept arguments transmis tels quels. Le corps entier de l'original
+    /// tient en un appel et un <c>ret</c> ; il est gardé sous son nom parce que les sites d'appel
+    /// distinguent les deux, pas parce qu'il fait autre chose.</summary>
+    internal uint* DrawTextRunAlias(
+        uint* otEntry, uint* prim, int* cursor, byte* text, uint flags, uint extra, int maxChars)
+        => DrawTextRun(otEntry, prim, cursor, text, flags, extra, maxChars);
+
+    /// <summary>
     /// Ghidra: FUN_00521df0 @ 0x00521df0 — la sœur courte de <see cref="DrawSpritePrimitive"/> :
     /// une primitive de **cinq** mots (longueur de tag 0x04000000) au lieu de dix. Même en-tête —
     /// même lecture du couple couleur/attributs à <c>sprite[0] + (short)sprite[4] * 8</c>, même

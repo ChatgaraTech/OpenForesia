@@ -372,6 +372,28 @@ public static unsafe partial class Blaze
         return s_MainMemExref != null ? *s_MainMemExref : null;
     }
 
+    // Ghidra: VSyncDelayed_exref — un second export de DONNEES nomme de winsys3d.dll, resolu
+    // comme MainMem. Le bloc des panneaux de la carte du monde le teste avant de dessiner les
+    // membres dans le monde : quand il est non nul, l'image est en retard et tout le rendu 3d des
+    // membres est saute pour la rattraper. Trois sites dans FUN_00516fc0 le lisent.
+    private static int* s_VSyncDelayedExref;
+    private static bool s_VSyncDelayedResolved;
+
+    internal static int VSyncDelayed()
+    {
+        if (!s_VSyncDelayedResolved)
+        {
+            s_VSyncDelayedResolved = true;
+            IntPtr module = Win32.LoadLibraryA(ToAnsiZ("winsys3d.dll"));
+            if (module != IntPtr.Zero)
+                s_VSyncDelayedExref = (int*)Win32.GetProcAddress(module, ToAnsiZ("VSyncDelayed"));
+        }
+
+        // TODO(REVERSE) : si l'export nomme n'existe pas sous ce nom, le zero rendu ici fait
+        // dessiner toutes les images — le comportement normal, pas un raccourci silencieux.
+        return s_VSyncDelayedExref != null ? *s_VSyncDelayedExref : 0;
+    }
+
     // =====================================================================
     // Le banc de registres GTE de winsys3d.dll
     //
