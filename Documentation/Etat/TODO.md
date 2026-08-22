@@ -29,17 +29,20 @@ d'entités traversent maintenant sans lever.
 > `FUN_0050bf20` avec elles, pour **chaque membre du groupe** et à chaque image. L'exception a
 > quitté la simulation : elle est remontée dans `RunWorldMapTick` lui-même.
 >
-> **Reprendre ici — `FUN_004011c0` en mode 1, puis la moitié dessin du bloc d'affichage.**
+> **Reprendre ici — la moitié dessin du bloc d'affichage.**
 >
 > La **tête** du bloc d'affichage est transcrite (mode de vue, défilement de textures, lissage de
-> caméra, personnage suivi, centroïde du groupe, décalage monde, `SetGeomOffset`) : c'est elle qui
-> pose tout l'état que la moitié dessin consomme. Le jeu y entre et s'arrête sur `FUN_004011c0`.
+> caméra, personnage suivi, centroïde du groupe, décalage monde, `SetGeomOffset`) **et tout le
+> sous-système de caméra avec elle** (`Screens/State03/WorldMapCamera.cs`, `FUN_004011c0` et douze
+> appelées). Le jeu traverse le tout et s'arrête sur la lacune délibérée de la moitié dessin.
 >
-> **Le mode de vue au repos est 1, pas 0** — mesuré, pas supposé. C'est le pilotage manuel de la
-> caméra, la plus longue des quatre branches ; elle tire `FUN_00402410`, `FUN_004022b0`,
-> `FUN_00401fb0` et `FUN_00401c90`.
+> Du sous-système caméra il ne reste que le sous-bloc d'**occlusion**
+> (`0x00401913`..`0x00401b6d`, plus `FUN_004029e0` et `FUN_00402d60`), qui **n'est pas sur le
+> chemin au repos** — sa garde rend la main avant, playtest à l'appui. Son blocage est la donnée et
+> non le code : les deux tables `0x00604ba0` / `0x00604d30` ont une étendue que l'indexation
+> apparente contredit, à trancher au désassembleur (voir `DataSymbols.md`).
 >
-> Ensuite vient la **moitié dessin** (à partir de `0x00517e7c`). En plus des seize appelées
+> Vient donc la **moitié dessin** (à partir de `0x00517e7c`). En plus des seize appelées
 > inventoriées dans le pavé qui précède la lacune, elle demande de relever une vingtaine de
 > descripteurs de sprite dans le binaire (`0x00564788`, `0x005646b8`, `0x00566c18`..`0x00566c38`,
 > `0x00564900`..`0x00564958`, `0x00563348`..`0x00563360`) et de reconstruire les blocs de trois

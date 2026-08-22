@@ -575,18 +575,36 @@ public static unsafe partial class Blaze
 
                     Winsys3d.Ordinal_378(0xa0, 0x78);   // libgte SetGeomOffset(160, 120)
 
+                    // Les DEUX prealables de la moitie dessin sont maintenant leves, et ils sont
+                    // dans DataSymbols.md plutot qu'ici parce qu'ils sont de la donnee :
+                    //
+                    //   1. les onze descripteurs d'atlas (0x00566c18..0x00566c38, 0x00564690,
+                    //      0x005646b8/c0, 0x00564788/90, 0x005648b8) et les cinq tables de la barre
+                    //      d'etat (0x00564900..0x00564958) sont releves ;
+                    //   2. le bloc de TROIS entiers que l'appelant batit sur sa pile est identifie
+                    //      — bloc[0] pointeur de descripteur, bloc[1] drapeaux de texture,
+                    //      bloc[2] position ecran empaquetee. Ghidra ne montre jamais cette
+                    //      structure : il rend les trois ecritures sous les noms de leurs
+                    //      decalages (uStack_48/44/40, puis 40/3c/38…) et la position par des
+                    //      CONCAT22. Reconnaitre que trois uStack_NN consecutifs dont le premier
+                    //      recoit une adresse de descripteur forment un bloc est ce qui rend ce
+                    //      code transcriptible.
+                    //
+                    // Restent a ecrire : le corps (~570 l.) et cinq appelees du chemin principal —
+                    // FUN_0051c420 (374 l.), FUN_0051be90 (74), FUN_0051f940 (18), FUN_00538bc0
+                    // (13), FUN_0051c250 (10). Les onze autres appelees du bloc sont deja dans le
+                    // depot : le moteur de dessin a ete transcrit plus tot.
                     throw new NotImplementedException(
                         "FUN_00516fc0 : la MOITIE DESSIN du bloc d'affichage (a partir de " +
                         "0x00517e7c) n'est pas transcrite. La tete — mode de vue, defilement de " +
                         "textures, lissage de camera, personnage suivi, centroide du groupe, " +
-                        "decalage monde — l'est depuis le 2026-08-22, et c'est elle qui pose tout " +
-                        "l'etat que la moitie dessin consomme. **Les curseurs de primitives sont " +
-                        "resolus** : voir le pave au-dessus. Ce qui reste demande en plus de " +
-                        "relever une vingtaine de descripteurs de sprite dans le binaire " +
-                        "(0x00564788, 0x005646b8, 0x00566c18..0x00566c38, 0x00564900..0x00564958, " +
-                        "0x00563348..0x00563360) et de reconstruire les blocs de trois entiers que " +
-                        "l'appelant bâtit sur sa pile — Ghidra les rend en ecritures CONCAT22 " +
-                        "eparpillees.");
+                        "decalage monde — l'est, ainsi que tout le sous-systeme de camera " +
+                        "(Screens/State03/WorldMapCamera.cs). **Les trois prealables sont leves** : " +
+                        "les curseurs de primitives ([esp+0x14] base d'OT, [esp+0x10] curseur), les " +
+                        "descripteurs d'atlas et le bloc de trois entiers de la pile — voir le pave " +
+                        "au-dessus de ce throw et DataSymbols.md. Reste le corps (~570 l.) et cinq " +
+                        "appelees : FUN_0051c420, FUN_0051be90, FUN_0051f940, FUN_00538bc0, " +
+                        "FUN_0051c250, toutes dans Blaze.c.");
                 }
 
                 throw new NotImplementedException(
@@ -999,7 +1017,11 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void AdvanceScriptedSceneMotion_00532B40()
     {
-        if (*(sbyte*)Mem.Entity(0x005645fc) == -1) return;
+        // Ghidra: `if (DAT_005645fc != -1)`. C'est un OCTET (0x00563612 l'ecrit par CONCAT31), et
+        // le depot le porte deja en `int` sous s_Unknown_005645fc — d'ou la comparaison a 0xff et
+        // non a -1. **Ce symbole n'est PAS dans EntityArena** : le lire par Mem.Entity donnerait un
+        // decalage negatif, ce qui a effectivement fait passer la garde a tort avant correction.
+        if ((byte)s_Unknown_005645fc == 0xff) return;
 
         byte* stream = *(byte**)Mem.Arena(0x005e9b3c);
 
@@ -1091,52 +1113,6 @@ public static unsafe partial class Blaze
             *(uint*)(record + offset + 4) = ((v1 & 0xff) << 0x10) | (u1 & 0xff) | (second & 0xff00ff00);
         }
     }
-
-    /// <summary>
-    /// Ghidra: FUN_004011c0 @ 0x004011c0 — <b>le mode de vue</b>, 363 lignes : elle publie l'etat de
-    /// camera vers le bloc <c>0x006067e0</c> et l'arene d'etat d'entite, selon <c>DAT_005de54c</c>.
-    ///
-    /// <para>
-    /// <b>Le mode au repos est 1, pas 0.</b> Ce commentaire annonçait le contraire jusqu'a ce que
-    /// le jeu le dise : la lacune est tombee avec <c>mode 1</c>. Le mode 1 est le <b>pilotage
-    /// manuel</b> de la camera ; le mode 0 (une trentaine de lignes) et les modes 2/3 (six lignes,
-    /// la scenette) sont bien plus courts, mais ce ne sont pas eux qu'il faut ecrire en premier.
-    /// </para>
-    /// <para>
-    /// <b>C'est un sous-systeme entier, pas une fonction isolee</b> — mesure faite le 2026-08-22.
-    /// Douze appelees, toutes groupees entre 0x00401bf0 et 0x00402d60 et toutes dans
-    /// <c>Blaze.c</c> : <c>FUN_00401bf0</c> 38 l., <c>FUN_00401c90</c> 121 l., <c>FUN_00401fa0</c>
-    /// 8 l., <c>FUN_00401fb0</c> 68 l., <c>FUN_004022b0</c> 42 l., <c>FUN_00402410</c> 66 l.,
-    /// <c>FUN_004025a0</c> 16 l., <c>FUN_00402610</c> 15 l., <c>FUN_00402670</c> 24 l.,
-    /// <c>FUN_00402710</c> 40 l., <c>FUN_004029e0</c> 75 l., <c>FUN_00402d60</c> 24 l. Aucune ne
-    /// demande de desassemblage. <b>Les deux premieres du chemin mode 1 sont <c>FUN_00402410</c> et
-    /// <c>FUN_004022b0</c></b> : rien ne bouge sans elles.
-    /// </para>
-    /// <para>
-    /// <b>La bonne nouvelle est que son etat est deja modelise.</b> Les globales en
-    /// <c>0x005712xx</c>..<c>0x005713xx</c> tombent dans <see cref="GameMemory.ViewParams"/>, cree
-    /// a l'etape (1) du plan du 2026-08-21, et celles en <c>0x006067xx</c> dans
-    /// <c>s_ViewBlock_006067c0</c>. Deux tables restent a modeliser : <c>0x00604ba0</c> et
-    /// <c>0x00604d30</c>, deux tableaux paralleles de pointeurs espaces de 0x190, indexes par
-    /// <c>(cellule * 200 + n) * 4</c> — le cache de maillage que la camera interroge pour ne pas
-    /// traverser le decor. Leur etendue reelle n'est pas etablie.
-    /// </para>
-    /// <para>
-    /// Deux tables de constantes sont relevees et n'ont plus a l'etre :
-    /// <c>DAT_0054f040</c> = 1600 et <c>DAT_0054f044</c> = 900 (les bornes haute et basse de la
-    /// hauteur de camera), et surtout les deux tableaux de neuf <c>short</c> a pas de 4 octets de
-    /// <c>0x0054f048</c> et <c>0x0054f070</c>, qui valent <c>{-1,0,1,-1,0,1,-1,0,1}</c> et
-    /// <c>{-1,-1,-1,0,0,0,1,1,1}</c> : ce sont les neuf decalages d'un voisinage 3x3, et
-    /// <c>FUN_00402d60(dx, dz, n)</c> les consomme par paires.
-    /// </para>
-    /// </summary>
-    private static void ApplyViewMode_004011C0(int mode)
-        => throw new NotImplementedException(
-            $"FUN_004011c0 (0x004011c0), mode {mode} : non transcrite. 363 lignes dans Blaze.c. " +
-            "C'est la premiere appelee du bloc d'affichage, donc elle bloque tout le reste. **Le " +
-            "mode emprunte au repos est 1** — mesure, pas suppose : c'est le pilotage manuel de la " +
-            "camera, la plus longue des quatre branches. Elle tire FUN_00402410, FUN_004022b0, " +
-            "FUN_00401fb0 et FUN_00401c90, toutes dans Blaze.c.");
 
     /// <summary>Le pas d'amortissement des angles du cas 0 : le delta est deja ramene dans
     /// <c>[0, 0x1000[</c> par un <c>&amp; 0xfff</c>, et la moitie haute veut dire « dans l'autre

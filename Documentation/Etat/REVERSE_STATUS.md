@@ -8902,3 +8902,145 @@ relevé de table doit se faire à la largeur que l'instruction utilise, pas à c
 Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
 inchangés. **Aucun changement de comportement** : le jeu s'arrête au même endroit, seules la
 documentation de la lacune et `DataSymbols.md` ont bougé.
+
+---
+
+## 2026-08-22 (fin) — le sous-système de caméra, écrit d'un bloc
+
+`Screens/State03/WorldMapCamera.cs`, nouveau fichier : `FUN_004011c0` et douze de ses quatorze
+appelées. **Le jeu l'exécute en entier**, et l'arrêt est revenu sur la lacune délibérée de la moitié
+dessin. Toute la tête du bloc d'affichage tourne donc, caméra comprise.
+
+### Pourquoi un fichier à part
+
+Les quatorze fonctions tiennent entre `0x00401bf0` et `0x00402d60` : c'est une **unité de
+compilation de 1998** prise telle quelle. Un seul écran l'appelle, donc la règle de routage (2)
+d'`ARCHITECTURE.md` la place dans `Screens/State03/`, et sa cohésion justifie son fichier plutôt
+qu'un ajout de 900 lignes à `WorldMapTick.cs`.
+
+### Le bloc de vue porte quatre poses parallèles
+
+C'est la lecture qui rend le reste évident, et elle ne se voit pas dans les noms de Ghidra
+(`DAT_006067c0`, `d0`, `e0`, `e8`, `f0` — cinq symboles sans rapport apparent) :
+
+```
++0x00  c0/c4/c8   la position visee     (« oeil »)
++0x10  d0/d4/d8   la position courante  (« cible »)
++0x20  e0/e2/e4   l'orientation visee
++0x28  e8/ea/ec   l'orientation courante
++0x30  f0/f4/f8   la position d'arrivee du glissement
+```
+
+`PublishCameraFrame_004022B0` fait glisser courant → précédent une fois par image ; c'est ce
+décalage qui donne aux autres fonctions un « avant » et un « après ». Nommées `ViewEye`,
+`ViewTarget`, `ViewAngle`, `ViewAngleGoal`, `ViewTargetGoal`, les quinze symboles deviennent cinq
+vecteurs.
+
+### Une cascade de labels de plus qui n'était pas irréductible
+
+`FUN_004027f0` classe le déplacement du groupe en huit secteurs. Ghidra en rend huit `goto`
+entrelacés plus un `unaff_DI` jamais initialisé — l'allure d'un graphe impossible. Ce n'en est pas
+un : chaque branche assigne son secteur puis saute au maillon suivant, **qui échoue toujours**. Le
+seul effet net est le secteur, et les huit plages couvrent la ligne entière, donc `unaff_DI` est
+toujours écrit avant d'être lu. Rendu en `if / else if`.
+
+C'est le troisième cas de cette forme (après `FinalizeEntityPlacement2` et `TickFollowingMember`).
+**Un `unaff_` de Ghidra n'est pas toujours un registre perdu** : c'est parfois simplement une
+variable que toutes les branches écrivent, et que le décompilateur n'a pas su relier.
+
+### Un bug que j'ai introduit, et ce qu'il apprend
+
+La garde de `AdvanceScriptedSceneMotion_00532B40` était écrite
+`*(sbyte*)Mem.Entity(0x005645fc) == -1`. **`0x005645fc` n'est pas dans `EntityArena`** (qui commence
+à `0x005eca00`) : `Mem.Entity` en a fait un décalage **négatif**, la garde a lu de la mémoire
+quelconque, elle est passée à tort, et la fonction a déréférencé un pointeur nul.
+
+Le symbole existait déjà dans le dépôt sous `s_Unknown_005645fc`, et c'est un **octet** comparé à
+`0xff`, pas un `sbyte` comparé à `-1`.
+
+Deux leçons, et la seconde est la vraie : les accesseurs d'arène **ne vérifient pas leurs bornes**,
+donc une adresse hors plage rend un pointeur valide sur autre chose. Et surtout — **chercher le
+symbole dans le dépôt avant d'inventer un accès**. Il était là, correctement typé, à trois lignes
+de `grep`.
+
+### Ce qui reste du sous-système
+
+Le sous-bloc d'**occlusion** (`0x00401913`..`0x00401b6d`) et ses deux appelées `FUN_004029e0` /
+`FUN_00402d60`. Le blocage n'est pas le code — c'est la **donnée** : les deux tables parallèles
+`0x00604ba0` et `0x00604d30`, espacées de `0x190` et indexées par `(cellule * 200 + n) * 4`, ont une
+étendue que l'indexation apparente contredit. À trancher au désassembleur avant de les allouer.
+
+**Il n'est pas sur le chemin au repos** : la garde `DAT_00571348 == 0 && DAT_00571380 == 0` rend la
+main avant, et le playtest le confirme — la lacune n'a pas été atteinte.
+
+### Ce que la vérification vaut, et ce qu'elle ne vaut pas
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
+inchangés ; 64 méthodes nouvelles. Tests de disposition : inchangés, 39 champs. Playtest : la tête
+du bloc d'affichage traverse en entier.
+
+**Mais rien ne s'affiche encore**, donc il n'y a aucun contrôle à l'écran : on sait que ce code
+*tourne*, pas qu'il est *juste*. Les largeurs des quarante champs de `ViewParams` sont déduites de
+l'usage de la pseudo-C, pas d'une passe de désassemblage — une largeur fausse écrirait chez le
+voisin sans rien casser de visible aujourd'hui. C'est le premier contrôle à refaire quand la moitié
+dessin donnera une image.
+
+---
+
+## 2026-08-22 (fin) — la moitié dessin : les deux préalables levés, le corps reste
+
+La moitié dessin **n'est pas transcrite**. Ce tour a levé les deux obstacles que le tour précédent
+avait nommés, et ils étaient de la donnée et de la structure, pas du code.
+
+### Les descripteurs sont relevés
+
+Onze descripteurs d'atlas de 8 octets et cinq tables de la barre d'état, tous dans
+`DataSymbols.md`. La plus parlante est `0x00564900` : neuf dwords `{1, 2, 4, 8, 0x10, 0x20, 0x40,
+0x100, 0x200}` que la barre teste contre `bloc + 0x140`, **un pictogramme par bit d'état**. La borne
+de la boucle (`< 0x564924`) confirme les neuf entrées sans qu'on ait à deviner.
+
+Les trois tables de `0x00564928`, `0x00564948` et `0x00564958` sont trois dispositions de X pour les
+panneaux des quatre membres, choisies par `DAT_005de160` — la position du menu dans son animation
+d'ouverture. Les panneaux se réarrangent pendant que le menu glisse.
+
+### Le bloc de trois entiers de la pile
+
+C'est le second préalable, et le plus important parce qu'il ne se voit nulle part dans la pseudo-C.
+Toutes les fonctions de dessin prennent en troisième argument l'adresse de **trois emplacements de
+pile consécutifs** :
+
+```
+bloc[0]  pointeur vers un descripteur d'atlas de 8 octets
+bloc[1]  transmis verbatim comme dword de texture/drapeaux
+bloc[2]  la position ecran, X dans le mot bas et Y dans le mot haut
+```
+
+Ghidra rend les trois écritures séparément, sous les noms de leurs décalages — `uStack_48`,
+`uStack_44`, `uStack_40` pour un bloc, puis `uStack_40`, `uStack_3c`, `uStack_38` pour le suivant —
+et la position par des `CONCAT22` sur les deux moitiés de `bloc[2]`. **Reconnaître que trois
+`uStack_NN` consécutifs dont le premier reçoit une adresse de descripteur forment un bloc** est ce
+qui rend ce code transcriptible ; sans cela chaque appel a l'air de prendre un pointeur vers rien.
+
+La disposition elle-même n'est pas neuve : elle avait été résolue en août sur le désassemblage de
+`FUN_0051c120` et est documentée sur `Primitives2d.EmitTextSprite`. **Ce qui manquait était de
+faire le lien** entre cette documentation et les `uStack_NN` du bloc d'affichage — deux endroits du
+dépôt qui décrivaient la même chose sans se citer.
+
+### Ce qui reste, et pourquoi ce tour s'arrête là
+
+Le corps (~570 l.) et cinq appelées du chemin principal : `FUN_0051c420` (374 l.),
+`FUN_0051be90` (74), `FUN_0051f940` (18), `FUN_00538bc0` (13), `FUN_0051c250` (10). Les onze autres
+appelées sont **déjà dans le dépôt** — le moteur de dessin a été transcrit plus tôt, et c'est ce qui
+rend ce bloc abordable malgré sa taille.
+
+Le total est du même ordre que le sous-système de caméra écrit juste avant : environ 1 100 lignes.
+La différence est le mode de défaillance. Un curseur de primitives mal chaîné ne lève pas une
+exception managée — il produit une violation d'accès **dans winsys3d**, sans pile utilisable, et le
+dépôt a déjà payé une journée pour ça sur `DrawFlatPrimitive`. C'est le seul endroit de cette carte
+du monde où « écrire vite et voir » ne marche pas.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
+inchangés. **Aucun changement de comportement** : seules `DataSymbols.md` et la documentation de la
+lacune ont bougé.

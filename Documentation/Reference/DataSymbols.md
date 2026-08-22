@@ -1454,3 +1454,74 @@ qui déborderait largement l'écart de 0x190 entre les deux bases. Soit le compt
 petit, soit l'une des deux bases est mal identifiée. À trancher au désassembleur avant de les
 modéliser — les allouer sur la foi de l'indexation apparente reproduirait un débordement qui
 n'existe peut-être pas.
+
+
+## Les descripteurs de sprite de la moitié dessin (0x00564680, 0x00566c18)
+
+Relevés le 2026-08-22 en préparant la moitié dessin du bloc d'affichage de `FUN_00516fc0`. Ce sont
+des **descripteurs d'atlas de 8 octets** : `dword0` empaquette l'origine X (octet bas), l'origine Y
+(octet 1), la largeur de cellule (octet 2) et la hauteur (5 bits hauts) ; `dword1` part tel quel
+comme moitié « attributs » du sprite. La disposition est déjà documentée sur
+`Primitives2d.EmitTextSprite` (`FUN_0051c120`), qui les consomme.
+
+| VA | dword0 | dword1 |
+|---|---|---|
+| `0x00566c18` | `0x40400000` | `0x02300100` |
+| `0x00566c20` | `0x28180000` | `0x02300008` |
+| `0x00566c28` | `0x40803000` | `0x02300000` |
+| `0x00566c30` | `0x08504800` | `0x02300000` |
+| `0x00566c38` | `0x0a640880` | `0x02300100` |
+| `0x00564690` | `0x10181800` | `0x01100302` |
+| `0x005646b8` | `0x3030a830` | `0x0e110001` |
+| `0x005646c0` | `0x0808f8a0` | `0x0e110001` |
+| `0x00564788` | `0x0f0f80c0` | `0x0d110000` |
+| `0x00564790` | `0x0f0f80d0` | `0x0d110000` |
+| `0x005648b8` | `0x0808f800` | `0x06110000` |
+
+## Les quatre tables de la barre d'état (0x00564900)
+
+| VA | contenu | rôle |
+|---|---|---|
+| `0x00564900` | `{1, 2, 4, 8, 0x10, 0x20, 0x40, 0x100, 0x200}` | les **neuf bits d'état** que la barre teste contre `bloc + 0x140`, un pictogramme par bit. La boucle s'arrête sur `< 0x564924`, ce qui donne bien neuf entrées. |
+| `0x00564928` | `{0x32, -50, 0x172, 0x10e}` | X du panneau, par membre du groupe |
+| `0x00564938` | `{0x5a, -20, 0x154, 0xe6}` | seconde disposition de X |
+| `0x00564948` | `{0xa0, 0xa0, 0xa0, 0xa0}` | X uniforme |
+| `0x00564958` | `{0xb4, 0x8c, 0xb4, 0x8c}` | X alterné |
+
+Les trois dernières sont choisies par `DAT_005de160`, la position de l'écran de menu dans son
+animation d'ouverture : les panneaux se réarrangent pendant que le menu glisse.
+
+## 0x00563340 — le bloc de l'affichage de mise au point
+
+| VA | contenu |
+|---|---|
+| `0x00563348` | `0x0002000c` |
+| `0x0056334c` | `0x000e0003` |
+| `0x00563350` | trois pointeurs de chaîne : `0x005649e8`, `0x005649dc`, `0x005649d0` |
+| `0x00563360` | deux pointeurs de chaîne : `0x005649cc`, `0x005649c8` |
+
+Ce bloc ne sert qu'au sous-bloc de mise au point, gardé par `DAT_005de020` qui vaut zéro au
+chargement — relevé ici parce qu'il était sur le chemin de la mesure, pas parce qu'il est utile
+tout de suite.
+
+## Le bloc de trois entiers que l'appelant bâtit sur sa pile
+
+Ce n'est pas une donnée du binaire, mais c'est la lecture sans laquelle les relevés ci-dessus ne
+servent à rien. Toutes les fonctions de dessin de la moitié dessin prennent en troisième argument
+l'adresse de **trois emplacements de pile consécutifs** :
+
+```
+bloc[0]  pointeur vers un descripteur d'atlas de 8 octets (le tableau ci-dessus)
+bloc[1]  transmis verbatim comme dword de texture/drapeaux du sprite
+bloc[2]  la position ecran, X dans le mot bas et Y dans le mot haut
+```
+
+**Ghidra ne montre jamais cette structure** : il rend les trois écritures séparément, sous les noms
+de leurs décalages (`uStack_48`, `uStack_44`, `uStack_40` pour un bloc, `uStack_40`, `uStack_3c`,
+`uStack_38` pour le suivant), et la position par des `CONCAT22` sur les deux moitiés de `bloc[2]`.
+Reconnaître que trois `uStack_NN` consécutifs dont le premier reçoit une adresse de descripteur
+forment un bloc est ce qui rend la moitié dessin transcriptible ; sans cela, chaque appel a l'air
+de prendre un pointeur vers rien.
+
+La disposition est celle que `Primitives2d.EmitTextSprite` documente déjà, résolue en août sur le
+désassemblage de `FUN_0051c120` — elle vaut pour toute la famille.
