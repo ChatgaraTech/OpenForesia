@@ -9044,3 +9044,66 @@ du monde où « écrire vite et voir » ne marche pas.
 Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
 inchangés. **Aucun changement de comportement** : seules `DataSymbols.md` et la documentation de la
 lacune ont bougé.
+
+---
+
+## 2026-08-22 (nuit) — la moitié dessin : écrite, essayée, désactivée
+
+Le corps de la moitié dessin est écrit — la première section, la rose des vents, et les lacunes
+nommées des trois autres — puis **essayé, et désactivé**. Il corrompt la mémoire.
+
+### Ce qui s'est passé
+
+À l'exécution, le jeu a levé une `NullReferenceException` **dans la caméra**, deux appels et une
+image plus loin que la faute : `PublishCameraFrame_004022B0` a trouvé un pointeur nul à
+`0x005eca94`, dans l'arène d'entités. La moitié dessin n'y écrit rien.
+
+L'explication tient en une ligne : les fonctions de dessin reçoivent l'**adresse d'un bloc de pile**
+dont elles lisent plusieurs champs, et je n'avais établi la disposition que d'un seul —
+`DrawTextRun` (`FUN_0051c120`), résolue au désassembleur en août. Pour `DrawSpriteVariant`,
+`DrawFlatPrimitive` et `FUN_0051c420`, j'ai rempli les champs que la pseudo-C montre et laissé les
+autres à zéro. La fonction calcule alors une adresse sur ces zéros et **écrit hors de la liste
+d'affichage**.
+
+### Pourquoi c'est le pire endroit pour improviser
+
+Ici la faute s'est vue : elle est tombée dans une de nos arènes, et le CLR a levé. **Dans le jeu
+réel elle part dans `winsys3d`**, sans pile utilisable — exactement ce que `CLAUDE.md` décrit sur
+`DrawFlatPrimitive`, où « une transcription fidèle plantait quand même parce que la convention de la
+liste d'affichage vit du côté DLL ».
+
+J'avais écrit cet avertissement moi-même deux tours plus tôt, en expliquant pourquoi je ne voulais
+pas écrire ce bloc à la légère. Il s'est vérifié au premier essai.
+
+### Ce qui manque n'est pas du code
+
+Le corps se lit et se relit ; il est conservé dans `DrawWorldMapFrame` et il est **appelé nulle
+part**, avec un `throw` qui dit pourquoi. Ce qui manque est la **disposition des blocs de pile**,
+fonction par fonction :
+
+| fonction | disposition |
+|---|---|
+| `FUN_0051c120` `DrawTextRun` | **établie** (août, désassemblage) — sert de modèle |
+| `FUN_00521df0` `DrawSpriteVariant` | à relever |
+| `FUN_0051f9c0` `DrawFlatPrimitive` | à relever |
+| `FUN_0051c420` | à relever, et la fonction elle-même à écrire (374 l.) |
+
+Chacune se relève comme `FUN_0051c120` l'a été : `disasm` sur le corps, suivre les `[param_3 + N]`.
+C'est du travail borné et sûr, et c'est le vrai préalable — les descripteurs et les tables de
+panneaux, eux, sont relevés et en place.
+
+### La leçon, et elle n'est pas nouvelle
+
+Le dépôt savait déjà que la convention de la liste d'affichage vit côté DLL et qu'une transcription
+fidèle ne suffit pas. Ce que cet essai ajoute : **ça vaut aussi pour les blocs que l'appelant bâtit
+sur sa pile**. Un champ laissé à zéro n'est pas « une valeur par défaut », c'est une adresse.
+
+Reconnaître le bloc de trois entiers ne suffisait donc pas — il fallait aussi savoir combien de
+champs chaque appelée lit. Les deux préalables annoncés au tour précédent en cachaient un
+troisième.
+
+### Vérification
+
+Build 0 erreur, 42 avertissements (inchangé). Oracle : deux corps signalés, les deux voulus et
+inchangés. Tests de disposition : inchangés, 39 champs. Playtest : le jeu s'arrête sur la lacune
+nommée, **sans corruption** — l'état d'avant l'essai est rétabli.

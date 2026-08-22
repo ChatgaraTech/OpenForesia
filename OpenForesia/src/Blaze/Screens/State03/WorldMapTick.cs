@@ -575,36 +575,32 @@ public static unsafe partial class Blaze
 
                     Winsys3d.Ordinal_378(0xa0, 0x78);   // libgte SetGeomOffset(160, 120)
 
-                    // Les DEUX prealables de la moitie dessin sont maintenant leves, et ils sont
-                    // dans DataSymbols.md plutot qu'ici parce qu'ils sont de la donnee :
+                    // **DrawWorldMapFrame N'EST PAS APPELEE, et c'est deliberе.** Le corps existe
+                    // plus bas et se lit, mais il a ete essaye le 2026-08-22 et il **corrompt la
+                    // memoire** : les fonctions de dessin recoivent un bloc de sprite dont tous les
+                    // champs ne sont pas encore etablis, calculent une adresse sur des zeros, et
+                    // ecrivent hors de la liste d'affichage. Le symptome observe n'etait meme pas
+                    // un plantage a l'endroit fautif — c'est l'arene d'entites qui perdait le
+                    // pointeur de 0x005eca94, et la camera levait deux images plus tard.
                     //
-                    //   1. les onze descripteurs d'atlas (0x00566c18..0x00566c38, 0x00564690,
-                    //      0x005646b8/c0, 0x00564788/90, 0x005648b8) et les cinq tables de la barre
-                    //      d'etat (0x00564900..0x00564958) sont releves ;
-                    //   2. le bloc de TROIS entiers que l'appelant batit sur sa pile est identifie
-                    //      — bloc[0] pointeur de descripteur, bloc[1] drapeaux de texture,
-                    //      bloc[2] position ecran empaquetee. Ghidra ne montre jamais cette
-                    //      structure : il rend les trois ecritures sous les noms de leurs
-                    //      decalages (uStack_48/44/40, puis 40/3c/38…) et la position par des
-                    //      CONCAT22. Reconnaitre que trois uStack_NN consecutifs dont le premier
-                    //      recoit une adresse de descripteur forment un bloc est ce qui rend ce
-                    //      code transcriptible.
+                    // C'est le mode de defaillance que CLAUDE.md decrit sur DrawFlatPrimitive :
+                    // ici la faute a ete visible, mais la meme ecriture dans la vraie liste
+                    // d'affichage part dans winsys3d sans pile utilisable.
                     //
-                    // Restent a ecrire : le corps (~570 l.) et cinq appelees du chemin principal —
-                    // FUN_0051c420 (374 l.), FUN_0051be90 (74), FUN_0051f940 (18), FUN_00538bc0
-                    // (13), FUN_0051c250 (10). Les onze autres appelees du bloc sont deja dans le
-                    // depot : le moteur de dessin a ete transcrit plus tot.
+                    // **Ce qui manque n'est pas du code, c'est la disposition exacte des blocs de
+                    // pile** que chaque fonction de dessin lit. Elle se releve au desassembleur,
+                    // fonction par fonction, comme FUN_0051c120 l'a ete en aout — voir le resume de
+                    // Primitives2d.DrawTextRun, qui est le seul dont la disposition soit etablie.
+                    // Tant qu'elle ne l'est pas pour DrawSpriteVariant, DrawFlatPrimitive et
+                    // FUN_0051c420, appeler ce corps est pire que la lacune.
                     throw new NotImplementedException(
-                        "FUN_00516fc0 : la MOITIE DESSIN du bloc d'affichage (a partir de " +
-                        "0x00517e7c) n'est pas transcrite. La tete — mode de vue, defilement de " +
-                        "textures, lissage de camera, personnage suivi, centroide du groupe, " +
-                        "decalage monde — l'est, ainsi que tout le sous-systeme de camera " +
-                        "(Screens/State03/WorldMapCamera.cs). **Les trois prealables sont leves** : " +
-                        "les curseurs de primitives ([esp+0x14] base d'OT, [esp+0x10] curseur), les " +
-                        "descripteurs d'atlas et le bloc de trois entiers de la pile — voir le pave " +
-                        "au-dessus de ce throw et DataSymbols.md. Reste le corps (~570 l.) et cinq " +
-                        "appelees : FUN_0051c420, FUN_0051be90, FUN_0051f940, FUN_00538bc0, " +
-                        "FUN_0051c250, toutes dans Blaze.c.");
+                        "FUN_00516fc0 : la moitie dessin est ECRITE mais DESACTIVEE — voir " +
+                        "DrawWorldMapFrame et le commentaire au-dessus de ce throw. Elle corrompt " +
+                        "la memoire tant que la disposition des blocs de pile que lisent " +
+                        "DrawSpriteVariant, DrawFlatPrimitive et FUN_0051c420 n'est pas relevee au " +
+                        "desassembleur. Celle de DrawTextRun (FUN_0051c120) l'est deja et sert de " +
+                        "modele. Les descripteurs d'atlas et les tables de panneaux, eux, sont " +
+                        "releves et en place.");
                 }
 
                 throw new NotImplementedException(
@@ -613,6 +609,7 @@ public static unsafe partial class Blaze
                     "actif. Il lui manque FUN_0051aa30 (594 lignes) et FUN_0052a7d0 (20 lignes).");
             }
 
+        frameTail:
             // ================= queue de boucle, commune a tous les chemins =================
             // Ghidra: FUN_0052a280(&local_60,&uStack_54,&stack0xffffff9c,3,1). Le cinquieme
             // argument est EBP au niveau machine : il vaut 1 sur les deux chemins courts et le
@@ -903,6 +900,385 @@ public static unsafe partial class Blaze
     // =====================================================================
     // Les scalaires isoles que la boucle par image touche hors arene.
     // =====================================================================
+
+    // =====================================================================
+    // Les descripteurs d'atlas de la moitie dessin, releves dans le binaire (DataSymbols.md).
+    //
+    // Huit octets chacun : dword0 empaquette l'origine et la taille de cellule, dword1 part tel
+    // quel comme moitie « attributs » du sprite. Ils sont poses ici plutot que dans GameMemory
+    // parce qu'un seul ecran les lit — meme regle que s_WorldMapDescriptor_005633b0.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00517e7c</c>..<c>0x00519703</c> — <b>la moitie dessin du bloc d'affichage</b>.
+    /// Elle emet tout ce que la carte du monde montre : le voile de transition, les deux
+    /// indicateurs d'ecran, le panneau d'interface, la rose des vents, les quatre panneaux de
+    /// membre avec leurs modeles, le balayage 7x7 des cellules de decor, et les trois listes de
+    /// morceaux.
+    ///
+    /// <para>
+    /// <b>Deux objets suffisent a lire tous les appels.</b> Ghidra repand ici six noms —
+    /// <c>unaff_EBX</c>, <c>unaff_ESI</c>, <c>unaff_EDI</c>, <c>unaff_EBP</c>, <c>local_60</c>,
+    /// <c>piStack_74</c> — qui ne designent que la <b>base d'ordering table</b> (<c>[esp+0x14]</c>)
+    /// et le <b>curseur de primitives</b> (<c>[esp+0x10]</c>), plus <c>uStack_54</c> pour l'entree
+    /// d'ordering table (<c>[esp+0x20]</c>). Chaque appel de dessin prend <c>(base + N, curseur,
+    /// …)</c> et <b>rend le nouveau curseur</b>, que l'appelant range aussitot. C'est le seul
+    /// invariant qui compte : un curseur non rechaine ne plante pas ici mais dans winsys3d, sans
+    /// pile utilisable.
+    /// </para>
+    /// <para>
+    /// Le decalage <c>+ N</c> sur la base choisit la <b>couche</b> : <c>+8</c> l'interface,
+    /// <c>+0xc</c> les etiquettes, <c>+0x14</c> les ombres, <c>-0x14</c> l'arriere-plan, et un
+    /// decalage lu dans l'entite pour les particules.
+    /// </para>
+    /// </summary>
+    private static void DrawWorldMapFrame(
+        uint* otBase, uint* otEntry, uint** cursorSlot, int debugLatch, byte* mainMem)
+    {
+        uint* cursor = *cursorSlot;
+
+        // Le bloc de trois entiers que toutes les fonctions de dessin recoivent par adresse.
+        int* block = stackalloc int[3];
+
+        // ---------------------------------------------------------- le voile de transition
+        if ((byte)(Mem.s_Unknown_005de024 >> 0x18) != 0)
+        {
+            cursor = FillScreenQuad_0051F940(otBase, cursor, Mem.s_Unknown_005de024, 0, 0, 0x140, 0x100);
+        }
+
+        // ---------------------------------------------------------- le compteur de mise au point
+        if (*(byte*)Mem.Camera(0x005de0b4) != 0)
+        {
+            (*(byte*)Mem.Camera(0x005de0b4))--;
+
+            block[0] = (int)(nint)SpriteAtlas(0x00566c28);
+            block[2] = (0x10 << 0x10) | 8;
+            cursor = Prims.DrawTextRun(otBase, cursor, block, Mem.Entity(0x005fa5d0), 0, 0, 0x10);
+
+            block[2] += 10 << 0x10;
+            cursor = Prims.DrawTextRun(otBase, cursor, block, (byte*)0x564a14, 0, 0, -1);
+
+            block[2] = ((block[2] >> 0x10) << 0x10) | (((block[2] & 0xffff) + 0x12) & 0xffff);
+            block[0] = (int)(nint)SpriteAtlas(0x00566c30);
+            cursor = DrawIconGlyph_0051BE90(otBase, cursor, block, *(short*)Mem.Arena(0x005e9a22), 5, 0);
+        }
+
+        // ---------------------------------------------------------- les deux indicateurs d'ecran
+        s_Unknown_005de15c = 1;
+        s_Unknown_005de154 = 0;
+        s_Unknown_005de158 = 0;
+
+        UiWin.EmitViewportRect(otBase + 2, &cursor);
+        UiWin.EmitClipRect(otBase + 2, &cursor);
+
+        s_Unknown_005de15c = 0;
+
+        byte* indicator = null;
+        if (s_Unknown_005de54c == 2) indicator = SpriteAtlas(0x00564788);
+        if (s_Unknown_005de54c == 1 && s_Unknown_005de550 == 2) indicator = SpriteAtlas(0x00564790);
+
+        if (indicator != null)
+        {
+            // L'indicateur pulse : le sinus du compteur de fondu module son echelle.
+            block[0] = (int)(nint)indicator;
+            block[2] = (0x10 << 0x10) | 0x130;
+
+            int pulse = (int)Winsys3d.GetSinTableEntry((int)(s_FadeCounter_005e9960 << 9));
+            block[1] = (pulse >> 3) + 0x1000;
+
+            cursor = Prims.DrawSpritePrimitive(otBase, cursor, block, 0, 0);
+        }
+
+        // ---------------------------------------------------------- le panneau d'interface
+        s_Unknown_005de15c = 1;
+        s_Unknown_005de154 = s_MenuSlideDone_00564a56 == 0 && Mem.s_SizeSetting_005de160 > 7 ? 0 : 0xa0;
+        s_Unknown_005de158 = (10 - Mem.s_SizeSetting_005de160) * 0xc;
+
+        if (s_Unknown_00563c5c != 0)
+        {
+            cursor = Ui.RunTextEngine(cursor, s_WorldMapDescriptor_005633b0);
+        }
+
+        // Le panneau glisse vers -0x50 ou -0x40 selon qu'il est ouvert, d'un quart par image, et
+        // ne se redessine que tant qu'il bouge.
+        short before = *(short*)(s_WorldMapDescriptor_005633b0 + 6);
+        *(short*)(s_WorldMapDescriptor_005633b0 + 6) +=
+            (short)((((s_Unknown_00563c77 & 1) != 0 ? 0x70 : 0) - 0x50 - before) >> 2);
+
+        if ((s_Unknown_00563c77 & 1) == 0 || before != *(short*)(s_WorldMapDescriptor_005633b0 + 6))
+        {
+            s_Unknown_00563c77 |= 0x20;
+        }
+        else
+        {
+            s_Unknown_00563c77 &= 0xdf;
+        }
+
+        if ((s_Unknown_00563c77 & 1) != 0 || before != *(short*)(s_WorldMapDescriptor_005633b0 + 6))
+        {
+            cursor = UiWin.DrawUiPanel(otBase, cursor, s_WorldMapDescriptor_005633b0);
+        }
+
+        s_Unknown_005de154 = 0;
+        s_Unknown_005de158 = 0;
+        s_Unknown_005de15c = 0;
+
+        if (debugLatch == 0 && s_DebugOverlayEnabled_005de020 != 0)
+        {
+            throw new NotImplementedException(
+                "FUN_00516fc0 : l'affichage de mise au point du bloc d'affichage " +
+                "(0x005182b0 a 0x00518473) n'est pas transcrit. Il compare les trois bancs de " +
+                "drapeaux a leurs miroirs d'image precedente et liste les bits qui ont change, " +
+                "avec le descripteur 0x00563c78 et les tables de chaines 0x00563350 / 0x00563360, " +
+                "toutes relevees dans DataSymbols.md. DAT_005de020 vaut 0 au chargement, donc ce " +
+                "bloc ne s'atteint que par la touche de mise au point.");
+        }
+
+        DrawCompassRose(otBase, otEntry, ref cursor, block);
+        DrawPartyPanels(otBase, ref cursor, block, mainMem);
+        DrawWorldCells(otBase, otEntry, ref cursor, mainMem);
+
+        *cursorSlot = cursor;
+    }
+
+    /// <summary>
+    /// L'indice, dans le cadre de pile modelise, de l'emplacement que Ghidra nomme par le decalage
+    /// <paramref name="ghidraOffset"/> (<c>uStack_48</c> → 0x48). Le cadre va de <c>piStack_74</c>
+    /// a <c>uStack_04</c>, et les fonctions de dessin en recoivent l'ADRESSE : c'est pour ça qu'il
+    /// faut un bloc contigu et non des variables separees.
+    /// </summary>
+    private static int SlotOf(int ghidraOffset) => (0x74 - ghidraOffset) / 4;
+
+    /// <summary>
+    /// Ghidra: <c>LAB_00518473</c>..<c>0x005185f0</c> — <b>la rose des vents</b>. La camera est
+    /// mise de cote, remplacee par une vue fixe a 800 unites, et le modele de la boussole est emis
+    /// avec ses huit graduations placees par sinus/cosinus autour du cap courant. La pose est
+    /// ensuite restituee a l'identique.
+    /// </summary>
+    private static void DrawCompassRose(uint* otBase, uint* otEntry, ref uint* cursor, int* unused)
+    {
+        int* frame = stackalloc int[SlotOf(0x04) + 1];
+        short* pose = (short*)Mem.s_CameraVector_00604928;
+
+        Winsys3d.Ordinal_378(0x80, 0xb8);   // SetGeomOffset(128, 184)
+
+        // Mise de cote du decalage monde, de la pose et de la matrice.
+        *(int*)Mem.Entity(0x005fa520) = Mem.s_Unknown_006008d0;
+        *(int*)Mem.Entity(0x005fa524) = Mem.s_Unknown_006008d4;
+        *(int*)Mem.Entity(0x005fa528) = Mem.s_Unknown_006008d8;
+        *(short*)Mem.Entity(0x005fa534) = pose[0];
+        *(short*)Mem.Entity(0x005fa536) = pose[1];
+        *(short*)Mem.Entity(0x005fa538) = pose[2];
+
+        for (int i = 0; i < 8; i++)
+        {
+            ((uint*)Mem.Arena(0x005e9b00))[i] = ((uint*)Mem.s_CameraMatrix_006008e0)[i];
+        }
+
+        Mem.s_Unknown_006008d0 = 0;
+        Mem.s_Unknown_006008d4 = 0;
+        Mem.s_Unknown_006008d8 = 0;
+
+        pose[0] = 0x400;
+        RotMatrix(pose, (short*)Mem.s_CameraMatrix_006008e0);
+        Mem.CameraTranslation[0] = 0x41;
+        Mem.CameraTranslation[1] = 0x21;
+        Mem.CameraTranslation[2] = 800;
+
+        s_Unknown_005de15c = 1;
+        int slide;
+        if (s_MenuSlideDone_00564a56 == 0 && Mem.s_SizeSetting_005de160 > 7)
+        {
+            slide = Mem.s_SizeSetting_005de160 - 0xb;
+            s_Unknown_005de154 = 0;
+        }
+        else
+        {
+            slide = Mem.s_SizeSetting_005de160 + 9;
+            s_Unknown_005de154 = 0xa0;
+        }
+
+        s_Unknown_005de158 = slide * 0xc;
+
+        uint* pen = cursor;
+        UiWin.EmitViewportRect(otBase + 2, &pen);
+        cursor = pen;
+
+        frame[SlotOf(0x30)] = 0x800;
+        frame[SlotOf(0x2c)] = 0x800;
+        frame[SlotOf(0x20)] = 0x1ffffff;
+        frame[SlotOf(0x3c)] = 0;
+        frame[SlotOf(0x38)] = 0;
+        frame[SlotOf(0x34)] = 0;
+        frame[SlotOf(0x28)] = 0;
+        frame[SlotOf(0x24)] = 0x40000;
+
+        cursor = DrawWorldModel_0051C420(otBase + 2, cursor,
+            *(byte**)s_ModelResultB_005f7b40, frame + SlotOf(0x3c), 0xe);
+
+        frame[SlotOf(0x40)] &= unchecked((int)0xffff0000);
+        frame[SlotOf(0x50)] = (int)(nint)SpriteAtlas(0x005646b8);
+        frame[SlotOf(0x4c)] = 0x1ffffff;
+        frame[SlotOf(0x48)] = 0xb00088;
+
+        cursor = Prims.DrawSpriteVariant(otBase + 2, cursor, frame + SlotOf(0x50), 0, 0);
+        cursor = Prims.DrawFlatPrimitive(otBase + 2, cursor, frame + SlotOf(0x50));
+
+        frame[SlotOf(0x4c)] = 0x1ffffff;
+        frame[SlotOf(0x50)] = (int)(nint)SpriteAtlas(0x005646c0);
+
+        // Les huit graduations, une par huitieme de tour, placees autour du centre (0x9c, 0xc5) a
+        // vingt-deux unites de rayon.
+        short tick = 0;
+        for (int angle = 0; angle < 0x1000; angle += 0x400, tick++)
+        {
+            frame[SlotOf(0x40)] = (frame[SlotOf(0x40)] & unchecked((int)0xffff0000)) | (ushort)tick;
+
+            int sin = (int)Winsys3d.GetSinTableEntry(angle - pose[1]);
+            frame[SlotOf(0x4c)] = (frame[SlotOf(0x4c)] & unchecked((int)0xffff0000))
+                | (ushort)(0x9c - (short)(sin * 0x16 >> 0xc));
+
+            int cos = Winsys3d.GetCosTableEntry(angle - pose[1]);
+            frame[SlotOf(0x48)] = ((0xc5 - (cos * 0x16 >> 0xc)) << 0x10)
+                | (frame[SlotOf(0x48)] & 0xffff);
+
+            cursor = Prims.DrawSpriteVariant(otBase + 2, cursor, frame + SlotOf(0x50), 0, 0);
+        }
+
+        cursor = Prims.DrawFlatPrimitive(otBase + 2, cursor, frame + SlotOf(0x50));
+        pen = cursor;
+        UiWin.EmitClipRect(otBase + 2, &pen);
+        cursor = pen;
+
+        // Restitution.
+        for (int i = 0; i < 8; i++)
+        {
+            ((uint*)Mem.s_CameraMatrix_006008e0)[i] = ((uint*)Mem.Arena(0x005e9b00))[i];
+        }
+
+        Mem.s_Unknown_006008d0 = *(int*)Mem.Entity(0x005fa520);
+        Mem.s_Unknown_006008d4 = *(int*)Mem.Entity(0x005fa524);
+        Mem.s_Unknown_006008d8 = *(int*)Mem.Entity(0x005fa528);
+
+        s_Unknown_005de15c = 0;
+        s_Unknown_005de154 = 0;
+        s_Unknown_005de158 = 0;
+
+        pose[0] = *(short*)Mem.Entity(0x005fa534);
+        pose[1] = *(short*)Mem.Entity(0x005fa536);
+        pose[2] = *(short*)Mem.Entity(0x005fa538);
+
+        Winsys3d.Ordinal_378(0xa0, 0x78);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x005185f0</c>..<c>0x00518e60</c> — <b>les panneaux des membres du groupe</b> :
+    /// pour chacun, la barre de vie et de magie, les pictogrammes d'etat, puis son modele.
+    /// </summary>
+    private static void DrawPartyPanels(uint* otBase, ref uint* cursor, int* unused, byte* mainMem)
+        => throw new NotImplementedException(
+            "FUN_00516fc0 : les panneaux de membre (0x005185f0..0x00518e60, ~200 l.) ne sont pas " +
+            "transcrits. Chaque membre y recoit sa barre de vie et de magie — un DrawIconGlyph par " +
+            "valeur, teinte par le rapport a son maximum —, les neuf pictogrammes d'etat de " +
+            "s_StatusBits_00564900, puis son modele par DrawAnimatedModel. Les trois dispositions " +
+            "en X sont relevees (s_PanelX_00564928/38/48/58) et choisies par s_SizeSetting_005de160. " +
+            "Appelees manquantes : FUN_0051be90 (74 l.), FUN_0051c250 (10 l.), FUN_00538bc0 (13 l.), " +
+            "FUN_005309b0 (147 l.) — toutes dans Blaze.c.");
+
+    /// <summary>
+    /// Ghidra: <c>0x00518e60</c>..<c>0x00519703</c> — <b>le balayage des cellules de decor</b>, le
+    /// gros du rendu du monde.
+    /// </summary>
+    private static void DrawWorldCells(uint* otBase, uint* otEntry, ref uint* cursor, byte* mainMem)
+        => throw new NotImplementedException(
+            "FUN_00516fc0 : le balayage des cellules (0x00518e60..0x00519703, ~200 l.) n'est pas " +
+            "transcrit. Il parcourt 7x7 cellules a partir du coin que le cap designe " +
+            "(DAT_00564548, releve), saute celles qu'une table de visibilite comprimee marque " +
+            "(PTR_DAT_005645d8, releve), et pour chaque occupant des deux grilles emet un modele, " +
+            "une particule ou un sprite selon ses bits d'etat. Suivent les trois listes de morceaux " +
+            "(FUN_0051fa40, FUN_00521000, FUN_00522140) et le ciel. Appelees manquantes : " +
+            "FUN_0051c420, FUN_0051e700 (423 l.), FUN_0051fa40 (441 l.), FUN_00521000 (365 l.), " +
+            "FUN_00522140 (315 l.) — toutes dans Blaze.c.");
+
+    /// <summary>Ghidra: FUN_0051f940 @ 0x0051f940 (18 l.) — le voile plein ecran.</summary>
+    private static uint* FillScreenQuad_0051F940(
+        uint* otEntry, uint* prim, uint colour, int x, int y, int width, int height)
+        => throw new NotImplementedException(
+            "FUN_0051f940 (0x0051f940) : non transcrite. 18 lignes dans Blaze.c — le quadrilatere " +
+            "plein ecran du fondu.");
+
+    /// <summary>Ghidra: FUN_0051be90 @ 0x0051be90 (74 l.) — le second chemin de pictogramme, celui
+    /// que <c>Engine/UiText.cs</c> cite comme distinct de son propre glyphe en ligne.</summary>
+    private static uint* DrawIconGlyph_0051BE90(
+        uint* otEntry, uint* prim, int* block, int value, int digits, int flags)
+        => throw new NotImplementedException(
+            $"FUN_0051be90 (0x0051be90), valeur {value} : non transcrite. 74 lignes dans Blaze.c.");
+
+    /// <summary>Ghidra: FUN_0051c420 @ 0x0051c420 (374 l.) — l'emission d'un modele de decor.</summary>
+    private static uint* DrawWorldModel_0051C420(
+        uint* otEntry, uint* prim, byte* model, int* placement, int flags)
+        => throw new NotImplementedException(
+            "FUN_0051c420 (0x0051c420) : non transcrite. 374 lignes dans Blaze.c — l'emission d'un " +
+            "modele de decor, appelee par la rose des vents et par le balayage des cellules.");
+
+    private static byte* s_SpriteAtlasStorage;
+
+    /// <summary>Ghidra: <c>AU_00564a05._51_4_</c>, le dword de <c>0x00564a56</c> — releve **nul**
+    /// dans le binaire. Il garde le glissement du panneau d'interface ; rien de transcrit ne
+    /// l'ecrit encore. TODO(REVERSE) : trouver son ecrivain.</summary>
+    private static int s_MenuSlideDone_00564a56;
+
+    private static byte* SpriteAtlas(int va)
+    {
+        if (s_SpriteAtlasStorage == null)
+        {
+            ReadOnlySpan<uint> relevé =
+            [
+                0x40400000, 0x02300100,   // 0x00566c18
+                0x28180000, 0x02300008,   // 0x00566c20
+                0x40803000, 0x02300000,   // 0x00566c28
+                0x08504800, 0x02300000,   // 0x00566c30
+                0x0a640880, 0x02300100,   // 0x00566c38
+                0x10181800, 0x01100302,   // 0x00564690
+                0x3030a830, 0x0e110001,   // 0x005646b8
+                0x0808f8a0, 0x0e110001,   // 0x005646c0
+                0x0f0f80c0, 0x0d110000,   // 0x00564788
+                0x0f0f80d0, 0x0d110000,   // 0x00564790
+                0x0808f800, 0x06110000,   // 0x005648b8
+            ];
+
+            s_SpriteAtlasStorage = (byte*)NativeMemory.AllocZeroed((nuint)relevé.Length, sizeof(uint));
+            for (int i = 0; i < relevé.Length; i++) ((uint*)s_SpriteAtlasStorage)[i] = relevé[i];
+        }
+
+        int slot = va switch
+        {
+            0x00566c18 => 0, 0x00566c20 => 1, 0x00566c28 => 2, 0x00566c30 => 3, 0x00566c38 => 4,
+            0x00564690 => 5, 0x005646b8 => 6, 0x005646c0 => 7,
+            0x00564788 => 8, 0x00564790 => 9, 0x005648b8 => 10,
+            _ => throw new NotImplementedException(
+                $"Descripteur d'atlas 0x{va:X8} non releve. Les onze connus sont dans " +
+                "DataSymbols.md ; en relever un nouveau avec " +
+                $"`OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x{va:x8} 8`."),
+        };
+
+        return s_SpriteAtlasStorage + slot * 8;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00564900</c> — les neuf bits d'etat que la barre des membres teste contre
+    /// <c>bloc + 0x140</c>, un pictogramme par bit. Releves dans le binaire ; la borne de la boucle
+    /// de l'original (<c>&lt; 0x564924</c>) confirme les neuf entrees.
+    /// </summary>
+    private static readonly uint[] s_StatusBits_00564900 =
+        [1, 2, 4, 8, 0x10, 0x20, 0x40, 0x100, 0x200];
+
+    /// <summary>Ghidra: les trois dispositions en X des panneaux de membre, choisies par
+    /// <c>DAT_005de160</c> — la position du menu dans son animation d'ouverture.</summary>
+    private static readonly int[] s_PanelX_00564928 = [0x32, -50, 0x172, 0x10e];
+    private static readonly int[] s_PanelX_00564938 = [0x5a, -20, 0x154, 0xe6];
+    private static readonly int[] s_PanelX_00564948 = [0xa0, 0xa0, 0xa0, 0xa0];
+    private static readonly int[] s_PanelX_00564958 = [0xb4, 0x8c, 0xb4, 0x8c];
 
     /// <summary>Ghidra: DAT_005de020 — le drapeau d'affichage de mise au point, bascule par une
     /// touche (Blaze.c 66241/66244, non transcrite). <b>Zero au chargement</b> : l'adresse tombe

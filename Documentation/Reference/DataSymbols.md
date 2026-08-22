@@ -1488,8 +1488,11 @@ comme moitié « attributs » du sprite. La disposition est déjà documentée s
 | `0x00564948` | `{0xa0, 0xa0, 0xa0, 0xa0}` | X uniforme |
 | `0x00564958` | `{0xb4, 0x8c, 0xb4, 0x8c}` | X alterné |
 
-Les trois dernières sont choisies par `DAT_005de160`, la position de l'écran de menu dans son
-animation d'ouverture : les panneaux se réarrangent pendant que le menu glisse.
+Les trois dernières sont choisies par `DAT_005de160` — que le dépôt porte déjà sous
+`s_SizeSetting_005de160`, le **réglage de taille de rendu** (11 = 640x480, 21 = 960x720, dérivation
+dans `Documentation/DLL/winsys3d.md`). Les panneaux se réarrangent donc selon la **résolution**, et
+non selon une animation de menu comme ce relevé l'avait d'abord supposé. Le nom existait dans le
+dépôt ; il suffisait de le chercher avant d'écrire une interprétation.
 
 ## 0x00563340 — le bloc de l'affichage de mise au point
 
