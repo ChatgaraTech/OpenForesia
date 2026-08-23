@@ -10304,3 +10304,67 @@ dialogue. Mais l'absence d'exception n'est pas une preuve de conformité : il n'
 d'image de référence du jeu original pour cet écran, et l'on ne sait donc pas si la conversation
 avance comme elle doit, ni si le cadrage est le bon. Capturer le legacy sur ce dialogue est le
 prochain contrôle utile, et il ne coûte que quelques minutes de jeu.
+
+---
+
+## 2026-08-23 (suite) — les réveils d'entité de type 1 et 2, et une signature de Ghidra à jeter
+
+`FUN_00405240` et `FUN_00405510` étaient les deux dernières cibles de `FUN_00404ef0`. Même forme que
+le type 0 déjà transcrit — armer l'état, puis cinq branches sur les trente bits bas de `+0x5c`, chacune
+relisant le mot parce que la précédente a pu le changer. Elles amènent avec elles deux pas
+d'animation qui n'étaient pas encore écrits : `FUN_004052f0` et `FUN_00405420`.
+
+### La signature que Ghidra donne pour `FUN_004052f0` est fausse
+
+Ghidra la déclare :
+
+```c
+uint __fastcall FUN_004052f0(undefined4 param_1, undefined4 param_2, int param_3,
+                             undefined2 param_4, short param_5, undefined2 param_6)
+```
+
+Six paramètres en `__fastcall`, alors que les **deux** sites d'appel en poussent quatre. Le
+désassemblage tranche sans ambiguïté :
+
+```
+00405561  push edx          ; rand % 10
+00405562  push 5
+00405564  push 3
+00405566  push esi          ; l'enregistrement
+00405567  call 004052F0h
+0040556c  add esp,10h       ; <- cdecl, quatre arguments
+```
+
+et le prologue de l'appelée lit l'enregistrement en `[esp+0x0c]` puis le premier numéro d'animation
+en `[esp+0x14]`, ce qui, compte tenu des trois `push` de registres, sont bien les arguments 1 et 2.
+Les `param_1` et `param_2` de Ghidra sont des **registres fantômes** ; ses `param_3` à `param_6` sont
+les quatre vrais arguments, dans l'ordre.
+
+C'est exactement la classe que `CLAUDE.md` signale comme « encore véritablement bloquée » — les
+fonctions dont Ghidra a raté les paramètres. Elle ne l'était pas ici, et la raison mérite d'être
+retenue : **quand les sites d'appel s'accordent sur un nombre d'arguments et que le `add esp,N` qui
+suit le confirme, la convention se lit en trois lignes de désassemblage.** Ce qui reste réellement
+bloquant, c'est le cas inverse — des sites d'appel discordants, ou une convention à registres qu'il
+faut reconstruire depuis le trafic. Le décalage systématique des `param_N` de Ghidra, lui, se corrige
+en comptant.
+
+### Ce que font les deux pas d'animation
+
+**`FUN_004052f0` parcourt une plage d'animations en marquant une pause sur chacune** : c'est
+l'inactivité d'un personnage non joueur. Il joue l'animation `first`, se fige quelques images sur sa
+dernière image, passe à la suivante, et recommence à `first` une fois `last` dépassée. Le champ
+`+0x9a`, qui n'apparaît nulle part ailleurs, est le **reste de pause**. La durée de pause est tirée
+au hasard **par l'appelant** (`CrtRand() % 10`), une fois par passage, si bien que deux entités de la
+même scène ne respirent pas en cadence.
+
+**`FUN_00405420` décompte au lieu d'avancer.** Le champ `+0x1a` part du nombre d'images de la
+séquence et descend, là où les trois autres pas d'animation du fichier le font monter — le champ ne
+désigne donc plus l'image courante mais ce qui reste à tenir. C'est la seule différence de fond entre
+les deux réveils : à l'état 3, le type 1 décompte, le type 2 avance normalement.
+
+### Ce que cela vérifie, et ce que cela ne vérifie pas
+
+Le jeu tourne, et le chemin de l'auberge ne lève plus rien. Mais **mon parcours scripté ne réveille
+pas d'entité de type 1 ou 2** : Vincent avait atteint `FUN_00405510` dans sa propre partie, plus loin
+que ce que le script rejoue. Les deux branches sont donc écrites et compilées, pas exercées. C'est sa
+prochaine session qui les mettra à l'épreuve.

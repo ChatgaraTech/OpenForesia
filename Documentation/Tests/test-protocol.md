@@ -655,6 +655,51 @@ hors du `try`/`catch` de l'initialiseur de module.
 **Conduite à tenir** : relancer une fois. Si l'échec se répète plusieurs fois d'affilée, alors
 seulement chercher ce qui a augmenté la pression sur la fenêtre basse.
 
+### Le même échec **pendant un chargement**, et pas au démarrage (observé le 2026-08-23)
+
+Signalé par Vincent : l'échec s'est produit **lors d'un chargement de l'auberge**, pas au lancement.
+Aléatoire, difficile à reproduire, une seule occurrence à ce jour.
+
+**Ce n'est pas le même cas que ci-dessus, et la conduite à tenir ne s'applique pas.** La récupération
+documentée — le jeu se relance en processus fils quand il perd la course — n'existe **qu'au
+démarrage** : `TryPrepareDisplayListArena` est appelée par l'initialiseur de module, et son
+`catch (InvalidOperationException)` est ce qui permet la relance. Une `AllocLowZeroed` qui échoue en
+cours de partie n'a rien pour la rattraper : elle traverse toute la pile et tue la session.
+
+**Le mécanisme, très probablement.** Il y a **neuf** sites d'allocation basse, et la liste
+pré-réclamée par `TryPrepareDisplayListArena` n'en couvre que **trois** :
+
+| pré-réclamé au démarrage | pris paresseusement, plus tard |
+|---|---|
+| `s_MenuContext_0056dd58` | `s_LoadScreenDescriptors_0056b558` (`GameMemory.cs`) — **l'écran de chargement** |
+| `s_UiDescriptors_00560ff0` | `s_WorldMapDescriptorStorage` (`WorldMap.cs:153`) |
+| `s_StatusDescriptor_00560728` | `s_WorldPanelsStorage` (`WorldMap.cs:364`) |
+| `s_SelectSlots_00573518` | `Destination.cs:61`, `ItemMenu.cs:84`, `Options.cs:2432`, `SaveSlots.cs:2046` |
+
+Les trois premiers de la colonne de droite sont pris **exactement pendant un chargement de zone**,
+c'est-à-dire au pire moment : le runtime .NET a eu plusieurs secondes pour grandir dans la même
+fenêtre de 16 Mo. C'est le raisonnement qui avait déjà fait pré-réclamer les trois de gauche
+(« taking the menu descriptor lazily at the first menu frame meant competing with a runtime that had
+had seconds to grow into the same window — measured, not hypothetical »), et il s'applique mot pour
+mot à ceux-ci.
+
+**Correction candidate, non appliquée** : ajouter les trois à la liste pré-réclamée de
+`TryPrepareDisplayListArena`. Cela ne supprimerait pas la contrainte — la fenêtre reste la fenêtre —
+mais déplacerait l'échec au démarrage, là où la relance en processus fils sait le rattraper. À ne
+faire qu'après avoir mesuré : pré-réclamer plus tôt augmente aussi la pression au moment le plus
+tendu, celui du chargement de `winsys3d.dll`.
+
+**Ce qu'il faut relever à la prochaine occurrence** — l'échantillon est de un, ce qui ne permet
+aucune conclusion :
+
+1. la taille demandée dans le message (`No free block of 0x…`), qui **désigne le site** :
+   `0x1000` = un descripteur seul, `0x2000` = deux, `0x4000` = l'écran de chargement ;
+2. la trace complète, qui donne le site exact ;
+3. ce qui était en cours — quelle zone, quel écran, à quelle image ;
+4. si la ligne `lost the race for low memory` figurait dans le journal du même lancement.
+
+Sans le 1 et le 2, une occurrence ne dit rien de plus que « c'est arrivé ».
+
 ## « relance détectée » : ce que cette ligne veut dire, et pourquoi il faut la lire (2026-08-19)
 
 `playtest.ps1` imprime `(relance detectee : fenetre portee par le PID N)` quand le processus qui

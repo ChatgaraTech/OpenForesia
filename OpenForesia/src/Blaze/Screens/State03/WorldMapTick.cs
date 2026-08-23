@@ -3322,21 +3322,198 @@ public static unsafe partial class Blaze
         return 1;
     }
 
-    /// <summary>Ghidra: FUN_00405240 @ 0x00405240 (31 l.) — le reveil d'une entite de scene de
-    /// type 1, cinq branches sur les 30 bits bas de <c>+0x5c</c>.</summary>
+    /// <summary>
+    /// Ghidra: FUN_00405240 @ 0x00405240 — <b>le reveil d'une entite de scene de type 1</b>. Meme
+    /// forme que <see cref="WakeSceneEntityKind0_00404F70"/> : on arme l'etat, puis on aiguille sur
+    /// les trente bits bas de <c>+0x5c</c>, cinq branches cette fois au lieu de trois, chacune
+    /// relisant le mot parce que la precedente a pu le changer.
+    /// </summary>
     private static void WakeSceneEntityKind1_00405240(int index)
-        => throw new NotImplementedException(
-            $"FUN_00405240 (0x00405240), entree {index} de la table 0x005ecaa0 : non transcrite. " +
-            "31 lignes dans Blaze.c, plus FUN_004051d0, FUN_00404fe0, FUN_004052f0 et " +
-            "FUN_00405420. Elle aiguille sur les 30 bits bas de +0x5c (valeurs 1 a 5).");
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
 
-    /// <summary>Ghidra: FUN_00405510 @ 0x00405510 (31 l.) — le reveil d'une entite de scene de
-    /// type 2, meme forme que sa voisine.</summary>
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2)
+            CycleSceneEntityAnimations_004052F0(record, 2, 3, (short)(CrtRand() % 10));
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) CountDownSceneEntityState_00405420(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 3);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405510 @ 0x00405510 — <b>le reveil d'une entite de scene de type 2</b>, la
+    /// jumelle de la precedente. Les cinq branches sont les memes a leurs arguments pres : l'etat 3
+    /// avance ici au lieu de decompter, et les numeros d'animation sont decales d'un cran.
+    /// </summary>
     private static void WakeSceneEntityKind2_00405510(int index)
-        => throw new NotImplementedException(
-            $"FUN_00405510 (0x00405510), entree {index} de la table 0x005ecaa0 : non transcrite. " +
-            "31 lignes dans Blaze.c. Meme forme que FUN_00405240 : un aiguillage sur les 30 bits " +
-            "bas de +0x5c.");
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2)
+            CycleSceneEntityAnimations_004052F0(record, 3, 5, (short)(CrtRand() % 10));
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) AdvanceSceneEntityState_00404FE0(record, 3);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 4);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 5);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004052f0 @ 0x004052f0 — <b>parcourt une plage d'animations en marquant une pause
+    /// sur chacune</b>. C'est l'inactivite d'un personnage non joueur : il joue l'animation
+    /// <paramref name="first"/>, se fige quelques images sur sa derniere image, passe a la suivante,
+    /// et recommence a <paramref name="first"/> une fois <paramref name="last"/> depassee.
+    ///
+    /// <para><b>La signature de Ghidra est fausse et il ne faut pas la suivre.</b> Il declare six
+    /// parametres en <c>__fastcall</c> alors que les deux sites d'appel en poussent quatre. Le
+    /// desassemblage tranche : <c>call</c> suivi de <c>add esp,0x10</c>, donc <b>cdecl a quatre
+    /// arguments</b>, et le prologue lit l'enregistrement en <c>[esp+0x0c]</c> puis le premier
+    /// numero en <c>[esp+0x14]</c>. Les <c>param_1</c> et <c>param_2</c> de Ghidra sont des
+    /// registres fantomes ; ses <c>param_3</c> a <c>param_6</c> sont les quatre vrais arguments,
+    /// dans l'ordre.</para>
+    ///
+    /// <para>Le champ <c>+0x9a</c>, propre a cette fonction, est le <b>reste de pause</b>. A zero on
+    /// avance d'une image ; arrive au bout de la sequence on y charge <paramref name="hold"/> et la
+    /// derniere image reste affichee tant qu'il decroit. Le tirage au hasard est fait par
+    /// l'appelant, une fois par passage, si bien que deux entites de la meme scene ne respirent pas
+    /// en cadence.</para>
+    ///
+    /// <para>Le champ <c>+0x4c</c> decide de la fin : a 1 la sequence <b>s'arrete</b> sur
+    /// <paramref name="last"/> au lieu de reboucler sur <paramref name="first"/>. Dans les deux cas
+    /// le bit <c>0x80000000</c> de <c>+0x5c</c> est pose et le script accroche en <c>+0x44</c>, s'il
+    /// y en a un, part une fois puis est efface.</para>
+    ///
+    /// <para>Comme ses voisines, la fonction rend une valeur dont Ghidra n'expose que du residu de
+    /// registre en moitie haute ; <b>aucun des deux appelants ne la lit</b>, et seule la moitie
+    /// basse a un sens : 1 si un script a demarre, 0 sinon.</para>
+    /// </summary>
+    private static uint CycleSceneEntityAnimations_004052F0(byte* record, short first, short last, short hold)
+    {
+        int counter = *(int*)(record + 0x48);
+        if (counter > 9)
+        {
+            counter--;
+            *(int*)(record + 0x48) = counter;
+            if (counter < 10) *(int*)(record + 0x48) = 0;
+        }
+
+        if (*(int*)(record + 0x48) == 0)
+        {
+            *(int*)(record + 0x48) = 1;
+            *(short*)(record + 0x18) = first;
+            *(short*)(record + 0x1a) = -1;
+            *(short*)(record + 0x9a) = 0;
+        }
+
+        if (*(int*)(record + 0x48) != 1) return 0;
+
+        byte* animation = ((byte**)*(byte***)(Mem.s_AnimationTable_005e9640 + record[4] * 4))
+                              [*(short*)(record + 0x18)];
+
+        if (*(short*)(record + 0x9a) == 0)
+        {
+            // Pas de pause en cours : on avance, et arrive a la derniere image on l'arme.
+            *(short*)(record + 0x1a) += 1;
+
+            if (*(ushort*)(animation + 0x16) - 1 <= *(short*)(record + 0x1a))
+            {
+                *(short*)(record + 0x9a) = hold;
+                *(short*)(record + 0x1a) = (short)(*(short*)(animation + 0x16) - 1);
+            }
+
+            return 0;
+        }
+
+        // Pause en cours : l'image reste la derniere de la sequence, et le reste decroit.
+        short remaining = (short)(*(short*)(record + 0x9a) - 1);
+        *(short*)(record + 0x9a) = remaining;
+        *(short*)(record + 0x1a) = (short)(*(short*)(animation + 0x16) - 1);
+
+        if (remaining >= 1) return 0;
+
+        short next = (short)(*(short*)(record + 0x18) + 1);
+        *(short*)(record + 0x9a) = 0;
+        *(short*)(record + 0x1a) = 0;
+        *(short*)(record + 0x18) = next;
+
+        if (last >= next) return 0;
+
+        *(short*)(record + 0x18) = first;
+        *(uint*)(record + 0x5c) |= 0x80000000;
+
+        if (*(int*)(record + 0x4c) == 1) *(short*)(record + 0x18) = last;
+
+        if (*(int*)(record + 0x44) == 0) return 0;
+
+        RunEntityScript(s_Unknown_005e97cc, *(byte**)(record + 0x6c), (uint)*(int*)(record + 0x44));
+        *(int*)(record + 0x44) = 0;
+        *(uint*)(record + 0x5c) |= 0x80000000;
+        return 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405420 @ 0x00405420 — <b>la variante qui decompte au lieu d'avancer</b>. Le
+    /// champ <c>+0x1a</c> part du nombre d'images de la sequence et descend ; les trois autres pas
+    /// d'animation de ce fichier le font monter. Le resultat visible est le meme, mais le champ ne
+    /// designe plus l'image courante — c'est ce qui reste a tenir.
+    ///
+    /// <para>Elle ne sert qu'a l'etat 3 de <see cref="WakeSceneEntityKind1_00405240"/>. Sa jumelle
+    /// de type 2 y met un <see cref="AdvanceSceneEntityState_00404FE0"/> ordinaire : c'est la seule
+    /// difference de fond entre les deux reveils.</para>
+    ///
+    /// <para>Comme <see cref="AdvanceSceneEntityState_00404FE0"/>, elle amorce <c>+0x1a</c> avec le
+    /// nombre d'images <b>entier</b> (et non diminue de un) puis le decremente aussitot : la
+    /// premiere image affichee est donc bien la derniere de la sequence.</para>
+    /// </summary>
+    private static uint CountDownSceneEntityState_00405420(byte* record, short kind)
+    {
+        int counter = *(int*)(record + 0x48);
+        if (counter > 9)
+        {
+            counter--;
+            *(int*)(record + 0x48) = counter;
+            if (counter < 10) *(int*)(record + 0x48) = 0;
+        }
+
+        if (*(int*)(record + 0x48) == 0)
+        {
+            *(short*)(record + 0x18) = kind;
+            *(short*)(record + 0x1a) =
+                *(short*)(((byte**)*(byte***)(Mem.s_AnimationTable_005e9640 + record[4] * 4))[kind] + 0x16);
+            *(int*)(record + 0x48) = 1;
+        }
+
+        if (*(int*)(record + 0x48) != 1) return 0;
+
+        byte* animation = ((byte**)*(byte***)(Mem.s_AnimationTable_005e9640 + record[4] * 4))
+                              [*(short*)(record + 0x18)];
+
+        *(short*)(record + 0x1a) -= 1;
+        if (*(short*)(record + 0x1a) >= 1) return 0;
+
+        int script = *(int*)(record + 0x44);
+
+        if (*(int*)(record + 0x4c) == 0)
+        {
+            *(short*)(record + 0x1a) = (short)(*(short*)(animation + 0x16) - 1);
+        }
+        else
+        {
+            *(short*)(record + 0x1a) = 0;
+        }
+
+        *(uint*)(record + 0x5c) |= 0x80000000;
+
+        if (script == 0) return 0;
+
+        RunEntityScript(s_Unknown_005e97cc, *(byte**)(record + 0x6c), (uint)script);
+        *(int*)(record + 0x44) = 0;
+        *(uint*)(record + 0x5c) |= 0x80000000;
+        return 1;
+    }
 
     /// <summary>
     /// Ghidra: FUN_004db5a0 @ 0x004db5a0 — <b>absente de <c>Blaze.c</c></b>, transcrite depuis le

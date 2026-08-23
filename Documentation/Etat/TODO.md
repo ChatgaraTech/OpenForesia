@@ -59,7 +59,6 @@ l'arène avaient déjà été corrigés.
 
 Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
 
-* `FUN_00405240` et `FUN_00405510` — les deux cibles restantes de `FUN_00404ef0` (le type 0,`FUN_00404f70`, est fait). Elles ont la même forme : un aiguillage sur `+0x5c` vers`FUN_004051d0` / `FUN_00404fe0` / `FUN_004050d0`, toutes trois déjà transcrites.
 * **capturer le legacy sur le dialogue de l'herboriste.** C'est devenu le contrôle le plus rentable :
   le dialogue s'affiche chez nous, la scène se peuple, plus aucune exception ne se lève sur ce
   chemin — et pourtant rien n'est *vérifié*. Aucune image de référence n'existe pour cet écran, donc
@@ -82,8 +81,16 @@ Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
 ## Une fragilité à surveiller
 
 Une exécution sur cinq a échoué dans `AllocLowZeroed` (« aucun bloc libre de 0x1000 octets sous
-0x01000000 »). La fenêtre basse fait 16 Mo et chaque bloc y dépense un granule de 64 Ko. Ce n'est pas
-une régression, mais la marge est plus mince qu'il n'y paraît.
+0x01000000 ») **au démarrage**. La fenêtre basse fait 16 Mo et chaque bloc y dépense un granule de
+64 Ko. Ce n'est pas une régression, mais la marge est plus mince qu'il n'y paraît.
+
+**Nouveau le 2026-08-23, et plus gênant** : Vincent a vu le même échec **pendant un chargement de
+l'auberge**, pas au lancement. Aléatoire, une seule occurrence. Or la relance en processus fils qui
+rattrape le cas du démarrage n'existe **que** là : une allocation basse qui échoue en cours de partie
+tue la session. Six des neuf sites d'allocation basse ne sont pas pré-réclamés, dont trois qui
+tombent exactement pendant un chargement de zone. Le détail, la correction candidate et surtout **ce
+qu'il faut relever à la prochaine occurrence** sont dans `Documentation/Tests/test-protocol.md`,
+§ « Le même échec pendant un chargement ». L'échantillon est de un : relever avant de corriger.
 
 ---
 
