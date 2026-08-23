@@ -639,6 +639,52 @@ internal sealed unsafe class UiText
     }
 
     /// <summary>
+    /// Handler for control code <c>0x02</c> — <c>0x00544970</c>, décodé à la main le 2026-08-23.
+    /// Il pose d'un seul mot le <b>compteur de glyphes</b> de <c>+0x10</c> et l'<b>index de ligne</b>
+    /// de <c>+0x11</c> : <c>texte[0]</c> dans l'octet bas, <c>texte[1]</c> dans le haut.
+    ///
+    /// <para>C'est bien une écriture de deux octets (<c>mov [edx+10h],cx</c>), pas une de un : les
+    /// deux champs se posent ensemble et il n'y a pas moyen d'écrire l'un sans l'autre.</para>
+    /// </summary>
+    private byte* Handler_00544970(byte* text, byte* descriptor)
+    {
+        *(ushort*)(descriptor + 0x10) = (ushort)(text[0] | (text[1] << 8));
+        return text + 2;
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x03</c> — <c>0x00544990</c>, décodé à la main le 2026-08-23.
+    /// Le jumeau exact du précédent, un champ plus loin : il écrit le mot de <c>+0x12</c>, dont
+    /// l'octet bas est la <b>largeur de ligne</b> en unités de huit pixels.
+    /// </summary>
+    private byte* Handler_00544990(byte* text, byte* descriptor)
+    {
+        *(ushort*)(descriptor + 0x12) = (ushort)(text[0] | (text[1] << 8));
+        return text + 2;
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x05</c> — <c>0x005449d0</c>, décodé à la main le 2026-08-23.
+    /// Il choisit la <b>banque de composition</b> des glyphes (<c>+0x14</c>) — et, ce faisant,
+    /// <b>remet la profondeur de pile de sous-chaînes à zéro</b>.
+    ///
+    /// <para>Ce second effet n'est pas une déduction : l'original fait <c>movzx cx, byte [eax]</c>
+    /// puis <c>mov [edx+14h],cx</c>, donc il écrit <b>deux</b> octets là où l'opérande n'en fournit
+    /// qu'un, et le second — <c>+0x15</c>, la profondeur que les codes <c>0x0b</c> et <c>0x1c</c>
+    /// empilent — reçoit le zéro de l'extension. Transcrire <c>descripteur[0x14] = texte[0]</c>
+    /// aurait laissé la pile de retour à sa profondeur courante, et une sous-chaîne ouverte plus
+    /// tôt serait revenue là où il ne fallait pas.</para>
+    ///
+    /// <para>Un seul octet d'opérande — la table de balayage le confirme, qui porte le talon
+    /// <see cref="Advance1"/> à cet indice.</para>
+    /// </summary>
+    private byte* Handler_005449d0(byte* text, byte* descriptor)
+    {
+        *(ushort*)(descriptor + 0x14) = text[0];
+        return text + 1;
+    }
+
+    /// <summary>
     /// Handler for control code <c>0x08</c> — <c>0x00544ab0</c>, decoded by hand from the binary on
     /// 2026-08-23. **C'est le code qui immobilise le joueur pendant un dialogue.** Il lit un
     /// sous-code d'un octet et l'aiguille sur une table de sauts de quatre entrées, relevée en
@@ -706,6 +752,190 @@ internal sealed unsafe class UiText
 
         byte* after = *(byte**)(descriptor + 0x8ac);
         return before == after ? text + 2 : after;
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x0b</c> — <c>0x00544c10</c>, décodé à la main le 2026-08-23.
+    /// C'est le <b>saut de sous-chaîne</b> sans substitution : le jumeau dépouillé de
+    /// <see cref="Handler_00544e80"/>, qui fait la même chose mais en décalant l'index d'une valeur
+    /// prise dans le bloc du joueur.
+    ///
+    /// <para>Il empile <c>texte + 3</c> sur la pile de retour du descripteur (<c>+0x8b4</c>,
+    /// profondeur en <c>+0x15</c>), puis rend la chaîne désignée par ses trois octets d'opérande :
+    /// <c>texte[0]</c> choisit la racine de ressources, <c>texte[1..2]</c> l'index dans sa table de
+    /// libellés de <c>+0x70</c>. La dépile est déjà reconstruite dans <see cref="RunTextEngine"/>,
+    /// qui reprend à <c>+0x8b4 + profondeur * 4</c> en rencontrant un NUL.</para>
+    ///
+    /// <para>Il est inscrit dans les <b>deux</b> tables, comme les codes <c>0x0f</c>, <c>0x1c</c> et
+    /// <c>0x1f</c> : la passe de balayage doit suivre le même saut que la passe de rendu, sans quoi
+    /// elle mesurerait la mauvaise chaîne.</para>
+    ///
+    /// <para>Premier lecteur atteint : la boîte « untel obtient tel objet » d'un coffre, dont
+    /// <see cref="Blaze.GrantChestContents_00530F20"/> compose la phrase à partir de libellés qui
+    /// s'appellent entre eux.</para>
+    /// </summary>
+    private byte* Handler_00544c10(byte* text, byte* descriptor)
+    {
+        byte depth = descriptor[0x15];
+        *(byte**)(descriptor + 0x8b4 + depth * 4) = text + 3;
+        descriptor[0x15] = (byte)(depth + 1);
+
+        uint index = (uint)(text[1] | (text[2] << 8));
+
+        // Ghidra: *(int *)(&DAT_005e97c0 + text[0] * 4), comme Handler_00544e80.
+        byte* root = text[0] switch
+        {
+            0 => mem.s_MainResourceBuffer_005e97c0,
+            1 => mem.s_MainResourceDirectory_005e97c4,
+            _ => throw new NotImplementedException(
+                     $"FUN_00544c10 : racine de ressources {text[0]} — l'original indexe " +
+                     "&DAT_005e97c0 de quatre en quatre, et seuls les emplacements 0 et 1 sont " +
+                     "modelises."),
+        };
+
+        return *(byte**)(*(byte**)(root + 0x70) + index * 4);
+    }
+
+    // =====================================================================================
+    // Les quinze setters de champ du descripteur (codes 0x10..0x13, 0x15..0x1b, 0x1e)
+    //
+    // Le binaire en fait quinze fonctions distinctes de seize a trente octets, qui ne different
+    // que par le champ vise et la largeur ecrite. Elles sont repliees ici en trois corps
+    // parametres, comme `ScriptOpAluArena` l'est pour les opcodes 4 a 7 de l'interpreteur : la
+    // regularite est reelle et verifiee instruction par instruction, pas supposee.
+    //
+    // Les quinze figurent a l'identique dans les DEUX tables, donc la passe de balayage consomme
+    // exactement les memes octets que la passe de rendu — ce qui donne au passage la longueur de
+    // chaque operande sans avoir a la deduire.
+    // =====================================================================================
+
+    /// <summary>Un octet d'operande vers un octet du descripteur. Codes 0x10 a 0x13 et 0x15 a 0x17.</summary>
+    private byte* SetDescriptorByte(byte* text, byte* descriptor, int field)
+    {
+        descriptor[field] = text[0];
+        return text + 1;
+    }
+
+    /// <summary>Quatre octets d'operande, petit-boutiste, vers un dword du descripteur.
+    /// Codes 0x18 a 0x1b.</summary>
+    private byte* SetDescriptorDword(byte* text, byte* descriptor, int field)
+    {
+        *(uint*)(descriptor + field) = (uint)(text[0] | (text[1] << 8) | (text[2] << 16) | (text[3] << 24));
+        return text + 4;
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x1e</c> — <c>0x00545100</c>, décodé à la main le 2026-08-23.
+    /// Le jumeau exact de <see cref="Handler_00545120"/> un champ plus bas : deux octets d'opérande
+    /// dont le second part dans la <b>moitié haute</b> du dword de <c>+0x04</c>, pas dans l'octet
+    /// suivant. Deux <c>short</c>, donc, et non un mot de seize bits.
+    /// </summary>
+    private byte* Handler_00545100(byte* text, byte* descriptor)
+    {
+        *(uint*)(descriptor + 4) = (uint)(text[0] | (text[1] << 0x10));
+        return text + 2;
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x07</c> — <c>0x00544a80</c>, décodé à la main le 2026-08-23.
+    /// C'est un <b>saut de chaîne sans retour</b> : contrairement aux codes <c>0x0b</c> et
+    /// <c>0x1c</c>, il n'empile rien sur <c>+0x8b4</c>. Le flux de texte part et ne revient pas.
+    ///
+    /// <para>L'index est <b>calculé</b> : <c>texte[1]</c> désigne une variable de la banque
+    /// <c>DAT_005e9060</c>, dont la valeur est ajoutée à <c>texte[2]</c>. Une seule chaîne de script
+    /// choisit donc parmi une suite de libellés consécutifs selon l'état du jeu — c'est le
+    /// « selon que… » du scénariste. <c>texte[0]</c> choisit la racine de ressources comme
+    /// ailleurs.</para>
+    /// </summary>
+    private byte* Handler_00544a80(byte* text, byte* descriptor)
+    {
+        _ = descriptor;                                     // le corps ne touche pas au descripteur
+
+        uint index = (uint)(mem.s_PanelSelection_005e9060[text[1]] + text[2]);
+
+        byte* root = text[0] switch
+        {
+            0 => mem.s_MainResourceBuffer_005e97c0,
+            1 => mem.s_MainResourceDirectory_005e97c4,
+            _ => throw new NotImplementedException(
+                     $"FUN_00544a80 : racine de ressources {text[0]} — l'original indexe " +
+                     "&DAT_005e97c0 de quatre en quatre, et seuls les emplacements 0 et 1 sont " +
+                     "modelises."),
+        };
+
+        return *(byte**)(*(byte**)(root + 0x70) + index * 4);
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x0e</c> — <c>0x00544b50</c>, décodé à la main le 2026-08-23.
+    /// C'est l'<b>attente de fin de page</b> : le code qui arrête le défilement du texte et rend la
+    /// main au joueur jusqu'à ce qu'il valide.
+    ///
+    /// <para>Il pose <c>+0x3b</c> à 1, le bit <c>4</c> des drapeaux de <c>+0x8c7</c>, et remet
+    /// <c>+0x8c4</c> à zéro. Le seul octet d'opérande se coupe en deux : le <b>quartet bas</b> va
+    /// dans <c>+0x8c5</c>, l'index de variable que <see cref="s_PanelSelection_005e9060"/> lira,
+    /// et le <b>quartet haut</b> choisit un bit de drapeau supplémentaire — 1 pose <c>0x40</c>,
+    /// 2 pose <c>0x80</c>, toute autre valeur n'en pose aucun.</para>
+    ///
+    /// <para>Il écrit lui-même le curseur dans <c>+0x8ac</c> <b>en plus</b> de le rendre. Les deux
+    /// valeurs sont identiques ; l'écriture est conservée parce que rien ne dit que l'appelant est
+    /// le seul lecteur de ce champ.</para>
+    /// </summary>
+    private byte* Handler_00544b50(byte* text, byte* descriptor)
+    {
+        byte flags = (byte)(descriptor[0x8c7] | 4);
+
+        descriptor[0x3b] = 1;
+        descriptor[0x8c4] = 0;
+        descriptor[0x8c7] = flags;
+
+        byte operand = text[0];
+        descriptor[0x8c5] = (byte)(operand & 0xf);
+
+        switch (operand >> 4)
+        {
+            case 1: flags |= 0x40; descriptor[0x8c7] = flags; break;
+            case 2: flags |= 0x80; descriptor[0x8c7] = flags; break;
+        }
+
+        *(byte**)(descriptor + 0x8ac) = text + 1;
+        return text + 1;
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x1d</c> — <c>0x00544f10</c>, décodé à la main le 2026-08-23.
+    /// Il <b>insère le nom du personnage qui parle</b> : le flux de texte saute dans le bloc de
+    /// 0x2000 octets du membre du groupe désigné par <c>+0x8b0</c>, à <c>MainMem + 0xf0100 +
+    /// indice * 0x2000</c> — la même adresse que <see cref="Blaze.GetEntityStatBlock"/> rend pour
+    /// un membre du groupe.
+    ///
+    /// <para><b>Sans opérande.</b> L'adresse empilée sur la pile de retour est <c>texte</c> tel
+    /// quel, et non <c>texte + n</c> comme aux codes <c>0x0b</c> et <c>0x1c</c> : c'est ce qui
+    /// prouve que ce code n'en a pas, et la table de balayage le confirme en partageant le même
+    /// corps.</para>
+    ///
+    /// <para>Si <c>+0x8b0</c> est nul, ou si l'entité n'est pas un membre du groupe
+    /// (<c>0xfc0000</c> ne valant pas <c>0x800000</c>), <b>rien n'est inséré</b> : le curseur est
+    /// rendu inchangé et le nom manque simplement de la phrase.</para>
+    /// </summary>
+    private byte* Handler_00544f10(byte* text, byte* descriptor)
+    {
+        uint* owner = *(uint**)(descriptor + 0x8b0);
+        if (owner == null || (*owner & 0xfc0000) != 0x800000) return text;
+
+        byte depth = descriptor[0x15];
+        *(byte**)(descriptor + 0x8b4 + depth * 4) = text;
+        descriptor[0x15] = (byte)(depth + 1);
+
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null)
+        {
+            throw new NotImplementedException(
+                "FUN_00544f10 : MainMem de winsys3d vaut null, donc le bloc du personnage dont ce " +
+                "code insere le nom est introuvable.");
+        }
+
+        return mainMem + *((byte*)owner + 8) * 0x2000 + 0xf0100;
     }
 
     /// <summary>
@@ -836,21 +1066,42 @@ internal sealed unsafe class UiText
         else
         {
             t[0x01] = Handler_00544810;   // 0x00544810, decompiled
+            t[0x02] = Handler_00544970;   // 0x00544970, décodé ici — compteur de glyphes + index de ligne
+            t[0x03] = Handler_00544990;   // 0x00544990, décodé ici — largeur de ligne
             t[0x04] = Handler_005449b0;   // 0x005449b0, decoded here
+            t[0x05] = Handler_005449d0;   // 0x005449d0, décodé ici — banque de composition, remet la profondeur a zero
             t[0x08] = Handler_00544ab0;   // 0x00544ab0, decoded here — gel/dégel
             t[0x06] = Handler_005449f0;   // 0x005449f0, decoded here — nombre en décimal
             t[0x09] = Handler_00544b10;   // 0x00544b10, decoded here
             t[0x0a] = Handler_00544bc0;   // 0x00544bc0, decoded here — lance un script d'entité
             t[0x0c] = Handler_00544c50;   // 0x00544c50, decompiled
             t[0x0d] = Handler_00544d90;   // 0x00544d90, decompiled
+            t[0x0e] = Handler_00544b50;   // 0x00544b50, décodé ici — attente de fin de page
             t[0x14] = Handler_00544fb0;   // 0x00544fb0, decompiled
         }
 
-        // Les deux tables portent le même corps à ces trois emplacements : il sert aux deux passes,
+        // Les deux tables portent le même corps à ces emplacements : ils servent aux deux passes,
         // contrairement aux codes dont la passe 1 substitue un talon d'avance.
+        t[0x07] = Handler_00544a80;   // 0x00544a80, décodé ici — saut de chaîne, index calculé
+        t[0x0b] = Handler_00544c10;   // 0x00544c10, décodé ici — saut de sous-chaîne
         t[0x0f] = Handler_00544e50;   // 0x00544e50
         t[0x1c] = Handler_00544e80;   // 0x00544e80
+        t[0x1d] = Handler_00544f10;   // 0x00544f10, décodé ici — insère le nom du locuteur
+        t[0x1e] = Handler_00545100;   // 0x00545100, décodé ici
         t[0x1f] = Handler_00545120;   // 0x00545120, décodé ici
+
+        // Les quinze setters de champ, repliés en trois corps paramétrés — voir leur bandeau.
+        t[0x10] = (x, d) => SetDescriptorByte(x, d, 0x23);
+        t[0x11] = (x, d) => SetDescriptorByte(x, d, 0x2b);
+        t[0x12] = (x, d) => SetDescriptorByte(x, d, 0x43);
+        t[0x13] = (x, d) => SetDescriptorByte(x, d, 0x1b);
+        t[0x15] = (x, d) => SetDescriptorByte(x, d, 0x2a);
+        t[0x16] = (x, d) => SetDescriptorByte(x, d, 0x42);
+        t[0x17] = (x, d) => SetDescriptorByte(x, d, 0x1a);
+        t[0x18] = (x, d) => SetDescriptorDword(x, d, 0x24);
+        t[0x19] = (x, d) => SetDescriptorDword(x, d, 0x2c);
+        t[0x1a] = (x, d) => SetDescriptorDword(x, d, 0x44);
+        t[0x1b] = (x, d) => SetDescriptorDword(x, d, 0x1c);
 
         return t;
     }
@@ -1434,12 +1685,31 @@ internal sealed unsafe class UiText
                 uint completion = *(uint*)(descriptor + 0x8a8);
                 if (completion != 0)
                 {
-                    // TODO(REVERSE): the original calls this through the pointer at +0x8a8 with
-                    // the user data at +0x8b0. No call site assigns it yet, so reaching it means a
-                    // caller now does and the signature has to be established.
-                    throw new NotImplementedException(
-                        $"FUN_005443a0: text completion callback at 0x{completion:X8} â€” no " +
-                        "assignment site is reconstructed yet, so its signature is unknown");
+                    // Ghidra: (*(code *)puVar11[0x22a])(puVar11[0x22c]) — le rappel recoit la
+                    // donnee d'utilisateur de +0x8b0, et rien d'autre. La signature etait inconnue
+                    // tant qu'aucun site d'affectation n'etait reconstruit ; GrantChestContents_00530F20
+                    // en est un, et le desassemblage du site d'appel donne l'arite : un argument.
+                    uint subject = *(uint*)(descriptor + 0x8b0);
+
+                    switch (completion)
+                    {
+                        case 0x00450700:
+                            Blaze.ChestPickupDone_00450700((uint*)subject);
+                            break;
+
+                        case 0x00530ed0:
+                            // Le corps ne lit pas son argument.
+                            Blaze.RestorePartyReactions_00530ED0();
+                            break;
+
+                        default:
+                            throw new NotImplementedException(
+                                $"Rappel de fin de texte 0x{completion:X8}, appele avec " +
+                                $"0x{subject:X8} : pas encore reconstruit. Son corps se releve au " +
+                                $"desassembleur (`OpenForesia.Tools -- disasm " +
+                                $"Legacy/Binaries/Blaze.exe 0x{completion:x8} <n>`) ; il prend un " +
+                                "seul argument, la donnee d'utilisateur de +0x8b0, et ne rend rien.");
+                    }
                 }
             }
 

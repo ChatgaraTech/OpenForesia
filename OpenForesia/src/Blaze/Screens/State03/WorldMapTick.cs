@@ -4232,7 +4232,7 @@ public static unsafe partial class Blaze
             if (already == 0)
             {
                 int amount = PickWeightedTableEntry(*(short*)(e + 0x16), 0x64);
-                ushort granted = GrantChestContents_00530F20(*(uint**)(e + 0x6c), amount, 0x00450700);
+                ushort granted = (ushort)GrantChestContents_00530F20(*(uint**)(e + 0x6c), amount, 0x00450700);
 
                 if (granted == 0)
                 {
@@ -4245,7 +4245,7 @@ public static unsafe partial class Blaze
                 return;
             }
 
-            ushort again = GrantChestContents_00530F20(*(uint**)(e + 0x6c), already - 1, 0x00450700);
+            ushort again = (ushort)GrantChestContents_00530F20(*(uint**)(e + 0x6c), already - 1, 0x00450700);
 
             // Ghidra: `neg ax ; sbb eax,eax ; and eax,0FFFFFCE1h ; add eax,3E7h` — la forme sans
             // branchement de « non nul ? 0xC8 : 0x3E7 ».
@@ -4332,20 +4332,437 @@ public static unsafe partial class Blaze
         return *(sbyte*)(table + column + row * 8);
     }
 
+    /// <summary>Ghidra: &amp;DAT_0056aaa0 — <b>la reaction de chaque classe a un objet qu'elle peut
+    /// utiliser</b> : seize dwords relevés dans <c>.data</c>, lus par l'indice de classe de
+    /// l'octet <c>MainMem + 0xf0150</c>. Chaque dword est ecrit d'un bloc sur <c>+0x18</c> de
+    /// l'emplacement, donc c'est une paire (numero d'animation, image de depart).
+    ///
+    /// <para>L'etendue est <b>relevee, pas supposee</b> : a <c>0x0056aae0</c> le contenu change de
+    /// nature (des enregistrements de 8 octets a motif <c>x0 80 10 10 00 00 11 xx</c>), et
+    /// <c>0x0056aae0</c> est deja connu comme un autre symbole. Seize entrees, soit les classes
+    /// 0 a 15.</para></summary>
+    private static readonly byte* s_ReactionAnimations_0056aaa0 = AllocBytes([
+        0x08, 0x00, 0x00, 0x00,  0x06, 0x00, 0x12, 0x00,  0x04, 0x00, 0x05, 0x00,  0x03, 0x00, 0x03, 0x00,
+        0x05, 0x00, 0x08, 0x00,  0x06, 0x00, 0x09, 0x00,  0x06, 0x00, 0x0b, 0x00,  0x06, 0x00, 0x12, 0x00,
+        0x06, 0x00, 0x04, 0x00,  0x06, 0x00, 0x09, 0x00,  0x03, 0x00, 0x00, 0x00,  0x06, 0x00, 0x12, 0x00,
+        0x05, 0x00, 0x08, 0x00,  0x07, 0x00, 0x05, 0x00,  0x06, 0x00, 0x04, 0x00,  0x06, 0x00, 0x09, 0x00,
+    ]);
+
+    /// <summary>Ghidra: &amp;DAT_005de620 — le tampon ou <see cref="GrantChestContents_00530F20"/>
+    /// compose la phrase « untel obtient tel objet ». Alloue a <c>0x80</c> octets : le symbole
+    /// suivant dans <c>Blaze.c</c> est <c>DAT_005de6a0</c>, et la phrase la plus longue possible
+    /// (prefixe, nom d'objet de 0x42 au plus, suffixe de 8, NUL) y tient largement.
+    ///
+    /// <para>Hors de <c>ItemMenuArena</c>, qui s'arrete a <c>0x005de510</c> : allocation propre,
+    /// pas une vue d'arene.</para></summary>
+    private static readonly byte* s_ItemMessageScratch_005de620 = (byte*)NativeMemory.AllocZeroed(0x80);
+
     /// <summary>
-    /// Ghidra: FUN_00530f20 @ 0x00530f20 — la remise d'un objet au groupe, avec la boite de
-    /// dialogue qui l'annonce. Atteinte uniquement quand un coffre est reellement ouvert.
+    /// Ghidra: FUN_00530f20 @ 0x00530f20 — <b>la remise d'un objet au groupe</b>, avec la boite de
+    /// dialogue qui l'annonce. C'est ce qu'un coffre appelle quand on en prend le contenu.
+    ///
+    /// <para>Le deroule est en quatre temps. Le monde se fige ; chaque membre du groupe qui peut se
+    /// servir de l'objet prend une <b>animation de reaction</b> choisie par sa classe dans
+    /// <see cref="s_ReactionAnimations_0056aaa0"/>, apres que son etat d'animation courant a ete mis
+    /// de cote en <c>+0x40</c> et <c>+0x42</c> ; l'inventaire du porteur est parcouru ; et une
+    /// phrase est composee puis confiee au moteur de texte.</para>
+    ///
+    /// <para><b>La valeur de retour dit si l'objet est passe</b> : zero quand il est remis,
+    /// <c>quantite + 1</c> quand il ne l'est pas — inventaire plein, ou destinataire qui n'est pas
+    /// un membre du groupe. Les deux appelants ne lisent que <c>AX</c> (<c>neg ax</c>) ou
+    /// <c>AL</c>, d'ou les retrecissements explicites a leurs sites.</para>
+    ///
+    /// <para><b>L'objet n'est pas rangé ici.</b> La fonction ne fait que vider les deux mots
+    /// <c>+0x310</c> et <c>+0x312</c> de l'emplacement libre ; le rangement proprement dit est dans
+    /// le rappel de fin de boite, que l'appelant passe en troisieme argument. Ne pas s'attendre a
+    /// voir une copie de la fiche d'objet dans ce corps.</para>
+    ///
+    /// <para>L'inventaire du porteur fait dix emplacements de <c>0x280</c> octets a
+    /// <c>MainMem + 0xf0000 + indice * 0x2000 + 0x300</c>. Un emplacement dont les seize premiers
+    /// octets — le nom court — egalent ceux de l'objet est un <b>empilement</b> : si l'objet porte
+    /// un des bits <c>0x30</c> en <c>+0x13</c>, la remise se fait dans cet emplacement-la sans
+    /// chercher plus loin.</para>
+    ///
+    /// <para>Le champ <c>+0x86</c> de la fiche d'objet, entre <c>0x32c9</c> et <c>0x32cf</c>, decrit
+    /// une famille a part : elle passe outre l'inventaire des que les trois bits bas de
+    /// <c>+0x150</c> du bloc du porteur valent 4. TODO(REVERSE) : la nature de cette famille n'est
+    /// pas etablie.</para>
     /// </summary>
-    private static ushort GrantChestContents_00530F20(uint* recipient, int amount, uint callback)
-        => throw new NotImplementedException(
-            $"FUN_00530f20 (0x00530f20) n'est pas transcrite : la remise d'un objet au groupe, " +
-            $"appelee ici avec (entite, {amount}, 0x{callback:X6}). C'est la cascade d'affichage " +
-            "des nombres et messages que TODO.md a mise de cote sciemment a l'etape (2) de " +
-            "l'interpreteur de script (opcode 27) : elle tire FUN_005312d0 (109 l., criblee " +
-            "d'artefacts de pile), FUN_00544350, FUN_0051bcc0, FUN_00530ed0, FUN_0053db20 et " +
-            "FUN_00532710. Son corps est dans Blaze.c (156 l.), et son arite de TROIS est deja " +
-            "confirmee au desassembleur. Le troisieme argument est une adresse de code (0x00450700 " +
-            "depuis le coffre), donc vraisemblablement un rappel de fin.");
+    /// <param name="recipient">Ghidra <c>param_1</c> — l'entite a qui l'objet est remis. Sans le
+    /// bit <c>0x800000</c> (membre du groupe), la fonction refuse sans rien afficher.</param>
+    /// <param name="amount">Ghidra <c>param_2</c> — l'indice de la fiche d'objet, pas une
+    /// quantite : il indexe la table de <c>0x140</c> octets pointee par <c>DAT_00600824</c> et sert
+    /// aussi a placer l'icone dans sa planche (colonne = indice % 10, ligne = indice / 10 + 4, au
+    /// pas de 24 pixels).</param>
+    /// <param name="callback">Ghidra <c>param_3</c> — l'adresse du rappel de fin de boite, range
+    /// tel quel en <c>+0x8a8</c> du descripteur. Le coffre y passe <c>0x00450700</c>.</param>
+    private static int GrantChestContents_00530F20(uint* recipient, int amount, uint callback)
+    {
+        if ((*recipient & 0x800000) == 0) return amount + 1;
+
+        FreezeAllEntities();                                 // Ghidra: FUN_00535300(0)
+
+        *Mem.Entity(0x005f7b50) = (byte)amount;
+        Mem.s_PanelSelection_005e9060[0x3c] = 1;             // Ghidra: DAT_005e909c
+        Mem.s_PanelSelection_005e9060[0x3d] = 3;             // Ghidra: DAT_005e909d
+        Mem.s_PanelSelection_005e9060[0x3e] = 0;             // Ghidra: DAT_005e909e
+
+        byte* item = *(byte**)Mem.Entity(0x00600824) + amount * 0x140;
+
+        // Le sous-repertoire +0x94 porte le descripteur d'icone en +0xc et, en +0x28, le mot que
+        // les reactions du groupe recopient.
+        byte* iconDirectory = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
+        byte* icon = *(byte**)(iconDirectory + 0xc);
+        icon[7] = *Mem.Entity(0x005f7b50);
+        icon[0] = (byte)(amount % 10 * 0x18);
+        icon[1] = (byte)((amount / 10 + 4) * 0x18);
+
+        byte* mainMem = GetMainMemPtr();
+
+        // --- les reactions du groupe ---------------------------------------------------------
+        if (s_PartySize_005e9020 != 0)
+        {
+            byte* slot = Inp.s_SlotFlags_005e93c0;
+            byte* block = mainMem + 0xf0150;
+
+            for (int i = s_PartySize_005e9020; i != 0; i--, slot += 0x9c, block += 0x2000)
+            {
+                // L'etat d'animation courant est mis de cote ; FUN_00530ed0 le rendra.
+                slot[0x40] = slot[0x1a];
+                slot[0x42] = slot[0x18];
+
+                uint flags = *(uint*)slot;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                // +0xf0112 du bloc du personnage porte les classes qui savent se servir d'un objet,
+                // +0x12 de la fiche celles auxquelles il est destine.
+                if ((*(ushort*)(block - 0x3e) & *(ushort*)(item + 0x12)) == 0) continue;
+
+                *(uint*)(slot + 0x18) = ((uint*)s_ReactionAnimations_0056aaa0)[*block];
+                *(uint*)(slot + 0x3c) = *(uint*)(iconDirectory + 0x28);
+            }
+        }
+
+        // --- ou l'objet doit aller ------------------------------------------------------------
+        byte* holder = mainMem + 0xf0000 + (byte)recipient[2] * 0x2000;
+        byte* target = Mem.Entity(0x005eca90);
+
+        bool deliver = false;
+        ushort family = *(ushort*)(item + 0x86);
+
+        if (family >= 0x32c9 && family <= 0x32cf)
+        {
+            if ((holder[0x150] & 7) == 4)
+            {
+                *(ushort*)(item + 0x12) |= 0x8000;
+                deliver = true;                              // l'emplacement reste celui d'avant
+            }
+            else
+            {
+                *(ushort*)(item + 0x12) &= 0x3fff;
+            }
+        }
+        else if (recipient[0x1b] != 0)
+        {
+            *(ushort*)(item + 0x12) &= 0x3fff;
+        }
+
+        if (!deliver)
+        {
+            int occupied = 0;
+            byte* stored = holder + 0x300;
+            *target = 0;
+
+            for (int i = 0; i < 10; i++, stored += 0x280)
+            {
+                byte chosen = (byte)i;
+
+                if (*stored != 0)
+                {
+                    int k = 0;
+                    while (k < 0x10 && stored[k] == item[k]) k++;
+
+                    if (k == 0x10)
+                    {
+                        if ((*(ushort*)(stored + 0x12) & 0x8000) != 0)
+                        {
+                            *(ushort*)(item + 0x12) |= 0x8000;
+                        }
+
+                        // Empilable : on s'arrete sur cet emplacement-ci, dont l'indice reste dans
+                        // `chosen` — c'est ce que l'original garde en sautant a la remise.
+                        if ((item[0x13] & 0x30) != 0)
+                        {
+                            *target = chosen;
+                            deliver = true;
+                            break;
+                        }
+                    }
+
+                    occupied++;
+                    chosen = *target;                        // emplacement pris : on garde le dernier libre
+                }
+
+                *target = chosen;
+            }
+
+            if (!deliver)
+            {
+                if (occupied == 10)
+                {
+                    // Inventaire plein : la phrase d'echec, et l'objet reste ou il est.
+                    AnnounceItem(item, recipient, 0x2b4, 0x3fc, 0x00530ed0);
+                    return amount + 1;
+                }
+
+                *(ushort*)(holder + *target * 0x280 + 0x310) = 0;
+                *(ushort*)(holder + *target * 0x280 + 0x312) = 0;
+            }
+        }
+
+        AnnounceItem(item, recipient, 0x2ac, 0x26c, callback);
+        return 0;
+    }
+
+    /// <summary>
+    /// Les deux sorties de <see cref="GrantChestContents_00530F20"/> composent leur phrase de la
+    /// meme facon ; l'original ecrit le code deux fois, a trois constantes pres. Reunies ici parce
+    /// que c'est une unite qui se tient, pas pour eviter une repetition.
+    ///
+    /// <para>Quand l'objet porte le bit <c>0x8000</c>, la phrase est <b>construite</b> : un prefixe
+    /// pris dans la table de libelles du repertoire, le nom de l'objet mis en forme par
+    /// <see cref="BuildItemDisplayName"/>, puis un suffixe de huit octets et un NUL. Sinon elle est
+    /// simplement <b>choisie</b> : le premier des bits 8 a 13 de <c>+0x12</c> designe une entree
+    /// toute faite.</para>
+    ///
+    /// <para>La boucle de prefixe copie <b>au moins quatre octets</b> avant de s'arreter sur un
+    /// NUL — <c>*src != 0 || i &lt; 4</c> — donc elle recopie les NUL des libelles courts. Transcrit
+    /// tel quel : ces quatre octets sont vraisemblablement un en-tete de sequence du moteur de
+    /// texte.</para>
+    ///
+    /// <para>La recherche de bit s'arrete a 13 <b>par le test de fin de boucle</b>, pas par une
+    /// borne : si aucun bit n'est pose, l'indice sort a 14 et designe l'entree suivante de la
+    /// table. Conserve.</para>
+    /// </summary>
+    private static void AnnounceItem(byte* item, uint* recipient, int suffix, int fallback, uint callback)
+    {
+        byte* labels = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+
+        if ((*(ushort*)(item + 0x12) & 0x8000) != 0)
+        {
+            byte* dest = s_ItemMessageScratch_005de620;
+            byte* src = *(byte**)(labels + 0x2a8);
+
+            for (int i = 0; *src != 0 || i < 4; i++)
+            {
+                *dest++ = *src++;
+            }
+
+            dest = BuildItemDisplayName(dest, item);         // Ghidra: FUN_0051bcc0
+
+            byte* tail = *(byte**)(labels + suffix);
+            for (int i = 0; i < 8; i++)
+            {
+                *dest++ = *tail++;
+            }
+
+            *dest = 0;
+
+            BindMenuLabels(s_ItemMessageScratch_005de620, (uint)(nint)recipient,
+                           s_WorldMapDescriptor_005633b0, callback);
+            return;
+        }
+
+        int bit = 8;
+        while ((*(ushort*)(item + 0x12) & (1 << (bit & 0x1f))) == 0 && ++bit < 0xe) { }
+
+        BindMenuLabels(*(byte**)(labels + fallback + bit * 4), (uint)(nint)recipient,
+                       s_WorldMapDescriptor_005633b0, callback);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00530ed0 @ 0x00530ed0 — <b>le miroir exact</b> de la mise de cote faite en tete
+    /// de <see cref="GrantChestContents_00530F20"/> : chaque membre du groupe retrouve son animation
+    /// (<c>+0x18</c> et <c>+0x1a</c> repris de <c>+0x42</c> et <c>+0x40</c>) et ses deux mots
+    /// <c>+0x3c</c> / <c>+0x3e</c> sont remis a zero.
+    ///
+    /// <para>Il rearme en prime les quatre bits hauts de l'octet d'entree de chaque manette
+    /// (<c>DAT_00604a24 + slot * 4</c>), ce qui rend la main au joueur.</para>
+    ///
+    /// <para>C'est le rappel de fin de boite de la <b>sortie d'echec</b> : quand l'inventaire est
+    /// plein, la seule chose a faire en refermant le message est de defaire la mise en scene.</para>
+    /// </summary>
+    internal static void RestorePartyReactions_00530ED0()
+    {
+        if (s_PartySize_005e9020 == 0) return;
+
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        byte* pads = Inp.s_PlayerSlots_005e9188;
+
+        for (int i = s_PartySize_005e9020; i != 0; i--, slot += 0x9c, pads += 0x4c)
+        {
+            *(ushort*)(slot + 0x1a) = slot[0x40];
+            *(ushort*)(slot + 0x3c) = 0;
+            *(ushort*)(slot + 0x3e) = 0;
+            *(ushort*)(slot + 0x18) = slot[0x42];
+
+            Inp.s_InputStateBase_00604a20[*pads * 4 + 4] |= 0xf0;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005312d0 @ 0x005312d0 — <b>le rangement proprement dit</b> : la fiche d'objet est
+    /// recopiee dans l'emplacement d'inventaire, son icone est decoupee de la VRAM et posee a la
+    /// place qui revient au personnage, et le compteur d'exemplaires monte d'un.
+    ///
+    /// <para><b>Ne pas suivre <c>Blaze.c</c> sur cette fonction.</b> Ghidra y a perdu la convention
+    /// de <c>FUN_0053db20</c> et de <c>FUN_00532710</c>, qu'il declare sans parametre : leurs
+    /// arguments apparaissent comme des affectations a des locales (<c>puStack_20</c>,
+    /// <c>uStack_24</c>) et leurs adresses de retour comme des valeurs (<c>iStack_30 = 0x53134e</c>).
+    /// Les quatre appels d'ordinaux subissent le meme sort. Tout ce qui suit est transcrit depuis le
+    /// desassemblage, conserve dans <c>Legacy/Raw/Blaze/Chest/</c> ; <c>Blaze.c</c> n'a servi que
+    /// pour la charpente.</para>
+    ///
+    /// <para>Les deux sorties anticipees rendent <c>indice + 1</c>, la meme convention que
+    /// <see cref="GrantChestContents_00530F20"/> : <c>DAT_005e909f</c> leve (un menu occupe l'ecran)
+    /// ou destinataire qui n'est pas un membre du groupe.</para>
+    ///
+    /// <para><b>La famille <c>0x32c9..0x32cf</c> ne passe pas par l'inventaire</b> : quand les trois
+    /// bits bas de <c>+0x150</c> du bloc du porteur valent 4, l'objet incremente un simple compteur.
+    /// L'original ecrit <c>holder[famille - 0x3151]</c>, soit <c>holder[0x178 + (famille -
+    /// 0x32c9)]</c> : <b>sept compteurs contigus a <c>+0x178</c></b>. Ce sont exactement les sept
+    /// octets que le verbe de zone <c>0x00442F20</c> remonte a 5 quand ils sont en dessous — les
+    /// deux relevés se confirment l'un l'autre. La forme d'origine est conservee ici pour rester
+    /// comparable au desassemblage.</para>
+    ///
+    /// <para><b>La recopie ecrase le compteur, et l'original le sait</b> : les <c>0x50</c> dwords de
+    /// la fiche recouvrent <c>+0x310</c> et <c>+0x312</c> de l'emplacement, donc le compteur
+    /// d'exemplaires et le bit <c>0x8000</c> sont releves avant et remis apres. Le compteur plafonne
+    /// a 99.</para>
+    ///
+    /// <para>L'icone se fait en <b>deux passes identiques</b> : un rectangle de <c>0x10 x 1</c> pour
+    /// la palette, un de <c>6 x 0x18</c> pour l'image. Chacune est lue de la VRAM vers l'emplacement
+    /// (<c>+0x440</c> et <c>+0x460</c>) par l'ordinal 684, puis recopiee a sa place d'affichage par
+    /// l'ordinal 676. Les ordinaux 667 qui les encadrent sont des appels vides confirmes.</para>
+    /// </summary>
+    /// <returns>Zero si l'objet est range, <c>indice + 1</c> sinon.</returns>
+    private static int StoreItemInInventory_005312D0(uint* recipient)
+    {
+        RestorePartyReactions_00530ED0();                 // Ghidra: FUN_00530ed0()
+
+        byte index = *Mem.Entity(0x005f7b50);
+        if (Mem.s_Unknown_005e909f != 0) return index + 1;
+        if ((*recipient & 0x800000) == 0) return index + 1;
+
+        byte* item = *(byte**)Mem.Entity(0x00600824) + index * 0x140;
+        byte* holder = GetMainMemPtr() + 0xf0000 + (byte)recipient[2] * 0x2000;
+
+        Aud.PlayPositionalSound(0x29, 0x400, 0x1300, (int*)((byte*)recipient + 0x1c));
+
+        // Le coffre lui-meme : on le desarme et on rend son emplacement au pool.
+        uint* chest = *(uint**)((byte*)recipient + 0x6c);
+        if (chest != null)
+        {
+            *chest &= 0x7fffffff;
+            FreeEntitySlot(Mem.Entity(0x005f7b60), (byte)chest[2]);
+        }
+
+        if ((holder[0x150] & 7) == 4)
+        {
+            ushort family = *(ushort*)(item + 0x86);
+            if (family >= 0x32c9 && family <= 0x32cf)
+            {
+                holder[family - 0x3151]++;
+                return 0;
+            }
+        }
+
+        byte target = *Mem.Entity(0x005eca90);
+        byte* slot = holder + target * 0x280;
+
+        ushort keptFlags = *(ushort*)(slot + 0x312);
+        ushort keptCount = *(ushort*)(slot + 0x310);
+
+        uint* destination = (uint*)(slot + 0x300);
+        uint* source = (uint*)item;
+        for (int i = 0x50; i != 0; i--) *destination++ = *source++;
+
+        // --- l'icone, deux passes ---------------------------------------------------------------
+        byte* atlas = Mem.s_EntityDecodeTable_005e8f00;
+        short* rect = stackalloc short[4];
+
+        // Passe 1 : la palette. DAT_005e8fa6 place la planche dans la VRAM.
+        ushort clutOrigin = *(ushort*)(atlas + 0xa6);
+        rect[0] = (short)(((index & 0xf) + (clutOrigin & 0x3f)) * 0x10);
+        rect[1] = (short)((index >> 4) + (clutOrigin >> 6));
+        rect[2] = 0x10;
+        rect[3] = 1;
+
+        Winsys3d.Ordinal_667(0);
+        Winsys3d.Ordinal_684(rect, slot + 0x440);
+        Winsys3d.Ordinal_667(0);
+        Winsys3d.Ordinal_676((ushort*)rect, target * 0x10, (byte)recipient[2] + 0x1f1);
+
+        // Passe 2 : l'image. DAT_005e8fa4 place l'autre planche, et l'icone y occupe une case de
+        // 6 x 0x18 sur une grille de dix colonnes.
+        ushort iconOrigin = *(ushort*)(atlas + 0xa4);
+        rect[0] = (short)((iconOrigin & 0xf) * 0x40 + index % 10 * 6);
+        rect[1] = (short)((iconOrigin & 0x10) * 0x10 + (index / 10 + 4) * 0x18);
+        rect[2] = 6;
+        rect[3] = 0x18;
+
+        Winsys3d.Ordinal_667(0);
+        Winsys3d.Ordinal_684(rect, slot + 0x460);
+        Winsys3d.Ordinal_667(0);
+        Winsys3d.Ordinal_676((ushort*)rect, target * 6 + 0x180, (byte)recipient[2] * 0x18 + 0x100);
+
+        // --- le compteur, que la recopie vient d'ecraser ----------------------------------------
+        *(ushort*)(slot + 0x310) = keptCount;
+        *(ushort*)(slot + 0x312) |= (ushort)(keptFlags & 0x8000);
+
+        if (*(ushort*)(slot + 0x310) < 99)
+        {
+            *(ushort*)(slot + 0x310) += 1;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00450700 @ 0x00450700 — <b>le rappel de fin de boite du coffre</b> : ce que le
+    /// moteur de texte appelle quand le joueur referme « untel obtient tel objet ». Quatre-vingt-sept
+    /// octets, <b>absente de <c>Blaze.c</c></b> ; dump dans <c>Legacy/Raw/Blaze/Chest/</c>.
+    ///
+    /// <para>Elle range l'objet, puis <b>ecrit le verdict dans deux endroits</b> : l'etat du coffre
+    /// en <c>+0x10</c> — <c>0xC8</c> si l'objet est passe, <c>0x64</c> sinon, les deux valeurs que
+    /// <c>TickEntityTable</c> aiguille — et la table de butin <c>0x005e9860</c>, qui retient ce qui
+    /// reste a donner pour que le coffre puisse etre rouvert.</para>
+    ///
+    /// <para>Le coffre est retrouve par <c>entite[0x41]</c>, l'octet que le script y a range juste
+    /// avant d'appeler <see cref="GrantChestContents_00530F20"/>.</para>
+    /// </summary>
+    internal static void ChestPickupDone_00450700(uint* entity)
+    {
+        byte index = ((byte*)entity)[0x41];
+
+        *(uint*)((byte*)entity + 0x6c) = 0;
+        Mem.s_PanelSelection_005e9060[0] = 0;             // Ghidra: DAT_005e9060
+
+        byte* chest = Mem.Entity(0x005fa5e0) + index * 0x9c;
+        int remaining = StoreItemInInventory_005312D0(entity);
+        byte* drops = Mem.Arena(0x005e9860);
+
+        if (remaining != 0)
+        {
+            *(ushort*)(chest + 0x10) = 0xC8;
+            drops[*(int*)(chest + 0x44)] = (byte)remaining;
+            return;
+        }
+
+        *(ushort*)(chest + 0x10) = 0x64;
+        drops[*(int*)(chest + 0x44)] = 0;
+    }
+
 
     /// <summary>
     /// Ghidra: FUN_0047aa70 @ 0x0047aa70 — la passe sur la table <c>DAT_005ff400</c>, 0x20

@@ -10420,3 +10420,231 @@ désassemblage, une relecture du contexte et un playtest, et la fenêtre est dé
 Le chemin au repos ne régresse pas : 1921 images, aucune exception. **Le coffre lui-même n'est pas
 rejoué par le parcours scripté** — c'est la partie de Vincent qui le vérifiera, comme pour les
 réveils d'entité de type 1 et 2 écrits juste avant.
+
+---
+
+## 2026-08-23 (suite) — la remise d'un objet au groupe
+
+`FUN_00530f20`, 130 lignes dans `Blaze.c`, plus deux compagnons et une signature de rappel qui
+manquait depuis longtemps.
+
+### Ce que fait la fonction
+
+Quatre temps. Le monde se fige ; chaque membre du groupe capable de se servir de l'objet prend une
+**animation de réaction** choisie par sa classe, après que son état d'animation courant a été mis de
+côté en `+0x40` / `+0x42` ; l'inventaire du porteur — dix emplacements de `0x280` octets à
+`MainMem + 0xf0000 + indice * 0x2000 + 0x300` — est parcouru ; et une phrase est composée puis
+confiée au moteur de texte.
+
+Un emplacement dont les seize premiers octets (le nom court) égalent ceux de l'objet est un
+**empilement** : si l'objet porte l'un des bits `0x30` en `+0x13`, la remise se fait là sans chercher
+plus loin.
+
+**Le retour dit si l'objet est passé** : zéro s'il l'est, `quantité + 1` sinon — inventaire plein, ou
+destinataire qui n'est pas un membre du groupe. Les deux appelants ne lisent que `AX` (`neg ax`) ou
+`AL` ; la transcription rend un `int` et les sites rétrécissent explicitement, là où le processeur le
+fait.
+
+**L'objet n'est pas rangé par cette fonction.** Elle ne fait que vider les deux mots `+0x310` et
+`+0x312` de l'emplacement libre. Le rangement est dans le rappel de fin de boîte, passé en troisième
+argument — c'est une surprise pour qui lit le nom de la fonction, et cela vaut d'être su avant d'y
+chercher une copie de la fiche d'objet.
+
+### La signature du rappel de fin de texte, enfin établie
+
+`RunTextEngine` portait depuis longtemps un `TODO(REVERSE)` sur le pointeur de `+0x8a8` : « aucun
+site d'affectation n'est reconstruit, donc sa signature est inconnue ». `FUN_00530f20` en est un, et
+`Blaze.c` donne l'appel :
+
+```c
+if ((code *)puVar11[0x22a] != (code *)0x0) {
+  (*(code *)puVar11[0x22a])(puVar11[0x22c]);
+}
+```
+
+Un seul argument, la donnée d'utilisateur de `+0x8b0`. Le trou est comblé et remplacé par un
+répartiteur par adresse, sur le modèle des autres tables du dépôt : `0x00530ed0` est branché, tout
+autre rappel lève en se nommant.
+
+**La leçon est de méthode** : un `TODO(REVERSE)` sur une signature inconnue se résout quand le
+premier site d'affectation apparaît, pas avant — et il faut penser à revenir le fermer à ce
+moment-là plutôt que d'attendre de buter dessus.
+
+### Deux acquis de données
+
+`DAT_0056aaa0` est une table de **seize dwords**, une par classe de personnage, lue par l'octet
+`MainMem + 0xf0150`. Chaque dword est écrit d'un bloc sur `+0x18` de l'emplacement, donc c'est une
+paire (numéro d'animation, image de départ). L'étendue est relevée, pas supposée : à `0x0056aae0` le
+contenu change de nature et cette adresse est déjà connue comme un autre symbole.
+
+`DAT_005de620` est **hors de `ItemMenuArena`**, qui s'arrête à `0x005de510` : c'est une allocation
+propre de `0x80` octets (le symbole suivant est `DAT_005de6a0`), pas une vue d'arène. Le distinguer
+évitait de rouvrir le défaut d'aliasing qui a déjà coûté une journée.
+
+### Ce qui reste pour que le coffre marche de bout en bout
+
+La boîte s'affiche maintenant. En la refermant, le rappel du coffre `0x00450700` se déclenche et
+lèvera : il est **absent de `Blaze.c`**, mais court (87 octets) et déjà désassemblé dans
+`Legacy/Raw/Blaze/Chest/`. Son corps est clair :
+
+```c
+octet indice = entite[0x41];
+entite[0x6c] = 0;  DAT_005e9060 = 0;
+octet *coffre = 0x005fa5e0 + indice * 0x9c;
+int r = FUN_005312d0(entite);
+coffre[0x10] = r != 0 ? 0xC8 : 0x64;
+DAT_005e9860[coffre[0x44]] = r != 0 ? (octet)r : 0;
+```
+
+Il tire `FUN_005312d0`, **le rangement proprement dit** (109 lignes). Celle-là est de la classe que
+`CLAUDE.md` signale comme difficile : Ghidra y a perdu la convention de `FUN_0053db20` et de
+`FUN_00532710`, qu'il déclare sans paramètre, si bien que leurs arguments apparaissent comme des
+affectations à des variables locales (`puStack_20`, `uStack_24`) et leurs adresses de retour comme
+des valeurs (`iStack_30 = 0x53134e`). **Ce n'est pas bloquant** : le désassemblage est déjà relevé
+dans `Legacy/Raw/Blaze/Chest/FUN_005312D0_rangement.asm` et le prologue s'y lit sans peine
+(`sub esp,0Ch` puis quatre `push` de registres). Il faut juste le lire, plutôt que suivre `Blaze.c`.
+
+### Vérification
+
+Pas de régression : 1921 images, aucune exception sur le chemin habituel. **Le coffre lui-même n'est
+pas rejouable par le parcours scripté** — c'est la partie de Vincent qui le vérifiera, et le prochain
+arrêt attendu est le rappel `0x00450700`.
+
+---
+
+## 2026-08-23 (suite) — le coffre bout en bout
+
+Trois fonctions, et la chaîne du coffre est complète : `FUN_005312d0` (le rangement),
+`FUN_00450700` (le rappel de fin de boîte) et `FUN_00544c10` (le code de contrôle `0x0b`).
+
+### `FUN_005312d0` : ne pas suivre `Blaze.c`
+
+C'est le cas d'école de la fonction qu'il faut lire au désassembleur *malgré* sa présence dans
+`Blaze.c`. Ghidra y a perdu la convention de `FUN_0053db20` et de `FUN_00532710`, qu'il déclare sans
+paramètre ; leurs arguments apparaissent alors comme des affectations à des locales
+(`puStack_20 = param_1 + 7`), et leurs adresses de retour comme des valeurs
+(`iStack_30 = 0x53134e`). Les quatre appels d'ordinaux subissent le même sort. `Blaze.c` n'a servi
+que pour la charpente : les branches, les comparaisons, la structure. Tout le reste vient du
+désassemblage.
+
+**La bonne nouvelle, et elle vaut d'être retenue** : une fois le désassemblage sous les yeux, les
+conventions se lisent en une ligne chacune — `add esp,0x10` après l'appel dit quatre arguments,
+`add esp,0xC` en dit trois — et **toutes les appelées étaient déjà transcrites** sous d'autres noms :
+
+| Ghidra | ce que c'était déjà chez nous |
+|---|---|
+| `FUN_00530ed0` | `RestorePartyReactions_00530ED0`, écrite la veille |
+| `FUN_0053db20` | `Audio.PlayPositionalSound` — le son est le jingle « objet obtenu » |
+| `FUN_00532710` | `FreeEntitySlot` — au même octet près, c'est le même corps |
+| ordinaux 667 / 676 / 684 | déjà déclarés dans `Interop/Winsys3d.cs` |
+
+La leçon : **avant d'estimer le coût d'une fonction, vérifier ce que ses appelées sont devenues.**
+Celle-ci a été portée au TODO comme « difficile » deux fois, alors que quatre de ses cinq
+dépendances étaient déjà là.
+
+### Ce que la fonction fait
+
+Elle recopie les `0x50` dwords de la fiche d'objet dans l'emplacement d'inventaire, découpe l'icône
+de la VRAM en deux passes (un rectangle `0x10 × 1` pour la palette, un `6 × 0x18` pour l'image) et la
+repose à la place qui revient au personnage, puis remonte le compteur d'exemplaires — qui plafonne à
+99.
+
+**La recopie écrase le compteur, et l'original le sait** : les `0x50` dwords recouvrent `+0x310` et
+`+0x312` de l'emplacement, donc le compteur et le bit `0x8000` sont relevés avant et remis après.
+Transcrire la boucle sans voir ça aurait remis chaque objet à un exemplaire.
+
+**Un recoupement gratuit.** La famille `0x32c9..0x32cf` ne passe pas par l'inventaire : elle
+incrémente `holder[famille - 0x3151]`, soit `holder[0x178 + (famille - 0x32c9)]` — **sept compteurs
+contigus à `+0x178`**. Ce sont exactement les sept octets que le verbe de zone `0x00442F20`, relevé
+la veille sans qu'on sache à quoi ils servaient, remonte à 5 quand ils sont en dessous. Deux relevés
+indépendants qui se confirment.
+
+### `FUN_00450700`, et le rappel enfin bouclé
+
+Quatre-vingt-sept octets, absente de `Blaze.c`. Elle range l'objet puis **écrit le verdict à deux
+endroits** : l'état du coffre en `+0x10` (`0xC8` s'il est passé, `0x64` sinon, les deux valeurs que
+`TickEntityTable` aiguille) et la table de butin `0x005e9860`, qui retient ce qui reste à donner
+pour que le coffre puisse être rouvert. Le coffre est retrouvé par `entite[0x41]`, l'octet que le
+script y range avant d'appeler la remise.
+
+Elle est branchée sur le répartiteur de rappels de fin de texte ouvert la veille — qui compte
+maintenant deux entrées.
+
+### `FUN_00544c10` : le code de contrôle `0x0b`
+
+Un **saut de sous-chaîne** : le jumeau dépouillé de `Handler_00544e80`, sans la valeur substituée. Il
+empile `texte + 3` sur la pile de retour du descripteur et rend la chaîne désignée par ses trois
+octets d'opérande. Inscrit dans les **deux** tables, comme les codes `0x0f`, `0x1c` et `0x1f` : la
+passe de balayage doit suivre le même saut que la passe de rendu, sinon elle mesure la mauvaise
+chaîne.
+
+C'est ce qui manquait pour que la phrase du coffre — composée de libellés qui s'appellent entre eux —
+s'affiche entière.
+
+### Vérification
+
+Pas de régression : 1921 images, aucune exception. **Le coffre reste non rejouable par le parcours
+scripté** ; c'est la partie de Vincent qui dira si l'objet arrive vraiment dans l'inventaire, et
+surtout si son icône se pose au bon endroit — les deux blits VRAM sont la partie la plus facile à
+transcrire juste et à voir fausse.
+
+---
+
+## 2026-08-23 (suite) — la table des codes de contrôle de texte, en entier
+
+Le code `0x03` manquait. Le relevé du bloc a montré qu'il en manquait **dix-huit**, tous minuscules,
+et qu'ils allaient tomber un par un au fil des parties. Ils sont tous écrits. La table des trente-deux
+codes est complète pour la première fois.
+
+### Ce que le relevé d'un bloc apprend qu'un relevé isolé n'apprend pas
+
+Quinze des dix-huit sont de **simples setters de champ du descripteur** : un octet vers un octet
+(`0x10`–`0x13`, `0x15`–`0x17`), quatre octets vers un dword (`0x18`–`0x1b`), deux octets vers les
+deux moitiés d'un dword (`0x1e`). Le binaire en fait quinze fonctions distinctes de seize à trente
+octets qui ne diffèrent que par le champ visé. Elles sont repliées ici en trois corps paramétrés, sur
+le précédent de `ScriptOpAluArena` — la régularité est vérifiée instruction par instruction, pas
+supposée.
+
+Les trois autres ont chacun un rôle :
+
+- **`0x07`** est un **saut de chaîne sans retour** — il n'empile rien, le flux part et ne revient
+  pas. Son index est *calculé* : `texte[1]` désigne une variable de la banque `DAT_005e9060` dont la
+  valeur s'ajoute à `texte[2]`. C'est le « selon que… » du scénariste, une chaîne qui choisit parmi
+  une suite de libellés consécutifs selon l'état du jeu.
+- **`0x0e`** est l'**attente de fin de page** : le code qui arrête le défilement et rend la main au
+  joueur. Le quartet bas de son opérande est un index de variable, le quartet haut choisit un bit de
+  drapeau supplémentaire.
+- **`0x1d`** **insère le nom du locuteur** : le flux saute dans le bloc de 0x2000 octets du membre du
+  groupe désigné par `+0x8b0`, à la même adresse que `GetEntityStatBlock` rend. Sans opérande — et
+  c'est l'adresse empilée qui le prouve, `texte` tel quel et non `texte + n` comme aux codes `0x0b`
+  et `0x1c`.
+
+### Un piège de largeur, attrapé de justesse
+
+Le code `0x05` choisit la banque de composition des glyphes. L'écriture évidente serait
+`descripteur[0x14] = texte[0]`. L'original fait `movzx cx, byte [eax]` puis `mov [edx+14h],cx` : il
+écrit **deux** octets là où l'opérande n'en fournit qu'un, et le second — `+0x15`, la profondeur de
+la pile de sous-chaînes que les codes `0x0b`, `0x1c` et `0x1d` empilent — reçoit le zéro de
+l'extension. **Ce code remet donc la pile de retour à plat.** Transcrire le `mov` évident aurait
+laissé une sous-chaîne ouverte revenir là où il ne fallait pas, avec un symptôme (du texte qui
+reprend au mauvais endroit, plus tard) impossible à rattacher à sa cause.
+
+C'est le rappel que `Strategy.md` fait sur les largeurs : ce n'est pas une subtilité théorique, elle
+se paye en heures de recherche.
+
+### Sur le choix d'avoir tout pris d'un coup
+
+Vincent n'avait demandé que le code `0x03`. Les dix-huit ont été faits ensemble parce que la
+situation cochait exactement le cas noté la veille dans `TODO.md` à propos des verbes de zone : **une
+famille de fonctions courtes, contiguës, relevées par un seul désassemblage, et qui se manifestent
+une par une**. Le coût marginal des dix-sept autres était une lecture de plus dans un dump déjà
+ouvert ; les prendre séparément aurait coûté dix-sept allers-retours de partie.
+
+Le critère n'est pas « c'est facile », c'est **contiguïté + relevé déjà fait + apparition en série**.
+Sans ces trois-là, la règle reste de s'en tenir à ce qui est demandé.
+
+### Vérification
+
+2101 images, aucune exception, et la boîte de dialogue se ferme désormais : la capture montre le
+joueur qui circule librement à l'étage de l'auberge, un décor et un personnage non joueur que le jeu
+n'avait encore jamais atteints. Toujours pas d'image de référence pour comparer.

@@ -59,11 +59,13 @@ l'arène avaient déjà été corrigés.
 
 Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
 
-* **capturer le legacy sur le dialogue de l'herboriste.** C'est devenu le contrôle le plus rentable :
-  le dialogue s'affiche chez nous, la scène se peuple, plus aucune exception ne se lève sur ce
-  chemin — et pourtant rien n'est *vérifié*. Aucune image de référence n'existe pour cet écran, donc
-  on ne sait ni si la conversation avance comme elle doit, ni si le cadrage de la caméra de scénette
-  est le bon. Seule l'arrivée à l'auberge a sa référence.
+* **capturer le legacy sur le dialogue de l'herboriste et sur l'ouverture d'un coffre.** C'est
+  devenu le contrôle le plus rentable : les deux marchent chez nous, la scène se peuple, plus aucune
+  exception ne se lève sur ce chemin — et pourtant rien n'est *vérifié*. Aucune image de référence
+  n'existe pour ces écrans, donc on ne sait ni si la conversation avance comme elle doit, ni si le
+  cadrage de la caméra de scénette est le bon, ni **si l'icône de l'objet se pose au bon endroit** :
+  les deux blits VRAM de `FUN_005312d0` sont la partie la plus facile à transcrire juste et à voir
+  fausse. Seule l'arrivée à l'auberge a sa référence.
 * l'entrée `0x46` de la table statique `0x00551c30` — le gestionnaire de l'effet « magie épuisée »,
   **absent de `Blaze.c`** : `OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00551d48 4`, puis
   désassembler.

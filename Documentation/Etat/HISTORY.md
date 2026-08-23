@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-23
 
+- feat : **la table des trente-deux codes de contrôle de texte est complète** — les dix-huit qui manquaient, dont le saut de chaîne à index calculé (`0x07`), l'attente de fin de page (`0x0e`) et l'insertion du nom du locuteur (`0x1d`). Le joueur circule à l'étage de l'auberge, 2101 images
+- fix : le code `0x05` écrit **deux** octets, pas un — il remet au passage à zéro la profondeur de la pile de sous-chaînes ; l'écriture évidente aurait fait reprendre le texte au mauvais endroit
+- feat : **le coffre est complet** — `FUN_005312d0` (le rangement en inventaire, avec le découpage VRAM de l'icône), `FUN_00450700` (le rappel de fin de boîte) et le code de contrôle de texte `0x0b` (`FUN_00544c10`, le saut de sous-chaîne)
+- doc : `FUN_005312d0` avait été portée deux fois au TODO comme difficile alors que quatre de ses cinq dépendances étaient déjà transcrites sous d'autres noms — vérifier ce que deviennent les appelées avant d'estimer le coût
+- doc : les sept compteurs à `+0x178` du bloc de personnage sont confirmés par deux relevés indépendants, `FUN_005312d0` et le verbe de zone `0x00442F20`
+- feat : `FUN_00530f20` — la remise d'un objet au groupe : réactions du groupe, parcours d'inventaire avec empilement, et la phrase qui l'annonce. Avec `FUN_00530ed0`, son miroir de fin de boîte
+- feat : le rappel de fin de texte (`+0x8a8` du descripteur) est branché — un `TODO(REVERSE)` de signature inconnue fermé dès que le premier site d'affectation est apparu
+- doc : `DAT_0056aaa0` relevée — seize dwords, une réaction (animation, image) par classe de personnage
 - feat : verbe 14 de la table de zone (`FUN_00442D90`) — **l'accès au coffre** : il désigne l'entité appelante comme porteur du script de l'entité de scène visée
 - doc : cinq voisins du verbe 14 relevés dans la même fenêtre de désassemblage, tous sous soixante octets — les prendre en une passe le jour où l'un sera demandé
 - feat : `FUN_00405510` et `FUN_00405240` — les deux derniers réveils d'entité de scène (types 2 et 1), plus les deux pas d'animation qu'ils appellent, `FUN_004052f0` (parcours d'une plage avec pause tirée au hasard) et `FUN_00405420` (le décompte). 6361 images sans plantage
