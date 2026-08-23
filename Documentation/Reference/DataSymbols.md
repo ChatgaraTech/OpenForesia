@@ -1,4 +1,4 @@
-# Recovered data symbols
+﻿# Recovered data symbols
 
 Values read out of `Legacy/Binaries/Blaze.exe`'s initialised data, keyed by the **Ghidra virtual address**
 `Blaze.c` uses. This is lookup material: an entry stops changing once its bytes are read.
@@ -1057,7 +1057,9 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005633b0` | `s_WorldMapDescriptor_005633b0` | 2220 | `Screens/State03/WorldMap.cs` |
 | `0x00563c5c` | `s_Unknown_00563c5c` | 27 | `Screens/State03/WorldMap.cs` |
 | `0x00563c77` | `s_Unknown_00563c77` | 2249 | `Screens/State03/WorldMap.cs` |
-| `0x00564540` | `s_Unknown_00564540` | 184 | `Screens/State03/WorldMap.cs` |
+| `0x00564540` | `s_Unknown_00564540` | 8 | `Screens/State03/WorldMap.cs` |
+| `0x00564548` | `s_CellSweepCorner_00564548` | 16 | `Memory/GameMemory.cs` |
+| `0x00564558` | `s_CellSkipTables_00564558` | 160 | `Memory/GameMemory.cs` |
 | `0x005645f8` | `s_WorldMapStep_005645f8` | 4 | `Screens/State03/WorldMap.cs` |
 | `0x005645fc` | `s_Unknown_005645fc` | 84 | `Screens/State03/WorldMap.cs` |
 | `0x00564650` | `s_WorldMapCamera_00564650` | 956 | `Screens/State03/WorldMap.cs` |
@@ -1568,3 +1570,69 @@ Deux erreurs de champ relevées au désassembleur dans le seul bloc d'affichage 
 Dans les deux cas Ghidra décale d'un champ, et dans les deux cas le résultat est absurde à la
 lecture : un X dans le mot de couleur, ou une position d'environ `0x1000` sur un écran de 320
 pixels. **L'absurdité du résultat est le signal** ; le désassembleur tranche.
+
+## `0x00564548` et `0x00564558` — les deux tables du balayage 7×7 par octant (2026-08-23)
+
+Relevées avec `OpenForesia.Tools -- at`, dans `.data`. Elles se suivent sans trou, et la table de
+pointeurs qui désigne la seconde vient juste après : **`0x00564548` .. `0x005645d8` d'un tenant**.
+
+### `&DAT_00564548` — le coin de départ, huit demi-mots
+
+```
+0x00564548: 0304 0204 0203 0202 0302 0402 0403 0404
+```
+
+soit, en petit-boutiste : `0x0403 0x0402 0x0302 0x0202 0x0203 0x0204 0x0304 0x0404`.
+
+L'indice est l'octant du cap de la caméra, `((DAT_0060492a + 0x100) >> 9) & 7`. L'**octet bas** est
+le décalage en X du coin de départ, l'**octet haut** son décalage en Z, tous deux comptés en
+cellules à partir de la cellule où se trouve la caméra :
+
+```
+cellX = ((-DAT_006008d0 >> 12) + 0x2000 >> 9) + (table[octant] & 0xff)
+cellZ = ((-DAT_006008d8 >> 12) + 0x2000 >> 9) + (table[octant] >> 8)
+```
+
+Le balayage descend ensuite sept rangs de sept colonnes, **en décroissant sur les deux axes** ; le
+coin est donc celui du plus grand X et du plus grand Z.
+
+### `PTR_DAT_005645d8` — huit pointeurs vers huit tranches contiguës
+
+```
+0x005645D8: 5845 5600 6845 5600 7845 5600 8845 5600
+0x005645E8: 9845 5600 a845 5600 b845 5600 c845 5600
+```
+
+soit `0x00564558`, `68`, `78`, `88`, `98`, `a8`, `b8`, `c8` — **huit tranches de 0x10 octets qui
+s'arrêtent pile où commence la table de pointeurs elle-même**. C'est la même situation que les
+descripteurs d'atlas : on ne peut pas relever une tranche isolée, il faut relever la plage, parce
+que le code y avance au pointeur et pourrait déborder d'une tranche sur la suivante.
+
+```
+0x00564558: 0703 0103 0702 0102 0701 0601 0201 0101
+0x00564568: 0707 0107 0706 0702 0701 0601 0201 0101
+0x00564578: 0707 0607 0507 0706 0702 0701 0601 0501
+0x00564588: 0707 0607 0207 0107 0706 0702 0701 0101
+0x00564598: 0707 0607 0207 0107 0706 0106 0705 0105
+0x005645A8: 0707 0607 0207 0107 0106 0102 0701 0101
+0x005645B8: 0307 0207 0107 0106 0102 0301 0201 0101
+0x005645C8: 0707 0107 0106 0102 0701 0601 0201 0101
+```
+
+Chaque tranche est une suite de **huit clés de seize bits** `rang << 8 | colonne`, dans l'ordre
+exact où le balayage visite ses 49 cellules (rang 7 puis 6 …, colonne 7 puis 6 … à l'intérieur).
+Ce sont les cellules que l'octant de cap met hors du cône de vue — les coins du carré, taillés
+différemment selon l'orientation.
+
+### Trois lecteurs, dont un défectueux
+
+`FUN_00516fc0` (le balayage du décor), `FUN_0051fa40` et `FUN_00521000` (deux des trois listes de
+morceaux, qui refont le balayage **à l'intérieur** de chaque morceau) lisent tous les trois ces
+deux tables. Les deux derniers consomment leurs huit clés ; le premier n'en consomme qu'une, parce
+qu'il lit les suivantes sur un octet au lieu de deux. Voir **LB-009**.
+
+### Dans OpenForesia
+
+`GameMemory.s_CellSweepCorner_00564548` et `GameMemory.s_CellSkipTables_00564558` — deux vues
+statiques, dans `Memory/GameMemory.cs` plutôt que chez l'un des lecteurs, précisément parce qu'il y
+en a trois répartis sur deux fichiers.

@@ -188,6 +188,8 @@ internal static unsafe class Winsys3d
     // identification is not lost.
     [DllImport("winsys3d.dll", EntryPoint = "#366")] internal static extern void Ordinal_366(void* matrix); // real: winsys3d.c FUN_00a20e70 â€” libgte SetRotMatrix: copies the nine rotation shorts into the MATRIX register (ordinal 814, offset 0)
 
+    [DllImport("winsys3d.dll", EntryPoint = "#367")] internal static extern void Ordinal_367(void* matrix); // real: winsys3d.c FUN_00a20eb0 â€” libgte SetLightMatrix: copies **huit dwords** (0x20 octets, pas neuf shorts) depuis `matrix` dans le registre de matrice d'eclairage, c'est-a-dire l'export de donnees 815. C'est la raison pour laquelle FUN_0051c420 recopie lui aussi 0x20 octets a la main.
+
     [DllImport("winsys3d.dll", EntryPoint = "#369")] internal static extern void Ordinal_369(void* matrix); // real: winsys3d.c FUN_00a20ef0 â€” libgte SetTransMatrix: copies the three translations from the matrix's +0x14/+0x18/+0x1c into the same register's translation row
 
     [DllImport("winsys3d.dll", EntryPoint = "#360")] internal static extern void Ordinal_360(void* destMatrix, void* a, void* b); // real: winsys3d.c FUN_00a20630 â€” composes two matrices (libgte CompMatrix family), with its own MMX/scalar split

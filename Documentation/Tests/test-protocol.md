@@ -795,3 +795,37 @@ Remove-Item scratchpad\diag-xxx.txt -ErrorAction SilentlyContinue
 Sur du code à pointeurs, ce détour coûte moins cher qu'une relecture : deux passes de relecture
 n'avaient pas trouvé un déréférencement manquant que l'impression de quatre champs d'en-tête a
 rendu évident.
+
+## La carte du monde ne s'arrête pas toujours au même endroit (2026-08-23)
+
+À partir du moment où la moitié dessin passe, la même recette exécutée trois fois de suite donne
+**trois sorties différentes** :
+
+* la plus fréquente, `FUN_0053aa10` non transcrite, dans le pas de simulation ;
+* de temps en temps, `DAT_005eca94` nul dans `PublishCameraFrame_004022B0`, **avant** le premier
+  dessin de l'image ;
+* parfois quelques images de plus avant de retomber sur l'une des deux.
+
+Ce n'est pas du bruit d'outillage : la zone de départ pose des entités dont le pas d'états et les
+scripts dépendent du tirage aléatoire et du nombre d'images écoulées avant que le groupe n'entre.
+Un chemin de code atteint à une exécution ne l'est pas forcément à la suivante.
+
+**Conséquence pratique : ne pas conclure sur un seul lancement.** Une lacune qui « disparaît » après
+une modification a pu simplement ne pas être atteinte ce coup-ci ; une lacune qui « apparaît » n'est
+pas forcément une régression. Lancer deux ou trois fois, et comparer les messages — ils se nomment
+tous, c'est exactement à cela qu'ils servent.
+
+Corollaire déjà vérifié ce jour-là : la nullité de `DAT_005eca94` a été prise pour une régression du
+travail en cours, alors qu'elle était apparue à **la toute première exécution de la séance**, avant
+la moindre modification. La trace de cette première exécution a suffi à trancher.
+
+## Une lacune franche n'empêche pas de mesurer, mais empêche de voir (2026-08-23)
+
+Quand le jeu meurt une ou deux images après être entré dans un écran, `-Shot` ne rend rien
+d'utilisable : la fenêtre est déjà détruite quand la capture a lieu. Le compteur de primitives ne
+sert pas davantage — il est imprimé toutes les soixante images, et les soixante dernières avant le
+plantage sont encore celles de l'écran précédent.
+
+Autrement dit : **tant qu'un écran ne survit pas quelques secondes, on ne peut ni le voir ni le
+mesurer.** Le seul indicateur exploitable est alors la position de l'exception dans la pile — d'où
+l'importance de transcrire les lacunes en `NotImplementedException` nommées plutôt qu'en no-op.

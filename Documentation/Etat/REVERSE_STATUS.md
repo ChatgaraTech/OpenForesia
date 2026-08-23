@@ -9359,3 +9359,98 @@ vérification visuelle des panneaux n'est possible qu'une fois la moitié dessin
 Build 0 erreur. Oracle : trois corps signalés, les mêmes que les deux tours précédents ; les
 quatre corps neufs comptent parmi les nouveaux. Tests de disposition inchangés, 3 rouges
 volontaires. Playtest : les panneaux s'exécutent, arrêt sur `DrawWorldCells`.
+
+
+## 2026-08-23 — la moitié dessin de la carte du monde est terminée
+
+Les six lacunes que le TODO de la veille listait comme « le plus gros morceau restant, ~1 500 lignes
+de pseudo-C, probablement deux séances » sont transcrites en une : `DrawWorldCells`,
+`FUN_0051f940`, `FUN_0051e700`, `FUN_0051fa40`, `FUN_00521000`, `FUN_00522140`.
+`DrawWorldMapFrame` va maintenant de bout en bout sans lever, et l'exception a **quitté la moitié
+dessin** — elle est remontée dans le pas de simulation, une ou deux images plus loin.
+
+### L'estimation était fausse, et pour une raison instructive
+
+Les trois listes de morceaux comptaient 441, 365 et 315 lignes de pseudo-C. Ce sont **la même passe
+à trois réglages près** :
+
+| | source des faces | profondeur | emplacement d'OT |
+|---|---|---|---|
+| `FUN_0051fa40` | grille de cellules | ordinal **418** | **par face**, `(z & 0xfffc)` |
+| `FUN_00521000` | grille de cellules | ordinal 795 | fixe, celui de l'appelant |
+| `FUN_00522140` | faces à la file | ordinal 795 | fixe, celui de l'appelant |
+
+Elles sont un seul `DrawChunk` dans `Engine/Model3d.cs`, avec deux émetteurs partagés
+(`EmitChunkTriangles`, `EmitChunkQuads`) et trois points d'entrée nommés. De même, `FUN_0051e700`
+(423 l.) est la **synthèse des deux émetteurs de modèle déjà écrits** : le prologue et les quatre
+seaux de `FUN_0051c420`, le tri par face de `FUN_0051d1f0`. Elle s'est écrite en une passe parce que
+les deux sœurs étaient là — troisième confirmation d'affilée du conseil « relire ce qui tourne coûte
+moins cher que relever au désassembleur ».
+
+**Ce qui prédit le coût n'est ni le nombre de lignes ni le nombre d'octets, mais le nombre de
+*formes distinctes*.** Ici : deux (triangle, quad), déclinées plate/dégradée, déjà écrites deux fois
+dans le dépôt.
+
+### Le morceau de décor n'est pas un modèle
+
+Un « morceau » porte une grille 32×32 de cellules à `+0x34` **en plus** de son tableau de faces à
+`+0x28`, et les deux premières listes refont **à l'intérieur** le même balayage 7×7 par octant que
+`FUN_00516fc0`. Chaque cellule pointe sur un enregistrement dont les deux premiers mots portent
+chacun quatre compteurs : ceux du premier sont sautés (ils appartiennent aux autres passes) et
+décalent seulement le curseur d'indices, ceux du second donnent les quatre seaux de la passe.
+
+Une face fait 0x20 octets. Les deux moitiés d'un mot de sommets **ne se lisent pas de la même
+façon** : la basse est un indice (`(w & 0xffff) * 4`), la haute un décalage d'octets déjà calculé
+(`w >> 0xe`), sans remasquage des deux bits perdus.
+
+### Les deux tables du balayage, relevées
+
+`&DAT_00564548` (huit demi-mots : le coin de départ, X dans l'octet bas, Z dans le haut) et les huit
+tranches que `PTR_DAT_005645d8` désigne (huit clés de seize bits `rang << 8 | colonne` chacune, les
+coins hors du cône de vue). Elles sont **contiguës de `0x00564548` à `0x005645d8`**, la table de
+pointeurs comprise — même situation que les descripteurs d'atlas : on relève la plage, pas l'entrée.
+Détail dans `DataSymbols.md`. Elles vivent dans `GameMemory` et non chez un lecteur, parce qu'il y
+en a trois répartis sur deux fichiers.
+
+### Deux défauts d'origine, tous deux prouvés par comparaison interne
+
+* **LB-009** — `FUN_00516fc0` lit les clés de saut suivantes **sur un octet** (`movzx ax, byte
+  [edi]` en `0x00519143`) alors que le curseur avance de deux et que la table porte des clés de
+  seize bits. La clé devient ≤ 0xff et ne peut plus égaler `rang << 8 | colonne` ≥ 0x0101 : **une
+  seule cellule est sautée par image au lieu de huit**. `FUN_0051fa40`, qui refait le même balayage
+  sur la même table, lit correctement seize bits — c'est ce qui transforme l'hypothèse en preuve.
+* **LB-010** — le seau des triangles plats de `FUN_00521000`, et lui seul, remplace son indice de
+  couleur par le prédicat « le champ est non nul » (`test ebx,ebx / setne dl`). Les trois autres
+  seaux de la même fonction, et les seaux homologues des deux autres listes, indexent normalement.
+
+### Un gestionnaire d'entité de plus, absent de `Blaze.c`
+
+`FUN_00486ee0` (881 o., `Legacy/Raw/Blaze/FUN_00486EE0.asm`) — le sous-type **0** de la table
+`0x005ecaa0`, la bestiole errante. Deux moitiés : la **détection** (distance par l'ordinal 442,
+angle par le 457, un bit par membre dans `entité[9]`, et le script `+0x16` qui démarre quand le
+masque passe de vide à non vide) et la **promenade** (cap et vitesse tirés au hasard, **essayés sur
+une copie** de l'enregistrement à `0x005e9a40`, adoptés seulement si `FinalizeEntityPlacement2` ne
+signale pas les bits `0x882`). Plus `FUN_004db5a0` (112 o.), l'avance d'image d'animation qu'elle
+partage : le bit `0x1000000` choisit entre boucler et s'arrêter en posant `0x2000000`.
+
+### Quatre thunks d'ordinal identifiés au passage
+
+`0x00545A10` → 442 (`SquareRoot0`), `0x00545A16` → 450 (cosinus), `0x00545A1C` → 451 (sinus),
+`0x00545A22` → 457 (`ratan2`). Le partage sinus/cosinus a été tranché en retrouvant le même idiome
+dans `Blaze.c` (`param_1[7] = Ordinal_451(...)`, `param_1[9] = Ordinal_450(...)`, soit X par le
+sinus et Z par le cosinus). L'ordinal **367** (`SetLightMatrix`, huit dwords) est déclaré pour la
+première fois — c'est lui qui explique pourquoi `FUN_0051c420` recopie 0x20 octets à la main.
+
+### État à la fin de la séance
+
+Build 0 erreur. Playtest : la moitié dessin passe en entier ; l'arrêt survient ensuite dans le pas
+de simulation, avec **trois sorties possibles selon le minutage** — `FUN_0053aa10` non transcrite
+(la plus fréquente), `DAT_005eca94` nul dans `PublishCameraFrame_004022B0` (intermittent, et
+**antérieur au travail du jour** : constaté à la première exécution de la séance, avant toute
+modification), ou quelques images de plus avant l'une des deux.
+
+**La première image de la carte du monde n'a toujours pas été vue.** La liste d'affichage se
+construit maintenant, mais le jeu meurt une ou deux images après le premier `Flip` et la capture
+n'attrape qu'une fenêtre morte. Un échafaudage temporaire dans `WorldMapCamera.cs` imprime le
+voisinage de `0x005eca94` au moment où il lève : le lancer une fois répondra plus vite que
+raisonner.

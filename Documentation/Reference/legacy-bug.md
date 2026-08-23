@@ -428,3 +428,111 @@ oublié.
 étant un `stackalloc`, le champ y vaut zéro plutôt qu'un résidu — c'est la traduction la plus proche
 possible, et surtout il ne faut pas inventer une valeur. Écrire `0x1000000` « par cohérence avec les
 voisins » rendrait le rendu plus joli que celui de 1998 et effacerait le défaut.
+
+---
+
+## LB-009 — Le balayage des cellules du monde ne saute qu'une case sur les huit prévues
+
+**Repéré** le 2026-08-23, en transcrivant le balayage 7×7 de `FUN_00516fc0`. **Latent** : il fait
+dessiner sept cellules de décor que la table de visibilité désignait comme hors du cône de vue.
+
+### Le défaut
+
+Chacune des huit tranches de `0x00564558` (celles que `PTR_DAT_005645d8` désigne) est une suite de
+**huit clés de seize bits** `rang << 8 | colonne`, rangées dans l'ordre exact où le balayage visite
+ses 49 cellules. La boucle compare la clé courante à `rang << 8 | colonne` et, à l'égalité, saute la
+cellule puis charge la clé suivante.
+
+La première clé se lit bien sur seize bits :
+
+```
+005190c5  66 8b 17           mov  dx,[edi]        ; la clé, entière
+005190e4  83 c7 02           add  edi,2
+```
+
+Les suivantes, non :
+
+```
+00519143  66 0f b6 07        movzx ax,byte [edi]  ; un OCTET, étendu de zéro
+00519147  83 c7 02           add   edi,2          ; mais le curseur avance de deux
+```
+
+Le curseur avance du bon pas, mais la valeur lue est l'octet de poids faible de la paire — donc la
+**colonne** seule. La clé vaut alors au plus `0xff`, tandis que `rang << 8 | colonne` vaut au moins
+`0x0101` puisque les deux compteurs descendent de 7 à 1. **Plus aucune égalité n'est possible.**
+
+Une seule cellule est donc sautée par image, celle de la première clé, au lieu des huit que la table
+prévoit.
+
+### Pourquoi c'est bien un défaut
+
+La même passe, écrite dans les trois listes de morceaux, lit correctement :
+
+```
+0051fde5  66 8b 08           mov  cx,[eax]        ; FUN_0051fa40, même table, même clé
+0051fde8  83 c0 02           add  eax,2
+```
+
+`FUN_0051fa40` et `FUN_00521000` refont le balayage à l'intérieur de chaque morceau, sur les mêmes
+deux tables, et consomment leurs huit clés. C'est la même intention écrite deux fois, correcte une
+fois sur deux.
+
+### Portée
+
+Sept cellules de plus dans la liste d'affichage par image, aux quatre coins du carré de 7×7. Elles
+sont hors du cône de vue de la caméra, donc la plupart de leurs faces tombent de toute façon au
+rejet écran ou au rejet de face arrière ; le coût est du travail perdu, pas un artefact visible.
+
+### Dans OpenForesia
+
+`DrawWorldCells` (`Screens/State03/WorldMapTick.cs`) lit **un octet et avance de deux**, comme
+l'original, et le dit sur place. Les trois listes de morceaux (`Engine/Model3d.cs`, `DrawChunk`)
+lisent seize bits, comme leur original à elles. Corriger `DrawWorldCells` changerait le contenu de
+la liste d'affichage — donc le comportement.
+
+---
+
+## LB-010 — La deuxième liste de morceaux réduit un indice de couleur à un booléen
+
+**Repéré** le 2026-08-23, en transcrivant `FUN_00521000`. **Latent** : une seule des quatre formes
+est touchée, et la couleur reste dans le tampon d'éclairage.
+
+### Le défaut
+
+Les trois listes de morceaux lisent la couleur d'une face plate dans le tampon d'éclairage, à
+l'indice que porte le champ `+0x08` de la face :
+
+```
+005217ae  81 e3 ff ff 00 00  and  ebx,0FFFFh            ; FUN_00521000, seau des quads plats
+005217de  8b 9c 9f 00 80 1b  mov  ebx,[edi+ebx*4+1B8000h]
+```
+
+Le seau des **triangles plats** de la même fonction fait autre chose :
+
+```
+00521539  8b 5f 08           mov   ebx,[edi+8]          ; le champ d'indices
+00521542  33 d2              xor   edx,edx
+00521544  85 db              test  ebx,ebx
+0048154f  0f 95 c2           setne dl                   ; dl = (champ != 0) → 0 ou 1
+00521582  8b bc 97 00 80 1b  mov   edi,[edi+edx*4+1B8000h]
+```
+
+L'indice est remplacé par le **prédicat** « le champ est non nul ». Tous les triangles plats de
+cette liste prennent donc la couleur du sommet 0 ou celle du sommet 1, jamais la leur.
+
+### Pourquoi c'est bien un défaut
+
+Les trois autres seaux de `FUN_00521000` indexent normalement, et les seaux homologues de
+`FUN_0051fa40` et `FUN_00522140` — le même code écrit trois fois — indexent normalement eux aussi.
+Seul ce seau-là diffère.
+
+### Portée
+
+Les triangles plats de la deuxième liste de morceaux ont une teinte plate prise dans les deux
+premières entrées du tampon d'éclairage. Comme la source d'éclairage part à `0xffffff` pour les
+morceaux, les valeurs restent claires : l'effet est un aplat, pas une couleur fausse et criarde.
+
+### Dans OpenForesia
+
+`EmitChunkTriangles` (`Engine/Model3d.cs`) porte un paramètre `booleanFlatColour`, posé pour la
+seule `DrawChunkCells` (`FUN_00521000`), et le commente sur place.

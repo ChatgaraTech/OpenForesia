@@ -1,4 +1,4 @@
-// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
+﻿// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // La carte des repertoires et la regle
@@ -955,6 +955,827 @@ internal sealed unsafe class Model3d(GameMemory mem)
                 prim[10] = c3;
                 prim[11] = v3;
                 prim[12] = record[3] >> 0x10;
+                prim += 13;
+            }
+
+            s_Unknown_005e9818--;
+        }
+
+        return prim;
+    }
+
+    // =====================================================================
+    // FUN_0051e700 — le rendu de modèle de décor **trié par polygone**
+    //
+    // La troisième sœur, et la synthèse des deux autres : même prologue et mêmes quatre seaux de
+    // faces que FUN_0051c420, mais l'emplacement d'ordering table est calculé **par face** depuis
+    // la profondeur du sommet le plus lointain, comme dans la branche triée de FUN_0051d1f0. C'est
+    // elle que le balayage des cellules emploie pour le décor posé qui doit s'entrelacer.
+    //
+    // Trois écarts avec FUN_0051c420, tous relevés au désassembleur le 2026-08-23 sur
+    // `Legacy/Raw/Blaze/FUN_0051E700.asm` :
+    //   * les sommets passent par l'ordinal **418** (qui produit une profondeur par sommet) et non
+    //     par le 795, et la profondeur du modèle entier ne décale plus l'entrée d'OT ;
+    //   * les deux matrices partent dans le GTE par les ordinaux **366** et **367** au lieu d'être
+    //     recopiées champ par champ dans les registres 814 et 815 ;
+    //   * le mot de page de texture porte un terme de plus — les deux bits de translucidité de la
+    //     couleur de pose, `(pose[7] >> 9) & 0x600000`, mêlés par ou-exclusif.
+    //
+    // Et un écart de **disposition de primitive**, sur le seul triangle dégradé : là où
+    // FUN_0051c420 met `record[3]` en UV de sommet et `record[2] >> 0x10` en dernier mot,
+    // FUN_0051e700 répartit `record[2]` sur ses deux moitiés et pose `record[3]` entier en dernier
+    // mot. Les trois autres formes sont identiques mot pour mot.
+    //
+    // **Signature reconstruite comme celle de sa sœur** : Ghidra n'a récupéré que `param_1` (le
+    // modèle) et `param_2` (la pose). Le prologue `sub esp,60h` + quatre `push` place les cinq
+    // arguments à `[esp+74h..84h]` : otBase, prim, model, placement, flags. Les emplacements
+    // d'arguments servent ensuite de brouillon, d'où les noms Ghidra dédoublés (`unaff_retaddr` et
+    // `puStack_14` pour un seul emplacement, `iStack_8` pour un temporaire).
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0051e700 @ 0x0051e700 — émet un modèle de décor dans la liste d'affichage, une
+    /// face à la fois et **chacune à sa propre profondeur**, et rend le curseur avancé.
+    /// </summary>
+    internal uint* DrawDepthSortedModel(uint* otBase, uint* prim, byte* model, int* placement, uint flags)
+    {
+        EnsureGteRegisters();
+
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null)
+        {
+            throw new NotImplementedException(
+                "DrawDepthSortedModel: l'export MainMem de winsys3d.dll rend null, donc les tampons " +
+                "de sommets a MainMem + 0x1b0000, de profondeurs a + 0x1b4000 et de couleurs a " +
+                "+ 0x1b8000 ne peuvent pas etre places.");
+        }
+
+        LoadPointAsMatrixTranslation(placement);
+
+        ushort placementFlags = *(ushort*)((byte*)placement + 0x1a);
+
+        // L'original remet le vecteur d'entrée à zéro **avant** le test de rejet, donc même quand
+        // il ne projette pas. Transcrit à cette place-là.
+        short* vector802 = (short*)s_GteVector802;
+        vector802[0] = 0;
+        vector802[1] = 0;
+        vector802[2] = 0;
+
+        // Le rejet, et rien d'autre : contrairement à FUN_0051c420, l'entrée d'OT n'est pas
+        // avancée de la profondeur du modèle — chaque face ira chercher la sienne.
+        if ((placementFlags & 1) != 0)
+        {
+            ProjectOriginThroughMatrix();
+
+            short screenX = (short)*(uint*)s_GteSxy809;
+            short screenY = (short)(*(uint*)s_GteSxy809 >> 0x10);
+
+            if ((ushort)(screenX + 0x18) >= 0x170) return prim;
+            if ((ushort)(screenY + 0x18) >= 0x120) return prim;
+
+            // Le désassembleur lit ici la profondeur **non divisée** (registre 811) et la décale
+            // de deux sur seize bits : `mov cx,[esp+4Ch] / sar cx,2`. Le registre 810 porte déjà
+            // ce quotient, mais calculé sur trente-deux bits ; les deux coïncident tant que la
+            // profondeur tient sur un short, ce qui est le cas puisque 811 en vient.
+            short depth = (short)((short)*(int*)s_GteSz811 >> 2);
+            if ((uint)(depth - 0x58) >= 0x3a0) return prim;
+        }
+
+        // === La matrice du modèle, puis celle d'éclairage. Les deux partent dans le GTE par appel,
+        // et non par recopie de registre comme chez FUN_0051c420. ===
+        short* cameraAngles = (short*)mem.s_CameraVector_00604928;
+        short* angles = stackalloc short[3];
+        angles[0] = (short)(*(short*)((byte*)placement + 0x14) + cameraAngles[0]);
+        angles[1] = (short)(*(short*)((byte*)placement + 0x16) + cameraAngles[1]);
+        angles[2] = (short)(*(short*)((byte*)placement + 0x18) + cameraAngles[2]);
+
+        byte* matrix = stackalloc byte[0x20];
+        NativeMemory.Clear(matrix, 0x20);
+        RotMatrix(angles, (short*)matrix);
+        ScaleMatrixSaturating((short*)matrix, (ushort*)(placement + 3));
+        Winsys3d.Ordinal_366(matrix);
+
+        // Le même écrasement du tangage par la rotation de scène que chez les deux sœurs :
+        // l'original **remplace** l'angle X au lieu de l'additionner. Transcrit tel quel.
+        angles[1] += (short)mem.s_SceneYaw_005e930a;
+        angles[2] += (short)mem.s_SceneRoll_005e930c;
+        angles[0] = (short)mem.s_ScenePitch_005e9308;
+
+        // L'ordinal 367 recopie **huit dwords**, pas neuf shorts : les quatorze octets qui suivent
+        // la rotation partent aussi. Dans l'original ce sont des restes de pile ; le tampon est
+        // remis à zéro ici, comme chez FUN_0051c420.
+        NativeMemory.Clear(matrix, 0x20);
+        RotMatrix(angles, (short*)matrix);
+        Winsys3d.Ordinal_367(matrix);
+
+        uint attributes = *(uint*)(model + 0x3c);
+        if (mem.s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
+        {
+            if (mem.s_Unknown_00564a4c == 0) return prim;
+            attributes &= 0xfffffdff;
+        }
+
+        uint clut = *(uint*)(mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
+        uint uvWord = ((uint)(((ushort)((short)flags >> 2)) & 0xffc0) + (flags & 0xff)) << 0x10;
+        uvWord += clut & 0xffff0000;
+
+        uint vertexCount = *(uint*)(model + 8) >> 0x10;
+        Winsys3d.Ordinal_418(model + 0x40, mainMem + 0x1b0000, mainMem + 0x1b4000, mainMem,
+                             *(uint*)(model + 8) & 0xffff);
+
+        // Le terme de plus : les deux bits 0x600000 viennent de la couleur de pose, pas des
+        // attributs du modèle, et se mêlent par ou-exclusif.
+        uint tpageWord = ((((attributes & 0xff) << 5) | clut) << 0x10)
+                       ^ ((uint)placement[7] >> 9 & 0x600000);
+
+        uint* colours = (uint*)(mainMem + 0x1b8000);
+        uint flatColour = (uint)placement[7] & 0x3ffffff ^ (attributes & 0x300) << 0x10;
+
+        if ((placementFlags & 4) == 0)
+        {
+            *(uint*)s_GteLightColour817 = flatColour;
+            Winsys3d.Ordinal_793(*(void**)(model + 0x24), colours, vertexCount);
+        }
+        else
+        {
+            uint* fill = colours;
+            for (uint i = vertexCount * 3; i != 0; i--) *fill++ = flatColour;
+        }
+
+        ushort* counters = (ushort*)(model + 0x10);
+        int skipped = counters[0] + counters[1] + counters[2] + counters[3];
+        uint* record = (uint*)(*(byte**)(model + 0x28) + skipped * 0x10);
+        uint* screen = (uint*)(mainMem + 0x1b0000);
+        int* depths = (int*)(mainMem + 0x1b4000);
+
+        prim = EmitSortedTriangles(otBase, prim, ref record, *(ushort*)(model + 0x18),
+                                   screen, depths, colours, tpageWord, uvWord, gouraud: false);
+        prim = EmitSortedQuads(otBase, prim, ref record, *(ushort*)(model + 0x1a),
+                               screen, depths, colours, tpageWord, uvWord, gouraud: false);
+        prim = EmitSortedTriangles(otBase, prim, ref record, *(ushort*)(model + 0x1c),
+                                   screen, depths, colours, tpageWord, uvWord, gouraud: true);
+        prim = EmitSortedQuads(otBase, prim, ref record, *(ushort*)(model + 0x1e),
+                               screen, depths, colours, tpageWord, uvWord, gouraud: true);
+
+        return prim;
+    }
+
+    /// <summary>
+    /// Ghidra: les seaux <c>+0x18</c> et <c>+0x1c</c> de FUN_0051e700 — les faces à trois sommets,
+    /// triangle texturé plat de 8 mots (<c>0x7000000</c> / <c>0x24</c>) puis triangle texturé
+    /// dégradé de 10 (<c>0x9000000</c> / <c>0x34</c>).
+    ///
+    /// <para>La forme plate est mot pour mot celle de <see cref="EmitStaticTriangles"/> ; la forme
+    /// dégradée <b>ne l'est pas</b> — voir l'en-tête de <see cref="DrawDepthSortedModel"/>.</para>
+    /// </summary>
+    private uint* EmitSortedTriangles(
+        uint* otBase, uint* prim, ref uint* record, int count,
+        uint* screen, int* depths, uint* colours, uint tpageWord, uint uvWord, bool gouraud)
+    {
+        for (; count != 0 && s_Unknown_005e9818 != 0; count--, record += 4)
+        {
+            uint packed = record[0];
+            int i0 = (int)(packed & 0xff);
+            int i1 = (int)(packed >> 8 & 0xff);
+            int i2 = (int)(packed >> 0x10 & 0xff);
+
+            uint v0 = screen[i0], v1 = screen[i1], v2 = screen[i2];
+
+            *(uint*)s_GteSxy805 = v0;
+            *(uint*)s_GteSxy806 = v1;
+            *(uint*)s_GteSxy807 = v2;
+
+            if ((ushort)v0 >= 0x140 && (ushort)v1 >= 0x140 && (ushort)v2 >= 0x140) continue;
+
+            int x0 = *(short*)s_GteSxy805, y0 = *(short*)(s_GteSxy805 + 2);
+            int x1 = *(short*)s_GteSxy806, y1 = *(short*)(s_GteSxy806 + 2);
+            int x2 = *(short*)s_GteSxy807, y2 = *(short*)(s_GteSxy807 + 2);
+            *(int*)s_GteMac0808 = x0 * y1 + x1 * y2 + x2 * y0
+                                - x0 * y2 - x1 * y0 - x2 * y1;
+
+            if ((v0 & 0xffff0000) >= 0xf00000 && (v1 & 0xffff0000) >= 0xf00000
+                && (v2 & 0xffff0000) >= 0xf00000) continue;
+
+            if (ReadMac0() >= 0) continue;
+
+            int zmax = depths[i0];
+            if (zmax < depths[i1]) zmax = depths[i1];
+            if (zmax < depths[i2]) zmax = depths[i2];
+            if ((uint)(zmax - 0x140) >= 0xec0) continue;
+
+            uint* slot = (uint*)((byte*)otBase + ((uint)zmax & 0xfffc));
+            uint previous = *slot;
+            *slot = (uint)(nuint)prim;
+
+            if (!gouraud)
+            {
+                prim[0] = previous | 0x7000000;
+                prim[1] = colours[record[1] & 0xff] | 0x24000000;
+                prim[2] = v0;
+                prim[3] = uvWord | record[2] & 0xffff;
+                prim[4] = v2;
+                prim[5] = tpageWord | record[3] & 0xffff;
+                prim[6] = v1;
+                prim[7] = record[2] >> 0x10;
+                prim += 8;
+            }
+            else
+            {
+                uint indices = record[1];
+                uint c0 = colours[indices & 0xff];
+                uint c1 = colours[indices >> 8 & 0xff];
+                uint c2 = colours[indices >> 0x10 & 0xff];
+
+                prim[0] = previous | 0x9000000;
+                prim[1] = c0 | 0x34000000;
+                prim[2] = v0;
+                prim[3] = uvWord | record[2] & 0xffff;
+                prim[4] = c2;
+                prim[5] = v2;
+                prim[6] = tpageWord | record[2] >> 0x10;
+                prim[7] = c1;
+                prim[8] = v1;
+                prim[9] = record[3];
+                prim += 10;
+            }
+
+            s_Unknown_005e9818--;
+        }
+
+        return prim;
+    }
+
+    /// <summary>
+    /// Ghidra: les seaux <c>+0x1a</c> et <c>+0x1e</c> de FUN_0051e700 — les faces à quatre
+    /// sommets. Les deux formes sont mot pour mot celles de <see cref="EmitStaticQuads"/> ; seul
+    /// l'emplacement d'ordering table change, calculé par face depuis la profondeur maximale.
+    /// </summary>
+    private uint* EmitSortedQuads(
+        uint* otBase, uint* prim, ref uint* record, int count,
+        uint* screen, int* depths, uint* colours, uint tpageWord, uint uvWord, bool gouraud)
+    {
+        for (; count != 0 && s_Unknown_005e9818 != 0; count--, record += 4)
+        {
+            uint packed = record[0];
+            int i0 = (int)(packed & 0xff);
+            int i1 = (int)(packed >> 8 & 0xff);
+            int i2 = (int)(packed >> 0x10 & 0xff);
+            int i3 = (int)(packed >> 0x18);
+
+            uint v0 = screen[i0], v1 = screen[i1], v2 = screen[i2], v3 = screen[i3];
+
+            *(uint*)s_GteSxy805 = v0;
+            *(uint*)s_GteSxy806 = v1;
+            *(uint*)s_GteSxy807 = v2;
+
+            if ((ushort)v0 >= 0x140 && (ushort)v1 >= 0x140
+                && (ushort)v2 >= 0x140 && (ushort)v3 >= 0x140) continue;
+
+            int x0 = *(short*)s_GteSxy805, y0 = *(short*)(s_GteSxy805 + 2);
+            int x1 = *(short*)s_GteSxy806, y1 = *(short*)(s_GteSxy806 + 2);
+            int x2 = *(short*)s_GteSxy807, y2 = *(short*)(s_GteSxy807 + 2);
+            *(int*)s_GteMac0808 = x0 * y1 + x1 * y2 + x2 * y0
+                                - x0 * y2 - x1 * y0 - x2 * y1;
+
+            if ((v0 & 0xffff0000) >= 0xf00000 && (v1 & 0xffff0000) >= 0xf00000
+                && (v2 & 0xffff0000) >= 0xf00000 && (v3 & 0xffff0000) >= 0xf00000) continue;
+
+            if (ReadMac0() >= 0)
+            {
+                *(uint*)s_GteSxy807 = v3;
+                if (NormalClip() >= 0) continue;
+            }
+
+            int zmax = depths[i0];
+            if (zmax < depths[i1]) zmax = depths[i1];
+            if (zmax < depths[i2]) zmax = depths[i2];
+            if (zmax < depths[i3]) zmax = depths[i3];
+            if ((uint)(zmax - 0x140) >= 0xec0) continue;
+
+            uint* slot = (uint*)((byte*)otBase + ((uint)zmax & 0xfffc));
+            uint previous = *slot;
+            *slot = (uint)(nuint)prim;
+
+            if (!gouraud)
+            {
+                prim[0] = previous | 0x9000000;
+                prim[1] = colours[record[1] & 0xff] | 0x2c000000;
+                prim[2] = v1;
+                prim[3] = record[2] >> 0x10 | uvWord;
+                prim[4] = v0;
+                prim[5] = tpageWord | record[2] & 0xffff;
+                prim[6] = v2;
+                prim[7] = record[3] & 0xffff;
+                prim[8] = v3;
+                prim[9] = record[3] >> 0x10;
+                prim += 10;
+            }
+            else
+            {
+                uint indices = record[1];
+                uint c0 = colours[indices & 0xff];
+                uint c1 = colours[indices >> 8 & 0xff];
+                uint c2 = colours[indices >> 0x10 & 0xff];
+                uint c3 = colours[indices >> 0x18];
+
+                prim[0] = previous | 0xc000000;
+                prim[1] = c1 | 0x3c000000;
+                prim[2] = v1;
+                prim[3] = record[2] >> 0x10 | uvWord;
+                prim[4] = c0;
+                prim[5] = v0;
+                prim[6] = tpageWord | record[2] & 0xffff;
+                prim[7] = c2;
+                prim[8] = v2;
+                prim[9] = record[3] & 0xffff;
+                prim[10] = c3;
+                prim[11] = v3;
+                prim[12] = record[3] >> 0x10;
+                prim += 13;
+            }
+
+            s_Unknown_005e9818--;
+        }
+
+        return prim;
+    }
+
+    // =====================================================================
+    // FUN_0051fa40, FUN_00521000, FUN_00522140 — les trois listes de morceaux de décor
+    //
+    // C'est le **terrain et ce qui est posé dessus**. Un « morceau » n'est pas un modèle au sens
+    // de FUN_0051c420 : il porte une grille 32×32 de cellules (+0x34) en plus de son tableau de
+    // faces de 0x20 octets (+0x28), et les deux premières fonctions refont à l'intérieur le
+    // **même balayage 7×7 par octant** que FUN_00516fc0 — mêmes deux tables relevées, même clé
+    // `rang << 8 | colonne`. La différence tient en une instruction : ici la clé suivante se lit
+    // bien sur seize bits (`mov cx,[eax]` en 0x0051fde5), ce qui **confirme que la lecture d'un
+    // seul octet dans FUN_00516fc0 est un défaut** et non une convention. Voir LB-009.
+    //
+    // Les trois fonctions sont la même passe à trois réglages près, relevés au désassembleur le
+    // 2026-08-23 (`Legacy/Raw/Blaze/FUN_0051FA40.asm`, `FUN_00521000.asm`) :
+    //
+    // | | source des faces | profondeur | emplacement d'OT |
+    // |---|---|---|---|
+    // | `FUN_0051fa40` | grille de cellules | ordinal **418** | **par face**, `(z & 0xfffc)` |
+    // | `FUN_00521000` | grille de cellules | ordinal 795 | fixe, celui de l'appelant |
+    // | `FUN_00522140` | faces à la file | ordinal 795 | fixe, celui de l'appelant |
+    //
+    // Chaque cellule pointe sur un enregistrement dont les deux premiers mots portent chacun
+    // quatre compteurs : ceux du premier mot sont **sautés** et servent seulement à décaler le
+    // curseur d'indices, ceux du second donnent les quatre seaux de la passe — triangle plat,
+    // quad plat, triangle dégradé, quad dégradé. Chaque indice désigne une face de 0x20 octets :
+    //
+    //   +0x00  sommets 0 et 1     +0x04  sommets 2 et 3
+    //   +0x08  couleurs 0 et 1    +0x0c  couleurs 2 et 3
+    //   +0x10  UV première paire  +0x14  UV seconde paire
+    //   +0x1c  mot d'attributs **par face**
+    //
+    // Les deux moitiés d'un mot de sommets ne se lisent pas de la même façon : la basse est un
+    // indice (`(w & 0xffff) * 4`), la haute un **décalage d'octets déjà calculé** (`w >> 0xe`) —
+    // l'original ne remasque pas les deux bits perdus, ce qui n'a d'effet que si un indice
+    // dépassait 0x3fff. Transcrit tel quel.
+    //
+    // L'éclairage n'est modulé par rien : la couleur de source part à 0xffffff avant l'appel de
+    // lot. Et il n'y a **pas de mise à l'échelle** de la matrice, contrairement aux trois
+    // émetteurs de modèle : un morceau de décor est posé, pas dimensionné.
+    //
+    // Signatures relevées au désassembleur — `sub esp,68h` / `5ch` / `54h` puis quatre `push`,
+    // donc **quatre** arguments : emplacement d'OT, curseur, morceau, pose. Ghidra n'en rend que
+    // les deux derniers et réutilise les emplacements des deux premiers comme brouillon, d'où
+    // `unaff_retaddr`, `unaff_EBX`, `unaff_EBP`, `uStack_18`, `uStack_1c` et `puStack_20` pour un
+    // seul et même trio de sommets.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0051fa40 @ 0x0051fa40 — la première liste : le **terrain**. Balaie les cellules
+    /// du morceau et trie chaque face à sa propre profondeur.
+    /// </summary>
+    internal uint* DrawChunkCellsSorted(uint* otBase, uint* prim, byte* chunk, int* placement)
+        => DrawChunk(otBase, prim, chunk, placement,
+                     cellSweep: true, depthSorted: true, booleanFlatColour: false);
+
+    /// <summary>
+    /// Ghidra: FUN_00521000 @ 0x00521000 — la deuxième liste. Même balayage de cellules, mais sans
+    /// profondeur par sommet : tout part sur l'emplacement d'ordering table de l'appelant.
+    /// </summary>
+    internal uint* DrawChunkCells(uint* otEntry, uint* prim, byte* chunk, int* placement)
+        => DrawChunk(otEntry, prim, chunk, placement,
+                     cellSweep: true, depthSorted: false, booleanFlatColour: true);
+
+    /// <summary>
+    /// Ghidra: FUN_00522140 @ 0x00522140 — la troisième liste. Pas de grille du tout : les faces
+    /// se prennent à la file dans l'en-tête du morceau, comme chez FUN_0051c420.
+    /// </summary>
+    internal uint* DrawChunkFaces(uint* otEntry, uint* prim, byte* chunk, int* placement)
+        => DrawChunk(otEntry, prim, chunk, placement,
+                     cellSweep: false, depthSorted: false, booleanFlatColour: false);
+
+    private uint* DrawChunk(
+        uint* otBase, uint* prim, byte* chunk, int* placement,
+        bool cellSweep, bool depthSorted, bool booleanFlatColour)
+    {
+        EnsureGteRegisters();
+
+        byte* mainMem = GetMainMemPtr();
+        if (mainMem == null)
+        {
+            throw new NotImplementedException(
+                "DrawChunk: l'export MainMem de winsys3d.dll rend null, donc les tampons de " +
+                "sommets a MainMem + 0x1b0000, de profondeurs a + 0x1b4000 et de couleurs a " +
+                "+ 0x1b8000 ne peuvent pas etre places.");
+        }
+
+        Winsys3d.Ordinal_366(mem.s_CameraMatrix_006008e0);
+        Winsys3d.Ordinal_369(mem.s_CameraMatrix_006008e0);
+
+        // Même bloc que LoadPointAsMatrixTranslation, **au registre d'entrée près** : celui-ci
+        // passe par le vecteur 802 et non le 803. Recopié pour cette seule raison.
+        short* input = (short*)s_GteVector802;
+        input[0] = (short)((placement[0] + mem.s_Unknown_006008d0) >> 0xc);
+        input[1] = (short)((mem.s_Unknown_006008d4 - placement[1]) >> 0xc);
+        input[2] = (short)((placement[2] + mem.s_Unknown_006008d8) >> 0xc);
+
+        short* cameraAngles = (short*)mem.s_CameraVector_00604928;
+        short* angles = stackalloc short[3];
+        angles[0] = (short)(*(short*)((byte*)placement + 0x14) + cameraAngles[0]);
+        angles[1] = (short)(*(short*)((byte*)placement + 0x16) + cameraAngles[1]);
+        angles[2] = (short)(*(short*)((byte*)placement + 0x18) + cameraAngles[2]);
+
+        short* m = (short*)s_GteMatrix814;
+        int* mac = (int*)s_GteMac801;
+        short* ir = (short*)s_GteIr813;
+
+        mac[0] = (input[1] * m[1] + input[2] * m[2] + m[0] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x14);
+        ir[0] = (short)mac[0];
+        mac[1] = (input[1] * m[4] + input[2] * m[5] + m[3] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x18);
+        ir[1] = (short)mac[1];
+        mac[2] = (input[1] * m[7] + input[2] * m[8] + m[6] * input[0] >> 0xc)
+               + *(int*)(s_GteMatrix814 + 0x1c);
+        ir[2] = (short)mac[2];
+
+        *(int*)(s_GteMatrix814 + 0x14) = mac[0];
+        *(int*)(s_GteMatrix814 + 0x18) = mac[1];
+        *(int*)(s_GteMatrix814 + 0x1c) = mac[2];
+
+        // La matrice du morceau, puis celle d'éclairage, dans un seul tampon de 0x20 octets. Le
+        // tampon n'est mis à zéro qu'une fois : l'original laisse les quatorze octets au-delà de
+        // la rotation à ce que la pile portait, et les envoie quand même dans le registre 815,
+        // que l'ordinal 367 recopie sur huit dwords.
+        //
+        // FUN_0051fa40 écrit les deux registres à la main là où les deux autres appellent les
+        // ordinaux 366 et 367 ; c'est la même chose, écrite deux fois par le compilateur de 1998.
+        byte* matrix = stackalloc byte[0x20];
+        NativeMemory.Clear(matrix, 0x20);
+
+        RotMatrix(angles, (short*)matrix);
+        Winsys3d.Ordinal_366(matrix);
+
+        angles[1] += (short)mem.s_SceneYaw_005e930a;
+        angles[2] += (short)mem.s_SceneRoll_005e930c;
+        angles[0] = (short)mem.s_ScenePitch_005e9308;
+
+        RotMatrix(angles, (short*)matrix);
+        Winsys3d.Ordinal_367(matrix);
+
+        uint attributes = *(uint*)(chunk + 0x3c);
+        if (mem.s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
+        {
+            if (mem.s_Unknown_00564a4c == 0) return prim;
+            attributes &= 0xfffffdff;
+        }
+
+        // Les deux mots constants, tirés du seul CLUT : la moitié haute pour le mot de palette,
+        // la moitié basse **avec le bit 0x800 posé** pour le mot de page de texture.
+        uint clut = *(uint*)(mem.s_EntityDecodeTable_005e8f00 + ((attributes >> 0x10) & 0xff) * 4);
+        uint clutWord = clut & 0xffff0000;
+        uint tpageWord = ((clut | 0x800) & 0xffff) << 0x10;
+
+        uint counts = *(uint*)(chunk + 8);
+
+        if (depthSorted)
+        {
+            Winsys3d.Ordinal_418(chunk + 0x40, mainMem + 0x1b0000, mainMem + 0x1b4000, mainMem,
+                                 counts & 0xffff);
+        }
+        else
+        {
+            Winsys3d.Ordinal_795(chunk + 0x40, mainMem + 0x1b0000, counts & 0xffff);
+        }
+
+        *(uint*)s_GteLightColour817 = 0xffffff;
+        Winsys3d.Ordinal_793(*(void**)(chunk + 0x24), mainMem + 0x1b8000, (uint)((int)counts >> 0x10));
+
+        byte* faces = *(byte**)(chunk + 0x28);
+
+        if (!cellSweep)
+        {
+            // FUN_00522140 : les quatre seaux se suivent dans l'en-tête, et le curseur saute les
+            // quatre premiers compteurs — exactement comme FUN_0051c420.
+            ushort* counters = (ushort*)(chunk + 0x10);
+            int skipped = counters[0] + counters[1] + counters[2] + counters[3];
+            uint* cursor = (uint*)(faces + skipped * 0x20);
+            ushort* unused = null;
+
+            prim = EmitChunkTriangles(otBase, prim, null, ref unused, ref cursor,
+                                      *(ushort*)(chunk + 0x18), mainMem, clutWord, tpageWord,
+                                      gouraud: false, depthSorted, booleanFlatColour);
+            prim = EmitChunkQuads(otBase, prim, null, ref unused, ref cursor,
+                                  *(ushort*)(chunk + 0x1a), mainMem, clutWord, tpageWord,
+                                  gouraud: false, depthSorted);
+            prim = EmitChunkTriangles(otBase, prim, null, ref unused, ref cursor,
+                                      *(ushort*)(chunk + 0x1c), mainMem, clutWord, tpageWord,
+                                      gouraud: true, depthSorted, booleanFlatColour);
+            prim = EmitChunkQuads(otBase, prim, null, ref unused, ref cursor,
+                                  *(ushort*)(chunk + 0x1e), mainMem, clutWord, tpageWord,
+                                  gouraud: true, depthSorted);
+            return prim;
+        }
+
+        byte** grid = *(byte***)(chunk + 0x34);
+
+        // Le même balayage que DrawWorldCells, cellule pour cellule — mais la clé suivante se lit
+        // ici sur seize bits, comme la table le demande.
+        short* pose = (short*)mem.s_CameraVector_00604928;
+        int octant = (((ushort)pose[1] + 0x100) >> 9) & 7;
+
+        int skipCursor = octant * 0x10;
+        int skipKey = GameMemory.s_CellSkipTables_00564558[skipCursor]
+                    | GameMemory.s_CellSkipTables_00564558[skipCursor + 1] << 8;
+        skipCursor += 2;
+
+        ushort corner = GameMemory.s_CellSweepCorner_00564548[octant];
+        int cellX = ((-mem.s_Unknown_006008d0 >> 0xc) + 0x2000 >> 9) + (corner & 0xff);
+        int cellZ = ((-mem.s_Unknown_006008d8 >> 0xc) + 0x2000 >> 9) + (corner >> 8);
+
+        for (int row = 7; row != 0; row--, cellZ--)
+        {
+            int x = cellX;
+
+            for (int col = 7; col != 0; col--, x--)
+            {
+                if (skipKey == (row << 8 | col))
+                {
+                    skipKey = GameMemory.s_CellSkipTables_00564558[skipCursor]
+                            | GameMemory.s_CellSkipTables_00564558[skipCursor + 1] << 8;
+                    skipCursor += 2;
+                    continue;
+                }
+
+                if ((ushort)x >= 0x20 || (ushort)cellZ >= 0x20) continue;
+
+                byte* cell = grid[(short)cellZ * 0x20 + (short)x];
+                uint skippedCounts = *(uint*)cell;
+                uint bucketCounts = *(uint*)(cell + 4);
+                if ((skippedCounts | bucketCounts) == 0) continue;
+
+                int skippedFaces = (int)((skippedCounts >> 0x18 & 0xff) + (skippedCounts >> 0x10 & 0xff)
+                                       + (skippedCounts >> 8 & 0xff) + (skippedCounts & 0xff));
+                ushort* index = (ushort*)(cell + 8 + skippedFaces * 2);
+                uint* unused = null;
+
+                prim = EmitChunkTriangles(otBase, prim, faces, ref index, ref unused,
+                                          (int)(bucketCounts & 0xff), mainMem, clutWord, tpageWord,
+                                          gouraud: false, depthSorted, booleanFlatColour);
+                prim = EmitChunkQuads(otBase, prim, faces, ref index, ref unused,
+                                      (int)(bucketCounts >> 8 & 0xff), mainMem, clutWord, tpageWord,
+                                      gouraud: false, depthSorted);
+                prim = EmitChunkTriangles(otBase, prim, faces, ref index, ref unused,
+                                          (int)(bucketCounts >> 0x10 & 0xff), mainMem, clutWord, tpageWord,
+                                          gouraud: true, depthSorted, booleanFlatColour);
+                prim = EmitChunkQuads(otBase, prim, faces, ref index, ref unused,
+                                      (int)(bucketCounts >> 0x18 & 0xff), mainMem, clutWord, tpageWord,
+                                      gouraud: true, depthSorted);
+            }
+        }
+
+        return prim;
+    }
+
+    /// <summary>Avance d'une face : par la table d'indices de la cellule quand il y en a une,
+    /// sinon d'un enregistrement de 0x20 octets.</summary>
+    private static void AdvanceFace(byte* faces, ref ushort* index, ref uint* cursor)
+    {
+        if (faces != null) index++; else cursor += 8;
+    }
+
+    /// <summary>
+    /// Ghidra: les seaux 0 et 2 des trois listes de morceaux — les faces à trois sommets. Triangle
+    /// texturé plat de 8 mots (<c>0x7000000</c>) puis triangle texturé dégradé de 10
+    /// (<c>0x9000000</c>). Le code d'opération n'est pas une constante ici : il vient des huit
+    /// bits de poids fort du mot d'attributs **de la face**.
+    /// </summary>
+    private uint* EmitChunkTriangles(
+        uint* otBase, uint* prim, byte* faces, ref ushort* index, ref uint* cursor, int count,
+        byte* mainMem, uint clutWord, uint tpageWord,
+        bool gouraud, bool depthSorted, bool booleanFlatColour)
+    {
+        byte* screen = mainMem + 0x1b0000;
+        byte* depths = mainMem + 0x1b4000;
+        byte* colours = mainMem + 0x1b8000;
+
+        for (; count != 0 && s_Unknown_005e9818 != 0;
+             count--, AdvanceFace(faces, ref index, ref cursor))
+        {
+            uint* face = faces != null ? (uint*)(faces + *index * 0x20) : cursor;
+
+            uint o0 = (face[0] & 0xffff) * 4;
+            uint o1 = face[0] >> 0xe;
+            uint o2 = (face[1] & 0xffff) * 4;
+
+            uint v0 = *(uint*)(screen + o0);
+            uint v1 = *(uint*)(screen + o1);
+            uint v2 = *(uint*)(screen + o2);
+
+            *(uint*)s_GteSxy805 = v0;
+            *(uint*)s_GteSxy806 = v1;
+            *(uint*)s_GteSxy807 = v2;
+
+            if ((ushort)v0 >= 0x140 && (ushort)v1 >= 0x140 && (ushort)v2 >= 0x140) continue;
+
+            int x0 = *(short*)s_GteSxy805, y0 = *(short*)(s_GteSxy805 + 2);
+            int x1 = *(short*)s_GteSxy806, y1 = *(short*)(s_GteSxy806 + 2);
+            int x2 = *(short*)s_GteSxy807, y2 = *(short*)(s_GteSxy807 + 2);
+            *(int*)s_GteMac0808 = x0 * y1 + x1 * y2 + x2 * y0
+                                - x0 * y2 - x1 * y0 - x2 * y1;
+
+            if ((v0 & 0xffff0000) >= 0xf00000 && (v1 & 0xffff0000) >= 0xf00000
+                && (v2 & 0xffff0000) >= 0xf00000) continue;
+
+            if (ReadMac0() >= 0) continue;
+
+            uint* slot = otBase;
+            if (depthSorted)
+            {
+                int zmax = *(int*)(depths + o0);
+                if (zmax < *(int*)(depths + o1)) zmax = *(int*)(depths + o1);
+                if (zmax < *(int*)(depths + o2)) zmax = *(int*)(depths + o2);
+                if ((uint)(zmax - 0x140) >= 0xec0) continue;
+
+                slot = (uint*)((byte*)otBase + ((uint)zmax & 0xfffc));
+            }
+
+            uint uv0 = face[4];
+            uint uv1 = face[5];
+            uint faceAttributes = face[7];
+
+            if (mem.s_DeviceCapFlag_00564a48 && (faceAttributes & 0x2000000) != 0)
+            {
+                if (mem.s_Unknown_00564a4c == 0) continue;
+                faceAttributes &= 0xfdffffff;
+            }
+
+            uint previous = *slot;
+            *slot = (uint)(nuint)prim;
+
+            if (!gouraud)
+            {
+                // LB-010 : dans FUN_00521000, et **seulement là**, l'indice de couleur du triangle
+                // plat se réduit à un booléen — `test ebx,ebx / setne dl` en 0x00521544, puis
+                // `colours[dl]`. Les trois autres seaux de la même fonction indexent normalement.
+                uint colour = booleanFlatColour
+                    ? *(uint*)(colours + (face[2] != 0 ? 4u : 0u))
+                    : *(uint*)(colours + (face[2] & 0xffff) * 4);
+
+                prim[0] = previous | 0x7000000;
+                prim[1] = faceAttributes & 0xff000000 | colour;
+                prim[2] = v0;
+                prim[3] = (faceAttributes & 0xfcf0) * 0x1000 + clutWord | uv0 & 0xffff;
+                prim[4] = v2;
+                prim[5] = (faceAttributes & 0xef0000) + tpageWord | uv1 & 0xffff;
+                prim[6] = v1;
+                prim[7] = uv0 >> 0x10;
+                prim += 8;
+            }
+            else
+            {
+                prim[0] = previous | 0x9000000;
+                prim[1] = faceAttributes & 0xff000000
+                        | *(uint*)(colours + (face[2] & 0xffff) * 4);
+                prim[2] = v0;
+                prim[3] = (faceAttributes & 0xfcf0) * 0x1000 + clutWord | uv0 & 0xffff;
+                prim[4] = *(uint*)(colours + (face[3] & 0xffff) * 4);
+                prim[5] = v2;
+                prim[6] = (faceAttributes & 0xef0000) + tpageWord | uv1 & 0xffff;
+                prim[7] = *(uint*)(colours + (face[2] >> 0xe));
+                prim[8] = v1;
+                prim[9] = uv0 >> 0x10;
+                prim += 10;
+            }
+
+            s_Unknown_005e9818--;
+        }
+
+        return prim;
+    }
+
+    /// <summary>
+    /// Ghidra: les seaux 1 et 3 des trois listes de morceaux — les faces à quatre sommets. Quad
+    /// texturé plat de 10 mots (<c>0x9000000</c>) puis quad texturé dégradé de 13
+    /// (<c>0xc000000</c>).
+    /// </summary>
+    private uint* EmitChunkQuads(
+        uint* otBase, uint* prim, byte* faces, ref ushort* index, ref uint* cursor, int count,
+        byte* mainMem, uint clutWord, uint tpageWord, bool gouraud, bool depthSorted)
+    {
+        byte* screen = mainMem + 0x1b0000;
+        byte* depths = mainMem + 0x1b4000;
+        byte* colours = mainMem + 0x1b8000;
+
+        for (; count != 0 && s_Unknown_005e9818 != 0;
+             count--, AdvanceFace(faces, ref index, ref cursor))
+        {
+            uint* face = faces != null ? (uint*)(faces + *index * 0x20) : cursor;
+
+            uint o0 = (face[0] & 0xffff) * 4;
+            uint o1 = face[0] >> 0xe;
+            uint o2 = (face[1] & 0xffff) * 4;
+            uint o3 = face[1] >> 0xe;
+
+            uint v0 = *(uint*)(screen + o0);
+            uint v1 = *(uint*)(screen + o1);
+            uint v2 = *(uint*)(screen + o2);
+            uint v3 = *(uint*)(screen + o3);
+
+            *(uint*)s_GteSxy805 = v0;
+            *(uint*)s_GteSxy806 = v1;
+            *(uint*)s_GteSxy807 = v2;
+
+            if ((ushort)v0 >= 0x140 && (ushort)v1 >= 0x140
+                && (ushort)v2 >= 0x140 && (ushort)v3 >= 0x140) continue;
+
+            int x0 = *(short*)s_GteSxy805, y0 = *(short*)(s_GteSxy805 + 2);
+            int x1 = *(short*)s_GteSxy806, y1 = *(short*)(s_GteSxy806 + 2);
+            int x2 = *(short*)s_GteSxy807, y2 = *(short*)(s_GteSxy807 + 2);
+            *(int*)s_GteMac0808 = x0 * y1 + x1 * y2 + x2 * y0
+                                - x0 * y2 - x1 * y0 - x2 * y1;
+
+            if ((v0 & 0xffff0000) >= 0xf00000 && (v1 & 0xffff0000) >= 0xf00000
+                && (v2 & 0xffff0000) >= 0xf00000 && (v3 & 0xffff0000) >= 0xf00000) continue;
+
+            if (ReadMac0() >= 0)
+            {
+                *(uint*)s_GteSxy807 = v3;
+                if (NormalClip() >= 0) continue;
+            }
+
+            uint* slot = otBase;
+            if (depthSorted)
+            {
+                int zmax = *(int*)(depths + o0);
+                if (zmax < *(int*)(depths + o1)) zmax = *(int*)(depths + o1);
+                if (zmax < *(int*)(depths + o2)) zmax = *(int*)(depths + o2);
+                if (zmax < *(int*)(depths + o3)) zmax = *(int*)(depths + o3);
+                if ((uint)(zmax - 0x140) >= 0xec0) continue;
+
+                slot = (uint*)((byte*)otBase + ((uint)zmax & 0xfffc));
+            }
+
+            uint uv0 = face[4];
+            uint uv1 = face[5];
+            uint faceAttributes = face[7];
+
+            if (mem.s_DeviceCapFlag_00564a48 && (faceAttributes & 0x2000000) != 0)
+            {
+                if (mem.s_Unknown_00564a4c == 0) continue;
+                faceAttributes &= 0xfdffffff;
+            }
+
+            uint previous = *slot;
+            *slot = (uint)(nuint)prim;
+
+            if (!gouraud)
+            {
+                prim[0] = previous | 0x9000000;
+                prim[1] = faceAttributes & 0xff000000
+                        | *(uint*)(colours + (face[2] & 0xffff) * 4);
+                prim[2] = v1;
+                prim[3] = (faceAttributes & 0xfcf0) * 0x1000 + clutWord | uv0 >> 0x10;
+                prim[4] = v0;
+                prim[5] = (faceAttributes & 0xef0000) + tpageWord | uv0 & 0xffff;
+                prim[6] = v2;
+                prim[7] = uv1 & 0xffff;
+                prim[8] = v3;
+                prim[9] = uv1 >> 0x10;
+                prim += 10;
+            }
+            else
+            {
+                prim[0] = previous | 0xc000000;
+                prim[1] = faceAttributes & 0xff000000
+                        | *(uint*)(colours + (face[2] >> 0xe));
+                prim[2] = v1;
+                prim[3] = (faceAttributes & 0xfcf0) * 0x1000 + clutWord | uv0 >> 0x10;
+                prim[4] = *(uint*)(colours + (face[2] & 0xffff) * 4);
+                prim[5] = v0;
+                prim[6] = (faceAttributes & 0xef0000) + tpageWord | uv0 & 0xffff;
+                prim[7] = *(uint*)(colours + (face[3] & 0xffff) * 4);
+                prim[8] = v2;
+                prim[9] = uv1 & 0xffff;
+                prim[10] = *(uint*)(colours + (face[3] >> 0xe));
+                prim[11] = v3;
+                prim[12] = uv1 >> 0x10;
                 prim += 13;
             }
 

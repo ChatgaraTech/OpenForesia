@@ -504,6 +504,24 @@ public static unsafe partial class Blaze
         ViewEye[2] = sceneCamera[2];
 
         int* sceneTarget = *(int**)Mem.Entity(0x005eca94);
+        if (sceneTarget == null)
+        {
+            // ECHAFAUDAGE TEMPORAIRE (2026-08-23) : ce pointeur est pose au chargement de zone
+            // (WorldMap.cs, `*(byte**)Mem.Entity(0x005eca94) = (byte*)Mem.View(0x006067d0)`) et
+            // relu sans encombre par le bloc d'affichage du meme tour. Le trouver nul au tour
+            // suivant veut dire qu'il a ete efface entre les deux. Le voisinage part avec la
+            // lacune pour distinguer « ce mot seul » de « toute la region ».
+            var around = new System.Text.StringBuilder();
+            for (int i = -0x20; i < 0x20; i += 4)
+            {
+                around.Append($"{0x005eca94 + i:x8}={*(uint*)Mem.Entity(0x005eca94 + i):x8} ");
+            }
+
+            throw new InvalidOperationException(
+                "PublishCameraFrame_004022B0 : DAT_005eca94 (le bloc de cible de vue) est nul. " +
+                "Voisinage : " + around);
+        }
+
         ViewTarget[0] = sceneTarget[0];
         ViewTarget[1] = sceneTarget[1];
         ViewTarget[2] = sceneTarget[2];

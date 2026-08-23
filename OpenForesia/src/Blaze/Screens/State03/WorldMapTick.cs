@@ -1,4 +1,4 @@
-// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
+﻿// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // Ce fichier est une part de la classe partielle Blaze. La carte des repertoires et la regle
@@ -1506,27 +1506,308 @@ public static unsafe partial class Blaze
     /// moitie basse du mot d'attributs passe au disque au sol. Releves dans le binaire.</summary>
     private static readonly ushort[] s_PanelExtra_00563348 = [0x000c, 0x0002, 0x0003, 0x000e];
 
+
     /// <summary>
-    /// Ghidra: <c>0x00518e60</c>..<c>0x00519703</c> — <b>le balayage des cellules de decor</b>, le
+    /// Ghidra: <c>0x0051905b</c>..<c>0x00519703</c> — <b>le balayage des cellules de decor</b>, le
     /// gros du rendu du monde.
+    ///
+    /// <para>La borne indiquee par le TODO — 0x00518e60 — tombait encore dans la boucle des
+    /// panneaux (la bulle d'etat est en 0x00518f02) ; le bloc commence au test du second voile,
+    /// juste apres la sortie de cette boucle.</para>
+    ///
+    /// <para>Le cap de la camera (<c>DAT_0060492a</c>) choisit un des <b>huit octants</b>. L'octant
+    /// donne le coin de depart (<see cref="GameMemory.s_CellSweepCorner_00564548"/>) et la liste des cellules
+    /// a sauter (<see cref="GameMemory.s_CellSkipTables_00564558"/>). Le balayage descend ensuite 7 rangs de
+    /// 7 colonnes, en <b>decroissant</b> sur les deux axes.</para>
+    ///
+    /// <para>Chaque cellule porte <b>deux listes chainees</b>, prises dans les deux grilles 32x32
+    /// que le prologue efface : <c>MainMem + 0x1c5000</c> (indice 0x38a0) pour les entites, et
+    /// <c>MainMem + 0x1c4000</c> (indice 0x3880) pour le decor pose. Les deux se parcourent par le
+    /// chainage <c>+0x68</c> des enregistrements de 0x9c octets.</para>
+    ///
+    /// <para>Viennent enfin les <b>trois listes de morceaux</b> — trois suites d'octets terminees
+    /// par <c>0xff</c>, prises a la file dans le meme tampon — puis le <b>ciel</b>, garde par le
+    /// bit 0x40 du premier octet de <c>DAT_005eca80</c>.</para>
     /// </summary>
     private static void DrawWorldCells(uint* otBase, uint* otEntry, ref uint* cursor, byte* mainMem)
-        => throw new NotImplementedException(
-            "FUN_00516fc0 : le balayage des cellules (0x00518e60..0x00519703, ~200 l.) n'est pas " +
-            "transcrit. Il parcourt 7x7 cellules a partir du coin que le cap designe " +
-            "(DAT_00564548, releve), saute celles qu'une table de visibilite comprimee marque " +
-            "(PTR_DAT_005645d8, releve), et pour chaque occupant des deux grilles emet un modele, " +
-            "une particule ou un sprite selon ses bits d'etat. Suivent les trois listes de morceaux " +
-            "(FUN_0051fa40, FUN_00521000, FUN_00522140) et le ciel. Appelees manquantes : " +
-            "FUN_0051c420, FUN_0051e700 (423 l.), FUN_0051fa40 (441 l.), FUN_00521000 (365 l.), " +
-            "FUN_00522140 (315 l.) — toutes dans Blaze.c.");
+    {
+        // ---------------------------------------------------------- le second voile plein ecran
+        // Ghidra: DAT_005de02b, c'est-a-dire l'octet de poids fort de DAT_005de028 — meme montage
+        // que DAT_005de024/DAT_005de027 en tete du bloc d'affichage.
+        if ((byte)(Mem.s_Unknown_005de028 >> 0x18) != 0)
+        {
+            cursor = FillScreenQuad_0051F940(
+                otBase + 2, cursor, Mem.s_Unknown_005de028, 0, 0, 0x140, 0x100);
+        }
 
-    /// <summary>Ghidra: FUN_0051f940 @ 0x0051f940 (18 l.) — le voile plein ecran.</summary>
+        // ---------------------------------------------------------- l'octant, le coin, les sauts
+        short* pose = (short*)Mem.s_CameraVector_00604928;
+        int octant = (((ushort)pose[1] + 0x100) >> 9) & 7;
+
+        int skipCursor = octant * 0x10;
+        int skipKey = GameMemory.s_CellSkipTables_00564558[skipCursor]
+                    | GameMemory.s_CellSkipTables_00564558[skipCursor + 1] << 8;
+        skipCursor += 2;
+
+        ushort corner = GameMemory.s_CellSweepCorner_00564548[octant];
+        int cellX = ((-Mem.s_Unknown_006008d0 >> 0xc) + 0x2000 >> 9) + (corner & 0xff);
+        int cellZ = ((-Mem.s_Unknown_006008d8 >> 0xc) + 0x2000 >> 9) + (corner >> 8);
+
+        short* projected = stackalloc short[2];
+
+        for (int row = 7; row != 0; row--, cellZ--)
+        {
+            int x = cellX;
+
+            for (int col = 7; col != 0; col--, x--)
+            {
+                if (skipKey == (row << 8 | col))
+                {
+                    // LB-009 : la cle suivante est lue sur **un seul octet** (`movzx ax, byte
+                    // [edi]` en 0x00519143) alors que le curseur avance de deux et que la table
+                    // porte des cles de 16 bits. La cle devient donc <= 0xff et ne peut plus
+                    // egaler `rang << 8 | colonne`, qui vaut au moins 0x0101 : une seule cellule
+                    // est sautee par image au lieu de huit. Transcrit tel quel.
+                    skipKey = GameMemory.s_CellSkipTables_00564558[skipCursor];
+                    skipCursor += 2;
+                    continue;
+                }
+
+                // Les deux bornes sont comparees sur 16 bits, ce qui rejette aussi les negatifs.
+                if ((ushort)x >= 0x20 || (ushort)cellZ >= 0x20) continue;
+
+                // ==================================================== la grille des entites
+                for (byte* e = *(byte**)(mainMem + ((cellZ + 0x38a0) * 0x20 + x) * 4);
+                     e != null; e = *(byte**)(e + 0x68))
+                {
+                    uint flags = *(uint*)e;
+                    if ((flags & 0x4000) != 0 || (e[0x36] & 0x80) != 0) continue;
+
+                    // La lueur ne suit que les chemins qui retombent sur LAB_005193ff ; les deux
+                    // chemins de modele (0x80000 et 0x100000) sautent directement au maillon
+                    // suivant.
+                    bool glow = true;
+
+                    if ((flags & 0x8000) == 0)
+                    {
+                        // -------- les particules : un decalage de couche pris dans l'entite,
+                        // ou la couche d'arriere-plan.
+                        if ((flags & 0x100000) != 0)
+                        {
+                            *(uint*)Mem.Entity(0x005fa52c) = 0x07000700;
+                            cursor = EmitParticle(otBase + *(short*)(e + 0x2e), cursor,
+                                (int*)(e + 0x1c), 0, *(ushort*)(e + 0x0a));
+                        }
+                        else if ((flags & 0x80000) != 0)
+                        {
+                            *(uint*)Mem.Entity(0x005fa52c) = 0x07000700;
+                            cursor = EmitParticle(otBase - 5, cursor,
+                                (int*)(e + 0x1c), 0, *(ushort*)(e + 0x0a));
+                        }
+                    }
+                    else if (VSyncDelayed() == 0)
+                    {
+                        if ((flags & 0x80000) != 0)
+                        {
+                            cursor = DrawWorldModel_0051C420(otBase, cursor,
+                                ((byte**)*(byte***)s_ModelResultB_005f7b40)[1],
+                                (int*)(e + 0x1c), 0xc);
+                            glow = false;
+                        }
+                        else if ((flags & 0x100000) != 0)
+                        {
+                            // Le paquet de modeles : la premiere serie tant que l'indice reste
+                            // sous DAT_005edec4, la seconde au-dela — le meme debordement volontaire
+                            // que les tables de sauts d'entites.
+                            byte assetIndex = e[4];
+                            byte* model = assetIndex < s_Unknown_005edec4
+                                ? ((byte**)*(byte***)s_ModelResultA_005fa588)[assetIndex]
+                                : ((byte**)*(byte***)Mem.Entity(0x00600780))
+                                      [assetIndex - s_Unknown_005edec4];
+
+                            cursor = DrawWorldModelVariant_0051E700(
+                                otBase + *(short*)(e + 0x2e), cursor, model,
+                                (int*)(e + 0x1c), *(ushort*)(e + 0x0a));
+                            glow = false;
+                        }
+                        else if ((flags & 0x440000) != 0)
+                        {
+                            *(uint*)Mem.Entity(0x005fa52c) = 0x0e000e00;
+
+                            int kind = e[4] * 4;
+                            cursor = Mdl.DrawAnimatedModel(otBase, cursor,
+                                *(byte**)(*(int**)(Mem.s_AnimationTable_005e9640 + kind)
+                                          + *(short*)(e + 0x18)),
+                                *(int**)(s_ModelTable_005e96a0 + kind),
+                                (int*)(e + 0x1c),
+                                *(short*)(e + 0x1a),
+                                *(ushort*)(e + 0x0a));
+
+                            // Les trois nombres de mise au point au-dessus de l'entite. Garde par
+                            // le verrou du mode developpeur, donc hors du chemin ordinaire.
+                            if (Mem.s_DebugModeLatch_005633a8 == 0 && s_DebugOverlayEnabled_005de020 != 0
+                                && Mdl.ProjectPoint((int*)(e + 0x1c), projected) != 0)
+                            {
+                                int* dbg = stackalloc int[5];
+                                dbg[0] = (int)(nint)SpriteAtlas(0x00566c30);
+                                dbg[1] = 0x1000000;
+                                byte* db = (byte*)dbg;
+                                *(short*)(db + 8) = (short)(projected[0] - 0xc);
+                                *(short*)(db + 0xa) = projected[1];
+
+                                // TODO(REVERSE) : le bloc par personnage 0x005ea560 a un pas de
+                                // 0x120, et GameArena s'arrete a 0x005ea600 — seul l'indice 0 y
+                                // tient. Etendre l'arene le jour ou ce chemin devient atteignable.
+                                byte* stats = Mem.Arena(0x005ea560) + e[8] * 0x120;
+
+                                cursor = DrawIconGlyph_0051BE90(
+                                    otBase + 2, cursor, dbg, *(ushort*)(stats + 0x44), 5, 0);
+                                *(short*)(db + 0xa) += 8;
+                                cursor = DrawIconGlyph_0051BE90(
+                                    otBase + 2, cursor, dbg, *(short*)(stats + 0x4c), 5, 0);
+                                *(short*)(db + 0xa) += 8;
+                                cursor = DrawIconGlyph_0051BE90(
+                                    otBase + 2, cursor, dbg, *(short*)(stats + 0x4e), 5, 0);
+                            }
+                        }
+                    }
+
+                    // -------- la lueur de l'entite, meme montage que celle des membres du groupe
+                    if (glow && (*(uint*)(e + 0x90) & 0x9000) == 0 && (flags & 0x1000) == 0)
+                    {
+                        *(uint*)Mem.Entity(0x005fa520) = *(uint*)(e + 0x1c);
+                        *(uint*)Mem.Entity(0x005fa524) = *(uint*)(e + 0x64);
+                        *(uint*)Mem.Entity(0x005fa528) = *(uint*)(e + 0x24);
+
+                        Mem.s_Unknown_00564a4c = 0;
+                        cursor = EmitParticle(otBase + 5, cursor, (int*)Mem.Entity(0x005fa520), 0, 0);
+                        Mem.s_Unknown_00564a4c = 1;
+                    }
+                }
+
+                // ==================================================== la grille du decor pose
+                if (VSyncDelayed() != 0) continue;
+
+                for (byte* e = *(byte**)(mainMem + ((cellZ + 0x3880) * 0x20 + x) * 4);
+                     e != null; e = *(byte**)(e + 0x68))
+                {
+                    if ((*(uint*)e & 0x4000) != 0) continue;
+
+                    // Les deux bits de poids fort de l'octet +0x07 — c'est-a-dire du mot d'etat —
+                    // choisissent entre particule, modele statique et sa variante.
+                    int kind = e[7] & 3;
+                    byte** chunks = (byte**)Mem.Entity(0x005f7bc0)
+                                  + (*Mem.Entity(0x00600838) & 0xff);
+
+                    if (kind == 0)
+                    {
+                        Mem.s_Unknown_00564a4c = 0;
+                        cursor = EmitParticle(otBase + *(short*)(e + 0x2e), cursor,
+                            (int*)(e + 0x1c), 0, *(ushort*)(e + 0x0a));
+                        Mem.s_Unknown_00564a4c = 1;
+                    }
+                    else if (kind == 1)
+                    {
+                        cursor = DrawWorldModel_0051C420(otBase, cursor, chunks[e[4]],
+                            (int*)(e + 0x1c), *(ushort*)(e + 0x0a));
+                    }
+                    else if (kind == 2)
+                    {
+                        cursor = DrawWorldModelVariant_0051E700(otBase, cursor, chunks[e[4]],
+                            (int*)(e + 0x1c), *(ushort*)(e + 0x0a));
+                    }
+                }
+            }
+        }
+
+        // ---------------------------------------------------------- les trois listes de morceaux
+        //
+        // Le bloc de pose remis a neuf : position nulle, echelles 0x1000, orientation nulle,
+        // teinte blanche. C'est le meme bloc de dix mots que DrawGroundDisc recopie.
+        int* placement = stackalloc int[10];
+        for (int i = 0; i < 10; i++) placement[i] = 0;
+        placement[3] = 0x10001000;
+        placement[4] = 0x1000;
+        placement[7] = 0xffffff;
+
+        byte* list = ((byte**)*(byte**)(s_Unknown_005e97cc + 0x80))[s_Unknown_005f2ce0[8]];
+
+        if (VSyncDelayed() != 0) return;
+
+        // Les trois bases sont trois octets consecutifs de DAT_00600830/34 ; les trois suites
+        // d'octets se suivent dans le meme tampon, chacune close par 0xff.
+        byte** table = (byte**)Mem.Entity(0x005f7bc0) + *Mem.Entity(0x00600832);
+        for (; *list != 0xff; list++)
+        {
+            cursor = DrawChunkListA_0051FA40(otBase, cursor, table[*list], placement);
+        }
+
+        table = (byte**)Mem.Entity(0x005f7bc0) + *Mem.Entity(0x00600834);
+        for (list++; *list != 0xff; list++)
+        {
+            cursor = DrawChunkListB_00521000(otEntry, cursor, table[*list], placement);
+        }
+
+        table = (byte**)Mem.Entity(0x005f7bc0) + *Mem.Entity(0x00600836);
+        for (list++; *list != 0xff; list++)
+        {
+            cursor = DrawChunkListC_00522140(otEntry, cursor, table[*list], placement);
+        }
+
+        // ---------------------------------------------------------- le ciel
+        if ((**(byte**)Mem.Entity(0x005eca80) & 0x40) != 0)
+        {
+            int* sky = *(int**)*(byte**)(s_Unknown_005e97cc + 0x3c);
+            cursor = Prims.DrawSpriteVariant(otEntry, cursor, sky, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otEntry, cursor, sky);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051f940 @ 0x0051f940 (18 l.) — <b>le voile plein ecran</b> : un rectangle plat
+    /// de cinq mots, chaine dans la table d'affichage avec la longueur 0x04000000. La couleur est
+    /// prise sur 24 bits et le voile est saute si elle est nulle.
+    /// </summary>
     private static uint* FillScreenQuad_0051F940(
-        uint* otEntry, uint* prim, uint colour, int x, int y, int width, int height)
-        => throw new NotImplementedException(
-            "FUN_0051f940 (0x0051f940) : non transcrite. 18 lignes dans Blaze.c — le quadrilatere " +
-            "plein ecran du fondu.");
+        uint* otEntry, uint* prim, uint colour, uint x, short y, uint width, short height)
+    {
+        if ((colour & 0xffffff) == 0) return prim;
+
+        prim[2] = colour & 0xffffff | 0x62000000;
+        prim[1] = 0xe1000200;
+        prim[3] = (uint)((int)y << 0x10) | x & 0xffff;
+        prim[4] = (uint)((int)height << 0x10) | width & 0xffff;
+        *prim = *otEntry | 0x4000000;
+        *otEntry = (uint)(nuint)prim;
+        return prim + 5;
+    }
+
+    /// <summary>Ghidra: FUN_0051e700 @ 0x0051e700 — la seconde voie d'emission d'un modele de
+    /// decor, sœur de <c>FUN_0051c420</c> : meme signature a cinq arguments, meme place dans les
+    /// deux grilles, mais un emplacement d'ordering table calcule **par face**. Transcrite dans
+    /// <c>Engine/Model3d.cs</c>, a cote de ses deux sœurs.</summary>
+    private static uint* DrawWorldModelVariant_0051E700(
+        uint* otBase, uint* prim, byte* model, int* placement, uint flags)
+        => Mdl.DrawDepthSortedModel(otBase, prim, model, placement, flags);
+
+    /// <summary>Ghidra: FUN_0051fa40 @ 0x0051fa40 — la premiere des trois listes de morceaux,
+    /// celle qui se dessine sur la base d'ordering table et trie chaque face a sa profondeur :
+    /// <b>le terrain</b>. Transcrite dans <c>Engine/Model3d.cs</c>.</summary>
+    private static uint* DrawChunkListA_0051FA40(
+        uint* otBase, uint* prim, byte* chunk, int* placement)
+        => Mdl.DrawChunkCellsSorted(otBase, prim, chunk, placement);
+
+    /// <summary>Ghidra: FUN_00521000 @ 0x00521000 — la deuxieme liste de morceaux : meme balayage
+    /// de cellules, sans tri par face. Transcrite dans <c>Engine/Model3d.cs</c>.</summary>
+    private static uint* DrawChunkListB_00521000(
+        uint* otEntry, uint* prim, byte* chunk, int* placement)
+        => Mdl.DrawChunkCells(otEntry, prim, chunk, placement);
+
+    /// <summary>Ghidra: FUN_00522140 @ 0x00522140 — la troisieme liste de morceaux : les faces se
+    /// prennent a la file dans l''en-tete, sans grille. Transcrite dans <c>Engine/Model3d.cs</c>.</summary>
+    private static uint* DrawChunkListC_00522140(
+        uint* otEntry, uint* prim, byte* chunk, int* placement)
+        => Mdl.DrawChunkFaces(otEntry, prim, chunk, placement);
 
     /// <summary>Ghidra: FUN_0051be90 @ 0x0051be90 (74 l.) — le second chemin de pictogramme, celui
     /// que <c>Engine/UiText.cs</c> cite comme distinct de son propre glyphe en ligne.</summary>
@@ -2570,6 +2851,7 @@ public static unsafe partial class Blaze
             case 0x004509B0: EntityHandler_004509B0((uint*)record); return;
             case 0x00450AA0: EntityHandler_00450AA0((uint*)record); return;
             case 0x00450D30: EntityHandler_00450D30((uint*)record); return;
+            case 0x00486EE0: EntityHandler_00486EE0((uint*)record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
@@ -2593,6 +2875,218 @@ public static unsafe partial class Blaze
         }
 
         return text.ToString();
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004db5a0 @ 0x004db5a0 — <b>absente de <c>Blaze.c</c></b>, transcrite depuis le
+    /// desassemblage (112 octets, 0x004db5a0..0x004db610). <b>L'avance d'une image d'animation</b>,
+    /// partagee par les gestionnaires d'entite.
+    ///
+    /// <para>Le compteur d'images est <c>+0x1a</c>, la limite le champ <c>+0x16</c> de l'entree
+    /// d'animation que designe <c>+0x18</c> dans la table du sous-type. Le bit <c>0x1000000</c> des
+    /// drapeaux choisit le regime : pose, l'animation <b>boucle</b> (retour a zero) ; degage, elle
+    /// <b>s'arrete</b> sur sa derniere image et pose le bit <c>0x2000000</c> pour l'annoncer. Le bit
+    /// <c>0x2000000</c> est efface a l'entree dans les deux cas.</para>
+    /// </summary>
+    private static void AdvanceEntityAnimation_004DB5A0(uint* entity)
+    {
+        byte* e = (byte*)entity;
+
+        uint flags = entity[0] & 0xfdffffff;
+        entity[0] = flags;
+
+        byte* animation = ((byte**)*(byte***)(Mem.s_AnimationTable_005e9640 + e[4] * 4))
+                              [*(short*)(e + 0x18)];
+
+        *(short*)(e + 0x1a) += 1;
+
+        if ((flags & 0x1000000) != 0)
+        {
+            if (*(short*)(e + 0x1a) >= *(ushort*)(animation + 0x16))
+            {
+                *(short*)(e + 0x1a) = 0;
+            }
+        }
+        else if (*(short*)(e + 0x1a) >= *(ushort*)(animation + 0x16))
+        {
+            *(short*)(e + 0x1a) -= 1;
+            entity[0] = flags | 0x2000000;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00486ee0 @ 0x00486ee0 — <b>absente de <c>Blaze.c</c></b>, transcrite depuis le
+    /// desassemblage (881 octets, 0x00486ee0..0x00487250, releve dans
+    /// <c>Legacy/Raw/Blaze/FUN_00486EE0.asm</c>). C'est le sous-type <b>0</b> de la table
+    /// <c>0x005ecaa0</c> — la <b>bestiole errante</b> : elle regarde qui du groupe la voit, et sinon
+    /// se promene au hasard.
+    ///
+    /// <para><b>Premiere moitie — la detection.</b> Pour chacun des membres vivants, elle mesure la
+    /// distance horizontale (racine de la somme des carres, ordinal 442), l'ecart vertical et
+    /// l'angle relatif (ordinal 457) ; le membre « voit » la bestiole si la distance est dans
+    /// <c>[0x3c, 0x78]</c>, l'ecart vertical dans <c>[-0x64, +0x64]</c> et l'angle dans un cone de
+    /// <c>0x400</c> unites de part et d'autre. Le resultat est un <b>bit par membre</b> dans
+    /// <c>entite[9]</c>, dont le rang est le type d'emplacement du membre. Quand le masque passe de
+    /// vide a non vide, le script d'entite <c>+0x16</c> demarre.</para>
+    ///
+    /// <para><b>Seconde moitie — la promenade.</b> <c>entite[0x18]</c> alterne entre 0 (arret) et 1
+    /// (marche) ; en marche, la position avance de cinq fois le sinus et le cosinus du cap
+    /// <c>+0x32</c>. Le minuteur <c>+0x40</c> decompte, et a zero la bestiole change d'etat : elle
+    /// <b>essaie</b> un cap et une vitesse tires au hasard sur une <b>copie</b> de son
+    /// enregistrement (0x005e9a40), la fait avancer, et ne l'adopte que si
+    /// <see cref="FinalizeEntityPlacement2"/> ne signale pas les bits <c>0x882</c> — un mur, un
+    /// vide, ou le bord du maillage.</para>
+    /// </summary>
+    private static void EntityHandler_00486EE0(uint* entity)
+    {
+        byte* e = (byte*)entity;
+
+        uint flags = entity[0];
+        if ((flags & 0x4000) != 0) return;
+
+        if ((flags & 0x8000000) == 0) AdvanceEntityAnimation_004DB5A0(entity);
+
+        // -------------------------------------------------------------- la detection par membre
+        int detectionBefore = e[9];
+
+        for (int slot = 0; slot < s_PartySize_005e9020; slot++)
+        {
+            byte* member = Inp.s_SlotFlags_005e93c0 + slot * 0x9c;
+            byte bit = (byte)(1 << member[8]);
+
+            uint memberFlags = *(uint*)member;
+            bool eligible = (memberFlags & 0x80000000) != 0
+                         && (memberFlags & 0x50010007) == 0
+                         && *(short*)(member + 0x12) == 0;
+
+            if (!eligible)
+            {
+                e[9] &= (byte)~bit;
+                continue;
+            }
+
+            int dx = (*(int*)(e + 0x1c) - *(int*)(member + 0x1c)) >> 0xc;
+            int dy = (*(int*)(e + 0x20) - *(int*)(member + 0x20)) >> 0xc;
+            int dz = (*(int*)(e + 0x24) - *(int*)(member + 0x24)) >> 0xc;
+
+            int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+            int bearing = (Winsys3d.Ordinal_457(dx, dz) - *(short*)(member + 0x32)) & 0xfff;
+
+            if (distance < 0x3c || distance > 0x78
+                || (uint)(dy + 0x64) > 0xc8
+                || ((bearing + 0x200) & 0xfff) > 0x400)
+            {
+                e[9] &= (byte)~bit;
+                continue;
+            }
+
+            // Le meme angle, pris dans l'autre sens : du point de vue de la bestiole vers le
+            // membre. Quand elle est deja alertee (+0x43), elle en profite pour se tourner.
+            int backX = (*(int*)(member + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            int backZ = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int facing = (Winsys3d.Ordinal_457(backX, backZ) - *(short*)(e + 0x32)) & 0xfff;
+
+            if (e[0x43] != 0)
+            {
+                *(short*)(e + 0x32) = (short)Winsys3d.Ordinal_457(backX, backZ);
+            }
+
+            if (((facing + 0x200) & 0xfff) > 0x400 && e[0x43] == 0) continue;
+
+            e[9] |= bit;
+            *(byte**)(e + 0x6c) = member;
+        }
+
+        // Le masque vient de passer de vide a non vide : le script de rencontre demarre.
+        if (detectionBefore == 0 && e[9] != 0)
+        {
+            RunEntityScript(s_Unknown_005e97cc, *(byte**)(e + 0x6c), (uint)*(short*)(e + 0x16));
+        }
+
+        if (*(short*)(e + 0x10) == 0 && *(short*)(e + 0x12) == 0 && *(short*)(e + 0x14) != 0)
+        {
+            *(short*)(e + 0x14) = 0;
+            e[0x43] = 1;
+        }
+
+        // -------------------------------------------------------------- la promenade
+        if (e[0x43] != 0)
+        {
+            if (*(short*)(e + 0x18) > 1)
+            {
+                // Un dword : l'original efface l'etat **et** le compteur d'images d'un coup.
+                *(int*)(e + 0x18) = 0;
+                e[0x40] = (byte)((CrtRand() & 3) + 3);
+            }
+        }
+        else
+        {
+            if (*(short*)(e + 0x18) != 0) *(int*)(e + 0x18) = 0;
+            return;
+        }
+
+
+        short walkState = *(short*)(e + 0x18);
+        if (walkState == 1)
+        {
+            // En marche : cinq unites par image dans la direction du cap.
+            int heading = *(short*)(e + 0x32);
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 5;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 5;
+            e[0x40]--;
+        }
+        else if (walkState == 0 && *(short*)(e + 0x1a) == 0)
+        {
+            e[0x40]--;
+        }
+
+        FinalizeEntityPlacement2(entity);
+        *(int*)(e + 0x20) = *(int*)(e + 0x64);
+
+        if ((*(uint*)(e + 0x90) & 0x800) != 0) e[0x40] = 0;
+
+        byte timer = e[0x40];
+        if (timer != 0 && timer != 0xff) return;
+
+        // Le minuteur est echu : on bascule marche/arret.
+        *(short*)(e + 0x18) ^= 1;
+        short newState = *(short*)(e + 0x18);
+        *(short*)(e + 0x1a) = 0;
+
+        if (newState == 0)
+        {
+            // On s'arrete : trois a six images d'immobilite.
+            e[0x40] = (byte)((CrtRand() & 3) + 3);
+            return;
+        }
+
+        // On repart : le cap et la vitesse sont tires au hasard, mais **essayes sur une copie**
+        // de l'enregistrement avant d'etre adoptes.
+        byte* trial = Mem.Arena(0x005e9a40);
+        Mem.CopyDwords(entity, (uint*)trial, 0x27);
+
+        *(short*)(trial + 0x32) = (short)CrtRand();
+        trial[0x40] = (byte)((CrtRand() & 0x1f) + 0x28);
+
+        int trialHeading = *(short*)(trial + 0x32);
+        int speed = trial[0x40];
+
+        *(int*)(trial + 0x1c) += (int)Winsys3d.GetSinTableEntry(trialHeading) * speed * 5;
+        *(int*)(trial + 0x24) += Winsys3d.GetCosTableEntry(trialHeading) * speed * 5;
+
+        FinalizeEntityPlacement2((uint*)trial);
+
+        if ((*(uint*)(trial + 0x90) & 0x882) != 0)
+        {
+            // Refuse : mur, vide ou bord du maillage. On reste immobile une image.
+            *(int*)(e + 0x18) = 0;
+            e[0x40] = 1;
+            return;
+        }
+
+        *(short*)(e + 0x32) = *(short*)(trial + 0x32);
+        e[0x40] = trial[0x40];
     }
 
     /// <summary>

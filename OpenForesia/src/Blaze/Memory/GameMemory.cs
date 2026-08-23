@@ -1,4 +1,4 @@
-// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
+﻿// OpenForesia - reconstruction of Blaze & Blade (Blaze.exe) from the Ghidra decompilation
 // in Blaze.c (Legacy source of truth - never modify it, see Prompt.md / Strategy.md).
 //
 // GameMemory : le modele du segment .data de Blaze.exe.
@@ -1041,4 +1041,42 @@ internal sealed unsafe class GameMemory
     /// </para>
     /// </summary>
     internal readonly short* s_FaceWalkHistory_005de730 = (short*)NativeMemory.AllocZeroed(8);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00564548</c> — huit demi-mots, un par octant de cap, relevés dans le
+    /// binaire le 2026-08-23. L'octet bas est le décalage en X du coin de départ du balayage 7×7,
+    /// l'octet haut son décalage en Z ; les deux se comptent en cellules à partir de la cellule de
+    /// la caméra.
+    ///
+    /// <para>Table et non arène : ce sont seize octets d'initialisé, immédiatement suivis des huit
+    /// tranches de <see cref="s_CellSkipTables_00564558"/>. Deux lecteurs — le balayage de
+    /// <c>FUN_00516fc0</c> et celui, imbriqué, de <c>FUN_0051fa40</c> — d'où la place ici plutôt
+    /// que chez l'un des deux.</para>
+    /// </summary>
+    internal static ReadOnlySpan<ushort> s_CellSweepCorner_00564548 =>
+        [0x0403, 0x0402, 0x0302, 0x0202, 0x0203, 0x0204, 0x0304, 0x0404];
+
+    /// <summary>
+    /// Ghidra: <c>PTR_DAT_005645d8</c> et ce qu'elle pointe — huit pointeurs vers huit tables de
+    /// 0x10 octets, relevés dans le binaire le 2026-08-23 : ils désignent <c>0x00564558</c>,
+    /// <c>68</c>, <c>78</c>, <c>88</c>, <c>98</c>, <c>a8</c>, <c>b8</c>, <c>c8</c>, c'est-à-dire
+    /// <b>huit tranches contiguës</b> qui s'arrêtent pile où commence la table de pointeurs
+    /// elle-même. Elles sont donc modélisées d'un bloc : le code y avance au pointeur et pourrait
+    /// déborder d'une tranche sur la suivante.
+    ///
+    /// <para>Chaque tranche est une suite de <b>huit clés de 16 bits</b> <c>rang &lt;&lt; 8 |
+    /// colonne</c>, dans l'ordre exact où le balayage visite ses 49 cellules : ce sont les coins
+    /// que l'octant de cap met hors du cône de vue.</para>
+    /// </summary>
+    internal static ReadOnlySpan<byte> s_CellSkipTables_00564558 =>
+    [
+        0x07, 0x03, 0x01, 0x03, 0x07, 0x02, 0x01, 0x02, 0x07, 0x01, 0x06, 0x01, 0x02, 0x01, 0x01, 0x01,
+        0x07, 0x07, 0x01, 0x07, 0x07, 0x06, 0x07, 0x02, 0x07, 0x01, 0x06, 0x01, 0x02, 0x01, 0x01, 0x01,
+        0x07, 0x07, 0x06, 0x07, 0x05, 0x07, 0x07, 0x06, 0x07, 0x02, 0x07, 0x01, 0x06, 0x01, 0x05, 0x01,
+        0x07, 0x07, 0x06, 0x07, 0x02, 0x07, 0x01, 0x07, 0x07, 0x06, 0x07, 0x02, 0x07, 0x01, 0x01, 0x01,
+        0x07, 0x07, 0x06, 0x07, 0x02, 0x07, 0x01, 0x07, 0x07, 0x06, 0x01, 0x06, 0x07, 0x05, 0x01, 0x05,
+        0x07, 0x07, 0x06, 0x07, 0x02, 0x07, 0x01, 0x07, 0x01, 0x06, 0x01, 0x02, 0x07, 0x01, 0x01, 0x01,
+        0x03, 0x07, 0x02, 0x07, 0x01, 0x07, 0x01, 0x06, 0x01, 0x02, 0x03, 0x01, 0x02, 0x01, 0x01, 0x01,
+        0x07, 0x07, 0x01, 0x07, 0x01, 0x06, 0x01, 0x02, 0x07, 0x01, 0x06, 0x01, 0x02, 0x01, 0x01, 0x01,
+    ];
 }

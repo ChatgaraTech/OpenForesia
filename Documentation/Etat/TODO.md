@@ -1,8 +1,7 @@
-# TODO
+﻿# TODO
 
-Point d'entrée entre deux sessions. Mis à jour le **2026-08-22, tard le soir**. L'historique
-détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et
-la suite à faire.
+Point d'entrée entre deux sessions. Mis à jour le **2026-08-23**. L'historique détaillé est dans
+`REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
 
@@ -10,18 +9,86 @@ la suite à faire.
 >
 > 1. `dotnet build OpenForesia.sln`, puis
 >    `OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 44 -WorkingDir OpenForesia -Shot -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT20`
->    — le jeu doit s'arrêter sur `DrawWorldCells`. Si la validation du groupe rate, relancer :
->    la séquence est sensible au minutage (voir `test-protocol.md`).
-> 2. Écrire **`DrawWorldCells`** et ses cinq appelées — le détail est dans l'encadré « REPRENDRE
->    ICI » plus bas.
+>    — **la moitié dessin passe en entier**, et le jeu s'arrête maintenant dans la *simulation*, une
+>    ou deux images plus loin. La sortie varie d'une exécution à l'autre (voir « trois sorties
+>    possibles » plus bas) : relancer deux ou trois fois avant de conclure.
+> 2. Écrire **`FUN_0053aa10`** (le pas d'états d'une entité de scène, dans `Blaze.c` l. 85517), puis
+>    régler la **nullité intermittente de `DAT_005eca94`** — l'échafaudage qui la nomme est déjà en
+>    place dans `WorldMapCamera.cs`.
 > 3. Une fois qu'il passe, **regarder la capture** : ce sera la première image de la carte du monde.
+>    Elle n'a **toujours pas été vue** : la moitié dessin s'exécute, mais le jeu meurt trop vite
+>    après pour que la capture attrape autre chose qu'une fenêtre morte.
 >
-> Le travail des 21 et 22 août **n'est pas commité**.
+> Le travail des 21, 22 et 23 août **n'est pas commité**.
+
+# REPRENDRE ICI (2026-08-24) — la simulation, pas le dessin
+
+**La moitié dessin de la carte du monde est terminée.** Les six lacunes que le TODO de la veille
+listait sont transcrites : `DrawWorldCells` (le balayage 7×7), `FUN_0051f940` (le voile plein
+écran), `FUN_0051e700` (l'émission de modèle **triée par face**), et les trois listes de morceaux
+`FUN_0051fa40` / `FUN_00521000` / `FUN_00522140`. `DrawWorldMapFrame` va de bout en bout sans lever.
+
+Ce qui bloque maintenant est **dans le pas de simulation**, et il y a **trois sorties possibles**
+selon le minutage, toutes reproduites plusieurs fois :
+
+| sortie | où | quoi faire |
+|---|---|---|
+| `FUN_0053aa10` non transcrite | `TickEntityTable_005ecaa0` | la plus fréquente. ~90 l. dans `Blaze.c` (l. 85517) — le pas d'états d'une entité de scène : poison, décomptes, `FUN_0053db20`. **Attention** : elle indexe `&DAT_005ea560` au pas `0x120`, et `GameArena` s'arrête à `0x005ea600` — l'arène ne tient qu'une entrée. C'est une question de carte mémoire avant d'être une question de code. |
+| `DAT_005eca94` nul | `PublishCameraFrame_004022B0` | intermittent, et **antérieur au travail du 23 août** (constaté à la première exécution de la séance, avant toute modification). Le pointeur est posé au chargement de zone (`WorldMap.cs`, `= (byte*)Mem.View(0x006067d0)`) et relu sans encombre par le bloc d'affichage du **même** tour ; il est nul au tour suivant. Un échafaudage temporaire dans `WorldMapCamera.cs` imprime le voisinage de `0x005eca94` au moment où il lève — le lancer une fois et lire le résultat coûte moins cher que raisonner. |
+| aucune | — | le jeu tourne quelques images de plus puis retombe sur l'une des deux ci-dessus |
+
+## Ce que la moitié dessin a appris
+
+**Les trois listes de morceaux sont la même passe à trois réglages près**, et non trois fonctions à
+1 100 lignes. Elles sont maintenant un seul `DrawChunk` dans `Engine/Model3d.cs`, paramétré par :
+
+| | source des faces | profondeur | emplacement d'OT |
+|---|---|---|---|
+| `FUN_0051fa40` | grille de cellules | ordinal **418** | **par face**, `(z & 0xfffc)` |
+| `FUN_00521000` | grille de cellules | ordinal 795 | fixe, celui de l'appelant |
+| `FUN_00522140` | faces à la file | ordinal 795 | fixe, celui de l'appelant |
+
+**`FUN_0051e700` est la synthèse des deux émetteurs de modèle déjà écrits** : le prologue et les
+quatre seaux de `FUN_0051c420`, le tri par face de `FUN_0051d1f0`. Un seul écart de disposition, sur
+le triangle dégradé, et un terme de plus dans le mot de page de texture. Elle s'est écrite en une
+passe **parce que les deux sœurs étaient là** — c'est la troisième fois de suite que le conseil
+« relire ce qui tourne avant de relever au désassembleur » paie.
+
+**Deux défauts d'origine relevés au passage**, tous deux consignés dans `legacy-bug.md` :
+
+* **LB-009** — le balayage de `FUN_00516fc0` lit les clés de saut suivantes **sur un octet** alors
+  que le curseur avance de deux. Une seule cellule est sautée par image au lieu de huit. Les deux
+  listes de morceaux qui refont le même balayage lisent, elles, seize bits : c'est ce qui prouve que
+  c'est un défaut et non une convention.
+* **LB-010** — le seau des triangles plats de `FUN_00521000`, et lui seul, réduit son indice de
+  couleur au prédicat « le champ est non nul ».
+
+**Un gestionnaire d'entité de plus, absent de `Blaze.c`** : `FUN_00486ee0` (881 o., sous-type 0 de
+la table `0x005ecaa0`) — la bestiole errante, avec sa détection par cône de vue et sa promenade
+aléatoire — plus `FUN_004db5a0` (112 o.), l'avance d'image d'animation qu'elle partage. Les deux
+sont transcrites depuis `Legacy/Raw/Blaze/FUN_00486EE0.asm`.
+
+## Deux lacunes secondaires, laissées derrière leur condition
+
+* `FUN_00538bc0` (13 l.) — la hauteur de la bulle d'état. Triviale, mais demande de relever
+  `DAT_0056d440` (table de pas 8 dans `.data`). Gardée par `record[0x3c] != 0`.
+* `FUN_005309b0` (147 l.) — la surimpression de dialogue, gardée par le bit `0x8000000`. Demande
+  `DAT_0056a851`, `DAT_0056aae0` et `DAT_0056ab30`, non relevées.
+
+## Une fragilité à surveiller
+
+Une exécution sur cinq a échoué dans `AllocLowZeroed` (« aucun bloc libre de 0x1000 octets sous
+0x01000000 »). La fenêtre basse fait 16 Mo et chaque bloc y dépense un granule de 64 Ko. Le bloc qui
+a échoué était alloué avant le nouveau, donc ce n'est pas une régression — mais la marge est plus
+mince qu'il n'y paraît.
+
+---
+
 
 **État git au 2026-08-21.** Commité jusqu'à `2d5bb36` (« Refacto Audio.cs ») : les six premières
 vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baseline.txt` /
 `bodies-baseline.txt`.
-**Non commité** : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
+**Non commité** : le travail du 23 août (la moitié dessin de la carte du monde en entier, deux défauts d'origine, deux gestionnaires d'entité relevés au désassembleur), et avant lui : les conversions de `Resources.cs`, `Model3d.cs` et `UiWindow.cs` — l'étape C est
 terminée —, le rapatriement `.data` du son, le retrait intérieur des points d'entrée, la correction
 des huit défauts d'aliasing (qui **change le comportement**), la transcription de `FUN_00533940`,
 `FUN_00533450`, `FUN_004747F0` (celle-ci **absente de `Blaze.c`**, désassemblée sur place) et
@@ -38,13 +105,15 @@ quatorze appelées du cas 0** (`0x005176d5`..`0x0051776b`, le pas de simulation 
 quatre gestionnaires d'entité que la zone de départ demande réellement**. Les six passes de tables
 d'entités traversent maintenant sans lever.
 
+## Archive — l'encadré « REPRENDRE ICI » du 2026-08-23, soldé
+
 > **LE PAS DE SIMULATION DU MONDE S'EXÉCUTE EN ENTIER.** Les quatorze appelées du cas 0 tournent,
 > `FUN_0050bf20` avec elles, pour **chaque membre du groupe** et à chaque image. L'exception a
 > quitté la simulation : elle est remontée dans `RunWorldMapTick` lui-même.
 >
 > ---
 >
-> # REPRENDRE ICI (2026-08-23) — `DrawWorldCells`, le dernier bloc de la moitié dessin
+> ## SOLDÉ le 2026-08-23 — `DrawWorldCells` et ses cinq appelées
 >
 > Le jeu s'arrête sur **`DrawWorldCells`** (`WorldMapTick.cs`, `0x00518e60`..`0x00519703`,
 > ~200 l.). **C'est le dernier gros bloc**, et c'est lui qui fera enfin apparaître une image : tant
