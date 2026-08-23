@@ -913,6 +913,7 @@ Four fields per descriptor, at the offsets already named on the other instances
 
 | VA | contenu | rôle |
 |---|---|---|
+| `0x0055EB68` | 32 pointeurs → `0x005037d0`, `0x005037e0`, `0x00503850`, `0x005038a0`, `0x00503990`, `0x00503b50`, `0x00503d30`, `0x00503d70`, `0x00503d80`, `0x00503d90`, `0x00503db0`, `0x00503dd0`, `0x00503df0`, `0x00503e10`, `0x00503e50`, `0x00503e80`, `0x00503f10`, `0x00503fa0`, `0x00503fd0`, `0x00504020`, `0x00504070`, `0x005040a0`, `0x00504110`, `0x00504170`, `0x005041a0`, `0x005041d0`, `0x00504200`, `0x00504270`, `0x00504290`, `0x005042b0`, `0x00504310`, `0x005043c0` ; puis `0x00504c80`, puis un dword nul | `PTR_LAB_0055eb68` — les verbes de la caméra de scénette, tous **absents de `Blaze.c`**, transcrits le 2026-08-23 dans `Screens/State03/WorldMapTick.cs`. `0x00504c80` **n'est pas un verbe** : son corps ne suit pas la convention `(curseur, &continuer)` |
 | `0x005633b0` | en-tête de descripteur, 26 dwords ; `+4` = `0xFFB00030` | le descripteur d'interface de la carte du monde |
 | `0x005645F8` | `02 00 00 00 FF 00 00 00 …` | `DAT_005645f8` = 2 : le pas de boucle ; `DAT_005645fc` = 0xff |
 | `0x00564650` | `7C 01 00 00 00 00 00 00 00 00 00 00 50 00 00 00 80 02 00 00` | six champs de caméra remis à neuf à chaque tour |

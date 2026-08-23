@@ -60,7 +60,11 @@ l'arène avaient déjà été corrigés.
 Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
 
 * `FUN_00405240` et `FUN_00405510` — les deux cibles restantes de `FUN_00404ef0` (le type 0,`FUN_00404f70`, est fait). Elles ont la même forme : un aiguillage sur `+0x5c` vers`FUN_004051d0` / `FUN_00404fe0` / `FUN_004050d0`, toutes trois déjà transcrites.
-* le **verbe 27 de la caméra de scénette** — `TickCutsceneCamera`, entrée de `PTR_LAB_0055eb68`relevée à **`0x00504270`**, absente de `Blaze.c`. C'est ce que déclenche le fait de marcher versun PNJ, donc la prochaine marche du chemin de dialogue.
+* l'**opcode 22 de l'interpréteur de scripts d'entité** — `FUN_00515b40`, absent de `Blaze.c`,
+  désassemblage déjà relevé dans `Legacy/Raw/Blaze/ScriptOps/FUN_00515b40.asm`. **C'est le point de
+  blocage courant** : on l'atteint quand l'animation d'une entité de scène finit et lance son
+  script (`TickEntityTable_005ff400` → `FUN_00404ef0` → `FUN_00404f70` → `FUN_00404fe0`), ce qui
+  arrive tout seul à l'auberge vers la 1681ᵉ image une fois la boîte de dialogue écartée.
 * l'entrée `0x46` de la table statique `0x00551c30` — le gestionnaire de l'effet « magie épuisée »,
   **absent de `Blaze.c`** : `OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00551d48 4`, puis
   désassembler.
@@ -959,8 +963,8 @@ RunGameStateTick (état 3)
             ├─ TickEffectSlots_005e9b60             [FAIT — FUN_0050f0d0]
             ├─ RunLeaderScriptListLate              [FAIT — FUN_00513f20]
             ├─ ResetPendingChunkRecords             [FAIT — FUN_00534f90]
-            └─ TickCutsceneCamera                   [FAIT — FUN_005036e0 ; sa boucle de verbes
-                                                     passe par PTR_LAB_0055eb68, non decompilee]
+            └─ TickCutsceneCamera                   [FAIT — FUN_005036e0, boucle de verbes comprise ;
+                                                     les 32 verbes de PTR_LAB_0055eb68 sont transcrits]
 
          [le cas 0 s'execute ENTIEREMENT depuis le 2026-08-22]
          └─ bloc d'affichage principal 0x00517aa7   ←←← ON S'ARRÊTE ICI (~700 l.)

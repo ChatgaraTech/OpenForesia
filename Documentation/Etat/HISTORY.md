@@ -6,6 +6,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-23
 
+- feat : **la caméra de scénette au complet** — la boucle de verbes `FUN_005036e0` et les trente-deux verbes de `PTR_LAB_0055eb68`, tous absents de `Blaze.c` et relevés au désassembleur
+- feat : les trois verbes de pas de la scénette — saut immédiat (3), glissement par quarts avec chemin d'angle le plus court (4), déplacement en N images (5)
+- feat : les verbes de flot de la scénette — étiquette et saut (7, 8), répétition (9, 10), appel de sous-script (2), sortie et rebranchement de la caméra libre (1)
+- feat : les verbes de consigne — visée et pose sur entité (13 à 16), littéraux absolus et relatifs (17 à 22), rappel de la caméra libre (23 à 26), secousses tirées au hasard (29 à 31)
+- doc : l'écart entre deux entrées d'une table de pointeurs ne mesure pas la fonction — le verbe 31 tenait en 158 octets là où l'écart annonçait 2240
+- doc : le verbe 6 de la scénette boucle indéfiniment sur une durée nulle, blocage latent du jeu de 1998 conservé tel quel
 - feat : verbe 0 de la table de zone (`FUN_00443100`) — le dégel des trois tables d'effets qu'un dialogue de PNJ demande
 - feat : cascade de réveil des entités de scène — `FUN_00404f70`, `FUN_004051d0`, `FUN_00404fe0`, `FUN_004050d0`
 - fix : **caméra de l'auberge conforme au legacy** — `FUN_00401000` restitue `ViewAngle` depuis `SavedViewAngle` avant de semer le but ; Ghidra avait supprimé ce bloc comme code mort, à tort (le pointeur `DAT_005E9AE0` aliase la destination). Élévation 597 et cap 1024 comme l'original, capture identique à `legacy.png`

@@ -10099,3 +10099,97 @@ s'anime. 1741 images sans plantage, 562 primitives par image.
 Marcher vers lui declenche ensuite une **camera de scenette** : `TickCutsceneCamera` reclame le
 verbe **27** de `PTR_LAB_0055eb68`, dont l'entree vaut **`0x00504270`** (relevee dans le binaire).
 Absente de `Blaze.c` comme toute cette table — c'est la prochaine marche.
+
+---
+
+## 2026-08-23 (suite) — la caméra de scénette au complet
+
+`TickCutsceneCamera` réclamait le verbe 27 de `PTR_LAB_0055eb68`. Le relevé de la table a montré
+qu'il n'y avait pas un verbe à écrire mais **trente-deux**, tous absents de `Blaze.c` : Ghidra a
+nommé la table `PTR_LAB_`, donc il n'a reconnu aucune de ses cibles comme une fonction et n'en a
+décompilé aucune. Les trente-deux sont maintenant transcrits, ainsi que la boucle qui les enchaîne.
+
+### La boucle, et ce qu'elle dit du rythme d'une scénette
+
+`FUN_005036e0` tient en trois lignes une fois l'échappement du joueur écarté :
+
+```c
+while (continuer != 0)
+    curseur = table[*curseur](curseur, &continuer);
+DAT_005719b4 = curseur;
+```
+
+Un pas de scénette n'est donc **pas « un verbe par image »** mais « tout ce qui se fait sans
+attendre, puis on rend la main ». Seuls trois verbes posent `continuer` à zéro — les trois verbes de
+pas, 3, 4 et 5 —, plus le verbe 0 qui termine. Tous les autres enchaînent dans la même image : une
+suite de dix consignes suivie d'un glissement s'exécute d'un bloc, puis la caméra glisse sur autant
+d'images qu'il faut.
+
+### Les six blocs, et le contresens qu'ils corrigent
+
+`BeginScriptedCamera` sauvegardait, croyait-on, les trois blocs de caméra avant de les remplacer par
+des copies de travail. Les verbes montrent que la moitié de cette « sauvegarde » n'en est pas une :
+
+| travail (ce que la caméra montre) | consigne (ce que les verbes visent) | contenu |
+|---|---|---|
+| `0x005719e8` | `0x005719f0` | trois angles, `short` |
+| `0x00571a18` | `0x005719f8` | position, `int` en virgule fixe 20.12 |
+| `0x00571a08` | `0x00571a28` | cible, `int` sans décalage |
+
+La colonne de droite est une **consigne**, initialisée à la valeur courante pour qu'une scénette qui
+n'écrit rien ne bouge rien. Dix-sept verbes ne font qu'écrire dedans, sous toutes les formes :
+depuis une entité choisie (15, 16) ou l'entité porteuse (13, 14), en littéral absolu (17, 18, 19) ou
+relatif (20, 21, 22), en rappelant la caméra libre (23, 24, 25), ou par tirage au hasard (29, 30,
+31 — la secousse de caméra).
+
+Deux verbes vont plus loin que la consigne : 11 et 12 branchent le pointeur que le moteur suit
+**directement** sur le triplet d'une entité, retenu au passage par les verbes 13 à 16 dans
+`DAT_005719b0` et `DAT_00571a14`. La caméra cesse alors de viser une valeur figée et suit l'entité
+image par image, sans plus repasser par les verbes. Ces deux adresses n'ont aucun lecteur dans
+`Blaze.c` : leurs seuls lecteurs étaient ces verbes-là.
+
+### Les trois régimes de mouvement
+
+- **verbe 3** — la consigne est recopiée telle quelle, et l'on tient N images. C'est le seul des
+  trois à écrire aussi les registres que le moteur lit sans passer par les pointeurs : le triplet
+  d'angles `DAT_00604928` et le vecteur de translation `DAT_006008d0`, dont deux composantes sur
+  trois partent niées.
+- **verbe 4** — chaque composante avance d'un quart de son écart à chaque image. Le verbe rend la
+  main tant qu'un seul des huit pas atteint 4 en valeur absolue.
+- **verbe 5** — l'écart est divisé une fois par la durée, et le pas ainsi obtenu est ajouté à chaque
+  image. Huit emplacements de pas lui sont réservés (`0x005719a8`, `0x005719b8`, `0x005719c8`).
+
+Les deux composantes d'angle des verbes 4 et 5 prennent le **chemin le plus court** : l'écart est
+ramené sur douze bits — un tour complet vaut `0x1000` — et au-delà d'un demi-tour c'est le
+complément qui est pris, en négatif.
+
+### Deux acquis de méthode
+
+**Un écart entre deux entrées d'une table de pointeurs ne mesure pas la fonction.** Le verbe 31
+était annoncé à 2240 octets par l'écart jusqu'à l'entrée suivante ; il en fait 158, et le code qui
+suit — une initialisation qui alloue huit tampons et ouvre un fichier — ne lui appartient pas. La
+règle rejoint celle déjà écrite pour `FUN_004747F0` : ce qui prédit le coût est le nombre de formes
+distinctes, pas la taille.
+
+**La dernière entrée d'une table n'en fait pas forcément partie.** Le mot `0x00504c80`, trente-
+troisième de la table, ne suit pas la convention des verbes : son corps ne lit ni curseur ni
+drapeau, il enchaîne un appel et un saut vers un tout autre sous-programme. La table compte
+trente-deux verbes ; le mot nul qui suit `0x00504c80` est sa vraie fin.
+
+### Un blocage latent du jeu de 1998
+
+Le verbe 6 — « attendre N images » — pose son compteur **sans** rendre la main, comptant sur le tour
+suivant de la boucle pour le décrémenter. Une durée de zéro le fait donc repasser indéfiniment sur
+lui-même à l'intérieur d'une seule image. Aucun script connu n'écrit ce zéro ; le comportement est
+transcrit tel quel plutôt que gardé.
+
+### Le point de blocage suivant
+
+La scénette est franchie. Le blocage suivant est ailleurs : l'**opcode 22 de l'interpréteur de
+scripts d'entité**, `FUN_00515b40`, lui aussi absent de `Blaze.c` et pour la même raison. On y
+arrive par `TickEntityTable_005ff400` → `EntityHandler_00404EF0` → `WakeSceneEntityKind0_00404F70`
+→ `AdvanceSceneEntityState_00404FE0`, c'est-à-dire quand l'animation d'une entité de scène atteint
+sa dernière image et lance le script qui y est accroché — rien qui passe par la caméra de scénette.
+Le chemin au repos de l'auberge y arrive tout seul vers la 1681ᵉ image, une fois la boîte de
+dialogue écartée et le monde dégelé. Son désassemblage est déjà relevé dans
+`Legacy/Raw/Blaze/ScriptOps/FUN_00515b40.asm`.
