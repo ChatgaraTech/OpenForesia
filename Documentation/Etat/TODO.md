@@ -12,16 +12,97 @@ Point d'entrée entre deux sessions. Mis à jour le **2026-08-23**. L'historique
 >    — **la moitié dessin passe en entier**, et le jeu s'arrête maintenant dans la *simulation*, une
 >    ou deux images plus loin. La sortie varie d'une exécution à l'autre (voir « trois sorties
 >    possibles » plus bas) : relancer deux ou trois fois avant de conclure.
-> 2. Écrire **`FUN_0053aa10`** (le pas d'états d'une entité de scène, dans `Blaze.c` l. 85517), puis
->    régler la **nullité intermittente de `DAT_005eca94`** — l'échafaudage qui la nomme est déjà en
->    place dans `WorldMapCamera.cs`.
+> 2. Écrire le **remplissage des blocs de statistiques** des entités de scène — personne ne les
+>    remplit, et c'est ce qui fait dérailler la simulation. Détail dans « REPRENDRE ICI ».
 > 3. Une fois qu'il passe, **regarder la capture** : ce sera la première image de la carte du monde.
 >    Elle n'a **toujours pas été vue** : la moitié dessin s'exécute, mais le jeu meurt trop vite
 >    après pour que la capture attrape autre chose qu'une fenêtre morte.
 >
 > Le travail des 21, 22 et 23 août **n'est pas commité**.
 
-# REPRENDRE ICI (2026-08-24) — la simulation, pas le dessin
+# REPRENDRE ICI (2026-08-24) — **les blocs de statistiques ne sont remplis par personne**
+
+`FUN_0053aa10` est écrite, et elle a mis le doigt sur autre chose qu'une lacune de transcription.
+
+**Le fait.** `s_EntityStatBlocks_005ea560` (0x20 entrées de 0x120 octets,
+`Screens/State04/CharacterCreation.cs`) est alloué à zéro et **aucun site du dépôt n'y écrit**. Les
+entités de scène — celles de `0x005ecaa0`, qui ne portent pas le bit `0x800000` — naissent donc avec
+0 point de vie et 0 point de magie.
+
+**La conséquence, faithfully transcrite.** `FUN_0053aa10` est le premier lecteur qui *agit* sur ce
+bloc. À la première image, pour chaque entité de scène :
+
+1. `+0x4c < 1` → le bit `0x40000000` part dans le bloc **et** dans le mot d'état de l'entité :
+   toutes les entités de scène sont marquées mortes ;
+2. `+0x4e < 1` et le verrou `0x80` encore levé → une entité de sous-type `0x29` naît dans
+   `DAT_005f2d40`, et une copie de sous-type `0x46` dans la table des effets `0x005ff400`.
+
+C'est cette copie de sous-type `0x46` qui bloque maintenant : son gestionnaire est l'entrée 0x46 de
+la table statique `0x00551c30`, **absente de `Blaze.c`**, à relever avec
+`OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00551d48 4` puis à désassembler.
+
+**Ne pas transcrire cette cascade.** Elle est le symptôme, pas la cause : dans le jeu d'origine, une
+entité de scène n'a pas 0 point de magie en naissant. Ce qu'il faut écrire, c'est **le remplissage
+des blocs**. Les trois fonctions qui le font sont identifiées — `FUN_00538af0`, `FUN_00538f50` et
+`FUN_00538fa0`, toutes dans `Blaze.c`, appelées ensemble par `FUN_00538830` (l'entrée en combat) et
+par `FUN_00519c30` (le ciblage). Reste à trouver **qui les appelle au chargement de zone** : c'est là
+que le premier remplissage a lieu, et c'est la vraie tâche suivante.
+
+## Ce qui a été écrit le 2026-08-23, seconde moitié
+
+* **`FUN_0053aa10`** (~90 l.) — le pas d'états d'une entité de scène. Malgré le nom que ce port lui
+  avait donné d'avance, elle n'anime rien : elle fait vivre le bloc de statistiques. Trois cadences
+  (chaque image : la teinte `+0x0b` ; toutes les trente : les deux poisons et le drain de
+  pétrification, à trois pour cent du maximum et au moins un point ; toutes les vingt : les
+  quarante-huit minuteurs d'état), puis les deux seuils de zéro.
+* **`FUN_0047ac40`** (~45 l.) — la troisième jumelle de `SpawnEffectEntity`, sur la table
+  `DAT_005f2d40`. Elle prend six arguments là où les deux autres en prennent quatre : la position
+  est passée à part et un descripteur d'atlas part dans `+0x3c`.
+* **`FUN_00404ef0`** (27 l.) — le gestionnaire `0x404EF0` de la table des effets : une impulsion qui
+  balaie les 0x20 entrées de `0x005ecaa0`, réveille celles qui portent `0x80000000 | 8` et se
+  désarme. Ses trois cibles (`FUN_00404f70`, `FUN_00405240`, `FUN_00405510`) restent des lacunes
+  nommées — aucune n'a été demandée jusqu'ici.
+* **`&DAT_0056d340`** relevée — quarante-huit masques d'état, un par minuteur. Détail dans
+  `DataSymbols.md`.
+
+**Une supposition démentie au passage** : le TODO du matin annonçait que `FUN_0053aa10` poserait un
+problème de carte mémoire, parce que `&DAT_005ea560` s'indexe au pas `0x120` alors que `GameArena`
+s'arrête à `0x005ea600`. Faux : le bloc a déjà sa propre allocation
+(`s_EntityStatBlocks_005ea560`, 0x20 × 0x120) et son accesseur (`GetEntityStatBlock`), écrits pour
+`FUN_00538780`. **Chercher le symbole avant de conclure à un trou dans l'arène** — c'est la même
+leçon que « relire ce qui tourne avant de relever au désassembleur ».
+
+## Où en est le dessin
+
+Inchangé depuis le matin : la moitié dessin passe en entier. La **première image de la carte du
+monde n'a toujours pas été vue**, le jeu mourant une ou deux images après le premier `Flip`.
+
+## Les deux autres sorties possibles
+
+Elles subsistent, plus rares depuis que `FUN_0053aa10` passe :
+
+* `DAT_005eca94` nul dans `PublishCameraFrame_004022B0` — intermittent, et **antérieur au travail du
+  23 août** (constaté à la première exécution de la séance, avant toute modification). Un
+  échafaudage temporaire dans `WorldMapCamera.cs` imprime le voisinage au moment où il lève.
+* quelques images de plus avant de retomber sur l'une des précédentes.
+
+## Deux lacunes secondaires, laissées derrière leur condition
+
+* `FUN_00538bc0` (13 l.) — la hauteur de la bulle d'état. Triviale, mais demande de relever
+  `DAT_0056d440` (table de pas 8 dans `.data`). Gardée par `record[0x3c] != 0`.
+* `FUN_005309b0` (147 l.) — la surimpression de dialogue, gardée par le bit `0x8000000`. Demande
+  `DAT_0056a851`, `DAT_0056aae0` et `DAT_0056ab30`, non relevées.
+
+## Une fragilité à surveiller
+
+Une exécution sur cinq a échoué dans `AllocLowZeroed` (« aucun bloc libre de 0x1000 octets sous
+0x01000000 »). La fenêtre basse fait 16 Mo et chaque bloc y dépense un granule de 64 Ko. Le bloc qui
+a échoué était alloué avant le nouveau, donc ce n'est pas une régression — mais la marge est plus
+mince qu'il n'y paraît.
+
+---
+
+## Archive — l'encadré du 2026-08-24 au matin, soldé
 
 **La moitié dessin de la carte du monde est terminée.** Les six lacunes que le TODO de la veille
 listait sont transcrites : `DrawWorldCells` (le balayage 7×7), `FUN_0051f940` (le voile plein

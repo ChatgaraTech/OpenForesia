@@ -9454,3 +9454,55 @@ construit maintenant, mais le jeu meurt une ou deux images après le premier `Fl
 n'attrape qu'une fenêtre morte. Un échafaudage temporaire dans `WorldMapCamera.cs` imprime le
 voisinage de `0x005eca94` au moment où il lève : le lancer une fois répondra plus vite que
 raisonner.
+
+
+## 2026-08-23 (suite) — `FUN_0053aa10`, et ce qu'elle révèle
+
+`FUN_0053aa10` est écrite, ainsi que les trois choses qu'elle réclamait : `FUN_0047ac40` (la
+troisième jumelle de `SpawnEffectEntity`, sur la table `DAT_005f2d40`), la table `&DAT_0056d340`
+(quarante-huit masques d'état, un par minuteur, relevée dans le binaire) et `FUN_00404ef0` (le
+gestionnaire `0x404EF0` de la table des effets). Le pas de simulation va deux fonctions plus loin.
+
+**Le nom que ce port lui avait donné d'avance était faux.** `AdvanceSceneEntityAnimation_0053aa10`
+n'anime rien : elle fait vivre le **bloc de statistiques** que `GetEntityStatBlock` désigne. Trois
+cadences — à chaque image la teinte `+0x0b` de l'entité ; toutes les trente images les deux poisons
+et le drain de pétrification, chacun à trois pour cent du maximum et **au moins un point** ; toutes
+les vingt images les quarante-huit minuteurs d'état, dont trois portent une régénération au lieu
+d'un simple décompte — puis les deux seuils de zéro. Le nom est conservé pour ne pas casser les
+renvois, mais la documentation sur place dit ce qu'elle fait vraiment.
+
+### Une supposition démentie avant même d'être testée
+
+Le TODO du matin annonçait un problème de carte mémoire : `&DAT_005ea560` s'indexe au pas `0x120`
+alors que `GameArena` s'arrête à `0x005ea600`, donc « l'arène ne tient qu'une entrée ». Faux. Le bloc
+a **déjà** sa propre allocation — `s_EntityStatBlocks_005ea560`, 0x20 × 0x120, dans
+`Screens/State04/CharacterCreation.cs` — et son accesseur `GetEntityStatBlock`, écrits pour
+`FUN_00538780` avec les deux bornes concordantes qui donnent 32 entrées. Chercher le symbole avant
+de conclure à un trou dans l'arène : même leçon que « relire ce qui tourne avant de relever au
+désassembleur », appliquée aux données.
+
+### Ce que la transcription a mis au jour : personne ne remplit ces blocs
+
+`s_EntityStatBlocks_005ea560` est alloué à zéro et **aucun site du dépôt n'y écrit**. Les entités de
+scène — celles de `0x005ecaa0` qui ne portent pas le bit `0x800000` — naissent donc à 0 point de vie
+et 0 point de magie. `FUN_0053aa10` est le premier lecteur qui *agit* sur ce contenu, et le fait
+fidèlement : à la première image, chaque entité de scène est marquée morte (`0x40000000` dans le
+bloc **et** dans le mot d'état), puis fait naître une entité de sous-type `0x29` dans
+`DAT_005f2d40` et une copie de sous-type `0x46` dans la table des effets.
+
+C'est cette copie qui bloque maintenant, sur l'entrée 0x46 de la table statique `0x00551c30` —
+absente de `Blaze.c`. **Il ne faut pas transcrire cette cascade** : elle est le symptôme. Les trois
+fonctions de remplissage sont identifiées (`FUN_00538af0`, `FUN_00538f50`, `FUN_00538fa0`, toutes
+dans `Blaze.c`, appelées ensemble par `FUN_00538830` et `FUN_00519c30`) ; ce qui reste à trouver est
+**qui les appelle au chargement de zone**.
+
+C'est le genre de trouvaille qu'une lacune franche produit et qu'un no-op silencieux aurait cachée :
+sans le `throw` nommé, les entités de scène seraient simplement mortes à l'écran sans que rien ne le
+dise.
+
+### État à la fin de la séance
+
+Build 0 erreur ; tests de disposition inchangés (3 rouges volontaires) ; oracle `compare-bodies`
+inchangé sur les trois corps déjà signalés. Playtest reproductible deux fois de suite : arrêt sur
+l'entrée 0x46 de la table statique des effets. La première image de la carte du monde n'a **toujours
+pas** été vue.

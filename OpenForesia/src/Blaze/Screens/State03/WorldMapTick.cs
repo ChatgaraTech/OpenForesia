@@ -2653,14 +2653,247 @@ public static unsafe partial class Blaze
             "Legacy/Decompiled/Blaze.c. Elle prend l'entite en unique argument et ne rend rien.");
 
     /// <summary>
-    /// Ghidra: FUN_0053aa10 @ 0x0053aa10 — appelee sur chaque entite de scene active, juste apres
-    /// son gestionnaire et la regeneration lente.
+    /// Ghidra: <c>&amp;DAT_0056d340</c> — <b>quarante-huit masques d'etat, un par minuteur</b>,
+    /// releves dans le binaire le 2026-08-23. Le bloc de statistiques porte quarante-huit
+    /// <c>short</c> a partir de <c>+0x80</c> ; quand le minuteur d'indice <i>i</i> retombe a zero,
+    /// le bit que donne <c>masques[i]</c> est efface du mot d'etat <c>+0x40</c>.
+    ///
+    /// <para>La borne vient du code : la boucle avance de quatre en quatre <b>tant que l'adresse
+    /// reste sous <c>0x0056d400</c></b>, soit 0x30 entrees. Onze d'entre elles valent zero — leur
+    /// minuteur decompte sans rien lever a l'echeance, il n'agit que tant qu'il est non nul (c'est
+    /// le cas des trois regenerations traitees a part dans la boucle).</para>
+    /// </summary>
+    private static readonly uint[] s_StatusTimerMasks_0056d340 =
+    [
+        0x08000000, 0x02000000, 0x04000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000004,
+        0x00000008, 0x00000010, 0x00000020, 0x00000040,
+        0x00000080, 0x00000100, 0x00000200, 0x00000400,
+        0x00000800, 0x00001000, 0x00002000, 0x00004000,
+        0x00008000, 0x00010000, 0x00020000, 0x00040000,
+        0x00080000, 0x00100000, 0x00200000, 0x10000000,
+        0x00400000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x01000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+        0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    ];
+
+    /// <summary>
+    /// Ghidra: FUN_0047ac40 @ 0x0047ac40 — <b>fait naitre une entite dans la table
+    /// <c>DAT_005f2d40</c></b> (0x80 emplacements), en recopiant les 0x27 dwords de la source puis
+    /// en remplacant une dizaine de champs. Troisieme jumelle de <see cref="SpawnEffectEntity"/>
+    /// (<c>FUN_0047a9d0</c>) et de <see cref="SpawnCastEntity_0047AAE0"/> : meme forme, autre table.
+    ///
+    /// <para>Elle prend six arguments la ou les deux autres en prennent quatre : la <b>position</b>
+    /// est passee separement (elle ecrase <c>+0x1c</c>/<c>+0x20</c>/<c>+0x24</c> de la copie) et un
+    /// <b>descripteur d'atlas</b> part dans <c>+0x3c</c>.</para>
+    /// </summary>
+    /// <param name="param6">Negatif veut dire « ne pas ecrire <c>+0x0a</c> » — la seule branche
+    /// conditionnelle de la fonction.</param>
+    /// <returns>1 si un emplacement etait libre, 0 sinon.</returns>
+    private static uint SpawnStatusEffectEntity_0047AC40(
+        byte* source, int* position, byte* descriptor, byte subtype, byte param5, int param6)
+    {
+        int index = AllocEntitySlot((ushort*)Mem.Entity(0x005f7ce0));
+        if (index < 0) return 0;
+
+        byte* born = Mem.Entity(0x005f2d40) + index * 0x9c;
+        Mem.CopyDwords((uint*)source, (uint*)born, 0x27);
+
+        *(int*)(born + 0x1c) = position[0];
+        *(int*)(born + 0x20) = position[1];
+        *(int*)(born + 0x24) = position[2];
+
+        born[0x08] = (byte)index;
+        born[0x36] |= 0x80;
+        born[0x05] = subtype;
+        *(byte**)(born + 0x3c) = descriptor;
+        born[0x0b] = param5;
+        *(byte**)(born + 0x6c) = source;
+        born[0x40] = 0;
+        if (param6 >= 0) born[0x0a] = (byte)param6;
+        *(ushort*)(born + 0x10) = 0;
+
+        *(uint*)born = (*(uint*)born & 0x10e82f02) | 0x80101000;
+        return 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053aa10 @ 0x0053aa10 — <b>le pas d'etats d'une entite de scene</b>, appele sur
+    /// chacune, une fois par image, juste apres son gestionnaire et la regeneration lente.
+    ///
+    /// <para>Malgre le nom que ce port lui avait donne d'avance, elle n'anime rien : elle fait
+    /// vivre le <b>bloc de statistiques</b> que <see cref="GetEntityStatBlock"/> designe — poison,
+    /// minuteurs d'etat, regenerations, et les deux seuils de zero.</para>
+    ///
+    /// <para><b>Trois cadences.</b> A chaque image : la teinte <c>+0x0b</c> de l'entite, prise dans
+    /// la fiche de sous-zone pour une entite ordinaire et dans son propre enregistrement pour un
+    /// membre du groupe, et forcee a <c>0xff</c> par le bit <c>0x100</c> (petrification). Toutes les
+    /// <b>trente</b> images : les deux poisons et le drain, chacun retirant trois pour cent du
+    /// maximum — <b>au moins un point</b> — et decomptant sa duree. Toutes les <b>vingt</b> images :
+    /// les quarante-huit minuteurs d'etat, dont trois portent une regeneration au lieu d'un
+    /// simple decompte.</para>
+    ///
+    /// <para>Un membre du groupe empoisonne repasse en plus par un declenchement d'objet equipe
+    /// (<c>FUN_005238e0</c>) toutes les vingt images, precede de la remise a zero de
+    /// <c>DAT_005e99c0</c>.</para>
+    ///
+    /// <para><b>Les deux seuils.</b> Points de vie a zero : le bit <c>0x40000000</c> part dans le
+    /// bloc de statistiques <b>et</b> dans le mot d'etat de l'entite. Points de magie a zero, et
+    /// seulement au passage : le bit <c>0x80</c>, un plancher de douze sur <c>+0x98</c>, une entite
+    /// de sous-type <c>0x29</c> dans la table <c>DAT_005f2d40</c> et une copie dans la table des
+    /// effets.</para>
     /// </summary>
     private static void AdvanceSceneEntityAnimation_0053aa10(byte* record)
-        => throw new NotImplementedException(
-            "FUN_0053aa10 (0x0053aa10) n'est pas transcrite : le pas d'animation d'une entite de " +
-            "scene, appele une fois par image par FUN_0050e680. Son corps est dans " +
-            "Legacy/Decompiled/Blaze.c. Elle prend l'entite en unique argument et ne rend rien.");
+    {
+        uint* entity = (uint*)record;
+
+        // La garde d'entree : ni mort (0x40000000) ni retire (0x10000000).
+        if ((entity[0] & 0x50000000) != 0) return;
+
+        byte* stats = GetEntityStatBlock(entity);
+
+        if ((entity[0] & 0x800000) == 0)
+        {
+            // Entite ordinaire : la teinte vient de la fiche de sous-zone, huit octets par entree.
+            record[0x0b] = (*(byte**)(s_Unknown_005e97cc + 0x4c))[record[0x0c] * 8 + 2];
+        }
+        else
+        {
+            // Membre du groupe : la teinte est dans son enregistrement de 0x2000 octets, et le
+            // reveil d'un membre a terre y regagne un seizieme de son maximum.
+            byte* character = GetMainMemPtr() + 0xf0000 + record[8] * 0x2000;
+            record[0x0b] = character[0x2bd];
+
+            if (character[0x206] == 0)
+            {
+                character[0x206] = 0x28;
+                *(short*)(character + 0x14c) +=
+                    (short)(*(short*)(character + 0x128) + 0x3f >> 6);
+            }
+        }
+
+        // La petrification efface la teinte.
+        if ((*(uint*)(stats + 0x40) & 0x100) != 0) record[0x0b] = 0xff;
+
+        uint frame = *(uint*)Mem.Entity(0x005f2cf0);
+
+        // ------------------------------------------------------------ toutes les trente images
+        if (frame % 0x1e == 0)
+        {
+            if ((stats[0x40] & 1) != 0)
+            {
+                *(short*)(stats + 0x4c) -= ThreePercentAtLeastOne(*(short*)(stats + 0x48));
+                *(short*)(stats + 0xe0) -= 1;
+                if (*(short*)(stats + 0xe0) == 0) *(uint*)(stats + 0x40) &= 0xfffffffe;
+            }
+
+            if ((stats[0x40] & 2) != 0)
+            {
+                *(short*)(stats + 0x4e) -= ThreePercentAtLeastOne(*(short*)(stats + 0x4a));
+                *(short*)(stats + 0xe2) -= 1;
+                if (*(short*)(stats + 0xe2) == 0) *(uint*)(stats + 0x40) &= 0xfffffffd;
+            }
+
+            // La petrification draine cinq pour cent, sans duree : elle ne s'arrete pas d'elle-meme.
+            if ((*(uint*)(stats + 0x40) & 0x100) != 0)
+            {
+                int drain = *(short*)(stats + 0x48) * 5 / 100;
+                if (drain == 0) drain = 1;
+                *(short*)(stats + 0x4c) -= (short)drain;
+            }
+
+            if ((*(uint*)(stats + 0x40) & 0x103) != 0)
+            {
+                Aud.PlayPositionalSound(5, 0xa00, 0x1800, (int*)(record + 0x1c));
+                *(ushort*)(record + 0x96) = 8;
+            }
+        }
+
+        // ------------------------------------------------------------ toutes les vingt images
+        if (frame % 0x14 == 0)
+        {
+            short* timer = (short*)(stats + 0x80);
+
+            for (int i = 0; i < s_StatusTimerMasks_0056d340.Length; i++, timer++)
+            {
+                if (*timer == 0) continue;
+
+                *timer -= 1;
+
+                if (*timer == 0)
+                {
+                    *(uint*)(stats + 0x40) &= ~s_StatusTimerMasks_0056d340[i];
+                    if ((byte*)timer == stats + 0xc0) *(ushort*)(stats + 0xec) = 0;
+                    continue;
+                }
+
+                // Trois minuteurs agissent **tant qu'ils tournent** : deux regenerations dont le
+                // pas vit a +0xfc/+0xfe, et une troisieme a taux fixe.
+                if ((byte*)timer == stats + 0xbc)
+                {
+                    *(short*)(stats + 0x4c) += *(short*)(stats + 0xfc);
+                }
+                if ((byte*)timer == stats + 0xbe)
+                {
+                    *(short*)(stats + 0x4e) += *(short*)(stats + 0xfe);
+                }
+                if ((byte*)timer == stats + 0xc2)
+                {
+                    *(short*)(stats + 0x4c) += 0x14;
+                }
+            }
+
+            if ((entity[0] & 0x800000) != 0)
+            {
+                *(uint*)Mem.Arena(0x005e99c0) = 0;
+                SetEntityAnimationState_005238E0(entity, 0);
+            }
+        }
+
+        // ------------------------------------------------------------ les bornes et les deux seuils
+        if (*(short*)(stats + 0x4c) > *(short*)(stats + 0x48))
+        {
+            *(ushort*)(stats + 0x4c) = *(ushort*)(stats + 0x48);
+        }
+        if (*(short*)(stats + 0x4e) > *(short*)(stats + 0x4a))
+        {
+            *(short*)(stats + 0x4e) = *(short*)(stats + 0x4a);
+        }
+
+        if (*(short*)(stats + 0x4c) < 1)
+        {
+            *(short*)(stats + 0x4c) = 0;
+            *(uint*)(stats + 0x40) |= 0x40000000;
+            entity[0] |= 0x40000000;
+        }
+
+        if (*(short*)(stats + 0x4e) < 1)
+        {
+            *(short*)(stats + 0x4e) = 0;
+
+            // Le bit 0x80 fait office de verrou : tout ce bloc ne s'execute qu'au passage a zero.
+            if ((stats[0x40] & 0x80) == 0)
+            {
+                *(uint*)(stats + 0x40) |= 0x80;
+                if (*(ushort*)(stats + 0x98) < 0xc) *(ushort*)(stats + 0x98) = 0xc;
+
+                SpawnStatusEffectEntity_0047AC40(
+                    record, (int*)(record + 0x1c), SpriteAtlas(0x005648b0), 0x29, 0, 0);
+                SpawnEffectEntity(record, 0x46, 0, 2);
+            }
+        }
+    }
+
+    /// <summary>Ghidra: le calcul de degat des deux poisons — <c>maximum * 3 / 100</c>, ramene a
+    /// <b>un</b> quand la division rend zero. Ecrit deux fois a l'identique dans
+    /// <c>FUN_0053aa10</c>.</summary>
+    private static short ThreePercentAtLeastOne(short maximum)
+    {
+        int amount = maximum * 3 / 100;
+        return amount == 0 ? (short)1 : (short)amount;
+    }
 
     /// <summary>
     /// Ghidra: FUN_0050eb20 @ 0x0050eb20 — la passe sur la table <c>DAT_005f7de0</c>, 0x40
@@ -2852,6 +3085,7 @@ public static unsafe partial class Blaze
             case 0x00450AA0: EntityHandler_00450AA0((uint*)record); return;
             case 0x00450D30: EntityHandler_00450D30((uint*)record); return;
             case 0x00486EE0: EntityHandler_00486EE0((uint*)record); return;
+            case 0x00404EF0: EntityHandler_00404EF0((uint*)record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
@@ -2876,6 +3110,59 @@ public static unsafe partial class Blaze
 
         return text.ToString();
     }
+
+    /// <summary>
+    /// Ghidra: FUN_00404ef0 @ 0x00404ef0 — le gestionnaire <b>0x404EF0</b> de la table des effets
+    /// <c>0x005ff400</c> : il ne touche pas a sa propre entite mais <b>balaie les 0x20
+    /// enregistrements de la table <c>0x005ecaa0</c></b> et reveille ceux qui portent a la fois le
+    /// bit <c>0x80000000</c> et le bit <c>8</c>, en aiguillant sur leur octet <c>+0x0c</c>.
+    ///
+    /// <para>Il se desarme lui-meme en sortant (bit <c>0x80000000</c> de son propre mot d'etat), ce
+    /// qui en fait une impulsion : une passe, une seule fois.</para>
+    /// </summary>
+    private static void EntityHandler_00404EF0(uint* entity)
+    {
+        byte* record = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, record += 0x9c)
+        {
+            uint flags = *(uint*)record;
+            if ((flags & 0x80000000) == 0 || (flags & 8) == 0) continue;
+
+            switch (record[0x0c])
+            {
+                case 0: WakeSceneEntityKind0_00404F70(i); break;
+                case 1: WakeSceneEntityKind1_00405240(i); break;
+                case 2: WakeSceneEntityKind2_00405510(i); break;
+            }
+        }
+
+        entity[0] &= 0x7fffffff;
+    }
+
+    /// <summary>Ghidra: FUN_00404f70 @ 0x00404f70 (23 l.) — le reveil d'une entite de scene de
+    /// type 0, aiguille a son tour sur les 30 bits bas de son mot <c>+0x5c</c>.</summary>
+    private static void WakeSceneEntityKind0_00404F70(int index)
+        => throw new NotImplementedException(
+            $"FUN_00404f70 (0x00404f70), entree {index} de la table 0x005ecaa0 : non transcrite. " +
+            "23 lignes dans Blaze.c, plus FUN_004051d0, FUN_00404fe0 et FUN_004050d0. Elle " +
+            "aiguille sur les 30 bits bas de +0x5c (valeurs 1, 2 et 3).");
+
+    /// <summary>Ghidra: FUN_00405240 @ 0x00405240 (31 l.) — le reveil d'une entite de scene de
+    /// type 1, cinq branches sur les 30 bits bas de <c>+0x5c</c>.</summary>
+    private static void WakeSceneEntityKind1_00405240(int index)
+        => throw new NotImplementedException(
+            $"FUN_00405240 (0x00405240), entree {index} de la table 0x005ecaa0 : non transcrite. " +
+            "31 lignes dans Blaze.c, plus FUN_004051d0, FUN_00404fe0, FUN_004052f0 et " +
+            "FUN_00405420. Elle aiguille sur les 30 bits bas de +0x5c (valeurs 1 a 5).");
+
+    /// <summary>Ghidra: FUN_00405510 @ 0x00405510 (31 l.) — le reveil d'une entite de scene de
+    /// type 2, meme forme que sa voisine.</summary>
+    private static void WakeSceneEntityKind2_00405510(int index)
+        => throw new NotImplementedException(
+            $"FUN_00405510 (0x00405510), entree {index} de la table 0x005ecaa0 : non transcrite. " +
+            "31 lignes dans Blaze.c. Meme forme que FUN_00405240 : un aiguillage sur les 30 bits " +
+            "bas de +0x5c.");
 
     /// <summary>
     /// Ghidra: FUN_004db5a0 @ 0x004db5a0 — <b>absente de <c>Blaze.c</c></b>, transcrite depuis le

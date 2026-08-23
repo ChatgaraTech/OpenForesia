@@ -1157,7 +1157,8 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x0056d272` | `s_DestinationCamY_0056d272` | 46 | `Screens/State02/Destination.cs` |
 | `0x0056d2a0` | `s_AreaToMenuIndex_0056d2a0` | 16 | `Screens/State02/Destination.cs` |
 | `0x0056d2b0` | `s_MenuIndexToArea_0056d2b0` | 16 | `Screens/State02/Destination.cs` |
-| `0x0056d2c0` | `s_DifficultyBonus_0056d2c0` | 2712 | `Screens/State04/CharacterCreation.cs` |
+| `0x0056d2c0` | `s_DifficultyBonus_0056d2c0` | 128 | `Screens/State04/CharacterCreation.cs` |
+| `0x0056d340` | `s_StatusTimerMasks_0056d340` | 2584 | `Screens/State03/WorldMapTick.cs` |
 | `0x0056dd58` | `s_MenuContext_0056dd58` | 2244 | `Screens/State00/Options.cs` |
 | `0x0056e61c` | `s_MenuSelection_0056e61c` | 3 | `Screens/State00/MainMenu.cs` |
 | `0x0056e61f` | `s_Unknown_0056e61f` | 81 | `Screens/State00/MainMenu.cs` |
@@ -1636,3 +1637,36 @@ qu'il lit les suivantes sur un octet au lieu de deux. Voir **LB-009**.
 `GameMemory.s_CellSweepCorner_00564548` et `GameMemory.s_CellSkipTables_00564558` — deux vues
 statiques, dans `Memory/GameMemory.cs` plutôt que chez l'un des lecteurs, précisément parce qu'il y
 en a trois répartis sur deux fichiers.
+
+## `0x0056d340` — quarante-huit masques d'état, un par minuteur (2026-08-23)
+
+Relevés avec `OpenForesia.Tools -- at`, dans `.data`. Quarante-huit dwords, `0x0056d340` à
+`0x0056d400` — la borne vient du code, pas d'une supposition : `FUN_0053aa10` avance de quatre en
+quatre **tant que l'adresse reste sous `0x0056d400`**.
+
+Ils sont lus en parallèle des quarante-huit `short` que le bloc de statistiques porte à partir de
+`+0x80`. Quand le minuteur d'indice *i* retombe à zéro, `masques[i]` est effacé du mot d'état
+`+0x40` du même bloc.
+
+```
++0x00  08000000  02000000  04000000  00000000
++0x10  00000000  00000000  00000000  00000004
++0x20  00000008  00000010  00000020  00000040
++0x30  00000080  00000100  00000200  00000400
++0x40  00000800  00001000  00002000  00004000
++0x50  00008000  00010000  00020000  00040000
++0x60  00080000  00100000  00200000  10000000
++0x70  00400000  00000000  00000000  00000000
++0x80  00000000  01000000  00000000  00000000
++0x90  … (zéro jusqu'à la fin)
+```
+
+Onze entrées valent zéro : leur minuteur décompte sans rien lever à l'échéance. Trois d'entre elles
+sont précisément les minuteurs que la boucle traite à part parce qu'ils agissent **tant qu'ils
+tournent** — `+0xbc` et `+0xbe` ajoutent le pas de régénération de `+0xfc`/`+0xfe` aux points de vie
+et de magie, `+0xc2` en ajoute vingt à taux fixe.
+
+### Dans OpenForesia
+
+`s_StatusTimerMasks_0056d340`, dans `Screens/State03/WorldMapTick.cs` — un seul lecteur, donc chez
+lui.
