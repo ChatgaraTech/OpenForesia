@@ -35,15 +35,18 @@ Points à vérifier en priorité, parce que la moitié dessin vient d'être écr
   volontaire mais visible ;
 * les sept cellules que **LB-009** fait dessiner en trop aux quatre coins du carré 7×7.
 
-## 2. Refermer la porte de l'aliasing
+## 2. ~~Refermer la porte de l'aliasing~~ — FAIT le 2026-08-23
 
-`GameArena` couvre encore `0x005ea560..0x005ea600`, l'étendue de la table
-`s_EntityStatBlocks_005ea560`, alors que plus rien n'y vit. Ramener `GameArenaSize` de `0x1600` à
-`0x1560` fermerait la porte et rendrait verte l'assertion `Aucune_allocation_propre_dans_l_etendue_d_une_arene`.
-La borne utile de l'arène est bien `0x005ea560` : c'est exactement là que s'arrête le balayage de
-`FUN_00516350` (`0x005e9b60 + 0x40 * 0x28`). **C'est une constante de carte mémoire, donc un
-changement à décider, pas à faire au passage.**
+`GameArenaSize` est passée de `0x1600` à `0x1560`, soit une arène qui s'arrête à `0x005ea560` et ne
+recouvre plus `s_EntityStatBlocks_005ea560`. La borne est celle du balayage de `FUN_00516350` :
+`undefined1 *`, 0x40 tours de pas 0x28 depuis `0x005e9b87`, donc dernier octet écrit en
+`0x005ea55f` — l'ancienne borne comptait un enregistrement de trop (`0x40 * 0x28` au lieu de
+`0x3f * 0x28`).
 
+L'assertion `Aucune_allocation_propre_dans_l_etendue_d_une_arene` est **verte** : les tests de
+disposition passent de trois rouges à deux. Playtest identique au précédent, image comprise — le
+changement est neutre, comme attendu, puisque les deux seuls sites qui lisaient la table par
+l'arène avaient déjà été corrigés.
 ## 3. Les lacunes que le jeu réclamera dès qu'on jouera vraiment
 
 Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.

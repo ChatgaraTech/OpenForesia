@@ -85,9 +85,22 @@ internal sealed unsafe class GameMemory
     // défaut ci-dessus. TODO(REVERSE) : les ramener dans l'arène quand un site les lira par adresse
     // plutôt que par nom.
     internal const int GameArenaBase = 0x005e9000;
-    // Etendue de 0x0a00 a 0x1600 le 2026-08-18 : FUN_00516350 atteint 0x005e9b87 et y efface 0x40
-    // dwords par pas de 0x28, soit jusqu'a 0x005ea587.
-    internal const int GameArenaSize = 0x1600;
+    // Etendue de 0x0a00 a 0x1600 le 2026-08-18, puis **ramenee a 0x1560 le 2026-08-23**.
+    //
+    // Le site qui fixe la borne est le balayage de FUN_00516350 : `undefined1 *puVar9 =
+    // &DAT_005e9b87`, 0x40 tours de pas 0x28, un OCTET remis a zero par tour. Le dernier ecrit est
+    // donc 0x005e9b87 + 0x3f * 0x28 = **0x005ea55f**, soit l'index 0x155f — d'ou 0x1560. La borne
+    // de 0x1600 venait d'un compte a un enregistrement pres (0x40 * 0x28 au lieu de 0x3f * 0x28),
+    // et le meme calcul vaut pour la table de 0x40 enregistrements de 0x28 octets qui commence en
+    // 0x005e9b60 : elle s'arrete elle aussi a 0x005ea55f.
+    //
+    // Reduire l'etendue n'est pas cosmetique. La queue 0x005ea560..0x005ea600 recouvrait
+    // s_EntityStatBlocks_005ea560, une allocation DISTINCTE, et ce recouvrement a ete **vivant**
+    // jusqu'au 2026-08-23 : ResolveEntityBlocks ecrivait les statistiques d'entite de scene dans
+    // l'arene tandis que GetEntityStatBlock les relisait dans l'autre bloc, si bien que toute
+    // entite de scene naissait a zero point de vie. Les deux sites sont corriges ; refermer
+    // l'etendue empeche de rouvrir la porte par un simple `Mem.Arena(0x005ea5..)`.
+    internal const int GameArenaSize = 0x1560;
     internal readonly byte* s_GameArena_005e9000 = (byte*)NativeMemory.AllocZeroed(GameArenaSize);
 
     /// <summary>Le symbole d'adresse Ghidra <paramref name="va"/> dans l'arène.</summary>

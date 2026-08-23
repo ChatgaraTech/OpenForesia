@@ -1,4 +1,4 @@
-# Blaze reverse-engineering status
+﻿# Blaze reverse-engineering status
 
 Tracks progress reconstructing `Blaze.c` (Ghidra pseudocode, read-only) into
 `OpenForesia/src/Blaze/` — split on 2026-08-19 into `Platform/`, `Memory/`,
@@ -9559,14 +9559,22 @@ latente ; elle ne l'était pas. **Une assertion rouge volontaire cesse d'être v
 site vivant l'active** — et rien ne signale ce basculement. Relire les trois messages rouges quand
 un symptôme inexplicable apparaît coûte une minute et aurait fait gagner la matinée.
 
-### Ce qui reste de ce côté
+### L'étendue de l'arène, refermée dans la foulée
 
-`GameArena` couvre encore `0x005ea560..0x005ea600` sans que rien n'y vive : les deux seuls sites qui
-lisaient la table par l'arène sont corrigés. Ramener `GameArenaSize` de `0x1600` à `0x1560`
-fermerait la porte pour de bon et rendrait l'assertion verte — la borne utile de l'arène est
-`0x005ea560`, là où s'arrête exactement le balayage de `FUN_00516350` (`0x005e9b60 + 0x40 * 0x28`).
-**Changement de constante de carte mémoire, donc laissé à l'arbitrage.**
+`GameArenaSize` est passée de `0x1600` à `0x1560` : l'arène s'arrête désormais à `0x005ea560` et ne
+recouvre plus la table des blocs de statistiques. La borne vient du seul site qui la fixe, le
+balayage de `FUN_00516350` — `undefined1 *puVar9 = &DAT_005e9b87`, 0x40 tours de pas 0x28, **un
+octet** par tour, donc dernier écrit en `0x005e9b87 + 0x3f * 0x28 = 0x005ea55f`, soit l'index
+`0x155f`. L'ancienne borne de `0x1600` venait d'un compte à un enregistrement près (`0x40 * 0x28`
+au lieu de `0x3f * 0x28`) ; la table de 0x40 enregistrements de 0x28 octets qui commence en
+`0x005e9b60` s'arrête exactement au même endroit.
 
+Le changement est **neutre à la mesure** — playtest identique, image comprise — parce que les deux
+seuls sites qui lisaient la table par l'arène venaient d'être corrigés. Ce qu'il apporte est de
+rendre le défaut irreproductible : un `Mem.Arena(0x005ea5..)` écrit par distraction lèvera
+maintenant au lieu de repartir en silence dans le mauvais bloc. L'assertion
+`Aucune_allocation_propre_dans_l_etendue_d_une_arene` est verte, et les tests de disposition
+passent de trois rouges à deux.
 ### État à la fin de la séance
 
 Build 0 erreur. Tests de disposition : 3 rouges, les mêmes (dont celle-ci, qui reste rouge tant que
