@@ -3142,13 +3142,185 @@ public static unsafe partial class Blaze
         entity[0] &= 0x7fffffff;
     }
 
-    /// <summary>Ghidra: FUN_00404f70 @ 0x00404f70 (23 l.) — le reveil d'une entite de scene de
-    /// type 0, aiguille a son tour sur les 30 bits bas de son mot <c>+0x5c</c>.</summary>
+    /// <summary>
+    /// Ghidra: FUN_00404f70 @ 0x00404f70 — <b>le reveil d'une entite de scene de type 0</b> : il
+    /// arme l'etat, puis aiguille sur les trente bits bas du mot <c>+0x5c</c>.
+    ///
+    /// <para>Les trois tests relisent <c>+0x5c</c> a chaque fois, et ce n'est pas une maladresse de
+    /// transcription : <see cref="AdvanceSceneEntityState_00404FE0"/> et
+    /// <see cref="HoldSceneEntityState_004050D0"/> ecrivent ce meme mot, donc un etat peut en
+    /// declencher un autre dans le meme tour. Conserve tel quel.</para>
+    /// </summary>
     private static void WakeSceneEntityKind0_00404F70(int index)
-        => throw new NotImplementedException(
-            $"FUN_00404f70 (0x00404f70), entree {index} de la table 0x005ecaa0 : non transcrite. " +
-            "23 lignes dans Blaze.c, plus FUN_004051d0, FUN_00404fe0 et FUN_004050d0. Elle " +
-            "aiguille sur les 30 bits bas de +0x5c (valeurs 1, 2 et 3).");
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2) HoldSceneEntityState_004050D0(record, 0);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) AdvanceSceneEntityState_00404FE0(record, 3);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004051d0 @ 0x004051d0 — <b>arme l'etat d'animation</b> d'une entite de scene
+    /// depuis ses trois champs de consigne, avant que l'un des deux pas ci-dessous ne le fasse
+    /// avancer.
+    ///
+    /// <para>Le mot <c>+0x5c</c> porte trois choses a la fois : ses trente bits bas sont le
+    /// <b>numero d'etat</b>, le bit <c>0x40000000</c> dit « la consigne est deja lue » et le bit
+    /// <c>0x80000000</c> « l'etat vient de changer ». Le dernier est efface en sortant, si bien
+    /// qu'il ne vaut que pour un tour.</para>
+    /// </summary>
+    private static void ArmSceneEntityState_004051D0(byte* record)
+    {
+        uint wanted = (uint)(*(short*)(record + 0x10) & 0xff);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) != wanted
+            && (*(uint*)(record + 0x5c) & 0x80000000) != 0)
+        {
+            *(uint*)(record + 0x5c) = wanted;
+            *(int*)(record + 0x48) = *(short*)(record + 0x14);
+        }
+
+        if ((*(uint*)(record + 0x5c) & 0x40000000) == 0)
+        {
+            *(int*)(record + 0x44) = *(short*)(record + 0x10) >> 8;
+            *(int*)(record + 0x4c) = *(short*)(record + 0x12);
+            *(uint*)(record + 0x5c) |= 0x40000000;
+        }
+
+        *(uint*)(record + 0x5c) &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00404fe0 @ 0x00404fe0 — <b>le pas d'animation qui va jusqu'au bout</b> : il
+    /// avance le compteur d'images et, arrive a la derniere, lance le script accroche a l'entite.
+    ///
+    /// <para>Le champ <c>+0x48</c> est un compteur a double usage — au-dessus de 9 c'est un delai
+    /// qui decompte, en dessous c'est un numero de phase (0 = a amorcer, 1 = en cours, 2 = fini et
+    /// gele). Le passage de delai a phase se fait par le test <c>&lt; 10</c> qui le remet a zero.</para>
+    ///
+    /// <para><b>La fin de sequence a deux regimes</b>, selon <c>+0x4c</c> : a zero l'animation
+    /// reboucle (compteur remis a zero), sinon elle <b>se fige sur sa derniere image</b>. Dans les
+    /// deux cas, si <c>+0x44</c> porte un script, il part et le champ est vide pour qu'il ne parte
+    /// qu'une fois.</para>
+    ///
+    /// <para>Ghidra rend la valeur de retour en <c>CONCAT22</c> avec une moitie haute qui n'est que
+    /// du residu de registre ; <b>aucun appelant ne la lit</b>, et seule la moitie basse a un sens :
+    /// 1 si un script a demarre, 0 sinon.</para>
+    /// </summary>
+    private static uint AdvanceSceneEntityState_00404FE0(byte* record, short kind)
+    {
+        int counter = *(int*)(record + 0x48);
+        if (counter > 9)
+        {
+            counter--;
+            *(int*)(record + 0x48) = counter;
+            if (counter < 10) *(int*)(record + 0x48) = 0;
+        }
+
+        if (*(int*)(record + 0x48) == 0)
+        {
+            *(int*)(record + 0x48) = 1;
+            *(short*)(record + 0x1a) = -1;
+            *(short*)(record + 0x18) = kind;
+        }
+
+        if (*(int*)(record + 0x48) != 1) return 0;
+
+        byte* animation = ((byte**)*(byte***)(Mem.s_AnimationTable_005e9640 + record[4] * 4))
+                              [*(short*)(record + 0x18)];
+
+        *(short*)(record + 0x1a) += 1;
+
+        ushort frames = *(ushort*)(animation + 0x16);
+        if (frames - 1 > *(short*)(record + 0x1a)) return 0;
+
+        int script;
+        if (*(int*)(record + 0x4c) == 0)
+        {
+            script = *(int*)(record + 0x44);
+            *(short*)(record + 0x1a) = 0;
+            *(uint*)(record + 0x5c) |= 0x80000000;
+            if (script == 0) return 0;
+        }
+        else
+        {
+            *(ushort*)(record + 0x1a) = (ushort)(frames - 1);
+            script = *(int*)(record + 0x44);
+            *(uint*)(record + 0x5c) |= 0x80000000;
+            if (script == 0)
+            {
+                *(int*)(record + 0x48) = 2;
+                return 0;
+            }
+        }
+
+        RunEntityScript(s_Unknown_005e97cc, *(byte**)(record + 0x6c), (uint)script);
+        *(uint*)(record + 0x5c) |= 0x80000000;
+        *(int*)(record + 0x44) = 0;
+        return 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004050d0 @ 0x004050d0 — <b>la jumelle qui n'attend pas la fin de la sequence</b>.
+    /// Meme compteur a double usage, meme fin en deux regimes, mais elle declenche des la
+    /// <b>premiere</b> image (<c>0 &lt; +0x1a</c>) au lieu d'attendre la derniere.
+    ///
+    /// <para>Autre difference, plus discrete : elle lit l'entree d'animation <b>comme une valeur</b>
+    /// et ne la dereference que dans la branche qui fige (<c>*(short *)(uVar1 + 0x16)</c>). Dans
+    /// l'autre branche l'entree n'est jamais touchee — transcrit tel quel.</para>
+    /// </summary>
+    private static uint HoldSceneEntityState_004050D0(byte* record, short kind)
+    {
+        int counter = *(int*)(record + 0x48);
+        if (counter > 9)
+        {
+            counter--;
+            *(int*)(record + 0x48) = counter;
+            if (counter < 10) *(int*)(record + 0x48) = 0;
+        }
+
+        if (*(int*)(record + 0x48) == 0)
+        {
+            *(int*)(record + 0x48) = 1;
+            *(short*)(record + 0x1a) = -1;
+            *(short*)(record + 0x18) = kind;
+        }
+
+        if (*(int*)(record + 0x48) != 1) return 0;
+
+        byte* animation = ((byte**)*(byte***)(Mem.s_AnimationTable_005e9640 + record[4] * 4))
+                              [*(short*)(record + 0x18)];
+
+        *(short*)(record + 0x1a) += 1;
+        if (*(short*)(record + 0x1a) <= 0) return 0;
+
+        if (*(int*)(record + 0x4c) == 0)
+        {
+            *(short*)(record + 0x1a) = 0;
+            *(uint*)(record + 0x5c) |= 0x80000000;
+
+            if (*(int*)(record + 0x44) == 0) return 0;
+        }
+        else
+        {
+            *(short*)(record + 0x1a) = (short)(*(short*)(animation + 0x16) - 1);
+            *(uint*)(record + 0x5c) |= 0x80000000;
+
+            if (*(int*)(record + 0x44) == 0)
+            {
+                *(int*)(record + 0x48) = 2;
+                return 0;
+            }
+        }
+
+        RunEntityScript(s_Unknown_005e97cc, *(byte**)(record + 0x6c), (uint)*(int*)(record + 0x44));
+        *(uint*)(record + 0x5c) |= 0x80000000;
+        *(int*)(record + 0x44) = 0;
+        return 1;
+    }
 
     /// <summary>Ghidra: FUN_00405240 @ 0x00405240 (31 l.) — le reveil d'une entite de scene de
     /// type 1, cinq branches sur les 30 bits bas de <c>+0x5c</c>.</summary>

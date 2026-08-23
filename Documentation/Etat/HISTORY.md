@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-23
 
+- feat : verbe 0 de la table de zone (`FUN_00443100`) — le dégel des trois tables d'effets qu'un dialogue de PNJ demande
+- feat : cascade de réveil des entités de scène — `FUN_00404f70`, `FUN_004051d0`, `FUN_00404fe0`, `FUN_004050d0`
 - fix : **caméra de l'auberge conforme au legacy** — `FUN_00401000` restitue `ViewAngle` depuis `SavedViewAngle` avant de semer le but ; Ghidra avait supprimé ce bloc comme code mort, à tort (le pointeur `DAT_005E9AE0` aliase la destination). Élévation 597 et cap 1024 comme l'original, capture identique à `legacy.png`
 - doc : `DAT_00604928` est (élévation, **cap**, roulis) et non (cap, tangage, roulis) — la rose des vents et l'octant du balayage 7x7 lisent tous deux `+2`
 - doc : écart de 90° de la caméra à l'auberge identifié comme le cap à 1024 ; semer `ViewAngleGoal` le corrige et rend la rose des vents identique au legacy

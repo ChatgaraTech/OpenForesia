@@ -59,8 +59,8 @@ l'arène avaient déjà été corrigés.
 
 Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
 
-* `FUN_00404f70`, `FUN_00405240`, `FUN_00405510` — les trois cibles de `FUN_00404ef0`, le réveil
-  des entités de scène par sous-type.
+* `FUN_00405240` et `FUN_00405510` — les deux cibles restantes de `FUN_00404ef0` (le type 0,`FUN_00404f70`, est fait). Elles ont la même forme : un aiguillage sur `+0x5c` vers`FUN_004051d0` / `FUN_00404fe0` / `FUN_004050d0`, toutes trois déjà transcrites.
+* le **verbe 27 de la caméra de scénette** — `TickCutsceneCamera`, entrée de `PTR_LAB_0055eb68`relevée à **`0x00504270`**, absente de `Blaze.c`. C'est ce que déclenche le fait de marcher versun PNJ, donc la prochaine marche du chemin de dialogue.
 * l'entrée `0x46` de la table statique `0x00551c30` — le gestionnaire de l'effet « magie épuisée »,
   **absent de `Blaze.c`** : `OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00551d48 4`, puis
   désassembler.

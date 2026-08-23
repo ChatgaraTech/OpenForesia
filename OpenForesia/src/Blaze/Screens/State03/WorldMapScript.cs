@@ -1153,6 +1153,8 @@ public static unsafe partial class Blaze
 
             0x00442F60 => AreaVerb_00442F60(),
 
+            0x00443100 => AreaVerb_00443100(),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de s_VtSource_0056aec8 (Engine/Resources.cs), deja " +
@@ -1193,6 +1195,54 @@ public static unsafe partial class Blaze
     /// script continue. C'est le seul verbe dont on connaisse la valeur de retour pour l'instant.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Ghidra: FUN_00443100 @ 0x00443100 — <b>le verbe 0 de la table de zone</b>, celui qu'un
+    /// dialogue de PNJ demande. 108 octets, <b>absente de <c>Blaze.c</c></b> : relevee au
+    /// desassembleur, dump conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00443100.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle degele trois tables d'entites</b>, et seulement celles-la : <c>0x005ff400</c>
+    /// (0x20 emplacements), <c>0x005f2d40</c> (0x80) et <c>0x005edee0</c> (0x80). Pour chaque
+    /// enregistrement dont le mot d'etat ne porte <b>pas</b> le bit <c>0x10000000</c> — c'est-a-dire
+    /// qui n'est pas retire — elle efface le bit <c>0x04000000</c>, celui-la meme que
+    /// <see cref="FreezeAllEntities"/> pose.
+    /// </para>
+    /// <para>
+    /// Les trois passes sont ecrites en clair, l'une apres l'autre, dans le binaire ; la boucle
+    /// commune ci-dessous est une factorisation de forme, pas un decoupage : les trois corps sont
+    /// identiques a l'adresse et au compte pres.
+    /// </para>
+    /// <para>
+    /// Noter <b>quelles tables sont absentes</b> : ni le groupe (<c>0x005e93c0</c>), ni les entites
+    /// de zone (<c>0x005fa5e0</c>), ni celles de scene (<c>0x005ecaa0</c>), ni les projectiles
+    /// (<c>0x005f7de0</c>). Un dialogue relache donc les effets, les incantations et les sorts
+    /// d'etat, mais laisse le monde fige — ce qui est exactement le comportement attendu quand la
+    /// boite de dialogue reste affichee.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero : le corps finit par <c>xor eax,eax ; ret</c>.</returns>
+    private static uint AreaVerb_00443100()
+    {
+        ThawEntityTable(Mem.Entity(0x005ff400), 0x20);
+        ThawEntityTable(Mem.Entity(0x005f2d40), 0x80);
+        ThawEntityTable(Mem.Entity(0x005edee0), 0x80);
+        return 0;
+    }
+
+    /// <summary>Une des trois passes de <see cref="AreaVerb_00443100"/> : efface le bit de gel
+    /// <c>0x04000000</c> de chaque enregistrement encore present.</summary>
+    private static void ThawEntityTable(byte* first, int count)
+    {
+        for (int i = 0; i < count; i++, first += 0x9c)
+        {
+            uint flags = *(uint*)first;
+            if ((flags & 0x10000000) == 0)
+            {
+                *(uint*)first = flags & 0xfbffffff;
+            }
+        }
+    }
+
     private static uint AreaVerb_00442F60()
     {
         byte* flags = Mem.Arena(0x005e9000);

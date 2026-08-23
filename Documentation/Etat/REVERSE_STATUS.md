@@ -10058,3 +10058,44 @@ apparente contredit ; il faut la trancher au désassembleur avant d'allouer quoi
 Il se réveillera quand le joueur prendra la caméra en main (bits `0x40`/`0x80` sans `0x20`) ou dans
 les états de caméra que l'auberge au repos n'emprunte pas. **À écrire le jour où il lèvera, pas
 avant** — c'est la même règle que pour les quinze gestionnaires d'entité laissés de côté.
+
+## 2026-08-23 (nuit) — le verbe 0 de zone, et la cascade de reveil qui suit
+
+Le dialogue avec un PNJ levait sur l'**opcode 0, verbe 0 = `0x00443100`**, absente de `Blaze.c`.
+Relevee au desassembleur (108 octets, dump dans `Legacy/Raw/Blaze/AreaVerbs/FUN_00443100.asm`), elle
+est courte et sans surprise : trois balayages identiques qui **effacent le bit de gel
+`0x04000000`** sur les enregistrements encore presents de trois tables — `0x005ff400` (0x20),
+`0x005f2d40` (0x80) et `0x005edee0` (0x80).
+
+**Ce qui est instructif, c'est ce qu'elle ne touche pas.** Ni le groupe (`0x005e93c0`), ni les
+entites de zone (`0x005fa5e0`), ni celles de scene (`0x005ecaa0`), ni les projectiles
+(`0x005f7de0`). Un dialogue relache donc les effets, les incantations et les sorts d'etat, mais
+laisse le monde fige — ce qui est exactement le comportement attendu tant que la boite reste
+affichee, et ce qui confirme au passage la lecture du code de controle `0x08` faite plus tot.
+
+### La cascade de reveil, debloquee dans la foulee
+
+Le verbe passe, et le jeu reclame aussitot `FUN_00404f70` — l'une des trois cibles de
+`FUN_00404ef0` laissees en lacunes nommees le matin. Elle et ses trois appelees sont transcrites :
+
+* **`FUN_004051d0`** — arme l'etat d'animation depuis les champs de consigne. Le mot `+0x5c` porte
+  trois choses : ses trente bits bas sont le numero d'etat, `0x40000000` dit « consigne deja lue »,
+  `0x80000000` « l'etat vient de changer » — ce dernier efface en sortant, donc valable un tour.
+* **`FUN_00404fe0`** — le pas d'animation qui va jusqu'au bout de la sequence, puis lance le script
+  accroche a l'entite. Le champ `+0x48` est un compteur **a double usage** : au-dessus de 9 c'est un
+  delai qui decompte, en dessous un numero de phase (0 a amorcer, 1 en cours, 2 fini et gele) ; le
+  test `< 10` fait le passage de l'un a l'autre.
+* **`FUN_004050d0`** — la jumelle qui declenche des la **premiere** image au lieu de la derniere, et
+  qui ne dereference l'entree d'animation que dans la branche qui fige.
+
+`FUN_00404f70` relit `+0x5c` avant chacun de ses trois tests, et c'est voulu : les deux pas ci-dessus
+ecrivent ce meme mot, donc un etat peut en declencher un autre dans le meme tour.
+
+### Ce que le jeu fait maintenant
+
+La boite « - La reception - » se passe, le monde se degele, **un PNJ apparait au comptoir** et
+s'anime. 1741 images sans plantage, 562 primitives par image.
+
+Marcher vers lui declenche ensuite une **camera de scenette** : `TickCutsceneCamera` reclame le
+verbe **27** de `PTR_LAB_0055eb68`, dont l'entree vaut **`0x00504270`** (relevee dans le binaire).
+Absente de `Blaze.c` comme toute cette table — c'est la prochaine marche.
