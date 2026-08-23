@@ -829,3 +829,42 @@ plantage sont encore celles de l'écran précédent.
 Autrement dit : **tant qu'un écran ne survit pas quelques secondes, on ne peut ni le voir ni le
 mesurer.** Le seul indicateur exploitable est alors la position de l'exception dans la pile — d'où
 l'importance de transcrire les lacunes en `NotImplementedException` nommées plutôt qu'en no-op.
+
+## Relire les assertions rouges de `MemoryLayoutTests` quand un symptôme est inexplicable (2026-08-23)
+
+`dotnet test OpenForesia.Tests` rend trois assertions rouges, présentées de longue date comme
+« volontaires » : elles nomment des défauts de disposition que le dépôt a choisi de ne pas corriger
+parce que la correction change le comportement.
+
+**Une assertion rouge volontaire cesse d'être volontaire dès qu'un site vivant l'active, et rien ne
+signale ce basculement.** Le 23 août, une demi-journée est passée à chercher pourquoi les entités de
+scène naissaient mortes ; le message de `Aucune_allocation_propre_dans_l_etendue_d_une_arene`
+nommait le symbole fautif mot pour mot, avec la bonne explication :
+
+```
+s_EntityStatBlocks_005ea560 -> dans GameArena (0x005ea560, …CharacterCreation.cs:985)
+L'arene et le symbole designent deux blocs distincts : une ecriture par l'un
+n'est jamais lue par l'autre.
+```
+
+**Réflexe à prendre** : devant un symptôme qui n'a pas de cause visible dans le code — une valeur
+qui revient à zéro, un état qui ne se propage pas, une écriture sans effet — lancer les tests de
+disposition et *lire les trois messages* avant d'instrumenter quoi que ce soit. Une minute contre
+une matinée.
+
+## Instrumenter par échafaudage jetable, en remontant la chaîne (2026-08-23)
+
+La méthode qui a fini par trouver ce défaut, en quatre exécutions :
+
+1. **Poser la question au site suspecté**, pas ailleurs : un `throw` dans la branche « le
+   remplissage est sauté » — il n'a pas tiré, donc le remplissage tournait.
+2. **Retourner la question** : un `throw` inconditionnel juste après le remplissage, imprimant ce
+   qu'il venait d'écrire — PV 1/1, donc l'écriture était bonne.
+3. **Aller voir le lecteur** : un `throw` là où la valeur est lue à zéro — bloc 0, image 1, avant
+   même le premier `Flip`.
+4. **Élargir d'un cran** : dumper *toute* la table et le compteur de la réserve d'emplacements —
+   trois entités légitimement allouées, donc pas de mémoire parasite, donc écriture et lecture ne
+   désignaient pas le même bloc.
+
+Chaque étape coûte un `throw`, une compilation et un lancement, et **élimine une moitié**. Écrire un
+échafaudage qui imprime tout d'un coup coûte plus cher et informe moins.

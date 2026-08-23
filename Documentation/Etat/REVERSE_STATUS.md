@@ -9506,3 +9506,70 @@ Build 0 erreur ; tests de disposition inchangés (3 rouges volontaires) ; oracle
 inchangé sur les trois corps déjà signalés. Playtest reproductible deux fois de suite : arrêt sur
 l'entrée 0x46 de la table statique des effets. La première image de la carte du monde n'a **toujours
 pas** été vue.
+
+
+## 2026-08-23 (fin) — LA CARTE DU MONDE TOURNE. Le remplisseur existait ; c'était un aliasing
+
+**`OpenForesia.Tools\playtest.ps1 -Entry 0 … -Shot` rend « aucun plantage », 2101 images, 257 à 452
+primitives par image, et la capture montre l'auberge** : les murs de bois, l'escalier, le sol de
+pierre, la plante, la porte, le personnage avec son épée, la rose des vents et le panneau de membre
+« MISEUR 16/16 2/2 ». Deux exécutions de suite, identiques.
+
+### Ce qu'on cherchait
+
+Le TODO du matin annonçait : « personne ne remplit les blocs de statistiques des entités de scène,
+c'est la vraie tâche suivante ». La recherche a donné le contraire de ce qu'elle annonçait.
+
+**Le remplisseur existe, il est transcrit, et il tournait.** C'est `FUN_005389e0`
+(`ResetEntityStats`, dans `Screens/State03/WorldMapScript.cs`), et il n'a **qu'un seul appelant dans
+tout le binaire** : `FUN_0051b850` (`SpawnEntityFormation`), lui-même atteint depuis un volume de
+déclenchement — `TickPartyMember` → `TestTriggerVolumes_00534CD0` → `RunEntityScript` →
+l'opcode de formation. Un échafaudage posé sur le site d'appel l'a montré sortant avec **PV 1/1 et
+PM 1/1**, donc bien rempli.
+
+### Le vrai défaut : deux noms pour une adresse
+
+`ResolveEntityBlocks` (`FUN_00538980`) résolvait le bloc de statistiques par
+**`Mem.Arena(0x005ea560)`** — une vue sur `GameArena` — alors que `GetEntityStatBlock`
+(`FUN_00538780`), lecteur de toute la simulation, le résout par **`s_EntityStatBlocks_005ea560`**,
+une allocation **distincte**. L'écriture partait dans la queue de `GameArena`, la lecture revenait
+de l'autre bloc : zéro.
+
+Conséquence en chaîne, entièrement fidèle une fois la donnée fausse admise : toute entité de scène
+naissait à 0 point de vie, `FUN_0053aa10` la marquait morte à la première image, puis faisait naître
+l'effet « magie épuisée » de sous-type `0x46` dont le gestionnaire n'est pas transcrit. **Trois
+fonctions de symptôme avaient été mises en file d'attente derrière une seule ligne fausse.**
+
+Le défaut était doublement fautif : `GameArena` s'arrête à `0x005ea600`, donc dès l'emplacement 1
+l'écriture sortait de l'arène.
+
+### La leçon, et elle est désagréable
+
+**Le test de disposition nommait ce symbole, mot pour mot, depuis le début** :
+
+```
+1 symbole(s) s'allouent leur propre memoire a une adresse qu'une arene couvre deja.
+L'arene et le symbole designent deux blocs distincts : une ecriture par l'un
+n'est jamais lue par l'autre.
+  s_EntityStatBlocks_005ea560 -> dans GameArena (0x005ea560, …CharacterCreation.cs:985)
+```
+
+C'est l'une des trois assertions rouges « volontaires » de `MemoryLayoutTests`. Elle était classée
+latente ; elle ne l'était pas. **Une assertion rouge volontaire cesse d'être volontaire dès qu'un
+site vivant l'active** — et rien ne signale ce basculement. Relire les trois messages rouges quand
+un symptôme inexplicable apparaît coûte une minute et aurait fait gagner la matinée.
+
+### Ce qui reste de ce côté
+
+`GameArena` couvre encore `0x005ea560..0x005ea600` sans que rien n'y vive : les deux seuls sites qui
+lisaient la table par l'arène sont corrigés. Ramener `GameArenaSize` de `0x1600` à `0x1560`
+fermerait la porte pour de bon et rendrait l'assertion verte — la borne utile de l'arène est
+`0x005ea560`, là où s'arrête exactement le balayage de `FUN_00516350` (`0x005e9b60 + 0x40 * 0x28`).
+**Changement de constante de carte mémoire, donc laissé à l'arbitrage.**
+
+### État à la fin de la séance
+
+Build 0 erreur. Tests de disposition : 3 rouges, les mêmes (dont celle-ci, qui reste rouge tant que
+l'étendue de `GameArena` n'est pas réduite). Oracle `compare-bodies` : quatre corps signalés, les
+trois habituels plus `ResolveEntityBlocks` — c'est la correction elle-même, et l'outil a bien fait
+de la voir.

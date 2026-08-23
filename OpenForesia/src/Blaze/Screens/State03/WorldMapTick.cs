@@ -1655,10 +1655,10 @@ public static unsafe partial class Blaze
                                 *(short*)(db + 8) = (short)(projected[0] - 0xc);
                                 *(short*)(db + 0xa) = projected[1];
 
-                                // TODO(REVERSE) : le bloc par personnage 0x005ea560 a un pas de
-                                // 0x120, et GameArena s'arrete a 0x005ea600 — seul l'indice 0 y
-                                // tient. Etendre l'arene le jour ou ce chemin devient atteignable.
-                                byte* stats = Mem.Arena(0x005ea560) + e[8] * 0x120;
+                                // La table des blocs de statistiques a sa propre allocation ; la
+                                // lire par `Mem.Arena` serait le defaut d'aliasing que
+                                // ResolveEntityBlocks a porte jusqu'au 2026-08-23.
+                                byte* stats = s_EntityStatBlocks_005ea560 + e[8] * 0x120;
 
                                 cursor = DrawIconGlyph_0051BE90(
                                     otBase + 2, cursor, dbg, *(ushort*)(stats + 0x44), 5, 0);

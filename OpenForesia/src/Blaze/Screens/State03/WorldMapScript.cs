@@ -727,10 +727,22 @@ public static unsafe partial class Blaze
     /// <c>slot[0xc]</c> indexe la table d'especes du repertoire de zone (<c>+0x4c</c>, pas de 8),
     /// dont l'octet <c>+4</c> indexe a son tour la table de modeles (<c>+0x98</c>, pas de 0x60).
     /// </para>
+    /// <para>
+    /// <b>Defaut d'aliasing resorbe le 2026-08-23.</b> La table de statistiques etait resolue ici
+    /// par <c>Mem.Arena(0x005ea560)</c> — une VUE sur <c>GameArena</c> — alors que
+    /// <see cref="GetEntityStatBlock"/> (<c>FUN_00538780</c>), qui est le lecteur de toute la
+    /// simulation, la resout par <see cref="s_EntityStatBlocks_005ea560"/>, une allocation
+    /// <b>distincte</b>. Deux noms pour une seule adresse : le remplissage de
+    /// <see cref="ResetEntityStats"/> partait dans la queue de <c>GameArena</c> et la simulation
+    /// relisait des zeros, si bien que toute entite de scene naissait a 0 point de vie et se
+    /// faisait tuer a la premiere image par <c>FUN_0053aa10</c>. Le defaut etait doublement
+    /// fautif : <c>GameArena</c> s'arrete a <c>0x005ea600</c>, donc dès l'emplacement 1 l'ecriture
+    /// sortait de l'arene.
+    /// </para>
     /// </summary>
     private static void ResolveEntityBlocks(byte* slot, out byte* stats, out byte* species, out byte* model)
     {
-        stats = Mem.Arena(0x005ea560) + slot[8] * 0x120;
+        stats = s_EntityStatBlocks_005ea560 + slot[8] * 0x120;
         species = *(byte**)(s_Unknown_005e97cc + 0x4c) + slot[0xc] * 8;
         model = *(byte**)(s_Unknown_005e97cc + 0x98) + species[4] * 0x60;
     }

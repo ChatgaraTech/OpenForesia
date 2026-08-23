@@ -1,170 +1,100 @@
 ﻿# TODO
 
-Point d'entrée entre deux sessions. Mis à jour le **2026-08-23**. L'historique détaillé est dans
-`REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
+Point d'entrée entre deux sessions. Mis à jour le **2026-08-23, fin de journée**. L'historique
+détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et
+la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
 
-> ## Pour reprendre demain, en trois lignes
+> ## LA CARTE DU MONDE TOURNE
 >
-> 1. `dotnet build OpenForesia.sln`, puis
->    `OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 44 -WorkingDir OpenForesia -Shot -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT20`
->    — **la moitié dessin passe en entier**, et le jeu s'arrête maintenant dans la *simulation*, une
->    ou deux images plus loin. La sortie varie d'une exécution à l'autre (voir « trois sorties
->    possibles » plus bas) : relancer deux ou trois fois avant de conclure.
-> 2. Écrire le **remplissage des blocs de statistiques** des entités de scène — personne ne les
->    remplit, et c'est ce qui fait dérailler la simulation. Détail dans « REPRENDRE ICI ».
-> 3. Une fois qu'il passe, **regarder la capture** : ce sera la première image de la carte du monde.
->    Elle n'a **toujours pas été vue** : la moitié dessin s'exécute, mais le jeu meurt trop vite
->    après pour que la capture attrape autre chose qu'une fenêtre morte.
+> ```powershell
+> OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 44 -WorkingDir OpenForesia -Shot -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT20
+> ```
 >
-> Le travail des 21, 22 et 23 août **n'est pas commité**.
+> rend **« aucun plantage »**, 2101 images, 257 à 452 primitives par image, et la capture montre
+> **l'auberge** : murs de bois, escalier, sol de pierre, plante, porte, le personnage avec son épée,
+> la rose des vents, et le panneau « MISEUR 16/16 2/2 ». Deux exécutions de suite, identiques.
+>
+> C'est la première fois. Le jeu ne s'arrête plus.
 
-# REPRENDRE ICI (2026-08-24) — **les blocs de statistiques ne sont remplis par personne**
+# REPRENDRE ICI (2026-08-24)
 
-`FUN_0053aa10` est écrite, et elle a mis le doigt sur autre chose qu'une lacune de transcription.
+Il n'y a plus de point de blocage : il y a un écran qui tourne et qu'on peut enfin **regarder**.
+Trois pistes, par ordre de rendement.
 
-**Le fait.** `s_EntityStatBlocks_005ea560` (0x20 entrées de 0x120 octets,
-`Screens/State04/CharacterCreation.cs`) est alloué à zéro et **aucun site du dépôt n'y écrit**. Les
-entités de scène — celles de `0x005ecaa0`, qui ne portent pas le bit `0x800000` — naissent donc avec
-0 point de vie et 0 point de magie.
+## 1. Comparer la capture à l'original, pas à un compteur
 
-**La conséquence, faithfully transcrite.** `FUN_0053aa10` est le premier lecteur qui *agit* sur ce
-bloc. À la première image, pour chaque entité de scène :
+C'est la règle apprise sur le carrousel de sélection : un débit qui monte ne prouve rien, seule une
+image de référence tranche. L'auberge s'affiche — reste à savoir si elle s'affiche **juste**.
+Points à vérifier en priorité, parce que la moitié dessin vient d'être écrite d'un trait :
 
-1. `+0x4c < 1` → le bit `0x40000000` part dans le bloc **et** dans le mot d'état de l'entité :
-   toutes les entités de scène sont marquées mortes ;
-2. `+0x4e < 1` et le verrou `0x80` encore levé → une entité de sous-type `0x29` naît dans
-   `DAT_005f2d40`, et une copie de sous-type `0x46` dans la table des effets `0x005ff400`.
+* l'ordre de profondeur des faces de terrain (`DrawChunkCellsSorted` trie par face, ses deux sœurs
+  non) ;
+* les teintes des triangles plats de la deuxième liste — **LB-010** les réduit à deux valeurs, c'est
+  volontaire mais visible ;
+* les sept cellules que **LB-009** fait dessiner en trop aux quatre coins du carré 7×7.
 
-C'est cette copie de sous-type `0x46` qui bloque maintenant : son gestionnaire est l'entrée 0x46 de
-la table statique `0x00551c30`, **absente de `Blaze.c`**, à relever avec
-`OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00551d48 4` puis à désassembler.
+## 2. Refermer la porte de l'aliasing
 
-**Ne pas transcrire cette cascade.** Elle est le symptôme, pas la cause : dans le jeu d'origine, une
-entité de scène n'a pas 0 point de magie en naissant. Ce qu'il faut écrire, c'est **le remplissage
-des blocs**. Les trois fonctions qui le font sont identifiées — `FUN_00538af0`, `FUN_00538f50` et
-`FUN_00538fa0`, toutes dans `Blaze.c`, appelées ensemble par `FUN_00538830` (l'entrée en combat) et
-par `FUN_00519c30` (le ciblage). Reste à trouver **qui les appelle au chargement de zone** : c'est là
-que le premier remplissage a lieu, et c'est la vraie tâche suivante.
+`GameArena` couvre encore `0x005ea560..0x005ea600`, l'étendue de la table
+`s_EntityStatBlocks_005ea560`, alors que plus rien n'y vit. Ramener `GameArenaSize` de `0x1600` à
+`0x1560` fermerait la porte et rendrait verte l'assertion `Aucune_allocation_propre_dans_l_etendue_d_une_arene`.
+La borne utile de l'arène est bien `0x005ea560` : c'est exactement là que s'arrête le balayage de
+`FUN_00516350` (`0x005e9b60 + 0x40 * 0x28`). **C'est une constante de carte mémoire, donc un
+changement à décider, pas à faire au passage.**
 
-## Ce qui a été écrit le 2026-08-23, seconde moitié
+## 3. Les lacunes que le jeu réclamera dès qu'on jouera vraiment
 
-* **`FUN_0053aa10`** (~90 l.) — le pas d'états d'une entité de scène. Malgré le nom que ce port lui
-  avait donné d'avance, elle n'anime rien : elle fait vivre le bloc de statistiques. Trois cadences
-  (chaque image : la teinte `+0x0b` ; toutes les trente : les deux poisons et le drain de
-  pétrification, à trois pour cent du maximum et au moins un point ; toutes les vingt : les
-  quarante-huit minuteurs d'état), puis les deux seuils de zéro.
-* **`FUN_0047ac40`** (~45 l.) — la troisième jumelle de `SpawnEffectEntity`, sur la table
-  `DAT_005f2d40`. Elle prend six arguments là où les deux autres en prennent quatre : la position
-  est passée à part et un descripteur d'atlas part dans `+0x3c`.
-* **`FUN_00404ef0`** (27 l.) — le gestionnaire `0x404EF0` de la table des effets : une impulsion qui
-  balaie les 0x20 entrées de `0x005ecaa0`, réveille celles qui portent `0x80000000 | 8` et se
-  désarme. Ses trois cibles (`FUN_00404f70`, `FUN_00405240`, `FUN_00405510`) restent des lacunes
-  nommées — aucune n'a été demandée jusqu'ici.
-* **`&DAT_0056d340`** relevée — quarante-huit masques d'état, un par minuteur. Détail dans
-  `DataSymbols.md`.
+Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
 
-**Une supposition démentie au passage** : le TODO du matin annonçait que `FUN_0053aa10` poserait un
-problème de carte mémoire, parce que `&DAT_005ea560` s'indexe au pas `0x120` alors que `GameArena`
-s'arrête à `0x005ea600`. Faux : le bloc a déjà sa propre allocation
-(`s_EntityStatBlocks_005ea560`, 0x20 × 0x120) et son accesseur (`GetEntityStatBlock`), écrits pour
-`FUN_00538780`. **Chercher le symbole avant de conclure à un trou dans l'arène** — c'est la même
-leçon que « relire ce qui tourne avant de relever au désassembleur ».
-
-## Où en est le dessin
-
-Inchangé depuis le matin : la moitié dessin passe en entier. La **première image de la carte du
-monde n'a toujours pas été vue**, le jeu mourant une ou deux images après le premier `Flip`.
-
-## Les deux autres sorties possibles
-
-Elles subsistent, plus rares depuis que `FUN_0053aa10` passe :
-
-* `DAT_005eca94` nul dans `PublishCameraFrame_004022B0` — intermittent, et **antérieur au travail du
-  23 août** (constaté à la première exécution de la séance, avant toute modification). Un
-  échafaudage temporaire dans `WorldMapCamera.cs` imprime le voisinage au moment où il lève.
-* quelques images de plus avant de retomber sur l'une des précédentes.
-
-## Deux lacunes secondaires, laissées derrière leur condition
-
-* `FUN_00538bc0` (13 l.) — la hauteur de la bulle d'état. Triviale, mais demande de relever
-  `DAT_0056d440` (table de pas 8 dans `.data`). Gardée par `record[0x3c] != 0`.
-* `FUN_005309b0` (147 l.) — la surimpression de dialogue, gardée par le bit `0x8000000`. Demande
-  `DAT_0056a851`, `DAT_0056aae0` et `DAT_0056ab30`, non relevées.
+* `FUN_00404f70`, `FUN_00405240`, `FUN_00405510` — les trois cibles de `FUN_00404ef0`, le réveil
+  des entités de scène par sous-type.
+* l'entrée `0x46` de la table statique `0x00551c30` — le gestionnaire de l'effet « magie épuisée »,
+  **absent de `Blaze.c`** : `OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00551d48 4`, puis
+  désassembler.
+* `FUN_00538bc0` (13 l., la hauteur de la bulle d'état — demande `DAT_0056d440`) et `FUN_005309b0`
+  (147 l., la surimpression de dialogue — demande `DAT_0056a851`, `DAT_0056aae0`, `DAT_0056ab30`).
+* `DAT_005eca94` nul dans `PublishCameraFrame_004022B0` : intermittent, **antérieur au 23 août**, et
+  plus revu depuis la correction de l'aliasing — à surveiller plutôt qu'à chasser. Un échafaudage
+  temporaire dans `WorldMapCamera.cs` imprime le voisinage s'il revient.
 
 ## Une fragilité à surveiller
 
 Une exécution sur cinq a échoué dans `AllocLowZeroed` (« aucun bloc libre de 0x1000 octets sous
-0x01000000 »). La fenêtre basse fait 16 Mo et chaque bloc y dépense un granule de 64 Ko. Le bloc qui
-a échoué était alloué avant le nouveau, donc ce n'est pas une régression — mais la marge est plus
-mince qu'il n'y paraît.
+0x01000000 »). La fenêtre basse fait 16 Mo et chaque bloc y dépense un granule de 64 Ko. Ce n'est pas
+une régression, mais la marge est plus mince qu'il n'y paraît.
 
 ---
 
-## Archive — l'encadré du 2026-08-24 au matin, soldé
+## Ce qui a été fait le 2026-08-23
 
-**La moitié dessin de la carte du monde est terminée.** Les six lacunes que le TODO de la veille
-listait sont transcrites : `DrawWorldCells` (le balayage 7×7), `FUN_0051f940` (le voile plein
-écran), `FUN_0051e700` (l'émission de modèle **triée par face**), et les trois listes de morceaux
-`FUN_0051fa40` / `FUN_00521000` / `FUN_00522140`. `DrawWorldMapFrame` va de bout en bout sans lever.
+**La moitié dessin, d'un trait.** `DrawWorldCells` (le balayage 7×7), `FUN_0051f940` (le voile plein
+écran), `FUN_0051e700` (l'émission de modèle triée par face) et les trois listes de morceaux
+`FUN_0051fa40` / `FUN_00521000` / `FUN_00522140`, ces trois-là réunies en un seul `DrawChunk`
+paramétré. Les six lacunes que le TODO de la veille estimait à « deux séances ».
 
-Ce qui bloque maintenant est **dans le pas de simulation**, et il y a **trois sorties possibles**
-selon le minutage, toutes reproduites plusieurs fois :
+**La simulation, ensuite.** `FUN_0053aa10` (le pas d'états d'une entité de scène — elle n'anime
+rien, malgré le nom que ce port lui avait donné d'avance), `FUN_0047ac40` (la troisième jumelle de
+`SpawnEffectEntity`), `FUN_00404ef0` (le réveil des entités de scène), `FUN_00486ee0` (la bestiole
+errante, 881 o., absente de `Blaze.c`) et `FUN_004db5a0` (l'avance d'image d'animation).
 
-| sortie | où | quoi faire |
-|---|---|---|
-| `FUN_0053aa10` non transcrite | `TickEntityTable_005ecaa0` | la plus fréquente. ~90 l. dans `Blaze.c` (l. 85517) — le pas d'états d'une entité de scène : poison, décomptes, `FUN_0053db20`. **Attention** : elle indexe `&DAT_005ea560` au pas `0x120`, et `GameArena` s'arrête à `0x005ea600` — l'arène ne tient qu'une entrée. C'est une question de carte mémoire avant d'être une question de code. |
-| `DAT_005eca94` nul | `PublishCameraFrame_004022B0` | intermittent, et **antérieur au travail du 23 août** (constaté à la première exécution de la séance, avant toute modification). Le pointeur est posé au chargement de zone (`WorldMap.cs`, `= (byte*)Mem.View(0x006067d0)`) et relu sans encombre par le bloc d'affichage du **même** tour ; il est nul au tour suivant. Un échafaudage temporaire dans `WorldMapCamera.cs` imprime le voisinage de `0x005eca94` au moment où il lève — le lancer une fois et lire le résultat coûte moins cher que raisonner. |
-| aucune | — | le jeu tourne quelques images de plus puis retombe sur l'une des deux ci-dessus |
+**Trois relevés** : `&DAT_00564548` et les huit tranches de `PTR_DAT_005645d8` (le balayage par
+octant), et `&DAT_0056d340` (quarante-huit masques d'état). Tous dans `DataSymbols.md`.
 
-## Ce que la moitié dessin a appris
+**Deux défauts d'origine** : LB-009 (le balayage ne saute qu'une case sur huit) et LB-010 (un indice
+de couleur réduit à un booléen), tous deux prouvés par comparaison avec le même code écrit deux fois
+dans le binaire.
 
-**Les trois listes de morceaux sont la même passe à trois réglages près**, et non trois fonctions à
-1 100 lignes. Elles sont maintenant un seul `DrawChunk` dans `Engine/Model3d.cs`, paramétré par :
+**Un défaut de reconstruction, celui qui bloquait tout** : `ResolveEntityBlocks` résolvait le bloc
+de statistiques par `Mem.Arena(0x005ea560)` quand tout le reste de la simulation le lit par
+`s_EntityStatBlocks_005ea560`. Deux noms, une adresse, deux blocs. Le détail — et la leçon sur les
+assertions rouges « volontaires » qui cessent de l'être — est dans `REVERSE_STATUS.md`.
 
-| | source des faces | profondeur | emplacement d'OT |
-|---|---|---|---|
-| `FUN_0051fa40` | grille de cellules | ordinal **418** | **par face**, `(z & 0xfffc)` |
-| `FUN_00521000` | grille de cellules | ordinal 795 | fixe, celui de l'appelant |
-| `FUN_00522140` | faces à la file | ordinal 795 | fixe, celui de l'appelant |
-
-**`FUN_0051e700` est la synthèse des deux émetteurs de modèle déjà écrits** : le prologue et les
-quatre seaux de `FUN_0051c420`, le tri par face de `FUN_0051d1f0`. Un seul écart de disposition, sur
-le triangle dégradé, et un terme de plus dans le mot de page de texture. Elle s'est écrite en une
-passe **parce que les deux sœurs étaient là** — c'est la troisième fois de suite que le conseil
-« relire ce qui tourne avant de relever au désassembleur » paie.
-
-**Deux défauts d'origine relevés au passage**, tous deux consignés dans `legacy-bug.md` :
-
-* **LB-009** — le balayage de `FUN_00516fc0` lit les clés de saut suivantes **sur un octet** alors
-  que le curseur avance de deux. Une seule cellule est sautée par image au lieu de huit. Les deux
-  listes de morceaux qui refont le même balayage lisent, elles, seize bits : c'est ce qui prouve que
-  c'est un défaut et non une convention.
-* **LB-010** — le seau des triangles plats de `FUN_00521000`, et lui seul, réduit son indice de
-  couleur au prédicat « le champ est non nul ».
-
-**Un gestionnaire d'entité de plus, absent de `Blaze.c`** : `FUN_00486ee0` (881 o., sous-type 0 de
-la table `0x005ecaa0`) — la bestiole errante, avec sa détection par cône de vue et sa promenade
-aléatoire — plus `FUN_004db5a0` (112 o.), l'avance d'image d'animation qu'elle partage. Les deux
-sont transcrites depuis `Legacy/Raw/Blaze/FUN_00486EE0.asm`.
-
-## Deux lacunes secondaires, laissées derrière leur condition
-
-* `FUN_00538bc0` (13 l.) — la hauteur de la bulle d'état. Triviale, mais demande de relever
-  `DAT_0056d440` (table de pas 8 dans `.data`). Gardée par `record[0x3c] != 0`.
-* `FUN_005309b0` (147 l.) — la surimpression de dialogue, gardée par le bit `0x8000000`. Demande
-  `DAT_0056a851`, `DAT_0056aae0` et `DAT_0056ab30`, non relevées.
-
-## Une fragilité à surveiller
-
-Une exécution sur cinq a échoué dans `AllocLowZeroed` (« aucun bloc libre de 0x1000 octets sous
-0x01000000 »). La fenêtre basse fait 16 Mo et chaque bloc y dépense un granule de 64 Ko. Le bloc qui
-a échoué était alloué avant le nouveau, donc ce n'est pas une régression — mais la marge est plus
-mince qu'il n'y paraît.
 
 ---
 
+## Archive — les encadrés des séances précédentes
 
 **État git au 2026-08-21.** Commité jusqu'à `2d5bb36` (« Refacto Audio.cs ») : les six premières
 vraies classes, `OpenForesia.Tests/`, et les références figées `blaze-baseline.txt` /
