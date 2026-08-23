@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-23
 
+- feat : verbe 14 de la table de zone (`FUN_00442D90`) — **l'accès au coffre** : il désigne l'entité appelante comme porteur du script de l'entité de scène visée
+- doc : cinq voisins du verbe 14 relevés dans la même fenêtre de désassemblage, tous sous soixante octets — les prendre en une passe le jour où l'un sera demandé
 - feat : `FUN_00405510` et `FUN_00405240` — les deux derniers réveils d'entité de scène (types 2 et 1), plus les deux pas d'animation qu'ils appellent, `FUN_004052f0` (parcours d'une plage avec pause tirée au hasard) et `FUN_00405420` (le décompte). 6361 images sans plantage
 - doc : la signature `__fastcall` à six paramètres que Ghidra donne à `FUN_004052f0` est fausse — `add esp,0x10` après l'appel dit cdecl à quatre arguments, et ses `param_1`/`param_2` sont des registres fantômes
 - doc : l'échec `AllocLowZeroed` peut aussi survenir **pendant un chargement**, là où la relance en processus fils ne rattrape rien ; six des neuf sites d'allocation basse ne sont pas pré-réclamés

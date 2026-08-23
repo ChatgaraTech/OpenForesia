@@ -10368,3 +10368,55 @@ Le jeu tourne, et le chemin de l'auberge ne lève plus rien. Mais **mon parcours
 pas d'entité de type 1 ou 2** : Vincent avait atteint `FUN_00405510` dans sa propre partie, plus loin
 que ce que le script rejoue. Les deux branches sont donc écrites et compilées, pas exercées. C'est sa
 prochaine session qui les mettra à l'épreuve.
+
+---
+
+## 2026-08-23 (suite) — le verbe 14 de la table de zone, celui du coffre
+
+`FUN_00442d90`, vingt-sept octets, absente de `Blaze.c` comme toute la table de verbes :
+
+```c
+*(octet **)(0x005ecaa0 + index * 0x9c + 0x6c) = entite;
+return 0;
+```
+
+Le champ `+0x6c` d'une entité de scène est celui que `RunEntityScript` reçoit en deuxième argument
+partout ailleurs — `AdvanceSceneEntityState_00404FE0`, `CycleSceneEntityAnimations_004052F0`,
+`CountDownSceneEntityState_00405420` le lisent toutes. Le verbe répond donc à la question « **pour le
+compte de qui ce décor joue-t-il son script ?** », et c'est exactement ce qu'il faut à un coffre : le
+script du coffre doit savoir qui l'ouvre pour lui remettre son contenu.
+
+L'original écrit `[ecx*4 + 0x005ecb0c]` avec `ecx = 39 * index` ; c'est la même table d'entités de
+scène que partout, prise à son champ `+0x6c`. La transcription l'adresse par son début et son
+décalage plutôt que par l'adresse composée, pour rester comparable aux autres accès à cette table.
+
+**L'indice est signé** (`movsx eax, word [esp+8]`) et aucune borne n'est vérifiée : un indice négatif
+ou au-delà de 0x20 écrit hors de la table. Transcrit tel quel.
+
+La convention d'appel des verbes de zone est reconfirmée au désassembleur du gestionnaire d'opcode 0
+(`0x00515490`) : `push ecx` (le `ushort` formé de `script[2]` et `script[3]`), `push edx`
+(l'entité), `call dword [eax*4+56AEC8h]`, `add esp,8`. Cdecl, deux arguments, dans cet ordre.
+
+### Cinq voisins relevés au passage
+
+La fenêtre de 464 octets prise pour ce verbe en a montré cinq autres, contigus, et **tous courts** —
+dump complet dans `Legacy/Raw/Blaze/AreaVerbs/FUN_00442D90_et_voisins.asm` :
+
+| adresse | ce qu'il fait, en une ligne |
+|---|---|
+| `0x00442DB0` | réveille les quatre membres du groupe : pour chacun dont le mot d'état porte `0x80000000`, remet `+0x6c` à zéro et enchaîne `0x0053A920` / `0x00530F20` / `0x005312D0` |
+| `0x00442E10` | rend le bit 0 de `0x00563c77` |
+| `0x00442E20` | balaie les dix emplacements de 0x280 octets d'un personnage à la recherche du mot `0x2EFB` en `+0x86` |
+| `0x00442E70` | pose la variable `0x005e9060` à 1 ou 2 selon que le mot `+0x144` du bloc de personnage est sous `0xB4` |
+| `0x00442EA0` | échelonne la même variable de 0 à 5 par seuils de 20 sur ce même mot `+0x144` |
+| `0x00442F20` | force à 5 les sept octets de `+0x178` qui étaient en dessous, et rend 1 si aucun ne l'était |
+
+Aucun ne dépasse la soixantaine d'octets. **Les prendre en une passe le jour où l'un d'eux sera
+demandé coûtera moins cher que de les reprendre un par un** — chaque verbe isolé coûte un
+désassemblage, une relecture du contexte et un playtest, et la fenêtre est déjà relevée.
+
+### Ce que cela vérifie
+
+Le chemin au repos ne régresse pas : 1921 images, aucune exception. **Le coffre lui-même n'est pas
+rejoué par le parcours scripté** — c'est la partie de Vincent qui le vérifiera, comme pour les
+réveils d'entité de type 1 et 2 écrits juste avant.

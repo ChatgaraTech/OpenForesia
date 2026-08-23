@@ -484,12 +484,26 @@ relance, il en nomme un autre.
       condition reçoit l'indice du verbe, tandis que celui-ci rend 0. Les confondre donnait un
       script qui s'arrête là où il devrait continuer.
 - [x] opcode 14 = `0x005158f0` — affichage d'un dialogue, absent de `Blaze.c`, transcrit.
-- [ ] les treize autres verbes réels de l'index 0 (`0x00443100`, `0x00443260`, `0x004430B0`,
+- [x] verbe 0 = `FUN_00443100` — dégèle les trois tables d'effets (bit `0x04000000` effacé sur tout
+      emplacement dont le mot d'état ne porte pas `0x10000000`). Rend 0. Demandé par le dialogue
+      d'un PNJ.
+- [x] verbe 14 = `FUN_00442D90` (27 o., **absente de `Blaze.c`**, désassemblée — dump dans
+      `Legacy/Raw/Blaze/AreaVerbs/`). Écrit l'entité appelante dans le champ `+0x6c` de l'entité de
+      scène d'indice donné, c'est-à-dire le porteur que `RunEntityScript` recevra. Rend 0. C'est ce
+      que demande **l'accès à un coffre**.
+- [ ] les onze autres verbes réels de l'index 0 (`0x00443260`, `0x004430B0`,
       `0x00442F20`, `0x00442E70`, `0x00442EA0`, `0x00442E20`, `0x00445840`, `0x004431F0`,
-      `0x00442E10`, `0x00442DB0`, `0x004457F0`, `0x00442D90`), plus `0x0053DD20/DEA0/DF20` aux
+      `0x00442E10`, `0x00442DB0`, `0x004457F0`), plus `0x0053DD20/DEA0/DF20` aux
       indices 56–58. **Aucun n'est demandé pour l'instant** — le prologue va au bout sans eux.
-      Un balayage a confirmé que seul `0x004441F0` est une souche ; les quinze autres sont de
+      Un balayage a confirmé que seul `0x004441F0` est une souche ; les autres sont de
       vraies fonctions.
+
+      Le désassemblage du 2026-08-23 en a montré cinq d'un coup, contigus après le verbe 14, et ils
+      sont **tous courts** : `0x00442DB0` réveille les quatre membres du groupe, `0x00442E10` rend
+      un bit de `0x00563c77`, `0x00442E20`, `0x00442E70`, `0x00442EA0` et `0x00442F20` interrogent
+      ou écrivent le bloc de 0x2000 octets d'un personnage. Aucun ne dépasse la soixantaine
+      d'octets. Les prendre en une passe quand l'un d'eux sera demandé coûtera moins cher qu'un par
+      un.
 
 **Le retour d'un verbe devient le résultat de condition**, donc il ne peut pas être deviné : un
 verbe non transcrit lève en se nommant plutôt que de rendre une valeur plausible.

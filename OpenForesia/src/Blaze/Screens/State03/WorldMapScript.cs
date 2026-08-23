@@ -1197,6 +1197,8 @@ public static unsafe partial class Blaze
             // 0 et non l'indice du verbe. Deux souches, deux comportements.
             0x004441F0 => 0,
 
+            0x00442D90 => AreaVerb_00442D90(ent, (short)(s[2] | (s[3] << 8))),
+
             0x00442F60 => AreaVerb_00442F60(),
 
             0x00443100 => AreaVerb_00443100(),
@@ -1272,6 +1274,35 @@ public static unsafe partial class Blaze
         ThawEntityTable(Mem.Entity(0x005ff400), 0x20);
         ThawEntityTable(Mem.Entity(0x005f2d40), 0x80);
         ThawEntityTable(Mem.Entity(0x005edee0), 0x80);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00442d90 @ 0x00442d90 — <b>le verbe 14 de la table de zone</b> : il désigne
+    /// l'entité appelante comme <b>porteur du script</b> de l'entité de scène numéro
+    /// <paramref name="index"/>. Vingt-sept octets, <b>absente de <c>Blaze.c</c></b> ; dump conservé
+    /// dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00442D90.asm</c>.
+    ///
+    /// <para>Le champ écrit est <c>+0x6c</c> de l'enregistrement, celui que
+    /// <see cref="RunEntityScript"/> reçoit en deuxième argument partout ailleurs —
+    /// <c>AdvanceSceneEntityState_00404FE0</c>, <c>CycleSceneEntityAnimations_004052F0</c> et leurs
+    /// voisines le lisent toutes. Le verbe répond donc à la question « pour le compte de qui ce
+    /// décor joue-t-il son script ? », et c'est exactement ce qu'il faut à un coffre : le script du
+    /// coffre doit savoir qui l'ouvre.</para>
+    ///
+    /// <para>L'original écrit <c>[ecx*4 + 0x005ecb0c]</c> avec <c>ecx = 39 * index</c>, soit
+    /// <c>0x005ecaa0 + index * 0x9c + 0x6c</c> : la même table d'entités de scène que partout, prise
+    /// à son champ <c>+0x6c</c>. Elle est adressée ici par son début et son décalage plutôt que par
+    /// l'adresse composée, pour rester lisible contre les autres accès.</para>
+    ///
+    /// <para><b>L'indice est signé</b> (<c>movsx eax, word [esp+8]</c>). Aucune borne n'est
+    /// vérifiée : un indice négatif ou au-delà de 0x20 écrit hors de la table. Transcrit tel quel —
+    /// c'est au script de zone d'être correct, et rien n'indique que le jeu s'en protège.</para>
+    /// </summary>
+    /// <returns>Toujours zéro : <c>xor eax,eax</c> précède l'écriture.</returns>
+    private static uint AreaVerb_00442D90(byte* entity, short index)
+    {
+        *(byte**)(Mem.Entity(0x005ecaa0) + index * 0x9c + 0x6c) = entity;
         return 0;
     }
 
