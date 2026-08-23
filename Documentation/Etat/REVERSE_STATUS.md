@@ -9658,3 +9658,43 @@ Build 0 erreur. Playtest : aucun plantage, 2101 images, 388 primitives par image
 et cadre de jauges conformes. Tests de disposition : 2 rouges, inchangés. Oracle `compare-bodies` :
 six corps signalés — les trois habituels plus `ResolveEntityBlocks`, `PlaceWorldMapParty` et
 `BuildTextTable`, c'est-à-dire exactement les trois corrections du jour.
+
+## 2026-08-23 (nuit) — la caméra : un défaut réel corrigé, et qui n'était pas le bon
+
+Troisième écart relevé par Vincent contre le jeu d'origine : à l'entrée de l'auberge la caméra doit
+se poser **juste au-dessus de la porte**, la nôtre reste en arrière.
+
+**Un défaut a été trouvé et corrigé** : les trois décalages de caméra `&DAT_00564650 + 8`, `+0xc` et
+`+0x10` sont des **entiers**, et la reconstruction les lisait sur seize bits dans **trois** endroits
+— `PlaceWorldMapParty` (au chargement de zone), la remise à neuf en tête de `RunWorldMapState`, et
+`ApplyPadHeightLimits_004021E0` (à chaque image). Le désassembleur ne laisse pas de place au doute :
+
+```
+0040223d  8b1558465600   mov edx,[564658h]      005169b5  8b355c465600  mov esi,[56465Ch]
+00402250  8b355c465600   mov esi,[56465Ch]      00516a7d  891560465600  mov [564660h],edx
+```
+
+Ghidra rendait ces symboles sans cast, ce qui aurait dû suffire à les typer en `int` ; c'est la
+même famille d'erreur que les décalages du bloc de panneaux plus tôt dans la journée.
+
+**Et l'image n'a pas bougé d'un pixel.** Le défaut est réel mais **latent à ce point d'entrée** :
+les valeurs y tiennent sur seize bits, donc la troncature n'y changeait rien. C'est un rappel utile
+— corriger ce qu'on trouve en cherchant une cause ne veut pas dire qu'on a trouvé *la* cause, et
+seule la capture le dit.
+
+### Deux pistes écartées par la mesure, pas par l'intuition
+
+* **Le sous-bloc d'occlusion n'est pas en cause.** Sa garde
+  (`ViewParams(0x00571348) == 0 && ViewParams(0x00571380) != 0`) rend la main à chaque image, et la
+  preuve est solide : `ProbeCameraOcclusion_004011C0` est encore une lacune franche, elle lèverait
+  si on l'atteignait. Le jeu tourne 2101 images sans lever.
+* **La lecture du point d'entrée est fidèle** — `views = *(byte**)(areaDir + 0xc0)`,
+  `index = (spawn[6] * 2) & 0xffff`, `view[0]` / `view[1]` — recoupée mot pour mot avec la pseudo-C.
+
+### Ce qu'il faut faire ensuite
+
+Comparer les **valeurs**, pas le code. Relever sur le jeu d'origine, à l'image où l'auberge
+apparaît, ce que valent `DAT_00604928` (le cap), `DAT_00564650..60` (le bloc de constantes) et
+`DAT_005de078/7c/80` (la cible), puis les confronter aux nôtres. C'est le seul moyen de séparer trois
+hypothèses qui produisent le même symptôme : une vue mal lue, une cible mal placée, ou un lissage
+qui ne converge pas au même endroit.

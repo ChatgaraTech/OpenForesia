@@ -127,6 +127,7 @@ Documentation/   tout ce que le projet a appris
 | `Documentation/ARCHITECTURE.md` | **Read this before adding or moving code.** The directory map, the routing rule that decides where a function goes, and the state rule that protects against the aliasing defect. |
 | `Documentation/Etat/REVERSE_STATUS.md` | **Read this first.** Call-graph coverage, per-function status, numbered `TODO(REVERSE)` items, current blocking point. |
 | `Documentation/Etat/TODO.md` | The between-sessions entry point: current state and what to do next. |
+| `Documentation/Etat/HISTORY.md` | **Update it at the end of every work session — see below.** One line per change, newest first. |
 | `Documentation/Methode/Prompt.md`, `Strategy.md` | The authoritative methodology documents, both in French. |
 | `Documentation/Reference/DataSymbols.md` | Values recovered from the binary's data sections, keyed by Ghidra VA. Also carries the **map of reconstructed symbols**: every VA-suffixed C# symbol, sorted by address, with its gap to the next and the file it lives in. |
 | `Documentation/Reference/legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect, and the project reproduces those rather than repairing them. |
@@ -140,6 +141,27 @@ Documentation/   tout ce que le projet a appris
 
 `openspec/` holds the change workflow: several completed changes, one archived, and the
 `blaze-intro-attract` spec. Use `openspec list` to see the current state.
+
+## Closing a session — always update `HISTORY.md`
+
+**At the end of every work session, add your entries to `Documentation/Etat/HISTORY.md`.** This is
+not optional and does not need to be asked for. It is the one file that shows overall progress at a
+glance: `REVERSE_STATUS.md` is too detailed for that, and `TODO.md` only describes the current
+state.
+
+Keep it **simple** — one line per change, prefixed by its kind:
+
+```markdown
+## 2026-08-23
+
+- feat : la carte du monde s'affiche et tient — l'auberge, 2101 images sans plantage
+- fix : `ResolveEntityBlocks` lisait les statistiques d'entité par une vue d'arène quand le reste de
+  la simulation les lit par leur allocation propre — toute entité de scène naissait à 0 PV
+```
+
+`feat :` for an addition, `fix :` for a correction, `doc :` for something learned and written down.
+Newest date at the top. No analysis paragraphs — the reasoning belongs in `REVERSE_STATUS.md`;
+`HISTORY.md` keeps only the line of progress.
 
 ## Working rules (condensed from Strategy.md)
 

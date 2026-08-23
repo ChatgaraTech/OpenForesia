@@ -561,10 +561,14 @@ public static unsafe partial class Blaze
         *Mem.Camera(0x005de090) +=
             ((*Mem.Camera(0x005de05c) >> 1) + *Mem.Camera(0x005de05c) - *Mem.Camera(0x005de090)) >> 2;
 
-        short* slideX = (short*)(s_WorldMapCamera_00564650 + 8);
-        short* slideZ = (short*)(s_WorldMapCamera_00564650 + 0x0c);
-        *slideX -= (short)(*slideX >> 3);
-        *slideZ -= (short)(*slideZ >> 3);
+        // Les deux decalages sont des ENTIERS, pas des shorts : `mov edx,[564658h]` et
+        // `mov esi,[56465Ch]` en 0x0040223d / 0x00402250. Les lire sur seize bits tronquait
+        // l'amortissement a chaque image, en plus de la troncature d'origine au chargement de zone
+        // (voir WorldMap.cs). Corrige le 2026-08-23.
+        int* slideX = (int*)(s_WorldMapCamera_00564650 + 8);
+        int* slideZ = (int*)(s_WorldMapCamera_00564650 + 0x0c);
+        *slideX -= *slideX >> 3;
+        *slideZ -= *slideZ >> 3;
 
         *Mem.Camera(0x005de08c) = lift >> 5;
         *Mem.Camera(0x005de07c) = (lift >> 5) + *slideZ;

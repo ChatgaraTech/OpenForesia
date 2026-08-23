@@ -184,10 +184,13 @@ public static unsafe partial class Blaze
             *(short*)(s_WorldMapCamera_00564650 + 4) = 0;
             *(short*)(Mem.s_CameraVector_00604928 + 0) = 0;
             *(short*)(Mem.s_CameraVector_00604928 + 2) = 0;
-            *(int*)(Mem.s_CameraVector_00604928 + 4) = 0;
-            *(short*)(s_WorldMapCamera_00564650 + 8) = 0;
-            *(short*)(s_WorldMapCamera_00564650 + 0xc) = 0;
-            *(short*)(s_WorldMapCamera_00564650 + 0x10) = 900;
+            *(short*)(Mem.s_CameraVector_00604928 + 4) = 0;
+
+            // Trois ENTIERS, pas trois shorts — meme relevé qu'au chargement de zone et sur le
+            // chemin par image. Voir le commentaire de PlaceWorldMapParty.
+            *(int*)(s_WorldMapCamera_00564650 + 8) = 0;
+            *(int*)(s_WorldMapCamera_00564650 + 0xc) = 0;
+            *(int*)(s_WorldMapCamera_00564650 + 0x10) = 900;
 
             while (true)
             {
@@ -1535,11 +1538,24 @@ public static unsafe partial class Blaze
                 int* view = (int*)(views + index * 4);
                 uint first = (uint)view[0];
 
+                // **Largeurs reprises au desassembleur le 2026-08-23** (0x005169b5..0x00516a7d).
+                // Le bloc de constantes de camera &DAT_00564650 mele des shorts et des ENTIERS, et
+                // la premiere transcription avait lu les trois derniers en shorts :
+                //
+                //     mov esi,[56465Ch]   dword     mov [564654h],bx   word
+                //     mov ebp,[564660h]   dword     mov [60492Ch],bx   word
+                //     mov ecx,[564658h]   dword     mov [564660h],edx  dword
+                //
+                // Les champs +0x08, +0x0c et +0x10 sont les trois decalages de la camera par
+                // rapport a la cible, en unites de 1/4096 : les tronquer a seize bits deplacait la
+                // camera a l'arrivee dans une zone. C'est l'ecart que Vincent a releve contre le
+                // jeu d'origine a l'entree de l'auberge, ou la camera doit se poser juste au-dessus
+                // de la porte.
                 *(short*)(s_WorldMapCamera_00564650 + 4) = 0;
                 *(int*)Mem.s_CameraVector_00604928 = view[0];
-                *Mem.Camera(0x005de078) = *(short*)(s_WorldMapCamera_00564650 + 8) + *Mem.Camera(0x005de088);
-                *Mem.Camera(0x005de07c) = *Mem.Camera(0x005de08c) + *(short*)(s_WorldMapCamera_00564650 + 0xc);
-                *Mem.Camera(0x005de080) = *(short*)(s_WorldMapCamera_00564650 + 0x10) + *Mem.Camera(0x005de090);
+                *Mem.Camera(0x005de078) = *(int*)(s_WorldMapCamera_00564650 + 8) + *Mem.Camera(0x005de088);
+                *Mem.Camera(0x005de07c) = *Mem.Camera(0x005de08c) + *(int*)(s_WorldMapCamera_00564650 + 0xc);
+                *Mem.Camera(0x005de080) = *(int*)(s_WorldMapCamera_00564650 + 0x10) + *Mem.Camera(0x005de090);
 
                 *(short*)(s_WorldMapCamera_00564650 + 0) = (short)first;
                 *(short*)Mem.View(0x006067e8) = *(short*)(s_WorldMapCamera_00564650 + 0);
@@ -1547,10 +1563,10 @@ public static unsafe partial class Blaze
                 *(short*)Mem.View(0x006067ea) = *(short*)(s_WorldMapCamera_00564650 + 2);
                 *Mem.View(0x006067c0) = *Mem.Camera(0x005de068);
                 *Mem.View(0x006067c4) = *Mem.Camera(0x005de06c);
-                *(int*)(Mem.s_CameraVector_00604928 + 4) = 0;
+                *(short*)(Mem.s_CameraVector_00604928 + 4) = 0;
                 *(short*)Mem.View(0x006067ec) = 0;
                 *Mem.View(0x006067c8) = *Mem.Camera(0x005de070);
-                *(short*)(s_WorldMapCamera_00564650 + 0x10) = (short)(view[1] - *Mem.Camera(0x005de090));
+                *(int*)(s_WorldMapCamera_00564650 + 0x10) = view[1] - *Mem.Camera(0x005de090);
                 *(uint*)(s_WorldMapCamera_00564650 + 0) = first;
                 *Mem.View(0x006067d0) = *Mem.Camera(0x005de078);
                 *Mem.View(0x006067d4) = *Mem.Camera(0x005de07c);

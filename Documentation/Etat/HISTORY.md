@@ -1,8 +1,34 @@
-# Historique
+﻿# Historique
 
 Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
+
+## 2026-08-23
+
+- feat : **la carte du monde s'affiche et tient** — l'auberge, 2101 images sans plantage, 388 primitives par image. Première image du jeu en 3D
+- feat : boîte de dialogue « - La réception - » à l'entrée de l'auberge, et immobilisation du joueur tant qu'elle est affichée
+- feat : cadre des jauges PV/PM, au même style de fenêtre que la boîte de dialogue
+- feat : `DrawWorldCells` — le balayage 7×7 des cellules de décor, les deux grilles d'entités, le ciel
+- feat : `FUN_0051e700` — l'émission de modèle triée par face
+- feat : les trois listes de morceaux `FUN_0051fa40` / `FUN_00521000` / `FUN_00522140`, réunies en un seul `DrawChunk` paramétré
+- feat : `FUN_0051f940` — le voile plein écran du fondu
+- feat : `FUN_0053aa10` — le pas d'états d'une entité de scène (poisons, minuteurs, régénérations, seuils de zéro)
+- feat : `FUN_00486ee0` et `FUN_004db5a0` — la bestiole errante et l'avance d'image d'animation, absentes de `Blaze.c`, désassemblées sur place
+- feat : `FUN_0047ac40` et `FUN_00404ef0` — la naissance d'entité dans `DAT_005f2d40` et le réveil des entités de scène
+- feat : codes de contrôle de texte `0x08` (gel/dégel) et `0x1f` (étendue du panneau), décodés à la main
+- fix : `ResolveEntityBlocks` lisait les blocs de statistiques par une vue d'arène quand toute la simulation les lit par leur allocation propre — chaque entité de scène naissait à 0 PV et se faisait tuer à la première image
+- fix : `DAT_00563c5c` et `DAT_00563c77` sont des champs du descripteur `0x005633b0` (+0x8ac et +0x8c7), pas des globales — la boîte de dialogue liait son texte et ne s'affichait jamais
+- fix : `&DAT_005dbc68` portait deux noms, l'un rempli au chargement, l'autre lu au dessin
+- fix : la boucle d'initialisation des quatre panneaux avait des décalages faux, dont `+0x08` — l'étendue que `DrawUiPanel` lit — jamais écrite
+- fix : les trois décalages de caméra `&DAT_00564650 + 8/0xc/0x10` sont des entiers, lus et écrits sur seize bits dans trois fonctions
+- fix : `GameArenaSize` ramenée de `0x1600` à `0x1560` — l'arène recouvrait la table des blocs de statistiques
+- doc : deux défauts d'origine catalogués — LB-009 (le balayage ne saute qu'une cellule sur huit) et LB-010 (un indice de couleur réduit à un booléen)
+- doc : tables `&DAT_00564548`, `PTR_DAT_005645d8` et `&DAT_0056d340` relevées dans le binaire
+
+> Les séances du 11 au 22 août ne sont pas consignées ici : elles ont été documentées dans
+> `REVERSE_STATUS.md` au fil de l'eau, mais la reprise d'`HISTORY.md` date du 23 août et
+> reconstituer ces onze jours après coup reviendrait à les deviner.
 
 ## 2026-08-10
 
