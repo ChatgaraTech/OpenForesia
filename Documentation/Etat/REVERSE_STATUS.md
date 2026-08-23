@@ -9790,17 +9790,20 @@ En neutralisant le bit `0x20`, le flot descend jusqu'à `ProbeCameraOcclusion_00
 Donc :
 
 1. le bit `0x20` est bien ce qui nous détourne ;
-2. **le sous-bloc d'occlusion est sur le chemin au repos à l'auberge.** La note qui le disait
-   inatteignable — « sa garde rend la main avant, playtest à l'appui » — datait d'une mesure faite
-   alors que `0x20` était posé à tort. Elle est corrigée.
+2. ~~le sous-bloc d'occlusion est sur le chemin au repos à l'auberge.~~ **RÉTRACTÉ le
+   2026-08-23 au soir** — voir la section « l'occlusion, remise à sa place » en fin de fichier.
+   L'expérience effaçait `0x20`, or `0x20` est précisément la garde qui protège l'occlusion :
+   l'atteindre en l'effaçant ne prouvait rien. La note d'origine (« sa garde rend la main
+   avant ») était juste.
 
-C'est aussi, très probablement, le mécanisme que Vincent décrit : l'occlusion tire la caméra en avant
-quand un mur s'interpose, ce qui la pose « juste au-dessus de la porte ».
+La caméra « juste au-dessus de la porte » ne venait pas de l'occlusion non plus : elle vient de la
+restitution de `SavedViewAngle` dans `FUN_00401000`, corrigée le même soir.
 
-**Leçon de méthode** : une garde qui « rend la main avant » ne prouve rien tant qu'on n'a pas vérifié
-que la condition qui la fait rendre la main est elle-même juste. Ici un bit posé à tort avait rendu
-tout un sous-système invisible, et l'avait fait classer « hors du chemin au repos » pendant deux
-jours.
+**Leçon de méthode, elle aussi corrigée** : l'expérience de l'après-midi concluait qu'une garde
+« qui rend la main avant » ne prouve rien tant qu'on n'a pas vérifié la condition. C'est vrai —
+mais l'expérience choisie était circulaire, puisqu'elle effaçait précisément cette condition. La
+bonne leçon est plus sévère : **une expérience qui force la garde d'un bloc ne dit rien sur
+l'atteignabilité de ce bloc.**
 
 ### Il reste un dword à lire
 
@@ -10015,3 +10018,43 @@ d'emblée quand deux implémentations partent du même état et divergent sans r
 À retenir aussi : les captures comparées ont donné en une image (les deux roses des vents, un quart
 de tour d'écart = 1024 unités) ce que trois relevés mémoire n'avaient pas isolé, **et** elles ont
 révélé une erreur de nommage — `DAT_00604928` est `(élévation, cap, roulis)`.
+
+## 2026-08-23 (clôture) — l'occlusion, remise à sa place
+
+Question de Vincent après la correction de la caméra : « y a-t-il quelque chose à modifier concernant
+le sous-bloc d'occlusion ? » **Non, et il faut rétracter ce que ce fichier en disait l'après-midi.**
+
+### La mesure
+
+`ProbeCameraOcclusion_004011C0` lève **inconditionnellement**. Le playtest de clôture passe
+**1441 images sans une seule exception**. Le bloc n'est donc pas atteint, preuve directe et non
+déduite.
+
+### Pourquoi l'affirmation de l'après-midi était fausse
+
+L'expérience concluait « le sous-bloc d'occlusion est sur le chemin au repos à l'auberge » parce
+qu'en neutralisant le bit `0x20` le flot y descendait et levait. Mais `0x20` **est** la garde qui
+protège l'occlusion :
+
+```
+if ((*CameraFlags & 0x20) != 0) { ManualCameraControl(); RaiseCameraOverParty(); return; }
+...
+if ((*CameraFlags & 0x78) != 0) { RaiseCameraOverParty(); return; }   // 0x78 contient 0x20
+...
+ProbeCameraOcclusion_004011C0();
+```
+
+Effacer la garde puis constater qu'on franchit la garde ne démontre rien. Et le relevé de Vincent a
+montré depuis que **Blaze aussi porte `0x20`** (drapeaux `0x60`) : la garde rend bien la main avant,
+dans les deux jeux. La note d'origine était juste, c'est ma rétractation qui était fausse.
+
+### Où en est réellement le bloc
+
+Inchangé, et correctement traité : une lacune franche qui se nomme en levant, derrière une garde
+fidèle. Son blocage reste **la donnée** — les deux tables parallèles `0x00604BA0` et `0x00604D30`,
+espacées de `0x190` et indexées par `(cellule * 200 + n) * 4`, ont une étendue que l'indexation
+apparente contredit ; il faut la trancher au désassembleur avant d'allouer quoi que ce soit.
+
+Il se réveillera quand le joueur prendra la caméra en main (bits `0x40`/`0x80` sans `0x20`) ou dans
+les états de caméra que l'auberge au repos n'emprunte pas. **À écrire le jour où il lèvera, pas
+avant** — c'est la même règle que pour les quinze gestionnaires d'entité laissés de côté.

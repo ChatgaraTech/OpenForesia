@@ -54,6 +54,7 @@ L'assertion `Aucune_allocation_propre_dans_l_etendue_d_une_arene` est **verte** 
 disposition passent de trois rouges à deux. Playtest identique au précédent, image comprise — le
 changement est neutre, comme attendu, puisque les deux seuls sites qui lisaient la table par
 l'arène avaient déjà été corrigés.
+
 ## 3. Les lacunes que le jeu réclamera dès qu'on jouera vraiment
 
 Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
@@ -65,9 +66,14 @@ Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
   désassembler.
 * `FUN_00538bc0` (13 l., la hauteur de la bulle d'état — demande `DAT_0056d440`) et `FUN_005309b0`
   (147 l., la surimpression de dialogue — demande `DAT_0056a851`, `DAT_0056aae0`, `DAT_0056ab30`).
-* `DAT_005eca94` nul dans `PublishCameraFrame_004022B0` : intermittent, **antérieur au 23 août**, et
-  plus revu depuis la correction de l'aliasing — à surveiller plutôt qu'à chasser. Un échafaudage
-  temporaire dans `WorldMapCamera.cs` imprime le voisinage s'il revient.
+* le **sous-bloc d'occlusion** de `FUN_004011C0` (`0x00401913..0x00401b6d`). Il n'est **pas** sur
+  le chemin au repos : `ProbeCameraOcclusion_004011C0` lève inconditionnellement et le playtest
+  passe 1441 images sans exception, donc la garde `0x20` rend bien la main avant — chez nous comme
+  chez Blaze, dont le relevé montre les mêmes drapeaux `0x60`. Il se réveillera quand le joueur
+  prendra la caméra en main. Son blocage est **la donnée** : les tables `0x00604BA0` et
+  `0x00604D30` ont une étendue que l'indexation apparente contredit, à trancher au désassembleur.
+* `DAT_005eca94` nul dans `PublishCameraFrame_004022B0` : intermittent, **antérieur au 23 août**,
+  et plus revu depuis la correction de l'aliasing — à surveiller plutôt qu'à chasser.
 
 ## Une fragilité à surveiller
 
