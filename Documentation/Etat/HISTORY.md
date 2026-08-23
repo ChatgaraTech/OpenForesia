@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-23
 
+- feat : code de contrôle de texte `0x0a` (`FUN_00544bc0`) — un dialogue peut lancer un script d'entité, et le script peut détourner le flux de texte. L'auberge tient 2341 images à 1017 primitives par image, deux exécutions
+- doc : la table de balayage `PTR_LAB_0056e870` donne la taille de l'opérande de n'importe quel code de contrôle de texte, sans lire le corps de rendu
+- feat : **le premier dialogue de PNJ du jeu** — « L'herboriste : Bonjour ! » s'affiche à l'auberge, 2221 images sans plantage, 956 primitives par image
+- feat : opcode 22 de l'interpréteur (`FUN_00515b40`) — l'opération arithmétique sur le bloc de statistiques de l'entité, absent de `Blaze.c`
+- fix : le message de lacune des codes de contrôle de texte conseillait encore une re-passe Ghidra ; il renvoie maintenant au verbe `disasm`, qui résout ce cas depuis le 2026-08-21
 - feat : **la caméra de scénette au complet** — la boucle de verbes `FUN_005036e0` et les trente-deux verbes de `PTR_LAB_0055eb68`, tous absents de `Blaze.c` et relevés au désassembleur
 - feat : les trois verbes de pas de la scénette — saut immédiat (3), glissement par quarts avec chemin d'angle le plus court (4), déplacement en N images (5)
 - feat : les verbes de flot de la scénette — étiquette et saut (7, 8), répétition (9, 10), appel de sous-script (2), sortie et rebranchement de la caméra libre (1)

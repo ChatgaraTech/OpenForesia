@@ -60,11 +60,11 @@ l'arène avaient déjà été corrigés.
 Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
 
 * `FUN_00405240` et `FUN_00405510` — les deux cibles restantes de `FUN_00404ef0` (le type 0,`FUN_00404f70`, est fait). Elles ont la même forme : un aiguillage sur `+0x5c` vers`FUN_004051d0` / `FUN_00404fe0` / `FUN_004050d0`, toutes trois déjà transcrites.
-* l'**opcode 22 de l'interpréteur de scripts d'entité** — `FUN_00515b40`, absent de `Blaze.c`,
-  désassemblage déjà relevé dans `Legacy/Raw/Blaze/ScriptOps/FUN_00515b40.asm`. **C'est le point de
-  blocage courant** : on l'atteint quand l'animation d'une entité de scène finit et lance son
-  script (`TickEntityTable_005ff400` → `FUN_00404ef0` → `FUN_00404f70` → `FUN_00404fe0`), ce qui
-  arrive tout seul à l'auberge vers la 1681ᵉ image une fois la boîte de dialogue écartée.
+* **capturer le legacy sur le dialogue de l'herboriste.** C'est devenu le contrôle le plus rentable :
+  le dialogue s'affiche chez nous, la scène se peuple, plus aucune exception ne se lève sur ce
+  chemin — et pourtant rien n'est *vérifié*. Aucune image de référence n'existe pour cet écran, donc
+  on ne sait ni si la conversation avance comme elle doit, ni si le cadrage de la caméra de scénette
+  est le bon. Seule l'arrivée à l'auberge a sa référence.
 * l'entrée `0x46` de la table statique `0x00551c30` — le gestionnaire de l'effet « magie épuisée »,
   **absent de `Blaze.c`** : `OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00551d48 4`, puis
   désassembler.

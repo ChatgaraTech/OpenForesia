@@ -1,6 +1,8 @@
+﻿Fichier     : D:\Open Foresia Project\GitHub Project\OpenForesia\Legacy\Binaries\Blaze.exe
+Image base  : 0x00400000
 
-Legacy/Binaries/Blaze.exe  base 0x00400000
-0x00515b40  section .text  offset fichier 0x114f40  96 octets
+Legacy\Binaries\Blaze.exe  base 0x00400000
+0x00515b40  section .text  offset fichier 0x114f40  128 octets
 
   00515b40  8b442408              mov       eax,[esp+8]
   00515b44  56                    push      esi
@@ -37,5 +39,24 @@ LAB_00515b86:
   00515b95  03d0                  add       edx,eax
   00515b97  52                    push      edx
   00515b98  e8a3e4ffff            call      00514040h
-  00515b9d  8b4c24                (bad)
-  (octet invalide — la plage demandee deborde probablement du code)
+  00515b9d  8b4c2420              mov       ecx,[esp+20h]
+  00515ba1  83c40c                add       esp,0Ch
+  00515ba4  8901                  mov       [ecx],eax
+  00515ba6  8d4604                lea       eax,[esi+4]
+  00515ba9  5e                    pop       esi
+  00515baa  c3                    ret
+
+LAB_00515bab:
+  00515bab  8b542414              mov       edx,[esp+14h]
+  00515baf  8d4604                lea       eax,[esi+4]
+  00515bb2  5e                    pop       esi
+  00515bb3  c70201000000          mov       dword [edx],1
+  00515bb9  c3                    ret
+  00515bba  90                    nop
+  00515bbb  90                    nop
+  00515bbc  90                    nop
+  00515bbd  90                    nop
+  00515bbe  90                    nop
+  00515bbf  90                    nop
+
+3 cible(s) de saut interne : 0x00515b74, 0x00515b86, 0x00515bab

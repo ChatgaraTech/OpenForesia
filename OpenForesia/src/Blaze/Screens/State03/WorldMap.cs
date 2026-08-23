@@ -96,7 +96,7 @@ public static unsafe partial class Blaze
 
     /// <summary>Ghidra: DAT_005e97cc et DAT_005e97e8 — les deux pointeurs de fin que le chargeur
     /// empile apres <see cref="s_Unknown_005e97c8"/> : la zone, puis son ecran.</summary>
-    private static byte* s_Unknown_005e97cc;
+    internal static byte* s_Unknown_005e97cc;                // internal : le code de controle de texte 0x0a le lit
     private static uint s_Unknown_005e97e8;
 
     /// <summary>Ghidra: _DAT_005e9828 — le nombre d'emplacements de la table de pages occupes a la

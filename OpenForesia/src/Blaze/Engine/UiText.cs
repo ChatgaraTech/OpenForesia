@@ -673,6 +673,42 @@ internal sealed unsafe class UiText
     }
 
     /// <summary>
+    /// Handler for control code <c>0x0a</c> — <c>0x00544bc0</c> (74 octets), décodé à la main le
+    /// 2026-08-23. **C'est le code par lequel un dialogue lance un script d'entité** : il lit un
+    /// index de 16 bits dans le flux de texte et appelle <see cref="Blaze.RunEntityScript"/> sur
+    /// l'entité qui porte le message.
+    ///
+    /// <para>Les deux valeurs viennent du descripteur : <c>+0x8b0</c> est cette entité — le même
+    /// champ que <see cref="Handler_00544e80"/> interroge pour savoir si le message appartient à un
+    /// membre du groupe — et <c>+0x8ac</c> est le curseur de texte lui-même.</para>
+    ///
+    /// <para><b>Le script peut détourner le flux de texte.</b> Le corps relit <c>+0x8ac</c> après
+    /// l'appel et le compare à sa valeur d'avant : si le script l'a déplacé, c'est cette nouvelle
+    /// adresse qui devient le curseur, et les deux octets d'opérande ne sont pas consommés. Sinon
+    /// le curseur avance normalement de deux. C'est le même idiome « avant / après » que
+    /// <c>TickCutsceneCamera</c> et le verbe 2 de la caméra de scénette emploient sur
+    /// <c>DAT_005719b4</c> : la seule façon, pour l'appelé, de rendre la main ailleurs.</para>
+    ///
+    /// <para><b>Recoupement sur la longueur de l'opérande.</b> La table de balayage
+    /// (<c>PTR_LAB_0056e870</c>) porte <c>0x00543960</c> à ce même indice, c'est-à-dire le talon
+    /// <see cref="Advance2"/>. La passe 1 saute donc exactement deux octets là où la passe 2 en
+    /// consomme deux : les deux tables se confirment l'une l'autre, et l'opérande fait bien deux
+    /// octets.</para>
+    /// </summary>
+    private byte* Handler_00544bc0(byte* text, byte* descriptor)
+    {
+        byte* before = *(byte**)(descriptor + 0x8ac);
+
+        Blaze.RunEntityScript(
+            Blaze.s_Unknown_005e97cc,                       // Ghidra: DAT_005e97cc, le répertoire de zone
+            *(byte**)(descriptor + 0x8b0),                  // l'entité qui porte le message
+            (uint)(text[0] | (text[1] << 8)));
+
+        byte* after = *(byte**)(descriptor + 0x8ac);
+        return before == after ? text + 2 : after;
+    }
+
+    /// <summary>
     /// Handler for control code <c>0x1f</c> — <c>0x00545120</c>, decoded by hand from the binary on
     /// 2026-08-23 (29 bytes; Ghidra never emitted it, it is reached only through the two tables).
     /// It sets the <b>panel extent</b>: two bytes of the text stream land in the descriptor's
@@ -776,7 +812,10 @@ internal sealed unsafe class UiText
             t[i] = (text, descriptor) => throw new NotImplementedException(
                 $"UI text control code 0x{code:x2} dispatches to FUN_{address:x8}, which Ghidra " +
                 $"never emitted (reached only through {(renderPass ? "PTR_FUN_0056e728" : "PTR_LAB_0056e870")}). " +
-                "It needs a scoped Ghidra re-run at that address â€” see Documentation/Reference/DataSymbols.md.");
+                "Le corps se releve au desassembleur : `OpenForesia.Tools -- disasm " +
+                $"Legacy/Binaries/Blaze.exe 0x{address:x8} <n>`. Le gestionnaire prend (texte, " +
+                "descripteur) et rend le nouveau curseur de texte ; voir " +
+                "Documentation/Reference/DataSymbols.md pour la table.");
         }
 
         if (!renderPass)
@@ -801,6 +840,7 @@ internal sealed unsafe class UiText
             t[0x08] = Handler_00544ab0;   // 0x00544ab0, decoded here — gel/dégel
             t[0x06] = Handler_005449f0;   // 0x005449f0, decoded here — nombre en décimal
             t[0x09] = Handler_00544b10;   // 0x00544b10, decoded here
+            t[0x0a] = Handler_00544bc0;   // 0x00544bc0, decoded here — lance un script d'entité
             t[0x0c] = Handler_00544c50;   // 0x00544c50, decompiled
             t[0x0d] = Handler_00544d90;   // 0x00544d90, decompiled
             t[0x14] = Handler_00544fb0;   // 0x00544fb0, decompiled

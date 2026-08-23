@@ -10193,3 +10193,114 @@ sa dernière image et lance le script qui y est accroché — rien qui passe par
 Le chemin au repos de l'auberge y arrive tout seul vers la 1681ᵉ image, une fois la boîte de
 dialogue écartée et le monde dégelé. Son désassemblage est déjà relevé dans
 `Legacy/Raw/Blaze/ScriptOps/FUN_00515b40.asm`.
+
+---
+
+## 2026-08-23 (suite) — l'opcode 22, et le premier dialogue de PNJ
+
+`FUN_00515b40`, absent de `Blaze.c` comme les 38 autres entrées de `PTR_LAB_00563298`, tient en une
+trentaine d'instructions :
+
+```c
+if ((*(uint *)entite & 0xc00000) == 0) { *resultat = 1; return script + 4; }
+octet *stats = FUN_00538780(entite);                     // reecrit en ligne
+*resultat = FUN_00514040(stats + script[1], script[2], script[3]);
+return script + 4;
+```
+
+C'est l'opération arithmétique de l'opcode 3, mais portée sur le **bloc de statistiques** de
+l'entité au lieu de son enregistrement de 0x9c octets. C'est par là qu'un script lit ou change des
+points de vie, un niveau, une résistance.
+
+### Trois choses que le corps apprend
+
+**Une entité sans bloc rend vrai.** Si le mot d'état ne porte ni `0x400000` ni `0x800000`, l'entité
+n'a pas de statistiques du tout : le résultat de condition reçoit `1` et rien n'est écrit. Ce n'est
+pas une garde ajoutée à la transcription mais la première branche de l'original, et le `1` est
+exactement ce que rendrait une comparaison satisfaite — un script qui teste une statistique sur une
+entité qui n'en a pas voit donc son test **passer**.
+
+**La résolution du bloc est `FUN_00538780` réécrite en ligne par le compilateur**, à l'identique :
+le bit `0x800000` distingue le membre du groupe, dont le bloc vit dans son enregistrement de 0x2000
+octets (`MainMem + 0xf0100 + indice * 0x2000`), de toute autre entité, logée dans
+`s_EntityStatBlocks_005ea560` au pas de 0x120. La transcription **réutilise `GetEntityStatBlock`**
+plutôt que de recopier le calcul : faire résoudre la même adresse par deux chemins est précisément
+le défaut d'aliasing que `ResolveEntityBlocks` a déjà coûté une journée le matin même.
+
+**Un résidu de registre dans le deuxième argument.** L'original charge l'indice d'entité dans `ECX`,
+s'en sert pour calculer l'adresse du bloc, puis n'écrit que l'octet bas `CL` avec `script[2]` avant
+de pousser `ECX` entier. Sur la branche du membre de groupe, où `ECX` vaut `indice << 13`, les bits
+hauts poussés ne sont pas nuls. C'est sans effet — `FUN_00514040` déclare son deuxième paramètre sur
+un octet (`undefined1` chez Ghidra) et ne lit jamais au-delà —, et cela explique le `xor` que le
+compilateur a omis là et fait pour le troisième argument. Le noter compte : sans la signature de
+`FUN_00514040` sous les yeux, on aurait pu prendre ce résidu pour un défaut de 1998 à reproduire.
+
+### Le résultat à l'écran
+
+Le jeu affiche le **premier dialogue de personnage non joueur** de la reconstruction : à l'auberge,
+« L'herboriste : Bonjour ! », dans une boîte au bon endroit, avec la caméra de scénette placée
+derrière le joueur et le PNJ visible. 2221 images sans plantage, 956 primitives par image — presque
+le double du régime au repos, la scénette et le PNJ tirant le reste.
+
+**Aucune image de référence du jeu original n'existe pour cet écran** : la seule comparaison
+disponible (`Tests/1. New Game/Arrivé Auberge/legacy.png`) porte sur l'arrivée, pas sur ce dialogue.
+La conformité du cadrage et du texte n'est donc **pas vérifiée**, seulement la stabilité. Une capture
+du legacy à ce moment-là serait le prochain contrôle utile.
+
+### Le point de blocage suivant
+
+Avancer dans le dialogue (une validation de plus) atteint le **code de contrôle de texte `0x0a`**,
+`FUN_00544bc0`, dans la table de rendu `PTR_FUN_0056e728`. Même classe de lacune : Ghidra n'a pas
+émis le corps parce qu'il n'y accède que par la table.
+
+Le message que levait ce trou conseillait encore « une re-passe Ghidra ciblée » — l'avis d'avant le
+2026-08-21, c'est-à-dire *bloqué pour toujours*, alors que le verbe `disasm` résout ce cas depuis.
+Le message renvoie maintenant à `disasm` et rappelle la signature `(texte, descripteur) → nouveau
+curseur`. Les autres messages de lacune du dépôt méritent le même coup d'œil.
+
+---
+
+## 2026-08-23 (suite) — le code de contrôle de texte `0x0a`
+
+`FUN_00544bc0`, 74 octets, absent de `Blaze.c` parce que Ghidra n'y accède que par
+`PTR_FUN_0056e728`. **C'est le code par lequel un dialogue lance un script d'entité** :
+
+```c
+octet *avant = descripteur[0x8ac];
+FUN_00513dd0(DAT_005e97cc, descripteur[0x8b0], texte[0] | texte[1] << 8);
+return descripteur[0x8ac] == avant ? texte + 2 : descripteur[0x8ac];
+```
+
+Les deux valeurs viennent du descripteur, et les deux étaient déjà nommées : `+0x8b0` est l'entité
+qui porte le message — le champ que `Handler_00544e80` interroge pour savoir si le message
+appartient à un membre du groupe — et `+0x8ac` est le curseur de texte lui-même.
+
+**Le script peut détourner le flux de texte.** Le corps relit `+0x8ac` après l'appel et le compare à
+sa valeur d'avant ; si le script l'a déplacé, c'est cette nouvelle adresse qui devient le curseur et
+les deux octets d'opérande ne sont pas consommés. C'est le troisième endroit du binaire où l'on
+rencontre cet idiome « avant / après » — `TickCutsceneCamera` et le verbe 2 de la caméra de scénette
+le font sur `DAT_005719b4`. Chez ce compilateur, c'est la seule façon pour l'appelé de rendre la
+main ailleurs, et le reconnaître fait gagner du temps : sans lui on prendrait la relecture pour une
+redondance.
+
+**Un recoupement gratuit sur la longueur de l'opérande.** La table de balayage `PTR_LAB_0056e870`
+porte `0x00543960` au même indice, c'est-à-dire le talon `Advance2`. La passe 1 saute donc exactement
+deux octets là où la passe 2 en consomme deux. Les deux tables se confirment l'une l'autre, et cela
+vaut d'être systématisé : **pour tout code de contrôle, la table de balayage donne la taille de
+l'opérande sans qu'on ait à lire le corps de rendu.**
+
+Une conséquence de plomberie : `s_Unknown_005e97cc` (le répertoire de zone) passe de `private` à
+`internal` sur la classe `Blaze`, parce que `UiText` en a maintenant besoin. `RunEntityScript`
+l'était déjà.
+
+### Où en est le chemin de dialogue
+
+L'auberge tourne **2341 images sans plantage** (2281 sur une seconde exécution), à 1017 primitives
+par image contre 562 au repos. La boîte « L'herboriste : Bonjour ! » s'affiche, et la scène s'est
+peuplée : deux personnages non joueurs visibles, le comptoir, le mobilier.
+
+**Aucun point de blocage nommé ne reste sur ce chemin** — c'est la première fois depuis le début du
+dialogue. Mais l'absence d'exception n'est pas une preuve de conformité : il n'existe toujours pas
+d'image de référence du jeu original pour cet écran, et l'on ne sait donc pas si la conversation
+avance comme elle doit, ni si le cadrage est le bon. Capturer le legacy sur ce dialogue est le
+prochain contrôle utile, et il ne coûte que quelques minutes de jeu.

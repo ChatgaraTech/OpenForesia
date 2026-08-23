@@ -192,6 +192,7 @@ public static unsafe partial class Blaze
             16 => ScriptOpSpawnEffect(ent, s, result),
             18 => ScriptOpFreeze(s),
             19 => ScriptOpUnfreeze(s),
+            22 => ScriptOpAluEntityStats(ent, s, result),
             23 => ScriptOpSetAdd(0x00600840, s, result),
             24 => ScriptOpSetAdd(0x00600880, s, result),
             25 => ScriptOpSetRemove(0x00600840, s, result),
@@ -507,6 +508,51 @@ public static unsafe partial class Blaze
         }
     }
 
+
+    /// <summary>
+    /// Ghidra: FUN_00515b40 @ 0x00515b40 (opcode 22) — <b>l'operation porte sur le bloc de
+    /// statistiques de l'entite courante</b>, la ou l'opcode 3 la fait porter sur son enregistrement
+    /// de 0x9c octets. C'est par lui qu'un script lit ou change des points de vie, un niveau, une
+    /// resistance.
+    ///
+    /// <para><b>Absent de <c>Blaze.c</c></b> comme les 38 autres entrees de
+    /// <c>PTR_LAB_00563298</c> ; transcrit depuis le desassemblage releve dans
+    /// <c>Legacy/Raw/Blaze/ScriptOps/FUN_00515b40.asm</c>.</para>
+    ///
+    /// <para><b>Une entite sans bloc rend vrai.</b> Si le mot d'etat ne porte ni <c>0x400000</c> ni
+    /// <c>0x800000</c>, l'entite n'a pas de statistiques du tout : le resultat de condition recoit
+    /// <c>1</c> et rien n'est ecrit. Ce n'est pas une garde ajoutee ici mais la premiere branche de
+    /// l'original, et le <c>1</c> est le meme que rendrait une comparaison satisfaite — un script
+    /// qui teste une statistique sur une entite qui n'en a pas voit donc son test passer.</para>
+    ///
+    /// <para>La resolution du bloc est mot pour mot celle de <see cref="GetEntityStatBlock"/>
+    /// (<c>FUN_00538780</c>), reecrite en ligne par le compilateur : le bit <c>0x800000</c>
+    /// distingue le membre du groupe, dont le bloc vit dans son enregistrement de 0x2000 octets,
+    /// de toute autre entite, logee dans <see cref="s_EntityStatBlocks_005ea560"/> au pas de 0x120.
+    /// La fonction est reutilisee ici plutot que recopiee — c'est la meme adresse, et la faire
+    /// resoudre deux fois par deux chemins est exactement le defaut d'aliasing que
+    /// <see cref="ResolveEntityBlocks"/> a deja coute une journee.</para>
+    ///
+    /// <para><b>Un residu de registre dans le deuxieme argument.</b> L'original charge l'indice
+    /// d'entite dans <c>ECX</c>, s'en sert pour calculer l'adresse du bloc, puis n'ecrit que
+    /// l'octet bas <c>CL</c> avec <c>script[2]</c> avant de pousser <c>ECX</c> entier. Sur la
+    /// branche du membre de groupe, ou <c>ECX</c> vaut <c>indice &lt;&lt; 13</c>, les bits hauts
+    /// pousses ne sont donc pas nuls. C'est sans effet : <c>FUN_00514040</c> declare son deuxieme
+    /// parametre sur un octet et ne lit jamais au-dela — le compilateur le savait, d'ou le
+    /// <c>xor</c> qu'il a omis la et fait pour le troisieme argument.</para>
+    /// </summary>
+    private static byte* ScriptOpAluEntityStats(byte* ent, byte* s, uint* result)
+    {
+        if ((*(uint*)ent & 0xc00000) == 0)
+        {
+            *result = 1;
+            return s + 4;
+        }
+
+        byte* stats = GetEntityStatBlock((uint*)ent);        // Ghidra: FUN_00538780, reecrite en ligne
+        *result = ApplyScriptOp(stats + s[1], s[2], s[3]) ? 1u : 0u;
+        return s + 4;
+    }
 
     /// <summary>Ghidra: FUN_00515c20 / 00515c50 (opcodes 23 et 24) — ajoute une valeur a l'un des
     /// deux ensembles, et rend 1 si elle y etait deja.</summary>
