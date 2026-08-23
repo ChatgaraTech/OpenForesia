@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-23
 
+- feat : `FUN_005309b0` — la surimpression de dialogue au-dessus d'un membre du groupe, la dernière des lacunes secondaires du bloc de dessin
+- fix : `DAT_0056aaa0` et `DAT_0056aae0` sont réunies en une seule allocation — le choix d'icône est un octet **signé** et son entrée `-1` lit la fin de la table voisine
+- doc : un `&LAB_00xxxxxx` utilisé comme valeur est presque toujours une constante que Ghidra a prise pour une adresse ; `&LAB_00404040` est la couleur `0x404040`
+- feat : la bulle d'état au-dessus du membre (`FUN_00538bc0` et le sous-bloc de `FUN_00516fc0`) — poison, sommeil, silence s'affichent enfin
+- doc : `DAT_0056d440` relevée — seize entrées de huit octets, une hauteur de tête par classe de personnage
 - feat : **la table des trente-deux codes de contrôle de texte est complète** — les dix-huit qui manquaient, dont le saut de chaîne à index calculé (`0x07`), l'attente de fin de page (`0x0e`) et l'insertion du nom du locuteur (`0x1d`). Le joueur circule à l'étage de l'auberge, 2101 images
 - fix : le code `0x05` écrit **deux** octets, pas un — il remet au passage à zéro la profondeur de la pile de sous-chaînes ; l'écriture évidente aurait fait reprendre le texte au mauvais endroit
 - feat : **le coffre est complet** — `FUN_005312d0` (le rangement en inventaire, avec le découpage VRAM de l'icône), `FUN_00450700` (le rappel de fin de boîte) et le code de contrôle de texte `0x0b` (`FUN_00544c10`, le saut de sous-chaîne)

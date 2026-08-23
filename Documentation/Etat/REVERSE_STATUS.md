@@ -10648,3 +10648,103 @@ Sans ces trois-là, la règle reste de s'en tenir à ce qui est demandé.
 2101 images, aucune exception, et la boîte de dialogue se ferme désormais : la capture montre le
 joueur qui circule librement à l'étage de l'auberge, un décor et un personnage non joueur que le jeu
 n'avait encore jamais atteints. Toujours pas d'image de référence pour comparer.
+
+---
+
+## 2026-08-23 (suite) — la bulle d'état au-dessus du membre
+
+`FUN_00538bc0` rend **la hauteur de la tête d'une entité**, prise dans l'une de deux tables selon ce
+qu'elle est : un membre du groupe la tient de sa classe, toute autre entité de son propre bloc de
+statistiques à `+0x5a`.
+
+La seconde branche est un piège déjà connu : `&DAT_005ea5ba + indice * 0x120` est la table des blocs
+de statistiques, celle qui a coûté une journée en août. Elle passe par
+`s_EntityStatBlocks_005ea560`, l'allocation propre, et non par une vue d'arène — sans quoi toutes les
+entités de scène auraient eu une hauteur nulle et leur bulle se serait affichée dans leurs pieds.
+
+`DAT_0056d440` est une table de **seize entrées de huit octets**, une par classe, dont seul le
+`short` de `+2` a un rôle établi. L'étendue est relevée : à `0x0056d4c0` commence une table de
+pointeurs. Seize entrées — le même compte que `DAT_0056aaa0`, la table des réactions relevée le même
+jour, et pour la même raison.
+
+### Le sous-bloc était décompilé depuis le début
+
+La souche affirmait que le corps se réduisait à « un `EmitParticle` à l'emplacement `0x10001000` ».
+C'était juste, mais incomplet : le sous-bloc est bel et bien dans `Blaze.c`, à la ligne 64663, à
+l'intérieur de `FUN_00516fc0`. Il ne manquait que son unique appelée.
+
+**La leçon est de recherche.** Les cinq sites d'appel de `FUN_00538bc0` que `grep` remonte sont tous
+en dehors de `FUN_00516fc0`, ce qui laisse croire que le sous-bloc n'est pas décompilé. Il l'est ; le
+`grep` échouait parce que le pointeur d'enregistrement y est exprimé en négatif
+(`puVar19 + -0x5a` pour `record + 0x3c`, `puVar19 + -0x96` pour `record`). **Chercher un décalage de
+champ dans du pseudo-code Ghidra suppose de savoir depuis quelle base la boucle l'exprime**, et cette
+base peut être au milieu de la structure.
+
+Une fois trouvé, le corps est le jumeau de `DrawGroundDisc` : la transformation du membre est
+recopiée, une composante est décalée — la hauteur ici au lieu de la profondeur —, et le tout part en
+particule. La bulle part sur `otBase` et non `otBase + 5` comme la lueur : elle se dessine donc
+devant, ce qui est bien ce qu'on attend d'une icône d'état.
+
+### Ce qui reste dans ce voisinage
+
+`FUN_005309b0` (147 l., la surimpression de dialogue, gardée par le bit `0x8000000`) est toujours une
+souche. Elle demande trois tables de `.data` non relevées : `DAT_0056a851`, `DAT_0056aae0` et
+`DAT_0056ab30`. Les deux dernières sont adjacentes à `DAT_0056aaa0`, déjà relevée — leur étendue se
+lira dans le même dump.
+
+---
+
+## 2026-08-23 (suite) — la surimpression de dialogue
+
+`FUN_005309b0` est écrite. C'est la bulle et son icône au-dessus d'un membre du groupe, gardée par le
+bit `0x8000000` de son enregistrement. Toutes ses appelées étaient déjà transcrites — `ProjectPoint`,
+`EmitViewportRect`, `EmitClipRect`, `DrawSpriteVariant`, `DrawFlatPrimitive` — et le travail était
+donc dans les données et dans trois détails faciles à manquer.
+
+### `&LAB_00404040` n'est pas du code
+
+Ghidra l'étiquette comme un label parce que l'adresse tombe dans `.text`. C'est la **couleur
+`0x404040`**, le gris éteint : `local_38` est le champ de teinte du bloc de sprite, et son autre
+valeur possible est `DAT_005e9814`, la teinte globale déjà modélisée en `uint`. `PartySetup` avait
+tranché le même cas en août (`&LAB_00404040 + (-(sel != 0) & 0xbfbfc0)`), ce qui a évité de le
+reprendre à zéro.
+
+**La règle générale** : dans ce binaire, un `&LAB_00xxxxxx` utilisé comme *valeur* est presque
+toujours une constante que Ghidra a prise pour une adresse. Vérifier avant d'en faire un pointeur.
+
+### Le bit `0x80` fait plus que changer une couleur
+
+`personnage[0x2be] & 0x80` choisit la teinte de la première moitié, puis **les deux teintes se
+croisent** pour la seconde. Et dans la branche où le bit est posé, l'original glisse un
+`iVar1 = (int)param_1` au milieu de la branche de couleur : l'emplacement d'ordonnancement passe de
+`otBase + 1` à `otBase`, donc toute la fin se dessine un plan plus près. Une ligne discrète au milieu
+d'un `if` de couleur, et elle change ce que le joueur voit.
+
+### Une table qui s'indexe en négatif, et ce qu'elle impose
+
+`DAT_0056a851` donne l'index d'icône, en **octets signés**, et deux de ses entrées valent `-1`. Or
+l'index sert tel quel : `DAT_0056aae0 + (-1) * 8` lit les huit derniers octets de… `DAT_0056aaa0`,
+la table des réactions par classe relevée le même jour.
+
+Les deux tables ont donc été réunies en **une seule allocation** (`s_IconTables_0056aaa0`,
+0x148 octets), dont les cinq symboles connus sont des vues. Les garder séparées aurait fait lire du
+tas quelconque à l'entrée `-1` — le défaut d'aliasing d'`ARCHITECTURE.md`, mais dans l'autre sens :
+non pas deux allocations pour une adresse, mais deux allocations là où le binaire compte sur
+l'adjacence.
+
+L'entrée `-1` ainsi lue a une **hauteur nulle**, donc elle ne dessine rien. C'est vraisemblablement
+la façon dont le jeu de 1998 écrit « pas d'icône » — mais la conclusion tient seulement parce que la
+mémoire est disposée comme dans le binaire.
+
+### Ce qui reste incertain
+
+Le pas de `DAT_0056a851` et l'étendue de son second index ne s'accordent pas : le premier facteur
+avance de neuf, le second va jusqu'à quinze, donc les rangées se chevauchent. Soit la table est
+volontairement dentelée, soit `personnage[0x2be] & 0xf` ne dépasse jamais huit en pratique.
+L'étendue retenue (0x50 octets) est celle que l'indexation *peut* atteindre, pas une fin observée.
+Un `TODO(REVERSE)` le dit sur place.
+
+### Vérification
+
+Pas de régression : 1921 images, aucune exception. La surimpression est gardée par un bit que le
+parcours scripté ne lève pas, donc elle est **écrite et compilée, pas exercée**.

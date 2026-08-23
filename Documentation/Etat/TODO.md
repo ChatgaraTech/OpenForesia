@@ -69,8 +69,6 @@ Elles se nomment toutes en levant ; aucune n'est sur le chemin au repos.
 * l'entrée `0x46` de la table statique `0x00551c30` — le gestionnaire de l'effet « magie épuisée »,
   **absent de `Blaze.c`** : `OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x00551d48 4`, puis
   désassembler.
-* `FUN_00538bc0` (13 l., la hauteur de la bulle d'état — demande `DAT_0056d440`) et `FUN_005309b0`
-  (147 l., la surimpression de dialogue — demande `DAT_0056a851`, `DAT_0056aae0`, `DAT_0056ab30`).
 * le **sous-bloc d'occlusion** de `FUN_004011C0` (`0x00401913..0x00401b6d`). Il n'est **pas** sur
   le chemin au repos : `ProbeCameraOcclusion_004011C0` lève inconditionnellement et le playtest
   passe 1441 images sans exception, donc la garde `0x20` rend bien la main avant — chez nous comme
@@ -181,11 +179,12 @@ d'entités traversent maintenant sans lever.
 >
 > ## Deux lacunes secondaires, laissées derrière leur condition
 >
-> * `FUN_00538bc0` (13 l.) — la hauteur de la bulle d'état. Triviale, mais demande de relever
->   `DAT_0056d440` (table de pas 8 dans `.data`). Gardée par `record[0x3c] != 0`.
-> * `FUN_005309b0` (147 l.) — la surimpression de dialogue, gardée par le bit `0x8000000`. Demande
->   `DAT_0056a851`, `DAT_0056aae0` et `DAT_0056ab30`, non relevées.
->
+> * `FUN_00538bc0` — FAIT le 2026-08-23. `DAT_0056d440` relevée : seize entrées de huit octets,
+>   une hauteur de tête par classe. Le sous-bloc gardé par `record[0x3c] != 0` est écrit aussi.
+> * `FUN_005309b0` — FAIT le 2026-08-23. Les trois tables sont relevées ; `DAT_0056aaa0` et
+>   `DAT_0056aae0` ont dû être réunies en une seule allocation, l'index d'icône étant signé et son
+>   entrée `-1` lisant la fin de la table voisine.
+
 > ## Une fragilité à surveiller
 >
 > Une exécution sur cinq a échoué dans `AllocLowZeroed` (« aucun bloc libre de 0x1000 octets sous

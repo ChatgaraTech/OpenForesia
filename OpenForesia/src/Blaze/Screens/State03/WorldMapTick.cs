@@ -1465,24 +1465,309 @@ public static unsafe partial class Blaze
             (uint)((s_FadeCounter_005e9960 << 6) & 0xffff0000) | s_PanelExtra_00563348[member]);
     }
 
-    /// <summary>Ghidra: le sous-bloc <c>record[0x3c] != 0</c> — la bulle au-dessus du membre, dont
-    /// la hauteur sort de <c>FUN_00538bc0</c>.</summary>
+    /// <summary>Ghidra: le sous-bloc <c>record[0x3c] != 0</c> de <c>FUN_00516fc0</c> — <b>la bulle
+    /// d'etat au-dessus du membre</b> : poison, sommeil, silence et le reste.
+    ///
+    /// <para>Meme forme que <see cref="DrawGroundDisc"/> : la transformation du membre est recopiee,
+    /// une composante est decalee, et le tout part en particule. Ici c'est la hauteur qui bouge —
+    /// <c>placement[1] += (hauteur + 0x19) &lt;&lt; 12</c>, la hauteur venant de
+    /// <see cref="StatusBubbleHeight_00538BC0"/> — et l'emplacement <c>0x10001000</c> de
+    /// <c>placement[3]</c> qui choisit la case de la planche.</para>
+    ///
+    /// <para>La particule part sur <c>otBase</c> et non <c>otBase + 5</c> comme la lueur du membre :
+    /// la bulle se dessine donc devant, ce qui est bien ce qu'on veut d'une icone d'etat.</para></summary>
     private static uint* DrawStatusBubble(uint* otBase, uint* cursor, int* transform, byte* record)
-        => throw new NotImplementedException(
-            "FUN_00516fc0 : la bulle d'etat au-dessus du membre n'est pas transcrite. Elle a " +
-            "besoin de FUN_00538bc0 (13 l., Blaze.c:84048), qui rend une hauteur prise dans l'une " +
-            "de deux tables selon le bit 0x800000 de l'enregistrement : DAT_0056d440 (pas de 8, " +
-            "dans .data de l'exe, a relever) ou DAT_005ea5b8 (pas de 0x120, dans l'arene de jeu). " +
-            "Le reste du sous-bloc est un EmitParticle a l'emplacement 0x10001000.");
+    {
+        int* placement = stackalloc int[10];
+        Mem.CopyDwords((uint*)transform, (uint*)placement, 10);
 
-    /// <summary>Ghidra: FUN_005309b0 @ 0x005309b0 (147 l.) — la surimpression de dialogue.</summary>
+        int height = StatusBubbleHeight_00538BC0((uint*)record);
+
+        placement[1] += (height + 0x19) * 0x1000;
+        placement[3] = 0x10001000;
+        placement[7] = 0x1000000;
+        placement[9] = 0;
+
+        return EmitParticle(otBase, cursor, placement, 0, 0);
+    }
+    /// <summary>Ghidra: &amp;DAT_0056d440 — <b>seize entrées de huit octets, une par classe de
+    /// personnage</b>, relevées dans <c>.data</c>. Seul le <c>short</c> de <c>+2</c> a un rôle
+    /// établi : la hauteur à laquelle flotte la bulle d'état au-dessus de la tête. Les trois autres
+    /// champs sont conservés tels quels.
+    ///
+    /// <para>L'étendue est relevée, pas supposée : à <c>0x0056d4c0</c> commence une table de
+    /// pointeurs (<c>0x0053ace0</c>, <c>0x0053ad80</c>, …), donc seize entrées exactement — le même
+    /// compte que <see cref="s_ReactionAnimations_0056aaa0"/>, et pour la même raison.</para>
+    ///
+    /// TODO(REVERSE) : le rôle des champs <c>+0</c>, <c>+4</c> et <c>+6</c> n'est pas établi.</summary>
+    private static readonly byte* s_ClassBubbleHeights_0056d440 = AllocBytes([
+        0x2e, 0x00, 0x82, 0x00, 0x1e, 0x00, 0x00, 0x00,  0x28, 0x00, 0x7f, 0x00, 0x18, 0x00, 0x00, 0x00,
+        0x26, 0x00, 0x7d, 0x00, 0x1a, 0x00, 0x00, 0x00,  0x21, 0x00, 0x7c, 0x00, 0x20, 0x00, 0x00, 0x00,
+        0x26, 0x00, 0x82, 0x00, 0x1a, 0x00, 0x00, 0x00,  0x28, 0x00, 0x7d, 0x00, 0x1e, 0x00, 0x00, 0x00,
+        0x40, 0x00, 0x76, 0x00, 0x28, 0x00, 0x00, 0x00,  0x1e, 0x00, 0x71, 0x00, 0x14, 0x00, 0x00, 0x00,
+        0x26, 0x00, 0x7d, 0x00, 0x19, 0x00, 0x00, 0x00,  0x1e, 0x00, 0x7b, 0x00, 0x1c, 0x00, 0x00, 0x00,
+        0x1c, 0x00, 0x75, 0x00, 0x18, 0x00, 0x00, 0x00,  0x1f, 0x00, 0x78, 0x00, 0x18, 0x00, 0x00, 0x00,
+        0x24, 0x00, 0x78, 0x00, 0x18, 0x00, 0x00, 0x00,  0x24, 0x00, 0x78, 0x00, 0x1a, 0x00, 0x00, 0x00,
+        0x32, 0x00, 0x72, 0x00, 0x28, 0x00, 0x00, 0x00,  0x1e, 0x00, 0x6e, 0x00, 0x14, 0x00, 0x00, 0x00,
+    ]);
+
+    /// <summary>
+    /// Ghidra: FUN_00538bc0 @ 0x00538bc0 — <b>la hauteur de la tête d'une entité</b>, prise dans
+    /// l'une de deux tables selon ce qu'elle est.
+    ///
+    /// <para>Un <b>membre du groupe</b> (bit <c>0x800000</c>) la tient de sa classe, lue dans le
+    /// bloc de 0x2000 octets à <c>MainMem + 0xf0150</c> puis indexée dans
+    /// <see cref="s_ClassBubbleHeights_0056d440"/>. Toute autre entité la tient de son propre bloc
+    /// de statistiques, à <c>+0x5a</c>.</para>
+    ///
+    /// <para>La seconde branche passe par <see cref="s_EntityStatBlocks_005ea560"/> et non par une
+    /// vue d'arène : c'est le défaut d'aliasing déjà résolu une fois pour cette table, et le
+    /// re-commettre ici aurait rendu des hauteurs nulles pour toutes les entités de scène.</para>
+    /// </summary>
+    private static int StatusBubbleHeight_00538BC0(uint* entity)
+    {
+        if ((*entity & 0x800000) != 0)
+        {
+            byte characterClass = GetMainMemPtr()[(byte)entity[2] * 0x2000 + 0xf0150];
+            return *(short*)(s_ClassBubbleHeights_0056d440 + characterClass * 8 + 2);
+        }
+
+        return *(short*)(s_EntityStatBlocks_005ea560 + (byte)entity[2] * 0x120 + 0x5a);
+    }
+
+    /// <summary>Ghidra: &amp;DAT_0056a851 — <b>le choix d'icône de la surimpression de dialogue</b>,
+    /// indexé par <c>(personnage[0x150] &amp; 7) * 9 + (personnage[0x2be] &amp; 0xf)</c>. Les valeurs
+    /// sont des <b>octets signés</b> et l'une d'elles vaut <c>-1</c> — voir
+    /// <see cref="s_SpeechIcons_0056aae0"/> pour ce que cela désigne.
+    ///
+    /// <para><b>Le pas et l'étendue de l'index ne s'accordent pas</b> : le premier facteur avance de
+    /// neuf, le second va jusqu'à quinze, donc les rangées se chevauchent. Soit la table est
+    /// volontairement dentelée, soit le second champ ne dépasse jamais huit en pratique. L'étendue
+    /// retenue ici, 0x50 octets, est celle que l'indexation peut atteindre (7 * 9 + 15 = 78), pas
+    /// une fin observée dans le binaire.</para>
+    ///
+    /// TODO(REVERSE) : trancher le chevauchement en relevant les valeurs de
+    /// <c>personnage[0x2be] &amp; 0xf</c> que le jeu produit réellement.</summary>
+    private static readonly byte* s_SpeechIconIndex_0056a851 = AllocBytes([
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x09, 0x08, 0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x06, 0x09,
+        0x08, 0x06, 0x00, 0x01, 0x03, 0x04, 0x05, 0x09, 0x08, 0xff, 0x07, 0x00, 0x01, 0x03, 0x04, 0x05,
+        0x06, 0x09, 0x08, 0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x07, 0x09, 0x08, 0x07, 0x00, 0x01, 0x03,
+        0x04, 0x05, 0x06, 0x09, 0x08, 0x07, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x09, 0x08, 0x07, 0x00,
+        0x01, 0x03, 0x04, 0x05, 0x06, 0x09, 0x08, 0x04, 0x00, 0x01, 0x02, 0x05, 0xff, 0x05, 0x00, 0x01,
+    ]);
+
+    /// <summary>
+    /// Ghidra: FUN_005309b0 @ 0x005309b0 — <b>la surimpression de dialogue</b> : la bulle et son
+    /// icône au-dessus d'un membre du groupe, gardée par le bit <c>0x8000000</c> de son
+    /// enregistrement.
+    ///
+    /// <para>Elle projette la position du membre, remontée de <c>0x32000</c> comme le disque au sol,
+    /// et <b>abandonne si elle sort de l'écran</b> — c'est le seul chemin qui rend le curseur
+    /// inchangé.</para>
+    ///
+    /// <para><b>Le bit <c>0x80</c> de <c>personnage[0x2be]</c> échange deux teintes et décale le
+    /// plan.</b> Avant l'appel médian, la première moitié se dessine en teinte globale ou en gris
+    /// <c>0x404040</c> selon ce bit ; après, les deux se croisent, et dans le cas où le bit est posé
+    /// la suite change en prime d'emplacement d'ordonnancement, de <c>otBase + 1</c> à
+    /// <c>otBase</c>. Ce dernier point est facile à manquer : dans l'original c'est un
+    /// <c>iVar1 = (int)param_1</c> discret au milieu d'une branche de couleur.</para>
+    ///
+    /// <para><b><c>&amp;LAB_00404040</c> n'est pas du code.</b> Ghidra l'a étiqueté comme un label
+    /// parce que l'adresse tombe dans <c>.text</c>, mais c'est la couleur <c>0x404040</c> — le gris
+    /// éteint. <c>PartySetup</c> avait déjà tranché le même cas ; le prendre pour un pointeur de
+    /// fonction aurait donné un plantage inexplicable.</para>
+    ///
+    /// <para>La partie basse ne se dessine que si <c>personnage[0x2d0]</c> est non nul, et l'icône
+    /// qu'elle pose dépend du même index que la bulle, par un aiguillage à quatre familles :
+    /// 0–5 balaient les cinq octets de <c>+0x2b0</c> à la recherche de la cible courante, 6–7
+    /// comparent <c>+0x2b6</c>, 8 prend une icône fixe, 9 va chercher un chiffre dans le bloc du
+    /// personnage visé.</para>
+    ///
+    /// <para>Le quatrième paramètre est poussé par l'appelant et <b>jamais lu</b> par le corps.
+    /// Conservé pour que le site d'appel reste lisible contre l'original.</para>
+    /// </summary>
     private static uint* DrawSpeechOverlay_005309B0(
         uint* otBase, uint* cursor, byte* record, short* slotEntry, byte* character)
-        => throw new NotImplementedException(
-            "FUN_005309b0 (0x005309b0) : non transcrite. 147 lignes dans Blaze.c — la " +
-            "surimpression de dialogue, gardee par le bit 0x8000000 de l'enregistrement de membre. " +
-            "Elle demande les tables DAT_0056a851 (choix d'icone), DAT_0056aae0 et DAT_0056ab30 " +
-            "(descripteurs), toutes dans .data de l'exe et non relevees.");
+    {
+        _ = slotEntry;                                       // Ghidra param_4 : pousse, jamais lu
+
+        int* placement = stackalloc int[10];
+        Mem.CopyDwords((uint*)(record + 0x1c), (uint*)placement, 10);
+        placement[1] += 0x32000;
+
+        short* screen = stackalloc short[2];
+        if (Mdl.ProjectPoint(placement, screen) == 0) return cursor;
+
+        uint* otEntry = otBase + 1;
+
+        int* sprite = stackalloc int[8];
+        for (int i = 0; i < 8; i++) sprite[i] = 0;
+        byte* s = (byte*)sprite;
+
+        sprite[1] = (character[0x2be] & 0x80) == 0 ? (int)s_Unknown_005e9814 : 0x404040;
+
+        // La bulle vit dans le repere de la fenetre d'objets : ces trois globales sont son origine.
+        int zoom = *Mem.ItemMenuState(0x005de160);
+        *Mem.ItemMenuState(0x005de15c) = 1;
+        *Mem.ItemMenuState(0x005de154) = screen[0] * (zoom + 9) * 0x20 / 0x140 + (0xb - zoom) * 0x10;
+        *Mem.ItemMenuState(0x005de158) = screen[1] * (zoom + 9) * 0x20 / 0x140 + (0xb - zoom) * 0xc;
+
+        UiWin.EmitViewportRect(otEntry, &cursor);            // Ghidra: FUN_0051be20
+
+        int icon = (sbyte)s_SpeechIconIndex_0056a851[
+            (character[0x150] & 7) * 9 + (character[0x2be] & 0xf)];
+
+        // --- la bulle ---------------------------------------------------------------------------
+        *(ushort*)(s + 0x10) = 0;
+        sprite[0] = (int)(nint)(s_SpeechIcons_0056aae0 + icon * 8);
+        *(short*)(s + 8) = -0xb;
+        *(short*)(s + 0xa) = -0xb;
+
+        cursor = Prims.DrawSpriteVariant(otEntry, cursor, sprite, 0, 0);
+        cursor = Prims.DrawFlatPrimitive(otEntry, cursor, sprite);
+
+        *(short*)(s + 8) -= 4;
+        *(short*)(s + 0xa) -= 4;
+        sprite[0] = (int)(nint)s_SpeechBubble_0056ab30;
+        *(ushort*)(s + 0x10) = 0;
+
+        cursor = Prims.DrawSpriteVariant(otEntry, cursor, sprite, 0, 2);
+        cursor = Prims.DrawFlatPrimitive(otEntry, cursor, sprite);
+
+        *(short*)(s + 8) += 6;
+        *(short*)(s + 0xa) += 6;
+        UiWin.EmitClipRect(otEntry, &cursor);                // Ghidra: FUN_0051bdb0
+
+        // Les deux teintes se croisent, et le plan bouge avec elles.
+        if ((character[0x2be] & 0x80) == 0)
+        {
+            sprite[1] = 0x404040;
+        }
+        else
+        {
+            sprite[1] = (int)s_Unknown_005e9814;
+            otEntry = otBase;
+        }
+
+        UiWin.EmitViewportRect(otEntry, &cursor);
+
+        // --- l'icone de contenu, seulement si personnage[0x2d0] le demande -----------------------
+        if (character[0x2d0] != 0)
+        {
+            byte* directory = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
+            uint extra = 0;
+            bool emit = true;
+
+            switch (icon)
+            {
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                {
+                    byte wanted = character[0x2d1 + character[0x2bf]];
+
+                    for (int i = 0; i < 5; i++)
+                    {
+                        if (character[0x2b0 + i] != wanted) continue;
+
+                        *(short*)(s + 8) += 0xc;
+                        *(short*)(s + 0xa) += 0xc;
+                        sprite[0] = (int)(nint)s_SpeechMarker_0056ab70;
+                        *(ushort*)(s + 0x10) = 0;
+
+                        cursor = Prims.DrawSpriteVariant(otEntry, cursor, sprite, 0, 0);
+                        cursor = Prims.DrawFlatPrimitive(otEntry, cursor, sprite);
+
+                        *(short*)(s + 8) -= 0xc;
+                        *(short*)(s + 0xa) -= 0xc;
+                    }
+
+                    byte* glyph = *(byte**)(directory + 8);
+                    sprite[0] = (int)(nint)glyph;
+                    *(ushort*)(s + 0x10) = 0;
+                    glyph[0] = (byte)(wanted * 0x18);
+                    glyph[1] = (byte)(record[8] * 0x18);
+
+                    // La branche 0-5 emet elle-meme, puis rejoint la sortie commune sans repasser
+                    // par le decalage de quatre.
+                    cursor = Prims.DrawSpriteVariant(otEntry, cursor, sprite, 0,
+                                                     (uint)((record[8] << 8) | wanted));
+                    emit = false;
+                    break;
+                }
+
+                case 6:
+                case 7:
+                    if (character[0x2b6] == character[0x2bf])
+                    {
+                        *(short*)(s + 8) += 0xc;
+                        *(short*)(s + 0xa) += 0xc;
+                        sprite[0] = (int)(nint)s_SpeechMarker_0056ab70;
+                        *(ushort*)(s + 0x10) = 0;
+
+                        cursor = Prims.DrawSpriteVariant(otEntry, cursor, sprite, 0, 0);
+                        cursor = Prims.DrawFlatPrimitive(otEntry, cursor, sprite);
+
+                        *(short*)(s + 8) -= 0xc;
+                        *(short*)(s + 0xa) -= 0xc;
+                    }
+
+                    sprite[0] = (int)(nint)(*(byte**)(directory + 0x10 + character[0x2b5] * 4));
+                    *(ushort*)(s + 0x10) = character[0x2bf];
+                    break;
+
+                case 8:
+                    sprite[0] = (int)(nint)s_SpeechDigits_0056ab38;
+                    *(ushort*)(s + 0x10) = character[0x2bf];
+                    break;
+
+                case 9:
+                {
+                    byte member = character[0x2bf];
+                    sprite[0] = (int)(nint)(*(byte**)(directory + 4));
+                    *(ushort*)(s + 0x10) = (ushort)(Inp.s_SlotFlags_005e93c0[member * 0x9c + 4] + 4);
+
+                    // Ghidra reutilise le registre du personnage pour ce calcul, et sa moitie haute
+                    // se retrouve dans l'argument. Transcrit tel quel : elle n'est nulle que tant
+                    // que l'indice reste sous huit.
+                    int block = member * 0x2000;
+                    extra = (uint)(((block >> 0x10) << 0x10)
+                                   | GetMainMemPtr()[block + 0xf02bd]);
+                    break;
+                }
+
+                default:
+                    emit = false;
+                    break;
+            }
+
+            if (emit)
+            {
+                *(short*)(s + 8) += 4;
+                *(short*)(s + 0xa) += 4;
+                cursor = Prims.DrawSpriteVariant(otEntry, cursor, sprite, 0, extra);
+                *(short*)(s + 8) -= 4;
+                *(short*)(s + 0xa) -= 4;
+            }
+
+            cursor = Prims.DrawFlatPrimitive(otEntry, cursor, sprite);
+        }
+
+        sprite[0] = (int)(nint)s_SpeechBubble_0056ab30;
+        *(ushort*)(s + 0x10) = 0;
+        cursor = Prims.DrawSpriteVariant(otEntry, cursor, sprite, 0, 6);
+        cursor = Prims.DrawFlatPrimitive(otEntry, cursor, sprite);
+        UiWin.EmitClipRect(otEntry, &cursor);
+
+        *Mem.ItemMenuState(0x005de15c) = 0;
+        *Mem.ItemMenuState(0x005de158) = 0;
+        *Mem.ItemMenuState(0x005de154) = 0;
+
+        return cursor;
+    }
 
     /// <summary>
     /// Ghidra: <c>&amp;DAT_005dbc68</c> — <b>quatre descripteurs de fenetre</b>, un par membre du
@@ -4332,21 +4617,65 @@ public static unsafe partial class Blaze
         return *(sbyte*)(table + column + row * 8);
     }
 
-    /// <summary>Ghidra: &amp;DAT_0056aaa0 — <b>la reaction de chaque classe a un objet qu'elle peut
-    /// utiliser</b> : seize dwords relevés dans <c>.data</c>, lus par l'indice de classe de
-    /// l'octet <c>MainMem + 0xf0150</c>. Chaque dword est ecrit d'un bloc sur <c>+0x18</c> de
-    /// l'emplacement, donc c'est une paire (numero d'animation, image de depart).
+    /// <summary>Ghidra: <c>&amp;DAT_0056aaa0</c> .. <c>&amp;DAT_0056abe8</c> — <b>un seul bloc</b>,
+    /// et c'est délibéré. Il porte deux tables voisines relevées dans <c>.data</c> :
+    /// <c>0x0056aaa0</c> les réactions par classe (seize dwords) et <c>0x0056aae0</c> les
+    /// descripteurs de sprite de la surimpression de dialogue (33 entrées de huit octets, jusqu'à
+    /// <c>0x0056abe8</c> où commence une chaîne de caractères).
     ///
-    /// <para>L'etendue est <b>relevee, pas supposee</b> : a <c>0x0056aae0</c> le contenu change de
-    /// nature (des enregistrements de 8 octets a motif <c>x0 80 10 10 00 00 11 xx</c>), et
-    /// <c>0x0056aae0</c> est deja connu comme un autre symbole. Seize entrees, soit les classes
-    /// 0 a 15.</para></summary>
-    private static readonly byte* s_ReactionAnimations_0056aaa0 = AllocBytes([
+    /// <para><b>Pourquoi une seule allocation.</b> Le choix d'icône de
+    /// <see cref="s_SpeechIconIndex_0056a851"/> est un octet <b>signé</b> et vaut <c>-1</c> à deux
+    /// entrées ; <c>DAT_0056aae0 + (-1) * 8</c> lit donc les huit derniers octets de la table des
+    /// réactions. Les séparer en deux allocations aurait fait lire du tas quelconque à la place —
+    /// exactement le défaut d'aliasing que <c>ARCHITECTURE.md</c> décrit, dans l'autre sens. Ici
+    /// l'entrée <c>-1</c> a une hauteur nulle, donc elle ne dessine rien : c'est vraisemblablement
+    /// la façon dont le jeu de 1998 écrit « pas d'icône ».</para>
+    ///
+    /// TODO(REVERSE) : le rôle des champs d'un descripteur (<c>u, v, w, h, ?, ?, clut</c>) est
+    /// supposé d'après leur forme, pas établi.</summary>
+    private static readonly byte* s_IconTables_0056aaa0 = AllocBytes([
+        // 0x0056aaa0 — les réactions par classe, seize dwords
         0x08, 0x00, 0x00, 0x00,  0x06, 0x00, 0x12, 0x00,  0x04, 0x00, 0x05, 0x00,  0x03, 0x00, 0x03, 0x00,
         0x05, 0x00, 0x08, 0x00,  0x06, 0x00, 0x09, 0x00,  0x06, 0x00, 0x0b, 0x00,  0x06, 0x00, 0x12, 0x00,
         0x06, 0x00, 0x04, 0x00,  0x06, 0x00, 0x09, 0x00,  0x03, 0x00, 0x00, 0x00,  0x06, 0x00, 0x12, 0x00,
         0x05, 0x00, 0x08, 0x00,  0x07, 0x00, 0x05, 0x00,  0x06, 0x00, 0x04, 0x00,  0x06, 0x00, 0x09, 0x00,
+        // 0x0056aae0 — les descripteurs de sprite, 33 entrées de huit octets
+        0x00, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,  0x10, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,
+        0x20, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,  0x30, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x0b,
+        0x40, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x0b,  0x50, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x08,
+        0x60, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x08,  0x70, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x0a,
+        0x80, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x0f,  0x80, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x0f,
+        0x00, 0x90, 0x18, 0x18, 0x00, 0x00, 0x11, 0x00,  0x90, 0x50, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,
+        0xa0, 0x50, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,  0xb0, 0x50, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,
+        0xc0, 0x50, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,  0xd0, 0x50, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,
+        0xe0, 0x50, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,  0xf0, 0x50, 0x10, 0x10, 0x00, 0x00, 0x11, 0x07,
+        0xf8, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x07,  0xe0, 0x80, 0x10, 0x10, 0x00, 0x00, 0x11, 0x0a,
+        0x80, 0xe0, 0x10, 0x08, 0x00, 0x00, 0x30, 0x00,  0x90, 0xe0, 0x10, 0x08, 0x00, 0x00, 0x30, 0x00,
+        0xa0, 0xe0, 0x10, 0x08, 0x00, 0x00, 0x30, 0x00,  0xb0, 0xe0, 0x10, 0x08, 0x00, 0x00, 0x30, 0x00,
+        0xc0, 0xe0, 0x10, 0x08, 0x00, 0x00, 0x30, 0x00,  0xd0, 0xe0, 0x10, 0x08, 0x00, 0x00, 0x30, 0x00,
+        0xe0, 0xe0, 0x10, 0x08, 0x00, 0x00, 0x30, 0x00,  0xf0, 0xe0, 0x10, 0x08, 0x00, 0x00, 0x30, 0x00,
+        0x80, 0xe8, 0x28, 0x08, 0x00, 0x00, 0x30, 0x02,  0x80, 0xf8, 0x28, 0x08, 0x00, 0x00, 0x30, 0x02,
+        0x80, 0xf0, 0x28, 0x08, 0x00, 0x00, 0x30, 0x02,  0xa8, 0xe8, 0x38, 0x08, 0x00, 0x00, 0x30, 0x02,
+        0xa8, 0xf0, 0x38, 0x08, 0x00, 0x00, 0x30, 0x02,
     ]);
+
+    /// <summary>Ghidra: &amp;DAT_0056aaa0 — les seize réactions par classe. Vue sur
+    /// <see cref="s_IconTables_0056aaa0"/> ; voir son commentaire pour l'adjacence.</summary>
+    private static byte* s_ReactionAnimations_0056aaa0 => s_IconTables_0056aaa0;
+
+    /// <summary>Ghidra: &amp;DAT_0056aae0 — les descripteurs de sprite de la surimpression de
+    /// dialogue. <b>S'indexe en signé</b> : voir <see cref="s_IconTables_0056aaa0"/>.</summary>
+    private static byte* s_SpeechIcons_0056aae0 => s_IconTables_0056aaa0 + 0x40;
+
+    /// <summary>Ghidra: &amp;DAT_0056ab30 — l'entrée 10, le cadre de la bulle (0x18 x 0x18).</summary>
+    private static byte* s_SpeechBubble_0056ab30 => s_IconTables_0056aaa0 + 0x90;
+
+    /// <summary>Ghidra: &amp;DAT_0056ab38 — l'entrée 11, la planche de chiffres.</summary>
+    private static byte* s_SpeechDigits_0056ab38 => s_IconTables_0056aaa0 + 0x98;
+
+    /// <summary>Ghidra: &amp;DAT_0056ab70 — l'entrée 18, le petit repère 8x8 de la cible courante.</summary>
+    private static byte* s_SpeechMarker_0056ab70 => s_IconTables_0056aaa0 + 0xd0;
+
 
     /// <summary>Ghidra: &amp;DAT_005de620 — le tampon ou <see cref="GrantChestContents_00530F20"/>
     /// compose la phrase « untel obtient tel objet ». Alloue a <c>0x80</c> octets : le symbole
