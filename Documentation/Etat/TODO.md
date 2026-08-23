@@ -23,18 +23,32 @@ la suite à faire.
 Il n'y a plus de point de blocage : il y a un écran qui tourne et qu'on peut enfin **regarder**.
 Trois pistes, par ordre de rendement.
 
-## 1. Comparer la capture à l'original, pas à un compteur
+## 1. La caméra n'est pas au bon endroit à l'entrée de l'auberge
 
-C'est la règle apprise sur le carrousel de sélection : un débit qui monte ne prouve rien, seule une
-image de référence tranche. L'auberge s'affiche — reste à savoir si elle s'affiche **juste**.
-Points à vérifier en priorité, parce que la moitié dessin vient d'être écrite d'un trait :
+Premier écart relevé contre le jeu d'origine et **pas encore diagnostiqué**. Sur l'original la
+caméra est posée **juste au-dessus de la porte** ; la nôtre est ailleurs. Ce qui est établi : le
+bloc d'initialisation existe et s'exécute (`WorldMap.cs`, la branche qui écrit
+`Mem.View(0x006067e8..ec)` depuis `s_WorldMapCamera_00564650` et le point d'entrée). Les pistes,
+par ordre de vraisemblance :
+
+1. la lecture du point d'entrée — position **et cap** — dans la fiche de sous-zone ;
+2. les constantes de `&DAT_00564650`, relevées mais jamais recoupées à l'écran ;
+3. le sous-bloc d'**occlusion** du sous-système de caméra (`0x00401913..0x00401b6d`, plus
+   `FUN_004029e0` et `FUN_00402d60`), toujours pas transcrit — réputé hors du chemin au repos, ce
+   qui reste à vérifier maintenant qu'on a une image à comparer.
+
+Les deux autres écarts relevés le même jour sont réglés : la boîte « - La réception - » s'affiche
+et bloque le déplacement, les jauges ont retrouvé leur cadre. Détail dans `REVERSE_STATUS.md`.
+
+## 1 bis. Continuer la comparaison à l'original, pas au compteur
+
+La méthode vient de payer trois fois en une soirée. Points suivants à regarder :
 
 * l'ordre de profondeur des faces de terrain (`DrawChunkCellsSorted` trie par face, ses deux sœurs
   non) ;
-* les teintes des triangles plats de la deuxième liste — **LB-010** les réduit à deux valeurs, c'est
-  volontaire mais visible ;
+* les teintes des triangles plats de la deuxième liste — **LB-010** les réduit à deux valeurs,
+  c'est volontaire mais visible ;
 * les sept cellules que **LB-009** fait dessiner en trop aux quatre coins du carré 7×7.
-
 ## 2. ~~Refermer la porte de l'aliasing~~ — FAIT le 2026-08-23
 
 `GameArenaSize` est passée de `0x1600` à `0x1560`, soit une arène qui s'arrête à `0x005ea560` et ne

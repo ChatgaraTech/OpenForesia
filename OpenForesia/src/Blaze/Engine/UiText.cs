@@ -639,6 +639,66 @@ internal sealed unsafe class UiText
     }
 
     /// <summary>
+    /// Handler for control code <c>0x08</c> — <c>0x00544ab0</c>, decoded by hand from the binary on
+    /// 2026-08-23. **C'est le code qui immobilise le joueur pendant un dialogue.** Il lit un
+    /// sous-code d'un octet et l'aiguille sur une table de sauts de quatre entrées, relevée en
+    /// <c>0x00544afc</c> (<c>c5 4a 54 00 / d4 4a 54 00 / de 4a 54 00 / ef 4a 54 00</c>) :
+    ///
+    /// <list type="table">
+    /// <item><term>0</term><description><see cref="Blaze.FreezeAllEntities"/> — le monde se fige</description></item>
+    /// <item><term>1</term><description><see cref="Blaze.UnfreezeAllEntities"/> — il repart</description></item>
+    /// <item><term>2</term><description>bit 0 de <c>DAT_00604b78</c> effacé</description></item>
+    /// <item><term>3</term><description>bit 0 de <c>DAT_00604b78</c> posé</description></item>
+    /// </list>
+    ///
+    /// <para>Tout sous-code au-delà de 3 ne fait qu'avancer le curseur — la table n'a que quatre
+    /// entrées et le <c>ja</c> de <c>0x00544abc</c> le renvoie sur la sortie commune.</para>
+    ///
+    /// <para>Le premier lecteur atteint est la boîte « - La réception - » de l'auberge : c'est ce
+    /// code-ci qui explique qu'on ne puisse pas bouger tant qu'elle n'est pas passée.</para>
+    /// </summary>
+    private byte* Handler_00544ab0(byte* text, byte* descriptor)
+    {
+        _ = descriptor;                                     // le corps ne touche pas au descripteur
+
+        switch (text[0])
+        {
+            case 0: Blaze.FreezeAllEntities(); break;
+            case 1: Blaze.UnfreezeAllEntities(); break;
+            case 2: Blaze.Saves.s_CutsceneActive_00604b78 &= ~1; break;
+            case 3: Blaze.Saves.s_CutsceneActive_00604b78 |= 1; break;
+        }
+
+        return text + 1;
+    }
+
+    /// <summary>
+    /// Handler for control code <c>0x1f</c> — <c>0x00545120</c>, decoded by hand from the binary on
+    /// 2026-08-23 (29 bytes; Ghidra never emitted it, it is reached only through the two tables).
+    /// It sets the <b>panel extent</b>: two bytes of the text stream land in the descriptor's
+    /// <c>+0x08</c> dword, the first in the low half and the second in the high half.
+    ///
+    /// <para>The two halves are the width and height <see cref="DrawUiPanel"/> reads back as
+    /// <c>extent</c>, which is how a message sizes its own box. Note the packing is
+    /// <c>text[1] &lt;&lt; 0x10</c>, not <c>&lt;&lt; 8</c> as in <see cref="Handler_005449b0"/> —
+    /// this one writes two shorts, not one:</para>
+    /// <code>
+    /// 00545128  8A 48 01     MOV CL,[EAX+1]      0054512D  C1 E1 10  SHL ECX,0x10
+    /// 0054512B  8A 10        MOV DL,[EAX]        00545130  0B CA     OR  ECX,EDX
+    /// 00545136  83 C0 02     ADD EAX,2           00545139  89 4A 08  MOV [EDX+8],ECX
+    /// </code>
+    ///
+    /// <para>Le premier lecteur atteint est la boîte « - La réception - » de l'auberge, qui ne
+    /// s'ouvrait pas tant que <c>DAT_00563c5c</c> était modélisé en globale isolée plutôt qu'en
+    /// champ du descripteur.</para>
+    /// </summary>
+    private byte* Handler_00545120(byte* text, byte* descriptor)
+    {
+        *(uint*)(descriptor + 8) = (uint)(text[0] | (text[1] << 0x10));
+        return text + 2;
+    }
+
+    /// <summary>
     /// Handler for control code <c>0x06</c> — <c>0x005449f0</c>, decoded by hand from
     /// Legacy/Binaries/Blaze.exe (file offset <c>0x143df0</c>). It **prints a number in decimal**, which is
     /// what the dice screen needs for the stat total and the seven class figures.
@@ -738,6 +798,7 @@ internal sealed unsafe class UiText
         {
             t[0x01] = Handler_00544810;   // 0x00544810, decompiled
             t[0x04] = Handler_005449b0;   // 0x005449b0, decoded here
+            t[0x08] = Handler_00544ab0;   // 0x00544ab0, decoded here — gel/dégel
             t[0x06] = Handler_005449f0;   // 0x005449f0, decoded here — nombre en décimal
             t[0x09] = Handler_00544b10;   // 0x00544b10, decoded here
             t[0x0c] = Handler_00544c50;   // 0x00544c50, decompiled
@@ -745,10 +806,11 @@ internal sealed unsafe class UiText
             t[0x14] = Handler_00544fb0;   // 0x00544fb0, decompiled
         }
 
-        // Les deux tables portent le même corps à ces deux emplacements : il sert aux deux passes,
+        // Les deux tables portent le même corps à ces trois emplacements : il sert aux deux passes,
         // contrairement aux codes dont la passe 1 substitue un talon d'avance.
         t[0x0f] = Handler_00544e50;   // 0x00544e50
         t[0x1c] = Handler_00544e80;   // 0x00544e80
+        t[0x1f] = Handler_00545120;   // 0x00545120, décodé ici
 
         return t;
     }

@@ -657,9 +657,35 @@ public static unsafe partial class Blaze
         return (planeHeight - y0) * 0x1000;
     }
 
-    // Ghidra: DAT_00563c77 et DAT_00563c5c — deux octets remis a zero en toute fin de
-    // FUN_00516350. TODO(REVERSE) : leurs lecteurs sont dans FUN_00516fc0, non transcrite.
-    private static byte s_Unknown_00563c77, s_Unknown_00563c5c;
+    // Ghidra: DAT_00563c77 et DAT_00563c5c — **ce ne sont pas des globales**, ce sont deux CHAMPS
+    // du descripteur d'interface de la carte du monde (0x005633b0) :
+    //
+    //   0x005633b0 + 0x8ac = 0x00563c5c   le curseur de texte, un POINTEUR
+    //   0x005633b0 + 0x8c7 = 0x00563c77   les drapeaux du moteur de texte
+    //
+    // Ghidra les rend en globales isolees parce qu'il ne sait pas que le bloc fait 0x8c8 octets ;
+    // c'est le piege deja documente sous « Un DAT_ cluster dans un enregistrement connu est un
+    // champ, pas une globale » (DataSymbols.md), et le meme decalage 0x8c7 que DAT_0056e61f dans
+    // le contexte de menu (Engine/Resources.cs).
+    //
+    // **Corrige le 2026-08-23**, et ce n'etait pas theorique : BindMenuLabels ecrit `descripteur
+    // [0x8ac]` et `descripteur[0x8c7]` (Engine/UiText.cs), tandis que le bloc d'affichage lisait
+    // deux `static byte` que rien n'atteignait jamais. La boite de dialogue liait donc son texte
+    // et ne s'ouvrait pas — « - La reception - » restait invisible a l'entree de l'auberge.
+    //
+    // Les largeurs viennent du desassembleur, pas de la pseudo-C : `mov [563C77h],bl` est un
+    // OCTET, `mov [563C5Ch],ebx` un DWORD (0x00516fa1 et 0x00516fa7).
+    private static byte s_Unknown_00563c77
+    {
+        get => s_WorldMapDescriptor_005633b0[0x8c7];
+        set => s_WorldMapDescriptor_005633b0[0x8c7] = value;
+    }
+
+    private static uint s_Unknown_00563c5c
+    {
+        get => *(uint*)(s_WorldMapDescriptor_005633b0 + 0x8ac);
+        set => *(uint*)(s_WorldMapDescriptor_005633b0 + 0x8ac) = value;
+    }
 
     /// <summary>
     /// Ghidra: FUN_00516350 @ 0x00516350 — la mise en place d'image de la carte du monde. Trois
@@ -1693,12 +1719,26 @@ public static unsafe partial class Blaze
         Winsys3d.Ordinal_765(1, 0xffffff);
 
         // Les quatre descripteurs d'interface de la carte, montes a l'identique.
+        //
+        // **Decalages repris au desassembleur le 2026-08-23** (0x00516f25..0x00516f9d), et non a la
+        // pseudo-C. Ghidra rend le curseur `puVar15 = &DAT_005dbc72` en `short *` puis melange
+        // indices de short et decalages d'octets (`puVar15 + 7` a cote de `(int)puVar15 + 0xf`) ;
+        // la premiere transcription en avait tire des decalages faux, decales de deux au debut et
+        // de sept a la fin. Le registre de base est `eax = 0x005dbc72`, soit **descripteur + 0x0a**,
+        // et tout se lit relativement a lui :
+        //
+        //     mov [eax-2],bp      -> +0x08 = 0x54     mov [eax-0Ah],si   -> +0x00 = 0x31 (WORD)
+        //     mov word [eax],1Ch  -> +0x0a = 0x1c     mov [eax+12h],edi  -> +0x1c (dword)
+        //
+        // L'erreur n'etait pas benigne : `DrawUiPanel` lit l'etendue de la fenetre en **+0x08**,
+        // que l'ancienne version n'ecrivait jamais. Les quatre panneaux de membre sortaient donc
+        // sans cadre — les jauges s'affichaient en texte nu la ou l'original les encadre.
         for (int i = 0; i < 4; i++)
         {
             byte* panel = s_WorldPanels_005dbc68 + i * GameMemory.UiDescriptorStride;
-            *(uint*)(panel + 0x00) = 0x31;
-            *(short*)(panel + 0x0a) = 0x54;
-            *(short*)(panel + 0x0c) = 0x1c;
+            *(short*)(panel + 0x00) = 0x31;
+            *(short*)(panel + 0x08) = 0x54;
+            *(short*)(panel + 0x0a) = 0x1c;
             panel[0x18] = 8;
             panel[0x19] = 8;
             panel[0x1a] = 0x0f;
@@ -1709,17 +1749,17 @@ public static unsafe partial class Blaze
             panel[0x22] = 7;
             panel[0x23] = 0;
             *(uint*)(panel + 0x24) = 0x01000000;
-            panel[0x2c] = 0;
-            panel[0x34] = 0;
-            panel[0x3c] = 0;
-            panel[0x42] = 0;
-            panel[0x44] = 0x0f;
-            panel[0x45] = 1;
-            *(uint*)(panel + 0x48) = 0x01000000;
-            panel[0x50] = 0;
-            panel[0x58] = 0;
-            panel[0x60] = 0;
-            panel[0x68] = 0;
+            panel[0x3b] = 0;
+            panel[0x33] = 0;
+            panel[0x40] = 0;
+            panel[0x41] = 0;
+            panel[0x42] = 0x0f;
+            panel[0x43] = 1;
+            *(uint*)(panel + 0x44) = 0x01000000;
+            panel[0x4b] = 0;
+            panel[0x53] = 0;
+            panel[0x5b] = 0;
+            panel[0x63] = 0;
         }
 
         s_Unknown_00563c77 = 0;

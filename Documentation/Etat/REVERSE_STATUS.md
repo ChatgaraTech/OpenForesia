@@ -9581,3 +9581,80 @@ Build 0 erreur. Tests de disposition : 3 rouges, les mêmes (dont celle-ci, qui 
 l'étendue de `GameArena` n'est pas réduite). Oracle `compare-bodies` : quatre corps signalés, les
 trois habituels plus `ResolveEntityBlocks` — c'est la correction elle-même, et l'outil a bien fait
 de la voir.
+
+
+## 2026-08-23 (soir) — trois écarts relevés par Vincent contre le jeu d'origine, deux réglés
+
+Première comparaison à l'original depuis que l'auberge s'affiche. Vincent relève trois différences.
+Deux avaient la même cause de fond — **un symbole modélisé deux fois** — et la troisième reste
+ouverte.
+
+### La boîte « - La réception - » ne s'ouvrait pas
+
+`DAT_00563c5c` et `DAT_00563c77` **ne sont pas des globales** : ce sont les champs `+0x8ac` (le
+curseur de texte, un pointeur) et `+0x8c7` (les drapeaux du moteur de texte) du descripteur
+d'interface de la carte du monde, à `0x005633b0`. Ghidra les rend en globales isolées parce qu'il
+ignore que le bloc fait `0x8c8` octets — le piège déjà catalogué sous « un `DAT_` cluster dans un
+enregistrement connu est un champ, pas une globale », et **le même décalage `0x8c7` que
+`DAT_0056e61f`** dans le contexte de menu.
+
+`BindMenuLabels` écrivait donc le descripteur pendant que le bloc d'affichage lisait deux
+`static byte` que rien n'atteignait : l'opcode 14 liait bien son texte, et il ne s'affichait jamais.
+Les deux largeurs viennent du désassembleur et non de la pseudo-C — `mov [563C77h],bl` est un octet,
+`mov [563C5Ch],ebx` un dword (`0x00516fa1`, `0x00516fa7`).
+
+Une fois les deux champs remis dans le descripteur, le moteur de texte a tourné pour la première
+fois sur ce bloc et a réclamé **deux codes de contrôle absents de `Blaze.c`**, décodés à la main :
+
+* **`0x1f` → `FUN_00545120`** (29 o.) : deux octets du flux deviennent l'**étendue** du panneau, en
+  `+0x08` — `(texte[1] << 0x10) | texte[0]`. C'est ainsi qu'un message dimensionne sa propre boîte.
+* **`0x08` → `FUN_00544ab0`** (77 o.) : un sous-code d'un octet sur une table de sauts de quatre
+  entrées relevée en `0x00544afc` — `FreezeAllEntities`, `UnfreezeAllEntities`, puis le bit 0 de
+  `DAT_00604b78` effacé ou posé. **C'est le code qui immobilise le joueur pendant un dialogue**, et
+  il explique la seconde moitié de l'observation : on ne peut pas bouger tant que la boîte est là.
+
+### Les jauges s'affichaient sans cadre
+
+Même famille, deux fois de suite. D'abord `&DAT_005dbc68` portait **deux noms** :
+`s_WorldPanels_005dbc68`, que la fin de `FUN_00516350` monte au chargement, et
+`s_PartyPanelDescriptors_005dbc68`, une allocation séparée que le bloc d'affichage lisait. Le second
+est devenu une vue sur le premier.
+
+Cela n'a pas suffi, et le second défaut est plus instructif : **la boucle d'initialisation elle-même
+avait des décalages faux**. Ghidra rend son curseur `puVar15 = &DAT_005dbc72` en `short *` puis
+mélange indices de short et décalages d'octets (`puVar15 + 7` à côté de `(int)puVar15 + 0xf`) ; la
+transcription en avait tiré des offsets décalés de deux au début et de sept à la fin. Le
+désassembleur (`0x00516f25..0x00516f9d`) donne la base sans ambiguïté — `eax = 0x005dbc72`, soit
+**descripteur + 0x0a** — et tout se lit relativement à elle :
+
+```
+mov [eax-2],bp        -> +0x08 = 0x54        mov [eax-0Ah],si  -> +0x00 = 0x31 (WORD, pas dword)
+mov word [eax],1Ch    -> +0x0a = 0x1c        mov [eax+12h],edi -> +0x1c (dword)
+```
+
+L'écart décisif est `+0x08` : c'est là que `DrawUiPanel` lit l'**étendue** de la fenêtre, et
+l'ancienne version ne l'écrivait jamais. Les quatre panneaux sortaient donc dégénérés, d'où des
+jauges en texte nu au lieu du cadre bleu de l'original.
+
+**Troisième fois dans la journée que la pseudo-C ment sur un bloc de descripteur.** La règle déjà
+écrite pour le bloc de sprite vaut ici mot pour mot : sur ces blocs, on relève au désassembleur.
+
+### Ce qui reste : la caméra
+
+Vincent la place, sur l'original, **juste au-dessus de la porte** à l'entrée de l'auberge ; la nôtre
+est ailleurs. Non diagnostiqué. Ce qui est établi : le bloc d'initialisation existe et s'exécute
+(`WorldMap.cs`, la branche qui écrit `Mem.View(0x006067e8..ec)` depuis `s_WorldMapCamera_00564650`
+et le point d'entrée). Les pistes, par ordre de vraisemblance :
+
+1. la lecture du point d'entrée — position **et cap** — dans la fiche de sous-zone ;
+2. les constantes de `&DAT_00564650`, relevées mais dont l'usage n'a pas été recoupé à l'écran ;
+3. le sous-bloc d'**occlusion** du sous-système de caméra (`0x00401913..0x00401b6d`, plus
+   `FUN_004029e0` et `FUN_00402d60`), toujours pas transcrit — il est réputé hors du chemin au
+   repos, ce qui reste à vérifier maintenant qu'on a une image à comparer.
+
+### État
+
+Build 0 erreur. Playtest : aucun plantage, 2101 images, 388 primitives par image, boîte de dialogue
+et cadre de jauges conformes. Tests de disposition : 2 rouges, inchangés. Oracle `compare-bodies` :
+six corps signalés — les trois habituels plus `ResolveEntityBlocks`, `PlaceWorldMapParty` et
+`BuildTextTable`, c'est-à-dire exactement les trois corrections du jour.

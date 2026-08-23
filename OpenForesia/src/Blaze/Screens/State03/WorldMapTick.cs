@@ -1487,20 +1487,22 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: <c>&amp;DAT_005dbc68</c> — <b>quatre descripteurs de fenetre</b>, un par membre du
     /// groupe, au meme pas <c>0x8c8</c> que ceux de <see cref="GameMemory.UiDescriptorStride"/>.
-    /// Le bloc est **nul au chargement** (verifie : l'adresse tombe dans la queue non initialisee
-    /// de <c>.data</c>), donc tout ce qu'il porte vient du code ; le bloc des panneaux n'en ecrit
-    /// que le coin (+4/+6), la teinte (+0x1c) et la couleur de jauge (+0x44).
     ///
-    /// <para>Alloue bas comme les trois de <see cref="GameMemory"/> : un descripteur de fenetre
-    /// porte sa propre table d'affichage a +0xa4, que <c>ClearOTagR</c> chaine sur 24 bits.</para>
+    /// <para><b>Defaut d'aliasing resorbe le 2026-08-23.</b> Ce nom designait sa PROPRE allocation,
+    /// alors que <see cref="s_WorldPanels_005dbc68"/> — la meme adresse — en a une autre, celle que
+    /// la fin de <c>FUN_00516350</c> monte au chargement de zone. Le bloc des panneaux lisait donc
+    /// quatre descripteurs vierges : le coin, la teinte et la couleur de jauge etaient bien ecrits
+    /// a chaque image, mais tout ce qui fait le <b>cadre</b> — le mot de page <c>+0x00</c>, la
+    /// hauteur <c>+0x0a</c>, le style <c>+0x18</c>/<c>+0x19</c>, les couleurs <c>+0x20</c>… —
+    /// restait a zero. D'ou des jauges affichees en texte nu, la ou l'original les encadre comme
+    /// une boite de dialogue.
+    ///
+    /// <para>Le commentaire precedent disait « le bloc est nul au chargement, donc tout ce qu'il
+    /// porte vient du code ». La premiere moitie etait vraie — l'adresse tombe dans la queue non
+    /// initialisee de <c>.data</c> — et c'est justement ce qui rendait la seconde trompeuse : le
+    /// code qui le remplit existait, ailleurs, sous un autre nom.</para>
     /// </summary>
-    private static byte* s_PartyPanelDescriptorsStorage;
-
-    private static byte* s_PartyPanelDescriptors_005dbc68
-        => s_PartyPanelDescriptorsStorage != null
-            ? s_PartyPanelDescriptorsStorage
-            : (s_PartyPanelDescriptorsStorage =
-                   AllocLowZeroed(4 * (uint)GameMemory.UiDescriptorStride));
+    private static byte* s_PartyPanelDescriptors_005dbc68 => s_WorldPanels_005dbc68;
 
     /// <summary>Ghidra: <c>&amp;DAT_00563348</c> — quatre demi-mots, un par membre, qui forment la
     /// moitie basse du mot d'attributs passe au disque au sol. Releves dans le binaire.</summary>

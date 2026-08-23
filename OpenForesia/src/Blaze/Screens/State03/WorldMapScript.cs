@@ -449,7 +449,7 @@ public static unsafe partial class Blaze
     /// L'argument est reellement mort, et l'appel est en cdecl, donc sans consequence.
     /// </para>
     /// </summary>
-    private static void FreezeAllEntities()
+    internal static void FreezeAllEntities()
     {
         SetEntityFlagBit(0x00000000, 0x4000000);
         Mem.s_WorldFlags_005de02c |= 0x10;
@@ -458,7 +458,7 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: FUN_00535400 @ 0x00535400 — l'exact inverse de
     /// <see cref="FreezeAllEntities"/> : les memes sept tables, les memes comptes, le meme pas, et
     /// <c>&amp; 0xfbffffff</c> au lieu de <c>| 0x4000000</c>.</summary>
-    private static void UnfreezeAllEntities()
+    internal static void UnfreezeAllEntities()
     {
         SetEntityFlagBit(0x4000000, 0x00000000);
         Mem.s_WorldFlags_005de02c &= 0xffffffef;
