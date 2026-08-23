@@ -1795,28 +1795,62 @@ public static unsafe partial class Blaze
     private static byte s_Unknown_005dbc14, s_Unknown_005dbc18, s_Unknown_005ddfd0;
 
     /// <summary>
-    /// Ghidra: FUN_00401000 @ 0x00401000 — <b>fige le vecteur de vue courant</b> dans le bloc de
-    /// vue, en deux exemplaires, et marque le bloc comme rafraichi.
+    /// Ghidra: FUN_00401000 @ 0x00401000 — <b>restitue l'orientation sauvegardee, puis en fait le
+    /// but</b>, et marque le bloc comme rafraichi.
     ///
     /// <para>
-    /// Les deux copies (<c>0x006067e0</c> et <c>0x006067e8</c>) recoivent les memes trois
-    /// <c>short</c> ; <see cref="PublishFrameView"/> s'en sert ensuite comme d'un couple
-    /// « courant / precedent ». L'appel final va a <c>FUN_00401fa0</c>, un <c>ret</c> nu : une
-    /// souche, transcrite comme telle plutot que passee sous silence.
+    /// <b>Ghidra a supprime le premier tiers de cette fonction</b>, et c'est la cause de l'ecart de
+    /// camera a l'entree de l'auberge, resolu le 2026-08-23 sur la trace dynamique de Vincent
+    /// (<c>Analyse/x32dbg/AUBERGE_CAMERA/openforesia_camera_dynamic_trace.md</c>, point d'arret
+    /// materiel en ecriture sur <c>0x006067E8</c>). Le corps reel commence par restituer
+    /// <c>ViewAngle</c> depuis <c>SavedViewAngle</c> (<c>0x005712F8</c>) :
     /// </para>
+    /// <code>
+    /// 00401000  mov ax,[5712F8h]     00401014  mov [6067E8h],ax   <- ViewAngle <- SavedViewAngle
+    /// 00401006  mov cx,[5712FAh]     0040101F  mov [6067EAh],cx
+    /// 0040100D  mov dx,[5712FCh]     00401026  mov [6067ECh],dx
+    /// 0040101A  mov eax,[5E9AE0h]    0040102D  mov cx,[eax]       <- puis le but depuis le pointeur
+    /// </code>
+    /// <para>
+    /// Ghidra tient ces trois ecritures pour <b>mortes</b>, puisque les trois suivantes reecrivent
+    /// les memes adresses depuis <c>*DAT_005E9AE0</c>. Elles ne le sont pas : <c>DAT_005E9AE0</c>
+    /// <b>pointe sur <c>0x006067E8</c></b>, c'est-a-dire sur la destination elle-meme. Les lectures
+    /// `[eax]`, `[eax+2]`, `[eax+4]` relisent donc ce que la premiere passe vient d'y ecrire, et la
+    /// chaine reelle est :
+    /// </para>
+    /// <code>
+    /// SavedViewAngle (600, 1024, 0) -> ViewAngle -> ViewAngleGoal
+    /// </code>
+    /// <para>
+    /// Sans ce premier bloc, le but partait a zero, l'elevation derivait vers la borne <b>basse</b>
+    /// de <c>DAT_005E9B34</c> (300 au lieu de 600) et le cap restait a 0 au lieu de 1024 — les 90°
+    /// d'ecart visibles sur la rose des vents. <b>Une elimination de code mort par le decompilateur
+    /// est fausse des qu'un pointeur peut aliaser la destination</b> : c'est le meme piege que les
+    /// doubles noms d'adresse, vu du cote du flot au lieu du cote des donnees.
+    /// </para>
+    /// <para>L'appel final va a <c>FUN_00401fa0</c>, un <c>ret</c> nu : une souche, transcrite
+    /// comme telle plutot que passee sous silence.</para>
     /// </summary>
     private static void SnapshotViewVector()
     {
-        short* view = *(short**)Mem.Arena(0x005e9ae0);
-        short* first = (short*)Mem.View(0x006067e0);
-        short* second = (short*)Mem.View(0x006067e8);
+        short* angle = (short*)Mem.View(0x006067e8);
+        short* saved = (short*)Mem.ViewParams(0x005712f8);
 
-        first[0] = view[0];
-        first[1] = view[1];
-        first[2] = view[2];
-        second[0] = view[0];
-        second[1] = view[1];
-        second[2] = view[2];
+        angle[0] = saved[0];
+        angle[1] = saved[1];
+        angle[2] = saved[2];
+
+        // `view` aliase `angle` au repos : les trois lectures ci-dessous relisent ce qui vient
+        // d'etre restitue. C'est voulu, et c'est ce que l'original fait.
+        short* view = *(short**)Mem.Arena(0x005e9ae0);
+        short* goal = (short*)Mem.View(0x006067e0);
+
+        goal[0] = view[0];
+        goal[1] = view[1];
+        goal[2] = view[2];
+        angle[0] = view[0];
+        angle[1] = view[1];
+        angle[2] = view[2];
 
         *Mem.ViewParams(0x0057139c) |= 0x20;
 

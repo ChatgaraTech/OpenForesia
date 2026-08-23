@@ -23,29 +23,16 @@ la suite à faire.
 Il n'y a plus de point de blocage : il y a un écran qui tourne et qu'on peut enfin **regarder**.
 Trois pistes, par ordre de rendement.
 
-## 1. La caméra n'est toujours pas au bon endroit à l'entrée de l'auberge
+## 1. ~~La caméra à l'auberge~~ — CORRIGÉE le 2026-08-23
 
-Sur l'original elle se pose **juste au-dessus de la porte** ; la nôtre reste en arrière. **Une
-correction réelle a été faite et n'a rien changé** : les trois décalages de caméra
-`&DAT_00564650 + 8 / 0xc / 0x10` sont des ENTIERS et étaient lus sur seize bits dans trois
-fonctions (`PlaceWorldMapParty`, la remise à neuf de `RunWorldMapState`, et
-`ApplyPadHeightLimits_004021E0`). Le désassembleur est formel — `mov edx,[564658h]`,
-`mov esi,[56465Ch]`, `mov [564660h],edx`. Le défaut est donc réparé, mais **latent à ce point
-d'entrée** : les valeurs y tiennent sur seize bits, et l'image est identique avant et après.
+`FUN_00401000` restitue `ViewAngle` depuis `SavedViewAngle` (`0x005712F8`) **avant** de semer le
+but ; Ghidra avait supprimé ce bloc comme code mort, à tort — `DAT_005E9AE0` aliase la destination,
+donc les lectures suivantes relisent ce que la première passe vient d'écrire. Élévation 597 et cap
+1024 comme l'original, capture identique à `legacy.png`. Détail dans `REVERSE_STATUS.md`.
 
-Ce qui a été écarté par la mesure :
-
-* le sous-bloc d'**occlusion** n'est pas en cause — sa garde
-  (`ViewParams(0x00571348) == 0 && ViewParams(0x00571380) != 0`) rend la main à chaque image, et
-  la preuve est que le jeu ne lève pas : `ProbeCameraOcclusion_004011C0` est encore une lacune
-  franche, elle exploserait si on l'atteignait ;
-* la lecture du point d'entrée est fidèle — `views = *(byte**)(areaDir + 0xc0)`,
-  `index = (spawn[6] * 2) & 0xffff`, recoupée mot pour mot avec la pseudo-C.
-
-Reste donc à comparer les **valeurs**, pas le code : relever sur le jeu d'origine (x32dbg, comme
-les sessions de `Analyse/`) ce que valent `DAT_00604928`, `DAT_00564650..60` et
-`DAT_005de078/7c/80` à l'image où l'auberge apparaît, et les confronter aux nôtres. C'est le seul
-moyen de savoir si l'écart vient de la vue lue, de la cible, ou du lissage.
+**Méthode à retenir** : c'est le point d'arrêt **matériel en écriture** de Vincent qui a tranché,
+après quatre relevés de valeurs qui n'avaient rien donné. Quand deux implémentations partent du
+même état et divergent sans raison visible, tracer les écrivains bat lire les valeurs.
 ## 1 bis. Continuer la comparaison à l'original, pas au compteur
 
 La méthode vient de payer trois fois en une soirée. Points suivants à regarder :

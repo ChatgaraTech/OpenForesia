@@ -9698,3 +9698,320 @@ apparaît, ce que valent `DAT_00604928` (le cap), `DAT_00564650..60` (le bloc de
 `DAT_005de078/7c/80` (la cible), puis les confronter aux nôtres. C'est le seul moyen de séparer trois
 hypothèses qui produisent le même symptôme : une vue mal lue, une cible mal placée, ou un lissage
 qui ne converge pas au même endroit.
+
+## 2026-08-23 (nuit) — la caméra, localisée à un seul bloc : `ViewAngleGoal`
+
+Le relevé x32dbg de Vincent (`Analyse/x32dbg/AUBERGE_CAMERA/camera_x32dbd_recap.md`) permet de
+réduire sa table de sept lignes à **deux nombres**, puis à **un bloc mémoire**.
+
+### Toutes les divergences découlent du lacet et du tangage
+
+| | Blaze | OpenForesia |
+|---|---:|---:|
+| `00604928` | cap 597, tangage **1024** | cap 297, tangage **3** |
+| `006067e8` | (600, **1024**, 0) | (300, **0**, 0) |
+| `005de08c` | 77 | 114 |
+| `005de090` | 606 | 334 |
+
+Les deux dernières lignes ne sont pas des divergences indépendantes, ce sont des **conséquences
+arithmétiques** des deux premières :
+
+* `005de08c = cos(cap) >> 5`. `cos(597)/4096 = 0.601` → `0.601 × 4096 / 32 = 77` ✓ ;
+  `cos(297)/4096 = 0.891` → `114` ✓.
+* `005de090` converge vers `1.5 × DAT_005de05c`, lui-même `sin(cap) >> 3` + l'écartement du groupe.
+
+Autrement dit : **la cible et la distance sont déjà justes** (`547` et
+`(3686400, 409600, -2867200)` des deux côtés), seul l'angle diffère, et tout le reste suit.
+
+### Le mécanisme, mesuré image par image
+
+Un échafaudage qui imprime la pose à chaque image montre le lacet monter **de +10 par image** depuis
+0, et s'arrêter net à **300**. Ce n'est pas un lissage : c'est la borne basse du couple
+`DAT_005e9b34`, dont nos deux valeurs sont **(300, 600)** — les bonnes. Nous convergeons vers le
+**minimum**, l'original se pose sur le **maximum**.
+
+### D'où vient le 600 de l'original — et pourquoi nous le perdons
+
+`PublishFrameView` (`FUN_00401080`) fait, dans cet ordre :
+
+```
+ViewAngle[0] = range[1]          // 600
+0x005712f8   = ViewAngle         // sauvegarde
+ViewAngle    = ViewAngleGoal     // 0x006067e0
+```
+
+Notre sauvegarde `0x005712f8` vaut **(600, 1024, 0)** — exactement les valeurs de régime établi de
+Blaze. **Le calcul est donc juste.** Ce qui l'écrase est la troisième ligne : notre
+`ViewAngleGoal` (`0x006067e0`) vaut `(0, 0, 0)` à l'image 1, puis `(300, 0, 0)`.
+
+**La divergence est entièrement dans `0x006067e0`.** Ses deux seuls semeurs sont
+`SnapshotViewVector` (`FUN_00401000`, gardé par le verrou `DAT_00566c94`) et la branche **mode 0**
+d'`ApplyViewMode_004011C0` — et le mode vaut 1 dès le chargement, donc cette branche ne s'exécute
+jamais.
+
+### Ce qui a été corrigé au passage, et qui n'était pas la cause
+
+`MeasureCameraToParty_00402710` comptait **`dx * dx` deux fois** dans la distance caméra-groupe :
+Ghidra rend la somme `dy² + [esp+0x10] + ebp`, et `[esp+0x10]` avait été pris pour `flat` alors
+qu'il ne porte que `dz²` — il est rangé en `0x00402752`, une instruction **avant** que `eax` ne
+devienne `dz² + dx²`. Corrigé. L'image n'a pas bougé : à ce point d'entrée la fonction ne pilote pas
+la caméra.
+
+Vérifié au passage et **fidèle** : `StartAngleGlide_004025A0` (une première lecture du prologue
+avait conclu à tort à un décalage d'arguments — elle ne tenait pas compte des `push edi` / `pop`
+intermédiaires), et le lissage de pose en tête du bloc d'affichage.
+
+### La mesure qui reste
+
+Au point d'arrêt `0x004021E0`, sur le jeu d'origine : **`0x006067E0`** (trois shorts, le but
+d'orientation) et **`0x00566C94`** (un octet, le verrou de réamorçage). Si Blaze montre
+`0x006067E0 = (600, 1024, 0)`, le semeur tourne chez lui et pas chez nous ; s'il montre `(0, 0, 0)`
+comme nous, alors c'est `PublishFrameView` qui ne doit pas écraser, et l'ordre des trois lignes est
+à revoir au désassembleur.
+
+## 2026-08-23 (nuit, suite) — la caméra localisée au bit 0x20, et une note du dépôt démentie
+
+Second relevé x32dbg de Vincent : `ViewAngleGoal` (`0x006067E0`) = **(600, 1024, 0)** sur l'original,
+contre **(300, 0, 0)** chez nous ; verrou `0x00566C94` à 0 des deux côtés.
+
+**Notre calcul est juste, c'est son résultat qui est écrasé.** La sauvegarde `0x005712F8` vaut chez
+nous **(600, 1024, 0)** — exactement les valeurs de Blaze. `PublishFrameView` les y range, puis fait
+`ViewAngle = ViewAngleGoal`, et c'est ce dernier qui dérive vers 300 chez nous.
+
+**Pourquoi il dérive :** `ApplyViewMode` part dans la **branche de rotation** (bit `0x20` de
+`DAT_0057139C`, posé par `SnapshotViewVector`) et n'atteint jamais la branche de recadrage, celle qui
+recharge le lacet depuis `0x005712F8`. Le lacet est alors poussé de +10 par image jusqu'à la borne
+**basse** du couple `DAT_005E9B34` (relevé : `(300, 600)`, les bonnes valeurs), là où l'original se
+pose sur la borne **haute**.
+
+### L'expérience, et ce qu'elle démentit
+
+En neutralisant le bit `0x20`, le flot descend jusqu'à `ProbeCameraOcclusion_004011C0` et lève.
+Donc :
+
+1. le bit `0x20` est bien ce qui nous détourne ;
+2. **le sous-bloc d'occlusion est sur le chemin au repos à l'auberge.** La note qui le disait
+   inatteignable — « sa garde rend la main avant, playtest à l'appui » — datait d'une mesure faite
+   alors que `0x20` était posé à tort. Elle est corrigée.
+
+C'est aussi, très probablement, le mécanisme que Vincent décrit : l'occlusion tire la caméra en avant
+quand un mur s'interpose, ce qui la pose « juste au-dessus de la porte ».
+
+**Leçon de méthode** : une garde qui « rend la main avant » ne prouve rien tant qu'on n'a pas vérifié
+que la condition qui la fait rendre la main est elle-même juste. Ici un bit posé à tort avait rendu
+tout un sous-système invisible, et l'avait fait classer « hors du chemin au repos » pendant deux
+jours.
+
+### Il reste un dword à lire
+
+`0x0057139C` au point d'arrêt `0x004021E0` sur l'original. S'il n'a pas le bit `0x20`, c'est notre
+pose du bit qu'il faut expliquer ; s'il l'a, les deux jeux prennent la même branche et l'écart est
+**dans** `ManualCameraControl_00401C90`.
+
+## 2026-08-23 (fin de nuit) — le tangage résolu, le lacet localisé à une graine
+
+Troisième relevé de Vincent : `0x0057139C` = **0x60** sur l'original, **identique au nôtre**. Le bit
+`0x20` est donc légitime, les deux jeux prennent la même branche, et l'écart est ailleurs.
+
+### Trois transcriptions vérifiées et déclarées fidèles
+
+* `ManualCameraControl_00401C90` — le rappel ±10 vers les bornes, le pas de dérive du tangage
+  (`((sbyte)(ViewAngle[1] >> 8) * 0x100 - ViewAngle[1]) >> 3`, un amortisseur qui colle le tangage
+  au multiple de 0x100 le plus proche, ce qui explique qu'il **tienne** à 1024 chez Blaze), la
+  lecture de manette à `+0` (et non `+2` comme dans `ReadCameraPad`).
+* `PublishFrameView` — l'hypothèse d'un `DAT_005e9b34 + 2` valant +4 octets sur un `short *` était
+  **fausse** : `mov cx,[eax+2]` en 0x0040108c, c'est bien +2, donc `range[1]`.
+* Le verrou `DAT_00566C94` n'est armé qu'au changement de zone, comme chez nous.
+
+### Ce que l'expérience a prouvé
+
+En semant `ViewAngleGoal` depuis `ViewAngle` à la fin du bloc caméra du chargement de zone :
+
+* le tangage passe à **1024**, exactement la valeur de Blaze ;
+* la vue change du tout au tout — le comptoir de la réception au premier plan, deux PNJ, les
+  plantes, les lampes, l'étage ;
+* le débit passe de **388 à 1037 primitives par image**.
+
+**La divergence est donc entièrement la valeur initiale de `ViewAngleGoal`** (`0x006067E0`), que
+`PublishFrameView` consomme (`ViewAngle = ViewAngleGoal`) et qui n'est jamais semée chez nous.
+
+Le lacet reste à 297 contre 597 : notre graine vaut 0, donc le rappel ±10 le pousse vers la borne
+**basse** (300) au lieu de la **haute** (600).
+
+### Ce qui reste — une séquence, pas une valeur
+
+`ViewAngleGoal` n'a que trois écrivains : `SnapshotViewVector` (`FUN_00401000`, verrou consommé une
+fois), la branche **mode 0** d'`ApplyViewMode` (jamais prise, le mode vaut 1 dès le chargement), et
+`PublishCameraFrame` (qui le recopie depuis `ViewAngle`, donc n'amorce rien). Sur le papier, la
+séquence du premier tour de carte du monde donne `(0,0,0)` **dans les deux jeux** :
+
+```
+PublishFrameView : ViewAngle[0] = 600 ; sauvegarde ; ViewAngle <- ViewAngleGoal (0,0,0)
+SnapshotViewVector : ViewAngleGoal <- ViewAngle (0,0,0)
+```
+
+Or Blaze mesure `(600, 1024, 0)`. Il manque donc un passage que la lecture statique ne montre pas.
+**Mesure suivante** : un point d'arrêt sur `0x00401000` (12 instructions) — est-il seulement atteint
+après l'entrée dans l'auberge, et si oui que vaut `0x006067E8` à ce moment ? Plus `0x006067E0` au
+**premier** passage en `0x00401080`.
+
+L'expérience reste dans le dépôt derrière `OPENFORESIA_SEED_GOAL=1`, **désactivée par défaut** et
+marquée « NE PAS GARDER TELLE QUELLE » : elle écrit ce que l'original écrit sûrement ailleurs, et
+tant qu'on ne sait pas où, ce n'est pas une transcription.
+
+## 2026-08-23 (fin) — le lacet : Blaze part du même état que nous, donc le modèle est faux quelque part
+
+Quatrième relevé : `FUN_00401000` (`SnapshotViewVector`) est atteint **pendant l'écran de
+chargement**, avec `ViewAngle = (0,0,0)`, et au **premier** passage de `FUN_00401080`
+`ViewAngleGoal = (0,0,0)`.
+
+**Conclusion forte : l'original démarre exactement dans notre état.** Le semeur ne tourne pas avec
+une orientation déjà bonne, et il n'y a pas de quatrième écrivain caché avant la carte du monde.
+La divergence naît donc **pendant** les premières images, à code identique et depuis un état
+identique — ce qui ne laisse qu'une explication : le **nombre d'itérations** n'est pas le même.
+
+### L'indice qui reste, et il est net
+
+Le compteur `DAT_005713AC` monte d'une unité à chaque passage dans `ManualCameraControl_00401C90`,
+et au-delà de `0x32` il efface le bit `0x40` pour poser `0x80` — définitivement, rien ne le remet à
+zéro sans entrée manette.
+
+* chez nous : drapeaux `0x60` à l'image 1, **`0xa0`** à l'image 60 → plus de cinquante passages ;
+* chez Blaze : **`0x60`** au moment du relevé, la boîte de dialogue affichée → **moins de cinquante
+  passages depuis le début**.
+
+Autrement dit, à ce moment-là l'original a exécuté ce corps **beaucoup moins souvent que nous**. Et
+comme c'est lui qui applique le rappel de ±10 vers les bornes, cinquante itérations de plus suffisent
+à emmener notre lacet jusqu'à la borne basse (300) là où l'original n'a pas eu le temps de bouger.
+
+Le gel du monde n'explique pas l'écart : `ApplyViewMode_004011C0` est appelée sans garde dans la
+moitié dessin, chez nous comme dans l'original (le bit `0x10` de `DAT_005de02c` ne garde que des
+morceaux de la moitié simulation). La cause est ailleurs — un chemin qui, chez l'original, rend la
+main **avant** la branche `0x20` la plupart des images.
+
+### Mesure suivante, deux lectures de la même adresse
+
+`0x006067E8` (trois shorts) au **premier** passage en `0x004021E0` après l'apparition de l'auberge,
+puis de nouveau cinq secondes plus tard.
+
+* si le lacet vaut **600 dès le premier passage et n'a pas bougé** cinq secondes après : l'original
+  ne dérive pas du tout, et c'est notre appel répété de `ManualCameraControl` qu'il faut expliquer ;
+* s'il **monte progressivement** vers 600 : les deux jeux dérivent, mais depuis des bornes
+  différentes, et il faut relire le couple `DAT_005E9B34` au moment exact du premier passage.
+
+### Rappel de l'acquis
+
+Le tangage, lui, est **résolu** : semer `ViewAngleGoal` donne 1024 comme l'original, la vue devient
+celle du comptoir de la réception et le débit passe de 388 à 1037 primitives par image. Reste à
+trouver **où** l'original le sème — pas à le semer nous-mêmes.
+
+## 2026-08-23 (fin) — les deux captures de Vincent tranchent : c'était le CAP, et j'avais inversé deux noms
+
+Vincent fournit `legacy.png` et `new.png` (`Tests/1. New Game/Arrivé Auberge/`) et note « je pense
+que la caméra est à 90° de la version legacy ». Les **roses des vents** le confirment sans
+ambiguïté :
+
+| | haut | droite | bas | gauche |
+|---|---|---|---|---|
+| legacy | O | **N** | E | S |
+| nous | **N** | E | S | O |
+
+Un quart de tour. Et 90° dans ce moteur valent `4096 / 4 = 1024` — exactement la valeur qui
+manquait.
+
+### Le correctif de nommage, qui explique deux jours de fausses pistes
+
+`DAT_00604928` n'est pas `(cap, tangage, roulis)`. C'est :
+
+```
++0  elevation      +2  CAP      +4  roulis
+```
+
+C'est `+2` que la rose des vents emploie (`DrawCompassRose` place ses graduations avec
+`pose[1]`) **et** que le balayage 7×7 emploie pour choisir son octant
+(`((ushort)pose[1] + 0x100) >> 9 & 7`). Les deux lecteurs les plus visibles du jeu pointent le même
+champ, et ce n'est pas celui que ce document appelait « cap » depuis le premier relevé.
+
+Relu avec les bons noms, tout se remet en place :
+
+* **cap** : legacy 1024 (90°), nous 0 → l'écart de 90° que Vincent voit ;
+* **élévation** : legacy 597, nous 297 → la caméra basse chez nous, haute chez lui ;
+* `DAT_005E9B34` = (300, 600) est la paire de bornes d'**élévation**, pas de cap : 26° et 53°.
+  Le legacy se pose sur la borne haute, nous sur la basse.
+
+### Ce que l'expérience de graine règle vraiment
+
+Semer `ViewAngleGoal` porte le **cap** à 1024 : la rose des vents devient identique au legacy, la
+scène est la bonne pièce vue du bon côté, et le débit passe de 388 à 1037 primitives par image.
+**Les 90° sont donc réglés** — reste l'élévation.
+
+### L'élévation, et pourquoi elle converge du mauvais côté
+
+`PublishFrameView` écrit `ViewAngle[0] = range[1]` (**600**, la borne haute) puis, deux lignes plus
+bas, `ViewAngle = ViewAngleGoal` l'écrase. Sur une image où `PublishFrameView` tourne, l'élévation
+repart donc du but ; sur une image où il ne tourne pas, le rappel de ±10 de
+`ManualCameraControl` l'accumule. Notre élévation grimpe de 0 à 300 en trente images, donc
+**`PublishFrameView` ne tourne pas à chaque image chez nous** — sinon le but la ramènerait.
+
+La question suivante est donc : sur quelles images le pas de boucle `DAT_005645F8` vaut-il 2 chez
+l'original ? C'est lui qui décide si `FUN_00401080` s'exécute, et donc si l'élévation est rappelée à
+600 ou laissée dériver vers 300.
+
+## 2026-08-23 (fin) — LA CAMÉRA EST CORRIGÉE. Ghidra avait supprimé un tiers de FUN_00401000
+
+La trace dynamique de Vincent (`Analyse/x32dbg/AUBERGE_CAMERA/openforesia_camera_dynamic_trace.md`,
+point d'arrêt **matériel en écriture** sur `0x006067E8`) donne la réponse que quatre relevés
+statiques n'avaient pas pu donner.
+
+### Ce que Ghidra avait effacé
+
+`FUN_00401000` commence en réalité par **restituer `ViewAngle` depuis `SavedViewAngle`** :
+
+```
+00401000  mov ax,[5712F8h]      00401014  mov [6067E8h],ax    <- ViewAngle <- SavedViewAngle
+00401006  mov cx,[5712FAh]      0040101F  mov [6067EAh],cx
+0040100D  mov dx,[5712FCh]      00401026  mov [6067ECh],dx
+0040101A  mov eax,[5E9AE0h]     0040102D  mov cx,[eax]        <- puis le but depuis le pointeur
+```
+
+Ghidra tient ces trois écritures pour **mortes**, puisque les trois suivantes réécrivent les mêmes
+adresses depuis `*DAT_005E9AE0`. Elles ne le sont pas : la trace confirme `EAX = 0x006067E8` à cet
+instant, donc **le pointeur vise la destination elle-même** et les lectures `[eax]`, `[eax+2]`,
+`[eax+4]` relisent ce que la première passe vient d'écrire. La chaîne réelle est :
+
+```
+SavedViewAngle (600, 1024, 0)  ->  ViewAngle  ->  ViewAngleGoal
+```
+
+**Une élimination de code mort par le décompilateur est fausse dès qu'un pointeur peut aliaser la
+destination.** C'est le même piège que les doubles noms d'adresse rencontrés toute la journée, vu du
+côté du flot au lieu du côté des données — et il est bien plus difficile à voir, parce que le code
+supprimé ne laisse aucune trace dans la pseudo-C.
+
+### Le résultat
+
+Une fois le bloc restitué, sans rien d'autre :
+
+| | Blaze | OpenForesia avant | OpenForesia après |
+|---|---:|---:|---:|
+| élévation | 597 | 297 | **597** |
+| cap | 1024 | 3 | **1024** |
+| primitives/image | — | 388 | **557** |
+
+Et la capture est **identique à `legacy.png`** : le personnage vu de dos au niveau de la porte, la
+plante, la boîte « - La réception - », les poutres, les deux arêtes de mur convergentes, la rose des
+vents (O en haut, N à droite) et jusqu'aux deux petites flèches grises latérales.
+
+L'expérience `OPENFORESIA_SEED_GOAL` est retirée : elle n'a plus lieu d'être, et elle écrivait au
+mauvais endroit.
+
+### Ce que cette enquête a coûté et appris
+
+Cinq allers-retours de mesure. Ce qui a fini par trancher n'est aucun des quatre relevés ponctuels
+mais le **point d'arrêt matériel en écriture** : là où lire des valeurs ne dit que l'état, tracer les
+écrivains donne la séquence. À retenir pour la prochaine divergence de ce type — et à préférer
+d'emblée quand deux implémentations partent du même état et divergent sans raison visible.
+
+À retenir aussi : les captures comparées ont donné en une image (les deux roses des vents, un quart
+de tour d'écart = 1024 unités) ce que trois relevés mémoire n'avaient pas isolé, **et** elles ont
+révélé une erreur de nommage — `DAT_00604928` est `(élévation, cap, roulis)`.

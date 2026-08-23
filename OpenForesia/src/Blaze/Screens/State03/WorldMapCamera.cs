@@ -504,24 +504,6 @@ public static unsafe partial class Blaze
         ViewEye[2] = sceneCamera[2];
 
         int* sceneTarget = *(int**)Mem.Entity(0x005eca94);
-        if (sceneTarget == null)
-        {
-            // ECHAFAUDAGE TEMPORAIRE (2026-08-23) : ce pointeur est pose au chargement de zone
-            // (WorldMap.cs, `*(byte**)Mem.Entity(0x005eca94) = (byte*)Mem.View(0x006067d0)`) et
-            // relu sans encombre par le bloc d'affichage du meme tour. Le trouver nul au tour
-            // suivant veut dire qu'il a ete efface entre les deux. Le voisinage part avec la
-            // lacune pour distinguer « ce mot seul » de « toute la region ».
-            var around = new System.Text.StringBuilder();
-            for (int i = -0x20; i < 0x20; i += 4)
-            {
-                around.Append($"{0x005eca94 + i:x8}={*(uint*)Mem.Entity(0x005eca94 + i):x8} ");
-            }
-
-            throw new InvalidOperationException(
-                "PublishCameraFrame_004022B0 : DAT_005eca94 (le bloc de cible de vue) est nul. " +
-                "Voisinage : " + around);
-        }
-
         ViewTarget[0] = sceneTarget[0];
         ViewTarget[1] = sceneTarget[1];
         ViewTarget[2] = sceneTarget[2];
@@ -551,6 +533,7 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void ApplyPadHeightLimits_004021E0()
     {
+
         int* reach = (int*)(s_WorldMapCamera_00564650 + 0x10);
 
         if (*reach > 0x4af) *reach += (0x4b0 - *reach) >> 2;
@@ -633,8 +616,24 @@ public static unsafe partial class Blaze
 
         *(short*)Mem.ViewParams(0x005712f8) = normalized;
         *(short*)Mem.ViewParams(0x005712fa) = (short)-Winsys3d.Ordinal_457(dx, dz);
+
+        // La distance en trois dimensions : dy² + dz² + dx², c'est-a-dire `dy² + flat`.
+        //
+        // **Corrige le 2026-08-23**, sur le releve x32dbg de Vincent. Cette ligne comptait
+        // `dx * dx` DEUX FOIS. Ghidra rend la somme en `dy*dy + [esp+0x10] + ebp`, et
+        // `[esp+0x10]` avait ete pris pour `flat` alors qu'il ne porte que `dz²` : le
+        // desassembleur le montre range en 0x00402752, **avant** que `eax` ne devienne
+        // `dz² + dx²` a l'instruction suivante.
+        //
+        //     00402752  89442410   mov [esp+10h],eax   ; dz²  (eax ne vaut pas encore flat)
+        //     00402756  03c5       add eax,ebp         ; eax = flat = dz² + dx²
+        //     004027c1  03442410   add eax,[esp+10h]   ; dy² + dz²
+        //     004027c5  03c5       add eax,ebp         ; + dx²
+        //
+        // Le resultat est la distance camera-groupe qui pilote le recadrage : la surestimer
+        // repoussait la camera et faussait tous les angles qui en decoulent.
         *(int*)Mem.ViewParams(0x00571340) =
-            (int)Winsys3d.Ordinal_442((uint)(dy * dy + flat + dx * dx));
+            (int)Winsys3d.Ordinal_442((uint)(dy * dy + flat));
         *(int*)Mem.ViewParams(0x00571338) = ViewTarget[0];
         *(int*)Mem.ViewParams(0x0057133c) = ViewTarget[1];
     }

@@ -57,6 +57,34 @@ shell:
 $env:PATH = "C:\Program Files (x86)\dotnet;D:\Logiciels\nodejs;$env:PATH"
 ```
 
+**Smart App Control blocks `OpenForesia.Tools`' Debug build.** This machine runs Smart App Control
+in enforced mode (`HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy` →
+`VerifiedAndReputablePolicyState = 1`), and it periodically refuses to load the freshly-built,
+unsigned `OpenForesia.Tools.dll` out of `bin\Debug\`:
+
+```
+System.IO.FileLoadException: ... Une stratégie de contrôle d'application a bloqué ce fichier. (0x800711C7)
+```
+
+It is **not** Mark-of-the-Web — the file carries no `Zone.Identifier` stream, so `Unblock-File`
+does nothing. The working answer is a **Release publish**, which SAC accepts:
+
+```powershell
+dotnet publish OpenForesia.Tools -c Release -o OpenForesia.Tools\bin\publish
+OpenForesia.Tools\bin\publish\OpenForesia.Tools.exe disasm Legacy/Binaries/Blaze.exe 0x00516a7d 12
+```
+
+Do this rather than reaching for the security setting: **turning Smart App Control off is
+irreversible** — Microsoft does not allow re-enabling it without reinstalling Windows. Never flip
+it without the user asking for that specific change, in those terms.
+
+If even the publish is refused, the fallback that needs no tooling at all is reading the binary's
+bytes directly — the `.text` file offset is `VA - 0x400C00`:
+
+```bash
+od -An -tx1 -j $((0x115E7D)) -N 24 Legacy/Binaries/Blaze.exe   # VA 0x00516a7d
+```
+
 ## Running the game — always via `test-protocol.md`
 
 **Before exercising the game in any way — launching it, reaching a screen, reproducing a crash,

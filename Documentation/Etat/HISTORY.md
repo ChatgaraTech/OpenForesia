@@ -6,6 +6,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-23
 
+- fix : **caméra de l'auberge conforme au legacy** — `FUN_00401000` restitue `ViewAngle` depuis `SavedViewAngle` avant de semer le but ; Ghidra avait supprimé ce bloc comme code mort, à tort (le pointeur `DAT_005E9AE0` aliase la destination). Élévation 597 et cap 1024 comme l'original, capture identique à `legacy.png`
+- doc : `DAT_00604928` est (élévation, **cap**, roulis) et non (cap, tangage, roulis) — la rose des vents et l'octant du balayage 7x7 lisent tous deux `+2`
+- doc : écart de 90° de la caméra à l'auberge identifié comme le cap à 1024 ; semer `ViewAngleGoal` le corrige et rend la rose des vents identique au legacy
+- doc : tangage de la caméra à l'auberge résolu — `ViewAngleGoal` (0x006067e0) n'est jamais semé ; le semer donne 1024 comme l'original et triple le débit (388 -> 1037 primitives/image)
+- fix : `MeasureCameraToParty_00402710` comptait `dx * dx` deux fois dans la distance caméra-groupe
+- fix : les trois décalages de caméra `&DAT_00564650 + 8/0xc/0x10` sont des entiers, lus sur seize bits dans trois fonctions
+- doc : divergence de caméra à l'auberge localisée dans `ViewAngleGoal` (0x006067e0) — le reste du relevé x32dbg en découle arithmétiquement
+- doc : `OpenForesia.Tools` se lance via `dotnet publish -c Release` quand Smart App Control refuse le build Debug
 - feat : **la carte du monde s'affiche et tient** — l'auberge, 2101 images sans plantage, 388 primitives par image. Première image du jeu en 3D
 - feat : boîte de dialogue « - La réception - » à l'entrée de l'auberge, et immobilisation du joueur tant qu'elle est affichée
 - feat : cadre des jauges PV/PM, au même style de fenêtre que la boîte de dialogue
