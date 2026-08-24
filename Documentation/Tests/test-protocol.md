@@ -977,3 +977,37 @@ fois, atténuation −1250 pour `CdVol=64`.
 Dernière vérification, gratuite : **le titre de la fenêtre**. Il vaut `OpenForesia` tant que
 l'initialisation du son n'a pas eu lieu, et `Blaze & Blade` dès qu'elle a lieu — c'est
 `SetWindowTextA`, la première instruction utile de `LAB_00512ef0`. La capture le montre.
+
+---
+
+## Se déplacer dans l'auberge, et la boîte de dialogue qui l'en empêche (2026-08-24)
+
+Pour atteindre une autre pièce que la salle d'arrivée, il faut **d'abord refermer la boîte de
+dialogue**. La séquence habituelle de `TODO.md` se termine par deux `ENTER` qui ouvrent la boîte
+« - La réception - », et cette boîte est **modale** : elle gèle le monde, si bien que tout
+`HOLD:RIGHT` qui la suit ne déplace rien du tout. La capture montre alors le personnage exactement
+où il était, ce qui se lit à tort comme « le déplacement ne marche pas ».
+
+Trois `ENTER` puis `ESC` la referment. Ensuite `HOLD:`/`FREE:` déplacent réellement :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 70 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT3,`
+HOLD:UP,WAIT8,FREE:UP,WAIT2,HOLD:RIGHT,WAIT10,FREE:RIGHT,WAIT4
+```
+
+rend **la boutique de l'herboriste** : quatre PNJ, un comptoir, des étagères, et le dialogue
+« L'herboriste: Bonjour ! ». Le débit passe de 557 à **1051 primitives par image** — une pièce plus
+chargée que la salle d'arrivée, ce qui est en soi la confirmation qu'on a changé de pièce.
+
+### Ce que ce trajet ne permet PAS de faire
+
+**Atteindre une pièce précise n'est pas fiable en frappes minutées.** Deux exécutions de la même
+séquence n'aboutissent pas au même endroit — 1051 primitives par image la première fois, 698 la
+seconde. Le personnage part d'une orientation qui dépend de ce qui a précédé, et les murs arrêtent
+la marche à des instants différents.
+
+Conséquence pratique : ce trajet sert à **exercer du code de zone**, pas à **reproduire un
+symptôme localisé**. Quand un plantage est signalé « dans la seconde grande pièce à droite », ne pas
+conclure de son absence ici qu'il est corrigé — la séquence n'établit pas qu'on y est allé. Le dire
+plutôt que de le laisser croire.

@@ -4106,6 +4106,15 @@ public static unsafe partial class Blaze
     /// Les arguments 5 et 6 ne sont lus <b>nulle part</b> dans le corps ; ils sont conserves dans
     /// la signature parce que l'appelant les empile.
     /// </para>
+    /// <para>
+    /// <b>Ce decompte d'offsets ne tient que parce que <c>Ordinal_442</c> est stdcall</b> : la
+    /// somme des carres empilee juste avant l'appel est depilee par la callee, sans
+    /// <c>add esp,4</c>. En cdecl, <c>[esp+10h]</c> designerait l'argument 1. Verifie au
+    /// desassembleur le 2026-08-24 sur les trois sœurs — voir
+    /// <c>Documentation/DLL/winsys3d.md</c>. Ici les trois valeurs sont lues en <b>double mot</b>
+    /// (<c>mov eax,[esp+10h]</c>), la ou <see cref="TryPlaySoundNearEntity"/> les lit en
+    /// <c>movsx word</c> : les deux sœurs ne partagent pas les largeurs de leurs arguments.
+    /// </para>
     /// </summary>
     /// <returns>1 si l'entite etait assez proche pour que la requete porte, 0 sinon.</returns>
     private static ushort TryPublishCameraEffectNearEntity(
@@ -4198,6 +4207,14 @@ public static unsafe partial class Blaze
     /// <c>[esp+14h]</c>, <c>[esp+18h]</c> et <c>[esp+1ch]</c> apres trois <c>push</c>, soit les
     /// arguments 2, 3 et 4, tous trois en <c>movsx word</c>. Les arguments 5 et 6 ne sont lus
     /// nulle part.
+    /// </para>
+    /// <para>
+    /// <b>Ce qui rend ces offsets lisibles est la convention de <c>Ordinal_442</c></b>, verifiee au
+    /// desassembleur le 2026-08-24 : elle est <b>stdcall</b>, aucun de ses sites d'appel ne fait
+    /// <c>add esp,4</c>. La somme des carres empilee est donc depilee par la callee, et
+    /// <c>[esp+14h]</c> designe l'argument 2. En cdecl, les memes offsets designeraient les
+    /// arguments 1, 2 et 3 — un cran d'ecart sur toute la famille. Voir
+    /// <c>Documentation/DLL/winsys3d.md</c>.
     /// </para>
     /// <para>
     /// Le gain est <b>double</b> avant d'etre passe (<c>shl edx,1</c>), et la position sonore est
@@ -4742,7 +4759,10 @@ public static unsafe partial class Blaze
     /// aussi a placer l'icone dans sa planche (colonne = indice % 10, ligne = indice / 10 + 4, au
     /// pas de 24 pixels).</param>
     /// <param name="callback">Ghidra <c>param_3</c> — l'adresse du rappel de fin de boite, range
-    /// tel quel en <c>+0x8a8</c> du descripteur. Le coffre y passe <c>0x00450700</c>.</param>
+    /// tel quel en <c>+0x8a8</c> du descripteur. Deux des trois appelants reconstruits y passent
+    /// <c>0x00450700</c> ; <see cref="EntityHandler_00473ED0"/>, le coffre de la table 0x0056adc8,
+    /// y passe <c>0x00474320</c>. Les deux adresses portent <b>le meme corps</b> — voir
+    /// <see cref="ChestPickupDone_00450700"/>.</param>
     private static int GrantChestContents_00530F20(uint* recipient, int amount, uint callback)
     {
         if ((*recipient & 0x800000) == 0) return amount + 1;
@@ -5087,6 +5107,15 @@ public static unsafe partial class Blaze
     ///
     /// <para>Le coffre est retrouve par <c>entite[0x41]</c>, l'octet que le script y a range juste
     /// avant d'appeler <see cref="GrantChestContents_00530F20"/>.</para>
+    ///
+    /// <para>
+    /// <b>Le meme corps vit a une seconde adresse, <c>0x00474320</c></b>, celle que
+    /// <see cref="EntityHandler_00473ED0"/> passe en rappel. Les 87 octets sont identiques dans le
+    /// binaire a l'exception du deplacement relatif du <c>call</c>, et les deux visent
+    /// <c>0x005312D0</c> : le compilateur a emis deux fois le meme code sans les replier. Les deux
+    /// adresses sont donc aiguillees ici, dans <c>Engine/UiText.cs</c>. Dumps cote a cote dans
+    /// <c>Legacy/Raw/Blaze/Chest/</c>.
+    /// </para>
     /// </summary>
     internal static void ChestPickupDone_00450700(uint* entity)
     {
@@ -9116,7 +9145,14 @@ public static unsafe partial class Blaze
         byte* entity = (byte*)entityPtr;
         byte* pending = Mem.Entity(0x005fa560);
 
-        short count = *(short*)pending;
+        // Ghidra: `uVar5 = (ushort)DAT_005fa560` puis `if ((short)uVar5 != 0)`, ce qui se lit comme
+        // un mot de seize bits et ne l'est pas. Le binaire fait `movzx ax,byte [5FA560h]` : le
+        // compte tient sur UN OCTET, et l'octet suivant est deja la premiere entree de la liste.
+        // Lire un `short` ici faisait entrer cette premiere entree dans le compte — un compte de 2
+        // suivi d'une entree 5 donnait 0x0502 tours — et la boucle sortait de la liste pour
+        // dereferencer des pointeurs quelconques. Plantage natif 0xC0000005 des qu'une zone
+        // arrivait avec des morceaux en attente. Le bornage de la boucle relit le meme octet.
+        int count = *pending;
         if (count == 0) return;
 
         int worldY = *(int*)(entity + 0x20);
@@ -9130,8 +9166,28 @@ public static unsafe partial class Blaze
             uint* record = *(uint**)(*(byte**)(s_Unknown_005e97cc + 0x88) + pending[slot] * 4);
             if (record == null) return;
 
+            // L'original n'a aucune borne : il fait confiance a la sentinelle 0xffffffff. Un
+            // enregistrement atteint par un mauvais indice n'en a pas, et la marche part alors
+            // dans de la memoire quelconque — c'est-a-dire une violation d'acces native, sans
+            // aucune indication de sa cause. La borne ci-dessous ne change rien a un parcours
+            // normal (les listes de boites font quelques dizaines d'entrees) et transforme ce
+            // plantage muet en un message qui nomme les valeurs. Meme raison d'etre que la borne
+            // de balayage de RunTextEngine et que StagingBank.
+            int walked = 0;
+            const int WalkLimit = 0x400;
+
             for (uint header = *record; header != 0xffffffff; record += 4, header = *record)
             {
+                if (++walked > WalkLimit)
+                {
+                    throw new InvalidOperationException(
+                        $"FUN_00534cd0 : plus de 0x{WalkLimit:X} boites parcourues sans sentinelle " +
+                        $"0xffffffff dans le morceau {pending[slot]} (creneau {slot} sur {count}). " +
+                        "La liste de boites atteinte n'en est pas une : c'est l'indice de morceau " +
+                        "ou la liste des morceaux en attente de 0x005fa560 qui est faux, pas la " +
+                        "marche. Relever les octets de 0x005fa560 au moment du plantage.");
+                }
+
                 if (isPartyMember) *(byte*)record = (byte)(*(byte*)record + 1);
 
                 byte kind = (byte)(header >> 8);
@@ -9298,19 +9354,28 @@ public static unsafe partial class Blaze
     /// La boucle rend <b>4</b> quand aucun emplacement ne convient - un indice hors des quatre,
     /// que l'appelant utilise tel quel. Transcrit sans garde : c'est le comportement d'origine.
     /// </para>
+    /// <para>
+    /// <b><c>DAT_005de538</c> est lu ici sur UN OCTET</b> — <c>mov cl,[5DE538h]</c> puis
+    /// <c>xor eax,eax ; mov al,cl</c>, verifie au desassembleur le 2026-08-24. Le meme global est
+    /// lu en double mot puis masque a d'autres sites (d'ou les <c>&amp; 0xff</c> disperses dans
+    /// <c>Engine/Input.cs</c>, <c>Engine/Resources.cs</c> et <c>Screens/State02/Destination.cs</c>),
+    /// et en double mot nu a deux sites d'<c>Engine/UiWindow.cs</c>. Les trois formes se
+    /// transcrivent telles quelles plutot que de s'unifier derriere un champ <c>byte</c> : c'est
+    /// le binaire qui varie, pas la reconstruction.
+    /// </para>
     /// </summary>
     private static short ActivePartySlot_00472770()
     {
         byte* slots = Inp.s_SlotFlags_005e93c0;
-        int current = Mem.s_Unknown_005de538;
+        int current = (byte)Mem.s_Unknown_005de538;
 
         uint flags = *(uint*)(slots + current * 0x9c);
 
         // Ghidra rend ce retour par `CONCAT31((int3)(uVar1 >> 8), DAT_005de538) & 0xffff00ff`, ce
-        // qui masque ce qu'il fait vraiment : l'appelant ne lit qu'un `short`, et dans ces seize
-        // bits les huit hauts sont effaces par le masque. Il ne reste que l'octet bas, soit
-        // DAT_005de538. Le reste de l'expression est du bruit de registre.
-        if ((flags & 0x80000000) != 0 && (flags & 0x50010000) == 0) return (short)(current & 0xff);
+        // qui masque ce qu'il fait vraiment : le binaire fait `xor ax,ax ; mov al,cl`, donc AX vaut
+        // l'octet de DAT_005de538 et les seize bits hauts d'EAX gardent les drapeaux lus juste
+        // avant. L'appelant ne lit qu'un `short` ; le reste de l'expression est du bruit de registre.
+        if ((flags & 0x80000000) != 0 && (flags & 0x50010000) == 0) return (short)current;
 
         short i = 0;
         while ((*(uint*)(slots + i * 0x9c) & 0x80000000) == 0 ||
@@ -9323,15 +9388,425 @@ public static unsafe partial class Blaze
         return i;
     }
 
-    /// <summary>Ghidra: FUN_00472e80 @ 0x00472e80 (244 l.) - la queue de l'automate commun, prise
-    /// quand l'etat n'est aucun de ceux que <see cref="EntityAnimTick_004727D0"/> traite lui-meme.
-    /// Non transcrite : huit dependances, dont <c>FUN_00466d70</c> qui ne l'est pas non plus.</summary>
+    /// <summary>
+    /// Ghidra: FUN_00466d70 @ 0x00466d70 - <b>combien d'emplacements du groupe sont actifs</b> :
+    /// les quatre fiches de <c>s_SlotFlags_005e93c0</c> dont le bit de signe est pose et dont le
+    /// masque <c>0x50000000</c> est vide.
+    ///
+    /// <para>
+    /// Le masque n'est pas celui de <see cref="ActivePartySlot_00472770"/>, qui exclut en plus
+    /// <c>0x00010000</c>. Les deux comptes cohabitent dans <see cref="EntityAnimTail_00472E80"/>
+    /// et ne donnent pas le meme resultat ; c'est voulu.
+    /// </para>
+    /// <para>
+    /// Rend <b>-1</b> quand aucun emplacement ne convient, ce qui en fait une valeur qu'aucune
+    /// comparaison de comptage ne peut satisfaire.
+    /// </para>
+    /// </summary>
+    private static int ActivePartySlotCount_00466D70()
+    {
+        byte* slots = Inp.s_SlotFlags_005e93c0;
+        int count = 0;
+
+        for (int i = 0; i < 4; i++)
+        {
+            uint flags = *(uint*)(slots + i * 0x9c);
+            if ((flags & 0x80000000) != 0 && (flags & 0x50000000) == 0) count++;
+        }
+
+        return count == 0 ? -1 : count;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00472e80 @ 0x00472e80 - <b>la queue de l'automate commun</b>, prise quand l'etat
+    /// n'est aucun de ceux que <see cref="EntityAnimTick_004727D0"/> traite lui-meme. Elle couvre
+    /// cinq etats : 200, 0xc9, 0xcd, 0xce, 0xd2 et 0xd3.
+    ///
+    /// <para>
+    /// <b>Ghidra perd sa signature, et le desassemblage dit pourquoi.</b> Sa pseudo-C declare deux
+    /// parametres alors que le site d'appel en empile trois, puis reaffecte <c>param_1</c> en
+    /// compteur de boucle. Le binaire l'explique en une ligne : la branche de l'etat 0xcd
+    /// <b>reutilise les emplacements d'arguments <c>[esp+14h]</c> et <c>[esp+18h]</c> comme
+    /// variables locales</b>, ecrasant l'entite et le premier identifiant de son une fois qu'ils
+    /// ont ete recopies dans des registres. Le troisieme argument, lui, n'est <b>jamais lu</b> :
+    /// <c>[esp+1ch]</c> n'apparait nulle part dans le corps. <c>soundB</c> est donc mort, et
+    /// garde ici pour que le site d'appel reste comparable a <c>Blaze.c</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le retour est un <c>short</c>, pas un <c>uint</c>.</b> Tous les
+    /// <c>CONCAT22</c>, <c>&amp; 0xffff0000</c> et <c>&lt;&lt; 0x10</c> de Ghidra sont du bruit de
+    /// registre : chaque sortie du binaire est soit <c>mov ax,1</c> soit <c>xor ax,ax</c>. Sauf
+    /// une — voir l'etat 0xd2 et LB-012.
+    /// </para>
+    /// <para>
+    /// Releve dans <c>Legacy/Raw/Blaze/FUN_00472E80.asm</c>.
+    /// </para>
+    /// </summary>
     private static short EntityAnimTail_00472E80(uint* entity, short soundA, short soundB)
-        => throw new NotImplementedException(
-            "FUN_00472e80 (0x00472e80) n'est pas transcrite : la queue de l'automate d'entite, " +
-            $"appelee par FUN_004727d0 pour l'etat {*(short*)((byte*)entity + 0x14)}. 244 lignes " +
-            "dans Blaze.c, huit dependances. Elle prend l'entite et deux identifiants de son, et " +
-            "rend le meme code que son appelant.");
+    {
+        byte* e = (byte*)entity;
+        short state = *(short*)(e + 0x14);
+
+        // --- 200 : annonce la phrase de +0x4c, puis passe la main a 0xc9 --------------------
+        if (state == 200)
+        {
+            *s_CameraResetArmed_00604b80 = 0;
+
+            uint line = *(uint*)(e + 0x4c);
+            if (*(short*)(e + 0x10) < 0xf && line != 0)
+            {
+                byte* slots = Inp.s_SlotFlags_005e93c0;
+                BindMenuLabels(
+                    *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + line * 4),
+                    // Ghidra: `xor eax,eax ; mov al,[5DE538h]` — l'indice est lu sur un octet ici
+                    // aussi, comme dans FUN_00472770.
+                    (uint)(nint)(slots + (byte)Mem.s_Unknown_005de538 * 0x9c),
+                    s_WorldMapDescriptor_005633b0, 0);                // Ghidra: FUN_00544350
+                *(uint*)Mem.Arena(0x005e99c8) = 0x40;
+            }
+
+            uint word = *(uint*)e;
+            *(short*)(e + 0x16) = -1;
+            *(short*)(e + 0x14) = 0xc9;
+            *(uint*)e = word | 0x2000;
+            *(uint*)(e + 0x5c) = 0;
+            return 1;
+        }
+
+        // --- 0xc9 : joue le son une seule fois, en passant de -1 a -2 -----------------------
+        if (state == 0xc9)
+        {
+            if (*(short*)(e + 0x16) == -1)
+            {
+                *(short*)(e + 0x16) = -2;
+                PlayZoneSound(entity, soundA);
+            }
+
+            return 0;
+        }
+
+        // --- 0xcd : le groupe s'est-il assez ecarte ? --------------------------------------
+        // Ce bloc ne rend jamais la main lui-meme : il arme au plus l'etat 0xce, que la cascade
+        // ci-dessous relit. Ghidra le montre en relisant +0x14 juste apres (LAB_00473154).
+        if (state == 0xcd) EvaluatePartyDispersal(e);
+
+        state = *(short*)(e + 0x14);
+
+        // --- 0xce : bascule sur la camera de scenette -------------------------------------
+        if (state == 0xce)
+        {
+            *s_CameraResetArmed_00604b80 = 1;
+
+            short kind = *(short*)(e + 0x98);
+            *(short*)(e + 0x14) = 10;
+            *(short*)(e + 0x16) = 1;
+
+            if (kind == 1 || kind == 2) ArmCutawayCamera(e);
+            return 1;
+        }
+
+        // --- 0xd2 : met le sujet en posture 6 et annonce le son d'ouverture ---------------
+        if (state == 0xd2)
+        {
+            uint word = *(uint*)e;
+            byte* subject = *(byte**)(e + 0x6c);
+            *(uint*)e = word | 0x2000;
+            if (subject == null) subject = Res.s_EntityList_005de558;
+
+            *(short*)(subject + 0x18) = 6;
+            *(short*)(e + 0x14) = 0xd3;
+            *(short*)(e + 0x16) = 0;
+            *(short*)(subject + 0x1a) = 0;
+
+            FreezeAllEntities();                                      // Ghidra: FUN_00535300(0)
+            *(uint*)e &= 0xfbffffff;
+
+            byte kindBits = GetMainMemPtr()[(subject[8] << 0xd) + 0xf0150];
+            if ((kindBits & 7) == 2) Aud.PlaySoundEffect(6, 0x800, 0xa00, 0xa00);
+            else Aud.PlaySoundEffect(7, 0x400, 0xa00, 0xa00);
+
+            // LB-012 : ces deux sorties ne posent PAS AX. Le binaire rend ce que FUN_0053cea0 a
+            // laisse dans EAX, c'est-a-dire ce que la derniere fonction appelee par elle y a
+            // laisse — une valeur indefinie, que l'appelant compare pourtant a 1. Toutes les
+            // autres sorties du corps font `mov ax,1` ou `xor ax,ax`. On rend 0, la valeur des
+            // sorties voisines ; c'est le seul choix qui ne soit pas un tirage.
+            return 0;
+        }
+
+        // --- 0xd3 : fait defiler la posture du sujet jusqu'a sa derniere image -------------
+        if (state == 0xd3) StepSubjectPosture(e);
+
+        return 0;
+    }
+
+    /// <summary>
+    /// L'etat 0xcd : trois comptages sur les quatre fiches d'emplacement, une distance a
+    /// <c>DAT_005e9a30</c>, et deux conditions concurrentes qui menent toutes deux a 0xce.
+    ///
+    /// <para>
+    /// <b>Les trois comptages n'emploient pas le meme masque</b>, et c'est la tout le sens du
+    /// bloc : <c>near</c> compte les membres assez eloignes de l'entite (rayon 500, ou 300 quand
+    /// +0x98 vaut 1), <c>active</c> les emplacements vivants au sens de <c>0x50010000</c>, et
+    /// <c>flagged</c> ceux d'entre eux qui portent deja le bit <c>0x04000000</c> pose par la
+    /// premiere boucle. Confondre les trois effacerait les deux issues.
+    /// </para>
+    /// <para>
+    /// La premiere boucle a un effet de bord : quand +0x98 vaut 2, chaque membre assez loin
+    /// recoit le bit <c>0x04000000</c> et voit naitre l'effet d'etat 0x9d sur lui.
+    /// </para>
+    /// <para>
+    /// <see cref="ActivePartySlotCount_00466D70"/> est appelee <b>inconditionnellement</b> : le
+    /// binaire l'appelle avant de tester quoi que ce soit, et son resultat est compare a
+    /// <c>near</c>. Ghidra le rend par <c>extraout_AX</c>, ce qui masque completement d'ou vient
+    /// la valeur.
+    /// </para>
+    /// </summary>
+    private static void EvaluatePartyDispersal(byte* e)
+    {
+        byte* slots = Inp.s_SlotFlags_005e93c0;
+        short kind = *(short*)(e + 0x98);
+        short near = 0;
+
+        for (int i = 0; i < 4; i++)
+        {
+            uint* slot = (uint*)(slots + i * 0x9c);
+            if ((*slot & 0x80000000) == 0 || (*slot & 0x50000001) != 0) continue;
+
+            byte* position = (byte*)slot + 0x1c;
+            int dx = (*(int*)(e + 0x1c) >> 0xc) - (*(int*)position >> 0xc);
+            int dy = (*(int*)(e + 0x20) >> 0xc) - (*(int*)(position + 4) >> 0xc);
+            int dz = (*(int*)(e + 0x24) >> 0xc) - (*(int*)(position + 8) >> 0xc);
+
+            int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+            if (distance <= 500 && !(distance > 300 && kind == 1)) continue;
+
+            near++;
+            if (kind != 2 || (*slot & 0x4000000) != 0) continue;
+
+            *slot |= 0x4000000;
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)slot, (int*)position, null, 0x9d, 0, -1);      // Ghidra: FUN_0047ac40
+        }
+
+        short active = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            uint flags = *(uint*)(slots + i * 0x9c);
+            if ((flags & 0x80000000) != 0 && (flags & 0x50010000) == 0) active++;
+        }
+
+        short flagged = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            uint flags = *(uint*)(slots + i * 0x9c);
+            if ((flags & 0x80000000) != 0 && (flags & 0x50010000) == 0 &&
+                (flags & 0x4000000) != 0) flagged++;
+        }
+
+        // La distance au point memorise en 0x005e9a30, la ou la premiere boucle mesurait la
+        // distance a chaque membre.
+        int* anchor = (int*)Mem.Arena(0x005e9a30);
+        int ax = (*(int*)(e + 0x1c) >> 0xc) - (anchor[0] >> 0xc);
+        int ay = (*(int*)(e + 0x20) >> 0xc) - (anchor[1] >> 0xc);
+        int az = (*(int*)(e + 0x24) >> 0xc) - (anchor[2] >> 0xc);
+        short far = (int)Winsys3d.Ordinal_442((uint)(ax * ax + ay * ay + az * az)) > 300
+            ? (short)1 : (short)0;
+
+        if (flagged != 0 && active != 0 && flagged == active && kind == 2)
+        {
+            *s_CameraResetArmed_00604b80 = 1;
+            *(short*)(e + 0x14) = 0xce;
+        }
+
+        short counted = (short)ActivePartySlotCount_00466D70();       // Ghidra: FUN_00466d70
+        if (near == counted && far == 1 && kind != 2)
+        {
+            *s_CameraResetArmed_00604b80 = 1;
+            *(short*)(e + 0x14) = 0xce;
+        }
+
+        if (*s_CameraResetArmed_00604b80 == 1) *(short*)(e + 0x14) = 0xce;
+    }
+
+    /// <summary>
+    /// L'etat 0xce, moitie active : <b>le miroir exact</b> de
+    /// <see cref="ResetCameraAndWakeSceneEntities"/>. Celui-la rebranche les trois globales de
+    /// camera sur les tables ordinaires ; celui-ci les detourne vers un jeu de valeurs range dans
+    /// <c>0x00571980..0x005719a0</c>, apres y avoir recopie ce que les tables portaient.
+    ///
+    /// <para>
+    /// La cible visee est l'entite elle-meme, avec un jeu de cap et d'elevation bruite : cap
+    /// <c>rand() % 200 + entite[0x30] + 400</c>, elevation <c>rand() % 200 + entite[0x32] + 300</c>,
+    /// distance <c>rand() % 200 + 1000</c>. <c>DAT_00571990</c> est ecrit <b>deux fois</b> — d'abord
+    /// avec la distance courante, puis avec le tirage — et la premiere ecriture est morte. C'est ce
+    /// que fait le binaire.
+    /// </para>
+    /// <para>
+    /// <b>L'entite est perdue en route</b> : le binaire fait <c>xor esi,esi</c> au milieu du bloc
+    /// pour reutiliser le registre en compteur de bits. Rien ne la relit apres, et la branche rend
+    /// 1 immediatement — c'est cette destruction qui rend le corps illisible dans <c>Blaze.c</c>,
+    /// ou <c>puVar9</c> change de sens en cours de route.
+    /// </para>
+    /// </summary>
+    private static void ArmCutawayCamera(byte* e)
+    {
+        int* target = Mem.EntityState(0x00571998);
+        target[0] = *(int*)(e + 0x1c);
+        target[1] = *(int*)(e + 0x20);
+        target[2] = *(int*)(e + 0x24);
+
+        short* view = (short*)Mem.EntityStateBytes(0x00571980);
+        view[0] = (short)(CrtRand() % 200 + *(short*)(e + 0x30) + 400);   // Ghidra: FUN_00547140
+        view[1] = (short)(CrtRand() % 200 + *(short*)(e + 0x32) + 300);
+        view[2] = *(short*)(e + 0x34);
+
+        // Ce que les tables portaient est mis de cote dans les trois mots voisins.
+        int* live = *(int**)Mem.Entity(0x005eca94);
+        int* saved = Mem.EntityState(0x00571988);
+        saved[0] = live[0];
+        saved[1] = live[1];
+        saved[2] = live[2];
+
+        int roll = CrtRand();
+
+        *(int**)Mem.Entity(0x005eca94) = Mem.EntityState(0x00571988);
+        *(byte**)Mem.Arena(0x005e9ae0) = Mem.EntityStateBytes(0x00571980);
+        *(int**)Mem.Entity(0x005edebc) = Mem.EntityState(0x00571998);
+
+        s_CameraResetMask_00604b84[0] = 0;
+        s_CameraResetMask_00604b84[1] = 0;
+        s_CameraResetMask_00604b84[2] = 0;
+        s_CameraResetMask_00604b84[3] = 0;
+
+        // La seconde ecriture de DAT_00571990 : elle ecrase celle de `saved[2]` ci-dessus.
+        *Mem.EntityState(0x00571990) = roll % 200 + 1000;
+
+        Saves.s_SavedViewMode_00604b7c = s_Unknown_005de54c;
+        s_Unknown_005de54c = 3;
+
+        // Le masque que ResetCameraAndWakeSceneEntities relira : un bit par entree de scene deja
+        // reveillee, l'indice de bit tournant sur huit.
+        byte* scene = Mem.Entity(0x005ecaa0);
+        short bit = 0;
+        for (int i = 0; i < 0x20; i++)
+        {
+            if ((*(uint*)(scene + i * 0x9c) & 0x4000000) != 0)
+            {
+                s_CameraResetMask_00604b84[i >> 3] |= (byte)(1 << (bit & 0x1f));
+            }
+
+            bit++;
+            if (bit == 8) bit = 0;
+        }
+
+        FreezeAllEntities();                                          // Ghidra: FUN_00535300(0)
+
+        // Et les entites de zone dont le sous-type est 1..7 perdent leur bit d'eveil.
+        byte* zone = Mem.Entity(0x005fa5e0);
+        for (int i = 0; i < 0x80; i++)
+        {
+            byte* record = zone + i * 0x9c;
+            if (record[5] >= 1 && record[5] <= 7) *(uint*)record &= 0xfbffffff;
+        }
+    }
+
+    /// <summary>
+    /// L'etat 0xd3 : le sujet tenu en +0x6c avance d'une image de posture par pas, jusqu'a une
+    /// borne qui depend de ce qu'il est.
+    ///
+    /// <para>
+    /// L'octet de classe est lu dans le bloc de 0x2000 octets du sujet, a
+    /// <c>(sujet[8] + 0x78) * 0x2000 + 0x150</c>. Sa valeur <c>&amp; 7</c> vaut 2 pour la famille
+    /// qui a ses propres bornes en dur — 5 images, ou 11 si le bit 8 est pose ; toute autre valeur
+    /// prend la borne dans la fiche d'animation, <c>0x005e9680[sujet[4]]</c>.
+    /// </para>
+    /// <para>
+    /// <b>Les deux liberations ne sont pas identiques</b> : celle de la famille 2 remet aussi
+    /// +0x16 a zero, celle de l'autre non. Ghidra le montre par un <c>goto LAB_00473454</c> d'un
+    /// cote et une chute de l'autre ; c'est le genre d'asymetrie qu'une factorisation effacerait.
+    /// </para>
+    /// </summary>
+    private static void StepSubjectPosture(byte* e)
+    {
+        byte* subject = *(byte**)(e + 0x6c);
+        if (subject == null) subject = Res.s_EntityList_005de558;
+
+        *(short*)(subject + 0x18) = 6;
+
+        // Le binaire charge la fiche d'animation AVANT de tester la classe, donc sans savoir s'il
+        // s'en servira. Transcrit dans le meme ordre : une fiche invalide fauterait au meme
+        // endroit qu'en 1998.
+        byte* animation = *(byte**)(((byte**)Mem.Arena(0x005e9680))[subject[4]] + 0x18);
+
+        byte kindBits = GetMainMemPtr()[((subject[8] + 0x78) << 0xd) + 0x150];
+
+        if ((kindBits & 7) == 2)
+        {
+            short frame = *(short*)(subject + 0x1a);
+
+            if ((kindBits & 8) == 0)
+            {
+                if (frame + 1 < 5)
+                {
+                    *(short*)(subject + 0x1a) = (short)(frame + 1);
+                    return;
+                }
+
+                if (*(short*)(e + 0x16) != 0)
+                {
+                    ReleaseSubjectPosture(e, subject, clearEvent: true);
+                    return;
+                }
+
+                *(short*)(e + 0x16) = 1;
+                *(short*)(subject + 0x1a) = 2;
+            }
+            else
+            {
+                if (frame + 1 < 0xb)
+                {
+                    *(short*)(subject + 0x1a) = (short)(frame + 1);
+                    return;
+                }
+
+                if (*(short*)(e + 0x16) != 0)
+                {
+                    ReleaseSubjectPosture(e, subject, clearEvent: true);
+                    return;
+                }
+
+                *(short*)(e + 0x16) = 1;
+                *(short*)(subject + 0x1a) = 3;
+            }
+
+            Aud.PlaySoundEffect(6, 0x800, 0xa00, 0xa00);              // Ghidra: FUN_0053cea0
+            return;
+        }
+
+        int bound = *(ushort*)(animation + 0x16);
+        if (*(short*)(subject + 0x1a) + 1 < bound)
+        {
+            *(short*)(subject + 0x1a) += 1;
+            return;
+        }
+
+        ReleaseSubjectPosture(e, subject, clearEvent: false);
+    }
+
+    /// <summary>
+    /// La fin de l'etat 0xd3 : le sujet reprend la main, les entites degelent, l'automate revient
+    /// en 0x14.
+    /// </summary>
+    /// <param name="clearEvent">Vrai sur la sortie de la famille 2 seulement — c'est la seule des
+    /// deux qui remet +0x16 a zero (Ghidra: <c>LAB_00473454</c> contre la chute en
+    /// <c>LAB_00473490</c>).</param>
+    private static void ReleaseSubjectPosture(byte* e, byte* subject, bool clearEvent)
+    {
+        *(uint*)subject |= 0x2000000;
+        UnfreezeAllEntities();                                        // Ghidra: FUN_00535400
+        *(short*)(e + 0x14) = 0x14;
+        if (clearEvent) *(short*)(e + 0x16) = 0;
+    }
 
     /// <summary>
     /// Ghidra: FUN_005037e0 @ 0x005037e0 - rebranche les trois globales de camera selon le mode de
@@ -9487,7 +9962,9 @@ public static unsafe partial class Blaze
             {
                 BindMenuLabels(
                     *(byte**)(*(int*)(s_Unknown_005e97cc + 0x70) + *(uint*)(e + 0x4c) * 4),
-                    (uint)(nint)(slots + Mem.s_Unknown_005de538 * 0x9c),
+                    // Ghidra: `xor eax,eax ; mov al,[5DE538h]` — troisieme site de ce fichier a
+                    // lire l'indice sur un octet. Voir ActivePartySlot_00472770.
+                    (uint)(nint)(slots + (byte)Mem.s_Unknown_005de538 * 0x9c),
                     s_WorldMapDescriptor_005633b0, 0);
                 *(uint*)Mem.Arena(0x005e99c8) = 0x40;
             }
@@ -10173,6 +10650,52 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: FUN_0040e640 @ 0x0040e640 — <b>le grand frere</b> de
+    /// <see cref="ClearWakeBitOnUnpinnedEntities_004742B0"/> : memes trois passes sur les memes
+    /// trois tables d'entites, plus deux ajouts. C'est cette variante-la, et non la courte, que le
+    /// sous-type 17 appelle en fin de pas.
+    ///
+    /// <para>
+    /// Sur la <b>premiere</b> table seulement, les sous-types <c>0x1c</c> et <c>0x17</c> recoivent
+    /// en plus le bit <c>0x40000000</c>. C'est pourquoi cette passe ne peut pas reutiliser
+    /// <see cref="ClearWakeBitOnTable"/> et est ecrite en toutes lettres : l'octet lu est +5, donc
+    /// dans le second mot de l'enregistrement, sans interference avec le mot de drapeaux de +0.
+    /// </para>
+    /// <para>
+    /// La <b>quatrieme</b> boucle ne touche plus d'entites de scene mais les quatre fiches
+    /// d'emplacement du groupe — <c>s_SlotFlags_005e93c0</c>, meme pas de 0x9c : elle remet le mot
+    /// de couleur de +0x38 a blanc (trois octets a 0xff) et efface le bit 2 de +0x36. Ghidra
+    /// l'ecrit en decalages negatifs autour de <c>&amp;DAT_005e93f9</c>, ce qui masque la base.
+    /// </para>
+    /// </summary>
+    private static void ResetEntityWakeBits_0040E640()
+    {
+        byte* scene = Mem.Entity(0x005ff400);
+        for (int i = 0; i < 0x20; i++)
+        {
+            uint* word = (uint*)(scene + i * 0x9c);
+            if ((*word & 0x10000000) == 0) *word &= 0xfbffffff;
+
+            sbyte subtype = *(sbyte*)((byte*)word + 5);
+            if (subtype == 0x1c) *word |= 0x40000000;
+            if (subtype == 0x17) *word |= 0x40000000;
+        }
+
+        ClearWakeBitOnTable(Mem.Entity(0x005f2d40), 0x80);
+        ClearWakeBitOnTable(Mem.Entity(0x005edee0), 0x80);
+
+        byte* slots = Mem.Arena(0x005e93c0);
+        for (int i = 0; i < 4; i++)
+        {
+            byte* record = slots + i * 0x9c;
+            record[0x38] = 0xff;
+            record[0x39] = 0xff;
+            record[0x3a] = 0xff;
+            *(ushort*)(record + 0x36) &= 0xfffb;
+        }
+    }
+
+    /// <summary>
     /// Ghidra: FUN_00473ed0 @ 0x00473ed0 - le sous-type <b>13</b> de la table 0x0056adc8 : <b>le
     /// coffre</b>. C'est le plus fourni de la famille, et le seul a remettre un objet au groupe.
     ///
@@ -10193,9 +10716,10 @@ public static unsafe partial class Blaze
     /// <para>
     /// <b>Le rappel de fin de boite est <c>0x00474320</c></b>, un bloc dont Ghidra n'a vu que
     /// l'adresse prise. Il n'est pas appele ici : il est range dans le descripteur par
-    /// <see cref="GrantChestContents_00530F20"/> et rejoue plus tard. Le transcrire n'est donc pas
-    /// necessaire pour que ce corps-ci tourne — il l'est pour que le contenu du coffre soit
-    /// reellement range. TODO(REVERSE) : <c>LAB_00474320</c>.
+    /// <see cref="GrantChestContents_00530F20"/> et rejoue plus tard. Longtemps porte comme une
+    /// lacune, il n'en etait pas une : ses 87 octets sont <b>identiques</b> a ceux de
+    /// <c>0x00450700</c>, et <see cref="ChestPickupDone_00450700"/> le couvre. Le contenu du coffre
+    /// est donc reellement range.
     /// </para>
     /// </summary>
     private static void EntityHandler_00473ED0(uint* entity)
@@ -10415,7 +10939,8 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// L'etat 0x28 : la remise effective du contenu. Le rappel de fin de boite est
-    /// <c>0x00474320</c> dans les deux branches.
+    /// <c>0x00474320</c> dans les deux branches — c'est-a-dire le meme corps que
+    /// <c>0x00450700</c>, emis deux fois par le compilateur.
     ///
     /// <para>
     /// <c>DAT_005e9860</c> retient, par numero d'objet de +0x44, ce que le coffre a deja donne :
@@ -10496,26 +11021,80 @@ public static unsafe partial class Blaze
     /// <b>ignore completement son entite</b> : il affiche un enonce fixe et rend la main.
     ///
     /// <para>
-    /// L'enonce vit en <c>0x00551814</c>. Ses octets sont du <b>Shift-JIS</b> — la chaine
-    /// japonaise est restee dans le binaire francais. Elle n'est pas transcrite ici : la faire
-    /// vivre demande de relever le bloc d'etiquettes entier et sa longueur, ce que
-    /// <see cref="BindMenuLabels"/> attend. Voir le TODO(REVERSE) ci-dessous.
+    /// L'enonce est <b>un message de developpeur</b>, reste en japonais dans le binaire francais :
+    /// « la porte a un battant n'est pas utilisable pour l'instant, contactez Imai ». Ces deux
+    /// sous-types sont donc une porte <b>inachevee</b>, et le texte n'a jamais ete traduit parce
+    /// qu'il n'etait pas destine au joueur. Voir <see cref="s_DeveloperNotice_00551814"/>.
     /// </para>
     /// </summary>
     private static void EntityHandler_00473A70(uint* entity)
-        => BindMenuLabels(s_JapaneseNotice_00551814, 0, s_WorldMapDescriptor_005633b0, 0);
+        => BindMenuLabels(s_DeveloperNotice_00551814, 0, s_WorldMapDescriptor_005633b0, 0);
 
-    // Ghidra: &DAT_00551814 - le bloc d'etiquettes que le gestionnaire ci-dessus affiche. Ses
-    // premiers octets releves dans Legacy/Binaries/Blaze.exe sont
-    //   1f d0 20 08 00 0c 95 d0   puis du Shift-JIS a partir de +0x08
-    // soit un en-tete de huit octets suivi du texte, comme les autres blocs d'etiquettes.
-    //
-    // TODO(REVERSE): la LONGUEUR du bloc n'est pas etablie, et sans elle le contenu ne peut pas
-    // etre transcrit fidelement. Laisse a zero : BindMenuLabels recevra un bloc vide et
-    // n'affichera rien, ce qui est visible et sans danger - au lieu de lire au hasard dans .data
-    // si on lui donnait un pointeur invente. Relever la longueur en lisant le format d'en-tete
-    // dans Engine/UiText.cs, puis dumper le bloc entier.
-    private static readonly byte* s_JapaneseNotice_00551814 = (byte*)NativeMemory.AllocZeroed(0x10);
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551814</c> — le bloc d'etiquettes que <see cref="EntityHandler_00473A70"/>
+    /// affiche, <b>releve verbatim</b> dans <c>Legacy/Binaries/Blaze.exe</c> (<c>.data</c>, decalage
+    /// fichier <c>0x0014FE14</c>). Soixante-six octets jusqu'au terminateur, plus deux octets de
+    /// bourrage jusqu'a la frontiere de quatre.
+    ///
+    /// <para>
+    /// <b>Sa longueur ne se lit pas dans un en-tete</b> — c'etait l'erreur qui l'a laisse en lacune
+    /// deux jours. Un bloc d'etiquettes est un <b>flux</b> : tout octet au-dessus de 0x1f est du
+    /// texte, tout octet en dessous est un code de controle, et le flux s'arrete au premier 0x00
+    /// <b>qui n'est pas une operande</b>. La longueur se mesure donc en parcourant le flux avec la
+    /// table de la passe 1 (<c>s_ScanTable_0056e870</c>, dans <c>Engine/UiText.cs</c>), dont les
+    /// talons <c>0x00543940</c>..<c>0x00543970</c> donnent directement le nombre d'operandes de
+    /// chaque code — zero a trois. Ici deux 0x00 sont des operandes avant celui qui termine.
+    /// </para>
+    /// <para>
+    /// Le flux se lit comme une scenette complete :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><c>1f d0 20</c> — code 0x1f, pose le champ de <c>+0x08</c> a deux <c>short</c> : la
+    /// boite se place en (0xd0, 0x20) ;</item>
+    /// <item><c>08 00</c> — code 0x08, <b>gele</b> le monde ;</item>
+    /// <item><c>0c</c> — code 0x0c, ouvre la boite (c'est lui qui <c>ClearOTagR</c> la table de
+    /// +0x68) ;</item>
+    /// <item>28 paires Shift-JIS — <c>片開きのドアは現在使用出来ません。今井まで連絡ください。</c> ;</item>
+    /// <item><c>0f</c> — code 0x0f, <b>attend le joueur</b> en montrant le curseur ;</item>
+    /// <item><c>08 01</c> — code 0x08, <b>degele</b> ;</item>
+    /// <item><c>00</c> — fin de flux.</item>
+    /// </list>
+    /// <para>
+    /// <b>今井 est un nom propre</b> — celui d'un membre de l'equipe. Le message dit « la porte a
+    /// un battant n'est pas utilisable pour l'instant. Contactez Imai. » : c'est une note interne
+    /// laissee a qui construisait les niveaux, expediee telle quelle dans la version vendue. Elle
+    /// est restee en japonais dans le binaire francais pour la meme raison qu'elle n'a jamais eu
+    /// de traduction — personne n'etait cense la lire.
+    /// </para>
+    /// </summary>
+    private static readonly byte* s_DeveloperNotice_00551814 = BuildDeveloperNotice_00551814();
+
+    private static byte* BuildDeveloperNotice_00551814()
+    {
+        ReadOnlySpan<byte> bytes =
+        [
+            0x1f, 0xd0, 0x20,                                     // place la boite en (0xd0, 0x20)
+            0x08, 0x00,                                           // gele le monde
+            0x0c,                                                 // ouvre la boite
+            0x95, 0xd0, 0x8a, 0x4a, 0x82, 0xab, 0x82, 0xcc,       // 片開きの
+            0x83, 0x68, 0x83, 0x41, 0x82, 0xcd,                   // ドアは
+            0x8c, 0xbb, 0x8d, 0xdd, 0x8e, 0x67, 0x97, 0x70,       // 現在使用
+            0x8f, 0x6f, 0x97, 0x88, 0x82, 0xdc, 0x82, 0xb9,       // 出来ませ
+            0x82, 0xf1, 0x81, 0x42,                               // ん。
+            0x8d, 0xa1, 0x88, 0xe4, 0x82, 0xdc, 0x82, 0xc5,       // 今井まで
+            0x98, 0x41, 0x97, 0x8d,                               // 連絡
+            0x82, 0xad, 0x82, 0xbe, 0x82, 0xb3, 0x82, 0xa2,       // ください
+            0x81, 0x42,                                           // 。
+            0x0f,                                                 // attend le joueur
+            0x08, 0x01,                                           // degele
+            0x00,                                                 // fin de flux
+            0x00, 0x00,                                           // bourrage jusqu'a la frontiere de 4
+        ];
+
+        byte* buffer = (byte*)NativeMemory.AllocZeroed((nuint)bytes.Length);
+        for (int i = 0; i < bytes.Length; i++) buffer[i] = bytes[i];
+        return buffer;
+    }
 
     /// <summary>
     /// Ghidra: FUN_00450bd0 @ 0x00450bd0 - le sous-type <b>11</b>. Une entite qui <b>scintille</b> :
@@ -10709,16 +11288,319 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x32) += (short)*(uint*)(e + 0x5c);
     }
 
-    /// <summary>Ghidra: FUN_004502e0 @ 0x004502e0 - le sous-type <b>17</b>. Absent de
-    /// <c>Blaze.c</c> comme les cinq ci-dessus, mais d'un tout autre calibre : environ
-    /// <b>1030 octets</b> (0x004502e0..0x004506ec au moins), avec la meme forme d'automate a etats
-    /// disperses que le coffre — <c>0xFF01</c>, <c>0xFFFE</c>, <c>0xFFFF</c>, et l'ecriture de
-    /// +0x9a / +0x98 des l'entree. Seul de la famille a ne pas avoir ete transcrit le
-    /// 2026-08-24.</summary>
+    /// <summary>
+    /// Ghidra: FUN_004502e0 @ 0x004502e0 - le sous-type <b>17</b> de la table 0x0056adc8, et le
+    /// <b>quasi-jumeau</b> du coffre de <see cref="EntityHandler_00473ED0"/> : meme automate, memes
+    /// etats, memes appels, a cinq differences pres. Absent de <c>Blaze.c</c> ; 1042 octets
+    /// (0x004502e0..0x004506f1), releve dans <c>Legacy/Raw/Blaze/FUN_004502E0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Ce qui le separe du coffre</b>, et c'est tout :
+    /// </para>
+    /// <list type="number">
+    /// <item>la memoire du « deja pris » n'est pas le champ de bits de coffres <c>DAT_005e96e0</c>
+    /// mais <c>s_PartyAbilityMask_005e9000</c>, teste par le meme <c>1 &lt;&lt; (n &amp; 7)</c> ;</item>
+    /// <item>et il n'y pose pas le bit lui-meme : l'etat 100 passe par
+    /// <see cref="ApplyPartyScriptOp"/> avec l'opcode 3 (<c>|=</c>), ce qui allume le bit dans le
+    /// bloc de drapeaux de <b>chaque membre du groupe</b> avant de le refleter dans le masque
+    /// commun ;</item>
+    /// <item>la valeur lissee de l'ouverture vit en <c>0x00571528</c>, pas <c>0x00571990</c> ;</item>
+    /// <item>le rappel de fin de boite est <c>0x00450700</c> la ou le coffre passe
+    /// <c>0x00474320</c> — deux adresses pour un seul corps, celui de
+    /// <see cref="ChestPickupDone_00450700"/> ;</item>
+    /// <item>la passe de fin est <see cref="ResetEntityWakeBits_0040E640"/> et non
+    /// <see cref="ClearWakeBitOnUnpinnedEntities_004742B0"/> : trois tables identiques, plus deux
+    /// sous-types epingles et la remise a blanc des quatre fiches d'emplacement.</item>
+    /// </list>
+    /// <para>
+    /// Le nom donne ici aux trois auxiliaires vient du champ de bits sur lequel il s'indexe
+    /// (<c>s_PartyAbilityMask</c>), pas d'une observation en jeu : ce sous-type n'apparait pas a
+    /// l'auberge, comme les onze autres ajoutes le 2026-08-24.
+    /// </para>
+    /// </summary>
     private static void EntityHandler_004502E0(uint* entity)
-        => throw new NotImplementedException(
-            "FUN_004502e0 (0x004502e0) n'est pas transcrite : le sous-type 17 de la table " +
-            "0x0056adc8, absent de Blaze.c. Environ 1030 octets a desassembler — " +
-            "`OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x004502e0 1040`. Meme forme " +
-            "que FUN_00473ed0 (le coffre) : automate a etats disperses, dont des etats negatifs.");
+    {
+        byte* e = (byte*)entity;
+
+        // L'operande de script que l'etat 100 appliquera. Le binaire l'initialise ICI, a
+        // { 0, 1, 4, 0xEF }, et en reecrit les trois derniers octets avant le seul site qui la
+        // lit : ces valeurs d'entree sont donc mortes. Elles sont ecrites quand meme, parce que
+        // c'est ce que fait le binaire et que le cout est nul.
+        byte* op = stackalloc byte[4];
+        op[0] = 0;
+        op[1] = 1;
+        op[2] = 4;
+        op[3] = 0xef;
+
+        *(uint*)(e + 0x50) = 0;
+        *(uint*)(e + 0x54) = 0;
+        *(uint*)(e + 0x58) = 0;
+
+        if (*(short*)(e + 0x10) == -0xff) *(short*)(e + 0x10) = 1;
+        if (*(short*)(e + 0x10) == -2) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // +0x30 porte le numero, signe : un numero negatif arme la variante -2 et memorise le
+            // signe dans +0x98. Identique au coffre.
+            short number = *(short*)(e + 0x30);
+            *(short*)(e + 0x10) = -1;
+            *(short*)(e + 0x9a) = number;
+            *(short*)(e + 0x98) = 0;
+            if (number < 0)
+            {
+                *(short*)(e + 0x10) = -2;
+                *(short*)(e + 0x9a) = (short)-number;
+                *(short*)(e + 0x98) = 1;
+            }
+
+            short packed = *(short*)(e + 0x34);
+            *(short*)(e + 0x30) = 0;
+            *(short*)(e + 0x34) = 0;
+            *(uint*)(e + 0x44) = (uint)(packed & 0xff);
+            *(uint*)(e + 0x48) = (uint)(packed >> 8);
+        }
+
+        if (*(short*)(e + 0x10) == -1 && (*(uint*)e & 0x40) != 0)
+        {
+            byte* target = *(byte**)(e + 0x6c);
+            if (target == null) target = Res.s_EntityList_005de558;
+
+            if ((*(uint*)target & 0x10000) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(uint*)e |= 0x2000;
+            }
+        }
+
+        short state = *(short*)(e + 0x10);
+        if (state != -0xff && state != -2 && state != 0 && state != -1 && state != 0xca)
+        {
+            FreezeAllEntities();                              // Ghidra: FUN_00535300(0)
+            *(uint*)e &= 0xfbffffff;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            // La cible de lissage de l'etat 2, tiree une fois : 500 a 799.
+            *(uint*)(e + 0x5c) = (uint)(CrtRand() % 300 + 500);   // Ghidra: FUN_00547140
+            FreezeAllEntities();
+
+            byte* sounds = *(byte**)(*(byte***)(s_Unknown_005e97cc + 0xa8));
+            TryPlaySoundNearEntity(entity, (short)sounds[8], 0x146, 0x3000, 0, 0);
+
+            *(short*)(e + 0x10) = 2;
+            *(uint*)e &= 0xfbffffff;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        // Seule sortie anticipee du corps : l'etat 2 quand la capacite est deja acquise. Tous les
+        // autres chemins de l'etat 2 rejoignent la cascade de sortie (Ghidra: LAB_0045050e).
+        if (*(short*)(e + 0x10) == 2 && !StepAbilityChestOpening(e, entity)) return;
+
+        AbilityChestDispatchTail(e, op);
+    }
+
+    /// <summary>
+    /// L'etat 2 : le couvercle descend de 0x23 par pas pendant trente pas, la valeur lissee de
+    /// <c>DAT_00571528</c> converge d'un quart vers la cible tiree a l'etat 1. Rend faux quand il
+    /// faut rendre la main sans passer par la cascade de sortie.
+    ///
+    /// <para>
+    /// C'est ici que se lit la premiere difference avec le coffre : le champ de bits interroge est
+    /// <c>s_PartyAbilityMask_005e9000</c>, indexe par le numero de +0x9a. Bit deja pose, la
+    /// capacite est deja acquise et l'etat part directement en 300.
+    /// </para>
+    /// </summary>
+    private static bool StepAbilityChestOpening(byte* e, uint* entity)
+    {
+        int* smoothed = Mem.EntityState(0x00571528);
+        *smoothed += ((int)*(uint*)(e + 0x5c) - *smoothed) >> 2;
+
+        *(short*)(e + 0x34) -= 0x23;
+        *(short*)(e + 0x12) += 1;
+        if (*(short*)(e + 0x12) < 0x1f) return true;
+
+        short number = *(short*)(e + 0x9a);
+        byte* mask = Mem.Arena(0x005e9000) + (number >> 3);
+        if ((*mask & (byte)(1 << (number & 7))) != 0)
+        {
+            *(short*)(e + 0x10) = 300;
+            *(short*)(e + 0x12) = 0;
+            return false;
+        }
+
+        uint slot = *(uint*)(e + 0x48);
+        short saved;
+
+        if (*(short*)(e + 0x14) == -1)
+        {
+            if (slot == 0)
+            {
+                *(short*)(e + 0x10) = 0x28;
+                *(short*)(e + 0x12) = 0;
+                return true;
+            }
+
+            saved = *(short*)(e + 0x98);
+            *(short*)(e + 0x98) = 0x28;
+        }
+        else
+        {
+            if (slot == 0)
+            {
+                *(short*)(e + 0x10) = 0x14;
+                *(short*)(e + 0x12) = 0;
+                return true;
+            }
+
+            saved = *(short*)(e + 0x98);
+            *(short*)(e + 0x98) = 0x14;
+        }
+
+        SpawnEffectEntity((byte*)entity, (byte)(slot + 0xc0), 0, -1);   // Ghidra: FUN_0047a9d0
+        *(short*)(e + 0x98) = saved;
+        *(short*)(e + 0x12) = 0;
+        *(short*)(e + 0x10) = 999;
+        return true;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>LAB_0045050e</c> — la cascade de sortie, atteinte par cinq chemins, exactement
+    /// comme <see cref="ChestDispatchTail"/>.
+    /// </summary>
+    /// <param name="op">L'operande de script de quatre octets allouee par l'appelant ; seul l'etat
+    /// 100 la reecrit et l'emploie.</param>
+    private static void AbilityChestDispatchTail(byte* e, byte* op)
+    {
+        byte* areaDir = s_Unknown_005e97cc;
+        short state = *(short*)(e + 0x10);
+
+        if (state == 0x14)
+        {
+            // Le contenu est refuse : marque dans la banque 0x005e9840, indexee par +0x14, puis la
+            // phrase que +0x16 designe.
+            short index = *(short*)(e + 0x14);
+            byte* refused = Mem.Arena(0x005e9840) + (index >> 3);
+            *refused |= (byte)(1 << (index & 7));
+
+            BindMenuLabels(
+                *(byte**)(*(int*)(areaDir + 0x70) + *(short*)(e + 0x16) * 4),
+                *(uint*)(e + 0x6c), s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
+            *(short*)(e + 0x10) = 100;
+            return;
+        }
+
+        if (state == 0x28)
+        {
+            AbilityChestGrantContents(e);
+            return;
+        }
+
+        if (state == 100)
+        {
+            // La difference qui fait ce sous-type : au lieu de poser un bit dans un champ de bits
+            // de zone, il applique l'operation de script 3 (`|=`) au bloc de drapeaux de chaque
+            // membre du groupe, puis au masque commun 0x005e9000.
+            short number = *(short*)(e + 0x9a);
+            op[1] = (byte)(number >> 3);
+            op[2] = 3;
+            op[3] = (byte)(1 << (number & 7));
+
+            // Ghidra: `lea ecx,[esp+18h]` — le binaire passe l'adresse de son PROPRE emplacement
+            // d'argument comme sortie, et ecrase donc le pointeur d'entite qu'il y avait recu.
+            // C'est sans effet : la suite du corps ne lit plus que ESI. Transcrit par une variable
+            // morte, qui dit la meme chose sans reproduire l'ecrasement.
+            uint clobberedArgumentSlot;
+            ApplyPartyScriptOp(op, &clobberedArgumentSlot);   // Ghidra: FUN_00514000
+
+            *(short*)(e + 0x10) = 200;
+        }
+
+        if (*(short*)(e + 0x10) == 200)
+        {
+            FreezeAllEntities();
+            *(short*)(e + 0x10) = 0xc9;
+            *(uint*)e &= 0xfbffffff;
+        }
+
+        // Le couvercle remonte de 0x46 a chaque pas de l'etat 0xc9, et l'etat ne change que
+        // lorsque la hauteur repasse positive.
+        if (*(short*)(e + 0x10) == 0xc9)
+        {
+            *(short*)(e + 0x34) += 0x46;
+            if (*(short*)(e + 0x34) > -1)
+            {
+                *(short*)(e + 0x34) = 0;
+                *(short*)(e + 0x10) = 0xca;
+                UnfreezeAllEntities();                        // Ghidra: FUN_00535400
+                *(uint*)e &= 0xffffdfff;
+                return;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 0xca && (e[9] & 0xf) == 0)
+        {
+            // Ghidra: `neg ax ; sbb eax,eax ; dec eax` — l'etat de repos depend du signe memorise
+            // a l'entree : -1 pour un exemplaire ordinaire, -2 pour la variante.
+            *(short*)(e + 0x10) = (short)(-1 - (*(short*)(e + 0x98) != 0 ? 1 : 0));
+        }
+
+        if (*(short*)(e + 0x10) != 300)
+        {
+            ResetEntityWakeBits_0040E640();                   // Ghidra: FUN_0040e640
+            return;
+        }
+
+        // L'etat 300 est l'exemplaire deja pris : une phrase fixe du repertoire principal, puis
+        // 200 (Ghidra: `mov [esi+10h],di`, et EDI vaut 0xC8 depuis LAB_004505ff).
+        BindMenuLabels(
+            *(byte**)(*(int*)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x48c),
+            *(uint*)(e + 0x6c), s_WorldMapDescriptor_005633b0, 0);
+        *(short*)(e + 0x10) = 200;
+    }
+
+    /// <summary>
+    /// L'etat 0x28 : la remise effective du contenu, mot pour mot celle du coffre. Le rappel de
+    /// fin de boite est <c>0x00450700</c> ici et <c>0x00474320</c> chez le coffre, mais les deux
+    /// adresses portent le meme corps — <see cref="ChestPickupDone_00450700"/>.
+    ///
+    /// <para>
+    /// <c>DAT_005e9860</c> retient, par numero d'objet de +0x44, ce que l'exemplaire a deja donne :
+    /// non nul, l'objet est redonne tel quel (moins un) ; nul, il est tire dans la table ponderee
+    /// de la zone et le resultat est memorise. Le code de retour non nul veut dire « pas passe ».
+    /// </para>
+    /// </summary>
+    private static void AbilityChestGrantContents(byte* e)
+    {
+        uint* recipient = *(uint**)(e + 0x6c);
+
+        *(uint*)((byte*)recipient + 0x6c) = 0;
+        *((sbyte*)recipient + 0x41) = (sbyte)e[8];
+
+        byte* given = Mem.Arena(0x005e9860);
+        uint item = *(uint*)(e + 0x44);
+
+        if (given[item] != 0)
+        {
+            int refused = GrantChestContents_00530F20(recipient, given[item] - 1, 0x00450700);
+
+            // Ghidra: `(-(ushort)(sVar4 != 0) & 0xfce1) + 999` — 999 quand l'objet est passe,
+            // 999 - 0x31f == 200 quand il ne l'est pas. Ecrit ici pour ce qu'il vaut.
+            *(short*)(e + 0x10) = (short)(refused != 0 ? 200 : 999);
+            return;
+        }
+
+        int roll = PickWeightedTableEntry(*(short*)(e + 0x16), 100);   // Ghidra: FUN_0053a920
+        int result = GrantChestContents_00530F20(recipient, roll, 0x00450700);
+
+        if (result != 0)
+        {
+            *(short*)(e + 0x10) = 200;
+            given[item] = (byte)result;
+            return;
+        }
+
+        *(short*)(e + 0x10) = 999;
+    }
 }

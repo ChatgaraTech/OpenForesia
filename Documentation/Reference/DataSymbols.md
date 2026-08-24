@@ -1705,3 +1705,96 @@ et de magie, `+0xc2` en ajoute vingt à taux fixe.
 
 `s_StatusTimerMasks_0056d340`, dans `Screens/State03/WorldMapTick.cs` — un seul lecteur, donc chez
 lui.
+
+---
+
+## `0x00551814` — le message de développeur resté dans le binaire (2026-08-24)
+
+Le bloc d'étiquettes que `FUN_00473a70` (sous-types 6 et 7 de la table d'entités 0x0056adc8)
+affiche. Relevé **verbatim** dans `Legacy/Binaries/Blaze.exe`, `.data`, décalage fichier
+`0x0014FE14`. **Soixante-six octets** jusqu'au terminateur, plus deux de bourrage jusqu'à la
+frontière de quatre.
+
+```
+1f d0 20 08 00 0c 95 d0  8a 4a 82 ab 82 cc 83 68
+83 41 82 cd 8c bb 8d dd  8e 67 97 70 8f 6f 97 88
+82 dc 82 b9 82 f1 81 42  8d a1 88 e4 82 dc 82 c5
+98 41 97 8d 82 ad 82 be  82 b3 82 a2 81 42 0f 08
+01 00                    (00 00)
+```
+
+Décodé en Shift-JIS :
+
+> 片開きのドアは現在使用出来ません。今井まで連絡ください。
+
+« La porte à un battant n'est pas utilisable pour l'instant. Contactez Imai. »
+
+**今井 est un nom propre** — celui d'un membre de l'équipe. Ce n'est pas une phrase de jeu oubliée
+en japonais : c'est une **note interne** laissée à qui construisait les niveaux, expédiée telle
+quelle dans la version vendue. Les sous-types 6 et 7 sont donc une porte **inachevée**, et le texte
+n'a jamais été traduit parce que personne n'était censé le lire. Cela répond aussi à la question
+posée le 2026-08-24 : « pourquoi du Shift-JIS dans le binaire français ? »
+
+### La longueur ne se lit pas dans un en-tête
+
+C'est l'erreur qui a laissé ce bloc en lacune deux jours, sur la foi de ses huit premiers octets
+pris pour « un en-tête, comme les autres blocs d'étiquettes ». Il n'y a pas d'en-tête. Un bloc
+d'étiquettes est un **flux** :
+
+* tout octet ≥ `0x20` est du texte (cp1252 ou Shift-JIS selon le jeu de caractères) ;
+* tout octet < `0x20` est un code de contrôle, qui consomme un nombre d'opérandes propre ;
+* le flux s'arrête au premier `0x00` **qui n'est pas une opérande**.
+
+La longueur se mesure donc en **parcourant** le flux. Le nombre d'opérandes de chaque code se lit
+directement dans la table de la passe 1, `PTR_LAB_0056e870`, dont quatre entrées sont des talons
+d'avance pure :
+
+| Talon | Opérandes |
+|---|---|
+| `0x00543940` | 0 |
+| `0x00543950` | 1 |
+| `0x00543960` | 2 |
+| `0x00543970` | 3 |
+
+Les codes qui ont un vrai corps portent leur compte dans ce corps — `0x0f` (`0x00544e50`) n'en
+consomme aucune, `0x1f` (`0x00545120`) en consomme deux.
+
+Ici, **deux `0x00` sont des opérandes** avant celui qui termine : s'arrêter au premier aurait donné
+cinq octets au lieu de soixante-six.
+
+### Ce que le flux fait, code par code
+
+| Octets | Code | Effet |
+|---|---|---|
+| `1f d0 20` | `0x1f` | pose le champ de `+0x08` à deux `short` : la boîte se place en (0xd0, 0x20) |
+| `08 00` | `0x08` | **gèle** le monde |
+| `0c` | `0x0c` | ouvre la boîte — c'est lui qui `ClearOTagR` la table de `+0x68` |
+| 56 octets | — | 28 paires Shift-JIS |
+| `0f` | `0x0f` | **attend le joueur** en montrant le curseur |
+| `08 01` | `0x08` | **dégèle** |
+| `00` | — | fin de flux |
+
+Une scénette complète, donc, et non un simple libellé. Les huit gestionnaires que ces codes
+atteignent sont tous reconstruits, dans les deux passes : le bloc traverse le moteur de texte sans
+lacune.
+
+---
+
+## `0x005de538` — un global lu à trois largeurs (2026-08-24)
+
+L'indice du membre de groupe « actif ». **Un octet** dans le binaire : les huit écrivains de
+`Blaze.c` y écrivent tous un `byte` ou zéro, et la carte des symboles lui donne quatre octets
+seulement par alignement.
+
+Le code le **lit** en revanche de trois façons différentes, et la reconstruction transcrit chacune
+telle quelle plutôt que de les unifier derrière un champ `byte` :
+
+| Forme dans le binaire | Sites reconstruits |
+|---|---|
+| octet — `mov cl,[5DE538h]` puis `xor eax,eax ; mov al,cl` | `FUN_00472770` (`ActivePartySlot_00472770`) |
+| double mot masqué — `… & 0xff` | `Engine/Input.cs`, `Engine/Resources.cs`, `Screens/State02/Destination.cs` |
+| double mot nu | deux sites d'`Engine/UiWindow.cs` |
+
+Les trois donnent le même résultat tant que la valeur reste sous 256, ce qui est toujours le cas.
+Elles se distinguent quand même dans la transcription : c'est le binaire qui varie, et l'unification
+effacerait l'information.

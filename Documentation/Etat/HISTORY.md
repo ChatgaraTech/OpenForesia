@@ -6,6 +6,27 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-24
 
+- fix : `TestTriggerVolumes_00534CD0` lisait le compte des morceaux en attente sur un `short` alors que le binaire fait `movzx ax,byte` — le compte avalait la première entrée de la liste, la boucle sortait de la liste et déréférençait des pointeurs inventés ; cause probable du `0xC0000005` signalé par Vincent, non reproduite
+- feat : la marche sur les boîtes de déclenchement porte une borne de 0x400 — l'original n'en a aucune, et une liste atteinte par un mauvais indice plantait sans nommer sa cause
+- doc : `FUN_0041be60` vérifiée — rayon 1500, trois valeurs publiées, arguments lus en double mot là où sa sœur sonore les lit en `movsx word`
+- doc : la boîte de dialogue de l'auberge est modale et gèle le monde ; il faut la refermer avant tout `HOLD:` de déplacement, et un trajet en frappes minutées n'atteint pas une pièce choisie de façon reproductible
+- doc : `Ordinal_442` est **stdcall** — aucun de ses sites d'appel ne nettoie la pile, et c'est ce qui fait que `[esp+14h]` désigne l'argument 2 dans les trois sœurs `FUN_00468080` / `FUN_00468110` / `FUN_0041be60` ; en cdecl la famille entière serait décalée d'un cran
+- doc : `FUN_00468080` et `FUN_00468110` vérifiées contre le binaire — rayons 2000 et 1800, gain doublé, `+0xC0` portant bien sur `param_2`
+- doc : `FUN_004727d0` et sa suite `EntityAnimCommon` vérifiées ligne à ligne contre le binaire — le test inversé corrigé plus tôt est bien dans le bon sens, et `or ch,80h` posait bien 0x8000
+- fix : les **trois** sites qui lisent `DAT_005de538` sur un octet (`ActivePartySlot_00472770`, `EntityAnimCommon` état 0, `EntityAnimTail_00472E80` état 200) indexaient la table des emplacements sans masquer — défaut latent, tous les écrivains restant sous 256
+- doc : la relance en processus fils peut épuiser son budget de trois tentatives — un lancement sur deux est mort au démarrage sur la fenêtre de mémoire basse, les trois relances ayant perdu la course
+- doc : `0x005de538` est lu à trois largeurs selon le site (octet, double mot masqué, double mot nu) ; les trois se transcrivent telles quelles, c'est le binaire qui varie
+- feat : le bloc d'étiquettes `0x00551814` relevé en entier — 66 octets, une scénette complète, et non un simple libellé
+- doc : le texte de ce bloc est **un message de développeur** resté dans la version vendue — « la porte à un battant n'est pas utilisable, contactez Imai » ; 今井 est un nom propre, et les sous-types 6/7 sont une porte inachevée
+- doc : un bloc d'étiquettes n'a pas d'en-tête de longueur — c'est un flux auto-terminant, et la table de la passe 1 donne le nombre d'opérandes de chaque code de contrôle
+- fix : le coffre range réellement son contenu — `LAB_00474320` n'était pas une lacune mais un double octet pour octet de `0x00450700`, déjà transcrite ; les deux adresses sont aiguillées sur le même corps
+- doc : avant de transcrire un corps absent de `Blaze.c`, vérifier qu'il n'est pas le double d'un corps déjà transcrit — deux `od` et une soustraction suffisent
+- feat : `FUN_00472e80`, la queue de l'automate commun des entités de zone (six états, 1584 octets), plus sa dépendance `FUN_00466d70`
+- doc : LB-012 — l'état 0xd2 de cette queue rend une valeur jamais écrite, que son appelant compare pourtant à 1
+- doc : Ghidra perd la signature de `FUN_00472e80` parce que l'état 0xcd recycle les emplacements d'arguments en variables locales — le prologue suffit à le voir, la convention d'appel n'est pas à reconstruire
+- feat : `FUN_004502E0` (sous-type 17) transcrite depuis le désassemblage — la table d'entités 0x0056adc8 n'a plus aucune lacune, ses 17 cibles ont un corps réel
+- feat : `FUN_0040e640`, la variante longue de `FUN_004742b0` — mêmes trois passes, plus deux sous-types épinglés et la remise à blanc des quatre fiches d'emplacement du groupe
+- doc : le sous-type 17 est le coffre à un détail près — au lieu de marquer une banque de zone, il applique l'opération de script `|=` au bloc de drapeaux de chaque membre du groupe : un acquis permanent, pas du butin
 - feat : le son marche — `LAB_00512ef0`, un corps que Ghidra n'avait jamais décompilé, crée le périphérique DirectSound ; menu, options et carte du monde jouent enfin leur musique et leurs bruitages
 - feat : `LAB_00513660`, le thread de flux de musique, transcrit depuis le binaire — sans lui la musique rejouait sans fin ses 80 blocs d'amorce
 - feat : la table des 40 noms de morceaux (`PTR_..._00566cc8`) relevée en entier ; son entrée 6, `Title01.WAV`, est le thème du menu et manquait

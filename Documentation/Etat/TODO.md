@@ -72,19 +72,39 @@ Les **trois** sous-types que `Blaze.c` couvrait encore — 12, 13 (le coffre) et
 derniers depuis le désassemblage. Les 17 cibles distinctes de la table ont maintenant un cas dans
 le répartiteur.
 
-**Il reste une seule lacune dans cette table** : `0x004502E0` (sous-type 17), ~1030 octets, absent
-de `Blaze.c`, même forme d'automate à états dispersés que le coffre. Elle se décrit elle-même si
-elle est atteinte.
+**La table n'a plus de lacune.** `0x004502E0` (sous-type 17), la dernière, a été transcrite le
+2026-08-24 : 1042 octets exactement, un quasi-jumeau du coffre à cinq différences près, dont la
+seule qui compte — au lieu de marquer un bit dans une banque de zone, il applique l'opération de
+script `|=` au bloc de drapeaux de **chaque membre du groupe**. C'est un acquis permanent, pas du
+butin. Avec lui, `FUN_0040e640`, la variante longue de `FUN_004742b0`.
 
-Deux autres lacunes nommées gravitent autour : `FUN_00472e80` (244 l., huit dépendances) pour les
-états que l'automate commun ne traite pas lui-même, et `LAB_00474320`, le rappel de fin de boîte
-qui range réellement le contenu d'un coffre. Plus le bloc d'étiquettes `0x00551814` — du
-Shift-JIS resté dans le binaire français — dont la longueur reste à établir.
+`FUN_00472e80`, la queue de l'automate commun, a suivi le même jour : 1584 octets, six états
+(200, 0xc9, 0xcd, 0xce, 0xd2, 0xd3), plus sa dépendance `FUN_00466d70` — onze lignes, alors qu'elle
+était citée comme un obstacle. Ghidra avait perdu sa signature parce que l'état 0xcd **recycle les
+emplacements d'arguments en variables locales** ; le troisième argument, lui, n'est jamais lu. Son
+état 0xd2 rend une valeur jamais écrite : **LB-012**.
+
+`LAB_00474320`, le rappel de fin de boîte du coffre, **n'était pas une lacune** : ses 87 octets
+sont identiques à ceux de `0x00450700`, déjà transcrite, au seul déplacement relatif du `call`
+près — et les deux visent `0x005312D0`. Le compilateur a émis deux fois le même corps. Les deux
+adresses sont aiguillées sur la même transcription, et le coffre range réellement son contenu.
+
+Le bloc d'étiquettes `0x00551814` est relevé, et il contenait **un message de développeur** :
+« 片開きのドアは現在使用出来ません。今井まで連絡ください。 » — « la porte à un battant n'est pas
+utilisable pour l'instant, contactez Imai ». 今井 est un nom propre. Les sous-types 6 et 7 sont donc
+une porte **inachevée**, et le texte n'a jamais été traduit parce que personne n'était censé le
+lire. Sa longueur ne se lisait pas dans un en-tête : un bloc d'étiquettes est un flux auto-terminant,
+et deux `0x00` y sont des opérandes avant celui qui termine.
+
+**La table 0x0056adc8 et tout ce qui gravite autour n'ont plus de lacune nommée.**
 
 ## La panne aléatoire de mémoire basse — corrigée le 2026-08-24
 
-`No free block of 0x2000 bytes below 0x01000000`, signalée deux fois par Vincent, **ne peut plus
-tuer une session**. Elle survenait sur cinq sites d'allocation basse pris paresseusement, donc en
+`No free block of 0x2000 bytes below 0x01000000`, signalée deux fois par Vincent, **ne tue plus une
+session qu'exceptionnellement** — le 2026-08-24 au soir, un lancement a quand même échoué en
+épuisant les **trois** tentatives de relance (journal : « relaunching (attempt 2 of 3) », puis
+« (attempt 3 of 3) »). Le quatrième lancement, manuel, est passé. Le mécanisme fonctionne ; c'est
+son budget qui peut s'épuiser un mauvais jour d'ASLR. Elle survenait sur cinq sites d'allocation basse pris paresseusement, donc en
 cours de partie — dont trois pendant un chargement de zone, hors de portée de la relance en
 processus fils qui rattrape la même panne au démarrage. Les cinq sont pré-réclamés.
 

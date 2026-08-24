@@ -514,6 +514,34 @@ Read the `ret` before writing a `[DllImport]` for an ordinal-only export. `dotne
 OpenForesia.Tools -- disasm Legacy/Binaries/winsys3d.dll 0x00a02e20 8` answers it in one line, and
 the export table maps ordinal → RVA (`+ 0x00a00000`) to find the body.
 
+#### L'autre moitié : lire le **site d'appel**, et ce que la convention décale (2026-08-24)
+
+Le `ret` du corps donne la convention. Le **site d'appel** la donne aussi — l'absence d'un
+`add esp,N` après le `call` — et c'est cette moitié-là qui compte quand on reconstruit la fonction
+*appelante* plutôt que l'interop.
+
+`Ordinal_442` (la racine carrée entière, `0x00545A10` côté `Blaze.exe`) est **stdcall** : aucun de
+ses sites d'appel ne nettoie la pile.
+
+```
+004680cc  push esi
+004680cd  call 00545A10h        ; pas de `add esp,4` : le callee a dépilé
+004680d2  xor  ecx,ecx
+```
+
+Cela **décale tout ce qui suit**. Dans `FUN_00468080`, les trois arguments lus après l'appel le
+sont à `[esp+14h]`, `[esp+18h]` et `[esp+1ch]` : en stdcall ce sont les arguments **2, 3 et 4** ; en
+cdecl, l'argument poussé resterait sur la pile et les mêmes offsets désigneraient les arguments
+**1, 2 et 3**. Un argument d'écart sur toute la famille.
+
+C'est ce qui rend récupérable la signature des trois sœurs `FUN_00468080` / `FUN_00468110` /
+`FUN_0041be60`, que Ghidra rate toutes les trois de la même façon (`param_1` employé à la fois
+comme pointeur et comme scalaire). Vérifié au désassembleur le 2026-08-24 ; les trois
+transcriptions étaient justes.
+
+Côté C#, `[DllImport]` sans `CallingConvention` vaut `Winapi`, soit `StdCall` sur x86 : la
+déclaration d'`Ordinal_442` dans `Interop/Winsys3d.cs` est donc correcte telle quelle.
+
 ### Confirmed real behavior
 
 | Ordinal | RVA | `winsys3d.c` symbol | Behavior |

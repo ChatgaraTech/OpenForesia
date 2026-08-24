@@ -319,6 +319,16 @@ of it in one pass. Keep the dump under `Legacy/Raw/Blaze/` next to the transcrip
 perfectly regular cascade of eight near-identical blocks, and the nine "convergent exits" were nine
 `return`s. What predicts the cost is the number of *distinct shapes*, not the size.
 
+**Check for a duplicate before transcribing.** `LAB_00474320` sat on the gap list for two days as
+"the callback that actually stores a chest's contents". Its 87 bytes turn out to be *identical* to
+already-transcribed `FUN_00450700` — one difference, the `call`'s relative displacement, and both
+resolve to the same target. The compiler emitted the same body twice. Two `od` dumps and a
+subtraction settle it, so run them whenever two addresses play the same role:
+
+```bash
+od -An -tx1 -j $((VA - 0x400C00)) -N <len> Legacy/Binaries/Blaze.exe
+```
+
 **What is still genuinely blocked**: functions whose parameters Ghidra failed to recover
 (`unaff_ESI`, `extraout_var`, fewer parameters than call sites pass). Disassembly resolves those too
 in principle, but reconstructing a calling convention from register traffic is real work — flag it

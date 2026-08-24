@@ -10940,7 +10940,7 @@ mene de l'adresse du message au sous-type, et du sous-type au travail restant.
 | 14 | `0x004746C0` | **transcrit le 2026-08-24** |
 | 15 | `0x004508B0` | **transcrit le 2026-08-24** |
 | 16 | `0x00450760` | **transcrit le 2026-08-24** — le declencheur de script |
-| 17 | `0x004502E0` | **LACUNE** — ~1030 o., seule restante |
+| 17 | `0x004502E0` | **transcrit le 2026-08-24 (suite 4)** — le quasi-jumeau du coffre |
 
 ### Ce qui a ete fait
 
@@ -11059,7 +11059,7 @@ transcrits** ; le sixieme est nomme et chiffre.
 | 11 | `0x00450BD0` | 130 o. | l'entite qui **scintille** — un gris sinusoidal bruite |
 | 14 | `0x004746C0` | 45 o. | une fois sur deux, fait naitre un effet d'etat sur soi |
 | 2 | `0x004736D0` | 450 o. | la vitesse amortie qui pousse le cap |
-| 17 | `0x004502E0` | **~1030 o.** | non transcrit — lacune nommee |
+| 17 | `0x004502E0` | 1042 o. | **transcrit** (suite 4) — le coffre, mais l'acquis est du groupe |
 
 Avec eux, `FUN_00468110` (19 l. dans `Blaze.c`, jamais reconstruite).
 
@@ -11117,7 +11117,579 @@ jugé**.
 ### Etat de la table
 
 Les 17 cibles distinctes de la table 0x0056adc8 ont maintenant un cas dans le repartiteur. Seize
-sont des corps reels ; `0x004502E0` est une lacune nommee qui se decrit elle-meme.
+sont des corps reels ; `0x004502E0` est une lacune nommee qui se decrit elle-meme. *(Elle a ete
+comblee le meme jour — voir la section « suite 4 » plus bas.)*
 
 Les sept gestionnaires d'hier et les cinq d'aujourd'hui restent **non exerces** : la sonde au site
 de dispatch ne voit toujours que les sous-types 8, 9, 10 et 18 dans l'auberge.
+
+---
+
+## 2026-08-24 (suite 4) — `FUN_004502E0`, la derniere lacune de la table 0x0056adc8
+
+Le sous-type 17 est transcrit. La table 0x0056adc8 n'a plus de creneau sans corps reel : ses **17
+cibles distinctes** sont toutes reconstruites.
+
+### Mesurer avant de lire, une fois de plus
+
+La lacune etait chiffree « ~1030 octets, meme forme que le coffre ». Les deux moities de cette
+phrase se sont averees justes, mais elles ne disaient pas la seule chose qui comptait.
+
+La longueur exacte est **1042 octets**, 0x004502e0..0x004506f1 : le `ret` final, puis quatorze
+`nop` de bourrage, puis `FUN_00450700` a l'adresse ronde suivante. C'est la regle du 2026-08-24 —
+mesurer le corps *avant* de le lire, et verifier que la derniere accolade tient dans la tranche —
+appliquee d'entree, et elle a evite de relire le debut d'une autre fonction comme si c'etait la
+queue de celle-ci.
+
+Le releve est dans `Legacy/Raw/Blaze/FUN_004502E0.asm`.
+
+### Ce que c'est : le coffre, moins le coffre
+
+`FUN_004502E0` est un **quasi-jumeau** de `FUN_00473ED0`. Meme automate a etats disperses (-0xff,
+-2, -1, 0, 1, 2, 0x14, 0x28, 100, 200, 0xc9, 0xca, 300, 999), meme ecriture de +0x9a / +0x98 a
+l'entree, meme descente de couvercle de 0x23 sur trente pas, meme remise d'objet par
+`FUN_00530f20`, meme calcul sans branchement `(-(ushort)(x != 0) & 0xfce1) + 999` en sortie.
+
+**Cinq differences, pas une de plus** :
+
+| | coffre `0x00473ED0` | sous-type 17 `0x004502E0` |
+|---|---|---|
+| memoire du « deja pris » | `DAT_005e96e0`, banque d'etat 0 | **`s_PartyAbilityMask_005e9000`** |
+| pose du bit | ecriture directe `\|= 1 << (n & 7)` | **`FUN_00514000`, opcode de script 3** |
+| valeur lissee de l'ouverture | `DAT_00571990` | **`DAT_00571528`** |
+| rappel de fin de boite | `0x00474320` (lacune) | **`0x00450700`** (deja transcrite) |
+| passe de fin de pas | `FUN_004742b0` | **`FUN_0040e640`** |
+
+La deuxieme ligne est celle qui donne son sens au sous-type. La ou le coffre marque un bit dans une
+banque de zone, celui-ci passe par `ApplyPartyScriptOp` avec l'operande `{ n>>3, 3, 1<<(n&7) }` :
+l'opcode 3 est un `|=`, applique au bloc de drapeaux de **chaque membre du groupe** puis reflete
+dans le masque commun. Ce n'est pas un coffre a butin, c'est un **acquis permanent du groupe**, et
+le champ de bits qu'il teste a l'ouverture est le meme que celui qu'il ecrit a la fermeture.
+
+D'ou le nom donne aux auxiliaires — `StepAbilityChestOpening`, `AbilityChestDispatchTail`,
+`AbilityChestGrantContents`. Il vient du symbole `s_PartyAbilityMask`, pas d'une observation en
+jeu ; le sous-type n'a pas ete vu tourner.
+
+**La quatrieme ligne a economise le travail** : `0x00450700` etait deja reconstruite depuis le
+2026-08-23 sous le nom `ChestPickupDone_00450700`, et le repartiteur de rappels de `UiText` la
+connait deja. La lacune `LAB_00474320` que le coffre traine ne se reproduit donc pas ici : ce corps
+range reellement son contenu.
+
+### `FUN_0040e640`, le grand frere de `FUN_004742b0`
+
+La cinquieme difference n'etait pas visible dans le nom. Les deux fonctions balayent les **memes
+trois tables d'entites** (0x005ff400 sur 0x20, 0x005f2d40 et 0x005edee0 sur 0x80) pour eteindre le
+bit 0x04000000 des enregistrements non epingles. `FUN_0040e640` en fait deux de plus :
+
+* sur la **premiere** table seulement, les sous-types `0x1c` et `0x17` recoivent le bit
+  `0x40000000` — c'est pourquoi cette passe ne peut pas reutiliser `ClearWakeBitOnTable` ;
+* une **quatrieme** boucle remet les quatre fiches d'emplacement du groupe a blanc : trois octets
+  de couleur a 0xff en +0x38 et le bit 2 efface en +0x36.
+
+Ghidra ecrit cette derniere boucle en decalages **negatifs** autour de `&DAT_005e93f9`
+(`puVar2[-1]`, `*puVar2`, `puVar2[1]`, `*(ushort *)(puVar2 - 3)`), ce qui masque completement la
+base. Le pas de 0x9c et l'adresse 0x005e93f6 la donnent : c'est `s_SlotFlags_005e93c0 + 0x36`, la
+meme table que `UiWindow` interroge. **Une boucle ecrite autour d'un point milieu ne nomme pas sa
+base ; c'est le pas qui la nomme.**
+
+### Un detail de pile a ne pas transcrire betement
+
+L'etat 100 appelle `FUN_00514000(&operande, &param_1)` — `lea ecx,[esp+18h]`, c'est-a-dire
+**l'adresse de son propre emplacement d'argument**. La fonction ecrase donc le pointeur d'entite
+qu'elle a recu, pour y ranger un resultat que personne ne lit. C'est sans consequence : a partir de
+la, le corps ne travaille plus que par ESI. Transcrit par une variable locale morte plutot que par
+une reproduction de l'ecrasement, avec la mesure en commentaire.
+
+Meme famille : l'operande de quatre octets est initialisee **a l'entree de la fonction** a
+`{ 0, 1, 4, 0xEF }`, et ses trois derniers octets sont reecrits avant le seul site qui la lit. Ces
+valeurs d'entree sont mortes. Elles sont ecrites quand meme — le cout est nul et c'est ce que fait
+le binaire.
+
+### Verification
+
+`dotnet build` : 0 erreur. Le parcours long de l'auberge (`-Entry 0 … -Then WAIT5,ENTER,WAIT2,
+START,WAIT6,ENTER,WAIT5,ENTER,WAIT10`) rend **1621 images, aucun plantage, 557 primitives par
+image**, et la capture montre l'auberge avec la boite « - La réception - ».
+
+C'est une **non-regression, pas une confirmation** : comme les onze gestionnaires precedents, le
+sous-type 17 n'apparait pas dans la zone de depart. Le corps est lu contre le desassemblage et
+compile, pas joue. Il ne se verifiera qu'avec une autre zone.
+
+---
+
+## 2026-08-24 (suite 5) — `FUN_00472e80`, et ce qu'un registre ecrase
+
+La queue de l'automate commun des entites de zone est transcrite, avec sa dependance
+`FUN_00466d70`. Il ne reste plus, autour de la table 0x0056adc8, que `LAB_00474320` (le rappel de
+fin de boite du coffre) et le bloc d'etiquettes Shift-JIS de `0x00551814`.
+
+### La signature perdue, et la ligne du binaire qui l'explique
+
+`Blaze.c` declare `uint FUN_00472e80(uint *param_1, short param_2)` alors que le site d'appel
+empile **trois** arguments, puis reaffecte `param_1` en compteur de boucle au milieu du corps.
+C'etait la raison invoquee pour ne pas la transcrire : « parametres non recuperes par Ghidra ».
+
+Le desassemblage tranche en une lecture. La branche de l'etat 0xcd **reutilise les emplacements
+d'arguments comme variables locales** :
+
+```
+00472f5c  mov dword [esp+18h],0     ; l'emplacement de param_2 devient un compteur
+00472f69  mov dword [esp+14h],4     ; celui de param_1 devient le pas de boucle
+```
+
+Les deux ont ete recopies en registres (`esi`, puis `ecx` via `movsx ecx,word [esp+18h]`) avant
+d'etre ecrases. Ghidra, qui suit les emplacements, voit `param_1 = 4` et perd le fil.
+
+Le troisieme argument, lui, **n'est jamais lu** : `[esp+1ch]` n'apparait nulle part dans les 1584
+octets du corps. Le site d'appel en empile pourtant trois. `soundB` est donc mort, et garde dans la
+signature C# pour que l'appel reste comparable a `Blaze.c`.
+
+**La regle** : « Ghidra a perdu les parametres » ne veut pas dire « la convention d'appel est a
+reconstruire depuis le trafic de registres ». Trois fois sur quatre, cela veut dire qu'un
+emplacement d'argument a ete recycle en local, et le prologue suffit a le voir.
+
+### Le retour est un `short`, et Ghidra le dit de six facons
+
+`CONCAT22(…, 1)`, `& 0xffff0000`, `<< 0x10`, `extraout_var`, `extraout_var_00`, `in_EAX` : six
+formes differentes pour la meme chose. Le binaire est univoque — chaque `ret` est precede de
+`mov ax,1` ou de `xor ax,ax`. Le reste est du bruit de suivi de registre 16/32 bits.
+
+Sauf deux sorties, qui ne posent AX ni d'une facon ni de l'autre : **LB-012**.
+
+### `extraout_AX` avait un nom
+
+Le test que Ghidra ecrit `if ((sVar10 == extraout_AX) && …)` est simplement
+`if (near == FUN_00466d70() && …)`. La fonction est appelee **inconditionnellement** juste avant, et
+`FUN_00466d70` fait onze lignes : elle compte les emplacements du groupe dont le masque
+`0x50000000` est vide, et rend -1 quand il n'y en a aucun.
+
+Elle etait citee comme « dependance non transcrite » ; elle etait en realite la plus petite du lot.
+
+### Trois comptages, trois masques, et pourquoi ils ne se factorisent pas
+
+L'etat 0xcd balaye **trois fois** les quatre fiches d'emplacement de `0x005e93c0`, et les trois
+passes n'ont pas le meme masque :
+
+| passe | masque exige nul | ce qu'elle compte |
+|---|---|---|
+| 1 | `0x50000001` | les membres assez **eloignes** de l'entite — rayon 500, ou 300 si +0x98 vaut 1 |
+| 2 | `0x50010000` | les emplacements **vivants** |
+| 3 | `0x50010000` + bit `0x04000000` pose | ceux d'entre eux que la passe 1 a **marques** |
+
+Et `FUN_00466d70`, appelee ensuite, en emploie un quatrieme : `0x50000000`. Quatre comptages, quatre
+masques, deux issues concurrentes vers l'etat 0xce. Les replier aurait efface exactement la
+distinction qui decide laquelle des deux se declenche.
+
+La passe 1 a un effet de bord : quand +0x98 vaut 2, chaque membre assez loin recoit le bit
+`0x04000000` **et** voit naitre l'effet d'etat 0x9d sur lui. C'est ce qui rend la passe 3 non vide.
+
+### L'etat 0xce est le miroir exact d'un bloc deja reconstruit
+
+`ResetCameraAndWakeSceneEntities`, extraite le 2026-08-24 de `EntityAnimCommon` pour l'etat 0x10,
+rebranche les trois globales de camera (`DAT_005eca94`, `DAT_005e9ae0`, `DAT_005edebc`) sur les
+tables ordinaires et reveille les entites que le masque `DAT_00604b84` designe.
+
+L'etat 0xce est sa moitie **active** : il recopie ce que les tables portaient dans
+`0x00571980..0x005719a0`, y detourne les trois globales, **construit** le masque, gele les entites,
+et eteint le bit d'eveil des entites de zone de sous-type 1..7. Les deux blocs se lisent en vis-a-vis.
+
+Deux details qui ne se voient que dans le binaire :
+
+* **`DAT_00571990` est ecrit deux fois** — d'abord avec la distance courante recopiee de la table,
+  puis avec `rand() % 200 + 1000`. La premiere ecriture est morte. Transcrite quand meme.
+* **L'entite est detruite en cours de bloc** : `xor esi,esi` a 0x00473216 recycle le registre qui la
+  portait en compteur de bits. Rien ne la relit ensuite, et la branche rend 1 immediatement. C'est
+  cette destruction qui rend le corps illisible dans `Blaze.c`, ou `puVar9` change de sens au
+  milieu d'une fonction.
+
+### Une asymetrie de sortie a ne pas lisser
+
+L'etat 0xd3 libere le sujet par deux chemins. Celui de la famille d'objets `(classe & 7) == 2`
+(`LAB_00473454`) remet **aussi** `+0x16` a zero ; celui de l'autre famille (`LAB_00473490`) ne le
+fait pas. Meme trois instructions, une de moins. C'est le motif du 2026-08-24 sur `FUN_004736D0` :
+deux corps qui se ressemblent au desassemblage se transcrivent separement d'abord.
+
+Ici les deux sont partages derriere `ReleaseSubjectPosture(e, subject, clearEvent)` — le drapeau
+**est** la difference, il ne l'efface pas.
+
+### Verification
+
+`dotnet build` : 0 erreur. Le parcours long de l'auberge rend **1621 images, aucun plantage, 557
+primitives par image** — chiffres **identiques** a ceux du run precedent, ce qui est en soi la
+mesure : la queue n'a pas ete atteinte une seule fois. Comme les douze gestionnaires ajoutes
+aujourd'hui, elle est lue contre le desassemblage et compilee, pas jouee.
+
+---
+
+## 2026-08-24 (suite 6) — `LAB_00474320` n'existait pas
+
+La derniere lacune de la famille du coffre est close, et elle n'a rien coute : **il n'y avait rien
+a transcrire**.
+
+`LAB_00474320` est le rappel de fin de boite que `FUN_00473ED0` range dans le descripteur de texte.
+Il figurait depuis deux jours comme une lacune nommee — « un bloc dont Ghidra n'a vu que l'adresse
+prise », « le rangement effectif du contenu en depend ». Le desassemblage rend 87 octets qui
+ressemblaient furieusement a ceux de `FUN_00450700`, deja transcrite sous le nom
+`ChestPickupDone_00450700`.
+
+Ils ne se ressemblent pas : ils sont **les memes**. Comparaison des octets bruts, sur les deux
+decalages fichier (`VA - 0x400C00`) :
+
+```
+od -An -tx1 -j $((0x4FB00)) -N 87 Legacy/Binaries/Blaze.exe   # 0x00450700
+od -An -tx1 -j $((0x73720)) -N 87 Legacy/Binaries/Blaze.exe   # 0x00474320
+```
+
+**Une seule difference sur 87 octets** : les quatre octets de deplacement du `call`, qui est relatif
+et doit donc differer. Les deux visent la meme cible :
+
+* `0x0045072D + 0x000E0BA3 = 0x005312D0`
+* `0x0047434D + 0x000BCF83 = 0x005312D0`
+
+Le compilateur a emis deux fois le meme corps sans les replier — pas de repliement de COMDAT
+identiques sur cette compilation. Les deux adresses sont donc aiguillees sur la meme transcription
+dans le repartiteur de rappels de `Engine/UiText.cs`, ce qui est **fidele** et non une
+approximation.
+
+### Ce que ca change
+
+Le coffre range reellement son contenu. La reserve portee par `EntityHandler_00473ED0` — « ce
+corps-ci tourne sans lui ; c'est le rangement effectif du contenu qui en depend » — tombe.
+
+### La lecon
+
+**Avant de transcrire un corps absent de `Blaze.c`, verifier qu'il n'est pas le double d'un corps
+deja transcrit.** Le test tient en deux `od` et une soustraction, et il aurait fallu le faire le
+2026-08-23, quand `FUN_00450700` a ete transcrite et que `LAB_00474320` figurait deja au tableau
+des lacunes a trois lignes de distance. Deux adresses, meme taille, meme famille de code : le
+soupcon etait la, et il n'a pas ete leve.
+
+Le signe qui aurait du alerter : `GrantChestContents_00530F20` recevait `0x00450700` de deux
+appelants et `0x00474320` d'un troisieme, pour un role identique. Un rappel qui fait la meme chose
+depuis deux adresses est presque toujours le meme rappel.
+
+### Verification
+
+`dotnet build` : 0 erreur. Parcours long de l'auberge : **1621 images, aucun plantage, 557
+primitives par image**, inchange. Le chemin ne se verifiera qu'en ouvrant un coffre : il n'y en a
+pas dans la zone de depart, et le sous-type 13 n'y est pas anime.
+
+### Etat de la famille du coffre
+
+Il ne reste qu'une lacune autour de la table 0x0056adc8 : le bloc d'etiquettes `0x00551814`, du
+Shift-JIS reste dans le binaire francais, dont la **longueur** n'est pas etablie.
+
+---
+
+## 2026-08-24 (suite 7) — le bloc 0x00551814, et pourquoi il etait en japonais
+
+La derniere lacune de la famille des entites de zone est comblee. Elle contenait **un message de
+developpeur**.
+
+Le bloc d'etiquettes de `0x00551814`, affiche par `FUN_00473A70` pour les sous-types 6 et 7, fait
+**66 octets** jusqu'a son terminateur. Decode en Shift-JIS, son texte est :
+
+> 片開きのドアは現在使用出来ません。今井まで連絡ください。
+>
+> « La porte a un battant n'est pas utilisable pour l'instant. Contactez Imai. »
+
+**今井 est un nom propre**, celui d'un membre de l'equipe. Ce n'etait donc pas une phrase de jeu
+oubliee a la traduction : c'est une **note interne** laissee a qui construisait les niveaux, et
+expediee telle quelle dans la version vendue. Les sous-types 6 et 7 sont une porte **inachevee**.
+
+Cela repond a la question que la note du 2026-08-24 laissait ouverte — « la chaine japonaise est
+restee dans le binaire francais » — et elle avait une meilleure reponse que l'oubli : le texte n'a
+jamais eu de traduction parce que personne n'etait cense le lire.
+
+### La longueur ne se lisait pas dans un en-tete
+
+La lacune tenait a une hypothese fausse, ecrite noir sur blanc dans le commentaire du symbole :
+« un en-tete de huit octets suivi du texte, comme les autres blocs d'etiquettes ». Il n'y a pas
+d'en-tete, et il n'y en a dans aucun bloc d'etiquettes.
+
+Un bloc d'etiquettes est un **flux** : octet ≥ 0x20 = texte, octet < 0x20 = code de controle avec
+son propre nombre d'operandes, fin au premier 0x00 **qui n'est pas une operande**. La longueur ne
+se lit pas, elle se **mesure en parcourant**.
+
+Et l'outil pour la mesurer etait deja dans le depot depuis le 2026-08-15 : la table de la passe 1,
+`s_ScanTable_0056e870` dans `Engine/UiText.cs`, dont quatre entrees sont des talons d'avance pure
+(`0x00543940`..`0x00543970` = 0 a 3 operandes). Le compte de chaque code s'y lit d'un coup d'œil.
+
+Ici **deux `0x00` sont des operandes** avant celui qui termine. S'arreter au premier zero — le
+reflexe naturel — aurait donne cinq octets au lieu de soixante-six.
+
+**La lecon** : quand une lacune porte « la longueur n'est pas etablie », verifier d'abord si la
+donnee a vraiment une longueur declaree. Un flux auto-terminant n'en a pas, et le decodeur qui le
+consomme est la specification de sa fin. Le releve complet est dans `DataSymbols.md`.
+
+### Une scenette, pas un libelle
+
+Le flux fait plus qu'afficher du texte : `1f` place la boite en (0xd0, 0x20), `08 00` gele le monde,
+`0c` ouvre la boite, puis les 28 paires Shift-JIS, puis `0f` attend le joueur en montrant le
+curseur, `08 01` degele, `00` termine. Les huit gestionnaires que ces codes atteignent sont tous
+reconstruits, dans les deux passes : le bloc traverse le moteur de texte sans lacune.
+
+### Verification
+
+`dotnet build` : 0 erreur. Parcours de l'auberge : **1441 images, aucun plantage, 557 primitives
+par image**, inchange. Le bloc ne s'affichera qu'a une porte de sous-type 6 ou 7, qui n'existe pas
+dans la zone de depart — mais le chemin est desormais complet de bout en bout, ce qui n'etait pas
+le cas quand le symbole etait un tampon de seize zeros.
+
+### Etat de la famille
+
+La table 0x0056adc8 et tout ce qui gravite autour n'ont plus de lacune nommee.
+
+---
+
+## 2026-08-24 (suite 8) — `FUN_00472770` etait deja transcrite ; sa verification a trouve autre chose
+
+`FUN_00472770` n'est pas une lacune : elle a ete reconstruite le 2026-08-24 sous le nom
+`ActivePartySlot_00472770`, en meme temps que l'automate commun `FUN_004727d0`. Le passage au
+desassembleur avait un autre objet — confirmer la seule lecture **interpretative** de ce corps, le
+retour que Ghidra rend par `CONCAT31((int3)(uVar1 >> 8), DAT_005de538) & 0xffff00ff`.
+
+### La lecture du retour est confirmee
+
+```
+00472797  6633c0    xor  ax,ax
+0047279a  8ac1      mov  al,cl
+0047279c  c3        ret
+```
+
+AX vaut l'octet de `DAT_005de538` ; les seize bits hauts d'EAX gardent les drapeaux lus juste
+avant, ce qui est exactement le `uVar1 >> 8` que Ghidra recompose. L'appelant ne lit qu'un `short`,
+donc la valeur utile est l'octet. La transcription disait vrai.
+
+La boucle aussi : `inc eax ; cmp ax,3 ; jle` rend bien **4** quand aucun des quatre emplacements ne
+convient, et l'appelant s'en sert tel quel.
+
+### Ce que la verification a trouve en passant
+
+Le prologue lit le global **sur un octet** :
+
+```
+00472770  8a0d38e55d00  mov  cl,[5DE538h]
+00472776  33c0          xor  eax,eax
+00472778  8ac1          mov  al,cl
+```
+
+Or la transcription indexait la table avec `Mem.s_Unknown_005de538` **non masque**, tout en masquant
+le retour par `& 0xff` trois lignes plus bas. Deux lectures du meme global dans la meme fonction,
+de deux largeurs differentes : l'une des deux etait fausse.
+
+Le masque est ajoute a l'indice. **Le defaut etait latent, pas vivant** : les cinq ecrivains
+reconstruits (`Engine/Resources.cs`, `Screens/State00/MainMenu.cs`, trois sites de
+`Screens/State03/WorldMapTick.cs`) ecrivent tous un octet ou zero, comme les huit ecrivains de
+`Blaze.c`. La valeur n'a jamais depasse 255, et le playtest le confirme — chiffres identiques.
+
+### Pourquoi ne pas simplement declarer le champ en `byte`
+
+C'etait la correction de fond evidente, et elle serait fausse. **Le binaire lit ce global a trois
+largeurs differentes selon le site** :
+
+| Forme | Sites reconstruits |
+|---|---|
+| octet (`mov cl,[…]`) | `FUN_00472770` |
+| double mot masque (`… & 0xff`) | `Engine/Input.cs`, `Engine/Resources.cs`, `Screens/State02/Destination.cs` |
+| double mot nu | deux sites d'`Engine/UiWindow.cs` |
+
+Unifier derriere un champ `byte` rendrait les trois formes indistinguables et effacerait
+l'information. C'est **le binaire qui varie**, pas la reconstruction : chaque site se transcrit tel
+qu'il est ecrit, et le commentaire du symbole dit maintenant pourquoi les trois formes cohabitent.
+
+**La regle** : quand le meme global se lit a deux largeurs dans le depot, ce n'est pas
+necessairement une incoherence a resorber — verifier d'abord si le binaire fait la meme chose. Ici
+oui. Dans la meme fonction, en revanche, deux largeurs pour un meme global sont toujours suspectes.
+
+### Verification
+
+`dotnet build` : 0 erreur. Parcours de l'auberge : **1441 images, aucun plantage, 557 primitives
+par image**, inchange — ce qui est le resultat attendu pour un defaut latent.
+
+---
+
+## 2026-08-24 (suite 9) — `FUN_004727d0` verifiee contre le binaire, et trois lectures d'octet
+
+`FUN_004727d0` etait deja transcrite (`EntityAnimTick_004727D0`, avec sa suite extraite
+`EntityAnimCommon`). Comme pour `FUN_00472770`, le travail restant etait la **verification** — et
+elle se justifiait : c'est le corps sur lequel deux pieges avaient ete payes le 2026-08-24, dont un
+test inverse.
+
+### Ce qui a ete verifie ligne a ligne
+
+| Bloc | Verdict |
+|---|---|
+| bloc d'age 0 (+0x9a, +0x30, +0x44, +0x4c, +0x48, l'aiguillage de +0x16) | conforme |
+| boucle des quatre emplacements et sa sortie `LAB_00472E3D` | conforme |
+| compte a rebours de +0x9a, avec son `cmp bx,bx` | conforme |
+| pas d'age, bascule 200 → 99 et bornage a 0x10 | conforme |
+| les deux chemins de contact de l'etat 99 | conforme |
+| tete d'`EntityAnimCommon` (LAB_004729b4) et etat 0 | conforme |
+| cascade d'etats 1, 5, 10, 0xb, 0xf et leurs cibles | conforme |
+
+Le test inverse corrige le 2026-08-24 est bien dans le bon sens : `cmp cx,di` puis
+`jne near 004729B4` — le bloc de contact n'est atteint que dans l'etat 99.
+
+Deux details qui auraient pu se retourner et qui sont justes :
+
+* `or ch,80h` a `0x00472e6a` pose **0x8000**, pas 0x80 — meme famille que le `or ch,40h` de
+  `FUN_004508B0`, et transcrit correctement des l'origine ;
+* `cmp byte [esi+0Dh],0FFh` est une comparaison d'**octet** a 0xFF, rendue par
+  `(sbyte)e[0xd] == -1`.
+
+### Ce que la verification a trouve : trois lectures d'octet non masquees
+
+`DAT_005de538` est lu **sur un octet** a trois sites de ce fichier, tous de la meme forme
+`xor eax,eax ; mov al,[5DE538h]` :
+
+| Adresse | Site | Etat avant |
+|---|---|---|
+| `0x00472a09` | `EntityAnimCommon`, etat 0 | non masque |
+| `0x00472eab` | `EntityAnimTail_00472E80`, etat 200 | non masque |
+| `0x00472770` | `ActivePartySlot_00472770` | non masque (corrige en suite 8) |
+
+Les trois indexent la table des emplacements au pas de 0x9c. Les trois portent desormais le
+`(byte)` que le reste du depot emploie deja a huit autres sites.
+
+**Le defaut reste latent** : tous les ecrivains du global, reconstruits comme dans `Blaze.c`,
+ecrivent un octet ou zero. Le playtest le confirme — 1441 images, chiffres identiques.
+
+**La lecon, et elle vaut au-dela de ce global** : quand un correctif de largeur est applique a un
+site, balayer immediatement les autres sites du meme global. Le premier a ete trouve en verifiant
+`FUN_00472770` ; les deux autres ne se sont montres qu'en verifiant la fonction voisine, et l'un
+d'eux venait d'etre ecrit le jour meme, dans cette meme session, en recopiant l'idiome fautif.
+
+### Une observation de test, notee au passage
+
+Un lancement sur les deux de cette verification est mort au demarrage sur
+`No free block of 0x280000 bytes below 0x00D80000`. **Le mecanisme de relance a bien tourne** — le
+journal porte « relaunching (attempt 2 of 3) » puis « (attempt 3 of 3) » — mais les **trois**
+tentatives ont perdu la course a la memoire basse. Le quatrieme lancement, manuel, a reussi.
+
+La formulation de `TODO.md` — « ne peut plus tuer une session » — est donc un cran trop forte : le
+budget de trois relances peut s'epuiser. Ce n'est pas une regression, c'est la fenetre de 16 Mo qui
+reste la fenetre, comme la section du 2026-08-24 (suite) le disait deja.
+
+---
+
+## 2026-08-24 (suite 10) — `FUN_00468080` verifiee, et la convention qui la rend lisible
+
+`FUN_00468080` (`TryPlaySoundNearEntity`) etait deja transcrite. La verification au desassembleur
+la confirme mot pour mot — rayon 2000, gain double par `shl edx,1`, position sonore prise en
+`+0x1c`, retour 1 ou 0 dans AX — et livre au passage le **fait qui manquait au dossier**.
+
+### `Ordinal_442` est stdcall, et c'est le pivot
+
+La signature de cette famille repose entierement sur une affirmation que la documentation posait
+sans la justifier : « le corps lit `[esp+14h]`, `[esp+18h]` et `[esp+1ch]`, soit les arguments 2, 3
+et 4 ». Cette lecture n'est vraie **que si** la somme des carres empilee juste avant a ete depilee
+par la callee.
+
+Elle l'est :
+
+```
+004680cc  push esi
+004680cd  call 00545A10h        ; aucun `add esp,4`
+004680d2  xor  ecx,ecx
+```
+
+Trois autres sites d'appel d'`Ordinal_442` — deux dans `FUN_00472e80`, un dans `FUN_00468110` — ne
+nettoient pas davantage. La convention est **stdcall**.
+
+En cdecl, l'argument pousse resterait sur la pile et les memes offsets designeraient les arguments
+**1, 2 et 3**. Un cran d'ecart sur les trois sœurs a la fois.
+
+**La lecon** : le `ret` du corps donne la convention quand on ecrit l'interop ; le **site d'appel**
+la donne quand on reconstruit l'appelant, et c'est la moitie qui manquait a
+`Documentation/DLL/winsys3d.md`. Une convention non etablie ne se voit pas comme une lacune — elle
+se voit comme une signature qui marche, jusqu'a ce qu'elle ne marche plus.
+
+### Les deux sœurs verifiees dans la foulee
+
+`FUN_00468110` (`SpawnEffectNearCamera_00468110`), transcrite le 2026-08-24 depuis le
+desassemblage, est confirmee sur ses trois points sensibles :
+
+* rayon **1800** — `cmp eax,708h ; jge` ;
+* le `+ 0xC0` porte bien sur **param_2** — `add ecx,0C0h` ou `ecx = [esp+14h]` ;
+* l'ordre d'empilement donne `(entite, &entite[0x1c], 0, param_2 + 0xC0, param_3, param_4)`.
+
+Cote interop, `[DllImport]` sans `CallingConvention` vaut `Winapi`, soit `StdCall` sur x86 : la
+declaration d'`Ordinal_442` dans `Interop/Winsys3d.cs` etait deja correcte.
+
+### Verification
+
+`dotnet build` : 0 erreur. Aucun changement de comportement — cette passe n'a rien corrige dans le
+code, seulement etabli et ecrit ce qui le rendait vrai.
+
+---
+
+## 2026-08-24 (suite 11) — le plantage de `FUN_00534cd0`, et `FUN_0041be60`
+
+### Le plantage signale par Vincent
+
+`Fatal error. 0xC0000005 at TestTriggerVolumes_00534CD0`, en entrant dans la seconde grande piece a
+droite de l'auberge.
+
+**Un defaut de largeur, et Ghidra le presentait a l'envers.** La pseudo-C ecrit
+
+```c
+uVar5 = (ushort)DAT_005fa560;
+if ((short)uVar5 != 0) { ... }
+```
+
+ce qui se lit comme un mot de seize bits. Le binaire dit autre chose :
+
+```
+00534d0a  movzx ax,byte [5FA560h]
+00534d12  movsx edi,ax
+```
+
+Le compte des morceaux en attente tient sur **un octet**, et l'octet suivant est deja la premiere
+entree de la liste. La transcription lisait un `short` : un compte de 2 suivi d'une entree 5 donnait
+**0x0502 = 1282 tours**. Passe la fin de la liste, `pending[slot]` rend des octets quelconques,
+l'indice de morceau qui en decoule designe n'importe quoi, et la marche sur les boites dereference
+un pointeur invente. C'est la violation d'acces.
+
+**La fonction sœur le disait deja.** `FUN_00534f90` (`ResetPendingChunkRecords`) parcourt la **meme
+liste** et etait transcrite correctement, `*pending` sur un octet. Deux fonctions, une liste, deux
+largeurs : l'incoherence etait visible dans le depot avant d'etre visible a l'ecran.
+
+### Ce qui n'est pas etabli
+
+**Le plantage n'a pas ete reproduit.** Les frappes minutees n'atteignent pas une piece choisie : le
+meme trajet donne 1051 primitives par image une fois et 698 la fois suivante. Deux executions avec
+la ligne fautive **remise en place** n'ont pas plante non plus — ce qui ne disculpe rien, cela dit
+seulement que ces trajets-la n'ont pas rempli la liste des morceaux en attente.
+
+La correction est donc etablie **par le binaire et par la fonction sœur**, pas par l'observation.
+C'est suffisant pour la faire — la lecture d'un `short` la ou le binaire lit un octet est fausse
+dans tous les cas — mais pas pour affirmer que le symptome de Vincent a disparu.
+
+### Un garde-fou, faute de reproduction
+
+La marche sur les boites n'a **aucune borne** dans l'original : elle fait confiance a la sentinelle
+`0xffffffff`. Une liste atteinte par un mauvais indice n'en a pas, et le parcours part alors dans de
+la memoire quelconque — c'est-a-dire un `0xC0000005` sans la moindre indication de sa cause, ce que
+Vincent a recu.
+
+Une borne de 0x400 boites transforme ce plantage muet en un message qui nomme le morceau, le
+creneau et le compte. Elle ne change rien a un parcours normal (les listes font quelques dizaines
+d'entrees). Meme raison d'etre que la borne de balayage de `RunTextEngine` et que `StagingBank` :
+une deviation assumee, qui rend visible un defaut de reconstruction au lieu de le laisser corrompre
+la memoire en silence.
+
+### `FUN_0041be60`, la troisieme sœur
+
+Verifiee contre le binaire, conforme : rayon **1500** (`cmp eax,5DCh`), trois valeurs comparees a
+999 puis publiees dans `0x005de0a8` / `ac` / `b0`, retour 1 ou 0 dans AX.
+
+Une difference de forme avec `FUN_00468080` merite d'etre notee : ici les trois arguments sont lus
+en **double mot** (`mov eax,[esp+10h]`), la ou la sœur sonore les lit en `movsx word`. Les deux
+fonctions se ressemblent trait pour trait et ne partagent pas les largeurs de leurs arguments.
+
+Et le decompte d'offsets ne tient, pour les trois, que parce qu'`Ordinal_442` est **stdcall** —
+etabli en suite 10. Ici le corps ne fait que **deux** `push` avant l'appel au lieu de trois, d'ou
+`[esp+10h]` pour l'argument 2 au lieu de `[esp+14h]`.
+
+Les trois sœurs sont maintenant verifiees : rayons 1500, 1800 et 2000.

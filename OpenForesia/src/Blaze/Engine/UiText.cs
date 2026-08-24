@@ -1693,7 +1693,13 @@ internal sealed unsafe class UiText
 
                     switch (completion)
                     {
+                        // 0x00474320 est un DOUBLE de 0x00450700, pas une seconde fonction : les
+                        // 87 octets sont identiques dans Blaze.exe a l'exception du deplacement
+                        // relatif du `call`, et les deux visent 0x005312D0. Le compilateur a emis
+                        // le meme corps deux fois. Les aiguiller sur la meme transcription est
+                        // donc fidele, et non une approximation.
                         case 0x00450700:
+                        case 0x00474320:
                             Blaze.ChestPickupDone_00450700((uint*)subject);
                             break;
 

@@ -574,3 +574,55 @@ cette longueur : le binaire relit le local tel quel.
 `RunMusicStreamWorker` (`Engine/Audio.cs`) transcrit les deux appels avec la même destination et le
 signale sur place. Le correctif, si un mode « corrigé » voyait le jour, tiendrait en un terme
 ajouté au second `dest`.
+
+---
+
+## LB-012 — L'état 0xd2 de l'automate d'entité rend une valeur jamais écrite
+
+**Relevé** le 2026-08-24 en transcrivant `FUN_00472e80`, la queue de l'automate commun des entités
+de zone, depuis le binaire (`Legacy/Raw/Blaze/FUN_00472E80.asm`). Non constaté en jeu : la mesure
+est statique, et l'état 0xd2 n'apparaît pas dans la zone de départ.
+
+### Symptôme attendu
+
+Au pas où une entité passe par l'état **0xd2** — celui qui met son sujet en posture 6 et joue le
+son d'ouverture — le gestionnaire de l'entité peut, une fois sur un nombre indéterminé, **sauter
+entièrement son propre corps** pour ce pas-là. L'entité paraît alors marquer un temps d'arrêt d'une
+image avant de reprendre.
+
+### Mécanisme
+
+`FUN_00472e80` rend un `short` dans AX, et son appelant `FUN_004727d0` le propage tel quel jusqu'au
+gestionnaire, qui en fait `if (… == 1) return;`. **Toutes** les sorties du corps posent AX
+explicitement — `mov ax,1` ou `xor ax,ax` — sauf les deux de l'état 0xd2 :
+
+```
+00473364  push 6
+00473366  call 0053CEA0h          ; le son
+0047336b  add  esp,10h
+0047336e  pop  edi                ; ni `mov ax,1`, ni `xor ax,ax`
+0047336f  pop  esi
+00473370  pop  ebp
+00473371  pop  ebx
+00473372  ret
+```
+
+La branche voisine (`LAB_00473373`, le son 7) a exactement la même forme. Pour comparaison, la
+sortie du même appel dans l'état 0xd3 fait bien `xor ax,ax` avant de dépiler.
+
+La valeur rendue est donc celle que `FUN_0053cea0` a laissée dans EAX — et cette fonction est
+elle-même déclarée `void` : ses propres sorties rendent ce que `FUN_0053d640` ou `FUN_0053d880` y
+ont laissé. Il n'y a aucune valeur définie au bout de la chaîne.
+
+C'est le motif classique du `return` d'une fonction déclarée sans prototype : le compilateur a
+traité `PlaySound(...)` comme rendant un `int` et a laissé passer le résultat.
+
+### Dans OpenForesia
+
+`EntityAnimTail_00472E80` (`Screens/State03/WorldMapTick.cs`) rend **0** sur ce chemin, avec la
+mesure en commentaire sur place. Ce n'est pas une reproduction du défaut : reproduire une valeur
+indéterminée demanderait de transcrire la discipline de registres de `FUN_0053cea0` et de tout ce
+qu'elle appelle. Zéro est la valeur des sorties voisines et le seul choix qui ne soit pas un
+tirage — mais c'est bien une **déviation déclarée**, pas une transcription.
+
+Le correctif d'un mode « corrigé » serait identique : rendre 0.
