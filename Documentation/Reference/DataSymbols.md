@@ -1798,3 +1798,145 @@ telle quelle plutôt que de les unifier derrière un champ `byte` :
 Les trois donnent le même résultat tant que la valeur reste sous 256, ce qui est toujours le cas.
 Elles se distinguent quand même dans la transcription : c'est le binaire qui varie, et l'unification
 effacerait l'information.
+
+---
+
+## `PTR_LAB_00551c30` — la table statique des gestionnaires d'entité de `FUN_0047aa70` (2026-08-24)
+
+**192 entrées de quatre octets**, relevées verbatim dans `Legacy/Binaries/Blaze.exe` (`.data`,
+`at 0x00551c30 768`). C'est la table que le répartiteur de `FUN_0047aa70` emprunte pour tout
+sous-type `< 0xC0` ; au-dessus, il passe par la table installée par zone `0x0056adc8`.
+
+**Aucune de ses cibles n'est dans `Blaze.c`** — Ghidra ne les a vues que prises en adresse ici,
+d'où le préfixe `PTR_LAB_`. Elles se répartissent en deux bandes, `0x0044xxxx` et
+`0x00475xxx`..`0x00482xxx`, et comptent **124 adresses distinctes**.
+
+### Le créneau « sous-type inconnu » n'est pas vide
+
+**Soixante-neuf des 192 créneaux pointent sur `0x0047ADC0`** :
+
+```
+0047adc0  8b442404      mov   eax,[esp+4]      ; l'enregistrement
+0047adc4  c70000000000  mov   dword [eax],0    ; son mot d'état part à zéro
+0047adca  c3            ret
+```
+
+Ce n'est **pas** un `ret` nu comme la souche `0x00401FA0` de l'autre table : effacer le mot d'état
+éteint le bit `0x80000000`, que la passe relit juste après pour rendre le créneau au pool. C'est un
+**désengendrement**. Le transcrire fait passer 69 créneaux sur 192 d'un plantage à un comportement
+juste, pour trois instructions.
+
+### La convention d'appel, que Ghidra donne à l'envers
+
+La pseudo-C écrit `(*(code *)…)()`, sans argument, et ce dépôt l'a répété. C'est faux. Le `push` est
+fait **avant** le branchement, donc les deux tables reçoivent le même unique argument :
+
+```
+0047aa8e  push esi                      ; l'enregistrement
+0047aa92  cmp  eax,0C0h
+0047aa97  jge  0047AAA2
+0047aa99  call dword [eax*4+551C30h]    ; table basse
+0047aaa2  call dword [eax*4+56ADC8h]    ; table haute
+0047aaa9  add  esp,4                    ; __cdecl, un argument, commun aux deux
+```
+
+La branche basse a donc exactement la convention de la branche haute. C'est le troisième argument
+perdu par Ghidra rencontré ce jour-là, après `FUN_00472e80` et la famille `FUN_00468080`.
+
+### Ce qui reste
+
+**123 corps réels**, tous absents de `Blaze.c`, à relever au désassembleur. C'est un mur, pas une
+lacune : il se franchit un corps à la fois, et cette table est la carte qui dit lequel. Les deux
+passes sœurs (`FUN_0047ab70` → `0x00551f30`, `FUN_0047acf0` → `0x00552230`) ont la même forme et
+n'ont pas encore été relevées.
+
+---
+
+## `PTR_LAB_00551f30` — la table statique de `FUN_0047ab70` (2026-08-24)
+
+**192 entrées de quatre octets**, relevées verbatim (`at 0x00551f30 768`). Elle commence exactement
+où `PTR_LAB_00551c30` s'achève : les trois tables de 0x300 octets — `0x00551c30`, `0x00551f30`,
+`0x00552230` — **se suivent sans trou**, ce qui donne au passage la borne de chacune.
+
+**84 cibles distinctes**, toutes absentes de `Blaze.c`.
+
+### Les deux tables sont disjointes
+
+Elles n'ont **qu'une seule cible en commun**, la souche `0x0047ADC0`, et **pas un seul gestionnaire
+réel**. Ce ne sont donc pas deux vues d'un même jeu de comportements indexé différemment : ce sont
+deux familles d'entités distinctes. La passe elle-même le confirme — `FUN_0047ab70` raccroche ses
+entités à la grille spatiale, `FUN_0047aa70` est la seule des six à ne rien y raccrocher.
+
+### Une table beaucoup plus creuse que sa sœur
+
+**109 des 192 créneaux** pointent sur la souche de désengendrement, contre 69 dans `0x00551c30` :
+plus de la moitié de l'espace d'indices est vide et éteint ce qui s'y présente. Les 60 premiers
+créneaux le sont d'un bloc, ce qui laisse penser que cette famille numérote ses sous-types à partir
+de 0x3c.
+
+Restent **83 corps réels**.
+
+### Le répartiteur a la même forme
+
+```
+0047ab95  and  byte [esi],7Fh              ; esi = 0x005edee0 + 0x36 → record[0x36] &= 0x7f
+0047ab9d  push edi                          ; l'enregistrement, AVANT le branchement
+0047ab9e  cmp  eax,0C0h
+0047aba5  call dword [eax*4+551F30h]        ; table basse
+0047abae  call dword [eax*4+56AEC8h]        ; table haute
+0047abb5  add  esp,4                        ; __cdecl, un argument
+```
+
+Le `lea edi,[esi-36h]` du prologue vaut confirmation au passage du `record[0x36] &= 0x7f` de la
+transcription : Ghidra le rendait par un décalage négatif autour d'un pointeur biaisé, la même
+figure que la boucle de `FUN_0040e640` autour de `&DAT_005e93f9`.
+
+---
+
+## `PTR_LAB_00552230` — la table statique de `FUN_0047acf0`, et le bilan des trois (2026-08-24)
+
+**192 entrées de quatre octets** (`at 0x00552230 768`), la troisième et dernière du bloc contigu.
+**68 cibles distinctes**, dont la souche. La plus creuse des trois : **125 créneaux sur 192**
+éteignent ce qui s'y présente.
+
+Le répartiteur a la forme des deux autres, avec le même pointeur biaisé
+(`esi = 0x005f2d40 + 0x36`) :
+
+```
+0047ad15  and  byte [esi],7Fh
+0047ad1d  push edi                          ; l'enregistrement, AVANT le branchement
+0047ad1e  cmp  eax,0C0h
+0047ad25  call dword [eax*4+552230h]
+```
+
+C'est la **seule des trois dont un créneau soit atteint par un chemin déjà reconstruit** :
+`SpawnStatusEffectEntity_0047AC40` engendre dans `0x005f2d40` en posant son sous-type en `+0x05`,
+l'octet même que cette passe aiguille. L'effet de dispersion du groupe d'`EvaluatePartyDispersal` y
+entre avec `0x9d`, ce qui désigne `0x00445860` — un corps réel, décompilé dans `Blaze.c`, non
+transcrit.
+
+### Bilan des trois tables
+
+| Table | Passe | Créneaux morts | Corps réels | dans `Blaze.c` | au désassembleur |
+|---|---|---|---|---|---|
+| `0x00551c30` | `FUN_0047aa70` | 69 / 192 | 123 | 63 | 60 |
+| `0x00551f30` | `FUN_0047ab70` | 109 / 192 | 83 | 26 | 57 |
+| `0x00552230` | `FUN_0047acf0` | 125 / 192 | 67 | 32 | 35 |
+| **total** | | **303 / 576** | **273** | **121** | **152** |
+
+Les trois sont **disjointes deux à deux** : leur seule cible commune est la souche `0x0047ADC0`.
+303 des 576 créneaux — plus de la moitié — sont des trous qui éteignent ce qui s'y présente.
+
+### `PTR_LAB_` ne veut pas dire « absent de `Blaze.c` »
+
+C'est la correction à retenir. Le préfixe dit seulement que **Ghidra n'a pas reconnu les cibles
+comme des fonctions depuis cette table** ; la plupart sont décompilées quand même, atteintes par
+d'autres appelants. **121 des 273 corps y sont**, et relèvent de la transcription ordinaire.
+
+L'affirmation contraire, écrite ici le même jour, venait d'un **échantillon de sept adresses**
+généralisé à 273. Le compte exact tient en deux commandes :
+
+```bash
+grep -oE "^/\* FUN_[0-9a-f]{8} @" Legacy/Decompiled/Blaze.c | sed 's|^/\* FUN_||; s| @$||' | sort -u > have.txt
+comm -12 cibles.txt have.txt | wc -l
+```

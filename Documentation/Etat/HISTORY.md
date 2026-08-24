@@ -6,6 +6,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-24
 
+- feat : la table statique `PTR_LAB_00552230` de `FUN_0047acf0` relevée — les trois passes de `0x0047axxx` ont leur branche basse câblée, et **303 des 576 créneaux** se comportent correctement
+- doc : `PTR_LAB_` ne veut **pas** dire « absent de `Blaze.c` » — 121 des 273 corps y sont décompilés ; l'affirmation contraire, écrite le même jour, généralisait un échantillon de sept adresses
+- feat : la table statique `PTR_LAB_00551f30` de `FUN_0047ab70` relevée — 192 entrées, 84 cibles distinctes, dont **109 créneaux** qui pointent sur la souche de désengendrement et deviennent corrects d'un coup
+- doc : les deux tables statiques relevées sont **disjointes** — une seule cible commune, la souche, et pas un seul gestionnaire réel partagé : ce sont deux familles d'entités, pas deux vues d'un même jeu
+- doc : les trois tables de 0x300 octets (`0x00551c30`, `0x00551f30`, `0x00552230`) se suivent sans trou, ce qui borne chacune sans avoir à deviner sa taille
+
+- feat : la table statique `PTR_LAB_00551c30` de `FUN_0047aa70` relevée en entier — 192 entrées, 124 cibles distinctes, toutes absentes de `Blaze.c`
+- feat : `0x0047ADC0`, le créneau « sous-type inconnu » de cette table, transcrit — il **éteint** l'entité au lieu de l'ignorer, et 69 des 192 créneaux y pointent : autant qui passent d'un plantage à un comportement juste
+- fix : le message d'exception de cette branche affirmait que le gestionnaire ne prend aucun argument — le `push esi` est fait avant le branchement, les deux tables reçoivent l'enregistrement en `__cdecl`
+- doc : les tests de navigation en jeu (auberge et autres cartes) passent à Vincent — un trajet en frappes minutées n'atteint pas une pièce choisie de façon reproductible
 - fix : `TestTriggerVolumes_00534CD0` lisait le compte des morceaux en attente sur un `short` alors que le binaire fait `movzx ax,byte` — le compte avalait la première entrée de la liste, la boucle sortait de la liste et déréférençait des pointeurs inventés ; cause probable du `0xC0000005` signalé par Vincent, non reproduite
 - feat : la marche sur les boîtes de déclenchement porte une borne de 0x400 — l'original n'en a aucune, et une liste atteinte par un mauvais indice plantait sans nommer sa cause
 - doc : `FUN_0041be60` vérifiée — rayon 1500, trois valeurs publiées, arguments lus en double mot là où sa sœur sonore les lit en `movsx word`

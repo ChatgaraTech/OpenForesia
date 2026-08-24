@@ -11693,3 +11693,146 @@ etabli en suite 10. Ici le corps ne fait que **deux** `push` avant l'appel au li
 `[esp+10h]` pour l'argument 2 au lieu de `[esp+14h]`.
 
 Les trois sœurs sont maintenant verifiees : rayons 1500, 1800 et 2000.
+
+---
+
+## 2026-08-24 (suite 12) — `FUN_0047aa70` : la branche basse de son repartiteur
+
+`FUN_0047aa70` (`TickEntityTable_005ff400`) etait transcrite, mais **la moitie de son repartiteur
+etait un mur** : tout sous-type `< 0xC0` levait une exception au lieu d'appeler quoi que ce soit.
+Cette passe est maintenant cartographiee, et un cinquieme de ses creneaux se comporte correctement.
+
+### Trois faits releves dans le binaire
+
+**Un — la table.** `PTR_LAB_00551c30` compte **192 entrees** et **124 cibles distinctes**, toutes
+absentes de `Blaze.c`. Relevee verbatim et materialisee ; le detail est dans `DataSymbols.md`.
+
+**Deux — le creneau « inconnu » agit.** Soixante-neuf des 192 creneaux pointent sur `0x0047ADC0`,
+trois instructions qui **eteignent l'entite** (`*enregistrement = 0`), et non un `ret` nu. La passe
+relit le mot d'etat juste apres et rend le creneau au pool. Transcrire ces trois instructions fait
+passer **69 creneaux sur 192** d'un plantage a un comportement juste.
+
+**Trois — la convention etait documentee a l'envers.** Le message d'exception affirmait « le
+gestionnaire ne prend AUCUN argument (l'appel est `(*(code *)…)()`) ». Faux : le `push esi` est
+fait **avant** le branchement, et le `add esp,4` qui suit nettoie les deux branches. La table basse
+a exactement la convention de la haute — `__cdecl`, un argument, l'enregistrement.
+
+C'est le **troisieme** argument perdu par Ghidra rencontre dans la journee, apres `FUN_00472e80`
+(emplacements d'arguments recycles en locales) et la famille `FUN_00468080` (offsets decales par
+une convention stdcall non etablie). Le motif est stable : quand Ghidra montre un appel indirect
+sans argument, verifier le `push` avant le branchement.
+
+**Et celui-ci etait pire que les deux autres** : il ne s'est pas manifeste par un plantage mais par
+une phrase juste-a-cote-de-vraie dans un message d'erreur, ecrite pour guider quiconque
+transcrirait ces 123 corps. Une lacune qui donne de mauvaises instructions coute plus qu'une lacune
+muette.
+
+### Ce qui reste, chiffre
+
+**123 corps reels** a relever au desassembleur pour cette table seule. Les deux passes sœurs —
+`FUN_0047ab70` vers `0x00551f30`, `FUN_0047acf0` vers `0x00552230` — ont la meme forme et ne sont
+pas relevees ; leur message d'exception dit maintenant comment le faire, et ne ment plus sur la
+convention.
+
+### Verification
+
+`dotnet build` : 0 erreur. Lancement sans deplacement : 1441 images, aucun plantage, 557 primitives
+par image, inchange. La branche basse n'est pas exercee a l'auberge — comme le reste de cette
+famille, elle attend une autre zone.
+
+---
+
+## 2026-08-24 (suite 13) — `FUN_0047ab70` : la deuxieme table statique
+
+Meme travail que la suite 12, sur la passe sœur. `PTR_LAB_00551f30` est relevee et materialisee ;
+**109 de ses 192 creneaux** deviennent corrects d'un coup, contre 69 pour la premiere table.
+
+### Trois faits, dont deux nouveaux
+
+**La borne des tables se lit dans leur contiguite.** `0x00551f30` commence exactement ou
+`0x00551c30` s'acheve, et `0x00552230` exactement ou celle-ci s'acheve : trois blocs de 0x300
+octets qui se suivent. Chacune borne la precedente, ce qui evite d'avoir a deviner leur taille.
+
+**Les deux tables sont disjointes.** Une seule cible commune — la souche `0x0047ADC0` — et **pas un
+seul gestionnaire reel** partage. Ce ne sont pas deux vues d'un meme jeu de comportements : ce sont
+deux familles d'entites distinctes, ce que la passe confirme (celle-ci raccroche ses entites a la
+grille spatiale, `FUN_0047aa70` est la seule des six a ne rien y raccrocher).
+
+**La table est beaucoup plus creuse.** 109 creneaux sur 192 eteignent ce qui s'y presente, et les
+**soixante premiers le sont d'un bloc** : cette famille numerote vraisemblablement ses sous-types a
+partir de 0x3c.
+
+### Un dividende de verification
+
+Le prologue biaise son pointeur — `esi = 0x005edee0 + 0x36`, l'enregistrement etant `esi - 0x36` —
+d'ou `and byte [esi],7Fh` pour `record[0x36] &= 0x7f`. La transcription l'avait juste. C'est la
+meme figure que la quatrieme boucle de `FUN_0040e640` autour de `&DAT_005e93f9`, relevee en suite 4 :
+**une boucle ecrite autour d'un point milieu ne nomme pas sa base**, et il faut la retrouver par le
+pas ou par le biais.
+
+### L'etat des trois tables
+
+| Table | Passe | Creneaux vides | Corps reels | Etat |
+|---|---|---|---|---|
+| `0x00551c30` | `FUN_0047aa70` | 69 / 192 | 123 | relevee (suite 12) |
+| `0x00551f30` | `FUN_0047ab70` | 109 / 192 | 83 | **relevee** |
+| `0x00552230` | `FUN_0047acf0` | ? | ? | non relevee |
+
+Deux cent six corps reels restent a relever pour les deux premieres. Le message d'exception de la
+troisieme dit comment la relever et ne ment plus sur la convention.
+
+### Verification
+
+`dotnet build` : 0 erreur. Lancement sans deplacement : 1441 images, aucun plantage, 557 primitives
+par image, inchange. Les branches basses ne sont pas exercees a l'auberge.
+
+---
+
+## 2026-08-24 (suite 14) — `FUN_0047acf0`, et une affirmation a corriger
+
+La troisieme et derniere table statique est relevee. Les trois passes de `0x0047axxx` ont
+maintenant leur branche basse cablee, et **303 des 576 creneaux** — plus de la moitie — se
+comportent correctement pour trois instructions.
+
+### Le bilan
+
+| Table | Passe | Creneaux morts | Corps reels | dans `Blaze.c` | au desassembleur |
+|---|---|---|---|---|---|
+| `0x00551c30` | `FUN_0047aa70` | 69 / 192 | 123 | 63 | 60 |
+| `0x00551f30` | `FUN_0047ab70` | 109 / 192 | 83 | 26 | 57 |
+| `0x00552230` | `FUN_0047acf0` | 125 / 192 | 67 | 32 | 35 |
+| **total** | | **303 / 576** | **273** | **121** | **152** |
+
+Les trois sont disjointes deux a deux : leur seule cible commune est la souche.
+
+### La correction : `PTR_LAB_` ne veut pas dire « absent de `Blaze.c` »
+
+**Ce que j'ai ecrit en suite 12 et 13 etait faux.** « Aucune de ses cibles n'est dans `Blaze.c` »,
+« tous absents de `Blaze.c` » : c'etait une generalisation d'un **echantillon de sept adresses**
+verifiees a la main, etendue a 273.
+
+Le compte exact dit autre chose : **121 des 273 corps sont decompiles**. Le prefixe `PTR_LAB_` dit
+seulement que Ghidra n'a pas reconnu les cibles comme des fonctions **depuis cette table** ; la
+plupart le sont depuis d'autres appelants.
+
+Cela change la nature du travail restant. Ce n'etait pas « 273 corps au desassembleur », c'est
+**121 transcriptions ordinaires et 152 desassemblages**. Le premier tiers est de la route pavee.
+
+**La lecon**, et c'est la meme que celle du carrousel de selection : sept echantillons concordants
+ne valent pas une mesure. Le compte tenait en deux commandes, et je ne les ai lancees qu'a la
+troisieme table — apres avoir ecrit deux fois l'affirmation dans le code et dans la documentation.
+Quand une phrase porte un quantificateur universel (« aucune », « tous »), la mesurer avant de
+l'ecrire, pas apres.
+
+### La seule des trois qui soit atteinte
+
+`0x00552230` est la seule dont un creneau soit atteint par un chemin deja reconstruit :
+`SpawnStatusEffectEntity_0047AC40` pose son sous-type en `+0x05`, l'octet que cette passe aiguille,
+et l'effet de dispersion du groupe d'`EvaluatePartyDispersal` y entre avec `0x9d` — soit
+`0x00445860`, un corps decompile et non transcrit. C'est le premier des 121 a faire, puisqu'un
+chemin vivant y mene.
+
+### Verification
+
+`dotnet build` : 0 erreur. Lancement sans deplacement : 1441 images, aucun plantage, 557 primitives
+par image, inchange.

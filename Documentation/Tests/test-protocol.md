@@ -1011,3 +1011,29 @@ Conséquence pratique : ce trajet sert à **exercer du code de zone**, pas à **
 symptôme localisé**. Quand un plantage est signalé « dans la seconde grande pièce à droite », ne pas
 conclure de son absence ici qu'il est corrigé — la séquence n'établit pas qu'on y est allé. Le dire
 plutôt que de le laisser croire.
+
+---
+
+## Les tests de navigation en jeu : c'est Vincent qui les fait (2026-08-24)
+
+**Décision de Vincent, prise le 2026-08-24 et valable pour la suite** : dès qu'un test demande de
+**se déplacer** dans une carte — atteindre une pièce de l'auberge, changer de zone, reproduire un
+symptôme localisé — **c'est lui qui l'exécute**. Conduire le personnage par frappes minutées est
+devenu trop compliqué et trop long ; il va plus vite à la main, et cela économise du temps de
+session.
+
+Ce n'est pas une préférence de confort : la section précédente le mesure. Deux exécutions de la même
+séquence `-Then HOLD:/FREE:` finissent à des endroits différents, et une absence de plantage sur un
+tel trajet **n'établit rien** sur la pièce visée.
+
+### Le partage, concrètement
+
+| À la charge de l'agent | À la charge de Vincent |
+|---|---|
+| `dotnet build` | tout ce qui demande de conduire le personnage |
+| les lancements de `playtest.ps1` **sans déplacement** — un écran s'ouvre, le rendu tourne, le démarrage ne casse pas | atteindre une pièce précise, changer de carte |
+| lire la capture et le verdict | reproduire un symptôme localisé, et confirmer qu'il a disparu |
+
+Quand une correction ne se vérifie qu'en jouant : la finir, la documenter, **dire franchement
+qu'elle n'est pas exercée**, et demander à Vincent de refaire le trajet. Ne pas essayer de le
+rejouer au clavier.

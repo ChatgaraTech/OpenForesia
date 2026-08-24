@@ -1,10 +1,31 @@
 ﻿# TODO
 
-Point d'entrée entre deux sessions. Mis à jour le **2026-08-23, fin de journée**. L'historique
+Point d'entrée entre deux sessions. Mis à jour le **2026-08-24, fin de journée**. L'historique
 détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et
 la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
+
+**Les tests de navigation en jeu sont à Vincent.** Atteindre une pièce, changer de carte,
+reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage dans
+`Documentation/Tests/test-protocol.md`. Restent à l'agent le build et les lancements sans
+déplacement.
+
+---
+
+# DEMAIN : `FUN_00445860`
+
+**C'est par là qu'on reprend.** Le premier des 121 corps de gestionnaire d'entité qui soient
+décompilés dans `Blaze.c` — donc de la transcription ordinaire, pas du désassemblage — **et le seul
+dont un chemin déjà reconstruit démontre qu'il est atteint** :
+
+`SpawnStatusEffectEntity_0047AC40` engendre dans `0x005f2d40` en posant son sous-type en `+0x05`,
+l'octet que `FUN_0047acf0` aiguille. L'effet de dispersion du groupe d'`EvaluatePartyDispersal`
+(état 0xcd de `EntityAnimTail_00472E80`) y entre avec `0x9d`, et l'entrée 0x9d de la table statique
+`0x00552230` vaut `0x00445860`.
+
+Contexte complet : `REVERSE_STATUS.md`, section du 2026-08-24 (suite 14), et l'entrée
+`PTR_LAB_00552230` de `DataSymbols.md`.
 
 > ## LA CARTE DU MONDE TOURNE
 >
@@ -18,7 +39,53 @@ la suite à faire.
 >
 > C'est la première fois. Le jeu ne s'arrête plus.
 
-# REPRENDRE ICI (2026-08-24, fin de journée)
+# CE QUI A ÉTÉ FAIT LE 2026-08-24
+
+## Les tables de gestionnaires d'entité — les trois branches basses câblées
+
+Les trois passes `FUN_0047aa70` / `FUN_0047ab70` / `FUN_0047acf0` aiguillaient tout sous-type
+`< 0xC0` vers une table statique du binaire, et cette branche entière levait une exception. Les
+trois tables sont relevées et matérialisées.
+
+| Table | Passe | Créneaux morts | Corps réels | dans `Blaze.c` | au désassembleur |
+|---|---|---|---|---|---|
+| `0x00551c30` | `FUN_0047aa70` | 69 / 192 | 123 | 63 | 60 |
+| `0x00551f30` | `FUN_0047ab70` | 109 / 192 | 83 | 26 | 57 |
+| `0x00552230` | `FUN_0047acf0` | 125 / 192 | 67 | 32 | 35 |
+| **total** | | **303 / 576** | **273** | **121** | **152** |
+
+**303 créneaux sur 576** se comportent maintenant correctement, pour trois instructions : la souche
+`0x0047ADC0` n'est pas un `ret` nu, elle **éteint** l'entité (`*enregistrement = 0`), et la passe
+relit le mot d'état juste après pour rendre le créneau au pool.
+
+Les trois tables sont **disjointes deux à deux** — leur seule cible commune est cette souche — et se
+suivent sans trou de `0x00551c30` à `0x0055252f`, ce qui borne chacune sans avoir à deviner sa
+taille.
+
+**Deux pièges payés, à ne pas rejouer :**
+
+* le message d'exception affirmait que ces gestionnaires ne prennent **aucun** argument, d'après le
+  `(*(code *)…)()` de Ghidra. Faux : le `push` est fait **avant** le branchement, et le `add esp,4`
+  nettoie les deux branches — `__cdecl`, un argument, l'enregistrement ;
+* `PTR_LAB_` ne veut **pas** dire « absent de `Blaze.c` ». 121 des 273 corps y sont décompilés.
+  L'affirmation contraire, écrite deux fois dans la journée, généralisait un échantillon de sept
+  adresses.
+
+## Le reste de la journée
+
+Les douze gestionnaires d'entité de la table `0x0056adc8`, `FUN_00472e80` et sa queue, le bloc
+d'étiquettes `0x00551814` (un message de développeur resté dans la version vendue), le double
+`LAB_00474320`, et le correctif de `TestTriggerVolumes_00534CD0`. Détail dans `REVERSE_STATUS.md`,
+sections du 2026-08-24 (suites 1 à 14), et lignes de progression dans `HISTORY.md`.
+
+**Une correction non vérifiée** : `TestTriggerVolumes_00534CD0` lisait le compte des morceaux en
+attente sur un `short` alors que le binaire fait `movzx ax,byte`. C'est la cause probable du
+`0xC0000005` signalé dans la seconde grande pièce à droite de l'auberge, mais **le symptôme n'a pas
+été reproduit** — à confirmer en jeu.
+
+---
+
+# L'ÉTAT D'AVANT (2026-08-24, matin)
 
 **Le jeu a le son.** Musique et bruitages fonctionnent, du menu à l'auberge. Ce qui bloquait
 n'était pas la pile audio — elle était complète — mais trois corps de fonction que Ghidra n'avait
@@ -50,7 +117,9 @@ décompilé, et se distinguent en une passe dans le binaire.
 * Un échafaudage de mesure subsiste dans `StartMusicStream` : la ligne `[AUDIO]` qui interroge
   `GetStatus`. À retirer quand le son sera routinier.
 
-## Les entités de zone — quatre gestionnaires de plus, non exercés
+## Les entités de zone de la table 0x0056adc8 — terminées le 2026-08-24
+
+*(Section conservée pour la méthode qu'elle porte ; la table elle-même n'a plus de lacune.)*
 
 `NotImplementedException: FUN_0050e5e0, table 0x005fa5e0 …` : **ce n'est pas `FUN_0050e5e0` qui
 manque**, elle est transcrite. C'est le gestionnaire d'entité que sa table de sauts (0x0056adc8)
