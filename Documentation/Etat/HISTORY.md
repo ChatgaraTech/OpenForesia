@@ -16,6 +16,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 - feat : chaque lancement imprime `[BAS] fenetre <0x01000000 apres reservations` — la marge basse varie de 3,4 à 11,5 Mo d'un lancement à l'autre, et c'est le mécanisme de la panne
 - doc : LB-011 — au bouclage d'un morceau, la seconde passe de décodage écrit par-dessus la première
 - doc : balayer `.text` à la recherche des `call` vers un thunk d'import retrouve les appelants que Ghidra a perdus — c'est ainsi que `DirectSoundCreate` a livré son unique site
+- feat : `FUN_004727d0`, l'automate commun des entités de zone, plus `FUN_00472770` et `FUN_005037e0` — la charpente que quatre gestionnaires partagent
+- feat : les gestionnaires `0x004734B0`, `0x004738A0`, `0x00473A90` et `0x00473CB0` de la table 0x0056adc8 — le saut sur place couvre à lui seul 47 des 64 sous-types
+- doc : la table de sauts 0x0056adc8 relevée en entier dans `REVERSE_STATUS.md` — d'une adresse de plantage au sous-type, et du sous-type au travail restant
+- doc : lire un corps décompilé par tranches fait manquer des branches ; `FUN_004734b0` en a six, pas trois, et l'une est une chute, pas un saut
 
 ---
 

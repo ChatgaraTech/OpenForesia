@@ -10910,3 +10910,67 @@ pas la même suite.
 **Leçon** : quand un message d'erreur oblige la documentation à tenir une table de correspondance
 pour être exploitable, c'est le message qu'il faut corriger, pas la table. Celle-ci a vécu cinq
 jours en étant fausse sans que personne s'en aperçoive, faute d'occurrence à y confronter.
+
+---
+
+## 2026-08-24 (fin) — la table de sauts d'entites 0x0056adc8, et ce qu'un plantage y designe
+
+`NotImplementedException: FUN_0050e5e0, table 0x005fa5e0 …` signale par Vincent. **`FUN_0050e5e0`
+n'est pas en cause** : elle est transcrite depuis longtemps (`TickEntityTable_005fa5e0`). Ce qui
+manque est toujours le **gestionnaire d'entite** qu'elle atteint par la table de sauts 0x0056adc8,
+et c'est la fin du message — `gestionnaire d'entite 0x4XXXXX non transcrit` — qui le nomme.
+
+### La table entiere, pour l'index de zone 0
+
+Relevee dans `Resources.s_VtSource_0056adc8`. C'est la carte a consulter la prochaine fois : elle
+mene de l'adresse du message au sous-type, et du sous-type au travail restant.
+
+| sous-types | cible | etat |
+|---|---|---|
+| 0, 1, **19..63** | `0x004734B0` | **transcrit le 2026-08-24** — le saut sur place, 47 creneaux sur 64 |
+| 2 | `0x004736D0` | absent de `Blaze.c` — voie du desassemblage |
+| 3 | `0x004738A0` | **transcrit** — la chute avec butee |
+| 4 | `0x00473A90` | **transcrit** — le glissement sur le cap |
+| 5 | `0x00473CB0` | **transcrit** — son miroir |
+| 6, 7 | `0x00473A70` | absent de `Blaze.c` |
+| 8, 9, 10, 18 | `0x4508D0`, `0x4509B0`, `0x450AA0`, `0x450D30` | transcrits anterieurement |
+| 11 | `0x00450BD0` | absent de `Blaze.c` |
+| 12 | `0x00450C60` | dans `Blaze.c`, 36 l., 2 dependances |
+| 13 | `0x00473ED0` | dans `Blaze.c`, 162 l., **9 dependances** |
+| 14 | `0x004746C0` | absent de `Blaze.c` |
+| 15 | `0x004508B0` | absent de `Blaze.c` |
+| 16 | `0x00450760` | dans `Blaze.c`, 66 l., 4 dependances |
+| 17 | `0x004502E0` | absent de `Blaze.c` |
+
+### Ce qui a ete fait
+
+`FUN_004727d0` (248 l.), **l'automate commun** des quatre gestionnaires transcrits, avec sa
+dependance `FUN_00472770` et `FUN_005037e0`. Restent en lacune nommee : `FUN_00472e80` (244 l.,
+huit dependances) pour les etats que l'automate ne traite pas lui-meme.
+
+**Deux pieges de lecture, tous deux payes comptant :**
+
+**Un.** `if (sVar3 != 99)` entre dans le bloc commun ; le bloc de contact n'est atteint que dans
+l'etat 99. La premiere transcription avait le test **a l'envers**, ce qui aurait envoye tous les
+etats ordinaires dans le chemin de contact.
+
+**Deux.** Lire un corps par tranches fait manquer des branches. `FUN_004734b0` a d'abord ete lu
+jusqu'a l'etat `0xcb` et transcrit comme s'il s'arretait la ; il a **six** groupes d'etats, dont un
+— `0xb`/`0xc` — qui n'est pas un saut mais une **chute avec butee** (hauteur decroissante, sortie
+sur la distance cumulee passant 0xc0, puis replacement exact a 0xc1). La regle : mesurer la
+longueur du corps *avant* de le lire, et verifier que la derniere accolade est dans la tranche.
+
+### Ce qui n'est pas verifie, et pourquoi
+
+**Les quatre gestionnaires n'ont pas ete exerces.** Une sonde posee au site de dispatch montre que
+l'auberge n'anime que les sous-types **8, 9, 10 et 18** — tous transcrits avant aujourd'hui. Le
+plantage de Vincent vient donc d'un sous-type qui n'apparait pas sur ce parcours, et rien ne dit
+lequel : le message complet le nommait, mais seule sa premiere ligne a ete relevee.
+
+Ces quatre corps sont donc **lus contre `Blaze.c` et compiles, pas joues**. C'est la meme situation
+que la surimpression de dialogue du 2026-08-23, et elle se note de la meme facon plutot que de se
+presenter comme une correction confirmee.
+
+**Methode pour la prochaine fois** : relever la ligne d'exception **entiere**. Elle porte le
+sous-type, l'adresse du gestionnaire et les seize premiers octets de l'enregistrement — de quoi
+aller directement a la bonne ligne du tableau ci-dessus.

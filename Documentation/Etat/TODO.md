@@ -50,6 +50,26 @@ décompilé, et se distinguent en une passe dans le binaire.
 * Un échafaudage de mesure subsiste dans `StartMusicStream` : la ligne `[AUDIO]` qui interroge
   `GetStatus`. À retirer quand le son sera routinier.
 
+## Les entités de zone — quatre gestionnaires de plus, non exercés
+
+`NotImplementedException: FUN_0050e5e0, table 0x005fa5e0 …` : **ce n'est pas `FUN_0050e5e0` qui
+manque**, elle est transcrite. C'est le gestionnaire d'entité que sa table de sauts (0x0056adc8)
+désigne, et la **fin** du message le nomme — `gestionnaire d'entite 0x4XXXXX non transcrit`.
+
+Quatre y ont été ajoutés le 2026-08-24, avec l'automate qu'ils partagent (`FUN_004727d0`). Le plus
+important, `0x004734B0`, est la cible de **47 des 64 sous-types**.
+
+**Ils compilent et se lisent contre `Blaze.c`, mais ne sont pas joués.** Une sonde au site de
+dispatch montre que l'auberge n'anime que les sous-types 8, 9, 10 et 18, tous transcrits avant.
+Le sous-type qui a planté n'apparaît pas sur ce parcours, et la ligne relevée était tronquée.
+
+**La prochaine fois, relever la ligne d'exception entière** : elle porte le sous-type, l'adresse du
+gestionnaire et les seize premiers octets de l'enregistrement. Le tableau complet de la table est
+dans `REVERSE_STATUS.md`, section du 2026-08-24 (fin) — il mène de l'adresse au travail restant.
+
+Neuf sous-types restent découverts, dont six dont le corps est **absent de `Blaze.c`** et demande la
+voie du désassemblage.
+
 ## La panne aléatoire de mémoire basse — corrigée le 2026-08-24
 
 `No free block of 0x2000 bytes below 0x01000000`, signalée deux fois par Vincent, **ne peut plus
