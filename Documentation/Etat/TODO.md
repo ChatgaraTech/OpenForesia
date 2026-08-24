@@ -67,8 +67,12 @@ Le sous-type qui a planté n'apparaît pas sur ce parcours, et la ligne relevée
 gestionnaire et les seize premiers octets de l'enregistrement. Le tableau complet de la table est
 dans `REVERSE_STATUS.md`, section du 2026-08-24 (fin) — il mène de l'adresse au travail restant.
 
-Neuf sous-types restent découverts, dont six dont le corps est **absent de `Blaze.c`** et demande la
-voie du désassemblage.
+Les **trois** sous-types encore couverts par `Blaze.c` — 12, 13 (le coffre) et 16 — ont été
+transcrits dans la foulée. Il reste **sept** sous-types, couverts par **six** corps distincts, tous **absents de `Blaze.c`**
+(2, 6, 7, 11, 14, 15, 17 → `0x004736D0`, `0x00473A70`, `0x00450BD0`, `0x004746C0`, `0x004508B0`,
+`0x004502E0`) : voie du désassemblage, comme `LAB_00512ef0` et `LAB_00513660`. Plus `FUN_00472e80`
+(244 l., huit dépendances) pour les états que l'automate commun ne traite pas lui-même, et
+`LAB_00474320`, le rappel de fin de boîte qui range réellement le contenu d'un coffre.
 
 ## La panne aléatoire de mémoire basse — corrigée le 2026-08-24
 

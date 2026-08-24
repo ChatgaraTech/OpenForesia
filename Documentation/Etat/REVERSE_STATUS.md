@@ -10935,11 +10935,11 @@ mene de l'adresse du message au sous-type, et du sous-type au travail restant.
 | 6, 7 | `0x00473A70` | absent de `Blaze.c` |
 | 8, 9, 10, 18 | `0x4508D0`, `0x4509B0`, `0x450AA0`, `0x450D30` | transcrits anterieurement |
 | 11 | `0x00450BD0` | absent de `Blaze.c` |
-| 12 | `0x00450C60` | dans `Blaze.c`, 36 l., 2 dependances |
-| 13 | `0x00473ED0` | dans `Blaze.c`, 162 l., **9 dependances** |
+| 12 | `0x00450C60` | **transcrit le 2026-08-24** — l'entite qui palpite |
+| 13 | `0x00473ED0` | **transcrit le 2026-08-24** — le coffre |
 | 14 | `0x004746C0` | absent de `Blaze.c` |
 | 15 | `0x004508B0` | absent de `Blaze.c` |
-| 16 | `0x00450760` | dans `Blaze.c`, 66 l., 4 dependances |
+| 16 | `0x00450760` | **transcrit le 2026-08-24** — le declencheur de script |
 | 17 | `0x004502E0` | absent de `Blaze.c` |
 
 ### Ce qui a ete fait
@@ -10974,3 +10974,71 @@ presenter comme une correction confirmee.
 **Methode pour la prochaine fois** : relever la ligne d'exception **entiere**. Elle porte le
 sous-type, l'adresse du gestionnaire et les seize premiers octets de l'enregistrement — de quoi
 aller directement a la bonne ligne du tableau ci-dessus.
+
+---
+
+## 2026-08-24 (suite 2) — les trois derniers gestionnaires que `Blaze.c` contenait
+
+La table 0x0056adc8 comptait encore neuf sous-types decouverts. **Trois avaient un corps dans
+`Blaze.c`** ; les six autres n'en ont pas et relevent du desassemblage. Les trois sont transcrits.
+
+| sous-type | cible | ce que c'est |
+|---|---|---|
+| 12 | `0x00450C60` | une entite qui **palpite** : les trois facteurs d'echelle oscillent autour de 0x1000, un son d'ambiance tous les 0x3c pas |
+| 16 | `0x00450760` | une entite qui **declenche un script sur contact**, avec descente et remontee de trente pas |
+| 13 | `0x00473ED0` | **le coffre** — le plus fourni de la famille, et le seul a remettre un objet au groupe |
+
+Avec eux, quatre dependances : `FUN_00460fc0` (11 l.), `FUN_004742b0` (38 l.), et la resolution de
+deux symboles qui n'etaient pas des fonctions.
+
+### Deux valeurs lues dans le binaire, et ce qu'elles ont evite
+
+**`PTR_FUN_0056afac` vaut `0x00401FA0`.** C'est la souche `ret` nu que la table de sauts d'entites
+utilise partout ailleurs comme creneau vide. L'appel indirect de l'etat 4 de `FUN_00450760` est
+donc un **no-op verifie**, pas une lacune — il est transcrit comme rien du tout, avec la mesure en
+commentaire. Sans cette lecture il aurait fallu poser un `NotImplementedException` sur un chemin
+qui ne fait rien.
+
+**`DAT_00571990` n'est pas une globale isolee** : elle tombe dans `s_EntityState_00571500`
+(0x00571500..0x00571a3c), qui a deja son accesseur `Mem.EntityState(va)`. Rien a allouer. C'est
+exactement le cas que la carte des symboles de `DataSymbols.md` existe pour attraper — la
+consulter avant de declarer un `DAT_` isole a coute une minute et economise une allocation
+aliasante de plus.
+
+### Le coffre : deux champs de bits d'arene comme memoire persistante
+
+`FUN_00473ed0` porte l'etat dans +0x10, avec des valeurs **negatives** (`-0xff`, `-2`, `-1`) que
+Ghidra rend en `undefined2` non signe (`0xffff`, `0xfffe`). Elles sont lues en `short` signe, ce que
+fait le binaire.
+
+Deux champs de bits retiennent ce qui a deja eu lieu, tous deux ecrits par le meme motif que Ghidra
+obscurcit en `bVar2 - (bVar2 & 0xf8)` — c'est `n & 7` :
+
+* `DAT_005e96e0` (banque d'etat 0), indexe par le numero de coffre de +0x9a : **le coffre a deja
+  ete ouvert**. Teste a l'ouverture, pose a la fermeture.
+* `DAT_005e9840`, indexe par +0x14 : le contenu a ete **refuse**.
+
+Le calcul de sortie `(-(ushort)(sVar4 != 0) & 0xfce1) + 999` vaut 999 quand l'objet est passe et
+200 quand il ne l'est pas ; il est ecrit pour ce qu'il vaut plutot que transcrit en arithmetique.
+
+**Une lacune reste, et elle ne bloque pas ce corps** : `LAB_00474320`, le rappel de fin de boite,
+n'est pas appele ici — il est **range** dans le descripteur par `GrantChestContents_00530F20` et
+rejoue plus tard. Ce corps-ci tourne sans lui ; c'est le rangement effectif du contenu qui en
+depend.
+
+### Verification : toujours pas exerces
+
+Une sonde relevant chaque sous-type **distinct** sur un parcours long et interactif de l'auberge —
+dialogue avec deux PNJ, deplacement dans trois directions — ne voit que **8, 9, 10 et 18**, comme
+la mesure precedente. Les sept gestionnaires ajoutes aujourd'hui sont donc **lus contre `Blaze.c`
+et compiles, pas joues**.
+
+Ce n'est pas une reserve de forme : la zone de depart n'anime que quatre sous-types sur soixante-
+quatre, et rien de ce qui est ajoute ici ne se verifiera avant qu'une autre zone soit atteinte.
+
+### Ce qui reste
+
+Six sous-types — 2, 6, 7, 11, 14, 15, 17 — dont le corps est **absent de `Blaze.c`** :
+`0x004736D0`, `0x00473A70`, `0x00450BD0`, `0x004746C0`, `0x004508B0`, `0x004502E0`. Voie du
+desassemblage, comme `LAB_00512ef0` et `LAB_00513660` ce matin. Plus `FUN_00472e80` (244 l., huit
+dependances) pour les etats que l'automate commun ne traite pas lui-meme.
