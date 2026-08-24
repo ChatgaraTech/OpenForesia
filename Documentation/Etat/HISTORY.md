@@ -23,6 +23,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 - feat : les trois derniers gestionnaires d'entité que `Blaze.c` contenait — `0x00450C60` (l'entité qui palpite), `0x00450760` (le déclencheur de script) et `0x00473ED0`, **le coffre**
 - doc : `PTR_FUN_0056afac` vaut `0x00401FA0`, la souche `ret` nu — l'appel indirect du déclencheur de script est un no-op vérifié, pas une lacune
 - doc : `DAT_00571990` tombe dans `s_EntityState_00571500` et a déjà son accesseur — consulter la carte des symboles avant de déclarer un `DAT_` isolé
+- feat : cinq gestionnaires d'entité **absents de `Blaze.c`** tirés du désassemblage — `0x004508B0`, `0x00473A70`, `0x00450BD0`, `0x004746C0`, `0x004736D0`, plus `FUN_00468110`
+- doc : `0x004736D0` n'est **pas** le miroir de `0x004738A0` — les signes sont bien inversés, mais le drapeau `0x40000000` ne se pose pas aux mêmes états ; deux corps qui se ressemblent se transcrivent séparément d'abord
+- doc : Ghidra rate la même signature pour la **troisième** fois dans cette famille — `param_1` servant à la fois de pointeur et de scalaire est toujours une attribution de registre ratée
+- doc : `or ch,40h` pose `0x4000`, pas `0x40` ; et l'idiome `cdq/xor/sub/and/xor/sub` est un modulo **signé**, pas un masque
 
 ---
 

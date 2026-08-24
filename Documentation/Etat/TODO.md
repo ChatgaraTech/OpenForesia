@@ -67,12 +67,19 @@ Le sous-type qui a planté n'apparaît pas sur ce parcours, et la ligne relevée
 gestionnaire et les seize premiers octets de l'enregistrement. Le tableau complet de la table est
 dans `REVERSE_STATUS.md`, section du 2026-08-24 (fin) — il mène de l'adresse au travail restant.
 
-Les **trois** sous-types encore couverts par `Blaze.c` — 12, 13 (le coffre) et 16 — ont été
-transcrits dans la foulée. Il reste **sept** sous-types, couverts par **six** corps distincts, tous **absents de `Blaze.c`**
-(2, 6, 7, 11, 14, 15, 17 → `0x004736D0`, `0x00473A70`, `0x00450BD0`, `0x004746C0`, `0x004508B0`,
-`0x004502E0`) : voie du désassemblage, comme `LAB_00512ef0` et `LAB_00513660`. Plus `FUN_00472e80`
-(244 l., huit dépendances) pour les états que l'automate commun ne traite pas lui-même, et
-`LAB_00474320`, le rappel de fin de boîte qui range réellement le contenu d'un coffre.
+Les **trois** sous-types que `Blaze.c` couvrait encore — 12, 13 (le coffre) et 16 — puis les
+**cinq** corps qui lui manquaient — 2, 6/7, 11, 14, 15 — ont été transcrits dans la foulée, ces
+derniers depuis le désassemblage. Les 17 cibles distinctes de la table ont maintenant un cas dans
+le répartiteur.
+
+**Il reste une seule lacune dans cette table** : `0x004502E0` (sous-type 17), ~1030 octets, absent
+de `Blaze.c`, même forme d'automate à états dispersés que le coffre. Elle se décrit elle-même si
+elle est atteinte.
+
+Deux autres lacunes nommées gravitent autour : `FUN_00472e80` (244 l., huit dépendances) pour les
+états que l'automate commun ne traite pas lui-même, et `LAB_00474320`, le rappel de fin de boîte
+qui range réellement le contenu d'un coffre. Plus le bloc d'étiquettes `0x00551814` — du
+Shift-JIS resté dans le binaire français — dont la longueur reste à établir.
 
 ## La panne aléatoire de mémoire basse — corrigée le 2026-08-24
 

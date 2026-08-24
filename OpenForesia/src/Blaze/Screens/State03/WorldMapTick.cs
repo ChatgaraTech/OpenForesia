@@ -3384,6 +3384,14 @@ public static unsafe partial class Blaze
             case 0x00450760: EntityHandler_00450760((uint*)record); return;
             case 0x00473ED0: EntityHandler_00473ED0((uint*)record); return;
 
+            // Corps absents de Blaze.c, transcrits depuis le binaire le 2026-08-24.
+            case 0x004736D0: EntityHandler_004736D0((uint*)record); return;
+            case 0x00473A70: EntityHandler_00473A70((uint*)record); return;
+            case 0x00450BD0: EntityHandler_00450BD0((uint*)record); return;
+            case 0x004746C0: EntityHandler_004746C0((uint*)record); return;
+            case 0x004508B0: EntityHandler_004508B0((uint*)record); return;
+            case 0x004502E0: EntityHandler_004502E0((uint*)record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de
@@ -10448,4 +10456,269 @@ public static unsafe partial class Blaze
 
         *(short*)(e + 0x10) = 999;
     }
+
+    // =====================================================================
+    // Les gestionnaires que Ghidra n'a pas decompiles - transcrits depuis le binaire le
+    // 2026-08-24. Ils manquaient tous a Blaze.c pour la meme raison que LAB_00512ef0 et
+    // LAB_00513660 : vus seulement pris en adresse dans une table de sauts, jamais appeles
+    // directement, donc jamais promus en fonction.
+    //
+    // Les cinq ci-dessous sont courts et reguliers. Le sixieme, 0x004502E0, fait ~1030 octets et
+    // reste a faire : voir la lacune nommee plus bas.
+    //
+    // Relevés bruts : Legacy/Raw/Blaze/FUN_004508B0.asm, FUN_00473A70.asm, FUN_00450BD0.asm,
+    // FUN_004736D0.asm, FUN_004746C0.asm, FUN_00468110.asm.
+    //
+    // ATTENTION AUX CONVENTIONS : ces corps sont __cdecl (`ret` nu, l'appelant nettoie), a la
+    // difference du rappel de l'ordinal 790 qui est __stdcall. Cela ne change rien ici - le
+    // repartiteur les appelle par un pointeur gere - mais c'est ce que dit le binaire.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004508b0 @ 0x004508b0 - le sous-type <b>15</b>. Dix-huit octets : il pose une
+    /// echelle de 0x320 en +0x2c et allume le bit 0x4000 du mot d'etat, puis rend la main.
+    ///
+    /// <para>
+    /// Le bit est pose par <c>or ch,40h</c>, c'est-a-dire sur le <b>deuxieme octet</b> de
+    /// <c>ecx</c> : 0x4000, pas 0x40. C'est le genre de detail qu'une lecture rapide du
+    /// desassemblage inverse.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004508B0(uint* entity)
+    {
+        byte* e = (byte*)entity;
+        *(ushort*)(e + 0x2c) = 0x320;
+        *(uint*)e |= 0x4000;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00473a70 @ 0x00473a70 - les sous-types <b>6 et 7</b>. Vingt-trois octets, et il
+    /// <b>ignore completement son entite</b> : il affiche un enonce fixe et rend la main.
+    ///
+    /// <para>
+    /// L'enonce vit en <c>0x00551814</c>. Ses octets sont du <b>Shift-JIS</b> — la chaine
+    /// japonaise est restee dans le binaire francais. Elle n'est pas transcrite ici : la faire
+    /// vivre demande de relever le bloc d'etiquettes entier et sa longueur, ce que
+    /// <see cref="BindMenuLabels"/> attend. Voir le TODO(REVERSE) ci-dessous.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00473A70(uint* entity)
+        => BindMenuLabels(s_JapaneseNotice_00551814, 0, s_WorldMapDescriptor_005633b0, 0);
+
+    // Ghidra: &DAT_00551814 - le bloc d'etiquettes que le gestionnaire ci-dessus affiche. Ses
+    // premiers octets releves dans Legacy/Binaries/Blaze.exe sont
+    //   1f d0 20 08 00 0c 95 d0   puis du Shift-JIS a partir de +0x08
+    // soit un en-tete de huit octets suivi du texte, comme les autres blocs d'etiquettes.
+    //
+    // TODO(REVERSE): la LONGUEUR du bloc n'est pas etablie, et sans elle le contenu ne peut pas
+    // etre transcrit fidelement. Laisse a zero : BindMenuLabels recevra un bloc vide et
+    // n'affichera rien, ce qui est visible et sans danger - au lieu de lire au hasard dans .data
+    // si on lui donnait un pointeur invente. Relever la longueur en lisant le format d'en-tete
+    // dans Engine/UiText.cs, puis dumper le bloc entier.
+    private static readonly byte* s_JapaneseNotice_00551814 = (byte*)NativeMemory.AllocZeroed(0x10);
+
+    /// <summary>
+    /// Ghidra: FUN_00450bd0 @ 0x00450bd0 - le sous-type <b>11</b>. Une entite qui <b>scintille</b> :
+    /// son mot de couleur de +0x38 recoit un gris dont le niveau suit une sinusoide bruitee.
+    ///
+    /// <para>
+    /// Le niveau est <c>0x78 + (rand() % 16) - (sin(phase) &gt;&gt; 8)</c>, calcule <b>sur huit
+    /// bits</b> (<c>sub al,bl</c> puis <c>add al,78h</c>), donc il boucle. Il est ensuite replique
+    /// sur les trois octets de couleur par les deux <c>shl 8 ; or</c> du binaire.
+    /// </para>
+    /// <para>
+    /// Le modulo signe de Ghidra (<c>cdq ; xor ; sub ; and 0xF ; xor ; sub</c>) est l'idiome MSVC
+    /// pour <c>% 16</c> sur un entier signe : le reste garde le signe du dividende.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00450BD0(uint* entity)
+    {
+        byte* e = (byte*)entity;
+        ClearEntityVelocity_00460FC0(e);       // Ghidra: FUN_00460fc0
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x12) += 0x100;
+
+        int wave = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12)) >> 8;   // Ghidra: Ordinal_451
+        byte level = (byte)((CrtRand() % 16) - wave + 0x78);                   // Ghidra: FUN_00547140
+
+        uint grey = level;
+        grey = grey << 8 | level;
+        grey = grey << 8 | level;
+        *(uint*)(e + 0x38) = grey;
+
+        if (*(short*)(e + 0x12) == 0x1000) *(short*)(e + 0x12) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004746c0 @ 0x004746c0 - le sous-type <b>14</b>. Quarante-cinq octets : une fois
+    /// sur deux, il fait naitre une entite d'effet d'etat sur lui-meme ; l'autre fois il ne fait
+    /// rien.
+    /// </summary>
+    private static void EntityHandler_004746C0(uint* entity)
+    {
+        if (CrtRand() % 2 != 0) return;                 // Ghidra: FUN_00547140
+        SpawnEffectNearCamera_00468110((byte*)entity, 0x3f, 0, -1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00468110 @ 0x00468110 - <b>la troisieme sœur</b> de
+    /// <see cref="TryPlaySoundNearEntity"/> et <see cref="TryPublishCameraEffectNearEntity"/> :
+    /// meme calcul de distance a la camera, meme signature perdue par Ghidra, mais un rayon de
+    /// <b>1800</b> et une naissance d'entite a la place d'un son ou de trois mots publies.
+    ///
+    /// <para>
+    /// <b>Ghidra se trompe de signature une troisieme fois</b>, et de la meme facon : sa pseudo-C
+    /// declare trois parametres et ecrit <c>(short)param_1 + 0xc0</c>, ou <c>param_1</c> est un
+    /// pointeur. Le desassemblage donne quatre parametres et le vrai calcul : apres trois
+    /// <c>push</c>, le corps lit <c>[esp+14h]</c>, <c>[esp+18h]</c> et <c>[esp+1ch]</c>, soit les
+    /// arguments 2, 3 et 4, et c'est <c>param_2</c> qui recoit le <c>+ 0xC0</c>.
+    /// </para>
+    /// </summary>
+    /// <returns>1 si l'entite etait assez proche pour que la naissance ait lieu, 0 sinon.</returns>
+    private static ushort SpawnEffectNearCamera_00468110(byte* entity, short subtype, short param3, short param4)
+    {
+        int* camera = *(int**)Mem.Entity(0x005edebc);
+
+        int dx = (camera[0] >> 0xc) - (*(int*)(entity + 0x1c) >> 0xc);
+        int dy = (camera[1] >> 0xc) - (*(int*)(entity + 0x20) >> 0xc);
+        int dz = (camera[2] >> 0xc) - (*(int*)(entity + 0x24) >> 0xc);
+
+        if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) >= 0x708) return 0;
+
+        SpawnStatusEffectEntity_0047AC40(
+            entity, (int*)(entity + 0x1c), null, (byte)(subtype + 0xc0), (byte)param3, param4);
+        return 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004736d0 @ 0x004736d0 - le sous-type <b>2</b>. Meme famille que
+    /// <see cref="EntityHandler_004738A0"/> : la vitesse amortie de +0x5c pousse le cap de +0x32.
+    ///
+    /// <para>
+    /// <b>Ce n'est PAS un simple miroir de son frere</b>, et c'etait le piege. Les signes de +0x32
+    /// sont bien inverses branche par branche — mais le drapeau <c>0x40000000</c> ne se pose pas
+    /// aux memes etats : ici seul l'etat 0x16 le pose, alors que 0x4738A0 le pose aussi en 2 et en
+    /// 0xca. Les deux corps sont donc ecrits separement plutot que partages avec un parametre de
+    /// signe, qui aurait efface cette difference.
+    /// </para>
+    /// <para>
+    /// Autre difference de forme : ici les etats 1 et 0xc9 <b>rendent la main</b> apres avoir
+    /// arme la branche suivante, alors que chez le frere ils tombent dedans dans le meme pas.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004736D0(uint* entity)
+    {
+        byte* e = (byte*)entity;
+        if (EntityAnimTick_004727D0(entity, 2, 3) == 1) return;
+
+        short state = *(short*)(e + 0x14);
+
+        if (state == 1)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(uint*)(e + 0x5c) = 0xf;
+            *(short*)(e + 0x14) = 2;
+            return;
+        }
+
+        if (state == 2)
+        {
+            if (StepDampedSpeed(e) == 0x28)
+            {
+                *(short*)(e + 0x16) = 1;
+                *(short*)(e + 0x14) = 5;
+                return;
+            }
+
+            *(short*)(e + 0x32) += (short)*(uint*)(e + 0x5c);
+        }
+
+        if (state == 0xc9)
+        {
+            *(short*)(e + 0x14) = 0xca;
+            *(short*)(e + 0x12) = 0;
+            *(uint*)(e + 0x5c) = 0xf;
+            return;
+        }
+
+        if (state == 0xca)
+        {
+            if (StepDampedSpeed(e) == 0x28)
+            {
+                *(short*)(e + 0x14) = 0xcd;
+                *(short*)(e + 0x16) = 2;
+            }
+
+            *(short*)(e + 0x32) += (short)*(uint*)(e + 0x5c);
+        }
+
+        if (*(short*)(e + 0x14) == 0xb)
+        {
+            *(short*)(e + 0x14) = 0xc;
+            *(short*)(e + 0x12) = 5;
+            *(uint*)(e + 0x5c) = 0;
+        }
+
+        // Le binaire relit l'etat ICI, une seule fois, et s'en sert pour les deux tests suivants
+        // (0xc puis 0x15) ; le troisieme, celui de 0x16, relit la memoire. Transcrit tel quel.
+        short current = *(short*)(e + 0x14);
+
+        if (current == 0xc)
+        {
+            short step = *(short*)(e + 0x12);
+            int travelled = (int)*(uint*)(e + 0x5c);
+            *(short*)(e + 0x32) -= step;
+            travelled += step;
+            *(short*)(e + 0x12) = (short)(step + 1);
+            *(uint*)(e + 0x5c) = (uint)travelled;
+
+            if (travelled >= 0x373)
+            {
+                *(short*)(e + 0x14) = 0xf;
+                *(short*)(e + 0x16) = 0;
+                *(short*)(e + 0x32) += (short)((short)*(uint*)(e + 0x5c) - 0x373);
+                return;
+            }
+        }
+
+        if (current == 0x15)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(uint*)(e + 0x5c) = 0xf;
+            *(short*)(e + 0x14) = 0x16;
+        }
+
+        if (*(short*)(e + 0x14) != 0x16) return;
+
+        if (StepDampedSpeed(e) == 0x28)
+        {
+            *(short*)(e + 0x16) = 1;
+            *(uint*)e |= 0x40000000;
+            *(short*)(e + 0x14) = 0x19;
+            return;
+        }
+
+        *(short*)(e + 0x32) += (short)*(uint*)(e + 0x5c);
+    }
+
+    /// <summary>Ghidra: FUN_004502e0 @ 0x004502e0 - le sous-type <b>17</b>. Absent de
+    /// <c>Blaze.c</c> comme les cinq ci-dessus, mais d'un tout autre calibre : environ
+    /// <b>1030 octets</b> (0x004502e0..0x004506ec au moins), avec la meme forme d'automate a etats
+    /// disperses que le coffre — <c>0xFF01</c>, <c>0xFFFE</c>, <c>0xFFFF</c>, et l'ecriture de
+    /// +0x9a / +0x98 des l'entree. Seul de la famille a ne pas avoir ete transcrit le
+    /// 2026-08-24.</summary>
+    private static void EntityHandler_004502E0(uint* entity)
+        => throw new NotImplementedException(
+            "FUN_004502e0 (0x004502e0) n'est pas transcrite : le sous-type 17 de la table " +
+            "0x0056adc8, absent de Blaze.c. Environ 1030 octets a desassembler — " +
+            "`OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x004502e0 1040`. Meme forme " +
+            "que FUN_00473ed0 (le coffre) : automate a etats disperses, dont des etats negatifs.");
 }

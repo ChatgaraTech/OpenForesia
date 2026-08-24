@@ -10928,19 +10928,19 @@ mene de l'adresse du message au sous-type, et du sous-type au travail restant.
 | sous-types | cible | etat |
 |---|---|---|
 | 0, 1, **19..63** | `0x004734B0` | **transcrit le 2026-08-24** — le saut sur place, 47 creneaux sur 64 |
-| 2 | `0x004736D0` | absent de `Blaze.c` — voie du desassemblage |
+| 2 | `0x004736D0` | **transcrit le 2026-08-24** — depuis le desassemblage |
 | 3 | `0x004738A0` | **transcrit** — la chute avec butee |
 | 4 | `0x00473A90` | **transcrit** — le glissement sur le cap |
 | 5 | `0x00473CB0` | **transcrit** — son miroir |
-| 6, 7 | `0x00473A70` | absent de `Blaze.c` |
+| 6, 7 | `0x00473A70` | **transcrit le 2026-08-24** — l'enonce fixe |
 | 8, 9, 10, 18 | `0x4508D0`, `0x4509B0`, `0x450AA0`, `0x450D30` | transcrits anterieurement |
-| 11 | `0x00450BD0` | absent de `Blaze.c` |
+| 11 | `0x00450BD0` | **transcrit le 2026-08-24** — le scintillement |
 | 12 | `0x00450C60` | **transcrit le 2026-08-24** — l'entite qui palpite |
 | 13 | `0x00473ED0` | **transcrit le 2026-08-24** — le coffre |
-| 14 | `0x004746C0` | absent de `Blaze.c` |
-| 15 | `0x004508B0` | absent de `Blaze.c` |
+| 14 | `0x004746C0` | **transcrit le 2026-08-24** |
+| 15 | `0x004508B0` | **transcrit le 2026-08-24** |
 | 16 | `0x00450760` | **transcrit le 2026-08-24** — le declencheur de script |
-| 17 | `0x004502E0` | absent de `Blaze.c` |
+| 17 | `0x004502E0` | **LACUNE** — ~1030 o., seule restante |
 
 ### Ce qui a ete fait
 
@@ -11042,3 +11042,82 @@ Six sous-types — 2, 6, 7, 11, 14, 15, 17 — dont le corps est **absent de `Bl
 `0x004736D0`, `0x00473A70`, `0x00450BD0`, `0x004746C0`, `0x004508B0`, `0x004502E0`. Voie du
 desassemblage, comme `LAB_00512ef0` et `LAB_00513660` ce matin. Plus `FUN_00472e80` (244 l., huit
 dependances) pour les etats que l'automate commun ne traite pas lui-meme.
+
+---
+
+## 2026-08-24 (suite 3) — les corps absents de `Blaze.c`, tires du desassemblage
+
+Six sous-types de la table 0x0056adc8 n'avaient **aucun corps dans `Blaze.c`**, pour la meme raison
+que `LAB_00512ef0` et `LAB_00513660` ce matin : Ghidra ne les a vus que pris en adresse dans une
+table de sauts, jamais appeles directement, donc jamais promus en fonction. **Cinq sont
+transcrits** ; le sixieme est nomme et chiffre.
+
+| sous-type | cible | taille | ce que c'est |
+|---|---|---|---|
+| 15 | `0x004508B0` | 18 o. | pose une echelle de 0x320 et allume le bit 0x4000 |
+| 6, 7 | `0x00473A70` | 23 o. | affiche un enonce fixe et **ignore son entite** |
+| 11 | `0x00450BD0` | 130 o. | l'entite qui **scintille** — un gris sinusoidal bruite |
+| 14 | `0x004746C0` | 45 o. | une fois sur deux, fait naitre un effet d'etat sur soi |
+| 2 | `0x004736D0` | 450 o. | la vitesse amortie qui pousse le cap |
+| 17 | `0x004502E0` | **~1030 o.** | non transcrit — lacune nommee |
+
+Avec eux, `FUN_00468110` (19 l. dans `Blaze.c`, jamais reconstruite).
+
+### Le piege du « c'est le miroir de son frere »
+
+`FUN_004736D0` ressemble trait pour trait a `FUN_004738A0` : meme automate commun, memes quatre
+groupes d'etats, meme amortissement d'un huitieme. Les signes de `+0x32` sont bien inverses branche
+par branche. **Mais le drapeau `0x40000000` ne se pose pas aux memes etats** : chez `0x4736D0` seul
+l'etat 0x16 le pose ; chez `0x4738A0` les etats 2 et 0xca le posent aussi. Et la forme differe :
+chez `0x4736D0` les etats 1 et 0xc9 **rendent la main** apres avoir arme la branche suivante, chez
+le frere ils tombent dedans dans le meme pas.
+
+Les deux corps sont donc ecrits separement. Les partager derriere un parametre de signe aurait
+efface exactement la difference qui compte — et se serait vu comme une simplification elegante.
+
+**La regle** : deux corps qui se ressemblent au desassemblage se transcrivent separement d'abord ;
+la factorisation, si elle a lieu, vient apres verification qu'elle ne mange rien.
+
+### Ghidra rate la meme signature pour la troisieme fois
+
+`FUN_00468110` est la **troisieme sœur** de `TryPlaySoundNearEntity` (`FUN_00468080`) et
+`TryPublishCameraEffectNearEntity` (`FUN_0041be60`) : meme calcul de distance a la camera, rayon de
+1800 au lieu de 2000 et 1500, et une naissance d'entite a la place d'un son ou de trois mots.
+
+Et Ghidra s'y trompe de la meme facon : sa pseudo-C declare trois parametres et ecrit
+`(short)param_1 + 0xc0`, ou `param_1` est un pointeur. Le desassemblage donne quatre parametres —
+apres trois `push`, le corps lit `[esp+14h]`, `[esp+18h]` et `[esp+1ch]` — et c'est **`param_2`**
+qui recoit le `+ 0xC0`. Le site d'appel empile six arguments (`add esp,18h`) ; les deux derniers ne
+sont lus nulle part.
+
+**Trois fois le meme motif, trois fois la meme erreur de Ghidra, trois fois le desassemblage qui
+tranche.** Quand une fonction se sert de `param_1` a la fois comme pointeur et comme scalaire, ce
+n'est jamais du code bizarre : c'est une attribution de registre ratee.
+
+### Deux details de lecture qui inversent le sens
+
+**`or ch,40h` pose 0x4000, pas 0x40** — c'est le deuxieme octet de `ecx`. Dans `FUN_004508B0`, tout
+le corps tient dans cette ligne ; s'y tromper aurait pose le mauvais bit d'etat.
+
+**Le modulo signe de MSVC** (`cdq ; xor eax,edx ; sub eax,edx ; and eax,N-1 ; xor eax,edx ; sub
+eax,edx`) est `% N` sur un entier **signe**, pas un masque. `FUN_00450BD0` et `FUN_004746C0`
+l'emploient tous les deux, pour `% 16` et `% 2`.
+
+### Une lacune assumee : l'enonce japonais
+
+`FUN_00473A70` affiche le bloc d'etiquettes de `0x00551814`. Ses octets sont du **Shift-JIS** — la
+chaine japonaise est restee dans le binaire francais. Le bloc n'est pas transcrit : sa **longueur**
+n'est pas etablie, et `BindMenuLabels` en a besoin.
+
+Le symbole existe donc, alloue a zero. Un bloc vide n'affiche rien — visible et sans danger — la ou
+un pointeur invente aurait fait lire au hasard dans `.data`. C'est la meme decision que pour les
+entrees 0x22..0x24 de la table des morceaux : **nommer la lacune plutot que la combler au
+jugé**.
+
+### Etat de la table
+
+Les 17 cibles distinctes de la table 0x0056adc8 ont maintenant un cas dans le repartiteur. Seize
+sont des corps reels ; `0x004502E0` est une lacune nommee qui se decrit elle-meme.
+
+Les sept gestionnaires d'hier et les cinq d'aujourd'hui restent **non exerces** : la sonde au site
+de dispatch ne voit toujours que les sous-types 8, 9, 10 et 18 dans l'auberge.
