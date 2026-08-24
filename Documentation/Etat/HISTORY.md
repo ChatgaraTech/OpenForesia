@@ -11,6 +11,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 - feat : la table des 40 noms de morceaux (`PTR_..._00566cc8`) relevée en entier ; son entrée 6, `Title01.WAV`, est le thème du menu et manquait
 - fix : `DAT_005db85c`, la fenêtre principale, n'était écrite nulle part — c'est winsys3d qui la rend, par le rappel de l'ordinal 790 ; `DestroyWindow` à l'extinction est rétabli
 - fix : `FUN_005135d0` ne fermait que 8 des 9 poignées d'événement et concluait à une fuite qui n'existe pas — la borne `0x5db85c` en compte neuf
+- fix : la panne aléatoire `No free block of 0x2000 bytes below 0x01000000` ne peut plus tuer une session — les cinq derniers sites d'allocation basse étaient pris en cours de partie, hors de portée de la relance ; ils sont pré-réclamés au démarrage
+- fix : le message d'échec de `AllocLowZeroed` nomme le site (`[CallerMemberName]`) et chiffre la fenêtre restante — trois sites arrondissent à `0x2000`, et la table taille → site du protocole de test était fausse
+- feat : chaque lancement imprime `[BAS] fenetre <0x01000000 apres reservations` — la marge basse varie de 3,4 à 11,5 Mo d'un lancement à l'autre, et c'est le mécanisme de la panne
 - doc : LB-011 — au bouclage d'un morceau, la seconde passe de décodage écrit par-dessus la première
 - doc : balayer `.text` à la recherche des `call` vers un thunk d'import retrouve les appelants que Ghidra a perdus — c'est ainsi que `DirectSoundCreate` a livré son unique site
 

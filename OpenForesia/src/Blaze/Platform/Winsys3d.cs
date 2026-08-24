@@ -196,6 +196,9 @@ public static unsafe partial class Blaze
     }
 
 
+    // Pose une fois la liste pre-reclamee epuisee ; voir la garde dans AllocLowZeroed.
+    private static bool s_LowClaimsDone;
+
     private static byte* s_DisplayListArena;   // the base of our allocation, not MainMem itself
 
     /// <summary>
@@ -234,6 +237,35 @@ public static unsafe partial class Blaze
             _ = Mem.s_UiDescriptors_00560ff0;
             _ = Mem.s_StatusDescriptor_00560728;
             _ = s_SelectSlots_00573518;
+
+            // Les cinq derniers, ajoutes le 2026-08-24. Ils etaient pris paresseusement, donc
+            // APRES le demarrage -- et c'est la que la panne signalee par Vincent se produisait :
+            // une AllocLowZeroed qui echoue en cours de partie n'a rien pour la rattraper, elle
+            // traverse toute la pile et tue la session, alors que la meme panne ici rend
+            // simplement `false` et Program.cs relance un processus neuf.
+            //
+            // Les trois premiers sont pris exactement PENDANT un chargement de zone, c'est-a-dire
+            // au pire moment : le runtime .NET a eu plusieurs secondes pour grandir dans la meme
+            // fenetre de 16 Mo. C'est mot pour mot le raisonnement qui avait deja fait remonter
+            // les quatre ci-dessus.
+            //
+            // Le cout est de cinq granules de 64 Ko sur les 255 de la fenetre, et il ne peut pas
+            // affamer l'arene : EnsureDisplayListArena est appelee en premier, et l'arene est deja
+            // placee quand ces lignes s'executent.
+            _ = Mem.s_LoadScreenDescriptors_0056b558;   // 0x2000 -- l'ecran de chargement
+            _ = s_ItemMenuDescriptors_00564fe0;         // 0x2000 -- le menu objets
+            _ = s_WorldPanels_005dbc68;                 // 0x3000 -- les quatre panneaux du monde
+            _ = s_WorldMapDescriptor_005633b0;          // 0x1000
+            _ = s_DestinationDescriptor_0056c978;       // 0x1000
+
+            // Tout ce qui doit vivre bas est pris. Ce qui reste est la marge, et c'est le seul
+            // chiffre qui dise quelque chose si la fenetre venait a se refermer : « plein » et
+            // « fragmente » n'appellent pas la meme suite.
+            s_LowClaimsDone = true;
+            SurveyLowWindow(out uint freeBytes, out uint largestFree);
+            Console.Error.WriteLine(
+                $"[BAS] fenetre <0x{DisplayListCeiling:X8} apres reservations : libre 0x{freeBytes:X} " +
+                $"octets, plus grand intervalle 0x{largestFree:X}");
             return true;
         }
         catch (InvalidOperationException) { return false; }
@@ -673,11 +705,27 @@ public static unsafe partial class Blaze
     /// every descriptor is a <c>.data</c> global of an image based at <c>0x00400000</c>. Keeping
     /// them low here keeps it the identity, instead of turning a faithful mask into corruption.
     /// </summary>
-    internal static byte* AllocLowZeroed(uint size)
+    /// <param name="caller">
+    /// Rempli par le compilateur : le nom du membre appelant, donc le nom du descripteur qui a
+    /// echoue. Sans lui, un echec ne se distinguait que par la taille demandee, et trois sites
+    /// distincts arrondissent a 0x2000 -- ce qui avait deja envoye une enquete au mauvais endroit.
+    /// </param>
+    internal static byte* AllocLowZeroed(uint size, [CallerMemberName] string caller = "")
     {
         // The arena needs 2.6 MB contiguous and gets first pick. Static field initialisers run
         // before entry()'s body, so without this a 64 KB descriptor allocated at the very bottom
-        // could split the only region large enough and starve it �?" measured, not hypothetical.
+        // could split the only region large enough and starve it — measured, not hypothetical.
+        // Apres TryPrepareDisplayListArena, plus AUCUNE allocation basse ne devrait avoir lieu :
+        // les neuf sites sont des singletons paresseux, tous forces au demarrage. Si celui-ci
+        // parle, c est qu un dixieme site existe et qu il court le risque que la liste
+        // pre-reclamee est justement la pour supprimer. Ne pas lever : l allocation, elle, marche.
+        if (s_LowClaimsDone)
+        {
+            Console.Error.WriteLine(
+                $"[BAS] ATTENTION : {caller} alloue bas APRES le demarrage, hors de la portee de la " +
+                "relance. A ajouter a la liste pre-reclamee de TryPrepareDisplayListArena.");
+        }
+
         EnsureDisplayListArena();
 
         nuint rounded = (size + 0xFFFu) & ~0xFFFu;
@@ -691,8 +739,43 @@ public static unsafe partial class Blaze
             if (block != null) return block;
         }
 
+        // Un echec ne disait jusqu'ici que la taille demandee. Le releve ci-dessous distingue les
+        // deux causes possibles, qui n'appellent pas la meme suite : une fenetre reellement PLEINE
+        // (rien a faire, la contrainte est la contrainte) et une fenetre FRAGMENTEE, ou il reste de
+        // la place mais aucun intervalle assez grand d'un seul tenant.
+        SurveyLowWindow(out uint freeBytes, out uint largestFree);
         throw new InvalidOperationException(
-            $"No free block of 0x{rounded:X} bytes below 0x{DisplayListCeiling:X8}. UI text " +
-            "descriptors are masked to 24 bits by FUN_005443a0, so they cannot live higher.");
+            $"No free block of 0x{rounded:X} bytes below 0x{DisplayListCeiling:X8} for {caller}. " +
+            $"Libre sous le plafond : 0x{freeBytes:X} octets au total, plus grand intervalle " +
+            $"0x{largestFree:X}. UI text descriptors are masked to 24 bits by FUN_005443a0, so " +
+            "they cannot live higher. Voir Documentation/Tests/test-protocol.md.");
+    }
+
+    /// <summary>
+    /// Recense la fenetre basse : total libre et plus grand intervalle libre d'un seul tenant.
+    /// Sert uniquement au message d'echec de <see cref="AllocLowZeroed"/> ; ne reserve rien.
+    /// </summary>
+    private static void SurveyLowWindow(out uint freeBytes, out uint largestFree)
+    {
+        freeBytes = 0;
+        largestFree = 0;
+        for (uint address = ArenaScanFloor; address < DisplayListCeiling;)
+        {
+            if (Win32.VirtualQuery((void*)address, out MEMORY_BASIC_INFORMATION info,
+                                   (nuint)sizeof(MEMORY_BASIC_INFORMATION)) == 0) break;
+
+            ulong regionEnd = (ulong)(nint)info.BaseAddress + (ulong)(nint)info.RegionSize;
+            if (regionEnd > DisplayListCeiling) regionEnd = DisplayListCeiling;
+
+            if (info.State == MEM_FREE)
+            {
+                uint span = (uint)(regionEnd - address);
+                freeBytes += span;
+                if (span > largestFree) largestFree = span;
+            }
+
+            if (regionEnd <= address) break;
+            address = (uint)regionEnd;
+        }
     }
 }

@@ -50,6 +50,26 @@ décompilé, et se distinguent en une passe dans le binaire.
 * Un échafaudage de mesure subsiste dans `StartMusicStream` : la ligne `[AUDIO]` qui interroge
   `GetStatus`. À retirer quand le son sera routinier.
 
+## La panne aléatoire de mémoire basse — corrigée le 2026-08-24
+
+`No free block of 0x2000 bytes below 0x01000000`, signalée deux fois par Vincent, **ne peut plus
+tuer une session**. Elle survenait sur cinq sites d'allocation basse pris paresseusement, donc en
+cours de partie — dont trois pendant un chargement de zone, hors de portée de la relance en
+processus fils qui rattrape la même panne au démarrage. Les cinq sont pré-réclamés.
+
+Ce n'est pas rendre la panne impossible : la fenêtre de 16 Mo reste la fenêtre. C'est déplacer
+toutes ses occurrences là où le programme sait s'en remettre. Analyse dans `REVERSE_STATUS.md`,
+section du 2026-08-24 (suite).
+
+Deux choses à savoir en lisant un journal :
+
+* `[BAS] fenetre <0x01000000 apres reservations : libre 0x… , plus grand intervalle 0x…` — la marge
+  basse, imprimée à chaque lancement. Elle varie de 3,4 à 11,5 Mo d'un lancement à l'autre ; c'est
+  l'ASLR, et c'est le mécanisme de la panne.
+* `[BAS] ATTENTION : <nom> alloue bas APRES le demarrage` — n'apparaît que si un **dixième** site
+  d'allocation basse est ajouté sans rejoindre la liste pré-réclamée de
+  `TryPrepareDisplayListArena`. Si elle apparaît, ajouter le site à la liste.
+
 ## Les pistes d'avant, toujours valables
 
 

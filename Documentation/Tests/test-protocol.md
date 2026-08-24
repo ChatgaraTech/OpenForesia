@@ -655,50 +655,75 @@ hors du `try`/`catch` de l'initialiseur de module.
 **Conduite à tenir** : relancer une fois. Si l'échec se répète plusieurs fois d'affilée, alors
 seulement chercher ce qui a augmenté la pression sur la fenêtre basse.
 
-### Le même échec **pendant un chargement**, et pas au démarrage (observé le 2026-08-23)
+### ~~Le même échec **pendant un chargement**~~ — CORRIGÉ le 2026-08-24
 
-Signalé par Vincent : l'échec s'est produit **lors d'un chargement de l'auberge**, pas au lancement.
-Aléatoire, difficile à reproduire, une seule occurrence à ce jour.
+Signalé deux fois par Vincent : l'échec s'est produit **en cours de partie**, pas au lancement. La
+seconde occurrence donnait `No free block of 0x2000 bytes`.
 
-**Ce n'est pas le même cas que ci-dessus, et la conduite à tenir ne s'applique pas.** La récupération
-documentée — le jeu se relance en processus fils quand il perd la course — n'existe **qu'au
-démarrage** : `TryPrepareDisplayListArena` est appelée par l'initialiseur de module, et son
-`catch (InvalidOperationException)` est ce qui permet la relance. Une `AllocLowZeroed` qui échoue en
-cours de partie n'a rien pour la rattraper : elle traverse toute la pile et tue la session.
+**Ce cas n'existe plus.** La récupération — le jeu se relance en processus fils quand il perd la
+course — n'existe **qu'au démarrage** : `TryPrepareDisplayListArena` est appelée par l'initialiseur
+de module, et son `catch (InvalidOperationException)` est ce qui permet la relance. Une
+`AllocLowZeroed` qui échouait en cours de partie n'avait rien pour la rattraper.
 
-**Le mécanisme, très probablement.** Il y a **neuf** sites d'allocation basse, et la liste
-pré-réclamée par `TryPrepareDisplayListArena` n'en couvre que **trois** :
+Il y a **neuf** sites d'allocation basse. Quatre étaient pré-réclamés au démarrage, **cinq étaient
+pris paresseusement** — et les trois premiers de cette liste sont pris exactement pendant un
+chargement de zone, c'est-à-dire au pire moment : le runtime .NET a eu plusieurs secondes pour
+grandir dans la même fenêtre de 16 Mo. Les cinq ont rejoint la liste pré-réclamée.
 
-| pré-réclamé au démarrage | pris paresseusement, plus tard |
-|---|---|
-| `s_MenuContext_0056dd58` | `s_LoadScreenDescriptors_0056b558` (`GameMemory.cs`) — **l'écran de chargement** |
-| `s_UiDescriptors_00560ff0` | `s_WorldMapDescriptorStorage` (`WorldMap.cs:153`) |
-| `s_StatusDescriptor_00560728` | `s_WorldPanelsStorage` (`WorldMap.cs:364`) |
-| `s_SelectSlots_00573518` | `Destination.cs:61`, `ItemMenu.cs:84`, `Options.cs:2432`, `SaveSlots.cs:2046` |
+| site | taille arrondie | quand |
+|---|---|---|
+| `s_UiDescriptors_00560ff0` | `0x2000` | démarrage (déjà) |
+| `s_StatusDescriptor_00560728` | `0x1000` | démarrage (déjà) |
+| `s_MenuContext_0056dd58` | `0x1000` | démarrage (déjà) |
+| `s_SelectSlots_00573518` | `0x5000` | démarrage (déjà) |
+| `s_LoadScreenDescriptors_0056b558` | `0x2000` | **chargement de zone** → démarrage |
+| `s_ItemMenuDescriptors_00564fe0` | `0x2000` | menu objets → démarrage |
+| `s_WorldPanels_005dbc68` | `0x3000` | carte du monde → démarrage |
+| `s_WorldMapDescriptor_005633b0` | `0x1000` | carte du monde → démarrage |
+| `s_DestinationDescriptor_0056c978` | `0x1000` | choix de destination → démarrage |
 
-Les trois premiers de la colonne de droite sont pris **exactement pendant un chargement de zone**,
-c'est-à-dire au pire moment : le runtime .NET a eu plusieurs secondes pour grandir dans la même
-fenêtre de 16 Mo. C'est le raisonnement qui avait déjà fait pré-réclamer les trois de gauche
-(« taking the menu descriptor lazily at the first menu frame meant competing with a runtime that had
-had seconds to grow into the same window — measured, not hypothetical »), et il s'applique mot pour
-mot à ceux-ci.
+**La table taille → site de la version précédente de cette note était fausse** (« `0x4000` =
+l'écran de chargement » : il fait 2 × `0x8c8` = `0x1190`, donc `0x2000`), et **trois** sites
+arrondissent à `0x2000`. Le message d'échec ne permettait donc pas de désigner le coupable. Il le
+nomme maintenant, via `[CallerMemberName]`, et il donne le relevé de la fenêtre :
 
-**Correction candidate, non appliquée** : ajouter les trois à la liste pré-réclamée de
-`TryPrepareDisplayListArena`. Cela ne supprimerait pas la contrainte — la fenêtre reste la fenêtre —
-mais déplacerait l'échec au démarrage, là où la relance en processus fils sait le rattraper. À ne
-faire qu'après avoir mesuré : pré-réclamer plus tôt augmente aussi la pression au moment le plus
-tendu, celui du chargement de `winsys3d.dll`.
+```
+No free block of 0x2000 bytes below 0x01000000 for BuildLoadScreenDescriptors.
+Libre sous le plafond : 0x33B000 octets au total, plus grand intervalle 0x1A0000.
+```
 
-**Ce qu'il faut relever à la prochaine occurrence** — l'échantillon est de un, ce qui ne permet
-aucune conclusion :
+Total libre et plus grand intervalle distinguent les deux causes, qui n'appellent pas la même
+suite : fenêtre **pleine** (la contrainte est la contrainte) contre fenêtre **fragmentée** (il reste
+de la place mais aucun intervalle d'un seul tenant).
 
-1. la taille demandée dans le message (`No free block of 0x…`), qui **désigne le site** :
-   `0x1000` = un descripteur seul, `0x2000` = deux, `0x4000` = l'écran de chargement ;
-2. la trace complète, qui donne le site exact ;
-3. ce qui était en cours — quelle zone, quel écran, à quelle image ;
-4. si la ligne `lost the race for low memory` figurait dans le journal du même lancement.
+### La ligne `[BAS]` du démarrage, et sa garde
 
-Sans le 1 et le 2, une occurrence ne dit rien de plus que « c'est arrivé ».
+Chaque lancement imprime désormais la marge restante une fois toutes les réservations basses faites :
+
+```
+[BAS] fenetre <0x01000000 apres reservations : libre 0x7D1000 octets, plus grand intervalle 0x690000
+```
+
+Relevés du 2026-08-24, trois lancements consécutifs sans rien changer : **0x7D1000, 0xB0B000,
+0x33B000** libres, plus grands intervalles 0x690000, 0xA50000, **0x1A0000**. La variation est
+énorme — c'est l'ASLR, et c'est bien le mécanisme de la panne. Sur le troisième lancement il ne
+restait qu'1,6 Mo d'un seul tenant : l'arène en demande 2,6, donc ce lancement-là aurait perdu la
+course si l'arène n'avait pas été servie en premier.
+
+Une seconde ligne n'apparaît que si un **dixième** site d'allocation basse est ajouté un jour sans
+rejoindre la liste pré-réclamée :
+
+```
+[BAS] ATTENTION : <nom> alloue bas APRES le demarrage, hors de la portee de la relance.
+```
+
+Elle n'interrompt rien — l'allocation, elle, a réussi. Elle signale que le site court à nouveau le
+risque que la pré-réclamation supprime. **Si elle apparaît, ajouter le site à la liste.**
+
+**Conduite à tenir**, désormais : un échec au démarrage est rattrapé tout seul (trois tentatives,
+ligne `lost the race for low memory` dans le journal). Un échec qui traverse malgré tout veut dire
+que les trois tentatives ont perdu — relever la ligne complète, elle nomme le site et donne la
+marge.
 
 ## « relance détectée » : ce que cette ligne veut dire, et pourquoi il faut la lire (2026-08-19)
 

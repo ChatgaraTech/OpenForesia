@@ -10836,3 +10836,77 @@ sur le chemin complet.
   d'écran `0x00505xxx` remplit.
 * LB-011 : au bouclage d'un morceau, la seconde passe de décodage écrit par-dessus la première.
   Fidèle, et à laisser tel quel.
+
+---
+
+## 2026-08-24 (suite) — la panne aléatoire de mémoire basse, et pourquoi elle tuait la session
+
+Vincent a signalé pour la seconde fois `No free block of 0x2000 bytes below 0x01000000`, cette
+fois avec le journal. La panne était connue et documentée depuis le 2026-08-19 ; ce qui manquait,
+c'était la distinction entre ses deux formes.
+
+### Le fond : la fenêtre basse est petite, disputée, et différente à chaque lancement
+
+Les descripteurs d'interface portent leur propre ordering table à `+0xa4`, que `ClearOTagR` relie
+en masquant sur 24 bits. Au-dessus de `0x01000000` un descripteur relie sa liste sur des adresses
+tronquées. Ils doivent donc vivre sous cette barre — dans 16 Mo que se disputent aussi le runtime
+.NET, `winsys3d.dll` (image de 8,3 Mo) et l'arène de liste d'affichage (2,6 Mo d'un tenant).
+
+Le relevé ajouté ce jour chiffre la dispute. Trois lancements consécutifs, rien de changé, marge
+restante après toutes nos réservations :
+
+| lancement | libre total | plus grand intervalle |
+|---|---|---|
+| 1 | 0x7D1000 (8,2 Mo) | 0x690000 (6,8 Mo) |
+| 2 | 0xB0B000 (11,5 Mo) | 0xA50000 (10,6 Mo) |
+| 3 | **0x33B000 (3,4 Mo)** | **0x1A0000 (1,6 Mo)** |
+
+C'est l'ASLR, et l'amplitude est le mécanisme même de la panne. Sur le troisième lancement, l'arène
+n'aurait pas tenu dans le plus grand intervalle restant si elle n'avait pas été servie en premier.
+
+### Ce qui distinguait vraiment les deux formes
+
+Il y a **neuf** sites d'allocation basse. Quatre étaient pré-réclamés par
+`TryPrepareDisplayListArena`, **cinq étaient pris paresseusement**. Cette différence est tout :
+
+* un échec **au démarrage** est levé à l'intérieur du `try` de `TryPrepareDisplayListArena`, rendu
+  comme `false`, et `Program.cs` relance un processus neuf — jusqu'à trois fois. La disposition de
+  l'espace d'adressage étant différente à chaque lancement, c'est une vraie seconde chance ;
+* un échec **en cours de partie** n'a rien pour le rattraper. Il traverse toute la pile et tue la
+  session.
+
+Or trois des cinq sites paresseux — l'écran de chargement, les quatre panneaux du monde, le
+descripteur de carte — sont pris **exactement pendant un chargement de zone**, c'est-à-dire au pire
+moment : le runtime a eu plusieurs secondes pour grandir dans la même fenêtre. Le raisonnement qui
+avait fait remonter les quatre premiers s'appliquait mot pour mot aux cinq autres et n'avait pas été
+poussé jusqu'au bout.
+
+**Correction** : les cinq rejoignent la liste pré-réclamée. Après quoi plus aucune `AllocLowZeroed`
+n'a lieu après le démarrage — les neuf sites sont des singletons paresseux, tous forcés. Vérifié sur
+les trois chemins (menu, menu objets, carte du monde) : aucune allocation basse tardive.
+
+Ce n'est **pas** rendre la panne impossible. La fenêtre reste la fenêtre. C'est déplacer toutes ses
+occurrences là où la relance sait les rattraper.
+
+### Une garde, parce que la liste peut se démoder
+
+Un dixième site ajouté un jour sans rejoindre la liste réintroduirait le problème en silence.
+`AllocLowZeroed` imprime donc `[BAS] ATTENTION : <nom> alloue bas APRES le demarrage` si elle est
+appelée une fois les réservations faites. Elle n'interrompt rien — l'allocation a réussi — mais la
+prochaine personne le verra dans le journal du premier test.
+
+### Le message d'échec ne désignait pas le coupable
+
+`No free block of 0x2000 bytes` ne dit pas quel descripteur. La note de test s'était construit une
+table taille → site pour combler ce trou, et **cette table était fausse** : elle donnait `0x4000`
+pour l'écran de chargement, qui fait 2 × `0x8c8` = `0x1190`, donc `0x2000` ; et **trois** sites
+distincts arrondissent à `0x2000`. Une occurrence ne pouvait donc pas être attribuée.
+
+`AllocLowZeroed` prend maintenant un `[CallerMemberName]` — zéro modification aux neuf sites — et
+son message nomme le membre appelant, puis le total libre et le plus grand intervalle sous le
+plafond. Les deux chiffres séparent « fenêtre pleine » de « fenêtre fragmentée », qui n'appellent
+pas la même suite.
+
+**Leçon** : quand un message d'erreur oblige la documentation à tenir une table de correspondance
+pour être exploitable, c'est le message qu'il faut corriger, pas la table. Celle-ci a vécu cinq
+jours en étant fausse sans que personne s'en aperçoive, faute d'occurrence à y confronter.
