@@ -536,3 +536,41 @@ morceaux, les valeurs restent claires : l'effet est un aplat, pas une couleur fa
 
 `EmitChunkTriangles` (`Engine/Model3d.cs`) porte un paramètre `booleanFlatColour`, posé pour la
 seule `DrawChunkCells` (`FUN_00521000`), et le commente sur place.
+
+---
+
+## LB-011 — Au bouclage d'un morceau, la tête du flux écrase sa propre queue
+
+**Relevé** le 2026-08-24 en transcrivant `LAB_00513660`, le thread de flux de musique, depuis le
+binaire (`Legacy/Raw/Blaze/LAB_00513660.asm`). Non constaté à l'oreille pour l'instant : la
+mesure est statique.
+
+### Symptôme attendu
+
+À chaque fois qu'un morceau repasse par son début — donc toutes les quelques minutes, en boucle —
+un des huit segments du tampon de flux contient les blocs de tête du morceau **là où auraient dû
+se trouver ses derniers blocs**. Il manque donc une fraction de seconde de fin de morceau, et la
+reprise se fait un peu trop tôt.
+
+### Mécanisme
+
+Le thread recharge dix blocs source par notification. Quand le curseur arrive à moins de dix blocs
+de la fin, il décode en deux fois : ce qui reste jusqu'au bout, puis le complément repris au début
+des données. Les deux appels à `FUN_00531bb0` (le décodeur MS-ADPCM) reçoivent la **même**
+destination :
+
+```
+0051373d  push ebp          ; 1er appel : dest = [esp+14h], le pointeur verrouille
+...
+0051376d  mov eax,[esp+10h] ; 2e appel : dest = le MEME local, non avance
+00513778  push eax
+```
+
+Le second décodage aurait dû partir de `dest + remaining * wSamplesPerBlock * 4`. Rien n'ajoute
+cette longueur : le binaire relit le local tel quel.
+
+### Dans OpenForesia
+
+`RunMusicStreamWorker` (`Engine/Audio.cs`) transcrit les deux appels avec la même destination et le
+signale sur place. Le correctif, si un mode « corrigé » voyait le jour, tiendrait en un terme
+ajouté au second `dest`.

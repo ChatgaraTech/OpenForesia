@@ -151,10 +151,10 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
         public IntPtr hEventNotify;
     }
 
-    // Ghidra: DAT_005db8e4 â€” the IDirectSound device object.
-    // TODO(REVERSE): nothing in the reconstructed call graph assigns it â€” no DirectSoundCreate
-    // call site has been located yet, so it is still null at runtime and every entry point below
-    // takes its "no device" early-out. Same category of coverage gap as DAT_005db85c (TODO #6).
+    // Ghidra: DAT_005db8e4 - the IDirectSound device object. Cree par InitAudioDevice
+    // (LAB_00512ef0), le rappel que winsys3d declenche pendant Ordinal_789. C'etait la lacune
+    // TODO(REVERSE) #26, levee le 2026-08-24 en meme temps que #6 (DAT_005db85c, la fenetre
+    // principale) : les deux sont ecrites par cette meme fonction.
     private void* s_DirectSound;
 
     // Ghidra: DAT_005db754 â€” a second COM object released just before the IDirectSound device in
@@ -211,6 +211,138 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
             InvokeComMethod(buffer, IDirectSoundBuffer_Release);
             s_SoundBuffers[i] = null;
         }
+    }
+
+    // =====================================================================
+    // Creation du peripherique (Ghidra: LAB_00512ef0 @ 0x00512ef0).
+    //
+    // Ce corps manquait a Blaze.c : Ghidra ne l'a vu que pris en adresse, dans
+    // `Ordinal_790(&LAB_00512ef0)`, et ne l'a donc jamais promu en fonction. C'est la lacune que
+    // REVERSE_STATUS #26 decrivait comme « DAT_005db8e4 n'a aucun site de creation » -- il en a
+    // un, en 0x00512f20, et c'est le seul appel a DirectSoundCreate de tout le binaire (balayage
+    // de .text a la recherche des `call rel32` et des `call [IAT]` vers 0x00545c68).
+    //
+    // La meme fonction ecrit DAT_005db85c, ce qui repond du meme coup a #6 : la fenetre
+    // principale n'est pas creee par Blaze.exe, elle lui est *rendue* par winsys3d.dll. Ordinal
+    // 790 range le pointeur dans DAT_011be798, et winsys3d le rappelle a deux endroits de son
+    // initialiseur de peripherique (winsys3d.c 5836 et 5874, soit 0x00a06485 et 0x00a065f8), les
+    // deux en empilant DAT_011be79c -- sa propre HWND. Ghidra a rate l'argument au premier des
+    // deux sites ; le desassemblage montre `push ecx` avant `call eax` aux deux.
+    //
+    // Le rappel est donc `void __stdcall (HWND)`, et il tombe pendant Ordinal_789 -- apres
+    // que le peripherique 3D existe, avant que la boucle de jeu ne demande le moindre son.
+    // Transcription ligne a ligne : Legacy/Raw/Blaze/FUN_00512EF0.asm.
+    // =====================================================================
+
+    private const int IDirectSound_SetCooperativeLevel = 0x18 / 4;
+    private const int IDirectSoundBuffer_SetFormat = 0x38 / 4;
+
+    private const uint DSBCAPS_PRIMARYBUFFER = 0x00000001;
+    private const uint DSSCL_PRIORITY = 2;
+
+    // Ghidra: DAT_005db85c -- la fenetre principale, ecrite ici et nulle part ailleurs. En
+    // lecture seule au dehors : `Platform/Startup.cs` la detruit a l'extinction.
+    internal IntPtr s_MainWindow_005db85c { get; private set; }
+
+    // Ghidra: DAT_005db888 -- le WAVEFORMATEX du tampon primaire (22050 Hz, 16 bits, stereo).
+    // En memoire native comme s_MusicOutputFormat, et pour la meme raison : l'original est une
+    // globale .bss dont l'adresse part chez DirectSound.
+    private readonly WAVEFORMATEX* s_PrimaryFormat_005db888 =
+        (WAVEFORMATEX*)NativeMemory.AllocZeroed((nuint)sizeof(WAVEFORMATEX));
+
+    // Ghidra: s_Blaze___Blade_005631d8 -- le titre pose sur la fenetre que winsys3d a creee.
+    private readonly byte* s_WindowTitle_005631d8 = ToAnsiZ("Blaze & Blade");
+
+    /// <summary>
+    /// Le trampoline que <c>Ordinal_790</c> recoit. <c>[UnmanagedCallersOnly]</c> impose une
+    /// methode statique : c'est une contrainte de plateforme, pas un choix de portee, et c'est
+    /// la seule raison pour laquelle ce membre-ci echappe a la regle « tout est d'instance »
+    /// enoncee en tete de fichier.
+    ///
+    /// <para>
+    /// C'est aussi la couture entre la chaine d'affichage de 1998 et la notre, et le seul endroit
+    /// ou elle a lieu. winsys3d passe <c>DAT_011be79c</c>, la fenetre qu'il a creee lui-meme --
+    /// mais avec le device synthetique de <c>Host/SyntheticDevice.cs</c>, <c>3dhelp</c> n'est
+    /// jamais initialise et cette fenetre n'existe pas : le rappel arrive avec une poignee nulle,
+    /// et <c>SetCooperativeLevel</c> rend alors E_INVALIDARG (0x80070057), mesure le 2026-08-24.
+    /// La reconstruction possede pourtant une vraie fenetre, celle du dos Direct3D 11 ; c'est
+    /// exactement le raisonnement deja tenu dans <c>Platform/Startup.cs</c> pour donner une
+    /// fenetre a DirectInput. On la substitue ici, et nulle part plus bas : <c>InitAudioDevice</c>
+    /// reste une transcription de <c>LAB_00512ef0</c> qui n'utilise que son parametre.
+    /// </para>
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+    internal static void DeviceInitCallback(IntPtr mainWindow)
+        => Aud.InitAudioDevice(mainWindow != IntPtr.Zero ? mainWindow : D3D11Window.Handle);
+
+    /// <summary>
+    /// Ghidra: LAB_00512ef0 @ 0x00512ef0. Cree le peripherique DirectSound, lui donne la fenetre
+    /// que winsys3d vient de faire naitre, et impose au tampon primaire le format 22050 Hz /
+    /// 16 bits / stereo dans lequel le flux de musique est decode.
+    /// </summary>
+    internal void InitAudioDevice(IntPtr mainWindow)
+    {
+        // Ghidra: 0x00512eff `mov [5DB85Ch],esi` puis SetWindowTextA(esi, s_Blaze___Blade_005631d8).
+        s_MainWindow_005db85c = mainWindow;
+        Win32.SetWindowTextA(mainWindow, s_WindowTitle_005631d8);
+
+        // Ghidra: `rep stosd` de 0x32 mots a partir de 0x005db758 -- les 50 emplacements de
+        // tampons d'effets sont remis a zero avant toute chose. Un ré-appel du rappel (winsys3d
+        // le declenche aussi sur une reinitialisation de peripherique) repart donc d'une table
+        // vide, sans liberer ce qu'elle contenait : fidele, y compris dans cette fuite.
+        for (int i = 0; i < s_SoundBuffers.Length; i++) s_SoundBuffers[i] = null;
+
+        // Ghidra: DirectSoundCreate(0, &DAT_005db8e4, 0) -- l'argument de sortie est la globale
+        // elle-meme ; le HRESULT n'est pas teste, c'est la nullite du pointeur qui l'est.
+        void* device = null;
+        int hr = Win32.DirectSoundCreate(null, &device, null);
+        s_DirectSound = device;
+        // Meme journalisation que Input.CreateInputDevice : un HRESULT d initialisation COM est la
+        // seule chose qui distingue « pas de peripherique » de « rappel jamais declenche ».
+        Console.Error.WriteLine($"[AUDIO] DirectSoundCreate -> 0x{hr:X8}, fenetre 0x{mainWindow.ToInt64():X}");
+        if (s_DirectSound == null) return;
+
+        // Ghidra: le WAVEFORMATEX de 0x005db888, ecrit champ par champ entre 0x00512f36 et
+        // 0x00512fa1. 0x5622 == 22050 Hz, 0x15888 == 88200 == 22050 * 2 canaux * 2 octets.
+        s_PrimaryFormat_005db888->wFormatTag = WAVE_FORMAT_PCM;
+        s_PrimaryFormat_005db888->nChannels = 2;
+        s_PrimaryFormat_005db888->nSamplesPerSec = 0x5622;
+        s_PrimaryFormat_005db888->nAvgBytesPerSec = 0x15888;
+        s_PrimaryFormat_005db888->nBlockAlign = 4;
+        s_PrimaryFormat_005db888->wBitsPerSample = 0x10;
+        s_PrimaryFormat_005db888->cbSize = 0;
+
+        void** deviceVtable = *(void***)s_DirectSound;
+        var setCooperativeLevel =
+            (delegate* unmanaged[Stdcall]<void*, IntPtr, uint, int>)deviceVtable[IDirectSound_SetCooperativeLevel];
+        hr = setCooperativeLevel(s_DirectSound, mainWindow, DSSCL_PRIORITY);
+        if (hr < 0) { Console.Error.WriteLine($"[AUDIO] SetCooperativeLevel -> 0x{hr:X8}"); return; }
+
+        // Ghidra: le DSBUFFERDESC local, remplis a l'envers par le compilateur (dwSize n'est ecrit
+        // qu'en 0x00512fae, juste avant l'appel). lpwfxFormat NUL : c'est le tampon primaire, son
+        // format se pose apres coup par SetFormat et non a la creation.
+        DSBUFFERDESC desc;
+        desc.dwSize = 0x14;
+        desc.dwFlags = DSBCAPS_PRIMARYBUFFER;
+        desc.dwBufferBytes = 0;
+        desc.dwReserved = 0;
+        desc.lpwfxFormat = null;
+
+        void* primary = null;
+        var createSoundBuffer =
+            (delegate* unmanaged[Stdcall]<void*, DSBUFFERDESC*, void**, void*, int>)deviceVtable[IDirectSound_CreateSoundBuffer];
+        hr = createSoundBuffer(s_DirectSound, &desc, &primary, null);
+        if (hr < 0) { Console.Error.WriteLine($"[AUDIO] CreateSoundBuffer(primaire) -> 0x{hr:X8}"); return; }
+
+        // Ghidra: DAT_005db754 -- l'objet dont FUN_00512ff0 fait un Release juste avant celui du
+        // peripherique. Sa nature etait notee « non epinglee » ; elle l'est maintenant, c'est le
+        // tampon primaire.
+        s_DirectSoundPrimary = primary;
+
+        void** primaryVtable = *(void***)primary;
+        var setFormat = (delegate* unmanaged[Stdcall]<void*, WAVEFORMATEX*, int>)primaryVtable[IDirectSoundBuffer_SetFormat];
+        hr = setFormat(primary, s_PrimaryFormat_005db888);
+        Console.Error.WriteLine($"[AUDIO] peripherique pret ; SetFormat(22050/16/stereo) -> 0x{hr:X8}");
     }
 
     /// <summary>
@@ -490,26 +622,34 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
     // memory because the original is a .bss global whose address is handed to DirectSound.
     private readonly WAVEFORMATEX* s_MusicOutputFormat = (WAVEFORMATEX*)NativeMemory.AllocZeroed((nuint)sizeof(WAVEFORMATEX));
 
-    // Ghidra: DAT_005db8a0 (DSBPOSITIONNOTIFY[8]) and DAT_005db838 (the same 8 event handles,
-    // kept separately so FUN_005135d0 can close them without walking the notify structs).
-    private const int MusicNotifyCount = 8;
-    private readonly DSBPOSITIONNOTIFY* s_MusicNotifyPositions = (DSBPOSITIONNOTIFY*)NativeMemory.AllocZeroed(MusicNotifyCount * (nuint)sizeof(DSBPOSITIONNOTIFY));
-    private readonly IntPtr[] s_MusicNotifyEvents = new IntPtr[MusicNotifyCount];
 
-    // Ghidra: DAT_005db858 â€” the "please exit" event signalled by FUN_005135d0.
-    private IntPtr s_MusicStopEvent;
+    // Ghidra: DAT_005db8a0 (DSBPOSITIONNOTIFY[8]) et DAT_005db838. Ce second bloc n'est PAS un
+    // simple double des huit poignees : c'est un tableau de NEUF poignees contigues, les huit
+    // evenements de notification suivis de l'evenement d'arret (DAT_005db858). Deux mesures
+    // independantes le disent, et elles se recoupent au dernier octet :
+    //   - le thread de flux attend `WaitForMultipleObjects(9, &DAT_005db838, FALSE, INFINITE)`
+    //     et traite l'indice 8 comme « il faut sortir » ;
+    //   - FUN_005135d0 ferme les poignees tant que le curseur est `< 0x5db85c`, soit 9 tours.
+    // 0x005db838 + 9 * 4 == 0x005db85c, l'adresse exacte de la fenetre principale qui suit.
+    //
+    // Il est donc en memoire native, et d'un seul tenant : c'est ce que WaitForMultipleObjects
+    // exige. La note precedente, « seuls les 8 evenements de notification sont fermes, celui
+    // d'arret fuit », lisait la borne a l'envers -- corrigee le 2026-08-24.
+    private const int MusicNotifyCount = 8;
+    private const int MusicWaitHandleCount = MusicNotifyCount + 1;
+    private const int MusicStopHandleIndex = MusicNotifyCount;
+    private readonly DSBPOSITIONNOTIFY* s_MusicNotifyPositions = (DSBPOSITIONNOTIFY*)NativeMemory.AllocZeroed(MusicNotifyCount * (nuint)sizeof(DSBPOSITIONNOTIFY));
+    private readonly IntPtr* s_MusicWaitHandles_005db838 = (IntPtr*)NativeMemory.AllocZeroed(MusicWaitHandleCount * (nuint)sizeof(IntPtr));
 
     // Ghidra: DAT_005db880 / DAT_005db8e0 â€” the streaming worker thread and its thread id.
     private IntPtr s_MusicStreamThread;
     private uint s_MusicStreamThreadId;
 
-    // Ghidra: DAT_005db860 / DAT_005db750 / DAT_005db89c. The first two are the streaming
-    // worker's cursor (source block index reached so far) and its end marker (total number of
-    // source blocks); the third is a flag set as playback starts.
-    // TODO(REVERSE): all three are only ever *written* in the reconstructed graph â€” their readers
-    // live in the missing worker thread body (LAB_00513660), so their exact roles above are read
-    // off the values written (0x50 == the 80 blocks pre-decoded, and a block count derived from
-    // the data-chunk size / nBlockAlign) rather than from consuming code.
+    // Ghidra: DAT_005db860 / DAT_005db750 / DAT_005db89c. Le curseur du flux (indice du bloc
+    // source atteint), son terme (nombre total de blocs source) et le drapeau « la lecture vient
+    // de demarrer ». Leurs lecteurs vivaient dans le corps manquant du thread ; celui-ci est
+    // transcrit depuis le binaire depuis le 2026-08-24 (RunMusicStreamWorker), et les trois roles
+    // ci-dessus sont maintenant lus dans du code qui les consomme, non plus deduits.
     private int s_MusicSourceBlockCursor;
     private int s_MusicTotalBlocks;
     private int s_MusicPlaying;
@@ -774,7 +914,7 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
             // Ghidra shows `FUN_00513470()` with no argument, but the callee's only use of its
             // parameter is the CreateFileA path and this is its sole call site â€” another instance
             // of the parameter-recovery weakness noted in REVERSE_STATUS.md.
-            if (!LoadMusicWaveFile(path)) return 0;
+            if (!LoadMusicWaveFile(path)) { Console.Error.WriteLine("[AUDIO] LoadMusicWaveFile a echoue"); return 0; }
         }
 
         if (s_MusicStreamStopped == 0) return 1;
@@ -821,10 +961,11 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
         {
             IntPtr signal = Win32.CreateEventA(null, 0, 0, null);
             s_MusicNotifyPositions[i].hEventNotify = signal;
-            s_MusicNotifyEvents[i] = signal;
+            s_MusicWaitHandles_005db838[i] = signal;
             s_MusicNotifyPositions[i].dwOffset = (uint)(samplesPerBlock * i * 0x28);
         }
-        s_MusicStopEvent = Win32.CreateEventA(null, 0, 0, null);
+        // Ghidra: DAT_005db858 -- la neuvieme poignee du meme tableau, l'evenement « sortir ».
+        s_MusicWaitHandles_005db838[MusicStopHandleIndex] = Win32.CreateEventA(null, 0, 0, null);
 
         void** notifyVtable = *(void***)notify;
         var setNotificationPositions = (delegate* unmanaged[Stdcall]<void*, uint, DSBPOSITIONNOTIFY*, int>)notifyVtable[IDirectSoundNotify_SetNotificationPositions];
@@ -851,21 +992,123 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
 
         s_MusicStreamStopped = 0;
 
-        // TODO(REVERSE): the streaming worker thread's body is missing. Blaze.c passes
-        // `&LAB_00513660` to CreateThread but contains no function at that address â€” Ghidra only
-        // ever saw it address-taken, the same class of gap as the movie WndProc (TODO #14) and
-        // the ordinal-790 device-lost callback (TODO #8). Calling CreateThread with an address we
-        // cannot reconstruct would jump into nothing, so the call is skipped exactly like
-        // CreateMoviePlayerWindow skips CreateWindowExA, and the handle stays zero.
-        //
-        // Consequence: everything above is real, so a track would start playing, but nothing ever
-        // refills the buffer â€” the primed 80 blocks would loop forever instead of streaming on.
-        // s_MusicSourceBlockCursor / s_MusicTotalBlocks / s_MusicPlaying / s_MusicNotifyEvents /
-        // s_MusicStopEvent exist for that thread and currently have no reader.
-        s_MusicStreamThread = IntPtr.Zero;
-        s_MusicStreamThreadId = 0;
+        // ECHAFAUDAGE DE MESURE (2026-08-24). N'existe pas dans l'original : GetStatus est le
+        // seul moyen de prouver, sans oreille, que le tampon joue vraiment. 0x5 vaut
+        // DSBSTATUS_PLAYING | DSBSTATUS_LOOPING. A retirer quand le son sera routinier.
+        {
+            uint status = 0;
+            var getStatus = (delegate* unmanaged[Stdcall]<void*, uint*, int>)bufferVtable[IDirectSoundBuffer_GetStatus];
+            getStatus(streamBuffer, &status);
+            Console.Error.WriteLine(
+                $"[AUDIO] {Marshal.PtrToStringAnsi((IntPtr)s_LoadedMusicPath)} : {desc.dwBufferBytes} octets, " +
+                $"{s_MusicTotalBlocks} blocs, statut 0x{status:X}, attenuation {s_MusicAttenuation}");
+        }
+
+        // Ghidra: DAT_005db880 = CreateThread(0, 0, &LAB_00513660, 0, 0, &DAT_005db8e0). Le corps
+        // du thread manquait a Blaze.c -- pris en adresse, jamais decompile -- et l'appel etait
+        // saute pour cette raison : la musique demarrait alors mais rejouait ses 80 blocs amorces
+        // en boucle, rien ne rechargeant le tampon. Le corps est transcrit ci-dessous depuis le
+        // binaire (RunMusicStreamWorker, 2026-08-24) ; l'appel peut donc avoir lieu.
+        fixed (uint* threadId = &s_MusicStreamThreadId)
+        {
+            s_MusicStreamThread = Win32.CreateThread(
+                null, 0, (IntPtr)(delegate* unmanaged[Stdcall]<void*, uint>)&MusicStreamThreadProc,
+                null, 0, threadId);
+        }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Le point d'entree que <c>CreateThread</c> recoit. Meme contrainte que
+    /// <see cref="DeviceInitCallback"/> : <c>[UnmanagedCallersOnly]</c> exige une methode
+    /// statique.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+    private static uint MusicStreamThreadProc(void* parameter) => Aud.RunMusicStreamWorker();
+
+    /// <summary>
+    /// Ghidra: LAB_00513660 @ 0x00513660. Le thread de flux : il attend qu'un des huit points de
+    /// notification du tampon soit franchi, puis redecode dix blocs source dans le segment que la
+    /// tete de lecture vient de quitter. Il sort sur la neuvieme poignee.
+    ///
+    /// <para>
+    /// Transcription de Legacy/Raw/Blaze/LAB_00513660.asm. Un seul ecart, note sur place :
+    /// <c>ExitThread</c> devient un <c>return</c>.
+    /// </para>
+    /// </summary>
+    private uint RunMusicStreamWorker()
+    {
+        while (true)
+        {
+            // Ghidra: WaitForMultipleObjects(9, &DAT_005db838, FALSE, INFINITE).
+            uint signalled = Win32.WaitForMultipleObjects(
+                MusicWaitHandleCount, s_MusicWaitHandles_005db838, 0, 0xffffffff);
+            int index = (int)signalled;
+
+            // Ghidra: `if (esi == 8) ExitThread(0);` -- rendu par un retour. Les deux terminent le
+            // thread avec le code 0 ; le retour laisse en plus le CLR derouler proprement le cadre
+            // de rappel natif, ce qu'un ExitThread depuis une trame geree ne ferait pas.
+            if (index == MusicStopHandleIndex) return 0;
+
+            // Ghidra: DAT_005db89c -- « la lecture vient de demarrer ». La toute premiere
+            // notification apres un demarrage porte l'indice 0, et ce segment-la vient justement
+            // d'etre amorce : le redecoder l'ecraserait. Le drapeau est efface dans tous les cas.
+            if (s_MusicPlaying != 0)
+            {
+                bool justStartedAtSegmentZero = index == 0;
+                s_MusicPlaying = 0;
+                if (justStartedAtSegmentZero) continue;
+            }
+
+            // Ghidra: les deux gardes `jl` / `jge` sur l'indice -- WAIT_ABANDONED_0 et au-dela
+            // sont ignores.
+            if (index < 0 || index >= MusicNotifyCount) continue;
+
+            // Le segment a recharger est celui qui PRECEDE la notification franchie.
+            int segment = index == 0 ? MusicNotifyCount - 1 : index - 1;
+
+            void* streamBuffer = s_MusicStreamBuffer;
+            void** bufferVtable = *(void***)streamBuffer;
+
+            void* audioPtr = null;
+            uint audioBytes = 0;
+            var lockBuffer = (delegate* unmanaged[Stdcall]<void*, uint, uint, void**, uint*, void**, uint*, uint, int>)bufferVtable[IDirectSoundBuffer_Lock];
+            // La taille verrouillee est lue dans s_MusicNotifyPositions[1].dwOffset (Ghidra:
+            // DAT_005db8a8) : les decalages etant espaces regulierement, celui de l'entree 1 EST
+            // la longueur d'un segment.
+            lockBuffer(streamBuffer, s_MusicNotifyPositions[segment].dwOffset,
+                       s_MusicNotifyPositions[1].dwOffset, &audioPtr, &audioBytes, null, null, 0);
+
+            int blockAlign = s_MusicFormat->wfx.nBlockAlign;
+            int cursor = s_MusicSourceBlockCursor;
+
+            if (cursor + 0x0a < s_MusicTotalBlocks)
+            {
+                DecodeMsAdpcm(s_MusicFormat, s_MusicData + cursor * blockAlign, s_MusicOutputFormat,
+                              (byte*)audioPtr, (uint)(blockAlign * 0x0a));
+                s_MusicSourceBlockCursor += 0x0a;
+            }
+            else
+            {
+                // Bouclage : ce qui reste jusqu'a la fin du morceau, puis le complement repris au
+                // debut des donnees.
+                int remaining = s_MusicTotalBlocks - cursor;
+                DecodeMsAdpcm(s_MusicFormat, s_MusicData + cursor * blockAlign, s_MusicOutputFormat,
+                              (byte*)audioPtr, (uint)(remaining * blockAlign));
+
+                s_MusicSourceBlockCursor = 0x0a - remaining;
+                // LEGACY : la seconde passe repart de `audioPtr` et non de la fin de la premiere.
+                // Le binaire relit le meme local en 0x0051376d sans lui ajouter la longueur
+                // decodee ; les blocs de tete ecrasent donc ceux de queue a chaque bouclage.
+                // Transcrit tel quel -- voir Documentation/Reference/legacy-bug.md.
+                DecodeMsAdpcm(s_MusicFormat, s_MusicData, s_MusicOutputFormat, (byte*)audioPtr,
+                              (uint)(s_MusicSourceBlockCursor * blockAlign));
+            }
+
+            var unlockBuffer = (delegate* unmanaged[Stdcall]<void*, void*, uint, void*, uint, int>)bufferVtable[IDirectSoundBuffer_Unlock];
+            unlockBuffer(streamBuffer, audioPtr, audioBytes, null, 0);
+        }
     }
 
     /// <summary>
@@ -877,7 +1120,7 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
         if (s_MusicStreamStopped == 0)
         {
             s_MusicStreamStopped = 1;
-            Win32.SetEvent(s_MusicStopEvent);
+            Win32.SetEvent(s_MusicWaitHandles_005db838[MusicStopHandleIndex]);
 
             // With the worker thread not created (see StartMusicStream), the handle is zero and
             // this returns WAIT_FAILED immediately instead of blocking â€” kept as decompiled.
@@ -889,10 +1132,12 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
             s_MusicStreamBuffer = null;
             s_MusicStreamNotify = null;
 
-            // Only the 8 notification events are closed (Ghidra's loop bound is 0x5db85c, i.e. it
-            // stops just before DAT_005db858): the stop event itself is leaked on every restart.
-            // Preserved rather than corrected.
-            for (int i = 0; i < MusicNotifyCount; i++) Win32.CloseHandle(s_MusicNotifyEvents[i]);
+            // Ghidra: `puVar1 = &DAT_005db838; do { CloseHandle(*puVar1); puVar1++; } while
+            // ((int)puVar1 < 0x5db85c);` -- la borne est 0x5db85c, donc NEUF tours : les huit
+            // evenements de notification ET l'evenement d'arret. La note precedente lisait
+            // « s'arrete juste avant DAT_005db858 » et n'en fermait que huit, en concluant a une
+            // fuite qui n'existe pas. Corrige le 2026-08-24.
+            for (int i = 0; i < MusicWaitHandleCount; i++) Win32.CloseHandle(s_MusicWaitHandles_005db838[i]);
         }
         return 1;
     }

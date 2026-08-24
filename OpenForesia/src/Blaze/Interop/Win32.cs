@@ -145,6 +145,14 @@ internal static unsafe class Win32
 
     [DllImport("ddraw.dll")] internal static extern int DirectDrawCreate(void* lpGuid, out IntPtr lplpDD, void* pUnkOuter);
 
+    // Ghidra: DirectSoundCreate @ 0x00545c68 (IAT 0x006084b8). Son unique site d'appel dans tout
+    // le binaire est 0x00512f20, au coeur du corps que Ghidra n'a pas decompile (LAB_00512ef0) :
+    // c'est pourquoi REVERSE_STATUS #26 a longtemps conclu qu'il n'en existait aucun.
+    [DllImport("dsound.dll")] internal static extern int DirectSoundCreate(void* lpcGuidDevice, void** ppDS, void* pUnkOuter);
+
+    // Ghidra: SetWindowTextA, appele par LAB_00512ef0 avec le titre s_Blaze___Blade_005631d8.
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] internal static extern int SetWindowTextA(IntPtr hWnd, byte* lpString);
+
     [DllImport("kernel32.dll")] internal static extern uint SetFilePointer(IntPtr hFile, int lDistanceToMove, void* lpDistanceToMoveHigh, uint dwMoveMethod);
 
     [DllImport("kernel32.dll")] internal static extern int ReadFile(IntPtr hFile, void* lpBuffer, uint nNumberOfBytesToRead, uint* lpNumberOfBytesRead, void* lpOverlapped);
@@ -153,6 +161,8 @@ internal static unsafe class Win32
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi)] internal static extern IntPtr CreateEventA(void* lpEventAttributes, int bManualReset, int bInitialState, byte* lpName);
 
     [DllImport("kernel32.dll")] internal static extern int SetEvent(IntPtr hEvent);
+
+    [DllImport("kernel32.dll")] internal static extern uint WaitForMultipleObjects(uint nCount, IntPtr* lpHandles, int bWaitAll, uint dwMilliseconds);
 
     [DllImport("kernel32.dll")] internal static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
 

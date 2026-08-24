@@ -97,22 +97,48 @@ Five pointers, matching the slot meanings documented in `Documentation/DLL/winsy
 | `[3]` | `0x00563228` | `OK` | OK button, id 1 |
 | `[4]` | `0x00563220` | `Annuler` | Cancel button, id 2 |
 
-## Music filename table (TODO #30)
+## Music filename table (TODO #30) — recovered in full, 2026-08-24
 
 `PTR_s____Music_Mel00_01_WAV_00566cc8` — a pointer table indexed by `PlayMusicTrack`
-(`FUN_00529ad0`), call sites reaching at least index `0x26`. Entries descend in memory:
+(`FUN_00529ad0`). **40 entries**, `0x00566cc8`..`0x00566d67`; the strings themselves occupy
+`0x005680d8`..`0x00568448` and are listed in descending pointer order. The table that follows at
+`0x00566d68` is a different family — 0x40 spacing, pointing elsewhere — which is what fixes the
+end of this one at index `0x27`.
 
-| Index | Pointer | Value |
-|---|---|---|
-| 0 | `0x00568430` | `@:/Music/Mel00_01.WAV` |
-| 1 | `0x00568418` | `@:/Music/Mel00_02.WAV` |
-| … | … | … |
-| 7 | `0x0056838C` | `@:/Music/End01.WAV` |
+| Index | Pointer | Value | | Index | Pointer | Value |
+|---|---|---|---|---|---|---|
+| `0x00` | `0x00568430` | `@:/Music/Mel00_01.WAV` | | `0x14` | `0x00568254` | `@:/Music/Mel10_01.WAV` |
+| `0x01` | `0x00568418` | `@:/Music/Mel00_02.WAV` | | `0x15` | `0x0056823c` | `@:/Music/Mel10_02.WAV` |
+| `0x02` | `0x00568400` | `@:/Music/Mel00_03.WAV` | | `0x16` | `0x00568224` | `@:/Music/Mel10_03.WAV` |
+| `0x03` | `0x005683e8` | `@:/Music/Mel00_a.WAV` | | `0x17` | `0x0056820c` | `@:/Music/Mel05_03.WAV` |
+| `0x04` | `0x005683d0` | `@:/Music/Mel00_b.WAV` | | `0x18` | `0x005681f4` | `@:/Music/Bos01_01.WAV` |
+| `0x05` | `0x005683b8` | `@:/Music/Mel00_c.WAV` | | `0x19` | `0x005681dc` | `@:/Music/Bos02_01.WAV` |
+| `0x06` | `0x005683a0` | `@:/Music/Title01.WAV` | | `0x1a` | `0x005681c4` | `@:/Music/Bos03_01.WAV` |
+| `0x07` | `0x0056838c` | `@:/Music/End01.WAV` | | `0x1b` | `0x005681ac` | `@:/Music/Bos04_01.WAV` |
+| `0x08` | `0x00568374` | `@:/Music/Mel01_01.WAV` | | `0x1c` | `0x00568194` | `@:/Music/Bos05_01.WAV` |
+| `0x09` | `0x0056835c` | `@:/Music/Mel02_01.WAV` | | `0x1d` | `0x0056817c` | `@:/Music/Bos06_01.WAV` |
+| `0x0a` | `0x00568344` | `@:/Music/Mel03_01.WAV` | | `0x1e` | `0x00568164` | `@:/Music/Bos07_01.WAV` |
+| `0x0b` | `0x0056832c` | `@:/Music/Mel04_01.WAV` | | `0x1f` | `0x0056814c` | `@:/Music/Bos08_01.WAV` |
+| `0x0c` | `0x00568314` | `@:/Music/Mel05_01.WAV` | | `0x20` | `0x00568134` | `@:/Music/Bos09_01.WAV` |
+| `0x0d` | `0x005682fc` | `@:/Music/Mel05_02.WAV` | | `0x21` | `0x0056811c` | `@:/Music/Bos10_01.WAV` |
+| `0x0e` | `0x005682e4` | `@:/Music/Mel06_01.WAV` | | `0x22` | `0x00572b40` | *(voir ci-dessous)* |
+| `0x0f` | `0x005682cc` | `@:/Music/Mel06_02.WAV` | | `0x23` | `0x00572b40` | *(idem)* |
+| `0x10` | `0x005682b4` | `@:/Music/Mel07_01.WAV` | | `0x24` | `0x00572b40` | *(idem)* |
+| `0x11` | `0x0056829c` | `@:/Music/Mel07_02.WAV` | | `0x25` | `0x00568108` | `@:/Music/Menu.WAV` |
+| `0x12` | `0x00568284` | `@:/Music/Mel08_01.WAV` | | `0x26` | `0x005680f0` | `@:/Music/GameOver.WAV` |
+| `0x13` | `0x0056826c` | `@:/Music/Mel09_01.WAV` | | `0x27` | `0x005680d8` | `@:/Music/Bos99_01.WAV` |
 
 Forward slashes, and drive-patched absolute paths like the sound bank — the CD's `Music\` directory
-is at the root, not under `FRENCH\`. Dereference the remaining entries before reconstructing
-`PlayMusicTrack`.
+is at the root, not under `FRENCH\`. Every name above exists on the disc, `MEL10_03.wav` excepted.
 
+**Les trois entrées `0x22`..`0x24` ne sont pas des littéraux** : elles pointent toutes sur
+`&DAT_00572b40`, huit octets de la queue **non initialisée** de `.data`, déjà modélisés ailleurs
+sous le nom `s_EmptyLabel_00572b40`. `FUN_00512900` les remplit au vol depuis le code d'écran
+`0x00505xxx`, que la reconstruction n'a pas encore atteint. `MainMenu.cs` les laisse nulles et le
+dit sur place : les pointer sur ce tampon ferait écrire la lettre de lecteur dedans.
+
+**L'entrée `0x06` est le thème du menu**, et c'était la lacune qui rendait le menu muet : la table
+n'avait que trois entrées transcrites (`0`, `1`, `7`) et `RunMainMenuFrameLoop` demande `6`.
 ## MS-ADPCM tables (TODO #24) — standard set, now confirmed
 
 The reconstruction filled these from the published MS-ADPCM standard. That assumption is now

@@ -328,7 +328,7 @@ transcribed, with Ghidra addresses kept in comments for traceability:
 3. **`PTR_s_Blaze___Blade_00563208`** — **structure resolved, contents partly open.** The dialog proc (`winsys3d.c:218-223`) proves it is a **5-entry ANSI string-pointer table**: `[0]` dialog title, `[1]`/`[2]` static labels, `[3]` OK caption, `[4]` Cancel caption. Entry `[0]` is `"Blaze & Blade"` (recorded in Ghidra's own symbol name for the table, and the same literal used as the movie window title). **Fixed a real defect while resolving this**: `RunApplication` had been passing its 4-byte `"X:\"` `driveRoot` buffer here, which would make the DLL read five garbage pointers off the stack and dereference them; it now passes a proper 5-entry table. *Still open*: entries `[1]`..`[4]` are `.data` string pointers (see "Systemic blocker") and currently hold explicit placeholder text — deliberately not null, because the DLL null-checks only the array pointer and then dereferences all five entries unconditionally.
 4. **`s_Please_insert_Blaze___Blade_CD__00563258` / `s_Erreur_00563278`** message strings: only Ghidra's auto-derived symbol names survive in `Blaze.c`, not the actual string bytes. `s_PleaseInsertCdMessage`/`s_ErrorCaption` in `Blaze.cs` are best-guess text reconstructed from the symbol name, not verified against the binary.
 5. **`DAT_00600920` lookup table**: purpose now narrowed (see `Documentation/DLL/winsys3d.md`) — it's a packed cos/sin table (`GetCosTableEntry`/`GetSinTableEntry`, ordinals 450/451, confirmed against `winsys3d.c`: both read the same `DAT_011cb420[0x1000]` sin table built by ordinal 337, 450 phase-shifted a quarter period). What *consumes* `DAT_00600920` is still unknown — presumably the not-yet-reconstructed rendering code.
-6. **`DAT_005db85c`** (main window `HWND`) — **searched exhaustively across all six sources; not found anywhere.** Findings:
+6. **RESOLVED, 2026-08-24 — and the conclusion below was right about the *shape* of the answer, wrong about it being unreachable.** `DAT_005db85c` is written in exactly one place: `LAB_00512ef0`, the ordinal-790 callback (#8), at `0x00512eff` — `mov [5DB85Ch],esi`, `esi` being the callback's only parameter. **`Blaze.exe` never creates the main window; `winsys3d.dll` hands it over.** `FUN_00a06420` (ordinal 789) calls the registered callback with `DAT_011be79c`, its own `HWND`, both when the 3D device is first created and on every re-init. The very next instruction is `SetWindowTextA(hwnd, "Blaze & Blade")`, which is why the window's title changing is a free, visible proof that audio init ran. `DestroyWindow(DAT_005db85c)` at shutdown is restored. The old findings below all remain true — none of the six sources creates the window, because none of them is where it happens. Original note: ~~**`DAT_005db85c`** (main window `HWND`) — **searched exhaustively across all six sources; not found anywhere.** Findings:~~
    - In `Blaze.c` it is **read twice and never written** (`FUN_00523120(0, DAT_005db85c, …)` and `DestroyWindow(DAT_005db85c)`).
    - `Blaze.c` contains exactly **one** `CreateWindowExA` call — the movie player's hidden `"VfwClass"` helper window (TODO #14), which is *not* it.
    - `winsys3d.c` contains **no** `CreateWindow`/`RegisterClass` at all.
@@ -336,9 +336,9 @@ transcribed, with Ghidra addresses kept in comments for traceability:
    - `3dhelp.c` **receives** an `HWND` from its caller (stores it at device+0x18 and validates it with `IsWindow`); it never creates one. Its `GetDesktopWindow` use is only for `GetDeviceCaps`.
    - **CORRECTED — this next claim is exactly backwards.** `Ordinal_789(0, 0)` is the *real* 3D device initialiser: passing 0 as the first argument is what **triggers** full init (it loads `3dhelp.dll`, resolves `Create3DDevice`, and on failure shows "3D-Graphics initialisation error" then `ExitProcess(3)` — `winsys3d.c:5966`). Observed firing for real once this reconstruction held DirectDraw exclusively and never released it. The non-zero values are the *teardown* paths (-1 / -2). Original claim, wrong: ~~`winsys3d.c`'s `Ordinal_789` device-init branch is never reached: both `Blaze.c` call sites pass `0` as its first argument.~~
 
-   Conclusion: the main window's creation site is **not present in any available source**. Most likely it lives in a `Blaze.exe` code path Ghidra rendered as a bodiless `LAB_`, or is reached through one of the unresolved indirect calls. This is the main reason nothing can render yet — see the "Reality check" section.
+   **Caveat for our build**: with the synthetic device (`Host/SyntheticDevice.cs`), `3dhelp` is never initialised and `DAT_011be79c` stays null, so the callback arrives with a null handle and `SetCooperativeLevel` returns `E_INVALIDARG`. `Audio.DeviceInitCallback` substitutes the Direct3D 11 host window there — at the trampoline, nowhere deeper. Original conclusion: ~~the main window's creation site is **not present in any available source**. Most likely it lives in a `Blaze.exe` code path Ghidra rendered as a bodiless `LAB_`, or is reached through one of the unresolved indirect calls.~~ The first half of that guess was right.
 7. **atexit() registration**: `DoExit` walks a table (`DAT_00607950`..`DAT_0060794c`) that nothing currently populates — no `atexit()` call sites have been reconstructed yet in the reachable call graph. Revisit if/when one turns up.
-8. **Ordinal 790's callback** (`Blaze.c`: `&LAB_00512ef0`, passed to `SetDeviceLostCallback`): no decompiled function body anywhere in `Blaze.c` — Ghidra only ever saw it address-taken. Cannot be reconstructed without further disassembly. `winsys3d.c` confirms the DLL does call it back later (see `Documentation/DLL/winsys3d.md`), so this matters once device-loss/reset handling comes up.
+8. **RESOLVED, 2026-08-24 — transcribed from the binary as `Audio.InitAudioDevice`.** `LAB_00512ef0` is the **audio initialiser**, not a device-lost handler: it stores the `HWND` winsys3d passes it (#6), titles the window, zeroes the 50 sound-buffer slots, calls `DirectSoundCreate` (#26), sets `DSSCL_PRIORITY` cooperative level, and creates the primary buffer with a 22050 Hz / 16-bit / stereo `WAVEFORMATEX`. 248 bytes, one shape, no branching worth the name — the *third* time a body written off as needing "further disassembly" turned out to be an afternoon's work. Dump kept at `Legacy/Raw/Blaze/FUN_00512EF0.asm`. Signature settled as `void __stdcall (HWND)`: `ret 4`, and both winsys3d call sites (`0x00a06485`, `0x00a065f8`) `push ecx` — the DLL's own `HWND` — before `call eax`, even though Ghidra shows the first one taking no argument. Original note: ~~**Ordinal 790's callback** (`Blaze.c`: `&LAB_00512ef0`, passed to `SetDeviceLostCallback`): no decompiled function body anywhere in `Blaze.c` — Ghidra only ever saw it address-taken. Cannot be reconstructed without further disassembly. `winsys3d.c` confirms the DLL does call it back later (see `Documentation/DLL/winsys3d.md`), so this matters once device-loss/reset handling comes up.~~
 9. ~~**`DAT_005db900`/`DAT_005db758[50]`** interface identity~~ — **RESOLVED**. Reading the shutdown path (`FUN_00512ff0`/`FUN_00512ea0`) and the buffer-creation path (`FUN_00513030`, `FUN_005133xx`) exercises enough distinct vtable slots to pin both interfaces against the documented DirectX 3–5 COM layouts with no ambiguity: `DAT_005db8e4` is **`IDirectSound`** (0x08 Release, 0x0c CreateSoundBuffer) and `DAT_005db900`/`DAT_005db758[50]` are **`IDirectSoundBuffer`** (0x08 Release, 0x24 GetStatus, 0x2c Lock, 0x30 Play, 0x3c SetVolume, 0x48 Stop, 0x4c Unlock). This retroactively confirms the 0x3c=SetVolume reading in `ApplyCdVolume`/`ApplyAllSoundBufferVolumes`. The 50-slot count is confirmed independently by `FUN_00512ea0`'s loop bound (`0x005db758`..`0x005db81f`). *Update, this session*: the **buffer**-creation paths are now reconstructed (`AllocateSoundBuffer`, `StartMusicStream`), and a third interface was added to the set — `DAT_005db904` is **`IDirectSoundNotify`** (0x08 Release, 0x0c SetNotificationPositions), pinned by `StartMusicStream` obtaining it via `QueryInterface` on the streaming buffer and then using it only with the argument pair `(8, &DAT_005db8a0)` where `DAT_005db8a0`..`DAT_005db8df` has just been filled as exactly 8 `{ dwOffset, hEventNotify }` pairs. *Still open*: the **device** itself (`DAT_005db8e4`) still has no assignment site anywhere in the reconstructed graph — no `DirectSoundCreate` call has been located — so every entry point still takes its "no device" early-out at runtime. See TODO #26.
 10. **AU_00564a05 blob**: `s_SmallTextureFlag` only reconstructs one 4-byte field (`._51_4_`) of what's clearly a larger structure/array (`AU_00564a05`) — the rest of that blob hasn't been characterized.
 11. **RESOLVED** — recovered from `Legacy/Binaries/Blaze.exe`, see `Documentation/Reference/DataSymbols.md`. The options-file extension (`DAT_005630bc`) is **`.cfg`, not `.ini`**, which is why `LoadOptionsIni` had never found a file; `DAT_005630a0` is `CdVol` (the former `UnknownIniKey_005630a0` placeholder); `DAT_005630c4` is `%d`. The full key set is `Size`, `Small`, `Filter`, `Gamma`, `CdVol`, `SoundVol` under section `Options`, corroborated by the installed game's own `BLAZE.cfg`. Original note kept below for context.
@@ -365,14 +365,14 @@ transcribed, with Ghidra addresses kept in comments for traceability:
 20. **RESOLVED — schema recovered *and* its reading confirmed.** `DAT_0056aca8` holds 37 `ushort`s ending at a `0x0000` terminator. Each entry is **`(low byte = index, high byte = stride)`**: the low byte selects `header[4 + index]` (a pointer the fixed pass already relocated) and the high byte is the byte stride for walking the chained list it heads. This is settled by `FUN_00532070`'s own `& 0xff` / `>> 8`, not inferred from the byte pattern — an earlier `(kind, size)` guess was wrong. The schema-driven pass is now reconstructed and is no longer a no-op. **Watch the two relocation formulas**: the fixed pass adds `header[0]`, the schema pass adds `header[0] + header[1]`; using the shorter one yields plausible-looking pointers that are off by a constant. Full table and analysis in `Documentation/Reference/DataSymbols.md`. Original note: ~~**`DAT_0056aca8`** (resource-fixup schema table read by `FixupResourceHeader`/`FUN_00532070`): data-only global, byte content not present in `Blaze.c`'s text (same category as `DAT_00562e00`/TODO #12) — `s_ResourceFixupSchema_0056aca8` is an empty array, so the schema-driven fixup pass is a safe no-op rather than a guess.~~
 21. **`DAT_006008c8`/`DAT_00604930`/`DAT_00600904`** (the 3 comparison targets in `IsKnownOverrideDestination`/`FUN_0052a660`): none have an assignment site anywhere in the reconstructed call graph yet, so they're always null/zero; the 2 true-branch bodies (native override-table installers, one pulling in 11 further `FUN_` calls) are stubbed rather than translated.
 22. **`PTR_s_BLAZE_ALL_1_00566bbc`/`PTR_s_SYSTEM_INI_1_00566bb8`/`s____snd_Base_snd_00568500`** filenames used by the resource-loader subsystem: same category as TODO #17 — only Ghidra's derived symbol names survive; `"BLAZE.ALL"`/`"SYSTEM.INI"`/`"\SND\BASE.SND"` in `Blaze.cs` are best guesses.
-23. **Body recovered — reconstructible whenever wanted.** `0x00513660` was forced in Ghidra and decompiled cleanly to `Legacy/Raw/Blaze/FUN_00513660.c`. It is a straightforward streaming pump: `WaitForMultipleObjects(9, &DAT_005db838, FALSE, INFINITE)` over the 8 notification events plus the stop event (index 8 breaks and `ExitThread`s), then `IDirectSoundBuffer::Lock` (vtable `0x2c`), a decode of 10 MS-ADPCM blocks through `FUN_00531bb0` — **already reconstructed as `DecodeMsAdpcm`** — and `Unlock` (vtable `0x4c`), with explicit wraparound handling when fewer than 10 blocks remain. Every dependency exists. *Note*: reconstructing it would have no observable effect yet, because `StartMusicStream` early-outs without an `IDirectSound` device (#26). Original note: ~~**Music-streaming worker thread** (`Blaze.c`: `&LAB_00513660`, passed to `CreateThread` by `FUN_005131d0`): no decompiled body anywhere in `Blaze.c` — address-taken only, exactly the same class of gap as the movie `WNDPROC` (#14) and ordinal 790's callback (#8). `StartMusicStream` therefore does **not** call `CreateThread` (jumping to an address we cannot reconstruct would crash), same precedent as `CreateMoviePlayerWindow` skipping `CreateWindowExA`; `s_MusicStreamThread` stays `IntPtr.Zero`. Consequence: everything else in the start path is real, so a track *would* begin playing, but nothing ever refills the buffer — the pre-decoded 80 blocks would loop forever instead of streaming on. This is also why `DAT_005db860`/`DAT_005db750`/`DAT_005db89c` (source-block cursor, total block count, playing flag) and the 8 notification events are written but never read in the reconstruction: the worker is their only consumer. Resolvable by re-running Ghidra with `0x00513660` forced to "disassemble as function".~~ — which is exactly what was done.
+23. **RESOLVED, 2026-08-24 — reconstructed as `Audio.RunMusicStreamWorker`, and `CreateThread` is called for real.** The body had already been recovered to `Legacy/Raw/Blaze/FUN_00513660.c`; the transcription was checked against **both** that decompilation and a fresh disassembly (`Legacy/Raw/Blaze/LAB_00513660.asm`), and the two disagree on one point that matters. Ghidra models the two stack locals as arrays (`local_8`, `local_4`), so it passes *addresses* where the machine code passes *values*: its `puVar3` is handed to the decoder as the destination and to `Unlock` as `lpvAudioPtr1`, with a byte count of `uVar4 = 0`. In the disassembly the destination is `mov esi,[esp+14h]` — a **load** of the locked pointer — and `Unlock` gets the real byte count from the other local. The reconstruction follows the disassembly. This also settles the layout of `DAT_005db838`: **nine** contiguous handles, the eight notification events plus the stop event at `DAT_005db858`, which `0x005db838 + 9*4 == 0x005db85c` corroborates to the byte against the window handle that follows. See LB-011 for the wraparound defect the body carries. Original note: ~~**Body recovered — reconstructible whenever wanted.** … *Note*: reconstructing it would have no observable effect yet, because `StartMusicStream` early-outs without an `IDirectSound` device (#26).~~ — both halves are now done.
 24. **`DAT_0056ac60` (16 shorts) / `DAT_0056ac80` and `DAT_0056ac90` (7 shorts each)** — the MS-ADPCM adaptation table and the two coefficient tables. Data-only globals, so the bytes aren't in `Blaze.c` (same systemic blocker as #12/#20), but unlike those two the *identity* here is not a guess: `FUN_00531f70` only accepts a `fmt ` chunk with `wFormatTag == 2` (WAVE_FORMAT_ADPCM), `wBitsPerSample == 4` and `wNumCoef == 7`, then compares `aCoef[0..6]` against `DAT_0056ac80`/`DAT_0056ac90` — i.e. it verifies the file uses the *standard* coefficient set so the decoder's hardcoded tables apply. The addresses corroborate the sizes exactly (16 shorts at `0x0056ac60` end at `0x0056ac80`; 7 shorts at `0x0056ac80` end at `0x0056ac8e`, padded to `0x0056ac90`). `Blaze.cs` uses the documented standard MS-ADPCM values. Still worth confirming byte-for-byte if the binary appears.
 25. **`FUN_00513030`'s register-attribution bug**: Ghidra writes `piVar3` (loaded from `DAT_005db8e4`, the *device*) into the slot table and releases that same pointer when the table is full, while the newly created buffer sits unused in `CreateSoundBuffer`'s `local_2c` output parameter. Storing the device in a buffer slot would make `ReleaseAllSoundBuffers` call `IDirectSoundBuffer` methods on an `IDirectSound` and release the device up to 50 times, so the decompiled text cannot be what the binary does. `AllocateSoundBuffer` transcribes the evident intent (the *created buffer* is stored and released) — flagged rather than presented as certain.
-26. **`DAT_005db8e4` (the `IDirectSound` device) has no creation site**: read in four places, assigned nowhere in all of `Blaze.c`'s reconstructed graph, and no `DirectSoundCreate` call site has been located. Same shape as `DAT_005db85c` (#6, the main window handle) and quite possibly the same root cause — both would plausibly be created by whatever code also creates the main window, which #6 established is not present in any available source. Until it is found, the whole audio subsystem is correct but inert: every entry point takes its "no device" early-out.
-27. **`DAT_005631d4` initial value** (music enabled/disabled at startup): data-section content, so unavailable; `s_MusicEnabled` defaults to 0, meaning music starts disabled and `StartMusicStream` early-outs until `ToggleMusicEnabled` flips it. Note `DAT_005631d0` (the "no stream running" flag) needed no such assumption — a first `StartMusicStream` always routes through `StopMusicStream`, which sets the flag before it is tested.
+26. **RESOLVED, 2026-08-24 — there is exactly one creation site, and the search that concluded otherwise was looking in the wrong text.** `DirectSoundCreate(0, &DAT_005db8e4, 0)` is called at `0x00512f20`, inside `LAB_00512ef0` (#8) — a body `Blaze.c` does not contain, which is precisely why grepping `Blaze.c` found nothing. **Method worth reusing**: scan `.text` for `call rel32` whose target is the import thunk (`0x00545c68`) and for `call [IAT slot]` (`0x006084b8`). One pass over 1.35 MB, one hit, and the hit is inside a `LAB_` — a decompiler gap and a "no call site exists" conclusion look identical from `Blaze.c` alone. The audio subsystem is no longer inert: measured `S_OK` on all four init calls, `DSBSTATUS_PLAYING|LOOPING` on the music buffer, and non-zero sample offsets on the UI effects. Original note: ~~**`DAT_005db8e4` (the `IDirectSound` device) has no creation site**: read in four places, assigned nowhere in all of `Blaze.c`'s reconstructed graph, and no `DirectSoundCreate` call site has been located. … Until it is found, the whole audio subsystem is correct but inert: every entry point takes its "no device" early-out.~~
+27. **`DAT_005631d4` initial value** (music enabled/disabled at startup): **recovered from the binary as `1`** — music ships enabled. The note below assumed the value unrecoverable and defaulted `s_MusicEnabled` to 0, which silently made `StartMusicStream` early-out forever; that was corrected when the binary was committed. Original note: ~~data-section content, so unavailable; `s_MusicEnabled` defaults to 0, meaning music starts disabled and `StartMusicStream` early-outs until `ToggleMusicEnabled` flips it.~~ Note `DAT_005631d0` (the "no stream running" flag) needed no such assumption — a first `StartMusicStream` always routes through `StopMusicStream`, which sets the flag before it is tested.
 28. **`FUN_0053da20`/`FUN_0053db20` (positional sound gain)** — the remaining members of the sound-effect family, deliberately left untranslated. `FUN_0053da20` computes a left/right gain pair from a world position via the cos table (ordinal 450) and `FUN_0053db20` feeds the result to `PlaySoundEffect`, but Ghidra declares `FUN_0053da20` with **2** parameters while `FUN_0053db20` calls it with **3**, and its body reads `unaff_SI` and `unaff_retaddr` — register-passed values never tied to a parameter. Reconstructing it would mean inventing a signature, which Strategy.md forbids; it needs a Ghidra re-run with the calling convention corrected (same class as the `__fastcall`/`__thiscall` cases noted under the systemic blocker).
 29. **Sound-directory second half (`DAT_005e8520`, entries `0x3c`..`0x4c`)** is loaded by `FUN_00512xxx` (`Blaze.c:63354`), which is not reconstructed — so those 17 entries stay zero and sound ids `0x3c`..`0x4c` (which include the four fixed UI sounds `PlayUiSound38`..`3B`) currently resolve to a zero-length sample and play silence. Not a data-availability problem: it is ordinary uncovered code, and the same call site also fills the level sample bank `DAT_00600900`.
-30. **RESOLVED — table recovered and `PlayMusicTrack` reconstructed.** The entries are CD-**root** absolute templates (`@:/Music/Mel00_01.WAV`), drive-letter patched at index 0, recorded in `Documentation/Reference/DataSymbols.md`. Only the sampled entries are transcribed so far; call sites index up to at least `0x26`, and unsampled slots stay null so `PlayMusicTrack` returns rather than reading past the table. **Nothing is audible yet**: no `DirectSoundCreate` site exists (#26), so `StartMusicStream` takes its no-device early-out. Silence here is expected, not a defect. Original note: ~~**`PTR_s____Music_Mel00_01_WAV_00566cc8`** — the music-filename pointer table indexed by `FUN_00529ad0`/`PlayMusicTrack`, the only caller of `StartMusicStream`. Call sites pass indices up to at least `0x26`, and `FUN_00529ad0` patches each path's first character with the CD drive letter (`s____Blaze_Blade_005631e8[0]`) before playing. Data-only table, so it is not reconstructed and `FUN_00529ad0` is deliberately left untranslated rather than filled with invented filenames — same category as #17/#22, but a whole table rather than single strings.~~
+30. **RESOLVED — table recovered *in full*, 2026-08-24.** 40 entries, `0x00566cc8`..`0x00566d67`, listed one by one in `Documentation/Reference/DataSymbols.md`. CD-**root** absolute templates (`@:/Music/Mel00_01.WAV`), drive-letter patched at index 0. The end of the table is fixed by what follows it at `0x00566d68` — a different family, 0x40 spacing. **Entry `0x06` is `Title01.WAV`, the menu theme**, and its absence was the second reason the menu was silent: only `0`, `1` and `7` had been sampled, and `RunMainMenuFrameLoop` asks for `6`, so `PlayMusicTrack` returned on a null slot every frame. Entries `0x22`..`0x24` are **not** literals — all three point at `&DAT_00572b40`, eight uninitialised bytes filled at run time by `FUN_00512900` from the not-yet-reconstructed `0x00505xxx` screen code; they stay null, and `MainMenu.cs` says why on the spot. Original note: ~~Only the sampled entries are transcribed so far … **Nothing is audible yet**: no `DirectSoundCreate` site exists (#26), so `StartMusicStream` takes its no-device early-out.~~
 
 36. **`FUN_00545340` — the menu/UI engine, deliberately deferred.** 1742 lines, three parameters, 25 calls, reached twice per menu frame alongside `FUN_005443a0` (233 lines). It is ordinary uncovered code with a full decompiled body, not blocked work, but it is a project in its own right and reconstructing it blind — with no way to observe whether the surrounding frame order is right — would have been the wrong order of operations. Stubbed along with `FUN_005443a0`, `FUN_00512320` (the options page) and `FUN_005048f0` (joystick state processing, which pulls in `FUN_005231f0`/`FUN_00523660`).
 
@@ -484,14 +484,15 @@ the call-graph section above:
 - **Nothing renders yet.** No reconstructed code creates a main window
   (`DAT_005db85c` is still unlocated, TODO #6), creates a Direct3D/DirectDraw
   device beyond `Setup3DDevice`'s ini parsing, or draws a frame.
-- **Audio is complete but inert.** The whole stack is reconstructed now —
-  gameplay call site → `PlaySoundEffect` → resampler → `IDirectSoundBuffer::Play`
-  for effects, and file load → MS-ADPCM decode → streaming buffer for music —
-  but nothing creates the `IDirectSound` *device* they all hang off (TODO #26),
-  so every entry point early-outs. Even with a device, streaming music would
-  loop its first 80 blocks forever until the worker thread (TODO #23) is
-  recovered, and sound ids 0x3c..0x4c would be silent until the level-load code
-  that fills the second half of the directory is reconstructed (TODO #29).
+- ~~**Audio is complete but inert.**~~ **Le son marche depuis le 2026-08-24.** Le
+  périphérique DirectSound naît dans `LAB_00512ef0` (TODO #8/#26), le thread de
+  flux est transcrit (#23), et la table des morceaux est complète (#30). Mesuré :
+  `Title01.WAV` au menu, `Menu.WAV` à la constitution du groupe, `Mel00_01.WAV` à
+  la carte du monde, chacun `DSBSTATUS_PLAYING|LOOPING` ; les bruitages d'interface
+  `0x38`/`0x3a` lisent des échantillons réels de la banque `Snd\`. Ce qui reste
+  muet : les identifiants `0x3c`..`0x4c`, jusqu'à ce que le code de chargement de
+  niveau remplisse la seconde moitié du répertoire (TODO #29) — et c'est aussi le
+  défaut d'aliasing de `s_SoundBankHeader_005e8520`.
 - **The game loop cannot iterate** — its tick pointer is TODO #15 above.
 - The whole of gameplay (`FUN_0052a440` and everything below it: rendering
   pipeline, entity/AI, menus, battle, save/load) is untouched.
@@ -10748,3 +10749,90 @@ Un `TODO(REVERSE)` le dit sur place.
 
 Pas de régression : 1921 images, aucune exception. La surimpression est gardée par un bit que le
 parcours scripté ne lève pas, donc elle est **écrite et compilée, pas exercée**.
+
+---
+
+## 2026-08-24 — le son, et la leçon de méthode qui l'a débloqué
+
+Le jeu était muet. La pile audio, elle, était complète depuis des semaines : enveloppes DirectSound,
+codec MS-ADPCM, les cinq rééchantillonneurs, le son positionnel, la file des sons différés. Tout
+existait, rien ne sonnait. Trois lacunes se tenaient en travers, et **les trois étaient la même
+lacune** : un corps de fonction que Ghidra n'a jamais décompilé.
+
+### Ce que la journée a réellement appris
+
+**Une conclusion « ce site d'appel n'existe pas » tirée de `Blaze.c` seul ne vaut rien.** TODO #26
+disait, mot pour mot, qu'aucun appel à `DirectSoundCreate` n'avait pu être localisé, et en déduisait
+que le périphérique devait naître dans du code absent de toute source disponible. C'était faux : il
+y a exactement un site, en `0x00512f20`. Il était invisible parce qu'il vit dans un `LAB_` sans
+corps — et depuis `Blaze.c`, **un trou du décompilateur et une absence réelle se ressemblent
+exactement**.
+
+La mesure qui tranche coûte une passe sur 1,35 Mo :
+
+```powershell
+# pour chaque octet de .text : E8 dont la cible est le thunk, ou FF15/FF25 vers l'entrée d'IAT
+# thunk DirectSoundCreate = 0x00545c68, entrée d'IAT = 0x006084b8
+```
+
+Un seul résultat, et il est dans un `LAB_`. **À refaire chaque fois qu'une globale d'API paraît
+n'avoir aucun écrivain.** Le balayage linéaire du désassembleur ne remplace pas ce test : lancé sur
+tout `.text` depuis `0x00401000`, il se désynchronise au bout de 120 Ko sur le premier îlot de
+données. C'est un test d'octets, pas un test d'instructions.
+
+### `LAB_00512ef0` répond à deux questions d'un coup
+
+L'initialisation du son écrit aussi `DAT_005db85c`. TODO #6 avait cherché la création de la fenêtre
+principale dans les six sources et conclu qu'elle n'y était pas — vrai, et pour une raison qu'aucune
+recherche dans les six sources ne pouvait donner : **`Blaze.exe` ne crée pas sa fenêtre, winsys3d la
+lui rend**, en argument du rappel de l'ordinal 790. La chaîne complète :
+
+```
+RunApplication → Ordinal_790(&LAB_00512ef0)      range le rappel dans DAT_011be798
+              → Ordinal_789(0, résolution)       crée le périphérique 3D
+                 └→ (*DAT_011be798)(DAT_011be79c)  ← la HWND arrive ici
+                     └→ DAT_005db85c = hwnd ; SetWindowTextA ; DirectSoundCreate ; …
+```
+
+Ghidra montre le premier des deux sites d'appel de winsys3d comme prenant zéro argument
+(`(*DAT_011be798)()`). Le désassemblage montre `push ecx` juste avant `call eax` aux **deux** sites.
+La signature est `void __stdcall (HWND)` — le `ret 4` du rappel le confirme de son côté.
+
+### Deux erreurs de lecture antérieures, corrigées au passage
+
+**`FUN_005135d0` fermait huit poignées sur neuf.** La note en place disait « la borne de Ghidra est
+`0x5db85c`, donc la boucle s'arrête juste avant `DAT_005db858` : l'événement d'arrêt fuit à chaque
+redémarrage ». La borne `0x5db85c` **inclut** `0x5db858` : neuf tours, pas huit. Il n'y avait pas de
+fuite, il y avait une poignée non fermée que nous ajoutions. Le thread de flux le prouve de
+l'extérieur : il attend `WaitForMultipleObjects(9, &DAT_005db838, …)`. `0x005db838 + 9*4 ==
+0x005db85c`, l'adresse exacte de la fenêtre principale qui suit — les deux mesures se recoupent à
+l'octet.
+
+**Le décompilateur et le désassembleur ne disent pas la même chose du thread de flux**, et c'est le
+désassembleur qui a raison. `FUN_00513660.c` modélise les deux locaux de pile en tableaux
+(`local_8`, `local_4`), donc passe des **adresses** là où le code machine passe des **valeurs** : sa
+destination de décodage est `puVar3`, l'adresse d'un local, et son `Unlock` reçoit un compte
+d'octets `uVar4 = 0`. En `0x00513706` le binaire fait `mov esi,[esp+14h]` — une *lecture* du
+pointeur verrouillé. Suivre le texte décompilé aurait décodé la musique par-dessus le cadre de pile
+du thread.
+
+### Ce qui est mesuré, et comment
+
+Le son ne laisse aucune trace dans une capture. La méthode de vérification est écrite dans
+`Documentation/Tests/test-protocol.md` ; en résumé, `IDirectSoundBuffer::GetStatus` rendant `0x5`
+(`PLAYING|LOOPING`) est la seule preuve qui vaille, et le titre de la fenêtre passant de
+`OpenForesia` à `Blaze & Blade` est la preuve gratuite que l'initialisation a eu lieu.
+
+Relevé : `Title01.WAV` au menu, `Menu.WAV` à la constitution du groupe, `Mel00_01.WAV` à l'auberge ;
+tampon de 323 840 octets, atténuation −1250 pour `CdVol=64` ; bruitages `0x38` (décalage 769 440,
+longueur 8 152) et `0x3a` (780 028 / 1 308). Aucun plantage, 1 621 images, 557 primitives par image
+sur le chemin complet.
+
+### Ce que ça laisse ouvert
+
+* Les identifiants de son `0x3c`..`0x4c` restent muets — c'est le défaut d'aliasing de
+  `s_SoundBankHeader_005e8520`, recensé et volontairement non corrigé.
+* Les entrées `0x22`..`0x24` de la table des morceaux pointent sur un tampon que seul le code
+  d'écran `0x00505xxx` remplit.
+* LB-011 : au bouclage d'un morceau, la seconde passe de décodage écrit par-dessus la première.
+  Fidèle, et à laisser tel quel.

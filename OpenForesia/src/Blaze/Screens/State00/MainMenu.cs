@@ -225,19 +225,66 @@ public static unsafe partial class Blaze
     // TODO(REVERSE): .rdata content; 1.0f keeps the product equal to the raw setting.
     private const float s_GammaScale_0054d074 = 1.0f;
 
-    // Ghidra: PTR_s____Music_Mel00_01_WAV_00566cc8 â€” the music filename table. Entries recovered
-    // from Legacy/Binaries/Blaze.exe are CD-root absolute templates; see Documentation/Reference/DataSymbols.md.
-    // TODO(REVERSE): only the sampled entries are transcribed. Call sites index up to at least
-    // 0x26, so the remaining slots stay null and PlayMusicTrack returns without starting anything
-    // rather than indexing past the table.
+    // Ghidra: PTR_s____Music_Mel00_01_WAV_00566cc8 - la table des noms de musique, 40 entrees de
+    // 4 octets (0x00566cc8..0x00566d67), relevee dans Legacy/Binaries/Blaze.exe le 2026-08-24 ;
+    // les chaines elles-memes vivent en 0x005680d8..0x00568448. Voir
+    // Documentation/Reference/DataSymbols.md. La table qui suit immediatement, en 0x00566d68,
+    // n'appartient plus a la musique : ses entrees sont espacees de 0x40 et pointent ailleurs.
+    //
+    // Ce sont des chemins absolus a la RACINE du CD (« @:/Music/… », pas la racine de langue),
+    // dont PlayMusicTrack remplace le « @ » par la lettre de lecteur detectee.
+    //
+    // TODO(REVERSE): les entrees 0x22, 0x23 et 0x24 pointent toutes les trois sur &DAT_00572b40,
+    // qui n'est pas une chaine litterale mais huit octets de la queue NON INITIALISEE de .data --
+    // deja modelises ailleurs sous le nom s_EmptyLabel_00572b40 (Screens/State04/
+    // CharacterCreation.cs). Ce tampon est rempli au vol par FUN_00512900 depuis le code d'ecran
+    // 0x00505xxx, que la reconstruction n'a pas encore atteint. Laissees nulles ici : les pointer
+    // sur ce tampon de 8 octets ferait ecrire la lettre de lecteur dedans, et le nom d'un
+    // morceau de donjon n'y tient pas de toute facon. Elles se rempliront quand leur ecrivain
+    // sera transcrit.
     private static readonly byte*[] s_MusicTrackPaths = BuildMusicTrackTable();
 
     private static byte*[] BuildMusicTrackTable()
     {
         var table = new byte*[0x30];
-        table[0] = ToAnsiZ("@:/Music/Mel00_01.WAV");
-        table[1] = ToAnsiZ("@:/Music/Mel00_02.WAV");
-        table[7] = ToAnsiZ("@:/Music/End01.WAV");
+        table[0x00] = ToAnsiZ("@:/Music/Mel00_01.WAV");   // 0x00568430
+        table[0x01] = ToAnsiZ("@:/Music/Mel00_02.WAV");   // 0x00568418
+        table[0x02] = ToAnsiZ("@:/Music/Mel00_03.WAV");   // 0x00568400
+        table[0x03] = ToAnsiZ("@:/Music/Mel00_a.WAV");    // 0x005683e8
+        table[0x04] = ToAnsiZ("@:/Music/Mel00_b.WAV");    // 0x005683d0
+        table[0x05] = ToAnsiZ("@:/Music/Mel00_c.WAV");    // 0x005683b8
+        table[0x06] = ToAnsiZ("@:/Music/Title01.WAV");    // 0x005683a0 - le theme du menu
+        table[0x07] = ToAnsiZ("@:/Music/End01.WAV");      // 0x0056838c
+        table[0x08] = ToAnsiZ("@:/Music/Mel01_01.WAV");   // 0x00568374
+        table[0x09] = ToAnsiZ("@:/Music/Mel02_01.WAV");   // 0x0056835c
+        table[0x0a] = ToAnsiZ("@:/Music/Mel03_01.WAV");   // 0x00568344
+        table[0x0b] = ToAnsiZ("@:/Music/Mel04_01.WAV");   // 0x0056832c
+        table[0x0c] = ToAnsiZ("@:/Music/Mel05_01.WAV");   // 0x00568314
+        table[0x0d] = ToAnsiZ("@:/Music/Mel05_02.WAV");   // 0x005682fc
+        table[0x0e] = ToAnsiZ("@:/Music/Mel06_01.WAV");   // 0x005682e4
+        table[0x0f] = ToAnsiZ("@:/Music/Mel06_02.WAV");   // 0x005682cc
+        table[0x10] = ToAnsiZ("@:/Music/Mel07_01.WAV");   // 0x005682b4
+        table[0x11] = ToAnsiZ("@:/Music/Mel07_02.WAV");   // 0x0056829c
+        table[0x12] = ToAnsiZ("@:/Music/Mel08_01.WAV");   // 0x00568284
+        table[0x13] = ToAnsiZ("@:/Music/Mel09_01.WAV");   // 0x0056826c
+        table[0x14] = ToAnsiZ("@:/Music/Mel10_01.WAV");   // 0x00568254
+        table[0x15] = ToAnsiZ("@:/Music/Mel10_02.WAV");   // 0x0056823c
+        table[0x16] = ToAnsiZ("@:/Music/Mel10_03.WAV");   // 0x00568224
+        table[0x17] = ToAnsiZ("@:/Music/Mel05_03.WAV");   // 0x0056820c
+        table[0x18] = ToAnsiZ("@:/Music/Bos01_01.WAV");   // 0x005681f4
+        table[0x19] = ToAnsiZ("@:/Music/Bos02_01.WAV");   // 0x005681dc
+        table[0x1a] = ToAnsiZ("@:/Music/Bos03_01.WAV");   // 0x005681c4
+        table[0x1b] = ToAnsiZ("@:/Music/Bos04_01.WAV");   // 0x005681ac
+        table[0x1c] = ToAnsiZ("@:/Music/Bos05_01.WAV");   // 0x00568194
+        table[0x1d] = ToAnsiZ("@:/Music/Bos06_01.WAV");   // 0x0056817c
+        table[0x1e] = ToAnsiZ("@:/Music/Bos07_01.WAV");   // 0x00568164
+        table[0x1f] = ToAnsiZ("@:/Music/Bos08_01.WAV");   // 0x0056814c
+        table[0x20] = ToAnsiZ("@:/Music/Bos09_01.WAV");   // 0x00568134
+        table[0x21] = ToAnsiZ("@:/Music/Bos10_01.WAV");   // 0x0056811c
+        // 0x22, 0x23, 0x24 : &DAT_00572b40 - voir le TODO(REVERSE) ci-dessus.
+        table[0x25] = ToAnsiZ("@:/Music/Menu.WAV");       // 0x00568108
+        table[0x26] = ToAnsiZ("@:/Music/GameOver.WAV");   // 0x005680f0
+        table[0x27] = ToAnsiZ("@:/Music/Bos99_01.WAV");   // 0x005680d8
         return table;
     }
 

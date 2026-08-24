@@ -18,7 +18,40 @@ la suite à faire.
 >
 > C'est la première fois. Le jeu ne s'arrête plus.
 
-# REPRENDRE ICI (2026-08-24)
+# REPRENDRE ICI (2026-08-24, fin de journée)
+
+**Le jeu a le son.** Musique et bruitages fonctionnent, du menu à l'auberge. Ce qui bloquait
+n'était pas la pile audio — elle était complète — mais trois corps de fonction que Ghidra n'avait
+jamais décompilés, dont celui qui crée le périphérique DirectSound *et* reçoit la fenêtre
+principale. Détail et méthode dans `REVERSE_STATUS.md`, section du 2026-08-24.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 30 -WorkingDir OpenForesia -Shot -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT10
+```
+
+donne trois lignes `[AUDIO] … statut 0x5` — `Title01.WAV`, `Menu.WAV`, `Mel00_01.WAV` — et une
+fenêtre intitulée « Blaze & Blade ».
+
+**La méthode à réutiliser** : quand une globale d'API paraît n'avoir aucun écrivain, ne pas
+conclure depuis `Blaze.c`. Balayer les octets de `.text` à la recherche des `call` vers le thunk
+d'import. Un trou du décompilateur et une absence réelle sont indiscernables dans le texte
+décompilé, et se distinguent en une passe dans le binaire.
+
+## Ce qui reste au son
+
+* **Les identifiants `0x3c`..`0x4c` sont muets.** C'est le défaut d'aliasing de
+  `s_SoundBankHeader_005e8520` (alloué à part alors que `0x005e8520 == 0x005e8340 + 0x1e0`, la
+  queue du répertoire de sons). Le corriger change le comportement : c'est un changement à part
+  entière, comme les autres défauts d'aliasing recensés.
+* **Les entrées `0x22`..`0x24` de la table des morceaux** pointent sur `&DAT_00572b40`, que seul le
+  code d'écran `0x00505xxx` remplit. Elles se rempliront avec lui.
+* **LB-011** — au bouclage d'un morceau, la seconde passe de décodage écrit par-dessus la première.
+  Défaut de 1998, à laisser tel quel.
+* Un échafaudage de mesure subsiste dans `StartMusicStream` : la ligne `[AUDIO]` qui interroge
+  `GetStatus`. À retirer quand le son sera routinier.
+
+## Les pistes d'avant, toujours valables
+
 
 Il n'y a plus de point de blocage : il y a un écran qui tourne et qu'on peut enfin **regarder**.
 Trois pistes, par ordre de rendement.

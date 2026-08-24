@@ -440,11 +440,30 @@ lookup + reading the matching `winsys3d.c` function body.
 | 451 | `0x25c40` | `FUN_00a25c40` @ `0x00a25c40` | `return DAT_011cb420[index & 0xfff];` — direct read from the sin table. | `GetSinTableEntry(int index)` |
 | 790 | `0x6410` | `FUN_00a06410` @ `0x00a06410` | `DAT_011be798 = param_1; return;` — stores the pointer into a DLL-private global. Confirmed elsewhere in `winsys3d.c` (near `0x00a06420`/`FUN_00a03110`) that `DAT_011be798` is later called indirectly as a callback (`if (DAT_011be798 != NULL) (*DAT_011be798)();` and a second call site passing an extra argument `DAT_011be79c`). Likely a device-lost/reset or per-frame notification hook, but not confirmed. | `SetDeviceLostCallback(void* callback)` |
 
-**Open question**: the callback Blaze.exe registers via ordinal 790
-(`Blaze.c`: `&LAB_00512ef0`) has no decompiled function body anywhere in
-`Blaze.c` — Ghidra only saw it address-taken, never called directly, so it
-never got promoted to a standalone `FUN_`/`LAB_` block with a body. Cannot be
-reconstructed without further disassembly at `0x00512ef0`.
+**Question ouverte — RÉSOLUE le 2026-08-24.** Le rappel que `Blaze.exe` enregistre par l'ordinal
+790 (`Blaze.c` : `&LAB_00512ef0`) n'a pas de corps dans `Blaze.c` : Ghidra ne l'a vu que pris en
+adresse. Il est désormais transcrit depuis le binaire — c'est **l'initialisation du son**, et elle
+répond du même coup à deux lacunes que `REVERSE_STATUS.md` tenait pour bloquées :
+
+* `DAT_005db8e4`, le périphérique DirectSound (#26) : `LAB_00512ef0` appelle `DirectSoundCreate`
+  en `0x00512f20`, et c'est **l'unique** site d'appel de tout le binaire (balayage de `.text` à la
+  recherche des `call rel32` et des `call [IAT]` vers le thunk `0x00545c68`) ;
+* `DAT_005db85c`, la fenêtre principale (#6) : `Blaze.exe` ne la crée pas, **winsys3d la lui
+  rend**. Le rappel la reçoit en paramètre et la range, puis lui pose le titre « Blaze & Blade »
+  par `SetWindowTextA`.
+
+Le rappel est `void __stdcall (HWND)`. `DAT_011be798` est appelé à deux endroits de
+`FUN_00a06420` (l'ordinal 789), et les **deux** empilent `DAT_011be79c`, la fenêtre du DLL —
+Ghidra a raté l'argument au premier des deux sites, le désassemblage montre `push ecx` avant
+`call eax` en `0x00a06485` comme en `0x00a065f8`. Ce n'est donc pas un rappel de « device perdu »
+au sens strict : il est déclenché à la création du périphérique 3D, et de nouveau à chaque
+réinitialisation. Le nom `SetDeviceLostCallback` reste, faute d'un meilleur, mais son rôle réel
+est « prévenir Blaze.exe que le périphérique et sa fenêtre existent ».
+
+**Piège de notre côté** : avec le device synthétique de `Host/SyntheticDevice.cs`, `3dhelp` n'est
+jamais initialisé et `DAT_011be79c` reste nul. Le rappel arrive alors avec une poignée nulle et
+`SetCooperativeLevel` rend `E_INVALIDARG` (0x80070057). `Engine/Audio.cs` substitue la fenêtre
+Direct3D 11 de l'hôte dans ce cas, au trampoline et nulle part ailleurs.
 
 ## Ordinals used by RunMainLoop (Ghidra: FUN_00529c10) and its dependency graph
 

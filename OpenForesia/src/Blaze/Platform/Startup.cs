@@ -213,10 +213,13 @@ public static unsafe partial class Blaze
                 Mem.s_BaseSoundBank_00604920 = Malloc(790000);
                 Mem.s_LevelSoundBank_00600900 = Malloc(260000);
 
-                // TODO(REVERSE): the callback (Ghidra: &LAB_00512ef0) has no decompiled body in
-                // Blaze.c (see Documentation/DLL/winsys3d.md for what SetDeviceLostCallback does
-                // with it inside winsys3d.dll).
-                Winsys3d.SetDeviceLostCallback(null);
+                // Ghidra: Ordinal_790(&LAB_00512ef0). Le corps de ce rappel manquait a Blaze.c
+                // (adresse prise, jamais appelee directement) ; il est transcrit depuis le
+                // binaire dans Engine/Audio.cs sous le nom InitAudioDevice. winsys3d le range
+                // dans DAT_011be798 et l'appelle depuis Ordinal_789 en lui passant sa propre
+                // fenetre -- c'est la que naissent le peripherique DirectSound ET DAT_005db85c.
+                // Lui passer `null`, comme ici jusqu'au 2026-08-24, rendait tout le son inerte.
+                Winsys3d.SetDeviceLostCallback((delegate* unmanaged[Stdcall]<IntPtr, void>)&Audio.DeviceInitCallback);
 
                 LoadOptionsIni(); // Ghidra: FUN_0050f140 @ 0x0050f140
                 Mem.s_CdCheckFileSize_0056321c += 0xd8000000;   // Ghidra: DAT_0056321c = DAT_0056321c + 0xd8000000
@@ -238,8 +241,10 @@ public static unsafe partial class Blaze
                     ShutdownStage1(); // Ghidra: FUN_00504600 @ 0x00504600
                     SaveOptionsIni(); // Ghidra: thunk_FUN_0050f300 @ 0x0050f520 -> FUN_0050f300
                     Aud.ShutdownStage3(); // Ghidra: FUN_00512ff0 @ 0x00512ff0
-                    // Ghidra: DestroyWindow(DAT_005db85c) â€” main window handle global not yet reconstructed.
-                    // TODO(REVERSE): DAT_005db85c (main HWND) needs to be threaded through from window creation.
+                    // Ghidra: DestroyWindow(DAT_005db85c). La poignee est celle que winsys3d a
+                    // remise a InitAudioDevice ; nulle si le rappel n'a jamais eu lieu, auquel cas
+                    // l'original passait NULL a DestroyWindow tout comme nous.
+                    Win32.DestroyWindow(Aud.s_MainWindow_005db85c);
                     ShutdownStage4(); // Ghidra: FUN_00542f50 @ 0x00542f50
                     ShutdownStage5(); // Ghidra: FUN_00542f90 @ 0x00542f90
                     RestoreWaveOutVolume(); // Ghidra: FUN_005138d0 @ 0x005138d0

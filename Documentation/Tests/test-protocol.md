@@ -913,3 +913,42 @@ La méthode qui a fini par trouver ce défaut, en quatre exécutions :
 
 Chaque étape coûte un `throw`, une compilation et un lancement, et **élimine une moitié**. Écrire un
 échafaudage qui imprime tout d'un coup coûte plus cher et informe moins.
+
+---
+
+## Vérifier le son sans oreille (2026-08-24)
+
+Le son ne laisse aucune trace dans la capture ni dans le débit de primitives. Un agent ne peut donc
+pas conclure « la musique marche » d'un run vert — et une reconstruction audio complète mais
+**inerte** rend exactement le même verdict qu'une reconstruction qui joue. C'est ce qui a laissé
+`REVERSE_STATUS` #26 endormi pendant des semaines.
+
+Trois preuves, du moins au plus fort, toutes lisibles dans le journal :
+
+1. **`[AUDIO] DirectSoundCreate -> 0x00000000`** — le périphérique existe. Une ligne absente veut
+   dire que le rappel de l'ordinal 790 n'a jamais été déclenché ; un `0x80070057` sur la ligne
+   `SetCooperativeLevel` veut dire qu'on lui a donné une fenêtre nulle.
+2. **`[AUDIO] <chemin> : … statut 0x5`** — `IDirectSoundBuffer::GetStatus` rend
+   `DSBSTATUS_PLAYING | DSBSTATUS_LOOPING`. C'est la preuve que le tampon **joue**, pas seulement
+   qu'il a été créé. `0x0` ou `0x1` seul est un échec.
+3. Pour les bruitages, une sonde jetable dans `PlaySoundEffect` qui imprime `decalage` et
+   `longueur` de l'entrée du répertoire : des valeurs **non nulles** prouvent que la banque `Snd\`
+   est chargée et que l'échantillon existe. Zéro des deux signifie répertoire vide — le défaut
+   d'aliasing de `s_SoundBankHeader_005e8520` pour les identifiants `0x3c`..`0x4c`.
+
+Le menu ne se laisse pas observer par `-Entry -1` (voir plus haut : on reste sur l'attract, que
+rien ne congédie). Pour entendre le thème du menu il faut `-Entry 0`, qui traverse la liste au
+clavier : les frappes de navigation sortent de l'attract, et `Title01.WAV` démarre pendant que le
+curseur se déplace, avant la validation.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 20 -WorkingDir OpenForesia -Then WAIT5
+```
+
+Repère du 2026-08-24 : `Title01.WAV` au menu, `Menu.WAV` à la constitution du groupe,
+`Mel00_01.WAV` à la carte du monde — trois lignes `statut 0x5`, tampon de 323 840 octets à chaque
+fois, atténuation −1250 pour `CdVol=64`.
+
+Dernière vérification, gratuite : **le titre de la fenêtre**. Il vaut `OpenForesia` tant que
+l'initialisation du son n'a pas eu lieu, et `Blaze & Blade` dès qu'elle a lieu — c'est
+`SetWindowTextA`, la première instruction utile de `LAB_00512ef0`. La capture le montre.

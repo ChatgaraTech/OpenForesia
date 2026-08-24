@@ -4,6 +4,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-08-24
+
+- feat : le son marche — `LAB_00512ef0`, un corps que Ghidra n'avait jamais décompilé, crée le périphérique DirectSound ; menu, options et carte du monde jouent enfin leur musique et leurs bruitages
+- feat : `LAB_00513660`, le thread de flux de musique, transcrit depuis le binaire — sans lui la musique rejouait sans fin ses 80 blocs d'amorce
+- feat : la table des 40 noms de morceaux (`PTR_..._00566cc8`) relevée en entier ; son entrée 6, `Title01.WAV`, est le thème du menu et manquait
+- fix : `DAT_005db85c`, la fenêtre principale, n'était écrite nulle part — c'est winsys3d qui la rend, par le rappel de l'ordinal 790 ; `DestroyWindow` à l'extinction est rétabli
+- fix : `FUN_005135d0` ne fermait que 8 des 9 poignées d'événement et concluait à une fuite qui n'existe pas — la borne `0x5db85c` en compte neuf
+- doc : LB-011 — au bouclage d'un morceau, la seconde passe de décodage écrit par-dessus la première
+- doc : balayer `.text` à la recherche des `call` vers un thunk d'import retrouve les appelants que Ghidra a perdus — c'est ainsi que `DirectSoundCreate` a livré son unique site
+
+---
+
 ## 2026-08-23
 
 - feat : `FUN_005309b0` — la surimpression de dialogue au-dessus d'un membre du groupe, la dernière des lacunes secondaires du bloc de dessin
