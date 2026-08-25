@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- fix : **la pastille de classe autorisée sortait en rectangle blanc** — `(-(bit) & 0xfffffff9) + 9` vaut **2** quand le bit est levé, pas 0 : `0xfffffff9` est **−7**, pas un masque ; corrigé dans la fiche d'objet du menu **et** dans le coffre, qui portaient la même lecture
+- doc : le réflexe — un `& 0xfffffffN` suivi d'un `+ N'` est un `SETcc` déguisé en arithmétique, jamais un masque ; calculer les deux cas avant d'écrire le ternaire
 - fix : **deux fautes de transcription du coffre, qui ont corrompu une sauvegarde** — `DAT_005dff3c[1]` est l'octet de **+4** (Ghidra type le pointeur en dword, `movzx cx,byte [eax+4]` le confirme), pas de +1 : d'où le portrait bariolé ; et le succès de l'écriture pose l'état **9**, pas 99 — poser 99 rebouclait sur l'écriture à chaque image
 - doc : la règle qui manquait — avant d'indexer un `DAT_` de Ghidra, chercher un `*DAT_ = *DAT_ & …` dans le même corps : c'est lui qui donne la largeur du pointeur, donc le pas de l'indice
 - doc : et l'autre — quand deux chemins d'un `switch` partagent leurs dernières lignes, vérifier qu'ils partagent aussi celles d'avant ; ici le `break` du succès était à l'intérieur du `if`

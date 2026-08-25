@@ -1388,12 +1388,15 @@ public static unsafe partial class Blaze
 
         for (s_Unknown_005dff34 = 0; s_Unknown_005dff34 < 8; s_Unknown_005dff34++)
         {
-            // Ghidra: `(-(bit != 0) & 0xfffffff9) + 9` — 0 quand le bit est leve, 9 sinon.
+            // Ghidra: `(-(bit != 0) & 0xfffffff9) + 9`. **2 quand le bit est leve, 9 sinon** —
+            // 0xfffffff9 vaut -7, et -7 + 9 fait 2, pas 0. La premiere transcription avait lu 0,
+            // ce qui changeait la page de l'atlas : la pastille de la classe autorisee sortait en
+            // blanc au lieu de sa couleur. Corrige le 2026-08-25 sur signalement en jeu.
             bool set = (1 << (s_Unknown_005dff34 & 0x1f)
                         & *(ushort*)(s_Unknown_005dfee8 + 0x12)) != 0;
 
             prim = Prims.DrawSpriteVariant(otBase, prim, (int*)s_DepotSprite_005dfe20, 0,
-                       set ? 0u : 9u);
+                       set ? 2u : 9u);
             prim = Prims.DrawFlatPrimitive(otBase, prim, (int*)s_DepotSprite_005dfe20);
 
             *(short*)(s_DepotSprite_005dfe20 + 8) += 0x10;

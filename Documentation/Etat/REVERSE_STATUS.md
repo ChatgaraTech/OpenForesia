@@ -14373,3 +14373,52 @@ different.
 **Non exerce.** Le panneau n'a jamais tourne : aucun run de l'agent n'atteint le coffre. Et surtout,
 **les chemins d'ecriture n'ont jamais ete executes**. Le premier essai doit se faire sur une copie du
 dossier `save\` — c'est la seule precaution qui compte ici.
+
+---
+
+## 2026-08-25 (suite 33) — `& 0xfffffffN` suivi d'un `+ N'` n'est pas un masque
+
+Signale en jeu : la pastille de la classe autorisee sort en **rectangle blanc avec un libelle
+bariole**, au lieu de sa couleur — dans la fenetre d'objets (F1) **comme** dans celle du coffre.
+
+### Le calcul
+
+Ghidra rend la teinte des huit pastilles de classe sans branchement :
+
+```c
+(-(uint)((1 << (i & 0x1f) & flags) != 0) & 0xfffffff9) + 9
+```
+
+Lu vite, `& 0xfffffff9` ressemble a un masque et `+ 9` a un decalage, ce qui donne « 0 quand le bit
+est leve, 9 sinon ». **C'est faux.** `0xfffffff9` vaut **-7**, et l'expression est une soustraction
+deguisee :
+
+| bit | valeur |
+|---|---|
+| leve | `0xfffffff9 + 9` = **2** |
+| eteint | `0 + 9` = **9** |
+
+Deux, pas zero. Cette valeur est le champ d'attributs que `DrawSpriteVariant` transforme en page
+d'atlas ; avec 0 la pastille allait chercher ses pixels ailleurs.
+
+### Deux sites, une seule faute
+
+Le meme calcul existe **deux fois** dans le jeu : `FUN_0052fdc0` (la fiche d'objet du menu, ecrite le
+2026-08-25 au matin) et `case 3` du coffre (ecrit le soir). Les deux portaient la meme lecture
+fautive, la seconde parce qu'elle a repris la premiere. Corriger l'une sans l'autre aurait laisse le
+defaut visible dans un ecran sur deux — c'est le signalement de Vincent, qui l'avait vu **aux deux
+endroits**, qui a evite ca.
+
+### Le reflexe
+
+**Un `& 0xfffffffN` suivi d'un `+ N'` n'est jamais un masque : c'est un `SETcc` deguise en
+arithmetique.** Calculer les deux cas avant d'ecrire le ternaire, systematiquement. Le meme idiome
+existe ailleurs dans le depot (`UiText.cs`, `((0 < x) - 1 & 0xfffffffd) + 2`) ; celui-la est
+transcrit **litteralement**, sans simplification, et se trouve donc juste — la simplification est
+exactement ce qui introduit l'erreur.
+
+### Verifie a l'ecran
+
+Onglet 1 de la fiche de personnage, epee du Guerrier : `Gue` sort en blanc franc, les sept autres en
+gris, et le rectangle blanc a disparu. Conforme au cliche du jeu d'origine
+(`Tests. Coffre de stockageegacy.jpg`), ou la classe autorisee est la seule en clair.

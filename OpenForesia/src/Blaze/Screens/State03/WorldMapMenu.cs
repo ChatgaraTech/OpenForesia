@@ -1667,9 +1667,18 @@ public static unsafe partial class Blaze
         BindMenuLabels(stream, (uint)(nint)slot, box, 0);
         cursor = Ui.RunTextEngine(cursor, box);
 
-        // ---- les huit pictogrammes d'element -------------------------------------------------------
-        // Le bit du mot +0x12 decide de la teinte : 9 quand il est absent, 0 quand il est la
-        // (`-(bit != 0) & 0xfffffff9` puis `+ 9`).
+        // ---- les huit pictogrammes de classe --------------------------------------------------------
+        // Le bit du mot +0x12 decide de la teinte. Ghidra l'ecrit sans branchement :
+        // `(-(bit != 0) & 0xfffffff9) + 9`.
+        //
+        // **La valeur du cas « bit leve » est 2, pas 0**, et c'est une faute de lecture qui a tenu
+        // jusqu'au 2026-08-25 : `0xfffffff9` vaut **-7**, et -7 + 9 fait 2. Avec 0, la pastille de
+        // la classe autorisee changeait de page d'atlas — elle sortait en rectangle blanc avec un
+        // libelle bariole, dans cette fenetre comme dans celle du coffre, qui porte le meme calcul.
+        // Signale en jeu par Vincent sur l'epee du Guerrier.
+        //
+        // Le reflexe qui manquait : un `& 0xfffffffN` suivi d'un `+ N'` n'est pas un masque, c'est
+        // une soustraction deguisee. Calculer les deux cas avant d'ecrire le ternaire.
         *(short*)(s + 0x10) = 0;
         *(short*)(s + 8) = 0x60;
         *(short*)(s + 0x0a) = 0x98;
@@ -1679,7 +1688,7 @@ public static unsafe partial class Blaze
 
         for (int i = 0; i < 8; i++)
         {
-            uint tint = (*(ushort*)(item + 0x12) & (1u << i)) != 0 ? 0u : 9u;
+            uint tint = (*(ushort*)(item + 0x12) & (1u << i)) != 0 ? 2u : 9u;
             cursor = Prims.DrawSpriteVariant(otBase, cursor, sprite, 0, tint);
             cursor = Prims.DrawFlatPrimitive(otBase, cursor, sprite);
             *(short*)(s + 8) += 0x10;
