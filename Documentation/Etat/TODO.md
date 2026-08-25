@@ -39,19 +39,24 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-# LE MENU DE JEU EST COMPLET
+# LE MENU DE JEU EST ENTIÈREMENT TRANSCRIT
 
-**Les six pages de `FUN_0052a850` sont transcrites** : la fiche de personnage, les objets de quête,
-la dalle aux cristaux, l'organisation du groupe, la carte du monde et ses repères, et « Options ».
-Chacune a été vérifiée à l'écran ; la sauvegarde l'a été **sur le disque**, avec un fichier de
-0x6000 octets écrit dans `save\`.
+**Plus aucun corps ne manque à `FUN_0052a850`** : les six pages (la fiche de personnage, les objets de
+quête, la dalle aux cristaux, l'organisation du groupe, la carte du monde et ses repères,
+« Options ») et les six onglets de la fiche (statistiques, inventaire, équipement, sorts, herbes,
+configuration de la manette). Les trois levées qui restent sont des gardes sur des cas que les
+bornes rendent impossibles, pas des trous.
 
-**Les quatre onglets du Guerrier marchent** aussi : statistiques, inventaire, équipement,
-configuration de la manette — avec l'échange qui fonctionne pour de bon (valider un objet déjà porté
-le retire, et le total est recalculé).
+Chacun a été vérifié à l'écran. Deux vérifications valent d'être notées : la **sauvegarde** l'a été
+sur le disque, avec un fichier de 0x6000 octets écrit dans `save\` ; et les **onglets 3 et 4**, que
+le personnage de départ n'a pas, l'ont été avec une sonde d'une ligne sur la ligne de classe (voir
+`test-protocol.md`).
 
-**Il ne reste que les onglets 3 et 4 de la fiche**, qui demandent une classe que le personnage de
-départ n'a pas.
+## La suite
+
+Le menu ne bloque plus rien. Ce qui reste au projet est ailleurs — les 120 corps décompilés des
+tables de gestionnaires, les 152 désassemblages, et ce que le jeu nommera au prochain plantage. Voir
+plus bas.
 
 **Le menu n'a plus aucune dépendance manquante** : ses quarante-trois appelées sont transcrites.
 
@@ -65,7 +70,7 @@ OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 55 -WorkingDir OpenForesia -Sho
 START,WAIT4,RIGHT,WAIT3,RIGHT,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT8
 ```
 
-## L'ordre à suivre — tout est fait sauf le dernier point
+## L'ordre à suivre — tout est fait
 
 1. ~~**L'onglet 5**~~ — fait le 2026-08-25. `Blaze.c` 76446..76571, binaire
    0x0052cf0a..0x0052d2b4 ; vérifié à l'écran, les trois rangées répondent.
@@ -83,9 +88,9 @@ START,WAIT4,RIGHT,WAIT3,RIGHT,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT8
 6. ~~**La page 5**~~ — faite le 2026-08-25. C'est « Options » : sauvegarder ou revenir au menu
    d'accueil ; binaire 0x0052e343..0x0052f568. Vérifiée à l'écran **et sur le disque** — la
    sauvegarde écrit un fichier de 0x6000 octets dans `save\`.
-7. **Les onglets 3 et 4** (217 et 105 l.) demandent une **autre classe** : la ligne 1, 3, 5 ou 7 de
-   la table pour le 3, la ligne 4 pour le 4. Il faut donc composer un groupe autrement, ou attendre
-   qu'un personnage d'une autre classe rejoigne — à voir avec Vincent.
+7. ~~**Les onglets 3 et 4**~~ — faits le 2026-08-25. Ce sont les sorts et les herbes. Vérifiés à
+   l'écran avec une sonde d'une ligne sur `classRow`, la seule façon de les atteindre avec le
+   personnage de départ.
 
 ```powershell
 # fiche → l'onglet 5, entrer dedans et changer les trois valeurs
@@ -162,7 +167,7 @@ ne démontre qu'il soit atteint — à faire quand un plantage le nommera, comme
 * **Le menu de jeu**, dans le nouveau `Screens/State03/WorldMapMenu.cs` : `FUN_0052a7d0`, le
   prologue et l'épilogue partagé de `FUN_0052a850`, la page 0 et ses onglets 0 (statistiques), 1
   (inventaire), 2 (équipement) et 5 (configuration de la manette), puis les pages 1 (« Objets ») et
-  2 (« Table », la dalle aux cristaux) 3 (« Organisation du groupe »), 4 (la carte du monde) et 5 (« Options »). Plus les quatre appelées qui manquaient — `FUN_0052fab0`,
+  2 (« Table », la dalle aux cristaux) 3 (« Organisation du groupe »), 4 (la carte du monde) et 5 (« Options »), et les six onglets de la fiche. Plus les quatre appelées qui manquaient — `FUN_0052fab0`,
   `FUN_0051bd50`, `FUN_0052fba0`, `FUN_0052fdc0` : **le menu n'a plus aucune dépendance**.
 * Les blocs de données du menu relevés depuis le binaire : la rangée de quatre descripteurs
   `0x00568530`, les trente-trois cellules de sprite `0x0056aae0`, les six flux d'étiquettes de

@@ -12913,3 +12913,88 @@ primitives**, qui identifie la page a lui seul.
 
 Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
 verifiee.**
+
+---
+
+## 2026-08-25 (suite 12) — les onglets 3 et 4 : LE MENU N'A PLUS AUCUNE LEVEE
+
+`FUN_0052a850`, page 0, `case 3` (Blaze.c 76124..76340, 217 l.) et `case 4` (76341..76445, 105 l.).
+Avec eux, **les six pages et les six onglets du menu sont transcrits** : plus une seule
+`NotImplementedException` dans tout `FUN_0052a850`.
+
+### L'onglet 3 : les sorts
+
+Six pages (quatre pour la classe 5), chacune une tranche du repertoire de l'ecole du personnage.
+Haut/bas changent de page, gauche/droite parcourent la tranche, le carre retient le sort dans
+`+0x2b6`. La tranche se lit dans `PTR_DAT_00564640` — un couple (premier, compte) par page — et
+l'etat « appris » dans le bloc de bits de `+0x160 + ecole * 8`.
+
+**La liste courte encode l'etat dans le signe.** Un sort appris entre dans `DAT_005de6a0` par son
+numero, un sort inconnu par son **oppose**, et tout le reste du corps teste `< 0x80`. Le numero 0 est
+donc ambigu — son oppose vaut aussi zero — et se lira toujours comme appris.
+
+Ce n'est pas une deduction de lecture : **l'ecran le montre**. Sur un Guerrier sonde en classe 1, la
+page 1 (numeros 0 a 4) affiche « Balle de feu » en premier et quatre « ? », tandis que la page 2
+(numeros 5 a 9) n'affiche que des « ? ». La seule entree qui paraisse apprise est celle dont le
+numero est zero. Transcrit tel quel, sans correction.
+
+**Le verrou de mise au point n'affiche pas une triche, il ecrit.** Quand `DAT_005633a8` vaut zero —
+il vaut 1 au chargement, et passe a zero apres « Gurkha » — la boucle **leve** le bit de chaque sort
+qu'elle parcourt avant de le tester. C'est une ecriture dans le personnage, pas un affichage.
+
+**Le nom du sort est reecrit sur place** : les zeros des quatorze premiers octets de
+l'enregistrement de ressource deviennent des espaces, dans la ressource elle-meme. Transcrit tel
+quel.
+
+### L'onglet 4 : les herbes
+
+Sept entrees fixes, sans page ni tranche. Le carre retient l'entree visee dans `+0x2b6` — **le meme
+octet que l'onglet 3**. Sept libelles pris d'un bloc contigu de la table de ressources (`+0x398` a
+`+0x3b4`) et sept nombres.
+
+**Les memes huit octets, lus de deux facons.** Les nombres viennent de `+0x160 + ecole * 8`, un
+octet par entree — exactement le bloc que l'onglet 3 lit **en bits**. Rien ne les reconcilie : c'est
+la classe qui decide de la lecture, et `s_ClassTabs_0056a898` s'arrange pour qu'un personnage n'ait
+jamais les deux onglets. C'est le genre de recouvrement que ce depot cherche d'habitude a debusquer ;
+ici il est deliberé et il faut le laisser.
+
+**La borne de la boucle de libelles est un decalage, pas un compte** : le binaire va de `0x398` a
+`0x3b4` par pas de quatre, ce qui fait sept entrees et le dit sans avoir a les compter.
+
+### Les tables relevees
+
+| VA | contenu | role |
+|---|---|---|
+| `0x00564608` | `00 1d 35 49` | le rang du premier libelle de chaque ecole ; le quatrieme borne le troisieme |
+| `0x00564610` | `00 05 05 05 0a 05 0f 05 14 06 1a 03` | ecole 0 : six couples (premier, compte) |
+| `0x00564620` | `00 05 05 06 0b 05 10 03 13 03 16 02` | ecole 1 |
+| `0x00564630` | `00 03 03 04 07 02 09 03 0c 04 10 04` | ecole 2 |
+| `0x00564640` | 3 pointeurs → `0x564610/20/30`, puis **un dword nul** | `PTR_DAT_00564640` ; le nul borne le nombre d'ecoles a trois sans qu'on ait a le deviner |
+| `0x0056a978` | 4 dwords + terminateur | les decorations de l'onglet 3, ancrees sur le descripteur 2 ; la plage se referme sur `0x0056a98c`, la table de ports de carte de la page 5 |
+| `0x005de6a0` | 8 octets | `DAT_005de6a0`, la tranche affichee ; borne par `s_KeyItemIndex_005de6a8` |
+
+### Comment les deux onglets ont ete atteints
+
+Le Guerrier de depart n'a que les onglets 0, 1, 2 et 5. Une **sonde d'une ligne** — `classRow = 1`
+puis `classRow = 4` dans la barre d'onglets, retiree apres — suffit a les afficher, et n'a pas eu
+besoin de toucher a l'ecole ni au bloc de bits : le personnage reste un Guerrier, seul le choix
+d'onglet change. C'est ce qui rend la sonde honnete ici, la ou forcer l'onglet directement aurait
+melange deux jeux de donnees.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent, quatre runs, aucun plantage :
+
+| Sequence | Resultat |
+|---|---|
+| `…,RIGHT,RIGHT,RIGHT` (sonde classe 1) | 490 primitives par image — « Niveau Magie 1/6 », cinq pictogrammes, « Balle de feu », « MA 2 », trois pictogrammes d'element, « Fenêtre Spécialité » |
+| `…,ENTER,UP,RIGHT` (sonde classe 1) | 484 — « 2/6 », cinq « ? », le curseur sur la deuxieme, « ???? » partout et « Cette capacité n'a pas encore été développée » |
+| `…,ENTER,DOWN,ENTER` (sonde classe 4) | 531 — les sept herbes avec leur compte, le marqueur sur la deuxieme, et sa description |
+| `…,RIGHT,RIGHT,RIGHT` (sonde retiree) | 487 — l'onglet 5 du Guerrier, comme avant : pas de regression |
+
+**Un run a ete perdu**, la seconde fois de la journee, avec la meme signature : « aucun plantage,
+509 par image » sur une sequence qui demandait trois `RIGHT`, et un `relance detectee` dans le
+journal. La table des signatures ajoutee a `test-protocol.md` a suffi a le voir tout de suite.
+
+Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
+verifiee.**

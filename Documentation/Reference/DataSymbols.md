@@ -985,6 +985,26 @@ instructions avant le saut. C'est le remappage des quatre boutons d'action, écr
 
 ---
 
+## Les onglets 3 et 4 de la fiche — relevé le 2026-08-25
+
+L'onglet des sorts et celui des herbes. Trois écoles, six pages chacune ; le compte d'écoles n'est
+pas deviné, c'est le **quatrième pointeur nul** de `0x00564640` qui le donne.
+
+| VA | contenu | rôle |
+|---|---|---|
+| `0x00564608` | `00 1d 35 49` | `DAT_00564608` — le rang du premier libellé de chaque école dans la table de ressources ; la quatrième valeur borne la troisième |
+| `0x00564610` | `00 05 05 05 0A 05 0F 05 14 06 1A 03` puis quatre octets nuls | école 0 : six couples (premier, compte), un par page |
+| `0x00564620` | `00 05 05 06 0B 05 10 03 13 03 16 02` + nuls | école 1 |
+| `0x00564630` | `00 03 03 04 07 02 09 03 0C 04 10 04` + nuls | école 2 |
+| `0x00564640` | 3 pointeurs → `0x564610/20/30`, puis **un dword nul** | `PTR_DAT_00564640` |
+| `0x0056A978` | `0x1C2C2402 0x1C680502 0x50342502 0x74442602 0x00000000` | les quatre décorations de l'onglet 3, ancrées sur le descripteur 2 ; la plage se referme sur `0x0056A98C` |
+
+Le bloc de huit octets `+0x160 + école * 8` du personnage est lu **en bits** par l'onglet 3 (l'état
+« appris » de chaque sort) et **en octets** par l'onglet 4 (le compte de chaque herbe). C'est la
+classe qui décide, et `s_ClassTabs_0056a898` fait qu'un personnage n'a jamais les deux onglets.
+
+---
+
 ## La page 5 du menu de jeu, « Options » — relevé le 2026-08-25
 
 Les emplacements de carte mémoire, `0x0056a98c`..`0x0056aa18`. La plage se referme par le haut sur

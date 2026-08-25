@@ -1239,18 +1239,44 @@ qu'une capture qui ressemble a ce qu'il faut.
 
 Utile quand un `-Then` semble n'avoir rien fait : chaque page du menu a sa signature.
 
-| Page | Primitives par image |
+| Page ou onglet | Primitives par image |
 |---|---|
-| 0, la fiche | ~509 |
-| 2, la dalle aux cristaux | ~391 |
-| 3, l'organisation du groupe | ~388 |
-| 1, les objets de quete | ~383 |
-| 4, la carte du monde | ~314 |
-| 5, « Options » | ~407 |
+| page 0, la fiche (onglet 0) | ~509 |
+| onglet 4, les herbes | ~531 |
+| onglet 3, les sorts | ~484 a 490 |
+| onglet 5, la manette | ~487 |
+| page 5, « Options » | ~407 |
+| page 2, la dalle aux cristaux | ~391 |
+| page 3, l'organisation du groupe | ~388 |
+| page 1, les objets de quete | ~383 |
+| page 4, la carte du monde | ~314 |
 
 Un verdict « aucun plantage, 509 par image » sur une sequence qui demandait trois `PGUP` veut dire
 que **la sequence n'a jamais ete vue** — le jeu est reste sur la page 0. C'est arrive le
-2026-08-25 ; relancer plutot que conclure.
+2026-08-25 **deux fois** ; chercher aussi `relance detectee` dans le journal, et relancer plutot que
+conclure.
+
+### Les onglets 3 et 4, depuis le 2026-08-25 (suite 12)
+
+**Ils ne s'atteignent pas avec le personnage de depart** : le Guerrier n'a que les onglets 0, 1, 2
+et 5. Une sonde d'une ligne suffit, et elle est plus honnete que de forcer l'onglet directement —
+seul le choix d'onglet change, le personnage reste un Guerrier et lit ses vraies donnees :
+
+```csharp
+// dans RunCharacterSheetPage, juste apres `int classRow = character[0x150] & 7;`
+classRow = 1;   // la ligne 1 donne {0,1,2,3,5} -> un troisieme RIGHT mene a l'onglet 3
+classRow = 4;   // la ligne 4 donne {0,1,2,4,5} -> un troisieme RIGHT mene a l'onglet 4
+```
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `START,WAIT4,RIGHT,WAIT3,RIGHT,WAIT3,RIGHT,WAIT8` (sonde 1) | ~490 primitives par image — « Niveau Magie 1/6 », « Balle de feu », « MA 2 », « Fenêtre Spécialité » |
+| `…,ENTER,WAIT3,UP,WAIT2,RIGHT,WAIT6` (sonde 1) | ~484 — « 2/6 », cinq « ? » et « Cette capacité n'a pas encore été développée » |
+| `…,ENTER,WAIT3,DOWN,WAIT2,ENTER,WAIT6` (sonde 4) | ~531 — les sept herbes, leur compte, le marqueur et la description |
+| `START,WAIT4,RIGHT,WAIT3,RIGHT,WAIT3,RIGHT,WAIT8` (sonde retiree) | ~487 — l'onglet 5, la configuration de la manette |
+
+Le dernier est la **verification de retrait** : sans la sonde, le troisieme `RIGHT` du Guerrier donne
+l'onglet 5, pas le 3.
 
 ### Compter les `RIGHT` : la classe decide, pas la position
 

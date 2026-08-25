@@ -15,16 +15,14 @@
 //
 // SIX PAGES, un switch sur DAT_005de6f0, et 2533 lignes de pseudo-C dans Blaze.c.
 //
-// ETAT : le prologue, l'epilogue partage, la page 0 (la fiche de personnage) et ses onglets 0 (le
-// pave de statistiques), 1 (l'inventaire), 2 (l'equipement) et 5 (la configuration de la manette)
-// sont transcrits — l'ecran s'ouvre, se dessine, change d'onglet, choisit un objet, l'equipe ou le
-// retire, regle la manette, et se referme. C'est toute la fiche pour la classe de depart : les
-// onglets 3 et 4 demandent une autre classe.
+// L'ecran s'ouvre, se dessine, change de page et d'onglet, choisit un objet, l'equipe ou le retire,
+// regle la manette, pose un repere sur la carte, sauvegarde, et se referme.
 //
-// LES SIX PAGES SONT TRANSCRITES — 0 (la fiche), 1 (les objets de quete), 2 (la dalle aux
-// cristaux), 3 (l'organisation du groupe), 4 (la carte du monde et ses reperes) et 5 (« Options » :
-// sauvegarder ou quitter). Le menu est complet ; il ne reste que les onglets 3 et 4 de la fiche,
-// qui demandent une classe que le personnage de depart n'a pas. Voir la carte au-dessus de
+// LE MENU EST ENTIEREMENT TRANSCRIT — les six pages (0 la fiche, 1 les objets de quete, 2 la dalle
+// aux cristaux, 3 l'organisation du groupe, 4 la carte du monde et ses reperes, 5 « Options ») et
+// les six onglets de la fiche (0 les statistiques, 1 l'inventaire, 2 l'equipement, 3 les sorts,
+// 4 les herbes, 5 la manette). Plus aucun corps n'y manque : les trois levees qui restent sont des
+// gardes sur des cas que les bornes rendent impossibles, pas des trous. Voir la carte au-dessus de
 // RunPartyMenu_0052A850.
 //
 // Le prologue et l'epilogue sont verifies ligne a ligne au desassembleur (0x0052a850..0x0052aa1d et
@@ -574,6 +572,7 @@ public static unsafe partial class Blaze
         // doit sonner. Rien entre ici et le saut ne touche a DAT_005de6f8, mais la capture est
         // gardee a sa place pour que la comparaison de l'onglet 5 reste lisible.
         int rowBefore = s_Unknown_005de6f8;
+        int listBefore = s_Unknown_005de6fc;
 
         switch (tab)
         {
@@ -587,14 +586,10 @@ public static unsafe partial class Blaze
                 return DrawEquipmentTab(otBase, cursor, slot, memberSlot, character, pad);
 
             case 3:
-                throw new NotImplementedException(
-                    "FUN_0052a850, page 0, onglet 3 : non transcrit. 217 lignes dans Blaze.c, " +
-                    "76124..76340.");
+                return DrawSpellTab(otBase, cursor, slot, character, pad, listBefore);
 
             case 4:
-                throw new NotImplementedException(
-                    "FUN_0052a850, page 0, onglet 4 : non transcrit. 105 lignes dans Blaze.c, " +
-                    "76341..76445.");
+                return DrawHerbTab(otBase, cursor, slot, character, pad, rowBefore);
 
             case 5:
                 return DrawConfigTab(otBase, cursor, slot, character, pad, rowBefore);
@@ -1692,6 +1687,445 @@ public static unsafe partial class Blaze
         }
 
         UiWin.EmitClipRect(otBase, &cursor);
+        return cursor;
+    }
+
+    /// <summary>
+    /// Ghidra: le <c>case 3</c> du switch d'onglets — <b>la liste de sorts</b>. Blaze.c
+    /// 76124..76340, 217 lignes.
+    ///
+    /// <para>
+    /// Six pages (quatre pour la classe 5), chacune une tranche du repertoire de l'ecole du
+    /// personnage : haut/bas changent de page, gauche/droite parcourent la tranche, le carre retient
+    /// le sort vise dans <c>+0x2b6</c>. La tranche se lit dans
+    /// <see cref="s_SpellPages_00564640"/> — un couple (premier, compte) par page — et l'etat
+    /// « appris » dans le bloc de bits de <c>+0x160 + ecole * 8</c>.
+    /// </para>
+    /// <para>
+    /// <b>La liste courte de <c>DAT_005de6a0</c> encode l'etat dans le signe.</b> Un sort appris y
+    /// entre par son numero, un sort inconnu par son <b>oppose</b>, et tout le reste du corps teste
+    /// <c>&lt; 0x80</c> pour les distinguer. Le numero 0 est donc ambigu — son oppose vaut aussi
+    /// zero — et se lira toujours comme appris ; c'est dans le binaire, note ici sans etre corrige.
+    /// </para>
+    /// <para>
+    /// <b>Le verrou de mise au point apprend tout.</b> Quand <c>DAT_005633a8</c> vaut zero — apres
+    /// « Gurkha », il vaut 1 au chargement — la boucle <b>leve</b> le bit de chaque sort qu'elle
+    /// parcourt avant de le tester. Ce n'est pas un affichage de triche, c'est une ecriture dans le
+    /// personnage.
+    /// </para>
+    /// <para>
+    /// Les huit octets de <c>DAT_005de6a0</c> se referment exactement sur
+    /// <see cref="s_KeyItemIndex_005de6a8"/> : la plus grande tranche des trois ecoles compte six
+    /// entrees, la place est bornee par le voisin.
+    /// </para>
+    /// </summary>
+    private static uint* DrawSpellTab(
+        uint* otBase, uint* cursor, byte* slot, byte* character, ushort* pad, int listBefore)
+    {
+        byte* labelTable = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+        byte* root = MenuDescriptor(0);
+        byte* sprite = s_MenuSprite_005de5f8;
+
+        // ---- la page --------------------------------------------------------------------
+        if (s_Unknown_005de718 < 0)
+        {
+            BindMenuLabels(*(byte**)(labelTable + 0x2dc), (uint)(nint)slot, root, 0);
+            s_Unknown_005de710 = -1;
+        }
+        else
+        {
+            // Quatre pages pour la classe 5, six pour les autres.
+            int lastPage = ((character[0x150] & 7) != 5 ? 2 : 0) + 3;
+
+            if ((pad[3] & 0x10) != 0 && s_Unknown_005de6fc < lastPage)
+            {
+                s_Unknown_005de6fc++;
+                s_Unknown_005de6f8 = 0;
+            }
+
+            if ((pad[3] & 0x40) != 0 && s_Unknown_005de6fc > 0)
+            {
+                s_Unknown_005de6fc--;
+                s_Unknown_005de6f8 = 0;
+            }
+
+            if (listBefore != s_Unknown_005de6fc)
+            {
+                pad[3] &= 0xff5f;
+                Aud.PlayUiSound3A();
+            }
+
+            if ((((byte*)pad)[3] & 0x40) != 0)
+            {
+                s_Unknown_005de718 = -1;
+                Aud.PlayUiSound39();
+            }
+        }
+
+        // ---- la tranche de sorts, montee a chaque image ------------------------------------
+        byte school = character[0x2b5];
+        uint* known = (uint*)(character + 0x160 + school * 8);
+        byte* pages = s_SpellPages_00564640[school];
+
+        int id = pages[s_Unknown_005de6fc * 2];
+        int listed = 0;
+
+        for (int remaining = pages[s_Unknown_005de6fc * 2 + 1]; remaining != 0; remaining--, id++)
+        {
+            if (Mem.s_DebugModeLatch_005633a8 == 0) known[id >> 5] |= 1u << (id & 0x1f);
+
+            s_SpellList_005de6a0[listed] = (known[id >> 5] & (1u << (id & 0x1f))) == 0
+                ? (byte)-(byte)id
+                : (byte)id;
+
+            listed++;
+        }
+
+        // ---- le curseur dans la tranche -----------------------------------------------------
+        if (s_Unknown_005de718 >= 0)
+        {
+            int cursorBefore = s_Unknown_005de6f8;
+
+            if ((pad[3] & 0x80) != 0) s_Unknown_005de6f8--;
+            if ((pad[3] & 0x20) != 0) s_Unknown_005de6f8++;
+            if (s_Unknown_005de6f8 < 0) s_Unknown_005de6f8 = listed - 1;
+            if (s_Unknown_005de6f8 >= listed) s_Unknown_005de6f8 = 0;
+
+            if (cursorBefore != s_Unknown_005de6f8) Aud.PlayUiSound3A();
+
+            if ((((byte*)pad)[3] & 0x80) != 0)
+            {
+                if (s_SpellList_005de6a0[s_Unknown_005de6f8] < 0x80)
+                {
+                    character[0x2b6] = s_SpellList_005de6a0[s_Unknown_005de6f8];
+                    Aud.PlayUiSound38();
+                }
+                else
+                {
+                    Aud.PlayUiSound3B();
+                }
+            }
+
+            byte* label;
+            if (s_SpellList_005de6a0[s_Unknown_005de6f8] < 0x80)
+            {
+                BindMenuLabels(Mem.s_Unknown_005606f8, (uint)(nint)slot, root, 0);
+                cursor = Ui.RunTextEngine(cursor, root);
+
+                label = *(byte**)(labelTable
+                    + (s_SpellLabelBase_00564608[school]
+                       + s_SpellList_005de6a0[s_Unknown_005de6f8]) * 8);
+            }
+            else
+            {
+                label = *(byte**)(labelTable + 0x31c);
+            }
+
+            BindMenuLabels(label, (uint)(nint)slot, root, 0);
+        }
+
+        // ---- le cadre, le numero de page, et le total ---------------------------------------
+        cursor = DrawDecorList_0052FAB0(otBase, cursor, s_MenuDecorSpells_0056a978);
+
+        *(byte**)sprite = SpriteAtlas(0x00566c30);
+        *(short*)(sprite + 8) = 0xb0;
+        *(short*)(sprite + 0x0a) = 0x24;
+        *(uint*)(sprite + 4) = 0x1000000;
+        cursor = Prims.DrawDecimalNumber(
+            otBase, cursor, (int*)sprite, (uint)(s_Unknown_005de6fc + 1), 1, 0);
+
+        *(short*)(sprite + 8) += 0x10;
+        cursor = Prims.DrawDecimalNumber(
+            otBase, cursor, (int*)sprite,
+            (uint)(((character[0x150] & 7) != 5 ? 2 : 0) + 4), 1, 0);
+
+        *(short*)(sprite + 0x0a) = 0x32;
+        UiWin.EmitViewportRect(otBase, &cursor);
+
+        if (s_Unknown_005de718 >= 0)
+        {
+            *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
+            *(ushort*)(sprite + 0x10) = 0x18;
+            *(short*)(sprite + 8) = (short)(s_Unknown_005de6f8 * 0x14 + 0x55);
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+        }
+
+        // ---- la rangee de pictogrammes -------------------------------------------------------
+        *(short*)(sprite + 8) = 0x60;
+
+        for (int i = 0; i < listed; i++)
+        {
+            *(uint*)(sprite + 4) =
+                i == s_Unknown_005de6f8 && s_Unknown_005de718 >= 0
+                    ? s_Unknown_005e9814
+                    : 0x1000000;
+
+            if (s_SpellList_005de6a0[i] < 0x80)
+            {
+                // Le sort retenu porte le marqueur, decale de huit dans les deux sens.
+                if (character[0x2b6] == s_SpellList_005de6a0[i])
+                {
+                    *(short*)(sprite + 8) += 8;
+                    *(short*)(sprite + 0x0a) += 8;
+                    *(byte**)sprite = s_ItemSprites_0056aae0 + 0x90;
+                    *(ushort*)(sprite + 0x10) = 0;
+                    cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+                    cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+                    *(short*)(sprite + 8) -= 8;
+                    *(short*)(sprite + 0x0a) -= 8;
+                }
+
+                *(byte**)sprite = *(byte**)(
+                    *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x10 + school * 4);
+                *(ushort*)(sprite + 0x10) = s_SpellList_005de6a0[i];
+            }
+            else
+            {
+                *(byte**)sprite = s_ItemSprites_0056aae0 + 0x98;
+                *(ushort*)(sprite + 0x10) = 0;
+            }
+
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            *(short*)(sprite + 8) += 0x14;
+        }
+
+        UiWin.EmitClipRect(otBase, &cursor);
+
+        // ---- le nom du sort vise, son cout, ses elements --------------------------------------
+        *(byte**)sprite = (byte*)s_GlyphAtlas_00566c28;
+        *(short*)(sprite + 8) = 0x64;
+        *(short*)(sprite + 0x0a) = 0x48;
+        *(uint*)(sprite + 4) = 0x1000000;
+
+        byte* record = null;
+        byte* name;
+
+        if (s_SpellList_005de6a0[s_Unknown_005de6f8] < 0x80)
+        {
+            record = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x9c) + school * 4)
+                     + s_SpellList_005de6a0[s_Unknown_005de6f8] * 0x30;
+
+            // Le nom est **reecrit sur place** : les zeros des quatorze premiers octets deviennent
+            // des espaces. Une ecriture dans la ressource, pas une copie — transcrite telle quelle.
+            for (int i = 0; i < 0x0e; i++) if (record[i] == 0) record[i] = 0x20;
+
+            name = record;
+        }
+        else
+        {
+            name = s_UnknownItemText_00566b80 + 4;      // Ghidra: &DAT_00566b84, « ???? »
+        }
+
+        cursor = Prims.DrawTextRun(otBase, cursor, (int*)sprite, name, 0, 0, 0x10);
+
+        *(short*)(sprite + 8) = 0xac;
+        *(short*)(sprite + 0x0a) = 0x58;
+        *(uint*)(sprite + 4) = 0x1000000;
+
+        if (record != null)
+        {
+            *(byte**)sprite = SpriteAtlas(0x00566c30);
+            cursor = Prims.DrawDecimalNumber(
+                otBase, cursor, (int*)sprite, *(ushort*)(record + 0x14), 3, 0);
+        }
+        else
+        {
+            cursor = Prims.DrawTextRun(
+                otBase, cursor, (int*)sprite, s_UnknownItemText_00566b80, 0, 0, 0x10);
+        }
+
+        *(short*)(sprite + 8) = 0x64;
+        *(short*)(sprite + 0x0a) = 0x88;
+
+        if (record == null)
+        {
+            *(byte**)sprite = (byte*)s_GlyphAtlas_00566c28;
+            return Prims.DrawTextRun(
+                otBase, cursor, (int*)sprite, s_UnknownItemText_00566b80 + 4, 0, 0, 0x10);
+        }
+
+        // Les pictogrammes d'element, quatre bits par entree, replies quand la ligne est pleine.
+        *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
+        *(uint*)(sprite + 4) = 0x1000000;
+
+        for (int entry = 0; entry < record[0x1f]; entry++)
+        {
+            uint bits = record[0x20 + entry];
+
+            int set = 0;
+            for (int b = 0; b < 4; b++, bits >>= 1) if ((bits & 0x10) != 0) set++;
+
+            if (0xe4 - set * 8 <= *(short*)(sprite + 8))
+            {
+                *(short*)(sprite + 0x0a) += 0x0c;
+                *(short*)(sprite + 8) = 100;
+            }
+
+            *(ushort*)(sprite + 0x10) = 0x30;
+
+            for (int b = 0; b < 4; b++, bits >>= 1, (*(ushort*)(sprite + 0x10))++)
+            {
+                if ((bits & 1) == 0) continue;
+
+                UiWin.EmitViewportRect(otBase, &cursor);
+                cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+                cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+                UiWin.EmitClipRect(otBase, &cursor);
+                *(short*)(sprite + 8) += 8;
+            }
+
+            *(short*)(sprite + 8) += 6;
+        }
+
+        return cursor;
+    }
+
+    /// <summary>
+    /// Ghidra: le <c>case 4</c> du switch d'onglets — <b>les sept herbes</b>. Blaze.c
+    /// 76341..76445, 105 lignes. Le seul onglet propre a la classe 4.
+    ///
+    /// <para>
+    /// Sept entrees fixes, sans page ni tranche : haut/bas deplacent le curseur, le carre retient
+    /// l'entree visee dans <c>+0x2b6</c> — le meme octet que l'onglet 3. A droite, sept libelles
+    /// pris d'un bloc contigu de la table de ressources (<c>+0x398</c> a <c>+0x3b4</c>) et sept
+    /// nombres.
+    /// </para>
+    /// <para>
+    /// <b>Les memes huit octets, lus de deux facons.</b> Les nombres viennent de
+    /// <c>+0x160 + ecole * 8</c>, un octet par entree — exactement le bloc que l'onglet 3 lit
+    /// <b>en bits</b>. Rien ne les reconcilie : c'est la classe qui decide de la lecture, et la
+    /// table d'onglets s'arrange pour qu'un personnage n'ait jamais les deux.
+    /// </para>
+    /// <para>
+    /// A l'ecran : « Lavande », « Sauge », « Verveine », « Mercuriale », « Fenouil », « Hysopius »,
+    /// « Belladone », avec leur compte et, pour celle qui est visee, sa description en bas.
+    /// </para>
+    /// <para>
+    /// <b>La borne de la boucle de libelles est un decalage, pas un compte</b> : le binaire va de
+    /// <c>0x398</c> a <c>0x3b4</c> par pas de quatre, ce qui fait sept entrees et le dit sans avoir
+    /// a les compter.
+    /// </para>
+    /// </summary>
+    private static uint* DrawHerbTab(
+        uint* otBase, uint* cursor, byte* slot, byte* character, ushort* pad, int rowBefore)
+    {
+        byte* labelTable = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+        byte* root = MenuDescriptor(0);
+        byte* sprite = s_MenuSprite_005de5f8;
+        byte school = character[0x2b5];
+
+        if (s_Unknown_005de718 < 0)
+        {
+            BindMenuLabels(*(byte**)(labelTable + 0x2dc), (uint)(nint)slot, root, 0);
+            s_Unknown_005de710 = -1;
+        }
+        else
+        {
+            if ((pad[3] & 0x10) != 0) s_Unknown_005de6f8--;
+            if ((pad[3] & 0x40) != 0) s_Unknown_005de6f8++;
+            if (s_Unknown_005de6f8 < 0) s_Unknown_005de6f8 = 6;
+            if (s_Unknown_005de6f8 > 6) s_Unknown_005de6f8 = 0;
+
+            if (rowBefore != s_Unknown_005de6f8) Aud.PlayUiSound3A();
+
+            if ((pad[1] & 0x8000) == 0)
+            {
+                if ((pad[1] & 0x4000) != 0)
+                {
+                    s_Unknown_005de718 = -1;
+                    Aud.PlayUiSound39();
+                }
+            }
+            else
+            {
+                character[0x2b6] = (byte)s_Unknown_005de6f8;
+                Aud.PlayUiSound38();
+            }
+
+            BindMenuLabels(Mem.s_Unknown_005606f8, (uint)(nint)slot, root, 0);
+            cursor = Ui.RunTextEngine(cursor, root);
+
+            BindMenuLabels(
+                *(byte**)(labelTable + (s_SpellLabelBase_00564608[school] + s_Unknown_005de6f8) * 8),
+                (uint)(nint)slot, root, 0);
+        }
+
+        UiWin.EmitViewportRect(otBase, &cursor);
+
+        if (s_Unknown_005de718 >= 0)
+        {
+            *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
+            *(ushort*)(sprite + 0x10) = 0x18;
+            *(short*)(sprite + 8) = 0x65;
+            *(short*)(sprite + 0x0a) = (short)((s_Unknown_005de6f8 + 2) * 0x12);
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+        }
+
+        *(short*)(sprite + 8) = 0x5c;
+        *(short*)(sprite + 0x0a) = 0x24;
+
+        for (int i = 0; i < 7; i++)
+        {
+            *(uint*)(sprite + 4) =
+                i == s_Unknown_005de6f8 && s_Unknown_005de718 >= 0
+                    ? s_Unknown_005e9814
+                    : 0x1000000;
+
+            if (character[0x2b6] == i)
+            {
+                *(short*)(sprite + 8) += 8;
+                *(short*)(sprite + 0x0a) += 8;
+                *(byte**)sprite = s_ItemSprites_0056aae0 + 0x90;
+                *(ushort*)(sprite + 0x10) = 0;
+                cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+                cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+                *(short*)(sprite + 8) -= 8;
+                *(short*)(sprite + 0x0a) -= 8;
+            }
+
+            *(byte**)sprite = *(byte**)(
+                *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x10 + school * 4);
+            *(ushort*)(sprite + 0x10) = (ushort)i;
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            *(short*)(sprite + 0x0a) += 0x12;
+        }
+
+        *(ushort*)(sprite + 0x10) = 0;
+        cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+        UiWin.EmitClipRect(otBase, &cursor);
+
+        // ---- les sept libelles ----------------------------------------------------------------
+        *(byte**)sprite = (byte*)s_GlyphAtlas_00566c28;
+        *(short*)(sprite + 8) = 0x70;
+        *(short*)(sprite + 0x0a) = 0x28;
+        *(uint*)(sprite + 4) = 0x1000000;
+
+        for (int offset = 0x398; offset < 0x3b4; offset += 4)
+        {
+            cursor = Prims.DrawTextRunAlias(
+                otBase, cursor, (int*)sprite, *(byte**)(labelTable + offset), 0, 0, -1);
+            *(short*)(sprite + 0x0a) += 0x12;
+            (*(ushort*)(sprite + 0x10))++;
+        }
+
+        // ---- les sept nombres ------------------------------------------------------------------
+        *(byte**)sprite = SpriteAtlas(0x00566c30);
+        *(short*)(sprite + 8) = 0xc8;
+        *(short*)(sprite + 0x0a) = 0x28;
+        *(uint*)(sprite + 4) = 0x1000000;
+
+        for (int i = 0; i < 7; i++)
+        {
+            cursor = Prims.DrawDecimalNumber(
+                otBase, cursor, (int*)sprite,
+                character[0x160 + school * 8 + i], 0x82, 0);
+            *(short*)(sprite + 0x0a) += 0x12;
+            (*(ushort*)(sprite + 0x10))++;
+        }
+
         return cursor;
     }
 
@@ -3953,6 +4387,53 @@ public static unsafe partial class Blaze
     /// occupe le trou de huit octets entre <see cref="s_StatOrder_0056a8d0"/> et
     /// <see cref="s_MenuDecorHead_0056a8e0"/>, ce qui referme la plage.</summary>
     private static readonly byte[] s_ItemStatOrder_0056a8d8 = [0x02, 0x01, 0x00, 0x03, 0x04, 0x05, 0x06, 0x07];
+
+    // =====================================================================================
+    // LES DONNEES DES ONGLETS 3 ET 4
+    // =====================================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_005de6a0</c> — <b>la tranche de sorts affichee</b>, huit
+    /// octets. Un sort appris y entre par son numero, un sort inconnu par son oppose ; tout le
+    /// corps de l'onglet 3 teste <c>&lt; 0x80</c> pour les distinguer.
+    ///
+    /// <para>Les huit octets sont bornes par le voisin du dessus,
+    /// <see cref="s_KeyItemIndex_005de6a8"/>, et la plus grande tranche des trois ecoles compte six
+    /// entrees : la place suffit et elle est mesuree, pas choisie.</para></summary>
+    private static byte* s_SpellListStorage;
+    private static byte* s_SpellList_005de6a0
+        => s_SpellListStorage != null
+            ? s_SpellListStorage
+            : (s_SpellListStorage = (byte*)NativeMemory.AllocZeroed(8));
+
+    /// <summary>
+    /// Ghidra: <c>&amp;PTR_DAT_00564640</c> — <b>le decoupage en pages du repertoire de chaque
+    /// ecole</b>. Chaque rangee donne six couples <c>(premier, compte)</c>, un par page.
+    ///
+    /// <para>Trois rangees en <c>0x00564610</c>, <c>0x00564620</c> et <c>0x00564630</c>, contigues
+    /// et de seize octets chacune ; la table de pointeurs qui les designe porte une <b>quatrieme
+    /// entree nulle</b>, ce qui borne le nombre d'ecoles a trois sans avoir a le deviner.</para>
+    /// </summary>
+    private static readonly byte*[] s_SpellPages_00564640 =
+    [
+        AllocBytes([0x00, 0x05, 0x05, 0x05, 0x0a, 0x05, 0x0f, 0x05, 0x14, 0x06, 0x1a, 0x03,
+                    0x00, 0x00, 0x00, 0x00]),
+        AllocBytes([0x00, 0x05, 0x05, 0x06, 0x0b, 0x05, 0x10, 0x03, 0x13, 0x03, 0x16, 0x02,
+                    0x00, 0x00, 0x00, 0x00]),
+        AllocBytes([0x00, 0x03, 0x03, 0x04, 0x07, 0x02, 0x09, 0x03, 0x0c, 0x04, 0x10, 0x04,
+                    0x00, 0x00, 0x00, 0x00]),
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_00564608</c> — le rang du premier libelle de chaque ecole dans
+    /// la table de ressources. Quatre octets ; le quatrieme borne le troisieme.</summary>
+    private static readonly byte[] s_SpellLabelBase_00564608 = [0x00, 0x1d, 0x35, 0x49];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0056a978</c> — les quatre decorations de l'onglet 3, toutes
+    /// ancrees sur le descripteur 2. La plage se referme sur <c>0x0056a98c</c>, la table de ports
+    /// de carte memoire de la page 5.</summary>
+    private static readonly uint[] s_MenuDecorSpells_0056a978 =
+    [
+        0x1c2c2402, 0x1c680502, 0x50342502, 0x74442602, 0x00000000,
+    ];
 
     /// <summary>Ghidra: <c>&amp;DAT_0056a948</c> — les dix decorations de l'onglet 1, toutes ancrees
     /// sur le descripteur 2.</summary>

@@ -6,6 +6,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- feat : **le menu de jeu est entièrement transcrit** — les onglets 3 (les sorts) et 4 (les herbes) faits ; six pages et six onglets, plus aucun corps ne manque à `FUN_0052a850`
+- feat : **l'onglet des sorts marche** — « Niveau Magie 1/6 », les cinq pictogrammes, « Balle de feu », son coût « MA 2 » et ses pictogrammes d'élément ; le changement de page et le curseur répondent
+- feat : **l'onglet des herbes marche** — les sept entrées (Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius, Belladone), leur compte, le marqueur de sélection et la description en bas
+- doc : la liste courte de `DAT_005de6a0` **encode l'état dans le signe** — un sort inconnu y entre par son opposé ; le numéro 0 est donc ambigu et se lit toujours comme appris, ce que l'écran montre
+- doc : les **mêmes huit octets** de `+0x160 + école * 8` sont un champ de bits pour l'onglet 3 et un octet par entrée pour l'onglet 4 — c'est la classe qui décide, et la table d'onglets fait qu'un personnage n'a jamais les deux
+- doc : le verrou de mise au point n'affiche pas des triches, il **écrit** — à zéro, la boucle de l'onglet 3 apprend chaque sort qu'elle parcourt
+- feat : les tables `0x00564608`, `0x00564610`..`0x00564640` et `0x0056a978` relevées — trois écoles, six pages chacune, et le pointeur nul qui borne le compte
 - feat : **le menu de jeu est complet** — la page 5 (« Options ») transcrite, et avec elle les six pages de `FUN_0052a850` ; il ne reste que deux onglets de la fiche, qui demandent une autre classe
 - feat : **la sauvegarde écrit pour de bon** — « Mémorisation achevée. » à l'écran et un fichier de `0x6000` octets neuf dans `save\` : énumérer, ouvrir, comparer les sommes, fusionner la table d'icônes, coller le niveau, recopier huit banques, capturer la palette, écrire en trois morceaux
 - feat : « Retour au menu d'accueil ? » marche aussi — la boîte de confirmation s'ouvre et attend
