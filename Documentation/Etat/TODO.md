@@ -39,12 +39,19 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-# DEMAIN : le menu de jeu, l'onglet 3 puis les autres
+# LE MENU DE JEU EST COMPLET
 
-**Les trois premiers onglets de la fiche marchent.** Statistiques, inventaire, équipement — avec
-l'échange qui fonctionne pour de bon : valider un objet déjà porté le retire, et le total est
-recalculé. Le menu s'ouvre, change d'onglet, entre dans les grilles, déplace ses curseurs et se
-referme.
+**Les six pages de `FUN_0052a850` sont transcrites** : la fiche de personnage, les objets de quête,
+la dalle aux cristaux, l'organisation du groupe, la carte du monde et ses repères, et « Options ».
+Chacune a été vérifiée à l'écran ; la sauvegarde l'a été **sur le disque**, avec un fichier de
+0x6000 octets écrit dans `save\`.
+
+**Les quatre onglets du Guerrier marchent** aussi : statistiques, inventaire, équipement,
+configuration de la manette — avec l'échange qui fonctionne pour de bon (valider un objet déjà porté
+le retire, et le total est recalculé).
+
+**Il ne reste que les onglets 3 et 4 de la fiche**, qui demandent une classe que le personnage de
+départ n'a pas.
 
 **Le menu n'a plus aucune dépendance manquante** : ses quarante-trois appelées sont transcrites.
 
@@ -58,17 +65,35 @@ OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 55 -WorkingDir OpenForesia -Sho
 START,WAIT4,RIGHT,WAIT3,RIGHT,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT8
 ```
 
-## L'ordre à suivre
+## L'ordre à suivre — tout est fait sauf le dernier point
 
-1. **L'onglet 5** — `Blaze.c` 76446..76571, 126 l. C'est le prochain **atteignable avec le
-   personnage de départ**, et c'est mesuré, pas supposé : un troisième `RIGHT` depuis l'onglet 0
-   lève « onglet 5 ». Le Guerrier n'a que quatre onglets — 0, 1, 2 et 5 — ce que
-   `s_ClassTabs_0056a898` annonçait et que le jeu confirme.
-2. **Les onglets 3 et 4** (217 et 105 l.) demandent une **autre classe** : la ligne 1, 3, 5 ou 7 de
+1. ~~**L'onglet 5**~~ — fait le 2026-08-25. `Blaze.c` 76446..76571, binaire
+   0x0052cf0a..0x0052d2b4 ; vérifié à l'écran, les trois rangées répondent.
+2. ~~**La page 1**~~ — faite le 2026-08-25. C'est la page « Objets », celle des objets de quête ;
+   binaire 0x0052d2b9..0x0052d50b. Vérifiée à l'écran avec une sonde qui lève quatre drapeaux.
+3. ~~**La page 2**~~ — faite le 2026-08-25. C'est la page « Table », la dalle aux cristaux ;
+   binaire 0x0052d510..0x0052d60e. Vérifiée à l'écran, sonde posée **dans `FUN_00535710`** et non
+   sur la banque (voir `test-protocol.md`).
+4. ~~**La page 3**~~ — faite le 2026-08-25. C'est « Organisation du groupe » ; binaire
+   0x0052d613..0x0052db32. Vérifiée à l'écran **sans sonde** : un `PGUP` depuis la page 0 y tombe
+   directement sur une partie neuve.
+5. ~~**La page 4**~~ — faite le 2026-08-25. C'est la carte du monde et ses huit repères ; binaire
+   0x0052db5b..0x0052e33e. Vérifiée à l'écran : le défilement, la pose d'un repère, et le groupe en
+   modèle 3d. Elle se pilote au `HOLD:`, pas au tapotement — voir `test-protocol.md`.
+6. ~~**La page 5**~~ — faite le 2026-08-25. C'est « Options » : sauvegarder ou revenir au menu
+   d'accueil ; binaire 0x0052e343..0x0052f568. Vérifiée à l'écran **et sur le disque** — la
+   sauvegarde écrit un fichier de 0x6000 octets dans `save\`.
+7. **Les onglets 3 et 4** (217 et 105 l.) demandent une **autre classe** : la ligne 1, 3, 5 ou 7 de
    la table pour le 3, la ligne 4 pour le 4. Il faut donc composer un groupe autrement, ou attendre
    qu'un personnage d'une autre classe rejoigne — à voir avec Vincent.
-3. Les pages 1 à 5 (98, 25, 136, 227 et 638 l.). La page 5 est la sauvegarde ; elle appelle les
-   quatre corps de carte mémoire, déjà transcrits.
+
+```powershell
+# fiche → l'onglet 5, entrer dedans et changer les trois valeurs
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 60 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT3,`
+START,WAIT4,RIGHT,WAIT3,RIGHT,WAIT3,RIGHT,WAIT4,ENTER,WAIT3,RIGHT,WAIT2,DOWN,WAIT2,RIGHT,WAIT2,`
+DOWN,WAIT2,LEFT,WAIT6
+```
 
 Les tableaux de découpage sont dans `REVERSE_STATUS.md`, section du 2026-08-25 (suite 2) ;
 l'épilogue partagé dans la suite 3, l'inventaire dans la suite 4, l'équipement dans la suite 5.
@@ -136,7 +161,8 @@ ne démontre qu'il soit atteint — à faire quand un plantage le nommera, comme
 * La **branche courte d'affichage** de `FUN_00516fc0` — le dernier trou de la boucle par image.
 * **Le menu de jeu**, dans le nouveau `Screens/State03/WorldMapMenu.cs` : `FUN_0052a7d0`, le
   prologue et l'épilogue partagé de `FUN_0052a850`, la page 0 et ses onglets 0 (statistiques), 1
-  (inventaire) et 2 (équipement). Plus les quatre appelées qui manquaient — `FUN_0052fab0`,
+  (inventaire), 2 (équipement) et 5 (configuration de la manette), puis les pages 1 (« Objets ») et
+  2 (« Table », la dalle aux cristaux) 3 (« Organisation du groupe »), 4 (la carte du monde) et 5 (« Options »). Plus les quatre appelées qui manquaient — `FUN_0052fab0`,
   `FUN_0051bd50`, `FUN_0052fba0`, `FUN_0052fdc0` : **le menu n'a plus aucune dépendance**.
 * Les blocs de données du menu relevés depuis le binaire : la rangée de quatre descripteurs
   `0x00568530`, les trente-trois cellules de sprite `0x0056aae0`, les six flux d'étiquettes de

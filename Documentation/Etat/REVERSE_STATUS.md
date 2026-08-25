@@ -12446,3 +12446,470 @@ valeur, ce qui rendrait le jour ou il se produirait visible au lieu de silencieu
 
 Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
 verifiee.**
+
+---
+
+## 2026-08-25 (suite 6) — l'onglet 5, la configuration de la manette
+
+`FUN_0052a850`, page 0, `case 5` : Blaze.c 76446..76571, binaire **0x0052cf0a..0x0052d2b4**. C'est
+le quatrieme et dernier onglet du Guerrier, et le seul des trois restants qui soit atteignable avec
+le personnage de depart — trois `RIGHT` depuis l'onglet 0 y menent.
+
+Trois rangees, dessinees a gauche par un cadre pictogramme (« CONTROLE », « DIRECTION »,
+« JOUEUR ») et a droite par leur valeur :
+
+| Rangee | Octet du personnage | Valeurs | Etiquettes |
+|---|---|---|---|
+| 0 | `+0x2b7` | cycle 0..2 | `PTR_s_Type_A_0056aa20` — « Type A/B/C » |
+| 1 | `+0x2ba` | bascule 0/1 | `PTR_DAT_0056aa30` — « ␣␣␣Activé » / « Désactivé » |
+| 2 | `+0x2b9` | bascule 0/1 | idem |
+
+### Le curseur de rangee est `DAT_005de6f8`, pas un curseur de grille
+
+Les onglets 1 et 2 se servent de `DAT_005de6f8` comme d'un index dans une liste ; ici il **est** la
+rangee, borne a 0..2, et il sert directement de coordonnee : le curseur se pose a
+`(0x58, rangee * 0x1a + 0x24)`. C'est aussi lui que le saut indexe de `0x0052fa4c` consulte.
+
+### Quatre touches, trois mots de manette differents
+
+C'est le point ou une lecture rapide se trompe, parce que `Blaze.c` ecrit les quatre acces de la
+meme facon alors que le binaire lit trois mots differents :
+
+| Geste | Pseudo-C | Binaire | Touche |
+|---|---|---|---|
+| rangee precedente / suivante | `param_5[3] & 0x10` / `& 0x40` | `test byte [edi+6]` | haut / bas |
+| sortir de l'onglet | `puVar27[1] & 0x40` sur l'octet 3 | `test byte [edi+3],40h` | croix (Echap) |
+| type de manette, en arriere | `puVar27[1] & 0x80` | `test byte [edi+2],80h` | gauche |
+| type de manette, en avant | `puVar27[3] & 0x20` | `test byte [edi+6],20h` | droite |
+| basculer | `puVar27[1] & 0xa0` | `test byte [edi+2],0A0h` | gauche **ou** droite |
+
+Le mot 1 est l'etat presse, le mot 3 l'etat repete : la rangee change au repete, le type de manette
+recule au presse et avance au repete. L'asymetrie est dans le binaire, elle est transcrite telle
+quelle.
+
+### Le `case 3` du saut indexe est inatteignable, et il est transcrit quand meme
+
+La table de `0x0052fa4c` porte quatre entrees ; `DAT_005de6f8` est ramene dans 0..2 quelques
+instructions avant le saut. Le `case 3` est donc mort — mais c'est le **remappage des quatre boutons
+d'action**, et il donne son sens a deux tables voisines : `0x0056aa38` porte les vingt-quatre
+permutations de {0,1,2,3} (exactement les 24 arrangements, ce qui confirme la borne `0x17` du code)
+et `0x0056aa98` les quatre masques `0x1000`/`0x2000`/`0x4000`/`0x8000`. Les quatre resultats vont
+dans le personnage a `+0x1fc0`, `+0x1fc2`, `+0x1fc4` et — le quatrieme **saute deux mots** —
+`+0x1fca`.
+
+### Deux racines de ressources dans le meme corps
+
+Le curseur de rangee prend son atlas dans `DAT_005e97c0`, les trois cadres dans `DAT_005e97c4`.
+`Blaze.c` ecrit les deux pareil, ce qui donne toutes les chances de recopier l'une pour l'autre ; le
+desassembleur tranche — `mov ecx,[5E97C0h]` en 0x0052d0a1 contre `mov eax,[5E97C4h]` en 0x0052d151.
+
+### La queue est commune aux deux branches
+
+`if (DAT_005de718 < 0)` ne choisit que la **tete** : onglet non entre, un bloc de libelles est pose
+sur le descripteur racine (c'est le panneau « Fenêtre Contrôle » du bas) ; onglet entre, les touches
+sont lues et le curseur est dessine. Les trois cadres et les trois etiquettes s'executent dans les
+deux cas — le `}` de Ghidra se referme avant, et c'est facile a lire de travers.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent, trois runs (2641, 3121 et 3181 images, ~488
+primitives par image, aucun plantage) :
+
+| Sequence | Resultat |
+|---|---|
+| `START,WAIT4,RIGHT,RIGHT,RIGHT,WAIT10` | l'onglet s'affiche : trois pictogrammes, « Type A », « Activé », « Activé », et le panneau « Fenêtre Contrôle » |
+| `…,ENTER,DOWN,DOWN` | le curseur apparait et descend jusqu'a la rangee « JOUEUR » — la branche « onglet entre » |
+| `…,ENTER,RIGHT,DOWN,RIGHT,DOWN,LEFT` | « Type B », et les **deux bascules passent a « Désactivé »** |
+
+Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
+verifiee.**
+
+---
+
+## 2026-08-25 (suite 7) — la page 1, « Objets »
+
+`FUN_0052a850`, `case 1` du switch de pages : Blaze.c 76574..76672, binaire
+**0x0052d2b9..0x0052d50b**. C'est la page des **objets de quete**.
+
+### Le role est etabli a l'ecran, pas deduit
+
+La page parcourt les trente-deux premiers bits de `DAT_005e9840` — la banque de drapeaux
+d'evenement — et prend, pour chaque bit leve, un enregistrement de huit octets dans
+`DAT_005e97c8 + 0x70` : un nom en `+0`, une description en `+4`. Rien dans le depot ne dit ce que
+ces bits representent : le titre de la page vit dans le fichier de ressources, pas dans le binaire.
+
+Une **sonde temporaire** — `*(int*)0x005e9840 |= 0x0f` en tete du menu, retiree apres — a tranche en
+un run : le titre est « - Objets - », la liste dit « Clé de l'aubergiste, Pierre triangulaire,
+Pierre-faucille, Pierre pentagonale », et la description de la troisieme est « Pierre étrange qui
+émet une lumière blafarde ». La table de `DAT_005e97c8 + 0x70` est donc bien peuplee, et ces
+trente-deux bits sont les objets de quete du groupe.
+
+C'est la lecon a retenir de la journee : **quand une page ne s'atteint pas parce que l'etat de la
+partie ne le permet pas, forcer l'etat le temps d'un run est moins cher que de raisonner dessus** —
+et c'est la seule chose qui aurait pu nommer la page.
+
+### Tout se dessine par une seule chaine
+
+Les noms sont concatenes, separes par `", "`, dans un tampon de brouillon a `MainMem + 0x1b0000`,
+puis le tampon entier part dans le moteur de texte. Il n'y a **pas** de curseur dessine : l'entree
+selectionnee est encadree par deux codes de controle, `0x14 0x06` avant et `0x14 0x07` apres,
+c'est-a-dire un changement de couleur. La capture le confirme — l'entree visee est jaune.
+
+Consequence : `DAT_005de6a8`, trente-deux octets, garde la correspondance **rang affiche → numero de
+bit**. Sans elle, `DAT_005de6fc` (un rang dans la liste courte) ne dirait rien du bit qu'il
+represente, et la description ne se retrouverait pas.
+
+### Le defilement est un remplacement, pas un cadrage
+
+Au-dela de douze entrees, les `compte - 12` premieres sont ecrites `"..."` au lieu de leur nom.
+Elles gardent leur place dans la chaine et dans la numerotation : rien ne bouge, le texte
+raccourcit. C'est tout le defilement qu'il y a.
+
+### Deux etats, portes par `DAT_005de70c` seul
+
+Negatif, la liste n'est pas entree et le panneau du bas montre le libelle fixe de `+0x2e4`
+(« Page Objets ») ; a zero ou plus, gauche/droite deplacent `DAT_005de6fc` et le panneau montre la
+description de l'entree visee. Entrer demande le carre **et** au moins une entree ; sortir est la
+croix. Les deux bornes du deplacement ne sont pas symetriques — la gauche s'arrete a zero par un
+test d'egalite, la droite compare a `compte - 1`.
+
+### Une ecriture d'un octet avant le tampon, transcrite telle quelle
+
+`text[-2] = 0` enleve le dernier `", "`. Sans aucune entree, il n'y en a pas eu, et l'ecriture tombe
+a `MainMem + 0x1AFFFE`. Le prologue rend le cas inatteignable (on n'entre pas sur la page quand le
+dword est nul) et l'adresse reste dans l'arene : transcrit tel quel plutot que garde.
+
+### `playtest.ps1` sait changer de page
+
+Deux jetons ajoutes, `PGUP` et `PGDN` : les gachettes hautes, que `FUN_0052a850` lit en `0x0800`
+(avancer) et `0x0400` (reculer). Leur liaison secondaire par defaut est PageUp pour R1 et PageDown
+pour L1 — donc **`PGUP` avance et `PGDN` recule**, l'inverse de ce que les noms suggerent.
+
+Un `PGUP` depuis la page 0 sur une partie neuve tombe sur la **page 3** : les pages 1 et 2 sont
+toutes les deux sautees, ce qui mesure d'un coup que `DAT_005e9840` est nul et que `DAT_005e9001`
+n'a pas son bit `0x10`.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent, quatre runs :
+
+| Sequence | Resultat |
+|---|---|
+| `START,WAIT4,PGUP,WAIT10` (sans sonde) | `PLANTAGE : … page 3` — les deux pages intermediaires se sautent, le jeton marche |
+| `START,WAIT4,PGUP,WAIT10` (avec sonde) | aucun plantage, 383 primitives par image, « - Objets - » et ses quatre entrees |
+| `…,PGUP,ENTER,RIGHT,RIGHT` (avec sonde) | 384 — la troisieme entree passe au jaune, le panneau donne sa description |
+| `START,WAIT10` (sonde retiree) | 509 — la fiche de personnage, comme avant : pas de regression |
+
+Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
+verifiee.**
+
+---
+
+## 2026-08-25 (suite 8) — la page 2, « Table » : la dalle aux cristaux
+
+`FUN_0052a850`, `case 2` : Blaze.c 76672..76697, binaire **0x0052d510..0x0052d60e**. Vingt-cinq
+lignes, et **aucune touche lue** — c'est la seule page d'affichage pur des six.
+
+### Ce qu'elle fait
+
+Dix images, une par bit leve parmi les dix premiers de `DAT_005e9000`, posees aux dix positions de
+`0x00564748`. La tuile est **l'indice du bit**, pas le rang d'affichage : le compteur avance a
+chaque tour de boucle, meme quand le bit est absent. Un cristal manquant laisse donc son trou, et
+les autres ne se decalent pas.
+
+### Le role, etabli a l'ecran
+
+Titre « - Table - », panneau du bas « Page Cristaux », et une dalle de pierre gravee portant neuf
+cristaux. La **dixieme tuile est la dalle elle-meme** — un descripteur de 0x80 par 0x70 en
+`0x00564740`, pose en dernier et donc derriere les neuf autres. Le bit 9 n'est pas un cristal de
+plus, c'est le support ; sans lui les cristaux flotteraient sur le fond.
+
+Les deux tables voisines sont maintenant nommees dans `DataSymbols.md` : neuf descripteurs de
+cristal en `0x005646f8`..`0x00564738`, celui de la dalle en `0x00564740`, dix positions en
+`0x00564748`..`0x0056476c`. Elles etaient deja dans le depot, relevees d'un bloc en 2026-08-22 pour
+la carte du monde — la lecon « un descripteur ne se releve pas seul » a paye ici sans qu'on ait rien
+a faire.
+
+### La sonde qui ne tenait pas — et pourquoi
+
+Le premier essai posait `*(int*)0x005e9000 |= 0x13ff` en tete du menu. Sans effet : le run tombait
+toujours sur la page 3. **`DAT_005e9000` n'est pas une banque de la partie, c'est un cumul
+recalcule** — `FUN_00535710` (`RefreshPartyAbilityMask`) remet ses huit dwords a zero et les
+reconstruit par OU des blocs de trente-deux octets de `+0x2e0` de chaque membre. Et le prologue
+l'appelle **juste apres avoir change de page, avant de tester le saut**. La sonde etait donc effacee
+entre son ecriture et sa lecture.
+
+La sonde qui marche se pose dans `FUN_00535710` lui-meme, apres la remise a zero. C'est la lecon a
+garder : **avant de sonder une adresse, chercher qui la reecrit dans la meme image** — un cumul
+recalcule par frame ne se force pas depuis l'exterieur.
+
+Au passage, cela dit ou vivent ces bits : dans les personnages, pas dans la partie. Les cristaux se
+portent.
+
+### Le dword de couleur n'est pas repose
+
+Rien dans ce corps n'ecrit `DAT_005de5fc` : la page se sert de ce que la precedente a laisse dans le
+bloc de brouillon. Verifie au desassembleur — aucun acces a `0x005de5fc` entre 0x0052d510 et
+0x0052d60e. Transcrit tel quel.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent, trois runs :
+
+| Sequence | Resultat |
+|---|---|
+| `START,WAIT4,PGUP,WAIT8` (sonde sur la banque) | `PLANTAGE : … page 3` — la sonde ne tient pas, voir ci-dessus |
+| `START,WAIT4,PGUP,WAIT8` (sonde dans `FUN_00535710`) | aucun plantage, 391 primitives par image, la dalle et ses neuf cristaux |
+| `START,WAIT10` (sonde retiree) | 509 — la fiche de personnage, comme avant : pas de regression |
+
+Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
+verifiee.**
+
+---
+
+## 2026-08-25 (suite 9) — la page 3, « Organisation du groupe »
+
+`FUN_0052a850`, `case 3` : Blaze.c 76697..76833, binaire **0x0052d613..0x0052db32**. C'est la
+premiere page du menu qui s'atteint **sans sonde** : sur une partie neuve, un `PGUP` depuis la
+page 0 y tombe directement, les pages 1 et 2 se sautant.
+
+### Ce qu'elle fait
+
+Gauche/droite choisissent un membre, haut/bas changent sa **couleur**, le carre lui donne le role de
+meneur, la croix le met de cote. Puis une colonne par membre : marque de meneur, deux pictogrammes
+d'etat, le numero de couleur, l'image de la manette, et le portrait.
+
+### `+0x2bd` est une couleur, pas un rang de formation
+
+C'est la correction que l'ecran a apportee. En lisant seul le desassembleur, un octet borne a 0..3
+par un `& 3`, modifie par haut/bas sur une page d'organisation de groupe, se lit naturellement comme
+une **rangee de formation**. Le panneau dit « Couleur 0 », et deux appuis sur haut font passer les
+cheveux du portrait de bleu a brun.
+
+Ce n'etait meme pas une inconnue : la fiche de personnage passe deja ce meme octet en `extra` au
+portrait, c'est-a-dire comme selecteur de palette. La lecon est la meme que pour `s_SizeSetting` en
+2026-08-22 — **le nom existait dans le depot, il suffisait de regarder l'autre site d'appel avant
+d'ecrire une interpretation**.
+
+### Donner le role de meneur echange deux sieges
+
+Quand le membre choisi etait ecarte (bit `0x10000` de ses drapeaux), il reprend le siege de l'ancien
+meneur : les octets `+8` et `+9` de l'entree de `DAT_005e9180` — emplacement de manette et index de
+personnage — sont **echanges**, pas copies, et c'est l'ancien meneur qui herite de la mise a l'ecart.
+Le meme geste que `PassLeaderToNextEligible` (`FUN_0050e520`) fait de son cote ; la croix appelle
+d'ailleurs cette fonction-la.
+
+### Deux refus, deux raisons
+
+Le carre est refuse si le membre vise est deja meneur, ou si son bloc `+0x140` porte l'un des bits
+`0x400001c0`. La croix est refusee tant que `DAT_005de034` est sous 2 — verifie en jeu avec un
+groupe d'un seul membre : la croix ne fait rien et ne plante pas. Les deux jouent le meme bip de
+refus (`FUN_0053dbc0`).
+
+### Trois indexations dans une seule boucle
+
+C'est le piege du corps, et il n'apparait qu'au desassembleur :
+
+| Ce qui est lu | Indexe par | Pas |
+|---|---|---|
+| l'abscisse de la colonne, `x * 0x35 + 0x18` (et `+ 0x1c` pour le portrait) | l'**index de personnage**, `DAT_005e93c8` | — |
+| l'emplacement de manette et son image | ce meme index de personnage | `0x4c` |
+| la couleur, `+0x2bd` | le **rang de la boucle** | `0x2000` |
+| les drapeaux et le portrait | le rang de la boucle | `0x9c` |
+
+### Le `CONCAT22` du dernier appel
+
+Le dernier `FUN_00521df0` recoit un `extra` que Ghidra ecrit
+`CONCAT22((short)(DAT_005de6f8 >> 0x10), couleur)`. Le binaire fait `movzx ax, byte [ebx]` sur un
+`eax` qui portait encore `DAT_005de6f8` : seul le mot bas est remplace. Le mot haut est
+**demontrablement nul** — quinze instructions plus haut, ce meme `DAT_005de6f8` est borne dans
+`[0, DAT_005e9020)`. Transcrit comme la seule couleur, avec la borne citee en commentaire : un
+artefact de registre partiel n'est pas une valeur.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent, deux runs, 388 primitives par image, aucun plantage :
+
+| Sequence | Resultat |
+|---|---|
+| `START,WAIT4,PGUP,WAIT8` | « - Organisation du groupe - », le portrait, la marque de meneur, « ◀1P▶ », « Couleur 0 » |
+| `…,PGUP,UP,UP,ESC` | « Couleur 2 » et **les cheveux du portrait changent** ; la croix est refusee, groupe d'un seul membre |
+
+Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
+verifiee.**
+
+---
+
+## 2026-08-25 (suite 10) — la page 4, la carte du monde et ses reperes
+
+`FUN_0052a850`, `case 4` : Blaze.c 76833..77060, binaire **0x0052db5b..0x0052e33e**. La plus grosse
+page apres la fiche, et la seule qui sorte de l'interface : image de carte qui defile, huit reperes
+poses par le joueur, et le groupe dessine en **modele 3d**.
+
+### C'est le jumeau de la rose des vents
+
+Le bloc central — mettre la camera de cote, poser une vue fixe a 800, emettre le modele, restituer —
+est celui de `DrawCompassRose` dans `WorldMapTick.cs`, instruction pour instruction : memes
+emplacements de sauvegarde (`0x005fa520`..`0x005fa538` pour le decalage monde et la pose,
+`0x005e9b00` pour les huit dwords de matrice), meme `Ordinal_378` avant et apres. Deux differences
+seulement :
+
+* le cap est **inverse** le temps du rendu (`neg ax` sur `pose[1]`) — la carte se lit du dessus ;
+* le modele est **l'element 2** du tableau d'offsets du paquet, la rose prenant l'element 0.
+
+Avoir la rose deja transcrite a fait la moitie du travail. C'est l'argument pour transcrire les
+jumeaux dans la foulee plutot que de les laisser pour plus tard.
+
+### Le defilement se fait dans le descripteur d'atlas
+
+Ce n'est pas le sprite qui bouge : les **deux premiers octets** de `**(DAT_005e97cc + 0x94)` —
+l'origine u et v de la cellule — sont reecrits a chaque image depuis le decalage de camera, et le
+sprite reste plante a (0x80, 0x70). C'est la fenetre lue dans la texture qui se deplace.
+
+Verifie a l'ecran : trois secondes de droite maintenue et le continent sort du cadre par la gauche,
+le modele du groupe disparaissant avec lui — la borne `0x14 < x < 0xec` le supprime proprement.
+
+### Les quatre directions sont lues sur le mot 0
+
+C'est la **seule** page qui lise l'etat *tenu* (`param_5[0]`) et non un front. Quatre unites par
+image tant que la touche est enfoncee : c'est ce qui fait un defilement et non un pas a pas. Toutes
+les autres pages lisent le mot 1 (presse) ou le mot 3 (repete).
+
+### Un repere fait huit octets, et l'efface en ecrit quatre
+
+Deux `short` de position monde reduite au quart, puis un mot d'etiquette qui empaquette
+`DAT_00566c84`, `DAT_00566c88` et la zone courante. Un repere vide se reconnait a son `short` de
+`+4` **negatif** — mais l'effacement ecrit un `dword` de `0xffffffff` (`mov [eax+4],ebp`, ebp = -1).
+Le test lit deux octets, l'ecriture en pose quatre ; transcrit tel quel.
+
+Le repere n'est dessine que si son etiquette correspond a la zone affichee, et **l'octet de zone est
+ignore** quand le terrain courant n'a pas le bit `0x10` : les deux cotes de la comparaison perdent
+alors leur octet bas.
+
+### Le recadrage sur le meneur, quatre fois en toute lettre
+
+Le meme bloc de huit instructions apparait dans le prologue (changement de page) et **trois fois**
+dans la page 4 : a l'ouverture de la liste, a la croix, et apres avoir pose un repere. Extrait en
+`RecentreMapOnLeader` — une unite qui se tient seule, pas un raccourci d'ecriture.
+
+### Deux ecritures de seize bits la ou la rose en fait trente-deux
+
+Le bloc de placement de `0x005de6c8` a exactement la forme du cadre de pile de la rose : trois
+entiers de position, deux d'echelle, un mot de reserve, deux `short`, l'etiquette. Mais `+0x10` et
+`+0x18` sont ecrits en **mot** et non en dword (`mov [5DE6D8h],ax`, `mov [5DE6E0h],di`) : le mot
+haut garde ce qu'il avait. Sur un bloc statique reutilise d'une image a l'autre, cela compte.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent, quatre runs, aucun plantage, ~314 primitives par
+image (la page en dessine moins que la fiche, elle n'a ni portrait ni texte) :
+
+| Sequence | Resultat |
+|---|---|
+| `START,WAIT4,PGUP,WAIT3,PGUP,WAIT8` | la carte, le continent, le groupe en fleche rouge, et la rangee des huit emplacements |
+| `…,HOLD:RIGHT,WAIT3,FREE:RIGHT` | **le continent sort du cadre** et la fleche du groupe avec lui — le defilement et la borne |
+| `…,ENTER,ENTER,ENTER` | le curseur de liste apparait, un repere **orange** — la couleur de l'emplacement 0 — se pose a la position du groupe |
+| `…,ENTER,RIGHT,ENTER,ENTER` | idem sur l'emplacement 1, et le repere est **bleu** : la teinte suit l'emplacement |
+
+Les deux derniers disent aussi que les huit emplacements partent **vides** : le premier carre pose,
+il n'efface pas.
+
+Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
+verifiee.**
+
+---
+
+## 2026-08-25 (suite 11) — la page 5, « Options » : LE MENU EST COMPLET
+
+`FUN_0052a850`, `case 5` : Blaze.c 77060..77698, binaire **0x0052e343..0x0052f568**. **638 lignes**,
+la plus grosse page du menu. Avec elle, **les six pages de `FUN_0052a850` sont transcrites**.
+
+### Trois niveaux emboites, quatre verrous
+
+`DAT_005de710` dit quelle entree du petit menu (Sauvegarde / Quitter) a ete validee,
+`DAT_005de70c` quel membre porte la sauvegarde, `DAT_005de714` quel emplacement de carte est
+retenu, et `DAT_005de71c` mene la machine a etats de la carte — 0 a 8 pour la marche normale, des
+numeros negatifs pour les echecs. `DAT_005de720`/`DAT_005de724` ajoutent un battement d'une image
+apres chaque changement d'etat, le temps que la boite de dialogue soit a l'ecran avant que l'etat
+suivant n'agisse.
+
+Le `case -5` **tombe volontairement dans le `case -4`** : le binaire n'a pas de saut entre les deux,
+le desarmement du port n'est qu'un prologue au meme nettoyage.
+
+### La sauvegarde ecrit pour de bon — et c'est verifie sur le disque
+
+Ce port remplace la carte memoire par des fichiers de `save\`, si bien que le chemin complet
+s'exerce. Le `case 7` ne se contente pas d'ecrire :
+
+1. il relit les 0x100 octets d'en-tete du fichier existant et compare sa somme de controle a celle
+   du bloc du personnage — trois issues, echec de lecture, somme differente (c'est la sauvegarde
+   d'un autre personnage), ou la suite ;
+2. il relit la table d'icones et y **fusionne** les dix entrees du personnage, chacune de seize
+   octets, ajoutee seulement si aucune ligne identique n'existe deja ;
+3. il colle le niveau en chiffres a la fin du titre ;
+4. il recopie huit banques globales (`0x005e96e0`, `0x005e9780`, `0x005e9060`, `0x005e9840`,
+   `0x005e9720`, `0x005e92c0`, `0x005e9980`, `0x005e9360`) et les huit reperes de la page 4 dans le
+   bloc du personnage ;
+5. il capture la palette depuis la VRAM ;
+6. il recalcule la somme sur 0x1ffc octets et ecrit **en trois morceaux**.
+
+En jeu : « Mémorisation achevée. », et un fichier neuf de **0x6000 octets** dans
+`OpenForesia/save/`, commencant par `53 43 11 03` — le « SC » des « title frames » PlayStation. Ce
+n'est pas une capture qui ressemble a ce qu'il faut, c'est un artefact verifiable sur le disque.
+
+### Le titre se termine par un mot sentinelle
+
+La boucle qui colle le niveau remonte depuis `+0x44` jusqu'a trouver `0x6b82` — quatre octets
+releves en `0x0056ac2c`, entre la chaine « Sauvegarde » et les flux d'etiquettes de `0x0056ac30`,
+dont seul le mot bas est lu. Les chiffres qui suivent **ne sont pas de l'ASCII** : ce sont les
+glyphes de seize bits du moteur de texte, pris dans la table de la ressource principale a
+`+0x70 → +4 → +0x20`.
+
+### Un `byte` qui cachait un `short`, et son voisin
+
+`DAT_0060498a` etait declare `byte` dans `SaveSlots.cs` avec la note « aucun lecteur trouve dans
+`Blaze.c` ; le role reste a etablir ». Le lecteur est cette page : elle lit **les deux moities de
+`0x00604988` en seize bits** — l'angle et le rayon de l'icone de carte qui tourne — et les amortit,
+l'angle vers le douzieme de tour suivant et le rayon vers `0x1800`. Elargi en un bloc de quatre
+octets avec deux vues.
+
+C'est le meme piege que d'habitude, dans l'autre sens : ici ce n'est pas une adresse vue de deux
+cotes, c'est **une largeur choisie sur un seul site d'ecriture**. Une note « aucun lecteur trouve »
+est une invitation a revenir, pas une conclusion.
+
+### Les tables d'emplacements de carte
+
+Relevees et bornees, `0x0056a98c`..`0x0056aa18` :
+
+| VA | contenu | role |
+|---|---|---|
+| `0x0056a98c`..`0x0056a9a8` | 4 rangees d'octets | l'identifiant de port de chaque emplacement, par configuration de multitap |
+| `0x0056a9a8` | 4 pointeurs | `PTR_DAT_0056a9a8` |
+| `0x0056a9b8`..`0x0056a9e0` | 4 rangees, **premier octet = le compte** | le nombre d'emplacements et leurs indices de position |
+| `0x0056a9e0` | 4 pointeurs | `PTR_DAT_0056a9e0` |
+| `0x0056a9f0`..`0x0056aa18` | 10 couples de `short` | les positions, relatives a `(0x8c, 0x48)` |
+
+Deux emplacements sans multitap, cinq avec un seul, huit avec les deux. La plage se referme par le
+haut sur `s_ConfigRowOffsets_0056aa18`, relevee le matin meme pour l'onglet 5 : dix entrees de
+quatre octets tombent exactement entre les deux bornes.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent, quatre runs (407 primitives par image, aucun
+plantage) :
+
+| Sequence | Resultat |
+|---|---|
+| `START,PGUP,PGUP,PGUP` | « - Options - », « Sauvegarde », « Quitter », le curseur, le portrait et le nom du membre, « Page Options » |
+| `…,DOWN,ENTER` | « Retour au menu d'accueil ? » et le curseur oui/non — le curseur du petit menu disparait, comme le code le dit |
+| `…,ENTER,ENTER` | « Mémorisation achevée. » **et un fichier neuf de 0x6000 octets dans `save\`** |
+| `START,WAIT10` (regression) | 509 — la fiche de personnage, inchangee |
+
+**Un run a ete perdu** et vaut d'etre note : le verdict disait « aucun plantage, 509 primitives par
+image » alors que la sequence demandait trois `PGUP`. 509 est le compte de la **page 0** — la
+sequence n'avait donc jamais ete vue par le jeu. Le piege est deja dans `test-protocol.md` (« une
+relance perdue invalide une sequence `-Then` ») ; ce qui l'a tranche ici est le **nombre de
+primitives**, qui identifie la page a lui seul.
+
+Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
+verifiee.**

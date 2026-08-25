@@ -6,6 +6,34 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- feat : **le menu de jeu est complet** — la page 5 (« Options ») transcrite, et avec elle les six pages de `FUN_0052a850` ; il ne reste que deux onglets de la fiche, qui demandent une autre classe
+- feat : **la sauvegarde écrit pour de bon** — « Mémorisation achevée. » à l'écran et un fichier de `0x6000` octets neuf dans `save\` : énumérer, ouvrir, comparer les sommes, fusionner la table d'icônes, coller le niveau, recopier huit banques, capturer la palette, écrire en trois morceaux
+- feat : « Retour au menu d'accueil ? » marche aussi — la boîte de confirmation s'ouvre et attend
+- doc : le titre du fichier de sauvegarde se termine par un **mot sentinelle**, `0x6b82` relevé en `0x0056ac2c` ; le niveau s'écrit après lui en glyphes de seize bits, pas en ASCII
+- doc : `DAT_0060498a` était déclaré `byte` avec la note « aucun lecteur trouvé » — le lecteur est cette page, qui lit les deux moitiés de `0x00604988` **en seize bits** ; élargi
+- feat : les tables d'emplacements de carte `0x0056a98c`..`0x0056aa18` relevées — quatre configurations de multitap, leurs comptes, et les dix positions ; la plage se referme sur `s_ConfigRowOffsets_0056aa18`
+- feat : **la carte du monde du menu marche** — page 4 : l'image défile, le groupe s'y dessine en modèle 3d, et les huit repères se posent et s'effacent
+- doc : le défilement se fait **dans le descripteur d'atlas**, pas sur le sprite — les deux premiers octets de `**(DAT_005e97cc + 0x94)` sont réécrits à chaque image ; c'est la fenêtre lue dans la texture qui bouge
+- doc : les quatre directions de cette page sont lues sur le mot **0** de la manette, l'état *tenu*, et non sur un front — c'est ce qui rend le défilement continu, et c'est la seule page qui fasse ça
+- doc : un repère fait huit octets ; son `short` de `+4` négatif veut dire « vide », mais l'effacement en écrit **quatre**, pas deux
+- feat : le recadrage de la carte sur le meneur extrait en `RecentreMapOnLeader` — le binaire l'écrit **quatre fois en toute lettre**, une dans le prologue et trois dans la page 4
+- feat : **la page « Organisation du groupe » marche** — page 3 du menu : le choix du membre, sa couleur, le passage du rôle de meneur et la mise de côté ; c'est la première page atteignable sans sonde
+- doc : l'octet `+0x2bd` du personnage est sa **couleur**, pas un rang de formation — le panneau affiche « Couleur 0 » et deux appuis sur haut font passer les cheveux du portrait de bleu à brun
+- doc : donner le rôle de meneur **échange** deux sièges (`+8` et `+9` de l'entrée `DAT_005e9180`), il ne les copie pas — c'est l'ancien meneur qui hérite de la mise à l'écart
+- doc : trois indexations différentes dans la même boucle de dessin — l'abscisse et les enregistrements de manette par l'**index de personnage**, la couleur par le **rang de la boucle**
+- feat : **la page « Table » marche** — page 2 du menu : la dalle de pierre gravée et ses neuf cristaux, une image par bit levé ; c'est la seule des six pages qui ne lit aucune touche
+- doc : la dixième tuile de la dalle **est la dalle elle-même** (0x80 × 0x70 en `0x00564740`), posée en dernier donc derrière les cristaux — le bit 9 n'est pas un cristal de plus
+- doc : `0x005646f8`..`0x0056476f` nommé — neuf descripteurs de cristal, celui de la dalle, et les dix positions ; la borne de boucle du binaire est une **adresse**, `0x00564770`, pas un compte
+- doc : une sonde posée sur `DAT_005e9000` ne tient pas — le prologue rappelle `FUN_00535710`, qui reconstruit la banque par OU des blocs `+0x2e0` de chaque membre ; il faut sonder dans cette fonction-là
+- feat : **la page « Objets » marche** — page 1 du menu : la liste des objets de quête, l'entrée sélectionnée colorée et sa description en dessous (« Pierre étrange qui émet une lumière blafarde »)
+- doc : les trente-deux premiers bits de `DAT_005e9840` sont les **objets de quête** du groupe — établi à l'écran par une sonde qui en lève quatre, pas déduit ; c'est pourquoi la page se saute tant que le dword est nul
+- doc : le défilement de cette page est un **remplacement, pas un cadrage** — au-delà de douze entrées, les `compte - 12` premières s'écrivent `"..."` et gardent leur place
+- feat : `playtest.ps1` connaît **`PGUP` et `PGDN`**, les deux gâchettes qui changent de page dans le menu ; `PGUP` avance et `PGDN` recule, l'inverse de ce que les noms suggèrent
+- feat : **la configuration de la manette marche** — onglet 5 de la fiche : les trois rangées avec leurs pictogrammes, le curseur qui les parcourt, le type de manette en cycle (« Type A/B/C ») et les deux bascules « Activé » / « Désactivé »
+- doc : les quatre gestes de l'onglet 5 lisent **trois mots de manette différents** là où `Blaze.c` les écrit tous pareil — la rangée change sur le mot répété, le type recule sur le mot pressé et avance sur le répété
+- doc : le `case 3` du saut indexé de `0x0052fa4c` est **inatteignable** (la borne 0..2 est deux instructions avant) mais transcrit quand même : c'est le remappage des quatre boutons, vingt-quatre permutations en `0x0056aa38` et quatre masques en `0x0056aa98`
+- doc : deux racines de ressources dans le même corps — le curseur de rangée lit `DAT_005e97c0`, les cadres `DAT_005e97c4` ; seul le désassembleur le dit
+- feat : les six étiquettes de `0x0056abe8` relevées, et les deux tables de pointeurs qui y mènent ; « ␣␣␣Activé » porte trois espaces de tête, c'est ce qui aligne la colonne
 - feat : **l'équipement marche** — onglet 2 de la fiche : les cinq rangées avec leurs pictogrammes et leurs noms, le choix d'un emplacement, l'ouverture de la grille, et l'échange lui-même (valider un objet déjà porté le retire)
 - feat : les six flux d'étiquettes de `0x0056ac30` relevés — quatre octets chacun, pris **à l'envers** par la boucle de dessin
 - doc : le nombre d'emplacements dépend de la classe (quatre pour les classes 0 et 6, trois sinon), et **l'emplacement retenu n'est pas la position du curseur** : au-delà de la deuxième ligne une classe à trois emplacements saute d'un cran, et la boucle de dessin saute la même rangée sans avancer son indice de libellé

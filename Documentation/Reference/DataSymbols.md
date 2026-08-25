@@ -960,6 +960,58 @@ lemplacement. Fin relevée : `0x0056AAE0` change de nature et est déjà un autr
 
 ---
 
+## L'onglet 5 du menu de jeu, la configuration de la manette — relevé le 2026-08-25
+
+Le corps est le `case 5` de `FUN_0052a850` (0x0052cf0a..0x0052d2b4). Ses quatre tables occupent
+`0x0056aa18`..`0x0056aa9f` et se referment des deux côtés sans qu'on ait à deviner : en dessous,
+`0x0056aa00`..`0x0056aa17` est nul dans le binaire ; au-dessus, `0x0056aaa0` est déjà la table des
+réactions par classe. Aucune n'est indexée au-delà de sa propre fin.
+
+| VA | contenu | rôle |
+|---|---|---|
+| `0x0056AA18` | `04 00 08 04` | le décalage horizontal des trois cadres de rangée, ajouté à `0x60`. Quatre octets, trois lus |
+| `0x0056AA20` | 4 pointeurs → `0x56ac18`, `0x56ac10`, `0x56ac08`, `0x56ac00` | `PTR_s_Type_A_0056aa20` — les noms de type de manette, A, B, C, D. **Le quatrième n'est jamais indexé** : le code borne le choix à 2 |
+| `0x0056AA30` | 2 pointeurs → `0x56abf4`, `0x56abe8` | `PTR_DAT_0056aa30` — les étiquettes des deux bascules : 0 = « ␣␣␣Activé », 1 = « Désactivé » |
+| `0x0056AA38` | 24 entrées de 4 octets | les **vingt-quatre permutations de {0,1,2,3}** — exactement les 24 arrangements, ce qui confirme la borne `0x17` du code sans la deviner. Chaque octet indexe `0x0056AA98` |
+| `0x0056AA98` | `00 10 00 20 00 40 00 80` | les quatre masques de bouton d'action : `0x1000`, `0x2000`, `0x4000`, `0x8000` |
+| `0x0056ABE8` | `"Désactivé"`, cp1252, 12 octets | la borne haute de `DAT_0056aae0`, déjà relevée comme « où commence une chaîne » |
+| `0x0056ABF4` | `"   Activé"` — **trois espaces de tête**, 12 octets | c'est ce qui aligne la colonne des valeurs sur « Type A », qui n'en a pas besoin |
+| `0x0056AC00` / `08` / `10` / `18` | `"Type D"` / `"Type C"` / `"Type B"` / `"Type A"` | 8 octets chacun ; le bloc se termine à `0x0056AC20`, où commence « Sauvegar… » |
+
+Les tables de permutation et de masques n'appartiennent qu'au `case 3` du saut indexé de
+`0x0052fa4c`, et **ce cas est inatteignable** : le curseur de rangée est ramené dans 0..2 quelques
+instructions avant le saut. C'est le remappage des quatre boutons d'action, écrit dans le personnage
+à `+0x1fc0`, `+0x1fc2`, `+0x1fc4` et — le quatrième saute deux mots — `+0x1fca`.
+
+---
+
+## La page 5 du menu de jeu, « Options » — relevé le 2026-08-25
+
+Les emplacements de carte mémoire, `0x0056a98c`..`0x0056aa18`. La plage se referme par le haut sur
+`s_ConfigRowOffsets_0056aa18`, relevée le matin même pour l'onglet 5 : dix entrées de quatre octets
+tombent exactement entre les deux bornes.
+
+| VA | contenu | rôle |
+|---|---|---|
+| `0x0056A98C` | `00 04` | l'identifiant de port des emplacements, sans multitap |
+| `0x0056A990` | `00 01 02 03 04` | idem, un multitap sur le port 1 |
+| `0x0056A998` | `00 04 05 06 07` | idem, un multitap sur le port 2 |
+| `0x0056A9A0` | `00 01 02 03 04 05 06 07` | idem, deux multitaps |
+| `0x0056A9A8` | 4 pointeurs → `0x56a98c/90/98/a0` | `PTR_DAT_0056a9a8`, indexé par `DAT_005de6f4` |
+| `0x0056A9B8` | `02 00 01` | **le premier octet est le compte** : deux emplacements, aux positions 0 et 1 |
+| `0x0056A9C0` | `05 02 03 04 05 01` | cinq emplacements |
+| `0x0056A9C8` | `05 00 06 07 08 09` | cinq emplacements, l'autre port |
+| `0x0056A9D0` | `08 02 03 04 05 06 07 08 09` | huit emplacements |
+| `0x0056A9E0` | 4 pointeurs → `0x56a9b8/c0/c8/d0` | `PTR_DAT_0056a9e0` |
+| `0x0056A9F0` | 10 couples de `short` : `(0x11,0x2c)`, `(0x1c,0x2c)`, `(-0x11,0x43)`, `(-0x0a,0x49)`, `(0x04,0x49)`, `(0x0b,0x43)`, `(0x23,0x43)`, `(0x2a,0x49)`, `(0x38,0x49)`, `(0x3f,0x43)` | les positions à l'écran, relatives à `(0x8c, 0x48)` |
+| `0x0056AC20` | `"Sauvegarde"` | la chaîne du petit menu, écrite en dur ; « Quitter » est à `0x00566B64`, partagée avec le menu objets |
+| `0x0056AC2C` | `0x00006B82` | `DAT_0056ac2c` — le **mot sentinelle** qui marque la fin du titre d'un fichier de sauvegarde ; seul le mot bas est lu |
+
+`DAT_005de6f4` vaut 0 à 3 selon que `DAT_00604b0a` et `DAT_00604b2e` lisent la sentinelle `-0x8000`
+— la même dérivation que `Input.ControllerRemapIndex`, sur une table différente.
+
+---
+
 ## Carte des symboles reconstruits — où chaque adresse vit dans le port
 
 Ajoutée le **2026-08-19**, au découpage de `Blaze.cs` (`openspec/changes/split-blaze-into-subsystems`).
@@ -1319,6 +1371,21 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x005de554` | `s_Unknown_005de554` | 4 | `Engine/Input.cs` |
 | `0x005de558` | `s_EntityList_005de558` | 480 | `Engine/Resources.cs` |
 | `0x005de738` | `s_Unknown_005de738` | 176 | `Screens/DebugParty.cs` |
+
+> **Correction locale, 2026-08-25.** L'écart de 480 déclaré sur `0x005de558` est celui d'un index
+> qui n'a pas suivi : la bande `0x005de5f8`..`0x005de6f0` porte depuis plusieurs séances des
+> symboles que la table ci-dessous n'a jamais listés. Relevé pour cette bande seule, dans l'ordre :
+>
+> | VA | symbole C# | taille | fichier |
+> |---|---|---:|---|
+> | `0x005de5f8` | `s_MenuSprite_005de5f8` | 20 | `Screens/State03/WorldMapMenu.cs` |
+> | `0x005de620` | `s_ItemMessageScratch_005de620` | 128 | `Screens/State03/WorldMapTick.cs` |
+> | `0x005de6a8` | `s_KeyItemIndex_005de6a8` | 32 | `Screens/State03/WorldMapMenu.cs` |
+> | `0x005de6f0` | `s_MenuPage_005de6f0` | 4 | `Screens/State03/WorldMapMenu.cs` |
+>
+> Les trois écarts internes se referment sans recouvrement (`0x005de60c` → `0x005de620`,
+> `0x005de6a0` → `0x005de6a8`, `0x005de6c8` → `0x005de6f0`). Le reste de l'index n'a pas été
+> re-vérifié : le prendre comme un état daté, pas comme une garantie.
 | `0x005de7e8` | `s_Unknown_005de7e8` | 4 | `Screens/State01/PartySetup.cs` |
 | `0x005de7ec` | `s_Unknown_005de7ec` | 4 | `Screens/State01/PartySetup.cs` |
 | `0x005de7f0` | `s_Unknown_005de7f0` | 4 | `Screens/State01/PartySetup.cs` |
@@ -1531,6 +1598,21 @@ comme moitié « attributs » du sprite. La disposition est déjà documentée s
 | `0x00564788` | `0x0f0f80c0` | `0x0d110000` |
 | `0x00564790` | `0x0f0f80d0` | `0x0d110000` |
 | `0x005648b8` | `0x0808f800` | `0x06110000` |
+
+### Ce que `0x005646f8`..`0x0056476f` s'est révélé être — le 2026-08-25
+
+Deux tables voisines de cette même plage, nommées en transcrivant la page 2 du menu de jeu
+(« - Table - » / « Page Cristaux ») et **vérifiées à l'écran** :
+
+| VA | contenu | rôle |
+|---|---|---|
+| `0x005646f8`..`0x00564738` | 9 descripteurs de 0x20 × 0x20 : `(0,0x70)`, `(0x20,0x70)`, `(0x40,0x70)`, `(0x60,0x70)`, `(0,0x90)`, `(0x20,0x90)`, `(0x40,0x90)`, `(0x60,0x90)`, `(0x40,0xb0)` | **les neuf cristaux** de la dalle |
+| `0x00564740` | un descripteur de 0x80 × 0x70, `0x70800000 / 0x00120001` | **la dalle elle-même**, tuile 9 — posée en dernier, donc derrière les cristaux |
+| `0x00564748`..`0x0056476c` | 10 dwords, X dans le mot bas et Y dans le mot haut : `(0x68,0x2c)`, `(0x88,0x3c)`, `(0x98,0x4c)`, `(0x90,0x6c)`, `(0x68,0x6c)`, `(0x48,0x6c)`, `(0x40,0x4c)`, `(0x50,0x3c)`, `(0x68,0x54)`, `(0x40,0x2c)` | leurs positions ; les huit premières font un anneau, la neuvième est le centre et la dixième le coin de la dalle |
+
+La borne de boucle du binaire est l'**adresse** `0x00564770`, pas un compte : c'est elle qui fixe la
+table à dix entrées. Le relevé de 2026-08-22 les décrivait comme « des couples de coordonnées » sans
+plus ; c'était juste, et ce sont bien dix positions et non des couples.
 
 ## Les quatre tables de la barre d'état (0x00564900)
 

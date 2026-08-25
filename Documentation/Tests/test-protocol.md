@@ -151,6 +151,12 @@ Précédents : `Ordinal_795`, `FUN_0052a1e0`, `FUN_0052a280`.
 | `SELECT` | 8 | `0x0001` select | 59 | F1 |
 | `START` | 11 | `0x0008` start | 60 | F2 |
 | `UP`/`RIGHT`/`DOWN`/`LEFT` | 12–15 | `0x10`/`0x20`/`0x40`/`0x80` | 72/77/80/75 | flèches |
+| `PGDN` | 2 | `0x0400` L1 | 81 / 209 | Pg. suiv. — **recule** d'une page dans le menu |
+| `PGUP` | 3 | `0x0800` R1 | 73 / 201 | Pg. préc. — **avance** d'une page dans le menu |
+
+**Les deux dernières lignes sont inversées par rapport à ce que leurs noms suggèrent**, et c'est
+dans la table de liaisons du binaire : L1, qui recule d'une page, est lié à PageDown ; R1, qui
+avance, à PageUp. Ajoutées le 2026-08-25 pour atteindre les pages 1 à 5 du menu de jeu.
 
 Chaque action a deux liaisons clavier, la primaire dans `K00xx` et la secondaire dans `K01xx` — d'où
 les deux touches sur les deux premières lignes. **Préférer `ESC` à `LALT` pour la croix** : les deux
@@ -1112,6 +1118,139 @@ dans la grille, le second `RIGHT` y deplace le curseur.
 | `RIGHT,WAIT3,RIGHT,WAIT8` | ~470 primitives par image — les cinq rangees d'equipement |
 | `RIGHT,RIGHT,ENTER,WAIT3,DOWN,WAIT3,ENTER,WAIT8` | ~498 — la grille s'ouvre sur « Choisis ce que tu aimerais echanger. » |
 | `RIGHT,RIGHT,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT8` | ~471 — l'epee est **retiree**, la rangee repasse a « ­ARME­ » |
+
+### La configuration de la manette (onglet 5), depuis le 2026-08-25 (suite 6)
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `RIGHT,WAIT3,RIGHT,WAIT3,RIGHT,WAIT10` | aucun plantage, ~487 primitives par image — trois rangees (« CONTROLE », « DIRECTION », « JOUEUR »), « Type A », « Activé », « Activé », et le panneau « Fenêtre Contrôle » |
+| `…,RIGHT,WAIT4,ENTER,WAIT3,DOWN,WAIT2,DOWN,WAIT2` | ~488 — le curseur (une main) apparait a gauche et descend jusqu'a la troisieme rangee |
+| `…,ENTER,WAIT3,RIGHT,WAIT2,DOWN,WAIT2,RIGHT,WAIT2,DOWN,WAIT2,LEFT,WAIT6` | ~488 — « Type B », et les **deux bascules passent a « Désactivé »** |
+
+**`ENTER` ne change rien dans cet onglet, et c'est normal.** Les trois rangees se modifient a
+**gauche/droite** (masques `0x80` et `0x20` du mot presse), pas au bouton de validation : `ENTER`
+vaut `0x8000`, qui n'est dans aucun des deux masques. La sortie de l'onglet est `ESC` (`0x4000`),
+pas `ENTER` non plus. Une sequence qui martele `ENTER` ici rend une capture identique a la
+precedente et se lit a tort comme « rien ne repond ».
+
+### La page « Objets » (page 1), depuis le 2026-08-25 (suite 7)
+
+**Elle ne s'atteint pas sur une partie neuve.** Le prologue saute la page tant que
+`DAT_005e9840` est nul, et sur une partie qui commence le groupe n'a aucun objet de quete : un
+`PGUP` depuis la page 0 tombe alors sur la **page 3** (la page 2 se saute aussi, faute du bit `0x10`
+de `DAT_005e9001`). Ce verdict est utile en soi — il mesure les deux conditions d'un coup.
+
+**Pour la voir, forcer l'etat le temps d'un run.** C'est ce qui a nomme la page :
+
+```csharp
+// en tete de RunPartyMenu_0052A850, A RETIRER apres le run
+*(int*)Mem.Arena(0x005e9840) |= 0x0f;
+```
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `START,WAIT4,PGUP,WAIT10` | ~383 primitives par image, « - Objets - » et la liste des objets de quete |
+| `…,PGUP,WAIT4,ENTER,WAIT3,RIGHT,WAIT3,RIGHT,WAIT8` | ~384 — l'entree visee passe au **jaune** et le panneau du bas donne sa description |
+
+La selection n'est pas un curseur dessine mais un changement de couleur pose par deux codes de
+controle dans la chaine. Une capture ou rien ne semble selectionne veut donc dire que la couleur
+n'a pas ete emise, pas qu'un sprite manque.
+
+**Retirer la sonde et refaire un run** avant de conclure : `START,WAIT10` doit rendre ~509
+primitives par image et la fiche de personnage.
+
+### La page « Table » (page 2), depuis le 2026-08-25 (suite 8)
+
+Meme situation que la page 1 : elle se saute sur une partie neuve, faute du bit `0x10` de
+`DAT_005e9001`. Mais **la sonde n'est pas au meme endroit**, et c'est le piege :
+
+```csharp
+// PAS ICI : DAT_005e9000 est reconstruit par FUN_00535710, que le prologue rappelle
+// juste avant de tester le saut de page. Une sonde posee dans le menu est effacee.
+// La bonne place est dans RefreshPartyAbilityMask (SaveSlots.cs), apres la remise a zero :
+accumulator[0] |= 0x13ff;   // bits 0..9 = les cristaux + la dalle, bit 12 = la page
+```
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `START,WAIT4,PGUP,WAIT8` | ~391 primitives par image, « - Table - », « Page Cristaux », la dalle gravee et ses neuf cristaux |
+
+La page ne lit **aucune touche** : une capture identique apres un `-Then` charge de frappes est le
+comportement normal, pas un signe que les touches se perdent.
+
+**Regle generale que ce run a coutee** : avant de sonder une adresse pour atteindre un ecran,
+chercher qui la reecrit dans la meme image. Un cumul recalcule par frame ne se force pas depuis
+l'exterieur — il faut sonder dans la fonction qui le calcule.
+
+### La page « Organisation du groupe » (page 3), depuis le 2026-08-25 (suite 9)
+
+**Elle s'atteint sans sonde** : sur une partie neuve, un `PGUP` depuis la page 0 y tombe
+directement, les pages 1 et 2 se sautant.
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `START,WAIT4,PGUP,WAIT8` | ~388 primitives par image, « - Organisation du groupe - », le portrait, la marque de meneur, « ◀1P▶ », « Couleur 0 » |
+| `…,PGUP,WAIT4,UP,WAIT2,UP,WAIT2,ESC,WAIT6` | ~388, « Couleur 2 » et **les cheveux du portrait passent de bleu a brun** ; la croix ne fait rien |
+
+Les deux verdicts se lisent ensemble : le second est ce qui a prouve que l'octet `+0x2bd` est une
+**couleur** et non un rang de formation. Un compteur qui monte de 0 a 2 n'aurait rien prouve tout
+seul — c'est le portrait qui change qui tranche. Meme lecon que le carrousel de selection : la
+capture est la mesure, pas le nombre.
+
+**La croix qui ne fait rien est le comportement attendu** avec un groupe d'un seul membre : elle est
+refusee tant que `DAT_005de034` est sous 2.
+
+### La carte du monde (page 4), depuis le 2026-08-25 (suite 10)
+
+**Deux `PGUP` depuis la page 0** sur une partie neuve : les pages 1 et 2 se sautent, le premier
+`PGUP` donne la page 3 et le second la page 4.
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `START,WAIT4,PGUP,WAIT3,PGUP,WAIT8` | ~314 primitives par image, le continent, la fleche rouge du groupe, la rangee des huit emplacements de repere |
+| `…,PGUP,WAIT4,HOLD:RIGHT,WAIT3,FREE:RIGHT,WAIT6` | ~313 — **le continent sort du cadre par la gauche** et la fleche du groupe disparait avec lui |
+| `…,PGUP,WAIT4,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT8` | ~316 — le curseur de liste apparait et un repere **orange** se pose sur le groupe |
+
+**Cette page se pilote au `HOLD:`, pas au tapotement.** Ses quatre directions sont les seules du jeu
+lues sur le mot **0** de la manette — l'etat *tenu* — a raison de quatre unites par image. Un `RIGHT`
+de 150 ms ne deplace la carte que de trente-six unites, ce qui ne se voit pas ; trois secondes de
+`HOLD:RIGHT` la sortent du cadre.
+
+**Le nombre de primitives est plus bas que sur les autres pages, et c'est normal** : la carte n'a ni
+portrait ni texte. ~314 contre ~509 sur la fiche.
+
+### La page « Options » (page 5), depuis le 2026-08-25 (suite 11)
+
+**Trois `PGUP` depuis la page 0** sur une partie neuve. C'est la derniere page du menu.
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `START,WAIT4,PGUP,WAIT4,PGUP,WAIT4,PGUP,WAIT10` | ~407 primitives par image, « - Options - », « Sauvegarde », « Quitter », le portrait et le nom du membre |
+| `…,PGUP,WAIT4,DOWN,WAIT2,ENTER,WAIT2` | « Retour au menu d'accueil ? » et le curseur oui/non ; **ne pas repondre oui**, le jeu quitterait |
+| `…,PGUP,WAIT4,ENTER,WAIT4,ENTER,WAIT4` | « Mémorisation achevée. » — et **un fichier neuf dans `OpenForesia/save/`** |
+
+**La sauvegarde ecrit un vrai fichier.** Ce port remplace la carte memoire par des fichiers de
+`save\` : apres le troisieme run, `ls OpenForesia/save/` doit montrer un `Blaze-Saving*` de
+**24576 octets** (0x6000) dont l'horodatage est celui du run, et dont les quatre premiers octets
+sont `53 43 11 03`. C'est la meilleure verification de la page — un artefact sur le disque plutot
+qu'une capture qui ressemble a ce qu'il faut.
+
+### Le nombre de primitives identifie la page
+
+Utile quand un `-Then` semble n'avoir rien fait : chaque page du menu a sa signature.
+
+| Page | Primitives par image |
+|---|---|
+| 0, la fiche | ~509 |
+| 2, la dalle aux cristaux | ~391 |
+| 3, l'organisation du groupe | ~388 |
+| 1, les objets de quete | ~383 |
+| 4, la carte du monde | ~314 |
+| 5, « Options » | ~407 |
+
+Un verdict « aucun plantage, 509 par image » sur une sequence qui demandait trois `PGUP` veut dire
+que **la sequence n'a jamais ete vue** — le jeu est reste sur la page 0. C'est arrive le
+2026-08-25 ; relancer plutot que conclure.
 
 ### Compter les `RIGHT` : la classe decide, pas la position
 

@@ -16,10 +16,16 @@
 // SIX PAGES, un switch sur DAT_005de6f0, et 2533 lignes de pseudo-C dans Blaze.c.
 //
 // ETAT : le prologue, l'epilogue partage, la page 0 (la fiche de personnage) et ses onglets 0 (le
-// pave de statistiques), 1 (l'inventaire) et 2 (l'equipement) sont transcrits — l'ecran s'ouvre,
-// se dessine, change d'onglet, choisit un objet, l'equipe ou le retire, et se referme. Les cinq
-// autres pages et les trois autres onglets levent en se nommant, avec leur plage de lignes. Voir
-// la carte au-dessus de RunPartyMenu_0052A850.
+// pave de statistiques), 1 (l'inventaire), 2 (l'equipement) et 5 (la configuration de la manette)
+// sont transcrits — l'ecran s'ouvre, se dessine, change d'onglet, choisit un objet, l'equipe ou le
+// retire, regle la manette, et se referme. C'est toute la fiche pour la classe de depart : les
+// onglets 3 et 4 demandent une autre classe.
+//
+// LES SIX PAGES SONT TRANSCRITES — 0 (la fiche), 1 (les objets de quete), 2 (la dalle aux
+// cristaux), 3 (l'organisation du groupe), 4 (la carte du monde et ses reperes) et 5 (« Options » :
+// sauvegarder ou quitter). Le menu est complet ; il ne reste que les onglets 3 et 4 de la fiche,
+// qui demandent une classe que le personnage de depart n'a pas. Voir la carte au-dessus de
+// RunPartyMenu_0052A850.
 //
 // Le prologue et l'epilogue sont verifies ligne a ligne au desassembleur (0x0052a850..0x0052aa1d et
 // 0x0052f82c..0x0052f9c2), et il le fallait — trois fois :
@@ -98,14 +104,17 @@ public static unsafe partial class Blaze
     /// <item><term>0</term><description>75336..76574 — <b>1238 l.</b> la fiche de personnage : choix du
     /// membre (L1/R1), choix de l'onglet (gauche/droite), et le pave de statistiques recalcule a
     /// chaque image par les cinq passes <c>FUN_00538ab0</c>..<c>FUN_00538fa0</c></description></item>
-    /// <item><term>1</term><description>76574..76672 — <b>98 l.</b> sautee quand <c>DAT_005e9840</c>
-    /// est nul</description></item>
-    /// <item><term>2</term><description>76672..76697 — <b>25 l.</b> sautee quand le bit <c>0x10</c>
-    /// de <c>DAT_005e9001</c> est absent</description></item>
-    /// <item><term>3</term><description>76697..76833 — <b>136 l.</b></description></item>
-    /// <item><term>4</term><description>76833..77060 — <b>227 l.</b></description></item>
-    /// <item><term>5</term><description>77060..77698 — <b>638 l.</b> la plus grosse apres la 0 ; elle
-    /// appelle les quatre corps de carte memoire <c>FUN_00504xxx</c>, donc c'est la sauvegarde</description></item>
+    /// <item><term>1</term><description>76574..76672 — <b>98 l.</b> la page « Objets », celle des
+    /// objets de quete ; sautee quand <c>DAT_005e9840</c> est nul, c'est-a-dire tant que le groupe
+    /// n'en porte aucun</description></item>
+    /// <item><term>2</term><description>76672..76697 — <b>25 l.</b> la page « Table », la dalle aux
+    /// cristaux ; sautee quand le bit <c>0x10</c> de <c>DAT_005e9001</c> est absent</description></item>
+    /// <item><term>3</term><description>76697..76833 — <b>136 l.</b> « Organisation du groupe » :
+    /// le meneur, la mise de cote, et la couleur de chaque personnage</description></item>
+    /// <item><term>4</term><description>76833..77060 — <b>227 l.</b> la carte du monde : elle
+    /// defile, porte huit reperes poses par le joueur, et dessine le groupe en modele 3d</description></item>
+    /// <item><term>5</term><description>77060..77698 — <b>638 l.</b> la plus grosse apres la 0 :
+    /// « Options », sauvegarder sur carte memoire ou revenir au menu d'accueil</description></item>
     /// </list>
     ///
     /// <para>
@@ -190,17 +199,7 @@ public static unsafe partial class Blaze
                 s_Unknown_005de710 = -1;
                 s_Unknown_005de718 = -1;
 
-                // Le meme recadrage que le cas 1 du repartiteur : la position du meneur reduite au
-                // quart (`sar 0x11`), arrondie au multiple de quatre, bornee a la fenetre de carte.
-                // Le masque porte sur les seize bits (`and al,0FCh` laisse AH intact).
-                byte* leader = Inp.s_SlotFlags_005e93c0 + (uint)Mem.s_Unknown_005de538 * 0x9c;
-                s_Unknown_005e8eda = (short)((*(int*)(leader + 0x24) >> 0x11) & 0xfffc);
-                s_Unknown_005e8ed8 = (short)((*(int*)(leader + 0x1c) >> 0x11) & 0xfffc);
-
-                if (s_Unknown_005e8eda > 0xa0) s_Unknown_005e8eda = 0xa0;
-                if (s_Unknown_005e8eda < -0xa0) s_Unknown_005e8eda = unchecked((short)0xff60);
-                if (s_Unknown_005e8ed8 < -0x90) s_Unknown_005e8ed8 = unchecked((short)0xff70);
-                if (s_Unknown_005e8ed8 > 0x90) s_Unknown_005e8ed8 = 0x90;
+                RecentreMapOnLeader();
 
                 Aud.PlayUiSound3A();                             // Ghidra: FUN_0053db60
             }
@@ -223,29 +222,24 @@ public static unsafe partial class Blaze
                 break;
 
             case 1:
-                throw new NotImplementedException(
-                    "FUN_0052a850, page 1 : non transcrite. 98 lignes dans Blaze.c, 76574..76672. " +
-                    "Cette page est sautee tant que DAT_005e9840 est nul.");
+                cursor = RunKeyItemsPage(otBase, cursor, slot, pad);
+                break;
 
             case 2:
-                throw new NotImplementedException(
-                    "FUN_0052a850, page 2 : non transcrite. 25 lignes dans Blaze.c, 76672..76697. " +
-                    "Cette page est sautee tant que DAT_005e9001 ne porte pas le bit 0x10.");
+                cursor = RunCrystalTablePage(otBase, cursor, slot);
+                break;
 
             case 3:
-                throw new NotImplementedException(
-                    "FUN_0052a850, page 3 : non transcrite. 136 lignes dans Blaze.c, 76697..76833.");
+                cursor = RunPartyOrderPage(otBase, cursor, slot, pad);
+                break;
 
             case 4:
-                throw new NotImplementedException(
-                    "FUN_0052a850, page 4 : non transcrite. 227 lignes dans Blaze.c, 76833..77060.");
+                cursor = RunWorldMapPage(otBase, cursor, slot, pad);
+                break;
 
             case 5:
-                throw new NotImplementedException(
-                    "FUN_0052a850, page 5 (la sauvegarde) : non transcrite. 638 lignes dans " +
-                    "Blaze.c, 77060..77698. Elle appelle les quatre corps de carte memoire " +
-                    "FUN_00504b40 / FUN_00504b70 / FUN_00504bc0 / FUN_00504c20, deja transcrits. " +
-                    "Appelees manquantes : FUN_0052fba0 (79 l.), FUN_0052fdc0 (134 l.).");
+                cursor = RunSavePage(otBase, cursor, slot, pad);
+                break;
 
             default:
                 // Le binaire a bien un cas par defaut (0x0052f82c, atteint par `ja`), mais les
@@ -575,6 +569,12 @@ public static unsafe partial class Blaze
         cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
         UiWin.EmitClipRect(otBase, &cursor);
 
+        // Le binaire relit les deux verrous d'onglet juste avant le saut indexe, et l'onglet 5 se
+        // sert de ce temoin : c'est en le comparant a la valeur d'apres ses fleches qu'il sait s'il
+        // doit sonner. Rien entre ici et le saut ne touche a DAT_005de6f8, mais la capture est
+        // gardee a sa place pour que la comparaison de l'onglet 5 reste lisible.
+        int rowBefore = s_Unknown_005de6f8;
+
         switch (tab)
         {
             case 0:
@@ -597,9 +597,7 @@ public static unsafe partial class Blaze
                     "76341..76445.");
 
             case 5:
-                throw new NotImplementedException(
-                    "FUN_0052a850, page 0, onglet 5 : non transcrit. 126 lignes dans Blaze.c, " +
-                    "76446..76571.");
+                return DrawConfigTab(otBase, cursor, slot, character, pad, rowBefore);
 
             default:
                 throw new NotImplementedException(
@@ -1697,6 +1695,1894 @@ public static unsafe partial class Blaze
         return cursor;
     }
 
+    /// <summary>
+    /// Ghidra: le <c>case 5</c> du switch d'onglets — <b>la configuration de la manette</b>.
+    /// Blaze.c 76446..76571, binaire 0x0052cf0a..0x0052d2b4.
+    ///
+    /// <para>
+    /// Trois rangees, et le curseur n'est pas celui des grilles : ici <c>DAT_005de6f8</c> EST la
+    /// rangee, bornee a 0..2, et chaque rangee agit sur un octet different du personnage —
+    /// <c>+0x2b7</c> le type de manette (trois valeurs en cycle), <c>+0x2ba</c> et <c>+0x2b9</c>
+    /// deux bascules. Les deux bascules partagent le meme couple d'etiquettes
+    /// (<see cref="s_ToggleNames_0056aa30"/>), le type de manette lit
+    /// <see cref="s_ControllerTypeNames_0056aa20"/>.
+    /// </para>
+    /// <para>
+    /// <b>Le saut indexe a quatre entrees, la borne n'en laisse que trois.</b> La table de
+    /// <c>0x0052fa4c</c> porte bien un <c>case 3</c> (0x0052cffc), mais <c>DAT_005de6f8</c> est
+    /// ramene dans 0..2 quelques instructions plus haut : il est inatteignable. Il est transcrit
+    /// quand meme — c'est le remappage des quatre boutons d'action, vingt-quatre permutations dans
+    /// <see cref="s_ButtonOrder_0056aa38"/> et quatre masques dans
+    /// <see cref="s_ButtonMasks_0056aa98"/>, ecrits dans le personnage a <c>+0x1fc0</c>,
+    /// <c>+0x1fc2</c>, <c>+0x1fc4</c> et — le quatrieme saute deux mots — <c>+0x1fca</c>.
+    /// </para>
+    /// <para>
+    /// <b>Deux racines de ressources differentes dans le meme corps</b>, et ce n'est pas une
+    /// coquille de Ghidra : le curseur de rangee prend son atlas dans <c>DAT_005e97c0</c> (le
+    /// tampon), les trois cadres de rangee dans <c>DAT_005e97c4</c> (le repertoire). Verifie au
+    /// desassembleur — <c>mov ecx,[5E97C0h]</c> en 0x0052d0a1 contre <c>mov eax,[5E97C4h]</c> en
+    /// 0x0052d151.
+    /// </para>
+    /// <para>
+    /// La queue — les trois cadres puis les trois etiquettes — est <b>commune aux deux branches</b> :
+    /// onglet entre ou non, elle s'execute. Seule la tete differe, et la branche « pas entre » ne
+    /// fait que poser un bloc de libelles sur le descripteur racine.
+    /// </para>
+    /// </summary>
+    private static uint* DrawConfigTab(
+        uint* otBase, uint* cursor, byte* slot, byte* character, ushort* pad, int rowBefore)
+    {
+        byte* sprite = s_MenuSprite_005de5f8;
+
+        if (s_Unknown_005de718 < 0)
+        {
+            // L'onglet n'est pas entre : rien ne repond, et la seule chose posee est le bloc de
+            // libelles de +0x2e0, ancre sur le descripteur racine.
+            byte* labelTable = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+            BindMenuLabels(*(byte**)(labelTable + 0x2e0), (uint)(nint)slot, MenuDescriptor(0), 0);
+        }
+        else
+        {
+            // ---- le curseur de rangee ----------------------------------------------------
+            if ((((byte*)pad)[6] & 0x10) != 0) s_Unknown_005de6f8--;
+            if ((((byte*)pad)[6] & 0x40) != 0) s_Unknown_005de6f8++;
+            if (s_Unknown_005de6f8 < 0) s_Unknown_005de6f8 = 2;
+            if (s_Unknown_005de6f8 > 2) s_Unknown_005de6f8 = 0;
+            if (rowBefore != s_Unknown_005de6f8) Aud.PlayUiSound3A();   // Ghidra: FUN_0053db60
+
+            // La touche 0x40 qui descend d'une rangee est lue dans le mot 3 ; celle qui ressort de
+            // l'onglet porte le meme masque dans le mot 1. Deux mots differents de la manette, ce
+            // ne sont pas les memes touches.
+            if ((((byte*)pad)[3] & 0x40) != 0)
+            {
+                s_Unknown_005de718 = -1;
+                Aud.PlayUiSound39();                                    // Ghidra: FUN_0053dba0
+            }
+
+            switch (s_Unknown_005de6f8)
+            {
+                case 0:
+                {
+                    // Le type de manette, en cycle sur trois valeurs. « Type D » existe dans la
+                    // table d'etiquettes mais la borne a 2 ne l'atteint jamais.
+                    int previous = character[0x2b7];
+                    int value = previous;
+                    if ((((byte*)pad)[2] & 0x80) != 0) value = previous - 1;
+                    if ((((byte*)pad)[6] & 0x20) != 0) value++;
+                    if (value < 0) value = 2;
+                    if (value > 2) value = 0;
+                    character[0x2b7] = (byte)value;
+                    if (previous != (value & 0xff)) Aud.PlayUiSound3A();
+                    break;
+                }
+
+                case 1:
+                    // Les deux touches 0x20 et 0x80 du mot 1 basculent, indifferemment.
+                    if ((((byte*)pad)[2] & 0xa0) != 0)
+                    {
+                        character[0x2ba] ^= 1;
+                        Aud.PlayUiSound3A();
+                    }
+                    break;
+
+                case 2:
+                    if ((((byte*)pad)[2] & 0xa0) != 0)
+                    {
+                        character[0x2b9] ^= 1;
+                        Aud.PlayUiSound3A();
+                    }
+                    break;
+
+                case 3:
+                {
+                    // INATTEIGNABLE — la borne 0..2 ci-dessus l'exclut. Le saut indexe de
+                    // 0x0052fa4c le porte quand meme, donc il est transcrit : le remappage des
+                    // quatre boutons, une permutation parmi vingt-quatre.
+                    int previous = character[0x2bb];
+                    int value = previous;
+                    if ((((byte*)pad)[2] & 0x80) != 0) value = previous - 1;
+                    if ((((byte*)pad)[6] & 0x20) != 0) value++;
+                    if (value < 0) value = 0x17;
+                    if (value > 0x17) value = 0;
+                    character[0x2bb] = (byte)value;
+                    value &= 0xff;
+
+                    if (previous != value)
+                    {
+                        *(ushort*)(character + 0x1fc0) =
+                            s_ButtonMasks_0056aa98[s_ButtonOrder_0056aa38[value * 4]];
+                        *(ushort*)(character + 0x1fc2) =
+                            s_ButtonMasks_0056aa98[s_ButtonOrder_0056aa38[value * 4 + 1]];
+                        *(ushort*)(character + 0x1fc4) =
+                            s_ButtonMasks_0056aa98[s_ButtonOrder_0056aa38[value * 4 + 2]];
+                        // Le quatrieme saute +0x1fc6 et +0x1fc8 — c'est ecrit ainsi dans le
+                        // binaire (mov [ebp+1FCAh],ax en 0x0052d090).
+                        *(ushort*)(character + 0x1fca) =
+                            s_ButtonMasks_0056aa98[s_ButtonOrder_0056aa38[value * 4 + 3]];
+                        Aud.PlayUiSound3A();
+                    }
+                    break;
+                }
+            }
+
+            // ---- le curseur, pose sur la rangee courante ---------------------------------
+            *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
+            *(ushort*)(sprite + 0x10) = 0x18;
+            *(uint*)(sprite + 4) = 0x1000000;
+            *(short*)(sprite + 8) = 0x58;
+            *(short*)(sprite + 0x0a) = (short)(s_Unknown_005de6f8 * 0x1a + 0x24);
+
+            UiWin.EmitViewportRect(otBase, &cursor);
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            UiWin.EmitClipRect(otBase, &cursor);
+        }
+
+        // ---- les trois cadres de rangee --------------------------------------------------
+        *(uint*)(sprite + 4) = 0x1000000;
+        *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
+        *(short*)(sprite + 0x0a) = 0x24;
+        *(ushort*)(sprite + 0x10) = 0x3a;
+
+        UiWin.EmitViewportRect(otBase, &cursor);
+        for (int row = 0; row < 3; row++)
+        {
+            *(short*)(sprite + 8) = (short)(s_ConfigRowOffsets_0056aa18[row] + 0x60);
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            *(short*)(sprite + 0x0a) += 0x1a;
+            (*(ushort*)(sprite + 0x10))++;
+        }
+        UiWin.EmitClipRect(otBase, &cursor);
+
+        // ---- les trois etiquettes ---------------------------------------------------------
+        *(byte**)sprite = (byte*)s_GlyphAtlas_00566c28;
+        *(short*)(sprite + 8) = 0xb0;
+        *(short*)(sprite + 0x0a) = 0x28;
+        cursor = Prims.DrawTextRun(
+            otBase, cursor, (int*)sprite,
+            s_ControllerTypeNames_0056aa20[character[0x2b7]], 0, 0, 0x10);
+
+        *(short*)(sprite + 0x0a) += 0x1a;
+        *(short*)(sprite + 8) = 0x98;
+        cursor = Prims.DrawTextRun(
+            otBase, cursor, (int*)sprite,
+            s_ToggleNames_0056aa30[character[0x2ba]], 0, 0, 0x10);
+
+        *(short*)(sprite + 0x0a) += 0x1a;
+        *(short*)(sprite + 8) = 0x98;
+        cursor = Prims.DrawTextRun(
+            otBase, cursor, (int*)sprite,
+            s_ToggleNames_0056aa30[character[0x2b9]], 0, 0, 0x10);
+
+        return cursor;
+    }
+
+    /// <summary>
+    /// Ghidra: le <c>case 1</c> du switch de pages — <b>la page « Objets »</b>, celle des objets
+    /// de quete. Blaze.c 76574..76672, binaire 0x0052d2b9..0x0052d50b.
+    ///
+    /// <para>
+    /// Elle parcourt les <b>trente-deux premiers bits</b> de <c>DAT_005e9840</c> — la banque de
+    /// drapeaux d'evenement de la partie, celle que les scripts de zone allument — et pour chaque
+    /// bit leve prend un enregistrement de huit octets dans <c>DAT_005e97c8 + 0x70</c> : un nom en
+    /// <c>+0</c>, une description en <c>+4</c>. C'est ce que le prologue teste avant d'y entrer, et
+    /// c'est pourquoi la page se saute tant que le dword est nul.
+    /// </para>
+    /// <para>
+    /// <b>Le role est etabli a l'ecran, pas deduit</b> : une sonde qui leve les quatre premiers
+    /// bits fait apparaitre « Clé de l'aubergiste, Pierre triangulaire, Pierre-faucille, Pierre
+    /// pentagonale » sous le titre « - Objets - », avec « Pierre étrange qui émet une lumière
+    /// blafarde » en description. Ces trente-deux bits sont donc les objets de quete que le groupe
+    /// porte — le titre lui-meme vit dans le fichier de ressources, pas dans le binaire, il ne se
+    /// lit qu'en jouant.
+    /// </para>
+    /// <para>
+    /// <b>Tout se dessine par une seule chaine.</b> Les noms sont concatenes, separes par
+    /// <c>", "</c>, dans un tampon de brouillon a <c>MainMem + 0x1b0000</c>, puis le tampon entier
+    /// part dans le moteur de texte. L'entree selectionnee est encadree par deux codes de controle
+    /// (<c>0x14 0x06</c> avant, <c>0x14 0x07</c> apres) — c'est-a-dire une couleur, pas un curseur
+    /// dessine.
+    /// </para>
+    /// <para>
+    /// <b>Le defilement est un remplacement, pas un cadrage.</b> Au-dela de douze entrees, les
+    /// <c>compte - 12</c> premieres sont ecrites <c>"..."</c> au lieu de leur nom — elles gardent
+    /// leur place dans la chaine et dans la numerotation. Rien ne bouge, le texte raccourcit.
+    /// </para>
+    /// <para>
+    /// <b>Deux etats, portes par <c>DAT_005de70c</c> seul</b> : negatif, la liste n'est pas entree
+    /// et le panneau du bas montre le libelle fixe de <c>+0x2e4</c> ; a zero ou plus, les fleches
+    /// deplacent <c>DAT_005de6fc</c> dans la liste et le panneau montre la description de l'entree
+    /// visee. Entrer demande le carre <b>et</b> au moins une entree ; sortir est la croix.
+    /// </para>
+    /// <para>
+    /// <b>Une ecriture d'un octet avant le tampon</b> quand la liste est vide : <c>text[-2] = 0</c>
+    /// enleve le dernier <c>", "</c>, et sans entree il n'y en a pas eu. Le prologue rend le cas
+    /// inatteignable (on n'entre pas sur la page quand le dword est nul) et l'ecriture reste dans
+    /// l'arene, donc c'est transcrit tel quel — voir <c>legacy-bug.md</c> si le cas se presente.
+    /// </para>
+    /// </summary>
+    private static uint* RunKeyItemsPage(uint* otBase, uint* cursor, byte* slot, ushort* pad)
+    {
+        byte* labelTable = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+        byte* page = MenuDescriptor(1);
+
+        BindMenuLabels(*(byte**)(labelTable + 0x370), (uint)(nint)slot, page, 0);
+        cursor = Ui.RunTextEngine(cursor, page);
+
+        // ---- combien de drapeaux sont leves ------------------------------------------------
+        // Le binaire indexe la banque par mot (`sar ecx,5`) alors que la borne est 0x20 : l'index
+        // vaut donc toujours zero. Ecrit comme le binaire l'ecrit, pas comme il se simplifie.
+        uint* flagBank = (uint*)Mem.Arena(0x005e9840);
+        int count = 0;
+        for (int bit = 0; bit < 0x20; bit++)
+        {
+            if ((flagBank[bit >> 5] & (1u << (bit & 0x1f))) != 0) count++;
+        }
+
+        int elided = count < 0xd ? 0 : count - 0xc;
+
+        // ---- entrer dans la liste, en sortir, s'y deplacer ---------------------------------
+        if (s_Unknown_005de70c < 0)
+        {
+            if ((((byte*)pad)[3] & 0x80) != 0 && count != 0)
+            {
+                Aud.PlayUiSound38();                                // Ghidra: FUN_0053db80
+                s_Unknown_005de70c = 0;
+                s_Unknown_005de6fc = 0;
+            }
+        }
+        else
+        {
+            if ((((byte*)pad)[3] & 0x40) != 0)
+            {
+                Aud.PlayUiSound39();                                // Ghidra: FUN_0053dba0
+                s_Unknown_005de70c = -1;
+            }
+
+            int before = s_Unknown_005de6fc;
+
+            // Les deux bornes ne sont pas symetriques : la gauche s'arrete a zero par un test
+            // d'egalite, la droite compare a `compte - 1`. C'est ce que fait le binaire.
+            if ((((byte*)pad)[6] & 0x80) != 0 && s_Unknown_005de6fc != 0) s_Unknown_005de6fc--;
+            if ((((byte*)pad)[6] & 0x20) != 0 && s_Unknown_005de6fc < count - 1) s_Unknown_005de6fc++;
+
+            if (before != s_Unknown_005de6fc) Aud.PlayUiSound3A();  // Ghidra: FUN_0053db60
+        }
+
+        // ---- monter la chaine ---------------------------------------------------------------
+        byte* text = GetMainMemPtr() + 0x1b0000;
+        byte* entries = *(byte**)(s_Unknown_005e97c8 + 0x70);
+        int shown = 0;
+        int remaining = elided;
+
+        for (int bit = 0; bit < 0x20; bit++)
+        {
+            if ((flagBank[bit >> 5] & (1u << (bit & 0x1f))) == 0) continue;
+
+            // La correspondance rang affiche -> numero de drapeau est gardee : c'est elle qui
+            // retrouve la description de l'entree visee, plus bas.
+            s_KeyItemIndex_005de6a8[shown] = (byte)bit;
+
+            bool selected = shown == s_Unknown_005de6fc && s_Unknown_005de70c >= 0;
+
+            if (selected)
+            {
+                *text++ = 0x14;
+                *text++ = 6;
+            }
+
+            if (remaining != 0)
+            {
+                remaining--;
+                *text++ = (byte)'.';
+                *text++ = (byte)'.';
+                *text++ = (byte)'.';
+            }
+            else
+            {
+                byte* name = *(byte**)(entries + bit * 8);
+                while (*name != 0) *text++ = *name++;
+            }
+
+            if (selected)
+            {
+                *text++ = 0x14;
+                *text++ = 7;
+            }
+
+            *text++ = (byte)',';
+            *text++ = (byte)' ';
+            shown++;
+        }
+
+        // Le dernier « , » est ecrase par le terminateur.
+        text[-2] = 0;
+
+        // ---- le panneau du bas ---------------------------------------------------------------
+        byte* detail;
+        if (s_Unknown_005de70c < 0)
+        {
+            detail = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x2e4);
+        }
+        else
+        {
+            BindMenuLabels(Mem.s_Unknown_005606f8, (uint)(nint)slot, MenuDescriptor(0), 0);
+            cursor = Ui.RunTextEngine(cursor, MenuDescriptor(0));
+
+            detail = *(byte**)(*(byte**)(s_Unknown_005e97c8 + 0x70)
+                               + s_KeyItemIndex_005de6a8[s_Unknown_005de6fc] * 8 + 4);
+        }
+
+        BindMenuLabels(detail, (uint)(nint)slot, MenuDescriptor(0), 0);
+
+        BindMenuLabels(GetMainMemPtr() + 0x1b0000, (uint)(nint)slot, page, 0);
+        cursor = Ui.RunTextEngine(cursor, page);
+
+        return cursor;
+    }
+
+    /// <summary>
+    /// Ghidra: le <c>case 2</c> du switch de pages — <b>la page « Table », celle des cristaux</b>.
+    /// Blaze.c 76672..76697, binaire 0x0052d510..0x0052d60e : <b>vingt-cinq lignes, et aucune
+    /// touche lue</b>: c'est une page d'affichage pur, la seule des six.
+    ///
+    /// <para>
+    /// Elle pose dix images aux dix positions de <c>0x00564748</c>, une par bit leve parmi les
+    /// <b>dix premiers</b> de <c>DAT_005e9000</c>. La tuile est l'indice du bit, pas le rang de
+    /// l'affichage : le compteur avance a chaque tour, meme quand le bit est absent — un trou reste
+    /// donc un trou. Le prologue saute la page tant que <c>DAT_005e9001</c> n'a pas son bit
+    /// <c>0x10</c>, c'est-a-dire le bit 12 de la meme banque.
+    /// </para>
+    /// <para>
+    /// <b>Le role est etabli a l'ecran</b> : une sonde qui leve les bits 0 a 9 et le bit 12 montre
+    /// le titre « - Table - », le panneau « Page Cristaux », et une dalle de pierre gravee portant
+    /// neuf cristaux. Les neuf premieres tuiles sont les cristaux (0x20 par 0x20, descripteurs
+    /// <c>0x005646f8</c>..<c>0x00564738</c>), la <b>dixieme est la dalle elle-meme</b> — un
+    /// descripteur de 0x80 par 0x70 en <c>0x00564740</c>, pose en dernier et donc derriere. Le bit 9
+    /// n'est pas un cristal de plus : c'est le support.
+    /// </para>
+    /// <para>
+    /// <c>DAT_005e9000</c> est le cumul par OU des blocs de trente-deux octets de <c>+0x2e0</c> de
+    /// chaque membre (voir <c>RefreshPartyAbilityMask</c>) : ces bits-la vivent donc dans les
+    /// personnages, pas dans la partie. C'est aussi pourquoi une sonde posee sur la banque ne tient
+    /// pas — le prologue rappelle <c>FUN_00535710</c> avant de tester le saut de page, et la
+    /// reconstruit.
+    /// </para>
+    /// <para>
+    /// <b>Les deux tables sont deja dans le depot</b>, et voisines : les descripteurs de pastille
+    /// commencent a <c>0x005646f8</c>, les positions a <c>0x00564748</c>, toutes dans la plage
+    /// d'atlas relevee d'un bloc pour la carte du monde (voir <c>SpriteAtlas</c> dans
+    /// <c>WorldMapTick.cs</c>, et la lecon « un descripteur ne se releve pas seul »). La borne de
+    /// boucle du binaire est une <b>adresse</b>, <c>0x00564770</c>, pas un compte — elle est gardee
+    /// telle quelle ici.
+    /// </para>
+    /// <para>
+    /// <b>Le dword de couleur n'est pas repose.</b> Rien dans ce corps n'ecrit <c>DAT_005de5fc</c> :
+    /// la page se sert de ce que la precedente a laisse dans le bloc de brouillon. Verifie au
+    /// desassembleur — aucun acces a <c>0x005de5fc</c> entre 0x0052d510 et 0x0052d60e.
+    /// </para>
+    /// <para>
+    /// Ghidra scinde le curseur de primitives en deux (<c>uVar11</c> et <c>param_3</c>) parce que
+    /// le binaire le garde a la fois dans <c>eax</c> et dans son emplacement de pile ; les deux
+    /// valent toujours la meme chose. Un seul curseur ici.
+    /// </para>
+    /// </summary>
+    private static uint* RunCrystalTablePage(uint* otBase, uint* cursor, byte* slot)
+    {
+        byte* labelTable = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+        byte* page = MenuDescriptor(1);
+
+        BindMenuLabels(*(byte**)(labelTable + 0x374), (uint)(nint)slot, page, 0);
+        cursor = Ui.RunTextEngine(cursor, page);
+
+        RefreshPartyAbilityMask();                          // Ghidra: FUN_00535710
+
+        byte* sprite = s_MenuSprite_005de5f8;
+        *(byte**)sprite = SpriteAtlas(0x005646f8);
+        *(ushort*)(sprite + 0x10) = 0;
+
+        UiWin.EmitViewportRect(otBase, &cursor);
+
+        uint* flagBank = (uint*)Mem.Arena(0x005e9000);
+        byte* position = SpriteAtlas(0x00564748);
+        byte* end = SpriteAtlas(0x00564770);
+
+        for (int bit = 0; position < end; bit++, position += 4)
+        {
+            if ((flagBank[bit >> 5] & (1u << (bit & 0x1f))) != 0)
+            {
+                // La position est un dword : X dans le mot bas, Y dans le mot haut.
+                *(uint*)(sprite + 8) = *(uint*)position;
+                cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            }
+
+            (*(ushort*)(sprite + 0x10))++;
+        }
+
+        *(ushort*)(sprite + 0x10) = 0;
+        cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+        UiWin.EmitClipRect(otBase, &cursor);
+
+        BindMenuLabels(*(byte**)(labelTable + 0x2e8), (uint)(nint)slot, MenuDescriptor(0), 0);
+
+        return cursor;
+    }
+
+    /// <summary>
+    /// Ghidra: le <c>case 3</c> du switch de pages — <b>la page « Organisation du groupe »</b>.
+    /// Blaze.c 76697..76833, binaire 0x0052d613..0x0052db32.
+    ///
+    /// <para>
+    /// Gauche/droite choisissent un membre, haut/bas changent sa <b>couleur</b> (l'octet
+    /// <c>+0x2bd</c> du personnage, borne a 0..3 par un simple <c>&amp; 3</c>), le carre lui donne
+    /// le role de meneur, et la croix le met de cote. Chaque membre est ensuite dessine avec son
+    /// portrait, son numero de couleur, son pictogramme de manette et, pour le meneur, une marque
+    /// au-dessus.
+    /// </para>
+    /// <para>
+    /// <b><c>+0x2bd</c> est bien une couleur, pas un rang</b>, et l'ecran le dit deux fois : le
+    /// panneau affiche « Couleur 0 », et deux appuis sur haut font passer les cheveux du portrait
+    /// de bleu a brun. C'est coherent avec l'usage qu'en fait la fiche de personnage, qui passe ce
+    /// meme octet en <c>extra</c> au portrait — le selecteur de palette.
+    /// </para>
+    /// <para>
+    /// <b>Donner le role de meneur echange deux sieges, il ne les copie pas.</b> Si le membre
+    /// choisi etait ecarte (bit <c>0x10000</c> de ses drapeaux), il reprend le siege de l'ancien
+    /// meneur — les octets <c>+8</c> et <c>+9</c> de l'entree de <c>DAT_005e9180</c>, c'est-a-dire
+    /// l'emplacement de manette et l'index de personnage — et <b>c'est l'ancien meneur qui herite
+    /// de l'ecart</b>. Le meme geste que <c>PassLeaderToNextEligible</c> fait de son cote.
+    /// </para>
+    /// <para>
+    /// <b>Deux refus, deux raisons.</b> Le carre est refuse si le membre vise est deja meneur ou si
+    /// son bloc <c>+0x140</c> porte l'un des bits <c>0x400001c0</c> (mort, petrifie, ce genre
+    /// d'etat) ; la croix est refusee tant que <c>DAT_005de034</c> est sous 2, c'est-a-dire quand le
+    /// groupe n'a pas de quoi se passer d'un membre. Les deux jouent le meme bip de refus.
+    /// </para>
+    /// <para>
+    /// <b>L'abscisse vient de l'index de personnage, pas du rang de la boucle</b> :
+    /// <c>caractere * 0x35 + 0x18</c> pour les pictogrammes, <c>+ 0x1c</c> pour le portrait. Les
+    /// deux se lisent dans <c>DAT_005e93c8</c> — l'octet <c>+8</c> de l'entree de drapeaux — et non
+    /// dans le compteur. Les enregistrements de manette, eux, s'indexent par ce meme index de
+    /// personnage au pas <c>0x4c</c>, tandis que la couleur s'indexe par le rang de la
+    /// boucle au pas <c>0x2000</c>. Trois indexations differentes dans une seule boucle : c'est le
+    /// piege du corps.
+    /// </para>
+    /// <para>
+    /// Le dernier <c>FUN_00521df0</c> recoit un <c>extra</c> que Ghidra ecrit
+    /// <c>CONCAT22((short)(DAT_005de6f8 &gt;&gt; 0x10), couleur)</c> : le binaire fait
+    /// <c>movzx ax, byte [ebx]</c> sur un <c>eax</c> qui portait encore <c>DAT_005de6f8</c>, donc
+    /// seul le mot bas est remplace. Le mot haut est <b>demontrablement nul</b> — quinze
+    /// instructions plus haut, ce meme <c>DAT_005de6f8</c> est borne dans
+    /// <c>[0, DAT_005e9020)</c>. Ecrit ici comme la seule couleur.
+    /// </para>
+    /// </summary>
+    private static uint* RunPartyOrderPage(uint* otBase, uint* cursor, byte* slot, ushort* pad)
+    {
+        byte* labelTable = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+        byte* page = MenuDescriptor(1);
+
+        BindMenuLabels(*(byte**)(labelTable + 0x378), (uint)(nint)slot, page, 0);
+        cursor = Ui.RunTextEngine(cursor, page);
+
+        // ---- le choix du membre ---------------------------------------------------------
+        int previousMember = s_Unknown_005de6f8;
+
+        if ((((byte*)pad)[6] & 0x80) != 0) s_Unknown_005de6f8--;
+        if ((((byte*)pad)[6] & 0x20) != 0) s_Unknown_005de6f8++;
+        if (s_Unknown_005de6f8 < 0) s_Unknown_005de6f8 = s_PartySize_005e9020 - 1;
+        if (s_Unknown_005de6f8 >= s_PartySize_005e9020) s_Unknown_005de6f8 = 0;
+
+        if (previousMember != s_Unknown_005de6f8)
+        {
+            // Les deux touches de direction sont consommees : sans cela le meme appui changerait
+            // de membre ET de couleur dans la meme image.
+            pad[1] &= 0xffaf;
+            Aud.PlayUiSound3A();                                // Ghidra: FUN_0053db60
+        }
+
+        int member = s_Unknown_005de6f8;
+        byte* character = GetMainMemPtr() + ((member + 0x78) << 0xd);
+        byte* memberFlagBytes = Inp.s_SlotFlags_005e93c0 + member * 0x9c;
+        uint* memberFlags = (uint*)memberFlagBytes;
+        byte* memberSeat = Inp.s_SlotArea_005e9180 + member * 0x4c;
+
+        // ---- la couleur du personnage ----------------------------------------------------
+        byte previousColour = character[0x2bd];
+        if ((pad[1] & 0x10) != 0) character[0x2bd] = (byte)(previousColour + 1);
+        if ((pad[1] & 0x40) != 0) character[0x2bd]--;
+
+        character[0x2bd] &= 3;
+        memberFlagBytes[0x0b] = character[0x2bd];
+
+        if (previousColour != character[0x2bd]) Aud.PlayUiSound3A();
+
+        // ---- le carre : ce membre prend la tete -------------------------------------------
+        if ((((byte*)pad)[3] & 0x80) != 0)
+        {
+            int leader = Mem.s_Unknown_005de538 & 0xff;
+
+            if (member == leader || (*(uint*)(character + 0x140) & 0x400001c0) != 0)
+            {
+                Aud.PlayUiSound3B();                            // Ghidra: FUN_0053dbc0, le refus
+            }
+            else
+            {
+                byte* leaderSeat = Inp.s_SlotArea_005e9180 + leader * 0x4c;
+
+                if ((*memberFlags & 0x10000) != 0)
+                {
+                    // L'echange de sieges : emplacement de manette et index de personnage.
+                    byte seatPad = memberSeat[8];
+                    byte seatCharacter = memberSeat[9];
+                    memberSeat[8] = leaderSeat[8];
+                    memberSeat[9] = leaderSeat[9];
+                    leaderSeat[8] = seatPad;
+                    leaderSeat[9] = seatCharacter;
+
+                    *memberFlags &= 0xfffeffff;
+                    *(uint*)(Inp.s_SlotFlags_005e93c0 + leader * 0x9c) |= 0x10000;
+
+                    // Le membre garde en reserve suivait l'ancien meneur : il suit le nouveau.
+                    if (s_Unknown_005de540 == leader) s_Unknown_005de540 = (byte)s_Unknown_005de6f8;
+                }
+
+                *memberFlags &= 0xf7fffffb;
+                Mem.s_Unknown_005de538 = (byte)s_Unknown_005de6f8;
+                *(uint*)(Inp.s_SlotFlags_005e93c0 + leader * 0x9c) &= 0xf7fffffb;
+                Aud.PlayUiSound38();                            // Ghidra: FUN_0053db80
+            }
+        }
+
+        // ---- la croix : ce membre est mis de cote ------------------------------------------
+        if ((((byte*)pad)[3] & 0x40) != 0)
+        {
+            if (s_Unknown_005de034 < 2)
+            {
+                Aud.PlayUiSound3B();
+            }
+            else
+            {
+                *memberFlags |= 0x10000;
+                PassLeaderToNextEligible(memberFlags, memberSeat, 0x10000);
+                s_Unknown_005de540 = (byte)(Mem.s_Unknown_005de538 & 0xff);
+                Aud.PlayUiSound39();                            // Ghidra: FUN_0053dba0
+            }
+        }
+
+        // ---- la colonne de chaque membre ----------------------------------------------------
+        byte* sprite = s_MenuSprite_005de5f8;
+        byte* colour = GetMainMemPtr() + 0xf02bd;
+        byte* seat = Inp.s_SlotFlags_005e93c0 + 8;              // Ghidra: &DAT_005e93c8
+
+        for (int index = 0; index < s_PartySize_005e9020;
+             index++, seat += 0x9c, colour += 0x2000)
+        {
+            byte characterIndex = *seat;
+            byte padSlot = Inp.s_PlayerSlots_005e9188[characterIndex * 0x4c];
+
+            *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
+            UiWin.EmitViewportRect(otBase, &cursor);
+
+            *(short*)(sprite + 8) = (short)(characterIndex * 0x35 + 0x18);
+            *(short*)(sprite + 0x0a) = 0x30;
+
+            // La marque du meneur, au-dessus de sa colonne.
+            if (index == (Mem.s_Unknown_005de538 & 0xff))
+            {
+                *(ushort*)(sprite + 0x10) = 0x2a;
+                cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            }
+
+            *(short*)(sprite + 8) += 8;
+            *(short*)(sprite + 0x0a) += 0x40;
+
+            // Ecarte ou non : le bit 0x10000 des drapeaux choisit entre deux tuiles voisines.
+            *(ushort*)(sprite + 0x10) = (ushort)(((*(uint*)(seat - 8) >> 0x10) & 1) + 0x48);
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+
+            // Manette branchee ou non, meme principe a l'envers : 0x2b si oui, 0x2c si non.
+            *(ushort*)(sprite + 0x10) = (ushort)(0x2c - (padSlot < 8 ? 1 : 0));
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+
+            *(short*)(sprite + 8) -= 4;
+            *(short*)(sprite + 0x0a) += 0x18;
+            *(ushort*)(sprite + 0x10) = 0x2d;
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            UiWin.EmitClipRect(otBase, &cursor);
+
+            // ---- le numero de couleur -----------------------------------------------------
+            *(short*)(sprite + 8) += 0x20;
+            *(byte**)sprite = SpriteAtlas(0x00566c30);
+            *(uint*)(sprite + 4) = 0x1000000;
+            cursor = Prims.DrawDecimalNumber(otBase, cursor, (int*)sprite, *colour, 1, 0);
+
+            UiWin.EmitViewportRect(otBase, &cursor);
+
+            // ---- le pictogramme de manette, seulement si elle est branchee -----------------
+            if (padSlot < 8)
+            {
+                *(short*)(sprite + 8) -= 0x18;
+                *(short*)(sprite + 0x0a) -= 10;
+                *(byte**)sprite = SpriteAtlas(0x00564798)
+                                  + Inp.s_PlayerSlots_005e9188[characterIndex * 0x4c + 1] * 8;
+                cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+                cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            }
+
+            // ---- le portrait ---------------------------------------------------------------
+            byte* portraitAtlas =
+                *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 4);
+            *(byte**)sprite = portraitAtlas;
+            portraitAtlas[5] = 0;                   // Ghidra: DAT_005de5f8[5] = '\0'
+            *(ushort*)(sprite + 0x10) = seat[-4];
+            *(short*)(sprite + 8) = (short)(characterIndex * 0x35 + 0x1c);
+            *(short*)(sprite + 0x0a) = 0x34;
+
+            *(uint*)(sprite + 4) =
+                index == s_Unknown_005de6f8 ? s_Unknown_005e9814 : 0x1000000;
+
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, *colour);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            UiWin.EmitClipRect(otBase, &cursor);
+        }
+
+        BindMenuLabels(*(byte**)(labelTable + 0x2ec), (uint)(nint)slot, MenuDescriptor(0), 0);
+
+        return cursor;
+    }
+
+    /// <summary>
+    /// Le recadrage de la carte sur le meneur : sa position reduite au quart (<c>sar 0x11</c>),
+    /// arrondie au multiple de quatre, bornee a la fenetre de carte.
+    ///
+    /// <para>Le binaire l'ecrit <b>quatre fois en toute lettre</b> — une dans le prologue au
+    /// changement de page, trois dans la page 4 (a l'ouverture de la liste de reperes, a la croix,
+    /// et apres avoir pose un repere). Les quatre copies sont identiques instruction pour
+    /// instruction ; extraites ici parce que c'est une unite qui se tient seule, pas pour
+    /// raccourcir.</para>
+    ///
+    /// <para>Le masque porte sur les seize bits : <c>and al,0FCh</c> laisse <c>ah</c> intact, ce
+    /// que <c>&amp; 0xfffc</c> reproduit puisque les deux bits effaces sont dans l'octet bas.</para>
+    /// </summary>
+    private static void RecentreMapOnLeader()
+    {
+        byte* leader = Inp.s_SlotFlags_005e93c0 + (uint)Mem.s_Unknown_005de538 * 0x9c;
+        s_Unknown_005e8eda = (short)((*(int*)(leader + 0x24) >> 0x11) & 0xfffc);
+        s_Unknown_005e8ed8 = (short)((*(int*)(leader + 0x1c) >> 0x11) & 0xfffc);
+
+        if (s_Unknown_005e8eda > 0xa0) s_Unknown_005e8eda = 0xa0;
+        if (s_Unknown_005e8eda < -0xa0) s_Unknown_005e8eda = unchecked((short)0xff60);
+        if (s_Unknown_005e8ed8 < -0x90) s_Unknown_005e8ed8 = unchecked((short)0xff70);
+        if (s_Unknown_005e8ed8 > 0x90) s_Unknown_005e8ed8 = 0x90;
+    }
+
+    /// <summary>
+    /// Ghidra: le <c>case 4</c> du switch de pages — <b>la carte du monde et ses reperes</b>.
+    /// Blaze.c 76833..77060, binaire 0x0052db5b..0x0052e33e.
+    ///
+    /// <para>
+    /// La plus grosse page apres la fiche, et la seule qui sorte de l'interface : elle fait defiler
+    /// l'image de carte, y place <b>huit reperes</b> que le joueur pose lui-meme, et dessine la
+    /// position du groupe avec un vrai modele 3d — camera mise de cote, vue fixe a 800, modele
+    /// emis, pose restituee. Le meme geste que la rose des vents de <c>WorldMapTick.cs</c>, dont
+    /// c'est le jumeau.
+    /// </para>
+    /// <para>
+    /// <b>Deux etats, portes par <c>DAT_005de70c</c>.</b> Negatif, les quatre directions font
+    /// defiler la carte de quatre unites par image — lues sur le mot <b>0</b> de la manette, l'etat
+    /// <i>tenu</i>, et non sur un front : c'est ce qui rend le defilement continu. Le carre ouvre
+    /// la liste des huit reperes, la croix recentre sur le meneur. A zero, gauche/droite parcourent
+    /// la liste, la croix la referme, et le carre <b>pose ou retire</b> le repere vise.
+    /// </para>
+    /// <para>
+    /// <b>Un repere fait huit octets</b> : deux <c>short</c> de position monde reduite au quart,
+    /// puis un mot d'etiquette qui empaquete <c>DAT_00566c84</c>, <c>DAT_00566c88</c> et la zone
+    /// courante. Un repere vide se reconnait a son <c>short</c> de <c>+4</c> negatif — et l'effacer
+    /// ecrit <b>quatre</b> octets de <c>0xff</c>, pas deux. Il n'est dessine que si son etiquette
+    /// correspond a la zone affichee, et l'octet de zone est <b>ignore</b> quand le terrain courant
+    /// n'a pas le bit <c>0x10</c> : les deux cotes de la comparaison sont alors amputes de leur
+    /// octet bas.
+    /// </para>
+    /// <para>
+    /// <b>Le defilement de l'image de carte se fait dans le descripteur d'atlas lui-meme</b> : les
+    /// deux premiers octets de <c>**(DAT_005e97cc + 0x94)</c> — l'origine u et v — sont reecrits a
+    /// chaque image depuis le decalage de camera. Ce n'est pas la position du sprite qui bouge,
+    /// c'est la fenetre lue dans la texture.
+    /// </para>
+    /// <para>
+    /// Le bloc de modele de <c>0x005de6c8</c> a exactement la forme du cadre de pile de la rose des
+    /// vents : trois entiers de position, deux d'echelle, puis deux mots et un mot d'etiquette. La
+    /// seule difference tient a <b>deux ecritures de seize bits</b> la ou la rose en fait de
+    /// trente-deux (<c>+0x10</c> et <c>+0x18</c>) : le mot haut garde ce qu'il avait, et c'est ainsi
+    /// dans le binaire.
+    /// </para>
+    /// </summary>
+    private static uint* RunWorldMapPage(uint* otBase, uint* cursor, byte* slot, ushort* pad)
+    {
+        byte* sprite = s_MenuSprite_005de5f8;
+
+        if (s_Unknown_005de70c < 0)
+        {
+            // ---- le defilement, sur l'etat TENU (mot 0) ----------------------------------
+            if ((pad[0] & 0x10) != 0 && s_Unknown_005e8eda < 0xa0) s_Unknown_005e8eda += 4;
+            if ((pad[0] & 0x40) != 0 && s_Unknown_005e8eda > -0xa0) s_Unknown_005e8eda -= 4;
+            if ((pad[0] & 0x80) != 0 && s_Unknown_005e8ed8 > -0x90) s_Unknown_005e8ed8 -= 4;
+            if ((pad[0] & 0x20) != 0 && s_Unknown_005e8ed8 < 0x90) s_Unknown_005e8ed8 += 4;
+
+            if ((((byte*)pad)[3] & 0x80) != 0)
+            {
+                s_Unknown_005de6fc = 0;
+                s_Unknown_005de70c = 0;
+                Aud.PlayUiSound38();                            // Ghidra: FUN_0053db80
+            }
+
+            if ((((byte*)pad)[3] & 0x40) != 0)
+            {
+                RecentreMapOnLeader();
+                Aud.PlayUiSound39();                            // Ghidra: FUN_0053dba0
+            }
+        }
+        else
+        {
+            // ---- la liste des huit reperes -----------------------------------------------
+            int previousMarker = s_Unknown_005de6fc;
+
+            if ((((byte*)pad)[6] & 0x80) != 0) s_Unknown_005de6fc--;
+            if ((((byte*)pad)[6] & 0x20) != 0) s_Unknown_005de6fc++;
+            if (s_Unknown_005de6fc < 0) s_Unknown_005de6fc = 7;
+            if (s_Unknown_005de6fc > 7) s_Unknown_005de6fc = 0;
+
+            if (previousMarker != s_Unknown_005de6fc) Aud.PlayUiSound3A();
+
+            if ((((byte*)pad)[3] & 0x40) != 0)
+            {
+                s_Unknown_005de70c = -1;
+                Aud.PlayUiSound39();
+            }
+
+            if ((((byte*)pad)[3] & 0x80) != 0)
+            {
+                s_MarkerCursor_005de618 = (short*)Mem.Arena(0x005e9320 + s_Unknown_005de6fc * 8);
+
+                if (*(short*)(s_MarkerCursor_005de618 + 2) >= 0)
+                {
+                    // Le repere existe : on l'efface. Le test lit DEUX octets, l'effacement en
+                    // ecrit QUATRE — c'est ainsi dans le binaire (`mov [eax+4],ebp`, ebp = -1).
+                    *(int*)(s_MarkerCursor_005de618 + 2) = -1;
+                    Aud.PlayUiSound39();
+                }
+                else
+                {
+                    s_MarkerCursor_005de618[0] = (short)(*(int*)Mem.Camera(0x005de068) >> 0x11);
+                    s_MarkerCursor_005de618[1] = (short)(*(int*)Mem.Camera(0x005de070) >> 0x11);
+                    *(uint*)(s_MarkerCursor_005de618 + 2) = CurrentMarkerTag();
+
+                    RecentreMapOnLeader();
+
+                    s_Unknown_005de70c = -1;
+                    Aud.PlayUiSound38();
+                }
+            }
+        }
+
+        // ---- les deux decalages de camera, bornes une seconde fois -------------------------
+        // Le binaire refait les bornes ici au lieu de se fier a celles du bloc d'entree, et il les
+        // range dans deux entiers de pile : c'est cette copie bornee que le dessin utilise, pas
+        // les globales.
+        int cameraY = s_Unknown_005e8ed8 < -0x90 ? -0x90
+                    : s_Unknown_005e8ed8 > 0x90 ? 0x90
+                    : s_Unknown_005e8ed8;
+
+        int cameraX = s_Unknown_005e8eda < -0xa0 ? -0xa0
+                    : s_Unknown_005e8eda > 0xa0 ? 0xa0
+                    : s_Unknown_005e8eda;
+
+        UiWin.EmitViewportRect(otBase, &cursor);
+
+        // ---- le curseur de la liste, seulement quand elle est ouverte ----------------------
+        if (s_Unknown_005de70c == 0)
+        {
+            *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
+            *(ushort*)(sprite + 0x10) = 0x18;
+            *(uint*)(sprite + 4) = 0x1000000;
+            *(short*)(sprite + 8) = (short)(s_Unknown_005de6fc * 10 + 0xc);
+            *(short*)(sprite + 0x0a) = 0xc0;
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+        }
+
+        // ---- les huit reperes ---------------------------------------------------------------
+        *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
+        s_MarkerCursor_005de618 = (short*)Mem.Arena(0x005e9320);
+
+        // Le repere clignote sur six images ; le compteur est divise NON SIGNE apres decalage.
+        *(ushort*)(sprite + 0x10) = (ushort)((s_FadeCounter_005e9960 >> 1) % 6 + 0x34);
+
+        uint currentTag = CurrentMarkerTag();
+
+        for (int index = 0; index < 8; index++, s_MarkerCursor_005de618 += 4)
+        {
+            short markerX = (short)(s_MarkerCursor_005de618[0] - cameraY + 0x7c);
+            short markerY = (short)(cameraX - s_MarkerCursor_005de618[1] + 0x6c);
+
+            *(uint*)(sprite + 4) = 0x1000000;
+            *(short*)(sprite + 8) = markerX;
+            *(short*)(sprite + 0x0a) = markerY;
+
+            uint markerTag = *(uint*)(s_MarkerCursor_005de618 + 2);
+            uint wanted = currentTag;
+
+            // Sans le bit 0x10 sur le terrain courant, l'octet de zone ne compte pas : les deux
+            // cotes perdent leur octet bas avant la comparaison.
+            if ((**(byte**)Mem.Entity(0x005eca80) & 0x10) == 0)
+            {
+                markerTag &= 0xffffff00;
+                wanted &= 0xffffff00;
+            }
+
+            if (markerTag == wanted
+                && markerX > 0x11 && markerX < 0xe9
+                && markerY > 0x11 && markerY < 0xc9)
+            {
+                cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, (uint)index);
+            }
+
+            // La vignette de la liste, dessinee que le repere existe ou non.
+            *(short*)(sprite + 8) = (short)(index * 10 + 0x18);
+            *(short*)(sprite + 0x0a) = 0xc4;
+            *(uint*)(sprite + 4) =
+                *(short*)(s_MarkerCursor_005de618 + 2) < 0 ? 0x1000000 : s_Unknown_005e9814;
+
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, (uint)index);
+        }
+
+        cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+
+        // ---- le groupe, en modele 3d ---------------------------------------------------------
+        short partyX = (short)((*(int*)Mem.Camera(0x005de068) >> 0x11) - cameraY + 0x80);
+        short partyY = (short)(cameraX - (*(int*)Mem.Camera(0x005de070) >> 0x11) + 0x70);
+        *(short*)(sprite + 8) = partyX;
+        *(short*)(sprite + 0x0a) = partyY;
+
+        if (partyX > 0x14 && partyX < 0xec && partyY > 0x14 && partyY < 0xcc)
+        {
+            Winsys3d.Ordinal_378(partyX, partyY);               // SetGeomOffset
+
+            short* pose = (short*)Mem.s_CameraVector_00604928;
+
+            // Mise de cote du decalage monde, de la pose et de la matrice — a l'identique de
+            // DrawCompassRose dans WorldMapTick.cs.
+            *(int*)Mem.Entity(0x005fa520) = Mem.s_Unknown_006008d0;
+            *(int*)Mem.Entity(0x005fa524) = Mem.s_Unknown_006008d4;
+            *(int*)Mem.Entity(0x005fa528) = Mem.s_Unknown_006008d8;
+            *(short*)Mem.Entity(0x005fa534) = pose[0];
+            *(short*)Mem.Entity(0x005fa536) = pose[1];
+            *(short*)Mem.Entity(0x005fa538) = pose[2];
+
+            for (int i = 0; i < 8; i++)
+            {
+                ((uint*)Mem.Arena(0x005e9b00))[i] = ((uint*)Mem.s_CameraMatrix_006008e0)[i];
+            }
+
+            Mem.s_Unknown_006008d0 = 0;
+            Mem.s_Unknown_006008d4 = 0;
+            Mem.s_Unknown_006008d8 = 0;
+
+            // Le cap est INVERSE le temps du rendu : la carte se lit du dessus, le modele doit
+            // tourner dans l'autre sens que la vue du monde.
+            pose[1] = (short)-pose[1];
+            pose[0] = 0x400;
+            RotMatrix(pose, (short*)Mem.s_CameraMatrix_006008e0);
+
+            Mem.CameraTranslation[0] = 0;
+            Mem.CameraTranslation[1] = 0;
+            Mem.CameraTranslation[2] = 800;
+
+            int* placement = (int*)s_MapModelBlock_005de6c8;
+            *(short*)((byte*)placement + 0x1a) = 4;
+            placement[7] = 0x1ffffff;
+            placement[3] = 0x200;
+            *(short*)((byte*)placement + 0x10) = 0x200;
+            placement[5] = 0;
+            *(short*)((byte*)placement + 0x18) = 0;
+            placement[0] = 0;
+            placement[1] = 0;
+            placement[2] = 0;
+
+            // Element 2 du tableau d'offsets du paquet de modeles — la rose des vents prend le 0.
+            cursor = DrawWorldModel_0051C420(
+                otBase, cursor, *(byte**)(*(byte**)s_ModelResultB_005f7b40 + 8), placement, 0xc);
+
+            for (int i = 0; i < 8; i++)
+            {
+                ((uint*)Mem.s_CameraMatrix_006008e0)[i] = ((uint*)Mem.Arena(0x005e9b00))[i];
+            }
+
+            Mem.s_Unknown_006008d0 = *(int*)Mem.Entity(0x005fa520);
+            Mem.s_Unknown_006008d4 = *(int*)Mem.Entity(0x005fa524);
+            Mem.s_Unknown_006008d8 = *(int*)Mem.Entity(0x005fa528);
+
+            pose[0] = *(short*)Mem.Entity(0x005fa534);
+            pose[1] = *(short*)Mem.Entity(0x005fa536);
+            pose[2] = *(short*)Mem.Entity(0x005fa538);
+        }
+
+        // ---- l'image de carte : c'est l'ATLAS qui defile, pas le sprite ----------------------
+        int windowV = s_Unknown_005e8ed8 < -0x90 ? 0
+                    : s_Unknown_005e8ed8 > 0x90 ? 0x90
+                    : (s_Unknown_005e8ed8 >> 1) + 0x80;
+
+        int windowU = s_Unknown_005e8eda < -0xa0 ? 0
+                    : s_Unknown_005e8eda > 0xa0 ? 0xa0
+                    : 0x80 - (s_Unknown_005e8eda >> 1);
+
+        byte* mapAtlas = *(byte**)*(byte**)(s_Unknown_005e97cc + 0x94);
+        *(byte**)sprite = mapAtlas;
+        mapAtlas[0] = (byte)(windowV - 0x38);
+        mapAtlas[1] = (byte)(windowU - 0x30);
+
+        *(ushort*)(sprite + 0x10) = 0;
+        *(short*)(sprite + 8) = 0x80;
+        *(short*)(sprite + 0x0a) = 0x70;
+        *(uint*)(sprite + 4) = 0x1000000;
+        *(short*)(sprite + 0x0c) = 0x2000;
+        *(short*)(sprite + 0x0e) = 0x2000;
+
+        cursor = Prims.DrawSpritePrimitive(otBase, cursor, (int*)sprite, 0, 0);
+        UiWin.EmitClipRect(otBase, &cursor);
+
+        BindMenuLabels(Mem.s_Unknown_005606f8, (uint)(nint)slot, MenuDescriptor(0), 0);
+
+        return cursor;
+    }
+
+    /// <summary>
+    /// Ghidra: le <c>case 5</c> du switch de pages — <b>la page « Sauvegarde »</b>. Blaze.c
+    /// 77060..77698, binaire 0x0052e343..0x0052f568. <b>638 lignes</b>, la plus grosse du menu.
+    ///
+    /// <para>
+    /// Trois niveaux emboites, portes par trois verrous : <c>DAT_005de710</c> dit quelle entree du
+    /// petit menu (Sauvegarde / Quitter) a ete validee, <c>DAT_005de70c</c> quel membre porte la
+    /// sauvegarde, <c>DAT_005de714</c> quel emplacement de carte a ete choisi. Puis
+    /// <c>DAT_005de71c</c> mene la machine a etats de la carte memoire, du numero 0 au numero 8 et
+    /// des numeros negatifs pour les echecs.
+    /// </para>
+    /// <para>
+    /// <b>Le nombre d'emplacements de carte depend des multitaps branches.</b>
+    /// <c>DAT_005de6f4</c> vaut 0 a 3 selon que <c>DAT_00604b0a</c> et <c>DAT_00604b2e</c> valent
+    /// <c>-0x8000</c>, et indexe deux tables paralleles de <c>0x0056a9a8</c> et <c>0x0056a9e0</c> :
+    /// la premiere donne l'identifiant de port, la seconde le compte et les indices de position.
+    /// </para>
+    /// <para>
+    /// <b>La sauvegarde ne se contente pas d'ecrire.</b> Le <c>case 7</c> relit d'abord l'en-tete
+    /// du fichier existant, compare sa somme de controle a celle du personnage, <b>fusionne</b> la
+    /// table d'icones de la carte avec les dix entrees du personnage, colle le niveau en chiffres a
+    /// la fin du titre, recopie huit banques globales et les huit reperes de carte dans le bloc du
+    /// personnage, capture la palette depuis la VRAM, recalcule la somme, et n'ecrit qu'ensuite —
+    /// en trois morceaux.
+    /// </para>
+    /// <para>
+    /// <b>Et tout cela s'exerce vraiment</b> : ce port remplace la carte memoire par des fichiers
+    /// de <c>save\</c>, si bien qu'un aller-retour complet — enumerer, ouvrir, comparer les sommes,
+    /// fusionner, ecrire — produit un fichier de <c>0x6000</c> octets sur le disque. Verifie le
+    /// 2026-08-25 : « Mémorisation achevée. » a l'ecran et un fichier neuf dans <c>save\</c>.
+    /// </para>
+    /// </summary>
+    private static uint* RunSavePage(uint* otBase, uint* cursor, byte* slot, ushort* pad)
+    {
+        byte* labelTable = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
+        byte* root = MenuDescriptor(0);
+
+        BindMenuLabels(*(byte**)(labelTable + 0x37c), (uint)(nint)slot, MenuDescriptor(1), 0);
+        cursor = Ui.RunTextEngine(cursor, MenuDescriptor(1));
+
+        int previousSlot = s_CardSlotCursor_005de700;
+        int previousMember = s_Unknown_005de6f8;
+
+        if (s_Unknown_005de710 == -1)
+        {
+            // ---- le petit menu : Sauvegarde ou Quitter --------------------------------------
+            // Les deux touches 0x10 et 0x40 du mot repete basculent, indifferemment : c'est un
+            // menu a deux entrees, il n'a pas besoin de savoir de quel cote on va.
+            if ((pad[3] & 0x50) != 0)
+            {
+                s_Unknown_005de6fc = ~s_Unknown_005de6fc & 1;
+                Aud.PlayUiSound3A();
+            }
+
+            if ((((byte*)pad)[3] & 0x80) != 0)
+            {
+                // « Sauvegarde » est refusee tant que le bit 8 de DAT_005de02c manque — c'est le
+                // meme bit que le libelle grise plus bas.
+                if ((Mem.s_WorldFlags_005de02c & 8) == 0 && s_Unknown_005de6fc == 0)
+                {
+                    Aud.PlayUiSound3B();
+                }
+                else
+                {
+                    s_Unknown_005de710 = s_Unknown_005de6fc;
+                    s_Unknown_005de6f8 = 0;
+                    Aud.PlayUiSound38();
+                }
+            }
+
+            BindMenuLabels(*(byte**)(labelTable + 0x2f0), (uint)(nint)slot, root, 0);
+        }
+        else if (s_Unknown_005de710 != 0)
+        {
+            if (s_Unknown_005de710 == 1) StepQuitFlow(labelTable, slot, root, pad);
+        }
+        else if (s_Unknown_005de70c < 0)
+        {
+            // ---- le choix du membre qui porte la sauvegarde ---------------------------------
+            if ((pad[3] & 0x10) != 0) s_Unknown_005de6f8--;
+            if ((pad[3] & 0x40) != 0) s_Unknown_005de6f8++;
+            if (s_Unknown_005de6f8 < 0) s_Unknown_005de6f8 = s_PartySize_005e9020 - 1;
+            if (s_Unknown_005de6f8 >= s_PartySize_005e9020) s_Unknown_005de6f8 = 0;
+
+            if (previousMember != s_Unknown_005de6f8) Aud.PlayUiSound3A();
+
+            if ((pad[1] & 0x8000) == 0)
+            {
+                if ((pad[1] & 0x4000) != 0)
+                {
+                    s_Unknown_005de710 = -1;
+                    Aud.PlayUiSound39();
+                }
+            }
+            else if ((*(uint*)(Inp.s_SlotFlags_005e93c0 + s_Unknown_005de6f8 * 0x9c) & 0x40000000) == 0
+                     && *(int*)(GetMainMemPtr() + ((s_Unknown_005de6f8 + 0x78) << 0xd)) != 0)
+            {
+                s_Unknown_005de714 = -1;
+                s_CardSlotCursor_005de700 =
+                    GetMainMemPtr()[s_Unknown_005de6f8 * 0x2000 + 0xf02bc];
+                s_Unknown_005de70c = s_Unknown_005de6f8;
+                Aud.PlayUiSound38();
+            }
+            else
+            {
+                Aud.PlayUiSound3B();
+            }
+
+            BindMenuLabels(*(byte**)(labelTable + 0x3c4), (uint)(nint)slot, root, 0);
+        }
+        else
+        {
+            cursor = StepCardFlow(otBase, cursor, labelTable, slot, root, pad, previousSlot);
+        }
+
+        return DrawSavePageChrome(otBase, cursor, slot);
+    }
+
+    /// <summary>
+    /// Ghidra: la branche <c>DAT_005de710 == 1</c> — <b>« Quitter »</b>. Trois etapes portees par
+    /// <c>DAT_005de6f8</c> : poser la question (<c>0x2f8</c>), attendre que la boite ait fini de
+    /// s'ouvrir (<c>0x3c0</c>), puis armer la sortie.
+    ///
+    /// <para>La sortie elle-meme n'est pas un appel : elle pose <c>DAT_005645f8</c> a <c>0xfe</c>,
+    /// leve le bit 2 de <c>DAT_005de02c</c> et remet l'etat de jeu a zero — la boucle par image
+    /// s'en charge a l'image suivante. Et si <c>DAT_005e909f</c> n'est pas nul, la question est
+    /// simplement abandonnee.</para>
+    /// </summary>
+    private static void StepQuitFlow(byte* labelTable, byte* slot, byte* root, ushort* pad)
+    {
+        if (s_Unknown_005de6f8 == 0)
+        {
+            BindMenuLabels(*(byte**)(labelTable + 0x2f8), (uint)(nint)slot, root, 0);
+            s_Unknown_005de6f8++;
+        }
+        else if (s_Unknown_005de6f8 == 1)
+        {
+            if ((((byte*)pad)[3] & 0x40) == 0)
+            {
+                if ((root[0x8c7] & 2) == 0)
+                {
+                    BindMenuLabels(*(byte**)(labelTable + 0x3c0), (uint)(nint)slot, root, 0);
+                    s_Unknown_005de6f8++;
+                }
+            }
+            else
+            {
+                CancelConfirmBox(root);
+            }
+        }
+        else if (s_Unknown_005de6f8 == 2)
+        {
+            if ((((byte*)pad)[3] & 0x40) != 0)
+            {
+                CancelConfirmBox(root);
+                return;
+            }
+
+            if ((root[0x8c7] & 4) == 0)
+            {
+                if (*Mem.Arena(0x005e909f) == 0)
+                {
+                    // Ghidra ecrit `DAT_005645f8._0_1_ = 0xfe` : un octet dans le pas de la carte
+                    // du monde, que le depot porte deja en `sbyte`. 0xfe est -2 signe, la meme
+                    // valeur que le pas de sortie pose par WorldMapTick.
+                    s_WorldMapStep_005645f8 = -2;
+                    Mem.s_WorldFlags_005de02c |= 2;
+                    s_GameStateId_005de510 = 0;
+                }
+                else
+                {
+                    s_Unknown_005de710 = -1;
+                }
+            }
+        }
+    }
+
+    /// <summary>Ghidra: <c>LAB_0052e410</c> — le desarmement de la boite de confirmation, partage
+    /// par quatre sites. Il efface les deux drapeaux de <c>+0x8c7</c>, les deux octets de reponse,
+    /// joue le bip d'annulation et rend la main au petit menu.</summary>
+    private static void CancelConfirmBox(byte* root)
+    {
+        root[0x8c7] &= 0xf9;
+        root[0x3b] = 0;                      // Ghidra: DAT_0056856b
+        root[0x33] = 0;                      // Ghidra: DAT_00568563
+        Aud.PlayUiSound39();
+        s_Unknown_005de710 = -1;
+    }
+
+    /// <summary>
+    /// Ghidra: la branche <c>DAT_005de70c &gt;= 0</c> — <b>le choix de l'emplacement de carte, puis
+    /// la machine a etats de la carte memoire</b>. Blaze.c 77161..77636.
+    ///
+    /// <para>
+    /// Le nombre d'emplacements depend des multitaps : <c>DAT_005de6f4</c> vaut 0 a 3 selon que
+    /// <c>DAT_00604b0a</c> et <c>DAT_00604b2e</c> valent <c>-0x8000</c>, et indexe deux tables
+    /// paralleles — <c>0x0056a9e0</c> pour le compte et les indices de position,
+    /// <c>0x0056a9a8</c> pour l'identifiant de port a poser dans <c>DAT_00604980</c>.
+    /// </para>
+    /// <para>
+    /// L'etat courant est <c>DAT_005de71c</c>. Les numeros positifs sont la marche normale (0 :
+    /// enumerer, 1 : ouvrir et lire, 5 a 8 : les confirmations et l'ecriture) ; les negatifs sont
+    /// les echecs, et <c>-5</c> est le seul qui repasse par le desarmement du port avant de rendre
+    /// la main.
+    /// </para>
+    /// <para>
+    /// <b>Le <c>case -5</c> tombe volontairement dans le <c>case -4</c></b> — le binaire n'a pas de
+    /// saut entre les deux, et le desarmement du port n'est donc qu'un prologue au meme
+    /// nettoyage. Transcrit par un appel explicite plutot que par un <c>goto</c>.
+    /// </para>
+    /// </summary>
+    private static uint* StepCardFlow(
+        uint* otBase, uint* cursor, byte* labelTable, byte* slot, byte* root, ushort* pad,
+        int previousSlot)
+    {
+        // ---- le choix de l'emplacement ----------------------------------------------------
+        if (s_Unknown_005de714 < 0)
+        {
+            if ((pad[3] & 0x80) != 0) s_CardSlotCursor_005de700--;
+            if ((pad[3] & 0x20) != 0) s_CardSlotCursor_005de700++;
+        }
+
+        s_Unknown_005de6f4 = *(short*)Inp.s_JoyAxis1_00604b0a == unchecked((short)0x8000) ? 1 : 0;
+        if (*(short*)Inp.s_JoyAxis2_00604b2e == unchecked((short)0x8000))
+        {
+            s_Unknown_005de6f4 += 2;
+        }
+
+        byte* layout = s_CardSlotLayouts_0056a9e0[s_Unknown_005de6f4];
+
+        if (s_CardSlotCursor_005de700 < 0) s_CardSlotCursor_005de700 = *layout - 1;
+        if (s_CardSlotCursor_005de700 >= *layout) s_CardSlotCursor_005de700 = 0;
+        if (previousSlot != s_CardSlotCursor_005de700) Aud.PlayUiSound3A();
+
+        if (s_Unknown_005de714 < 0)
+        {
+            s_Unknown_005e8edc = 0;
+            s_Unknown_005de714 = s_CardSlotCursor_005de700;
+            s_Unknown_00604960 = 0;
+            s_Unknown_005de71c = 0;
+            s_CardIconAngle_00604988 = 0;      // Ghidra: _DAT_00604988 &= 0xffff — le mot haut
+            Aud.PlayUiSound38();
+        }
+
+        int member = s_Unknown_005de6f8;
+
+        // Une image de battement apres chaque changement d'etat : DAT_005de724 fait sauter un tour
+        // aux etats 5, 7 et 8, le temps que la boite de dialogue soit a l'ecran.
+        if (s_Unknown_005de720 != s_Unknown_005de71c)
+        {
+            s_Unknown_005de720 = s_Unknown_005de71c;
+            s_Unknown_005de724 = 1;
+        }
+
+        byte* character = GetMainMemPtr() + ((member + 0x78) << 0xd);
+
+        if (s_Unknown_005de714 >= 0)
+        {
+            // ---- le sondage du port, entre deux etats -------------------------------------
+            if (s_Unknown_005e8edc == 1)
+            {
+                s_Unknown_005e8ee0 = Saves.PollCardTransfer(CardPort(), false);
+                if (s_Unknown_005e8ee0 < -1) s_Unknown_005de71c = -4;
+            }
+            else if (s_Unknown_005e8edc == 2)
+            {
+                while (Winsys3d.Ordinal_67(CardPort()) == 0) { }
+                s_Unknown_005e8ee0 = Saves.PollCardTransfer(CardPort(), false);
+            }
+
+            switch (s_Unknown_005de71c)
+            {
+                case 0:
+                    // Le repertoire de sauvegarde est-il seulement lisible ?
+                    if (root[0x8ac] == 0)                    // Ghidra: DAT_00568ddc
+                    {
+                        s_Unknown_005de71c = 1;
+                        s_CardSlotIndex_00604980 =
+                            s_CardPortIds_0056a9a8[s_Unknown_005de6f4][s_CardSlotCursor_005de700];
+                    }
+                    else
+                    {
+                        root[0x8c7] &= 0xfd;
+                        root[0x33] = 0;
+                        BindMenuLabels(*(byte**)(labelTable + 0x3cc), (uint)(nint)slot, root, 0);
+                    }
+                    break;
+
+                case 1:
+                    StepCardOpen(labelTable, slot, root, character);
+                    break;
+
+                case 5:
+                    if (s_Unknown_005de724 == 0)
+                    {
+                        if ((((byte*)pad)[3] & 0x40) == 0)
+                        {
+                            if ((root[0x8c7] & 2) == 0)
+                            {
+                                BindMenuLabels(
+                                    *(byte**)(labelTable + 0x3c0), (uint)(nint)slot, root, 0);
+                                s_Unknown_005de71c++;
+                            }
+                        }
+                        else
+                        {
+                            s_Unknown_005de71c = -5;
+                        }
+                    }
+                    else
+                    {
+                        s_Unknown_005de724 = 0;
+                    }
+                    break;
+
+                case 6:
+                    if ((((byte*)pad)[3] & 0x40) == 0)
+                    {
+                        if ((root[0x8c7] & 4) == 0)
+                        {
+                            if (*Mem.Arena(0x005e909f) == 0)
+                            {
+                                BindMenuLabels(
+                                    *(byte**)(labelTable + 0x400), (uint)(nint)slot, root, 0);
+                                s_Unknown_005de71c++;
+                            }
+                            else
+                            {
+                                s_Unknown_005de71c = -5;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        s_Unknown_005de71c = -5;
+                    }
+                    break;
+
+                case 7:
+                    if (s_Unknown_005de724 == 0) BuildAndWriteSaveBlock(labelTable, slot, root, member);
+                    else s_Unknown_005de724 = 0;
+                    break;
+
+                case 8:
+                    if (s_Unknown_005de724 == 0)
+                    {
+                        if ((((byte*)pad)[3] & 0x40) == 0)
+                        {
+                            if ((root[0x8c7] & 2) != 0) break;
+                        }
+                        else
+                        {
+                            root[0x8c7] &= 0xf9;
+                            root[0x3b] = 0;
+                            root[0x33] = 0;
+                        }
+
+                        s_Unknown_005de70c = -1;
+                    }
+                    else
+                    {
+                        s_Unknown_005de724 = 0;
+                    }
+                    break;
+
+                case -5:
+                    Saves.ResetCardTransferStatus((s_CardSlotIndex_00604980 & 4) << 2);
+                    Saves.ResetCardWriteEvents();
+                    goto case -4;
+
+                case -4:
+                    root[0x3b] = 0;
+                    root[0x8c7] &= 0xf9;
+                    root[0x33] = 0;
+                    s_Unknown_005de714 = -1;
+                    Aud.PlayUiSound39();
+                    break;
+
+                case -3:
+                case -2:
+                    if ((((byte*)pad)[3] & 0x40) == 0)
+                    {
+                        if (s_Unknown_005e8ee0 == -3)
+                        {
+                            s_Unknown_005e8edc = 0;
+                            s_Unknown_005de71c = 0;
+                        }
+                        else if ((root[0x8c7] & 2) == 0)
+                        {
+                            Saves.ResetCardTransferStatus((s_CardSlotIndex_00604980 & 4) << 2);
+                            Saves.ResetCardWriteEvents();
+                            s_Unknown_005de714 = -1;
+                        }
+                    }
+                    else
+                    {
+                        s_Unknown_005de71c = -5;
+                    }
+                    break;
+
+                case -1:
+                    if ((root[0x8c7] & 2) == 0) s_Unknown_005de714 = -1;
+                    break;
+            }
+        }
+
+        // ---- le curseur d'emplacement, tant qu'aucun n'est retenu --------------------------
+        byte* sprite = s_MenuSprite_005de5f8;
+
+        if (s_Unknown_005de714 < 0)
+        {
+            *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
+            *(ushort*)(sprite + 0x10) = 0x19;
+            *(uint*)(sprite + 4) = 0x1000000;
+
+            byte place = layout[1 + s_CardSlotCursor_005de700];
+            *(short*)(sprite + 8) = (short)(s_CardSlotPositions_0056a9f0[place * 2] + 0x8c);
+            *(short*)(sprite + 0x0a) = (short)(s_CardSlotPositions_0056a9f0[place * 2 + 1] + 0x48);
+
+            UiWin.EmitViewportRect(otBase, &cursor);
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            UiWin.EmitClipRect(otBase, &cursor);
+        }
+
+        if (s_Unknown_005de714 >= 0 && s_Unknown_005de71c > 8 && s_Unknown_005de71c < 0xc)
+        {
+            cursor = DrawCardIconRing(otBase, cursor);
+        }
+
+        return cursor;
+    }
+
+    /// <summary>Ghidra: <c>(DAT_00604980 &amp; 3) + (DAT_00604980 &amp; 4) * 4</c> — le numero de
+    /// port que les appels de carte attendent. Les deux bits bas donnent l'emplacement dans le
+    /// multitap, le bit 2 le port physique et vaut alors seize.</summary>
+    private static int CardPort()
+        => (s_CardSlotIndex_00604980 & 3) + (s_CardSlotIndex_00604980 & 4) * 4;
+
+    /// <summary>
+    /// Ghidra: le <c>case 1</c> de la machine a etats — <b>ouvrir le fichier et decider</b>.
+    /// <c>FUN_005126c0</c> enumere le repertoire, puis selon son verdict on ouvre le fichier du
+    /// personnage, on annonce un port vide, ou on compose un message d'erreur.
+    ///
+    /// <para><b>Le message d'erreur est monte en seize bits.</b> Trois chaines — le libelle
+    /// <c>0x3f4</c>, le nom du personnage a <c>+0x100</c>, le libelle <c>0x3f8</c> — sont recopiees
+    /// dans le tampon de <c>MainMem + 0x1b0000</c> <b>deux octets par caractere</b>, chaque paire
+    /// prise telle quelle dans la source. C'est le meme flux d'etiquettes que le moteur de texte
+    /// consomme ailleurs, pas une chaine C.</para>
+    /// </summary>
+    private static void StepCardOpen(byte* labelTable, byte* slot, byte* root, byte* character)
+    {
+        s_CardCursorSlot_00604984 = 0;
+
+        int verdict = LoadSaveDirectory();                  // Ghidra: FUN_005126c0
+
+        switch (verdict)
+        {
+            case 0:
+            {
+                Saves.SetCardFileName((byte*)(character + 0x1fd0));
+                Saves.SetCardPathDeviceFields();
+
+                IntPtr handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+                Saves.RetryCloseCardFile(handle);
+
+                if ((nint)handle < 0)
+                {
+                    BuildCardErrorMessage(labelTable, character);
+                    BindMenuLabels(GetMainMemPtr() + 0x1b0000, (uint)(nint)slot, root, 0);
+                    s_Unknown_005de71c = -1;
+                    return;
+                }
+
+                BindMenuLabels(*(byte**)(labelTable + 0x404), (uint)(nint)slot, root, 0);
+                Saves.ResetCardTransferStatus(CardPort());
+                s_Unknown_005e8edc = 1;
+                s_Unknown_005de71c = 7;
+                break;
+            }
+
+            case -3:
+                BindMenuLabels(*(byte**)(labelTable + 0x3d0), (uint)(nint)slot, root, 0);
+                s_Unknown_005de71c = -1;
+                break;
+
+            case -2:
+                BindMenuLabels(*(byte**)(labelTable + 0x3d4), (uint)(nint)slot, root, 0);
+                Saves.ResetCardTransferStatus(CardPort());
+                s_Unknown_005e8edc = 2;
+                s_Unknown_005de71c = -3;
+                break;
+
+            case -1:
+                BuildCardErrorMessage(labelTable, character);
+                BindMenuLabels(GetMainMemPtr() + 0x1b0000, (uint)(nint)slot, root, 0);
+                s_Unknown_005de71c = -1;
+                break;
+        }
+    }
+
+    /// <summary>Ghidra: les trois boucles de <c>CONCAT11</c> du <c>case 1</c> — le message d'echec
+    /// monte dans <c>MainMem + 0x1b0000</c>, deux octets par caractere.</summary>
+    private static void BuildCardErrorMessage(byte* labelTable, byte* character)
+    {
+        ushort* out_ = (ushort*)(GetMainMemPtr() + 0x1b0000);
+
+        for (byte* src = *(byte**)(labelTable + 0x3f4); *src != 0; src += 2)
+            *out_++ = (ushort)(src[0] | (src[1] << 8));
+
+        for (byte* src = character + 0x100; *src != 0; src += 2)
+            *out_++ = (ushort)(src[0] | (src[1] << 8));
+
+        for (byte* src = *(byte**)(labelTable + 0x3f8); *src != 0; src += 2)
+            *out_++ = (ushort)(src[0] | (src[1] << 8));
+
+        *out_ = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: le <c>case 7</c> de la machine a etats — <b>la sauvegarde elle-meme</b>. Blaze.c
+    /// 77354..77503, la partie la plus dense de la page.
+    ///
+    /// <para>
+    /// Elle ne se contente pas d'ecrire : elle relit d'abord les 0x100 octets d'en-tete du fichier
+    /// existant et compare sa somme de controle a celle du bloc du personnage. Trois issues — echec
+    /// de lecture (<c>0x408</c>), somme differente (<c>0x40c</c>, c'est la sauvegarde d'un autre
+    /// personnage), ou la suite.
+    /// </para>
+    /// <para>
+    /// La suite relit la table d'icones de la carte, y <b>fusionne</b> les dix entrees du
+    /// personnage — chacune de seize octets, ajoutee seulement si aucune ligne identique n'existe
+    /// deja — colle le niveau en chiffres a la fin du titre, recopie huit banques globales et les
+    /// huit reperes de carte dans le bloc, capture la palette depuis la VRAM, recalcule la somme
+    /// sur 0x1ffc octets, et ecrit en trois morceaux.
+    /// </para>
+    /// <para>
+    /// <b>Le titre se termine par un mot sentinelle.</b> La boucle remonte depuis <c>+0x44</c>
+    /// jusqu'a trouver <c>0x6b82</c> — deux octets releves dans le binaire a <c>0x0056ac2c</c>,
+    /// juste sous les flux d'etiquettes de <c>0x0056ac30</c> — et ecrit les chiffres apres lui. Les
+    /// chiffres ne sont pas de l'ASCII : ce sont les glyphes de seize bits que le moteur de texte
+    /// du jeu attend, pris dans la table de la ressource principale.
+    /// </para>
+    /// </summary>
+    private static void BuildAndWriteSaveBlock(byte* labelTable, byte* slot, byte* root, int member)
+    {
+        byte* character = GetMainMemPtr() + ((member + 0x78) << 0xd);
+        byte* scratch = GetMainMemPtr() + 0x1b0000;
+
+        Saves.SetCardFileName(character + 0x1fd0);
+        Saves.SetCardPathDeviceFields();
+        Saves.ResetCardTransferStatus((s_CardSlotIndex_00604980 & 4) << 2);
+        Saves.ResetCardWriteEvents();
+
+        IntPtr handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+        int read = Saves.RetrySeekAndReadCardFile(handle, scratch, 0x3f00, 0x100);
+        Saves.RetryCloseCardFile(handle);
+
+        byte* message = *(byte**)(labelTable + 0x408);
+
+        if (read >= 0)
+        {
+            if (*(int*)(scratch + 0xfc) != *(int*)(character + 0x1ffc))
+            {
+                message = *(byte**)(labelTable + 0x40c);
+            }
+            else
+            {
+                handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 1);
+                read = Saves.RetrySeekAndReadCardFile(handle, scratch, 0x4000, 0x2000);
+                Saves.RetryCloseCardFile(handle);
+
+                if (read >= 0)
+                {
+                    MergeSaveIconTable(character, scratch);
+                    AppendLevelToSaveTitle(character);
+                    CopyGlobalBanksIntoSaveBlock(character, member);
+
+                    int checksum = 0;
+                    for (int i = 0; i < 0x1ffc; i++) checksum += (sbyte)character[i];
+                    *(int*)(character + 0x1ffc) = checksum;
+
+                    handle = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 2);
+                    int w1 = Saves.RetrySeekAndWriteCardFile(handle, character, 0, 0x2000);
+                    int w2 = Saves.RetrySeekAndWriteCardFile(handle, character + 0x1f00, 0x3f00, 0x100);
+                    int w3 = Saves.RetrySeekAndWriteCardFile(handle, scratch, 0x4000, 0x2000);
+                    Saves.RetryCloseCardFile(handle);
+
+                    if ((w1 | w2 | w3) >= 0) message = *(byte**)(labelTable + 0x3c4);
+                }
+            }
+        }
+
+        BindMenuLabels(message, (uint)(nint)slot, root, 0);
+        s_Unknown_005de71c++;
+        s_Unknown_005e8edc = 0;
+        s_Unknown_005de6fc = 0;
+    }
+
+    /// <summary>Ghidra: la fusion de la table d'icones. Dix entrees de <c>0x280</c> octets a partir
+    /// de <c>+0x300</c> ; seules celles dont le mot <c>+0x12</c> porte <c>0x8000</c> sans
+    /// <c>0x4000</c> entrent, et seulement si leurs seize premiers octets ne figurent pas deja dans
+    /// la table de la carte. La table se termine par une ligne dont le premier octet est nul, et
+    /// c'est la que la nouvelle entree se pose.</summary>
+    private static void MergeSaveIconTable(byte* character, byte* table)
+    {
+        byte* entry = character + 0x300;
+
+        for (int i = 0; i < 10; i++, entry += 0x280)
+        {
+            ushort flags = *(ushort*)(entry + 0x12);
+            if ((flags & 0x4000) != 0 || (flags & 0x8000) == 0) continue;
+
+            byte* row = table;
+
+            if (*row != 0)
+            {
+                while (true)
+                {
+                    int matched = 0;
+                    while (matched < 4 && ((uint*)entry)[matched] == ((uint*)row)[matched]) matched++;
+                    if (matched == 4) break;
+
+                    row += 0x10;
+                    if (*row == 0) break;
+                }
+
+                // Deja presente : rien a ajouter.
+                if (*row != 0) continue;
+            }
+
+            for (int b = 0; b < 0x10; b++) row[b] = entry[b];
+        }
+    }
+
+    /// <summary>Ghidra: le niveau colle a la fin du titre du fichier. On remonte depuis
+    /// <c>+0x44</c> jusqu'au mot sentinelle <c>DAT_0056ac2c</c>, puis on ecrit les chiffres
+    /// significatifs — le dernier toujours, meme nul.</summary>
+    private static void AppendLevelToSaveTitle(byte* character)
+    {
+        ushort* tail = (ushort*)(character + 0x44);
+        while (*tail != s_TitleSentinel_0056ac2c) tail--;
+
+        byte* digitGlyphs =
+            *(byte**)(*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x70) + 4) + 0x20;
+
+        uint value = *(ushort*)(character + 0x144);
+        int written = 0;
+
+        for (int remaining = 10; remaining != 0; remaining--)
+        {
+            uint divisor = Ui.s_DecimalDivisors_00566be8[10 - remaining];
+            uint digit = value / divisor;
+            value -= divisor * digit;
+
+            if (digit != 0 || remaining == 1) written++;
+
+            if (written != 0)
+            {
+                tail++;
+                *tail = *(ushort*)(digitGlyphs + digit * 2);
+            }
+        }
+    }
+
+    /// <summary>Ghidra: l'en-tete de <c>+0x1f00</c>, les huit banques globales recopiees a
+    /// <c>+0x1d00</c>..<c>+0x1ec0</c>, les huit reperes de carte a <c>+0x1f04</c>, puis la capture
+    /// de palette depuis la VRAM vers <c>+0x60</c>.</summary>
+    private static void CopyGlobalBanksIntoSaveBlock(byte* character, int member)
+    {
+        byte* header = character + 0x1f00;
+        header[0] = 0;
+        header[1] = s_Unknown_00566c84;
+        header[2] = s_Unknown_00566c88;
+        header[3] = *(byte*)Mem.Camera(0x005de044);
+
+        // Huit banques de 0x40 octets, dans l'ordre du binaire.
+        for (int off = 0; off < 0x40; off += 4)
+        {
+            *(uint*)(character + 0x1d00 + off) = *(uint*)(Mem.Arena(0x005e96e0) + off);
+            *(uint*)(character + 0x1d40 + off) = *(uint*)(Mem.Arena(0x005e9780) + off);
+            *(uint*)(character + 0x1d80 + off) = *(uint*)(Mem.Arena(0x005e9060) + off);
+            *(uint*)(character + 0x1dc0 + off) = *(uint*)(Mem.Arena(0x005e9840) + off);
+            *(uint*)(character + 0x1e00 + off) = *(uint*)(Mem.Arena(0x005e9720) + off);
+            *(uint*)(character + 0x1e40 + off) = *(uint*)(Mem.Arena(0x005e92c0) + off);
+            *(uint*)(character + 0x1e80 + off) = *(uint*)(Mem.Arena(0x005e9980) + off);
+            *(uint*)(character + 0x1ec0 + off) = *(uint*)(Mem.Arena(0x005e9360) + off);
+        }
+
+        // Les huit reperes de la page 4 : trois mots chacun, le quatrieme n'est pas sauve.
+        for (int i = 0; i < 8; i++)
+        {
+            ushort* src = (ushort*)Mem.Arena(0x005e9320 + i * 8);
+            ushort* dst = (ushort*)(character + 0x1f04 + i * 8);
+            dst[0] = src[0];
+            dst[1] = src[1];
+            dst[2] = src[2];
+        }
+
+        byte portrait = Inp.s_SlotFlags_005e93c0[4 + member * 0x9c];
+        short* rect = (short*)s_IconRect_005de610;
+        rect[0] = (short)((character[0x2bd] + portrait * 4) * 0x10);
+        rect[2] = 0x10;
+        rect[3] = 1;
+        rect[1] = (short)(*(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0x92 + portrait * 4) >> 6);
+
+        Winsys3d.Ordinal_667(0);
+        Winsys3d.Ordinal_684(rect, character + 0x60);
+        Winsys3d.Ordinal_667(0);
+    }
+
+    /// <summary>
+    /// Ghidra: le bloc <c>8 &lt; DAT_005de71c &lt; 0xc</c> — <b>l'icone de carte qui tourne</b>
+    /// pendant l'ecriture. Blaze.c 77578..77633.
+    ///
+    /// <para>
+    /// Le cadre et les deux chiffres d'abord, puis autant d'icones que le fichier a d'images
+    /// (<c>DAT_00604980 &gt;&gt; 8</c>), placees sur un cercle par <c>Ordinal_450</c> /
+    /// <c>Ordinal_451</c>. L'angle avance par amortissement vers le douzieme de tour suivant, et le
+    /// rayon vers <c>0x1800</c> — les deux moities du meme dword de <c>0x00604988</c>.
+    /// </para>
+    /// <para>
+    /// <b>Celle de devant est dessinee autrement</b> : decalee de huit dans les deux sens, teintee
+    /// par <c>DAT_005e9814</c>, et emise par la primitive longue <c>FUN_00521f20</c> avec une
+    /// echelle qui bat au rythme du compteur de fondu. Les autres passent par la courte.
+    /// </para>
+    /// </summary>
+    private static uint* DrawCardIconRing(uint* otBase, uint* cursor)
+    {
+        byte* sprite = s_MenuSprite_005de5f8;
+
+        UiWin.EmitViewportRect(otBase, &cursor);
+
+        *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94);
+        *(ushort*)(sprite + 0x10) = 0x2e;
+        *(short*)(sprite + 8) = 0xc8;
+        *(short*)(sprite + 0x0a) = 0x40;
+        cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+
+        *(ushort*)(sprite + 0x10) = 0x2f;
+        *(short*)(sprite + 8) = 0xcc;
+        *(short*)(sprite + 0x0a) = 0x54;
+        cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+
+        cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+        UiWin.EmitClipRect(otBase, &cursor);
+
+        *(byte**)sprite = SpriteAtlas(0x00566c30);
+        *(short*)(sprite + 8) = 0xd0;
+        *(short*)(sprite + 0x0a) = 0x48;
+        *(uint*)(sprite + 4) = 0x1000000;
+        cursor = Prims.DrawDecimalNumber(
+            otBase, cursor, (int*)sprite,
+            *(uint*)(s_CardDirectoryEntries_006049bc + 0x18 + s_CardCursorSlot_00604984 * 0x28),
+            0x82, 0);
+
+        *(short*)(sprite + 8) = 0xd0;
+        *(short*)(sprite + 0x0a) = 0x5c;
+        cursor = Prims.DrawDecimalNumber(
+            otBase, cursor, (int*)sprite, (uint)(s_CardEntryCount_00604981), 0x82, 0);
+
+        Mem.s_PanelSelection_005e9060[0xf8 - 0x60] = 0x0f;     // Ghidra: _DAT_005e8ff8 = 0xf
+        *(ushort*)(Mem.Arena(0x005e8ffa)) = 0x7f80;
+
+        *(ushort*)(sprite + 0x10) = 0;
+        *(byte**)sprite = s_RowSpriteRecord_00563148;
+
+        int frames = (s_CardSlotIndex_00604980 >> 8) & 0xff;
+
+        // L'angle courant, ramene dans un tour, puis amorti vers la position de l'image visee.
+        uint delta = (uint)(s_CardIconAngle_00604988
+                            - (int)(0x1000 / (frames == 0 ? 1 : frames)) * s_CardCursorSlot_00604984)
+                     & 0xfff;
+
+        short step = delta < 2000
+            ? (short)((int)delta >> 2)
+            : (short)-(short)((int)(0x1000 - delta) >> 2);
+
+        s_CardIconAngle_00604988 -= step;
+        s_Unknown_0060498a += (short)((0x1800 - s_Unknown_0060498a) >> 2);
+
+        UiWin.EmitViewportRect(otBase, &cursor);
+
+        for (int i = frames; i != 0; i--)
+        {
+            int place = (i + s_CardCursorSlot_00604984) % frames;
+            int angle = (int)(0x1000 / frames) * place - s_CardIconAngle_00604988;
+
+            int sin = (int)Winsys3d.GetSinTableEntry(angle);
+            *(short*)(sprite + 8) = (short)((sin * s_Unknown_0060498a >> 0x14) + 0xa2);
+
+            int cos = Winsys3d.GetCosTableEntry(angle);
+            s_RowSpriteRecord_00563148[0] = (byte)(place << 4);
+            short y = (short)(100 - (cos * s_Unknown_0060498a >> 0x14));
+            *(short*)(sprite + 0x0a) = y;
+
+            s_RowSpriteRecord_00563148[1] =
+                (byte)((((s_FadeCounter_005e9960 >> 2) % s_CardIconFrameCount_0060498c[place]) + 2) * 0x10);
+
+            if (i == frames)
+            {
+                // Celle de devant : decalee, teintee, et emise par la primitive longue.
+                *(short*)(sprite + 8) += 8;
+                *(short*)(sprite + 0x0a) = (short)(y + 8);
+
+                int beat = (int)Winsys3d.GetSinTableEntry((int)((s_FadeCounter_005e9960 & 7) << 9));
+                *(short*)(sprite + 0x0c) = (short)((beat >> 2) + 0x1400);
+                *(short*)(sprite + 0x0e) = *(short*)(sprite + 0x0c);
+                *(uint*)(sprite + 4) = s_Unknown_005e9814;
+
+                cursor = Prims.DrawSpritePrimitive(otBase, cursor, (int*)sprite, 0, (uint)place);
+            }
+            else
+            {
+                cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 3, (uint)place);
+            }
+        }
+
+        cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+        UiWin.EmitClipRect(otBase, &cursor);
+
+        return cursor;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>LAB_0052f568</c> — <b>la queue commune de la page 5</b> : le curseur du petit
+    /// menu, les deux libelles « Sauvegarde » et « Quitter », puis la rangee des portraits du
+    /// groupe avec leur nom.
+    ///
+    /// <para><b>« Sauvegarde » est grisee</b> (<c>0x808080</c> au lieu de <c>0x1000000</c>) tant que
+    /// le bit 3 de <c>DAT_005de02c</c> manque — le meme bit qui fait refuser la validation plus
+    /// haut. Les deux chaines viennent du binaire et non de la ressource : elles sont ecrites en
+    /// dur a <c>0x0056ac20</c> et <c>0x00566b64</c>.</para>
+    /// </summary>
+    private static uint* DrawSavePageChrome(uint* otBase, uint* cursor, byte* slot)
+    {
+        byte* sprite = s_MenuSprite_005de5f8;
+        *(uint*)(sprite + 4) = 0x1000000;
+
+        if (s_Unknown_005de710 < 0)
+        {
+            *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
+            *(ushort*)(sprite + 0x10) = 0x18;
+            *(short*)(sprite + 8) = 0x4c;
+            *(short*)(sprite + 0x0a) = (short)(s_Unknown_005de6fc * 0xc + 0x28);
+
+            UiWin.EmitViewportRect(otBase, &cursor);
+            cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            UiWin.EmitClipRect(otBase, &cursor);
+        }
+
+        *(byte**)sprite = (byte*)s_GlyphAtlas_00566c28;
+        *(short*)(sprite + 8) = 0x5c;
+        *(short*)(sprite + 0x0a) = 0x2c;
+
+        if ((Mem.s_WorldFlags_005de02c & 8) == 0) *(uint*)(sprite + 4) = 0x808080;
+
+        cursor = Prims.DrawTextRun(
+            otBase, cursor, (int*)sprite, s_Sauvegarde_0056ac20, 0, 0, -1);
+
+        *(short*)(sprite + 0x0a) += 0x0c;
+        *(uint*)(sprite + 4) = 0x1000000;
+        cursor = Prims.DrawTextRun(
+            otBase, cursor, (int*)sprite, s_InventoryLabels_00566b58[2], 0, 0, -1);
+
+        // ---- la rangee des membres ----------------------------------------------------------
+        byte* seat = Inp.s_SlotFlags_005e93c0 + 4;              // Ghidra: &DAT_005e93c4
+        byte* character = GetMainMemPtr() + 0xf0100;
+
+        for (int index = 0; index < s_PartySize_005e9020;
+             index++, seat += 0x9c, character += 0x2000)
+        {
+            int row = seat[4] * 0x14 + 0x4c;
+
+            UiWin.EmitViewportRect(otBase, &cursor);
+
+            if (index == s_Unknown_005de6f8 && s_Unknown_005de710 == 0)
+            {
+                if (s_Unknown_005de70c < 0)
+                {
+                    *(byte**)sprite = *(byte**)*(byte**)(Mem.s_MainResourceBuffer_005e97c0 + 0x94);
+                    *(ushort*)(sprite + 0x10) = 0x18;
+                    *(short*)(sprite + 8) = 0x15;
+                    *(short*)(sprite + 0x0a) = (short)row;
+                    cursor = Prims.DrawSpriteVariant(otBase, cursor, (int*)sprite, 0, 0);
+                    cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+                }
+
+                *(uint*)(sprite + 4) = s_Unknown_005e9814;
+            }
+            else
+            {
+                *(uint*)(sprite + 4) = 0x1000000;
+            }
+
+            byte* portraitAtlas =
+                *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 4);
+            *(byte**)sprite = portraitAtlas;
+            portraitAtlas[5] = 0;
+            *(ushort*)(sprite + 0x10) = (ushort)(*seat + 4);
+            *(short*)(sprite + 8) = 0x20;
+            *(short*)(sprite + 0x0a) = (short)row;
+
+            cursor = Prims.DrawSpriteVariant(
+                otBase, cursor, (int*)sprite, 0, character[0xbd]);
+            cursor = Prims.DrawFlatPrimitive(otBase, cursor, (int*)sprite);
+            UiWin.EmitClipRect(otBase, &cursor);
+
+            *(short*)(sprite + 8) += 0x14;
+            *(short*)(sprite + 0x0a) += 4;
+            *(byte**)sprite = (byte*)s_GlyphAtlas_00566c28;
+            cursor = Prims.DrawTextRunAlias(otBase, cursor, (int*)sprite, character, 0, 0, 8);
+        }
+
+        return cursor;
+    }
+
+    /// <summary>L'etiquette qu'un repere pose maintenant porterait : <c>DAT_00566c84</c> en octet
+    /// haut, <c>DAT_00566c88</c> au milieu, la zone courante en octet bas. Le binaire la recalcule
+    /// aux deux endroits ou elle sert.</summary>
+    private static uint CurrentMarkerTag()
+        => ((uint)s_Unknown_00566c84 << 16) | ((uint)s_Unknown_00566c88 << 8)
+           | (uint)*Mem.Camera(0x005de058);
+
     // =====================================================================================
     // LES DONNEES DU MENU
     // =====================================================================================
@@ -1715,6 +3601,150 @@ public static unsafe partial class Blaze
         => s_MenuSpriteStorage != null
             ? s_MenuSpriteStorage
             : (s_MenuSpriteStorage = (byte*)NativeMemory.AllocZeroed(0x14));
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005de6a8</c> — <b>rang affiche vers numero d'objet de quete</b>,
+    /// trente-deux octets. La page « Objets » le remplit en dessinant sa liste, et s'en ressert
+    /// immediatement pour retrouver la description de l'entree visee : sans lui,
+    /// <c>DAT_005de6fc</c> (un rang dans la liste courte) ne dirait rien du bit qu'il represente.
+    ///
+    /// <para>Le voisin du dessous est <c>s_ItemMessageScratch_005de620</c>, qui finit a
+    /// <c>0x005de6a0</c> — huit octets d'ecart, verifies ; celui du dessus est
+    /// <see cref="s_MenuPage_005de6f0"/>, a <c>0x005de6f0</c>, donc quarante de marge apres la fin
+    /// de cette table.</para>
+    /// </summary>
+    private static byte* s_KeyItemIndexStorage;
+    private static byte* s_KeyItemIndex_005de6a8
+        => s_KeyItemIndexStorage != null
+            ? s_KeyItemIndexStorage
+            : (s_KeyItemIndexStorage = (byte*)NativeMemory.AllocZeroed(0x20));
+
+    /// <summary>Ghidra: <c>DAT_005de618</c> — le curseur de la page 4 sur la table de reperes. Il
+    /// vit en memoire et non dans un registre : le binaire le relit apres chaque appel de dessin
+    /// (<c>mov ebp,[5DE618h]</c>), les appelees pouvant ecrire la meme zone.</summary>
+    private static short* s_MarkerCursor_005de618;
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005de6c8</c> — <b>le bloc de placement du modele de la page 4</b>, 0x20
+    /// octets. Meme forme que le cadre de pile de la rose des vents : trois entiers de position,
+    /// deux d'echelle, un mot de reserve, deux <c>short</c> puis l'etiquette.
+    ///
+    /// <para>Il commence exactement ou <see cref="s_KeyItemIndex_005de6a8"/> finit
+    /// (<c>0x005de6a8 + 0x20</c>) et s'arrete a <c>0x005de6e8</c>, huit octets sous
+    /// <see cref="s_MenuPage_005de6f0"/> : les deux bornes se referment sur des symboles connus.
+    /// </para>
+    /// </summary>
+    private static byte* s_MapModelBlockStorage;
+    private static byte* s_MapModelBlock_005de6c8
+        => s_MapModelBlockStorage != null
+            ? s_MapModelBlockStorage
+            : (s_MapModelBlockStorage = (byte*)NativeMemory.AllocZeroed(0x20));
+
+    // =====================================================================================
+    // LES VERROUS ET LES DONNEES DE LA PAGE 5
+    // =====================================================================================
+
+    /// <summary>Ghidra: <c>DAT_005de700</c> — le curseur d'emplacement de carte de la page 5. Il
+    /// est initialise depuis l'octet <c>+0x2bc</c> du personnage choisi, c'est-a-dire le dernier
+    /// emplacement ou ce personnage a ete sauve.</summary>
+    private static int s_CardSlotCursor_005de700;
+
+    /// <summary>Ghidra: <c>DAT_005de6f4</c> — la configuration d'emplacements de carte, 0 a 3
+    /// selon les deux multitaps detectes. Elle indexe les deux tables paralleles de
+    /// <c>0x0056a9a8</c> et <c>0x0056a9e0</c>.</summary>
+    private static int s_Unknown_005de6f4;
+
+    /// <summary>Ghidra: <c>DAT_005de714</c> / <c>DAT_005de71c</c> / <c>DAT_005de720</c> /
+    /// <c>DAT_005de724</c> — les quatre verrous de la page 5 : l'emplacement de carte retenu,
+    /// l'etat de la machine a etats, sa valeur de l'image precedente, et le battement d'une image
+    /// qui laisse la boite de dialogue s'afficher avant que l'etat n'agisse.</summary>
+    private static int s_Unknown_005de714, s_Unknown_005de71c;
+    private static int s_Unknown_005de720, s_Unknown_005de724;
+
+    /// <summary>Ghidra: <c>_DAT_005de610</c>..<c>_DAT_005de616</c> — le rectangle VRAM de la
+    /// capture de palette, quatre <c>short</c>. Il occupe le trou entre
+    /// <see cref="s_MenuSprite_005de5f8"/>, qui finit a <c>0x005de60c</c>, et
+    /// <see cref="s_MarkerCursor_005de618"/>.</summary>
+    private static byte* s_IconRectStorage;
+    private static byte* s_IconRect_005de610
+        => s_IconRectStorage != null
+            ? s_IconRectStorage
+            : (s_IconRectStorage = (byte*)NativeMemory.AllocZeroed(8));
+
+    /// <summary>Ghidra: <c>DAT_005e8edc</c> / <c>DAT_005e8ee0</c> — le mode de sondage du port de
+    /// carte (0 aucun, 1 simple, 2 avec attente) et le dernier verdict rendu. Voisins immediats de
+    /// <c>s_Unknown_005e8ed8</c> et <c>s_Unknown_005e8eda</c>, la position de la carte du
+    /// monde.</summary>
+    private static int s_Unknown_005e8edc, s_Unknown_005e8ee0;
+
+    /// <summary>
+    /// Ghidra: <c>&amp;PTR_DAT_0056a9a8</c> — <b>l'identifiant de port de chaque emplacement</b>,
+    /// une rangee par configuration de multitap. Les quatre rangees vivent en
+    /// <c>0x0056a98c</c>..<c>0x0056a9a8</c>, contigues, et la table de pointeurs les suit.
+    ///
+    /// <para>Deux emplacements sans multitap (les deux ports), cinq avec un seul, huit avec les
+    /// deux. Le premier octet de chaque rangee est <c>0</c> : le port 1 est toujours la.</para>
+    /// </summary>
+    private static readonly byte[][] s_CardPortIds_0056a9a8 =
+    [
+        [0x00, 0x04],                                        // 0x0056a98c
+        [0x00, 0x01, 0x02, 0x03, 0x04],                       // 0x0056a990
+        [0x00, 0x04, 0x05, 0x06, 0x07],                       // 0x0056a998
+        [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07],     // 0x0056a9a0
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;PTR_DAT_0056a9e0</c> — <b>le compte d'emplacements et leurs positions</b>,
+    /// une rangee par configuration. Le premier octet est le compte, les suivants indexent
+    /// <see cref="s_CardSlotPositions_0056a9f0"/>. Rangees en
+    /// <c>0x0056a9b8</c>..<c>0x0056a9e0</c>.
+    /// </summary>
+    private static readonly byte*[] s_CardSlotLayouts_0056a9e0 =
+    [
+        AllocBytes([0x02, 0x00, 0x01]),
+        AllocBytes([0x05, 0x02, 0x03, 0x04, 0x05, 0x01]),
+        AllocBytes([0x05, 0x00, 0x06, 0x07, 0x08, 0x09]),
+        AllocBytes([0x08, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09]),
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0056a9f0</c> — <b>les dix positions d'emplacement de carte</b>, deux
+    /// <c>short</c> chacune, relatives a <c>(0x8c, 0x48)</c>. Les deux premieres sont les ports
+    /// sans multitap ; les huit suivantes les deux colonnes de quatre qu'un multitap ajoute.
+    ///
+    /// <para>La plage se referme des deux cotes : <c>0x0056a9e0</c> en dessous est la table de
+    /// pointeurs ci-dessus, et <c>0x0056aa18</c> au-dessus est
+    /// <see cref="s_ConfigRowOffsets_0056aa18"/>, deja relevee pour l'onglet 5. Dix entrees de
+    /// quatre octets tombent exactement entre les deux.</para>
+    /// </summary>
+    private static readonly short[] s_CardSlotPositions_0056a9f0 =
+    [
+         0x0011, 0x002c,
+         0x001c, 0x002c,
+        -0x0011, 0x0043,
+        -0x000a, 0x0049,
+         0x0004, 0x0049,
+         0x000b, 0x0043,
+         0x0023, 0x0043,
+         0x002a, 0x0049,
+         0x0038, 0x0049,
+         0x003f, 0x0043,
+    ];
+
+    /// <summary>Ghidra: <c>DAT_0056ac2c</c> — le mot sentinelle qui marque la fin du titre d'un
+    /// fichier de sauvegarde. Quatre octets entre la chaine « Sauvegarde » et les flux
+    /// d'etiquettes de <c>0x0056ac30</c>, dont seul le mot bas est lu.</summary>
+    private const ushort s_TitleSentinel_0056ac2c = 0x6b82;
+
+    /// <summary>Ghidra: <c>s_Sauvegarde_0056ac20</c> — la chaine ecrite en dur dans le binaire,
+    /// juste au-dessus des six etiquettes de l'onglet 5.</summary>
+    private static byte* s_SauvegardeStorage;
+    private static byte* s_Sauvegarde_0056ac20
+        => s_SauvegardeStorage != null
+            ? s_SauvegardeStorage
+            : (s_SauvegardeStorage = AllocBytes([
+                0x53, 0x61, 0x75, 0x76, 0x65, 0x67, 0x61, 0x72, 0x64, 0x65, 0x00, 0x00,
+            ]));
 
     /// <summary>
     /// Ghidra: <c>&amp;DAT_00568530</c> et ses trois voisins — <b>les quatre descripteurs
@@ -1946,4 +3976,94 @@ public static unsafe partial class Blaze
         0x3f, 0x3f, 0x3f, 0x3f,   // "????"
         0x00, 0x00, 0x00, 0x00,
     ]);
+
+    // =====================================================================================
+    // LES DONNEES DE L'ONGLET 5
+    //
+    // Elles occupent 0x0056aa18..0x0056aa9f, juste sous la table des reactions par classe
+    // (0x0056aaa0, dans WorldMapTick.cs) — la plage se referme donc par le haut. Par le bas,
+    // 0x0056aa00..0x0056aa17 est nul dans le binaire. Aucune des trois n'est indexee au-dela
+    // de sa propre fin : trois octets pour la premiere, vingt-quatre entrees de quatre pour la
+    // deuxieme, et la troisieme n'est atteinte que par des indices 0..3 pris dans la deuxieme.
+    // =====================================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0056aa18</c> — le decalage horizontal des trois cadres de
+    /// rangee, ajoute a <c>0x60</c>. Quatre octets releves, trois lus.</summary>
+    private static readonly byte[] s_ConfigRowOffsets_0056aa18 = [0x04, 0x00, 0x08, 0x04];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0056aa38</c> — <b>les vingt-quatre permutations de quatre boutons</b>,
+    /// quatre octets chacune. C'est la table du <c>case 3</c> inatteignable : chaque octet indexe
+    /// <see cref="s_ButtonMasks_0056aa98"/>. Les vingt-quatre lignes sont exactement les vingt-quatre
+    /// arrangements de {0,1,2,3}, ce qui confirme la borne <c>0x17</c> du code sans avoir a la
+    /// deviner.
+    /// </summary>
+    private static readonly byte[] s_ButtonOrder_0056aa38 =
+    [
+        0x03, 0x02, 0x01, 0x00,   0x03, 0x02, 0x00, 0x01,
+        0x03, 0x01, 0x02, 0x00,   0x03, 0x01, 0x00, 0x02,
+        0x03, 0x00, 0x02, 0x01,   0x03, 0x00, 0x01, 0x02,
+        0x02, 0x03, 0x01, 0x00,   0x02, 0x03, 0x00, 0x01,
+        0x02, 0x01, 0x03, 0x00,   0x02, 0x01, 0x00, 0x03,
+        0x02, 0x00, 0x03, 0x01,   0x02, 0x00, 0x01, 0x03,
+        0x01, 0x03, 0x02, 0x00,   0x01, 0x03, 0x00, 0x02,
+        0x01, 0x02, 0x03, 0x00,   0x01, 0x02, 0x00, 0x03,
+        0x01, 0x00, 0x03, 0x02,   0x01, 0x00, 0x02, 0x03,
+        0x00, 0x03, 0x02, 0x01,   0x00, 0x03, 0x01, 0x02,
+        0x00, 0x02, 0x03, 0x01,   0x00, 0x02, 0x01, 0x03,
+        0x00, 0x01, 0x03, 0x02,   0x00, 0x01, 0x02, 0x03,
+    ];
+
+    /// <summary>Ghidra: <c>&amp;DAT_0056aa98</c> — les quatre masques de bouton d'action, quatre
+    /// mots de seize bits. Ce sont les bits que le <c>case 3</c> range dans le personnage.</summary>
+    private static readonly ushort[] s_ButtonMasks_0056aa98 = [0x1000, 0x2000, 0x4000, 0x8000];
+
+    /// <summary>
+    /// Ghidra: <c>0x0056abe8</c>..<c>0x0056ac20</c> — <b>les six etiquettes de l'onglet 5</b>,
+    /// cp1252, relevees d'un bloc parce que les deux tables de pointeurs ci-dessous y pointent
+    /// toutes les deux. Dans l'ordre : « Désactivé », « &#160;&#160;&#160;Activé », « Type D »,
+    /// « Type C », « Type B », « Type A ».
+    ///
+    /// <para>La borne basse est <see cref="s_ItemSprites_0056aae0"/>, qui s'arrete precisement la ;
+    /// la borne haute est <c>0x0056ac20</c>, ou commence « Sauvegar… ».</para>
+    /// </summary>
+    private static byte* s_ConfigStringsStorage;
+    private static byte* s_ConfigStrings_0056abe8
+        => s_ConfigStringsStorage != null
+            ? s_ConfigStringsStorage
+            : (s_ConfigStringsStorage = AllocBytes([
+                0x44, 0xe9, 0x73, 0x61, 0x63, 0x74, 0x69, 0x76, 0xe9, 0x00, 0x00, 0x00,  // "Désactivé"
+                0x20, 0x20, 0x20, 0x41, 0x63, 0x74, 0x69, 0x76, 0xe9, 0x00, 0x00, 0x00,  // "   Activé"
+                0x54, 0x79, 0x70, 0x65, 0x20, 0x44, 0x00, 0x00,                          // "Type D"
+                0x54, 0x79, 0x70, 0x65, 0x20, 0x43, 0x00, 0x00,                          // "Type C"
+                0x54, 0x79, 0x70, 0x65, 0x20, 0x42, 0x00, 0x00,                          // "Type B"
+                0x54, 0x79, 0x70, 0x65, 0x20, 0x41, 0x00, 0x00,                          // "Type A"
+            ]));
+
+    /// <summary>Ghidra: <c>&amp;PTR_s_Type_A_0056aa20</c> — les quatre noms de type de manette,
+    /// dans l'ordre A, B, C, D. Le quatrieme n'est jamais indexe : le code borne le choix a 2.
+    /// </summary>
+    private static byte** s_ControllerTypeNamesStorage;
+    private static byte** s_ControllerTypeNames_0056aa20
+        => s_ControllerTypeNamesStorage != null
+            ? s_ControllerTypeNamesStorage
+            : (s_ControllerTypeNamesStorage = BuildConfigLabelTable(0x30, 0x28, 0x20, 0x18));
+
+    /// <summary>Ghidra: <c>&amp;PTR_DAT_0056aa30</c> — le couple d'etiquettes des deux bascules :
+    /// l'indice 0 est « &#160;&#160;&#160;Activé », l'indice 1 « Désactivé ».</summary>
+    private static byte** s_ToggleNamesStorage;
+    private static byte** s_ToggleNames_0056aa30
+        => s_ToggleNamesStorage != null
+            ? s_ToggleNamesStorage
+            : (s_ToggleNamesStorage = BuildConfigLabelTable(0x0c, 0x00));
+
+    /// <summary>Une table de pointeurs du binaire, refaite sur les etiquettes reconstruites : les
+    /// adresses de 1998 ne survivent pas, les decalages dans le bloc si.</summary>
+    private static byte** BuildConfigLabelTable(params int[] offsets)
+    {
+        byte* block = s_ConfigStrings_0056abe8;
+        byte** table = (byte**)NativeMemory.Alloc((nuint)offsets.Length * (nuint)sizeof(byte*));
+        for (int i = 0; i < offsets.Length; i++) table[i] = block + offsets[i];
+        return table;
+    }
 }

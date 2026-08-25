@@ -172,10 +172,18 @@ public static unsafe partial class Blaze
     // état « chargement de carte en cours », mais pas confirmé par la lecture d'un seul site.
     private static int s_Unknown_00604960;
 
-    // Ghidra: DAT_0060498a — remis à zéro à l'entrée du dialogue de carte mémoire de la phase 0xd
-    // du sous-écran « Invertaire ». TODO(REVERSE) : aucun lecteur trouvé dans Blaze.c ; le rôle
-    // reste à établir, seule l'écriture est attestée.
-    private static byte s_Unknown_0060498a;
+    // Ghidra: _DAT_00604988 — **deux shorts contigus**, la pose de l'icône de carte qui tourne.
+    // `DAT_00604988` est l'angle, `DAT_0060498a` le rayon ; le binaire les écrit ensemble par un
+    // `CONCAT22` et les lit séparément.
+    //
+    // **Élargi le 2026-08-25, à la page 5 du menu de jeu.** Ce champ était déclaré `byte` ici avec
+    // la note « aucun lecteur trouvé dans Blaze.c ; le rôle reste à établir ». Le lecteur existe :
+    // c'est le bloc d'icône animée de `FUN_0052a850` (Blaze.c 77593..77632), qui lit les deux
+    // moitiés **en seize bits** et amortit le rayon vers 0x1800. Un `byte` isolé perdait à la fois
+    // l'octet haut et le voisinage.
+    private static readonly byte* s_CardIconSpin_00604988 = (byte*)NativeMemory.AllocZeroed(4);
+    private static ref short s_CardIconAngle_00604988 => ref *(short*)s_CardIconSpin_00604988;
+    private static ref short s_Unknown_0060498a => ref *(short*)(s_CardIconSpin_00604988 + 2);
 
     // Ghidra: &DAT_0060498c — un octet par entrée de répertoire (jusqu'à 0x20).
     //

@@ -34,7 +34,7 @@ param(
     [string[]]$Trace = @(),
 
     # Touches a jouer une fois l'ecran atteint, dans l'ordre. Jetons reconnus :
-    # ENTER ESC UP DOWN LEFT RIGHT, et WAIT<n> pour patienter n secondes.
+    # ENTER ESC UP DOWN LEFT RIGHT PGUP PGDN, et WAIT<n> pour patienter n secondes.
     # Exemple : -Then DOWN,WAIT2,ENTER
     [string[]]$Then = @(),
 
@@ -62,7 +62,7 @@ param(
     # navigation du menu et sa validation. Sert aux conditions que le jeu lit sur l'etat *tenu* a un
     # instant precoce -- typiquement SELECT a l'entree de l'etat de jeu 1, que la sequence -Then ne
     # peut pas atteindre puisqu'elle ne demarre qu'apres la validation.
-    # Jetons : SELECT START LCTRL LALT ENTER ESC UP DOWN LEFT RIGHT
+    # Jetons : SELECT START LCTRL LALT ENTER ESC UP DOWN LEFT RIGHT PGUP PGDN
     [string]$Hold = ''
 )
 
@@ -399,7 +399,8 @@ if ($p.HasExited) {
                         $act = $Matches[1]; $key = $Matches[2].ToUpper()
                         $map = @{ 'START'=@(0x3C,$false); 'SELECT'=@(0x3B,$false); 'LCTRL'=@(0x1D,$false);
                                   'LALT'=@(0x38,$false);  'ENTER'=@(0x1C,$false); 'ESC'=@(0x01,$false);
-                                  'UP'=@(0x48,$true); 'DOWN'=@(0x50,$true); 'LEFT'=@(0x4B,$true); 'RIGHT'=@(0x4D,$true) }
+                                  'UP'=@(0x48,$true); 'DOWN'=@(0x50,$true); 'LEFT'=@(0x4B,$true); 'RIGHT'=@(0x4D,$true);
+                                  'PGUP'=@(0x49,$true); 'PGDN'=@(0x51,$true) }
                         if (-not $map.ContainsKey($key)) { Write-Host "!! jeton inconnu : $k"; continue }
                         $sc = [uint16]$map[$key][0]; $ex = [bool]$map[$key][1]
                         if ($act -eq 'HOLD') { [PlayTestInput]::Hold($sc, $ex) } else { [PlayTestInput]::Free($sc, $ex) }
@@ -440,6 +441,14 @@ if ($p.HasExited) {
                         'START'  { [PlayTestInput]::Tap(0x3C, $false, 400) }
                         'SELECT' { [PlayTestInput]::Tap(0x3B, $false, 400) }
                         'LALT'   { [PlayTestInput]::Tap(0x38, $false, 400) }
+                        # Les deux gachettes hautes, ajoutees pour changer de page dans le menu de
+                        # jeu (FUN_0052a850 lit 0x0400 pour reculer et 0x0800 pour avancer). Leur
+                        # liaison secondaire par defaut est PageDown (DIK 0xd1) pour L1 et PageUp
+                        # (DIK 0xc9) pour R1 -- donc PGUP avance d'une page et PGDN recule, ce qui
+                        # est l'inverse de ce que les noms suggerent. Envoyees comme les fleches :
+                        # le scancode de base avec le drapeau etendu.
+                        'PGUP'   { [PlayTestInput]::Tap(0x49, $true,  400) }
+                        'PGDN'   { [PlayTestInput]::Tap(0x51, $true,  400) }
                         default { Write-Host "!! jeton inconnu : $k"; continue }
                     }
                     Write-Host "   -> $k"
