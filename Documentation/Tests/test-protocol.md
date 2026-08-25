@@ -1037,3 +1037,89 @@ tel trajet **n'établit rien** sur la pièce visée.
 Quand une correction ne se vérifie qu'en jouant : la finir, la documenter, **dire franchement
 qu'elle n'est pas exercée**, et demander à Vincent de refaire le trajet. Ne pas essayer de le
 rejouer au clavier.
+
+---
+
+## Ouvrir le menu de jeu : **l'agent peut le faire** (2026-08-25)
+
+**F2 est le jeton `START` de ce script** — action 11 de la section `[Controls]` d'`OpenForesia.cfg`,
+scancode `0x3C`. Il n'y a rien a ajouter au script.
+
+Et surtout : **le menu s'ouvre sur place, sans conduire le personnage.** Il ne tombe donc pas dans
+le partage du 2026-08-24 — c'est un test que l'agent execute lui-meme, comme un ecran atteint depuis
+le menu principal.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT3,`
+START,WAIT8
+```
+
+Les quatre `ENTER` puis `ESC` referment la boite de dialogue de la reception — elle est modale et
+gele le monde, donc le `START` final ne serait pas vu autrement. Le `START` du debut, lui, est celui
+qui lance la partie depuis le menu principal : le meme jeton sert aux deux, a deux instants
+differents.
+
+**Ce que cela debloque** : les six pages du menu (`FUN_0052a850`) et leurs sous-onglets se
+verifient a l'ecran par l'agent, une par une. C'est le premier gros morceau de reconstruction depuis
+la carte du monde dont l'oracle soit a portee sans deplacement.
+
+### Ce qu'on voit aujourd'hui
+
+La charpente du menu tourne — navigation entre pages, fermeture, cadrage — et la page demandee leve
+en se nommant. Un `PLANTAGE` dont le message dit `FUN_0052a850, page N` est donc le comportement
+attendu tant que les corps de page ne sont pas transcrits, **pas** une regression.
+
+### Ce qu'on voit depuis le 2026-08-25 (suite)
+
+La **fiche de personnage** s'affiche : portrait, nom, classe, élément, niveau, or, PV/PM, les sept
+caractéristiques, les quatre résistances, l'expérience. Trois sequences, trois verdicts attendus :
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `START,WAIT10` | aucun plantage, ~509 primitives par image, la fiche est a l'ecran |
+| `START,WAIT4,RIGHT,WAIT6` | `PLANTAGE : … page 0, onglet 1` — c'est le selecteur d'onglets qui marche |
+| `START,WAIT5,START,WAIT8` | aucun plantage, le menu se referme, le monde reprend a ~1105 |
+
+**Un `PLANTAGE` dont le message nomme une page ou un onglet est le comportement attendu**, pas une
+regression. Ce qui serait une regression : un `0xC0000005`, un debit nul, ou un message nommant
+autre chose.
+
+### Le fond du menu n'est pas dessine par le menu
+
+La branche courte **ne redessine pas le monde** : ce qu'on voit derriere les panneaux est l'image
+precedente restee dans le tampon, et elle apparait teintee. Ne pas le lire comme un defaut de
+rendu du menu — et ne pas conclure non plus que c'est juste. **La fidelite de cette teinte contre le
+jeu de 1998 n'est pas verifiee**, et elle demande le jeu d'origine : c'est un test pour Vincent.
+
+### L'inventaire, depuis le 2026-08-25 (suite)
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `START,WAIT4,RIGHT,WAIT8` | aucun plantage, ~498 primitives par image, la grille d'objets et la fiche de l'objet vise |
+| `START,WAIT4,RIGHT,WAIT4,ENTER,WAIT4,RIGHT,WAIT8` | aucun plantage, ~499 — le curseur entre dans la grille et se deplace, la fiche suit |
+
+**Les deux mouvements ne se pilotent pas par le meme mot de manette.** Le changement d'onglet lit
+`pad[1]` (le mot a `+2`), le deplacement dans la grille lit `pad[3]` (celui a `+6`). Un `RIGHT`
+n'agit donc pas au meme endroit selon qu'on a valide ou non — c'est le comportement de l'original,
+et c'est ce qui rend la seconde sequence lisible : le premier `RIGHT` change d'onglet, `ENTER` entre
+dans la grille, le second `RIGHT` y deplace le curseur.
+
+### L'equipement, depuis le 2026-08-25 (suite)
+
+| Fin de `-Then` | Verdict attendu |
+|---|---|
+| `RIGHT,WAIT3,RIGHT,WAIT8` | ~470 primitives par image — les cinq rangees d'equipement |
+| `RIGHT,RIGHT,ENTER,WAIT3,DOWN,WAIT3,ENTER,WAIT8` | ~498 — la grille s'ouvre sur « Choisis ce que tu aimerais echanger. » |
+| `RIGHT,RIGHT,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT8` | ~471 — l'epee est **retiree**, la rangee repasse a « ­ARME­ » |
+
+### Compter les `RIGHT` : la classe decide, pas la position
+
+**Le personnage de depart (Guerrier) n'a que quatre onglets — 0, 1, 2 et 5.** Un troisieme `RIGHT`
+depuis l'onglet 0 ne mene donc PAS a l'onglet 3 : il mene au **5**. Mesure le 2026-08-25, et
+conforme a ce que `s_ClassTabs_0056a898` annonce.
+
+Consequence pratique : **les onglets 3 et 4 ne sont pas atteignables avec ce personnage.** Il faut
+une autre classe — la ligne 1, 3, 5 ou 7 de la table pour le 3, la ligne 4 pour le 4. Avant de
+compter des `RIGHT`, lire la ligne de la classe dans `s_ClassTabs_0056a898`
+(`Screens/State03/WorldMapMenu.cs`).

@@ -39,7 +39,57 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-# DEMAIN : la suite des 121 corps décompilés
+# DEMAIN : le menu de jeu, l'onglet 3 puis les autres
+
+**Les trois premiers onglets de la fiche marchent.** Statistiques, inventaire, équipement — avec
+l'échange qui fonctionne pour de bon : valider un objet déjà porté le retire, et le total est
+recalculé. Le menu s'ouvre, change d'onglet, entre dans les grilles, déplace ses curseurs et se
+referme.
+
+**Le menu n'a plus aucune dépendance manquante** : ses quarante-trois appelées sont transcrites.
+
+**L'agent vérifie tout ça lui-même** — le menu s'ouvre sur place, sans conduire le personnage. Voir
+`test-protocol.md`.
+
+```powershell
+# fiche → inventaire → équipement → choisir un emplacement → échanger
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 55 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT3,`
+START,WAIT4,RIGHT,WAIT3,RIGHT,WAIT3,ENTER,WAIT3,ENTER,WAIT3,ENTER,WAIT8
+```
+
+## L'ordre à suivre
+
+1. **L'onglet 5** — `Blaze.c` 76446..76571, 126 l. C'est le prochain **atteignable avec le
+   personnage de départ**, et c'est mesuré, pas supposé : un troisième `RIGHT` depuis l'onglet 0
+   lève « onglet 5 ». Le Guerrier n'a que quatre onglets — 0, 1, 2 et 5 — ce que
+   `s_ClassTabs_0056a898` annonçait et que le jeu confirme.
+2. **Les onglets 3 et 4** (217 et 105 l.) demandent une **autre classe** : la ligne 1, 3, 5 ou 7 de
+   la table pour le 3, la ligne 4 pour le 4. Il faut donc composer un groupe autrement, ou attendre
+   qu'un personnage d'une autre classe rejoigne — à voir avec Vincent.
+3. Les pages 1 à 5 (98, 25, 136, 227 et 638 l.). La page 5 est la sauvegarde ; elle appelle les
+   quatre corps de carte mémoire, déjà transcrits.
+
+Les tableaux de découpage sont dans `REVERSE_STATUS.md`, section du 2026-08-25 (suite 2) ;
+l'épilogue partagé dans la suite 3, l'inventaire dans la suite 4, l'équipement dans la suite 5.
+
+## Ce qui reste à savoir
+
+* **La fidélité du rendu n'est pas vérifiée.** Les captures sont cohérentes et lisibles, mais aucune
+  image de référence ne leur a été comparée. Le fond notamment est l'image précédente restée dans le
+  tampon — la branche courte ne redessine pas le monde — et il apparaît teinté. **C'est un test pour
+  Vincent.**
+* **Un recouvrement latent, relevé et non corrigé** : `DAT_005de0c8` (le tampon de nom d'objet) finit
+  à `0x005de109` et mord de neuf octets sur `s_ItemMenuArena_005de100`. La divergence ne se voit
+  qu'avec un nom de 63 caractères, ce qu'aucun nom du jeu n'atteint. Même TODO(REVERSE) que dans
+  `Engine/UiWindow.cs`.
+* `FUN_0051aa30` (598 l.), l'autre moitié de la branche courte : la surimpression de mise au point.
+  Atteinte seulement avec le verrou `DAT_005633a8` à 0 **et** le bit 1 de `DAT_005de02c`, donc hors
+  du chemin du joueur. À faire en dernier.
+
+---
+
+# DEMAIN AUSSI : la suite des 121 corps décompilés
 
 `FUN_00445860` — le premier de la liste, celui que le TODO de la veille désignait — est fait. Il
 reste **120 transcriptions ordinaires** et 152 désassemblages sur les trois tables statiques.
@@ -83,6 +133,15 @@ ne démontre qu'il soit atteint — à faire quand un plantage le nommera, comme
 * `FUN_00445860`, l'afficheur d'énoncé — entrée `0x9d` de la table de `FUN_0047acf0`.
 * `s_EntityParams_00551640` semée depuis le binaire : ses 0x200 octets ne sont **pas** nuls au
   chargement, et deux flux d'étiquettes inédits y dormaient (« 開かない！？ », « 遠くで音がした。 »).
+* La **branche courte d'affichage** de `FUN_00516fc0` — le dernier trou de la boucle par image.
+* **Le menu de jeu**, dans le nouveau `Screens/State03/WorldMapMenu.cs` : `FUN_0052a7d0`, le
+  prologue et l'épilogue partagé de `FUN_0052a850`, la page 0 et ses onglets 0 (statistiques), 1
+  (inventaire) et 2 (équipement). Plus les quatre appelées qui manquaient — `FUN_0052fab0`,
+  `FUN_0051bd50`, `FUN_0052fba0`, `FUN_0052fdc0` : **le menu n'a plus aucune dépendance**.
+* Les blocs de données du menu relevés depuis le binaire : la rangée de quatre descripteurs
+  `0x00568530`, les trente-trois cellules de sprite `0x0056aae0`, les six flux d'étiquettes de
+  `0x0056ac30`, les tables d'onglets et d'ordre, les trois listes de décorations et les deux chaînes
+  d'objet non identifié.
 * `Documentation/Etat/NOTE_DEVELOPPEUR.md` — nouveau, à la demande de Vincent : le registre des
   traces humaines restées dans le binaire. Six entrées pour commencer. **Y ajouter une entrée quand
   on en croise une.**

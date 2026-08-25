@@ -6,6 +6,33 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- feat : **l'équipement marche** — onglet 2 de la fiche : les cinq rangées avec leurs pictogrammes et leurs noms, le choix d'un emplacement, l'ouverture de la grille, et l'échange lui-même (valider un objet déjà porté le retire)
+- feat : les six flux d'étiquettes de `0x0056ac30` relevés — quatre octets chacun, pris **à l'envers** par la boucle de dessin
+- doc : le nombre d'emplacements dépend de la classe (quatre pour les classes 0 et 6, trois sinon), et **l'emplacement retenu n'est pas la position du curseur** : au-delà de la deuxième ligne une classe à trois emplacements saute d'un cran, et la boucle de dessin saute la même rangée sans avancer son indice de libellé
+- doc : poser un objet est refusé par **deux** tests — le bit que l'emplacement exige dans les drapeaux de l'objet, **et** le même bit dans le mot `+0x112` du personnage ; les deux mains partagent `0x800` et se refusent l'une l'autre
+- doc : le `switch` qui choisit ce bit n'a **pas** de branche par défaut dans le binaire — au-delà de 4 le registre garderait sa valeur précédente ; la transcription lève plutôt que d'inventer
+- feat : **l'inventaire s'affiche et répond** — onglet 1 de la fiche : la grille d'objets, les marqueurs « équipé », les quantités, le curseur de case, la fiche de l'objet visé, ses huit pictogrammes d'élément et sa description
+- feat : `FUN_0051bd50`, `FUN_0052fba0` et `FUN_0052fdc0` — **les quarante-trois appelées du menu sont maintenant toutes transcrites** : ce qui reste est du corps, plus aucune dépendance
+- feat : le bloc de sprites `0x0056aae0`..`0x0056abe8` relevé, ses **deux bornes mesurées** — table de mots en dessous, chaîne cp1252 au-dessus ; et `0x0056a8d8`, qui referme le trou laissé entre deux tables voisines
+- doc : `FUN_0051bd50` recopie la suite du nom **à partir de l'indice 1**, sans condition — le format est `<un caractère>/<le reste>`, ce n'est pas un défaut mais une convention de données
+- doc : Ghidra ne récupère qu'un paramètre à `FUN_0051bd50` alors que le site en pousse quatre — `__cdecl`, l'appelant nettoie, les trois autres sont ignorés parce que le site partage sa forme avec cinq chemins voisins
+- doc : le curseur d'inventaire vaut **99** quand rien n'est visé, et les quatre directions y reviennent dès qu'elles sortent de la liste ; elles ne s'excluent pas, une diagonale prend la dernière
+- doc : recouvrement latent relevé et **non corrigé** — `DAT_005de0c8` finit à `0x005de109` et mord de neuf octets sur `s_ItemMenuArena_005de100` ; la divergence ne se voit qu'avec un nom de 63 caractères
+- feat : **la fiche de personnage s'affiche** — page 0 du menu, son onglet 0 et l'épilogue partagé des six pages : portrait, nom, classe, élément, niveau, or, PV/PM, sept caractéristiques, quatre résistances, expérience
+- feat : `FUN_0052fab0`, la liste de décorations — la première des quatre appelées qui manquaient au menu
+- feat : la rangée de quatre descripteurs d'interface `0x00568530` semée depuis le binaire ; le compte se déduit de deux bornes qui se rejoignent, il n'est pas deviné
+- fix : `s_Unknown_005de708` était déclarée `uint` alors que le binaire la teste en signé (`test eax,eax ; jge`) — c'est ce qui fait boucler la sélection de membre sur le dernier
+- doc : troisième piège de Ghidra dans le même corps — `if ((a == 1) || (X = 0, a == 2)) X = 1;` n'est **pas** un `if/else` : la remise à zéro n'a lieu que sur le chemin `a != 1`
+- doc : les cinq passes de statistiques tournent **deux fois par image** sur la fiche, une fois dans la tête de page et une fois dans l'onglet — c'est dans le binaire aux deux endroits
+- doc : le bloc `+0x100` du personnage est un **flux d'étiquettes**, pas une structure de nombres : c'est ainsi que les statistiques arrivent à l'écran
+- doc : l'onglet affiché n'est pas la position du curseur — `DAT_0056a898` donne à chaque classe sa propre liste d'onglets ; vérifié en jeu
+- feat : la branche courte d'affichage de `FUN_00516fc0` (0x005179da..0x00517a77) — le dernier trou de la boucle par image : la touche de menu ne plante plus dessus
+- feat : `FUN_0052a7d0` et la charpente de `FUN_0052a850` (nouveau `Screens/State03/WorldMapMenu.cs`) — navigation entre les six pages, sauts conditionnels, fermeture, cadrage ; chaque page restante lève en se nommant avec sa plage de lignes
+- doc : **l'agent peut ouvrir le menu lui-même** — F2 est le jeton `START` de `playtest.ps1` et le menu s'ouvre sur place, sans conduire le personnage : les six pages sont vérifiables à l'écran, une par une
+- doc : la chaîne qui trouve l'emplacement de manette a **une indirection de plus** dans la branche courte que dans celle de `PTR_FUN_0056aff0`, vingt lignes plus haut — deux écritures différentes du même geste, transcrites telles quelles
+- doc : `DAT_005e9840` est comparé en **dword** et `DAT_005e9001` en octet, là où `Blaze.c` écrit les deux pareil ; et Ghidra réutilise `iVar29` de part et d'autre du switch de pages
+- doc : `DAT_0056a898` — huit lignes de six octets, une par classe : le nombre d'onglets de la fiche et leurs identifiants ; toutes commencent par l'onglet 0
+- doc : il ne manque que **quatre appelées** au menu (`FUN_0052fab0`, `FUN_0052fba0`, `FUN_0052fdc0`, `FUN_0051bd50`, 287 lignes en tout) — les trente-neuf autres sont déjà transcrites
 - feat : `FUN_004055C0` et ses cinq réveils (types 3 à 7) — le second balayeur d'entités de scène : c'est le plantage de la salle du barman
 - fix : l'affirmation de ce matin, « `0x00403710` est le **seul** créneau atteignable de `FUN_0047aa70` », était à moitié fausse — vraie pour la branche basse, muette sur la branche haute, où six sites écrivent directement dans `DAT_005ff400` et posent des sous-types `>= 0xC0`
 - doc : compter les écrivains d'un **symbole** ne compte pas les écrivains d'une **adresse** — un `grep` sur `DAT_005ff405` ne voit ni un `memcpy` vers `DAT_005ff400`, ni un enregistrement posé en bloc par le chargeur de zone

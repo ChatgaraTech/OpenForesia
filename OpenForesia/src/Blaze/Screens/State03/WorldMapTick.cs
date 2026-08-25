@@ -588,10 +588,48 @@ public static unsafe partial class Blaze
                     goto frameTail;
                 }
 
-                throw new NotImplementedException(
-                    "FUN_00516fc0 : la branche courte d'affichage (0x005179da a 0x00517a77), " +
-                    "prise quand DAT_005de02c porte le bit 4 sans que le pilotage libre soit " +
-                    "actif. Il lui manque FUN_0051aa30 (594 lignes) et FUN_0052a7d0 (20 lignes).");
+                // =========================================================================
+                // LA BRANCHE COURTE D'AFFICHAGE — 0x005179da..0x00517a77.
+                //
+                // Le menu de jeu est ouvert (le cas 1 du repartiteur vient de poser le bit 4 de
+                // DAT_005de02c). Le monde n'est pas dessine du tout : UN seul appel remplace les
+                // ~700 lignes du bloc principal, et la fenetre de rendu se retrecit de 320x240 a
+                // **256x224** le temps du menu — ce sont les quatre ecritures de la fin, que la
+                // queue de boucle remet a 320x240 juste apres.
+                //
+                // Ghidra: `(&DAT_005e9188)[(byte)(&DAT_005e93c8)[DAT_005de540 * 0x9c] * 0x4c]`.
+                // **DEUX indirections**, et non une seule comme au site de PTR_FUN_0056aff0 vingt
+                // lignes plus haut : l'emplacement de manette se lit ici a travers l'index de
+                // personnage porte par la fiche (+8), pas directement depuis DAT_005de540. Les
+                // deux chaines sont differentes dans le binaire, et chacune est transcrite telle
+                // qu'elle y est ecrite.
+                // =========================================================================
+                byte* menuSlot = Inp.s_SlotFlags_005e93c0 + (uint)s_Unknown_005de540 * 0x9c;
+                byte* menuPad = Inp.s_InputStateBase_00604a20
+                                + Inp.s_PlayerSlots_005e9188[menuSlot[8] * 0x4c] * 0x10;
+
+                if (debugLatch == 0 && (Mem.s_WorldFlags_005de02c & 1) != 0)
+                {
+                    // Le seul chemin de cette branche qui ne mene PAS au menu, et il ne s'ouvre
+                    // qu'en mode de mise au point. Le binaire lui passe quatre arguments —
+                    // `(otBase, curseur, [esp+0x38], manette)` — dont le troisieme est un bloc
+                    // local de la trame que rien de transcrit ne nomme encore.
+                    throw new NotImplementedException(
+                        "FUN_0051aa30 (0x0051aa30, 598 lignes dans Blaze.c) : non transcrite. " +
+                        "C'est la surimpression de mise au point, prise quand le verrou " +
+                        "DAT_005633a8 vaut 0 ET que DAT_005de02c porte le bit 1. Elle prend " +
+                        "quatre arguments en __cdecl (otBase, curseur de primitives, un bloc " +
+                        "local de la trame, l'etat de manette) et rend le curseur.");
+                }
+
+                primCursor = RunPartyMenuFrame_0052A7D0(
+                    otBase, otEntry, primCursor, menuSlot, (ushort*)menuPad);
+
+                *(ushort*)Mem.Arena(0x005e9950) = 0x100;
+                *(ushort*)Mem.Arena(0x005e98e0) = 0x100;
+                *(ushort*)Mem.Arena(0x005e9952) = 0xe0;
+                *(ushort*)Mem.Arena(0x005e98e2) = 0xe0;
+                goto frameTail;
             }
 
         frameTail:
@@ -7010,7 +7048,7 @@ public static unsafe partial class Blaze
     /// <summary>Ghidra: DAT_005de708 — l'index de membre que le declenchement du repartiteur
     /// <c>DAT_005e9ae4</c> met de cote, en meme temps que <c>DAT_005de540</c>. Hors du bloc de
     /// camera (qui s'arrete a 0x005de100), donc declare a part.</summary>
-    private static uint s_Unknown_005de708;
+    private static int s_Unknown_005de708;
 
     /// <summary>
     /// Ghidra: FUN_0050bf20 @ 0x0050bf20 — <b>le pas par personnage</b>. Voir le pave ci-dessus pour

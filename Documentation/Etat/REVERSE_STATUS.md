@@ -12026,3 +12026,423 @@ tel quel.
 
 `dotnet build` : 0 erreur. Le trajet lui-meme est a Vincent : la salle du barman ne s'atteint pas en
 frappes minutees.
+
+## 2026-08-25 (suite 2) — la branche courte de `FUN_00516fc0`, et l'entree du menu de jeu
+
+La touche de menu (F2) plantait sur le dernier trou de la boucle par image :
+
+```
+FUN_00516fc0 : la branche courte d'affichage (0x005179da a 0x00517a77) ... Il lui manque
+FUN_0051aa30 (594 lignes) et FUN_0052a7d0 (20 lignes).
+```
+
+### La branche elle-meme — transcrite
+
+Vingt lignes de C#, verifiees au desassembleur. Quand `DAT_005de02c` porte le bit 4, le monde n'est
+**pas dessine du tout** : un seul appel remplace les ~700 lignes du bloc d'affichage principal, la
+fenetre de rendu se retrecit de 320x240 a **256x224** le temps du menu, et la queue de boucle la
+remet a 320x240 juste apres.
+
+Un piege releve au passage : la chaine qui trouve l'emplacement de manette n'est **pas** la meme
+ici et au site de `PTR_FUN_0056aff0`, vingt lignes plus haut.
+
+| Site | Chaine |
+|---|---|
+| `PTR_FUN_0056aff0` (0x0051762b) | `DAT_005e9188[DAT_005de540 * 0x4c]` |
+| branche courte (0x005179de) | `DAT_005e9188[DAT_005e93c8[DAT_005de540 * 0x9c] * 0x4c]` |
+
+Une indirection de plus ici : l'emplacement se lit a travers l'index de personnage porte par la
+fiche (`+8`), pas directement. Les deux sont transcrites telles qu'elles sont ecrites.
+
+`FUN_0051aa30` (598 l.) reste une lacune nommee. Elle n'est atteinte que par le mode de mise au
+point (`DAT_005633a8 == 0` **et** bit 1 de `DAT_005de02c`), donc hors du chemin du joueur.
+
+### `FUN_0052a7d0` — l'enveloppe, transcrite
+
+Elle arme la fenetre de decoupe de l'interface (`DAT_005de154`/`_158`/`_15c`, ceux que
+`UiWindow.EmitClipRect` relit), appelle le menu, la desarme. Le calcul est mot pour mot celui de
+`Screens/State01/PartySetup.cs`.
+
+**Ghidra la declare `void` et c'est faux.** Le site d'appel range son `eax` dans l'emplacement du
+curseur de primitives, et rien apres l'appel a `FUN_0052a850` ne touche `eax` — elle rend donc le
+curseur. Verifie a 0x0052a841.
+
+### `FUN_0052a850` — la charpente transcrite, les six pages nommees
+
+2533 lignes dans `Blaze.c`. Ce qui est fait : le prologue (0x0052a850..0x0052aa1d), verifie ligne a
+ligne au desassembleur.
+
+* changement de page sur les deux gachettes (`[pad+3] & 4` et `& 8`) ;
+* **deux pages se sautent selon l'etat de la partie** — la 1 tant que `DAT_005e9840` est nul, la 2
+  tant que `DAT_005e9001` ne porte pas le bit `0x10` — et les deux sauts s'enchainent, donc un recul
+  depuis la page 3 peut atterrir directement sur la 0 ;
+* remise a neuf de l'etat de page et recadrage de la carte sur le meneur, au changement ;
+* fermeture sur `[pad+2] & 8` ;
+* **deux verrous « operation en cours »** qui court-circuitent toute la navigation, fermeture
+  comprise : la page 5 tant que `DAT_005de710` n'est pas negatif, la page 0 tant que
+  `DAT_005de70c` ne l'est pas.
+
+**Deux pieges que `Blaze.c` ne montre pas :**
+
+* `DAT_005e9840` est compare en **dword** (`cmp [5E9840h],edi` a 0x0052a8bb). `DAT_005e9001`, lui,
+  est bien un octet. La pseudo-C ecrit les deux de la meme facon ;
+* Ghidra reutilise `iVar29` pour la page precedente avant le switch **et pour tout autre chose**
+  dans la page 0. Le binaire recharge `esi` depuis la pile en 0x0052aa0b, ou il vaut `param_1`. Ne
+  pas faire circuler la variable de Ghidra a travers le switch.
+
+### La carte des six pages, pour la suite
+
+| Page | `Blaze.c` | Taille | Ce qu'on en sait |
+|---|---|---|---|
+| 0 | 75336..76574 | **1238 l.** | la fiche de personnage. Elle-meme un switch de **six onglets** |
+| 1 | 76574..76672 | 98 l. | sautee quand `DAT_005e9840` est nul |
+| 2 | 76672..76697 | 25 l. | sautee sans le bit `0x10` de `DAT_005e9001` |
+| 3 | 76697..76833 | 136 l. | |
+| 4 | 76833..77060 | 227 l. | |
+| 5 | 77060..77698 | 638 l. | la sauvegarde — elle appelle les quatre corps de carte memoire `FUN_00504xxx` |
+
+Le decoupage de la page 0, releve au meme titre :
+
+| Onglet | `Blaze.c` | Taille |
+|---|---|---|
+| 0 | 75488..75674 | 187 l. |
+| 1 | 75675..75887 | 213 l. |
+| 2 | 75888..76123 | 236 l. |
+| 3 | 76124..76340 | 217 l. |
+| 4 | 76341..76445 | 105 l. |
+| 5 | 76446..76571 | 126 l. |
+
+L'onglet affiche n'est pas l'indice de position : `DAT_0056a898` porte **huit lignes de six octets**,
+une par classe (`DAT_005e9150 & 7`), dont le premier octet est le nombre d'onglets et les suivants
+leurs identifiants. Relevee dans le binaire :
+
+```
+classe 0  04 | 00 01 02 05      classe 4  05 | 00 01 02 04 05
+classe 1  05 | 00 01 02 03 05   classe 5  05 | 00 01 02 03 05
+classe 2  04 | 00 01 02 05      classe 6  04 | 00 01 02 05
+classe 3  05 | 00 01 02 03 05   classe 7  05 | 00 01 02 03 05
+```
+
+Toutes commencent par l'onglet 0, donc **le menu s'ouvre toujours sur l'onglet 0 de la page 0** —
+`DAT_005de6f0` et `DAT_005de704` valent tous deux zero au chargement, le premier releve dans la
+queue non initialisee de `.data`.
+
+`DAT_0056a8c8` (`00 01 46 02 03 47`) traduit l'identifiant d'onglet en indice de pictogramme.
+
+### Ce qui manque encore au dépôt pour finir le menu
+
+**Quatre appelees seulement**, toutes courtes : `FUN_0052fab0` (39 l.), `FUN_0052fba0` (79 l.),
+`FUN_0052fdc0` (134 l.), `FUN_0051bd50` (35 l.). Les **trente-neuf** autres sont deja transcrites —
+tout le moteur de texte, les fenetres, les sprites, les cinq passes de statistiques
+(`FUN_00538ab0`..`FUN_00538fa0`) et les quatre corps de carte memoire. Le menu n'est donc pas un
+sous-systeme a batir, c'est un corps a transcrire au-dessus d'un socle qui existe.
+
+Un bloc de donnees reste a modeliser : **`DAT_005de5f8`**, le descripteur de sprite de brouillon que
+toute la page 0 remplit avant chaque `FUN_00521df0` / `FUN_0051f9c0`. Cinq dwords a 0x005de5f8 —
+atlas, couleur, position (deux `short` a `+8`), indice de tuile a `+0x10`. Il ne recouvre pas
+`s_EntityList_005de558`, qui s'arrete a 0x005de5f4 : quatre octets d'ecart, verifies.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, **par l'agent** (voir la nouvelle section de
+`test-protocol.md`) : la branche courte, `FUN_0052a7d0` et le prologue s'executent, et l'exception
+nomme desormais `FUN_0052a850, page 0` avec sa plage de lignes. Le chemin entier est donc exerce.
+
+## 2026-08-25 (suite 3) — la fiche de personnage s'affiche
+
+La page 0 du menu et son onglet 0 sont transcrits, plus l'epilogue partage que les six pages se
+donnent. **L'ecran s'ouvre, se dessine, change d'onglet et se referme** — capture a l'appui :
+portrait, nom, classe, element, niveau, or, PV/PM, les sept caracteristiques, les quatre
+resistances, l'experience et le reste a gagner.
+
+### L'epilogue partage, qui manquait a la carte
+
+Le decoupage releve hier disait « six pages » et s'arretait la. Il manquait la piece qui les rend
+visibles : **0x0052f82c..0x0052f9c2**, ou les six pages retombent toutes. C'est lui qui appelle
+`FUN_00545340` (le dessin de panneau) et qui pose le curseur d'ecran.
+
+Le nombre de panneaux dessines se lit dans un idiome de booleen etendu que Ghidra rend en
+arithmetique :
+
+```
+uVar23 = -(uint)(page != 4) & (-(uint)(page != 0) & 0xfffffffe) + 3
+```
+
+soit, developpe : **page 4 → un panneau, page 0 → quatre, les autres → deux**. Ils partent du
+dernier et redescendent, chacun s'empilant devant le precedent.
+
+Et les deux derniers appels prennent **`param_2`** (otEntry) et non `param_1` — seul endroit du
+corps ou la difference se voie. Le binaire le dit en une instruction : `mov esi,[esp+20h]` en
+0x0052f915, juste avant.
+
+### Le troisieme piege de Ghidra dans cette fonction
+
+```c
+if ((DAT_005de704 == 1) || (DAT_005696e3 = 0, DAT_005de704 == 2)) { DAT_005696e3 = 1; }
+```
+
+**Ce n'est pas un `if/else`.** L'operateur virgule cache que la remise a zero n'a lieu que sur le
+chemin `tab != 1` :
+
+```
+0052f831  cmp eax,1 ; je 0052F842
+0052f836  cmp eax,2 ; mov byte [5696E3h],0 ; jne 0052F849
+0052f842  mov byte [5696E3h],1
+```
+
+Transcrit en deux `if` successifs, ce qui reproduit exactement les deux chemins. C'est le
+**troisieme** piege de Ghidra dans ce seul corps, apres le `iVar29` reutilise et le `cmp dword` lu
+comme un octet.
+
+### La rangee de descripteurs 0x00568530 — quatre, et le compte se deduit
+
+Quatre descripteurs d'interface contigus au pas `0x8c8`, comme la rangee de `0x00560ff0`. Leurs
+**0x68 premiers octets** sont initialises dans le binaire, la queue est nulle — verifie aux quatre
+adresses.
+
+Le compte ne se devine pas : `FUN_0052fab0` indexe depuis `0x00568530` au pas `0x8c8`, le plus grand
+indice rencontre est 3, et la premiere donnee qui n'est pas un descripteur est `DAT_0056a898` —
+juste au-dela de `0x00568530 + 4 * 0x8c8 = 0x0056a850`. Les deux bornes se rejoignent.
+
+| Indice | VA | Role observe |
+|---|---|---|
+| 0 | `0x00568530` | le panneau racine, dessine en dernier ; l'epilogue deplace sa boite selon la page |
+| 1 | `0x00568df8` | la boite de titre, deplacee elle aussi |
+| 2 | `0x005696c0` | le pave de statistiques — l'ancre des vingt decorations de l'onglet 0 |
+| 3 | `0x00569f88` | la fiche de personnage, que la page 0 remplit quatre fois |
+
+### Ce que la page 0 apprend
+
+* **Les cinq passes de statistiques sont faites deux fois par image** — une fois dans la tete de
+  page, une fois dans l'onglet 0. C'est dans le binaire aux deux endroits, pas une maladresse de
+  transcription. La fiche affiche donc un total **recalcule**, jamais un total range.
+* **Le bloc `+0x100` du personnage est un flux d'etiquettes**, pas une structure de nombres : il
+  part tel quel dans `FUN_00544350` puis le moteur de texte. C'est ainsi que les statistiques
+  arrivent a l'ecran.
+* **`DAT_005de708` est signe** (`test eax,eax ; jge` en 0x0052aa68), et c'est ce qui fait boucler la
+  selection de membre sur le dernier. Le depot le declarait `uint` — corrige.
+* **L'onglet affiché n'est pas la position du curseur.** `DAT_0056a898` porte huit lignes de six
+  octets, une par classe : le nombre d'onglets puis leurs identifiants. La classe du guerrier en a
+  quatre (0, 1, 2, 5) ; d'autres en ont cinq. Verifie en jeu — une pression a droite depuis
+  l'onglet 0 mene bien a l'onglet 1 et non a une position vide.
+* **La teinte des jauges** vient d'un rapport sur 255 : sous la moitie le rouge est plein et le vert
+  suit, au-dessus l'inverse. Les deux assemblages que Ghidra rend en `CONCAT31` sont
+  `(rapport << 9) & 0xffffff00 | 0xff` et `(rapport + 0x7f80) * 0x20000 | 0xffff`.
+* **`DAT_005de5f8`** est le bloc de sprite de brouillon — cinq dwords, atlas / couleur / position /
+  indice de tuile — que toute la page remplit avant chaque emission. Il ne recouvre pas
+  `s_EntityList_005de558`, qui s'arrete a `0x005de5f4` : quatre octets d'ecart, verifies avant de
+  l'allouer a part.
+
+### `FUN_0052fab0` — la liste de decorations
+
+Trente-neuf lignes, la premiere des quatre appelees qui manquaient. Un dword par decoration :
+indice du descripteur qui sert d'ancre, indice de tuile, puis deux decalages en octets ; la liste
+s'arrete au premier dword nul. Son bloc de sprite est **local**, pas `DAT_005de5f8` — meme
+disposition, autre emplacement.
+
+Deux listes relevees : `DAT_0056a8e0` (deux decorations, ancrees sur le descripteur 3) et
+`DAT_0056a8f0` (vingt, sur le descripteur 2).
+
+### Verification
+
+`dotnet build` : 0 erreur. **En jeu, par l'agent**, trois runs :
+
+| Sequence | Resultat |
+|---|---|
+| `…,START,WAIT10` | aucun plantage, 509 primitives par image, **la fiche s'affiche** |
+| `…,START,WAIT4,RIGHT,WAIT6` | plantage attendu : « page 0, onglet 1 » — le selecteur d'onglets marche |
+| `…,START,WAIT5,START,WAIT8` | aucun plantage — le menu se referme et le monde reprend a 1105 primitives par image |
+
+**Ce qui n'est PAS verifie** : la fidelite du rendu contre le jeu d'origine. La capture est
+coherente et lisible, mais aucune image de reference ne lui a ete comparee — notamment le fond, qui
+est l'image precedente restee dans le tampon (la branche courte ne redessine pas le monde) et qui
+apparait teintee. Dire si cette teinte est celle de 1998 demande le jeu original.
+
+## 2026-08-25 (suite 4) — l'inventaire, et les quatre dernieres appelees du menu
+
+L'onglet 1 de la fiche est transcrit, avec ses trois appelees. **Le menu n'a plus aucune dependance
+manquante** : ses quarante-trois appelees sont toutes dans le depot, et ce qui reste est du corps a
+transcrire.
+
+Verifie a l'ecran : la grille de quatre objets, les marqueurs « equipe », la quantite, le curseur de
+case, la fiche de l'objet vise (« Epee normale », ATT 7 / DEF 0), les huit pictogrammes d'element
+teintes selon le masque de l'objet, et la description (« Fabriquee en cuir solide. ») quand le
+curseur bouge.
+
+### Les trois etats de l'onglet, et le curseur a 99
+
+Deux verrous, pas un :
+
+* **`DAT_005de718` negatif** — la grille n'est pas entree. Un seul libelle s'affiche, rien ne
+  repond. C'est l'etat ou l'onglet arrive, parce que l'onglet 0 pose `-1` en sortant ;
+* **`DAT_005de70c`** mene une machine a quatre etats une fois la grille entree : `-1` la selection
+  libre, puis 0 a 3 pour la confirmation d'utilisation, chacun avec sa question et son annulation
+  par Croix.
+
+**Le curseur vaut 99 quand rien n'est vise**, et ce n'est pas une sentinelle inventee : les quatre
+directions y reviennent des qu'elles sortent de la liste, et 99 est teste partout comme « aucun
+objet ». La grille fait cinq colonnes, d'ou les pas de 1 et de 5.
+
+Depuis 99, les quatre directions **entrent** dans la liste — trois par la fin, une par le debut — et
+elles ne s'excluent pas : le binaire les teste l'une apres l'autre, donc une diagonale prend la
+derniere.
+
+### Six chemins, un seul appel
+
+`Blaze.c` rend l'onglet avec un `goto LAB_0052ba95` et trois variables recyclees, ce qui donne six
+chemins apparents. Les trois derniers arguments sont **identiques partout** — la fiche, le
+descripteur racine, zero — et seul le flux d'etiquettes change. Reconstruit en une variable et un
+appel, ce qui fait tomber les six chemins a une cascade lisible.
+
+Le point de chute `LAB_0052b82d` est ecrit deux fois par Ghidra, et les deux aboutissent au meme
+test : la branche « validation » y saute apres avoir pose `DAT_005de70c = 0`, ce qui ne change pas
+le test qui suit.
+
+### `FUN_0051bd50` — le nom coupe a la barre oblique, et son indice 1
+
+Le nom de l'objet est recopie depuis `+0x40` jusqu'au premier `'/'`, puis la suite est recopiee — et
+**elle repart de l'indice 1**, pas de 0 ni de la position de la barre. Le binaire est formel :
+`mov edx,1` en 0x0051bd7c, sans condition.
+
+Le format attendu est donc `<un caractere>/<le reste>` : le premier caractere survit, la barre
+disparait, le reste se colle derriere. Un nom dont la barre serait ailleurs qu'en position 1 serait
+mutile. Ce n'est pas un defaut a signaler dans `legacy-bug.md` — c'est une convention de donnees,
+et les noms du jeu la respectent (« Epee normale » sort entier).
+
+**Ghidra ne lui recupere qu'un parametre alors que le site en pousse quatre.** Ce n'est pas une
+signature ratee : la fonction est `__cdecl`, l'appelant nettoie, et les trois autres sont ignores —
+le site les pousse parce qu'il partage sa forme avec les cinq autres chemins de l'onglet, qui
+appellent tous `FUN_00544350`.
+
+### `FUN_0052fba0` — la grille
+
+Cinq colonnes de cases de `0x1c`. Ghidra ecrit l'indice de boucle en arithmetique de pointeurs
+(`pbVar8 = pbVar9 + iVar7` avec `iVar7 = -0x2c1 - param_4`), ce qui n'est que `i`.
+
+**Le pictogramme se decoupe en ecrivant dans l'atlas** : les deux premiers octets du descripteur
+partage recoivent `entree * 0x18` et `personnage * 0x18` avant chaque emission. Le meme couple
+repart en `extra`, empaquete sur seize bits.
+
+Son `param_3` est bien la fiche du membre choisi, et non une variable recyclee : verifie au site
+d'appel (0x0052bc58, `mov edi,[esp+18h]`, l'emplacement ou la tete de page a range `ebx` en
+0x0052aad9).
+
+### `FUN_0052fdc0` — la fiche d'objet
+
+Huit rangs de valeurs, deux rangs de portee, le nom, huit pictogrammes d'element. Un objet non
+identifie (`+0x13` sans le bit `0x80`) rend `« ??? »` a chaque rang et `« ???? »` comme nom — les
+deux chaines sont a `0x00566b80`, relevees.
+
+**Le nom part dans un flux d'etiquettes monte sur la pile** : `0c 04 <x> <y>` puis le nom recopie
+octet par octet par l'idiome `rep movsd` habituel. Les deux decalages se prennent par rapport au
+descripteur 2, donc ils suivent la boite si elle bouge. Le descripteur garde ensuite un pointeur
+vers un cadre mort et personne ne le relit — c'est ce que fait l'original, avec la meme duree de
+vie.
+
+### Deux blocs de donnees releves
+
+* **`0x0056aae0`..`0x0056abe8`** — trente-trois cellules de sprite de huit octets. **Les deux bornes
+  sont mesurees** : en dessous commence une table de mots de seize bits, au-dessus une chaine cp1252
+  (« Desactiv… »). C'est la lecon du carrousel de selection — un descripteur ne se releve pas seul,
+  parce que `DrawSpriteVariant` indexe **en avant** depuis sa base.
+* **`0x0056a8d8`** — l'ordre des huit rangs de la fiche d'objet. Il occupe exactement le trou de
+  huit octets laisse entre `DAT_0056a8d0` et `DAT_0056a8e0`, ce qui referme la plage.
+
+### Un recouvrement latent, releve et NON corrige
+
+`DAT_005de0c8`, le tampon de nom, finit a `0x005de109` dans le binaire et mord donc de neuf octets
+sur `s_ItemMenuArena_005de100`. Ici il s'alloue a part, ce qui diverge de l'original **uniquement si
+un nom atteint 63 caracteres** — ce qu'aucun nom du jeu ne fait. Le corriger demande de trancher
+l'etendue de l'arene, deja douteuse (meme TODO(REVERSE) dans `Engine/UiWindow.cs`).
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent :
+
+| Sequence | Resultat |
+|---|---|
+| `…,START,WAIT4,RIGHT,WAIT8` | aucun plantage, 498 primitives par image, **la grille et la fiche d'objet s'affichent** |
+| `…,RIGHT,WAIT4,ENTER,WAIT4,RIGHT,WAIT8` | aucun plantage, 499 par image — le curseur entre dans la grille et se deplace, la fiche suit |
+
+Meme reserve qu'hier : **la fidelite du rendu contre le jeu d'origine n'est pas verifiee.**
+
+## 2026-08-25 (suite 5) — l'equipement
+
+L'onglet 2 de la fiche est transcrit. Verifie a l'ecran de bout en bout : les cinq rangees avec
+leurs pictogrammes et leurs noms, le choix d'un emplacement, l'ouverture de la grille d'objets, et
+**l'echange lui-meme** — valider l'epee deja portee la retire, et la rangee repasse a
+« ­ARME­ » avec son marqueur vide.
+
+### Trois etats sur un seul verrou
+
+Contrairement a l'onglet 1, qui en utilise deux, celui-ci tient sur `DAT_005de718` seul :
+
+| Valeur | Etat |
+|---|---|
+| `-1` | l'onglet n'est pas entre — un libelle, rien ne repond |
+| `0` | on choisit un emplacement (haut/bas sur `pad[3]`) |
+| `1` | on choisit l'objet a y mettre (la grille de l'onglet 1, empruntee telle quelle) |
+
+Les trois partagent le meme dessin final, ce que Ghidra rend par un `goto LAB_0052c017`.
+
+### Le trou des classes a trois emplacements
+
+**Le nombre d'emplacements depend de la classe** : quatre pour les classes 0 et 6, trois pour les
+autres. Ghidra ecrit ce choix avec sa virgule habituelle —
+`if ((cls == 0) || (uVar23 = 3, cls == 6)) { uVar23 = 4; }` — qui n'est ici qu'un ternaire, la
+valeur n'ayant pas d'effet de bord.
+
+Ce qui compte davantage : **l'emplacement retenu n'est pas la position du curseur.** Au-dela de la
+deuxieme ligne, une classe a trois emplacements saute d'un cran
+(`DAT_005de710 = DAT_005de6fc + 1`). Et le meme trou se retrouve dans la boucle de dessin, qui saute
+la troisieme rangee **et n'avance pas son indice de libelle** — le `param_4++` est a l'interieur du
+`if`. Les deux se repondent : sans cela, les rangees suivantes porteraient le mauvais nom.
+
+### Poser un objet est refuse par deux tests, pas un
+
+Le mot de drapeaux de l'objet (`+0x12` de sa fiche) doit porter le bit que l'emplacement demande :
+
+| Emplacement | Bit exige |
+|---|---|
+| 0, 1, 2 | `0x100`, `0x200`, `0x400` |
+| 3, 4 (les deux mains) | `0x800`, **et seulement si l'autre main ne porte pas deja cet objet** |
+
+**Et** le personnage doit porter ce meme bit dans son propre mot de `+0x112`. Les deux tests sont
+lies par un `||` de refus, donc il suffit qu'un seul echoue. Un refus joue le bruitage d'erreur.
+
+Poser un objet deja porte a cet emplacement le **retire** (`0xff`) : la validation est une bascule,
+pas une pose. Les cinq passes de statistiques repassent juste apres, puisque le total change — c'est
+la troisieme fois qu'elles apparaissent dans cette seule page.
+
+### Les six flux d'etiquettes de `0x0056ac30`
+
+Six blocs de **quatre octets**, releves verbatim. Cinq sont `04 2a <y> 00` — un code de placement,
+ses deux operandes, la fin — et le sixieme (`0d 00 00 00`) referme la rangee.
+
+La boucle les prend **a l'envers**, depuis `0x0056ac44` : la rangee 0 est la plus haute
+(`y = 0x1e`), la rangee 4 la plus basse (`y = 0x54`). Bornes : au-dessous deux dwords sans rapport,
+au-dessus une paire de pointeurs de code (`0x005315b0`, `0x00531b90`).
+
+Le pictogramme d'emplacement vide se prend lui aussi a l'envers, dans le bloc de sprites deja
+releve : `&DAT_0056abe8 + compteur * -8`, soit les cinq dernieres cellules de
+`s_ItemSprites_0056aae0`.
+
+### Un cas par defaut que le binaire n'a pas
+
+Le `switch(DAT_005de710)` qui choisit le bit exige n'a **pas** de branche par defaut : au-dela de 4,
+le registre garderait sa valeur precedente. `DAT_005de710` est borne a 4 par le choix
+d'emplacement, donc le cas ne se produit pas — mais la transcription leve plutot que d'inventer une
+valeur, ce qui rendrait le jour ou il se produirait visible au lieu de silencieux.
+
+### Verification
+
+`dotnet build` : 0 erreur. En jeu, par l'agent, trois runs :
+
+| Sequence | Resultat |
+|---|---|
+| `…,RIGHT,WAIT3,RIGHT,WAIT8` | 470 primitives par image — les cinq rangees, trois portees et deux vides |
+| `…,RIGHT,RIGHT,ENTER,DOWN,ENTER` | 498 — la grille s'ouvre sur « Choisis ce que tu aimerais echanger. » |
+| `…,RIGHT,RIGHT,ENTER,ENTER,ENTER` | 471 — **l'epee est retiree**, la rangee repasse a « ­ARME­ » |
+
+Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
+verifiee.**
