@@ -2117,10 +2117,24 @@ public static unsafe partial class Blaze
         FillDepotSaveBlock(player);
 
         byte* labels = *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70);
-        byte* message = WriteDepotSaveFile(mainMem, player, labels);
+        byte* message = WriteDepotSaveFile(mainMem, player, labels, out bool written);
 
         BindMenuLabels(message, (uint)(nint)s_Unknown_005dff3c, MenuDescriptor(0), 0);
-        s_Unknown_005dff7c = 99;
+
+        // **Les deux issues ne posent PAS le meme etat**, et s'y tromper est ce qui a corrompu une
+        // sauvegarde le 2026-08-25 : le succes avance d'un cran (8 -> 9, la sortie), l'echec part a
+        // l'etat 99, qui remet le magasin d'avant et repasse par l'ecriture. Poser 99 apres une
+        // ecriture reussie boucle donc indefiniment en reecrivant le fichier a chaque tour.
+        if (written)
+        {
+            s_Unknown_005dff7c++;
+            s_Unknown_005dff20 = 1;
+        }
+        else
+        {
+            s_Unknown_005dff7c = 99;
+        }
+
         s_Unknown_005dff18 = 0;
     }
 
@@ -2284,11 +2298,13 @@ public static unsafe partial class Blaze
         }
 
         // L'icone, capturee depuis la VRAM. La page se derive du portrait du personnage.
-        s_DepotIconRect_005dfe38[0] = (short)((s_Unknown_005dff3c[0x0b] + s_Unknown_005dff3c[1] * 4) * 0x10);
+        // Ghidra rend `DAT_005dff3c[1]` sur un pointeur de DWORD : c'est l'octet de +4, pas de +1.
+        // Verifie au desassembleur — `movzx cx,byte [eax+4]` en 0x005407f3.
+        s_DepotIconRect_005dfe38[0] = (short)((s_Unknown_005dff3c[0x0b] + s_Unknown_005dff3c[4] * 4) * 0x10);
         s_DepotIconRect_005dfe38[2] = 0x10;
         s_DepotIconRect_005dfe38[3] = 1;
         s_DepotIconRect_005dfe38[1] =
-            (short)(*(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0x92 + s_Unknown_005dff3c[1] * 4) >> 6);
+            (short)(*(ushort*)(Mem.s_EntityDecodeTable_005e8f00 + 0x92 + s_Unknown_005dff3c[4] * 4) >> 6);
 
         Winsys3d.Ordinal_667(0);
         Winsys3d.Ordinal_684(s_DepotIconRect_005dfe38, player + 0x60);
@@ -2309,8 +2325,11 @@ public static unsafe partial class Blaze
     /// tot rendrait la sortie destructrice.</para>
     /// </summary>
     /// <returns>Le libelle a afficher.</returns>
-    private static byte* WriteDepotSaveFile(byte* mainMem, byte* player, byte* labels)
+    private static byte* WriteDepotSaveFile(byte* mainMem, byte* player, byte* labels,
+                                            out bool written)
     {
+        written = false;
+
         s_Unknown_005dff04 = Saves.RetryOpenCardFile(Saves.s_CardPathDescriptor_00604940, 3);
         s_Unknown_005dff34 = Saves.RetrySeekAndReadCardFile(
             s_Unknown_005dff04, mainMem + 0x1b8000, 0x3f00, 0x100);
@@ -2355,7 +2374,7 @@ public static unsafe partial class Blaze
 
         if (s_Unknown_005dff34 < 0) return *(byte**)(labels + 0x408);
 
-        s_Unknown_005dff20 = 1;                           // l'ecriture a reussi
+        written = true;
         return *(byte**)(labels + 0x404);
     }
 
@@ -2458,7 +2477,8 @@ public static unsafe partial class Blaze
         *(byte**)s_DepotSprite_005dfe20 = portrait;
         portrait[5] = 0;
 
-        *(short*)(s_DepotSprite_005dfe20 + 0x10) = s_Unknown_005dff3c[1];
+        // Meme piege : `DAT_005dff3c[1]` est l'octet de +4 (pointeur de dword cote Ghidra).
+        *(short*)(s_DepotSprite_005dfe20 + 0x10) = s_Unknown_005dff3c[4];
         *(short*)(s_DepotSprite_005dfe20 + 8) = 0x20;
         *(short*)(s_DepotSprite_005dfe20 + 0x0a) = 0x18;
         *(uint*)(s_DepotSprite_005dfe20 + 4) = 0x1000000;

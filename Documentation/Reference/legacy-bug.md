@@ -703,3 +703,48 @@ espacés de `0x10`, relevés dans le binaire. Le débordement est donc reproduit
 rendue vaut bien `0x4558`.
 
 Le correctif d'un mode « corrigé » serait d'arrêter le curseur à la fin de la tranche.
+
+---
+
+## Note — ceci n'est PAS un bug d'origine : deux fautes de transcription du 2026-08-25
+
+Consignees ici parce que leur symptome ressemblait a un defaut de 1998, et que la prochaine
+sauvegarde bizarre appellera la meme verification. **Les deux etaient de nous.**
+
+### 1. `DAT_005dff3c[1]` n'est pas l'octet de +1
+
+Ghidra type `DAT_005dff3c` en **pointeur de dword** — la preuve est deux lignes plus haut,
+`*DAT_005dff3c = *DAT_005dff3c & 0xfffeffff`. Son `[1]` designe donc le dword de **+4**, dont
+l'expression prend l'octet bas. Transcrit sur un `byte*` en C#, `[1]` lisait l'octet de +1 : trois
+octets a cote.
+
+Le desassemblage tranche sans appel (`0x005407f3`) :
+
+```
+movzx cx,byte [eax+4]      ; l'octet de +4
+movzx dx,byte [eax+0Bh]
+lea   ecx,[edx+ecx*4]
+shl   ecx,4
+```
+
+Cet octet choisit la page de l'icone de sauvegarde. Faux, il capture un rectangle de VRAM au mauvais
+endroit — d'ou un **portrait bariole** a l'ecran « constituer un groupe », qui se lit tres bien comme
+un bug de 1998.
+
+**La regle** : avant d'indexer un `DAT_` de Ghidra, chercher un `*DAT_ = *DAT_ & …` dans le meme
+corps. C'est lui qui donne la largeur du pointeur, et donc le pas de l'indice.
+
+### 2. Le succes et l'echec ne posent pas le meme etat
+
+L'etat 8 du coffre finit par `DAT_005dff7c = DAT_005dff7c + 1` quand l'ecriture a reussi — 8 vers 9,
+la sortie — et par `DAT_005dff7c = 99` quand elle a echoue. Les deux chemins partagent le
+`FUN_00544350` du libelle, ce qui invite a partager aussi la queue ; c'est ce que la transcription
+avait fait, en posant 99 dans les deux cas.
+
+Consequence : apres une ecriture **reussie**, l'etat 99 remettait le magasin d'avant la tentative et
+renvoyait a l'etat 4, donc a l'ecriture. Le panneau ne se fermait plus et le fichier etait reecrit a
+chaque tour, avec un contenu qui derivait — **la sauvegarde de Vincent en est morte**.
+
+**La regle** : quand deux chemins d'un `switch` partagent leurs dernieres lignes, verifier qu'ils
+partagent aussi celles d'avant. Ici le `break` du chemin de succes etait a l'interieur du `if`, et
+c'est tout ce qui les separait.

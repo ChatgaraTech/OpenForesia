@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- fix : **deux fautes de transcription du coffre, qui ont corrompu une sauvegarde** — `DAT_005dff3c[1]` est l'octet de **+4** (Ghidra type le pointeur en dword, `movzx cx,byte [eax+4]` le confirme), pas de +1 : d'où le portrait bariolé ; et le succès de l'écriture pose l'état **9**, pas 99 — poser 99 rebouclait sur l'écriture à chaque image
+- doc : la règle qui manquait — avant d'indexer un `DAT_` de Ghidra, chercher un `*DAT_ = *DAT_ & …` dans le même corps : c'est lui qui donne la largeur du pointeur, donc le pas de l'indice
+- doc : et l'autre — quand deux chemins d'un `switch` partagent leurs dernières lignes, vérifier qu'ils partagent aussi celles d'avant ; ici le `break` du succès était à l'intérieur du `if`
 - feat : **LE COFFRE EST COMPLET** — les états 0, 1, 5 et 8 écrits, dont les trois qui touchent le disque ; `FUN_0053e0a0` ne porte plus aucune levée, ses deux modes et ses vingt états sont transcrits
 - doc : la somme de contrôle porte sur des octets **signés** (`0x80` y compte pour −128), les trois écritures sont combinées par **ou binaire** et testées une seule fois, et le drapeau de succès est posé **en dernier** — le poser plus tôt rendrait la sortie destructrice
 - doc : le compactage réécrit les cinq octets d'équipement de `+0x2b0` qui désignaient les anciens indices — sans ça, refermer le coffre déséquiperait ce que le joueur portait
