@@ -218,7 +218,8 @@ public static unsafe partial class Blaze
 
     /// <summary>Ghidra: DAT_005e97d0 — le pendant de s_Unknown_005e97c8 pour le menu objets ;
     /// voisin immédiat, même rôle : la poignée que le chargeur de ressources rend.</summary>
-    private static byte* s_Unknown_005e97d0;
+    // internal : le moteur de texte l'atteint comme racine de ressources 4 (ResourceRoot).
+    internal static byte* s_Unknown_005e97d0;
 
 
     // Ghidra: _DAT_0054d074 â€” the float the gamma value is scaled by before CreateTranslationTables.

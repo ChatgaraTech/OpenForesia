@@ -12998,3 +12998,165 @@ journal. La table des signatures ajoutee a `test-protocol.md` a suffi a le voir 
 
 Meme reserve que les jours precedents : **la fidelite du rendu contre le jeu d'origine n'est pas
 verifiee.**
+
+---
+
+## 2026-08-25 (suite 13) — les racines de ressources du moteur de texte : il y en a cinq, pas deux
+
+**Le plantage.** Une boite de dialogue leve
+`FUN_00544a80 : racine de ressources 3 — l'original indexe &DAT_005e97c0 de quatre en quatre, et
+seuls les emplacements 0 et 1 sont modelises.` Le message disait exactement ce qu'il fallait : la
+garde etait un aveu de modelisation incomplete, pas une inconnue.
+
+**Ce que le desassemblage tranche.** `0x00544a9c` porte `mov eax,[ecx*4+5E97C0h]`, avec `ecx` charge
+d'un octet du flux de texte (`mov cl,[eax]`). L'indexation est donc sur **256 emplacements
+possibles**, pas sur deux. La question n'etait pas « faut-il ajouter la racine 3 » mais « ou s'arrete
+la suite de globales qui en sont ».
+
+**Elle s'arrete a cinq.** Les cinq dwords a partir de `0x005e97c0` recoivent tous le retour du meme
+chargeur, `FUN_00529b50` :
+
+| n | VA | role | ecrivains dans `Blaze.c` |
+|---|---|---|---|
+| 0 | `0x005e97c0` | le tampon de ressources principal | `MainMem + 0xe0000` (ligne 74556) |
+| 1 | `0x005e97c4` | son repertoire | ligne 74793 |
+| 2 | `0x005e97c8` | le repertoire de l'etat de jeu courant | lignes 54703, 55577, 63141, 78867, 89405 |
+| 3 | `0x005e97cc` | le repertoire de la zone | ligne 63216 |
+| 4 | `0x005e97d0` | le repertoire du menu objets | lignes 63322, 71243 |
+
+Le sixieme, `0x005e97d4`, n'en est pas une : son **seul** ecrivain (`Blaze.c` 81679,
+`_DAT_005e97d4 = param_1`) y range un parametre, pas un retour de chargeur. La levee s'arrete donc a
+5, et non a 256 — une borne tiree de la nature des voisins, pas d'une commodite.
+
+**Les cinq etaient deja transcrites**, chacune sous son nom, dans trois fichiers differents
+(`GameMemory.cs`, `Resources.cs`, `MainMenu.cs`, `WorldMap.cs`). Rien n'etait a decouvrir : ce qui
+manquait etait le **lien** entre l'octet d'operande et ces globales. C'est le genre de trou que la
+carte des symboles de `DataSymbols.md` rend visible en une ligne — les cinq y sont contigus, 4 octets
+chacun — et qu'un `grep` sur un seul symbole ne montre jamais.
+
+**Quatre copies du meme calcul.** `Handler_00544e80` (code `0x1c`), `Handler_00544810` (`0x01`),
+`Handler_00544c10` (`0x0b`) et `Handler_00544a80` (`0x07`) portaient chacun leur propre `switch` a
+deux branches et leur propre message de levee. Elles sont remontees dans une aide unique,
+`UiText.ResourceRoot(slot, caller)` : le calcul est bien **un** dans le binaire — la meme sequence de
+trois instructions, quatre fois — donc une seule reconstruction le dit mieux que quatre.
+
+**Verification a l'execution.** Une sonde jetable dans `ResourceRoot`, sur le trajet de l'auberge
+(`-Entry 0 … ENTER×4,ESC,START`), a imprime les cinq pointeurs et la premiere entree de leur table
+`+0x70` :
+
+```
+racine 0  root=0x00ad0000  +0x70=0x00ad0194  [0] = 81 40 82 ED 82 F1 82 EE
+racine 1  root=0x00ad08b0  +0x70=0x00ad0a90  [0] = « Tire sur… »
+racine 2  root=0x00ad504c  +0x70=0x00ad5158  [0] = « Cle de l… »
+racine 3  root=0x00ad5d50  +0x70=0x00ad609c  [0] = 1F D0 1D 08 00 0C 20 2D
+racine 4  root=0x00ad975c  +0x70=0x00000000
+```
+
+C'est **la racine 3 qui est la preuve** : son entree 0 ne commence pas par du texte lisible mais par
+`0x1f`, `0x1d` — deux codes de controle du moteur lui-meme. C'est donc bien une chaine de dialogue de
+la zone, et non un libelle d'interface. Les racines 1 et 2 rendent du texte lisible, ce qui borne le
+faux positif. La racine 4 a une table nulle tant que le menu objets n'est pas charge, exactement
+comme l'original.
+
+**Ce que la sonde a appris au passage, et qui ne se devinait pas.** Les 2 358 appels a
+`ResourceRoot` du trajet viennent **du menu de jeu**, pas de la boite « - La reception - » : la
+sequence sans `START` final n'en produit aucun. La boite de reception traverse donc le moteur de
+texte sans passer par une racine indexee. A retenir avant de conclure d'un run qu'un code de
+controle a ete exerce.
+
+**Ce qui reste non exerce.** La racine 3 est confirmee **valide**, pas **empruntee** : aucun run de
+l'agent n'atteint le dialogue qui levait. La confirmation que le plantage a disparu demande le trajet
+de Vincent — voir le partage du 2026-08-24 dans `test-protocol.md`.
+
+---
+
+## 2026-08-25 (suite 14) — le plantage en parlant de biais : une lecture deux octets trop loin
+
+**Le symptome, tel que Vincent l'a decrit, portait deja la reponse.** « Les PNJ de la deuxieme
+piece, seulement quand je leur parle **de cote** — bas et droite ensemble ; en face a face, aucun
+probleme. » Une condition qui depend de l'**orientation** et de rien d'autre : dans ce moteur, ce qui
+depend de l'orientation, c'est l'**octant de cap de la camera**.
+
+```
+System.IndexOutOfRangeException  at Model3d.DrawChunk … Model3d.cs:line 1520
+```
+
+### Ce que la ligne 1520 faisait
+
+Le chemin « balayage par cellules » de `FUN_0051fa40` parcourt les 49 cellules d'une grille 7x7 en
+sautant celles que l'octant met hors du cone de vue. La liste des sauts est une **tranche de seize
+octets** — huit cles de 16 bits `rang << 8 | colonne` — et le binaire y avance un `short*` **sans
+aucune borne** (`Blaze.c` 68683-68687) : chaque correspondance consomme une cle et **lit d'avance la
+suivante**.
+
+### La simulation tranche en une seconde ce que le raisonnement laissait flou
+
+Les huit tranches sont contigues, `0x00564558`..`0x005645d7`. Rejouer les huit balayages hors du jeu,
+sur les octets releves dans le binaire, donne :
+
+```
+octant 0 : 8 sauts, dernier curseur lu 16    (dans la table)
+octant 1 : 8 sauts, dernier curseur lu 32    (dans la table)
+…
+octant 6 : 8 sauts, dernier curseur lu 112   (dans la table)
+octant 7 : 8 sauts, dernier curseur lu 128   (DEBORDEMENT)
+```
+
+Les huit octants font **tous** huit sauts, et chacun lit d'avance la premiere cle de la tranche
+**suivante**. Pour les sept premiers c'est inoffensif — la tranche suivante existe. Pour le
+huitieme, il n'y en a pas : `0x005645d8` est le debut de `PTR_DAT_005645d8`, la table de pointeurs
+qui designe les tranches elles-memes.
+
+**Ce que la simulation a corrige dans mon raisonnement.** J'avais deduit a la main que seules
+certaines tranches finissaient sur la derniere cellule visitee, et donc que le nombre de sauts
+variait d'un octant a l'autre. Faux : il est de huit partout. La conclusion — un seul octant
+deborde — etait juste, la demonstration ne l'etait pas. Vingt lignes de simulation valaient mieux
+que la lecture a l'oeil de huit lignes de table.
+
+### Pourquoi le jeu de 1998 ne bronchait pas
+
+Les deux octets lus en `0x005645d8` sont `58 45`, la moitie basse du premier pointeur
+(`0x00564558`) : la cle vaut `0x4558`. Elle n'est **jamais consultee** — elle est lue en `(1,1)`, la
+derniere cellule, et les deux boucles se terminent juste apres. Et meme consultee, `0x4558` ne peut
+egaler aucun `rang << 8 | colonne`, tous deux bornes a 7. Sur x86, deux octets lus chez le voisin ne
+coutent rien.
+
+**C'est le premier defaut du catalogue qui plante la reconstruction sans avoir jamais rien casse
+dans l'original** : `ReadOnlySpan<byte>` leve la ou une lecture x86 passait. Consigne en
+[LB-013](../Reference/legacy-bug.md).
+
+### La correction
+
+`GameMemory.NextCellSkipKey(cursor)` restitue la lecture telle qu'elle est : dans la table tant qu'on
+y est, et **les vrais octets de `PTR_DAT_005645d8`** au-dela — huit pointeurs de quatre octets vers
+les huit tranches, espaces de `0x10`, releves dans le binaire. Le debordement est **reproduit, pas
+garde** : ni zero de commodite, ni `if` qui evite la lecture. C'est la difference entre modeliser
+l'espace d'adressage et se proteger de lui.
+
+### La verification, et comment elle a ete obtenue
+
+Le trajet de l'auberge ne suffisait pas : deux runs successifs montrent que le chemin `cellSweep`
+tourne bien (~4 400 appels) mais **toujours dans l'octant 2**. Conduire la camera jusqu'a l'octant 7
+au clavier n'est pas fiable — c'est exactement ce que le partage du 2026-08-24 constate.
+
+Une **sonde d'une ligne** l'a donne directement : `octant = 7;` juste apres le calcul. Deux
+verdicts :
+
+| sonde | resultat |
+|---|---|
+| `octant = 7` force, compteur d'appels | ~2 800 appels, **aucun plantage** |
+| trace dans la branche de debordement | **2 314** lectures, toutes `curseur 128, over 0` |
+
+La seconde est celle qui prouve quelque chose : elle montre que la branche corrigee est **empruntee
+2 314 fois**, la ou l'ancien code levait a la premiere. Les sondes retirees, le run de controle rend
+509 primitives par image — la valeur de reference.
+
+**Ce qui reste a Vincent** : refaire le dialogue de biais. Forcer l'octant prouve que le chemin ne
+plante plus ; il ne prouve pas que c'est bien cet octant que la camera prenait.
+
+### L'autre balayage n'est pas concerne, et c'est un defaut qui en masque un autre
+
+`DrawWorldCells` (`FUN_00516fc0`) lit la meme table, mais sa lecture de cle suivante est celle de
+**LB-009** : sur **un seul octet**. La cle devient `<= 0xff`, ne peut plus egaler `rang << 8 |
+colonne`, et le curseur s'arrete apres une seule correspondance — bien avant la fin de la tranche. Le
+bug de 1998 protege le code du bug de 1998.

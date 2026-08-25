@@ -1769,6 +1769,17 @@ morceaux, qui refont le balayage **à l'intérieur** de chaque morceau) lisent t
 deux tables. Les deux derniers consomment leurs huit clés ; le premier n'en consomme qu'une, parce
 qu'il lit les suivantes sur un octet au lieu de deux. Voir **LB-009**.
 
+### La huitième clé de la huitième tranche tombe dans la table de pointeurs (2026-08-25)
+
+Les huit octants consomment **tous** huit clés, et chacun lit d'avance la première clé de la tranche
+suivante. Pour les sept premiers, la tranche suivante existe. Pour le huitième — `0x005645c8` — il
+n'y en a pas : les deux octets lus sont ceux de `0x005645d8`, c'est-à-dire `58 45`, la moitié basse
+du premier pointeur. La clé débordée vaut donc **`0x4558`**, et elle n'est jamais consultée.
+
+C'est ce que `GameMemory.NextCellSkipKey` restitue, et c'est ce qui rend la plage indissociable :
+**tout lecteur de ces tranches doit passer par cette aide**, y compris `FUN_00521000` quand il sera
+transcrit — il consomme ses huit clés comme `FUN_0051fa40` et débordera pareil. Voir **LB-013**.
+
 ### Dans OpenForesia
 
 `GameMemory.s_CellSweepCorner_00564548` et `GameMemory.s_CellSkipTables_00564558` — deux vues

@@ -1156,4 +1156,50 @@ internal sealed unsafe class GameMemory
         0x03, 0x07, 0x02, 0x07, 0x01, 0x07, 0x01, 0x06, 0x01, 0x02, 0x03, 0x01, 0x02, 0x01, 0x01, 0x01,
         0x07, 0x07, 0x01, 0x07, 0x01, 0x06, 0x01, 0x02, 0x07, 0x01, 0x06, 0x01, 0x02, 0x01, 0x01, 0x01,
     ];
+
+    /// <summary>
+    /// La cle de saut de 16 bits au curseur d'octet donne dans
+    /// <see cref="s_CellSkipTables_00564558"/> — **y compris au-dela de la huitieme tranche**.
+    ///
+    /// <para><b>Pourquoi une aide plutot qu'une indexation directe.</b> L'original ne borne rien :
+    /// il tient un <c>short*</c> qui part de <c>PTR_DAT_005645d8[octant] + 2</c> et avance d'un
+    /// short a chaque cellule sautee (<c>Blaze.c</c> 68686-68687). Or la huitieme tranche — celle
+    /// de l'octant 7 — finit sur la cle <c>(rang 1, colonne 1)</c>, qui est la **derniere cellule
+    /// visitee** par le balayage. Le corps lit donc une neuvieme cle qui tombe deux octets apres la
+    /// fin du bloc, en <c>0x005645d8</c>, c'est-a-dire dans <c>PTR_DAT_005645d8</c> elle-meme.</para>
+    ///
+    /// <para>Cette cle n'est jamais consultee : les deux boucles se terminent juste apres. Le
+    /// debordement est donc sans consequence dans l'original — mais un <c>ReadOnlySpan</c> C# leve
+    /// la ou une lecture x86 ne bronchait pas, et c'est ce qui faisait planter le rendu d'un
+    /// modele des que la camera tombait dans l'octant 7. Voir <c>legacy-bug.md</c>, LB-013.</para>
+    ///
+    /// <para>Ce que l'aide rend au-dela de la fin, ce sont donc les <b>vrais octets</b> de
+    /// <c>PTR_DAT_005645d8</c> : huit pointeurs de quatre octets vers les huit tranches ci-dessus,
+    /// espaces de <c>0x10</c> (<c>0x00564558</c> .. <c>0x005645c8</c>), releves dans le binaire le
+    /// 2026-08-25. La premiere cle debordee vaut ainsi <c>0x4558</c>, la moitie basse du premier
+    /// pointeur — pas un garde, pas un zero de commodite.</para>
+    /// </summary>
+    internal static int NextCellSkipKey(int cursor)
+    {
+        ReadOnlySpan<byte> table = s_CellSkipTables_00564558;
+        if (cursor + 1 < table.Length) return table[cursor] | table[cursor + 1] << 8;
+
+        int over = cursor - table.Length;
+        return TrailingPointerByte_005645d8(over) | TrailingPointerByte_005645d8(over + 1) << 8;
+    }
+
+    /// <summary>Un octet de <c>PTR_DAT_005645d8</c>, la table de pointeurs qui suit immediatement
+    /// les huit tranches de saut. Voir <see cref="NextCellSkipKey"/>.</summary>
+    private static int TrailingPointerByte_005645d8(int offset)
+    {
+        if ((uint)offset >= 32)
+        {
+            throw new NotImplementedException(
+                $"PTR_DAT_005645d8 : le curseur de saut a depasse la table de pointeurs (octet {offset}) — " +
+                "au-dela de 0x005645f8 la .data n'est pas relevee.");
+        }
+
+        uint pointer = 0x00564558u + (uint)(offset >> 2) * 0x10u;
+        return (int)(pointer >> ((offset & 3) * 8)) & 0xff;
+    }
 }

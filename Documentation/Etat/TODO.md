@@ -39,7 +39,35 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
+## Deuxième chose à vérifier : la boîte de dialogue à racine de ressources 3
+
+**Corrigé le 2026-08-25, non exercé.** Une boîte levait
+`FUN_00544a80 : racine de ressources 3 …`. Le moteur de texte ne modélisait que deux des **cinq**
+racines de `&DAT_005e97c0` ; les cinq sont maintenant reliées, dans une aide unique
+(`UiText.ResourceRoot`) au lieu de quatre copies.
+
+La racine 3 est confirmée **valide** par une sonde — son entrée `+0x70` numéro 0 commence par des
+codes de contrôle, c'est bien une chaîne de dialogue de zone. Elle n'est pas confirmée
+**empruntée** : aucun run de l'agent n'atteint le dialogue qui levait. Refaire le trajet qui l'a
+produit. Détail dans `REVERSE_STATUS.md`, section « suite 13 ».
+
+---
+
+## Troisième chose à vérifier : le dialogue de biais avec un PNJ
+
+**Corrigé le 2026-08-25, exercé par sonde, pas par le jeu.** Le balayage par cellules de
+`DrawChunk` lisait une clé de saut deux octets après la fin de sa table ; seul l'octant 7 de cap de
+caméra en sort, ce qui explique « de côté oui, en face à face non ». C'est LB-013 du catalogue :
+un défaut d'origine bénin en 1998 que `ReadOnlySpan` transforme en plantage.
+
+Le chemin corrigé a été exercé 2 314 fois avec l'octant forcé à 7, sans lever. Ce qui reste :
+**refaire le dialogue de biais**, pour confirmer que c'était bien cet octant. Détail dans
+`REVERSE_STATUS.md`, section « suite 14 ».
+
+---
+
 # LE MENU DE JEU EST ENTIÈREMENT TRANSCRIT
+
 
 **Plus aucun corps ne manque à `FUN_0052a850`** : les six pages (la fiche de personnage, les objets de
 quête, la dalle aux cristaux, l'organisation du groupe, la carte du monde et ses repères,

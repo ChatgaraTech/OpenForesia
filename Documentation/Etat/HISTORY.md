@@ -6,6 +6,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- fix : **le plantage en parlant de biais à un PNJ** — le balayage par cellules de `DrawChunk` lit une clé de saut deux octets après la fin de sa table, et seul l'octant 7 en sort ; `GameMemory.NextCellSkipKey` rend désormais les vrais octets de `PTR_DAT_005645d8`
+- doc : LB-013 au catalogue — premier défaut d'origine qui **plante la reconstruction sans avoir jamais rien cassé en 1998** ; `ReadOnlySpan` lève là où x86 lisait paisiblement chez le voisin
+- doc : LB-009 protège `DrawWorldCells` de LB-013 — sa lecture d'un seul octet arrête le curseur avant la fin de la tranche ; un bug de 1998 en masque un autre
+- doc : les huit octants font **tous** huit sauts et lisent chacun d'avance la première clé de la tranche suivante ; c'est la simulation hors jeu qui l'a établi, la lecture à l'œil de la table s'était trompée
+- fix : le moteur de texte ne connaissait que **deux** racines de ressources sur cinq — toute boîte de dialogue passant par la racine 3, le répertoire de zone, levait `NotImplementedException` dans `FUN_00544a80`
+- doc : les cinq dwords à partir de `0x005e97c0` sont cinq racines, toutes issues de `FUN_00529b50` ; la sixième, `0x005e97d4`, n'en est pas une — c'est ce qui borne la levée à 5 et non à 256
+- doc : les quatre gestionnaires qui indexaient `&DAT_005e97c0` avaient chacun leur copie du calcul ; remontées dans `UiText.ResourceRoot`, une seule reconstruction pour une seule séquence du binaire
+- doc : les appels à `ResourceRoot` du trajet de l'auberge viennent **du menu de jeu**, pas de la boîte « - La réception - » — une sonde le montre, la lecture du run ne le disait pas
+
 - feat : **le menu de jeu est entièrement transcrit** — les onglets 3 (les sorts) et 4 (les herbes) faits ; six pages et six onglets, plus aucun corps ne manque à `FUN_0052a850`
 - feat : **l'onglet des sorts marche** — « Niveau Magie 1/6 », les cinq pictogrammes, « Balle de feu », son coût « MA 2 » et ses pictogrammes d'élément ; le changement de page et le curseur répondent
 - feat : **l'onglet des herbes marche** — les sept entrées (Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius, Belladone), leur compte, le marqueur de sélection et la description en bas

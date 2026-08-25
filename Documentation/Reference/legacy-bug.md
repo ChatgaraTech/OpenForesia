@@ -626,3 +626,80 @@ qu'elle appelle. Zéro est la valeur des sorties voisines et le seul choix qui n
 tirage — mais c'est bien une **déviation déclarée**, pas une transcription.
 
 Le correctif d'un mode « corrigé » serait identique : rendre 0.
+
+---
+
+## LB-013 — Le balayage par cellules de `DrawChunk` lit une clé de saut **après la fin** de sa table
+
+**Constaté** le 2026-08-25 par Vincent dans OpenForesia — plantage en parlant à un PNJ de la
+deuxième pièce **en biais** (bas + droite ensemble), jamais en face à face. Tracé ensuite dans
+`Blaze.c` et dans le binaire.
+
+### Le défaut
+
+`FUN_0051fa40` (notre `Model3d.DrawChunk`, chemin « balayage par cellules ») choisit un des huit
+octants d'après le cap de la caméra, puis parcourt les 49 cellules d'une grille 7×7 en sautant
+celles que l'octant met hors du cône de vue. La liste des cellules à sauter est une **tranche de
+seize octets** — huit clés de 16 bits `rang << 8 | colonne` — et le code y avance un `short*` sans
+aucune borne :
+
+```c
+sStack_4a  = *(short *)(&PTR_DAT_005645d8)[iVar10];        // Blaze.c 68683
+psStack_58 = (short *)((int)(&PTR_DAT_005645d8)[iVar10] + 2);
+...
+if ((int)sStack_4a == ((int)sStack_40 << 8 | (int)sVar6)) {
+  sStack_4a  = *psStack_58;                                 // lit la clé suivante
+  psStack_58 = psStack_58 + 1;                              // …même après la huitième
+}
+```
+
+Chaque correspondance consomme une clé **et lit d'avance la suivante**. Or la huitième tranche —
+celle de l'**octant 7**, en `0x005645c8` — se termine sur la clé `01 01`, c'est-à-dire la cellule
+`(rang 1, colonne 1)` : la **dernière cellule visitée** du balayage. La huitième correspondance lit
+donc une neuvième clé deux octets après la fin du bloc, en `0x005645d8` :
+
+```
+0x005645C8: 0707 0107 0106 0102 0701 0601 0201 0101   <- la tranche de l'octant 7
+0x005645D8: 5845 5600 6845 5600 …                     <- PTR_DAT_005645d8 elle-même
+```
+
+Les deux octets lus sont `58 45` — la moitié basse du premier pointeur, `0x00564558` — donc la clé
+vaut `0x4558`.
+
+### Pourquoi c'est bien un défaut
+
+Les huit tranches occupent `0x00564558`..`0x005645d7` et la table de pointeurs qui les désigne
+commence **exactement** à `0x005645d8`. Il n'y a donc pas de neuvième tranche : la lecture sort de
+l'objet. Les sept autres octants ne sortent pas — leur débordement tombe dans la tranche suivante,
+qui existe.
+
+### Pourquoi c'est bénin dans le jeu d'origine
+
+La clé lue n'est **jamais consultée** : elle est lue en `(1,1)`, la dernière cellule ; la boucle
+interne se termine sur le `col--` qui suit, puis l'externe sur le `row--`. Et même si elle l'était,
+`0x4558` ne peut égaler aucun `rang << 8 | colonne`, tous deux bornés à 7. Sur x86 une lecture de
+deux octets dans la `.data` voisine ne coûte rien. Le défaut est donc invisible en 1998.
+
+### Portée
+
+L'octant 7 seulement, et seulement sur le chemin `cellSweep` de `FUN_0051fa40` — le rendu d'un
+morceau de décor porteur d'une grille de cellules. C'est ce qui explique la forme du symptôme :
+approcher un PNJ **en biais** amène la caméra dans cet octant, l'approcher de face non.
+
+L'autre balayage, `DrawWorldCells` (`FUN_00516fc0`), n'est **pas** concerné : sa lecture de clé
+suivante est celle de [LB-009](#lb-009--le-balayage-des-cellules-du-monde-ne-saute-quune-case-sur-les-huit-prévues),
+sur **un seul octet**, ce qui rend toute correspondance ultérieure impossible et arrête le curseur
+bien avant la fin de la tranche. Un défaut en masque un autre.
+
+### Dans OpenForesia
+
+C'est le seul de ce catalogue qui **plantait** la reconstruction : `s_CellSkipTables_00564558` est
+un `ReadOnlySpan<byte>` de 128 octets, et C# lève `IndexOutOfRangeException` là où x86 lisait
+paisiblement chez le voisin.
+
+`GameMemory.NextCellSkipKey` restitue la lecture telle qu'elle est : dans la table tant qu'on y est,
+et **les vrais octets de `PTR_DAT_005645d8`** au-delà — huit pointeurs vers les huit tranches,
+espacés de `0x10`, relevés dans le binaire. Le débordement est donc reproduit, pas gardé : la clé
+rendue vaut bien `0x4558`.
+
+Le correctif d'un mode « corrigé » serait d'arrêter le curseur à la fin de la tranche.

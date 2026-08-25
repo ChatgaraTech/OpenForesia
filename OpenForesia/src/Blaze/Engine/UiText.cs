@@ -468,6 +468,59 @@ internal sealed unsafe class UiText
         return text;                        // aucun octet d'opérande consommé
     }
 
+
+    /// <summary>
+    /// La racine de ressources designee par un octet d'operande de code de controle.
+    ///
+    /// <para>Quatre gestionnaires font le meme calcul, que le desassemblage rend litteralement :
+    /// <c>mov eax,[ecx*4+5E97C0h]</c> sur un octet non borne (voir <c>0x00544a9c</c>). Ce n'est
+    /// donc pas un tableau declare, mais les cinq emplacements qu'il couvre sont cinq globales
+    /// voisines qui recoivent toutes le retour du meme chargeur, <c>FUN_00529b50</c> :</para>
+    ///
+    /// <list type="table">
+    /// <item><term>0</term><description><c>DAT_005e97c0</c> — le tampon de ressources principal</description></item>
+    /// <item><term>1</term><description><c>DAT_005e97c4</c> — son repertoire</description></item>
+    /// <item><term>2</term><description><c>DAT_005e97c8</c> — le repertoire de l'etat de jeu courant</description></item>
+    /// <item><term>3</term><description><c>DAT_005e97cc</c> — le repertoire de la zone</description></item>
+    /// <item><term>4</term><description><c>DAT_005e97d0</c> — le repertoire du menu objets</description></item>
+    /// </list>
+    ///
+    /// <para>L'emplacement 5 tomberait sur <c>DAT_005e97d4</c>, qui n'est pas une racine : son seul
+    /// ecrivain (<c>Blaze.c</c> ligne 81679) y range un parametre, pas un retour de chargeur. La
+    /// levee s'arrete donc a 5, et non a 256.</para>
+    ///
+    /// <para><b>Historique.</b> Seuls 0 et 1 etaient modelises jusqu'au 2026-08-25, chacun recopie
+    /// dans les quatre gestionnaires ; une boite de dialogue passant par la racine 3 —
+    /// le repertoire de zone, celui dont vit tout l'etat 3 — levait <c>NotImplementedException</c>
+    /// dans <see cref="Handler_00544a80"/>.</para>
+    ///
+    /// <para><b>Verifie a l'execution</b> (sonde jetable dans l'auberge, 2026-08-25). Les cinq
+    /// pointeurs et la premiere entree de leur table <c>+0x70</c> :</para>
+    /// <code>
+    /// racine 0  root=0x00ad0000  +0x70=0x00ad0194  [0] = 81 40 82 ED 82 F1 82 EE
+    /// racine 1  root=0x00ad08b0  +0x70=0x00ad0a90  [0] = « Tire sur… »
+    /// racine 2  root=0x00ad504c  +0x70=0x00ad5158  [0] = « Cle de l… »
+    /// racine 3  root=0x00ad5d50  +0x70=0x00ad609c  [0] = 1F D0 1D 08 00 0C 20 2D
+    /// racine 4  root=0x00ad975c  +0x70=0x00000000  (menu objets non charge)
+    /// </code>
+    /// <para>Les racines 1 et 2 rendent des libelles lisibles ; la racine 3 rend un flux qui
+    /// commence par des <b>codes de controle</b> (<c>0x1f</c>, <c>0x1d</c>), c'est-a-dire une
+    /// reelle chaine de dialogue — c'est bien la table de libelles de la zone. La racine 4 a une
+    /// table nulle tant que le menu objets n'est pas charge, exactement comme l'original.</para>
+    /// </summary>
+    private byte* ResourceRoot(uint slot, string caller) => slot switch
+    {
+        0 => mem.s_MainResourceBuffer_005e97c0,   // le tampon principal
+        1 => mem.s_MainResourceDirectory_005e97c4,// son repertoire
+        2 => Blaze.s_Unknown_005e97c8,            // le repertoire de l'etat courant
+        3 => Blaze.s_Unknown_005e97cc,            // celui de la zone
+        4 => Blaze.s_Unknown_005e97d0,            // celui du menu objets
+        _ => throw new NotImplementedException(
+                 $"{caller} : racine de ressources {slot} — l'original indexe &DAT_005e97c0 de " +
+                 "quatre en quatre ; seuls les emplacements 0 a 4 sont des racines connues, et " +
+                 "l'emplacement 5 tomberait sur DAT_005e97d4, qui n'en est pas une."),
+    };
+
     /// <summary>
     /// Handler for control code <c>0x1c</c>, in both passes — <c>0x00544e80</c>, decoded by hand
     /// from Legacy/Binaries/Blaze.exe (file offset <c>0x144280</c>). It is a **subroutine jump inside the
@@ -510,17 +563,8 @@ internal sealed unsafe class UiText
         descriptor[0x15] = (byte)(depth + 1);
 
         uint index = (uint)((text[2] << 8) | text[1]) + value;
-
-        // Ghidra: *(int *)(&DAT_005e97c0 + text[0] * 4). Les deux racines sont des champs séparés
-        // ici, pas un tableau, donc le choix est explicite plutôt qu'indexé.
-        byte* root = text[0] switch
-        {
-            0 => mem.s_MainResourceBuffer_005e97c0,
-            1 => mem.s_MainResourceDirectory_005e97c4,
-            _ => throw new NotImplementedException(
-                     $"FUN_00544e80: resource root {text[0]} — the original indexes " +
-                     "&DAT_005e97c0 by four bytes, and only slots 0 and 1 are modelled."),
-        };
+        // Ghidra: *(int *)(&DAT_005e97c0 + text[0] * 4) — voir ResourceRoot.
+        byte* root = ResourceRoot(text[0], "FUN_00544e80");
 
         return *(byte**)(*(byte**)(root + 0x70) + index * 4);
     }
@@ -540,7 +584,7 @@ internal sealed unsafe class UiText
     /// <para>Three operand bytes select (category, sub-category, index), each remapped through
     /// <see cref="s_PanelSelection_005e9060"/> exactly like <see cref="Handler_005449f0"/>'s single
     /// operand, then chase the same nested atlas <see cref="DrawUiPanel"/> and
-    /// <see cref="Handler_00544e80"/> already use: root (slot 0 or 1) → <c>+0x94</c> (atlas) →
+    /// <see cref="Handler_00544e80"/> already use: root (le meme choix que <see cref="ResourceRoot"/>) → <c>+0x94</c> (atlas) →
     /// <c>[selector1]</c> (a sub-table pointer) → <c>[selector2 * 8]</c> (an 8-byte
     /// <c>(uv, flags)</c> record). <c>flags</c>' byte at bits 16-23 then indexes
     /// <see cref="s_EntityDecodeTable_005e8f00"/> — the same 1024-entry tpage/clut table
@@ -573,15 +617,7 @@ internal sealed unsafe class UiText
         descriptor[0x0c] = 0;
 
         byte selector0 = mem.s_PanelSelection_005e9060[text[0]];
-        byte* root = selector0 switch
-        {
-            0 => mem.s_MainResourceBuffer_005e97c0,
-            1 => mem.s_MainResourceDirectory_005e97c4,
-            _ => throw new NotImplementedException(
-                     $"FUN_00544810: resource root {selector0} â€” the original indexes " +
-                     "&DAT_005e97c0 by four bytes, and only slots 0 and 1 are modelled, same as " +
-                     "FUN_00544e80."),
-        };
+        byte* root = ResourceRoot(selector0, "FUN_00544810");   // &DAT_005e97c0 + selector0 * 4
         byte* atlas = *(byte**)(root + 0x94);
 
         byte selector1 = mem.s_PanelSelection_005e9060[text[1]];
@@ -781,17 +817,8 @@ internal sealed unsafe class UiText
         descriptor[0x15] = (byte)(depth + 1);
 
         uint index = (uint)(text[1] | (text[2] << 8));
-
-        // Ghidra: *(int *)(&DAT_005e97c0 + text[0] * 4), comme Handler_00544e80.
-        byte* root = text[0] switch
-        {
-            0 => mem.s_MainResourceBuffer_005e97c0,
-            1 => mem.s_MainResourceDirectory_005e97c4,
-            _ => throw new NotImplementedException(
-                     $"FUN_00544c10 : racine de ressources {text[0]} — l'original indexe " +
-                     "&DAT_005e97c0 de quatre en quatre, et seuls les emplacements 0 et 1 sont " +
-                     "modelises."),
-        };
+        // Ghidra: *(int *)(&DAT_005e97c0 + text[0] * 4) — voir ResourceRoot.
+        byte* root = ResourceRoot(text[0], "FUN_00544c10");
 
         return *(byte**)(*(byte**)(root + 0x70) + index * 4);
     }
@@ -852,16 +879,7 @@ internal sealed unsafe class UiText
         _ = descriptor;                                     // le corps ne touche pas au descripteur
 
         uint index = (uint)(mem.s_PanelSelection_005e9060[text[1]] + text[2]);
-
-        byte* root = text[0] switch
-        {
-            0 => mem.s_MainResourceBuffer_005e97c0,
-            1 => mem.s_MainResourceDirectory_005e97c4,
-            _ => throw new NotImplementedException(
-                     $"FUN_00544a80 : racine de ressources {text[0]} — l'original indexe " +
-                     "&DAT_005e97c0 de quatre en quatre, et seuls les emplacements 0 et 1 sont " +
-                     "modelises."),
-        };
+        byte* root = ResourceRoot(text[0], "FUN_00544a80");   // &DAT_005e97c0 + text[0] * 4
 
         return *(byte**)(*(byte**)(root + 0x70) + index * 4);
     }

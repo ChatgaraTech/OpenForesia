@@ -1288,3 +1288,64 @@ Consequence pratique : **les onglets 3 et 4 ne sont pas atteignables avec ce per
 une autre classe — la ligne 1, 3, 5 ou 7 de la table pour le 3, la ligne 4 pour le 4. Avant de
 compter des `RIGHT`, lire la ligne de la classe dans `s_ClassTabs_0056a898`
 (`Screens/State03/WorldMapMenu.cs`).
+
+---
+
+## Une sonde de comptage vaut mieux qu'une deduction sur le trajet (2026-08-25)
+
+En corrigeant les racines de ressources du moteur de texte, il fallait savoir si le trajet de
+l'auberge exercait bien le code touche. La deduction naturelle — « la boite " - La reception - "
+est du texte, donc elle passe par la », — **est fausse**. Une sonde d'une ligne dans la fonction
+corrigee l'a montre en un run :
+
+| sequence `-Then` | appels a la fonction corrigee |
+|---|---|
+| `…,ENTER,WAIT2,ENTER,WAIT4` (la boite de reception seule) | **0** |
+| `…,ENTER,WAIT2,ESC,WAIT3,START,WAIT8` (+ le menu de jeu) | 2 358 |
+
+La boite de reception traverse le moteur de texte sans jamais indexer de racine ; ce sont les pages
+du **menu de jeu** qui le font. Un « aucun plantage » sur le premier trajet n'aurait donc rien
+prouve du tout.
+
+**La regle**: quand une correction doit etre *exercee* et pas seulement *compilee*, poser une sonde
+qui **compte les passages**, et lire ce compte. Un verdict `aucun plantage` ne dit pas que le code
+corrige a tourne — il dit que rien n'a plante, ce qui est vrai aussi quand il n'a pas tourne.
+
+**Le corollaire honnete** : si la sonde rend 0 sur tous les trajets accessibles a l'agent, la
+correction n'est pas verifiee, et il faut le dire — voir le partage du 2026-08-24.
+
+---
+
+## Forcer l'etat plutot que d'essayer de l'atteindre (2026-08-25)
+
+Suite directe de la section precedente. Le plantage de `DrawChunk` (LB-013) ne survient que dans un
+**octant de cap de camera** sur huit. Le trajet de l'auberge le montre en deux runs : le chemin
+concerne tourne bien, ~4 400 appels, mais **toujours dans l'octant 2**. Amener la camera dans
+l'octant 7 au clavier n'est pas fiable — c'est le constat du 2026-08-24.
+
+Une **sonde d'une ligne** le donne directement, juste apres le calcul :
+
+```csharp
+int octant = (((ushort)pose[1] + 0x100) >> 9) & 7;
+octant = 7;   // SONDE JETABLE
+```
+
+Le rendu devient faux — ce n'est pas le bon cone de vue — mais ce n'est pas ce qu'on mesure : on
+mesure qu'un chemin s'execute sans lever.
+
+### Les deux sondes, et laquelle prouve quelque chose
+
+| sonde | ce qu'elle rend | ce qu'elle prouve |
+|---|---|---|
+| forcer l'etat + compter les appels | ~2 800 appels, aucun plantage | que rien ne casse **si** le chemin est bien celui-la |
+| tracer **dans la branche corrigee** | 2 314 lectures, toutes au meme curseur | que la branche corrigee est **empruntee** |
+
+La seconde est la bonne. La premiere peut se satisfaire d'un chemin voisin ; la seconde nomme la
+ligne. Quand une correction tient en une branche, **poser la sonde dans la branche**, pas a l'entree
+de la fonction.
+
+### Ce qu'il faut dire ensuite
+
+Forcer un etat prouve que le code ne plante plus **dans cet etat**. Cela ne prouve pas que le jeu
+atteignait cet etat-la. Les deux phrases sont differentes et il faut ecrire la seconde : ici, c'est
+a Vincent de refaire le dialogue de biais.

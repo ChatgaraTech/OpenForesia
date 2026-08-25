@@ -1501,8 +1501,7 @@ internal sealed unsafe class Model3d(GameMemory mem)
         int octant = (((ushort)pose[1] + 0x100) >> 9) & 7;
 
         int skipCursor = octant * 0x10;
-        int skipKey = GameMemory.s_CellSkipTables_00564558[skipCursor]
-                    | GameMemory.s_CellSkipTables_00564558[skipCursor + 1] << 8;
+        int skipKey = GameMemory.NextCellSkipKey(skipCursor);
         skipCursor += 2;
 
         ushort corner = GameMemory.s_CellSweepCorner_00564548[octant];
@@ -1517,8 +1516,9 @@ internal sealed unsafe class Model3d(GameMemory mem)
             {
                 if (skipKey == (row << 8 | col))
                 {
-                    skipKey = GameMemory.s_CellSkipTables_00564558[skipCursor]
-                            | GameMemory.s_CellSkipTables_00564558[skipCursor + 1] << 8;
+                    // La huitieme tranche deborde de deux octets sur PTR_DAT_005645d8 — voir
+                    // GameMemory.NextCellSkipKey et legacy-bug.md, LB-013.
+                    skipKey = GameMemory.NextCellSkipKey(skipCursor);
                     skipCursor += 2;
                     continue;
                 }
