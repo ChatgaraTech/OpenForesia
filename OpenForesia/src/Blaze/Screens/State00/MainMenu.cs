@@ -292,7 +292,25 @@ public static unsafe partial class Blaze
     // Ghidra: DAT_00566c48 — le bloc de decoupe du menu. **0x28 et non 0x40** : la taille declaree
     // debordait de 0x18 sur DAT_00566c70, son voisin immediat (corrige le 2026-08-21). Les
     // ecritures de SetupMenuScreen vont jusqu'a +0x13, l'ecart au voisin est 0x28 : tout tient.
-    private static readonly uint* s_MenuScreenBlock_00566c48 = (uint*)NativeMemory.AllocZeroed(0x28);
+    private static readonly uint* s_MenuScreenBlock_00566c48 = BuildMenuScreenBlock();
+
+    /// <summary>
+    /// Le contenu <b>initial</b> du bloc, releve dans <c>.data</c> le 2026-08-25. Il etait alloue a
+    /// zero jusque-la, ce qui n'etait juste que tant que son seul lecteur ecrivait tous les champs
+    /// avant de lire — <see cref="SetupMenuScreen"/> le fait. <c>EntityHandler_00404E50</c>, lui,
+    /// <b>lit</b> <c>+0x10</c> et <c>+0x12</c> pour en decompter 300 : sur un bloc a zero, son
+    /// decompte serait deja fini a la premiere image.
+    /// </summary>
+    private static uint* BuildMenuScreenBlock()
+    {
+        uint* p = (uint*)NativeMemory.AllocZeroed(0x28);
+        p[1] = 0x3fff3fff;                      // +0x04
+        p[3] = 0x3fff3fff;                      // +0x0c
+        p[4] = 0x3fff3fff;                      // +0x10 et +0x12, les deux champs decomptes
+        p[5] = 1;                               // +0x14
+        p[6] = 1;                               // +0x18
+        return p;
+    }
 
     // Ghidra: DAT_00566c70 — reuni avec s_ViewRect_00566c70 dans GameMemory le 2026-08-21 : les
     // deux etaient deux allocations pour une seule memoire. Voir Mem.s_ViewRect_00566c70.

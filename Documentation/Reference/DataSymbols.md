@@ -2102,3 +2102,36 @@ généralisé à 273. Le compte exact tient en deux commandes :
 grep -oE "^/\* FUN_[0-9a-f]{8} @" Legacy/Decompiled/Blaze.c | sed 's|^/\* FUN_||; s| @$||' | sort -u > have.txt
 comm -12 cibles.txt have.txt | wc -l
 ```
+
+---
+
+## `0x00566c48` — le bloc d'ecran, et son contenu **initial** (2026-08-25)
+
+Relevé avec `OpenForesia.Tools -- at`. Quarante octets, jusqu'a `DAT_00566c70` qui suit :
+
+```
+0x00566C48: 0000 0000 ff3f ff3f 0000 0000 ff3f ff3f
+0x00566C58: ff3f ff3f 0100 0000 0100 0000 0000 0000
+0x00566C68: 0000 0000 0000 0000
+```
+
+| champ | valeur initiale |
+|---|---|
+| `+0x00` | 0 |
+| `+0x04` | `0x3fff3fff` |
+| `+0x08` | 0 |
+| `+0x0c` | `0x3fff3fff` |
+| `+0x10` et `+0x12` | `0x3fff` chacun — deux `short`, c'est-a-dire `DAT_00566c58` et `DAT_00566c5a` |
+| `+0x14`, `+0x18` | 1 |
+| `+0x1c` .. `+0x24` | 0 |
+
+**Pourquoi ce releve a fini par compter.** Le bloc etait alloue **a zero** dans la reconstruction, ce
+qui etait juste tant que son unique lecteur, `SetupMenuScreen`, ecrivait tous ses champs avant de le
+publier. `EntityHandler_00404E50` (2026-08-25) en **lit** deux : il decompte 300 par image sur
+`+0x10` et `+0x12` et n'agit que quand les deux atteignent zero. Sur un bloc a zero, ce decompte
+serait deja fini a la premiere image — le changement de musique serait instantane au lieu de prendre
+la cinquantaine d'images que `0x3fff / 300` demande.
+
+**La lecon generale** : un bloc `.data` alloue a zero n'est faux que le jour ou quelqu'un le **lit**
+avant de l'ecrire. Tant qu'il n'y a qu'un ecrivain complet, rien ne le montre. C'est le meme genre de
+dette silencieuse que les huit champs `= Arena(0x…)` du decoupage de 2026-08-19.

@@ -13314,3 +13314,70 @@ primitives par image, la valeur de reference, et le build est vert — c'est tou
 etablir. **Meme reserve qu'hier**, et elle vaut d'etre repetee parce qu'elle s'est deja realisee
 une fois : une salle qui s'ouvre reveille des entites qui n'ont peut-etre jamais tourne. Le prochain
 plantage, s'il vient, se nommera.
+
+---
+
+## 2026-08-25 (suite 17) — la femme a la petite harpe, et un bloc `.data` alloue a zero
+
+**La salle marche, les PNJ aussi.** Un seul geste levait : accepter la proposition de la femme a la
+petite harpe de changer de musique.
+
+```
+FUN_0047aa70, table 0x005ff400 entree 1 [00 08 90 80 00 ff 00 00 01 00 00 00 …] :
+gestionnaire d'entite 0x404E50 non transcrit.
+```
+
+Absent de `Blaze.c` cette fois — contrairement a `FUN_00405a70` la veille. Le message dit quoi faire
+dans les deux cas ; c'est sa condition qu'il faut lire, pas sa suggestion.
+
+### Ce que fait le gestionnaire
+
+151 octets, deux moities, et **la seconde attend la premiere**.
+
+A chaque image il decompte **300** sur les deux `short` de `+0x10` et `+0x12` du bloc d'ecran
+`0x00566c48`, en les bornant a zero par le bas, remet le mot de tete a `0xc0` et republie le bloc par
+`Ordinal_762`. Tant que l'un des deux est non nul, il s'arrete la : l'entite **reste armee** et
+repasse a l'image suivante. Quand les deux sont a zero, il choisit la piste, la lance, et se desarme
+(`and dword [eax],7FFFFFFFh`).
+
+`0x3fff / 300` fait une cinquantaine d'images. Le changement de musique n'est donc pas instantane :
+il y a une transition, et c'est elle que ce gestionnaire pilote.
+
+### Deux recoupements qui n'ont rien coute
+
+**La premiere moitie existe seule dans `Blaze.c`** — `FUN_0041af50`, ligne 11043 : le meme decompte,
+sans entite, sans musique, sans desarmement. Elle n'est pas transcrite (rien ne l'appelle encore),
+mais elle confirme la lecture du bloc et des deux champs sans avoir a les deduire.
+
+**Le choix de piste est un calcul deja rencontre, ecrit autrement.** Ici, une cascade
+`cmp al,1` / `cmp al,2` ; dans `ScriptOpAreaVerbMusic`, un `setne / dec / and 2` sans branchement.
+Les deux calculent la meme identite bornee — 0, 1 et 2 se rendent eux-memes, toute autre valeur rend
+0. Deux codegens pour une regle, ce qui la confirme mieux qu'une lecture seule.
+
+### Le vrai enseignement : un bloc `.data` alloue a zero
+
+`s_MenuScreenBlock_00566c48` etait `NativeMemory.AllocZeroed(0x28)`. C'etait juste tant que son
+**unique** lecteur, `SetupMenuScreen`, ecrivait tous les champs avant de publier le bloc. Ce
+gestionnaire-ci est le premier a **lire** `+0x10` et `+0x12` sans les avoir ecrits — et sur un bloc a
+zero, son decompte serait deja fini a la premiere image : la transition disparaitrait, la musique
+changerait d'un coup.
+
+Le contenu initial est releve et modelise (voir `DataSymbols.md`). **La lecon se generalise** : un
+bloc `.data` alloue a zero n'est faux que le jour ou quelqu'un le lit avant de l'ecrire, et rien ne
+le signale avant ce jour-la. Meme famille de dette silencieuse que les huit champs `= Arena(0x…)`
+du decoupage du 2026-08-19.
+
+Verifie a l'ecran : la fiche de personnage est pixel pour pixel celle d'avant le changement, et le
+debit reste a 509 primitives par image.
+
+### Ce qui n'est pas etabli
+
+`Ordinal_762` reste opaque. Elle est declaree, deja appelee par `SetupMenuScreen` sur ce meme bloc,
+et sa decompilation dans `winsys3d.c` tombe sur un corps partage par des dizaines d'ordinaux — ce qui
+ne dit rien. Les deux champs decomptes sont donc transcrits **pour ce qu'ils sont**, deux `short` du
+bloc, sans leur preter un role d'affichage qu'on ne peut pas prouver.
+
+### Non exerce
+
+La salle du barman demande de conduire le personnage. Build vert, run de controle a 509 primitives
+par image, capture identique a la precedente.

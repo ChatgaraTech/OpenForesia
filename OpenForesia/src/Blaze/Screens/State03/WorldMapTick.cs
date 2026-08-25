@@ -3636,6 +3636,10 @@ public static unsafe partial class Blaze
             // de scene. C'est le plantage de la salle DERRIERE le barman, signale le 2026-08-25.
             case 0x00405A70: EntityHandler_00405A70((uint*)record); return;
 
+            // L'entree 1 de la meme table — le changement de musique differe de la femme a la
+            // petite harpe. Signale le 2026-08-25.
+            case 0x00404E50: EntityHandler_00404E50((uint*)record); return;
+
             // La famille commune de la table 0x0056adc8, transcrite le 2026-08-24. 0x004734B0 est
             // le gestionnaire par defaut : 47 des 64 sous-types y pointent.
             case 0x004734B0: EntityHandler_004734B0((uint*)record); return;
@@ -3868,6 +3872,70 @@ public static unsafe partial class Blaze
             *(short*)(effect + 0x2a) = (short)(((int)Winsys3d.GetSinTableEntry(angle) >> 2) + 0x1000);
             *(ushort*)(effect + 0x12) = (ushort)((angle + 400) & 0xfff);
         }
+    }
+
+    /// <summary>
+    /// Ghidra: 0x00404e50 — <b>le changement de musique differe</b>. Absent de <c>Blaze.c</c> ;
+    /// releve au desassembleur, 151 octets (<c>0x00404e50</c>..<c>0x00404ee6</c>) —
+    /// <c>Legacy/Raw/Blaze/FUN_00404E50.asm</c>.
+    ///
+    /// <para>Atteint le 2026-08-25 par la femme a la petite harpe de la salle derriere le barman,
+    /// entree 1 de la table installee par zone (<c>0x005ff400</c>) : elle propose de changer de
+    /// musique, et c'est cette entite-ci qui execute le changement une fois qu'on accepte.</para>
+    ///
+    /// <para><b>Deux moities, et la seconde attend la premiere.</b> A chaque image il decompte
+    /// <b>300</b> sur les deux <c>short</c> de <c>+0x10</c> et <c>+0x12</c> du bloc d'ecran
+    /// <see cref="s_MenuScreenBlock_00566c48"/>, en les bornant a zero par le bas, remet le mot de
+    /// tete du bloc a <c>0xc0</c> et le republie par <c>Ordinal_762</c>. Tant que l'un des deux est
+    /// encore non nul, il s'arrete la — l'entite reste armee et repassera a l'image suivante.
+    /// Quand les <b>deux</b> sont a zero, il choisit la piste et la lance, puis se desarme.</para>
+    ///
+    /// <para><b>La premiere moitie existe deja seule</b>, dans <c>Blaze.c</c> cette fois :
+    /// <c>FUN_0041af50</c> (ligne 11043) en est le decompte nu, sans entite, sans musique et sans
+    /// desarmement. Elle n'est pas transcrite — rien ne l'appelle encore dans le graphe reconstruit
+    /// — mais elle confirme la lecture du bloc et des deux champs.</para>
+    ///
+    /// <para><b>Le choix de piste est le meme calcul qu'ailleurs, ecrit autrement.</b> Ici c'est une
+    /// cascade de <c>cmp al,1</c> / <c>cmp al,2</c>, la ou <c>ScriptOpAreaVerbMusic</c> emploie un
+    /// <c>setne / dec / and 2</c> sans branchement. Les deux calculent l'identite bornee : 0, 1 et 2
+    /// se rendent eux-memes, <b>toute autre valeur rend 0</b>. Deux codegens pour une meme regle,
+    /// ce qui la confirme.</para>
+    ///
+    /// <para><b>Ce que fait <c>Ordinal_762</c> n'est pas etabli.</b> Elle est declaree et deja
+    /// appelee par <c>SetupMenuScreen</c> sur ce meme bloc ; sa decompilation dans
+    /// <c>winsys3d.c</c> tombe sur un corps partage par des dizaines d'ordinaux, ce qui ne dit rien
+    /// de plus. Les deux champs decomptes sont donc transcrits pour ce qu'ils sont — deux
+    /// <c>short</c> du bloc — sans leur preter un role.</para>
+    /// </summary>
+    private static void EntityHandler_00404E50(uint* entity)
+    {
+        byte* block = (byte*)s_MenuScreenBlock_00566c48;
+
+        // Ghidra: `movsx ebx,word [566C58h]` — la lecture est SIGNEE, et c'est ce qui rend la
+        // borne a zero necessaire : sans elle le decompte passerait sous zero et repartirait.
+        int a = *(short*)(block + 0x10) - 300;
+        int b = *(short*)(block + 0x12) - 300;
+
+        *(uint*)block = 0xc0;
+
+        if (a < 0) a = 0;
+        if (b < 0) b = 0;
+
+        *(short*)(block + 0x10) = (short)a;
+        *(short*)(block + 0x12) = (short)b;
+
+        Winsys3d.Ordinal_762(block);
+
+        if (a != 0 || b != 0) return;                      // encore en cours : on repassera
+
+        byte source = *Mem.Arena(0x005e96fe);
+        byte track = source <= 2 ? source : (byte)0;       // Ghidra: la cascade cmp al,1 / cmp al,2
+
+        s_Unknown_005de534 = track;
+        s_Unknown_00566c8c = track;
+        PlayMusicTrack(track);                             // Ghidra: FUN_00529ad0
+
+        entity[0] &= 0x7fffffff;
     }
 
     /// <summary>

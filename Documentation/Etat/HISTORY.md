@@ -6,6 +6,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- feat : **le changement de musique de la femme à la petite harpe** (`FUN_00404e50`, absent de `Blaze.c`) — un décompte de 300 par image sur deux champs du bloc d'écran, puis la piste, puis le désarmement
+- fix : le bloc d'écran `0x00566c48` était alloué **à zéro** ; son contenu `.data` initial est relevé et modélisé — sans lui, la transition musicale serait déjà finie à la première image
+- doc : un bloc `.data` alloué à zéro n'est faux que le jour où quelqu'un le **lit** avant de l'écrire ; tant qu'il n'a qu'un écrivain complet, rien ne le montre
+- doc : le choix de piste s'écrit ici en cascade `cmp al,1` / `cmp al,2` là où le verbe de zone emploie un `setne / dec / and 2` — deux codegens pour la même identité bornée 0/1/2
 - feat : **le troisième balayeur d'entités de scène** (`FUN_00405a70`) et ses quatre corps de réveil manquants — c'est ce que la salle derrière le barman réclamait après l'opcode 17
 - doc : le numéro de type est **relatif au balayeur**, pas au corps : `FUN_00405680` est le type 3 de l'un et le type 0 de l'autre ; les nouveaux corps ne portent donc pas de numéro
 - doc : `FUN_00405be0` est mot pour mot `FUN_00405770` — vérifié, pas supposé : même taille, aucun `call` différent, seuls les sauts internes bougent

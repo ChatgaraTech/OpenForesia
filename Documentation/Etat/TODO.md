@@ -39,24 +39,31 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-## À vérifier maintenant : la salle derrière le barman (suite)
+## À vérifier maintenant : le changement de musique de la femme à la petite harpe
 
-**Opcode 17 confirmé, le balayeur suivant transcrit le 2026-08-25.** L'opcode a tenu — la salle
-s'affiche — puis le jeu a levé sur `FUN_00405a70`, le troisième balayeur d'entités de scène. Son
-corps était dans `Blaze.c` ; quatre corps de réveil sur cinq manquaient, tous courts, toutes leurs
-primitives déjà en place.
+**Salle et PNJ confirmés le 2026-08-25** — l'opcode 17 et le troisième balayeur ont tenu. Reste un
+geste : accepter que la femme à la petite harpe change la musique.
 
-À refaire : **entrer dans la salle**. Détail dans `REVERSE_STATUS.md`, section « suite 16 ».
+`FUN_00404e50` transcrit (absent de `Blaze.c`, relevé au désassembleur). C'est un décompte de 300
+par image sur deux champs du bloc d'écran, une cinquantaine d'images, puis la piste et le
+désarmement.
 
-**Même réserve, et elle s'est déjà réalisée une fois** : une salle qui s'ouvre réveille des entités
-qui n'ont peut-être jamais tourné. Le prochain plantage, s'il vient, se nommera.
+**Avec lui une vraie correction de fond** : le bloc `0x00566c48` était alloué **à zéro** alors que
+`.data` y met `0x3fff`. Sans le relevé, la transition serait finie dès la première image. Vérifié
+que le menu principal n'a pas bougé (capture identique, 509 primitives par image).
+
+À refaire : **accepter le changement de musique**. Détail dans `REVERSE_STATUS.md`, section
+« suite 17 ».
 
 ---
 
-## Vérifié en jeu le 2026-08-25 : les dialogues de biais
+## Vérifié en jeu le 2026-08-25
 
-Vincent : « les dialogues de biais fonctionnent ». Cela confirme **deux** corrections du jour, qui
-tombaient toutes les deux sur ce geste :
+**La salle derrière le barman s'ouvre et ses PNJ répondent** : l'**opcode 17** (le changement de
+salle) et le **troisième balayeur d'entités de scène** sont confirmés — « suite 15 » et « suite 16 ».
+
+**Les dialogues de biais fonctionnent.** Cela confirme deux corrections qui tombaient toutes les
+deux sur ce geste :
 
 - **la racine de ressources 3** du moteur de texte (`FUN_00544a80`), qui levait sur toute boîte de
   dialogue passant par le répertoire de zone — `REVERSE_STATUS.md`, « suite 13 » ;
