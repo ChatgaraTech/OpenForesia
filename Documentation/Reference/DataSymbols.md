@@ -2135,3 +2135,56 @@ la cinquantaine d'images que `0x3fff / 300` demande.
 **La lecon generale** : un bloc `.data` alloue a zero n'est faux que le jour ou quelqu'un le **lit**
 avant de l'ecrire. Tant qu'il n'y a qu'un ecrivain complet, rien ne le montre. C'est le meme genre de
 dette silencieuse que les huit champs `= Arena(0x…)` du decoupage de 2026-08-19.
+
+---
+
+## La colonne d'ecart n'est PAS une taille (2026-08-25)
+
+**Piege paye une fois, note ici pour ne pas l'etre deux.** La troisieme colonne de la carte des
+symboles reconstruits est **l'ecart jusqu'au symbole declare suivant**, pas la taille de
+l'allocation. `s_Particles_005de824` y porte `6060` alors qu'elle alloue **4992** octets
+(0x20 particules de 0x9c) : l'ecart couvre 900 octets de globales qui ne sont simplement pas encore
+declarees.
+
+En lisant cette colonne comme une taille, on conclut qu'une adresse tombe dans une allocation alors
+qu'elle est dehors — et on renonce a un travail pour une mauvaise raison. **Pour trancher une
+appartenance, il faut la taille reelle cote C#**, pas l'ecart :
+
+| adresse | symbole en dessous | ecart affiche | taille reelle | verdict |
+|---|---|---|---|---|
+| `0x005dff28` | `s_Particles_005de824` | 6060 | 4992 | **dehors** |
+| `0x0056dc90` | `s_StatusTimerMasks_0056d340` | 2584 | 192 | **dehors** |
+
+## `0x005dfb8c` — la file de sons differes, et son chevauchement nominal
+
+`FUN_0053dbe0` empile et `FUN_0053dc30` sert une file de sons differes : un compteur en
+`0x005dfb8c` qui reboucle a 0x20, puis **32 enregistrements de 0x14 octets a partir de
+`0x005dfb90`**, soit `0x005dfb90`..`0x005dfe10`. Taille confirmee trois fois — le masque
+`0xffffff1f` du compteur, la boucle de service (`local_4 = 0x20`), et le pas `* 0x14`.
+
+**Elle commence 0x14 octets avant la fin nominale de `s_Particles_005de824`** (`0x005dfba4`). Les
+deux etendues se chevauchent donc d'un enregistrement sur le papier.
+
+**Sans consequence en pratique** : le code des particules ne touche que les offsets `0x00`..`0x27`
+de chaque entree de `0x9c` — les deux boucles n'ecrivent pas au-dela de `piVar11[8]`, `ProjectPoint`
+ne lit que les trois entiers de position et `EmitParticle` que `+0x20`. Le dernier octet ecrit par
+une particule est `0x005dfb2f`, 97 octets avant la file.
+
+**Ce qu'il ne faut surtout pas faire** : modeliser la file de sons comme une vue dans
+`s_Particles_005de824`. Ce serait deux noms pour une adresse — le defaut que `MemoryLayoutTests`
+existe pour nommer. Elle prend sa propre allocation le jour ou elle est transcrite.
+
+## `0x005de548`, `0x005dff28`, `0x005dff5c`..`0x005dff7c`, `0x0056dc90` — l'etat du panneau des verbes 57/58
+
+Onze globales posees par `FUN_0053dea0` et `FUN_0053df20`, lues par `FUN_0053e0a0` (non transcrite).
+Declarees dans `Screens/State03/WorldMapScript.cs` chez leur seul ecrivain transcrit.
+
+| adresse | largeur | role |
+|---|---|---|
+| `0x005de548` | octet | le **mode** du panneau : 0 (verbe 57) ou 1 (verbe 58) ; toute autre valeur fait sortir `FUN_0053e0a0` aussitot |
+| `0x005dff28` | octet | l'index de membre du groupe sur lequel il porte |
+| `0x005dff5c`..`0x005dff7c` | 9 dwords | l'etat de curseur, remis a zero d'un bloc a l'ouverture |
+| `0x0056dc90` | dword | le sous-etat, **-1** a l'ouverture |
+
+`0x005dff64` est le seul des neuf traite a part : le verbe 57 y met l'octet `+0x2bc` du bloc du
+personnage (`MainMem + membre * 0x2000 + 0xf02bc`), le verbe 58 y met zero.

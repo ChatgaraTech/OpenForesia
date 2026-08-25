@@ -13381,3 +13381,245 @@ bloc, sans leur preter un role d'affichage qu'on ne peut pas prouver.
 
 La salle du barman demande de conduire le personnage. Build vert, run de controle a 509 primitives
 par image, capture identique a la precedente.
+
+---
+
+## 2026-08-25 (suite 18) — les six balayeurs d'entites de scene, fermes d'un bloc
+
+**Le troisieme plantage de suite au meme endroit du graphe.** La chambre de l'analyseur d'objets
+leve sur `0x00405D60`, apres `0x00405A70` (la salle du barman) et `0x00404E50` (la harpiste). Trois
+allers-retours pour trois voisins immediats : c'etait le signal qu'il fallait arreter de les prendre
+un par un.
+
+### Le binaire les range lui-meme
+
+`s_VtSource_0056b0c8`, entrees **32 a 37** — donc les sous-types `0xe0` a `0xe5` de la table
+installee par zone :
+
+| entree | sous-type | adresse | types reveilles | etat avant |
+|---|---|---|---|---|
+| 32 | `0xe0` | `0x00404EF0` | 1, 0, 2 | transcrit |
+| 33 | `0xe1` | `0x004055C0` | 3, 4, 5, 7, 6 | transcrit |
+| 34 | `0xe2` | `0x00405A70` | 0, 1, 2, 3, 4 | transcrit la veille |
+| 35 | `0xe3` | `0x00405D60` | 0 | **manquant** |
+| 36 | `0xe4` | `0x00405E70` | 0, 1 | **manquant** |
+| 37 | `0xe5` | `0x00405FE0` | 5, 1, 2, 3, 4, 0 | **manquant** |
+
+Les entrees 38 et 39 retombent sur la souche vide : le bloc se referme la. **Six balayeurs, pas
+sept**, et la borne vient de la table, pas d'une supposition.
+
+Cote corps de reveil, la famille est finie elle aussi : **quinze**, dont douze etaient deja ecrits.
+Manquaient `FUN_00405da0`, `FUN_00405ed0` et `FUN_00405f50`. Trois sweepers et trois corps, tous
+courts, toutes leurs primitives deja en place : le bloc entier valait moins qu'un des allers-retours
+qu'il evite.
+
+### Un seul est absent de `Blaze.c`, et il fallait le voir
+
+`0x00405D60` n'a pas de nom Ghidra : il n'est atteint que par la table. Pire, il se cache **dans**
+ce que la lecture rapide prend pour la fin de `FUN_00405d20` — ce dernier s'arrete en `0x00405d58`,
+suivi de sept `nop` d'alignement, et le balayeur commence en `0x00405d60`. Releve au desassembleur,
+64 octets, garde dans `Legacy/Raw/Blaze/FUN_00405D60.asm`.
+
+C'est le plus depouille de la famille : un seul test par emplacement, le type 0.
+
+### Verifie par extraction, pas a l'oeil
+
+Les trois corps de reveil sont des cascades de quatre a sept `if (etat == n) primitive(record, m)`.
+Les relire a l'oeil est exactement le genre de tache ou l'on intervertit deux nombres sans le voir.
+Les triplets `(etat, primitive, argument)` ont donc ete extraits **des deux cotes** — de `Blaze.c` et
+du C# — et compares :
+
+```
+--- 405da0 (Blaze.c) ---        --- 00405DA0 (C#) ---
+== 1  FUN_00404fe0(puVar1,0)    == 1  AdvanceSceneEntityState_00404FE0(record, 0)
+== 2  FUN_00404fe0(puVar1,1)    == 2  AdvanceSceneEntityState_00404FE0(record, 1)
+…                               …
+== 7  FUN_00405420(puVar1,1)    == 7  CountDownSceneEntityState_00405420(record, 1)
+```
+
+Les quinze lignes des trois corps concordent. **Ca coute deux commandes et ca remplace une relecture
+qui n'aurait rien prouve.**
+
+### Ce que la famille dit une fois complete
+
+`FUN_00405f50` est le **seul des neuf** appelants de `FUN_004052f0` a passer une pause d'inactivite
+**fixe** (`2, 3, 1`) ; les huit autres passent `rand() % 10`, un avec un `+ 10`. Ce decor-la ne
+respire pas au hasard — et on ne pouvait pas le savoir avant d'avoir les neuf sous les yeux.
+
+`FUN_00405fe0` est `FUN_00405a70` plus le type 5, et il commence par lui : l'ordre du binaire est
+5, 1, 2, 3, 4, 0. Conserve tel quel — un reveil peut changer l'octet de type, et le binaire le relit
+avant chaque test.
+
+### Non exerce
+
+La chambre demande de conduire le personnage. Build vert, run de controle a 509 primitives par
+image. L'oracle d'extraction ci-dessus est ce qui remplace, pour ces trois corps, une verification a
+l'ecran qui n'est pas a ma portee.
+
+---
+
+## 2026-08-25 (suite 19) — le verbe 56 : l'expertise d'un objet
+
+**Le second dialogue de l'homme de la chambre** appelle le verbe 56 de la table de zone,
+`FUN_0053dd20`. Absente de `Blaze.c`.
+
+**Le relevé etait deja au depot depuis le 2026-08-16** — `Legacy/Raw/Blaze/FUN_0053dd20.asm` et sa
+decompilation ciblee `FUN_0053dd20.c`. Neuf jours d'avance sur le besoin. Reflexe a garder :
+**regarder dans `Legacy/Raw/` avant de relancer un dump**, la moitie du travail y est parfois deja
+faite.
+
+### Trois temps
+
+**Trouver.** Les dix emplacements d'objet du personnage (`MainMem + (joueur + 0x78) * 0x2000 +
+0x300`, pas de `0x280`) sont parcourus jusqu'au premier occupe **et** non identifie — octet de tete
+non nul, bit `0x8000` de `+0x12` eteint. Les dix epuises : `DAT_005e909f = 0` et le verbe rend
+**1**. C'est sa seule sortie non nulle, donc la seule qui fasse brancher le script — « je n'ai rien
+a expertiser ».
+
+**Expertiser.** Le bit est pose, le nom complet de l'objet est **recopie octet par octet** dans le
+libelle 1 de la zone (`repertoire + 0x70`, entree 1) — c'est comme cela que la phrase du personnage
+nomme l'objet — et cinq champs du bloc de panneau sont remplis. Deux entrees de la table de decodage
+aussi, dont l'une porte le numero du joueur.
+
+**Propager.** Les dix emplacements sont reparcourus : tout objet occupe encore non identifie dont
+les **seize premiers octets** sont identiques a celui qu'on vient d'expertiser est marque identifie a
+son tour. Une expertise vaut pour toute la pile. C'est le **meme predicat d'identite d'objet** que le
+transfert entre membres du menu « Objets », qui y propage deja `0x8000` dans l'autre sens : deux
+sites, une regle.
+
+### Trois endroits ou la pseudo-C dit moins que le binaire
+
+**`CONCAT22` cache deux ecritures de largeurs differentes.** Ghidra rend
+`_DAT_005e8ffc = CONCAT22(joueur * 0x40 + DAT_005e8fa2, DAT_005e8fa0)`. Le binaire fait
+`mov edx,[5e8fa0] ; mov [5e8ffc],edx` — une copie de **dword** — puis
+`movzx ax,[edi+8] ; shl eax,6 ; add ax,[5e8fa2] ; mov [5e8ffe],ax` — une reecriture de la moitie
+haute en **seize bits**. C'est cette forme-la qui est transcrite.
+
+**Le drapeau `DAT_005e909a` est pose puis retracte.** L'ordre du binaire est
+`cmp eax,0x4000400 ; mov [5e909a],dl ; jnz ; mov [5e909a],0` : il ecrit 1, puis revient dessus si la
+valeur exacte tombe. Ce n'est pas la meme chose qu'un test compose, et la difference se verrait si
+quoi que ce soit lisait entre les deux.
+
+**Les trois seuils de valeur sont NON SIGNES** (`jbe`, pas `jle`) : plus de 0x15e, plus de 1000, plus
+de 5000, sur le champ `+0x88` — celui dont `ComputeItemValue` part.
+
+**Et une astuce de pointeur conservee** : la boucle de propagation tient l'ecart en octets jusqu'a
+l'objet expertise et le decremente de `0x280` par tour, si bien que `curseur[ecart]` le designe
+toujours sans recalcul. Transcrite telle quelle.
+
+### Les deux verbes voisins : prets a ecrire, mais PAS ecrits
+
+`s_VtSource_0056aec8` porte `0x0053DD20, 0x0053DEA0, 0x0053DF20` puis la souche vide : les verbes
+**56, 57 et 58** forment un petit bloc, exactement comme les six balayeurs de la veille. Leurs
+relevés sont la eux aussi, et leurs corps sont **triviaux** — une douzaine de stores chacun, ouvrant
+le meme panneau avec `DAT_005de548` a 0 pour l'un et 1 pour l'autre.
+
+**Je me suis arrete la, et pas par prudence de principe.** Le meme raisonnement qu'hier — « le
+binaire les range ensemble, ferme le bloc » — ne s'applique pas : hier, tout ce que les trois corps
+touchaient existait deja. Ici, les deux voisins ont besoin de **dix globales nouvelles**, et la carte
+des symboles dit ou elles tombent :
+
+| adresse | ou elle tombe |
+|---|---|
+| `0x005dff28`, `0x005dff5c` .. `0x005dff7c` | **a l'interieur de `s_Particles_005de824`** (6060 octets, `0x005de824`..`0x005dffd0`) |
+| `0x005de548` | dans la fenetre de `s_Unknown_005de53c`, aux cotes de `s_Unknown_005de540` deja declare — scalaire, sans difficulte |
+| `0x0056dc90` | rien de declare autour — scalaire, sans difficulte |
+
+Les neuf premieres sont **le piege que le depot surveille** : les declarer en globales propres
+donnerait deux noms pour une adresse, l'exact defaut que `MemoryLayoutTests` existe pour nommer. Il
+faut d'abord trancher laquelle des trois lectures est la bonne — la taille de `s_Particles_005de824`
+est fausse, ou ces champs vivent vraiment dans le bloc de particules, ou le nom du bloc est faux — et
+c'est une decision deliberee, pas un raccourci de cinq minutes.
+
+**Ce qu'il reste a faire quand ils tomberont** : trancher cette question, puis les deux corps
+s'ecrivent en dix minutes. Les deux rendent **0** (`xor eax,eax` avant la sortie, verifie au
+desassembleur pour les deux), donc le script continue.
+
+### Non exerce
+
+La chambre demande de conduire le personnage. Build vert, run de controle a 509 primitives par image.
+Le corps a ete recoupe instruction par instruction contre `FUN_0053dd20.asm`, ce qui est l'oracle
+disponible ici.
+
+---
+
+## 2026-08-25 (suite 20) — `s_Particles_005de824` tranche, et une erreur de lecture a corriger
+
+### D'abord la correction : ce que j'ai affirme hier soir etait faux
+
+J'ai ecrit que neuf des dix globales des verbes 57 et 58 tombaient « **a l'interieur** de
+`s_Particles_005de824` (6060 octets) » et que les declarer recreerait le defaut d'aliasing. **Non.**
+
+Le 6060 vient de la carte des symboles de `DataSymbols.md`, dont la colonne est
+**l'ecart jusqu'au symbole suivant**, pas la taille de l'allocation. `CLAUDE.md` le dit en toutes
+lettres — « avec son ecart au suivant » — et je l'ai lu comme une taille.
+
+L'allocation reelle est **0x20 particules de 0x9c**, soit 4992 octets : `0x005de824`..`0x005dfba4`.
+Les adresses en cause, `0x005dff28` et `0x005dff5c`..`0x005dff7c`, sont **900 octets plus haut**.
+Aucun recouvrement, rien qui bloquait.
+
+**La lecon, et elle vaut plus que l'erreur** : la colonne d'ecart de la carte ne prouve **jamais**
+une appartenance. Elle dit seulement ou commence le voisin declare. Pour savoir si une adresse tombe
+dans une allocation, il faut la **taille reelle de cette allocation**, cote C#. La verification tient
+en quatre lignes et a ete faite cette fois pour les quatre adresses :
+
+| adresse | symbole en dessous | taille reelle | distance | verdict |
+|---|---|---|---|---|
+| `0x005de548` | `s_Unknown_005de53c` | 1 (un `byte`) | 12 | dehors |
+| `0x005dff28` | `s_Particles_005de824` | 4992 | 5892 | dehors |
+| `0x005dff5c` | `s_Particles_005de824` | 4992 | 5944 | dehors |
+| `0x0056dc90` | `s_StatusTimerMasks_0056d340` | 192 (0x30 dwords) | 2384 | dehors |
+
+### Ce que la question a quand meme trouve : un vrai recouvrement, ailleurs
+
+En verifiant l'etendue des particules, une autre paire s'est presentee. `FUN_0053dbe0` et
+`FUN_0053dc30` (`Blaze.c` 87916 et 87938) tiennent une **file de sons differes** : un compteur en
+`0x005dfb8c` qui reboucle a 0x20, et **32 enregistrements de 0x14 octets a partir de
+`0x005dfb90`**. Trois confirmations independantes de sa taille — le masque `0xffffff1f` du compteur,
+le `local_4 = 0x20` de la boucle de service, et le pas `* 0x14`.
+
+Or `0x005dfb90` est **0x14 octets avant la fin nominale des particules** (`0x005dfba4`). Les deux
+etendues se chevauchent d'exactement un enregistrement.
+
+**Et c'est sans consequence, ce qui est le vrai resultat.** Le code des particules ne touche que les
+offsets `0x00`..`0x27` de chaque entree de `0x9c` — verifie sur les deux boucles (`Blaze.c` 83468 et
+83627, qui ecrivent au plus `piVar11[8]`) et sur les deux appelees qui recoivent un enregistrement
+(`ProjectPoint` lit les trois entiers de position, `EmitParticle` lit `+0x20` et rien d'autre). Le
+dernier octet qu'une particule ecrit est donc `0x005dfb2f`, **97 octets avant la file de sons**. Les
+0x74 octets de queue de chaque entree sont du remplissage mort.
+
+Reste que les deux **objets** se chevauchent sur le papier, ce qu'un editeur de liens ne fait pas :
+l'une des deux lectures est donc imprecise — le plus probable etant que le tableau de particules
+n'est pas un objet C de 32 x 0x9c mais une boucle qui parcourt 32 entites au pas d'entite dans une
+zone plus courte. **Non tranche, et sans urgence** : rien ne casse tant que personne ne modelise la
+file de sons comme une vue dans les particules. C'est precisement ce que la colonne d'ecart de 6060
+inviterait a faire, d'ou la note ajoutee a `DataSymbols.md`.
+
+### Les deux verbes
+
+`FUN_0053dea0` (57) et `FUN_0053df20` (58) sont transcrits. Ils **posent un etat et levent un
+drapeau**, rien de plus : le membre concerne, le mode, le bit `0x40` de `DAT_005de02c`, et la remise
+a neuf de neuf dwords de curseur. Les deux rendent 0.
+
+**Deux differences entre les jumeaux, et pas une de plus** : `DAT_005de548` vaut 0 pour l'un et 1
+pour l'autre — c'est le mode que `FUN_0053e0a0` teste avant tout —, et `DAT_005dff64` recoit chez le
+57 l'octet `+0x2bc` du bloc du personnage la ou le 58 y met zero. L'ordre des stores differe aussi,
+sans consequence : aucun de ces champs n'est relu entre-temps.
+
+Les onze globales restent dans `WorldMapScript.cs`, chez leur seul ecrivain transcrit, par la regle
+de routage (4). Leur proprietaire reel est `FUN_0053e0a0`, qui les lit toutes et n'est pas
+transcrite.
+
+### Ce que le prochain plantage dira, et c'est previsible
+
+Le bit `0x40` est exactement ce que le pas de monde teste (`WorldMapTick`, ligne 189) pour appeler le
+crochet `PTR_FUN_0056aff0`. Ce crochet vaut `0x0053DF90` pour la zone d'index 0, il n'est pas
+transcrit, et il leve deja en se nommant — son relevé est au depot
+(`Legacy/Raw/Blaze/FUN_0053DF90.asm`). **Ouvrir ce panneau menera donc a lui, puis a
+`FUN_0053e0a0`.** Ce n'est pas une regression : c'est la marche suivante, et elle etait deja ecrite
+dans le message de levee avant aujourd'hui.
+
+### Non exerce
+
+Build vert, run de controle a 509 primitives par image, et les deux assertions rouges de
+`MemoryLayoutTests` sont **les memes qu'avant** — aucune des onze globales nouvelles n'y apparait.

@@ -3640,6 +3640,13 @@ public static unsafe partial class Blaze
             // petite harpe. Signale le 2026-08-25.
             case 0x00404E50: EntityHandler_00404E50((uint*)record); return;
 
+            // Les trois derniers balayeurs d'entites de scene, transcrits d'un bloc le 2026-08-25 :
+            // le binaire range les six cote a cote, entrees 32 a 37 de 0x0056b0c8, soit les
+            // sous-types 0xe0 a 0xe5. Ce sont les trois derniers de ce petit bloc.
+            case 0x00405D60: EntityHandler_00405D60((uint*)record); return;
+            case 0x00405E70: EntityHandler_00405E70((uint*)record); return;
+            case 0x00405FE0: EntityHandler_00405FE0((uint*)record); return;
+
             // La famille commune de la table 0x0056adc8, transcrite le 2026-08-24. 0x004734B0 est
             // le gestionnaire par defaut : 47 des 64 sous-types y pointent.
             case 0x004734B0: EntityHandler_004734B0((uint*)record); return;
@@ -4469,6 +4476,129 @@ public static unsafe partial class Blaze
         if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 0);
     }
 
+
+    /// <summary>
+    /// Ghidra: 0x00405d60 — <b>le quatrieme balayeur d'entites de scene</b>, et le seul des six qui
+    /// soit <b>absent de <c>Blaze.c</c></b> : Ghidra ne l'a pas reconnu comme fonction parce qu'il
+    /// n'est atteint que par la table. Releve au desassembleur, 64 octets —
+    /// <c>Legacy/Raw/Blaze/FUN_00405D60.asm</c>.
+    ///
+    /// <para>Un seul type reveille, le <b>0</b>. C'est le plus depouille de la famille : meme
+    /// boucle de 0x20 emplacements, meme garde « vivante et eveillee », meme auto-desarmement, mais
+    /// un seul test par emplacement.</para>
+    ///
+    /// <para>Atteint le 2026-08-25 dans la chambre de l'homme qui analyse les objets.</para>
+    /// </summary>
+    private static void EntityHandler_00405D60(uint* entity)
+    {
+        byte* record = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, record += 0x9c)
+        {
+            if (record[0x0c] == 0 && IsSceneEntityAwake(record)) WakeSceneEntity_00405DA0(i);
+        }
+
+        entity[0] &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405e70 @ 0x00405e70 — <b>le cinquieme balayeur</b>. Deux types, 0 et 1, dans
+    /// cet ordre.
+    /// </summary>
+    private static void EntityHandler_00405E70(uint* entity)
+    {
+        byte* record = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, record += 0x9c)
+        {
+            if (record[0x0c] == 0 && IsSceneEntityAwake(record)) WakeSceneEntity_00405ED0(i);
+            if (record[0x0c] == 1 && IsSceneEntityAwake(record)) WakeSceneEntity_00405F50(i);
+        }
+
+        entity[0] &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405fe0 @ 0x00405fe0 — <b>le sixieme et dernier balayeur</b>. Six types, et
+    /// c'est le seul qui commence par le type <b>5</b> : l'ordre du binaire est 5, 1, 2, 3, 4, 0.
+    ///
+    /// <para>Ses cinq derniers appels sont exactement ceux de
+    /// <see cref="EntityHandler_00405A70"/> ; il n'ajoute que le type 5. Conserver l'ordre compte —
+    /// un reveil peut changer l'octet de type, et le binaire le relit avant chaque test.</para>
+    /// </summary>
+    private static void EntityHandler_00405FE0(uint* entity)
+    {
+        byte* record = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, record += 0x9c)
+        {
+            if (record[0x0c] == 5 && IsSceneEntityAwake(record)) WakeSceneEntity_00405DA0(i);
+            if (record[0x0c] == 1 && IsSceneEntityAwake(record)) WakeSceneEntity_00405B30(i);
+            if (record[0x0c] == 2 && IsSceneEntityAwake(record)) WakeSceneEntity_00405BE0(i);
+            if (record[0x0c] == 3 && IsSceneEntityAwake(record)) WakeSceneEntity_00405CB0(i);
+            if (record[0x0c] == 4 && IsSceneEntityAwake(record)) WakeSceneEntity_00405D20(i);
+            if (record[0x0c] == 0 && IsSceneEntityAwake(record)) WakeSceneEntityKind3_00405680(i);
+        }
+
+        entity[0] &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405da0 @ 0x00405da0 — <b>sept etats</b>, le plus long des quinze corps de
+    /// reveil. Cinq pas d'animation (0, 1, 2, 3 puis 4) et <b>deux</b> decomptes, aux etats 5 et 7.
+    /// Aucune inactivite : ce corps ne passe jamais par
+    /// <see cref="CycleSceneEntityAnimations_004052F0"/>.
+    /// </summary>
+    private static void WakeSceneEntity_00405DA0(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 0);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 3);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) CountDownSceneEntityState_00405420(record, 3);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 6) AdvanceSceneEntityState_00404FE0(record, 4);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 7) CountDownSceneEntityState_00405420(record, 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405ed0 @ 0x00405ed0 — quatre etats : trois pas d'animation puis un decompte.
+    /// C'est <see cref="WakeSceneEntity_00405CB0"/> avec une animation de plus intercalee — le
+    /// decompte y est a l'etat 3, ici a l'etat 4.
+    /// </summary>
+    private static void WakeSceneEntity_00405ED0(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) AdvanceSceneEntityState_00404FE0(record, 3);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) CountDownSceneEntityState_00405420(record, 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405f50 @ 0x00405f50 — quatre etats, et le seul de la famille dont l'inactivite
+    /// ait une pause <b>fixe</b> : <c>FUN_004052f0(…, 2, 3, 1)</c>. Les <b>neuf</b> sites qui
+    /// appellent cette primitive sont recenses ; les huit autres passent <c>rand() % 10</c> (un avec
+    /// un <c>+ 10</c>). Ce decor-la est le seul qui ne respire pas au hasard.
+    /// </summary>
+    private static void WakeSceneEntity_00405F50(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2) AdvanceSceneEntityState_00404FE0(record, 0);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3)
+            CycleSceneEntityAnimations_004052F0(record, 2, 3, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) CountDownSceneEntityState_00405420(record, 2);
+    }
     /// <summary>
     /// Ghidra: FUN_004052f0 @ 0x004052f0 — <b>parcourt une plage d'animations en marquant une pause
     /// sur chacune</b>. C'est l'inactivite d'un personnage non joueur : il joue l'animation

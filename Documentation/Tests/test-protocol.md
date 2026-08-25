@@ -1349,3 +1349,38 @@ de la fonction.
 Forcer un etat prouve que le code ne plante plus **dans cet etat**. Cela ne prouve pas que le jeu
 atteignait cet etat-la. Les deux phrases sont differentes et il faut ecrire la seconde : ici, c'est
 a Vincent de refaire le dialogue de biais.
+
+---
+
+## Verifier une cascade par extraction des deux cotes (2026-08-25)
+
+Certains corps ne se verifient ni a l'ecran ni par une sonde : ils sont atteints dans une piece que
+l'agent ne peut pas atteindre, et leur contenu est une **cascade de constantes**. Les corps de reveil
+d'entites de scene en sont le type meme :
+
+```c
+if (etat == 1) FUN_00404fe0(puVar1, 0);
+if (etat == 2) FUN_00404fe0(puVar1, 1);
+…
+```
+
+Relire ca a l'oeil est exactement la tache ou l'on intervertit deux nombres sans le voir. Extraire les
+triplets `(etat, primitive, argument)` **des deux sources** et les comparer coute deux commandes :
+
+```bash
+# cote Blaze.c
+sed -n '2746,2784p' Legacy/Decompiled/Blaze.c |
+  grep -oE "0x3fffffff\) == [0-9]+|FUN_00404fe0\(puVar1,[0-9]+\)|FUN_00405420\(puVar1,[0-9]+\)" | paste - -
+
+# cote reconstruction
+awk '/private static void WakeSceneEntity_00405DA0\(int index\)/,/^    }$/' \
+    OpenForesia/src/Blaze/Screens/State03/WorldMapTick.cs |
+  grep -oE "== [0-9]+\)|AdvanceSceneEntityState_00404FE0\(record, [0-9]+\)" | paste - -
+```
+
+Les deux colonnes se lisent cote a cote en un coup d'oeil, et une inversion saute aux yeux.
+
+**Quand s'en servir** : des qu'un corps est une table deguisee en code — cascades d'etats, tables de
+sauts, listes de constantes — et que l'oracle a l'ecran n'est pas a portee. Ce n'est pas un
+remplacement du test en jeu ; c'est ce qui evite de livrer une cascade fausse **en disant** qu'elle
+n'est pas verifiee.

@@ -44,6 +44,123 @@ namespace OpenForesia.Blaze;
 
 public static unsafe partial class Blaze
 {
+
+    // =====================================================================================
+    // L'etat du panneau que les verbes 57 et 58 ouvrent.
+    //
+    // Ces onze globales appartiennent en propre a FUN_0053e0a0, le rendu du panneau, qui n'est pas
+    // transcrite : c'est elle qui les lit toutes (Blaze.c 88018 et suivantes). Elles restent donc
+    // ici, chez leur seul ecrivain transcrit, jusqu'a ce que ce corps arrive — regle de routage (4)
+    // d'ARCHITECTURE.md.
+    //
+    // **Aucune n'est une vue dans une allocation existante**, verifie contre la carte des symboles
+    // le 2026-08-25 : la plus proche en dessous de 0x005dff28 et 0x005dff5c est
+    // s_Particles_005de824, qui s'arrete a 0x005dfba4 (0x20 particules de 0x9c) — 900 octets plus
+    // bas. Voir REVERSE_STATUS.md, « suite 20 ».
+    // =====================================================================================
+
+    /// <summary>Ghidra: DAT_005dff28 — l'index de membre du groupe sur lequel porte le panneau.
+    /// <c>FUN_0053e0a0</c> en derive quatre pointeurs des sa premiere ligne.</summary>
+    private static byte s_Unknown_005dff28;
+
+    /// <summary>Ghidra: DAT_005de548 — le <b>mode</b> du panneau. <c>FUN_0053e0a0</c> ne connait que
+    /// 0 et 1 ; sur toute autre valeur elle repart immediatement. Le verbe 57 pose 0, le 58 pose 1 :
+    /// c'est la seule difference de fond entre les deux.</summary>
+    private static byte s_Unknown_005de548;
+
+    /// <summary>Ghidra: DAT_005dff5c .. DAT_005dff7c — neuf dwords contigus, l'etat de curseur du
+    /// panneau, remis a zero d'un bloc a chaque ouverture. Seul <c>DAT_005dff64</c> est traite a
+    /// part, et par un seul des deux verbes.</summary>
+    private static uint s_Unknown_005dff5c, s_Unknown_005dff60, s_Unknown_005dff64,
+                        s_Unknown_005dff68, s_Unknown_005dff6c, s_Unknown_005dff70,
+                        s_Unknown_005dff74, s_Unknown_005dff78, s_Unknown_005dff7c;
+
+    /// <summary>Ghidra: DAT_0056dc90 — le sous-etat du panneau, <b>-1</b> a l'ouverture.
+    /// <c>FUN_0053e0a0</c> teste son signe avant tout le reste.</summary>
+    private static int s_Unknown_0056dc90;
+
+    /// <summary>
+    /// Ghidra: FUN_0053dea0 @ 0x0053dea0 — <b>le verbe 57 : ouvre le panneau en mode 0</b>. Absente
+    /// de <c>Blaze.c</c> ; relevés au depot depuis le 2026-08-16
+    /// (<c>Legacy/Raw/Blaze/FUN_0053dea0.asm</c> et <c>.c</c>).
+    ///
+    /// <para>Elle ne fait que <b>poser un etat et lever un drapeau</b> : le membre concerne, le
+    /// mode, le bit <c>0x40</c> de <see cref="GameMemory.s_WorldFlags_005de02c"/>, et la remise a
+    /// neuf des neuf dwords de curseur. Le travail visible arrive ailleurs — le bit <c>0x40</c> est
+    /// ce que le pas de monde teste pour appeler le crochet <c>PTR_FUN_0056aff0</c>, lequel mene a
+    /// <c>FUN_0053e0a0</c>.</para>
+    ///
+    /// <para><b>Le seul champ qui ne soit pas mis a zero</b> est <c>DAT_005dff64</c> : il recoit
+    /// l'octet <c>+0x2bc</c> du bloc du personnage (<c>MainMem + membre * 0x2000 + 0xf02bc</c>),
+    /// etendu en dword. Le verbe 58 y met zero a la place, et c'est la deuxieme des deux seules
+    /// differences entre les jumeaux.</para>
+    ///
+    /// <para><b>Elle rend 0</b> — <c>xor eax,eax</c> en <c>0x0053dec1</c>, jamais retouche jusqu'au
+    /// <c>ret</c>. Le resultat de condition est donc nul et le script continue.</para>
+    /// </summary>
+    private static uint AreaVerb_0053DEA0(byte* entity)
+    {
+        byte member = entity[8];
+
+        s_Unknown_005de540 = member;
+        s_Unknown_005dff28 = member;
+        Mem.s_WorldFlags_005de02c |= 0x40;
+        s_Unknown_005de548 = 0;
+
+        s_Unknown_005dff5c = 0;
+        s_Unknown_005dff60 = 0;
+        s_Unknown_005dff68 = 0;
+
+        // Ghidra: `mov bl,[edx+ecx+0xf02bc]` sur EBX mis a zero — un octet etendu en dword.
+        s_Unknown_005dff64 = GetMainMemPtr()[member * 0x2000 + 0xf02bc];
+
+        s_Unknown_005dff6c = 0;
+        s_Unknown_005dff70 = 0;
+        s_Unknown_005dff74 = 0;
+        s_Unknown_0056dc90 = -1;
+        s_Unknown_005dff78 = 0;
+        s_Unknown_005dff7c = 0;
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053df20 @ 0x0053df20 — <b>le verbe 58 : le meme panneau en mode 1</b>. Jumelle
+    /// exacte de <see cref="AreaVerb_0053DEA0"/> a deux differences pres, et pas une de plus :
+    /// <c>DAT_005de548</c> vaut <b>1</b>, et <c>DAT_005dff64</c> est mis a <b>zero</b> au lieu de
+    /// recevoir l'octet <c>+0x2bc</c> du personnage.
+    ///
+    /// <para>L'ordre des stores differe aussi, mais sans consequence : aucun de ces champs n'est lu
+    /// entre-temps.</para>
+    ///
+    /// <para>Le binaire fait ici <c>or al,0x40</c> puis reecrit le dword entier, la ou son jumeau
+    /// fait <c>or edx,0x40</c>. Meme effet — les trois octets hauts viennent de la meme lecture — et
+    /// les deux sont rendus par le meme <c>|= 0x40</c>.</para>
+    ///
+    /// <para>Elle rend 0 elle aussi (<c>xor eax,eax</c> en <c>0x0053df49</c>).</para>
+    /// </summary>
+    private static uint AreaVerb_0053DF20(byte* entity)
+    {
+        byte member = entity[8];
+
+        s_Unknown_005de540 = member;
+        s_Unknown_005dff28 = member;
+        s_Unknown_005de548 = 1;
+        Mem.s_WorldFlags_005de02c |= 0x40;
+
+        s_Unknown_005dff5c = 0;
+        s_Unknown_005dff60 = 0;
+        s_Unknown_005dff64 = 0;
+        s_Unknown_005dff68 = 0;
+        s_Unknown_005dff6c = 0;
+        s_Unknown_005dff70 = 0;
+        s_Unknown_005dff74 = 0;
+        s_Unknown_0056dc90 = -1;
+        s_Unknown_005dff78 = 0;
+        s_Unknown_005dff7c = 0;
+
+        return 0;
+    }
     /// <summary>
     /// Ghidra: FUN_00513dd0 @ 0x00513dd0 — lance un script en basculant l'allocateur de la DLL sur
     /// le tampon de travail, si tant est qu'il y en ait un a sauvegarder.
@@ -1266,6 +1383,10 @@ public static unsafe partial class Blaze
 
             0x00443100 => AreaVerb_00443100(),
 
+            // Le verbe 56 : l'expertise d'objet. Il ignore le second argument — son corps ne lit
+            // que [esp+0x14], c'est-a-dire l'entite.
+            0x0053DD20 => AreaVerb_0053DD20(ent),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de s_VtSource_0056aec8 (Engine/Resources.cs), deja " +
@@ -1431,6 +1552,140 @@ public static unsafe partial class Blaze
         }
 
         return 0;                                          // Ghidra: xor eax,eax ; ret
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053dd20 @ 0x0053dd20 — <b>le verbe 56 de la table de zone : l'expertise d'un
+    /// objet</b>. C'est l'homme qui identifie les objets non identifies, et c'est lui que son second
+    /// dialogue appelle.
+    ///
+    /// <para>Absente de <c>Blaze.c</c>. Le relevé existait deja au depot depuis le 2026-08-16 —
+    /// <c>Legacy/Raw/Blaze/FUN_0053dd20.asm</c> et sa decompilation ciblee
+    /// <c>FUN_0053dd20.c</c> — et c'est celle-ci qui a servi de base, recoupee instruction par
+    /// instruction contre le desassemblage.</para>
+    ///
+    /// <para><b>Trois temps.</b></para>
+    ///
+    /// <para><b>1. Trouver.</b> Les dix emplacements d'objet du personnage
+    /// (<c>MainMem + (joueur + 0x78) * 0x2000 + 0x300</c>, pas de <c>0x280</c>) sont parcourus
+    /// jusqu'au premier qui soit <b>occupe</b> et <b>non identifie</b> — l'octet de tete non nul, le
+    /// bit <c>0x8000</c> de <c>+0x12</c> eteint. Si les dix sont epuises, <c>DAT_005e909f</c>
+    /// retombe a 0 et le verbe rend <b>1</b> : « rien a expertiser ». C'est la seule sortie non
+    /// nulle, donc la seule qui fasse brancher le script.</para>
+    ///
+    /// <para><b>2. Expertiser.</b> Le bit <c>0x8000</c> est pose, le nom complet de l'objet
+    /// (<see cref="ItemDisplayName"/>) est <b>recopie octet par octet</b> dans le libelle 1 de la
+    /// zone (<c>repertoire + 0x70</c>, entree 1) — c'est ainsi que la phrase du personnage nomme
+    /// l'objet — et cinq champs du bloc de panneau sont remplis :</para>
+    ///
+    /// <list type="bullet">
+    /// <item><c>DAT_005e909a</c> : 1 si le mot de <c>+0x14</c> porte <c>0x400</c>, mais 0 s'il vaut
+    /// exactement <c>0x4000400</c>. L'ordre du binaire est <c>cmp ; mov 1 ; jnz ; mov 0</c> — il
+    /// pose 1 puis se retracte, ce qui n'est pas la meme chose qu'un test compose.</item>
+    /// <item><c>DAT_005e909b</c> : 0 a 3 selon la valeur de base de l'objet (<c>+0x88</c>, le champ
+    /// dont <see cref="ComputeItemValue"/> part), par trois seuils <b>non signes</b> — plus de
+    /// 0x15e, plus de 1000, plus de 5000.</item>
+    /// <item><c>DAT_005e909c</c> = 3, <c>DAT_005e909d</c> = 1, <c>DAT_005e909e</c> = 0 : le meme
+    /// triplet de mise en page que les autres ouvertures de panneau posent.</item>
+    /// </list>
+    ///
+    /// <para>Deux entrees de la table de decodage sont aussi ecrites : <c>0x005e8ffc</c> recoit
+    /// <b>en un dword</b> la copie de <c>0x005e8fa0</c>, puis sa moitie haute est reecrite
+    /// <b>en seize bits</b> avec <c>joueur * 0x40</c> ajoute. Ghidra rend les deux par un seul
+    /// <c>CONCAT22</c> ; le binaire fait bien deux ecritures de largeurs differentes, et c'est cette
+    /// forme-la qui est transcrite.</para>
+    ///
+    /// <para><b>3. Propager.</b> Les dix emplacements sont reparcourus, et tout objet occupe encore
+    /// non identifie dont les <b>seize premiers octets</b> sont identiques a celui qu'on vient
+    /// d'expertiser est marque identifie a son tour. Une expertise vaut donc pour toute la pile.
+    /// L'emplacement trouve lui-meme est saute par le garde, son bit venant d'etre pose.</para>
+    ///
+    /// <para>La comparaison sur seize octets est <b>le meme predicat d'identite d'objet</b> que le
+    /// transfert entre membres du menu « Objets » emploie, et il y propage deja <c>0x8000</c> dans
+    /// l'autre sens. Deux sites, une regle.</para>
+    ///
+    /// <para><b>L'astuce de pointeur du binaire est conservee</b> : il tient l'ecart en octets entre
+    /// le curseur et l'emplacement expertise, et le decremente de <c>0x280</c> a chaque tour, si
+    /// bien que <c>curseur[ecart]</c> designe toujours l'objet de reference sans le recalculer.</para>
+    /// </summary>
+    /// <returns>1 si aucun objet n'etait a expertiser, 0 sinon.</returns>
+    private static uint AreaVerb_0053DD20(byte* entity)
+    {
+        byte player = entity[8];
+        byte* items = GetMainMemPtr() + ((player + 0x78) << 0xd) + 0x300;
+
+        int index = 0;
+        byte* found = items;
+
+        while (found[0] == 0 || (*(ushort*)(found + 0x12) & 0x8000) != 0)
+        {
+            index++;
+            found += 0x280;
+            if (index >= 10)
+            {
+                Mem.s_Unknown_005e909f = 0;
+                return 1;                                  // rien a expertiser
+            }
+        }
+
+        *(ushort*)(found + 0x12) |= 0x8000;
+
+        // Le nom est recopie octet par octet dans le libelle 1 de la zone — c'est la phrase du
+        // personnage qui le lira.
+        byte* name = ItemDisplayName(found);               // Ghidra: FUN_0051bd30
+        byte* label = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + 4);
+        while (*name != 0) *label++ = *name++;
+        *label = 0;
+
+        // Deux ecritures de largeurs differentes, et non un seul CONCAT22 : `mov edx,[5e8fa0] ;
+        // mov [5e8ffc],edx` puis `movzx ax,[edi+8] ; shl eax,6 ; add ax,[5e8fa2] ; mov [5e8ffe],ax`.
+        byte* decode = Mem.s_EntityDecodeTable_005e8f00;
+        *(uint*)(decode + 0xfc) = *(uint*)(decode + 0xa0);
+        *(ushort*)(decode + 0xfe) = (ushort)(player * 0x40 + *(ushort*)(decode + 0xa2));
+
+        // `cmp eax,0x4000400 ; mov [5e909a],dl ; jnz` — il pose 1 puis se retracte.
+        uint attributes = *(uint*)(found + 0x14);
+        if ((attributes & 0x400) != 0)
+        {
+            s_Unknown_005e909a = 1;
+            if (attributes == 0x4000400) s_Unknown_005e909a = 0;
+        }
+        else
+        {
+            s_Unknown_005e909a = 0;
+        }
+
+        ushort value = *(ushort*)(found + 0x88);           // la valeur de base de l'objet
+        byte tier = (byte)(value > 0x15e ? 1 : 0);         // trois `cmp` / `jbe` : NON SIGNES
+        if (value > 1000) tier++;
+        if (value > 5000) tier++;
+        s_Unknown_005e909b = tier;
+
+        s_Unknown_005e909c = 3;
+        s_Unknown_005e909d = 1;
+        s_Unknown_005e909e = 0;
+
+        byte* sheet = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x94) + 4);
+        sheet[0] = (byte)(index * 0x18);
+        sheet[1] = (byte)(player * 0x18);
+        sheet[7] = (byte)index;
+
+        Mem.s_Unknown_005e909f = 1;
+
+        // L'ecart en octets jusqu'a l'objet expertise, decremente de 0x280 par tour : `curseur[gap]`
+        // reste sur lui sans qu'on le recalcule. Idiome du binaire, conserve.
+        int gap = (int)(found - items);
+
+        for (int remaining = 10; remaining != 0; remaining--, items += 0x280, gap -= 0x280)
+        {
+            if (items[0] == 0 || (*(ushort*)(items + 0x12) & 0x8000) != 0) continue;
+
+            int same = 0;
+            while (same < 0x10 && items[same] == items[same + gap]) same++;
+            if (same == 0x10) *(ushort*)(items + 0x12) |= 0x8000;
+        }
+
+        return 0;
     }
 
     /// <summary>

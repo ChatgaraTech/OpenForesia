@@ -39,25 +39,35 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-## À vérifier maintenant : le changement de musique de la femme à la petite harpe
 
-**Salle et PNJ confirmés le 2026-08-25** — l'opcode 17 et le troisième balayeur ont tenu. Reste un
-geste : accepter que la femme à la petite harpe change la musique.
+## À vérifier maintenant : les trois verbes de l'homme qui expertise
 
-`FUN_00404e50` transcrit (absent de `Blaze.c`, relevé au désassembleur). C'est un décompte de 300
-par image sur deux champs du bloc d'écran, une cinquantaine d'images, puis la piste et le
-désarmement.
+**Les verbes 56, 57 et 58 sont transcrits** (2026-08-25), et avec eux tout le petit bloc que la
+table `s_VtSource_0056aec8` range avant sa souche vide.
 
-**Avec lui une vraie correction de fond** : le bloc `0x00566c48` était alloué **à zéro** alors que
-`.data` y met `0x3fff`. Sans le relevé, la transition serait finie dès la première image. Vérifié
-que le menu principal n'a pas bougé (capture identique, 509 primitives par image).
+- **56** (`FUN_0053dd20`) : l'expertise proprement dite.
+- **57** et **58** (`FUN_0053dea0`, `FUN_0053df20`) : ils ouvrent le panneau de `FUN_0053e0a0`,
+  en mode 0 et en mode 1.
 
-À refaire : **accepter le changement de musique**. Détail dans `REVERSE_STATUS.md`, section
-« suite 17 ».
+À refaire : **relancer les dialogues de ce personnage**.
+
+**Le prochain plantage est prévisible, et ce n'est pas une régression.** Les verbes 57/58 lèvent le
+bit `0x40` de `DAT_005de02c`, que le pas de monde teste pour appeler le crochet `PTR_FUN_0056aff0`
+(`WorldMapTick`, ligne 189). Ce crochet vaut `0x0053DF90`, n'est pas transcrit, et lève déjà en se
+nommant — son relevé est au dépôt. Derrière lui vient `FUN_0053e0a0`, le rendu du panneau, qui lit
+les onze globales que les deux verbes viennent de poser.
+
+Détail dans `REVERSE_STATUS.md`, sections « suite 19 » et « suite 20 ».
 
 ---
 
 ## Vérifié en jeu le 2026-08-25
+
+**La chambre de l'homme qui expertise fonctionne** — les six balayeurs d'entités de scène sont
+confirmés, « suite 18 ».
+
+**Le changement de musique de la femme à la petite harpe fonctionne** — `FUN_00404e50` et le contenu
+initial du bloc d'écran `0x00566c48` sont confirmés, « suite 17 ».
 
 **La salle derrière le barman s'ouvre et ses PNJ répondent** : l'**opcode 17** (le changement de
 salle) et le **troisième balayeur d'entités de scène** sont confirmés — « suite 15 » et « suite 16 ».

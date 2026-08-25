@@ -6,6 +6,19 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- feat : **les verbes 57 et 58** (`FUN_0053dea0`, `FUN_0053df20`) — ils ouvrent le panneau de `FUN_0053e0a0` : membre, mode, bit `0x40` des drapeaux de monde, neuf dwords de curseur remis à neuf
+- fix : **ma lecture de la carte des symboles était fausse** — la colonne est l'**écart au symbole suivant**, pas la taille ; `s_Particles_005de824` alloue 4992 octets et non 6060, et aucune des onze globales des deux verbes ne tombait dedans
+- doc : le vrai chevauchement est ailleurs — la **file de sons différés** (`0x005dfb90`, 32 × 0x14) commence 0x14 octets avant la fin nominale des particules, mais celles-ci n'écrivent jamais au-delà de l'offset 0x27 de leurs entrées de 0x9c : 97 octets de marge
+- doc : ne jamais modéliser cette file comme une vue dans `s_Particles_005de824` — ce serait deux noms pour une adresse
+- feat : **le verbe 56, l'expertise d'un objet** (`FUN_0053dd20`) — il trouve le premier objet non identifié, le nomme dans le libellé de zone, remplit le panneau, puis propage l'identification à toute la pile
+- doc : le relevé de cette fonction dormait dans `Legacy/Raw/` depuis le 2026-08-16 — **y regarder avant de relancer un dump**
+- doc : le `CONCAT22` de Ghidra cache **deux écritures de largeurs différentes** (un dword puis une moitié haute en 16 bits) ; le drapeau `DAT_005e909a` est posé **puis rétracté** ; les trois seuils de valeur sont **non signés**
+- doc : les verbes voisins 57 et 58 sont triviaux mais **pas écrits** — neuf de leurs dix globales tombent **à l'intérieur** de `s_Particles_005de824`, et les déclarer en globales propres recréerait le défaut d'aliasing que `MemoryLayoutTests` surveille
+- feat : **les six balayeurs d'entités de scène sont complets** — les trois derniers (`0x00405D60`, `FUN_00405e70`, `FUN_00405fe0`) et leurs trois corps de réveil manquants, transcrits d'un bloc au lieu d'un par salle
+- doc : le binaire les range lui-même — entrées 32 à 37 de `0x0056b0c8`, sous-types `0xe0` à `0xe5`, les deux suivantes retombant sur la souche vide ; la borne vient de la table
+- doc : `0x00405D60` se cache **dans** ce qu'une lecture rapide prend pour la fin de `FUN_00405d20` — sept `nop` d'alignement les séparent
+- doc : les quinze triplets `(état, primitive, argument)` des trois corps vérifiés par **extraction des deux côtés** et comparaison, pas à l'œil
+- doc : `FUN_00405f50` est le seul des neuf appelants de `FUN_004052f0` à passer une pause d'inactivité **fixe** ; les huit autres tirent au hasard
 - feat : **le changement de musique de la femme à la petite harpe** (`FUN_00404e50`, absent de `Blaze.c`) — un décompte de 300 par image sur deux champs du bloc d'écran, puis la piste, puis le désarmement
 - fix : le bloc d'écran `0x00566c48` était alloué **à zéro** ; son contenu `.data` initial est relevé et modélisé — sans lui, la transition musicale serait déjà finie à la première image
 - doc : un bloc `.data` alloué à zéro n'est faux que le jour où quelqu'un le **lit** avant de l'écrire ; tant qu'il n'a qu'un écrivain complet, rien ne le montre
