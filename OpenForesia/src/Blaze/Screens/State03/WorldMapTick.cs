@@ -3632,6 +3632,10 @@ public static unsafe partial class Blaze
             // scene. C'est le plantage de la salle du barman, signale le 2026-08-25.
             case 0x004055C0: EntityHandler_004055C0((uint*)record); return;
 
+            // L'entree 0 de la meme table installee par zone — le troisieme balayeur d'entites
+            // de scene. C'est le plantage de la salle DERRIERE le barman, signale le 2026-08-25.
+            case 0x00405A70: EntityHandler_00405A70((uint*)record); return;
+
             // La famille commune de la table 0x0056adc8, transcrite le 2026-08-24. 0x004734B0 est
             // le gestionnaire par defaut : 47 des 64 sous-types y pointent.
             case 0x004734B0: EntityHandler_004734B0((uint*)record); return;
@@ -4276,6 +4280,125 @@ public static unsafe partial class Blaze
         if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 3);
         if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 4);
         if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 6) AdvanceSceneEntityState_00404FE0(record, 2);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405a70 @ 0x00405a70 — <b>le troisieme balayeur d'entites de scene</b>. Meme
+    /// forme et meme table <c>0x005ecaa0</c> que <see cref="EntityHandler_00404EF0"/> et
+    /// <see cref="EntityHandler_004055C0"/>, meme auto-desarmement en sortant. Il reveille les types
+    /// <b>0 a 4</b>, dans l'ordre.
+    ///
+    /// <para><b>Les numeros de type sont relatifs au balayeur, pas au corps.</b> Son type 0 est
+    /// <see cref="WakeSceneEntityKind3_00405680"/> — la meme fonction que le second balayeur appelle
+    /// pour son type 3. Le suffixe d'adresse est donc la seule identite stable des huit corps, et
+    /// c'est pourquoi les quatre nouveaux ci-dessous ne portent <b>pas</b> de numero de type : il
+    /// n'y en a pas un seul a porter.</para>
+    ///
+    /// <para>Atteint le 2026-08-25 dans la salle derriere le barman, entree 0 de la table installee
+    /// par zone (<c>0x005ff400</c>).</para>
+    /// </summary>
+    private static void EntityHandler_00405A70(uint* entity)
+    {
+        byte* record = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, record += 0x9c)
+        {
+            if (record[0x0c] == 0 && IsSceneEntityAwake(record)) WakeSceneEntityKind3_00405680(i);
+            if (record[0x0c] == 1 && IsSceneEntityAwake(record)) WakeSceneEntity_00405B30(i);
+            if (record[0x0c] == 2 && IsSceneEntityAwake(record)) WakeSceneEntity_00405BE0(i);
+            if (record[0x0c] == 3 && IsSceneEntityAwake(record)) WakeSceneEntity_00405CB0(i);
+            if (record[0x0c] == 4 && IsSceneEntityAwake(record)) WakeSceneEntity_00405D20(i);
+        }
+
+        entity[0] &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405b30 @ 0x00405b30 — trois etats seulement, et <b>le seul des douze corps de
+    /// reveil qui fasse du bruit</b> : a l'etat 1, si l'animation courante est exactement la 2 et
+    /// que son compteur d'images vaut 0x12, il joue le son <c>+0x10</c> de la table de la zone.
+    ///
+    /// <para>La condition est etroite a dessein — une image precise d'une animation precise. C'est
+    /// un bruitage cale sur un geste : le pas d'un pied, le choc d'un objet pose.</para>
+    ///
+    /// <para>Les deux champs testes sont <c>+0x1a</c> (le compteur d'images, celui que
+    /// <see cref="AdvanceSceneEntityState_00404FE0"/> fait courir) et <c>+0x18</c> (le numero
+    /// d'animation). Ghidra les rend en <c>(&amp;DAT_005ecaba)[i * 0x4e]</c> et
+    /// <c>(&amp;DAT_005ecab8)[i * 0x4e]</c> — des <b>short</b>, pas des octets.</para>
+    /// </summary>
+    private static void WakeSceneEntity_00405B30(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1)
+        {
+            AdvanceSceneEntityState_00404FE0(record, 2);
+
+            if (*(short*)(record + 0x1a) == 0x12 && *(short*)(record + 0x18) == 2)
+            {
+                byte* sounds = *(byte**)(*(byte***)(s_Unknown_005e97cc + 0xa8));
+                TryPlaySoundNearEntity((uint*)record, sounds[0x10], 0x400, 0x1000, 0, 0);
+            }
+        }
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2) AdvanceSceneEntityState_00404FE0(record, 0);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) AdvanceSceneEntityState_00404FE0(record, 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405be0 @ 0x00405be0 — six etats, plage d'inactivite 2 a 4. C'est
+    /// <see cref="WakeSceneEntityKind3_00405680"/> <b>sans les deux decalages de <c>+0x32</c></b>,
+    /// donc le meme corps que <see cref="WakeSceneEntityKind4_00405770"/> — <b>a la lettre</b>.
+    ///
+    /// <para>Verifie plutot que suppose, comme la regle du depot le demande : les deux corps font
+    /// 208 octets, et le desassemblage des deux ne differe que par les <c>jne short</c> internes,
+    /// relogeables par nature. <b>Aucun <c>call</c> ne differe</b> — memes cibles, meme ordre.
+    /// Le compilateur a emis le corps deux fois ; les deux adresses restent distinctes parce que la
+    /// table de sauts les distingue.</para>
+    /// </summary>
+    private static void WakeSceneEntity_00405BE0(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2)
+            CycleSceneEntityAnimations_004052F0(record, 2, 4, (short)(CrtRand() % 10));
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) CountDownSceneEntityState_00405420(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 3);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 6) AdvanceSceneEntityState_00404FE0(record, 4);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405cb0 @ 0x00405cb0 — trois etats, sans inactivite : deux pas d'animation puis
+    /// un decompte. Le plus court des corps a plusieurs branches.
+    /// </summary>
+    private static void WakeSceneEntity_00405CB0(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) CountDownSceneEntityState_00405420(record, 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405d20 @ 0x00405d20 — <b>un seul etat</b>. Il arme, et si l'etat vaut 1 il
+    /// avance l'animation 0. Un decor qui joue une boucle et rien d'autre.
+    /// </summary>
+    private static void WakeSceneEntity_00405D20(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 0);
     }
 
     /// <summary>

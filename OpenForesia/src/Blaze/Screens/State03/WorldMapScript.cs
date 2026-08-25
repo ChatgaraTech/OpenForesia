@@ -190,6 +190,7 @@ public static unsafe partial class Blaze
             13 => ScriptOpSpawnFormation(ctx, s, result),
             14 => ScriptOpShowMessage(ent, s),
             16 => ScriptOpSpawnEffect(ent, s, result),
+            17 => ScriptOpTransferArea(ent, s),
             18 => ScriptOpFreeze(s),
             19 => ScriptOpUnfreeze(s),
             22 => ScriptOpAluEntityStats(ent, s, result),
@@ -389,6 +390,68 @@ public static unsafe partial class Blaze
     {
         SpawnSubAreaEntities(s[1]);                          // Ghidra: FUN_005350b0
         return s + 2;
+    }
+
+    /// <summary>
+    /// Ghidra: 0x00515a10 (opcode 17) — <b>le changement de salle</b>. C'est l'opcode qu'un script
+    /// de porte, d'escalier ou de sortie de carte execute : il note ou aller, marque l'entite comme
+    /// partante, et demande a la boucle de la carte du monde de recharger.
+    ///
+    /// <para>Absent de <c>Blaze.c</c> — Ghidra a nomme la table <c>PTR_LAB_</c>, donc il n'a pas
+    /// reconnu ces corps comme des fonctions. Releve au desassembleur :
+    /// <c>Legacy/Raw/Blaze/ScriptOps/FUN_00515a10.asm</c>, 110 octets (la fenetre de 96 du premier
+    /// relevé coupait la fin).</para>
+    ///
+    /// <para><b>Le garde d'entree est le meme que celui de <see cref="ScriptOpShowMessage"/></b> :
+    /// <c>(drapeaux &amp; 0xfc0000) == 0x800000</c>, le genre « membre du groupe ». Toute autre
+    /// entite ne fait qu'avancer le curseur de quatre octets — l'opcode est inerte pour elle, et le
+    /// <c>lea eax,[edx+4]</c> commun aux deux chemins le dit sans ambiguite.</para>
+    ///
+    /// <para><b>Les trois octets d'operande ne se lisent pas de la meme facon.</b> <c>script[1]</c>
+    /// (la zone) et <c>script[2]</c> (la sous-zone) portent <c>0xff</c> pour « ne pas changer » ;
+    /// <c>script[3]</c> (le point d'entree) est ecrit <b>inconditionnellement</b>, sans test de
+    /// <c>0xff</c>. L'asymetrie est dans le binaire — deux <c>cmp cl,0FFh ; je</c> et pas de
+    /// troisieme — et elle a un sens : on peut rester dans la meme zone en changeant de porte, on ne
+    /// peut pas arriver sans point d'arrivee.</para>
+    ///
+    /// <para><b>Le meme geste existe ailleurs</b>, pour la sortie <i>marchee</i> plutot que scriptee
+    /// (<c>Blaze.c</c> 57354-57363) : memes quatre champs d'entite, memes globales de destination.
+    /// Une seule difference, et elle compte — celle-la pose le pas de boucle a <b>1</b>, celle-ci a
+    /// <b>2</b>. Or <see cref="PlaceWorldMapParty"/> ne replace le groupe au point d'entree que si le
+    /// pas vaut 2. Un transfert scripte repose donc le groupe ; une sortie marchee le laisse ou il
+    /// est.</para>
+    ///
+    /// <para>Le marquage de l'entite : <c>+0x98</c> recoit <c>+0x32</c> (la valeur mise de cote le
+    /// temps du transfert), les drapeaux perdent <c>0x08000200</c> et gagnent <c>0x2000</c>, et le
+    /// compteur <c>+0x12</c> avance d'un — le meme champ « occupee » que
+    /// <see cref="ScriptOpShowMessage"/> consulte pour choisir un locuteur.</para>
+    /// </summary>
+    private static byte* ScriptOpTransferArea(byte* ent, byte* s)
+    {
+        // Ghidra: `and edx,0FC0000h ; cmp edx,800000h ; jne 00515A7A`.
+        if ((*(uint*)ent & 0xfc0000) != 0x800000) return s + 4;
+
+        ushort saved = *(ushort*)(ent + 0x32);            // Ghidra: mov si,[eax+32h], lu avant tout
+        *(ushort*)(ent + 0x12) += 1;                      // Ghidra: inc word [eax+12h]
+        *(ushort*)(ent + 0x98) = saved;
+        *(uint*)ent = *(uint*)ent & 0xf7fffdff | 0x2000;  // Ghidra: and ecx,0F7FFFDFFh ; or ch,20h
+
+        // 0xff = « ne pas changer », pour la zone et la sous-zone seulement.
+        if (s[1] != 0xff)
+        {
+            // DAT_005de528 est un dword ici alors que l'original y ecrit un octet (`mov [5DE528h],cl`) :
+            // les trois octets hauts sont preserves. Tous ses lecteurs le masquent par 0xff, mais
+            // reproduire la largeur du store coute une ligne et ne suppose rien.
+            Res.s_Unknown_005de528 = (int)((uint)Res.s_Unknown_005de528 & 0xffffff00 | s[1]);
+        }
+
+        if (s[2] != 0xff) s_Unknown_005de52c = s[2];
+
+        s_Unknown_005de530 = s[3];                        // sans test de 0xff — voir le resume
+        s_Unknown_005de53c = ent[8];                      // le membre du groupe qui declenche
+        s_WorldMapStep_005645f8 = 2;                      // rechargement, groupe repose au point d'entree
+
+        return s + 4;
     }
 
     /// <summary>Ghidra: FUN_00515a80 @ 0x00515a80 (opcode 18) — gele la simulation.

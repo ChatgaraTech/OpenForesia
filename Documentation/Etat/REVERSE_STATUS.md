@@ -13160,3 +13160,157 @@ plante plus ; il ne prouve pas que c'est bien cet octant que la camera prenait.
 **LB-009** : sur **un seul octet**. La cle devient `<= 0xff`, ne peut plus egaler `rang << 8 |
 colonne`, et le curseur s'arrete apres une seule correspondance — bien avant la fin de la tranche. Le
 bug de 1998 protege le code du bug de 1998.
+
+---
+
+## 2026-08-25 (suite 15) — opcode 17 : le changement de salle
+
+**Le plantage.** La salle derriere le barman leve
+`Interpreteur de script : opcode 17 = FUN_00515a10, pas encore transcrit.` Le message portait deja
+tout ce qu'il fallait, y compris le chemin du desassemblage.
+
+**Le releve etait tronque.** `FUN_00515a10.asm` s'arretait sur `(bad)` — la fenetre de 96 octets du
+premier passage coupait le corps, qui en fait 110. La coupure tombait au milieu de
+`mov [5DE53Ch],al`, dont le premier octet seul se lit comme invalide. Le README du repertoire le
+disait deja pour `FUN_00515b40` ; c'est la deuxieme fois, et la deuxieme fois qu'un dump repris plus
+large rend le corps entier d'un coup.
+
+### Ce que fait l'opcode
+
+```
+mov eax,[esp+8]         ; l'entite (2e argument)
+and edx,0FC0000h        ; genre
+cmp edx,800000h         ; membre du groupe ?
+mov edx,[esp+0Ch]       ; le curseur de script (3e argument)
+jne 00515A7A            ; sinon : rien, on avance de 4
+…
+lea eax,[edx+4]         ; les DEUX chemins rendent script + 4
+ret
+```
+
+Sur une entite du bon genre — le meme garde que `ScriptOpShowMessage` — il fait deux choses.
+
+**Il marque l'entite comme partante** : `+0x98` recoit `+0x32`, les drapeaux perdent `0x08000200` et
+gagnent `0x2000`, et le compteur `+0x12` avance d'un. Ce `+0x12` est exactement le champ
+« occupee » que `ScriptOpShowMessage` consulte pour ne pas choisir un locuteur en transit.
+
+**Il note la destination** dans quatre globales, puis pose le pas de boucle :
+
+| globale | source | 0xff = ne pas changer |
+|---|---|---|
+| `DAT_005de528` — la zone | `script[1]` | oui |
+| `DAT_005de52c` — la sous-zone | `script[2]` | oui |
+| `DAT_005de530` — le point d'entree | `script[3]` | **non** |
+| `DAT_005de53c` — le membre declencheur | `entite[8]` | — |
+| `DAT_005645f8` — le pas de boucle | `2` | — |
+
+**L'asymetrie du `0xff` est dans le binaire**, pas une simplification : deux `cmp cl,0FFh ; je` et
+pas de troisieme. Elle a un sens — on peut rester dans la meme zone en changeant de porte, on ne
+peut pas arriver sans point d'arrivee.
+
+### Le pas de boucle a 2, et pourquoi c'est le detail qui compte
+
+`Blaze.c` 57354-57363 fait **le meme geste** pour la sortie *marchee* : memes quatre champs
+d'entite, memes globales de destination. Une seule difference — cette version-la pose le pas a
+**1**, celle-ci a **2**.
+
+Ce n'est pas cosmetique. `PlaceWorldMapParty` ne replace le groupe au point d'entree que
+`if ((s_WorldMapStep_005645f8 & 0xff) == 2)`, et c'est la qu'il lit `DAT_005de530` et
+`DAT_005de53c` — les deux globales que cet opcode vient d'ecrire. **Un transfert scripte repose donc
+le groupe a la porte d'arrivee ; une sortie marchee le laisse ou son elan l'a mis.** Les deux
+ecritures ne se comprennent que l'une par l'autre.
+
+### Une largeur de store preservee
+
+`DAT_005de528` est un `int` dans la reconstruction, la ou l'original y ecrit un octet
+(`mov [5DE528h],cl`). Le store masque les trois octets hauts. Tous ses lecteurs connus le masquent
+par `0xff`, donc la difference est invisible aujourd'hui — mais reproduire la largeur coute une ligne
+et ne suppose rien sur les lecteurs a venir.
+
+### Non exerce, et pourquoi
+
+Une sonde posee sur l'opcode ne s'allume **pas** sur le trajet de l'auberge, herboriste comprise :
+ce passage-la n'emprunte pas l'opcode 17. C'est coherent avec la lecture ci-dessus — c'est une sortie
+marchee, celle de `Blaze.c` 57354. Atteindre un declencheur scripte demande la salle du barman, donc
+Vincent.
+
+**Reserve a dire franchement** : cet opcode ne fait que *noter* la destination. Le travail reel
+arrive a l'image suivante, quand `LoadWorldMapArea` recharge la zone demandee — et ce chemin-la peut
+tres bien buter sur autre chose qui n'est pas encore transcrit. Corriger l'opcode 17 ne garantit pas
+que la salle s'ouvre ; il garantit que le jeu ne s'arrete plus **ici**.
+
+---
+
+## 2026-08-25 (suite 16) — la salle derriere le barman : le troisieme balayeur d'entites de scene
+
+**L'opcode 17 a tenu.** Le jeu affiche la salle, puis leve ailleurs :
+
+```
+FUN_0047aa70, table 0x005ff400 entree 0 [00 08 90 80 00 e2 00 00 …] :
+gestionnaire d'entite 0x405A70 non transcrit.
+```
+
+C'est exactement la reserve ecrite la veille au soir : « corriger l'opcode 17 ne garantit pas que la
+salle s'ouvre ; il garantit que le jeu ne s'arrete plus ici ». Elle s'est verifiee en une session.
+
+**Le corps etait dans `Blaze.c`** — ligne 2598 — contrairement a la famille des opcodes de script.
+Le message de la levee proposait le desassembleur « s'il est absent de Blaze.c » ; il ne l'etait pas,
+et un `grep` de dix secondes l'a montre. Lire la condition du message avant de suivre sa suggestion.
+
+### Ce qui manquait
+
+`FUN_00405a70` est le **troisieme** balayeur d'entites de scene, apres `FUN_00404ef0` et
+`FUN_004055c0` deja transcrits. Meme forme exacte : 0x20 emplacements de 0x9c octets a partir de
+`0x005ecaa0`, cinq tests par emplacement sur l'octet de type `+0x0c`, chacun garde par « vivante et
+eveillee », puis `*entite &= 0x7fffffff` en sortant.
+
+Sur ses cinq corps de reveil, **un etait deja la** et quatre manquaient :
+
+| type | corps | etat |
+|---|---|---|
+| 0 | `FUN_00405680` | deja transcrit — c'est le type **3** du second balayeur |
+| 1 | `FUN_00405b30` | ecrit |
+| 2 | `FUN_00405be0` | ecrit |
+| 3 | `FUN_00405cb0` | ecrit |
+| 4 | `FUN_00405d20` | ecrit |
+
+Toutes leurs primitives (`FUN_004051d0`, `FUN_00404fe0`, `FUN_004052f0`, `FUN_00405420`,
+`FUN_00468080`) etaient deja en place. Il ne manquait que quatre corps de quinze lignes.
+
+### Le numero de type est relatif au balayeur, pas au corps
+
+`FUN_00405680` est le type **3** du second balayeur et le type **0** du troisieme. Le nom
+`WakeSceneEntityKind3_00405680` porte donc un numero qui n'est vrai que pour un de ses deux
+appelants. Les quatre nouveaux corps sont nommes `WakeSceneEntity_<adresse>` **sans numero** : il n'y
+en a pas un seul a porter, et le suffixe d'adresse est la seule identite stable.
+
+Le nom existant n'a pas ete change — son commentaire disait deja « il sert aussi de type 0 au
+troisieme balayeur » — mais la lecon vaut d'etre retenue : **un numero d'index dans un nom suppose
+qu'il n'y a qu'une table.**
+
+### Un corps emis deux fois, verifie et non suppose
+
+`FUN_00405be0` est mot pour mot `FUN_00405770` (le type 4 du second balayeur). La regle du depot
+demande de verifier avant de transcrire, et c'est ce qui a ete fait :
+
+- meme taille, 208 octets ;
+- le desassemblage des deux ne differe que par les `jne short` internes, relogeables par nature ;
+- **aucun `call` ne differe** — memes cibles, meme ordre.
+
+Le compilateur a emis le corps deux fois. Les deux adresses restent distinctes parce que la table de
+sauts les distingue, donc les deux fonctions restent distinctes ici aussi.
+
+### Le seul des douze corps de reveil qui fasse du bruit
+
+`FUN_00405b30` joue un son a l'etat 1, mais seulement si l'animation courante est **exactement** la 2
+et son compteur d'images **exactement** 0x12. Une image precise d'une animation precise : c'est un
+bruitage cale sur un geste — un pas, un objet pose. Les deux champs sont des `short` (`+0x1a` le
+compteur, `+0x18` le numero), ce que Ghidra rend par `(&DAT_005ecaba)[i * 0x4e]`.
+
+### Non exerce
+
+La salle du barman ne s'atteint pas sans conduire le personnage. Le run de controle rend 509
+primitives par image, la valeur de reference, et le build est vert — c'est tout ce que l'agent peut
+etablir. **Meme reserve qu'hier**, et elle vaut d'etre repetee parce qu'elle s'est deja realisee
+une fois : une salle qui s'ouvre reveille des entites qui n'ont peut-etre jamais tourne. Le prochain
+plantage, s'il vient, se nommera.

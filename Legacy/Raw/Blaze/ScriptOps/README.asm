@@ -8,3 +8,8 @@
 ; (FUN_00515b40 en fait 122). Un dump tronqué se reconnait a sa derniere ligne, "(bad)" — la reprendre
 ; avec `disasm <va> <n>` plus large avant de transcrire, sans quoi on transcrit une fonction sans
 ; sa fin. FUN_00515b40 est reprise ici sur 128 octets.
+
+;
+; 2026-08-25 : FUN_00515a10 (opcode 17) reprise sur 110 octets — son corps s'arrete a 0x00515a7d,
+; soit 14 octets apres la fenetre de 96. La coupure tombait sur `mov [5DE53Ch],al`, dont le premier
+; octet seul se lit "(bad)".

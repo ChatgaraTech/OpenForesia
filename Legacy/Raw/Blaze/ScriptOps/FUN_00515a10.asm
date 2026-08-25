@@ -1,6 +1,6 @@
 
 Legacy/Binaries/Blaze.exe  base 0x00400000
-0x00515a10  section .text  offset fichier 0x114e10  96 octets
+0x00515a10  section .text  offset fichier 0x114e10  110 octets
 
   00515a10  8b442408              mov       eax,[esp+8]
   00515a14  8b08                  mov       ecx,[eax]
@@ -32,5 +32,11 @@ LAB_00515a61:
   00515a64  5e                    pop       esi
   00515a65  880d30e55d00          mov       [5DE530h],cl
   00515a6b  8a4008                mov       al,[eax+8]
-  00515a6e  a23c                  (bad)
-  (octet invalide — la plage demandee deborde probablement du code)
+  00515a6e  a23ce55d00            mov       [5DE53Ch],al
+  00515a73  c605f845560002        mov       byte [5645F8h],2
+
+LAB_00515a7a:
+  00515a7a  8d4204                lea       eax,[edx+4]
+  00515a7d  c3                    ret
+
+3 cible(s) de saut interne : 0x00515a53, 0x00515a61, 0x00515a7a

@@ -39,35 +39,36 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-## Deuxième chose à vérifier : la boîte de dialogue à racine de ressources 3
+## À vérifier maintenant : la salle derrière le barman (suite)
 
-**Corrigé le 2026-08-25, non exercé.** Une boîte levait
-`FUN_00544a80 : racine de ressources 3 …`. Le moteur de texte ne modélisait que deux des **cinq**
-racines de `&DAT_005e97c0` ; les cinq sont maintenant reliées, dans une aide unique
-(`UiText.ResourceRoot`) au lieu de quatre copies.
+**Opcode 17 confirmé, le balayeur suivant transcrit le 2026-08-25.** L'opcode a tenu — la salle
+s'affiche — puis le jeu a levé sur `FUN_00405a70`, le troisième balayeur d'entités de scène. Son
+corps était dans `Blaze.c` ; quatre corps de réveil sur cinq manquaient, tous courts, toutes leurs
+primitives déjà en place.
 
-La racine 3 est confirmée **valide** par une sonde — son entrée `+0x70` numéro 0 commence par des
-codes de contrôle, c'est bien une chaîne de dialogue de zone. Elle n'est pas confirmée
-**empruntée** : aucun run de l'agent n'atteint le dialogue qui levait. Refaire le trajet qui l'a
-produit. Détail dans `REVERSE_STATUS.md`, section « suite 13 ».
+À refaire : **entrer dans la salle**. Détail dans `REVERSE_STATUS.md`, section « suite 16 ».
+
+**Même réserve, et elle s'est déjà réalisée une fois** : une salle qui s'ouvre réveille des entités
+qui n'ont peut-être jamais tourné. Le prochain plantage, s'il vient, se nommera.
 
 ---
 
-## Troisième chose à vérifier : le dialogue de biais avec un PNJ
+## Vérifié en jeu le 2026-08-25 : les dialogues de biais
 
-**Corrigé le 2026-08-25, exercé par sonde, pas par le jeu.** Le balayage par cellules de
-`DrawChunk` lisait une clé de saut deux octets après la fin de sa table ; seul l'octant 7 de cap de
-caméra en sort, ce qui explique « de côté oui, en face à face non ». C'est LB-013 du catalogue :
-un défaut d'origine bénin en 1998 que `ReadOnlySpan` transforme en plantage.
+Vincent : « les dialogues de biais fonctionnent ». Cela confirme **deux** corrections du jour, qui
+tombaient toutes les deux sur ce geste :
 
-Le chemin corrigé a été exercé 2 314 fois avec l'octant forcé à 7, sans lever. Ce qui reste :
-**refaire le dialogue de biais**, pour confirmer que c'était bien cet octant. Détail dans
-`REVERSE_STATUS.md`, section « suite 14 ».
+- **la racine de ressources 3** du moteur de texte (`FUN_00544a80`), qui levait sur toute boîte de
+  dialogue passant par le répertoire de zone — `REVERSE_STATUS.md`, « suite 13 » ;
+- **LB-013**, la clé de saut lue deux octets après la fin de sa table dans `DrawChunk`, qui ne
+  plantait que dans l'octant 7 de cap de caméra — « suite 14 ».
+
+Les deux avaient été exercées par sonde, pas par le jeu. C'est le trajet de Vincent qui les a
+closes.
 
 ---
 
 # LE MENU DE JEU EST ENTIÈREMENT TRANSCRIT
-
 
 **Plus aucun corps ne manque à `FUN_0052a850`** : les six pages (la fiche de personnage, les objets de
 quête, la dalle aux cristaux, l'organisation du groupe, la carte du monde et ses repères,

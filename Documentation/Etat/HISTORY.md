@@ -6,6 +6,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- feat : **le troisième balayeur d'entités de scène** (`FUN_00405a70`) et ses quatre corps de réveil manquants — c'est ce que la salle derrière le barman réclamait après l'opcode 17
+- doc : le numéro de type est **relatif au balayeur**, pas au corps : `FUN_00405680` est le type 3 de l'un et le type 0 de l'autre ; les nouveaux corps ne portent donc pas de numéro
+- doc : `FUN_00405be0` est mot pour mot `FUN_00405770` — vérifié, pas supposé : même taille, aucun `call` différent, seuls les sauts internes bougent
+- doc : le corps était **dans `Blaze.c`** (ligne 2598) alors que le message de levée proposait le désassembleur ; sa condition « s'il est absent de Blaze.c » se lit avant de suivre sa suggestion
+- doc : les dialogues de biais confirmés en jeu par Vincent — la racine de ressources 3 et LB-013 sont closes, toutes deux tombaient sur ce geste
+- feat : **l'opcode 17 de l'interpréteur de script est transcrit** — c'est le changement de salle : il note zone, sous-zone et point d'entrée, marque l'entité comme partante et demande le rechargement
+- doc : `script[1]` et `script[2]` portent `0xff` pour « ne pas changer », `script[3]` **non** — deux `cmp cl,0FFh` dans le binaire et pas de troisième
+- doc : le transfert scripté pose le pas de boucle à **2**, la sortie marchée à **1** ; seul le 2 fait replacer le groupe au point d'entrée — les deux écritures ne se comprennent que l'une par l'autre
+- doc : `FUN_00515a10.asm` était tronqué à 96 octets (corps de 110) ; deuxième fois qu'un dump repris plus large débloque un corps d'un coup
 - fix : **le plantage en parlant de biais à un PNJ** — le balayage par cellules de `DrawChunk` lit une clé de saut deux octets après la fin de sa table, et seul l'octant 7 en sort ; `GameMemory.NextCellSkipKey` rend désormais les vrais octets de `PTR_DAT_005645d8`
 - doc : LB-013 au catalogue — premier défaut d'origine qui **plante la reconstruction sans avoir jamais rien cassé en 1998** ; `ReadOnlySpan` lève là où x86 lisait paisiblement chez le voisin
 - doc : LB-009 protège `DrawWorldCells` de LB-013 — sa lecture d'un seul octet arrête le curseur avant la fin de la tranche ; un bug de 1998 en masque un autre
