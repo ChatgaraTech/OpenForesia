@@ -1,8 +1,7 @@
 ﻿# TODO
 
-Point d'entrée entre deux sessions. Mis à jour le **2026-08-24, fin de journée**. L'historique
-détaillé est dans `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et
-la suite à faire.
+Point d'entrée entre deux sessions. Mis à jour le **2026-08-25**. L'historique détaillé est dans
+`REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
 
@@ -13,19 +12,55 @@ déplacement.
 
 ---
 
-# DEMAIN : `FUN_00445860`
+# À VÉRIFIER EN JEU : la salle du barman
 
-**C'est par là qu'on reprend.** Le premier des 121 corps de gestionnaire d'entité qui soient
-décompilés dans `Blaze.c` — donc de la transcription ordinaire, pas du désassemblage — **et le seul
-dont un chemin déjà reconstruit démontre qu'il est atteint** :
+**Deux gestionnaires manquaient sur ce trajet, pas un.** Les deux sont transcrits, le build est
+vert, mais **aucun des deux n'est exercé** : la salle du barman ne s'atteint pas en frappes
+minutées. À refaire pour confirmer que le plantage a disparu.
 
-`SpawnStatusEffectEntity_0047AC40` engendre dans `0x005f2d40` en posant son sous-type en `+0x05`,
-l'octet que `FUN_0047acf0` aiguille. L'effet de dispersion du groupe d'`EvaluatePartyDispersal`
-(état 0xcd de `EntityAnimTail_00472E80`) y entre avec `0x9d`, et l'entrée 0x9d de la table statique
-`0x00552230` vaut `0x00445860`.
+| Passage | Branche | Sous-type | Cible | Transcrit |
+|---|---|---|---|---|
+| écran suivant, 1er essai | basse (`< 0xC0`) | `0x59` | `0x00403710`, l'effet de soin | ✔ |
+| salle du barman | **haute** (`>= 0xC0`) | `0xe1` | `0x004055C0`, le 2e balayeur d'entités de scène | ✔ |
 
-Contexte complet : `REVERSE_STATUS.md`, section du 2026-08-24 (suite 14), et l'entrée
-`PTR_LAB_00552230` de `DataSymbols.md`.
+**Relever la ligne d'exception entière est ce qui a tranché.** Le premier essai n'en portait que le
+début, et la déduction faite dessus était à moitié fausse — voir ci-dessous.
+
+## La leçon du jour : symbole ≠ adresse
+
+J'ai écrit le matin que `0x00403710` était **le seul** créneau atteignable de cette passe, parce que
+`&DAT_005ff405` n'a qu'un seul écrivain dans `Blaze.c`. Vrai pour la **branche basse**, et muet sur
+tout le reste : **six autres sites écrivent directement dans `DAT_005ff400`** — enregistrement posé
+en bloc par le chargeur de zone — et y mettent des sous-types `>= 0xC0`.
+
+Compter les écrivains d'un **symbole** ne compte pas les écrivains d'une **adresse**. Un `grep` sur
+`DAT_005ff405` ne voit pas un `memcpy` vers `DAT_005ff400`. Le raisonnement était bon pour ce qu'il
+couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
+
+---
+
+# DEMAIN : la suite des 121 corps décompilés
+
+`FUN_00445860` — le premier de la liste, celui que le TODO de la veille désignait — est fait. Il
+reste **120 transcriptions ordinaires** et 152 désassemblages sur les trois tables statiques.
+
+Aucun autre créneau n'a de chemin reconstruit qui y mène de façon démontrée : les deux suivants se
+choisissent donc au jugé, ou en attendant qu'un plantage en nomme un. La table complète, adresse
+par adresse, est dans `REVERSE_STATUS.md`, sections du 2026-08-24 (suites 12 à 14).
+
+**Un troisième balayeur d'entités de scène attend** : `FUN_00405a70`, qui réveille les types 0 à 4
+avec encore d'autres corps (`FUN_00405b30`, `FUN_00405be0`, `FUN_00405cb0`, `FUN_00405d20`). Rien
+ne démontre qu'il soit atteint — à faire quand un plantage le nommera, comme les deux autres.
+
+**Deux TODO(REVERSE) ouverts le 2026-08-25**, tous deux avec assez de matière pour être repris :
+
+* **`FUN_0053dcb0` recopie `+0x148` dans `+0x14c` à chaque image.** Avec la lecture désormais tenue
+  par deux témoins — `+0x148`/`+0x14a` le maximum, `+0x14c`/`+0x14e` le courant — cela remettrait
+  les points de vie au maximum en permanence. Les deux transcriptions sont fidèles au binaire, les
+  deux désassemblages sont dans le dépôt : **il manque une pièce**, pas une correction.
+* **Les huit octets `f0 80 0f 0f 01 00 11 00` en `0x00551640`** précèdent un flux d'étiquettes et
+  ne sont écrits par personne. Un en-tête de boîte, vraisemblablement — le flux du développeur en
+  `0x00551814` n'en a pas.
 
 > ## LA CARTE DU MONDE TOURNE
 >
@@ -33,11 +68,26 @@ Contexte complet : `REVERSE_STATUS.md`, section du 2026-08-24 (suite 14), et l'e
 > OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 44 -WorkingDir OpenForesia -Shot -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT20
 > ```
 >
-> rend **« aucun plantage »**, 2101 images, 257 à 452 primitives par image, et la capture montre
+> rend **« aucun plantage »**, ~2000 images, 557 primitives par image, et la capture montre
 > **l'auberge** : murs de bois, escalier, sol de pierre, plante, porte, le personnage avec son épée,
-> la rose des vents, et le panneau « MISEUR 16/16 2/2 ». Deux exécutions de suite, identiques.
+> la rose des vents, et le panneau « MISEUR 16/16 2/2 ».
 >
 > C'est la première fois. Le jeu ne s'arrête plus.
+
+# CE QUI A ÉTÉ FAIT LE 2026-08-25
+
+* `FUN_00403710`, l'effet de soin — le seul créneau atteignable par la **branche basse** de
+  `FUN_0047aa70`.
+* `FUN_004055C0` et ses cinq réveils (types 3, 4, 5, 6, 7) — le second balayeur d'entités de scène,
+  atteint par la **branche haute**. C'est le plantage de la salle du barman.
+* `FUN_00445860`, l'afficheur d'énoncé — entrée `0x9d` de la table de `FUN_0047acf0`.
+* `s_EntityParams_00551640` semée depuis le binaire : ses 0x200 octets ne sont **pas** nuls au
+  chargement, et deux flux d'étiquettes inédits y dormaient (« 開かない！？ », « 遠くで音がした。 »).
+* `Documentation/Etat/NOTE_DEVELOPPEUR.md` — nouveau, à la demande de Vincent : le registre des
+  traces humaines restées dans le binaire. Six entrées pour commencer. **Y ajouter une entrée quand
+  on en croise une.**
+
+Détail dans `REVERSE_STATUS.md`, sections du 2026-08-25, et dans `DataSymbols.md` pour la plage.
 
 # CE QUI A ÉTÉ FAIT LE 2026-08-24
 

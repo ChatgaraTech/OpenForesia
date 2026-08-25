@@ -11836,3 +11836,193 @@ chemin vivant y mene.
 
 `dotnet build` : 0 erreur. Lancement sans deplacement : 1441 images, aucun plantage, 557 primitives
 par image, inchange.
+
+## 2026-08-25 — le plantage de l'auberge : `FUN_0047aa70` n'avait qu'un seul creneau atteignable
+
+Vincent signale, en passant a l'ecran suivant dans l'auberge :
+
+```
+Unhandled exception. System.NotImplementedException: FUN_0047aa70
+```
+
+La ligne est tronquee, et la lecon du 2026-08-24 disait de relever l'exception entiere. Elle n'a
+pas ete necessaire : **la table 0x005ff400 n'a qu'un seul sous-type possible**, et deux `grep` le
+demontrent sans avoir a rejouer le trajet.
+
+### Comment le creneau se deduit au lieu de se mesurer
+
+`FUN_0047aa70` aiguille sur l'octet `+0x05` de l'enregistrement. Dans tout `Blaze.c`,
+**`&DAT_005ff405` n'a qu'un seul ecrivain** — `FUN_0047a9d0`, l'engendreur de cette table, qui le
+pose depuis son `param_2`. Et ses **six** sites d'appel passent tous la meme valeur : `0x59`.
+
+`0x59 = 89 < 0xC0`, donc la branche basse, donc l'entree 89 de `PTR_LAB_00551c30`. Relevee dans le
+binaire (`at 0x00551d88 32`, decalage `+0x0c`) : **`0x00403710`**.
+
+Le sous-type ne pouvant pas etre autre chose, la ligne complete n'apportait rien. C'est le contraire
+du cas du 2026-08-24, ou la table 0x0056adc8 avait 64 sous-types possibles et ou seule l'exception
+pouvait dire lequel : **le nombre d'ecrivains du champ d'aiguillage decide si un symptome doit etre
+reproduit ou peut etre deduit.**
+
+### `FUN_00403710` — l'effet de soin
+
+Corps de 480 octets, decompile dans `Blaze.c`, verifie ligne a ligne au desassembleur. C'est une
+entite satellite accrochee a son porteur (`+0x6c`), dont elle recopie la position a chaque image :
+
+* `+0x16` est le compteur de scenette — bruitage `0x30` a l'image 0, `0x2f` a l'image 1, extinction
+  a 40 (le bit `0x80000000` de l'entite tombe, et le bit `8` du porteur avec lui) ;
+* `+0x1a` est le **pourcentage** soigne. A 100, et seulement a 100, il pose le bit `8` du porteur et
+  lance une gerbe d'entites `0x59` en spirale (angle `+0x12`, pas de `rand % 400 + 800`, rayon
+  `60 * sin`) ;
+* le soin lui-meme n'a lieu qu'a l'image 1 : `+0x14c` et `+0x14e` du bloc de personnage recoivent
+  le pourcentage de `+0x148` et `+0x14a`, bornes par eux.
+
+**Ce bornage tranche le sens de la paire** : `+0x148`/`+0x14a` sont le maximum, `+0x14c`/`+0x14e`
+le courant. C'est la meme lecture que `Destination.cs` (retour en ville), et elle est maintenant
+tenue par deux temoins independants.
+
+Une bizarrerie a signaler sans la resoudre : `ResetPerCharacterFrameState` (`FUN_0053dcb0`) recopie
+`+0x148` dans `+0x14c` **a chaque image**, ce qui, avec la lecture ci-dessus, remettrait les points
+de vie au maximum en permanence. Les deux transcriptions sont fideles au binaire — les deux
+desassemblages sont dans ce depot. **Il reste donc une piece manquante**, pas une erreur de
+transcription. TODO(REVERSE) : trouver ce qui distingue les deux sites.
+
+### Le piege de Ghidra sur la division par 100
+
+`Blaze.c` ecrit la division comme une somme de trois termes :
+
+```c
+(short)(iVar6 / 100) + (short)(iVar6 >> 0x1f) - (short)((longlong)iVar6 * 0x51eb851f >> 0x3f)
+```
+
+Les deux derniers termes valent tous deux `-1` pour un operande negatif et `0` sinon : ils
+s'annulent. Le binaire porte l'idiome habituel (`imul 0x51EB851F ; sar edx,5 ; shr eax,31 ; add`),
+une division signee tronquee vers zero. C'est `/ 100` en C#, sans plus.
+
+### `FUN_00445860` — le premier des 121, transcrit
+
+L'item designe par le TODO de la veille. Corps de 180 octets, entree `0x9d` de `PTR_LAB_00552230`.
+C'est un **afficheur d'enonce** accroche a son porteur : il pose `&DAT_00551640` en `+0x3c`, avance
+l'image d'animation du porteur en la bouclant sur le nombre d'images de sa planche
+(`**(&DAT_005e9680)[porteur[+4]]`, champ `+0x16`), remet les trois octets de teinte a `0xff`, et
+fait pulser son echelle `+0x28`/`+0x2a` a `0x1000 + sin(angle)/4`.
+
+Deux points que seul le binaire tranche :
+
+* **le porteur nul retombe sur `&DAT_005de558`**, l'entite factice — `test eax,eax ; jne ; mov
+  eax,5DE558h`. Ce n'est pas une garde defensive ajoutee par la transcription : tout le corps
+  travaille ensuite sur ce substitut, avance d'animation comprise ;
+* `Ordinal_451` est appele **deux fois** avec le meme angle, pour `+0x28` puis `+0x2a`. Table de
+  sinus pure, donc deux fois la meme valeur ; les deux appels sont conserves.
+
+### Ce que `FUN_00445860` a mis au jour : `0x00551640` n'etait pas semee
+
+`param_1[0xf] = &DAT_00551640` pose un **pointeur de donnee**, pas un drapeau. Or
+`s_EntityParams_00551640` etait une `AllocZeroed(0x200)` : l'entite recevait un pointeur vers 512
+octets nuls.
+
+La plage est sous la frontiere `0x00571400`, donc **reellement presente dans le fichier**, et ses
+0x200 octets y sont initialises. Les onze initialiseurs (`Init_0045a220` et sa famille) reecrivent
+les champs numeriques avec exactement les memes valeurs — `Init_0045a220` pose `0x9c4` en
+`0x00551660`, et le binaire y porte deja `c4 09 00 00` — mais ils ne touchent pas aux **trois flux
+d'etiquettes** noyes dans la plage :
+
+| Adresse | Flux | Sens |
+|---|---|---|
+| `0x00551648` | `1f d0 20 · 08 00 · 0c · 開かない！？ · 0f · 08 01 · 00` | « ça ne s'ouvre pas ! » |
+| `0x00551720` | `08 00 · 0c · 遠くで音がした。 · 0f · 08 01 · 00` | « un bruit, au loin » |
+| `0x00551814` | la note de developpeur, relevee le 2026-08-24 | « contactez Imai » |
+
+Les 0x200 octets sont maintenant semes verbatim depuis le binaire (`BuildEntityParams_00551640`,
+`Memory/GameMemory.cs`). Les huit premiers octets (`f0 80 0f 0f 01 00 11 00`) precedent le flux de
+`0x00551648` et ne sont ecrits par personne — TODO(REVERSE) : leur role n'est pas etabli. Un
+en-tete de boite, vraisemblablement, puisque le flux du developpeur en `0x00551814` n'en a pas et
+se lit directement.
+
+**La lecon generale** : une plage sous `0x00571400` modelisee par `AllocZeroed` est une hypothese,
+pas un fait. Elle ne tient que si le binaire y porte reellement des zeros — ce que `at` dit en une
+commande. Deux des huit blocs adresses par decalage portent la mention « verifiee nulle » ; les
+autres ne l'ont jamais ete.
+
+### Verification
+
+`dotnet build` : 0 erreur. `dotnet test` : 4 vertes, 2 rouges — les deux rouges connues (test 3 et
+test 5), inchangees. Lancement sans deplacement jusqu'a l'auberge : aucun plantage, 557 primitives
+par image, identique avant et apres.
+
+**Le plantage lui-meme n'est pas exerce** : il demande de conduire le personnage jusqu'a l'ecran
+suivant, ce qui est a Vincent depuis le 2026-08-24.
+
+## 2026-08-25 (suite) — la salle du barman, et la deduction qui etait a moitie fausse
+
+La ligne d'exception entiere, cette fois :
+
+```
+FUN_0047aa70, table 0x005ff400 entree 0 [00 08 90 80 00 e1 00 00 00 00 00 00 00 00 00 00]
+ : gestionnaire d'entite 0x4055C0 non transcrit
+```
+
+### La correction
+
+J'ai ecrit ce matin que `0x00403710` etait **le seul** creneau que cette passe puisse atteindre.
+C'est faux, et l'octet `+0x05` de l'enregistrement le dit : il vaut **`0xe1`**, pas `0x59`.
+
+Ce qui etait juste : `FUN_0047a9d0` est bien l'unique ecrivain de `&DAT_005ff405`, et ses six sites
+d'appel passent bien tous `0x59`. Ce qui etait faux, c'est d'en conclure quoi que ce soit sur
+**l'ensemble** des sous-types possibles. `FUN_0047a9d0` n'est pas le seul chemin vers cette table :
+**six autres sites de `Blaze.c` ecrivent directement dans `DAT_005ff400`** (lignes 6165, 30034,
+30297, 45382, 81493, 81556), et le chargement de zone y pose des enregistrements complets. Le
+symbole `DAT_005ff405` ne compte que les ecritures **nommees par ce symbole-la**.
+
+`0xe1 >= 0xC0`, donc la branche **haute** : `0x0056adc8 + 0xe1 * 4 = 0x0056b14c`, soit l'entree 33
+de `s_Vt_0056b0c8`, la table installee par zone. Cible : `0x004055C0`.
+
+**La lecon**, et c'est la troisieme fois qu'elle se paie dans ce depot : compter les ecrivains d'un
+**symbole** ne compte pas les ecrivains d'une **adresse**. Un `grep` sur `DAT_005ff405` ne voit pas
+un `memcpy` vers `DAT_005ff400`, ni un enregistrement pose en bloc par le chargeur de zone. Le
+raisonnement etait bon pour ce qu'il couvrait — la branche basse — et l'erreur a ete de ne pas
+borner sa portee en l'ecrivant.
+
+`RestoreVitalsEntity_00403710` reste juste et reste utile : c'est bien la cible de la branche basse.
+Sa documentation borne maintenant ce qu'elle affirme.
+
+### `FUN_004055C0` — le second balayeur d'entites de scene
+
+Jumeau de `FUN_00404ef0`, deja transcrit : meme forme, meme table `0x005ecaa0`, meme
+auto-desarmement en sortant. La difference tient aux types reveilles — **3, 4, 5, 7 et 6**, dans cet
+ordre — la ou son jumeau reveille 0, 1 et 2.
+
+Il y a d'ailleurs un **troisieme** balayeur, `FUN_00405a70`, qui reveille 0, 1, 2, 3, 4 avec encore
+d'autres corps. Non transcrit : rien ne demontre qu'il soit atteint. Son type 0 est
+`FUN_00405680`, deja fait ici.
+
+Les cinq reveils partagent la meme charpente que les trois deja transcrits — `ArmSceneEntityState`
+puis cinq ou six tests sur les trente bits bas de `+0x5c` — et ne different que par leurs numeros
+d'animation :
+
+| Type | Corps | Etat 1 | Etat 2 (inactivite) | Etat 3 | Etats 4-6 |
+|---|---|---|---|---|---|
+| 3 | `0x00405680` | avance 1 **+ decale `+0x32`** | cycle 2..4, pause `rand%10` | decompte 1 **+ decale `+0x32`** | 2, 3, 4 |
+| 4 | `0x00405770` | avance 1 | cycle 2..4, pause `rand%10` | decompte 1 | 2, 3, 4 |
+| 5 | `0x00405840` | avance 1 | cycle 1..2, pause `rand%10` | decompte 2 | 1, 2 |
+| 6 | `0x004058f0` | avance 4 | cycle 2..3, pause `rand%10 + 10` | decompte 4 | 0, 5 |
+| 7 | `0x004059a0` | avance 1 | cycle 3..4, pause `rand%10` | decompte 1 | 3, 4, 2 |
+
+Deux choses meritent d'etre notees :
+
+* **le type 3 est le seul des huit qui deplace son entite.** Aux etats 1 et 3, si le pas d'animation
+  vient d'atteindre sa fin (`+0x48 == 1`) et que le bit « l'etat vient de changer » est retombe, il
+  decale `+0x32` de `-0x22` puis de `+0x22`. Aller-retour de 34 unites sur ce seul champ. Les deux
+  additions sont **16 bits** dans le binaire (`add word [esi+32h],0FFDEh`), ce qui se verifie au
+  desassembleur et pas dans `Blaze.c` ;
+* **le type 4 est exactement le type 3 sans ces deux decalages.** Memes six etats, memes numeros
+  d'animation. Ce qui distingue les deux types dans le jeu est donc le deplacement, et rien
+  d'autre — un objet de decor qui bouge et le meme qui ne bouge pas.
+
+Les cinq tests du balayeur **relisent** le mot d'etat et l'octet de type a chaque fois : un reveil
+peut changer l'un comme l'autre, et le binaire recharge `[esi]` avant chaque comparaison. Transcrit
+tel quel.
+
+### Verification
+
+`dotnet build` : 0 erreur. Le trajet lui-meme est a Vincent : la salle du barman ne s'atteint pas en
+frappes minutees.

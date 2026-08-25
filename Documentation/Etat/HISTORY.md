@@ -4,6 +4,21 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-08-25
+
+- feat : `FUN_004055C0` et ses cinq réveils (types 3 à 7) — le second balayeur d'entités de scène : c'est le plantage de la salle du barman
+- fix : l'affirmation de ce matin, « `0x00403710` est le **seul** créneau atteignable de `FUN_0047aa70` », était à moitié fausse — vraie pour la branche basse, muette sur la branche haute, où six sites écrivent directement dans `DAT_005ff400` et posent des sous-types `>= 0xC0`
+- doc : compter les écrivains d'un **symbole** ne compte pas les écrivains d'une **adresse** — un `grep` sur `DAT_005ff405` ne voit ni un `memcpy` vers `DAT_005ff400`, ni un enregistrement posé en bloc par le chargeur de zone
+- doc : le type 3 est le seul des huit réveils qui **déplace** son entité (aller-retour de 0x22 sur `+0x32`), et le type 4 en est la copie exacte sans ce déplacement
+- doc : `Documentation/Etat/NOTE_DEVELOPPEUR.md` — le registre des traces humaines restées dans le binaire : la note à Imai, les deux phrases japonaises oubliées, « Invertaire », « Gurkha » et l'écran d'outil qu'il ouvre
+- feat : `FUN_00403710`, l'effet de soin — le seul créneau que la **branche basse** de `FUN_0047aa70` puisse atteindre : `&DAT_005ff405` n'a qu'un écrivain, et ses six sites d'appel passent tous `0x59`
+- feat : `FUN_00445860`, l'afficheur d'énoncé — le premier des 121 corps décompilés des trois tables statiques, celui que le TODO désignait
+- fix : `s_EntityParams_00551640` était une `AllocZeroed` alors que le binaire porte ses 0x200 octets initialisés — `FUN_00445860` y pose un pointeur de donnée, qui rendait 512 octets nuls
+- doc : deux flux d'étiquettes inédits relevés dans cette plage — « 開かない！？ » (« ça ne s'ouvre pas ! ») en `0x00551648` et « 遠くで音がした。 » (« un bruit, au loin ») en `0x00551720`
+- doc : une plage sous `0x00571400` modélisée par `AllocZeroed` est une hypothèse, pas un fait — le binaire y porte du contenu, et `at` le dit en une commande
+- doc : la division par 100 que `Blaze.c` écrit en somme de trois termes est l'idiome `imul 0x51EB851F` ordinaire — les deux termes correctifs s'annulent, c'est `/ 100`
+- doc : `+0x148`/`+0x14a` sont bien le maximum et `+0x14c`/`+0x14e` le courant, tenu maintenant par deux témoins ; mais `FUN_0053dcb0` recopie l'un dans l'autre à chaque image, ce qui reste inexpliqué — TODO(REVERSE)
+
 ## 2026-08-24
 
 - feat : la table statique `PTR_LAB_00552230` de `FUN_0047acf0` relevée — les trois passes de `0x0047axxx` ont leur branche basse câblée, et **303 des 576 créneaux** se comportent correctement

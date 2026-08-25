@@ -140,7 +140,7 @@ Legacy/          tout ce qui vient de 1998, rien d'ecrit par nous
 Documentation/   tout ce que le projet a appris
   ARCHITECTURE.md
   DLL/           un fichier par DLL d'aide
-  Etat/          TODO.md, REVERSE_STATUS.md, HISTORY.md
+  Etat/          TODO.md, REVERSE_STATUS.md, HISTORY.md, NOTE_DEVELOPPEUR.md
   Methode/       Prompt.md, Strategy.md
   Reference/     DataSymbols.md, legacy-bug.md, OpenForesia.cfg.md
   Tests/         test-protocol.md, test-todo-later.md, et les analyses ponctuelles
@@ -156,6 +156,7 @@ Documentation/   tout ce que le projet a appris
 | `Documentation/Etat/REVERSE_STATUS.md` | **Read this first.** Call-graph coverage, per-function status, numbered `TODO(REVERSE)` items, current blocking point. |
 | `Documentation/Etat/TODO.md` | The between-sessions entry point: current state and what to do next. |
 | `Documentation/Etat/HISTORY.md` | **Update it at the end of every work session — see below.** One line per change, newest first. |
+| `Documentation/Etat/NOTE_DEVELOPPEUR.md` | **Les traces humaines restées dans le binaire** — le mot à un collègue, l'écran d'outil laissé dans la version vendue, la faute de frappe partie en pressage. Aucune utilité technique ; y ajouter une entrée quand on en croise une. |
 | `Documentation/Methode/Prompt.md`, `Strategy.md` | The authoritative methodology documents, both in French. |
 | `Documentation/Reference/DataSymbols.md` | Values recovered from the binary's data sections, keyed by Ghidra VA. Also carries the **map of reconstructed symbols**: every VA-suffixed C# symbol, sorted by address, with its gap to the next and the file it lives in. |
 | `Documentation/Reference/legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect, and the project reproduces those rather than repairing them. |

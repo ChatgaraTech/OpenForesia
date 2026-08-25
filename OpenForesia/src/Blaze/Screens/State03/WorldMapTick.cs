@@ -3582,6 +3582,18 @@ public static unsafe partial class Blaze
             case 0x00486EE0: EntityHandler_00486EE0((uint*)record); return;
             case 0x00404EF0: EntityHandler_00404EF0((uint*)record); return;
 
+            // L'entree 89 de la table statique 0x00551c30 — le seul creneau que la BRANCHE BASSE
+            // de FUN_0047aa70 puisse atteindre, son engendreur ne posant que le sous-type 0x59.
+            case 0x00403710: RestoreVitalsEntity_00403710(record); return;
+
+            // L'entree 0x9d de la table statique 0x00552230, atteinte par l'effet de dispersion
+            // du groupe.
+            case 0x00445860: ShowEntityLabel_00445860(record); return;
+
+            // L'entree 0xe1 de la table installee par zone — le second balayeur d'entites de
+            // scene. C'est le plantage de la salle du barman, signale le 2026-08-25.
+            case 0x004055C0: EntityHandler_004055C0((uint*)record); return;
+
             // La famille commune de la table 0x0056adc8, transcrite le 2026-08-24. 0x004734B0 est
             // le gestionnaire par defaut : 47 des 64 sous-types y pointent.
             case 0x004734B0: EntityHandler_004734B0((uint*)record); return;
@@ -3622,6 +3634,198 @@ public static unsafe partial class Blaze
         }
 
         return text.ToString();
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00403710 @ 0x00403710 — <b>l'effet de soin</b>, et le seul gestionnaire que la
+    /// table statique <see cref="s_StaticEntityHandlers_00551c30"/> puisse recevoir <b>par la
+    /// branche basse</b> de <see cref="TickEntityTable_005ff400"/> : <c>FUN_0047a9d0</c> est
+    /// l'unique ecrivain de l'octet de sous-type <c>0x005ff405</c>, et ses six sites d'appel
+    /// passent tous <c>0x59</c>, dont l'entree 89 de la table vaut <c>0x00403710</c>.
+    ///
+    /// <para>
+    /// <b>Cela ne dit rien de la branche haute.</b> Six autres sites de <c>Blaze.c</c> ecrivent
+    /// directement dans <c>DAT_005ff400</c> — sans passer par <c>FUN_0047a9d0</c> — et y posent des
+    /// sous-types <c>&gt;= 0xC0</c>, qui vont dans la table installee par zone. Le premier observe
+    /// est <c>0xe1</c>, dans la salle du barman : voir <see cref="EntityHandler_004055C0"/>.
+    /// </para>
+    ///
+    /// <para>
+    /// L'entite est un satellite : elle suit son porteur (<c>+0x6c</c>), dont elle recopie la
+    /// position a chaque image, et le compteur <c>+0x16</c> mene la scenette — deux bruitages a
+    /// l'ouverture, une gerbe d'entites <c>0x59</c> lancees en spirale tant que le compteur est
+    /// impair et sous 10, l'extinction a 40. <c>+0x1a</c> est le <b>pourcentage</b> soigne : 100
+    /// veut dire « au maximum », et c'est la seule valeur qui pose le bit 8 du porteur et qui
+    /// autorise la gerbe.
+    /// </para>
+    /// <para>
+    /// Le soin lui-meme n'a lieu qu'a l'image 1 : <c>+0x14c</c> et <c>+0x14e</c> du bloc de
+    /// personnage recoivent le pourcentage de <c>+0x148</c> et <c>+0x14a</c>, bornes par eux. Ce
+    /// bornage tranche le sens de la paire — <c>+0x148</c>/<c>+0x14a</c> sont bien le maximum.
+    /// </para>
+    /// <para>
+    /// La division par 100 s'ecrit dans <c>Blaze.c</c> comme une somme de trois termes
+    /// (<c>x / 100 + (x &gt;&gt; 0x1f) - ((longlong)x * 0x51eb851f &gt;&gt; 0x3f)</c>) : les deux
+    /// derniers valent tous deux -1 pour un operande negatif et 0 sinon, donc ils s'annulent. Le
+    /// binaire confirme l'idiome habituel (<c>imul 0x51EB851F ; sar edx,5 ; shr eax,31 ; add</c>),
+    /// une division signee tronquee vers zero — c'est <c>/ 100</c> en C#.
+    /// </para>
+    /// </summary>
+    private static void RestoreVitalsEntity_00403710(byte* effect)
+    {
+        byte* carrier = *(byte**)(effect + 0x6c);
+        if (carrier == null) return;
+
+        *(int*)(effect + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(effect + 0x20) = *(int*)(carrier + 0x20);
+        *(int*)(effect + 0x24) = *(int*)(carrier + 0x24);
+        *(int*)(effect + 0x60) = *(int*)(carrier + 0x60);
+
+        if (*(short*)(effect + 0x10) == 0)
+        {
+            // Le binaire compare AVANT d'effacer : `cmp word [esi+18h],0FFFFh` precede
+            // `mov [esi+18h],bx`, et le `je` qui suit lit encore ces drapeaux-la.
+            short requested = *(short*)(effect + 0x18);
+            *(short*)(effect + 0x18) = 0;
+            if (requested != -1) *(short*)(effect + 0x1a) = 100;
+
+            *(short*)(effect + 0x10) = 1;
+            *(short*)(effect + 0x12) = 0;
+            *(short*)(effect + 0x16) = 0;
+
+            if (*(short*)(effect + 0x1a) == 100) *(uint*)carrier |= 8;
+        }
+
+        if (*(short*)(effect + 0x10) == 1)
+        {
+            SpawnStatusEffectEntity_0047AC40(effect, (int*)(effect + 0x1c), null, 0x3b, 0, -1);
+        }
+
+        if (*(short*)(effect + 0x16) == 0) Aud.PlaySoundEffect(0x30, 400, 0x1000, 0x1000);
+        if (*(short*)(effect + 0x16) == 1) Aud.PlaySoundEffect(0x2f, 0x200, 0x600, 0x600);
+
+        (*(short*)(effect + 0x16))++;
+
+        if (*(short*)(effect + 0x16) < 10 && (*(ushort*)(effect + 0x16) & 1) != 0)
+        {
+            // Ordinal_451 part en +0x1c et Ordinal_450 en +0x24 — l'inverse de l'appariement de
+            // MoveEntityAlongHeading. Le binaire est formel (0x004037df puis 0x004037fa), et les
+            // deux fonctions sont transcrites telles qu'elles sont ecrites.
+            short heading = *(short*)(effect + 0x12);
+            *(int*)(effect + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 0x3c;   // Ordinal_451
+            *(int*)(effect + 0x24) += (int)Winsys3d.GetCosTableEntry(heading) * 0x3c;   // Ordinal_450
+
+            if (*(short*)(effect + 0x1a) == 100)
+            {
+                SpawnCastEntity_0047AAE0(effect, 0x59, 0, -1);
+            }
+
+            *(short*)(effect + 0x12) += (short)(CrtRand() % 400 + 800);   // Ghidra: FUN_00547140
+        }
+
+        if (*(short*)(effect + 0x16) >= 0x28)
+        {
+            *(uint*)effect &= 0x7fffffff;
+            *(uint*)carrier &= 0xfffffff7;
+        }
+
+        if (*(short*)(effect + 0x16) == 1)
+        {
+            byte* block = GetMainMemPtr() + ((carrier[8] + 0x78) << 0xd);
+            short percent = *(short*)(effect + 0x1a);
+
+            short maxHp = *(short*)(block + 0x148);
+            *(short*)(block + 0x14c) += (short)(percent * maxHp / 100);
+            if (*(short*)(block + 0x14c) >= maxHp) *(short*)(block + 0x14c) = maxHp;
+
+            short maxMp = *(short*)(block + 0x14a);
+            *(short*)(block + 0x14e) += (short)(percent * maxMp / 100);
+            if (*(short*)(block + 0x14e) >= maxMp) *(short*)(block + 0x14e) = maxMp;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00445860 @ 0x00445860 — l'entree <b>0x9d</b> de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/>, celle de la passe
+    /// <see cref="TickEntityTable_005f2d40"/>. C'est le <b>premier</b> des 121 corps de gestionnaire
+    /// de ces trois tables que <c>Blaze.c</c> decompile <b>et</b> dont un chemin reconstruit
+    /// demontre qu'il est atteint : <see cref="EvaluatePartyDispersal"/> (etat 0xcd de
+    /// <see cref="EntityAnimTail_00472E80"/>) engendre dans <c>0x005f2d40</c> avec ce sous-type.
+    ///
+    /// <para>
+    /// L'entite est un <b>afficheur d'enonce</b> accroche a son porteur. Elle pose en <c>+0x3c</c>
+    /// le bloc <c>&amp;DAT_00551640</c>, dont le flux d'etiquettes dit « 開かない！？ » — « ça ne
+    /// s'ouvre pas ! ». Les huit premiers octets du bloc precedent le flux ; voir
+    /// <c>BuildEntityParams_00551640</c> dans <c>Memory/GameMemory.cs</c>, ou les 0x200 octets sont
+    /// releves.
+    /// </para>
+    /// <para>
+    /// <b>Le porteur nul retombe sur <c>&amp;DAT_005de558</c></b> — l'entite factice de
+    /// <see cref="Resources.s_EntityList_005de558"/>, deja rencontree ailleurs dans ce fichier. Ce
+    /// n'est pas une garde defensive ajoutee par la transcription : le binaire fait
+    /// <c>test eax,eax ; jne ; mov eax,5DE558h</c>, et tout le corps travaille ensuite sur ce
+    /// substitut, y compris l'avance d'animation.
+    /// </para>
+    /// <para>
+    /// Le porteur avance d'une image (<c>+0x1a</c>), bouclee sur le nombre d'images que declare sa
+    /// planche d'animation — lue par <c>*(&amp;DAT_005e9680)[porteur[+4]]</c> puis <c>+0x16</c>. Les
+    /// trois octets de teinte du porteur repartent a <c>0xff</c> et son bit <c>0x04</c> de
+    /// <c>+0x36</c> tombe. Sans le bit <c>0x4000000</c> sur le porteur, l'afficheur s'eteint tout
+    /// de suite : il ne vit qu'aussi longtemps que ce qu'il commente.
+    /// </para>
+    /// <para>
+    /// L'echelle <c>+0x28</c>/<c>+0x2a</c> pulse a <c>0x1000 + sin(angle) / 4</c>, l'angle avancant
+    /// de 400 par image sur douze bits. Le binaire appelle <c>Ordinal_451</c> <b>deux fois</b> avec
+    /// le meme angle — table de sinus pure, donc deux fois la meme valeur ; les deux appels sont
+    /// conserves.
+    /// </para>
+    /// </summary>
+    private static void ShowEntityLabel_00445860(byte* effect)
+    {
+        byte* carrier = *(byte**)(effect + 0x6c);
+        if (carrier == null) carrier = Res.s_EntityList_005de558;
+
+        carrier[0x36] &= 0xfb;
+        carrier[0x38] = 0xff;
+        carrier[0x39] = 0xff;
+        carrier[0x3a] = 0xff;
+        *(ushort*)(carrier + 0x18) = 0;
+
+        // Ghidra: `**(int **)(&DAT_005e9680 + (uint)(byte)puVar1[1] * 4)` — la planche
+        // d'animation de la famille du porteur, dont +0x16 porte le nombre d'images.
+        byte* sheet = *(byte**)*(byte***)(Mem.Arena(0x005e9680) + carrier[4] * 4);
+
+        (*(short*)(carrier + 0x1a))++;
+        if (*(short*)(carrier + 0x1a) >= (int)*(ushort*)(sheet + 0x16) - 1)
+        {
+            *(short*)(carrier + 0x1a) = 0;
+        }
+
+        if ((*(uint*)carrier & 0x4000000) == 0) *(uint*)effect &= 0x7fffffff;
+
+        *(int*)(effect + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(effect + 0x20) = *(int*)(carrier + 0x60) + 0x96000;
+        *(int*)(effect + 0x24) = *(int*)(carrier + 0x24);
+
+        if (*(short*)(effect + 0x10) == 0)
+        {
+            *(byte**)(effect + 0x3c) = Mem.s_EntityParams_00551640;   // Ghidra: &DAT_00551640
+            effect[0x0a] = 10;
+            effect[0x0b] = 0;
+            *(short*)(effect + 0x10) = 1;
+            *(short*)(effect + 0x12) = 0;
+            effect[0x38] = 0xff;
+            effect[0x39] = 0xff;
+            effect[0x3a] = 0xff;
+        }
+
+        if (*(short*)(effect + 0x10) == 1)
+        {
+            short angle = *(short*)(effect + 0x12);
+            *(short*)(effect + 0x28) = (short)(((int)Winsys3d.GetSinTableEntry(angle) >> 2) + 0x1000);
+            *(short*)(effect + 0x2a) = (short)(((int)Winsys3d.GetSinTableEntry(angle) >> 2) + 0x1000);
+            *(ushort*)(effect + 0x12) = (ushort)((angle + 400) & 0xfff);
+        }
     }
 
     /// <summary>
@@ -3870,6 +4074,170 @@ public static unsafe partial class Blaze
         if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) AdvanceSceneEntityState_00404FE0(record, 3);
         if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 4);
         if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 5);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004055c0 @ 0x004055c0 — <b>le second balayeur d'entites de scene</b>, jumeau de
+    /// <see cref="EntityHandler_00404EF0"/> : meme forme, meme table <c>0x005ecaa0</c>, meme
+    /// auto-desarmement en sortant, mais il reveille les types <b>3, 4, 5, 7 et 6</b> la ou son
+    /// jumeau reveille 0, 1 et 2.
+    ///
+    /// <para>
+    /// <b>Il n'est pas atteint par la branche basse.</b> C'est l'entree <c>0xe1</c> — donc
+    /// <c>&gt;= 0xC0</c> — de la table installee par zone, celle qui deborde de trois tables et
+    /// retombe dans <c>s_Vt_0056b0c8</c>. Le sous-type ne vient donc pas de <c>FUN_0047a9d0</c>,
+    /// l'engendreur qui pose toujours <c>0x59</c> : il vient d'un des six sites qui ecrivent
+    /// directement dans <c>DAT_005ff400</c> au chargement de la zone.
+    /// </para>
+    /// <para>
+    /// Les cinq tests <b>relisent</b> le mot d'etat et l'octet de type a chaque fois. Ce n'est pas
+    /// une maladresse de transcription : un reveil peut changer l'un comme l'autre, et le binaire
+    /// recharge <c>[esi]</c> avant chaque comparaison.
+    /// </para>
+    /// <para>L'ordre 3, 4, 5, <b>7</b>, 6 est celui du binaire. Conserve tel quel.</para>
+    /// </summary>
+    private static void EntityHandler_004055C0(uint* entity)
+    {
+        byte* record = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, record += 0x9c)
+        {
+            if (record[0x0c] == 3 && IsSceneEntityAwake(record)) WakeSceneEntityKind3_00405680(i);
+            if (record[0x0c] == 4 && IsSceneEntityAwake(record)) WakeSceneEntityKind4_00405770(i);
+            if (record[0x0c] == 5 && IsSceneEntityAwake(record)) WakeSceneEntityKind5_00405840(i);
+            if (record[0x0c] == 7 && IsSceneEntityAwake(record)) WakeSceneEntityKind7_004059A0(i);
+            if (record[0x0c] == 6 && IsSceneEntityAwake(record)) WakeSceneEntityKind6_004058F0(i);
+        }
+
+        entity[0] &= 0x7fffffff;
+    }
+
+    /// <summary>Les deux bits que les balayeurs testent avant chaque reveil — vivante
+    /// (<c>0x80000000</c>) et eveillee (<c>8</c>). Relus a chaque test.</summary>
+    private static bool IsSceneEntityAwake(byte* record)
+        => (*(uint*)record & 0x80000000) != 0 && (*(uint*)record & 8) != 0;
+
+    /// <summary>
+    /// Ghidra: FUN_00405680 @ 0x00405680 — <b>le reveil d'une entite de scene de type 3</b>, et le
+    /// seul des huit qui <b>deplace</b> son entite : aux etats 1 et 3, si le pas d'animation vient
+    /// d'atteindre sa fin (<c>+0x48 == 1</c>) et que le bit « l'etat vient de changer » est retombe,
+    /// il decale <c>+0x32</c> de <c>-0x22</c> puis de <c>+0x22</c>.
+    ///
+    /// <para>Aller-retour de 34 unites, donc, sur ce seul champ : une porte qui s'ouvre et se
+    /// referme, ou un battant. Les deux decalages sont des additions <b>16 bits</b> dans le binaire
+    /// (<c>add word [esi+32h],0FFDEh</c>), pas des ecritures de dword.</para>
+    ///
+    /// <para>Il sert aussi de type 0 au troisieme balayeur, <c>FUN_00405a70</c>, non transcrit.</para>
+    /// </summary>
+    private static void WakeSceneEntityKind3_00405680(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1)
+        {
+            AdvanceSceneEntityState_00404FE0(record, 1);
+            if (*(int*)(record + 0x48) == 1 && (*(uint*)(record + 0x5c) & 0x80000000) == 0)
+            {
+                *(short*)(record + 0x32) -= 0x22;
+            }
+        }
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2)
+            CycleSceneEntityAnimations_004052F0(record, 2, 4, (short)(CrtRand() % 10));
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3)
+        {
+            CountDownSceneEntityState_00405420(record, 1);
+            if (*(int*)(record + 0x48) == 1 && (*(uint*)(record + 0x5c) & 0x80000000) == 0)
+            {
+                *(short*)(record + 0x32) += 0x22;
+            }
+        }
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 3);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 6) AdvanceSceneEntityState_00404FE0(record, 4);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405770 @ 0x00405770 — <b>type 4</b>. Exactement
+    /// <see cref="WakeSceneEntityKind3_00405680"/> <b>sans les deux decalages de <c>+0x32</c></b> :
+    /// memes six etats, memes numeros d'animation. Ce qui distingue les deux types est donc le
+    /// deplacement, et rien d'autre.
+    /// </summary>
+    private static void WakeSceneEntityKind4_00405770(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2)
+            CycleSceneEntityAnimations_004052F0(record, 2, 4, (short)(CrtRand() % 10));
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) CountDownSceneEntityState_00405420(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 3);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 6) AdvanceSceneEntityState_00404FE0(record, 4);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00405840 @ 0x00405840 — <b>type 5</b>. Cinq etats au lieu de six, et une plage
+    /// d'inactivite plus courte (animations 1 a 2). Le decompte de l'etat 3 porte sur l'animation 2.
+    /// </summary>
+    private static void WakeSceneEntityKind5_00405840(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2)
+            CycleSceneEntityAnimations_004052F0(record, 1, 2, (short)(CrtRand() % 10));
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) CountDownSceneEntityState_00405420(record, 2);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 2);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004058f0 @ 0x004058f0 — <b>type 6</b>, et le seul des huit dont la pause
+    /// d'inactivite soit <b>decalee de dix</b> : <c>rand % 10 + 10</c> au lieu de <c>rand % 10</c>.
+    /// Il se fige donc deux fois plus longtemps sur chaque animation.
+    ///
+    /// <para>Son etat 4 avance l'animation <b>0</b>, ce qu'aucun autre ne fait.</para>
+    /// </summary>
+    private static void WakeSceneEntityKind6_004058F0(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 4);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2)
+            CycleSceneEntityAnimations_004052F0(record, 2, 3, (short)(CrtRand() % 10 + 10));
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) CountDownSceneEntityState_00405420(record, 4);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 0);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 5);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004059a0 @ 0x004059a0 — <b>type 7</b>. Six etats, plage d'inactivite 3 a 4, et
+    /// l'etat 6 qui avance l'animation 2 — le seul a redescendre apres les etats 4 et 5.
+    /// </summary>
+    private static void WakeSceneEntityKind7_004059A0(int index)
+    {
+        byte* record = Mem.Entity(0x005ecaa0) + index * 0x9c;
+
+        ArmSceneEntityState_004051D0(record);
+
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 1) AdvanceSceneEntityState_00404FE0(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 2)
+            CycleSceneEntityAnimations_004052F0(record, 3, 4, (short)(CrtRand() % 10));
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 3) CountDownSceneEntityState_00405420(record, 1);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 4) AdvanceSceneEntityState_00404FE0(record, 3);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 5) AdvanceSceneEntityState_00404FE0(record, 4);
+        if ((*(uint*)(record + 0x5c) & 0x3fffffff) == 6) AdvanceSceneEntityState_00404FE0(record, 2);
     }
 
     /// <summary>

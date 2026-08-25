@@ -1780,6 +1780,55 @@ lacune.
 
 ---
 
+## `0x00551640` — la plage EntityParams n'était pas nulle au chargement (2026-08-25)
+
+Les 0x200 octets de `0x00551640` étaient modélisés par une `AllocZeroed`, sur l'hypothèse que les
+onze initialiseurs (`Init_0045a220` et sa famille) les remplissaient entièrement. **Faux** : la
+plage est sous la frontière `0x00571400`, donc réellement présente dans le fichier
+(décalage `0x0014FC40`), et le binaire y porte du contenu.
+
+Les initialiseurs réécrivent bien les champs numériques — et avec exactement les mêmes valeurs :
+`Init_0045a220` pose `0x9c4` en `0x00551660`, et le binaire y porte déjà `c4 09 00 00`. Mais ils ne
+touchent pas aux **trois flux d'étiquettes** noyés dans la plage.
+
+| Adresse | Flux | Shift-JIS | Sens |
+|---|---|---|---|
+| `0x00551648` | `1f d0 20 · 08 00 · 0c · … · 0f · 08 01 · 00` | 開かない！？ | « ça ne s'ouvre pas ! » |
+| `0x00551720` | `08 00 · 0c · … · 0f · 08 01 · 00` | 遠くで音がした。 | « un bruit, au loin » |
+| `0x00551814` | voir la section dédiée ci-dessus | 片開きのドア… | la note à Imai |
+
+Les deux premiers sont inédits. Ils ont la même grammaire que celui de `0x00551814` — placement,
+gel, ouverture de boîte, texte, attente du joueur, dégel — et le second n'a pas de code `0x1f`,
+donc pas de placement explicite : la boîte reste où elle était.
+
+### Ce qui l'a mis au jour
+
+`FUN_00445860` pose `&DAT_00551640` en `+0x3c` de son entité. C'est un **pointeur de donnée**, pas
+un drapeau, et il désignait 512 octets nuls.
+
+### Les huit octets d'en-tête
+
+```
+f0 80 0f 0f  01 00 11 00
+```
+
+Ils précèdent le flux de `0x00551648` et **ne sont écrits par personne**. TODO(REVERSE) : leur rôle
+n'est pas établi. Un en-tête de boîte, vraisemblablement — le flux du développeur en `0x00551814`
+n'en a pas et se lit directement, donc la différence tient à qui pointe où.
+
+### La leçon
+
+Une plage sous `0x00571400` modélisée par `AllocZeroed` est une **hypothèse**, pas un fait. Elle ne
+tient que si le binaire y porte réellement des zéros, ce que `at` dit en une commande. Deux des huit
+blocs adressés par décalage portent la mention « vérifiée nulle » (`s_EntityState_00571500`,
+`s_ViewParams_00571270`) ; les autres ne l'ont jamais été.
+
+### Dans OpenForesia
+
+`BuildEntityParams_00551640`, dans `Memory/GameMemory.cs` — les 0x200 octets semés verbatim.
+
+---
+
 ## `0x005de538` — un global lu à trois largeurs (2026-08-24)
 
 L'indice du membre de groupe « actif ». **Un octet** dans le binaire : les huit écrivains de
