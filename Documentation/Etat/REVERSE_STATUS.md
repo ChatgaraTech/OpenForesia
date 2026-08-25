@@ -13623,3 +13623,99 @@ dans le message de levee avant aujourd'hui.
 
 Build vert, run de controle a 509 primitives par image, et les deux assertions rouges de
 `MemoryLayoutTests` sont **les memes qu'avant** — aucune des onze globales nouvelles n'y apparait.
+
+---
+
+## 2026-08-25 (suite 21) — le crochet du coffre, et `FUN_0053e0a0` qui est **deux ecrans**
+
+### Le crochet
+
+`0x0053DF90` (260 octets, absent de `Blaze.c`) encadre l'appel au panneau : il pose le rectangle de
+decoupe, appelle `FUN_0053e0a0`, puis dessine le curseur d'ecran par dessus. Sa queue est **mot pour
+mot** celle de `DrawWorldMapMenuCursor` — memes huit octets de descripteur montes a la main
+(`00 00 00 df 00 01 3f 00`), memes `0x80` / `0x70` / `0x1400` / `0x1249`. Seule difference : le
+descripteur de sprite est ici une locale de pile.
+
+Son seul appele manquant, `FUN_005412f0`, est transcrit avec lui : une liste d'icones dont chaque
+entree est un dword de **quatre octets signes** — panneau de reference, image, decalage x, decalage
+y. Les coordonnees se prennent sur le descripteur du panneau, ce qui fait suivre les icones quand il
+bouge.
+
+### `FUN_0053e0a0` n'est pas une fonction, c'est deux ecrans
+
+1359 lignes de pseudo-C, et le premier test du corps est `DAT_005de548` — **le mode**, que les verbes
+57 et 58 posent :
+
+| mode | verbe | ecran | lignes | etat |
+|---|---|---|---|---|
+| 1 | 58 | **le coffre** — reprendre un objet depose | 195 | **transcrit** |
+| 0 | 57 | **la carte memoire** — sauvegarder, charger, formater | 1150 | non transcrit, leve en se nommant |
+
+Le mode 0 a son propre automate de sous-etats, ouvre des fichiers (`FUN_00504b40`), attend la carte
+(`Ordinal_67` en boucle), et recopie trois chaines dans un tampon de message. C'est un ecran a part
+entiere, du meme ordre que `SaveSlots.cs`. Le decouper du coffre n'est pas un arbitrage de confort :
+c'est le corps lui-meme qui les separe des sa premiere ligne.
+
+**Le coffre noir de la chambre est le mode 1.** C'est celui qui etait demande, et c'est celui qui est
+fait.
+
+### Onze globales declarees, onze qui ne devaient PAS l'etre
+
+Le corps touche 39 adresses. La verification contre la carte des symboles — celle que la lecon de la
+« suite 20 » impose de faire sur les **tailles reelles**, pas sur la colonne d'ecart — en a ecarte
+onze d'un coup :
+
+| adresse | ce que c'est vraiment |
+|---|---|
+| `0x005633b6` | `s_WorldMapDescriptor_005633b0 + 6` |
+| `0x00568563` · `0x0056856b` · `0x00568ddc` · `0x00568df7` | `MenuDescriptor(0) + 0x33` · `+0x3b` · `+0x8ac` · `+0x8c7` |
+| `0x00568dfc` · `0x00568e00` · `0x00568e02` · `0x00568e1b` | `MenuDescriptor(1) + 4` · `+8` · `+0x0a` · `+0x23` |
+| `0x005696e3` | `MenuDescriptor(2) + 0x23` |
+
+Ce ne sont pas des globales : ce sont des **champs des descripteurs d'interface deja modelises**, au
+pas de `0x8c8`. Et les quatre offsets du descripteur 0 sont ceux que le moteur de texte nomme deja
+ailleurs — `+0x33` le curseur, `+0x3b` les fleches de defilement, `+0x8ac` le curseur de texte,
+`+0x8c7` les drapeaux. Les declarer aurait donne onze paires « deux noms pour une adresse ».
+
+**La regle qui en sort** : quand une adresse tombe a moins de `0x8c8` au-dessus de `0x00568530`,
+`0x005633b0` ou d'un autre descripteur, ce n'est presque jamais une globale — c'est un champ. Le
+reflexe doit etre de soustraire avant de declarer.
+
+Les onze restantes (`0x005dfe20` et sa plage, `0x0056dd34`) sont bien neuves ; aucune ne tombe dans
+une allocation existante.
+
+### Trois points ou la pseudo-C ne suffisait pas
+
+**Les pas du prologue.** Ghidra rend trois indexations sur trois types de tableau differents. Le
+binaire tranche : `imul eax,4Ch` en `0x0053e0e5` pour la vue d'emplacement (Ghidra disait `0x26`, sur
+des `short`), `0x9c` pour l'emplacement de personnage, `shl edx,0Dh` pour le bloc du personnage.
+
+**Un appel decoupe au mauvais endroit.** Ghidra rend
+`FUN_0051bd50(fiche, personnage, panneau, 0)` puis `FUN_00544350(resultat)`. Le binaire empile les
+quatre valeurs, appelle `FUN_0051bd50` avec **une seule** (`add esp,4` en `0x0053e323`), puis empile
+le nom rendu et appelle `FUN_00544350` avec quatre (`add esp,10h`). Les trois arguments appartiennent
+au **second** appel. Le commentaire de `BuildItemDisplayName_0051BD50` decrivait deja ce piege pour
+son autre site ; c'est la deuxieme fois qu'il se presente.
+
+**`0x0056dd34` est une chaine, pas un nombre.** Les octets `2a 00` releves dans le binaire, passes en
+texte a `FUN_0051c120` : la chaine `"*"` d'un caractere que la liste intercale entre le nom de
+l'objet et son prix.
+
+### Un saut d'un mode a l'autre
+
+La branche du coffre fait `goto LAB_0053e9fa`, dont la cible vit **dans le code du mode 0**. Trois
+lignes — le champ `+6` du descripteur de carte a `0xffb0`, le bit `0x40` des drapeaux de monde
+eteint, un bip. Elles sont recopiees sur place plutot que rendues par un saut entre deux ecrans que
+tout le reste separe.
+
+### Non exerce, et une question a poser
+
+Build vert, run de controle a 509 primitives par image, `MemoryLayoutTests` inchange (les deux memes
+assertions rouges, aucune des onze globales nouvelles n'y apparait).
+
+**Le symptome signale — « le coffre n'ouvre pas l'interface » — n'est pas explique par ce qui
+precede, et il faut le dire.** Si le script du coffre appelait bien le verbe 58, la version d'hier
+aurait **plante** dans le crochet, pas « ne rien faire ». Deux lectures possibles : le trajet a ete
+essaye sur une version anterieure aux verbes 57/58, ou le coffre passe par un tout autre chemin. Le
+prochain essai tranche : soit le panneau s'ouvre, soit la levee nomme `FUN_0053e0a0, mode 0` — et
+dans les deux cas on saura que le chemin est le bon.

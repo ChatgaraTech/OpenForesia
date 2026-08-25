@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- feat : **le crochet du coffre** (`0x0053DF90`) et son émetteur d'icônes (`FUN_005412f0`), tous deux absents de `Blaze.c`
+- feat : **le coffre s'ouvre** — mode 1 de `FUN_0053e0a0` transcrit : la liste des dix emplacements, la grille de cinq rangées, le paiement, la remise de l'objet et les trois sous-états
+- doc : `FUN_0053e0a0` est **deux écrans**, pas un — le mode 1 est le coffre (195 lignes, fait), le mode 0 la **carte mémoire** (1150 lignes, non transcrit, lève en se nommant)
+- doc : onze des 39 adresses du corps **ne sont pas des globales** mais des champs des descripteurs d'interface, au pas de `0x8c8` — les déclarer aurait donné onze paires « deux noms pour une adresse »
+- doc : Ghidra rattache trois arguments au mauvais appel (`add esp,4` puis `add esp,10h`) ; le binaire tranche, et c'est la deuxième fois que ce piège se présente
 - feat : **les verbes 57 et 58** (`FUN_0053dea0`, `FUN_0053df20`) — ils ouvrent le panneau de `FUN_0053e0a0` : membre, mode, bit `0x40` des drapeaux de monde, neuf dwords de curseur remis à neuf
 - fix : **ma lecture de la carte des symboles était fausse** — la colonne est l'**écart au symbole suivant**, pas la taille ; `s_Particles_005de824` alloue 4992 octets et non 6060, et aucune des onze globales des deux verbes ne tombait dedans
 - doc : le vrai chevauchement est ailleurs — la **file de sons différés** (`0x005dfb90`, 32 × 0x14) commence 0x14 octets avant la fin nominale des particules, mais celles-ci n'écrivent jamais au-delà de l'offset 0x27 de leurs entrées de 0x9c : 97 octets de marge

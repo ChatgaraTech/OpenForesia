@@ -699,6 +699,9 @@ public static unsafe partial class Blaze
         uint target = Res.s_Vt_0056afc8[10];
         return target switch
         {
+            // L'entree 10 pour la zone d'index 0 : le crochet du coffre, transcrit le 2026-08-25.
+            0x0053DF90 => EntityHook_0053DF90(otBase, prim, slotRecord, pad),
+
             // Souche `ret` nu : elle ne touche pas EAX, qui porte encore l'adresse du dernier
             // argument empile — `&DAT_005e93c0 + index * 0x27`. Le `mov [esp+10h],eax` de
             // l'appelant en fait donc le nouveau curseur de primitives. C'est absurde et c'est ce

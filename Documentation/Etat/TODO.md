@@ -39,29 +39,37 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
+## À vérifier maintenant : le coffre noir de la chambre
 
-## À vérifier maintenant : les trois verbes de l'homme qui expertise
+**Le chemin complet est transcrit** (2026-08-25) : verbes 56/57/58 → bit `0x40` des drapeaux de
+monde → crochet `0x0053DF90` → `FUN_0053e0a0` **mode 1**, le coffre.
 
-**Les verbes 56, 57 et 58 sont transcrits** (2026-08-25), et avec eux tout le petit bloc que la
-table `s_VtSource_0056aec8` range avant sa souche vide.
+À refaire : **utiliser le coffre**. Deux issues, et les deux renseignent :
 
-- **56** (`FUN_0053dd20`) : l'expertise proprement dite.
-- **57** et **58** (`FUN_0053dea0`, `FUN_0053df20`) : ils ouvrent le panneau de `FUN_0053e0a0`,
-  en mode 0 et en mode 1.
+- le panneau s'ouvre → c'est gagné ;
+- la levée dit `FUN_0053e0a0, mode 0` → le coffre passe par le verbe **57** et non 58, donc par le
+  panneau de carte mémoire ; il faudra le transcrire.
 
-À refaire : **relancer les dialogues de ce personnage**.
+**Le symptôme signalé — « ça ne fait rien » — n'est pas expliqué.** Si le script appelait le verbe
+58, la version d'avant aurait **planté** dans le crochet, pas fait *rien*. Soit l'essai datait d'une
+version antérieure aux verbes 57/58, soit le coffre passe par un tout autre chemin. Le prochain essai
+tranche.
 
-**Le prochain plantage est prévisible, et ce n'est pas une régression.** Les verbes 57/58 lèvent le
-bit `0x40` de `DAT_005de02c`, que le pas de monde teste pour appeler le crochet `PTR_FUN_0056aff0`
-(`WorldMapTick`, ligne 189). Ce crochet vaut `0x0053DF90`, n'est pas transcrit, et lève déjà en se
-nommant — son relevé est au dépôt. Derrière lui vient `FUN_0053e0a0`, le rendu du panneau, qui lit
-les onze globales que les deux verbes viennent de poser.
+## Ce qui reste de `FUN_0053e0a0` : le **mode 0**, la carte mémoire
 
-Détail dans `REVERSE_STATUS.md`, sections « suite 19 » et « suite 20 ».
+1150 lignes (`Blaze.c` 88221..89333), un automate de sous-états propre, l'ouverture de fichier,
+l'attente de la carte et les messages d'erreur. C'est un écran entier, du même ordre que
+`SaveSlots.cs` — pas un reste à finir en dix minutes.
+
+Il lève en se nommant. Le prologue, les onze globales et les onze **vues de descripteur** qu'il
+partage avec le coffre sont déjà en place : ce qui reste est le corps, pas le décor. Détail dans
+`REVERSE_STATUS.md`, section « suite 21 ».
 
 ---
 
 ## Vérifié en jeu le 2026-08-25
+
+**Les trois verbes de l'homme qui expertise fonctionnent** — 56, 57 et 58, « suite 19 » et « suite 20 ».
 
 **La chambre de l'homme qui expertise fonctionne** — les six balayeurs d'entités de scène sont
 confirmés, « suite 18 ».
