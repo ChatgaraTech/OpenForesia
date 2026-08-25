@@ -1345,10 +1345,29 @@ public static unsafe partial class Blaze
     /// d'une vraie fonction ne peut pas etre devinee.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Trace des verbes de zone, sous <c>OPENFORESIA_TRACE_VERBS=1</c>
+    /// (<c>playtest.ps1 -Trace VERBS</c>).
+    ///
+    /// <para>Elle est permanente, pas jetable, et pour une raison precise : <b>savoir quel verbe un
+    /// decor declenche ne se devine pas</b>. Les tables de verbes sont installees par zone et les
+    /// scripts vivent dans les donnees du disque — ni <c>Blaze.c</c> ni le desassemblage ne disent
+    /// quel numero un coffre, une porte ou un marchand appelle. Seul le jeu le dit.</para>
+    /// </summary>
+    private static readonly bool s_TraceVerbs =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_VERBS") == "1";
+
     private static byte* ScriptOpAreaVerb(byte* ent, byte* s, uint* result)
     {
         uint[] verbs = Res.s_Vt_0056aec8;
         byte verb = s[1];
+
+        if (s_TraceVerbs)
+        {
+            uint traced = verb < verbs.Length ? verbs[verb] : 0;
+            Console.Error.WriteLine(
+                $"[VERBE] {verb} -> 0x{traced:X6}  operande 0x{(ushort)(s[2] | s[3] << 8):X4}");
+        }
 
         // L'indice est un octet, la table n'a que 0x40 entrees — et dans le binaire les six tables
         // sont CONTIGUES (0x0056aec8 + 0x40*4 = 0x0056afc8). Un indice de 0x40 ou plus lisait donc

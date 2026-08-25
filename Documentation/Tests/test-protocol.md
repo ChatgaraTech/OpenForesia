@@ -1384,3 +1384,33 @@ Les deux colonnes se lisent cote a cote en un coup d'oeil, et une inversion saut
 sauts, listes de constantes — et que l'oracle a l'ecran n'est pas a portee. Ce n'est pas un
 remplacement du test en jeu ; c'est ce qui evite de livrer une cascade fausse **en disant** qu'elle
 n'est pas verifiee.
+
+---
+
+## `-Trace VERBS` : savoir quel verbe un decor declenche (2026-08-25)
+
+**Un script de zone ne se lit ni dans `Blaze.c` ni au desassembleur.** Les tables de verbes sont
+installees par zone, et les scripts eux-memes vivent dans les donnees du disque. Quand un decor
+« ne fait rien » ou fait autre chose que prevu, aucune lecture statique ne dit quel verbe il appelle.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 60 -WorkingDir OpenForesia -Trace VERBS -Then …
+```
+
+Chaque appel a l'opcode 0 imprime une ligne :
+
+```
+[VERBE] 3 -> 0x442F60  operande 0x0000
+[VERBE] 10 -> 0x4441F0  operande 0x0000
+```
+
+— le numero du verbe, l'adresse que la table de la zone courante lui donne, et l'operande de 16 bits
+que le script passe. Sur le trajet d'arrivee de l'auberge, exactement deux verbes s'allument.
+
+**A quoi ca sert concretement** : poser le geste (parler, ouvrir un coffre, toucher un panneau), lire
+la ou les lignes qui apparaissent, et on sait **quelle fonction transcrire**. C'est la seule facon
+d'aller du symptome au corps sans deviner — et deviner coute cher : le panneau de
+`FUN_0053e0a0` a ete pris pour le coffre de stockage sur la seule foi de son voisinage dans la table.
+
+La trace est **permanente**, pas jetable : elle repond a une question qui reviendra a chaque decor
+nouveau.

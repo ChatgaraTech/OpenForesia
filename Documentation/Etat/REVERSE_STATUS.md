@@ -13719,3 +13719,78 @@ aurait **plante** dans le crochet, pas « ne rien faire ». Deux lectures possib
 essaye sur une version anterieure aux verbes 57/58, ou le coffre passe par un tout autre chemin. Le
 prochain essai tranche : soit le panneau s'ouvre, soit la levee nomme `FUN_0053e0a0, mode 0` — et
 dans les deux cas on saura que le chemin est le bon.
+
+---
+
+## 2026-08-25 (suite 22) — le cliche du jeu d'origine dit que le coffre n'est PAS `FUN_0053e0a0`
+
+Vincent fournit une capture du jeu officiel : `D:\Open Foresia Project\Tests\2. Coffre de stockage\legacy.jpg`.
+
+### Ce que la capture montre
+
+Le cadre habituel a trois panneaux — portrait / Nom / Classe / Element a gauche, une liste a droite,
+une description en bas. Mais le panneau de droite porte **trois choses que rien de transcrit ne
+dessine ensemble** :
+
+1. **quatre lignes d'objet** avec pictogramme, dont une avec une quantite (« Petite potion 5 ») ;
+2. **`ATT 7   DEF 0`** ;
+3. **une rangee de huit colonnes** de pastilles chiffrees, etiquetees des huit **classes**
+   (Gue / Pre / Vol / Mag / Cha / Elf / …) — donc « qui peut se servir de cet objet », et non des
+   resistances elementaires.
+
+Puis la description de l'objet designe : « Facile a manier pour un debutant. »
+
+C'est donc **le contenu du coffre plus la fiche de l'objet choisi**. Un ecran a part entiere.
+
+### Ce que ce n'est pas
+
+**Ce n'est pas le mode 1 de `FUN_0053e0a0`**, que j'ai transcrit hier en le nommant « le coffre ».
+Deux raisons, et la seconde suffit :
+
+- **La mise en page ne colle pas.** Le mode 1 dessine **cinq** rangees, et chacune met le
+  pictogramme, puis le nom, puis — a `+0x88` et `+8` plus loin, donc contre le bord droit — une
+  etoile et un nombre a deux chiffres. La capture n'a rien contre le bord droit, et quatre lignes.
+- **La logique ne colle pas.** Le mode 1 lit un **prix** dans `repertoire + 0xa8`, verifie que
+  l'emplacement marque par la cle `0x2efb` en contient assez, le decremente, et **donne** l'objet par
+  `GrantChestContents_00530F20`. On paie une monnaie pour recevoir un objet : c'est un **achat**,
+  pas un depot.
+
+Le corps est juste ; c'est son nom qui etait faux. Il faudra le renommer quand son ecran sera
+identifie a l'ecran — pas avant, pour ne pas remplacer une erreur par une autre.
+
+**Ce n'est pas non plus l'onglet d'equipement du menu de jeu**, verifie par comparaison directe :
+notre onglet rend cinq emplacements (`- ARME -`, Armure, Bouclier, `-ACCESSOIRE1-`,
+`-ACCESSOIRE2-`) et la phrase « Choisis ce que tu aimerais echanger. », sans `ATT`/`DEF` ni rangee de
+classes. Meme cadre, contenu different.
+
+### La lecon : le voisinage dans une table n'est pas une preuve de role
+
+`FUN_0053e0a0` a ete pris pour le coffre parce que les verbes 56, 57 et 58 se suivent dans
+`s_VtSource_0056aec8` et que le 56 est l'expertise d'objet — un voisinage, pas un fait. Le corps a
+ete transcrit correctement ; l'erreur est d'avoir laisse le nom affirmer ce que rien n'avait etabli.
+**Nommer d'apres la position dans une table est la meme faute que compter les ecrivains d'un symbole
+au lieu d'une adresse** (2026-08-25, la lecon du matin).
+
+### L'instrument qui tranche, et pourquoi il est permanent
+
+Un script de zone ne se lit **ni dans `Blaze.c` ni au desassembleur** : les tables sont installees
+par zone et les scripts vivent dans les donnees du disque. La seule facon d'aller du geste au corps
+est de regarder le jeu le faire.
+
+`ScriptOpAreaVerb` porte donc desormais une trace, sous `OPENFORESIA_TRACE_VERBS=1`
+(`playtest.ps1 -Trace VERBS`) :
+
+```
+[VERBE] 3 -> 0x442F60  operande 0x0000
+[VERBE] 10 -> 0x4441F0  operande 0x0000
+```
+
+Le trajet d'arrivee de l'auberge en allume exactement deux. **Ouvrir le coffre avec la trace posee
+nomme la fonction a transcrire en une ligne** — c'est ce qui manque et c'est un run, pas une
+enquete. La trace reste dans le code : la question reviendra a chaque decor nouveau.
+
+### Ce qui est acquis malgre tout
+
+Le crochet `0x0053DF90`, `FUN_005412f0` et le mode 1 de `FUN_0053e0a0` sont transcrits et le build
+est vert. Le chemin verbe → drapeau `0x40` → crochet → panneau fonctionne de bout en bout ; c'est
+seulement le panneau au bout qui n'est pas celui du coffre.

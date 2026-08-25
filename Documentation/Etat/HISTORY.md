@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- fix : **le mode 1 de `FUN_0053e0a0` n'est pas le coffre de stockage** — le cliché du jeu d'origine le montre : quatre lignes, `ATT`/`DEF` et une rangée des huit classes, là où le mode 1 dessine cinq rangées avec une étoile et un nombre contre le bord droit ; et sa logique **paie un prix** pour recevoir un objet, donc un achat
+- doc : le voisinage dans une table de verbes n'est **pas** une preuve de rôle — le corps était juste, c'est le nom qui affirmait ce que rien n'avait établi
+- feat : `-Trace VERBS` (permanent) — chaque appel à l'opcode 0 imprime le verbe, l'adresse résolue et l'opérande ; c'est la seule façon d'aller d'un geste en jeu à la fonction à transcrire, un script de zone ne se lisant ni dans `Blaze.c` ni au désassembleur
 - feat : **le crochet du coffre** (`0x0053DF90`) et son émetteur d'icônes (`FUN_005412f0`), tous deux absents de `Blaze.c`
 - feat : **le coffre s'ouvre** — mode 1 de `FUN_0053e0a0` transcrit : la liste des dix emplacements, la grille de cinq rangées, le paiement, la remise de l'objet et les trois sous-états
 - doc : `FUN_0053e0a0` est **deux écrans**, pas un — le mode 1 est le coffre (195 lignes, fait), le mode 0 la **carte mémoire** (1150 lignes, non transcrit, lève en se nommant)

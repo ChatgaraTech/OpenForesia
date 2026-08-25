@@ -39,31 +39,43 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-## À vérifier maintenant : le coffre noir de la chambre
+## LE PROCHAIN GESTE : ouvrir le coffre avec `-Trace VERBS`
 
-**Le chemin complet est transcrit** (2026-08-25) : verbes 56/57/58 → bit `0x40` des drapeaux de
-monde → crochet `0x0053DF90` → `FUN_0053e0a0` **mode 1**, le coffre.
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 90 -WorkingDir OpenForesia -Trace VERBS -KeepOpen
+```
 
-À refaire : **utiliser le coffre**. Deux issues, et les deux renseignent :
+Aller jusqu'au coffre noir, l'ouvrir, puis lire les lignes `[VERBE]` du journal :
 
-- le panneau s'ouvre → c'est gagné ;
-- la levée dit `FUN_0053e0a0, mode 0` → le coffre passe par le verbe **57** et non 58, donc par le
-  panneau de carte mémoire ; il faudra le transcrire.
+```
+[VERBE] <numéro> -> 0x<adresse>  operande 0x<n>
+```
 
-**Le symptôme signalé — « ça ne fait rien » — n'est pas expliqué.** Si le script appelait le verbe
-58, la version d'avant aurait **planté** dans le crochet, pas fait *rien*. Soit l'essai datait d'une
-version antérieure aux verbes 57/58, soit le coffre passe par un tout autre chemin. Le prochain essai
-tranche.
+**Cette ligne nomme la fonction à transcrire.** C'est un run, pas une enquête — et il n'y a pas
+d'autre moyen : un script de zone ne se lit ni dans `Blaze.c` ni au désassembleur, les tables sont
+installées par zone et les scripts vivent dans les données du disque.
 
-## Ce qui reste de `FUN_0053e0a0` : le **mode 0**, la carte mémoire
+## Ce que le cliché du jeu d'origine a corrigé
 
-1150 lignes (`Blaze.c` 88221..89333), un automate de sous-états propre, l'ouverture de fichier,
-l'attente de la carte et les messages d'erreur. C'est un écran entier, du même ordre que
-`SaveSlots.cs` — pas un reste à finir en dix minutes.
+`D:\Open Foresia Project\Tests\2. Coffre de stockage\legacy.jpg` montre : quatre lignes d'objet dont
+une avec quantité, `ATT 7 / DEF 0`, une rangée des **huit classes** (qui peut s'en servir), et la
+description de l'objet désigné.
 
-Il lève en se nommant. Le prologue, les onze globales et les onze **vues de descripteur** qu'il
-partage avec le coffre sont déjà en place : ce qui reste est le corps, pas le décor. Détail dans
-`REVERSE_STATUS.md`, section « suite 21 ».
+**Ce n'est pas le mode 1 de `FUN_0053e0a0`**, que j'avais nommé « le coffre » : celui-là dessine cinq
+rangées avec une étoile et un nombre contre le bord droit, et sa logique **paie un prix** pour
+recevoir un objet — un achat. Le corps transcrit est juste ; c'est son nom qui affirmait ce que rien
+n'avait établi. Il sera renommé quand son écran sera identifié **à l'écran**.
+
+Ce n'est pas non plus l'onglet d'équipement du menu de jeu : comparaison faite, le nôtre rend cinq
+emplacements et « Choisis ce que tu aimerais échanger. », sans `ATT`/`DEF` ni rangée de classes.
+
+Détail dans `REVERSE_STATUS.md`, section « suite 22 ».
+
+## Ce qui reste de `FUN_0053e0a0` : le mode 0, la carte mémoire
+
+1150 lignes (`Blaze.c` 88221..89333), automate de sous-états propre, ouverture de fichier, attente de
+la carte, messages d'erreur. Il lève en se nommant. Le prologue, les onze globales et les onze vues
+de descripteur sont déjà en place — ce qui reste est le corps, pas le décor. Section « suite 21 ».
 
 ---
 
