@@ -39,43 +39,45 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-## LE PROCHAIN GESTE : ouvrir le coffre avec `-Trace VERBS`
+## LE PROCHAIN GESTE : ouvrir le coffre avec les deux traces
 
 ```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 90 -WorkingDir OpenForesia -Trace VERBS -KeepOpen
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 120 -WorkingDir OpenForesia -Trace VERBS,SCRIPT -KeepOpen
 ```
 
-Aller jusqu'au coffre noir, l'ouvrir, puis lire les lignes `[VERBE]` du journal :
+Aller au coffre noir, l'ouvrir, puis lire la fin du journal. Trois issues, et elles se départagent
+d'un coup d'œil :
 
-```
-[VERBE] <numéro> -> 0x<adresse>  operande 0x<n>
-```
+| ce que montre le journal au moment du geste | conclusion |
+|---|---|
+| aucune ligne `[SCRIPT]` nouvelle | l'interaction n'atteint pas l'interpréteur — le problème est au déclenchement |
+| `[SCRIPT]` mais pas d'`[OPCODE] 0` | le script tourne ; les opcodes listés disent ce qu'il tente |
+| `[OPCODE] 0` puis `[VERBE] n -> 0x…` | **le verbe est nommé**, et avec lui la fonction à écrire |
 
-**Cette ligne nomme la fonction à transcrire.** C'est un run, pas une enquête — et il n'y a pas
-d'autre moyen : un script de zone ne se lit ni dans `Blaze.c` ni au désassembleur, les tables sont
-installées par zone et les scripts vivent dans les données du disque.
+Référence mesurée sur le trajet d'arrivée : 1 446 `[SCRIPT]`, et **deux** `[OPCODE] 0`.
 
-## Ce que le cliché du jeu d'origine a corrigé
+## L'écran du coffre EST identifié : l'onglet 1 de la fiche de personnage
 
-`D:\Open Foresia Project\Tests\2. Coffre de stockage\legacy.jpg` montre : quatre lignes d'objet dont
-une avec quantité, `ATT 7 / DEF 0`, une rangée des **huit classes** (qui peut s'en servir), et la
-description de l'objet désigné.
+Comparaison capture contre capture avec `Tests\2. Coffre de stockage\legacy.jpg` : mêmes quatre
+objets, même `ATT 7 / DEF 0`, mêmes huit colonnes `Gue Pre Vol Mag Cha Elf Nai Lut` — **les huit
+classes**, qui peut se servir de l'objet. Notre onglet 1 le rend déjà, et `FUN_0052fdc0` (la moitié
+basse) n'a que deux sites d'appel dans tout `Blaze.c`, tous deux dans le menu de jeu.
 
-**Ce n'est pas le mode 1 de `FUN_0053e0a0`**, que j'avais nommé « le coffre » : celui-là dessine cinq
-rangées avec une étoile et un nombre contre le bord droit, et sa logique **paie un prix** pour
-recevoir un objet — un achat. Le corps transcrit est juste ; c'est son nom qui affirmait ce que rien
-n'avait établi. Il sera renommé quand son écran sera identifié **à l'écran**.
+**Le lien coffre → onglet 1 n'est pas câblé, et c'est délibéré.** Rien n'établit encore par où
+l'original y va ; poser le lien maintenant coderait le symptôme attendu au lieu du mécanisme.
 
-Ce n'est pas non plus l'onglet d'équipement du menu de jeu : comparaison faite, le nôtre rend cinq
-emplacements et « Choisis ce que tu aimerais échanger. », sans `ATT`/`DEF` ni rangée de classes.
+Deux écarts de notre rendu à corriger sur cet onglet, indépendamment du coffre :
 
-Détail dans `REVERSE_STATUS.md`, section « suite 22 ».
+- la liste est **horizontale** (quatre pictogrammes en rangée) là où l'original **empile** quatre
+  lignes « pictogramme + nom » ;
+- la description affiche le libellé de remplissage « Fenêtre Objets » au lieu du texte de l'objet.
+
+Détail dans `REVERSE_STATUS.md`, sections « suite 22 » et « suite 23 ».
 
 ## Ce qui reste de `FUN_0053e0a0` : le mode 0, la carte mémoire
 
 1150 lignes (`Blaze.c` 88221..89333), automate de sous-états propre, ouverture de fichier, attente de
-la carte, messages d'erreur. Il lève en se nommant. Le prologue, les onze globales et les onze vues
-de descripteur sont déjà en place — ce qui reste est le corps, pas le décor. Section « suite 21 ».
+la carte, messages d'erreur. Il lève en se nommant. Section « suite 21 ».
 
 ---
 

@@ -13794,3 +13794,77 @@ enquete. La trace reste dans le code : la question reviendra a chaque decor nouv
 Le crochet `0x0053DF90`, `FUN_005412f0` et le mode 1 de `FUN_0053e0a0` sont transcrits et le build
 est vert. Le chemin verbe → drapeau `0x40` → crochet → panneau fonctionne de bout en bout ; c'est
 seulement le panneau au bout qui n'est pas celui du coffre.
+
+---
+
+## 2026-08-25 (suite 23) — l'ecran du coffre est identifie ; le declencheur, non
+
+### L'ecran : c'est l'onglet 1 de la fiche de personnage
+
+Comparaison directe, capture contre capture, plutot que raisonnement :
+
+| | cliche du jeu d'origine | notre onglet 1 (`playtest -Then …,START,RIGHT`) |
+|---|---|---|
+| cadre | portrait / Nom / Classe / Element, liste a droite, description en bas | **identique** |
+| objets | Epee normale, Armure de cuir, Bouclier de cuir, Petite potion 5 | **les memes quatre** |
+| valeurs | `ATT 7` `DEF 0` | **identiques** |
+| rangee du bas | huit colonnes `Gue Pre Vol Mag Cha Elf Nai Lut` | **les memes huit** |
+
+Ce sont donc bien **les huit classes** — qui peut se servir de l'objet — et non des resistances
+elementaires, comme la premiere lecture du cliche le supposait.
+
+L'ecran du coffre est donc l'onglet 1 du menu de jeu (`FUN_0052a850`, page 0), deja transcrit et deja
+verifie a l'ecran. `FUN_0052fdc0`, qui dessine la moitie basse (valeurs, portees, nom, pictogrammes),
+n'a que **deux sites d'appel dans tout `Blaze.c`**, tous deux dans le menu de jeu : il n'existe pas de
+second dessinateur de cette fiche.
+
+### Deux differences a garder en vue
+
+1. **La liste.** Le cliche empile quatre lignes « pictogramme + nom » ; le notre pose quatre
+   pictogrammes en rangee horizontale avec le nom de l'objet vise en dessous. Meme fiche, deux
+   dispositions — donc deux etats du meme onglet, ou un etat que nous ne produisons pas.
+2. **La description.** Le cliche affiche le texte de l'objet (« Facile a manier pour un
+   debutant. ») ; le notre affiche le libelle de remplissage « Fenetre Objets ». C'est un defaut de
+   notre rendu, independant du coffre, et il valait d'etre note.
+
+### Le declencheur : toujours inconnu, et je ne l'invente pas
+
+Vincent retente : **rien**. Ni panneau, ni levee. Ce « rien » se lit :
+
+- ce n'est **pas** un verbe non transcrit (les onze de la table d'index 0 leveraient) ;
+- ce n'est **pas** le verbe 57 (le mode 0 de `FUN_0053e0a0` leve) ;
+- ce n'est **pas** une zone differente (`InstallEntityVTables` leve pour tout index non nul, et
+  l'index est force a 0 tant que la zone est 0 — ce qui est le cas puisque rien ne leve) ;
+- ce n'est **pas** un opcode de script non transcrit (ils levent aussi).
+
+Restent trois possibilites, et aucune ne se departage par la lecture :
+
+1. le script du coffre ne tourne pas du tout — l'interaction n'atteint pas l'interpreteur ;
+2. il tourne et n'appelle que des opcodes deja transcrits, sans effet visible ;
+3. il appelle un verbe **souche** (`0x00401FA0`), ce qui ne ferait rien dans l'original non plus —
+   donc improbable, mais a exclure.
+
+### L'instrument, complete
+
+`RunScript` porte desormais sa propre trace, sous `OPENFORESIA_TRACE_SCRIPT=1`
+(`playtest.ps1 -Trace SCRIPT`), a cote de `-Trace VERBS` :
+
+```
+[SCRIPT] index 8 entite 0x… genre 0x800000
+[OPCODE] 4
+[OPCODE] 16
+```
+
+Mesure de reference sur le trajet d'arrivee : 1 446 lancements, les opcodes 4, 16 et 3 en masse, et
+**deux** appels a l'opcode 0. Les trois issues ci-dessus se distinguent donc en **un** run :
+
+| ce que le journal montre au moment du geste | conclusion |
+|---|---|
+| aucune ligne `[SCRIPT]` nouvelle | l'interaction n'atteint pas l'interpreteur — chercher du cote du declenchement, pas du script |
+| `[SCRIPT]` mais pas d'`[OPCODE] 0` | le script tourne ; lire quels opcodes pour savoir ce qu'il tente |
+| `[OPCODE] 0` puis une ligne `[VERBE]` | le verbe est nomme, et avec lui la fonction a transcrire |
+
+**Je n'ai pas cable le coffre sur l'onglet 1, et c'est deliberé.** Rien n'etablit encore que c'est
+par la que l'original y va ; poser un lien maintenant reviendrait a coder le symptome attendu plutot
+que le mecanisme, ce que la methode du depot exclut. L'ecran est identifie — le chemin qui y mene est
+a une seule execution de distance.

@@ -197,6 +197,25 @@ public static unsafe partial class Blaze
     /// boucle s'arrete, et l'opcode 2 est la branche qui reprend la main.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Trace de l'interpreteur, sous <c>OPENFORESIA_TRACE_SCRIPT=1</c>
+    /// (<c>playtest.ps1 -Trace SCRIPT</c>). Elle imprime chaque script lance et chaque opcode
+    /// execute.
+    ///
+    /// <para>Elle repond a une question que <see cref="s_TraceVerbs"/> ne couvre pas : quand un
+    /// decor <b>ne fait rien du tout</b>, il faut d'abord savoir si un script tourne. Trois issues,
+    /// et elles se distinguent en un run :</para>
+    ///
+    /// <list type="bullet">
+    /// <item>aucune ligne — l'interaction elle-meme n'atteint pas l'interpreteur ;</item>
+    /// <item>des lignes <c>[SCRIPT]</c> mais aucun opcode interessant — le script tourne et ne fait
+    /// que des tests ;</item>
+    /// <item>des opcodes, dont le 0 — alors <see cref="s_TraceVerbs"/> nomme le verbe.</item>
+    /// </list>
+    /// </summary>
+    private static readonly bool s_TraceScript =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_SCRIPT") == "1";
+
     internal static void RunScript(byte* context, byte* entity, uint scriptIndex)
     {
         uint condition = 0;                              // Ghidra: local_4
@@ -206,8 +225,18 @@ public static unsafe partial class Blaze
 
         byte* script = *(byte**)(*(byte**)(context + 0x8c) + scriptIndex * 4);
 
+        if (s_TraceScript)
+        {
+            Console.Error.WriteLine(
+                $"[SCRIPT] index {scriptIndex} entite 0x{(nuint)entity:x} genre 0x" +
+                (entity != null ? $"{*(uint*)entity & 0xfc0000:x}" : "?"));
+        }
+
         for (uint op = *script; op != 0xff && (op == 2 || condition == 0); op = *script)
+        {
+            if (s_TraceScript) Console.Error.WriteLine($"[OPCODE] {op}");
             script = DispatchScriptOp(op, context, entity, script, &condition);
+        }
     }
 
     /// <summary>

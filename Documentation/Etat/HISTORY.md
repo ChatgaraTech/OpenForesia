@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- doc : **l'écran du coffre est identifié** — c'est l'onglet 1 de la fiche de personnage, établi par comparaison capture contre capture : mêmes quatre objets, même `ATT 7 / DEF 0`, mêmes huit colonnes `Gue Pre Vol Mag Cha Elf Nai Lut` (les huit **classes**, pas des résistances)
+- doc : deux écarts de notre rendu sur ce même onglet — la liste est horizontale là où l'original l'empile, et la description affiche le libellé de remplissage « Fenêtre Objets » au lieu du texte de l'objet
+- feat : `-Trace SCRIPT` — chaque script lancé et chaque opcode exécuté ; avec `-Trace VERBS`, un seul run sépare « le script ne tourne pas » de « il tourne sans effet » et de « il appelle tel verbe »
 - fix : **le mode 1 de `FUN_0053e0a0` n'est pas le coffre de stockage** — le cliché du jeu d'origine le montre : quatre lignes, `ATT`/`DEF` et une rangée des huit classes, là où le mode 1 dessine cinq rangées avec une étoile et un nombre contre le bord droit ; et sa logique **paie un prix** pour recevoir un objet, donc un achat
 - doc : le voisinage dans une table de verbes n'est **pas** une preuve de rôle — le corps était juste, c'est le nom qui affirmait ce que rien n'avait établi
 - feat : `-Trace VERBS` (permanent) — chaque appel à l'opcode 0 imprime le verbe, l'adresse résolue et l'opérande ; c'est la seule façon d'aller d'un geste en jeu à la fonction à transcrire, un script de zone ne se lisant ni dans `Blaze.c` ni au désassembleur
