@@ -48,6 +48,12 @@ namespace OpenForesia.Blaze;
 /// </summary>
 internal sealed unsafe class UiWindow(GameMemory mem, UiText ui, Input inp, Audio aud)
 {
+    /// <summary>Trace du choix latche par un panneau, sous <c>OPENFORESIA_TRACE_SCRIPT=1</c> : le
+    /// curseur, le creneau de <c>DAT_005e9060</c> vise, les drapeaux et le nombre de lignes. C'est
+    /// ce qui relie « le joueur a repondu Oui » a « le script a lu telle valeur ».</summary>
+    private static readonly bool s_TraceChoice =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_SCRIPT") == "1";
+
     // =====================================================================
     // The UI window renderer (Ghidra: FUN_00545340 and its four primitive emitters)
     //
@@ -266,6 +272,14 @@ internal sealed unsafe class UiWindow(GameMemory mem, UiText ui, Input inp, Audi
                 byte flags = descriptor[0x8c7];
                 descriptor[0x3b] = 0;
                 descriptor[0x8c7] = (byte)(flags & 0xfb);
+
+                if (s_TraceChoice)
+                {
+                    Console.Error.WriteLine(
+                        $"[CHOIX] descripteur 0x{(nuint)descriptor:x} curseur=+0x8c4:{descriptor[0x8c4]}" +
+                        $" creneau=+0x8c5:{descriptor[0x8c5]} drapeaux=0x{flags:x2}" +
+                        $" lignes=+0x11:{descriptor[0x11]}");
+                }
 
                 if ((flags & 0x40) != 0)
                     mem.s_PanelSelection_005e9060[descriptor[0x8c5]] = (byte)(descriptor[0x8c4] >> 1);

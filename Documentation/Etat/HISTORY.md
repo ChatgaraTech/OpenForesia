@@ -6,6 +6,39 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-25
 
+- feat : **LE COFFRE EST COMPLET** — les états 0, 1, 5 et 8 écrits, dont les trois qui touchent le disque ; `FUN_0053e0a0` ne porte plus aucune levée, ses deux modes et ses vingt états sont transcrits
+- doc : la somme de contrôle porte sur des octets **signés** (`0x80` y compte pour −128), les trois écritures sont combinées par **ou binaire** et testées une seule fois, et le drapeau de succès est posé **en dernier** — le poser plus tôt rendrait la sortie destructrice
+- doc : le compactage réécrit les cinq octets d'équipement de `+0x2b0` qui désignaient les anciens indices — sans ça, refermer le coffre déséquiperait ce que le joueur portait
+- doc : troisième enchaînement sans `break` dans la même fonction (le cas 0 de l'état 5 tombe dans son cas −1) — c'est la façon de faire de ce code, pas un accident
+- feat : **les états 0x61, 0x62 et les cinq négatifs du coffre** — l'attente de périphérique, l'échec franc et le retour au choix ; il ne reste que l'entrée (0) et les trois écritures de fichier (1, 5, 8)
+- doc : les **deux automates de la fonction communiquent par une seule globale**, `DAT_005dff24` — le `-3` que quatre états testent est ce que rend `FUN_00504820`, rangé là par l'automate d'attente
+- doc : reposer `DAT_0056dc90` à -1 est **le seul chemin de retour** vers le choix de périphérique — ce qui éclaire rétrospectivement la branche morte du prologue : c'est un état à part, entré et quitté par cette valeur
+- doc : `-5` tombe dans `-4` comme `0x5f` tombe dans `0x60` — le même motif deux fois dans la même fonction, donc une façon de faire et non un `break` oublié
+- fix : **les quatre descripteurs d'interface sont pré-réclamés au démarrage** — leur allocation paresseuse échouait à l'ouverture du coffre (`0x19B000` libres mais `0xF000` d'un tenant) ; après correction le plus grand intervalle passe à `0x640000`
+- doc : sixième occurrence de la même leçon — **le moment où une allocation basse est prise fait partie de sa définition** : au démarrage elle rend `false` et le processus se relance, en cours de partie elle tue la session
+- feat : **six états du coffre de plus** — 6 et 7 (les confirmations), 9 (la sortie), 0x5f et 0x60 (l'abandon), 99 (la reprise après échec)
+- doc : le `0x5f` **tombe dans** le `0x60`, `break` manquant compris — les deux états distinguent « il y avait un transfert » de « il n'y en avait pas » ; et l'état 7 est le seul à s'arrêter tant que l'état n'a *pas* changé
+- feat : **l'état 4 du coffre** — trois affectations, l'aiguillage vers l'écriture ; la remise à zéro des deux drapeaux synchronise les deux automates pour que l'état 8 entre par sa branche de travail dès le premier tour, pas un tour plus tard
+- feat : **l'état 3 du coffre** — la liste des objets rangés, sa fenêtre de cinq lignes, la fiche de l'objet visé (huit valeurs, deux portées, huit pastilles de classe) et le basculement du drapeau « garde »
+- doc : le `CONCAT31` de Ghidra sur l'`extra` des sprites **n'existe pas** — deux `xor cx,cx` / `xor dx,dx` de seize bits laissent la moitié haute des registres, et `DrawSpriteVariant` ne lit que les seize bits bas ; troisième artefact du même genre dans la journée
+- doc : trois idiomes MSVC mis en ligne (`strlen`, `strcpy`, `strcat`) rendus par ce qu'ils font ; la ligne visée est dessinée **quatre fois** décalée d'un pixel, c'est son liseré
+- doc : annuler va directement à l'état 9 **si rien n'a changé** — même compte et mêmes quantités que la copie posée par l'état 2, ce qui évite de réécrire le fichier pour rien
+- feat : **l'état 2 du coffre** — la lecture du magasin : mise de côté des objets du joueur, lecture du fichier sous contrôle de somme, fusion des piles identiques, vingt-deux vignettes en VRAM, recensement des deux côtés
+- doc : le prédicat d'« objet identique » (seize octets + la clé de `+0x86`) apparaît pour la **troisième** fois — expertise, transfert entre membres, et maintenant la fusion du coffre : c'est *la* définition du jeu, pas une coïncidence
+- doc : le total fusionné est borné à 99 par **deux écritures d'octet**, pas par une saturation de `short` — la différence se verrait au-delà de 255
+- doc : écart déclaré — les deux rectangles VRAM sont des locales de pile dans l'original, ici deux blocs propres ; reproduire le pointeur pendant serait du comportement indéfini, pas de la fidélité
+- feat : **la queue d'affichage du coffre** — le curseur de périphérique, le portrait, les icônes, les quatre lignes de texte et les **quatre** panneaux ; c'est elle qui produit le cadre du cliché de référence
+- doc : `DAT_00569f88` n'est pas une globale — c'est `MenuDescriptor(3)`, à `0x1a58` de `0x00568530`, soit trois descripteurs pile ; le mode 0 en dessine quatre là où le mode 1 n'en dessine que deux
+- doc : le quatrième libellé est **animé** — `(compteur d'images / 4) % 3` ajouté à `+0x151` fois trois, ce qui ne saute pas aux yeux dans la pseudo-C
+- doc : `DAT_005dff7c` est **signé** (états -1 à -5), et l'original n'a **pas de `default`** dans son switch : une valeur hors liste ne fait rien, ce que la transcription reproduit
+- feat : le socle du mode 0 (le coffre) — trente-neuf globales et **huit tables de données relevées dans le binaire** : identifiants de périphérique, listes de lignes avec leur compte, positions d'écran, deux listes d'icônes, deux enregistrements d'atlas et les dix puissances de dix
+- doc : le prologue du mode 0 teste `DAT_0056dc90 < 0` trois fois et le premier bloc met la globale à zéro — les deux tests suivants et leur `goto` sont **morts dans tous les cas**, établi au désassembleur (`mov [56DC90h],esi`, `esi` à 0)
+- doc : le corps du mode 0 n'est **pas** écrit et n'est pas déclaré fait — vingt états, des sauts d'un cas à l'autre, et trois chemins qui écrivent le fichier de sauvegarde ; la pseudo-C ne suffit pas, il a fallu le désassemblage pour un seul point de flot sur soixante lignes
+- fix : **le coffre ouvre enfin son panneau** — l'appel `PTR_FUN_0056afac` de l'état 4 de `EntityHandler_00450760` avait été **supprimé sur la foi d'une souche `ret` nu** ; c'est l'entrée 57 de la table de verbes, et pour la zone 0 elle vaut `0x0053DEA0`
+- doc : une entrée de table n'est une souche que **pour une zone donnée** — ces tables sont installées par zone, et figer « rien à émettre » généralise ce qui n'a été vérifié que pour une
+- fix : **les deux modes de `FUN_0053e0a0` étaient inversés** — le mode 0 est le coffre de stockage (sa persistance sur fichier est son magasin), le mode 1 une boutique ; j'avais conclu sur ce que le corps *appelle* sans regarder ce qu'il *dessine*
+- feat : cinq sondes permanentes pour aller d'un geste en jeu au corps à écrire — `-Trace VERBS`, `-Trace SCRIPT` (scripts, opcodes, `[ETAT]`, `[TOUCHE]`, `[ALU]`, `[SAUT]`, `[CHOIX]`) et `-Trace ENTITY` (`[SOUCHE]`)
+- doc : `RunWorldMapTick` n'est **pas** appelée une fois par image — elle contient la boucle d'images ; une sonde posée à son entrée ne s'allume qu'une fois, ce qui a failli me faire conclure qu'elle ne tournait pas
 - doc : **l'écran du coffre est identifié** — c'est l'onglet 1 de la fiche de personnage, établi par comparaison capture contre capture : mêmes quatre objets, même `ATT 7 / DEF 0`, mêmes huit colonnes `Gue Pre Vol Mag Cha Elf Nai Lut` (les huit **classes**, pas des résistances)
 - doc : deux écarts de notre rendu sur ce même onglet — la liste est horizontale là où l'original l'empile, et la description affiche le libellé de remplissage « Fenêtre Objets » au lieu du texte de l'objet
 - feat : `-Trace SCRIPT` — chaque script lancé et chaque opcode exécuté ; avec `-Trace VERBS`, un seul run sépare « le script ne tourne pas » de « il tourne sans effet » et de « il appelle tel verbe »

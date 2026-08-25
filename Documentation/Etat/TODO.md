@@ -39,45 +39,36 @@ couvrait ; l'erreur a été de ne pas borner sa portée en l'écrivant.
 
 ---
 
-## LE PROCHAIN GESTE : ouvrir le coffre avec les deux traces
+# LE COFFRE EST COMPLET — À EXERCER SUR UNE COPIE DE `save\`
 
-```powershell
-OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 120 -WorkingDir OpenForesia -Trace VERBS,SCRIPT -KeepOpen
-```
+`FUN_0053e0a0` ne porte plus aucune levée : ses deux modes, ses vingt états, son automate d'attente
+de périphérique, son prologue et sa queue d'affichage sont transcrits. Build vert.
 
-Aller au coffre noir, l'ouvrir, puis lire la fin du journal. Trois issues, et elles se départagent
-d'un coup d'œil :
+## AVANT DE TESTER
 
-| ce que montre le journal au moment du geste | conclusion |
-|---|---|
-| aucune ligne `[SCRIPT]` nouvelle | l'interaction n'atteint pas l'interpréteur — le problème est au déclenchement |
-| `[SCRIPT]` mais pas d'`[OPCODE] 0` | le script tourne ; les opcodes listés disent ce qu'il tente |
-| `[OPCODE] 0` puis `[VERBE] n -> 0x…` | **le verbe est nommé**, et avec lui la fonction à écrire |
+**Copie ton dossier `save\`.** Les états 1, 5 et 8 écrivent le fichier : `FUN_00504c20` y écrit
+0x2000 + 0x1f00 + 0x100 octets, recalcule la somme de contrôle et réécrit le bloc d'icône. Ces
+chemins n'ont **jamais** été exécutés.
 
-Référence mesurée sur le trajet d'arrivée : 1 446 `[SCRIPT]`, et **deux** `[OPCODE] 0`.
+## Ce qu'il faut regarder, dans cet ordre
 
-## L'écran du coffre EST identifié : l'onglet 1 de la fiche de personnage
+1. **le panneau s'ouvre** et ressemble à `Tests\2. Coffre de stockage\legacy.jpg` ;
+2. **la navigation** répond — cinq lignes, la fiche suit le curseur ;
+3. **valider** bascule le drapeau « garde » (trois refus prévus : objet équipé, dix objets déjà
+   tenus, rien à rendre) ;
+4. **ressortir sans rien changer** → doit partir directement, sans écrire ;
+5. **ressortir après un échange** → là seulement le fichier est écrit.
 
-Comparaison capture contre capture avec `Tests\2. Coffre de stockage\legacy.jpg` : mêmes quatre
-objets, même `ATT 7 / DEF 0`, mêmes huit colonnes `Gue Pre Vol Mag Cha Elf Nai Lut` — **les huit
-classes**, qui peut se servir de l'objet. Notre onglet 1 le rend déjà, et `FUN_0052fdc0` (la moitié
-basse) n'a que deux sites d'appel dans tout `Blaze.c`, tous deux dans le menu de jeu.
+Si quelque chose cloche, `-Trace VERBS,SCRIPT,ENTITY` est toujours en place.
 
-**Le lien coffre → onglet 1 n'est pas câblé, et c'est délibéré.** Rien n'établit encore par où
-l'original y va ; poser le lien maintenant coderait le symptôme attendu au lieu du mécanisme.
+## Les trois points les plus risqués, si un défaut apparaît
 
-Deux écarts de notre rendu à corriger sur cet onglet, indépendamment du coffre :
+- la **somme de contrôle** porte sur des octets **signés** ;
+- les trois écritures sont combinées par **ou binaire**, testées une fois ;
+- le **drapeau de succès** (`DAT_005dff20`) est posé en dernier — c'est lui qui décide si l'état 9
+  remet les objets d'avant.
 
-- la liste est **horizontale** (quatre pictogrammes en rangée) là où l'original **empile** quatre
-  lignes « pictogramme + nom » ;
-- la description affiche le libellé de remplissage « Fenêtre Objets » au lieu du texte de l'objet.
-
-Détail dans `REVERSE_STATUS.md`, sections « suite 22 » et « suite 23 ».
-
-## Ce qui reste de `FUN_0053e0a0` : le mode 0, la carte mémoire
-
-1150 lignes (`Blaze.c` 88221..89333), automate de sous-états propre, ouverture de fichier, attente de
-la carte, messages d'erreur. Il lève en se nommant. Section « suite 21 ».
+Détail dans `REVERSE_STATUS.md`, sections « suite 25 » à « suite 32 ».
 
 ---
 

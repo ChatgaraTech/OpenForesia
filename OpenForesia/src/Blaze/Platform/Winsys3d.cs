@@ -258,6 +258,19 @@ public static unsafe partial class Blaze
             _ = s_WorldMapDescriptor_005633b0;          // 0x1000
             _ = s_DestinationDescriptor_0056c978;       // 0x1000
 
+            // Le sixieme, ajoute le 2026-08-25, et il s'est signale exactement comme les cinq
+            // precedents : « No free block of 0x3000 bytes below 0x01000000 for
+            // BuildMenuDescriptors », en ouvrant le coffre de la chambre.
+            //
+            // Les quatre descripteurs d'interface servent au menu de jeu ET au coffre. Tant qu'on
+            // ouvrait le menu tot dans la partie, ils etaient pris quand la fenetre etait encore
+            // large ; le coffre, lui, s'atteint apres plusieurs minutes de jeu, et la fenetre a eu
+            // le temps de se fragmenter. Le journal l'annoncait depuis le 2026-08-25 (« alloue bas
+            // APRES le demarrage, hors de la portee de la relance ») — c'est la meme leçon une
+            // sixieme fois : **le moment ou une allocation basse est prise fait partie de sa
+            // definition.**
+            _ = s_MenuDescriptors_00568530;             // 0x3000 -- 4 x 0x8c8, menu de jeu et coffre
+
             // Tout ce qui doit vivre bas est pris. Ce qui reste est la marge, et c'est le seul
             // chiffre qui dise quelque chose si la fenetre venait a se refermer : « plein » et
             // « fragmente » n'appellent pas la meme suite.

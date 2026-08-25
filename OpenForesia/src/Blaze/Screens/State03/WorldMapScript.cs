@@ -36,6 +36,7 @@
 // =================================================================================================
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using static OpenForesia.Blaze.Blaze;
@@ -172,8 +173,20 @@ public static unsafe partial class Blaze
     /// puis il est restaure.
     /// </para>
     /// </summary>
-    internal static void RunEntityScript(byte* context, byte* entity, uint scriptIndex)
+    /// <summary>
+    /// Le nom du dernier appelant de <see cref="RunEntityScript"/>, sous
+    /// <c>OPENFORESIA_TRACE_SCRIPT=1</c>. <c>RunEntityScript</c> a une vingtaine de sites d'appel :
+    /// savoir <b>lequel</b> a lance un script est ce qui separe « le joueur a parle a quelqu'un » de
+    /// « une entite a marche sur une face ». Le nom est pris par
+    /// <see cref="CallerMemberNameAttribute"/>, donc sans cout quand la trace est eteinte.
+    /// </summary>
+    private static string s_ScriptCaller = "?";
+
+    internal static void RunEntityScript(byte* context, byte* entity, uint scriptIndex,
+                                         [CallerMemberName] string caller = "")
     {
+        if (s_TraceScript) s_ScriptCaller = caller;
+
         if (Winsys3d.Ordinal_46() < 0)
         {
             RunScript(context, entity, scriptIndex);
@@ -228,7 +241,7 @@ public static unsafe partial class Blaze
         if (s_TraceScript)
         {
             Console.Error.WriteLine(
-                $"[SCRIPT] index {scriptIndex} entite 0x{(nuint)entity:x} genre 0x" +
+                $"[SCRIPT] {s_ScriptCaller} index {scriptIndex} entite 0x{(nuint)entity:x} genre 0x" +
                 (entity != null ? $"{*(uint*)entity & 0xfc0000:x}" : "?"));
         }
 
@@ -436,7 +449,18 @@ public static unsafe partial class Blaze
     /// l'adresse de base pres, d'ou un seul ici.</summary>
     private static byte* ScriptOpAluArena(int bankVa, byte* s, uint* result)
     {
-        *result = ApplyScriptOp(Mem.Arena(bankVa) + s[1], s[2], s[3]) ? 1u : 0u;
+        byte* cell = Mem.Arena(bankVa) + s[1];
+        byte before = *cell;
+
+        *result = ApplyScriptOp(cell, s[2], s[3]) ? 1u : 0u;
+
+        if (s_TraceScript)
+        {
+            Console.Error.WriteLine(
+                $"[ALU] banc 0x{bankVa:x6}[{s[1]}] valeur={before} op={s[2]} operande={s[3]}" +
+                $" -> resultat={*result} (valeur apres={*cell})");
+        }
+
         return s + 4;
     }
 
@@ -1314,6 +1338,13 @@ public static unsafe partial class Blaze
     /// </summary>
     private static byte* ScriptOpJumpIf(byte* ctx, byte* s, uint* result)
     {
+        if (s_TraceScript)
+        {
+            Console.Error.WriteLine(
+                $"[SAUT] condition={*result} -> " +
+                (*result == 0 ? "PAS de saut" : $"saut vers le script {s[1] | s[2] << 8}"));
+        }
+
         if (*result == 0)
         {
             return s + 3;

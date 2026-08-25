@@ -1414,3 +1414,46 @@ d'aller du symptome au corps sans deviner — et deviner coute cher : le panneau
 
 La trace est **permanente**, pas jetable : elle repond a une question qui reviendra a chaque decor
 nouveau.
+
+---
+
+## Les cinq sondes permanentes : du geste en jeu au corps a ecrire (2026-08-25)
+
+Le coffre de la chambre « ne faisait rien ». Aucune lecture statique ne pouvait le dire : le
+declencheur est un script du disque, la table de verbes est installee par zone, et le symptome etait
+un silence. Cinq sondes ont ete posees, chacune parce que la precedente ne suffisait pas, et **chacune
+a corrige une conclusion trop rapide**. Elles restent dans le code.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 40 -WorkingDir OpenForesia -Trace VERBS,SCRIPT,ENTITY -KeepOpen
+```
+
+| ligne | source | ce qu'elle repond |
+|---|---|---|
+| `[VERBE] n -> 0x…` | `ScriptOpAreaVerb` | quel verbe de zone l'opcode 0 appelle |
+| `[SCRIPT] <appelant> index n` | `RunScript` | quel script part, et **d'ou** — le nom de l'appelant est pris par `CallerMemberName` |
+| `[OPCODE] n` | `RunScript` | ce que le script execute |
+| `[ETAT] image=… pas=… x=… z=…` | la boucle de monde | si le monde tourne, ou l'on est, si le meneur bouge |
+| `[TOUCHE] image=… boutons=…` | la boucle de monde | **quand le joueur appuie** |
+| `[ALU]` · `[SAUT]` · `[CHOIX]` | l'ALU de script, le saut, la validation de panneau | ce que le script a lu et decide |
+| `[SOUCHE] <creneau>` | `DispatchEntityHandler` | quels creneaux retombent sur la fonction vide |
+
+### L'ordre dans lequel on les lit
+
+1. **`[TOUCHE]`** — l'appui est-il vu ? Sans lui, « rien ne se passe » et « l'appui n'arrive pas »
+   ont exactement la meme trace. C'est la sonde qui manquait le plus longtemps.
+2. **`[SCRIPT]` / `[OPCODE]`** — quelque chose part-il ?
+3. **`[ALU]` / `[SAUT]` / `[CHOIX]`** — que decide-t-il, et sur quelle valeur ?
+4. **`[SOUCHE]`** — le cas silencieux : un creneau qui ne fait rien *et ne le dit pas*.
+5. **`[ETAT]`** — le contexte, quand rien de ce qui precede ne s'allume.
+
+### Deux pieges payes en route
+
+**Une sonde a l'entree d'une fonction ne compte pas les images.** `RunWorldMapTick` contient
+elle-meme la boucle d'images : elle n'est entree qu'une fois par chargement de zone. La sonde
+posee a son entree ne s'est allumee qu'une fois, et m'a fait croire un moment que la fonction ne
+tournait pas. **Verifier ou est la boucle avant de compter.**
+
+**« Aucun script » ne veut pas dire « le monde est arrete ».** Une salle sans script en boucle donne
+le meme silence qu'une simulation figee. C'est `[ETAT]` avec la position du meneur qui departage, pas
+le comptage des scripts.

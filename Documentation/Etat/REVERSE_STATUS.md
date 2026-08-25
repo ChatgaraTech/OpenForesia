@@ -13868,3 +13868,508 @@ Mesure de reference sur le trajet d'arrivee : 1 446 lancements, les opcodes 4, 1
 par la que l'original y va ; poser un lien maintenant reviendrait a coder le symptome attendu plutot
 que le mecanisme, ce que la methode du depot exclut. L'ecran est identifie — le chemin qui y mene est
 a une seule execution de distance.
+
+---
+
+## 2026-08-25 (suite 24) — le coffre : un appel supprime sur une supposition
+
+### Le defaut
+
+`EntityHandler_00450760` — le gestionnaire du coffre — portait ceci a son etat 4 :
+
+```csharp
+// Ghidra: (*(code *)PTR_FUN_0056afac)(param_1[0x1b], 0) - souche `ret` nu. Rien a emettre.
+```
+
+**L'appel avait ete supprime sur la foi d'une souche.** Il n'en est pas une :
+`0x0056afac - 0x0056aec8 = 0xe4`, soit l'entree **57** de la table de verbes de zone, et pour la
+zone 0 cette entree vaut `0x0053DEA0` — le verbe 57, celui qui leve le drapeau `0x40` et fait ouvrir
+le panneau.
+
+Le coffre s'ouvrait donc visuellement (le couvercle descend de `0x23` pendant 30 images), le compte
+arrivait a son terme, et a l'instant precis ou le panneau devait apparaitre, on ne faisait rien.
+
+**La regle qui manquait** : une entree de table n'est une souche que **pour une zone donnee**. Ces
+tables sont installees par zone ; ecrire « souche `ret` nu, rien a emettre » fige pour toutes les
+zones ce qui n'a ete verifie que pour une. La correction reprend la discipline des autres tables —
+un cas par fonction transcrite, une levee nommee pour le reste.
+
+### Comment il a ete trouve : cinq sondes, chacune posee parce que la precedente ne suffisait pas
+
+Aucune lecture statique ne pouvait donner ce resultat : le declencheur est un script du disque, la
+table est installee par zone, et le symptome etait « rien ne se passe ». Il a fallu instrumenter, et
+chaque sonde a corrige une conclusion trop rapide :
+
+| sonde | ce qu'elle a montre | l'erreur qu'elle a corrigee |
+|---|---|---|
+| `-Trace VERBS` | les verbes appeles par l'opcode 0 | « le coffre appelle un verbe » — il n'en appelle aucun |
+| `-Trace SCRIPT` | chaque script et chaque opcode | « le monde est gele » — non, il tourne |
+| `[ETAT]` dans la boucle | pas, drapeaux, position | « aucun script = simulation arretee » — une salle sans script donne le meme silence |
+| `[TOUCHE]` | le mot de boutons a chaque changement | « l'appui n'est pas vu » — il l'est, et la boite s'ouvre |
+| `[CHOIX]`, `[ALU]`, `[SAUT]` | le choix latche, le test, le verdict | « la reponse Oui ne passe pas » — elle passe, le calcul est juste |
+
+**La sonde `[ETAT]` a d'abord echoue silencieusement**, et c'est instructif : elle comptait les
+**appels** a `RunWorldMapTick`. Or cette fonction n'est pas appelee une fois par image — elle
+contient elle-meme la boucle d'images et n'est entree qu'une fois par chargement de zone. Une sonde
+a son entree ne s'allume qu'une fois. Elle est desormais **dans** la boucle.
+
+### Et une etiquette a inverser
+
+`FUN_0053e0a0` a deux modes. J'avais nomme le mode 0 « carte memoire » parce qu'il appelle des
+primitives de fichier (`FUN_00504b40`, `FUN_00504c20`, `FUN_00512900`), et le mode 1 « le coffre »
+parce que les verbes 56/57/58 se suivent. **Les deux etaient faux, et le jeu l'a tranche** :
+
+| mode | verbe | ce que c'est |
+|---|---|---|
+| 0 | 57 | **le coffre de stockage** — c'est la que le coffre noir arrive. La persistance sur fichier est son magasin, pas une sauvegarde de partie ; il recopie des blocs d'objets par `FUN_005352e0` |
+| 1 | 58 | **une boutique** — cinq rangees avec un prix contre le bord droit, prelevé sur l'emplacement `0x2efb`, l'objet rendu par `GrantChestContents_00530F20` |
+
+**J'ai conclu deux fois sur ce que le corps APPELLE sans regarder ce qu'il DESSINE.** Les primitives
+de fichier ne disent pas « sauvegarde » ; elles disent « quelque chose est range quelque part ».
+
+### Etat
+
+Le chemin va maintenant de bout en bout et s'arrete en se nommant :
+
+```
+coffre → etat 4 → PTR_FUN_0056afac → verbe 57 → drapeau 0x40 → crochet 0x0053DF90
+       → FUN_0053e0a0 mode 0 → leve
+```
+
+Reste a transcrire le mode 0 : `Blaze.c` 88221..89333, 1150 lignes. Son prologue, ses onze globales
+et ses onze vues de descripteur sont deja en place — c'est le corps qui manque.
+
+### Note d'allocation relevee au passage
+
+Le journal signale : `BuildMenuDescriptors alloue bas APRES le demarrage, hors de la portee de la
+relance`. Les quatre descripteurs d'interface sont alloues paresseusement ; a ajouter a la liste
+pre-reclamee de `TryPrepareDisplayListArena`.
+
+---
+
+## 2026-08-25 (suite 25) — le mode 0 : le socle est pose, le corps ne l'est pas
+
+Le mode 0 de `FUN_0053e0a0` a ete attaque d'un bloc, comme demande. **Le socle est en place et
+compile ; le corps ne l'est pas, et je ne le declare pas fait.**
+
+### Ce qui est pose
+
+**Les trente-neuf globales et les huit tables de donnees.** Chaque table est relevee dans le binaire,
+pas devinee :
+
+| symbole | contenu |
+|---|---|
+| `PTR_DAT_0056dc20` | quatre tables d'octets — l'identifiant de peripherique par (peripherique, ligne) |
+| table de `0x0056dc58` | quatre listes dont le **premier octet est le compte**, ce qui borne le curseur |
+| `DAT_0056dc68` | dix positions d'ecran, deux `short` chacune |
+| `DAT_0056dcb0` | dix icones de cadre, quatre octets signes chacune |
+| `DAT_0056dca0` | deux icones de bandeau |
+| `DAT_0056dce0`, `DAT_0056dce8` | deux enregistrements d'atlas de huit octets |
+| `DAT_00566be8` | les dix puissances de dix, de 1e9 a 1 |
+
+**Quatre adresses n'ont pas ete declarees** — meme verification que pour le mode 1 : `0x005e8f92`
+tombe dans `s_EntityDecodeTable_005e8f00` (0x1000 octets), `0x005e9322` et `0x005fafb0` sont des vues
+d'arene, et `0x00568536` / `0x0056853a` / `0x005696c4` / `0x005696c6` sont des champs de
+descripteurs.
+
+### Une branche morte, etablie au desassemblage
+
+Le prologue teste `DAT_0056dc90 < 0` **trois fois**, et le premier bloc met cette globale a zero
+(`mov [56DC90h],esi` en `0x0053e963`, avec `esi` a 0 — verifie par les `cmp` voisins). Les deux tests
+suivants, et le `goto switchD_0053eaef_caseD_a` qui en depend, sont donc **morts dans tous les cas** :
+si le premier bloc a tourne la valeur vaut 0, et s'il n'a pas tourne elle etait deja positive.
+
+C'est une simplification reelle pour la suite — mais elle n'a ete acquise qu'au desassemblage, et
+c'est le point suivant.
+
+### Pourquoi le corps n'est pas ecrit
+
+Les 1110 lignes restantes sont un automate de vingt etats avec des sauts d'un cas a l'autre
+(`goto LAB_005402b5`, `joined_r0x005402d1`, `goto LAB_00540dab`), trois chemins qui **ecrivent le
+fichier de sauvegarde** (`FUN_00504c20` y ecrit 0x2000 + 0x1f00 + 0x100 octets, recalcule la somme de
+controle de `+0x1ffc` et reecrit le bloc d'icone de `0x4000`), et une large duplication de ce que
+`SaveSlots.cs` fait deja.
+
+La branche morte ci-dessus montre le probleme : **la pseudo-C ne suffit pas ici**. Il a fallu le
+desassemblage pour trancher un seul point de flot sur les soixante premieres lignes. Transcrire les
+1110 restantes a la meme rigueur est le travail d'une session, pas d'une passe — et livrer 1300
+lignes qui compilent sans cette verification, sur des chemins qui **ecrivent la sauvegarde du
+joueur**, serait exactement ce que `Strategy.md` interdit.
+
+### Ce qu'il reste, concretement
+
+L'ordre conseille, du plus sur au plus risque :
+
+1. **la queue d'affichage** (apres `switchD_0053eaef_caseD_a`, ~50 lignes) — elle dessine le curseur
+   de peripherique, la vignette du personnage, les deux listes d'icones et les quatre panneaux.
+   Elle seule ferait **apparaitre** l'interface ;
+2. **le cas 3** (~300 lignes) — la liste des objets ranges, sa fenetre de cinq lignes et sa fiche ;
+3. **les cas 0, 2, 4, 6, 7, 9, 0x5f a 0x62, 99 et les negatifs** — la navigation et les messages ;
+4. **les cas 1, 5, 8 en dernier** — les trois chemins de fichier, a verifier au desassemblage et a
+   exercer sur une copie de `save\`.
+
+Le prologue commun, les onze vues de descripteur du mode 1 et les trente-neuf globales de ce
+paragraphe sont deja en place : le point 1 s'attaque directement.
+
+---
+
+## 2026-08-25 (suite 26) — la queue d'affichage du coffre
+
+Le prologue de navigation et la **queue d'affichage** du mode 0 sont transcrits. L'automate des
+vingt etats ne l'est pas : chacun leve en se nommant.
+
+### Ce que la queue dessine
+
+C'est elle qui produit le cadre du cliche de reference : le curseur de peripherique, le portrait, la
+liste d'icones du bandeau, quatre lignes de texte et **quatre panneaux**.
+
+**Le quatrieme descripteur n'est pas une globale.** `DAT_00569f88` est a `0x1a58` de
+`0x00568530`, soit exactement **trois** descripteurs de `0x8c8` : c'est `MenuDescriptor(3)`. La
+boucle finale les dessine tous les quatre, du dernier au premier — la ou le mode 1 n'en dessine que
+deux. C'est la difference de cadre la plus visible entre les deux ecrans, et elle explique pourquoi
+le cliche a trois cadres imbriques.
+
+**Le curseur de peripherique ne se dessine qu'a l'etat 4.** La condition de l'original est
+`(DAT_0056dc90 < 0) || (DAT_005dff7c == 4)`, et son premier terme est celui dont la branche morte a
+ete etablie a la suite 25. Sa position se prend en deux temps : la liste de lignes du peripherique
+donne un indice, cet indice donne un couple (x, y) dans la table de `0x0056dc68`, decale de `0x86`
+et `0x48`.
+
+**Le quatrieme libelle est anime**, ce qui ne se voit pas dans la pseudo-C au premier regard :
+`DAT_005e909e` recoit `(compteur d'images / 4) % 3` ajoute a `+0x151` fois trois. Trois images qui
+tournent, pas un index fixe.
+
+### Deux points de type
+
+`DAT_005dff7c` est **signe** : l'automate a des etats `-1` a `-5` en plus de `0` a `99`. La globale
+etant declaree `uint` avec les huit autres dwords de curseur, le `switch` porte sur `(int)`.
+
+`DAT_005dff80` et `DAT_005dff84` sont deux globales nouvelles, distinctes des neuf dwords de curseur
+qui s'arretent a `0x005dff7c` : la valeur de l'etat a l'image precedente, et le drapeau « l'etat vient
+de changer » que leur comparaison leve.
+
+### L'automate, etat par etat
+
+Il leve avec le numero de l'etat, et l'ordre conseille est dans le message lui-meme. **Le premier a
+ecrire est l'etat 2** : c'est celui que le prologue pose en entrant, et c'est la lecture du magasin.
+
+Une precision utile : **l'original n'a pas de `default`** dans ce `switch`. Une valeur hors de sa
+liste ne fait rien du tout, et la transcription le reproduit — la levee ne couvre que les vingt etats
+qu'il traite vraiment.
+
+---
+
+## 2026-08-25 (suite 27) — l'etat 2 du coffre : la lecture du magasin
+
+C'est l'etat que le prologue pose en entrant, donc le premier que le panneau execute.
+`Blaze.c` 88423..88543, transcrit en quatre corps : l'etat lui-meme et ses trois etapes.
+
+### Ce qu'il fait
+
+1. **Il met les objets du joueur de cote** a `MainMem + 0x1bc000`. C'est cette copie que l'etat 9
+   remet en place si on ressort sans rien ranger — le seul filet de securite du panneau, et il faut
+   le savoir avant de toucher aux etats de sortie.
+2. **Il lit le fichier du coffre** et ne le prend que si sa somme de controle correspond a celle du
+   bloc du joueur (`+0x1ffc` contre `MainMem + 0x1b38fc`). Sinon tout est saute et on tombe sur le
+   message « coffre vide », etat 9.
+3. **Il fusionne les piles identiques** dans l'inventaire du joueur.
+4. **Il envoie vingt-deux vignettes en VRAM**, deux transferts par emplacement.
+5. **Il recense les deux cotes** et passe a l'etat 3 — sauf coffre vide.
+
+### Le predicat d'identite, pour la troisieme fois
+
+La fusion cherche un objet dont les **seize premiers octets** et la cle de `+0x86` concordent, et
+dont l'octet de `+0x13` porte `0x30`. Les seize octets sont **exactement** le predicat que
+l'expertise (verbe 56) et le transfert entre membres du menu « Objets » emploient deja. Trois sites,
+une regle — et c'est maintenant assez pour dire que c'est *la* definition d'« objet identique » du
+jeu, pas une coincidence.
+
+Le total fusionne est **borne a 99 par deux ecritures d'octet** (`99` puis `0`), pas par une
+saturation de `short`. La difference se verrait sur une pile de plus de 255.
+
+### Deux ecarts declares
+
+**Les deux rectangles VRAM sont des locales de pile dans l'original**, dont l'adresse est rangee dans
+deux globales (`DAT_005dfef4`, `DAT_005dfefc`). Ils sont ici deux blocs propres de huit octets : meme
+comportement observable, sans le pointeur pendant que l'original laisse derriere lui en sortant.
+Reproduire le pendouillant serait du comportement indefini en C#, pas de la fidelite.
+
+**La poignee de fichier** est un `int` compare a -1 dans l'original ; `RetryOpenCardFile` rend un
+`IntPtr`, donc c'est ce type qui est garde et le test devient `(nint) >= 0`.
+
+### Un croisement de listes, conserve
+
+La derniere boucle parcourt la table des emplacements du **coffre** (`DAT_005dff40`) mais son compte
+de tours est celui de l'inventaire du **joueur** (`+0x2c0`). Les deux listes n'ont aucune raison
+d'avoir la meme longueur, et rien ne borne la lecture. C'est ce que dit le binaire ; conserve comme
+les autres defauts d'origine, et a verser dans `legacy-bug.md` le jour ou une partie le fait sortir
+de ses seize octets.
+
+### Ce qui reste
+
+L'etat 3 — la liste des objets ranges, sa fenetre de cinq lignes et sa fiche, ~300 lignes. C'est le
+plus gros des dix-neuf restants, et c'est lui qui remplit le cadre que la queue d'affichage dessine
+deja.
+
+---
+
+## 2026-08-25 (suite 28) — l'etat 3 du coffre : la liste et la fiche
+
+Le plus gros des vingt etats, `Blaze.c` 88545..88889. C'est lui qui **remplit** le cadre que la queue
+d'affichage dessine deja : quatre lignes « pictogramme + nom », les valeurs, les deux portees et la
+rangee des huit classes — exactement ce que montre le cliche du jeu d'origine.
+
+### Un `CONCAT31` qui n'existe pas
+
+Les quatre emissions de sprite de la boucle recoivent un `extra` que Ghidra rend par
+
+```c
+CONCAT31(uVar13, bVar3) & 0xffff000f | (CONCAT31(..., bVar3) & 0xffff0010) << 4
+```
+
+Le desassemblage en `0x0053f93a` montre la vraie sequence, et elle est propre :
+
+```
+mov al,[ecx+5DFF40h]     ; l'emplacement
+xor cx,cx                ; efface SEIZE bits — la moitie haute reste
+mov dl,al
+and al,10h
+and dl,0Fh
+mov cl,dl                ; (emplacement & 0x0f)
+xor dx,dx                ; idem
+mov dl,al
+shl edx,4                ; (emplacement & 0x10) << 4
+or  ecx,edx
+```
+
+Les deux `xor cx,cx` / `xor dx,dx` de **seize bits** laissent la moitie haute des registres intacte,
+et c'est cette moitie-la que Ghidra a rendue en `CONCAT31`. Elle ne participe pas :
+`DrawSpriteVariant` ne lit que les seize bits bas de son `extra`. Le calcul reel est donc
+`(emplacement & 0xf) | ((emplacement & 0x10) << 4)`.
+
+**C'est la troisieme fois de la journee que la pseudo-C fabrique un artefact qu'un `xor` de seize
+bits explique.** Le reflexe a garder : un `CONCAT` sur une valeur qui devrait etre un simple octet
+signale presque toujours un effacement partiel de registre, pas un calcul.
+
+### Trois idiomes de MSVC rendus par ce qu'ils font
+
+Le nom de chaque rangee est compose sur la pile, en un flux d'etiquettes
+`0c 04 <x> <y> 14 <couleur>` suivi du texte — le meme idiome que `DrawItemDetail_0052FDC0`. Ghidra
+en rend trois boucles cryptiques : ce sont un `strlen`, un `strcpy` et un `strcat` **mis en ligne**
+par le compilateur (le `uVar7 = 0xffffffff ; do … while (c != 0) ; uVar7 = ~uVar7` est la signature
+du `strlen` de MSVC). Ils sont transcrits par leur effet, pas par leur forme.
+
+La couleur de la ligne suit la meme logique : `(-(garde != 0) & 6) + 1` est une facon sans
+branchement de choisir entre 1 et 7.
+
+Et la ligne visee est dessinee **quatre fois**, decalee d'un pixel a chaque tour : c'est le liseré
+qui l'entoure. La condition est `DAT_005dfe2c == 0x800`, soit la moitie basse du mot de couleur que
+la branche « non visee » vient de poser — un test sur une valeur que le code a lui-meme ecrite deux
+lignes plus haut.
+
+### La sortie
+
+Valider bascule le drapeau « garde » de la ligne visee, avec **trois refus** : l'objet est deja
+equipe (il figure dans les cinq octets de `+0x2b0`), on tient deja dix objets, ou l'on essaie de
+rendre alors qu'on n'en tient aucun.
+
+Annuler ne quitte que si l'echange tient en douze emplacements, et **va directement a l'etat 9 si
+rien n'a change** — meme compte et memes quantites que la copie de sauvegarde posee par l'etat 2.
+C'est ce qui evite de reecrire le fichier pour rien.
+
+### Ce qui reste
+
+Dix-huit etats, dont les trois d'ecriture de fichier (1, 5, 8). Le panneau devrait maintenant
+s'afficher et se naviguer ; il ne peut pas encore **valider** l'echange, l'etat 4 qui suit
+l'annulation n'etant pas ecrit.
+
+---
+
+## 2026-08-25 (suite 29) — l'etat 4 du coffre : trois affectations
+
+Le plus court des vingt : `DAT_005dff7c = 8`, `DAT_005dff84 = 0`, `DAT_005dff18 = 0`.
+
+C'est **l'aiguillage vers l'ecriture**. L'etat 3 y arrive en annulant — quand l'echange a change
+quelque chose — et il repart aussitot vers l'etat 8, celui qui ecrit le fichier.
+
+**La remise a zero des deux drapeaux n'est pas decorative.** `DAT_005dff84` est le drapeau « l'etat
+vient de changer » que le prologue leve a chaque transition ; l'etat 8 le teste en entrant et, s'il
+le trouve leve, se contente de le consommer sans rien faire. En le posant a zero ici, l'etat 4
+garantit que l'etat 8 entrera par sa branche de travail des le premier tour, et non un tour plus
+tard. Meme raisonnement pour `DAT_005dff18`, qui remet l'attente de peripherique a l'arret.
+
+C'est le genre de detail qu'on aurait pu prendre pour du bruit : trois affectations sans logique.
+Elles sont la synchronisation de deux automates.
+
+### Etat des vingt
+
+| ecrit | reste |
+|---|---|
+| 2, 3, 4 | 0, 1, 5, 6, 7, 8, 9, 0x5f, 0x60, 0x61, 0x62, 99, -1, -2, -3, -4, -5 |
+
+Le panneau s'affiche et se navigue ; il ne peut pas encore conclure, l'etat 8 (l'ecriture) n'etant
+pas ecrit. L'ordre conseille reste : la navigation et les messages d'abord, les trois etats de
+fichier (1, 5, 8) en dernier et sur une copie du dossier de sauvegarde.
+
+---
+
+## 2026-08-25 (suite 30) — la panne d'allocation basse du coffre, et six etats de plus
+
+### La panne, signalee en jeu
+
+```
+No free block of 0x3000 bytes below 0x01000000 for BuildMenuDescriptors.
+Libre sous le plafond : 0x19B000 octets au total, plus grand intervalle 0xF000.
+```
+
+**C'est la sixieme fois que la meme lecon se presente**, et le journal l'annoncait deja : les quatre
+descripteurs d'interface (`0x00568530`, 4 x `0x8c8`) etaient pris **paresseusement**. Tant qu'on
+ouvrait le menu de jeu tot dans la partie, ils tombaient dans une fenetre encore large ; le coffre,
+lui, s'atteint apres plusieurs minutes, et la fenetre a eu le temps de se fragmenter — 0x19B000
+libres mais seulement 0xF000 d'un tenant.
+
+Ajoutes a la liste pre-reclamee de `TryPrepareDisplayListArena`. Apres correction, le releve de
+demarrage passe de `0xF000` a **`0x640000`** de plus grand intervalle.
+
+**La regle, une bonne fois** : *le moment ou une allocation basse est prise fait partie de sa
+definition.* Une `AllocLowZeroed` qui echoue au demarrage rend `false` et `Program.cs` relance un
+processus neuf ; la meme, en cours de partie, traverse toute la pile et tue la session.
+
+### Six etats
+
+| etat | ce qu'il fait |
+|---|---|
+| 6 | pose le premier message de confirmation, puis surveille l'annulation |
+| 7 | idem, mais ne parle que si `DAT_005e909f` est nul — sinon il termine le transfert et file a l'etat 4 |
+| 9 | **la sortie** — rend la main au monde et remet les objets si rien n'a ete range |
+| 0x5f | l'abandon **avec** fin de transfert |
+| 0x60 | l'abandon sans |
+| 99 | la reprise apres echec : remet le magasin d'avant la tentative et repart a l'etat 4 |
+
+**Trois queues partagees, pas trois etats.** Ghidra rend les cas 6 et 7 avec `LAB_005402b5`,
+`LAB_005402bd` et `joined_r0x005402d1` entrelaces. Ce sont deux corps distincts qui partagent une
+queue d'annulation ; ecrits comme tels, ils tiennent en trois methodes lisibles au lieu d'un
+enchevetrement de sauts.
+
+**Le `0x5f` tombe dans le `0x60`**, `break` manquant compris. Ce n'est pas un oubli : les deux etats
+existent precisement pour distinguer « il y avait un transfert en cours » de « il n'y en avait
+pas », et le premier ne fait qu'ajouter la fin de transfert avant de faire le travail du second.
+
+**L'etat 7 est le seul a s'arreter tant que l'etat n'a PAS change** (`DAT_005dff84 == 0`), a l'envers
+de tous les autres. Transcrit tel quel.
+
+### Le filet de securite se tend a l'etat 9
+
+`DAT_005dff20` est leve par l'etat 8 apres une ecriture reussie. Tant qu'il est a zero, l'etat 9
+recopie par-dessus l'inventaire la sauvegarde posee par l'etat 2 a `MainMem + 0x1bc000`. C'est **le**
+mecanisme qui garantit qu'un coffre referme sans rien ranger ne mange pas les objets du joueur, et il
+tient a ce seul octet.
+
+### Etat des vingt
+
+| ecrit | reste |
+|---|---|
+| 2, 3, 4, 6, 7, 9, 0x5f, 0x60, 99 | 0, 1, 5, 8, 0x61, 0x62, -1 a -5 |
+
+Les trois etats de fichier (1, 5, 8) restent pour la fin, et sur une copie du dossier de sauvegarde.
+
+---
+
+## 2026-08-25 (suite 31) — les etats 0x61, 0x62 et les cinq negatifs
+
+Sept etats de plus, tous courts, tous consacres au **peripherique** : l'attendre, le voir echouer,
+revenir a son choix.
+
+### Les deux automates se parlent par une seule globale
+
+Les etats `0x61` / `0x62` et `-3` / `-2` testent tous `DAT_005dff24 == -3`. Ce n'est pas un code
+d'erreur invente : c'est ce que rend `FUN_00504820`, et l'automate d'attente de peripherique
+(`DAT_005dff18`) le range dans cette globale. **Les deux automates de la fonction communiquent par ce
+seul entier**, et c'est ce qui les rend lisibles une fois qu'on l'a vu — sans ca, ces quatre etats
+semblent tester une valeur qui vient de nulle part.
+
+### `DAT_0056dc90` a -1 est le seul chemin de retour
+
+Trois de ces etats (`-4`, `-2`, `-1`) reposent `DAT_0056dc90` a `-1`. C'est tout leur objet : le
+prologue de `RunDepotMode0` ne s'execute que lorsque cette globale est negative, donc la remettre a
+-1 **rearme le choix de peripherique au tour suivant**. C'est le seul chemin de retour vers ce choix
+une fois qu'on en est sorti, et il eclaire retrospectivement la branche morte de la suite 25 : le
+prologue est bien un etat a part, entre et quitte par cette valeur.
+
+### Deux enchainements sans `break`, et le meme motif
+
+`-5` tombe dans `-4` exactement comme `0x5f` tombe dans `0x60` : deux etats pour distinguer « il y
+avait un transfert en cours » de « il n'y en avait pas », le premier n'ajoutant que les deux appels
+de fin de transfert. **Le meme motif, deux fois dans la meme fonction** — ce n'est pas un oubli de
+`break`, c'est une facon de faire.
+
+L'etat `-2` rearme pourtant le choix **sans** passer par `-4` : il refait les deux appels lui-meme.
+Le code est duplique dans l'original, pas factorise, et il l'est reste ici.
+
+### Etat des vingt
+
+| ecrit | reste |
+|---|---|
+| 2, 3, 4, 6, 7, 9, 0x5f, 0x60, 0x61, 0x62, 99, -1, -2, -3, -4, -5 | **0, 1, 5, 8** |
+
+Les quatre qui restent sont l'entree (0) et les **trois ecritures de fichier**. Ce sont les seuls a
+toucher le disque, et ils sont gardes pour la fin, a exercer sur une copie du dossier de sauvegarde.
+
+---
+
+## 2026-08-25 (suite 32) — les etats 0, 1, 5 et 8 : LE COFFRE EST COMPLET
+
+Les quatre derniers etats, dont les **trois qui touchent le disque**. `FUN_0053e0a0` ne porte plus
+aucune levee : ses deux modes, ses vingt etats et son automate d'attente de peripherique sont
+transcrits.
+
+### Trois choses a ne pas se tromper dans l'ecriture
+
+**La somme de controle porte sur des octets SIGNES.** Ghidra la rend `(int)(char)*p` sur `0x1ffc`
+octets. Un octet a `0x80` y compte pour **-128**, pas 128. Se tromper la produirait un fichier que
+le jeu refuserait de relire, sans que rien n'indique pourquoi.
+
+**Les trois ecritures sont combinees par OU binaire** et testees une seule fois : il suffit qu'un bit
+de signe apparaisse dans l'un des trois retours pour que l'ensemble soit declare en echec. Ce n'est
+pas trois tests, c'est un.
+
+**Le drapeau de succes est pose en dernier.** `DAT_005dff20 = 1` n'arrive qu'apres la reussite des
+quatre acces disque, et c'est ce drapeau que l'etat 9 consulte pour savoir s'il doit remettre les
+objets d'avant. Le poser plus tot rendrait la sortie destructrice — c'est le point le plus dangereux
+de la fonction, et il tient a l'ordre de deux lignes.
+
+### La correction d'equipement, qui se serait vue tout de suite
+
+Le compactage vers l'inventaire ne se contente pas de deplacer les objets : il reecrit les cinq
+octets de `+0x2b0` qui designaient leurs **anciens** indices. Sans cette correction, refermer le
+coffre desequiperait ce que le joueur portait. C'est un des rares endroits ou un oubli se serait vu
+immediatement en jeu plutot que des mois plus tard.
+
+### Deux enchainements de plus sans `break`
+
+Le cas `0` de l'etat 5 tombe dans son cas `-1` quand l'ouverture echoue — troisieme occurrence du
+motif apres `0x5f`/`0x60` et `-5`/`-4`. **Trois fois dans la meme fonction** : c'est la facon de
+faire de ce code, pas un accident.
+
+Et le message d'absence de peripherique est ecrit **deux fois a l'identique** dans l'original (cas 0
+et cas -1 de l'etat 1). Factorise ici en `ComposeDepotDeviceMessage`, parce que c'est une unite
+reellement independante — trois chaines de glyphes de seize bits collees bout a bout — et non un
+`LAB_` promu en methode.
+
+### Une duplication assumee
+
+La moitie basse de l'etat 8 est **la meme sequence que l'ecran de sauvegarde du menu**
+(`BuildAndWriteSaveBlock`) : meme mot sentinelle `0x6b82`, memes huit banques, memes huit reperes,
+meme capture d'icone, meme ecriture en trois morceaux. Le compilateur l'a emise deux fois ; les deux
+corps restent distincts ici parce qu'ils le sont dans le binaire et que leurs globales de travail
+different.
+
+### Etat
+
+| ecrit | reste |
+|---|---|
+| les vingt etats, l'automate d'attente, le prologue, la queue | **rien** |
+
+**Non exerce.** Le panneau n'a jamais tourne : aucun run de l'agent n'atteint le coffre. Et surtout,
+**les chemins d'ecriture n'ont jamais ete executes**. Le premier essai doit se faire sur une copie du
+dossier `save\` — c'est la seule precaution qui compte ici.

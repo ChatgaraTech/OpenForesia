@@ -154,6 +154,42 @@ public static unsafe partial class Blaze
         // =============================================================================
         while (true)
         {
+            // Sous OPENFORESIA_TRACE_SCRIPT=1 : l'etat de la boucle de monde, une ligne toutes les
+            // soixante images.
+            //
+            // **Elle est ICI et non a l'entree de la fonction**, et c'est tout le sujet :
+            // `RunWorldMapTick` n'est PAS appelee une fois par image. Elle contient elle-meme la
+            // boucle d'images, et n'est donc entree qu'une fois par chargement de zone. Une sonde
+            // posee a son entree ne s'allume qu'une fois — ce qui s'est produit, et m'a fait croire
+            // un moment que la fonction ne tournait pas.
+            if (s_TraceScript && ++s_TickCount % 60 == 0)
+            {
+                Console.Error.WriteLine(
+                    $"[ETAT] image={s_TickCount} pas={s_WorldMapStep_005645f8} " +
+                    $"drapeaux=0x{Mem.s_WorldFlags_005de02c:x} " +
+                    $"9ae4=0x{*(uint*)Mem.Arena(0x005e9ae4) & 3} " +
+                    $"zone={Res.s_Unknown_005de528 & 0xff} sous-zone={s_Unknown_005de52c} " +
+                    $"x={*(int*)(Inp.s_SlotFlags_005e93c0 + (uint)(byte)Mem.s_Unknown_005de538 * 0x9c + 0x1c) >> 12}" +
+                    $" z={*(int*)(Inp.s_SlotFlags_005e93c0 + (uint)(byte)Mem.s_Unknown_005de538 * 0x9c + 0x24) >> 12}");
+            }
+
+            // Le mot de boutons du meneur, imprime a chaque CHANGEMENT. C'est ce qui manquait a
+            // toutes les sondes precedentes : elles disaient ce que le jeu faisait, aucune ne disait
+            // quand le joueur appuyait. Sans ce reperage, « rien ne se passe » ne se distingue pas
+            // de « l'appui n'a jamais ete vu ».
+            if (s_TraceScript)
+            {
+                uint padSlot = (uint)(byte)Mem.s_Unknown_005de538;
+                byte* padRecord = Inp.s_InputStateBase_00604a20
+                                + Inp.s_PlayerSlots_005e9188[padSlot * 0x4c] * 0x10;
+                uint buttons = *(uint*)padRecord;
+                if (buttons != s_LastButtons)
+                {
+                    s_LastButtons = buttons;
+                    Console.Error.WriteLine($"[TOUCHE] image={s_TickCount} boutons=0x{buttons:x8}");
+                }
+            }
+
             // Ghidra: FUN_0040a600(DAT_005de534) — corps vide, confirme dans Blaze.c.
             AnimatePalettes(Mem.s_MainResourceDirectory_005e97c4);   // Ghidra: FUN_00533000
             Aud.TickDelayedSounds();                                 // Ghidra: FUN_0053dc30
@@ -3605,12 +3641,38 @@ public static unsafe partial class Blaze
     /// insensible a la casse, deja documentee dans TODO.md.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Inventaire des creneaux qui retombent sur la souche vide, sous
+    /// <c>OPENFORESIA_TRACE_ENTITY=1</c> (<c>playtest.ps1 -Trace ENTITY</c>).
+    ///
+    /// <para>C'est le <b>cas silencieux</b> et donc le plus difficile a debusquer : un gestionnaire
+    /// absent leve en se nommant, un gestionnaire transcrit fait son travail, mais un creneau qui
+    /// vaut <c>0x00401FA0</c> ne fait rien <b>et ne le dit pas</b>. Quand un decor repond a moitie —
+    /// le couvercle du coffre s'ouvre mais le panneau ne vient pas — c'est la premiere chose a
+    /// regarder.</para>
+    ///
+    /// <para>Chaque creneau n'est imprime qu'une fois : la liste reste courte et se lit d'un coup,
+    /// la ou une trace par image serait illisible.</para>
+    /// </summary>
+    private static int s_TickCount;
+    private static uint s_LastButtons = 0xffffffff;
+
+    private static readonly bool s_TraceEntity =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_ENTITY") == "1";
+
+    private static readonly System.Collections.Generic.HashSet<string> s_SeenEmptySlots = new();
+
     private static void DispatchEntityHandler(uint target, byte* record, string where)
     {
         switch (target)
         {
             // Souche `ret` nu, verifiee dans Blaze.c.
-            case 0x00401FA0: return;
+            case 0x00401FA0:
+                if (s_TraceEntity && s_SeenEmptySlots.Add(where))
+                {
+                    Console.Error.WriteLine($"[SOUCHE] {where}");
+                }
+                return;
 
             // Le creneau « sous-type inconnu » de la table statique 0x00551c30 : il ETEINT
             // l'entite, il ne l'ignore pas. Soixante-neuf de ses 192 creneaux y pointent.
@@ -11476,6 +11538,36 @@ public static unsafe partial class Blaze
     /// etat 0. C'est la seule sortie du cycle.
     /// </para>
     /// </summary>
+
+    /// <summary>
+    /// L'appel indirect de <c>PTR_FUN_0056afac</c> — l'entree <b>57</b> de la table de verbes de
+    /// zone <c>0x0056aec8</c>, atteinte <b>hors de l'opcode 0</b> : c'est un decor qui appelle un
+    /// verbe directement, pas un script.
+    ///
+    /// <para>Meme discipline que <see cref="CallEntityHook_0056aff0"/> : le dispatch se fait sur la
+    /// valeur d'adresse, un cas par fonction transcrite, et tout le reste leve en se nommant. La
+    /// table etant installee par zone, l'adresse qui s'y trouve depend de l'endroit ou l'on est.</para>
+    /// </summary>
+    private static void CallAreaVerbSlot57(byte* entity)
+    {
+        uint target = Res.s_Vt_0056aec8[57];
+
+        switch (target)
+        {
+            // Souche `ret` nu : rien a faire. C'est ce que la reconstruction supposait pour TOUTES
+            // les zones jusqu'au 2026-08-25, ce qui rendait le coffre muet.
+            case 0x00401FA0: return;
+
+            case 0x0053DEA0: AreaVerb_0053DEA0(entity); return;
+
+            default:
+                throw new NotImplementedException(
+                    $"FUN_00450760, etat 4 : l'entree 57 de la table 0x0056aec8 vaut 0x{target:X6}, " +
+                    "pas encore reconstruite. C'est le verbe que le coffre appelle pour ouvrir son " +
+                    "panneau, atteint par PTR_FUN_0056afac et non par l'opcode 0 du script.");
+        }
+    }
+
     private static void EntityHandler_00450760(uint* entity)
     {
         byte* e = (byte*)entity;
@@ -11520,8 +11612,19 @@ public static unsafe partial class Blaze
 
             if (*(short*)(e + 0x12) > 0x1e)
             {
-                // Ghidra: (*(code *)PTR_FUN_0056afac)(param_1[0x1b], 0) - souche `ret` nu, voir
-                // le resume ci-dessus. Rien a emettre.
+                // Ghidra: `(*(code *)PTR_FUN_0056afac)(param_1[0x1b], 0)`.
+                //
+                // **Cet appel etait supprime, sur la foi d'une souche `ret` nu.** Il ne l'est pas :
+                // `0x0056afac` est l'entree **57** de la table 0x0056aec8 (l'ecart au debut vaut
+                // 0xe4, soit 57 dwords), et pour la zone 0 cette entree vaut `0x0053DEA0` — le
+                // verbe 57, celui qui ouvre le panneau. C'est ici, et nulle part ailleurs, que le
+                // coffre de la chambre demandait son interface.
+                //
+                // Trouve le 2026-08-25 en suivant a la trace un appui sur le coffre : la boite
+                // « Oui / Non » s'ouvrait, la reponse etait bien latchee, le script de reponse
+                // posait l'etat 4 — et l'etat 4 arrivait ici pour ne rien faire.
+                CallAreaVerbSlot57(*(byte**)(e + 0x6c));
+
                 *(short*)(e + 0x10) = 3;
                 *(short*)(e + 0x12) = 0;
                 UnfreezeAllEntities();                            // Ghidra: FUN_00535400
