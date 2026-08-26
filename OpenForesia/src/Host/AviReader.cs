@@ -44,6 +44,19 @@ internal sealed class AviReader : IDisposable
     internal int AudioSampleRate { get; private set; }
     internal int AudioBitsPerSample { get; private set; }
 
+    /// <summary>Taille d'un bloc ADPCM, en octets. 512 pour les films du jeu.</summary>
+    internal int AudioBlockAlign { get; private set; }
+
+    /// <summary>Échantillons rendus par bloc. 1012 pour les films du jeu.</summary>
+    internal int AudioSamplesPerBlock { get; private set; }
+
+    /// <summary>
+    /// Les couples de coefficients du prédicteur MS-ADPCM, **lus dans le fichier** et non
+    /// codés en dur : le format les transporte précisément pour qu'un encodeur puisse en choisir
+    /// d'autres. Ceux des films du jeu sont les sept couples habituels.
+    /// </summary>
+    internal short[,] AudioCoefficients { get; private set; } = new short[0, 2];
+
     private AviReader(FileStream file) => _file = file;
 
     /// <summary>
@@ -176,11 +189,35 @@ internal sealed class AviReader : IDisposable
             }
             else if (id == "strf" && size >= 16 && kind == "auds")
             {
-                if (!ReadExact(buffer, 16)) return false;
+                int wanted = (int)Math.Min(size, buffer.Length);
+                if (!ReadExact(buffer, wanted)) return false;
                 AudioFormatTag = BitConverter.ToUInt16(buffer, 0);
                 AudioChannels = BitConverter.ToUInt16(buffer, 2);
                 AudioSampleRate = BitConverter.ToInt32(buffer, 4);
+                AudioBlockAlign = BitConverter.ToUInt16(buffer, 12);
                 AudioBitsPerSample = BitConverter.ToUInt16(buffer, 14);
+
+                // La queue propre a MS-ADPCM : le nombre d'echantillons par bloc, puis le nombre de
+                // couples de coefficients, puis les couples eux-memes.
+                if (AudioFormatTag == 2 && wanted >= 22)
+                {
+                    int extra = BitConverter.ToUInt16(buffer, 16);
+                    if (extra >= 4 && wanted >= 18 + extra)
+                    {
+                        AudioSamplesPerBlock = BitConverter.ToUInt16(buffer, 18);
+                        int pairs = BitConverter.ToUInt16(buffer, 20);
+                        if (pairs > 0 && wanted >= 22 + pairs * 4)
+                        {
+                            var coefficients = new short[pairs, 2];
+                            for (int i = 0; i < pairs; i++)
+                            {
+                                coefficients[i, 0] = BitConverter.ToInt16(buffer, 22 + i * 4);
+                                coefficients[i, 1] = BitConverter.ToInt16(buffer, 24 + i * 4);
+                            }
+                            AudioCoefficients = coefficients;
+                        }
+                    }
+                }
             }
 
             _file.Position = body + size + (size & 1);
@@ -188,21 +225,26 @@ internal sealed class AviReader : IDisposable
         return true;
     }
 
+    internal enum ChunkKind { End, Video, Audio }
+
     /// <summary>
-    /// Le prochain bloc **vidéo** de la liste <c>movi</c>, recopié dans <paramref name="buffer"/>,
-    /// qui est agrandi si besoin. Rend la longueur utile, ou <c>-1</c> à la fin du film.
+    /// Le prochain bloc de la liste <c>movi</c>, recopié dans <paramref name="buffer"/>, qui est
+    /// agrandi si besoin. Rend sa longueur et son genre, ou <c>End</c> à la fin du film.
     ///
     /// <para>
     /// Le nom d'un bloc est <c>NNcc</c> : les deux chiffres donnent le numéro de flux, les deux
     /// lettres le genre — <c>dc</c> image compressée, <c>db</c> image brute, <c>wb</c> son. Les
-    /// blocs audio sont sautés ici ; le son n'est pas encore joué (voir MoviePlayback).
+    /// deux genres sortent **entrelacés dans l'ordre du fichier**, qui est celui du montage : le
+    /// son y précède légèrement l'image qu'il accompagne, ce qui donne l'avance dont la lecture a
+    /// besoin pour ne pas manquer de son.
     /// </para>
     /// </summary>
-    internal int NextVideoChunk(ref byte[] buffer)
+    internal ChunkKind NextChunk(ref byte[] buffer, out int length)
     {
+        length = 0;
         while (_file.Position + 8 <= _moviEnd)
         {
-            if (!ReadExact(_header, 8)) return -1;
+            if (!ReadExact(_header, 8)) return ChunkKind.End;
             string id = Fourcc(_header, 0);
             long size = (uint)BitConverter.ToInt32(_header, 4);
             long body = _file.Position;
@@ -215,18 +257,24 @@ internal sealed class AviReader : IDisposable
                 continue;
             }
 
-            if ((id.EndsWith("dc", StringComparison.Ordinal) || id.EndsWith("db", StringComparison.Ordinal))
-                && body + size <= _moviEnd)
+            ChunkKind kind = ChunkKind.End;
+            if (id.EndsWith("dc", StringComparison.Ordinal) || id.EndsWith("db", StringComparison.Ordinal))
+                kind = ChunkKind.Video;
+            else if (id.EndsWith("wb", StringComparison.Ordinal))
+                kind = ChunkKind.Audio;
+
+            if (kind != ChunkKind.End && size > 0 && body + size <= _moviEnd)
             {
                 if (buffer.Length < size) buffer = new byte[Math.Max(size, buffer.Length * 2)];
-                if (!ReadExact(buffer, (int)size)) return -1;
+                if (!ReadExact(buffer, (int)size)) return ChunkKind.End;
                 _file.Position = body + size + (size & 1);
-                return (int)size;
+                length = (int)size;
+                return kind;
             }
 
             _file.Position = body + size + (size & 1);
         }
-        return -1;
+        return ChunkKind.End;
     }
 
     public void Dispose() => _file.Dispose();

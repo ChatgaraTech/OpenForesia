@@ -109,7 +109,7 @@ cadence lue dans l'en-tête du film, et une touche les passe.
 | décodage Indeo 4 | `Platform/IndeoCodec.cs` | la DLL du CD, ni installée ni enregistrée |
 | cadence, affichage, abandon | `Host/MoviePlayback.cs` | horloge du film, `StretchDIBits` en 640×480 |
 | branchement | `Engine/Video.cs`, `TrySetupMovieStream` | remplace le graphe DirectShow introuvable |
-| **le son** | — | **pas encore joué**, voir ci-dessous |
+| son MS-ADPCM | `Host/MsAdpcm.cs`, `Host/WaveOut.cs` | décodé et joué, **validé contre le décodeur de Windows** |
 
 **Le pas-à-pas ne passe pas par le minuteur de 100 ms de l'original.** Les films sont à 15 im/s, soit
 66,7 ms : un minuteur Windows à 100 ms ne saurait pas les tenir. La boucle de lecture avance donc
@@ -126,12 +126,37 @@ zéro.
 **Conséquence sur les tests** : `playtest.ps1` attend désormais **30 secondes** par défaut avant de
 chercher le menu, contre 12 auparavant — `TEPS.AVI` dure 21 secondes.
 
-### Ce qui reste : le son
+### Le son
 
-Les films portent une piste **MS-ADPCM mono 22 050 Hz**, et elle n'est pas jouée. Il faut la
-décoder — une table de sept couples de coefficients et une boucle, une centaine de lignes sans
-dépendance — puis la faire sortir par le chemin audio du jeu, en la tenant synchronisée avec
-l'horloge des images. C'est le prochain morceau.
+Les films portent une piste **MS-ADPCM mono 22 050 Hz**, blocs de 512 octets, 1 012 échantillons par
+bloc, sept couples de coefficients — **lus dans le fichier**, pas codés en dur : le format les
+transporte précisément pour qu'un encodeur puisse en choisir d'autres.
+
+Elle sort par `waveOut` de winmm, et non par le chemin DirectSound du jeu : les cinématiques
+tournent avant lui, sur un thread qui ne fait que pomper des messages, et les brancher l'un sur
+l'autre ferait dépendre le démarrage d'un sous-système que le film n'a aucune raison d'attendre.
+`waveOut` donne en prime **une position de lecture en échantillons**, qui sert d'horloge au film.
+
+#### La leçon : un décodeur audio ne se relit pas
+
+La première version divisait par 256 là où il faut **décaler de 8 bits**. Les deux ne diffèrent que
+d'une unité, et seulement sur les valeurs négatives — mais le résultat repart dans le prédicteur de
+l'échantillon suivant, donc l'écart s'accumule au lieu de s'annuler. Mesuré : **64 % des
+échantillons divergeaient**, d'un écart allant jusqu'à 309. Assez pour que le son sonne faux, pas
+assez pour qu'une forme d'onde paraisse anormale, et parfaitement invisible à la lecture du code.
+
+Ce qui l'a trouvé : **`msadp32.acm`, le décodeur MS-ADPCM de Windows**, qui est sur toute machine et
+s'atteint par `acmStreamOpen` / `acmStreamConvert`. `OpenForesia.Tools\check-movie-audio.ps1`
+décode les mêmes blocs des deux façons et compare échantillon par échantillon ; il rend maintenant
+« IDENTIQUE » sur 476 652 échantillons.
+
+```powershell
+powershell -File OpenForesia.Tools\check-movie-audio.ps1 -Avi E:\French\Teps.AVI -Wav son.wav
+```
+
+C'est la même leçon que celle du carré noir de l'auberge, sur un autre sens : **ce qui n'est pas
+comparé à une référence n'est pas vérifié.** Pour tous les formats d'époque, Windows en fournit
+une.
 
 ## Et si on voulait écrire le codec à la main ?
 

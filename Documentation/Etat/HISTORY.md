@@ -7,6 +7,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ## 2026-08-26
 
 - doc : **l'utilisation des objets est gelée** — chantier suspendu à la demande du Responsable, le test (boire une potion, un équipement qui réagit) est noté dans `TODO.md` **pour le premier donjon et à la charge du Responsable**
+- feat : **le son des cinématiques se joue** — MS-ADPCM décodé par `Host/MsAdpcm.cs`, sorti par `Host/WaveOut.cs` (winmm), et c'est **la position de lecture du périphérique audio qui sert d'horloge au film** : l'image ne peut pas dériver du son sur trois minutes
+- fix : **`>> 8` et non `/ 256` dans le prédicteur MS-ADPCM** — les deux ne diffèrent que d'une unité sur les négatifs, mais le résultat repart dans le prédicteur suivant : **64 % des échantillons divergeaient**, jusqu'à 309 d'écart. Assez pour sonner faux sans qu'aucune forme d'onde paraisse anormale
+- feat : `OpenForesia.Tools/check-movie-audio.ps1` — compare notre décodeur à **`msadp32.acm`, celui de Windows**, échantillon par échantillon ; c'est lui qui a trouvé l'écart, et il rend maintenant « IDENTIQUE » sur 476 652 échantillons
+- doc : la leçon — **un décodeur audio ne se relit pas à l'oreille ni à l'œil** ; il faut une référence, et Windows en fournit une pour tous les formats d'époque
+- feat : les images sont mises en réserve **compressées** en attendant leur tour — anticiper le son oblige à traverser les blocs vidéo entrelacés, et les décoder au passage ferait courir l'image devant le son
 - feat : **LES CINÉMATIQUES SE JOUENT** — `TEPS.AVI` puis `OPENING.AVI` au démarrage, image par image à la cadence du film, une touche les passe ; le décodeur Indeo 4 du CD (`ir41_32.ax`) est intégré comme les cinq autres DLL de 1998, ni installé ni enregistré dans le système
 - feat : `Host/AviReader.cs` — démultiplexeur AVI **en flux** : `opening.avi` pèse 463 Mo sur le CD pour 28 Mo déclarés, le charger entier coûterait un demi-gigaoctet sur le chemin de démarrage
 - feat : `Platform/IndeoCodec.cs` et `Host/MoviePlayback.cs` — le codec par `ICOpenFunction`, la cadence sur l'horloge du film (15 im/s, pas le minuteur de 100 ms de l'original), l'affichage par la surface GDI de démarrage en 640×480
