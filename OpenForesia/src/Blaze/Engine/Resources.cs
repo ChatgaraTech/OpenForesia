@@ -45,7 +45,7 @@ namespace OpenForesia.Blaze;
 /// Instanciee UNE FOIS, par <c>Subsystems.cs</c>.
 /// </para>
 /// </summary>
-internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input inp, Audio aud)
+internal sealed unsafe partial class Resources(GameMemory mem, Primitives2d prims, Input inp, Audio aud)
 {
     // =====================================================================
     // Resource-file loader subsystem (Ghidra: FUN_00529b00/FUN_00529b50/FUN_00532070/FUN_005322f0/
@@ -175,97 +175,21 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
     // ---------------------------------------------------------------------------------------
     // Les sept tables de sauts d'entites (Ghidra: la branche DAT_00600904 de FUN_0052a660).
     // ---------------------------------------------------------------------------------------
-
     /// <summary>
     /// Ghidra: les sept tables que la branche <c>DAT_00600904</c> installe d'affilee. Chacune est
-    /// choisie dans une table de pointeurs indexee par <c>zone * 0x10 + sous-zone</c> ; les valeurs
-    /// ci-dessous sont celles de l'**index 0**, la seule que la carte du monde atteint, relevees
-    /// dans <c>Legacy/Binaries/Blaze.exe</c> et **generees mecaniquement** plutot que recopiees a la main.
+    /// choisie dans une table de pointeurs indexee par <c>zone * 0x10 + sous-zone</c> ; les 176
+    /// index des onze zones sont releves dans <c>EntityVTables.cs</c>, fichier **genere** par
+    /// <c>OpenForesia.Tools/dump-entity-vtables.sh</c> — aucune de ces valeurs n'est ecrite a la
+    /// main.
     ///
-    /// <para><c>0x00401FA0</c> revient partout : c'est la fonction au corps vide. La table
-    /// <c>0056adc8</c> est la seule pleine — soixante-quatre entrees, dont dix-neuf distinctes puis
-    /// <c>0x004734B0</c> repete, la forme classique d'une table virtuelle avec son gestionnaire par
-    /// defaut.</para>
+    /// <para>Jusqu'au 2026-08-26 seul l'index 0 etait releve, et tout autre index levait. Ses
+    /// valeurs n'ont pas bouge : le releve mecanique les redonne entree pour entree, et c'est ce
+    /// qui a servi de controle au generateur.</para>
+    ///
+    /// <para><c>0x00401FA0</c> revient partout : c'est la fonction au corps vide. Le bloc
+    /// <c>0x0056B3C8</c>, lui, est soixante-quatre fois <c>FUN_00536170</c> — <b>l'arret
+    /// fatal</b> : c'est ce que le jeu installe pour les sous-zones qui n'existent pas.</para>
     /// </summary>
-    private readonly uint[] s_VtSource_0056ad48 =
-    [
-        0x00486EE0, 0x00487260, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-    ];
-
-    private readonly uint[] s_VtSource_0056adc8 =
-    [
-        0x004734B0, 0x004734B0, 0x004736D0, 0x004738A0, 0x00473A90, 0x00473CB0, 0x00473A70, 0x00473A70,
-        0x004508D0, 0x004509B0, 0x00450AA0, 0x00450BD0, 0x00450C60, 0x00473ED0, 0x004746C0, 0x004508B0,
-        0x00450760, 0x004502E0, 0x00450D30, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
-        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
-        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
-        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
-        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
-        0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0, 0x004734B0,
-    ];
-
-    private readonly uint[] s_VtSource_0056aec8 =
-    [
-        0x00443100, 0x00443260, 0x004430B0, 0x00442F60, 0x00442F20, 0x00442E70, 0x00442EA0, 0x00442E20,
-        0x00445840, 0x004431F0, 0x004441F0, 0x00442E10, 0x00442DB0, 0x004457F0, 0x00442D90, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x0053DD20, 0x0053DEA0, 0x0053DF20, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-    ];
-
-    private readonly uint[] s_VtSource_0056afc8 =
-    [
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x0053DCB0, 0x00401FA0, 0x0053DF90, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-    ];
-
-    private readonly uint[] s_VtSource_0056b0c8 =
-    [
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00404EF0, 0x004055C0, 0x00405A70, 0x00405D60, 0x00405E70, 0x00405FE0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00404B90, 0x00404E50,
-    ];
-
-    private readonly uint[] s_VtSource_0056b1c8 =
-    [
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-    ];
-
-    private readonly uint[] s_VtSource_0056b2c8 =
-    [
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0,
-        0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00401FA0, 0x00404C80,
-    ];
 
     /// <summary>Les sept tables actives, dans l'ordre ou l'original les remplit.</summary>
     internal readonly uint[] s_Vt_0056ad48 = new uint[0x20];   // lue par la passe FUN_0050e680
@@ -278,24 +202,51 @@ internal sealed unsafe class Resources(GameMemory mem, Primitives2d prims, Input
 
     private void InstallEntityVTables(int index)
     {
-        if (index != 0)
+        // Le binaire ne borne pas l'index par le haut : il ne teste que la sous-zone (> 0xf =
+        // arret fatal), et une zone au-dela de 10 lirait donc au-dela des sept tables. Ici la
+        // lecture hors bornes est nommee au lieu de rendre n'importe quoi.
+        if ((uint)index >= (uint)s_VtPtr_00566d98.Length)
             throw new NotImplementedException(
-                $"Tables de sauts d'entites, index {index} (zone * 0x10 + sous-zone) : seules les " +
-                "valeurs de l'index 0 sont relevees dans Legacy/Binaries/Blaze.exe. Relever les sept " +
-                "tables de cet index avant d'aller plus loin — voir REVERSE_STATUS.md");
+                $"Tables de sauts d'entites, index {index} (zone * 0x10 + sous-zone) : au-dela des " +
+                $"{s_VtPtr_00566d98.Length} entrees relevees (onze zones de seize). L'original " +
+                "lirait la .data suivante ; c'est une zone hors carte, donc une destination fausse " +
+                "en amont — remonter a DAT_005de528 / DAT_005de52c.");
 
-        Array.Copy(s_VtSource_0056ad48, s_Vt_0056ad48, s_Vt_0056ad48.Length);
-        Array.Copy(s_VtSource_0056adc8, s_Vt_0056adc8, s_Vt_0056adc8.Length);
-        Array.Copy(s_VtSource_0056aec8, s_Vt_0056aec8, s_Vt_0056aec8.Length);
-        Array.Copy(s_VtSource_0056afc8, s_Vt_0056afc8, s_Vt_0056afc8.Length);
-        Array.Copy(s_VtSource_0056b0c8, s_Vt_0056b0c8, s_Vt_0056b0c8.Length);
-        Array.Copy(s_VtSource_0056b1c8, s_Vt_0056b1c8, s_Vt_0056b1c8.Length);
-        Array.Copy(s_VtSource_0056b2c8, s_Vt_0056b2c8, s_Vt_0056b2c8.Length);
+        CopyEntityVTable(s_VtPtr_00566d98[index], s_Vt_0056ad48);
+        CopyEntityVTable(s_VtPtr_00567058[index], s_Vt_0056adc8);
+        CopyEntityVTable(s_VtPtr_00567318[index], s_Vt_0056aec8);
+        CopyEntityVTable(s_VtPtr_005675d8[index], s_Vt_0056afc8);
+        CopyEntityVTable(s_VtPtr_00567898[index], s_Vt_0056b0c8);
+        CopyEntityVTable(s_VtPtr_00567b58[index], s_Vt_0056b1c8);
+        CopyEntityVTable(s_VtPtr_00567e18[index], s_Vt_0056b2c8);
 
         // Ghidra: les onze initialiseurs appeles a la suite des sept copies.
         Init_004502d0(); Init_0045a220(); Init_0045c1f0(); Init_0045e200(); Init_004610a0();
         Init_00467c00(); Init_00468570(); Init_0046a770(); Init_0046c530(); Init_0046e2b0();
         Init_00470250();
+    }
+
+    /// <summary>
+    /// Une des sept boucles de recopie de <c>FUN_0052a660</c> : le bloc dont l'adresse est
+    /// <paramref name="sourceVa"/> passe dans la table active <paramref name="dest"/>.
+    ///
+    /// <para>L'original deference un pointeur ; ici le bloc est cherche par dichotomie dans
+    /// <see cref="s_VtBlockVa"/>, ce qui a l'avantage de <b>nommer l'adresse</b> si elle manque au
+    /// releve au lieu de lire a cote.</para>
+    /// </summary>
+    private void CopyEntityVTable(uint sourceVa, uint[] dest)
+    {
+        int lo = 0, hi = s_VtBlockVa.Length - 1;
+        while (lo <= hi)
+        {
+            int mid = (lo + hi) / 2;
+            if (s_VtBlockVa[mid] == sourceVa) { Array.Copy(s_VtBlock[mid], dest, dest.Length); return; }
+            if (s_VtBlockVa[mid] < sourceVa) lo = mid + 1; else hi = mid - 1;
+        }
+
+        throw new NotImplementedException(
+            $"Tables de sauts d'entites : le bloc 0x{sourceVa:x8} n'est pas dans le releve de " +
+            "EntityVTables.cs. Regenerer avec OpenForesia.Tools/dump-entity-vtables.sh.");
     }
 
     /// <summary>L'appel indirect a travers une des sept tables. Comme

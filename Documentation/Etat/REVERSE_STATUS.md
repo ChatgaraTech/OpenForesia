@@ -14746,3 +14746,422 @@ Transcrit et compile, pas execute — les tests sont a la charge du Responsable 
 travail arrive apres, dans `RunDestinationSelect` et dans le rechargement qui suit, et ce chemin-la
 peut tres bien buter sur autre chose qui n'est pas encore transcrit. Corriger l'opcode 30 garantit
 que le jeu ne s'arrete plus **ici**.
+
+---
+
+## 2026-08-26 (suite 3) — les sept tables de sauts d'entites, pour les onze zones
+
+**Le plantage.** Entrer dans la foret depuis la carte du monde leve
+`Tables de sauts d'entites, index 48 (zone * 0x10 + sous-zone) : seules les valeurs de l'index 0
+sont relevees.` Index 48 = zone 3, sous-zone 0.
+
+### Ce que le relevé a montré, et pourquoi il valait mieux tout prendre d'un coup
+
+`FUN_0052a660` (Blaze.c 75118) choisit sept blocs dans **sept tables de pointeurs contigues** et les
+recopie sur les sept tables actives `0x0056ad48 .. 0x0056b2c8`. Ces tables de pointeurs sont
+`PTR_PTR_00566d98`, `00567058`, `00567318`, `005675d8`, `00567898`, `00567b58`, `00567e18` —
+espacees de `0x2C0` exactement, soit **176 pointeurs chacune : onze zones de seize sous-zones**.
+
+Le dépôt en avait relevé **un seul index sur 176**, à la main. La suite aurait été 175 allers-retours
+d'une session chacun. Trois faits, tous vérifiables en une commande, ont montré que ce n'était pas
+nécessaire :
+
+- les sept tables sont contigues et de taille connue → un seul `od` de 4 928 octets les donne toutes ;
+- elles ne citent que **197 blocs distincts** (29 par colonne, dont `0x0056B3C8` partagé par les
+  sept) — pas 1 232 ;
+- les blocs pointés forment un pool **contigu** de `0x00553288` à `0x0055E8A8`, juste avant
+  `s_AreaHandlerSource_0055e8a8` qui était déjà relevé.
+
+D'où `OpenForesia.Tools/dump-entity-vtables.sh`, qui régénère
+`OpenForesia/src/Blaze/Engine/EntityVTables.cs` : 7 × 176 adresses + 11 712 entrées de bloc. **Aucune
+valeur n'est écrite à la main.**
+
+### Le contrôle qui rend le relevé sûr
+
+Les sept blocs de l'index 0 relevés mécaniquement sont **identiques, entrée pour entrée**, aux sept
+tables `s_VtSource_*` qui étaient écrites à la main dans `Resources.cs` depuis des mois. Sept `diff`
+vides. Le générateur est donc validé contre du connu avant d'être cru sur les 27 autres jeux, et
+l'index 0 ne peut pas avoir régressé.
+
+### Deux choses que le relevé apprend au passage
+
+**`0x0056B3C8` n'est pas la souche vide.** C'est le bloc que les sept tables donnent à toute
+sous-zone inexistante, et il porte soixante-quatre fois `FUN_00536170` — **l'arret fatal**. Une
+sous-zone qui n'existe pas ne se traverse pas en silence : elle tue le processus. C'est le pendant du
+`if (0xf < sous-zone) FUN_00536170()` déjà transcrit, pour le cas où l'index est dans la table mais
+la zone vide.
+
+**La carte des zones est complete** : onze zones (0..10) ont un contenu, et le nombre de sous-zones
+par zone se lit directement dans la table — zone 0 : 1 ; zones 1, 3, 5 : 10 ; zone 4 : 11 ; zone 6 :
+12 ; zone 7 : 3 ; zones 8, 9 : 2 ; zone 10 : **16**, la seule pleine.
+
+### Ce que la forêt va exercer, et ce qu'elle va lever
+
+Les tables de la zone 3 ne ressemblent pas à celles de la zone 0 : **25 des 64 gestionnaires
+d'entité** (`0x0056adc8`) et **15 des 64 verbes** (`0x0056aec8`) changent. Ces adresses-là ne sont
+pour la plupart pas transcrites, et `CallEntityHandler` lèvera en les nommant — ce qui est le
+comportement voulu.
+
+Un détail rassure sur le chemin par image : dans `0x0056afc8`, les entrées 8 et 10 — les deux que
+`RunWorldMapTick` appelle à chaque image — valent `0x00401FA0` (corps vide) pour la zone 3, là où la
+zone 0 y mettait `0x0053DCB0` et `0x0053DF90`. Elles ne lèveront pas.
+
+**Ce que cette suite corrige dans ce qui précède** : l'affirmation de la suite du 2026-08-25
+(« `InstallEntityVTables` leve pour tout index non nul ») n'est plus vraie. Les 176 index sont
+relevés ; seuls les *gestionnaires* qu'ils désignent restent à transcrire.
+
+### Non exerce
+
+Transcrit, généré, compilé, contrôlé contre l'index 0 — pas exécuté. Les tests sont à la charge du
+Responsable.
+
+---
+
+## 2026-08-26 (suite 4) — les verbes de la foret : le premier, et la carte du reste
+
+**Le plantage.** `Interpreteur de script, opcode 0 : verbe 6 = 0x443260, pas encore reconstruit.`
+
+Premiere chose a verifier, et elle rassure : `0x00443260` **est** l'entree 6 de la table de la
+zone 3 (`0x005554a8`), et c'est l'entree **1** de la zone 0. Le releve de la suite 3 tient donc au
+runtime, et la forme du dispatch — un `switch` sur l'**adresse**, pas sur l'indice — encaisse le
+remappage sans rien changer. C'etait le pari de cette forme ; il est gagne.
+
+### `FUN_00443260` — le « tout effacer » de la memoire de script
+
+53 octets, absente de `Blaze.c`, relevee au desassembleur
+(`Legacy/Raw/Blaze/AreaVerbs/FUN_00443260.asm`). Quatre `rep stosd` de `0x10` mots sur
+`0x005e9840`, `0x005e9060`, `0x005e9780`, `0x005e96e0` — les banques **3, 2, 1 et 0**, c'est-a-dire
+exactement les quatre bancs que servent les opcodes 4 a 7 de l'interpreteur. Ce verbe remet a zero
+toute la memoire de script de la zone.
+
+Elle rend **0** : le `xor eax,eax` de `0x00443266` sert de valeur aux `stosd`, et `rep stosd` ne
+touche pas EAX.
+
+### Deux voisines prises dans la foulee
+
+Le desassemblage de la plage entiere etait deja tire ; deux verbes de la meme table y tenaient en
+quelques instructions, transcrits dans le meme passage :
+
+- **`FUN_00442E10`** (11 octets) — rend le bit 0 de `0x00563c77`. C'est un verbe de **test**.
+  L'adresse est un piege deja tranche le 2026-08-23 : ce n'est pas une globale mais le champ
+  `+0x8c7` du descripteur `0x005633b0`, et la boite de dialogue etait restee invisible pour l'avoir
+  modelisee en `static byte`. La transcription passe par `s_Unknown_00563c77`.
+- **`FUN_004432E0`** (19 octets) — si `0x005e9001` porte `0x10`, efface le bit 0 de
+  `s_StateBank3_005e9840 + 1`. Rend 0 par les deux chemins.
+
+### Ce qui reste dans cette table, et ce que ca coute
+
+La zone 3 cite **13 verbes distincts** hors souche ; cinq sont maintenant couverts (les trois
+ci-dessus, plus `0x004441F0` la souche a zero et `0x00401FA0` la souche nue). Les huit qui restent,
+mesures au desassembleur — la taille est jusqu'au premier `ret`, donc un minorant :
+
+| verbe | indice en zone 3 | taille | appels |
+|---|---:|---:|---:|
+| `0x004457F0` | 63 | 28 | 1 |
+| `0x00445840` | 8 | 28 | 1 |
+| `0x00445480` | 62 | 61 | 0 |
+| `0x004439A0` | 10 | 83 | 0 |
+| `0x00443830` | 9 | 108 | 0 |
+| `0x004431F0` | 12 | 109 | 0 |
+| `0x004438A0` | 5 | 179 | 0 |
+| `0x00443300` | 14 | 171 | 1 |
+| `0x004433B0` | 13 | ≥ 1150 | 0 |
+
+Le desassemblage de toute la plage est disponible sans nouvel outillage :
+`disasm Legacy/Binaries/Blaze.exe 0x00442e10 10992`. **Rappel de la suite 3** : une taille n'est pas
+une difficulte — `FUN_004747F0` faisait 723 octets et est sortie en une passe.
+
+### Non exerce
+
+Compile, pas execute. Quel verbe la foret appelle ensuite, seul le jeu le dit — c'est exactement ce
+pour quoi `OPENFORESIA_TRACE_VERBS=1` existe.
+
+---
+
+## 2026-08-26 (suite 5) — le premier gestionnaire propre a une zone, et le chantier qui s'ouvre
+
+**Le plantage.** `FUN_0050e5e0, table 0x005fa5e0 entree 58, sous-type 32 : gestionnaire d'entite
+0x456730 non transcrit.`
+
+**C'est la confirmation que le releve des onze zones tient au runtime.** Le sous-type 32 renvoie a
+`0x004734B0`, le gestionnaire par defaut, dans la zone 0 — et a `0x00456730` dans le bloc
+`0x005553a8`, celui de la zone 3. La valeur lue par le jeu est celle du releve, entree pour entree.
+C'est le premier gestionnaire **propre a une zone** que le depot exerce.
+
+### `FUN_00456730` — vingt-deux octets
+
+Absente de `Blaze.c`, relevee au desassembleur (`Legacy/Raw/Blaze/FUN_00456730.asm`) :
+
+```
+mov eax,[esp+4] ; mov ecx,0C00h ; mov [eax+28h],cx ; mov [eax+2Ah],cx ; mov [eax+2Ch],cx ; ret
+```
+
+`+0x28`, `+0x2a`, `+0x2c` sont l'echelle X, Y, Z de l'enregistrement, `0x1000` valant l'unite — c'est
+ce que `SpawnEntityFormation` y ecrit pour une entite a taille normale. `0x0C00` est donc **trois
+quarts** : ce decor de foret nait plus petit que son modele. Rien d'autre n'est touche.
+
+### Ce qui reste dans la table de la foret, et pourquoi je m'arrete la
+
+La table `0x0056adc8` de la zone 3 compte **18 gestionnaires encore non transcrits**, et — a la
+difference des verbes de la suite 4 — **aucun n'est trivial**. Mesure au desassembleur (taille
+jusqu'au premier `ret`, donc un minorant ; le compte d'appels est ce qui predit vraiment le cout) :
+
+| gestionnaire | sous-type(s) | taille | appels |
+|---|---:|---:|---:|
+| `0x004571D0` | 22 | 103 | 3 |
+| `0x004566C0` | 33 | 110 | 1 |
+| `0x00457240` | 19 | 122 | 0 |
+| `0x00458170` | 31 | 133 | 1 |
+| `0x00457140` | 23 | 142 | 4 |
+| `0x00457E20` | 8 | 152 | 3 |
+| `0x00457FC0` | 34 | 172 | 4 |
+| `0x00456E80` | 25 | 183 | 3 |
+| `0x00457770` | 17 | 197 | 1 |
+| `0x00456F40` | 24 | 234 | 5 |
+| `0x004746F0` | 26 | 242 | 1 |
+| `0x00457EC0` | 9 | 256 | 2 |
+| `0x00456CF0` | 27 | 395 | 5 |
+| `0x00457BF0` | 16 | 503 | 8 |
+| `0x00456A30` | 29 | 666 | 6 |
+| `0x00456750` | 30 | 734 | 10 |
+| `0x00457370` | 18 | 946 | 10 |
+| `0x00474380` | 15 | non mesure | — |
+
+Le plus petit fait 103 octets avec trois appels ; la moitie en portent quatre ou plus, donc chacun
+tire des appelees qui peuvent elles-memes manquer. **Les transcrire d'avance serait un chantier de
+plusieurs jours pour des sous-types dont rien ne dit qu'ils apparaissent** : la foret n'en a
+exerce qu'un jusqu'ici.
+
+La bonne facon d'y aller est celle que le depot s'est donnee : laisser le jeu nommer le suivant.
+`OPENFORESIA_TRACE_SCRIPT=1` et `OPENFORESIA_TRACE_VERBS=1` sont faits pour ca, et le message de
+lacune porte deja les seize premiers octets de l'enregistrement.
+
+Le desassemblage de la plage entiere se retire sans nouvel outillage :
+`disasm Legacy/Binaries/Blaze.exe 0x004566c0 7000`.
+
+### Non exerce
+
+Compile, pas execute.
+
+---
+
+## 2026-08-26 (suite 6) — la trace de script en jeu, et le sous-type 31
+
+**Deux runs `playtest.ps1`, a la demande de Vincent.** Le premier avec `-Trace SCRIPT`, le second
+avec `-Trace SCRIPT,VERBS`.
+
+### Ce que la trace etablit
+
+Quinze opcodes distincts tournent sur le trajet auberge → foret, et **tous les quinze sont deja
+transcrits**. La repartition est tres inegale :
+
+| opcode | executions | |
+|---:|---:|---|
+| 4, 6, 16, 3 | 564, 522, 463, 317 | 97 % du total |
+| 9 | 48 | |
+| 0, 1, 2, 13, 14, 18, 19, 28, 29 | 1 a 7 | |
+| **30** | **1** | la sortie de l'auberge |
+
+**L'opcode 30 tourne une fois de tout le run** — c'est la confirmation en jeu de la transcription de
+la suite 2, et la preuve qu'un opcode rare n'est pas un opcode secondaire : celui-la est le seul
+chemin hors du batiment.
+
+Les lanceurs de script sont eux aussi comptes : `RunEntityScriptList` (index 8 et 9) et
+`TestTriggerVolumes_00534CD0` (index 0 et 3) font l'essentiel ; `RunWorldMapTick`,
+`ResolveEntityContact_00534330`, `Handler_00544bc0` et trois autres lancent chacun un script isole.
+
+Cote verbes, la salle d'arrivee n'en appelle que deux (3 → `0x00442F60`, 10 → `0x004441F0`), tous
+deux couverts. **La table de verbes n'est donc pas ce qui bloque** ; les gestionnaires d'entite le
+sont.
+
+### `FUN_00458170` — le sous-type 31, un decor qui parle
+
+133 octets, absente de `Blaze.c` (`Legacy/Raw/Blaze/FUN_00458170.asm`). Une machine a trois etats
+sur `+0x10` :
+
+- **etat 0** — repos. Se declenche quand les quatre bits bas de `+0x9` (le champ de contact) sont
+  poses : lie le texte, passe a l'etat 2 avec un compte de 3 en `+0x12` ;
+- **etat 2** — compte a rebours de trois images vers l'etat 1 ;
+- **etat 1** — attend que le contact cesse pour revenir a 0.
+
+C'est ce qui empeche le decor de reparler a chaque image tant qu'on reste appuye contre lui.
+
+Le sujet du texte a un **repli** : `+0x70` designe l'entite concernee, et quand il est nul c'est
+`s_EntityList_005de558`, l'enregistrement neutre remis a zero a chaque chargement de zone. Le bit
+`0x10000` (« ecarte ») de son mot de tete annule l'affichage **sans annuler le changement d'etat** —
+le decor consomme le contact meme quand il ne dit rien. Le bloc d'etiquettes vient de la table
+`+0x70` du repertoire de zone, indexee par `+0x16` lu en `movsx`, donc **signe**.
+
+### Ce que les deux runs n'ont pas etabli
+
+Le second run n'a pas atteint la foret : 557 primitives par image et une capture montrant
+« - La reception - », c'est-a-dire la salle d'arrivee. Sortir de l'auberge demande de conduire le
+personnage, ce qui reste le partage du 2026-08-24. **La transcription de `FUN_00458170` n'est donc
+pas exercee** ; elle compile, et c'est tout ce qui est acquis.
+
+Il reste **17 gestionnaires** dans la table de la foret (carte des tailles en suite 5).
+
+---
+
+## 2026-08-26 (suite 7) — huit gestionnaires de la foret, et ou le bloc s'arrete
+
+Vincent a demande les dix-sept d'un bloc. **Huit sont transcrits, un est bloque, huit restent.** Le
+detail de ce partage compte plus que le compte : ils ne sont pas restes pour la meme raison.
+
+### Ce que la lecture des dix-sept a d'abord appris
+
+**Quatre des cinq « appelees manquantes » n'en etaient pas.** `0x00545A10`, `0x00545A16` et
+`0x00545A1C` sont des **thunks d'import** — `jmp dword [IAT]` — et les slots resolvent aux ordinaux
+**442, 450 et 451** de `winsys3d`, c'est-a-dire `SquareRoot0`, `GetCosTableEntry` et
+`GetSinTableEntry`, tous trois deja lies dans `Interop/Winsys3d.cs`. Une adresse dans `.text` qui ne
+ressemble a rien peut n'etre qu'un saut vers une DLL ; le verifier coute un `od` sur `.idata`.
+
+**`FUN_004580E0` est la troisieme sœur** de `TryPlaySoundNearEntity` et
+`TryPublishCameraEffectNearEntity` : meme calcul de distance a la camera, memes six arguments, meme
+convention `stdcall` d'`Ordinal_442`. Deux differences seulement — la portee est un **argument** au
+lieu d'une constante, et le gain **decroit lineairement avec la distance** avant de partir sur les
+deux voies, donc le son est **non positionnel**. Le patron etait deja au depot ; il n'a fallu que le
+relire.
+
+### Les huit transcrits
+
+| sous-type | fonction | ce qu'il fait |
+|---:|---|---|
+| 33 | `FUN_004566C0` | chuchote toutes les vingt images, a portee 3000 |
+| 22 | `FUN_004571D0` | balance : `+0x34 = sin(phase) >> 5`, phase et vitesse tirees au hasard |
+| 23 | `FUN_00457140` | respire : la meme phase module l'**echelle** `+0x28`/`+0x2c` autour de `0xED8` |
+| 19 | `FUN_00457240` | tombe, rebondit, puis flotte — le bit `0x40000000` separe les deux moities |
+| 25 | `FUN_00456E80` | lance un script sur le meneur a chaque image, s'eteint au trentieme tour |
+| 9 | `FUN_00457EC0` | **dalle de pression** : pose un bit dans le banc `0x005e96e0` |
+| 34 | `FUN_00457FC0` | tremble sur place autour d'une position memorisee en `+0x44` |
+| 31 | `FUN_00458170` | parle au contact (suite 6) |
+
+plus les deux appelees `CountPartyMembersMatching` (`FUN_00535000`) et `TryPlayDistanceSound`
+(`FUN_004580E0`).
+
+**Le plus interessant des huit est la dalle.** C'est le premier decor transcrit qui **ecrit dans la
+memoire de script** : `+0x16` est un numero de bit global, l'octet est `+0x16 / 8` et le bit
+`+0x16 % 8`, dans le banc que sert l'opcode 4 de l'interpreteur. Et elle **n'efface jamais le
+bit** — la relachee ne fait que remonter la dalle. C'est un declencheur a sens unique, ce qui
+explique comment un script sait qu'on est passe quelque part.
+
+**Deux idiomes reviennent partout** et se transcrivent mal si on les lit vite :
+
+- `cdq ; xor eax,edx ; sub eax,edx ; and eax,N-1 ; xor ; sub` n'est **pas** un masque, c'est le
+  **reste signe** `% N` pour N puissance de deux. Le masque seul changerait le resultat sur un
+  tirage negatif ;
+- `cdq ; and edx,7 ; add eax,edx ; sar eax,3` est la **division signee par 8** avec arrondi vers
+  zero.
+
+### Le bloque, et pourquoi il l'est
+
+**Sous-type 8, `FUN_00457E20`** (152 octets) — son corps est lu et compris : il teste les vitesses
+`+0x50` et `+0x58` contre `0x2000`, joue un son au franchissement avec un verrou de quinze images
+en `+0x98`, puis appelle `TestTriggerVolumes_00534CD0` et remet les trois vitesses a zero. Mais sa
+**premiere instruction utile est `FUN_00455B30(entite, 0x88C2)`**, une fonction de 200 octets et
+plus qui monte un cadre de pile d'une quinzaine de champs pour appeler `FUN_005330D0`. La
+transcrire est un chantier a part entiere, et l'ecrire au jugé donnerait un decor qui bouge faux
+sans rien dire. **Laisse en lacune nommee.**
+
+### Les huit qui restent, par cout croissant
+
+| sous-type | fonction | taille | appelees encore absentes |
+|---:|---|---:|---|
+| 26 | `FUN_004746F0` | 242 | — |
+| 24 | `FUN_00456F40` | 234 | — |
+| 15 | `FUN_00474380` | non mesuree | — |
+| 27 | `FUN_00456CF0` | 395 | `FUN_0045DA40` |
+| 16 | `FUN_00457BF0` | 503 | — |
+| 29 | `FUN_00456A30` | 666 | `FUN_00455B30` |
+| 30 | `FUN_00456750` | 734 | `FUN_00468110` ✓, `FUN_00533940` ✓ |
+| 18 | `FUN_00457370` | 946 | — |
+
+Trois d'entre eux passent 500 octets et deux tirent des appelees non transcrites. **Ce n'est pas un
+reste de bloc, c'est un second bloc.** Le dire plutot que de livrer huit transcriptions rapides :
+une erreur dans un de ces corps ne se voit pas a la compilation et coute une session a retrouver.
+
+### Non exerce
+
+Les huit compilent ; **aucun n'a tourne**. `FUN_00457EC0` en particulier ecrit dans la memoire de
+script, donc son effet se verra dans le comportement d'un script, pas a l'ecran.
+
+---
+
+## 2026-08-26 (suite 8) — la foret au complet, moins trois
+
+Vincent : « prends les huit restants aussi ». **Cinq des huit sont transcrits ; les trois autres
+butent sur la meme chose, une fonction de collision de terrain.** Total de la journee sur cette
+table : **quatorze gestionnaires sur dix-sept**, plus six appelees.
+
+### Les cinq de ce tour
+
+| sous-type | fonction | taille | ce que c'est |
+|---:|---|---:|---|
+| 24 | `FUN_00456F40` | 234 | quelque chose qui traverse, tombe, **eclate en neuf effets**, et recommence |
+| 26 | `FUN_004746F0` | 242 | un decor qui **attend un bit de script** et pulse en attendant |
+| 15 | `FUN_00474380` | 400 | la **scenette de sortie** : detourne la camera, fond au blanc, relance la musique |
+| 16 | `FUN_00457BF0` | 503 | un projectile en cloche qui **s'eteint en cinq echos** |
+| 30 | `FUN_00456750` | 734 | le **radeau** |
+| 18 | `FUN_00457370` | 946 | l'**ascenseur** |
+
+(Six lignes pour cinq entrees : `FUN_00457370` etait le huitieme, `FUN_00457FC0` ayant ete pris a la
+suite 7.)
+
+### Ce que le lot apprend, et qui vaut plus que les fonctions elles-memes
+
+**Le banc de script est un vrai bus, et on en voit maintenant les deux bouts.** La dalle
+`FUN_00457EC0` (suite 7) **ecrit** un bit dans `0x005e96e0` ; `FUN_004746F0` en **lit** un dans
+`0x005e9840` avec exactement la meme arithmetique ; `FUN_00457BF0` ne fait **rien du tout** tant que
+le bit 0 de `0x005e96fb` n'est pas pose ; et `FUN_00456750` exige deux bits de `0x005e96ff`. Un decor
+de foret n'est pas une machine isolee : c'est un abonne d'un bus de drapeaux que les scripts
+pilotent.
+
+**Le radeau et l'ascenseur comptent le groupe de deux facons differentes**, et la difference est un
+seul bit : `CountPartyMembersMatching(entite, 0x10, …)` pour la dalle et le radeau, `0x20` pour
+l'ascenseur. Deux manieres distinctes d'etre « pose sur » quelque chose, jamais confondues par le
+binaire.
+
+**Tout est double dans l'ascenseur.** `+0x44` porte le sens, et les cinq decisions de la fonction
+sont ecrites **deux fois** dans le binaire, une par sens, avec deux jeux de constantes
+(`0x14000`/`0x258000` contre `0xFFF60000`/`0xDC000`). La reconstruction choisit les constantes une
+fois et n'ecrit le corps qu'une fois — verifie instruction par instruction que les deux branches ne
+different que par la constante. C'est ce que `Strategy.md` appelle reconstruire le flot.
+
+**Une table de sauts qui n'est qu'une constante.** Les six branches de `FUN_00457BF0`
+(`0x00457df0`) ne different que par le **gain** : `0x1800 → 0x1000 → 0x0B00 → 0x0800 → 0x400`, la
+sixieme etant muette. Rendues en tableau de six entiers plutot qu'en six blocs — le seul contenu de
+la table etait la constante.
+
+**Le trajet du radeau est ecrit, pas navigue.** Quatre plages disjointes sur le compteur d'images
+(`0x19..0x21`, `0x23..0x2b`, `0x6c..0x75`, `0x78..0x81`) changent le cap de -4, +4, +3, -3. Deux
+virages a l'aller, deux au retour, et la traversee s'arrete a la 200e image exactement.
+
+**Un `movsx` change une borne.** `FUN_00457BF0` teste `+0x98 > 12` avec `movsx` puis `ja` : la
+comparaison est **non signee**, donc une valeur negative depasse la table au lieu de tomber dessous.
+Transcrit tel quel.
+
+### Les trois qui restent, et la seule raison qui les retient
+
+Ce ne sont plus des tailles, c'est **une dependance unique** :
+
+| sous-type | fonction | bloque par | qui appelle |
+|---:|---|---|---|
+| 8 | `FUN_00457E20` (152 o.) | `FUN_00455B30` (200 o.) | `FUN_005330D0` |
+| 29 | `FUN_00456A30` (666 o.) | `FUN_00455B30` | `FUN_005330D0` |
+| 27 | `FUN_00456CF0` (395 o.) | `FUN_0045DA40` (300 o.) | `FUN_005397B0` |
+
+**`FUN_005330D0` est le vrai obstacle.** Elle est dans `Blaze.c` (ligne 80202) et c'est une
+**recherche de sol dans un maillage triangulaire** : produits vectoriels sur trois sommets,
+interpolation barycentrique, plus de 150 lignes de pseudo-C truffee de temporaires. Ce n'est pas un
+gestionnaire de decor, c'est de la geometrie de collision — un chantier a part entiere, et le
+transcrire au jugé donnerait des entites qui traversent le sol sans que rien ne le dise.
+
+`FUN_005397B0` (37 lignes, deja stubee sous `SetEntityPose_005397B0`) est en revanche a portee de
+main : c'est elle qui debloquerait le sous-type 27, le moins cher des trois.
+
+### Non exerce
+
+**Aucun des quatorze n'a tourne.** Ils compilent, et c'est tout ce qui est acquis. Plusieurs
+touchent des choses visibles — la camera, la musique, le fondu — donc un defaut s'y verra ; d'autres
+n'ecrivent que dans le banc de script, et leur effet ne se lira que dans le comportement d'un
+script.

@@ -1679,3 +1679,43 @@ Un `retabli` en **regime 1** alors qu'un `releve` en regime 3 le precede signale
 l'utilisateur a ete perdu. **Aucun `retabli` du tout** signale que le run n'a pas atteint le
 basculement vers le backend Direct3D — le test ne prouve alors rien : il faut un run qui entre
 vraiment dans un ecran de jeu (`-Entry 1` suffit).
+
+---
+
+## Ce que `-Trace SCRIPT` repond, et ce qu'il ne repond pas (2026-08-26)
+
+`-Trace SCRIPT` pose `OPENFORESIA_TRACE_SCRIPT=1` : chaque script lance et chaque opcode execute
+partent dans le journal. Ce qu'il donne en une passe, et qu'aucune lecture de code ne donne :
+
+```powershell
+grep -o '^\[OPCODE\] [0-9]*' scratchpad\playtest-<horodatage>.log | sort | uniq -c | sort -rn
+grep '^\[SCRIPT\]' scratchpad\playtest-<horodatage>.log | sort | uniq -c | sort -rn
+```
+
+Le premier compte **quels opcodes tournent reellement** — donc lesquels des 39 valent d'etre
+transcrits. Le second nomme **qui lance les scripts**, ce qui situe l'interpreteur dans la boucle.
+
+Releve du 2026-08-26, un run qui va de l'auberge a la foret : quinze opcodes distincts, **tous deja
+transcrits**, et une repartition tres inegale — 4, 6, 16 et 3 font 97 % des executions, tandis que
+l'opcode 30 (la sortie de batiment) tourne **une seule fois** de tout le run. C'est la confirmation
+en jeu de sa transcription, et la mesure dit aussi qu'un opcode rare n'est pas un opcode secondaire.
+
+**Ce que la trace ne dit pas** : elle ne couvre pas les gestionnaires d'entite. Un plantage sur
+`FUN_0050e5e0 … gestionnaire d'entite 0x… non transcrit` n'apparait dans aucune ligne `[OPCODE]` —
+c'est un autre chemin, et son message de lacune est deja tout ce qu'il faut.
+
+`-Trace VERBS` complete pour l'opcode 0 : il imprime `[VERBE] <indice> -> 0x<adresse>` avant
+l'appel, donc il nomme le verbe **meme quand il est deja transcrit**. Sur la salle d'arrivee de
+l'auberge, deux verbes seulement (3 et 10), tous deux couverts.
+
+### Le rappel qui a coute un run ici aussi
+
+Le premier des deux runs de cette session a affiche `aucune fenetre intitulee 'OpenForesia' apres
+20 s`, et le second `relance detectee`. Les deux journaux sont exploitables — le journal est le
+stderr du PID lance, pas de la fenetre trouvee — **mais la sequence `-Then` ne vaut rien dans ce
+cas**, et le verdict le masque. Le controle qui tranche reste le debit : **557 primitives par image
+= la salle d'arrivee de l'auberge**, pas la foret. La capture l'a confirme (« - La reception - »).
+
+Autrement dit : **atteindre la foret n'est pas a la portee du script**. C'est le partage du
+2026-08-24 — sortir de l'auberge demande de conduire le personnage, donc c'est Vincent qui y va.
+L'agent peut lancer la trace, la depouiller, et lire le verdict ; il ne peut pas garantir l'endroit.

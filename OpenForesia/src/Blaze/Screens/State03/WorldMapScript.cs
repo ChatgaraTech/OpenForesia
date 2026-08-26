@@ -1518,14 +1518,22 @@ public static unsafe partial class Blaze
 
             0x00443100 => AreaVerb_00443100(),
 
+            // Le « tout effacer » des quatre bancs de variables de script (verbe 6 en foret).
+            0x00443260 => AreaVerb_00443260(),
+
+            // Deux verbes courts de la meme table, relevés dans la foulée du precedent.
+            0x00442E10 => AreaVerb_00442E10(),
+            0x004432E0 => AreaVerb_004432E0(),
+
             // Le verbe 56 : l'expertise d'objet. Il ignore le second argument — son corps ne lit
             // que [esp+0x14], c'est-a-dire l'entite.
             0x0053DD20 => AreaVerb_0053DD20(ent),
 
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
-                "reconstruit. Son adresse vient de s_VtSource_0056aec8 (Engine/Resources.cs), deja " +
-                "relevee dans le binaire pour l'index 0. La transcrire, puis la brancher ici : " +
+                "reconstruit. Son adresse vient de la table 0x0056aec8 de la zone courante " +
+                "(Engine/EntityVTables.cs, relevee pour les onze zones). " +
+                "La transcrire, puis la brancher ici : " +
                 $"`OpenForesia.Tools disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512` si elle " +
                 "n'est pas dans Blaze.c. L'argument passe est (entite, ushort(script[2], script[3])), " +
                 "et la valeur de retour devient le resultat de condition."),
@@ -1596,6 +1604,93 @@ public static unsafe partial class Blaze
         return 0;
     }
 
+    /// <summary>
+    /// Ghidra: FUN_00443260 @ 0x00443260 — <b>remet a zero les quatre bancs de variables de
+    /// script</b>. 53 octets, <b>absente de <c>Blaze.c</c></b> ; relevee au desassembleur, dump
+    /// conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00443260.asm</c>.
+    ///
+    /// <para>
+    /// Quatre <c>rep stosd</c> de <c>0x10</c> mots, soit 0x40 octets chacun, sur <c>0x005e9840</c>,
+    /// <c>0x005e9060</c>, <c>0x005e9780</c> et <c>0x005e96e0</c> — dans cet ordre, soit les banques
+    /// <b>3, 2, 1 et 0</b> des huit que la sauvegarde restaure. <b>Ce sont exactement les quatre
+    /// bancs des opcodes 4 a 7 de l'interpreteur</b>
+    /// (<see cref="ScriptOpAluArena"/>) : ce verbe est le « tout effacer » de la memoire de script,
+    /// pas une operation d'affichage.
+    /// </para>
+    /// <para>
+    /// L'ordre des quatre n'est pas celui des opcodes (7, 6, 5, 4) et il est transcrit tel quel :
+    /// les etendues sont disjointes, donc l'ordre ne change rien, mais rien ne justifie de le
+    /// reecrire.
+    /// </para>
+    /// <para>
+    /// <b>Elle rend 0</b> : le <c>xor eax,eax</c> de <c>0x00443266</c> sert de valeur a stocker
+    /// pour les <c>stosd</c>, et <c>rep stosd</c> ne touche pas EAX. Le registre vaut donc encore
+    /// zero au <c>ret</c>, et le resultat de condition est nul.
+    /// </para>
+    /// <para>
+    /// <b>C'est le verbe 6 de la zone 3</b>, la foret — et le verbe 1 de la zone 0. Le dispatch se
+    /// fait sur l'adresse et non sur l'indice, donc le remappage d'une zone a l'autre est sans
+    /// effet ici ; c'est precisement ce que cette forme de <c>switch</c> achete.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00443260()
+    {
+        ClearScriptBank(Mem.s_StateBank3_005e9840);
+        ClearScriptBank(Mem.s_StateBank2_005e9060);
+        ClearScriptBank(Mem.s_StateBank1_005e9780);
+        ClearScriptBank(Mem.s_StateBank0_005e96e0);
+        return 0;
+    }
+
+    /// <summary>Un des quatre <c>rep stosd</c> de <see cref="AreaVerb_00443260"/> : 0x10 dwords a
+    /// zero a partir de <paramref name="bank"/>.</summary>
+    private static void ClearScriptBank(byte* bank)
+    {
+        uint* words = (uint*)bank;
+        for (int i = 0; i < 0x10; i++) words[i] = 0;
+    }
+
+
+    /// <summary>
+    /// Ghidra: FUN_00442E10 @ 0x00442e10 — <b>rend le bit 0 du champ <c>+0x8c7</c> du descripteur
+    /// de menu</b>, et rien d'autre. Onze octets, absente de <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <c>xor eax,eax ; mov al,[563C77h] ; and eax,1 ; ret</c>. C'est un verbe de <b>test</b> : le
+    /// resultat de condition vaut 1 ou 0, donc l'interpreteur s'arrete ou continue selon l'etat de
+    /// ce bit.
+    /// </para>
+    /// <para>
+    /// <b>L'adresse <c>0x00563c77</c> n'est pas une globale</b> — c'est le champ <c>+0x8c7</c> du
+    /// descripteur <c>0x005633b0</c>, tranche le 2026-08-23 apres que la boite de dialogue soit
+    /// restee invisible pour cette raison exacte. Le passage par
+    /// <see cref="s_Unknown_00563c77"/> est donc obligatoire : un <c>static byte</c> de plus
+    /// referait le meme defaut.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00442E10() => (uint)(s_Unknown_00563c77 & 1);
+
+    /// <summary>
+    /// Ghidra: FUN_004432E0 @ 0x004432e0 — <b>efface le bit 0 de la banque 3 quand l'octet de tete
+    /// de l'arene porte <c>0x10</c></b>. Dix-neuf octets, absente de <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <c>0x005e9841</c> est <c>s_StateBank3_005e9840 + 1</c> — la meme banque que
+    /// <see cref="AreaVerb_00443260"/> remet a zero en entier. Ce verbe-ci n'en touche qu'un bit,
+    /// et seulement si <c>0x005e9001</c> porte <c>0x10</c>.
+    /// </para>
+    /// <para><b>Elle rend 0</b> par les deux chemins : le <c>xor eax,eax</c> est apres la
+    /// jonction.</para>
+    /// </summary>
+    private static uint AreaVerb_004432E0()
+    {
+        // Ghidra: `test byte [5E9001h],10h ; je 004432F0 ; and byte [5E9841h],0FEh`.
+        if ((*Mem.Arena(0x005e9001) & 0x10) != 0)
+            Mem.s_StateBank3_005e9840[1] &= 0xfe;
+
+        return 0;
+    }
     /// <summary>
     /// Ghidra: FUN_00442d90 @ 0x00442d90 — <b>le verbe 14 de la table de zone</b> : il désigne
     /// l'entité appelante comme <b>porteur du script</b> de l'entité de scène numéro

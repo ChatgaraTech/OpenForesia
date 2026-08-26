@@ -1131,7 +1131,8 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 |---|---|---:|---|
 | `0x0054d000` | `s_GammaScale_0054d000` | 116 | `Engine/Input.cs` |
 | `0x0054d074` | `s_GammaScale_0054d074` | 17868 | `Screens/State00/MainMenu.cs` |
-| `0x00551640` | `s_EntityParams_00551640` | 53864 | `Memory/GameMemory.cs` |
+| `0x00551640` | `s_EntityParams_00551640` | 7240 | `Memory/GameMemory.cs` |
+| `0x00553288` | `s_VtBlock` — les 197 blocs de sauts d'entites, un pool contigu | 46624 | `Engine/EntityVTables.cs` |
 | `0x0055e8a8` | `s_AreaHandlerSource_0055e8a8` | 7760 | `Engine/Resources.cs` |
 | `0x005606f8` | `s_Unknown_005606f8` | 48 | `Memory/GameMemory.cs` |
 | `0x00560728` | `s_StatusDescriptor_00560728` | 51 | `Memory/GameMemory.cs` |
@@ -1218,25 +1219,26 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00566c90` | `s_Unknown_00566c90` | 4 | `Screens/DebugParty.cs` |
 | `0x00566c94` | `s_Unknown_00566c94` | 4 | `Screens/DebugParty.cs` |
 | `0x00566c98` | `s_UiOffsetX_00566c98` | 24 | `Screens/State00/Options.cs` |
-| `0x00566cb0` | `s_UiOffsetY_00566cb0` | 6120 | `Screens/State00/Options.cs` |
+| `0x00566cb0` | `s_UiOffsetY_00566cb0` | 232 | `Screens/State00/Options.cs` |
+| `0x00566d98` | `s_VtPtr_00566d98` | 704 | `Engine/EntityVTables.cs` |
+| `0x00567058` | `s_VtPtr_00567058` | 704 | `Engine/EntityVTables.cs` |
+| `0x00567318` | `s_VtPtr_00567318` | 704 | `Engine/EntityVTables.cs` |
+| `0x005675d8` | `s_VtPtr_005675d8` | 704 | `Engine/EntityVTables.cs` |
+| `0x00567898` | `s_VtPtr_00567898` | 704 | `Engine/EntityVTables.cs` |
+| `0x00567b58` | `s_VtPtr_00567b58` | 704 | `Engine/EntityVTables.cs` |
+| `0x00567e18` | `s_VtPtr_00567e18` | 1664 | `Engine/EntityVTables.cs` |
 | `0x00568498` | `s_SaveNameTemplate_00568498` | 120 | `Screens/State04/CharacterCreation.cs` |
 | `0x00568510` | `s_ControllerBannerText_00568510` | 9024 | `Engine/SaveData.cs` |
 | `0x0056a850` | `s_MenuLayout_0056a850` | 592 | `Screens/State03/WorldMapTick.cs` |
 | `0x0056aca8` | `s_ResourceFixupSchema_0056aca8` | 160 | `Engine/Resources.cs` |
-| `0x0056ad48` | `s_VtSource_0056ad48` | **0** | `Engine/Resources.cs` |
 | `0x0056ad48` | `s_Vt_0056ad48` | 128 | `Engine/Resources.cs` |
-| `0x0056adc8` | `s_VtSource_0056adc8` | **0** | `Engine/Resources.cs` |
 | `0x0056adc8` | `s_Vt_0056adc8` | 256 | `Engine/Resources.cs` |
-| `0x0056aec8` | `s_VtSource_0056aec8` | **0** | `Engine/Resources.cs` |
 | `0x0056aec8` | `s_Vt_0056aec8` | 256 | `Engine/Resources.cs` |
-| `0x0056afc8` | `s_VtSource_0056afc8` | **0** | `Engine/Resources.cs` |
 | `0x0056afc8` | `s_Vt_0056afc8` | 256 | `Engine/Resources.cs` |
-| `0x0056b0c8` | `s_VtSource_0056b0c8` | **0** | `Engine/Resources.cs` |
 | `0x0056b0c8` | `s_Vt_0056b0c8` | 256 | `Engine/Resources.cs` |
-| `0x0056b1c8` | `s_VtSource_0056b1c8` | **0** | `Engine/Resources.cs` |
 | `0x0056b1c8` | `s_Vt_0056b1c8` | 256 | `Engine/Resources.cs` |
-| `0x0056b2c8` | `s_VtSource_0056b2c8` | **0** | `Engine/Resources.cs` |
-| `0x0056b2c8` | `s_Vt_0056b2c8` | 520 | `Engine/Resources.cs` |
+| `0x0056b2c8` | `s_Vt_0056b2c8` | 256 | `Engine/Resources.cs` |
+| `0x0056b3c8` | `s_VtBlock` — le bloc d'arret fatal (64 x `FUN_00536170`) | 264 | `Engine/EntityVTables.cs` |
 | `0x0056b4d0` | `s_AreaHandlerTable_0056b4d0` | 136 | `Engine/Resources.cs` |
 | `0x0056b558` | `s_LoadScreenDescriptors_0056b558` | 51 | `Memory/GameMemory.cs` |
 | `0x0056b58b` | `s_Unknown_0056b58b` | 8 | `Memory/GameMemory.cs` |
