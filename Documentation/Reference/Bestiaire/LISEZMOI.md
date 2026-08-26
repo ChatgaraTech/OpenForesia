@@ -173,7 +173,7 @@ deux rangées de quatre, puis **deux valeurs longues** prises à `+0x30` et `+0x
 | `+0x32` | `short` | **DEF** — non nul sur les armures |
 | `+0x18` | 8 octets **signés** | **les huit éléments**, affichés dans l'ordre `s_StatSlotOrder_00566ad0 = [2,1,0,3,4,5,6,7]` |
 | `+0x12` | masque 8 bits | **les classes qui peuvent l'équiper** |
-| `+0x20` | 16 `short` | ce qu'`ApplyEquipmentStatBonuses` ajoute aux statistiques du personnage — les indices **8 et 9 sont l'ATT et la DEF**, les indices 0 à 7 les caractéristiques, les six derniers sans rôle établi |
+| `+0x20` | 16 `short` | ce qu'`ApplyEquipmentStatBonuses` ajoute aux statistiques du personnage — les indices 0 à 7 vont aux caractéristiques, les indices **8, 9, 12 et 13 sont l'ATT, la DEF, la MATT et la MDEF**, et les indices 10, 11, 14 et 15 ne s'affichent que derrière le verrou de mise au point — voir plus bas |
 | `+0x8a` | `short` | ajouté à la valeur bornée à `[0, 99]` de `+0x156` |
 
 Les huit octets de `+0x18` ne s'appliquent qu'aux **deux derniers emplacements** d'équipement.
@@ -206,6 +206,95 @@ Trois relevés indépendants concordent, ce qui fixe l'ordre : les pointeurs ci-
 0 et 6, 14/8 aux classes 1, 3 et 7, 15/4 aux classes 2, 4 et 5 — soit les paires
 Guerrier/Nain, Prêtre/Sorcier/Fée et Voleur/Chasseur/Elfe ; et la dernière colonne du tableau,
 qui est le contenu du jeu lui-même, obtenu en listant les objets dont `+0x12` n'allume qu'un bit.
+
+#### Où vont les seize mots de `+0x20`
+
+`ApplyEquipmentStatBonuses` (`FUN_00538e20`) les ajoute **tous au même tableau** :
+`primary[k] += bonus[k]`, avec `primary = character + 0x120`. Les indices 0 à 7 tombent donc sur les
+caractéristiques, les indices 8 à 15 sur les **huit valeurs dérivées** de `+0x130` que
+`ComputeDerivedStats` vient d'y écrire.
+
+Mais la fiche de personnage n'en dessine que **quatre**, et pas dans l'ordre : elle boucle
+`i = 0..3` sur `character + 0x130 + s_StatOrder_0056a8d0[i] * 2`, et cette table vaut
+`[0, 1, 4, 5, 2, 3, 6, 7]`.
+
+| indice | offset dans l'objet | emplacement de `+0x130` | ce que c'est |
+|---:|---|---:|---|
+| 8 | `+0x30` | 0 | **ATT** |
+| 9 | `+0x32` | 1 | **DEF** |
+| 10 | `+0x34` | 2 | non affichée en jeu normal |
+| 11 | `+0x36` | 3 | non affichée en jeu normal |
+| 12 | `+0x38` | 4 | **MATT** |
+| 13 | `+0x3a` | 5 | **MDEF** |
+| 14 | `+0x3c` | 6 | non affichée en jeu normal |
+| 15 | `+0x3e` | 7 | non affichée en jeu normal |
+
+**Les noms viennent de l'écran, pas d'une déduction** : relevés en jeu par Vincent le 2026-08-26 en
+équipant des objets aux valeurs distinctes et en regardant lesquelles bougent. Une mesure sous sonde,
+le même jour, le confirme côté mémoire : le Bâton d'Apollon (indices 8 et 12 à +121 et +82) fait
+passer les emplacements 0 et 4 de `10` et `2` à `131` et `84`.
+
+**Ce qui fixe les quatre noms, côté code** : le système d'états ne touche *que* les emplacements
+0, 1, 4 et 5. `FinalizeEquipmentEffects` lit huit bits de `+0x140` — `0x400`/`0x800` pour
+l'emplacement 0, `0x1000`/`0x2000` pour le 1, `0x10000`/`0x20000` pour le 4,
+`0x40000`/`0x80000` pour le 5 — une paire hausse/baisse chacune, plus un bit `0x200` qui monte le 0
+et descend le 1, la rage. **Les emplacements 2, 3, 6 et 7 n'ont aucun bit d'état.** Ce sont donc bien
+les quatre autres qui portent les statistiques de combat, indépendamment du relevé à l'écran.
+
+**Les huit se répondent deux à deux.** `ComputeDerivedStats` les tire des sept caractéristiques et
+du niveau (`+0x144`), et chaque paire sort des mêmes sources :
+
+| emplacement | rang | nom | tirée de |
+|---:|---:|---|---|
+| 0 | 0 | **ATT** | niveau, carac. 1 |
+| 2 | 4 | contrepartie de l'ATT | niveau, carac. 1 et 4 |
+| 1 | 1 | **DEF** | niveau, carac. 4 et 5 |
+| 3 | 5 | contrepartie de la DEF | niveau, carac. 4 et 5 |
+| 4 | 2 | **MATT** | niveau, carac. 6 |
+| 6 | 6 | contrepartie de la MATT | niveau, carac. 3 et 6 |
+| 5 | 3 | **MDEF** | niveau, carac. 2 et 3 |
+| 7 | 7 | contrepartie de la MDEF | niveau, carac. 2 et 3 |
+
+**Les quatre contreparties sont probablement des résistances** — et c'est le **contenu du jeu** qui
+le dit, pas le code. Quatre relevés concordent :
+
+- les objets qui ne posent *que* ces quatre-là sont tous des objets de protection, et leurs
+  descriptions le disent : « Renforce le système immunitaire », « Augmente la résistance de
+  l'esprit », « Protection anti-sortilèges », « une formule sacrée qui sanctifie » ;
+- la série **Médaillon de bronze / d'argent / d'or** les pose à 6, 12 puis 24 sur les indices 11
+  **et** 15 à la fois, et sur rien d'autre — trois paliers du même objet ;
+- sur les 128 objets qui en posent au moins une, **66 posent toutes les leurs à la même valeur** ;
+- une arme pure n'y touche jamais : le Glaive et la Longue épée ne posent que l'indice 8.
+
+**Ça reste une hypothèse.** Aucun lecteur n'est identifié — le combat n'est pas reconstruit — et le
+jeu ne leur donne aucun libellé, même en mise au point. À écrire comme telle jusqu'à preuve.
+
+Elles **sont dessinées**  — mais seulement quand le verrou `DAT_005633a8` est
+tombé, c'est-à-dire après « Gurkha » : une colonne nue en bas à droite, en `x = 0xd4`, **sans
+libellé**. Les développeurs de 1998 ne les nommaient pas non plus.
+
+**Rien d'autre ne les lit.** Dans tout `Blaze.c`, `+0x130` apparaît quatre fois — les deux boucles
+d'affichage, la recopie depuis `+0x290`, et la remise à l'échelle par la difficulté ; les copies de
+travail `+0x292`, `+0x296`, `+0x29a` et `+0x29e` apparaissent **une seule fois chacune**, leur
+propre écriture ; et seules deux fonctions sont jamais appelées avec la base `+0x100`
+(`FUN_00538f50` et `FUN_00538fa0`), les deux passes de recalcul. Réserve à garder : `Blaze.c` est
+une décompilation du code seul et Ghidra a laissé des corps de côté ; le combat n'est pas
+reconstruit, donc « absent de `Blaze.c` » ne veut pas dire « absent du binaire ».
+
+**Les malus ne se voient jamais.** `FinalizeEquipmentEffects` termine par un écrêtage sur seize
+`short` à partir de `+0x120` : `< 0 → 0`, `> 999 → 999`. Les six valeurs négatives du Bâton
+d'Apollon écrasent donc leur emplacement à zéro au lieu de le décrémenter. C'est le jeu de 1998, pas
+une erreur de lecture.
+
+**L'indice 7 ne sert à rien.** Il tombe sur `character + 0x12e`, la **huitième** case d'un tableau
+que le jeu ne remplit qu'à **sept** : `DrawStatsTab` boucle `i < 7`, `ComputeDerivedStats` ne lit que
+`0x120` à `0x12c`, l'écran de création n'ouvre que sept lignes, et la huitième colonne de
+`s_ClassBaseStats_0056c7e0` est l'élément du personnage, pas une caractéristique. La chaîne `0x12e`
+apparaît **une seule fois** dans les 98 000 lignes de `Blaze.c`, et c'est une écriture. Vérifié en
+jeu : la Cuirasse de maître y met `+5` et aucune valeur de la fiche ne bouge.
+
+Des sept caractéristiques, **seule la troisième est nommée** à ce jour — **Volonté**, relevée à
+l'écran. Les six autres restent numérotées dans la page plutôt que devinées.
 
 ### Les huit éléments
 

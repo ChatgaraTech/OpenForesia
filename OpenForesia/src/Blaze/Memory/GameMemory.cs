@@ -137,8 +137,18 @@ internal sealed unsafe class GameMemory
     // â€” un dword, donc bien un `int`.
     //
     // Le seul écrivain de tout le binaire est <see cref="CheatCodeProbe"/> (FUN_0051c0e0), qui le
-    // met à **0** une fois la séquence "Gurkha" entièrement filée. Les trois lecteurs testent
-    // tous `== 0`, et chacun active alors un comportement de développeur :
+    // met à **0** une fois la séquence "Gurkha" entièrement filée.
+    //
+    // **La séquence n'est pas une saisie, c'est un DESSIN.** CheatCodeProbe est appelée sur chaque
+    // caractère que le moteur de texte trace ; le verrou tombe donc quand le jeu **affiche**
+    // "Gurkha" quelque part. Nommer un personnage ainsi est le moyen sûr d'y arriver — l'écran de
+    // saisie du nom le réaffiche à chaque lettre — mais n'importe quel texte tracé contenant cette
+    // chaîne ferait la même chose. Et comme CheatCodeProbe est **le seul écrivain du binaire**, le
+    // verrou ne se relève jamais : une fois à 0, il y reste jusqu'à la fin du processus.
+    //
+    // Les lecteurs testent tous `== 0`, et chacun active alors un comportement de développeur.
+    // Il y en avait trois quand cette note a été écrite ; la reconstruction en compte une douzaine
+    // aujourd'hui, dont :
     // <list type="bullet">
     // <item><see cref="InitViewportSurfaces"/> : damier de mise au point dans le tampon de rendu
     // au lieu d'un effacement en noir ;</item>
@@ -146,10 +156,15 @@ internal sealed unsafe class GameMemory
     // <item><see cref="RunGameState1Entry"/> : bascule vers <see cref="RunDebugPartySelect"/>
     // (FUN_00536270), l'écran de composition de groupe de mise au point, au lieu du chemin
     // normal FUN_00536ea0.</item>
+    // <item><c>DrawStatsTab</c> : les **quatre rangs supplémentaires** de la fiche de personnage —
+    // les emplacements 2, 3, 6 et 7 du bloc dérivé de <c>+0x130</c>, dessinés en colonne nue en
+    // <c>x = 0xd4</c> et <b>sans libellé</b> ;</item>
+    // <item><c>DrawSpellTab</c> : tous les sorts marqués comme connus ;</item>
+    // <item>l'inventaire : tout objet marqué identifié (<c>record[0x13] |= 0x80</c>).</item>
     // </list>
-    // Donc 0 = mise au point active, 1 = jeu normal. Initialisé à 1 comme dans .data : les trois
-    // lecteurs prenaient jusqu'ici la branche « développeur » par le seul effet du zéro par défaut
-    // de C#.
+    // Donc 0 = mise au point active, 1 = jeu normal. Initialisé à 1 comme dans .data : sans cette
+    // initialisation, les lecteurs prenaient la branche « développeur » par le seul effet du zéro
+    // par défaut de C#.
     //
     // **Fusionné avec l'ancien `s_Unknown_005633a8`**, qui déclarait la même adresse une seconde
     // fois (celui-là recevait l'écriture de CheatCodeProbe, celui-ci portait les lectures : la

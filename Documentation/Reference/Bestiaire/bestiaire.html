@@ -376,6 +376,18 @@
   .car .val { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
   .car .idx { color: var(--faint); }
 
+  /* la precision accrochee a un libelle : « Volonte », « jamais lue », « non affichee » */
+  .tag {
+    margin-left: 6px;
+    padding: 1px 5px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-family: var(--sans);
+    font-size: 10px;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+
   table.inner { width: 100%; min-width: 0; margin-top: 4px; }
   table.inner th, table.inner td {
     font-family: var(--mono);
@@ -417,7 +429,8 @@
   td.zeroed { color: var(--faint); }
 
   /* ATT et DEF : les deux valeurs longues que l'ecran d'objet met en tete */
-  .attdef { display: flex; gap: 10px; }
+  .attdef { display: flex; flex-wrap: wrap; gap: 8px; }
+  .attdef .ad { flex: 1 1 calc(50% - 4px); min-width: 0; }
   .ad {
     flex: 1;
     display: flex;
@@ -581,6 +594,61 @@
   <section class="notes">
     <div class="wrap">
       <div class="notes-grid">
+        <div>
+          <h2>Les huit valeurs dérivées</h2>
+          <p>
+            Les seize mots de <code>+0x20</code> d'un objet vont <strong>tous au même
+            tableau</strong>&nbsp;: <code>primary[k] += bonus[k]</code>, avec
+            <code>primary = character + 0x120</code>. Les indices 0 à 6 tombent sur les sept
+            caractéristiques, l'indice 7 sur une case morte, et les indices 8 à 15 sur les
+            <strong>huit valeurs dérivées</strong> de <code>+0x130</code> que
+            <code>ComputeDerivedStats</code> calcule à partir des caractéristiques et du niveau.
+          </p>
+          <p>
+            La fiche du jeu n'en dessine que quatre, et l'ordre vient de
+            <code>s_StatOrder_0056a8d0&nbsp;= [0,&nbsp;1,&nbsp;4,&nbsp;5,&nbsp;2,&nbsp;3,&nbsp;6,&nbsp;7]</code>.
+            Les huit se répondent <strong>deux à deux</strong>&nbsp;: chaque paire sort des mêmes
+            caractéristiques, et seule la première des deux est affichée et modifiable par un état.
+          </p>
+          <div class="table-scroll">
+          <table class="inner"><thead><tr>
+            <th style="text-align:left">indice</th><th>emplacement</th>
+            <th style="text-align:left">nom</th><th style="text-align:left">tirée de</th>
+          </tr></thead><tbody>
+            <tr><td class="item">8 · <code>+0x30</code></td><td>0</td><td class="item"><b>ATT</b></td><td class="item">niveau, carac.&nbsp;1</td></tr>
+            <tr><td class="item">9 · <code>+0x32</code></td><td>1</td><td class="item"><b>DEF</b></td><td class="item">niveau, carac.&nbsp;4 et 5</td></tr>
+            <tr><td class="item">12 · <code>+0x38</code></td><td>4</td><td class="item"><b>MATT</b></td><td class="item">niveau, carac.&nbsp;6</td></tr>
+            <tr><td class="item">13 · <code>+0x3a</code></td><td>5</td><td class="item"><b>MDEF</b></td><td class="item">niveau, carac.&nbsp;2 et 3</td></tr>
+            <tr><td class="item">10 · <code>+0x34</code></td><td>2</td><td class="dim">résistance&nbsp;? <span class="tag">contrepartie de l'ATT</span></td><td class="item">niveau, carac.&nbsp;1 et 4</td></tr>
+            <tr><td class="item">11 · <code>+0x36</code></td><td>3</td><td class="dim">résistance&nbsp;? <span class="tag">contrepartie de la DEF</span></td><td class="item">niveau, carac.&nbsp;4 et 5</td></tr>
+            <tr><td class="item">14 · <code>+0x3c</code></td><td>6</td><td class="dim">résistance&nbsp;? <span class="tag">contrepartie de la MATT</span></td><td class="item">niveau, carac.&nbsp;3 et 6</td></tr>
+            <tr><td class="item">15 · <code>+0x3e</code></td><td>7</td><td class="dim">résistance&nbsp;? <span class="tag">contrepartie de la MDEF</span></td><td class="item">niveau, carac.&nbsp;2 et 3</td></tr>
+          </tbody></table>
+          </div>
+          <p style="margin-top:12px">
+            <strong>Ce qui fixe les quatre noms</strong>&nbsp;: le système d'états ne touche
+            <em>que</em> les emplacements 0, 1, 4 et 5. Huit bits de <code>+0x140</code>, une paire
+            hausse/baisse par emplacement, plus un bit <code>0x200</code> qui monte le 0 et descend
+            le 1 — la rage. Les emplacements 2, 3, 6 et 7 n'ont aucun bit d'état.
+          </p>
+          <p>
+            <strong>Les quatre autres sont probablement des résistances</strong>, et c'est le
+            contenu du jeu qui le dit, pas le code&nbsp;: les objets qui ne posent qu'elles sont
+            tous des objets de protection — «&nbsp;Renforce le système immunitaire&nbsp;»,
+            «&nbsp;Augmente la résistance de l'esprit&nbsp;», «&nbsp;Protection
+            anti-sortilèges&nbsp;». La série Médaillon de bronze / d'argent / d'or les pose à 6, 12
+            puis 24 sur les indices 11 <em>et</em> 15 à la fois et sur rien d'autre&nbsp;; sur 128
+            objets qui en posent au moins une, 66 posent toutes les leurs à la même valeur&nbsp;; et
+            une arme pure n'y touche jamais. <strong>Ça reste une hypothèse</strong>&nbsp;: aucun
+            lecteur n'est identifié, le combat n'étant pas reconstruit.
+          </p>
+          <p>
+            <strong>Et un piège</strong>&nbsp;: <code>FinalizeEquipmentEffects</code> finit par
+            écrêter seize <code>short</code> à <code>[0, 999]</code>. Un malus d'équipement
+            n'apparaît donc jamais en négatif&nbsp;: il écrase la valeur à zéro.
+          </p>
+        </div>
+
         <div>
           <h2>La fiche</h2>
           <p>
@@ -906,11 +974,57 @@
   // Les seize shorts de +0x20 tels qu'ApplyEquipmentStatBonuses les ajoute aux statistiques du
   // personnage. Les indices 8 et 9 tombent sur +0x30 et +0x32 — l'ATT et la DEF que la fiche
   // affiche à part ; les six derniers n'ont pas de rôle établi.
+  // Les seize mots de +0x20 vont TOUS au même endroit : ApplyEquipmentStatBonuses (FUN_00538e20)
+  // fait `primary[k] += bonus[k]` avec `primary = character + 0x120`. Les indices 0 à 7 tombent
+  // donc sur le tableau des caractéristiques, les indices 8 à 15 sur les huit valeurs dérivées de
+  // `+0x130` que ComputeDerivedStats vient d'y écrire.
+  //
+  // La fiche de personnage n'en dessine que QUATRE, et pas dans l'ordre : elle boucle
+  // `i = 0..3` sur `character + 0x130 + s_StatOrder_0056a8d0[i] * 2`, et cette table vaut
+  // [0, 1, 4, 5, 2, 3, 6, 7]. Les quatre affichées sont donc les emplacements 0, 1, 4 et 5, soit
+  // les indices 8, 9, 12 et 13 — **ATT, DEF, MATT et MDEF**, relevés à l'écran par Vincent.
+  // Les rangs 4 à 7 de la même table (emplacements 2, 3, 6, 7 = indices 10, 11, 14, 15) ne se
+  // dessinent que dans le bloc gardé par DAT_005633a8, celui qu'on ouvre en nommant un
+  // personnage « Gurkha ».
+  //
+  // L'indice 7 est un cas à part : il tombe sur `character + 0x12e`, la HUITIÈME case d'un
+  // tableau que le jeu ne remplit qu'à sept. Rien ne la lit — une seule occurrence de `0x12e`
+  // dans les 98 000 lignes de Blaze.c, et c'est une écriture. Vérifié en jeu : la Cuirasse de
+  // maître y met +5 et aucune valeur ne bouge.
+  const BONUS_NAMED = { 8: 'ATT', 9: 'DEF', 12: 'MATT', 13: 'MDEF' };
+
+  // Les quatre autres : **des résistances, selon toute vraisemblance**. Ce n'est pas une lecture
+  // du code — rien ne les lit en dehors de la fiche — mais du CONTENU du jeu, et il est net :
+  //   · les objets qui ne posent QUE ces quatre-là sont tous des objets de protection, et leurs
+  //     descriptions le disent — « Renforce le système immunitaire », « Augmente la résistance de
+  //     l'esprit », « Protection anti-sortilèges », « une formule sacrée qui sanctifie » ;
+  //   · la série Médaillon de bronze / d'argent / d'or les pose à 6, 12 puis 24 sur les indices 11
+  //     ET 15 à la fois, et sur rien d'autre : trois paliers du même objet ;
+  //   · sur 128 objets qui en posent au moins une, 66 posent toutes les leurs à la MÊME valeur ;
+  //   · une arme pure n'y touche jamais — le Glaive et la Longue épée ne posent que l'indice 8.
+  // Faute d'un lecteur identifié, le libellé garde son point d'interrogation.
+  const BONUS_SHADOW = { 10: 'ATT', 11: 'DEF', 14: 'MATT', 15: 'MDEF' };
+
+  // Les sept caractéristiques. Seule la troisième est nommée pour l'instant — relevée à l'écran ;
+  // les six autres restent numérotées plutôt que devinées.
+  const CARAC_NAMES = { 2: 'Volonté' };
+
   function bonusLabel(i) {
-    if (i < 8) return 'carac. ' + (i + 1);
-    if (i === 8) return 'ATT';
-    if (i === 9) return 'DEF';
-    return '+0x' + (0x20 + i * 2).toString(16);
+    if (i < 7) {
+      return 'carac. ' + (i + 1) +
+        (CARAC_NAMES[i] ? '<span class="tag">' + CARAC_NAMES[i] + '</span>' : '');
+    }
+    if (i === 7) return '+0x2e<span class="tag">jamais lue</span>';
+    if (BONUS_NAMED[i]) return BONUS_NAMED[i];
+    const shadow = BONUS_SHADOW[i];
+    return '+0x' + (0x20 + i * 2).toString(16) +
+      (shadow
+        ? '<span class="tag" title="Hypothèse : une résistance. Les objets qui ne posent que ces ' +
+          'quatre valeurs sont tous des objets de protection (« système immunitaire », ' +
+          '« anti-sortilèges »), et aucune arme pure ne les touche. Tirée des mêmes ' +
+          'caractéristiques que la ' + shadow + ', et dessinée seulement en mise au point.' +
+          '">résistance&nbsp;?</span>'
+        : '');
   }
 
   /// Les huit éléments d'un objet ou d'un monstre, dans l'ordre où le jeu les dessine.
@@ -942,10 +1056,12 @@
       '<span class="kls' + ((o.kls >> n) & 1 ? ' on' : '') + '" title="bit ' + n + ' de +0x12">' +
       esc(nom) + '</span>').join('');
 
-    // Les seize shorts, hors ATT et DEF qui sont deja en tete.
-    const bonuses = (o.b16 || [])
+    // Les seize shorts, hors les quatre que la rangee de combat porte deja (8, 9, 12, 13).
+    const b16 = o.b16 || [];
+    const COMBAT_ROW = [8, 9, 12, 13];
+    const bonuses = b16
       .map((v, i) => ({ v, i }))
-      .filter(b => b.v !== 0 && b.i !== 8 && b.i !== 9)
+      .filter(b => b.v !== 0 && !COMBAT_ROW.includes(b.i))
       .map(b =>
         '<div class="car"><span class="idx">' + bonusLabel(b.i) + '</span>' +
         '<span class="track"><i style="width:' + Math.min(100, Math.abs(b.v) * 2) + '%;' +
@@ -982,9 +1098,14 @@
           : '') +
       '</div>' +
       '<div>' +
+        // Les quatre que la fiche du jeu aligne sous les caractéristiques : ATT et DEF viennent
+        // de +0x30 et +0x32, MATT et MDEF des indices 12 et 13 du bloc de +0x20. Sources
+        // différentes, même rangée à l'écran.
         '<div class="attdef">' +
           '<div class="ad"><span class="ad-k">ATT</span><span class="ad-v">' + o.att + '</span></div>' +
           '<div class="ad"><span class="ad-k">DEF</span><span class="ad-v">' + o.def + '</span></div>' +
+          '<div class="ad"><span class="ad-k">MATT</span><span class="ad-v">' + (b16[12] || 0) + '</span></div>' +
+          '<div class="ad"><span class="ad-k">MDEF</span><span class="ad-v">' + (b16[13] || 0) + '</span></div>' +
         '</div>' +
         '<p class="panel-label" style="margin-top:16px">Bonus élémentaire</p>' +
         '<div class="els">' + slots + '</div>' +

@@ -90,6 +90,11 @@ const harness = `
   const glaive = OBJ.find(o => o.nom === 'Glaive');
   if (glaive) { openKey = 'Glaive'; render(); grab('objets, deplie Glaive'); }
 
+  // La Cuirasse de maitre porte des valeurs sur les indices 7, 11, 13 et 15 : c'est la fiche qui
+  // exerce d'un coup la rangee de combat, l'emplacement jamais lu et les emplacements caches.
+  const cuirasse = OBJ.find(o => o.nom.startsWith('Cuirasse de ma'));
+  if (cuirasse) { openKey = cuirasse.nom; render(); grab('objets, deplie Cuirasse'); }
+
   // Un objet qu'AUCUN monstre ne lache : il n'existe que par un coffre, et la vue Objets doit
   // quand meme le porter. C'est le cas que le filtre sur le nombre de sources perdait en silence.
   const chestOnly = OBJ.find(o => o.src.length === 0 && (o.csrc || []).length > 0);
@@ -191,6 +196,22 @@ for (const [label, markup] of rendered) {
     failed = true;
     console.log('        ECHEC     ', label.padEnd(32), 'valeur manquante dans la vue des coffres');
   }
+}
+
+// Les quatre valeurs de combat sont nommees, et les emplacements sans role sont dits comme tels.
+expect('objets, deplie Cuirasse', [
+  'MATT', 'MDEF',              // indices 12 et 13, releves a l'ecran
+  '+0x2e', 'jamais lue',       // indice 7 : la huitieme case d'un tableau rempli a sept
+  '+0x36', '+0x3e', 'résistance',
+]);
+
+// La rangee de combat ne doit plus reapparaitre dans « Autres bonus » : MATT/MDEF une seule fois.
+{
+  const found = rendered.find(([l]) => l.includes('objets, deplie Cuirasse'));
+  const count = found ? (found[1].match(/MATT/g) || []).length : 0;
+  const ok = count === 1;
+  if (!ok) failed = true;
+  console.log('        attendu   ', '"MATT une seule fois"'.padEnd(34), ok ? 'ok' : 'ECHEC : ' + count);
 }
 
 process.exit(failed ? 1 : 0);
