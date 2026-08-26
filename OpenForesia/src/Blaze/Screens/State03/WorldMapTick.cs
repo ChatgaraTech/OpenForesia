@@ -1612,26 +1612,45 @@ public static unsafe partial class Blaze
         return *(short*)(s_EntityStatBlocks_005ea560 + (byte)entity[2] * 0x120 + 0x5a);
     }
 
-    /// <summary>Ghidra: &amp;DAT_0056a851 — <b>le choix d'icône de la surimpression de dialogue</b>,
-    /// indexé par <c>(personnage[0x150] &amp; 7) * 9 + (personnage[0x2be] &amp; 0xf)</c>. Les valeurs
-    /// sont des <b>octets signés</b> et l'une d'elles vaut <c>-1</c> — voir
-    /// <see cref="s_SpeechIcons_0056aae0"/> pour ce que cela désigne.
+    /// <summary>Ghidra: &amp;DAT_0056a850 — <b>la disposition du menu rapide</b>, neuf rangées de
+    /// neuf octets indexées par <c>personnage[0x150] &amp; 7</c>, la classe. Chaque rangée s'ouvre
+    /// sur son <b>nombre de catégories</b> puis porte huit <b>genres de catégorie</b>.
     ///
-    /// <para><b>Le pas et l'étendue de l'index ne s'accordent pas</b> : le premier facteur avance de
-    /// neuf, le second va jusqu'à quinze, donc les rangées se chevauchent. Soit la table est
-    /// volontairement dentelée, soit le second champ ne dépasse jamais huit en pratique. L'étendue
-    /// retenue ici, 0x50 octets, est celle que l'indexation peut atteindre (7 * 9 + 15 = 78), pas
-    /// une fin observée dans le binaire.</para>
+    /// <para>Les deux moitiés sont deux symboles dans <c>Blaze.c</c> et une seule table ici, parce
+    /// que c'en est une : <c>(&amp;DAT_0056a850)[classe * 9]</c> lit l'octet de compte,
+    /// <c>(&amp;DAT_0056a851)[classe * 9 + n]</c> lit le n-ième genre de la même rangée. Les allouer
+    /// séparément aurait perdu l'adjacence dont l'indexation dépend.</para>
     ///
-    /// TODO(REVERSE) : trancher le chevauchement en relevant les valeurs de
-    /// <c>personnage[0x2be] &amp; 0xf</c> que le jeu produit réellement.</summary>
-    private static readonly byte* s_SpeechIconIndex_0056a851 = AllocBytes([
-        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x09, 0x08, 0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x06, 0x09,
-        0x08, 0x06, 0x00, 0x01, 0x03, 0x04, 0x05, 0x09, 0x08, 0xff, 0x07, 0x00, 0x01, 0x03, 0x04, 0x05,
-        0x06, 0x09, 0x08, 0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x07, 0x09, 0x08, 0x07, 0x00, 0x01, 0x03,
-        0x04, 0x05, 0x06, 0x09, 0x08, 0x07, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x09, 0x08, 0x07, 0x00,
-        0x01, 0x03, 0x04, 0x05, 0x06, 0x09, 0x08, 0x04, 0x00, 0x01, 0x02, 0x05, 0xff, 0x05, 0x00, 0x01,
+    /// <para><b>Le chevauchement supposé n'existe pas</b> — relevé le 2026-08-26 en transcrivant
+    /// <see cref="TickQuickMenu_00530070"/>. On avait noté ici que le pas 9 et un second index
+    /// allant jusqu'à quinze se contredisaient. L'octet de compte tranche : <c>0x2be &amp; 0xf</c>
+    /// est ramené sous le compte de la rangée à chaque changement de catégorie (au plus 7), donc
+    /// une rangée ne déborde jamais sur la suivante. La même lecture rend les deux <c>0xff</c> de la
+    /// table <b>inatteignables</b> : celui de la rangée 2 est au huitième genre alors que le compte
+    /// vaut 6, et toute la rangée 8 est hors de portée de <c>classe &amp; 7</c>.</para>
+    ///
+    /// <para>Genres : 0–5 les cinq emplacements d'équipement, 6 les sorts, 7 et 8 deux choix fixes,
+    /// 9 le passage de la main à un autre membre. <see cref="DrawSpeechOverlay_005309B0"/> les
+    /// interprète en icônes, <see cref="TickQuickMenu_00530070"/> en gestes.</para>
+    ///
+    /// <para>Les valeurs sont des <b>octets signés</b> — voir <see cref="s_SpeechIcons_0056aae0"/>
+    /// pour ce que <c>-1</c> désignerait.</para></summary>
+    private static readonly byte* s_MenuLayout_0056a850 = AllocBytes([
+        0x07, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x09, 0x08,
+        0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x06, 0x09, 0x08,
+        0x06, 0x00, 0x01, 0x03, 0x04, 0x05, 0x09, 0x08, 0xff,
+        0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x06, 0x09, 0x08,
+        0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x07, 0x09, 0x08,
+        0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x06, 0x09, 0x08,
+        0x07, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x09, 0x08,
+        0x07, 0x00, 0x01, 0x03, 0x04, 0x05, 0x06, 0x09, 0x08,
+        0x04, 0x00, 0x01, 0x02, 0x05, 0xff, 0x05, 0x00, 0x01,
     ]);
+
+    /// <summary>Ghidra: &amp;DAT_0056a851 — la seconde moitié de <see cref="s_MenuLayout_0056a850"/>,
+    /// le genre de la catégorie <c>n</c>. Propriété calculée et non champ : le champ doit rester la
+    /// table entière, sinon l'octet de compte n'a plus d'adresse.</summary>
+    private static byte* s_SpeechIconIndex_0056a851 => s_MenuLayout_0056a850 + 1;
 
     /// <summary>
     /// Ghidra: FUN_005309b0 @ 0x005309b0 — <b>la surimpression de dialogue</b> : la bulle et son
@@ -1668,11 +1687,18 @@ public static unsafe partial class Blaze
     {
         _ = slotEntry;                                       // Ghidra param_4 : pousse, jamais lu
 
+
         int* placement = stackalloc int[10];
         Mem.CopyDwords((uint*)(record + 0x1c), (uint*)placement, 10);
         placement[1] += 0x32000;
 
-        short* screen = stackalloc short[2];
+        // QUATRE mots, pas deux : ProjectPoint ecrit huit octets — le couple ecran en +0 et la
+        // profondeur en +4. Deux suffisaient a l'usage qu'on en fait ici, et debordaient la pile de
+        // quatre octets : le JIT pose un temoin de pile des qu'une methode contient un `stackalloc`,
+        // et sa verification de sortie tuait le processus par 0xC0000409, sans message, dans
+        // l'epilogue de cette fonction. Le cadre de l'original reserve bien huit octets a cet
+        // endroit (`local_44` suivi de quatre octets muets avant `local_3c`).
+        short* screen = stackalloc short[4];
         if (Mdl.ProjectPoint(placement, screen) == 0) return cursor;
 
         uint* otEntry = otBase + 1;
@@ -1684,10 +1710,19 @@ public static unsafe partial class Blaze
         sprite[1] = (character[0x2be] & 0x80) == 0 ? (int)s_Unknown_005e9814 : 0x404040;
 
         // La bulle vit dans le repere de la fenetre d'objets : ces trois globales sont son origine.
-        int zoom = *Mem.ItemMenuState(0x005de160);
-        *Mem.ItemMenuState(0x005de15c) = 1;
-        *Mem.ItemMenuState(0x005de154) = screen[0] * (zoom + 9) * 0x20 / 0x140 + (0xb - zoom) * 0x10;
-        *Mem.ItemMenuState(0x005de158) = screen[1] * (zoom + 9) * 0x20 / 0x140 + (0xb - zoom) * 0xc;
+        //
+        // **Elles s'ecrivent par leur champ nomme, pas par l'arene.** 0x005de154, _158, _15c et
+        // _160 tombent tous les quatre DANS ItemMenuArena, et portent aussi un champ simple ailleurs
+        // (s_Unknown_005de154..15c dans State00/MainMenu.cs, s_SizeSetting_005de160 dans
+        // GameMemory) — c'est le recouvrement que UiWindow signale en TODO(REVERSE) depuis le
+        // 2026-08-21. Le lecteur, EmitViewportRect/EmitClipRect, lit les champs ; ecrire l'arene
+        // ici ne lui parvenait donc pas, et la bulle se dessinait dans le coin haut gauche avec
+        // une origine restee a zero. Releve le 2026-08-26, a la premiere image ou l'anneau a
+        // survecu assez longtemps pour etre regarde.
+        int zoom = Mem.s_SizeSetting_005de160;
+        s_Unknown_005de15c = 1;
+        s_Unknown_005de154 = screen[0] * (zoom + 9) * 0x20 / 0x140 + (0xb - zoom) * 0x10;
+        s_Unknown_005de158 = screen[1] * (zoom + 9) * 0x20 / 0x140 + (0xb - zoom) * 0xc;
 
         UiWin.EmitViewportRect(otEntry, &cursor);            // Ghidra: FUN_0051be20
 
@@ -1839,9 +1874,9 @@ public static unsafe partial class Blaze
         cursor = Prims.DrawFlatPrimitive(otEntry, cursor, sprite);
         UiWin.EmitClipRect(otEntry, &cursor);
 
-        *Mem.ItemMenuState(0x005de15c) = 0;
-        *Mem.ItemMenuState(0x005de158) = 0;
-        *Mem.ItemMenuState(0x005de154) = 0;
+        s_Unknown_005de15c = 0;
+        s_Unknown_005de158 = 0;
+        s_Unknown_005de154 = 0;
 
         return cursor;
     }
@@ -1917,7 +1952,9 @@ public static unsafe partial class Blaze
         int cellX = ((-Mem.s_Unknown_006008d0 >> 0xc) + 0x2000 >> 9) + (corner & 0xff);
         int cellZ = ((-Mem.s_Unknown_006008d8 >> 0xc) + 0x2000 >> 9) + (corner >> 8);
 
-        short* projected = stackalloc short[2];
+        // Quatre mots : ProjectPoint en ecrit huit octets (couple ecran puis profondeur). Voir
+        // DrawSpeechOverlay_005309B0 pour ce que deux coutaient.
+        short* projected = stackalloc short[4];
 
         for (int row = 7; row != 0; row--, cellZ--)
         {
@@ -5666,6 +5703,11 @@ public static unsafe partial class Blaze
     /// l'entrée <c>-1</c> a une hauteur nulle, donc elle ne dessine rien : c'est vraisemblablement
     /// la façon dont le jeu de 1998 écrit « pas d'icône ».</para>
     ///
+    /// <para><b>Ces deux <c>-1</c> sont en fait inatteignables</b>, établi le 2026-08-26 —
+    /// l'octet de compte de <see cref="s_MenuLayout_0056a850"/> borne l'index avant eux. L'adjacence
+    /// reste néanmoins la bonne façon d'allouer : c'est l'indexation du binaire qu'elle décrit, et
+    /// rien ne garantit qu'aucun chemin ne l'atteigne jamais.</para>
+    ///
     /// TODO(REVERSE) : le rôle des champs d'un descripteur (<c>u, v, w, h, ?, ?, clut</c>) est
     /// supposé d'après leur forme, pas établi.</summary>
     private static readonly byte* s_IconTables_0056aaa0 = AllocBytes([
@@ -7605,9 +7647,13 @@ public static unsafe partial class Blaze
             return;
         }
 
+        if (*(ushort*)(pad + 2) != 0)
+        {
+        }
+
         if ((*slot & 0x8000000) != 0)
         {
-            HandleKnockback_00530070(slot, entry, perChar, pad);
+            TickQuickMenu_00530070(slot, entry, perChar, pad);
             TickPartyMemberTail(member, s, slot, entry, pad, perChar, mainMem);
             return;
         }
@@ -8090,13 +8136,554 @@ public static unsafe partial class Blaze
             "Blaze.c, plus FUN_00523a20. Elle balaie les cinq emplacements d'objet equipe du bloc " +
             "par personnage (+0x2b0) et agit sur celui dont l'identifiant vaut le second argument.");
 
-    /// <summary>Ghidra: FUN_00530070 @ 0x00530070 (365 l.) — le recul apres un coup recu, pris
-    /// quand le mot d'etat porte <c>0x8000000</c>.</summary>
-    private static void HandleKnockback_00530070(uint* slot, byte* entry, byte* perChar, byte* pad)
+    /// <summary>Ghidra: &amp;DAT_00564600 — <b>le nombre de sorts par école</b>, indexé par
+    /// <c>personnage[0x2b5]</c>. Trois écoles seulement : la table de pointeurs
+    /// <c>PTR_DAT_00564640</c> porte trois rangées puis un mot nul, et la rangée cumulée voisine
+    /// (<c>DAT_00564608</c>, <c>00 1d 35 49</c>) est bien la somme courante de <c>1d 18 14</c>.
+    /// Relevé verbatim dans <c>Legacy/Binaries/Blaze.exe</c>.
+    ///
+    /// <para>Ces comptes bornent le balayage de <see cref="TickQuickMenu_00530070"/> et l'index de
+    /// bit dans <c>personnage + 0x160 + école * 8</c>, huit octets par école — soit 64 bits pour au
+    /// plus 29 sorts.</para></summary>
+    private static readonly byte* s_SpellCounts_00564600 = AllocBytes([
+        0x1d, 0x18, 0x14, 0x01, 0x01, 0x01, 0x26, 0x00,
+    ]);
+
+    // =====================================================================
+    // Le menu rapide — l'anneau au-dessus du personnage, ouvert par le bouton `+0x1fca`.
+    //
+    // `DrawSpeechOverlay_005309B0` le dessine ; `TickQuickMenu_00530070` le pilote. Les deux lisent
+    // la meme table de disposition `s_MenuLayout_0056a850` : la categorie courante est
+    // `personnage[0x2be] & 0xf`, l'entree choisie dans la categorie est `personnage[0x2bf]`, et
+    // `personnage[0x2d0]` porte le nombre d'entrees que la categorie courante propose (la liste
+    // elle-meme etant a `+0x2d1`).
+    //
+    // Le bit 0x80 de `personnage[0x2be]` distingue les deux etages : eteint on change de categorie,
+    // allume on parcourt les entrees de la categorie. Le bit 0x8000000 du mot d'etat est ce qui
+    // maintient l'anneau a l'ecran ; l'eteindre le ferme.
+    //
+    // Les quatre sons sont ceux de tout le jeu : 0x38 valider, 0x39 annuler, 0x3a deplacer,
+    // 0x3b refuser (Ghidra: FUN_0053db80 / FUN_0053dba0 / FUN_0053db60 / FUN_0053dbc0, quatre
+    // enveloppes d'une ligne autour de FUN_0053cea0).
+    // =====================================================================
+
+    private static void QuickMenuConfirmSound() => Aud.PlaySoundEffect(0x38, 0x400, 0x2000, 0x2000);
+    private static void QuickMenuCancelSound() => Aud.PlaySoundEffect(0x39, 0x400, 0x2000, 0x2000);
+    private static void QuickMenuMoveSound() => Aud.PlaySoundEffect(0x3a, 0x400, 0x2000, 0x2000);
+    private static void QuickMenuRefuseSound() => Aud.PlaySoundEffect(0x3b, 0x400, 0x2000, 0x2000);
+
+    /// <summary>
+    /// Ghidra: FUN_00530070 @ 0x00530070 — <b>le menu rapide</b>, la boucle d'entree de l'anneau
+    /// qu'un membre du groupe ouvre au-dessus de lui. Prise quand le mot d'etat porte
+    /// <c>0x8000000</c>.
+    ///
+    /// <para>Elle fait trois choses dans cet ordre : ouvrir, fermer ou valider l'etage courant ;
+    /// deplacer le curseur d'entree et agir sur la validation, par un aiguillage sur le genre de la
+    /// categorie ; puis — c'est la queue commune, atteinte par tous les chemins — deplacer le
+    /// curseur de categorie et <b>recalculer la liste d'entrees</b> que la nouvelle categorie
+    /// propose.</para>
+    ///
+    /// <para><b>Les deux axes ne font pas la meme chose selon que le bouton d'ouverture est
+    /// tenu.</b> Bouton tenu : haut/bas changent de categorie, gauche/droite changent d'entree.
+    /// Bouton relache : les deux axes changent d'entree, et la categorie ne bouge que si l'anneau
+    /// n'est pas encore ouvert. Le repetiteur est <c>manette[6]</c>, le mot que
+    /// <see cref="Input.UpdateButtonEdges"/> remplit avec la croix et sa repetition automatique —
+    /// <c>0x10</c> haut, <c>0x20</c> droite, <c>0x40</c> bas, <c>0x80</c> gauche.</para>
+    ///
+    /// <para><b>Le test « le curseur a-t-il bouge » du genre 6 lit un registre ecrase.</b> Ghidra
+    /// rend <c>puVar11</c> comme la valeur d'avant le deplacement, puis les deux boucles de
+    /// recherche l'ecrasent avec leur compteur d'essais restants ; le binaire confirme
+    /// (<c>cmp ebx,edx</c> en <c>0x00530376</c>, ou <c>ebx</c> sort de <c>dec ebx</c>). Transcrit
+    /// tel quel : le son de deplacement se declenche donc des qu'une recherche a tourne, meme si
+    /// elle est revenue sur le meme sort. C'est le comportement de 1998.</para>
+    ///
+    /// <para><b>Le genre <c>-1</c> de la table est inatteignable</b> — voir
+    /// <see cref="s_MenuLayout_0056a850"/>. Le binaire n'y initialise pas le masque de la queue : le
+    /// <c>ja</c> non signe saute par-dessus les cinq <c>mov ebx</c>, puis le <c>jg</c> signe laisse
+    /// entrer la boucle avec <c>ebx</c> = le pointeur de manette. On pose zero a la place, ce qui
+    /// rend la liste vide plutot qu'aleatoire, et on le dit ici.</para>
+    ///
+    /// <para><b>Un seul trou</b> : le genre 5 valide fait tourner le script d'objet
+    /// (<see cref="RunItemScript_00523AA0"/>), une seconde machine a opcodes de 23 gestionnaires
+    /// que le depot n'a pas encore abordee. Tout le reste du menu — navigation, equipement,
+    /// sorts, passage de la main — est transcrit.</para>
+    ///
+    /// <para>Le desassemblage complet est conserve dans
+    /// <c>Legacy/Raw/Blaze/FUN_00530070.disasm.txt</c> : Ghidra s'arrete au <c>ret</c> de
+    /// <c>0x00530714</c> alors que les genres 8 et 9 vivent apres lui, et trois tables de sauts
+    /// (<c>0x00530948</c>, <c>0x00530970</c>, <c>0x00530998</c>) ne se lisent que la.</para>
+    /// </summary>
+    private static void TickQuickMenu_00530070(uint* slot, byte* entry, byte* perChar, byte* pad)
+    {
+
+        byte state = perChar[0x2be];
+        int kind = (sbyte)s_SpeechIconIndex_0056a851[(state & 0xf) + (perChar[0x150] & 7) * 9];
+
+        ushort openMask = *(ushort*)(perChar + 0x1fca);
+        byte* target = pad;                    // Ghidra: puVar7 / eax, l'emplacement qu'on equipera
+        bool close = false;                    // Ghidra: LAB_005304f7, atteint des deux etages
+
+        if ((state & 0x80) == 0)
+        {
+            // ---------------------------------------------- l'anneau n'est pas encore ouvert
+            ushort edge = *(ushort*)(pad + 2);
+            ushort dismiss = (ushort)(openMask | 0x4000);
+
+            if ((dismiss & edge) != 0)
+            {
+                *(ushort*)(pad + 2) = (ushort)(~dismiss & edge);
+                close = true;
+            }
+            else if (((*(ushort*)pad & openMask) != 0 && (pad[6] & 0xa0) != 0)
+                     || (edge & 0x8000) != 0)
+            {
+                // Le genre 5 se refuse tant que le delai d'objet du personnage court.
+                if ((kind == 5 && perChar[0x207] != 0) || perChar[0x2d0] == 0)
+                {
+                    QuickMenuRefuseSound();
+                }
+                else
+                {
+                    perChar[0x2be] = (byte)(state | 0x80);
+                    QuickMenuConfirmSound();
+                }
+            }
+        }
+        else
+        {
+            // ---------------------------------------------- l'anneau est ouvert sur une categorie
+            ushort edge = *(ushort*)(pad + 2);
+
+            if ((edge & openMask) != 0)
+            {
+                *(ushort*)(pad + 2) = (ushort)(edge & ~openMask);
+                close = true;
+            }
+            else if (((*(ushort*)pad & openMask) != 0 && (pad[6] & 0x50) != 0)
+                     || (edge & 0x4000) != 0)
+            {
+                perChar[0x2be] = (byte)(state & 0xf);
+                QuickMenuCancelSound();
+            }
+            else if (perChar[0x2d0] != 0)
+            {
+                byte entries = perChar[0x2d0];            // Ghidra: bVar1, releve une seule fois
+
+                // --- le curseur d'entree ; le genre 6 a son propre balayage plus bas ------------
+                if (kind != 6)
+                {
+                    sbyte before = (sbyte)perChar[0x2bf];
+                    byte repeat = pad[6];
+                    byte forward;
+
+                    if ((*(ushort*)pad & openMask) == 0)
+                    {
+                        if ((repeat & 0x90) != 0) perChar[0x2bf] = (byte)(before - 1);
+                        forward = (byte)(pad[6] & 0x60);
+                    }
+                    else
+                    {
+                        if ((repeat & 0x80) != 0) perChar[0x2bf] = (byte)(before - 1);
+                        forward = (byte)(pad[6] & 0x20);
+                    }
+
+                    if (forward != 0) perChar[0x2bf]++;
+                    if (perChar[0x2bf] == 0xff) perChar[0x2bf] = (byte)(entries - 1);
+                    if (perChar[0x2bf] >= entries) perChar[0x2bf] = 0;
+                    if (before != (sbyte)perChar[0x2bf]) QuickMenuMoveSound();
+                }
+
+                switch (kind)
+                {
+                    // --- 0 a 4 : les cinq emplacements d'equipement ----------------------------
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                        target = perChar + 0x2b0 + kind;
+                        break;
+
+                    // --- 5 : se servir de l'objet designe --------------------------------------
+                    case 5:
+                    {
+                        byte item = perChar[perChar[0x2bf] + 0x2d1];
+
+                        if ((pad[3] & 0x80) != 0)
+                        {
+                            if ((perChar[item * 0x280 + 0x313] & 0x10) == 0
+                                || s_Unknown_00566c84 == 0
+                                || (*(uint*)(perChar + 0x140) & 0x400003c0) != 0)
+                            {
+                                QuickMenuRefuseSound();
+                            }
+                            else
+                            {
+                                UseCarriedItem_00523820(slot, item);
+                                CommitStagedStatBlock(perChar);              // Ghidra: FUN_00538ab0
+                                ScaleStatBlockByDifficulty(perChar + 0x100); // Ghidra: FUN_00538f50
+                                ComputeDerivedStats(perChar);                // Ghidra: FUN_00538c50
+                                ApplyEquipmentStatBonuses(perChar);          // Ghidra: FUN_00538e20
+                                FinalizeEquipmentEffects(perChar + 0x100);   // Ghidra: FUN_00538fa0
+                                QuickMenuConfirmSound();
+
+                                perChar[0x207] = 0x28;
+                                perChar[0x2be] &= 0xf;
+                                *slot &= 0xf7ffffff;
+                            }
+                        }
+                        break;
+                    }
+
+                    // --- 6 : les sorts, parcourus en sautant ceux qui ne sont pas appris --------
+                    case 6:
+                    {
+                        byte school = perChar[0x2b5];
+                        int spells = s_SpellCounts_00564600[school];
+                        uint* learned = (uint*)(perChar + 0x160 + school * 8);
+
+                        // Ghidra: puVar11 / ebx. Charge ici avec l'index d'avant, puis ecrase par
+                        // le compteur d'essais de chaque recherche — voir l'en-tete.
+                        int witness = perChar[0x2bf];
+
+                        ushort held = (ushort)(*(ushort*)pad & openMask);
+                        if ((held != 0 && (pad[6] & 0x80) != 0)
+                            || (held == 0 && (pad[6] & 0x90) != 0))
+                        {
+                            int index = witness;
+                            int tries = spells;
+                            while (tries != 0)
+                            {
+                                index--;
+                                if (index < 0) index = spells - 1;
+                                if ((learned[index >> 5] & (1u << (index & 0x1f))) != 0) break;
+                                tries--;
+                            }
+                            witness = tries;
+                            perChar[0x2bf] = (byte)index;
+                        }
+
+                        held = (ushort)(*(ushort*)pad & openMask);
+                        if ((held != 0 && (pad[6] & 0x20) != 0)
+                            || (held == 0 && (pad[6] & 0x60) != 0))
+                        {
+                            int index = perChar[0x2bf];
+                            int tries = spells;
+                            while (tries != 0)
+                            {
+                                index = (index + 1) % spells;
+                                if ((learned[index >> 5] & (1u << (index & 0x1f))) != 0) break;
+                                tries--;
+                            }
+                            witness = tries;
+                            perChar[0x2bf] = (byte)index;
+                        }
+
+                        if (witness != perChar[0x2bf]) QuickMenuMoveSound();
+
+                        if ((pad[3] & 0x80) != 0)
+                        {
+                            perChar[0x2b6] = perChar[0x2bf];
+                            perChar[0x2be] &= 0xf;
+                            *slot &= 0xf7ffffff;
+                            QuickMenuConfirmSound();
+                        }
+                        break;
+                    }
+
+                    // --- 7 : un choix simple, garde a +0x2b6 -----------------------------------
+                    case 7:
+                        if ((*(ushort*)(pad + 2) & 0x8000) != 0)
+                        {
+                            perChar[0x2b6] = perChar[0x2bf];
+                            perChar[0x2be] &= 0xf;
+                            *slot &= 0xf7ffffff;
+                            QuickMenuConfirmSound();
+                        }
+                        break;
+
+                    // --- 8 : trois reglages selon la tranche ou tombe l'entree ------------------
+                    case 8:
+                        if ((*(ushort*)(pad + 2) & 0x8000) != 0)
+                        {
+                            byte pick = perChar[0x2bf];
+                            if (pick <= 2) perChar[0x2b7] = pick;
+                            if (pick >= 3 && pick <= 4) perChar[0x2b9] = (byte)((pick - 3) ^ 1);
+                            if (pick >= 5 && pick <= 6) perChar[0x2ba] = (byte)((pick - 5) ^ 1);
+                            QuickMenuConfirmSound();
+                        }
+                        break;
+
+                    // --- 9 : passer la main a un autre membre ----------------------------------
+                    case 9:
+                    {
+                        ushort confirmed = *(ushort*)(pad + 2);
+                        if ((confirmed & 0x8000) != 0)
+                        {
+                            *(ushort*)(pad + 2) = (ushort)(confirmed & 0xfff);
+                            pad[0x0e] = 0;
+
+                            byte pick = perChar[0x2bf];
+                            uint* pickFlags = (uint*)(Inp.s_SlotFlags_005e93c0 + pick * 0x9c);
+
+                            if ((byte)Mem.s_Unknown_005de538 == pick
+                                || (*pickFlags & 0x50000000) != 0)
+                            {
+                                QuickMenuRefuseSound();
+                            }
+                            else
+                            {
+                                // Ecriture d'octet dans l'original ; les huit ecrivains du global
+                                // n'y posent jamais plus de 255, donc l'affectation entiere donne
+                                // la meme valeur — voir DataSymbols.md, « 0x005de538 ».
+                                Mem.s_Unknown_005de538 = pick;
+
+                                if ((*pickFlags & 0x10000) == 0)
+                                {
+                                    QuickMenuConfirmSound();
+                                }
+                                else
+                                {
+                                    // Le membre vise etait mene par l'IA : on lui donne la manette.
+                                    byte* mainMem = GetMainMemPtr();
+                                    byte leader = (byte)Mem.s_Unknown_005de538;
+                                    byte* leaderBlock = mainMem + 0xf0000 + leader * 0x2000;
+
+                                    leaderBlock[0x2d0] = (byte)s_PartySize_005e9020;
+                                    leaderBlock[0x2be] = (byte)(
+                                        s_MenuLayout_0056a850[(leaderBlock[0x150] & 7) * 9] - 1);
+                                    leaderBlock[0x2bf] = leader;
+                                    leaderBlock[0x2b8] = 0;
+
+                                    perChar[0x2b8] = 1;
+                                    perChar[0x2be] &= 0xf;
+
+                                    // Les deux octets d'affectation de manette s'echangent entre
+                                    // l'entree de ce membre et celle du nouveau meneur.
+                                    byte* leaderEntry = Inp.s_PlayerSlots_005e9188 + leader * 0x4c;
+                                    byte keptKind = entry[9];
+                                    byte keptPad = entry[8];
+                                    entry[8] = leaderEntry[0];
+                                    entry[9] = leaderEntry[1];
+                                    leaderEntry[0] = keptPad;
+                                    leaderEntry[1] = keptKind;
+
+                                    *(uint*)(Inp.s_SlotFlags_005e93c0 + leader * 0x9c) &= 0xfffeffff;
+                                    *slot |= 0x10000;
+                                    QuickMenuConfirmSound();
+                                }
+                            }
+
+                            perChar[0x2be] &= 0xf;
+                            *slot &= 0xf7ffffff;
+                            *(uint*)(Inp.s_SlotFlags_005e93c0
+                                     + (byte)Mem.s_Unknown_005de538 * 0x9c) &= 0xf7ffffff;
+                        }
+                        break;
+                    }
+                }
+
+                // --- la validation des cinq emplacements d'equipement --------------------------
+                if (kind < 5)
+                {
+                    byte item = perChar[perChar[0x2bf] + 0x2d1];
+
+                    if ((pad[3] & 0x80) != 0)
+                    {
+                        if ((*(ushort*)(perChar + item * 0x280 + 0x312)
+                             & *(ushort*)(perChar + 0x112)) == 0)
+                        {
+                            QuickMenuRefuseSound();
+                        }
+                        else
+                        {
+                            // Les deux mains, +0x2b3 et +0x2b4, ne peuvent pas tenir le meme objet :
+                            // on refuse quand la validation viserait une main alors que l'autre le
+                            // porte deja. Tout autre emplacement passe.
+                            byte* left = perChar + 0x2b3;
+                            byte* right = perChar + 0x2b4;
+
+                            if ((target == left && perChar[0x2b4] != item)
+                                || (target == right && perChar[0x2b3] != item)
+                                || (target != left && target != right))
+                            {
+                                // Revalider l'objet deja en place le retire.
+                                *target = *target == item ? (byte)0xff : item;
+
+                                CommitStagedStatBlock(perChar);              // Ghidra: FUN_00538ab0
+                                ScaleStatBlockByDifficulty(perChar + 0x100); // Ghidra: FUN_00538f50
+                                ComputeDerivedStats(perChar);                // Ghidra: FUN_00538c50
+                                ApplyEquipmentStatBonuses(perChar);          // Ghidra: FUN_00538e20
+                                FinalizeEquipmentEffects(perChar + 0x100);   // Ghidra: FUN_00538fa0
+                                QuickMenuConfirmSound();
+                            }
+                            else
+                            {
+                                QuickMenuRefuseSound();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (close)
+        {
+            perChar[0x2be] &= 0xf;
+            *slot &= 0xf7ffffff;
+            QuickMenuCancelSound();
+        }
+
+        // ------------------------------------------------------ la queue : le curseur de categorie
+        ushort menuHeld = (ushort)(*(ushort*)pad & *(ushort*)(perChar + 0x1fca));
+
+        // On ne change de categorie que si le bouton est tenu, ou si l'anneau n'est pas ouvert.
+        if (menuHeld != 0 || (perChar[0x2be] & 0x80) == 0)
+        {
+            byte before = perChar[0x2be];
+            int beforeCategory = before & 0xf;
+            byte repeat = pad[6];
+            byte forward;
+
+            if (menuHeld != 0)
+            {
+                if ((repeat & 0x10) != 0) perChar[0x2be] = (byte)(before - 1);
+                forward = (byte)(pad[6] & 0x40);
+            }
+            else
+            {
+                if ((repeat & 0x90) != 0) perChar[0x2be] = (byte)(before - 1);
+                forward = (byte)(pad[6] & 0x60);
+            }
+
+            if (forward != 0) perChar[0x2be]++;
+
+            sbyte categories = (sbyte)s_MenuLayout_0056a850[(perChar[0x150] & 7) * 9];
+            if ((perChar[0x2be] & 0xf) == 0xf) perChar[0x2be] = (byte)(categories - 1);
+            if ((perChar[0x2be] & 0xf) >= categories) perChar[0x2be] = 0;
+
+            if (beforeCategory != (perChar[0x2be] & 0xf))
+            {
+                QuickMenuMoveSound();
+
+                // La nouvelle categorie repart d'un etat par defaut, propre a son genre.
+                switch ((sbyte)s_SpeechIconIndex_0056a851[
+                            (perChar[0x2be] & 0xf) + (perChar[0x150] & 7) * 9])
+                {
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                    case 5:
+                        perChar[0x2bf] = 0;
+                        break;
+
+                    case 6:
+                        perChar[0x2d0] = 1;
+                        perChar[0x2bf] = perChar[0x2b6];
+                        break;
+
+                    case 7:
+                        perChar[0x2d0] = 7;
+                        perChar[0x2bf] = perChar[0x2b6];
+                        break;
+
+                    case 8:
+                        perChar[0x2d0] = 7;
+                        perChar[0x2bf] = 0;
+                        break;
+
+                    case 9:
+                        perChar[0x2d0] = (byte)s_PartySize_005e9020;
+                        perChar[0x2bf] = 0;
+                        break;
+                }
+            }
+        }
+
+        // ------------------------------------------------ la liste d'entrees de la categorie
+        // Les genres 0 a 5 listent les objets portes dont le mot de type porte le bit de la
+        // categorie ; les autres genres gardent la liste que le bloc ci-dessus leur a posee.
+        int shown = (sbyte)s_SpeechIconIndex_0056a851[
+                        (perChar[0x2be] & 0xf) + (perChar[0x150] & 7) * 9];
+
+        uint slotBit = shown switch
+        {
+            0 => 0x100u,
+            1 => 0x200u,
+            2 => 0x400u,
+            3 or 4 => 0x800u,
+            5 => 0x1000u,
+            _ => 0u,                            // inatteignable — voir l'en-tete
+        };
+
+        if (shown < 6)
+        {
+            perChar[0x2d0] = 0;
+
+            for (int i = 0; i < 10; i++)
+            {
+                byte* item = perChar + 0x300 + i * 0x280;
+                if (item[0] == 0 || (*(ushort*)(item + 0x12) & slotBit) == 0) continue;
+
+                perChar[0x2d1 + perChar[0x2d0]] = (byte)i;
+                perChar[0x2d0]++;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00523820 @ 0x00523820 — <b>se servir d'un objet porte</b>. Elle retrouve le bloc
+    /// du personnage a partir de l'index range en <c>emplacement[8]</c>, puis lance le script de
+    /// l'objet <paramref name="item"/> par <c>FUN_00523860</c>.
+    ///
+    /// <para>Le garde <c>item &lt; 10</c> est celui de l'original : dix objets portes au plus, et
+    /// un index hors borne ne fait rien du tout.</para>
+    /// </summary>
+    private static void UseCarriedItem_00523820(uint* slot, uint item)
+    {
+        if (item >= 10) return;
+
+        byte* record = GetMainMemPtr() + (((byte*)slot)[8] + 0x78) * 0x2000;
+        RunItemScriptSaved_00523860(slot, record, record + item * 0x280 + 0x300);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00523860 @ 0x00523860 — le meme sas que <see cref="RunEntityScript"/> : bascule
+    /// l'allocateur de <c>winsys3d</c> sur le tampon de travail le temps du script d'objet, si tant
+    /// est qu'il y ait un etat a preserver.
+    ///
+    /// <para><b>Ghidra perd un parametre dans la seconde branche</b> — elle y appelle
+    /// <c>FUN_00523aa0(unaff_retaddr, param_1, param_2, …)</c>, decale d'un cran, et prend le mot
+    /// de retour pour un argument. Les deux branches passent les memes trois arguments ; c'est la
+    /// forme retenue ici, et <c>FUN_00539190</c> porte le meme defaut sur le meme squelette.</para>
+    /// </summary>
+    private static void RunItemScriptSaved_00523860(uint* slot, byte* record, byte* item)
+    {
+        byte* script = item + *(ushort*)(item + 0x80);
+
+        if (Winsys3d.Ordinal_46() < 0)
+        {
+            RunItemScript_00523AA0(slot, record, item, script);
+            return;
+        }
+
+        *(int*)Mem.Arena(0x005e9318) = Winsys3d.Ordinal_46();
+        Winsys3d.Ordinal_45(GetMainMemPtr() + 0x1c0000);
+        RunItemScript_00523AA0(slot, record, item, script);
+        Winsys3d.Ordinal_45((void*)(nint)(*(int*)Mem.Arena(0x005e9318)));
+    }
+
+    /// <summary>Ghidra: FUN_00523aa0 @ 0x00523aa0 — <b>la machine a opcodes des objets</b>, jumelle
+    /// exacte de <see cref="RunScript"/> mais sur une autre table de gestionnaires.</summary>
+    private static void RunItemScript_00523AA0(uint* slot, byte* record, byte* item, byte* script)
         => throw new NotImplementedException(
-            "FUN_00530070 (0x00530070) : non transcrite. 365 lignes dans Blaze.c — le recul du " +
-            "personnage touche. Elle prend (entite, entree d'emplacement, bloc par personnage, " +
-            "manette) ; Ghidra lui donne les quatre parametres.");
+            "FUN_00523aa0 (0x00523aa0) : non transcrite. C'est la seconde machine a opcodes du " +
+            "jeu — meme boucle que RunScript (arret sur 0xff, ou des qu'un gestionnaire pose un " +
+            "resultat, sauf l'opcode 2), mais sur la table PTR_LAB_00564f80 : 23 gestionnaires, " +
+            "0x00523b00 a 0x00524170, tous presents dans Blaze.c. Elle est le seul trou du menu " +
+            "rapide : elle ne s'atteint que par le genre 5 valide, « se servir de l'objet ».");
 
     /// <summary>Ghidra: FUN_0051a020 @ 0x0051a020 (221 l.) — l'integration du deplacement au sol,
     /// appelee quand le personnage n'est pas en l'air.</summary>

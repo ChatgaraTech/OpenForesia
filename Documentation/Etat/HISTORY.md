@@ -4,6 +4,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-08-26
+
+- feat : **le menu rapide fonctionne** — `FUN_00530070` transcrite (`TickQuickMenu_00530070`, 2 262 octets, deux étages, dix genres de catégorie) ; espace ouvre l'anneau au-dessus du personnage, les flèches changent de catégorie et d'entrée, la validation équipe et recalcule les statistiques, et la croix referme
+- fix : **la bulle du menu se dessinait dans le coin haut gauche** — `DrawSpeechOverlay_005309B0` posait son origine (`0x005de154`/`_158`/`_15c`) et lisait son zoom (`0x005de160`) *par l'arène du menu d'objets*, alors que `UiWindow` lit les champs nommés à ces mêmes adresses ; l'écriture n'atteignait jamais le lecteur
+- fix : **`stackalloc short[2]` pour un `ProjectPoint` qui écrit huit octets**, deux fois (la surimpression et le balayage de cellules) — le témoin de pile que le JIT pose sur toute méthode à `stackalloc` tuait le processus par `0xC0000409` dans l'épilogue, sans une ligne de journal
+- doc : **le chevauchement supposé de `DAT_0056a851` n'existe pas** — `0x0056a850` est l'octet de compte de sa rangée, il borne l'index sous 7, et rend du même coup ses deux `-1` inatteignables ; les deux symboles sont une seule table
+- doc : `DAT_00564600`, le nombre de sorts par école — **trois écoles**, 29/24/20, établi par la table de pointeurs voisine et par la rangée cumulée `DAT_00564608`
+- feat : `playtest.ps1` apprend le jeton `SPACE` (triangle, l'ouverture du menu rapide) et dit désormais **« SORTIE SILENCIEUSE »** quand le jeu meurt de lui-même sans rien écrire — le verdict annonçait « aucun plantage » sur un processus mort
+
 ## 2026-08-25
 
 - fix : **la pastille de classe autorisée sortait en rectangle blanc** — `(-(bit) & 0xfffffff9) + 9` vaut **2** quand le bit est levé, pas 0 : `0xfffffff9` est **−7**, pas un masque ; corrigé dans la fiche d'objet du menu **et** dans le coffre, qui portaient la même lecture

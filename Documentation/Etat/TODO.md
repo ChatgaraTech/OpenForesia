@@ -1,6 +1,6 @@
 ﻿# TODO
 
-Point d'entrée entre deux sessions. Mis à jour le **2026-08-25**. L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-08-26**. L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -11,6 +11,45 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# LE MENU RAPIDE FONCTIONNE (2026-08-26)
+
+Espace ouvre l'anneau au-dessus du personnage, les flèches parcourent catégories et entrées, la
+validation équipe et recalcule les statistiques, la croix referme. `FUN_00530070` est transcrite en
+entier (`TickQuickMenu_00530070`) — le nom « le recul après un coup reçu » qu'elle portait était
+faux, c'est le pilote du menu.
+
+**Exercé par l'agent, capture à l'appui** (l'anneau s'ouvre sur place, donc hors du partage du
+2026-08-24) :
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 5 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT4,`
+SPACE,WAIT2,DOWN,WAIT2,DOWN,WAIT2
+```
+
+Vu : `ARME` à l'ouverture, `BOUC` après deux `DOWN`, fermeture propre au second `SPACE`, aucun
+plantage sur ouvrir → entrer → annuler → fermer.
+
+## Ce qui reste
+
+**Un seul trou : `FUN_00523aa0`**, la seconde machine à opcodes du jeu — 23 gestionnaires,
+`0x00523b00`..`0x00524170`, tous dans `Blaze.c`. Elle ne s'atteint que par le genre 5 validé,
+« se servir de l'objet ». Tout le reste du menu est écrit.
+
+**Non exercé en jeu** : l'équipement effectif (valider une arme et voir les statistiques bouger),
+le genre 6 (les sorts) et le genre 9 (passer la main à un autre membre). Le trajet scripté ouvre le
+menu et navigue ; il ne valide rien. À faire à la main.
+
+## Deux corrections de fond au passage
+
+- **`stackalloc short[2]` pour un `ProjectPoint` qui écrit huit octets** : le témoin de pile du JIT
+  tuait le processus par `0xC0000409` dans l'épilogue, **sans une ligne de journal**. Deux sites.
+  La recette de diagnostic est dans `test-protocol.md`.
+- **Recouvrement d'arène sur `0x005de154`/`_158`/`_15c`/`_160`** : la bulle se dessinait dans le coin
+  haut gauche. Le `TODO(REVERSE)` d'`Engine/UiWindow.cs` disait « ne se manifeste pas » — il vient
+  de se manifester. Le site fautif est corrigé ; le recouvrement, non.
+
 
 # À VÉRIFIER EN JEU : la salle du barman
 

@@ -34,7 +34,7 @@ param(
     [string[]]$Trace = @(),
 
     # Touches a jouer une fois l'ecran atteint, dans l'ordre. Jetons reconnus :
-    # ENTER ESC UP DOWN LEFT RIGHT PGUP PGDN, et WAIT<n> pour patienter n secondes.
+    # ENTER ESC SPACE UP DOWN LEFT RIGHT PGUP PGDN, et WAIT<n> pour patienter n secondes.
     # Exemple : -Then DOWN,WAIT2,ENTER
     [string[]]$Then = @(),
 
@@ -62,7 +62,7 @@ param(
     # navigation du menu et sa validation. Sert aux conditions que le jeu lit sur l'etat *tenu* a un
     # instant precoce -- typiquement SELECT a l'entree de l'etat de jeu 1, que la sequence -Then ne
     # peut pas atteindre puisqu'elle ne demarre qu'apres la validation.
-    # Jetons : SELECT START LCTRL LALT ENTER ESC UP DOWN LEFT RIGHT PGUP PGDN
+    # Jetons : SELECT START LCTRL LALT ENTER ESC SPACE UP DOWN LEFT RIGHT PGUP PGDN
     [string]$Hold = ''
 )
 
@@ -315,7 +315,8 @@ if ($p.HasExited) {
     if ($Hold -ne '') {
         $holdMap = @{ 'START'=@(0x3C,$false); 'SELECT'=@(0x3B,$false); 'LCTRL'=@(0x1D,$false);
                       'LALT'=@(0x38,$false);  'ENTER'=@(0x1C,$false); 'ESC'=@(0x01,$false);
-                      'UP'=@(0x48,$true); 'DOWN'=@(0x50,$true); 'LEFT'=@(0x4B,$true); 'RIGHT'=@(0x4D,$true) }
+                      'UP'=@(0x48,$true); 'DOWN'=@(0x50,$true); 'LEFT'=@(0x4B,$true); 'RIGHT'=@(0x4D,$true);
+                      'SPACE'=@(0x39,$false) }
         $hk = $Hold.ToUpper()
         if ($holdMap.ContainsKey($hk)) {
             $holdScan = @([uint16]$holdMap[$hk][0], [bool]$holdMap[$hk][1])
@@ -400,7 +401,7 @@ if ($p.HasExited) {
                         $map = @{ 'START'=@(0x3C,$false); 'SELECT'=@(0x3B,$false); 'LCTRL'=@(0x1D,$false);
                                   'LALT'=@(0x38,$false);  'ENTER'=@(0x1C,$false); 'ESC'=@(0x01,$false);
                                   'UP'=@(0x48,$true); 'DOWN'=@(0x50,$true); 'LEFT'=@(0x4B,$true); 'RIGHT'=@(0x4D,$true);
-                                  'PGUP'=@(0x49,$true); 'PGDN'=@(0x51,$true) }
+                                  'PGUP'=@(0x49,$true); 'PGDN'=@(0x51,$true); 'SPACE'=@(0x39,$false) }
                         if (-not $map.ContainsKey($key)) { Write-Host "!! jeton inconnu : $k"; continue }
                         $sc = [uint16]$map[$key][0]; $ex = [bool]$map[$key][1]
                         if ($act -eq 'HOLD') { [PlayTestInput]::Hold($sc, $ex) } else { [PlayTestInput]::Free($sc, $ex) }
@@ -449,6 +450,11 @@ if ($p.HasExited) {
                         # le scancode de base avec le drapeau etendu.
                         'PGUP'   { [PlayTestInput]::Tap(0x49, $true,  400) }
                         'PGDN'   { [PlayTestInput]::Tap(0x51, $true,  400) }
+                        # ESPACE (DIK 0x39) -- action 4 = TRIANGLE (masque 0x1000) dans
+                        # OpenForesia.cfg K0004=57. C'est le bouton que le personnage porte par
+                        # defaut en +0x1fca : celui qui ouvre le menu rapide (TickQuickMenu_00530070).
+                        # Ajoute le 2026-08-26 pour exercer ce menu sans conduire le personnage.
+                        'SPACE'  { [PlayTestInput]::Tap(0x39, $false, 400) }
                         default { Write-Host "!! jeton inconnu : $k"; continue }
                     }
                     Write-Host "   -> $k"
@@ -469,6 +475,8 @@ if ($Shot -and -not $p.HasExited -and $hwnd -ne [IntPtr]::Zero) {
 }
 
 $p.Refresh()
+# Mort de lui-meme avant qu'on le tue ? Releve AVANT le Kill, sinon la question ne se pose plus.
+$sortiSeul = $p.HasExited
 if (-not $p.HasExited) {
     if ($KeepOpen) { Write-Host "== laisse ouvert (PID $($p.Id))" }
     else {
@@ -496,7 +504,16 @@ if ($fault.Success) {
     }
     $lines[$start..([Math]::Min($start + 16, $lines.Count - 1))] | ForEach-Object { Write-Host "   $_" }
 } else {
-    Write-Host 'aucun plantage'
+    # Le journal peut ne rien dire alors que le processus est mort : une faute native tuee par
+    # le systeme n'ecrit rien du tout. Le journal des evenements Windows le nomme -- un temoin
+    # de pile viole donne 0xC0000409, une violation d'acces 0xC0000005. Ajoute le
+    # 2026-08-26 : le menu rapide fermait le jeu en silence et le verdict disait << aucun
+    # plantage >>.
+    if ($sortiSeul) {
+        Write-Host "SORTIE SILENCIEUSE : le jeu est mort de lui-meme sans rien ecrire (voir le journal des evenements Windows, fournisseur << Application Error >>, pour le code d exception)"
+    } else {
+        Write-Host ('aucun plantage')
+    }
 }
 
 # Progression du rendu : deux derniers bilans du shim.

@@ -36,7 +36,19 @@ namespace OpenForesia.Blaze;
 /// <para>
 /// Verifie : <b>aucun site n'adresse l'arene entre 0x005de154 et 0x005de170</b>, donc le
 /// recouvrement ne se manifeste pas aujourd'hui — c'est un risque de structure, pas un defaut
-/// observable. Deux raisons de ne pas y toucher ici : le corriger changerait le comportement, et
+/// observable.
+/// </para>
+/// <para>
+/// <b>Cette phrase a cesse d'etre vraie une fois, le 2026-08-26.</b>
+/// <c>DrawSpeechOverlay_005309B0</c> a ete ecrite en posant son origine par
+/// <c>Mem.ItemMenuState(0x005de154…)</c>, c'est-a-dire par l'arene, alors que les deux emetteurs
+/// ci-dessous lisent les champs. La bulle du menu rapide se dessinait donc dans le coin haut
+/// gauche, origine restee a zero. Le site fautif a ete ramene sur les champs ; le recouvrement,
+/// lui, reste. C'est la demonstration que ce TODO n'est pas theorique : il attend le prochain
+/// site distrait.
+/// </para>
+/// <para>
+/// Deux raisons de ne pas y toucher ici : le corriger changerait le comportement, et
 /// l'etendue reelle de l'arene est elle-meme douteuse (son commentaire annonce 0x420 octets, son
 /// allocation en fait 0x460, et ces 0x40 d'ecart sont exactement ce qui rend vrai ou faux le
 /// signalement de <c>s_EntityList_005de558</c> par les tests). Trancher demande de retrouver

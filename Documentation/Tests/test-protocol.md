@@ -1457,3 +1457,77 @@ tournait pas. **Verifier ou est la boucle avant de compter.**
 **« Aucun script » ne veut pas dire « le monde est arrete ».** Une salle sans script en boucle donne
 le meme silence qu'une simulation figee. C'est `[ETAT]` avec la position du meneur qui departage, pas
 le comptage des scripts.
+
+---
+
+## Ouvrir le menu rapide : le jeton `SPACE` (2026-08-26)
+
+Comme le menu de jeu, l'anneau du menu rapide **s'ouvre sur place** — il ne tombe donc pas dans le
+partage du 2026-08-24 et l'agent l'exerce lui-meme.
+
+Le bouton est le **triangle** (masque manette `0x1000`, action 4, `K0004=57` = **espace**) : c'est
+ce que le personnage porte par defaut en `+0x1fca`. Le jeton `SPACE` a ete ajoute a `playtest.ps1`
+pour lui, et vaut aussi en `HOLD:`/`FREE:` — utile parce que **tenir le bouton change ce que font
+les fleches** : tenu, haut/bas changent de categorie et gauche/droite d'entree ; relache, les deux
+axes changent d'entree.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 5 -WorkingDir OpenForesia -Shot `
+  -Then WAIT5,ENTER,WAIT2,START,WAIT6,ENTER,WAIT5,ENTER,WAIT6,ENTER,WAIT2,ENTER,WAIT2,ESC,WAIT4,`
+SPACE,WAIT2,DOWN,WAIT2,DOWN,WAIT2
+```
+
+rend la bulle au-dessus du personnage sur la troisieme categorie. Attendu : `ARME` a l'ouverture,
+`BOUC` apres deux `DOWN`. **`SPACE` est une bascule** : un second appui referme l'anneau. `ENTER`
+(carre) entre dans la categorie, `ESC` (croix) en ressort.
+
+---
+
+## Un `0xC0000409` sans une ligne de journal : un `stackalloc` deborde (2026-08-26)
+
+Symptome : le jeu disparait, `-stdout.log` ne porte que sa banniere, le journal s'arrete au milieu
+d'un bilan `[SHIM]`, et **aucune** exception managee n'est imprimee. Ce n'est pas une
+`NotImplementedException`, ce n'est pas non plus le `Fatal error. 0xC0000005` habituel.
+
+Le journal des evenements Windows le nomme :
+
+```powershell
+Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Application Error';
+                                StartTime=(Get-Date).AddMinutes(-15)} |
+  Select-Object -First 1 | ForEach-Object { $_.Message }
+```
+
+→ `Nom du module defaillant : coreclr.dll ... Exception code: 0xc0000409`.
+
+`0xC0000409` est `STATUS_STACK_BUFFER_OVERRUN`. **Le JIT pose un temoin de pile sur toute methode
+qui contient un `stackalloc`**, et sa verification a lieu dans l'**epilogue** : le processus meurt
+donc *au retour* de la methode fautive, pas a l'ecriture. D'ou la facon de le localiser, qui a
+marche du premier coup : semer des traces fichier dans le corps suspect ; celle qui manque n'est
+pas la premiere apres l'ecriture fautive, c'est **la premiere APRES le retour**. Si toutes les
+traces internes passent et que celle du site d'appel manque, c'est le temoin de pile.
+
+Cas releve : `DrawSpeechOverlay_005309B0` donnait un `stackalloc short[2]` a
+`Model3d.ProjectPoint`, qui ecrit **huit octets** (le couple ecran, puis la profondeur). Le cadre de
+l'original reservait bien huit octets a cet endroit. Le reflexe : **avant d'ecrire un `stackalloc`,
+compter ce que l'appelee ecrit, pas ce que l'appelant relit.** Deux sites sur sept avaient la
+mauvaise taille.
+
+Le verdict de `playtest.ps1` disait « aucun plantage » sur ce cas — il ne lisait que le journal. Il
+releve maintenant `$p.HasExited` **avant** de tuer le processus et affiche
+`SORTIE SILENCIEUSE` quand le jeu est mort de lui-meme.
+
+---
+
+## Le recouvrement d'arene se voit a l'ecran, pas a la compilation (2026-08-26)
+
+Le meme menu rapide a ensuite dessine sa bulle dans le **coin haut gauche** au lieu de la poser
+au-dessus du personnage. Cause : `DrawSpeechOverlay_005309B0` ecrivait son origine par
+`Mem.ItemMenuState(0x005de154 / _158 / _15c)` — l'arene — alors que le lecteur,
+`UiWindow.EmitViewportRect`, lit les champs simples `s_Unknown_005de154`… declares dans
+`Screens/State00/MainMenu.cs`. Deux noms pour une adresse : l'ecriture n'arrivait nulle part.
+
+`UiWindow` porte depuis le 2026-08-21 un `TODO(REVERSE)` disant « aucun site n'adresse l'arene entre
+0x005de154 et 0x005de170, donc le recouvrement ne se manifeste pas ». **C'etait vrai jusqu'a ce
+qu'un site nouveau l'adresse.** La regle pratique : quand une transcription touche une VA de
+`0x005de1xx`, chercher d'abord un champ nomme a cette adresse (`grep 005de15` sur `src/`) —
+`OpenForesia.Tests` test 5 en liste 42 par nom, fichier et ligne.

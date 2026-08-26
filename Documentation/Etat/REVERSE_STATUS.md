@@ -14422,3 +14422,126 @@ exactement ce qui introduit l'erreur.
 Onglet 1 de la fiche de personnage, epee du Guerrier : `Gue` sort en blanc franc, les sept autres en
 gris, et le rectangle blanc a disparu. Conforme au cliche du jeu d'origine
 (`Tests. Coffre de stockageegacy.jpg`), ou la classe autorisee est la seule en clair.
+
+---
+
+## 2026-08-26 — le menu rapide : `FUN_00530070`, ses deux etages et ses deux plantages
+
+`TickQuickMenu_00530070` (`Screens/State03/WorldMapTick.cs`) transcrit `FUN_00530070` en entier.
+C'est le pilote de **l'anneau au-dessus du personnage** que `DrawSpeechOverlay_005309B0` dessinait
+deja : espace l'ouvre, les fleches parcourent, la validation agit.
+
+### Ce que la fonction est vraiment
+
+Le nom qu'elle portait — « le recul apres un coup recu » — etait faux. Il venait de sa position dans
+`FUN_0050bf20`, entre deux traitements de degats. Son corps ne parle que de menu.
+
+Trois etages, dans l'ordre du corps :
+
+1. **ouvrir / fermer / valider l'etage courant**, selon le bit `0x80` de `personnage[0x2be]` ;
+2. **le curseur d'entree** et l'action, par un aiguillage sur le **genre** de la categorie ;
+3. **la queue commune, atteinte par tous les chemins** : le curseur de categorie, puis le recalcul
+   de la liste d'entrees que la nouvelle categorie propose.
+
+L'etat tient dans quatre octets du bloc par personnage : `+0x2be` (categorie en bas de quartet,
+`0x80` = « anneau ouvert sur une categorie »), `+0x2bf` (entree choisie), `+0x2d0` (nombre
+d'entrees) et `+0x2d1…` (la liste elle-meme, au plus dix indices d'objet porte).
+
+Les dix genres viennent de `DAT_0056a851` : 0–5 les cinq emplacements d'equipement, 6 les sorts,
+7 et 8 deux choix fixes, 9 le passage de la main a un autre membre.
+
+### `DAT_0056a850` et `DAT_0056a851` sont **une seule table**
+
+Le `TODO(REVERSE)` pose le 2026-08-22 disait : « le pas 9 et un second index allant jusqu'a 15 se
+contredisent, les rangees se chevauchent — non tranche ». **Il est tranche, et il n'y a pas de
+chevauchement.** La table fait neuf rangees de neuf octets ; le premier octet de chaque rangee est
+le **nombre de categories** de la classe (7, 7, 6, 7, 7, 7, 7, 7), les huit suivants sont les
+genres. `DAT_0056a850` est ce compte, `DAT_0056a851` est le premier genre — deux symboles Ghidra
+pour une table.
+
+Consequence directe : la queue ramene `0x2be & 0xf` sous le compte a chaque changement, donc
+l'index reste sous 7 et **une rangee ne deborde jamais sur la suivante**. Consequence indirecte :
+les deux `0xff` de la table sont **inatteignables** (celui de la rangee 2 est au huitieme genre
+alors que le compte vaut 6 ; la rangee 8 est hors de portee de `classe & 7`). La note d'adjacence
+de `s_IconTables_0056aaa0` reste juste comme description de l'indexation, mais son cas `-1` ne se
+produit pas.
+
+Allouees ensemble, sous `s_MenuLayout_0056a850` (81 octets) ; `s_SpeechIconIndex_0056a851` est
+devenu une **propriete calculee** `=> base + 1`, pour que l'octet de compte garde une adresse.
+
+### Deux fidelites qui se lisent mal, gardees telles quelles
+
+**Le test « le curseur a-t-il bouge » du genre 6 lit un registre ecrase.** Ghidra charge `puVar11`
+avec l'index d'avant, puis les deux boucles de recherche l'ecrasent avec leur compteur d'essais
+restants ; `cmp ebx,edx` en `0x00530376` le confirme au binaire. Le son de deplacement se declenche
+donc des qu'une recherche a tourne, meme revenue sur le meme sort. Transcrit tel quel.
+
+**Le masque de la queue n'est pas initialise pour un genre negatif.** Le `ja` non signe saute
+par-dessus les cinq `mov ebx`, puis le `jg` signe laisse entrer la boucle avec `ebx` = le pointeur
+de manette. Zero est pose a la place, avec le fait dit sur place : c'est inatteignable par le
+paragraphe precedent, et rendre la liste vide vaut mieux qu'aleatoire.
+
+### Ghidra s'arrete avant la fin de la fonction
+
+`Blaze.c` rend un corps qui se termine au `ret` de `0x00530714` — mais les genres 8 et 9 vivent
+**apres** lui (`0x00530715` et `0x00530761`), atteints par la table de sauts `0x00530948`. La
+fonction fait 2 262 octets, pas 1 701. Trois tables de sauts (`0x00530948` les dix genres,
+`0x00530970` les defauts de categorie, `0x00530998` les cinq masques) ne se lisent que dans le
+binaire. Desassemblage complet garde dans `Legacy/Raw/Blaze/FUN_00530070.disasm.txt`.
+
+`DAT_00564600`, lu par le genre 6, donne **trois** ecoles de sorts (29, 24, 20) : `PTR_DAT_00564640`
+porte trois pointeurs puis un mot nul, et `DAT_00564608` (`00 1d 35 49`) est leur somme courante.
+
+### Le seul trou restant
+
+**TODO(REVERSE) — `FUN_00523aa0`, la seconde machine a opcodes.** Le genre 5 valide (« se servir de
+l'objet ») descend `UseCarriedItem_00523820` → `RunItemScriptSaved_00523860` →
+`RunItemScript_00523AA0`. Les deux premieres sont transcrites ; la troisieme leve. C'est la meme
+boucle que `RunScript` (arret sur `0xff`, ou des qu'un gestionnaire pose un resultat, sauf l'opcode
+2) mais sur `PTR_LAB_00564f80` : **23 gestionnaires**, `0x00523b00` a `0x00524170`, tous presents
+dans `Blaze.c`. Rien d'autre du menu rapide n'est manquant.
+
+`FUN_00523860` porte le defaut de recuperation habituel de Ghidra : sa seconde branche appelle
+`FUN_00523aa0(unaff_retaddr, param_1, param_2, …)`, decalee d'un cran, en prenant le mot de retour
+pour un argument. Les deux branches passent les memes trois arguments ; `FUN_00539190` porte le
+meme defaut sur le meme squelette.
+
+### La chaine de recalcul etait deja la
+
+Les cinq appels que la validation d'equipement enchaine — `FUN_00538ab0`, `FUN_00538f50`,
+`FUN_00538c50`, `FUN_00538e20`, `FUN_00538fa0` — ont ete **retranscrits puis jetes** : ils
+existaient deja sous `CommitStagedStatBlock` / `ScaleStatBlockByDifficulty` / `ComputeDerivedStats`
+/ `ApplyEquipmentStatBonuses` / `FinalizeEquipmentEffects` dans `Screens/State04/CharacterCreation.cs`,
+et trois ecrans les appellent deja dans cet ordre exact. La regle de `CLAUDE.md` — « chercher un
+doublon avant de transcrire » — vaut aussi pour les fonctions **deja reconstruites**, pas seulement
+pour deux adresses du binaire.
+
+**TODO(REVERSE)** : ces cinq-la satisfont desormais la regle (3) d'`ARCHITECTURE.md` — quatre ecrans
+les appellent (State03 x2, State04, DebugParty). Elles restent dans `State04/CharacterCreation.cs`
+faute d'un `Engine/` evident ; leurs douze sites d'appel dans `Blaze.c` s'etalent de `0x00516350` a
+`0x00539b80`, ce qui plaide pour un sous-systeme « statistiques derivees ». La promotion n'a pas ete
+faite dans le meme changement qu'une correction de comportement.
+
+### Deux plantages, tous deux anterieurs a cette transcription
+
+**`0xC0000409` sans une ligne de journal : un `stackalloc` deborde.**
+`DrawSpeechOverlay_005309B0` donnait un `stackalloc short[2]` a `Model3d.ProjectPoint`, qui ecrit
+**huit octets** — le couple ecran en `+0`, la profondeur en `+4`. Le JIT pose un temoin de pile sur
+toute methode contenant un `stackalloc` et le verifie dans l'**epilogue** : le processus mourait
+donc *au retour* de la fonction, sans message, et le verdict de `playtest.ps1` annoncait « aucun
+plantage ». Le cadre de l'original reserve bien huit octets a cet endroit (`local_44` suivi de
+quatre octets muets avant `local_3c`). Deuxieme site corrige au passage : le balayage de cellules de
+`WorldMapTick`. Cinq autres appelants avaient deja la bonne taille.
+
+**La bulle se dessinait dans le coin haut gauche : recouvrement d'arene.**
+`DrawSpeechOverlay_005309B0` posait son origine par `Mem.ItemMenuState(0x005de154 / _158 / _15c)` et
+lisait son zoom par `Mem.ItemMenuState(0x005de160)` — l'arene — alors que le lecteur
+(`UiWindow.EmitViewportRect`) lit les champs simples `s_Unknown_005de154…` de
+`Screens/State00/MainMenu.cs`, et que le zoom vit dans `GameMemory.s_SizeSetting_005de160`.
+L'ecriture n'atteignait jamais le lecteur, l'origine restait a zero. Ramene sur les champs.
+
+Le `TODO(REVERSE)` de `Engine/UiWindow.cs` disait depuis le 2026-08-21 : « aucun site n'adresse
+l'arene entre `0x005de154` et `0x005de170`, donc le recouvrement ne se manifeste pas ». **C'etait
+vrai jusqu'a ce qu'un site nouveau l'adresse.** Le recouvrement lui-meme n'est pas corrige — le
+corriger changerait le comportement, et l'etendue de l'arene reste douteuse — mais la note dit
+maintenant qu'il a mordu une fois.

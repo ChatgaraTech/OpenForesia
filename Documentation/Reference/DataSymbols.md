@@ -940,9 +940,10 @@ Four fields per descriptor, at the offsets already named on the other instances
 | VA | contenu | rôle |
 |---|---|---|
 | `0x0055EB68` | 32 pointeurs → `0x005037d0`, `0x005037e0`, `0x00503850`, `0x005038a0`, `0x00503990`, `0x00503b50`, `0x00503d30`, `0x00503d70`, `0x00503d80`, `0x00503d90`, `0x00503db0`, `0x00503dd0`, `0x00503df0`, `0x00503e10`, `0x00503e50`, `0x00503e80`, `0x00503f10`, `0x00503fa0`, `0x00503fd0`, `0x00504020`, `0x00504070`, `0x005040a0`, `0x00504110`, `0x00504170`, `0x005041a0`, `0x005041d0`, `0x00504200`, `0x00504270`, `0x00504290`, `0x005042b0`, `0x00504310`, `0x005043c0` ; puis `0x00504c80`, puis un dword nul | `PTR_LAB_0055eb68` — les verbes de la caméra de scénette, tous **absents de `Blaze.c`**, transcrits le 2026-08-23 dans `Screens/State03/WorldMapTick.cs`. `0x00504c80` **n'est pas un verbe** : son corps ne suit pas la convention `(curseur, &continuer)` |
-| `0x0056A851` | `00 01 02 03 04 05 09 08 07 / 00 01 03 04 05 06 09 08 06 / 00 01 03 04 05 09 08 FF 07 / 00 01 03 04 05 06 09 08 07 / 00 01 03 04 05 07 09 08 07 / 00 01 03 04 05 06 09 08 07 / 00 01 02 03 04 05 09 08 07 / 00 01 03 04 05 06 09 08 04 / 00 01 02 05 FF 05 00 01` | `DAT_0056a851` — le choix d'icône de la surimpression de dialogue, indexé `(perso[0x150] & 7) * 9 + (perso[0x2be] & 0xf)`. **Octets signés** : deux entrées valent `-1`. Pas 9 et second index jusqu'à 15, donc les rangées se chevauchent — non tranché |
+| `0x0056A850` | 9 rangées de 9 octets : `07 / 00 01 02 03 04 05 09 08` · `07 / 00 01 03 04 05 06 09 08` · `06 / 00 01 03 04 05 09 08 FF` · `07 / 00 01 03 04 05 06 09 08` · `07 / 00 01 03 04 05 07 09 08` · `07 / 00 01 03 04 05 06 09 08` · `07 / 00 01 02 03 04 05 09 08` · `07 / 00 01 03 04 05 06 09 08` · `04 / 00 01 02 05 FF 05 00 01` | `DAT_0056a850` + `DAT_0056a851` — **la disposition du menu rapide**, une rangée par classe (`perso[0x150] & 7`). Premier octet : le **nombre de catégories**. Les huit suivants : le **genre** de chaque catégorie (0–5 les cinq emplacements d'équipement, 6 les sorts, 7 et 8 deux choix fixes, 9 le passage de la main). Une seule allocation dans la reconstruction, `s_MenuLayout_0056a850` : les deux symboles de Ghidra sont une seule table, décalée d'un octet |
+| `0x00564600` | `1d 18 14 01 01 01 26 00` | `DAT_00564600` — **le nombre de sorts par école**, indexé `perso[0x2b5]`. **Trois écoles** seulement : 29, 24, 20. La preuve est double — `PTR_DAT_00564640` porte trois pointeurs puis un mot nul, et le voisin `DAT_00564608` (`00 1d 35 49`) est la somme courante de ces trois-là. Ce qui suit dans la rangée n'est donc pas un compte de sorts |
 | `0x0056AAA0` | 16 dwords : `08000000 06001200 04000500 03000300 05000800 06000900 06000B00 06001200 06000400 06000900 03000000 06001200 05000800 07000500 06000400 06000900` | `DAT_0056aaa0` — une **réaction par classe de personnage** (paire animation / image de départ), écrite d'un bloc sur `+0x18` de l'emplacement. Fin relevée : `0x0056AAE0` change de nature et est déjà un autre symbole |
-| `0x0056AAE0` | 33 entrées de 8 octets, `u v w h 00 00 clut clut`, jusqu'à `0x0056ABE8` où commence une chaîne | `DAT_0056aae0` — les descripteurs de sprite de la surimpression. **Contiguë à `0x0056AAA0` et il faut le rester** : l'index `-1` de `DAT_0056a851` lit les huit derniers octets de la table des réactions, dont la hauteur nulle vaut « pas d'icône ». Entrées nommées : 10 = `0x0056AB30` (le cadre), 11 = `0x0056AB38` (les chiffres), 18 = `0x0056AB70` (le repère 8x8) |
+| `0x0056AAE0` | 33 entrées de 8 octets, `u v w h 00 00 clut clut`, jusqu'à `0x0056ABE8` où commence une chaîne | `DAT_0056aae0` — les descripteurs de sprite de la surimpression. **Contiguë à `0x0056AAA0` et il faut le rester** : l’index `-1` de `DAT_0056a851` lirait les huit derniers octets de la table des réactions, dont la hauteur nulle vaut « pas d’icône ». Cet index `-1` est **inatteignable** (2026-08-26) — l’octet de compte de `0x0056A850` borne l’indice avant lui — mais l’adjacence décrit l’indexation du binaire et se garde. Entrées nommées : 10 = `0x0056AB30` (le cadre), 11 = `0x0056AB38` (les chiffres), 18 = `0x0056AB70` (le repère 8x8) |
 | `0x0056D440` | 16 entrées de 8 octets : `2E00 8200 1E00 0000 / 2800 7F00 1800 0000 / 2600 7D00 1A00 0000 / 2100 7C00 2000 0000 / 2600 8200 1A00 0000 / 2800 7D00 1E00 0000 / 4000 7600 2800 0000 / 1E00 7100 1400 0000 / 2600 7D00 1900 0000 / 1E00 7B00 1C00 0000 / 1C00 7500 1800 0000 / 1F00 7800 1800 0000 / 2400 7800 1800 0000 / 2400 7800 1A00 0000 / 3200 7200 2800 0000 / 1E00 6E00 1400 0000` | `DAT_0056d440` — une entrée par **classe de personnage**. Seul le `short` de `+2` a un rôle établi : la hauteur de la tête, où flotte la bulle d'état. Fin relevée : `0x0056D4C0` commence une table de pointeurs |
 bloc
 sur
@@ -1168,7 +1169,8 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00564548` | `s_CellSweepCorner_00564548` | 16 | `Memory/GameMemory.cs` |
 | `0x00564558` | `s_CellSkipTables_00564558` | 160 | `Memory/GameMemory.cs` |
 | `0x005645f8` | `s_WorldMapStep_005645f8` | 4 | `Screens/State03/WorldMap.cs` |
-| `0x005645fc` | `s_Unknown_005645fc` | 84 | `Screens/State03/WorldMap.cs` |
+| `0x005645fc` | `s_Unknown_005645fc` | 4 | `Screens/State03/WorldMap.cs` |
+| `0x00564600` | `s_SpellCounts_00564600` | 80 | `Screens/State03/WorldMapTick.cs` |
 | `0x00564650` | `s_WorldMapCamera_00564650` | 956 | `Screens/State03/WorldMap.cs` |
 | `0x00564a0c` | `s_SlashLabel_00564a0c` | 4 | `Screens/State06/Inventory.cs` |
 | `0x00564a10` | `s_PageWaitCommand_00564a10` | 28 | `Screens/State06/Inventory.cs` |
@@ -1214,7 +1216,8 @@ taille déclarée du symbole est un recouvrement, donc un défaut.
 | `0x00566c98` | `s_UiOffsetX_00566c98` | 24 | `Screens/State00/Options.cs` |
 | `0x00566cb0` | `s_UiOffsetY_00566cb0` | 6120 | `Screens/State00/Options.cs` |
 | `0x00568498` | `s_SaveNameTemplate_00568498` | 120 | `Screens/State04/CharacterCreation.cs` |
-| `0x00568510` | `s_ControllerBannerText_00568510` | 10136 | `Engine/SaveData.cs` |
+| `0x00568510` | `s_ControllerBannerText_00568510` | 9024 | `Engine/SaveData.cs` |
+| `0x0056a850` | `s_MenuLayout_0056a850` | 592 | `Screens/State03/WorldMapTick.cs` |
 | `0x0056aca8` | `s_ResourceFixupSchema_0056aca8` | 160 | `Engine/Resources.cs` |
 | `0x0056ad48` | `s_VtSource_0056ad48` | **0** | `Engine/Resources.cs` |
 | `0x0056ad48` | `s_Vt_0056ad48` | 128 | `Engine/Resources.cs` |
