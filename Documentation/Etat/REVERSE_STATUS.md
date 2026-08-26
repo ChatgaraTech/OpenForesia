@@ -15236,3 +15236,58 @@ suite 8 : c'est un chantier de collision, pas de decor.
 ### Non exerce
 
 Aucune des quinze n'a tourne.
+
+---
+
+## 2026-08-26 (suite 10) — le crochet de contact au sol, et un script fabrique sur la pile
+
+**Le plantage.** `FUN_0050bf20, membre 0 : le crochet de contact au sol PTR_FUN_0056b048 :
+gestionnaire d'entite 0x541440 non transcrit.`
+
+**Ce n'etait pas la table 0x0056adc8** — celle des dix-sept — mais la **quatrieme** des sept,
+`0x0056afc8`, entree 32. La zone 0 y met la souche vide ; la foret y met `FUN_00541440`. Autrement
+dit : le releve des onze zones continue de rendre ce que le jeu demande, table par table, et la
+foret ne remappe pas que les gestionnaires d'entite.
+
+### Deux moities, aucun etat
+
+271 octets, absente de `Blaze.c`. La fonction est **rejouee en entier a chaque image et ne retient
+rien** — pas de `+0x10`, pas de compteur.
+
+**La poussiere du pas.** L'animation courante du membre est prise dans `0x005e9680` (les quatre
+bundles d'animation, indexes par `+0x4`), puis par le clip `+0x18`. Son champ `+0x16` **divise par
+deux** donne la periode, et quand l'image courante `+0x1a` tombe dessus, un effet `0xFE` nait. **La
+cadence de la poussiere vient du clip, pas d'une constante** : elle suit le cycle de marche.
+
+La division est **non signee** (`movsx` puis `div`, pas `idiv`) : une image negative devient un tres
+grand nombre au lieu de rester negative. Transcrit tel quel.
+
+**Le sol qui brule.** Quand les **trois bits bas** de `+0x150` du bloc de personnage valent **4** —
+le type de terrain — un effet `0x2A` nait. Et `+0x0a` est mis a zero le temps de la naissance puis
+rendu : `SpawnStatusEffectEntity_0047AC40` recopie l'entite entiere, donc l'effet heriterait de son
+orientation. **Meme geste que `ApplyPercentDamage_005397B0` (suite 9), et pour la meme raison** —
+c'est un motif, pas une coincidence.
+
+### Le jeu fabrique une instruction de script sur la pile
+
+C'est la trouvaille de ce corps. Sept octets sont ecrits dans un tampon local —
+`{0, 0, 0, porteur[0x0a], 0x0d, 4, 0xf7}` — puis passes a `FUN_00513FE0`, qui n'est **qu'une
+enveloppe** :
+
+```c
+void FUN_00513fe0(a, b) { FUN_00515790(DAT_005e97cc, 0, a, b); }
+```
+
+`FUN_00515790` est le **gestionnaire de l'opcode 10** de l'interpreteur, deja transcrit sous
+`ScriptOpAluChunkRecords`. Le jeu ne lance donc pas un script du disque : il **assemble une
+instruction en memoire et appelle son gestionnaire directement**, avec le contexte de zone et une
+entite nulle.
+
+Cela change la facon de lire les gestionnaires d'opcode : ce ne sont pas seulement les 39 cibles
+d'une table de sauts, ce sont des **primitives appelables**. Le huitieme octet du tampon n'est ni
+ecrit ni lu — `ScriptOpAluChunkRecords` s'arrete a `s[6]`, ce qui confirme au passage la longueur
+de sept octets deja transcrite.
+
+### Non exerce
+
+Compile, pas execute.

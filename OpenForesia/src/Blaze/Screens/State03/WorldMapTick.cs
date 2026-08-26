@@ -3804,6 +3804,7 @@ public static unsafe partial class Blaze
             case 0x00456750: EntityHandler_00456750((uint*)record); return;
             case 0x00457370: EntityHandler_00457370((uint*)record); return;
             case 0x00456CF0: EntityHandler_00456CF0((uint*)record); return;
+            case 0x00541440: EntityHandler_00541440((uint*)record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
@@ -14904,6 +14905,101 @@ public static unsafe partial class Blaze
         }
 
         e[9] = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00541440 @ 0x00541440 — <b>le crochet de contact au sol de la foret</b>, entree
+    /// 32 de la table <c>0x0056afc8</c>. 271 octets, absente de <c>Blaze.c</c>. La zone 0 met la
+    /// souche vide a cette entree ; la foret y met ceci, et c'est <b>ce que le sol fait a chaque
+    /// pas</b>.
+    ///
+    /// <para><b>Deux moities independantes</b>, sans etat ni compteur — la fonction est rejouee en
+    /// entier a chaque image et ne retient rien.</para>
+    ///
+    /// <para>
+    /// <b>La poussiere du pas.</b> L'animation courante du membre est prise dans
+    /// <c>0x005e9680</c> — la table des quatre bundles d'animation, indexee par <c>+0x4</c> — puis
+    /// par le clip <c>+0x18</c>. Son champ <c>+0x16</c>, <b>divise par deux</b>, donne la periode :
+    /// quand l'image courante <c>+0x1a</c> tombe dessus (ou a chaque image si le bit 0 du mot de
+    /// tete est pose), et si <c>+0x90</c> porte <c>0x200</c>, un effet <c>0xFE</c> nait a la
+    /// position de l'entite. <b>Un pas sur deux du cycle de marche</b> : c'est la periode du clip
+    /// qui donne le rythme, pas une constante.
+    /// </para>
+    /// <para>
+    /// La division est <b>non signee</b> (<c>movsx</c> puis <c>div</c>, pas <c>idiv</c>) : une
+    /// image negative devient un tres grand nombre au lieu de rester negative. Transcrit tel quel.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Le sol qui brule.</b> Si le porteur (<c>+0x7c</c>) a un <c>+0x0a</c> non nul, que
+    /// l'entite n'est ni retiree ni morte (<c>0x50000000</c>), et que les <b>trois bits bas</b> de
+    /// <c>+0x150</c> du bloc de personnage valent <b>4</b> — le type de terrain —, alors un effet
+    /// <c>0x2A</c> nait et un mini-script part.
+    /// </para>
+    /// <para>
+    /// <b><c>+0x0a</c> est mis a zero le temps de la naissance</b>, puis rendu :
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> recopie l'entite entiere, donc l'effet
+    /// heriterait de son orientation. Meme geste que dans
+    /// <see cref="ApplyPercentDamage_005397B0"/>, et pour la meme raison.
+    /// </para>
+    /// <para>
+    /// <b>Le mini-script est construit sur la pile</b> : sept octets
+    /// <c>{0, 0, 0, porteur[0x0a], 0x0d, 4, 0xf7}</c> passes a <c>FUN_00513FE0</c>, qui n'est qu'une
+    /// enveloppe autour du <b>gestionnaire de l'opcode 10</b> de l'interpreteur
+    /// (<see cref="ScriptOpAluChunkRecords"/>, <c>FUN_00515790</c>) avec le contexte de zone. Le
+    /// jeu ne lance donc pas un script du disque : il <b>fabrique une instruction</b> et appelle son
+    /// gestionnaire directement. Le huitieme octet du tampon n'est jamais ecrit ni lu — le
+    /// gestionnaire s'arrete a <c>s[6]</c>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00541440(uint* entity)
+    {
+        byte* e = (byte*)entity;
+
+        // Ghidra: `mov edx,[eax*4+5E9680h] ; mov eax,[edx+ecx*4]` — bundle du membre, puis clip.
+        byte* bundle = *(byte**)(Mem.Arena(0x005e9680) + e[4] * 4);
+        byte* clip = *(byte**)(bundle + *(short*)(e + 0x18) * 4);
+
+        uint period = (uint)*(ushort*)(clip + 0x16) >> 1;
+        if (period != 0)
+        {
+            // Ghidra: `div ecx` — division NON SIGNEE sur une valeur etendue par movsx.
+            uint frame = (uint)(int)*(short*)(e + 0x1a);
+            if (frame % period == 0 || (e[0] & 1) != 0)
+            {
+                if ((*(uint*)(e + 0x90) & 0x200) != 0)
+                    SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xfe, 0x18, -1);
+            }
+        }
+
+        byte* character = GetMainMemPtr() + (e[8] + 0x78) * 0x2000;
+        byte* carrier = *(byte**)(e + 0x7c);
+
+        if (*(short*)(carrier + 0x0a) == 0) return;
+        if ((*(uint*)e & 0x50000000) != 0) return;
+        if ((character[0x150] & 7) != 4) return;
+
+        ushort savedFacing = *(ushort*)(e + 0x0a);
+        *(ushort*)(e + 0x0a) = 0;
+
+        byte* descriptor =
+            *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x24);
+
+        SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), descriptor, 0x2a, 0, 0);
+
+        *(ushort*)(e + 0x0a) = savedFacing;
+
+        // Ghidra: `mov eax,[esi+7Ch]` est REFAIT apres l'appel — le porteur est relu, pas garde.
+        byte* script = stackalloc byte[8];
+        script[0] = 0;
+        script[1] = 0;
+        script[2] = 0;
+        script[3] = (*(byte**)(e + 0x7c))[0x0a];
+        script[4] = 0x0d;
+        script[5] = 4;
+        script[6] = 0xf7;
+
+        ScriptOpAluChunkRecords(script);           // Ghidra: FUN_00513FE0 -> FUN_00515790
     }
 
     /// <summary>

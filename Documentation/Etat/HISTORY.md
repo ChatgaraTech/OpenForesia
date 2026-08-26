@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-26
 
+- feat : **le crochet de contact au sol de la forêt** — `FUN_00541440` (entrée 32 de la table `0x0056afc8`, souche vide en zone 0) : la poussière du pas cadencée par la période du clip d'animation, et l'effet de terrain brûlant
+- doc : **le jeu fabrique une instruction de script sur la pile** — sept octets locaux passés à `FUN_00513FE0`, qui n'est qu'une enveloppe autour du gestionnaire de l'opcode 10. Les gestionnaires d'opcode ne sont pas que des cibles de table : ce sont des primitives appelables
 - feat : **le sous-type 27, le seul décor de la forêt qui blesse** — `FUN_00456CF0`, via `FUN_0045DA40` (frappe les membres que l'octet de contact désigne) et `FUN_005397B0` ; quinze gestionnaires sur dix-sept
 - fix : **`SetEntityPose_005397B0` n'a jamais posé de pose** — c'est `ApplyPercentDamage_005397B0`, les dégâts en pourcentage des PV max ; ses deux appels `(slot, 2, 0)` voulaient dire **2 % des PV**, pas « pose 2, mode 0 ». Un nom posé sur une hypothèse empêche de relire
 - feat : **six gestionnaires de plus en forêt** — le radeau (`FUN_00456750`), l'ascenseur (`FUN_00457370`), la scénette de sortie qui détourne la caméra (`FUN_00474380`), le projectile à cinq échos (`FUN_00457BF0`), le décor qui attend un bit de script (`FUN_004746F0`) et celui qui traverse et éclate (`FUN_00456F40`) — quatorze sur dix-sept
