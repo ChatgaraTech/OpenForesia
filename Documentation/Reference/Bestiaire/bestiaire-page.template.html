@@ -1,0 +1,1096 @@
+<title>Bestiaire de Foresia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --ground: #eaeeec;
+    --surface: #ffffff;
+    --surface-2: #f4f7f5;
+    --ink: #131a17;
+    --muted: #5c6a64;
+    --faint: #8b9791;
+    --line: #d1dad5;
+    --line-soft: #e3e9e6;
+    --accent: #0c6d58;
+    --accent-soft: #d6ece5;
+    --on-accent: #ffffff;
+    --hp: #a8412a;
+    --hp-soft: #f0dad3;
+    --mp: #2f5f92;
+    --mp-soft: #d7e3f0;
+
+    --sans: "Archivo", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    --serif: "Source Serif 4", ui-serif, Georgia, serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0c110f;
+      --surface: #141b18;
+      --surface-2: #1a231f;
+      --ink: #dde5e1;
+      --muted: #93a29b;
+      --faint: #6f7d77;
+      --line: #26312c;
+      --line-soft: #1f2925;
+      --accent: #46c0a0;
+      --accent-soft: #10312a;
+      --on-accent: #0c110f;
+      --hp: #e28065;
+      --hp-soft: #34201a;
+      --mp: #7fabd9;
+      --mp-soft: #182634;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0c110f;
+    --surface: #141b18;
+    --surface-2: #1a231f;
+    --ink: #dde5e1;
+    --muted: #93a29b;
+    --faint: #6f7d77;
+    --line: #26312c;
+    --line-soft: #1f2925;
+    --accent: #46c0a0;
+    --accent-soft: #10312a;
+    --on-accent: #0c110f;
+    --hp: #e28065;
+    --hp-soft: #34201a;
+    --mp: #7fabd9;
+    --mp-soft: #182634;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+  /* ---------------------------------------------------------------- masthead */
+
+  .masthead { border-bottom: 1px solid var(--line); background: var(--surface); }
+
+  .masthead-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 40px 20px 28px;
+  }
+
+  h1 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1.02;
+    letter-spacing: -.025em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .lede { margin: 12px 0 0; max-width: 56ch; color: var(--muted); font-size: 17px; }
+
+  .provenance {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.9;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+  .provenance b { color: var(--muted); font-weight: 500; }
+
+  /* ---------------------------------------------------------------- counters */
+
+  .counters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 28px 0 0;
+  }
+
+  .counter { background: var(--surface); padding: 14px 16px; }
+
+  .counter dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--faint);
+    margin: 0 0 4px;
+  }
+
+  .counter dd {
+    margin: 0;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------------------------------------------------------------- controls */
+
+  .controls {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    margin-top: 32px;
+  }
+
+  .controls-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+  }
+
+  .views { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .view-btn {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--surface);
+    border: 0;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  .view-btn + .view-btn { border-left: 1px solid var(--line); }
+  .view-btn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .view-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .search {
+    flex: 1 1 190px;
+    min-width: 150px;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 8px 11px;
+  }
+  .search::placeholder { color: var(--faint); }
+  .search:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+  .zone-select {
+    font-family: var(--sans);
+    font-size: 13.5px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 8px 10px;
+    max-width: 15rem;
+  }
+  .zone-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .count-note {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--faint);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  /* ---------------------------------------------------------------- table */
+
+  .table-scroll { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+
+  table { width: 100%; border-collapse: collapse; min-width: 720px; }
+
+  /* L'en-tete n'est PAS colle, et c'est deliberé. Il l'a ete, sous une barre de controles
+     elle-meme collante : quelle que soit la valeur de son `top` — constante en dur ou hauteur
+     mesuree — il finissait toujours par se poser par-dessus une ligne et la cacher. Un en-tete
+     qui masque une donnee coute plus qu'il ne rapporte ; il defile donc avec le tableau, et le
+     tri ramene le defilement en tete pour qu'il reste a portee. */
+  thead th {
+    background: var(--ground);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--faint);
+    text-align: right;
+    padding: 14px 10px 8px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  thead th:first-child, thead th.left { text-align: left; }
+
+  thead th.sortable { cursor: pointer; user-select: none; }
+  thead th.sortable:hover { color: var(--ink); }
+  thead th[aria-sort] { color: var(--accent); }
+  thead th.sortable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  tbody tr.row { border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+  tbody tr.row:hover, tbody tr.row.open { background: var(--surface); }
+
+  tbody td {
+    padding: 9px 10px;
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  td.name {
+    text-align: left;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14.5px;
+    white-space: normal;
+    min-width: 150px;
+  }
+
+  /* Les noms de zone sont longs et une entree en cumule jusqu'a trois : la cellule passe a la
+     ligne au lieu d'etirer le tableau. */
+  td.loc {
+    text-align: left;
+    color: var(--faint);
+    font-size: 12px;
+    white-space: normal;
+    min-width: 11rem;
+    line-height: 1.35;
+  }
+  td.wrapcell { text-align: left; white-space: normal; font-size: 12px; color: var(--muted); }
+
+  .bar {
+    display: inline-block;
+    vertical-align: -1px;
+    width: 44px;
+    height: 6px;
+    border-radius: 1px;
+    margin-right: 7px;
+    overflow: hidden;
+  }
+  .bar i { display: block; height: 100%; }
+  .bar.hp { background: var(--hp-soft); }
+  .bar.hp i { background: var(--hp); }
+  .bar.mp { background: var(--mp-soft); }
+  .bar.mp i { background: var(--mp); }
+
+  .ai-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 2px;
+    padding: 2px 5px;
+  }
+
+  /* ---------------------------------------------------------------- detail */
+
+  /* `tbody td` pose white-space: nowrap pour les colonnes chiffrees ; sans cette remise a
+     `normal`, tout le contenu du depliage en herite et une description longue deborde a droite
+     du tableau au lieu de passer a la ligne. */
+  tr.detail > td { padding: 0; background: var(--surface-2); white-space: normal; }
+  tr.detail[hidden] { display: none; }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 28px;
+    padding: 22px 12px 26px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+  @media (max-width: 860px) { .detail-grid { grid-template-columns: 1fr; } }
+
+  .panel-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--faint);
+    margin: 0 0 10px;
+  }
+
+  /* la fiche de 0x60 octets, telle qu'elle est sur le disque */
+  .bytes {
+    display: grid;
+    grid-template-columns: auto repeat(16, 1fr);
+    gap: 2px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    line-height: 1;
+  }
+  .bytes .off { color: var(--faint); padding: 4px 6px 4px 0; text-align: right; }
+  .bytes .b { padding: 4px 0; text-align: center; border-radius: 2px; background: var(--surface); color: var(--muted); }
+  .bytes .b.zero { color: var(--faint); opacity: .45; }
+  .bytes .b.f-name { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .bytes .b.f-hp { background: var(--hp-soft); color: var(--hp); font-weight: 700; }
+  .bytes .b.f-mp { background: var(--mp-soft); color: var(--mp); font-weight: 700; }
+  .bytes .b.f-lvl, .bytes .b.f-drop, .bytes .b.f-car {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-weight: 500;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-family: var(--mono); font-size: 12px; }
+  .kv dt { color: var(--faint); white-space: nowrap; }
+  .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+  .cars { display: grid; gap: 3px; margin-top: 4px; }
+  .car { display: grid; grid-template-columns: 62px 1fr 44px; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px; }
+  .car .track { height: 7px; background: var(--line-soft); border-radius: 1px; overflow: hidden; }
+  .car .track i { display: block; height: 100%; background: var(--accent); }
+  .car .val { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .car .idx { color: var(--faint); }
+
+  table.inner { width: 100%; min-width: 0; margin-top: 4px; }
+  table.inner th, table.inner td {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 5px;
+    text-align: right;
+    border-bottom: 1px solid var(--line-soft);
+    white-space: nowrap;
+  }
+  table.inner th {
+    position: static;
+    background: none;
+    color: var(--faint);
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  table.inner td.dim { color: var(--faint); }
+  table.inner td.item { text-align: left; font-family: var(--sans); font-size: 12px; color: var(--ink); white-space: normal; }
+
+  .subpanel + .subpanel { margin-top: 22px; }
+
+  /* la description de l'objet, telle qu'elle est ecrite dans sa fiche */
+  .desc {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 52ch;
+  }
+
+  .none { margin: 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.7; color: var(--muted); }
+  .none b { color: var(--ink); font-weight: 700; }
+  .none code { color: var(--accent); }
+
+  .rangelo { color: var(--faint); }
+  td.zeroed { color: var(--faint); }
+
+  /* ATT et DEF : les deux valeurs longues que l'ecran d'objet met en tete */
+  .attdef { display: flex; gap: 10px; }
+  .ad {
+    flex: 1;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 8px 12px;
+  }
+  .ad-k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em; color: var(--faint); }
+  .ad-v {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* les huit elements, deux rangees de quatre comme dans le jeu */
+  .els { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .el {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--el) 14%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--el) 40%, var(--line));
+    color: var(--el);
+  }
+  .el-k { font-size: 10.5px; }
+  .el-v { font-weight: 700; }
+  .el.off {
+    background: transparent;
+    border-color: var(--line-soft);
+    color: var(--faint);
+  }
+  .el.off .el-v { font-weight: 400; }
+  .el.neg .el-v { text-decoration: underline; }
+
+  /* Un ton par element. Choisis pour rester distinguables entre eux ET lisibles sur les deux
+     fonds ; la variante sombre n'est pas un simple eclaircissement, chaque ton est repose. */
+  .el[data-el="0"] { --el: #c4491f; }   /* Feu      */
+  .el[data-el="1"] { --el: #1f6fb4; }   /* Eau      */
+  .el[data-el="2"] { --el: #7d5729; }   /* Terre    */
+  .el[data-el="3"] { --el: #2e8a66; }   /* Air      */
+  .el[data-el="4"] { --el: #b2860c; }   /* Lumiere  */
+  .el[data-el="5"] { --el: #57499b; }   /* Tenebres */
+  .el[data-el="6"] { --el: #5c7387; }   /* Sacre    */
+  .el[data-el="7"] { --el: #94275b; }   /* Mal      */
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .el[data-el="0"] { --el: #ef7d55; }
+    :root:not([data-theme="light"]) .el[data-el="1"] { --el: #62a8e4; }
+    :root:not([data-theme="light"]) .el[data-el="2"] { --el: #c39159; }
+    :root:not([data-theme="light"]) .el[data-el="3"] { --el: #5ec69c; }
+    :root:not([data-theme="light"]) .el[data-el="4"] { --el: #e5b93f; }
+    :root:not([data-theme="light"]) .el[data-el="5"] { --el: #9a8ce0; }
+    :root:not([data-theme="light"]) .el[data-el="6"] { --el: #a3b6c6; }
+    :root:not([data-theme="light"]) .el[data-el="7"] { --el: #e0699c; }
+  }
+  :root[data-theme="dark"] .el[data-el="0"] { --el: #ef7d55; }
+  :root[data-theme="dark"] .el[data-el="1"] { --el: #62a8e4; }
+  :root[data-theme="dark"] .el[data-el="2"] { --el: #c39159; }
+  :root[data-theme="dark"] .el[data-el="3"] { --el: #5ec69c; }
+  :root[data-theme="dark"] .el[data-el="4"] { --el: #e5b93f; }
+  :root[data-theme="dark"] .el[data-el="5"] { --el: #9a8ce0; }
+  :root[data-theme="dark"] .el[data-el="6"] { --el: #a3b6c6; }
+  :root[data-theme="dark"] .el[data-el="7"] { --el: #e0699c; }
+
+  /* les huit classes de +0x12 */
+  .klss { display: flex; flex-wrap: nowrap; gap: 3px; }
+  .kls {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 3px 4px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-family: var(--sans);
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .kls.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+
+  .car .idx { color: var(--faint); }
+
+  /* ---------------------------------------------------------------- prose */
+
+  .notes { background: var(--surface); border-top: 1px solid var(--line); margin-top: 56px; padding: 44px 0 64px; }
+  .notes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 34px; }
+
+  h2 { font-family: var(--sans); font-weight: 700; font-size: 15px; margin: 0 0 10px; }
+
+  .notes p { margin: 0 0 12px; font-size: 15px; color: var(--muted); max-width: 60ch; }
+  .notes p:last-child { margin-bottom: 0; }
+  .notes strong { color: var(--ink); font-weight: 600; }
+  .notes code { font-family: var(--mono); font-size: .88em; color: var(--accent); }
+
+  .empty { padding: 60px 0; text-align: center; color: var(--faint); font-family: var(--mono); font-size: 13px; }
+
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner wrap">
+    <div>
+      <h1>Bestiaire de Foresia</h1>
+      <p class="lede">
+        Les monstres de <i>Blaze&nbsp;&amp;&nbsp;Blade</i> et ce qu'ils lâchent, lus octet par octet
+        dans les données du CD de 1999. Pas une retranscription&nbsp;: le relevé rejoue la chaîne de
+        chargement du jeu et affiche ce que les tables contiennent.
+      </p>
+    </div>
+    <p class="provenance">
+      source &nbsp;<b>E:\French\BLAZE.ALL</b> · 46&nbsp;317&nbsp;568&nbsp;o
+    </p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <dl class="counters" id="counters"></dl>
+  </div>
+
+  <div class="controls">
+    <div class="controls-inner wrap">
+      <div class="views" role="group" aria-label="Vue">
+        <button class="view-btn" type="button" id="v-mon" aria-pressed="true">Monstres</button>
+        <button class="view-btn" type="button" id="v-obj" aria-pressed="false">Objets</button>
+      </div>
+      <input class="search" id="q" type="search" placeholder="Chercher…" aria-label="Chercher">
+      <div class="chips" id="zones" role="group" aria-label="Filtrer par zone"></div>
+      <span class="count-note" id="count"></span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="table-scroll">
+      <table id="tbl">
+        <thead id="head"></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="empty" hidden>Rien ne correspond.</p>
+  </div>
+
+  <section class="notes">
+    <div class="wrap">
+      <div class="notes-grid">
+        <div>
+          <h2>La fiche</h2>
+          <p>
+            Les seize octets de tête sont <strong>le nom</strong>, en Latin&#8209;1, l'octet nul
+            servant de séparateur de mot&nbsp;: <code>46 6f 75 72 6d 69 00 67 e9 61 6e 74 65</code>
+            se lit «&nbsp;Fourmi géante&nbsp;».
+          </p>
+          <p>
+            <code>+0x14</code> porte <strong>les points de vie</strong> et <code>+0x16</code>
+            <strong>les points de magie</strong>. Ce sont les usages de l'instance qui le disent&nbsp;:
+            la pétrification draine cinq pour cent de la première paire, la régénération lente
+            remonte la seconde d'un seizième tous les cent tours.
+          </p>
+          <p>
+            <code>+0x10</code> est le rang, affiché par la surimpression de mise au point du jeu à
+            côté des deux jauges, et comparé au niveau du personnage à la mise à mort.
+          </p>
+        </div>
+
+        <div>
+          <h2>La loi du butin</h2>
+          <p>
+            À la mort d'un monstre, le jeu tire <code>rand() % plage</code>, le compare à sept seuils
+            pour obtenir un rang de 0 à 7, lit la table de la zone à <code>+0xb4</code>, et passe
+            l'indice trouvé à la remise d'objet. Sur une plage de 100, les huit rangs valent
+            <strong>25&nbsp;/&nbsp;17&nbsp;/&nbsp;15&nbsp;/&nbsp;13&nbsp;/&nbsp;11&nbsp;/&nbsp;9&nbsp;/&nbsp;6&nbsp;/&nbsp;4&nbsp;%</strong>.
+          </p>
+          <p>
+            Mais la plage n'est pas 100&nbsp;: elle vaut 56 plus l'écart entre le niveau du
+            personnage et le rang du monstre, borné à 44. <strong>Une plage de 56 ne dépasse jamais
+            le rang 4</strong> — les trois derniers rangs restent hors d'atteinte tant que le groupe
+            n'a pas pris de l'avance sur ce qu'il combat.
+          </p>
+          <p>
+            La classe de butin vient de l'<strong>espèce</strong>, pas de la fiche&nbsp;: deux
+            espèces qui partagent un modèle peuvent ne pas lâcher les mêmes choses.
+          </p>
+        </div>
+
+        <div>
+          <h2>Les objets</h2>
+          <p>
+            Chaque sous-zone porte son propre <strong>catalogue</strong> de fiches d'objets de
+            0x140 octets, et c'est dans ce catalogue que l'indice tiré va chercher. Le nom affiché
+            est le <em>nom long</em> de <code>+0x41</code>, terminé par une barre oblique&nbsp;; le
+            nom court de <code>+0x00</code> n'est qu'un repli tronqué à seize octets.
+          </p>
+          <p>
+            L'octet de tête du nom court n'est pas une lettre&nbsp;: au-dessus de <code>0x5f</code>,
+            le moteur de texte l'émet comme un pictogramme et le nom commence en <code>+1</code>.
+            C'est ce qui explique les <code>w</code>, <code>m</code> et <code>s</code> qu'une lecture
+            naïve met devant chaque nom — et pourquoi «&nbsp;La dévoreuse&nbsp;» garde son L.
+          </p>
+          <p>
+            <strong>386 objets au catalogue, 265 obtenables sur un monstre.</strong> Les autres
+            viennent des coffres et des marchands, qui ne passent pas par cette table.
+          </p>
+        </div>
+
+        <div>
+          <h2>Ce qui reste ouvert</h2>
+          <p>
+            <strong>Les compétences ne sont pas des données.</strong> Elles vivent dans les
+            fonctions d'intelligence artificielle, une par comportement, qu'il faut lire une à une
+            dans le binaire. La colonne <em>IA</em> est le pont&nbsp;: elle donne, pour chaque
+            monstre nommé, le numéro qui l'aiguille dans la table de sauts du jeu.
+          </p>
+          <p>
+            <strong>Le seuil <code>+0x22</code> n'est pas encore relié à son effet.</strong> La
+            fonction de mise à mort le compare à un tirage sur mille pour choisir entre deux formes
+            de butin&nbsp;; laquelle est la meilleure reste à établir.
+          </p>
+          <p>
+            <strong>La zone 0 est écartée.</strong> Le monde extérieur rend des noms illisibles qui
+            se répètent&nbsp;; sa liste de sous-zones est vraisemblablement mal parcourue. Les dix
+            autres sortent sans un octet douteux.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const PAYLOAD = /*__DATA__*/{ m: [], i: [], stats: {} };
+  const MON = PAYLOAD.m;
+  const OBJ = PAYLOAD.i;
+  const TIER = [25, 17, 15, 13, 11, 9, 6, 4];
+  // Les zones se lisent sur les VARIANTES : depuis le regroupement par nom, une entree de MON
+  // porte `z`, la liste de ses zones, et plus de champ `zone`. Le lire dessus donnait une puce
+  // unique « Zundefined » qui, une fois cliquee, ne laissait passer aucune ligne.
+  const ZONES = [...new Set(MON.flatMap(d => d.z))].sort((a, b) => a - b);
+
+  // Les noms de zone, relevés dans l'archive du CD (`lieux.csv`) : le jeu les écrit dans ses
+  // textes sous la forme « - Le labyrinthe des morts - », et c'est le nom qui revient le plus dans
+  // les sous-zones d'un indice qui nomme cet indice. L'orthographe est donc celle du jeu, minuscules
+  // comprises. Z7 et Z9 n'ont pas de forme courte dans les textes ; ils portent celle des ruines qui
+  // les distingue.
+  const ZONE_NAMES = {
+    1: 'La mine abandonnée',
+    2: 'La montagne du dragon de feu',
+    3: 'La forêt',
+    4: 'La vieille tour',
+    5: 'Le labyrinthe des morts',
+    6: 'Le château de l’immortel',
+    7: 'Les ruines',
+    8: 'La vallée d’argent',
+    9: 'Les ruines dans le lac',
+    10: 'La grotte scellée',
+  };
+  const zoneName = z => ZONE_NAMES[z] || ('Zone ' + z);
+  const zoneSub = (z, sz) => zoneName(z) + ' · ' + sz;
+
+  // Les maxima se prennent sur les VARIANTES : depuis le regroupement par nom, une entree de MON
+  // ne porte plus ni `pv` ni `c` — les lire dessus donnait NaN, donc des barres sans largeur.
+  const ALL_VARIANTS = MON.flatMap(d => d.v);
+  const maxHp = Math.max(...ALL_VARIANTS.map(v => v.pv));
+  const maxMp = Math.max(...ALL_VARIANTS.map(v => v.pm));
+  const maxCar = Math.max(...ALL_VARIANTS.flatMap(v => v.c));
+
+  let view = 'mon';
+  let sortKey = 'rang';
+  let sortDir = -1;
+  let zoneFilter = null;
+  let query = '';
+  let openKey = null;
+
+  const body = document.getElementById('body');
+  const head = document.getElementById('head');
+  const empty = document.getElementById('empty');
+  const countEl = document.getElementById('count');
+
+  // ---- compteurs
+  const S = PAYLOAD.stats;
+  document.getElementById('counters').innerHTML = [
+    ['Fiches', S.fiches], ['Monstres', S.noms], ['Objets', S.objets],
+    ['Obtenables', S.lachables], ['Formations', S.formations], ['Placements', S.placements]
+  ].map(([k, v]) => '<div class="counter"><dt>' + k + '</dt><dd>' + v.toLocaleString('fr') + '</dd></div>').join('');
+
+  // ---- filtre de zone
+  // Une liste déroulante et non plus dix puces : les noms complets en feraient une barre de trois
+  // lignes, et la barre est collante.
+  const zonesEl = document.getElementById('zones');
+  const zoneSelect = document.createElement('select');
+  zoneSelect.className = 'zone-select';
+  zoneSelect.setAttribute('aria-label', 'Filtrer par zone');
+
+  const all = document.createElement('option');
+  all.value = '';
+  all.textContent = 'Toutes les zones';
+  zoneSelect.appendChild(all);
+
+  ZONES.forEach(z => {
+    const opt = document.createElement('option');
+    opt.value = String(z);
+    opt.textContent = zoneName(z);
+    zoneSelect.appendChild(opt);
+  });
+
+  zoneSelect.addEventListener('change', e => {
+    zoneFilter = e.target.value === '' ? null : Number(e.target.value);
+    openKey = null;
+    render();
+  });
+  zonesEl.appendChild(zoneSelect);
+
+  document.getElementById('q').addEventListener('input', e => {
+    query = e.target.value.trim().toLowerCase();
+    openKey = null;
+    render();
+  });
+
+  const setView = v => {
+    view = v;
+    sortKey = v === 'mon' ? 'rmax' : 'nom';
+    sortDir = v === 'mon' ? -1 : 1;
+    openKey = null;
+    document.getElementById('v-mon').setAttribute('aria-pressed', String(v === 'mon'));
+    document.getElementById('v-obj').setAttribute('aria-pressed', String(v === 'obj'));
+    document.getElementById('q').placeholder =
+      v === 'mon' ? 'Chercher un monstre — Goblin, Dragon, Momie…' : 'Chercher un objet — Armure, Potion, Anneau…';
+    render();
+  };
+  document.getElementById('v-mon').addEventListener('click', () => setView('mon'));
+  document.getElementById('v-obj').addEventListener('click', () => setView('obj'));
+
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // Trier reordonne la liste : si on est descendu dans le tableau, on remonte a son en-tete, qui
+  // defile avec lui. La marge est la hauteur de la barre de controles, seul element encore colle.
+  const controls = document.querySelector('.controls');
+
+  function scrollToTable() {
+    const table = document.getElementById('tbl');
+    const top = table.getBoundingClientRect().top + scrollY - controls.offsetHeight - 8;
+    if (scrollY > top) scrollTo({ top, behavior: 'instant' });
+  }
+
+  // ---- la fiche de 0x60 octets, champs marqués à leur place
+  function byteGrid(hex) {
+    const cls = i => {
+      if (i < 0x10) return 'f-name';
+      if (i === 0x10 || i === 0x11) return 'f-lvl';
+      if (i === 0x14 || i === 0x15) return 'f-hp';
+      if (i === 0x16 || i === 0x17) return 'f-mp';
+      if (i === 0x22 || i === 0x23) return 'f-drop';
+      if (i >= 0x30 && i < 0x40) return 'f-car';
+      return '';
+    };
+    let out = '';
+    for (let row = 0; row < 6; row++) {
+      out += '<span class="off">' + (row * 16).toString(16).padStart(2, '0') + '</span>';
+      for (let col = 0; col < 16; col++) {
+        const i = row * 16 + col;
+        const b = hex.slice(i * 2, i * 2 + 2) || '00';
+        out += '<span class="b ' + cls(i) + (b === '00' && !cls(i) ? ' zero' : '') + '">' + b + '</span>';
+      }
+    }
+    return out;
+  }
+
+  function monsterDetail(d) {
+    // La variante la plus forte porte la fiche detaillee ; les autres sont dans le tableau.
+    const top = d.v.reduce((a, b) => (b.rang > a.rang ? b : a), d.v[0]);
+
+    const cars = top.c.map((v, i) =>
+      '<div class="car"><span class="idx">c' + i + '</span>' +
+      '<span class="track"><i style="width:' + Math.max(2, (v / maxCar) * 100) + '%"></i></span>' +
+      '<span class="val">' + v + '</span></div>').join('');
+
+    const variants = d.v.map(v =>
+      '<tr' + (v === top ? ' style="color:var(--ink)"' : '') + '>' +
+      '<td class="dim" style="text-align:left;white-space:normal">' + esc(zoneSub(v.zone, v.sz)) + '</td>' +
+      '<td>' + v.rang + '</td><td>' + v.pv + '</td><td>' + v.pm + '</td>' +
+      '<td class="dim">' + v.butin + '</td>' +
+      '<td class="dim">' + (v.ia.join('·') || '—') + '</td>' +
+      '<td class="dim">' + v.spawns + '</td></tr>').join('');
+
+    // Deux sous-zones donnent souvent le meme butin : on ne montre chaque liste qu'une fois.
+    const seen = new Set();
+    const lootBlocks = d.v.map(v => {
+      if (!v.lt || v.lt.length !== 8) return '';
+      const sig = v.zone + '|' + v.lt.join('|');
+      if (seen.has(sig)) return '';
+      seen.add(sig);
+      const where = d.v.filter(w => w.zone + '|' + (w.lt || []).join('|') === sig)
+                       .map(w => zoneSub(w.zone, w.sz)).join(', ');
+      return '<p class="panel-label" style="margin-top:14px">Ce qu\'il lâche — ' + where + '</p>' +
+        '<table class="inner"><thead><tr><th>rang</th><th style="text-align:left">objet</th>' +
+        '<th>chance</th><th>atteignable</th></tr></thead><tbody>' +
+        v.lt.map((n, i) =>
+          '<tr><td class="dim">rang ' + i + '</td><td class="item">' + esc(n || '—') + '</td>' +
+          '<td class="dim">' + TIER[i] + ' %</td>' +
+          '<td class="dim">' + (i > 4 ? 'seulement en avance' : 'toujours') + '</td></tr>').join('') +
+        '</tbody></table>';
+    }).join('');
+
+    return '<div class="detail-grid">' +
+      '<div>' +
+        '<p class="panel-label">La fiche telle qu\'elle est sur le disque — 0x60 octets, variante ' +
+          esc(zoneSub(top.zone, top.sz)) + '</p>' +
+        '<div class="bytes">' + byteGrid(top.hex) + '</div>' +
+        '<div class="legend">' +
+          '<span><i class="swatch" style="background:var(--accent)"></i>nom</span>' +
+          '<span><i class="swatch" style="background:var(--hp)"></i>PV +0x14</span>' +
+          '<span><i class="swatch" style="background:var(--mp)"></i>PM +0x16</span>' +
+          '<span><i class="swatch" style="background:var(--line);box-shadow:inset 0 0 0 1px var(--muted)"></i>rang, seuil, caractéristiques</span>' +
+        '</div>' +
+        '<div class="subpanel">' +
+          '<p class="panel-label">Affinités élémentaires — <code>+0x28</code></p>' +
+          '<div class="els">' + elementGrid(top.el) + '</div>' +
+        '</div>' +
+        '<div class="subpanel">' +
+          '<p class="panel-label">Les huit caractéristiques (+0x30) — variante ' + esc(zoneSub(top.zone, top.sz)) + '</p>' +
+          '<div class="cars">' + cars + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="subpanel">' +
+          '<p class="panel-label">' + d.v.length + ' variante' + (d.v.length > 1 ? 's' : '') +
+            ' — une fiche par sous-zone où il apparaît</p>' +
+          '<table class="inner"><thead><tr><th style="text-align:left">zone</th><th>rang</th>' +
+          '<th>PV</th><th>PM</th><th>seuil</th><th>IA</th><th>plac.</th></tr></thead>' +
+          '<tbody>' + variants + '</tbody></table>' +
+          lootBlocks +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Les seize bonus de `+0x20` s'ajoutent aux seize statistiques du personnage : les sept
+  // caracteristiques de la feuille, puis les huit valeurs de `+0x130` dont la feuille etiquette
+  // quatre « resistances » — celles que s_StatOrder_0056a8d0 place en tete. Les libelles du jeu
+  // vivent dans une ressource de texte pas encore lue, donc les positions sont numerotees, pas
+  // nommees.
+  // L'ordre dans lequel l'écran d'objet du jeu dessine les huit octets de +0x18
+  // (s_StatSlotOrder_00566ad0) : la troisième d'abord, puis la deuxième, la première, et la suite.
+  const SLOT_ORDER = [2, 1, 0, 3, 4, 5, 6, 7];
+
+  // Les huit éléments. Ce ne sont pas des noms inventés : le jeu porte une « Chaîne de X » par
+  // emplacement, chacune décrite « Protection des élémentaux de X », et chacune ne remplit que
+  // son propre octet. Les quatre capes saisonnières et Gulwick — « l'âme de la terre », 25 en
+  // emplacement 2, ce que la FAQ du jeu donne aussi — recoupent les quatre premiers.
+  const ELEMENTS = ['Feu', 'Eau', 'Terre', 'Air', 'Lumière', 'Ténèbres', 'Sacré', 'Mal'];
+
+  // Les huit classes jouables, indexées par le bit de +0x12 qui les autorise. Ce ne sont pas des
+  // noms devinés : ils sortent du binaire, bloc 0x0056c894 lu par &PTR_s_Fighter_0056c7c0, dont
+  // les huit pointeurs suivent l'identifiant de classe (les trois bits bas de +0x150) —
+  // Fighter, Priest, Rogue, Sorcerer, Hunter, Elf, Dwarf, Fairy. SetClassBaseHpMp les regroupe
+  // par PV/PM de départ dans le même ordre (16/2 pour 0 et 6, 14/8 pour 1, 3 et 7, 15/4 pour 2,
+  // 4 et 5), et le contenu du jeu le confirme item par item : le bit 6 ne porte que des haches
+  // (dont Gulwick), le bit 5 que des rapières et de l'équipement d'elfe, le bit 4 que des arcs.
+  const CLASSES = ['Guerrier', 'Prêtre', 'Voleur', 'Sorcier', 'Chasseur', 'Elfe', 'Nain', 'Fée'];
+
+  // Les seize shorts de +0x20 tels qu'ApplyEquipmentStatBonuses les ajoute aux statistiques du
+  // personnage. Les indices 8 et 9 tombent sur +0x30 et +0x32 — l'ATT et la DEF que la fiche
+  // affiche à part ; les six derniers n'ont pas de rôle établi.
+  function bonusLabel(i) {
+    if (i < 8) return 'carac. ' + (i + 1);
+    if (i === 8) return 'ATT';
+    if (i === 9) return 'DEF';
+    return '+0x' + (0x20 + i * 2).toString(16);
+  }
+
+  /// Les huit éléments d'un objet ou d'un monstre, dans l'ordre où le jeu les dessine.
+  function elementGrid(values) {
+    return SLOT_ORDER.map(s => {
+      const v = (values && values[s]) || 0;
+      return '<div class="el' + (v === 0 ? ' off' : v < 0 ? ' neg' : '') + '" data-el="' + s + '">' +
+        '<span class="el-k">' + ELEMENTS[s] + '</span>' +
+        '<span class="el-v">' + (v > 0 ? '+' : '') + v + '</span></div>';
+    }).join('');
+  }
+
+  function itemDetail(o) {
+    const rows = o.src
+      .slice()
+      .sort((a, b) => b[4] - a[4])
+      .map(s =>
+        '<tr><td class="item">' + esc(s[2]) + '</td>' +
+        '<td class="dim" style="white-space:normal">' + esc(zoneSub(s[0], s[1])) + '</td>' +
+        '<td class="dim">' + (String(s[3]).includes(',') ? 'rangs ' : 'rang ') + s[3] + '</td>' +
+        '<td>' + s[4] + ' %</td><td class="dim">' + s[5] + ' sur place</td></tr>')
+      .join('');
+
+    // La fiche du jeu, dans son ordre : ATT et DEF, puis les huit éléments de +0x18.
+    const b8 = o.b8 || [];
+    const slots = elementGrid(b8);
+
+    const klasses = CLASSES.map((nom, n) =>
+      '<span class="kls' + ((o.kls >> n) & 1 ? ' on' : '') + '" title="bit ' + n + ' de +0x12">' +
+      esc(nom) + '</span>').join('');
+
+    // Les seize shorts, hors ATT et DEF qui sont deja en tete.
+    const bonuses = (o.b16 || [])
+      .map((v, i) => ({ v, i }))
+      .filter(b => b.v !== 0 && b.i !== 8 && b.i !== 9)
+      .map(b =>
+        '<div class="car"><span class="idx">' + bonusLabel(b.i) + '</span>' +
+        '<span class="track"><i style="width:' + Math.min(100, Math.abs(b.v) * 2) + '%;' +
+        (b.v < 0 ? 'background:var(--hp)' : '') + '"></i></span>' +
+        '<span class="val">' + (b.v > 0 ? '+' : '') + b.v + '</span></div>').join('');
+
+    return '<div class="detail-grid">' +
+      '<div>' +
+        (o.desc ? '<p class="panel-label">Description</p><p class="desc">' + esc(o.desc) + '</p>' : '') +
+        '<p class="panel-label"' + (o.desc ? ' style="margin-top:18px"' : '') + '>Où l\'obtenir — ' +
+          o.src.length + ' source' + (o.src.length > 1 ? 's' : '') + '</p>' +
+        '<table class="inner"><thead><tr><th style="text-align:left">monstre</th><th>zone</th><th>rang</th><th>chance</th><th>placements</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table>' +
+      '</div>' +
+      '<div>' +
+        '<div class="attdef">' +
+          '<div class="ad"><span class="ad-k">ATT</span><span class="ad-v">' + o.att + '</span></div>' +
+          '<div class="ad"><span class="ad-k">DEF</span><span class="ad-v">' + o.def + '</span></div>' +
+        '</div>' +
+        '<p class="panel-label" style="margin-top:16px">Bonus élémentaire</p>' +
+        '<div class="els">' + slots + '</div>' +
+        '<div class="subpanel" style="margin-top:22px">' +
+          '<p class="panel-label">Classes qui peuvent l\'équiper</p>' +
+          '<div class="klss">' + klasses + '</div>' +
+        '</div>' +
+        (bonuses
+          ? '<div class="subpanel"><p class="panel-label">Autres bonus</p>' +
+            '<div class="cars">' + bonuses + '</div></div>'
+          : '') +
+        (o.b8a ? '<div class="subpanel"><p class="panel-label">Le short de <code>+0x8a</code></p>' +
+          '<p class="none">' + (o.b8a > 0 ? '+' : '') + o.b8a + ' sur la valeur bornée à [0, 99].</p></div>' : '') +
+        (o.att === 0 && o.def === 0 && !bonuses && b8.every(v => v === 0)
+          ? '<div class="subpanel"><p class="none">Tout est à zéro : c\'est un consommable, dont ' +
+            'l\'effet passe par un script et non par l\'équipement.</p></div>'
+          : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  const HEADS = {
+    mon: '<tr>' +
+      '<th class="left sortable" data-k="nom" tabindex="0" role="button">Monstre</th>' +
+      '<th class="left">Zones</th>' +
+      '<th class="sortable" data-k="rmax" tabindex="0" role="button">Rang</th>' +
+      '<th class="sortable" data-k="pvmax" tabindex="0" role="button">PV</th>' +
+      '<th class="sortable" data-k="pmmax" tabindex="0" role="button">PM</th>' +
+      '<th class="sortable" data-k="nv" tabindex="0" role="button">Variantes</th></tr>',
+    obj: '<tr>' +
+      '<th class="left sortable" data-k="nom" tabindex="0" role="button">Objet</th>' +
+      '<th class="sortable" data-k="att" tabindex="0" role="button">ATT</th>' +
+      '<th class="sortable" data-k="def" tabindex="0" role="button">DEF</th>' +
+      '<th class="left">Zones</th>' +
+      '<th class="sortable" data-k="nsrc" tabindex="0" role="button">Sources</th>' +
+      '<th class="sortable" data-k="best" tabindex="0" role="button">Meilleure chance</th>' +
+      '<th class="left">Lâché par</th></tr>'
+  };
+
+  function render() {
+    head.innerHTML = HEADS[view];
+
+    let rows;
+    if (view === 'mon') {
+      rows = MON
+        .filter(d => query === '' || d.nom.toLowerCase().includes(query))
+        .map(d => {
+          // Le filtre de zone reduit la liste des variantes, pas seulement celle des lignes :
+          // un Goblin filtre sur Z3 doit montrer ses fiches de Z3, pas celles de Z1 et Z4.
+          const v = zoneFilter === null ? d.v : d.v.filter(x => x.zone === zoneFilter);
+          if (!v.length) return null;
+          return {
+            nom: d.nom, v,
+            z: [...new Set(v.map(x => x.zone))],
+            rmin: Math.min(...v.map(x => x.rang)), rmax: Math.max(...v.map(x => x.rang)),
+            pvmin: Math.min(...v.map(x => x.pv)), pvmax: Math.max(...v.map(x => x.pv)),
+            pmmin: Math.min(...v.map(x => x.pm)), pmmax: Math.max(...v.map(x => x.pm)),
+            nv: v.length
+          };
+        })
+        .filter(Boolean);
+    } else {
+      rows = OBJ
+        .map(o => {
+          // Le `...o` n'est pas cosmetique : sans lui la ligne ne transporte que le nom et les
+          // sources, et le depliage — qui recoit cet objet-la, pas celui de OBJ — affiche
+          // `undefined` pour la description, l'ATT, la DEF, les classes et les bonus.
+          const src = zoneFilter === null ? o.src : o.src.filter(s => s[0] === zoneFilter);
+          return { ...o, src, nsrc: src.length, best: src.length ? Math.max(...src.map(s => s[4])) : 0 };
+        })
+        .filter(o => o.nsrc > 0 && (query === '' || o.nom.toLowerCase().includes(query)));
+    }
+
+    rows.sort((a, b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      const cmp = typeof av === 'string' ? av.localeCompare(bv, 'fr') : av - bv;
+      return cmp * sortDir || a.nom.localeCompare(b.nom, 'fr');
+    });
+
+    countEl.textContent = rows.length + (view === 'mon' ? ' fiche' : ' objet') + (rows.length > 1 ? 's' : '');
+    empty.hidden = rows.length > 0;
+
+    body.innerHTML = rows.map(d => {
+      const k = d.nom;
+      const isOpen = openKey === k;
+      const span2 = (lo, hi) => lo === hi ? String(hi) : '<span class="rangelo">' + lo + '–</span>' + hi;
+      const cells = view === 'mon'
+        ? '<td class="name">' + esc(d.nom) + '</td>' +
+          '<td class="loc">' + d.z.map(zoneName).join(' · ') + '</td>' +
+          '<td>' + span2(d.rmin, d.rmax) + '</td>' +
+          '<td><span class="bar hp"><i style="width:' + Math.max(3, (d.pvmax / maxHp) * 100) + '%"></i></span>' +
+            span2(d.pvmin, d.pvmax) + '</td>' +
+          '<td><span class="bar mp"><i style="width:' + Math.max(3, (d.pmmax / maxMp) * 100) + '%"></i></span>' +
+            span2(d.pmmin, d.pmmax) + '</td>' +
+          '<td>' + d.v.length + '</td>'
+        : '<td class="name">' + esc(d.nom) + '</td>' +
+          '<td' + (d.att ? '' : ' class="zeroed"') + '>' + d.att + '</td>' +
+          '<td' + (d.def ? '' : ' class="zeroed"') + '>' + d.def + '</td>' +
+          '<td class="loc">' + [...new Set(d.src.map(s => zoneName(s[0])))].join(' · ') + '</td>' +
+          '<td>' + d.nsrc + '</td>' +
+          '<td>' + d.best + ' %</td>' +
+          '<td class="wrapcell">' + esc([...new Set(d.src.map(s => s[2]))].join(', ')) + '</td>';
+
+      const span = view === 'mon' ? 6 : 7;
+      return '<tr class="row' + (isOpen ? ' open' : '') + '" data-k="' + esc(k) + '" tabindex="0" role="button" aria-expanded="' + isOpen + '">' +
+        cells + '</tr>' +
+        '<tr class="detail"' + (isOpen ? '' : ' hidden') + '><td colspan="' + span + '">' +
+        (isOpen ? (view === 'mon' ? monsterDetail(d) : itemDetail(d)) : '') + '</td></tr>';
+    }).join('');
+
+    head.querySelectorAll('th.sortable').forEach(th => {
+      if (th.dataset.k === sortKey) th.setAttribute('aria-sort', sortDir === 1 ? 'ascending' : 'descending');
+      const apply = () => {
+        const kk = th.dataset.k;
+        if (sortKey === kk) sortDir = -sortDir;
+        else { sortKey = kk; sortDir = kk === 'nom' ? 1 : -1; }
+        openKey = null;
+        render();
+        // Trier reordonne la liste sous un en-tete colle : sans ce recalage, la premiere ligne
+        // du nouvel ordre se retrouve cachee derriere lui. On revient au haut du tableau.
+        scrollToTable();
+      };
+      th.addEventListener('click', apply);
+      th.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apply(); }
+      });
+    });
+
+    body.querySelectorAll('tr.row').forEach(tr => {
+      const toggle = () => { openKey = openKey === tr.dataset.k ? null : tr.dataset.k; render(); };
+      tr.addEventListener('click', toggle);
+      tr.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
+  }
+
+  setView('mon');
+</script>

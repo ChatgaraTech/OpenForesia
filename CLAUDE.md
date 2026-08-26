@@ -123,6 +123,27 @@ dotnet run --project OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x004
 
 Both verbs take a **Ghidra virtual address** (hex, `0x` optional); byte counts are decimal.
 
+**Reading the CD's own data — `bestiaire`.** A fourth verb reads not the binary but the game data,
+by replaying the reconstructed load chain (`SYSTEM.INI` → state → zone → sub-area) offline:
+
+```powershell
+dotnet run --project OpenForesia.Tools -- bestiaire "E:\" --sortie Documentation\Reference\Bestiaire
+```
+
+It writes the enemy cartography — species, sheets (name, HP, MP, characteristics), formations, loot
+tables, the per-sub-area item catalogue, and the reverse index (item → what drops it, where, at what
+chance). `--regions` adds each directory's 60-pointer region map, which is the general tool for
+**finding a new table in a resource blob**: the regions follow one another without gaps, so a
+table's end is the next header pointer, and a region's first bytes usually say what it holds.
+
+`OpenForesia.Tools\build-bestiaire-page.ps1` then joins the CSVs into
+`Documentation/Reference/Bestiaire/bestiaire.html`, a standalone browsable page. That file is
+**generated** — edit `bestiaire-page.template.html` instead. See
+`Documentation/Reference/Bestiaire/LISEZMOI.md`.
+
+**A `.ps1` added to this repo needs a UTF-8 BOM.** Windows PowerShell 5.1 reads a BOM-less file as
+ANSI, and the first accented character or em-dash in a string breaks parsing.
+
 `at` prints the resolved file offset and section alongside hex, C-string and dword renderings. An
 address landing in `.data`'s uninitialised tail is reported as such — that means "zero at load,
 written only by code", which is an answer, not an error.

@@ -15420,3 +15420,637 @@ sous-systemes.
 L'ordre le moins couteux est monstre par monstre : le sous-type **0** debloque le premier groupe
 d'ennemis, et ses six appelees manquantes serviront aux dix autres. Mais il n'y a pas de raccourci,
 et annoncer le contraire ferait perdre plus de temps que la lecture elle-meme.
+
+---
+
+## 2026-08-26 (suite 13) — comment naissent les monstres, et ce que ca implique pour le code
+
+Question de Vincent, avant d'implementer : est-ce du spawn par ennemi ou par groupe, et faut-il des
+classes pour le comportement de groupe ? Reponse tiree du code, pas d'une intuition.
+
+### Deux tables d'entites, deux voies de naissance — a ne pas confondre
+
+| | `0x005fa5e0` | `0x005ecaa0` |
+|---|---|---|
+| ce que c'est | les **decors** de la zone | les **entites de scene** : les ennemis |
+| emplacements | 128 | **32** |
+| naissance | `SpawnSubAreaEntities` (`FUN_005350B0`) | `SpawnEntityFormation` |
+| declenchee par | opcode **12**, ou le chargement de sous-zone | opcode **13** |
+| table de sauts | `0x0056adc8` | `0x0056ad48` |
+| ce qu'on en a fait | **les dix-sept, transcrits aujourd'hui** | **les onze, pas encore** |
+
+Les dix-sept gestionnaires du jour etaient donc les **decors**. Les monstres sont l'autre table, et
+c'est une autre echelle.
+
+### Le spawn est par GROUPE, le comportement est par INDIVIDU
+
+`ScriptOpSpawnFormation` (opcode 13) prend une **formation** dans la table `contexte + 0x34`,
+indexee par son operande. Une formation est une **liste d'enregistrements de 32 octets**, terminee
+par `kind == -1` :
+
+```
++0x00  kind          l'index d'espece
++0x04  x  (short)
++0x06  y  (short)
++0x08  z  (short)
++0x0a  ushort        -> slot+0x30
++0x0c  orientation   -> slot+0x32
++0x0e  ushort        -> slot+0x34
++0x10  deux dwords de reference : (-1,-1) ou (0,0) = « pose-moi sur le terrain »,
++0x14                sinon CopyEntityReferences depuis l'enregistrement
+```
+
+Un enregistrement = un monstre. **La formation ne survit pas a la naissance** : elle donne les
+types et les positions, puis chaque monstre part dans le pool commun de 32 emplacements, melange
+avec ceux des autres formations.
+
+**Il n'y a aucun etat de groupe dans l'enregistrement d'entite.** Pas de champ « mes camarades »,
+pas de chef, pas d'identifiant de formation. Le seul lien vers autre chose est `+0x6c`, la **cible**
+— et elle est tiree **au hasard parmi le groupe du joueur, individuellement, a la naissance** :
+
+```csharp
+*(byte**)(slot + 0x6c) = Mem.Arena(0x005e93c0) + CrtRand() % s_PartySize_005e9020 * 0x9c;
+```
+
+Deux monstres de la meme formation peuvent donc courir apres deux personnages differents, et rien
+ne les coordonne.
+
+### Ce qui choisit l'IA n'est pas la formation
+
+`slot[5]` indexe la table des gestionnaires, et il vient du **bloc d'espece**, pas de
+l'enregistrement de formation :
+
+```csharp
+species = *(byte**)(areaDir + 0x4c) + slot[0xc] * 8;   // 8 octets par espece
+*(int*)(slot + 0x04) = *(int*)species;                 // slot[5] = species[1]
+```
+
+Le `kind` de la formation designe une **espece** (8 octets dans une table de zone) ; le deuxieme
+octet de son premier dword est le **numero d'IA**. Une meme IA peut donc servir a plusieurs especes,
+et une espece porte en plus son modele (`species[4]`) et ses drapeaux (`species[6]`).
+
+### L'echelle reelle : 11 pour la foret, 166 pour le jeu
+
+Balayage des vingt-huit blocs de la table `0x0056ad48` : **166 gestionnaires d'entites de scene
+distincts**, de 2 (zone 0) a 11 par bloc — et **aucun n'est partage entre zones**. Les onze de la
+foret ne servent qu'a la foret.
+
+**Mais le socle est commun, et c'est ce qui rend le chantier faisable.** Les onze fonctions
+(≈20 000 octets) n'appellent que **vingt et une cibles distinctes**, et cinq d'entre elles sont
+appelees **exactement onze fois** — une par monstre :
+
+| appelee | appels | etat |
+|---|---:|---|
+| `FUN_00547140` (rand) | 127 | transcrite |
+| ordinaux 442/450/451/457 (sqrt, cos, sin, atan2) | 80 | lies |
+| `FUN_0053DB20` (son positionnel) | 14 | transcrite |
+| `FUN_00519C30` | 14 | **manquante**, 62 l. |
+| `FUN_00539B80` | 13 | **manquante**, 241 l. |
+| `FUN_00538980` (blocs d'espece) | 11 | transcrite |
+| `FUN_00535F20` | 11 | **manquante**, 72 l. |
+| `FUN_004DB5A0` | 11 | transcrite |
+| `FUN_00533940` (placement) | 10 | transcrite |
+| `FUN_00488160` | 8 | **manquante**, 32 l., **parametres perdus par Ghidra** |
+| `FUN_004E3770` | 7 | **manquante**, 24 l. |
+| `FUN_004DFAF0` | 7 | **manquante**, 22 l. |
+
+Chaque IA est donc **le meme squelette avec d'autres constantes** — exactement le motif deja vu sur
+les sept tables de sauts et sur les deux moities de l'ascenseur. Le cout n'est pas onze inventions,
+c'est **six fonctions de socle** puis onze variantes.
+
+### Faut-il des classes de comportement ?
+
+**Non, et pour deux raisons distinctes.**
+
+La premiere est factuelle : **il n'y a rien a modeliser**. Un comportement de groupe n'existe pas
+dans le binaire ; en creer un en C# serait inventer une structure que la source de verite n'a pas,
+ce que `Strategy.md` interdit explicitement.
+
+La seconde est la regle de `ARCHITECTURE.md` : tout est `static`, et les noms `Manager`, `Service`,
+`Controller`, `Provider` sont proscrits parce qu'ils « promettent un objet avec un cycle de vie que
+la transcription n'a pas ». Onze fonctions du binaire restent onze fonctions statiques.
+
+**Ce qui est pertinent, en revanche** :
+
+1. **un fichier a elles**, `Screens/State03/SceneEntities.cs`, plutot que 20 000 octets de plus dans
+   `WorldMapTick.cs` qui en fait deja 14 000. Le critere d'`ARCHITECTURE.md` est la coherence, et
+   « les gestionnaires d'entites de scene » en est une ;
+2. **les six appelees de socle a part**, parce qu'elles serviront aux 166 : si un second ecran les
+   appelle un jour, la regle 3 les envoie dans `Engine/` ;
+3. **transcrire le socle d'abord**, puis les monstres un par un. Les six manquantes totalisent
+   453 lignes de `Blaze.c` — moins que deux monstres, et elles debloquent les onze.
+
+### La fiche « squelette : X PV, vitesse Y » existe deja — elle est dans les donnees
+
+Suite de la question de Vincent : faut-il une classe, ou un tableau, par type d'ennemi ?
+
+**Non, parce que le jeu en a deja un, et qu'il n'est pas dans le code.** Un monstre a trois blocs, et
+`ResolveEntityBlocks` les resout des la naissance :
+
+```csharp
+stats   = s_EntityStatBlocks_005ea560 + slot[8] * 0x120;      // par EMPLACEMENT, 0x120 octets
+species = *(byte**)(areaDir + 0x4c) + slot[0xc] * 8;          // par ESPECE, 8 octets
+model   = *(byte**)(areaDir + 0x98) + species[4] * 0x60;      // par TYPE, 0x60 octets
+```
+
+- l'**espece** (8 octets) est un aiguillage : elle porte le numero d'IA (`species[1]`), l'index de
+  modele (`species[4]`) et des drapeaux (`species[6]`) ;
+- le **modele** (0x60 octets) est **la fiche** : c'est de la que sortent les points de vie et tout
+  le reste ;
+- les **stats** (0x120 octets) sont l'instance vivante, remplie depuis le modele a la naissance.
+
+**La preuve que la fiche est le modele et non l'espece** tient en une ligne de
+`ResetEntityStats` : son parametre `species` est <b>pousse par l'appelant et jamais lu</b>
+(`_ = species;` dans la transcription, fidele au binaire). Tout ce que l'instance recoit vient de
+`model`.
+
+Carte du remplissage, relevee dans `ResetEntityStats` :
+
+| modele | stats | note |
+|---|---|---|
+| `+0x00..0x0f` | `+0x00` | seize octets recopies tels quels |
+| `+0x10` | `+0x44` | |
+| `+0x12` | `+0x10` | |
+| `+0x14` | `+0x48` **et** `+0x4c` | une jauge, max et courant |
+| `+0x16` | `+0x4a` **et** `+0x4e` | **les points de vie** |
+| `+0x1a` | `+0x2e` | |
+| `+0x1c`, `+0x20`, `+0x24` | `+0x58`, `+0x5c`, `+0x14` | trois dwords |
+| `+0x28..0x2f` | `+0x18` (octets) **et** `+0x110` (etendus en ushort) | huit valeurs, ecrites deux fois |
+| `+0x30..0x3f` | `+0x30` | huit ushorts |
+
+> **Corrige le meme jour, voir la suite 14 : c'est `+0x14` qui porte la vie, et `+0x16` la magie.**
+> Les trois usages ci-dessous portent tous sur la meme paire `(+0x4a, +0x4e)` et ne pouvaient donc
+> pas departager les deux. Le paragraphe est garde tel quel parce que l'erreur est instructive.
+
+**`+0x16` est bien la vie**, confirme par trois usages independants et deja transcrits : la
+regeneration lente lit `stats+0x4a` comme maximum et augmente `stats+0x4e`
+(`WorldMapTick.cs:2931`), la jauge dessinee au-dessus du monstre affiche `stats+0x4e`
+(`:2090`), et un coup retire trois pour cent de `stats+0x4a` a `stats+0x4e` (`:3214`).
+
+### Ce que ca veut dire pour le code a ecrire
+
+**Une classe par ennemi n'aurait rien a contenir.** La variation entre un squelette et un loup est
+**dans les donnees du CD**, pas dans le code : meme structure de 0x60 octets, d'autres valeurs. Le
+code, lui, ne varie que par l'**IA** — les onze fonctions. Le jeu a donc deja fait la separation
+qu'une classe chercherait a faire, et la refaire en C# creerait un second modele a maintenir en
+face du premier.
+
+Ce qui manque n'est pas la fiche : c'est le **comportement**.
+
+**Ce qui serait reellement utile**, en revanche, et qui donnerait le tableau que la question
+imagine — mais <b>releve du jeu</b> plutot qu'invente : une trace `OPENFORESIA_TRACE_SPAWN=1` qui
+imprime a chaque naissance l'index d'espece, le numero d'IA, l'index de modele et les valeurs du
+modele. Trois lignes dans `SpawnEntityFormation`, et la fiche de chaque monstre de la foret devient
+lisible — verifiable contre l'original, comme la trace des opcodes l'a ete.
+
+---
+
+## 2026-08-26 (suite 14) — la cartographie des ennemis, lue sur le CD
+
+La suite 13 finissait sur « ce qui serait reellement utile : une trace `OPENFORESIA_TRACE_SPAWN=1`
+qui imprime a chaque naissance les valeurs du modele ». La trace n'est plus necessaire : **les
+donnees se lisent hors-jeu**, sans lancer quoi que ce soit, parce que la chaine de chargement est
+entierement reconstruite dans le depot et qu'il suffisait de la rejouer.
+
+`OpenForesia.Tools bestiaire <cd>` le fait. Voir `Documentation/Reference/Bestiaire/LISEZMOI.md`
+pour la methode et le detail ; ce qui suit est ce que la lecture apprend.
+
+### Ce qui rendait la lecture possible sans qu'on le voie
+
+Trois pieces etaient deja la, chacune reconstruite pour une autre raison :
+
+- `LoadResourceEntry` (FUN_00529b50) — l'archive est adressee au secteur, `entree[0] << 11` ;
+- `FixupResourceHeader` (FUN_00532070) — les soixante dwords d'en-tete et la passe de schema, avec
+  ses **deux formules de relocalisation differentes** que la note du fichier signalait deja ;
+- la chaine a quatre niveaux de `WorldMap.cs`, tous en `+0x48`.
+
+Charger les blobs a l'**adresse virtuelle 0** transforme chaque pointeur relocalise en offset dans
+le tableau. Ce n'est pas une approximation : les pointeurs d'un blob ne sortent jamais de leur
+propre blob, donc la substitution est exacte.
+
+### La borne d'une table est un pointeur d'en-tete, pas un enregistrement nul
+
+Le premier essai comptait jusqu'au premier enregistrement entierement nul. Il a lu **six** especes
+la ou il y en a trois, et la sixieme s'appelait `47 6f 62 6c 69 6e` — « Goblin ». C'est-a-dire que la
+table voisine avait ete avalee.
+
+La bonne borne est structurelle : les regions d'un blob se suivent sans trou, donc la fin d'une
+table est **le plus petit des soixante pointeurs d'en-tete qui lui soit superieur**. Une option
+`--regions` imprime cette carte ; c'est elle qui a montre du meme coup que `+0x98` fait exactement
+288 octets pour trois modeles de 0x60, et que la region qui suit `+0x4c` commence par un nom.
+
+### Le nom du monstre etait sous nos yeux depuis le 2026-08-23
+
+`ResetEntityStats` recopie « seize octets tels quels » de `modele+0x00` vers `stats+0x00`. Le
+`TODO(REVERSE)` portait sur les huit octets de `+0x28`, jamais sur ces seize-la — personne n'avait
+demande ce qu'ils contenaient. Ils contiennent **le nom**, en Latin-1, l'octet nul servant de
+separateur de mot autant que de fin de chaine (`46 6f 75 72 6d 69 00 67 e9 61 6e 74 65` = « Fourmi
+geante »).
+
+Le recoupement etait disponible : le code de controle de texte `0x1d` insere le nom d'un locuteur
+« a la meme adresse que `GetEntityStatBlock` rend », soit l'offset 0 du bloc. Deux releves
+independants qui se confirment, a deux jours d'intervalle.
+
+### Correction : les deux jauges etaient inversees
+
+La suite 13 ecrivait « **`+0x16` est bien la vie**, confirme par trois usages independants ». C'est
+faux, et la forme de l'erreur merite d'etre retenue.
+
+Les trois usages cites — la regeneration lente, la jauge dessinee, les trois pour cent d'un coup —
+portent tous sur la **meme** paire `(stats+0x4a, stats+0x4e)`. Trois usages d'une seule paire ne
+disent pas laquelle des deux paires est la vie : ils confirment que cette paire est *une* jauge, ce
+qui n'etait pas la question. Le nombre de recoupements ne remplace pas leur independance.
+
+Ce qui tranche est ailleurs, dans le meme bloc de `WorldMapTick.cs` :
+
+```csharp
+// la petrification draine cinq pour cent, sans duree
+int drain = *(short*)(stats + 0x48) * 5 / 100;
+*(short*)(stats + 0x4c) -= (short)drain;
+```
+
+Une jauge qu'on petrifie est la vie. Et la paire `(+0x4a, +0x4e)` est celle que la regeneration
+remonte d'un seizieme tous les cent tours — c'est la magie. La surimpression de mise au point les
+dessine dans cet ordre, `+0x44` puis `+0x4c` puis `+0x4e`, exactement comme la fiche de personnage
+affiche niveau, PV, PM.
+
+**Donc `modele+0x14` = les points de vie, `modele+0x16` = les points de magie.** Les donnees le
+disent aussi, ce qui est la verification demandee : sous l'ancienne lecture la Coccinelle avait
+**1 point de vie** et 8 de magie. Elle a 8 PV et 1 PM.
+
+### La loi du butin, exactement
+
+`FUN_0053a920(classe, plage)` tire `rand() % plage` et le compare a sept seuils — `0x18`, `0x29`,
+`0x38`, `0x45`, `0x50`, `0x59`, `0x5f` — pour un rang de 0 a 7, puis rend
+`table[classe * 8 + rang]` avec la table en `areaDir + 0xb4`. Sur une plage de 100 :
+**25 / 17 / 15 / 13 / 11 / 9 / 6 / 4 %**.
+
+A la mise a mort (`FUN_0051a740`) la plage n'est pas 100 : `0x38 + ecart`, ou l'ecart est le niveau
+du personnage moins `stats+0x44` (le rang du monstre), borne a `0x2c`. Soit **56 a 100**. Une plage
+de 56 ne depasse jamais le rang 4 : **les trois derniers rangs sont inatteignables** tant que le
+groupe n'a pas pris de l'avance sur le monstre.
+
+La classe vient de l'**espece** (`espece+5`), pas de la fiche. Deux especes partageant un modele
+peuvent donc lacher des choses differentes.
+
+> **Resolu le meme jour, voir la suite 15 : l'octet rendu est un identifiant d'objet.** Le
+> paragraphe ci-dessous suivait l'emplacement ou la valeur est rangee au lieu de ceux qui la
+> consomment ; il est garde parce que c'est exactement la forme d'erreur a reconnaitre.
+
+**Ce qui reste ouvert.** L'octet rendu est ecrit en `+7` de l'entite de butin, et la seule autre
+fonction qui ecrit `+7` (`FUN_0053a980`) le traite comme un index de **liste** de fiches d'objets —
+or le repertoire d'etat en compte neuf et les valeurs relevees vont de 0 a 37. La lecture ne tient
+pas telle quelle. Les tables sont exactes ; leur interpretation attend la transcription de
+`FUN_0051a740`, qui n'est pas dans `Blaze.c` sous une forme complete.
+
+### Ce que le relevé change pour le chantier des 166 gestionnaires
+
+`espece+1` est le numero d'IA, et `espece+4` l'index du modele — donc du **nom**. Pour la premiere
+fois, les numeros de la table `0x0056ad48` ont des noms en face d'eux : `especes.csv` donne, pour
+chaque sous-zone, quel monstre nomme est aiguille vers quel gestionnaire.
+
+Ce n'est pas qu'un confort de lecture. Cela dit **quelles IA sont partagees et lesquelles ne le sont
+pas**, et cela permet de choisir l'ordre de transcription par ce que le monstre fait plutot que par
+son adresse. La suite 12 recommandait « monstre par monstre, en commencant par le sous-type 0 » ;
+avec les noms, le choix peut se faire sur autre chose que l'ordre de la table.
+
+### Une reserve honnete : la zone 0
+
+Ses 102 lignes portent des noms illisibles et se repetent avec une periode de huit sous-zones. Sa
+liste de sous-zones est vraisemblablement mal parcourue, ou le monde exterieur n'a pas de table de
+fiches en `+0x98`. Elle est signalee comme telle et **ecartee des comptes** ; les zones 1 a 10 sont
+propres, ce qui se voit a ce que **cent vingt et un noms** francais en sortent sans un seul octet
+douteux.
+
+---
+
+## 2026-08-26 (suite 15) — le butin nomme, et une lecon sur la lecture d'une valeur
+
+La suite 14 laissait un point ouvert : « ce que l'octet rendu par `FUN_0053a920` designe n'est pas
+tranche ». Il l'est. **C'est un identifiant d'objet**, et la reponse etait a deux lignes de la.
+
+### L'erreur, et sa forme
+
+La suite 14 avait suivi `FUN_0051a740` : elle ecrit la valeur en `+7` de l'entite de butin, et la
+seule autre fonction connue qui ecrit `+7` (`FUN_0053a980`) y range un index de **liste** de fiches.
+D'ou la conclusion « c'est un index de liste », et le paradoxe qui l'accompagnait : neuf listes au
+repertoire d'etat, mais des valeurs jusqu'a 37.
+
+Le paradoxe etait le signal. **On avait lu l'emplacement ou la valeur est rangee, pas ce qu'en font
+ceux qui la consomment.** Un octet range en `+7` n'a pas le sens de `+7` : il a le sens que lui
+donne la fonction qui le relit.
+
+Les trois autres appelants de `FUN_0053a920` le disaient tous les trois, et ils etaient dans
+`Blaze.c` depuis le debut :
+
+```c
+uVar6 = FUN_0053a920((int)*(short *)((int)param_1 + 0x16),100);   /* le coffre */
+sVar4 = FUN_00530f20(param_1[0x1b],uVar6,puVar9);
+```
+
+`FUN_00530f20` est **la remise d'objet**, deja transcrite sous le nom
+`GrantChestContents_00530F20`, et son deuxieme parametre est documente dans notre propre
+reconstruction : « l'indice de la fiche d'objet, pas une quantite : il indexe la table de `0x140`
+octets pointee par `DAT_00600824` ». La reponse etait ecrite dans le depot.
+
+**La lecon** : pour savoir ce qu'une valeur *est*, lire ses consommateurs, pas son entrepot. Et
+quand deux lectures se contredisent par un ordre de grandeur — neuf listes contre trente-sept
+valeurs — c'est la lecture qu'il faut refaire, pas la contradiction qu'il faut expliquer.
+
+### Le catalogue d'objets
+
+`DAT_00600824` est pose par `UploadRawAreaBlocks` (`FUN_005355f0`), qui traite la liste
+`areaDir + 0xb0`. Chaque entree de cette liste est un blob d'archive fait d'un **compte suivi
+d'offsets relatifs** ; chaque morceau designe porte les **0x140 octets de la fiche d'objet**, puis
+une palette de seize couleurs en `+0x140` et une icone 24x24 en `+0x160` qui partent en VRAM. Les
+0x50 dwords de tete sont recopies bout a bout dans le tampon de la sous-zone, le curseur continuant
+d'un blob au suivant — **l'indice est donc cumulatif sur toute la liste**.
+
+Ce blob n'a **pas** d'en-tete de soixante dwords : lui appliquer `FixupResourceHeader` le
+detruirait. C'est le premier blob du releve qui se charge sans remise en place des pointeurs.
+
+### Le nom d'un objet, et l'octet qui n'est pas une lettre
+
+Le catalogue extrait donnait des noms du genre `wPotion med`, `mGlaive`, `sExtrait sang` — et, sur
+huit fiches, `La devoreuse`. Sur 1 618 fiches, l'octet 0 ne prend que **quatre valeurs** : 0x77,
+0x6d, 0x73 et 0x4c. Quatre valeurs, ce n'est pas une premiere lettre.
+
+`BuildItemDisplayName`, deja transcrite dans `Screens/State06/Inventory.cs`, donne la regle sans
+qu'on ait a la deviner :
+
+```csharp
+if (item[0] > 0x5f && item[1] < 0x60) { dest[0] = 0x24; dest[1] = item[0]; written = 2; }
+```
+
+L'octet 0, au-dessus de `0x5f` et suivi d'une majuscule, est emis comme la sequence de controle
+`0x24 <octet>` — un **pictogramme** — et le nom commence en `+1`. Le `L` de « La devoreuse » ne
+depasse pas `0x5f`, la regle ne s'y applique pas, et son nom commence bien en `+0`. Les quatre
+valeurs s'expliquent d'un coup.
+
+La meme fonction apprend que **le nom court n'est pas le nom** : le vrai nom est le **nom long de
+`+0x41`**, termine par un `'/'` et non par un NUL, le nom court n'etant qu'un repli tronque a seize
+octets. « Casstetechain » devient « Casse-tete a chaine ».
+
+### Ce que ca donne
+
+**386 objets au catalogue, 265 obtenables sur un monstre** ; les autres viennent des coffres et des
+marchands, qui ne passent pas par cette table. `butin_par_objet.csv` repond a la question dans
+l'autre sens — « Armure du dragon : Jeune dragon en zone 1/4 au rang 5 (9 %), Wybarn en zone 4/7 au
+rang 1 (17 %) ».
+
+### La page
+
+`Documentation/Reference/Bestiaire/bestiaire.html` est autonome et se genere :
+`build-bestiaire-page.ps1` joint les six CSV et les injecte dans
+`bestiaire-page.template.html`. Le fichier produit ne se modifie pas a la main.
+
+**Un piege d'outillage au passage** : un `.ps1` ecrit en UTF-8 **sans** marque d'ordre d'octets est
+lu en ANSI par Windows PowerShell 5.1, et le premier tiret cadratin d'un message casse l'analyse
+syntaxique. Le script porte donc une BOM. A retenir pour tout script ajoute au depot.
+
+---
+
+## 2026-08-26 (suite 16) — ce que l'ecran d'objet nomme, et un nom qui a empeche de relire
+
+Vincent, en regardant la page : « pour le mage, son Baton de bois a comme description "En bois tres
+solide.", avec **ATT 5 DEF 0** et tu as les **8 stats magiques a 0** ». Deux nombres et un compte —
+et c'est ce compte qui a tout ouvert.
+
+### Le releve etait bon, les etiquettes etaient fausses
+
+La suite 15 disait des seize shorts de `+0x20` : « positions numerotees, pas nommees ». Prudent, mais
+insuffisant — parce que la reponse etait dans la reconstruction, a un `grep` de distance.
+
+`s_ItemPanelIcons_00566ad8` pose **dix** icones fixes sur le cadre : **deux** sur une premiere ligne,
+puis **huit** sur deux rangees de quatre. Exactement ce que Vincent decrit. Et `DrawItemStatRow`
+dessine les valeurs en face :
+
+```csharp
+for (int n = 0; n < 8; n++) { ... item[0x18 + s_StatSlotOrder_00566ad0[n]] ... }   // les huit
+short* longStat = (short*)(item + 0x30);
+for (int n = 0; n < 2; n++, longStat++) { ... }                                    // les deux
+```
+
+Donc **`+0x30` est l'ATT et `+0x32` la DEF**, et les huit sont les octets **signes** de `+0x18` —
+affiches dans l'ordre `[2,1,0,3,4,5,6,7]`.
+
+Le recoupement avec les donnees est immediat et sans exception : « Simple baton » a `+0x30 = 16` et
+`+0x32 = 0` ; « Armure du dragon » `+0x30 = 0` et `+0x32 = 65` ; « Casque de fer » `0` et `4`. Les
+armes portent l'ATT, les armures la DEF.
+
+**Consequence sur la suite 15** : dans les seize shorts de `+0x20`, les indices **8 et 9** tombent sur
+`+0x30` et `+0x32`. La page les etiquetait « resist. 1 » et « resist. 2 » d'apres
+`s_StatOrder_0056a8d0`. C'etaient l'ATT et la DEF.
+
+### Le nom qui a empeche de relire
+
+`DrawItemElementRow` allume huit temoins depuis les bits de `*(ushort*)(item + 0x12)`. Le nom dit
+« element ». Il est faux.
+
+`GrantChestContents_00530F20` documentait deja le meme champ correctement, et depuis des jours :
+« `+0x12` de la fiche celles **auxquelles il est destine** », teste contre « `+0xf0112` du bloc du
+personnage porte les classes qui savent se servir d'un objet ». Deux lectures du meme champ dans le
+meme depot, l'une juste et l'autre inventee.
+
+Les donnees tranchent sans appel : « Simple baton » allume **un** bit, « Manteau de cuir » les
+**huit**, « Armure du dragon » **deux**. Un baton qu'une seule classe peut tenir, un manteau de cuir
+que tout le monde peut porter. Ce sont les **huit classes jouables**, pas des elements.
+
+`CLAUDE.md` porte deja la lecon sous une autre entree — « `SetEntityPose_005397B0` n'a jamais pose de
+pose », et la phrase « un nom pose sur une hypothese empeche de relire ». Elle vient de se verifier
+une seconde fois, et le contre-poison est le meme : **quand deux endroits du depot nomment le meme
+champ differemment, l'un des deux est une supposition**. Chercher le champ, pas la fonction.
+
+### Ce que ca vaut comme methode
+
+Le releve de la suite 15 n'etait pas faux, il etait **muet** : des nombres justes sans etiquettes.
+Ce qui l'a fait parler n'est pas une relecture du binaire, c'est **une phrase de quelqu'un qui a le
+jeu sous les yeux**. « Deux valeurs, puis huit » suffisait a identifier le bloc de dessin, et le bloc
+de dessin donnait les offsets.
+
+C'est la meme lecon que la carte du carrousel du 2026-08-25 : une metrique qui concorde n'est pas une
+preuve, et la reference existe — ici, l'ecran du jeu.
+
+### Deux defauts de la page, au passage
+
+- La description debordait a droite : `tbody td` pose `white-space: nowrap` pour les colonnes
+  chiffrees, et tout le contenu du depliage en heritait. `tr.detail > td` le remet a `normal`.
+- L'en-tete collant recouvrait la premiere ligne apres un tri : son `top` etait une constante en dur
+  alors que la barre de controles au-dessus change de hauteur quand elle passe a la ligne. La hauteur
+  est mesuree au chargement et au redimensionnement, et le tri recale le defilement en tete de
+  tableau.
+
+### Suite 16 (complement) — le recoupement contre l'inventaire du jeu
+
+Vincent a releve trois objets dans son inventaire sur le jeu d'origine :
+
+| objet | description affichee | ATT | DEF |
+|---|---|---:|---:|
+| Glaive | « Courte epee a deux tranchants. » | 9 | 0 |
+| Plastron | « Cuirasse solide pour proteger le buste. » | 0 | 24 |
+| Potion med | « Petite Potion » | 0 | 0 |
+
+Le releve donne exactement ces trois lignes. C'est la verification qui manquait : les offsets `+0x30`
+et `+0x32` ne sont plus une lecture de code, ils sont **confirmes a l'ecran**.
+
+**Et le troisieme a leve un defaut.** « Potion med » sortait sans description, alors que le jeu en
+affiche une. La regle etait trop stricte : le champ `+0x41` avait ete lu comme « toujours
+`nom/description` », et l'absence de barre oblique traitee comme « pas de description ».
+
+Le binaire dit autre chose. `BuildItemDisplayName` reprend le **nom court** des que les 0x40 octets
+defilent sans rencontrer de barre — ce qui veut dire que, dans ce cas, le champ long n'est pas un nom
+du tout. C'est la description seule :
+
+```
+00  77 50 6f 74 69 6f 6e 20 6d 65 64 00 ...    wPotion med       <- nom court
+40  0c 50 65 74 69 74 65 20 50 6f 74 69 6f 6e  .Petite Potion    <- champ long, sans barre
+```
+
+La barre oblique est donc **facultative**, et son absence n'annule pas la description : elle annule
+le *nom*. Avec la regle corrigee, **les 1 618 fiches** en portent une ; l'ancienne en manquait 242.
+
+La lecon est la meme qu'a la suite 15, sous une autre forme : le separateur avait ete lu comme
+obligatoire parce que les premiers exemples regardes en avaient un. **Un motif verifie sur les
+premieres entrees n'est pas une regle** — c'est la fonction qui consomme le champ qui la donne, et
+elle disait deja quoi faire quand la barre manque.
+
+### Un en-tete collant qui cachait une ligne
+
+Signale deux fois par Vincent, et corrige deux fois de la mauvaise facon avant d'etre supprime. Le
+tableau avait un `thead` colle sous une barre de controles elle-meme collante. Avec un decalage en
+dur (45 px) il passait derriere la barre ; avec la hauteur mesuree, il se posait pile sur la
+deuxieme ligne. Les deux valeurs sont « justes » et les deux cachent une donnee.
+
+**La conclusion n'est pas une troisieme valeur, c'est de retirer le collant.** Un en-tete qui masque
+une ligne coute plus qu'il ne rapporte sur un tableau de 121 lignes ; il defile desormais avec le
+tableau, et le tri ramene le defilement en tete pour qu'il reste a portee. Quand deux reglages
+opposes produisent tous deux un defaut, c'est le mecanisme qu'il faut retirer, pas le reglage qu'il
+faut affiner.
+
+### Suite 16 (complement 2) — verifier la donnee ne verifie pas la page
+
+« Il y a undefined partout à la place. » Signale par Vincent sur la description et l'ATT/DEF de la
+vue Objets — alors qu'un controle, ecrit une heure plus tot, avait imprime :
+
+```
+Glaive  ATT 9 DEF 0 | Courte epee a deux tranchants.
+```
+
+Les deux sont vrais. Le controle lisait `OBJ`, le tableau de donnees ; la page, elle, n'affiche pas
+`OBJ` mais l'objet que `render()` fabrique a partir de lui :
+
+```js
+return { nom: o.nom, src, nsrc: src.length, best: ... };   // description, att, def : perdus
+```
+
+Le depliage recoit **cet objet-la**. La donnee etait juste, le chemin la jetait. Un `...o` regle le
+defaut ; ce qui compte est la lecon de methode.
+
+**Un controle qui relit la charge utile ne verifie pas la page.** Il faut executer le rendu. C'est ce
+que fait desormais `OpenForesia.Tools/check-bestiaire-page.mjs` : un DOM minimal, l'appel reel a
+`render()` dans les deux vues, liste et depliage, puis une relecture du HTML produit qui echoue sur
+tout `undefined`, `NaN` ou `[object Object]`.
+
+**Il a immediatement trouve un second defaut, non signale** : les barres de PV et PM de la vue
+Monstres etaient en `NaN`. Depuis le regroupement par nom, une entree ne porte plus de champ `pv` —
+les maxima se lisaient encore dessus. Personne ne l'avait vu parce qu'une barre sans largeur ne
+ressemble pas a une erreur.
+
+C'est la troisieme fois que ce projet paie la meme note, sous trois formes : un compte de primitives
+qui concorde (2026-08-25), une metrique qui concorde, et maintenant une donnee qui concorde. **Ce qui
+compte est ce que la sortie montre, pas ce que l'entree contient.**
+
+---
+
+## 2026-08-26 (suite 17) — les huit elements, et un TODO qui tombe
+
+Vincent apporte une reference externe : la FAQ GameFAQs du jeu donne « Gulwick : 25 Earth ». Le
+releve du CD a bien un **Gulwick**, « hache doree abritant l'ame de la terre », ATT 146, et son bloc
+`+0x18` vaut `0;0;25;0;0;0;0;0`. **L'emplacement 2 est la terre.**
+
+Un point d'ancrage suffit rarement ; celui-la a suffi, parce qu'il a fait poser la bonne question aux
+donnees deja extraites.
+
+### Le jeu se documente lui-meme
+
+Le catalogue d'objets porte une famille temoin qu'on n'avait pas vue : **une « Chaine de X » par
+emplacement**, chacune decrite « Protection des elementaux de X », et chacune ne remplissant que son
+propre octet.
+
+| empl. | element | temoins |
+|---:|---|---|
+| 0 | **Feu** | Chaine du feu · Cape d'ete · Epee de feu · Bouclier du feu |
+| 1 | **Eau** | Chaine de l'eau · Cape d'hiver · Bouclier de glace · Epee de glace |
+| 2 | **Terre** | Chaine de la terre · Cape du printemps · **Gulwick** |
+| 3 | **Air** | Chaine de l'air · Cape d'automne · Epee du tonnerre · Fleche du vent |
+| 4 | **Lumiere** | Chaine de la lumiere · Lame du soleil · Amulette de la lumiere |
+| 5 | **Tenebres** | Chaine des tenebres · Armure noire · Answerer |
+| 6 | **Sacre** | Chaine sacree · Bouclier sacre · Gants sacres · Robe sacree |
+| 7 | **Mal** | Chaine du mal · Anneau de Satan · La devoreuse · Baguette du mal |
+
+Trois recoupements **independants** : les huit chaines ; les **quatre capes saisonnieres**, qui
+remplissent exactement les emplacements 0 a 3 dans l'ordre ete/hiver/printemps/automne ; et la FAQ
+sur Gulwick. Aucun ne repose sur les deux autres.
+
+### Le TODO des huit octets du monstre tombe
+
+`ResetEntityStats` recopie huit octets de `modele+0x28` deux fois — tels quels a `stats+0x18`,
+elargis en `ushort` a `stats+0x110`. Leur role portait un `TODO(REVERSE)` depuis le 2026-08-23.
+
+Ce sont **les memes huit elements**. La verification ne demande pas de code, seulement de lire le
+releve avec la table ci-dessus en main :
+
+| monstre | affinites |
+|---|---|
+| Salamandre feu | Feu 22, Lumiere 31 |
+| Triton glace, Varan glace | Eau 22, Eau 32 |
+| Grifon | Air 21 |
+| Fantome | Tenebres 12, Mal 18 |
+| Archange noir | Tenebres 20, Feu 10, Air 6, Mal 6 |
+
+**214 fiches sur 281** portent au moins une affinite. Le `TODO` est reecrit dans
+`WorldMapScript.cs` : ce qui reste ouvert n'est plus « a quoi servent ces octets » mais « pourquoi le
+meme bloc est ecrit aux deux endroits » — le duo octets/ushorts suggere une valeur de base et une
+valeur courante, comme les jauges, mais rien ne le confirme.
+
+### Ce que cette suite dit de la methode
+
+Les donnees etaient extraites depuis deux jours. Ce qui manquait n'etait pas un octet, c'etait **une
+question posee dans le bon sens**. « Gulwick donne 25 de terre » a transforme une colonne de nombres
+anonymes en une table nommee, et de la en resolution d'un TODO sur une structure differente.
+
+Corollaire pratique : **quand un bloc de N valeurs resiste, chercher dans les donnees une famille
+d'objets qui n'en remplit qu'une a la fois.** Les huit chaines etaient exactement ca, et elles
+attendaient dans `objets.csv` depuis le premier releve.
+
+### Suite 17 (complement) — les noms de zone etaient dans le CD
+
+Vincent apporte les dix noms de zone, trouves de son cote. Avant de les poser dans la page, un
+reflexe devenu la regle de ce chantier : **le CD les a-t-il ?**
+
+Il les a. Le jeu ecrit ses noms de lieu dans ses textes sous la forme `« - Le labyrinthe des
+morts - »`, suivie du sous-niveau (`« - 1er sous-sol - »`). Une reconnaissance de motif sur les
+octets de chaque repertoire de sous-zone suffit, et le nom **dominant** d'une zone se degage tout
+seul : dix occurrences pour « La mine abandonnee » en zone 1, treize pour le chateau en zone 6 —
+parce que le nom de zone est repete dans chacune de ses sous-zones, la ou les noms de salle
+n'apparaissent qu'une fois.
+
+**Les dix concordent avec la liste apportee.** Ce que le releve ajoute est double : l'orthographe du
+jeu — minuscules comprises, la ou une saisie a la main donnait « Le Chateaux De l'Immortel » — et
+surtout **l'association a l'indice**, la seule chose qu'une source exterieure ne peut pas garantir.
+
+Deux zones n'ont pas de forme courte dans les textes : la **7** et la **9** ne portent que leurs
+variantes (« Les ruines souterraines », « de la surface », « dans le lac »). La page retient celle
+qui les distingue, et le fichier `lieux.csv` garde tout le releve.
+
+**Ce n'est pas la lecture d'une table declaree**, et le code le dit : c'est une reconnaissance de
+motif, donc une indication. Elle vaut ici parce qu'elle est verifiee contre une source independante
+— mais elle ne remplacerait pas une table si un jour on en trouve une.
+
+### Le controle attrape ce que la relecture manque
+
+Une occurrence de `Z3` avait survecu, dans le tableau « Ou l'obtenir » de la fiche d'objet — invisible
+a la relecture parce que la chaine `'Z' + s[0]` y etait ecrite autrement que partout ailleurs.
+L'assertion ajoutee au controle — **aucun `\bZ\d+\b` ne doit subsister dans le rendu** — l'a designee
+en un lancement. C'est le troisieme defaut que ce controle trouve, et le deuxieme qui n'avait pas ete
+signale.

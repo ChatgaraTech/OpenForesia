@@ -44,6 +44,27 @@ if (args[0] is "disasm")
     return;
 }
 
+// Le bestiaire ne lit pas Blaze.exe mais les donnees du CD : SYSTEM.INI (le repertoire racine) et
+// BLAZE.ALL (l'archive). Voir Bestiaire.cs pour la chaine a quatre niveaux qu'il reproduit.
+if (args[0] is "bestiaire")
+{
+    if (args.Length < 2) { PrintUsage(); return; }
+
+    int? zone = null;
+    string? outDir = null;
+    var regions = false;
+    for (var i = 2; i < args.Length; i++)
+    {
+        if (args[i] is "--zone" && i + 1 < args.Length && int.TryParse(args[i + 1], out var z)) { zone = z; i++; }
+        else if (args[i] is "--sortie" && i + 1 < args.Length) { outDir = args[i + 1]; i++; }
+        else if (args[i] is "--regions") { regions = true; }
+        else { Console.WriteLine($"Option inconnue : {args[i]}"); PrintUsage(); return; }
+    }
+
+    Bestiaire.Run(args[1], zone, outDir, regions);
+    return;
+}
+
 if (args.Length != 1)
 {
     PrintUsage();
@@ -240,6 +261,8 @@ static void PrintUsage()
     Console.WriteLine("  OpenForesia.Tools sections <path>            sections PE : plages VA, offsets fichier");
     Console.WriteLine("  OpenForesia.Tools at <path> <va> [octets]    dumpe les octets a une adresse virtuelle Ghidra");
     Console.WriteLine("  OpenForesia.Tools disasm <path> <va> [octets] desassemble x86-32 a partir d'une VA Ghidra");
+    Console.WriteLine("  OpenForesia.Tools bestiaire <cd> [--zone N] [--sortie <dir>]");
+    Console.WriteLine("                                               especes, fiches, formations et butin, lus sur le CD");
     Console.WriteLine();
     Console.WriteLine("Exemples:");
     Console.WriteLine("  OpenForesia.Tools Legacy/Binaries/winsys3d.dll");

@@ -1092,8 +1092,19 @@ public static unsafe partial class Blaze
     /// d'appel reste lisible contre l'original.
     /// </para>
     /// <para>
-    /// TODO(REVERSE): le role des huit octets recopies deux fois — une fois tels quels a
-    /// <c>+0x18</c>, une fois elargis en <c>ushort</c> a <c>+0x110</c> — n'est pas etabli.
+    /// <b>Les huit octets recopies deux fois — tels quels a <c>+0x18</c>, elargis en
+    /// <c>ushort</c> a <c>+0x110</c> — sont les huit ELEMENTS</b> : feu, eau, terre, air, lumiere,
+    /// tenebres, sacre, mal. Etabli le 2026-08-26 par le releve du CD, sur trois recoupements
+    /// independants : les huit « Chaine de X » du catalogue d'objets, dont chacune ne remplit que
+    /// son propre octet du bloc jumeau <c>objet+0x18</c> ; les quatre capes saisonnieres, qui
+    /// remplissent exactement les emplacements 0 a 3 ; et le controle par les monstres eux-memes —
+    /// Triton glace en eau, Grifon en air, Fantome en tenebres et mal. Voir
+    /// <c>Documentation/Reference/Bestiaire/LISEZMOI.md</c>.
+    /// </para>
+    /// <para>
+    /// TODO(REVERSE): pourquoi le meme bloc est ecrit aux deux endroits — octets a <c>+0x18</c>,
+    /// ushorts a <c>+0x110</c> — reste a etablir ; le duo suggere une valeur de base et une valeur
+    /// courante, comme les jauges, mais rien ne le confirme encore.
     /// </para>
     /// </summary>
     private static void ResetEntityStats(byte* stats, byte* species, byte* model)

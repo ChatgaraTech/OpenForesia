@@ -1,0 +1,3645 @@
+objet,zone,sous_zone,monstre,classe,rang,pourcent_plage_100,seuil_0x22,placements
+"Petite potion",0,0,"£",0,0,25,0,1
+"Petite potion",0,0,"£",0,1,17,0,1
+"Petite potion",0,0,"£",0,2,15,0,1
+"Petite potion",0,0,"£",0,3,13,0,1
+"Petite potion",0,0,"£",0,4,11,0,1
+"Petite potion",0,0,"£",0,5,9,0,1
+"Petite potion",0,0,"£",0,6,6,0,1
+"Petite potion",0,0,"£",0,7,4,0,1
+"Petite potion",0,0,"£",0,0,25,0,1
+"Petite potion",0,0,"£",0,1,17,0,1
+"Petite potion",0,0,"£",0,2,15,0,1
+"Petite potion",0,0,"£",0,3,13,0,1
+"Petite potion",0,0,"£",0,4,11,0,1
+"Petite potion",0,0,"£",0,5,9,0,1
+"Petite potion",0,0,"£",0,6,6,0,1
+"Petite potion",0,0,"£",0,7,4,0,1
+"Petite potion",0,0,"£",0,0,25,0,1
+"Petite potion",0,0,"£",0,1,17,0,1
+"Petite potion",0,0,"£",0,2,15,0,1
+"Petite potion",0,0,"£",0,3,13,0,1
+"Petite potion",0,0,"£",0,4,11,0,1
+"Petite potion",0,0,"£",0,5,9,0,1
+"Petite potion",0,0,"£",0,6,6,0,1
+"Petite potion",0,0,"£",0,7,4,0,1
+"Petite potion",0,0,"£",0,0,25,0,1
+"Petite potion",0,0,"£",0,1,17,0,1
+"Petite potion",0,0,"£",0,2,15,0,1
+"Petite potion",0,0,"£",0,3,13,0,1
+"Petite potion",0,0,"£",0,4,11,0,1
+"Petite potion",0,0,"£",0,5,9,0,1
+"Petite potion",0,0,"£",0,6,6,0,1
+"Petite potion",0,0,"£",0,7,4,0,1
+"Petite potion",0,0,"£",0,0,25,0,1
+"Petite potion",0,0,"£",0,1,17,0,1
+"Petite potion",0,0,"£",0,2,15,0,1
+"Petite potion",0,0,"£",0,3,13,0,1
+"Petite potion",0,0,"£",0,4,11,0,1
+"Petite potion",0,0,"£",0,5,9,0,1
+"Petite potion",0,0,"£",0,6,6,0,1
+"Petite potion",0,0,"£",0,7,4,0,1
+"Petite potion",0,0,"£",0,0,25,0,1
+"Petite potion",0,0,"£",0,1,17,0,1
+"Petite potion",0,0,"£",0,2,15,0,1
+"Petite potion",0,0,"£",0,3,13,0,1
+"Petite potion",0,0,"£",0,4,11,0,1
+"Petite potion",0,0,"£",0,5,9,0,1
+"Petite potion",0,0,"£",0,6,6,0,1
+"Petite potion",0,0,"£",0,7,4,0,1
+"Petite potion",0,0,"£",0,0,25,0,1
+"Petite potion",0,0,"£",0,1,17,0,1
+"Petite potion",0,0,"£",0,2,15,0,1
+"Petite potion",0,0,"£",0,3,13,0,1
+"Petite potion",0,0,"£",0,4,11,0,1
+"Petite potion",0,0,"£",0,5,9,0,1
+"Petite potion",0,0,"£",0,6,6,0,1
+"Petite potion",0,0,"£",0,7,4,0,1
+"Petite potion",0,0,"£",0,0,25,0,1
+"Petite potion",0,0,"£",0,1,17,0,1
+"Petite potion",0,0,"£",0,2,15,0,1
+"Petite potion",0,0,"£",0,3,13,0,1
+"Petite potion",0,0,"£",0,4,11,0,1
+"Petite potion",0,0,"£",0,5,9,0,1
+"Petite potion",0,0,"£",0,6,6,0,1
+"Petite potion",0,0,"£",0,7,4,0,1
+"Petite potion",0,1,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,1,"µÔç",0,1,17,0,1
+"Debacle",0,1,"µÔç",0,2,15,0,1
+"Béquille",0,1,"µÔç",0,3,13,0,1
+"Genocide",0,2,"åòØÝ",0,0,25,4,4
+"Cristal de terre",0,2,"åòØÝ",0,1,17,4,4
+"Cristal de feu",0,2,"åòØÝ",0,2,15,4,4
+"Cristal d'air",0,2,"åòØÝ",0,3,13,4,4
+"Cristal d'ombre",0,2,"åòØÝ",0,4,11,4,4
+"Cristal de lumière",0,2,"åòØÝ",0,5,9,4,4
+"Cristal saint",0,2,"åòØÝ",0,6,6,4,4
+"Cristal du mal",0,2,"åòØÝ",0,7,4,4,4
+"Cristal de magie",0,2,"åòØÝ¼¬ÏÝ",1,0,25,800,0
+"Lavande",0,2,"åòØÝ¼¬ÏÝ",1,1,17,800,0
+"Sauge",0,2,"åòØÝ¼¬ÏÝ",1,2,15,800,0
+"Verveine",0,2,"åòØÝ¼¬ÏÝ",1,3,13,800,0
+"Mercuriale",0,2,"åòØÝ¼¬ÏÝ",1,4,11,800,0
+"Fenouil",0,2,"åòØÝ¼¬ÏÝ",1,5,9,800,0
+"Hysopius",0,2,"åòØÝ¼¬ÏÝ",1,6,6,800,0
+"Belladone",0,2,"åòØÝ¼¬ÏÝ",1,7,4,800,0
+"Petite potion",0,3,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,3,"µÔç",0,1,17,0,1
+"Debacle",0,3,"µÔç",0,2,15,0,1
+"Béquille",0,3,"µÔç",0,3,13,0,1
+"Petite potion",0,3,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,3,"µÔç",0,1,17,0,1
+"Debacle",0,3,"µÔç",0,2,15,0,1
+"Béquille",0,3,"µÔç",0,3,13,0,1
+"Armure anti-sortilège",0,4,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,4,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,4,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,4,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,4,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,4,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,4,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,4,"µÔç",0,7,4,0,2
+"Livre de la technique",0,4,"µÔç",8,0,25,0,2
+"Livre de la technique",0,4,"µÔç",8,1,17,0,2
+"Livre de la technique",0,4,"µÔç",8,2,15,0,2
+"Livre de la technique",0,4,"µÔç",8,3,13,0,2
+"Livre de la technique",0,4,"µÔç",8,4,11,0,2
+"Livre de la technique",0,4,"µÔç",8,5,9,0,2
+"Livre de la technique",0,4,"µÔç",8,6,6,0,2
+"Livre de la technique",0,4,"µÔç",8,7,4,0,2
+"Petite potion",0,5,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,5,"µÔç",0,1,17,0,0
+"Debacle",0,5,"µÔç",0,2,15,0,0
+"Béquille",0,5,"µÔç",0,3,13,0,0
+"Petite potion",0,5,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,5,"µÔç",0,1,17,0,1
+"Debacle",0,5,"µÔç",0,2,15,0,1
+"Béquille",0,5,"µÔç",0,3,13,0,1
+"Petite potion",0,5,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,5,"µÔç",0,1,17,0,1
+"Debacle",0,5,"µÔç",0,2,15,0,1
+"Béquille",0,5,"µÔç",0,3,13,0,1
+"Petite potion",0,5,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,5,"µÔç",0,1,17,0,1
+"Debacle",0,5,"µÔç",0,2,15,0,1
+"Béquille",0,5,"µÔç",0,3,13,0,1
+"Petite potion",0,5,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,5,"µÔç",0,1,17,0,1
+"Debacle",0,5,"µÔç",0,2,15,0,1
+"Béquille",0,5,"µÔç",0,3,13,0,1
+"Petite potion",0,5,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,5,"µÔç",0,1,17,0,0
+"Debacle",0,5,"µÔç",0,2,15,0,0
+"Béquille",0,5,"µÔç",0,3,13,0,0
+"Petite potion",0,8,"£",0,0,25,0,1
+"Petite potion",0,8,"£",0,1,17,0,1
+"Petite potion",0,8,"£",0,2,15,0,1
+"Petite potion",0,8,"£",0,3,13,0,1
+"Petite potion",0,8,"£",0,4,11,0,1
+"Petite potion",0,8,"£",0,5,9,0,1
+"Petite potion",0,8,"£",0,6,6,0,1
+"Petite potion",0,8,"£",0,7,4,0,1
+"Petite potion",0,8,"£",0,0,25,0,1
+"Petite potion",0,8,"£",0,1,17,0,1
+"Petite potion",0,8,"£",0,2,15,0,1
+"Petite potion",0,8,"£",0,3,13,0,1
+"Petite potion",0,8,"£",0,4,11,0,1
+"Petite potion",0,8,"£",0,5,9,0,1
+"Petite potion",0,8,"£",0,6,6,0,1
+"Petite potion",0,8,"£",0,7,4,0,1
+"Petite potion",0,8,"£",0,0,25,0,1
+"Petite potion",0,8,"£",0,1,17,0,1
+"Petite potion",0,8,"£",0,2,15,0,1
+"Petite potion",0,8,"£",0,3,13,0,1
+"Petite potion",0,8,"£",0,4,11,0,1
+"Petite potion",0,8,"£",0,5,9,0,1
+"Petite potion",0,8,"£",0,6,6,0,1
+"Petite potion",0,8,"£",0,7,4,0,1
+"Petite potion",0,8,"£",0,0,25,0,1
+"Petite potion",0,8,"£",0,1,17,0,1
+"Petite potion",0,8,"£",0,2,15,0,1
+"Petite potion",0,8,"£",0,3,13,0,1
+"Petite potion",0,8,"£",0,4,11,0,1
+"Petite potion",0,8,"£",0,5,9,0,1
+"Petite potion",0,8,"£",0,6,6,0,1
+"Petite potion",0,8,"£",0,7,4,0,1
+"Petite potion",0,8,"£",0,0,25,0,1
+"Petite potion",0,8,"£",0,1,17,0,1
+"Petite potion",0,8,"£",0,2,15,0,1
+"Petite potion",0,8,"£",0,3,13,0,1
+"Petite potion",0,8,"£",0,4,11,0,1
+"Petite potion",0,8,"£",0,5,9,0,1
+"Petite potion",0,8,"£",0,6,6,0,1
+"Petite potion",0,8,"£",0,7,4,0,1
+"Petite potion",0,8,"£",0,0,25,0,1
+"Petite potion",0,8,"£",0,1,17,0,1
+"Petite potion",0,8,"£",0,2,15,0,1
+"Petite potion",0,8,"£",0,3,13,0,1
+"Petite potion",0,8,"£",0,4,11,0,1
+"Petite potion",0,8,"£",0,5,9,0,1
+"Petite potion",0,8,"£",0,6,6,0,1
+"Petite potion",0,8,"£",0,7,4,0,1
+"Petite potion",0,8,"£",0,0,25,0,1
+"Petite potion",0,8,"£",0,1,17,0,1
+"Petite potion",0,8,"£",0,2,15,0,1
+"Petite potion",0,8,"£",0,3,13,0,1
+"Petite potion",0,8,"£",0,4,11,0,1
+"Petite potion",0,8,"£",0,5,9,0,1
+"Petite potion",0,8,"£",0,6,6,0,1
+"Petite potion",0,8,"£",0,7,4,0,1
+"Petite potion",0,8,"£",0,0,25,0,1
+"Petite potion",0,8,"£",0,1,17,0,1
+"Petite potion",0,8,"£",0,2,15,0,1
+"Petite potion",0,8,"£",0,3,13,0,1
+"Petite potion",0,8,"£",0,4,11,0,1
+"Petite potion",0,8,"£",0,5,9,0,1
+"Petite potion",0,8,"£",0,6,6,0,1
+"Petite potion",0,8,"£",0,7,4,0,1
+"Petite potion",0,9,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,9,"µÔç",0,1,17,0,1
+"Debacle",0,9,"µÔç",0,2,15,0,1
+"Béquille",0,9,"µÔç",0,3,13,0,1
+"Petite potion",0,11,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,11,"µÔç",0,1,17,0,1
+"Debacle",0,11,"µÔç",0,2,15,0,1
+"Béquille",0,11,"µÔç",0,3,13,0,1
+"Petite potion",0,11,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,11,"µÔç",0,1,17,0,1
+"Debacle",0,11,"µÔç",0,2,15,0,1
+"Béquille",0,11,"µÔç",0,3,13,0,1
+"Armure anti-sortilège",0,12,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,12,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,12,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,12,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,12,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,12,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,12,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,12,"µÔç",0,7,4,0,2
+"Livre de la technique",0,12,"µÔç",8,0,25,0,2
+"Livre de la technique",0,12,"µÔç",8,1,17,0,2
+"Livre de la technique",0,12,"µÔç",8,2,15,0,2
+"Livre de la technique",0,12,"µÔç",8,3,13,0,2
+"Livre de la technique",0,12,"µÔç",8,4,11,0,2
+"Livre de la technique",0,12,"µÔç",8,5,9,0,2
+"Livre de la technique",0,12,"µÔç",8,6,6,0,2
+"Livre de la technique",0,12,"µÔç",8,7,4,0,2
+"Petite potion",0,13,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,13,"µÔç",0,1,17,0,0
+"Debacle",0,13,"µÔç",0,2,15,0,0
+"Béquille",0,13,"µÔç",0,3,13,0,0
+"Petite potion",0,13,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,13,"µÔç",0,1,17,0,1
+"Debacle",0,13,"µÔç",0,2,15,0,1
+"Béquille",0,13,"µÔç",0,3,13,0,1
+"Petite potion",0,13,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,13,"µÔç",0,1,17,0,1
+"Debacle",0,13,"µÔç",0,2,15,0,1
+"Béquille",0,13,"µÔç",0,3,13,0,1
+"Petite potion",0,13,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,13,"µÔç",0,1,17,0,1
+"Debacle",0,13,"µÔç",0,2,15,0,1
+"Béquille",0,13,"µÔç",0,3,13,0,1
+"Petite potion",0,13,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,13,"µÔç",0,1,17,0,1
+"Debacle",0,13,"µÔç",0,2,15,0,1
+"Béquille",0,13,"µÔç",0,3,13,0,1
+"Petite potion",0,13,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,13,"µÔç",0,1,17,0,0
+"Debacle",0,13,"µÔç",0,2,15,0,0
+"Béquille",0,13,"µÔç",0,3,13,0,0
+"Petite potion",0,16,"£",0,0,25,0,1
+"Petite potion",0,16,"£",0,1,17,0,1
+"Petite potion",0,16,"£",0,2,15,0,1
+"Petite potion",0,16,"£",0,3,13,0,1
+"Petite potion",0,16,"£",0,4,11,0,1
+"Petite potion",0,16,"£",0,5,9,0,1
+"Petite potion",0,16,"£",0,6,6,0,1
+"Petite potion",0,16,"£",0,7,4,0,1
+"Petite potion",0,16,"£",0,0,25,0,1
+"Petite potion",0,16,"£",0,1,17,0,1
+"Petite potion",0,16,"£",0,2,15,0,1
+"Petite potion",0,16,"£",0,3,13,0,1
+"Petite potion",0,16,"£",0,4,11,0,1
+"Petite potion",0,16,"£",0,5,9,0,1
+"Petite potion",0,16,"£",0,6,6,0,1
+"Petite potion",0,16,"£",0,7,4,0,1
+"Petite potion",0,16,"£",0,0,25,0,1
+"Petite potion",0,16,"£",0,1,17,0,1
+"Petite potion",0,16,"£",0,2,15,0,1
+"Petite potion",0,16,"£",0,3,13,0,1
+"Petite potion",0,16,"£",0,4,11,0,1
+"Petite potion",0,16,"£",0,5,9,0,1
+"Petite potion",0,16,"£",0,6,6,0,1
+"Petite potion",0,16,"£",0,7,4,0,1
+"Petite potion",0,16,"£",0,0,25,0,0
+"Petite potion",0,16,"£",0,1,17,0,0
+"Petite potion",0,16,"£",0,2,15,0,0
+"Petite potion",0,16,"£",0,3,13,0,0
+"Petite potion",0,16,"£",0,4,11,0,0
+"Petite potion",0,16,"£",0,5,9,0,0
+"Petite potion",0,16,"£",0,6,6,0,0
+"Petite potion",0,16,"£",0,7,4,0,0
+"Petite potion",0,16,"£",0,0,25,0,1
+"Petite potion",0,16,"£",0,1,17,0,1
+"Petite potion",0,16,"£",0,2,15,0,1
+"Petite potion",0,16,"£",0,3,13,0,1
+"Petite potion",0,16,"£",0,4,11,0,1
+"Petite potion",0,16,"£",0,5,9,0,1
+"Petite potion",0,16,"£",0,6,6,0,1
+"Petite potion",0,16,"£",0,7,4,0,1
+"Petite potion",0,16,"£",0,0,25,0,1
+"Petite potion",0,16,"£",0,1,17,0,1
+"Petite potion",0,16,"£",0,2,15,0,1
+"Petite potion",0,16,"£",0,3,13,0,1
+"Petite potion",0,16,"£",0,4,11,0,1
+"Petite potion",0,16,"£",0,5,9,0,1
+"Petite potion",0,16,"£",0,6,6,0,1
+"Petite potion",0,16,"£",0,7,4,0,1
+"Petite potion",0,16,"£",0,0,25,0,1
+"Petite potion",0,16,"£",0,1,17,0,1
+"Petite potion",0,16,"£",0,2,15,0,1
+"Petite potion",0,16,"£",0,3,13,0,1
+"Petite potion",0,16,"£",0,4,11,0,1
+"Petite potion",0,16,"£",0,5,9,0,1
+"Petite potion",0,16,"£",0,6,6,0,1
+"Petite potion",0,16,"£",0,7,4,0,1
+"Petite potion",0,16,"£",0,0,25,0,1
+"Petite potion",0,16,"£",0,1,17,0,1
+"Petite potion",0,16,"£",0,2,15,0,1
+"Petite potion",0,16,"£",0,3,13,0,1
+"Petite potion",0,16,"£",0,4,11,0,1
+"Petite potion",0,16,"£",0,5,9,0,1
+"Petite potion",0,16,"£",0,6,6,0,1
+"Petite potion",0,16,"£",0,7,4,0,1
+"Petite potion",0,17,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,17,"µÔç",0,1,17,0,1
+"Debacle",0,17,"µÔç",0,2,15,0,1
+"Béquille",0,17,"µÔç",0,3,13,0,1
+"Petite potion",0,19,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,19,"µÔç",0,1,17,0,1
+"Debacle",0,19,"µÔç",0,2,15,0,1
+"Béquille",0,19,"µÔç",0,3,13,0,1
+"Petite potion",0,19,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,19,"µÔç",0,1,17,0,1
+"Debacle",0,19,"µÔç",0,2,15,0,1
+"Béquille",0,19,"µÔç",0,3,13,0,1
+"Armure anti-sortilège",0,20,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,20,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,20,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,20,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,20,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,20,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,20,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,20,"µÔç",0,7,4,0,2
+"Livre de la technique",0,20,"µÔç",8,0,25,0,2
+"Livre de la technique",0,20,"µÔç",8,1,17,0,2
+"Livre de la technique",0,20,"µÔç",8,2,15,0,2
+"Livre de la technique",0,20,"µÔç",8,3,13,0,2
+"Livre de la technique",0,20,"µÔç",8,4,11,0,2
+"Livre de la technique",0,20,"µÔç",8,5,9,0,2
+"Livre de la technique",0,20,"µÔç",8,6,6,0,2
+"Livre de la technique",0,20,"µÔç",8,7,4,0,2
+"Petite potion",0,21,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,21,"µÔç",0,1,17,0,1
+"Debacle",0,21,"µÔç",0,2,15,0,1
+"Béquille",0,21,"µÔç",0,3,13,0,1
+"Petite potion",0,21,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,21,"µÔç",0,1,17,0,1
+"Debacle",0,21,"µÔç",0,2,15,0,1
+"Béquille",0,21,"µÔç",0,3,13,0,1
+"Petite potion",0,21,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,21,"µÔç",0,1,17,0,1
+"Debacle",0,21,"µÔç",0,2,15,0,1
+"Béquille",0,21,"µÔç",0,3,13,0,1
+"Petite potion",0,21,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,21,"µÔç",0,1,17,0,1
+"Debacle",0,21,"µÔç",0,2,15,0,1
+"Béquille",0,21,"µÔç",0,3,13,0,1
+"Petite potion",0,21,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,21,"µÔç",0,1,17,0,0
+"Debacle",0,21,"µÔç",0,2,15,0,0
+"Béquille",0,21,"µÔç",0,3,13,0,0
+"Petite potion",0,21,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,21,"µÔç",0,1,17,0,1
+"Debacle",0,21,"µÔç",0,2,15,0,1
+"Béquille",0,21,"µÔç",0,3,13,0,1
+"Petite potion",0,24,"£",0,0,25,0,1
+"Petite potion",0,24,"£",0,1,17,0,1
+"Petite potion",0,24,"£",0,2,15,0,1
+"Petite potion",0,24,"£",0,3,13,0,1
+"Petite potion",0,24,"£",0,4,11,0,1
+"Petite potion",0,24,"£",0,5,9,0,1
+"Petite potion",0,24,"£",0,6,6,0,1
+"Petite potion",0,24,"£",0,7,4,0,1
+"Petite potion",0,24,"£",0,0,25,0,1
+"Petite potion",0,24,"£",0,1,17,0,1
+"Petite potion",0,24,"£",0,2,15,0,1
+"Petite potion",0,24,"£",0,3,13,0,1
+"Petite potion",0,24,"£",0,4,11,0,1
+"Petite potion",0,24,"£",0,5,9,0,1
+"Petite potion",0,24,"£",0,6,6,0,1
+"Petite potion",0,24,"£",0,7,4,0,1
+"Petite potion",0,24,"£",0,0,25,0,1
+"Petite potion",0,24,"£",0,1,17,0,1
+"Petite potion",0,24,"£",0,2,15,0,1
+"Petite potion",0,24,"£",0,3,13,0,1
+"Petite potion",0,24,"£",0,4,11,0,1
+"Petite potion",0,24,"£",0,5,9,0,1
+"Petite potion",0,24,"£",0,6,6,0,1
+"Petite potion",0,24,"£",0,7,4,0,1
+"Petite potion",0,24,"£",0,0,25,0,1
+"Petite potion",0,24,"£",0,1,17,0,1
+"Petite potion",0,24,"£",0,2,15,0,1
+"Petite potion",0,24,"£",0,3,13,0,1
+"Petite potion",0,24,"£",0,4,11,0,1
+"Petite potion",0,24,"£",0,5,9,0,1
+"Petite potion",0,24,"£",0,6,6,0,1
+"Petite potion",0,24,"£",0,7,4,0,1
+"Petite potion",0,24,"£",0,0,25,0,1
+"Petite potion",0,24,"£",0,1,17,0,1
+"Petite potion",0,24,"£",0,2,15,0,1
+"Petite potion",0,24,"£",0,3,13,0,1
+"Petite potion",0,24,"£",0,4,11,0,1
+"Petite potion",0,24,"£",0,5,9,0,1
+"Petite potion",0,24,"£",0,6,6,0,1
+"Petite potion",0,24,"£",0,7,4,0,1
+"Petite potion",0,24,"£",0,0,25,0,1
+"Petite potion",0,24,"£",0,1,17,0,1
+"Petite potion",0,24,"£",0,2,15,0,1
+"Petite potion",0,24,"£",0,3,13,0,1
+"Petite potion",0,24,"£",0,4,11,0,1
+"Petite potion",0,24,"£",0,5,9,0,1
+"Petite potion",0,24,"£",0,6,6,0,1
+"Petite potion",0,24,"£",0,7,4,0,1
+"Petite potion",0,24,"£",0,0,25,0,1
+"Petite potion",0,24,"£",0,1,17,0,1
+"Petite potion",0,24,"£",0,2,15,0,1
+"Petite potion",0,24,"£",0,3,13,0,1
+"Petite potion",0,24,"£",0,4,11,0,1
+"Petite potion",0,24,"£",0,5,9,0,1
+"Petite potion",0,24,"£",0,6,6,0,1
+"Petite potion",0,24,"£",0,7,4,0,1
+"Petite potion",0,24,"£",0,0,25,0,1
+"Petite potion",0,24,"£",0,1,17,0,1
+"Petite potion",0,24,"£",0,2,15,0,1
+"Petite potion",0,24,"£",0,3,13,0,1
+"Petite potion",0,24,"£",0,4,11,0,1
+"Petite potion",0,24,"£",0,5,9,0,1
+"Petite potion",0,24,"£",0,6,6,0,1
+"Petite potion",0,24,"£",0,7,4,0,1
+"Petite potion",0,25,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,25,"µÔç",0,1,17,0,1
+"Debacle",0,25,"µÔç",0,2,15,0,1
+"Béquille",0,25,"µÔç",0,3,13,0,1
+"Petite potion",0,27,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,27,"µÔç",0,1,17,0,1
+"Debacle",0,27,"µÔç",0,2,15,0,1
+"Béquille",0,27,"µÔç",0,3,13,0,1
+"Petite potion",0,27,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,27,"µÔç",0,1,17,0,1
+"Debacle",0,27,"µÔç",0,2,15,0,1
+"Béquille",0,27,"µÔç",0,3,13,0,1
+"Armure anti-sortilège",0,28,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,28,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,28,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,28,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,28,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,28,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,28,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,28,"µÔç",0,7,4,0,2
+"Livre de la technique",0,28,"µÔç",8,0,25,0,2
+"Livre de la technique",0,28,"µÔç",8,1,17,0,2
+"Livre de la technique",0,28,"µÔç",8,2,15,0,2
+"Livre de la technique",0,28,"µÔç",8,3,13,0,2
+"Livre de la technique",0,28,"µÔç",8,4,11,0,2
+"Livre de la technique",0,28,"µÔç",8,5,9,0,2
+"Livre de la technique",0,28,"µÔç",8,6,6,0,2
+"Livre de la technique",0,28,"µÔç",8,7,4,0,2
+"Petite potion",0,29,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,29,"µÔç",0,1,17,0,0
+"Debacle",0,29,"µÔç",0,2,15,0,0
+"Béquille",0,29,"µÔç",0,3,13,0,0
+"Petite potion",0,29,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,29,"µÔç",0,1,17,0,1
+"Debacle",0,29,"µÔç",0,2,15,0,1
+"Béquille",0,29,"µÔç",0,3,13,0,1
+"Petite potion",0,29,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,29,"µÔç",0,1,17,0,1
+"Debacle",0,29,"µÔç",0,2,15,0,1
+"Béquille",0,29,"µÔç",0,3,13,0,1
+"Petite potion",0,29,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,29,"µÔç",0,1,17,0,1
+"Debacle",0,29,"µÔç",0,2,15,0,1
+"Béquille",0,29,"µÔç",0,3,13,0,1
+"Petite potion",0,29,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,29,"µÔç",0,1,17,0,1
+"Debacle",0,29,"µÔç",0,2,15,0,1
+"Béquille",0,29,"µÔç",0,3,13,0,1
+"Petite potion",0,29,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,29,"µÔç",0,1,17,0,0
+"Debacle",0,29,"µÔç",0,2,15,0,0
+"Béquille",0,29,"µÔç",0,3,13,0,0
+"Petite potion",0,32,"£",0,0,25,0,1
+"Petite potion",0,32,"£",0,1,17,0,1
+"Petite potion",0,32,"£",0,2,15,0,1
+"Petite potion",0,32,"£",0,3,13,0,1
+"Petite potion",0,32,"£",0,4,11,0,1
+"Petite potion",0,32,"£",0,5,9,0,1
+"Petite potion",0,32,"£",0,6,6,0,1
+"Petite potion",0,32,"£",0,7,4,0,1
+"Petite potion",0,32,"£",0,0,25,0,1
+"Petite potion",0,32,"£",0,1,17,0,1
+"Petite potion",0,32,"£",0,2,15,0,1
+"Petite potion",0,32,"£",0,3,13,0,1
+"Petite potion",0,32,"£",0,4,11,0,1
+"Petite potion",0,32,"£",0,5,9,0,1
+"Petite potion",0,32,"£",0,6,6,0,1
+"Petite potion",0,32,"£",0,7,4,0,1
+"Petite potion",0,32,"£",0,0,25,0,1
+"Petite potion",0,32,"£",0,1,17,0,1
+"Petite potion",0,32,"£",0,2,15,0,1
+"Petite potion",0,32,"£",0,3,13,0,1
+"Petite potion",0,32,"£",0,4,11,0,1
+"Petite potion",0,32,"£",0,5,9,0,1
+"Petite potion",0,32,"£",0,6,6,0,1
+"Petite potion",0,32,"£",0,7,4,0,1
+"Petite potion",0,32,"£",0,0,25,0,1
+"Petite potion",0,32,"£",0,1,17,0,1
+"Petite potion",0,32,"£",0,2,15,0,1
+"Petite potion",0,32,"£",0,3,13,0,1
+"Petite potion",0,32,"£",0,4,11,0,1
+"Petite potion",0,32,"£",0,5,9,0,1
+"Petite potion",0,32,"£",0,6,6,0,1
+"Petite potion",0,32,"£",0,7,4,0,1
+"Petite potion",0,32,"£",0,0,25,0,1
+"Petite potion",0,32,"£",0,1,17,0,1
+"Petite potion",0,32,"£",0,2,15,0,1
+"Petite potion",0,32,"£",0,3,13,0,1
+"Petite potion",0,32,"£",0,4,11,0,1
+"Petite potion",0,32,"£",0,5,9,0,1
+"Petite potion",0,32,"£",0,6,6,0,1
+"Petite potion",0,32,"£",0,7,4,0,1
+"Petite potion",0,32,"£",0,0,25,0,1
+"Petite potion",0,32,"£",0,1,17,0,1
+"Petite potion",0,32,"£",0,2,15,0,1
+"Petite potion",0,32,"£",0,3,13,0,1
+"Petite potion",0,32,"£",0,4,11,0,1
+"Petite potion",0,32,"£",0,5,9,0,1
+"Petite potion",0,32,"£",0,6,6,0,1
+"Petite potion",0,32,"£",0,7,4,0,1
+"Petite potion",0,32,"£",0,0,25,0,1
+"Petite potion",0,32,"£",0,1,17,0,1
+"Petite potion",0,32,"£",0,2,15,0,1
+"Petite potion",0,32,"£",0,3,13,0,1
+"Petite potion",0,32,"£",0,4,11,0,1
+"Petite potion",0,32,"£",0,5,9,0,1
+"Petite potion",0,32,"£",0,6,6,0,1
+"Petite potion",0,32,"£",0,7,4,0,1
+"Petite potion",0,32,"£",0,0,25,0,1
+"Petite potion",0,32,"£",0,1,17,0,1
+"Petite potion",0,32,"£",0,2,15,0,1
+"Petite potion",0,32,"£",0,3,13,0,1
+"Petite potion",0,32,"£",0,4,11,0,1
+"Petite potion",0,32,"£",0,5,9,0,1
+"Petite potion",0,32,"£",0,6,6,0,1
+"Petite potion",0,32,"£",0,7,4,0,1
+"Petite potion",0,33,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,33,"µÔç",0,1,17,0,1
+"Debacle",0,33,"µÔç",0,2,15,0,1
+"Béquille",0,33,"µÔç",0,3,13,0,1
+"Petite potion",0,35,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,35,"µÔç",0,1,17,0,1
+"Debacle",0,35,"µÔç",0,2,15,0,1
+"Béquille",0,35,"µÔç",0,3,13,0,1
+"Petite potion",0,35,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,35,"µÔç",0,1,17,0,1
+"Debacle",0,35,"µÔç",0,2,15,0,1
+"Béquille",0,35,"µÔç",0,3,13,0,1
+"Armure anti-sortilège",0,36,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,36,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,36,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,36,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,36,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,36,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,36,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,36,"µÔç",0,7,4,0,2
+"Livre de la technique",0,36,"µÔç",8,0,25,0,2
+"Livre de la technique",0,36,"µÔç",8,1,17,0,2
+"Livre de la technique",0,36,"µÔç",8,2,15,0,2
+"Livre de la technique",0,36,"µÔç",8,3,13,0,2
+"Livre de la technique",0,36,"µÔç",8,4,11,0,2
+"Livre de la technique",0,36,"µÔç",8,5,9,0,2
+"Livre de la technique",0,36,"µÔç",8,6,6,0,2
+"Livre de la technique",0,36,"µÔç",8,7,4,0,2
+"Petite potion",0,37,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,37,"µÔç",0,1,17,0,0
+"Debacle",0,37,"µÔç",0,2,15,0,0
+"Béquille",0,37,"µÔç",0,3,13,0,0
+"Petite potion",0,37,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,37,"µÔç",0,1,17,0,1
+"Debacle",0,37,"µÔç",0,2,15,0,1
+"Béquille",0,37,"µÔç",0,3,13,0,1
+"Petite potion",0,37,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,37,"µÔç",0,1,17,0,1
+"Debacle",0,37,"µÔç",0,2,15,0,1
+"Béquille",0,37,"µÔç",0,3,13,0,1
+"Petite potion",0,37,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,37,"µÔç",0,1,17,0,1
+"Debacle",0,37,"µÔç",0,2,15,0,1
+"Béquille",0,37,"µÔç",0,3,13,0,1
+"Petite potion",0,37,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,37,"µÔç",0,1,17,0,1
+"Debacle",0,37,"µÔç",0,2,15,0,1
+"Béquille",0,37,"µÔç",0,3,13,0,1
+"Petite potion",0,37,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,37,"µÔç",0,1,17,0,0
+"Debacle",0,37,"µÔç",0,2,15,0,0
+"Béquille",0,37,"µÔç",0,3,13,0,0
+"Petite potion",0,40,"£",0,0,25,0,1
+"Petite potion",0,40,"£",0,1,17,0,1
+"Petite potion",0,40,"£",0,2,15,0,1
+"Petite potion",0,40,"£",0,3,13,0,1
+"Petite potion",0,40,"£",0,4,11,0,1
+"Petite potion",0,40,"£",0,5,9,0,1
+"Petite potion",0,40,"£",0,6,6,0,1
+"Petite potion",0,40,"£",0,7,4,0,1
+"Petite potion",0,40,"£",0,0,25,0,1
+"Petite potion",0,40,"£",0,1,17,0,1
+"Petite potion",0,40,"£",0,2,15,0,1
+"Petite potion",0,40,"£",0,3,13,0,1
+"Petite potion",0,40,"£",0,4,11,0,1
+"Petite potion",0,40,"£",0,5,9,0,1
+"Petite potion",0,40,"£",0,6,6,0,1
+"Petite potion",0,40,"£",0,7,4,0,1
+"Petite potion",0,40,"£",0,0,25,0,1
+"Petite potion",0,40,"£",0,1,17,0,1
+"Petite potion",0,40,"£",0,2,15,0,1
+"Petite potion",0,40,"£",0,3,13,0,1
+"Petite potion",0,40,"£",0,4,11,0,1
+"Petite potion",0,40,"£",0,5,9,0,1
+"Petite potion",0,40,"£",0,6,6,0,1
+"Petite potion",0,40,"£",0,7,4,0,1
+"Petite potion",0,40,"£",0,0,25,0,1
+"Petite potion",0,40,"£",0,1,17,0,1
+"Petite potion",0,40,"£",0,2,15,0,1
+"Petite potion",0,40,"£",0,3,13,0,1
+"Petite potion",0,40,"£",0,4,11,0,1
+"Petite potion",0,40,"£",0,5,9,0,1
+"Petite potion",0,40,"£",0,6,6,0,1
+"Petite potion",0,40,"£",0,7,4,0,1
+"Petite potion",0,40,"£",0,0,25,0,1
+"Petite potion",0,40,"£",0,1,17,0,1
+"Petite potion",0,40,"£",0,2,15,0,1
+"Petite potion",0,40,"£",0,3,13,0,1
+"Petite potion",0,40,"£",0,4,11,0,1
+"Petite potion",0,40,"£",0,5,9,0,1
+"Petite potion",0,40,"£",0,6,6,0,1
+"Petite potion",0,40,"£",0,7,4,0,1
+"Petite potion",0,40,"£",0,0,25,0,1
+"Petite potion",0,40,"£",0,1,17,0,1
+"Petite potion",0,40,"£",0,2,15,0,1
+"Petite potion",0,40,"£",0,3,13,0,1
+"Petite potion",0,40,"£",0,4,11,0,1
+"Petite potion",0,40,"£",0,5,9,0,1
+"Petite potion",0,40,"£",0,6,6,0,1
+"Petite potion",0,40,"£",0,7,4,0,1
+"Petite potion",0,40,"£",0,0,25,0,1
+"Petite potion",0,40,"£",0,1,17,0,1
+"Petite potion",0,40,"£",0,2,15,0,1
+"Petite potion",0,40,"£",0,3,13,0,1
+"Petite potion",0,40,"£",0,4,11,0,1
+"Petite potion",0,40,"£",0,5,9,0,1
+"Petite potion",0,40,"£",0,6,6,0,1
+"Petite potion",0,40,"£",0,7,4,0,1
+"Petite potion",0,40,"£",0,0,25,0,1
+"Petite potion",0,40,"£",0,1,17,0,1
+"Petite potion",0,40,"£",0,2,15,0,1
+"Petite potion",0,40,"£",0,3,13,0,1
+"Petite potion",0,40,"£",0,4,11,0,1
+"Petite potion",0,40,"£",0,5,9,0,1
+"Petite potion",0,40,"£",0,6,6,0,1
+"Petite potion",0,40,"£",0,7,4,0,1
+"Petite potion",0,41,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,41,"µÔç",0,1,17,0,1
+"Debacle",0,41,"µÔç",0,2,15,0,1
+"Béquille",0,41,"µÔç",0,3,13,0,1
+"Cristal saint",0,43,"µÔç",7,0,25,0,1
+"Cristal du mal",0,43,"µÔç",7,1,17,0,1
+"Gants de force",0,43,"µÔç",7,2,15,0,1
+"Panoramix",0,43,"µÔç",7,3,13,0,1
+"Ambrosia",0,43,"µÔç",7,4,11,0,1
+"Croix",0,43,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,43,"µÔç",7,6,6,0,1
+"Plume dominicale",0,43,"µÔç",7,7,4,0,1
+"Cristal saint",0,43,"µÔç",7,0,25,0,1
+"Cristal du mal",0,43,"µÔç",7,1,17,0,1
+"Gants de force",0,43,"µÔç",7,2,15,0,1
+"Panoramix",0,43,"µÔç",7,3,13,0,1
+"Ambrosia",0,43,"µÔç",7,4,11,0,1
+"Croix",0,43,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,43,"µÔç",7,6,6,0,1
+"Plume dominicale",0,43,"µÔç",7,7,4,0,1
+"Armure anti-sortilège",0,44,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,44,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,44,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,44,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,44,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,44,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,44,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,44,"µÔç",0,7,4,0,2
+"Livre de la technique",0,44,"µÔç",8,0,25,0,2
+"Livre de la technique",0,44,"µÔç",8,1,17,0,2
+"Livre de la technique",0,44,"µÔç",8,2,15,0,2
+"Livre de la technique",0,44,"µÔç",8,3,13,0,2
+"Livre de la technique",0,44,"µÔç",8,4,11,0,2
+"Livre de la technique",0,44,"µÔç",8,5,9,0,2
+"Livre de la technique",0,44,"µÔç",8,6,6,0,2
+"Livre de la technique",0,44,"µÔç",8,7,4,0,2
+"Petite potion",0,45,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,45,"µÔç",0,1,17,0,0
+"Debacle",0,45,"µÔç",0,2,15,0,0
+"Béquille",0,45,"µÔç",0,3,13,0,0
+"Petite potion",0,45,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,45,"µÔç",0,1,17,0,1
+"Debacle",0,45,"µÔç",0,2,15,0,1
+"Béquille",0,45,"µÔç",0,3,13,0,1
+"Petite potion",0,45,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,45,"µÔç",0,1,17,0,1
+"Debacle",0,45,"µÔç",0,2,15,0,1
+"Béquille",0,45,"µÔç",0,3,13,0,1
+"Petite potion",0,45,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,45,"µÔç",0,1,17,0,1
+"Debacle",0,45,"µÔç",0,2,15,0,1
+"Béquille",0,45,"µÔç",0,3,13,0,1
+"Petite potion",0,45,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,45,"µÔç",0,1,17,0,1
+"Debacle",0,45,"µÔç",0,2,15,0,1
+"Béquille",0,45,"µÔç",0,3,13,0,1
+"Petite potion",0,45,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,45,"µÔç",0,1,17,0,0
+"Debacle",0,45,"µÔç",0,2,15,0,0
+"Béquille",0,45,"µÔç",0,3,13,0,0
+"Petite potion",0,48,"£",0,0,25,0,1
+"Petite potion",0,48,"£",0,1,17,0,1
+"Petite potion",0,48,"£",0,2,15,0,1
+"Petite potion",0,48,"£",0,3,13,0,1
+"Petite potion",0,48,"£",0,4,11,0,1
+"Petite potion",0,48,"£",0,5,9,0,1
+"Petite potion",0,48,"£",0,6,6,0,1
+"Petite potion",0,48,"£",0,7,4,0,1
+"Petite potion",0,48,"£",0,0,25,0,1
+"Petite potion",0,48,"£",0,1,17,0,1
+"Petite potion",0,48,"£",0,2,15,0,1
+"Petite potion",0,48,"£",0,3,13,0,1
+"Petite potion",0,48,"£",0,4,11,0,1
+"Petite potion",0,48,"£",0,5,9,0,1
+"Petite potion",0,48,"£",0,6,6,0,1
+"Petite potion",0,48,"£",0,7,4,0,1
+"Petite potion",0,48,"£",0,0,25,0,1
+"Petite potion",0,48,"£",0,1,17,0,1
+"Petite potion",0,48,"£",0,2,15,0,1
+"Petite potion",0,48,"£",0,3,13,0,1
+"Petite potion",0,48,"£",0,4,11,0,1
+"Petite potion",0,48,"£",0,5,9,0,1
+"Petite potion",0,48,"£",0,6,6,0,1
+"Petite potion",0,48,"£",0,7,4,0,1
+"Petite potion",0,48,"£",0,0,25,0,1
+"Petite potion",0,48,"£",0,1,17,0,1
+"Petite potion",0,48,"£",0,2,15,0,1
+"Petite potion",0,48,"£",0,3,13,0,1
+"Petite potion",0,48,"£",0,4,11,0,1
+"Petite potion",0,48,"£",0,5,9,0,1
+"Petite potion",0,48,"£",0,6,6,0,1
+"Petite potion",0,48,"£",0,7,4,0,1
+"Petite potion",0,48,"£",0,0,25,0,1
+"Petite potion",0,48,"£",0,1,17,0,1
+"Petite potion",0,48,"£",0,2,15,0,1
+"Petite potion",0,48,"£",0,3,13,0,1
+"Petite potion",0,48,"£",0,4,11,0,1
+"Petite potion",0,48,"£",0,5,9,0,1
+"Petite potion",0,48,"£",0,6,6,0,1
+"Petite potion",0,48,"£",0,7,4,0,1
+"Petite potion",0,48,"£",0,0,25,0,1
+"Petite potion",0,48,"£",0,1,17,0,1
+"Petite potion",0,48,"£",0,2,15,0,1
+"Petite potion",0,48,"£",0,3,13,0,1
+"Petite potion",0,48,"£",0,4,11,0,1
+"Petite potion",0,48,"£",0,5,9,0,1
+"Petite potion",0,48,"£",0,6,6,0,1
+"Petite potion",0,48,"£",0,7,4,0,1
+"Petite potion",0,48,"£",0,0,25,0,1
+"Petite potion",0,48,"£",0,1,17,0,1
+"Petite potion",0,48,"£",0,2,15,0,1
+"Petite potion",0,48,"£",0,3,13,0,1
+"Petite potion",0,48,"£",0,4,11,0,1
+"Petite potion",0,48,"£",0,5,9,0,1
+"Petite potion",0,48,"£",0,6,6,0,1
+"Petite potion",0,48,"£",0,7,4,0,1
+"Petite potion",0,48,"£",0,0,25,0,1
+"Petite potion",0,48,"£",0,1,17,0,1
+"Petite potion",0,48,"£",0,2,15,0,1
+"Petite potion",0,48,"£",0,3,13,0,1
+"Petite potion",0,48,"£",0,4,11,0,1
+"Petite potion",0,48,"£",0,5,9,0,1
+"Petite potion",0,48,"£",0,6,6,0,1
+"Petite potion",0,48,"£",0,7,4,0,1
+"Petite potion",0,49,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,49,"µÔç",0,1,17,0,1
+"Debacle",0,49,"µÔç",0,2,15,0,1
+"Béquille",0,49,"µÔç",0,3,13,0,1
+"Cristal saint",0,51,"µÔç",7,0,25,0,1
+"Cristal du mal",0,51,"µÔç",7,1,17,0,1
+"Gants de force",0,51,"µÔç",7,2,15,0,1
+"Panoramix",0,51,"µÔç",7,3,13,0,1
+"Ambrosia",0,51,"µÔç",7,4,11,0,1
+"Croix",0,51,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,51,"µÔç",7,6,6,0,1
+"Plume dominicale",0,51,"µÔç",7,7,4,0,1
+"Cristal saint",0,51,"µÔç",7,0,25,0,1
+"Cristal du mal",0,51,"µÔç",7,1,17,0,1
+"Gants de force",0,51,"µÔç",7,2,15,0,1
+"Panoramix",0,51,"µÔç",7,3,13,0,1
+"Ambrosia",0,51,"µÔç",7,4,11,0,1
+"Croix",0,51,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,51,"µÔç",7,6,6,0,1
+"Plume dominicale",0,51,"µÔç",7,7,4,0,1
+"Armure anti-sortilège",0,52,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,52,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,52,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,52,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,52,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,52,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,52,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,52,"µÔç",0,7,4,0,2
+"Livre de la technique",0,52,"µÔç",8,0,25,0,2
+"Livre de la technique",0,52,"µÔç",8,1,17,0,2
+"Livre de la technique",0,52,"µÔç",8,2,15,0,2
+"Livre de la technique",0,52,"µÔç",8,3,13,0,2
+"Livre de la technique",0,52,"µÔç",8,4,11,0,2
+"Livre de la technique",0,52,"µÔç",8,5,9,0,2
+"Livre de la technique",0,52,"µÔç",8,6,6,0,2
+"Livre de la technique",0,52,"µÔç",8,7,4,0,2
+"Petite potion",0,53,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,53,"µÔç",0,1,17,0,0
+"Debacle",0,53,"µÔç",0,2,15,0,0
+"Béquille",0,53,"µÔç",0,3,13,0,0
+"Petite potion",0,53,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,53,"µÔç",0,1,17,0,1
+"Debacle",0,53,"µÔç",0,2,15,0,1
+"Béquille",0,53,"µÔç",0,3,13,0,1
+"Petite potion",0,53,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,53,"µÔç",0,1,17,0,1
+"Debacle",0,53,"µÔç",0,2,15,0,1
+"Béquille",0,53,"µÔç",0,3,13,0,1
+"Petite potion",0,53,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,53,"µÔç",0,1,17,0,1
+"Debacle",0,53,"µÔç",0,2,15,0,1
+"Béquille",0,53,"µÔç",0,3,13,0,1
+"Petite potion",0,53,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,53,"µÔç",0,1,17,0,1
+"Debacle",0,53,"µÔç",0,2,15,0,1
+"Béquille",0,53,"µÔç",0,3,13,0,1
+"Petite potion",0,53,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,53,"µÔç",0,1,17,0,0
+"Debacle",0,53,"µÔç",0,2,15,0,0
+"Béquille",0,53,"µÔç",0,3,13,0,0
+"Petite potion",0,56,"£",0,0,25,0,1
+"Petite potion",0,56,"£",0,1,17,0,1
+"Petite potion",0,56,"£",0,2,15,0,1
+"Petite potion",0,56,"£",0,3,13,0,1
+"Petite potion",0,56,"£",0,4,11,0,1
+"Petite potion",0,56,"£",0,5,9,0,1
+"Petite potion",0,56,"£",0,6,6,0,1
+"Petite potion",0,56,"£",0,7,4,0,1
+"Petite potion",0,56,"£",0,0,25,0,1
+"Petite potion",0,56,"£",0,1,17,0,1
+"Petite potion",0,56,"£",0,2,15,0,1
+"Petite potion",0,56,"£",0,3,13,0,1
+"Petite potion",0,56,"£",0,4,11,0,1
+"Petite potion",0,56,"£",0,5,9,0,1
+"Petite potion",0,56,"£",0,6,6,0,1
+"Petite potion",0,56,"£",0,7,4,0,1
+"Petite potion",0,56,"£",0,0,25,0,1
+"Petite potion",0,56,"£",0,1,17,0,1
+"Petite potion",0,56,"£",0,2,15,0,1
+"Petite potion",0,56,"£",0,3,13,0,1
+"Petite potion",0,56,"£",0,4,11,0,1
+"Petite potion",0,56,"£",0,5,9,0,1
+"Petite potion",0,56,"£",0,6,6,0,1
+"Petite potion",0,56,"£",0,7,4,0,1
+"Petite potion",0,56,"£",0,0,25,0,1
+"Petite potion",0,56,"£",0,1,17,0,1
+"Petite potion",0,56,"£",0,2,15,0,1
+"Petite potion",0,56,"£",0,3,13,0,1
+"Petite potion",0,56,"£",0,4,11,0,1
+"Petite potion",0,56,"£",0,5,9,0,1
+"Petite potion",0,56,"£",0,6,6,0,1
+"Petite potion",0,56,"£",0,7,4,0,1
+"Petite potion",0,56,"£",0,0,25,0,1
+"Petite potion",0,56,"£",0,1,17,0,1
+"Petite potion",0,56,"£",0,2,15,0,1
+"Petite potion",0,56,"£",0,3,13,0,1
+"Petite potion",0,56,"£",0,4,11,0,1
+"Petite potion",0,56,"£",0,5,9,0,1
+"Petite potion",0,56,"£",0,6,6,0,1
+"Petite potion",0,56,"£",0,7,4,0,1
+"Petite potion",0,56,"£",0,0,25,0,1
+"Petite potion",0,56,"£",0,1,17,0,1
+"Petite potion",0,56,"£",0,2,15,0,1
+"Petite potion",0,56,"£",0,3,13,0,1
+"Petite potion",0,56,"£",0,4,11,0,1
+"Petite potion",0,56,"£",0,5,9,0,1
+"Petite potion",0,56,"£",0,6,6,0,1
+"Petite potion",0,56,"£",0,7,4,0,1
+"Petite potion",0,56,"£",0,0,25,0,1
+"Petite potion",0,56,"£",0,1,17,0,1
+"Petite potion",0,56,"£",0,2,15,0,1
+"Petite potion",0,56,"£",0,3,13,0,1
+"Petite potion",0,56,"£",0,4,11,0,1
+"Petite potion",0,56,"£",0,5,9,0,1
+"Petite potion",0,56,"£",0,6,6,0,1
+"Petite potion",0,56,"£",0,7,4,0,1
+"Petite potion",0,56,"£",0,0,25,0,1
+"Petite potion",0,56,"£",0,1,17,0,1
+"Petite potion",0,56,"£",0,2,15,0,1
+"Petite potion",0,56,"£",0,3,13,0,1
+"Petite potion",0,56,"£",0,4,11,0,1
+"Petite potion",0,56,"£",0,5,9,0,1
+"Petite potion",0,56,"£",0,6,6,0,1
+"Petite potion",0,56,"£",0,7,4,0,1
+"Petite potion",0,57,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,57,"µÔç",0,1,17,0,1
+"Debacle",0,57,"µÔç",0,2,15,0,1
+"Béquille",0,57,"µÔç",0,3,13,0,1
+"Cristal saint",0,59,"µÔç",7,0,25,0,1
+"Cristal du mal",0,59,"µÔç",7,1,17,0,1
+"Gants de force",0,59,"µÔç",7,2,15,0,1
+"Panoramix",0,59,"µÔç",7,3,13,0,1
+"Ambrosia",0,59,"µÔç",7,4,11,0,1
+"Croix",0,59,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,59,"µÔç",7,6,6,0,1
+"Plume dominicale",0,59,"µÔç",7,7,4,0,1
+"Cristal saint",0,59,"µÔç",7,0,25,0,1
+"Cristal du mal",0,59,"µÔç",7,1,17,0,1
+"Gants de force",0,59,"µÔç",7,2,15,0,1
+"Panoramix",0,59,"µÔç",7,3,13,0,1
+"Ambrosia",0,59,"µÔç",7,4,11,0,1
+"Croix",0,59,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,59,"µÔç",7,6,6,0,1
+"Plume dominicale",0,59,"µÔç",7,7,4,0,1
+"Armure anti-sortilège",0,60,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,60,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,60,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,60,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,60,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,60,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,60,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,60,"µÔç",0,7,4,0,2
+"Livre de la technique",0,60,"µÔç",8,0,25,0,2
+"Livre de la technique",0,60,"µÔç",8,1,17,0,2
+"Livre de la technique",0,60,"µÔç",8,2,15,0,2
+"Livre de la technique",0,60,"µÔç",8,3,13,0,2
+"Livre de la technique",0,60,"µÔç",8,4,11,0,2
+"Livre de la technique",0,60,"µÔç",8,5,9,0,2
+"Livre de la technique",0,60,"µÔç",8,6,6,0,2
+"Livre de la technique",0,60,"µÔç",8,7,4,0,2
+"Petite potion",0,61,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,61,"µÔç",0,1,17,0,1
+"Debacle",0,61,"µÔç",0,2,15,0,1
+"Béquille",0,61,"µÔç",0,3,13,0,1
+"Petite potion",0,61,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,61,"µÔç",0,1,17,0,1
+"Debacle",0,61,"µÔç",0,2,15,0,1
+"Béquille",0,61,"µÔç",0,3,13,0,1
+"Petite potion",0,61,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,61,"µÔç",0,1,17,0,1
+"Debacle",0,61,"µÔç",0,2,15,0,1
+"Béquille",0,61,"µÔç",0,3,13,0,1
+"Petite potion",0,61,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,61,"µÔç",0,1,17,0,1
+"Debacle",0,61,"µÔç",0,2,15,0,1
+"Béquille",0,61,"µÔç",0,3,13,0,1
+"Petite potion",0,61,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,61,"µÔç",0,1,17,0,1
+"Debacle",0,61,"µÔç",0,2,15,0,1
+"Béquille",0,61,"µÔç",0,3,13,0,1
+"Petite potion",0,61,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,61,"µÔç",0,1,17,0,0
+"Debacle",0,61,"µÔç",0,2,15,0,0
+"Béquille",0,61,"µÔç",0,3,13,0,0
+"Petite potion",0,64,"£",0,0,25,0,1
+"Petite potion",0,64,"£",0,1,17,0,1
+"Petite potion",0,64,"£",0,2,15,0,1
+"Petite potion",0,64,"£",0,3,13,0,1
+"Petite potion",0,64,"£",0,4,11,0,1
+"Petite potion",0,64,"£",0,5,9,0,1
+"Petite potion",0,64,"£",0,6,6,0,1
+"Petite potion",0,64,"£",0,7,4,0,1
+"Petite potion",0,64,"£",0,0,25,0,1
+"Petite potion",0,64,"£",0,1,17,0,1
+"Petite potion",0,64,"£",0,2,15,0,1
+"Petite potion",0,64,"£",0,3,13,0,1
+"Petite potion",0,64,"£",0,4,11,0,1
+"Petite potion",0,64,"£",0,5,9,0,1
+"Petite potion",0,64,"£",0,6,6,0,1
+"Petite potion",0,64,"£",0,7,4,0,1
+"Petite potion",0,64,"£",0,0,25,0,1
+"Petite potion",0,64,"£",0,1,17,0,1
+"Petite potion",0,64,"£",0,2,15,0,1
+"Petite potion",0,64,"£",0,3,13,0,1
+"Petite potion",0,64,"£",0,4,11,0,1
+"Petite potion",0,64,"£",0,5,9,0,1
+"Petite potion",0,64,"£",0,6,6,0,1
+"Petite potion",0,64,"£",0,7,4,0,1
+"Petite potion",0,64,"£",0,0,25,0,1
+"Petite potion",0,64,"£",0,1,17,0,1
+"Petite potion",0,64,"£",0,2,15,0,1
+"Petite potion",0,64,"£",0,3,13,0,1
+"Petite potion",0,64,"£",0,4,11,0,1
+"Petite potion",0,64,"£",0,5,9,0,1
+"Petite potion",0,64,"£",0,6,6,0,1
+"Petite potion",0,64,"£",0,7,4,0,1
+"Petite potion",0,64,"£",0,0,25,0,1
+"Petite potion",0,64,"£",0,1,17,0,1
+"Petite potion",0,64,"£",0,2,15,0,1
+"Petite potion",0,64,"£",0,3,13,0,1
+"Petite potion",0,64,"£",0,4,11,0,1
+"Petite potion",0,64,"£",0,5,9,0,1
+"Petite potion",0,64,"£",0,6,6,0,1
+"Petite potion",0,64,"£",0,7,4,0,1
+"Petite potion",0,64,"£",0,0,25,0,1
+"Petite potion",0,64,"£",0,1,17,0,1
+"Petite potion",0,64,"£",0,2,15,0,1
+"Petite potion",0,64,"£",0,3,13,0,1
+"Petite potion",0,64,"£",0,4,11,0,1
+"Petite potion",0,64,"£",0,5,9,0,1
+"Petite potion",0,64,"£",0,6,6,0,1
+"Petite potion",0,64,"£",0,7,4,0,1
+"Petite potion",0,64,"£",0,0,25,0,1
+"Petite potion",0,64,"£",0,1,17,0,1
+"Petite potion",0,64,"£",0,2,15,0,1
+"Petite potion",0,64,"£",0,3,13,0,1
+"Petite potion",0,64,"£",0,4,11,0,1
+"Petite potion",0,64,"£",0,5,9,0,1
+"Petite potion",0,64,"£",0,6,6,0,1
+"Petite potion",0,64,"£",0,7,4,0,1
+"Petite potion",0,64,"£",0,0,25,0,1
+"Petite potion",0,64,"£",0,1,17,0,1
+"Petite potion",0,64,"£",0,2,15,0,1
+"Petite potion",0,64,"£",0,3,13,0,1
+"Petite potion",0,64,"£",0,4,11,0,1
+"Petite potion",0,64,"£",0,5,9,0,1
+"Petite potion",0,64,"£",0,6,6,0,1
+"Petite potion",0,64,"£",0,7,4,0,1
+"Petite potion",0,65,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,65,"µÔç",0,1,17,0,1
+"Debacle",0,65,"µÔç",0,2,15,0,1
+"Béquille",0,65,"µÔç",0,3,13,0,1
+"Cristal saint",0,67,"µÔç",7,0,25,0,1
+"Cristal du mal",0,67,"µÔç",7,1,17,0,1
+"Gants de force",0,67,"µÔç",7,2,15,0,1
+"Panoramix",0,67,"µÔç",7,3,13,0,1
+"Ambrosia",0,67,"µÔç",7,4,11,0,1
+"Croix",0,67,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,67,"µÔç",7,6,6,0,1
+"Plume dominicale",0,67,"µÔç",7,7,4,0,1
+"Cristal saint",0,67,"µÔç",7,0,25,0,1
+"Cristal du mal",0,67,"µÔç",7,1,17,0,1
+"Gants de force",0,67,"µÔç",7,2,15,0,1
+"Panoramix",0,67,"µÔç",7,3,13,0,1
+"Ambrosia",0,67,"µÔç",7,4,11,0,1
+"Croix",0,67,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,67,"µÔç",7,6,6,0,1
+"Plume dominicale",0,67,"µÔç",7,7,4,0,1
+"Armure anti-sortilège",0,68,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,68,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,68,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,68,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,68,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,68,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,68,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,68,"µÔç",0,7,4,0,2
+"Livre de la technique",0,68,"µÔç",8,0,25,0,2
+"Livre de la technique",0,68,"µÔç",8,1,17,0,2
+"Livre de la technique",0,68,"µÔç",8,2,15,0,2
+"Livre de la technique",0,68,"µÔç",8,3,13,0,2
+"Livre de la technique",0,68,"µÔç",8,4,11,0,2
+"Livre de la technique",0,68,"µÔç",8,5,9,0,2
+"Livre de la technique",0,68,"µÔç",8,6,6,0,2
+"Livre de la technique",0,68,"µÔç",8,7,4,0,2
+"Petite potion",0,69,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,69,"µÔç",0,1,17,0,0
+"Debacle",0,69,"µÔç",0,2,15,0,0
+"Béquille",0,69,"µÔç",0,3,13,0,0
+"Petite potion",0,69,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,69,"µÔç",0,1,17,0,1
+"Debacle",0,69,"µÔç",0,2,15,0,1
+"Béquille",0,69,"µÔç",0,3,13,0,1
+"Petite potion",0,69,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,69,"µÔç",0,1,17,0,1
+"Debacle",0,69,"µÔç",0,2,15,0,1
+"Béquille",0,69,"µÔç",0,3,13,0,1
+"Petite potion",0,69,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,69,"µÔç",0,1,17,0,1
+"Debacle",0,69,"µÔç",0,2,15,0,1
+"Béquille",0,69,"µÔç",0,3,13,0,1
+"Petite potion",0,69,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,69,"µÔç",0,1,17,0,1
+"Debacle",0,69,"µÔç",0,2,15,0,1
+"Béquille",0,69,"µÔç",0,3,13,0,1
+"Petite potion",0,69,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,69,"µÔç",0,1,17,0,0
+"Debacle",0,69,"µÔç",0,2,15,0,0
+"Béquille",0,69,"µÔç",0,3,13,0,0
+"Petite potion",0,72,"£",0,0,25,0,1
+"Petite potion",0,72,"£",0,1,17,0,1
+"Petite potion",0,72,"£",0,2,15,0,1
+"Petite potion",0,72,"£",0,3,13,0,1
+"Petite potion",0,72,"£",0,4,11,0,1
+"Petite potion",0,72,"£",0,5,9,0,1
+"Petite potion",0,72,"£",0,6,6,0,1
+"Petite potion",0,72,"£",0,7,4,0,1
+"Petite potion",0,72,"£",0,0,25,0,1
+"Petite potion",0,72,"£",0,1,17,0,1
+"Petite potion",0,72,"£",0,2,15,0,1
+"Petite potion",0,72,"£",0,3,13,0,1
+"Petite potion",0,72,"£",0,4,11,0,1
+"Petite potion",0,72,"£",0,5,9,0,1
+"Petite potion",0,72,"£",0,6,6,0,1
+"Petite potion",0,72,"£",0,7,4,0,1
+"Petite potion",0,72,"£",0,0,25,0,1
+"Petite potion",0,72,"£",0,1,17,0,1
+"Petite potion",0,72,"£",0,2,15,0,1
+"Petite potion",0,72,"£",0,3,13,0,1
+"Petite potion",0,72,"£",0,4,11,0,1
+"Petite potion",0,72,"£",0,5,9,0,1
+"Petite potion",0,72,"£",0,6,6,0,1
+"Petite potion",0,72,"£",0,7,4,0,1
+"Petite potion",0,72,"£",0,0,25,0,1
+"Petite potion",0,72,"£",0,1,17,0,1
+"Petite potion",0,72,"£",0,2,15,0,1
+"Petite potion",0,72,"£",0,3,13,0,1
+"Petite potion",0,72,"£",0,4,11,0,1
+"Petite potion",0,72,"£",0,5,9,0,1
+"Petite potion",0,72,"£",0,6,6,0,1
+"Petite potion",0,72,"£",0,7,4,0,1
+"Petite potion",0,72,"£",0,0,25,0,1
+"Petite potion",0,72,"£",0,1,17,0,1
+"Petite potion",0,72,"£",0,2,15,0,1
+"Petite potion",0,72,"£",0,3,13,0,1
+"Petite potion",0,72,"£",0,4,11,0,1
+"Petite potion",0,72,"£",0,5,9,0,1
+"Petite potion",0,72,"£",0,6,6,0,1
+"Petite potion",0,72,"£",0,7,4,0,1
+"Petite potion",0,72,"£",0,0,25,0,1
+"Petite potion",0,72,"£",0,1,17,0,1
+"Petite potion",0,72,"£",0,2,15,0,1
+"Petite potion",0,72,"£",0,3,13,0,1
+"Petite potion",0,72,"£",0,4,11,0,1
+"Petite potion",0,72,"£",0,5,9,0,1
+"Petite potion",0,72,"£",0,6,6,0,1
+"Petite potion",0,72,"£",0,7,4,0,1
+"Petite potion",0,72,"£",0,0,25,0,1
+"Petite potion",0,72,"£",0,1,17,0,1
+"Petite potion",0,72,"£",0,2,15,0,1
+"Petite potion",0,72,"£",0,3,13,0,1
+"Petite potion",0,72,"£",0,4,11,0,1
+"Petite potion",0,72,"£",0,5,9,0,1
+"Petite potion",0,72,"£",0,6,6,0,1
+"Petite potion",0,72,"£",0,7,4,0,1
+"Petite potion",0,72,"£",0,0,25,0,1
+"Petite potion",0,72,"£",0,1,17,0,1
+"Petite potion",0,72,"£",0,2,15,0,1
+"Petite potion",0,72,"£",0,3,13,0,1
+"Petite potion",0,72,"£",0,4,11,0,1
+"Petite potion",0,72,"£",0,5,9,0,1
+"Petite potion",0,72,"£",0,6,6,0,1
+"Petite potion",0,72,"£",0,7,4,0,1
+"Petite potion",0,73,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,73,"µÔç",0,1,17,0,1
+"Debacle",0,73,"µÔç",0,2,15,0,1
+"Béquille",0,73,"µÔç",0,3,13,0,1
+"Cristal saint",0,75,"µÔç",7,0,25,0,1
+"Cristal du mal",0,75,"µÔç",7,1,17,0,1
+"Gants de force",0,75,"µÔç",7,2,15,0,1
+"Panoramix",0,75,"µÔç",7,3,13,0,1
+"Ambrosia",0,75,"µÔç",7,4,11,0,1
+"Croix",0,75,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,75,"µÔç",7,6,6,0,1
+"Plume dominicale",0,75,"µÔç",7,7,4,0,1
+"Cristal saint",0,75,"µÔç",7,0,25,0,1
+"Cristal du mal",0,75,"µÔç",7,1,17,0,1
+"Gants de force",0,75,"µÔç",7,2,15,0,1
+"Panoramix",0,75,"µÔç",7,3,13,0,1
+"Ambrosia",0,75,"µÔç",7,4,11,0,1
+"Croix",0,75,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,75,"µÔç",7,6,6,0,1
+"Plume dominicale",0,75,"µÔç",7,7,4,0,1
+"Armure anti-sortilège",0,76,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,76,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,76,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,76,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,76,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,76,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,76,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,76,"µÔç",0,7,4,0,2
+"Livre de la technique",0,76,"µÔç",8,0,25,0,2
+"Livre de la technique",0,76,"µÔç",8,1,17,0,2
+"Livre de la technique",0,76,"µÔç",8,2,15,0,2
+"Livre de la technique",0,76,"µÔç",8,3,13,0,2
+"Livre de la technique",0,76,"µÔç",8,4,11,0,2
+"Livre de la technique",0,76,"µÔç",8,5,9,0,2
+"Livre de la technique",0,76,"µÔç",8,6,6,0,2
+"Livre de la technique",0,76,"µÔç",8,7,4,0,2
+"Petite potion",0,77,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,77,"µÔç",0,1,17,0,1
+"Debacle",0,77,"µÔç",0,2,15,0,1
+"Béquille",0,77,"µÔç",0,3,13,0,1
+"Petite potion",0,77,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,77,"µÔç",0,1,17,0,1
+"Debacle",0,77,"µÔç",0,2,15,0,1
+"Béquille",0,77,"µÔç",0,3,13,0,1
+"Petite potion",0,77,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,77,"µÔç",0,1,17,0,1
+"Debacle",0,77,"µÔç",0,2,15,0,1
+"Béquille",0,77,"µÔç",0,3,13,0,1
+"Petite potion",0,77,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,77,"µÔç",0,1,17,0,1
+"Debacle",0,77,"µÔç",0,2,15,0,1
+"Béquille",0,77,"µÔç",0,3,13,0,1
+"Petite potion",0,77,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,77,"µÔç",0,1,17,0,1
+"Debacle",0,77,"µÔç",0,2,15,0,1
+"Béquille",0,77,"µÔç",0,3,13,0,1
+"Petite potion",0,77,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,77,"µÔç",0,1,17,0,0
+"Debacle",0,77,"µÔç",0,2,15,0,0
+"Béquille",0,77,"µÔç",0,3,13,0,0
+"Petite potion",0,80,"£",0,0,25,0,1
+"Petite potion",0,80,"£",0,1,17,0,1
+"Petite potion",0,80,"£",0,2,15,0,1
+"Petite potion",0,80,"£",0,3,13,0,1
+"Petite potion",0,80,"£",0,4,11,0,1
+"Petite potion",0,80,"£",0,5,9,0,1
+"Petite potion",0,80,"£",0,6,6,0,1
+"Petite potion",0,80,"£",0,7,4,0,1
+"Petite potion",0,80,"£",0,0,25,0,1
+"Petite potion",0,80,"£",0,1,17,0,1
+"Petite potion",0,80,"£",0,2,15,0,1
+"Petite potion",0,80,"£",0,3,13,0,1
+"Petite potion",0,80,"£",0,4,11,0,1
+"Petite potion",0,80,"£",0,5,9,0,1
+"Petite potion",0,80,"£",0,6,6,0,1
+"Petite potion",0,80,"£",0,7,4,0,1
+"Petite potion",0,80,"£",0,0,25,0,1
+"Petite potion",0,80,"£",0,1,17,0,1
+"Petite potion",0,80,"£",0,2,15,0,1
+"Petite potion",0,80,"£",0,3,13,0,1
+"Petite potion",0,80,"£",0,4,11,0,1
+"Petite potion",0,80,"£",0,5,9,0,1
+"Petite potion",0,80,"£",0,6,6,0,1
+"Petite potion",0,80,"£",0,7,4,0,1
+"Petite potion",0,80,"£",0,0,25,0,1
+"Petite potion",0,80,"£",0,1,17,0,1
+"Petite potion",0,80,"£",0,2,15,0,1
+"Petite potion",0,80,"£",0,3,13,0,1
+"Petite potion",0,80,"£",0,4,11,0,1
+"Petite potion",0,80,"£",0,5,9,0,1
+"Petite potion",0,80,"£",0,6,6,0,1
+"Petite potion",0,80,"£",0,7,4,0,1
+"Petite potion",0,80,"£",0,0,25,0,1
+"Petite potion",0,80,"£",0,1,17,0,1
+"Petite potion",0,80,"£",0,2,15,0,1
+"Petite potion",0,80,"£",0,3,13,0,1
+"Petite potion",0,80,"£",0,4,11,0,1
+"Petite potion",0,80,"£",0,5,9,0,1
+"Petite potion",0,80,"£",0,6,6,0,1
+"Petite potion",0,80,"£",0,7,4,0,1
+"Petite potion",0,80,"£",0,0,25,0,1
+"Petite potion",0,80,"£",0,1,17,0,1
+"Petite potion",0,80,"£",0,2,15,0,1
+"Petite potion",0,80,"£",0,3,13,0,1
+"Petite potion",0,80,"£",0,4,11,0,1
+"Petite potion",0,80,"£",0,5,9,0,1
+"Petite potion",0,80,"£",0,6,6,0,1
+"Petite potion",0,80,"£",0,7,4,0,1
+"Petite potion",0,80,"£",0,0,25,0,1
+"Petite potion",0,80,"£",0,1,17,0,1
+"Petite potion",0,80,"£",0,2,15,0,1
+"Petite potion",0,80,"£",0,3,13,0,1
+"Petite potion",0,80,"£",0,4,11,0,1
+"Petite potion",0,80,"£",0,5,9,0,1
+"Petite potion",0,80,"£",0,6,6,0,1
+"Petite potion",0,80,"£",0,7,4,0,1
+"Petite potion",0,80,"£",0,0,25,0,1
+"Petite potion",0,80,"£",0,1,17,0,1
+"Petite potion",0,80,"£",0,2,15,0,1
+"Petite potion",0,80,"£",0,3,13,0,1
+"Petite potion",0,80,"£",0,4,11,0,1
+"Petite potion",0,80,"£",0,5,9,0,1
+"Petite potion",0,80,"£",0,6,6,0,1
+"Petite potion",0,80,"£",0,7,4,0,1
+"Petite potion",0,81,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,81,"µÔç",0,1,17,0,1
+"Debacle",0,81,"µÔç",0,2,15,0,1
+"Béquille",0,81,"µÔç",0,3,13,0,1
+"Cristal saint",0,83,"µÔç",7,0,25,0,1
+"Cristal du mal",0,83,"µÔç",7,1,17,0,1
+"Gants de force",0,83,"µÔç",7,2,15,0,1
+"Panoramix",0,83,"µÔç",7,3,13,0,1
+"Ambrosia",0,83,"µÔç",7,4,11,0,1
+"Croix",0,83,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,83,"µÔç",7,6,6,0,1
+"Plume dominicale",0,83,"µÔç",7,7,4,0,1
+"Cristal saint",0,83,"µÔç",7,0,25,0,1
+"Cristal du mal",0,83,"µÔç",7,1,17,0,1
+"Gants de force",0,83,"µÔç",7,2,15,0,1
+"Panoramix",0,83,"µÔç",7,3,13,0,1
+"Ambrosia",0,83,"µÔç",7,4,11,0,1
+"Croix",0,83,"µÔç",7,5,9,0,1
+"Talisman médicinal",0,83,"µÔç",7,6,6,0,1
+"Plume dominicale",0,83,"µÔç",7,7,4,0,1
+"Armure anti-sortilège",0,84,"µÔç",0,0,25,0,2
+"Armure anti-sortilège",0,84,"µÔç",0,1,17,0,2
+"Armure anti-sortilège",0,84,"µÔç",0,2,15,0,2
+"Armure anti-sortilège",0,84,"µÔç",0,3,13,0,2
+"Armure anti-sortilège",0,84,"µÔç",0,4,11,0,2
+"Armure anti-sortilège",0,84,"µÔç",0,5,9,0,2
+"Armure anti-sortilège",0,84,"µÔç",0,6,6,0,2
+"Armure anti-sortilège",0,84,"µÔç",0,7,4,0,2
+"Livre de la technique",0,84,"µÔç",8,0,25,0,2
+"Livre de la technique",0,84,"µÔç",8,1,17,0,2
+"Livre de la technique",0,84,"µÔç",8,2,15,0,2
+"Livre de la technique",0,84,"µÔç",8,3,13,0,2
+"Livre de la technique",0,84,"µÔç",8,4,11,0,2
+"Livre de la technique",0,84,"µÔç",8,5,9,0,2
+"Livre de la technique",0,84,"µÔç",8,6,6,0,2
+"Livre de la technique",0,84,"µÔç",8,7,4,0,2
+"Petite potion",0,85,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,85,"µÔç",0,1,17,0,1
+"Debacle",0,85,"µÔç",0,2,15,0,1
+"Béquille",0,85,"µÔç",0,3,13,0,1
+"Petite potion",0,85,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,85,"µÔç",0,1,17,0,1
+"Debacle",0,85,"µÔç",0,2,15,0,1
+"Béquille",0,85,"µÔç",0,3,13,0,1
+"Petite potion",0,85,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,85,"µÔç",0,1,17,0,1
+"Debacle",0,85,"µÔç",0,2,15,0,1
+"Béquille",0,85,"µÔç",0,3,13,0,1
+"Petite potion",0,85,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,85,"µÔç",0,1,17,0,1
+"Debacle",0,85,"µÔç",0,2,15,0,1
+"Béquille",0,85,"µÔç",0,3,13,0,1
+"Petite potion",0,85,"µÔç",0,0,25,0,1
+"Aiguille médicinale",0,85,"µÔç",0,1,17,0,1
+"Debacle",0,85,"µÔç",0,2,15,0,1
+"Béquille",0,85,"µÔç",0,3,13,0,1
+"Petite potion",0,85,"µÔç",0,0,25,0,0
+"Aiguille médicinale",0,85,"µÔç",0,1,17,0,0
+"Debacle",0,85,"µÔç",0,2,15,0,0
+"Béquille",0,85,"µÔç",0,3,13,0,0
+"Casse-tête à chaîne",1,0,"Goblin",2,0,25,74,18
+"Casse-tête à chaîne",1,0,"Goblin",2,1,17,74,18
+"Lavande",1,0,"Goblin",2,2,15,74,18
+"Ecu du destin",1,0,"Goblin",2,3,13,74,18
+"Tablier de cuir",1,0,"Goblin",2,4,11,74,18
+"Tablier de cuir",1,0,"Goblin",2,5,9,74,18
+"Cotte de maille",1,0,"Goblin",2,6,6,74,18
+"Cotte de maille",1,0,"Goblin",2,7,4,74,18
+"Sceptre de la mort",1,0,"Goblin-sorcier",3,0,25,66,12
+"Baguette aux joyaux",1,0,"Goblin-sorcier",3,1,17,66,12
+"Sauge",1,0,"Goblin-sorcier",3,2,15,66,12
+"Verveine",1,0,"Goblin-sorcier",3,3,13,66,12
+"Mercuriale",1,0,"Goblin-sorcier",3,4,11,66,12
+"Fenouil",1,0,"Goblin-sorcier",3,5,9,66,12
+"Ecu du destin",1,0,"Goblin-sorcier",3,6,6,66,12
+"Balle de cristal",1,0,"Goblin-sorcier",3,7,4,66,12
+"Potion med",1,0,"Chauve-souris",4,0,25,66,7
+"Potion med",1,0,"Chauve-souris",4,1,17,66,7
+"Potion med",1,0,"Chauve-souris",4,2,15,66,7
+"Potion med",1,0,"Chauve-souris",4,3,13,66,7
+"Potion med",1,0,"Chauve-souris",4,4,11,66,7
+"Huile de sang",1,0,"Chauve-souris",4,5,9,66,7
+"Huile de sang",1,0,"Chauve-souris",4,6,6,66,7
+"Huile de sang",1,0,"Chauve-souris",4,7,4,66,7
+"Casse-tête à chaîne",1,1,"Goblin",4,0,25,64,11
+"Casse-tête à chaîne",1,1,"Goblin",4,1,17,64,11
+"Lavande",1,1,"Goblin",4,2,15,64,11
+"Ecu du destin",1,1,"Goblin",4,3,13,64,11
+"Tablier de cuir",1,1,"Goblin",4,4,11,64,11
+"Tablier de cuir",1,1,"Goblin",4,5,9,64,11
+"Cotte de maille",1,1,"Goblin",4,6,6,64,11
+"Cotte de maille",1,1,"Goblin",4,7,4,64,11
+"Sceptre de la mort",1,1,"Goblin-sorcier",5,0,25,66,11
+"Baguette aux joyaux",1,1,"Goblin-sorcier",5,1,17,66,11
+"Sauge",1,1,"Goblin-sorcier",5,2,15,66,11
+"Verveine",1,1,"Goblin-sorcier",5,3,13,66,11
+"Mercuriale",1,1,"Goblin-sorcier",5,4,11,66,11
+"Fenouil",1,1,"Goblin-sorcier",5,5,9,66,11
+"Ecu du destin",1,1,"Goblin-sorcier",5,6,6,66,11
+"Balle de cristal",1,1,"Goblin-sorcier",5,7,4,66,11
+"Potion med",1,1,"Chauve-souris",6,0,25,66,13
+"Potion med",1,1,"Chauve-souris",6,1,17,66,13
+"Potion med",1,1,"Chauve-souris",6,2,15,66,13
+"Potion med",1,1,"Chauve-souris",6,3,13,66,13
+"Potion med",1,1,"Chauve-souris",6,4,11,66,13
+"Huile de sang",1,1,"Chauve-souris",6,5,9,66,13
+"Huile de sang",1,1,"Chauve-souris",6,6,6,66,13
+"Huile de sang",1,1,"Chauve-souris",6,7,4,66,13
+"Longue épée",1,1,"Chef-Goblin",7,0,25,66,6
+"Gantelets",1,1,"Chef-Goblin",7,1,17,66,6
+"Bouclier rond",1,1,"Chef-Goblin",7,2,15,66,6
+"Bouclier rond",1,1,"Chef-Goblin",7,3,13,66,6
+"Gantelets de chevaliers",1,1,"Chef-Goblin",7,4,11,66,6
+"Gantelets de chevaliers",1,1,"Chef-Goblin",7,5,9,66,6
+"Gantelets d'argent",1,1,"Chef-Goblin",7,6,6,66,6
+"Gantelets d'argent",1,1,"Chef-Goblin",7,7,4,66,6
+"Sceptre de la mort",1,2,"Goblin-sorcier",3,0,25,66,7
+"Baguette aux joyaux",1,2,"Goblin-sorcier",3,1,17,66,7
+"Sauge",1,2,"Goblin-sorcier",3,2,15,66,7
+"Verveine",1,2,"Goblin-sorcier",3,3,13,66,7
+"Mercuriale",1,2,"Goblin-sorcier",3,4,11,66,7
+"Fenouil",1,2,"Goblin-sorcier",3,5,9,66,7
+"Ecu du destin",1,2,"Goblin-sorcier",3,6,6,66,7
+"Balle de cristal",1,2,"Goblin-sorcier",3,7,4,66,7
+"Potion med",1,2,"Chauve-souris",4,0,25,66,14
+"Potion med",1,2,"Chauve-souris",4,1,17,66,14
+"Potion med",1,2,"Chauve-souris",4,2,15,66,14
+"Potion med",1,2,"Chauve-souris",4,3,13,66,14
+"Potion med",1,2,"Chauve-souris",4,4,11,66,14
+"Huile de sang",1,2,"Chauve-souris",4,5,9,66,14
+"Huile de sang",1,2,"Chauve-souris",4,6,6,66,14
+"Huile de sang",1,2,"Chauve-souris",4,7,4,66,14
+"Potion olympique",1,2,"Vipère",5,0,25,64,10
+"Potion olympique",1,2,"Vipère",5,1,17,64,10
+"Elixir de vie",1,2,"Vipère",5,2,15,64,10
+"Elixir de vie",1,2,"Vipère",5,3,13,64,10
+"Elixir de vie",1,2,"Vipère",5,4,11,64,10
+"Elixir de vie",1,2,"Vipère",5,5,9,64,10
+"Elixir de vie",1,2,"Vipère",5,6,6,64,10
+"Extrait de sang",1,2,"Vipère",5,7,4,64,10
+"Longue épée",1,2,"Chef-Goblin",6,0,25,66,2
+"Gantelets",1,2,"Chef-Goblin",6,1,17,66,2
+"Bouclier rond",1,2,"Chef-Goblin",6,2,15,66,2
+"Bouclier rond",1,2,"Chef-Goblin",6,3,13,66,2
+"Gantelets de chevaliers",1,2,"Chef-Goblin",6,4,11,66,2
+"Gantelets de chevaliers",1,2,"Chef-Goblin",6,5,9,66,2
+"Gantelets d'argent",1,2,"Chef-Goblin",6,6,6,66,2
+"Gantelets d'argent",1,2,"Chef-Goblin",6,7,4,66,2
+"Potion med",1,3,"Chauve-souris",2,0,25,66,6
+"Potion med",1,3,"Chauve-souris",2,1,17,66,6
+"Potion med",1,3,"Chauve-souris",2,2,15,66,6
+"Potion med",1,3,"Chauve-souris",2,3,13,66,6
+"Potion med",1,3,"Chauve-souris",2,4,11,66,6
+"Huile de sang",1,3,"Chauve-souris",2,5,9,66,6
+"Huile de sang",1,3,"Chauve-souris",2,6,6,66,6
+"Huile de sang",1,3,"Chauve-souris",2,7,4,66,6
+"Potion olympique",1,3,"Vipère",3,0,25,64,10
+"Potion olympique",1,3,"Vipère",3,1,17,64,10
+"Elixir de vie",1,3,"Vipère",3,2,15,64,10
+"Elixir de vie",1,3,"Vipère",3,3,13,64,10
+"Elixir de vie",1,3,"Vipère",3,4,11,64,10
+"Elixir de vie",1,3,"Vipère",3,5,9,64,10
+"Elixir de vie",1,3,"Vipère",3,6,6,64,10
+"Extrait de sang",1,3,"Vipère",3,7,4,64,10
+"Potion olympique",1,3,"Scorpion",4,0,25,64,10
+"Minegosh",1,3,"Scorpion",4,1,17,64,10
+"Potion olympique",1,3,"Scorpion",4,2,15,64,10
+"Potion olympique",1,3,"Scorpion",4,3,13,64,10
+"Potion olympique",1,3,"Scorpion",4,4,11,64,10
+"Potion olympique",1,3,"Scorpion",4,5,9,64,10
+"Potion olympique",1,3,"Scorpion",4,6,6,64,10
+"Potion olympique",1,3,"Scorpion",4,7,4,64,10
+"Potion olympique",1,3,"Araignée",5,0,25,64,5
+"Potion olympique",1,3,"Araignée",5,1,17,64,5
+"Extrait d'esprits",1,3,"Araignée",5,2,15,64,5
+"Extrait d'esprits",1,3,"Araignée",5,3,13,64,5
+"Extrait d'esprits",1,3,"Araignée",5,4,11,64,5
+"Extrait d'esprits",1,3,"Araignée",5,5,9,64,5
+"Extrait d'esprits",1,3,"Araignée",5,6,6,64,5
+"Extrait d'esprits",1,3,"Araignée",5,7,4,64,5
+"Potion olympique",1,4,"Scorpion",9,0,25,64,0
+"Minegosh",1,4,"Scorpion",9,1,17,64,0
+"Potion olympique",1,4,"Scorpion",9,2,15,64,0
+"Potion olympique",1,4,"Scorpion",9,3,13,64,0
+"Potion olympique",1,4,"Scorpion",9,4,11,64,0
+"Potion olympique",1,4,"Scorpion",9,5,9,64,0
+"Potion olympique",1,4,"Scorpion",9,6,6,64,0
+"Potion olympique",1,4,"Scorpion",9,7,4,64,0
+"Potion olympique",1,4,"Mille-patte",10,0,25,56,15
+"Potion olympique",1,4,"Mille-patte",10,1,17,56,15
+"Epice rouge",1,4,"Mille-patte",10,2,15,56,15
+"Epice rouge",1,4,"Mille-patte",10,3,13,56,15
+"Epice rouge",1,4,"Mille-patte",10,4,11,56,15
+"Elixir de vie",1,4,"Mille-patte",10,5,9,56,15
+"Elixir de vie",1,4,"Mille-patte",10,6,6,56,15
+"Elixir de vie",1,4,"Mille-patte",10,7,4,56,15
+"Amulette du dragon",1,4,"Jeune dragon",11,0,25,250,1
+"Corne du dragon",1,4,"Jeune dragon",11,1,17,250,1
+"Balle de feu",1,4,"Jeune dragon",11,2,15,250,1
+"Queue de dragon",1,4,"Jeune dragon",11,3,13,250,1
+"Ecailles de dragon",1,4,"Jeune dragon",11,4,11,250,1
+"Armure du dragon",1,4,"Jeune dragon",11,5,9,250,1
+"Poignard d'Orihalcon",1,4,"Jeune dragon",11,6,6,250,1
+"Poignard d'Orihalcon",1,4,"Jeune dragon",11,7,4,250,1
+"Potion olympique",1,4,"Araignée",12,0,25,64,0
+"Potion olympique",1,4,"Araignée",12,1,17,64,0
+"Extrait d'esprits",1,4,"Araignée",12,2,15,64,0
+"Extrait d'esprits",1,4,"Araignée",12,3,13,64,0
+"Extrait d'esprits",1,4,"Araignée",12,4,11,64,0
+"Extrait d'esprits",1,4,"Araignée",12,5,9,64,0
+"Extrait d'esprits",1,4,"Araignée",12,6,6,64,0
+"Extrait d'esprits",1,4,"Araignée",12,7,4,64,0
+"Extrait de sang",1,4,"Ours gris",13,0,25,62,1
+"Extrait de sang",1,4,"Ours gris",13,1,17,62,1
+"Extrait de sang",1,4,"Ours gris",13,2,15,62,1
+"Extrait de sang",1,4,"Ours gris",13,3,13,62,1
+"Extrait de sang",1,4,"Ours gris",13,4,11,62,1
+"Extrait de sang",1,4,"Ours gris",13,5,9,62,1
+"Os de guerrier sauvage",1,4,"Ours gris",13,6,6,62,1
+"Os de guerrier sauvage",1,4,"Ours gris",13,7,4,62,1
+"Grande hache",1,5,"Crabe",3,0,25,55,7
+"Potion olympique",1,5,"Crabe",3,1,17,55,7
+"Cristal d'eau",1,5,"Crabe",3,2,15,55,7
+"Cristal de terre",1,5,"Crabe",3,3,13,55,7
+"Cristal de terre",1,5,"Crabe",3,4,11,55,7
+"Cristal d'eau",1,5,"Crabe",3,5,9,55,7
+"Panoramix",1,5,"Crabe",3,6,6,55,7
+"Panoramix",1,5,"Crabe",3,7,4,55,7
+"Potion med",1,5,"Poisson tueur",4,0,25,50,10
+"Potion med",1,5,"Poisson tueur",4,1,17,50,10
+"Cristal de terre",1,5,"Poisson tueur",4,2,15,50,10
+"Cristal d'air",1,5,"Poisson tueur",4,3,13,50,10
+"Cristal d'air",1,5,"Poisson tueur",4,4,11,50,10
+"Cristal de terre",1,5,"Poisson tueur",4,5,9,50,10
+"Panoramix",1,5,"Poisson tueur",4,6,6,50,10
+"Panoramix",1,5,"Poisson tueur",4,7,4,50,10
+"Cristal du mal",1,5,"Maudite",5,0,25,10,11
+"Balle des ténèbres",1,5,"Maudite",5,1,17,10,11
+"Cristal du mal",1,5,"Maudite",5,2,15,10,11
+"Balle des ténèbres",1,5,"Maudite",5,3,13,10,11
+"Balle des ténèbres",1,5,"Maudite",5,4,11,10,11
+"Cristal du mal",1,5,"Maudite",5,5,9,10,11
+"Balle des ténèbres",1,5,"Maudite",5,6,6,10,11
+"Cristal du mal",1,5,"Maudite",5,7,4,10,11
+"Potion med",1,5,"Belle bleue",6,0,25,40,1
+"Potion med",1,5,"Belle bleue",6,1,17,40,1
+"Potion med",1,5,"Belle bleue",6,2,15,40,1
+"Potion med",1,5,"Belle bleue",6,3,13,40,1
+"Elixir de vie",1,5,"Belle bleue",6,4,11,40,1
+"Elixir de vie",1,5,"Belle bleue",6,5,9,40,1
+"Elixir de vie",1,5,"Belle bleue",6,6,6,40,1
+"Elixir de vie",1,5,"Belle bleue",6,7,4,40,1
+"Potion med",1,6,"Ours gris",4,0,25,62,2
+"Potion med",1,6,"Ours gris",4,1,17,62,2
+"Potion med",1,6,"Ours gris",4,2,15,62,2
+"Potion med",1,6,"Ours gris",4,3,13,62,2
+"Elixir de vie",1,6,"Ours gris",4,4,11,62,2
+"Elixir de vie",1,6,"Ours gris",4,5,9,62,2
+"Elixir de vie",1,6,"Ours gris",4,6,6,62,2
+"Elixir de vie",1,6,"Ours gris",4,7,4,62,2
+"Potion med",1,6,"Belle bleue",4,0,25,40,10
+"Potion med",1,6,"Belle bleue",4,1,17,40,10
+"Potion med",1,6,"Belle bleue",4,2,15,40,10
+"Potion med",1,6,"Belle bleue",4,3,13,40,10
+"Elixir de vie",1,6,"Belle bleue",4,4,11,40,10
+"Elixir de vie",1,6,"Belle bleue",4,5,9,40,10
+"Elixir de vie",1,6,"Belle bleue",4,6,6,40,10
+"Elixir de vie",1,6,"Belle bleue",4,7,4,40,10
+"Grande hache",1,6,"Crabe",5,0,25,55,18
+"Potion olympique",1,6,"Crabe",5,1,17,55,18
+"Cristal d'eau",1,6,"Crabe",5,2,15,55,18
+"Cristal de terre",1,6,"Crabe",5,3,13,55,18
+"Cristal de terre",1,6,"Crabe",5,4,11,55,18
+"Cristal d'eau",1,6,"Crabe",5,5,9,55,18
+"Panoramix",1,6,"Crabe",5,6,6,55,18
+"Panoramix",1,6,"Crabe",5,7,4,55,18
+"Cristal du mal",1,6,"Maudite",6,0,25,10,8
+"Balle des ténèbres",1,6,"Maudite",6,1,17,10,8
+"Cristal du mal",1,6,"Maudite",6,2,15,10,8
+"Balle des ténèbres",1,6,"Maudite",6,3,13,10,8
+"Balle des ténèbres",1,6,"Maudite",6,4,11,10,8
+"Cristal du mal",1,6,"Maudite",6,5,9,10,8
+"Balle des ténèbres",1,6,"Maudite",6,6,6,10,8
+"Cristal du mal",1,6,"Maudite",6,7,4,10,8
+"Joyau de glace",1,6,"Salamandre",7,0,25,30,2
+"Balle de gel",1,6,"Salamandre",7,1,17,30,2
+"Saphir",1,6,"Salamandre",7,2,15,30,2
+"Forgée de glace",1,6,"Salamandre",7,3,13,30,2
+"Poignard des brouillards",1,6,"Salamandre",7,4,11,30,2
+"Poignard des brouillards",1,6,"Salamandre",7,5,9,30,2
+"Hache du gel",1,6,"Salamandre",7,6,6,30,2
+"Hache du gel",1,6,"Salamandre",7,7,4,30,2
+"Extrait de sang",1,7,"Ours gris",3,0,25,62,6
+"Extrait de sang",1,7,"Ours gris",3,1,17,62,6
+"Extrait de sang",1,7,"Ours gris",3,2,15,62,6
+"Extrait de sang",1,7,"Ours gris",3,3,13,62,6
+"Extrait de sang",1,7,"Ours gris",3,4,11,62,6
+"Extrait de sang",1,7,"Ours gris",3,5,9,62,6
+"Os de guerrier sauvage",1,7,"Ours gris",3,6,6,62,6
+"Os de guerrier sauvage",1,7,"Ours gris",3,7,4,62,6
+"Potion med",1,7,"Belle bleue",4,0,25,40,20
+"Potion med",1,7,"Belle bleue",4,1,17,40,20
+"Potion med",1,7,"Belle bleue",4,2,15,40,20
+"Potion med",1,7,"Belle bleue",4,3,13,40,20
+"Elixir de vie",1,7,"Belle bleue",4,4,11,40,20
+"Elixir de vie",1,7,"Belle bleue",4,5,9,40,20
+"Elixir de vie",1,7,"Belle bleue",4,6,6,40,20
+"Elixir de vie",1,7,"Belle bleue",4,7,4,40,20
+"Cristal du mal",1,7,"Maudite",5,0,25,10,14
+"Balle des ténèbres",1,7,"Maudite",5,1,17,10,14
+"Cristal du mal",1,7,"Maudite",5,2,15,10,14
+"Balle des ténèbres",1,7,"Maudite",5,3,13,10,14
+"Balle des ténèbres",1,7,"Maudite",5,4,11,10,14
+"Cristal du mal",1,7,"Maudite",5,5,9,10,14
+"Balle des ténèbres",1,7,"Maudite",5,6,6,10,14
+"Cristal du mal",1,7,"Maudite",5,7,4,10,14
+"Elixir de vie",1,7,"Ogre",6,0,25,40,2
+"Ruban de force",1,7,"Ogre",6,1,17,40,2
+"Crosse d'ambre",1,7,"Ogre",6,2,15,40,2
+"Hache d'Ouga",1,7,"Ogre",6,3,13,40,2
+"Cendre rouge",1,7,"Ogre",6,4,11,40,2
+"Cendre rouge",1,7,"Ogre",6,5,9,40,2
+"Cendre rouge",1,7,"Ogre",6,6,6,40,2
+"Cendre rouge",1,7,"Ogre",6,7,4,40,2
+"Extrait de sang",1,8,"Ours gris",3,0,25,62,2
+"Extrait de sang",1,8,"Ours gris",3,1,17,62,2
+"Extrait de sang",1,8,"Ours gris",3,2,15,62,2
+"Extrait de sang",1,8,"Ours gris",3,3,13,62,2
+"Extrait de sang",1,8,"Ours gris",3,4,11,62,2
+"Extrait de sang",1,8,"Ours gris",3,5,9,62,2
+"Os de guerrier sauvage",1,8,"Ours gris",3,6,6,62,2
+"Os de guerrier sauvage",1,8,"Ours gris",3,7,4,62,2
+"Potion med",1,8,"Belle bleue",4,0,25,40,26
+"Potion med",1,8,"Belle bleue",4,1,17,40,26
+"Potion med",1,8,"Belle bleue",4,2,15,40,26
+"Potion med",1,8,"Belle bleue",4,3,13,40,26
+"Elixir de vie",1,8,"Belle bleue",4,4,11,40,26
+"Elixir de vie",1,8,"Belle bleue",4,5,9,40,26
+"Elixir de vie",1,8,"Belle bleue",4,6,6,40,26
+"Elixir de vie",1,8,"Belle bleue",4,7,4,40,26
+"Cristal du mal",1,8,"Maudite",5,0,25,10,15
+"Balle des ténèbres",1,8,"Maudite",5,1,17,10,15
+"Cristal du mal",1,8,"Maudite",5,2,15,10,15
+"Balle des ténèbres",1,8,"Maudite",5,3,13,10,15
+"Balle des ténèbres",1,8,"Maudite",5,4,11,10,15
+"Cristal du mal",1,8,"Maudite",5,5,9,10,15
+"Balle des ténèbres",1,8,"Maudite",5,6,6,10,15
+"Cristal du mal",1,8,"Maudite",5,7,4,10,15
+"Elixir de vie",1,8,"Ogre",6,0,25,40,3
+"Ruban de force",1,8,"Ogre",6,1,17,40,3
+"Crosse d'ambre",1,8,"Ogre",6,2,15,40,3
+"Hache d'Ouga",1,8,"Ogre",6,3,13,40,3
+"Cendre rouge",1,8,"Ogre",6,4,11,40,3
+"Cendre rouge",1,8,"Ogre",6,5,9,40,3
+"Cendre rouge",1,8,"Ogre",6,6,6,40,3
+"Cendre rouge",1,8,"Ogre",6,7,4,40,3
+"Cristal du mal",1,9,"Géant vert",2,0,25,40,3
+"Hallebarde",1,9,"Géant vert",2,1,17,40,3
+"Ecu du destin",1,9,"Géant vert",2,2,15,40,3
+"Casque splendide",1,9,"Géant vert",2,3,13,40,3
+"Cuirasse de maître",1,9,"Géant vert",2,4,11,40,3
+"La dévoreuse",1,9,"Géant vert",2,5,9,40,3
+"Cuirasse de maître",1,9,"Géant vert",2,6,6,40,3
+"Gulwick",1,9,"Géant vert",2,7,4,40,3
+"Cristal du mal",1,9,"Maudite",3,0,25,10,12
+"Balle des ténèbres",1,9,"Maudite",3,1,17,10,12
+"Cristal du mal",1,9,"Maudite",3,2,15,10,12
+"Balle des ténèbres",1,9,"Maudite",3,3,13,10,12
+"Balle des ténèbres",1,9,"Maudite",3,4,11,10,12
+"Cristal du mal",1,9,"Maudite",3,5,9,10,12
+"Balle des ténèbres",1,9,"Maudite",3,6,6,10,12
+"Cristal du mal",1,9,"Maudite",3,7,4,10,12
+"Elixir de vie",1,9,"Ogre",4,0,25,40,5
+"Ruban de force",1,9,"Ogre",4,1,17,40,5
+"Crosse d'ambre",1,9,"Ogre",4,2,15,40,5
+"Hache d'Ouga",1,9,"Ogre",4,3,13,40,5
+"Cendre rouge",1,9,"Ogre",4,4,11,40,5
+"Cendre rouge",1,9,"Ogre",4,5,9,40,5
+"Cendre rouge",1,9,"Ogre",4,6,6,40,5
+"Cendre rouge",1,9,"Ogre",4,7,4,40,5
+"Ecu du destin",1,9,"Troll",5,0,25,210,1
+"Talisman médicinal",1,9,"Troll",5,1,17,210,1
+"Talisman médicinal",1,9,"Troll",5,2,15,210,1
+"Gants de force",1,9,"Troll",5,3,13,210,1
+"Gants de force",1,9,"Troll",5,4,11,210,1
+"Gants de force",1,9,"Troll",5,5,9,210,1
+"Dropneal",1,9,"Troll",5,6,6,210,1
+"Dominique",1,9,"Troll",5,7,4,210,1
+"Corne du dragon",2,0,"Dragon rouge",18,0,25,500,1
+"Cristal de feu",2,0,"Dragon rouge",18,1,17,500,1
+"Robe des anciens",2,0,"Dragon rouge",18,2,15,500,1
+"Dropneal",2,0,"Dragon rouge",18,3,13,500,1
+"Mistortain",2,0,"Dragon rouge",18,4,11,500,1
+"Bahamut",2,0,"Dragon rouge",18,5,9,500,1
+"Fabnihl",2,0,"Dragon rouge",18,6,6,500,1
+"Lame de Calvin",2,0,"Dragon rouge",18,7,4,500,1
+"Joyau de feu",2,0,"Salamandre",16,0,25,30,3
+"Balle de feu",2,0,"Salamandre",16,1,17,30,3
+"Cristal de feu",2,0,"Salamandre",16,2,15,30,3
+"Franberg",2,0,"Salamandre",16,3,13,30,3
+"Hache du feu",2,0,"Salamandre",16,4,11,30,3
+"Cristal de feu",2,0,"Salamandre",16,5,9,30,3
+"Rubis",2,0,"Salamandre",16,6,6,30,3
+"Rubis",2,0,"Salamandre",16,7,4,30,3
+"Balle de lumière",2,0,"Salamandre feu",17,0,25,30,3
+"Balle des éléments",2,0,"Salamandre feu",17,1,17,30,3
+"Cristal de lumière",2,0,"Salamandre feu",17,2,15,30,3
+"Hache du feu",2,0,"Salamandre feu",17,3,13,30,3
+"Epée de glace",2,0,"Salamandre feu",17,4,11,30,3
+"Cristal de lumière",2,0,"Salamandre feu",17,5,9,30,3
+"Rubis",2,0,"Salamandre feu",17,6,6,30,3
+"Rubis",2,0,"Salamandre feu",17,7,4,30,3
+"Potion med",3,0,"Goblin",0,0,25,66,24
+"Rapière",3,0,"Goblin",0,1,17,66,24
+"Glaive",3,0,"Goblin",0,2,15,66,24
+"Mercuriale",3,0,"Goblin",0,3,13,66,24
+"Cuir fin",3,0,"Goblin",0,4,11,66,24
+"Cuir fin",3,0,"Goblin",0,5,9,66,24
+"Bouclier rond",3,0,"Goblin",0,6,6,66,24
+"Féline",3,0,"Goblin",0,7,4,66,24
+"Lavande",3,0,"Fourmi géante",1,0,25,60,18
+"Lavande",3,0,"Fourmi géante",1,1,17,60,18
+"Potion med",3,0,"Fourmi géante",1,2,15,60,18
+"Potion med",3,0,"Fourmi géante",1,3,13,60,18
+"Glaive",3,0,"Fourmi géante",1,4,11,60,18
+"Glaive",3,0,"Fourmi géante",1,5,9,60,18
+"Daak",3,0,"Fourmi géante",1,6,6,60,18
+"Daak",3,0,"Fourmi géante",1,7,4,60,18
+"Lavande",3,0,"Coccinelle",2,0,25,60,10
+"Lavande",3,0,"Coccinelle",2,1,17,60,10
+"Potion med",3,0,"Coccinelle",2,2,15,60,10
+"Potion med",3,0,"Coccinelle",2,3,13,60,10
+"Extrait de sang",3,0,"Coccinelle",2,4,11,60,10
+"Extrait de sang",3,0,"Coccinelle",2,5,9,60,10
+"Extrait de sang",3,0,"Coccinelle",2,6,6,60,10
+"Extrait de sang",3,0,"Coccinelle",2,7,4,60,10
+"Potion med",3,1,"Goblin",0,0,25,66,6
+"Rapière",3,1,"Goblin",0,1,17,66,6
+"Glaive",3,1,"Goblin",0,2,15,66,6
+"Mercuriale",3,1,"Goblin",0,3,13,66,6
+"Cuir fin",3,1,"Goblin",0,4,11,66,6
+"Cuir fin",3,1,"Goblin",0,5,9,66,6
+"Bouclier rond",3,1,"Goblin",0,6,6,66,6
+"Féline",3,1,"Goblin",0,7,4,66,6
+"Lavande",3,1,"Coccinelle",2,0,25,60,4
+"Lavande",3,1,"Coccinelle",2,1,17,60,4
+"Potion med",3,1,"Coccinelle",2,2,15,60,4
+"Potion med",3,1,"Coccinelle",2,3,13,60,4
+"Extrait de sang",3,1,"Coccinelle",2,4,11,60,4
+"Extrait de sang",3,1,"Coccinelle",2,5,9,60,4
+"Extrait de sang",3,1,"Coccinelle",2,6,6,60,4
+"Extrait de sang",3,1,"Coccinelle",2,7,4,60,4
+"Potion med",3,1,"Poisson volant",4,0,25,60,16
+"Potion med",3,1,"Poisson volant",4,1,17,60,16
+"Potion med",3,1,"Poisson volant",4,2,15,60,16
+"Potion med",3,1,"Poisson volant",4,3,13,60,16
+"Potion med",3,1,"Poisson volant",4,4,11,60,16
+"Potion med",3,1,"Poisson volant",4,5,9,60,16
+"Cristal d'eau",3,1,"Poisson volant",4,6,6,60,16
+"Cristal d'eau",3,1,"Poisson volant",4,7,4,60,16
+"Potion med",3,1,"Crabe géant",3,0,25,60,3
+"Potion med",3,1,"Crabe géant",3,1,17,60,3
+"Potion med",3,1,"Crabe géant",3,2,15,60,3
+"Potion med",3,1,"Crabe géant",3,3,13,60,3
+"Potion med",3,1,"Crabe géant",3,4,11,60,3
+"Cristal d'eau",3,1,"Crabe géant",3,5,9,60,3
+"Cristal d'eau",3,1,"Crabe géant",3,6,6,60,3
+"Cristal d'eau",3,1,"Crabe géant",3,7,4,60,3
+"Large épée",3,1,"Goblin",1,0,25,155,8
+"Elixir de vie",3,1,"Goblin",1,1,17,155,8
+"Elixir de vie",3,1,"Goblin",1,2,15,155,8
+"Rapière",3,1,"Goblin",1,3,13,155,8
+"Rapière",3,1,"Goblin",1,4,11,155,8
+"Tablier de cuir",3,1,"Goblin",1,5,9,155,8
+"Pavois de chevalier",3,1,"Goblin",1,6,6,155,8
+"Féline",3,1,"Goblin",1,7,4,155,8
+"Potion med",3,2,"Crotale",2,0,25,60,7
+"Potion med",3,2,"Crotale",2,1,17,60,7
+"Potion med",3,2,"Crotale",2,2,15,60,7
+"Potion olympique",3,2,"Crotale",2,3,13,60,7
+"Potion olympique",3,2,"Crotale",2,4,11,60,7
+"Potion olympique",3,2,"Crotale",2,5,9,60,7
+"Potion olympique",3,2,"Crotale",2,6,6,60,7
+"Extrait de sang",3,2,"Crotale",2,7,4,60,7
+"Potion med",3,2,"Grizzly",3,0,25,60,0
+"Potion med",3,2,"Grizzly",3,1,17,60,0
+"Potion med",3,2,"Grizzly",3,2,15,60,0
+"Potion med",3,2,"Grizzly",3,3,13,60,0
+"Potion med",3,2,"Grizzly",3,4,11,60,0
+"Extrait de sang",3,2,"Grizzly",3,5,9,60,0
+"Extrait de sang",3,2,"Grizzly",3,6,6,60,0
+"Extrait de sang",3,2,"Grizzly",3,7,4,60,0
+"Aiguille médicinale",3,2,"Abeille",4,0,25,48,11
+"Aiguille médicinale",3,2,"Abeille",4,1,17,48,11
+"Aiguille médicinale",3,2,"Abeille",4,2,15,48,11
+"Sauvagerie",3,2,"Abeille",4,3,13,48,11
+"Sauvagerie",3,2,"Abeille",4,4,11,48,11
+"Sauvagerie",3,2,"Abeille",4,5,9,48,11
+"Sauvagerie",3,2,"Abeille",4,6,6,48,11
+"Sauvagerie",3,2,"Abeille",4,7,4,48,11
+"Potion med",3,2,"Crabe géant",5,0,25,68,13
+"Potion med",3,2,"Crabe géant",5,1,17,68,13
+"Potion med",3,2,"Crabe géant",5,2,15,68,13
+"Potion med",3,2,"Crabe géant",5,3,13,68,13
+"Potion med",3,2,"Crabe géant",5,4,11,68,13
+"Cristal d'eau",3,2,"Crabe géant",5,5,9,68,13
+"Cristal d'eau",3,2,"Crabe géant",5,6,6,68,13
+"Cristal d'eau",3,2,"Crabe géant",5,7,4,68,13
+"Casse-tête",3,3,"Goblin",0,0,25,156,4
+"Lavande",3,3,"Goblin",0,1,17,156,4
+"Casse-tête",3,3,"Goblin",0,2,15,156,4
+"Cuir fin",3,3,"Goblin",0,3,13,156,4
+"Arc noble",3,3,"Goblin",0,4,11,156,4
+"Arc noble",3,3,"Goblin",0,5,9,156,4
+"Marteau de guerre",3,3,"Goblin",0,6,6,156,4
+"Marteau de guerre",3,3,"Goblin",0,7,4,156,4
+"Bâton de fer",3,3,"Goblin-sorcier",1,0,25,206,2
+"Baguette aux joyaux",3,3,"Goblin-sorcier",1,1,17,206,2
+"Sauge",3,3,"Goblin-sorcier",1,2,15,206,2
+"Verveine",3,3,"Goblin-sorcier",1,3,13,206,2
+"Mercuriale",3,3,"Goblin-sorcier",1,4,11,206,2
+"Fenouil",3,3,"Goblin-sorcier",1,5,9,206,2
+"Ecu du destin",3,3,"Goblin-sorcier",1,6,6,206,2
+"Balle de cristal",3,3,"Goblin-sorcier",1,7,4,206,2
+"Rapière",3,3,"Homme-lézard",2,0,25,66,6
+"Large épée",3,3,"Homme-lézard",2,1,17,66,6
+"Ecu du destin",3,3,"Homme-lézard",2,2,15,66,6
+"Fine rapière",3,3,"Homme-lézard",2,3,13,66,6
+"Rapière Misuril",3,3,"Homme-lézard",2,4,11,66,6
+"Ecu du destin",3,3,"Homme-lézard",2,5,9,66,6
+"Ecu du destin",3,3,"Homme-lézard",2,6,6,66,6
+"Ecu du destin",3,3,"Homme-lézard",2,7,4,66,6
+"Potion med",3,3,"Crabe géant",3,0,25,60,14
+"Potion med",3,3,"Crabe géant",3,1,17,60,14
+"Potion med",3,3,"Crabe géant",3,2,15,60,14
+"Potion med",3,3,"Crabe géant",3,3,13,60,14
+"Potion med",3,3,"Crabe géant",3,4,11,60,14
+"Cristal d'eau",3,3,"Crabe géant",3,5,9,60,14
+"Cristal d'eau",3,3,"Crabe géant",3,6,6,60,14
+"Cristal d'eau",3,3,"Crabe géant",3,7,4,60,14
+"Potion med",3,3,"Poisson volant",4,0,25,60,19
+"Potion med",3,3,"Poisson volant",4,1,17,60,19
+"Potion med",3,3,"Poisson volant",4,2,15,60,19
+"Potion med",3,3,"Poisson volant",4,3,13,60,19
+"Potion med",3,3,"Poisson volant",4,4,11,60,19
+"Potion med",3,3,"Poisson volant",4,5,9,60,19
+"Cristal d'eau",3,3,"Poisson volant",4,6,6,60,19
+"Cristal d'eau",3,3,"Poisson volant",4,7,4,60,19
+"Potion med",3,3,"Barricade",4,0,25,0,1
+"Potion med",3,3,"Barricade",4,1,17,0,1
+"Potion med",3,3,"Barricade",4,2,15,0,1
+"Potion med",3,3,"Barricade",4,3,13,0,1
+"Potion med",3,3,"Barricade",4,4,11,0,1
+"Potion med",3,3,"Barricade",4,5,9,0,1
+"Cristal d'eau",3,3,"Barricade",4,6,6,0,1
+"Cristal d'eau",3,3,"Barricade",4,7,4,0,1
+"Aiguille médicinale",3,4,"Abeille tueuse",11,0,25,48,26
+"Aiguille médicinale",3,4,"Abeille tueuse",11,1,17,48,26
+"Aiguille médicinale",3,4,"Abeille tueuse",11,2,15,48,26
+"Sauvagerie",3,4,"Abeille tueuse",11,3,13,48,26
+"Sauvagerie",3,4,"Abeille tueuse",11,4,11,48,26
+"Sauvagerie",3,4,"Abeille tueuse",11,5,9,48,26
+"Sauvagerie",3,4,"Abeille tueuse",11,6,6,48,26
+"Sauvagerie",3,4,"Abeille tueuse",11,7,4,48,26
+"Rapière",3,4,"Homme-lézard",12,0,25,66,10
+"Large épée",3,4,"Homme-lézard",12,1,17,66,10
+"Ecu du destin",3,4,"Homme-lézard",12,2,15,66,10
+"Fine rapière",3,4,"Homme-lézard",12,3,13,66,10
+"Rapière Misuril",3,4,"Homme-lézard",12,4,11,66,10
+"Ecu du destin",3,4,"Homme-lézard",12,5,9,66,10
+"Ecu du destin",3,4,"Homme-lézard",12,6,6,66,10
+"Ecu du destin",3,4,"Homme-lézard",12,7,4,66,10
+"Potion med",3,4,"Grizzly",13,0,25,60,8
+"Potion med",3,4,"Grizzly",13,1,17,60,8
+"Potion med",3,4,"Grizzly",13,2,15,60,8
+"Potion med",3,4,"Grizzly",13,3,13,60,8
+"Potion med",3,4,"Grizzly",13,4,11,60,8
+"Extrait de sang",3,4,"Grizzly",13,5,9,60,8
+"Extrait de sang",3,4,"Grizzly",13,6,6,60,8
+"Extrait de sang",3,4,"Grizzly",13,7,4,60,8
+"Joyau de terre",3,5,"Méchant ours",0,0,25,250,1
+"Balle de terre",3,5,"Méchant ours",0,1,17,250,1
+"Extrait de sang",3,5,"Méchant ours",0,2,15,250,1
+"Extrait de sang",3,5,"Méchant ours",0,3,13,250,1
+"Extrait de sang",3,5,"Méchant ours",0,4,11,250,1
+"Extrait de sang",3,5,"Méchant ours",0,5,9,250,1
+"Extrait de sang",3,5,"Méchant ours",0,6,6,250,1
+"Extrait de sang",3,5,"Méchant ours",0,7,4,250,1
+"Aiguille médicinale",3,5,"Abeille tueuse",1,0,25,48,5
+"Aiguille médicinale",3,5,"Abeille tueuse",1,1,17,48,5
+"Aiguille médicinale",3,5,"Abeille tueuse",1,2,15,48,5
+"Sauvagerie",3,5,"Abeille tueuse",1,3,13,48,5
+"Sauvagerie",3,5,"Abeille tueuse",1,4,11,48,5
+"Sauvagerie",3,5,"Abeille tueuse",1,5,9,48,5
+"Sauvagerie",3,5,"Abeille tueuse",1,6,6,48,5
+"Sauvagerie",3,5,"Abeille tueuse",1,7,4,48,5
+"Potion med",3,5,"Grizzly",2,0,25,60,2
+"Potion med",3,5,"Grizzly",2,1,17,60,2
+"Potion med",3,5,"Grizzly",2,2,15,60,2
+"Potion med",3,5,"Grizzly",2,3,13,60,2
+"Potion med",3,5,"Grizzly",2,4,11,60,2
+"Extrait de sang",3,5,"Grizzly",2,5,9,60,2
+"Extrait de sang",3,5,"Grizzly",2,6,6,60,2
+"Extrait de sang",3,5,"Grizzly",2,7,4,60,2
+"Joyau de terre",3,5,"Abeille tueuse",0,0,25,48,1
+"Balle de terre",3,5,"Abeille tueuse",0,1,17,48,1
+"Extrait de sang",3,5,"Abeille tueuse",0,2,15,48,1
+"Extrait de sang",3,5,"Abeille tueuse",0,3,13,48,1
+"Extrait de sang",3,5,"Abeille tueuse",0,4,11,48,1
+"Extrait de sang",3,5,"Abeille tueuse",0,5,9,48,1
+"Extrait de sang",3,5,"Abeille tueuse",0,6,6,48,1
+"Extrait de sang",3,5,"Abeille tueuse",0,7,4,48,1
+"Extrait de sang",3,5,"Grizzly",3,0,25,60,2
+"Extrait de sang",3,5,"Grizzly",3,1,17,60,2
+"Extrait de sang",3,5,"Grizzly",3,2,15,60,2
+"Extrait de sang",3,5,"Grizzly",3,3,13,60,2
+"Extrait de sang",3,5,"Grizzly",3,4,11,60,2
+"Extrait de sang",3,5,"Grizzly",3,5,9,60,2
+"Extrait de sang",3,5,"Grizzly",3,6,6,60,2
+"Extrait de sang",3,5,"Grizzly",3,7,4,60,2
+"Rapière",3,6,"Homme-lézard",1,0,25,66,16
+"Large épée",3,6,"Homme-lézard",1,1,17,66,16
+"Ecu du destin",3,6,"Homme-lézard",1,2,15,66,16
+"Fine rapière",3,6,"Homme-lézard",1,3,13,66,16
+"Rapière Misuril",3,6,"Homme-lézard",1,4,11,66,16
+"Ecu du destin",3,6,"Homme-lézard",1,5,9,66,16
+"Ecu du destin",3,6,"Homme-lézard",1,6,6,66,16
+"Ecu du destin",3,6,"Homme-lézard",1,7,4,66,16
+"Parfum de convalescence",3,6,"Trent",3,0,25,58,11
+"Parfum de guérison",3,6,"Trent",3,1,17,58,11
+"Joyau de terre",3,6,"Trent",3,2,15,58,11
+"Ecu du destin",3,6,"Trent",3,3,13,58,11
+"Talisman",3,6,"Trent",3,4,11,58,11
+"Cristal de terre",3,6,"Trent",3,5,9,58,11
+"Cristal de terre",3,6,"Trent",3,6,6,58,11
+"Talisman",3,6,"Trent",3,7,4,58,11
+"Verveine",3,6,"Fleur du mal",4,0,25,65,12
+"Mercuriale",3,6,"Fleur du mal",4,1,17,65,12
+"Fenouil",3,6,"Fleur du mal",4,2,15,65,12
+"Hysopius",3,6,"Fleur du mal",4,3,13,65,12
+"Belladone",3,6,"Fleur du mal",4,4,11,65,12
+"Belladone",3,6,"Fleur du mal",4,5,9,65,12
+"Ambrosia",3,6,"Fleur du mal",4,6,6,65,12
+"Ambrosia",3,6,"Fleur du mal",4,7,4,65,12
+"Chaîne des ténèbres",3,6,"Lézard noir",2,0,25,43,5
+"Fine rapière",3,6,"Lézard noir",2,1,17,43,5
+"Ecu du destin",3,6,"Lézard noir",2,2,15,43,5
+"Bouclier de la terre",3,6,"Lézard noir",2,3,13,43,5
+"Rapière d'argent",3,6,"Lézard noir",2,4,11,43,5
+"Cristal saint",3,6,"Lézard noir",2,5,9,43,5
+"Cristal saint",3,6,"Lézard noir",2,6,6,43,5
+"Cristal saint",3,6,"Lézard noir",2,7,4,43,5
+"Cristal de lumière",3,6,"Willie",5,0,25,15,7
+"Balle de lumière",3,6,"Willie",5,1,17,15,7
+"Cristal de lumière",3,6,"Willie",5,2,15,15,7
+"Chaîne de la lumière",3,6,"Willie",5,3,13,15,7
+"Chaîne de la lumière",3,6,"Willie",5,4,11,15,7
+"Cristal de lumière",3,6,"Willie",5,5,9,15,7
+"Balle de lumière",3,6,"Willie",5,6,6,15,7
+"Cristal de lumière",3,6,"Willie",5,7,4,15,7
+"Parfum de convalescence",3,7,"Trent",0,0,25,58,11
+"Parfum de guérison",3,7,"Trent",0,1,17,58,11
+"Joyau de terre",3,7,"Trent",0,2,15,58,11
+"Ecu du destin",3,7,"Trent",0,3,13,58,11
+"Talisman",3,7,"Trent",0,4,11,58,11
+"Cristal de terre",3,7,"Trent",0,5,9,58,11
+"Cristal de terre",3,7,"Trent",0,6,6,58,11
+"Talisman",3,7,"Trent",0,7,4,58,11
+"Chaîne des ténèbres",3,7,"Lézard noir",1,0,25,43,12
+"Fine rapière",3,7,"Lézard noir",1,1,17,43,12
+"Ecu du destin",3,7,"Lézard noir",1,2,15,43,12
+"Bouclier de la terre",3,7,"Lézard noir",1,3,13,43,12
+"Rapière d'argent",3,7,"Lézard noir",1,4,11,43,12
+"Cristal saint",3,7,"Lézard noir",1,5,9,43,12
+"Cristal saint",3,7,"Lézard noir",1,6,6,43,12
+"Cristal saint",3,7,"Lézard noir",1,7,4,43,12
+"Cristal de lumière",3,7,"Willie",2,0,25,15,17
+"Balle de lumière",3,7,"Willie",2,1,17,15,17
+"Cristal de lumière",3,7,"Willie",2,2,15,15,17
+"Chaîne de la lumière",3,7,"Willie",2,3,13,15,17
+"Chaîne de la lumière",3,7,"Willie",2,4,11,15,17
+"Cristal de lumière",3,7,"Willie",2,5,9,15,17
+"Balle de lumière",3,7,"Willie",2,6,6,15,17
+"Cristal de lumière",3,7,"Willie",2,7,4,15,17
+"Verveine",3,7,"Fleur du mal",3,0,25,65,11
+"Mercuriale",3,7,"Fleur du mal",3,1,17,65,11
+"Fenouil",3,7,"Fleur du mal",3,2,15,65,11
+"Hysopius",3,7,"Fleur du mal",3,3,13,65,11
+"Belladone",3,7,"Fleur du mal",3,4,11,65,11
+"Belladone",3,7,"Fleur du mal",3,5,9,65,11
+"Ambrosia",3,7,"Fleur du mal",3,6,6,65,11
+"Ambrosia",3,7,"Fleur du mal",3,7,4,65,11
+"Ecailles de Belzébuth",3,8,"Varan",0,0,25,50,12
+"Ecailles de Belzébuth",3,8,"Varan",0,1,17,50,12
+"Harpe d'or",3,8,"Varan",0,2,15,50,12
+"Harpe d'or",3,8,"Varan",0,3,13,50,12
+"Cristal de terre",3,8,"Varan",0,4,11,50,12
+"Cristal de terre",3,8,"Varan",0,5,9,50,12
+"Cristal de terre",3,8,"Varan",0,6,6,50,12
+"Cristal de terre",3,8,"Varan",0,7,4,50,12
+"Manteau de cuir",3,8,"Wyrm",1,0,25,50,7
+"Manteau de cuir",3,8,"Wyrm",1,1,17,50,7
+"Joyau de vent",3,8,"Wyrm",1,2,15,50,7
+"Joyau de vent",3,8,"Wyrm",1,3,13,50,7
+"Joyau de vent",3,8,"Wyrm",1,4,11,50,7
+"Queue de dragon",3,8,"Wyrm",1,5,9,50,7
+"Ecailles de dragon",3,8,"Wyrm",1,6,6,50,7
+"Amulette du dragon",3,8,"Wyrm",1,7,4,50,7
+"Hache de boucher",3,8,"Géant",2,0,25,50,7
+"Corne du Minotaure",3,8,"Géant",2,1,17,50,7
+"Ecu du destin",3,8,"Géant",2,2,15,50,7
+"Casque splendide",3,8,"Géant",2,3,13,50,7
+"Cuirasse de maître",3,8,"Géant",2,4,11,50,7
+"La dévoreuse",3,8,"Géant",2,5,9,50,7
+"La dévoreuse",3,8,"Géant",2,6,6,50,7
+"Cuirasse de maître",3,8,"Géant",2,7,4,50,7
+"Cristal de terre",3,9,"Behemoth",0,0,25,250,1
+"Bâton stellaire",3,9,"Behemoth",0,1,17,250,1
+"Cristal de terre",3,9,"Behemoth",0,2,15,250,1
+"Anneau des éléments",3,9,"Behemoth",0,3,13,250,1
+"Anneau des éléments",3,9,"Behemoth",0,4,11,250,1
+"Ecailles de Belzébuth",3,9,"Behemoth",0,5,9,250,1
+"Ecailles de Belzébuth",3,9,"Behemoth",0,6,6,250,1
+"Hache de Mars",3,9,"Behemoth",0,7,4,250,1
+"Hache de guerre",4,0,"Goblin",0,0,25,64,19
+"Lavande",4,0,"Goblin",0,1,17,64,19
+"Arc noble",4,0,"Goblin",0,2,15,64,19
+"Ecu du destin",4,0,"Goblin",0,3,13,64,19
+"Elixir de vie",4,0,"Goblin",0,4,11,64,19
+"Tablier de cuir",4,0,"Goblin",0,5,9,64,19
+"Pavois fin",4,0,"Goblin",0,6,6,64,19
+"Pavois fin",4,0,"Goblin",0,7,4,64,19
+"Simple bâton",4,0,"Goblin-sorcier",1,0,25,66,11
+"Simple bâton",4,0,"Goblin-sorcier",1,1,17,66,11
+"Sauge",4,0,"Goblin-sorcier",1,2,15,66,11
+"Verveine",4,0,"Goblin-sorcier",1,3,13,66,11
+"Mercuriale",4,0,"Goblin-sorcier",1,4,11,66,11
+"Fenouil",4,0,"Goblin-sorcier",1,5,9,66,11
+"Ecu du destin",4,0,"Goblin-sorcier",1,6,6,66,11
+"Balle de cristal",4,0,"Goblin-sorcier",1,7,4,66,11
+"Baguette aux joyaux",4,0,"Gremlin",2,0,25,60,3
+"Aile de fée",4,0,"Gremlin",2,1,17,60,3
+"Poudre de fées",4,0,"Gremlin",2,2,15,60,3
+"Poudre de fées",4,0,"Gremlin",2,3,13,60,3
+"Ecu du destin",4,0,"Gremlin",2,4,11,60,3
+"Ecu du destin",4,0,"Gremlin",2,5,9,60,3
+"Poudre de fées",4,0,"Gremlin",2,6,6,60,3
+"Parfum de feu",4,0,"Gremlin",2,7,4,60,3
+"Hache de guerre",4,1,"Goblin",4,0,25,64,14
+"Lavande",4,1,"Goblin",4,1,17,64,14
+"Arc noble",4,1,"Goblin",4,2,15,64,14
+"Ecu du destin",4,1,"Goblin",4,3,13,64,14
+"Elixir de vie",4,1,"Goblin",4,4,11,64,14
+"Tablier de cuir",4,1,"Goblin",4,5,9,64,14
+"Pavois fin",4,1,"Goblin",4,6,6,64,14
+"Pavois fin",4,1,"Goblin",4,7,4,64,14
+"Simple bâton",4,1,"Goblin-sorcier",5,0,25,64,9
+"Simple bâton",4,1,"Goblin-sorcier",5,1,17,64,9
+"Sauge",4,1,"Goblin-sorcier",5,2,15,64,9
+"Verveine",4,1,"Goblin-sorcier",5,3,13,64,9
+"Mercuriale",4,1,"Goblin-sorcier",5,4,11,64,9
+"Fenouil",4,1,"Goblin-sorcier",5,5,9,64,9
+"Ecu du destin",4,1,"Goblin-sorcier",5,6,6,64,9
+"Balle de cristal",4,1,"Goblin-sorcier",5,7,4,64,9
+"Potion med",4,1,"Belle verte",6,0,25,50,14
+"Potion med",4,1,"Belle verte",6,1,17,50,14
+"Potion med",4,1,"Belle verte",6,2,15,50,14
+"Potion med",4,1,"Belle verte",6,3,13,50,14
+"Elixir de vie",4,1,"Belle verte",6,4,11,50,14
+"Elixir de vie",4,1,"Belle verte",6,5,9,50,14
+"Elixir de vie",4,1,"Belle verte",6,6,6,50,14
+"Elixir de vie",4,1,"Belle verte",6,7,4,50,14
+"Cuirasse de bronze",4,1,"Garde golem",7,0,25,80,2
+"Epée du bâtard",4,1,"Garde golem",7,1,17,80,2
+"Pavois de chevalier",4,1,"Garde golem",7,2,15,80,2
+"Pavois de chevalier",4,1,"Garde golem",7,3,13,80,2
+"Pavois de chevalier",4,1,"Garde golem",7,4,11,80,2
+"Armure de chevalier",4,1,"Garde golem",7,5,9,80,2
+"Armure de chevalier",4,1,"Garde golem",7,6,6,80,2
+"Armure de chevalier",4,1,"Garde golem",7,7,4,80,2
+"Fine rapière",4,2,"Lézard rouge",1,0,25,60,8
+"Longue épée",4,2,"Lézard rouge",1,1,17,60,8
+"Ecu du destin",4,2,"Lézard rouge",1,2,15,60,8
+"Ecu du destin",4,2,"Lézard rouge",1,3,13,60,8
+"Franberg",4,2,"Lézard rouge",1,4,11,60,8
+"Ecu du destin",4,2,"Lézard rouge",1,5,9,60,8
+"Ecu du destin",4,2,"Lézard rouge",1,6,6,60,8
+"Ecu du destin",4,2,"Lézard rouge",1,7,4,60,8
+"Elixir des esprits",4,2,"Crapouille",2,0,25,50,9
+"Elixir des esprits",4,2,"Crapouille",2,1,17,50,9
+"Elixir des esprits",4,2,"Crapouille",2,2,15,50,9
+"Elixir des esprits",4,2,"Crapouille",2,3,13,50,9
+"Cristal de magie",4,2,"Crapouille",2,4,11,50,9
+"Cristal de magie",4,2,"Crapouille",2,5,9,50,9
+"Cristal de magie",4,2,"Crapouille",2,6,6,50,9
+"Cristal de magie",4,2,"Crapouille",2,7,4,50,9
+"Elixir de magicien",4,3,"Sorcier",6,0,25,80,16
+"Ecu du destin",4,3,"Sorcier",6,1,17,80,16
+"Robe de reine",4,3,"Sorcier",6,2,15,80,16
+"Ecu du destin",4,3,"Sorcier",6,3,13,80,16
+"Bague réflectrice",4,3,"Sorcier",6,4,11,80,16
+"Bague de résistance",4,3,"Sorcier",6,5,9,80,16
+"Bague de résistance",4,3,"Sorcier",6,6,6,80,16
+"Bague réflectrice",4,3,"Sorcier",6,7,4,80,16
+"Bottes d'elfes",4,3,"Sylphide",7,0,25,180,1
+"Chapeau d'elfe",4,3,"Sylphide",7,1,17,180,1
+"Manteau d'elfe",4,3,"Sylphide",7,2,15,180,1
+"Bouclier des elfes",4,3,"Sylphide",7,3,13,180,1
+"Arc des elfes",4,3,"Sylphide",7,4,11,180,1
+"Arc des elfes",4,3,"Sylphide",7,5,9,180,1
+"Arc des elfes",4,3,"Sylphide",7,6,6,180,1
+"Arc des elfes",4,3,"Sylphide",7,7,4,180,1
+"Baguette aux joyaux",4,3,"Goblin volant",8,0,25,60,25
+"Aile de fée",4,3,"Goblin volant",8,1,17,60,25
+"Poudre de fées",4,3,"Goblin volant",8,2,15,60,25
+"Poudre de fées",4,3,"Goblin volant",8,3,13,60,25
+"Ecu du destin",4,3,"Goblin volant",8,4,11,60,25
+"Ecu du destin",4,3,"Goblin volant",8,5,9,60,25
+"Poudre de fées",4,3,"Goblin volant",8,6,6,60,25
+"Parfum de feu",4,3,"Goblin volant",8,7,4,60,25
+"Hache de guerre",4,4,"Goblin",1,0,25,64,6
+"Lavande",4,4,"Goblin",1,1,17,64,6
+"Arc noble",4,4,"Goblin",1,2,15,64,6
+"Ecu du destin",4,4,"Goblin",1,3,13,64,6
+"Elixir de vie",4,4,"Goblin",1,4,11,64,6
+"Tablier de cuir",4,4,"Goblin",1,5,9,64,6
+"Pavois fin",4,4,"Goblin",1,6,6,64,6
+"Pavois fin",4,4,"Goblin",1,7,4,64,6
+"Simple bâton",4,4,"Goblin-sorcier",2,0,25,66,10
+"Simple bâton",4,4,"Goblin-sorcier",2,1,17,66,10
+"Sauge",4,4,"Goblin-sorcier",2,2,15,66,10
+"Verveine",4,4,"Goblin-sorcier",2,3,13,66,10
+"Mercuriale",4,4,"Goblin-sorcier",2,4,11,66,10
+"Fenouil",4,4,"Goblin-sorcier",2,5,9,66,10
+"Ecu du destin",4,4,"Goblin-sorcier",2,6,6,66,10
+"Balle de cristal",4,4,"Goblin-sorcier",2,7,4,66,10
+"Potion med",4,4,"Belle verte",3,0,25,50,14
+"Potion med",4,4,"Belle verte",3,1,17,50,14
+"Potion med",4,4,"Belle verte",3,2,15,50,14
+"Potion med",4,4,"Belle verte",3,3,13,50,14
+"Elixir de vie",4,4,"Belle verte",3,4,11,50,14
+"Elixir de vie",4,4,"Belle verte",3,5,9,50,14
+"Elixir de vie",4,4,"Belle verte",3,6,6,50,14
+"Elixir de vie",4,4,"Belle verte",3,7,4,50,14
+"Rapière",4,4,"Homme-lézard",4,0,25,66,16
+"Large épée",4,4,"Homme-lézard",4,1,17,66,16
+"Ecu du destin",4,4,"Homme-lézard",4,2,15,66,16
+"Fine rapière",4,4,"Homme-lézard",4,3,13,66,16
+"Rapière Misuril",4,4,"Homme-lézard",4,4,11,66,16
+"Ecu du destin",4,4,"Homme-lézard",4,5,9,66,16
+"Ecu du destin",4,4,"Homme-lézard",4,6,6,66,16
+"Ecu du destin",4,4,"Homme-lézard",4,7,4,66,16
+"Elixir des esprits",4,4,"Crapouille",6,0,25,50,7
+"Elixir des esprits",4,4,"Crapouille",6,1,17,50,7
+"Elixir des esprits",4,4,"Crapouille",6,2,15,50,7
+"Elixir des esprits",4,4,"Crapouille",6,3,13,50,7
+"Cristal de magie",4,4,"Crapouille",6,4,11,50,7
+"Cristal de magie",4,4,"Crapouille",6,5,9,50,7
+"Cristal de magie",4,4,"Crapouille",6,6,6,50,7
+"Cristal de magie",4,4,"Crapouille",6,7,4,50,7
+"Fine rapière",4,4,"Lézard rouge",5,0,25,60,2
+"Longue épée",4,4,"Lézard rouge",5,1,17,60,2
+"Ecu du destin",4,4,"Lézard rouge",5,2,15,60,2
+"Ecu du destin",4,4,"Lézard rouge",5,3,13,60,2
+"Franberg",4,4,"Lézard rouge",5,4,11,60,2
+"Ecu du destin",4,4,"Lézard rouge",5,5,9,60,2
+"Ecu du destin",4,4,"Lézard rouge",5,6,6,60,2
+"Ecu du destin",4,4,"Lézard rouge",5,7,4,60,2
+"Epée de feu",4,5,"Chevalier noir",1,0,25,40,7
+"Pavois de chevalier",4,5,"Chevalier noir",1,1,17,40,7
+"Cristal d'ombre",4,5,"Chevalier noir",1,2,15,40,7
+"Symbole de force",4,5,"Chevalier noir",1,3,13,40,7
+"Symbole de force",4,5,"Chevalier noir",1,4,11,40,7
+"Armure noire",4,5,"Chevalier noir",1,5,9,40,7
+"Armure noire",4,5,"Chevalier noir",1,6,6,40,7
+"Answerer",4,5,"Chevalier noir",1,7,4,40,7
+"Elixir des esprits",4,5,"Crapouille",2,0,25,50,14
+"Elixir des esprits",4,5,"Crapouille",2,1,17,50,14
+"Elixir des esprits",4,5,"Crapouille",2,2,15,50,14
+"Elixir des esprits",4,5,"Crapouille",2,3,13,50,14
+"Cristal de magie",4,5,"Crapouille",2,4,11,50,14
+"Cristal de magie",4,5,"Crapouille",2,5,9,50,14
+"Cristal de magie",4,5,"Crapouille",2,6,6,50,14
+"Cristal de magie",4,5,"Crapouille",2,7,4,50,14
+"Cristal de magie",4,5,"Golem-sequelette",3,0,25,60,3
+"Cristal de magie",4,5,"Golem-sequelette",3,1,17,60,3
+"Cristal de magie",4,5,"Golem-sequelette",3,2,15,60,3
+"Corne du Minotaure",4,5,"Golem-sequelette",3,3,13,60,3
+"Os de guerrier sauvage",4,5,"Golem-sequelette",3,4,11,60,3
+"Cendre blanche",4,5,"Golem-sequelette",3,5,9,60,3
+"Cendre blanche",4,5,"Golem-sequelette",3,6,6,60,3
+"Corne du dragon",4,5,"Golem-sequelette",3,7,4,60,3
+"Sauge",4,5,"Rampant",4,0,25,32,6
+"Baguette de l'air",4,5,"Rampant",4,1,17,32,6
+"Flèche du vent",4,5,"Rampant",4,2,15,32,6
+"Cristal d'air",4,5,"Rampant",4,3,13,32,6
+"Cristal d'air",4,5,"Rampant",4,4,11,32,6
+"Cristal d'air",4,5,"Rampant",4,5,9,32,6
+"Balle du tonnerre",4,5,"Rampant",4,6,6,32,6
+"Balle du tonnerre",4,5,"Rampant",4,7,4,32,6
+"Elixir de magicien",4,6,"Sorcier",2,0,25,80,15
+"Ecu du destin",4,6,"Sorcier",2,1,17,80,15
+"Robe de reine",4,6,"Sorcier",2,2,15,80,15
+"Ecu du destin",4,6,"Sorcier",2,3,13,80,15
+"Bague réflectrice",4,6,"Sorcier",2,4,11,80,15
+"Bague de résistance",4,6,"Sorcier",2,5,9,80,15
+"Bague de résistance",4,6,"Sorcier",2,6,6,80,15
+"Bague réflectrice",4,6,"Sorcier",2,7,4,80,15
+"Sauge",4,6,"Rampant",3,0,25,32,10
+"Baguette de l'air",4,6,"Rampant",3,1,17,32,10
+"Flèche du vent",4,6,"Rampant",3,2,15,32,10
+"Cristal d'air",4,6,"Rampant",3,3,13,32,10
+"Cristal d'air",4,6,"Rampant",3,4,11,32,10
+"Cristal d'air",4,6,"Rampant",3,5,9,32,10
+"Balle du tonnerre",4,6,"Rampant",3,6,6,32,10
+"Balle du tonnerre",4,6,"Rampant",3,7,4,32,10
+"Epée de feu",4,6,"Chevalier noir",4,0,25,40,12
+"Pavois de chevalier",4,6,"Chevalier noir",4,1,17,40,12
+"Cristal d'ombre",4,6,"Chevalier noir",4,2,15,40,12
+"Symbole de force",4,6,"Chevalier noir",4,3,13,40,12
+"Symbole de force",4,6,"Chevalier noir",4,4,11,40,12
+"Armure noire",4,6,"Chevalier noir",4,5,9,40,12
+"Armure noire",4,6,"Chevalier noir",4,6,6,40,12
+"Answerer",4,6,"Chevalier noir",4,7,4,40,12
+"Epée du bâtard",4,6,"Sabre volant",5,0,25,45,7
+"Craimore",4,6,"Sabre volant",5,1,17,45,7
+"Cristal de magie",4,6,"Sabre volant",5,2,15,45,7
+"Cristal de magie",4,6,"Sabre volant",5,3,13,45,7
+"Cristal de magie",4,6,"Sabre volant",5,4,11,45,7
+"Epée de la fatalité",4,6,"Sabre volant",5,5,9,45,7
+"Epée de Damas",4,6,"Sabre volant",5,6,6,45,7
+"Epée du gardien",4,6,"Sabre volant",5,7,4,45,7
+"Elixir de vie",4,6,"Armure volante",6,0,25,48,5
+"Armure d'argent",4,6,"Armure volante",6,1,17,48,5
+"Cristal de magie",4,6,"Armure volante",6,2,15,48,5
+"Bouclier des runes",4,6,"Armure volante",6,3,13,48,5
+"Bouclier des runes",4,6,"Armure volante",6,4,11,48,5
+"Robe des runes",4,6,"Armure volante",6,5,9,48,5
+"Robe des runes",4,6,"Armure volante",6,6,6,48,5
+"Armure du gardien",4,6,"Armure volante",6,7,4,48,5
+"Elixir de vie",4,7,"Armure volante",3,0,25,48,17
+"Armure d'argent",4,7,"Armure volante",3,1,17,48,17
+"Cristal de magie",4,7,"Armure volante",3,2,15,48,17
+"Bouclier des runes",4,7,"Armure volante",3,3,13,48,17
+"Bouclier des runes",4,7,"Armure volante",3,4,11,48,17
+"Robe des runes",4,7,"Armure volante",3,5,9,48,17
+"Robe des runes",4,7,"Armure volante",3,6,6,48,17
+"Armure du gardien",4,7,"Armure volante",3,7,4,48,17
+"Bottes d'elfes",4,7,"Sylphide",4,0,25,180,1
+"Chapeau d'elfe",4,7,"Sylphide",4,1,17,180,1
+"Manteau d'elfe",4,7,"Sylphide",4,2,15,180,1
+"Bouclier des elfes",4,7,"Sylphide",4,3,13,180,1
+"Bouclier des elfes",4,7,"Sylphide",4,4,11,180,1
+"Arc des elfes",4,7,"Sylphide",4,5,9,180,1
+"Arc des elfes",4,7,"Sylphide",4,6,6,180,1
+"Arc des elfes",4,7,"Sylphide",4,7,4,180,1
+"Corne du dragon",4,7,"Wybarn",5,0,25,40,1
+"Armure du dragon",4,7,"Wybarn",5,1,17,40,1
+"Cendre verte",4,7,"Wybarn",5,2,15,40,1
+"Cendre verte",4,7,"Wybarn",5,3,13,40,1
+"Bottes ailées",4,7,"Wybarn",5,4,11,40,1
+"Bottes ailées",4,7,"Wybarn",5,5,9,40,1
+"Bottes ailées",4,7,"Wybarn",5,6,6,40,1
+"Bottes ailées",4,7,"Wybarn",5,7,4,40,1
+"Cristal de magie",4,8,"Crapouille",2,0,25,50,0
+"Cristal de magie",4,8,"Crapouille",2,1,17,50,0
+"Cristal de magie",4,8,"Crapouille",2,2,15,50,0
+"Cristal de magie",4,8,"Crapouille",2,3,13,50,0
+"Cristal de magie",4,8,"Crapouille",2,4,11,50,0
+"Cristal de magie",4,8,"Crapouille",2,5,9,50,0
+"Cristal de magie",4,8,"Crapouille",2,6,6,50,0
+"Cristal de magie",4,8,"Crapouille",2,7,4,50,0
+"Chaîne du mal",4,8,"Archange noir",3,0,25,80,7
+"Ecu du destin",4,8,"Archange noir",3,1,17,80,7
+"Cendre bleue",4,8,"Archange noir",3,2,15,80,7
+"Symbole des ténébres",4,8,"Archange noir",3,3,13,80,7
+"Bâton lunaire",4,8,"Archange noir",3,4,11,80,7
+"Bâton lunaire",4,8,"Archange noir",3,5,9,80,7
+"Robe des anciens",4,8,"Archange noir",3,6,6,80,7
+"Pentacle magique",4,8,"Archange noir",3,7,4,80,7
+"Epée du bâtard",4,8,"Sabre volant",4,0,25,45,22
+"Craimore",4,8,"Sabre volant",4,1,17,45,22
+"Cristal de magie",4,8,"Sabre volant",4,2,15,45,22
+"Cristal de magie",4,8,"Sabre volant",4,3,13,45,22
+"Cristal de magie",4,8,"Sabre volant",4,4,11,45,22
+"Epée de la fatalité",4,8,"Sabre volant",4,5,9,45,22
+"Epée de Damas",4,8,"Sabre volant",4,6,6,45,22
+"Epée du gardien",4,8,"Sabre volant",4,7,4,45,22
+"Elixir de vie",4,8,"Armure volante",5,0,25,48,12
+"Armure d'argent",4,8,"Armure volante",5,1,17,48,12
+"Cristal de magie",4,8,"Armure volante",5,2,15,48,12
+"Bouclier des runes",4,8,"Armure volante",5,3,13,48,12
+"Bouclier des runes",4,8,"Armure volante",5,4,11,48,12
+"Robe des runes",4,8,"Armure volante",5,5,9,48,12
+"Robe des runes",4,8,"Armure volante",5,6,6,48,12
+"Armure du gardien",4,8,"Armure volante",5,7,4,48,12
+"Cristal de magie",4,8,"Cristal maudit",6,0,25,0,8
+"Cristal de magie",4,8,"Cristal maudit",6,1,17,0,8
+"Cristal de magie",4,8,"Cristal maudit",6,2,15,0,8
+"Corne du Minotaure",4,8,"Cristal maudit",6,3,13,0,8
+"Os de guerrier sauvage",4,8,"Cristal maudit",6,4,11,0,8
+"Cendre blanche",4,8,"Cristal maudit",6,5,9,0,8
+"Cendre blanche",4,8,"Cristal maudit",6,6,6,0,8
+"Corne du dragon",4,8,"Cristal maudit",6,7,4,0,8
+"Cristal de magie",4,8,"Gros dur",6,0,25,60,7
+"Cristal de magie",4,8,"Gros dur",6,1,17,60,7
+"Cristal de magie",4,8,"Gros dur",6,2,15,60,7
+"Corne du Minotaure",4,8,"Gros dur",6,3,13,60,7
+"Os de guerrier sauvage",4,8,"Gros dur",6,4,11,60,7
+"Cendre blanche",4,8,"Gros dur",6,5,9,60,7
+"Cendre blanche",4,8,"Gros dur",6,6,6,60,7
+"Corne du dragon",4,8,"Gros dur",6,7,4,60,7
+"Ecu du destin",4,9,"Platinum",1,0,25,100,3
+"Ecu du destin",4,9,"Platinum",1,1,17,100,3
+"Gantelets d'argent",4,9,"Platinum",1,2,15,100,3
+"Gantelets d'argent",4,9,"Platinum",1,3,13,100,3
+"Epée de Damas",4,9,"Platinum",1,4,11,100,3
+"Armure sacrée",4,9,"Platinum",1,5,9,100,3
+"Armure sacrée",4,9,"Platinum",1,6,6,100,3
+"Revatin",4,9,"Platinum",1,7,4,100,3
+"Extrait d'esprits",4,9,"Enchanteresse",2,0,25,200,1
+"Baguette de l'alchimiste",4,9,"Enchanteresse",2,1,17,200,1
+"Anneau de Satan",4,9,"Enchanteresse",2,2,15,200,1
+"Anneau de Satan",4,9,"Enchanteresse",2,3,13,200,1
+"Robe magique",4,9,"Enchanteresse",2,4,11,200,1
+"Robe magique",4,9,"Enchanteresse",2,5,9,200,1
+"Plume dominicale",4,9,"Enchanteresse",2,6,6,200,1
+"Plume dominicale",4,9,"Enchanteresse",2,7,4,200,1
+"Corne du diable",4,9,"Ténébreux",3,0,25,200,2
+"Corne du diable",4,9,"Ténébreux",3,1,17,200,2
+"Corne du diable",4,9,"Ténébreux",3,2,15,200,2
+"Corne du diable",4,9,"Ténébreux",3,3,13,200,2
+"Corne du diable",4,9,"Ténébreux",3,4,11,200,2
+"Corne du diable",4,9,"Ténébreux",3,5,9,200,2
+"Corne du diable",4,9,"Ténébreux",3,6,6,200,2
+"Corne du diable",4,9,"Ténébreux",3,7,4,200,2
+"Cristal de magie",4,10,"Crapouille",2,0,25,50,4
+"Cristal de magie",4,10,"Crapouille",2,1,17,50,4
+"Cristal de magie",4,10,"Crapouille",2,2,15,50,4
+"Cristal de magie",4,10,"Crapouille",2,3,13,50,4
+"Cristal de magie",4,10,"Crapouille",2,4,11,50,4
+"Cristal de magie",4,10,"Crapouille",2,5,9,50,4
+"Cristal de magie",4,10,"Crapouille",2,6,6,50,4
+"Cristal de magie",4,10,"Crapouille",2,7,4,50,4
+"Chaîne du mal",4,10,"Archange noir",3,0,25,80,6
+"Ecu du destin",4,10,"Archange noir",3,1,17,80,6
+"Cendre bleue",4,10,"Archange noir",3,2,15,80,6
+"Symbole des ténébres",4,10,"Archange noir",3,3,13,80,6
+"Bâton lunaire",4,10,"Archange noir",3,4,11,80,6
+"Bâton lunaire",4,10,"Archange noir",3,5,9,80,6
+"Robe des anciens",4,10,"Archange noir",3,6,6,80,6
+"Pentacle magique",4,10,"Archange noir",3,7,4,80,6
+"Epée du bâtard",4,10,"Sabre volant",4,0,25,45,22
+"Craimore",4,10,"Sabre volant",4,1,17,45,22
+"Cristal de magie",4,10,"Sabre volant",4,2,15,45,22
+"Cristal de magie",4,10,"Sabre volant",4,3,13,45,22
+"Cristal de magie",4,10,"Sabre volant",4,4,11,45,22
+"Epée de la fatalité",4,10,"Sabre volant",4,5,9,45,22
+"Epée de Damas",4,10,"Sabre volant",4,6,6,45,22
+"Epée du gardien",4,10,"Sabre volant",4,7,4,45,22
+"Elixir de vie",4,10,"Armure volante",5,0,25,48,12
+"Armure d'argent",4,10,"Armure volante",5,1,17,48,12
+"Cristal de magie",4,10,"Armure volante",5,2,15,48,12
+"Bouclier des runes",4,10,"Armure volante",5,3,13,48,12
+"Bouclier des runes",4,10,"Armure volante",5,4,11,48,12
+"Robe des runes",4,10,"Armure volante",5,5,9,48,12
+"Robe des runes",4,10,"Armure volante",5,6,6,48,12
+"Armure du gardien",4,10,"Armure volante",5,7,4,48,12
+"Cristal de magie",4,10,"Cristal maudit",6,0,25,0,8
+"Cristal de magie",4,10,"Cristal maudit",6,1,17,0,8
+"Cristal de magie",4,10,"Cristal maudit",6,2,15,0,8
+"Corne du Minotaure",4,10,"Cristal maudit",6,3,13,0,8
+"Os de guerrier sauvage",4,10,"Cristal maudit",6,4,11,0,8
+"Cendre blanche",4,10,"Cristal maudit",6,5,9,0,8
+"Cendre blanche",4,10,"Cristal maudit",6,6,6,0,8
+"Corne du dragon",4,10,"Cristal maudit",6,7,4,0,8
+"Cristal de magie",4,10,"Gros dur",6,0,25,60,6
+"Cristal de magie",4,10,"Gros dur",6,1,17,60,6
+"Cristal de magie",4,10,"Gros dur",6,2,15,60,6
+"Corne du Minotaure",4,10,"Gros dur",6,3,13,60,6
+"Os de guerrier sauvage",4,10,"Gros dur",6,4,11,60,6
+"Cendre blanche",4,10,"Gros dur",6,5,9,60,6
+"Cendre blanche",4,10,"Gros dur",6,6,6,60,6
+"Corne du dragon",4,10,"Gros dur",6,7,4,60,6
+"Bouclier rond",5,0,"Tas d'os",3,0,25,70,5
+"Large épée",5,0,"Tas d'os",3,1,17,70,5
+"Pavois de chevalier",5,0,"Tas d'os",3,2,15,70,5
+"Pavois de chevalier",5,0,"Tas d'os",3,3,13,70,5
+"Ecu du destin",5,0,"Tas d'os",3,4,11,70,5
+"Ecu du destin",5,0,"Tas d'os",3,5,9,70,5
+"Cendre blanche",5,0,"Tas d'os",3,6,6,70,5
+"Cendre blanche",5,0,"Tas d'os",3,7,4,70,5
+"Châle précieux",5,0,"Zombie",4,0,25,65,71
+"Potion med",5,0,"Zombie",4,1,17,65,71
+"Potion med",5,0,"Zombie",4,2,15,65,71
+"Talisman",5,0,"Zombie",4,3,13,65,71
+"Ecu du destin",5,0,"Zombie",4,4,11,65,71
+"Ecu du destin",5,0,"Zombie",4,5,9,65,71
+"Cendre grise",5,0,"Zombie",4,6,6,65,71
+"Cendre grise",5,0,"Zombie",4,7,4,65,71
+"Potion olympique",5,0,"Dunoeud",5,0,25,50,1
+"Potion olympique",5,0,"Dunoeud",5,1,17,50,1
+"Potion olympique",5,0,"Dunoeud",5,2,15,50,1
+"Potion olympique",5,0,"Dunoeud",5,3,13,50,1
+"Corde du retour",5,0,"Dunoeud",5,4,11,50,1
+"Corde du retour",5,0,"Dunoeud",5,5,9,50,1
+"Cendre rouge",5,0,"Dunoeud",5,6,6,50,1
+"Cendre rouge",5,0,"Dunoeud",5,7,4,50,1
+"Châle précieux",5,1,"Zombie",2,0,25,65,56
+"Potion med",5,1,"Zombie",2,1,17,65,56
+"Potion med",5,1,"Zombie",2,2,15,65,56
+"Talisman",5,1,"Zombie",2,3,13,65,56
+"Ecu du destin",5,1,"Zombie",2,4,11,65,56
+"Ecu du destin",5,1,"Zombie",2,5,9,65,56
+"Cendre grise",5,1,"Zombie",2,6,6,65,56
+"Cendre grise",5,1,"Zombie",2,7,4,65,56
+"Potion olympique",5,1,"Dunoeud",3,0,25,50,8
+"Potion olympique",5,1,"Dunoeud",3,1,17,50,8
+"Potion olympique",5,1,"Dunoeud",3,2,15,50,8
+"Potion olympique",5,1,"Dunoeud",3,3,13,50,8
+"Corde du retour",5,1,"Dunoeud",3,4,11,50,8
+"Corde du retour",5,1,"Dunoeud",3,5,9,50,8
+"Cendre rouge",5,1,"Dunoeud",3,6,6,50,8
+"Cendre rouge",5,1,"Dunoeud",3,7,4,50,8
+"Bouclier rond",5,1,"Tas d'os",1,0,25,70,3
+"Large épée",5,1,"Tas d'os",1,1,17,70,3
+"Pavois de chevalier",5,1,"Tas d'os",1,2,15,70,3
+"Pavois de chevalier",5,1,"Tas d'os",1,3,13,70,3
+"Ecu du destin",5,1,"Tas d'os",1,4,11,70,3
+"Ecu du destin",5,1,"Tas d'os",1,5,9,70,3
+"Cendre blanche",5,1,"Tas d'os",1,6,6,70,3
+"Cendre blanche",5,1,"Tas d'os",1,7,4,70,3
+"Châle précieux",5,2,"Zombie",2,0,25,65,22
+"Potion med",5,2,"Zombie",2,1,17,65,22
+"Potion med",5,2,"Zombie",2,2,15,65,22
+"Talisman",5,2,"Zombie",2,3,13,65,22
+"Ecu du destin",5,2,"Zombie",2,4,11,65,22
+"Ecu du destin",5,2,"Zombie",2,5,9,65,22
+"Cendre grise",5,2,"Zombie",2,6,6,65,22
+"Cendre grise",5,2,"Zombie",2,7,4,65,22
+"Potion olympique",5,2,"Dunoeud",3,0,25,50,20
+"Potion olympique",5,2,"Dunoeud",3,1,17,50,20
+"Potion olympique",5,2,"Dunoeud",3,2,15,50,20
+"Potion olympique",5,2,"Dunoeud",3,3,13,50,20
+"Corde du retour",5,2,"Dunoeud",3,4,11,50,20
+"Corde du retour",5,2,"Dunoeud",3,5,9,50,20
+"Cendre rouge",5,2,"Dunoeud",3,6,6,50,20
+"Cendre rouge",5,2,"Dunoeud",3,7,4,50,20
+"Bouclier rond",5,2,"Tas d'os",4,0,25,70,9
+"Large épée",5,2,"Tas d'os",4,1,17,70,9
+"Pavois de chevalier",5,2,"Tas d'os",4,2,15,70,9
+"Pavois de chevalier",5,2,"Tas d'os",4,3,13,70,9
+"Ecu du destin",5,2,"Tas d'os",4,4,11,70,9
+"Ecu du destin",5,2,"Tas d'os",4,5,9,70,9
+"Cendre blanche",5,2,"Tas d'os",4,6,6,70,9
+"Cendre blanche",5,2,"Tas d'os",4,7,4,70,9
+"Hache de guerre",5,2,"Persil",5,0,25,60,1
+"Epée du bâtard",5,2,"Persil",5,1,17,60,1
+"Long marteau",5,2,"Persil",5,2,15,60,1
+"Potion olympique",5,2,"Persil",5,3,13,60,1
+"Potion olympique",5,2,"Persil",5,4,11,60,1
+"Potion olympique",5,2,"Persil",5,5,9,60,1
+"Cendre verte",5,2,"Persil",5,6,6,60,1
+"Cendre verte",5,2,"Persil",5,7,4,60,1
+"Potion med",5,3,"Belle rouge",2,0,25,50,19
+"Potion med",5,3,"Belle rouge",2,1,17,50,19
+"Potion med",5,3,"Belle rouge",2,2,15,50,19
+"Potion med",5,3,"Belle rouge",2,3,13,50,19
+"Elixir de vie",5,3,"Belle rouge",2,4,11,50,19
+"Elixir de vie",5,3,"Belle rouge",2,5,9,50,19
+"Cristal de feu",5,3,"Belle rouge",2,6,6,50,19
+"Cristal de feu",5,3,"Belle rouge",2,7,4,50,19
+"Flacon d'énergie",5,3,"Mort-vivant",3,0,25,40,14
+"Flacon d'énergie",5,3,"Mort-vivant",3,1,17,40,14
+"Flacon d'énergie",5,3,"Mort-vivant",3,2,15,40,14
+"Flacon d'énergie",5,3,"Mort-vivant",3,3,13,40,14
+"Robe de la terre",5,3,"Mort-vivant",3,4,11,40,14
+"Robe de la terre",5,3,"Mort-vivant",3,5,9,40,14
+"Cendre noire",5,3,"Mort-vivant",3,6,6,40,14
+"Cendre noire",5,3,"Mort-vivant",3,7,4,40,14
+"Craimore",5,3,"Sanguinaire",4,0,25,70,4
+"Minegosh",5,3,"Sanguinaire",4,1,17,70,4
+"Ecu du destin",5,3,"Sanguinaire",4,2,15,70,4
+"Ecu du destin",5,3,"Sanguinaire",4,3,13,70,4
+"Cendre rouge",5,3,"Sanguinaire",4,4,11,70,4
+"Cendre rouge",5,3,"Sanguinaire",4,5,9,70,4
+"Epée de sang",5,3,"Sanguinaire",4,6,6,70,4
+"Epée de sang",5,3,"Sanguinaire",4,7,4,70,4
+"Hache de guerre",5,4,"Persil",2,0,25,60,9
+"Epée du bâtard",5,4,"Persil",2,1,17,60,9
+"Long marteau",5,4,"Persil",2,2,15,60,9
+"Potion olympique",5,4,"Persil",2,3,13,60,9
+"Potion olympique",5,4,"Persil",2,4,11,60,9
+"Potion olympique",5,4,"Persil",2,5,9,60,9
+"Cendre verte",5,4,"Persil",2,6,6,60,9
+"Cendre verte",5,4,"Persil",2,7,4,60,9
+"Potion olympique",5,4,"Dunoeud",3,0,25,50,2
+"Potion olympique",5,4,"Dunoeud",3,1,17,50,2
+"Potion olympique",5,4,"Dunoeud",3,2,15,50,2
+"Potion olympique",5,4,"Dunoeud",3,3,13,50,2
+"Corde du retour",5,4,"Dunoeud",3,4,11,50,2
+"Corde du retour",5,4,"Dunoeud",3,5,9,50,2
+"Cendre rouge",5,4,"Dunoeud",3,6,6,50,2
+"Cendre rouge",5,4,"Dunoeud",3,7,4,50,2
+"Epée de sang",5,4,"Durahan",4,0,25,200,1
+"Epée de sang",5,4,"Durahan",4,1,17,200,1
+"Balle maléfique",5,4,"Durahan",4,2,15,200,1
+"Balle maléfique",5,4,"Durahan",4,3,13,200,1
+"Balle maléfique",5,4,"Durahan",4,4,11,200,1
+"Armure de Satan",5,4,"Durahan",4,5,9,200,1
+"Armure de Satan",5,4,"Durahan",4,6,6,200,1
+"Armure de Satan",5,4,"Durahan",4,7,4,200,1
+"Craimore",5,4,"Sanguinaire",5,0,25,70,4
+"Minegosh",5,4,"Sanguinaire",5,1,17,70,4
+"Ecu du destin",5,4,"Sanguinaire",5,2,15,70,4
+"Ecu du destin",5,4,"Sanguinaire",5,3,13,70,4
+"Cendre rouge",5,4,"Sanguinaire",5,4,11,70,4
+"Cendre rouge",5,4,"Sanguinaire",5,5,9,70,4
+"Epée de sang",5,4,"Sanguinaire",5,6,6,70,4
+"Epée de sang",5,4,"Sanguinaire",5,7,4,70,4
+"Huile du pouvoir",5,5,"Momie",4,0,25,50,12
+"Bague au joyau",5,5,"Momie",4,1,17,50,12
+"Bague sacrée",5,5,"Momie",4,2,15,50,12
+"Cendre bleue",5,5,"Momie",4,3,13,50,12
+"Cendre bleue",5,5,"Momie",4,4,11,50,12
+"Ambrosia",5,5,"Momie",4,5,9,50,12
+"Ambrosia",5,5,"Momie",4,6,6,50,12
+"Balance des juges",5,5,"Momie",4,7,4,50,12
+"Flacon d'énergie",5,5,"Mort-vivant",6,0,25,40,21
+"Flacon d'énergie",5,5,"Mort-vivant",6,1,17,40,21
+"Flacon d'énergie",5,5,"Mort-vivant",6,2,15,40,21
+"Flacon d'énergie",5,5,"Mort-vivant",6,3,13,40,21
+"Robe de la terre",5,5,"Mort-vivant",6,4,11,40,21
+"Robe de la terre",5,5,"Mort-vivant",6,5,9,40,21
+"Cendre noire",5,5,"Mort-vivant",6,6,6,40,21
+"Cendre noire",5,5,"Mort-vivant",6,7,4,40,21
+"Potion med",5,5,"Belle rouge",7,0,25,50,11
+"Potion med",5,5,"Belle rouge",7,1,17,50,11
+"Potion med",5,5,"Belle rouge",7,2,15,50,11
+"Potion med",5,5,"Belle rouge",7,3,13,50,11
+"Elixir de vie",5,5,"Belle rouge",7,4,11,50,11
+"Elixir de vie",5,5,"Belle rouge",7,5,9,50,11
+"Cristal de feu",5,5,"Belle rouge",7,6,6,50,11
+"Cristal de feu",5,5,"Belle rouge",7,7,4,50,11
+"Potion olympique",5,5,"Agonisant",8,0,25,50,2
+"Ecu du destin",5,5,"Agonisant",8,1,17,50,2
+"Epée d'argent",5,5,"Agonisant",8,2,15,50,2
+"Manteau de croisé",5,5,"Agonisant",8,3,13,50,2
+"Bannière de chevalier",5,5,"Agonisant",8,4,11,50,2
+"Bannière de chevalier",5,5,"Agonisant",8,5,9,50,2
+"Epée de la fatalité",5,5,"Agonisant",8,6,6,50,2
+"Epée de la fatalité",5,5,"Agonisant",8,7,4,50,2
+"Huile de sang",5,5,"Sanglante",5,0,25,60,18
+"Bague au joyau",5,5,"Sanglante",5,1,17,60,18
+"Bague sacrée",5,5,"Sanglante",5,2,15,60,18
+"Cendre rouge",5,5,"Sanglante",5,3,13,60,18
+"Cendre rouge",5,5,"Sanglante",5,4,11,60,18
+"Ambrosia",5,5,"Sanglante",5,5,9,60,18
+"Ambrosia",5,5,"Sanglante",5,6,6,60,18
+"Balance des juges",5,5,"Sanglante",5,7,4,60,18
+"Potion olympique",5,6,"Agonisant",3,0,25,50,8
+"Ecu du destin",5,6,"Agonisant",3,1,17,50,8
+"Epée d'argent",5,6,"Agonisant",3,2,15,50,8
+"Manteau de croisé",5,6,"Agonisant",3,3,13,50,8
+"Bannière de chevalier",5,6,"Agonisant",3,4,11,50,8
+"Bannière de chevalier",5,6,"Agonisant",3,5,9,50,8
+"Epée de la fatalité",5,6,"Agonisant",3,6,6,50,8
+"Epée de la fatalité",5,6,"Agonisant",3,7,4,50,8
+"Balle des ténèbres",5,6,"Ombre",4,0,25,44,17
+"Cristal d'ombre",5,6,"Ombre",4,1,17,44,17
+"Pendentif vaporeux",5,6,"Ombre",4,2,15,44,17
+"Robe de l'ombre",5,6,"Ombre",4,3,13,44,17
+"Voile des ombres",5,6,"Ombre",4,4,11,44,17
+"Voile des ombres",5,6,"Ombre",4,5,9,44,17
+"Voile des ombres",5,6,"Ombre",4,6,6,44,17
+"Voile des ombres",5,6,"Ombre",4,7,4,44,17
+"Huile du pouvoir",5,6,"Momie",5,0,25,50,12
+"Bague au joyau",5,6,"Momie",5,1,17,50,12
+"Bague sacrée",5,6,"Momie",5,2,15,50,12
+"Cendre bleue",5,6,"Momie",5,3,13,50,12
+"Cendre bleue",5,6,"Momie",5,4,11,50,12
+"Ambrosia",5,6,"Momie",5,5,9,50,12
+"Ambrosia",5,6,"Momie",5,6,6,50,12
+"Balance des juges",5,6,"Momie",5,7,4,50,12
+"Poudre de zombie",5,6,"Revenant",6,0,25,40,4
+"Ecu du destin",5,6,"Revenant",6,1,17,40,4
+"Sauvagerie",5,6,"Revenant",6,2,15,40,4
+"Ecu du destin",5,6,"Revenant",6,3,13,40,4
+"Gants de force",5,6,"Revenant",6,4,11,40,4
+"Bottes de sept lieux",5,6,"Revenant",6,5,9,40,4
+"Bottes de sept lieux",5,6,"Revenant",6,6,6,40,4
+"Gants de force",5,6,"Revenant",6,7,4,40,4
+"Potion olympique",5,7,"Agonisant",4,0,25,50,39
+"Ecu du destin",5,7,"Agonisant",4,1,17,50,39
+"Epée d'argent",5,7,"Agonisant",4,2,15,50,39
+"Manteau de croisé",5,7,"Agonisant",4,3,13,50,39
+"Bannière de chevalier",5,7,"Agonisant",4,4,11,50,39
+"Bannière de chevalier",5,7,"Agonisant",4,5,9,50,39
+"Epée de la fatalité",5,7,"Agonisant",4,6,6,50,39
+"Epée de la fatalité",5,7,"Agonisant",4,7,4,50,39
+"Poudre de zombie",5,7,"Revenant",5,0,25,40,15
+"Ecu du destin",5,7,"Revenant",5,1,17,40,15
+"Sauvagerie",5,7,"Revenant",5,2,15,40,15
+"Ecu du destin",5,7,"Revenant",5,3,13,40,15
+"Gants de force",5,7,"Revenant",5,4,11,40,15
+"Bottes de sept lieux",5,7,"Revenant",5,5,9,40,15
+"Bottes de sept lieux",5,7,"Revenant",5,6,6,40,15
+"Gants de force",5,7,"Revenant",5,7,4,40,15
+"Balle des ténèbres",5,7,"Ombre",6,0,25,44,27
+"Cristal d'ombre",5,7,"Ombre",6,1,17,44,27
+"Pendentif vaporeux",5,7,"Ombre",6,2,15,44,27
+"Robe de l'ombre",5,7,"Ombre",6,3,13,44,27
+"Voile des ombres",5,7,"Ombre",6,4,11,44,27
+"Voile des ombres",5,7,"Ombre",6,5,9,44,27
+"Voile des ombres",5,7,"Ombre",6,6,6,44,27
+"Voile des ombres",5,7,"Ombre",6,7,4,44,27
+"Potion olympique",5,8,"Agonisant",4,0,25,50,17
+"Ecu du destin",5,8,"Agonisant",4,1,17,50,17
+"Epée d'argent",5,8,"Agonisant",4,2,15,50,17
+"Manteau de croisé",5,8,"Agonisant",4,3,13,50,17
+"Bannière de chevalier",5,8,"Agonisant",4,4,11,50,17
+"Bannière de chevalier",5,8,"Agonisant",4,5,9,50,17
+"Epée de la fatalité",5,8,"Agonisant",4,6,6,50,17
+"Epée de la fatalité",5,8,"Agonisant",4,7,4,50,17
+"Huile du pouvoir",5,8,"Momie",5,0,25,50,19
+"Bague au joyau",5,8,"Momie",5,1,17,50,19
+"Bague sacrée",5,8,"Momie",5,2,15,50,19
+"Cendre bleue",5,8,"Momie",5,3,13,50,19
+"Cendre bleue",5,8,"Momie",5,4,11,50,19
+"Ambrosia",5,8,"Momie",5,5,9,50,19
+"Ambrosia",5,8,"Momie",5,6,6,50,19
+"Balance des juges",5,8,"Momie",5,7,4,50,19
+"Balle des ténèbres",5,8,"Ombre",6,0,25,44,13
+"Cristal d'ombre",5,8,"Ombre",6,1,17,44,13
+"Pendentif vaporeux",5,8,"Ombre",6,2,15,44,13
+"Robe de l'ombre",5,8,"Ombre",6,3,13,44,13
+"Voile des ombres",5,8,"Ombre",6,4,11,44,13
+"Voile des ombres",5,8,"Ombre",6,5,9,44,13
+"Voile des ombres",5,8,"Ombre",6,6,6,44,13
+"Voile des ombres",5,8,"Ombre",6,7,4,44,13
+"Poudre de zombie",5,8,"Revenant",7,0,25,40,5
+"Ecu du destin",5,8,"Revenant",7,1,17,40,5
+"Sauvagerie",5,8,"Revenant",7,2,15,40,5
+"Ecu du destin",5,8,"Revenant",7,3,13,40,5
+"Gants de force",5,8,"Revenant",7,4,11,40,5
+"Bottes de sept lieux",5,8,"Revenant",7,5,9,40,5
+"Bottes de sept lieux",5,8,"Revenant",7,6,6,40,5
+"Gants de force",5,8,"Revenant",7,7,4,40,5
+"Elixir des esprits",5,8,"Belle jaune",8,0,25,40,9
+"Elixir des esprits",5,8,"Belle jaune",8,1,17,40,9
+"Cristal de lumière",5,8,"Belle jaune",8,2,15,40,9
+"Cristal de lumière",5,8,"Belle jaune",8,3,13,40,9
+"Cristal de lumière",5,8,"Belle jaune",8,4,11,40,9
+"Cristal de lumière",5,8,"Belle jaune",8,5,9,40,9
+"Cristal de lumière",5,8,"Belle jaune",8,6,6,40,9
+"Cristal de lumière",5,8,"Belle jaune",8,7,4,40,9
+"Huile du pouvoir",5,8,"Vielle momie",5,0,25,10,18
+"Bague au joyau",5,8,"Vielle momie",5,1,17,10,18
+"Bague sacrée",5,8,"Vielle momie",5,2,15,10,18
+"Cendre bleue",5,8,"Vielle momie",5,3,13,10,18
+"Cendre bleue",5,8,"Vielle momie",5,4,11,10,18
+"Ambrosia",5,8,"Vielle momie",5,5,9,10,18
+"Ambrosia",5,8,"Vielle momie",5,6,6,10,18
+"Balance des juges",5,8,"Vielle momie",5,7,4,10,18
+"Huile du pouvoir",5,8,"Reine momie",5,0,25,80,1
+"Bague au joyau",5,8,"Reine momie",5,1,17,80,1
+"Bague sacrée",5,8,"Reine momie",5,2,15,80,1
+"Cendre bleue",5,8,"Reine momie",5,3,13,80,1
+"Cendre bleue",5,8,"Reine momie",5,4,11,80,1
+"Ambrosia",5,8,"Reine momie",5,5,9,80,1
+"Ambrosia",5,8,"Reine momie",5,6,6,80,1
+"Balance des juges",5,8,"Reine momie",5,7,4,80,1
+"Epée de la fatalité",5,9,"Durahan-noir",0,0,25,200,2
+"Epée de la fatalité",5,9,"Durahan-noir",0,1,17,200,2
+"Balle maléfique",5,9,"Durahan-noir",0,2,15,200,2
+"Balle maléfique",5,9,"Durahan-noir",0,3,13,200,2
+"Balle maléfique",5,9,"Durahan-noir",0,4,11,200,2
+"Armure de Satan",5,9,"Durahan-noir",0,5,9,200,2
+"Armure de Satan",5,9,"Durahan-noir",0,6,6,200,2
+"Armure de Satan",5,9,"Durahan-noir",0,7,4,200,2
+"Cristal d'énergie",5,9,"Roi-zombie",1,0,25,220,1
+"Bouclier lunaire",5,9,"Roi-zombie",1,1,17,220,1
+"Bouclier lunaire",5,9,"Roi-zombie",1,2,15,220,1
+"Crosse du diable",5,9,"Roi-zombie",1,3,13,220,1
+"Baguette spatiale",5,9,"Roi-zombie",1,4,11,220,1
+"Baguette spatiale",5,9,"Roi-zombie",1,5,9,220,1
+"Crosse du diable",5,9,"Roi-zombie",1,6,6,220,1
+"Crosse de Séraphin",5,9,"Roi-zombie",1,7,4,220,1
+"Poudre de zombie",5,9,"Revenant",2,0,25,40,2
+"Ecu du destin",5,9,"Revenant",2,1,17,40,2
+"Sauvagerie",5,9,"Revenant",2,2,15,40,2
+"Ecu du destin",5,9,"Revenant",2,3,13,40,2
+"Gants de force",5,9,"Revenant",2,4,11,40,2
+"Bottes de sept lieux",5,9,"Revenant",2,5,9,40,2
+"Bottes de sept lieux",5,9,"Revenant",2,6,6,40,2
+"Gants de force",5,9,"Revenant",2,7,4,40,2
+"Balle maléfique",5,9,"Ombre rouge",3,0,25,44,2
+"Cristal du mal",5,9,"Ombre rouge",3,1,17,44,2
+"Chaîne du mal",5,9,"Ombre rouge",3,2,15,44,2
+"Robe de l'ombre",5,9,"Ombre rouge",3,3,13,44,2
+"Voile des ombres",5,9,"Ombre rouge",3,4,11,44,2
+"Voile des ombres",5,9,"Ombre rouge",3,5,9,44,2
+"Voile des ombres",5,9,"Ombre rouge",3,6,6,44,2
+"Voile des ombres",5,9,"Ombre rouge",3,7,4,44,2
+"Châle précieux",6,0,"Zombie",9,0,25,65,37
+"Potion med",6,0,"Zombie",9,1,17,65,37
+"Potion med",6,0,"Zombie",9,2,15,65,37
+"Talisman",6,0,"Zombie",9,3,13,65,37
+"Ecu du destin",6,0,"Zombie",9,4,11,65,37
+"Ecu du destin",6,0,"Zombie",9,5,9,65,37
+"Cendre grise",6,0,"Zombie",9,6,6,65,37
+"Cendre grise",6,0,"Zombie",9,7,4,65,37
+"Elixir des esprits",6,0,"Harpie",10,0,25,40,29
+"Ecu du destin",6,0,"Harpie",10,1,17,40,29
+"Flûte des moutons",6,0,"Harpie",10,2,15,40,29
+"Gants ailés",6,0,"Harpie",10,3,13,40,29
+"Manteau à plumes",6,0,"Harpie",10,4,11,40,29
+"Chaussures à plumes",6,0,"Harpie",10,5,9,40,29
+"Balle du tonnerre",6,0,"Harpie",10,6,6,40,29
+"Balle du tonnerre",6,0,"Harpie",10,7,4,40,29
+"Potion med",6,0,"Loup",11,0,25,70,26
+"Potion med",6,0,"Loup",11,1,17,70,26
+"Elixir de vie",6,0,"Loup",11,2,15,70,26
+"Elixir de vie",6,0,"Loup",11,3,13,70,26
+"Extrait de sang",6,0,"Loup",11,4,11,70,26
+"Extrait de sang",6,0,"Loup",11,5,9,70,26
+"Extrait de sang",6,0,"Loup",11,6,6,70,26
+"Extrait de sang",6,0,"Loup",11,7,4,70,26
+"Châle précieux",6,1,"Zombie",1,0,25,65,48
+"Potion med",6,1,"Zombie",1,1,17,65,48
+"Potion med",6,1,"Zombie",1,2,15,65,48
+"Talisman",6,1,"Zombie",1,3,13,65,48
+"Ecu du destin",6,1,"Zombie",1,4,11,65,48
+"Ecu du destin",6,1,"Zombie",1,5,9,65,48
+"Cendre grise",6,1,"Zombie",1,6,6,65,48
+"Cendre grise",6,1,"Zombie",1,7,4,65,48
+"Flacon d'énergie",6,1,"Fantôme",2,0,25,50,44
+"Flacon d'énergie",6,1,"Fantôme",2,1,17,50,44
+"Flacon d'énergie",6,1,"Fantôme",2,2,15,50,44
+"Flacon d'énergie",6,1,"Fantôme",2,3,13,50,44
+"Extrait d'esprits",6,1,"Fantôme",2,4,11,50,44
+"Extrait d'esprits",6,1,"Fantôme",2,5,9,50,44
+"Robe de l'ombre",6,1,"Fantôme",2,6,6,50,44
+"Robe de l'ombre",6,1,"Fantôme",2,7,4,50,44
+"Craimore",6,1,"Sanguinaire",3,0,25,70,37
+"Minegosh",6,1,"Sanguinaire",3,1,17,70,37
+"Ecu du destin",6,1,"Sanguinaire",3,2,15,70,37
+"Ecu du destin",6,1,"Sanguinaire",3,3,13,70,37
+"Cendre rouge",6,1,"Sanguinaire",3,4,11,70,37
+"Cendre rouge",6,1,"Sanguinaire",3,5,9,70,37
+"Epée de sang",6,1,"Sanguinaire",3,6,6,70,37
+"Epée de sang",6,1,"Sanguinaire",3,7,4,70,37
+"Châle précieux",6,2,"Zombie",5,0,25,65,5
+"Potion med",6,2,"Zombie",5,1,17,65,5
+"Potion med",6,2,"Zombie",5,2,15,65,5
+"Talisman",6,2,"Zombie",5,3,13,65,5
+"Ecu du destin",6,2,"Zombie",5,4,11,65,5
+"Ecu du destin",6,2,"Zombie",5,5,9,65,5
+"Cendre grise",6,2,"Zombie",5,6,6,65,5
+"Cendre grise",6,2,"Zombie",5,7,4,65,5
+"Elixir des esprits",6,2,"Crapouille",3,0,25,50,2
+"Elixir des esprits",6,2,"Crapouille",3,1,17,50,2
+"Elixir des esprits",6,2,"Crapouille",3,2,15,50,2
+"Elixir des esprits",6,2,"Crapouille",3,3,13,50,2
+"Cristal de magie",6,2,"Crapouille",3,4,11,50,2
+"Cristal de magie",6,2,"Crapouille",3,5,9,50,2
+"Cristal de magie",6,2,"Crapouille",3,6,6,50,2
+"Cristal de magie",6,2,"Crapouille",3,7,4,50,2
+"Flacon d'énergie",6,2,"Fantôme",6,0,25,40,7
+"Flacon d'énergie",6,2,"Fantôme",6,1,17,40,7
+"Flacon d'énergie",6,2,"Fantôme",6,2,15,40,7
+"Flacon d'énergie",6,2,"Fantôme",6,3,13,40,7
+"Extrait d'esprits",6,2,"Fantôme",6,4,11,40,7
+"Extrait d'esprits",6,2,"Fantôme",6,5,9,40,7
+"Robe de l'ombre",6,2,"Fantôme",6,6,6,40,7
+"Robe de l'ombre",6,2,"Fantôme",6,7,4,40,7
+"Craimore",6,2,"Sanguinaire",7,0,25,70,4
+"Minegosh",6,2,"Sanguinaire",7,1,17,70,4
+"Ecu du destin",6,2,"Sanguinaire",7,2,15,70,4
+"Ecu du destin",6,2,"Sanguinaire",7,3,13,70,4
+"Cendre rouge",6,2,"Sanguinaire",7,4,11,70,4
+"Cendre rouge",6,2,"Sanguinaire",7,5,9,70,4
+"Epée de sang",6,2,"Sanguinaire",7,6,6,70,4
+"Epée de sang",6,2,"Sanguinaire",7,7,4,70,4
+"Elixir de magicien",6,2,"Gargouille",4,0,25,50,4
+"Elixir de magicien",6,2,"Gargouille",4,1,17,50,4
+"Elixir de magicien",6,2,"Gargouille",4,2,15,50,4
+"Elixir de magicien",6,2,"Gargouille",4,3,13,50,4
+"Cristal de magie",6,2,"Gargouille",4,4,11,50,4
+"Cristal de magie",6,2,"Gargouille",4,5,9,50,4
+"Cristal de magie",6,2,"Gargouille",4,6,6,50,4
+"Cristal de magie",6,2,"Gargouille",4,7,4,50,4
+"Flacon d'énergie",6,3,"Fantôme",1,0,25,40,7
+"Flacon d'énergie",6,3,"Fantôme",1,1,17,40,7
+"Flacon d'énergie",6,3,"Fantôme",1,2,15,40,7
+"Flacon d'énergie",6,3,"Fantôme",1,3,13,40,7
+"Extrait d'esprits",6,3,"Fantôme",1,4,11,40,7
+"Extrait d'esprits",6,3,"Fantôme",1,5,9,40,7
+"Robe de l'ombre",6,3,"Fantôme",1,6,6,40,7
+"Robe de l'ombre",6,3,"Fantôme",1,7,4,40,7
+"Elixir des esprits",6,3,"Harpie",2,0,25,40,4
+"Ecu du destin",6,3,"Harpie",2,1,17,40,4
+"Flûte des moutons",6,3,"Harpie",2,2,15,40,4
+"Gants ailés",6,3,"Harpie",2,3,13,40,4
+"Manteau à plumes",6,3,"Harpie",2,4,11,40,4
+"Chaussures à plumes",6,3,"Harpie",2,5,9,40,4
+"Balle du tonnerre",6,3,"Harpie",2,6,6,40,4
+"Balle du tonnerre",6,3,"Harpie",2,7,4,40,4
+"Craimore",6,3,"Sanguinaire",3,0,25,70,13
+"Minegosh",6,3,"Sanguinaire",3,1,17,70,13
+"Ecu du destin",6,3,"Sanguinaire",3,2,15,70,13
+"Ecu du destin",6,3,"Sanguinaire",3,3,13,70,13
+"Cendre rouge",6,3,"Sanguinaire",3,4,11,70,13
+"Cendre rouge",6,3,"Sanguinaire",3,5,9,70,13
+"Epée de sang",6,3,"Sanguinaire",3,6,6,70,13
+"Epée de sang",6,3,"Sanguinaire",3,7,4,70,13
+"Flacon d'énergie",6,4,"Fantôme",1,0,25,40,3
+"Flacon d'énergie",6,4,"Fantôme",1,1,17,40,3
+"Flacon d'énergie",6,4,"Fantôme",1,2,15,40,3
+"Flacon d'énergie",6,4,"Fantôme",1,3,13,40,3
+"Extrait d'esprits",6,4,"Fantôme",1,4,11,40,3
+"Extrait d'esprits",6,4,"Fantôme",1,5,9,40,3
+"Robe de l'ombre",6,4,"Fantôme",1,6,6,40,3
+"Robe de l'ombre",6,4,"Fantôme",1,7,4,40,3
+"Elixir des esprits",6,4,"Harpie",2,0,25,40,4
+"Ecu du destin",6,4,"Harpie",2,1,17,40,4
+"Flûte des moutons",6,4,"Harpie",2,2,15,40,4
+"Gants ailés",6,4,"Harpie",2,3,13,40,4
+"Manteau à plumes",6,4,"Harpie",2,4,11,40,4
+"Chaussures à plumes",6,4,"Harpie",2,5,9,40,4
+"Balle du tonnerre",6,4,"Harpie",2,6,6,40,4
+"Balle du tonnerre",6,4,"Harpie",2,7,4,40,4
+"Craimore",6,4,"Sanguinaire",3,0,25,70,11
+"Minegosh",6,4,"Sanguinaire",3,1,17,70,11
+"Ecu du destin",6,4,"Sanguinaire",3,2,15,70,11
+"Ecu du destin",6,4,"Sanguinaire",3,3,13,70,11
+"Cendre rouge",6,4,"Sanguinaire",3,4,11,70,11
+"Cendre rouge",6,4,"Sanguinaire",3,5,9,70,11
+"Epée de sang",6,4,"Sanguinaire",3,6,6,70,11
+"Epée de sang",6,4,"Sanguinaire",3,7,4,70,11
+"Potion med",6,4,"Loup gris",4,0,25,70,10
+"Chaînette d'argent",6,4,"Loup gris",4,1,17,70,10
+"Poignard d'argent",6,4,"Loup gris",4,2,15,70,10
+"Poignard d'argent",6,4,"Loup gris",4,3,13,70,10
+"Extrait de sang",6,4,"Loup gris",4,4,11,70,10
+"Extrait de sang",6,4,"Loup gris",4,5,9,70,10
+"Extrait de sang",6,4,"Loup gris",4,6,6,70,10
+"Extrait de sang",6,4,"Loup gris",4,7,4,70,10
+"Sauvagerie",6,5,"Loup-garou",2,0,25,180,1
+"Sauvagerie",6,5,"Loup-garou",2,1,17,180,1
+"Poignard de sang",6,5,"Loup-garou",2,2,15,180,1
+"Poignard de sang",6,5,"Loup-garou",2,3,13,180,1
+"Bague sacrée",6,5,"Loup-garou",2,4,11,180,1
+"Bague sacrée",6,5,"Loup-garou",2,5,9,180,1
+"La massacreuse",6,5,"Loup-garou",2,6,6,180,1
+"La massacreuse",6,5,"Loup-garou",2,7,4,180,1
+"Epice rouge",6,5,"Tigre",3,0,25,180,1
+"Epice rouge",6,5,"Tigre",3,1,17,180,1
+"Poignard de sang",6,5,"Tigre",3,2,15,180,1
+"Poignard de sang",6,5,"Tigre",3,3,13,180,1
+"Os de guerrier sauvage",6,5,"Tigre",3,4,11,180,1
+"Os de guerrier sauvage",6,5,"Tigre",3,5,9,180,1
+"La massacreuse",6,5,"Tigre",3,6,6,180,1
+"La massacreuse",6,5,"Tigre",3,7,4,180,1
+"Elixir des esprits",6,5,"Harpie",4,0,25,40,4
+"Ecu du destin",6,5,"Harpie",4,1,17,40,4
+"Flûte des moutons",6,5,"Harpie",4,2,15,40,4
+"Gants ailés",6,5,"Harpie",4,3,13,40,4
+"Manteau à plumes",6,5,"Harpie",4,4,11,40,4
+"Chaussures à plumes",6,5,"Harpie",4,5,9,40,4
+"Balle du tonnerre",6,5,"Harpie",4,6,6,40,4
+"Balle du tonnerre",6,5,"Harpie",4,7,4,40,4
+"Potion med",6,5,"Loup gris",5,0,25,70,4
+"Chaînette d'argent",6,5,"Loup gris",5,1,17,70,4
+"Poignard d'argent",6,5,"Loup gris",5,2,15,70,4
+"Poignard d'argent",6,5,"Loup gris",5,3,13,70,4
+"Extrait de sang",6,5,"Loup gris",5,4,11,70,4
+"Extrait de sang",6,5,"Loup gris",5,5,9,70,4
+"Extrait de sang",6,5,"Loup gris",5,6,6,70,4
+"Extrait de sang",6,5,"Loup gris",5,7,4,70,4
+"Broche au joyau",6,6,"Petit vampire",4,0,25,60,35
+"Chaîne des ténèbres",6,6,"Petit vampire",4,1,17,60,35
+"Chaîne du mal",6,6,"Petit vampire",4,2,15,60,35
+"Extrait d'esprits",6,6,"Petit vampire",4,3,13,60,35
+"Plume",6,6,"Petit vampire",4,4,11,60,35
+"Pointe de sang",6,6,"Petit vampire",4,5,9,60,35
+"Pointe de sang",6,6,"Petit vampire",4,6,6,60,35
+"Plume",6,6,"Petit vampire",4,7,4,60,35
+"Elixir de magicien",6,6,"Gargouille",5,0,25,50,30
+"Elixir de magicien",6,6,"Gargouille",5,1,17,50,30
+"Elixir de magicien",6,6,"Gargouille",5,2,15,50,30
+"Elixir de magicien",6,6,"Gargouille",5,3,13,50,30
+"Cristal de magie",6,6,"Gargouille",5,4,11,50,30
+"Cristal de magie",6,6,"Gargouille",5,5,9,50,30
+"Cristal de magie",6,6,"Gargouille",5,6,6,50,30
+"Cristal de magie",6,6,"Gargouille",5,7,4,50,30
+"Balle des ténèbres",6,6,"Ombre",6,0,25,44,21
+"Cristal d'ombre",6,6,"Ombre",6,1,17,44,21
+"Pendentif vaporeux",6,6,"Ombre",6,2,15,44,21
+"Robe de l'ombre",6,6,"Ombre",6,3,13,44,21
+"Voile des ombres",6,6,"Ombre",6,4,11,44,21
+"Voile des ombres",6,6,"Ombre",6,5,9,44,21
+"Voile des ombres",6,6,"Ombre",6,6,6,44,21
+"Voile des ombres",6,6,"Ombre",6,7,4,44,21
+"Huile de sang",6,6,"Vampire",7,0,25,40,28
+"Huile de sang",6,6,"Vampire",7,1,17,40,28
+"Extrait d'esprits",6,6,"Vampire",7,2,15,40,28
+"Extrait d'esprits",6,6,"Vampire",7,3,13,40,28
+"Extrait d'esprits",6,6,"Vampire",7,4,11,40,28
+"Extrait d'esprits",6,6,"Vampire",7,5,9,40,28
+"Extrait d'esprits",6,6,"Vampire",7,6,6,40,28
+"Extrait d'esprits",6,6,"Vampire",7,7,4,40,28
+"Elixir de magicien",6,7,"Gargouille",6,0,25,50,17
+"Elixir de magicien",6,7,"Gargouille",6,1,17,50,17
+"Elixir de magicien",6,7,"Gargouille",6,2,15,50,17
+"Elixir de magicien",6,7,"Gargouille",6,3,13,50,17
+"Cristal de magie",6,7,"Gargouille",6,4,11,50,17
+"Cristal de magie",6,7,"Gargouille",6,5,9,50,17
+"Cristal de magie",6,7,"Gargouille",6,6,6,50,17
+"Cristal de magie",6,7,"Gargouille",6,7,4,50,17
+"Ecu du destin",6,7,"Pourpre preux",5,0,25,50,23
+"Ecu du destin",6,7,"Pourpre preux",5,1,17,50,23
+"Casque de fer",6,7,"Pourpre preux",5,2,15,50,23
+"Casque de fer",6,7,"Pourpre preux",5,3,13,50,23
+"Bannière de chevalier",6,7,"Pourpre preux",5,4,11,50,23
+"Bannière de chevalier",6,7,"Pourpre preux",5,5,9,50,23
+"Epée de sang",6,7,"Pourpre preux",5,6,6,50,23
+"Epée de sang",6,7,"Pourpre preux",5,7,4,50,23
+"Broche au joyau",6,7,"Petit vampire",7,0,25,60,22
+"Chaîne des ténèbres",6,7,"Petit vampire",7,1,17,60,22
+"Chaîne du mal",6,7,"Petit vampire",7,2,15,60,22
+"Extrait d'esprits",6,7,"Petit vampire",7,3,13,60,22
+"Plume",6,7,"Petit vampire",7,4,11,60,22
+"Pointe de sang",6,7,"Petit vampire",7,5,9,60,22
+"Pointe de sang",6,7,"Petit vampire",7,6,6,60,22
+"Plume",6,7,"Petit vampire",7,7,4,60,22
+"Lavande",6,8,"Chimère",3,0,25,45,9
+"Sauge",6,8,"Chimère",3,1,17,45,9
+"Poudre de zombie",6,8,"Chimère",3,2,15,45,9
+"Poudre de zombie",6,8,"Chimère",3,3,13,45,9
+"Cristal de magie",6,8,"Chimère",3,4,11,45,9
+"Cristal d'ombre",6,8,"Chimère",3,5,9,45,9
+"Cristal d'ombre",6,8,"Chimère",3,6,6,45,9
+"Cristal de magie",6,8,"Chimère",3,7,4,45,9
+"Broche au joyau",6,8,"Petit vampire",2,0,25,60,7
+"Chaîne des ténèbres",6,8,"Petit vampire",2,1,17,60,7
+"Chaîne du mal",6,8,"Petit vampire",2,2,15,60,7
+"Extrait d'esprits",6,8,"Petit vampire",2,3,13,60,7
+"Plume",6,8,"Petit vampire",2,4,11,60,7
+"Pointe de sang",6,8,"Petit vampire",2,5,9,60,7
+"Pointe de sang",6,8,"Petit vampire",2,6,6,60,7
+"Plume",6,8,"Petit vampire",2,7,4,60,7
+"Lavande",6,8,"Chimère",3,0,25,0,2
+"Sauge",6,8,"Chimère",3,1,17,0,2
+"Poudre de zombie",6,8,"Chimère",3,2,15,0,2
+"Poudre de zombie",6,8,"Chimère",3,3,13,0,2
+"Cristal de magie",6,8,"Chimère",3,4,11,0,2
+"Cristal d'ombre",6,8,"Chimère",3,5,9,0,2
+"Cristal d'ombre",6,8,"Chimère",3,6,6,0,2
+"Cristal de magie",6,8,"Chimère",3,7,4,0,2
+"Broche au joyau",6,8,"Petit vampire",2,0,25,0,2
+"Chaîne des ténèbres",6,8,"Petit vampire",2,1,17,0,2
+"Chaîne du mal",6,8,"Petit vampire",2,2,15,0,2
+"Extrait d'esprits",6,8,"Petit vampire",2,3,13,0,2
+"Plume",6,8,"Petit vampire",2,4,11,0,2
+"Pointe de sang",6,8,"Petit vampire",2,5,9,0,2
+"Pointe de sang",6,8,"Petit vampire",2,6,6,0,2
+"Plume",6,8,"Petit vampire",2,7,4,0,2
+"Lavande",6,9,"Chimère",0,0,25,45,3
+"Sauge",6,9,"Chimère",0,1,17,45,3
+"Poudre de zombie",6,9,"Chimère",0,2,15,45,3
+"Poudre de zombie",6,9,"Chimère",0,3,13,45,3
+"Cristal de magie",6,9,"Chimère",0,4,11,45,3
+"Cristal d'ombre",6,9,"Chimère",0,5,9,45,3
+"Cristal d'ombre",6,9,"Chimère",0,6,6,45,3
+"Cristal de magie",6,9,"Chimère",0,7,4,45,3
+"Extrait d'esprits",6,9,"Vampire",1,0,25,60,10
+"Chaîne des ténèbres",6,9,"Vampire",1,1,17,60,10
+"Chaîne du mal",6,9,"Vampire",1,2,15,60,10
+"Bouclier de l'ombre",6,9,"Vampire",1,3,13,60,10
+"Plume",6,9,"Vampire",1,4,11,60,10
+"Pointe de sang",6,9,"Vampire",1,5,9,60,10
+"Pointe de sang",6,9,"Vampire",1,6,6,60,10
+"Plume",6,9,"Vampire",1,7,4,60,10
+"Voile de beauté",6,9,"Sacuba",2,0,25,52,1
+"Voile mystique",6,9,"Sacuba",2,1,17,52,1
+"Bracelet de reine",6,9,"Sacuba",2,2,15,52,1
+"Tiare de la terre",6,9,"Sacuba",2,3,13,52,1
+"Tiare des étoiles",6,9,"Sacuba",2,4,11,52,1
+"Couronne de la lune",6,9,"Sacuba",2,5,9,52,1
+"Artémis",6,9,"Sacuba",2,6,6,52,1
+"Artémis",6,9,"Sacuba",2,7,4,52,1
+"Ecu du destin",6,9,"Pourpre preux",3,0,25,50,18
+"Ecu du destin",6,9,"Pourpre preux",3,1,17,50,18
+"Casque de fer",6,9,"Pourpre preux",3,2,15,50,18
+"Casque de fer",6,9,"Pourpre preux",3,3,13,50,18
+"Bannière de chevalier",6,9,"Pourpre preux",3,4,11,50,18
+"Bannière de chevalier",6,9,"Pourpre preux",3,5,9,50,18
+"Epée de sang",6,9,"Pourpre preux",3,6,6,50,18
+"Epée de sang",6,9,"Pourpre preux",3,7,4,50,18
+"Ecu du destin",6,10,"Pourpre preux",0,0,25,50,79
+"Ecu du destin",6,10,"Pourpre preux",0,1,17,50,79
+"Casque de fer",6,10,"Pourpre preux",0,2,15,50,79
+"Casque de fer",6,10,"Pourpre preux",0,3,13,50,79
+"Bannière de chevalier",6,10,"Pourpre preux",0,4,11,50,79
+"Bannière de chevalier",6,10,"Pourpre preux",0,5,9,50,79
+"Epée de sang",6,10,"Pourpre preux",0,6,6,50,79
+"Epée de sang",6,10,"Pourpre preux",0,7,4,50,79
+"Extrait d'esprits",6,10,"Vampire",1,0,25,60,81
+"Chaîne des ténèbres",6,10,"Vampire",1,1,17,60,81
+"Chaîne du mal",6,10,"Vampire",1,2,15,60,81
+"Bouclier de l'ombre",6,10,"Vampire",1,3,13,60,81
+"Plume",6,10,"Vampire",1,4,11,60,81
+"Pointe de sang",6,10,"Vampire",1,5,9,60,81
+"Pointe de sang",6,10,"Vampire",1,6,6,60,81
+"Plume",6,10,"Vampire",1,7,4,60,81
+"Balle des ténèbres",6,10,"Ombre",2,0,25,44,73
+"Cristal d'ombre",6,10,"Ombre",2,1,17,44,73
+"Pendentif vaporeux",6,10,"Ombre",2,2,15,44,73
+"Robe de l'ombre",6,10,"Ombre",2,3,13,44,73
+"Voile des ombres",6,10,"Ombre",2,4,11,44,73
+"Voile des ombres",6,10,"Ombre",2,5,9,44,73
+"Voile des ombres",6,10,"Ombre",2,6,6,44,73
+"Voile des ombres",6,10,"Ombre",2,7,4,44,73
+"Broche au joyau",6,10,"Petit vampire",3,0,25,60,25
+"Chaîne des ténèbres",6,10,"Petit vampire",3,1,17,60,25
+"Chaîne du mal",6,10,"Petit vampire",3,2,15,60,25
+"Extrait d'esprits",6,10,"Petit vampire",3,3,13,60,25
+"Plume",6,10,"Petit vampire",3,4,11,60,25
+"Pointe de sang",6,10,"Petit vampire",3,5,9,60,25
+"Pointe de sang",6,10,"Petit vampire",3,6,6,60,25
+"Plume",6,10,"Petit vampire",3,7,4,60,25
+"Pentacle de prince",6,11,"Nocturio",0,0,25,300,1
+"Robe du démon",6,11,"Nocturio",0,1,17,300,1
+"Poupée Dummy",6,11,"Nocturio",0,2,15,300,1
+"Table des anciens",6,11,"Nocturio",0,3,13,300,1
+"Table de vision",6,11,"Nocturio",0,4,11,300,1
+"Manteau des esprits",6,11,"Nocturio",0,5,9,300,1
+"Anneau de Merlin",6,11,"Nocturio",0,6,6,300,1
+"Rapière de Zeus",6,11,"Nocturio",0,7,4,300,1
+"Pentacle de prince",6,11,"Nocturio",0,0,25,300,1
+"Robe du démon",6,11,"Nocturio",0,1,17,300,1
+"Poupée Dummy",6,11,"Nocturio",0,2,15,300,1
+"Table des anciens",6,11,"Nocturio",0,3,13,300,1
+"Table de vision",6,11,"Nocturio",0,4,11,300,1
+"Manteau des esprits",6,11,"Nocturio",0,5,9,300,1
+"Anneau de Merlin",6,11,"Nocturio",0,6,6,300,1
+"Rapière de Zeus",6,11,"Nocturio",0,7,4,300,1
+"Voile de beauté",6,11,"Sacuba",1,0,25,52,3
+"Voile mystique",6,11,"Sacuba",1,1,17,52,3
+"Bracelet de reine",6,11,"Sacuba",1,2,15,52,3
+"Tiare de la terre",6,11,"Sacuba",1,3,13,52,3
+"Tiare des étoiles",6,11,"Sacuba",1,4,11,52,3
+"Couronne de la lune",6,11,"Sacuba",1,5,9,52,3
+"Artémis",6,11,"Sacuba",1,6,6,52,3
+"Artémis",6,11,"Sacuba",1,7,4,52,3
+"Elixir des esprits",7,0,"Crapaud",2,0,25,50,2
+"Elixir des esprits",7,0,"Crapaud",2,1,17,50,2
+"Elixir des esprits",7,0,"Crapaud",2,2,15,50,2
+"Elixir des esprits",7,0,"Crapaud",2,3,13,50,2
+"Cristal de magie",7,0,"Crapaud",2,4,11,50,2
+"Cristal de magie",7,0,"Crapaud",2,5,9,50,2
+"Cristal de magie",7,0,"Crapaud",2,6,6,50,2
+"Cristal de magie",7,0,"Crapaud",2,7,4,50,2
+"Cristal de magie",7,0,"Balle métal",3,0,25,40,15
+"Cuirasse au miroir",7,0,"Balle métal",3,1,17,40,15
+"Bouclier d'argent",7,0,"Balle métal",3,2,15,40,15
+"Bouclier réflecteur",7,0,"Balle métal",3,3,13,40,15
+"Joyau de feu",7,0,"Balle métal",3,4,11,40,15
+"Joyau de glace",7,0,"Balle métal",3,5,9,40,15
+"Joyau de terre",7,0,"Balle métal",3,6,6,40,15
+"Joyau de vent",7,0,"Balle métal",3,7,4,40,15
+"Potion med",7,0,"Loup",4,0,25,70,0
+"Potion med",7,0,"Loup",4,1,17,70,0
+"Elixir de vie",7,0,"Loup",4,2,15,70,0
+"Elixir de vie",7,0,"Loup",4,3,13,70,0
+"Extrait de sang",7,0,"Loup",4,4,11,70,0
+"Extrait de sang",7,0,"Loup",4,5,9,70,0
+"Extrait de sang",7,0,"Loup",4,6,6,70,0
+"Extrait de sang",7,0,"Loup",4,7,4,70,0
+"Potion med",7,0,"Loup",4,0,25,70,2
+"Potion med",7,0,"Loup",4,1,17,70,2
+"Elixir de vie",7,0,"Loup",4,2,15,70,2
+"Elixir de vie",7,0,"Loup",4,3,13,70,2
+"Extrait de sang",7,0,"Loup",4,4,11,70,2
+"Extrait de sang",7,0,"Loup",4,5,9,70,2
+"Extrait de sang",7,0,"Loup",4,6,6,70,2
+"Extrait de sang",7,0,"Loup",4,7,4,70,2
+"Lavande",7,1,"Chimère",0,0,25,45,3
+"Sauge",7,1,"Chimère",0,1,17,45,3
+"Poudre de zombie",7,1,"Chimère",0,2,15,45,3
+"Poudre de zombie",7,1,"Chimère",0,3,13,45,3
+"Cristal de magie",7,1,"Chimère",0,4,11,45,3
+"Cristal d'ombre",7,1,"Chimère",0,5,9,45,3
+"Cristal d'ombre",7,1,"Chimère",0,6,6,45,3
+"Cristal de magie",7,1,"Chimère",0,7,4,45,3
+"Cristal de magie",7,1,"Balle métal",1,0,25,80,2
+"Cristal de magie",7,1,"Balle métal",1,1,17,80,2
+"Dropneal",7,1,"Balle métal",1,2,15,80,2
+"Dropneal",7,1,"Balle métal",1,3,13,80,2
+"Dropneal",7,1,"Balle métal",1,4,11,80,2
+"Dropneal",7,1,"Balle métal",1,5,9,80,2
+"Dropneal",7,1,"Balle métal",1,6,6,80,2
+"Arc gris",7,1,"Balle métal",1,7,4,80,2
+"Poudre de zombie",7,2,"Sosie",0,0,25,40,4
+"Elixir de magicien",7,2,"Sosie",0,1,17,40,4
+"Panoramix",7,2,"Sosie",0,2,15,40,4
+"Cristal de magie",7,2,"Sosie",0,3,13,40,4
+"Cristal de magie",7,2,"Sosie",0,4,11,40,4
+"Panoramix",7,2,"Sosie",0,5,9,40,4
+"Elixir de magicien",7,2,"Sosie",0,6,6,40,4
+"Poudre de zombie",7,2,"Sosie",0,7,4,40,4
+"Poudre de zombie",7,2,"Sosie",0,0,25,40,3
+"Elixir de magicien",7,2,"Sosie",0,1,17,40,3
+"Panoramix",7,2,"Sosie",0,2,15,40,3
+"Cristal de magie",7,2,"Sosie",0,3,13,40,3
+"Cristal de magie",7,2,"Sosie",0,4,11,40,3
+"Panoramix",7,2,"Sosie",0,5,9,40,3
+"Elixir de magicien",7,2,"Sosie",0,6,6,40,3
+"Poudre de zombie",7,2,"Sosie",0,7,4,40,3
+"Poudre de zombie",7,2,"Sosie",0,0,25,40,2
+"Elixir de magicien",7,2,"Sosie",0,1,17,40,2
+"Panoramix",7,2,"Sosie",0,2,15,40,2
+"Cristal de magie",7,2,"Sosie",0,3,13,40,2
+"Cristal de magie",7,2,"Sosie",0,4,11,40,2
+"Panoramix",7,2,"Sosie",0,5,9,40,2
+"Elixir de magicien",7,2,"Sosie",0,6,6,40,2
+"Poudre de zombie",7,2,"Sosie",0,7,4,40,2
+"Poudre de zombie",7,2,"Sosie",0,0,25,40,1
+"Elixir de magicien",7,2,"Sosie",0,1,17,40,1
+"Panoramix",7,2,"Sosie",0,2,15,40,1
+"Cristal de magie",7,2,"Sosie",0,3,13,40,1
+"Cristal de magie",7,2,"Sosie",0,4,11,40,1
+"Panoramix",7,2,"Sosie",0,5,9,40,1
+"Elixir de magicien",7,2,"Sosie",0,6,6,40,1
+"Poudre de zombie",7,2,"Sosie",0,7,4,40,1
+"Extrait de sang",8,0,"Ours blanc",0,0,25,62,3
+"Extrait de sang",8,0,"Ours blanc",0,1,17,62,3
+"Cape d'hiver",8,0,"Ours blanc",0,2,15,62,3
+"Joyau de glace",8,0,"Ours blanc",0,3,13,62,3
+"Joyau de glace",8,0,"Ours blanc",0,4,11,62,3
+"Balle de gel",8,0,"Ours blanc",0,5,9,62,3
+"Balle de gel",8,0,"Ours blanc",0,6,6,62,3
+"Cape d'hiver",8,0,"Ours blanc",0,7,4,62,3
+"Potion med",8,0,"Loup blanc",1,0,25,70,4
+"Potion med",8,0,"Loup blanc",1,1,17,70,4
+"Cape d'hiver",8,0,"Loup blanc",1,2,15,70,4
+"Elixir de vie",8,0,"Loup blanc",1,3,13,70,4
+"Elixir de vie",8,0,"Loup blanc",1,4,11,70,4
+"Extrait de sang",8,0,"Loup blanc",1,5,9,70,4
+"Extrait de sang",8,0,"Loup blanc",1,6,6,70,4
+"Cape d'hiver",8,0,"Loup blanc",1,7,4,70,4
+"Chaîne de l'air",8,0,"Grifon",2,0,25,40,2
+"Plume",8,0,"Grifon",2,1,17,40,2
+"Gants ailés",8,0,"Grifon",2,2,15,40,2
+"Manteau à plumes",8,0,"Grifon",2,3,13,40,2
+"Chaîne de l'air",8,0,"Grifon",2,4,11,40,2
+"Plume",8,0,"Grifon",2,5,9,40,2
+"Gants ailés",8,0,"Grifon",2,6,6,40,2
+"Manteau à plumes",8,0,"Grifon",2,7,4,40,2
+"Chaîne de l'air",8,1,"Grifon",1,0,25,40,2
+"Plume",8,1,"Grifon",1,1,17,40,2
+"Gants ailés",8,1,"Grifon",1,2,15,40,2
+"Manteau à plumes",8,1,"Grifon",1,3,13,40,2
+"Chaîne de l'air",8,1,"Grifon",1,4,11,40,2
+"Plume",8,1,"Grifon",1,5,9,40,2
+"Gants ailés",8,1,"Grifon",1,6,6,40,2
+"Manteau à plumes",8,1,"Grifon",1,7,4,40,2
+"Balle de lumière",8,1,"Fougre",2,0,25,200,1
+"Cristal d'énergie",8,1,"Fougre",2,1,17,200,1
+"Balle de l'illusion",8,1,"Fougre",2,2,15,200,1
+"Chaînette de plumes",8,1,"Fougre",2,3,13,200,1
+"Casque ailé",8,1,"Fougre",2,4,11,200,1
+"Bottes ailées",8,1,"Fougre",2,5,9,200,1
+"Gantelets ailés",8,1,"Fougre",2,6,6,200,1
+"Flèche de Persée",8,1,"Fougre",2,7,4,200,1
+"Chaîne des ténèbres",9,0,"Lézard noir",0,0,25,43,4
+"Fine rapière",9,0,"Lézard noir",0,1,17,43,4
+"Ecu du destin",9,0,"Lézard noir",0,2,15,43,4
+"Bouclier de la terre",9,0,"Lézard noir",0,3,13,43,4
+"Rapière d'argent",9,0,"Lézard noir",0,4,11,43,4
+"Cristal saint",9,0,"Lézard noir",0,5,9,43,4
+"Cristal saint",9,0,"Lézard noir",0,6,6,43,4
+"Cristal saint",9,0,"Lézard noir",0,7,4,43,4
+"Manteau de cuir",9,0,"Wyrm",1,0,25,50,3
+"Manteau de cuir",9,0,"Wyrm",1,1,17,50,3
+"Joyau de vent",9,0,"Wyrm",1,2,15,50,3
+"Joyau de vent",9,0,"Wyrm",1,3,13,50,3
+"Joyau de vent",9,0,"Wyrm",1,4,11,50,3
+"Queue de dragon",9,0,"Wyrm",1,5,9,50,3
+"Ecailles de dragon",9,0,"Wyrm",1,6,6,50,3
+"Amulette du dragon",9,0,"Wyrm",1,7,4,50,3
+"Cristal d'eau",9,0,"Kraaken bras",2,0,25,200,2
+"Balle de gel",9,0,"Kraaken bras",2,1,17,200,2
+"Joyau de glace",9,0,"Kraaken bras",2,2,15,200,2
+"Aquachâle",9,0,"Kraaken bras",2,3,13,200,2
+"Aquachâle",9,0,"Kraaken bras",2,4,11,200,2
+"Balle des éléments",9,0,"Kraaken bras",2,5,9,200,2
+"Manteau des esprits",9,0,"Kraaken bras",2,6,6,200,2
+"Bouclier des élémentaux",9,0,"Kraaken bras",2,7,4,200,2
+"Cristal d'eau",9,0,"Kraaken pied",3,0,25,100,8
+"Balle de gel",9,0,"Kraaken pied",3,1,17,100,8
+"Joyau de glace",9,0,"Kraaken pied",3,2,15,100,8
+"Aquachâle",9,0,"Kraaken pied",3,3,13,100,8
+"Aquachâle",9,0,"Kraaken pied",3,4,11,100,8
+"Cristal d'eau",9,0,"Kraaken pied",3,5,9,100,8
+"Cristal d'eau",9,0,"Kraaken pied",3,6,6,100,8
+"Cristal d'eau",9,0,"Kraaken pied",3,7,4,100,8
+"Cristal d'eau",9,0,"Kraaken",4,0,25,10,1
+"Cristal d'eau",9,0,"Kraaken",4,1,17,10,1
+"Cristal d'eau",9,0,"Kraaken",4,2,15,10,1
+"Cristal d'eau",9,0,"Kraaken",4,3,13,10,1
+"Cristal d'eau",9,0,"Kraaken",4,4,11,10,1
+"Cristal d'eau",9,0,"Kraaken",4,5,9,10,1
+"Cristal d'eau",9,0,"Kraaken",4,6,6,10,1
+"Cristal d'eau",9,0,"Kraaken",4,7,4,10,1
+"Cristal d'eau",9,1,"Lézard noir",4,0,25,43,4
+"Cristal d'eau",9,1,"Lézard noir",4,1,17,43,4
+"Cristal d'eau",9,1,"Lézard noir",4,2,15,43,4
+"Cristal d'eau",9,1,"Lézard noir",4,3,13,43,4
+"Cristal d'eau",9,1,"Lézard noir",4,4,11,43,4
+"Cristal d'eau",9,1,"Lézard noir",4,5,9,43,4
+"Cristal d'eau",9,1,"Lézard noir",4,6,6,43,4
+"Cristal d'eau",9,1,"Lézard noir",4,7,4,43,4
+"Cristal d'eau",9,1,"Wyrm",4,0,25,50,3
+"Cristal d'eau",9,1,"Wyrm",4,1,17,50,3
+"Cristal d'eau",9,1,"Wyrm",4,2,15,50,3
+"Cristal d'eau",9,1,"Wyrm",4,3,13,50,3
+"Cristal d'eau",9,1,"Wyrm",4,4,11,50,3
+"Cristal d'eau",9,1,"Wyrm",4,5,9,50,3
+"Cristal d'eau",9,1,"Wyrm",4,6,6,50,3
+"Cristal d'eau",9,1,"Wyrm",4,7,4,50,3
+"Cristal d'eau",9,1,"Kraaken bras",4,0,25,200,2
+"Cristal d'eau",9,1,"Kraaken bras",4,1,17,200,2
+"Cristal d'eau",9,1,"Kraaken bras",4,2,15,200,2
+"Cristal d'eau",9,1,"Kraaken bras",4,3,13,200,2
+"Cristal d'eau",9,1,"Kraaken bras",4,4,11,200,2
+"Cristal d'eau",9,1,"Kraaken bras",4,5,9,200,2
+"Cristal d'eau",9,1,"Kraaken bras",4,6,6,200,2
+"Cristal d'eau",9,1,"Kraaken bras",4,7,4,200,2
+"Cristal d'eau",9,1,"Kraaken pied",4,0,25,100,8
+"Cristal d'eau",9,1,"Kraaken pied",4,1,17,100,8
+"Cristal d'eau",9,1,"Kraaken pied",4,2,15,100,8
+"Cristal d'eau",9,1,"Kraaken pied",4,3,13,100,8
+"Cristal d'eau",9,1,"Kraaken pied",4,4,11,100,8
+"Cristal d'eau",9,1,"Kraaken pied",4,5,9,100,8
+"Cristal d'eau",9,1,"Kraaken pied",4,6,6,100,8
+"Cristal d'eau",9,1,"Kraaken pied",4,7,4,100,8
+"Cristal d'eau",9,1,"Kraaken",4,0,25,10,1
+"Cristal d'eau",9,1,"Kraaken",4,1,17,10,1
+"Cristal d'eau",9,1,"Kraaken",4,2,15,10,1
+"Cristal d'eau",9,1,"Kraaken",4,3,13,10,1
+"Cristal d'eau",9,1,"Kraaken",4,4,11,10,1
+"Cristal d'eau",9,1,"Kraaken",4,5,9,10,1
+"Cristal d'eau",9,1,"Kraaken",4,6,6,10,1
+"Cristal d'eau",9,1,"Kraaken",4,7,4,10,1
+"Fenouil",10,0,"Sale rampant",0,0,25,32,18
+"Robe des anciens",10,0,"Sale rampant",0,1,17,32,18
+"Flèche de l'ombre",10,0,"Sale rampant",0,2,15,32,18
+"Cristal du mal",10,0,"Sale rampant",0,3,13,32,18
+"Cristal du mal",10,0,"Sale rampant",0,4,11,32,18
+"Balle maléfique",10,0,"Sale rampant",0,5,9,32,18
+"Balle maléfique",10,0,"Sale rampant",0,6,6,32,18
+"Balle maléfique",10,0,"Sale rampant",0,7,4,32,18
+"Balle maléfique",10,0,"Ombre rouge",1,0,25,44,21
+"Cristal du mal",10,0,"Ombre rouge",1,1,17,44,21
+"Chaîne du mal",10,0,"Ombre rouge",1,2,15,44,21
+"Robe de l'ombre",10,0,"Ombre rouge",1,3,13,44,21
+"Voile des ombres",10,0,"Ombre rouge",1,4,11,44,21
+"Voile des ombres",10,0,"Ombre rouge",1,5,9,44,21
+"Voile des ombres",10,0,"Ombre rouge",1,6,6,44,21
+"Voile des ombres",10,0,"Ombre rouge",1,7,4,44,21
+"Cristal du mal",10,0,"Maudite",2,0,25,10,24
+"Balle des ténèbres",10,0,"Maudite",2,1,17,10,24
+"Cristal du mal",10,0,"Maudite",2,2,15,10,24
+"Balle des ténèbres",10,0,"Maudite",2,3,13,10,24
+"Balle des ténèbres",10,0,"Maudite",2,4,11,10,24
+"Cristal du mal",10,0,"Maudite",2,5,9,10,24
+"Balle des ténèbres",10,0,"Maudite",2,6,6,10,24
+"Cristal du mal",10,0,"Maudite",2,7,4,10,24
+"Gants de cuir",10,0,"Bras gris",3,0,25,50,4
+"Manteau de brigand",10,0,"Bras gris",3,1,17,50,4
+"Joyau de vent",10,0,"Bras gris",3,2,15,50,4
+"Joyau de vent",10,0,"Bras gris",3,3,13,50,4
+"Joyau de vent",10,0,"Bras gris",3,4,11,50,4
+"Queue de dragon",10,0,"Bras gris",3,5,9,50,4
+"Ecailles de dragon",10,0,"Bras gris",3,6,6,50,4
+"Amulette du dragon",10,0,"Bras gris",3,7,4,50,4
+"Aile de fée",10,0,"Gremlin",4,0,25,60,14
+"Belladone",10,0,"Gremlin",4,1,17,60,14
+"Poudre de fées",10,0,"Gremlin",4,2,15,60,14
+"Baguette de la féerie",10,0,"Gremlin",4,3,13,60,14
+"Ecu du destin",10,0,"Gremlin",4,4,11,60,14
+"Ecu du destin",10,0,"Gremlin",4,5,9,60,14
+"Ecu du destin",10,0,"Gremlin",4,6,6,60,14
+"Parfum de feu",10,0,"Gremlin",4,7,4,60,14
+"Elixir des esprits",10,1,"Mort volante",0,0,25,40,7
+"Ecu du destin",10,1,"Mort volante",0,1,17,40,7
+"Flûte des moutons",10,1,"Mort volante",0,2,15,40,7
+"Gants ailés",10,1,"Mort volante",0,3,13,40,7
+"Manteau à plumes",10,1,"Mort volante",0,4,11,40,7
+"Chaussures à plumes",10,1,"Mort volante",0,5,9,40,7
+"Balle du tonnerre",10,1,"Mort volante",0,6,6,40,7
+"Balle du tonnerre",10,1,"Mort volante",0,7,4,40,7
+"Gants de cuir",10,1,"Bras gris",1,0,25,50,1
+"Manteau de brigand",10,1,"Bras gris",1,1,17,50,1
+"Joyau de vent",10,1,"Bras gris",1,2,15,50,1
+"Joyau de vent",10,1,"Bras gris",1,3,13,50,1
+"Joyau de vent",10,1,"Bras gris",1,4,11,50,1
+"Queue de dragon",10,1,"Bras gris",1,5,9,50,1
+"Ecailles de dragon",10,1,"Bras gris",1,6,6,50,1
+"Amulette du dragon",10,1,"Bras gris",1,7,4,50,1
+"Hache de guerre",10,1,"Noir goblin",2,0,25,0,4
+"Lavande",10,1,"Noir goblin",2,1,17,0,4
+"Arc noble",10,1,"Noir goblin",2,2,15,0,4
+"Ecu du destin",10,1,"Noir goblin",2,3,13,0,4
+"Elixir de vie",10,1,"Noir goblin",2,4,11,0,4
+"Tablier de cuir",10,1,"Noir goblin",2,5,9,0,4
+"Pavois fin",10,1,"Noir goblin",2,6,6,0,4
+"Pavois fin",10,1,"Noir goblin",2,7,4,0,4
+"Simple bâton",10,1,"Shamane",3,0,25,0,3
+"Simple bâton",10,1,"Shamane",3,1,17,0,3
+"Sauge",10,1,"Shamane",3,2,15,0,3
+"Verveine",10,1,"Shamane",3,3,13,0,3
+"Mercuriale",10,1,"Shamane",3,4,11,0,3
+"Fenouil",10,1,"Shamane",3,5,9,0,3
+"Ecu du destin",10,1,"Shamane",3,6,6,0,3
+"Balle de cristal",10,1,"Shamane",3,7,4,0,3
+"Fenouil",10,2,"Sale rampant",1,0,25,32,17
+"Robe des anciens",10,2,"Sale rampant",1,1,17,32,17
+"Flèche de l'ombre",10,2,"Sale rampant",1,2,15,32,17
+"Cristal du mal",10,2,"Sale rampant",1,3,13,32,17
+"Cristal du mal",10,2,"Sale rampant",1,4,11,32,17
+"Balle maléfique",10,2,"Sale rampant",1,5,9,32,17
+"Balle maléfique",10,2,"Sale rampant",1,6,6,32,17
+"Balle maléfique",10,2,"Sale rampant",1,7,4,32,17
+"Ecu du destin",10,2,"Preux mort",2,0,25,50,22
+"Gantelet de force",10,2,"Preux mort",2,1,17,50,22
+"Rapière du chaos",10,2,"Preux mort",2,2,15,50,22
+"Armure noire",10,2,"Preux mort",2,3,13,50,22
+"Armure noire",10,2,"Preux mort",2,4,11,50,22
+"Symbole des ténébres",10,2,"Preux mort",2,5,9,50,22
+"Epée noire",10,2,"Preux mort",2,6,6,50,22
+"Ecu du destin",10,2,"Preux mort",2,7,4,50,22
+"Balle maléfique",10,2,"Ombre rouge",3,0,25,44,22
+"Cristal du mal",10,2,"Ombre rouge",3,1,17,44,22
+"Chaîne du mal",10,2,"Ombre rouge",3,2,15,44,22
+"Robe de l'ombre",10,2,"Ombre rouge",3,3,13,44,22
+"Voile des ombres",10,2,"Ombre rouge",3,4,11,44,22
+"Voile des ombres",10,2,"Ombre rouge",3,5,9,44,22
+"Voile des ombres",10,2,"Ombre rouge",3,6,6,44,22
+"Voile des ombres",10,2,"Ombre rouge",3,7,4,44,22
+"Gants de cuir",10,2,"Bras gris",4,0,25,50,7
+"Manteau de brigand",10,2,"Bras gris",4,1,17,50,7
+"Joyau de vent",10,2,"Bras gris",4,2,15,50,7
+"Joyau de vent",10,2,"Bras gris",4,3,13,50,7
+"Joyau de vent",10,2,"Bras gris",4,4,11,50,7
+"Queue de dragon",10,2,"Bras gris",4,5,9,50,7
+"Ecailles de dragon",10,2,"Bras gris",4,6,6,50,7
+"Amulette du dragon",10,2,"Bras gris",4,7,4,50,7
+"Aile de fée",10,2,"Gremlin",5,0,25,60,24
+"Belladone",10,2,"Gremlin",5,1,17,60,24
+"Poudre de fées",10,2,"Gremlin",5,2,15,60,24
+"Baguette de la féerie",10,2,"Gremlin",5,3,13,60,24
+"Ecu du destin",10,2,"Gremlin",5,4,11,60,24
+"Ecu du destin",10,2,"Gremlin",5,5,9,60,24
+"Ecu du destin",10,2,"Gremlin",5,6,6,60,24
+"Parfum de feu",10,2,"Gremlin",5,7,4,60,24
+"Ecu du destin",10,3,"Sanpeur",1,0,25,50,8
+"Gantelet de force",10,3,"Sanpeur",1,1,17,50,8
+"Rapière du chaos",10,3,"Sanpeur",1,2,15,50,8
+"Armure noire",10,3,"Sanpeur",1,3,13,50,8
+"Armure noire",10,3,"Sanpeur",1,4,11,50,8
+"Symbole des ténébres",10,3,"Sanpeur",1,5,9,50,8
+"Epée noire",10,3,"Sanpeur",1,6,6,50,8
+"Ecu du destin",10,3,"Sanpeur",1,7,4,50,8
+"Balle maléfique",10,3,"Ombre rouge",2,0,25,44,3
+"Cristal du mal",10,3,"Ombre rouge",2,1,17,44,3
+"Chaîne du mal",10,3,"Ombre rouge",2,2,15,44,3
+"Robe de l'ombre",10,3,"Ombre rouge",2,3,13,44,3
+"Voile des ombres",10,3,"Ombre rouge",2,4,11,44,3
+"Voile des ombres",10,3,"Ombre rouge",2,5,9,44,3
+"Voile des ombres",10,3,"Ombre rouge",2,6,6,44,3
+"Voile des ombres",10,3,"Ombre rouge",2,7,4,44,3
+"Fenouil",10,3,"Sale rampant",0,0,25,32,7
+"Robe des anciens",10,3,"Sale rampant",0,1,17,32,7
+"Flèche de l'ombre",10,3,"Sale rampant",0,2,15,32,7
+"Cristal du mal",10,3,"Sale rampant",0,3,13,32,7
+"Cristal du mal",10,3,"Sale rampant",0,4,11,32,7
+"Balle maléfique",10,3,"Sale rampant",0,5,9,32,7
+"Balle maléfique",10,3,"Sale rampant",0,6,6,32,7
+"Balle maléfique",10,3,"Sale rampant",0,7,4,32,7
+"Aile de fée",10,3,"Gremlin",4,0,25,60,11
+"Belladone",10,3,"Gremlin",4,1,17,60,11
+"Poudre de fées",10,3,"Gremlin",4,2,15,60,11
+"Baguette de la féerie",10,3,"Gremlin",4,3,13,60,11
+"Ecu du destin",10,3,"Gremlin",4,4,11,60,11
+"Ecu du destin",10,3,"Gremlin",4,5,9,60,11
+"Ecu du destin",10,3,"Gremlin",4,6,6,60,11
+"Parfum de feu",10,3,"Gremlin",4,7,4,60,11
+"Gants de cuir",10,3,"Bras gris",3,0,25,50,4
+"Manteau de brigand",10,3,"Bras gris",3,1,17,50,4
+"Joyau de vent",10,3,"Bras gris",3,2,15,50,4
+"Joyau de vent",10,3,"Bras gris",3,3,13,50,4
+"Joyau de vent",10,3,"Bras gris",3,4,11,50,4
+"Queue de dragon",10,3,"Bras gris",3,5,9,50,4
+"Ecailles de dragon",10,3,"Bras gris",3,6,6,50,4
+"Amulette du dragon",10,3,"Bras gris",3,7,4,50,4
+"Cristal d'énergie",10,4,"Dragon zombie",11,0,25,250,1
+"Balle de l'illusion",10,4,"Dragon zombie",11,1,17,250,1
+"Horloge du bonheur",10,4,"Dragon zombie",11,2,15,250,1
+"Robe magique",10,4,"Dragon zombie",11,3,13,250,1
+"Armure du gardien",10,4,"Dragon zombie",11,4,11,250,1
+"Bouclier du gardien",10,4,"Dragon zombie",11,5,9,250,1
+"Anneau de Merlin",10,4,"Dragon zombie",11,6,6,250,1
+"Anneau des philosophes",10,4,"Dragon zombie",11,7,4,250,1
+"Cristal du mal",10,4,"Maudite",12,0,25,200,2
+"Balle maléfique",10,4,"Maudite",12,1,17,200,2
+"Carte de la peur",10,4,"Maudite",12,2,15,200,2
+"Cendre rouge",10,4,"Maudite",12,3,13,200,2
+"Cendre rouge",10,4,"Maudite",12,4,11,200,2
+"Carte de la peur",10,4,"Maudite",12,5,9,200,2
+"Balle maléfique",10,4,"Maudite",12,6,6,200,2
+"Cristal du mal",10,4,"Maudite",12,7,4,200,2
+"Hache d'Ouga",10,5,"Infernal",1,0,25,40,10
+"Potion olympique",10,5,"Infernal",1,1,17,40,10
+"Os de guerrier sauvage",10,5,"Infernal",1,2,15,40,10
+"Cendre rouge",10,5,"Infernal",1,3,13,40,10
+"Cendre verte",10,5,"Infernal",1,4,11,40,10
+"Cristal du mal",10,5,"Infernal",1,5,9,40,10
+"La massacreuse",10,5,"Infernal",1,6,6,40,10
+"La massacreuse",10,5,"Infernal",1,7,4,40,10
+"Bouclier de la terre",10,5,"Basirisk",2,0,25,40,9
+"Ecailles de Belzébuth",10,5,"Basirisk",2,1,17,40,9
+"Harpe d'or",10,5,"Basirisk",2,2,15,40,9
+"Cristal de terre",10,5,"Basirisk",2,3,13,40,9
+"Cristal de terre",10,5,"Basirisk",2,4,11,40,9
+"Harpe d'or",10,5,"Basirisk",2,5,9,40,9
+"Ecailles de Belzébuth",10,5,"Basirisk",2,6,6,40,9
+"Bouclier de la terre",10,5,"Basirisk",2,7,4,40,9
+"Huile du pouvoir",10,5,"Groklebs",3,0,25,40,15
+"Lavande",10,5,"Groklebs",3,1,17,40,15
+"Elixir de vie",10,5,"Groklebs",3,2,15,40,15
+"Cristal de feu",10,5,"Groklebs",3,3,13,40,15
+"Chaîne du feu",10,5,"Groklebs",3,4,11,40,15
+"Chaînette d'argent",10,5,"Groklebs",3,5,9,40,15
+"Chaînette d'argent",10,5,"Groklebs",3,6,6,40,15
+"Chaîne du feu",10,5,"Groklebs",3,7,4,40,15
+"Aile de fée",10,5,"Gremlin",4,0,25,60,5
+"Belladone",10,5,"Gremlin",4,1,17,60,5
+"Poudre de fées",10,5,"Gremlin",4,2,15,60,5
+"Baguette de la féerie",10,5,"Gremlin",4,3,13,60,5
+"Ecu du destin",10,5,"Gremlin",4,4,11,60,5
+"Ecu du destin",10,5,"Gremlin",4,5,9,60,5
+"Ecu du destin",10,5,"Gremlin",4,6,6,60,5
+"Parfum de feu",10,5,"Gremlin",4,7,4,60,5
+"Aile de fée",10,6,"Gremlin",0,0,25,60,9
+"Belladone",10,6,"Gremlin",0,1,17,60,9
+"Poudre de fées",10,6,"Gremlin",0,2,15,60,9
+"Baguette de la féerie",10,6,"Gremlin",0,3,13,60,9
+"Ecu du destin",10,6,"Gremlin",0,4,11,60,9
+"Ecu du destin",10,6,"Gremlin",0,5,9,60,9
+"Ecu du destin",10,6,"Gremlin",0,6,6,60,9
+"Parfum de feu",10,6,"Gremlin",0,7,4,60,9
+"Voile de beauté",10,6,"Sacuba",1,0,25,52,3
+"Voile mystique",10,6,"Sacuba",1,1,17,52,3
+"Bracelet de reine",10,6,"Sacuba",1,2,15,52,3
+"Tiare de la terre",10,6,"Sacuba",1,3,13,52,3
+"Tiare des étoiles",10,6,"Sacuba",1,4,11,52,3
+"Couronne de la lune",10,6,"Sacuba",1,5,9,52,3
+"Artémis",10,6,"Sacuba",1,6,6,52,3
+"Artémis",10,6,"Sacuba",1,7,4,52,3
+"Joyau de glace",10,6,"Triton glace",2,0,25,30,5
+"Balle de gel",10,6,"Triton glace",2,1,17,30,5
+"Saphir",10,6,"Triton glace",2,2,15,30,5
+"Forgée de glace",10,6,"Triton glace",2,3,13,30,5
+"Poignard des brouillards",10,6,"Triton glace",2,4,11,30,5
+"Poignard des brouillards",10,6,"Triton glace",2,5,9,30,5
+"Hache du gel",10,6,"Triton glace",2,6,6,30,5
+"Hache du gel",10,6,"Triton glace",2,7,4,30,5
+"Cristal d'eau",10,6,"Varan glace",3,0,25,30,5
+"Chaîne de l'eau",10,6,"Varan glace",3,1,17,30,5
+"Saphir",10,6,"Varan glace",3,2,15,30,5
+"Bouclier de glace",10,6,"Varan glace",3,3,13,30,5
+"Bouclier des élémentaux",10,6,"Varan glace",3,4,11,30,5
+"Bouclier des élémentaux",10,6,"Varan glace",3,5,9,30,5
+"Baguette de la licorne",10,6,"Varan glace",3,6,6,30,5
+"Baguette de la licorne",10,6,"Varan glace",3,7,4,30,5
+"Joyau de feu",10,7,"Salamandre",0,0,25,30,20
+"Balle de feu",10,7,"Salamandre",0,1,17,30,20
+"Cristal de feu",10,7,"Salamandre",0,2,15,30,20
+"Franberg",10,7,"Salamandre",0,3,13,30,20
+"Hache du feu",10,7,"Salamandre",0,4,11,30,20
+"Cristal de feu",10,7,"Salamandre",0,5,9,30,20
+"Rubis",10,7,"Salamandre",0,6,6,30,20
+"Rubis",10,7,"Salamandre",0,7,4,30,20
+"Huile du pouvoir",10,7,"Groklebs",1,0,25,40,22
+"Lavande",10,7,"Groklebs",1,1,17,40,22
+"Elixir de vie",10,7,"Groklebs",1,2,15,40,22
+"Cristal de feu",10,7,"Groklebs",1,3,13,40,22
+"Chaîne du feu",10,7,"Groklebs",1,4,11,40,22
+"Chaînette d'argent",10,7,"Groklebs",1,5,9,40,22
+"Chaînette d'argent",10,7,"Groklebs",1,6,6,40,22
+"Chaîne du feu",10,7,"Groklebs",1,7,4,40,22
+"Hache d'Ouga",10,7,"Infernal",2,0,25,40,16
+"Potion olympique",10,7,"Infernal",2,1,17,40,16
+"Os de guerrier sauvage",10,7,"Infernal",2,2,15,40,16
+"Cendre rouge",10,7,"Infernal",2,3,13,40,16
+"Cendre verte",10,7,"Infernal",2,4,11,40,16
+"Cristal du mal",10,7,"Infernal",2,5,9,40,16
+"La massacreuse",10,7,"Infernal",2,6,6,40,16
+"La massacreuse",10,7,"Infernal",2,7,4,40,16
+"Joyau de feu",10,7,"Salamandre feu",0,0,25,30,10
+"Balle de feu",10,7,"Salamandre feu",0,1,17,30,10
+"Cristal de feu",10,7,"Salamandre feu",0,2,15,30,10
+"Franberg",10,7,"Salamandre feu",0,3,13,30,10
+"Hache du feu",10,7,"Salamandre feu",0,4,11,30,10
+"Cristal de feu",10,7,"Salamandre feu",0,5,9,30,10
+"Rubis",10,7,"Salamandre feu",0,6,6,30,10
+"Rubis",10,7,"Salamandre feu",0,7,4,30,10
+"Hache d'Ouga",10,8,"Infernal",1,0,25,40,31
+"Potion olympique",10,8,"Infernal",1,1,17,40,31
+"Os de guerrier sauvage",10,8,"Infernal",1,2,15,40,31
+"Cendre rouge",10,8,"Infernal",1,3,13,40,31
+"Cendre verte",10,8,"Infernal",1,4,11,40,31
+"Cristal du mal",10,8,"Infernal",1,5,9,40,31
+"La massacreuse",10,8,"Infernal",1,6,6,40,31
+"La massacreuse",10,8,"Infernal",1,7,4,40,31
+"Voile de beauté",10,8,"Sacuba",2,0,25,52,24
+"Voile mystique",10,8,"Sacuba",2,1,17,52,24
+"Bracelet de reine",10,8,"Sacuba",2,2,15,52,24
+"Tiare de la terre",10,8,"Sacuba",2,3,13,52,24
+"Tiare des étoiles",10,8,"Sacuba",2,4,11,52,24
+"Couronne de la lune",10,8,"Sacuba",2,5,9,52,24
+"Artémis",10,8,"Sacuba",2,6,6,52,24
+"Artémis",10,8,"Sacuba",2,7,4,52,24
+"Hache du feu",10,9,"Cerbère",0,0,25,250,1
+"Robe des esprits",10,9,"Cerbère",0,1,17,250,1
+"Cendre grise",10,9,"Cerbère",0,2,15,250,1
+"Cendre grise",10,9,"Cerbère",0,3,13,250,1
+"Bouclier du feu",10,9,"Cerbère",0,4,11,250,1
+"Bouclier du feu",10,9,"Cerbère",0,5,9,250,1
+"Dropneal",10,9,"Cerbère",0,6,6,250,1
+"Fenril",10,9,"Cerbère",0,7,4,250,1
+"Huile du pouvoir",10,9,"Groklebs",1,0,25,40,4
+"Lavande",10,9,"Groklebs",1,1,17,40,4
+"Elixir de vie",10,9,"Groklebs",1,2,15,40,4
+"Cristal de feu",10,9,"Groklebs",1,3,13,40,4
+"Chaîne du feu",10,9,"Groklebs",1,4,11,40,4
+"Chaînette d'argent",10,9,"Groklebs",1,5,9,40,4
+"Chaînette d'argent",10,9,"Groklebs",1,6,6,40,4
+"Chaîne du feu",10,9,"Groklebs",1,7,4,40,4
+"Corne du Minotaure",10,9,"Gorgon",2,0,25,80,2
+"Corne du diable",10,9,"Gorgon",2,1,17,80,2
+"Fenouil",10,9,"Gorgon",2,2,15,80,2
+"Cendre noire",10,9,"Gorgon",2,3,13,80,2
+"Pierre médicinale",10,9,"Gorgon",2,4,11,80,2
+"Pierre magique",10,9,"Gorgon",2,5,9,80,2
+"Bouclier de l'ombre",10,9,"Gorgon",2,6,6,80,2
+"Chaîne du souffle",10,9,"Gorgon",2,7,4,80,2
+"Gants de cuir",10,10,"Bras gris",1,0,25,50,60
+"Manteau de brigand",10,10,"Bras gris",1,1,17,50,60
+"Joyau de vent",10,10,"Bras gris",1,2,15,50,60
+"Joyau de vent",10,10,"Bras gris",1,3,13,50,60
+"Joyau de vent",10,10,"Bras gris",1,4,11,50,60
+"Queue de dragon",10,10,"Bras gris",1,5,9,50,60
+"Ecailles de dragon",10,10,"Bras gris",1,6,6,50,60
+"Amulette du dragon",10,10,"Bras gris",1,7,4,50,60
+"Hache d'Ouga",10,10,"Infernal",2,0,25,40,3
+"Potion olympique",10,10,"Infernal",2,1,17,40,3
+"Os de guerrier sauvage",10,10,"Infernal",2,2,15,40,3
+"Cendre rouge",10,10,"Infernal",2,3,13,40,3
+"Cendre verte",10,10,"Infernal",2,4,11,40,3
+"Cristal du mal",10,10,"Infernal",2,5,9,40,3
+"La massacreuse",10,10,"Infernal",2,6,6,40,3
+"La massacreuse",10,10,"Infernal",2,7,4,40,3
+"Voile de beauté",10,10,"Sacuba",3,0,25,52,30
+"Voile mystique",10,10,"Sacuba",3,1,17,52,30
+"Bracelet de reine",10,10,"Sacuba",3,2,15,52,30
+"Tiare de la terre",10,10,"Sacuba",3,3,13,52,30
+"Tiare des étoiles",10,10,"Sacuba",3,4,11,52,30
+"Couronne de la lune",10,10,"Sacuba",3,5,9,52,30
+"Artémis",10,10,"Sacuba",3,6,6,52,30
+"Artémis",10,10,"Sacuba",3,7,4,52,30
+"Cristal de feu",10,11,"Eifridt",0,0,25,100,1
+"Balle des éléments",10,11,"Eifridt",0,1,17,100,1
+"Bouclier des élémentaux",10,11,"Eifridt",0,2,15,100,1
+"Revatin",10,11,"Eifridt",0,3,13,100,1
+"Hache du diable",10,11,"Eifridt",0,4,11,100,1
+"Marteau de Thor",10,11,"Eifridt",0,5,9,100,1
+"Armure de Pawas",10,11,"Eifridt",0,6,6,100,1
+"Armure de Pawas",10,11,"Eifridt",0,7,4,100,1
+"Cristal de feu",10,11,"Eifridt",0,0,25,100,1
+"Balle des éléments",10,11,"Eifridt",0,1,17,100,1
+"Bouclier des élémentaux",10,11,"Eifridt",0,2,15,100,1
+"Revatin",10,11,"Eifridt",0,3,13,100,1
+"Hache du diable",10,11,"Eifridt",0,4,11,100,1
+"Marteau de Thor",10,11,"Eifridt",0,5,9,100,1
+"Armure de Pawas",10,11,"Eifridt",0,6,6,100,1
+"Armure de Pawas",10,11,"Eifridt",0,7,4,100,1
+"Corne du diable",10,12,"Le gros poilu",0,0,25,100,1
+"Balle maléfique",10,12,"Le gros poilu",0,1,17,100,1
+"Boîte de Pandore",10,12,"Le gros poilu",0,2,15,100,1
+"Cristal du mal",10,12,"Le gros poilu",0,3,13,100,1
+"Cristal du mal",10,12,"Le gros poilu",0,4,11,100,1
+"Aile de Lucifer",10,12,"Le gros poilu",0,5,9,100,1
+"Aile de Lucifer",10,12,"Le gros poilu",0,6,6,100,1
+"Anneau de Satan",10,12,"Le gros poilu",0,7,4,100,1
+"Corne du diable",10,12,"Le gros poilu",0,0,25,100,1
+"Balle maléfique",10,12,"Le gros poilu",0,1,17,100,1
+"Boîte de Pandore",10,12,"Le gros poilu",0,2,15,100,1
+"Cristal du mal",10,12,"Le gros poilu",0,3,13,100,1
+"Cristal du mal",10,12,"Le gros poilu",0,4,11,100,1
+"Aile de Lucifer",10,12,"Le gros poilu",0,5,9,100,1
+"Aile de Lucifer",10,12,"Le gros poilu",0,6,6,100,1
+"Anneau de Satan",10,12,"Le gros poilu",0,7,4,100,1
+"Gantelet de force",10,13,"Lordémon",0,0,25,200,1
+"Robe du démon",10,13,"Lordémon",0,1,17,200,1
+"Anneau de l'hermite",10,13,"Lordémon",0,2,15,200,1
+"Anneau du roi Salomon",10,13,"Lordémon",0,3,13,200,1
+"Masque de la mort",10,13,"Lordémon",0,4,11,200,1
+"Masque de la mort",10,13,"Lordémon",0,5,9,200,1
+"Bouclier de Bartschas",10,13,"Lordémon",0,6,6,200,1
+"Bouclier de Bartschas",10,13,"Lordémon",0,7,4,200,1
+"Gantelet de force",10,13,"Lordémon",0,0,25,200,1
+"Robe du démon",10,13,"Lordémon",0,1,17,200,1
+"Anneau de l'hermite",10,13,"Lordémon",0,2,15,200,1
+"Anneau du roi Salomon",10,13,"Lordémon",0,3,13,200,1
+"Masque de la mort",10,13,"Lordémon",0,4,11,200,1
+"Masque de la mort",10,13,"Lordémon",0,5,9,200,1
+"Bouclier de Bartschas",10,13,"Lordémon",0,6,6,200,1
+"Bouclier de Bartschas",10,13,"Lordémon",0,7,4,200,1
+"Plume dominicale",10,14,"L'Ange noir",0,0,25,200,1
+"Faux de la mort",10,14,"L'Ange noir",0,1,17,200,1
+"Robe de fantôme",10,14,"L'Ange noir",0,2,15,200,1
+"Aile de Lucifer",10,14,"L'Ange noir",0,3,13,200,1
+"Aile de Séraphin",10,14,"L'Ange noir",0,4,11,200,1
+"Bouclier de Lucifer",10,14,"L'Ange noir",0,5,9,200,1
+"Bouclier de Séraphin",10,14,"L'Ange noir",0,6,6,200,1
+"Robe de Saulus",10,14,"L'Ange noir",0,7,4,200,1
+"Plume dominicale",10,14,"L'Ange noir",0,0,25,200,1
+"Faux de la mort",10,14,"L'Ange noir",0,1,17,200,1
+"Robe de fantôme",10,14,"L'Ange noir",0,2,15,200,1
+"Aile de Lucifer",10,14,"L'Ange noir",0,3,13,200,1
+"Aile de Séraphin",10,14,"L'Ange noir",0,4,11,200,1
+"Bouclier de Lucifer",10,14,"L'Ange noir",0,5,9,200,1
+"Bouclier de Séraphin",10,14,"L'Ange noir",0,6,6,200,1
+"Robe de Saulus",10,14,"L'Ange noir",0,7,4,200,1
+"Plume dominicale",10,15,"Belzébuth",0,0,25,0,1
+"Plume dominicale",10,15,"Belzébuth",0,1,17,0,1
+"Faux de la mort",10,15,"Belzébuth",0,2,15,0,1
+"Faux de la mort",10,15,"Belzébuth",0,3,13,0,1
+"Faux de la mort",10,15,"Belzébuth",0,4,11,0,1
+"Robe de fantôme",10,15,"Belzébuth",0,5,9,0,1
+"Robe de fantôme",10,15,"Belzébuth",0,6,6,0,1
+"Robe de fantôme",10,15,"Belzébuth",0,7,4,0,1
+"Plume dominicale",10,15,"Belzébuth",0,0,25,0,1
+"Plume dominicale",10,15,"Belzébuth",0,1,17,0,1
+"Faux de la mort",10,15,"Belzébuth",0,2,15,0,1
+"Faux de la mort",10,15,"Belzébuth",0,3,13,0,1
+"Faux de la mort",10,15,"Belzébuth",0,4,11,0,1
+"Robe de fantôme",10,15,"Belzébuth",0,5,9,0,1
+"Robe de fantôme",10,15,"Belzébuth",0,6,6,0,1
+"Robe de fantôme",10,15,"Belzébuth",0,7,4,0,1
