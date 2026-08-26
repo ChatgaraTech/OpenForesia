@@ -332,10 +332,37 @@ internal sealed unsafe class UiText
     }
 
     /// <summary>
-    /// Ghidra: FUN_00544d90 @ 0x00544d90 â€” pass-2 handler for control code <c>0x0d</c>: ends the
+    /// Ghidra: FUN_00544d90 @ 0x00544d90 — pass-2 handler for control code <c>0x0d</c>: ends the
     /// line, uploads it, emits its sprite, and re-points every cursor at the next line's slots.
+    ///
+    /// <para>
+    /// <b>Son premier argument EST le drapeau de remise a zero.</b> <c>FUN_00544d90</c> lit
+    /// <c>[esp+0Ch]</c> — l'argument 1 — et remet <see cref="s_TextState_005e8308"/> a zero des
+    /// qu'il est non nul. Appele depuis la table des codes de controle, cet argument est le
+    /// <b>curseur de texte</b>, qui n'est jamais nul : <b>un retour a la ligne explicite remet donc
+    /// toujours l'etat a zero</b>.
+    /// </para>
+    /// <para>
+    /// <b>Les deux autres appelants passent zero</b>, verifie au desassembleur : le repli de mot sur
+    /// un espace (<c>0x00543c62</c>, <c>push esi ; push 0</c>) et le report de mot partiel
+    /// (<c>0x00543d7f</c>). Eux gardent l'etat, ce qui est le comportement voulu — la ligne
+    /// reportee est la suite de la precedente, pas une ligne neuve.
+    /// </para>
+    /// <para>
+    /// <b>Ce site-ci passait <c>0</c> jusqu'au 2026-08-26</b>, et c'etait le defaut du texte de la
+    /// foret : sans remise a zero, l'etat 2 (« un espace de tete a ete retire ») survivait d'une
+    /// ligne a l'autre — <see cref="NewLine"/> le ramene a 1, et le premier glyphe de la ligne
+    /// suivante le repousse a 2. <see cref="FlushLine"/> centrait alors <b>toutes</b> les lignes du
+    /// bloc au lieu de la seule qui commence par un espace, en decalant les pixels vers la droite
+    /// et en laissant des debris de la ligne precedente.
+    /// </para>
     /// </summary>
-    private byte* Handler_00544d90(byte* text, byte* descriptor) { NewLine(0, descriptor); return text; }
+    private byte* Handler_00544d90(byte* text, byte* descriptor)
+    {
+        // Ghidra: `mov eax,[esp+0Ch] ; cmp eax,ebx ; je` — l'argument 1 sert de drapeau, tel quel.
+        NewLine(text != null ? 1 : 0, descriptor);
+        return text;
+    }
 
     private void NewLine(int reset, byte* descriptor)
     {

@@ -1525,6 +1525,9 @@ public static unsafe partial class Blaze
             0x00442E10 => AreaVerb_00442E10(),
             0x004432E0 => AreaVerb_004432E0(),
 
+            // Le verbe 62 : « suis-je le dernier membre vivant ? »
+            0x00445480 => AreaVerb_00445480(ent),
+
             // Le verbe 56 : l'expertise d'objet. Il ignore le second argument — son corps ne lit
             // que [esp+0x14], c'est-a-dire l'entite.
             0x0053DD20 => AreaVerb_0053DD20(ent),
@@ -1641,6 +1644,41 @@ public static unsafe partial class Blaze
         ClearScriptBank(Mem.s_StateBank1_005e9780);
         ClearScriptBank(Mem.s_StateBank0_005e96e0);
         return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00445480 @ 0x00445480 — <b>le verbe 62 de la foret</b> : rend <b>0 si l'entite
+    /// est le dernier membre vivant du groupe</b>, 1 sinon. 61 octets, absente de <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// La boucle retient l'indice du <b>dernier</b> emplacement vivant rencontre — pas le premier :
+    /// <c>esi</c> est ecrase a chaque correspondance, il n'y a aucun <c>break</c>. Puis elle compare
+    /// cet indice a <c>+0x8</c> de l'entite et rend le resultat de <c>setne</c>.
+    /// </para>
+    /// <para>
+    /// <b>C'est donc un verbe de test</b>, et son sens s'inverse dans la boucle de l'interpreteur :
+    /// un resultat nul laisse le script continuer. Le script continue quand l'entite <b>est</b> ce
+    /// dernier membre.
+    /// </para>
+    /// <para>
+    /// Le compteur part a <c>-1</c> et la comparaison finale se fait sur <b>16 bits</b>
+    /// (<c>cmp cx,si</c>) : si aucun membre n'est vivant, <c>si</c> vaut <c>0xffff</c>, qu'aucun
+    /// indice de membre ne peut egaler — le verbe rend alors 1. Transcrit avec la meme largeur.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00445480(byte* entity)
+    {
+        int last = -1;
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) != 0 && (flags & 0x50000000) == 0) last = i;
+        }
+
+        // Ghidra: `movzx cx,byte [eax+8]` puis `cmp cx,si` — seize bits des deux cotes.
+        return (ushort)entity[8] != (ushort)last ? 1u : 0u;
     }
 
     /// <summary>Un des quatre <c>rep stosd</c> de <see cref="AreaVerb_00443260"/> : 0x10 dwords a

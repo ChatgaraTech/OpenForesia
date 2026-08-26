@@ -15291,3 +15291,67 @@ de sept octets deja transcrite.
 ### Non exerce
 
 Compile, pas execute.
+
+---
+
+## 2026-08-26 (suite 11) — le texte de la foret : un argument pris pour une constante
+
+Vincent a fourni les deux captures (`D:\Open Foresia Project\Tests\3. Donjon Foret`). L'original :
+
+```
+        - La foret aux ruines -
+Il s'agit d'une region forestiere situee a
+l'est de Foresia, dans laquelle se
+trouveraient des ruines, que l'on a pas
+encore decouvertes.
+```
+
+Le notre : titre correct, puis **chaque ligne du corps decalee d'une quantite differente**, des
+morceaux manquants (« sit a » pour « situee a ») et des debris d'un autre texte (« on du gro » colle
+a « decouvertes. »).
+
+### Ce que la comparaison dit avant toute lecture de code
+
+Dans l'original, **le titre est centre et le corps est aligne a gauche**. Chez nous, **toutes les
+lignes sont centrees**, chacune selon sa propre longueur. Ce n'etait donc ni un probleme de police,
+ni de largeur de boite, ni de decoupage : c'etait un **centrage applique a des lignes qui ne
+devaient pas l'etre**, et les debris sont ce que le decalage laisse derriere lui.
+
+`FlushLine` ne centre que si `DAT_005e8308` vaut **2**, l'etat « un espace de tete a ete retire ».
+
+### Le defaut
+
+`FUN_00544d90` — le gestionnaire du code de controle `0x0d`, le retour a la ligne — lit
+`[esp+0Ch]`, c'est-a-dire son **premier argument**, et remet l'etat a zero des qu'il est non nul :
+
+```
+00544e09  mov  eax,[esp+0Ch]
+00544e16  cmp  eax,ebx
+00544e1a  je   00544E32
+00544e2c  mov  [5E8308h],ebx      ; etat = 0
+```
+
+Appele depuis la table des codes de controle, cet argument est le **curseur de texte**, jamais nul.
+**Un retour a la ligne explicite remet donc toujours l'etat a zero.** La reconstruction passait `0`
+en dur : l'etat 2 survivait d'une ligne a l'autre — `NewLine` le ramene a 1, et le premier glyphe de
+la ligne suivante le repousse a 2 — et le centrage se propageait a tout le bloc.
+
+**Les deux autres appelants passent reellement zero**, verifie au desassembleur : le repli de mot sur
+un espace (`0x00543c62`, `push esi ; push 0`) et le report de mot partiel (`0x00543d7f`). Eux
+gardent l'etat, et c'est voulu — la ligne reportee est la suite de la precedente, pas une ligne
+neuve. **Le meme appel, trois sites, deux valeurs differentes** : c'est exactement le genre de
+detail qu'une signature « (texte, descripteur) » recopiee sans lire la pile fait disparaitre.
+
+### La lecon, qui est la deuxieme du jour
+
+C'est le meme defaut de fond que `SetEntityPose_005397B0` (suite 9) : **un argument dont on croit
+connaitre le role**. La-bas un nom pose sur une hypothese ; ici une constante ecrite a la place d'un
+argument. Dans les deux cas, la pseudo-C ne montrait rien et trois lignes de desassemblage
+tranchaient.
+
+### A verifier a l'ecran
+
+**Le correctif n'est pas exerce.** Ce qui doit changer : les quatre lignes du corps alignees a
+gauche, le titre toujours centre, et les debris disparus. Si des debris subsistent apres ca, c'est
+un second defaut — `FlushLine` deplace les pixels par `CrtMemMove` et remplit la gauche de `0xff`,
+donc un centrage legitime mal borne laisserait le meme genre de trace.

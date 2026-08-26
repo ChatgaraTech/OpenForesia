@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-26
 
+- fix : **le texte de la forêt était centré ligne par ligne** au lieu d'être aligné à gauche — `FUN_00544d90` (retour à la ligne) prend son **premier argument** comme drapeau de remise à zéro, et la table des codes de contrôle lui passe le curseur de texte, jamais nul ; la reconstruction passait `0` en dur, donc l'état « espace de tête retiré » survivait d'une ligne à l'autre et `FlushLine` centrait tout le bloc
+- feat : le verbe 62 de la forêt (`FUN_00445480`) — « suis-je le dernier membre vivant du groupe ? »
 - feat : **le crochet de contact au sol de la forêt** — `FUN_00541440` (entrée 32 de la table `0x0056afc8`, souche vide en zone 0) : la poussière du pas cadencée par la période du clip d'animation, et l'effet de terrain brûlant
 - doc : **le jeu fabrique une instruction de script sur la pile** — sept octets locaux passés à `FUN_00513FE0`, qui n'est qu'une enveloppe autour du gestionnaire de l'opcode 10. Les gestionnaires d'opcode ne sont pas que des cibles de table : ce sont des primitives appelables
 - feat : **le sous-type 27, le seul décor de la forêt qui blesse** — `FUN_00456CF0`, via `FUN_0045DA40` (frappe les membres que l'octet de contact désigne) et `FUN_005397B0` ; quinze gestionnaires sur dix-sept
