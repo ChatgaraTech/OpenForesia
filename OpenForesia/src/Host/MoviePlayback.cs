@@ -6,9 +6,9 @@
 // l'image, `MsAdpcm` et `WaveOut` pour le son — sauf la présentation, qui passe par la surface GDI
 // de démarrage comme le reste de l'écran-titre, la chaîne Direct3D n'existant pas encore.
 //
-// **Trois horloges possibles, une seule juste.** Le chronomètre du programme dérive du son ; le
-// rythme d'arrivée des blocs dérive de tout ; seule la position de lecture du périphérique audio
-// dit où en est réellement le film. C'est elle qui décide quelle image est due.
+// **L'horloge est le chronomètre du programme.** La position de lecture du périphérique audio est
+// plus juste sur le papier — elle ne dérive pas — mais elle se **fige** quand la sortie se vide, et
+// une horloge figée gèle tout le lecteur au lieu de le laisser rattraper. Voir `Step`.
 //
 // **On anticipe les données, jamais l'affichage.** Le son a besoin d'avance pour ne pas hoqueter,
 // et lire en avance oblige à traverser les blocs vidéo entrelacés — mais ceux-là sont mis de côté
@@ -44,7 +44,12 @@ internal static unsafe class MoviePlayback
 
     private static WaveOut? s_Sound;
     private static short[] s_Samples = [];
-    private static int s_PendingSamples;   // décodés mais pas encore acceptés par la sortie
+
+    // Les lots décodés que la sortie n'a pas encore acceptés, dans l'ordre. **Une file, et non un
+    // seul tampon** : la première version gardait le lot en attente dans `s_Samples`, que le
+    // décodage du lot suivant écrasait aussitôt. Le son sautait alors des morceaux — ce qui
+    // s'entend comme un son brouillon et trop rapide, pas comme un silence.
+    private static readonly Queue<short[]> s_PendingSound = new();
 
     /// <summary>Vrai tant qu'un film est ouvert et n'a pas atteint sa fin.</summary>
     internal static bool Active => s_Reader != null;
@@ -125,7 +130,8 @@ internal static unsafe class MoviePlayback
             s_Sound = WaveOut.Open(reader.AudioSampleRate, reader.AudioChannels);
             if (s_Sound != null)
             {
-                s_Samples = new short[Math.Max(8192, reader.AudioSamplesPerBlock * reader.AudioChannels * 8)];
+                // Une taille de départ seulement : QueueSound l’agrandit selon le bloc réel.
+                s_Samples = new short[Math.Max(8192, reader.AudioSamplesPerBlock * reader.AudioChannels * 4)];
                 soundNote = $"MS-ADPCM {reader.AudioSampleRate} Hz " +
                             $"{(reader.AudioChannels == 1 ? "mono" : "stéréo")}";
             }
@@ -164,8 +170,16 @@ internal static unsafe class MoviePlayback
         if (s_Reader == null || s_Stream == null || s_Clock == null) return false;
         if (s_Aborted) { Stop(); return false; }
 
-        long elapsed = s_Sound?.PositionMicroseconds() ?? 0;
-        if (elapsed == 0) elapsed = s_Clock.ElapsedMilliseconds * 1000;
+        // **L'horloge est le chronomètre, pas la position du périphérique audio.** La première
+        // version prenait la seconde, au motif qu'elle ne dérive pas — mais elle se **fige** quand
+        // la sortie se vide, et une fois figée l'image ne progresse plus, donc plus aucune image
+        // n'est consommée, donc la réserve d'images reste pleine, donc plus rien n'est lu, donc le
+        // son ne repart jamais. Un simple hoquet devenait un blocage définitif : image gelée, son
+        // muet, au bout de trois secondes. Le chronomètre, lui, avance quoi qu'il arrive.
+        //
+        // Ce qu'on perd est négligeable : un quartz et une carte son s'écartent de l'ordre de
+        // 0,01 %, soit une vingtaine de millisecondes sur les trois minutes d'`OPENING.AVI`.
+        long elapsed = s_Clock.ElapsedMilliseconds * 1000;
 
         long dueFrame = s_Reader.MicroSecPerFrame > 0 ? elapsed / s_Reader.MicroSecPerFrame : s_FrameIndex;
 
@@ -225,12 +239,8 @@ internal static unsafe class MoviePlayback
 
         while (s_VideoQueue.Count < VideoQueueLimit)
         {
-            // Un reste non accepté veut dire que la sortie est pleine : le son a assez d'avance.
-            if (s_PendingSamples > 0)
-            {
-                if (s_Sound == null || !s_Sound.Enqueue(s_Samples, s_PendingSamples)) return;
-                s_PendingSamples = 0;
-            }
+            // Un lot qui ne passe pas veut dire que la sortie est pleine : le son a assez d'avance.
+            if (!DrainPendingSound()) return;
 
             // Sans piste audio, rien ne freinerait cette boucle : la réserve d'images le fait.
             if (s_Sound == null && s_VideoQueue.Count > 0) return;
@@ -241,6 +251,26 @@ internal static unsafe class MoviePlayback
             if (kind == AviReader.ChunkKind.Video) s_VideoQueue.Enqueue(s_Compressed[..length]);
             else QueueSound(length);
         }
+
+        // La réserve d'images est pleine, mais le son, lui, ne doit jamais cesser d'être servi :
+        // c'est ce couplage qui bloquait tout.
+        DrainPendingSound();
+    }
+
+    /// <summary>
+    /// Pousse vers la sortie autant de lots en attente qu'elle en accepte. Rend faux dès qu'elle
+    /// refuse — il reste alors du son en attente, et il ne faut surtout pas en décoder d'autre.
+    /// </summary>
+    private static bool DrainPendingSound()
+    {
+        while (s_PendingSound.Count > 0)
+        {
+            if (s_Sound == null) { s_PendingSound.Clear(); return true; }
+            short[] batch = s_PendingSound.Peek();
+            if (!s_Sound.Enqueue(batch, batch.Length)) return false;
+            s_PendingSound.Dequeue();
+        }
+        return true;
     }
 
     /// <summary>
@@ -254,17 +284,40 @@ internal static unsafe class MoviePlayback
         int blockAlign = s_Reader.AudioBlockAlign;
         if (blockAlign <= 0) return;
 
+        // **Le tampon se dimensionne sur le bloc, pas sur une taille supposée.** Un bloc AVI porte
+        // autant de blocs ADPCM que le monteur a voulu : `ANI01.AVI` en met un par image, mais
+        // `TEPS.AVI` en met une seconde entière — 21 668 échantillons. Un tampon fixe de 8 192 en
+        // perdait alors les deux tiers, **sans un mot** : le son sautait en avant en permanence,
+        // ce qui s'entend comme un son brouillon et trop rapide, et vidait la sortie.
+        int blocks = (length + blockAlign - 1) / blockAlign;
+        int capacity = blocks * Math.Max(1, s_Reader.AudioSamplesPerBlock) * s_Reader.AudioChannels + 16;
+        if (s_Samples.Length < capacity) s_Samples = new short[capacity];
+
         int written = 0;
         for (int offset = 0; offset + 1 < length; offset += blockAlign)
         {
             int size = Math.Min(blockAlign, length - offset);
-            written += MsAdpcm.DecodeBlock(
+            int produced = MsAdpcm.DecodeBlock(
                 s_Compressed.AsSpan(offset, size), s_Reader.AudioChannels,
                 s_Reader.AudioCoefficients, s_Samples, written);
+            written += produced;
+
+            // Le décodeur s'arrête net quand la place manque. Le silence sur cette troncature est
+            // ce qui a rendu le défaut précédent si long à voir : maintenant il parle.
+            if (produced == 0 && size >= 7 * s_Reader.AudioChannels)
+            {
+                Console.Error.WriteLine(
+                    $"[FILM] bloc audio tronqué : {written} échantillons écrits sur {capacity} de place");
+                break;
+            }
         }
 
         if (written <= 0) return;
-        s_PendingSamples = s_Sound.Enqueue(s_Samples, written) ? 0 : written;
+
+        // Le lot part dans la file d'attente, jamais directement : `s_Samples` sert au décodage du
+        // lot suivant, et le garder comme tampon d'attente le ferait écraser.
+        s_PendingSound.Enqueue(s_Samples[..written]);
+        DrainPendingSound();
     }
 
     private static void Present()
@@ -293,6 +346,22 @@ internal static unsafe class MoviePlayback
     /// <summary>Ferme le film en cours, s'il y en a un. Sans effet sinon.</summary>
     internal static void Stop()
     {
+        // L'écart entre les deux horloges à la fin de la projection. C'est la mesure qui dit si le
+        // choix du chronomètre tient : un écart de quelques dizaines de millisecondes est la dérive
+        // attendue entre un quartz et une carte son, un écart qui se compte en secondes voudrait
+        // dire que la sortie s'est vidée en route.
+        if (s_Sound != null && s_Clock != null && s_FrameIndex > 0)
+        {
+            long played = s_Sound.PositionMicroseconds();
+            if (played > 0)
+            {
+                long drift = s_Clock.ElapsedMilliseconds * 1000 - played;
+                Console.Error.WriteLine(
+                    $"[FILM] {s_FrameIndex} images, son joué {played / 1000} ms, " +
+                    $"écart horloge {drift / 1000} ms");
+            }
+        }
+
         s_Sound?.Dispose();
         s_Sound = null;
         s_Stream?.Dispose();
@@ -301,7 +370,7 @@ internal static unsafe class MoviePlayback
         s_Reader = null;
         s_Clock = null;
         s_FrameIndex = 0;
-        s_PendingSamples = 0;
+        s_PendingSound.Clear();
         s_VideoQueue.Clear();
     }
 }

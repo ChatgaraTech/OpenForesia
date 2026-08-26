@@ -135,7 +135,33 @@ transporte précisément pour qu'un encodeur puisse en choisir d'autres.
 Elle sort par `waveOut` de winmm, et non par le chemin DirectSound du jeu : les cinématiques
 tournent avant lui, sur un thread qui ne fait que pomper des messages, et les brancher l'un sur
 l'autre ferait dépendre le démarrage d'un sous-système que le film n'a aucune raison d'attendre.
-`waveOut` donne en prime **une position de lecture en échantillons**, qui sert d'horloge au film.
+
+#### Trois pièges, tous les trois payés
+
+**Un bloc AVI ne fait pas une image de son.** Il porte autant de blocs ADPCM que le monteur a voulu :
+`ANI01.AVI` en met un par image, `TEPS.AVI` en met **une seconde entière**, soit 21 668 échantillons.
+Un tampon de décodage fixe à 8 192 en perdait donc les deux tiers — **sans un mot**. Le son sautait
+en avant en permanence, ce qui s'entend comme un son brouillon et trop rapide, et vidait la sortie.
+Le tampon se dimensionne maintenant sur le bloc réel, et une troncature se signale au journal.
+
+**L'horloge du film ne doit pas être la position du périphérique audio.** Elle ne dérive pas, ce qui
+est tentant — mais elle se **fige** quand la sortie se vide. Et une horloge figée gèle tout : plus
+d'image due, donc plus d'image consommée, donc la réserve d'images reste pleine, donc plus rien
+n'est lu, donc le son ne repart jamais. Un simple hoquet devenait un blocage définitif — image
+gelée, son muet, au bout de trois secondes. Le chronomètre du programme avance quoi qu'il arrive, et
+sa dérive contre une carte son est de l'ordre de 0,01 %, soit vingt millisecondes sur trois minutes.
+
+**Un lot audio en attente ne se garde pas dans le tampon de décodage.** Le lot suivant l'écrase. Il
+faut une file.
+
+Mesure de contrôle, écrite au journal à la fin de chaque film :
+
+```
+[FILM] 324 images, son joué 21516 ms, écart horloge 98 ms
+```
+
+324 images sur 324, 21,5 s de son pour un film de 21,6 s, et 98 ms d'écart — la latence du tampon,
+constante. Un écart qui se compterait en secondes voudrait dire que la sortie s'est vidée en route.
 
 #### La leçon : un décodeur audio ne se relit pas
 

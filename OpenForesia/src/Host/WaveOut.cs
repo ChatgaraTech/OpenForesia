@@ -107,9 +107,20 @@ internal sealed unsafe class WaveOut : IDisposable
         *(IntPtr*)(header + 0) = _buffers[slot];
         *(uint*)(header + 4) = (uint)bytes;
 
-        if (waveOutPrepareHeader(_device, header, HeaderBytes) != 0) return true;
-        if (waveOutWrite(_device, header, HeaderBytes) != 0)
+        // Un échec ici perd le lot : il est déjà décodé, et le reproposer indéfiniment bloquerait
+        // la lecture. On le dit au journal plutôt que de le taire — un son qui saute sans qu'aucune
+        // trace ne l'explique est exactement ce qu'on ne veut pas avoir à chercher deux fois.
+        int rc = waveOutPrepareHeader(_device, header, HeaderBytes);
+        if (rc != 0)
         {
+            Console.Error.WriteLine($"[FILM] waveOutPrepareHeader = {rc}, lot perdu");
+            return true;
+        }
+
+        rc = waveOutWrite(_device, header, HeaderBytes);
+        if (rc != 0)
+        {
+            Console.Error.WriteLine($"[FILM] waveOutWrite = {rc}, lot perdu");
             waveOutUnprepareHeader(_device, header, HeaderBytes);
         }
         return true;
