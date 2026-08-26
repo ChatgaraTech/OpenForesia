@@ -57,10 +57,16 @@ shell:
 $env:PATH = "C:\Program Files (x86)\dotnet;D:\Logiciels\nodejs;$env:PATH"
 ```
 
-**Smart App Control blocks `OpenForesia.Tools`' Debug build.** This machine runs Smart App Control
-in enforced mode (`HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy` →
-`VerifiedAndReputablePolicyState = 1`), and it periodically refuses to load the freshly-built,
-unsigned `OpenForesia.Tools.dll` out of `bin\Debug\`:
+**Smart App Control — turned OFF by the user on 2026-08-25, so this no longer bites.** The registry
+key below now reads `VerifiedAndReputablePolicyState = 0`, `dotnet run --project OpenForesia.Tools`
+works straight out of `bin\Debug\`, and the Release-publish workaround is no longer needed. The user
+disabled it because SAC was refusing to load one of the game's own DLLs — not on our advice, and it
+cannot be re-enabled. **Check the key before assuming either state**, and keep the recipe below: it
+is the answer if this project is ever cloned onto a machine where SAC is enforced.
+
+Historically, on this machine with SAC in enforced mode
+(`HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy` → `VerifiedAndReputablePolicyState = 1`), it
+periodically refused to load the freshly-built, unsigned `OpenForesia.Tools.dll` out of `bin\Debug\`:
 
 ```
 System.IO.FileLoadException: ... Une stratégie de contrôle d'application a bloqué ce fichier. (0x800711C7)
@@ -74,9 +80,9 @@ dotnet publish OpenForesia.Tools -c Release -o OpenForesia.Tools\bin\publish
 OpenForesia.Tools\bin\publish\OpenForesia.Tools.exe disasm Legacy/Binaries/Blaze.exe 0x00516a7d 12
 ```
 
-Do this rather than reaching for the security setting: **turning Smart App Control off is
-irreversible** — Microsoft does not allow re-enabling it without reinstalling Windows. Never flip
-it without the user asking for that specific change, in those terms.
+On such a machine, do this rather than reaching for the security setting: **turning Smart App
+Control off is irreversible** — Microsoft does not allow re-enabling it without reinstalling
+Windows. Never flip it without the user asking for that specific change, in those terms.
 
 If even the publish is refused, the fallback that needs no tooling at all is reading the binary's
 bytes directly — the `.text` file offset is `VA - 0x400C00`:

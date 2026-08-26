@@ -1006,6 +1006,25 @@ public static unsafe partial class Blaze
         int* block = stackalloc int[5];
         byte* b = (byte*)block;
 
+        // Le champ +0x04 — le « mot de base » — part avec ce que l'image PRECEDENTE a laisse dans
+        // cet emplacement de pile, et cette valeur est connue : `0x0051833d` y ecrit
+        // `mov dword [esp+38h], 1000000h`, et les autres sous-blocs de la fonction font de meme.
+        // A la fin de chaque image, l'emplacement vaut donc 0x1000000 ; l'image suivante le relit
+        // tel quel dans les deux sous-blocs qui ne l'ecrivent pas — le compteur de mise au point et
+        // l'indicateur d'ecran.
+        //
+        // Ce n'est pas une valeur inventee « par coherence avec les voisins », et ce n'est pas
+        // benin : le bit 24 du mot de base tombe dans l'octet de commande de la primitive
+        // (`prim[1] >> 24`), et fait passer winsys3d de la commande 0x2c (`FUN_00a0f570`, qui teinte
+        // les quatre sommets par les 24 bits bas du meme mot) a la commande 0x2d (`FUN_00a0f780`,
+        // qui les met a 0xffffffff, donc la texture sans teinte). Un mot de base nul, c'est la
+        // commande 0x2c avec une teinte noire : un carre noir opaque en haut a droite de l'ecran.
+        // Voir legacy-bug.md LB-008, corrige le 2026-08-26 apres l'avoir vu en jeu a l'auberge.
+        //
+        // Seule la toute premiere image de la partie lit autre chose dans l'original — ce que le
+        // demarrage avait laisse la. On ne modelise pas ce cas : il n'est pas determinable.
+        block[1] = 0x1000000;
+
         // ---------------------------------------------------------- le voile de transition
         if ((byte)(Mem.s_Unknown_005de024 >> 0x18) != 0)
         {
@@ -1062,8 +1081,8 @@ public static unsafe partial class Blaze
                 (int)(s_FadeCounter_005e9960 << 9)) >> 3) + 0x1000);
             *(short*)(b + 0x10) = 0;
 
-            // +0x04 n'est **pas** ecrit par l'original avant 0x0051833d : le mot de base part avec
-            // ce que la pile portait. Voir legacy-bug.md LB-008 ; on ne comble pas, on transcrit.
+            // +0x04 n'est **pas** ecrit ici par l'original — il relit ce que l'image precedente a
+            // laisse, soit 0x1000000, pose en haut de cette fonction. Voir LB-008.
             cursor = Prims.DrawSpritePrimitive(otBase, cursor, block, 0, 0);
         }
 

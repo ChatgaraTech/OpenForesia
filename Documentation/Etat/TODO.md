@@ -12,7 +12,7 @@ déplacement.
 
 ---
 
-# LA MACHINE À OPCODES DES OBJETS EST ÉCRITE, PAS EXERCÉE (2026-08-26)
+# L’UTILISATION DES OBJETS — ÉCRITE, JAMAIS EXERCÉE, CHANTIER GELÉ (2026-08-26)
 
 `FUN_00523aa0` et ses 23 opcodes sont transcrits, **onze corps depuis le désassembleur** (Ghidra ne
 les avait pas décompilés). Les deux entrées de la machine sont vivantes :
@@ -24,7 +24,15 @@ les avait pas décompilés). Les deux entrées de la machine sont vivantes :
 
 Build vert, aucune régression sur le menu rapide.
 
-## RIEN DE TOUT ÇA N'A TOURNÉ
+**Décision du Responsable, 2026-08-26 : on laisse tomber l'utilisation des objets pour le moment.**
+Le chantier est gelé en l'état — rien à reprendre dessus, ni les deux frontières ci-dessous, ni
+l'opcode 22, tant que le premier donjon n'est pas atteint.
+
+**Et ce test est au Responsable (Vincent), pas à l'agent.** Il faut jouer jusqu'au donjon : c'est un
+test de navigation, donc du côté de Vincent selon le partage de `test-protocol.md`. L'agent ne
+reprend ce chantier que sur ce que ce test aura montré.
+
+## RIEN DE TOUT ÇA N'A TOURNÉ — ET ÇA ATTENDRA LE PREMIER DONJON
 
 Le jeu refuse « se servir d'un objet » dans l'auberge, et aucun des sept sites de
 `TriggerEquippedItems_005238E0` ne se déclenche dans la salle d'arrivée. **À exercer au premier
@@ -78,7 +86,7 @@ rapide n'a donc plus de levée à lui.
 **Confirmé en jeu par Vincent le 2026-08-26** : équiper un bouclier ou une armure fonctionne.
 **Toujours pas exercé** : les accessoires (il n'en avait pas), se servir d'un objet (le jeu
 l'interdit dans l'auberge), le genre 6 (les sorts) et le genre 9 (passer la main). Au premier
-donjon.
+donjon — **et c'est le Responsable (Vincent) qui l'exercera**, pas l'agent.
 
 ## Deux corrections de fond au passage
 
@@ -1590,7 +1598,18 @@ Relevé conservé dans `Legacy/Raw/Blaze/FUN_004747F0.asm`.
   l'original, pas un lien mort.
 ---
 
-# À OUVRIR : une corruption de tas intermittente, antérieure au 2026-08-26
+# EN ATTENTE — une corruption de tas intermittente, antérieure au 2026-08-26
+
+**Mis de côté le 2026-08-26, décision du Responsable** — aucun chantier ouvert dessus pour le
+moment. La section reste ici pour ne pas perdre ce qui a été daté ; on n'y revient pas tant que le
+Responsable ne le demande pas.
+
+**Vingt exécutions du Responsable le 2026-08-26, aucune n'a planté.** À un plantage sur six, vingt
+essais propres d'affilée ont moins d'une chance sur trente de se produire : le taux mesuré la veille
+ne tient plus. **L'hypothèse retenue** est que les six occurrences des 25 et 26/08 venaient de
+**Smart App Control**, que le Responsable a désactivé le 25/08 parce qu'il refusait de charger une
+des DLL du jeu. On garde ça en tête sans y travailler ; si le symptôme revient, on prendra des
+dispositions à ce moment-là — et la première sera le tas de page.
 
 **Environ une exécution sur six** meurt en silence sur `0xC0000374` (`STATUS_HEAP_CORRUPTION`,
 détecté dans `ntdll`). Le journal des événements Windows en compte **cinq le 25/08 et une le
@@ -1601,6 +1620,22 @@ Jusqu'au 26/08 le verdict de `playtest.ps1` annonçait « aucun plantage » sur 
 dit maintenant `SORTIE SILENCIEUSE`, ce qui est justement ce qui a rendu le défaut visible.
 
 **Une exécution verte ne prouve rien** sur ce défaut : compter sur cinq à dix lancements.
+
+## Ce que le vidage du 26/08 10:32 a déjà dit (lu le 2026-08-26, sans rouvrir le chantier)
+
+Windows garde un **vidage complet** de chaque mort dans `%LOCALAPPDATA%\CrashDumps` ; onze y
+dormaient. `OpenForesia.Tools\dump-info.ps1` les lit sans debogueur. Sur celui du `0xC0000374` :
+
+- l'exécution avait **70 secondes** (10:31:01 → 10:32:11), tous les sous-systèmes chargés
+  (`winsys3d`, `ddraw`, `dsound`, `dinput`, `d3d11`), **42 threads** ;
+- le thread qui lève est un **thread COM/RPC** (`ole32`/`combase`/`rpcrt4`) : c'est celui qui
+  allouait, donc le détecteur, pas le coupable ;
+- le thread principal était dans la **boucle par image** de `winsys3d` — l'ordinal 701
+  (`FUN_00a061b0`, le parcours de la liste d'affichage) et l'ordinal 132 (`FUN_00a053e0`, l'attente
+  de synchronisation verticale). Donc **ni la constitution du groupe, ni un chargement**.
+
+Ça ne nomme toujours pas l'écrivain — par construction, `0xC0000374` se détecte loin de la faute.
+Seul le tas de page (`gflags`) le nommerait.
 
 Pour l'attraper : `gflags /p /enable OpenForesia.exe /full` fait planter **à l'écriture** au lieu du
 prochain `alloc`. Rien n'a encore été tenté. Recette et commandes de datation dans

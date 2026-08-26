@@ -389,8 +389,9 @@ masquerait la contradiction, qui est précisément ce que ce fichier existe pour
 ## LB-008 — L'indicateur d'écran de la carte du monde émet son mot de base depuis une pile non initialisée
 
 **Repéré** le 2026-08-22, en relevant au désassembleur la disposition du bloc de sprite du bloc
-d'affichage de `FUN_00516fc0`. **Latent** : il produit des bits de couleur indéterminés, pas un
-plantage.
+d'affichage de `FUN_00516fc0`. **Latent dans l'original** : la valeur que la pile porte à cet
+endroit est stable et correcte d'une image à l'autre. **Il ne l'était pas dans OpenForesia** —
+voir « Ce que la première analyse a manqué » plus bas.
 
 ### Le défaut
 
@@ -407,27 +408,51 @@ Ce bloc vit à `esp+0x34` dans le cadre de `FUN_00516fc0`. Le désassemblage mon
 l'indicateur d'écran appelle `FUN_00521f20` en `0x00518038`, trois cents octets plus tôt. Entre
 l'entrée de la fonction et cet appel, aucune instruction n'écrit cet emplacement.
 
-L'indicateur émet donc sa primitive avec un mot de base qui vaut ce que l'appelant avait laissé sur
-la pile. Le sous-bloc du compteur de mise au point, juste avant, a le même problème pour ses deux
-appels à `FUN_0051c120`.
+L'indicateur émet donc sa primitive avec un mot de base qui vaut ce que l'image **précédente** avait
+laissé sur la pile. Le sous-bloc du compteur de mise au point, juste avant, a le même problème pour
+ses deux appels à `FUN_0051c120`.
 
-### Pourquoi c'est bénin
+### Ce que la première analyse a manqué, et ce que ça a coûté
 
-Les 26 bits en question se chevauchent avec la moitié haute décalée de seize crans, et ce que
-`winsys3d` en fait est une teinte, pas une adresse. Le résultat est un indicateur dont la couleur
-dépend du contenu résiduel de la pile — stable en pratique, puisque le même chemin de code repasse
-au même endroit à chaque image, mais non défini par le programme.
+La rédaction du 2026-08-22 concluait « bénin : ce que `winsys3d` en fait est une teinte, pas une
+adresse ; le résultat est un indicateur dont la couleur dépend du résidu ». **Les deux moitiés de
+cette phrase sont fausses**, et il a fallu voir l'écran pour s'en apercevoir.
 
-Ce n'est pas non plus un cas isolé de négligence : dans le même bloc, les autres sous-blocs
-écrivent bien `+0x04` avant d'appeler (`uStack_3c = 0x1000000` un peu partout). Celui-ci a été
-oublié.
+D'abord, **le bit 24 du mot de base n'est pas un bit de couleur** : il tombe dans l'octet de
+commande de la primitive, celui que `FUN_00a13400` lit en `*(byte *)(param_1 + 7)` pour choisir son
+gestionnaire. Il fait basculer la commande **0x2c** en **0x2d**, et les deux ne font pas la même
+chose :
+
+| commande | gestionnaire | couleur des quatre sommets |
+|---|---|---|
+| `0x2c` | `FUN_00a0f570` | les octets `+4`/`+5`/`+6` de `prim[1]`, doublés et bornés — **la teinte** |
+| `0x2d` | `FUN_00a0f780` | `0xffffffff` posé en dur — **pas de teinte**, la texture telle quelle |
+
+Ensuite, le résidu n'est pas indéterminé : il est **connu**. `0x0051833d` porte
+`mov dword [esp+38h], 1000000h`, et les autres sous-blocs de la fonction écrivent la même valeur au
+même emplacement. À la fin de chaque image, `[esp+0x38]` vaut donc `0x1000000` — bit 24 levé — et
+l'image suivante le relit tel quel. L'original affiche un indicateur **sans teinte**, image après
+image, dès la seconde.
+
+Un `stackalloc` C# est zéro. Zéro, c'est la commande `0x2c` avec une teinte `(0, 0, 0)` : **un carré
+noir opaque de quinze pixels en haut à droite de l'écran**, à `(0x130, 0x10)`. Il est resté visible
+à l'auberge du 22 au 26 août, décrit dans ce fichier comme « bénin ».
 
 ### Dans OpenForesia
 
-`DrawWorldMapFrame` **n'écrit pas** `+0x04` pour l'indicateur, exactement comme l'original. Le bloc
-étant un `stackalloc`, le champ y vaut zéro plutôt qu'un résidu — c'est la traduction la plus proche
-possible, et surtout il ne faut pas inventer une valeur. Écrire `0x1000000` « par cohérence avec les
-voisins » rendrait le rendu plus joli que celui de 1998 et effacerait le défaut.
+`DrawWorldMapFrame` pose `block[1] = 0x1000000` **à l'entrée**, avec le raisonnement ci-dessus en
+commentaire. Ce n'est pas combler un trou « par cohérence avec les voisins » — c'est modéliser le
+contenu réel de l'emplacement de pile, établi au désassembleur. Les deux sous-blocs qui ne
+l'écrivent pas le relisent donc comme dans l'original.
+
+Reste une seule image non modélisée : **la toute première**, où l'original lit ce que le démarrage
+avait laissé là. Elle n'est pas déterminable, et une image de teinte fausse ne se voit pas.
+
+### La leçon
+
+**Un défaut classé « latent » n'a pas été observé — il a été raisonné.** Celui-ci était visible à
+l'écran depuis quatre jours. Quand une analyse conclut « bénin » sur un chemin que le jeu emprunte à
+chaque image, la conclusion se vérifie par une capture, pas par la lecture seule.
 
 ---
 

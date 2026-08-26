@@ -1579,3 +1579,43 @@ soit `gflags /p /enable OpenForesia.exe /full` (le tas de page, qui fait planter
 soit une passe sur les allocations `NativeMemory.AllocZeroed` et leurs bornes. Aucune des deux n'a
 ete faite. **A ouvrir comme chantier a part** ; le noter ici evite qu'il soit redecouvert comme
 « regression » a chaque session.
+
+### Windows garde un vidage complet de chaque mort, et il se lit sans debogueur
+
+Ajoute le 2026-08-26. La section ci-dessus disait « le module defaillant est `ntdll.dll`, ce qui ne
+nomme que le detecteur » et s'arretait la. Elle s'arretait trop tot : **`%LOCALAPPDATA%\CrashDumps`
+contient un vidage complet (33 Mo) pour chaque plantage**, y compris les `SORTIE SILENCIEUSE`. Onze
+y dormaient depuis le 26/08 au matin sans que personne les ouvre.
+
+Aucun outil de debogage n'est installe sur cette machine — ni `cdb`, ni `gflags`, ni `procdump`,
+et le SDK Windows n'est pas la. **Ce n'est pas bloquant** : le format MINIDUMP se lit directement,
+et `OpenForesia.Tools\dump-info.ps1` le fait.
+
+```powershell
+OpenForesia.Tools\dump-info.ps1 -Path "$env:LOCALAPPDATA\CrashDumps\OpenForesia.exe.4124.dmp"
+OpenForesia.Tools\dump-info.ps1 -Path <dmp> -Threads       # ou en etait le jeu
+OpenForesia.Tools\dump-info.ps1 -Path <dmp> -Stack 15844   # une pile en detail
+```
+
+Ce que le vidage donne, et que le journal des evenements ne donne pas :
+
+| ce qu'on veut savoir | ou ca se lit |
+|---|---|
+| combien de temps l'execution a vecu | flux MISC_INFO : date de demarrage, contre la date du fichier |
+| ou en etait le jeu | la pile du thread principal, resolue en `winsys3d.dll+0x…` |
+| quels sous-systemes tournaient | la liste des modules charges (ddraw, dsound, dinput, d3d11) |
+| combien de threads | le flux THREAD_LIST |
+
+**Les limites, qui comptent.** Ce n'est pas un debogueur : pas de deroulement de pile reel — le
+balayage rend *toute* adresse de la pile tombant dans un module, donc des restes d'appels anciens
+se melent aux vraies adresses de retour. Et surtout **le code managed n'appartient a aucun module**
+(il est JIT) : notre transcription C# n'apparait jamais. On voit les DLL de 1998 et les DLL
+systeme, ce qui suffit a situer le jeu, jamais a nommer une fonction a nous.
+
+Deux pieges de PowerShell 5.1 rencontres en ecrivant le script, et payes tous les deux :
+
+- **`0xC0000374` deborde `int32`** : le litteral hexadecimal est lu comme un entier signe, et
+  `$code -eq 0xC0000374` est faux face a un `uint32`. Comparer a `[uint32]3221226356`.
+- **Un script contenant un tiret cadratin ou une lettre accentuee ne s'analyse pas** s'il est ecrit
+  en UTF-8 sans BOM : PowerShell 5.1 le lit en ANSI et casse sur les chaines. Garder ces scripts
+  en ASCII pur — c'est deja la convention de ce fichier.
