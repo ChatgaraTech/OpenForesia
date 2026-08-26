@@ -131,8 +131,13 @@ dotnet run --project OpenForesia.Tools -- bestiaire "E:\" --sortie Documentation
 ```
 
 It writes the enemy cartography — species, sheets (name, HP, MP, characteristics), formations, loot
-tables, the per-sub-area item catalogue, and the reverse index (item → what drops it, where, at what
-chance). `--regions` adds each directory's 60-pointer region map, which is the general tool for
+tables, the per-sub-area item catalogue, the reverse index (item → what drops it, where, at what
+chance), and **the chests** (`coffres.csv`). A chest draws from the *same* `+0xb4` table as a
+monster, at a row its placement record carries — so 112 items exist only in chests. Identifying one
+requires resolving the sub-area's own entity jump table out of `Blaze.exe`: **a subtype number
+means nothing on its own**, the 0x0056adc8 table is reloaded per sub-area.
+
+`--regions` adds each directory's 60-pointer region map, which is the general tool for
 **finding a new table in a resource blob**: the regions follow one another without gaps, so a
 table's end is the next header pointer, and a region's first bytes usually say what it holds.
 

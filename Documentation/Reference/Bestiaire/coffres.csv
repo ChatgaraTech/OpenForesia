@@ -1,0 +1,1295 @@
+zone,sous_zone,liste,index,sous_type,gestionnaire,famille,coffre_id,x,y,z,orientation,role,libelle_0x14,rangee_0x16,contenu_0x48,memoire_0x44,rang,objet_id,objet,pourcent_plage_100
+0,0,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,0,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,0,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,0,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,0,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,0,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,0,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,0,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,4,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,4,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,4,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,4,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,4,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,4,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,4,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,4,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,4,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,4,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,4,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,4,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,4,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,4,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,4,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,4,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,8,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,8,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,8,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,8,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,8,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,8,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,8,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,8,0,13,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,12,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,12,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,12,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,12,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,12,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,12,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,12,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,12,0,13,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,12,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,12,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,12,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,12,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,12,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,12,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,12,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,12,0,15,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,16,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,16,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,16,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,16,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,16,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,16,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,16,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,16,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,20,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,20,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,20,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,20,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,20,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,20,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,20,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,20,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,20,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,20,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,20,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,20,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,20,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,20,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,20,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,20,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,24,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,24,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,24,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,24,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,24,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,24,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,24,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,24,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,26,0,7,13,0x473ed0,coffre,235,-1050,440,1500,1024,objet,-1,2,0,2,0,2,"Debacle",25
+0,26,0,7,13,0x473ed0,coffre,235,-1050,440,1500,1024,objet,-1,2,0,2,1,2,"Debacle",17
+0,26,0,7,13,0x473ed0,coffre,235,-1050,440,1500,1024,objet,-1,2,0,2,2,3,"Béquille",15
+0,26,0,7,13,0x473ed0,coffre,235,-1050,440,1500,1024,objet,-1,2,0,2,3,3,"Béquille",13
+0,26,0,7,13,0x473ed0,coffre,235,-1050,440,1500,1024,objet,-1,2,0,2,4,2,"Debacle",11
+0,26,0,7,13,0x473ed0,coffre,235,-1050,440,1500,1024,objet,-1,2,0,2,5,3,"Béquille",9
+0,26,0,7,13,0x473ed0,coffre,235,-1050,440,1500,1024,objet,-1,2,0,2,6,3,"Béquille",6
+0,26,0,7,13,0x473ed0,coffre,235,-1050,440,1500,1024,objet,-1,2,0,2,7,2,"Debacle",4
+0,28,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,28,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,28,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,28,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,28,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,28,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,28,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,28,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,28,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,28,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,28,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,28,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,28,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,28,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,28,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,28,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,32,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,32,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,32,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,32,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,32,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,32,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,32,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,32,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,36,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,36,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,36,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,36,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,36,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,36,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,36,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,36,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,36,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,36,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,36,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,36,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,36,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,36,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,36,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,36,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,40,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,40,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,40,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,40,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,40,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,40,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,40,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,40,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,44,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,44,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,44,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,44,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,44,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,44,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,44,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,44,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,44,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,44,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,44,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,44,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,44,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,44,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,44,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,44,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,48,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,48,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,48,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,48,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,48,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,48,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,48,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,48,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,52,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,52,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,52,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,52,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,52,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,52,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,52,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,52,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,52,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,52,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,52,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,52,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,52,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,52,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,52,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,52,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,56,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,56,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,56,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,56,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,56,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,56,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,56,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,56,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,60,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,60,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,60,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,60,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,60,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,60,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,60,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,60,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,60,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,60,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,60,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,60,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,60,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,60,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,60,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,60,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,64,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,64,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,64,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,64,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,64,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,64,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,64,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,64,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,68,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,68,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,68,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,68,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,68,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,68,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,68,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,68,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,68,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,68,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,68,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,68,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,68,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,68,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,68,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,68,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,72,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,72,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,72,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,72,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,72,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,72,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,72,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,72,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,76,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,76,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,76,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,76,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,76,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,76,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,76,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,76,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,76,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,76,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,76,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,76,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,76,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,76,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,76,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,76,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+0,80,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,0,1,"Aiguille médicinale",25
+0,80,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,1,1,"Aiguille médicinale",17
+0,80,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,2,1,"Aiguille médicinale",15
+0,80,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,3,1,"Aiguille médicinale",13
+0,80,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,4,1,"Aiguille médicinale",11
+0,80,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,5,1,"Aiguille médicinale",9
+0,80,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,6,1,"Aiguille médicinale",6
+0,80,0,10,18,0x450d30,coffre-18,234,250,204,-1000,3584,objet,-1,1,0,0,7,1,"Aiguille médicinale",4
+0,84,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,0,0,"Armure anti-sortilège",25
+0,84,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,1,0,"Armure anti-sortilège",17
+0,84,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,2,0,"Armure anti-sortilège",15
+0,84,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,3,0,"Armure anti-sortilège",13
+0,84,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,4,0,"Armure anti-sortilège",11
+0,84,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,5,0,"Armure anti-sortilège",9
+0,84,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,6,0,"Armure anti-sortilège",6
+0,84,0,14,17,0x4502e0,coffre-17,53,700,440,2400,1024,objet,-1,0,0,0,7,0,"Armure anti-sortilège",4
+0,84,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,0,3,"Livre de la technique",25
+0,84,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,1,3,"Livre de la technique",17
+0,84,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,2,3,"Livre de la technique",15
+0,84,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,3,3,"Livre de la technique",13
+0,84,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,4,3,"Livre de la technique",11
+0,84,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,5,3,"Livre de la technique",9
+0,84,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,6,3,"Livre de la technique",6
+0,84,0,16,17,0x4502e0,coffre-17,54,430,440,2100,0,objet,-1,8,0,1,7,3,"Livre de la technique",4
+1,0,0,0,22,0x473ed0,coffre,228,-2878,-980,3678,1024,objet,-1,0,0,0,0,0,"Baguette d'argent",25
+1,0,0,0,22,0x473ed0,coffre,228,-2878,-980,3678,1024,objet,-1,0,0,0,1,1,"Baguette de la féerie",17
+1,0,0,0,22,0x473ed0,coffre,228,-2878,-980,3678,1024,objet,-1,0,0,0,2,2,"Porte-bonheur",15
+1,0,0,0,22,0x473ed0,coffre,228,-2878,-980,3678,1024,objet,-1,0,0,0,3,3,"Parfum de feu",13
+1,0,0,0,22,0x473ed0,coffre,228,-2878,-980,3678,1024,objet,-1,0,0,0,4,4,"Aile de fée",11
+1,0,0,0,22,0x473ed0,coffre,228,-2878,-980,3678,1024,objet,-1,0,0,0,5,4,"Aile de fée",9
+1,0,0,0,22,0x473ed0,coffre,228,-2878,-980,3678,1024,objet,-1,0,0,0,6,5,"Poudre de fées",6
+1,0,0,0,22,0x473ed0,coffre,228,-2878,-980,3678,1024,objet,-1,0,0,0,7,5,"Poudre de fées",4
+1,0,1,0,22,0x473ed0,coffre,229,20,-180,3428,1024,objet,-1,1,0,1,0,6,"Potion med",25
+1,0,1,0,22,0x473ed0,coffre,229,20,-180,3428,1024,objet,-1,1,0,1,1,6,"Potion med",17
+1,0,1,0,22,0x473ed0,coffre,229,20,-180,3428,1024,objet,-1,1,0,1,2,7,"Elixir des esprits",15
+1,0,1,0,22,0x473ed0,coffre,229,20,-180,3428,1024,objet,-1,1,0,1,3,7,"Elixir des esprits",13
+1,0,1,0,22,0x473ed0,coffre,229,20,-180,3428,1024,objet,-1,1,0,1,4,8,"Bonbon aux plantes",11
+1,0,1,0,22,0x473ed0,coffre,229,20,-180,3428,1024,objet,-1,1,0,1,5,9,"Gantelets",9
+1,0,1,0,22,0x473ed0,coffre,229,20,-180,3428,1024,objet,-1,1,0,1,6,10,"Hache fine",6
+1,0,1,0,22,0x473ed0,coffre,229,20,-180,3428,1024,objet,-1,1,0,1,7,11,"Lampe sacrée",4
+1,1,0,0,22,0x473ed0,coffre,240,3434,40,-906,3072,message,2,2,0,0,,,,
+1,1,0,1,22,0x473ed0,coffre,241,-1700,640,5230,1024,objet,-1,1,0,2,0,5,"Sceptre de la mort",25
+1,1,0,1,22,0x473ed0,coffre,241,-1700,640,5230,1024,objet,-1,1,0,2,1,5,"Sceptre de la mort",17
+1,1,0,1,22,0x473ed0,coffre,241,-1700,640,5230,1024,objet,-1,1,0,2,2,5,"Sceptre de la mort",15
+1,1,0,1,22,0x473ed0,coffre,241,-1700,640,5230,1024,objet,-1,1,0,2,3,6,"Casque de cuir",13
+1,1,0,1,22,0x473ed0,coffre,241,-1700,640,5230,1024,objet,-1,1,0,2,4,6,"Casque de cuir",11
+1,1,0,1,22,0x473ed0,coffre,241,-1700,640,5230,1024,objet,-1,1,0,2,5,7,"Amulette de la lumière",9
+1,1,0,1,22,0x473ed0,coffre,241,-1700,640,5230,1024,objet,-1,1,0,2,6,7,"Amulette de la lumière",6
+1,1,0,1,22,0x473ed0,coffre,241,-1700,640,5230,1024,objet,-1,1,0,2,7,7,"Amulette de la lumière",4
+1,1,0,2,22,0x473ed0,coffre,231,2014,140,-3620,1536,objet,-1,2,0,3,0,8,"Médaillon de bronze",25
+1,1,0,2,22,0x473ed0,coffre,231,2014,140,-3620,1536,objet,-1,2,0,3,1,8,"Médaillon de bronze",17
+1,1,0,2,22,0x473ed0,coffre,231,2014,140,-3620,1536,objet,-1,2,0,3,2,9,"Médaillon d'argent",15
+1,1,0,2,22,0x473ed0,coffre,231,2014,140,-3620,1536,objet,-1,2,0,3,3,9,"Médaillon d'argent",13
+1,1,0,2,22,0x473ed0,coffre,231,2014,140,-3620,1536,objet,-1,2,0,3,4,9,"Médaillon d'argent",11
+1,1,0,2,22,0x473ed0,coffre,231,2014,140,-3620,1536,objet,-1,2,0,3,5,10,"Médaillon d'or",9
+1,1,0,2,22,0x473ed0,coffre,231,2014,140,-3620,1536,objet,-1,2,0,3,6,10,"Médaillon d'or",6
+1,1,0,2,22,0x473ed0,coffre,231,2014,140,-3620,1536,objet,-1,2,0,3,7,10,"Médaillon d'or",4
+1,1,1,0,22,0x473ed0,coffre,255,-2037,240,1168,1024,objet,-1,0,0,4,0,0,"Potion med",25
+1,1,1,0,22,0x473ed0,coffre,255,-2037,240,1168,1024,objet,-1,0,0,4,1,0,"Potion med",17
+1,1,1,0,22,0x473ed0,coffre,255,-2037,240,1168,1024,objet,-1,0,0,4,2,1,"Balle de feu",15
+1,1,1,0,22,0x473ed0,coffre,255,-2037,240,1168,1024,objet,-1,0,0,4,3,2,"Balle de terre",13
+1,1,1,0,22,0x473ed0,coffre,255,-2037,240,1168,1024,objet,-1,0,0,4,4,3,"Gants de force",11
+1,1,1,0,22,0x473ed0,coffre,255,-2037,240,1168,1024,objet,-1,0,0,4,5,3,"Gants de force",9
+1,1,1,0,22,0x473ed0,coffre,255,-2037,240,1168,1024,objet,-1,0,0,4,6,4,"Chaîne de la terre",6
+1,1,1,0,22,0x473ed0,coffre,255,-2037,240,1168,1024,objet,-1,0,0,4,7,4,"Chaîne de la terre",4
+1,1,1,20,22,0x473ed0,coffre,261,-2300,40,400,0,objet,-1,1,0,25,0,5,"Sceptre de la mort",25
+1,1,1,20,22,0x473ed0,coffre,261,-2300,40,400,0,objet,-1,1,0,25,1,5,"Sceptre de la mort",17
+1,1,1,20,22,0x473ed0,coffre,261,-2300,40,400,0,objet,-1,1,0,25,2,5,"Sceptre de la mort",15
+1,1,1,20,22,0x473ed0,coffre,261,-2300,40,400,0,objet,-1,1,0,25,3,6,"Casque de cuir",13
+1,1,1,20,22,0x473ed0,coffre,261,-2300,40,400,0,objet,-1,1,0,25,4,6,"Casque de cuir",11
+1,1,1,20,22,0x473ed0,coffre,261,-2300,40,400,0,objet,-1,1,0,25,5,7,"Amulette de la lumière",9
+1,1,1,20,22,0x473ed0,coffre,261,-2300,40,400,0,objet,-1,1,0,25,6,7,"Amulette de la lumière",6
+1,1,1,20,22,0x473ed0,coffre,261,-2300,40,400,0,objet,-1,1,0,25,7,7,"Amulette de la lumière",4
+1,2,0,0,22,0x473ed0,coffre,242,3122,-560,861,2048,objet,-1,0,0,5,0,0,"Bottes de cuir",25
+1,2,0,0,22,0x473ed0,coffre,242,3122,-560,861,2048,objet,-1,0,0,5,1,0,"Bottes de cuir",17
+1,2,0,0,22,0x473ed0,coffre,242,3122,-560,861,2048,objet,-1,0,0,5,2,1,"Manteau",15
+1,2,0,0,22,0x473ed0,coffre,242,3122,-560,861,2048,objet,-1,0,0,5,3,1,"Manteau",13
+1,2,0,0,22,0x473ed0,coffre,242,3122,-560,861,2048,objet,-1,0,0,5,4,2,"Joyau de terre",11
+1,2,0,0,22,0x473ed0,coffre,242,3122,-560,861,2048,objet,-1,0,0,5,5,2,"Joyau de terre",9
+1,2,0,0,22,0x473ed0,coffre,242,3122,-560,861,2048,objet,-1,0,0,5,6,3,"Armure",6
+1,2,0,0,22,0x473ed0,coffre,242,3122,-560,861,2048,objet,-1,0,0,5,7,3,"Armure",4
+1,2,1,0,22,0x473ed0,coffre,-243,492,-560,-2060,1536,objet,-1,1,0,6,0,4,"Balle de cristal",25
+1,2,1,0,22,0x473ed0,coffre,-243,492,-560,-2060,1536,objet,-1,1,0,6,1,5,"Aile de Séraphin",17
+1,2,1,0,22,0x473ed0,coffre,-243,492,-560,-2060,1536,objet,-1,1,0,6,2,5,"Aile de Séraphin",15
+1,2,1,0,22,0x473ed0,coffre,-243,492,-560,-2060,1536,objet,-1,1,0,6,3,4,"Balle de cristal",13
+1,2,1,0,22,0x473ed0,coffre,-243,492,-560,-2060,1536,objet,-1,1,0,6,4,4,"Balle de cristal",11
+1,2,1,0,22,0x473ed0,coffre,-243,492,-560,-2060,1536,objet,-1,1,0,6,5,5,"Aile de Séraphin",9
+1,2,1,0,22,0x473ed0,coffre,-243,492,-560,-2060,1536,objet,-1,1,0,6,6,5,"Aile de Séraphin",6
+1,2,1,0,22,0x473ed0,coffre,-243,492,-560,-2060,1536,objet,-1,1,0,6,7,4,"Balle de cristal",4
+1,2,1,110,22,0x473ed0,coffre,262,-1300,40,2000,3584,objet,-1,2,0,26,0,6,"Bouclier rond",25
+1,2,1,110,22,0x473ed0,coffre,262,-1300,40,2000,3584,objet,-1,2,0,26,1,6,"Bouclier rond",17
+1,2,1,110,22,0x473ed0,coffre,262,-1300,40,2000,3584,objet,-1,2,0,26,2,6,"Bouclier rond",15
+1,2,1,110,22,0x473ed0,coffre,262,-1300,40,2000,3584,objet,-1,2,0,26,3,6,"Bouclier rond",13
+1,2,1,110,22,0x473ed0,coffre,262,-1300,40,2000,3584,objet,-1,2,0,26,4,6,"Bouclier rond",11
+1,2,1,110,22,0x473ed0,coffre,262,-1300,40,2000,3584,objet,-1,2,0,26,5,6,"Bouclier rond",9
+1,2,1,110,22,0x473ed0,coffre,262,-1300,40,2000,3584,objet,-1,2,0,26,6,6,"Bouclier rond",6
+1,2,1,110,22,0x473ed0,coffre,262,-1300,40,2000,3584,objet,-1,2,0,26,7,6,"Bouclier rond",4
+1,3,0,0,22,0x473ed0,coffre,244,2400,840,-2409,3072,objet,-1,0,0,7,0,0,"Elixir de vie",25
+1,3,0,0,22,0x473ed0,coffre,244,2400,840,-2409,3072,objet,-1,0,0,7,1,1,"Ecailles de dragon",17
+1,3,0,0,22,0x473ed0,coffre,244,2400,840,-2409,3072,objet,-1,0,0,7,2,1,"Ecailles de dragon",15
+1,3,0,0,22,0x473ed0,coffre,244,2400,840,-2409,3072,objet,-1,0,0,7,3,1,"Ecailles de dragon",13
+1,3,0,0,22,0x473ed0,coffre,244,2400,840,-2409,3072,objet,-1,0,0,7,4,1,"Ecailles de dragon",11
+1,3,0,0,22,0x473ed0,coffre,244,2400,840,-2409,3072,objet,-1,0,0,7,5,2,"Chaîne de l'eau",9
+1,3,0,0,22,0x473ed0,coffre,244,2400,840,-2409,3072,objet,-1,0,0,7,6,2,"Chaîne de l'eau",6
+1,3,0,0,22,0x473ed0,coffre,244,2400,840,-2409,3072,objet,-1,0,0,7,7,2,"Chaîne de l'eau",4
+1,3,0,1,22,0x473ed0,coffre,245,-3048,240,4744,1024,objet,-1,1,0,8,0,3,"Joyau de vent",25
+1,3,0,1,22,0x473ed0,coffre,245,-3048,240,4744,1024,objet,-1,1,0,8,1,4,"Joyau de glace",17
+1,3,0,1,22,0x473ed0,coffre,245,-3048,240,4744,1024,objet,-1,1,0,8,2,3,"Joyau de vent",15
+1,3,0,1,22,0x473ed0,coffre,245,-3048,240,4744,1024,objet,-1,1,0,8,3,4,"Joyau de glace",13
+1,3,0,1,22,0x473ed0,coffre,245,-3048,240,4744,1024,objet,-1,1,0,8,4,5,"Délicieux drop",11
+1,3,0,1,22,0x473ed0,coffre,245,-3048,240,4744,1024,objet,-1,1,0,8,5,5,"Délicieux drop",9
+1,3,0,1,22,0x473ed0,coffre,245,-3048,240,4744,1024,objet,-1,1,0,8,6,6,"Ambrosia",6
+1,3,0,1,22,0x473ed0,coffre,245,-3048,240,4744,1024,objet,-1,1,0,8,7,6,"Ambrosia",4
+1,4,0,0,22,0x473ed0,coffre,246,-1872,40,-564,3072,objet,-1,0,0,9,0,0,"Bague de protection",25
+1,4,0,0,22,0x473ed0,coffre,246,-1872,40,-564,3072,objet,-1,0,0,9,1,1,"Bague de résistance",17
+1,4,0,0,22,0x473ed0,coffre,246,-1872,40,-564,3072,objet,-1,0,0,9,2,2,"Aquachâle",15
+1,4,0,0,22,0x473ed0,coffre,246,-1872,40,-564,3072,objet,-1,0,0,9,3,2,"Aquachâle",13
+1,4,0,0,22,0x473ed0,coffre,246,-1872,40,-564,3072,objet,-1,0,0,9,4,3,"Ruban de force",11
+1,4,0,0,22,0x473ed0,coffre,246,-1872,40,-564,3072,objet,-1,0,0,9,5,4,"Nobles bottes",9
+1,4,0,0,22,0x473ed0,coffre,246,-1872,40,-564,3072,objet,-1,0,0,9,6,4,"Nobles bottes",6
+1,4,0,0,22,0x473ed0,coffre,246,-1872,40,-564,3072,objet,-1,0,0,9,7,4,"Nobles bottes",4
+1,4,0,1,22,0x473ed0,coffre,247,1503,40,-565,2048,objet,-1,1,0,10,0,5,"Armure",25
+1,4,0,1,22,0x473ed0,coffre,247,1503,40,-565,2048,objet,-1,1,0,10,1,5,"Armure",17
+1,4,0,1,22,0x473ed0,coffre,247,1503,40,-565,2048,objet,-1,1,0,10,2,5,"Armure",15
+1,4,0,1,22,0x473ed0,coffre,247,1503,40,-565,2048,objet,-1,1,0,10,3,5,"Armure",13
+1,4,0,1,22,0x473ed0,coffre,247,1503,40,-565,2048,objet,-1,1,0,10,4,5,"Armure",11
+1,4,0,1,22,0x473ed0,coffre,247,1503,40,-565,2048,objet,-1,1,0,10,5,5,"Armure",9
+1,4,0,1,22,0x473ed0,coffre,247,1503,40,-565,2048,objet,-1,1,0,10,6,5,"Armure",6
+1,4,0,1,22,0x473ed0,coffre,247,1503,40,-565,2048,objet,-1,1,0,10,7,5,"Armure",4
+1,5,0,0,22,0x473ed0,coffre,232,2492,440,-2224,1024,objet,-1,0,0,11,0,0,"Pierre médicinale",25
+1,5,0,0,22,0x473ed0,coffre,232,2492,440,-2224,1024,objet,-1,0,0,11,1,1,"Pierre magique",17
+1,5,0,0,22,0x473ed0,coffre,232,2492,440,-2224,1024,objet,-1,0,0,11,2,2,"Chaussuresvol",15
+1,5,0,0,22,0x473ed0,coffre,232,2492,440,-2224,1024,objet,-1,0,0,11,3,3,"Boucle de cristal",13
+1,5,0,0,22,0x473ed0,coffre,232,2492,440,-2224,1024,objet,-1,0,0,11,4,3,"Boucle de cristal",11
+1,5,0,0,22,0x473ed0,coffre,232,2492,440,-2224,1024,objet,-1,0,0,11,5,2,"Chaussuresvol",9
+1,5,0,0,22,0x473ed0,coffre,232,2492,440,-2224,1024,objet,-1,0,0,11,6,1,"Pierre magique",6
+1,5,0,0,22,0x473ed0,coffre,232,2492,440,-2224,1024,objet,-1,0,0,11,7,0,"Pierre médicinale",4
+1,5,0,1,22,0x473ed0,coffre,233,-52,440,-2574,2048,objet,-1,1,0,12,0,4,"Ecu du destin",25
+1,5,0,1,22,0x473ed0,coffre,233,-52,440,-2574,2048,objet,-1,1,0,12,1,4,"Ecu du destin",17
+1,5,0,1,22,0x473ed0,coffre,233,-52,440,-2574,2048,objet,-1,1,0,12,2,4,"Ecu du destin",15
+1,5,0,1,22,0x473ed0,coffre,233,-52,440,-2574,2048,objet,-1,1,0,12,3,4,"Ecu du destin",13
+1,5,0,1,22,0x473ed0,coffre,233,-52,440,-2574,2048,objet,-1,1,0,12,4,4,"Ecu du destin",11
+1,5,0,1,22,0x473ed0,coffre,233,-52,440,-2574,2048,objet,-1,1,0,12,5,4,"Ecu du destin",9
+1,5,0,1,22,0x473ed0,coffre,233,-52,440,-2574,2048,objet,-1,1,0,12,6,4,"Ecu du destin",6
+1,5,0,1,22,0x473ed0,coffre,233,-52,440,-2574,2048,objet,-1,1,0,12,7,4,"Ecu du destin",4
+1,5,0,2,22,0x473ed0,coffre,234,-1052,40,2400,2048,objet,-1,2,0,13,0,5,"Porte-bonheur",25
+1,5,0,2,22,0x473ed0,coffre,234,-1052,40,2400,2048,objet,-1,2,0,13,1,6,"Casque de fer",17
+1,5,0,2,22,0x473ed0,coffre,234,-1052,40,2400,2048,objet,-1,2,0,13,2,7,"Miroir de la porte",15
+1,5,0,2,22,0x473ed0,coffre,234,-1052,40,2400,2048,objet,-1,2,0,13,3,8,"Bottes de fer",13
+1,5,0,2,22,0x473ed0,coffre,234,-1052,40,2400,2048,objet,-1,2,0,13,4,8,"Bottes de fer",11
+1,5,0,2,22,0x473ed0,coffre,234,-1052,40,2400,2048,objet,-1,2,0,13,5,7,"Miroir de la porte",9
+1,5,0,2,22,0x473ed0,coffre,234,-1052,40,2400,2048,objet,-1,2,0,13,6,6,"Casque de fer",6
+1,5,0,2,22,0x473ed0,coffre,234,-1052,40,2400,2048,objet,-1,2,0,13,7,5,"Porte-bonheur",4
+1,6,1,0,22,0x473ed0,coffre,235,-86,40,-1230,1024,objet,-1,0,0,14,0,0,"Talisman médicinal",25
+1,6,1,0,22,0x473ed0,coffre,235,-86,40,-1230,1024,objet,-1,0,0,14,1,1,"Bague sacrée",17
+1,6,1,0,22,0x473ed0,coffre,235,-86,40,-1230,1024,objet,-1,0,0,14,2,2,"Bouclier de glace",15
+1,6,1,0,22,0x473ed0,coffre,235,-86,40,-1230,1024,objet,-1,0,0,14,3,2,"Bouclier de glace",13
+1,6,1,0,22,0x473ed0,coffre,235,-86,40,-1230,1024,objet,-1,0,0,14,4,3,"Pendentif vaporeux",11
+1,6,1,0,22,0x473ed0,coffre,235,-86,40,-1230,1024,objet,-1,0,0,14,5,3,"Pendentif vaporeux",9
+1,6,1,0,22,0x473ed0,coffre,235,-86,40,-1230,1024,objet,-1,0,0,14,6,3,"Pendentif vaporeux",6
+1,6,1,0,22,0x473ed0,coffre,235,-86,40,-1230,1024,objet,-1,0,0,14,7,3,"Pendentif vaporeux",4
+1,6,1,1,22,0x473ed0,coffre,236,-4235,740,3289,512,objet,-1,1,0,15,0,4,"Arc de bois",25
+1,6,1,1,22,0x473ed0,coffre,236,-4235,740,3289,512,objet,-1,1,0,15,1,5,"Baguette-Misuril",17
+1,6,1,1,22,0x473ed0,coffre,236,-4235,740,3289,512,objet,-1,1,0,15,2,6,"Baguette de la terre",15
+1,6,1,1,22,0x473ed0,coffre,236,-4235,740,3289,512,objet,-1,1,0,15,3,7,"Hache empoisonnée",13
+1,6,1,1,22,0x473ed0,coffre,236,-4235,740,3289,512,objet,-1,1,0,15,4,7,"Hache empoisonnée",11
+1,6,1,1,22,0x473ed0,coffre,236,-4235,740,3289,512,objet,-1,1,0,15,5,6,"Baguette de la terre",9
+1,6,1,1,22,0x473ed0,coffre,236,-4235,740,3289,512,objet,-1,1,0,15,6,5,"Baguette-Misuril",6
+1,6,1,1,22,0x473ed0,coffre,236,-4235,740,3289,512,objet,-1,1,0,15,7,4,"Arc de bois",4
+1,6,2,0,22,0x473ed0,coffre,237,-2192,740,-4861,3072,objet,-1,2,0,16,0,8,"Lame du soleil",25
+1,6,2,0,22,0x473ed0,coffre,237,-2192,740,-4861,3072,objet,-1,2,0,16,1,9,"Crosse des anciens",17
+1,6,2,0,22,0x473ed0,coffre,237,-2192,740,-4861,3072,objet,-1,2,0,16,2,10,"Black Jack",15
+1,6,2,0,22,0x473ed0,coffre,237,-2192,740,-4861,3072,objet,-1,2,0,16,3,11,"Lame de la terre",13
+1,6,2,0,22,0x473ed0,coffre,237,-2192,740,-4861,3072,objet,-1,2,0,16,4,11,"Lame de la terre",11
+1,6,2,0,22,0x473ed0,coffre,237,-2192,740,-4861,3072,objet,-1,2,0,16,5,10,"Black Jack",9
+1,6,2,0,22,0x473ed0,coffre,237,-2192,740,-4861,3072,objet,-1,2,0,16,6,9,"Crosse des anciens",6
+1,6,2,0,22,0x473ed0,coffre,237,-2192,740,-4861,3072,objet,-1,2,0,16,7,8,"Lame du soleil",4
+1,7,0,2,22,0x473ed0,coffre,238,3886,240,-6076,0,objet,-1,0,0,17,0,0,"Armure mirage",25
+1,7,0,2,22,0x473ed0,coffre,238,3886,240,-6076,0,objet,-1,0,0,17,1,1,"Bouclier de vie",17
+1,7,0,2,22,0x473ed0,coffre,238,3886,240,-6076,0,objet,-1,0,0,17,2,2,"Robe des esprits",15
+1,7,0,2,22,0x473ed0,coffre,238,3886,240,-6076,0,objet,-1,0,0,17,3,3,"Bracelet d'argent",13
+1,7,0,2,22,0x473ed0,coffre,238,3886,240,-6076,0,objet,-1,0,0,17,4,3,"Bracelet d'argent",11
+1,7,0,2,22,0x473ed0,coffre,238,3886,240,-6076,0,objet,-1,0,0,17,5,2,"Robe des esprits",9
+1,7,0,2,22,0x473ed0,coffre,238,3886,240,-6076,0,objet,-1,0,0,17,6,1,"Bouclier de vie",6
+1,7,0,2,22,0x473ed0,coffre,238,3886,240,-6076,0,objet,-1,0,0,17,7,0,"Armure mirage",4
+1,7,0,3,22,0x473ed0,coffre,239,-3900,-160,-4872,3072,objet,-1,1,0,18,0,4,"Balle de l'illusion",25
+1,7,0,3,22,0x473ed0,coffre,239,-3900,-160,-4872,3072,objet,-1,1,0,18,1,5,"Lampe sacrée",17
+1,7,0,3,22,0x473ed0,coffre,239,-3900,-160,-4872,3072,objet,-1,1,0,18,2,5,"Lampe sacrée",15
+1,7,0,3,22,0x473ed0,coffre,239,-3900,-160,-4872,3072,objet,-1,1,0,18,3,4,"Balle de l'illusion",13
+1,7,0,3,22,0x473ed0,coffre,239,-3900,-160,-4872,3072,objet,-1,1,0,18,4,6,"Manteau de résistance",11
+1,7,0,3,22,0x473ed0,coffre,239,-3900,-160,-4872,3072,objet,-1,1,0,18,5,6,"Manteau de résistance",9
+1,7,0,3,22,0x473ed0,coffre,239,-3900,-160,-4872,3072,objet,-1,1,0,18,6,6,"Manteau de résistance",6
+1,7,0,3,22,0x473ed0,coffre,239,-3900,-160,-4872,3072,objet,-1,1,0,18,7,6,"Manteau de résistance",4
+1,7,0,4,22,0x473ed0,coffre,224,-4340,240,2896,0,objet,-1,2,0,19,0,7,"Panoramix",25
+1,7,0,4,22,0x473ed0,coffre,224,-4340,240,2896,0,objet,-1,2,0,19,1,8,"Ambrosia",17
+1,7,0,4,22,0x473ed0,coffre,224,-4340,240,2896,0,objet,-1,2,0,19,2,8,"Ambrosia",15
+1,7,0,4,22,0x473ed0,coffre,224,-4340,240,2896,0,objet,-1,2,0,19,3,7,"Panoramix",13
+1,7,0,4,22,0x473ed0,coffre,224,-4340,240,2896,0,objet,-1,2,0,19,4,7,"Panoramix",11
+1,7,0,4,22,0x473ed0,coffre,224,-4340,240,2896,0,objet,-1,2,0,19,5,8,"Ambrosia",9
+1,7,0,4,22,0x473ed0,coffre,224,-4340,240,2896,0,objet,-1,2,0,19,6,8,"Ambrosia",6
+1,7,0,4,22,0x473ed0,coffre,224,-4340,240,2896,0,objet,-1,2,0,19,7,7,"Panoramix",4
+1,8,0,90,22,0x473ed0,coffre,225,2876,40,-3927,2048,objet,-1,0,0,20,0,0,"Plume",25
+1,8,0,90,22,0x473ed0,coffre,225,2876,40,-3927,2048,objet,-1,0,0,20,1,1,"Cendre noire",17
+1,8,0,90,22,0x473ed0,coffre,225,2876,40,-3927,2048,objet,-1,0,0,20,2,2,"Corne du Minotaure",15
+1,8,0,90,22,0x473ed0,coffre,225,2876,40,-3927,2048,objet,-1,0,0,20,3,2,"Corne du Minotaure",13
+1,8,0,90,22,0x473ed0,coffre,225,2876,40,-3927,2048,objet,-1,0,0,20,4,3,"Boucle de la chance",11
+1,8,0,90,22,0x473ed0,coffre,225,2876,40,-3927,2048,objet,-1,0,0,20,5,3,"Boucle de la chance",9
+1,8,0,90,22,0x473ed0,coffre,225,2876,40,-3927,2048,objet,-1,0,0,20,6,4,"Anneau des éléments",6
+1,8,0,90,22,0x473ed0,coffre,225,2876,40,-3927,2048,objet,-1,0,0,20,7,4,"Anneau des éléments",4
+1,8,0,92,22,0x473ed0,coffre,227,204,-2760,2098,0,objet,-1,2,0,22,0,5,"Cristal de magie",25
+1,8,0,92,22,0x473ed0,coffre,227,204,-2760,2098,0,objet,-1,2,0,22,1,5,"Cristal de magie",17
+1,8,0,92,22,0x473ed0,coffre,227,204,-2760,2098,0,objet,-1,2,0,22,2,8,"Ambrosia",15
+1,8,0,92,22,0x473ed0,coffre,227,204,-2760,2098,0,objet,-1,2,0,22,3,9,"Balance des juges",13
+1,8,0,92,22,0x473ed0,coffre,227,204,-2760,2098,0,objet,-1,2,0,22,4,9,"Balance des juges",11
+1,8,0,92,22,0x473ed0,coffre,227,204,-2760,2098,0,objet,-1,2,0,22,5,9,"Balance des juges",9
+1,8,0,92,22,0x473ed0,coffre,227,204,-2760,2098,0,objet,-1,2,0,22,6,9,"Balance des juges",6
+1,8,0,92,22,0x473ed0,coffre,227,204,-2760,2098,0,objet,-1,2,0,22,7,9,"Balance des juges",4
+1,8,0,94,22,0x473ed0,coffre,226,2474,-1360,1174,2048,objet,-1,1,0,21,0,5,"Cristal de magie",25
+1,8,0,94,22,0x473ed0,coffre,226,2474,-1360,1174,2048,objet,-1,1,0,21,1,5,"Cristal de magie",17
+1,8,0,94,22,0x473ed0,coffre,226,2474,-1360,1174,2048,objet,-1,1,0,21,2,6,"Boîte du silence",15
+1,8,0,94,22,0x473ed0,coffre,226,2474,-1360,1174,2048,objet,-1,1,0,21,3,6,"Boîte du silence",13
+1,8,0,94,22,0x473ed0,coffre,226,2474,-1360,1174,2048,objet,-1,1,0,21,4,7,"Boîte de Pandore",11
+1,8,0,94,22,0x473ed0,coffre,226,2474,-1360,1174,2048,objet,-1,1,0,21,5,7,"Boîte de Pandore",9
+1,8,0,94,22,0x473ed0,coffre,226,2474,-1360,1174,2048,objet,-1,1,0,21,6,7,"Boîte de Pandore",6
+1,8,0,94,22,0x473ed0,coffre,226,2474,-1360,1174,2048,objet,-1,1,0,21,7,7,"Boîte de Pandore",4
+1,9,0,0,22,0x473ed0,coffre,253,1722,-160,-828,3072,objet,-1,0,0,23,0,0,"Balle des éléments",25
+1,9,0,0,22,0x473ed0,coffre,253,1722,-160,-828,3072,objet,-1,0,0,23,1,1,"Robe des anciens",17
+1,9,0,0,22,0x473ed0,coffre,253,1722,-160,-828,3072,objet,-1,0,0,23,2,2,"Tiare de la terre",15
+1,9,0,0,22,0x473ed0,coffre,253,1722,-160,-828,3072,objet,-1,0,0,23,3,3,"Horloge des mystères",13
+1,9,0,0,22,0x473ed0,coffre,253,1722,-160,-828,3072,objet,-1,0,0,23,4,3,"Horloge des mystères",11
+1,9,0,0,22,0x473ed0,coffre,253,1722,-160,-828,3072,objet,-1,0,0,23,5,4,"Aile de Séraphin",9
+1,9,0,0,22,0x473ed0,coffre,253,1722,-160,-828,3072,objet,-1,0,0,23,6,4,"Aile de Séraphin",6
+1,9,0,0,22,0x473ed0,coffre,253,1722,-160,-828,3072,objet,-1,0,0,23,7,4,"Aile de Séraphin",4
+1,9,0,1,22,0x473ed0,coffre,254,-562,-360,-3682,3072,objet,-1,1,0,24,0,5,"Pendentif de princesse",25
+1,9,0,1,22,0x473ed0,coffre,254,-562,-360,-3682,3072,objet,-1,1,0,24,1,5,"Pendentif de princesse",17
+1,9,0,1,22,0x473ed0,coffre,254,-562,-360,-3682,3072,objet,-1,1,0,24,2,6,"Bracelet de reine",15
+1,9,0,1,22,0x473ed0,coffre,254,-562,-360,-3682,3072,objet,-1,1,0,24,3,6,"Bracelet de reine",13
+1,9,0,1,22,0x473ed0,coffre,254,-562,-360,-3682,3072,objet,-1,1,0,24,4,7,"Manteau des esprits",11
+1,9,0,1,22,0x473ed0,coffre,254,-562,-360,-3682,3072,objet,-1,1,0,24,5,7,"Manteau des esprits",9
+1,9,0,1,22,0x473ed0,coffre,254,-562,-360,-3682,3072,objet,-1,1,0,24,6,8,"Durandal",6
+1,9,0,1,22,0x473ed0,coffre,254,-562,-360,-3682,3072,objet,-1,1,0,24,7,8,"Durandal",4
+2,0,1,0,12,0x473ed0,coffre,248,200,240,3520,3072,objet,-1,0,0,0,0,0,"Bouclier de glace",25
+2,0,1,0,12,0x473ed0,coffre,248,200,240,3520,3072,objet,-1,0,0,0,1,0,"Bouclier de glace",17
+2,0,1,0,12,0x473ed0,coffre,248,200,240,3520,3072,objet,-1,0,0,0,2,0,"Bouclier de glace",15
+2,0,1,0,12,0x473ed0,coffre,248,200,240,3520,3072,objet,-1,0,0,0,3,0,"Bouclier de glace",13
+2,0,1,0,12,0x473ed0,coffre,248,200,240,3520,3072,objet,-1,0,0,0,4,0,"Bouclier de glace",11
+2,0,1,0,12,0x473ed0,coffre,248,200,240,3520,3072,objet,-1,0,0,0,5,0,"Bouclier de glace",9
+2,0,1,0,12,0x473ed0,coffre,248,200,240,3520,3072,objet,-1,0,0,0,6,0,"Bouclier de glace",6
+2,0,1,0,12,0x473ed0,coffre,248,200,240,3520,3072,objet,-1,0,0,0,7,0,"Bouclier de glace",4
+2,0,1,9,12,0x473ed0,coffre,251,70,240,3800,512,objet,-1,8,0,1,0,3,"Epée noire",25
+2,0,1,9,12,0x473ed0,coffre,251,70,240,3800,512,objet,-1,8,0,1,1,3,"Epée noire",17
+2,0,1,9,12,0x473ed0,coffre,251,70,240,3800,512,objet,-1,8,0,1,2,3,"Epée noire",15
+2,0,1,9,12,0x473ed0,coffre,251,70,240,3800,512,objet,-1,8,0,1,3,3,"Epée noire",13
+2,0,1,9,12,0x473ed0,coffre,251,70,240,3800,512,objet,-1,8,0,1,4,3,"Epée noire",11
+2,0,1,9,12,0x473ed0,coffre,251,70,240,3800,512,objet,-1,8,0,1,5,3,"Epée noire",9
+2,0,1,9,12,0x473ed0,coffre,251,70,240,3800,512,objet,-1,8,0,1,6,3,"Epée noire",6
+2,0,1,9,12,0x473ed0,coffre,251,70,240,3800,512,objet,-1,8,0,1,7,3,"Epée noire",4
+2,0,4,2,12,0x473ed0,coffre,-252,530,40,1300,1536,objet,-1,18,0,2,0,21,"Corne du dragon",25
+2,0,4,2,12,0x473ed0,coffre,-252,530,40,1300,1536,objet,-1,18,0,2,1,13,"Cristal de feu",17
+2,0,4,2,12,0x473ed0,coffre,-252,530,40,1300,1536,objet,-1,18,0,2,2,22,"Robe des anciens",15
+2,0,4,2,12,0x473ed0,coffre,-252,530,40,1300,1536,objet,-1,18,0,2,3,23,"Dropneal",13
+2,0,4,2,12,0x473ed0,coffre,-252,530,40,1300,1536,objet,-1,18,0,2,4,24,"Mistortain",11
+2,0,4,2,12,0x473ed0,coffre,-252,530,40,1300,1536,objet,-1,18,0,2,5,25,"Bahamut",9
+2,0,4,2,12,0x473ed0,coffre,-252,530,40,1300,1536,objet,-1,18,0,2,6,26,"Fabnihl",6
+2,0,4,2,12,0x473ed0,coffre,-252,530,40,1300,1536,objet,-1,18,0,2,7,27,"Lame de Calvin",4
+3,2,3,0,10,0x473ed0,coffre,243,900,40,-1500,0,objet,-1,1,0,0,0,8,"Corde du retour",25
+3,2,3,0,10,0x473ed0,coffre,243,900,40,-1500,0,objet,-1,1,0,0,1,8,"Corde du retour",17
+3,2,3,0,10,0x473ed0,coffre,243,900,40,-1500,0,objet,-1,1,0,0,2,9,"Huile du pouvoir",15
+3,2,3,0,10,0x473ed0,coffre,243,900,40,-1500,0,objet,-1,1,0,0,3,10,"Lavande",13
+3,2,3,0,10,0x473ed0,coffre,243,900,40,-1500,0,objet,-1,1,0,0,4,11,"Sauge",11
+3,2,3,0,10,0x473ed0,coffre,243,900,40,-1500,0,objet,-1,1,0,0,5,12,"Casse-tête à chaîne",9
+3,2,3,0,10,0x473ed0,coffre,243,900,40,-1500,0,objet,-1,1,0,0,6,13,"Daak",6
+3,2,3,0,10,0x473ed0,coffre,243,900,40,-1500,0,objet,-1,1,0,0,7,14,"Manteau à plumes",4
+3,2,4,0,10,0x473ed0,coffre,242,900,340,-1740,0,objet,-1,0,0,1,0,0,"Arc classique",25
+3,2,4,0,10,0x473ed0,coffre,242,900,340,-1740,0,objet,-1,0,0,1,1,1,"Cuir fin",17
+3,2,4,0,10,0x473ed0,coffre,242,900,340,-1740,0,objet,-1,0,0,1,2,2,"Cotte de maille",15
+3,2,4,0,10,0x473ed0,coffre,242,900,340,-1740,0,objet,-1,0,0,1,3,3,"Hachette",13
+3,2,4,0,10,0x473ed0,coffre,242,900,340,-1740,0,objet,-1,0,0,1,4,4,"Gants de cuir",11
+3,2,4,0,10,0x473ed0,coffre,242,900,340,-1740,0,objet,-1,0,0,1,5,5,"Casque de cuir",9
+3,2,4,0,10,0x473ed0,coffre,242,900,340,-1740,0,objet,-1,0,0,1,6,6,"Grand arc",6
+3,2,4,0,10,0x473ed0,coffre,242,900,340,-1740,0,objet,-1,0,0,1,7,7,"Pavois fin",4
+3,4,3,0,10,0x473ed0,coffre,244,1900,140,2700,0,objet,-1,0,0,2,0,0,"Longue épée",25
+3,4,3,0,10,0x473ed0,coffre,244,1900,140,2700,0,objet,-1,0,0,2,1,1,"Pique",17
+3,4,3,0,10,0x473ed0,coffre,244,1900,140,2700,0,objet,-1,0,0,2,2,2,"Sceptre de la mort",15
+3,4,3,0,10,0x473ed0,coffre,244,1900,140,2700,0,objet,-1,0,0,2,3,3,"Chaînette d'argent",13
+3,4,3,0,10,0x473ed0,coffre,244,1900,140,2700,0,objet,-1,0,0,2,4,4,"Casquette de chasseur",11
+3,4,3,0,10,0x473ed0,coffre,244,1900,140,2700,0,objet,-1,0,0,2,5,5,"Pierre médicinale",9
+3,4,3,0,10,0x473ed0,coffre,244,1900,140,2700,0,objet,-1,0,0,2,6,6,"Pierre magique",6
+3,4,3,0,10,0x473ed0,coffre,244,1900,140,2700,0,objet,-1,0,0,2,7,7,"Arc en croix",4
+3,4,3,1,10,0x473ed0,coffre,245,-2070,340,1280,2048,message,1,1,0,0,,,,
+3,4,3,5,10,0x473ed0,coffre,221,-2850,140,800,0,message,4,26,0,0,,,,
+3,4,6,0,10,0x473ed0,coffre,246,-2100,-160,-400,2048,message,2,2,0,0,,,,
+3,4,6,3,10,0x473ed0,coffre,-220,-3100,-160,-500,0,effet,255,13,32,0,,,,
+3,4,6,5,10,0x473ed0,coffre,219,-3100,-160,-300,0,objet,-1,3,0,3,0,16,"Plastron",25
+3,4,6,5,10,0x473ed0,coffre,219,-3100,-160,-300,0,objet,-1,3,0,3,1,16,"Plastron",17
+3,4,6,5,10,0x473ed0,coffre,219,-3100,-160,-300,0,objet,-1,3,0,3,2,16,"Plastron",15
+3,4,6,5,10,0x473ed0,coffre,219,-3100,-160,-300,0,objet,-1,3,0,3,3,16,"Plastron",13
+3,4,6,5,10,0x473ed0,coffre,219,-3100,-160,-300,0,objet,-1,3,0,3,4,16,"Plastron",11
+3,4,6,5,10,0x473ed0,coffre,219,-3100,-160,-300,0,objet,-1,3,0,3,5,16,"Plastron",9
+3,4,6,5,10,0x473ed0,coffre,219,-3100,-160,-300,0,objet,-1,3,0,3,6,16,"Plastron",6
+3,4,6,5,10,0x473ed0,coffre,219,-3100,-160,-300,0,objet,-1,3,0,3,7,16,"Plastron",4
+3,4,6,7,10,0x473ed0,coffre,223,-2700,-160,-1100,3072,objet,-1,2,0,4,0,15,"Poudre de zombie",25
+3,4,6,7,10,0x473ed0,coffre,223,-2700,-160,-1100,3072,objet,-1,2,0,4,1,15,"Poudre de zombie",17
+3,4,6,7,10,0x473ed0,coffre,223,-2700,-160,-1100,3072,objet,-1,2,0,4,2,15,"Poudre de zombie",15
+3,4,6,7,10,0x473ed0,coffre,223,-2700,-160,-1100,3072,objet,-1,2,0,4,3,15,"Poudre de zombie",13
+3,4,6,7,10,0x473ed0,coffre,223,-2700,-160,-1100,3072,objet,-1,2,0,4,4,15,"Poudre de zombie",11
+3,4,6,7,10,0x473ed0,coffre,223,-2700,-160,-1100,3072,objet,-1,2,0,4,5,15,"Poudre de zombie",9
+3,4,6,7,10,0x473ed0,coffre,223,-2700,-160,-1100,3072,objet,-1,2,0,4,6,15,"Poudre de zombie",6
+3,4,6,7,10,0x473ed0,coffre,223,-2700,-160,-1100,3072,objet,-1,2,0,4,7,15,"Poudre de zombie",4
+3,4,6,9,10,0x473ed0,coffre,-210,-2500,-160,-1100,3072,objet,-1,1,0,10,0,8,"Talisman médicinal",25
+3,4,6,9,10,0x473ed0,coffre,-210,-2500,-160,-1100,3072,objet,-1,1,0,10,1,9,"Nobles bottes",17
+3,4,6,9,10,0x473ed0,coffre,-210,-2500,-160,-1100,3072,objet,-1,1,0,10,2,10,"Bottes de sept lieux",15
+3,4,6,9,10,0x473ed0,coffre,-210,-2500,-160,-1100,3072,objet,-1,1,0,10,3,11,"Cape du printemps",13
+3,4,6,9,10,0x473ed0,coffre,-210,-2500,-160,-1100,3072,objet,-1,1,0,10,4,12,"Boîte à bijoux",11
+3,4,6,9,10,0x473ed0,coffre,-210,-2500,-160,-1100,3072,objet,-1,1,0,10,5,13,"Bague sacrée",9
+3,4,6,9,10,0x473ed0,coffre,-210,-2500,-160,-1100,3072,objet,-1,1,0,10,6,14,"Bague de protection",6
+3,4,6,9,10,0x473ed0,coffre,-210,-2500,-160,-1100,3072,objet,-1,1,0,10,7,14,"Bague de protection",4
+3,5,5,0,10,0x473ed0,coffre,253,4100,140,-3700,0,objet,-1,5,0,5,0,4,"Arc en croix",25
+3,5,5,0,10,0x473ed0,coffre,253,4100,140,-3700,0,objet,-1,5,0,5,1,5,"Fine rapière",17
+3,5,5,0,10,0x473ed0,coffre,253,4100,140,-3700,0,objet,-1,5,0,5,2,6,"Grande hache",15
+3,5,5,0,10,0x473ed0,coffre,253,4100,140,-3700,0,objet,-1,5,0,5,3,7,"Baguette de cristal",13
+3,5,5,0,10,0x473ed0,coffre,253,4100,140,-3700,0,objet,-1,5,0,5,4,7,"Baguette de cristal",11
+3,5,5,0,10,0x473ed0,coffre,253,4100,140,-3700,0,objet,-1,5,0,5,5,6,"Grande hache",9
+3,5,5,0,10,0x473ed0,coffre,253,4100,140,-3700,0,objet,-1,5,0,5,6,5,"Fine rapière",6
+3,5,5,0,10,0x473ed0,coffre,253,4100,140,-3700,0,objet,-1,5,0,5,7,4,"Arc en croix",4
+3,5,5,1,10,0x473ed0,coffre,252,4300,140,1700,0,objet,-1,4,0,6,0,0,"Epée du bâtard",25
+3,5,5,1,10,0x473ed0,coffre,252,4300,140,1700,0,objet,-1,4,0,6,1,1,"Marteau de guerre",17
+3,5,5,1,10,0x473ed0,coffre,252,4300,140,1700,0,objet,-1,4,0,6,2,2,"Minegosh",15
+3,5,5,1,10,0x473ed0,coffre,252,4300,140,1700,0,objet,-1,4,0,6,3,3,"Simple bâton",13
+3,5,5,1,10,0x473ed0,coffre,252,4300,140,1700,0,objet,-1,4,0,6,4,3,"Simple bâton",11
+3,5,5,1,10,0x473ed0,coffre,252,4300,140,1700,0,objet,-1,4,0,6,5,2,"Minegosh",9
+3,5,5,1,10,0x473ed0,coffre,252,4300,140,1700,0,objet,-1,4,0,6,6,1,"Marteau de guerre",6
+3,5,5,1,10,0x473ed0,coffre,252,4300,140,1700,0,objet,-1,4,0,6,7,0,"Epée du bâtard",4
+3,5,6,0,10,0x473ed0,coffre,254,-4100,140,-3700,0,objet,-1,6,0,7,0,8,"Bouclier rond",25
+3,5,6,0,10,0x473ed0,coffre,254,-4100,140,-3700,0,objet,-1,6,0,7,1,9,"Robe fine",17
+3,5,6,0,10,0x473ed0,coffre,254,-4100,140,-3700,0,objet,-1,6,0,7,2,9,"Robe fine",15
+3,5,6,0,10,0x473ed0,coffre,254,-4100,140,-3700,0,objet,-1,6,0,7,3,8,"Bouclier rond",13
+3,5,6,0,10,0x473ed0,coffre,254,-4100,140,-3700,0,objet,-1,6,0,7,4,10,"Nobles chaussures",11
+3,5,6,0,10,0x473ed0,coffre,254,-4100,140,-3700,0,objet,-1,6,0,7,5,10,"Nobles chaussures",9
+3,5,6,0,10,0x473ed0,coffre,254,-4100,140,-3700,0,objet,-1,6,0,7,6,11,"Gants de force",6
+3,5,6,0,10,0x473ed0,coffre,254,-4100,140,-3700,0,objet,-1,6,0,7,7,11,"Gants de force",4
+3,5,6,1,10,0x473ed0,coffre,255,-4300,140,1900,0,objet,-1,7,0,8,0,12,"Poudre de zombie",25
+3,5,6,1,10,0x473ed0,coffre,255,-4300,140,1900,0,objet,-1,7,0,8,1,12,"Poudre de zombie",17
+3,5,6,1,10,0x473ed0,coffre,255,-4300,140,1900,0,objet,-1,7,0,8,2,12,"Poudre de zombie",15
+3,5,6,1,10,0x473ed0,coffre,255,-4300,140,1900,0,objet,-1,7,0,8,3,13,"Ambrosia",13
+3,5,6,1,10,0x473ed0,coffre,255,-4300,140,1900,0,objet,-1,7,0,8,4,13,"Ambrosia",11
+3,5,6,1,10,0x473ed0,coffre,255,-4300,140,1900,0,objet,-1,7,0,8,5,13,"Ambrosia",9
+3,5,6,1,10,0x473ed0,coffre,255,-4300,140,1900,0,objet,-1,7,0,8,6,14,"Aile de Séraphin",6
+3,5,6,1,10,0x473ed0,coffre,255,-4300,140,1900,0,objet,-1,7,0,8,7,14,"Aile de Séraphin",4
+3,6,3,2,10,0x473ed0,coffre,224,3700,140,-3100,0,objet,-1,0,0,9,0,0,"Poignard d'argent",25
+3,6,3,2,10,0x473ed0,coffre,224,3700,140,-3100,0,objet,-1,0,0,9,1,1,"Hache de Viking",17
+3,6,3,2,10,0x473ed0,coffre,224,3700,140,-3100,0,objet,-1,0,0,9,2,2,"Robe des runes",15
+3,6,3,2,10,0x473ed0,coffre,224,3700,140,-3100,0,objet,-1,0,0,9,3,3,"Bouclier d'argent",13
+3,6,3,2,10,0x473ed0,coffre,224,3700,140,-3100,0,objet,-1,0,0,9,4,4,"Miroir d'eau",11
+3,6,3,2,10,0x473ed0,coffre,224,3700,140,-3100,0,objet,-1,0,0,9,5,5,"Aquachâle",9
+3,6,3,2,10,0x473ed0,coffre,224,3700,140,-3100,0,objet,-1,0,0,9,6,5,"Aquachâle",6
+3,6,3,2,10,0x473ed0,coffre,224,3700,140,-3100,0,objet,-1,0,0,9,7,4,"Miroir d'eau",4
+4,1,0,32,28,0x473ed0,coffre,298,1320,240,1420,3584,objet,-1,2,0,19,0,8,"Pique",25
+4,1,0,32,28,0x473ed0,coffre,298,1320,240,1420,3584,objet,-1,2,0,19,1,9,"Fine rapière",17
+4,1,0,32,28,0x473ed0,coffre,298,1320,240,1420,3584,objet,-1,2,0,19,2,9,"Fine rapière",15
+4,1,0,32,28,0x473ed0,coffre,298,1320,240,1420,3584,objet,-1,2,0,19,3,10,"Arc classique",13
+4,1,0,32,28,0x473ed0,coffre,298,1320,240,1420,3584,objet,-1,2,0,19,4,11,"Rapière d'argent",11
+4,1,0,32,28,0x473ed0,coffre,298,1320,240,1420,3584,objet,-1,2,0,19,5,12,"Parfum de guérison",9
+4,1,0,32,28,0x473ed0,coffre,298,1320,240,1420,3584,objet,-1,2,0,19,6,12,"Parfum de guérison",6
+4,1,0,32,28,0x473ed0,coffre,298,1320,240,1420,3584,objet,-1,2,0,19,7,12,"Parfum de guérison",4
+4,1,0,33,28,0x473ed0,coffre,299,1950,240,1950,1536,objet,-1,3,0,20,0,13,"Hachette",25
+4,1,0,33,28,0x473ed0,coffre,299,1950,240,1950,1536,objet,-1,3,0,20,1,14,"Hache de guerre",17
+4,1,0,33,28,0x473ed0,coffre,299,1950,240,1950,1536,objet,-1,3,0,20,2,15,"Hache fine",15
+4,1,0,33,28,0x473ed0,coffre,299,1950,240,1950,1536,objet,-1,3,0,20,3,15,"Hache fine",13
+4,1,0,33,28,0x473ed0,coffre,299,1950,240,1950,1536,objet,-1,3,0,20,4,16,"Daak",11
+4,1,0,33,28,0x473ed0,coffre,299,1950,240,1950,1536,objet,-1,3,0,20,5,16,"Daak",9
+4,1,0,33,28,0x473ed0,coffre,299,1950,240,1950,1536,objet,-1,3,0,20,6,17,"Ecu du destin",6
+4,1,0,33,28,0x473ed0,coffre,299,1950,240,1950,1536,objet,-1,3,0,20,7,17,"Ecu du destin",4
+4,1,1,0,28,0x473ed0,coffre,228,1500,440,3500,2048,objet,-1,0,0,1,0,0,"Manteau de brigand",25
+4,1,1,0,28,0x473ed0,coffre,228,1500,440,3500,2048,objet,-1,0,0,1,1,0,"Manteau de brigand",17
+4,1,1,0,28,0x473ed0,coffre,228,1500,440,3500,2048,objet,-1,0,0,1,2,1,"Poignard d'argent",15
+4,1,1,0,28,0x473ed0,coffre,228,1500,440,3500,2048,objet,-1,0,0,1,3,1,"Poignard d'argent",13
+4,1,1,0,28,0x473ed0,coffre,228,1500,440,3500,2048,objet,-1,0,0,1,4,2,"Insigne de brigand",11
+4,1,1,0,28,0x473ed0,coffre,228,1500,440,3500,2048,objet,-1,0,0,1,5,2,"Insigne de brigand",9
+4,1,1,0,28,0x473ed0,coffre,228,1500,440,3500,2048,objet,-1,0,0,1,6,3,"Balle des ténèbres",6
+4,1,1,0,28,0x473ed0,coffre,228,1500,440,3500,2048,objet,-1,0,0,1,7,3,"Balle des ténèbres",4
+4,1,1,3,28,0x473ed0,coffre,163,2200,445,40,1024,objet,-1,1,0,2,0,4,"Talisman",25
+4,1,1,3,28,0x473ed0,coffre,163,2200,445,40,1024,objet,-1,1,0,2,1,5,"Talisman médicinal",17
+4,1,1,3,28,0x473ed0,coffre,163,2200,445,40,1024,objet,-1,1,0,2,2,6,"Pendentif vaporeux",15
+4,1,1,3,28,0x473ed0,coffre,163,2200,445,40,1024,objet,-1,1,0,2,3,7,"Chapeau de sorcière",13
+4,1,1,3,28,0x473ed0,coffre,163,2200,445,40,1024,objet,-1,1,0,2,4,7,"Chapeau de sorcière",11
+4,1,1,3,28,0x473ed0,coffre,163,2200,445,40,1024,objet,-1,1,0,2,5,6,"Pendentif vaporeux",9
+4,1,1,3,28,0x473ed0,coffre,163,2200,445,40,1024,objet,-1,1,0,2,6,5,"Talisman médicinal",6
+4,1,1,3,28,0x473ed0,coffre,163,2200,445,40,1024,objet,-1,1,0,2,7,4,"Talisman",4
+4,2,0,53,28,0x473ed0,coffre,278,100,40,3200,3072,objet,-1,0,0,18,0,0,"Armure de chevalier",25
+4,2,0,53,28,0x473ed0,coffre,278,100,40,3200,3072,objet,-1,0,0,18,1,0,"Armure de chevalier",17
+4,2,0,53,28,0x473ed0,coffre,278,100,40,3200,3072,objet,-1,0,0,18,2,0,"Armure de chevalier",15
+4,2,0,53,28,0x473ed0,coffre,278,100,40,3200,3072,objet,-1,0,0,18,3,0,"Armure de chevalier",13
+4,2,0,53,28,0x473ed0,coffre,278,100,40,3200,3072,objet,-1,0,0,18,4,0,"Armure de chevalier",11
+4,2,0,53,28,0x473ed0,coffre,278,100,40,3200,3072,objet,-1,0,0,18,5,0,"Armure de chevalier",9
+4,2,0,53,28,0x473ed0,coffre,278,100,40,3200,3072,objet,-1,0,0,18,6,0,"Armure de chevalier",6
+4,2,0,53,28,0x473ed0,coffre,278,100,40,3200,3072,objet,-1,0,0,18,7,0,"Armure de chevalier",4
+4,3,0,0,28,0x473ed0,coffre,217,3500,40,4100,1024,objet,-1,0,0,3,0,0,"Bague de protection",25
+4,3,0,0,28,0x473ed0,coffre,217,3500,40,4100,1024,objet,-1,0,0,3,1,1,"Rubis",17
+4,3,0,0,28,0x473ed0,coffre,217,3500,40,4100,1024,objet,-1,0,0,3,2,2,"Saphir",15
+4,3,0,0,28,0x473ed0,coffre,217,3500,40,4100,1024,objet,-1,0,0,3,3,3,"Armure mirage",13
+4,3,0,0,28,0x473ed0,coffre,217,3500,40,4100,1024,objet,-1,0,0,3,4,4,"Balle des éléments",11
+4,3,0,0,28,0x473ed0,coffre,217,3500,40,4100,1024,objet,-1,0,0,3,5,5,"Symbole de force",9
+4,3,0,0,28,0x473ed0,coffre,217,3500,40,4100,1024,objet,-1,0,0,3,6,6,"Table des anciens",6
+4,3,0,0,28,0x473ed0,coffre,217,3500,40,4100,1024,objet,-1,0,0,3,7,6,"Table des anciens",4
+4,3,0,1,28,0x473ed0,coffre,220,3100,240,-2300,1024,objet,-1,3,0,4,0,10,"Poudre de zombie",25
+4,3,0,1,28,0x473ed0,coffre,220,3100,240,-2300,1024,objet,-1,3,0,4,1,10,"Poudre de zombie",17
+4,3,0,1,28,0x473ed0,coffre,220,3100,240,-2300,1024,objet,-1,3,0,4,2,10,"Poudre de zombie",15
+4,3,0,1,28,0x473ed0,coffre,220,3100,240,-2300,1024,objet,-1,3,0,4,3,10,"Poudre de zombie",13
+4,3,0,1,28,0x473ed0,coffre,220,3100,240,-2300,1024,objet,-1,3,0,4,4,11,"Ambrosia",11
+4,3,0,1,28,0x473ed0,coffre,220,3100,240,-2300,1024,objet,-1,3,0,4,5,11,"Ambrosia",9
+4,3,0,1,28,0x473ed0,coffre,220,3100,240,-2300,1024,objet,-1,3,0,4,6,11,"Ambrosia",6
+4,3,0,1,28,0x473ed0,coffre,220,3100,240,-2300,1024,objet,-1,3,0,4,7,11,"Ambrosia",4
+4,3,0,2,28,0x473ed0,coffre,221,3500,240,-2300,1024,objet,-1,4,0,5,0,12,"Robe épiscopale",25
+4,3,0,2,28,0x473ed0,coffre,221,3500,240,-2300,1024,objet,-1,4,0,5,1,13,"Robe magique",17
+4,3,0,2,28,0x473ed0,coffre,221,3500,240,-2300,1024,objet,-1,4,0,5,2,13,"Robe magique",15
+4,3,0,2,28,0x473ed0,coffre,221,3500,240,-2300,1024,objet,-1,4,0,5,3,12,"Robe épiscopale",13
+4,3,0,2,28,0x473ed0,coffre,221,3500,240,-2300,1024,objet,-1,4,0,5,4,14,"Lampe sacrée",11
+4,3,0,2,28,0x473ed0,coffre,221,3500,240,-2300,1024,objet,-1,4,0,5,5,14,"Lampe sacrée",9
+4,3,0,2,28,0x473ed0,coffre,221,3500,240,-2300,1024,objet,-1,4,0,5,6,15,"Bouclier réflecteur",6
+4,3,0,2,28,0x473ed0,coffre,221,3500,240,-2300,1024,objet,-1,4,0,5,7,15,"Bouclier réflecteur",4
+4,3,2,8,28,0x473ed0,coffre,219,2900,40,-1500,2048,objet,-1,2,0,6,0,9,"Elixir de magicien",25
+4,3,2,8,28,0x473ed0,coffre,219,2900,40,-1500,2048,objet,-1,2,0,6,1,9,"Elixir de magicien",17
+4,3,2,8,28,0x473ed0,coffre,219,2900,40,-1500,2048,objet,-1,2,0,6,2,9,"Elixir de magicien",15
+4,3,2,8,28,0x473ed0,coffre,219,2900,40,-1500,2048,objet,-1,2,0,6,3,9,"Elixir de magicien",13
+4,3,2,8,28,0x473ed0,coffre,219,2900,40,-1500,2048,objet,-1,2,0,6,4,9,"Elixir de magicien",11
+4,3,2,8,28,0x473ed0,coffre,219,2900,40,-1500,2048,objet,-1,2,0,6,5,9,"Elixir de magicien",9
+4,3,2,8,28,0x473ed0,coffre,219,2900,40,-1500,2048,objet,-1,2,0,6,6,8,"Panoramix",6
+4,3,2,8,28,0x473ed0,coffre,219,2900,40,-1500,2048,objet,-1,2,0,6,7,8,"Panoramix",4
+4,3,3,8,28,0x473ed0,coffre,0,-2000,200,-3500,0,message,0,0,0,0,,,,
+4,3,3,9,28,0x473ed0,coffre,0,3300,0,500,0,message,0,0,0,0,,,,
+4,3,3,10,28,0x473ed0,coffre,0,3700,0,500,0,message,0,0,0,0,,,,
+4,3,3,11,28,0x473ed0,coffre,0,1300,200,-2500,0,message,0,0,0,0,,,,
+4,3,3,12,28,0x473ed0,coffre,0,1300,200,-2900,0,message,0,0,0,0,,,,
+4,3,3,13,28,0x473ed0,coffre,0,1700,200,-2500,0,message,0,0,0,0,,,,
+4,3,3,14,28,0x473ed0,coffre,0,1700,200,-2900,0,message,0,0,0,0,,,,
+4,3,3,15,28,0x473ed0,coffre,0,-2000,200,-3100,0,message,0,0,0,0,,,,
+4,3,4,2,28,0x473ed0,coffre,218,1500,40,-1500,0,objet,-1,1,0,7,0,7,"Elixir de vie",25
+4,3,4,2,28,0x473ed0,coffre,218,1500,40,-1500,0,objet,-1,1,0,7,1,7,"Elixir de vie",17
+4,3,4,2,28,0x473ed0,coffre,218,1500,40,-1500,0,objet,-1,1,0,7,2,7,"Elixir de vie",15
+4,3,4,2,28,0x473ed0,coffre,218,1500,40,-1500,0,objet,-1,1,0,7,3,7,"Elixir de vie",13
+4,3,4,2,28,0x473ed0,coffre,218,1500,40,-1500,0,objet,-1,1,0,7,4,7,"Elixir de vie",11
+4,3,4,2,28,0x473ed0,coffre,218,1500,40,-1500,0,objet,-1,1,0,7,5,7,"Elixir de vie",9
+4,3,4,2,28,0x473ed0,coffre,218,1500,40,-1500,0,objet,-1,1,0,7,6,8,"Panoramix",6
+4,3,4,2,28,0x473ed0,coffre,218,1500,40,-1500,0,objet,-1,1,0,7,7,8,"Panoramix",4
+4,3,4,3,28,0x473ed0,coffre,222,-1900,240,-2100,2048,objet,-1,5,0,8,0,16,"Baguette des runes",25
+4,3,4,3,28,0x473ed0,coffre,222,-1900,240,-2100,2048,objet,-1,5,0,8,1,16,"Baguette des runes",17
+4,3,4,3,28,0x473ed0,coffre,222,-1900,240,-2100,2048,objet,-1,5,0,8,2,17,"Bouclier des runes",15
+4,3,4,3,28,0x473ed0,coffre,222,-1900,240,-2100,2048,objet,-1,5,0,8,3,18,"Amulette des runes",13
+4,3,4,3,28,0x473ed0,coffre,222,-1900,240,-2100,2048,objet,-1,5,0,8,4,19,"Gants des runes",11
+4,3,4,3,28,0x473ed0,coffre,222,-1900,240,-2100,2048,objet,-1,5,0,8,5,20,"Cape des runes",9
+4,3,4,3,28,0x473ed0,coffre,222,-1900,240,-2100,2048,objet,-1,5,0,8,6,6,"Table des anciens",6
+4,3,4,3,28,0x473ed0,coffre,222,-1900,240,-2100,2048,objet,-1,5,0,8,7,6,"Table des anciens",4
+4,4,0,8,28,0x473ed0,coffre,203,-3500,40,-5500,0,message,0,1,0,0,,,,
+4,4,0,9,28,0x473ed0,coffre,204,3700,40,-5500,2048,message,1,2,0,0,,,,
+4,4,2,1,28,0x473ed0,coffre,205,-1950,940,-1500,0,objet,-1,0,0,0,0,0,"Parfum de convalescence",25
+4,4,2,1,28,0x473ed0,coffre,205,-1950,940,-1500,0,objet,-1,0,0,0,1,1,"Parfum de guérison",17
+4,4,2,1,28,0x473ed0,coffre,205,-1950,940,-1500,0,objet,-1,0,0,0,2,2,"Pierre médicinale",15
+4,4,2,1,28,0x473ed0,coffre,205,-1950,940,-1500,0,objet,-1,0,0,0,3,3,"Pierre magique",13
+4,4,2,1,28,0x473ed0,coffre,205,-1950,940,-1500,0,objet,-1,0,0,0,4,4,"Ambrosia",11
+4,4,2,1,28,0x473ed0,coffre,205,-1950,940,-1500,0,objet,-1,0,0,0,5,4,"Ambrosia",9
+4,4,2,1,28,0x473ed0,coffre,205,-1950,940,-1500,0,objet,-1,0,0,0,6,5,"Pentacle de prince",6
+4,4,2,1,28,0x473ed0,coffre,205,-1950,940,-1500,0,objet,-1,0,0,0,7,6,"Pentacle magique",4
+4,5,1,0,28,0x473ed0,coffre,192,-3100,440,125,1024,objet,-1,0,0,9,0,0,"Flèche de lumière",25
+4,5,1,0,28,0x473ed0,coffre,192,-3100,440,125,1024,objet,-1,0,0,9,1,1,"Livre de la technique",17
+4,5,1,0,28,0x473ed0,coffre,192,-3100,440,125,1024,objet,-1,0,0,9,2,2,"Bouclier du feu",15
+4,5,1,0,28,0x473ed0,coffre,192,-3100,440,125,1024,objet,-1,0,0,9,3,3,"Rapière aux éclairs",13
+4,5,1,0,28,0x473ed0,coffre,192,-3100,440,125,1024,objet,-1,0,0,9,4,3,"Rapière aux éclairs",11
+4,5,1,0,28,0x473ed0,coffre,192,-3100,440,125,1024,objet,-1,0,0,9,5,4,"Gantelet de force",9
+4,5,1,0,28,0x473ed0,coffre,192,-3100,440,125,1024,objet,-1,0,0,9,6,5,"Baguette du mal",6
+4,5,1,0,28,0x473ed0,coffre,192,-3100,440,125,1024,objet,-1,0,0,9,7,5,"Baguette du mal",4
+4,6,1,4,28,0x473ed0,coffre,199,1700,240,-1400,1024,objet,-1,1,0,10,0,4,"Cape des runes",25
+4,6,1,4,28,0x473ed0,coffre,199,1700,240,-1400,1024,objet,-1,1,0,10,1,5,"Cape du printemps",17
+4,6,1,4,28,0x473ed0,coffre,199,1700,240,-1400,1024,objet,-1,1,0,10,2,6,"Cape d'été",15
+4,6,1,4,28,0x473ed0,coffre,199,1700,240,-1400,1024,objet,-1,1,0,10,3,7,"Cape d'automne",13
+4,6,1,4,28,0x473ed0,coffre,199,1700,240,-1400,1024,objet,-1,1,0,10,4,8,"Cape d'hiver",11
+4,6,1,4,28,0x473ed0,coffre,199,1700,240,-1400,1024,objet,-1,1,0,10,5,9,"Manteau des esprits",9
+4,6,1,4,28,0x473ed0,coffre,199,1700,240,-1400,1024,objet,-1,1,0,10,6,9,"Manteau des esprits",6
+4,6,1,4,28,0x473ed0,coffre,199,1700,240,-1400,1024,objet,-1,1,0,10,7,10,"Anneau de Merlin",4
+4,6,3,0,28,0x473ed0,coffre,198,-3700,240,300,0,objet,-1,0,0,11,0,0,"Solitaire",25
+4,6,3,0,28,0x473ed0,coffre,198,-3700,240,300,0,objet,-1,0,0,11,1,1,"Baguette-vampire",17
+4,6,3,0,28,0x473ed0,coffre,198,-3700,240,300,0,objet,-1,0,0,11,2,1,"Baguette-vampire",15
+4,6,3,0,28,0x473ed0,coffre,198,-3700,240,300,0,objet,-1,0,0,11,3,0,"Solitaire",13
+4,6,3,0,28,0x473ed0,coffre,198,-3700,240,300,0,objet,-1,0,0,11,4,2,"Voile mystique",11
+4,6,3,0,28,0x473ed0,coffre,198,-3700,240,300,0,objet,-1,0,0,11,5,2,"Voile mystique",9
+4,6,3,0,28,0x473ed0,coffre,198,-3700,240,300,0,objet,-1,0,0,11,6,2,"Voile mystique",6
+4,6,3,0,28,0x473ed0,coffre,198,-3700,240,300,0,objet,-1,0,0,11,7,3,"Couronne de la lune",4
+4,7,0,2,28,0x473ed0,coffre,-164,3692,4440,-2832,1024,message,4,8,0,0,,,,
+4,7,5,0,28,0x473ed0,coffre,190,5900,4440,1700,2048,objet,-1,0,0,12,0,0,"Cristal de magie",25
+4,7,5,0,28,0x473ed0,coffre,190,5900,4440,1700,2048,objet,-1,0,0,12,1,1,"Cristal de terre",17
+4,7,5,0,28,0x473ed0,coffre,190,5900,4440,1700,2048,objet,-1,0,0,12,2,2,"Cristal de feu",15
+4,7,5,0,28,0x473ed0,coffre,190,5900,4440,1700,2048,objet,-1,0,0,12,3,3,"Cristal d'air",13
+4,7,5,0,28,0x473ed0,coffre,190,5900,4440,1700,2048,objet,-1,0,0,12,4,4,"Cristal d'ombre",11
+4,7,5,0,28,0x473ed0,coffre,190,5900,4440,1700,2048,objet,-1,0,0,12,5,5,"Cristal de lumière",9
+4,7,5,0,28,0x473ed0,coffre,190,5900,4440,1700,2048,objet,-1,0,0,12,6,6,"Cristal saint",6
+4,7,5,0,28,0x473ed0,coffre,190,5900,4440,1700,2048,objet,-1,0,0,12,7,7,"Cristal du mal",4
+4,7,5,1,28,0x473ed0,coffre,191,5900,4440,1500,2048,objet,-1,1,0,13,0,8,"Carte de la peur",25
+4,7,5,1,28,0x473ed0,coffre,191,5900,4440,1500,2048,objet,-1,1,0,13,1,9,"Carte de tarot",17
+4,7,5,1,28,0x473ed0,coffre,191,5900,4440,1500,2048,objet,-1,1,0,13,2,9,"Carte de tarot",15
+4,7,5,1,28,0x473ed0,coffre,191,5900,4440,1500,2048,objet,-1,1,0,13,3,8,"Carte de la peur",13
+4,7,5,1,28,0x473ed0,coffre,191,5900,4440,1500,2048,objet,-1,1,0,13,4,8,"Carte de la peur",11
+4,7,5,1,28,0x473ed0,coffre,191,5900,4440,1500,2048,objet,-1,1,0,13,5,9,"Carte de tarot",9
+4,7,5,1,28,0x473ed0,coffre,191,5900,4440,1500,2048,objet,-1,1,0,13,6,9,"Carte de tarot",6
+4,7,5,1,28,0x473ed0,coffre,191,5900,4440,1500,2048,objet,-1,1,0,13,7,8,"Carte de la peur",4
+4,7,5,2,28,0x473ed0,coffre,176,5900,4440,1300,2048,objet,-1,2,0,14,0,10,"Bouclier de l'ombre",25
+4,7,5,2,28,0x473ed0,coffre,176,5900,4440,1300,2048,objet,-1,2,0,14,1,10,"Bouclier de l'ombre",17
+4,7,5,2,28,0x473ed0,coffre,176,5900,4440,1300,2048,objet,-1,2,0,14,2,11,"Poignard de sang",15
+4,7,5,2,28,0x473ed0,coffre,176,5900,4440,1300,2048,objet,-1,2,0,14,3,11,"Poignard de sang",13
+4,7,5,2,28,0x473ed0,coffre,176,5900,4440,1300,2048,objet,-1,2,0,14,4,10,"Bouclier de l'ombre",11
+4,7,5,2,28,0x473ed0,coffre,176,5900,4440,1300,2048,objet,-1,2,0,14,5,10,"Bouclier de l'ombre",9
+4,7,5,2,28,0x473ed0,coffre,176,5900,4440,1300,2048,objet,-1,2,0,14,6,12,"Anneau de Merlin",6
+4,7,5,2,28,0x473ed0,coffre,176,5900,4440,1300,2048,objet,-1,2,0,14,7,12,"Anneau de Merlin",4
+4,8,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,0,0,"Flèche de faucon",25
+4,8,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,1,1,"Casque d'argent",17
+4,8,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,2,1,"Casque d'argent",15
+4,8,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,3,0,"Flèche de faucon",13
+4,8,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,4,2,"Renegeton",11
+4,8,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,5,2,"Renegeton",9
+4,8,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,6,2,"Renegeton",6
+4,8,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,7,2,"Renegeton",4
+4,8,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,0,3,"Talisman",25
+4,8,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,1,4,"Talisman médicinal",17
+4,8,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,2,5,"Bottes de sept lieux",15
+4,8,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,3,5,"Bottes de sept lieux",13
+4,8,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,4,6,"Aile de Séraphin",11
+4,8,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,5,6,"Aile de Séraphin",9
+4,8,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,6,7,"Baguette d'Ishtar",6
+4,8,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,7,7,"Baguette d'Ishtar",4
+4,9,3,0,28,0x473ed0,coffre,165,600,240,2900,2048,objet,-1,0,0,17,0,0,"Plume dominicale",25
+4,9,3,0,28,0x473ed0,coffre,165,600,240,2900,2048,objet,-1,0,0,17,1,0,"Plume dominicale",17
+4,9,3,0,28,0x473ed0,coffre,165,600,240,2900,2048,objet,-1,0,0,17,2,1,"Flèche des Gouivres",15
+4,9,3,0,28,0x473ed0,coffre,165,600,240,2900,2048,objet,-1,0,0,17,3,1,"Flèche des Gouivres",13
+4,9,3,0,28,0x473ed0,coffre,165,600,240,2900,2048,objet,-1,0,0,17,4,2,"Bâton d'Apollon",11
+4,9,3,0,28,0x473ed0,coffre,165,600,240,2900,2048,objet,-1,0,0,17,5,3,"Baguette des anges",9
+4,9,3,0,28,0x473ed0,coffre,165,600,240,2900,2048,objet,-1,0,0,17,6,4,"Anneau des philosophes",6
+4,9,3,0,28,0x473ed0,coffre,165,600,240,2900,2048,objet,-1,0,0,17,7,5,"Bahil",4
+4,10,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,0,0,"Flèche de faucon",25
+4,10,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,1,1,"Casque d'argent",17
+4,10,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,2,1,"Casque d'argent",15
+4,10,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,3,0,"Flèche de faucon",13
+4,10,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,4,2,"Renegeton",11
+4,10,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,5,2,"Renegeton",9
+4,10,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,6,2,"Renegeton",6
+4,10,5,4,28,0x473ed0,coffre,182,-1500,1640,-1500,1024,objet,-1,0,0,15,7,2,"Renegeton",4
+4,10,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,0,3,"Talisman",25
+4,10,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,1,4,"Talisman médicinal",17
+4,10,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,2,5,"Bottes de sept lieux",15
+4,10,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,3,5,"Bottes de sept lieux",13
+4,10,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,4,6,"Aile de Séraphin",11
+4,10,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,5,6,"Aile de Séraphin",9
+4,10,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,6,7,"Baguette d'Ishtar",6
+4,10,5,5,28,0x473ed0,coffre,183,1300,1640,-1500,1024,objet,-1,1,0,16,7,7,"Baguette d'Ishtar",4
+5,0,1,0,28,0x473ed0,coffre,213,-2080,40,-2900,0,objet,-1,1,0,17,0,4,"Balle de cristal",25
+5,0,1,0,28,0x473ed0,coffre,213,-2080,40,-2900,0,objet,-1,1,0,17,1,4,"Balle de cristal",17
+5,0,1,0,28,0x473ed0,coffre,213,-2080,40,-2900,0,objet,-1,1,0,17,2,4,"Balle de cristal",15
+5,0,1,0,28,0x473ed0,coffre,213,-2080,40,-2900,0,objet,-1,1,0,17,3,4,"Balle de cristal",13
+5,0,1,0,28,0x473ed0,coffre,213,-2080,40,-2900,0,objet,-1,1,0,17,4,4,"Balle de cristal",11
+5,0,1,0,28,0x473ed0,coffre,213,-2080,40,-2900,0,objet,-1,1,0,17,5,4,"Balle de cristal",9
+5,0,1,0,28,0x473ed0,coffre,213,-2080,40,-2900,0,objet,-1,1,0,17,6,4,"Balle de cristal",6
+5,0,1,0,28,0x473ed0,coffre,213,-2080,40,-2900,0,objet,-1,1,0,17,7,4,"Balle de cristal",4
+5,0,1,4,28,0x473ed0,coffre,201,1220,40,-3200,3072,objet,-1,0,0,0,0,0,"Talisman médicinal",25
+5,0,1,4,28,0x473ed0,coffre,201,1220,40,-3200,3072,objet,-1,0,0,0,1,1,"Gants sacrés",17
+5,0,1,4,28,0x473ed0,coffre,201,1220,40,-3200,3072,objet,-1,0,0,0,2,2,"Hache en demi-lune",15
+5,0,1,4,28,0x473ed0,coffre,201,1220,40,-3200,3072,objet,-1,0,0,0,3,2,"Hache en demi-lune",13
+5,0,1,4,28,0x473ed0,coffre,201,1220,40,-3200,3072,objet,-1,0,0,0,4,1,"Gants sacrés",11
+5,0,1,4,28,0x473ed0,coffre,201,1220,40,-3200,3072,objet,-1,0,0,0,5,0,"Talisman médicinal",9
+5,0,1,4,28,0x473ed0,coffre,201,1220,40,-3200,3072,objet,-1,0,0,0,6,3,"Bâton des sages",6
+5,0,1,4,28,0x473ed0,coffre,201,1220,40,-3200,3072,objet,-1,0,0,0,7,3,"Bâton des sages",4
+5,0,2,48,28,0x473ed0,coffre,273,2800,40,3500,0,objet,-1,2,0,23,0,5,"Robe magique",25
+5,0,2,48,28,0x473ed0,coffre,273,2800,40,3500,0,objet,-1,2,0,23,1,5,"Robe magique",17
+5,0,2,48,28,0x473ed0,coffre,273,2800,40,3500,0,objet,-1,2,0,23,2,5,"Robe magique",15
+5,0,2,48,28,0x473ed0,coffre,273,2800,40,3500,0,objet,-1,2,0,23,3,5,"Robe magique",13
+5,0,2,48,28,0x473ed0,coffre,273,2800,40,3500,0,objet,-1,2,0,23,4,5,"Robe magique",11
+5,0,2,48,28,0x473ed0,coffre,273,2800,40,3500,0,objet,-1,2,0,23,5,5,"Robe magique",9
+5,0,2,48,28,0x473ed0,coffre,273,2800,40,3500,0,objet,-1,2,0,23,6,5,"Robe magique",6
+5,0,2,48,28,0x473ed0,coffre,273,2800,40,3500,0,objet,-1,2,0,23,7,5,"Robe magique",4
+5,1,1,3,28,0x473ed0,coffre,202,850,-560,1200,0,objet,-1,0,0,1,0,0,"Elixir de vie",25
+5,1,1,3,28,0x473ed0,coffre,202,850,-560,1200,0,objet,-1,0,0,1,1,1,"Elixir de magicien",17
+5,1,1,3,28,0x473ed0,coffre,202,850,-560,1200,0,objet,-1,0,0,1,2,1,"Elixir de magicien",15
+5,1,1,3,28,0x473ed0,coffre,202,850,-560,1200,0,objet,-1,0,0,1,3,0,"Elixir de vie",13
+5,1,1,3,28,0x473ed0,coffre,202,850,-560,1200,0,objet,-1,0,0,1,4,2,"Poudre de zombie",11
+5,1,1,3,28,0x473ed0,coffre,202,850,-560,1200,0,objet,-1,0,0,1,5,2,"Poudre de zombie",9
+5,1,1,3,28,0x473ed0,coffre,202,850,-560,1200,0,objet,-1,0,0,1,6,2,"Poudre de zombie",6
+5,1,1,3,28,0x473ed0,coffre,202,850,-560,1200,0,objet,-1,0,0,1,7,2,"Poudre de zombie",4
+5,2,3,3,28,0x473ed0,coffre,203,4112,-560,-3052,2560,objet,-1,0,0,2,0,0,"Panoramix",25
+5,2,3,3,28,0x473ed0,coffre,203,4112,-560,-3052,2560,objet,-1,0,0,2,1,0,"Panoramix",17
+5,2,3,3,28,0x473ed0,coffre,203,4112,-560,-3052,2560,objet,-1,0,0,2,2,1,"Croix",15
+5,2,3,3,28,0x473ed0,coffre,203,4112,-560,-3052,2560,objet,-1,0,0,2,3,1,"Croix",13
+5,2,3,3,28,0x473ed0,coffre,203,4112,-560,-3052,2560,objet,-1,0,0,2,4,2,"Cendre blanche",11
+5,2,3,3,28,0x473ed0,coffre,203,4112,-560,-3052,2560,objet,-1,0,0,2,5,3,"Cendre bleue",9
+5,2,3,3,28,0x473ed0,coffre,203,4112,-560,-3052,2560,objet,-1,0,0,2,6,4,"Pointe de sang",6
+5,2,3,3,28,0x473ed0,coffre,203,4112,-560,-3052,2560,objet,-1,0,0,2,7,4,"Pointe de sang",4
+5,2,3,29,28,0x473ed0,coffre,271,-4100,40,-3740,3072,objet,-1,1,0,21,0,5,"Bouclier de brigand",25
+5,2,3,29,28,0x473ed0,coffre,271,-4100,40,-3740,3072,objet,-1,1,0,21,1,5,"Bouclier de brigand",17
+5,2,3,29,28,0x473ed0,coffre,271,-4100,40,-3740,3072,objet,-1,1,0,21,2,5,"Bouclier de brigand",15
+5,2,3,29,28,0x473ed0,coffre,271,-4100,40,-3740,3072,objet,-1,1,0,21,3,5,"Bouclier de brigand",13
+5,2,3,29,28,0x473ed0,coffre,271,-4100,40,-3740,3072,objet,-1,1,0,21,4,5,"Bouclier de brigand",11
+5,2,3,29,28,0x473ed0,coffre,271,-4100,40,-3740,3072,objet,-1,1,0,21,5,5,"Bouclier de brigand",9
+5,2,3,29,28,0x473ed0,coffre,271,-4100,40,-3740,3072,objet,-1,1,0,21,6,5,"Bouclier de brigand",6
+5,2,3,29,28,0x473ed0,coffre,271,-4100,40,-3740,3072,objet,-1,1,0,21,7,5,"Bouclier de brigand",4
+5,3,0,0,28,0x473ed0,coffre,193,1900,-160,100,1024,objet,-1,0,0,24,0,0,"Rapière à poison",25
+5,3,0,0,28,0x473ed0,coffre,193,1900,-160,100,1024,objet,-1,0,0,24,1,0,"Rapière à poison",17
+5,3,0,0,28,0x473ed0,coffre,193,1900,-160,100,1024,objet,-1,0,0,24,2,1,"Eau bénite",15
+5,3,0,0,28,0x473ed0,coffre,193,1900,-160,100,1024,objet,-1,0,0,24,3,1,"Eau bénite",13
+5,3,0,0,28,0x473ed0,coffre,193,1900,-160,100,1024,objet,-1,0,0,24,4,2,"Croix",11
+5,3,0,0,28,0x473ed0,coffre,193,1900,-160,100,1024,objet,-1,0,0,24,5,2,"Croix",9
+5,3,0,0,28,0x473ed0,coffre,193,1900,-160,100,1024,objet,-1,0,0,24,6,2,"Croix",6
+5,3,0,0,28,0x473ed0,coffre,193,1900,-160,100,1024,objet,-1,0,0,24,7,2,"Croix",4
+5,3,1,0,28,0x473ed0,coffre,194,-700,640,3700,1024,objet,-1,1,0,25,0,3,"Bracelet d'argent",25
+5,3,1,0,28,0x473ed0,coffre,194,-700,640,3700,1024,objet,-1,1,0,25,1,4,"Balle sacrée",17
+5,3,1,0,28,0x473ed0,coffre,194,-700,640,3700,1024,objet,-1,1,0,25,2,4,"Balle sacrée",15
+5,3,1,0,28,0x473ed0,coffre,194,-700,640,3700,1024,objet,-1,1,0,25,3,5,"Chaîne sacrée",13
+5,3,1,0,28,0x473ed0,coffre,194,-700,640,3700,1024,objet,-1,1,0,25,4,5,"Chaîne sacrée",11
+5,3,1,0,28,0x473ed0,coffre,194,-700,640,3700,1024,objet,-1,1,0,25,5,5,"Chaîne sacrée",9
+5,3,1,0,28,0x473ed0,coffre,194,-700,640,3700,1024,objet,-1,1,0,25,6,5,"Chaîne sacrée",6
+5,3,1,0,28,0x473ed0,coffre,194,-700,640,3700,1024,objet,-1,1,0,25,7,5,"Chaîne sacrée",4
+5,4,2,0,28,0x473ed0,coffre,204,-2250,-260,1700,2048,objet,-1,0,0,3,0,0,"Epée d'argent",25
+5,4,2,0,28,0x473ed0,coffre,204,-2250,-260,1700,2048,objet,-1,0,0,3,1,1,"Hache d'argent",17
+5,4,2,0,28,0x473ed0,coffre,204,-2250,-260,1700,2048,objet,-1,0,0,3,2,2,"Marteau de prêtre",15
+5,4,2,0,28,0x473ed0,coffre,204,-2250,-260,1700,2048,objet,-1,0,0,3,3,3,"Baguette du feu",13
+5,4,2,0,28,0x473ed0,coffre,204,-2250,-260,1700,2048,objet,-1,0,0,3,4,4,"Poupée Dummy",11
+5,4,2,0,28,0x473ed0,coffre,204,-2250,-260,1700,2048,objet,-1,0,0,3,5,5,"Poupée dansante",9
+5,4,2,0,28,0x473ed0,coffre,204,-2250,-260,1700,2048,objet,-1,0,0,3,6,5,"Poupée dansante",6
+5,4,2,0,28,0x473ed0,coffre,204,-2250,-260,1700,2048,objet,-1,0,0,3,7,4,"Poupée Dummy",4
+5,4,4,0,28,0x473ed0,coffre,239,-3900,240,6100,0,objet,-1,1,0,4,0,6,"Os de guerrier sauvage",25
+5,4,4,0,28,0x473ed0,coffre,239,-3900,240,6100,0,objet,-1,1,0,4,1,6,"Os de guerrier sauvage",17
+5,4,4,0,28,0x473ed0,coffre,239,-3900,240,6100,0,objet,-1,1,0,4,2,7,"Bouclier d'argent",15
+5,4,4,0,28,0x473ed0,coffre,239,-3900,240,6100,0,objet,-1,1,0,4,3,7,"Bouclier d'argent",13
+5,4,4,0,28,0x473ed0,coffre,239,-3900,240,6100,0,objet,-1,1,0,4,4,8,"Balance des juges",11
+5,4,4,0,28,0x473ed0,coffre,239,-3900,240,6100,0,objet,-1,1,0,4,5,8,"Balance des juges",9
+5,4,4,0,28,0x473ed0,coffre,239,-3900,240,6100,0,objet,-1,1,0,4,6,9,"Epée gauloise",6
+5,4,4,0,28,0x473ed0,coffre,239,-3900,240,6100,0,objet,-1,1,0,4,7,9,"Epée gauloise",4
+5,5,2,2,28,0x473ed0,coffre,223,-100,40,-900,3072,objet,-1,0,0,5,0,0,"Chaîne de l'eau",25
+5,5,2,2,28,0x473ed0,coffre,223,-100,40,-900,3072,objet,-1,0,0,5,1,1,"Chaîne du feu",17
+5,5,2,2,28,0x473ed0,coffre,223,-100,40,-900,3072,objet,-1,0,0,5,2,2,"Chaîne de la terre",15
+5,5,2,2,28,0x473ed0,coffre,223,-100,40,-900,3072,objet,-1,0,0,5,3,3,"Chaîne de l'air",13
+5,5,2,2,28,0x473ed0,coffre,223,-100,40,-900,3072,objet,-1,0,0,5,4,3,"Chaîne de l'air",11
+5,5,2,2,28,0x473ed0,coffre,223,-100,40,-900,3072,objet,-1,0,0,5,5,2,"Chaîne de la terre",9
+5,5,2,2,28,0x473ed0,coffre,223,-100,40,-900,3072,objet,-1,0,0,5,6,1,"Chaîne du feu",6
+5,5,2,2,28,0x473ed0,coffre,223,-100,40,-900,3072,objet,-1,0,0,5,7,0,"Chaîne de l'eau",4
+5,5,2,93,28,0x473ed0,coffre,268,640,-160,-3800,0,objet,-1,1,0,18,0,4,"Poudre de zombie",25
+5,5,2,93,28,0x473ed0,coffre,268,640,-160,-3800,0,objet,-1,1,0,18,1,4,"Poudre de zombie",17
+5,5,2,93,28,0x473ed0,coffre,268,640,-160,-3800,0,objet,-1,1,0,18,2,4,"Poudre de zombie",15
+5,5,2,93,28,0x473ed0,coffre,268,640,-160,-3800,0,objet,-1,1,0,18,3,4,"Poudre de zombie",13
+5,5,2,93,28,0x473ed0,coffre,268,640,-160,-3800,0,objet,-1,1,0,18,4,4,"Poudre de zombie",11
+5,5,2,93,28,0x473ed0,coffre,268,640,-160,-3800,0,objet,-1,1,0,18,5,4,"Poudre de zombie",9
+5,5,2,93,28,0x473ed0,coffre,268,640,-160,-3800,0,objet,-1,1,0,18,6,4,"Poudre de zombie",6
+5,5,2,93,28,0x473ed0,coffre,268,640,-160,-3800,0,objet,-1,1,0,18,7,4,"Poudre de zombie",4
+5,5,3,62,28,0x473ed0,coffre,269,-4000,-360,-740,3072,objet,-1,2,0,19,0,5,"Elixir de vie",25
+5,5,3,62,28,0x473ed0,coffre,269,-4000,-360,-740,3072,objet,-1,2,0,19,1,5,"Elixir de vie",17
+5,5,3,62,28,0x473ed0,coffre,269,-4000,-360,-740,3072,objet,-1,2,0,19,2,5,"Elixir de vie",15
+5,5,3,62,28,0x473ed0,coffre,269,-4000,-360,-740,3072,objet,-1,2,0,19,3,6,"Panoramix",13
+5,5,3,62,28,0x473ed0,coffre,269,-4000,-360,-740,3072,objet,-1,2,0,19,4,6,"Panoramix",11
+5,5,3,62,28,0x473ed0,coffre,269,-4000,-360,-740,3072,objet,-1,2,0,19,5,6,"Panoramix",9
+5,5,3,62,28,0x473ed0,coffre,269,-4000,-360,-740,3072,objet,-1,2,0,19,6,6,"Panoramix",6
+5,5,3,62,28,0x473ed0,coffre,269,-4000,-360,-740,3072,objet,-1,2,0,19,7,6,"Panoramix",4
+5,5,3,63,28,0x473ed0,coffre,270,1240,-160,5200,0,objet,-1,3,0,20,0,5,"Elixir de vie",25
+5,5,3,63,28,0x473ed0,coffre,270,1240,-160,5200,0,objet,-1,3,0,20,1,5,"Elixir de vie",17
+5,5,3,63,28,0x473ed0,coffre,270,1240,-160,5200,0,objet,-1,3,0,20,2,7,"Balle de cristal",15
+5,5,3,63,28,0x473ed0,coffre,270,1240,-160,5200,0,objet,-1,3,0,20,3,7,"Balle de cristal",13
+5,5,3,63,28,0x473ed0,coffre,270,1240,-160,5200,0,objet,-1,3,0,20,4,7,"Balle de cristal",11
+5,5,3,63,28,0x473ed0,coffre,270,1240,-160,5200,0,objet,-1,3,0,20,5,8,"Cristal d'énergie",9
+5,5,3,63,28,0x473ed0,coffre,270,1240,-160,5200,0,objet,-1,3,0,20,6,8,"Cristal d'énergie",6
+5,5,3,63,28,0x473ed0,coffre,270,1240,-160,5200,0,objet,-1,3,0,20,7,8,"Cristal d'énergie",4
+5,6,0,0,28,0x473ed0,coffre,200,-2750,690,-700,0,message,4,3,0,0,,,,
+5,6,0,3,28,0x473ed0,coffre,205,-1450,-360,1900,2048,objet,-1,2,0,6,0,7,"Masque de chevalier",25
+5,6,0,3,28,0x473ed0,coffre,205,-1450,-360,1900,2048,objet,-1,2,0,6,1,7,"Masque de chevalier",17
+5,6,0,3,28,0x473ed0,coffre,205,-1450,-360,1900,2048,objet,-1,2,0,6,2,8,"Boîte à bijoux",15
+5,6,0,3,28,0x473ed0,coffre,205,-1450,-360,1900,2048,objet,-1,2,0,6,3,8,"Boîte à bijoux",13
+5,6,0,3,28,0x473ed0,coffre,205,-1450,-360,1900,2048,objet,-1,2,0,6,4,9,"Anneau de l'hermite",11
+5,6,0,3,28,0x473ed0,coffre,205,-1450,-360,1900,2048,objet,-1,2,0,6,5,9,"Anneau de l'hermite",9
+5,6,0,3,28,0x473ed0,coffre,205,-1450,-360,1900,2048,objet,-1,2,0,6,6,10,"Plume dominicale",6
+5,6,0,3,28,0x473ed0,coffre,205,-1450,-360,1900,2048,objet,-1,2,0,6,7,10,"Plume dominicale",4
+5,6,2,2,28,0x473ed0,coffre,215,-1300,1240,100,0,objet,-1,1,0,7,0,3,"Gants des runes",25
+5,6,2,2,28,0x473ed0,coffre,215,-1300,1240,100,0,objet,-1,1,0,7,1,3,"Gants des runes",17
+5,6,2,2,28,0x473ed0,coffre,215,-1300,1240,100,0,objet,-1,1,0,7,2,4,"Solitaire",15
+5,6,2,2,28,0x473ed0,coffre,215,-1300,1240,100,0,objet,-1,1,0,7,3,4,"Solitaire",13
+5,6,2,2,28,0x473ed0,coffre,215,-1300,1240,100,0,objet,-1,1,0,7,4,5,"La dévoreuse",11
+5,6,2,2,28,0x473ed0,coffre,215,-1300,1240,100,0,objet,-1,1,0,7,5,5,"La dévoreuse",9
+5,6,2,2,28,0x473ed0,coffre,215,-1300,1240,100,0,objet,-1,1,0,7,6,6,"Dropneal",6
+5,6,2,2,28,0x473ed0,coffre,215,-1300,1240,100,0,objet,-1,1,0,7,7,6,"Dropneal",4
+5,6,3,2,28,0x473ed0,coffre,214,-2153,640,2300,0,objet,-1,0,0,8,0,0,"Robe sacrée",25
+5,6,3,2,28,0x473ed0,coffre,214,-2153,640,2300,0,objet,-1,0,0,8,1,1,"Crosse sacrée",17
+5,6,3,2,28,0x473ed0,coffre,214,-2153,640,2300,0,objet,-1,0,0,8,2,2,"Chaîne sacrée",15
+5,6,3,2,28,0x473ed0,coffre,214,-2153,640,2300,0,objet,-1,0,0,8,3,0,"Robe sacrée",13
+5,6,3,2,28,0x473ed0,coffre,214,-2153,640,2300,0,objet,-1,0,0,8,4,1,"Crosse sacrée",11
+5,6,3,2,28,0x473ed0,coffre,214,-2153,640,2300,0,objet,-1,0,0,8,5,1,"Crosse sacrée",9
+5,6,3,2,28,0x473ed0,coffre,214,-2153,640,2300,0,objet,-1,0,0,8,6,0,"Robe sacrée",6
+5,6,3,2,28,0x473ed0,coffre,214,-2153,640,2300,0,objet,-1,0,0,8,7,2,"Chaîne sacrée",4
+5,7,2,0,28,0x473ed0,coffre,206,550,-6760,1300,2048,objet,-1,1,0,9,0,8,"Balance des juges",25
+5,7,2,0,28,0x473ed0,coffre,206,550,-6760,1300,2048,objet,-1,1,0,9,1,9,"Boîte du silence",17
+5,7,2,0,28,0x473ed0,coffre,206,550,-6760,1300,2048,objet,-1,1,0,9,2,10,"Boîte à bijoux",15
+5,7,2,0,28,0x473ed0,coffre,206,550,-6760,1300,2048,objet,-1,1,0,9,3,11,"Extrait de sang",13
+5,7,2,0,28,0x473ed0,coffre,206,550,-6760,1300,2048,objet,-1,1,0,9,4,12,"Cendre bleue",11
+5,7,2,0,28,0x473ed0,coffre,206,550,-6760,1300,2048,objet,-1,1,0,9,5,13,"Cendre verte",9
+5,7,2,0,28,0x473ed0,coffre,206,550,-6760,1300,2048,objet,-1,1,0,9,6,14,"Cendre noire",6
+5,7,2,0,28,0x473ed0,coffre,206,550,-6760,1300,2048,objet,-1,1,0,9,7,15,"Durandal",4
+5,7,2,1,28,0x473ed0,coffre,207,-1150,-1160,-5300,0,objet,-1,0,0,10,0,0,"Cristal de magie",25
+5,7,2,1,28,0x473ed0,coffre,207,-1150,-1160,-5300,0,objet,-1,0,0,10,1,1,"Cristal de terre",17
+5,7,2,1,28,0x473ed0,coffre,207,-1150,-1160,-5300,0,objet,-1,0,0,10,2,2,"Cristal de feu",15
+5,7,2,1,28,0x473ed0,coffre,207,-1150,-1160,-5300,0,objet,-1,0,0,10,3,3,"Cristal d'air",13
+5,7,2,1,28,0x473ed0,coffre,207,-1150,-1160,-5300,0,objet,-1,0,0,10,4,4,"Cristal d'ombre",11
+5,7,2,1,28,0x473ed0,coffre,207,-1150,-1160,-5300,0,objet,-1,0,0,10,5,5,"Cristal de lumière",9
+5,7,2,1,28,0x473ed0,coffre,207,-1150,-1160,-5300,0,objet,-1,0,0,10,6,6,"Cristal saint",6
+5,7,2,1,28,0x473ed0,coffre,207,-1150,-1160,-5300,0,objet,-1,0,0,10,7,7,"Cristal du mal",4
+5,7,3,17,28,0x473ed0,coffre,192,-50,-7110,-3000,0,objet,-1,2,0,11,0,16,"Aile de Séraphin",25
+5,7,3,17,28,0x473ed0,coffre,192,-50,-7110,-3000,0,objet,-1,2,0,11,1,17,"Balle de cristal",17
+5,7,3,17,28,0x473ed0,coffre,192,-50,-7110,-3000,0,objet,-1,2,0,11,2,18,"Ambrosia",15
+5,7,3,17,28,0x473ed0,coffre,192,-50,-7110,-3000,0,objet,-1,2,0,11,3,8,"Balance des juges",13
+5,7,3,17,28,0x473ed0,coffre,192,-50,-7110,-3000,0,objet,-1,2,0,11,4,8,"Balance des juges",11
+5,7,3,17,28,0x473ed0,coffre,192,-50,-7110,-3000,0,objet,-1,2,0,11,5,18,"Ambrosia",9
+5,7,3,17,28,0x473ed0,coffre,192,-50,-7110,-3000,0,objet,-1,2,0,11,6,17,"Balle de cristal",6
+5,7,3,17,28,0x473ed0,coffre,192,-50,-7110,-3000,0,objet,-1,2,0,11,7,16,"Aile de Séraphin",4
+5,7,3,18,28,0x473ed0,coffre,272,2280,-60,-5300,0,objet,-1,3,0,22,0,19,"Plume dominicale",25
+5,7,3,18,28,0x473ed0,coffre,272,2280,-60,-5300,0,objet,-1,3,0,22,1,20,"Robe des anciens",17
+5,7,3,18,28,0x473ed0,coffre,272,2280,-60,-5300,0,objet,-1,3,0,22,2,21,"Bouclier sacré",15
+5,7,3,18,28,0x473ed0,coffre,272,2280,-60,-5300,0,objet,-1,3,0,22,3,22,"Armure sacrée",13
+5,7,3,18,28,0x473ed0,coffre,272,2280,-60,-5300,0,objet,-1,3,0,22,4,22,"Armure sacrée",11
+5,7,3,18,28,0x473ed0,coffre,272,2280,-60,-5300,0,objet,-1,3,0,22,5,21,"Bouclier sacré",9
+5,7,3,18,28,0x473ed0,coffre,272,2280,-60,-5300,0,objet,-1,3,0,22,6,20,"Robe des anciens",6
+5,7,3,18,28,0x473ed0,coffre,272,2280,-60,-5300,0,objet,-1,3,0,22,7,19,"Plume dominicale",4
+5,8,0,1,28,0x473ed0,coffre,210,-900,40,-700,0,message,0,4,0,0,,,,
+5,8,2,8,28,0x473ed0,coffre,208,-3700,40,2500,0,objet,-1,0,0,12,0,0,"Panoramix",25
+5,8,2,8,28,0x473ed0,coffre,208,-3700,40,2500,0,objet,-1,0,0,12,1,0,"Panoramix",17
+5,8,2,8,28,0x473ed0,coffre,208,-3700,40,2500,0,objet,-1,0,0,12,2,0,"Panoramix",15
+5,8,2,8,28,0x473ed0,coffre,208,-3700,40,2500,0,objet,-1,0,0,12,3,0,"Panoramix",13
+5,8,2,8,28,0x473ed0,coffre,208,-3700,40,2500,0,objet,-1,0,0,12,4,0,"Panoramix",11
+5,8,2,8,28,0x473ed0,coffre,208,-3700,40,2500,0,objet,-1,0,0,12,5,0,"Panoramix",9
+5,8,2,8,28,0x473ed0,coffre,208,-3700,40,2500,0,objet,-1,0,0,12,6,0,"Panoramix",6
+5,8,2,8,28,0x473ed0,coffre,208,-3700,40,2500,0,objet,-1,0,0,12,7,0,"Panoramix",4
+5,8,2,10,28,0x473ed0,coffre,209,500,240,5300,0,objet,-1,1,0,13,0,1,"Balle de cristal",25
+5,8,2,10,28,0x473ed0,coffre,209,500,240,5300,0,objet,-1,1,0,13,1,2,"Balle sacrée",17
+5,8,2,10,28,0x473ed0,coffre,209,500,240,5300,0,objet,-1,1,0,13,2,1,"Balle de cristal",15
+5,8,2,10,28,0x473ed0,coffre,209,500,240,5300,0,objet,-1,1,0,13,3,2,"Balle sacrée",13
+5,8,2,10,28,0x473ed0,coffre,209,500,240,5300,0,objet,-1,1,0,13,4,2,"Balle sacrée",11
+5,8,2,10,28,0x473ed0,coffre,209,500,240,5300,0,objet,-1,1,0,13,5,1,"Balle de cristal",9
+5,8,2,10,28,0x473ed0,coffre,209,500,240,5300,0,objet,-1,1,0,13,6,2,"Balle sacrée",6
+5,8,2,10,28,0x473ed0,coffre,209,500,240,5300,0,objet,-1,1,0,13,7,1,"Balle de cristal",4
+5,8,3,50,28,0x473ed0,coffre,266,2900,-360,1700,2048,objet,-1,3,0,15,0,5,"Poignard des brouillards",25
+5,8,3,50,28,0x473ed0,coffre,266,2900,-360,1700,2048,objet,-1,3,0,15,1,5,"Poignard des brouillards",17
+5,8,3,50,28,0x473ed0,coffre,266,2900,-360,1700,2048,objet,-1,3,0,15,2,5,"Poignard des brouillards",15
+5,8,3,50,28,0x473ed0,coffre,266,2900,-360,1700,2048,objet,-1,3,0,15,3,5,"Poignard des brouillards",13
+5,8,3,50,28,0x473ed0,coffre,266,2900,-360,1700,2048,objet,-1,3,0,15,4,0,"Panoramix",11
+5,8,3,50,28,0x473ed0,coffre,266,2900,-360,1700,2048,objet,-1,3,0,15,5,0,"Panoramix",9
+5,8,3,50,28,0x473ed0,coffre,266,2900,-360,1700,2048,objet,-1,3,0,15,6,0,"Panoramix",6
+5,8,3,50,28,0x473ed0,coffre,266,2900,-360,1700,2048,objet,-1,3,0,15,7,0,"Panoramix",4
+5,8,3,52,28,0x473ed0,coffre,267,2900,-360,2100,2048,objet,-1,2,0,16,0,3,"Couronne du soleil",25
+5,8,3,52,28,0x473ed0,coffre,267,2900,-360,2100,2048,objet,-1,2,0,16,1,4,"Sceptre de bataille",17
+5,8,3,52,28,0x473ed0,coffre,267,2900,-360,2100,2048,objet,-1,2,0,16,2,4,"Sceptre de bataille",15
+5,8,3,52,28,0x473ed0,coffre,267,2900,-360,2100,2048,objet,-1,2,0,16,3,3,"Couronne du soleil",13
+5,8,3,52,28,0x473ed0,coffre,267,2900,-360,2100,2048,objet,-1,2,0,16,4,3,"Couronne du soleil",11
+5,8,3,52,28,0x473ed0,coffre,267,2900,-360,2100,2048,objet,-1,2,0,16,5,4,"Sceptre de bataille",9
+5,8,3,52,28,0x473ed0,coffre,267,2900,-360,2100,2048,objet,-1,2,0,16,6,4,"Sceptre de bataille",6
+5,8,3,52,28,0x473ed0,coffre,267,2900,-360,2100,2048,objet,-1,2,0,16,7,3,"Couronne du soleil",4
+6,0,1,0,25,0x473ed0,coffre,253,-3300,240,2700,2048,message,10,19,0,0,,,,
+6,0,1,5,25,0x473ed0,coffre,240,1700,200,900,0,message,7,13,0,0,,,,
+6,0,1,6,25,0x473ed0,coffre,255,2900,40,-2350,2048,message,8,17,0,0,,,,
+6,0,1,9,25,0x473ed0,coffre,205,-2900,240,3700,1024,objet,-1,0,0,0,0,0,"Balle de cristal",25
+6,0,1,9,25,0x473ed0,coffre,205,-2900,240,3700,1024,objet,-1,0,0,0,1,0,"Balle de cristal",17
+6,0,1,9,25,0x473ed0,coffre,205,-2900,240,3700,1024,objet,-1,0,0,0,2,1,"Balle sacrée",15
+6,0,1,9,25,0x473ed0,coffre,205,-2900,240,3700,1024,objet,-1,0,0,0,3,2,"Balle maléfique",13
+6,0,1,9,25,0x473ed0,coffre,205,-2900,240,3700,1024,objet,-1,0,0,0,4,1,"Balle sacrée",11
+6,0,1,9,25,0x473ed0,coffre,205,-2900,240,3700,1024,objet,-1,0,0,0,5,2,"Balle maléfique",9
+6,0,1,9,25,0x473ed0,coffre,205,-2900,240,3700,1024,objet,-1,0,0,0,6,1,"Balle sacrée",6
+6,0,1,9,25,0x473ed0,coffre,205,-2900,240,3700,1024,objet,-1,0,0,0,7,2,"Balle maléfique",4
+6,0,1,10,25,0x473ed0,coffre,206,-3500,240,4500,2048,objet,-1,1,0,1,0,3,"Epée de feu",25
+6,0,1,10,25,0x473ed0,coffre,206,-3500,240,4500,2048,objet,-1,1,0,1,1,4,"Epée de glace",17
+6,0,1,10,25,0x473ed0,coffre,206,-3500,240,4500,2048,objet,-1,1,0,1,2,5,"Epée du tonnerre",15
+6,0,1,10,25,0x473ed0,coffre,206,-3500,240,4500,2048,objet,-1,1,0,1,3,6,"Sabre de la terre",13
+6,0,1,10,25,0x473ed0,coffre,206,-3500,240,4500,2048,objet,-1,1,0,1,4,6,"Sabre de la terre",11
+6,0,1,10,25,0x473ed0,coffre,206,-3500,240,4500,2048,objet,-1,1,0,1,5,5,"Epée du tonnerre",9
+6,0,1,10,25,0x473ed0,coffre,206,-3500,240,4500,2048,objet,-1,1,0,1,6,4,"Epée de glace",6
+6,0,1,10,25,0x473ed0,coffre,206,-3500,240,4500,2048,objet,-1,1,0,1,7,3,"Epée de feu",4
+6,0,3,1,25,0x473ed0,coffre,254,-900,240,3500,2048,message,9,18,0,0,,,,
+6,1,4,3,25,0x473ed0,coffre,223,4300,2640,4700,2048,objet,-1,0,0,2,0,0,"Parfum de guérison",25
+6,1,4,3,25,0x473ed0,coffre,223,4300,2640,4700,2048,objet,-1,0,0,2,1,1,"Parfum de convalescence",17
+6,1,4,3,25,0x473ed0,coffre,223,4300,2640,4700,2048,objet,-1,0,0,2,2,2,"Parfum d'impératrice",15
+6,1,4,3,25,0x473ed0,coffre,223,4300,2640,4700,2048,objet,-1,0,0,2,3,3,"Parfum de feu",13
+6,1,4,3,25,0x473ed0,coffre,223,4300,2640,4700,2048,objet,-1,0,0,2,4,4,"Balle de l'arc-en-ciel",11
+6,1,4,3,25,0x473ed0,coffre,223,4300,2640,4700,2048,objet,-1,0,0,2,5,4,"Balle de l'arc-en-ciel",9
+6,1,4,3,25,0x473ed0,coffre,223,4300,2640,4700,2048,objet,-1,0,0,2,6,4,"Balle de l'arc-en-ciel",6
+6,1,4,3,25,0x473ed0,coffre,223,4300,2640,4700,2048,objet,-1,0,0,2,7,4,"Balle de l'arc-en-ciel",4
+6,1,5,0,25,0x473ed0,coffre,243,-2900,2040,-1100,3072,message,0,19,0,0,,,,
+6,1,6,0,25,0x473ed0,coffre,241,700,2040,1300,2048,message,1,18,0,0,,,,
+6,1,6,1,25,0x473ed0,coffre,244,-4300,1640,5100,3072,message,13,16,0,0,,,,
+6,2,0,0,25,0x473ed0,coffre,236,1756,40,-862,0,message,2,17,0,0,,,,
+6,2,2,4,25,0x473ed0,coffre,237,2100,40,300,2048,message,18,18,0,0,,,,
+6,2,2,6,25,0x473ed0,coffre,238,-2100,40,300,0,message,19,19,0,0,,,,
+6,2,2,8,25,0x473ed0,coffre,222,-1300,40,2300,1024,objet,-1,0,0,3,0,0,"Broche au joyau",25
+6,2,2,8,25,0x473ed0,coffre,222,-1300,40,2300,1024,objet,-1,0,0,3,1,1,"Bague au joyau",17
+6,2,2,8,25,0x473ed0,coffre,222,-1300,40,2300,1024,objet,-1,0,0,3,2,2,"Tiare des étoiles",15
+6,2,2,8,25,0x473ed0,coffre,222,-1300,40,2300,1024,objet,-1,0,0,3,3,3,"Tiare de la terre",13
+6,2,2,8,25,0x473ed0,coffre,222,-1300,40,2300,1024,objet,-1,0,0,3,4,4,"Couronne de la lune",11
+6,2,2,8,25,0x473ed0,coffre,222,-1300,40,2300,1024,objet,-1,0,0,3,5,4,"Couronne de la lune",9
+6,2,2,8,25,0x473ed0,coffre,222,-1300,40,2300,1024,objet,-1,0,0,3,6,5,"Boîte à bijoux",6
+6,2,2,8,25,0x473ed0,coffre,222,-1300,40,2300,1024,objet,-1,0,0,3,7,5,"Boîte à bijoux",4
+6,2,5,0,25,0x473ed0,coffre,239,2500,440,3600,2048,message,12,20,0,0,,,,
+6,2,5,40,25,0x473ed0,coffre,301,-2600,440,3700,1024,objet,-1,1,0,16,0,6,"Epée d'argent",25
+6,2,5,40,25,0x473ed0,coffre,301,-2600,440,3700,1024,objet,-1,1,0,16,1,7,"Féline",17
+6,2,5,40,25,0x473ed0,coffre,301,-2600,440,3700,1024,objet,-1,1,0,16,2,8,"Rapière Misuril",15
+6,2,5,40,25,0x473ed0,coffre,301,-2600,440,3700,1024,objet,-1,1,0,16,3,9,"Masse d'armes",13
+6,2,5,40,25,0x473ed0,coffre,301,-2600,440,3700,1024,objet,-1,1,0,16,4,9,"Masse d'armes",11
+6,2,5,40,25,0x473ed0,coffre,301,-2600,440,3700,1024,objet,-1,1,0,16,5,8,"Rapière Misuril",9
+6,2,5,40,25,0x473ed0,coffre,301,-2600,440,3700,1024,objet,-1,1,0,16,6,7,"Féline",6
+6,2,5,40,25,0x473ed0,coffre,301,-2600,440,3700,1024,objet,-1,1,0,16,7,6,"Epée d'argent",4
+6,2,5,41,25,0x473ed0,coffre,302,-2200,440,3700,1024,objet,-1,2,0,17,0,10,"Bague de protection",25
+6,2,5,41,25,0x473ed0,coffre,302,-2200,440,3700,1024,objet,-1,2,0,17,1,11,"Chaînette d'argent",17
+6,2,5,41,25,0x473ed0,coffre,302,-2200,440,3700,1024,objet,-1,2,0,17,2,11,"Chaînette d'argent",15
+6,2,5,41,25,0x473ed0,coffre,302,-2200,440,3700,1024,objet,-1,2,0,17,3,11,"Chaînette d'argent",13
+6,2,5,41,25,0x473ed0,coffre,302,-2200,440,3700,1024,objet,-1,2,0,17,4,12,"Médaillon d'or",11
+6,2,5,41,25,0x473ed0,coffre,302,-2200,440,3700,1024,objet,-1,2,0,17,5,12,"Médaillon d'or",9
+6,2,5,41,25,0x473ed0,coffre,302,-2200,440,3700,1024,objet,-1,2,0,17,6,12,"Médaillon d'or",6
+6,2,5,41,25,0x473ed0,coffre,302,-2200,440,3700,1024,objet,-1,2,0,17,7,10,"Bague de protection",4
+6,3,0,2,25,0x473ed0,coffre,201,-1700,240,700,1024,objet,-1,0,0,4,0,0,"Hache empoisonnée",25
+6,3,0,2,25,0x473ed0,coffre,201,-1700,240,700,1024,objet,-1,0,0,4,1,1,"Baguette magique",17
+6,3,0,2,25,0x473ed0,coffre,201,-1700,240,700,1024,objet,-1,0,0,4,2,2,"Arc de chasseur",15
+6,3,0,2,25,0x473ed0,coffre,201,-1700,240,700,1024,objet,-1,0,0,4,3,3,"Baguette de l'eau",13
+6,3,0,2,25,0x473ed0,coffre,201,-1700,240,700,1024,objet,-1,0,0,4,4,3,"Baguette de l'eau",11
+6,3,0,2,25,0x473ed0,coffre,201,-1700,240,700,1024,objet,-1,0,0,4,5,2,"Arc de chasseur",9
+6,3,0,2,25,0x473ed0,coffre,201,-1700,240,700,1024,objet,-1,0,0,4,6,1,"Baguette magique",6
+6,3,0,2,25,0x473ed0,coffre,201,-1700,240,700,1024,objet,-1,0,0,4,7,0,"Hache empoisonnée",4
+6,4,0,1,25,0x473ed0,coffre,221,2900,1180,100,2048,objet,-1,0,0,5,0,0,"Cuirasse au miroir",25
+6,4,0,1,25,0x473ed0,coffre,221,2900,1180,100,2048,objet,-1,0,0,5,1,1,"Bouclier d'argent",17
+6,4,0,1,25,0x473ed0,coffre,221,2900,1180,100,2048,objet,-1,0,0,5,2,2,"Robe de la terre",15
+6,4,0,1,25,0x473ed0,coffre,221,2900,1180,100,2048,objet,-1,0,0,5,3,3,"Pentacle magique",13
+6,4,0,1,25,0x473ed0,coffre,221,2900,1180,100,2048,objet,-1,0,0,5,4,3,"Pentacle magique",11
+6,4,0,1,25,0x473ed0,coffre,221,2900,1180,100,2048,objet,-1,0,0,5,5,2,"Robe de la terre",9
+6,4,0,1,25,0x473ed0,coffre,221,2900,1180,100,2048,objet,-1,0,0,5,6,1,"Bouclier d'argent",6
+6,4,0,1,25,0x473ed0,coffre,221,2900,1180,100,2048,objet,-1,0,0,5,7,0,"Cuirasse au miroir",4
+6,5,0,16,25,0x473ed0,coffre,299,5800,40,300,2048,objet,-1,0,0,14,0,0,"Armure d'argent",25
+6,5,0,16,25,0x473ed0,coffre,299,5800,40,300,2048,objet,-1,0,0,14,1,0,"Armure d'argent",17
+6,5,0,16,25,0x473ed0,coffre,299,5800,40,300,2048,objet,-1,0,0,14,2,0,"Armure d'argent",15
+6,5,0,16,25,0x473ed0,coffre,299,5800,40,300,2048,objet,-1,0,0,14,3,0,"Armure d'argent",13
+6,5,0,16,25,0x473ed0,coffre,299,5800,40,300,2048,objet,-1,0,0,14,4,0,"Armure d'argent",11
+6,5,0,16,25,0x473ed0,coffre,299,5800,40,300,2048,objet,-1,0,0,14,5,0,"Armure d'argent",9
+6,5,0,16,25,0x473ed0,coffre,299,5800,40,300,2048,objet,-1,0,0,14,6,0,"Armure d'argent",6
+6,5,0,16,25,0x473ed0,coffre,299,5800,40,300,2048,objet,-1,0,0,14,7,0,"Armure d'argent",4
+6,5,0,17,25,0x473ed0,coffre,300,5800,40,-100,2048,objet,-1,1,0,15,0,1,"Robe de reine",25
+6,5,0,17,25,0x473ed0,coffre,300,5800,40,-100,2048,objet,-1,1,0,15,1,1,"Robe de reine",17
+6,5,0,17,25,0x473ed0,coffre,300,5800,40,-100,2048,objet,-1,1,0,15,2,1,"Robe de reine",15
+6,5,0,17,25,0x473ed0,coffre,300,5800,40,-100,2048,objet,-1,1,0,15,3,1,"Robe de reine",13
+6,5,0,17,25,0x473ed0,coffre,300,5800,40,-100,2048,objet,-1,1,0,15,4,1,"Robe de reine",11
+6,5,0,17,25,0x473ed0,coffre,300,5800,40,-100,2048,objet,-1,1,0,15,5,1,"Robe de reine",9
+6,5,0,17,25,0x473ed0,coffre,300,5800,40,-100,2048,objet,-1,1,0,15,6,1,"Robe de reine",6
+6,5,0,17,25,0x473ed0,coffre,300,5800,40,-100,2048,objet,-1,1,0,15,7,1,"Robe de reine",4
+6,6,2,1,25,0x473ed0,coffre,219,-2900,1240,-100,3072,objet,-1,1,0,6,0,4,"Balle de cristal",25
+6,6,2,1,25,0x473ed0,coffre,219,-2900,1240,-100,3072,objet,-1,1,0,6,1,4,"Balle de cristal",17
+6,6,2,1,25,0x473ed0,coffre,219,-2900,1240,-100,3072,objet,-1,1,0,6,2,5,"Horloge des mystères",15
+6,6,2,1,25,0x473ed0,coffre,219,-2900,1240,-100,3072,objet,-1,1,0,6,3,6,"Horloge du bonheur",13
+6,6,2,1,25,0x473ed0,coffre,219,-2900,1240,-100,3072,objet,-1,1,0,6,4,6,"Horloge du bonheur",11
+6,6,2,1,25,0x473ed0,coffre,219,-2900,1240,-100,3072,objet,-1,1,0,6,5,5,"Horloge des mystères",9
+6,6,2,1,25,0x473ed0,coffre,219,-2900,1240,-100,3072,objet,-1,1,0,6,6,7,"Anneau des philosophes",6
+6,6,2,1,25,0x473ed0,coffre,219,-2900,1240,-100,3072,objet,-1,1,0,6,7,7,"Anneau des philosophes",4
+6,6,3,1,25,0x473ed0,coffre,218,-1300,-360,-1900,1024,objet,-1,0,0,7,0,0,"Parfum de convalescence",25
+6,6,3,1,25,0x473ed0,coffre,218,-1300,-360,-1900,1024,objet,-1,0,0,7,1,1,"Parfum de guérison",17
+6,6,3,1,25,0x473ed0,coffre,218,-1300,-360,-1900,1024,objet,-1,0,0,7,2,2,"Parfum d'impératrice",15
+6,6,3,1,25,0x473ed0,coffre,218,-1300,-360,-1900,1024,objet,-1,0,0,7,3,3,"Parfum de feu",13
+6,6,3,1,25,0x473ed0,coffre,218,-1300,-360,-1900,1024,objet,-1,0,0,7,4,3,"Parfum de feu",11
+6,6,3,1,25,0x473ed0,coffre,218,-1300,-360,-1900,1024,objet,-1,0,0,7,5,2,"Parfum d'impératrice",9
+6,6,3,1,25,0x473ed0,coffre,218,-1300,-360,-1900,1024,objet,-1,0,0,7,6,1,"Parfum de guérison",6
+6,6,3,1,25,0x473ed0,coffre,218,-1300,-360,-1900,1024,objet,-1,0,0,7,7,0,"Parfum de convalescence",4
+6,6,4,6,25,0x473ed0,coffre,230,-100,-360,-2500,0,objet,-1,3,0,13,0,12,"Manteau de croisé",25
+6,6,4,6,25,0x473ed0,coffre,230,-100,-360,-2500,0,objet,-1,3,0,13,1,13,"Armure du dragon",17
+6,6,4,6,25,0x473ed0,coffre,230,-100,-360,-2500,0,objet,-1,3,0,13,2,14,"Bouclier lunaire",15
+6,6,4,6,25,0x473ed0,coffre,230,-100,-360,-2500,0,objet,-1,3,0,13,3,15,"Robe des anciens",13
+6,6,4,6,25,0x473ed0,coffre,230,-100,-360,-2500,0,objet,-1,3,0,13,4,15,"Robe des anciens",11
+6,6,4,6,25,0x473ed0,coffre,230,-100,-360,-2500,0,objet,-1,3,0,13,5,14,"Bouclier lunaire",9
+6,6,4,6,25,0x473ed0,coffre,230,-100,-360,-2500,0,objet,-1,3,0,13,6,13,"Armure du dragon",6
+6,6,4,6,25,0x473ed0,coffre,230,-100,-360,-2500,0,objet,-1,3,0,13,7,12,"Manteau de croisé",4
+6,6,5,1,25,0x473ed0,coffre,220,-1900,840,-4100,2048,objet,-1,2,0,8,0,8,"Cape du printemps",25
+6,6,5,1,25,0x473ed0,coffre,220,-1900,840,-4100,2048,objet,-1,2,0,8,1,9,"Cape d'été",17
+6,6,5,1,25,0x473ed0,coffre,220,-1900,840,-4100,2048,objet,-1,2,0,8,2,10,"Cape d'automne",15
+6,6,5,1,25,0x473ed0,coffre,220,-1900,840,-4100,2048,objet,-1,2,0,8,3,11,"Cape d'hiver",13
+6,6,5,1,25,0x473ed0,coffre,220,-1900,840,-4100,2048,objet,-1,2,0,8,4,11,"Cape d'hiver",11
+6,6,5,1,25,0x473ed0,coffre,220,-1900,840,-4100,2048,objet,-1,2,0,8,5,10,"Cape d'automne",9
+6,6,5,1,25,0x473ed0,coffre,220,-1900,840,-4100,2048,objet,-1,2,0,8,6,9,"Cape d'été",6
+6,6,5,1,25,0x473ed0,coffre,220,-1900,840,-4100,2048,objet,-1,2,0,8,7,8,"Cape du printemps",4
+6,7,3,0,25,0x473ed0,coffre,228,1300,-560,900,2048,message,27,45,0,0,,,,
+6,7,5,2,25,0x473ed0,coffre,227,-1300,-960,500,3072,message,24,22,0,0,,,,
+6,7,6,0,25,0x473ed0,coffre,-202,3100,40,700,1024,objet,-1,2,0,9,0,7,"Walmunk",25
+6,7,6,0,25,0x473ed0,coffre,-202,3100,40,700,1024,objet,-1,2,0,9,1,8,"Poignard de sang",17
+6,7,6,0,25,0x473ed0,coffre,-202,3100,40,700,1024,objet,-1,2,0,9,2,9,"Rapière du chaos",15
+6,7,6,0,25,0x473ed0,coffre,-202,3100,40,700,1024,objet,-1,2,0,9,3,10,"Bâton stellaire",13
+6,7,6,0,25,0x473ed0,coffre,-202,3100,40,700,1024,objet,-1,2,0,9,4,11,"Crosse d'ambre",11
+6,7,6,0,25,0x473ed0,coffre,-202,3100,40,700,1024,objet,-1,2,0,9,5,12,"Flèche de faucon",9
+6,7,6,0,25,0x473ed0,coffre,-202,3100,40,700,1024,objet,-1,2,0,9,6,13,"Hache du gel",6
+6,7,6,0,25,0x473ed0,coffre,-202,3100,40,700,1024,objet,-1,2,0,9,7,14,"Baguette de l'arc-en-ciel",4
+6,7,6,1,25,0x473ed0,coffre,-203,3700,40,1500,1024,objet,-1,1,0,9,0,3,"Boîte à bijoux",25
+6,7,6,1,25,0x473ed0,coffre,-203,3700,40,1500,1024,objet,-1,1,0,9,1,3,"Boîte à bijoux",17
+6,7,6,1,25,0x473ed0,coffre,-203,3700,40,1500,1024,objet,-1,1,0,9,2,4,"Horloge du bonheur",15
+6,7,6,1,25,0x473ed0,coffre,-203,3700,40,1500,1024,objet,-1,1,0,9,3,5,"Horloge des mystères",13
+6,7,6,1,25,0x473ed0,coffre,-203,3700,40,1500,1024,objet,-1,1,0,9,4,5,"Horloge des mystères",11
+6,7,6,1,25,0x473ed0,coffre,-203,3700,40,1500,1024,objet,-1,1,0,9,5,4,"Horloge du bonheur",9
+6,7,6,1,25,0x473ed0,coffre,-203,3700,40,1500,1024,objet,-1,1,0,9,6,6,"Dropneal",6
+6,7,6,1,25,0x473ed0,coffre,-203,3700,40,1500,1024,objet,-1,1,0,9,7,6,"Dropneal",4
+6,7,6,2,25,0x473ed0,coffre,-204,4300,40,700,1024,objet,-1,0,0,9,0,0,"Broche d'argent",25
+6,7,6,2,25,0x473ed0,coffre,-204,4300,40,700,1024,objet,-1,0,0,9,1,0,"Broche d'argent",17
+6,7,6,2,25,0x473ed0,coffre,-204,4300,40,700,1024,objet,-1,0,0,9,2,1,"Carte de tarot",15
+6,7,6,2,25,0x473ed0,coffre,-204,4300,40,700,1024,objet,-1,0,0,9,3,1,"Carte de tarot",13
+6,7,6,2,25,0x473ed0,coffre,-204,4300,40,700,1024,objet,-1,0,0,9,4,1,"Carte de tarot",11
+6,7,6,2,25,0x473ed0,coffre,-204,4300,40,700,1024,objet,-1,0,0,9,5,1,"Carte de tarot",9
+6,7,6,2,25,0x473ed0,coffre,-204,4300,40,700,1024,objet,-1,0,0,9,6,2,"Chaîne du souffle",6
+6,7,6,2,25,0x473ed0,coffre,-204,4300,40,700,1024,objet,-1,0,0,9,7,2,"Chaîne du souffle",4
+6,8,4,0,25,0x473ed0,coffre,207,3700,720,-280,1024,objet,-1,0,0,10,0,0,"Rapière aux éclairs",25
+6,8,4,0,25,0x473ed0,coffre,207,3700,720,-280,1024,objet,-1,0,0,10,1,0,"Rapière aux éclairs",17
+6,8,4,0,25,0x473ed0,coffre,207,3700,720,-280,1024,objet,-1,0,0,10,2,0,"Rapière aux éclairs",15
+6,8,4,0,25,0x473ed0,coffre,207,3700,720,-280,1024,objet,-1,0,0,10,3,0,"Rapière aux éclairs",13
+6,8,4,0,25,0x473ed0,coffre,207,3700,720,-280,1024,objet,-1,0,0,10,4,1,"Cristal d'air",11
+6,8,4,0,25,0x473ed0,coffre,207,3700,720,-280,1024,objet,-1,0,0,10,5,1,"Cristal d'air",9
+6,8,4,0,25,0x473ed0,coffre,207,3700,720,-280,1024,objet,-1,0,0,10,6,1,"Cristal d'air",6
+6,8,4,0,25,0x473ed0,coffre,207,3700,720,-280,1024,objet,-1,0,0,10,7,1,"Cristal d'air",4
+6,8,9,3,25,0x473ed0,coffre,286,-1500,-160,-7900,0,objet,-1,1,0,11,0,2,"Pentacle magique",25
+6,8,9,3,25,0x473ed0,coffre,286,-1500,-160,-7900,0,objet,-1,1,0,11,1,3,"Médaillon d'or",17
+6,8,9,3,25,0x473ed0,coffre,286,-1500,-160,-7900,0,objet,-1,1,0,11,2,4,"Poupée Dummy",15
+6,8,9,3,25,0x473ed0,coffre,286,-1500,-160,-7900,0,objet,-1,1,0,11,3,5,"Poupée dansante",13
+6,8,9,3,25,0x473ed0,coffre,286,-1500,-160,-7900,0,objet,-1,1,0,11,4,5,"Poupée dansante",11
+6,8,9,3,25,0x473ed0,coffre,286,-1500,-160,-7900,0,objet,-1,1,0,11,5,4,"Poupée Dummy",9
+6,8,9,3,25,0x473ed0,coffre,286,-1500,-160,-7900,0,objet,-1,1,0,11,6,3,"Médaillon d'or",6
+6,8,9,3,25,0x473ed0,coffre,286,-1500,-160,-7900,0,objet,-1,1,0,11,7,2,"Pentacle magique",4
+6,10,7,0,25,0x473ed0,coffre,216,1100,40,2300,2048,message,28,1,0,0,,,,
+7,0,2,0,8,0x473ed0,coffre,250,3150,-420,1500,2048,objet,-1,0,0,0,0,0,"Bague réflectrice",25
+7,0,2,0,8,0x473ed0,coffre,250,3150,-420,1500,2048,objet,-1,0,0,0,1,1,"Dropneal",17
+7,0,2,0,8,0x473ed0,coffre,250,3150,-420,1500,2048,objet,-1,0,0,0,2,2,"Anneau de Merlin",15
+7,0,2,0,8,0x473ed0,coffre,250,3150,-420,1500,2048,objet,-1,0,0,0,3,3,"Robe magique",13
+7,0,2,0,8,0x473ed0,coffre,250,3150,-420,1500,2048,objet,-1,0,0,0,4,4,"Bouclier solaire",11
+7,0,2,0,8,0x473ed0,coffre,250,3150,-420,1500,2048,objet,-1,0,0,0,5,5,"Armure du gardien",9
+7,0,2,0,8,0x473ed0,coffre,250,3150,-420,1500,2048,objet,-1,0,0,0,6,6,"Table de vision",6
+7,0,2,0,8,0x473ed0,coffre,250,3150,-420,1500,2048,objet,-1,0,0,0,7,6,"Table de vision",4
+7,0,2,1,8,0x473ed0,coffre,251,-2900,-420,1500,0,objet,-1,1,0,1,0,7,"Cristal de magie",25
+7,0,2,1,8,0x473ed0,coffre,251,-2900,-420,1500,0,objet,-1,1,0,1,1,7,"Cristal de magie",17
+7,0,2,1,8,0x473ed0,coffre,251,-2900,-420,1500,0,objet,-1,1,0,1,2,7,"Cristal de magie",15
+7,0,2,1,8,0x473ed0,coffre,251,-2900,-420,1500,0,objet,-1,1,0,1,3,8,"Anneau des éléments",13
+7,0,2,1,8,0x473ed0,coffre,251,-2900,-420,1500,0,objet,-1,1,0,1,4,9,"Bouclier du gardien",11
+7,0,2,1,8,0x473ed0,coffre,251,-2900,-420,1500,0,objet,-1,1,0,1,5,9,"Bouclier du gardien",9
+7,0,2,1,8,0x473ed0,coffre,251,-2900,-420,1500,0,objet,-1,1,0,1,6,10,"Epée du gardien",6
+7,0,2,1,8,0x473ed0,coffre,251,-2900,-420,1500,0,objet,-1,1,0,1,7,10,"Epée du gardien",4
+8,1,1,1,18,0x473ed0,coffre,251,3300,240,-3350,2560,objet,-1,0,0,0,0,0,"Poignard de brigand",25
+8,1,1,1,18,0x473ed0,coffre,251,3300,240,-3350,2560,objet,-1,0,0,0,1,0,"Poignard de brigand",17
+8,1,1,1,18,0x473ed0,coffre,251,3300,240,-3350,2560,objet,-1,0,0,0,2,1,"Boîte à bijoux",15
+8,1,1,1,18,0x473ed0,coffre,251,3300,240,-3350,2560,objet,-1,0,0,0,3,2,"Corde du retour",13
+8,1,1,1,18,0x473ed0,coffre,251,3300,240,-3350,2560,objet,-1,0,0,0,4,3,"Cendre grise",11
+8,1,1,1,18,0x473ed0,coffre,251,3300,240,-3350,2560,objet,-1,0,0,0,5,3,"Cendre grise",9
+8,1,1,1,18,0x473ed0,coffre,251,3300,240,-3350,2560,objet,-1,0,0,0,6,2,"Corde du retour",6
+8,1,1,1,18,0x473ed0,coffre,251,3300,240,-3350,2560,objet,-1,0,0,0,7,1,"Boîte à bijoux",4
+9,1,0,35,14,0x473ed0,coffre,250,1800,240,-3200,2560,objet,-1,0,0,0,0,0,"Cristal d'eau",25
+9,1,0,35,14,0x473ed0,coffre,250,1800,240,-3200,2560,objet,-1,0,0,0,1,1,"Balle de gel",17
+9,1,0,35,14,0x473ed0,coffre,250,1800,240,-3200,2560,objet,-1,0,0,0,2,2,"Joyau de glace",15
+9,1,0,35,14,0x473ed0,coffre,250,1800,240,-3200,2560,objet,-1,0,0,0,3,3,"Aquachâle",13
+9,1,0,35,14,0x473ed0,coffre,250,1800,240,-3200,2560,objet,-1,0,0,0,4,3,"Aquachâle",11
+9,1,0,35,14,0x473ed0,coffre,250,1800,240,-3200,2560,objet,-1,0,0,0,5,4,"Balle des éléments",9
+9,1,0,35,14,0x473ed0,coffre,250,1800,240,-3200,2560,objet,-1,0,0,0,6,5,"Manteau des esprits",6
+9,1,0,35,14,0x473ed0,coffre,250,1800,240,-3200,2560,objet,-1,0,0,0,7,6,"Bouclier des élémentaux",4
+9,1,0,36,14,0x473ed0,coffre,251,2000,240,1200,1536,objet,-1,1,0,1,0,0,"Cristal d'eau",25
+9,1,0,36,14,0x473ed0,coffre,251,2000,240,1200,1536,objet,-1,1,0,1,1,1,"Balle de gel",17
+9,1,0,36,14,0x473ed0,coffre,251,2000,240,1200,1536,objet,-1,1,0,1,2,2,"Joyau de glace",15
+9,1,0,36,14,0x473ed0,coffre,251,2000,240,1200,1536,objet,-1,1,0,1,3,3,"Aquachâle",13
+9,1,0,36,14,0x473ed0,coffre,251,2000,240,1200,1536,objet,-1,1,0,1,4,3,"Aquachâle",11
+9,1,0,36,14,0x473ed0,coffre,251,2000,240,1200,1536,objet,-1,1,0,1,5,0,"Cristal d'eau",9
+9,1,0,36,14,0x473ed0,coffre,251,2000,240,1200,1536,objet,-1,1,0,1,6,0,"Cristal d'eau",6
+9,1,0,36,14,0x473ed0,coffre,251,2000,240,1200,1536,objet,-1,1,0,1,7,0,"Cristal d'eau",4
+9,1,0,37,14,0x473ed0,coffre,252,-1800,240,1200,512,objet,-1,2,0,2,0,7,"Forgée de glace",25
+9,1,0,37,14,0x473ed0,coffre,252,-1800,240,1200,512,objet,-1,2,0,2,1,0,"Cristal d'eau",17
+9,1,0,37,14,0x473ed0,coffre,252,-1800,240,1200,512,objet,-1,2,0,2,2,0,"Cristal d'eau",15
+9,1,0,37,14,0x473ed0,coffre,252,-1800,240,1200,512,objet,-1,2,0,2,3,0,"Cristal d'eau",13
+9,1,0,37,14,0x473ed0,coffre,252,-1800,240,1200,512,objet,-1,2,0,2,4,0,"Cristal d'eau",11
+9,1,0,37,14,0x473ed0,coffre,252,-1800,240,1200,512,objet,-1,2,0,2,5,0,"Cristal d'eau",9
+9,1,0,37,14,0x473ed0,coffre,252,-1800,240,1200,512,objet,-1,2,0,2,6,0,"Cristal d'eau",6
+9,1,0,37,14,0x473ed0,coffre,252,-1800,240,1200,512,objet,-1,2,0,2,7,7,"Forgée de glace",4
+9,1,0,38,14,0x473ed0,coffre,253,-1800,240,-3200,3584,objet,-1,3,0,3,0,8,"Epée de glace",25
+9,1,0,38,14,0x473ed0,coffre,253,-1800,240,-3200,3584,objet,-1,3,0,3,1,9,"Bouclier de glace",17
+9,1,0,38,14,0x473ed0,coffre,253,-1800,240,-3200,3584,objet,-1,3,0,3,2,10,"Chaîne de l'eau",15
+9,1,0,38,14,0x473ed0,coffre,253,-1800,240,-3200,3584,objet,-1,3,0,3,3,10,"Chaîne de l'eau",13
+9,1,0,38,14,0x473ed0,coffre,253,-1800,240,-3200,3584,objet,-1,3,0,3,4,9,"Bouclier de glace",11
+9,1,0,38,14,0x473ed0,coffre,253,-1800,240,-3200,3584,objet,-1,3,0,3,5,8,"Epée de glace",9
+9,1,0,38,14,0x473ed0,coffre,253,-1800,240,-3200,3584,objet,-1,3,0,3,6,11,"Saphir",6
+9,1,0,38,14,0x473ed0,coffre,253,-1800,240,-3200,3584,objet,-1,3,0,3,7,11,"Saphir",4
+10,2,3,1,34,0x473ed0,coffre,232,900,-360,700,2048,message,0,4,0,0,,,,
+10,2,3,4,34,0x473ed0,coffre,267,700,-360,-500,2048,objet,-1,0,0,3,0,0,"Robe des runes",25
+10,2,3,4,34,0x473ed0,coffre,267,700,-360,-500,2048,objet,-1,0,0,3,1,1,"Robe médicinale",17
+10,2,3,4,34,0x473ed0,coffre,267,700,-360,-500,2048,objet,-1,0,0,3,2,2,"Cendre rouge",15
+10,2,3,4,34,0x473ed0,coffre,267,700,-360,-500,2048,objet,-1,0,0,3,3,3,"Cendre grise",13
+10,2,3,4,34,0x473ed0,coffre,267,700,-360,-500,2048,objet,-1,0,0,3,4,4,"Cendre blanche",11
+10,2,3,4,34,0x473ed0,coffre,267,700,-360,-500,2048,objet,-1,0,0,3,5,5,"Cendre bleue",9
+10,2,3,4,34,0x473ed0,coffre,267,700,-360,-500,2048,objet,-1,0,0,3,6,6,"Cendre verte",6
+10,2,3,4,34,0x473ed0,coffre,267,700,-360,-500,2048,objet,-1,0,0,3,7,7,"Cendre noire",4
+10,4,2,0,34,0x473ed0,coffre,217,700,40,3100,2048,objet,-1,8,0,2,0,8,"Cristal d'énergie",25
+10,4,2,0,34,0x473ed0,coffre,217,700,40,3100,2048,objet,-1,8,0,2,1,8,"Cristal d'énergie",17
+10,4,2,0,34,0x473ed0,coffre,217,700,40,3100,2048,objet,-1,8,0,2,2,8,"Cristal d'énergie",15
+10,4,2,0,34,0x473ed0,coffre,217,700,40,3100,2048,objet,-1,8,0,2,3,8,"Cristal d'énergie",13
+10,4,2,0,34,0x473ed0,coffre,217,700,40,3100,2048,objet,-1,8,0,2,4,8,"Cristal d'énergie",11
+10,4,2,0,34,0x473ed0,coffre,217,700,40,3100,2048,objet,-1,8,0,2,5,8,"Cristal d'énergie",9
+10,4,2,0,34,0x473ed0,coffre,217,700,40,3100,2048,objet,-1,8,0,2,6,8,"Cristal d'énergie",6
+10,4,2,0,34,0x473ed0,coffre,217,700,40,3100,2048,objet,-1,8,0,2,7,8,"Cristal d'énergie",4
+10,4,2,1,34,0x473ed0,coffre,218,700,40,2300,2048,objet,-1,9,0,5,0,9,"Pierre médicinale",25
+10,4,2,1,34,0x473ed0,coffre,218,700,40,2300,2048,objet,-1,9,0,5,1,9,"Pierre médicinale",17
+10,4,2,1,34,0x473ed0,coffre,218,700,40,2300,2048,objet,-1,9,0,5,2,9,"Pierre médicinale",15
+10,4,2,1,34,0x473ed0,coffre,218,700,40,2300,2048,objet,-1,9,0,5,3,10,"Ambrosia",13
+10,4,2,1,34,0x473ed0,coffre,218,700,40,2300,2048,objet,-1,9,0,5,4,10,"Ambrosia",11
+10,4,2,1,34,0x473ed0,coffre,218,700,40,2300,2048,objet,-1,9,0,5,5,10,"Ambrosia",9
+10,4,2,1,34,0x473ed0,coffre,218,700,40,2300,2048,objet,-1,9,0,5,6,11,"Anneau de Merlin",6
+10,4,2,1,34,0x473ed0,coffre,218,700,40,2300,2048,objet,-1,9,0,5,7,11,"Anneau de Merlin",4
+10,4,2,2,34,0x473ed0,coffre,219,-1700,40,3100,0,objet,-1,10,0,6,0,12,"Pierre magique",25
+10,4,2,2,34,0x473ed0,coffre,219,-1700,40,3100,0,objet,-1,10,0,6,1,12,"Pierre magique",17
+10,4,2,2,34,0x473ed0,coffre,219,-1700,40,3100,0,objet,-1,10,0,6,2,12,"Pierre magique",15
+10,4,2,2,34,0x473ed0,coffre,219,-1700,40,3100,0,objet,-1,10,0,6,3,13,"Panoramix",13
+10,4,2,2,34,0x473ed0,coffre,219,-1700,40,3100,0,objet,-1,10,0,6,4,13,"Panoramix",11
+10,4,2,2,34,0x473ed0,coffre,219,-1700,40,3100,0,objet,-1,10,0,6,5,13,"Panoramix",9
+10,4,2,2,34,0x473ed0,coffre,219,-1700,40,3100,0,objet,-1,10,0,6,6,14,"Bouclier du gardien",6
+10,4,2,2,34,0x473ed0,coffre,219,-1700,40,3100,0,objet,-1,10,0,6,7,14,"Bouclier du gardien",4
+10,4,2,3,34,0x473ed0,coffre,220,-1700,40,2300,0,objet,-1,8,0,7,0,8,"Cristal d'énergie",25
+10,4,2,3,34,0x473ed0,coffre,220,-1700,40,2300,0,objet,-1,8,0,7,1,8,"Cristal d'énergie",17
+10,4,2,3,34,0x473ed0,coffre,220,-1700,40,2300,0,objet,-1,8,0,7,2,8,"Cristal d'énergie",15
+10,4,2,3,34,0x473ed0,coffre,220,-1700,40,2300,0,objet,-1,8,0,7,3,8,"Cristal d'énergie",13
+10,4,2,3,34,0x473ed0,coffre,220,-1700,40,2300,0,objet,-1,8,0,7,4,8,"Cristal d'énergie",11
+10,4,2,3,34,0x473ed0,coffre,220,-1700,40,2300,0,objet,-1,8,0,7,5,8,"Cristal d'énergie",9
+10,4,2,3,34,0x473ed0,coffre,220,-1700,40,2300,0,objet,-1,8,0,7,6,8,"Cristal d'énergie",6
+10,4,2,3,34,0x473ed0,coffre,220,-1700,40,2300,0,objet,-1,8,0,7,7,8,"Cristal d'énergie",4
+10,5,2,3,34,0x473ed0,coffre,-225,-2500,1640,-900,0,message,1,3,0,0,,,,
+10,5,5,1,34,0x473ed0,coffre,239,-1900,1640,1500,0,objet,-1,0,0,0,0,0,"Crosse de voeux",25
+10,5,5,1,34,0x473ed0,coffre,239,-1900,1640,1500,0,objet,-1,0,0,0,1,1,"Robe magique",17
+10,5,5,1,34,0x473ed0,coffre,239,-1900,1640,1500,0,objet,-1,0,0,0,2,2,"Balle de cristal",15
+10,5,5,1,34,0x473ed0,coffre,239,-1900,1640,1500,0,objet,-1,0,0,0,3,3,"Panoramix",13
+10,5,5,1,34,0x473ed0,coffre,239,-1900,1640,1500,0,objet,-1,0,0,0,4,4,"Ambrosia",11
+10,5,5,1,34,0x473ed0,coffre,239,-1900,1640,1500,0,objet,-1,0,0,0,5,5,"Aile de Séraphin",9
+10,5,5,1,34,0x473ed0,coffre,239,-1900,1640,1500,0,objet,-1,0,0,0,6,5,"Aile de Séraphin",6
+10,5,5,1,34,0x473ed0,coffre,239,-1900,1640,1500,0,objet,-1,0,0,0,7,5,"Aile de Séraphin",4
+10,7,0,0,34,0x473ed0,coffre,229,2100,440,5500,0,message,2,1,0,0,,,,
+10,8,3,0,34,0x473ed0,coffre,270,-1500,-260,-1700,0,message,5,3,0,0,,,,
+10,8,5,0,34,0x473ed0,coffre,272,-940,-160,-520,2048,objet,-1,0,0,4,0,0,"Balle du tonnerre",25
+10,8,5,0,34,0x473ed0,coffre,272,-940,-160,-520,2048,objet,-1,0,0,4,1,1,"Bouclier de l'air",17
+10,8,5,0,34,0x473ed0,coffre,272,-940,-160,-520,2048,objet,-1,0,0,4,2,2,"Cristal d'air",15
+10,8,5,0,34,0x473ed0,coffre,272,-940,-160,-520,2048,objet,-1,0,0,4,3,3,"Chaîne de l'air",13
+10,8,5,0,34,0x473ed0,coffre,272,-940,-160,-520,2048,objet,-1,0,0,4,4,4,"Plume dominicale",11
+10,8,5,0,34,0x473ed0,coffre,272,-940,-160,-520,2048,objet,-1,0,0,4,5,4,"Plume dominicale",9
+10,8,5,0,34,0x473ed0,coffre,272,-940,-160,-520,2048,objet,-1,0,0,4,6,4,"Plume dominicale",6
+10,8,5,0,34,0x473ed0,coffre,272,-940,-160,-520,2048,objet,-1,0,0,4,7,4,"Plume dominicale",4
+10,8,8,3,34,0x473ed0,coffre,269,-4700,-160,-100,0,message,4,2,0,0,,,,
+10,8,8,5,34,0x473ed0,coffre,271,300,40,2700,1024,message,6,4,0,0,,,,
+10,10,0,28,34,0x473ed0,coffre,226,3100,-60,100,0,objet,-1,0,0,1,0,0,"Balle du tonnerre",25
+10,10,0,28,34,0x473ed0,coffre,226,3100,-60,100,0,objet,-1,0,0,1,1,1,"Bouclier de l'air",17
+10,10,0,28,34,0x473ed0,coffre,226,3100,-60,100,0,objet,-1,0,0,1,2,2,"Cristal d'air",15
+10,10,0,28,34,0x473ed0,coffre,226,3100,-60,100,0,objet,-1,0,0,1,3,3,"Chaîne de l'air",13
+10,10,0,28,34,0x473ed0,coffre,226,3100,-60,100,0,objet,-1,0,0,1,4,4,"Plume dominicale",11
+10,10,0,28,34,0x473ed0,coffre,226,3100,-60,100,0,objet,-1,0,0,1,5,4,"Plume dominicale",9
+10,10,0,28,34,0x473ed0,coffre,226,3100,-60,100,0,objet,-1,0,0,1,6,4,"Plume dominicale",6
+10,10,0,28,34,0x473ed0,coffre,226,3100,-60,100,0,objet,-1,0,0,1,7,4,"Plume dominicale",4

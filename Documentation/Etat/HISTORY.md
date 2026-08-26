@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-26
 
+- feat : **les coffres sont cartographiés** — 161 coffres dans les zones 1 à 10, avec leur contenu chiffré, leur position et leur numéro. Nouvel onglet dans `bestiaire.html`, nouveau `coffres.csv`, et la fiche d'objet dit désormais quels coffres le contiennent
+- doc : **un coffre tire dans la même table `+0xb4` qu'un monstre** (`PickWeightedTableEntry`, FUN_0053a920) — seule la rangée change, et c'est pourquoi **112 objets ne s'obtiennent qu'en coffre**. Sa fiche voyage dans les champs de hauteur et de rotation de l'entité (`+0x30`, `+0x34`), que l'état 0 du gestionnaire vide dans `+0x9a`, `+0x44` et `+0x48`
+- fix : **un numéro de sous-type d'entité ne veut rien dire tout seul** — la table 0x0056adc8 est rechargée à chaque sous-zone. Filtrer sur « sous-type 13 » donnait 36 coffres aux champs tous nuls ; résoudre la table de la sous-zone dans `Blaze.exe` en donne 161 cohérents, et montre que le coffre de la zone 1 est le sous-type 22
 - feat : **la fiche d'objet nomme les classes qui peuvent l'équiper** au lieu d'aligner huit chiffres — le masque de `+0x12` se lit désormais « Voleur » sur le Glaive, « Nain » sur les haches
 - doc : **les huit bits de `+0x12` sont identifiés**, par `&PTR_s_Fighter_0056c7c0` (bloc `0x0056c894`) et non par déduction : 0 Guerrier, 1 Prêtre, 2 Voleur, 3 Sorcier, 4 Chasseur, 5 Elfe, 6 Nain, 7 Fée. `SetClassBaseHpMp` et le contenu du jeu — le bit 6 ne porte que des haches, dont Gulwick — recoupent l'ordre
 - feat : **la cartographie des ennemis, lue hors-jeu sur le CD** — `OpenForesia.Tools bestiaire` rejoue la chaîne de chargement (`SYSTEM.INI` → état → zone → sous-zone) et sort les quatre tables du répertoire de zone : 281 fiches et 121 noms dans les zones 1 à 10, 913 formations, 3 018 placements, 434 classes de butin. Voir `Documentation/Reference/Bestiaire/`

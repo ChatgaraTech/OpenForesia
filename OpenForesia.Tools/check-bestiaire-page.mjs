@@ -90,6 +90,27 @@ const harness = `
   const glaive = OBJ.find(o => o.nom === 'Glaive');
   if (glaive) { openKey = 'Glaive'; render(); grab('objets, deplie Glaive'); }
 
+  // Un objet qu'AUCUN monstre ne lache : il n'existe que par un coffre, et la vue Objets doit
+  // quand meme le porter. C'est le cas que le filtre sur le nombre de sources perdait en silence.
+  const chestOnly = OBJ.find(o => o.src.length === 0 && (o.csrc || []).length > 0);
+  if (chestOnly) {
+    openKey = chestOnly.nom; render();
+    grab('objets, deplie objet de coffre seul (' + chestOnly.nom + ')');
+  }
+
+  // La vue des coffres, liste puis depliage du premier qui contient quelque chose.
+  openKey = null;
+  setView('cof');
+  grab('coffres, liste');
+  const withLot = COF.find(c => (c.lots || []).length > 0);
+  if (withLot) {
+    openKey = withLot.zone + '/' + withLot.sz + '/' + withLot.id + '/' + withLot.mem;
+    render();
+    grab('coffres, deplie ' + withLot.id);
+  }
+  openKey = null;
+  setView('obj');
+
   // Un filtre de zone doit laisser passer des lignes. Une puce qui vide le tableau est un
   // symptome de valeur de filtre inexistante, pas d'un jeu de donnees vide.
   openKey = null;
@@ -154,6 +175,22 @@ expect('objets, deplie Glaive', CLASSES);
   const ok = on.length === 1 && on[0] === 'Voleur';
   if (!ok) failed = true;
   console.log('        attendu   ', '"Glaive → Voleur seul"'.padEnd(34), ok ? 'ok' : 'ECHEC : ' + JSON.stringify(on));
+}
+
+// La vue des coffres : elle existe, elle est peuplee, et son depliage porte un contenu chiffre.
+expect('coffres, liste', ['Coffre ', 'donne un objet']);
+expect('coffres, deplie', ['Contenu possible', 'numéro de coffre', 'chance']);
+
+// Un objet de coffre seul doit dire d'ou il vient — et dire qu'aucun monstre ne le lache.
+expect('objet de coffre seul', ['Aucun monstre', 'Dans les coffres', 'Coffre ']);
+
+// Aucune vue ne doit produire de pourcentage vide ou de nom manquant.
+for (const [label, markup] of rendered) {
+  if (!label.startsWith('coffres')) continue;
+  if (/>s*%/.test(markup) || markup.includes('Coffre NaN')) {
+    failed = true;
+    console.log('        ECHEC     ', label.padEnd(32), 'valeur manquante dans la vue des coffres');
+  }
 }
 
 process.exit(failed ? 1 : 0);

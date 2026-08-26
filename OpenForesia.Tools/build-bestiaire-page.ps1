@@ -25,7 +25,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-foreach ($f in @('modeles.csv', 'especes.csv', 'formations.csv', 'butin.csv', 'objets.csv', 'butin_par_objet.csv')) {
+foreach ($f in @('modeles.csv', 'especes.csv', 'formations.csv', 'butin.csv', 'objets.csv', 'butin_par_objet.csv', 'coffres.csv')) {
     $p = Join-Path $DataDir $f
     if (-not (Test-Path $p)) { throw "Manquant : $p — relancer le verbe bestiaire avec --sortie $DataDir" }
 }
@@ -36,6 +36,7 @@ $fo  = Import-Csv (Join-Path $DataDir 'formations.csv')       | Where-Object zon
 $bu  = Import-Csv (Join-Path $DataDir 'butin.csv')            | Where-Object zone -ne '0'
 $ob  = Import-Csv (Join-Path $DataDir 'objets.csv')           | Where-Object zone -ne '0'
 $dr  = Import-Csv (Join-Path $DataDir 'butin_par_objet.csv')  | Where-Object zone -ne '0'
+$co  = Import-Csv (Join-Path $DataDir 'coffres.csv')          | Where-Object zone -ne '0'
 
 # especes par (zone, sous-zone, modele) : une fiche peut servir a plusieurs especes
 $spByModel = @{}
@@ -110,6 +111,47 @@ $rows = foreach ($g in ($variants | Group-Object nom)) {
 # correction, pas un confort d'affichage. Le CSV, lui, garde une ligne par rang : c'est la donnee
 # fidele, et c'est ici que se fait la lecture.
 
+# Un coffre = un enregistrement de placement de la table `+0x30`, dont le gestionnaire installe
+# par la sous-zone est l'un des trois qui remettent un objet. Ses huit rangs se CUMULENT par objet,
+# exactement comme le butin d'un monstre : un meme objet occupe souvent plusieurs des huit rangs,
+# et la chance reelle est alors la somme.
+$chests = foreach ($g in ($co | Group-Object zone, sous_zone, liste, index)) {
+    $f = $g.Group[0]
+    $lots = @($g.Group | Where-Object { $_.objet } | Group-Object objet | ForEach-Object {
+        $ranks = (($_.Group | ForEach-Object { [int]$_.rang } | Sort-Object) -join ',')
+        $total = ($_.Group | Measure-Object -Property pourcent_plage_100 -Sum).Sum
+        , @($_.Name, $ranks, [math]::Round($total, 1))
+    })
+    [pscustomobject]@{
+        zone = [int]$f.zone
+        sz   = [int]$f.sous_zone
+        id   = [int]$f.coffre_id
+        fam  = $f.famille
+        hnd  = $f.gestionnaire
+        st   = [int]$f.sous_type
+        role = $f.role
+        row  = [int]$f.rangee_0x16
+        lab  = [int]$f.libelle_0x14
+        eff  = [int]$f.contenu_0x48
+        mem  = [int]$f.memoire_0x44
+        x    = [int]$f.x
+        y    = [int]$f.y
+        zz   = [int]$f.z
+        lots = $lots
+    }
+}
+
+# Quels coffres contiennent quel objet — le pendant de butin_par_objet.csv, cote coffres.
+$chestSrc = @{}
+foreach ($g in ($co | Where-Object { $_.objet } | Group-Object objet)) {
+    $chestSrc[$g.Name] = @($g.Group | Group-Object zone, sous_zone, coffre_id | ForEach-Object {
+        $f = $_.Group[0]
+        $ranks = (($_.Group | ForEach-Object { [int]$_.rang } | Sort-Object) -join ',')
+        $total = ($_.Group | Measure-Object -Property pourcent_plage_100 -Sum).Sum
+        , @([int]$f.zone, [int]$f.sous_zone, [int]$f.coffre_id, $ranks, [math]::Round($total, 1))
+    })
+}
+
 # La fiche d'objet : description et bonus. Un meme objet figure au catalogue de plusieurs
 # sous-zones, avec les memes octets ; la premiere occurrence suffit.
 $itemSheet = @{}
@@ -127,11 +169,19 @@ foreach ($i in $ob) {
     }
 }
 
-$items = foreach ($g in ($dr | Group-Object objet | Sort-Object Name)) {
-    $bySource = $g.Group | Group-Object zone, sous_zone, monstre
-    $sheet = $itemSheet[$g.Name]
+# **Un objet peut n'exister qu'en coffre.** 112 des 274 objets que les coffres contiennent ne
+# sont laches par aucun monstre ; construire la liste sur le seul index de butin les perdait tous.
+$dropByItem = @{}
+foreach ($g in ($dr | Group-Object objet)) { $dropByItem[$g.Name] = $g.Group }
+
+$itemNames = @(@($dr | ForEach-Object { $_.objet }) + @($co | Where-Object { $_.objet } | ForEach-Object { $_.objet }) |
+    Sort-Object -Unique)
+
+$items = foreach ($name in $itemNames) {
+    $bySource = if ($dropByItem[$name]) { $dropByItem[$name] | Group-Object zone, sous_zone, monstre } else { @() }
+    $sheet = $itemSheet[$name]
     [pscustomobject]@{
-        nom  = $g.Name
+        nom  = $name
         desc = if ($sheet) { $sheet.desc } else { '' }
         att  = if ($sheet) { $sheet.att } else { 0 }
         def  = if ($sheet) { $sheet.def } else { 0 }
@@ -139,6 +189,7 @@ $items = foreach ($g in ($dr | Group-Object objet | Sort-Object Name)) {
         b16  = @(if ($sheet) { $sheet.b16 } else { @() })
         b8   = @(if ($sheet) { $sheet.b8 } else { @() })
         b8a  = if ($sheet) { $sheet.b8a } else { 0 }
+        csrc = @(if ($chestSrc[$name]) { $chestSrc[$name] } else { @() })
         src = @($bySource | ForEach-Object {
             $f = $_.Group[0]
             $ranks = ($_.Group | ForEach-Object { [int]$_.rang } | Sort-Object) -join ','
@@ -152,11 +203,14 @@ $items = foreach ($g in ($dr | Group-Object objet | Sort-Object Name)) {
 $payload = [pscustomobject]@{
     m = @($rows)
     i = @($items)
+    c = @($chests)
     stats = [pscustomobject]@{
         fiches     = @($variants).Count
         noms       = ($mod.nom | Sort-Object -Unique).Count
         objets     = ($ob.nom | Sort-Object -Unique).Count
         lachables  = ($dr.objet | Sort-Object -Unique).Count
+        coffres    = @($chests).Count
+        encoffres  = (@($co | Where-Object { $_.objet } | ForEach-Object { $_.objet }) | Sort-Object -Unique).Count
         formations = ($fo | Group-Object zone, sous_zone, formation).Count
         placements = $fo.Count
     }
@@ -165,19 +219,29 @@ $payload = [pscustomobject]@{
 # Le garde-fou de l'aplatissement : une source est un tuple de six champs. Si le deroulement du
 # pipeline recommence un jour, mieux vaut echouer ici que publier une page qui affiche
 # « Zundefined » sans rien lever.
-$firstSrc = @($items)[0].src
-if ($firstSrc.Count -eq 0 -or @($firstSrc[0]).Count -ne 6) {
-    throw "Les sources d'objet sont aplaties : src[0] devrait etre un tuple de 6 champs, il en a $(@($firstSrc[0]).Count)."
+$withSrc = @($items | Where-Object { $_.src.Count -gt 0 })[0]
+if (-not $withSrc -or @($withSrc.src[0]).Count -ne 6) {
+    throw "Les sources d'objet sont aplaties : src[0] devrait etre un tuple de 6 champs, il en a $(@($withSrc.src[0]).Count)."
 }
 
-$json = $payload | ConvertTo-Json -Depth 6 -Compress
+$withChest = @($items | Where-Object { $_.csrc.Count -gt 0 })[0]
+if (-not $withChest -or @($withChest.csrc[0]).Count -ne 5) {
+    throw "Les sources de coffre sont aplaties : csrc[0] devrait etre un tuple de 5 champs, il en a $(@($withChest.csrc[0]).Count)."
+}
+
+$withLot = @($chests | Where-Object { $_.lots.Count -gt 0 })[0]
+if (-not $withLot -or @($withLot.lots[0]).Count -ne 3) {
+    throw "Les contenus de coffre sont aplatis : lots[0] devrait etre un tuple de 3 champs, il en a $(@($withLot.lots[0]).Count)."
+}
+
+$json = $payload | ConvertTo-Json -Depth 8 -Compress
 $html = Get-Content $Template -Raw -Encoding utf8
 
-$marker = '/*__DATA__*/{ m: [], i: [], stats: {} }'
+$marker = '/*__DATA__*/{ m: [], i: [], c: [], stats: {} }'
 if ($html -notmatch [regex]::Escape($marker)) { throw "Marqueur introuvable dans $Template" }
 
 $html = $html.Replace($marker, $json)
 Set-Content -Path $Out -Value $html -Encoding utf8 -NoNewline
 
 $ko = [math]::Round((Get-Item $Out).Length / 1KB)
-Write-Host "$Out — $ko Ko, $($payload.stats.fiches) fiches, $($payload.stats.lachables) objets obtenables"
+Write-Host "$Out — $ko Ko, $($payload.stats.fiches) fiches, $($payload.stats.lachables) objets obtenables, $($payload.stats.coffres) coffres"

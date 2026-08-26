@@ -269,6 +269,10 @@ internal static class Bestiaire
         var dropCsv = new StringBuilder(
             "objet,zone,sous_zone,monstre,classe,rang,pourcent_plage_100,seuil_0x22,placements\n");
         var placeCsv = new StringBuilder("zone,sous_zone,nom\n");
+        var chestCsv = new StringBuilder(
+            "zone,sous_zone,liste,index,sous_type,gestionnaire,famille,coffre_id,x,y,z,orientation,role,"
+            + "libelle_0x14,rangee_0x16,contenu_0x48,memoire_0x44,rang,objet_id,objet,"
+            + "pourcent_plage_100\n");
 
         for (int z = 0; z < zones.Count; z++)
         {
@@ -285,7 +289,7 @@ internal static class Bestiaire
             {
                 var areaDir = LoadEntry(archive, zoneBlob, subs[s]);
                 if (areaDir.Len == 0) continue;
-                DumpSubArea(z, s, areaDir, archive, regions, report, speciesCsv, modelCsv, formationCsv, lootCsv, itemCsv, dropCsv, placeCsv);
+                DumpSubArea(z, s, areaDir, archive, regions, report, speciesCsv, modelCsv, formationCsv, lootCsv, itemCsv, dropCsv, placeCsv, chestCsv);
             }
         }
 
@@ -302,14 +306,109 @@ internal static class Bestiaire
             File.WriteAllText(Path.Combine(outDir, "objets.csv"), itemCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "butin_par_objet.csv"), dropCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "lieux.csv"), placeCsv.ToString());
+            File.WriteAllText(Path.Combine(outDir, "coffres.csv"), chestCsv.ToString());
             Console.WriteLine();
             Console.WriteLine($"Ecrit dans {outDir} : bestiaire.md, especes.csv, modeles.csv, "
-                              + "formations.csv, butin.csv, objets.csv, butin_par_objet.csv, lieux.csv");
+                              + "formations.csv, butin.csv, objets.csv, butin_par_objet.csv, lieux.csv, "
+                              + "coffres.csv");
         }
     }
 
     // Les seuils de FUN_0053a920 : rand() % plage, compare a 0x18, 0x29, 0x38, 0x45, 0x50, 0x59,
     // 0x5f. Huit rangs, donc, et ce sont ces bornes qui donnent les pourcentages.
+    // =============================================================================================
+    // Les gestionnaires d'entite de la sous-zone, lus dans Blaze.exe
+    // =============================================================================================
+    //
+    // **Un numero de sous-type ne veut rien dire tout seul.** La passe FUN_0050e5e0 appelle
+    // `(&PTR_..._0056adc8)[entite[5]]`, et cette table de 0x40 entrees est RECHARGEE a chaque
+    // sous-zone : la branche DAT_00600904 de FUN_0052a660 choisit sept blocs dans sept tables de
+    // pointeurs contigues, indexees par `zone * 0x10 + sous-zone`. Le sous-type 13 est un coffre
+    // dans une sous-zone et tout autre chose dans la suivante.
+    //
+    // Ces tables vivent en `.data`, donc pas dans `Blaze.c` — elles se lisent dans le binaire.
+    // C'est le meme releve que `OpenForesia.Tools/dump-entity-vtables.sh` fait pour
+    // `EntityVTables.cs` ; ici il est refait a la volee plutot que de dupliquer le fichier genere.
+    private const string BlazeExePath = "Legacy/Binaries/Blaze.exe";
+    private const uint VtSelectorTable_00567058 = 0x00567058;   // -> s_Vt_0056adc8, 0x40 entrees
+
+    /// <summary>Les trois gestionnaires qui remettent un objet au groupe : le coffre (sous-type 13
+    /// de la sous-zone observee, <c>FUN_00473ed0</c>) et ses deux quasi-jumeaux
+    /// <c>FUN_004502e0</c> et <c>FUN_00450d30</c>. Meme automate, memes champs — voir
+    /// <c>Screens/State03/WorldMapTick.cs</c>.</summary>
+    private static readonly Dictionary<uint, string> ChestHandlers = new()
+    {
+        [0x00473ED0] = "coffre",
+        [0x004502E0] = "coffre-17",
+        [0x00450D30] = "coffre-18",
+    };
+
+    private static byte[]? s_exe;
+    private static System.Reflection.PortableExecutable.PEHeaders? s_exeHeaders;
+    private static readonly Dictionary<int, uint[]?> s_vtCache = [];
+
+    private static bool LoadBlazeExe()
+    {
+        if (s_exe is not null) return true;
+        if (!File.Exists(BlazeExePath)) return false;
+
+        s_exe = File.ReadAllBytes(BlazeExePath);
+        using var stream = new MemoryStream(s_exe, writable: false);
+        s_exeHeaders = new System.Reflection.PortableExecutable.PEHeaders(stream);
+        return true;
+    }
+
+    /// <summary>Adresse virtuelle Ghidra vers offset de fichier, par les en-tetes de section.
+    /// Rend -1 quand l'adresse tombe dans la queue non initialisee d'une section, ou hors image —
+    /// c'est une reponse, pas une erreur.</summary>
+    private static int ExeOffset(uint va)
+    {
+        if (s_exeHeaders is null) return -1;
+        int rva = (int)(va - 0x00400000);
+
+        foreach (var section in s_exeHeaders.SectionHeaders)
+        {
+            int start = section.VirtualAddress;
+            int size = Math.Max(section.VirtualSize, section.SizeOfRawData);
+            if (rva < start || rva >= start + size) continue;
+
+            int inSection = rva - start;
+            if (inSection >= section.SizeOfRawData) return -1;   // queue non initialisee
+            return section.PointerToRawData + inSection;
+        }
+        return -1;
+    }
+
+    private static uint ExeU32(uint va)
+    {
+        int off = ExeOffset(va);
+        if (off < 0 || s_exe is null || off + 4 > s_exe.Length) return 0;
+        return (uint)(s_exe[off] | (s_exe[off + 1] << 8) | (s_exe[off + 2] << 16) | (s_exe[off + 3] << 24));
+    }
+
+    /// <summary>Les 0x40 gestionnaires que la sous-zone installe sur <c>0x0056adc8</c>. Null quand
+    /// le binaire n'est pas la, ou quand la sous-zone renvoie au bloc d'arret fatal.</summary>
+    private static uint[]? SubAreaEntityHandlers(int zone, int sub)
+    {
+        int index = zone == 0 ? 0 : zone * 0x10 + sub;
+        if (s_vtCache.TryGetValue(index, out uint[]? cached)) return cached;
+
+        uint[]? table = null;
+        if (LoadBlazeExe() && sub <= 0xf && index >= 0 && index < 176)
+        {
+            uint block = ExeU32(VtSelectorTable_00567058 + (uint)index * 4);
+            if (block != 0)
+            {
+                var entries = new uint[0x40];
+                for (int i = 0; i < 0x40; i++) entries[i] = ExeU32(block + (uint)i * 4);
+                table = entries;
+            }
+        }
+
+        s_vtCache[index] = table;
+        return table;
+    }
+
     private static readonly int[] LootThresholds = [0x18, 0x29, 0x38, 0x45, 0x50, 0x59, 0x5f];
 
     /// <summary>
@@ -470,7 +569,7 @@ internal static class Bestiaire
         int z, int s, Blob a, byte[] archive, bool regions,
         StringBuilder report, StringBuilder speciesCsv, StringBuilder modelCsv,
         StringBuilder formationCsv, StringBuilder lootCsv, StringBuilder itemCsv, StringBuilder dropCsv,
-        StringBuilder placeCsv)
+        StringBuilder placeCsv, StringBuilder chestCsv)
     {
         // Le catalogue d'objets de la sous-zone, resolu avant tout le reste : c'est lui qui donne
         // un nom aux valeurs de la table de butin.
@@ -678,6 +777,121 @@ internal static class Bestiaire
                 report.AppendLine("| classe | rang 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |");
                 report.AppendLine("|---:|---|---|---|---|---|---|---|---|");
                 report.AppendLine("| *chance, plage 100* | " + string.Join(" | ", pct.Select(p => $"{p:0.#} %")) + " |");
+                foreach (string r in rows) report.AppendLine(r);
+                report.AppendLine();
+            }
+        }
+
+        // ---- les coffres ---------------------------------------------------------------------
+        // La table `+0x30` est celle que SpawnSubAreaEntities (FUN_005350b0, WorldMap.cs) lit :
+        // une liste de listes d'enregistrements de 0x20 octets, terminee par kind == -1, et
+        // chaque enregistrement devient une entite de 0x9c octets. La correspondance champ a
+        // champ vient de son corps, pas d'une supposition :
+        //
+        //   record[7]      -> `*(short*)(slot + 1)`      = octets 4-5 de l'entite, dont l'octet 5
+        //                     est le SOUS-TYPE que FUN_0050e5e0 donne a la table 0x0056adc8 ;
+        //   record[6]      -> `slot[5]`                  = +0x14 (mot bas) et +0x16 (mot haut) ;
+        //   record[2] haut -> `slot[0xc]` mot bas        = +0x30 ;
+        //   record[3] haut -> `*(ushort*)(slot + 0xd)`   = +0x34.
+        //
+        // Les trois sous-types qui remettent un objet sont 13 (FUN_00473ed0), 17 (FUN_004502e0) et
+        // 18 (FUN_00450d30) : meme automate, memes champs. Leur etat 0 vide +0x30 et +0x34 dans
+        // +0x9a, +0x44 et +0x48 — c'est-a-dire que **la fiche du coffre voyage dans les champs de
+        // hauteur et de rotation de l'entite**, et n'est lue qu'a la premiere image.
+        //
+        //   +0x9a = |+0x30|          le numero de coffre, index du bit « deja ouvert »
+        //   +0x44 = +0x34 & 0xff     l'index de la memoire de contenu (DAT_005e9860)
+        //   +0x48 = +0x34 >> 8       non nul : le coffre fait naitre un effet et ne donne rien
+        //   +0x14 = -1               le coffre donne un OBJET ; sinon il affiche un libelle
+        //   +0x16                    la rangee de la table de butin, ou l'index du libelle
+        //
+        // Le tirage est `PickWeightedTableEntry(+0x16, 100)` — FUN_0053a920, exactement celui des
+        // monstres : meme table `+0xb4`, memes huit bandes de probabilite. Un coffre et un monstre
+        // ne different donc que par la RANGEE, et c'est pourquoi des objets n'apparaissent que
+        // dans les coffres : leurs rangees ne sont referencees par aucune espece.
+        int chestLists = a.In(0x30, 4) ? a.I32(0x30) : 0;
+        uint[]? handlers = SubAreaEntityHandlers(z, s);
+        if (chestLists != 0 && a.In(chestLists, 4) && handlers is not null)
+        {
+            double[] pct = LootTierPercent(100);
+            var rows = new List<string>();
+            int listEnd = RegionEnd(a, chestLists);
+
+            for (int lp = chestLists; lp + 4 <= listEnd; lp += 4)
+            {
+                int listIndex = (lp - chestLists) / 4;
+                int rec = a.I32(lp);
+                if (rec == 0 || !a.In(rec, 0x20)) continue;
+
+                int recEnd = RegionEnd(a, rec);
+                for (int r = 0; r < 128; r++)
+                {
+                    int ro = rec + r * 0x20;
+                    if (!a.In(ro, 0x20) || ro + 0x20 > recEnd) break;
+                    if (a.I32(ro) == -1) break;
+
+                    int subtype = a.U8(ro + 0x1d);
+                    if (subtype >= handlers.Length) continue;
+                    if (!ChestHandlers.TryGetValue(handlers[subtype], out string? family)) continue;
+
+                    int kind = a.I32(ro);
+                    int chestId = a.I16(ro + 0x0a);
+                    int packed = a.I16(ro + 0x0e);
+                    int memory = packed & 0xff;
+                    int effect = packed >> 8;          // short signe, comme +0x34 dans le jeu
+                    int label = a.I16(ro + 0x18);
+                    int row = a.I16(ro + 0x1a);
+
+                    // Les trois roles possibles, dans l'ordre ou les gestionnaires les testent.
+                    string role = effect != 0 ? "effet" : label == -1 ? "objet" : "message";
+
+                    string common =
+                        $"{z},{s},{listIndex},{r},{subtype},0x{handlers[subtype]:x6},{family},{chestId},"
+                        + $"{a.I16(ro + 4)},{a.I16(ro + 6)},{a.I16(ro + 8)},{a.I16(ro + 0x0c)},"
+                        + $"{role},{label},{row},{effect},{memory}";
+
+                    if (role != "objet" || lootTable == 0)
+                    {
+                        chestCsv.AppendLine(common + ",,,,");
+                        rows.Add($"| {listIndex}.{r} | {family} `{subtype}` | {chestId} | {role} | — | "
+                                 + $"{a.I16(ro + 4)} / {a.I16(ro + 6)} / {a.I16(ro + 8)} |");
+                        continue;
+                    }
+
+                    int classOff = lootTable + row * 8;
+                    if (!a.In(classOff, 8) || classOff + 8 > RegionEnd(a, lootTable))
+                    {
+                        chestCsv.AppendLine(common + ",,,,");
+                        rows.Add($"| {listIndex}.{r} | {family} `{subtype}` | {chestId} | {role} "
+                                 + $"| *rangee {row} hors table* | "
+                                 + $"{a.I16(ro + 4)} / {a.I16(ro + 6)} / {a.I16(ro + 8)} |");
+                        continue;
+                    }
+
+                    var names = new List<string>();
+                    for (int t = 0; t < 8; t++)
+                    {
+                        int id = a.I8(classOff + t);
+                        string name = ItemName(items, id);
+                        chestCsv.AppendLine(
+                            common + $",{t},{id},\"{name}\",{pct[t]:0.##}");
+                        if (name.Length > 0) names.Add($"{name} ({pct[t]:0.#} %)");
+                    }
+
+                    rows.Add($"| {listIndex}.{r} | {family} `{subtype}` | {chestId} | {role} "
+                             + $"| rangee {row} : " + string.Join(", ", names.Distinct()) + " | "
+                             + $"{a.I16(ro + 4)} / {a.I16(ro + 6)} / {a.I16(ro + 8)} |");
+                }
+            }
+
+            if (rows.Count > 0)
+            {
+                report.AppendLine("**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire "
+                                  + "dans la meme table `+0xb4` que le butin des monstres, a une rangee "
+                                  + "que porte l'enregistrement de placement.");
+                report.AppendLine();
+                report.AppendLine("| coffre | gestionnaire | id | role | contenu | x / y / z |");
+                report.AppendLine("|---|---:|---:|---|---|---|");
                 foreach (string r in rows) report.AppendLine(r);
                 report.AppendLine();
             }

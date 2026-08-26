@@ -43,6 +43,12 @@
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.13 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
+
 ### Zone 0, sous-zone 1 — repertoire de 4392 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -184,6 +190,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.13 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.15 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 5 — repertoire de 6156 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -291,6 +304,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.13 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 9 — repertoire de 4192 octets
 
@@ -409,6 +428,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.13 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.15 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 13 — repertoire de 5988 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -515,6 +541,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 17 — repertoire de 4296 octets
 
@@ -633,6 +665,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 21 — repertoire de 24124 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -742,6 +781,12 @@
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
+
 ### Zone 0, sous-zone 25 — repertoire de 4084 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -779,6 +824,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Béquille `3` | Béquille `3` | Debacle `2` | Béquille `3` | Béquille `3` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.7 | coffre `13` | 235 | objet | rangee 2 : Debacle (25 %), Debacle (17 %), Béquille (15 %), Béquille (13 %), Debacle (11 %), Béquille (9 %), Béquille (6 %), Debacle (4 %) | -1050 / 440 / 1500 |
 
 ### Zone 0, sous-zone 27 — repertoire de 3128 octets
 
@@ -860,6 +911,13 @@
 | 13 | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` |
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
 
 ### Zone 0, sous-zone 29 — repertoire de 6324 octets
 
@@ -968,6 +1026,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 33 — repertoire de 4136 octets
 
@@ -1086,6 +1150,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 37 — repertoire de 6128 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -1193,6 +1264,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 41 — repertoire de 4128 octets
 
@@ -1334,6 +1411,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 45 — repertoire de 6208 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -1441,6 +1525,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 49 — repertoire de 4136 octets
 
@@ -1582,6 +1672,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 53 — repertoire de 6640 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -1689,6 +1786,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 57 — repertoire de 4116 octets
 
@@ -1830,6 +1933,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 61 — repertoire de 11612 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -1938,6 +2048,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 65 — repertoire de 4132 octets
 
@@ -2079,6 +2195,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 69 — repertoire de 8232 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -2186,6 +2309,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 73 — repertoire de 5896 octets
 
@@ -2327,6 +2456,13 @@
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
+
 ### Zone 0, sous-zone 77 — repertoire de 14308 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -2435,6 +2571,12 @@
 | 0 | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` | Petite potion `0` |
 | 1 | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` | Aiguille médicinale `1` |
 | 2 | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` | Debacle `2` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.10 | coffre-18 `18` | 234 | objet | rangee 1 : Aiguille médicinale (25 %), Aiguille médicinale (17 %), Aiguille médicinale (15 %), Aiguille médicinale (13 %), Aiguille médicinale (11 %), Aiguille médicinale (9 %), Aiguille médicinale (6 %), Aiguille médicinale (4 %) | 250 / 204 / -1000 |
 
 ### Zone 0, sous-zone 81 — repertoire de 4076 octets
 
@@ -2575,6 +2717,13 @@
 | 13 | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` | Chaîne du souffle `8` |
 | 14 | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` | Gantelets ailés `9` |
 | 15 | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` | Pentacle magique `10` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.14 | coffre-17 `17` | 53 | objet | rangee 0 : Armure anti-sortilège (25 %), Armure anti-sortilège (17 %), Armure anti-sortilège (15 %), Armure anti-sortilège (13 %), Armure anti-sortilège (11 %), Armure anti-sortilège (9 %), Armure anti-sortilège (6 %), Armure anti-sortilège (4 %) | 700 / 440 / 2400 |
+| 0.16 | coffre-17 `17` | 54 | objet | rangee 8 : Livre de la technique (25 %), Livre de la technique (17 %), Livre de la technique (15 %), Livre de la technique (13 %), Livre de la technique (11 %), Livre de la technique (9 %), Livre de la technique (6 %), Livre de la technique (4 %) | 430 / 440 / 2100 |
 
 ### Zone 0, sous-zone 85 — repertoire de 14720 octets
 
@@ -3327,6 +3476,13 @@
 | 3 | Sceptre de la mort `17` | Baguette aux joyaux `18` | Sauge `19` | Verveine `20` | Mercuriale `21` | Fenouil `22` | Ecu du destin `14` | Balle de cristal `23` |
 | 4 | Potion med `6` | Potion med `6` | Potion med `6` | Potion med `6` | Potion med `6` | Huile de sang `24` | Huile de sang `24` | Huile de sang `24` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `22` | 228 | objet | rangee 0 : Baguette d'argent (25 %), Baguette de la féerie (17 %), Porte-bonheur (15 %), Parfum de feu (13 %), Aile de fée (11 %), Aile de fée (9 %), Poudre de fées (6 %), Poudre de fées (4 %) | -2878 / -980 / 3678 |
+| 1.0 | coffre `22` | 229 | objet | rangee 1 : Potion med (25 %), Potion med (17 %), Elixir des esprits (15 %), Elixir des esprits (13 %), Bonbon aux plantes (11 %), Gantelets (9 %), Hache fine (6 %), Lampe sacrée (4 %) | 20 / -180 / 3428 |
+
 ### Zone 1, sous-zone 1 — repertoire de 14212 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -3407,6 +3563,16 @@
 | 6 | Potion med `0` | Potion med `0` | Potion med `0` | Potion med `0` | Potion med `0` | Huile de sang `23` | Huile de sang `23` | Huile de sang `23` |
 | 7 | Longue épée `24` | Gantelets `25` | Bouclier rond `26` | Bouclier rond `26` | Gantelets de chevaliers `27` | Gantelets de chevaliers `27` | Gantelets d'argent `28` | Gantelets d'argent `28` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `22` | 240 | message | — | 3434 / 40 / -906 |
+| 0.1 | coffre `22` | 241 | objet | rangee 1 : Sceptre de la mort (25 %), Sceptre de la mort (17 %), Sceptre de la mort (15 %), Casque de cuir (13 %), Casque de cuir (11 %), Amulette de la lumière (9 %), Amulette de la lumière (6 %), Amulette de la lumière (4 %) | -1700 / 640 / 5230 |
+| 0.2 | coffre `22` | 231 | objet | rangee 2 : Médaillon de bronze (25 %), Médaillon de bronze (17 %), Médaillon d'argent (15 %), Médaillon d'argent (13 %), Médaillon d'argent (11 %), Médaillon d'or (9 %), Médaillon d'or (6 %), Médaillon d'or (4 %) | 2014 / 140 / -3620 |
+| 1.0 | coffre `22` | 255 | objet | rangee 0 : Potion med (25 %), Potion med (17 %), Balle de feu (15 %), Balle de terre (13 %), Gants de force (11 %), Gants de force (9 %), Chaîne de la terre (6 %), Chaîne de la terre (4 %) | -2037 / 240 / 1168 |
+| 1.20 | coffre `22` | 261 | objet | rangee 1 : Sceptre de la mort (25 %), Sceptre de la mort (17 %), Sceptre de la mort (15 %), Casque de cuir (13 %), Casque de cuir (11 %), Amulette de la lumière (9 %), Amulette de la lumière (6 %), Amulette de la lumière (4 %) | -2300 / 40 / 400 |
+
 ### Zone 1, sous-zone 2 — repertoire de 18788 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -3478,6 +3644,14 @@
 | 5 | Potion olympique `16` | Potion olympique `16` | Elixir de vie `17` | Elixir de vie `17` | Elixir de vie `17` | Elixir de vie `17` | Elixir de vie `17` | Extrait de sang `18` |
 | 6 | Longue épée `19` | Gantelets `20` | Bouclier rond `6` | Bouclier rond `6` | Gantelets de chevaliers `21` | Gantelets de chevaliers `21` | Gantelets d'argent `22` | Gantelets d'argent `22` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `22` | 242 | objet | rangee 0 : Bottes de cuir (25 %), Bottes de cuir (17 %), Manteau (15 %), Manteau (13 %), Joyau de terre (11 %), Joyau de terre (9 %), Armure (6 %), Armure (4 %) | 3122 / -560 / 861 |
+| 1.0 | coffre `22` | -243 | objet | rangee 1 : Balle de cristal (25 %), Aile de Séraphin (17 %), Aile de Séraphin (15 %), Balle de cristal (13 %), Balle de cristal (11 %), Aile de Séraphin (9 %), Aile de Séraphin (6 %), Balle de cristal (4 %) | 492 / -560 / -2060 |
+| 1.110 | coffre `22` | 262 | objet | rangee 2 : Bouclier rond (25 %), Bouclier rond (17 %), Bouclier rond (15 %), Bouclier rond (13 %), Bouclier rond (11 %), Bouclier rond (9 %), Bouclier rond (6 %), Bouclier rond (4 %) | -1300 / 40 / 2000 |
+
 ### Zone 1, sous-zone 3 — repertoire de 5484 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -3546,6 +3720,13 @@
 | 4 | Potion olympique `9` | Minegosh `11` | Potion olympique `9` | Potion olympique `9` | Potion olympique `9` | Potion olympique `9` | Potion olympique `9` | Potion olympique `9` |
 | 5 | Potion olympique `9` | Potion olympique `9` | Extrait d'esprits `12` | Extrait d'esprits `12` | Extrait d'esprits `12` | Extrait d'esprits `12` | Extrait d'esprits `12` | Extrait d'esprits `12` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `22` | 244 | objet | rangee 0 : Elixir de vie (25 %), Ecailles de dragon (17 %), Ecailles de dragon (15 %), Ecailles de dragon (13 %), Ecailles de dragon (11 %), Chaîne de l'eau (9 %), Chaîne de l'eau (6 %), Chaîne de l'eau (4 %) | 2400 / 840 / -2409 |
+| 0.1 | coffre `22` | 245 | objet | rangee 1 : Joyau de vent (25 %), Joyau de glace (17 %), Joyau de vent (15 %), Joyau de glace (13 %), Délicieux drop (11 %), Délicieux drop (9 %), Ambrosia (6 %), Ambrosia (4 %) | -3048 / 240 / 4744 |
+
 ### Zone 1, sous-zone 4 — repertoire de 14460 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -3609,6 +3790,13 @@
 | 11 | Amulette du dragon `15` | Corne du dragon `16` | Balle de feu `17` | Queue de dragon `18` | Ecailles de dragon `19` | Armure du dragon `20` | Poignard d'Orihalcon `21` | Poignard d'Orihalcon `21` |
 | 12 | Potion olympique `11` | Potion olympique `11` | Extrait d'esprits `22` | Extrait d'esprits `22` | Extrait d'esprits `22` | Extrait d'esprits `22` | Extrait d'esprits `22` | Extrait d'esprits `22` |
 | 13 | Extrait de sang `23` | Extrait de sang `23` | Extrait de sang `23` | Extrait de sang `23` | Extrait de sang `23` | Extrait de sang `23` | Os de guerrier sauvage `24` | Os de guerrier sauvage `24` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `22` | 246 | objet | rangee 0 : Bague de protection (25 %), Bague de résistance (17 %), Aquachâle (15 %), Aquachâle (13 %), Ruban de force (11 %), Nobles bottes (9 %), Nobles bottes (6 %), Nobles bottes (4 %) | -1872 / 40 / -564 |
+| 0.1 | coffre `22` | 247 | objet | rangee 1 : Armure (25 %), Armure (17 %), Armure (15 %), Armure (13 %), Armure (11 %), Armure (9 %), Armure (6 %), Armure (4 %) | 1503 / 40 / -565 |
 
 ### Zone 1, sous-zone 5 — repertoire de 5008 octets
 
@@ -3676,6 +3864,14 @@
 | 4 | Potion med `14` | Potion med `14` | Cristal de terre `12` | Cristal d'air `15` | Cristal d'air `15` | Cristal de terre `12` | Panoramix `13` | Panoramix `13` |
 | 5 | Cristal du mal `16` | Balle des ténèbres `17` | Cristal du mal `16` | Balle des ténèbres `17` | Balle des ténèbres `17` | Cristal du mal `16` | Balle des ténèbres `17` | Cristal du mal `16` |
 | 6 | Potion med `14` | Potion med `14` | Potion med `14` | Potion med `14` | Elixir de vie `18` | Elixir de vie `18` | Elixir de vie `18` | Elixir de vie `18` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `22` | 232 | objet | rangee 0 : Pierre médicinale (25 %), Pierre magique (17 %), Chaussuresvol (15 %), Boucle de cristal (13 %), Boucle de cristal (11 %), Chaussuresvol (9 %), Pierre magique (6 %), Pierre médicinale (4 %) | 2492 / 440 / -2224 |
+| 0.1 | coffre `22` | 233 | objet | rangee 1 : Ecu du destin (25 %), Ecu du destin (17 %), Ecu du destin (15 %), Ecu du destin (13 %), Ecu du destin (11 %), Ecu du destin (9 %), Ecu du destin (6 %), Ecu du destin (4 %) | -52 / 440 / -2574 |
+| 0.2 | coffre `22` | 234 | objet | rangee 2 : Porte-bonheur (25 %), Casque de fer (17 %), Miroir de la porte (15 %), Bottes de fer (13 %), Bottes de fer (11 %), Miroir de la porte (9 %), Casque de fer (6 %), Porte-bonheur (4 %) | -1052 / 40 / 2400 |
 
 ### Zone 1, sous-zone 6 — repertoire de 6596 octets
 
@@ -3758,6 +3954,14 @@
 | 6 | Cristal du mal `21` | Balle des ténèbres `22` | Cristal du mal `21` | Balle des ténèbres `22` | Balle des ténèbres `22` | Cristal du mal `21` | Balle des ténèbres `22` | Cristal du mal `21` |
 | 7 | Joyau de glace `23` | Balle de gel `24` | Saphir `25` | Forgée de glace `26` | Poignard des brouillards `27` | Poignard des brouillards `27` | Hache du gel `28` | Hache du gel `28` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 1.0 | coffre `22` | 235 | objet | rangee 0 : Talisman médicinal (25 %), Bague sacrée (17 %), Bouclier de glace (15 %), Bouclier de glace (13 %), Pendentif vaporeux (11 %), Pendentif vaporeux (9 %), Pendentif vaporeux (6 %), Pendentif vaporeux (4 %) | -86 / 40 / -1230 |
+| 1.1 | coffre `22` | 236 | objet | rangee 1 : Arc de bois (25 %), Baguette-Misuril (17 %), Baguette de la terre (15 %), Hache empoisonnée (13 %), Hache empoisonnée (11 %), Baguette de la terre (9 %), Baguette-Misuril (6 %), Arc de bois (4 %) | -4235 / 740 / 3289 |
+| 2.0 | coffre `22` | 237 | objet | rangee 2 : Lame du soleil (25 %), Crosse des anciens (17 %), Black Jack (15 %), Lame de la terre (13 %), Lame de la terre (11 %), Black Jack (9 %), Crosse des anciens (6 %), Lame du soleil (4 %) | -2192 / 740 / -4861 |
+
 ### Zone 1, sous-zone 7 — repertoire de 9472 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -3837,6 +4041,14 @@
 | 4 | Potion med `11` | Potion med `11` | Potion med `11` | Potion med `11` | Elixir de vie `12` | Elixir de vie `12` | Elixir de vie `12` | Elixir de vie `12` |
 | 5 | Cristal du mal `13` | Balle des ténèbres `14` | Cristal du mal `13` | Balle des ténèbres `14` | Balle des ténèbres `14` | Cristal du mal `13` | Balle des ténèbres `14` | Cristal du mal `13` |
 | 6 | Elixir de vie `12` | Ruban de force `15` | Crosse d'ambre `16` | Hache d'Ouga `17` | Cendre rouge `18` | Cendre rouge `18` | Cendre rouge `18` | Cendre rouge `18` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.2 | coffre `22` | 238 | objet | rangee 0 : Armure mirage (25 %), Bouclier de vie (17 %), Robe des esprits (15 %), Bracelet d'argent (13 %), Bracelet d'argent (11 %), Robe des esprits (9 %), Bouclier de vie (6 %), Armure mirage (4 %) | 3886 / 240 / -6076 |
+| 0.3 | coffre `22` | 239 | objet | rangee 1 : Balle de l'illusion (25 %), Lampe sacrée (17 %), Lampe sacrée (15 %), Balle de l'illusion (13 %), Manteau de résistance (11 %), Manteau de résistance (9 %), Manteau de résistance (6 %), Manteau de résistance (4 %) | -3900 / -160 / -4872 |
+| 0.4 | coffre `22` | 224 | objet | rangee 2 : Panoramix (25 %), Ambrosia (17 %), Ambrosia (15 %), Panoramix (13 %), Panoramix (11 %), Ambrosia (9 %), Ambrosia (6 %), Panoramix (4 %) | -4340 / 240 / 2896 |
 
 ### Zone 1, sous-zone 8 — repertoire de 7616 octets
 
@@ -3922,6 +4134,14 @@
 | 5 | Cristal du mal `14` | Balle des ténèbres `15` | Cristal du mal `14` | Balle des ténèbres `15` | Balle des ténèbres `15` | Cristal du mal `14` | Balle des ténèbres `15` | Cristal du mal `14` |
 | 6 | Elixir de vie `13` | Ruban de force `16` | Crosse d'ambre `17` | Hache d'Ouga `18` | Cendre rouge `19` | Cendre rouge `19` | Cendre rouge `19` | Cendre rouge `19` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.90 | coffre `22` | 225 | objet | rangee 0 : Plume (25 %), Cendre noire (17 %), Corne du Minotaure (15 %), Corne du Minotaure (13 %), Boucle de la chance (11 %), Boucle de la chance (9 %), Anneau des éléments (6 %), Anneau des éléments (4 %) | 2876 / 40 / -3927 |
+| 0.92 | coffre `22` | 227 | objet | rangee 2 : Cristal de magie (25 %), Cristal de magie (17 %), Ambrosia (15 %), Balance des juges (13 %), Balance des juges (11 %), Balance des juges (9 %), Balance des juges (6 %), Balance des juges (4 %) | 204 / -2760 / 2098 |
+| 0.94 | coffre `22` | 226 | objet | rangee 1 : Cristal de magie (25 %), Cristal de magie (17 %), Boîte du silence (15 %), Boîte du silence (13 %), Boîte de Pandore (11 %), Boîte de Pandore (9 %), Boîte de Pandore (6 %), Boîte de Pandore (4 %) | 2474 / -1360 / 1174 |
+
 ### Zone 1, sous-zone 9 — repertoire de 6652 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -3980,6 +4200,13 @@
 | 4 | Elixir de vie `17` | Ruban de force `18` | Crosse d'ambre `19` | Hache d'Ouga `20` | Cendre rouge `21` | Cendre rouge `21` | Cendre rouge `21` | Cendre rouge `21` |
 | 5 | Ecu du destin `11` | Talisman médicinal `22` | Talisman médicinal `22` | Gants de force `23` | Gants de force `23` | Gants de force `23` | Dropneal `24` | Dominique `25` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `22` | 253 | objet | rangee 0 : Balle des éléments (25 %), Robe des anciens (17 %), Tiare de la terre (15 %), Horloge des mystères (13 %), Horloge des mystères (11 %), Aile de Séraphin (9 %), Aile de Séraphin (6 %), Aile de Séraphin (4 %) | 1722 / -160 / -828 |
+| 0.1 | coffre `22` | 254 | objet | rangee 1 : Pendentif de princesse (25 %), Pendentif de princesse (17 %), Bracelet de reine (15 %), Bracelet de reine (13 %), Manteau des esprits (11 %), Manteau des esprits (9 %), Durandal (6 %), Durandal (4 %) | -562 / -360 / -3682 |
+
 ## Zone 2 — 868 octets, 1 sous-zone(s)
 
 ### Zone 2, sous-zone 0 — repertoire de 9580 octets
@@ -4036,6 +4263,14 @@
 | 16 | Joyau de feu `11` | Balle de feu `12` | Cristal de feu `13` | Franberg `14` | Hache du feu `15` | Cristal de feu `13` | Rubis `16` | Rubis `16` |
 | 17 | Balle de lumière `17` | Balle des éléments `18` | Cristal de lumière `19` | Hache du feu `15` | Epée de glace `20` | Cristal de lumière `19` | Rubis `16` | Rubis `16` |
 | 18 | Corne du dragon `21` | Cristal de feu `13` | Robe des anciens `22` | Dropneal `23` | Mistortain `24` | Bahamut `25` | Fabnihl `26` | Lame de Calvin `27` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 1.0 | coffre `12` | 248 | objet | rangee 0 : Bouclier de glace (25 %), Bouclier de glace (17 %), Bouclier de glace (15 %), Bouclier de glace (13 %), Bouclier de glace (11 %), Bouclier de glace (9 %), Bouclier de glace (6 %), Bouclier de glace (4 %) | 200 / 240 / 3520 |
+| 1.9 | coffre `12` | 251 | objet | rangee 8 : Epée noire (25 %), Epée noire (17 %), Epée noire (15 %), Epée noire (13 %), Epée noire (11 %), Epée noire (9 %), Epée noire (6 %), Epée noire (4 %) | 70 / 240 / 3800 |
+| 4.2 | coffre `12` | -252 | objet | rangee 18 : Corne du dragon (25 %), Cristal de feu (17 %), Robe des anciens (15 %), Dropneal (13 %), Mistortain (11 %), Bahamut (9 %), Fabnihl (6 %), Lame de Calvin (4 %) | 530 / 40 / 1300 |
 
 ## Zone 3 — 1464 octets, 10 sous-zone(s)
 
@@ -4266,6 +4501,13 @@
 | 4 | Aiguille médicinale `18` | Aiguille médicinale `18` | Aiguille médicinale `18` | Sauvagerie `19` | Sauvagerie `19` | Sauvagerie `19` | Sauvagerie `19` | Sauvagerie `19` |
 | 5 | Potion med `15` | Potion med `15` | Potion med `15` | Potion med `15` | Potion med `15` | Cristal d'eau `20` | Cristal d'eau `20` | Cristal d'eau `20` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 3.0 | coffre `10` | 243 | objet | rangee 1 : Corde du retour (25 %), Corde du retour (17 %), Huile du pouvoir (15 %), Lavande (13 %), Sauge (11 %), Casse-tête à chaîne (9 %), Daak (6 %), Manteau à plumes (4 %) | 900 / 40 / -1500 |
+| 4.0 | coffre `10` | 242 | objet | rangee 0 : Arc classique (25 %), Cuir fin (17 %), Cotte de maille (15 %), Hachette (13 %), Gants de cuir (11 %), Casque de cuir (9 %), Grand arc (6 %), Pavois fin (4 %) | 900 / 340 / -1740 |
+
 ### Zone 3, sous-zone 3 — repertoire de 13988 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -4439,6 +4681,19 @@
 | 12 | Rapière `21` | Large épée `22` | Ecu du destin `23` | Fine rapière `24` | Rapière Misuril `25` | Ecu du destin `23` | Ecu du destin `23` | Ecu du destin `23` |
 | 13 | Potion med `26` | Potion med `26` | Potion med `26` | Potion med `26` | Potion med `26` | Extrait de sang `27` | Extrait de sang `27` | Extrait de sang `27` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 3.0 | coffre `10` | 244 | objet | rangee 0 : Longue épée (25 %), Pique (17 %), Sceptre de la mort (15 %), Chaînette d'argent (13 %), Casquette de chasseur (11 %), Pierre médicinale (9 %), Pierre magique (6 %), Arc en croix (4 %) | 1900 / 140 / 2700 |
+| 3.1 | coffre `10` | 245 | message | — | -2070 / 340 / 1280 |
+| 3.5 | coffre `10` | 221 | message | — | -2850 / 140 / 800 |
+| 6.0 | coffre `10` | 246 | message | — | -2100 / -160 / -400 |
+| 6.3 | coffre `10` | -220 | effet | — | -3100 / -160 / -500 |
+| 6.5 | coffre `10` | 219 | objet | rangee 3 : Plastron (25 %), Plastron (17 %), Plastron (15 %), Plastron (13 %), Plastron (11 %), Plastron (9 %), Plastron (6 %), Plastron (4 %) | -3100 / -160 / -300 |
+| 6.7 | coffre `10` | 223 | objet | rangee 2 : Poudre de zombie (25 %), Poudre de zombie (17 %), Poudre de zombie (15 %), Poudre de zombie (13 %), Poudre de zombie (11 %), Poudre de zombie (9 %), Poudre de zombie (6 %), Poudre de zombie (4 %) | -2700 / -160 / -1100 |
+| 6.9 | coffre `10` | -210 | objet | rangee 1 : Talisman médicinal (25 %), Nobles bottes (17 %), Bottes de sept lieux (15 %), Cape du printemps (13 %), Boîte à bijoux (11 %), Bague sacrée (9 %), Bague de protection (6 %), Bague de protection (4 %) | -2500 / -160 / -1100 |
+
 ### Zone 3, sous-zone 5 — repertoire de 31512 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -4489,6 +4744,15 @@
 | 5 | Arc en croix `4` | Fine rapière `5` | Grande hache `6` | Baguette de cristal `7` | Baguette de cristal `7` | Grande hache `6` | Fine rapière `5` | Arc en croix `4` |
 | 6 | Bouclier rond `8` | Robe fine `9` | Robe fine `9` | Bouclier rond `8` | Nobles chaussures `10` | Nobles chaussures `10` | Gants de force `11` | Gants de force `11` |
 | 7 | Poudre de zombie `12` | Poudre de zombie `12` | Poudre de zombie `12` | Ambrosia `13` | Ambrosia `13` | Ambrosia `13` | Aile de Séraphin `14` | Aile de Séraphin `14` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 5.0 | coffre `10` | 253 | objet | rangee 5 : Arc en croix (25 %), Fine rapière (17 %), Grande hache (15 %), Baguette de cristal (13 %), Baguette de cristal (11 %), Grande hache (9 %), Fine rapière (6 %), Arc en croix (4 %) | 4100 / 140 / -3700 |
+| 5.1 | coffre `10` | 252 | objet | rangee 4 : Epée du bâtard (25 %), Marteau de guerre (17 %), Minegosh (15 %), Simple bâton (13 %), Simple bâton (11 %), Minegosh (9 %), Marteau de guerre (6 %), Epée du bâtard (4 %) | 4300 / 140 / 1700 |
+| 6.0 | coffre `10` | 254 | objet | rangee 6 : Bouclier rond (25 %), Robe fine (17 %), Robe fine (15 %), Bouclier rond (13 %), Nobles chaussures (11 %), Nobles chaussures (9 %), Gants de force (6 %), Gants de force (4 %) | -4100 / 140 / -3700 |
+| 6.1 | coffre `10` | 255 | objet | rangee 7 : Poudre de zombie (25 %), Poudre de zombie (17 %), Poudre de zombie (15 %), Ambrosia (13 %), Ambrosia (11 %), Ambrosia (9 %), Aile de Séraphin (6 %), Aile de Séraphin (4 %) | -4300 / 140 / 1900 |
 
 ### Zone 3, sous-zone 6 — repertoire de 23076 octets
 
@@ -4579,6 +4843,12 @@
 | 3 | Parfum de convalescence `15` | Parfum de guérison `16` | Joyau de terre `17` | Ecu du destin `8` | Talisman `18` | Cristal de terre `19` | Cristal de terre `19` | Talisman `18` |
 | 4 | Verveine `20` | Mercuriale `21` | Fenouil `22` | Hysopius `23` | Belladone `24` | Belladone `24` | Ambrosia `25` | Ambrosia `25` |
 | 5 | Cristal de lumière `26` | Balle de lumière `27` | Cristal de lumière `26` | Chaîne de la lumière `28` | Chaîne de la lumière `28` | Cristal de lumière `26` | Balle de lumière `27` | Cristal de lumière `26` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 3.2 | coffre `10` | 224 | objet | rangee 0 : Poignard d'argent (25 %), Hache de Viking (17 %), Robe des runes (15 %), Bouclier d'argent (13 %), Miroir d'eau (11 %), Aquachâle (9 %), Aquachâle (6 %), Miroir d'eau (4 %) | 3700 / 140 / -3100 |
 
 ### Zone 3, sous-zone 7 — repertoire de 13408 octets
 
@@ -4896,6 +5166,15 @@
 | 6 | Potion med `29` | Potion med `29` | Potion med `29` | Potion med `29` | Elixir de vie `20` | Elixir de vie `20` | Elixir de vie `20` | Elixir de vie `20` |
 | 7 | Cuirasse de bronze `30` | Epée du bâtard `31` | Pavois de chevalier `32` | Pavois de chevalier `32` | Pavois de chevalier `32` | Armure de chevalier `33` | Armure de chevalier `33` | Armure de chevalier `33` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.32 | coffre `28` | 298 | objet | rangee 2 : Pique (25 %), Fine rapière (17 %), Fine rapière (15 %), Arc classique (13 %), Rapière d'argent (11 %), Parfum de guérison (9 %), Parfum de guérison (6 %), Parfum de guérison (4 %) | 1320 / 240 / 1420 |
+| 0.33 | coffre `28` | 299 | objet | rangee 3 : Hachette (25 %), Hache de guerre (17 %), Hache fine (15 %), Hache fine (13 %), Daak (11 %), Daak (9 %), Ecu du destin (6 %), Ecu du destin (4 %) | 1950 / 240 / 1950 |
+| 1.0 | coffre `28` | 228 | objet | rangee 0 : Manteau de brigand (25 %), Manteau de brigand (17 %), Poignard d'argent (15 %), Poignard d'argent (13 %), Insigne de brigand (11 %), Insigne de brigand (9 %), Balle des ténèbres (6 %), Balle des ténèbres (4 %) | 1500 / 440 / 3500 |
+| 1.3 | coffre `28` | 163 | objet | rangee 1 : Talisman (25 %), Talisman médicinal (17 %), Pendentif vaporeux (15 %), Chapeau de sorcière (13 %), Chapeau de sorcière (11 %), Pendentif vaporeux (9 %), Talisman médicinal (6 %), Talisman (4 %) | 2200 / 445 / 40 |
+
 ### Zone 4, sous-zone 2 — repertoire de 11524 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -4942,6 +5221,12 @@
 | 0 | Armure de chevalier `0` | Armure de chevalier `0` | Armure de chevalier `0` | Armure de chevalier `0` | Armure de chevalier `0` | Armure de chevalier `0` | Armure de chevalier `0` | Armure de chevalier `0` |
 | 1 | Fine rapière `1` | Longue épée `2` | Ecu du destin `3` | Ecu du destin `3` | Franberg `4` | Ecu du destin `3` | Ecu du destin `3` | Ecu du destin `3` |
 | 2 | Elixir des esprits `5` | Elixir des esprits `5` | Elixir des esprits `5` | Elixir des esprits `5` | Cristal de magie `6` | Cristal de magie `6` | Cristal de magie `6` | Cristal de magie `6` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.53 | coffre `28` | 278 | objet | rangee 0 : Armure de chevalier (25 %), Armure de chevalier (17 %), Armure de chevalier (15 %), Armure de chevalier (13 %), Armure de chevalier (11 %), Armure de chevalier (9 %), Armure de chevalier (6 %), Armure de chevalier (4 %) | 100 / 40 / 3200 |
 
 ### Zone 4, sous-zone 3 — repertoire de 23056 octets
 
@@ -5022,6 +5307,25 @@
 | 6 | Elixir de magicien `9` | Ecu du destin `21` | Robe de reine `22` | Ecu du destin `21` | Bague réflectrice `23` | Bague de résistance `24` | Bague de résistance `24` | Bague réflectrice `23` |
 | 7 | Bottes d'elfes `25` | Chapeau d'elfe `26` | Manteau d'elfe `27` | Bouclier des elfes `28` | Arc des elfes `29` | Arc des elfes `29` | Arc des elfes `29` | Arc des elfes `29` |
 | 8 | Baguette aux joyaux `30` | Aile de fée `31` | Poudre de fées `32` | Poudre de fées `32` | Ecu du destin `21` | Ecu du destin `21` | Poudre de fées `32` | Parfum de feu `33` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `28` | 217 | objet | rangee 0 : Bague de protection (25 %), Rubis (17 %), Saphir (15 %), Armure mirage (13 %), Balle des éléments (11 %), Symbole de force (9 %), Table des anciens (6 %), Table des anciens (4 %) | 3500 / 40 / 4100 |
+| 0.1 | coffre `28` | 220 | objet | rangee 3 : Poudre de zombie (25 %), Poudre de zombie (17 %), Poudre de zombie (15 %), Poudre de zombie (13 %), Ambrosia (11 %), Ambrosia (9 %), Ambrosia (6 %), Ambrosia (4 %) | 3100 / 240 / -2300 |
+| 0.2 | coffre `28` | 221 | objet | rangee 4 : Robe épiscopale (25 %), Robe magique (17 %), Robe magique (15 %), Robe épiscopale (13 %), Lampe sacrée (11 %), Lampe sacrée (9 %), Bouclier réflecteur (6 %), Bouclier réflecteur (4 %) | 3500 / 240 / -2300 |
+| 2.8 | coffre `28` | 219 | objet | rangee 2 : Elixir de magicien (25 %), Elixir de magicien (17 %), Elixir de magicien (15 %), Elixir de magicien (13 %), Elixir de magicien (11 %), Elixir de magicien (9 %), Panoramix (6 %), Panoramix (4 %) | 2900 / 40 / -1500 |
+| 3.8 | coffre `28` | 0 | message | — | -2000 / 200 / -3500 |
+| 3.9 | coffre `28` | 0 | message | — | 3300 / 0 / 500 |
+| 3.10 | coffre `28` | 0 | message | — | 3700 / 0 / 500 |
+| 3.11 | coffre `28` | 0 | message | — | 1300 / 200 / -2500 |
+| 3.12 | coffre `28` | 0 | message | — | 1300 / 200 / -2900 |
+| 3.13 | coffre `28` | 0 | message | — | 1700 / 200 / -2500 |
+| 3.14 | coffre `28` | 0 | message | — | 1700 / 200 / -2900 |
+| 3.15 | coffre `28` | 0 | message | — | -2000 / 200 / -3100 |
+| 4.2 | coffre `28` | 218 | objet | rangee 1 : Elixir de vie (25 %), Elixir de vie (17 %), Elixir de vie (15 %), Elixir de vie (13 %), Elixir de vie (11 %), Elixir de vie (9 %), Panoramix (6 %), Panoramix (4 %) | 1500 / 40 / -1500 |
+| 4.3 | coffre `28` | 222 | objet | rangee 5 : Baguette des runes (25 %), Baguette des runes (17 %), Bouclier des runes (15 %), Amulette des runes (13 %), Gants des runes (11 %), Cape des runes (9 %), Table des anciens (6 %), Table des anciens (4 %) | -1900 / 240 / -2100 |
 
 ### Zone 4, sous-zone 4 — repertoire de 23672 octets
 
@@ -5120,6 +5424,14 @@
 | 5 | Fine rapière `23` | Longue épée `25` | Ecu du destin `10` | Ecu du destin `10` | Franberg `26` | Ecu du destin `10` | Ecu du destin `10` | Ecu du destin `10` |
 | 6 | Elixir des esprits `27` | Elixir des esprits `27` | Elixir des esprits `27` | Elixir des esprits `27` | Cristal de magie `28` | Cristal de magie `28` | Cristal de magie `28` | Cristal de magie `28` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.8 | coffre `28` | 203 | message | — | -3500 / 40 / -5500 |
+| 0.9 | coffre `28` | 204 | message | — | 3700 / 40 / -5500 |
+| 2.1 | coffre `28` | 205 | objet | rangee 0 : Parfum de convalescence (25 %), Parfum de guérison (17 %), Pierre médicinale (15 %), Pierre magique (13 %), Ambrosia (11 %), Ambrosia (9 %), Pentacle de prince (6 %), Pentacle magique (4 %) | -1950 / 940 / -1500 |
+
 ### Zone 4, sous-zone 5 — repertoire de 15764 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -5185,6 +5497,12 @@
 | 2 | Elixir des esprits `12` | Elixir des esprits `12` | Elixir des esprits `12` | Elixir des esprits `12` | Cristal de magie `13` | Cristal de magie `13` | Cristal de magie `13` | Cristal de magie `13` |
 | 3 | Cristal de magie `13` | Cristal de magie `13` | Cristal de magie `13` | Corne du Minotaure `14` | Os de guerrier sauvage `15` | Cendre blanche `16` | Cendre blanche `16` | Corne du dragon `17` |
 | 4 | Sauge `18` | Baguette de l'air `19` | Flèche du vent `20` | Cristal d'air `21` | Cristal d'air `21` | Cristal d'air `21` | Balle du tonnerre `22` | Balle du tonnerre `22` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 1.0 | coffre `28` | 192 | objet | rangee 0 : Flèche de lumière (25 %), Livre de la technique (17 %), Bouclier du feu (15 %), Rapière aux éclairs (13 %), Rapière aux éclairs (11 %), Gantelet de force (9 %), Baguette du mal (6 %), Baguette du mal (4 %) | -3100 / 440 / 125 |
 
 ### Zone 4, sous-zone 6 — repertoire de 20572 octets
 
@@ -5275,6 +5593,13 @@
 | 5 | Epée du bâtard `27` | Craimore `28` | Cristal de magie `29` | Cristal de magie `29` | Cristal de magie `29` | Epée de la fatalité `30` | Epée de Damas `31` | Epée du gardien `32` |
 | 6 | Elixir de vie `33` | Armure d'argent `34` | Cristal de magie `29` | Bouclier des runes `35` | Bouclier des runes `35` | Robe des runes `36` | Robe des runes `36` | Armure du gardien `37` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 1.4 | coffre `28` | 199 | objet | rangee 1 : Cape des runes (25 %), Cape du printemps (17 %), Cape d'été (15 %), Cape d'automne (13 %), Cape d'hiver (11 %), Manteau des esprits (9 %), Manteau des esprits (6 %), Anneau de Merlin (4 %) | 1700 / 240 / -1400 |
+| 3.0 | coffre `28` | 198 | objet | rangee 0 : Solitaire (25 %), Baguette-vampire (17 %), Baguette-vampire (15 %), Solitaire (13 %), Voile mystique (11 %), Voile mystique (9 %), Voile mystique (6 %), Couronne de la lune (4 %) | -3700 / 240 / 300 |
+
 ### Zone 4, sous-zone 7 — repertoire de 30392 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -5328,6 +5653,15 @@
 | 3 | Elixir de vie `13` | Armure d'argent `14` | Cristal de magie `0` | Bouclier des runes `15` | Bouclier des runes `15` | Robe des runes `16` | Robe des runes `16` | Armure du gardien `17` |
 | 4 | Bottes d'elfes `18` | Chapeau d'elfe `19` | Manteau d'elfe `20` | Bouclier des elfes `21` | Bouclier des elfes `21` | Arc des elfes `22` | Arc des elfes `22` | Arc des elfes `22` |
 | 5 | Corne du dragon `23` | Armure du dragon `24` | Cendre verte `25` | Cendre verte `25` | Bottes ailées `26` | Bottes ailées `26` | Bottes ailées `26` | Bottes ailées `26` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.2 | coffre `28` | -164 | message | — | 3692 / 4440 / -2832 |
+| 5.0 | coffre `28` | 190 | objet | rangee 0 : Cristal de magie (25 %), Cristal de terre (17 %), Cristal de feu (15 %), Cristal d'air (13 %), Cristal d'ombre (11 %), Cristal de lumière (9 %), Cristal saint (6 %), Cristal du mal (4 %) | 5900 / 4440 / 1700 |
+| 5.1 | coffre `28` | 191 | objet | rangee 1 : Carte de la peur (25 %), Carte de tarot (17 %), Carte de tarot (15 %), Carte de la peur (13 %), Carte de la peur (11 %), Carte de tarot (9 %), Carte de tarot (6 %), Carte de la peur (4 %) | 5900 / 4440 / 1500 |
+| 5.2 | coffre `28` | 176 | objet | rangee 2 : Bouclier de l'ombre (25 %), Bouclier de l'ombre (17 %), Poignard de sang (15 %), Poignard de sang (13 %), Bouclier de l'ombre (11 %), Bouclier de l'ombre (9 %), Anneau de Merlin (6 %), Anneau de Merlin (4 %) | 5900 / 4440 / 1300 |
 
 ### Zone 4, sous-zone 8 — repertoire de 14784 octets
 
@@ -5427,6 +5761,13 @@
 | 5 | Elixir de vie `21` | Armure d'argent `22` | Cristal de magie `8` | Bouclier des runes `23` | Bouclier des runes `23` | Robe des runes `24` | Robe des runes `24` | Armure du gardien `25` |
 | 6 | Cristal de magie `8` | Cristal de magie `8` | Cristal de magie `8` | Corne du Minotaure `26` | Os de guerrier sauvage `27` | Cendre blanche `28` | Cendre blanche `28` | Corne du dragon `29` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 5.4 | coffre `28` | 182 | objet | rangee 0 : Flèche de faucon (25 %), Casque d'argent (17 %), Casque d'argent (15 %), Flèche de faucon (13 %), Renegeton (11 %), Renegeton (9 %), Renegeton (6 %), Renegeton (4 %) | -1500 / 1640 / -1500 |
+| 5.5 | coffre `28` | 183 | objet | rangee 1 : Talisman (25 %), Talisman médicinal (17 %), Bottes de sept lieux (15 %), Bottes de sept lieux (13 %), Aile de Séraphin (11 %), Aile de Séraphin (9 %), Baguette d'Ishtar (6 %), Baguette d'Ishtar (4 %) | 1300 / 1640 / -1500 |
+
 ### Zone 4, sous-zone 9 — repertoire de 27672 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -5465,6 +5806,12 @@
 | 1 | Ecu du destin `6` | Ecu du destin `6` | Gantelets d'argent `7` | Gantelets d'argent `7` | Epée de Damas `8` | Armure sacrée `9` | Armure sacrée `9` | Revatin `10` |
 | 2 | Extrait d'esprits `11` | Baguette de l'alchimiste `12` | Anneau de Satan `13` | Anneau de Satan `13` | Robe magique `14` | Robe magique `14` | Plume dominicale `0` | Plume dominicale `0` |
 | 3 | Corne du diable `15` | Corne du diable `15` | Corne du diable `15` | Corne du diable `15` | Corne du diable `15` | Corne du diable `15` | Corne du diable `15` | Corne du diable `15` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 3.0 | coffre `28` | 165 | objet | rangee 0 : Plume dominicale (25 %), Plume dominicale (17 %), Flèche des Gouivres (15 %), Flèche des Gouivres (13 %), Bâton d'Apollon (11 %), Baguette des anges (9 %), Anneau des philosophes (6 %), Bahil (4 %) | 600 / 240 / 2900 |
 
 ### Zone 4, sous-zone 10 — repertoire de 14680 octets
 
@@ -5565,6 +5912,13 @@
 | 4 | Epée du bâtard `16` | Craimore `17` | Cristal de magie `8` | Cristal de magie `8` | Cristal de magie `8` | Epée de la fatalité `18` | Epée de Damas `19` | Epée du gardien `20` |
 | 5 | Elixir de vie `21` | Armure d'argent `22` | Cristal de magie `8` | Bouclier des runes `23` | Bouclier des runes `23` | Robe des runes `24` | Robe des runes `24` | Armure du gardien `25` |
 | 6 | Cristal de magie `8` | Cristal de magie `8` | Cristal de magie `8` | Corne du Minotaure `26` | Os de guerrier sauvage `27` | Cendre blanche `28` | Cendre blanche `28` | Corne du dragon `29` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 5.4 | coffre `28` | 182 | objet | rangee 0 : Flèche de faucon (25 %), Casque d'argent (17 %), Casque d'argent (15 %), Flèche de faucon (13 %), Renegeton (11 %), Renegeton (9 %), Renegeton (6 %), Renegeton (4 %) | -1500 / 1640 / -1500 |
+| 5.5 | coffre `28` | 183 | objet | rangee 1 : Talisman (25 %), Talisman médicinal (17 %), Bottes de sept lieux (15 %), Bottes de sept lieux (13 %), Aile de Séraphin (11 %), Aile de Séraphin (9 %), Baguette d'Ishtar (6 %), Baguette d'Ishtar (4 %) | 1300 / 1640 / -1500 |
 
 ## Zone 5 — 2672 octets, 10 sous-zone(s)
 
@@ -5680,6 +6034,14 @@
 | 4 | Châle précieux `11` | Potion med `12` | Potion med `12` | Talisman `13` | Ecu du destin `9` | Ecu du destin `9` | Cendre grise `14` | Cendre grise `14` |
 | 5 | Potion olympique `15` | Potion olympique `15` | Potion olympique `15` | Potion olympique `15` | Corde du retour `16` | Corde du retour `16` | Cendre rouge `17` | Cendre rouge `17` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 1.0 | coffre `28` | 213 | objet | rangee 1 : Balle de cristal (25 %), Balle de cristal (17 %), Balle de cristal (15 %), Balle de cristal (13 %), Balle de cristal (11 %), Balle de cristal (9 %), Balle de cristal (6 %), Balle de cristal (4 %) | -2080 / 40 / -2900 |
+| 1.4 | coffre `28` | 201 | objet | rangee 0 : Talisman médicinal (25 %), Gants sacrés (17 %), Hache en demi-lune (15 %), Hache en demi-lune (13 %), Gants sacrés (11 %), Talisman médicinal (9 %), Bâton des sages (6 %), Bâton des sages (4 %) | 1220 / 40 / -3200 |
+| 2.48 | coffre `28` | 273 | objet | rangee 2 : Robe magique (25 %), Robe magique (17 %), Robe magique (15 %), Robe magique (13 %), Robe magique (11 %), Robe magique (9 %), Robe magique (6 %), Robe magique (4 %) | 2800 / 40 / 3500 |
+
 ### Zone 5, sous-zone 1 — repertoire de 20556 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -5780,6 +6142,12 @@
 | 2 | Châle précieux `8` | Potion med `9` | Potion med `9` | Talisman `10` | Ecu du destin `6` | Ecu du destin `6` | Cendre grise `11` | Cendre grise `11` |
 | 3 | Potion olympique `12` | Potion olympique `12` | Potion olympique `12` | Potion olympique `12` | Corde du retour `13` | Corde du retour `13` | Cendre rouge `14` | Cendre rouge `14` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 1.3 | coffre `28` | 202 | objet | rangee 0 : Elixir de vie (25 %), Elixir de magicien (17 %), Elixir de magicien (15 %), Elixir de vie (13 %), Poudre de zombie (11 %), Poudre de zombie (9 %), Poudre de zombie (6 %), Poudre de zombie (4 %) | 850 / -560 / 1200 |
+
 ### Zone 5, sous-zone 2 — repertoire de 16352 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -5869,6 +6237,13 @@
 | 4 | Bouclier rond `14` | Large épée `15` | Pavois de chevalier `16` | Pavois de chevalier `16` | Ecu du destin `9` | Ecu du destin `9` | Cendre blanche `2` | Cendre blanche `2` |
 | 5 | Hache de guerre `17` | Epée du bâtard `18` | Long marteau `19` | Potion olympique `11` | Potion olympique `11` | Potion olympique `11` | Cendre verte `20` | Cendre verte `20` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 3.3 | coffre `28` | 203 | objet | rangee 0 : Panoramix (25 %), Panoramix (17 %), Croix (15 %), Croix (13 %), Cendre blanche (11 %), Cendre bleue (9 %), Pointe de sang (6 %), Pointe de sang (4 %) | 4112 / -560 / -3052 |
+| 3.29 | coffre `28` | 271 | objet | rangee 1 : Bouclier de brigand (25 %), Bouclier de brigand (17 %), Bouclier de brigand (15 %), Bouclier de brigand (13 %), Bouclier de brigand (11 %), Bouclier de brigand (9 %), Bouclier de brigand (6 %), Bouclier de brigand (4 %) | -4100 / 40 / -3740 |
+
 ### Zone 5, sous-zone 3 — repertoire de 8428 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -5940,6 +6315,13 @@
 | 3 | Flacon d'énergie `9` | Flacon d'énergie `9` | Flacon d'énergie `9` | Flacon d'énergie `9` | Robe de la terre `10` | Robe de la terre `10` | Cendre noire `11` | Cendre noire `11` |
 | 4 | Craimore `12` | Minegosh `13` | Ecu du destin `14` | Ecu du destin `14` | Cendre rouge `15` | Cendre rouge `15` | Epée de sang `16` | Epée de sang `16` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `28` | 193 | objet | rangee 0 : Rapière à poison (25 %), Rapière à poison (17 %), Eau bénite (15 %), Eau bénite (13 %), Croix (11 %), Croix (9 %), Croix (6 %), Croix (4 %) | 1900 / -160 / 100 |
+| 1.0 | coffre `28` | 194 | objet | rangee 1 : Bracelet d'argent (25 %), Balle sacrée (17 %), Balle sacrée (15 %), Chaîne sacrée (13 %), Chaîne sacrée (11 %), Chaîne sacrée (9 %), Chaîne sacrée (6 %), Chaîne sacrée (4 %) | -700 / 640 / 3700 |
+
 ### Zone 5, sous-zone 4 — repertoire de 12740 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -5992,6 +6374,13 @@
 | 3 | Potion olympique `13` | Potion olympique `13` | Potion olympique `13` | Potion olympique `13` | Corde du retour `15` | Corde du retour `15` | Cendre rouge `16` | Cendre rouge `16` |
 | 4 | Epée de sang `17` | Epée de sang `17` | Balle maléfique `18` | Balle maléfique `18` | Balle maléfique `18` | Armure de Satan `19` | Armure de Satan `19` | Armure de Satan `19` |
 | 5 | Craimore `20` | Minegosh `21` | Ecu du destin `22` | Ecu du destin `22` | Cendre rouge `16` | Cendre rouge `16` | Epée de sang `17` | Epée de sang `17` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 2.0 | coffre `28` | 204 | objet | rangee 0 : Epée d'argent (25 %), Hache d'argent (17 %), Marteau de prêtre (15 %), Baguette du feu (13 %), Poupée Dummy (11 %), Poupée dansante (9 %), Poupée dansante (6 %), Poupée Dummy (4 %) | -2250 / -260 / 1700 |
+| 4.0 | coffre `28` | 239 | objet | rangee 1 : Os de guerrier sauvage (25 %), Os de guerrier sauvage (17 %), Bouclier d'argent (15 %), Bouclier d'argent (13 %), Balance des juges (11 %), Balance des juges (9 %), Epée gauloise (6 %), Epée gauloise (4 %) | -3900 / 240 / 6100 |
 
 ### Zone 5, sous-zone 5 — repertoire de 14400 octets
 
@@ -6099,6 +6488,15 @@
 | 7 | Potion med `20` | Potion med `20` | Potion med `20` | Potion med `20` | Elixir de vie `5` | Elixir de vie `5` | Cristal de feu `21` | Cristal de feu `21` |
 | 8 | Potion olympique `22` | Ecu du destin `23` | Epée d'argent `24` | Manteau de croisé `25` | Bannière de chevalier `26` | Bannière de chevalier `26` | Epée de la fatalité `27` | Epée de la fatalité `27` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 2.2 | coffre `28` | 223 | objet | rangee 0 : Chaîne de l'eau (25 %), Chaîne du feu (17 %), Chaîne de la terre (15 %), Chaîne de l'air (13 %), Chaîne de l'air (11 %), Chaîne de la terre (9 %), Chaîne du feu (6 %), Chaîne de l'eau (4 %) | -100 / 40 / -900 |
+| 2.93 | coffre `28` | 268 | objet | rangee 1 : Poudre de zombie (25 %), Poudre de zombie (17 %), Poudre de zombie (15 %), Poudre de zombie (13 %), Poudre de zombie (11 %), Poudre de zombie (9 %), Poudre de zombie (6 %), Poudre de zombie (4 %) | 640 / -160 / -3800 |
+| 3.62 | coffre `28` | 269 | objet | rangee 2 : Elixir de vie (25 %), Elixir de vie (17 %), Elixir de vie (15 %), Panoramix (13 %), Panoramix (11 %), Panoramix (9 %), Panoramix (6 %), Panoramix (4 %) | -4000 / -360 / -740 |
+| 3.63 | coffre `28` | 270 | objet | rangee 3 : Elixir de vie (25 %), Elixir de vie (17 %), Balle de cristal (15 %), Balle de cristal (13 %), Balle de cristal (11 %), Cristal d'énergie (9 %), Cristal d'énergie (6 %), Cristal d'énergie (4 %) | 1240 / -160 / 5200 |
+
 ### Zone 5, sous-zone 6 — repertoire de 10380 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -6177,6 +6575,15 @@
 | 4 | Balle des ténèbres `17` | Cristal d'ombre `18` | Pendentif vaporeux `19` | Robe de l'ombre `20` | Voile des ombres `21` | Voile des ombres `21` | Voile des ombres `21` | Voile des ombres `21` |
 | 5 | Huile du pouvoir `22` | Bague au joyau `23` | Bague sacrée `24` | Cendre bleue `25` | Cendre bleue `25` | Ambrosia `26` | Ambrosia `26` | Balance des juges `27` |
 | 6 | Poudre de zombie `28` | Ecu du destin `12` | Sauvagerie `29` | Ecu du destin `12` | Gants de force `30` | Bottes de sept lieux `31` | Bottes de sept lieux `31` | Gants de force `30` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `28` | 200 | message | — | -2750 / 690 / -700 |
+| 0.3 | coffre `28` | 205 | objet | rangee 2 : Masque de chevalier (25 %), Masque de chevalier (17 %), Boîte à bijoux (15 %), Boîte à bijoux (13 %), Anneau de l'hermite (11 %), Anneau de l'hermite (9 %), Plume dominicale (6 %), Plume dominicale (4 %) | -1450 / -360 / 1900 |
+| 2.2 | coffre `28` | 215 | objet | rangee 1 : Gants des runes (25 %), Gants des runes (17 %), Solitaire (15 %), Solitaire (13 %), La dévoreuse (11 %), La dévoreuse (9 %), Dropneal (6 %), Dropneal (4 %) | -1300 / 1240 / 100 |
+| 3.2 | coffre `28` | 214 | objet | rangee 0 : Robe sacrée (25 %), Crosse sacrée (17 %), Chaîne sacrée (15 %), Robe sacrée (13 %), Crosse sacrée (11 %), Crosse sacrée (9 %), Robe sacrée (6 %), Chaîne sacrée (4 %) | -2153 / 640 / 2300 |
 
 ### Zone 5, sous-zone 7 — repertoire de 12924 octets
 
@@ -6294,6 +6701,15 @@
 | 4 | Potion olympique `23` | Ecu du destin `24` | Epée d'argent `25` | Manteau de croisé `26` | Bannière de chevalier `27` | Bannière de chevalier `27` | Epée de la fatalité `28` | Epée de la fatalité `28` |
 | 5 | Poudre de zombie `29` | Ecu du destin `24` | Sauvagerie `30` | Ecu du destin `24` | Gants de force `31` | Bottes de sept lieux `32` | Bottes de sept lieux `32` | Gants de force `31` |
 | 6 | Balle des ténèbres `33` | Cristal d'ombre `4` | Pendentif vaporeux `34` | Robe de l'ombre `35` | Voile des ombres `36` | Voile des ombres `36` | Voile des ombres `36` | Voile des ombres `36` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 2.0 | coffre `28` | 206 | objet | rangee 1 : Balance des juges (25 %), Boîte du silence (17 %), Boîte à bijoux (15 %), Extrait de sang (13 %), Cendre bleue (11 %), Cendre verte (9 %), Cendre noire (6 %), Durandal (4 %) | 550 / -6760 / 1300 |
+| 2.1 | coffre `28` | 207 | objet | rangee 0 : Cristal de magie (25 %), Cristal de terre (17 %), Cristal de feu (15 %), Cristal d'air (13 %), Cristal d'ombre (11 %), Cristal de lumière (9 %), Cristal saint (6 %), Cristal du mal (4 %) | -1150 / -1160 / -5300 |
+| 3.17 | coffre `28` | 192 | objet | rangee 2 : Aile de Séraphin (25 %), Balle de cristal (17 %), Ambrosia (15 %), Balance des juges (13 %), Balance des juges (11 %), Ambrosia (9 %), Balle de cristal (6 %), Aile de Séraphin (4 %) | -50 / -7110 / -3000 |
+| 3.18 | coffre `28` | 272 | objet | rangee 3 : Plume dominicale (25 %), Robe des anciens (17 %), Bouclier sacré (15 %), Armure sacrée (13 %), Armure sacrée (11 %), Bouclier sacré (9 %), Robe des anciens (6 %), Plume dominicale (4 %) | 2280 / -60 / -5300 |
 
 ### Zone 5, sous-zone 8 — repertoire de 17528 octets
 
@@ -6424,6 +6840,16 @@
 | 8 | Elixir des esprits `27` | Elixir des esprits `27` | Cristal de lumière `28` | Cristal de lumière `28` | Cristal de lumière `28` | Cristal de lumière `28` | Cristal de lumière `28` | Cristal de lumière `28` |
 | 9 | Extrait d'esprits `29` | Bague au joyau `13` | Bague sacrée `14` | Cendre bleue `15` | Cendre bleue `15` | Ambrosia `16` | Ambrosia `16` | Balance des juges `17` |
 | 10 | Extrait de sang `30` | Bague au joyau `13` | Bague sacrée `14` | Cendre bleue `15` | Cendre bleue `15` | Ambrosia `16` | Ambrosia `16` | Balance des juges `17` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.1 | coffre `28` | 210 | message | — | -900 / 40 / -700 |
+| 2.8 | coffre `28` | 208 | objet | rangee 0 : Panoramix (25 %), Panoramix (17 %), Panoramix (15 %), Panoramix (13 %), Panoramix (11 %), Panoramix (9 %), Panoramix (6 %), Panoramix (4 %) | -3700 / 40 / 2500 |
+| 2.10 | coffre `28` | 209 | objet | rangee 1 : Balle de cristal (25 %), Balle sacrée (17 %), Balle de cristal (15 %), Balle sacrée (13 %), Balle sacrée (11 %), Balle de cristal (9 %), Balle sacrée (6 %), Balle de cristal (4 %) | 500 / 240 / 5300 |
+| 3.50 | coffre `28` | 266 | objet | rangee 3 : Poignard des brouillards (25 %), Poignard des brouillards (17 %), Poignard des brouillards (15 %), Poignard des brouillards (13 %), Panoramix (11 %), Panoramix (9 %), Panoramix (6 %), Panoramix (4 %) | 2900 / -360 / 1700 |
+| 3.52 | coffre `28` | 267 | objet | rangee 2 : Couronne du soleil (25 %), Sceptre de bataille (17 %), Sceptre de bataille (15 %), Couronne du soleil (13 %), Couronne du soleil (11 %), Sceptre de bataille (9 %), Sceptre de bataille (6 %), Couronne du soleil (4 %) | 2900 / -360 / 2100 |
 
 ### Zone 5, sous-zone 9 — repertoire de 17256 octets
 
@@ -6602,6 +7028,17 @@
 | 10 | Elixir des esprits `15` | Ecu du destin `13` | Flûte des moutons `16` | Gants ailés `17` | Manteau à plumes `18` | Chaussures à plumes `19` | Balle du tonnerre `20` | Balle du tonnerre `20` |
 | 11 | Potion med `11` | Potion med `11` | Elixir de vie `21` | Elixir de vie `21` | Extrait de sang `22` | Extrait de sang `22` | Extrait de sang `22` | Extrait de sang `22` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 1.0 | coffre `25` | 253 | message | — | -3300 / 240 / 2700 |
+| 1.5 | coffre `25` | 240 | message | — | 1700 / 200 / 900 |
+| 1.6 | coffre `25` | 255 | message | — | 2900 / 40 / -2350 |
+| 1.9 | coffre `25` | 205 | objet | rangee 0 : Balle de cristal (25 %), Balle de cristal (17 %), Balle sacrée (15 %), Balle maléfique (13 %), Balle sacrée (11 %), Balle maléfique (9 %), Balle sacrée (6 %), Balle maléfique (4 %) | -2900 / 240 / 3700 |
+| 1.10 | coffre `25` | 206 | objet | rangee 1 : Epée de feu (25 %), Epée de glace (17 %), Epée du tonnerre (15 %), Sabre de la terre (13 %), Sabre de la terre (11 %), Epée du tonnerre (9 %), Epée de glace (6 %), Epée de feu (4 %) | -3500 / 240 / 4500 |
+| 3.1 | coffre `25` | 254 | message | — | -900 / 240 / 3500 |
+
 ### Zone 6, sous-zone 1 — repertoire de 25748 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -6764,6 +7201,15 @@
 | 2 | Flacon d'énergie `10` | Flacon d'énergie `10` | Flacon d'énergie `10` | Flacon d'énergie `10` | Extrait d'esprits `11` | Extrait d'esprits `11` | Robe de l'ombre `12` | Robe de l'ombre `12` |
 | 3 | Craimore `13` | Minegosh `14` | Ecu du destin `8` | Ecu du destin `8` | Cendre rouge `15` | Cendre rouge `15` | Epée de sang `16` | Epée de sang `16` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 4.3 | coffre `25` | 223 | objet | rangee 0 : Parfum de guérison (25 %), Parfum de convalescence (17 %), Parfum d'impératrice (15 %), Parfum de feu (13 %), Balle de l'arc-en-ciel (11 %), Balle de l'arc-en-ciel (9 %), Balle de l'arc-en-ciel (6 %), Balle de l'arc-en-ciel (4 %) | 4300 / 2640 / 4700 |
+| 5.0 | coffre `25` | 243 | message | — | -2900 / 2040 / -1100 |
+| 6.0 | coffre `25` | 241 | message | — | 700 / 2040 / 1300 |
+| 6.1 | coffre `25` | 244 | message | — | -4300 / 1640 / 5100 |
+
 ### Zone 6, sous-zone 2 — repertoire de 29268 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -6827,6 +7273,18 @@
 | 6 | Flacon d'énergie `21` | Flacon d'énergie `21` | Flacon d'énergie `21` | Flacon d'énergie `21` | Extrait d'esprits `22` | Extrait d'esprits `22` | Robe de l'ombre `23` | Robe de l'ombre `23` |
 | 7 | Craimore `24` | Minegosh `25` | Ecu du destin `19` | Ecu du destin `19` | Cendre rouge `26` | Cendre rouge `26` | Epée de sang `27` | Epée de sang `27` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `25` | 236 | message | — | 1756 / 40 / -862 |
+| 2.4 | coffre `25` | 237 | message | — | 2100 / 40 / 300 |
+| 2.6 | coffre `25` | 238 | message | — | -2100 / 40 / 300 |
+| 2.8 | coffre `25` | 222 | objet | rangee 0 : Broche au joyau (25 %), Bague au joyau (17 %), Tiare des étoiles (15 %), Tiare de la terre (13 %), Couronne de la lune (11 %), Couronne de la lune (9 %), Boîte à bijoux (6 %), Boîte à bijoux (4 %) | -1300 / 40 / 2300 |
+| 5.0 | coffre `25` | 239 | message | — | 2500 / 440 / 3600 |
+| 5.40 | coffre `25` | 301 | objet | rangee 1 : Epée d'argent (25 %), Féline (17 %), Rapière Misuril (15 %), Masse d'armes (13 %), Masse d'armes (11 %), Rapière Misuril (9 %), Féline (6 %), Epée d'argent (4 %) | -2600 / 440 / 3700 |
+| 5.41 | coffre `25` | 302 | objet | rangee 2 : Bague de protection (25 %), Chaînette d'argent (17 %), Chaînette d'argent (15 %), Chaînette d'argent (13 %), Médaillon d'or (11 %), Médaillon d'or (9 %), Médaillon d'or (6 %), Bague de protection (4 %) | -2200 / 440 / 3700 |
+
 ### Zone 6, sous-zone 3 — repertoire de 6616 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -6883,6 +7341,12 @@
 | 1 | Flacon d'énergie `4` | Flacon d'énergie `4` | Flacon d'énergie `4` | Flacon d'énergie `4` | Extrait d'esprits `5` | Extrait d'esprits `5` | Robe de l'ombre `6` | Robe de l'ombre `6` |
 | 2 | Elixir des esprits `7` | Ecu du destin `8` | Flûte des moutons `9` | Gants ailés `10` | Manteau à plumes `11` | Chaussures à plumes `12` | Balle du tonnerre `13` | Balle du tonnerre `13` |
 | 3 | Craimore `14` | Minegosh `15` | Ecu du destin `8` | Ecu du destin `8` | Cendre rouge `16` | Cendre rouge `16` | Epée de sang `17` | Epée de sang `17` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.2 | coffre `25` | 201 | objet | rangee 0 : Hache empoisonnée (25 %), Baguette magique (17 %), Arc de chasseur (15 %), Baguette de l'eau (13 %), Baguette de l'eau (11 %), Arc de chasseur (9 %), Baguette magique (6 %), Hache empoisonnée (4 %) | -1700 / 240 / 700 |
 
 ### Zone 6, sous-zone 4 — repertoire de 5740 octets
 
@@ -6948,6 +7412,12 @@
 | 3 | Craimore `15` | Minegosh `16` | Ecu du destin `8` | Ecu du destin `8` | Cendre rouge `17` | Cendre rouge `17` | Epée de sang `18` | Epée de sang `18` |
 | 4 | Potion med `19` | Chaînette d'argent `20` | Poignard d'argent `21` | Poignard d'argent `21` | Extrait de sang `14` | Extrait de sang `14` | Extrait de sang `14` | Extrait de sang `14` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.1 | coffre `25` | 221 | objet | rangee 0 : Cuirasse au miroir (25 %), Bouclier d'argent (17 %), Robe de la terre (15 %), Pentacle magique (13 %), Pentacle magique (11 %), Robe de la terre (9 %), Bouclier d'argent (6 %), Cuirasse au miroir (4 %) | 2900 / 1180 / 100 |
+
 ### Zone 6, sous-zone 5 — repertoire de 12728 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -6994,6 +7464,13 @@
 | 3 | Epice rouge `6` | Epice rouge `6` | Poignard de sang `3` | Poignard de sang `3` | Os de guerrier sauvage `7` | Os de guerrier sauvage `7` | La massacreuse `5` | La massacreuse `5` |
 | 4 | Elixir des esprits `8` | Ecu du destin `9` | Flûte des moutons `10` | Gants ailés `11` | Manteau à plumes `12` | Chaussures à plumes `13` | Balle du tonnerre `14` | Balle du tonnerre `14` |
 | 5 | Potion med `15` | Chaînette d'argent `16` | Poignard d'argent `17` | Poignard d'argent `17` | Extrait de sang `18` | Extrait de sang `18` | Extrait de sang `18` | Extrait de sang `18` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.16 | coffre `25` | 299 | objet | rangee 0 : Armure d'argent (25 %), Armure d'argent (17 %), Armure d'argent (15 %), Armure d'argent (13 %), Armure d'argent (11 %), Armure d'argent (9 %), Armure d'argent (6 %), Armure d'argent (4 %) | 5800 / 40 / 300 |
+| 0.17 | coffre `25` | 300 | objet | rangee 1 : Robe de reine (25 %), Robe de reine (17 %), Robe de reine (15 %), Robe de reine (13 %), Robe de reine (11 %), Robe de reine (9 %), Robe de reine (6 %), Robe de reine (4 %) | 5800 / 40 / -100 |
 
 ### Zone 6, sous-zone 6 — repertoire de 25760 octets
 
@@ -7148,6 +7625,15 @@
 | 6 | Balle des ténèbres `24` | Cristal d'ombre `25` | Pendentif vaporeux `26` | Robe de l'ombre `27` | Voile des ombres `28` | Voile des ombres `28` | Voile des ombres `28` | Voile des ombres `28` |
 | 7 | Huile de sang `29` | Huile de sang `29` | Extrait d'esprits `19` | Extrait d'esprits `19` | Extrait d'esprits `19` | Extrait d'esprits `19` | Extrait d'esprits `19` | Extrait d'esprits `19` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 2.1 | coffre `25` | 219 | objet | rangee 1 : Balle de cristal (25 %), Balle de cristal (17 %), Horloge des mystères (15 %), Horloge du bonheur (13 %), Horloge du bonheur (11 %), Horloge des mystères (9 %), Anneau des philosophes (6 %), Anneau des philosophes (4 %) | -2900 / 1240 / -100 |
+| 3.1 | coffre `25` | 218 | objet | rangee 0 : Parfum de convalescence (25 %), Parfum de guérison (17 %), Parfum d'impératrice (15 %), Parfum de feu (13 %), Parfum de feu (11 %), Parfum d'impératrice (9 %), Parfum de guérison (6 %), Parfum de convalescence (4 %) | -1300 / -360 / -1900 |
+| 4.6 | coffre `25` | 230 | objet | rangee 3 : Manteau de croisé (25 %), Armure du dragon (17 %), Bouclier lunaire (15 %), Robe des anciens (13 %), Robe des anciens (11 %), Bouclier lunaire (9 %), Armure du dragon (6 %), Manteau de croisé (4 %) | -100 / -360 / -2500 |
+| 5.1 | coffre `25` | 220 | objet | rangee 2 : Cape du printemps (25 %), Cape d'été (17 %), Cape d'automne (15 %), Cape d'hiver (13 %), Cape d'hiver (11 %), Cape d'automne (9 %), Cape d'été (6 %), Cape du printemps (4 %) | -1900 / 840 / -4100 |
+
 ### Zone 6, sous-zone 7 — repertoire de 21972 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -7247,6 +7733,16 @@
 | 6 | Elixir de magicien `16` | Elixir de magicien `16` | Elixir de magicien `16` | Elixir de magicien `16` | Cristal de magie `26` | Cristal de magie `26` | Cristal de magie `26` | Cristal de magie `26` |
 | 7 | Broche au joyau `27` | Chaîne des ténèbres `28` | Chaîne du mal `29` | Extrait d'esprits `30` | Plume `31` | Pointe de sang `32` | Pointe de sang `32` | Plume `31` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 3.0 | coffre `25` | 228 | message | — | 1300 / -560 / 900 |
+| 5.2 | coffre `25` | 227 | message | — | -1300 / -960 / 500 |
+| 6.0 | coffre `25` | -202 | objet | rangee 2 : Walmunk (25 %), Poignard de sang (17 %), Rapière du chaos (15 %), Bâton stellaire (13 %), Crosse d'ambre (11 %), Flèche de faucon (9 %), Hache du gel (6 %), Baguette de l'arc-en-ciel (4 %) | 3100 / 40 / 700 |
+| 6.1 | coffre `25` | -203 | objet | rangee 1 : Boîte à bijoux (25 %), Boîte à bijoux (17 %), Horloge du bonheur (15 %), Horloge des mystères (13 %), Horloge des mystères (11 %), Horloge du bonheur (9 %), Dropneal (6 %), Dropneal (4 %) | 3700 / 40 / 1500 |
+| 6.2 | coffre `25` | -204 | objet | rangee 0 : Broche d'argent (25 %), Broche d'argent (17 %), Carte de tarot (15 %), Carte de tarot (13 %), Carte de tarot (11 %), Carte de tarot (9 %), Chaîne du souffle (6 %), Chaîne du souffle (4 %) | 4300 / 40 / 700 |
+
 ### Zone 6, sous-zone 8 — repertoire de 16920 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -7301,6 +7797,13 @@
 | 1 | Pentacle magique `2` | Médaillon d'or `3` | Poupée Dummy `4` | Poupée dansante `5` | Poupée dansante `5` | Poupée Dummy `4` | Médaillon d'or `3` | Pentacle magique `2` |
 | 2 | Broche au joyau `6` | Chaîne des ténèbres `7` | Chaîne du mal `8` | Extrait d'esprits `9` | Plume `10` | Pointe de sang `11` | Pointe de sang `11` | Plume `10` |
 | 3 | Lavande `12` | Sauge `13` | Poudre de zombie `14` | Poudre de zombie `14` | Cristal de magie `15` | Cristal d'ombre `16` | Cristal d'ombre `16` | Cristal de magie `15` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 4.0 | coffre `25` | 207 | objet | rangee 0 : Rapière aux éclairs (25 %), Rapière aux éclairs (17 %), Rapière aux éclairs (15 %), Rapière aux éclairs (13 %), Cristal d'air (11 %), Cristal d'air (9 %), Cristal d'air (6 %), Cristal d'air (4 %) | 3700 / 720 / -280 |
+| 9.3 | coffre `25` | 286 | objet | rangee 1 : Pentacle magique (25 %), Médaillon d'or (17 %), Poupée Dummy (15 %), Poupée dansante (13 %), Poupée dansante (11 %), Poupée Dummy (9 %), Médaillon d'or (6 %), Pentacle magique (4 %) | -1500 / -160 / -7900 |
 
 ### Zone 6, sous-zone 9 — repertoire de 8064 octets
 
@@ -7662,6 +8165,12 @@
 | 2 | Balle des ténèbres `10` | Cristal d'ombre `11` | Pendentif vaporeux `12` | Robe de l'ombre `13` | Voile des ombres `14` | Voile des ombres `14` | Voile des ombres `14` | Voile des ombres `14` |
 | 3 | Broche au joyau `15` | Chaîne des ténèbres `5` | Chaîne du mal `6` | Extrait d'esprits `4` | Plume `8` | Pointe de sang `9` | Pointe de sang `9` | Plume `8` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 7.0 | coffre `25` | 216 | message | — | 1100 / 40 / 2300 |
+
 ### Zone 6, sous-zone 11 — repertoire de 10036 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -7753,6 +8262,13 @@
 | 2 | Elixir des esprits `11` | Elixir des esprits `11` | Elixir des esprits `11` | Elixir des esprits `11` | Cristal de magie `7` | Cristal de magie `7` | Cristal de magie `7` | Cristal de magie `7` |
 | 3 | Cristal de magie `7` | Cuirasse au miroir `12` | Bouclier d'argent `13` | Bouclier réflecteur `14` | Joyau de feu `15` | Joyau de glace `16` | Joyau de terre `17` | Joyau de vent `18` |
 | 4 | Potion med `19` | Potion med `19` | Elixir de vie `20` | Elixir de vie `20` | Extrait de sang `21` | Extrait de sang `21` | Extrait de sang `21` | Extrait de sang `21` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 2.0 | coffre `8` | 250 | objet | rangee 0 : Bague réflectrice (25 %), Dropneal (17 %), Anneau de Merlin (15 %), Robe magique (13 %), Bouclier solaire (11 %), Armure du gardien (9 %), Table de vision (6 %), Table de vision (4 %) | 3150 / -420 / 1500 |
+| 2.1 | coffre `8` | 251 | objet | rangee 1 : Cristal de magie (25 %), Cristal de magie (17 %), Cristal de magie (15 %), Anneau des éléments (13 %), Bouclier du gardien (11 %), Bouclier du gardien (9 %), Epée du gardien (6 %), Epée du gardien (4 %) | -2900 / -420 / 1500 |
 
 ### Zone 7, sous-zone 1 — repertoire de 6728 octets
 
@@ -7906,6 +8422,12 @@
 | 1 | Chaîne de l'air `4` | Plume `5` | Gants ailés `6` | Manteau à plumes `7` | Chaîne de l'air `4` | Plume `5` | Gants ailés `6` | Manteau à plumes `7` |
 | 2 | Balle de lumière `8` | Cristal d'énergie `9` | Balle de l'illusion `10` | Chaînette de plumes `11` | Casque ailé `12` | Bottes ailées `13` | Gantelets ailés `14` | Flèche de Persée `15` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 1.1 | coffre `18` | 251 | objet | rangee 0 : Poignard de brigand (25 %), Poignard de brigand (17 %), Boîte à bijoux (15 %), Corde du retour (13 %), Cendre grise (11 %), Cendre grise (9 %), Corde du retour (6 %), Boîte à bijoux (4 %) | 3300 / 240 / -3350 |
+
 ## Zone 9 — 836 octets, 2 sous-zone(s)
 
 ### Zone 9, sous-zone 0 — repertoire de 12936 octets
@@ -8019,6 +8541,15 @@
 | 2 | Forgée de glace `7` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Forgée de glace `7` |
 | 3 | Epée de glace `8` | Bouclier de glace `9` | Chaîne de l'eau `10` | Chaîne de l'eau `10` | Bouclier de glace `9` | Epée de glace `8` | Saphir `11` | Saphir `11` |
 | 4 | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` | Cristal d'eau `0` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.35 | coffre `14` | 250 | objet | rangee 0 : Cristal d'eau (25 %), Balle de gel (17 %), Joyau de glace (15 %), Aquachâle (13 %), Aquachâle (11 %), Balle des éléments (9 %), Manteau des esprits (6 %), Bouclier des élémentaux (4 %) | 1800 / 240 / -3200 |
+| 0.36 | coffre `14` | 251 | objet | rangee 1 : Cristal d'eau (25 %), Balle de gel (17 %), Joyau de glace (15 %), Aquachâle (13 %), Aquachâle (11 %), Cristal d'eau (9 %), Cristal d'eau (6 %), Cristal d'eau (4 %) | 2000 / 240 / 1200 |
+| 0.37 | coffre `14` | 252 | objet | rangee 2 : Forgée de glace (25 %), Cristal d'eau (17 %), Cristal d'eau (15 %), Cristal d'eau (13 %), Cristal d'eau (11 %), Cristal d'eau (9 %), Cristal d'eau (6 %), Forgée de glace (4 %) | -1800 / 240 / 1200 |
+| 0.38 | coffre `14` | 253 | objet | rangee 3 : Epée de glace (25 %), Bouclier de glace (17 %), Chaîne de l'eau (15 %), Chaîne de l'eau (13 %), Bouclier de glace (11 %), Epée de glace (9 %), Saphir (6 %), Saphir (4 %) | -1800 / 240 / -3200 |
 
 ## Zone 10 — 3104 octets, 16 sous-zone(s)
 
@@ -8322,6 +8853,13 @@
 | 4 | Gants de cuir `22` | Manteau de brigand `23` | Joyau de vent `24` | Joyau de vent `24` | Joyau de vent `24` | Queue de dragon `25` | Ecailles de dragon `26` | Amulette du dragon `27` |
 | 5 | Aile de fée `28` | Belladone `29` | Poudre de fées `30` | Baguette de la féerie `31` | Ecu du destin `13` | Ecu du destin `13` | Ecu du destin `13` | Parfum de feu `32` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 3.1 | coffre `34` | 232 | message | — | 900 / -360 / 700 |
+| 3.4 | coffre `34` | 267 | objet | rangee 0 : Robe des runes (25 %), Robe médicinale (17 %), Cendre rouge (15 %), Cendre grise (13 %), Cendre blanche (11 %), Cendre bleue (9 %), Cendre verte (6 %), Cendre noire (4 %) | 700 / -360 / -500 |
+
 ### Zone 10, sous-zone 3 — repertoire de 9772 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -8436,6 +8974,15 @@
 | 11 | Cristal d'énergie `8` | Balle de l'illusion `15` | Horloge du bonheur `16` | Robe magique `17` | Armure du gardien `18` | Bouclier du gardien `14` | Anneau de Merlin `11` | Anneau des philosophes `19` |
 | 12 | Cristal du mal `20` | Balle maléfique `21` | Carte de la peur `22` | Cendre rouge `23` | Cendre rouge `23` | Carte de la peur `22` | Balle maléfique `21` | Cristal du mal `20` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 2.0 | coffre `34` | 217 | objet | rangee 8 : Cristal d'énergie (25 %), Cristal d'énergie (17 %), Cristal d'énergie (15 %), Cristal d'énergie (13 %), Cristal d'énergie (11 %), Cristal d'énergie (9 %), Cristal d'énergie (6 %), Cristal d'énergie (4 %) | 700 / 40 / 3100 |
+| 2.1 | coffre `34` | 218 | objet | rangee 9 : Pierre médicinale (25 %), Pierre médicinale (17 %), Pierre médicinale (15 %), Ambrosia (13 %), Ambrosia (11 %), Ambrosia (9 %), Anneau de Merlin (6 %), Anneau de Merlin (4 %) | 700 / 40 / 2300 |
+| 2.2 | coffre `34` | 219 | objet | rangee 10 : Pierre magique (25 %), Pierre magique (17 %), Pierre magique (15 %), Panoramix (13 %), Panoramix (11 %), Panoramix (9 %), Bouclier du gardien (6 %), Bouclier du gardien (4 %) | -1700 / 40 / 3100 |
+| 2.3 | coffre `34` | 220 | objet | rangee 8 : Cristal d'énergie (25 %), Cristal d'énergie (17 %), Cristal d'énergie (15 %), Cristal d'énergie (13 %), Cristal d'énergie (11 %), Cristal d'énergie (9 %), Cristal d'énergie (6 %), Cristal d'énergie (4 %) | -1700 / 40 / 2300 |
+
 ### Zone 10, sous-zone 5 — repertoire de 12216 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -8510,6 +9057,13 @@
 | 2 | Bouclier de la terre `13` | Ecailles de Belzébuth `14` | Harpe d'or `15` | Cristal de terre `16` | Cristal de terre `16` | Harpe d'or `15` | Ecailles de Belzébuth `14` | Bouclier de la terre `13` |
 | 3 | Huile du pouvoir `17` | Lavande `18` | Elixir de vie `19` | Cristal de feu `20` | Chaîne du feu `21` | Chaînette d'argent `22` | Chaînette d'argent `22` | Chaîne du feu `21` |
 | 4 | Aile de fée `23` | Belladone `24` | Poudre de fées `25` | Baguette de la féerie `26` | Ecu du destin `27` | Ecu du destin `27` | Ecu du destin `27` | Parfum de feu `28` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 2.3 | coffre `34` | -225 | message | — | -2500 / 1640 / -900 |
+| 5.1 | coffre `34` | 239 | objet | rangee 0 : Crosse de voeux (25 %), Robe magique (17 %), Balle de cristal (15 %), Panoramix (13 %), Ambrosia (11 %), Aile de Séraphin (9 %), Aile de Séraphin (6 %), Aile de Séraphin (4 %) | -1900 / 1640 / 1500 |
 
 ### Zone 10, sous-zone 6 — repertoire de 3352 octets
 
@@ -8671,6 +9225,12 @@
 | 2 | Hache d'Ouga `11` | Potion olympique `12` | Os de guerrier sauvage `13` | Cendre rouge `14` | Cendre verte `15` | Cristal du mal `16` | La massacreuse `17` | La massacreuse `17` |
 | 3 | Balle de lumière `18` | Balle des éléments `19` | Cristal de lumière `20` | Hache du feu `4` | Epée de glace `21` | Cristal de lumière `20` | Rubis `5` | Rubis `5` |
 
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.0 | coffre `34` | 229 | message | — | 2100 / 440 / 5500 |
+
 ### Zone 10, sous-zone 8 — repertoire de 16100 octets
 
 **Especes** (`+0x4c`, 8 octets) — l'aiguillage : quelle IA, quelle fiche, quel butin.
@@ -8755,6 +9315,15 @@
 | 0 | Balle du tonnerre `0` | Bouclier de l'air `1` | Cristal d'air `2` | Chaîne de l'air `3` | Plume dominicale `4` | Plume dominicale `4` | Plume dominicale `4` | Plume dominicale `4` |
 | 1 | Hache d'Ouga `11` | Potion olympique `12` | Os de guerrier sauvage `13` | Cendre rouge `14` | Cendre verte `15` | Cristal du mal `16` | La massacreuse `17` | La massacreuse `17` |
 | 2 | Voile de beauté `18` | Voile mystique `19` | Bracelet de reine `20` | Tiare de la terre `21` | Tiare des étoiles `22` | Couronne de la lune `23` | Artémis `24` | Artémis `24` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 3.0 | coffre `34` | 270 | message | — | -1500 / -260 / -1700 |
+| 5.0 | coffre `34` | 272 | objet | rangee 0 : Balle du tonnerre (25 %), Bouclier de l'air (17 %), Cristal d'air (15 %), Chaîne de l'air (13 %), Plume dominicale (11 %), Plume dominicale (9 %), Plume dominicale (6 %), Plume dominicale (4 %) | -940 / -160 / -520 |
+| 8.3 | coffre `34` | 269 | message | — | -4700 / -160 / -100 |
+| 8.5 | coffre `34` | 271 | message | — | 300 / 40 / 2700 |
 
 ### Zone 10, sous-zone 9 — repertoire de 5528 octets
 
@@ -8920,6 +9489,12 @@
 | 1 | Gants de cuir `5` | Manteau de brigand `6` | Joyau de vent `7` | Joyau de vent `7` | Joyau de vent `7` | Queue de dragon `8` | Ecailles de dragon `9` | Amulette du dragon `10` |
 | 2 | Hache d'Ouga `11` | Potion olympique `12` | Os de guerrier sauvage `13` | Cendre rouge `14` | Cendre verte `15` | Cristal du mal `16` | La massacreuse `17` | La massacreuse `17` |
 | 3 | Voile de beauté `18` | Voile mystique `19` | Bracelet de reine `20` | Tiare de la terre `21` | Tiare des étoiles `22` | Couronne de la lune `23` | Artémis `24` | Artémis `24` |
+
+**Coffres** (`+0x30`, sous-types 13, 17 et 18) — le contenu est tire dans la meme table `+0xb4` que le butin des monstres, a une rangee que porte l'enregistrement de placement.
+
+| coffre | gestionnaire | id | role | contenu | x / y / z |
+|---|---:|---:|---|---|---|
+| 0.28 | coffre `34` | 226 | objet | rangee 0 : Balle du tonnerre (25 %), Bouclier de l'air (17 %), Cristal d'air (15 %), Chaîne de l'air (13 %), Plume dominicale (11 %), Plume dominicale (9 %), Plume dominicale (6 %), Plume dominicale (4 %) | 3100 / -60 / 100 |
 
 ### Zone 10, sous-zone 11 — repertoire de 2468 octets
 

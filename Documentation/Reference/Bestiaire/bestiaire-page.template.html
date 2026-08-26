@@ -560,6 +560,7 @@
       <div class="views" role="group" aria-label="Vue">
         <button class="view-btn" type="button" id="v-mon" aria-pressed="true">Monstres</button>
         <button class="view-btn" type="button" id="v-obj" aria-pressed="false">Objets</button>
+        <button class="view-btn" type="button" id="v-cof" aria-pressed="false">Coffres</button>
       </div>
       <input class="search" id="q" type="search" placeholder="Chercher…" aria-label="Chercher">
       <div class="chips" id="zones" role="group" aria-label="Filtrer par zone"></div>
@@ -635,7 +636,8 @@
           </p>
           <p>
             <strong>386 objets au catalogue, 265 obtenables sur un monstre.</strong> Les autres
-            viennent des coffres et des marchands, qui ne passent pas par cette table.
+            viennent des marchands, qui ne passent pas par cette table&nbsp;; les coffres, eux,
+            ont leur propre onglet.
           </p>
         </div>
 
@@ -664,9 +666,10 @@
 </main>
 
 <script>
-  const PAYLOAD = /*__DATA__*/{ m: [], i: [], stats: {} };
+  const PAYLOAD = /*__DATA__*/{ m: [], i: [], c: [], stats: {} };
   const MON = PAYLOAD.m;
   const OBJ = PAYLOAD.i;
+  const COF = PAYLOAD.c || [];
   const TIER = [25, 17, 15, 13, 11, 9, 6, 4];
   // Les zones se lisent sur les VARIANTES : depuis le regroupement par nom, une entree de MON
   // porte `z`, la liste de ses zones, et plus de champ `zone`. Le lire dessus donnait une puce
@@ -716,7 +719,8 @@
   const S = PAYLOAD.stats;
   document.getElementById('counters').innerHTML = [
     ['Fiches', S.fiches], ['Monstres', S.noms], ['Objets', S.objets],
-    ['Obtenables', S.lachables], ['Formations', S.formations], ['Placements', S.placements]
+    ['Obtenables', S.lachables], ['Coffres', S.coffres], ['Objets en coffre', S.encoffres],
+    ['Formations', S.formations], ['Placements', S.placements]
   ].map(([k, v]) => '<div class="counter"><dt>' + k + '</dt><dd>' + v.toLocaleString('fr') + '</dd></div>').join('');
 
   // ---- filtre de zone
@@ -752,19 +756,24 @@
     render();
   });
 
+  const PLACEHOLDERS = {
+    mon: 'Chercher un monstre — Goblin, Dragon, Momie…',
+    obj: 'Chercher un objet — Armure, Potion, Anneau…',
+    cof: 'Chercher un coffre — par son contenu, ou par son numéro…',
+  };
+
   const setView = v => {
     view = v;
-    sortKey = v === 'mon' ? 'rmax' : 'nom';
-    sortDir = v === 'mon' ? -1 : 1;
+    sortKey = v === 'mon' ? 'rmax' : v === 'cof' ? 'id' : 'nom';
+    sortDir = v === 'obj' ? 1 : v === 'cof' ? 1 : -1;
     openKey = null;
-    document.getElementById('v-mon').setAttribute('aria-pressed', String(v === 'mon'));
-    document.getElementById('v-obj').setAttribute('aria-pressed', String(v === 'obj'));
-    document.getElementById('q').placeholder =
-      v === 'mon' ? 'Chercher un monstre — Goblin, Dragon, Momie…' : 'Chercher un objet — Armure, Potion, Anneau…';
+    ['mon', 'obj', 'cof'].forEach(x =>
+      document.getElementById('v-' + x).setAttribute('aria-pressed', String(v === x)));
+    document.getElementById('q').placeholder = PLACEHOLDERS[v];
     render();
   };
-  document.getElementById('v-mon').addEventListener('click', () => setView('mon'));
-  document.getElementById('v-obj').addEventListener('click', () => setView('obj'));
+  ['mon', 'obj', 'cof'].forEach(v =>
+    document.getElementById('v-' + v).addEventListener('click', () => setView(v)));
 
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -943,13 +952,34 @@
         (b.v < 0 ? 'background:var(--hp)' : '') + '"></i></span>' +
         '<span class="val">' + (b.v > 0 ? '+' : '') + b.v + '</span></div>').join('');
 
+    // Les coffres qui le contiennent, tries comme les monstres : la meilleure chance d'abord.
+    const chestRows = (o.csrc || [])
+      .slice()
+      .sort((a, b) => b[4] - a[4])
+      .map(c =>
+        '<tr><td class="item">Coffre ' + c[2] + '</td>' +
+        '<td class="dim" style="white-space:normal">' + esc(zoneSub(c[0], c[1])) + '</td>' +
+        '<td class="dim">' + (String(c[3]).includes(',') ? 'rangs ' : 'rang ') + c[3] + '</td>' +
+        '<td>' + c[4] + ' %</td></tr>')
+      .join('');
+
     return '<div class="detail-grid">' +
       '<div>' +
         (o.desc ? '<p class="panel-label">Description</p><p class="desc">' + esc(o.desc) + '</p>' : '') +
-        '<p class="panel-label"' + (o.desc ? ' style="margin-top:18px"' : '') + '>Où l\'obtenir — ' +
-          o.src.length + ' source' + (o.src.length > 1 ? 's' : '') + '</p>' +
-        '<table class="inner"><thead><tr><th style="text-align:left">monstre</th><th>zone</th><th>rang</th><th>chance</th><th>placements</th></tr></thead>' +
-        '<tbody>' + rows + '</tbody></table>' +
+        (o.src.length
+          ? '<p class="panel-label"' + (o.desc ? ' style="margin-top:18px"' : '') + '>Lâché par — ' +
+            o.src.length + ' monstre' + (o.src.length > 1 ? 's' : '') + '</p>' +
+            '<table class="inner"><thead><tr><th style="text-align:left">monstre</th><th>zone</th><th>rang</th><th>chance</th><th>placements</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody></table>'
+          : '<p class="panel-label"' + (o.desc ? ' style="margin-top:18px"' : '') + '>Lâché par</p>' +
+            '<p class="none">Aucun monstre. Cet objet ne s\'obtient qu\'en coffre.</p>') +
+        (chestRows
+          ? '<p class="panel-label" style="margin-top:18px">Dans les coffres — ' +
+            o.csrc.length + ' coffre' + (o.csrc.length > 1 ? 's' : '') + '</p>' +
+            '<table class="inner"><thead><tr><th style="text-align:left">coffre</th><th>zone</th>' +
+            '<th>rang</th><th>chance</th></tr></thead>' +
+            '<tbody>' + chestRows + '</tbody></table>'
+          : '') +
       '</div>' +
       '<div>' +
         '<div class="attdef">' +
@@ -976,6 +1006,60 @@
     '</div>';
   }
 
+  // Les trois roles qu'un coffre peut jouer, tels que son gestionnaire les teste : le mot de
+  // +0x48 d'abord (non nul = il fait naitre un effet et ne donne rien), puis +0x14 (-1 = il remet
+  // un objet, sinon il affiche un libelle).
+  const CHEST_ROLES = {
+    objet: ['donne un objet', 'Le contenu est tiré dans la table de butin de la sous-zone, à la rangée que porte l\'enregistrement de placement — le même tirage que sur un monstre.'],
+    message: ['affiche un texte', 'Ce coffre ne remet rien : il pose son drapeau et fait parler la boîte de dialogue du libellé désigné par <code>+0x16</code>.'],
+    effet: ['fait naître un effet', 'Le mot de <code>+0x48</code> n\'est pas nul : le coffre lâche une entité d\'effet de type <code>+0xC0</code> au lieu de passer par la remise d\'objet.'],
+  };
+
+  function chestDetail(d) {
+    const lots = (d.lots || []).slice().sort((a, b) => b[2] - a[2]);
+
+    const rows = lots.map(l =>
+      '<tr><td class="item">' + esc(l[0]) + '</td>' +
+      '<td class="dim">' + (String(l[1]).includes(',') ? 'rangs ' : 'rang ') + l[1] + '</td>' +
+      '<td>' + l[2] + ' %</td></tr>').join('');
+
+    const [roleTitle, roleNote] = CHEST_ROLES[d.role] || [d.role, ''];
+
+    const kv = [
+      ['numéro de coffre — <code>+0x30</code>', d.id],
+      ['rangée de butin — <code>+0x16</code>', d.role === 'objet' ? d.row : '—'],
+      ['libellé — <code>+0x14</code>', d.lab === -1 ? '−1 (donne un objet)' : d.lab],
+      ['effet — <code>+0x48</code>', d.eff],
+      ['mémoire du contenu — <code>+0x44</code>', d.mem],
+      ['gestionnaire installé', '<code>' + esc(d.hnd) + '</code> (sous-type ' + d.st + ')'],
+      ['position — x / y / z', d.x + ' / ' + d.y + ' / ' + d.zz],
+    ].map(([k, v]) => '<div><dt>' + k + '</dt><dd>' + v + '</dd></div>').join('');
+
+    return '<div class="detail-grid">' +
+      '<div>' +
+        '<p class="panel-label">Ce coffre ' + roleTitle + '</p>' +
+        '<p class="none">' + roleNote + '</p>' +
+        (rows
+          ? '<p class="panel-label" style="margin-top:18px">Contenu possible — ' + lots.length +
+            ' objet' + (lots.length > 1 ? 's' : '') + '</p>' +
+            '<table class="inner"><thead><tr><th style="text-align:left">objet</th>' +
+            '<th>rang</th><th>chance</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody></table>'
+          : '') +
+      '</div>' +
+      '<div>' +
+        '<p class="panel-label">Ce que porte l\'enregistrement de placement</p>' +
+        '<dl class="kv">' + kv + '</dl>' +
+        '<div class="subpanel" style="margin-top:22px">' +
+          '<p class="none">Le numéro de coffre indexe le champ de bits «&nbsp;déjà ouvert&nbsp;» ' +
+          '(<code>DAT_005e96e0</code>)&nbsp;; un numéro négatif ne change que le sens d\'ouverture. ' +
+          'Ces valeurs voyagent dans les champs de hauteur et de rotation de l\'entité, et le ' +
+          'gestionnaire les y prend à la première image.</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   const HEADS = {
     mon: '<tr>' +
       '<th class="left sortable" data-k="nom" tabindex="0" role="button">Monstre</th>' +
@@ -991,7 +1075,14 @@
       '<th class="left">Zones</th>' +
       '<th class="sortable" data-k="nsrc" tabindex="0" role="button">Sources</th>' +
       '<th class="sortable" data-k="best" tabindex="0" role="button">Meilleure chance</th>' +
-      '<th class="left">Lâché par</th></tr>'
+      '<th class="left">Lâché par</th></tr>',
+    cof: '<tr>' +
+      '<th class="left sortable" data-k="id" tabindex="0" role="button">Coffre</th>' +
+      '<th class="left">Zone</th>' +
+      '<th class="left">Rôle</th>' +
+      '<th class="sortable" data-k="nlot" tabindex="0" role="button">Contenus</th>' +
+      '<th class="sortable" data-k="best" tabindex="0" role="button">Meilleure chance</th>' +
+      '<th class="left">Contient</th></tr>'
   };
 
   function render() {
@@ -1016,6 +1107,21 @@
           };
         })
         .filter(Boolean);
+    } else if (view === 'cof') {
+      rows = COF
+        .filter(c => zoneFilter === null || c.zone === zoneFilter)
+        .map(c => {
+          const lots = c.lots || [];
+          return {
+            ...c,
+            nom: 'Coffre ' + c.id,
+            nlot: lots.length,
+            best: lots.length ? Math.max(...lots.map(l => l[2])) : 0,
+          };
+        })
+        .filter(c => query === ''
+          || String(c.id).includes(query)
+          || (c.lots || []).some(l => l[0].toLowerCase().includes(query)));
     } else {
       rows = OBJ
         .map(o => {
@@ -1023,7 +1129,15 @@
           // sources, et le depliage — qui recoit cet objet-la, pas celui de OBJ — affiche
           // `undefined` pour la description, l'ATT, la DEF, les classes et les bonus.
           const src = zoneFilter === null ? o.src : o.src.filter(s => s[0] === zoneFilter);
-          return { ...o, src, nsrc: src.length, best: src.length ? Math.max(...src.map(s => s[4])) : 0 };
+          const csrc = zoneFilter === null
+            ? (o.csrc || [])
+            : (o.csrc || []).filter(c => c[0] === zoneFilter);
+          const best = [...src.map(s => s[4]), ...csrc.map(c => c[4])];
+          return {
+            ...o, src, csrc,
+            nsrc: src.length + csrc.length,
+            best: best.length ? Math.max(...best) : 0,
+          };
         })
         .filter(o => o.nsrc > 0 && (query === '' || o.nom.toLowerCase().includes(query)));
     }
@@ -1034,14 +1148,17 @@
       return cmp * sortDir || a.nom.localeCompare(b.nom, 'fr');
     });
 
-    countEl.textContent = rows.length + (view === 'mon' ? ' fiche' : ' objet') + (rows.length > 1 ? 's' : '');
+    const unit = view === 'mon' ? ' fiche' : view === 'cof' ? ' coffre' : ' objet';
+    countEl.textContent = rows.length + unit + (rows.length > 1 ? 's' : '');
     empty.hidden = rows.length > 0;
 
     body.innerHTML = rows.map(d => {
-      const k = d.nom;
+      // Deux coffres peuvent porter le meme numero dans deux sous-zones : la cle du depliage prend
+      // la sous-zone et l'index de memoire, sans quoi les deux s'ouvrent ensemble.
+      const k = view === 'cof' ? d.zone + '/' + d.sz + '/' + d.id + '/' + d.mem : d.nom;
       const isOpen = openKey === k;
       const span2 = (lo, hi) => lo === hi ? String(hi) : '<span class="rangelo">' + lo + '–</span>' + hi;
-      const cells = view === 'mon'
+      const cells = view === 'cof' ? '' : view === 'mon'
         ? '<td class="name">' + esc(d.nom) + '</td>' +
           '<td class="loc">' + d.z.map(zoneName).join(' · ') + '</td>' +
           '<td>' + span2(d.rmin, d.rmax) + '</td>' +
@@ -1056,13 +1173,26 @@
           '<td class="loc">' + [...new Set(d.src.map(s => zoneName(s[0])))].join(' · ') + '</td>' +
           '<td>' + d.nsrc + '</td>' +
           '<td>' + d.best + ' %</td>' +
-          '<td class="wrapcell">' + esc([...new Set(d.src.map(s => s[2]))].join(', ')) + '</td>';
+          '<td class="wrapcell">' + esc([
+            ...new Set(d.src.map(s => s[2])),
+            ...(d.csrc.length ? ['coffre'] : []),
+          ].join(', ')) + '</td>';
 
-      const span = view === 'mon' ? 6 : 7;
+      const cofCells =
+        '<td class="name">Coffre ' + d.id + '</td>' +
+        '<td class="loc">' + esc(zoneSub(d.zone, d.sz)) + '</td>' +
+        '<td class="loc">' + esc((CHEST_ROLES[d.role] || [d.role])[0]) + '</td>' +
+        '<td>' + d.nlot + '</td>' +
+        '<td>' + (d.best || 0) + ' %</td>' +
+        '<td class="wrapcell">' + esc((d.lots || []).map(l => l[0]).join(', ')) + '</td>';
+
+      const span = view === 'obj' ? 7 : 6;
+      const detail = view === 'mon' ? monsterDetail : view === 'cof' ? chestDetail : itemDetail;
+
       return '<tr class="row' + (isOpen ? ' open' : '') + '" data-k="' + esc(k) + '" tabindex="0" role="button" aria-expanded="' + isOpen + '">' +
-        cells + '</tr>' +
+        (view === 'cof' ? cofCells : cells) + '</tr>' +
         '<tr class="detail"' + (isOpen ? '' : ' hidden') + '><td colspan="' + span + '">' +
-        (isOpen ? (view === 'mon' ? monsterDetail(d) : itemDetail(d)) : '') + '</td></tr>';
+        (isOpen ? detail(d) : '') + '</td></tr>';
     }).join('');
 
     head.querySelectorAll('th.sortable').forEach(th => {

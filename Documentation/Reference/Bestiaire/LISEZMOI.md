@@ -93,6 +93,53 @@ l'entité de butin, et en concluant que `+7` était un index de liste parce que 
 fonction y range. C'était prendre le **rangement temporaire** pour le sens de la valeur. Le sens se
 lit chez les appelants qui la consomment, pas chez celui qui la met de côté.
 
+### Les coffres
+
+**Un coffre tire son contenu dans la même table `+0xb4` qu'un monstre.** `ChestGrantContents`
+(`Screens/State03/WorldMapTick.cs`) appelle `PickWeightedTableEntry(+0x16, 100)` — c'est
+`FUN_0053a920`, exactement l'appel de la mise à mort, avec les mêmes huit bandes de probabilité.
+Ce qui change est la **rangée** : un monstre prend celle de son espèce (`espèce+5`), un coffre
+prend celle que porte son enregistrement de placement. C'est pour cela que des objets n'apparaissent
+que dans les coffres — **112 des 274** objets qu'ils contiennent ne sont lâchés par aucun monstre :
+leurs rangées ne sont référencées par aucune espèce.
+
+Les coffres sont des **entités de la table `+0x30`** — celle que `SpawnSubAreaEntities`
+(`FUN_005350b0`) parcourt : une liste de listes d'enregistrements de `0x20` octets, terminée par
+`kind == -1`, chacun devenant une entité de `0x9c` octets. La correspondance vient de son corps :
+
+| dans l'enregistrement | dans l'entité | ce que c'est |
+|---|---|---|
+| `+0x04` / `+0x06` / `+0x08` | `slot[7]`, `slot[8]`, `slot[9]` | X, hauteur, Z |
+| `+0x0a` | `+0x30` | **le numéro de coffre** |
+| `+0x0e` | `+0x34` | **le mot de contenu**, octet bas et octet haut |
+| `+0x18` | `+0x14` | l'index du drapeau, ou `-1` |
+| `+0x1a` | `+0x16` | **la rangée de butin**, ou l'index du libellé |
+| `+0x1d` | octet 5 | le **sous-type**, celui qui choisit le gestionnaire |
+
+L'état 0 du gestionnaire vide `+0x30` et `+0x34` dans `+0x9a`, `+0x44` et `+0x48`, puis les remet à
+zéro : **la fiche du coffre voyage dans les champs de hauteur et de rotation de l'entité**, et n'est
+lue qu'à la première image. Le numéro de coffre indexe le champ de bits « déjà ouvert »
+(`DAT_005e96e0`) ; un numéro **négatif** ne change que le sens d'ouverture, et la valeur absolue
+reste l'index.
+
+Trois rôles, dans l'ordre où le gestionnaire les teste : `+0x48` non nul, le coffre fait naître une
+entité d'effet et ne donne rien ; sinon `+0x14 == -1`, il **remet un objet** ; sinon il affiche le
+libellé que `+0x16` désigne.
+
+**Le piège, et il est complet : un numéro de sous-type ne veut rien dire tout seul.** La passe
+`FUN_0050e5e0` appelle `(&PTR_…_0056adc8)[entité[5]]`, et cette table de `0x40` entrées est
+**rechargée à chaque sous-zone** — la branche `DAT_00600904` de `FUN_0052a660` choisit sept blocs
+indexés par `zone * 0x10 + sous-zone`. Le premier relevé filtrait sur « sous-type 13, 17 ou 18 »,
+les numéros observés dans la sous-zone où les gestionnaires avaient été lus, et sortait des données
+absurdes : identifiants tous nuls, contenus tous nuls, 36 coffres. Le coffre de la zone 1 est en
+réalité le **sous-type 22**. L'outil résout donc la table de la sous-zone dans `Blaze.exe` — c'est
+le même relevé que `dump-entity-vtables.sh` — et retient les entrées qui valent `0x00473ED0`,
+`0x004502E0` ou `0x00450D30`, les trois gestionnaires qui remettent un objet. Le compte passe de 36
+à **161 coffres**.
+
+Ces trois gestionnaires portent le même automate à cinq différences près ; `EntityHandler_00450D30`
+et `FUN_004502E0` étaient absents de `Blaze.c` et ont été transcrits depuis le désassemblage.
+
 ### Le catalogue d'objets
 
 Il est **par sous-zone**, et `UploadRawAreaBlocks` (`FUN_005355f0`) le construit à partir de la
@@ -197,7 +244,7 @@ contrôle `0x24 <octet>` — un pictogramme — et le nom commence en `+1`. Sur 
 prend que quatre valeurs : `w`, `m`, `s`… et le `L` de « La dévoreuse », qui ne dépasse pas `0x5f`
 et reste donc une vraie lettre. Une lecture naïve colle les trois premiers devant chaque nom.
 
-## Les sept fichiers
+## Les huit fichiers
 
 | fichier | contenu |
 |---|---|
@@ -209,6 +256,7 @@ et reste donc une vraie lettre. Une lecture naïve colle les trois premiers deva
 | `objets.csv` | le catalogue par sous-zone : identifiant, nom, **description**, **bonus**, et les 0x140 octets bruts |
 | `butin_par_objet.csv` | **l'index inverse** : un objet, et tout ce qui le lâche — zone, monstre, rang, chance, nombre de placements |
 | `lieux.csv` | les **noms de lieu** relevés dans les textes de chaque sous-zone |
+| `coffres.csv` | **un coffre par ligne et par rang** : zone, numéro, rôle, gestionnaire résolu, position, rangée de butin, objet et chance |
 
 ### Les noms de zone
 
@@ -292,8 +340,9 @@ aussi ce que le script a créé élément par élément. C'est ce que le contrô
 
 **281 fiches dans les zones 1 à 10, 121 noms distincts** — du Goblin au Dragon rouge (8 000 PV), en
 passant par Belzébuth, Cerbère et Behemoth. **913 formations et 3 018 placements** de monstres,
-chacun avec ses coordonnées. **386 objets au catalogue, dont 265 obtenables sur un monstre** — les
-autres viennent des coffres et des marchands, qui ne passent pas par cette table. Les bornes de la
+chacun avec ses coordonnées. **386 objets au catalogue, dont 265 obtenables sur un monstre**
+et **274 dans un coffre** — dont 112 que nul monstre ne lâche. Ce qui reste vient des marchands, qui
+ne passent pas par cette table. **161 coffres** dans les zones 1 à 10. Les bornes de la
 lecture sont dans `bestiaire.md` zone par zone.
 
 **La zone 0 est à écarter.** Ses 102 lignes portent des noms illisibles et se répètent avec une
