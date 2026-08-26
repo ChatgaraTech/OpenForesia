@@ -1531,3 +1531,51 @@ au-dessus du personnage. Cause : `DrawSpeechOverlay_005309B0` ecrivait son origi
 qu'un site nouveau l'adresse.** La regle pratique : quand une transcription touche une VA de
 `0x005de1xx`, chercher d'abord un champ nomme a cette adresse (`grep 005de15` sur `src/`) —
 `OpenForesia.Tests` test 5 en liste 42 par nom, fichier et ligne.
+
+---
+
+## Un `0xC0000374` intermittent : corruption de tas, anterieure au 2026-08-26
+
+**A ne pas confondre avec le `0xC0000409` de la section precedente.** Meme symptome vu du script —
+le jeu disparait, le journal s'arrete au milieu d'un bilan `[SHIM]`, rien n'est ecrit — mais un
+autre code et une autre cause :
+
+| code | ce que c'est | ou le systeme le detecte |
+|---|---|---|
+| `0xC0000409` | temoin de pile viole — un `stackalloc` deborde | dans l'epilogue de la methode fautive, **deterministe** |
+| `0xC0000374` | **tas corrompu** — une ecriture au-dela d'une allocation native | au prochain `alloc`/`free`, donc **loin de la faute et intermittent** |
+
+Le second est **anterieur au 2026-08-26** : le journal des evenements Windows en compte cinq le
+25/08 et un le 26/08. Ce n'est donc pas une regression du menu rapide ni du script d'objet, et il
+faut le savoir avant d'accuser un changement recent.
+
+**Mesure : environ une execution sur six.** Neuf executions consecutives du meme trajet le 26/08 en
+ont donne une seule qui plante. **Une execution verte ne prouve rien** sur ce defaut-la ; c'est un
+comptage sur cinq a dix lancements qui tranche.
+
+### La facon de savoir si un changement en est la cause
+
+C'est la question qui s'est posee le 26/08 apres la transcription du script d'objet, et voici ce qui
+l'a reglee en deux commandes :
+
+1. **Semer une trace fichier a l'entree de chaque fonction nouvelle** (voir la section sur le
+   `stackalloc` pour le pourquoi du fichier). Si le fichier n'est jamais cree, le code neuf n'est
+   pas sur le trajet, et il ne peut pas etre la cause.
+2. **Dater le defaut** dans le journal des evenements :
+
+```powershell
+Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Application Error';
+                                StartTime=(Get-Date).AddDays(-6)} |
+  Where-Object { $_.Message -match 'OpenForesia' -and $_.Message -match 'c0000374' } |
+  ForEach-Object { $_.TimeCreated }
+```
+
+Une premiere occurrence anterieure au changement suffit a l'innocenter.
+
+### Ce qu'on sait de la cause : rien encore
+
+Le module defaillant est `ntdll.dll`, ce qui ne nomme que le detecteur. Trouver l'ecrivain demande
+soit `gflags /p /enable OpenForesia.exe /full` (le tas de page, qui fait planter **a l'ecriture**),
+soit une passe sur les allocations `NativeMemory.AllocZeroed` et leurs bornes. Aucune des deux n'a
+ete faite. **A ouvrir comme chantier a part** ; le noter ici evite qu'il soit redecouvert comme
+« regression » a chaque session.

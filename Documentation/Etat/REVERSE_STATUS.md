@@ -14498,8 +14498,15 @@ porte trois pointeurs puis un mot nul, et `DAT_00564608` (`00 1d 35 49`) est leu
 l'objet ») descend `UseCarriedItem_00523820` → `RunItemScriptSaved_00523860` →
 `RunItemScript_00523AA0`. Les deux premieres sont transcrites ; la troisieme leve. C'est la meme
 boucle que `RunScript` (arret sur `0xff`, ou des qu'un gestionnaire pose un resultat, sauf l'opcode
-2) mais sur `PTR_LAB_00564f80` : **23 gestionnaires**, `0x00523b00` a `0x00524170`, tous presents
-dans `Blaze.c`. Rien d'autre du menu rapide n'est manquant.
+2) mais sur `PTR_LAB_00564f80` : **23 gestionnaires**, `0x00523b00` a `0x00524170`. Rien
+d'autre du menu rapide n'est manquant.
+
+> **Correction du 2026-08-26** : ce paragraphe disait « tous presents dans `Blaze.c` ». **Faux** —
+> onze des vingt-deux corps distincts sont des `LAB_`, que Ghidra n'a vus que pris en adresse dans
+> la table. L'affirmation venait de ce que la table de pointeurs affiche des adresses en
+> `0x00523xxx`, une bande ou `Blaze.c` a beaucoup de fonctions ; elle n'avait pas ete verifiee
+> nom par nom. Le reflexe : compter les corps presents avec un `grep` par adresse avant d'annoncer
+> qu'un sous-arbre est decompile.
 
 `FUN_00523860` porte le defaut de recuperation habituel de Ghidra : sa seconde branche appelle
 `FUN_00523aa0(unaff_retaddr, param_1, param_2, …)`, decalee d'un cran, en prenant le mot de retour
@@ -14545,3 +14552,148 @@ l'arene entre `0x005de154` et `0x005de170`, donc le recouvrement ne se manifeste
 vrai jusqu'a ce qu'un site nouveau l'adresse.** Le recouvrement lui-meme n'est pas corrige — le
 corriger changerait le comportement, et l'etendue de l'arene reste douteuse — mais la note dit
 maintenant qu'il a mordu une fois.
+
+---
+
+## 2026-08-26 (suite) — `FUN_00523aa0` : la seconde machine a opcodes, ses 23 opcodes et ses deux entrees
+
+`RunItemScript_00523AA0` transcrit la machine a opcodes des objets, et ses vingt-trois
+gestionnaires avec elle. Sa boucle est celle de `RunScript` a la ligne pres — arret sur `0xff`, ou
+des qu'un gestionnaire pose un resultat, sauf l'opcode 2 qui est la branche. Seule la table change :
+`PTR_LAB_00564f80`, 23 entrees, 22 corps distincts (12 et 19 partagent le meme).
+
+### Onze corps sur vingt-deux sont absents de `Blaze.c`
+
+Ghidra ne les a vus que pris en adresse dans la table, d'ou le prefixe `PTR_LAB_`. Les onze :
+`0x00523b00`, `0x00523bb0`, `0x00523bd0`, `0x00523cb0`, `0x00523d60`, `0x00523e10`, `0x00523f00`,
+`0x00523f10`, `0x00523f80`, `0x00523fc0`, `0x00524170`. Tous transcrits depuis le desassemblage,
+conserve dans `Legacy/Raw/Blaze/FUN_00523aa0-handlers.disasm.txt`.
+
+**Un byte count reste un mauvais estimateur.** Les onze pesent 712 octets a eux tous et se sont
+ecrits en une passe : neuf sont des variantes a une constante pres de corps deja decompiles (l'unite
+arithmetique sur une banque differente, la particule sur la cible plutot que sur soi). Ce sont les
+*formes distinctes* qui comptent, et il n'y en avait que quatre nouvelles.
+
+### Les quatre arguments, etablis par recoupement
+
+Ghidra donne la signature des onze corps decompiles ; les autres se lisent aux decalages de pile.
+Tous recoivent la meme chose :
+
+| argument | ce que c'est |
+|---|---|
+| `slot` | l'enregistrement d'entite de 0x9c octets de celui qui se sert de l'objet ; `slot[0x70]` est sa cible |
+| `record` | son bloc par personnage de 0x2000 octets |
+| `item` | le bloc de 0x280 octets de l'objet, dans `record + 0x300 + n * 0x280` |
+| `s` | le curseur de script — qui vit **dans** le bloc d'objet |
+
+Ce dernier point explique les opcodes 1 et 2 : leurs sauts sont des decalages de seize bits
+**depuis `item`**, pas depuis le curseur.
+
+### Deux scripts par objet, deux entrees dans la machine
+
+| entree | script | appelee par |
+|---|---|---|
+| `FUN_00523860` → `RunItemScriptSaved_00523860` | `item + item[0x80]` | `FUN_00523820`, « se servir de l'objet » (genre 5 du menu rapide) |
+| `FUN_00523a20` → `RunTriggeredItemScript_00523A20` | `item + item[0x82]` | `FUN_005238e0`, l'evenement d'objet equipe |
+
+`FUN_005238e0` etait une souche sous le nom **faux** de `SetEntityAnimationState_005238E0` — rien
+dans son corps ne touche a une animation. Elle est transcrite sous
+`TriggerEquippedItems_005238E0` : elle balaie les cinq emplacements de `+0x2b0` et fait tourner le
+script declenche de chaque objet dont `item[0x84]` vaut l'evenement. Ses sept sites d'appel dans la
+reconstruction passent 0, 1, 5, 6 et 0x15 comme evenements.
+
+**Trois protections encadrent l'appel, et elles disent que ce script peut en declencher un autre** :
+un masque de cinq bits (`DAT_005e99c0`) empeche un emplacement de se re-declencher, la banque de
+variables de script est empilee dans `0x005de170` au pas de 0x40, et la cible `slot[0x70]` dans
+`0x005de2b8`.
+
+**La pile de sauvegarde touche son propre compteur.** `0x005de170 + 5 * 0x40` vaut exactement
+`0x005de2b0`, l'octet de profondeur. Cinq places pour cinq emplacements d'equipement : la
+disposition de 1998 est juste au dernier octet pres, et c'est ce qui justifie de les loger dans la
+meme allocation (`ItemMenuArena`) plutot qu'en champs separes.
+
+### `item[0x84]` est un identifiant d'evenement, pas une categorie
+
+Deux sites le lisent et se recoupent : `TriggerEquippedItems_005238E0` compare `item[0x84]` a
+l'evenement recu, et l'opcode 18 l'indexe dans `DAT_0052403c` (22 entrees, donc evenements 0 a
+0x15). La table rend une famille 0 a 8, et une table de sauts a neuf entrees
+(`0x00524014`) la reduit a **un seul bit** : 1 pour les familles impaires, 0 sinon. Le compilateur a
+etale un `switch` sur ce qui tient en une comparaison de parite ; la transcription garde
+l'enumeration, qui est ce que la table dit.
+
+### Ce que chaque opcode fait
+
+| op | corps | role | taille |
+|---:|---|---|---:|
+| 0 | `LAB_00523b00` | consommer l'objet, une chance sur cent de `s[1]` ; a zero, vider l'emplacement, refaire la liste d'inventaire `+0x2c0` et deshabiller | 2 |
+| 1 | `LAB_00523bb0` | saut, decalage 16 bits depuis `item` | 3 |
+| 2 | `LAB_00523bd0` | saut conditionnel, et remise a zero de la condition | 3 |
+| 3 | `FUN_00523c00` | unite arithmetique sur l'enregistrement d'entite | 4 |
+| 4 | `FUN_00523c30` | idem, sur celui de la cible | 4 |
+| 5 | `FUN_00523c70` | idem, sur `record + 0x100` | 4 |
+| 6 | `LAB_00523cb0` | idem, sur le bloc de statistiques de la cible | 4 |
+| 7 | `FUN_00523d20` | idem, sur `record + 0x200` | 4 |
+| 8 | `LAB_00523d60` | idem, sur le bloc de statistiques de la cible `+0x100` | 4 |
+| 9 | `FUN_00523dd0` | engendrer un effet sur soi | 4 |
+| 10 | `LAB_00523e10` | idem, sur la cible | 4 |
+| 11 | `FUN_00523e50` | unite arithmetique sur la banque de variables | 4 |
+| 12 | `FUN_00524060` | particule a sa propre position | 4 |
+| 13 | `FUN_00523e80` | unite arithmetique sur le bloc de l'objet equipe `s[1]` | **5** |
+| 14 | `FUN_00523ed0` | declencher un sort ou un effet (`FUN_0053a980`) | **5** |
+| 15 | `LAB_00523f00` | le son de refus, et rien d'autre | **1** |
+| 16 | `LAB_00523f10` | choisir la cible par indice, groupe ou scene | 3 |
+| 17 | `LAB_00523f80` | choisir la cible par recherche (`FUN_00474ad0`) | 2 |
+| 18 | `LAB_00523fc0` | appliquer un effet de la table de 48 de `0x0056d4e0` | 2 |
+| 19 | `FUN_00524060` | le meme corps que 12 | 4 |
+| 20 | `FUN_005240d0` | particule a la position de la cible | 4 |
+| 21 | `FUN_00524140` | jouer un son | **6** |
+| 22 | `LAB_00524170` | ouvrir l'ecran du menu objets | — |
+
+### Trois fidelites que la relecture voudra questionner
+
+**L'opcode 12 passe le curseur de script comme parametre quand la largeur est inconnue.** `s[1]`
+dit 0 octet, 1 mot, 2 double mot ; toute autre valeur laisse le registre non initialise, et il se
+trouve contenir le curseur (`mov eax,[esp+14h]` en `0x005240a1`). Ghidra le rend exactement ainsi
+(`uVar2 = param_4`). Transcrit tel quel.
+
+**L'opcode 21 lit deux fois le meme mot** pour le gain gauche et le gain droit. Ce n'est pas une
+coquille de transcription : `FUN_00524140` lit `s+4` deux fois.
+
+**L'opcode 22 rend une valeur qui n'est pas un curseur de script.** `LAB_00524170` est
+`FUN_00524180` — l'etat de jeu 6 — duplique par le compilateur, avec le second appel en saut de
+queue. La valeur rendue est donc celle de `FUN_00524320`, dont le dernier appel est `FUN_00524190`,
+c'est-a-dire `DrawItemMenuTitle`, qui rend un **curseur de liste d'affichage**. La boucle
+dereference ensuite ce pointeur comme un opcode.
+
+C'est un defaut de 1998, **latent** : il ne se manifeste que si un script d'objet emet reellement
+l'opcode 22. Il n'est donc pas verse dans `legacy-bug.md`, qui ne recense que l'observe ; un
+`TODO(REVERSE)` le porte sur place. La transcription fait les deux appels de l'original puis leve,
+plutot que d'inventer une valeur de retour : le jour ou le jeu y passe, la levee dira ou regarder.
+
+### `CONCAT31` de Ghidra a failli couter une regression
+
+`FUN_0053a980` ecrit `*(short *)(param_1 + 6) = (short)CONCAT31((int3)param_2,(char)param_3);`.
+Lu vite, cela ressemble a « ranger l'indice » ; c'est en fait **les deux arguments empiles dans un
+mot**, la famille en octet haut et l'indice en octet bas. La premiere transcription avait garde le
+seul indice. Le binaire tranche sans ambiguite — `mov dh,cl ; mov dl,al ; mov [esi+6],dx` en
+`0x0053a991` — et c'est la seule facon de le voir.
+
+**La regle** : un `CONCAT` de Ghidra tronque par un cast n'est jamais evident. Le desassembler
+coute trois lignes ; le deviner coute un champ silencieusement faux.
+
+### Les deux frontieres, nommees et bruyantes
+
+**`FUN_00474ad0`, la recherche de cible** (opcode 17). 47 lignes seulement, mais elle ouvre le
+sous-arbre de ciblage de combat : `FUN_00519af0` (52 l., le balayage des entites de scene par
+cellule) et `FUN_00519c30` (63 l., le balayage du groupe), qui tirent `FUN_00535a90`,
+`FUN_00538af0` et `FUN_005238e0`. C'est le ciblage, pas le script d'objet.
+
+**La table de 48 effets de `0x0056d4e0`** (opcode 18), `0x0053afb0` a `0x0053cdf0`. L'etendue est
+deduite : le dword qui suit la 48e entree vaut 1, debut d'une table de masques de bits. C'est le
+sous-systeme des effets, atteint aussi par les sorts.
+
+### Non exerce
+
+Le menu rapide refuse « se servir d'un objet » dans l'auberge (le jeu lui-meme l'interdit), et
+aucun des sept sites de `TriggerEquippedItems_005238E0` ne se declenche dans la piece d'arrivee.
+**La machine est transcrite et compilee, elle n'a pas tourne.** Le premier donjon la dira.

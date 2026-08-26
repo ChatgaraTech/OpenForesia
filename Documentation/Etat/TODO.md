@@ -12,6 +12,45 @@ déplacement.
 
 ---
 
+# LA MACHINE À OPCODES DES OBJETS EST ÉCRITE, PAS EXERCÉE (2026-08-26)
+
+`FUN_00523aa0` et ses 23 opcodes sont transcrits, **onze corps depuis le désassembleur** (Ghidra ne
+les avait pas décompilés). Les deux entrées de la machine sont vivantes :
+
+| entrée | script | quand |
+|---|---|---|
+| `RunItemScriptSaved_00523860` | `item + item[0x80]` | on se sert de l'objet (genre 5 du menu rapide) |
+| `RunTriggeredItemScript_00523A20` | `item + item[0x82]` | un événement touche un objet équipé (`TriggerEquippedItems_005238E0`) |
+
+Build vert, aucune régression sur le menu rapide.
+
+## RIEN DE TOUT ÇA N'A TOURNÉ
+
+Le jeu refuse « se servir d'un objet » dans l'auberge, et aucun des sept sites de
+`TriggerEquippedItems_005238E0` ne se déclenche dans la salle d'arrivée. **À exercer au premier
+donjon** — c'est là que ça se verra :
+
+- boire une potion (entrée `item[0x80]`, opcodes 0, 3/5, 12, 21 attendus) ;
+- porter un équipement qui réagit — poison, coup reçu, entrée de zone (entrée `item[0x82]`).
+
+## Les deux frontières, qui lèveront si on les touche
+
+- **`PickTargetBySearch_00474AD0`** (opcode 17) — 47 lignes, mais elle ouvre le ciblage de combat :
+  `FUN_00519af0`, `FUN_00519c30`, puis `FUN_00535a90`, `FUN_00538af0`.
+- **`ApplyItemEffect_0056D4E0`** (opcode 18) — la table des **48 effets**, `0x0053afb0`..`0x0053cdf0`,
+  partagée avec les sorts. C'est un sous-système à part entière.
+
+Si une potion lève sur l'une des deux, c'est elle la suite du chantier — et on saura enfin laquelle
+des deux le jeu emprunte pour soigner.
+
+## Et un piège de 1998 qui dort
+
+L'opcode 22 (ouvrir l'écran du menu objets depuis un script d'objet) rend un **curseur de liste
+d'affichage** là où la boucle attend un curseur de script. La transcription fait les deux appels de
+l'original puis lève, plutôt que d'inventer une valeur. Si cette levée sort un jour, c'est qu'un
+script émet vraiment l'opcode 22 — et il faudra alors trancher ce que faisait la vraie machine.
+
+
 # LE MENU RAPIDE FONCTIONNE (2026-08-26)
 
 Espace ouvre l'anneau au-dessus du personnage, les flèches parcourent catégories et entrées, la
@@ -33,13 +72,13 @@ plantage sur ouvrir → entrer → annuler → fermer.
 
 ## Ce qui reste
 
-**Un seul trou : `FUN_00523aa0`**, la seconde machine à opcodes du jeu — 23 gestionnaires,
-`0x00523b00`..`0x00524170`, tous dans `Blaze.c`. Elle ne s'atteint que par le genre 5 validé,
-« se servir de l'objet ». Tout le reste du menu est écrit.
+~~Un seul trou : `FUN_00523aa0`~~ — **écrite le 2026-08-26**, voir la section du dessus. Le menu
+rapide n'a donc plus de levée à lui.
 
-**Non exercé en jeu** : l'équipement effectif (valider une arme et voir les statistiques bouger),
-le genre 6 (les sorts) et le genre 9 (passer la main à un autre membre). Le trajet scripté ouvre le
-menu et navigue ; il ne valide rien. À faire à la main.
+**Confirmé en jeu par Vincent le 2026-08-26** : équiper un bouclier ou une armure fonctionne.
+**Toujours pas exercé** : les accessoires (il n'en avait pas), se servir d'un objet (le jeu
+l'interdit dans l'auberge), le genre 6 (les sorts) et le genre 9 (passer la main). Au premier
+donjon.
 
 ## Deux corrections de fond au passage
 
@@ -1549,3 +1588,21 @@ Relevé conservé dans `Legacy/Raw/Blaze/FUN_004747F0.asm`.
 - Le `save\` suit le **répertoire de travail**, le `.cfg` suit le chemin de l'**exe**. Un `save\`
   vide fait rebondir « Invertaire » et « Enchère » vers l'écran racine — c'est le comportement de
   l'original, pas un lien mort.
+---
+
+# À OUVRIR : une corruption de tas intermittente, antérieure au 2026-08-26
+
+**Environ une exécution sur six** meurt en silence sur `0xC0000374` (`STATUS_HEAP_CORRUPTION`,
+détecté dans `ntdll`). Le journal des événements Windows en compte **cinq le 25/08 et une le
+26/08** : ce n'est ni le menu rapide, ni le script d'objet — les deux ont été innocentés par une
+trace fichier qui n'a jamais été écrite.
+
+Jusqu'au 26/08 le verdict de `playtest.ps1` annonçait « aucun plantage » sur ces exécutions-là. Il
+dit maintenant `SORTIE SILENCIEUSE`, ce qui est justement ce qui a rendu le défaut visible.
+
+**Une exécution verte ne prouve rien** sur ce défaut : compter sur cinq à dix lancements.
+
+Pour l'attraper : `gflags /p /enable OpenForesia.exe /full` fait planter **à l'écriture** au lieu du
+prochain `alloc`. Rien n'a encore été tenté. Recette et commandes de datation dans
+`Documentation/Tests/test-protocol.md`.
+
