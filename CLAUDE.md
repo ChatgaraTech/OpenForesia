@@ -139,7 +139,7 @@ decompilations, the DLL binaries and eleven `.md` files were all loose at the ro
 
 ```
 Legacy/          tout ce qui vient de 1998, rien d'ecrit par nous
-  Binaries/      Blaze.exe, Blaze.cfg, et les cinq DLL d'aide
+  Binaries/      Blaze.exe, Blaze.cfg, et les six DLL d'aide (dont ir41_32.ax, le codec des films)
   Decompiled/    Blaze.c et les cinq .c de DLL — sortie Ghidra, LECTURE SEULE
   Raw/           relevés bruts par fonction (desassemblage, exports Ghidra)
 

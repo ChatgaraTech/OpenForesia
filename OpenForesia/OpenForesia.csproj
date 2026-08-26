@@ -13,7 +13,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Update="src\DLL\*.dll">
+        <!-- Les bibliotheques de 1998, aplaties a cote de l'executable. `.ax` autant que `.dll` :
+             le decodeur Indeo des cinematiques porte l'extension des filtres DirectShow, mais il
+             se charge comme les autres (voir Platform/IndeoCodec.cs). -->
+        <None Update="src\DLL\*.dll;src\DLL\*.ax">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <TargetPath>%(Filename)%(Extension)</TargetPath>
         </None>

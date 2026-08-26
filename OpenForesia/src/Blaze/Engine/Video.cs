@@ -93,7 +93,12 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
                                             // FUN_00542970 tests it alongside Playing
         public int TimerArmed;              // offset 0x20 (param_1[8]) â€” nonzero once Win32.SetTimer(hwnd,1,...) ran
         public int Field24;                 // offset 0x24 â€” OpenMovieStream writes 2
-        public int Field28;                 // offset 0x28 â€” OpenMovieStream writes 1; gates the WM_TIMER step
+        // Le chemin du film que PlayMovie vient de construire. L'original le recopie dans le
+        // tampon de l'objet de flux (`lstrcpyA(param_1[6] + 0xc, param_2)`) ; cet objet-la n'est
+        // pas reconstructible, donc le chemin se range ici, ou TrySetupMovieStream le relit.
+        public string? PendingMoviePath;
+
+        public int Field28;                 // offset 0x28â€” OpenMovieStream writes 1; gates the WM_TIMER step
     }
 
     private MoviePlayerState? s_MoviePlayer; // Ghidra: DAT_005dffa8
@@ -551,9 +556,12 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
         // as the original would with no stream open. Nothing is invented here.
         if (player.Stream != null)
         {
-            // TODO(REVERSE): stream teardown via the unrecoverable vtable; unreachable while
-            // TrySetupMovieStream is a stub.
+            // TODO(REVERSE): stream teardown via the unrecoverable vtable; Stream reste null.
         }
+
+        // Le film ouvert par TrySetupMovieStream. C'est ce que fait la branche ci-dessus dans
+        // l'original, par la vtable introuvable ; ici la lecture nous appartient, donc on la ferme.
+        MoviePlayback.Stop();
 
         player.Playing = false;   // Ghidra: *param_1 = 0
         player.Result = result;   // Ghidra: param_1[0xb] = param_3
@@ -958,8 +966,24 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
     /// through the unrecoverable custom "stream"/DirectDraw-wrapper vtables (see banner above);
     /// always reports failure here, matching how the original already handles a failed open.
     /// </summary>
+    /// <remarks>
+    /// <b>DEVIATION ASSUMEE, et la seule possible.</b> L'original ouvre ici un graphe DirectShow a
+    /// travers la vtable d'un objet dont Ghidra n'a jamais vu les corps (TODO(REVERSE) #13) -- et
+    /// ce graphe ne se batirait de toute facon plus, puisque Windows n'a plus de decodeur Indeo 4.
+    /// La reconstruction fait donc le meme travail par un autre chemin : notre demultiplexeur AVI,
+    /// le codec d'origine du CD (`Platform/IndeoCodec.cs`), et la surface GDI de demarrage. Rien
+    /// n'est invente du corps introuvable. Voir Documentation/Reference/cinematiques.md.
+    /// <para>
+    /// Le minuteur de 100 ms de l'original n'est pas arme : la cadence vient de l'en-tete du film
+    /// (15 im/s, soit 66,7 ms), et le pas-a-pas est fait par la boucle de lecture ci-dessous. Un
+    /// minuteur Windows a 100 ms ne saurait pas la tenir.
+    /// </para>
+    /// </remarks>
     private bool TrySetupMovieStream(MoviePlayerState player)
-        => false;
+    {
+        if (player.PendingMoviePath == null) return false;
+        return MoviePlayback.Start(player.PendingMoviePath, D3D11Window.Handle);
+    }
 
     /// <summary>
     /// Ghidra: FUN_00542b70 @ 0x00542b70 â€” plays the stream opened by TrySetupMovieStream, pumping
@@ -968,8 +992,10 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
     /// </summary>
     private int PlayMoviePumpLoop(MoviePlayerState player, byte* path)
     {
-        // Ghidra: lstrcpyA(param_1[6] + 0xc, param_2) â€” copies into the (unrecoverable) stream
-        // object's own filename buffer; nothing to copy into without that object, so skipped.
+        // Ghidra: lstrcpyA(param_1[6] + 0xc, param_2) -- l'original recopie le chemin dans le
+        // tampon de l'objet de flux. Cet objet n'est pas reconstructible ; le chemin va donc dans
+        // PendingMoviePath, que TrySetupMovieStream relit.
+        player.PendingMoviePath = Marshal.PtrToStringAnsi((IntPtr)path);
         player.Result = 0;
 
         Win32.joySetCapture(player.HWnd, 0, 0x32, 1);
@@ -977,14 +1003,16 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
 
         if (TrySetupMovieStream(player))
         {
-            // HAZARD â€” do not enable TrySetupMovieStream without also signalling completion.
-            // This loop terminates only when `player.Playing` is cleared, and the sole thing that
-            // clears it in the original is a callback through the movie stream object's vtable,
-            // whose slots have no decompiled body anywhere in Blaze.c (REVERSE_STATUS.md TODO #13).
-            // The loop is currently unreachable *only* because TrySetupMovieStream is a stub
-            // returning false. Making that stub return true before the completion signal exists
-            // re-hangs startup â€” this time in a tight PeekMessage spin rather than a bare one.
-            // This is the same defect class that TODO #31 records for the attract loop.
+            // Le signal de fin qui manquait. Cette boucle ne se termine que sur `player.Playing`
+            // remis a faux, et dans l'original c'est un rappel a travers la vtable de l'objet de
+            // flux qui le fait -- vtable dont aucun corps n'est decompile (REVERSE_STATUS.md #13).
+            // La boucle etait donc tenue inaccessible expres, TrySetupMovieStream rendant toujours
+            // faux : l'activer sans signal de fin rependait le demarrage dans une attente active.
+            //
+            // Le signal existe maintenant : MoviePlayback.Step rend faux a la derniere image, et
+            // les touches passent par StopMoviePlayback comme dans l'original. Les deux sorties
+            // sont donc couvertes, et la boucle a bien au moins une condition de sortie
+            // atteignable -- ce que la specification blaze-intro-attract exige.
             player.Playing = true;
             MSG msg;
             do
@@ -997,8 +1025,24 @@ internal sealed unsafe class Video(GameMemory mem, Resources res)
                     }
                     Win32.DispatchMessageA(&msg);
                 }
+
+                if (player.Playing && !MoviePlayback.Step())
+                {
+                    // Zero quand le film est alle jusqu'au bout, un quand il a ete interrompu.
+                    // C'est la distinction que fait la sequence d'introduction : `FUN_00529c10`
+                    // ne joue OPENING.AVI que si TEPS.AVI a rendu zero, et la boucle d'attract
+                    // sort des qu'un de ses quatre pas rend non nul.
+                    StopMoviePlayback(player, player.HWnd, MoviePlayback.WasAborted ? 1 : 0);
+                }
+                else if (player.Playing)
+                {
+                    // Rendre la main : sans ca la boucle brule un coeur entre deux images.
+                    System.Threading.Thread.Sleep(1);
+                }
             } while (player.Playing);
         }
+
+        MoviePlayback.Stop();
 
         Win32.joyReleaseCapture(0);
         Win32.joyReleaseCapture(1);

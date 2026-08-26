@@ -45,7 +45,9 @@ param(
     [switch]$KeepOpen,
 
     # Secondes d'attente avant que le menu principal soit interactif.
-    [int]$MenuDelay = 12,
+    # Attente avant de chercher le menu. 30 s et non 12 depuis que les cinematiques se jouent :
+    # TEPS.AVI dure 21 s avant que le menu paraisse, et le script cherchait le menu pendant le film.
+    [int]$MenuDelay = 30,
 
     # Duree d'un appui, en millisecondes. Voir test-protocol.md : trop court = perdu,
     # trop long = le curseur s'emballe.

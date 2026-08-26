@@ -189,6 +189,15 @@ internal static unsafe class D3D11Window
 
             case WmKeyDown:
             case WmSysKeyDown:
+                // Passer une cinématique. L'original écoute la même chose, mais sur la fenêtre de
+                // son lecteur ; en démarrage fenêtré c'est la nôtre qui a le focus, donc c'est
+                // elle qui reçoit la touche. Même déviation, et pour la même raison, que celle
+                // déjà documentée pour les frappes de la boucle d'attract.
+                if (MoviePlayback.Active)
+                {
+                    MoviePlayback.Abort();
+                    return IntPtr.Zero;
+                }
                 // Alt+Entrée : la convention universelle pour la bascule plein écran. DXGI ne peut
                 // plus l'intercepter (MakeWindowAssociation, voir D3D11Backend), donc elle nous
                 // revient. Le bit 29 de lParam porte l'état de la touche Alt.
