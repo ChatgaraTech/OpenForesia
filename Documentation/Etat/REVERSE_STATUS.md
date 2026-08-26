@@ -14697,3 +14697,52 @@ sous-systeme des effets, atteint aussi par les sorts.
 Le menu rapide refuse « se servir d'un objet » dans l'auberge (le jeu lui-meme l'interdit), et
 aucun des sept sites de `TriggerEquippedItems_005238E0` ne se declenche dans la piece d'arrivee.
 **La machine est transcrite et compilee, elle n'a pas tourne.** Le premier donjon la dira.
+
+---
+
+## 2026-08-26 (suite 2) — opcode 30 : sortir du batiment
+
+**Le plantage.** Quitter l'auberge leve
+`Interpreteur de script : opcode 30 = FUN_00515e20, pas encore transcrit.` Le message portait le
+chemin du desassemblage, et cette fois le relevé de 96 octets **suffisait** : le corps s'arrete au
+`ret` de 0x00515e70, soit 81 octets, suivi de quinze `nop` de bourrage. Aucune reprise plus large
+n'etait necessaire — un dump tronque se reconnait a son `(bad)` final, celui-ci finit sur des `nop`.
+
+### Un jumeau de l'opcode 17, a la fin pres
+
+La comparaison instruction par instruction avec `ScriptOpTransferArea` (opcode 17, suite 15) donne
+la fonction en entier :
+
+| | opcode 17 | opcode 30 |
+|---|---|---|
+| garde de genre | `& 0xfc0000 == 0x800000` | **identique** |
+| marquage de l'entite partante | `+0x98 ← +0x32`, drapeaux `& 0xf7fffdff \| 0x2000`, `+0x12` +1 | **identique** |
+| `DAT_005de53c` | `entite[8]` | **identique** |
+| destination (`005de528`/`52c`/`530`) | trois operandes, `0xff` = ne pas changer | **rien** |
+| pas de boucle `DAT_005645f8` | `2` | **`0xfe`** |
+| etat de jeu `DAT_005de510` | — | **`2`** |
+| avancee du curseur | `script + 4` | **`script + 1`** |
+
+L'avancee d'un seul octet (`lea eax,[ecx+1]`, pas `[ecx+4]`) est la preuve mecanique qu'il n'y a
+aucune operande a lire : la destination n'est pas omise du relevé, elle n'existe pas.
+
+### Ce que les deux valeurs de fin enchainent
+
+`0xfe` est `-2` signe, la valeur sur laquelle `RunWorldMapState` fait `return` au lieu de reboucler
+— l'etat 3 rend la main. `DAT_005de510 = 2` designe l'etat suivant, et le cas 2 de
+`RunGameStateTick` est `Res.LoadMenuResources()` puis `RunDestinationSelect()` puis `etat = 3`.
+Autrement dit : **on sort du batiment par la carte du monde, on choisit ou aller, on rentre en
+jeu**. La ou l'opcode 17 recharge une zone sur place sans quitter l'etat 3, l'opcode 30 remonte d'un
+etage.
+
+Les deux ecritures ne se comprennent que l'une par l'autre, exactement comme le couple `pas = 1` /
+`pas = 2` de la suite 15 : le pas dit *comment* on repart, l'etat dit *ou*.
+
+### Non exerce
+
+Transcrit et compile, pas execute — les tests sont a la charge du Responsable depuis le 2026-08-26.
+
+**Reserve a dire franchement**, la meme qu'a la suite 15 : cet opcode ne fait que *poser* l'etat. Le
+travail arrive apres, dans `RunDestinationSelect` et dans le rechargement qui suit, et ce chemin-la
+peut tres bien buter sur autre chose qui n'est pas encore transcrit. Corriger l'opcode 30 garantit
+que le jeu ne s'arrete plus **ici**.

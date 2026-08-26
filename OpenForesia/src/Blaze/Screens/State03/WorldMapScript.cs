@@ -359,6 +359,7 @@ public static unsafe partial class Blaze
             26 => ScriptOpSetRemove(0x00600880, s, result),
             28 => ScriptOpAluParty(s, result),
             29 => ScriptOpBeginScriptedCamera(ent, s),
+            30 => ScriptOpExitToDestinationSelect(ent, s),
             _  => throw new NotImplementedException(BuildScriptOpGap(op)),
         };
 
@@ -918,6 +919,61 @@ public static unsafe partial class Blaze
     {
         BeginScriptedCamera(ent, s[1], *(ushort*)(s + 2));
         return s + 4;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00515e20 @ 0x00515e20 (opcode 30) — <b>quitte la zone pour l'ecran de choix de
+    /// destination</b>. C'est la sortie d'un batiment : le script d'une porte pose l'etat, et le
+    /// jeu ressort par la carte du monde.
+    ///
+    /// <para>
+    /// Ce gestionnaire n'est pas dans <c>Blaze.c</c> — Ghidra a nomme la table <c>PTR_LAB_</c> et
+    /// n'a donc pas reconnu ces corps comme des fonctions. Releve au desassembleur, corps entier
+    /// dans la fenetre de 96 octets : <c>Legacy/Raw/Blaze/ScriptOps/FUN_00515e20.asm</c>, 81
+    /// octets jusqu'au <c>ret</c>, puis quinze <c>nop</c> de bourrage.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>C'est le jumeau de <see cref="ScriptOpTransferArea"/></b> (opcode 17) : meme garde de
+    /// genre, et exactement les memes quatre champs d'entite pour marquer le membre comme partant
+    /// — <c>+0x98</c> recoit <c>+0x32</c>, les drapeaux perdent <c>0x08000200</c> et gagnent
+    /// <c>0x2000</c>, le compteur d'occupation <c>+0x12</c> avance d'un — suivis du meme
+    /// <c>DAT_005de53c</c> = <c>entite[8]</c>. Toute la difference est dans la fin :
+    /// </para>
+    ///
+    /// <list type="bullet">
+    /// <item>l'opcode 17 <b>note une destination</b> (zone, sous-zone, point d'entree) et pose le
+    /// pas de boucle a <b>2</b> : la carte du monde se recharge sur place, sans quitter l'etat 3.
+    /// Ici il n'y a aucune operande a lire, et le pas passe a <b>0xfe</b> — la valeur sur laquelle
+    /// <see cref="RunWorldMapState"/> fait <c>return</c> au lieu de reboucler ;</item>
+    /// <item>l'opcode 30 pose en plus <c>s_GameStateId_005de510 = 2</c>. Le cas 2 de
+    /// <see cref="RunGameStateTick"/> enchaine <c>Res.LoadMenuResources</c>,
+    /// <see cref="RunDestinationSelect"/>, puis repose l'etat 3 : on sort du batiment, on choisit
+    /// ou aller, on revient en jeu.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Aucune operande</b> : <c>lea eax,[ecx+1]</c>, et non <c>[ecx+4]</c> comme l'opcode 17. Et
+    /// les deux chemins rendent <c>script + 1</c> — sur une entite qui n'est pas un membre du
+    /// groupe, l'opcode ne fait rien du tout.
+    /// </para>
+    /// </summary>
+    private static byte* ScriptOpExitToDestinationSelect(byte* ent, byte* s)
+    {
+        // Ghidra: `and edx,0FC0000h ; cmp edx,800000h ; jne 00515E69`.
+        if ((*(uint*)ent & 0xfc0000) != 0x800000) return s + 1;
+
+        ushort saved = *(ushort*)(ent + 0x32);            // Ghidra: mov dx,[eax+32h], lu avant tout
+        *(ushort*)(ent + 0x12) += 1;                      // Ghidra: inc word [eax+12h]
+        *(ushort*)(ent + 0x98) = saved;
+        *(uint*)ent = *(uint*)ent & 0xf7fffdff | 0x2000;  // Ghidra: and ecx,0F7FFFDFFh ; or ch,20h
+
+        // L'ordre est celui du binaire : le pas d'abord, le membre ensuite, l'etat en dernier.
+        s_WorldMapStep_005645f8 = -2;                     // Ghidra: mov byte [5645F8h],0FEh
+        s_Unknown_005de53c = ent[8];                      // le membre du groupe qui declenche
+        s_GameStateId_005de510 = 2;                       // l'ecran de choix de destination
+
+        return s + 1;
     }
 
     /// <summary>

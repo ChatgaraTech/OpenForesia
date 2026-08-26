@@ -6,6 +6,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-26
 
+- feat : **on peut sortir de l'auberge** — opcode 30 de l'interpréteur de script (`FUN_00515e20`, absent de `Blaze.c`, relevé au désassembleur) : jumeau de l'opcode 17, il marque le membre comme partant puis pose le pas de boucle à `0xfe` et l'état de jeu à **2**, soit la sortie par l'écran de choix de destination
 - doc : **l'utilisation des objets est gelée** — chantier suspendu à la demande du Responsable, le test (boire une potion, un équipement qui réagit) est noté dans `TODO.md` **pour le premier donjon et à la charge du Responsable**
 - feat : **le son des cinématiques se joue** — MS-ADPCM décodé par `Host/MsAdpcm.cs`, sorti par `Host/WaveOut.cs` (winmm) ; mesuré sur `TEPS.AVI` : 324 images sur 324, 21,5 s de son, **98 ms d'écart d'horloge** (la latence du tampon)
 - fix : **le son était tronqué de deux tiers, en silence** — un bloc AVI porte autant de blocs ADPCM que le monteur a voulu, et `TEPS.AVI` en met **une seconde entière** (21 668 échantillons) là où `ANI01.AVI` en met une image ; le tampon de décodage était fixe à 8 192. Il se dimensionne désormais sur le bloc réel, et une troncature parle au lieu de se taire
