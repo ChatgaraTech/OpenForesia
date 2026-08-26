@@ -6,6 +6,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-26
 
+- doc : **les onze monstres de la forêt sont un chantier d'un autre ordre** — table `0x0056ad48`, 1 400 à 2 550 octets et 24 à 45 appels chacun (contre 100–950 octets et presque aucun appel pour les dix-sept décors) ; carte des appelées relevée, six manquantes dont une aux paramètres perdus par Ghidra
 - fix : **le texte de la forêt était centré ligne par ligne** au lieu d'être aligné à gauche — `FUN_00544d90` (retour à la ligne) prend son **premier argument** comme drapeau de remise à zéro, et la table des codes de contrôle lui passe le curseur de texte, jamais nul ; la reconstruction passait `0` en dur, donc l'état « espace de tête retiré » survivait d'une ligne à l'autre et `FlushLine` centrait tout le bloc
 - feat : le verbe 62 de la forêt (`FUN_00445480`) — « suis-je le dernier membre vivant du groupe ? »
 - feat : **le crochet de contact au sol de la forêt** — `FUN_00541440` (entrée 32 de la table `0x0056afc8`, souche vide en zone 0) : la poussière du pas cadencée par la période du clip d'animation, et l'effet de terrain brûlant

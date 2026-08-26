@@ -15355,3 +15355,68 @@ tranchaient.
 gauche, le titre toujours centre, et les debris disparus. Si des debris subsistent apres ca, c'est
 un second defaut — `FlushLine` deplace les pixels par `CrtMemMove` et remplit la gauche de `0xff`,
 donc un centrage legitime mal borne laisserait le meme genre de trace.
+
+---
+
+## 2026-08-26 (suite 12) — les onze monstres de la foret : la carte avant de creuser
+
+**Le texte est corrige**, confirme a l'ecran par Vincent : le correctif de la suite 11 (l'argument
+de `FUN_00544d90` pris pour une constante) suffisait.
+
+**Le plantage suivant est d'une autre nature.** `FUN_0050e680, table 0x005ecaa0 entree 0,
+sous-type 0 : gestionnaire d'entite 0x499DE0` — c'est la table `0x0056ad48`, la **premiere** des
+sept, celle des entites de scene. Autrement dit : **les ennemis**.
+
+### Ce que la table dit
+
+La zone 3 y remplit **onze** entrees (0 a 9, plus 18), la ou la zone 0 n'en a que deux
+(`FUN_00486EE0`, la « bestiole errante » deja transcrite, et `FUN_00487260`). Ce sont les onze types
+de monstres de la foret, tous **absents de `Blaze.c`**.
+
+| gestionnaire | sous-type | taille | appels |
+|---|---:|---:|---:|
+| `FUN_00499DE0` | 0 | 1 377 | 24 |
+| `FUN_0049A360` | 1 | non mesure | — |
+| `FUN_0049A980` | 2 | 2 175 | 39 |
+| `FUN_0049B220` | 3 | 1 542 | 25 |
+| `FUN_0049B840` | 4 | 1 371 | 36 |
+| `FUN_0049C0B0` | 5 | non mesure | — |
+| `FUN_0049C8E0` | 6 | 1 866 | 29 |
+| `FUN_0049D030` | 7 | 2 546 | 45 |
+| `FUN_0049DA40` | 8 | 1 841 | 31 |
+| `FUN_0049E190` | 9 | non mesure | — |
+| `FUN_0049E920` | 18 | non mesure | — |
+
+**Ce n'est pas le meme ordre de grandeur que les decors.** Les dix-sept de la table `0x0056adc8`
+faisaient 100 a 950 octets et la plupart n'appelaient rien ; ceux-ci font **1 400 a 2 550 octets
+avec 24 a 45 appels chacun**. Le total depasse 20 000 octets de code, contre environ 6 000 pour les
+dix-sept decors — et le compte d'appels, qui est le vrai predicteur du cout, est dix fois plus
+eleve.
+
+### Les appelees du premier, verifiees une a une
+
+Sur les treize cibles distinctes de `FUN_00499DE0` :
+
+- **deja transcrites** : `FUN_00533940` (placement), `FUN_004DB5A0`, `FUN_00538980` (blocs
+  d'espece), `FUN_0053DB20` (son positionnel), `FUN_00547140` (rand) ;
+- **des thunks d'import** : `0x00545A10` → ordinal 442 (`SquareRoot0`), `0x00545A22` → ordinal
+  **457** (`ratan2`), tous deux deja lies ;
+- **manquantes, mais toutes dans `Blaze.c`** : `FUN_004DFAF0` (22 l.), `FUN_004E3770` (24 l.),
+  `FUN_00488160` (32 l.), `FUN_00519C30` (62 l.), `FUN_00535F20` (72 l.), `FUN_00539B80`
+  (**241 l.**).
+
+Une seule pose une difficulte connue : **`FUN_00488160` a ses parametres perdus par Ghidra**
+(`unaff_EBP`, `unaff_retaddr` dans son corps). C'est le cas que `CLAUDE.md` classe « genuinement
+bloque » pour la pseudo-C — resoluble au desassembleur, mais il faut reconstruire la convention
+d'appel depuis le trafic de registres.
+
+### Ce que ca veut dire, dit franchement
+
+**C'est un chantier de plusieurs sessions, pas la suite du precedent.** Les decors etaient des
+machines a etats de quelques dizaines de lignes ; ceux-ci sont des **intelligences artificielles
+completes** — detection, poursuite, attaque, degats, mort — et chacune tire une demi-douzaine de
+sous-systemes.
+
+L'ordre le moins couteux est monstre par monstre : le sous-type **0** debloque le premier groupe
+d'ennemis, et ses six appelees manquantes serviront aux dix autres. Mais il n'y a pas de raccourci,
+et annoncer le contraire ferait perdre plus de temps que la lecture elle-meme.
