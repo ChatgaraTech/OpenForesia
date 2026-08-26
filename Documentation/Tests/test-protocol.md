@@ -41,6 +41,7 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 | `-Build` | reconstruit la solution d'abord |
 | `-Then A,B` | touches à jouer **une fois l'écran atteint**, dans l'ordre. Jetons : `ENTER` `ESC` `UP` `DOWN` `LEFT` `RIGHT` `LCTRL` `START` `SELECT` `LALT` ; `TYPE:texte` et `KBENTER` pour la frappe clavier ; `HOLD:x`/`FREE:x` pour enfoncer et relâcher ; `WAIT<n>` pour patienter n secondes. Exemple : `-Then DOWN,WAIT2,ENTER` |
 | `-Hold <jeton>` | touche maintenue **de la prise de focus jusqu'à la fin du run**, navigation du menu comprise. Indispensable pour les conditions que le jeu lit sur l'état *tenu* à un instant précoce : `-Then` ne démarre qu'après la validation du menu, et certains écrans sont atteints avant |
+| `-Maximize` | clique « agrandir » **dès que la fenêtre existe**, donc pendant l'écran-titre, avant le passage au menu. C'est le seul instant où ça teste quelque chose : c'est ce passage qui redimensionne la fenêtre (changement de mode d'affichage de `3dhelp`). Le verdict imprime la géométrie de fin de run, `[agrandie]` compris |
 | `-Trace A,B` | pose `OPENFORESIA_TRACE_A=1`, `OPENFORESIA_TRACE_B=1` (voir plus bas) |
 | `-KeepOpen` | laisse le jeu ouvert |
 | `-MenuDelay`, `-TapMs`, `-MaxTaps` | réglages fins, rarement utiles |
@@ -1619,3 +1620,62 @@ Deux pieges de PowerShell 5.1 rencontres en ecrivant le script, et payes tous le
 - **Un script contenant un tiret cadratin ou une lettre accentuee ne s'analyse pas** s'il est ecrit
   en UTF-8 sans BOM : PowerShell 5.1 le lit en ANSI et casse sur les chaines. Garder ces scripts
   en ASCII pur — c'est deja la convention de ce fichier.
+
+### Un plantage de construction qui n'en est pas un : le jeu est encore ouvert
+
+`MSB3027` / `MSB3021` — « Le fichier est verrouillé par : OpenForesia (13384) » — signifie qu'une
+instance du jeu tourne encore et tient `bin\Debug\net9.0\OpenForesia.exe`. `playtest.ps1 -Build`
+s'arrete alors net.
+
+**Avant de tuer quoi que ce soit, regarder a qui appartient cette instance :**
+
+```powershell
+Get-Process -Name OpenForesia | Select-Object Id, StartTime, MainWindowTitle
+```
+
+Une instance dont l'heure de demarrage ne correspond a aucun run du script est celle du
+**Responsable**, en train de jouer — la tuer lui coute sa session. `playtest.ps1` tue toujours la
+sienne en fin de run ; un reliquat vient donc d'un run interrompu, et celui-la se tue sans risque.
+
+## Piloter la FENETRE, et pas n'importe laquelle
+
+Ajoute le 2026-08-26 en corrigeant le redimensionnement de la fenetre agrandie. Deux pieges, tous
+deux payes le meme jour, et tous deux capables de rendre un **faux negatif** — un correctif juste
+qui parait ne rien faire.
+
+### 1. `Process.MainWindowHandle` n'est pas la fenetre du jeu
+
+Le processus porte cinq fenetres de haut niveau. Celle qui compte est la notre :
+
+| classe | titre | etat |
+|---|---|---|
+| `OpenForesiaWindow` | `OpenForesia` | **la fenetre du jeu**, visible, 656x519 par defaut |
+| `VfwClass` | `Blaze & Blade` | le lecteur video de l'original, masquee, 10x10 |
+| `PseudoConsoleWindow`, `MSCTFIME UI`, `IME` | — | plomberie |
+
+Au tout debut, la notre n'existe pas encore et `MainWindowHandle` rend celle du lecteur video. Un
+`-Maximize` pose dessus agrandit une fenetre **invisible** : le script affichait fierement
+`1936x1048 [agrandie]` sans que rien ne bouge a l'ecran. Chercher par **classe** —
+`FindWindowA("OpenForesiaWindow", null)`, c'est ce que fait `PlayTestInput.FindGame()`.
+
+### 2. `SW_RESTORE` de-agrandit une fenetre agrandie
+
+`ShowWindow(h, 9)` ne sert qu'a sortir une fenetre **reduite**. Appliquee a une fenetre
+**agrandie**, elle la ramene a sa taille normale. La prise de focus du script le faisait
+systematiquement, donc defaisait le `-Maximize` qu'elle venait de poser. Corrige : on ne restaure
+que si `IsIconic`.
+
+### Ce que le jeu trace sur sa fenetre
+
+`D3D11Window` ecrit deux lignes dans le journal, qui suffisent a lire toute l'affaire :
+
+```
+[FEN] releve : regime 1, normale 656x519      <- SavePlacement, regime SW_SHOWNORMAL
+[FEN] releve : regime 3, normale 656x519      <- l'utilisateur a clique "agrandir" (SW_SHOWMAXIMIZED)
+[FEN] retabli : regime 3, normale 656x519     <- RestorePlacement, apres le changement de mode
+```
+
+Un `retabli` en **regime 1** alors qu'un `releve` en regime 3 le precede signale que le relevé de
+l'utilisateur a ete perdu. **Aucun `retabli` du tout** signale que le run n'a pas atteint le
+basculement vers le backend Direct3D — le test ne prouve alors rien : il faut un run qui entre
+vraiment dans un ecran de jeu (`-Entry 1` suffit).

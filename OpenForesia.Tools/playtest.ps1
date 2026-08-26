@@ -63,7 +63,12 @@ param(
     # instant precoce -- typiquement SELECT a l'entree de l'etat de jeu 1, que la sequence -Then ne
     # peut pas atteindre puisqu'elle ne demarre qu'apres la validation.
     # Jetons : SELECT START LCTRL LALT ENTER ESC SPACE UP DOWN LEFT RIGHT PGUP PGDN
-    [string]$Hold = ''
+    [string]$Hold = '',
+    # Agrandit la fenetre du jeu -- par le meme message que le bouton de la barre de titre -- juste
+    # apres la prise de focus, donc AVANT la validation du menu. C'est le seul moment ou ca teste
+    # quelque chose : le passage a l'ecran suivant est ce qui remettait la fenetre a sa taille de
+    # depart (le changement de mode d'affichage de 3dhelp, voir D3D11Window.RestorePlacement).
+    [switch]$Maximize
 )
 
 $ErrorActionPreference = 'Stop'
@@ -201,7 +206,32 @@ public static class PlayTestInput {
         Send(scan, SCAN | UP);
     }
 
-    public static void Focus(IntPtr h) { ShowWindow(h, 9); SetForegroundWindow(h); }
+    // SW_RESTORE (9) ne sert qu'a sortir d'une fenetre reduite -- applique a une fenetre AGRANDIE,
+    // il la ramene a sa taille normale. Le harnais defaisait ainsi le -Maximize qu'il venait de
+    // poser, et le test rendait un faux negatif. Ne restaurer que si la fenetre est reduite.
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+    public static void Focus(IntPtr h) { if (IsIconic(h)) ShowWindow(h, 9); SetForegroundWindow(h); }
+
+    // Le bouton "agrandir" de la barre de titre, exactement : un WM_SYSCOMMAND/SC_MAXIMIZE.
+    // ShowWindow(SW_MAXIMIZE) agrandirait aussi, mais sans emettre ce message -- or c'est lui que
+    // la fenetre du jeu ecoute pour savoir que le redimensionnement vient de l'utilisateur.
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
+
+    // La fenetre du jeu se trouve par sa CLASSE, jamais par Process.MainWindowHandle : au
+    // demarrage, la seule fenetre du processus est celle du lecteur video (classe VfwClass, titre
+    // "Blaze & Blade", 10x10, masquee), et c'est elle que MainWindowHandle rend. Un -Maximize
+    // pose dessus agrandit une fenetre invisible et ne teste rien -- mesure le 2026-08-26.
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)] static extern IntPtr FindWindowA(string cls, string name);
+    public static IntPtr FindGame() { return FindWindowA("OpenForesiaWindow", null); }
+    public static void Maximize(IntPtr h) { PostMessage(h, 0x0112, (IntPtr)0xF030, IntPtr.Zero); }
+
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] static extern bool IsZoomed(IntPtr h);
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L,T,R,B; }
+    public static string Geometry(IntPtr h) {
+        RECT r; GetWindowRect(h, out r);
+        return (r.R - r.L) + "x" + (r.B - r.T) + " en (" + r.L + "," + r.T + ")" + (IsZoomed(h) ? " [agrandie]" : "");
+    }
 }
 "@
 }
@@ -268,6 +298,27 @@ $cwd = if ($WorkingDir) { $WorkingDir } else { Split-Path $exe }
 $p = Start-Process -FilePath $exe -WorkingDirectory $cwd -PassThru `
         -RedirectStandardError $err -RedirectStandardOutput $out
 Write-Host "== PID $($p.Id) ; attente $MenuDelay s pour le menu"
+
+# -Maximize agrandit des que la fenetre existe, donc pendant l'ecran-titre et AVANT le passage au
+# menu : c'est ce passage-la qui remettait la fenetre a sa taille de depart, et l'agrandir apres ne
+# testerait rien. La fenetre peut appartenir au processus fils (voir plus bas), d'ou le balayage par
+# recherche par CLASSE (voir PlayTestInput.FindGame) plutot que $p.MainWindowHandle.
+if ($Maximize) {
+    $h = [IntPtr]::Zero
+    for ($i = 0; $i -lt ($MenuDelay * 8); $i++) {
+        $h = [PlayTestInput]::FindGame()
+        if ($h -ne [IntPtr]::Zero) { break }
+        Start-Sleep -Milliseconds 250
+    }
+    if ($h -ne [IntPtr]::Zero) {
+        [PlayTestInput]::Maximize($h)
+        Start-Sleep -Milliseconds 600
+        Write-Host "== agrandie des l'ecran-titre : $([PlayTestInput]::Geometry($h))"
+    } else {
+        Write-Host "!! -Maximize : aucune fenetre a agrandir"
+    }
+}
+
 Start-Sleep -Seconds $MenuDelay
 
 # Le jeu se **relance en processus fils** quand il perd la course pour la memoire basse (environ
@@ -468,6 +519,13 @@ if ($p.HasExited) {
 }
 
 if ($null -ne $holdScan) { [PlayTestInput]::Free($holdScan[0], $holdScan[1]) }
+
+# La geometrie finale : c'est elle qui dit si un changement d'ecran a repositionne la fenetre dans
+# le dos de l'utilisateur. Voir D3D11Window.SavePlacement.
+$hGame = [PlayTestInput]::FindGame()
+if (-not $p.HasExited -and $hGame -ne [IntPtr]::Zero) {
+    Write-Host "== fenetre en fin de run : $([PlayTestInput]::Geometry($hGame))"
+}
 
 if ($Shot -and -not $p.HasExited -and $hwnd -ne [IntPtr]::Zero) {
     try { [PlayTestShot]::Grab($hwnd, $png); Write-Host "== capture -> $png" }

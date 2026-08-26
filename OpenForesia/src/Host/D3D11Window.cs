@@ -22,6 +22,10 @@ internal static unsafe class D3D11Window
     private const uint WmDestroy = 0x0002;
     private const uint WmClose = 0x0010;
     private const uint WmSize = 0x0005;
+    private const uint WmSysCommand = 0x0112;
+    private const uint WmExitSizeMove = 0x0232;
+    private const uint ScMaximize = 0xF030;
+    private const uint ScRestore = 0xF120;
     private const uint WmChar = 0x0102;
     private const uint WmKeyDown = 0x0100;
     private const uint WmSysKeyDown = 0x0104;
@@ -128,6 +132,29 @@ internal static unsafe class D3D11Window
             case WmSize:
                 s_Resized = true;
                 return IntPtr.Zero;
+
+            // Les deux seuls messages qui disent « c'est **l'utilisateur** qui a redimensionné » :
+            // la fin d'un glisser de bordure, et le bouton agrandir / restaurer de la barre de
+            // titre (double-clic sur la barre compris). Les repositionnements que Windows impose
+            // lors d'un changement de mode d'affichage n'en émettent aucun — c'est ce qui permet à
+            // RestorePlacement de rétablir le choix de l'utilisateur plutôt que le dernier état
+            // subi. Voir SavePlacement.
+            case WmExitSizeMove:
+                SavePlacement();
+                return IntPtr.Zero;
+
+            case WmSysCommand:
+            {
+                uint command = (uint)wParam & 0xfff0;
+                if (command == ScMaximize || command == ScRestore)
+                {
+                    // Laisser Windows agrandir ou restaurer d'abord : on relève l'état d'après.
+                    IntPtr result = DefWindowProcA(hWnd, msg, wParam, lParam);
+                    SavePlacement();
+                    return result;
+                }
+                break;
+            }
 
             // La file de caractères tapés. Dans l'original c'est la **procédure de fenêtre interne
             // de winsys3d** qui la remplit, en appelant FUN_00a03f50 — une fonction non exportée,
@@ -308,20 +335,47 @@ internal static unsafe class D3D11Window
     private const uint SwpNoOwnerZOrder = 0x0200;
     private const uint SwpNoActivate = 0x0010;
 
-    private static Rect s_SavedPlacement;
+    /// <summary>
+    /// <c>WINDOWPLACEMENT</c>. Il porte, en plus du rectangle, le <b>régime d'affichage</b> de la
+    /// fenêtre — normale, agrandie, réduite — ce qu'un simple <c>GetWindowRect</c> ne dit pas.
+    /// </summary>
+    private struct WindowPlacement
+    {
+        public uint length;
+        public uint flags;
+        public uint showCmd;
+        public int minX, minY;
+        public int maxX, maxY;
+        public Rect rcNormalPosition;
+    }
+
+    [DllImport("user32.dll")] private static extern int GetWindowPlacement(IntPtr hWnd, WindowPlacement* p);
+    [DllImport("user32.dll")] private static extern int SetWindowPlacement(IntPtr hWnd, WindowPlacement* p);
+
+    private static WindowPlacement s_SavedPlacement;
     private static bool s_HasSavedPlacement;
 
     /// <summary>
-    /// Mémorise la géométrie de la fenêtre, pour pouvoir la rétablir après un changement
-    /// d'affichage.
+    /// Mémorise la géométrie **et le régime** de la fenêtre, pour pouvoir les rétablir après un
+    /// changement d'affichage.
+    ///
+    /// <para>
+    /// Appelé à la création de la fenêtre, puis à chaque fois que <b>l'utilisateur</b> la
+    /// redimensionne — voir <c>WM_EXITSIZEMOVE</c> et <c>WM_SYSCOMMAND</c> dans la procédure de
+    /// fenêtre. C'est ce qui distingue un déplacement voulu d'un déplacement subi : les
+    /// repositionnements que Windows impose lors d'un changement de mode n'émettent ni l'un ni
+    /// l'autre de ces messages, et ne remplacent donc pas le relevé.
+    /// </para>
     /// </summary>
     internal static void SavePlacement()
     {
-        if (Handle == IntPtr.Zero) return;
-        Rect r;
-        if (GetWindowRect(Handle, &r) == 0) return;
-        s_SavedPlacement = r;
+        if (Handle == IntPtr.Zero || s_Fullscreen) return;
+        WindowPlacement p = default;
+        p.length = (uint)sizeof(WindowPlacement);
+        if (GetWindowPlacement(Handle, &p) == 0) return;
+        s_SavedPlacement = p;
         s_HasSavedPlacement = true;
+        Console.Error.WriteLine($"[FEN] releve : regime {p.showCmd}, normale {p.rcNormalPosition.Width}x{p.rcNormalPosition.Height}");
     }
 
     /// <summary>
@@ -334,14 +388,22 @@ internal static unsafe class D3D11Window
     /// jour où <c>3dhelp</c> ne changera plus de mode, cet appel deviendra sans effet plutôt que
     /// faux.
     /// </para>
+    /// <para>
+    /// Le rétablissement passe par <c>SetWindowPlacement</c> et non par <c>SetWindowPos</c>. La
+    /// première version posait un rectangle : une fenêtre <b>agrandie</b> se retrouvait alors à la
+    /// taille du relevé tout en gardant son bit <c>WS_MAXIMIZE</c>, si bien que le bouton
+    /// « agrandir » commençait par la restaurer — il fallait cliquer deux fois pour la ragrandir.
+    /// Signalé en jeu le 2026-08-26 : agrandir la fenêtre à l'écran-titre, puis valider vers le
+    /// menu, la ramenait à sa taille de départ.
+    /// </para>
     /// </summary>
     internal static void RestorePlacement()
     {
-        if (Handle == IntPtr.Zero || !s_HasSavedPlacement) return;
-        SetWindowPos(Handle, IntPtr.Zero,
-            s_SavedPlacement.Left, s_SavedPlacement.Top,
-            s_SavedPlacement.Width, s_SavedPlacement.Height,
-            SwpNoZOrder | SwpNoOwnerZOrder | SwpNoActivate);
+        if (Handle == IntPtr.Zero || !s_HasSavedPlacement || s_Fullscreen) return;
+        WindowPlacement p = s_SavedPlacement;
+        p.length = (uint)sizeof(WindowPlacement);
+        SetWindowPlacement(Handle, &p);
+        Console.Error.WriteLine($"[FEN] retabli : regime {p.showCmd}, normale {p.rcNormalPosition.Width}x{p.rcNormalPosition.Height}");
     }
     private const uint MonitorDefaultToNearest = 2;
 
@@ -396,6 +458,10 @@ internal static unsafe class D3D11Window
                 SwpFrameChanged | SwpNoZOrder | SwpNoOwnerZOrder);
 
             s_Fullscreen = false;
+
+            // Le retour en fenêtré est un choix de l'utilisateur au même titre qu'un glisser de
+            // bordure : le relevé doit suivre.
+            SavePlacement();
         }
 
         s_Resized = true;
