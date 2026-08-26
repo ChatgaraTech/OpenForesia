@@ -3803,6 +3803,7 @@ public static unsafe partial class Blaze
             case 0x00457BF0: EntityHandler_00457BF0((uint*)record); return;
             case 0x00456750: EntityHandler_00456750((uint*)record); return;
             case 0x00457370: EntityHandler_00457370((uint*)record); return;
+            case 0x00456CF0: EntityHandler_00456CF0((uint*)record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
@@ -10598,7 +10599,7 @@ public static unsafe partial class Blaze
                 if ((held & 0x40000000) == 0)
                 {
                     *(short*)(s + 0x96) = 0;
-                    SetEntityPose_005397B0(slot, 2, 0);
+                    ApplyPercentDamage_005397B0(slot, 2, 0);
                     *(short*)(s + 0x96) = 0x10;
                     *(short*)(s + 0x14) = 0;
                     *(uint*)(s + 0x5c) = 0;
@@ -10938,7 +10939,7 @@ public static unsafe partial class Blaze
                 && (*(uint*)(perChar + 0x140) & 0x40400000) == 0)
             {
                 Aud.PlayPositionalSound(5, 0xa00, 0x1800, (int*)(s + 0x1c));
-                SetEntityPose_005397B0(slot, 2, 0);
+                ApplyPercentDamage_005397B0(slot, 2, 0);
                 pad[0x0c] = 0;
                 *(short*)(s + 0x96) = 0x10;
             }
@@ -11199,10 +11200,70 @@ public static unsafe partial class Blaze
         }
     }
 
-    /// <summary>Ghidra: FUN_005397b0 @ 0x005397b0 (37 l.) — pose une pose d'entite.</summary>
-    private static void SetEntityPose_005397B0(uint* entity, int pose, int mode)
-        => throw new NotImplementedException(
-            $"FUN_005397b0 (0x005397b0), pose {pose} : non transcrite. 37 lignes dans Blaze.c.");
+    /// <summary>
+    /// Ghidra: FUN_005397b0 @ 0x005397b0 — <b>applique des degats en pourcentage des points de vie
+    /// maximaux</b>, avec le verrou d'invulnerabilite qui va avec. Le corps est dans
+    /// <c>Blaze.c</c> ; il etait stube ici sous le nom <c>SetEntityPose_005397B0</c>, qui <b>etait
+    /// faux</b> : il n'y a aucune pose la-dedans.
+    ///
+    /// <para>
+    /// Ce que la lecture du corps donne, et que l'adresse seule ne donnait pas : <c>+0x96</c> est un
+    /// <b>verrou d'invulnerabilite</b>. Non nul, le coup ne passe pas du tout ; la fonction le pose
+    /// a <c>0x10</c> des qu'elle frappe. Les deux appelants deja transcrits le confirment — ils le
+    /// mettent a zero juste avant l'appel et le remettent a <c>0x10</c> juste apres, pour forcer un
+    /// coup a travers.
+    /// </para>
+    /// <para>
+    /// Les degats sont <c>PV_max * pourcentage / 100</c>, avec un <b>plancher a 1</b> : un
+    /// pourcentage trop petit pour valoir un point en vaut quand meme un. A zero point de vie, le
+    /// bit <c>0x40000000</c> part <b>a la fois</b> sur le bloc du personnage et sur son entite.
+    /// </para>
+    /// <para>
+    /// <b>Deux champs sont sauves et rendus</b> autour de la naissance de l'effet <c>0x50</c> :
+    /// <c>+0x18</c> et <c>+0x0a</c>. L'effet herite d'une copie de l'entite
+    /// (<see cref="SpawnEffectEntity"/>), donc le binaire y glisse <c>100</c> et
+    /// <paramref name="effectParam"/> le temps de l'appel, puis remet les valeurs d'origine. Sans
+    /// cette restitution, une entite frappee garderait la teinte de son propre effet de degats.
+    /// </para>
+    /// </summary>
+    private static void ApplyPercentDamage_005397B0(uint* entity, int percent, ushort effectParam)
+    {
+        byte* e = (byte*)entity;
+
+        if (*(short*)(e + 0x96) != 0) return;
+        *(short*)(e + 0x96) = 0x10;
+
+        // Ghidra: `((byte)param_1[2] + 0x78) * 0x2000 + MainMem` — l'octet +0x8 est l'index de
+        // membre, et 0x78 * 0x2000 vaut 0xf0000, le meme decalage de bloc de personnage que
+        // AreaVerb_0053DEA0 ecrit `membre * 0x2000 + 0xf02bc`.
+        byte* character = GetMainMemPtr() + (e[8] + 0x78) * 0x2000;
+
+        int damage = *(short*)(character + 0x148) * percent / 100;
+        if (damage == 0) damage = 1;
+
+        *(short*)(character + 0x14c) -= (short)damage;
+        if (*(short*)(character + 0x14c) < 1)
+        {
+            *(ushort*)(character + 0x14c) = 0;
+            *(uint*)(character + 0x140) |= 0x40000000;
+            *(uint*)e |= 0x40000000;
+        }
+
+        *(ushort*)(character + 0x196) = 0;
+        *(uint*)(character + 0x140) &= 0xffffffbf;
+
+        SpawnParticle_0050F070((uint*)(e + 0x1c), (uint)damage, 0);
+
+        uint savedTint = *(uint*)(e + 0x18);
+        ushort savedFacing = *(ushort*)(e + 0x0a);
+        *(ushort*)(e + 0x18) = 100;
+        *(ushort*)(e + 0x1a) = effectParam;
+
+        SpawnEffectEntity(e, 0x50, 0, 0);                 // Ghidra: FUN_0047a9d0
+
+        *(uint*)(e + 0x18) = savedTint;
+        *(ushort*)(e + 0x0a) = savedFacing;
+    }
 
 
     /// <summary>
@@ -14686,6 +14747,163 @@ public static unsafe partial class Blaze
 
         *(ushort*)(e + 0x10) = 0;
         return true;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0045DA40 @ 0x0045da40 — <b>frappe les membres du groupe que l'octet de contact
+    /// designe</b>. 300 octets, absente de <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <c>+0x9</c> de la source porte <b>deux masques de quatre bits</b>, un par demi-octet, et
+    /// <paramref name="selector"/> dit lequel prendre : <b>0</b> le bas, <b>1</b> le haut. Toute
+    /// autre valeur est prise <b>telle quelle comme masque</b> — le selecteur sert de masque par
+    /// defaut, ce que seul le desassemblage montre (l'argument et le masque partagent la meme case
+    /// de pile, <c>[esp+0x20]</c>, et les deux branches ne font que l'ecraser).
+    /// </para>
+    /// <para>
+    /// Chaque membre vivant dont le bit est pose, et dont le verrou <c>+0x96</c> est libre, prend
+    /// <see cref="ApplyPercentDamage_005397B0"/>, gagne le bit <c>0x40</c> et se voit poser un
+    /// verrou de <paramref name="stunFrames"/> images — ou <b>0x3c</b> quand cet argument est nul.
+    /// </para>
+    /// <para>
+    /// <b>L'octet de contact est remis a zero en sortant</b>, et le retour est le masque des
+    /// membres reellement touches. La boucle est ecrite <c>cmp bx,3 ; jle</c>, donc quatre tours.
+    /// </para>
+    /// </summary>
+    private static ushort StrikePartyMembers_0045DA40(
+        byte* source, int percent, ushort selector, ushort effectParam, int stunFrames)
+    {
+        byte mask = (byte)selector;
+        if (selector == 0) mask = (byte)(source[9] & 0x0f);
+        if (selector == 1) mask = (byte)(source[9] >> 4);
+
+        ushort struck = 0;
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+            if (((mask >> i) & 1) == 0) continue;
+            if (*(short*)(member + 0x96) != 0) continue;
+
+            ApplyPercentDamage_005397B0((uint*)member, (short)percent, effectParam);
+
+            *(uint*)member |= 0x40;
+            *(ushort*)(member + 0x96) = stunFrames != 0 ? (ushort)stunFrames : (ushort)0x3c;
+
+            struck |= (ushort)(1 << i);
+        }
+
+        source[9] = 0;
+        return struck;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00456CF0 @ 0x00456cf0 — <b>le sous-type 27</b> : un piege qui <b>tombe sur le
+    /// groupe</b>. 395 octets, absente de <c>Blaze.c</c>. C'est le seul decor de la foret qui fasse
+    /// des degats.
+    ///
+    /// <para>
+    /// A l'amorcage il prend l'echelle <c>0x1194</c> sur deux axes et <b>retient trois shorts de
+    /// l'arene</b> (<c>0x005e92b8</c>, <c>ba</c>, <c>bc</c>) dans <c>+0x44</c>, <c>+0x48</c>,
+    /// <c>+0x4c</c> : ce sont les valeurs de l'effet d'ecran qu'il restaurera plus tard.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 1 est l'attente.</b> Il efface le bit <c>0x2000</c>, remet ses trois vitesses a
+    /// zero, et compte les membres poses sur lui. Le premier tour ou quelqu'un y est, il tire
+    /// <c>+0x14 = rand() % 6</c> ; des que plus personne n'y est, <c>+0x12</c> retombe a zero.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 2 est le declenchement</b> — pose par un script, pas par cette fonction. Il vide
+    /// quatre octets espaces de <c>0x4c</c> a partir de <c>0x005e918a</c>, allume <c>0x2000</c> et
+    /// le bit <c>0x10</c> de <c>+0x7</c>, se donne une vitesse verticale de <c>0x64000</c>, joue
+    /// <c>sounds[0x2a]</c> a gain <c>0x1800</c>, et <b>revient a l'etat 1</b>.
+    /// </para>
+    /// <para>
+    /// <b><c>+0x16</c> est la machine de l'impact</b>, et elle non plus n'est jamais armee ici :
+    /// a <b>1</b> le piege frappe (4 % des points de vie, demi-octet haut du contact, verrou de
+    /// deux images), joue le son <c>3</c> et arme l'effet d'ecran <c>(0xfa, 0x3c, 0x3c, 1)</c> ;
+    /// a <b>2</b> il restaure les trois valeurs retenues a l'amorcage et remet le mode a 2. Les
+    /// deux etats sont donc <b>poses de l'exterieur</b>, comme l'etat 2 — ce decor est pilote par
+    /// son script d'un bout a l'autre.
+    /// </para>
+    /// <para>L'octet de contact <c>+0x9</c> est remis a zero a chaque image, quel que soit le
+    /// chemin.</para>
+    /// </summary>
+    private static void EntityHandler_00456CF0(uint* entity)
+    {
+        byte* e = (byte*)entity;
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(ushort*)(e + 0x10) = 1;
+            *(ushort*)(e + 0x28) = 0x1194;
+            *(ushort*)(e + 0x2c) = 0x1194;
+            *(ushort*)(e + 0x12) = 0;
+            *(ushort*)(e + 0x16) = 0;
+
+            *(int*)(e + 0x44) = *(short*)Mem.Arena(0x005e92b8);
+            *(int*)(e + 0x48) = *(short*)Mem.Arena(0x005e92ba);
+            *(int*)(e + 0x4c) = *(short*)Mem.Arena(0x005e92bc);
+        }
+
+        if (*(ushort*)(e + 0x10) == 1)
+        {
+            *(uint*)e &= 0xffffdfff;                       // Ghidra: and ch,0DFh
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x58) = 0;
+
+            if (CountPartyMembersMatching(e, 0x10, 0x40000000) == 0)
+            {
+                *(ushort*)(e + 0x12) = 0;
+            }
+            else if (*(ushort*)(e + 0x12) == 0)
+            {
+                *(ushort*)(e + 0x12) = 1;
+                *(short*)(e + 0x14) = (short)(CrtRand() % 6);
+            }
+        }
+
+        if (*(ushort*)(e + 0x10) == 2)
+        {
+            // Ghidra: quatre octets espaces de 0x4c — une table dont seul ce champ est touche.
+            for (int i = 0; i < 4; i++) *Mem.Arena(0x005e918a + i * 0x4c) = 0;
+
+            *(uint*)e |= 0x2000;                           // Ghidra: or ah,20h
+            e[7] |= 0x10;
+            *(int*)(e + 0x54) = 0x64000;
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x58) = 0;
+
+            byte* sounds = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0xa8));
+            TryPlaySoundNearEntity(entity, sounds[0x2a], 0x400, 0x1800, 0, 0);
+
+            *(ushort*)(e + 0x10) = 1;
+        }
+
+        if (*(ushort*)(e + 0x16) == 2)
+        {
+            *(short*)Mem.Arena(0x005e9160) = (short)*(int*)(e + 0x44);
+            *(short*)Mem.Arena(0x005e9162) = (short)*(int*)(e + 0x48);
+            *(short*)Mem.Arena(0x005e9164) = (short)*(int*)(e + 0x4c);
+            *(short*)Mem.Arena(0x005e9166) = 2;
+        }
+
+        if (*(ushort*)(e + 0x16) == 1)
+        {
+            StrikePartyMembers_0045DA40(e, 4, 1, 0, 2);
+            Aud.PlaySoundEffect(3, 0x400, 0x800, 0x800);   // Ghidra: FUN_0053cea0
+
+            *(ushort*)(e + 0x16) = 2;
+            *(short*)Mem.Arena(0x005e9160) = 0xfa;
+            *(short*)Mem.Arena(0x005e9162) = 0x3c;
+            *(short*)Mem.Arena(0x005e9164) = 0x3c;
+            *(short*)Mem.Arena(0x005e9166) = 1;
+        }
+
+        e[9] = 0;
     }
 
     /// <summary>

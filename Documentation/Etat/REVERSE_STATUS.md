@@ -15165,3 +15165,74 @@ main : c'est elle qui debloquerait le sous-type 27, le moins cher des trois.
 touchent des choses visibles — la camera, la musique, le fondu — donc un defaut s'y verra ; d'autres
 n'ecrivent que dans le banc de script, et leur effet ne se lira que dans le comportement d'un
 script.
+
+---
+
+## 2026-08-26 (suite 9) — le sous-type 27, et un nom qui etait faux depuis le debut
+
+La chaine demandee : `FUN_005397B0` → `FUN_0045DA40` → `FUN_00456CF0`. Les trois sont transcrites.
+**Quinze gestionnaires sur dix-sept.**
+
+### `SetEntityPose_005397B0` n'a jamais pose de pose
+
+Le stub portait ce nom depuis sa creation, avec la signature `(entity, pose, mode)` et le resume
+« pose une pose d'entite ». **Il n'y a aucune pose dans ce corps.** `FUN_005397B0` applique des
+**degats en pourcentage des points de vie maximaux**, et son corps etait dans `Blaze.c` depuis le
+debut — trente-sept lignes que personne n'avait ouvertes parce que le nom laissait croire que le
+role etait connu.
+
+Renommee `ApplyPercentDamage_005397B0(entite, pourcentage, parametre d'effet)`. **Les deux appels
+deja transcrits passaient `(slot, 2, 0)`** : ce n'etait pas « pose 2, mode 0 » mais **2 % des points
+de vie**. Ils n'ont pas change de forme, seulement de sens.
+
+**La lecon vaut d'etre ecrite** : un nom pose sur une hypothese est plus couteux qu'un `FUN_…`,
+parce qu'il empeche de relire. `Strategy.md` le dit deja — « renommer seulement quand le role est
+etabli » — et voici le cas ou la regle a ete enfreinte, et ce que ca a coute : deux sites d'appel
+lus a l'envers pendant des semaines.
+
+### Ce que le corps apprend
+
+`+0x96` est un **verrou d'invulnerabilite** : non nul, le coup ne passe pas ; la fonction le pose a
+`0x10` des qu'elle frappe. Les deux appelants deja transcrits le confirment sans le savoir — ils le
+mettent a zero juste avant l'appel et le remettent a `0x10` juste apres, pour forcer un coup a
+travers.
+
+Les degats ont un **plancher a 1** : un pourcentage trop petit pour valoir un point en vaut quand
+meme un. Et **deux champs sont sauves et rendus** autour de la naissance de l'effet `0x50`
+(`+0x18` et `+0x0a`) : l'effet herite d'une copie de l'entite, donc le binaire y glisse ses valeurs
+le temps de l'appel. Sans la restitution, une entite frappee garderait la teinte de son propre
+effet de degats.
+
+### `FUN_0045DA40` — le selecteur qui sert de masque
+
+`+0x9` de la source porte **deux masques de quatre bits**, un par demi-octet, et l'argument
+`selector` dit lequel prendre : 0 le bas, 1 le haut. **Toute autre valeur est prise telle quelle
+comme masque.** Cela ne se voit que sur la pile : l'argument et le masque partagent la case
+`[esp+0x20]`, et les deux branches ne font que l'ecraser. La pseudo-C ne l'aurait pas montre.
+
+Chaque membre touche gagne le bit `0x40` et un verrou de `stunFrames` images — ou **0x3c** quand
+l'argument est nul. L'octet de contact est remis a zero en sortant, et le retour est le masque des
+membres reellement touches.
+
+### `FUN_00456CF0` — le sous-type 27, le seul decor de la foret qui blesse
+
+Trois machines a etats **dont deux ne sont jamais armees par la fonction elle-meme** :
+
+- `+0x10` : 0 amorcage, 1 attente (compte les membres poses dessus), **2 declenchement** — pose par
+  le script, jamais ici ;
+- `+0x16` : **1 impact** (4 % des points de vie, demi-octet haut du contact, verrou de deux images,
+  son 3, effet d'ecran `0xfa, 0x3c, 0x3c, 1`), **2 restitution** — poses par le script eux aussi.
+
+Ce decor est donc **pilote de bout en bout par son script**. L'amorcage retient trois shorts de
+l'arene (`0x005e92b8`, `ba`, `bc`) dans `+0x44`/`+0x48`/`+0x4c` pour les rendre a l'etat 2 de
+`+0x16` : l'effet d'ecran est emprunte, puis rendu.
+
+### Les deux qui restent
+
+Sous-types **8** et **29**, tous deux bloques par `FUN_00455B30` → `FUN_005330D0`, la recherche de
+sol dans un maillage triangulaire (`Blaze.c` 80202, 150+ lignes de geometrie). Inchange depuis la
+suite 8 : c'est un chantier de collision, pas de decor.
+
+### Non exerce
+
+Aucune des quinze n'a tourne.

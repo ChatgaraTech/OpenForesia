@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-08-26
 
+- feat : **le sous-type 27, le seul décor de la forêt qui blesse** — `FUN_00456CF0`, via `FUN_0045DA40` (frappe les membres que l'octet de contact désigne) et `FUN_005397B0` ; quinze gestionnaires sur dix-sept
+- fix : **`SetEntityPose_005397B0` n'a jamais posé de pose** — c'est `ApplyPercentDamage_005397B0`, les dégâts en pourcentage des PV max ; ses deux appels `(slot, 2, 0)` voulaient dire **2 % des PV**, pas « pose 2, mode 0 ». Un nom posé sur une hypothèse empêche de relire
 - feat : **six gestionnaires de plus en forêt** — le radeau (`FUN_00456750`), l'ascenseur (`FUN_00457370`), la scénette de sortie qui détourne la caméra (`FUN_00474380`), le projectile à cinq échos (`FUN_00457BF0`), le décor qui attend un bit de script (`FUN_004746F0`) et celui qui traverse et éclate (`FUN_00456F40`) — quatorze sur dix-sept
 - doc : **le banc de script est un bus, et on en voit les deux bouts** — la dalle écrit un bit dans `0x005e96e0`, le sous-type 26 en lit un dans `0x005e9840`, le 16 ne démarre pas sans `0x005e96fb`, le radeau exige deux bits de `0x005e96ff`
 - feat : **huit gestionnaires d'entité de la forêt** — la dalle de pression (`FUN_00457EC0`, qui pose un bit dans le banc de script `0x005e96e0`), le décor qui balance, celui qui respire, celui qui tombe et flotte, celui qui tremble, celui qui chuchote, celui qui lance un script sur le meneur ; plus `CountPartyMembersMatching` et `TryPlayDistanceSound`, la troisième sœur de la famille « distance à la caméra »
