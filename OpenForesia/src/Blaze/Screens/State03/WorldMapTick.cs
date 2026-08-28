@@ -1586,17 +1586,25 @@ public static unsafe partial class Blaze
 
         return EmitParticle(otBase, cursor, placement, 0, 0);
     }
+
     /// <summary>Ghidra: &amp;DAT_0056d440 — <b>seize entrées de huit octets, une par classe de
-    /// personnage</b>, relevées dans <c>.data</c>. Seul le <c>short</c> de <c>+2</c> a un rôle
-    /// établi : la hauteur à laquelle flotte la bulle d'état au-dessus de la tête. Les trois autres
-    /// champs sont conservés tels quels.
+    /// personnage</b> : la <b>boîte du corps</b>. <c>+0</c> et <c>+4</c> sont ses deux
+    /// demi-étendues au sol, <c>+2</c> la hauteur à laquelle flotte la bulle d'état au-dessus de la
+    /// tête. <c>+6</c> est nul dans les seize entrées. Relevées dans <c>.data</c>.
+    ///
+    /// <para><b>Le rôle de <c>+0</c> et <c>+4</c> a été établi le 2026-08-28</b>, en transcrivant
+    /// <see cref="TestMeleeReach_00535A90"/> : <see cref="EntityFootprint_00538C10"/> rend cette
+    /// entrée pour un membre du groupe et <c>stat + 0x58</c> pour une entité de scène, et le test
+    /// de portée en tire les deux côtés du rectangle de collision. Les deux tables portent donc le
+    /// <b>même enregistrement</b>, ce que confirme <see cref="StatusBubbleHeight_00538BC0"/> :
+    /// elle lit <c>stat + 0x5a</c> là où celle-ci lit <c>+2</c>, soit le même champ des deux côtés.
+    /// Les valeurs se recoupent aussi — la classe 6 est la plus large (0x40 sur 0x28) et la 7 la
+    /// plus étroite (0x1e sur 0x14).</para>
     ///
     /// <para>L'étendue est relevée, pas supposée : à <c>0x0056d4c0</c> commence une table de
     /// pointeurs (<c>0x0053ace0</c>, <c>0x0053ad80</c>, …), donc seize entrées exactement — le même
-    /// compte que <see cref="s_ReactionAnimations_0056aaa0"/>, et pour la même raison.</para>
-    ///
-    /// TODO(REVERSE) : le rôle des champs <c>+0</c>, <c>+4</c> et <c>+6</c> n'est pas établi.</summary>
-    private static readonly byte* s_ClassBubbleHeights_0056d440 = AllocBytes([
+    /// compte que <see cref="s_ReactionAnimations_0056aaa0"/>, et pour la même raison.</para></summary>
+    private static readonly byte* s_ClassBodyMetrics_0056d440 = AllocBytes([
         0x2e, 0x00, 0x82, 0x00, 0x1e, 0x00, 0x00, 0x00,  0x28, 0x00, 0x7f, 0x00, 0x18, 0x00, 0x00, 0x00,
         0x26, 0x00, 0x7d, 0x00, 0x1a, 0x00, 0x00, 0x00,  0x21, 0x00, 0x7c, 0x00, 0x20, 0x00, 0x00, 0x00,
         0x26, 0x00, 0x82, 0x00, 0x1a, 0x00, 0x00, 0x00,  0x28, 0x00, 0x7d, 0x00, 0x1e, 0x00, 0x00, 0x00,
@@ -1613,7 +1621,7 @@ public static unsafe partial class Blaze
     ///
     /// <para>Un <b>membre du groupe</b> (bit <c>0x800000</c>) la tient de sa classe, lue dans le
     /// bloc de 0x2000 octets à <c>MainMem + 0xf0150</c> puis indexée dans
-    /// <see cref="s_ClassBubbleHeights_0056d440"/>. Toute autre entité la tient de son propre bloc
+    /// <see cref="s_ClassBodyMetrics_0056d440"/>. Toute autre entité la tient de son propre bloc
     /// de statistiques, à <c>+0x5a</c>.</para>
     ///
     /// <para>La seconde branche passe par <see cref="s_EntityStatBlocks_005ea560"/> et non par une
@@ -1625,7 +1633,7 @@ public static unsafe partial class Blaze
         if ((*entity & 0x800000) != 0)
         {
             byte characterClass = GetMainMemPtr()[(byte)entity[2] * 0x2000 + 0xf0150];
-            return *(short*)(s_ClassBubbleHeights_0056d440 + characterClass * 8 + 2);
+            return *(short*)(s_ClassBodyMetrics_0056d440 + characterClass * 8 + 2);
         }
 
         return *(short*)(s_EntityStatBlocks_005ea560 + (byte)entity[2] * 0x120 + 0x5a);
@@ -3548,7 +3556,7 @@ public static unsafe partial class Blaze
     /// <b>Cent neuf des 192 creneaux</b> pointent sur <see cref="DespawnEntity_0047ADC0"/>, contre
     /// 69 dans la table sœur — plus de la moitie de l'espace d'indices est vide et eteint ce qui
     /// s'y presente. Restent <b>83 corps reels</b>, dont <b>26 decompiles dans <c>Blaze.c</c></b> ;
-    /// les 57 autres demandent le desassembleur.
+    /// les 57 autres demandent le desassembleur — dont <c>0x004765D0</c>, fait le 2026-08-28.
     /// </para>
     /// </summary>
     private static readonly uint[] s_StaticEntityHandlers_00551f30 =
@@ -3592,11 +3600,13 @@ public static unsafe partial class Blaze
     /// autres, comme elles le sont entre elles : une seule cible commune, la souche.
     /// </para>
     /// <para>
-    /// <b>C'est la seule des trois dont un creneau soit atteint par un chemin reconstruit.</b>
+    /// <b>Deux des trois tables ont desormais un creneau atteint par un chemin reconstruit</b> —
+    /// celle-ci et sa sœur 0x00551f30, dont le sous-type 0xbd est l’aureole d’incantation
+    /// (<see cref="TickCastAura_004765D0"/>), relevee le 2026-08-28.
     /// <see cref="SpawnStatusEffectEntity_0047AC40"/> engendre dans <c>0x005f2d40</c> en posant son
     /// sous-type en <c>+0x05</c>, l'octet meme que cette passe aiguille ; l'effet de dispersion du
     /// groupe de <see cref="EvaluatePartyDispersal"/> y entre avec <c>0x9d</c>, ce qui designe
-    /// <c>0x00445860</c> — un corps reel, non transcrit.
+    /// <c>0x00445860</c>, transcrit depuis (<see cref="ShowEntityLabel_00445860"/>).
     /// </para>
     /// </summary>
     private static readonly uint[] s_StaticEntityHandlers_00552230 =
@@ -3805,6 +3815,21 @@ public static unsafe partial class Blaze
             case 0x00457370: EntityHandler_00457370((uint*)record); return;
             case 0x00456CF0: EntityHandler_00456CF0((uint*)record); return;
             case 0x00541440: EntityHandler_00541440((uint*)record); return;
+
+            // L'entree 0xbd de la table statique 0x00551f30 — l'aureole d'incantation, le seul
+            // creneau de CETTE table qu'un chemin reconstruit atteigne. C'est le plantage a
+            // l'appui sur Select en foret, signale le 2026-08-28.
+            case 0x004765D0: TickCastAura_004765D0(record); return;
+
+            // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
+            // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
+            // 2026-08-28.
+            case 0x0049A980: TickSceneEntityAi_0049A980(record); return;
+
+            // Le sous-type 0 de la meme table — la sœur du precedent, une bete plus petite et plus
+            // prudente. C'est le plantage a l'apparition d'un groupe, signale le 2026-08-28 apres
+            // que le sous-type 2 eut ete transcrit.
+            case 0x00499DE0: TickSceneEntityAi_00499DE0(record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
@@ -6220,6 +6245,2002 @@ public static unsafe partial class Blaze
         drops[*(int*)(chest + 0x44)] = 0;
     }
 
+
+    // =====================================================================
+    // L'INTELLIGENCE DES ENTITES DE SCENE — la famille 0x0049xxxx
+    //
+    // Le gestionnaire de sous-type 2 de la table installee 0x0056ad48, atteint par la passe
+    // FUN_0050e680 des l'apparition d'un monstre. Ghidra n'a presque RIEN decompile de cette
+    // plage : sur 0x00491290..0x004a1020 il ne rend que cinq corps, et pas celui-ci. Tout ce qui
+    // suit vient du desassembleur (Legacy/Raw/Blaze/FUN_0049A980.asm et ses deux voisins).
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00535f20 @ 0x00535f20 — <b>la lecture de situation</b> d'une entite de scene :
+    /// elle remplit cinq valeurs a partir de l'entite, de sa cible et de son bloc de statistiques.
+    /// C'est le seul appel qui precede la decision, et tout
+    /// <see cref="TickSceneEntityAi_0049A980"/> raisonne sur ce qu'elle rend.
+    ///
+    /// <para>
+    /// <b>Le corps est dans <c>Blaze.c</c>, mais sa signature ne l'est pas.</b> Ghidra a perdu
+    /// <c>EBX</c>, <c>EBP</c> et l'adresse de retour, et — plus trompeur — il a ecrit les
+    /// <b>cinq</b> sorties sur le meme <c>*param_2</c>. A le lire ainsi on obtient une fonction qui
+    /// ecrase quatre fois sa propre sortie. Le desassemblage tranche : ce sont cinq pointeurs
+    /// distincts, et l'arithmetique de pile les separe sans ambiguite
+    /// (<c>Legacy/Raw/Blaze/FUN_00535F20.asm</c>).
+    /// </para>
+    /// </summary>
+    /// <param name="boldness">Sortie : de 0 a 0x40. Part de l'ecart entre le niveau du poursuivi
+    /// (<c>bloc par personnage + 0x146</c>) et celui de l'entite (<c>stat + 0x44</c>), corrige par
+    /// le rapport <c>stat[0x4c] / stat[0x48]</c>, borne aux deux bouts. Le trait <c>0x200</c> la
+    /// force a 0x40 avant correction. C'est l'echelle sur laquelle toute la suite lit ses seuils,
+    /// et son complement a 0x40 sert de mesure inverse.</param>
+    /// <param name="distance">Sortie : la distance a la cible, <b>en trois dimensions</b>.</param>
+    /// <param name="heading">Sortie : le cap vers la cible <b>relatif</b> a l'orientation de
+    /// l'entite, sur douze bits. Le trait <c>8</c> le remplace par un tirage.</param>
+    /// <param name="speed">Sortie : l'echelle de deplacement, <c>0x1000</c> par defaut. Cinq
+    /// conditions la modifient et trois la mettent a zero — <b>et zero veut dire « ne pense
+    /// pas »</b> : l'appelant renonce a toute la decision.</param>
+    /// <param name="traits">Sortie : <c>stat + 0x40</c>, le mot de comportement de l'espece.</param>
+    private static void ReadSceneEntitySituation_00535F20(
+        byte* entity, int* boldness, int* distance, int* heading, int* speed, uint* traits)
+    {
+        byte* mainMem = GetMainMemPtr();
+        byte* stats = s_EntityStatBlocks_005ea560 + entity[8] * 0x120;
+        byte* chased = *(byte**)(entity + 0x6c);
+
+        *traits = *(uint*)(stats + 0x40);
+
+        byte* perChar = mainMem + (chased[8] + 0x78) * 0x2000;
+        *boldness = *(ushort*)(perChar + 0x146) - *(ushort*)(stats + 0x44);
+
+        if ((*traits & 0x200) != 0) *boldness = 0x40;
+
+        *boldness += 0x20 - (*(short*)(stats + 0x4c) * 0x20) / *(short*)(stats + 0x48);
+        if (*boldness < 0) *boldness = 0;
+        else if (*boldness > 0x40) *boldness = 0x40;
+
+        int dx = (*(int*)(chased + 0x1c) - *(int*)(entity + 0x1c)) >> 0xc;
+        int dy = (*(int*)(chased + 0x20) - *(int*)(entity + 0x20)) >> 0xc;
+        int dz = (*(int*)(chased + 0x24) - *(int*)(entity + 0x24)) >> 0xc;
+
+        *heading = (Winsys3d.Ordinal_457(dx, dz) - *(ushort*)(entity + 0x32)) & 0xfff;
+        *distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+
+        if ((*traits & 8) != 0) *heading = CrtRand() & 0xfff;
+
+        *speed = 0x1000;
+        if ((*traits & 0x4000) != 0) *speed = 0x1333;
+        if ((*traits & 0x8000) != 0) *speed = 0xccc;
+        if ((*traits & 4) != 0) *speed = 0x800;
+        if ((*traits & 0x1c0) != 0) *speed = 0;
+        if ((*(uint*)entity & 0x80) != 0) *speed = 0;
+
+        // La derniere condition lit le bloc de statistiques, pas les traits : une entite « tenue »
+        // (+0x74 non nul) ne bouge plus, sauf si son espece porte le bit de tete de stat[0x14].
+        if ((*(uint*)(stats + 0x14) & 0x80000000) == 0 && *(byte**)(entity + 0x74) != null)
+        {
+            *speed = 0;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00488160 @ 0x00488160 — <b>l'integration du mouvement</b> d'une entite de scene,
+    /// appelee sans condition a la fin de chaque decision.
+    ///
+    /// <para>
+    /// <b>Meme piege de signature que sa voisine</b> : <c>Blaze.c</c> la declare a un parametre puis
+    /// lit <c>unaff_EBP</c> et <c>unaff_retaddr</c>. Le desassemblage donne deux parametres —
+    /// l'entite et l'echelle de vitesse — et <c>unaff_EBP</c> n'est que le sinus dont Ghidra a jete
+    /// la valeur de retour, exactement comme il le fait dans <c>FUN_0049a8e0</c>, sa jumelle.
+    /// </para>
+    /// <para>
+    /// Les trois composantes de vitesse (<c>+0x50</c>, <c>+0x54</c>, <c>+0x58</c>) sont amorties
+    /// d'un huitieme et d'un deux-cent-cinquante-sixieme par image, puis ajoutees a la position ;
+    /// la poussee dirigee de <c>+0x5c</c> s'ajoute a X et Z par le sinus et le cosinus du cap. La
+    /// composante verticale porte en plus le rappel de <c>+0x9a</c>, le flottement propre a
+    /// l'espece.
+    /// </para>
+    /// </summary>
+    private static void IntegrateSceneEntityMotion_00488160(byte* entity, int speed)
+    {
+        int course = *(short*)(entity + 0x32);
+        int sin = (int)Winsys3d.GetSinTableEntry(course);   // Ghidra: Ordinal_451
+        int cos = (int)Winsys3d.GetCosTableEntry(course);   // Ghidra: Ordinal_450
+
+        int vx = *(int*)(entity + 0x50);
+        int vy = *(int*)(entity + 0x54);
+        int vz = *(int*)(entity + 0x58);
+        int bob = *(short*)(entity + 0x9a);
+        int thrust = (*(int*)(entity + 0x5c) * speed) >> 0xc;
+
+        int nvx = vx - (vx >> 3) - (vx >> 8);
+        int nvy = (bob >> 8) - (vy >> 8) - bob + vy;
+        int nvz = vz - (vz >> 8) - (vz >> 3);
+
+        *(int*)(entity + 0x50) = nvx;
+        *(int*)(entity + 0x54) = nvy;
+        *(int*)(entity + 0x58) = nvz;
+
+        *(int*)(entity + 0x1c) += ((thrust * sin) >> 0xc) + nvx;
+        *(int*)(entity + 0x20) += nvy;
+        *(int*)(entity + 0x24) += ((thrust * cos) >> 0xc) + nvz;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004dfaf0 @ 0x004dfaf0 — <b>la fin de geste</b> : quand le compteur de
+    /// <c>+0x20</c> a rattrape la borne de <c>+0x64</c>, le bit 0 du mot d'etat tombe et l'entite
+    /// cesse d'etre « en cours d'animation ». Sinon il est repose.
+    /// </summary>
+    private static void EndSceneEntityAnimation_004DFAF0(uint* entity)
+    {
+        if ((int)entity[8] <= (int)entity[0x19] && (entity[0x24] & 0xa000) == 0)
+        {
+            entity[8] = entity[0x19];
+            uint flags = *entity;
+
+            if ((flags & 1) != 0 && (flags & 0x816) == 0)
+            {
+                ((byte*)entity)[0x43] = 0;
+            }
+
+            entity[0x15] = 0;
+            *entity = flags & 0xfffffffe;
+            return;
+        }
+
+        if ((*entity & 1) == 0) *entity |= 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004e3770 @ 0x004e3770 — <b>l'interruption</b> : ce qui remet une entite de scene
+    /// a l'attente quand quelque chose lui arrive. Deux causes, et la seconde est le clignotement de
+    /// degat (<c>+0x96</c>) que <see cref="TickEntityTable_005ecaa0"/> decompte.
+    ///
+    /// <para>Elle prend le <b>bloc de statistiques</b> en second parametre — celui que
+    /// <see cref="ResolveEntityBlocks"/> a resolu au tout debut du gestionnaire, et le seul de ses
+    /// trois resultats qui serve.</para>
+    /// </summary>
+    private static void InterruptSceneEntity_004E3770(uint* entity, byte* stats)
+    {
+        byte* e = (byte*)entity;
+
+        if ((entity[0x24] & 0x2000a882) != 0)
+        {
+            if ((*entity & 0x817) == 0)
+            {
+                e[0x42] = 1;
+                e[0x43] = 1;
+            }
+
+            entity[0x17] = 0;
+        }
+
+        if (*(short*)(e + 0x96) != 0
+            && (*(uint*)(stats + 0x14) & 0x80000000) == 0
+            && (*entity & 0x817) == 0)
+        {
+            if ((*entity & 0x40) != 0)
+            {
+                e[0x43] = 0;
+                return;
+            }
+
+            e[0x42] = 0;
+            e[0x43] = 1;
+            entity[0x17] = 0;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00538af0 @ 0x00538af0 — <b>rebase un bloc de statistiques sur son modele</b>, en
+    /// appliquant le bonus de difficulte. Les huit resistances elementaires de <c>modele + 0x28</c>
+    /// partent elargies en <c>ushort</c> dans <c>stat + 0x110</c> ; les huit <c>short</c> de
+    /// <c>modele + 0x30</c> sont mis a l'echelle de <c>100 + bonus</c> pour cent.
+    ///
+    /// <para>Le bonus ne s'applique que si <c>stat[0x14]</c> porte son bit de tete ; sinon
+    /// l'echelle vaut 100 pour cent, c'est-a-dire rien. Le <c>&gt;&gt; 0x3f</c> et le
+    /// <c>&gt;&gt; 0x1f</c> que Ghidra ajoute autour de la division sont la correction de signe de
+    /// l'idiome de division par 100 : le net est une division tronquee.</para>
+    /// </summary>
+    private static void RebaseStatBlockOnModel_00538AF0(byte* entity)
+    {
+        ResolveEntityBlocks(entity, out byte* stats, out _, out byte* model);
+
+        uint bonus;
+        int percent;
+
+        if ((*(uint*)(stats + 0x14) & 0x80000000) == 0)
+        {
+            bonus = 0;
+            percent = 100;
+        }
+        else
+        {
+            bonus = s_DifficultyBonus_0056d2c0[s_Unknown_005de034];
+            percent = (int)bonus + 100;
+        }
+
+        for (int i = 0; i < 8; i++)
+        {
+            *(ushort*)(stats + 0x110 + i * 2) = model[0x28 + i];
+        }
+
+        for (int i = 0; i < 8; i++)
+        {
+            int scaled = *(short*)(model + 0x30 + i * 2) * percent;
+            *(short*)(stats + 0x30 + i * 2) = (short)(scaled / 100);
+        }
+
+        *(ushort*)(stats + 0x2c) = *(ushort*)(model + 0x18);
+        *(short*)(stats + 0x2e) = (short)(*(short*)(model + 0x1a) + (short)((int)bonus >> 3));
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00538c10 @ 0x00538c10 — <b>l'empreinte au sol d'une entite</b> : les deux
+    /// demi-etendues de sa boite de collision, prises dans une table ou dans l'autre selon qu'elle
+    /// est un membre du groupe (bit <c>0x800000</c>) ou une entite de scene.
+    ///
+    /// <para>
+    /// <b>Le meme enregistrement de huit octets sert des deux cotes</b>, et c'est ce qui a resolu
+    /// le <c>TODO(REVERSE)</c> pose sur <see cref="s_ClassBodyMetrics_0056d440"/> : <c>+0</c> et
+    /// <c>+4</c> sont les demi-etendues, <c>+2</c> la hauteur de la bulle d'etat que
+    /// <see cref="StatusBubbleHeight_00538BC0"/> lit deja. Les deux lectures se confirment l'une
+    /// l'autre — celle-ci prend <c>stat + 0x58</c> pour une entite de scene, celle-la
+    /// <c>stat + 0x5a</c> pour la hauteur, soit le meme bloc a deux octets pres.
+    /// </para>
+    /// </summary>
+    private static byte* EntityFootprint_00538C10(uint* entity)
+    {
+        if ((*entity & 0x800000) != 0)
+        {
+            byte characterClass = GetMainMemPtr()[(byte)entity[2] * 0x2000 + 0xf0150];
+            return s_ClassBodyMetrics_0056d440 + characterClass * 8;
+        }
+
+        return s_EntityStatBlocks_005ea560 + (byte)entity[2] * 0x120 + 0x58;
+    }
+
+    /// <summary>Le format de point que <see cref="PolygonOverlapMask_005358F0"/> attend : deux
+    /// coordonnees au sol empaquetees dans un dword, X en bas et Z en haut. C'est la disposition
+    /// d'un registre <c>SXY</c> du GTE, ou ces points transitent.</summary>
+    private static uint PackGroundPoint(int x, int z) => ((uint)z << 0x10) | ((uint)x & 0xffff);
+
+    /// <summary>
+    /// Ghidra: FUN_005358f0 @ 0x005358f0 — <b>de quel cote de chaque arete tombe chaque sommet</b> :
+    /// seize produits en croix, un par couple (arete de <paramref name="edges"/>, sommet de
+    /// <paramref name="corners"/>), dont seuls les <b>signes</b> sont gardes, empiles dans un mot
+    /// de seize bits.
+    ///
+    /// <para>
+    /// <b>Ghidra la declare a un parametre ; elle en prend deux.</b> Le second quadrilatere devient
+    /// chez lui un <c>local_24[4]</c> jamais initialise — c'est la meme perte de signature que
+    /// <c>FUN_00535f20</c>, et le site d'appel la trahit (<c>push</c>, <c>push</c>,
+    /// <c>add esp,8</c>).
+    /// </para>
+    /// <para>
+    /// <b>Le produit en croix passe par le GTE.</b> Les trois points vont dans <c>SXY0</c>,
+    /// <c>SXY1</c>, <c>SXY2</c> et le resultat sort de <c>MAC0</c> — c'est <c>NCLIP</c>, l'operation
+    /// d'elimination des faces arriere, detournee ici en test de cote. Le portage l'ecrit en x86 et
+    /// range quand meme le resultat dans le registre : <see cref="NormalClip"/> reproduit les deux.
+    /// </para>
+    /// <para>
+    /// <b>Le decalage est en retard d'un tour</b>, et ce n'est pas une maladresse : c'est la
+    /// latence du coprocesseur d'origine. Chaque tour empile le signe du produit <i>precedent</i>,
+    /// et un dernier decalage apres les boucles rattrape le seizieme. Le bit 16 qui en resulte est
+    /// le zero initial, toujours nul, donc le mot rendu tient bien sur seize bits.
+    /// </para>
+    /// </summary>
+    private static uint PolygonOverlapMask_005358F0(uint* edges, uint* corners)
+    {
+        EnsureGteRegisters();
+
+        // Le quatrieme sommet est recopie en tete pour fermer le contour : les quatre aretes se
+        // lisent alors comme quatre couples consecutifs.
+        uint* loop = stackalloc uint[5];
+        loop[0] = edges[0];
+        loop[1] = edges[1];
+        loop[2] = edges[2];
+        loop[3] = edges[3];
+        loop[4] = edges[0];
+
+        uint* tested = stackalloc uint[4];
+        tested[0] = corners[0];
+        tested[1] = corners[1];
+        tested[2] = corners[2];
+        tested[3] = corners[3];
+
+        uint mask = 0;
+        int previous = 0;
+
+        for (int edge = 0; edge < 4; edge++)
+        {
+            *(uint*)s_GteSxy806 = loop[edge];
+            *(uint*)s_GteSxy807 = loop[edge + 1];
+
+            for (int corner = 0; corner < 4; corner++)
+            {
+                *(uint*)s_GteSxy805 = tested[corner];
+                NormalClip();
+
+                mask = mask * 2 | ((uint)previous >> 0x1f);
+                previous = ReadMac0();
+            }
+        }
+
+        return mask * 2 | ((uint)previous >> 0x1f);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00535a40 @ 0x00535a40 — <b>ce que le mot de seize signes veut dire</b>. Trois
+    /// reponses, et <see cref="TestMeleeReach_00535A90"/> additionne celles des deux sens :
+    ///
+    /// <list type="bullet">
+    /// <item><c>0xffff</c> — les seize sommets sont du meme cote de toutes les aretes : recouvrement
+    /// franc, <b>1</b>.</item>
+    /// <item>un quartet entierement nul — un sommet du polygone teste est en dehors d'<b>une</b>
+    /// arete, donc separe : <b>-1</b>, et ce -1 annule le +1 de l'autre sens.</item>
+    /// <item>sinon, le compte de bits : plus de neuf sur seize vaut <b>1</b>, le reste <b>0</b>.
+    /// C'est le cas des recouvrements partiels, tranche a la majorite.</item>
+    /// </list>
+    /// </summary>
+    private static int ClassifyOverlapMask_00535A40(uint mask)
+    {
+        if (mask == 0xffff) return 1;
+
+        uint quartet = 0xf;
+        for (int i = 4; i != 0; i--)
+        {
+            if ((mask & quartet) == 0) return -1;
+            quartet <<= 4;
+        }
+
+        int set = 0;
+        uint bit = 1;
+        for (int i = 0x10; i != 0; i--)
+        {
+            if ((mask & bit) != 0) set++;
+            bit <<= 1;
+        }
+
+        return 9 < set ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00535a90 @ 0x00535a90 — <b>le test de portee</b> : est-ce que le geste de
+    /// l'entite touche ce membre du groupe ? 1158 octets, transcrite au desassembleur
+    /// (<c>Legacy/Raw/Blaze/FUN_00535A90.asm</c>).
+    ///
+    /// <para>
+    /// <b>Elle est dans <c>Blaze.c</c> et elle y est inexploitable.</b> Ghidra y a perdu <c>EBX</c>,
+    /// <c>ESI</c>, <c>EDI</c> et les arguments des quatre appels a <c>Ordinal_450</c>/<c>451</c>, il
+    /// la declare a trois parametres quand <c>FUN_00519c30</c> lui en passe quatre, et il rend une
+    /// des deux figures comme un tableau local jamais rempli. Ce qu'il en reste ne se lit pas.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>La fonction croise deux figures a plat</b>, apres un rejet en hauteur qui, lui, est bien
+    /// rendu : si l'ecart vertical entre le membre et l'entite depasse <c>sonde[3]</c> plus la
+    /// demi-hauteur du membre, rien ne peut toucher — c'est le seul endroit ou la troisieme
+    /// dimension compte.
+    /// </para>
+    /// <list type="number">
+    /// <item><b>Le quadrilatere du geste</b>, construit sur la sonde : cap de l'entite decale de
+    /// <c>sonde[0]</c>, avance de <c>sonde[1]</c>, largeur <c>sonde[2]</c> de part et d'autre, puis
+    /// une profondeur <c>sonde[5]</c> prise sur deux caps ouverts de <c>±sonde[4]</c>. Avec la
+    /// sonde de <see cref="TickSceneEntityAi_0049A980"/> (<c>0, 0x1e, 0x32, 0x64, 0, 0x50</c>) cela
+    /// donne un simple rectangle de 0x64 sur 0x50, pose 0x1e devant la bete.</item>
+    /// <item><b>Le rectangle du membre</b>, construit sur son empreinte
+    /// (<see cref="EntityFootprint_00538C10"/>) tournee de son cap. Noter le
+    /// <c>-(largeur * sinus) &gt;&gt; 12</c> : la negation precede le decalage, ce qui n'est pas la
+    /// meme chose que nier le decalage.</item>
+    /// <item><b>Le croisement</b>, dans les <b>deux sens</b> — chaque figure jugee contre les aretes
+    /// de l'autre. C'est ce qui rattrape le cas ou l'une contient l'autre sans qu'aucun sommet ne
+    /// franchisse d'arete.</item>
+    /// </list>
+    /// </summary>
+    private static bool TestMeleeReach_00535A90(int* position, byte* member, short* probe, byte* entity)
+    {
+        // ---------------------------------------------------------------- le rejet en hauteur
+        int half = StatusBubbleHeight_00538BC0((uint*)member) >> 1;
+        int gap = ((*(int*)(member + 0x20) - position[1]) >> 0xc) + half;
+        if (gap < 0) gap = -gap;
+        if (gap > probe[3] + half) return false;
+
+        // ---------------------------------------------------------------- la figure du geste
+        int course = *(short*)((byte*)position + 0x16) + probe[0];
+        int sin = (int)Winsys3d.GetSinTableEntry(course);   // Ghidra: Ordinal_451
+        int cos = (int)Winsys3d.GetCosTableEntry(course);   // Ghidra: Ordinal_450
+
+        // Le centre de la face avant, encore en virgule fixe : la position de l'entite avancee de
+        // sonde[1]. Le decalage de douze bits n'intervient qu'apres l'ecart lateral.
+        int frontX = probe[1] * sin + position[0];
+        int frontZ = probe[1] * cos + position[2];
+
+        int nearRightX = (frontX + probe[2] * cos) >> 0xc;
+        int nearLeftX = (frontX - probe[2] * cos) >> 0xc;
+        int nearRightZ = (frontZ - probe[2] * sin) >> 0xc;
+        int nearLeftZ = (frontZ + probe[2] * sin) >> 0xc;
+
+        int farLeftX = nearLeftX + ((int)Winsys3d.GetSinTableEntry(course - probe[4]) * probe[5] >> 0xc);
+        int farLeftZ = nearLeftZ + ((int)Winsys3d.GetCosTableEntry(course - probe[4]) * probe[5] >> 0xc);
+        int farRightX = nearRightX + ((int)Winsys3d.GetSinTableEntry(course + probe[4]) * probe[5] >> 0xc);
+        int farRightZ = nearRightZ + ((int)Winsys3d.GetCosTableEntry(course + probe[4]) * probe[5] >> 0xc);
+
+        uint* swing = stackalloc uint[4];
+        swing[0] = PackGroundPoint(nearRightX, nearRightZ);
+        swing[1] = PackGroundPoint(nearLeftX, nearLeftZ);
+        swing[2] = PackGroundPoint(farLeftX, farLeftZ);
+        swing[3] = PackGroundPoint(farRightX, farRightZ);
+
+        // ---------------------------------------------------------------- la figure du membre
+        int memberCourse = *(short*)(member + 0x32);
+        int memberSin = (int)Winsys3d.GetSinTableEntry(memberCourse);
+        int memberCos = (int)Winsys3d.GetCosTableEntry(memberCourse);
+
+        int memberX = *(int*)(member + 0x1c) >> 0xc;
+        int memberZ = *(int*)(member + 0x24) >> 0xc;
+
+        byte* footprint = EntityFootprint_00538C10((uint*)member);
+        int across = *(short*)footprint;
+        int along = *(short*)(footprint + 4);
+
+        int acrossX = (across * memberCos) >> 0xc;
+        int acrossZ = (-(across * memberSin)) >> 0xc;
+        int alongX = (along * memberSin) >> 0xc;
+        int alongZ = (along * memberCos) >> 0xc;
+
+        int cornerX = memberX + (acrossX >> 1) + (alongX >> 1);
+        int cornerZ = memberZ + (acrossZ >> 1) + (alongZ >> 1);
+
+        uint* body = stackalloc uint[4];
+        body[0] = PackGroundPoint(cornerX, cornerZ);
+        body[1] = PackGroundPoint(cornerX - alongX, cornerZ - alongZ);
+        body[2] = PackGroundPoint(cornerX - alongX - acrossX, cornerZ - alongZ - acrossZ);
+        body[3] = PackGroundPoint(cornerX - acrossX, cornerZ - acrossZ);
+
+        // ---------------------------------------------------------------- le trace de mise au point
+        if (Mem.s_DebugModeLatch_005633a8 == 0 && s_DebugOverlayEnabled_005de020 != 0)
+        {
+            throw new NotImplementedException(
+                "FUN_00535a90 : le trace de mise au point (0x00535d1d a 0x00535ec8) n'est pas " +
+                "transcrit. Il pose les huit sommets des deux figures en entites d'effet, par huit " +
+                "appels a SpawnStatusEffectEntity_0047AC40 (sous-types 4 a 7, deux fois) dont le " +
+                "descripteur est &DAT_0056aca0 — une table qui reste a relever dans le binaire, " +
+                "et la seule chose qui manque pour l'ecrire. DAT_005de020 vaut 0 au chargement, " +
+                "donc ce bloc ne s'atteint que par la touche de mise au point, elle-meme non " +
+                "transcrite.");
+        }
+
+        // ---------------------------------------------------------------- le croisement
+        int forward = ClassifyOverlapMask_00535A40(PolygonOverlapMask_005358F0(swing, body));
+        int backward = ClassifyOverlapMask_00535A40(PolygonOverlapMask_005358F0(body, swing));
+
+        return forward + backward > 0;
+    }
+
+    /// <summary>Ghidra: &amp;DAT_00564808 — le <b>descripteur d'atlas</b> que
+    /// <see cref="ValidateCombatants_0053A860"/> passe a <c>FUN_0047ac40</c> quand un coup arrive
+    /// avec un assaillant invalide. Huit octets, releves verbatim dans <c>.data</c> ; les huit
+    /// suivants (<c>d0 28 28 08 01 00 30 02</c>) forment un second descripteur de meme forme, non
+    /// designe par ce site.</summary>
+    private static readonly byte* s_ErrorMarkerAtlas_00564808 = AllocBytes([
+        0xa0, 0x28, 0x24, 0x08, 0x01, 0x00, 0x30, 0x02,
+    ]);
+
+    /// <summary>
+    /// Ghidra: FUN_0053a860 @ 0x0053a860 — <b>le controle d'identite des deux combattants</b>, et
+    /// la premiere chose que fait la resolution du coup : elle ne rend zero que si les deux sont
+    /// vivants et rangés dans la table qui correspond a leur nature.
+    ///
+    /// <para>
+    /// Le mot rendu est un <b>diagnostic</b>, pas un booleen : quartet bas pour l'assaillant,
+    /// quartet haut pour la victime, et dans chaque quartet <c>1</c> pour « pas alloue »,
+    /// <c>2</c> pour « membre du groupe hors de sa table », <c>4</c> pour « entite de scene hors de
+    /// la sienne », <c>8</c> pour « ni l'un ni l'autre ». L'appelant n'en lit que la nullite, mais
+    /// la valeur reste lisible en debogage.
+    /// </para>
+    /// <para>
+    /// <b>Les deux bornes sont des comparaisons de POINTEUR dans l'original</b> — <c>param_1</c>
+    /// contre <c>&amp;DAT_005e93c0</c>..<c>&amp;DAT_005e9594</c> et <c>&amp;DAT_005ecaa0</c>..
+    /// <c>&amp;DAT_005ede20</c>. Ici les deux tables sont deux allocations distinctes, donc la
+    /// comparaison se fait contre leurs etendues reconstruites : quatre emplacements de 0x9c pour
+    /// le groupe, trente-deux pour la scene. Les bornes hautes du binaire sont <b>inclusives d'un
+    /// emplacement de trop</b> (elles designent le premier octet APRES la table) et c'est transcrit
+    /// tel quel.
+    /// </para>
+    /// </summary>
+    private static byte ValidateCombatants_0053A860(uint* attacker, uint* victim)
+    {
+        byte* partyBase = Inp.s_SlotFlags_005e93c0;          // 0x005e93c0, quatre fois 0x9c
+        byte* sceneBase = Mem.Entity(0x005ecaa0);            // 0x005ecaa0, trente-deux fois 0x9c
+
+        byte report = (byte)(((*attacker & 0x80000000) == 0) ? 1 : 0);
+
+        if ((*attacker & 0x800000) == 0)
+        {
+            if ((*attacker & 0x400000) == 0) report |= 8;
+            else if ((byte*)attacker < sceneBase || sceneBase + 0x1380 < (byte*)attacker) report |= 4;
+        }
+        else if ((byte*)attacker < partyBase || partyBase + 0x1d4 < (byte*)attacker)
+        {
+            report |= 2;
+        }
+
+        if ((*victim & 0x80000000) == 0) report |= 0x10;
+
+        if ((*victim & 0x800000) == 0)
+        {
+            if ((*victim & 0x400000) == 0) report |= 0x80;
+            else if ((byte*)victim < sceneBase || sceneBase + 0x1380 < (byte*)victim) report |= 0x40;
+        }
+        else if ((byte*)victim < partyBase || partyBase + 0x1d4 < (byte*)victim)
+        {
+            report |= 0x20;
+        }
+
+        // Assaillant douteux mais victime saine : une marque visible est posee sur la victime. Le
+        // cas inverse ne dit rien — c'est la seule trace laissee d'une incoherence.
+        if ((report & 0x0f) != 0 && (report & 0xf0) == 0)
+        {
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)((byte*)victim + 0x1c), s_ErrorMarkerAtlas_00564808, 0x29, 0, 0);
+        }
+
+        return report;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005398a0 @ 0x005398a0 — <b>le penchant elementaire</b> : l'element nomme en
+    /// <c>+0x51</c> du bloc gagne la moitie de sa valeur, et son <b>oppose</b> en perd la moitie.
+    ///
+    /// <para>L'oppose se designe par <c>indice ^ 1</c>, ce qui dit que les huit elements sont
+    /// ranges par <b>couples contraires</b> : feu et eau, terre et air, lumiere et tenebres, sacre
+    /// et mal. C'est la meme lecture que <see cref="ResolveElementalExchange_005398E0"/>, qui
+    /// annule les couples l'un contre l'autre avant de compter.</para>
+    /// </summary>
+    private static void TiltDominantElement_005398A0(byte* block)
+    {
+        int element = block[0x51];
+
+        ushort* mine = (ushort*)(block + 0x110 + element * 2);
+        *mine = (ushort)((*mine >> 1) + *mine);
+
+        ushort* opposite = (ushort*)(block + 0x110 + (element ^ 1) * 2);
+        *opposite = (ushort)(*opposite - (*opposite >> 1));
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005398e0 @ 0x005398e0 — <b>l'echange elementaire</b> : les huit elements de
+    /// l'assaillant contre les huit de la victime, et le nombre rendu s'ajoute aux degats.
+    ///
+    /// <para>
+    /// <b>Elle commence par vider les couples contraires, dans les DEUX blocs.</b> Feu et eau
+    /// s'annulent l'un l'autre jusqu'a ce qu'il n'en reste qu'un ; idem pour les trois autres
+    /// couples. Un bloc qui portait 30 de feu et 10 d'eau en ressort avec 20 de feu et rien d'eau.
+    /// C'est une <b>modification en place</b> du bloc de statistiques, pas un calcul de cote : la
+    /// fonction consomme ce qu'elle lit.
+    /// </para>
+    /// <para>
+    /// <b>Puis le compte, element par element</b> : si la victime porte le meme element, il est
+    /// <b>soustrait</b> — elle y resiste ; si elle ne le porte pas, il est ajoute, mais reduit au
+    /// <b>quart</b> lorsqu'elle ne porte pas non plus son contraire. Attaquer par le feu paye plein
+    /// tarif contre qui porte de l'eau, et au quart contre qui n'a ni l'un ni l'autre.
+    /// </para>
+    /// </summary>
+    private static int ResolveElementalExchange_005398E0(byte* attackerBlock, byte* victimBlock)
+    {
+        for (int pass = 0; pass < 2; pass++)
+        {
+            ushort* pair = (ushort*)((pass == 0 ? attackerBlock : victimBlock) + 0x110);
+
+            for (int couple = 0; couple < 4; couple++, pair += 2)
+            {
+                ushort first = pair[0];
+                ushort second = pair[1];
+
+                if (first < second)
+                {
+                    second = (ushort)(second - first);
+                    first = 0;
+                }
+                else
+                {
+                    first = (ushort)(first - second);
+                    second = 0;
+                }
+
+                pair[0] = first;
+                pair[1] = second;
+            }
+        }
+
+        // Le miroir de mise au point : les deux series de huit partent dans l'arene, ou l'ecran
+        // « Gurkha » les relit. Le verrou vaut 1 au chargement, donc ce bloc dort en jeu normal.
+        if (Mem.s_DebugModeLatch_005633a8 == 0)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                *(ushort*)(Mem.Arena(0x005e90a0) + i * 2) = *(ushort*)(attackerBlock + 0x110 + i * 2);
+                *(ushort*)(Mem.Arena(0x005e90b0) + i * 2) = *(ushort*)(victimBlock + 0x110 + i * 2);
+            }
+        }
+
+        int score = 0;
+
+        for (int i = 0; i < 8; i++)
+        {
+            int attack = *(ushort*)(attackerBlock + 0x110 + i * 2);
+            if (attack == 0) continue;
+
+            int resisted = *(ushort*)(victimBlock + 0x110 + i * 2);
+
+            if (resisted == 0)
+            {
+                if (*(short*)(victimBlock + 0x110 + (i ^ 1) * 2) == 0) attack >>= 2;
+                score += attack;
+            }
+            else
+            {
+                score -= resisted;
+            }
+        }
+
+        return score;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005399e0 @ 0x005399e0 — <b>l'element dominant</b> d'un bloc : l'indice du plus
+    /// fort des huit, <b>decale de deux</b>, ou zero si le bloc n'en porte aucun. Le decalage n'est
+    /// pas cosmetique — la valeur sert de teinte au nombre de degats que
+    /// <see cref="ApplyDamage_00539A20"/> fait apparaitre, et 0 et 1 y designent deja autre chose.
+    ///
+    /// <para>En cas d'egalite c'est le <b>premier</b> qui gagne : la comparaison est stricte.</para>
+    /// </summary>
+    private static int DominantElement_005399E0(byte* block)
+    {
+        ushort best = 0;
+        int index = 0;
+
+        for (int i = 0; i < 8; i++)
+        {
+            ushort value = *(ushort*)(block + 0x110 + i * 2);
+            if (best < value)
+            {
+                index = i;
+                best = value;
+            }
+        }
+
+        return best != 0 ? index + 2 : index;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00539a20 @ 0x00539a20 — <b>l'application des degats</b> : le nombre calcule est
+    /// retire des points de vie, affiche, et la mort constatee.
+    ///
+    /// <para>
+    /// <b>Le nombre passe par le bloc de statistiques avant d'etre utilise.</b> Il est ecrit en
+    /// <c>+0x100</c> et <c>+0x102</c>, l'evenement d'objet equipe part, <b>puis il est relu</b> —
+    /// c'est ce qui permet a un objet de modifier les degats qu'on subit ou qu'on inflige. L'ordre
+    /// est le mecanisme, pas un detour.
+    /// </para>
+    /// <para>
+    /// <b>L'evenement ne part pas du meme cote selon la victime</b> : une victime membre du groupe
+    /// declenche ses propres objets (evenement 10), une entite de scene declenche ceux de
+    /// l'assaillant (evenement 0x14).
+    /// </para>
+    /// <para>
+    /// <b>Deux champs de l'entite servent de boite aux lettres</b> : le nombre part en <c>+0x18</c>
+    /// et l'element en <c>+0x1a</c> le temps de l'appel a <c>FUN_0047a9d0</c>, puis le dword
+    /// d'origine est remis. Le sauvetage de <c>+0x0a</c> qui l'accompagne est un <b>aller-retour a
+    /// vide</b> — rien ne l'ecrit entre les deux — et il est conserve tel quel.
+    /// </para>
+    /// <para>
+    /// A la mort, une entite de scene qui n'est pas marquee <c>0x80000000</c> dans <c>+0x14</c>
+    /// laisse un effet dont le sous-type depend de sa famille : <c>0x51</c> a <c>0x54</c>, les tests
+    /// se recouvrant volontairement — le dernier qui repond gagne.
+    /// </para>
+    /// </summary>
+    /// <param name="attackerBlock">Jamais lu par le corps. L'appelant le pousse quand meme ; garde
+    /// pour que le site d'appel reste lisible contre l'original.</param>
+    /// <returns>1 si la victime en meurt, 0 sinon.</returns>
+    private static int ApplyDamage_00539A20(
+        uint* attacker, uint* victim, byte* attackerBlock, byte* victimBlock, short damage, byte element)
+    {
+        *(short*)(victimBlock + 0x96) = 0;
+        *(uint*)(victimBlock + 0x40) &= 0xffffffbf;
+        *(short*)(victimBlock + 0x100) = damage;
+        victimBlock[0x102] = element;
+
+        *(uint*)Mem.Arena(0x005e99c0) = 0;
+
+        if ((*victim & 0x800000) == 0) TriggerEquippedItems_005238E0(attacker, 0x14);
+        else TriggerEquippedItems_005238E0(victim, 10);
+
+        // La relecture : l'evenement ci-dessus a pu changer les deux.
+        byte shown = victimBlock[0x102];
+        short dealt = *(short*)(victimBlock + 0x100);
+
+        byte* v = (byte*)victim;
+        SpawnParticle_0050F070((uint*)(v + 0x1c), (uint)(ushort)dealt, shown);
+
+        uint savedState = *(uint*)(v + 0x18);
+        *(short*)(v + 0x18) = dealt;
+        ushort savedTint = *(ushort*)(v + 0x0a);
+        *(ushort*)(v + 0x1a) = shown;
+
+        *(short*)(victimBlock + 0x4c) -= dealt;
+
+        if (*(short*)(victimBlock + 0x4c) < 1)
+        {
+            *(short*)(victimBlock + 0x4c) = 0;
+
+            if ((*victim & 0x40000000) == 0)
+            {
+                *victim |= 0x40000000;
+                *(uint*)(victimBlock + 0x40) |= 0x40000000;
+
+                uint family = *(uint*)(victimBlock + 0x14);
+
+                if ((*victim & 0x800000) == 0 && (family & 0x80000000) == 0)
+                {
+                    int leaving = 0;
+                    if ((family & 0x19000) != 0) leaving = 0x51;
+                    if ((family & 0xb600000) != 0) leaving = 0x52;
+                    if ((family & 0x80000) != 0) leaving = 0x53;
+                    if ((family & 0x4966800) != 0) leaving = 0x54;
+
+                    if (leaving != 0) SpawnEffectEntity(v, (byte)leaving, 0, 0);
+                }
+            }
+
+            *(ushort*)(v + 0x0a) = savedTint;
+            *(uint*)(v + 0x18) = savedState;
+            return 1;
+        }
+
+        SpawnEffectEntity(v, 0x50, 0, 0);
+        *(uint*)(v + 0x18) = savedState;
+        *(ushort*)(v + 0x0a) = savedTint;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00539b80 @ 0x00539b80 — <b>la resolution du coup</b> : ce qui se passe entre
+    /// l'instant ou <see cref="TestMeleeReach_00535A90"/> a dit « touche » et l'instant ou la
+    /// victime a perdu ses points de vie. C'est le cœur du combat.
+    ///
+    /// <para>
+    /// <b>Elle recalcule les deux fiches avant de frapper</b>, et pas par prudence : les cinq passes
+    /// de statistiques (<c>FUN_00538ab0</c>..<c>FUN_00538fa0</c>) reconstruisent equipement, bonus
+    /// et derivees a partir de zero, si bien qu'un changement d'arme entre deux coups est pris en
+    /// compte au coup suivant sans que rien n'ait a le notifier. Les deux chemins different : un
+    /// membre du groupe repasse par les cinq, une entite de scene par trois seulement.
+    /// </para>
+    /// <para>
+    /// <b>Les trois octets <c>+0x2b0</c>, <c>+0x2b1</c> et <c>+0x2b2</c> designent des lignes de
+    /// 0x280 octets</b> dans le bloc du personnage, dont huit <c>char</c> signes a <c>+0x318</c>
+    /// s'ajoutent aux huit elements de <c>+0x210</c>. Le premier vaut pour l'assaillant, le second
+    /// pour la victime, et le <b>troisieme n'est lu que si la victime est debout</b> (posture 0 ou
+    /// 6) — c'est la difference entre parer avec son arme et encaisser.
+    /// </para>
+    /// <para>
+    /// <b>Le calcul des degats, dans l'ordre :</b> attaque et defense sont chacune bruitees d'un
+    /// quart de leur ecart propre (<c>+0x2c</c>) puis bornees a zero ; un coup critique
+    /// (<c>+0x2e</c> pour cent, plus cinq si l'assaillant est sous cinq pour cent de vie)
+    /// <b>divise la defense par deux</b> et fait naitre l'effet <c>0xbe</c> ; l'echange elementaire
+    /// s'ajoute a la difference ; un <b>type d'arme inadapte</b> (aucun bit commun entre la ligne
+    /// d'arme et <c>+0x14</c> de la victime, sur le masque <c>0x6099500</c>) divise le tout
+    /// <b>par quatre</b> ; le reste est borne a zero, augmente d'un sixieme de l'attaque moins un
+    /// trente-deuxieme de la defense, et borne a <b>un</b>. Personne ne fait jamais zero.
+    /// </para>
+    /// <para>
+    /// <b>Ce qui suit n'arrive que si l'assaillant est un membre du groupe</b> : le son (choisi sur
+    /// la classe, six variantes, decalees par le resultat du coup), l'experience — l'ecart entre le
+    /// niveau de la victime et celui de l'assaillant, au trente-deuxieme, plus un —, le compte de
+    /// victimes, l'effet elementaire visible, et le bandeau de nom.
+    /// </para>
+    /// <para>
+    /// <b>Une entite de scene qui survit garde qui l'a frappee</b> en <c>+0x09</c>, et si son octet
+    /// <c>+0x0d</c> designe le genre 10, elle <b>lance son script</b> : c'est ainsi qu'un monstre
+    /// reagit au fait d'etre attaque.
+    /// </para>
+    /// </summary>
+    /// <returns>1 si le coup a ete refuse au controle d'identite, 0 sinon.</returns>
+    private static int ResolveMeleeHit_00539B80(uint* attacker, uint* victim)
+    {
+        if (ValidateCombatants_0053A860(attacker, victim) != 0) return 1;
+
+        *(byte**)((byte*)attacker + 0x70) = (byte*)victim;   // chacun retient l'autre
+        *(byte**)((byte*)victim + 0x70) = (byte*)attacker;
+
+        byte* attackerBlock = RefreshCombatantBlock(attacker, 0x2b0, false);
+        byte* victimBlock = RefreshCombatantBlock(victim, 0x2b1, true);
+
+        // Le bloc par personnage de l'ASSAILLANT, calcule sans egard a sa nature — le binaire le
+        // fait aussi pour une entite de scene, et ne s'en sert alors jamais.
+        byte* attackerCharacter = GetMainMemPtr() + ((byte)attacker[2] + 0x78) * 0x2000;
+
+        if ((*attacker & 0x800000) != 0)
+        {
+            *(uint*)Mem.Arena(0x005e99c0) = 0;
+            TriggerEquippedItems_005238E0(attacker, 2);
+        }
+
+        if ((*victim & 0x800000) != 0)
+        {
+            *(uint*)Mem.Arena(0x005e99c0) = 0;
+            TriggerEquippedItems_005238E0(victim, 0xc);
+        }
+
+        // ---------------------------------------------------------------- attaque et defense
+        short attackSpread = *(short*)(attackerBlock + 0x2c);
+        int attack = *(short*)(attackerBlock + 0x30)
+                     + ((CrtRand() % (attackSpread + 1) - (attackSpread >> 1)) >> 2);
+        if (attack < 0) attack = 0;
+
+        short defenceSpread = *(short*)(victimBlock + 0x2c);
+        int defence = *(short*)(victimBlock + 0x32)
+                      + ((CrtRand() % (defenceSpread + 1) - (defenceSpread >> 1)) >> 2);
+        if (defence < 0) defence = 0;
+
+        // ---------------------------------------------------------------- le coup critique
+        int criticalChance = *(ushort*)(attackerBlock + 0x2e);
+
+        if ((*attacker & 0x800000) != 0
+            && *(short*)(attackerBlock + 0x4c) <= *(short*)(attackerBlock + 0x48) * 5 / 100)
+        {
+            criticalChance += 5;
+        }
+
+        sbyte outcome = (sbyte)(CrtRand() % 100 < criticalChance ? 1 : 0);
+
+        if (outcome != 0)
+        {
+            defence >>= 1;
+            SpawnEffectEntity((byte*)victim, 0xbe, 0, -1);
+        }
+
+        // ---------------------------------------------------------------- les degats
+        int damage = ResolveElementalExchange_005398E0(attackerBlock, victimBlock) + (attack - defence);
+        int element = DominantElement_005399E0(attackerBlock);
+
+        if ((*attacker & 0x800000) != 0
+            && (*victim & 0x400000) != 0
+            && (*(uint*)(victimBlock + 0x14) & 0x6099500) != 0
+            && attackerCharacter[0x2b0] != 0xff
+            && (*(uint*)(attackerCharacter + attackerCharacter[0x2b0] * 0x280 + 0x314)
+                & *(uint*)(victimBlock + 0x14) & 0x6099500) == 0
+            && (*(uint*)(attackerBlock + 0x40) & 0x8000000) == 0)
+        {
+            // L'arme ne mord pas sur cette famille : le quart, et un troisieme son.
+            damage >>= 2;
+            outcome = 2;
+        }
+
+        if (damage < 0) damage = 0;
+        damage += *(short*)(attackerBlock + 0x30) / 6 - (*(short*)(victimBlock + 0x32) >> 5);
+        if (damage < 1) damage = 1;
+
+        if (Mem.s_DebugModeLatch_005633a8 == 0 && s_DebugOverlayEnabled_005de020 != 0)
+        {
+            throw new NotImplementedException(
+                "FUN_00539b80 : le bandeau de mise au point du combat (0x00539df2 environ) n'est " +
+                "pas transcrit. Il recopie une vingtaine de valeurs du calcul dans l'arene " +
+                "(DAT_005e90c0..DAT_005e90e8 : les huit elements de chaque camp, les deux indices " +
+                "d'entite, l'issue, la chance de critique, l'attaque, la defense et les degats) " +
+                "puis appelle FUN_00544350 avec la table de libelles du repertoire de zone " +
+                "(+0x70, +0x5f0) et &DAT_005633b0. DAT_005de020 vaut 0 au chargement, donc ce " +
+                "bloc ne s'atteint que par la touche de mise au point, elle-meme non transcrite.");
+        }
+
+        // ---------------------------------------------------------------- le coup porte
+        int killed = ApplyDamage_00539A20(
+            attacker, victim, attackerBlock, victimBlock, (short)damage, (byte)element);
+
+        if (killed != 0 && (*attacker & 0x800000) != 0
+            && *(int*)(attackerCharacter + 0x15c) != -1)
+        {
+            *(int*)(attackerCharacter + 0x15c) += 1;
+        }
+
+        // ---------------------------------------------------------------- ce qui n'est qu'au groupe
+        if ((*attacker & 0x800000) != 0)
+        {
+            TriggerEquippedItems_005238E0(attacker, 3);
+
+            int voice = (attackerBlock[0x50] & 7) switch
+            {
+                0 or 2 or 4 or 5 or 6 => outcome + 0x32,
+                _ => outcome + 0x35,
+            };
+
+            Aud.PlayPositionalSound(voice, 0x400, 0x1200, (int*)((byte*)attacker + 0x1c));
+
+            int gained = (*(ushort*)(victimBlock + 0x44) - *(ushort*)(attackerBlock + 0x46)) >> 5;
+            if (gained < 0) gained = 0;
+            *(int*)(attackerCharacter + 0x158) += gained + 1;
+
+            ApplyDamageToMember_00539190(attacker, attackerCharacter);
+
+            if (*(short*)(attackerBlock + 0x82) != 0)
+            {
+                // L'effet elementaire visible, pris sur l'element le plus fort de la VICTIME —
+                // pas de l'assaillant, et pas celui qui a servi a teinter le nombre.
+                ushort strongest = 0;
+                uint which = 0;
+
+                for (uint i = 0; i < 8; i++)
+                {
+                    ushort value = *(ushort*)(victimBlock + 0x110 + i * 2);
+                    if (strongest < value)
+                    {
+                        which = i;
+                        strongest = value;
+                    }
+                }
+
+                if (strongest != 0)
+                {
+                    byte* atlas = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x20)
+                                  + which * 0x18;
+
+                    SpawnStatusEffectEntity_0047AC40(
+                        (byte*)victim, (int*)((byte*)victim + 0x1c), atlas, 0x29, 0, 0);
+                }
+            }
+
+            if (*(short*)(attackerBlock + 0x84) != 0 || Mem.s_DebugModeLatch_005633a8 == 0)
+            {
+                // Le bandeau : le nom de la victime, ses points de vie et son maximum. Les seize
+                // octets du nom sont recopies tels quels, puis tout zero SUIVI d'un non-zero
+                // devient une espace — c'est ainsi que le jeu rejoint deux mots ranges dans un
+                // champ a trous.
+                byte* banner = Mem.Entity(0x005fa5d0);
+                ((uint*)banner)[0] = ((uint*)victimBlock)[0];
+                ((uint*)banner)[1] = ((uint*)victimBlock)[1];
+                ((uint*)banner)[2] = ((uint*)victimBlock)[2];
+                ((uint*)banner)[3] = ((uint*)victimBlock)[3];
+
+                for (int i = 0; i < 0xf; i++)
+                {
+                    if (banner[i] == 0 && banner[i + 1] != 0) banner[i] = 0x20;
+                }
+
+                *(ushort*)Mem.Arena(0x005e9a22) = *(ushort*)(victimBlock + 0x4c);
+                *(ushort*)Mem.Arena(0x005e9aec) = *(ushort*)(victimBlock + 0x4e);
+                *(byte*)Mem.Camera(0x005de0b4) = 0xff;
+            }
+        }
+
+        if ((*victim & 0x800000) != 0)
+        {
+            TriggerEquippedItems_005238E0(victim, 0xd);
+            return 0;
+        }
+
+        // Une entite de scene retient qui l'a frappee, et reagit si son genre le prevoit.
+        ((byte*)victim)[9] = (byte)attacker[2];
+
+        if ((((byte*)victim)[0x0d] & 0xf) == 10)
+        {
+            RunEntityScript(s_Unknown_005e97cc, (byte*)victim, *(ushort*)((byte*)victim + 0x0e));
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: les deux blocs jumeaux de <c>FUN_00539b80</c> (0x00539bc0 et 0x00539c60) —
+    /// <b>refaire la fiche d'un combattant avant le coup</b>, et rendre le bloc de statistiques sur
+    /// lequel tout le calcul va porter.
+    ///
+    /// <para>Les deux moities du binaire sont ecrites ici en une seule parce qu'elles ne different
+    /// que par l'octet de ligne d'arme (<c>+0x2b0</c> pour l'assaillant, <c>+0x2b1</c> pour la
+    /// victime) et par le bloc supplementaire de <paramref name="withStanceRow"/>, que seule la
+    /// victime porte.</para>
+    /// </summary>
+    /// <param name="rowByte">L'octet du bloc par personnage qui designe la ligne de 0x280 a
+    /// ajouter aux elements.</param>
+    /// <param name="withStanceRow">La victime ajoute une seconde ligne, celle de <c>+0x2b2</c>, et
+    /// seulement si elle est debout — posture 0 ou 6.</param>
+    private static byte* RefreshCombatantBlock(uint* fighter, int rowByte, bool withStanceRow)
+    {
+        if ((*fighter & 0x800000) == 0)
+        {
+            byte* stats = s_EntityStatBlocks_005ea560 + (byte)fighter[2] * 0x120;
+
+            RebaseStatBlockOnModel_00538AF0((byte*)fighter);   // Ghidra: FUN_00538af0
+            ScaleStatBlockByDifficulty(stats);                 // Ghidra: FUN_00538f50
+            FinalizeEquipmentEffects(stats);                   // Ghidra: FUN_00538fa0
+            return stats;
+        }
+
+        byte* character = GetMainMemPtr() + ((byte)fighter[2] + 0x78) * 0x2000;
+        byte* block = character + 0x100;
+
+        CommitStagedStatBlock(character);                      // Ghidra: FUN_00538ab0
+        ScaleStatBlockByDifficulty(block);                     // Ghidra: FUN_00538f50
+        ComputeDerivedStats(character);                        // Ghidra: FUN_00538c50
+        ApplyEquipmentStatBonuses(character);                  // Ghidra: FUN_00538e20
+        FinalizeEquipmentEffects(block);                       // Ghidra: FUN_00538fa0
+
+        AddElementRow(character, character[rowByte]);
+
+        if (withStanceRow)
+        {
+            int stance = character[0x150] & 7;
+            if (stance == 0 || stance == 6) AddElementRow(character, character[0x2b2]);
+        }
+
+        TiltDominantElement_005398A0(block);                   // Ghidra: FUN_005398a0
+        return block;
+    }
+
+    /// <summary>Ghidra: la boucle de huit tours qui suit chaque octet de ligne — les huit
+    /// <c>char</c> <b>signes</b> de <c>personnage + ligne * 0x280 + 0x318</c> s'ajoutent aux huit
+    /// elements de <c>personnage + 0x210</c>. Une ligne de <c>0xff</c> veut dire « aucune ».</summary>
+    private static void AddElementRow(byte* character, byte row)
+    {
+        if (row == 0xff) return;
+
+        for (int i = 0; i < 8; i++)
+        {
+            *(short*)(character + 0x210 + i * 2) += (short)(sbyte)character[row * 0x280 + 0x318 + i];
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00519c30 @ 0x00519c30 — <b>le balayage du groupe</b> : lequel des membres le
+    /// geste en cours touche-t-il ? Elle rend le <b>plus proche</b> de ceux que
+    /// <see cref="TestMeleeReach_00535A90"/> accepte, et pose <c>DAT_005de0b8</c> a 1 quand il y en
+    /// a un.
+    ///
+    /// <para>
+    /// <b>La parade est ici, pas dans le combat.</b> Si le membre trouve porte le bit 4, que sa
+    /// classe (<c>bloc par personnage + 0x150</c>, trois bits bas) vaut 0 ou 6, et qu'il fait face
+    /// au coup a moins d'un demi-tour pres, alors il <b>pare</b> : ses statistiques sont refaites,
+    /// l'assaillant est note en <c>+0x70</c>, l'evenement d'objet equipe 0x0e part, un son joue —
+    /// et <c>DAT_005de0b8</c> est remis a <b>zero</b>, ce qui dit a l'appelant « touche, mais pas
+    /// de degats ». C'est la seule difference entre parer et encaisser.
+    /// </para>
+    /// </summary>
+    private static byte* SweepPartyForMeleeHit_00519C30(byte* entity, int* position, short* probe, uint flags)
+    {
+        byte* found = null;
+        int nearest = 0x7fff;
+
+        *Mem.Camera(0x005de0b8) = 0;
+
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        for (int n = s_PartySize_005e9020; n != 0; n--, slot += 0x9c)
+        {
+            if ((*(uint*)slot & 0x50002040) != 0) continue;
+            if (*(short*)(slot + 0x12) != 0 || *(short*)(slot + 0x96) != 0) continue;
+            if (!TestMeleeReach_00535A90(position, slot, probe, entity)) continue;
+
+            int dx = (*(int*)(slot + 0x1c) - *(int*)(entity + 0x1c)) >> 0xc;
+            int dz = (*(int*)(slot + 0x24) - *(int*)(entity + 0x24)) >> 0xc;
+            int range = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            if (range < nearest)
+            {
+                *Mem.Camera(0x005de0b8) = 1;
+                found = slot;
+                nearest = range;
+            }
+        }
+
+        if (found == null)
+        {
+            *Mem.Camera(0x005de0b8) = 0;
+            return null;
+        }
+
+        if ((flags & 0x800) == 0 && (*found & 4) != 0)
+        {
+            byte stance = (byte)(GetMainMemPtr()[(found[8] + 0x78) * 0x2000 + 0x150] & 7);
+
+            if ((stance == 0 || stance == 6)
+                && (uint)((*(short*)(found + 0x32) - *(short*)((byte*)position + 0x16) - *probe - 0x400) & 0xfff) < 0x800)
+            {
+                byte index = found[8];
+                RebaseStatBlockOnModel_00538AF0(found);
+                ScaleStatBlockByDifficulty(s_EntityStatBlocks_005ea560 + index * 0x120);
+                FinalizeEquipmentEffects(s_EntityStatBlocks_005ea560 + index * 0x120);
+
+                *(byte**)(found + 0x70) = entity;
+                *(uint*)Mem.Arena(0x005e99c0) = 0;
+                TriggerEquippedItems_005238E0((uint*)found, 0xe);
+                Aud.PlayPositionalSound(8, 0x800, 0x1000, (int*)(found + 0x1c));
+
+                // Le coup a bien porte, mais la parade annule les degats : l'appelant lit ce
+                // drapeau et ne va pas jusqu'a la resolution.
+                *Mem.Camera(0x005de0b8) = 0;
+                return found;
+            }
+        }
+
+        *Mem.Camera(0x005de0b8) = 1;
+        return found;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0049a980</c> — <b>l'intelligence d'une entite de scene</b> : le gestionnaire du
+    /// sous-type 2 de la table installee <c>0x0056ad48</c>, celui que la passe
+    /// <see cref="TickEntityTable_005ecaa0"/> appelle a chaque image pour chaque monstre. 2175
+    /// octets, <b>absente de <c>Blaze.c</c></b> — Ghidra ne rend que cinq corps sur toute la plage
+    /// <c>0x00491290..0x004a1020</c>, et pas celui-ci. Transcrite au desassembleur, releve garde
+    /// sous <c>Legacy/Raw/Blaze/FUN_0049A980.asm</c>.
+    ///
+    /// <para>
+    /// <b>La fonction se lit en trois temps</b>, et c'est ce decoupage qui la rend abordable malgre
+    /// sa taille : <i>decider</i> ce qu'on fait de l'image en cours, <i>appliquer</i> le mouvement
+    /// et l'animation, puis <i>replanifier</i> pour la suite. Les 43 cibles de saut ne sont que les
+    /// sorties de la premiere partie, qui convergent toutes sur la deuxieme.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Deux champs portent l'etat</b>, et les confondre rend le tout illisible. <c>+0x42</c> est
+    /// la <b>posture</b> : cinq valeurs, aiguillees par une table de sauts a <c>0x0049b200</c>
+    /// (relevee dans le binaire) — 0 attendre, 1 se tourner, 2 s'approcher jusqu'a une distance
+    /// tenue en <c>+0x10</c>, 3 marcher ou bondir, 4 foncer. <c>+0x43</c> est le <b>compte a
+    /// rebours</b> qui la maintient : tant qu'il n'est pas nul, la replanification ne reprend pas
+    /// la main.
+    /// </para>
+    /// <para>
+    /// <b>Tout se decide sur deux nombres</b> que <see cref="ReadSceneEntitySituation_00535F20"/>
+    /// rend : la <i>hardiesse</i> (0 a 0x40, tiree de l'ecart de niveau et de l'etat de sante) et
+    /// son complement a 0x40. La premiere elargit les cones de virage et allonge les pas ; le
+    /// second elargit les seuils de tirage. Une bete faible face a un groupe fort hesite, tourne
+    /// plus lentement et frappe moins souvent — c'est une seule soustraction qui le produit.
+    /// </para>
+    /// <para>
+    /// <b>Une vitesse nulle veut dire « ne pense pas ».</b> Les trois conditions qui l'annulent
+    /// (traits <c>0x1c0</c>, bit <c>0x80</c> de l'entite, entite tenue) court-circuitent la
+    /// decision <i>et</i> la replanification, mais pas l'application : l'entite continue d'etre
+    /// integree et animee.
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_0049A980(byte* record)
+    {
+        byte* e = record;
+
+        // Des trois blocs resolus, seul celui de statistiques sert — a la toute fin, en argument
+        // de l'interruption. Les deux autres sont ecrits sur la pile et jamais relus.
+        ResolveEntityBlocks(e, out byte* stats, out _, out _);
+
+        // La sonde du geste, posee sur la pile avant meme la lecture de situation et relue une
+        // seule fois : c'est le gabarit que FUN_00519c30 croise avec chaque membre du groupe.
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0x1e;
+        probe[2] = 0x32;
+        probe[3] = 0x64;
+        probe[4] = 0;
+        probe[5] = 0x50;
+
+        int boldness, distance, heading, speed;
+        uint traits;
+        ReadSceneEntitySituation_00535F20(e, &boldness, &distance, &heading, &speed, &traits);
+
+        int timid = 0x40 - boldness;
+
+        // ---------------------------------------------------------------- 1. decider
+        if (DecideSceneEntityAction(e, probe, boldness, distance, heading, speed, traits))
+        {
+            // Ghidra: LAB_0049ae97 — la poussee est remise a zero sur les seules sorties qui
+            // viennent de poser une vitesse propre.
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        // ---------------------------------------------------------------- 2. appliquer
+        IntegrateSceneEntityMotion_00488160(e, speed);
+        FinalizeEntityPlacement2((uint*)e);
+        EndSceneEntityAnimation_004DFAF0((uint*)e);
+        InterruptSceneEntity_004E3770((uint*)e, stats);
+
+        // ---------------------------------------------------------------- 3. replanifier
+        if (speed == 0) return;
+        if ((*(uint*)e & 0x817) != 0) return;
+        if (e[0x43] != 0) return;
+
+        ReplanSceneEntityAction(e, boldness, timid);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0049aa0d..0x0049ae96</c> — <b>le premier temps</b> de
+    /// <see cref="TickSceneEntityAi_0049A980"/> : ce que l'entite fait de l'image en cours, selon
+    /// qu'elle est deja en train d'agir ou qu'elle tient une posture.
+    /// </summary>
+    /// <returns><c>true</c> si la sortie passe par <c>LAB_0049ae97</c>, qui remet la poussee
+    /// <c>+0x5c</c> a zero avant l'application.</returns>
+    private static bool DecideSceneEntityAction(
+        byte* e, short* probe, int boldness, int distance, int heading, int speed, uint traits)
+    {
+        if (speed == 0) return false;
+
+        AdvanceEntityAnimation_004DB5A0((uint*)e);
+        uint flags = *(uint*)e;
+
+        // ================================================================ le geste en cours
+        if ((flags & 2) != 0)
+        {
+            // Le trait 0x10 coupe court : l'espece ne poursuit pas son geste.
+            if ((traits & 0x10) != 0)
+            {
+                e[0x43] = 0;
+                *(uint*)e = flags & 0xfffffffd;
+                return false;
+            }
+
+            byte posture = e[0x42];
+
+            if (posture == 1)
+            {
+                // A la quatorzieme image du geste, la charge laisse une trainee. Les trois
+                // vitesses sont remplacees le temps de la copie puis remises telles quelles :
+                // c'est l'EFFET qui part avec la vitesse, l'entite garde la sienne.
+                if (*(short*)(e + 0x1a) == 0x0e)
+                {
+                    int savedX = *(int*)(e + 0x50);
+                    int savedY = *(int*)(e + 0x54);
+                    int savedZ = *(int*)(e + 0x58);
+
+                    int reach = (CrtRand() & 0x0f) + 0x28;
+                    int course = *(short*)(e + 0x32);
+
+                    *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(course) * reach;
+                    *(int*)(e + 0x58) = (int)Winsys3d.GetCosTableEntry(course) * reach;
+                    *(int*)(e + 0x54) = 0x18000;
+
+                    // Le sous-type de la trainee n'est pas une constante : il est lu dans le
+                    // repertoire de zone (+0xcc), premier bloc, deuxieme octet, decale de 0xc0.
+                    byte* block = *(byte**)(s_Unknown_005e97cc + 0xcc);
+                    int subtype = (*(byte**)block)[1] + 0xc0;
+
+                    SpawnEffectEntity(e, (byte)subtype, 0xff, -1);
+
+                    *(int*)(e + 0x54) = savedY;
+                    *(int*)(e + 0x50) = savedX;
+                    *(int*)(e + 0x58) = savedZ;
+                }
+
+                // Ghidra: LAB_0049aac8
+                flags = *(uint*)e;
+                if ((flags & 0x2000000) != 0) *(uint*)e = flags & 0xfffffffd;
+                return false;
+            }
+
+            if (posture != 0) return false;
+
+            // Ghidra: LAB_0049aade — la posture 0 pendant un geste, c'est le COUP : a la
+            // huitieme image, on regarde qui est sous le gabarit.
+            if (*(short*)(e + 0x1a) == 8)
+            {
+                byte* victim = SweepPartyForMeleeHit_00519C30(e, (int*)(e + 0x1c), probe, 0);
+
+                // Le drapeau vaut 1 quand le coup porte SANS etre pare — la parade le remet a
+                // zero elle-meme, en ayant deja joue son propre son.
+                if (*Mem.Camera(0x005de0b8) != 0)
+                {
+                    ResolveMeleeHit_00539B80((uint*)e, (uint*)victim);
+
+                    *(ushort*)(victim + 0x96) = 0x10;      // le clignotement de degat
+                    *(uint*)victim |= 0x40;
+                    Aud.PlayPositionalSound(3, 0x300, 0x1800, (int*)(victim + 0x1c));
+                }
+
+                flags = *(uint*)e;
+
+                if ((flags & 1) != 0)
+                {
+                    *(short*)(e + 0x1a) -= 1;
+                    return false;
+                }
+            }
+            else if ((flags & 1) != 0)
+            {
+                return false;
+            }
+
+            // Ghidra: LAB_0049ab47
+            if ((flags & 0x2000000) != 0) *(uint*)e = flags & 0xfffffffd;
+            return true;
+        }
+
+        // ================================================================ le recul
+        // Ghidra: LAB_0049ab5b — le bit 0x10 est pose par l'interruption : l'entite encaisse,
+        // et ne fait rien d'autre que se tourner vers ce qui l'a touchee.
+        if ((flags & 0x10) != 0)
+        {
+            if ((flags & 0x2000000) != 0 && e[0x43] != 0)
+            {
+                e[0x43]--;
+                if (e[0x43] == 0)
+                {
+                    flags &= 0xffffffef;
+                    *(uint*)e = flags;
+                }
+            }
+
+            TurnSceneEntityTowardTarget(e, boldness + 0x40, heading);
+            return false;
+        }
+
+        // ================================================================ la posture tenue
+        // Ghidra: LAB_0049abb5
+        if ((flags & 0x804) != 0) return false;
+
+        if ((flags & 1) != 0)
+        {
+            // Le geste vient de finir : une chance sur 100 par quart de hardiesse de relancer.
+            if (CrtRand() % 100 >= (boldness >> 2)) return false;
+
+            uint state = *(uint*)e;
+            *(int*)(e + 0x18) = 3;
+            e[0x42] = 0;
+            *(int*)(e + 0x5c) = 0;
+            *(uint*)e = (state & 0xfeffffff) | 2;
+            return false;
+        }
+
+        // Ghidra: LAB_0049ac00 — le repartiteur des cinq postures, table de sauts 0x0049b200.
+        byte held = e[0x42];
+        if (held > 4) return false;
+
+        switch (held)
+        {
+            // ---------------------------------------------------------- 0 : attendre
+            case 0:
+                if (*(ushort*)(e + 0x18) != 0)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 0;
+                    *(uint*)e = flags;
+                }
+
+                if (distance < 0x12c)
+                {
+                    e[0x43] = 0;
+                    return false;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+                *(int*)(e + 0x5c) = 0;
+                return false;
+
+            // ---------------------------------------------------------- 1 : se tourner
+            case 1:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                // Le compte a rebours ne repart que lorsque le cap est ATTEINT — c'est ce qui
+                // fait qu'une bete desorientee reste tournee vers vous avant de repartir.
+                if (TurnSceneEntityTowardTarget(e, boldness * 2 + 0x80, heading)) e[0x43] = 0;
+                *(int*)(e + 0x5c) = 0;
+                return false;
+
+            // ---------------------------------------------------------- 2 : s'approcher
+            case 2:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                // La distance tenue est dans +0x10, la meme case que la posture 3 remplit d'un
+                // cap tire au sort : le champ sert aux deux, jamais en meme temps.
+                if (distance < *(short*)(e + 0x10))
+                {
+                    e[0x43] = 0;
+                    return false;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+
+                TurnSceneEntityTowardTarget(e, boldness * 2 + 0x80, heading);
+                *(int*)(e + 0x5c) = (boldness + 0xc0) << 7;
+                return false;
+
+            // ---------------------------------------------------------- 3 : marcher ou bondir
+            case 3:
+            {
+                if (e[0x43] != 0) e[0x43]--;
+
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                if (CrtRand() % 100 < (boldness >> 3))
+                {
+                    // Le bond : la poussee passe par la VITESSE, avec une composante verticale,
+                    // et le bit 0 s'allume — l'entite est en l'air.
+                    int thrust = (boldness + 0x100) << 7;
+                    int step = (speed * thrust) >> 0xc;
+                    *(int*)(e + 0x5c) = thrust;
+
+                    int course = *(short*)(e + 0x10);
+                    *(int*)(e + 0x50) += ((int)Winsys3d.GetSinTableEntry(course) * step) >> 0xc;
+                    *(int*)(e + 0x58) += ((int)Winsys3d.GetCosTableEntry(course) * step) >> 0xc;
+                    *(int*)(e + 0x54) += 0xa000;
+                    *(uint*)e |= 1;
+                    return true;
+                }
+
+                // La marche : la POSITION avance directement, sans passer par la vitesse.
+                int walk = (boldness + 0x80) << 7;
+                int walkStep = (speed * walk) >> 0xc;
+                *(int*)(e + 0x5c) = walk;
+
+                int walkCourse = *(short*)(e + 0x10);
+                *(int*)(e + 0x1c) += ((int)Winsys3d.GetSinTableEntry(walkCourse) * walkStep) >> 0xc;
+                *(int*)(e + 0x24) += ((int)Winsys3d.GetCosTableEntry(walkCourse) * walkStep) >> 0xc;
+
+                TurnSceneEntityTowardTarget(e, boldness * 4 + 0x32, heading);
+                return true;
+            }
+
+            // ---------------------------------------------------------- 4 : foncer
+            default:
+            {
+                flags = (flags & 0xfeffffff) | 1;
+                *(int*)(e + 0x18) = 6;
+                *(uint*)e = flags;
+
+                // La seule posture qui ECRASE la vitesse au lieu de s'y ajouter, et la seule
+                // dont le pas se compte sur huit bits plutot que sept.
+                int thrust = (boldness + 0xa0) << 8;
+                int step = (speed * thrust) >> 0xc;
+                *(int*)(e + 0x5c) = thrust;
+
+                int course = *(short*)(e + 0x10);
+                *(int*)(e + 0x50) = ((int)Winsys3d.GetSinTableEntry(course) * step) >> 0xc;
+                *(int*)(e + 0x58) = ((int)Winsys3d.GetCosTableEntry(course) * step) >> 0xc;
+                *(int*)(e + 0x54) = 0x19000;
+                return true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: le motif <c>LAB_0049ab78</c> / <c>ac5c</c> / <c>acd6</c> / <c>0049ae07</c> —
+    /// <b>tourner vers la cible, au plus de <paramref name="amount"/> par image</b>. Le meme corps
+    /// est emis quatre fois par le compilateur, avec quatre largeurs differentes.
+    ///
+    /// <para>Le test <c>((amount + cap) &amp; 0xfff) &lt;= amount * 2</c> demande « l'ecart tient-il
+    /// dans le cone ? » : si oui le cap est pris d'un coup, sinon on avance de la largeur du cone,
+    /// dans le sens que donne la moitie du tour ou se trouve la cible.</para>
+    /// </summary>
+    /// <returns><c>true</c> si le cap a ete pris d'un coup.</returns>
+    private static bool TurnSceneEntityTowardTarget(byte* e, int amount, int heading)
+    {
+        if (((amount + heading) & 0xfff) <= amount * 2)
+        {
+            *(ushort*)(e + 0x32) += (ushort)heading;
+            return true;
+        }
+
+        if ((heading & 0xfff) >= 0x800) amount = -amount;
+        *(ushort*)(e + 0x32) += (ushort)amount;
+        return false;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0049aeef..0x0049b1fe</c> — <b>le troisieme temps</b> : quelle posture prendre
+    /// pour la suite. Elle ne tourne que lorsque le compte a rebours <c>+0x43</c> est epuise et que
+    /// l'entite n'est ni en geste ni en recul.
+    ///
+    /// <para>
+    /// <b>La distance et le cap sont RECALCULES ici, et en deux dimensions seulement</b> — la
+    /// hauteur est ignoree. Ceux de <see cref="ReadSceneEntitySituation_00535F20"/> etaient a trois
+    /// dimensions et sont morts a ce point : c'est deliberé, une bete ne renonce pas a vous
+    /// poursuivre parce que vous etes sur une marche.
+    /// </para>
+    /// <para>
+    /// Trois plages de distance, et dans chacune un tirage sur cent : <b>sous 0x0fa</b> le corps a
+    /// corps, ou l'entite frappe, esquive de cote, ou recule ; <b>sous 0x1f4</b> l'approche ;
+    /// <b>au-dela</b> l'errance, ou elle finit le plus souvent par attendre.
+    /// </para>
+    /// </summary>
+    private static void ReplanSceneEntityAction(byte* e, int boldness, int timid)
+    {
+        byte* chased = *(byte**)(e + 0x6c);
+
+        int dx = (*(int*)(chased + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+        int dz = (*(int*)(chased + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int heading = (Winsys3d.Ordinal_457(dx, dz) - *(ushort*)(e + 0x32)) & 0xfff;
+
+        // ================================================================ le corps a corps
+        if (distance < 0xfa)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x1e)
+            {
+                // Frapper : il faut etre dans le cone ET assez pres, la portee tiree au sort
+                // s'elargissant avec la timidite — une bete craintive frappe de plus loin.
+                if (((heading + timid * 4 + 0x100) & 0xfff) <= timid * 8 + 0x200
+                    && distance < CrtRand() % (timid * 2 + 1) + 100)
+                {
+                    uint state = *(uint*)e;
+                    *(int*)(e + 0x18) = 3;
+                    e[0x42] = 0;
+                    *(int*)(e + 0x5c) = 0;
+                    *(uint*)e = (state & 0xfeffffff) | 2;
+                    return;
+                }
+
+                // Ghidra: LAB_0049afb2 — l'esquive de cote, dans un cone deux fois plus large.
+                if (((heading + timid * 4 + 0x200) & 0xfff) > timid * 8 + 0x400
+                    || CrtRand() % 100 >= (timid >> 1) + 0x20)
+                {
+                    HesitateSceneEntity(e);
+                    return;
+                }
+
+                uint dodge = *(uint*)e;
+                *(int*)(e + 0x18) = 5;
+                *(uint*)e = (dodge & 0xfeffffff) | 0x10;
+                *(int*)(e + 0x5c) = 0;
+                e[0x43] = (byte)(CrtRand() % 5 + 10);
+                return;
+            }
+
+            // Ghidra: LAB_0049b022
+            if (roll < 0x3c)
+            {
+                HoldSceneEntityAtRange(e, timid, 0x64);
+                return;
+            }
+
+            if (roll < 0x4b && distance > boldness + 100)
+            {
+                e[0x42] = 4;                                   // foncer
+                *(ushort*)(e + 0x10) = (ushort)CrtRand();
+                return;
+            }
+
+            WanderSceneEntity(e, boldness, timid, heading, 0x800);
+            return;
+        }
+
+        // ================================================================ l'approche
+        if (distance < 0x1f4)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < (boldness >> 1) + 0x10)
+            {
+                // Se tourner, mais seulement si la cible est deja dans la moitie avant.
+                if (((heading + 0x400) & 0xfff) >= 0x800)
+                {
+                    HesitateSceneEntity(e);
+                    return;
+                }
+
+                uint state = *(uint*)e;
+                *(int*)(e + 0x18) = 4;
+                e[0x42] = 1;
+                *(int*)(e + 0x5c) = 0;
+                *(uint*)e = (state & 0xfeffffff) | 2;
+                return;
+            }
+
+            if (roll < 0x46)
+            {
+                // Le meme errement que plus haut, sans le demi-tour de 0x800 : l'entite part
+                // VERS la cible au lieu de s'en ecarter.
+                WanderSceneEntity(e, boldness, timid, heading, 0);
+                return;
+            }
+
+            if (roll < 0x5a)
+            {
+                HoldSceneEntityAtRange(e, timid, 0x64);
+                return;
+            }
+
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        // ================================================================ l'errance
+        int far = CrtRand() % 100;
+
+        if (far < 0x1e)
+        {
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        if (far < 0x3c)
+        {
+            HesitateSceneEntity(e);
+            return;
+        }
+
+        // Ghidra: LAB_0049b1d3 — la seule sortie ou le cap est ENTIEREMENT tire au sort, sans
+        // reference a la cible : trop loin pour qu'elle compte.
+        e[0x42] = 3;
+        e[0x43] = SceneEntityDelay(timid);
+        *(ushort*)(e + 0x10) = (ushort)CrtRand();
+    }
+
+    /// <summary>Ghidra: le motif <c>rand() % 10 + (timide &gt;&gt; 1) + 0x14</c>, emis quatre fois
+    /// — <b>la duree d'une posture</b>, de 20 a 61 images selon la timidite.</summary>
+    private static byte SceneEntityDelay(int timid) => (byte)(CrtRand() % 10 + (byte)(timid >> 1) + 0x14);
+
+    /// <summary>Ghidra: LAB_0049b1c3 — <b>l'hesitation</b> : posture 1 pour une seule image. C'est
+    /// la sortie de secours de toutes les conditions qui echouent.</summary>
+    private static void HesitateSceneEntity(byte* e)
+    {
+        e[0x42] = 1;
+        e[0x43] = 1;
+    }
+
+    /// <summary>Ghidra: LAB_0049b19b — <b>le repos</b> : posture 0, pour une duree tiree.</summary>
+    private static void RestSceneEntity(byte* e, int timid)
+    {
+        e[0x42] = 0;
+        e[0x43] = SceneEntityDelay(timid);
+    }
+
+    /// <summary>Ghidra: LAB_0049b160 et LAB_0049a1f9 — <b>tenir la distance</b> : posture 2, avec
+    /// la distance voulue posee dans <c>+0x10</c>. Les deux especes ne different que par elle —
+    /// 0x64 pour la famille de <see cref="TickSceneEntityAi_0049A980"/>, 0x5a pour celle de
+    /// <see cref="TickSceneEntityAi_00499DE0"/>.</summary>
+    private static void HoldSceneEntityAtRange(byte* e, int timid, ushort range)
+    {
+        e[0x42] = 2;
+        *(ushort*)(e + 0x10) = range;
+        e[0x43] = SceneEntityDelay(timid);
+    }
+
+    /// <summary>
+    /// Ghidra: LAB_0049b054, LAB_0049b10c et LAB_0049a28a — <b>marcher dans une direction proche de
+    /// la cible</b> : posture 3, le cap etant celui de la cible plus un ecart tire dans une
+    /// fourchette large de <c>(hardiesse + 0x80) * 16</c>, centree.
+    ///
+    /// <para>Les trois sites ne different que par <paramref name="bias"/> : <c>0x800</c> est un
+    /// demi-tour, donc l'entite s'ELOIGNE — c'est la retraite du corps a corps ; <c>0</c> la fait
+    /// avancer.</para>
+    /// </summary>
+    private static void WanderSceneEntity(byte* e, int boldness, int timid, int heading, int bias)
+    {
+        e[0x42] = 3;
+        e[0x43] = SceneEntityDelay(timid);
+
+        int spread = (boldness + 0x80) << 4;
+        int offset = CrtRand() % spread - (spread >> 1);
+
+        *(ushort*)(e + 0x10) = (ushort)(offset + heading + *(short*)(e + 0x32) + bias);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00499de0</c> — <b>la seconde intelligence d'entite de scene</b> : le
+    /// gestionnaire du sous-type <b>0</b> de la table installee <c>0x0056ad48</c>. 1377 octets,
+    /// <b>absente de <c>Blaze.c</c></b>, transcrite au desassembleur
+    /// (<c>Legacy/Raw/Blaze/FUN_00499DE0.asm</c>).
+    ///
+    /// <para>
+    /// <b>C'est la sœur de <see cref="TickSceneEntityAi_0049A980"/></b> : meme decoupage en trois
+    /// temps, meme lecture de situation, meme queue de quatre appels, et les memes feuilles. Elle
+    /// n'est pas factorisee avec elle parce que ce sont <b>deux fonctions distinctes du binaire</b>,
+    /// et que l'oracle de <c>compare-bodies.ps1</c> compare des corps — meme raison que les trois
+    /// passes <c>FUN_0047aa70</c>/<c>ab70</c>/<c>acf0</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ce qui la distingue tient en cinq nombres et une absence</b>, et l'ecart dessine une bete
+    /// plus petite et plus prudente :
+    /// </para>
+    /// <list type="bullet">
+    /// <item>sa <b>sonde</b> est plus courte et plus basse — <c>0x50</c> de tolerance en hauteur et
+    /// <c>0x3c</c> de portee, contre <c>0x64</c> et <c>0x50</c> ;</item>
+    /// <item>son coup porte a la <b>douzieme</b> image du geste, pas a la huitieme ;</item>
+    /// <item>elle n'a que <b>quatre</b> postures (table de sauts a <c>0x0049a344</c>, quatre entrees
+    /// relevees dans le binaire) — il n'y a pas de « foncer » ;</item>
+    /// <item>ses cones de virage sont bien plus etroits : <c>hardiesse + 0x20</c> et
+    /// <c>hardiesse + 0x40</c>, la ou sa sœur ouvre a <c>hardiesse * 2 + 0x80</c> ;</item>
+    /// <item><b>elle ne bondit pas et ne se recule pas</b>. Ni la branche de recul (bit
+    /// <c>0x10</c>), ni la relance d'attaque en fin de geste, ni l'esquive de cote n'existent :
+    /// le mot d'etat <c>0x11</c> la renvoie directement a la queue.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Sa posture 3 tourne au lieu de marcher</b>, et c'est la seule difference de <i>forme</i>
+    /// et non de constante. La sœur y avance en ligne droite ou bondit ; celle-ci pose une poussee
+    /// <c>(hardiesse + 0xa0) &lt;&lt; 7</c> et <b>pivote vers un cap range en <c>+0x10</c></b> a
+    /// <c>0x20 + hardiesse / 2</c> par image, en s'arretant des que l'ecart tient sous
+    /// <c>0x100</c>. Le champ <c>+0x10</c> sert donc ici aussi a deux choses — distance voulue en
+    /// posture 2, cap vise en posture 3.
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_00499DE0(byte* record)
+    {
+        byte* e = record;
+
+        ResolveEntityBlocks(e, out byte* stats, out _, out _);
+
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0x1e;
+        probe[2] = 0x32;
+        probe[3] = 0x50;
+        probe[4] = 0;
+        probe[5] = 0x3c;
+
+        int boldness, distance, heading, speed;
+        uint traits;
+        ReadSceneEntitySituation_00535F20(e, &boldness, &distance, &heading, &speed, &traits);
+
+        int timid = 0x40 - boldness;
+
+        // ---------------------------------------------------------------- 1. decider
+        DecideSceneEntityAction_00499DE0(e, probe, boldness, distance, heading, speed, traits);
+
+        // ---------------------------------------------------------------- 2. appliquer
+        IntegrateSceneEntityMotion_00488160(e, speed);
+        FinalizeEntityPlacement2((uint*)e);
+        EndSceneEntityAnimation_004DFAF0((uint*)e);
+        InterruptSceneEntity_004E3770((uint*)e, stats);
+
+        // ---------------------------------------------------------------- 3. replanifier
+        if (speed == 0) return;
+        if ((*(uint*)e & 0x817) != 0) return;
+        if (e[0x43] != 0) return;
+
+        ReplanSceneEntityAction_00499DE0(e, boldness, timid);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00499e68..0x0049a0cb</c> — <b>le premier temps</b> de
+    /// <see cref="TickSceneEntityAi_00499DE0"/>. Contrairement a sa sœur, aucune sortie ne demande
+    /// de remise a zero separee de la poussee : celles qui la veulent l'ecrivent elles-memes.
+    /// </summary>
+    private static void DecideSceneEntityAction_00499DE0(
+        byte* e, short* probe, int boldness, int distance, int heading, int speed, uint traits)
+    {
+        if (speed == 0) return;
+
+        AdvanceEntityAnimation_004DB5A0((uint*)e);
+        uint flags = *(uint*)e;
+
+        // ================================================================ le geste en cours
+        if ((flags & 2) != 0)
+        {
+            if ((traits & 0x10) != 0)
+            {
+                e[0x43] = 0;
+                *(uint*)e = flags & 0xfffffffd;
+                return;
+            }
+
+            // Le coup porte a la douzieme image, et non a la huitieme comme chez la sœur.
+            if (*(short*)(e + 0x1a) == 0x0c)
+            {
+                byte* victim = SweepPartyForMeleeHit_00519C30(e, (int*)(e + 0x1c), probe, 0);
+
+                if (*Mem.Camera(0x005de0b8) != 0)
+                {
+                    // Ici le clignotement est pose AVANT la resolution, l'inverse de
+                    // TickSceneEntityAi_0049A980. Sans consequence — rien ne les relit entre les
+                    // deux — mais c'est bien ce que le binaire fait.
+                    *(ushort*)(victim + 0x96) = 0x10;
+                    *(uint*)victim |= 0x40;
+
+                    ResolveMeleeHit_00539B80((uint*)e, (uint*)victim);
+                    Aud.PlayPositionalSound(3, 0x300, 0x1800, (int*)(victim + 0x1c));
+                }
+
+                flags = *(uint*)e;
+
+                if ((flags & 1) != 0)
+                {
+                    *(short*)(e + 0x1a) -= 1;
+                    return;
+                }
+            }
+            else if ((flags & 1) != 0)
+            {
+                return;
+            }
+
+            if ((flags & 0x2000000) != 0) *(uint*)e = flags & 0xfffffffd;
+            *(int*)(e + 0x5c) = 0;
+            return;
+        }
+
+        // ================================================================ la posture tenue
+        // Ghidra: LAB_00499f13 — le bit 0x10 ne mene nulle part chez cette espece : pas de recul,
+        // pas de relance d'attaque, la queue directement.
+        if ((flags & 0x11) != 0) return;
+        if ((flags & 0x804) != 0) return;
+
+        byte held = e[0x42];
+        if (held > 3) return;
+
+        switch (held)
+        {
+            // ---------------------------------------------------------- 0 : attendre
+            case 0:
+                if (*(ushort*)(e + 0x18) != 0)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 0;
+                    *(uint*)e = flags;
+                }
+
+                if (distance < 0x12c)
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+                *(int*)(e + 0x5c) = 0;
+                return;
+
+            // ---------------------------------------------------------- 1 : se tourner
+            case 1:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                if (TurnSceneEntityTowardTarget(e, boldness + 0x20, heading)) e[0x43] = 0;
+                *(int*)(e + 0x5c) = 0;
+                return;
+
+            // ---------------------------------------------------------- 2 : s'approcher
+            case 2:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                if (distance < *(short*)(e + 0x10))
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+
+                TurnSceneEntityTowardTarget(e, boldness + 0x40, heading);
+                *(int*)(e + 0x5c) = (boldness + 0xa0) << 7;
+                return;
+
+            // ---------------------------------------------------------- 3 : errer
+            default:
+            {
+                if (e[0x43] != 0) e[0x43]--;
+
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                *(int*)(e + 0x5c) = (boldness + 0xa0) << 7;
+
+                // Le cap vise est dans +0x10 — pose par la replanification, pas par la cible.
+                int bearing = (*(ushort*)(e + 0x10) - *(ushort*)(e + 0x32)) & 0xfff;
+                if (((bearing + 0x100) & 0xfff) <= 0x200) return;
+
+                int step = bearing >= 0x800 ? -0x20 - (boldness >> 1) : (boldness >> 1) + 0x20;
+                *(ushort*)(e + 0x32) += (ushort)step;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0049a11d..0x0049a338</c> — <b>le troisieme temps</b> de
+    /// <see cref="TickSceneEntityAi_00499DE0"/>. Meme decoupage en trois plages de distance que sa
+    /// sœur, mais un tirage plus simple : ni esquive de cote, ni charge, et le meme errement
+    /// dessert les trois plages.
+    ///
+    /// <para>Sous <c>0x0fa</c>, une chance sur 0x28 de frapper — <b>plus du double</b> de la
+    /// sœur — sinon tenir la distance ou errer ; entre <c>0x0fa</c> et <c>0x1f4</c>, tenir,
+    /// errer ou se reposer ; au-dela, se reposer, hesiter, ou errer vers un cap entierement tire
+    /// au sort.</para>
+    /// </summary>
+    private static void ReplanSceneEntityAction_00499DE0(byte* e, int boldness, int timid)
+    {
+        byte* chased = *(byte**)(e + 0x6c);
+
+        int dx = (*(int*)(chased + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+        int dz = (*(int*)(chased + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int heading = (Winsys3d.Ordinal_457(dx, dz) - *(ushort*)(e + 0x32)) & 0xfff;
+
+        // ================================================================ le corps a corps
+        if (distance < 0xfa)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x28
+                && ((heading + timid * 4 + 0x100) & 0xfff) <= timid * 8 + 0x200
+                && distance < CrtRand() % (timid * 2 + 1) + 100)
+            {
+                uint state = *(uint*)e;
+                *(int*)(e + 0x18) = 3;
+                *(int*)(e + 0x5c) = 0;
+                *(uint*)e = (state & 0xfeffffff) | 2;
+                return;
+            }
+
+            // Entre 0x28 et 0x50 elle tient la distance ; partout ailleurs elle erre. Le
+            // court-circuit ci-dessus renvoie donc a l'errement quand le coup ne part pas.
+            if (roll >= 0x28 && roll < 0x50)
+            {
+                HoldSceneEntityAtRange(e, timid, 0x5a);
+                return;
+            }
+
+            WanderSceneEntity(e, boldness, timid, heading, 0);
+            return;
+        }
+
+        // ================================================================ l'approche
+        if (distance < 0x1f4)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x32)
+            {
+                HoldSceneEntityAtRange(e, timid, 0x5a);
+                return;
+            }
+
+            if (roll < 0x50)
+            {
+                WanderSceneEntity(e, boldness, timid, heading, 0);
+                return;
+            }
+
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        // ================================================================ l'errance
+        int far = CrtRand() % 100;
+
+        if (far < 0x1e)
+        {
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        if (far < 0x3c)
+        {
+            HesitateSceneEntity(e);
+            return;
+        }
+
+        e[0x42] = 3;
+        e[0x43] = SceneEntityDelay(timid);
+        *(ushort*)(e + 0x10) = (ushort)CrtRand();
+    }
 
     /// <summary>
     /// Ghidra: FUN_0047aa70 @ 0x0047aa70 — la passe sur la table <c>DAT_005ff400</c>, 0x20
@@ -9620,13 +11641,189 @@ public static unsafe partial class Blaze
         return 1;
     }
 
-    /// <summary>Ghidra: FUN_0051a5d0 @ 0x0051a5d0 (46 l.) — reconnait la combinaison de directions
-    /// empilee dans l'entree d'emplacement et rend l'indice du sort correspondant, ou -1.</summary>
+    /// <summary>
+    /// Ghidra: FUN_004765d0 @ 0x004765d0 — <b>l'aureole d'incantation</b> : le gestionnaire du
+    /// sous-type <c>0xbd</c>, creneau 189 de la table statique <see cref="s_StaticEntityHandlers_00551f30"/>.
+    /// 350 octets, <b>absente de <c>Blaze.c</c></b>, transcrite au desassembleur — le releve est
+    /// garde sous <c>Legacy/Raw/Blaze/FUN_004765D0.asm</c>.
+    ///
+    /// <para>
+    /// C'est le pendant vivant de <see cref="SpawnCastEntity_0047AAE0"/> : ce que
+    /// <see cref="ApplyGroundMotion_0051A020"/> fait naitre a chaque fois qu'un personnage prend la
+    /// posture d'incantation (<c>+0x18 == 5</c>), et ce qui plantait a l'appui sur Select en foret.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>La premiere entite n'est qu'une graine.</b> Le sous-type se comporte de deux façons selon
+    /// que sa source porte ou non le bit <c>0x100000</c> — celui qui, dans la boucle de dessin de la
+    /// grille, designe une entite <b>rendue comme modele du paquet</b>, indexee par <c>+0x04</c>.
+    /// Un personnage ne le porte pas (il passe par la branche <c>0x440000</c>, le modele anime),
+    /// mais <see cref="SpawnCastEntity_0047AAE0"/> le <b>force</b> sur tout ce qu'elle engendre.
+    /// Le test lit donc « ma source est-elle une de mes semblables ? » :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>source = le personnage</b> — la graine se recopie <b>deux fois</b> par
+    /// <see cref="SpawnCastEntity_0047AAE0"/>, en avançant sa rotation <c>+0x32</c> de <c>0x800</c>
+    /// avant chaque copie, puis se marque <c>0x2000000</c> et s'eteint a l'image suivante. Trois
+    /// tiers de tour, donc, dont il ne reste que deux exemplaires.</item>
+    /// <item><b>source = la graine</b> — la copie se reaccroche au <b>personnage</b>
+    /// (<c>source + 0x6c</c>), prend le modele <c>0x3d</c>, la teinte pleine <c>0xffffff</c>, et
+    /// mesure une fois pour toutes la hauteur de tete du lanceur par
+    /// <see cref="StatusBubbleHeight_00538BC0"/>.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// Ensuite, a chaque image : la position est recopiee du lanceur avec la hauteur en decalage
+    /// vertical (<c>(hauteur &amp; ~1) &lt;&lt; 11</c>), l'echelle des trois axes <b>approche</b> sa
+    /// cible d'un quart de la distance restante — la cible etant <c>(hauteur &lt;&lt; 12) / 150</c>,
+    /// que le binaire ecrit en multiplication magique <c>0x1B4E81B5</c> suivie de <c>sar 4</c> —
+    /// et la rotation avance de <c>0x40</c> sur <c>+0x32</c>, <c>0x80</c> sur <c>+0x34</c>.
+    /// </para>
+    /// <para>
+    /// <b>Trois conditions rendent la main</b>, et posent <c>0x2000000</c> sur le mot d'etat, ce qui
+    /// bascule l'entite dans la branche d'extinction : le lanceur porte <c>0x50000000</c> ; c'est un
+    /// membre du groupe (<c>0x800000</c>) qui a <b>quitte la posture 5</b> ; ou son mot d'etat
+    /// vaut <c>0x400000</c> sur le masque <c>0x400004</c>. L'extinction <b>divise l'echelle par
+    /// deux</b> a chaque image et rend le creneau des qu'elle passe sous <c>0x100</c>, en mettant le
+    /// mot d'etat a zero — la passe <see cref="TickEntityTable_005edee0"/> relit ce mot juste apres
+    /// et libere l'emplacement.
+    /// </para>
+    /// </summary>
+    private static void TickCastAura_004765D0(byte* record)
+    {
+        byte* e = record;
+
+        // ------------------------------------------------------------------ l'extinction
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            int scale = *(short*)(e + 0x28);
+            scale -= scale >> 1;                       // la moitie, arrondie vers le haut
+
+            *(short*)(e + 0x2c) = (short)scale;
+            *(uint*)(e + 0x28) = ((uint)scale << 0x10) | (uint)scale;
+
+            *(ushort*)(e + 0x32) += 0x40;
+            *(ushort*)(e + 0x34) += 0x80;
+
+            // Le mot d'etat a zero : la passe rend le creneau au pool 0x006007a0.
+            if (scale < 0x100) *(uint*)e = 0;
+            return;
+        }
+
+        // ------------------------------------------------------------------ l'amorcage
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            byte* source = *(byte**)(e + 0x6c);
+
+            e[0x36] |= 6;
+            *(ushort*)(e + 0x10) = 1;
+            *(uint*)(e + 0x38) = 0xffffff;
+            *(uint*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(ushort*)(e + 0x34) = 0;
+
+            if ((*(uint*)source & 0x100000) == 0)
+            {
+                // Ghidra: LAB_004766f4 — la graine se dedouble et se marque pour l'extinction.
+                *(ushort*)(e + 0x32) += 0x800;
+                SpawnCastEntity_0047AAE0(e, 0xbd, 0, 0);
+                *(ushort*)(e + 0x32) += 0x800;
+                SpawnCastEntity_0047AAE0(e, 0xbd, 0, 0);
+
+                *(uint*)e |= 0x2000000;
+                return;
+            }
+
+            // La copie saute par-dessus la graine et se raccroche au lanceur lui-meme.
+            byte* caster = *(byte**)(source + 0x6c);
+            e[0x04] = 0x3d;
+            *(byte**)(e + 0x6c) = caster;
+            e[0x0b] = 0;
+            e[0x0a] = 0x0f;
+            *(short*)(e + 0x12) = (short)StatusBubbleHeight_00538BC0((uint*)caster);
+        }
+
+        // Ghidra: LAB_0047666c — le suivi, hors de toute branche d'etat.
+        int height = *(short*)(e + 0x12);
+        byte* anchor = *(byte**)(e + 0x6c);
+
+        // `imul 0x1B4E81B5` puis `sar edx,4` et la correction de signe : une division signee par
+        // 150, l'idiome du compilateur de 1998.
+        int target = (height << 0xc) / 150;
+        int current = *(short*)(e + 0x28);
+        current += (target - current) >> 2;            // un quart de ce qui reste, par image
+
+        *(short*)(e + 0x2c) = (short)current;
+        *(uint*)(e + 0x28) = ((uint)current << 0x10) | (uint)current;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + ((height & ~1) << 0xb);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        uint state = *(uint*)anchor;
+        bool spent;
+
+        if ((state & 0x50000000) != 0) spent = true;
+        else if ((state & 0x800000) != 0 && *(ushort*)(anchor + 0x18) != 5) spent = true;
+        else spent = (state & 0x400004) == 0x400000;   // Ghidra: LAB_004766d3
+
+        if (spent) *(uint*)e |= 0x2000000;
+
+        // Ghidra: LAB_004766e5 — la rotation, commune aux deux branches.
+        *(ushort*)(e + 0x32) += 0x40;
+        *(ushort*)(e + 0x34) += 0x80;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de directions</b>
+    /// saisie pendant l'incantation. Elle rend l'indice du sort dont la combinaison correspond, ou
+    /// <c>-1</c>.
+    ///
+    /// <para>
+    /// <b>C'est la table de sorts elle-meme qui porte les combinaisons.</b> Chaque fiche fait
+    /// <c>0x30</c> octets ; <c>+0x1f</c> est la <b>longueur</b> de sa combinaison et <c>+0x20</c>
+    /// ouvre la suite des directions attendues. La borne du balayage vient de
+    /// <see cref="s_SpellCounts_00564600"/>, indexee par l'ecole <c>personnage[0x2b5]</c>.
+    /// </para>
+    /// <para>
+    /// Cote joueur, <see cref="ApplyGroundMotion_0051A020"/> empile chaque direction tenue dans
+    /// <c>entree[0x0c + n]</c> sous la forme <c>(manette[2..3] &gt;&gt; 8) &amp; 0xf0</c> et compte
+    /// les coups dans <c>entree[0x0b]</c>, plafonne a <c>0x10</c>. <b>Les deux bornes se repondent
+    /// exactement</b> : seize octets tiennent entre <c>+0x20</c> et la fin de la fiche, ce qui
+    /// confirme les deux lectures l'une par l'autre.
+    /// </para>
+    /// <para>
+    /// La comparaison est un <c>memcmp</c> que Ghidra a deroule ; il est reecrit en boucle. Le test
+    /// <c>longueur != 0</c> est invariant de boucle dans le binaire — il est remonte avant, ce qui
+    /// ne change rien : une combinaison vide ne correspond a rien et le balayage rendait
+    /// <c>-1</c> apres l'avoir parcouru pour rien.
+    /// </para>
+    /// </summary>
     private static int PickCastTarget_0051A5D0(byte* entry, byte* perChar)
-        => throw new NotImplementedException(
-            "FUN_0051a5d0 (0x0051a5d0) : non transcrite. 46 lignes dans Blaze.c — la " +
-            "reconnaissance de la combinaison de directions saisie pendant l'incantation. Elle " +
-            "rend un indice de sort, ou une valeur negative si rien ne correspond.");
+    {
+        byte school = perChar[0x2b5];
+        int count = s_SpellCounts_00564600[school];
+        if (count == 0) return -1;
+
+        byte length = entry[0x0b];
+        if (length == 0) return -1;
+
+        // La fiche de sort commence 0x20 octets plus tot ; on balaye directement les combinaisons.
+        byte* combo = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x9c)
+                                + school * 4) + 0x20;
+
+        for (int index = 0; index < count; index++, combo += 0x30)
+        {
+            if (length != combo[-1]) continue;          // la longueur, en +0x1f de la fiche
+
+            int matched = 0;
+            while (matched < length && entry[0x0c + matched] == combo[matched]) matched++;
+
+            if (matched == length) return index;
+        }
+
+        return -1;
+    }
 
     /// <summary>
     /// Ghidra: <c>(*(code *)(&amp;PTR_FUN_00562ce0)[bloc + 0x2b7])(…)</c> — quatre gestionnaires de

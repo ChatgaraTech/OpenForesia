@@ -16054,3 +16054,367 @@ a la relecture parce que la chaine `'Z' + s[0]` y etait ecrite autrement que par
 L'assertion ajoutee au controle — **aucun `\bZ\d+\b` ne doit subsister dans le rendu** — l'a designee
 en un lancement. C'est le troisieme defaut que ce controle trouve, et le deuxieme qui n'avait pas ete
 signale.
+
+## 2026-08-28 — `FUN_004765D0`, l'auréole d'incantation (sous-type `0xbd`)
+
+Vincent signale un plantage : en forêt, appuyer sur **Select** lève
+`FUN_0047ab70, table 0x005edee0 entrée 0 [00 9f 90 80 00 bd 00 00 …] : gestionnaire d'entité
+0x4765D0 non transcrit`.
+
+L'entête de l'enregistrement suffit à situer les choses avant même de lire le binaire. Le mot d'état
+`0x80909f00` porte exactement les bits que `SpawnCastEntity_0047AAE0` force (`| 0x80109000`), et
+`+0x05 = 0xbd` est le sous-type que `ApplyGroundMotion_0051A020` pose déjà à deux endroits
+reconstruits — l'incantation lancée et l'incantation annulée. Le créneau 189 de
+`PTR_LAB_00551f30` vaut `0x004765D0` ; **c'est donc le premier créneau de cette table qu'un chemin
+reconstruit atteigne**, et le seul de la famille dont l'engendreur soit déjà transcrit.
+
+`0x004765D0` est **absente de `Blaze.c`**. 350 octets au désassembleur
+(`Legacy/Raw/Blaze/FUN_004765D0.asm`), six cibles de saut internes, aucune forme difficile.
+
+### Ce que la fonction fait
+
+Trois branches, dont deux triviales, et un tri au milieu qui est le seul point intéressant.
+
+**Le tri porte sur le bit `0x100000` de la source** (`+0x6c`). Ce bit n'est pas un drapeau
+d'incantation : c'est celui que la boucle de dessin de la grille lit pour choisir « modèle du
+paquet, indexé par `+0x04` » plutôt que « modèle animé » (`0x440000`) ou « particule ». Un
+personnage ne le porte pas ; `SpawnCastEntity_0047AAE0` le **force** sur tout ce qu'elle engendre.
+Le test se lit donc « ma source est-elle une de mes semblables ? », et il sépare deux rôles portés
+par le même sous-type :
+
+- **la graine** (source = le personnage) — elle avance sa rotation `+0x32` de `0x800`, se recopie,
+  avance encore de `0x800`, se recopie, puis se marque `0x2000000` et meurt à l'image suivante.
+  Elle n'est jamais dessinée : `+0x28` reste à zéro tout du long ;
+- **les deux copies** (source = la graine) — chacune saute par-dessus la graine et se raccroche au
+  **personnage** (`source + 0x6c`), prend le modèle `0x3d`, la teinte pleine `0xffffff`, et mesure
+  une fois pour toutes la hauteur de tête du lanceur par `StatusBubbleHeight_00538BC0`.
+
+Ensuite, chaque image : position recopiée du lanceur avec `(hauteur & ~1) << 11` en décalage
+vertical, échelle des trois axes approchant sa cible **d'un quart de la distance restante**, et
+rotation `+0x40` / `+0x80` sur `+0x32` / `+0x34`.
+
+La cible d'échelle est `(hauteur << 12) / 150`. Le binaire l'écrit `imul 0x1B4E81B5` puis `sar
+edx,4` avec correction de signe — la magie de division signée par 150 (`ceil(2^36 / 150)`), pas une
+constante à recopier telle quelle.
+
+**Trois conditions rendent la main**, et posent `0x2000000` : le lanceur porte `0x50000000` ; c'est
+un membre du groupe (`0x800000`) qui a **quitté la posture 5** — la valeur même que
+`ApplyGroundMotion_0051A020` écrit en `+0x18` pour incanter ; ou son mot d'état vaut `0x400000` sur
+le masque `0x400004`. L'extinction divise l'échelle par deux à chaque image et met le mot d'état à
+zéro dès qu'elle passe sous `0x100`, ce que `TickEntityTable_005edee0` relit juste après pour rendre
+le créneau au pool `0x006007a0`.
+
+### Ce que le cas apprend
+
+**Un même sous-type peut porter deux rôles, distingués par ce qu'est sa source.** On avait jusqu'ici
+lu la table de sauts comme « un sous-type = un comportement ». Ici le comportement se dédouble sur un
+bit qui appartient au **rendu**, pas à la logique — et le lire comme un drapeau de logique aurait
+donné une fonction incompréhensible. Le chemin qui l'a résolu passe par la boucle de dessin de la
+grille (`0x100000` / `0x80000` / `0x440000`), pas par la fonction elle-même.
+
+Le compte de `PTR_LAB_00551f30` passe donc à **26 décompilées + 1 désassemblée**, 56 restantes.
+
+### Suite — `FUN_0051a5d0`, la combinaison de directions
+
+Le relâchement de Select plantait juste après, sur la fonction que la branche « bouton relâché » de
+`ApplyGroundMotion_0051A020` appelle pour transformer la suite de directions saisie en indice de
+sort. Elle est dans `Blaze.c`, 46 lignes, et ne demandait que d'être écrite.
+
+**Les combinaisons sont dans la table de sorts elle-même.** Chaque fiche fait `0x30` octets ;
+`+0x1f` porte la **longueur** de sa combinaison, `+0x20` ouvre la suite des directions attendues. Le
+balayage est borné par `s_SpellCounts_00564600[personnage[0x2b5]]` — la même école que la fiche.
+
+**Les deux bornes se confirment l'une l'autre.** Côté saisie, `ApplyGroundMotion_0051A020` empile
+chaque direction tenue dans `entrée[0x0c + n]` et plafonne le compte à `0x10` ; côté données, seize
+octets tiennent exactement entre `+0x20` et la fin de la fiche. Ni l'une ni l'autre lecture ne
+dit pourquoi la limite est là — mises ensemble, elles la donnent.
+
+Ghidra avait déroulé le `memcmp` en boucle avec pointeur biaisé (`pcVar4[iVar6]`) ; c'est réécrit en
+comparaison indexée. Le test `longueur != 0` est invariant de boucle dans le binaire et remonte
+avant, sans changer le résultat : une combinaison vide ne correspond à rien.
+
+## 2026-08-28 (suite) — `FUN_0049A980`, l'intelligence des entités de scène
+
+Vincent signale le plantage suivant : dès qu'un groupe de monstres apparaît,
+`FUN_0050e680, table 0x005ecaa0 entrée 0, sous-type 2 … gestionnaire 0x49A980 non transcrit`.
+
+C'est le sous-type 2 de la table **installée par sous-zone** `0x0056ad48`, et donc le comportement
+de tout ce qui bouge et n'appartient pas au groupe. 2175 octets, **absente de `Blaze.c`** — Ghidra
+ne rend que cinq corps sur toute la plage `0x00491290..0x004a1020`, et pas celui-ci.
+
+### La taille n'était pas le problème
+
+43 cibles de saut interne, une table de sauts à cinq entrées, dix appels sortants. Le chiffre fait
+peur et il ne veut rien dire, exactement comme pour `FUN_004747F0` en son temps. Ce qui a rendu la
+fonction lisible tient en une phrase : **elle se lit en trois temps**, et les 43 cibles ne sont que
+les sorties du premier, qui convergent toutes sur le deuxième.
+
+1. **Décider** (`0x0049aa0d..0x0049ae96`) — que fait-on de l'image en cours.
+2. **Appliquer** (`0x0049ae9e..0x0049aecc`) — intégration du mouvement, placement, fin d'animation,
+   interruption. Quatre appels, sans condition.
+3. **Replanifier** (`0x0049aeef..0x0049b1fe`) — quelle posture prendre ensuite, et seulement si le
+   compte à rebours est épuisé.
+
+### Ce que la fonction apprend
+
+**Tout le comportement tient sur un seul nombre.** `FUN_00535F20` rend une « hardiesse » de 0 à
+0x40, tirée de l'écart de niveau entre l'entité et sa cible, corrigée par son état de santé. Ce
+nombre élargit les cônes de virage, allonge les pas et abaisse les seuils de tirage ; son complément
+à 0x40 fait l'inverse. Une bête faible face à un groupe fort hésite, tourne plus lentement et frappe
+moins souvent — et **c'est une seule soustraction qui le produit**, pas une table de comportements.
+
+**Deux champs portent l'état, et les confondre rend le tout illisible.** `+0x42` est la posture,
+aiguillée par la table de sauts de `0x0049b200` (relevée dans le binaire, cinq entrées) : 0 attendre,
+1 se tourner, 2 tenir une distance, 3 marcher ou bondir, 4 foncer. `+0x43` est le compte à rebours
+qui la maintient : tant qu'il n'est pas nul, la replanification ne reprend pas la main.
+
+**`+0x10` sert à deux choses selon la posture** — la distance voulue en posture 2, le cap tiré au
+sort en posture 3 — et jamais aux deux en même temps. C'est le même genre de réemploi que `+0x14`
+dans `FUN_004746F0`, et il faut le repérer sous peine d'écrire une bête qui ne s'arrête jamais.
+
+**La distance et le cap sont recalculés à la replanification, et en deux dimensions seulement.**
+Ceux de `FUN_00535F20` sont à trois dimensions et meurent à ce point. C'est délibéré : une bête ne
+renonce pas à vous poursuivre parce que vous êtes sur une marche.
+
+### Deux signatures que `Blaze.c` donne fausses
+
+`FUN_00535F20` **est** dans `Blaze.c`, et sa décompilation est un piège. Ghidra y a perdu `EBX`,
+`EBP` et l'adresse de retour, et — plus trompeur — il écrit les **cinq** sorties sur le même
+`*param_2`. À le lire ainsi on obtient une fonction qui écrase quatre fois son propre résultat. Le
+désassemblage tranche en une passe : ce sont cinq pointeurs distincts, et l'arithmétique de pile les
+sépare sans ambiguïté.
+
+`FUN_00488160` a le même défaut sous une autre forme : déclarée à un paramètre, elle lit ensuite
+`unaff_EBP` et `unaff_retaddr`. Elle en prend deux, et `unaff_EBP` n'est que le sinus dont Ghidra a
+jeté la valeur de retour — exactement ce qu'il fait dans `FUN_0049a8e0`, sa jumelle décompilée.
+
+**La leçon générale** : quand `Blaze.c` rend une fonction dont plusieurs écritures visent le même
+`*param_n`, ce n'est presque jamais ce que le binaire fait. C'est la signature de paramètres perdus,
+et le désassembleur la résout en comptant les `push`.
+
+### Ce qui reste
+
+Deux fonctions restent en lacune nommée, toutes deux dans la **même branche** — la posture 0 pendant
+un geste, c'est-à-dire l'image où le coup porte :
+
+- `FUN_00535A90` (0x00535a90), le test de portée. Elle est dans `Blaze.c` (122 lignes) mais
+  inexploitable : Ghidra y a perdu `EBX`, `ESI`, `EDI` et les arguments des quatre appels à
+  `Ordinal_450`/`451`, et il la déclare à trois paramètres quand `FUN_00519c30` lui en passe quatre.
+  Sa forme se lit déjà — un rejet en hauteur, puis deux quadrilatères croisés par `FUN_005358f0` /
+  `FUN_00535a40`. Le bloc de tracé gardé par `DAT_005633a8 == 0 && DAT_005de020 != 0` est **mort en
+  jeu normal**, ce qui retire `FUN_0047ac40` de la dépendance.
+- `FUN_00539B80` (0x00539b80), la résolution du coup. 242 lignes, et c'est la **racine d'un
+  sous-arbre** : onze fonctions non écrites en dépendent. C'est le système de combat lui-même, et il
+  se fera pour lui-même.
+
+`FUN_00519C30` (le balayage du groupe) et `FUN_00538AF0` (la remise à neuf d'un bloc de statistiques
+sur son modèle) sont écrites au passage. La **parade est dans `FUN_00519C30`, pas dans le combat** :
+si le membre trouvé porte le bit 4, que sa classe vaut 0 ou 6 et qu'il fait face au coup, ses
+statistiques sont refaites, un son joue, et `DAT_005de0b8` est remis à **zéro** — ce qui dit à
+l'appelant « touché, mais pas de dégâts ». C'est la seule différence entre parer et encaisser.
+
+## 2026-08-28 (suite 2) — `FUN_00535A90`, le test de portée
+
+La lacune nommée la veille est levée. 1158 octets, transcrits au désassembleur
+(`Legacy/Raw/Blaze/FUN_00535A90.asm`), plus trois appelées : `FUN_005358f0`, `FUN_00535a40` et
+`FUN_00538c10`.
+
+### Pourquoi `Blaze.c` ne servait à rien ici
+
+Le corps y est, sur 122 lignes, et il est illisible : Ghidra a perdu `EBX`, `ESI` et `EDI`, il a
+laissé sans argument les quatre appels à `Ordinal_450`/`451`, il déclare trois paramètres là où
+`FUN_00519c30` en passe quatre, et il rend l'une des deux figures comme un `local_24[4]` jamais
+rempli. Rien de tout cela ne se répare à la lecture ; le calcul de décalage de pile le fait en une
+passe.
+
+`FUN_005358f0` avait le même défaut sous une forme plus discrète : déclarée à **un** paramètre, elle
+en prend deux, et le second est exactement la figure que Ghidra rendait comme un tableau vide. Le
+site d'appel le disait déjà — `push`, `push`, `add esp,8`.
+
+### Ce que la fonction fait
+
+Un rejet en hauteur, puis un croisement de deux figures à plat.
+
+1. **Le quadrilatère du geste**, construit sur la sonde de six `short` que l'appelant pose sur sa
+   pile : cap de l'entité décalé de `sonde[0]`, avancé de `sonde[1]`, largeur `sonde[2]` de part et
+   d'autre, profondeur `sonde[5]` prise sur deux caps ouverts de `±sonde[4]`. Avec la sonde de
+   `FUN_0049A980` (`0, 0x1e, 0x32, 0x64, 0, 0x50`), c'est un rectangle de 0x64 sur 0x50 posé 0x1e
+   devant la bête.
+2. **Le rectangle du membre**, construit sur son empreinte au sol tournée de son cap.
+3. **Le croisement, dans les deux sens** — chaque figure jugée contre les arêtes de l'autre. Le
+   second sens n'est pas une redondance : il rattrape le cas où l'une contient l'autre sans qu'aucun
+   sommet ne franchisse d'arête.
+
+### Ce que le cas apprend
+
+**Le `TODO(REVERSE)` de `DAT_0056d440` tombe, et pas par déduction.** `FUN_00538c10` rend, pour un
+membre du groupe, `0x0056d440 + classe * 8`, et pour une entité de scène `stat + 0x58` ; le test de
+portée lit `+0` et `+4` de ce que la fonction rend et en tire les deux côtés du rectangle de
+collision. Donc `+0` et `+4` sont **les deux demi-étendues du corps**. Deux recoupements le
+confirment : `StatusBubbleHeight_00538BC0` lit `stat + 0x5a` là où cette table porte son `+2`, donc
+les deux tables portent **le même enregistrement de huit octets** ; et les valeurs se rangent comme
+il faut — la classe 6 est la plus large (0x40 sur 0x28), la 7 la plus étroite (0x1e sur 0x14). Le
+symbole devient `s_ClassBodyMetrics_0056d440`.
+
+**Le produit en croix passe par le GTE, et le portage garde la latence.** Les trois points vont dans
+`SXY0`/`SXY1`/`SXY2` et le résultat sort de `MAC0` : c'est `NCLIP`, l'opération d'élimination des
+faces arrière, détournée en test de côté. Le portage calcule en x86 **et range quand même** le
+résultat dans le registre pour le relire au tour suivant — le décalage du masque est en retard d'un
+tour, et un dernier décalage après les boucles rattrape le seizième signe. Ce n'est pas une
+maladresse de transcription : c'est le pipeline du coprocesseur d'origine, reproduit tel quel.
+
+**Une négation avant un décalage n'est pas la négation du décalage.** Le rectangle du membre porte
+`-(largeur * sinus) >> 12`, et l'écrire `-((largeur * sinus) >> 12)` change le résultat d'une unité
+sur les valeurs négatives non multiples. Détail, mais il décale une boîte de collision.
+
+### Ce qui reste
+
+**Une seule lacune nommée sur ce chemin** : `FUN_00539B80`, la résolution du coup — 242 lignes et la
+racine d'un sous-arbre de onze fonctions non écrites. C'est le système de combat, à faire pour
+lui-même.
+
+Le tracé de mise au point de `FUN_00535a90` (`0x00535d1d`..`0x00535ec8`) est conservé comme branche
+gardée qui lève : il pose les huit sommets des deux figures en entités d'effet, et la seule chose
+qui manque pour l'écrire est le descripteur `&DAT_0056aca0`, à relever dans le binaire. Il est mort
+en jeu normal, `DAT_005de020` valant 0 au chargement.
+
+## 2026-08-28 (suite 3) — `FUN_00539B80`, la résolution du coup
+
+La dernière lacune du chemin de combat est levée. La racine était annoncée comme « un sous-arbre de
+onze fonctions non écrites » ; le décompte réel était plus doux : **six l'étaient déjà**
+(`FUN_00538ab0`, `FUN_00538c50`, `FUN_00538e20`, `FUN_00539190`, `FUN_00513dd0`, `FUN_00544350`), et
+les cinq restantes tiennent en 250 lignes de `Blaze.c` sans registre perdu :
+
+| fonction | rôle | lignes |
+|---|---|---|
+| `FUN_0053a860` | le contrôle d'identité des deux combattants | 42 |
+| `FUN_005398a0` | le penchant élémentaire (`+0x51` gagne, son contraire perd) | 18 |
+| `FUN_005398e0` | l'échange élémentaire, et le score qui s'ajoute aux dégâts | 91 |
+| `FUN_005399e0` | l'élément dominant d'un bloc | 28 |
+| `FUN_00539a20` | l'application des dégâts et le constat de mort | 71 |
+
+**La leçon de comptage, en creux de celle de `FUN_004747F0`** : ce qui avait fait écrire « racine
+d'un sous-arbre de onze fonctions » était un `grep` des appelées, pas une vérification de ce qui
+était déjà écrit. Le coût annoncé était plus de deux fois le coût réel. **Compter les appelées ne
+suffit pas ; il faut compter celles qui manquent.**
+
+### Ce que la fonction apprend
+
+**Les huit éléments sont rangés par couples contraires.** `FUN_005398a0` désigne l'opposé d'un
+élément par `indice ^ 1`, et `FUN_005398e0` annule chaque couple l'un contre l'autre — dans les
+**deux** blocs, en place — avant de compter quoi que ce soit. Un bloc qui portait 30 de feu et 10
+d'eau en ressort avec 20 de feu et rien d'eau. Cela confirme d'un troisième côté l'ordre relevé le
+2026-08-26 dans les données : feu/eau, terre/air, lumière/ténèbres, sacré/mal.
+
+**Le barème élémentaire est asymétrique, et c'est délibéré.** Si la victime porte le même élément,
+il est **soustrait** — elle y résiste. Si elle ne le porte pas mais porte son contraire, il compte
+plein tarif. Si elle ne porte ni l'un ni l'autre, il ne compte **qu'au quart**. Attaquer par le feu
+paie donc surtout contre qui porte de l'eau, et presque rien contre un neutre.
+
+**Le nombre de dégâts fait un aller-retour par le bloc de statistiques.** `FUN_00539a20` l'écrit en
+`+0x100`/`+0x102`, déclenche l'événement d'objet équipé, **puis le relit** avant de s'en servir.
+C'est le mécanisme par lequel un objet modifie les dégâts qu'on inflige ou qu'on subit ; l'ordre
+n'est pas un détour, c'est le point d'entrée du système d'objets dans le combat. Et l'événement ne
+part pas du même côté selon la victime : un membre du groupe déclenche ses propres objets
+(événement 10), une entité de scène déclenche ceux de l'assaillant (événement 0x14).
+
+**La fiche des deux combattants est refaite à chaque coup.** Les cinq passes
+`FUN_00538ab0`..`FUN_00538fa0` reconstruisent équipement, bonus et dérivées à partir de zéro, si
+bien qu'un changement d'arme entre deux coups est pris en compte au suivant sans que rien n'ait à le
+notifier. Les deux chemins diffèrent : un membre du groupe repasse par les cinq, une entité de scène
+par trois.
+
+**Personne ne fait jamais zéro.** Après l'écrêtage à zéro, le résultat gagne un sixième de l'attaque
+moins un trente-deuxième de la défense, puis est borné à **un**.
+
+**Deux champs de l'entité servent de boîte aux lettres** dans `FUN_00539a20` : le nombre part en
+`+0x18` et l'élément en `+0x1a` le temps de l'appel qui fait naître l'effet, puis le dword d'origine
+est remis. Le sauvetage de `+0x0a` qui l'accompagne est un **aller-retour à vide** — rien ne l'écrit
+entre les deux. Vérifié au désassembleur (`mov cx,[edi+0Ah]` puis `mov [edi+1Ah],bx`,
+`Legacy/Raw/Blaze/FUN_00539A20.asm`) parce que `+ 10` chez Ghidra pouvait se lire `0x1a` mal rendu :
+c'est bien `0x0a`, et c'est bien inutile. Transcrit tel quel.
+
+**Les comparaisons de pointeur de `FUN_0053a860` ne se transcrivent pas littéralement.** L'original
+teste `param_1` contre `&DAT_005e93c0`..`&DAT_005e9594` et `&DAT_005ecaa0`..`&DAT_005ede20` — des
+adresses absolues. Ici les deux tables sont deux allocations distinctes, donc la comparaison porte
+sur leurs étendues reconstruites. Les bornes hautes du binaire désignent le premier octet **après**
+la table et sont inclusives ; c'est transcrit tel quel plutôt que corrigé.
+
+### Ce qui reste, et ce qui ne reste plus
+
+Le chemin ouvert le 2026-08-28 par trois plantages successifs est **complet de bout en bout** :
+apparition, intelligence de déplacement, geste, portée, parade, dégâts, mort. Il ne subsiste que
+deux branches gardées et mortes en jeu normal, toutes deux du même genre — les tracés de mise au
+point de `FUN_00535a90` et de `FUN_00539b80`, qui ne s'atteignent que par la touche de débogage,
+elle-même non transcrite.
+
+Le bloc de caméra passe de 0x84 à 0x88 octets : `FUN_00539b80` écrit l'octet `DAT_005de0b4`, qui
+tombait exactement sur l'ancienne borne de fin. Même cas que `DAT_005de0b0` le 2026-08-21, et même
+correction.
+
+## 2026-08-28 (suite 4) — `FUN_00499DE0`, et la découverte que c'est une famille
+
+Nouveau plantage à l'apparition d'un groupe, mais sur un autre créneau : **sous-type 0** de la même
+table installée `0x0056ad48`, gestionnaire `0x00499DE0`. 1377 octets, absente de `Blaze.c`,
+transcrite au désassembleur (`Legacy/Raw/Blaze/FUN_00499DE0.asm`).
+
+### Ce n'est pas une deuxième fonction, c'est la deuxième d'une quarantaine
+
+Le vrai résultat de la journée est là, et il ne s'est vu qu'en transcrivant la seconde. **Un balayage
+du binaire sur les appels à `FUN_00535F20`** — la lecture de situation, que tout gestionnaire de la
+famille appelle une fois et une seule — en trouve **au moins 39**, de `0x00491745` à `0x004aba7d` :
+
+```
+00491745 00492292 00492ea6 00493655 00493cad 0049451d 00494e28 00495ccd 00496625 00497462
+00498021 00499e45 0049a3d3 0049a9e5 0049b285 0049b87d 0049c115 0049c943 0049d0ba 0049daa5
+0049e1f3 0049e986 0049f14a 0049fb0d 004a0572 004a141d 004a1e43 004a3615 004a3c95 004a42ad
+004a4b1d 004a551d 004a62f5 004a6a63 004a72a9 004a85b3 004aaba0 004aba7d
+```
+
+Le balayage est linéaire et se désynchronise sur les tables de sauts : **le compte est un plancher,
+pas un total.** Deux de ces corps sont écrits (`0x00499de0` et `0x0049a980`) ; les autres sont
+autant de comportements d'espèce, aucun dans `Blaze.c`.
+
+**Conséquence pratique, et il faut la dire clairement** : corriger ces plantages un par un se
+répétera une trentaine de fois, une fois par espèce rencontrée. La bonne nouvelle est que le coût
+marginal s'effondre — le squelette est le même et toutes les feuilles sont écrites.
+
+### Le squelette est identique ; cinq constantes et une forme changent
+
+`FUN_00499DE0` a exactement le découpage de sa sœur : décider, appliquer, replanifier, avec la même
+lecture de situation et la même queue de quatre appels. Ce qui la distingue dessine une bête plus
+petite et plus prudente :
+
+| | `0x0049A980` | `0x00499DE0` |
+|---|---|---|
+| sonde (hauteur, portée) | `0x64`, `0x50` | `0x50`, `0x3c` |
+| image où le coup porte | 8 | 12 |
+| postures | 5 | 4 (pas de « foncer ») |
+| cône de virage, posture 1 | `hardiesse * 2 + 0x80` | `hardiesse + 0x20` |
+| cône, posture 2 | `hardiesse * 2 + 0x80` | `hardiesse + 0x40` |
+| bond, recul, esquive | oui | **aucun** |
+
+Une seule différence est de **forme** et non de constante : sa **posture 3 tourne au lieu de
+marcher**. Là où la sœur avance en ligne droite ou bondit, celle-ci pose une poussée
+`(hardiesse + 0xa0) << 7` et pivote vers un cap rangé en `+0x10` à `0x20 + hardiesse / 2` par image,
+en s'arrêtant dès que l'écart tient sous `0x100`. Le champ `+0x10` sert donc ici aussi à deux
+choses — distance voulue en posture 2, cap visé en posture 3.
+
+### Ce que la deuxième transcription change dans le code
+
+**Rien n'a été factorisé entre les deux gestionnaires**, et c'est délibéré : ce sont deux fonctions
+distinctes du binaire, et l'oracle de `compare-bodies.ps1` compare des corps — même raison que les
+trois passes `FUN_0047aa70`/`ab70`/`acf0`. En revanche **les feuilles sont partagées** et l'ont été
+sans une ligne de changement : `TurnSceneEntityTowardTarget`, `SceneEntityDelay`,
+`HesitateSceneEntity`, `RestSceneEntity`, `WanderSceneEntity`. Une seule a demandé un paramètre —
+`HoldSceneEntityAtRange`, dont la distance voulue vaut `0x64` chez l'une et `0x5a` chez l'autre.
+
+C'est la vérification qu'on pouvait espérer : **le découpage choisi la veille pour une seule
+fonction a tenu tel quel pour la seconde**, et il tiendra pour les suivantes.
+
+### Un détail d'ordre conservé
+
+Dans la branche du coup qui porte, `0x00499DE0` pose le clignotement et le bit `0x40` sur la victime
+**avant** d'appeler la résolution, alors que `0x0049A980` le fait après. Rien ne les relit entre les
+deux, donc c'est sans conséquence — mais c'est transcrit dans l'ordre du binaire, et noté sur place
+pour qu'on ne prenne pas l'écart pour une faute de copie.

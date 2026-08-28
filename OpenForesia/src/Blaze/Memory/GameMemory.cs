@@ -405,7 +405,10 @@ internal sealed unsafe class GameMemory
     /// </para>
     /// </summary>
     internal const int CameraBlockBase = 0x005de030;
-    internal readonly byte* s_CameraBlock_005de030 = (byte*)NativeMemory.AllocZeroed(0x84);
+    // Etendu de 0x84 a 0x88 le 2026-08-28 : FUN_00539b80 ecrit l OCTET DAT_005de0b4, qui tombait
+    // exactement sur l ancienne borne de fin — meme cas que DAT_005de0b0 le 2026-08-21. Rien ne
+    // suit jusqu a ItemMenuArena (0x005de100).
+    internal readonly byte* s_CameraBlock_005de030 = (byte*)NativeMemory.AllocZeroed(0x88);
     internal int* Camera(int va) => (int*)(s_CameraBlock_005de030 + (va - CameraBlockBase));
 
     /// <summary>Ghidra: 0x006067c0..0x00606800 — le second bloc de vue, dont l'adresse part dans

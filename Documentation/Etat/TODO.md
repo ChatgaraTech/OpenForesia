@@ -12,6 +12,52 @@ déplacement.
 
 ---
 
+# LA FORÊT — LE COMBAT MARCHE, MAIS L'IA DES ESPÈCES EST UNE FAMILLE (2026-08-28)
+
+Cinq plantages signalés en jeu le même jour, tous réglés :
+
+| symptôme | cause | état |
+|---|---|---|
+| Select en forêt | sous-type `0xbd`, `FUN_004765D0` absente de `Blaze.c` | écrite |
+| relâchement de Select | `FUN_0051a5d0`, la combinaison de directions | écrite |
+| apparition d'un groupe (sous-type 2) | `FUN_0049A980` (2175 o.) absente de `Blaze.c` | écrite |
+| le coup qui porte | `FUN_00535A90` (portée) puis `FUN_00539B80` (dégâts) | écrites |
+| apparition d'un groupe (sous-type 0) | `FUN_00499DE0` (1377 o.) absente de `Blaze.c` | écrite |
+
+**Le chemin de combat est complet** : apparition, décision, geste, portée, parade, dégâts, mort.
+
+## Ce qui va se répéter, et qu'il faut savoir avant de recommencer
+
+**L'IA d'espèce est une famille d'une quarantaine de fonctions**, pas deux. Le balayage des appels à
+`FUN_00535F20` en trouve **au moins 39** entre `0x00491745` et `0x004aba7d`, et le compte est un
+plancher — le désassemblage linéaire se désynchronise sur les tables de sauts. **Deux sont écrites.**
+
+Chaque espèce nouvelle rencontrée réveillera donc un créneau de plus. Ce n'est pas un défaut du
+travail fait : c'est la forme du jeu.
+
+**La bonne nouvelle est que le coût marginal est faible.** Le squelette est identique d'une fonction
+à l'autre — décider, appliquer, replanifier — et **toutes les feuilles sont déjà écrites** :
+`ReadSceneEntitySituation_00535F20`, `IntegrateSceneEntityMotion_00488160`,
+`EndSceneEntityAnimation_004DFAF0`, `InterruptSceneEntity_004E3770`, `SweepPartyForMeleeHit_00519C30`,
+`TestMeleeReach_00535A90`, `ResolveMeleeHit_00539B80`, plus les cinq petites postures partagées.
+Seules changent cinq constantes (sonde, image du coup, nombre de postures, largeur des cônes, seuils
+de tirage) et parfois la forme d'une posture.
+
+**Recette pour la suivante** : `disasm` à l'adresse que le message de plantage donne, repérer la fin
+sur le bourrage de `nop`, relever la table de sauts qui suit, et calquer sur
+`TickSceneEntityAi_0049A980` ou `TickSceneEntityAi_00499DE0` selon le nombre de postures. Compter
+une heure.
+
+## Lacunes secondaires, gardées et mortes en jeu normal
+
+Les tracés de mise au point de `FUN_00535a90` (`0x00535d1d`..`0x00535ec8`, il lui manque le
+descripteur `&DAT_0056aca0`) et de `FUN_00539b80`. Ils ne s'atteignent que par la touche de
+débogage, elle-même non transcrite.
+
+Détail dans `REVERSE_STATUS.md`, sections du 2026-08-28.
+
+---
+
 # L’UTILISATION DES OBJETS — ÉCRITE, JAMAIS EXERCÉE, CHANTIER GELÉ (2026-08-26)
 
 `FUN_00523aa0` et ses 23 opcodes sont transcrits, **onze corps depuis le désassembleur** (Ghidra ne
@@ -338,6 +384,10 @@ trois tables sont relevées et matérialisées.
 | `0x00551f30` | `FUN_0047ab70` | 109 / 192 | 83 | 26 | 57 |
 | `0x00552230` | `FUN_0047acf0` | 125 / 192 | 67 | 32 | 35 |
 | **total** | | **303 / 576** | **273** | **121** | **152** |
+
+Le 2026-08-28, **la première de ces 152 est faite** : `0x004765D0`, le sous-type `0xbd` de
+`0x00551f30` — l'auréole d'incantation, et le plantage de Select en forêt. Voir
+`REVERSE_STATUS.md`, section du 2026-08-28.
 
 **303 créneaux sur 576** se comportent maintenant correctement, pour trois instructions : la souche
 `0x0047ADC0` n'est pas un `ret` nu, elle **éteint** l'entité (`*enregistrement = 0`), et la passe
@@ -696,7 +746,8 @@ d'entités traversent maintenant sans lever.
 > gestionnaires de posture `0x0051A6B0`/`0x0051A700`/`0x0051A710` et de commande
 > `0x0050DD00`/`0x0050DFF0` (tous **absents de `Blaze.c`**), et `FUN_005238e0`, `FUN_00530070`,
 > `FUN_005397b0`, `FUN_00519940`, `FUN_00539190`, `FUN_005335e0`, `FUN_0051a5d0`, `FUN_0053a980`,
-> `FUN_00530f20`, `FUN_0051a740`, `FUN_0053aa10` (tous dans `Blaze.c`).
+> `FUN_00530f20`, `FUN_0051a740`, `FUN_0053aa10` (tous dans `Blaze.c`). — `FUN_0051a5d0` est
+> écrite le 2026-08-28, c'était le plantage au **relâchement** de Select en forêt.
 >
 > **Les quatre lectures que seule la machine donne sont résolues** — c'était le plus dur ; elles
 > sont écrites en tête de `TickPartyMember` :
