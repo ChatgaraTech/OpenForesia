@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-28
+- doc : **le compte exact des comportements d'ennemi** — `Documentation/Ennemies/Comportement.md`. La table `0x0056ad48` installe **166 gestionnaires distincts** sur 509 emplacements, dont **112 routines d'intelligence** ; trois sont écrites. Ma première estimation (« une quarantaine ») était un plancher tiré d'un balayage trop étroit
+- doc : **ce n'est pas une fonction par ennemi** — 555 espèces pour 112 comportements. Une routine est un comportement partagé, pas un monstre
+- doc : **la forêt (zone 3) utilise 23 gestionnaires, dont 22 d'IA**, répartis sur trois blocs seulement ; deux sont écrits, et les neuf autres du bloc d'arrivée sont ceux qui se réveilleront ensuite
+- feat : `OpenForesia.Tools/census-ai-handlers.sh` — le relevé, reproductible, sans le CD : tout vient de `Blaze.exe`
 - feat : **`FUN_00499DE0` transcrite** (1377 octets, absente de `Blaze.c`) — le sous-type 0 de la table `0x0056ad48`, sœur de `FUN_0049A980`. C'est le plantage à l'apparition d'un groupe, celui d'après
 - doc : **c'est une FAMILLE, pas deux fonctions** — un balayage du binaire trouve **au moins 39** appels à `FUN_00535F20` entre `0x00491745` et `0x004aba7d`, donc une quarantaine de comportements d'espèce bâtis sur le même squelette. Deux sont écrits ; chaque espèce nouvelle en réveillera un autre
 - doc : **le squelette est identique, seules cinq constantes changent** — la sonde, l'image où le coup porte, le nombre de postures, la largeur des cônes de virage, et les seuils de tirage. `FUN_00499DE0` est une bête plus petite et plus prudente : portée `0x3c` au lieu de `0x50`, coup à la 12ᵉ image au lieu de la 8ᵉ, quatre postures au lieu de cinq, cônes deux fois plus étroits, et **ni bond, ni recul, ni esquive**

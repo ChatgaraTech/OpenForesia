@@ -26,27 +26,26 @@ Cinq plantages signalés en jeu le même jour, tous réglés :
 
 **Le chemin de combat est complet** : apparition, décision, geste, portée, parade, dégâts, mort.
 
-## Ce qui va se répéter, et qu'il faut savoir avant de recommencer
+## Ce qui va se répéter — LE COMPTE EST FAIT
 
-**L'IA d'espèce est une famille d'une quarantaine de fonctions**, pas deux. Le balayage des appels à
-`FUN_00535F20` en trouve **au moins 39** entre `0x00491745` et `0x004aba7d`, et le compte est un
-plancher — le désassemblage linéaire se désynchronise sur les tables de sauts. **Deux sont écrites.**
+**Voir `Documentation/Ennemies/Comportement.md`**, écrit le 2026-08-28. Le relevé remplace
+l'estimation « une quarantaine » qui figurait ici : elle était un plancher tiré d'un balayage trop
+étroit.
 
-Chaque espèce nouvelle rencontrée réveillera donc un créneau de plus. Ce n'est pas un défaut du
-travail fait : c'est la forme du jeu.
+| | |
+|---|---|
+| gestionnaires distincts installés sur `0x0056ad48` | **166** |
+| dont routines d'intelligence complètes | **112** |
+| écrites | **3** |
+| pour la forêt (zone 3) seule | 22 d'IA, dont 2 écrites |
 
-**La bonne nouvelle est que le coût marginal est faible.** Le squelette est identique d'une fonction
-à l'autre — décider, appliquer, replanifier — et **toutes les feuilles sont déjà écrites** :
-`ReadSceneEntitySituation_00535F20`, `IntegrateSceneEntityMotion_00488160`,
-`EndSceneEntityAnimation_004DFAF0`, `InterruptSceneEntity_004E3770`, `SweepPartyForMeleeHit_00519C30`,
-`TestMeleeReach_00535A90`, `ResolveMeleeHit_00539B80`, plus les cinq petites postures partagées.
-Seules changent cinq constantes (sonde, image du coup, nombre de postures, largeur des cônes, seuils
-de tirage) et parfois la forme d'une posture.
+Ce n'est **pas une fonction par ennemi** : 555 espèces pour 112 comportements. Une routine est un
+comportement partagé.
 
-**Recette pour la suivante** : `disasm` à l'adresse que le message de plantage donne, repérer la fin
-sur le bourrage de `nop`, relever la table de sauts qui suit, et calquer sur
-`TickSceneEntityAi_0049A980` ou `TickSceneEntityAi_00499DE0` selon le nombre de postures. Compter
-une heure.
+**Le prochain pas concret** : les neuf routines restantes du bloc d'arrivée de la forêt
+(sous-types 1, 3, 4, 5, 6, 7, 8, 9, 18 → `0x0049A360`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`,
+`0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`). Elles se suivent dans le
+binaire et se ressemblent ; la recette et le tableau complet sont dans `Comportement.md`.
 
 ## Lacunes secondaires, gardées et mortes en jeu normal
 
