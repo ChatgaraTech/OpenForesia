@@ -1879,6 +1879,28 @@ prochain échafaudage posé là** : la boucle de monde n'implique pas une partie
 Corollaire pratique : la forme sans transfert (`AI_BENCH=1`) ne court pas ce risque du tout, puisque
 rien n'est forcé — c'est celle à préférer quand quelqu'un conduit le personnage lui-même.
 
+### Le transfert `AI_BENCH=<zone>:<sous-zone>` meurt encore, partie chargée (2026-08-29, agent)
+
+La garde `s_PartySize_005e9020` de la section précédente règle le cas de l'écran-titre, **pas celui
+d'une partie réellement en cours**. Depuis l'auberge, groupe constitué et carte du monde affichée,
+le transfert part bien — la ligne `[BANC] transfert vers zone 3 sous-zone 0 point d'entree 0`
+s'imprime — et le jeu meurt à l'image suivante :
+
+```
+Fatal error. 0xC0000005
+   at PlaceWorldMapParty(Byte*)
+   at RunWorldMapFrame() … RunWorldMapState()
+```
+
+Reproduit deux fois de suite, avec `3:0` puis `3:0:2` — **le point d'entrée n'y change rien**, ce
+qui écarte « l'entrée 0 n'existe pas dans cette zone » comme explication. Le débit tombe à
+1 primitive par image avant la levée : la zone de destination n'a jamais fini de se charger.
+
+Conséquence pratique tant que ce n'est pas repris : **la forme avec transfert n'est pas utilisable
+par l'agent**, et c'était le seul moyen dont il disposait pour mettre des monstres devant le groupe
+sans conduire le personnage. Un relevé de comportements passe donc par `banc.bat` conduit à la
+main, ou par `AI_BENCH=1` sur une sauvegarde déjà posée dans un donjon.
+
 ### `tests\banc.bat` — le raccourci
 
 Un double-clic sur `tests\banc.bat` fait tout ce qui précède : il pose les deux variables, lance le
@@ -1892,5 +1914,22 @@ du jeu**.
 | `banc.bat 3:0` | transfert en zone 3 sous-zone 0 avant de peupler |
 | `banc.bat 1 0` | sans greffe : seulement les espèces que le lieu porte vraiment |
 
-Le fichier est en **ASCII pur** : `cmd.exe` ne lit pas l'UTF-8 par défaut, et un accent y casserait
-l'affichage.
+### `tests\filet.bat` — jouer normalement, et savoir qui manque
+
+Le pendant de `banc.bat` pour le jeu **non truqué** : il pose `OPENFORESIA_AI_STUB=1` et rien
+d'autre. Aucune greffe, aucun transfert, aucun monstre forcé — seulement le filet, qui empêche un
+gestionnaire d'entité non transcrit de tuer le processus.
+
+C'est la forme à utiliser quand un plantage se produit **en jouant** — typiquement en frappant, le
+geste qui fait naître le plus d'entités neuves d'un coup (l'éclat d'impact `0x39` et ce qu'il sème,
+plus la réaction de la bête touchée). Sans le filet la première lacune tue le jeu et n'en nomme
+qu'une ; avec, la partie continue et **toutes** se journalisent.
+
+Il lance depuis `OpenForesia\` — donc le `save\` du dépôt, pas celui de `bin\Debug\net9.0\` — écrit
+`scratchpad\filet-<horodatage>.log`, et réaffiche les lignes `[LACUNE]` à la fermeture.
+
+**Fermer la fenêtre normalement** : le récapitulatif trié par nombre d'appels est branché sur
+`ProcessExit`, un processus tué ne le produit pas.
+
+Les deux fichiers sont en **ASCII pur** : `cmd.exe` ne lit pas l'UTF-8 par défaut, et un accent y
+casserait l'affichage.

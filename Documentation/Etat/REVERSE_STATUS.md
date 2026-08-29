@@ -16898,3 +16898,280 @@ du déjà écrit. Reconnaissance à l'œil à Vincent : ce qu'il faut voir, c'es
 depuis l'autre bout de la clairière**, un projectile qui **infléchit sa course** vers le personnage
 sans le suivre parfaitement, et qui **reste planté** dans lui en clignotant une petite seconde
 après l'avoir touché.
+
+---
+
+## 2026-08-29 (suite 8) — `FUN_004041C0`, la sœur sombre, et deux tables pour un même `0x52`
+
+**Signalée en jeu par Vincent**, partie lancée normalement depuis l'IDE, sans le filet :
+
+```
+FUN_0047aa70, table 0x005ff400 entree 0 [00 00 50 80 01 52 00 00 00 00 00 00 01 ff 00 00]
+gestionnaire d'entite 0x4041C0 non transcrit
+```
+
+330 octets, **absents de `Blaze.c`**, relevé gardé sous `Legacy/Raw/Blaze/FUN_004041C0.asm`.
+
+### Le même sous-type, deux handlers — la règle vérifiée sur pièce
+
+`record[5] = 0x52`, et **la suite 6 a déjà écrit un `0x52`** : `0x0047A270`, la trajectoire du jet du
+Goblin. Ce n'est pas le même corps, et ce n'est pas une contradiction — les deux passes ne résolvent
+pas dans la même table de sauts :
+
+| table de sauts | entrée 82 (`0x52`) | rôle |
+|---|---|---|
+| `0x00551f30` (passe `FUN_0047ab70`) | `0x0047A270` | la **trajectoire** du projectile |
+| `0x00551c30` (passe `FUN_0047aa70`) | `0x004041C0` | l'**effet sombre** transcrit ici |
+
+C'est exactement ce que `CLAUDE.md` avance en principe — « un sous-type ne veut rien dire tout
+seul » — vérifié ici sur deux corps réels écrits à une heure d'intervalle. Le numéro seul aurait fait
+conclure « déjà fait » et laissé la levée en place.
+
+### Ce que fait le gestionnaire
+
+C'est la **sœur de `EntityHandler_00402FC0`** (entrée 84 de la même table), au squelette près : il
+tient sa victime par `+0x6c`, la colle à sa position, pose `0x1008` de son mot d'état — dont le
+bit 3 « tenue par un effet », rendu à l'extinction —, tire sa durée entre 15 et 19 images et fait
+défiler l'animation de la victime lui-même, une image sur deux, bornée au nombre d'images de la
+séquence.
+
+Trois différences, toutes lues au désassembleur :
+
+1. **elle noircit sa victime** au lieu de semer des étincelles : `BrightenEntityTint_00404DE0` avec
+   `-15` sur les trois composantes, **à chaque image**, borné à 0 — la bête finit noire ;
+2. **une seule entité d'état `0x34` par image**, et non quatre puis deux ;
+3. `+0x14` reçoit la **moyenne** des trois étendues du bloc de modèle (`imul 55555556h`), là où la
+   sœur en prend la demi-somme (`>>1`).
+
+### Le piège du pointeur d'animation
+
+Il est résolu **avant** la branche d'initialisation, donc à travers `*(short*)(victime + 0x18)` —
+l'animation que la victime jouait déjà — alors que la sœur le résout sur l'indice 2 littéral.
+L'initialisation écrit ensuite `+0x18` et `+0x1a` d'un seul `mov dword [esi+18h],2` : séquence 2,
+image 0.
+
+Conséquence : **la première image borne le compteur d'images sur l'ancienne séquence**, les suivantes
+sur la séquence 2. C'est écrit ainsi dans le binaire et transcrit tel quel. Si un jour une victime
+saute une image d'animation à l'entrée de cet effet, c'est là qu'il faut regarder — et ce sera un
+bug d'origine, pas de la transcription.
+
+Le son `0x1f` part par `FUN_004031c0`, le jumeau de `TryPlaySoundNearEntity` déjà établi en suite 5 ;
+il est réemployé tel quel.
+
+### État
+
+Transcrit et **compilé, pas exécuté** — c'est Vincent qui conduit les tests depuis le 2026-08-29.
+Reconnaissance à l'œil : ce qu'il faut voir, c'est une bête **immobilisée qui s'assombrit jusqu'au
+noir** en une quinzaine d'images, animation au ralenti, une petite entité lâchée par image, puis qui
+retrouve sa couleur et le contrôle.
+
+---
+
+## 2026-08-29 (suite 9) — la sortie en forêt de Vincent : trois corps de plus, chaîne close
+
+Run `filet.bat` conduit par Vincent : forêt, deux apparitions, trois goblins et deux fourmis tués.
+**Le filet a tenu du début à la fin** — aucun plantage, et `0x004041C0` (suite 8) ne lève plus. Le
+récapitulatif de sortie donne exactement deux lacunes, et leur poids :
+
+```
+[LACUNE]   0x404310 zone=3 sous-zone=0 : 3272 appel(s)
+[LACUNE]   0x403C10 zone=3 sous-zone=0 : 1203 appel(s)
+```
+
+**C'est la première fois que la récolte se fait par le récapitulatif plutôt que par une levée.** Une
+partie jouée d'un bout à l'autre a rendu les deux lacunes du parcours et leur fréquence, là où un
+plantage n'en aurait nommé qu'une. C'est exactement ce que le filet promettait.
+
+### Les trois corps, et pourquoi trois et non deux
+
+| | table | sous-type | taille | rôle |
+|---|---|---|---|---|
+| `0x00404310` | `0x00552230` | `0x34` | 322 | la retombée que `0x004041C0` lâche par image |
+| `0x00403C10` | `0x00551c30` | `0x50` | 324 | un effet qui **suit** sa cible et sème du `0x32` |
+| `0x00403D60` | `0x00552230` | `0x32` | 277 | la bouffée que le précédent sème |
+
+Le troisième n'était pas dans le relevé : il est venu de la lecture de `0x00403C10`, qui engendre
+`0x32`. L'écrire tout de suite ferme la chaîne — sans lui, la première frappe du run suivant aurait
+redonné une lacune. Vérifié : aucun des trois n'appelle plus rien de non transcrit.
+
+### `0x00403C10` mesure sa cible selon son genre
+
+Il ne tient pas sa cible — il se recopie sa position sans toucher à son mot d'état, contrairement à
+`0x004041C0` et `0x00402FC0`. Ce qu'il en lit, c'est le genre `& 0xfc0000`, le même champ que
+`UiWindow` et `WorldMapScript` interrogent déjà :
+
+- `0x800000`, membre du groupe → rayon fixé à **150**, sans mesurer ;
+- `0x400000` / `0x600000`, entité de scène → moyenne des trois étendues du modèle, plancher à 5 ;
+- tout autre genre → `+0x14` reste à `-1` et l'effet **s'éteint sans jouer une seule image**.
+
+La durée vient de `+0x18 / 30 + 2`, bornée à 15. La division est un `imul 88888889h` suivi d'un
+`add` et d'un `sar 4` : c'est le magique de **30**, pas de 15 — 2^36/30 = 0x88888889, vérifié par le
+calcul plutôt que lu de travers.
+
+### Deux bouffées jumelles, et ce qui les sépare
+
+`0x00404310` et `0x00403D60` partagent l'atlas `0x0054f0e0` et le compteur à sept. Elles diffèrent
+sur six points, tous écrits : teinte de départ `0xa0` contre `0x80`, assombrissement de 2 contre 4,
+échelle fixe `0xbb8` contre tirée `2500 + rand%1024`, pas de 2–3 images contre 1–2, montée de
+`0x8000` par image contre aucune, et couche `+0x0a` constante contre héritée du père plus quatre.
+
+**Et elles ne calculent pas leur dispersion pareil** : `0x00404310` emploie l'idiome tronqué vers
+zéro (`sub eax,edx` puis `sar`), `0x00403D60` des `sar` nus. Sur une taille positive c'est le même
+résultat ; c'est transcrit tel quel des deux côtés plutôt qu'uniformisé, parce que rien ne garantit
+que la taille soit toujours positive.
+
+### Le défaut de données que la lecture de l'atlas a découvert
+
+La table s'arrête à `0x0054f118`, l'adresse du descripteur du grain de poussière — et celui-ci était
+relevé faux : `s_DustDescriptors_0054F118` portait les octets de `0x0054f120`. Un décalage d'un
+enregistrement, invisible à la compilation. Corrigé, détaillé dans `DataSymbols.md`.
+
+C'est le deuxième défaut de ce type sur cette famille, et il suggère une règle : **relever un
+descripteur isolé sans lire la table voisine ne se contrôle pas**.
+
+### État
+
+Transcrits et **compilés, pas exécutés** — c'est Vincent qui conduit les tests. Reconnaissance à
+l'œil, pour la prochaine sortie : autour d'une bête prise par l'effet sombre, une seule bouffée grise
+par image qui **monte** en s'assombrissant ; et pour `0x50`, un semis plus dense de bouffées qui
+**restent sur place**, suivi d'une seconde d'attente avant que tout disparaisse.
+
+---
+
+## 2026-08-29 (suite 10) — trois naissances, un porteur de coup, et une branche laissée ouverte
+
+Deuxième série de runs `filet.bat` conduits par Vincent (quelques coups, quelques ennemis tués).
+Aucun plantage, et les trois corps de la suite 9 ne lèvent plus. Trois lacunes en tout sur la série :
+
+```
+[LACUNE] 0x476770  3226 appel(s)   sous-type 0xba
+[LACUNE] 0x483450   454 appel(s)   sous-type 0xdf
+[LACUNE] 0x4758C0                  sous-type 0xb6   (run précédent de la série)
+```
+
+**Les trois sont décompilées dans `Blaze.c`** — une première depuis le début de cette famille — et
+les trois ont exactement la même forme.
+
+### Le motif « naissance qui s'efface »
+
+Chacune règle une dizaine de champs, fait naître **une** entité fille, puis écrit `*e = 0` : elle ne
+met pas le bit d'extinction `0x7fffffff`, elle **efface tout le mot d'état**, ce qui rend
+l'emplacement libre immédiatement. Elle ne vit donc qu'une image, et tout le comportement est chez
+l'enfant.
+
+| | sous-type | l'enfant | table de l'enfant |
+|---|---|---|---|
+| `0x00476770` | `0xba` | `0x004767E0`, **même numéro** | `0x00551f30` |
+| `0x004758C0` | `0xb6` | `0x3f` → `0x00475910` | `0x00552230` |
+| `0x00483450` | `0xdf` | `0xc0 + n` | **par sous-zone** |
+
+Le premier est le cas le plus piégeux du lot : **le père et le fils portent le même numéro de
+sous-type `0xba`**, et ce sont deux corps différents, parce que `SpawnCastEntity_0047AAE0` dépose
+dans `0x005edee0` dont la table de sauts est `0x00551f30`, pas `0x00551c30`. C'est la troisième fois
+en deux jours que la règle « un sous-type ne veut rien dire tout seul » décide quelque chose.
+
+### `0x00483450` : le cas où la règle est structurelle
+
+Son enfant est `0xc0 + n`, `n` étant un octet lu dans le répertoire de zone
+(`+0xd4`, premier pointeur, octet `+2`). `0xc0` vaut 192, et les tables statiques n'ont que 192
+créneaux : **cet enfant ne peut jamais être résolu dans la table statique**, il l'est toujours dans
+celle que la sous-zone recharge. Ce n'est pas un accident de numérotation, c'est le mécanisme.
+
+Conséquence pratique : on ne peut pas savoir d'avance quel corps ce sera, ni fermer cette branche
+depuis le binaire seul. Il faudra la rencontrer.
+
+### `0x004767E0` : ce qui porte réellement le coup
+
+192 octets au désassembleur. Il avance par `FUN_00535880`, grossit d'un quart de ce qui lui reste
+pour atteindre `0x1000`, et balaie le camp d'en face tant que sa teinte est `>= 0x202020`. La
+victime prend `ResolveMeleeHit_00539B80` **au compte du lanceur** — rangé en `+0x74` par le père,
+pas de l'entité elle-même.
+
+**Sa durée ne se compte pas, elle se soustrait**, et c'est une fragilité d'origine qui mérite d'être
+notée : la teinte perd `0x080808` par image et l'entité meurt quand elle vaut **exactement** zéro —
+le test est le drapeau de zéro du `add`, pas un signe. Partie du `0x808080` que le père pose, cela
+fait 16 images pile, dont les treize premières frappent. **Une teinte de départ qui ne serait pas un
+multiple de `0x080808` ferait vivre l'entité pour toujours.** Transcrit tel quel.
+
+### Trois feuilles venues avec
+
+- `FUN_00531fe0` — deux composantes d'un vecteur mises à l'échelle, à partir d'un mot sinus/cosinus
+  empaqueté ;
+- `FUN_00532b10` — son enveloppe : l'angle indexe `s_LookupTable00600920`, la table construite au
+  démarrage ;
+- `FUN_00535880` — l'intégrateur à frottement. L'horizontale perd `1/8 + 1/256` par image ; la
+  verticale non, elle est pilotée par le mot `+0x9a`, qui est donc une **gravité par entité**. Une
+  entité qui la laisse à zéro flotte — et c'est précisément ce que `0x00476770` fait à son enfant.
+
+### La branche laissée ouverte, et pourquoi
+
+`0x00475910` (sous-type `0x3f`, l'enfant de `0x004758C0`) est **absente de `Blaze.c`**, 288 octets,
+et elle appelle `FUN_0053b3c0`. Ce n'est pas une feuille : c'est **l'application des dégâts** —
+`FUN_00538870`, `FUN_0053a6c0`, l'engendrement de `0xbf`, `0x29`, `0x3a`, le champ `+0x8e`, le bit
+`4` de `+0x40`. Un sous-système entier.
+
+**Ne pas le bolter à la fin de cette série est délibéré.** Il mérite d'être pris comme sa propre
+pièce, avec son propre relevé, plutôt qu'écrit à la va-vite pour fermer une chaîne. La prochaine
+sortie le fera lever ; ce sera le bon moment.
+
+### État
+
+Transcrits et **compilés, pas exécutés**. Reconnaissance à l'œil, quand l'occasion se présentera :
+`0xba` doit donner une chose qui **part à l'horizontale sans tomber** (gravité mise à zéro), grossit
+en avançant, blesse ce qu'elle traverse pendant treize images et s'éteint à la seizième.
+
+---
+
+## 2026-08-29 (suite 11) — `FUN_004834D0` : la table de sous-zone observée de bout en bout
+
+Session `filet.bat` longue, conduite par Vincent. Aucun plantage, et **une seule** lacune sur toute
+la session :
+
+```
+[LACUNE] 0x4834D0 zone=3 sous-zone=0 : FUN_0047acf0, table 0x005f2d40 entree 3
+         [00 10 50 80 00 df 00 00 03 00 03 00 00 ff 00 00]   2995 appel(s)
+```
+
+**C'est la prédiction de la suite 10 qui se vérifie.** `FUN_00483450` engendre `0xc0 + n` ; ici
+`n = 0x1f`, donc `0xdf` — 223, au-delà des 192 créneaux statiques. La table statique `0x00552230`
+n'a pas pu le résoudre : c'est **celle que la sous-zone recharge** qui a désigné `0x004834D0`. Dans
+un autre lieu, le même `0xdf` désignerait un autre corps.
+
+C'est la première fois que ce chemin est observé de bout en bout plutôt que déduit. La règle « un
+sous-type ne veut rien dire tout seul » cesse d'être une précaution méthodologique : c'est le
+mécanisme, et il vient de produire une adresse.
+
+### Ce que fait le corps
+
+384 octets au désassembleur, cinq étiquettes. Un **projectile qui roule et qui meurt de toucher**.
+
+- **Il intègre sa vitesse lui-même**, et pas avec la même formule que `FUN_00535880` : le
+  frottement est `1/8 + 1/4096` au lieu de `1/8 + 1/256`. Écrit en clair plutôt que factorisé —
+  ce n'est pas la même fonction, et l'appeler aurait été une erreur de fidélité déguisée en
+  réutilisation.
+- **Il tient au sol.** `FinalizeEntityPlacement2` résout la face portante, mais le corps
+  **sauvegarde `+0x20` avant l'appel et le remet après** : la hauteur calculée par la finalisation
+  est délibérément jetée, seul le plancher `+0x60` compte. Quand il retombe dessous, il rebondit —
+  `+0x54` remis à `0xa000`, bits `0x2010` posés, altitude ramenée au plancher.
+- **Sa mort est la règle inverse de toutes les précédentes.** Chaque sortie efface son mot d'état
+  (`*e = 0`) **sauf une** : celle où le balayage ne trouve personne. Il ne survit donc qu'aux images
+  où il ne touche rien. Les 2995 appels du relevé, c'est ce vol-là.
+- **Quand il touche** : dégâts au compte du lanceur (`+0x74`), bit `0x40` et `0x10` en `+0x96` sur
+  la victime, son `3`, et l'éclaboussure `0xbd` avec `s_SplashDescriptors_00551A08` — le même atlas
+  que le jet du Goblin de la suite 6.
+
+### La chaîne est close de ce côté
+
+`0xbd` → `FUN_00476320`, déjà transcrite. Aucun appel non transcrit ne reste dans ce corps.
+
+### Ce qui reste ouvert
+
+`0x00475910` (sous-type `0x3f`, l'enfant de `FUN_004758C0`) n'a pas levé cette session — la
+naissance `0xb6` n'a pas été déclenchée. Elle reste ce qu'elle était en suite 10 : absente de
+`Blaze.c`, 288 octets, et elle appelle `FUN_0053b3c0`, l'application des dégâts. Toujours à prendre
+comme sa propre pièce.
+
+### État
+
+Transcrit et **compilé, pas exécuté**. Reconnaissance à l'œil : une chose lancée qui **roule au sol
+en rebondissant** au lieu de voler droit, et qui disparaît dans une éclaboussure au premier contact.

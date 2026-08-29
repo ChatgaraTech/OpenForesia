@@ -2252,3 +2252,75 @@ C'est la deuxième fois que la longueur d'une table de descripteurs se déduit d
 plutôt que de la mise en page ; l'autre est `0x005515a0`, l'étincelle, dont le `+0x40` cycle sur
 trois. Le grain de poussière de `0x0054f118`, lui, n'incrémente jamais son indice : une seule
 entrée.
+
+## `0x0054f0e0` — les sept images de la retombée sombre, et une correction sur `0x0054f118` (2026-08-29)
+
+Sept enregistrements de huit octets, que `FUN_00404310` (sous-type `0x34`) et `FUN_00403d60`
+(sous-type `0x32`) posent tous deux en `+0x3c`. La borne se lit dans le code, comme pour
+`0x00551a08` : les deux corps comptent `+0x40` jusqu'à 7 avant de s'éteindre.
+
+| adresse | octets |
+|---|---|
+| `0x0054f0e0` | `c0 b8 17 17 01 02 10 00` |
+| `0x0054f0e8` | `d8 b8 17 17 01 02 10 00` |
+| `0x0054f0f0` | `60 d0 17 17 01 02 10 00` |
+| `0x0054f0f8` | `78 d0 17 17 01 02 10 00` |
+| `0x0054f100` | `90 d0 17 17 01 02 10 00` |
+| `0x0054f108` | `a8 d0 17 17 01 02 10 00` |
+| `0x0054f110` | `c0 d0 17 17 01 02 10 00` |
+
+**C'est la même séquence que `0x00551a08`, dans une autre planche.** Les sept déplacements sont
+identiques — `c0b8`, `d8b8`, `60d0`, `78d0`, `90d0`, `a8d0`, `c0d0` — et seule la moitié haute
+change : `1717` ici, `1818` pour l'éclaboussure de tir. Le jeu réutilise une même animation de sept
+images sur deux planches de texture.
+
+### La correction sur `0x0054f118`
+
+La table s'arrête exactement où commence celle du grain de poussière, et cette adjacence a fait
+apparaître une **erreur de relevé** dans `s_DustDescriptors_0054F118` : elle portait
+`18 a8 17 17 01 02 10 00`, qui sont les octets de `0x0054f120`, pas de `0x0054f118`. Le binaire dit :
+
+```
+0x0054f118 : 00 a8 17 17 01 02 10 00
+0x0054f120 : 18 a8 17 17 01 02 10 00
+```
+
+Vérifié deux fois, au verbe `at` puis à `od` sur l'offset fichier `0x0014d718`. Corrigé le
+2026-08-29. Le grain de poussière pointait donc une image trop loin depuis sa transcription — un
+décalage d'une seule case, invisible à la compilation, et que rien n'aurait signalé sans la lecture
+de la table voisine.
+
+**À retenir :** un descripteur d'atlas relevé isolément n'a aucun garde-fou. Lire la table qui le
+précède ou le suit est le seul contrôle bon marché.
+
+## `0x00551a60` et `0x00551b00` — deux atlas de plus (2026-08-29)
+
+Passés en troisième argument de `FUN_0047ac40` par les deux naissances `FUN_004758c0` et
+`FUN_00483450`.
+
+`0x00551a60` — **trois** enregistrements, et la borne se lit dans le corps du consommateur :
+`FUN_00475910` pose `+0x40 = rand % 3`. La donnée le confirme, le quatrième mot change de planche.
+
+| adresse | octets |
+|---|---|
+| `0x00551a60` | `00 30 18 18 01 02 10 00` |
+| `0x00551a68` | `18 30 18 18 01 02 10 00` |
+| `0x00551a70` | `30 30 18 18 01 02 10 00` |
+
+`0x00551b00` — **cinq** enregistrements, bornés autrement : ici le consommateur est résolu par
+sous-zone (`0xc0 + n`), donc **aucun compteur du code ne donne la longueur**. Ce qui la donne est le
+changement de planche à `0x00551b28` (`a8 18 18 18`). À reprendre si le gestionnaire réel se révèle
+en compter plus.
+
+| adresse | octets |
+|---|---|
+| `0x00551b00` | `10 68 10 10 00 00 10 00` |
+| `0x00551b08` | `20 68 10 10 00 00 10 00` |
+| `0x00551b10` | `00 68 10 10 01 02 10 00` |
+| `0x00551b18` | `10 68 10 10 01 02 10 00` |
+| `0x00551b20` | `20 68 10 10 01 02 10 00` |
+
+Les deux premiers ont `00 00` en cinquième et sixième octets là où les trois suivants ont `01 02` :
+deux groupes dans une même table, ce qui est une raison de plus de ne pas trancher la longueur sans
+le corps consommateur.
+
