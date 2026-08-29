@@ -678,9 +678,54 @@
           </p>
           <p>
             Mais la plage n'est pas 100&nbsp;: elle vaut 56 plus l'écart entre le niveau du
-            personnage et le rang du monstre, borné à 44. <strong>Une plage de 56 ne dépasse jamais
-            le rang 4</strong> — les trois derniers rangs restent hors d'atteinte tant que le groupe
-            n'a pas pris de l'avance sur ce qu'il combat.
+            <strong>personnage qui porte le coup fatal</strong> et le rang du monstre, écart
+            <strong>borné en bas à 0</strong> et en haut à 44 — donc une plage de 56 à 100. Comme le
+            tirage est <code>rand() % plage</code>, le résultat maximal est <em>plage − 1</em>, et
+            les rangs hauts deviennent littéralement inatteignables&nbsp;: pour toucher le rang 3 il
+            faut tirer au moins 57, ce qu'une plage de 56 ne permet pas.
+          </p>
+          <p>
+            <strong>À plage 56 — c'est-à-dire dès que le tueur n'a pas au moins deux niveaux
+            d'avance — seuls les rangs 0, 1 et 2 existent</strong>, à 44,6&nbsp;/&nbsp;30,4&nbsp;/&nbsp;25,0&nbsp;%.
+            Les cinq derniers rangs sont hors d'atteinte. Et parce que l'écart est borné en bas à
+            zéro, <strong>être sous-niveau ne donne rien de moins qu'être à niveau</strong>&nbsp;:
+            les deux cas tirent exactement la même chose.
+          </p>
+          <table>
+            <thead>
+              <tr><th>écart de niveau</th><th>plage</th><th>rangs atteignables</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>≤ 1 (dont tout écart négatif)</td><td>56–57</td><td>0 – 2</td></tr>
+              <tr><td>2</td><td>58</td><td>0 – 3</td></tr>
+              <tr><td>15</td><td>71</td><td>0 – 4</td></tr>
+              <tr><td>26</td><td>82</td><td>0 – 5</td></tr>
+              <tr><td>35</td><td>91</td><td>0 – 6</td></tr>
+              <tr><td>41</td><td>97</td><td>0 – 7</td></tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>« Plage 100 » ne veut pas dire « 100&nbsp;% de chance ».</strong> Les huit rangs
+            se partagent toujours 100&nbsp;%, il en sort toujours exactement un&nbsp;; la plage est
+            le <em>dénominateur</em> du tirage, et 100 n'est mis en avant que parce qu'à ce
+            dénominateur-là les effectifs se lisent directement en pourcents. Tous les rangs sont
+            d'ailleurs atteignables dès <strong>+41</strong>&nbsp;: les trois niveaux suivants ne
+            débloquent rien, ils font seulement passer la part du rang 7 de 1&nbsp;% à 4&nbsp;%.
+            L'écart de 44 n'est pas le seuil du « tout débloqué », c'est le point où l'échelle cesse
+            de bouger — et le rang 0 reste le plus probable à toutes les plages, 44,6&nbsp;% à 56 et
+            encore 25&nbsp;% à 100.
+          </p>
+          <p>
+            <strong>La chance n'entre pas dans ce tirage-là.</strong> Le rang ne dépend que de la
+            classe de butin et de l'écart de niveau. La chance du tueur — le septième champ du bloc
+            de caractéristiques — mène deux tirages <em>voisins</em>&nbsp;: elle ajoute la moitié de
+            sa valeur, sur mille, à la probabilité qu'un objet tombe plutôt que de l'argent&nbsp;; et
+            elle pèse dans le second tirage qui décide si l'objet sort « propre » — 60&nbsp;% à
+            chance nulle, 72&nbsp;% à 24, plafonné à 95&nbsp;% dès 70. Le jeu sépare donc
+            <strong>quel</strong> objet (l'écart de niveau, seul), <strong>si</strong> il tombe (la
+            chance et l'espèce) et <strong>dans quel état</strong> (la chance, surtout). Monter en
+            niveau ouvre le haut de la table&nbsp;; monter la chance fait tomber plus souvent, et
+            plus propre.
           </p>
           <p>
             La classe de butin vient de l'<strong>espèce</strong>, pas de la fiche&nbsp;: deux

@@ -5,6 +5,17 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-29
+- feat : **le piège de coffre** — `FUN_004755F0` (`0xb5`) transcrite, avec sa gerbe `FUN_00475730` (`0x3d`), son atlas `0x005519d0` et son script de sons `0x00551858`. Huit images, puis le coup part
+- feat : **la chaîne d'application des dégâts** — `FUN_005387c0`, `FUN_00538830`, `FUN_00538870`, `FUN_0053a6c0` (le jet de sauvegarde) et `FUN_0053c420` (l'effet de piège). Elle débloque aussi `FUN_0053b3c0`, donc `0x00475910` laissée ouverte en suite 10
+- feat : `Audio.QueueDelayedSoundScript` (`FUN_0053dbe0`) et le curseur d'anneau `0x005dfb8c` — la file des sons différés a enfin son écrivain
+- feat : les deux entités visuelles du coup, `FUN_00475400` (`0x29`) et `FUN_00445950` (`0x3a`)
+- doc : **une borne « d'un emplacement de trop » qui n'en était pas une** — le piège se fabrique un assaillant à `0x005ede20`, l'adresse suivant la table de scène, et `ValidateCombatants_0053A860` l'accepte *parce que* sa borne haute est inclusive. L'adjacence est le mécanisme, pas un débordement
+- doc : **mesurer la profondeur réelle avant de renoncer** — la chaîne des dégâts avait été écartée deux fois sur son apparence ; six de ses dépendances profondes étaient déjà écrites, il ne restait que cinq corps courts
+- doc : **la chance ne touche pas le tirage de rang du butin** — elle mène deux tirages voisins : la probabilité qu'un objet tombe plutôt que de l'argent (`odds + chance/2` sur mille) et l'état de l'objet (`0x3c + chance/2`, plafonné à 95). Le jeu sépare **quel** objet (écart de niveau seul), **si** il tombe et **dans quel état**
+- doc : `+0x2ac` lu comme la **chance** sur une déduction assumée — septième champ du bloc `+0x2a0`, il vaut 16 pour les huit classes sauf le **Voleur à 24**. Aucun libellé du binaire ne le nomme
+- doc : **« plage 100 » n'est pas « 100 % de chance »** — la plage est le dénominateur du tirage, les huit rangs se partagent toujours 100 %. Tous les rangs sont atteignables dès **+41** ; les trois derniers niveaux ne font que porter le rang 7 de 1 % à 4 %. Précisé dans `LISEZMOI.md` et sur la page
+- fix : **la loi du butin était fausse dans le bestiaire** — « une plage de 56 ne dépasse jamais le rang 4, les trois derniers rangs hors d'atteinte ». C'est le rang **2**, et les **cinq** derniers. Le tirage est `rand() % plage`, donc le maximum est `plage - 1` = 55, et le rang 3 demande 57. Corrigé dans `LISEZMOI.md`, le gabarit et la page régénérée
+- doc : l'écart de niveau du butin est **borné en bas à zéro** : être sous-niveau donne exactement la même distribution qu'être à niveau. Il n'y a pas de malus, seulement un bonus qui commence à **deux** niveaux d'avance, et le rang 7 demande **41** niveaux d'écart
 - feat : `FUN_004834D0` transcrite — l'enfant de `FUN_00483450`, un **projectile qui roule et rebondit** sur le plancher `+0x60`, et qui ne survit qu'aux images où son balayage ne touche personne. Il jette délibérément la hauteur que `FinalizeEntityPlacement2` calcule
 - doc : **la table de sous-zone observée de bout en bout** — `0xc0 + 0x1f = 0xdf` en forêt désigne `0x004834D0`, une adresse qu'aucune table statique ne pouvait donner. La prédiction de la suite 10 vérifiée sur pièce
 - doc : son intégrateur n'est **pas** `FUN_00535880` — frottement `1/8 + 1/4096` au lieu de `1/8 + 1/256`. Écrit en clair plutôt que factorisé

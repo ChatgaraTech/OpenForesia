@@ -77,9 +77,67 @@ la lecture inverse lui donnait 1 point de vie.
 | plage 100 | 25 % | 17 % | 15 % | 13 % | 11 % | 9 % | 6 % | 4 % |
 
 À la mise à mort la plage n'est pas 100 : elle vaut `0x38 + écart`, où l'écart est le niveau du
-personnage moins le rang du monstre, borné à `0x2c` — donc **56 à 100**. Une plage de 56 ne peut
-jamais dépasser le rang 4, ce qui rend les trois derniers rangs inatteignables tant que le groupe
-n'a pas pris de l'avance sur le monstre.
+personnage **qui porte le coup fatal** (`bloc par personnage + 0x146`) moins le rang du monstre
+(`stats + 0x44`), **borné en bas à 0** et en haut à `0x2c` — donc **56 à 100**.
+
+Comme le tirage est `rand() % plage`, le résultat maximal est `plage - 1`, et les comparaisons sont
+**strictes** (`roll > seuil`). Un rang n'est donc atteignable que si la plage dépasse son seuil
+d'entrée :
+
+| rang | atteint si `roll >=` | plage minimale | écart minimal |
+|---:|---:|---:|---:|
+| 3 | 57 | 58 | 2 |
+| 4 | 70 | 71 | 15 |
+| 5 | 81 | 82 | 26 |
+| 6 | 90 | 91 | 35 |
+| 7 | 96 | 97 | 41 |
+
+**À plage 56, seuls les rangs 0, 1 et 2 existent** — 25/56, 17/56 et 14/56, soit
+44,6 / 30,4 / 25,0 %. Les cinq derniers rangs sont hors d'atteinte, pas les trois derniers : une
+note antérieure disait « ne dépasse jamais le rang 4 », c'était faux, corrigé le 2026-08-29.
+
+Et parce que l'écart est borné **en bas** à zéro, **être sous-niveau ne donne rien de moins qu'être
+à niveau** : les deux cas produisent exactement la même distribution. Le malus n'existe pas ; il n'y
+a qu'un bonus, qui commence à deux niveaux d'avance.
+
+**Attention au sens de « plage 100 ».** Ce n'est pas « 100 % de chance » : les huit rangs se
+partagent toujours 100 %, il en sort toujours exactement un. La plage est le **dénominateur** du
+`rand() % plage`, et 100 n'est mis en avant que parce qu'à ce dénominateur-là les effectifs se lisent
+directement en pourcents.
+
+Corollaire : **tous les rangs sont atteignables dès +41**, et les trois niveaux suivants ne
+débloquent rien — ils ne font que grossir la part du rang 7, de 1 % (plage 97) à 4 % (plage 100).
+L'écart de 44 n'est donc pas le seuil du « tout débloqué », c'est le point où l'échelle cesse de
+bouger. Le rang 0 reste le plus probable à toutes les plages : 44,6 % à 56, encore 25 % à 100.
+
+
+### Où la chance entre, et où elle n'entre pas
+
+**Elle n'entre pas dans le tirage de rang.** `PickWeightedTableEntry(espèce+5, écart + 0x38)` ne
+prend que la classe de butin et l'écart de niveau. Deux personnages de même niveau tirent la même
+distribution, quelle que soit leur chance.
+
+Elle mène deux tirages **voisins**, dans la même fonction :
+
+| | formule | effet |
+|---|---|---|
+| un objet tombe, ou seulement de l'argent | `odds + (chance >> 1)` contre `rand() % 1000` | la moitié de la chance, sur mille |
+| l'objet est « propre » (`+6 = 0`) ou marqué `0xb4..0xb9` | `(+0x12c >> 3) + 0x3c + (chance >> 1)`, **plafonné à 0x5f** | 60 % à chance 0, 72 % à 24, plafond 95 % atteint dès 70 |
+
+Le jeu sépare donc trois questions et leur donne trois maîtres : **quel** objet — l'écart de niveau
+seul ; **si** il tombe — la chance et l'espèce ; **dans quel état** — la chance, surtout. Monter en
+niveau ouvre le haut de la table, monter la chance fait tomber plus souvent et plus propre ; les deux
+ne se remplacent pas.
+
+**Deux réserves.** Ce que `drop[0x06]` *fait* n'est pas établi — rien de transcrit ne le relit, on
+sait seulement qu'il vaut 0 ou l'un de six numéros consécutifs. Et `+0x12c`, l'autre contributeur du
+second tirage, n'a pas non plus de rôle identifié.
+
+**Sur l'identification de « la chance ».** `+0x2ac` est le septième champ du bloc `+0x2a0`, et aucun
+libellé du binaire ne le nomme. La lecture tient malgré tout : dans `s_ClassBaseStats_0056c7e0` ce
+septième champ vaut 16 pour les huit classes **sauf le Voleur, à 24** — une statistique où seul le
+Voleur sort du lot est une chance. `LevelUpCharacter_005391F0` s'en sert par ailleurs comme facteur
+commun de toute la progression.
 
 La **classe** vient de l'espèce (`espèce+5`), pas de la fiche : deux espèces partageant un modèle
 peuvent donc ne pas lâcher les mêmes choses.

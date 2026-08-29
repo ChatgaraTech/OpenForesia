@@ -4029,6 +4029,18 @@ public static unsafe partial class Blaze
             // ne survit qu'aux images ou son balayage ne touche personne.
             case 0x004834D0: EntityHandler_004834D0(record); return;
 
+            // L'entree 181 (0xb5) — le PIEGE DE COFFRE : huit images, une gerbe 0x3d une image
+            // sur deux, puis le coup porte par une entite d'emprunt posee en 0x005ede20.
+            case 0x004755F0: EntityHandler_004755F0(record); return;
+
+            // L'entree 61 (0x3d) de la table 0x00552230 — la gerbe que le precedent seme.
+            case 0x00475730: EntityHandler_00475730(record); return;
+
+            // Les deux entites que la resolution du coup fait naitre : 0x29 la MARQUE (elle enfle
+            // puis palit au-dessus de la victime) et 0x3a, qui seme du 0x99 une image sur deux.
+            case 0x00475400: EntityHandler_00475400(record); return;
+            case 0x00445950: EntityHandler_00445950(record); return;
+
             // L'entree 90 de la table 0x00551f30 — l'ETINCELLE que le precedent lache par six.
             // Elle decrit une spirale autour de son point de naissance et meurt de retrecir.
             case 0x004034A0: EntityHandler_004034A0(record); return;
@@ -5351,6 +5363,526 @@ public static unsafe partial class Blaze
             e, (int*)(e + 0x1c), SplashDescriptors(), 0xbd, 0, 4);
 
         *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_005387c0 @ 0x005387c0 — <b>le bloc de combat d'un membre du groupe</b>. Il vit
+    /// dans la memoire principale, a <c>(emplacement[8] + 0x78) * 0x2000</c>, et la fonction rend
+    /// sa <b>seconde moitie</b> (<c>+0x100</c>) : c'est celle-la que la resolution du coup lit.
+    ///
+    /// <para>
+    /// <c>keep != 0</c> saute entierement le recalcul et se contente de poser la marque. C'est ce
+    /// qui permet a une chaine de coups successifs de ne recalculer qu'une fois.
+    /// </para>
+    /// </summary>
+    private static byte* ResolvePartyCombatBlock_005387C0(uint* slot, byte marker, int keep)
+    {
+        byte* block = GetMainMemPtr() + (*((byte*)slot + 8) + 0x78) * 0x2000;
+
+        if (keep == 0)
+        {
+            CommitStagedStatBlock(block);
+            ScaleStatBlockByDifficulty(block + 0x100);
+            ComputeDerivedStats(block);
+            ApplyEquipmentStatBonuses(block);
+            FinalizeEquipmentEffects(block + 0x100);
+        }
+
+        block[0x203] = marker;
+        return block + 0x100;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00538830 @ 0x00538830 — <b>le bloc de combat d'une entite de scene</b>, dans
+    /// <c>s_EntityStatBlocks_005ea560</c>, 0x120 octets par emplacement. Trois passes seulement la
+    /// ou un membre du groupe en demande cinq : une bete n'a ni equipement ni statistiques
+    /// preparees.
+    ///
+    /// <para>La marque part en <c>+0x103</c> — <c>&amp;DAT_005ea663</c> dans la pseudo-C, soit
+    /// <c>0x005ea560 + 0x103</c>.</para>
+    /// </summary>
+    private static byte* ResolveSceneCombatBlock_00538830(uint* slot, byte marker)
+    {
+        byte* block = s_EntityStatBlocks_005ea560 + *((byte*)slot + 8) * 0x120;
+
+        RebaseStatBlockOnModel_00538AF0((byte*)slot);
+        ScaleStatBlockByDifficulty(block);
+        FinalizeEquipmentEffects(block);
+
+        block[0x103] = marker;
+        return block;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00538870 @ 0x00538870 — <b>l'ouverture de tout echange de coups</b> : elle valide
+    /// les deux combattants, les <b>appareille</b> (chacun retient l'autre en <c>+0x70</c>), resout
+    /// leurs deux blocs de combat, declenche leurs objets equipes, et rend non nul quand le coup ne
+    /// doit pas avoir lieu.
+    ///
+    /// <para>
+    /// <b>Le bloc resolu depend de la nature</b> : bit <c>0x800000</c> — membre du groupe — passe
+    /// par <see cref="ResolvePartyCombatBlock_005387C0"/>, tout le reste par
+    /// <see cref="ResolveSceneCombatBlock_00538830"/>.
+    /// </para>
+    /// <para>
+    /// <b>Deux refus</b> : une victime dont le genre vaut <c>0x600000</c> en entier, et une victime
+    /// dont le bloc porte <c>0x100000</c> en <c>+0x40</c> — celle-la recoit en plus une entite
+    /// <c>0x29</c>, la marque visible du coup qui ne passe pas.
+    /// </para>
+    /// </summary>
+    private static uint PrepareCombatPair_00538870(
+        uint* attacker, uint* victim, byte** attackerBlock, byte** victimBlock, byte marker, int keep)
+    {
+        if (ValidateCombatants_0053A860(attacker, victim) != 0) return 1;
+
+        attacker[0x1c] = (uint)victim;
+        victim[0x1c] = (uint)attacker;
+
+        *attackerBlock = (*attacker & 0x800000) == 0
+            ? ResolveSceneCombatBlock_00538830(attacker, marker)
+            : ResolvePartyCombatBlock_005387C0(attacker, marker, keep);
+
+        *victimBlock = (*victim & 0x800000) == 0
+            ? ResolveSceneCombatBlock_00538830(victim, marker)
+            : ResolvePartyCombatBlock_005387C0(victim, marker, keep);
+
+        if ((*attacker & 0x800000) != 0)
+        {
+            if (keep == 0) *(uint*)Mem.Arena(0x005e99c0) = 0;
+            TriggerEquippedItems_005238E0(attacker, 7);
+        }
+
+        if ((*victim & 0x800000) != 0)
+        {
+            if (keep == 0) *(uint*)Mem.Arena(0x005e99c0) = 0;
+            TriggerEquippedItems_005238E0(victim, 0x11);
+        }
+
+        if ((*victim & 0x600000) == 0x600000) return 1;
+
+        if ((*(uint*)(*victimBlock + 0x40) & 0x100000) != 0)
+        {
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x005648a0), 0x29, 0, 0);
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053a6c0 @ 0x0053a6c0 — <b>le jet de sauvegarde</b>, celui du piege et du sort de
+    /// statut. Quatre tirages, deux par camp : chacun ajoute a sa caracteristique un aleatoire borne
+    /// par elle-meme et un second borne par la moitie de <c>+0x2c</c>.
+    ///
+    /// <para>
+    /// <b>L'assaillant doit depasser STRICTEMENT</b> : a egalite la victime resiste, et le
+    /// <c>0xbf</c> — l'effet « ca n'a pas pris » — part sur elle. Le biais est donc du cote du
+    /// defenseur, d'un point.
+    /// </para>
+    /// <para>
+    /// L'assaillant compte sur <c>+0x34</c>, la victime sur <c>+0x36</c> : ce ne sont pas les memes
+    /// champs, et les deux sont divises par deux avant d'entrer dans le calcul.
+    /// </para>
+    /// </summary>
+    private static uint RollSavingThrow_0053A6C0(
+        uint* attacker, uint* victim, byte* attackerBlock, byte* victimBlock)
+    {
+        if (ValidateCombatants_0053A860(attacker, victim) != 0) return 1;
+
+        if ((*attacker & 0x800000) != 0) TriggerEquippedItems_005238E0(attacker, 8);
+        if ((*victim & 0x800000) != 0) TriggerEquippedItems_005238E0(victim, 0x12);
+
+        // L'ordre des quatre tirages est celui du binaire, et il compte : ils partagent une seule
+        // suite pseudo-aleatoire.
+        int offence = *(short*)(attackerBlock + 0x34) >> 1;
+        int r1 = CrtRand();
+        short attackerSpread = *(short*)(attackerBlock + 0x2c);
+        int r2 = CrtRand();
+        int defence = *(short*)(victimBlock + 0x36) >> 1;
+        int r3 = CrtRand();
+        short victimSpread = *(short*)(victimBlock + 0x2c);
+        int r4 = CrtRand();
+
+        if (r1 % ((attackerSpread >> 1) + 1) + r2 % (offence + 1) + offence
+            <= r4 % (defence + 1) + defence + r3 % ((victimSpread >> 1) + 1))
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053c420 @ 0x0053c420 — <b>l'application d'un effet de piege</b>, evenement
+    /// <c>0x1d</c>. Une des cinq variantes de la meme forme dans le binaire (voir
+    /// <c>FUN_0053b3c0</c>, <c>FUN_0053c510</c>…) : meme squelette, autre evenement, autre masque
+    /// d'immunite, autre bit d'etat.
+    ///
+    /// <para>
+    /// <b>Trois refus successifs</b> avant que quoi que ce soit ne s'applique : l'ouverture de
+    /// <see cref="PrepareCombatPair_00538870"/>, le masque d'immunite <c>0xf3099500</c> lu en
+    /// <c>+0x14</c> du bloc de la victime, et le jet de sauvegarde. Les deux derniers font naitre le
+    /// <c>0xbf</c> sur la victime — c'est le meme retour visuel pour « immunise » et pour
+    /// « resiste ».
+    /// </para>
+    /// <para>
+    /// <b>Ce qui s'applique</b> : <c>+0xe0</c> du bloc de la victime recoit <c>attaque / 4 + 6</c>,
+    /// mais <b>seulement si c'est plus que ce qui s'y trouve</b> — un second piege plus faible ne
+    /// raccourcit pas l'effet du premier. Puis, la premiere fois seulement (bit 1 de <c>+0x40</c>),
+    /// l'entite <c>0x29</c> et l'entite <c>0x3a</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le champ <c>+0x44</c> de la victime est mis a zero le temps du <c>0x3a</c>, puis
+    /// restaure.</b> C'est ce que fait l'original ; ce que ce champ porte n'est pas etabli.
+    /// </para>
+    /// </summary>
+    private static uint ApplyTrapEffect_0053C420(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x1d, keep) != 0)
+        {
+            return 1;
+        }
+
+        if ((*(uint*)(victimBlock + 0x14) & 0xf3099500) != 0)
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x34) >> 2) + 6;
+        if (*(ushort*)(victimBlock + 0xe0) < duration)
+        {
+            *(short*)(victimBlock + 0xe0) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 1) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 1;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x005647c0), 0x29, 0, 0);
+
+            uint saved = victim[0x11];
+            victim[0x11] = 0;
+            SpawnEffectEntity((byte*)victim, 0x3a, 0, 0);
+            victim[0x11] = saved;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551858</c> — <b>le script de sons du piege</b>, tel que
+    /// <see cref="Audio.TickDelayedSounds"/> le lit : identifiant en <c>+0</c>, delai du lot suivant
+    /// en <c>+1</c>, nombre de sons du lot en <c>+2</c>, hauteur en <c>+4</c>, gain en <c>+6</c>.
+    ///
+    /// <para>
+    /// Deux enregistrements, donc <b>deux fois le son 3 a une image d'intervalle</b> : le premier
+    /// lot annonce un delai de 1, le second un delai de 0 qui termine le script et libere
+    /// l'emplacement. Seize octets — la suite (<c>0x00551868</c>) est un autre script, son
+    /// identifiant change.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_TrapSoundScript_00551858 =
+    [
+        0x03, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x12,   // 0x00551858
+        0x03, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x12,   // 0x00551860
+    ];
+
+    private static byte* s_TrapSoundScriptStorage;
+
+    /// <summary>Le script en memoire native : la file des sons differes le garde par pointeur, donc
+    /// il doit survivre a l'appel.</summary>
+    private static byte* TrapSoundScript()
+    {
+        if (s_TrapSoundScriptStorage == null)
+        {
+            s_TrapSoundScriptStorage =
+                (byte*)NativeMemory.Alloc((nuint)s_TrapSoundScript_00551858.Length);
+            for (int i = 0; i < s_TrapSoundScript_00551858.Length; i++)
+            {
+                s_TrapSoundScriptStorage[i] = s_TrapSoundScript_00551858[i];
+            }
+        }
+
+        return s_TrapSoundScriptStorage;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005519d0</c> — <b>les sept images de la gerbe de piege</b>, l'atlas que
+    /// <see cref="EntityHandler_004755F0"/> passe a chacune des entites <c>0x3d</c> qu'il seme.
+    ///
+    /// <para>
+    /// Sept, et la borne se lit dans le code comme pour <see cref="s_SplashDescriptors_00551A08"/> :
+    /// <see cref="EntityHandler_00475730"/> pose <c>+0x40 = compteur / 2</c> et s'eteint des que
+    /// cet indice atteint 7. La donnee le confirme d'une facon particulierement nette — la table
+    /// s'arrete <b>exactement</b> a <c>0x00551a08</c>, la premiere image de l'eclaboussure.
+    /// </para>
+    /// <para>
+    /// C'est encore la meme sequence de sept deplacements que <c>0x00551a08</c> et
+    /// <see cref="s_Entity34Descriptors_0054F0E0"/> — <c>c0b8</c>, <c>d8b8</c>, <c>60d0</c>,
+    /// <c>78d0</c>, <c>90d0</c>, <c>a8d0</c>, <c>c0d0</c> — a la moitie haute pres. Trois tables
+    /// pour une seule animation, dans trois planches.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_TrapBurstDescriptors_005519D0 =
+    [
+        0xc0, 0xb8, 0x18, 0x18, 0x00, 0x02, 0x10, 0x00,   // 0x005519d0
+        0xd8, 0xb8, 0x18, 0x18, 0x00, 0x02, 0x10, 0x00,   // 0x005519d8
+        0x60, 0xd0, 0x18, 0x18, 0x00, 0x02, 0x10, 0x00,   // 0x005519e0
+        0x78, 0xd0, 0x18, 0x18, 0x00, 0x02, 0x10, 0x00,   // 0x005519e8
+        0x90, 0xd0, 0x18, 0x18, 0x00, 0x02, 0x10, 0x00,   // 0x005519f0
+        0xa8, 0xd0, 0x18, 0x18, 0x00, 0x02, 0x10, 0x00,   // 0x005519f8
+        0xc0, 0xd0, 0x18, 0x18, 0x00, 0x02, 0x10, 0x00,   // 0x00551a00
+    ];
+
+    private static byte* s_TrapBurstDescriptorStorage;
+
+    /// <summary>Les sept descripteurs en memoire native.</summary>
+    private static byte* TrapBurstDescriptors()
+    {
+        if (s_TrapBurstDescriptorStorage == null)
+        {
+            s_TrapBurstDescriptorStorage =
+                (byte*)NativeMemory.Alloc((nuint)s_TrapBurstDescriptors_005519D0.Length);
+            for (int i = 0; i < s_TrapBurstDescriptors_005519D0.Length; i++)
+            {
+                s_TrapBurstDescriptorStorage[i] = s_TrapBurstDescriptors_005519D0[i];
+            }
+        }
+
+        return s_TrapBurstDescriptorStorage;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004755f0</c> — <b>l'entree 181 (<c>0xb5</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551c30"/></b>, 313 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_004755F0.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est le piege de coffre</b>, signale en jeu par Vincent le 2026-08-29. Il vit
+    /// <b>huit images</b> exactement, et son deroule est entierement porte par le compteur
+    /// <c>+0x10</c> :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>image 0</b> — reglage : teinte <c>0xf0f0f0</c>, echelle <c>0x1800</c>, gravite
+    /// <c>+0x9a</c> a <c>0x4000</c> ;</item>
+    /// <item><b>image 1</b> — le script de sons <see cref="s_TrapSoundScript_00551858"/> part dans
+    /// la file differee ;</item>
+    /// <item><b>images paires</b> — une gerbe : une entite <c>0x3d</c> nait sur un cercle autour du
+    /// PORTEUR (le coffre, retenu en <c>+0x6c</c>), a un angle tire sur douze bits et un rayon tire
+    /// entre 0 et 59. La hauteur est celle du porteur, sans dispersion ;</item>
+    /// <item><b>image 8</b> — le coup part, puis l'entite s'efface.</item>
+    /// </list>
+    /// <para>
+    /// <b>Le coup se porte par une entite d'emprunt</b>, et c'est le point interessant :
+    /// <c>0x005ede20</c> est l'adresse qui suit <b>immediatement</b> les trente-deux emplacements de
+    /// la table de scene <c>0x005ecaa0</c>. Le piege s'y recopie (<c>0x27</c> mots), y force le
+    /// genre <c>0x20</c> en <c>+8</c>, lui fabrique un bloc de statistiques neuf par
+    /// <see cref="ResetEntityStats"/>, et s'en sert comme assaillant.
+    /// </para>
+    /// <para>
+    /// <b>Cette adjacence n'est pas un hasard et elle n'est pas facultative</b> :
+    /// <see cref="ValidateCombatants_0053A860"/> accepte un assaillant de scene jusqu'a
+    /// <c>0x005ecaa0 + 0x1380</c> <b>inclus</b>, ce qui est exactement <c>0x005ede20</c>. La borne
+    /// haute « d'un emplacement de trop » relevee le 2026-08-26 n'etait donc pas une maladresse du
+    /// binaire : c'est <b>par elle</b> que le piege est reconnu comme un combattant valide. La
+    /// reconstruction la conserve parce que l'arene d'entites est une seule allocation, comme
+    /// l'original.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004755F0(byte* e)
+    {
+        short phase = *(short*)(e + 0x10);
+        byte* carrier = *(byte**)(e + 0x6c);
+
+        if (phase == 0)
+        {
+            *(short*)(e + 0x0a) = 0;
+            *(uint*)(e + 0x38) = 0xf0f0f0;
+            *(uint*)(e + 0x28) = 0x18001800;
+            e[0x40] = 0;
+            *(short*)(e + 0x9a) = 0x4000;
+        }
+
+        // Ghidra: LAB_00475625 — le test porte sur la valeur d'ENTREE, pas sur celle que le bloc
+        // precedent aurait pu ecrire ; il ne l'ecrit d'ailleurs pas.
+        if (phase == 1)
+        {
+            Aud.QueueDelayedSoundScript(TrapSoundScript(), (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047563c — une image sur deux.
+        if ((e[0x10] & 1) == 0)
+        {
+            int angle = CrtRand() & 0xfff;
+            int radius = CrtRand() % 0x3c;
+
+            int* position = stackalloc int[3];
+            position[0] = *(int*)(carrier + 0x1c) + (int)Winsys3d.GetSinTableEntry(angle) * radius;
+            position[1] = *(int*)(carrier + 0x20);
+            position[2] = *(int*)(carrier + 0x24) + (int)Winsys3d.GetCosTableEntry(angle) * radius;
+
+            SpawnStatusEffectEntity_0047AC40(e, position, TrapBurstDescriptors(), 0x3d, 0, 3);
+        }
+
+        // Ghidra: LAB_004756a2
+        *(short*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) < 8) return;
+
+        // L'entite d'emprunt, une place au-dela de la table de scene. Voir le commentaire de tete.
+        byte* proxy = Mem.Entity(0x005ede20);
+
+        *(uint*)e = 0x80400000;
+        Mem.CopyDwords((uint*)e, (uint*)proxy, 0x27);      // Ghidra: FUN_005352e0
+
+        proxy[8] = 0x20;
+        ResolveEntityBlocks(proxy, out byte* stats, out byte* species, out byte* model);
+        ResetEntityStats(stats, species, model);           // Ghidra: FUN_005389e0
+
+        *(short*)(proxy + 6) = *(short*)(e + 6);
+
+        ApplyTrapEffect_0053C420((uint*)proxy, *(uint**)(e + 0x6c), 0);
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00475730</c> — <b>l'entree 61 (<c>0x3d</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>, 46 octets, <b>absente de <c>Blaze.c</c></b>.
+    /// C'est la gerbe que <see cref="EntityHandler_004755F0"/> seme une image sur deux.
+    ///
+    /// <para>
+    /// La plus courte de toute la famille, et sans branche d'initialisation : elle monte de
+    /// <c>0xA000</c> par image, prend pour image d'atlas <b>la moitie de son compteur</b> — donc
+    /// deux images par dessin — et s'eteint des que cet indice atteint 7. Quatorze images de vie.
+    /// </para>
+    /// <para>
+    /// <b>L'indice est ecrit avant le test</b>, y compris sur l'image ou elle meurt ; et la
+    /// comparaison est <b>non signee</b> sur l'octet bas. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00475730(byte* e)
+    {
+        short counter = *(short*)(e + 0x10);
+
+        *(int*)(e + 0x20) += 0xa000;
+
+        byte frame = (byte)(short)(counter >> 1);
+        e[0x40] = frame;
+        if (frame >= 7) *(uint*)e = 0;
+
+        *(short*)(e + 0x10) = (short)(counter + 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00475400 @ 0x00475400 — <b>l'entree 41 (<c>0x29</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>La marque du coup</b> : l'entite que toute la famille de resolution fait naitre sur la
+    /// victime — <see cref="PrepareCombatPair_00538870"/> quand le coup est refuse,
+    /// <see cref="ApplyTrapEffect_0053C420"/> quand il porte,
+    /// <see cref="ValidateCombatants_0053A860"/> quand l'assaillant est douteux.
+    /// </para>
+    /// <para>
+    /// Elle se colle a son porteur (<c>+0x6c</c>) a chaque image, decalee vers le haut de la
+    /// hauteur de bulle d'etat de celui-ci — <see cref="StatusBubbleHeight_00538BC0"/>, mesuree une
+    /// seule fois a la naissance et gardee en <c>+0x48</c>. <b>Elle enfle puis palit</b> : les douze
+    /// premieres images son echelle suit un sinus (<c>angle = image &lt;&lt; 7</c>) jusqu'a
+    /// <c>0x1200</c>, et a partir de la 32e sa teinte descend de <c>0xff</c> a <c>0x1f</c>. Elle
+    /// meurt a la 40e.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00475400(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x0a) = 0;
+            *(uint*)(e + 0x38) = 0x1ffffff;
+            *(uint*)(e + 0x28) = 0;
+            *(uint*)(e + 0x40) = 0;
+            *(short*)(e + 0x2e) = unchecked((short)0xfff6);
+
+            *(int*)(e + 0x48) = StatusBubbleHeight_00538BC0((uint*)carrier) << 0xc;
+        }
+
+        *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(carrier + 0x20) + *(int*)(e + 0x48);
+        *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+
+        if (*(short*)(e + 0x10) < 0xc)
+        {
+            // Ordinal_451 : la table de sinus. L'angle est l'image multipliee par 0x80.
+            int scale = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 7);
+            short size = (short)(scale * 0x1200 >> 0xc);
+            *(short*)(e + 0x28) = size;
+            *(short*)(e + 0x2a) = size;
+        }
+
+        short frame = *(short*)(e + 0x10);
+
+        if (frame > 0x1f)
+        {
+            // La teinte descend de 0xff a 0x1f sur les huit dernieres images, repliee sur les trois
+            // canaux, l'octet de mode passant a 2.
+            uint level = (uint)(frame * -0x20 + 0x4ff);
+            *(uint*)(e + 0x38) = ((level | 0x200) << 8 | level) << 8 | level;
+        }
+
+        *(short*)(e + 0x10) = (short)(frame + 1);
+        if ((short)(frame + 1) > 0x27) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00445950</c> — <b>l'entree 58 (<c>0x3a</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551c30"/></b>, 142 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_00445950.asm</c>.
+    ///
+    /// <para>
+    /// La seconde entite que <see cref="ApplyTrapEffect_0053C420"/> fait naitre quand un effet
+    /// prend. Elle se colle a son porteur, prend pour largeur l'etendue <c>+0x1e</c> de son bloc de
+    /// modele, et seme une entite <c>0x99</c> une image sur deux pendant dix-huit images.
+    /// </para>
+    /// <para>
+    /// <b>Elle a un porteur de repli</b> : si <c>+0x6c</c> est nul elle prend
+    /// <see cref="Resources.s_EntityList_005de558"/>, l'entite de service que
+    /// <c>Resources</c> tient a zero et qui se pointe elle-meme en <c>+0x6c</c>. Elle ne peut donc
+    /// pas manquer de porteur — elle se colle a l'origine du monde plutot que de ne rien faire.
+    /// C'est ecrit ainsi dans le binaire.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00445950(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0) *(short*)(e + 0x14) = 0;
+
+        byte* carrier = *(byte**)(e + 0x6c);
+        if (carrier == null) carrier = Res.s_EntityList_005de558;   // Ghidra: DAT_005de558
+
+        ResolveEntityBlocks(carrier, out _, out _, out byte* model);
+        *(short*)(e + 0x14) = *(short*)(model + 0x1e);
+
+        *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(carrier + 0x20);
+        *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+
+        if ((e[0x10] & 1) != 0)
+        {
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x99, 0, -1);
+        }
+
+        *(short*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) >= 0x12) *(uint*)e &= 0x7fffffff;
     }
 
     /// <summary>

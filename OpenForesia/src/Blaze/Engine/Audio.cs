@@ -1631,6 +1631,34 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
     /// </summary>
     internal readonly byte* s_DelayedSounds_005dfb90 = (byte*)NativeMemory.AllocZeroed(0x20 * 0x14);
 
+    /// <summary>Ghidra: <c>DAT_005dfb8c</c> — le curseur d'ecriture de la file, <b>sur cinq
+    /// bits</b> : le binaire incremente l'octet puis masque par <c>0x1f</c> en preservant les trois
+    /// octets hauts du mot, ce qui revient exactement a un anneau de 0x20 entrees.</summary>
+    private byte s_DelayedSoundCursor_005dfb8c;
+
+    /// <summary>
+    /// Ghidra: FUN_0053dbe0 @ 0x0053dbe0 — <b>ranger un script de sons differes</b> dans
+    /// <see cref="s_DelayedSounds_005dfb90"/>, a la position du curseur, avec la position du monde
+    /// ou il devra etre joue et un delai initial d'<b>une</b> image.
+    ///
+    /// <para>
+    /// <b>L'anneau n'a pas de test d'occupation</b> : la 0x21e entree ecrase la premiere, script en
+    /// cours ou non. C'est ce que fait l'original, et c'est transcrit tel quel.
+    /// </para>
+    /// </summary>
+    internal void QueueDelayedSoundScript(byte* script, int* position)
+    {
+        byte* entry = s_DelayedSounds_005dfb90 + s_DelayedSoundCursor_005dfb8c * 0x14;
+
+        *(byte**)(entry + 0x0c) = script;
+        *(int*)(entry + 0x00) = position[0];
+        *(int*)(entry + 0x04) = position[1];
+        *(int*)(entry + 0x08) = position[2];
+        entry[0x10] = 1;
+
+        s_DelayedSoundCursor_005dfb8c = (byte)((s_DelayedSoundCursor_005dfb8c + 1) & 0x1f);
+    }
+
     /// <summary>
     /// Ghidra: FUN_0053dc30 @ 0x0053dc30 â€” le tour par image de la file des sons differes. Appele
     /// une fois par image par la boucle de la carte du monde.

@@ -17175,3 +17175,78 @@ comme sa propre pièce.
 
 Transcrit et **compilé, pas exécuté**. Reconnaissance à l'œil : une chose lancée qui **roule au sol
 en rebondissant** au lieu de voler droit, et qui disparaît dans une éclaboussure au premier contact.
+
+---
+
+## 2026-08-29 (suite 12) — le piège de coffre, et la chaîne d'application des dégâts
+
+Signalé en jeu par Vincent, lancement nu depuis l'IDE : ouvrir un coffre piégé tue le processus sur
+`0x004755F0`, sous-type `0xb5`, entrée 181 de `0x00551c30`.
+
+### Ce que fait le piège
+
+313 octets, absent de `Blaze.c`. Il vit **huit images**, tout entier porté par `+0x10` : réglage à
+l'image 0, script de sons différés à l'image 1, une gerbe `0x3d` une image sur deux autour du coffre
+(angle sur douze bits, rayon 0 à 59), et à la huitième le coup part.
+
+### L'entité d'emprunt, et pourquoi une borne « d'un emplacement de trop » n'en était pas une
+
+Le coup se porte par une entité fabriquée à `0x005ede20`, qui est l'adresse suivant
+**immédiatement** les trente-deux emplacements de la table de scène `0x005ecaa0`. Le piège s'y
+recopie (0x27 mots), y force le genre `0x20`, lui fabrique un bloc de statistiques neuf, et s'en sert
+comme assaillant.
+
+**Cette adjacence est le mécanisme, pas un débordement.** `ValidateCombatants_0053A860` accepte un
+assaillant de scène jusqu'à `0x005ecaa0 + 0x1380` **inclus** — soit exactement `0x005ede20`. La note
+du 2026-08-26 qui relevait des « bornes hautes inclusives d'un emplacement de trop » et les
+transcrivait telles quelles avait raison de ne pas les corriger : c'est **par elles** qu'un piège est
+reconnu comme combattant valide. La reconstruction tient parce que l'arène d'entités est une seule
+allocation, comme l'original — le défaut d'aliasing que `ARCHITECTURE.md` interdit est ici la
+condition du bon fonctionnement.
+
+### La chaîne d'application des dégâts, enfin écrite
+
+C'est la vraie pièce de cette session, et elle était bloquée depuis la suite 10 :
+
+| | rôle |
+|---|---|
+| `FUN_005387c0` | le bloc de combat d'un membre du groupe — cinq passes de recalcul |
+| `FUN_00538830` | celui d'une entité de scène — trois passes |
+| `FUN_00538870` | l'ouverture : valide, appareille, résout les deux blocs, déclenche l'équipement |
+| `FUN_0053a6c0` | le **jet de sauvegarde**, quatre tirages |
+| `FUN_0053c420` | l'application d'un effet de piège, événement `0x1d` |
+
+Deux points qui méritent d'être notés :
+
+- **le jet de sauvegarde est biaisé vers le défenseur d'un point** : l'assaillant doit dépasser
+  *strictement*, à égalité la victime résiste ;
+- **`+0xe0` du bloc de la victime ne prend la nouvelle durée que si elle est plus grande** — un
+  second piège plus faible ne raccourcit pas l'effet du premier.
+
+Six dépendances profondes se sont révélées **déjà transcrites** (`FUN_00538ab0`, `af0`, `c50`,
+`e20`, `f50`, `fa0`), ce qui a fait passer cette chaîne de « sous-système à prendre à part » à
+« cinq corps courts ». **La leçon vaut d'être retenue : mesurer la profondeur réelle avant de
+renoncer.** Elle avait été écartée deux fois sur son apparence.
+
+Corollaire : `FUN_0053b3c0`, quasi-jumelle de `FUN_0053c420`, n'est plus bloquée non plus — donc
+`0x00475910` (suite 10) est désormais à portée.
+
+### Ce qui reste ouvert, et c'est assumé
+
+La résolution du coup fait naître trois entités visuelles. Deux sont écrites — `0x29`
+(`FUN_00475400`, la marque qui enfle puis pâlit) et `0x3a` (`FUN_00445950`). Restent :
+
+| | quand | ce que ça ouvre |
+|---|---|---|
+| `0xbf` → `0x00475D40` | victime immunisée **ou qui résiste** | 347 o, une boucle, un atlas neuf (`0x551ba0`), engendre `0xbe` |
+| `0x99` → `0x004459E0` | semé par `0x3a`, une image sur deux | absent de `Blaze.c` |
+
+`0xbf` partira souvent, le jet étant biaisé vers le défenseur. **Passer par `tests\filet.bat` pour
+la prochaine sortie** : ces deux-là s'y journaliseront au lieu de tuer le run, et on saura lequel
+arrive vraiment.
+
+### État
+
+Transcrits et **compilés, pas exécutés**. Reconnaissance à l'œil : à l'ouverture d'un coffre piégé,
+une gerbe grise qui monte autour du coffre pendant huit images, un double son, puis une marque qui
+enfle au-dessus du personnage touché.
