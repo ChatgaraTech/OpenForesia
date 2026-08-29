@@ -36,16 +36,16 @@ l'estimation « une quarantaine » qui figurait ici : elle était un plancher ti
 |---|---|
 | gestionnaires distincts installés sur `0x0056ad48` | **166** |
 | dont routines d'intelligence complètes | **112** |
-| écrites | **3** |
-| pour la forêt (zone 3) seule | 22 d'IA, dont 2 écrites |
+| écrites | **10** |
+| pour la forêt (zone 3) seule | 22 d'IA, dont 9 écrites |
 
 Ce n'est **pas une fonction par ennemi** : 555 espèces pour 112 comportements. Une routine est un
 comportement partagé.
 
-**Le prochain pas concret** : les neuf routines restantes du bloc d'arrivée de la forêt
-(sous-types 1, 3, 4, 5, 6, 7, 8, 9, 18 → `0x0049A360`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`,
-`0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`). Elles se suivent dans le
-binaire et se ressemblent ; la recette et le tableau complet sont dans `Comportement.md`.
+**Le prochain pas concret** : les deux routines restantes du bloc d’arrivée de la forêt
+(sous-types 9 et 18 → `0x0049E190`, `0x0049E920`) — **et le projectile du Goblin**, voir plus bas.
+Elles se suivent dans le binaire et se ressemblent ; la recette — dont le **tri de départ en quatre
+lectures** et le calque **à deux sœurs** — et le tableau complet sont dans `Comportement.md`.
 
 ## Lacunes secondaires, gardées et mortes en jeu normal
 

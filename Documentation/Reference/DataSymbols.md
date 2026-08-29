@@ -2197,3 +2197,32 @@ Declarees dans `Screens/State03/WorldMapScript.cs` chez leur seul ecrivain trans
 
 `0x005dff64` est le seul des neuf traite a part : le verbe 57 y met l'octet `+0x2bc` du bloc du
 personnage (`MainMem + membre * 0x2000 + 0xf02bc`), le verbe 58 y met zero.
+
+## `0x00552930`..`0x00552978` — des gabarits de portee d'ennemi, en dur dans `.data` (2026-08-29)
+
+Cinq enregistrements de six `short`, de la meme forme que
+`s_MeleeProbes_00562cf0` — le gabarit que `TestMeleeReach_00535A90` croise avec chaque membre du
+groupe. Releves au verbe `at` en transcrivant `FUN_0049B840`, le Grizzly.
+
+| adresse | `[0]` | `[1]` | `[2]` | `[3]` | `[4]` | `[5]` | attribution |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `0x00552930` | 0 | `0x32` | `0x78` | `0x96` | `0x0100` | `0xfa` | non attribuee |
+| `0x0055293c` | 0 | `0x32` | `0x5a` | `0x96` | 0 | `0xc8` | non attribuee |
+| `0x00552948` | 0 | `0x32` | `0x5a` | `0x96` | 0 | `0xc8` | non attribuee |
+| `0x00552960` | 0 | `0x1e` | `0x46` | `0x96` | `-0x100` | `0x50` | **`FUN_0049B840`, la griffe** |
+| `0x0055296c` | 0 | `0x1e` | `0x32` | `0x96` | 0 | `0x50` | **`FUN_0049B840`, le bond** |
+
+Le cinquieme terme est un **decalage vertical** : negatif, le gabarit se leve — la griffe du Grizzly
+s'abat d'en haut, son bond frappe au ras du sol.
+
+**Deux bornes, lues dans la donnee et non dans les sites d'appel.** `0x00552954` porte
+`00 00 00 00 0e 02 14 00 1b 00 00 00`, qui n'a plus la forme d'une sonde : la serie de trois
+s'arrete donc a `0x00552954`. De meme `0x00552978` (`03 00 08 00 0a 00 10 00 0c 02 03 00`) ferme la
+paire du Grizzly. Les trois premieres appartiennent a des routines du meme bloc non encore
+transcrites, et **il ne faut pas les deviner** : celle qui les lira les nommera.
+
+**Ce que ce releve apprend sur la famille.** Les six routines d'intelligence ecrites avant le
+Grizzly construisaient toutes leur sonde **sur la pile**, a chaque image. Le Grizzly est le premier
+a la lire dans `.data`. Une routine d'entite de scene peut donc faire l'un ou l'autre, et un
+`push <adresse>` juste avant `call 00519C30` est le signe qu'il faut sortir le verbe `at` plutot que
+de chercher six `mov word [esp+…]` qui n'existent pas.

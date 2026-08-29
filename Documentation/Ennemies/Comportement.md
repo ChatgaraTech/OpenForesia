@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-08-29** | **4** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`) |
+| **écrits au 2026-08-29** | **10** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -55,7 +55,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | 0 | L'auberge | 2 | 1 | 0 |
 | 1 | La mine abandonnée | 23 | 17 | 0 |
 | 2 | La montagne du dragon de feu | 2 | 1 | 0 |
-| **3** | **La forêt** | **23** | **22** | **3** |
+| **3** | **La forêt** | **23** | **22** | **9** |
 | 4 | La vieille tour | 22 | 10 | 0 |
 | 5 | Le Labyrinthe des morts | 19 | 13 | 0 |
 | 6 | Le château de l'immortel | 21 | 9 | 0 |
@@ -100,12 +100,12 @@ le 2026-08-29 ; les trois premières sont confirmées **en jeu** par le bilan de
 | 0 | `0x00499DE0` | Fourmi géante | **écrit** |
 | 1 | `0x0049A360` | Coccinelle | **écrit** |
 | 2 | `0x0049A980` | Goblin | **écrit** |
-| 3 | `0x0049B220` | Abeille · Abeille tueuse | — |
-| 4 | `0x0049B840` | Grizzly | — |
-| 5 | `0x0049C0B0` | Crabe géant | — |
-| 6 | `0x0049C8E0` | Poisson volant | — |
-| 7 | `0x0049D030` | Homme-lézard | — |
-| 8 | `0x0049DA40` | Goblin | — |
+| 3 | `0x0049B220` | Abeille · Abeille tueuse | **écrit** |
+| 4 | `0x0049B840` | Grizzly | **écrit** |
+| 5 | `0x0049C0B0` | Crabe géant | **écrit** |
+| 6 | `0x0049C8E0` | Poisson volant | **écrit** |
+| 7 | `0x0049D030` | Homme-lézard | **écrit** |
+| 8 | `0x0049DA40` | Goblin | **écrit** |
 | 9 | `0x0049E190` | Goblin-sorcier | — |
 | 18 | `0x0049E920` | Crotale | — |
 
@@ -143,7 +143,7 @@ rechargée par sous-zone.
 | 17 | `0x004A54E0` | Behemoth | IA |
 | 19 | `0x004A5F10` | Abeille tueuse | simple |
 
-**Dix-neuf routines restent pour rendre la forêt entièrement stable**, dont huit pour les seules
+**Treize routines restent pour rendre la forêt entièrement stable**, dont deux pour les seules
 sous-zones d'arrivée.
 
 ---
@@ -189,11 +189,39 @@ Cinq constantes, et parfois la forme d'une posture :
 
 1. `OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe <adresse> 2600` — l'adresse est dans le
    message de plantage, dans le journal `[LACUNE]` du filet, ou dans les tables ci-dessus.
-2. Repérer la fin sur le bourrage de `nop`, et relever la **table de sauts** qui suit immédiatement
-   (une entrée par posture) avec le verbe `at`.
-3. Calquer sur `TickSceneEntityAi_0049A980` (cinq postures) ou `TickSceneEntityAi_00499DE0`
-   (quatre), en substituant les constantes.
-4. Ajouter le `case` au répartiteur `DispatchEntityHandler`, et garder le relevé sous
+2. **Le tri de départ, quatre lectures d'une minute chacune, avant d'écrire une ligne :**
+   - quelle **fonction d'intégration** la routine appelle — `FUN_00488160` terrestre,
+     `FUN_0049a8e0` volante ;
+   - y a-t-il un **`jmp dword [reg*4+…]`** ? Sinon l'aiguillage est une cascade de comparaisons et
+     il n'y a pas de table de sauts à relever ;
+   - **d'où vient la sonde** — six `mov word [esp+…]` avant l'appel, ou un `push <adresse>` juste
+     avant `call 00519C30`, auquel cas elle est dans `.data` et se lit au verbe `at`. Il peut y en
+     avoir **deux**, une par geste ;
+   - **combien d'appels à `FUN_00539b80`**, la résolution du coup. C'est le compte des gestes qui
+     blessent vraiment : l'Homme-lézard balaie son gabarit dans ses deux gestes et n'appelle la
+     résolution que dans un seul — sa course bouscule sans faire de dégât. Deux balayages ne font
+     pas deux attaques.
+3. Relever au verbe `at` ce que l'étape 2 a désigné : la table de sauts qui suit le bourrage de
+   `nop`, et la ou les sondes statiques.
+4. **Calquer sur DEUX sœurs, pas une** — le milieu et la charpente sont des axes indépendants, et
+   l'Abeille l'a montré le 2026-08-29 : elle est volante et bâtie comme une terrestre.
+   - le **milieu** décide de trois appels et du bloc de vol : `IntegrateSceneEntityMotion_00488160`
+     + `EndSceneEntityAnimation_004DFAF0` + `InterruptSceneEntity_004E3770` pour une terrestre ;
+     `IntegrateFlyingEntityMotion_0049A8E0` + `BeatWings_0049A68F` +
+     `InterruptFlyingEntity_004A1CF0` pour une volante ;
+   - la **charpente** décide des postures et de la replanification : `TickSceneEntityAi_0049A980`
+     (cinq postures) ou `TickSceneEntityAi_00499DE0` (quatre) pour la forme classique à trois
+     plages, `TickSceneEntityAi_0049C0B0` / `0049B840` pour une bête à deux gestes,
+     `TickSceneEntityAi_0049D030` pour la forme complète à cinq postures avec recul et esquive,
+     `TickSceneEntityAi_0049A360` pour la forme courte à deux plages.
+
+   La charpente et les postures tenues se recopient ; **ce sont les gestes qui ne se devinent pas**,
+   et c'est là que passe le temps.
+5. **Lire comment chaque geste se termine** — quatre mécanismes différents ont été rencontrés sur
+   neuf routines, et rien ne permet de deviner lequel : un compte à rebours `+0x43` (le Crabe), le
+   contact avec le sol (le Grizzly), un seuil de vitesse horizontale mesuré au `sqrt` (l'Homme-lézard
+   et l'Abeille), ou la seule fin d'animation `0x2000000` (l'Abeille, la Coccinelle).
+6. Ajouter le `case` au répartiteur `DispatchEntityHandler`, et garder le relevé sous
    `Legacy/Raw/Blaze/`.
 
 Compter **environ une heure** par routine, et beaucoup moins dès qu'on en enchaîne plusieurs du
@@ -223,12 +251,340 @@ la hauteur autour d'un plafond. Le plafond est le plus haut de `+0x60` (le sol s
 sans jamais descendre sous son propre sol. Pendant un geste l'oscillation cesse et elle prend de la
 hauteur.
 
+
+### La cinquième routine : le Poisson volant ne vole pas (2026-08-29)
+
+**Le tri par la fonction d'intégration a marché du premier coup, et il a démenti le nom.** La
+routine appelle `FUN_00488160`, l'intégration terrestre, pas `FUN_0049a8e0`. Le « Poisson volant »
+ne vole pas : il **bondit**. Le bit 1 de ses drapeaux veut dire « en l'air », `+0x54` porte sa
+vitesse verticale, et l'atterrissage se détecte en comparant `+0x20` au sol de `+0x60`. Une ligne du
+désassemblage a évité de le calquer sur la mauvaise famille.
+
+**Elle s'accroche**, et c'est nouveau. Quand son bond touche un membre du groupe, elle se colle à
+lui : bit 0 de `+0x40`, l'écart de fixation rangé dans `+0x44`/`+0x48`/`+0x4c`, et à partir de là sa
+position est **recopiée de sa victime** au lieu d'être intégrée. Elle mord toutes les `0x1e` images.
+
+**Le joueur s'en débarrasse en remuant.** La routine remonte jusqu'au *pad* de sa victime — par
+`0x005e9188` puis `0x00604a20`, l'indexation exacte des sondes d'entrée — et n'use le compteur de
+prise `+0x10` que sur les images où une direction est tenue. À zéro elle lâche et part en arrière,
+cap + `0x800`, détente verticale fixe. La force de la prise vaut `(hasard & 7) + hardiesse/4 + 8` :
+une bête hardie tient plus longtemps.
+
+**Trois postures, et aucune table de sauts.** L'aiguillage est une cascade de comparaisons. C'est la
+première des cinq routines dans ce cas — donc l'étape 2 de la recette (« relever la table de sauts
+qui suit le corps ») **ne s'applique pas partout** : chercher d'abord un `jmp dword [reg*4+…]`, et
+s'il n'y en a pas, lire la cascade. Cette espèce n'a par ailleurs ni repos ni errance : elle attend,
+se tourne, ou bondit.
+
+**Ce que ça dit du reste du bloc.** Deux prédictions de suite se sont révélées fausses — j'avais
+annoncé que le Poisson volant se calquerait sur la Coccinelle et coûterait moins cher ; il est
+terrestre et c'est la plus riche des cinq. **Ne rien prédire à partir du nom de la bête.** Le
+désassemblage se lit d'abord, sur trois points qui coûtent une minute chacun : la fonction
+d'intégration, la présence d'une table de sauts, et la sonde.
 Sa sonde le disait déjà : `probe[4]` vaut `-0x100` là où les deux terrestres ont 0.
 
 **Conséquence pour la suite du bloc A.** « Calquer sur une des deux sœurs en substituant cinq
 constantes » n'est vrai qu'entre bêtes de même milieu. Le Poisson volant (sous-type 6) se calquera
 sur celle-ci ; le Grizzly et le Crabe sur les terrestres. **Regarder d'abord quelle fonction
 d'intégration la routine appelle** — c'est le tri le moins cher, une seule ligne du désassemblage.
+
+
+### La sixième routine : le Crabe géant a deux attaques (2026-08-29)
+
+**Le tri par la fonction d'intégration a de nouveau tenu**, et cette fois il confirmait la prévision
+plutôt que de la démentir : le Crabe appelle `FUN_00488160`, l'intégration terrestre, comme annoncé
+au paragraphe précédent. La routine est la plus proche parente des deux premières — même queue de
+quatre appels, même table de sauts (quatre entrées, relevées à `0x0049c8cc`), mêmes feuilles
+partagées, et une replanification qui est celle de `0x0049a980` à deux branches près.
+
+**Sa nouveauté est ailleurs : elle a deux attaques, là où les cinq précédentes n'en ont qu'une.**
+La forme du geste ne se lit pas sur un champ à part mais sur la **posture** — c'est-à-dire que
+`+0x42` sert à deux choses selon que le bit 1 des drapeaux est mis ou non.
+
+| | la pince (posture 0) | la ruée (posture 1) |
+|---|---|---|
+| déclenchée depuis | le corps à corps, sous `0xfa` | l'approche, entre `0xfa` et `0x1f4` |
+| animation | 3 | 4 |
+| contact | images 12 à 15, **une par image** | une seule fois, verrou `0x20` |
+| dégâts | pleins | **moitié** |
+
+**La pince frappe quatre fois.** Elle croise le gabarit à chacune des images 12, 13, 14 et 15, sans
+le verrou de coup unique que la ruée possède. Une victime restée dessous encaisse quatre fois. Ce
+n'est pas une garde oubliée à la transcription : le binaire ne teste rien à cet endroit.
+
+**La ruée est une machine à trois temps**, portée par `+0x10` décompté de 2 à 0 — à 2 la bête amortit
+sa poussée d'un seizième et vise ; à la quatorzième image du geste elle passe à 1 ; à 1 elle se
+lance, en versant `(hardiesse + 0x380) << 7` d'un coup dans ses vitesses `+0x50`/`+0x58` ; à 0 elle
+cherche ce qu'elle a percuté. C'est la plus forte poussée de toutes les routines écrites.
+
+**Et la ruée ne porte qu'à moitié.** Avant d'appeler `FUN_00539b80`, la routine divise par deux le
+premier des huit caractères du bloc de **modèle** (`+0x30`, l'attaque), puis le remet tel quel
+aussitôt après. Comme `FUN_00538af0` recopie ce bloc dans la fiche au début de chaque résolution, la
+division se propage jusqu'aux dégâts et disparaît ensuite sans laisser de trace. **C'est la première
+routine écrite qui module les dégâts**, et le détour par le modèle partagé — et non par la fiche de
+la bête — est ce qui rend l'astuce invisible à la lecture de `FUN_00539b80` seule. À chercher
+désormais dans les routines suivantes : une écriture dans le bloc de modèle autour d'un appel de
+combat est une modulation de puissance, pas une corruption.
+
+Un contact réussi projette en outre la victime à trente unités par image dans le cap du crabe, la
+décolle du sol si elle y était, et fait naître l'effet `0x39` **au point d'impact** — pour cela le
+crabe se pose une image sur la position de sa victime, puis reprend la sienne. C'est la même ruse
+que la traînée de la Fourmi géante, appliquée à la position au lieu de la vitesse.
+
+**Deux écarts de constante à noter**, tous deux vérifiés dans le désassemblage et non déduits :
+
+- **sa marche ignore la vitesse** rendue par la lecture de situation, là où `0x0049a980` multiplie
+  sa poussée par elle avant d'avancer. Les deux corps diffèrent bien d'un `imul` ;
+- **le compte à rebours de la ruée vaut `(timidité >> 8) + 8`**, et la timidité ne dépasse jamais
+  `0x40` : le décalage rend toujours zéro, donc la durée est invariablement 8. Le `sar ecx,8` est
+  dans le binaire ; c'est vraisemblablement un `/2` écrit trop grand, mais rien ne le prouve, et la
+  transcription garde le calcul tel quel.
+
+**Ce qui reste vrai de la recette.** Le Crabe est la première des trois dernières à se laisser
+calquer pour de bon : les quatre postures, les cônes de virage (`hardiesse * 2 + 0x80`), la distance
+tenue `0x64` et les trois plages de replanification sont mot pour mot celles de `0x0049a980`. Ce qui
+a demandé du travail, c'est uniquement ce que les deux gestes font — donc **lire le geste avant la
+posture** : la charpente se recopie, la frappe ne se devine pas.
+
+
+### La septième routine : le Grizzly, ou la preuve que le calque fonctionne (2026-08-29)
+
+**C'est le jumeau du Crabe**, et la première fois que « calquer sur une sœur de même milieu » a
+vraiment tenu de bout en bout. Intégration terrestre `FUN_00488160`, quatre postures aiguillées par
+une table de sauts (`0x0049c0a0`), même découpage des gestes sur `+0x42`, même machine à trois temps
+sur `+0x10`, et **la même division par deux de l'attaque du modèle** autour de `FUN_00539b80`. Les
+quatre postures tenues sont identiques au mot près — mêmes cônes `hardiesse * 2 + 0x80`, même
+distance tenue `0x64`, même poussée `(hardiesse + 0xc0) << 7`.
+
+**La demi-attaque n'est donc pas une singularité du Crabe : c'est un idiome de la famille.** Deux
+routines voisines la partagent, écrites à un jour d'intervalle. À chercher systématiquement dans les
+suivantes — une écriture dans le bloc de modèle autour d'un appel de combat.
+
+#### Trois choses lui sont propres, et elles changent la silhouette
+
+**Il quitte le sol.** Là où le Crabe se rue à plat, le Grizzly pose une vitesse verticale de
+`0x24000` et allume le bit 0 (« en l'air ») en se lançant. Son geste ne se ferme donc **pas** sur un
+compte à rebours mais à l'**atterrissage**, quand ce bit retombe : `LAB_0049b981` teste `al,1` là où
+le Crabe décomptait `+0x43`. Un bond long dure plus longtemps qu'un bond court, ce qui n'a pas
+d'équivalent chez les six précédentes.
+
+Et il écrit `0x6000` dans **`+0x9a` à chaque image**, sur le chemin commun de sortie, juste avant
+l'intégration. C'est le terme que `FUN_00488160` retranche de la vitesse verticale — sa gravité
+propre, qu'aucune routine écrite avant lui ne touchait. Elle est reposée même quand sa vitesse est
+nulle.
+
+**Ses gabarits sont dans `.data`.** Ses deux sondes ne sont pas construites sur la pile mais lues à
+`0x00552960` (la griffe) et `0x0055296c` (le bond) — un cas que ce fichier n'avait pas encore
+rencontré, et qui a valu une étape de plus à la recette. Le relevé complet, avec les trois entrées
+voisines non attribuées, est dans `Documentation/Reference/DataSymbols.md`.
+
+| | `[1]` | `[2]` | `[3]` | `[4]` | `[5]` |
+|---|---:|---:|---:|---:|---:|
+| la griffe, `0x00552960` | `0x1e` | `0x46` | `0x96` | **`-0x100`** | `0x50` |
+| le bond, `0x0055296c` | `0x1e` | `0x32` | `0x96` | 0 | `0x50` |
+
+Le cinquième terme est un décalage vertical : négatif, le gabarit se lève. **La griffe s'abat d'en
+haut, le bond frappe au ras du sol** — et c'est la donnée seule qui le dit, le code étant le même
+des deux côtés.
+
+**Sa griffe se corrige en cours de geste.** Jusqu'à la neuvième image elle continue de se tourner
+vers sa cible (`hardiesse / 2 + 0x20` par image), à la neuvième elle avance d'un à-coup
+`(hardiesse + 0x300) << 7`, et elle balaie ensuite les images 10 à 13. Le Crabe, lui, part droit et
+ne rectifie plus une fois le geste commencé. C'est pour cela qu'un Grizzly rate beaucoup moins
+souvent — et c'est une **différence de forme, pas de constante** : rien dans la table des cinq
+nombres ne l'aurait fait apparaître.
+
+#### Deux écarts de replanification
+
+**Il bondit depuis les deux plages utiles**, pas seulement depuis l'approche. Au corps à corps un
+tirage sur cent le fait griffer sous `0x32`, tenir sa distance sous `0x4b`, **bondir** entre `0x4b`
+et `0x59` s'il est dans le cône, et s'écarter au-delà. Le Crabe n'avait qu'une seule entrée vers sa
+ruée.
+
+**Il n'hésite jamais de loin.** Son errance lointaine n'a que deux sorties — repos sous `0x32`,
+direction entièrement tirée au-delà — contre trois chez toutes les précédentes.
+
+#### Ce que ça dit du coût des suivantes
+
+Le Grizzly a coûté beaucoup moins cher que le Crabe, et pour une raison qui se généralise : **la
+charpente et les postures tenues se recopient, seuls les gestes se lisent**. Sur 2 141 octets de
+corps, les quatre postures tenues et les trois plages de replanification — soit les deux tiers du
+texte — étaient déjà écrites. Le travail réel a porté sur deux blocs de gestes et deux tables de
+`.data`.
+
+Conséquence pratique pour les quatre qui restent au bloc d’arrivée : **lire le geste avant la
+posture**, et ne pas laisser la ressemblance de la charpente donner l'illusion que la routine est
+finie.
+
+
+### La huitième routine : l'Abeille, et les deux axes qui se croisent (2026-08-29)
+
+**Le tri à trois lectures l'a classée en une minute** : elle appelle `FUN_0049A8E0`, l'intégration
+volante, et `FUN_004A1CF0`, l'interruption volante. C'est donc une sœur de la Coccinelle. Table de
+sauts à `0x0049b828`, sonde construite sur la pile.
+
+**Et pourtant elle est bâtie comme une terrestre.** Son squelette est celui de `0x0049a980` : quatre
+postures, trois plages de replanification à `0xfa` et `0x1f4`, le même cône `hardiesse * 2 + 0x80`,
+la même distance tenue `0x64`, le même `SceneEntityDelay`. La Coccinelle, elle, n'a que deux plages,
+un délai qui lui est propre (`timidité / 4 + 10`) et un engagement sans animation.
+
+| | Coccinelle `0x0049a360` | Abeille `0x0049b220` |
+|---|---|---|
+| intégration, interruption, bloc de vol | volantes | **les mêmes** |
+| plages de replanification | 2 (`0x12c`, `0x258`) | **3 (`0xfa`, `0x1f4`) — celles des terrestres** |
+| compte à rebours de posture | `timidité / 4 + 10` | **`SceneEntityDelay`, celui des terrestres** |
+| cap d'errance | `+0x12` | **`+0x10`** |
+| image où le coup porte | aucune, balayage continu | **la seizième, une seule fois** |
+| sonde | `{0, 0x1e, 0x50, 0x64, -0x100, 0x50}` | `{0, 0x1e, 0x32, 0x64, 0, 0x50}` |
+
+**C'est la leçon de méthode de la journée.** « Volante ou terrestre » ne décide que de trois appels
+et du bloc de vol ; **la charpente, elle, se choisit indépendamment**. Le tri par la fonction
+d'intégration reste le bon premier geste — il évite de calquer le mauvais bloc de mouvement — mais
+il ne dit pas sur quelle sœur calquer la replanification. Les deux axes se croisent, et il faut les
+lire séparément.
+
+#### Sa posture 3 est un trait, pas une marche
+
+C'est ce qu'elle a de plus caractéristique, et c'est un usage de `+0x43` qu'aucune routine
+précédente ne fait : **une machine à deux temps au lieu d'un compte à rebours**.
+
+- à **2**, l'abeille verse d'un coup `(timidité + 0x120) << 8` dans ses vitesses, le long du cap
+  rangé en `+0x10`, puis décrémente ;
+- à **1**, elle attend que cette vitesse horizontale soit retombée sous `hardiesse / 8 + 1` avant de
+  rendre la main à la replanification ;
+- et **à chaque image de la posture, elle oriente son corps plein cap sur la cible**, sans cône.
+
+Le résultat est le vol d'insecte : des traits rectilignes séparés par des arrêts face au joueur. Les
+trois sorties d'errance de sa replanification arment ce trait (`+0x43 = 2`) au lieu de tirer un
+délai — elle ne tient jamais un cap pendant vingt images.
+
+**La poussée du trait se prend sur la TIMIDITÉ, pas sur la hardiesse.** Une abeille craintive file
+plus vite. Aucune autre routine écrite ne fait cela, et le registre a été vérifié deux fois avant
+d'être transcrit : `edi` vaut `0x40 - hardiesse` depuis `0x0049b29a` et n'est pas réécrit sur ce
+chemin. Le décalage est en outre de huit bits et non de sept comme partout ailleurs.
+
+#### Son coup tient en une image
+
+La seizième du geste, exactement — ni les quatre images du Crabe et du Grizzly, ni le balayage
+continu de la Coccinelle. **Un dard, une fois**, et aucun verrou n'est nécessaire : l'égalité stricte
+sur `+0x1a` en tient lieu. Le geste n'a d'ailleurs pas de forme à choisir, si bien que son engagement
+ne touche pas `+0x42` : il pose `+0x43 = 1`, dont le seul rôle est de retenir la replanification
+jusqu'à la fin de l'animation.
+
+#### Deux détails de drapeaux
+
+Elle **ne pose pas** le bit 0 à l'entrée, là où la Coccinelle le fait à chaque image ; et son garde
+de posture teste `0x10` seul quand les terrestres testent `0x11`. Les deux choix vont ensemble et
+sont cohérents avec `0x816` — le masque de l'interruption volante — dans la garde de
+replanification.
+
+
+### La neuvième routine : l'Homme-lézard, et une charge qui ne blesse pas (2026-08-29)
+
+**C'est la plus riche de la famille**, et la première à réunir tout ce que les sept précédentes
+avaient chacune de leur côté : les **cinq** postures de la Fourmi géante (`0x0049a980`), sa branche
+de recul, sa relance d'attaque en fin de geste, son esquive de côté — **et** les deux gestes du
+Crabe et du Grizzly. Rien de neuf dans la charpente, tout dans la combinaison. Terrestre
+(`FUN_00488160`), table de sauts à `0x0049da24`, deux sondes construites sur la pile.
+
+#### Sa charge ne fait aucun dégât
+
+C'est le fait le plus inattendu de la journée, et il est net dans le binaire : **`FUN_00539b80`
+n'est appelé qu'une seule fois** dans les 2 546 octets, depuis le geste de posture 0. Le geste de
+posture 1 — la course — croise pourtant le gabarit à chaque image, mais tout ce qu'il fait d'une
+victime touchée, c'est la faire clignoter, la projeter à trente unités par image, la décoller du sol
+et poser l'effet `0x39`. **Elle bouscule, elle ne blesse pas.**
+
+Cela vaut aussi comme méthode : *compter les appels de `FUN_00539b80` est une lecture d'une seconde
+qui dit combien des gestes d'une bête sont des attaques*. Deux balayages du gabarit ne font pas deux
+attaques.
+
+#### Sa course tourne en boucle
+
+Dès que l'animation dépasse sa huitième image, la routine la **remet à 8** : le cycle de course se
+rejoue tant que la bête file. Elle ne s'arrête ni sur un compte à rebours (le Crabe) ni à
+l'atterrissage (le Grizzly), mais quand sa vitesse horizontale — mesurée au `sqrt` de `FUN_00545a10`
+sur `+0x50` et `+0x58` — est retombée sous `hardiesse / 8 + 1`. **Une bête hardie court donc moins
+longtemps**, ce qui est l'inverse de l'intuition et se lit tel quel. Le même seuil sert à l'Abeille
+pour terminer son trait : c'est un idiome partagé, comme la demi-attaque du Crabe et du Grizzly.
+
+Trois fins de geste, donc, pour trois espèces voisines — compte à rebours, contact avec le sol,
+seuil de vitesse. **Ne pas supposer laquelle** avant d'avoir lu le bloc.
+
+#### Le bit 0 retient le coup
+
+Si la bête est en l'air quand son geste atteint sa fenêtre de contact, l'image d'animation
+**recule** d'un cran au lieu d'avancer : le coup attend qu'elle ait touché terre. Le motif existait
+déjà chez la Fourmi géante et il avait été transcrit sans être compris ; il prend ici tout son sens,
+puisque la posture 3 de l'Homme-lézard peut bondir.
+
+#### Ce qui a changé de valeur
+
+| | Fourmi géante `0x0049a980` | Homme-lézard `0x0049d030` |
+|---|---|---|
+| sonde du coup | `{0, 0x1e, 0x32, 0x64, 0, 0x50}` | `{0, 0x28, 0x32, 0x64, 0, 0x78}` |
+| allonge tirée au corps à corps | `100 + hasard` | **`0xc8` + hasard** |
+| chance de tenter le coup | `0x1e` sur cent | **`0x32` sur cent** |
+| animation de l'esquive | 5 | 4 |
+| chance de bondir en posture 3 | `hardiesse / 8` | **`hardiesse / 16`**, mais plus fort et plus haut |
+| poussée d'approche | `(hardiesse + 0xc0) << 7` | `(hardiesse + 0x100) << 7` |
+
+La sonde à `0x78` et l'allonge à `0xc8` vont ensemble : **c'est la plus longue portée de la
+famille**, et cela se verra à l'œil — il touche de plus loin que tout ce qui a été écrit.
+
+#### Une sortie que la Fourmi géante n'a pas
+
+Entre `0x46` et `0x59` du tirage de corps à corps, et si la cible est dans le cône, il arme **la
+course** au lieu d'errer. Avec le « foncer » de la posture 4 juste avant, cela lui fait deux façons
+distinctes de fondre sur le groupe : l'une est une posture tenue, l'autre un geste.
+
+
+### La dixième routine : le Goblin attaque de loin (2026-08-29)
+
+**C'est la première bête qui ne frappe pas.** Ses deux gestes ne se ressemblent en rien :
+
+| | posture 0 en geste | posture 1 en geste |
+|---|---|---|
+| ce qu'elle fait | un balayage du gabarit, à la **neuvième** image | fait naître l'effet `0x49` à la **septième**, et rien d'autre |
+| gabarit croisé | oui | **aucun** |
+| dégâts | `FUN_00539b80` | **c'est le projectile qui portera le coup** |
+
+La routine ne contient donc **qu'un seul** appel à `FUN_00539b80`, comme l'Homme-lézard — mais pour
+une raison opposée : chez le lézard, le second geste bouscule sans blesser ; chez le Goblin, le
+second geste ne touche pas du tout, il lance.
+
+#### Le jet part des deux plages lointaines
+
+C'est ce qui change le plus la silhouette, et aucune des neuf précédentes ne le fait : **à
+l'approche comme dans l'errance**, un tirage arme le jet. De loin il faut en plus être à moins de
+`0x2bc` et dans le cône ; à l'approche, il suffit d'avoir la cible dans la moitié avant. Un goblin
+vous vise de l'autre bout de la clairière, là où toutes les autres bêtes se contentent de marcher.
+
+**Et le seuil de ce tirage se prend sur la HARDIESSE**, `hardiesse / 2 + 8` sur cent, aux deux
+plages. C'est le seul tirage de la famille dont le seuil monte avec l'état de la bête au lieu de
+descendre avec sa timidité — une bête en forme lance plus souvent.
+
+#### Le reste est la forme complète, moins deux branches
+
+Cinq postures (table de sauts `0x0049e174`), relance d'attaque en fin de geste, corps à corps de la
+Fourmi géante — mais **ni branche de recul ni esquive de côté** : le bit `0x10` renvoie directement
+à l'application, et une attaque refusée mène droit à l'hésitation. Sa sonde `{0, 0x1e, 0x32, 0x64,
+0, 0x46}` est la plus courte des terrestres, ce qui va avec une bête qui préfère lancer.
+
+**Sa marche et son « foncer » tiennent compte de la vitesse** rendue par la lecture de situation, là
+où le Crabe, le Grizzly et l'Homme-lézard l'ignorent dans leur marche. Et son « foncer » **s'ajoute**
+à la vitesse au lieu de l'écraser, détente verticale comprise.
+
+#### Ce que le jet ouvre, et qui n'est pas écrit
+
+L'effet `0x49` est le **lanceur** `0x0047A100` : il choisit une cible dans un cône
+(`FUN_00474f00`), oriente le tir, fait naître le projectile `0x52` — `0x0047A270`, la trajectoire —
+et s'éteint. Le projectile, à l'impact, fait naître `0xbd` (`0x00476320`). **Aucune des trois n'est
+transcrite et aucune n'est dans `Blaze.c`** ; les deux feuilles qu'elles appellent
+(`FUN_00474f00`, `FUN_00474c70`), elles, le sont.
+
+C'est le premier sous-système d'**attaque à distance** du jeu, et il servira aux autres lanceurs :
+le Goblin-sorcier (sous-type 9) est le suivant du bloc, et son nom promet la même chose.
 
 ### L'oracle qui manquait, et qu'on avait sous la main
 

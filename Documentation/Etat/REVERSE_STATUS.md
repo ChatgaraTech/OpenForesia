@@ -16418,3 +16418,398 @@ Dans la branche du coup qui porte, `0x00499DE0` pose le clignotement et le bit `
 **avant** d'appeler la résolution, alors que `0x0049A980` le fait après. Rien ne les relit entre les
 deux, donc c'est sans conséquence — mais c'est transcrit dans l'ordre du binaire, et noté sur place
 pour qu'on ne prenne pas l'écart pour une faute de copie.
+
+---
+
+## 2026-08-29 (suite) — `FUN_0049C0B0`, le Crabe géant : la première bête à deux attaques
+
+**Sixième gestionnaire d'entité de scène écrit, cinquième routine d'intelligence.** 2 096 octets,
+absente de `Blaze.c`, transcrite au désassembleur ; le relevé est gardé sous
+`Legacy/Raw/Blaze/FUN_0049C0B0.asm`. Le détail du comportement est dans
+`Documentation/Ennemies/Comportement.md`, section « La sixième routine » — ce qui suit ne garde que
+ce qui touche au *code*.
+
+### Le tri par la fonction d'intégration a tenu une deuxième fois
+
+La routine appelle `FUN_00488160`, l'intégration terrestre. La charpente s'est donc recopiée depuis
+`TickSceneEntityAi_0049A980` sans résistance : quatre postures au lieu de cinq (table de sauts à
+`0x0049c8cc`, quatre entrées — `0x0049c415`, `0x0049c44e`, `0x0049c4b1`, `0x0049c539`), mêmes cônes
+de virage `hardiesse * 2 + 0x80`, même distance tenue `0x64`, mêmes trois plages de replanification.
+**Aucune feuille partagée n'a demandé de changement** : `TurnSceneEntityTowardTarget`,
+`SceneEntityDelay`, `HesitateSceneEntity`, `RestSceneEntity`, `HoldSceneEntityAtRange` et
+`WanderSceneEntity` ont servi telles quelles, pour la cinquième fois.
+
+### Ce qui a réellement coûté : les deux gestes
+
+Le champ `+0x42` porte la posture **et** la forme du geste, selon que le bit 1 des drapeaux est mis
+ou non. Posture 0 en geste, c'est la pince — balayage du gabarit à chacune des images 12 à 15, sans
+verrou, donc jusqu'à quatre coups. Posture 1 en geste, c'est la ruée — machine à trois temps portée
+par `+0x10` (2 amortir et viser, 1 se lancer, 0 chercher la victime), armée par la replanification
+d'approche et non par une posture tenue.
+
+`DecideLungingEntityAction_0049C0B0` prend donc un paramètre de plus que ses sœurs : le **bloc de
+modèle**, que la ruée ampute de la moitié de son attaque (`modèle + 0x30`) le temps de l'appel à
+`ResolveMeleeHit_00539B80`, puis remet. C'est la première fois qu'une routine d'intelligence a
+besoin d'autre chose que la fiche de statistiques rendue par `ResolveEntityBlocks`, et la raison
+pour laquelle la signature diverge.
+
+### Deux écarts de constante, relevés et non déduits
+
+- **La marche du crabe ignore la vitesse** rendue par `ReadSceneEntitySituation_00535F20`, là où
+  `0x0049a980` multiplie sa poussée par elle avant d'avancer. Les deux corps diffèrent d'un `imul` :
+  vérifié des deux côtés avant de l'écrire, parce qu'une omission de ce genre est exactement ce
+  qu'une transcription rapide produirait par accident.
+- **Le compte à rebours de la ruée vaut `(timidité >> 8) + 8`** (`sar ecx,8` à `0x0049c7a7`). La
+  timidité vaut `0x40 - hardiesse` et ne dépasse jamais `0x40`, donc le décalage rend toujours zéro
+  et la durée est invariablement 8. C'est vraisemblablement un `/2` écrit trop grand en 1998, mais
+  rien ne le prouve : le calcul est transcrit tel quel et documenté sur place. Si un jour la
+  hardiesse dépasse `0x100` par un autre chemin, le comportement changera — comme dans l'original.
+
+### État
+
+Transcrit et **compilé, pas exécuté**. Le bench (`OPENFORESIA_AI_BENCH=3:0`) et la reconnaissance à
+l'œil restent à faire côté Vincent, conformément au partage de `Documentation/Tests/test-protocol.md` :
+ce qu'il faut voir, c'est une bête qui alterne entre une pince sur place au corps à corps et une
+ruée en ligne droite lancée depuis l'approche.
+
+---
+
+## 2026-08-29 (suite 2) — `FUN_0049B840`, le Grizzly : le calque tient, et la sonde change de place
+
+**Septième gestionnaire d'entité de scène écrit, sixième routine d'intelligence.** 2 141 octets de
+corps, absente de `Blaze.c`, transcrite au désassembleur ; relevé sous
+`Legacy/Raw/Blaze/FUN_0049B840.asm`. Le comportement est décrit dans
+`Documentation/Ennemies/Comportement.md`, section « La septième routine » ; ce qui suit ne garde que
+ce qui touche au *code* et à la *méthode*.
+
+### La première routine qui n'a presque rien coûté, et pourquoi
+
+C'est le jumeau de `FUN_0049C0B0`, écrite une heure plus tôt. Sur les 2 141 octets, **les quatre
+postures tenues et les trois plages de replanification — les deux tiers du texte — étaient déjà
+écrites** : mêmes cônes `hardiesse * 2 + 0x80`, même distance tenue `0x64`, même poussée
+`(hardiesse + 0xc0) << 7`, même table de sauts à quatre entrées (`0x0049c0a0`). Aucune feuille
+partagée n'a bougé, pour la sixième fois consécutive.
+
+Le travail réel a porté sur **deux blocs de gestes et deux tables de `.data`**. C'est la mesure
+qu'il faut retenir pour estimer les cinq qui restent : le prédicteur du coût n'est ni la taille ni
+le nombre d'appels, c'est le nombre de gestes distincts.
+
+### Le cas nouveau : une sonde statique
+
+Les six routines précédentes construisaient leur gabarit de portée **sur la pile**, six
+`mov word [esp+…]` avant l'appel. Le Grizzly le lit dans `.data` — `push 552960h` / `push 55296Ch`
+juste avant `call 00519C30`. Les deux entrées sont relevées dans
+`Documentation/Reference/DataSymbols.md` avec les trois voisines non attribuées, et transcrites en
+`s_GrizzlyProbes_00552960` avec le même motif de stockage natif que `s_MeleeProbes_00562cf0`
+(tableau managé + copie native paresseuse, puisque l'appelée reçoit un pointeur).
+
+**La recette de `Comportement.md` gagne donc une étape**, et elle est bon marché : avant d'écrire
+une ligne, trois lectures d'une minute — quelle fonction d'intégration, y a-t-il un
+`jmp dword [reg*4+…]`, et d'où vient la sonde. Les deux premières avaient déjà évité une erreur (le
+Poisson volant, classé volant sur son nom) ; la troisième aurait fait chercher six `mov` qui
+n'existent pas.
+
+### Deux différences de *forme*, que la table des constantes n'aurait pas montrées
+
+- **Le geste de bond se ferme à l'atterrissage.** `LAB_0049b981` teste le bit 0 des drapeaux
+  (« en l'air ») là où le Crabe décomptait `+0x43` ; la replanification qui l'arme
+  (`PounceAt`) ne pose donc **aucun** compte à rebours. Un bond long dure plus longtemps qu'un bond
+  court, ce qu'aucune routine antérieure ne fait.
+- **La griffe corrige son cap dans le geste**, jusqu'à la neuvième image, puis avance d'un à-coup à
+  la neuvième et balaie les images 10 à 13. Le Crabe part droit et ne rectifie plus.
+
+### `+0x9a`, la gravité, écrite par la routine et non par l'espèce
+
+`LAB_0049baa8` pose `*(ushort*)(e + 0x9a) = 0x6000` sur le chemin commun de sortie, avant
+`IntegrateSceneEntityMotion_00488160` — donc **sur toutes les branches, y compris la sortie
+« vitesse nulle »**. C'est le terme que l'intégration retranche de la vitesse verticale. Aucune des
+six routines précédentes n'y touchait : la valeur venait de la fiche d'espèce et n'était jamais
+réécrite. À vérifier dans les suivantes plutôt qu'à supposer stable.
+
+### Ce que le Grizzly confirme rétrospectivement
+
+**La demi-attaque du Crabe n'était pas une singularité.** Le Grizzly divise la même valeur —
+`modèle + 0x30`, le premier des huit caractères — par deux autour de `FUN_00539b80`, puis la remet.
+Deux routines voisines partagent l'idiome, donc c'est une convention de la famille et non une ruse
+isolée. Une écriture dans le bloc de modèle autour d'un appel de combat est désormais à lire comme
+une modulation de puissance.
+
+### État
+
+Transcrit et **compilé, pas exécuté**. Comme pour le Crabe, la reconnaissance à l'œil revient à
+Vincent (`OPENFORESIA_AI_BENCH=3:0`) : ce qu'il faut voir, c'est une bête qui griffe sur place en se
+réajustant, et qui **saute vraiment** — trajectoire en cloche, pas un glissement — sur le groupe
+depuis la moyenne distance comme depuis le corps à corps.
+
+---
+
+## 2026-08-29 (suite 3) — `FUN_0049B220`, l'Abeille : milieu et charpente sont deux axes
+
+**Huitième gestionnaire d'entité de scène écrit, septième routine d'intelligence, deuxième bête
+volante.** 1 542 octets de corps, absente de `Blaze.c`, transcrite au désassembleur ; relevé sous
+`Legacy/Raw/Blaze/FUN_0049B220.asm`. Le comportement est décrit dans
+`Documentation/Ennemies/Comportement.md`, section « La huitième routine ».
+
+### Ce que le tri a dit, et ce qu'il n'a pas dit
+
+Le tri à trois lectures ajouté la veille l'a classée en une minute : `call 0049A8E0` (intégration
+volante) et `call 004A1CF0` (interruption volante) — c'est une sœur de la Coccinelle. La queue de
+l'application se recopie donc telle quelle, bloc de vol `BeatWings_0049A68F` compris : les deux
+corps sont identiques, le compilateur de 1998 l'a émis deux fois.
+
+**Mais le tri ne dit rien de la charpente**, et c'est là que la routine surprend. Sa
+replanification est celle des terrestres — trois plages à `0xfa` et `0x1f4`, cône
+`hardiesse * 2 + 0x80`, distance tenue `0x64`, `SceneEntityDelay` — alors que la Coccinelle n'a que
+deux plages, un délai propre et un engagement sans animation. **Milieu et charpente sont deux axes
+indépendants**, et l'étape 4 de la recette a été réécrite en conséquence : calquer sur *deux*
+sœurs, l'une pour les trois appels de mouvement, l'autre pour les postures et la replanification.
+
+C'est la troisième fois de la journée qu'une prédiction tirée d'un seul indice se révèle
+insuffisante — après le nom de l'espèce (le Poisson volant) et la table de sauts supposée toujours
+présente. Le motif est constant : **un indice classe, il ne décrit pas.**
+
+### Le seul usage de `+0x43` qui ne soit pas un compte à rebours
+
+Sa posture 3 en fait une **machine à deux temps** : à 2 elle verse `(timidité + 0x120) << 8` dans
+les vitesses le long du cap de `+0x10` puis décrémente ; à 1 elle attend que la vitesse horizontale
+soit retombée sous `hardiesse / 8 + 1` — un `sqrt` sur les deux composantes, `LAB_0049b513` — avant
+de rendre la main. Les trois sorties d'errance de la replanification arment ce trait (`+0x43 = 2`)
+au lieu de tirer un délai.
+
+Transcrit en `DartSceneEntity`, à côté de `WanderSceneEntity` plutôt qu'en paramètre de celle-ci :
+le compte à rebours fixe change la *nature* de la posture, pas seulement sa durée.
+
+### Deux constantes vérifiées deux fois avant d'être écrites
+
+- **La poussée du trait se prend sur la timidité**, pas sur la hardiesse : `edi` vaut
+  `0x40 - hardiesse` depuis `0x0049b29a` et n'est réécrit sur aucun chemin menant à la posture 3
+  (`004DB5A0` préserve `edi`, et la branche de geste qui l'écrase ne mène pas là). Une abeille
+  craintive file donc plus vite — unique parmi les huit routines écrites.
+- **Le décalage est de huit bits** (`shl edi,8`) et non de sept comme partout ailleurs.
+
+Ces deux-là sont exactement le genre d'écart qu'une transcription rapide « normalise » sans s'en
+apercevoir. Les relire dans le désassemblage coûte trente secondes.
+
+### Un coup d'une seule image, et un engagement qui ne choisit pas de posture
+
+Le dard porte à la **seizième** image du geste, sur une égalité stricte — donc aucun verrou n'est
+nécessaire, contrairement au Crabe et au Grizzly qui balaient quatre images de suite. Et comme le
+geste n'a pas de forme à choisir, l'engagement ne touche pas `+0x42` : il pose `+0x43 = 1`, dont le
+seul rôle est de retenir la replanification jusqu'à la fin de l'animation, laquelle remet `+0x43` à
+zéro. C'est le mécanisme le plus économe rencontré dans la famille.
+
+### État
+
+Transcrit et **compilé, pas exécuté**. Reconnaissance à l'œil à Vincent
+(`OPENFORESIA_AI_BENCH=3:0`) : ce qu'il faut voir, c'est une bête qui **ne poursuit pas en
+glissant** — des traits rectilignes séparés par des arrêts, le corps tourné vers le groupe pendant
+les arrêts, et une piqûre unique et brève au contact.
+
+---
+
+## 2026-08-29 (suite 4) — `FUN_0049D030`, l'Homme-lézard : la forme complète, et un geste qui ne blesse pas
+
+**Neuvième gestionnaire d'entité de scène écrit, huitième routine d'intelligence.** 2 546 octets de
+corps — la plus grosse de la famille —, absente de `Blaze.c`, transcrite au désassembleur ; relevé
+sous `Legacy/Raw/Blaze/FUN_0049D030.asm`. Le comportement est décrit dans
+`Documentation/Ennemies/Comportement.md`, section « La neuvième routine ».
+
+### Elle ne contient rien de neuf, et c'est le résultat intéressant
+
+C'est la charpente complète de `FUN_0049A980` — cinq postures (table de sauts `0x0049da24`), branche
+de recul, relance d'attaque en fin de geste, esquive de côté — plus les deux gestes du Crabe et du
+Grizzly. Sur 2 546 octets, tout se calque : ni feuille partagée modifiée, ni mécanisme inédit. Le
+travail a porté sur les constantes et sur la lecture des deux gestes.
+
+**Après neuf routines, l'inventaire des pièces semble clos.** Ce que les trois qui restent au bloc
+d'arrivée apporteront sera vraisemblablement une nouvelle combinaison, pas une nouvelle mécanique —
+mais c'est une prédiction, et les prédictions de cette famille se sont trompées trois fois
+aujourd'hui. À vérifier plutôt qu'à supposer.
+
+### Le fait qui a demandé une deuxième lecture
+
+`FUN_00539b80` — la résolution du coup — **n'est appelé qu'une seule fois** dans toute la fonction,
+depuis le geste de posture 0. Le geste de posture 1, la course, croise pourtant le gabarit par
+`FUN_00519c30` à chaque image ; ce qu'il fait d'une victime touchée se limite au clignotement, à une
+projection de trente unités par image, au décollage du sol et à l'effet `0x39`. **La course bouscule
+sans blesser.**
+
+Le compte des `call 00539B80h` a donc été ajouté au tri de départ de la recette : c'est une lecture
+d'une seconde qui dit combien des gestes d'une bête sont réellement des attaques. Sans elle, la
+tentation était d'ajouter la résolution « par symétrie » avec le Crabe et le Grizzly, qui font le
+même geste et *appellent* la résolution.
+
+### Trois fins de geste pour trois espèces voisines
+
+- le Crabe : un compte à rebours `+0x43` ;
+- le Grizzly : le contact avec le sol (bit 0 des drapeaux) ;
+- l'Homme-lézard : un **seuil de vitesse horizontale**, `sqrt(vx² + vz²) <= hardiesse / 8 + 1`,
+  mesuré par `FUN_00545a10` sur `+0x50` et `+0x58`.
+
+Ce dernier seuil est exactement celui que l'Abeille emploie pour terminer son trait — un idiome
+partagé de plus, comme la demi-attaque du Crabe et du Grizzly. Et il produit un comportement
+contre-intuitif qu'il faut lire et ne pas « corriger » : **une bête hardie court moins longtemps**.
+
+Sa course rejoue en outre son cycle d'animation, l'image étant **remise à 8** dès qu'elle le dépasse.
+C'est la première routine écrite qui écrit `+0x1a` pour boucler plutôt que pour retarder.
+
+### Un motif ancien qui prend enfin son sens
+
+Le geste de posture 0 fait **reculer** l'image d'animation d'un cran quand le bit 0 est posé au
+moment de la fenêtre de contact : le coup attend que la bête ait touché terre. Ce motif avait été
+transcrit tel quel dans `FUN_0049A980` le 2026-08-28 sans être expliqué. Il s'éclaire ici, où la
+posture 3 peut bondir : c'est le garde qui empêche une bête en l'air de frapper dans le vide.
+
+### État
+
+Transcrit et **compilé, pas exécuté**. Reconnaissance à l'œil à Vincent
+(`OPENFORESIA_AI_BENCH=3:0`) : ce qu'il faut voir, c'est une bête qui **touche de plus loin que
+toutes les autres** — sonde à `0x78`, allonge tirée à partir de `0xc8`, les deux plus grandes de la
+famille — et qui alterne un coup de griffe avec une course en ligne droite qui **renverse le
+personnage sans lui enlever de points de vie**. Si un dégât apparaît sur la course, la transcription
+est fausse.
+
+---
+
+## 2026-08-29 (suite 5) — `FUN_00402FC0`, la levée en frappant un goblin
+
+**Signalée en jeu par Vincent**, partie lancée normalement (pas par le banc) :
+
+```
+FUN_0047aa70, table 0x005ff400 entree 0 [00 00 50 80 00 54 00 00 00 00 00 00 00 ff 00 00]
+gestionnaire d'entite 0x402FC0 non transcrit
+```
+
+C'est **une autre table que celle des neuf routines d'IA écrites aujourd'hui** : `0x005ff400`, la
+table d'effets, et sa table de sauts statique `0x00551c30`. L'entrée 84 (`record[5] = 0x54`) y
+pointe sur `0x00402fc0`, 500 octets **absents de `Blaze.c`** — un des 60 corps de cette table qui
+demandent le désassembleur. Relevé gardé sous `Legacy/Raw/Blaze/FUN_00402FC0.asm`.
+
+### D'où vient le sous-type 0x54
+
+Il n'existe nulle part en dur dans le binaire : aucun `FUN_0047a9d0(..., 0x54, ...)`. Il sort du
+**descripteur d'effet** que `CastSpell_0053A980` lit dans le répertoire de zone — `+0x9c`, pas de
+`0x30`, octet `+0x10`. Autrement dit c'est un sort ou un effet d'objet, déclenché sur le chemin du
+coup porté au goblin. Le chercher par un littéral aurait été une impasse ; c'est le site d'appel à
+signature variable qu'il fallait suivre.
+
+### Ce que fait le gestionnaire
+
+Il garde sa cible en `+0x6c` et ne fait rien si elle a disparu. Sur elle :
+
+- il la colle à sa propre position, lui impose l'animation **2** et pose `0x1008` de son mot d'état
+  — dont le bit 3, celui que `RestoreVitalsEntity_00403710` (l'entrée 89, même module) emploie déjà
+  pour dire « tenue par un effet », et qui est rendu à l'extinction ;
+- il **fait défiler l'image d'animation lui-même, une image sur deux**, bornée au nombre d'images de
+  la séquence lu dans `s_AnimationTable_005e9640[cible[4]][2]`. La cible joue donc son animation au
+  ralenti tant que l'effet dure.
+
+Et il montre : quatre entités d'état `0x38` et six entités de sort `0x5a` à la première image, deux
+`0x38` de plus une image sur deux, le son `0x25` par la porte de distance. La durée est tirée entre
+15 et 19 images. `+0x14` reçoit la demi-somme des trois étendues du bloc de modèle de la cible — sa
+taille, que les entités filles relisent pour se répartir autour d'elle.
+
+### `FUN_004031c0` : un doublon qui n'est pas un doublon d'octets
+
+Le corps appelle `0x004031c0` pour son son. `Blaze.c` la décompile, et elle est **la même fonction**
+que `FUN_00468080`, déjà transcrite sous le nom `TryPlaySoundNearEntity` : même rayon de 2000, même
+`Ordinal_442`, même `FUN_0053db20` avec le gain doublé et la position `+0x1c`.
+
+Mais les deux corps **ne sont pas identiques octet pour octet** — le compilateur a alloué les
+registres différemment. La recette de `CLAUDE.md` (« deux `od` et une soustraction ») aurait donc
+conclu « fonctions distinctes » à tort. Ce qui tranche ici, c'est la queue des deux corps, qui est
+identique instruction pour instruction : mêmes `[esp+14h]` / `[esp+18h]` / `[esp+1ch]` en
+`movsx word`, même `shl edx,1`, même seuil `0x7d0`, même `mov ecx,1`.
+
+**À retenir : un doublon peut être une seconde émission de la même source avec une autre allocation
+de registres.** Comparer les octets reste le test le moins cher, mais un échec ne prouve rien —
+il faut alors comparer les corps instruction par instruction, ce que `Blaze.c` permet quand elle a
+décompilé l'une des deux.
+
+`TryPlaySoundNearEntity` est réemployée telle quelle plutôt que dupliquée : c'est une feuille, et
+les deux sources concordent argument pour argument.
+
+### Ce que cette levée dit du reste
+
+Elle rappelle que **les routines d'IA n'étaient qu'une des trois tables**. Celle des effets
+(`0x00551c30`) compte 123 corps réels, dont 63 décompilés et 60 au désassembleur ; celui-ci est le
+troisième écrit. Le chemin du combat en réveillera d'autres, et il n'y a pas de raison d'attendre le
+bench pour les rencontrer : une partie ordinaire suffit.
+
+---
+
+## 2026-08-29 (suite 6) — la gerbe de coup, et `FUN_0049DA40` : le Goblin lance
+
+### La seconde levée, et la cascade qu'elle a ouverte
+
+Signalée en jeu par Vincent, une image après le correctif précédent :
+
+```
+FUN_0047ab70, table 0x005edee0 entree 0 [00 90 50 80 00 5a 00 00 ...]
+gestionnaire d'entite 0x4034A0 non transcrit
+```
+
+C'est l'**étincelle** que `EntityHandler_00402FC0` — écrit une heure plus tôt — lâche par six. Le
+correctif de l'un ouvrait donc mécaniquement le suivant. Plutôt que d'attendre la levée d'après,
+l'arbre des sous-types engendrés a été suivi jusqu'à ses feuilles, et il se ferme en **cinq**
+gestionnaires :
+
+| sous-type | table | corps | rôle |
+|---|---|---|---|
+| `0x5a` | `0x005edee0` | `0x004034A0` | l'étincelle : spirale sur une sphère, meurt de rétrécir |
+| `0x38` | `0x005f2d40` | `0x00403250` | le grain de poussière, sa sœur : meurt d'être éteint |
+| `0x39` | `0x005ff400` | `0x00447280` | **l'éclat d'impact**, que les dix routines d'IA font naître à chaque coup |
+| `0xa4` | `0x005edee0` | `0x00447380` | l'anneau qu'il pose au point d'impact |
+| `0x98` | `0x005f2d40` | `0x004474C0` | les huit étincelles de sa couronne |
+
+Trois d'entre eux sont absents de `Blaze.c` et sortent du désassembleur. Ils partagent une feuille,
+`FUN_00404DE0`, qui éclaircit ou assombrit la teinte `+0x38`/`+0x39`/`+0x3a` en la bornant à
+`0..0xff` — les deux sens sont utilisés, et c'est ce qui fait mourir la poussière et l'anneau.
+
+**Deux remarques de méthode.**
+
+`FUN_00447280` calcule l'encombrement de sa victime, le borne à `0x15e` puis à `0x64`, et
+**écrase le résultat par la constante `0xb4`** trois instructions plus loin. Trois lignes mort-nées
+de 1998, transcrites telles quelles.
+
+Les descripteurs d'atlas passés en `+0x3c` ont été relevés au verbe `at` : un seul enregistrement
+pour la poussière (`0x0054f118`, qui ne fait jamais tourner son indice d'image), **trois** pour
+l'étincelle de la couronne (`0x005515a0`), parce que son `+0x40` cycle sur 0, 1, 2. La borne se lit
+donc dans le *code* — l'usage de `+0x40` — et pas seulement dans la forme de la donnée.
+
+### `FUN_0049DA40` — le Goblin
+
+Dixième gestionnaire d'entité de scène, neuvième routine d'intelligence. 1 841 octets, absente de
+`Blaze.c` ; relevé sous `Legacy/Raw/Blaze/FUN_0049DA40.asm`. Comportement décrit dans
+`Documentation/Ennemies/Comportement.md`, section « La dixième routine ».
+
+**C'est la première bête qui ne frappe pas.** Son geste de posture 1 ne croise aucun gabarit : à la
+septième image il fait naître l'effet `0x49` et rend la main. Le compte des `FUN_00539b80` — la
+quatrième lecture du tri de départ, ajoutée la veille — donne 1, et cette fois c'est parce que le
+second geste **délègue** au lieu de bousculer. La lecture est la même, la conclusion opposée : il
+faut regarder ce que le geste fait de son absence d'appel.
+
+**Son jet part des deux plages lointaines**, ce qu'aucune des neuf précédentes ne fait, et le seuil
+du tirage se prend sur la hardiesse (`hardiesse / 2 + 8`) — seul cas de la famille où un seuil monte
+avec l'état de la bête plutôt que de descendre avec sa timidité.
+
+### Ce qui reste ouvert, et qui est nommé
+
+Le jet ouvre un **sous-système d'attaque à distance** de trois fonctions, toutes absentes de
+`Blaze.c` :
+
+- `0x0047A100`, le **lanceur** (0x170 octets) : il choisit une cible dans un cône par
+  `FUN_00474f00` — décompilée, elle balaie le groupe ou la table de scène selon le bit `0x800000`
+  de l'appelant —, oriente le tir en cap et en site, décale le départ à la hauteur de bulle
+  (`FUN_00538bc0`), fait naître le projectile `0x52` et s'éteint ;
+- `0x0047A270`, la **trajectoire** (0x360 octets), qui appelle `FUN_00474c70` (décompilée) et fait
+  naître `0xbd` à l'impact ;
+- `0x00476320`, l'**effet d'impact**.
+
+**Rien de tout cela n'est écrit**, et c'est une décision et non un oubli : les trois corps forment
+un chantier cohérent qu'il vaut mieux prendre d'un bloc que d'entamer par la moitié. En attendant,
+`OPENFORESIA_AI_STUB=1` transforme la lacune en ligne de journal au lieu d'un plantage — c'est
+exactement le cas pour lequel le filet a été fait.
+
+Il servira au-delà du Goblin : le **Goblin-sorcier** (sous-type 9, `0x0049E190`) est le suivant du
+bloc, et son nom promet le même mécanisme.
