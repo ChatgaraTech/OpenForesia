@@ -175,7 +175,7 @@ Documentation/   tout ce que le projet a appris
   Ennemies/      Comportement.md — la carte des 166 gestionnaires de comportement
   Etat/          TODO.md, REVERSE_STATUS.md, HISTORY.md, NOTE_DEVELOPPEUR.md
   Methode/       Prompt.md, Strategy.md
-  Reference/     DataSymbols.md, legacy-bug.md, OpenForesia.cfg.md
+  Reference/     DataSymbols.md, legacy-bug.md, MonteeDeNiveau.md, Sorts.md, OpenForesia.cfg.md
   Tests/         test-protocol.md, test-todo-later.md, et les analyses ponctuelles
 
 tests/           les raccourcis de lancement a double-cliquer (banc.bat : la salle d’essai)
@@ -196,6 +196,8 @@ tests/           les raccourcis de lancement a double-cliquer (banc.bat : la sal
 | `Documentation/Reference/DataSymbols.md` | Values recovered from the binary's data sections, keyed by Ghidra VA. Also carries the **map of reconstructed symbols**: every VA-suffixed C# symbol, sorted by address, with its gap to the next and the file it lives in. |
 | `Documentation/Ennemies/Comportement.md` | **La carte des comportements d'ennemi** : combien de gestionnaires la table `0x0056ad48` installe, dans quelle zone, lesquels sont écrits, et la recette pour le suivant. À lire avant de transcrire un gestionnaire d'entité de scène. |
 | `Documentation/Reference/legacy-bug.md` | **Bugs of the 1998 game itself**, observed in play and traced in the decompilation. Check here before "fixing" an oddity: it may be a faithful transcription of an original defect, and the project reproduces those rather than repairing them. |
+| `Documentation/Reference/MonteeDeNiveau.md` | **Ce que le jeu calcule à une montée de niveau** : le palier, les sept gains, les trois familles de probabilités par classe, le plafond fixé à la création (culminant à 510 pour un départ de 80 à 83), et la chance — la seule statistique qui peut baisser. Tableaux par classe et cas limites de répartition. À lire avant de toucher à `LevelUpCharacter_005391F0` ou de répondre à une question sur la progression. |
+| `Documentation/Reference/Sorts.md` | **Le système de sorts** : quelles classes lancent, les trois écoles (plus une morte), la fiche de sort et ses champs, l'apprentissage à la montée de niveau — le seul en jeu normal —, les sorts hors d'atteinte, la combinaison de directions, le coût en PM. Compagnon de `MonteeDeNiveau.md`. |
 | `Documentation/Tests/test-protocol.md` | How to exercise the game. Read it before any run — see "Running the game" above. |
 | `Documentation/DLL/<dll>.md` | Accumulated knowledge per DLL (ordinals, signatures, confirmed vs. hypothesis). |
 | `OpenForesia/src/Blaze/**` | The reconstruction, split into `Platform/`, `Memory/`, `Engine/`, `Screens/` — **see `Documentation/ARCHITECTURE.md`**. |

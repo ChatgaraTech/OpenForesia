@@ -2469,3 +2469,58 @@ Quand les deux critères concordent, la borne ne fait pas de doute.
 donne à son enfant `0x40`, et `FUN_0053b580` au `0xbb` qu'il fait naître sur la victime. Les deux
 consommateurs (`FUN_00475a80` et `FUN_004768a0`) posent tous deux `+0x40 = rand() & 3`, ce qui
 donne la même borne par deux chemins. `0x00551a98` derrière passe en `0x20 × 0x20`.
+
+## `0x0054f158` — un descripteur qui est aussi un séparateur (2026-08-29)
+
+| adresse | octets |
+|---|---|
+| `0x0054f158` | `00 00 08 08 01 02 10 00` |
+
+**Un seul enregistrement**, et c'est le cas où la borne se démontre au lieu de s'estimer :
+`FUN_0047ac40` pose `+0x40 = 0` sur toute entité qu'elle fait naître, et `FUN_004038f0` — son
+unique consommateur — n'écrit jamais ce champ. L'indice d'atlas reste nul pour la vie entière de
+l'entité, donc aucun autre enregistrement n'est atteignable, quoi que contienne la suite.
+
+La donnée est cohérente avec ça : la plage qui précède (`0x0054f138`..`0x0054f150`) est en
+`0x0f × 0x0f`, celle qui suit (`0x0054f160`..`0x0054f178`) en `0x18 × 0x20`.
+
+**Et le même motif reparaît à `0x0054f180`**, juste après cette seconde plage. Une tuile `8 × 8`
+prise à l'origine de la planche, posée entre deux animations : `00 00 08 08 01 02 10 00` sert de
+**séparateur** dans cette zone de `.data`. C'est une borne exploitable pour les plages voisines,
+au même titre qu'un changement de planche.
+
+## `0x0056d308` et `0x0056d310` — les deux tables de la montée de niveau (2026-08-29)
+
+Relevées de longue date dans `WorldMapTick.cs`, portées ici parce que la première a changé de sens.
+L'exploitation complète est dans `Documentation/Reference/MonteeDeNiveau.md`.
+
+### `0x0056d308` — la caractéristique favorisée, **par élément**
+
+Six octets : `00 01 04 03 02 05`, une permutation de 0..5. La caractéristique désignée voit son
+plafond de progression augmenté d'un cinquième.
+
+**L'indexeur est `+0x151`, qui porte l'élément et non une sous-classe.** Le symbole s'appelait
+`s_SubClassFavouredStat_0056D308` jusqu'à ce jour ; le nom était une supposition. Ce qui tranche est
+le remplissage du champ : `DebugParty` fait `record[0x151] = s_ClassBaseStats_0056c7e0[classe * 8 + 7]`
+avec le commentaire « l'élément », et `LISEZMOI.md` du bestiaire avait déjà identifié cette huitième
+colonne comme l'élément du personnage. Les éléments 6 et 7 ne sont pas dans la table : le code les
+traite à part, en augmentant les six plafonds d'un vingtième.
+
+**À retenir :** un nom de symbole qui contient une hypothèse doit être vérifié contre le
+*remplissage* du champ, pas seulement contre son usage. Ici l'usage — « choisit une caractéristique
+favorisée » — était compatible avec les deux lectures.
+
+### `0x0056d310` — les chances de progression, huit dwords
+
+| classe | dword | physique | mentale |
+|---|---|---|---|
+| 0 Guerrier, 6 Nain | `0x04280241` | `chance / 2 + 65` | `chance / 4 + 40` |
+| 1 Prêtre, 3 Sorcier, 7 Fée | `0x023c0423` | `chance / 4 + 35` | `chance / 2 + 60` |
+| 2 Voleur, 4 Chasseur, 5 Elfe | `0x03320332` | `chance / 3 + 50` | `chance / 3 + 50` |
+
+Chaque dword se lit **quatre octets deux par deux** : `(base physique, diviseur physique, base
+mentale, diviseur mental)`.
+
+**Trois valeurs pour huit classes**, et le regroupement n'est pas arbitraire — les deux classes
+purement physiques, les trois lanceurs de sorts, les trois hybrides. Le même partage apparaît dans
+les masques d'équipement et dans les tables du bestiaire, ce qui le confirme de trois côtés.

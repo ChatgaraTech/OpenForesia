@@ -1,6 +1,6 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-08-26**. L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-08-29**. L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -11,6 +11,33 @@ reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage 
 déplacement.
 
 ---
+
+# LES PIÈGES DE COFFRE — ÉCRITS EN ENTIER, TESTÉS EN PARTIE (2026-08-29)
+
+**Les douze pièges `0xb4`..`0xbf` de la table statique `0x00551c30` sont transcrits, mais Vincent
+n'a pas pu tous les déclencher en jeu.** Trois ont été vus (`0xb4`/`0xb5` au premier signalement,
+`0xb6` puis `0xb9` ensuite) ; les autres n'ont jamais été atteints, les taux d'apparition étant ce
+qu'ils sont dans le jeu d'origine.
+
+**Ce qui reste donc à vérifier, quand l'occasion se présentera :**
+
+- `0xb7` (`0x00475A30` → `0x40`), `0xb8` (`0x00475B90` → `0x5f`), `0xba` (`0x00476770`),
+  `0xbb` (`0x00476730`, la secousse d'écran), `0xbc` (`0x00475170`, deux enfants),
+  `0xbd` (`0x004753D0`) ;
+- les trois applications d'effet `0x0053B4B0`, `0x0053B580`, `0x0053B660` et le second jet de
+  sauvegarde `0x0053A790`, qui ne s'exercent que par ces pièges-là ;
+- **un coffre dont l'octet de piège vaut `0x01`..`0x3f`** : le sous-type serait alors `0xc1`..`0xff`
+  et résolu par la table d'entités de la **sous-zone**, donc n'importe quel corps de la zone. Rien
+  ne garantit qu'il soit transcrit.
+
+Le détail du mécanisme — le piège est nommé par l'octet haut de `+0x34` du coffre, plus `0xc0`
+replié sur huit bits — est dans `REVERSE_STATUS.md`, section « suite 18 ».
+
+**Symptôme à guetter** : une levée `FUN_0047aa70, table 0x005ff400 … gestionnaire d'entité 0x…`
+juste après l'ouverture d'un coffre. Le sous-type est l'octet `+5` du relevé que le message affiche.
+
+---
+
 
 # LA FORÊT — LE COMBAT MARCHE, MAIS L'IA DES ESPÈCES EST UNE FAMILLE (2026-08-28)
 

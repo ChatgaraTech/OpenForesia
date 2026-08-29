@@ -4076,6 +4076,12 @@ public static unsafe partial class Blaze
             case 0x0047A880: EntityHandler_0047A880(record); return;   // 0x2d, les six eclats
             case 0x004768A0: EntityHandler_004768A0(record); return;   // 0xbb, l'anneau de l'effet 9
 
+            // LA MONTEE DE NIVEAU. Elle lache un 0x59 de la table 0x00551c30, qui est
+            // RestoreVitalsEntity_00403710 ; celui-ci seme les deux corps ci-dessous — le grain
+            // 0x3b dans 0x005f2d40, et un SECOND 0x59, celui de la table 0x00551f30.
+            case 0x004038F0: EntityHandler_004038F0(record); return;
+            case 0x00403A90: EntityHandler_00403A90(record); return;
+
             // Les deux entites que la resolution du coup fait naitre : 0x29 la MARQUE (elle enfle
             // puis palit au-dessus de la victime) et 0x3a, qui seme du 0x99 une image sur deux.
             case 0x00475400: EntityHandler_00475400(record); return;
@@ -4421,6 +4427,235 @@ public static unsafe partial class Blaze
             short maxMp = *(short*)(block + 0x14a);
             *(short*)(block + 0x14e) += (short)(percent * maxMp / 100);
             if (*(short*)(block + 0x14e) >= maxMp) *(short*)(block + 0x14e) = maxMp;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f158</c> — <b>un seul enregistrement</b>, la tuile <c>8 x 8</c> de
+    /// l'origine de la planche, atlas des grains que
+    /// <see cref="EntityHandler_004038F0"/> porte.
+    ///
+    /// <para>
+    /// <b>Un, et pour une fois la borne ne se discute pas</b> :
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> pose <c>+0x40 = 0</c> sur toute entite qu'elle
+    /// fait naitre, et <c>0x004038f0</c> n'y touche jamais. L'indice d'atlas reste donc zero pour
+    /// la vie entiere de l'entite, et aucun autre enregistrement n'est atteignable.
+    /// </para>
+    /// <para>
+    /// La donnee est d'ailleurs isolee : la plage qui la precede
+    /// (<c>0x0054f138</c>..<c>0x0054f150</c>) est en <c>0x0f x 0x0f</c>, celle qui la suit
+    /// (<c>0x0054f160</c>) en <c>0x18 x 0x20</c>, et le meme motif <c>00 00 08 08</c> reparait a
+    /// <c>0x0054f180</c> pour clore cette seconde plage. C'est un <b>separateur</b> autant qu'un
+    /// descripteur.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F158 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f158
+    ];
+
+    private static byte* s_Descriptors0054F158Storage;
+
+    private static byte* Descriptors0054F158()
+        => NativeCopy(s_Descriptors_0054F158, ref s_Descriptors0054F158Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_004038f0 @ 0x004038f0 — <b>l'entree 59 (<c>0x3b</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>. Decompilee dans <c>Blaze.c</c>.
+    /// <b>Le grain qui monte quand on gagne un niveau</b>, ou quand on est soigne :
+    /// <see cref="RestoreVitalsEntity_00403710"/> en seme un a chaque image de son etat 1, et
+    /// c'est le meme effet que la montee de niveau declenche.
+    ///
+    /// <para>
+    /// <b>Il naît sur un cercle et monte en s'accelerant.</b> Sa naissance fige l'ancre
+    /// <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> sur sa position d'origine, se choisit un cap sur douze
+    /// bits, s'ecarte de <c>0x50</c> fois le sinus, et repart du <b>plancher</b> <c>+0x60</c>. Le
+    /// pas de montee <c>+0x14</c> commence a 10 et <b>gagne un par image</b> ; le cap tourne de 100
+    /// par image. La trajectoire est donc une helice qui s'ouvre.
+    /// </para>
+    /// <para>
+    /// <b>Son echelle est tiree deux fois dans la meme naissance</b>, et la seconde ecrase la
+    /// premiere : <c>0xc00 + rand % 0x5dc</c> puis <c>0x1194 + rand % 0x400</c>. Le premier tirage
+    /// ne sert a rien d'autre qu'a consommer un nombre de la suite pseudo-aleatoire — transcrit tel
+    /// quel, c'est ce que fait le binaire et la suite est partagee.
+    /// </para>
+    /// <para>
+    /// <b>La teinte depend du pourcentage soigne.</b> Si <c>+0x1a</c> — herite de l'effet parent —
+    /// ne vaut pas 100, les trois canaux sont tires entre <c>-106</c> et <c>-7</c>, c'est-a-dire
+    /// entre <c>0x96</c> et <c>0xf9</c> une fois lus comme octets. A 100, le grain garde la teinte
+    /// heritee. Puis, passe la neuvieme image, il perd dix par canal et meurt quand les trois sont
+    /// a zero.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004038F0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F158();
+            e[0x0a] = 6;
+            e[0x0b] = 0;
+
+            // Ce premier tirage d'echelle est ecrase quinze lignes plus bas. Il consomme un
+            // nombre de la suite, et c'est son seul effet.
+            short discarded = (short)(CrtRand() % 0x5dc + 0xc00);
+            *(short*)(e + 0x28) = discarded;
+            *(short*)(e + 0x2a) = discarded;
+
+            short heading = (short)(CrtRand() % 0x1000);
+
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(short*)(e + 0x12) = heading;
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(heading) * 0x50 + *(int*)(e + 0x50);
+            *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(heading) * 0x50 + *(int*)(e + 0x58);
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+            short scale = (short)(CrtRand() % 0x400 + 0x1194);
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x14) = 10;
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            if (*(short*)(e + 0x1a) != 100)
+            {
+                e[0x38] = (byte)(CrtRand() % 100 - 0x6a);
+                e[0x39] = (byte)(CrtRand() % 100 - 0x6a);
+                e[0x3a] = (byte)(CrtRand() % 100 - 0x6a);
+            }
+        }
+
+        // La premiere image passe ici aussi : la naissance pose +0x10 = 1.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short heading = *(short*)(e + 0x12);
+
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(heading) * 0x50 + *(int*)(e + 0x50);
+
+            // Le cosinus est lu AVANT que le cap n'avance : l'ecart d'une image entre X et Z est
+            // dans le binaire.
+            int cosine = Winsys3d.GetCosTableEntry(heading);
+            *(short*)(e + 0x12) = (short)(heading + 100);
+            *(short*)(e + 0x16) += 1;
+            *(int*)(e + 0x24) = cosine * 0x50 + *(int*)(e + 0x58);
+
+            *(int*)(e + 0x20) += *(short*)(e + 0x14) * 0x1000;
+            *(short*)(e + 0x14) += 1;
+
+            if (*(short*)(e + 0x16) > 8)
+            {
+                BrightenEntityTint_00404DE0(e, -10, -10, -10);
+
+                if (e[0x39] == 0 && e[0x3a] == 0 && e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00403a90</c> — <b>l'entree 89 (<c>0x59</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551f30"/></b>, 374 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. La gerbe que <see cref="RestoreVitalsEntity_00403710"/> lance par
+    /// <see cref="SpawnCastEntity_0047AAE0"/> une image sur deux — donc l'autre moitie de ce qu'on
+    /// voit en gagnant un niveau.
+    ///
+    /// <para>
+    /// <b>Le meme numero <c>0x59</c> designe deux corps</b> : dans <c>0x00551c30</c> c'est
+    /// <see cref="RestoreVitalsEntity_00403710"/>, l'effet lui-meme, et dans <c>0x00551f30</c> ce
+    /// corps-ci. La montee de niveau lache le premier par <see cref="SpawnEffectEntity"/>, et le
+    /// premier lache le second par <see cref="SpawnCastEntity_0047AAE0"/> : le pere et le fils
+    /// portent le meme sous-type, seule la table de destination les distingue.
+    /// </para>
+    /// <para><b>Quatre etats, et l'horloge est la teinte</b> :</para>
+    /// <list type="number">
+    /// <item><b>0</b> — naissance : elle se pose sur le plancher <c>+0x60</c>, se tire deux
+    /// echelles, un cap, un delai de 0 a 9, et <b>trois vitesses d'eclaircissement</b> — 4 pour le
+    /// rouge, <c>6 + rand % 4</c> pour le vert et pour le bleu ;</item>
+    /// <item><b>1</b> — attente : le delai <c>+0x12</c> descend ;</item>
+    /// <item><b>2</b> — <b>elle s'allume</b> : <see cref="BrightenEntityTint_00404DE0"/> ajoute les
+    /// trois vitesses a chaque image jusqu'a ce que le <b>vert</b> depasse <c>0x6e</c> ;</item>
+    /// <item><b>3</b> — un second delai, de 5 a 14 ;</item>
+    /// <item><b>4</b> — <b>elle s'eteint</b> : <c>-6</c>, <c>-3</c>, <c>-6</c> par image, et sous
+    /// <c>0x3c</c> de vert elle <b>grossit</b> de 40 en s'eteignant. Elle meurt quand le vert
+    /// atteint zero.</item>
+    /// </list>
+    /// <para>
+    /// <b>Le vert seul mene tout</b> — les deux seuils et la mort le lisent, jamais les deux autres
+    /// canaux. C'est pour cela que sa vitesse est tiree au hasard et celle du rouge fixee a 4 : la
+    /// duree varie d'un grain a l'autre, mais chacun garde sa propre couleur.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00403A90(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[4] = 0;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+            *(short*)(e + 0x28) = (short)(CrtRand() % 0x7d0 + 0x190);
+            *(short*)(e + 0x2a) = 0x6d60;
+            *(short*)(e + 0x2c) = (short)(CrtRand() % 0x3e8 + 0x190);
+            *(short*)(e + 0x32) = (short)(CrtRand() % 0x1000);
+
+            *(short*)(e + 0x36) |= 4;
+
+            int delay = CrtRand() % 10;
+            *(short*)(e + 0x16) = 0;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(int*)(e + 0x50) = 4;
+            *(short*)(e + 0x12) = (short)delay;
+
+            *(int*)(e + 0x54) = CrtRand() % 4 + 6;
+            *(int*)(e + 0x58) = CrtRand() % 4 + 6;
+        }
+
+        // Ghidra: LAB_00403b5d
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) -= 1;
+            if (*(short*)(e + 0x12) <= 0) *(short*)(e + 0x10) = 2;
+        }
+
+        // Ghidra: LAB_00403b77
+        if (*(short*)(e + 0x10) == 2)
+        {
+            BrightenEntityTint_00404DE0(
+                e, (short)*(int*)(e + 0x50), (short)*(int*)(e + 0x54), (short)*(int*)(e + 0x58));
+
+            if (e[0x39] > 0x6e) *(short*)(e + 0x10) = 3;
+        }
+
+        // Ghidra: LAB_00403ba2
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(short*)(e + 0x10) = 4;
+            *(short*)(e + 0x12) = (short)(CrtRand() % 10 + 5);
+        }
+
+        // Ghidra: LAB_00403bc1
+        if (*(short*)(e + 0x10) == 4)
+        {
+            *(short*)(e + 0x12) -= 1;
+            if (*(short*)(e + 0x12) >= 0) return;
+
+            *(short*)(e + 0x12) = 0;
+            BrightenEntityTint_00404DE0(e, -6, -3, -6);
+
+            byte green = e[0x39];
+
+            if (green < 0x3c)
+            {
+                *(short*)(e + 0x28) += 0x28;
+                *(short*)(e + 0x2c) += 0x28;
+            }
+
+            if (green == 0) *(uint*)e &= 0x7fffffff;
         }
     }
 
@@ -21743,12 +21978,20 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: <c>&amp;DAT_0056d308</c> — <b>la caracteristique favorisee par une sous-classe</b>,
-    /// un octet pour chacune des six premieres. Relevee dans le binaire : <c>00 01 04 03 02 05</c>,
-    /// une permutation de 0..5 — chaque sous-classe pousse une caracteristique differente d'un
-    /// cinquieme a la montee de niveau.
+    /// Ghidra: <c>&amp;DAT_0056d308</c> — <b>la caracteristique favorisee par un ELEMENT</b>, un
+    /// octet pour chacun des six premiers. Relevee dans le binaire : <c>00 01 04 03 02 05</c>, une
+    /// permutation de 0..5 — chaque element pousse une caracteristique differente d'un cinquieme a
+    /// la montee de niveau, et les elements 6 et 7 poussent les six d'un vingtieme.
+    ///
+    /// <para>
+    /// <b>Le champ indexeur est <c>+0x151</c>, et il porte l'element, pas une sous-classe</b> —
+    /// <c>DebugParty</c> et l'ecran de creation le remplissent tous deux depuis la <b>huitieme</b>
+    /// colonne de <c>s_ClassBaseStats_0056c7e0</c>, celle que le bestiaire a identifiee comme
+    /// l'element. Ce symbole s'appelait <c>s_SubClassFavouredStat_0056D308</c> jusqu'au
+    /// 2026-08-29 : le nom etait une supposition, pas un releve.
+    /// </para>
     /// </summary>
-    private static readonly byte[] s_SubClassFavouredStat_0056D308 = [0, 1, 4, 3, 2, 5];
+    private static readonly byte[] s_ElementFavouredStat_0056D308 = [0, 1, 4, 3, 2, 5];
 
     /// <summary>
     /// Ghidra: <c>&amp;DAT_0056d310</c> — <b>les chances de progression par classe</b>, un dword
@@ -21837,15 +22080,23 @@ public static unsafe partial class Blaze
     private static readonly short[] s_LevelUpGains_005e85b0 = new short[7];
 
     /// <summary>
-    /// Ghidra: FUN_005391f0 @ 0x005391f0 — <b>la montee de niveau</b>. Elle boucle tant que
-    /// l'experience accumulee franchit le palier suivant, donc un seul coup peut faire gagner
-    /// plusieurs niveaux.
+    /// Ghidra: FUN_005391f0 @ 0x005391f0 — <b>la montee de niveau</b>. Le corps entier est une
+    /// boucle (<c>goto LAB_00539207</c> en queue de fonction). Vue d'ensemble dans
+    /// <c>Documentation/Reference/MonteeDeNiveau.md</c>.
     ///
     /// <para>
     /// <b>Le palier</b> est <c>niveau / 4 + 0x30 + niveau * 2</c>, borne a 9999, et l'experience
-    /// (<c>+0x158</c>) est <b>remise a zero</b> a chaque passage — ce n'est pas un total cumule
-    /// mais une jauge. Le niveau vit en <c>+0x146</c> et son plancher en <c>+0x144</c> : le second
-    /// avance d'un a chaque montee et tire le premier vers le haut s'il avait ete abaisse.
+    /// (<c>+0x158</c>) est <b>remise a zero</b> des le franchissement — ce n'est pas un total cumule
+    /// mais une jauge, et le surplus est perdu. Le niveau vit en <c>+0x146</c> et son plancher en
+    /// <c>+0x144</c> : le second avance d'un a chaque montee et tire le premier vers le haut s'il
+    /// avait ete abaisse.
+    /// </para>
+    /// <para>
+    /// <b>La boucle ne tourne donc jamais deux fois.</b> La remise a zero est <i>a l'interieur</i>
+    /// du corps, et le palier vaut au minimum <c>0x30</c> : le second tour ne peut pas repasser le
+    /// test. Un seul coup ne fait gagner qu'un niveau, quelle que soit l'experience rapportee. Le
+    /// commentaire porte l'affirmation inverse jusqu'au 2026-08-29 — la forme du code l'avait
+    /// emporte sur ce qu'il fait.
     /// </para>
     /// <para>
     /// <b>Le septieme champ de <c>+0x2a0</c> mene tout le reste.</b> Les six premiers sont les
@@ -21854,10 +22105,18 @@ public static unsafe partial class Blaze
     /// <c>+0x28c</c>. Une seule valeur decide donc du rythme de progression du personnage.
     /// </para>
     /// <para>
-    /// <b>Une caracteristique ne monte que si elle est SOUS un plafond calcule</b>
-    /// (<c>(v/8 - v²/16) + (v+10)*10</c>, une courbe qui plafonne d'elle-meme) <b>et</b> si un
-    /// tirage passe. Les six alternent entre la chance physique et la chance mentale dans l'ordre
-    /// physique, mentale, mentale, physique, physique, mentale.
+    /// <b>Une caracteristique ne monte que si elle est SOUS un plafond</b> et si un tirage passe.
+    /// Les six alternent entre la chance physique et la chance mentale dans l'ordre physique,
+    /// mentale, mentale, physique, physique, mentale.
+    /// </para>
+    /// <para>
+    /// <b>Le plafond se calcule sur la valeur de DEPART, pas sur la valeur courante</b> :
+    /// <c>(v/8 - v²/16) + (v+10)*10</c> ou <c>v</c> vient de <c>+0x2a0</c>, le bloc fige a la
+    /// creation — <c>psVar9 = (short *)(param_2 + 0x2a0)</c> dans <c>Blaze.c</c>. Il est donc
+    /// <b>constant pour toute la partie</b>, et c'est la valeur de depart choisie a la creation qui
+    /// decide, seule, jusqu'ou la caracteristique pourra monter. La courbe culmine a <b>510</b> pour
+    /// un depart de 80 a 83 et <b>redescend</b> ensuite : un depart de 99 plafonne a 490, moins
+    /// qu'un depart de 80.
     /// </para>
     /// <para>
     /// <b>La valeur de <c>+0x28c</c> peut BAISSER</b> : au-dessous de 0x1f au tirage elle perd le
@@ -21904,10 +22163,12 @@ public static unsafe partial class Blaze
                 *(ushort*)(c + 0x146) = *(ushort*)(c + 0x144);
             }
 
-            short* stats = (short*)(c + 0x2a0);
-            int seventh = stats[6];
+            // +0x2a0 : le bloc FIGE a la creation. Tout ce qui suit s'y refere — la taille des
+            // gains ET les plafonds —, jamais aux valeurs courantes de +0x280.
+            short* start = (short*)(c + 0x2a0);
+            int seventh = start[6];
 
-            for (int i = 0; i < 7; i++) scratch[i] = (short)((stats[i] >> 3) + 1);
+            for (int i = 0; i < 7; i++) scratch[i] = (short)((start[i] >> 3) + 1);
 
             for (int i = 0; i < 7; i++)
             {
@@ -21931,20 +22192,23 @@ public static unsafe partial class Blaze
                 (short)(seventh / (int)(odds >> 0x18) + (short)(odds >> 0x10 & 0xff));
 
             // ------------------------------------------------------------ les plafonds
+            //
+            // Sur les valeurs de DEPART (+0x2a0), pas sur les courantes : le plafond de chaque
+            // caracteristique est donc le meme a tous les niveaux. Voir MonteeDeNiveau.md.
             for (int i = 0; i < 6; i++)
             {
-                short v = stats[i];
+                short v = start[i];
                 scratch[i] = (short)((v >> 3) - (short)(v * v >> 4) + (v + 10) * 10);
             }
 
-            byte subClass = c[0x151];
+            byte element = c[0x151];
 
-            if (subClass < 6)
+            if (element < 6)
             {
-                int favoured = s_SubClassFavouredStat_0056D308[subClass];
+                int favoured = s_ElementFavouredStat_0056D308[element];
                 scratch[favoured] += (short)(scratch[favoured] / 5);
             }
-            else if (subClass == 6 || subClass == 7)
+            else if (element == 6 || element == 7)
             {
                 for (int i = 0; i < 6; i++) scratch[i] += (short)(scratch[i] / 0x14);
             }
@@ -22018,13 +22282,21 @@ public static unsafe partial class Blaze
 
     /// <summary>
     /// Ghidra: <c>0x0053962b..0x005396f7</c> — <b>l'apprentissage de sort</b> de la montee de
-    /// niveau, reserve aux classes 1, 3, 5 et 7.
+    /// niveau, reserve aux classes 1, 3, 5 et 7. <b>C'est le seul chemin par lequel un sort
+    /// s'apprend en jeu normal</b> ; vue d'ensemble dans
+    /// <c>Documentation/Reference/Sorts.md</c>.
     ///
     /// <para>
     /// Le palier vient du <b>plancher de niveau</b> (<c>+0x144</c>) compare a quatre seuils
-    /// (0x13, 0x31, 0x4f, 0x6d), ce qui donne 0 a 4 ; la classe 5 voit son niveau ramene a 0x50
-    /// au-dela de 0x6d avant ce calcul, donc elle ne depasse jamais le palier 2. La table de
-    /// 0x0056d330 dit alors combien de sorts de l'ecole sont accessibles.
+    /// (0x13, 0x31, 0x4f, 0x6d), ce qui donne 0 a 4. La table de 0x0056d330 dit alors combien de
+    /// sorts de l'ecole sont accessibles.
+    /// </para>
+    /// <para>
+    /// <b>La classe 5 est plafonnee au palier 3</b>, pas 2 : son niveau est ramene a <c>0x50</c>
+    /// (80) des qu'il depasse <c>0x6d</c> (109), et 80 franchit encore le troisieme seuil
+    /// (<c>80 &gt; 0x4f</c>) sans atteindre le quatrieme. Elle s'arrete donc a 20 sorts sur les 26
+    /// que son ecole offre au palier 4 — six de moins que la classe 3, qui partage pourtant la meme
+    /// ecole. Ce commentaire portait « palier 2 » jusqu'au 2026-08-29.
     /// </para>
     /// <para>
     /// Les sorts de l'ecole vivent dans le repertoire principal (<c>+0x9c</c>), enregistrements de

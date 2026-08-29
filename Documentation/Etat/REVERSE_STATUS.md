@@ -17713,3 +17713,83 @@ arrivé.
 Transcrits et **compilés, pas exécutés**. Plus aucun corps non transcrit sur le chemin d'un coffre
 piégé du jeu de base. Reste possible : un coffre dont l'octet de piège vaut `0x01`..`0x3f`, qui
 serait résolu par la table de sous-zone et pourrait désigner n'importe quel corps de la zone.
+
+---
+
+## 2026-08-29 (suite 19) — la montée de niveau
+
+Signalé en jeu par Vincent : « je crash à chaque fois que je prends un level », sur `0x004038F0`,
+sous-type `0x3b` de la table `0x00552230`.
+
+### Ce qui manquait n'était pas le système, c'étaient ses deux entités
+
+**La montée de niveau elle-même (`FUN_005391f0`) était écrite depuis longtemps** — paliers,
+caractéristiques, dérivées, apprentissage de sort. Ce qui plantait était sa mise en scène, restée
+ouverte :
+
+```
+montée de niveau  →  0x59 (SpawnEffectEntity, table 0x005ff400)
+                     →  RestoreVitalsEntity_00403710, déjà écrite
+                        →  0x3b (SpawnStatusEffectEntity, table 0x005f2d40) → 0x004038F0
+                        →  0x59 (SpawnCastEntity,        table 0x005edee0) → 0x00403A90
+```
+
+Les deux feuilles manquaient, et la seconde aurait planté juste après la première : **elles ont été
+prises ensemble** plutôt qu'une par lancement, comme pour la famille des pièges.
+
+C'est aussi pour cela que la montée de niveau soigne : elle passe par l'effet de soin avec
+`+0x1a = 0x65`, et non par un effet qui lui serait propre.
+
+### Un troisième cas de « même numéro, deux corps »
+
+`0x59` désigne `RestoreVitalsEntity_00403710` dans `0x00551c30` et `FUN_00403A90` dans
+`0x00551f30`. **Le père lâche le fils sous son propre numéro** : seule la fonction d'engendrement
+(`FUN_0047a9d0` contre `FUN_0047aae0`) les distingue.
+
+C'est le troisième relevé du même piège en deux sessions, après `0xbe` (suite 13) et les trois
+`0xbc` (suite 18). **La règle se stabilise : un sous-type ne se lit jamais seul, il se lit avec la
+table de destination de l'engendreur.**
+
+### `FUN_00403A90` — l'horloge est le vert
+
+Quatre états. La naissance tire un cap, deux échelles, un délai, et **trois vitesses
+d'éclaircissement** : 4 pour le rouge, `6 + rand % 4` pour le vert et pour le bleu. L'état 2 ajoute
+ces trois vitesses à chaque image jusqu'à ce que le **vert** dépasse `0x6e` ; l'état 4 retire
+`-6 / -3 / -6` et l'entité meurt quand le **vert** atteint zéro, en grossissant de 40 par image
+sous `0x3c` de vert.
+
+**Les deux seuils et la mort lisent le vert seul**, jamais les deux autres canaux. C'est ce qui
+justifie que sa vitesse soit tirée au hasard et celle du rouge fixée : chaque grain vit une durée
+différente et garde sa propre couleur.
+
+### `FUN_004038F0` — un tirage pour rien, et il compte
+
+La naissance tire son échelle **deux fois** : `0xc00 + rand % 0x5dc`, écrite dans `+0x28`/`+0x2a`,
+puis quinze lignes plus bas `0x1194 + rand % 0x400` qui l'écrase. Le premier tirage n'a aucun effet
+visible.
+
+**Il n'est pas supprimable pour autant** : la suite pseudo-aléatoire est partagée par tout le jeu,
+et retirer un appel décale tout ce qui suit dans la même image. Transcrit tel quel, avec le
+commentaire qui le dit — c'est le même raisonnement que « l'ordre des quatre tirages est celui du
+binaire, et il compte » relevé sur le jet de sauvegarde.
+
+Pour le reste : le grain naît sur un cercle de rayon `0x50` autour de sa position, repart du
+plancher `+0x60`, et monte d'un pas qui **gagne un par image** pendant que son cap tourne de 100.
+Une hélice qui s'ouvre. Sa teinte n'est tirée que si `+0x1a` — le pourcentage soigné, hérité de
+l'effet parent — ne vaut pas 100.
+
+### Une borne d'atlas qui ne se discute pas
+
+`0x0054f158` compte **un** enregistrement, et pour une fois la démonstration est complète :
+`SpawnStatusEffectEntity_0047AC40` pose `+0x40 = 0` sur toute entité qu'elle fait naître, et
+`0x004038f0` n'y touche jamais. L'indice reste nul pour la vie entière de l'entité.
+
+La donnée le confirme d'une façon inhabituelle : le motif `00 00 08 08 01 02 10 00` reparaît à
+`0x0054f180` pour clore la plage suivante. **C'est un séparateur autant qu'un descripteur** —
+utile à connaître pour borner les plages voisines.
+
+### État
+
+Transcrits et **compilés, pas exécutés**. Reconnaissance à l'œil : à la montée de niveau, une
+auréole autour du personnage, des grains qui montent en hélice depuis le sol en s'éteignant, et des
+points colorés qui s'allument puis grossissent en pâlissant.
