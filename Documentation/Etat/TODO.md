@@ -43,9 +43,9 @@ Ce n'est **pas une fonction par ennemi** : 555 espèces pour 112 comportements. 
 comportement partagé.
 
 **Le prochain pas concret** : les deux routines restantes du bloc d’arrivée de la forêt
-(sous-types 9 et 18 → `0x0049E190`, `0x0049E920`) — **et le projectile du Goblin**, voir plus bas.
-Elles se suivent dans le binaire et se ressemblent ; la recette — dont le **tri de départ en quatre
-lectures** et le calque **à deux sœurs** — et le tableau complet sont dans `Comportement.md`.
+(sous-types 9 et 18 → `0x0049E190`, `0x0049E920`). **Le projectile du Goblin est écrit** — le
+sous-système de tir (`0x0047A100`, `0x0047A270`, `0x00476320`) est complet. La recette — dont le
+**tri de départ en quatre lectures** et le calque **à deux sœurs** — est dans `Comportement.md`.
 
 ## Lacunes secondaires, gardées et mortes en jeu normal
 

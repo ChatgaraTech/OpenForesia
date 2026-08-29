@@ -2226,3 +2226,29 @@ Grizzly construisaient toutes leur sonde **sur la pile**, a chaque image. Le Gri
 a la lire dans `.data`. Une routine d'entite de scene peut donc faire l'un ou l'autre, et un
 `push <adresse>` juste avant `call 00519C30` est le signe qu'il faut sortir le verbe `at` plutot que
 de chercher six `mov word [esp+…]` qui n'existent pas.
+
+## `0x00551a08` — les sept images de l'éclaboussure de tir (2026-08-29)
+
+Sept enregistrements de huit octets, même forme que `s_LootDescriptors_005646E0` : le descripteur
+d'atlas que `FUN_0047a270`, la trajectoire du projectile, passe à `FUN_0047ac40` en faisant naître
+l'effet d'impact `0xbd`.
+
+| adresse | octets |
+|---|---|
+| `0x00551a08` | `c0 b8 18 18 01 02 10 00` |
+| `0x00551a10` | `d8 b8 18 18 01 02 10 00` |
+| `0x00551a18` | `60 d0 18 18 01 02 10 00` |
+| `0x00551a20` | `78 d0 18 18 01 02 10 00` |
+| `0x00551a28` | `90 d0 18 18 01 02 10 00` |
+| `0x00551a30` | `a8 d0 18 18 01 02 10 00` |
+| `0x00551a38` | `c0 d0 18 18 01 02 10 00` |
+
+**La borne se lit dans le CODE, pas seulement dans la donnée.** `FUN_00476320` compte `+0x40`
+jusqu'à 7 avant de s'éteindre, et `FUN_0047ac40` pose ce champ à zéro : il faut donc exactement
+sept entrées. La donnée le confirme — la huitième (`0x00551a40`) a un cinquième octet à 0 et un
+huitième à 1, une autre forme.
+
+C'est la deuxième fois que la longueur d'une table de descripteurs se déduit d'un compteur du corps
+plutôt que de la mise en page ; l'autre est `0x005515a0`, l'étincelle, dont le `+0x40` cycle sur
+trois. Le grain de poussière de `0x0054f118`, lui, n'incrémente jamais son indice : une seule
+entrée.

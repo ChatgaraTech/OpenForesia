@@ -16813,3 +16813,88 @@ exactement le cas pour lequel le filet a été fait.
 
 Il servira au-delà du Goblin : le **Goblin-sorcier** (sous-type 9, `0x0049E190`) est le suivant du
 bloc, et son nom promet le même mécanisme.
+
+---
+
+## 2026-08-29 (suite 7) — le tir : `0x0047A100`, `0x0047A270`, `0x00476320`
+
+**Le premier sous-système d'attaque à distance du jeu**, ouvert par le jet du Goblin transcrit une
+heure plus tôt. Les trois corps sont **absents de `Blaze.c`** et sortent du désassembleur ; les
+relevés sont sous `Legacy/Raw/Blaze/FUN_0047A100.asm` et `FUN_0047A270.asm`.
+
+| | taille | rôle |
+|---|---:|---|
+| `0x0047A100`, sous-type `0x49` | 0x170 | le **lanceur** — une seule image de vie |
+| `0x0047A270`, sous-type `0x52` | 0x360 | la **trajectoire** |
+| `0x00476320`, sous-type `0xbd` | 45 | l'**éclaboussure** |
+
+Trois feuilles sont venues avec, toutes décompilées : `FUN_00474f00` (choisir une cible dans un
+cône), `FUN_00519af0` (le balayage des entités de scène) et `FUN_00474c70` (l'aiguillage d'une
+ligne entre les deux balayages).
+
+### Le lanceur vise en trois dimensions
+
+`+0x32` reçoit l'azimut de la cible, `+0x34` son site. Aucune routine de bête ne fait cela — elles
+n'ont qu'un cap. Les trois vitesses en découlent : les deux horizontales par le produit du sinus ou
+du cosinus d'azimut avec le cosinus de site, la verticale par le sinus de site seul.
+
+**Et le site reçoit `distance / 4` en plus de l'angle** : un tir long part plus haut. C'est une
+garde-au-but grossière, mais délibérée — le `sar edi,2 ; add eax,edi` est sans ambiguïté.
+
+Le départ est relevé à la hauteur de bulle du tireur (`FUN_00538bc0`, arrondie à un multiple de deux
+puis décalée de onze bits) : le projectile part de la main, pas des pieds.
+
+**Deux idiomes à ne pas normaliser** dans ce corps. Le `sar eax,5` suivi de `and al,80h` est un
+décalage de cinq bits puis un effacement des sept bits bas — il ne touche pas les octets hauts,
+c'est un `& ~0x7f` et non un `& 0xff80`. Et le calcul d'azimut lit un dword là où seul un mot a été
+écrit (`mov [esp+24h],cx` puis `mov eax,[esp+1Ch]`) : les seize bits hauts sont ceux du pointeur
+d'argument, mais le masque `& 0xfff` puis le stockage en `ax` les annulent. Transcrit sans les
+recopier, avec la note.
+
+### La trajectoire, et ses trois mécanismes propres
+
+**Elle avance en huit sous-pas** d'un huitième de vitesse, en appelant `FUN_00533940` à chacun et en
+accumulant les drapeaux de collision de `+0x90`. C'est le seul endroit reconstruit qui procède
+ainsi, et la raison est claire : un projectile rapide traverserait un mur en une image. L'avant-
+dernier sous-pas efface trois bits de l'accumulateur — noté, non expliqué.
+
+**Son virage est plafonné.** `setge cl ; dec ecx ; and ecx,0FFFFFFC0h ; add ecx,20h` produit
+exactement `+0x20` ou `-0x20`, jamais autre chose : un tir suit sa cible sans jamais la rattraper
+d'un coup. Et la norme horizontale est conservée pendant le virage — il tourne, il n'accélère pas.
+
+**Elle se réoriente sur le déplacement obtenu, pas sur la consigne** : après les huit sous-pas, le
+cap et le site sont refaits à partir de l'écart réellement parcouru, le site rejoignant sa valeur
+par quarts. Une flèche déviée par un mur pointe donc dans la direction où elle va vraiment.
+
+**Elle se plante.** Deux voies : le décor — les drapeaux accumulés portent `0x802`, ou la hauteur
+est passée sous le sol de `+0x60`, et un placement invalide (`0xa000`) interdit la plantée —, ou
+une créature. Dans les deux cas le bit `0x10000000` bascule le corps dans sa seconde vie : il
+recopie la position de son hôte augmentée de l'écart figé à l'impact, clignote une image sur deux
+par le bit `0x4000`, et disparaît à la vingtième image.
+
+### Ce qui frappe, c'est le propriétaire
+
+Le lanceur range le tireur en `+0x74`, et c'est **lui** que la trajectoire passe à `FUN_00539b80`.
+L'attaque, l'échange élémentaire, l'expérience et le compte de victimes reviennent donc au Goblin,
+pas au projectile. À se rappeler avant de chercher pourquoi une flèche « n'a pas de
+statistiques » — elle n'en a pas et n'en a pas besoin.
+
+### `FUN_00519af0` : le balayage par la grille, enfin écrit
+
+C'est la sœur de `SweepPartyForMeleeHit_00519C30` pour le camp d'en face, et elle figurait depuis le
+2026-08-26 sur la liste des frontières de `PickTargetBySearch_00474AD0`. Elle **ne parcourt pas une
+table mais la grille spatiale** : les neuf cases autour de la position, dans le découpage de
+`LinkIntoWorldGrid`. Le `0x389f * 0x20` du binaire est exactement `0x1c5000 / 4` moins une rangée,
+c'est-à-dire la case de rang `Z - 1` — vérifié par le calcul plutôt que supposé.
+
+Elle rend **la première** entité acceptée, pas la plus proche : la grille sert d'index, pas de tri.
+C'est une différence de fond avec sa sœur, qui compare les distances.
+
+### État
+
+Transcrit et **compilé, pas exécuté**. La chaîne est close : le lanceur engendre `0x52`, la
+trajectoire engendre `0xbd`, l'éclaboussure n'engendre rien, et les trois feuilles n'appellent que
+du déjà écrit. Reconnaissance à l'œil à Vincent : ce qu'il faut voir, c'est un goblin qui **lance
+depuis l'autre bout de la clairière**, un projectile qui **infléchit sa course** vers le personnage
+sans le suivre parfaitement, et qui **reste planté** dans lui en clignotant une petite seconde
+après l'avoir touché.

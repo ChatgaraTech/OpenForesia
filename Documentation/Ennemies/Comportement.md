@@ -575,16 +575,36 @@ Fourmi géante — mais **ni branche de recul ni esquive de côté** : le bit `0
 où le Crabe, le Grizzly et l'Homme-lézard l'ignorent dans leur marche. Et son « foncer » **s'ajoute**
 à la vitesse au lieu de l'écraser, détente verticale comprise.
 
-#### Ce que le jet ouvre, et qui n'est pas écrit
+#### Ce que le jet ouvre : le tir, écrit dans la foulée
 
-L'effet `0x49` est le **lanceur** `0x0047A100` : il choisit une cible dans un cône
-(`FUN_00474f00`), oriente le tir, fait naître le projectile `0x52` — `0x0047A270`, la trajectoire —
-et s'éteint. Le projectile, à l'impact, fait naître `0xbd` (`0x00476320`). **Aucune des trois n'est
-transcrite et aucune n'est dans `Blaze.c`** ; les deux feuilles qu'elles appellent
-(`FUN_00474f00`, `FUN_00474c70`), elles, le sont.
+L'effet `0x49` est le **lanceur** `0x0047A100`, et il ouvre les trois seuls corps du jeu qui font
+voler quelque chose. Ils ont été transcrits le même jour ; aucun n'était dans `Blaze.c`.
 
-C'est le premier sous-système d'**attaque à distance** du jeu, et il servira aux autres lanceurs :
-le Goblin-sorcier (sous-type 9) est le suivant du bloc, et son nom promet la même chose.
+| | rôle |
+|---|---|
+| `0x0047A100`, sous-type `0x49` | **le lanceur** : choisit une cible dans un cône (`FUN_00474f00`), oriente le tir en **cap et en site**, relève le départ à la hauteur de bulle du tireur, fait naître le projectile et **s'éteint dans la même image** |
+| `0x0047A270`, sous-type `0x52` | **la trajectoire** : vole, se dirige, touche, puis se **plante** dans sa victime et la suit vingt images en clignotant |
+| `0x00476320`, sous-type `0xbd` | **l'éclaboussure** : sept images de sprite, et c'est fini |
+
+**Trois choses de ce sous-système méritent d'être retenues pour la suite.**
+
+Le lanceur vise en **trois dimensions** — `+0x32` reçoit l'azimut, `+0x34` le site —, ce qu'aucune
+routine de bête ne fait. Et il ajoute `distance / 4` au site : **un tir long part plus haut**, une
+garde-au-but grossière mais réelle.
+
+La trajectoire avance en **huit sous-pas** d'un huitième de vitesse, en appelant le placement à
+chaque sous-pas et en accumulant les drapeaux de collision. C'est ce qui empêche un projectile
+rapide de traverser un mur en une image, et c'est le seul endroit reconstruit qui procède ainsi.
+Son virage est plafonné à `±0x20` par image, jamais plus : un tir suit sa cible sans jamais la
+rattraper d'un coup.
+
+Et **c'est le propriétaire qui frappe, pas la flèche**. Le lanceur range le tireur en `+0x74`, et
+c'est lui que la trajectoire passe à `FUN_00539b80` : l'attaque, l'expérience et le compte de
+victimes reviennent au Goblin. À retenir avant de chercher pourquoi un projectile « n'a pas de
+statistiques ».
+
+Le sous-système servira aux autres lanceurs : le Goblin-sorcier (sous-type 9) est le suivant du
+bloc, et son nom promet la même chose.
 
 ### L'oracle qui manquait, et qu'on avait sous la main
 
