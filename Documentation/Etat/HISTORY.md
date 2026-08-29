@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-29
+- feat : **la branche `0xbe` close d'un coup** — `FUN_00475EA0` (la naissance signalée en frappant un scarabée), plus ses deux enfants `FUN_00475FC0` (`0xbe`) et `FUN_0047BD00` (`0x68`), tous deux des feuilles franches
+- doc : `FUN_00475FC0` **vole en repère relatif** — un décalage sur une ancre `+0x70`, et sans ancre elle s'ancre à elle-même, ce qui rend le calcul identité. C'est ainsi que l'original écrit « repère absolu » sans dupliquer le code
+- doc : `0x00551ba0` **n'est pas une animation** mais une réserve de descripteurs de planches différentes ; sa longueur n'est pas établie, chaque engendreur y désigne son départ et borne par `+0x1a`
+- doc : **lister les cibles de `call` avant d'écrire** — c'est ce qui a montré que les deux enfants étaient des feuilles et permis de fermer la branche entière au lieu de s'arrêter au corps signalé
 - feat : **le piège de coffre** — `FUN_004755F0` (`0xb5`) transcrite, avec sa gerbe `FUN_00475730` (`0x3d`), son atlas `0x005519d0` et son script de sons `0x00551858`. Huit images, puis le coup part
 - feat : **la chaîne d'application des dégâts** — `FUN_005387c0`, `FUN_00538830`, `FUN_00538870`, `FUN_0053a6c0` (le jet de sauvegarde) et `FUN_0053c420` (l'effet de piège). Elle débloque aussi `FUN_0053b3c0`, donc `0x00475910` laissée ouverte en suite 10
 - feat : `Audio.QueueDelayedSoundScript` (`FUN_0053dbe0`) et le curseur d'anneau `0x005dfb8c` — la file des sons différés a enfin son écrivain

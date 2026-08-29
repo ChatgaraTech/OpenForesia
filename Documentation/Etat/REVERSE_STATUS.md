@@ -17250,3 +17250,74 @@ arrive vraiment.
 Transcrits et **compilés, pas exécutés**. Reconnaissance à l'œil : à l'ouverture d'un coffre piégé,
 une gerbe grise qui monte autour du coffre pendant huit images, un double son, puis une marque qui
 enfle au-dessus du personnage touché.
+
+---
+
+## 2026-08-29 (suite 13) — la branche `0xbe`, close d'un coup
+
+Signalé en jeu par Vincent en frappant un scarabée, sans rapport avec le coffre : `0x00475EA0`,
+sous-type `0xbe`, entrée 190 de `0x00551c30`.
+
+### Trois corps, et la branche est close
+
+| | table | sous-type | source | taille |
+|---|---|---|---|---|
+| `0x00475EA0` | `0x00551c30` | `0xbe` | **décompilée** | ~30 lignes |
+| `0x00475FC0` | `0x00552230` | `0xbe` | désassembleur | 256 o |
+| `0x0047BD00` | `0x00551f30` | `0x68` | désassembleur | 239 o |
+
+Le père est encore une **naissance qui s'efface** : il range son porteur dans *trois* champs
+(`+0x70`, `+0x74`, `+0x78` — ses enfants ne lisent pas le même), engendre un `0xbe`, **réécrit deux
+réglages**, puis engendre deux `0x68` et se supprime. Les trois enfants ne reçoivent donc pas la même
+copie, et c'est délibéré dans le binaire.
+
+**Même piège que `0xba` en suite 10** : père et fils portent le numéro `0xbe` et sont deux corps
+différents, parce que `SpawnStatusEffectEntity_0047AC40` dépose dans `0x005f2d40`, dont la table de
+sauts est `0x00552230`. Troisième occurrence de ce motif ; c'est manifestement une convention du
+jeu et non un accident.
+
+**Les deux enfants sont des feuilles franches** — `0x00475FC0` ne fait *aucun* appel, `0x0047BD00`
+n'en fait que trois, tous déjà transcrits. Vérifié avant d'écrire, en listant les cibles de `call`
+du désassemblage : c'est ce qui a permis de fermer la branche entière au lieu de s'arrêter au corps
+signalé.
+
+### `0x00475FC0` vole en repère relatif
+
+`+0x44`/`+0x48`/`+0x4c` sont un **décalage** par rapport à une ancre `+0x70`, et la position
+`+0x1c`/`+0x20`/`+0x24` est recalculée à chaque image comme « ancre + décalage ». La vitesse perd
+`1 / 2^(+0x12)` par image — un décalage, pas une division constante.
+
+**Sans ancre, elle s'ancre à elle-même** : `+0x70` nul fait verser la position courante dans le
+décalage, met la position à zéro et prend `e` pour ancre. Le calcul devient l'identité. C'est la
+façon dont l'original écrit « repère absolu » sans dupliquer le code — élégant, et invisible si on
+ne suit pas le `mov edi,eax` du chemin nul.
+
+Sa durée ne se compte pas non plus : la teinte perd `0x101010` par image et la mort tient au test
+`(teinte & 0xffffff) == 0`, **placé avant la soustraction**. Depuis le `0xf0f0f0` que le père pose,
+seize images pile. Troisième corps de la famille à mourir ainsi.
+
+### `0x0047BD00` : une teinte en sinus
+
+Une bulle qui enfle vers `+0x14` par quarts et tourne sur elle-même. **Sa teinte n'est pas une
+rampe** mais `sin(image << 7) × 255 / 4096` replié sur les trois canaux : elle s'allume et s'éteint
+d'elle-même sur ses seize images, sans compteur séparé. Son orientation de départ est entièrement
+tirée — trois `rand()` d'affilée.
+
+### `0x00551ba0` n'est pas une animation
+
+Les huit enregistrements relevés pointent des **planches différentes** (`0x2020`, `0x1818`,
+`0x1010`, `0x0808`) et deux n'ont pas les octets `01 02` des autres. Ce n'est pas une séquence : la
+plage sert de réserve où chaque engendreur désigne son point de départ, et borne le parcours par
+`+0x1a`. Depuis `0x00475EA0` cette borne vaut **1**, donc seul l'enregistrement 0 est atteint.
+
+**La longueur réelle n'est donc pas établie** — huit sont relevés parce que huit sont lisibles, pas
+parce qu'une borne les désigne. À reprendre si un consommateur en indexe davantage.
+
+### État
+
+Transcrits et **compilés, pas exécutés**. Reconnaissance à l'œil : au coup porté, une chose qui part
+du point d'impact en **suivant la bête** au lieu de rester où elle est née, et deux bulles qui
+enflent en s'allumant puis s'éteignent, tournées chacune dans une direction tirée.
+
+Reste ouvert sur la famille voisine : `0xbf` (`0x00475D40`, 347 o, engendre `0xbe` — donc son enfant
+est desormais ecrit) et `0x99` (`0x004459E0`), tous deux hors de `Blaze.c`.

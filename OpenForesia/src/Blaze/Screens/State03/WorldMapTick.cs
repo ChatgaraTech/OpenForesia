@@ -4041,6 +4041,12 @@ public static unsafe partial class Blaze
             case 0x00475400: EntityHandler_00475400(record); return;
             case 0x00445950: EntityHandler_00445950(record); return;
 
+            // La branche 0xbe : le pere (entree 190 de 0x00551c30) n'est qu'une naissance, il
+            // lache un 0xbe dans l'AUTRE table plus deux 0x68. Meme numero, deux corps.
+            case 0x00475EA0: EntityHandler_00475EA0(record); return;
+            case 0x00475FC0: EntityHandler_00475FC0(record); return;
+            case 0x0047BD00: EntityHandler_0047BD00(record); return;
+
             // L'entree 90 de la table 0x00551f30 — l'ETINCELLE que le precedent lache par six.
             // Elle decrit une spirale autour de son point de naissance et meurt de retrecir.
             case 0x004034A0: EntityHandler_004034A0(record); return;
@@ -5883,6 +5889,271 @@ public static unsafe partial class Blaze
 
         *(short*)(e + 0x10) += 1;
         if (*(short*)(e + 0x10) >= 0x12) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551ba0</c> — <b>une plage de descripteurs d'atlas</b>, pas une
+    /// animation : les huit enregistrements relevés pointent des <b>planches differentes</b>
+    /// (<c>0x2020</c>, <c>0x1818</c>, <c>0x1010</c>, <c>0x0808</c>) et deux d'entre eux n'ont pas
+    /// les octets <c>01 02</c> des autres. Chaque engendreur y designe son point de depart et borne
+    /// lui-meme le parcours par <c>+0x1a</c>.
+    ///
+    /// <para>
+    /// Depuis <see cref="EntityHandler_00475EA0"/>, <c>+0x1a</c> vaut <b>1</b> : seul
+    /// l'enregistrement 0 est atteint. <c>0x00475D40</c>, encore a transcrire, en passe 3. La
+    /// <b>longueur reelle de la table n'est donc pas etablie</b> — huit enregistrements sont releves
+    /// parce que huit sont lisibles, pas parce qu'une borne les designe.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551BA0 =
+    [
+        0x60, 0x48, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551ba0
+        0x18, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551ba8
+        0x30, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551bb0
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551bb8
+        0xb0, 0xa8, 0x10, 0x10, 0x00, 0x00, 0x10, 0x00,   // 0x00551bc0
+        0xa0, 0xa8, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551bc8
+        0x50, 0x58, 0x08, 0x08, 0x00, 0x00, 0x30, 0x02,   // 0x00551bd0
+        0xb8, 0x30, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551bd8
+    ];
+
+    private static byte* s_Descriptors00551BA0Storage;
+
+    /// <summary>Les huit descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551BA0()
+    {
+        if (s_Descriptors00551BA0Storage == null)
+        {
+            s_Descriptors00551BA0Storage =
+                (byte*)NativeMemory.Alloc((nuint)s_Descriptors_00551BA0.Length);
+            for (int i = 0; i < s_Descriptors_00551BA0.Length; i++)
+            {
+                s_Descriptors00551BA0Storage[i] = s_Descriptors_00551BA0[i];
+            }
+        }
+
+        return s_Descriptors00551BA0Storage;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00475ea0 @ 0x00475ea0 — <b>l'entree 190 (<c>0xbe</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551c30"/></b>. Decompilee dans <c>Blaze.c</c>. Signalee
+    /// en jeu par Vincent le 2026-08-29, en frappant un scarabee.
+    ///
+    /// <para>
+    /// Encore une <b>naissance qui s'efface</b>, et le meme piege que <c>0xba</c> : le pere et
+    /// l'enfant portent le meme numero <c>0xbe</c>, mais l'enfant est
+    /// <see cref="EntityHandler_00475FC0"/>, entree 190 de la table <b>0x00552230</b>, ou
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> depose. Deux corps, un numero.
+    /// </para>
+    /// <para>
+    /// Elle range son porteur dans <b>trois</b> champs (<c>+0x70</c>, <c>+0x74</c>, <c>+0x78</c>) —
+    /// ses trois enfants ne lisent pas le meme — puis engendre en deux temps : d'abord un
+    /// <c>0xbe</c> avec une echelle de <c>0x1f</c>, ensuite deux <c>0x68</c> avec une echelle de
+    /// <c>0x3000</c> et une cible d'echelle de <c>0x800</c>. <b>Les deux reglages sont ecrits entre
+    /// les appels</b>, donc les trois enfants ne recoivent pas la meme copie.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00475EA0(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+
+        *(short*)(e + 0x0a) = 7;
+
+        *(byte**)(e + 0x70) = carrier;
+        *(byte**)(e + 0x74) = carrier;
+        *(byte**)(e + 0x78) = carrier;
+
+        *(uint*)(e + 0x38) = 0xf0f0f0;
+        *(uint*)(e + 0x44) = 0;
+
+        uint height = (uint)StatusBubbleHeight_00538BC0((uint*)carrier);
+        *(int*)(e + 0x48) = (int)((height & 0xfffffffe) << 0xb);
+
+        *(uint*)(e + 0x4c) = 0;
+        *(short*)(e + 0x12) = 0x1f;
+        *(uint*)(e + 0x50) = 0;
+        *(uint*)(e + 0x54) = 0;
+        *(uint*)(e + 0x58) = 0;
+        *(uint*)(e + 0x28) = 0x20002000;
+        *(short*)(e + 0x14) = 0;
+        *(short*)(e + 0x16) = 3;
+        *(short*)(e + 0x1a) = 1;
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors00551BA0(), 0xbe, e[0x0b], -1);
+
+        // Le second reglage, entre les appels : les deux 0x68 partent plus gros et visent 0x800.
+        *(short*)(e + 0x12) = 0x3000;
+        *(short*)(e + 0x14) = 0x800;
+
+        SpawnCastEntity_0047AAE0(e, 0x68, e[0x0b], -1);
+        SpawnCastEntity_0047AAE0(e, 0x68, e[0x0b], -1);
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00475fc0</c> — <b>l'entree 190 (<c>0xbe</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>, 256 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_00475FC0.asm</c>. C'est
+    /// l'enfant de <see cref="EntityHandler_00475EA0"/>. <b>Elle n'appelle rien</b> : une feuille
+    /// franche.
+    ///
+    /// <para>
+    /// <b>Elle vole en repere relatif.</b> <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c> sont un
+    /// <b>decalage</b> par rapport a une ancre <c>+0x70</c>, et <c>+0x1c</c>/<c>+0x20</c>/<c>+0x24</c>
+    /// sont recalcules a chaque image comme « ancre + decalage ». La vitesse
+    /// (<c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>) perd <c>1 / 2^(+0x12)</c> par image et s'ajoute au
+    /// decalage : un jet qui s'essouffle en suivant ce a quoi il est accroche.
+    /// </para>
+    /// <para>
+    /// <b>Sans ancre elle s'ancre a elle-meme</b> : si <c>+0x70</c> est nul, la premiere image
+    /// verse la position courante dans le decalage, met la position a zero et prend <c>e</c> pour
+    /// ancre. Le calcul devient alors l'identite — c'est la facon dont l'original ecrit « repere
+    /// absolu » sans dupliquer le code.
+    /// </para>
+    /// <para>
+    /// L'echelle rejoint <c>+0x14</c> par pas de <c>1 / 2^(+0x16)</c>, l'image d'atlas
+    /// (<c>+0x40</c>) tourne modulo <c>+0x1a</c>, et la teinte perd <c>0x101010</c> par image :
+    /// partie du <c>0xf0f0f0</c> que le pere pose, cela fait <b>seize images</b> pile.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00475FC0(byte* e)
+    {
+        byte* anchor = *(byte**)(e + 0x70);
+
+        if (anchor == null)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                // La position courante devient le decalage, une seule fois.
+                *(int*)(e + 0x44) += *(int*)(e + 0x1c);
+                *(int*)(e + 0x48) += *(int*)(e + 0x20);
+                *(int*)(e + 0x4c) += *(int*)(e + 0x24);
+                *(short*)(e + 0x10) = 1;
+            }
+
+            *(int*)(e + 0x1c) = 0;
+            *(int*)(e + 0x20) = 0;
+            *(int*)(e + 0x24) = 0;
+            anchor = e;
+        }
+
+        // Ghidra: LAB_00476009 — l'amortissement est un decalage, pas une division constante.
+        int damping = *(short*)(e + 0x12);
+
+        int vx = *(int*)(e + 0x50);
+        int vy = *(int*)(e + 0x54);
+        int vz = *(int*)(e + 0x58);
+
+        vx -= vx >> damping;
+        vy -= vy >> damping;
+        vz -= vz >> damping;
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x58) = vz;
+
+        *(int*)(e + 0x44) += vx;
+        *(int*)(e + 0x48) += vy;
+        *(int*)(e + 0x4c) += vz;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c) + *(int*)(e + 0x44);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + *(int*)(e + 0x48);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24) + *(int*)(e + 0x4c);
+
+        short current = *(short*)(e + 0x28);
+        short size = (short)(((*(short*)(e + 0x14) - current) >> e[0x16]) + current);
+        *(short*)(e + 0x28) = size;
+        *(short*)(e + 0x2a) = size;
+
+        e[0x40]++;
+        if ((short)(ushort)e[0x40] >= *(short*)(e + 0x1a)) e[0x40] = 0;
+
+        // Ghidra: LAB_0047609c — le test precede la soustraction, d'ou seize images et non quinze.
+        uint tint = *(uint*)(e + 0x38);
+        if ((tint & 0xffffff) == 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        *(uint*)(e + 0x38) = tint + 0xffefeff0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0047bd00</c> — <b>l'entree 104 (<c>0x68</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551f30"/></b>, 239 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_0047BD00.asm</c>. C'est ce
+    /// que <see cref="EntityHandler_00475EA0"/> lache <b>par deux</b>.
+    ///
+    /// <para>
+    /// <b>Une bulle qui enfle et blanchit puis s'eteint en seize images.</b> A la naissance elle
+    /// prend l'echelle <c>+0x12</c> sur les trois axes et <b>une orientation entierement tiree</b> —
+    /// trois appels a <c>rand()</c> pour <c>+0x30</c>, <c>+0x32</c>, <c>+0x34</c> —, puis chaque
+    /// image ses trois echelles rejoignent <c>+0x14</c> <b>par quarts</b>.
+    /// </para>
+    /// <para>
+    /// <b>Sa teinte est un sinus, pas une rampe</b> : <c>sin(image &lt;&lt; 7) × 255 / 4096</c>,
+    /// replie sur les trois canaux. Elle s'allume donc et s'eteint d'elle-meme sur la duree de vie,
+    /// sans compteur separe.
+    /// </para>
+    /// <para>
+    /// Elle suit son ancre <c>+0x78</c> en <c>X</c> et <c>Z</c>, mais sa hauteur est recalculee a
+    /// chaque image : celle de l'ancre plus la bulle d'etat de <c>+0x74</c>, arrondie au pair. Et
+    /// elle <b>tourne sur elle-meme</b>, <c>+0x32</c> de <c>0x60</c> et <c>+0x34</c> de <c>0x80</c>
+    /// par image.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0047BD00(byte* e)
+    {
+        byte* anchor = *(byte**)(e + 0x78);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            int start = *(short*)(e + 0x12);
+
+            *(short*)(e + 0x2c) = (short)start;
+            *(uint*)(e + 0x28) = (uint)((start << 0x10) | (start & 0xffff));
+
+            *(short*)(e + 0x30) = (short)CrtRand();
+            *(short*)(e + 0x32) = (short)CrtRand();
+            *(short*)(e + 0x34) = (short)CrtRand();
+
+            e[0x04] = 0x1d;
+        }
+        else
+        {
+            // Ghidra: LAB_0047bd44 — les trois echelles rejoignent la cible par quarts.
+            int target = *(short*)(e + 0x14);
+
+            short s28 = *(short*)(e + 0x28);
+            short s2a = *(short*)(e + 0x2a);
+            short s2c = *(short*)(e + 0x2c);
+
+            *(short*)(e + 0x28) = (short)(((target - s28) >> 2) + s28);
+            *(short*)(e + 0x2a) = (short)(((target - s2a) >> 2) + s2a);
+            *(short*)(e + 0x2c) = (short)(((target - s2c) >> 2) + s2c);
+        }
+
+        // Ghidra: LAB_0047bd82 — la teinte suit un sinus de l'age, repliee sur les trois canaux.
+        int wave = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 7);
+        int level = (wave << 8) - wave >> 0xc;
+        *(uint*)(e + 0x38) = (uint)((((level << 8) | level) << 8) | level);
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        uint height = (uint)StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+
+        *(short*)(e + 0x32) += 0x60;
+        *(short*)(e + 0x34) += 0x80;
+
+        *(int*)(e + 0x20) = (int)((height & 0xfffffffe) << 0xb) + *(int*)(anchor + 0x20);
+
+        *(short*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) >= 0x10) *(uint*)e = 0;
     }
 
     /// <summary>
