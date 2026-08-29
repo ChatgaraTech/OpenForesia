@@ -33,6 +33,13 @@ param(
     # Exemple : -Trace GLYPHS,VP  ->  OPENFORESIA_TRACE_GLYPHS=1, OPENFORESIA_TRACE_VP=1
     [string[]]$Trace = @(),
 
+    # Variables OPENFORESIA_* quelconques, sous la forme NOM=VALEUR (le prefixe OPENFORESIA_ est
+    # ajoute, et une valeur omise vaut 1). C'est le pendant de -Trace pour les drapeaux qui ne sont
+    # PAS des traces mais changent le comportement du jeu.
+    # Exemple : -EnvVar AI_STUB  ->  OPENFORESIA_AI_STUB=1, le filet qui empeche un gestionnaire
+    # d'entite non transcrit de tuer le processus. Voir test-protocol.md.
+    [string[]]$EnvVar = @(),
+
     # Touches a jouer une fois l'ecran atteint, dans l'ordre. Jetons reconnus :
     # ENTER ESC SPACE UP DOWN LEFT RIGHT PGUP PGDN, et WAIT<n> pour patienter n secondes.
     # Exemple : -Then DOWN,WAIT2,ENTER
@@ -293,6 +300,11 @@ function Get-ValidateCount([string]$path) {
 # --------------------------------------------------------------------------------------------
 $env:OPENFORESIA_TRACE_MENU = '1'          # indispensable : c'est la boucle de retour
 foreach ($t in $Trace) { Set-Item -Path "Env:OPENFORESIA_TRACE_$t" -Value '1' }
+foreach ($e in $EnvVar) {
+    $kv = $e -split '=', 2
+    $val = if ($kv.Count -gt 1) { $kv[1] } else { '1' }
+    Set-Item -Path "Env:OPENFORESIA_$($kv[0])" -Value $val
+}
 
 Remove-Item $err, $out -ErrorAction SilentlyContinue
 

@@ -177,6 +177,8 @@ Documentation/   tout ce que le projet a appris
   Methode/       Prompt.md, Strategy.md
   Reference/     DataSymbols.md, legacy-bug.md, OpenForesia.cfg.md
   Tests/         test-protocol.md, test-todo-later.md, et les analyses ponctuelles
+
+tests/           les raccourcis de lancement a double-cliquer (banc.bat : la salle d’essai)
 ```
 
 | Path | Role |
@@ -201,6 +203,7 @@ Documentation/   tout ce que le projet a appris
 | `OpenForesia.Tools/` | PE export-table dumper, **x86-32 disassembler** (`disasm`, via Iced), `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
 | `OpenForesia/src/DLL/*.dll` | Copies of the helper DLLs, flattened into the build output for P/Invoke. |
 | `Analyse/` | Notes d'observation du jeu original (comportement, sessions x32dbg). |
+| `tests/` | Raccourcis `.bat` a double-cliquer. `banc.bat` lance le jeu avec la salle d’essai (`OPENFORESIA_AI_BENCH`) et reaffiche les lignes `[BANC]` a la fermeture. ASCII pur — `cmd.exe` ne lit pas l’UTF-8. |
 
 `openspec/` holds the change workflow: several completed changes, one archived, and the
 `blaze-intro-attract` spec. Use `openspec list` to see the current state.

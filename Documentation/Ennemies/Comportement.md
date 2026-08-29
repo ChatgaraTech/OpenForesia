@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-08-28** | **3** (`0x00486EE0`, `0x00499DE0`, `0x0049A980`) |
+| **écrits au 2026-08-29** | **4** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -55,7 +55,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | 0 | L'auberge | 2 | 1 | 0 |
 | 1 | La mine abandonnée | 23 | 17 | 0 |
 | 2 | La montagne du dragon de feu | 2 | 1 | 0 |
-| **3** | **La forêt** | **23** | **22** | **2** |
+| **3** | **La forêt** | **23** | **22** | **3** |
 | 4 | La vieille tour | 22 | 10 | 0 |
 | 5 | Le Labyrinthe des morts | 19 | 13 | 0 |
 | 6 | Le château de l'immortel | 21 | 9 | 0 |
@@ -92,47 +92,58 @@ Dix sous-zones, **trois blocs** de table seulement. C'est ce qui rend la forêt 
 
 ### Bloc A — les sous-zones à ciel ouvert, celles où le joueur arrive
 
-| sous-type | gestionnaire | genre | état |
+La colonne « bête » vient du croisement `especes.csv` (colonne `ia`) × `modeles.csv` (le nom), fait
+le 2026-08-29 ; les trois premières sont confirmées **en jeu** par le bilan de la salle d'essai.
+
+| sous-type | gestionnaire | bête | état |
 |---|---|---|---|
-| 0 | `0x00499DE0` | IA | **écrit** |
-| 1 | `0x0049A360` | IA | — |
-| 2 | `0x0049A980` | IA | **écrit** |
-| 3 | `0x0049B220` | IA | — |
-| 4 | `0x0049B840` | IA | — |
-| 5 | `0x0049C0B0` | IA | — |
-| 6 | `0x0049C8E0` | IA | — |
-| 7 | `0x0049D030` | IA | — |
-| 8 | `0x0049DA40` | IA | — |
-| 9 | `0x0049E190` | IA | — |
-| 18 | `0x0049E920` | IA | — |
+| 0 | `0x00499DE0` | Fourmi géante | **écrit** |
+| 1 | `0x0049A360` | Coccinelle | **écrit** |
+| 2 | `0x0049A980` | Goblin | **écrit** |
+| 3 | `0x0049B220` | Abeille · Abeille tueuse | — |
+| 4 | `0x0049B840` | Grizzly | — |
+| 5 | `0x0049C0B0` | Crabe géant | — |
+| 6 | `0x0049C8E0` | Poisson volant | — |
+| 7 | `0x0049D030` | Homme-lézard | — |
+| 8 | `0x0049DA40` | Goblin | — |
+| 9 | `0x0049E190` | Goblin-sorcier | — |
+| 18 | `0x0049E920` | Crotale | — |
 
 **Les onze se suivent dans le binaire**, dans l'ordre des sous-types. Les deux plantages signalés
 étaient les sous-types 0 et 2 ; les neuf autres attendent, et ce sont eux qui se réveilleront à la
 prochaine rencontre.
 
+Une espèce de la sous-zone 3 porte le **sous-type 30, « Barricade »**, absent de ce tableau : son
+créneau ne fait pas partie des onze relevés, donc il pointe sur la souche vide ou sur un
+gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom sent le décor.
+
 ### Bloc B — l'île, le sentier, la vallée
 
-| sous-type | gestionnaire | genre |
+| sous-type | gestionnaire | bête |
 |---|---|---|
-| 7 | `0x0049F0C0` | IA |
-| 10 | `0x0049FAD0` | IA |
-| 11 | `0x004A0480` | IA |
-| 12 | `0x004A13E0` | IA |
-| 13 | `0x004A1D50` | IA |
-| 14 | `0x004A2C90` | IA |
-| 15 | `0x004A35B0` | IA |
+| 7 | `0x0049F0C0` | Homme-lézard · Lézard noir |
+| 10 | `0x0049FAD0` | Trent |
+| 11 | `0x004A0480` | Fleur du mal |
+| 12 | `0x004A13E0` | Wyrm |
+| 13 | `0x004A1D50` | Varan |
+| 14 | `0x004A2C90` | Géant |
+| 15 | `0x004A35B0` | Willie |
+
+**Le même numéro ne désigne pas la même bête d'un bloc à l'autre** : le sous-type 7 est
+`0x0049D030` en bloc A et `0x0049F0C0` en bloc B. C'est le rappel concret que la table est
+rechargée par sous-zone.
 
 ### Bloc C — le lieu de coupe et la grotte
 
-| sous-type | gestionnaire | genre |
-|---|---|---|
-| 3 | `0x004A3C30` | IA |
-| 4 | `0x004A4270` | IA |
-| 16 | `0x004A4AE0` | IA |
-| 17 | `0x004A54E0` | IA |
-| 19 | `0x004A5F10` | simple |
+| sous-type | gestionnaire | bête | genre |
+|---|---|---|---|
+| 3 | `0x004A3C30` | Abeille tueuse | IA |
+| 4 | `0x004A4270` | Grizzly | IA |
+| 16 | `0x004A4AE0` | Méchant ours | IA |
+| 17 | `0x004A54E0` | Behemoth | IA |
+| 19 | `0x004A5F10` | Abeille tueuse | simple |
 
-**Vingt routines restent pour rendre la forêt entièrement stable**, dont neuf pour les seules
+**Dix-neuf routines restent pour rendre la forêt entièrement stable**, dont huit pour les seules
 sous-zones d'arrivée.
 
 ---
@@ -177,7 +188,7 @@ Cinq constantes, et parfois la forme d'une posture :
 ### Recette pour la suivante
 
 1. `OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe <adresse> 2600` — l'adresse est dans le
-   message de plantage, ou dans les tables ci-dessus.
+   message de plantage, dans le journal `[LACUNE]` du filet, ou dans les tables ci-dessus.
 2. Repérer la fin sur le bourrage de `nop`, et relever la **table de sauts** qui suit immédiatement
    (une entrée par posture) avec le verbe `at`.
 3. Calquer sur `TickSceneEntityAi_0049A980` (cinq postures) ou `TickSceneEntityAi_00499DE0`
@@ -190,11 +201,125 @@ même bloc — elles se suivent dans le binaire et se ressemblent.
 
 ---
 
+
+### La quatrième routine : ce que la Coccinelle a appris (2026-08-29)
+
+Elle est la première **bête volante** écrite, et elle casse trois hypothèses que les deux premières
+avaient laissé s'installer.
+
+| | terrestres (`0x00499DE0`, `0x0049A980`) | Coccinelle (`0x0049A360`) |
+|---|---|---|
+| intégration du mouvement | `FUN_00488160`, avec le rappel de `+0x9a` qui plaque au sol | `FUN_0049a8e0`, **sans ce rappel** |
+| fin de geste | `FUN_004dfaf0` | **rien** — un bloc de vol la remplace |
+| interruption | `FUN_004e3770` (`0x2000a882` / `0x817`) | `FUN_004a1cf0` (`0x8882` / `0x816`) |
+| image où le coup porte | 8ᵉ ou 12ᵉ | **aucune** : elle balaie à chaque image du geste |
+| poussée entre deux gestes | remise à zéro | **amortie** d'un seizième |
+| cap d'errance | `+0x10` | **`+0x12`** |
+| compte à rebours | `rand%10 + timidité/2 + 0x14` | `rand%10 + timidité/4 + 0x0a` |
+
+**Le vol tient en dix lignes** : `+0x14` accumule une phase, et le sinus de cette phase fait osciller
+la hauteur autour d'un plafond. Le plafond est le plus haut de `+0x60` (le sol sous la bête) et de
+`+0x48`, recopié du `+0x60` de la cible — **elle se cale sur l'altitude de ce qu'elle poursuit**,
+sans jamais descendre sous son propre sol. Pendant un geste l'oscillation cesse et elle prend de la
+hauteur.
+
+Sa sonde le disait déjà : `probe[4]` vaut `-0x100` là où les deux terrestres ont 0.
+
+**Conséquence pour la suite du bloc A.** « Calquer sur une des deux sœurs en substituant cinq
+constantes » n'est vrai qu'entre bêtes de même milieu. Le Poisson volant (sous-type 6) se calquera
+sur celle-ci ; le Grizzly et le Crabe sur les terrestres. **Regarder d'abord quelle fonction
+d'intégration la routine appelle** — c'est le tri le moins cher, une seule ligne du désassemblage.
+
+### L'oracle qui manquait, et qu'on avait sous la main
+
+Ce fichier disait — et c'est toujours vrai — qu'**aucune vérification automatique ne peut dire si un
+comportement est fidèle**. Il n'existe pas de sortie attendue à comparer : la salle d'essai prouve
+qu'une routine ne plante pas et qu'elle atteint ses postures, pas qu'elle se comporte comme en 1998.
+
+Le 2026-08-29 a montré qu'il existe pourtant un oracle, et qu'il n'est pas dans le dépôt :
+**quelqu'un qui connaît le jeu**. La Coccinelle a été lâchée dans la forêt, elle a volé en oscillant
+puis foncé en prenant de la hauteur, et Vincent a reconnu la bête. C'est la première routine
+d'intelligence dont le **comportement** — et pas seulement la compilation — soit confirmé.
+
+**Ce que cet oracle vaut, et ce qu'il ne vaut pas.** Il valide une *forme* : vole ou marche, charge
+ou tourne autour, frappe de près ou de loin. Il ne dira jamais qu'un cône de virage vaut
+`hardiesse/4 + 0x38` plutôt que `+0x30`. Les constantes restent l'affaire du désassembleur ; la
+silhouette, elle, se vérifie à l'œil, et c'est exactement ce qui manquait.
+
+Conséquence pratique : **faire tourner chaque routine neuve devant quelqu'un qui a joué au jeu**,
+une fois, dans sa sous-zone d'origine et avec son vrai modèle — donc sans greffe. Une routine dont
+la silhouette est reconnue est bien plus sûre qu'une routine qui n'a fait que ne pas planter.
+
+---
+
+## Savoir lesquels manquent vraiment : le filet
+
+Ce relevé dit ce que le jeu **contient**. Il ne dit pas ce qu'un joueur **rencontre**, et les deux
+listes n'ont pas la même longueur : 166 gestionnaires existent, une partie n'en croise qu'une
+poignée à la fois.
+
+Depuis le 2026-08-29, `OPENFORESIA_AI_STUB=1` récolte la seconde liste. Sous ce drapeau, un
+gestionnaire non transcrit ne tue plus le processus : il se journalise et rend la main, la créature
+reste immobile, et la partie continue jusqu'au bout. Une seule partie rapporte donc **toutes** les
+lacunes de son parcours, là où une levée n'en donne jamais qu'une — celle qui a tué le processus.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 120 -EnvVar AI_STUB -WorkingDir OpenForesia
+Select-String -Path scratchpad\playtest-*.log -Pattern '\[LACUNE\]'
+```
+
+Le journal compte les appels par couple *(gestionnaire, sous-zone)*, et **ce compte est l'ordre de
+transcription** : un gestionnaire appelé des milliers de fois est une bête sous les yeux du joueur,
+un appel unique peut n'être qu'un passage. Le mode d'emploi complet est dans
+`Documentation/Tests/test-protocol.md`, section « Le filet ».
+
+---
+
+## Les exercer sans jouer jusqu'à eux : la salle d'essai
+
+Le filet dit ce qui manque ; il faut encore aller au-devant des bêtes pour le savoir. Depuis le
+2026-08-29, `OPENFORESIA_AI_BENCH` supprime ce trajet : à l'arrivée dans une sous-zone, le banc lit
+sa table d'espèces, retient **une espèce par sous-type**, et les fait toutes naître d'un coup autour
+du groupe.
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 90 -EnvVar AI_BENCH=3:0 -WorkingDir OpenForesia
+```
+
+Le lien sous-type ↔ espèce n'est pas deviné : `ResolveEntityBlocks` donne
+`espèce = *(répertoire + 0x4c) + index * 8`, et **`espèce[1]` est le numéro de comportement** — le
+même octet que `SpawnEntityFormation` recopie en `entité[5]`. C'est ce qui répond à la première des
+questions laissées ouvertes plus bas, au moins en jeu : le bilan du banc nomme chaque bête, en
+lisant les seize premiers octets de son modèle.
+
+**Une sous-zone ne porte que trois à huit espèces**, alors que sa table en installe jusqu'à onze.
+Relevé du CD pour la forêt :
+
+| sous-zone | comportements portés |
+|---|---|
+| 0 | 2, 0, 1 |
+| 1 | 2, 1, 6, 5 |
+| 2 | 18, 4, 3, 5 |
+| 3 | 8, 9, 7, 5, 6, 30 |
+| 4 | 3, 7, 4 |
+
+Le bloc A se couvre donc soit **en marchant** — le banc se réarme à chaque changement de lieu — soit
+en **greffant** (`AI_BENCH_ORPHANS=1`) les sous-types que le lieu installe sans qu'aucune de ses
+espèces les porte. La greffe exerce le corps de la routine avec de vraies statistiques, mais sous un
+modèle qui n'est pas le sien : une levée venant de l'animation y demande confirmation là où l'espèce
+vit vraiment. Mode d'emploi complet dans `Documentation/Tests/test-protocol.md`, section « La salle
+d'essai ».
+
+---
+
 ## Ce que ce relevé ne dit pas
 
-- **Quelle espèce utilise quel sous-type.** Le lien passe par les fiches de sous-zone du CD ; le
-  bestiaire les a déjà relevées pour le butin, mais le croisement avec les sous-types d'entité n'est
-  pas fait. C'est ce qui permettrait de dire « le gestionnaire `0x0049B220`, c'est le loup ».
+- **Quelle espèce utilise quel sous-type — la donnée est là, la table de correspondance non.** La
+  colonne `ia` d'`especes.csv` *est* le sous-type (`espèce[1]`), et `modeles.csv` porte les noms :
+  tout est relevé, mais le croisement systématique « comportement → liste d'espèces, par nom »
+  n'est pas écrit. En jeu, la salle d'essai le fait au coup par coup — son bilan nomme chaque bête
+  qu'elle engendre. Le tableau d'ensemble reste à produire, et c'est un simple `join` sur les deux
+  CSV.
 - **Si les 54 gestionnaires « simples » sont vraiment tous du décor.** Le classement repose sur un
   seul critère — appellent-ils `FUN_00535F20` ? — qui est sûr dans un sens (un appelant est une
   routine d'IA) mais pas dans l'autre : un gestionnaire simple peut être un coffre, un déclencheur,

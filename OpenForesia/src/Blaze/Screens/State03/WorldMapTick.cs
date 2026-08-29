@@ -162,6 +162,10 @@ public static unsafe partial class Blaze
             // boucle d'images, et n'est donc entree qu'une fois par chargement de zone. Une sonde
             // posee a son entree ne s'allume qu'une fois — ce qui s'est produit, et m'a fait croire
             // un moment que la fonction ne tournait pas.
+            // ECHAFAUDAGE : la salle d'essai, sous OPENFORESIA_AI_BENCH. Sans le drapeau, le
+            // premier test de TickAiBench rend la main aussitot. Voir AiBench.cs.
+            TickAiBench();
+
             if (s_TraceScript && ++s_TickCount % 60 == 0)
             {
                 Console.Error.WriteLine(
@@ -3071,14 +3075,180 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_0051a740 @ 0x0051a740 — appelee quand une entite de scene expire sans porter le
-    /// bit <c>0x200000</c>, juste apres le son de disparition.
+    /// Ghidra: <c>&amp;DAT_005646e0</c> et <c>&amp;DAT_005646e8</c> — les deux descripteurs du butin,
+    /// huit octets chacun, releves dans le binaire. Meme forme d'enregistrement que
+    /// <see cref="s_LevelUpEffect_005648A8"/>, et la donnee qui suit (0x005646f0) n'a plus cette
+    /// forme : ce sont bien deux enregistrements isoles, l'un pour ce qui tombe, l'autre pour les
+    /// eclats qui l'accompagnent.
     /// </summary>
-    private static void DespawnSceneEntity_0051a740(byte* record)
-        => throw new NotImplementedException(
-            "FUN_0051a740 (0x0051a740) n'est pas transcrite : la mise a mort d'une entite de scene, " +
-            "appelee par FUN_0050e680 quand son clignotement expire. Son corps est dans " +
-            "Legacy/Decompiled/Blaze.c. Elle prend l'entite en unique argument et ne rend rien.");
+    private static readonly byte[] s_LootDescriptors_005646E0 =
+    [
+        0x18, 0x90, 0x17, 0x17, 0x01, 0x00, 0x11, 0x06,   // 0x005646e0
+        0x30, 0x90, 0x17, 0x17, 0x01, 0x00, 0x11, 0x07,   // 0x005646e8
+    ];
+
+    private static byte* s_LootDescriptorStorage;
+
+    /// <summary>Le descripteur en memoire native : l'entite nee le garde par pointeur
+    /// (<c>+0x3c</c>). <paramref name="which"/> vaut 0 pour 0x005646e0, 1 pour 0x005646e8.</summary>
+    private static byte* LootDescriptor(int which)
+    {
+        if (s_LootDescriptorStorage == null)
+        {
+            s_LootDescriptorStorage = (byte*)NativeMemory.Alloc((nuint)s_LootDescriptors_005646E0.Length);
+            for (int i = 0; i < s_LootDescriptors_005646E0.Length; i++)
+            {
+                s_LootDescriptorStorage[i] = s_LootDescriptors_005646E0[i];
+            }
+        }
+
+        return s_LootDescriptorStorage + which * 8;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051a740 @ 0x0051a740 — <b>la mise a mort d'une entite de scene, et ce qu'elle
+    /// laisse tomber</b>. Appelee par <see cref="TickEntityTable_005ecaa0"/> quand le clignotement
+    /// d'une entite sans le bit <c>0x200000</c> expire, juste apres le son de disparition.
+    ///
+    /// <para>
+    /// Elle prend un emplacement dans le pool des objets tombes (<c>0x005f7b60</c> / table
+    /// <c>0x005f7de0</c>, 0x40 entrees), y <b>recopie l'entite morte</b> — d'ou la position et
+    /// l'orientation du butin, qui naissent la ou la bete est tombee — puis lui donne une vitesse
+    /// verticale pour le faire sauter.
+    /// </para>
+    /// <para>
+    /// <b>Le tirage du butin.</b> <c>modele + 0x22</c> est la chance de l'espece, et la
+    /// <b>septieme caracteristique</b> du tueur (<c>+0x2ac</c>) y ajoute sa moitie — la meme valeur
+    /// qui mene toute la progression dans <see cref="LevelUpCharacter_005391F0"/>. Si
+    /// <c>rand() % 1000</c> depasse ce total, il ne tombe que de l'argent (descripteur
+    /// 0x005646e0, drapeaux <c>0x80081000</c>) ; sinon c'est un objet (drapeaux <c>0x80089000</c>),
+    /// dont la <b>classe</b> se tire en <c>0xb4..0xb9</c> par une cascade de cinq seuils — a moins
+    /// qu'un second tirage, mene lui aussi par la chance du tueur, ne la ramene a zero.
+    /// </para>
+    /// <para>
+    /// <b>Puis zero a trois eclats</b> (<c>rand() &amp; 3</c>, descripteur 0x005646e8, drapeaux
+    /// <c>0x90081000</c>) partent en etoile autour du butin. La boucle s'arrete aussi des que le
+    /// pool est plein — un butin peut donc tomber sans ses eclats, jamais l'inverse.
+    /// </para>
+    /// <para>
+    /// TODO(REVERSE): <b>le tueur est lu en <c>+9</c></b> et non en <c>+8</c> comme partout
+    /// ailleurs (<see cref="ReadSceneEntitySituation_00535F20"/> prend <c>chased[8]</c>). Les deux
+    /// octets sont distincts ; celui-ci n'a pas d'ecrivain identifie dans ce qui est transcrit.
+    /// Transcrit tel quel — si le butin se met a dependre du mauvais personnage, c'est ici.
+    /// </para>
+    /// </summary>
+    /// <returns>1 si un emplacement etait libre, 0 sinon. L'appelant ignore la valeur.</returns>
+    private static uint DespawnSceneEntity_0051a740(byte* record)
+    {
+        int index = AllocEntitySlot((ushort*)Mem.Entity(0x005f7b60));
+        if (index < 0) return 0;
+
+        byte* drop = Mem.Entity(0x005f7de0) + index * 0x9c;
+        Mem.CopyDwords((uint*)record, (uint*)drop, 0x27);
+
+        drop[0x08] = (byte)index;
+        *(short*)(drop + 0x9a) = 0x5000;
+        *(uint*)(drop + 0x38) = 0x1000000;
+        *(uint*)(drop + 0x28) = 0x0c000c00;
+        *(short*)(drop + 0x2c) = 0x0c00;
+        *(short*)(drop + 0x0a) = 0;
+        *(int*)(drop + 0x50) = 0;
+
+        int hop = CrtRand();
+        *(int*)(drop + 0x58) = 0;
+        *(int*)(drop + 0x54) = (hop % 10 + 0x19) * 0x1000;
+
+        byte* killer = GetMainMemPtr() + (record[9] + 0x78) * 0x2000;
+
+        ResolveEntityBlocks(record, out byte* stats, out byte* species, out byte* model);
+
+        *(uint*)(drop + 0x5c) = *(ushort*)(stats + 0x44);
+
+        // L'ecart de niveau entre le tueur et la bete, borne a 0x2c, decale le tirage de colonne.
+        int gap = *(ushort*)(killer + 0x146) - *(ushort*)(stats + 0x44);
+        if (gap < 0) gap = 0;
+        if (gap > 0x2c) gap = 0x2c;
+
+        drop[0x07] = (byte)PickWeightedTableEntry(species[5], gap + 0x38);   // Ghidra: FUN_0053a920
+
+        short luck = *(short*)(killer + 0x2ac);
+        ushort odds = *(ushort*)(model + 0x22);
+
+        if (odds + (luck >> 1) < CrtRand() % 1000)
+        {
+            // ---- rien que de l'argent ----
+            int life = CrtRand();
+            *(uint*)(drop + 0x14) = 0;
+            *(byte**)(drop + 0x3c) = LootDescriptor(0);
+            drop[0x40] = 0;
+            *(uint*)drop = 0x80081000;
+            *(int*)(drop + 0x10) = life % 0x1e + 200;
+        }
+        else
+        {
+            // ---- un objet ----
+            int life = CrtRand();
+            *(uint*)(drop + 0x14) = 0;
+            *(uint*)drop = 0x80089000;
+            *(int*)(drop + 0x10) = life % 0x1e + 300;
+
+            int quality = (*(short*)(killer + 0x12c) >> 3) + 0x3c + (*(short*)(killer + 0x2ac) >> 1);
+            if (quality > 0x5f) quality = 0x5f;
+
+            if (CrtRand() % 100 < quality)
+            {
+                drop[0x06] = 0;
+            }
+            else
+            {
+                int roll = CrtRand() % 100;
+                int kind = roll > 0x22 ? 0xb5 : 0xb4;
+                if (roll > 0x3b) kind++;
+                if (roll > 0x4a) kind++;
+                if (roll > 0x56) kind++;
+                if (roll > 0x5e) kind++;
+                drop[0x06] = (byte)kind;
+            }
+        }
+
+        // ---- les eclats ----
+        uint sparkles = (uint)CrtRand() & 3;
+
+        while (sparkles != 0)
+        {
+            int slot = AllocEntitySlot((ushort*)Mem.Entity(0x005f7b60));
+            if (slot < 0) break;
+
+            byte* sparkle = Mem.Entity(0x005f7de0) + slot * 0x9c;
+            Mem.CopyDwords((uint*)record, (uint*)sparkle, 0x27);
+
+            sparkle[0x08] = (byte)slot;
+            *(short*)(sparkle + 0x9a) = 0x5000;
+            *(uint*)(sparkle + 0x38) = 0x1000000;
+            *(uint*)(sparkle + 0x5c) = *(ushort*)(stats + 0x44);
+            *(uint*)(sparkle + 0x28) = 0x0c000c00;
+            *(short*)(sparkle + 0x2c) = 0x1000;
+            *(short*)(sparkle + 0x0a) = 0;
+
+            int angle = CrtRand();
+            int speed = (CrtRand() & 7) + 0x10;
+
+            *(int*)(sparkle + 0x50) = (int)Winsys3d.GetSinTableEntry(angle) * speed;
+            *(int*)(sparkle + 0x54) = (CrtRand() % 10 + 0x19) * 0x1000;
+            *(int*)(sparkle + 0x58) = Winsys3d.GetCosTableEntry(angle) * speed;
+
+            int life = CrtRand();
+            *(uint*)(sparkle + 0x14) = 0;
+            *(byte**)(sparkle + 0x3c) = LootDescriptor(1);
+            sparkle[0x40] = 0;
+            *(uint*)sparkle = 0x90081000;
+
+            sparkles--;
+            *(int*)(sparkle + 0x10) = life % 0x1e + 200;
+        }
+
+        return 1;
+    }
 
     /// <summary>
     /// Ghidra: <c>&amp;DAT_0056d340</c> — <b>quarante-huit masques d'etat, un par minuteur</b>,
@@ -3728,7 +3898,70 @@ public static unsafe partial class Blaze
 
     private static readonly System.Collections.Generic.HashSet<string> s_SeenEmptySlots = new();
 
+    /// <summary>
+    /// ECHAFAUDAGE — <b>le filet</b>, pose sous <c>OPENFORESIA_AI_STUB=1</c>. Sous ce drapeau, un
+    /// gestionnaire d'entite non transcrit <b>ne tue plus le processus</b> : il se journalise une
+    /// fois et rend la main, donc la creature reste immobile et la partie continue.
+    ///
+    /// <para>
+    /// La regle « une lacune hurle » est tenue, pas contournee : elle hurle dans la trace au lieu
+    /// de lever, et seulement sous ce drapeau — sans lui,
+    /// <see cref="Resources.CallEntityHandler"/> leve comme avant. Ce que ca change est la
+    /// <b>maniere de recolter</b> : une partie jouee d'un bout a l'autre rend la liste de TOUS les
+    /// gestionnaires rencontres, la ou une levee n'en donne jamais qu'un, celui qui a tue le
+    /// processus. C'est cette liste-la — et non le recensement de
+    /// <c>Documentation/Ennemies/Comportement.md</c> — qui donne l'ordre de transcription : elle ne
+    /// contient que ce que le joueur croise vraiment.
+    /// </para>
+    /// <para>
+    /// <b>Une entite sans cervelle n'est pas une entite absente</b> : elle garde sa place, son
+    /// gabarit et ses statistiques, elle ne decide simplement rien. Un decor ou un declencheur mis
+    /// en souche peut donc bloquer une progression sans planter — c'est le prix du filet, et c'est
+    /// pourquoi il ne s'allume pas tout seul.
+    /// </para>
+    /// </summary>
+    private static readonly bool s_AiStub =
+        Environment.GetEnvironmentVariable("OPENFORESIA_AI_STUB") == "1";
+
+    /// <summary>
+    /// Les lacunes rencontrees sous <see cref="s_AiStub"/>, comptees par <b>couple (gestionnaire,
+    /// sous-zone)</b>. La sous-zone fait partie de la cle parce qu'un numero de sous-type ne veut
+    /// rien dire tout seul : la table 0x0056ad48 est rechargee a chaque sous-zone, et le meme
+    /// gestionnaire rencontre en deux lieux se transcrit une fois mais se rencontre deux fois.
+    /// </summary>
+    private static readonly
+        System.Collections.Generic.Dictionary<(uint Target, int Zone, int SubArea), int>
+            s_MissingHandlers = new();
+
+    private static bool s_MissingHandlerRecapArmed;
+
+    /// <summary>
+    /// ECHAFAUDAGE : l'enveloppe de banc. Sous <c>OPENFORESIA_AI_BENCH</c>, chaque appel de
+    /// gestionnaire est compte et sa levee retenue au lieu de tuer le run — c'est ce qui permet
+    /// d'exercer vingt comportements d'un coup alors que le premier manquant aurait arrete la
+    /// partie. Hors banc, l'appel est direct et rien ne change.
+    /// </summary>
     private static void DispatchEntityHandler(uint target, byte* record, string where)
+    {
+        if (!s_AiBench)
+        {
+            DispatchEntityHandlerCore(target, record, where);
+            return;
+        }
+
+        BenchNoteCall(target);
+
+        try
+        {
+            DispatchEntityHandlerCore(target, record, where);
+        }
+        catch (Exception error)
+        {
+            BenchNoteThrow(target, error);
+        }
+    }
+
+    private static void DispatchEntityHandlerCore(uint target, byte* record, string where)
     {
         switch (target)
         {
@@ -3831,12 +4064,26 @@ public static unsafe partial class Blaze
             // que le sous-type 2 eut ete transcrit.
             case 0x00499DE0: TickSceneEntityAi_00499DE0(record); return;
 
+            // Le sous-type 1 de la meme table — la COCCINELLE, premiere bete volante ecrite.
+            // Relevee par le banc le 2026-08-29 : la seule des neuf lacunes du bloc A qui soit une
+            // vraie espece de la sous-zone d'arrivee, donc validable sans greffe.
+            case 0x0049A360: TickSceneEntityAi_0049A360(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de
                 // distinguer une entite legitime d'un enregistrement mal rempli sans instrumenter
                 // le jeu pour un seul essai.
-                Res.CallEntityHandler(target, $"{where} [{DumpRecordHead(record)}]");
+                string detail = $"{where} [{DumpRecordHead(record)}]";
+
+                // ECHAFAUDAGE : voir s_AiStub. Sans le drapeau, rien ne change — la lacune leve.
+                if (s_AiStub)
+                {
+                    NoteMissingHandler(target, detail);
+                    return;
+                }
+
+                Res.CallEntityHandler(target, detail);
                 return;
         }
     }
@@ -3853,6 +4100,73 @@ public static unsafe partial class Blaze
         }
 
         return text.ToString();
+    }
+
+    /// <summary>
+    /// Note une lacune au lieu de lever : une ligne a la <b>premiere</b> rencontre du couple
+    /// (gestionnaire, sous-zone), un compte pour le recapitulatif. Une ligne par image serait
+    /// illisible — un gestionnaire manquant est rappele soixante fois par seconde.
+    ///
+    /// <para>
+    /// La ligne part sur la sortie d'erreur, que <c>playtest.ps1</c> redirige deja vers
+    /// <c>scratchpad/playtest-&lt;horodatage&gt;.log</c>. C'est voulu : le script <b>tue</b> le
+    /// processus a la fin du run, donc le recapitulatif de <see cref="PrintMissingHandlerRecap"/>
+    /// ne s'imprime que sur une sortie propre. Les lignes ecrites au fil de l'eau, elles, sont
+    /// dans le journal quoi qu'il arrive.
+    /// </para>
+    /// </summary>
+    private static void NoteMissingHandler(uint target, string detail)
+    {
+        (uint Target, int Zone, int SubArea) key =
+            (target, Res.s_Unknown_005de528 & 0xff, s_Unknown_005de52c);
+
+        if (s_MissingHandlers.TryGetValue(key, out int seen))
+        {
+            s_MissingHandlers[key] = seen + 1;
+            return;
+        }
+
+        s_MissingHandlers[key] = 1;
+
+        Console.Error.WriteLine(
+            $"[LACUNE] 0x{target:X6} zone={key.Zone} sous-zone={key.SubArea} : {detail}");
+
+        if (!s_MissingHandlerRecapArmed)
+        {
+            s_MissingHandlerRecapArmed = true;
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => PrintMissingHandlerRecap();
+        }
+    }
+
+    /// <summary>
+    /// Le recapitulatif de fin de partie : les couples (gestionnaire, sous-zone) rencontres, du
+    /// plus sollicite au moins sollicite. C'est la liste de courses — l'ordre de transcription se
+    /// lit dessus, un gestionnaire appele des milliers de fois etant une bete que le joueur a sous
+    /// les yeux, la ou un appel unique peut n'etre qu'un passage.
+    ///
+    /// <para>Ne s'imprime que si le processus se termine proprement ; voir
+    /// <see cref="NoteMissingHandler"/>.</para>
+    /// </summary>
+    private static void PrintMissingHandlerRecap()
+    {
+        if (s_MissingHandlers.Count == 0) return;
+
+        var lines = new System.Collections.Generic.List<
+            System.Collections.Generic.KeyValuePair<(uint Target, int Zone, int SubArea), int>>(
+                s_MissingHandlers);
+
+        lines.Sort((a, b) => b.Value.CompareTo(a.Value));
+
+        Console.Error.WriteLine(
+            $"[LACUNE] recapitulatif : {lines.Count} couple(s) (gestionnaire, sous-zone) " +
+            "rencontre(s) et non transcrit(s)");
+
+        foreach (var line in lines)
+        {
+            Console.Error.WriteLine(
+                $"[LACUNE]   0x{line.Key.Target:X6} zone={line.Key.Zone} " +
+                $"sous-zone={line.Key.SubArea} : {line.Value} appel(s)");
+        }
     }
 
     /// <summary>
@@ -7162,7 +7476,7 @@ public static unsafe partial class Blaze
             if (gained < 0) gained = 0;
             *(int*)(attackerCharacter + 0x158) += gained + 1;
 
-            ApplyDamageToMember_00539190(attacker, attackerCharacter);
+            CheckLevelUp_00539190((byte*)attacker, attackerCharacter);
 
             if (*(short*)(attackerBlock + 0x82) != 0)
             {
@@ -8240,6 +8554,472 @@ public static unsafe partial class Blaze
         e[0x42] = 3;
         e[0x43] = SceneEntityDelay(timid);
         *(ushort*)(e + 0x10) = (ushort)CrtRand();
+    }
+
+    // =============================================================================================
+    // 0x0049A360 — LA COCCINELLE, sous-type 1 du bloc A de la foret. Transcrite le 2026-08-29 au
+    // desassembleur (Legacy/Raw/Blaze/FUN_0049A360.asm, 1392 octets de corps ; la table de sauts a
+    // quatre entrees suit a 0x0049a8d0, et 0x0049a8e0 est deja la fonction suivante).
+    //
+    // C'EST LA PREMIERE BETE VOLANTE ECRITE, et cela change trois choses par rapport aux deux
+    // routines terrestres deja transcrites :
+    //
+    //   1. elle integre son mouvement par FUN_0049a8e0 et non FUN_00488160 — meme amortissement,
+    //      mais SANS le rappel de +0x9a qui plaque une bete au sol ;
+    //   2. elle n'appelle pas la fin de geste (FUN_004dfaf0) : a la place, un bloc de VOL fait
+    //      osciller sa hauteur autour d'un plafond, par le sinus d'une phase que +0x14 accumule ;
+    //   3. son interruption est FUN_004a1cf0 et non FUN_004e3770 — deux masques differents.
+    //
+    // Sa sonde le dit aussi : probe[4] vaut -0x100 la ou les deux terrestres ont 0, donc son gabarit
+    // de frappe est decale en hauteur.
+    // =============================================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0049a8e0 @ 0x0049a8e0 — <b>l'integration du mouvement d'une entite volante</b>,
+    /// la jumelle de <see cref="IntegrateSceneEntityMotion_00488160"/> que la documentation de
+    /// celle-ci annoncait deja.
+    ///
+    /// <para>
+    /// <b>Meme piege de signature</b> : <c>Blaze.c</c> la declare a un parametre puis lit
+    /// <c>unaff_retaddr</c> et <c>unaff_EBP</c>. Le desassemblage donne deux parametres — l'entite
+    /// et l'echelle de vitesse — et <c>unaff_EBP</c> n'est que le sinus dont Ghidra a jete la valeur
+    /// de retour.
+    /// </para>
+    /// <para>
+    /// <b>La difference avec sa jumelle tient en un terme absent</b> : la composante verticale
+    /// n'est qu'amortie, sans le rappel de <c>+0x9a</c>. Rien ne ramene la bete au sol — c'est le
+    /// bloc de vol de <see cref="TickSceneEntityAi_0049A360"/> qui tient sa hauteur.
+    /// </para>
+    /// </summary>
+    private static void IntegrateFlyingEntityMotion_0049A8E0(byte* e, int speed)
+    {
+        short heading = *(short*)(e + 0x32);
+
+        int sin = (int)Winsys3d.GetSinTableEntry(heading);
+        int cos = Winsys3d.GetCosTableEntry(heading);
+
+        int vx = *(int*)(e + 0x50);
+        vx = vx - (vx >> 3) - (vx >> 8);
+        *(int*)(e + 0x50) = vx;
+
+        int vy = *(int*)(e + 0x54);
+        vy = vy - (vy >> 8) - (vy >> 3);
+
+        int vz = *(int*)(e + 0x58);
+        int push = *(int*)(e + 0x5c) * speed >> 0xc;
+
+        vz = vz - (vz >> 3) - (vz >> 8);
+        *(int*)(e + 0x58) = vz;
+
+        *(int*)(e + 0x1c) += (push * sin >> 0xc) + vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x20) += vy;
+        *(int*)(e + 0x24) += (push * cos >> 0xc) + vz;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004a1cf0 @ 0x004a1cf0 — <b>la remise a l'attente sur coup recu</b> des betes
+    /// volantes, la sœur de <see cref="InterruptSceneEntity_004E3770"/>.
+    ///
+    /// <para>
+    /// Deux masques les separent, et rien d'autre : <c>0x8882</c> au lieu de <c>0x2000a882</c> sur
+    /// les drapeaux de vue <c>+0x90</c>, et <c>0x816</c> au lieu de <c>0x817</c> sur les drapeaux
+    /// d'entite — le bit 1, que cette routine pose elle-meme a chaque image, est donc exclu du
+    /// garde.
+    /// </para>
+    /// </summary>
+    private static void InterruptFlyingEntity_004A1CF0(uint* entity, byte* stats)
+    {
+        byte* e = (byte*)entity;
+
+        if ((entity[0x24] & 0x8882) != 0)
+        {
+            if ((*entity & 0x816) == 0)
+            {
+                e[0x42] = 1;
+                e[0x43] = 1;
+            }
+
+            entity[0x17] = 0;
+        }
+
+        if (*(short*)(e + 0x96) != 0
+            && (*(uint*)(stats + 0x14) & 0x80000000) == 0
+            && (*entity & 0x816) == 0)
+        {
+            if ((*entity & 0x40) != 0)
+            {
+                e[0x43] = 0;
+                return;
+            }
+
+            e[0x42] = 0;
+            e[0x43] = 1;
+            entity[0x17] = 0;
+        }
+    }
+
+    /// <summary>Ghidra: <c>0x0049a4fb</c> et ses trois jumeaux — <b>l'amortissement de la
+    /// poussee</b>, un seizieme par image. La ou les deux betes terrestres remettent
+    /// <c>+0x5c</c> a zero d'un coup, la Coccinelle ralentit : elle vole, elle ne pile pas.</summary>
+    private static void DampFlyingEntityPush(byte* e)
+    {
+        int push = *(int*)(e + 0x5c);
+        *(int*)(e + 0x5c) = push - (push >> 4);
+    }
+
+    /// <summary>Ghidra: <c>0x0049a469</c> et ses jumeaux — <b>la montee de la poussee</b> vers une
+    /// consigne, par seiziemes. Trois consignes selon la posture : <c>+0x280</c> en frappant,
+    /// <c>+0x1a0</c> en approchant, <c>+0x140</c> en errant, chacune decalee de la hardiesse et
+    /// multipliee par 0x80.</summary>
+    private static void RampFlyingEntityPush(byte* e, int target)
+    {
+        int push = *(int*)(e + 0x5c);
+        *(int*)(e + 0x5c) = push + ((target - push) >> 4);
+    }
+
+    /// <summary>Ghidra: <c>0x0049a802</c> et ses deux jumeaux — le compte a rebours de posture de
+    /// cette espece. <b>Ce n'est pas <see cref="SceneEntityDelay"/></b> : la timidite y compte pour
+    /// un quart et non pour une moitie, et le plancher est 10 au lieu de 0x14. La Coccinelle change
+    /// donc d'avis nettement plus vite que ses voisines.</summary>
+    private static byte FlyingEntityDelay(int timid)
+        => (byte)(CrtRand() % 10 + (byte)(timid >> 2) + 0x0a);
+
+    /// <summary>
+    /// Ghidra: <c>0x0049a360</c> — <b>l'intelligence de la Coccinelle</b>, sous-type 1 de la table
+    /// installee <c>0x0056ad48</c> en foret. 1392 octets, <b>absente de <c>Blaze.c</c></b> comme
+    /// toute la famille ; releve garde sous <c>Legacy/Raw/Blaze/FUN_0049A360.asm</c>.
+    ///
+    /// <para>
+    /// Meme charpente en trois temps que ses deux voisines — decider, appliquer, replanifier — et
+    /// quatre postures, comme <see cref="TickSceneEntityAi_00499DE0"/> : 0 attendre, 1 se tourner,
+    /// 2 s'approcher, 3 errer vers un cap range en <c>+0x12</c>. <b>Ce n'est pas <c>+0x10</c></b>
+    /// comme chez la sœur : le champ change d'une espece a l'autre, et la replanification ecrit
+    /// bien <c>+0x12</c>.
+    /// </para>
+    /// <para>
+    /// <b>Elle pose le bit 1 de ses drapeaux a chaque image</b>, des l'entree, avant toute lecture.
+    /// Aucune des deux voisines ne le fait ; c'est aussi ce bit que son interruption exclut de son
+    /// garde (<c>0x816</c> et non <c>0x817</c>), les deux choix allant ensemble.
+    /// </para>
+    /// <para>
+    /// <b>Son coup ne connait pas d'image de frappe.</b> Les deux terrestres attendent la huitieme
+    /// ou la douzieme image du geste pour balayer le groupe ; celle-ci balaie a <b>chaque</b> image
+    /// tant que le geste dure, et accelere pendant ce temps. Un contact prolonge, pas un coup
+    /// porte — ce qui va avec une bete qui fonce en vol.
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_0049A360(byte* record)
+    {
+        byte* e = record;
+
+        // Ghidra: `or eax,edi` avec edi = 1, avant meme la resolution des blocs.
+        *(uint*)e |= 1;
+
+        ResolveEntityBlocks(e, out byte* stats, out _, out _);
+
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0x1e;
+        probe[2] = 0x50;
+        probe[3] = 0x64;
+        probe[4] = unchecked((short)0xff00);   // le gabarit est decale en hauteur : elle vole
+        probe[5] = 0x50;
+
+        int boldness, distance, heading, speed;
+        uint traits;
+        ReadSceneEntitySituation_00535F20(e, &boldness, &distance, &heading, &speed, &traits);
+
+        int timid = 0x40 - boldness;
+
+        // ---------------------------------------------------------------- 1. decider
+        DecideFlyingEntityAction_0049A360(e, probe, boldness, distance, heading, speed, traits);
+
+        // ---------------------------------------------------------------- 2. appliquer
+        IntegrateFlyingEntityMotion_0049A8E0(e, speed);
+        FinalizeEntityPlacement2((uint*)e);
+        BeatWings_0049A68F(e);
+        InterruptFlyingEntity_004A1CF0((uint*)e, stats);
+
+        // ---------------------------------------------------------------- 3. replanifier
+        if (speed == 0) return;
+        if ((*(uint*)e & 0x816) != 0) return;
+        if (e[0x43] != 0) return;
+
+        ReplanFlyingEntityAction_0049A360(e, boldness, timid);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0049a68f..0x0049a710</c> — <b>le vol</b>, et ce qui remplace la fin de geste
+    /// chez cette espece.
+    ///
+    /// <para>
+    /// <c>+0x14</c> accumule une <b>phase</b> — de <c>0x100</c> a <c>0x1ff</c> par image, donc
+    /// jamais tout a fait la meme — et le sinus de cette phase fait osciller la hauteur autour d'un
+    /// plafond. Le plafond est le plus haut de <c>+0x60</c> (le sol sous la bete) et de
+    /// <c>+0x48</c>, recopie du <c>+0x60</c> de la cible tant que celle-ci ne porte pas le bit 0 :
+    /// <b>la Coccinelle se cale sur l'altitude de ce qu'elle poursuit</b>, sans jamais descendre
+    /// sous son propre sol.
+    /// </para>
+    /// <para>
+    /// Pendant un geste, l'oscillation cesse : la hauteur rejoint le plafond majore de
+    /// <c>0x28000</c> par huitiemes — elle prend de la hauteur pour foncer. Hors geste elle
+    /// rejoint plafond + sinus par seiziemes.
+    /// </para>
+    /// </summary>
+    private static void BeatWings_0049A68F(byte* e)
+    {
+        *(uint*)(e + 0x90) &= 0xdfffd8ff;
+
+        byte* chased = *(byte**)(e + 0x6c);
+        if ((*chased & 1) == 0) *(int*)(e + 0x48) = *(int*)(chased + 0x60);
+
+        *(short*)(e + 0x14) += (short)((CrtRand() & 0xff) + 0x100);
+
+        int ceiling = *(int*)(e + 0x60);
+        if (*(int*)(e + 0x48) >= ceiling) ceiling = *(int*)(e + 0x48);
+
+        int y = *(int*)(e + 0x20);
+
+        if ((*(uint*)e & 2) != 0)
+        {
+            *(int*)(e + 0x20) = y + ((ceiling - y + 0x28000) >> 3);
+            return;
+        }
+
+        int lift = ((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x14)) + 0x3200) << 6;
+        *(int*)(e + 0x20) = y + ((lift + ceiling - y) >> 4);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0049a3f2..0x0049a67a</c> — <b>le premier temps</b> de
+    /// <see cref="TickSceneEntityAi_0049A360"/>.
+    /// </summary>
+    private static void DecideFlyingEntityAction_0049A360(
+        byte* e, short* probe, int boldness, int distance, int heading, int speed, uint traits)
+    {
+        if (speed == 0) return;
+
+        AdvanceEntityAnimation_004DB5A0((uint*)e);
+        uint flags = *(uint*)e;
+
+        // ================================================================ le geste en cours
+        if ((flags & 2) != 0)
+        {
+            if ((traits & 0x10) != 0)
+            {
+                e[0x43] = 0;
+                *(uint*)e = flags & 0xfffffffd;
+                return;
+            }
+
+            // Aucun controle d'image du geste : le balayage a lieu a CHAQUE image.
+            byte* victim = SweepPartyForMeleeHit_00519C30(e, (int*)(e + 0x1c), probe, 0);
+
+            if (*Mem.Camera(0x005de0b8) != 0)
+            {
+                *(ushort*)(victim + 0x96) = 0x10;
+                *(uint*)victim |= 0x40;
+
+                ResolveMeleeHit_00539B80((uint*)e, (uint*)victim);
+                Aud.PlayPositionalSound(3, 0x300, 0x1800, (int*)(victim + 0x1c));
+            }
+
+            // Ghidra: LAB_0049a469 — elle ACCELERE pendant le geste, la ou ses voisines remettent
+            // la poussee a zero.
+            RampFlyingEntityPush(e, (boldness + 0x280) << 7);
+
+            if (e[0x43] == 0) return;
+            if (--e[0x43] != 0) return;
+
+            *(uint*)e &= 0xfffffffd;
+            return;
+        }
+
+        // ================================================================ la posture tenue
+        if ((flags & 0x10) != 0) return;
+        if ((flags & 0x804) != 0) return;
+
+        byte held = e[0x42];
+        if (held > 3) return;
+
+        // Le cone de virage des postures 1 et 2, identique pour les deux.
+        int cone = (boldness >> 2) + 0x38;
+
+        switch (held)
+        {
+            // ---------------------------------------------------------- 0 : attendre
+            case 0:
+                if (*(ushort*)(e + 0x18) != 0)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 0;
+                    *(uint*)e = flags;
+                }
+
+                if (distance < 0x12c)
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+                DampFlyingEntityPush(e);
+                return;
+
+            // ---------------------------------------------------------- 1 : se tourner
+            case 1:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                if (TurnSceneEntityTowardTarget(e, cone, heading)) e[0x43] = 0;
+                DampFlyingEntityPush(e);
+                return;
+
+            // ---------------------------------------------------------- 2 : s'approcher
+            case 2:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                // La distance tenue est une CONSTANTE ici, la ou la sœur la lit dans +0x10.
+                if (distance < 0x12c)
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+
+                TurnSceneEntityTowardTarget(e, cone, heading);
+                RampFlyingEntityPush(e, (boldness + 0x1a0) << 7);
+                return;
+
+            // ---------------------------------------------------------- 3 : errer
+            default:
+            {
+                if (e[0x43] != 0) e[0x43]--;
+
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                RampFlyingEntityPush(e, (boldness + 0x140) << 7);
+
+                // Le cap vise est en +0x12, et non en +0x10 comme chez la sœur.
+                int bearing = (*(ushort*)(e + 0x12) - *(ushort*)(e + 0x32)) & 0xfff;
+                if (((bearing + 0x100) & 0xfff) <= 0x200) return;
+
+                int step = bearing >= 0x800 ? -0x38 - (boldness >> 2) : (boldness >> 2) + 0x38;
+                *(ushort*)(e + 0x32) += (ushort)step;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0049a742..0x0049a8cf</c> — <b>le troisieme temps</b> : quelle posture prendre
+    /// pour la suite.
+    ///
+    /// <para>
+    /// Trois plages de distance, comme chez ses voisines, mais des seuils a elle : <b>sous
+    /// 0x12c</b> une chance sur 0x3c d'engager — et l'engagement demande en plus un cap dans le
+    /// cone et une distance sous <c>0xfa</c> <b>diminuee</b> d'un tirage (la sœur, elle,
+    /// <i>augmente</i> son seuil du meme tirage : plus une Coccinelle hesite, plus elle doit etre
+    /// pres) ; sinon elle erre vers un cap tire autour de la cible. <b>Entre 0x12c et 0x258</b>
+    /// elle approche, sans condition. <b>Au-dela</b> elle attend, hesite ou erre au hasard.
+    /// </para>
+    /// <para>
+    /// Son engagement ne pose <b>que</b> le bit 2 et un compte a rebours de <c>timidite/8 + 0x10</c> :
+    /// ni animation forcee, ni remise a zero de la poussee — elle garde son elan.
+    /// </para>
+    /// <para>
+    /// Le tirage jete de la plage moyenne (<c>call rand</c> dont le resultat n'est pas lu) est
+    /// transcrit : il fait avancer le generateur, donc le retirer changerait toute la suite.
+    /// </para>
+    /// </summary>
+    private static void ReplanFlyingEntityAction_0049A360(byte* e, int boldness, int timid)
+    {
+        byte* chased = *(byte**)(e + 0x6c);
+
+        int dx = (*(int*)(chased + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+        int dz = (*(int*)(chased + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int heading = (Winsys3d.Ordinal_457(dx, dz) - *(ushort*)(e + 0x32)) & 0xfff;
+
+        // ================================================================ le corps a corps
+        if (distance < 0x12c)
+        {
+            if (CrtRand() % 100 >= 0x3c)
+            {
+                // Errer vers un cap tire AUTOUR de la cible : la largeur du tirage croit avec la
+                // hardiesse, et il est centre en retranchant sa moitie.
+                e[0x42] = 3;
+                e[0x43] = FlyingEntityDelay(timid);
+
+                int spread = (boldness + 0x80) << 4;
+                int offset = CrtRand() % spread - (spread >> 1);
+
+                *(short*)(e + 0x12) = (short)(offset + heading + *(short*)(e + 0x32));
+                return;
+            }
+
+            if (((heading + timid * 4 + 0x100) & 0xfff) > timid * 8 + 0x200)
+            {
+                HesitateSceneEntity(e);
+                return;
+            }
+
+            if (distance >= 0xfa - CrtRand() % (timid * 2 + 1))
+            {
+                HesitateSceneEntity(e);
+                return;
+            }
+
+            *(uint*)e |= 2;
+            e[0x43] = (byte)((timid >> 3) + 0x10);
+            return;
+        }
+
+        // ================================================================ l'approche
+        if (distance < 0x258)
+        {
+            CrtRand();                       // Ghidra: `call 00547140h` dont le resultat est jete
+            e[0x42] = 2;
+            e[0x43] = FlyingEntityDelay(timid);
+            return;
+        }
+
+        // ================================================================ l'errance
+        int far = CrtRand() % 100;
+
+        if (far < 0x1e)
+        {
+            e[0x42] = 0;
+            e[0x43] = FlyingEntityDelay(timid);
+            return;
+        }
+
+        if (far < 0x3c)
+        {
+            HesitateSceneEntity(e);
+            return;
+        }
+
+        e[0x42] = 3;
+        e[0x43] = FlyingEntityDelay(timid);
+        *(short*)(e + 0x12) = (short)CrtRand();
     }
 
     /// <summary>
@@ -13196,7 +13976,9 @@ public static unsafe partial class Blaze
             {
                 if ((kind & 0x10000000) == 0)
                 {
-                    // Degats repartis sur tout le groupe encore debout.
+                    // EXPERIENCE repartie sur tout le groupe encore debout — et non « degats »,
+                    // comme ce commentaire le disait jusqu'au 2026-08-29 : la part s'ajoute a
+                    // +0x158, la jauge que CheckLevelUp_00539190 examine juste apres.
                     int index = 0;
                     int offset = 0;
                     uint* victim = (uint*)Inp.s_SlotFlags_005e93c0;
@@ -13212,7 +13994,7 @@ public static unsafe partial class Blaze
                             share += (int)(*(uint*)((byte*)hit + 0x5c) + 0xf) >> 4;
                             *(int*)(mainMem + 0xf0158 + offset) += share;
 
-                            ApplyDamageToMember_00539190(victim, mainMem + 0xf0000 + offset);
+                            CheckLevelUp_00539190((byte*)victim, mainMem + 0xf0000 + offset);
                         }
 
                         index++;
@@ -13260,7 +14042,10 @@ public static unsafe partial class Blaze
             }
         }
 
-        // Le pas sonore, sur la derniere image de l'animation de marche.
+        // LE COUP, sur la derniere image du geste — et non « le pas sonore », comme ce commentaire
+        // le disait jusqu'au 2026-08-29 : voir SweepSceneEntitiesForMeleeHit_00519940. Les deux
+        // postures ecartees (4 et 7, modulo 8) sont exactement celles dont le gabarit de portee est
+        // entierement nul dans la table de 0x00562cf0.
         if ((*slot & 2) != 0)
         {
             byte posture = perChar[0x150];
@@ -13274,7 +14059,7 @@ public static unsafe partial class Blaze
                     uint row = posture;
                     if ((posture & 7) == 0 && *(short*)(s + 0x18) == 6) row = (row >> 3) + 0x10;
 
-                    EmitFootstep_00519940(slot, (int*)(s + 0x1c), FootstepParameters(row));
+                    SweepSceneEntitiesForMeleeHit_00519940((byte*)slot, (int*)(s + 0x1c), MeleeProbeForPosture(row));
                 }
             }
         }
@@ -13550,15 +14335,484 @@ public static unsafe partial class Blaze
         return null;
     }
 
-    /// <summary>Ghidra: FUN_00539190 @ 0x00539190 (20 l.) — applique des degats a un membre.</summary>
-    private static void ApplyDamageToMember_00539190(uint* victim, byte* block)
-        => throw new NotImplementedException(
-            "FUN_00539190 (0x00539190) : non transcrite. 20 lignes dans Blaze.c.");
+    /// <summary>
+    /// Ghidra: FUN_00539190 @ 0x00539190 — <b>la verification de palier apres un gain
+    /// d'experience</b>, en basculant l'allocateur de la DLL sur le tampon de travail le temps du
+    /// calcul. Exactement la meme enveloppe que <see cref="RunEntityScript"/> autour de
+    /// <c>RunScript</c> : <c>Ordinal_46</c> rend l'etat courant de l'allocateur, negatif voulant
+    /// dire « rien a preserver ».
+    ///
+    /// <para>
+    /// <b>Elle s'appelait <c>ApplyDamageToMember_00539190</c> et ce nom etait faux</b> — elle
+    /// n'applique aucun degat. Le site d'appel le montre : <c>+0x158</c> vient de recevoir
+    /// l'experience du coup, et c'est cela qu'elle examine. Troisieme nom invente tombe le
+    /// 2026-08-29, tous les trois sur le chemin « taper sur un monstre ».
+    /// </para>
+    /// <para>
+    /// <b>Ghidra rend le second appel comme <c>FUN_005391f0(unaff_retaddr, param_1)</c></b>, ce qui
+    /// n'a pas de sens. Le desassemblage tranche : les deux branches font
+    /// <c>push [esp+8] ; push [esp+4] ; call</c>, donc les deux passent <c>(param_1, param_2)</c>.
+    /// L'artefact vient de ce que Ghidra a perdu le niveau de pile apres l'appel <b>stdcall</b> a
+    /// <c>Ordinal_45</c>, qui depile lui-meme son argument.
+    /// </para>
+    /// </summary>
+    private static void CheckLevelUp_00539190(byte* member, byte* character)
+    {
+        if (Winsys3d.Ordinal_46() < 0)
+        {
+            LevelUpCharacter_005391F0(member, character);
+            return;
+        }
 
-    /// <summary>Ghidra: FUN_00519940 @ 0x00519940 (62 l.) — le pas sonore et sa poussiere.</summary>
-    private static void EmitFootstep_00519940(uint* entity, int* position, byte* parameters)
-        => throw new NotImplementedException(
-            "FUN_00519940 (0x00519940) : non transcrite. 62 lignes dans Blaze.c.");
+        *(int*)Mem.Arena(0x005e9318) = Winsys3d.Ordinal_46();
+        Winsys3d.Ordinal_45(GetMainMemPtr() + 0x1c0000);
+        LevelUpCharacter_005391F0(member, character);
+        Winsys3d.Ordinal_45((void*)(nint)(*(int*)Mem.Arena(0x005e9318)));
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0056d308</c> — <b>la caracteristique favorisee par une sous-classe</b>,
+    /// un octet pour chacune des six premieres. Relevee dans le binaire : <c>00 01 04 03 02 05</c>,
+    /// une permutation de 0..5 — chaque sous-classe pousse une caracteristique differente d'un
+    /// cinquieme a la montee de niveau.
+    /// </summary>
+    private static readonly byte[] s_SubClassFavouredStat_0056D308 = [0, 1, 4, 3, 2, 5];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0056d310</c> — <b>les chances de progression par classe</b>, un dword
+    /// pour chacune des huit, releve dans le binaire. Chaque dword porte quatre octets lus deux par
+    /// deux : <c>(base physique, diviseur physique, base mentale, diviseur mental)</c>, d'ou
+    /// <c>chance = septieme caracteristique / diviseur + base</c>.
+    ///
+    /// <para>Trois valeurs seulement pour huit classes — <c>0x04280241</c>, <c>0x023c0423</c> et
+    /// <c>0x03320332</c> — reparties en 0,6 · 1,3,7 · 2,4,5. Les classes se rangent donc en trois
+    /// familles de progression.</para>
+    /// </summary>
+    private static readonly uint[] s_ClassGrowthOdds_0056D310 =
+    [
+        0x04280241, 0x023c0423, 0x03320332, 0x023c0423,
+        0x03320332, 0x03320332, 0x04280241, 0x023c0423,
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0056d330</c> — <b>combien de sorts d'une ecole sont accessibles a un
+    /// palier</b>, cinq octets par ecole, releves dans le binaire.
+    ///
+    /// <para>
+    /// <c>05 0a 0f 14 1a · 05 0b 10 13 16 · 03 07 09 0c 10</c> — trois ecoles, et la suite est
+    /// nulle. Le corps se garde lui-meme (<c>if (compte != 0)</c>), donc une quatrieme ecole
+    /// n'apprendrait simplement rien ; les cinq octets nuls sont conserves pour que l'indexation
+    /// reste celle du binaire.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_SpellsByTier_0056D330 =
+    [
+        0x05, 0x0a, 0x0f, 0x14, 0x1a,
+        0x05, 0x0b, 0x10, 0x13, 0x16,
+        0x03, 0x07, 0x09, 0x0c, 0x10,
+        0x00, 0x00, 0x00, 0x00, 0x08,
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005648a8</c> — le descripteur de <b>l'effet visuel de montee de
+    /// niveau</b>, onze enregistrements de huit octets releves dans le binaire. La borne se lit
+    /// dans la donnee : ses voisins connus (<c>DAT_00564800</c> a <c>DAT_00564860</c>) avancent
+    /// tous de huit, et le bloc s'arrete a 0x00564900 ou commence une suite <c>1, 2, …</c> qui n'a
+    /// plus cette forme.
+    /// </summary>
+    private static readonly byte[] s_LevelUpEffect_005648A8 =
+    [
+        0xd8, 0x58, 0x27, 0x08, 0x01, 0x00, 0x30, 0x02,
+        0xa2, 0x20, 0x32, 0x08, 0x01, 0x00, 0x30, 0x02,
+        0x00, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x06,
+        0x08, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x04,
+        0x10, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x05,
+        0x18, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x07,
+        0x20, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x07,
+        0x28, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x09,
+        0x30, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x09,
+        0x38, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x0a,
+        0x48, 0xf8, 0x08, 0x08, 0x00, 0x00, 0x11, 0x04,
+    ];
+
+    private static byte* s_LevelUpEffectStorage;
+
+    /// <summary>Le descripteur en memoire native : l'entite nee le garde par pointeur
+    /// (<c>+0x3c</c>), donc il doit survivre a l'appel.</summary>
+    private static byte* LevelUpEffectDescriptor()
+    {
+        if (s_LevelUpEffectStorage == null)
+        {
+            s_LevelUpEffectStorage = (byte*)NativeMemory.Alloc((nuint)s_LevelUpEffect_005648A8.Length);
+            for (int i = 0; i < s_LevelUpEffect_005648A8.Length; i++)
+            {
+                s_LevelUpEffectStorage[i] = s_LevelUpEffect_005648A8[i];
+            }
+        }
+
+        return s_LevelUpEffectStorage;
+    }
+
+    /// <summary>Ghidra: DAT_005e85a8 et DAT_005e85aa — les deux chances de progression du tour,
+    /// physique et mentale. Reserve non initialisee, ecrite et relue par la seule
+    /// <see cref="LevelUpCharacter_005391F0"/> : c'est du brouillon que le compilateur de 1998 a
+    /// mis en donnees plutot que sur la pile.</summary>
+    private static short s_LevelUpPhysicalOdds_005e85a8, s_LevelUpMentalOdds_005e85aa;
+
+    /// <summary>Ghidra: DAT_005e85b0..DAT_005e85bc — les sept gains tires pour le tour : six
+    /// caracteristiques et, en septieme, le pas de la valeur de <c>+0x28c</c>. Meme nature de
+    /// brouillon que la paire ci-dessus.</summary>
+    private static readonly short[] s_LevelUpGains_005e85b0 = new short[7];
+
+    /// <summary>
+    /// Ghidra: FUN_005391f0 @ 0x005391f0 — <b>la montee de niveau</b>. Elle boucle tant que
+    /// l'experience accumulee franchit le palier suivant, donc un seul coup peut faire gagner
+    /// plusieurs niveaux.
+    ///
+    /// <para>
+    /// <b>Le palier</b> est <c>niveau / 4 + 0x30 + niveau * 2</c>, borne a 9999, et l'experience
+    /// (<c>+0x158</c>) est <b>remise a zero</b> a chaque passage — ce n'est pas un total cumule
+    /// mais une jauge. Le niveau vit en <c>+0x146</c> et son plancher en <c>+0x144</c> : le second
+    /// avance d'un a chaque montee et tire le premier vers le haut s'il avait ete abaisse.
+    /// </para>
+    /// <para>
+    /// <b>Le septieme champ de <c>+0x2a0</c> mene tout le reste.</b> Les six premiers sont les
+    /// caracteristiques ; le septieme (<c>+0x2ac</c>) sert de facteur commun — il elargit les
+    /// tirages de gain, il divise dans le calcul des deux chances, et il pese dans le tirage de
+    /// <c>+0x28c</c>. Une seule valeur decide donc du rythme de progression du personnage.
+    /// </para>
+    /// <para>
+    /// <b>Une caracteristique ne monte que si elle est SOUS un plafond calcule</b>
+    /// (<c>(v/8 - v²/16) + (v+10)*10</c>, une courbe qui plafonne d'elle-meme) <b>et</b> si un
+    /// tirage passe. Les six alternent entre la chance physique et la chance mentale dans l'ordre
+    /// physique, mentale, mentale, physique, physique, mentale.
+    /// </para>
+    /// <para>
+    /// <b>La valeur de <c>+0x28c</c> peut BAISSER</b> : au-dessous de 0x1f au tirage elle perd le
+    /// septieme gain, entre 0x1f et 0x46 ce gain est remis a zero pour la suite, au-dessus elle
+    /// l'ajoute. Bornee a 0..200. C'est le seul champ du bloc qui recule a une montee de niveau.
+    /// </para>
+    /// <para>
+    /// <b>L'apprentissage de sort ne concerne que les classes 1, 3, 5 et 7</b>, et la classe 5 voit
+    /// son niveau ramene a 0x50 au-dela de 0x6d avant le calcul du palier — un plafonnement propre
+    /// a elle, transcrit tel quel. Le premier sort de l'ecole encore inconnu dont le cout tient
+    /// dans le tirage est appris, et un seul par montee (<c>break</c>).
+    /// </para>
+    /// </summary>
+    private static void LevelUpCharacter_005391F0(byte* member, byte* c)
+    {
+        bool leveled = false;
+
+        // `local_10` de Ghidra : le brouillon du tour, hisse hors de la boucle (un stackalloc par
+        // tour ferait deborder la pile sur un gain de plusieurs niveaux).
+        short* scratch = stackalloc short[8];
+
+        while (true)
+        {
+            ushort level = *(ushort*)(c + 0x146);
+
+            if (level == 9999)
+            {
+                *(int*)(c + 0x158) = 0;
+                break;
+            }
+
+            uint needed = (uint)((level >> 2) + 0x30 + level * 2);
+            if (needed > 9999) needed = 9999;
+            if (needed > *(uint*)(c + 0x158)) break;
+
+            // ------------------------------------------------------------ le palier est franchi
+            *(short*)(c + 0x144) += 1;
+            leveled = true;
+            *(int*)(c + 0x158) = 0;
+            *(ushort*)(c + 0x146) = (ushort)(level + 1);
+
+            if ((ushort)(level + 1) < *(ushort*)(c + 0x144))
+            {
+                *(ushort*)(c + 0x146) = *(ushort*)(c + 0x144);
+            }
+
+            short* stats = (short*)(c + 0x2a0);
+            int seventh = stats[6];
+
+            for (int i = 0; i < 7; i++) scratch[i] = (short)((stats[i] >> 3) + 1);
+
+            for (int i = 0; i < 7; i++)
+            {
+                s_LevelUpGains_005e85b0[i] = (short)(
+                    CrtRand() % scratch[i] + 1 + CrtRand() % ((seventh >> 3) + 1));
+            }
+
+            // ------------------------------------------------------------ les jauges
+            *(short*)(c + 0x148) += (short)(CrtRand() % s_LevelUpGains_005e85b0[4] + 2);
+            *(short*)(c + 0x14a) += (short)(CrtRand() % s_LevelUpGains_005e85b0[5] + 1);
+
+            if (*(short*)(c + 0x148) > 9999) *(short*)(c + 0x148) = 9999;
+            if (*(short*)(c + 0x14a) > 9999) *(short*)(c + 0x14a) = 9999;
+
+            // ------------------------------------------------------------ les deux chances
+            uint odds = s_ClassGrowthOdds_0056D310[c[0x150] & 7];
+
+            s_LevelUpPhysicalOdds_005e85a8 =
+                (short)(seventh / (int)(odds >> 8 & 0xff) + (short)(odds & 0xff));
+            s_LevelUpMentalOdds_005e85aa =
+                (short)(seventh / (int)(odds >> 0x18) + (short)(odds >> 0x10 & 0xff));
+
+            // ------------------------------------------------------------ les plafonds
+            for (int i = 0; i < 6; i++)
+            {
+                short v = stats[i];
+                scratch[i] = (short)((v >> 3) - (short)(v * v >> 4) + (v + 10) * 10);
+            }
+
+            byte subClass = c[0x151];
+
+            if (subClass < 6)
+            {
+                int favoured = s_SubClassFavouredStat_0056D308[subClass];
+                scratch[favoured] += (short)(scratch[favoured] / 5);
+            }
+            else if (subClass == 6 || subClass == 7)
+            {
+                for (int i = 0; i < 6; i++) scratch[i] += (short)(scratch[i] / 0x14);
+            }
+
+            // ------------------------------------------------------------ les caracteristiques
+            short* carac = (short*)(c + 0x280);
+
+            GrowCharacteristic(carac + 0, scratch[0], s_LevelUpPhysicalOdds_005e85a8, 0);
+            GrowCharacteristic(carac + 1, scratch[1], s_LevelUpMentalOdds_005e85aa, 1);
+            GrowCharacteristic(carac + 2, scratch[2], s_LevelUpMentalOdds_005e85aa, 2);
+            GrowCharacteristic(carac + 3, scratch[3], s_LevelUpPhysicalOdds_005e85a8, 3);
+            GrowCharacteristic(carac + 4, scratch[4], s_LevelUpPhysicalOdds_005e85a8, 4);
+            GrowCharacteristic(carac + 5, scratch[5], s_LevelUpMentalOdds_005e85aa, 5);
+
+            for (int i = 0; i < 6; i++)
+            {
+                if (carac[i] > 999) carac[i] = 999;
+            }
+
+            // ------------------------------------------------------------ le champ qui recule
+            int roll = CrtRand() % 100 + (seventh >> 2);
+            int value = *(short*)(c + 0x28c);
+
+            if (roll < 0x47)
+            {
+                if (roll < 0x1f) value -= s_LevelUpGains_005e85b0[6];
+                else s_LevelUpGains_005e85b0[6] = 0;
+            }
+            else
+            {
+                value += s_LevelUpGains_005e85b0[6];
+            }
+
+            if (value < 0) value = 0;
+            if (value > 200) value = 200;
+            *(short*)(c + 0x28c) = (short)value;
+
+            // ------------------------------------------------------------ les derivees, refaites
+            CommitStagedStatBlock(c);                          // Ghidra: FUN_00538ab0
+            ScaleStatBlockByDifficulty(c + 0x100);             // Ghidra: FUN_00538f50
+            ComputeDerivedStats(c);                            // Ghidra: FUN_00538c50
+            ApplyEquipmentStatBonuses(c);                      // Ghidra: FUN_00538e20
+            FinalizeEquipmentEffects(c + 0x100);               // Ghidra: FUN_00538fa0
+
+            TryLearnSpell(member, c);
+        }
+
+        if (!leveled) return;
+
+        // Ghidra: l'aureole de montee de niveau, puis une gerbe d'entites 0x59 — le meme sous-type
+        // que la gerbe de soin de RestoreVitalsEntity_00403710, lance ici avec +0x18 force.
+        SpawnStatusEffectEntity_0047AC40(
+            member, (int*)(member + 0x1c), LevelUpEffectDescriptor(), 0x29, 0, 0);
+
+        uint saved = *(uint*)(member + 0x18);
+        *(ushort*)(member + 0x18) = 0xffff;
+        *(ushort*)(member + 0x1a) = 0x65;
+        SpawnEffectEntity(member, 0x59, 0, 0);                 // Ghidra: FUN_0047a9d0
+        *(uint*)(member + 0x18) = saved;
+    }
+
+    /// <summary>Une caracteristique monte si elle est sous son plafond et qu'un centieme passe.
+    /// Les six sites ne different que par le plafond, la chance et le gain.</summary>
+    private static void GrowCharacteristic(short* value, short ceiling, short odds, int gain)
+    {
+        if (*value < ceiling && CrtRand() % 100 <= odds)
+        {
+            *value += s_LevelUpGains_005e85b0[gain];
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0053962b..0x005396f7</c> — <b>l'apprentissage de sort</b> de la montee de
+    /// niveau, reserve aux classes 1, 3, 5 et 7.
+    ///
+    /// <para>
+    /// Le palier vient du <b>plancher de niveau</b> (<c>+0x144</c>) compare a quatre seuils
+    /// (0x13, 0x31, 0x4f, 0x6d), ce qui donne 0 a 4 ; la classe 5 voit son niveau ramene a 0x50
+    /// au-dela de 0x6d avant ce calcul, donc elle ne depasse jamais le palier 2. La table de
+    /// 0x0056d330 dit alors combien de sorts de l'ecole sont accessibles.
+    /// </para>
+    /// <para>
+    /// Les sorts de l'ecole vivent dans le repertoire principal (<c>+0x9c</c>), enregistrements de
+    /// 0x30 octets dont <c>+0x1d</c> est le cout d'apprentissage. Le premier encore inconnu dont le
+    /// cout tient dans <c>tirage % (+0x122 + 1) / 8 + (+0x154)</c> est appris — <b>un seul par
+    /// montee</b>.
+    /// </para>
+    /// </summary>
+    private static void TryLearnSpell(byte* member, byte* c)
+    {
+        byte characterClass = (byte)(c[0x150] & 7);
+
+        if (characterClass != 1 && characterClass != 3
+            && characterClass != 5 && characterClass != 7)
+        {
+            return;
+        }
+
+        ushort level = *(ushort*)(c + 0x144);
+        if (characterClass == 5 && level > 0x6d) level = 0x50;
+
+        uint tier = level > 0x13 ? 1u : 0u;
+        if (level > 0x31) tier++;
+        if (level > 0x4f) tier++;
+        if (level > 0x6d) tier++;
+
+        uint school = c[0x2b5];
+        if (tier + school * 5 >= s_SpellsByTier_0056D330.Length) return;
+
+        byte available = s_SpellsByTier_0056D330[tier + school * 5];
+        if (available == 0) return;
+
+        byte* spell = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x9c) + school * 4) + 0x1d;
+        uint* known = (uint*)(c + 0x160 + school * 8);
+
+        for (uint i = 0; i < available; i++, spell += 0x30)
+        {
+            if (*spell == 0) continue;
+            if ((*known & 1u << (int)(i & 0x1f)) != 0) continue;
+
+            int reach = (CrtRand() % (*(short*)(c + 0x122) + 1) >> 3) + *(short*)(c + 0x154);
+            if (*spell > reach) continue;
+
+            *known |= 1u << (int)(i & 0x1f);
+
+            // Le temps de l'effet, l'entite porte le descripteur de l'ecole : mis de cote et
+            // rendu tout de suite apres.
+            uint savedDescriptor = *(uint*)(member + 0x3c);
+
+            *(byte*)(member + 0x40) = (byte)i;
+            *(uint*)(member + 0x3c) = *(uint*)(
+                *(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x10 + c[0x2b5] * 4);
+
+            SpawnEffectEntity(member, 0xbc, 0, 0);             // Ghidra: FUN_0047a9d0
+
+            *(uint*)(member + 0x3c) = savedDescriptor;
+            break;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00519940 @ 0x00519940 — <b>le coup du groupe contre les entites de scene</b>,
+    /// le miroir exact de <see cref="SweepPartyForMeleeHit_00519C30"/> : celle-la cherche quel
+    /// membre un monstre touche, celle-ci quels monstres un membre touche.
+    ///
+    /// <para>
+    /// <b>Elle s'appelait <c>EmitFootstep_00519940</c> et ce nom etait faux</b>, comme l'etaient
+    /// <c>FootstepParameters</c> et <c>s_FootstepTable_00562cf0</c>, ses deux voisines. Le nom venait du site d’appel — la
+    /// derniere image d'une animation — et du fait que le corps n'avait jamais ete lu. Il n'y a
+    /// aucun son de pas ici : la fonction croise un gabarit avec les entites voisines, resout les
+    /// degats et pousse les touches en arriere. La table de 0x00562cf0 n'est pas faite de
+    /// parametres de pas mais de <b>gabarits de portee</b>, six <c>short</c> par posture, de la
+    /// meme forme que la sonde que <see cref="TickSceneEntityAi_0049A980"/> pose sur sa pile — et
+    /// ses quatre lignes entierement nulles (4, 7, 12, 15) sont exactement les postures que le site
+    /// d'appel exclut. Decouvert le 2026-08-29, en jouant : taper plantait.
+    /// </para>
+    /// <para>
+    /// <b>Le balayage passe par la grille spatiale</b>, pas par un tableau : trois colonnes sur
+    /// trois lignes autour de la case de l'attaquant, et pour chacune la liste simplement chainee
+    /// que <see cref="LinkIntoWorldGrid"/> remplit (chainage a <c>+0x68</c>). L'origine
+    /// <c>0x001c5000</c> et le decalage d'une ligne vers l'arriere sont tous deux caches dans la
+    /// constante <c>0x389f</c> : <c>(0x389f + ligne) * 0x20 * 4 = (ligne - 1) * 0x80 + 0x1c5000</c>.
+    /// </para>
+    /// <para>
+    /// TODO(REVERSE): <b>la borne de ligne laisse passer une ligne de trop.</b>
+    /// <c>uVar3 &lt; 0x71800</c> autorise l'indice de ligne 0x20, alors que la grille n'en a que
+    /// 0x20 (0..0x1f) — la lecture tombe alors dans les quatre premiers octets de la grille
+    /// suivante. C'est dans le binaire, transcrit tel quel ; a verser dans <c>legacy-bug.md</c> le
+    /// jour ou on l'observe en jeu.
+    /// </para>
+    /// <para>
+    /// La parade est <b>plus maigre que celle du groupe</b> : une entite qui porte le bit
+    /// <c>0x10</c> et fait face au coup a moins d'un demi-tour pres ne fait que jouer le son 8,
+    /// sans refaire ses statistiques ni noter son assaillant. C'est la seule difference de fond
+    /// entre les deux miroirs.
+    /// </para>
+    /// </summary>
+    /// <returns>La <b>derniere</b> entite blessee, ou <c>null</c>. Le site d'appel l'ignore ;
+    /// <c>DAT_005de0b8</c> porte l'information utile — 1 si un coup a porte.</returns>
+    private static byte* SweepSceneEntitiesForMeleeHit_00519940(byte* attacker, int* position, short* probe)
+    {
+        byte* mainMem = GetMainMemPtr();
+        byte* last = null;
+
+        *Mem.Camera(0x005de0b8) = 0;
+
+        uint column = (uint)((((position[0] >> 0xc) + 0x2000) >> 9) - 1);
+        uint row = (uint)(((((position[2] >> 0xc) + 0x2000) >> 9) + 0x389f) * 0x20);
+
+        for (int lines = 3; lines != 0; lines--, row += 0x20)
+        {
+            // Ghidra remet la colonne de depart par `uVar5 = uVar6 - 2` apres la boucle interne ;
+            // ici le curseur est local au tour, donc `column` ne bouge pas et le geste disparait.
+            uint cell = column;
+
+            for (int columns = 3; columns != 0; columns--, cell++)
+            {
+                if (cell >= 0x20 || row >= 0x71800) continue;
+
+                for (byte* victim = *(byte**)(mainMem + (cell + row) * 4);
+                     victim != null;
+                     victim = *(byte**)(victim + 0x68))
+                {
+                    uint flags = *(uint*)victim;
+
+                    if ((flags & 0x400000) == 0) continue;
+                    if ((flags & 0x50102040) != 0) continue;
+                    if (*(short*)(victim + 0x96) != 0) continue;      // deja en train de clignoter
+                    if (!TestMeleeReach_00535A90(position, victim, probe, attacker)) continue;
+
+                    short heading = *(short*)((byte*)position + 0x16);
+
+                    if ((flags & 0x10) != 0
+                        && (uint)((*(short*)(victim + 0x32) - heading - *probe - 0x400) & 0xfff) <= 0x7ff)
+                    {
+                        Aud.PlayPositionalSound(8, 0x800, 0x1000, (int*)(victim + 0x1c));
+                        continue;
+                    }
+
+                    if (ResolveMeleeHit_00539B80((uint*)attacker, (uint*)victim) != 0)
+                    {
+                        // Le recul part dans le cap de l'attaquant, seize fois le sinus.
+                        *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(heading) * 0x10;
+                        *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(heading) * 0x10;
+                        *(uint*)victim |= 0x40;
+
+                        *Mem.Camera(0x005de0b8) = 1;
+                        last = victim;
+                    }
+
+                    // Le clignotement de degat est pose meme quand la resolution n'a rien rendu :
+                    // c'est dans le binaire, hors du `if`.
+                    victim[0x96] = 0x10;
+                    victim[0x97] = 0;
+                }
+            }
+        }
+
+        return last;
+    }
 
 
     /// <summary>
@@ -13718,15 +14972,16 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: <c>&amp;DAT_00562cf0</c> — les jeux de parametres de pas sonore, <b>0xc octets (six
-    /// shorts) par entree</b>, releves dans le binaire
+    /// Ghidra: <c>&amp;DAT_00562cf0</c> — les <b>gabarits de portee au corps a corps</b>, un par posture,
+    /// <b>0xc octets (six shorts) par entree</b>, releves dans le binaire
     /// (<c>at Legacy/Binaries/Blaze.exe 0x00562cf0 384</c>).
     ///
     /// <para>
     /// <b>La table compte dix-huit entrees</b>, pas seize ni vingt : le dword de 0x00562dc8 est
     /// <c>0x02030100</c>, une suite d'octets croissants qui n'a plus la forme des six shorts. La
     /// borne se lit donc dans la donnee, pas dans les sites d'appel. Quatre entrees (4, 7, 12, 15)
-    /// sont entierement nulles — les postures sans pas sonore.
+    /// sont entierement nulles — les postures qui ne frappent pas, et ce sont exactement celles que le
+    /// site d’appel ecarte par <c>(posture &amp; 7) != 4 &amp;&amp; != 7</c>.
     /// </para>
     /// <para>
     /// L'indice est <b>l'octet de posture entier</b>, pas ses trois bits bas ; seule l'entree 6 de
@@ -13735,7 +14990,7 @@ public static unsafe partial class Blaze
     /// suivante — la lacune le dit plutot que de rendre des octets inventes.
     /// </para>
     /// </summary>
-    private static readonly short[] s_FootstepTable_00562cf0 =
+    private static readonly short[] s_MeleeProbes_00562cf0 =
     [
         0x0000, 0x0028, 0x003c, 0x0096, unchecked((short)0xffa0), 0x006e,   //  0
         0x0000, 0x001e, 0x001e, 0x0096, 0x0100, 0x005a,                     //  1
@@ -13757,31 +15012,31 @@ public static unsafe partial class Blaze
         0x0000, 0x0032, 0x006e, 0x0064, unchecked((short)0xfe80), 0x006e,   // 17
     ];
 
-    private static short* s_FootstepStorage;
+    private static short* s_MeleeProbeStorage;
 
-    /// <summary>L'entree de <see cref="s_FootstepTable_00562cf0"/> pour une posture, en memoire
+    /// <summary>L'entree de <see cref="s_MeleeProbes_00562cf0"/> pour une posture, en memoire
     /// native puisque l'appele la recoit par pointeur.</summary>
-    private static byte* FootstepParameters(uint row)
+    private static short* MeleeProbeForPosture(uint row)
     {
         if (row >= 18)
         {
             throw new NotImplementedException(
-                $"FUN_0050bf20 : parametres de pas sonore d'indice {row}, hors des dix-huit " +
-                "entrees relevees a 0x00562cf0. Dans le binaire cette lecture tombe dans la " +
+                $"Gabarit de portee d’indice {row}, hors des dix-huit entrees " +
+                "relevees a 0x00562cf0. Dans le binaire cette lecture tombe dans la " +
                 "structure suivante (0x00562dc8) ; relever ce qu'elle porte avant d'aller plus " +
                 $"loin : `OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x{0x00562cf0 + row * 0xc:x8} 12`.");
         }
 
-        if (s_FootstepStorage == null)
+        if (s_MeleeProbeStorage == null)
         {
-            s_FootstepStorage = (short*)NativeMemory.Alloc((nuint)s_FootstepTable_00562cf0.Length, sizeof(short));
-            for (int i = 0; i < s_FootstepTable_00562cf0.Length; i++)
+            s_MeleeProbeStorage = (short*)NativeMemory.Alloc((nuint)s_MeleeProbes_00562cf0.Length, sizeof(short));
+            for (int i = 0; i < s_MeleeProbes_00562cf0.Length; i++)
             {
-                s_FootstepStorage[i] = s_FootstepTable_00562cf0[i];
+                s_MeleeProbeStorage[i] = s_MeleeProbes_00562cf0[i];
             }
         }
 
-        return (byte*)s_FootstepStorage + row * 0xc;
+        return s_MeleeProbeStorage + row * 6;
     }
 
     // =====================================================================

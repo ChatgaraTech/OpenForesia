@@ -212,6 +212,13 @@ src/
 Tout `src/Blaze/` est **une seule classe partielle `Blaze`**. Le fichier est une unité de
 navigation, pas une unité d'encapsulation — voir « pourquoi pas de vraies classes » plus bas.
 
+**Une seule exception dans tout `src/Blaze/` : `Screens/State03/AiBench.cs`.** Ce n'est pas une
+transcription — c'est la **salle d'essai**, un banc qui fait naître un ennemi par comportement
+installé pour les exercer sans jouer jusqu'à eux. Il vit là et non dans `src/Host/` parce qu'il
+appelle les fonctions du jeu (`SpawnEntityFormation`, `ResolveEntityHandler`) et doit donc faire
+partie de la classe partielle. Son en-tête le dit en majuscules ; voir
+`Documentation/Tests/test-protocol.md`.
+
 ---
 
 ## La règle de routage : où va une fonction

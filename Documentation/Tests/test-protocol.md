@@ -43,6 +43,7 @@ Si le script ne couvre pas le cas voulu, **l'étendre**, ne pas le contourner.
 | `-Hold <jeton>` | touche maintenue **de la prise de focus jusqu'à la fin du run**, navigation du menu comprise. Indispensable pour les conditions que le jeu lit sur l'état *tenu* à un instant précoce : `-Then` ne démarre qu'après la validation du menu, et certains écrans sont atteints avant |
 | `-Maximize` | clique « agrandir » **dès que la fenêtre existe**, donc pendant l'écran-titre, avant le passage au menu. C'est le seul instant où ça teste quelque chose : c'est ce passage qui redimensionne la fenêtre (changement de mode d'affichage de `3dhelp`). Le verdict imprime la géométrie de fin de run, `[agrandie]` compris |
 | `-Trace A,B` | pose `OPENFORESIA_TRACE_A=1`, `OPENFORESIA_TRACE_B=1` (voir plus bas) |
+| `-EnvVar A=1,B` | pose `OPENFORESIA_A=1`, `OPENFORESIA_B=1` — le pendant de `-Trace` pour les drapeaux qui **changent le comportement** du jeu au lieu de le décrire. Une valeur omise vaut `1`. Voir « Le filet » plus bas |
 | `-KeepOpen` | laisse le jeu ouvert |
 | `-MenuDelay`, `-TapMs`, `-MaxTaps` | réglages fins, rarement utiles |
 | `-WorkingDir <chemin>` | dossier de travail du processus lancé. Par défaut celui de l'exe (comme un double-clic Explorer). À poser pour reproduire un lancement dont le CWD diffère — **Rider "Run" et `dotnet run` mettent tous deux par défaut le dossier du `.csproj`**, pas celui de l'exe compilé — ce qui change la résolution de tout chemin relatif que le jeu ouvre (`save\...` notamment, voir plus bas) |
@@ -1719,3 +1720,177 @@ cas**, et le verdict le masque. Le controle qui tranche reste le debit : **557 p
 Autrement dit : **atteindre la foret n'est pas a la portee du script**. C'est le partage du
 2026-08-24 — sortir de l'auberge demande de conduire le personnage, donc c'est Vincent qui y va.
 L'agent peut lancer la trace, la depouiller, et lire le verdict ; il ne peut pas garantir l'endroit.
+
+---
+
+## Le filet : `OPENFORESIA_AI_STUB=1`, ou récolter toutes les lacunes en une partie (2026-08-29)
+
+```powershell
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 120 -EnvVar AI_STUB -WorkingDir OpenForesia -Shot
+```
+
+**Le problème.** Un gestionnaire d'entité non transcrit lève, et la levée tue le processus. Une
+partie ne rapporte donc **jamais qu'une seule lacune** : la première rencontrée. Trois plantages
+successifs en forêt le 2026-08-28 ont ainsi coûté trois parties pour trois adresses, alors que la
+même partie les portait toutes les trois.
+
+**Ce que le drapeau fait.** Sous `OPENFORESIA_AI_STUB=1`, le `default:` de
+`DispatchEntityHandler` ne lève plus : il journalise le couple *(gestionnaire, sous-zone)* à sa
+première rencontre et rend la main. La créature reste immobile, la partie continue, et le journal
+finit par porter **la liste complète** de ce que ce parcours a croisé.
+
+**Ce que le drapeau ne fait pas.** Il ne s'allume pas tout seul, et c'est délibéré : une entité
+sans cervelle garde sa place, son gabarit et ses statistiques. Un décor ou un déclencheur mis en
+souche peut donc **bloquer une progression sans planter** — un couvercle qui ne s'ouvre pas, une
+porte qui ne répond pas. Si un parcours se bloque sous le filet, c'est une lacune du journal qu'il
+faut lire, pas un bug à chercher.
+
+### Dépouiller le journal
+
+```powershell
+Select-String -Path scratchpad\playtest-*.log -Pattern '\[LACUNE\]'
+```
+
+Deux formes de ligne :
+
+```
+[LACUNE] 0x0049B220 zone=3 sous-zone=0 : FUN_0050e680, table 0x005ecaa0 entree 4, sous-type 3 [c0 20 …]
+[LACUNE]   0x0049B220 zone=3 sous-zone=0 : 3812 appel(s)
+```
+
+La première paraît **une fois par couple**, au fil de l'eau. La seconde est le récapitulatif, trié
+du plus sollicité au moins sollicité — et il ne s'imprime **que sur une sortie propre** du jeu
+(menu « Quitter »), parce que `playtest.ps1` tue le processus à la fin du run. Les lignes au fil de
+l'eau, elles, sont dans le journal quoi qu'il arrive : c'est sur elles qu'il faut compter.
+
+**Le compte d'appels est l'ordre de transcription.** Un gestionnaire appelé des milliers de fois
+est une bête que le joueur a sous les yeux ; un appel unique peut n'être qu'un passage. C'est cette
+liste — et non le recensement de `Documentation/Ennemies/Comportement.md` — qui dit par quoi
+commencer : elle ne contient que ce qui est vraiment rencontré.
+
+**La sous-zone fait partie de la clé**, et ce n'est pas décoratif : la table `0x0056ad48` est
+rechargée à chaque sous-zone, donc un numéro de sous-type ne veut rien dire tout seul. Le même
+gestionnaire vu dans deux lieux se transcrit une fois, mais compte deux lignes.
+
+---
+
+## La salle d'essai : `OPENFORESIA_AI_BENCH`, ou exercer les comportements sans jouer jusqu'à eux (2026-08-29)
+
+```powershell
+# la sous-zone où le groupe se trouve, et de nouveau à chaque changement de lieu
+OpenForesia.Tools\playtest.ps1 -Entry 0 -Seconds 90 -EnvVar AI_BENCH=1 -WorkingDir OpenForesia -Shot
+
+# se transférer d'abord en forêt, sous-zone 0
+… -EnvVar AI_BENCH=3:0
+
+# idem, en greffant les comportements installés qu'aucune espèce du lieu ne porte
+… -EnvVar AI_BENCH=3:0,AI_BENCH_ORPHANS=1
+```
+
+**Le problème.** 166 gestionnaires d'entité de scène existent, trois sont écrits, et le seul moyen
+d'en réveiller un était d'amener le groupe devant la bête correspondante — au hasard d'une rencontre
+qui ne se commande pas.
+
+**Ce que le banc fait.** À l'arrivée dans une sous-zone, il lit sa table d'espèces (`répertoire
++0x4c`), retient **une espèce par sous-type** — `espèce[1]` *est* le numéro de comportement, c'est
+`ResolveEntityBlocks` qui le dit — et les fait toutes naître d'un coup autour du meneur par
+`SpawnEntityFormation`, la fonction du jeu. De vraies espèces, de vraies fiches, de vrais modèles :
+seule la liste de formation est fabriquée, exactement comme `TrySpawnRandomEncounter` fabrique la
+sienne.
+
+Le transfert (`AI_BENCH=3:0`) passe lui aussi par le chemin du jeu : les quatre globales de
+destination de l'opcode 17, le pas de boucle à 2 et le bit 2 des drapeaux de monde — la séquence
+exacte d'une porte scriptée.
+
+Chaque appel de gestionnaire est compté et **chaque levée est retenue au lieu de tuer le run** :
+c'est ce qui permet d'exercer vingt comportements d'un coup là où le premier manquant aurait arrêté
+la partie.
+
+### Une sous-zone ne porte que trois à huit espèces
+
+C'est le fait qui décide de la manière de s'en servir. Relevé du CD, zone 3 :
+
+| sous-zone | comportements portés par ses espèces |
+|---|---|
+| 0 | 2, 0, 1 |
+| 1 | 2, 1, 6, 5 |
+| 2 | 18, 4, 3, 5 |
+| 3 | 8, 9, 7, 5, 6, 30 |
+| 4 | 3, 7, 4 |
+
+Le bloc A de la forêt installe onze comportements, mais **aucune sous-zone n'en porte plus de six**.
+Deux façons de couvrir le bloc :
+
+- **marcher** — le banc se réarme à chaque changement de lieu, donc une promenade par les cinq
+  sous-zones les exerce tous, avec les vraies bêtes ;
+- **greffer** (`AI_BENCH_ORPHANS=1`) — les sous-types installés qu'aucune espèce du lieu ne porte
+  sont posés sur une espèce locale, en remplaçant le seul octet `+5` de l'entité. Les onze tournent
+  alors dans une seule salle.
+
+**Ce que la greffe prouve, et ce qu'elle ne prouve pas.** Elle exerce le corps de la routine — ses
+postures, ses tirages, son combat — avec de vraies statistiques. Mais le modèle est celui de
+l'espèce hôte, pas celui de la bête à qui ce comportement appartient : une levée venant de
+l'**animation** sous greffe peut n'être qu'un décalage d'index de geste, et demande d'être revue
+dans la sous-zone où l'espèce vit vraiment. Une levée venant de la routine elle-même, elle, est
+réelle.
+
+### Lire le journal
+
+```powershell
+Select-String -Path scratchpad\playtest-*.log -Pattern '\[BANC\]'
+```
+
+```
+[BANC] transfert vers zone 3 sous-zone 0 point d'entree 0
+[BANC] zone 3 sous-zone 0 : 3 sous-type(s) a exercer
+[BANC]   sous-type   2  0x0049A980  espece   0  modele   0  « … »
+[BANC] installes mais portes par aucune espece d'ici : 3->0x0049B220 4->0x0049B840 …
+[BANC] 3 entite(s) engendree(s) sur 3 demandee(s)
+[BANC] LEVEE 0x0049B220 — NotImplementedException: … gestionnaire d'entite non transcrit
+[BANC] image 600 : 11 sous-type(s) exerce(s), 1 gestionnaire(s) en levee
+```
+
+Le tableau complet ne repart qu'au premier bilan et chaque fois qu'un gestionnaire **de plus** se
+met à lever ; sinon la ligne courte suffit, pour qu'un run long ne noie pas le journal.
+
+### Trois choses à savoir avant de lancer
+
+- **Ce sont de vrais monstres.** Ils attaquent, et un groupe faible meurt. Le banc est un combat,
+  pas un musée — prendre un groupe solide, ou s'attendre à un écran de fin.
+- **Les rencontres aléatoires s'arrêtent** tant que le banc occupe le pool : `TrySpawnRandomEncounter`
+  renonce dès que `0x005f2d00` n'est pas vide. C'est voulu, ça évite qu'une rencontre brouille le
+  relevé.
+- **Le banc attend 90 images après l'arrivée** avant de faire naître quoi que ce soit : le groupe
+  doit d'abord être posé au point d'entrée, sinon tout le monde naît au même endroit.
+
+### La démonstration de l'écran-titre fait tourner la carte du monde (2026-08-29)
+
+Premier essai du banc, et il n'a pas passé la première seconde : `AI_BENCH=3:0` a déclenché son
+transfert **avant toute frappe**, sur l'écran-titre, et le jeu est mort en `PlaceWorldMapParty` avec
+un `0xC0000005`.
+
+La cause n'est pas le transfert : c'est que `RunWorldMapTick` **tourne pendant la démonstration
+d'attente**, donc tout échafaudage branché sur la boucle de monde s'exécute bien avant qu'une partie
+soit chargée. Le point d'entrée était lu à travers un répertoire qui n'était pas le sien.
+
+Le banc teste désormais `s_PartySize_005e9020 != 0` avant quoi que ce soit. **La leçon vaut pour le
+prochain échafaudage posé là** : la boucle de monde n'implique pas une partie en cours.
+
+Corollaire pratique : la forme sans transfert (`AI_BENCH=1`) ne court pas ce risque du tout, puisque
+rien n'est forcé — c'est celle à préférer quand quelqu'un conduit le personnage lui-même.
+
+### `tests\banc.bat` — le raccourci
+
+Un double-clic sur `tests\banc.bat` fait tout ce qui précède : il pose les deux variables, lance le
+jeu depuis `OpenForesia\` (donc avec le bon `save\`), redirige la sortie d'erreur vers
+`scratchpad\banc-<horodatage>.log`, et **réaffiche les lignes `[BANC]` et `[LACUNE]` à la fermeture
+du jeu**.
+
+| appel | effet |
+|---|---|
+| `banc.bat` | la sous-zone courante, greffe comprise — la forme à utiliser quand on conduit soi-même |
+| `banc.bat 3:0` | transfert en zone 3 sous-zone 0 avant de peupler |
+| `banc.bat 1 0` | sans greffe : seulement les espèces que le lieu porte vraiment |
+
+Le fichier est en **ASCII pur** : `cmd.exe` ne lit pas l'UTF-8 par défaut, et un accent y casserait
+l'affichage.
