@@ -141,6 +141,25 @@ means nothing on its own**, the 0x0056adc8 table is reloaded per sub-area.
 **finding a new table in a resource blob**: the regions follow one another without gaps, so a
 table's end is the next header pointer, and a region's first bytes usually say what it holds.
 
+**Simulating character progression — `montee`.** A fifth verb reads neither the binary nor the CD.
+It opens a window (`OpenForesia.Tools/MonteeDeNiveau/`, or double-click `tests\montee.bat`) where
+you compose a character the way the creation screen does — class, a pool of 15 + 3d6, seven lines
+floored at their class value and capped at 99 — pick a target level and a seed, and it replays
+`FUN_005391f0` one level at a time on a real 0x2000-byte character record:
+
+```powershell
+dotnet run --project OpenForesia.Tools -- montee
+```
+
+Out come nine curves with their ceilings dashed in, a per-level table of what each level-up changed,
+and a per-characteristic summary (start, final, ceiling, the level the ceiling was hit, how often it
+moved). **The same seed replays the same game exactly** — that is what makes the per-level table
+meaningful. Two things the offline run cannot have, both documented on `Simulateur`: the starting
+equipment (its bonuses land in `+0x120`, never in the `+0x280`/`+0x2a0` pair the progression reads)
+and spell learning (the spell directory is on the CD) — neither changes a curve, though the second
+shifts the RNG *stream* for a casting class. Read `Documentation/Reference/MonteeDeNiveau.md` for
+what the numbers mean.
+
 `OpenForesia.Tools\build-bestiaire-page.ps1` then joins the CSVs into
 `Documentation/Reference/Bestiaire/bestiaire.html`, a standalone browsable page. That file is
 **generated** — edit `bestiaire-page.template.html` instead. See
@@ -202,10 +221,10 @@ tests/           les raccourcis de lancement a double-cliquer (banc.bat : la sal
 | `Documentation/DLL/<dll>.md` | Accumulated knowledge per DLL (ordinals, signatures, confirmed vs. hypothesis). |
 | `OpenForesia/src/Blaze/**` | The reconstruction, split into `Platform/`, `Memory/`, `Engine/`, `Screens/` — **see `Documentation/ARCHITECTURE.md`**. |
 | `OpenForesia/src/Host/**` | Our 2026 scaffolding — the Direct3D 11 replacement for the 1998 display chain. **Not bound by fidelity.** |
-| `OpenForesia.Tools/` | PE export-table dumper, **x86-32 disassembler** (`disasm`, via Iced), `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
+| `OpenForesia.Tools/` | PE export-table dumper, **x86-32 disassembler** (`disasm`, via Iced), the **level-up simulator** (`montee`, `MonteeDeNiveau/`), `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
 | `OpenForesia/src/DLL/*.dll` | Copies of the helper DLLs, flattened into the build output for P/Invoke. |
 | `Analyse/` | Notes d'observation du jeu original (comportement, sessions x32dbg). |
-| `tests/` | Raccourcis `.bat` a double-cliquer. `banc.bat` lance le jeu avec la salle d’essai (`OPENFORESIA_AI_BENCH`) et reaffiche les lignes `[BANC]` a la fermeture. ASCII pur — `cmd.exe` ne lit pas l’UTF-8. |
+| `tests/` | Raccourcis `.bat` a double-cliquer. `banc.bat` lance le jeu avec la salle d’essai (`OPENFORESIA_AI_BENCH`) et reaffiche les lignes `[BANC]` a la fermeture ; `montee.bat` ouvre le simulateur de montee de niveau. ASCII pur — `cmd.exe` ne lit pas l’UTF-8. |
 
 `openspec/` holds the change workflow: several completed changes, one archived, and the
 `blaze-intro-attract` spec. Use `openspec list` to see the current state.

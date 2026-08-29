@@ -6,8 +6,78 @@ Ce que le jeu calcule quand un personnage gagne un niveau, relevé le 2026-08-29
 a l'air purement aléatoire.
 
 Elle l'est en partie. Mais l'aléatoire est encadré par trois choses fixes — **les statistiques de
-départ**, **la classe** et **l'élément** — et par un plafond calculé qui arrête la progression
-bien avant la borne apparente.
+départ**, **la classe** et **l'élément** —, et par un plafond calculé qui, aux valeurs de création
+ordinaires, se tient si haut qu'aucune partie normale ne l'atteint.
+
+> ## ⚠ D'où viennent les valeurs de départ — correction du 2026-08-29
+>
+> Ce document a d'abord été écrit à partir de `s_ClassBaseStats_0056c7e0` (24/8/8/16/16/8/16 pour le
+> Guerrier). **Cette table est celle de l'écran de groupe de mise au point, pas celle de la
+> création de personnage** : ses deux seuls sites de lecture dans `Blaze.c` sont les lignes 82448
+> et 82449, dans `RunDebugPartySelect`. Aucun personnage jouable n'en sort.
+>
+> L'écran de création résout les siennes **sur le CD** :
+> `**(int **)(DAT_005e97c4 + 0x74) + (classe & 7) * 8`, lisible en clair dans le désassemblage de
+> `FUN_00509470` à `0x005094e0` (`MOV EAX,[EDX+0x74]` · `MOV EDX,[EAX]` · `LEA ECX,[EDX+ECX*8]`),
+> et la boucle qui suit n'en copie que **sept** octets. Relevées dans
+> `E:\French\BLAZE.ALL` à l'offset `0x0090f0b4` — la suite `0d 08 08 09 0b 08 09` n'apparaît
+> qu'**une seule fois** sur les 46 Mo de l'archive :
+>
+> | classe | FO | INT | VO | AGI | CON | PM | CH |
+> |---|---|---|---|---|---|---|---|
+> | 0 Guerrier | **13** | 8 | 8 | 9 | 11 | 8 | 9 |
+> | 1 Prêtre | 9 | 10 | **13** | 9 | 8 | **13** | 11 |
+> | 2 Voleur | 10 | 8 | 9 | **13** | 9 | 8 | 12 |
+> | 3 Sorcier | 8 | 13 | 12 | 9 | 8 | **14** | 10 |
+> | 4 Chasseur | 12 | 8 | 9 | 10 | 11 | 8 | 9 |
+> | 5 Elfe | 11 | 10 | 10 | 9 | 9 | **12** | 9 |
+> | 6 Nain | 14 | 8 | 9 | 8 | **15** | 8 | 9 |
+> | 7 Fée | 6 | 10 | 10 | 13 | 6 | 11 | **16** |
+>
+> **Les sept lignes portent enfin leur nom** — relevés à l'écran par Vincent le 2026-08-29 : FO,
+> INT, VO, AGI, CON, PM, CH. Les profils les confirment un par un, et le regroupement du code
+> tombe juste : les physiques 0, 3, 4 sont **FO, AGI, CON**, les mentales 1, 2, 5 sont
+> **INT, VO, PM**.
+>
+> **Ce que la vraie table change.** Les plafonds réels d'un personnage qui ne dépense aucun point
+> vont de **158 à 237**, pas de 177 à 307. Et le tirage de gain, qui lit `départ >> 3`, ne vaut
+> plus grand-chose au départ : à 13, `(13>>3)+1 = 2`, donc 0 ou 1 ; **à 6 — la force et la
+> constitution de la Fée — le terme est toujours nul**. Le cas « une valeur sous 8 n'apporte rien
+> à sa propre croissance », écrit plus bas comme une curiosité théorique, arrive en vrai.
+>
+> | classe | plafonds FO · INT · VO · AGI · CON · PM | P. physique | P. mentale | PV / PM au niveau 1 |
+> |---|---|---|---|---|
+> | 0 Guerrier | 221 · 177 · 177 · 186 · 204 · 177 | **70 %** | 43 % | 28 / 10 |
+> | 1 Prêtre | 186 · 195 · 221 · 186 · 177 · 221 | 38 % | **66 %** | 22 / 21 |
+> | 2 Voleur | 195 · 177 · 186 · 221 · 186 · 177 | 55 % | 55 % | 24 / 12 |
+> | 3 Sorcier | 177 · 221 · 212 · 186 · 177 · 229 | 38 % | **66 %** | 22 / 21 |
+> | 4 Chasseur | 212 · 177 · 186 · 195 · 204 · 177 | 54 % | 54 % | 26 / 12 |
+> | 5 Elfe | 204 · 195 · 195 · 186 · 186 · 212 | 54 % | 54 % | 25 / 15 |
+> | 6 Nain | 229 · 177 · 186 · 177 · 237 · 177 | **70 %** | 43 % | 30 / 10 |
+> | 7 Fée | 158 · 195 · 195 · 221 · 158 · 204 | 40 % | **69 %** | 20 / 18 |
+>
+> **Ce n'est pas le Voleur, la classe chanceuse — c'est la Fée**, à 16 contre 12. Le paragraphe
+> plus bas qui déduit « une statistique où seul le Voleur sort du lot est une chance » raisonnait
+> sur la table de mise au point ; la conclusion tient (le libellé de l'écran dit CH), pas
+> l'argument.
+>
+> **L'élément se CHOISIT.** `FUN_00508e00` lui donne un sélecteur gauche/droite masqué `& 7` sur
+> `+0x151` : il ne découle pas de la classe. La huitième colonne de la table du CD est nulle
+> partout, et seule celle de `DAT_0056c7e0` — la table de mise au point — porte un élément par
+> classe.
+>
+> **Le document a été entièrement recalculé sur cette table le 2026-08-29** — les deux sections de
+> tableaux par classe comprises, avec les espérances recoupées contre 2 000 parties simulées et les
+> estimations de niveau contre 300. Ce qui suit est à jour ; ce cadre reste pour dire d'où viennent
+> les valeurs, et pour que personne ne remette `DAT_0056c7e0` à leur place.
+>
+> ---
+
+> **Le simulateur.** Tout ce que ce document calcule à la main se rejoue à l'écran :
+> `tests\montee.bat` (ou `dotnet run --project OpenForesia.Tools -- montee`) ouvre une fenêtre où
+> l'on compose un personnage comme à la création, on choisit un niveau visé et une graine, et
+> `FUN_005391f0` est rejouée niveau par niveau — courbes, plafonds, tableau des écarts. Les
+> chiffres ci-dessous ont été recoupés avec lui.
 
 ---
 
@@ -36,10 +106,9 @@ explique tout le reste.
 **`+0x2a0` est donc la photographie de tes statistiques de départ, et c'est elle — pas tes
 statistiques actuelles — qui dimensionne tous les gains, pour toute la partie.**
 
-La septième valeur, `+0x2ac`, est lue comme **la chance**. L'identification n'est pas un libellé du
-binaire mais elle tient : dans `s_ClassBaseStats_0056c7e0` ce septième champ vaut 16 pour les huit
-classes **sauf le Voleur, à 24**, et une statistique où seul le Voleur sort du lot est une chance.
-Elle sert de facteur commun à toute la fonction, et le tirage du butin s'en sert aussi.
+La septième valeur, `+0x2ac`, est **la chance** — l'écran de création l'appelle « CH ». Elle sert de
+facteur commun à toute la fonction, et le tirage du butin s'en sert aussi. Les huit classes s'y
+étalent de 9 à 16, la Fée en tête.
 
 ---
 
@@ -78,35 +147,49 @@ gain[i] = rand() % ((départ[i] >> 3) + 1) + 1  +  rand() % ((chance_départ >> 
 où `départ` est le bloc `+0x2a0`. Le minimum est **1**, le maximum
 `(départ[i] >> 3) + (chance_départ >> 3) + 1`.
 
-Avec une statistique de départ à 24 et une chance de départ à 16, cela donne un gain de **1 à 6**.
-C'est petit, et c'est voulu : la progression se joue sur la fréquence, pas sur l'ampleur.
+Aux valeurs de départ réelles, cela donne un gain de **1 à 3** dans la quasi-totalité des cas — un
+Guerrier a 13 de FO et 9 de CH, donc `rand()%2 + 1 + rand()%2`. C'est minuscule, et c'est voulu : la
+progression se joue sur la fréquence, pas sur l'ampleur, et **l'ampleur ne s'achète qu'à la
+création**.
 
 Les sept gains servent ensuite à trois choses différentes — les six caractéristiques, les deux
 jauges (qui réutilisent `gain[4]` et `gain[5]`), et la chance (`gain[6]`).
 
 ### D'où vient l'amplitude visible à l'écran
 
-Voir « +1 » à un niveau puis « +4 » au suivant sur la même caractéristique est normal : **les deux
+Voir « +1 » à un niveau puis « +3 » au suivant sur la même caractéristique est normal : **les deux
 termes sont retirés à chaque montée**. Le tableau donne la fourchette et la moyenne selon la valeur
-de départ de la caractéristique et la chance de départ.
+de départ de la caractéristique et la chance de départ. Les cinq premières colonnes sont les chances
+de départ que les huit classes portent réellement ; les deux dernières, ce qu'un pool exceptionnel
+permet d'acheter.
 
-| départ de la carac. | chance 16 | chance 24 | chance 48 | chance 99 |
-|---|---|---|---|---|
-| 8 | 1..4 (moy. 2,5) | 1..5 (3,0) | 1..8 (4,5) | 1..14 (7,5) |
-| 16 | 1..5 (3,0) | 1..6 (3,5) | 1..9 (5,0) | 1..15 (8,0) |
-| 20 | 1..5 (3,0) | 1..6 (3,5) | 1..9 (5,0) | 1..15 (8,0) |
-| 24 | 1..6 (3,5) | 1..7 (4,0) | 1..10 (5,5) | 1..16 (8,5) |
-| 48 | 1..9 (5,0) | 1..10 (5,5) | 1..13 (7,0) | 1..19 (10,0) |
-| 81 | 1..13 (7,0) | 1..14 (7,5) | 1..17 (9,0) | 1..23 (12,0) |
-| 99 | 1..15 (8,0) | 1..16 (8,5) | 1..19 (10,0) | 1..25 (13,0) |
+| départ de la carac. | CH 9 | CH 10 | CH 11 | CH 12 | CH 16 | CH 48 | CH 99 |
+|---|---|---|---|---|---|---|---|
+| 6 | 1..2 (moy. 1,5) | 1..2 (1,5) | 1..2 (1,5) | 1..2 (1,5) | 1..3 (2,0) | 1..7 (4,0) | 1..13 (7,0) |
+| 8 | 1..3 (2,0) | 1..3 (2,0) | 1..3 (2,0) | 1..3 (2,0) | 1..4 (2,5) | 1..8 (4,5) | 1..14 (7,5) |
+| 10 | 1..3 (2,0) | 1..3 (2,0) | 1..3 (2,0) | 1..3 (2,0) | 1..4 (2,5) | 1..8 (4,5) | 1..14 (7,5) |
+| 13 | 1..3 (2,0) | 1..3 (2,0) | 1..3 (2,0) | 1..3 (2,0) | 1..4 (2,5) | 1..8 (4,5) | 1..14 (7,5) |
+| 16 | 1..4 (2,5) | 1..4 (2,5) | 1..4 (2,5) | 1..4 (2,5) | 1..5 (3,0) | 1..9 (5,0) | 1..15 (8,0) |
+| 24 | 1..5 (3,0) | 1..5 (3,0) | 1..5 (3,0) | 1..5 (3,0) | 1..6 (3,5) | 1..10 (5,5) | 1..16 (8,5) |
+| 48 | 1..8 (4,5) | 1..8 (4,5) | 1..8 (4,5) | 1..8 (4,5) | 1..9 (5,0) | 1..13 (7,0) | 1..19 (10,0) |
+| 81 | 1..12 (6,5) | 1..12 (6,5) | 1..12 (6,5) | 1..12 (6,5) | 1..13 (7,0) | 1..17 (9,0) | 1..23 (12,0) |
+| 99 | 1..14 (7,5) | 1..14 (7,5) | 1..14 (7,5) | 1..14 (7,5) | 1..15 (8,0) | 1..19 (10,0) | 1..25 (13,0) |
 
 **Le minimum est toujours 1** — le `+ 1` de la formule est hors des deux tirages, donc une
 caractéristique qui monte ne monte jamais de zéro. Le maximum vaut
 `(départ >> 3) + (chance >> 3) + 1`.
 
-**Oui, la chance élargit l'amplitude**, mais elle n'est que la moitié de l'affaire : le premier
-terme vient de la caractéristique elle-même. Une force de départ à 8 ne dépassera jamais +4 tant que
-la chance reste à 16, quoi qu'il arrive.
+**Les quatre premières colonnes sont identiques**, et c'est le fait le plus important du tableau :
+entre 9 et 12 de chance, le décalage de trois bits donne le même `rand() % 2`. **Sept des huit
+classes ne se distinguent donc en rien par l'ampleur de leurs gains** — seule la Fée, à 16, achète
+un demi-point de plus sur chacune des sept lignes. Tout le reste de la table réelle tient dans les
+trois premières lignes : les valeurs de départ vont de 6 à 15, soit `rand()%1`, `rand()%2` ou rien
+de plus.
+
+**Une caractéristique de départ sous 8 n'apporte rien du tout à sa propre croissance** :
+`rand() % 1` vaut toujours 0. C'est le cas de la **force et de la constitution de la Fée**, à 6 —
+les deux seules occurrences dans les huit classes, et elles sont exactement les deux lignes que la
+Fée est censée être mauvaise à faire monter.
 
 ---
 
@@ -143,42 +226,51 @@ Huit classes, mais **trois valeurs seulement** — donc trois familles de progre
 Les familles ne sont pas arbitraires : **les deux classes purement physiques**, **les trois
 lanceurs de sorts**, **les trois hybrides**. Le même regroupement apparaît ailleurs dans le jeu.
 
-Le test est `rand() % 100 <= probabilité`, donc une probabilité de 73 vaut **74 %**. Avec la chance
-de départ standard de 16 :
+Le test est `rand() % 100 <= probabilité`, donc une probabilité de 69 vaut **70 %**. Aux chances de
+départ réelles, cela donne une valeur par classe et non par famille — les huit classes n'ont pas la
+même chance de départ :
 
-| famille | physique | mentale |
-|---|---|---|
-| Guerrier / Nain | **74 %** | **45 %** |
-| Prêtre / Sorcier / Fée | **40 %** | **69 %** |
-| Voleur / Chasseur / Elfe | **56 %** | **56 %** |
+| classe | CH de départ | physique (FO, AGI, CON) | mentale (INT, VO, PM) |
+|---|---|---|---|
+| 0 Guerrier | 9 | **70 %** | **43 %** |
+| 6 Nain | 9 | **70 %** | **43 %** |
+| 1 Prêtre | 11 | **38 %** | **66 %** |
+| 3 Sorcier | 10 | **38 %** | **66 %** |
+| 7 Fée | 16 | **40 %** | **69 %** |
+| 2 Voleur | 12 | **55 %** | **55 %** |
+| 4 Chasseur | 9 | **54 %** | **54 %** |
+| 5 Elfe | 9 | **54 %** | **54 %** |
 
-Le Voleur, avec sa chance de départ à 24, monte à **59 %** sur les deux.
+**La Fée est la mieux servie des trois lanceurs**, à 69 % contre 66 %, parce qu'elle est la seule à
+partir avec 16 de chance. Le Voleur prend le même avantage sur ses deux collègues hybrides, en plus
+petit : 55 % contre 54 %.
 
 Les six caractéristiques se répartissent ainsi, et l'ordre est en dur dans le code :
 
-- **physiques** : indices **0, 3, 4**
-- **mentales** : indices **1, 2, 5**
+- **physiques** : indices **0, 3, 4** — **FO, AGI, CON**
+- **mentales** : indices **1, 2, 5** — **INT, VO, PM**
 
-La répartition se recoupe avec `s_ClassBaseStats_0056c7e0` : le Guerrier a ses trois plus hautes
-valeurs en 0, 3, 4 et le Sorcier en 1, 2, 5.
+La répartition se recoupe avec la table de départ du CD : le Guerrier a ses trois plus hautes
+valeurs en FO, CON, AGI et le Sorcier en PM, INT, VO.
 
 ### À chance égale, quelle famille progresse le plus ?
 
-La question se pose parce que le Voleur est la seule classe dont la chance de départ diffère, et
-qu'on peut vouloir séparer les deux effets. En sommant les six probabilités — trois physiques et
-trois mentales — à chance identique :
+La question se pose parce que les chances de départ diffèrent d'une classe à l'autre, et qu'on peut
+vouloir séparer les deux effets. En sommant les six probabilités — trois physiques et trois
+mentales — à chance identique :
 
-| chance | Guerrier / Nain | Prêtre / Sorcier / Fée | Voleur / Chasseur / Elfe |
+| CH | Guerrier / Nain | Prêtre / Sorcier / Fée | Voleur / Chasseur / Elfe |
 |---|---|---|---|
+| 9 | **339** | 309 | 324 |
+| 12 | **348** | 318 | 330 |
 | 16 | **357** | 327 | 336 |
-| 24 | **375** | 345 | 354 |
-| 48 | **411** | 381 | 393 |
-| 99 | **495** | 480 | 504 |
+| 48 | **429** | 399 | 402 |
+| 99 | 495 | 480 | **504** |
 
-**La famille du Guerrier et du Nain est la plus généreuse à chance ordinaire**, et la famille des
-hybrides — celle du Voleur — arrive deuxième. Le Voleur ne progresse donc **pas** mieux que les
-autres par nature : à chance égale il est derrière un Guerrier. Ses 24 de chance de départ lui
-rendent 354 contre 357, ce qui les met à égalité en pratique.
+**La famille du Guerrier et du Nain est la plus généreuse à chance ordinaire**, et celle des
+hybrides arrive deuxième. Aucune classe ne rattrape cet écart par sa chance de départ : la Fée, la
+mieux dotée à 16, atteint 327 — toujours sous les 339 d'un Guerrier à 9. **La famille décide plus
+que la chance, tant qu'on ne dépense pas de points de création.**
 
 À très haute chance le classement s'inverse — les hybrides passent en tête (504) parce que leurs
 deux formules divisent la chance par 3 au lieu de 2 et 4, donc les deux progressent ensemble au lieu
@@ -211,14 +303,30 @@ Puis l'**élément** (`+0x151`) l'ajuste :
   permutation de 0..5) reçoit **+1/5** ;
 - élément **6 ou 7** — les six reçoivent **+1/20**.
 
-C'est bien l'élément et non la classe : `record[0x151]` est rempli depuis la **huitième** colonne de
-`s_ClassBaseStats_0056c7e0`, celle que `LISEZMOI.md` du bestiaire a identifiée comme l'élément.
+**Et l'élément se CHOISIT** : `FUN_00508e00` lui donne un sélecteur gauche/droite masqué `& 7` sur
+`+0x151`, dans un sous-état dédié de la création. Il ne découle pas de la classe — la huitième
+colonne de la table du CD est nulle pour les huit lignes. Seule `DAT_0056c7e0`, la table de l'écran
+de mise au point, porte un élément par classe, et c'est de là que venait l'affirmation inverse.
+
+**C'est donc le seul choix de la création qui déplace un plafond sans coûter de point.** Un élément
+favorisé rend un cinquième sur une caractéristique — 44 points sur un plafond de 221 — pour rien.
 
 ### La courbe culmine à 510, et redescend
 
+Les neuf premières lignes sont la plage réelle des valeurs de classe (6 à 15) : c'est là que se joue
+la partie d'un personnage qui ne dépense aucun point.
+
 | départ | plafond | + élément favorisé | + élément 6/7 |
 |---|---|---|---|
+| 6 | 158 | 189 | 165 |
 | 8 | 177 | 212 | 185 |
+| 9 | 186 | 223 | 195 |
+| 10 | 195 | 234 | 204 |
+| 11 | 204 | 244 | 214 |
+| 12 | 212 | 254 | 222 |
+| 13 | 221 | 265 | 232 |
+| 14 | 229 | 274 | 240 |
+| 15 | 237 | 284 | 248 |
 | 16 | 246 | 295 | 258 |
 | 20 | 277 | 332 | 290 |
 | 24 | 307 | 368 | 322 |
@@ -245,19 +353,26 @@ si (v < plafond && rand() % 100 <= probabilité)  v += gain[i]
 ```
 
 Le test précède l'addition, donc **la valeur finale dépasse légèrement le plafond** — d'au plus un
-gain, soit une vingtaine de points dans le pire cas. L'écrêtage à 999 qui suit les six tirages reste
-inatteignable : même 612 + 24 n'en approche pas.
+gain. Aux valeurs de départ de classe, cela vaut **deux ou trois points** ; il faut un personnage
+monté à 99 partout pour que le dépassement approche 25. L'écrêtage à 999 qui suit les six tirages
+reste inatteignable dans tous les cas.
 
 ### Recoupement avec l'observation
 
-Un Nain de niveau 110 à 496 en force se relit sans peine. Sans élément favorisé, un plafond de 496
-correspond à un départ de **66** ; avec l'élément favorisé, 496 se situe encore sous le plafond de
-612 qu'un départ vers 80 lui donnerait, et la progression peut continuer.
+Un Nain de niveau 110 à 496 en force. Sans élément favorisé, un plafond de 496 correspond à un
+départ de **66** exactement — et un Nain part à 14 de force, donc **52 points de création** placés
+sur cette seule ligne.
 
-Le rythme concorde aussi : à un départ de 66, le gain moyen vaut `(66 >> 3) / 2 + 2 = 6` et la
-probabilité physique du Nain est de 74 %, soit 4,44 points par niveau. En 109 montées cela fait
-484 points — bien assez pour buter dans le plafond avant le niveau 110, ce qui est exactement ce
-qu'on observe.
+Le rythme concorde : à un départ de 66 et 9 de chance, le gain moyen vaut
+`1 + (66>>3)/2 + (9>>3)/2 = 5,5` et la probabilité physique du Nain est de 70 %, soit 3,85 points
+par niveau. En 109 montées cela fait 420 points, plus les 66 du départ : 486, à trois points d'un
+plafond de 496 que le dépassement franchit. Le compte tombe juste.
+
+**Mais 52 points de création demandent un pool exceptionnel** — le pool ordinaire vaut 18 à 33, et
+il faut plusieurs triples pour atteindre 52. Deux lectures restent ouvertes : ce Nain a eu une série
+de dés remarquable, ou l'écran de personnage n'affiche pas `+0x280` mais `+0x120`, la copie de
+travail, qui porte en plus les bonus d'équipement. **Non tranché** — la question à reposer à
+l'observation est la valeur de départ de ce personnage, pas sa valeur finale.
 
 ---
 
@@ -271,11 +386,24 @@ tirage < 0x1f (31)          →  chance -= gain[6]
 tirage >= 0x47              →  chance += gain[6]
 ```
 
-Bornée à **0..200** — pas à 999 comme les six autres. Avec la chance de départ à 16, le tirage
-couvre 4..103, ce qui donne **27 % de perte, 40 % rien, 33 % de gain**. À 24 (le Voleur) :
-25 % / 40 % / 35 %.
+Bornée à **0..200** — pas à 999 comme les six autres. Le décalage `chance_départ / 4` est tout ce
+qui sépare les huit classes, et à des chances de 9 à 16 il ne vaut que 2 à 4 :
 
-C'est le seul champ du bloc de personnage qui recule à une montée de niveau.
+| CH de départ | classes | perte | rien | gain |
+|---|---|---|---|---|
+| 9 | Guerrier, Chasseur, Elfe, Nain | 29 % | 40 % | 31 % |
+| 10 | Sorcier | 29 % | 40 % | 31 % |
+| 11 | Prêtre | 29 % | 40 % | 31 % |
+| 12 | Voleur | 28 % | 40 % | 32 % |
+| 16 | Fée | 27 % | 40 % | 33 % |
+| 99 | (pool exceptionnel) | 7 % | 40 % | 53 % |
+
+**Les huit classes sont donc à peu près à égalité** — la chance courante monte un peu plus souvent
+qu'elle ne descend, de deux points de pourcentage. Il faut acheter de la chance à la création pour
+que le déséquilibre devienne net.
+
+C'est le seul champ du bloc de personnage qui recule à une montée de niveau. Rappel : c'est la
+chance **courante** (`+0x28c`) qui bouge ; celle qui pilote la progression est `+0x2ac`, figée.
 
 ---
 
@@ -303,15 +431,17 @@ l'effet visuel du soin, il réutilise le soin.
 Les exemples qui suivent n'ont de sens qu'avec les bornes de l'écran de répartition
 (`EditCharacterStats`, `FUN_005098f0`) :
 
-- les sept lignes partent des **valeurs de classe** de `s_ClassBaseStats_0056c7e0` ;
+- les sept lignes partent des **valeurs de classe** lues sur le CD (voir la correction en tête) ;
 - le **pool** part de **15** et reçoit la somme de **trois dés à six faces** (`rand() % 6 + 1`),
   soit 18 à 33 dans le cas ordinaire ;
 - **un triple offre un relancer**, dont la somme s'ajoute au pool. Le pool est **plafonné à 99** ;
 - une ligne ne peut pas descendre sous sa valeur de classe, ni monter **au-dessus de 99**.
 
-Donc oui, **99 en chance est atteignable dès la création** — il faut 83 points pour un personnage
-qui part de 16, ce qui suppose une belle série de triples. Un pool ordinaire de 25 points ne permet
-qu'un déplacement modeste.
+Donc oui, **99 en chance est atteignable dès la création** — il faut **83 points pour la Fée**, qui
+part de 16, et **90 pour les quatre classes qui partent de 9**. Cela suppose une longue série de
+triples : un pool ordinaire de 25 points ne permet qu'un déplacement modeste, et c'est le cas
+normal. **Les tableaux de cas limites plus bas décrivent donc des personnages exceptionnels, pas la
+partie ordinaire.**
 
 ### Le seuil qui compte est le multiple de 8
 
@@ -330,8 +460,13 @@ dépensés entre deux multiples de 8 n'élargissent pas le tirage** :
 
 Passer une caractéristique de 16 à 23 ne change **rien** à sa vitesse de progression ; la passer de
 23 à 24 la change. Idem pour la chance. Les points comptent toujours pour la valeur de départ
-elle-même — mais pour la *croissance*, seuls les franchissements de multiple de 8 achètent quelque
-chose.
+elle-même — et donc pour le plafond — mais pour la *croissance*, seuls les franchissements de
+multiple de 8 achètent quelque chose.
+
+**Toutes les valeurs de départ des huit classes tiennent dans les deux premières lignes** : de 6 à
+15, soit `rand() % 1` ou `rand() % 2`. Les deux 6 de la Fée sont donc les seules valeurs de classe
+du jeu qui n'apportent strictement rien à leur propre croissance, et le premier point utile pour
+n'importe quelle autre ligne est celui qui la porte à 16.
 
 ### La chance qui monte n'est pas celle qui compte
 
@@ -343,103 +478,130 @@ donc rien** ; en gagner n'accélère rien non plus.
 
 ## Les huit classes, caractéristique par caractéristique
 
-Valeurs de départ de classe, sans aucun point dépensé et sans élément favorisé. « P » est la
+Valeurs de départ de classe, sans aucun point dépensé et sans élément choisi. « P » est la
 probabilité qu'elle monte à un niveau donné, « gain » sa valeur moyenne quand elle monte,
 « espérance » le produit des deux — les points gagnés par niveau en moyenne. « Plafond » est fixé
 par la valeur de départ ; « niveaux » estime combien il en faut pour l'atteindre.
 
-**0 — Guerrier** · famille Guerrier/Nain · chance 16 · physique **74 %**, mental **45 %**
+Les espérances ont été recoupées avec 2 000 parties simulées par classe : elles tombent à 0,01
+près.
 
-| # | type | départ | plafond | P | gain | espérance | niveaux |
-|---|---|---|---|---|---|---|---|
-| 0 | physique | 24 | 307 | 74 % | 3,5 | **2,59** | ~109 |
-| 1 | mental | 8 | 177 | 45 % | 2,5 | 1,13 | ~150 |
-| 2 | mental | 8 | 177 | 45 % | 2,5 | 1,13 | ~150 |
-| 3 | physique | 16 | 246 | 74 % | 3,0 | 2,22 | ~104 |
-| 4 | physique | 16 | 246 | 74 % | 3,0 | 2,22 | ~104 |
-| 5 | mental | 8 | 177 | 45 % | 2,5 | 1,13 | ~150 |
+**0 — Guerrier** · famille Guerrier/Nain · CH 9 · physique **70 %**, mental **43 %**
 
-**1 — Prêtre** · famille des lanceurs · chance 16 · physique **40 %**, mental **69 %**
+| # | carac. | type | départ | plafond | P | gain | espérance | niveaux |
+|---|---|---|---|---|---|---|---|---|
+| 0 | FO | physique | 13 | 221 | 70 % | 2,0 | **1,40** | ~149 |
+| 1 | INT | mental | 8 | 177 | 43 % | 2,0 | 0,86 | ~197 |
+| 2 | VO | mental | 8 | 177 | 43 % | 2,0 | 0,86 | ~197 |
+| 3 | AGI | physique | 9 | 186 | 70 % | 2,0 | 1,40 | ~126 |
+| 4 | CON | physique | 11 | 204 | 70 % | 2,0 | 1,40 | ~138 |
+| 5 | PM | mental | 8 | 177 | 43 % | 2,0 | 0,86 | ~197 |
 
-| # | type | départ | plafond | P | gain | espérance | niveaux |
-|---|---|---|---|---|---|---|---|
-| 0 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 1 | mental | 16 | 246 | 69 % | 3,0 | 2,07 | ~111 |
-| 2 | mental | 24 | 307 | 69 % | 3,5 | **2,42** | ~117 |
-| 3 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 4 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 5 | mental | 16 | 246 | 69 % | 3,0 | 2,07 | ~111 |
+**1 — Prêtre** · famille lanceurs · CH 11 · physique **38 %**, mental **66 %**
 
-**2 — Voleur** · famille des hybrides · **chance 24** · physique **59 %**, mental **59 %**
+| # | carac. | type | départ | plafond | P | gain | espérance | niveaux |
+|---|---|---|---|---|---|---|---|---|
+| 0 | FO | physique | 9 | 186 | 38 % | 2,0 | 0,76 | ~233 |
+| 1 | INT | mental | 10 | 195 | 66 % | 2,0 | **1,32** | ~140 |
+| 2 | VO | mental | 13 | 221 | 66 % | 2,0 | 1,32 | ~158 |
+| 3 | AGI | physique | 9 | 186 | 38 % | 2,0 | 0,76 | ~233 |
+| 4 | CON | physique | 8 | 177 | 38 % | 2,0 | 0,76 | ~222 |
+| 5 | PM | mental | 13 | 221 | 66 % | 2,0 | 1,32 | ~158 |
 
-| # | type | départ | plafond | P | gain | espérance | niveaux |
-|---|---|---|---|---|---|---|---|
-| 0 | physique | 8 | 177 | 59 % | 3,0 | 1,77 | ~96 |
-| 1 | mental | 8 | 177 | 59 % | 3,0 | 1,77 | ~96 |
-| 2 | mental | 8 | 177 | 59 % | 3,0 | 1,77 | ~96 |
-| 3 | physique | 24 | 307 | 59 % | 4,0 | **2,36** | ~120 |
-| 4 | physique | 16 | 246 | 59 % | 3,5 | 2,07 | ~111 |
-| 5 | mental | 8 | 177 | 59 % | 3,0 | 1,77 | ~96 |
+**2 — Voleur** · famille hybrides · CH 12 · physique **55 %**, mental **55 %**
 
-**3 — Sorcier** · famille des lanceurs · chance 16 · physique **40 %**, mental **69 %**
+| # | carac. | type | départ | plafond | P | gain | espérance | niveaux |
+|---|---|---|---|---|---|---|---|---|
+| 0 | FO | physique | 10 | 195 | 55 % | 2,0 | **1,10** | ~168 |
+| 1 | INT | mental | 8 | 177 | 55 % | 2,0 | 1,10 | ~154 |
+| 2 | VO | mental | 9 | 186 | 55 % | 2,0 | 1,10 | ~161 |
+| 3 | AGI | physique | 13 | 221 | 55 % | 2,0 | 1,10 | ~189 |
+| 4 | CON | physique | 9 | 186 | 55 % | 2,0 | 1,10 | ~161 |
+| 5 | PM | mental | 8 | 177 | 55 % | 2,0 | 1,10 | ~154 |
 
-| # | type | départ | plafond | P | gain | espérance | niveaux |
-|---|---|---|---|---|---|---|---|
-| 0 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 1 | mental | 16 | 246 | 69 % | 3,0 | 2,07 | ~111 |
-| 2 | mental | 16 | 246 | 69 % | 3,0 | 2,07 | ~111 |
-| 3 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 4 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 5 | mental | 24 | 307 | 69 % | 3,5 | **2,42** | ~117 |
+**3 — Sorcier** · famille lanceurs · CH 10 · physique **38 %**, mental **66 %**
 
-**4 — Chasseur** · famille des hybrides · chance 16 · physique **56 %**, mental **56 %**
+| # | carac. | type | départ | plafond | P | gain | espérance | niveaux |
+|---|---|---|---|---|---|---|---|---|
+| 0 | FO | physique | 8 | 177 | 38 % | 2,0 | 0,76 | ~222 |
+| 1 | INT | mental | 13 | 221 | 66 % | 2,0 | **1,32** | ~158 |
+| 2 | VO | mental | 12 | 212 | 66 % | 2,0 | 1,32 | ~152 |
+| 3 | AGI | physique | 9 | 186 | 38 % | 2,0 | 0,76 | ~233 |
+| 4 | CON | physique | 8 | 177 | 38 % | 2,0 | 0,76 | ~222 |
+| 5 | PM | mental | 14 | 229 | 66 % | 2,0 | 1,32 | ~163 |
 
-| # | type | départ | plafond | P | gain | espérance | niveaux |
-|---|---|---|---|---|---|---|---|
-| 0 | physique | 16 | 246 | 56 % | 3,0 | 1,68 | ~137 |
-| 1 | mental | 8 | 177 | 56 % | 2,5 | 1,40 | ~121 |
-| 2 | mental | 8 | 177 | 56 % | 2,5 | 1,40 | ~121 |
-| 3 | physique | 20 | 277 | 56 % | 3,0 | **1,68** | ~153 |
-| 4 | physique | 20 | 277 | 56 % | 3,0 | **1,68** | ~153 |
-| 5 | mental | 8 | 177 | 56 % | 2,5 | 1,40 | ~121 |
+**4 — Chasseur** · famille hybrides · CH 9 · physique **54 %**, mental **54 %**
 
-**5 — Elfe** · famille des hybrides · chance 16 · physique **56 %**, mental **56 %**
+| # | carac. | type | départ | plafond | P | gain | espérance | niveaux |
+|---|---|---|---|---|---|---|---|---|
+| 0 | FO | physique | 12 | 212 | 54 % | 2,0 | **1,08** | ~185 |
+| 1 | INT | mental | 8 | 177 | 54 % | 2,0 | 1,08 | ~156 |
+| 2 | VO | mental | 9 | 186 | 54 % | 2,0 | 1,08 | ~164 |
+| 3 | AGI | physique | 10 | 195 | 54 % | 2,0 | 1,08 | ~171 |
+| 4 | CON | physique | 11 | 204 | 54 % | 2,0 | 1,08 | ~179 |
+| 5 | PM | mental | 8 | 177 | 54 % | 2,0 | 1,08 | ~156 |
 
-| # | type | départ | plafond | P | gain | espérance | niveaux |
-|---|---|---|---|---|---|---|---|
-| 0 | physique | 8 | 177 | 56 % | 2,5 | 1,40 | ~121 |
-| 1 | mental | 20 | 277 | 56 % | 3,0 | **1,68** | ~153 |
-| 2 | mental | 16 | 246 | 56 % | 3,0 | 1,68 | ~137 |
-| 3 | physique | 8 | 177 | 56 % | 2,5 | 1,40 | ~121 |
-| 4 | physique | 8 | 177 | 56 % | 2,5 | 1,40 | ~121 |
-| 5 | mental | 20 | 277 | 56 % | 3,0 | **1,68** | ~153 |
+**5 — Elfe** · famille hybrides · CH 9 · physique **54 %**, mental **54 %**
 
-**6 — Nain** · famille Guerrier/Nain · chance 16 · physique **74 %**, mental **45 %**
+| # | carac. | type | départ | plafond | P | gain | espérance | niveaux |
+|---|---|---|---|---|---|---|---|---|
+| 0 | FO | physique | 11 | 204 | 54 % | 2,0 | **1,08** | ~179 |
+| 1 | INT | mental | 10 | 195 | 54 % | 2,0 | 1,08 | ~171 |
+| 2 | VO | mental | 10 | 195 | 54 % | 2,0 | 1,08 | ~171 |
+| 3 | AGI | physique | 9 | 186 | 54 % | 2,0 | 1,08 | ~164 |
+| 4 | CON | physique | 9 | 186 | 54 % | 2,0 | 1,08 | ~164 |
+| 5 | PM | mental | 12 | 212 | 54 % | 2,0 | 1,08 | ~185 |
 
-| # | type | départ | plafond | P | gain | espérance | niveaux |
-|---|---|---|---|---|---|---|---|
-| 0 | physique | 20 | 277 | 74 % | 3,0 | **2,22** | ~116 |
-| 1 | mental | 8 | 177 | 45 % | 2,5 | 1,13 | ~150 |
-| 2 | mental | 8 | 177 | 45 % | 2,5 | 1,13 | ~150 |
-| 3 | physique | 16 | 246 | 74 % | 3,0 | 2,22 | ~104 |
-| 4 | physique | 20 | 277 | 74 % | 3,0 | **2,22** | ~116 |
-| 5 | mental | 8 | 177 | 45 % | 2,5 | 1,13 | ~150 |
+**6 — Nain** · famille Guerrier/Nain · CH 9 · physique **70 %**, mental **43 %**
 
-**7 — Fée** · famille des lanceurs · chance 16 · physique **40 %**, mental **69 %**
+| # | carac. | type | départ | plafond | P | gain | espérance | niveaux |
+|---|---|---|---|---|---|---|---|---|
+| 0 | FO | physique | 14 | 229 | 70 % | 2,0 | **1,40** | ~154 |
+| 1 | INT | mental | 8 | 177 | 43 % | 2,0 | 0,86 | ~197 |
+| 2 | VO | mental | 9 | 186 | 43 % | 2,0 | 0,86 | ~206 |
+| 3 | AGI | physique | 8 | 177 | 70 % | 2,0 | 1,40 | ~121 |
+| 4 | CON | physique | 15 | 237 | 70 % | 2,0 | 1,40 | ~159 |
+| 5 | PM | mental | 8 | 177 | 43 % | 2,0 | 0,86 | ~197 |
 
-| # | type | départ | plafond | P | gain | espérance | niveaux |
-|---|---|---|---|---|---|---|---|
-| 0 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 1 | mental | 20 | 277 | 69 % | 3,0 | **2,07** | ~124 |
-| 2 | mental | 20 | 277 | 69 % | 3,0 | **2,07** | ~124 |
-| 3 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 4 | physique | 8 | 177 | 40 % | 2,5 | 1,00 | ~169 |
-| 5 | mental | 16 | 246 | 69 % | 3,0 | 2,07 | ~111 |
+**7 — Fée** · famille lanceurs · CH 16 · physique **40 %**, mental **69 %**
 
-**Lecture d'ensemble.** Le Guerrier et le Nain progressent **deux fois plus vite en physique qu'en
-mental** ; les trois lanceurs, l'inverse ; les trois hybrides ne font aucune différence. Aucune
-classe n'a une caractéristique qui progresse plus vite qu'une autre du *même* type — seule la valeur
-de départ, par ses multiples de 8, les sépare.
+| # | carac. | type | départ | plafond | P | gain | espérance | niveaux |
+|---|---|---|---|---|---|---|---|---|
+| 0 | FO | physique | 6 | 158 | 40 % | 2,0 | 0,80 | ~190 |
+| 1 | INT | mental | 10 | 195 | 69 % | 2,5 | **1,73** | ~107 |
+| 2 | VO | mental | 10 | 195 | 69 % | 2,5 | 1,73 | ~107 |
+| 3 | AGI | physique | 13 | 221 | 40 % | 2,5 | 1,00 | ~208 |
+| 4 | CON | physique | 6 | 158 | 40 % | 2,0 | 0,80 | ~190 |
+| 5 | PM | mental | 11 | 204 | 69 % | 2,5 | 1,73 | ~112 |
+
+**Lecture d'ensemble.** Le Guerrier et le Nain progressent **1,6 fois plus vite en physique qu'en
+mental** (1,40 contre 0,86) ; les lanceurs, 1,7 fois plus vite en mental (1,32 contre 0,76) ; les
+trois hybrides ne font aucune différence, à 1,08 ou 1,10 partout. Aucune classe n'a une
+caractéristique qui progresse plus vite qu'une autre du *même* type — seule la valeur de départ, par
+ses multiples de 8, les sépare, et **à des valeurs de 6 à 15 elle ne les sépare presque jamais** :
+sur les 48 lignes du tableau, le gain moyen vaut 2,0 partout sauf les quatre lignes de la Fée à 2,5.
+
+**La Fée est la classe la plus rapide du jeu**, et de loin : la somme de ses six espérances vaut
+**7,78** points par niveau contre 6,78 pour le Guerrier et 6,24 pour le Sorcier. Ses 16 de chance
+de départ lui donnent trois points de probabilité et un demi-point de gain sur **chacune** des sept
+lignes. Elle le paie par ses deux 6 en FO et CON, qui ne dépasseront jamais 158.
+
+**La conclusion la plus importante du tableau est la colonne « niveaux ».** Aucune caractéristique
+n'atteint son plafond avant le niveau **107**, et la plupart en demandent 150 à 230. Une partie
+ordinaire s'arrête bien avant. **Pour un personnage qui ne dépense aucun point de création, le
+plafond n'existe pas** : il est hors de portée, et tout ce qui compte est la vitesse. C'est
+exactement l'inverse de ce que ce document affirmait quand il calculait sur la table de mise au
+point, où les valeurs de départ deux fois plus grandes rendaient les plafonds atteignables vers le
+niveau 110.
+
+**Les deux seules exceptions sont l'INT et la VO de la Fée**, à ~107 niveaux, et sa PM à ~112 : une
+partie menée très loin les verra buter. C'est la seule classe pour qui la question du plafond se
+pose sans passer par l'écran de répartition.
+
+**Le paradoxe du Nain.** Son agilité, sa plus mauvaise ligne (8), est celle qui atteint son plafond
+le plus tôt de tout le jeu — ~121 niveaux. Une valeur de départ basse donne un plafond bas *et* le
+fait atteindre plus vite, parce que la probabilité, elle, ne dépend que de la famille. Le rang final
+d'une caractéristique se décide donc bien plus à la création qu'en jouant.
 
 ---
 
@@ -476,22 +638,33 @@ Les hybrides plafonnent à 84 % même à 99 de chance.
 ### Les huit comparaisons
 
 « Signature » = la caractéristique la plus haute de la classe. Trois répartitions, sans élément
-favorisé :
+choisi :
 
 - **A** — 99 dans la signature, chance laissée à sa valeur de classe ;
 - **B** — 99 en chance, signature laissée à sa valeur de classe ;
 - **C** — **81** dans la signature (le sommet de la courbe), chance laissée à sa valeur de classe.
 
-| classe | signature | A : 99 dans la signature | B : 99 en chance | C : 81 dans la signature |
+Les colonnes « niv » ont été recoupées avec 300 parties simulées sur les cinq cas les plus
+représentatifs : la mesure tombe deux niveaux au-dessus de l'estimation, l'écart d'arrondi du
+premier niveau.
+
+| classe | signature | A : 99 dans la signature | B : 99 en CH | C : 81 dans la signature |
 |---|---|---|---|---|
-| 0 Guerrier | #0 (24) | plafond **490** · 5,92/niv · ~66 niv · coût 75 | plafond 307 · 8,50/niv · ~33 niv · coût 83 | plafond **510** · 5,18/niv · ~83 niv · **coût 57** |
-| 1 Prêtre | #2 (24) | plafond **490** · 5,52/niv · ~71 niv · coût 75 | plafond 307 · 8,50/niv · ~33 niv · coût 83 | plafond **510** · 4,83/niv · ~89 niv · **coût 57** |
-| 2 Voleur | #3 (24) | plafond **490** · 5,02/niv · ~78 niv · coût 75 | plafond 307 · 7,14/niv · ~40 niv · coût 75 | plafond **510** · 4,43/niv · ~97 niv · **coût 57** |
-| 3 Sorcier | #5 (24) | plafond **490** · 5,52/niv · ~71 niv · coût 75 | plafond 307 · 8,50/niv · ~33 niv · coût 83 | plafond **510** · 4,83/niv · ~89 niv · **coût 57** |
-| 4 Chasseur | #3/#4 (20) | plafond **490** · 4,48/niv · ~87 niv · coût 79 | plafond 277 · 6,72/niv · ~38 niv · coût 83 | plafond **510** · 3,92/niv · ~109 niv · **coût 61** |
-| 5 Elfe | #1/#5 (20) | plafond **490** · 4,48/niv · ~87 niv · coût 79 | plafond 277 · 6,72/niv · ~38 niv · coût 83 | plafond **510** · 3,92/niv · ~109 niv · **coût 61** |
-| 6 Nain | #0/#4 (20) | plafond **490** · 5,92/niv · ~66 niv · coût 79 | plafond 277 · 8,00/niv · ~32 niv · coût 83 | plafond **510** · 5,18/niv · ~83 niv · **coût 61** |
-| 7 Fée | #1/#2 (20) | plafond **490** · 5,52/niv · ~71 niv · coût 79 | plafond 277 · 8,00/niv · ~32 niv · coût 83 | plafond **510** · 4,83/niv · ~89 niv · **coût 61** |
+| 0 Guerrier | FO (13) | plafond **490** · 5,25/niv · ~74 niv · coût 86 | plafond **221** · 7,50/niv · ~28 niv · coût 90 | plafond **510** · 4,55/niv · ~94 niv · coût 68 |
+| 1 Prêtre | VO/PM (13) | plafond **490** · 4,95/niv · ~79 niv · coût 86 | plafond **221** · 7,50/niv · ~28 niv · coût 88 | plafond **510** · 4,29/niv · ~100 niv · coût 68 |
+| 2 Voleur | AGI (13) | plafond **490** · 4,13/niv · ~95 niv · coût 86 | plafond **221** · 6,30/niv · ~33 niv · coût 87 | plafond **510** · 3,58/niv · ~120 niv · coût 68 |
+| 3 Sorcier | PM (14) | plafond **490** · 4,95/niv · ~79 niv · coût 85 | plafond **229** · 7,50/niv · ~29 niv · coût 89 | plafond **510** · 4,29/niv · ~100 niv · coût 67 |
+| 4 Chasseur | FO (12) | plafond **490** · 4,05/niv · ~97 niv · coût 87 | plafond **212** · 6,30/niv · ~32 niv · coût 90 | plafond **510** · 3,51/niv · ~122 niv · coût 69 |
+| 5 Elfe | PM (12) | plafond **490** · 4,05/niv · ~97 niv · coût 87 | plafond **212** · 6,30/niv · ~32 niv · coût 90 | plafond **510** · 3,51/niv · ~122 niv · coût 69 |
+| 6 Nain | CON (15) | plafond **490** · 5,25/niv · ~74 niv · coût 84 | plafond **237** · 7,50/niv · ~30 niv · coût 90 | plafond **510** · 4,55/niv · ~94 niv · coût 66 |
+| 7 Fée | AGI (13) | plafond **490** · 3,20/niv · ~122 niv · coût 86 | plafond **221** · 4,50/niv · ~46 niv · coût 83 | plafond **510** · 2,80/niv · ~153 niv · coût 68 |
+
+**La Fée est le cas tordu du tableau** : sa caractéristique la plus haute est l'**agilité**, une
+ligne *physique*, et sa famille est celle des lanceurs, qui monte le physique à 40 %. Sa signature
+au sens du tableau est donc la ligne qu'elle est la plus mauvaise à faire grandir. Lue autrement —
+en plaçant les 99 sur sa PM à 11 — elle passe à 5,52/niv et ~71 niveaux, à égalité avec le Prêtre et
+le Sorcier au lieu du dernier rang. **« La plus haute » n'est pas « la bonne » : c'est le type qui
+décide, pas la valeur de départ.**
 
 ### Ce que la comparaison dit
 
@@ -505,68 +678,87 @@ caractéristique de 81 à 99 soit rentable — la courbe redescend, et les 18 po
 n'importe où ailleurs. **C'est le piège principal de l'écran de création.**
 
 **B contre A/C : deux marchandises différentes.** Une caractéristique laissée à sa valeur de classe
-est plafonnée à 277 ou 307 pour toute la partie, et aucune quantité de niveaux ne la fera monter
-plus haut. En échange, 99 en chance donne sur **les six** caractéristiques des probabilités
-relevées, et des gains plus gros (le second terme passe de `rand() % 3` à `rand() % 13`, soit +5 en
-moyenne partout). Sur un Guerrier, la somme des six espérances passe de **10,4** points par
-niveau — le total du tableau de la classe 0 plus haut — à **39,1**, presque le quadruple. Le
-personnage atteint donc ses plafonds bien plus tôt, mais ce sont des plafonds plus bas.
+est plafonnée entre 158 et 237 pour toute la partie, et aucune quantité de niveaux ne la fera monter
+plus haut. En échange, 99 en chance donne sur **les six** caractéristiques des probabilités relevées
+et des gains bien plus gros — le second terme passe de `rand() % 2` à `rand() % 13`, soit +5,5 en
+moyenne partout. Sur un Guerrier, la somme des six espérances passe de **6,78** points par niveau —
+le total du tableau de la classe 0 plus haut — à **37,1**, cinq fois et demie plus. Le personnage
+atteint donc ses plafonds bien plus tôt, mais ce sont des plafonds bas.
 
-**En pratique, la question est le niveau visé.** Une partie qui s'arrête vers le niveau 40 ou 50
-n'approchera aucun plafond : c'est la vitesse qui compte, donc la chance. Une partie menée jusqu'au
-niveau 110 les atteindra tous : ce sont les plafonds qui comptent, donc les points placés dans les
-caractéristiques — vers 80, pas vers 99.
+**Et c'est précisément ce qui rend B attirant à la vraie table.** Sans points dépensés, aucun
+plafond n'est atteignable avant le niveau 107 : les plafonds ne sont pas une contrainte, ce sont des
+décors. Mettre les points en chance ne renonce donc à rien de concret sur une partie ordinaire,
+alors que mettre les points dans une caractéristique laisse les six autres à leur rythme d'origine.
+**C'est l'inverse de la conclusion que ce document tirait sur la table de mise au point**, où les
+plafonds étaient réellement atteints vers le niveau 110.
+
+**La question reste le niveau visé**, mais le seuil a bougé. Une partie qui s'arrête vers 50 ou 70 —
+c'est-à-dire la quasi-totalité des parties — ne verra jamais un plafond sans répartition extrême :
+c'est la vitesse qui compte, donc la chance. Il faut viser au-delà du niveau 100 *et* avoir concentré
+la création sur une ligne pour que le plafond redevienne la contrainte, et là seulement 81 bat 99.
 
 **Trois avantages de plus pour la chance, qui ne coûtent rien.** Elle nourrit aussi le tirage du
 butin (`odds + chance/2` sur mille pour qu'un objet tombe plutôt que de l'argent, et
 `+0x12c/8 + 0x3c + chance/2` pour sa qualité) et le tirage de la chance courante, qui à 99 de départ
-monte 53 % du temps et ne descend que 7 % du temps au lieu de 33 % / 27 %.
+monte 53 % du temps et ne descend que 7 % du temps au lieu de 31 % / 29 %.
 
 ### Trois cas limites de plus
 
-**Une caractéristique laissée à 8** ne dépassera **jamais 177**, quel que soit le nombre de niveaux
-et quelle que soit la chance. Cinq des six caractéristiques de la Fée et du Sorcier partent à 8 ou
-16 ; ces classes sont donc structurellement bornées là où le Guerrier part à 24 sur sa signature.
+**Les deux 6 de la Fée** — force et constitution — ne dépasseront **jamais 158**, quel que soit le
+nombre de niveaux et quelle que soit la chance. C'est le plancher du jeu. Juste au-dessus, les
+caractéristiques de départ à 8 sont bornées à 177 : le Guerrier en a trois (INT, VO, PM), le
+Sorcier deux, le Nain trois. **Aucune classe n'échappe à deux ou trois lignes structurellement
+bornées sous 190** ; ce qui distingue les classes, c'est lesquelles.
 
 **Le dépassement du plafond.** Le test précède l'addition, donc la valeur finale s'arrête entre le
-plafond et le plafond plus un gain — jusqu'à une vingtaine de points au-dessus. Un personnage qui
-affiche 315 avec un plafond calculé de 307 n'a rien d'anormal.
+plafond et le plafond plus un gain — deux ou trois points aux valeurs de classe. Un personnage qui
+affiche 223 avec un plafond calculé de 221 n'a rien d'anormal.
 
 **La chance à sa valeur plancher.** Une chance de départ **inférieure à 8** annulerait complètement
-le second terme du gain (`rand() % 1` vaut toujours 0). Cela ne peut pas arriver : la plus basse
-valeur de classe est 16, et l'écran de création interdit de descendre sous la valeur de classe. Le
-cas est mort — mais il explique pourquoi le plancher a été mis là.
+le second terme du gain (`rand() % 1` vaut toujours 0). Cela n'arrive pas, mais il s'en faut d'un
+point : la plus basse valeur de classe est **9** — le Guerrier, le Chasseur, l'Elfe et le Nain —, et
+l'écran de création interdit de descendre sous la valeur de classe. Sur la table de mise au point,
+où le minimum était 16, le cas paraissait purement théorique ; à la vraie table, le jeu passe à un
+point de le rendre réel.
 
 ---
 
 ## Ce que ça veut dire en jouant
 
-Quatre conséquences tombent directement des formules, et elles sont vérifiables en jeu :
+Six conséquences tombent directement des formules, et elles sont vérifiables en jeu :
 
 1. **Le bloc `+0x2a0` étant figé, la création décide de trois choses à la fois** : la valeur de
    départ, la taille des gains, et **le plafond**. Un point placé là achète les trois ; un point
    placé ailleurs n'en achète aucune.
-2. **Le plafond culmine pour un départ de 80 à 83, et redescend après.** Porter une caractéristique
+2. **En partie ordinaire, le plafond ne se rencontre jamais.** Aux valeurs de classe, il faut 107 à
+   233 niveaux pour l'atteindre. Ce que la création achète réellement, ce n'est donc pas un plafond
+   lointain, c'est **la vitesse** — sauf si l'on concentre assez de points pour changer d'échelle.
+3. **Le plafond culmine pour un départ de 80 à 83, et redescend après.** Porter une caractéristique
    à 99 la plafonne plus bas qu'à 81, pour 18 points de plus. C'est le seul endroit du système où
-   dépenser davantage donne strictement moins.
-3. **La classe décide de la fréquence, pas de l'ampleur.** Un Guerrier voit son physique monter
-   trois fois sur quatre et son mental moins d'une fois sur deux ; un Voleur voit tout monter une
-   fois sur deux. Le gain, lui, ne dépend que des valeurs de départ.
-4. **Le Voleur est avantagé par sa chance de départ à 24, et par elle seule.** Sa famille de
-   progression est la plus plate des trois (56 % partout contre 74 %/45 % pour le Guerrier) ; à
-   chance égale il progresse *moins* qu'un Guerrier ou un Nain. Ce que ses 24 lui donnent, c'est
-   +3 points sur ses deux probabilités, +0,5 sur le gain moyen de **chacune** des sept
-   caractéristiques, et du butin plus fréquent et de meilleure qualité.
+   dépenser davantage donne strictement moins — et cela ne concerne que les répartitions extrêmes,
+   les seules où le plafond compte.
+4. **L'élément est gratuit et il déplace un plafond d'un cinquième.** C'est le seul choix de la
+   création qui achète 44 points de plafond sans coûter un point de pool.
+5. **La classe décide de la fréquence, pas de l'ampleur.** Un Guerrier voit son physique monter
+   sept fois sur dix et son mental un peu plus de quatre fois sur dix ; un Voleur voit tout monter
+   une fois sur deux. Le gain, lui, ne dépend que des valeurs de départ — et aux valeurs de classe
+   il vaut 2,0 pour sept classes sur huit.
+6. **La classe chanceuse est la Fée, et son avantage est général.** Ses 16 de CH lui donnent trois
+   points sur ses deux probabilités, un demi-point sur le gain moyen de **chacune** des sept
+   lignes, et du butin plus fréquent et de meilleure qualité. C'est la seule classe dont la somme
+   des six espérances dépasse 7 points par niveau. Elle le paie par ses deux 6, en force et en
+   constitution, bornés à 158 pour toute la partie.
 
 ---
 
 ## Ce qui n'est pas établi
 
-**Le nom des caractéristiques.** Des sept, **seule la troisième est nommée à ce jour — Volonté**,
-relevée à l'écran (voir `Bestiaire/LISEZMOI.md`). Les six autres restent numérotées ici plutôt que
-devinées. Le profil des classes suggère fortement que l'indice 0 est la force (le Guerrier y a 24)
-et que l'indice 5 est la magie (le Sorcier y a 24), mais **c'est une inférence, pas un relevé** :
-aucun libellé du binaire ne l'a confirmée.
+~~**Le nom des caractéristiques.**~~ **Résolu le 2026-08-29** : les sept lignes sont **FO, INT, VO,
+AGI, CON, PM, CH**, relevées à l'écran. L'inférence notée ici — l'indice 0 est la force, l'indice 5
+la magie — était juste, mais elle s'appuyait sur la mauvaise table (voir la correction en tête de
+document) ; c'est le libellé de l'écran qui tranche, pas le profil. Seul « PM » reste ambigu :
+l'écran ne dit pas s'il faut lire « puissance magique » ou « points de magie ». Il nourrit la jauge
+de PM par la moitié de (VO + PM).
 
 **Le rôle de `+0x12c`.** L'autre contributeur du tirage de qualité du butin n'a pas de rôle
 identifié au-delà d'être la copie de travail de la chance.

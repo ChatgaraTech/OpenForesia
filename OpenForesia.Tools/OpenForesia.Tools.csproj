@@ -1,13 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
+        <!-- `-windows` et UseWindowsForms : le verbe `montee` ouvre une fenetre (le simulateur de
+             montee de niveau, MonteeDeNiveau/). OutputType reste Exe et non WinExe pour que les
+             cinq autres verbes gardent leur console. -->
+        <TargetFramework>net9.0-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
 
         <PlatformTarget>x86</PlatformTarget>
         <Prefer32Bit>true</Prefer32Bit>
+
+        <!-- Le simulateur travaille sur un vrai bloc de personnage de 0x2000 octets, aux memes
+             decalages que le jeu, pour que la transcription de FUN_005391f0 reste lisible a cote
+             de l'originale. -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>

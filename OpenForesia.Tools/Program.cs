@@ -65,6 +65,28 @@ if (args[0] is "bestiaire")
     return;
 }
 
+// Le simulateur de montee de niveau : le seul verbe qui ouvre une fenetre. Il ne lit ni le binaire
+// ni le CD — il rejoue FUN_005391f0 sur un personnage qu'on compose a l'ecran. Voir
+// MonteeDeNiveau/Simulateur.cs et Documentation/Reference/MonteeDeNiveau.md.
+if (args[0] is "montee")
+{
+    if (args.Length != 1) { PrintUsage(); return; }
+
+    // Les instructions de haut niveau ne sont pas STA, et WinForms l'exige : la fenetre part sur
+    // son propre fil, et le verbe rend la main quand elle se ferme.
+    var interfaceGraphique = new Thread(() =>
+    {
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        Application.SetHighDpiMode(HighDpiMode.SystemAware);
+        Application.Run(new OpenForesia.Tools.MonteeDeNiveau.FenetreSimulateur());
+    });
+    interfaceGraphique.SetApartmentState(ApartmentState.STA);
+    interfaceGraphique.Start();
+    interfaceGraphique.Join();
+    return;
+}
+
 if (args.Length != 1)
 {
     PrintUsage();
@@ -263,6 +285,7 @@ static void PrintUsage()
     Console.WriteLine("  OpenForesia.Tools disasm <path> <va> [octets] desassemble x86-32 a partir d'une VA Ghidra");
     Console.WriteLine("  OpenForesia.Tools bestiaire <cd> [--zone N] [--sortie <dir>]");
     Console.WriteLine("                                               especes, fiches, formations et butin, lus sur le CD");
+    Console.WriteLine("  OpenForesia.Tools montee                     simulateur de montee de niveau (fenetre)");
     Console.WriteLine();
     Console.WriteLine("Exemples:");
     Console.WriteLine("  OpenForesia.Tools Legacy/Binaries/winsys3d.dll");
