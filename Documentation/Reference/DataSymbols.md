@@ -2324,3 +2324,148 @@ Les deux premiers ont `00 00` en cinquième et sixième octets là où les trois
 deux groupes dans une même table, ce qui est une raison de plus de ne pas trancher la longueur sans
 le corps consommateur.
 
+
+## `0x00551ab8` — l'atlas de la gerbe `0x3c`, et une borne par champ (2026-08-29)
+
+Passé en troisième argument de `FUN_0047ac40` par `FUN_004754c0`, le piège de coffre `0xb4`.
+
+**Quatre** enregistrements. La borne se lit d'abord dans le corps du consommateur, comme pour
+`0x005519d0` : `FUN_004755c0` pose `+0x40 = compteur / 2` et s'éteint dès que cet indice dépasse 3.
+
+| adresse | octets |
+|---|---|
+| `0x00551ab8` | `40 88 20 20 01 02 10 02` |
+| `0x00551ac0` | `60 88 20 20 01 02 10 02` |
+| `0x00551ac8` | `80 88 20 20 01 02 10 04` |
+| `0x00551ad0` | `a0 88 20 20 01 02 10 0b` |
+
+**La donnée confirme la borne par le bas d'une façon nouvelle.** Les quatre enregistrements
+reprennent exactement les mêmes tuiles `0x20 × 0x20` (`4088`, `6088`, `8088`, `a088`) que la plage
+`0x00551a98` qui les précède sans trou : ni la planche ni la taille ne séparent les deux tables. Ce
+qui les sépare est le **dernier octet**, nul dans toute la plage précédente et `02 02 04 0b` ici.
+
+**À retenir :** une plage de descripteurs peut se borner par un champ qui change de valeur, pas
+seulement par un changement de planche. Quand deux tables partagent leurs tuiles, comparer les huit
+octets colonne par colonne — la colonne qui bouge est la frontière.
+
+## `0x005515b8`, `0x005515c0`, `0x005519b8`, `0x00551868` — quatre relevés de la branche `0x99` / `0xbf` (2026-08-29)
+
+### Les deux atlas de `FUN_004459e0`
+
+Cette fonction a deux corps exclusifs, choisis par `+0x44` de l'entité, et chacun pose son propre
+atlas en `+0x3c`.
+
+| adresse | octets | borne |
+|---|---|---|
+| `0x005515b8` | `a0 a8 0f 0f 01 02 10 00` | **1** — le corps `+0x44 == 0` pose `+0x40 = 0` et n'y touche plus |
+| `0x005515c0` | `70 78 0f 0f 01 02 10 00` | **4** — voir ci-dessous |
+| `0x005515c8` | `80 78 0f 0f 01 02 10 00` | |
+| `0x005515d0` | `90 78 0f 0f 01 02 10 00` | |
+| `0x005515d8` | `a0 78 0f 0f 01 02 10 00` | |
+
+`0x005515b8` est **seul de sa planche** : la plage qui le précède (`0x005515a0`) est en `d0`, celle
+qui le suit en `78`. La donnée et le code disent donc la même chose.
+
+**`0x005515c0` introduit une borne d'un genre nouveau : le plafond.** Le corps `+0x44 == 1` avance
+`+0x40` d'un cran toutes les six sous-étapes, puis exécute `si l'incrémentation donne 4, remettre 3`.
+Ce n'est pas un cycle — l'animation s'arrête sur sa dernière image et y reste. Quatre
+enregistrements, et les quatre tuiles `7078`, `8078`, `9078`, `a078` se suivent exactement.
+
+**À retenir :** un plafond borne une table aussi sûrement qu'un modulo, et se repère au motif
+`inc ; cmp N ; si égal, écrire N-1`.
+
+### `0x005519b8` — la borne écrite dans l'engendreur
+
+| adresse | octets |
+|---|---|
+| `0x005519b8` | `20 c0 10 10 01 02 10 00` |
+| `0x005519c0` | `00 d0 10 10 01 02 10 00` |
+| `0x005519c8` | `10 d0 10 10 01 02 10 00` |
+
+**Trois**, et pour la première fois la longueur n'est ni dans le consommateur ni dans un changement
+de planche : `FUN_00475d40` pose `+0x1a = 3` sur l'entité **avant** l'appel d'engendrement, et le
+consommateur (`FUN_00475fc0`) parcourt `+0x1a` enregistrements. Le même engendreur passe `+0x1a = 1`
+pour son premier appel, sur l'atlas `0x00551ba0`.
+
+La donnée suit : ce sont les trois derniers de la plage de six tuiles `0x10 × 0x10` commençant à
+`0x005519a0`, et `0x005519d0` derrière change de planche.
+
+### `0x00551868` — le son du coup qui ne passe pas
+
+| adresse | octets |
+|---|---|
+| `0x00551868` | `03 00 01 00 00 01 00 12` |
+
+Même forme que le script de piège `0x00551858` (identifiant en `+0`, délai du lot suivant en `+1`,
+nombre de sons en `+2`, hauteur en `+4`, gain en `+6`) mais **un seul enregistrement** : son délai de
+lot suivant est nul, ce qui termine le script dès la première lecture. C'est ce qui le sépare du
+script de deux enregistrements qui le précède, et non un changement de valeur.
+
+## Correction — `0x005519b8` était décalé d'un enregistrement (2026-08-29)
+
+Le relevé publié plus haut le même jour donnait `20c0`, `00d0`, `10d0`. **C'est faux.** La lecture à
+l'adresse exacte donne :
+
+| adresse | octets |
+|---|---|
+| `0x005519b8` | `00 d0 10 10 01 02 10 00` |
+| `0x005519c0` | `10 d0 10 10 01 02 10 00` |
+| `0x005519c8` | `20 d0 10 10 01 02 10 00` |
+
+L'erreur vient d'avoir compté les enregistrements à l'œil sur un affichage de seize octets par ligne
+au lieu de demander le relevé **à l'adresse du descripteur**. La vérification coûte une commande :
+
+```powershell
+dotnet run --project OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x005519b8 24
+```
+
+**À retenir :** relever à l'adresse citée par le code, jamais à celle d'une plage qui la contient.
+Le décalage ne se voit ni à la compilation ni dans la forme des données — les huit octets restent
+plausibles.
+
+## `0x005519a0`, `0x00551a40`, `0x00551a78` — les trois atlas de la famille de pièges (2026-08-29)
+
+### `0x005519a0` — trois images, et une plage partagée
+
+| adresse | octets |
+|---|---|
+| `0x005519a0` | `00 c0 10 10 01 02 10 00` |
+| `0x005519a8` | `10 c0 10 10 01 02 10 00` |
+| `0x005519b0` | `20 c0 10 10 01 02 10 00` |
+
+Borné par `FUN_0047a880`, qui avance `+0x40` d'un cran par image et le remet à zéro dès qu'il atteint
+3.
+
+**Cette table et `0x005519b8` se partagent une seule plage contiguë** de six tuiles `0x10 × 0x10`
+allant de `0x005519a0` à `0x005519d0`. Ni la planche, ni la taille, ni la queue des huit octets ne
+les sépare : **seuls leurs deux consommateurs les bornent**, l'un à trois enregistrements par un
+modulo, l'autre à trois par le `+0x1a` que son engendreur pose. C'est le cas de figure où relever un
+descripteur isolément est le plus dangereux — et c'est précisément là que l'erreur ci-dessus s'est
+produite.
+
+### `0x00551a40` — quatre images, bornées deux fois
+
+| adresse | octets |
+|---|---|
+| `0x00551a40` | `60 b8 18 18 00 02 10 01` |
+| `0x00551a48` | `78 b8 18 18 00 02 10 01` |
+| `0x00551a50` | `90 b8 18 18 00 02 10 01` |
+| `0x00551a58` | `a8 b8 18 18 00 02 10 01` |
+
+`FUN_004757a0` pose `+0x40 = (compteur / 2) & 3`. La donnée le confirme **deux fois** : la table
+suivante (`0x00551a60`) change de tuile *et* de queue (`01 02 10 00` au lieu de `00 02 10 01`).
+Quand les deux critères concordent, la borne ne fait pas de doute.
+
+### `0x00551a78` — quatre images, et deux engendreurs
+
+| adresse | octets |
+|---|---|
+| `0x00551a78` | `98 00 10 10 01 02 10 00` |
+| `0x00551a80` | `a8 00 10 10 01 02 10 00` |
+| `0x00551a88` | `b8 00 10 10 01 02 10 00` |
+| `0x00551a90` | `c8 00 10 10 01 02 10 00` |
+
+**Le seul atlas de la série que deux engendreurs indépendants se partagent** : `FUN_00475a30` le
+donne à son enfant `0x40`, et `FUN_0053b580` au `0xbb` qu'il fait naître sur la victime. Les deux
+consommateurs (`FUN_00475a80` et `FUN_004768a0`) posent tous deux `+0x40 = rand() & 3`, ce qui
+donne la même borne par deux chemins. `0x00551a98` derrière passe en `0x20 × 0x20`.

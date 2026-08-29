@@ -17321,3 +17321,395 @@ enflent en s'allumant puis s'éteignent, tournées chacune dans une direction ti
 
 Reste ouvert sur la famille voisine : `0xbf` (`0x00475D40`, 347 o, engendre `0xbe` — donc son enfant
 est desormais ecrit) et `0x99` (`0x004459E0`), tous deux hors de `Blaze.c`.
+
+---
+
+## 2026-08-29 (suite 14) — `FUN_005312D0`, la remise d'objet : analyse, pas encore transcription
+
+Signalé en jeu par Vincent : ouvrir un coffre, répondre « Oui » à la prise de l'objet, et le jeu
+meurt sur le **rappel de fin de texte** `0x005312D0`, appelé avec `0x0B2287E0`.
+
+Ce n'est pas un gestionnaire d'entité mais un `completion` du moteur de texte
+(`UiText.RunTextEngine`), dont le `switch` ne connaît que `0x00450700` / `0x00474320` et
+`0x00530ed0`.
+
+### Ce qui a été établi
+
+734 octets (`0x005312D0..0x005315AD`), **absents de `Blaze.c`**, relevé gardé sous
+`Legacy/Raw/Blaze/FUN_005312D0.asm`. Un seul argument : l'emplacement du personnage.
+
+**Les trois appels inconnus sont résolus.** Ce sont des thunks d'import, tous vers **winsys3d** et
+tous **déjà câblés** dans `Interop/Winsys3d.cs` :
+
+| thunk | slot IAT | ordinal | rôle |
+|---|---|---|---|
+| `0x00545ABE` | `0x60880C` | 684 | `Ordinal_684` — VRAM → mémoire, rectangle (`StoreImage`) |
+| `0x00545C3E` | `0x6086E0` | 676 | `Ordinal_676` — `MoveImage`, rectangle VRAM → VRAM |
+| `0x00545AC4` | `0x608814` | 667 | `Ordinal_667` — no-op confirmé (`DrawSync`) |
+
+Les slots portent le bit haut : ce sont des imports **par ordinal**, ce qui explique qu'aucun nom
+n'apparaisse. La méthode se réutilise : lire le dword du slot IAT, ôter `0x80000000`, chercher
+l'ordinal dans le dump d'export de la DLL.
+
+`FUN_00532710` — le dernier appel interne — est une **remise d'emplacement dans une pile libre** :
+`pool[0]` est un compte, et si non nul `pool[compte + 1] = valeur` puis `pool[0]--`. Ici sur
+`0x005f7b60`, la pile des 0x40 entités de butin : le corps libère donc l'objet ramassé.
+
+### Ce que fait la fonction, dans les grandes lignes
+
+1. `FUN_00530ED0` — restaure les réactions du groupe ;
+2. deux sorties précoces : `DAT_005e909f` non nul, ou un porteur qui n'est pas un membre du groupe ;
+3. le son `0x29` à la position du personnage ;
+4. l'entité de butin est éteinte et son emplacement rendu à la pile libre ;
+5. **deux chemins** selon `bloc + 0x150 & 7` : la valeur `4` incrémente un compteur à
+   `esi + edi - 0x3151` (une monnaie, ou un consommable compté), tout le reste passe à la remise
+   normale ;
+6. la remise normale copie 0x50 dwords, puis compose l'**icône** de l'objet par une suite de
+   `StoreImage` / `MoveImage` dans la page du personnage courant (`DAT_005eca90`, pas de `0x280`) ;
+7. la fin range l'identifiant en `+0x310`, pose un drapeau en `+0x312`, et incrémente le compte
+   **borné à 0x63** — 99 objets, la limite d'inventaire du jeu.
+
+### Pourquoi elle n'est pas écrite
+
+Tout se résout : aucun appel n'est inconnu, aucun global n'est inconnu. Ce n'est donc **pas** un
+blocage, c'est un **volume** — 734 octets d'arithmétique d'adresses sur la VRAM, écrits en fin d'une
+session qui en a déjà produit quinze. La transcrire à moitié attentivement est précisément la façon
+de poser un défaut de VRAM qui se cherchera ensuite pendant des heures.
+
+Elle est donc laissée **délibérément pour une passe dédiée**, avec ce relevé et cette analyse comme
+point de départ. Le travail restant est de la lecture ligne à ligne, pas de la recherche.
+
+### En attendant
+
+`OPENFORESIA_AI_STUB` ne couvre **pas** ce chemin : le filet ne protège que les gestionnaires
+d'entité, pas les rappels du moteur de texte. Ouvrir un coffre et accepter l'objet tue le run dans
+les deux modes. C'est une limite du filet qui mérite d'être notée — et peut-être comblée, le
+`switch` de `RunTextEngine` étant le seul endroit à toucher.
+
+---
+
+## 2026-08-29 (suite 15) — `0x005312D0` : le corps était écrit, c'est le `switch` qui manquait
+
+**Correction de la suite 14, qui s'était trompée de diagnostic.** Elle concluait « 734 octets à
+transcrire, une passe dédiée ». La transcription existait depuis longtemps :
+`StoreItemInInventory_005312D0`, `WorldMapTick.cs:9339`, corps complet — les deux passes d'icône, le
+compteur borné à 99, la remise d'emplacement.
+
+Ce qui manquait était **un `case` dans le `switch` de `UiText.RunTextEngine`**, cinq lignes.
+
+### Ce qui a fait perdre le fil
+
+Trois choses, et elles valent d'être nommées :
+
+1. **Le message de la levée dit « pas encore reconstruit »**, ce qui est faux dans ce cas : il ne
+   sait rien du corps, seulement que le `switch` n'a pas d'entrée. Il a orienté toute l'analyse vers
+   « écrire la fonction ».
+2. **La fonction est appelée de deux façons.** Elle est déjà employée par
+   `ChestPickupDone_00450700` et par `WorldMapDepot`, donc « transcrite » ; mais le binaire l'emploie
+   *aussi* comme rappel direct (`FUN_00530f20(..., FUN_005312d0)` et
+   `FUN_0053a920(..., FUN_005312d0)`). Seul ce second usage passe par le `switch`.
+3. **La vérification faite était la mauvaise.** J'ai cherché `FUN_005312d0` dans `Blaze.c` — absent,
+   donc « au désassembleur ». Il fallait chercher `005312D0` dans **les sources reconstruites**, où
+   le suffixe VA l'aurait donné en une ligne.
+
+### La règle qui en sort
+
+**Devant une levée qui nomme une adresse, chercher cette adresse dans `OpenForesia/src` AVANT de
+la chercher dans `Blaze.c`.** Le suffixe VA des noms reconstruits est là pour ça. C'est le pendant
+de « vérifier s'il y a un doublon avant de transcrire » de `CLAUDE.md`, dans l'autre sens : ici le
+doublon était de notre côté.
+
+Le message de la levée porte désormais cet avertissement, pour que le prochain rappel manquant ne
+refasse pas le trajet.
+
+### Ce que l'analyse de la suite 14 garde de valable
+
+Rien n'est perdu de ce qui y a été établi, et deux choses restent utiles :
+
+- **les trois thunks `0x00545ABE` / `0x00545C3E` / `0x00545AC4`** sont `StoreImage` / `MoveImage` /
+  `DrawSync` de winsys3d, importés **par ordinal** (684, 676, 667) — la méthode pour les nommer
+  (ôter `0x80000000` du dword du slot IAT, chercher l'ordinal dans le dump d'export) sert pour tous
+  les thunks `0x00545xxx` ;
+- `FUN_00532710` est la **remise d'emplacement dans une pile libre**, déjà transcrite sous
+  `FreeEntitySlot`.
+
+Le relevé `FUN_005312D0.asm` a été supprimé : il faisait doublon avec une transcription existante, et
+le garder aurait suggéré un travail à faire.
+
+### État
+
+Corrigé et **compilé, pas exécuté**. Ouvrir un coffre et accepter l'objet devrait maintenant ranger
+l'objet, composer son icône et incrémenter le compte.
+
+---
+
+## 2026-08-29 (suite 16) — l'autre piège de coffre, `0xb4`
+
+Signalé en jeu par Vincent : prendre un coffre plante encore, « parfois », sur
+
+```
+FUN_0047aa70, table 0x005ff400 entree 0 [00 08 90 80 00 b4 00 00 …]
+  : gestionnaire d'entite 0x4754C0 non transcrit
+```
+
+Le « parfois » est la clef, et l'octet `b4` du relevé le dit : **le coffre tire son piège**, et la
+suite 12 n'en avait écrit qu'un. `0xb4` → `0x004754C0` et `0xb5` → `0x004755F0` sont voisins dans la
+table statique `0x00551c30` comme dans le binaire ; il fallait les deux.
+
+### Ce que fait `0x004754C0`
+
+254 octets, **absent de `Blaze.c`** (Ghidra saute de `0x00475400` à `0x004755c0`) ; relevé gardé sous
+`Legacy/Raw/Blaze/FUN_004754C0.asm`. Il vit **seize images** :
+
+| image | ce qu'il fait |
+|---|---|
+| 0 | réglage : teinte `0xf0f0f0`, échelle `0x1000`, gravité `+0x9a` à `0x4000` |
+| 1 | le son `0x0b` part à sa propre position (`FUN_0053db20`, pas le script différé de `0xb5`) |
+| chaque image | une entité `0x3c` naît autour du **porteur** `+0x6c` — angle sur douze bits, rayon 0 à 59 |
+| 16 | la victime perd **5 %** de ses points de vie, puis l'entité s'efface |
+
+Trois différences avec son voisin `0xb5`, toutes portées par le même squelette :
+
+- il sème **à chaque image**, là où `0xb5` teste la parité du compteur ;
+- son son est **immédiat** au lieu de passer par la file différée ;
+- **il ne s'emprunte pas d'assaillant.** Pas de copie en `0x005ede20`, pas de bloc de statistiques
+  fabriqué, pas de jet de sauvegarde : le dégât passe par `ApplyPercentDamage_005397B0`, qui n'a pas
+  besoin d'attaquant. Le coup porte donc **toujours**.
+
+### La vitesse de la gerbe se pose sur le père
+
+Le point qu'il fallait lire dans le désassemblage et qui ne se devine pas. Le piège écrit **son
+propre** `+0x50` / `+0x54` / `+0x58` — `sin(angle) << 3`, `0x10000`, `cos(angle) << 3` — juste avant
+d'appeler `FUN_0047AC40`, qui recopie `0x27` mots du père dans l'enfant. C'est le seul chemin par
+lequel la gerbe reçoit sa direction : `FUN_004755c0` ne fait qu'intégrer ce qu'elle trouve déjà
+écrit. Le père se sert de ses propres champs de vitesse comme d'un **paramètre de passage**, alors
+qu'il ne se déplace jamais lui-même.
+
+### L'enfant `0x3c` et son atlas
+
+`FUN_004755c0`, entrée 60 de `0x00552230`, celle-là **décompilée dans `Blaze.c`** : sœur de
+`FUN_00475730` au frottement près — elle avance par `IntegrateWithDrag_00535880`, prend pour image
+d'atlas la moitié de son compteur et s'éteint dès que cet indice dépasse 3. Huit images de vie.
+
+C'est ce corps qui **borne l'atlas** `0x00551ab8` à quatre enregistrements, la méthode déjà employée
+pour `0x005519d0`. La donnée le confirme par le bas : les quatre enregistrements reprennent les mêmes
+tuiles `0x20 × 0x20` que la plage `0x00551a98` qui les précède sans trou, et ce qui les en distingue
+est le **dernier octet** — nul partout avant, `02 02 04 0b` ici. Une plage de descripteurs se borne
+donc aussi par un champ qui change de valeur, pas seulement par un changement de planche.
+
+### État
+
+Transcrits et **compilés, pas exécutés**. Reconnaissance à l'œil : sur un coffre piégé, une gerbe qui
+part **dans toutes les directions** en retombant (celle de `0xb5` monte tout droit), un seul son, et
+le personnage qui perd un petit morceau de sa barre de vie sans message de résistance.
+
+---
+
+## 2026-08-29 (suite 17) — la branche « effet d'état », close de bout en bout
+
+Signalé en jeu par Vincent, dans la foulée de la suite 16 : le butin d'un coffre non piégé arrive
+bien dans l'inventaire, mais certains coffres plantent encore, sur
+
+```
+FUN_0047acf0, table 0x005f2d40 entree 37 [00 18 90 80 00 3f 00 00 …]
+  : gestionnaire d'entite 0x475910 non transcrit
+```
+
+`0x3f` est l'enfant de la naissance `0xb6` (`FUN_004758C0`), et c'était la dernière pièce ouverte de
+la suite 10. **Cette fois la branche a été fermée entièrement plutôt qu'au corps signalé**, en
+listant d'abord ce que chaque corps engendre : quatre fonctions, dont trois absentes de `Blaze.c`.
+
+| | rôle | taille |
+|---|---|---|
+| `0x00475910` (`0x3f`) | trente-trois images de brouillard, puis l'effet | 270 o, absente |
+| `0x0053b3c0` | l'application d'un **effet d'état**, événement `7` | décompilée |
+| `0x00475d40` (`0xbf`) | le retour visuel du **coup qui ne passe pas** | 347 o, absente |
+| `0x004459e0` (`0x99`) | la **poussière** que `0x3a` sème une image sur deux | 773 o, absente |
+
+### `+0x44` de la victime décide de l'aspect de la poussière
+
+C'est le vrai acquis de la session, et il **referme une question laissée ouverte en suite 12**.
+
+Le commentaire de `ApplyTrapEffect_0053C420` notait : « le champ `+0x44` de la victime est mis à zéro
+le temps du `0x3a`, puis restauré. C'est ce que fait l'original ; ce que ce champ porte n'est pas
+établi. » Son voisin `0x0053b3c0` fait la même chose mais y met **1**.
+
+`FUN_004459E0` donne la réponse : il a **deux corps complets dans une seule fonction**, l'un gardé
+par `+0x44 == 0`, l'autre par `+0x44 == 1`, et toute autre valeur ne fait rien du tout. Ils
+diffèrent par cinq valeurs :
+
+| | `+0x44 == 0` | `+0x44 == 1` |
+|---|---|---|
+| atlas | `0x005515b8`, 1 image | `0x005515c0`, 4 images |
+| teinte | `b4 00 b4` (violet) | `00 b4 c8` (cyan) |
+| échelle | `0x400 + rand % 0x400` | `0x800 + rand % 0x400` |
+| extinction | `8 + rand % 0x10` par image | `6 + rand % 6` |
+| image d'atlas | figée à 0 | avance toutes les 6 étapes, **plafonnée à 3** |
+
+**C'est donc l'effet d'origine qui choisit l'aspect**, et le même sous-type `0x99` rend deux choses
+différentes. Le champ n'est pas un drapeau interne à l'entité : c'est un argument que l'appelant
+pose, laisse consommer, puis restaure.
+
+### `FUN_0053b3c0` est `FUN_0053c420` à cinq valeurs près
+
+Même squelette exactement — trois refus, une durée qui ne s'écrase que vers le haut, un bit de
+première fois, deux entités. Ce qui change : l'événement (`7` contre `0x1d`), le masque d'immunité
+(`0xfb299500` contre `0xf3099500`), le champ de durée (`+0x8e` contre `+0xe0`, et `+0x24` contre
+`+6` de base), le bit de `+0x40` (`4` contre `1`), l'atlas du `0x29`.
+
+Les quatre autres variantes (`0x0053b4b0`, `b580`, `b660`, `b730`) écrivent `+0x90`, `+0x92`,
+`+0x94` : **les durées d'état sont un bloc de mots consécutifs**, une par effet. C'est une carte
+utilisable pour nommer les effets quand l'occasion viendra.
+
+### `0x00475910` — un nuage qui ne se centre pas
+
+Trente-trois images. Chaque image il se replace au hasard autour de son porteur (`+0x78`, recopié de
+`+0x6c` par le père) et tire son image d'atlas parmi trois. **Le tirage de position est entièrement
+positif** : `rand() & 0xfff` multiplié par 50 en `X` et `Z`, par **150** en `Y`. Le nuage dérive donc
+toujours dans le même quart d'espace au lieu d'entourer la victime. Écrit ainsi dans le binaire,
+transcrit tel quel.
+
+À la 33e image il emprunte **la même entité d'assaillant que le piège `0xb5`** — `0x005ede20` — et
+appelle `0x0053b3c0`. Le mécanisme d'adjacence documenté en suite 12 sert donc à deux branches
+indépendantes ; ce n'était pas une particularité du piège.
+
+Son son part **une image sur six** (`compteur % 6 == 1`), pas une sur deux : le seul de la famille à
+compter ainsi.
+
+### `0x00475d40` — une seule image, quatre gerbes
+
+Tout se fait en une passe puis `*e = 0` : une bouffée `0xbe` immobile, **quatre** autres `0xbe`
+lancées dans des directions tirées **sur une sphère**, la marque `0x29` posée sur le **porteur** et
+non sur lui-même, et un son différé.
+
+Les deux mises à l'échelle des vitesses **ne sont pas symétriques** : les composantes horizontales
+sont un produit de deux entrées de table ramené de six rangs puis **tronqué à un multiple de `0x40`**
+(`and al,0xc0` — les six bits bas de l'octet bas tombent, rien d'autre), tandis que la verticale est
+une seule entrée **montée** de six rangs, sans troncature. Les deux arrivent à la même échelle par
+deux écritures différentes.
+
+### Les bornes d'atlas, une méthode de plus
+
+`0x005519b8` est le premier cas où **la borne est écrite dans l'engendreur** : `0x00475d40` pose
+`+0x1a = 3` avant l'appel, et le consommateur parcourt `+0x1a` enregistrements. Jusqu'ici la borne se
+lisait dans le corps du consommateur (`0x005519d0`, `0x00551ab8`) ou dans un changement de planche
+(`0x00551b00`).
+
+`0x005515c0` en donne encore une autre : le consommateur **plafonne** son index (`si l'incrémentation
+donne 4, remettre 3`), ce qui donne quatre enregistrements et non un cycle. Un plafond est une borne
+aussi sûre qu'un modulo, et plus lisible.
+
+### État
+
+Transcrits et **compilés, pas exécutés**. Reconnaissance à l'œil : sur un coffre à `0xb6`, un
+brouillard qui dérive une seconde autour du personnage, puis soit une bouffée grise et un son sec
+(il a résisté), soit la marque qui enfle et une pluie de poussière violette ou cyan (l'effet a pris).
+
+---
+
+## 2026-08-29 (suite 18) — la famille entière des pièges de coffre
+
+Troisième plantage de coffre en trois passes, et Vincent pose la bonne question : « je sais pas
+combien de différents il y a ». Cette fois la réponse est venue avant la correction, et elle a permis
+de fermer la famille d'un coup plutôt qu'un corps par plantage.
+
+### Combien de pièges il y a, et où c'est écrit
+
+`StepChestOpening` (`0x004747f0`) contient la ligne qui décide :
+
+```csharp
+uint slot = *(uint*)(e + 0x48);          // = (short)(e + 0x34) >> 8, posé à l'état 0
+SpawnEffectEntity((byte*)entity, (byte)(slot + 0xc0), 0, -1);
+```
+
+Le coffre porte donc son piège dans **l'octet haut de `+0x34`** de son enregistrement de placement,
+et le sous-type est cet octet **plus `0xc0`, replié sur huit bits**. Deux régimes en découlent :
+
+- `slot == 0` : pas de piège, le coffre passe directement à la remise du contenu ;
+- `slot` de `0x01` à `0x3f` : sous-type `0xc1`..`0xff`, **au-dessus de `0xc0`**, donc résolu par la
+  table d'entités de la **sous-zone** — impossible à énumérer hors d'une zone donnée ;
+- `slot` de `0xf4` à `0xff` : le repli donne `0xb4`..`0xbf`, **dans la table statique
+  `0x00551c30`**. Ce sont les pièges « du jeu de base », et ils sont **douze**.
+
+C'est ce dernier bloc qui plantait, un sous-type à la fois. Il est maintenant entier.
+
+### La charpente, la même pour tous
+
+| sous-type | naissance | enfant | effet |
+|---|---|---|---|
+| `0xb4` | `0x004754C0` | `0x3c` `0x004755C0` | 5 % des PV, direct |
+| `0xb5` | `0x004755F0` | `0x3d` `0x00475730` | `0x0053c420` (événement `0x1d`) |
+| `0xb6` | `0x004758C0` | `0x3f` `0x00475910` | `0x0053b3c0` (événement `7`) |
+| `0xb7` | `0x00475A30` | `0x40` `0x00475A80` | `0x0053b580` (événement `9`) |
+| `0xb8` | `0x00475B90` | `0x5f` `0x00475BE0` | `0x0053b660` (événement `10`) |
+| `0xb9` | `0x00475760` | `0x3e` `0x004757A0` | `0x0053b4b0` (événement `8`) |
+| `0xba` | `0x00476770` | — | — |
+| `0xbb` | `0x00476730` | — | secousse d'écran |
+| `0xbc` | `0x00475170` | deux `0xbc` `0x004751E0` | visuel seul |
+| `0xbd` | `0x004753D0` | `0x29` | visuel seul |
+| `0xbe` | `0x00475EA0` | — | (pas un piège : le scarabée) |
+| `0xbf` | `0x00475D40` | — | (pas un piège : le coup refusé) |
+
+**La forme est toujours la même** : une naissance qui recopie sa victime de `+0x6c` vers `+0x78`,
+règle teinte et échelle, lâche un enfant et s'efface dans la même image ; l'enfant tient la durée,
+reste accroché à la victime, puis à la 65e image (ou à l'extinction de sa teinte) **emprunte
+`0x005ede20`** et appelle une application d'effet. Le mécanisme d'adjacence documenté en suite 12
+sert donc à toute la famille — ce n'était ni une particularité du piège `0xb5`, ni de la branche
+`0xb6`.
+
+Les cinq applications d'effet (`0x0053b3c0`, `b4b0`, `b580`, `b660`, `c420`) écrivent **cinq durées
+consécutives** : `+0x8e`, `+0x90`, `+0x92`, `+0x94`, `+0xe0`. Une carte utilisable pour nommer les
+effets quand l'occasion viendra. Deux d'entre elles emploient un second jet de sauvegarde,
+`0x0053a790`, qui compte sur `+0x3c`/`+0x3e` là où `0x0053a6c0` compte sur `+0x34`/`+0x36`.
+
+### Trois `0xbc` dans trois tables
+
+`0x00475170` illustre mieux que tout le reste pourquoi un sous-type ne veut rien dire seul. Le même
+octet `0xbc` désigne :
+
+- `0x00475170` dans `0x00551c30` (table de `0x005ff400`) — la naissance ;
+- `0x004751E0` dans `0x00551f30` (table de `0x005edee0`) — ses deux enfants, nés par
+  `FUN_0047aae0` ;
+- `0x004752F0` dans `0x00552230` (table de `0x005f2d40`) — le petit-enfant, né par `FUN_0047ac40`.
+
+**Ce qui tranche est la fonction d'engendrement, pas le numéro.** `FUN_0047aae0` et `FUN_0047ac40`
+écrivent dans deux tables différentes ; c'est le seul écart entre `0x00475A30` et `0x00475B90`, qui
+sont sinon la même naissance.
+
+### Deux horloges sans compteur
+
+`0x00475BE0` ne teste aucun âge : sa teinte part de `0xf0f0f0` et perd `0x080808` par image, et
+l'effet part **quand le mot atteint exactement zéro**. `0xf0 / 0x08 = 30` — trente images, sans
+qu'aucune constante ne les nomme. `0x0047A880` fait pareil avec `0x101010`, soit quinze images.
+
+**C'est fragile et délibéré** : la durée tient parce que la division tombe juste sur les trois
+canaux à la fois. Une teinte de départ différente ferait déborder le mot au lieu de l'annuler, et
+l'entité vivrait indéfiniment. À ne surtout pas « corriger » en compteur.
+
+### Le relevé de `0x005519b8` était faux, et c'est le piège que `CLAUDE.md` annonce
+
+En suite 17 j'ai relevé `0x005519b8` comme `20c0`, `00d0`, `10d0`. C'est `00d0`, `10d0`, `20d0` :
+un décalage d'un enregistrement, invisible à la compilation.
+
+La cause est exactement celle que `DataSymbols.md` décrit depuis 2026-08-22 — j'ai lu la plage
+`0x005519a0` sur une ligne de seize octets et compté les enregistrements à l'œil au lieu de demander
+l'adresse au relevé. La vérification qui l'a rattrapé coûte une commande :
+
+```powershell
+dotnet run --project OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x005519b8 24
+```
+
+**Demander le relevé À l'adresse du descripteur, pas la plage qui le contient.** Le décalage s'est
+révélé en cherchant la borne de `0x005519a0` pour une autre table — c'est-à-dire par hasard.
+
+Et le fond de l'affaire est instructif : `0x005519a0` (trois enregistrements, pour `0x2d`) et
+`0x005519b8` (trois, pour `0xbe`) **se partagent une seule plage contiguë de six tuiles
+`0x10 × 0x10`**, sans rien dans la donnée pour les séparer. Seuls leurs deux consommateurs les
+bornent. C'est le cas où relever un descripteur isolément aurait été le plus dangereux, et il est
+arrivé.
+
+### État
+
+Transcrits et **compilés, pas exécutés**. Plus aucun corps non transcrit sur le chemin d'un coffre
+piégé du jeu de base. Reste possible : un coffre dont l'octet de piège vaut `0x01`..`0x3f`, qui
+serait résolu par la table de sous-zone et pourrait désigner n'importe quel corps de la zone.

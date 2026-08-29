@@ -1753,13 +1753,30 @@ internal sealed unsafe class UiText
                             Blaze.RestorePartyReactions_00530ED0();
                             break;
 
+                        // 0x005312D0 est le rangement lui-meme, employe DIRECTEMENT comme rappel a
+                        // deux endroits du binaire (`FUN_00530f20(..., FUN_005312d0)` et
+                        // `FUN_0053a920(..., FUN_005312d0)`) et non seulement a travers
+                        // ChestPickupDone. Signale en jeu le 2026-08-29 : accepter l'objet d'un
+                        // coffre tuait le run alors que le corps etait ecrit depuis longtemps —
+                        // c'est ce `case` qui manquait, pas la transcription.
+                        //
+                        // Le rappel ne rend rien : la valeur de retour, qui compte ce qui n'a pas
+                        // pu etre range, n'interesse que ChestPickupDone.
+                        case 0x005312d0:
+                            Blaze.StoreItemInInventory_005312D0((uint*)subject);
+                            break;
+
                         default:
                             throw new NotImplementedException(
                                 $"Rappel de fin de texte 0x{completion:X8}, appele avec " +
                                 $"0x{subject:X8} : pas encore reconstruit. Son corps se releve au " +
                                 $"desassembleur (`OpenForesia.Tools -- disasm " +
                                 $"Legacy/Binaries/Blaze.exe 0x{completion:x8} <n>`) ; il prend un " +
-                                "seul argument, la donnee d'utilisateur de +0x8b0, et ne rend rien.");
+                                "seul argument, la donnee d'utilisateur de +0x8b0, et ne rend " +
+                                "rien. ATTENTION : verifier D'ABORD que le corps n'est pas deja " +
+                                "transcrit sous un nom VA-suffixe. Il arrive que seul ce `switch` " +
+                                "manque, et non la fonction — 0x005312D0 a coute une demi-session " +
+                                "a ce titre le 2026-08-29.");
                     }
                 }
             }
