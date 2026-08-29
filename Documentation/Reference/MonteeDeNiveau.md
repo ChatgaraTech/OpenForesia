@@ -311,6 +311,97 @@ de mise au point, porte un élément par classe, et c'est de là que venait l'af
 **C'est donc le seul choix de la création qui déplace un plafond sans coûter de point.** Un élément
 favorisé rend un cinquième sur une caractéristique — 44 points sur un plafond de 221 — pour rien.
 
+### Les huit éléments, et ce que chacun pousse
+
+Les noms sont sur le CD, huit chaînes consécutives dans `BLAZE.ALL` à partir de `0x0090e325`,
+juste après « Ton choix se porte-t-il sur cet élément ? » et juste avant « Tu reçois un bonus. ».
+Croisés avec `DAT_0056d308` (`00 01 04 03 02 05`), ils donnent :
+
+| # | élément | pousse | d'un |
+|---|---|---|---|
+| 0 | **Feu** | FO — Force | cinquième |
+| 1 | **Eau** | INT — Intelligence | cinquième |
+| 2 | **Terre** | CON — Constitution | cinquième |
+| 3 | **Air** | AGI — Agilité | cinquième |
+| 4 | **Lumière** | VO — Volonté | cinquième |
+| 5 | **Nuit** | PM | cinquième |
+| 6 | **Divin** | les six | vingtième |
+| 7 | **Maléfique** | les six | vingtième |
+
+**L'ordre est confirmé deux fois, et par deux tables indépendantes.** D'abord par le sens :
+Feu → Force, Terre → Constitution, Air → Agilité, Nuit → PM. Ensuite par la huitième colonne de
+`DAT_0056c7e0`, l'élément que l'écran de mise au point attribue d'office à chaque classe :
+
+| classe | élément imposé |
+|---|---|
+| Guerrier | Feu |
+| Prêtre | **Divin** |
+| Voleur | **Nuit** |
+| Magicien | Lumière |
+| Chasseur | **Air** |
+| Elfe | Eau |
+| Kobold | **Terre** |
+| Lutin | Maléfique |
+
+Les huit tombent juste. Deux tables écrites à deux endroits différents du jeu, qui se recoupent sur
+la même permutation : l'ordre est établi.
+
+> **Au passage, les noms de classes du jeu ne sont pas ceux que ce projet emploie.** `BLAZE.ALL`
+> porte à `0x0090dea4` les masculins — Guerrier, Prêtre, Voleur, **Magicien**, Chasseur, Elfe,
+> **Kobold**, **Lutin** — et à `0x0090def0` les féminins : Guerrière, Prêtresse, Voleuse,
+> Magicienne, Chasseresse, **Sylphide**, **Naine**, **Fée**. Les trois derniers couples ne sont pas
+> des accords mais des mots différents. Ce document garde « Sorcier », « Nain » et « Fée » par
+> continuité ; le simulateur, lui, affiche les deux.
+
+### À quoi sert vraiment l'élément
+
+À **une** chose chiffrée : le plafond ci-dessus. Le champ `+0x151` n'a que quatre lecteurs dans
+tout `Blaze.c`, et les trois autres sont cosmétiques ou inertes.
+
+1. **Le plafond de montée de niveau** — `FUN_005391f0`, le seul effet sur les statistiques.
+2. **La teinte du fond de l'écran de sélection** — `DAT_00562a58 + élément * 8`, trois `short` lus
+   comme un RVB vers lequel `DAT_005e93a0..a4` glisse d'un quart par image.
+3. **La couleur du nom affiché** — `DAT_005e909e = … + élément * 3`, l'index de style que le moteur
+   de texte consomme.
+4. **Un masque écrit et jamais relu** : la création pose
+   `+0x114 = (1 << élément) | 0x800` dans le bloc de statistiques, à `bloc+0x14`. C'est le **même
+   champ** que les monstres remplissent depuis leur fiche de modèle (`modèle+0x24`), et eux s'en
+   servent : leurs valeurs relevées dans le bestiaire vont de `0x00000a00` à `0x80001202`, bits bas
+   compris. Mais **aucun test du jeu ne regarde les bits que la création y met**. Les huit masques
+   d'immunité qui interrogent ce champ — `0x80000000`, `0x80008000`, `0x06099500`, `0xf3099500`,
+   `0xf3299500`, `0xfb099500`, `0xfb299500`, `0xfbaf9500` — ont tous **un octet de poids faible
+   nul et le bit `0x800` éteint** ; et le seul test à masque variable, le ciblage en cône de
+   `FUN_00474f00`, est appelé avec `0xffffffff`. Un membre du groupe ne peut donc ni gagner ni
+   perdre quoi que ce soit par ces bits.
+
+**Donc : choisir Feu plutôt qu'Eau ne change ni les dégâts subis, ni les résistances, ni ce qui
+peut te viser. Cela change la couleur de l'écran, et quelle caractéristique montera 44 points plus
+haut.** Le « Tu reçois un bonus. » de l'écran de création est littéralement vrai, et c'est tout ce
+qu'il est.
+
+**Et l'élément le plus généreux n'est pas celui qu'on croit.** En sommant ce que chacun rend sur
+les six plafonds d'un Guerrier à ses valeurs de classe :
+
+| élément | ce qu'il rend | total |
+|---|---|---|
+| Feu | FO 221 → **265** | **44** |
+| Terre | CON 204 → **244** | 40 |
+| Air | AGI 186 → **223** | 37 |
+| Eau · Lumière · Nuit | une ligne à 177 → **212** | 35 |
+| **Divin** et **Maléfique** | +11 +8 +8 +9 +10 +8 sur les six | **54** |
+
+Un vingtième sur six lignes bat un cinquième sur une seule, parce que le cinquième s'applique au
+plafond de la ligne choisie et que les six plafonds ne sont pas si différents. **Divin et Maléfique
+sont donc le meilleur choix quand on veut le plus de plafond en tout**, et les six élémentaires le
+meilleur choix quand on veut concentrer — ce qui est le cas ordinaire, puisque la valeur d'une
+caractéristique se juge ligne par ligne et non en somme.
+
+> **La limite de cette affirmation.** `Blaze.c` est une décompilation *de ce que Ghidra a su
+> décompiler* : `FUN_00474f00` n'y a aucun appelant visible alors que la reconstruction lui en
+> connaît un, preuve qu'au moins un site d'appel vit hors du fichier. Le relevé ci-dessus couvre
+> tout ce qui est décompilé, pas tout ce qui existe. Si un jour un test sur les bits bas de
+> `bloc+0x14` apparaît dans un corps désassemblé à la main, c'est ici qu'il faudra revenir.
+
 ### La courbe culmine à 510, et redescend
 
 Les neuf premières lignes sont la plage réelle des valeurs de classe (6 à 15) : c'est là que se joue

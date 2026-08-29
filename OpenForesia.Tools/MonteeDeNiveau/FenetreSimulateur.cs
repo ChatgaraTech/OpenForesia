@@ -116,7 +116,7 @@ internal sealed class FenetreSimulateur : Form
         _element.DropDownStyle = ComboBoxStyle.DropDownList;
         _element.Dock = DockStyle.Top;
         _element.Items.AddRange([.. Enumerable.Range(0, 8)
-            .Select(e => (object)$"Élément {e} — {DonneesDeClasse.EffetDeLElement(e)}")]);
+            .Select(e => (object)DonneesDeClasse.LibelleElement(e))]);
         _element.SelectedIndex = 0;
         _element.SelectedIndexChanged += (_, _) => RafraichirPool();
 
@@ -149,7 +149,7 @@ internal sealed class FenetreSimulateur : Form
         var simulation = ConstruireBlocSimulation();
 
         _infoProgression.Dock = DockStyle.Top;
-        _infoProgression.Height = 120;
+        _infoProgression.Height = 190;
         _infoProgression.Padding = new Padding(2, 8, 2, 0);
         _infoProgression.ForeColor = Color.FromArgb(90, 90, 98);
 
@@ -434,7 +434,8 @@ internal sealed class FenetreSimulateur : Form
         }
 
         var (pv, pm) = DonneesDeClasse.PvPmDeBase(_classe.SelectedIndex);
-        _infoClasse.Text = $"PV de base {pv} · PM de base {pm} (avant la prime des caractéristiques)";
+        _infoClasse.Text = $"« {DonneesDeClasse.NomsFeminins[_classe.SelectedIndex]} » au féminin · "
+            + $"PV de base {pv} · PM de base {pm}";
         _enMiseAJour = false;
 
         RafraichirPool();
@@ -502,17 +503,31 @@ internal sealed class FenetreSimulateur : Form
         var valeurs = new short[7];
         for (var i = 0; i < 7; i++) valeurs[i] = (short)_valeurs[i].Value;
 
+        var element = (byte)_element.SelectedIndex;
+
         var plafonds = new short[6];
-        Simulateur.CalculerPlafonds(valeurs, (byte)_element.SelectedIndex, plafonds);
+        Simulateur.CalculerPlafonds(valeurs, element, plafonds);
+
+        // Les mêmes plafonds sans élément : l'écart est ce que le choix a rapporté, et c'est la
+        // seule chose chiffrée que l'élément apporte au personnage (voir MonteeDeNiveau.md,
+        // « À quoi sert vraiment l'élément »).
+        var sansElement = new short[6];
+        Simulateur.CalculerPlafonds(valeurs, 0xff, sansElement);
 
         for (var i = 0; i < 6; i++)
         {
-            _plafonds[i].Text = plafonds[i].ToString();
+            var prime = plafonds[i] - sansElement[i];
+            _plafonds[i].Text = prime == 0 ? plafonds[i].ToString() : $"{plafonds[i]}  (+{prime})";
+            _plafonds[i].Font = new Font(Font, prime == 0 ? FontStyle.Regular : FontStyle.Bold);
+            _plafonds[i].ForeColor = prime == 0 ? Color.FromArgb(110, 110, 120) : Couleurs[i];
         }
         _plafonds[6].Text = "0 à 200";
 
         var (phys, ment) = DonneesDeClasse.Probabilites(_classe.SelectedIndex, valeurs[6]);
         var gainMax = (valeurs[6] >> 3) + 1;
+
+        var total = 0;
+        for (var i = 0; i < 6; i++) total += plafonds[i] - sansElement[i];
 
         _infoProgression.Text =
             $"Avec une chance de départ de {valeurs[6]} :\r\n" +
@@ -520,7 +535,10 @@ internal sealed class FenetreSimulateur : Form
             $"    mental (INT, VO, PM) : {ment + 1} %\r\n\r\n" +
             $"Le gain vaut 1 + rand%(départ/8+1) + rand%{gainMax}.\r\n" +
             "Seuls les franchissements de multiple de 8 élargissent le tirage :\r\n" +
-            "une valeur de départ sous 8 n'apporte rien à sa propre croissance.";
+            "une valeur de départ sous 8 n'apporte rien à sa propre croissance.\r\n\r\n" +
+            $"Élément {DonneesDeClasse.NomsElements[element]} : {total} points de plafond,\r\n" +
+            "pour aucun point de pool. C'est son seul effet chiffré —\r\n" +
+            "le reste est une teinte de fond et une couleur de nom.";
     }
 
     // -----------------------------------------------------------------------------------------
@@ -582,7 +600,8 @@ internal sealed class FenetreSimulateur : Form
         var (phys, ment) = DonneesDeClasse.Probabilites(resultat.Classe, resultat.Depart[6]);
         _titreResultat.Text =
             $"{DonneesDeClasse.Noms[resultat.Classe]} · niveau 1 → {etapes[^1].Niveau} · " +
-            $"élément {resultat.Element} ({DonneesDeClasse.EffetDeLElement(resultat.Element)}) · " +
+            $"élément {DonneesDeClasse.NomsElements[resultat.Element]} " +
+            $"({DonneesDeClasse.EffetDeLElement(resultat.Element)}) · " +
             $"CH de départ {resultat.Depart[6]} " +
             $"({phys + 1} % physique / {ment + 1} % mental) · graine {resultat.Graine}";
 

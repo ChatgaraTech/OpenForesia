@@ -9,8 +9,29 @@ using System.Runtime.InteropServices;
 /// </summary>
 internal static class DonneesDeClasse
 {
+    /// <summary>Les libellés du jeu, relevés dans <c>BLAZE.ALL</c> à <c>0x0090dea4</c> (masculins)
+    /// et <c>0x0090def0</c> (féminins). Le projet dit « Sorcier », « Nain » et « Fée » là où le jeu
+    /// écrit « Magicien », « Kobold » et « Lutin » au masculin — les deux derniers ne sont
+    /// <b>pas</b> les mêmes mots que leurs féminins « Naine » et « Fée ».</summary>
     internal static readonly string[] Noms =
-        ["Guerrier", "Prêtre", "Voleur", "Sorcier", "Chasseur", "Elfe", "Nain", "Fée"];
+        ["Guerrier", "Prêtre", "Voleur", "Magicien", "Chasseur", "Elfe", "Kobold", "Lutin"];
+
+    internal static readonly string[] NomsFeminins =
+        ["Guerrière", "Prêtresse", "Voleuse", "Magicienne", "Chasseresse", "Sylphide", "Naine", "Fée"];
+
+    /// <summary>
+    /// <b>Les huit éléments</b>, relevés dans <c>BLAZE.ALL</c> à <c>0x0090e325</c> — huit chaînes
+    /// consécutives, juste après « Ton choix se porte-t-il sur cet élément ? » et juste avant
+    /// « Tu reçois un bonus. ».
+    ///
+    /// <para>L'ordre est confirmé deux fois. D'abord par <c>DAT_0056d308</c>, qui dit quelle
+    /// caractéristique chaque élément pousse : Feu → Force, Terre → Constitution, Air → Agilité,
+    /// Nuit → PM. Ensuite par la huitième colonne de <c>DAT_0056c7e0</c>, l'élément que l'écran de
+    /// mise au point donne à chaque classe : Prêtre → Divin, Voleur → Nuit, Nain → Terre,
+    /// Chasseur → Air.</para>
+    /// </summary>
+    internal static readonly string[] NomsElements =
+        ["Feu", "Eau", "Terre", "Air", "Lumière", "Nuit", "Divin", "Maléfique"];
 
     /// <summary>
     /// <b>Les statistiques de départ des huit classes, telles que l'écran de création les
@@ -111,10 +132,14 @@ internal static class DonneesDeClasse
 
     /// <summary>Ce que l'élément favorise, en clair. <c>FUN_00508e00</c> montre que le joueur le
     /// <b>choisit</b> — un sélecteur gauche/droite masqué <c>&amp; 7</c> sur <c>+0x151</c> —, il ne
-    /// découle donc pas de la classe.</summary>
+    /// découle donc pas de la classe. C'est son seul effet chiffré : le reste de ce que le champ
+    /// alimente est une teinte de fond et une couleur de texte.</summary>
     internal static string EffetDeLElement(int element) => element < 6
         ? $"pousse {NomsLongs[CaracFavoriseeParElement_0056D308[element]]} d'un cinquième"
         : "pousse les six d'un vingtième";
+
+    internal static string LibelleElement(int element)
+        => $"{element} — {NomsElements[element & 7]}, {EffetDeLElement(element & 7)}";
 
     /// <summary>Les deux probabilités du tour, telles que <c>FUN_005391f0</c> les calcule à partir
     /// de la <b>chance de départ</b>. Reproduite ici pour l'affichage ; la simulation, elle, les
