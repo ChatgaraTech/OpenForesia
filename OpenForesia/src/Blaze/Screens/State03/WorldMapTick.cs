@@ -4792,6 +4792,7 @@ public static unsafe partial class Blaze
             // L'ASCENSEUR — deux courses en un corps, choisies par +0x44. Il part quand tout
             // le monde est monte et redescend si quelqu'un tombe.
             case 0x00458FC0: EntityHandler_00458FC0(record); return;
+            case 0x00457770: EntityHandler_00457770(record); return;
 
             // Les deux autres exemplaires de l'eclat : meme corps, autre planche.
             case 0x00412950: EntityHandler_00412950(record); return;
@@ -10209,6 +10210,244 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x20) = bottom;
         if (*(int*)(e + 0x5c) == 1) LiftArrivalSound(e);
         *(short*)(e + 0x10) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00457770 @ 0x00457770 — <b>le tourniquet</b>. Decompilee dans <c>Blaze.c</c>.
+    /// Table <c>0x0056adc8</c>, foret.
+    ///
+    /// <para>
+    /// <b>Deux etats se superposent.</b> <c>+0x10</c> est un compteur qui monte d'un par image
+    /// active et se rabat a <c>0x10</c> passe 200 ; <c>+0x14</c> est la <b>phase</b>, et c'est elle
+    /// qui porte le comportement. Le <c>+0x9a</c> est un delai qui suspend tout : tant qu'il
+    /// decompte, le corps rend la main des la troisieme ligne.
+    /// </para>
+    /// <para>
+    /// <b>La rotation accelere puis freine.</b> La vitesse <c>+0x5c</c> part de <c>0x0f</c> et
+    /// gagne un huitieme d'elle-meme pendant douze images, puis en <b>perd</b> un huitieme pendant
+    /// les vingt-huit suivantes. Au bout de quarante images le tour est fait, le bit
+    /// <c>0x40000000</c> se pose et la phase retombe a 99. Les phases 1, 0xc9 et 0x15 sont trois
+    /// copies de ce meme mouvement, a la valeur de <c>+0x16</c> pres qu'elles laissent derriere.
+    /// </para>
+    /// <para>
+    /// <b>La phase 0xca guette le depart du groupe.</b> Elle balaie les quatre membres et cherche
+    /// s'il en reste un a moins de 500 unites ; s'il n'y en a plus, elle enchaine sur la phase 10,
+    /// qui referme. La boucle du binaire ne compte pas ses tours : elle avance le curseur jusqu'a
+    /// depasser <c>0x5e9595</c>, ce qui fait exactement quatre membres.
+    /// </para>
+    /// <para>
+    /// <b>La phase 0xb est un retour en arriere</b> : le cap <b>recule</b> d'un pas qui grandit
+    /// d'un par image, jusqu'a ce que la somme parcourue depasse <c>0x372</c> ; le depassement est
+    /// alors rendu au cap, de sorte que le tourniquet retombe pile. C'est la seule phase qui
+    /// corrige son propre arrondi.
+    /// </para>
+    /// <para>
+    /// <b>Deux messages, deux sources.</b> A la phase 99, un tourniquet verrouille
+    /// (<c>+0x48 == 1</c>, pose a la naissance quand la phase de depart valait 200) affiche
+    /// l'etiquette <c>0x00551648</c> — « ça ne s'ouvre pas ! », deja relevee dans
+    /// <see cref="GameMemory.s_EntityParams_00551640"/>. A la fin du retour en arriere, c'est
+    /// l'etiquette que <b>la sous-zone</b> designe, prise dans son repertoire a l'indice que
+    /// <c>+0x30</c> portait a la naissance et que <c>+0x44</c> conserve.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00457770(byte* e)
+    {
+        short counter = *(short*)(e + 0x10);
+
+        if (counter == 0)
+        {
+            short label = *(short*)(e + 0x30);
+            short start = *(short*)(e + 0x14);
+
+            *(short*)(e + 0x9a) = 0;
+            *(int*)(e + 0x44) = label;
+            *(short*)(e + 0x30) = 0;
+            *(int*)(e + 0x48) = start == 200 ? 1 : 0;
+        }
+
+        (*(short*)(e + 0x9a))--;
+        if (*(short*)(e + 0x9a) < 0) *(short*)(e + 0x9a) = 0;
+        if (*(short*)(e + 0x9a) != 0) return;
+
+        short bumped = (short)(counter + 1);
+        *(short*)(e + 0x10) = bumped;
+
+        if (bumped > 0x0f && *(short*)(e + 0x14) == 200) *(short*)(e + 0x14) = 99;
+        if (bumped > 200) *(short*)(e + 0x10) = 0x10;
+
+        short phase = *(short*)(e + 0x14);
+
+        if (phase == 99)
+        {
+            if (*(short*)(e + 0x16) == 0 && (*(uint*)e & 0x40) != 0 && *(int*)(e + 0x48) == 1)
+            {
+                // Ghidra: &DAT_00551648 — « ça ne s'ouvre pas ! », a huit octets du bloc releve.
+                BindMenuLabels(Mem.s_EntityParams_00551640 + 8, 0, s_WorldMapDescriptor_005633b0, 0);
+                *(uint*)Mem.Arena(0x005e99c8) = 0x40;
+                *(short*)(e + 0x9a) = 5;
+            }
+
+            return;
+        }
+
+        if ((*(uint*)e & 0x40000000) != 0 && phase != 0 && phase != 200) return;
+
+        // ------------------------------------------------------------ le premier tour
+        if (phase == 0)
+        {
+            TurnstileSound(e);
+            *(short*)(e + 0x16) = -1;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0x0f;
+            *(uint*)e |= 0x2000;
+            *(short*)(e + 0x14) = 1;
+        }
+
+        if (*(short*)(e + 0x14) == 1 && TurnstileSpin(e))
+        {
+            *(short*)(e + 0x16) = 1;
+            *(short*)(e + 0x14) = 99;
+            *(uint*)e |= 0x40000000;
+            return;
+        }
+
+        // ------------------------------------------------------------ le tour de la phase 200
+        if (*(short*)(e + 0x14) == 200)
+        {
+            TurnstileSound(e);
+            *(short*)(e + 0x16) = -1;
+            *(short*)(e + 0x14) = 0xc9;
+            *(short*)(e + 0x12) = 0;
+            *(uint*)e |= 0x2000;
+            *(int*)(e + 0x5c) = 0x0f;
+        }
+
+        if (*(short*)(e + 0x14) == 0xc9 && TurnstileSpin(e))
+        {
+            *(short*)(e + 0x14) = 0xca;
+            *(short*)(e + 0x16) = 2;
+            *(uint*)e |= 0x40000000;
+        }
+
+        // ------------------------------------------------------------ attendre que le groupe parte
+        if (*(short*)(e + 0x14) == 0xca)
+        {
+            bool nearby = false;
+            byte* member = Inp.s_SlotFlags_005e93c0;
+
+            for (int i = 0; i < 4; i++, member += 0x9c)
+            {
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x10000000) != 0) continue;
+
+                int dx = (*(int*)(e + 0x1c) >> 0xc) - (*(int*)(member + 0x1c) >> 0xc);
+                int dy = (*(int*)(e + 0x20) >> 0xc) - (*(int*)(member + 0x20) >> 0xc);
+                int dz = (*(int*)(e + 0x24) >> 0xc) - (*(int*)(member + 0x24) >> 0xc);
+
+                if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) < 500) nearby = true;
+            }
+
+            if (!nearby)
+            {
+                *(short*)(e + 0x14) = 10;
+                *(short*)(e + 0x16) = 1;
+            }
+        }
+
+        if (*(short*)(e + 0x14) == 10 && *(short*)(e + 0x16) == 0) *(short*)(e + 0x14) = 99;
+
+        if (*(short*)(e + 0x14) == 10
+            && (*(short*)(e + 0x16) == 1 || *(short*)(e + 0x16) == 2))
+        {
+            TurnstileSound(e);
+            *(short*)(e + 0x14) = 0x0b;
+            *(uint*)e &= 0xffffdfff;
+            *(short*)(e + 0x16) = -1;
+            *(short*)(e + 0x12) = 5;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        // ------------------------------------------------------------ le retour en arriere
+        if (*(short*)(e + 0x14) == 0x0b)
+        {
+            short step = *(short*)(e + 0x12);
+            int travelled = *(int*)(e + 0x5c);
+
+            *(short*)(e + 0x32) -= step;
+            *(short*)(e + 0x12) = (short)(step + 1);
+            *(int*)(e + 0x5c) = travelled + step;
+
+            if (travelled + step > 0x372)
+            {
+                int total = *(int*)(e + 0x5c);
+                *(short*)(e + 0x14) = 99;
+                *(short*)(e + 0x16) = 0;
+
+                // Le depassement est rendu au cap : le tourniquet retombe pile.
+                *(short*)(e + 0x32) += (short)(total - 0x373);
+
+                if (*(int*)(e + 0x44) == 0) return;
+
+                byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + *(int*)(e + 0x44) * 4);
+                BindMenuLabels(labels, 0, s_WorldMapDescriptor_005633b0, 0);
+                *(uint*)Mem.Arena(0x005e99c8) = 0x40;
+                return;
+            }
+        }
+
+        // ------------------------------------------------------------ le tour de la phase 0x14
+        if (*(short*)(e + 0x14) == 0x14
+            && (*(short*)(e + 0x16) == 1 || *(short*)(e + 0x16) == 2))
+        {
+            *(short*)(e + 0x14) = 99;
+        }
+
+        if (*(short*)(e + 0x14) == 0x14 && *(short*)(e + 0x16) == 0)
+        {
+            TurnstileSound(e);
+            *(short*)(e + 0x14) = 0x15;
+            *(short*)(e + 0x16) = -1;
+            *(short*)(e + 0x12) = 0;
+            *(uint*)e |= 0x2000;
+            *(int*)(e + 0x5c) = 0x0f;
+        }
+
+        if (*(short*)(e + 0x14) == 0x15 && TurnstileSpin(e))
+        {
+            *(short*)(e + 0x16) = 1;
+            *(short*)(e + 0x14) = 99;
+            *(uint*)e |= 0x40000000;
+        }
+    }
+
+    /// <summary>Le son du tourniquet, <c>sons[0x14]</c>. Le binaire l'ecrit quatre fois.</summary>
+    private static void TurnstileSound(byte* e)
+        => TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x14], 0x400, 0x1000, 0, 0);
+
+    /// <summary>
+    /// Une image de rotation : la vitesse <c>+0x5c</c> gagne un huitieme d'elle-meme pendant les
+    /// douze premieres images, en perd un huitieme ensuite, et le cap avance d'autant. Rend
+    /// <c>true</c> a la quarantieme image, quand le tour est fait.
+    ///
+    /// <para>Le binaire ecrit ce bloc <b>trois fois</b> — phases 1, 0xc9 et 0x15 —, a l'identique
+    /// sauf la valeur laissee dans <c>+0x16</c>. Le cap n'avance PAS a l'image de fin : le
+    /// binaire rend la main avant.</para>
+    /// </summary>
+    private static bool TurnstileSpin(byte* e)
+    {
+        int speed = *(int*)(e + 0x5c);
+
+        *(int*)(e + 0x5c) = *(short*)(e + 0x12) < 0x0d
+            ? (speed >> 3) + speed
+            : speed - (speed >> 3);
+
+        short frame = (short)(*(short*)(e + 0x12) + 1);
+        *(short*)(e + 0x12) = frame;
+
+        if (frame == 0x28) return true;
+
+        *(short*)(e + 0x32) += (short)*(int*)(e + 0x5c);
+        return false;
     }
 
     /// <summary>Une image de course d'ascenseur : le son toutes les cinq images, le compteur, et le

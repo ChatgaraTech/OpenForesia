@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **41** |
-| implementes, jamais appeles | **96** |
-| a transcrire | **1293** |
+| implementes, jamais appeles | **97** |
+| a transcrire | **1292** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -65,7 +65,7 @@ et n'est pas un comportement.
 | 0 | L'auberge | 48 | 34 | 0 |
 | 1 | La mine abandonnee | 157 | 18 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 14 | 0 |
-| 3 | La foret | 136 | 69 | 17 |
+| 3 | La foret | 136 | 70 | 17 |
 | 4 | La vieille tour | 176 | 16 | 0 |
 | 5 | Le Labyrinthe des morts | 160 | 16 | 0 |
 | 6 | Le chateau de l'immortel | 170 | 16 | 0 |
@@ -634,7 +634,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 3 — La foret
 
-136 gestionnaires, 69 implementes, 17 testes.
+136 gestionnaires, 70 implementes, 17 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -680,7 +680,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00443830` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | **non** | **non** |
 | `0x00443B20` | 5,9 | 0056AEC8 | **non** | **non** |
 | `0x00444E60` | 5,9 | 0056AEC8 | **non** | **non** |
-| `0x00457770` | 0,1,2,3,4 | 0056ADC8 | **non** | **non** |
 | `0x00458200` | 6,7,8 | 0056ADC8 | **non** | **non** |
 | `0x00458DE0` | 6,7,8 | 0056ADC8 | **non** | **non** |
 | `0x00458E90` | 6,7,8 | 0056ADC8 | **non** | **non** |
@@ -735,6 +734,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004571D0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00457240` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00457370` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
+| `0x00457770` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00457BF0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00457E20` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00457FC0` | 0,1,2,3,4,6,7,8 | 0056ADC8 | oui | **non** |

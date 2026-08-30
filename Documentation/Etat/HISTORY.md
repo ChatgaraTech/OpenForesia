@@ -5,6 +5,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **le tourniquet de la forêt** (`0x00457770`) — deux états superposés, un délai qui suspend tout, une rotation qui accélère d'un huitième pendant douze images puis freine du même huitième pendant vingt-huit. Sa phase de retour **corrige son propre arrondi** en rendant le dépassement au cap. Verrouillé, il affiche « ça ne s'ouvre pas ! » (`0x00551648`) ; ouvert, l'étiquette que la sous-zone désigne
 - feat : **l'ascenseur de la forêt** (`0x00458fc0`) — deux courses dans un corps, choisies par `+0x44` figé à la première image. Il part quand le compte des membres rattachés égale le groupe **moins ceux déjà arrivés**, et redescend si l'un d'eux tombe de plus de `0x28000`. Son toutes les cinq images pendant la course, une fois plus grave à l'arrêt
 - doc : **`0x00410820` et `0x00413c90` mis de côté** — deux cinématiques qui détournent trois pointeurs de caméra vers un bloc privé non modélisé, et dont deux appelées (`FUN_00423d10`, `FUN_0040b0e0`) manquent. Ouvrir cette chaîne est un travail en soi
 - feat : **`0x004134c0`, deux effets dans un seul corps** — `+0x5c` n'est pas un état mais un aiguillage. Variante 0 : une onde qui s'ouvre par huitièmes et **tient le compte des membres qu'elle a touchés** dans un masque de quatre bits que rien n'efface. Variante 1 : une étincelle qui rejoint `0xfa` par moitiés en six images, puis retombe par huitièmes en vingt-et-une
