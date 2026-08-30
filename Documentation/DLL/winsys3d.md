@@ -809,3 +809,63 @@ ordinal 795 has a real argument it dropped, and `FUN_0052a1e0`/`FUN_0052a280` on
 the same problem. When a winsys3d call faults natively rather than misbehaving, an arity mismatch
 is the first thing to check — cdecl means a missing argument is silently read from whatever the
 caller left on the stack.
+
+## A primitive's RGB is **doubled and clamped** — `0x80` is full white, not grey — **CONFIRMED**, 2026-08-30
+
+Every per-primitive handler in the DrawOTag dispatcher (`FUN_00a13400`) begins its colour work the
+same way. `FUN_00a0f090`, the flat textured triangle (primitive code `0x24`), is representative:
+
+```c
+uVar1 = (uint)*(byte *)(param_1 + 4) * 2;   if (0xfe < uVar1) uVar1 = 0xff;   /* R */
+uVar2 = (uint)*(byte *)(param_1 + 5) * 2;   if (0xfe < uVar2) uVar2 = 0xff;   /* G */
+uVar3 = (uint)*(byte *)(param_1 + 6) * 2;   if (0xfe < uVar3) uVar3 = 0xff;   /* B */
+_DAT_011cb148 = ((uVar1 + 0xff00) * 0x100 + uVar2) * 0x100 + uVar3;           /* 0xFFRRGGBB */
+```
+
+The same three-clamp block appears at `0x00a0e580`, `0x00a0f090`, and a dozen more sites — one per
+primitive shape. The alpha byte is **always** `0xff`; transparency is a render state, never the
+vertex colour.
+
+**This is the PlayStation convention, kept.** On the PSX GPU a texture is modulated by the primitive
+colour with `128` as the neutral multiplier, so `0x808080` means "the texel unchanged" and `0xffffff`
+means "twice as bright, clamped". winsys3d reproduces it by doubling into a `0..255` D3D colour
+before the vertex leaves the DLL.
+
+**Why it matters for reading `Blaze.c`.** A tint of `0x808080` on an entity (`+0x38`) is **white**,
+not 50 % grey, and a tint of `0xffffff` is a deliberate over-brighten. The distinction decides
+whether an effect that renders dark is a bug or a faithful transcription. Two examples in the
+reconstruction: `EntityHandler_00476770` gives the warrior's shockwave `0x808080` and subtracts
+`0x080808` per frame — sixteen frames from **white** to black — while `WorldMap.cs` gives an ordinary
+scene entity `0xffffff`.
+
+**Consequence for the D3D11 backend.** The doubling happens inside the DLL, so anything that reaches
+`DeviceShim` already carries a `0..255` colour and must **not** be doubled again. If a primitive ever
+bypassed winsys3d and were built directly, it would have to double for itself.
+
+## `FUN_00a03c80` — les **cinq** couples de mélange, dont trois additifs — **CONFIRMED**, 2026-08-30
+
+`FUN_00a03c80(tpage)` traduit le mode de semi-transparence de la page de texture en un couple
+`SRCBLEND`/`DESTBLEND` de Direct3D 3, posé par les slots `+0xA0` et `+0xA4` du périphérique
+`3dhelp` :
+
+| cas | `SRCBLEND` | `DESTBLEND` | effet |
+|---|---|---|---|
+| posé par `FUN_00a03db0` | `2` ONE | `1` ZERO | opaque |
+| 0 et 2 | `5` SRCALPHA | `6` INVSRCALPHA | fondu ordinaire |
+| 1 | `2` ONE | `2` ONE | **additif** |
+| 3 | `5` SRCALPHA | `2` ONE | additif pondéré par l'alpha |
+| 4 | `3` SRCCOLOR | `2` ONE | additif pondéré par la couleur |
+
+Le mode vient de `FUN_00a03400((tpage >> 5) & 3)`, c'est-à-dire des deux bits `ABR` de la page —
+la sémantique PlayStation, conservée.
+
+**Deux garde-fous avant la traduction.** `DAT_00a2f454` porte les capacités du périphérique : sans
+le bit `0x1000` (mélange alpha) mais avec `0x2000`, la DLL bascule sur le **tramage**
+(`vtable[0x9C]`, `STIPPLEENABLE`) ; sans ni l'un ni l'autre, `FUN_00a03c80` rend faux et la
+primitive est **abandonnée**. Un backend qui déclare le mélange alpha n'emprunte jamais ces deux
+chemins.
+
+**Ce que ça implique pour un backend de remplacement.** Porter le seul couple `(5, 6)` ne suffit
+pas : les trois modes additifs sont ceux des effets lumineux — nuages de la carte du monde, onde de
+choc, auréoles. Rendus opaques, ils peignent leur planche en aplat au lieu de s'ajouter au fond, et
+une planche en dégradé y devient une tache sombre. C'est exactement le défaut relevé le 2026-08-30.

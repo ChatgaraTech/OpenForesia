@@ -21,6 +21,8 @@
 
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Silk.NET.Core.Native;
+using Silk.NET.Direct3D11;
 
 // `Blaze` porte les aides que cette classe appelle : ToAnsiZ, VirtualAlloc, GetModuleHandleA,
 // RenderSizeFromSizeSetting, Video.s_WindowedStartup. La dependance Host -> Blaze est assumee.
@@ -534,6 +536,43 @@ internal static unsafe class DeviceShim
     private static void* s_BoundTexture;
 
     // =====================================================================
+    // ECHAFAUDAGE — le pendant de OPENFORESIA_TRACE_FX cote shim.
+    //
+    // `Model3d.DrawDepthSortedModel` arme ce compteur juste apres avoir emis une primitive
+    // d'effet ; les dessins suivants disent ce que `winsys3d` en a fait. La question tient en
+    // deux nombres : la diffuse doit valoir 0xFFFFFFFF (la DLL double les trois octets de
+    // `0x808080` et les borne a 0xff), et la vue de texture doit se resoudre. Si la diffuse est
+    // blanche et la vue presente, le noir vient des texels ; si la diffuse vaut 0xFF808080, le
+    // doublement n'a pas eu lieu.
+    // =====================================================================
+
+    // CORRECTION du 2026-08-30 : la premiere version comptait les trois dessins qui SUIVENT
+    // l'armement, et elle a rate sa cible. `DrawOTag` ne s'execute qu'a la fin de l'image, alors
+    // que l'emission a lieu au milieu : les trois dessins captes etaient les premiers de la salve
+    // suivante, identiques d'une image a l'autre. Le tri se fait maintenant sur la COULEUR — la
+    // DLL double et borne, donc tout ce que le jeu emet a `0xffffff` ressort a `0xFFFFFFFF`, et
+    // une diffuse differente ne peut venir que d'une teinte differente de blanc. L'effet a
+    // `0x787878` doit ressortir a `0xFFF0F0F0`.
+
+    private static bool s_EffectTraceArmed;
+    private static int s_EffectTraceLeft;
+    private static int s_EffectDrawsSeen;
+    private static int s_EffectNonWhite;
+
+    internal static void ArmEffectTrace(int primitives)
+    {
+        if (s_EffectDrawsSeen > 0)
+            Console.Error.WriteLine(
+                $"[FX]   salve precedente : {s_EffectDrawsSeen} dessins, dont {s_EffectNonWhite} " +
+                "a diffuse non blanche");
+
+        s_EffectDrawsSeen = 0;
+        s_EffectNonWhite = 0;
+        s_EffectTraceLeft = primitives;
+        s_EffectTraceArmed = true;
+    }
+
+    // =====================================================================
     // États de mélange — portés avec la liaison de texture (tâche 3.5), parce que sans eux
     // l'image sort exactement deux fois trop claire.
     //
@@ -568,21 +607,30 @@ internal static unsafe class DeviceShim
     internal static void Shim_DestBlend(void* self, uint blend) => s_DestBlend = blend;
 
     /// <summary>
-    /// Vrai si le mélange actif est bien celui que le backend sait poser. Le jeu n'emploie que deux
-    /// couples : <c>(2, 1)</c> = ONE/ZERO, c'est-à-dire opaque, et <c>(5, 6)</c> =
-    /// SRCALPHA/INVSRCALPHA. Tout autre couple est signalé une fois plutôt que rendu de travers.
+    /// L'etat de melange courant, tel que <c>winsys3d</c> l'a demande. Vue nulle = opaque.
+    ///
+    /// <para>
+    /// <b>Correction du 2026-08-30.</b> Cette fonction rendait un booleen et n'acceptait qu'un
+    /// couple, <c>(5, 6)</c> = SRCALPHA/INVSRCALPHA ; tout autre etait signale puis <b>rendu
+    /// opaque</b>. Or <c>FUN_00a03c80</c> (winsys3d) en emploie cinq, et les trois qu'il manquait
+    /// sont les modes <b>additifs</b> — <c>(2, 2)</c> ONE/ONE, <c>(5, 2)</c> SRCALPHA/ONE et
+    /// <c>(3, 2)</c> SRCCOLOR/ONE. Tout effet additif se peignait donc en aplat de sa texture au
+    /// lieu de s'ajouter au fond : les nuages de la carte du monde en taches sombres, l'onde de
+    /// choc du Guerrier en croissant noir.
+    /// </para>
+    /// <para>
+    /// Le defaut ne s'etait pas vu plus tot parce que le drapeau <c>DAT_00564a48</c> retirait la
+    /// semi-transparence en amont — la souche du slot <c>+0x40</c> faisait croire au jeu qu'il
+    /// tournait sur le rastériseur logiciel. Les deux fautes se masquaient l'une l'autre :
+    /// corriger la premiere a rendu la seconde visible, sous forme de nuages.
+    /// </para>
     /// </summary>
-    private static bool AlphaBlendActive()
-    {
-        if (!s_AlphaBlendEnable) return false;
-        if (s_SrcBlend == 5 && s_DestBlend == 6) return true;
+    private static ComPtr<ID3D11BlendState> CurrentBlend()
+        => s_AlphaBlendEnable ? D3D11Backend.BlendState(s_SrcBlend, s_DestBlend) : default;
 
-        if (s_GuardReported.Add($"blend:{s_SrcBlend}/{s_DestBlend}"))
-            Console.Error.WriteLine(
-                $"[SHIM] couple de mélange non porté SRCBLEND={s_SrcBlend} DESTBLEND={s_DestBlend} " +
-                "— rendu opaque en attendant");
-        return false;
-    }
+    /// <summary>Le couple courant, pour les relevés.</summary>
+    private static string BlendLabel()
+        => s_AlphaBlendEnable ? $"melange {s_SrcBlend}/{s_DestBlend}" : "opaque";
 
     /// <summary>Relevé de géométrie et de décalages : <c>OPENFORESIA_DUMP_GEOMETRY=1</c>.</summary>
     private static readonly bool s_DumpGeometry =
@@ -810,6 +858,37 @@ internal static unsafe class DeviceShim
                         $"[TRACE]   dessin #{s_ShimSeen[0xBC / 4]} topo={t} n={n} " +
                         $"v0=({tvx[0].X:F0},{tvx[0].Y:F0}) v{n - 1}=({tvx[n - 1].X:F0},{tvx[n - 1].Y:F0})");
             }
+            // ECHAFAUDAGE — voir ArmEffectTrace plus haut.
+            if (s_EffectTraceArmed && vt == 3 && n > 0)
+            {
+                var tfx = (TlVertex*)v;
+                s_EffectDrawsSeen++;
+
+                if (tfx[0].Diffuse != 0xFFFFFFFF)
+                {
+                    s_EffectNonWhite++;
+                    if (s_EffectTraceLeft > 0)
+                    {
+                        s_EffectTraceLeft--;
+                        nint key = (nint)s_BoundTexture;
+                        D3D11Backend.DumpTexture(key);
+                        var view = s_BoundTexture != null ? D3D11Backend.TextureView(key) : default;
+
+                        var uvs = new System.Text.StringBuilder();
+                        for (uint i = 0; i < n && i < 4; i++)
+                            uvs.Append($" ({tfx[i].U:F3},{tfx[i].V:F3})");
+
+                        Console.Error.WriteLine(
+                            $"[FX]   dessin topo={t} n={n} diffuse=0x{tfx[0].Diffuse:X8} " +
+                            $"texture=0x{key:X8} vue={(view.Handle != null ? "oui" : "NON")} " +
+                            $"{BlendLabel()} " +
+                            $"tmb={s_TextureMapBlend}" +
+                            $"\n         uv :{uvs}" +
+                            $"\n         {D3D11Backend.DescribeTexture(key, tfx[0].U, tfx[0].V)}");
+                    }
+                }
+            }
+
 
             // ECHAFAUDAGE TEMPORAIRE — tâche 4.5. Enveloppe des coordonnées réellement soumises.
             // Le relevé du dessin #500 montre des sommets non mis à l'échelle alors que la table de
@@ -843,7 +922,7 @@ internal static unsafe class DeviceShim
                     : default;
 
                 D3D11Backend.DrawPrimitive(t, (TlVertex*)v, (int)n, bound, s_FlatShading,
-                    alphaBlend: AlphaBlendActive(), alphaFromTexture: s_TextureMapBlend == 4);
+                    CurrentBlend(), alphaFromTexture: s_TextureMapBlend == 4);
             });
             return;
         }

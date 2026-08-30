@@ -1933,3 +1933,119 @@ Il lance depuis `OpenForesia\` — donc le `save\` du dépôt, pas celui de `bin
 
 Les deux fichiers sont en **ASCII pur** : `cmd.exe` ne lit pas l'UTF-8 par défaut, et un accent y
 casserait l'affichage.
+
+## `OPENFORESIA_TRACE_FX=1` : suivre une couleur d'effet de bout en bout (2026-08-30)
+
+**Le problème que ce relevé résout.** Un effet sort d'une couleur qu'on ne comprend pas — l'onde de
+choc du Guerrier, blanche dans le jeu d'origine, sortait noire. La chaîne qui porte cette couleur
+traverse trois maisons : `Blaze` la calcule, `winsys3d.dll` la transforme, le backend Direct3D 11 la
+peint. Aucune des trois ne se lit à la trace des deux autres, et la relecture statique de la partie
+`Blaze` peut être complète et juste sans rien apprendre.
+
+**Le relevé donne les deux bouts en un seul essai.** `tests\trace-fx.bat` (double-clic) pose la
+variable et rejoue le journal. Chaque effet produit **deux** lignes :
+
+```
+[FX] modele=0x… attributs=0x… clut=0x… drapeaux=0x0084 teinte=0x00808080
+     plate=0x00808080 code=0x24 tpage=0x… uv=0x… sommets=… faces=… seaux=…/…/…/…
+[FX]   dessin topo=4 n=3 diffuse=0xFFFFFFFF uv0=(…,…) texture=0x… vue=oui melange=… tmb=2
+```
+
+La première vient de `Model3d.DrawDepthSortedModel`, juste après le remplissage plat du tampon de
+couleurs ; la seconde de `DeviceShim.Shim_DrawPrimitive`, pour les trois dessins qui suivent.
+
+**Comment se lit le couple.** `winsys3d` **double** les trois octets de couleur et les borne à
+`0xff` (voir `Documentation/DLL/winsys3d.md`), donc :
+
+| ce qu'on voit | ce que ça veut dire |
+|---|---|
+| `teinte=0x00808080`, `diffuse=0xFFFFFFFF`, `vue=oui` | la couleur est juste des deux côtés — le noir vient des **texels ou de la palette** |
+| `diffuse=0xFF808080` | le doublement n'a pas eu lieu : le dessin n'est pas passé par le gestionnaire attendu |
+| `vue=NON` | la texture n'est pas enregistrée ; le repli est **blanc**, donc ce n'est pas la cause d'un noir |
+| `code=0x25` au lieu de `0x24` | le modèle porte le bit `0x100` : `FUN_00a0f260` **ignore** la couleur et force `0xffffffff` |
+
+**Pourquoi la branche plate seulement.** Le relevé ne se déclenche que quand `+0x36` de l'entité
+porte le bit `4`, c'est-à-dire quand le tampon de couleurs est rempli de la teinte telle quelle,
+sans éclairage. C'est rare — les effets d'incantation et de coup — et c'est exactement le cas où la
+teinte de l'entité arrive intacte dans la primitive. Six relevés au plus, puis le compteur s'épuise :
+le chemin est chaud, une ligne par image le noierait.
+
+**La leçon générale.** Une couleur `0xffffff` rend la même chose que le doublement ait lieu ou non
+(`0xff` doublé est borné à `0xff`). Presque tout le jeu emploie `0xffffff` — donc **un seul effet
+peut révéler une convention de couleur cassée pendant que tout le reste paraît juste**. Quand une
+seule chose sort de la mauvaise couleur, chercher ce qu'elle a d'unique, pas ce qui est commun.
+
+### Corriger `TRACE_FX` : émission et dessin sont deux temps (2026-08-30)
+
+La première version armait « les trois prochains dessins » au moment où `Blaze` **émettait** la
+primitive. Elle a raté sa cible sur toute la ligne : `DrawOTag` ne parcourt la liste d'affichage
+qu'à la **fin** de l'image, si bien que les trois dessins captés étaient les trois premiers de la
+salve suivante — le fond, identique d'un armement à l'autre. Six relevés, six fois la même chose,
+et aucun rapport avec l'effet.
+
+**La règle qui s'en dégage** : dans un moteur à liste d'affichage, un relevé qui veut relier ce
+qu'un sous-système émet à ce qu'un autre dessine doit s'accrocher à une **propriété de la donnée**,
+jamais à la proximité temporelle. Ici la propriété était sous la main : `winsys3d` double les octets
+de couleur et les borne à `0xff`, donc tout ce que le jeu émet à `0xffffff` ressort à `0xFFFFFFFF`.
+Trier sur « diffuse différente de blanc » isole les effets teintés et rien d'autre.
+
+La deuxième version compte aussi les dessins vus pendant la salve : `0 a diffuse non blanche` est
+alors une réponse en soi, et non un silence qu'on interprète.
+
+### Un compte par égalité ne mesure pas une couleur (2026-08-30)
+
+Le deuxième `TRACE_FX` comptait les texels « opaques **et** exactement noirs ». Il a rendu zéro, ce
+qui semblait innocenter la texture — sauf qu'une planche uniformément sombre, à `0xFF080808`, aurait
+rendu zéro elle aussi. La mesure ne distinguait pas « pas noir » de « pas noir au bit près ».
+
+Deux corrections, et la seconde est la vraie :
+
+- compter par **seuils** (`<0x10`, `<0x40`, `<0xc0`, `>=0xc0`) plutôt que par égalité ;
+- **écrire l'image**. Un histogramme répond à la question qu'on a pensé à poser ; une planche PNG
+  de 32 x 32 dans `scratchpad/` répond à celles qu'on n'a pas pensé à poser. Quand un relevé
+  chiffré tourne en rond sur une question visuelle, sortir l'image coûte trente lignes d'encodeur
+  et termine le débat.
+
+Corollaire pratique : quand la mesure finit par innocenter toute la chaîne, la question n'est plus
+« où le calcul se trompe » mais « est-ce bien cet objet-là que je regarde à l'écran ». Une capture
+d'écran redevient alors l'instrument le plus informatif — voir la règle sur les images de
+référence plus haut dans ce fichier.
+
+### Relever la donnée brute à côté de la donnée calculée (2026-08-30)
+
+Le relevé `TRACE_FX` imprimait `attributs=0x00100001` et cette ligne a envoyé l'enquête dans le
+mur pendant deux tours. La valeur était juste — mais c'était celle **après** le masquage que
+`DrawDepthSortedModel` applique quelques lignes plus haut. Le modèle portait `0x00100201` : le bit
+`0x200`, la semi-transparence, effacé avant impression.
+
+Ce qui a rattrapé l'angle mort est le **vidage hexadécimal de l'en-tête**, ajouté pour une tout
+autre raison (vérifier un compte de faces) : `+3c 01 02 10 00` disait la vérité que la variable
+calculée cachait.
+
+**La règle** : dans un relevé de diagnostic, imprimer la donnée **telle qu'elle est en mémoire** à
+côté de la valeur que le code en a tirée. Une variable locale porte déjà les décisions du code
+qu'on soupçonne ; elle ne peut pas servir à juger ce code. Quelques octets bruts coûtent une ligne
+et sont le seul témoin indépendant qu'on ait.
+
+Corollaire, valable au-delà des relevés : quand une mesure innocente toute une chaîne, se demander
+si la mesure n'observe pas justement le point que la chaîne a déjà modifié.
+
+### Un garde-fou muet ne prouve rien (2026-08-30)
+
+Le shim Direct3D portait un seul couple de mélange et signalait les autres :
+« couple de mélange non porté — rendu opaque en attendant ». Cette ligne n'a **jamais** été
+imprimée en des mois de parties, ce qui laissait croire le portage complet.
+
+Elle était inatteignable : un drapeau du jeu, en amont, retirait la semi-transparence avant que la
+moindre primitive additive n'arrive. Le garde-fou était bien écrit, bien placé, et muet pour une
+raison qui n'avait rien à voir avec lui.
+
+**La règle** : quand on porte une couche, l'absence d'alerte n'est pas une couverture. Se demander
+pour chaque garde-fou **par quel chemin il devrait être atteint**, et si ce chemin est exercé. Un
+compteur d'atteintes — même à zéro, surtout à zéro — en dit plus qu'un message conditionnel qui ne
+part jamais.
+
+Corollaire observé le même jour : deux défauts en série peuvent se masquer l'un l'autre au point
+qu'aucun symptôme ne bouge quand on corrige le premier. La correction du slot `+0x40` n'a rien
+changé à l'onde de choc — mais elle a fait apparaître les nuages de la carte du monde, et ce sont
+eux qui ont montré le second défaut.

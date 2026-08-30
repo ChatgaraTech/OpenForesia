@@ -594,3 +594,54 @@ Trois faits rendent l'étape 2 abordable, tous établis par la mesure :
 2. les sommets sont des **`TLVERTEX`**, déjà transformés — pas de pipeline géométrique à écrire ;
 3. les quatre grosses fonctions ne sont **pas** sur le chemin chaud (un appel chacune), et leur
    pseudocode est désormais disponible dans `Legacy/Raw/3dhelp/3dhelp-vtable.c`.
+
+## `+0x40` — « suis-je le périphérique matériel ? », le slot qui commande toute la transparence (2026-08-30)
+
+Le corps est un getter d'une ligne, à `0x0FFE17D0` :
+
+```
+0ffe17d0  8b81a4000000    mov  eax,[ecx+0A4h]
+0ffe17d6  c3              ret
+```
+
+Le champ `+0xA4` est posé à l'initialisation du périphérique (`0x0FFE224A`) par une comparaison de
+**seize octets** — `repe cmpsb` — entre le GUID du pilote Direct3D retenu, en `[this+0x9C]+4`, et
+celui gravé à `0x0FFE65F0` :
+
+```
+84E63DE0-46AA-11CF-816F-0000C020156E  =  IID_IDirect3DHALDevice
+```
+
+`+0xA4` vaut donc **1 sur le matériel, 0 sur le rastériseur logiciel**. Le même champ sert dans la
+foulée à poser `D3DRENDERSTATE_DITHERENABLE` (`SetRenderState(0x1A, +0xA4)`), ce qui confirme la
+lecture : on active le tramage quand on a du matériel.
+
+### Ce que le jeu en fait
+
+`FUN_0050f120` (`Blaze.c`) appelle ce slot et en tire :
+
+```c
+DAT_00564a48 = (uint)(iVar2 == 0);        /* « pas de matériel » */
+```
+
+Ce drapeau est relu dans une **trentaine** d'endroits du rendu, et il ne fait qu'une chose :
+**retirer la semi-transparence**. Il efface le bit `0x200` des attributs de modèle et le bit
+`0x2000000` des mots de couleur, ce qui fait retomber la primitive du code `0x26` (triangle texturé
+semi-transparent, `FUN_00a116e0` côté `winsys3d`) sur le code `0x24` (opaque, `FUN_00a0f090`). Dans
+un cas — `FUN_0051e700` quand `DAT_00564a4c` est nul — il **saute le modèle entier**.
+
+C'est un ménagement pour le rastériseur logiciel de 1998, pas une capacité qui manquerait à un
+backend moderne.
+
+### Ce que ça a coûté
+
+Le périphérique synthétique rendait zéro par la souche neutre, et le jeu en concluait « logiciel » :
+toute la transparence tombait, silencieusement et partout. Le symptôme qui l'a mis au jour est
+l'onde de choc du Guerrier, signalée noire par Vincent le 2026-08-30 : sa planche est un **dégradé**
+du sombre vers le clair, dont le bout sombre doit s'effacer par mélange. Peint en opaque, il donne
+un croissant noir.
+
+**La leçon dépasse ce slot.** Une souche neutre qui rend zéro n'est pas neutre quand la question
+posée est « en es-tu capable ? » : elle répond non, et le jeu se dégrade tout seul, sans erreur ni
+message. Les accesseurs de capacités de cette vtable doivent tous être relus dans ce sens — la
+souche n'est acceptable que pour les slots dont le retour n'est pas lu.

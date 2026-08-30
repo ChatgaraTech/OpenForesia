@@ -5401,10 +5401,22 @@ public static unsafe partial class Blaze
     /// quelle.
     /// </para>
     /// <para>
-    /// La sonde passee au balayage est une pile de six mots : <c>+0x00</c> recoit
-    /// <c>echelle × 80 &gt;&gt; 12</c> et <c>+0x06</c> <c>echelle × 90 &gt;&gt; 12</c> — la portee
-    /// grandit donc avec l'entite. Les quatre autres restent a zero ; <c>0x64</c> n'est qu'une
-    /// valeur d'amorce, ecrasee avant l'appel.
+    /// La sonde passee au balayage est une pile de six mots, dont <b>deux seulement</b> sont
+    /// ecrits par ce corps : <c>+0x04</c> (<c>sonde[2]</c>, la demi-largeur) recoit
+    /// <c>echelle × 80 &gt;&gt; 12</c> et <c>+0x0a</c> (<c>sonde[5]</c>, la profondeur) recoit
+    /// <c>echelle × 90 &gt;&gt; 12</c> — la portee grandit donc avec l'entite. Le <c>0x64</c> pose
+    /// a la naissance en <c>+0x06</c> (<c>sonde[3]</c>) est la <b>tolerance en hauteur</b> et
+    /// <b>survit</b> jusqu'a l'appel ; les trois autres mots restent a zero.
+    /// </para>
+    /// <para>
+    /// <b>Les deux decalages se lisent sur la pile, pas dans le pseudo-code.</b> Les six mots sont
+    /// ecrits alors que l'argument de <c>FUN_00535880</c> est encore empile, et l'adresse de la
+    /// sonde n'est prise (<c>lea ecx,[esp+0Ch]</c>) qu'apres le <c>add esp,4</c> qui le depile —
+    /// d'ou un ecart de quatre octets entre les deux vues. La premiere transcription avait lu les
+    /// deux ecritures dans la vue d'avant l'appel et les avait rangees en <c>sonde[0]</c> et
+    /// <c>sonde[3]</c> : la demi-largeur et la profondeur tombaient a zero, le quadrilatere de
+    /// frappe se reduisait a un <b>point</b>, et l'onde traversait les ennemis sans les toucher.
+    /// Corrige le 2026-08-30.
     /// </para>
     /// </summary>
     private static void EntityHandler_004767E0(byte* e)
@@ -5426,8 +5438,11 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x28) = (short)scale;
         *(short*)(e + 0x2c) = (short)scale;
 
-        probe[3] = (short)(scale * 90 >> 0xc);
-        probe[0] = (short)(scale * 80 >> 0xc);
+        // Ghidra: `mov [esp+16h],ax` puis `mov [esp+10h],dx`, dans la vue de pile d'APRES le
+        // depilement de l'argument de FUN_00535880 — soit sonde[5] et sonde[2], pas sonde[3] et
+        // sonde[0]. Voir l'en-tete.
+        probe[5] = (short)(scale * 90 >> 0xc);
+        probe[2] = (short)(scale * 80 >> 0xc);
 
         // Ghidra: `jb` — comparaison NON signee.
         if (*(uint*)(e + 0x38) >= 0x202020)

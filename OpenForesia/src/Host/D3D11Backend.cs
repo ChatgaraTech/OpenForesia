@@ -66,7 +66,8 @@ internal static unsafe class D3D11Backend
     private static ComPtr<ID3D11Buffer> s_VertexBuffer;
     private static ComPtr<ID3D11SamplerState> s_PointSampler;
     private static ComPtr<ID3D11BlendState> s_OpaqueBlend;
-    private static ComPtr<ID3D11BlendState> s_AlphaBlend;
+    // s_AlphaBlend a disparu le 2026-08-30 : BlendState(5, 6) le fabrique et le garde, au meme titre
+    // que les quatre autres couples que winsys3d demande.
     private static ComPtr<ID3D11RasterizerState> s_Rasterizer;
     private static ComPtr<ID3D11DepthStencilState> s_DepthOff;
 
@@ -414,16 +415,6 @@ internal static unsafe class D3D11Backend
         opaque.RenderTarget[0].RenderTargetWriteMask = (byte)ColorWriteEnable.All;
         SilkMarshal.ThrowHResult(s_Device.CreateBlendState(in opaque, ref s_OpaqueBlend));
 
-        var alpha = default(BlendDesc);
-        alpha.RenderTarget[0].BlendEnable = 1;
-        alpha.RenderTarget[0].SrcBlend = Blend.SrcAlpha;
-        alpha.RenderTarget[0].DestBlend = Blend.InvSrcAlpha;
-        alpha.RenderTarget[0].BlendOp = BlendOp.Add;
-        alpha.RenderTarget[0].SrcBlendAlpha = Blend.One;
-        alpha.RenderTarget[0].DestBlendAlpha = Blend.InvSrcAlpha;
-        alpha.RenderTarget[0].BlendOpAlpha = BlendOp.Add;
-        alpha.RenderTarget[0].RenderTargetWriteMask = (byte)ColorWriteEnable.All;
-        SilkMarshal.ThrowHResult(s_Device.CreateBlendState(in alpha, ref s_AlphaBlend));
 
         var raster = new RasterizerDesc
         {
@@ -617,6 +608,85 @@ internal static unsafe class D3D11Backend
             s_DepthView, (uint)ClearFlag.Depth, depth, 0);
     }
 
+
+    // =====================================================================
+    // Les etats de melange que `winsys3d` demande reellement (2026-08-30).
+    //
+    // `FUN_00a03c80` (winsys3d.c) traduit le mode de semi-transparence de la page de texture en
+    // un couple SRCBLEND/DESTBLEND de Direct3D 3, et il en emploie **cinq** :
+    //
+    //   (2, 1)  ONE      / ZERO         opaque, pose par FUN_00a03db0
+    //   (5, 6)  SRCALPHA / INVSRCALPHA  modes 0 et 2
+    //   (2, 2)  ONE      / ONE          mode 1 — ADDITIF
+    //   (5, 2)  SRCALPHA / ONE          mode 3 — additif pondere par l'alpha
+    //   (3, 2)  SRCCOLOR / ONE          mode 4
+    //
+    // Le shim n'en portait qu'un, (5, 6), et rendait **opaque** tout le reste en signalant une
+    // ligne. Consequence : chaque effet additif — les nuages de la carte du monde, l'onde de choc
+    // du Guerrier — se peignait en aplat de sa texture au lieu de s'ajouter au fond. Une planche
+    // en degrade y devient une tache sombre.
+    //
+    // La table ci-dessous est celle de Direct3D 3 (`D3DBLEND_*`), qui se transpose terme a terme.
+    // Les facteurs de couleur interdits sur le canal alpha en Direct3D 11 ne sont pas transposes :
+    // l'alpha de la cible hors ecran n'est jamais relu, la presentation forçant 1.
+    // =====================================================================
+
+    private static readonly Dictionary<uint, ComPtr<ID3D11BlendState>> s_BlendStates = [];
+    private static readonly HashSet<uint> s_UnmappedBlends = [];
+
+    private static Blend? MapBlend(uint d3d3) => d3d3 switch
+    {
+        1 => Blend.Zero,
+        2 => Blend.One,
+        3 => Blend.SrcColor,
+        4 => Blend.InvSrcColor,
+        5 => Blend.SrcAlpha,
+        6 => Blend.InvSrcAlpha,
+        7 => Blend.DestAlpha,
+        8 => Blend.InvDestAlpha,
+        9 => Blend.DestColor,
+        10 => Blend.InvDestColor,
+        11 => Blend.SrcAlphaSat,
+        _ => null,
+    };
+
+    /// <summary>
+    /// L'etat de melange pour un couple <c>D3DBLEND</c>, cree a la demande et garde. Un couple
+    /// que Direct3D 3 connait mais pas cette table est signale une fois et rendu opaque, ce qui
+    /// reste visible a l'ecran plutot que silencieux.
+    /// </summary>
+    internal static ComPtr<ID3D11BlendState> BlendState(uint src, uint dest)
+    {
+        if (!Ready) return default;
+
+        uint key = src << 8 | dest;
+        if (s_BlendStates.TryGetValue(key, out ComPtr<ID3D11BlendState> cached)) return cached;
+
+        Blend? source = MapBlend(src);
+        Blend? destination = MapBlend(dest);
+        if (source == null || destination == null)
+        {
+            if (s_UnmappedBlends.Add(key))
+                Console.Error.WriteLine($"[D3D11] couple de melange inconnu SRCBLEND={src} DESTBLEND={dest} — opaque");
+            return s_OpaqueBlend;
+        }
+
+        var desc = default(BlendDesc);
+        desc.RenderTarget[0].BlendEnable = 1;
+        desc.RenderTarget[0].SrcBlend = source.Value;
+        desc.RenderTarget[0].DestBlend = destination.Value;
+        desc.RenderTarget[0].BlendOp = BlendOp.Add;
+        desc.RenderTarget[0].SrcBlendAlpha = Blend.One;
+        desc.RenderTarget[0].DestBlendAlpha = Blend.InvSrcAlpha;
+        desc.RenderTarget[0].BlendOpAlpha = BlendOp.Add;
+        desc.RenderTarget[0].RenderTargetWriteMask = (byte)ColorWriteEnable.All;
+
+        ComPtr<ID3D11BlendState> state = default;
+        SilkMarshal.ThrowHResult(s_Device.CreateBlendState(in desc, ref state));
+        s_BlendStates[key] = state;
+        return state;
+    }
+
     /// <summary>
     /// Dessine une liste de triangles de sommets déjà transformés. <paramref name="texture"/> à
     /// <c>null</c> sélectionne la texture blanche, ce qui rend la primitive non texturée sans
@@ -624,7 +694,7 @@ internal static unsafe class D3D11Backend
     /// </summary>
     internal static void DrawTriangles(
         ReadOnlySpan<TlVertex> vertices, ComPtr<ID3D11ShaderResourceView> texture,
-        bool alphaBlend = false, float modulate = 1f, float alphaFromTexture = 0f,
+        ComPtr<ID3D11BlendState> blend = default, float modulate = 1f, float alphaFromTexture = 0f,
         bool applyViewportOrigin = false)
     {
         if (vertices.Length < 3) return;
@@ -636,7 +706,7 @@ internal static unsafe class D3D11Backend
             for (int start = 0; start < vertices.Length; start += chunk)
             {
                 int len = Math.Min(chunk, vertices.Length - start);
-                DrawTriangles(vertices.Slice(start, len), texture, alphaBlend, modulate,
+                DrawTriangles(vertices.Slice(start, len), texture, blend, modulate,
                               alphaFromTexture, applyViewportOrigin);
             }
             return;
@@ -668,7 +738,7 @@ internal static unsafe class D3D11Backend
         var sampler = s_PointSampler;
         s_Context.PSSetSamplers(0, 1, ref sampler);
 
-        var blend = alphaBlend ? s_AlphaBlend : s_OpaqueBlend;
+        if (blend.Handle == null) blend = s_OpaqueBlend;
         float* factor = stackalloc float[4] { 1, 1, 1, 1 };
         s_Context.OMSetBlendState(blend, factor, 0xFFFFFFFF);
         s_Context.RSSetState(s_Rasterizer);
@@ -699,7 +769,7 @@ internal static unsafe class D3D11Backend
     internal static void DrawPrimitive(
         uint primitiveType, TlVertex* vertices, int count,
         ComPtr<ID3D11ShaderResourceView> texture, bool flatShading,
-        bool alphaBlend = false, bool alphaFromTexture = false)
+        ComPtr<ID3D11BlendState> blend = default, bool alphaFromTexture = false)
     {
         if (count < 3) return;
 
@@ -729,7 +799,7 @@ internal static unsafe class D3D11Backend
                 break;
         }
 
-        DrawTriangles(s_Expanded.AsSpan(0, n), texture, alphaBlend, 1f, alphaFromTexture ? 1f : 0f,
+        DrawTriangles(s_Expanded.AsSpan(0, n), texture, blend, 1f, alphaFromTexture ? 1f : 0f,
                       applyViewportOrigin: true);
 
         void Emit(TlVertex a, TlVertex b, TlVertex c)
@@ -857,7 +927,7 @@ internal static unsafe class D3D11Backend
                 Tl(cx + r, cy + r, 0, 0, 0xFF00FF00),
                 Tl(cx - r, cy + r, 0, 0, 0xFF0000FF),
             ];
-            DrawTriangles(triangle, default, alphaBlend: true);
+            DrawTriangles(triangle, default, BlendState(5, 6));
 
             Present();
             frames++;
@@ -896,6 +966,141 @@ internal static unsafe class D3D11Backend
 
     private static readonly Dictionary<nint, GameTexture> s_GameTextures = [];
     private static readonly HashSet<nint> s_MissingTextures = [];
+
+    // ECHAFAUDAGE — OPENFORESIA_TRACE_FX=1 conserve les texels cote CPU apres la creation de la
+    // vue, ce que le regime ordinaire ne fait pas. Sans cela, DescribeTexture n'aurait rien a
+    // lire : le releve de l'onde de choc arrive longtemps apres le chargement de sa texture.
+    private static readonly bool s_RetainPixels =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_FX") == "1";
+
+    /// <summary>
+    /// ECHAFAUDAGE — decrit un objet texture pour le releve : ses dimensions, le texel que les
+    /// coordonnees donnees echantillonnent, et la repartition des texels opaques par clarte.
+    ///
+    /// <para>La premiere version ne comptait que les noirs <b>exacts</b>, et elle a rendu
+    /// « 0 noir opaque » pour une texture qui aurait tres bien pu etre uniformement sombre : un
+    /// texel a 0xFF080808 n'y entrait pas. Les seuils remplacent l'egalite.</para>
+    /// </summary>
+    internal static string DescribeTexture(nint key, float u, float v)
+    {
+        if (!s_GameTextures.TryGetValue(key, out GameTexture? t)) return "inconnue";
+
+        uint[]? px = t.Pixels;
+        if (px == null) return $"{t.Width}x{t.Height} texels non conserves";
+
+        int x = Math.Clamp((int)(u * t.Width), 0, t.Width - 1);
+        int y = Math.Clamp((int)(v * t.Height), 0, t.Height - 1);
+
+        int clear = 0, tresSombre = 0, sombre = 0, moyen = 0, clairs = 0;
+        foreach (uint p in px)
+        {
+            if (p >> 24 < 128) { clear++; continue; }
+            uint m = Math.Max((p >> 16) & 0xff, Math.Max((p >> 8) & 0xff, p & 0xff));
+            if (m < 0x10) tresSombre++;
+            else if (m < 0x40) sombre++;
+            else if (m < 0xc0) moyen++;
+            else clairs++;
+        }
+
+        return $"{t.Width}x{t.Height} texel({x},{y})=0x{px[y * t.Width + x]:X8} " +
+               $"transparents={clear} opaques<0x10={tresSombre} <0x40={sombre} " +
+               $"<0xc0={moyen} >=0xc0={clairs} sur {px.Length}";
+    }
+
+    private static readonly HashSet<nint> s_DumpedTextures = [];
+
+    /// <summary>
+    /// ECHAFAUDAGE — ecrit une texture dans <c>scratchpad/</c> au format PNG, une fois par objet.
+    /// Le relevé chiffre peut mentir par omission ; l'image, non. L'encodeur est minimal — un
+    /// IHDR, un IDAT deflate et un IEND — parce qu'il ne sert qu'a regarder.
+    /// </summary>
+    internal static void DumpTexture(nint key)
+    {
+        if (!s_RetainPixels || !s_DumpedTextures.Add(key)) return;
+        if (!s_GameTextures.TryGetValue(key, out GameTexture? t) || t.Pixels == null) return;
+
+        try
+        {
+            string dir = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+                AppContext.BaseDirectory, "..", "..", "..", "..", "scratchpad"));
+            System.IO.Directory.CreateDirectory(dir);
+            string path = System.IO.Path.Combine(dir, $"texture-{key:X8}-{t.Width}x{t.Height}.png");
+
+            int w = t.Width, h = t.Height;
+            uint[] px = t.Pixels;
+
+            // Un octet de filtre (0 = aucun) par ligne, puis les texels en RGBA.
+            byte[] raw = new byte[h * (1 + w * 4)];
+            int o = 0;
+            for (int y = 0; y < h; y++)
+            {
+                raw[o++] = 0;
+                for (int x = 0; x < w; x++)
+                {
+                    uint p = px[y * w + x];            // 0xAARRGGBB en memoire
+                    raw[o++] = (byte)(p >> 16);
+                    raw[o++] = (byte)(p >> 8);
+                    raw[o++] = (byte)p;
+                    raw[o++] = (byte)(p >> 24);
+                }
+            }
+
+            using var deflated = new System.IO.MemoryStream();
+            using (var z = new System.IO.Compression.ZLibStream(
+                       deflated, System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true))
+            {
+                z.Write(raw, 0, raw.Length);
+            }
+
+            byte[] header = new byte[13];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(header, w);
+            System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(header.AsSpan(4), h);
+            header[8] = 8;      // huit bits par canal
+            header[9] = 6;      // RGBA
+            header[10] = 0; header[11] = 0; header[12] = 0;
+
+            using var file = System.IO.File.Create(path);
+            file.Write([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+            WriteChunk(file, "IHDR", header);
+            WriteChunk(file, "IDAT", deflated.ToArray());
+            WriteChunk(file, "IEND", []);
+
+            Console.Error.WriteLine($"[FX]   texture 0x{key:X8} ecrite dans {path}");
+        }
+        catch (Exception e)
+        {
+            Console.Error.WriteLine($"[FX]   ecriture de la texture 0x{key:X8} impossible : {e.Message}");
+        }
+
+        static void WriteChunk(System.IO.Stream file, string type, byte[] data)
+        {
+            Span<byte> length = stackalloc byte[4];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(length, data.Length);
+            file.Write(length);
+
+            byte[] body = new byte[4 + data.Length];
+            for (int i = 0; i < 4; i++) body[i] = (byte)type[i];
+            data.CopyTo(body.AsSpan(4));
+            file.Write(body);
+
+            Span<byte> crc = stackalloc byte[4];
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(crc, Crc32(body));
+            file.Write(crc);
+        }
+
+        static uint Crc32(byte[] data)
+        {
+            uint crc = 0xffffffff;
+            foreach (byte b in data)
+            {
+                crc ^= b;
+                for (int i = 0; i < 8; i++)
+                    crc = (crc & 1) != 0 ? 0xedb88320 ^ (crc >> 1) : crc >> 1;
+            }
+            return ~crc;
+        }
+    }
+
 
     /// <summary>Nombre d'objets texture actuellement connus. Sert au bilan de fin d'image.</summary>
     internal static int GameTextureCount => s_GameTextures.Count;
@@ -944,7 +1149,7 @@ internal static unsafe class D3D11Backend
             if (pixels == null) return default;
             fixed (uint* p = pixels) texture.View = CreateTexture(texture.Width, texture.Height, p);
             texture.ViewCreated = true;
-            texture.Pixels = null;                            // la copie GPU suffit désormais
+            if (!s_RetainPixels) texture.Pixels = null;   // la copie GPU suffit desormais
         }
 
         return texture.View;
@@ -1014,7 +1219,8 @@ internal static unsafe class D3D11Backend
         s_WhiteTexture.Dispose();
         s_DepthOff.Dispose();
         s_Rasterizer.Dispose();
-        s_AlphaBlend.Dispose();
+        foreach (var state in s_BlendStates.Values) state.Dispose();
+        s_BlendStates.Clear();
         s_OpaqueBlend.Dispose();
         s_PointSampler.Dispose();
         s_VertexBuffer.Dispose();

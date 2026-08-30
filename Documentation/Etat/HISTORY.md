@@ -5,6 +5,19 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- fix : **les trois modes de mélange ADDITIFS n'étaient pas portés** — le shim n'acceptait que `(5, 6)` SRCALPHA/INVSRCALPHA et rendait opaque `(2, 2)`, `(5, 2)` et `(3, 2)`, que `FUN_00a03c80` demande pour tout effet lumineux. D'où les nuages de la carte du monde en taches sombres et l'onde de choc en croissant noir
+- doc : `winsys3d.md` — la table des cinq couples `SRCBLEND`/`DESTBLEND` de `FUN_00a03c80`, et les deux garde-fous de capacité (tramage, puis abandon de la primitive) qui la précèdent
+- fix : **l'onde de choc du Guerrier est noire parce que TOUTE la semi-transparence était désactivée** — le slot `+0x40` du périphérique synthétique rendait zéro par la souche neutre, or il répond « suis-je le matériel Direct3D ? » ; le jeu en concluait « rastériseur logiciel » et effaçait le bit `0x200` de tout modèle transparent, depuis toujours
+- doc : `3dhelp.md` — le slot `+0x40` est le getter du champ `+0xA4`, posé par comparaison du GUID du pilote avec `IID_IDirect3DHALDevice` ; c'est lui qui commande `DAT_00564a48`, relu dans une trentaine d'endroits du rendu
+- doc : **troisième relevé `TRACE_FX`** — la texture de l'onde est une planche `32x32` dont les texels échantillonnés sont transparents ou **presque blancs** (`0xEEEEEE`), sans aucun noir opaque : la chaîne complète est correcte et l'onde devrait se peindre en blanc
+- feat : le relevé écrit la texture liée en **PNG** dans `scratchpad/` et compte les texels opaques par seuils de clarté — le compte par égalité à zéro ne mesurait pas une couleur
+- doc : **deuxième relevé `TRACE_FX`** — la couleur de l'onde arrive **intacte** jusqu'à Direct3D (`0x787878` émis, `0xFFF0F0F0` reçu : le doublement de winsys3d marche), et les indices de couleur des seize faces tiennent dans les trois entrées remplies. Par élimination, le noir vient des **texels**
+- feat : le relevé décrit maintenant la texture liée — dimensions, texel échantillonné, partage transparents / noirs opaques — et les quatre coordonnées du dessin
+- doc : **premier relevé `TRACE_FX`** — la chaîne `Blaze` est confirmée juste jusqu'à la primitive (teinte `0x787878` décroissante, code `0x24`, CLUT `0x7382`) ; piste ouverte : `mot8=0x00010006` ne remplit que **trois** entrées de couleur pour un modèle de **seize** faces
+- fix : le relevé côté shim visait à côté — `DrawOTag` dessine en fin d'image, pas à l'émission. Il trie maintenant sur la diffuse non blanche au lieu de la proximité temporelle
+- feat : **`tests\trace-fx.bat`** (`OPENFORESIA_TRACE_FX=1`) — suit la couleur d'un effet de bout en bout : ce que `Blaze` émet, puis ce que `winsys3d` en rend au backend. L'onde de choc reste noire malgré une chaîne `Blaze` vérifiée fidèle ; ce relevé dira si le noir vient de la diffuse ou des texels
+- fix : **l'onde de choc du Guerrier ne touchait presque jamais** — les deux mots de portée de sa sonde (`EntityHandler_004767E0`) étaient rangés en `sonde[0]`/`sonde[3]` au lieu de `sonde[2]`/`sonde[5]` : demi-largeur et profondeur nulles, quadrilatère de frappe réduit à un point
+- doc : **winsys3d double les trois octets de couleur d'une primitive et les borne à `0xff`** — `0x808080` est donc du blanc plein, pas du gris ; convention PlayStation conservée, relevée dans `winsys3d.md`
 - feat : **l'éclaboussure du pas dans l'eau** — `0x0040f7f0`, absente de `Blaze.c`, relevée au désassembleur (231 octets). Sous-type `0xfe` de la table installée par zone, semé un pas sur deux par le crochet de contact au sol dès que le sol porte `0x200` : c'est le plantage à l'approche d'un point d'eau
 - doc : les quatre images de l'éclaboussure relevées à `0x0054f7a8` — quatre tuiles `8 x 8` aux coins d'un carré de `0x10`, bornées par `DAT_0054f7c8`
 

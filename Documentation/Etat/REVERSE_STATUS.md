@@ -17856,3 +17856,330 @@ deux et disparaissent en huit images sans bouger.
 **Ce qui reste ouvert** : rien ne garantit que l'éclaboussure soit la seule lacune du chemin de
 l'eau. La chute et le repêchage décrits par Vincent — le personnage tombe puis revient sur la terre
 ferme — passent par d'autres gestionnaires qui n'ont pas encore été atteints.
+
+## 2026-08-30 (suite) — l'onde de choc du Guerrier : une sonde lue dans la mauvaise vue de pile
+
+**Signalé par Vincent** : l'onde de choc de l'attaque en course (attaquer + une direction) **traverse
+parfois les ennemis sans rien leur faire**, et elle sort **noire** au lieu de blanche.
+
+### Le chemin, pour mémoire
+
+`PostureHandler_0051A670` (posture 0, la marche) fait naître l'effet `0xba` à la cinquième image de
+l'état 6. Ce `0xba`-là est `EntityHandler_00476770` : une naissance qui pose le modèle `0x2a`, la
+teinte `0x808080`, une vitesse horizontale de 12 sans gravité — puis s'efface en engendrant un
+**second** `0xba`, dans l'autre table (`0x005edee0`), qui est `EntityHandler_004767E0`. C'est
+celui-là qui vit, grandit et frappe.
+
+### La faute : quatre octets de décalage sur la pile
+
+`EntityHandler_004767E0` est absente de `Blaze.c` ; elle a été transcrite au désassembleur. Les six
+mots de sa sonde de frappe sont écrits **pendant que l'argument de `FUN_00535880` est encore
+empilé** :
+
+```
+004767ec  push  esi                    ; l'argument de FUN_00535880
+004767ed  mov   [esp+10h],bx           ; sonde[0] = 0
+...
+004767fc  mov   word [esp+16h],64h     ; sonde[3] = 0x64
+0047680d  call  00535880h
+0047681b  add   esp,4                  ; <-- la vue de pile se décale de quatre octets ICI
+0047683e  mov   [esp+16h],ax           ; = sonde[5], PAS sonde[3]
+0047684e  mov   [esp+10h],dx           ; = sonde[2], PAS sonde[0]
+00476855  lea   ecx,[esp+0Ch]          ; l'adresse de la sonde : esp+0x0c, d'où l'écart
+```
+
+La transcription avait lu les deux écritures d'après dans la vue d'**avant** le `add esp,4` et les
+avait rangées en `sonde[0]` et `sonde[3]`.
+
+### Ce que ça faisait
+
+`TestMeleeReach_00535A90` lit la sonde ainsi : `[0]` décalage d'angle, `[1]` avance du bord proche,
+`[2]` **demi-largeur**, `[3]` tolérance en hauteur, `[4]` ouverture angulaire, `[5]` **profondeur**.
+
+Avec les mauvais créneaux, `sonde[2]` et `sonde[5]` restaient à **zéro** : le quadrilatère de frappe
+avait une largeur nulle et une profondeur nulle, ses quatre coins tombaient au même endroit. L'onde
+ne touchait donc que par accident — exactement le symptôme décrit. En prime, `sonde[0]` recevait une
+demi-largeur (≈ 80) là où le corps veut un angle, et le `0x64` de tolérance en hauteur — qui
+**survit** jusqu'à l'appel, contrairement à ce que disait le commentaire — était écrasé par une
+profondeur.
+
+**Le contrôle qui aurait dû être fait** : un `lea` qui prend l'adresse d'un tampon de pile est la
+seule référence fiable pour numéroter ses champs. Relever les offsets d'écriture sans le confronter
+au `lea` — et sans vérifier ce que la fonction receveuse fait de chaque champ — laisse passer un
+décalage entier.
+
+### La couleur : pas encore expliquée, mais la convention est établie
+
+`0x808080` n'est **pas** du gris à mi-chemin. Tous les gestionnaires de primitive de winsys3d
+(`FUN_00a0f090` et ses semblables) **doublent** les trois octets et les bornent à `0xff` avant de
+construire le sommet Direct3D : `0x80` rend `0xff`. C'est la convention PlayStation — 128 est le
+multiplicateur neutre — et winsys3d la conserve. Relevé dans `Documentation/DLL/winsys3d.md`.
+
+L'onde est donc **blanche à la naissance** dans le jeu d'origine, et s'éteint en seize images
+(`0x808080`, moins `0x080808` par image). Vincent a raison sur l'attendu.
+
+Le chemin qui porte cette teinte a été relu jusqu'au bout et il est fidèle : `+0x38 = 0x808080`
+posé par `FUN_00476770` (décompilée), recopié par `FUN_0047aae0`, lu par `FUN_0051e700` en
+`placement[7]`, masqué `& 0x3ffffff`, versé tel quel dans le tampon de couleurs (branche plate, car
+`+0x36` porte le bit 4), puis posé en `prim[1] | 0x24000000`. Chaque étape a été confrontée au
+désassemblage, y compris le compte de couleurs `*(uint*)(model+8) >> 0x10` que Ghidra avait perdu
+(`uStack_c` non initialisé) et que `0051eb24` confirme.
+
+**La perte est donc en aval de `Blaze`**, du côté de l'échafaudage : la texture liée pour ce modèle,
+sa CLUT (`s_EntityDecodeTable_005e8f00`), ou l'état de mélange. Aucune de ces trois ne se tranche à
+la lecture — il faut une exécution. TODO(REVERSE) : relever, en jeu, la couleur diffuse et la vue de
+texture que `DeviceShim.Shim_DrawPrimitive` reçoit pour le modèle `0x2a`.
+
+## 2026-08-30 (suite 2) — premier relevé `TRACE_FX` : une piste, et un instrument mal visé
+
+Journal : `scratchpad/trace-fx-260830-101712.log`.
+
+### Ce que le relevé confirme
+
+Les six lignes `[FX]` sont bien l'onde de choc : la teinte descend `0x787878`, `0x707070`,
+`0x686868`, `0x606060`, `0x585858`, `0x505050` — le pas de `0x080808` par image de
+`EntityHandler_004767E0`, et `drapeaux=0x0004` (le bit `0x80` de `+0x36` a été effacé par la passe,
+comme prévu). Côté `Blaze`, tout est conforme : `plate=0x00787878`, `code=0x24`,
+`tpage=0x02370000`, `uv=0x73820000` — donc la CLUT `0x7382` et la page `0x0237`, cohérentes avec
+`attributs=0x00100001` et l'entrée `0x10` de la table de décodage (`clut=0x73400217`).
+
+### Ce que le relevé rate, et pourquoi
+
+Les lignes `[FX]   dessin` sont **hors sujet**. Elles montrent toutes `diffuse=0xFFFFFFFF`, les
+mêmes UV et les mêmes deux textures, identiques d'un armement à l'autre — impossible pour un effet
+dont la teinte décroît.
+
+La cause est une erreur de conception de l'instrument : **`DrawOTag` ne s'exécute qu'à la fin de
+l'image**, alors que l'émission a lieu au milieu. Armer « les trois prochains dessins » au moment de
+l'émission capte donc les trois **premiers** dessins de la salve suivante, c'est-à-dire le fond, et
+toujours les mêmes.
+
+**La leçon vaut au-delà de ce cas** : dans un moteur à liste d'affichage, l'ordre d'émission et
+l'ordre de dessin sont deux temps différents. Un relevé qui relie les deux doit s'accrocher à une
+**propriété de la donnée**, jamais à la proximité temporelle. La deuxième version trie sur la
+couleur — la DLL double et borne, donc tout ce que le jeu émet à `0xffffff` ressort à `0xFFFFFFFF`,
+et une diffuse différente ne peut venir que d'une teinte différente de blanc.
+
+### La piste que le relevé ouvre
+
+`mot8 = 0x00010006`, et les quatre seaux valent `4/12/0/0`.
+
+Le remplissage plat écrit `(mot8 >> 16) * 3` entrées de couleur, soit **trois**. Les seaux
+annoncent **seize faces**, et chaque face lit sa couleur par `colours[record[1] & 0xff]`. Si les
+indices de couleur dépassent 2, treize faces sur seize lisent le tampon d'échafaudage
+`MainMem + 0x1b8000` **au-delà de ce qui vient d'y être écrit**.
+
+C'est un candidat sérieux pour le noir : ce tampon n'est jamais effacé, donc en 1998 il portait les
+couleurs éclairées du modèle précédent — quelconques mais non nulles — alors que chez nous il peut
+être à zéro. Le décalage `mot8 >> 16` est pourtant confirmé au désassembleur (`0051eb24`), et le
+`rep stosd` qui suit aussi : si le compte est bien 1 pour un modèle de seize faces, alors **les
+indices de couleur des faces doivent rester dans 0..2**, et le noir vient d'ailleurs.
+
+Le deuxième relevé imprime exactement cela : l'en-tête complet du modèle sur 0x40 octets, et les
+indices `i0/i1/i2` des vingt premières faces. Les deux réponses possibles sont également
+instructives.
+
+TODO(REVERSE) : rejouer `tests\trace-fx.bat`.
+
+## 2026-08-30 (suite 3) — deuxième relevé : la couleur arrive juste, ce sont les texels
+
+Journal : `scratchpad/trace-fx-260830-102409.log`.
+
+### Deux hypothèses tombent, et c'est un progrès
+
+**Le compte de couleurs n'était pas en cause.** Les seize faces du modèle n'emploient que les
+indices **0 et 1** (`0/0/0 0/0/0 1/1/1 1/1/1 …`), donc les trois entrées remplies par
+`(mot8 >> 16) * 3` suffisent largement. Le relevé valide au passage la lecture `mot8 >> 16` prise
+au désassembleur : un modèle de seize faces peut n'avoir qu'un seul jeu de trois couleurs, parce
+que le champ compte les **jeux de couleurs**, pas les faces.
+
+**La couleur arrive intacte jusqu'à Direct3D.** Le tri sur la diffuse non blanche a trouvé sa
+cible du premier coup :
+
+| teinte émise | diffuse reçue |
+|---|---|
+| `0x787878` | `0xFFF0F0F0` |
+| `0x707070` | `0xFFE0E0E0` |
+| `0x686868` | `0xFFD0D0D0` |
+| `0x606060` | `0xFFC0C0C0` |
+
+Le doublement de winsys3d fonctionne exactement comme `winsys3d.md` le décrit. Vingt dessins sur
+trois cent soixante portent une diffuse non blanche par image, et les quatre premiers sont bien
+l'onde. La texture se résout (`vue=oui`, objet `0x16CAB1B8`), le mélange est
+`SRCALPHA/INVSRCALPHA`, et `TEXTUREMAPBLEND=4` (MODULATEALPHA), donc le nuanceur calcule
+`rgb = texel.rgb × 0,94` et `a = texel.a`.
+
+### Ce qu'il reste, par élimination
+
+Une diffuse à `0xF0F0F0` et un rendu noir ne laissent qu'une possibilité : **`texel.rgb` vaut zéro
+là où `texel.a` est opaque**. Deux familles de causes, que le troisième relevé sépare :
+
+- **la donnée** — page non déposée, mauvaise CLUT, ou expansion 16 bits qui rend des zéros. Un
+  signe reconnaissable serait `transparents=0` avec un grand `noirs_opaques` : c'est la signature
+  d'une **alpha inversée**, où le fond noir du sprite devient opaque et l'arc blanc transparent —
+  ce qui donnerait précisément une forme noire à la place d'une forme blanche ;
+- **l'adressage** — les coordonnées tombent sur une région noire de la bonne page.
+
+Le troisième relevé imprime, pour chaque dessin de l'onde, les quatre couples de coordonnées et une
+description de la texture liée : dimensions, texel échantillonné, et le partage entre transparents,
+noirs opaques et le reste. `OPENFORESIA_TRACE_FX=1` fait aussi **conserver les texels côté CPU**
+après la création de la vue, ce que le régime ordinaire ne fait pas — sans quoi il n'y aurait rien
+à lire au moment du relevé.
+
+TODO(REVERSE) : rejouer `tests\trace-fx.bat`.
+
+## 2026-08-30 (suite 4) — troisième relevé : la texture n'est pas noire non plus
+
+Journal : `scratchpad/trace-fx-260830-103325.log`.
+
+### Ce que la mesure dit
+
+Un seul objet texture pour les vingt dessins teintés de l'onde, `32 x 32` :
+
+```
+uv : (0,047,0,297) (0,984,0,297) (0,047,0,984) (0,984,0,984)
+32x32 texel(1,31)=0xFFEEEEEE transparents=176 noirs_opaques=0 sur 1024
+32x32 texel(1,9)=0x00000000
+```
+
+Les coordonnées couvrent bien la planche, les texels échantillonnés sont soit **transparents**,
+soit **presque blancs** (`0xEEEEEE`), et **aucun texel opaque n'est noir**. Multipliés par la
+diffuse `0xF0F0F0`, ils donnent du blanc cassé. La chaîne entière — teinte, doublement, indices de
+couleur, coordonnées, texels — est donc **correcte de bout en bout**, et l'onde devrait se peindre
+en blanc.
+
+### Ce que la mesure ne dit pas, et la faiblesse qu'elle a révélée
+
+Le compte `noirs_opaques` testait l'**égalité** à zéro. Une texture uniformément sombre — des
+texels à `0xFF080808` — aurait rendu « 0 noir opaque » exactement comme une texture blanche. Deux
+texels échantillonnés ne font pas une planche.
+
+**La leçon : un compte par égalité ne mesure pas une couleur.** Le relevé compte maintenant les
+texels opaques par **seuils de clarté** (`<0x10`, `<0x40`, `<0xc0`, `>=0xc0`), et surtout il **écrit
+la texture en PNG** dans `scratchpad/`. Une image ne ment pas par omission ; un histogramme mal
+choisi, si.
+
+### Ce qui reste ouvert
+
+Si la planche PNG est bien un arc clair sur fond transparent, alors le rendu de l'onde est juste et
+ce que Vincent voit en noir est **autre chose** — une entité voisine, ou l'onde masquée par un
+dessin qui la recouvre. Le relevé capte désormais les **vingt** dessins teintés de la salve au lieu
+de quatre, ce qui montrera si l'un d'eux emploie une autre texture.
+
+TODO(REVERSE) : rejouer `tests\trace-fx.bat`, ouvrir le PNG, et — si la planche est claire —
+joindre une capture d'écran de l'instant de l'attaque : la question devient « qu'est-ce qui est noir
+à l'écran », et elle ne se répond plus par des nombres.
+
+## 2026-08-30 (suite 5) — l'onde de choc noire : une souche neutre qui répondait « non »
+
+Journal : `scratchpad/trace-fx-260830-104006.log`, planches
+`scratchpad/texture-167979C0-32x32.png` et `texture-16795C88-256x32.png`, capture
+`D:\Open Foresia Project\Tests\Onde choc\new.jpg`.
+
+### La planche est un dégradé, et c'est ce qui a tout expliqué
+
+Rendue en carte de luminance, la planche `32 x 32` de l'onde se lit d'un coup d'œil : huit rangées
+de tuiles pleines en haut, puis **vingt-deux rangées de dégradé**, du sombre vers le clair, répété
+deux fois horizontalement. Les coordonnées du modèle (`v` de 0,297 à 0,984) prennent exactement le
+dégradé.
+
+Un dégradé du noir au blanc n'a de sens que si le bout sombre **s'efface par mélange**. Peint en
+opaque, il donne un croissant noir — ce que montre la capture.
+
+### La cause, à trois maisons de là
+
+L'en-tête du modèle, relevé en hexadécimal par le troisième `TRACE_FX`, porte
+`+0x3c = 0x00100201` : le bit **`0x200`**, la semi-transparence. Mais la ligne du relevé annonçait
+`attributs=0x00100001` — parce que `DrawDepthSortedModel` **efface ce bit** juste avant :
+
+```csharp
+if (mem.s_DeviceCapFlag_00564a48 && (attributes & 0x200) != 0)
+{
+    if (mem.s_Unknown_00564a4c == 0) return prim;
+    attributes &= 0xfffffdff;
+}
+```
+
+`DAT_00564a48` vient de `FUN_0050f120`, qui interroge le slot `+0x40` du périphérique `3dhelp` :
+un getter du champ `+0xA4`, lui-même posé par la comparaison du GUID du pilote Direct3D avec
+`IID_IDirect3DHALDevice`. Le drapeau signifie donc « **pas de matériel** », et il ne sert qu'à
+retirer la semi-transparence — un ménagement pour le rastériseur logiciel de 1998. Détail relevé
+dans `Documentation/DLL/3dhelp.md`.
+
+Notre périphérique synthétique rendait **zéro** par la souche neutre. Le jeu en concluait
+« logiciel », et retirait la transparence de tout ce qui en demande — silencieusement, partout,
+depuis toujours.
+
+### La leçon
+
+**Une souche neutre qui rend zéro n'est pas neutre quand la question est « en es-tu capable ? ».**
+Elle répond non, et le programme se dégrade tout seul, sans erreur ni message. Les autres
+accesseurs de capacités de cette vtable méritent la même relecture : la souche n'est acceptable que
+pour les slots dont le retour n'est pas lu.
+
+Deux autres remarques que cette enquête laisse :
+
+- **Le relevé chiffré a tourné trois fois en rond avant que l'image ne tranche.** L'histogramme
+  disait « aucun texel noir opaque », ce qui était vrai et trompeur ; la carte de luminance a montré
+  le dégradé en dix secondes. Quand la question est visuelle, sortir l'image tôt.
+- **Le relevé imprimait une valeur déjà corrigée.** `attributs=0x00100001` était le résultat après
+  masquage, pas ce que le modèle portait. C'est le vidage hexadécimal de l'en-tête, ajouté pour une
+  tout autre raison, qui a montré le `0x200`. Relever la donnée brute à côté de la donnée calculée
+  ne coûte rien et rattrape ce genre d'angle mort.
+
+### Portée du changement
+
+Le drapeau est lu dans une trentaine d'endroits. Le faire passer à faux **remet la semi-transparence
+partout** : effets, ombres, voiles d'interface. C'est le régime que le jeu employait sur une carte
+3D de 1998, donc le bon — mais c'est un changement large, à regarder à l'écran avant d'être tenu
+pour acquis.
+
+## 2026-08-30 (suite 6) — les nuages, ou deux fautes qui se masquaient
+
+Images : `D:\Open Foresia Project\Tests\4. Map Monde\legacy.jpg` et `new.jpg`.
+
+### Ce que le correctif du slot `+0x40` a révélé
+
+Rendre « oui » au test « suis-je le périphérique matériel ? » a **fait apparaître les nuages de la
+carte du monde**, absents jusque-là : le jeu ne demandait plus le retrait de la semi-transparence,
+donc les modèles qui portent le bit `0x200` sont enfin émis. C'est la preuve que le premier
+correctif porte.
+
+Mais ils sont sortis en **grosses taches gris sombre** là où l'original ne montre qu'un voile
+clair. Le même symptôme, exactement, que l'onde de choc — qui n'a donc pas bougé.
+
+### La seconde faute
+
+`FUN_00a03c80` (winsys3d) traduit le mode de semi-transparence de la page de texture en un couple
+`SRCBLEND`/`DESTBLEND`, et il en emploie **cinq**. Le shim n'en portait qu'un :
+
+```csharp
+if (s_SrcBlend == 5 && s_DestBlend == 6) return true;
+// tout le reste : « couple de mélange non porté — rendu opaque en attendant »
+```
+
+Les trois manquants sont précisément les **additifs** — `(2, 2)` ONE/ONE, `(5, 2)` SRCALPHA/ONE et
+`(3, 2)` SRCCOLOR/ONE —, c'est-à-dire le régime de tous les effets lumineux. Rendus opaques, ils
+peignent leur planche en aplat au lieu de s'ajouter au fond, et une planche en dégradé y devient
+une tache sombre. Table complète dans `Documentation/DLL/winsys3d.md`.
+
+Le backend fabrique désormais l'état de mélange à la demande depuis le couple `D3DBLEND`, avec la
+table de transposition complète de Direct3D 3 vers Direct3D 11, et le garde en cache.
+
+### La leçon, et elle est inconfortable
+
+**Les deux fautes se masquaient l'une l'autre.** Tant que `DAT_00564a48` retirait la
+semi-transparence en amont, aucune primitive additive n'atteignait le shim — la ligne « couple de
+mélange non porté » n'avait donc jamais été imprimée, et le shim paraissait complet. Corriger la
+première a rendu la seconde visible.
+
+Deux conséquences pratiques :
+
+- **Un garde-fou qui n'a jamais parlé ne prouve rien.** Celui-ci était bien écrit, bien placé, et
+  muet parce qu'il était inatteignable. Quand on porte une couche, la question n'est pas seulement
+  « qu'est-ce qui a signalé un manque » mais « qu'est-ce qui aurait dû être exercé et ne l'a pas
+  été ».
+- **Le symptôme d'origine ne s'est pas amélioré graduellement.** L'onde de choc est restée
+  strictement identique entre les deux correctifs, alors que le premier était nécessaire. Une
+  correction qui ne change rien à l'écran n'est pas pour autant inutile — ici elle a déplacé le
+  défaut d'un cran, et c'est la carte du monde qui l'a dit, pas l'onde.

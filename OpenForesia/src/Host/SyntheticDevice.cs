@@ -340,6 +340,33 @@ internal static unsafe class SyntheticDevice
         // le jeu à une attente oisive perpétuelle, sans plantage ni progrès. On rend actif.
         vtable[0x3C / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_Active;
 
+        // `+0x40` — **« suis-je le peripherique materiel ? »**, et c'est le slot qui decidait
+        // jusqu'ici que le jeu n'a pas de transparence.
+        //
+        // Le corps d'origine est un getter d'une ligne, `mov eax,[ecx+0A4h] ; ret`
+        // (`0x0FFE17D0`). Le champ `+0xA4` est pose a l'initialisation du peripherique
+        // (`0x0FFE224A`) par la comparaison de seize octets entre le GUID du pilote Direct3D
+        // choisi et celui grave a `0x0FFE65F0` : `84E63DE0-46AA-11CF-816F-0000C020156E`, soit
+        // **`IID_IDirect3DHALDevice`**. Autrement dit `+0xA4` vaut 1 quand le jeu tourne sur le
+        // materiel, 0 sur le rasteriseur logiciel de 1998. Le meme champ sert aussi a poser
+        // `D3DRENDERSTATE_DITHERENABLE` juste apres.
+        //
+        // Cote jeu, `FUN_0050f120` en tire `DAT_00564a48 = (getter() == 0)` — « pas de
+        // materiel ». Ce drapeau est relu dans une trentaine d'endroits, et il ne fait qu'une
+        // chose : **retirer la semi-transparence**. Il efface le bit `0x200` des attributs de
+        // modele et le bit `0x2000000` des mots de couleur, ce qui fait retomber la primitive du
+        // code `0x26` (triangle texture semi-transparent, `FUN_00a116e0`) sur le code `0x24`
+        // (opaque, `FUN_00a0f090`). C'est un menagement pour le rasteriseur logiciel, pas une
+        // capacite qui nous manque.
+        //
+        // Notre peripherique synthetique rendait zero par la souche neutre, et le jeu en
+        // concluait « logiciel » : toute la transparence tombait. Signale par Vincent le
+        // 2026-08-30 sur l'onde de choc du Guerrier, dont la planche est un degrade — le bout
+        // sombre, qui doit s'effacer par mélange, etait peint en **noir opaque**.
+        //
+        // Nous dessinons en Direct3D 11, avec melange alpha : la reponse honnete est oui.
+        vtable[0x40 / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_IsHardwareDevice;
+
         // Les trois capacités de la page « Résolution » — voir le bloc de commentaire sur
         // Synth_DisplayModeMask pour ce qu'elles valent chez nous et pourquoi.
         vtable[0x1C / 4] = (delegate* unmanaged[Thiscall]<void*, int>)&Synth_DisplayModeMask;
@@ -496,6 +523,15 @@ internal static unsafe class SyntheticDevice
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
     private static int Synth_Active(void* self) => 1;
+
+    /// <summary>
+    /// Slot <c>+0x40</c> — le getter du champ <c>+0xA4</c> de <c>3dhelp</c>, c'est-a-dire
+    /// « le pilote Direct3D choisi est-il <c>IID_IDirect3DHALDevice</c> ? ». Voir le bloc de
+    /// commentaire au site d'installation : rendre zero fait croire au jeu qu'il tourne sur le
+    /// rasteriseur logiciel de 1998, et lui fait retirer la semi-transparence partout.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvThiscall)])]
+    private static int Synth_IsHardwareDevice(void* self) => 1;
 
     // =====================================================================
     // Les trois slots de la page « Résolution » (2026-08-18).

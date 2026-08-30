@@ -47,6 +47,19 @@ namespace OpenForesia.Blaze;
 internal sealed unsafe class Model3d(GameMemory mem)
 {
     // =====================================================================
+    // ECHAFAUDAGE — OPENFORESIA_TRACE_FX=1
+    //
+    // La classe n'a par ailleurs aucun champ, et ces deux-la n'en font pas une exception de fond :
+    // ils sont statiques et ne servent qu'au diagnostic de la couleur des effets. A retirer une
+    // fois l'onde de choc du Guerrier eclaircie.
+    // =====================================================================
+
+    private static readonly bool s_TraceEffects =
+        Environment.GetEnvironmentVariable("OPENFORESIA_TRACE_FX") == "1";
+
+    private static int s_EffectTracesLeft = 2;
+
+    // =====================================================================
     // FUN_0051d1f0 — le rendu de modèle animé
     //
     // La plus grosse fonction reconstruite à ce jour. C'est elle qui dessine un personnage : elle
@@ -1100,6 +1113,47 @@ internal sealed unsafe class Model3d(GameMemory mem)
         {
             uint* fill = colours;
             for (uint i = vertexCount * 3; i != 0; i--) *fill++ = flatColour;
+        }
+
+        // ECHAFAUDAGE — OPENFORESIA_TRACE_FX=1. La branche plate ci-dessus est rare : c'est la
+        // seule ou la teinte de l'entite arrive telle quelle dans la primitive, sans passer par
+        // l'eclairage. On releve ce qui part vers winsys3d, puis on arme le releve du cote shim
+        // pour voir ce qui en ressort — la question etant de savoir ou le blanc se perd.
+        //
+        // Le premier essai (2026-08-30) a montre `mot8 = 0x00010006` pour un modele dont les
+        // seaux annoncent SEIZE faces : le remplissage plat n'ecrit alors que trois entrees de
+        // couleur, et toute face dont l'indice depasse 2 lit de la memoire d'echafaudage. D'ou le
+        // releve de l'en-tete et des indices de couleur ci-dessous, qui tranche.
+        if (s_TraceEffects && (placementFlags & 4) != 0 && s_EffectTracesLeft > 0)
+        {
+            s_EffectTracesLeft--;
+
+            ushort* head = (ushort*)(model + 0x10);
+            int skip = head[0] + head[1] + head[2] + head[3];
+            int faces = head[4] + head[5] + head[6] + head[7];
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"[FX] modele=0x{(nint)model:X8} attributs=0x{attributes:X8} clut=0x{clut:X8} ");
+            sb.Append($"drapeaux=0x{placementFlags:X4} teinte=0x{(uint)placement[7]:X8} ");
+            sb.Append($"plate=0x{flatColour:X8} code=0x{((flatColour | 0x24000000) >> 0x18):X2} ");
+            sb.Append($"tpage=0x{tpageWord:X8} uv=0x{uvWord:X8}");
+            sb.Append($"\n     mot8=0x{*(uint*)(model + 8):X8} couleurs_remplies={vertexCount * 3} ");
+            sb.Append($"faces_sautees={skip} faces_emises={faces} ");
+            sb.Append($"seaux={head[4]}/{head[5]}/{head[6]}/{head[7]}");
+
+            sb.Append("\n     entete :");
+            for (int i = 0; i < 0x40; i++)
+                sb.Append(i % 16 == 0 ? $"\n       +{i:x2} {model[i]:x2}" : $" {model[i]:x2}");
+
+            uint* face = (uint*)(*(byte**)(model + 0x28) + skip * 0x10);
+            sb.Append("\n     indices de couleur (i0/i1/i2 par face) :");
+            for (int i = 0; i < faces && i < 20; i++, face += 4)
+                sb.Append($" {face[1] & 0xff}/{face[1] >> 8 & 0xff}/{face[1] >> 0x10 & 0xff}");
+
+            Console.Error.WriteLine(sb.ToString());
+
+            // Vingt-quatre : la salve en compte vingt a diffuse non blanche, on les veut toutes.
+            DeviceShim.ArmEffectTrace(24);
         }
 
         ushort* counters = (ushort*)(model + 0x10);
