@@ -19006,3 +19006,44 @@ sans reconstruire la pile pas à pas.
 
 **Rien de ce lot n'a tourné en jeu.** Les trente-trois gestionnaires de la journée sont tous
 `implémenté=oui, testé=non`. C'est une dette, pas un acquis.
+
+## 2026-08-30 (suite 34) — la première des neuf routines d'intelligence
+
+`0x0049e190` est transcrite : 572 instructions, absente de `Blaze.c`, relevée au désassembleur. La
+zone 3 passe à 121 sur 136.
+
+**Le cadre était déjà là, et c'est tout ce qui rend l'exercice faisable.** Deux routines sœurs
+(`0x0049a980` et `0x00499de0`) avaient déjà établi le découpage en trois temps — décider,
+appliquer, replanifier —, la lecture de situation `ReadSceneEntitySituation_00535F20` et ses cinq
+sorties, la queue de quatre appels, et six feuilles nommées (`HesitateSceneEntity`,
+`RestSceneEntity`, `HoldSceneEntityAtRange`, `WanderSceneEntity`, `SceneEntityDelay`,
+`TestMeleeReach_00535A90`). Sur les 572 instructions, la part réellement neuve tient dans les deux
+tables de sauts et le mécanisme de sort.
+
+**Elle n'est pas factorisée avec ses sœurs, et c'est la règle du projet.** Le résumé de
+`TickSceneEntityAi_00499DE0` l'énonce déjà : ce sont des fonctions distinctes du binaire, et
+l'oracle de `compare-bodies.ps1` compare des corps. La vérification a été refaite ici de façon
+mesurable — comparées par la seule forme des instructions, adresses et constantes effacées, elles
+diffèrent sur 416 lignes de 672 et 345 de 572. Ce ne sont pas des variantes à constantes près.
+
+**Ce qui la distingue.** Elle lance des sorts. Sa posture 1 attend l'image 7 de l'animation puis
+appelle `CastSpell_0053A980` avec la paire famille-indice rangée en `+0x06` ; sa posture 3 tire
+cette paire au sort dans une table de trois mots par espèce à `0x00552978`, invoque le sous-type
+`0xbd`, et **va chercher le délai d'après-sort dans le répertoire** plutôt que de le tirer : l'octet
+`+0x13` de la fiche du sort, atteinte par `DAT_005e97c4 + 0x9c` puis la famille puis l'indice, au
+pas de `0x30`.
+
+**Une subtilité conservée.** Quand l'animation n'a pas atteint son image 8, le corps saute
+par-dessus la sonde **et** par-dessus la relecture du mot de drapeaux : le test du bit 1 porte alors
+sur la valeur lue avant la sonde, et `+0x1a` n'est pas décrémenté. Les deux chemins ne diffèrent
+donc pas seulement par le coup porté, et une transcription qui relirait les drapeaux dans les deux
+cas se tromperait sur une image.
+
+**La table `0x00552978` n'a pas de fin établie.** Le corps n'y borne pas son indice. Douze mots
+sont relevés — quatre triplets — parce qu'au-delà la donnée change de forme : on y lit des triplets
+`0x14 / 0x3c / 0x64` qui ressemblent à des seuils de pourcentage, pas à des paires famille-indice.
+C'est un indice, pas une preuve, et le résumé du champ le dit.
+
+**Il n'y a plus de raccourci dans cette famille.** Les neuf routines restantes ont été comparées
+aux onze déjà branchées : vingt empreintes normalisées, toutes distinctes. Chacune des huit qui
+restent est un corps à lire en entier, de 614 à 1449 instructions.

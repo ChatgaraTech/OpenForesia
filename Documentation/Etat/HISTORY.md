@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **`0x0049e190`, la troisième intelligence d'entité de scène** — 572 instructions, absente de `Blaze.c`, relevée au désassembleur. Zone 3 à **121 sur 136**. Même découpage en trois temps que ses deux sœurs, mais c'est bien un autre corps : comparée par la seule forme des instructions, elle en diffère sur 416 lignes de 672
+- feat : **elle lance des sorts**, ce qu'aucune des deux autres ne fait — sa posture 1 attend l'image 7 de l'animation puis appelle `CastSpell_0053A980` avec la paire famille-indice rangée en `+0x06`, et sa posture 3 tire cette paire dans une table de trois mots par espèce (`0x00552978`)
+- doc : **le délai d'après-sort ne vient pas d'un tirage mais du répertoire** — l'octet `+0x13` de la fiche du sort, atteinte par `DAT_005e97c4 + 0x9c` puis la famille puis l'indice, au pas de `0x30`. C'est le sort lui-même qui dit combien de temps la bête reste immobile après l'avoir lancé
+- doc : **aucun doublon parmi les vingt routines d'intelligence** — les neuf restantes comparées aux onze déjà branchées donnent vingt empreintes distinctes. Il n'y a plus de raccourci dans cette famille
 - feat : **sept gestionnaires de la forêt de plus**, la zone 3 passe de 113 à **120 sur 136**. Il ne reste que les seize plus grosses, dont les neuf routines d'intelligence des espèces
 - feat : **le verbe « joue l'animation de la statue »** (`0x00443b20`) — cinq phases gouvernées par le drapeau de script 208, dont l'état vit dans le bloc privé de la forêt et survit d'une image à l'autre. L'animation avance **une image sur deux**, et seulement passé la huitième
 - feat : **le geyser et sa partition** (`0x0040ef40`) — un jet qui s'étire plus haut que large (`0x9c4` contre `0x800`), puis ondule au sinus. Sa partition est en dur : neuf notes, deux accords de trois montantes suivis d'une basse. Elle tourne à chaque image **sauf une**, celle du changement d'état
