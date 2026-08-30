@@ -19047,3 +19047,57 @@ C'est un indice, pas une preuve, et le résumé du champ le dit.
 **Il n'y a plus de raccourci dans cette famille.** Les neuf routines restantes ont été comparées
 aux onze déjà branchées : vingt empreintes normalisées, toutes distinctes. Chacune des huit qui
 restent est un corps à lire en entier, de 614 à 1449 instructions.
+
+## 2026-08-30 (suite 35) — le verbe 13 : le rassemblement du groupe (`0x004433b0`)
+
+**Le plantage.** `Interpreteur de script, opcode 0 : verbe 13 = 0x4433B0, pas encore reconstruit`,
+à l'arrivée sur une carte de la forêt. C'était le dernier verbe non couvert de la table
+`0x0056aec8` en zone 3 — et de loin le plus gros : **1150 octets**, contre 28 à 179 pour les huit
+autres du lot. Absent de `Blaze.c` ; désassemblage conservé sous
+`Legacy/Raw/Blaze/AreaVerbs/FUN_004433B0.asm`.
+
+**Une taille n'est toujours pas une difficulté.** Le corps est **quatre fois le même bloc**, à
+trois choses près : le créneau d'entité qu'il arme, le bit de garde qu'il consulte, et les trois
+rectangles qu'il teste. Écrit une fois avec les constantes en table (`GatherRegions_004433B0`),
+comme l'ascenseur `FUN_00457370` dont les deux sens étaient eux aussi écrits deux fois dans le
+binaire. Ce qui coûte, ici, c'est de suivre les **vingt-quatre sauts** des quatre tests de région
+pour établir qu'ils forment bien, dans les quatre cas, un simple OU de trois rectangles — le
+compilateur partage les bornes communes, si bien que l'échec d'un rectangle retombe tantôt sur le
+test suivant, tantôt directement sur le membre suivant.
+
+**Ce que la fonction fait.** Elle ne lit **pas** l'entité qu'on lui passe. Elle porte sur les
+**quatre premiers créneaux de la table d'entités de zone** (`0x005fa5e0`, pas de `0x9c`), dont elle
+utilise trois champs : `+0x16` l'armement (1 = en attente, −1 = désarmé), `+0x14` l'état (99 =
+prêt, 206 = déclenché), `+0x98` le témoin posé à 1 au déclenchement. Pour chacun, si sa garde est
+levée, s'il est armé et prêt, et si **tout** le groupe debout se tient dans sa zone, l'état passe à
+206 et le témoin à 1. Elle rend toujours 0 (`xor eax,eax ; ret`) : c'est un ordre, pas une
+question.
+
+**Les deux clairières.** Les quatre zones sont des réunions de trois rectangles, en unités
+entières (position décalée de douze bits). Les créneaux 1 et 3 couvrent la clairière **sud**
+(`z` de −200 à 780), les créneaux 0 et 2 la clairière **nord** (`z` de 2020 à 3000) ; les deux
+entre `x = −4200` et `x = −3220`. Dans chaque clairière, les deux créneaux découpent le même sol de
+deux façons différentes — l'un en trois bandes verticales dont celle du milieu est plus courte,
+l'autre en trois bandes horizontales dont celle du milieu est plus étroite. Il y a donc **deux
+emplacements distincts à occuper par clairière**, pas un seul écrit deux fois.
+
+**Le banc de script, encore.** La garde est l'octet `0x1f` du banc 0 — `0x005e96ff`, exactement
+celui dont le radeau `FUN_00456750` consulte les bits 2 et 3. Ici ce sont les bits **0** et **1**,
+un par clairière. Deux abonnés se partagent donc un même octet du banc sans se marcher dessus,
+chacun sur ses propres bits.
+
+**Le réamorçage est croisé**, et c'est la seule vraie surprise du corps : dans une paire, le
+désarmement de l'un remet l'**autre** à l'état prêt. `+0x16` du créneau 3 à −1 remet `+0x14` du
+créneau 1 à 99, et réciproquement ; même croisement entre 0 et 2. Les deux emplacements d'une
+clairière s'excluent donc l'un l'autre. Une transcription qui aurait « corrigé » ce croisement en
+appariement direct aurait produit une énigme qui se referme au lieu de basculer.
+
+**Le compte du groupe se fait en deux nombres, pas en un.** `esi` est incrémenté pour chaque membre
+vivant, `ebp` pour chaque membre vivant qui passe les trois tests (hauteur `+0x20` tronquée au
+millier ≥ `0x50000`, bit `0x2000` de `+0x90` absent, position dans l'un des rectangles) —
+l'incrément de `esi` venant **avant** ces tests. C'est ce qui fait qu'un seul membre trop bas ou
+resté ailleurs suffit à faire échouer l'égalité. Le même plancher de hauteur que le radeau, avec
+une autre borne.
+
+**La zone 3 n'a plus de verbe manquant.** Les treize verbes distincts de la table `0x0056aec8` en
+zone 3 sont désormais tous couverts, souches comprises.

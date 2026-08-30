@@ -1577,6 +1577,11 @@ public static unsafe partial class Blaze
             0x00443300 => AreaVerb_00443300((short)(s[2] | (s[3] << 8))),
             0x00443B20 => AreaVerb_00443B20(),
 
+            // Le verbe 13 : le rassemblement du groupe sur l'un des quatre emplacements des deux
+            // clairieres. Le plus gros verbe de la table, et le premier a ne toucher qu'aux
+            // creneaux d'entite de zone — il ignore l'entite qu'on lui passe.
+            0x004433B0 => AreaVerb_004433B0(),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de la table 0x0056aec8 de la zone courante " +
@@ -2293,6 +2298,224 @@ public static unsafe partial class Blaze
 
         // Ghidra: `movzx cx,byte [eax+8]` puis `cmp cx,si` — seize bits des deux cotes.
         return (ushort)entity[8] != (ushort)last ? 1u : 0u;
+    }
+
+    // =====================================================================
+    // LE VERBE 13 DE LA FORET (0x004433B0) — LE RASSEMBLEMENT DU GROUPE
+    //
+    // 1150 octets, absent de Blaze.c, releve au desassembleur ; le dump est conserve sous
+    // Legacy/Raw/Blaze/AreaVerbs/FUN_004433B0.asm. C'est le plus gros verbe de la table
+    // 0x0056aec8 et de loin — les huit autres du meme lot tiennent en 28 a 179 octets.
+    //
+    // Le corps est QUATRE FOIS le meme bloc, a trois choses pres : le creneau d'entite qu'il
+    // arme, le bit de garde qu'il consulte, et les trois rectangles qu'il teste. Il est donc
+    // ecrit une fois, avec les constantes en table — la meme decision que pour l'ascenseur
+    // (EntityHandler_00457370), dont les deux sens etaient ecrits deux fois dans le binaire.
+    // =====================================================================
+
+    /// <summary>
+    /// Les <b>quatre zones de rassemblement</b> de <see cref="AreaVerb_004433B0"/>, indexees par
+    /// le creneau d'entite de zone qu'elles arment (0 a 3).
+    ///
+    /// <para>
+    /// Chaque ligne est <b>trois rectangles</b> a la suite — <c>xMin, xMax, zMin, zMax</c> — et la
+    /// zone est leur <b>reunion</b>. Le binaire ne les ecrit pas comme une reunion : il enchaine
+    /// les comparaisons en partageant les bornes communes, si bien que l'echec d'un rectangle
+    /// tombe parfois sur le test du suivant et parfois directement sur le membre suivant. Les
+    /// vingt-quatre sauts ont ete suivis un par un : dans les quatre blocs, le resultat est
+    /// exactement un OU des trois rectangles, sans trou ni recouvrement parasite.
+    /// </para>
+    /// <para>
+    /// Les coordonnees sont en <b>unites entieres</b>, c'est-a-dire la position de l'entite
+    /// decalee de douze bits vers la droite. Elles dessinent <b>deux clairieres</b> : les creneaux
+    /// 1 et 3 au sud (<c>z</c> de -200 a 780), les creneaux 0 et 2 au nord (<c>z</c> de 2020 a
+    /// 3000), toutes deux entre <c>x = -4200</c> et <c>x = -3220</c>. Dans chaque clairiere les
+    /// deux creneaux decoupent le meme sol de deux facons differentes : l'un en trois bandes
+    /// verticales dont celle du milieu est plus courte, l'autre en trois bandes horizontales dont
+    /// celle du milieu est plus etroite. Il y a donc bien <b>deux emplacements distincts</b> a
+    /// occuper par clairiere, et non un seul ecrit deux fois.
+    /// </para>
+    /// </summary>
+    private static readonly int[][] GatherRegions_004433B0 =
+    [
+        // creneau 0 — clairiere nord, trois bandes verticales
+        [-4200, -3850, 2020, 3000,   -3850, -3550, 2200, 3000,   -3550, -3220, 2020, 3000],
+
+        // creneau 1 — clairiere sud, trois bandes verticales
+        [-4200, -3850, -200,  780,   -3850, -3550, -200,  600,   -3550, -3220, -200,  780],
+
+        // creneau 2 — clairiere nord, trois bandes horizontales
+        [-4200, -3220, 2650, 3000,   -4200, -3400, 2350, 2650,   -4200, -3220, 2020, 2350],
+
+        // creneau 3 — clairiere sud, trois bandes horizontales
+        [-4200, -3220,  450,  780,   -4200, -3400,  150,  450,   -4200, -3220, -200,  150],
+    ];
+
+    /// <summary>
+    /// Ghidra: FUN_004433B0 @ 0x004433b0 — <b>le verbe 13 de la foret</b> : « le groupe est-il
+    /// entierement rassemble sur l'un des quatre emplacements ? ». 1150 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; desassemblage conserve sous
+    /// <c>Legacy/Raw/Blaze/AreaVerbs/FUN_004433B0.asm</c>. Table <c>0x0056aec8</c>, foret,
+    /// sous-zones 0 a 4.
+    ///
+    /// <para>
+    /// <b>Sur quoi elle porte.</b> Sur les <b>quatre premiers creneaux d'entite de zone</b>
+    /// (<c>0x005fa5e0</c>, pas de <c>0x9c</c>), et sur eux seuls — jamais sur l'entite qu'on lui
+    /// passe, qu'elle ne lit pas. De chaque creneau elle utilise trois champs : <c>+0x16</c>
+    /// l'<b>armement</b> (1 = en attente, -1 = desarme), <c>+0x14</c> l'<b>etat</b> (99 = pret,
+    /// 206 = declenche) et <c>+0x98</c> le <b>temoin</b> qu'elle pose a 1 en declenchant.
+    /// </para>
+    /// <para>
+    /// <b>La garde.</b> L'octet <c>0x1f</c> du banc de script 0 — <c>0x005e96ff</c>, celui dont
+    /// <c>EntityHandler_00456750</c>, le radeau, consulte les bits 2 et 3. Ici ce sont les bits
+    /// <b>0</b> et <b>1</b> : le bit 0 eteint la paire de creneaux 1 et 3 (la clairiere sud), le
+    /// bit 1 la paire 0 et 2 (la clairiere nord). Un bit pose n'est pas seulement un
+    /// « deja fait » : il coupe aussi le reamorcage ci-dessous.
+    /// </para>
+    /// <para>
+    /// <b>Le reamorcage est croise</b>, et c'est la seule surprise de la fonction : dans une paire,
+    /// l'armement de l'un remet l'<b>autre</b> a l'etat pret. Le <c>+0x16</c> du creneau 3 desarme
+    /// (-1) remet le <c>+0x14</c> du creneau 1 a 99, et reciproquement ; meme croisement entre 0
+    /// et 2. Les deux emplacements d'une clairiere s'excluent donc : desarmer l'un rouvre l'autre.
+    /// </para>
+    /// <para>
+    /// <b>Le declenchement.</b> Pour chacun des quatre creneaux, dans l'ordre 3, 1, 0, 2 : si sa
+    /// garde est levee, s'il est arme (<c>+0x16 == 1</c>) et pret (<c>+0x14 == 99</c>), et si
+    /// <see cref="PartyGatheredInRegion"/> repond oui, alors <c>+0x14</c> passe a <b>206</b> et
+    /// <c>+0x98</c> a <b>1</b>. Le mot d'armement du creneau 3 est lu <b>une seule fois, a
+    /// l'entree</b> (<c>mov cx,[5FA7CAh]</c>, et <c>ecx</c> n'est plus touche jusqu'au
+    /// <c>cmp cx,1</c>) : transcrit tel quel, meme si le preambule n'ecrit que des <c>+0x14</c> et
+    /// ne pourrait donc pas le changer.
+    /// </para>
+    /// <para>
+    /// Elle finit par <c>xor eax,eax ; ret</c> : elle rend <b>toujours zero</b>, donc le script
+    /// continue et lira l'etat des creneaux ensuite. C'est un ordre, pas une question.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_004433B0()
+    {
+        // Ghidra: `mov al,[5E96FFh]` puis `and dl,1` et `and al,2` — l'octet 0x1f du banc 0, le
+        // meme que celui du radeau.
+        byte gates = Mem.s_StateBank0_005e96e0[0x1f];
+        bool southLocked = (gates & 1) != 0;         // dl
+        bool northLocked = (gates & 2) != 0;         // al apres `and al,2`
+
+        byte* slot0 = ZoneEntitySlot(0);
+        byte* slot1 = ZoneEntitySlot(1);
+        byte* slot2 = ZoneEntitySlot(2);
+        byte* slot3 = ZoneEntitySlot(3);
+
+        // Ghidra: `mov cx,[5FA7CAh]`, avant tout le reste.
+        short armed3 = *(short*)(slot3 + 0x16);
+
+        // Le reamorcage croise, une paire par bit de garde.
+        if (!southLocked)
+        {
+            if (armed3 == -1) *(short*)(slot1 + 0x14) = 99;
+            if (*(short*)(slot1 + 0x16) == -1) *(short*)(slot3 + 0x14) = 99;
+        }
+
+        if (!northLocked)
+        {
+            if (*(short*)(slot0 + 0x16) == -1) *(short*)(slot2 + 0x14) = 99;
+            if (*(short*)(slot2 + 0x16) == -1) *(short*)(slot0 + 0x14) = 99;
+        }
+
+        // Les quatre blocs, dans l'ordre du binaire. Le creneau 3 est le seul dont l'armement
+        // vienne de la lecture d'entree.
+        if (!southLocked && armed3 == 1)
+        {
+            TriggerGatherMarker(slot3, GatherRegions_004433B0[3]);
+        }
+
+        if (!southLocked && *(short*)(slot1 + 0x16) == 1)
+        {
+            TriggerGatherMarker(slot1, GatherRegions_004433B0[1]);
+        }
+
+        if (!northLocked && *(short*)(slot0 + 0x16) == 1)
+        {
+            TriggerGatherMarker(slot0, GatherRegions_004433B0[0]);
+        }
+
+        if (!northLocked && *(short*)(slot2 + 0x16) == 1)
+        {
+            TriggerGatherMarker(slot2, GatherRegions_004433B0[2]);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Le creneau <paramref name="index"/> de la table d'entites de zone
+    /// (<c>0x005fa5e0</c>, pas de <c>0x9c</c>).</summary>
+    private static byte* ZoneEntitySlot(int index) => Mem.Entity(0x005fa5e0) + index * 0x9c;
+
+    /// <summary>
+    /// Un des quatre blocs de <see cref="AreaVerb_004433B0"/> : si le creneau est pret et que le
+    /// groupe est rassemble sur sa zone, il passe a l'etat declenche et pose son temoin.
+    /// </summary>
+    private static void TriggerGatherMarker(byte* slot, int[] region)
+    {
+        if (*(short*)(slot + 0x14) != 99) return;
+        if (!PartyGatheredInRegion(region)) return;
+
+        *(short*)(slot + 0x14) = 206;               // Ghidra: 0xce
+        *(ushort*)(slot + 0x98) = 1;
+    }
+
+    /// <summary>
+    /// La question que posent les quatre blocs de <see cref="AreaVerb_004433B0"/> : <b>tous</b> les
+    /// membres debout sont-ils dans la zone, et y en a-t-il au moins un ?
+    ///
+    /// <para>
+    /// Le binaire ne compte pas « combien sont dedans » mais deux nombres qu'il compare :
+    /// <c>esi</c>, incremente pour chaque membre vivant, et <c>ebp</c>, incremente pour chaque
+    /// membre vivant qui passe les trois tests suivants. L'increment de <c>esi</c> vient
+    /// <b>avant</b> ces tests — c'est ce qui fait qu'un membre trop bas, marque <c>0x2000</c> ou
+    /// simplement ailleurs suffit a faire echouer l'egalite.
+    /// </para>
+    /// <para>
+    /// Les trois tests : la hauteur <c>+0x20</c> tronquee au millier doit atteindre
+    /// <c>0x50000</c> — le meme idiome de plancher que le radeau, avec une autre borne —, le mot
+    /// <c>+0x90</c> ne doit pas porter le bit <c>0x2000</c>, et la position doit tomber dans l'un
+    /// des trois rectangles. Le binaire ecrit ce bit de deux facons selon le bloc
+    /// (<c>test bh,0x20</c> dans trois d'entre eux, <c>test dword …,0x2000</c> dans le quatrieme) :
+    /// c'est le meme test.
+    /// </para>
+    /// </summary>
+    private static bool PartyGatheredInRegion(int[] region)
+    {
+        int standing = 0;
+        int inside = 0;
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            standing++;
+
+            if ((*(int*)(member + 0x20) & unchecked((int)0xfffff000)) < 0x50000) continue;
+            if ((*(uint*)(member + 0x90) & 0x2000) != 0) continue;
+
+            int x = *(int*)(member + 0x1c) >> 0xc;
+            int z = *(int*)(member + 0x24) >> 0xc;
+
+            for (int r = 0; r < 12; r += 4)
+            {
+                if (x >= region[r] && x <= region[r + 1] && z >= region[r + 2] && z <= region[r + 3])
+                {
+                    inside++;
+                    break;
+                }
+            }
+        }
+
+        // Ghidra: `cmp si,bp` puis `test si,si` et `test bp,bp` — trois sorties, une seule
+        // condition. Les deux comptes valent au plus 4, la largeur de seize bits ne se voit pas.
+        return standing == inside && standing != 0;
     }
 
     /// <summary>Un des quatre <c>rep stosd</c> de <see cref="AreaVerb_00443260"/> : 0x10 dwords a

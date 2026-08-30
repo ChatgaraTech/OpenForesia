@@ -1,6 +1,6 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-08-29**. L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-08-30**. L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -9,6 +9,24 @@ Point d’entrée entre deux sessions. Mis à jour le **2026-08-29**. L'historiq
 reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage dans
 `Documentation/Tests/test-protocol.md`. Restent à l'agent le build et les lancements sans
 déplacement.
+
+---
+
+# LES VERBES DE ZONE DE LA FORÊT — TABLE COMPLÈTE (2026-08-30)
+
+**Les treize verbes distincts de la table `0x0056aec8` en zone 3 sont transcrits**, souches
+comprises. Le dernier — `0x004433b0`, le verbe 13, 1150 octets — est le rassemblement du groupe sur
+l'un des quatre emplacements des deux clairières ; détail dans `REVERSE_STATUS.md`, « suite 35 ».
+Une arrivée sur une carte de forêt ne devrait plus lever de `verbe … pas encore reconstruit`.
+
+**Écrit, jamais exercé.** Le corps compile et est branché ; aucune image de jeu ne l'a encore
+traversé. Ce qu'il faut voir en jeu : arriver dans l'une des deux clairières, y **rassembler tout
+le groupe** sur l'emplacement, et vérifier que l'énigme bascule. Un membre resté en arrière, en
+l'air ou marqué `0x2000` suffit à faire échouer le test — c'est voulu, pas un défaut.
+
+**Ce que le prochain plantage de verbe apprendra.** Les dix autres zones ont chacune leur table ;
+`GestionnairesEntites.md` dit lesquelles sont couvertes. Le message de `ScriptOpAreaVerb` donne
+déjà l'adresse et la ligne de `disasm` à taper.
 
 ---
 

@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **le verbe 13 de la forêt** (`0x004433b0`, 1150 octets, absent de `Blaze.c`) — « tout le groupe est-il rassemblé sur l'un des quatre emplacements ? ». **La zone 3 n'a plus de verbe manquant** : les treize de la table `0x0056aec8` sont couverts
+- doc : **deux clairières, deux emplacements chacune** — quatre réunions de trois rectangles, la sud en `z` −200..780, la nord en `z` 2020..3000, toutes entre `x` −4200 et −3220. Dans une clairière les deux emplacements découpent le même sol dans deux sens perpendiculaires
+- doc : **le réamorçage des emplacements est croisé** — désarmer l'un remet l'**autre** de la paire à l'état prêt, jamais lui-même. Un appariement direct aurait fermé l'énigme au lieu de la faire basculer
 - feat : **`0x0049e190`, la troisième intelligence d'entité de scène** — 572 instructions, absente de `Blaze.c`, relevée au désassembleur. Zone 3 à **121 sur 136**. Même découpage en trois temps que ses deux sœurs, mais c'est bien un autre corps : comparée par la seule forme des instructions, elle en diffère sur 416 lignes de 672
 - feat : **elle lance des sorts**, ce qu'aucune des deux autres ne fait — sa posture 1 attend l'image 7 de l'animation puis appelle `CastSpell_0053A980` avec la paire famille-indice rangée en `+0x06`, et sa posture 3 tire cette paire dans une table de trois mots par espèce (`0x00552978`)
 - doc : **le délai d'après-sort ne vient pas d'un tirage mais du répertoire** — l'octet `+0x13` de la fiche du sort, atteinte par `DAT_005e97c4 + 0x9c` puis la famille puis l'indice, au pas de `0x30`. C'est le sort lui-même qui dit combien de temps la bête reste immobile après l'avoir lancé

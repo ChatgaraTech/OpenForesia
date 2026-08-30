@@ -48,9 +48,9 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 | | |
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
-| testes en jeu | **41** |
-| implementes, jamais appeles | **148** |
-| a transcrire | **1241** |
+| testes en jeu | **53** |
+| implementes, jamais appeles | **137** |
+| a transcrire | **1240** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -62,10 +62,10 @@ et n'est pas un comportement.
 | zone | lieu | gestionnaires | implementes | testes |
 |---|---|---|---|---|
 | — | **tables statiques** (partout) | 274 | 47 | 0 |
-| 0 | L'auberge | 48 | 35 | 0 |
+| 0 | L'auberge | 48 | 35 | 12 |
 | 1 | La mine abandonnee | 157 | 22 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
-| 3 | La foret | 136 | 121 | 17 |
+| 3 | La foret | 136 | 122 | 23 |
 | 4 | La vieille tour | 176 | 19 | 0 |
 | 5 | Le Labyrinthe des morts | 160 | 19 | 0 |
 | 6 | Le chateau de l'immortel | 170 | 20 | 0 |
@@ -366,7 +366,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 0 — L'auberge
 
-48 gestionnaires, 35 implementes, 0 testes.
+48 gestionnaires, 35 implementes, 12 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -384,40 +384,40 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0053DF20` | 0 | 0056AEC8 | **non** | **non** |
 | `0x0053DF90` | 0 | 0056AFC8 | **non** | **non** |
 | `0x00404E50` | 0 | 0056B0C8 | oui | **non** |
-| `0x00404EF0` | 0 | 0056B0C8 | oui | **non** |
-| `0x004055C0` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405A70` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405D60` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405E70` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405FE0` | 0 | 0056B0C8 | oui | **non** |
 | `0x00442D90` | 0 | 0056AEC8 | oui | **non** |
 | `0x00442E10` | 0 | 0056AEC8 | oui | **non** |
-| `0x00442F60` | 0 | 0056AEC8 | oui | **non** |
-| `0x00443100` | 0 | 0056AEC8 | oui | **non** |
 | `0x004431F0` | 0 | 0056AEC8 | oui | **non** |
 | `0x00443260` | 0 | 0056AEC8 | oui | **non** |
-| `0x004441F0` | 0 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0 | 0056AEC8 | oui | **non** |
 | `0x00445840` | 0 | 0056AEC8 | oui | **non** |
 | `0x004502E0` | 0 | 0056ADC8 | oui | **non** |
 | `0x00450760` | 0 | 0056ADC8 | oui | **non** |
-| `0x004508B0` | 0 | 0056ADC8 | oui | **non** |
-| `0x004508D0` | 0 | 0056ADC8 | oui | **non** |
-| `0x004509B0` | 0 | 0056ADC8 | oui | **non** |
-| `0x00450AA0` | 0 | 0056ADC8 | oui | **non** |
 | `0x00450BD0` | 0 | 0056ADC8 | oui | **non** |
 | `0x00450C60` | 0 | 0056ADC8 | oui | **non** |
-| `0x00450D30` | 0 | 0056ADC8 | oui | **non** |
 | `0x004734B0` | 0 | 0056ADC8 | oui | **non** |
-| `0x004736D0` | 0 | 0056ADC8 | oui | **non** |
 | `0x004738A0` | 0 | 0056ADC8 | oui | **non** |
 | `0x00473A70` | 0 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0 | 0056ADC8 | oui | **non** |
 | `0x00473CB0` | 0 | 0056ADC8 | oui | **non** |
 | `0x00473ED0` | 0 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0 | 0056ADC8 | oui | **non** |
-| `0x00486EE0` | 0 | 0056AD48 | oui | **non** |
 | `0x0053DD20` | 0 | 0056AEC8 | oui | **non** |
+| `0x00404EF0` | 0 | 0056B0C8 | oui | oui |
+| `0x004055C0` | 0 | 0056B0C8 | oui | oui |
+| `0x00442F60` | 0 | 0056AEC8 | oui | oui |
+| `0x00443100` | 0 | 0056AEC8 | oui | oui |
+| `0x004441F0` | 0 | 0056AEC8 | oui | oui |
+| `0x004508B0` | 0 | 0056ADC8 | oui | oui |
+| `0x004508D0` | 0 | 0056ADC8 | oui | oui |
+| `0x004509B0` | 0 | 0056ADC8 | oui | oui |
+| `0x00450AA0` | 0 | 0056ADC8 | oui | oui |
+| `0x00450D30` | 0 | 0056ADC8 | oui | oui |
+| `0x004736D0` | 0 | 0056ADC8 | oui | oui |
+| `0x00486EE0` | 0 | 0056AD48 | oui | oui |
 
 ## Zone 1 — La mine abandonnee
 
@@ -634,11 +634,10 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 3 — La foret
 
-136 gestionnaires, 121 implementes, 17 testes.
+136 gestionnaires, 122 implementes, 23 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x004433B0` | 0,1,2,3,4 | 0056AEC8 | **non** | **non** |
 | `0x00458200` | 6,7,8 | 0056ADC8 | **non** | **non** |
 | `0x0049E920` | 0,1,2,3,4 | 0056AD48 | **non** | **non** |
 | `0x0049FAD0` | 6,7,8 | 0056AD48 | **non** | **non** |
@@ -699,23 +698,18 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00416120` | 5,9 | 0056B2C8 | oui | **non** |
 | `0x00416210` | 5,9 | 0056B2C8 | oui | **non** |
 | `0x00416300` | 5,9 | 0056B2C8 | oui | **non** |
-| `0x00442E10` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004431F0` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
-| `0x00443260` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004432A0` | 5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004432E0` | 0,1,2,3,4,6,7,8 | 0056AEC8 | oui | **non** |
 | `0x00443300` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
+| `0x004433B0` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
 | `0x00443830` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x004438A0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00443960` | 5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004439A0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00443A00` | 6,7,8 | 0056AEC8 | oui | **non** |
 | `0x00443B20` | 5,9 | 0056AEC8 | oui | **non** |
-| `0x004441F0` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
 | `0x00444E60` | 5,9 | 0056AEC8 | oui | **non** |
-| `0x00445480` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
-| `0x00445840` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004566C0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00456CF0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00456E80` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
@@ -759,6 +753,12 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004A5F10` | 5,9 | 0056AD48 | oui | **non** |
 | `0x0040F370` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
 | `0x0040F7F0` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
+| `0x00442E10` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00443260` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x004438A0` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x004441F0` | 0,1,2,3,4 | 0056AEC8 | oui | oui |
+| `0x00445480` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
+| `0x00445840` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | oui |
 | `0x00456730` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
 | `0x00456750` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
 | `0x00456A30` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
