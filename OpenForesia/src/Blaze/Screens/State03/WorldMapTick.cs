@@ -4739,6 +4739,12 @@ public static unsafe partial class Blaze
             // FUN_00539b80 n'est appele que depuis son autre geste.
             case 0x0049D030: TickSceneEntityAi_0049D030(record); return;
 
+            // 0x0049f0c0 est un DUPLICATA RELOCALISE de l'Homme-lezard : 648 instructions
+            // comparees une a une, une seule difference — l'adresse de sa propre table de sauts,
+            // dont les cinq cibles sont decalees de 0x2090, exactement l'ecart entre les deux
+            // fonctions. Le compilateur a emis le meme corps deux fois.
+            case 0x0049F0C0: TickSceneEntityAi_0049D030(record); return;
+
             // Le sous-type 8 — le GOBLIN, la premiere bete qui ATTAQUE DE LOIN : son second geste
             // ne croise aucun gabarit, il fait naitre le projectile 0x49 et rend la main.
             case 0x0049DA40: TickSceneEntityAi_0049DA40(record); return;
@@ -4764,6 +4770,24 @@ public static unsafe partial class Blaze
             case 0x0040F470: EntityHandler_0040F470(record); return;
             case 0x0040F8E0: EntityHandler_0040F8E0(record); return;
             case 0x0040FAC0: EntityHandler_0040FAC0(record); return;
+
+            // Les deux autres exemplaires de la bulle : meme corps, autre planche.
+            case 0x00412C20: EntityHandler_00412C20(record); return;
+            case 0x00416210: EntityHandler_00416210(record); return;
+
+            // Le rocher qui roule, sœur maigre de 0x00456a30.
+            case 0x00457E20: EntityHandler_00457E20(record); return;
+            case 0x00459A70: EntityHandler_00459A70(record); return;
+
+            // Les deux autres exemplaires de l'eclat : meme corps, autre planche.
+            case 0x00412950: EntityHandler_00412950(record); return;
+            case 0x00415F40: EntityHandler_00415F40(record); return;
+
+            // 0x00458070 est un DOUBLON octet pour octet de 0x004566c0, deja transcrit : trois
+            // caracteres hexadecimaux d'ecart, le deplacement relatif du `call`. Le compilateur a
+            // emis le meme corps deux fois. Un case suffit — voir la regle « verifier s'il y a un
+            // doublon avant de transcrire » dans CLAUDE.md.
+            case 0x00458070: EntityHandler_004566C0((uint*)record); return;
             case 0x0040F650: EntityHandler_0040F650(record); return;
 
             default:
@@ -9187,35 +9211,90 @@ public static unsafe partial class Blaze
         if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
     }
 
+    // =====================================================================
+    // L'ECLAT QUI JAILLIT, EN TROIS EXEMPLAIRES (2026-08-30)
+    //
+    // Comme la bulle : 0x0040f470, 0x00412950 et 0x00415f40 sont le meme corps, a l'adresse du
+    // descripteur pres. Les trois pseudo-C de Blaze.c ne different que d'une ligne, celle qui pose
+    // la planche — le diff tient en trois lignes.
+    //
+    // Les trois planches portent elles aussi les memes cinq enregistrements : 0x0054f7c8,
+    // 0x0054f8e8 et 0x0054f9e0. Seule leur SIXIEME entree differe, et aucune des trois n'est
+    // atteignable — le corps pose l'indice a zero et n'y revient jamais.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f8e8</c> — cinq enregistrements jusqu'a
+    /// <c>DAT_0054f910</c>, les memes que <see cref="s_Descriptors_0054F7C8"/>.</summary>
+    private static readonly byte[] s_Descriptors_0054F8E8 =
+    [
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f8e8
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f8f0
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f8f8
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f900
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f908
+    ];
+
+    private static byte* s_Descriptors0054F8E8Storage;
+
+    private static byte* Descriptors0054F8E8()
+        => NativeCopy(s_Descriptors_0054F8E8, ref s_Descriptors0054F8E8Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f9e0</c> — la troisieme copie, jusqu'a
+    /// <c>DAT_0054fa08</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054F9E0 =
+    [
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f9e0
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f9e8
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f9f0
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f9f8
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054fa00
+    ];
+
+    private static byte* s_Descriptors0054F9E0Storage;
+
+    private static byte* Descriptors0054F9E0()
+        => NativeCopy(s_Descriptors_0054F9E0, ref s_Descriptors0054F9E0Storage);
+
+    /// <summary>Ghidra: FUN_0040f470 @ 0x0040f470 — le premier des trois eclats. Le corps est dans
+    /// <see cref="TickBurstingSpark"/>.</summary>
+    private static void EntityHandler_0040F470(byte* e)
+        => TickBurstingSpark(e, Descriptors0054F7C8());   // Ghidra: &DAT_0054f7c8
+
+    /// <summary>Ghidra: FUN_00412950 @ 0x00412950 — le deuxieme.</summary>
+    private static void EntityHandler_00412950(byte* e)
+        => TickBurstingSpark(e, Descriptors0054F8E8());
+
+    /// <summary>Ghidra: FUN_00415f40 @ 0x00415f40 — le troisieme.</summary>
+    private static void EntityHandler_00415F40(byte* e)
+        => TickBurstingSpark(e, Descriptors0054F9E0());
+
     /// <summary>
-    /// Ghidra: FUN_0040f470 @ 0x0040f470 — <b>l'eclat qui jaillit et retombe</b>. Decompilee dans
-    /// <c>Blaze.c</c>. Table <c>0x0056b2c8</c>, foret.
+    /// Le corps commun des trois eclats.
     ///
     /// <para>
-    /// <b>Elle tire son echelle deux fois</b>, et la seconde ecrase la premiere :
+    /// <b>Il tire son echelle deux fois</b>, et la seconde ecrase la premiere :
     /// <c>0xc00 + (rand &amp; 0x3ff)</c> sur les deux axes, puis <c>0x1000 + rand % 0xc00</c>. Les
     /// deux premiers tirages ne servent qu'a consommer deux nombres de la suite pseudo-aleatoire —
     /// transcrits tels quels, la suite est partagee par tout le jeu.
     /// </para>
     /// <para>
-    /// Elle part d'une position dispersee puis <b>decalee de 0x32 fois le sinus et le cosinus de
-    /// son cap</b> <c>+0x32</c> — elle jaillit donc dans la direction que son porteur regarde. Sa
-    /// vitesse verticale <c>+0x54</c> part vers le haut (<c>+10 a +24</c> unites) et perd deux
-    /// unites par image : une parabole.
+    /// L'eclat part d'une position dispersee puis <b>decalee de 0x32 fois le sinus et le cosinus
+    /// de son cap</b> <c>+0x32</c> — il jaillit donc dans la direction que son porteur regarde. Sa
+    /// vitesse verticale part vers le haut (<c>+10 a +24</c> unites) et perd deux unites par
+    /// image : une parabole.
     /// </para>
     /// <para>
     /// <b>Sa mort a deux portes, et l'une est aleatoire</b> : passe la onzieme image, une chance
     /// sur six par image ; et de toute facon a la seizieme. La teinte perd <c>0x24</c> par canal et
     /// par image <b>sans borne</b> — soustraction d'octet directe, pas
-    /// <see cref="BrightenEntityTint_00404DE0"/> —, donc elle deborde. C'est ce que fait le
-    /// binaire.
+    /// <see cref="BrightenEntityTint_00404DE0"/> —, donc elle deborde.
     /// </para>
     /// </summary>
-    private static void EntityHandler_0040F470(byte* e)
+    private static void TickBurstingSpark(byte* e, byte* atlas)
     {
         if (*(short*)(e + 0x10) == 0)
         {
-            *(byte**)(e + 0x3c) = Descriptors0054F7C8();   // Ghidra: &DAT_0054f7c8
+            *(byte**)(e + 0x3c) = atlas;
 
             // Les deux premiers tirages d'echelle sont ecrases plus bas. Ils consomment deux
             // nombres de la suite, et c'est leur seul effet.
@@ -9331,28 +9410,22 @@ public static unsafe partial class Blaze
         e[0x40] = (byte)(CrtRand() % 6);
     }
 
-    /// <summary>
-    /// Ghidra: FUN_0040fac0 @ 0x0040fac0 — <b>la bulle qui monte et retrecit</b>. Decompilee dans
-    /// <c>Blaze.c</c>. Table <c>0x0056b2c8</c>, foret.
-    ///
-    /// <para>
-    /// Elle se disperse de <c>±80</c> unites a l'horizontale, monte de <c>0 a 19</c> d'un coup a la
-    /// naissance, et part d'une echelle fixe de <c>0x9c4</c>. Son pas de montee <c>+0x12</c>, tire
-    /// entre 10 et 19, <b>diminue d'une unite une image sur deux</b> — le compteur <c>+0x14</c>
-    /// bascule.
-    /// </para>
-    /// <para>
-    /// <b>Deux seuils sur ce meme pas</b> : sous 7, l'echelle perd 200 par image sur les deux axes ;
-    /// sous 3, l'entite s'eteint. Elle ne compte donc pas ses images — c'est sa vitesse qui lui
-    /// sert d'horloge.
-    /// </para>
-    /// </summary>
+    /// <summary>Ghidra: FUN_0040fac0 @ 0x0040fac0 — la premiere des trois bulles. Le corps est
+    /// dans <see cref="TickRisingBubble"/> : voir le bloc de commentaire qui la precede.</summary>
     private static void EntityHandler_0040FAC0(byte* e)
+        => TickRisingBubble(e, Descriptors0054F6F8());   // Ghidra: &DAT_0054f6f8
+
+    /// <summary>Le corps commun des trois bulles. Elle se disperse de <c>±80</c> unites a
+    /// l'horizontale, monte de <c>0 a 19</c> d'un coup, part d'une echelle fixe de <c>0x9c4</c>,
+    /// et son pas de montee <c>+0x12</c> — tire entre 10 et 19 — <b>diminue d'une unite une image
+    /// sur deux</b>. Deux seuils sur ce pas : sous 7 l'echelle perd 200 par image, sous 3 l'entite
+    /// s'eteint. Elle ne compte donc pas ses images : sa vitesse lui sert d'horloge.</summary>
+    private static void TickRisingBubble(byte* e, byte* atlas)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x10) = 1;
-            *(byte**)(e + 0x3c) = Descriptors0054F6F8();   // Ghidra: &DAT_0054f6f8
+            *(byte**)(e + 0x3c) = atlas;
             e[0x0a] = 6;
             e[0x0b] = 0;
 
@@ -9386,6 +9459,142 @@ public static unsafe partial class Blaze
         }
 
         if (*(short*)(e + 0x12) < 3) *(uint*)e &= 0x7fffffff;
+    }
+
+    // =====================================================================
+    // LA BULLE, EN TROIS EXEMPLAIRES (2026-08-30)
+    //
+    // 0x0040fac0, 0x00412c20 et 0x00416210 sont le MEME corps, emis trois fois par le compilateur.
+    // Compares octet a octet, ils ne different que par l'adresse du descripteur et par les
+    // deplacements relatifs des quatre `call rand` — consequence mecanique de leurs adresses.
+    //
+    // Leurs trois planches sont elles aussi identiques, a l'adresse pres : 0x0054f6f8, 0x0054f818
+    // et 0x0054f930 portent les memes cinq enregistrements. Le jeu de 1998 a duplique le code ET
+    // la donnee.
+    //
+    // Le corps est donc ecrit UNE fois, avec la planche en parametre. C'est une unite reelle, pas
+    // un decoupage de confort : trois sites l'emploient a l'identique.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f818</c> — les cinq premiers enregistrements, identiques a
+    /// ceux de <see cref="s_Descriptors_0054F6F8"/>. La plage va jusqu'a <c>DAT_0054f8e8</c>, soit
+    /// vingt-six enregistrements ; seul le <b>premier</b> est atteignable depuis
+    /// <see cref="TickRisingBubble"/>, dont le corps ne touche jamais l'indice.</summary>
+    private static readonly byte[] s_Descriptors_0054F818 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f818
+        0x48, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f820
+        0x60, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f828
+        0x78, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f830
+        0x90, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f838
+    ];
+
+    private static byte* s_Descriptors0054F818Storage;
+
+    private static byte* Descriptors0054F818()
+        => NativeCopy(s_Descriptors_0054F818, ref s_Descriptors0054F818Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f930</c> — la troisieme copie, meme contenu. La plage va
+    /// jusqu'a <c>DAT_0054f9e0</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054F930 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f930
+        0x48, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f938
+        0x60, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f940
+        0x78, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f948
+        0x90, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f950
+    ];
+
+    private static byte* s_Descriptors0054F930Storage;
+
+    private static byte* Descriptors0054F930()
+        => NativeCopy(s_Descriptors_0054F930, ref s_Descriptors0054F930Storage);
+
+    /// <summary>Ghidra: FUN_00412c20 @ 0x00412c20 — la deuxieme des trois bulles.</summary>
+    private static void EntityHandler_00412C20(byte* e)
+        => TickRisingBubble(e, Descriptors0054F818());
+
+    /// <summary>Ghidra: FUN_00416210 @ 0x00416210 — la troisieme.</summary>
+    private static void EntityHandler_00416210(byte* e)
+        => TickRisingBubble(e, Descriptors0054F930());
+
+    /// <summary>
+    /// Ghidra: FUN_00457e20 @ 0x00457e20 — <b>le rocher qui roule</b>. Decompilee dans
+    /// <c>Blaze.c</c>. Table <c>0x0056adc8</c>, foret.
+    ///
+    /// <para>
+    /// <b>C'est la sœur maigre de <see cref="EntityHandler_00456A30"/></b> : le meme deplacement
+    /// avec collision (<see cref="MoveSceneEntity_00455B30"/>, masque <c>0x88c2</c> au lieu de
+    /// <c>0x8882</c>), le meme test de vitesse, le meme son de roulement, les memes volumes de
+    /// declenchement, les memes trois vitesses remises a zero a la fin. Ce qu'elle n'a pas : la
+    /// position gardee hors de l'enregistrement, la recherche du membre le plus proche, et le
+    /// second effet.
+    /// </para>
+    /// <para>
+    /// <b>Son compteur se comporte a l'envers de celui de sa sœur.</b> Ici il decompte jusqu'a
+    /// zero et <b>s'y arrete</b> ; chez <c>0x00456a30</c> il se recharge a 15. Le son repart donc
+    /// des que la vitesse retombe puis remonte, au lieu d'une image sur seize.
+    /// </para>
+    /// <para>
+    /// Elle ne pose jamais <c>+0x10</c> a 1 : le test de naissance ne sert qu'a remettre le
+    /// compteur a zero, et il est donc vrai a chaque image tant que rien d'autre n'ecrit
+    /// <c>+0x10</c>. C'est ce que fait le binaire.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00457E20(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0) *(short*)(e + 0x98) = 0;
+
+        MoveSceneEntity_00455B30(e, 0x88c2);
+
+        if (Rolling(e) && *(short*)(e + 0x98) == 0)
+        {
+            TryPlaySoundNearEntity((uint*)e, 2, 700, 0x1000, 0, 0);
+            *(short*)(e + 0x98) = 0x0f;
+        }
+
+        (*(short*)(e + 0x98))--;
+        if (*(short*)(e + 0x98) < 0) *(short*)(e + 0x98) = 0;
+
+        TestTriggerVolumes_00534CD0((uint*)e);
+
+        *(int*)(e + 0x50) = 0;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00459a70 @ 0x00459a70 — <b>le troisieme rocher qui roule</b>. Decompilee dans
+    /// <c>Blaze.c</c>. Table <c>0x0056adc8</c>, foret.
+    ///
+    /// <para>
+    /// Elle tient le milieu entre ses deux sœurs : comme <see cref="EntityHandler_00457E20"/> son
+    /// compteur <c>+0x98</c> s'arrete a zero au lieu de se recharger, mais comme
+    /// <see cref="EntityHandler_00456A30"/> elle <b>s'eteint quand le deplacement le lui dit</b> —
+    /// le bit 29 du mot d'etat, que <see cref="MoveSceneEntity_00455B30"/> rend. Son masque de
+    /// refus est <c>0x8880</c>, le plus permissif des trois.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00459A70(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0) *(short*)(e + 0x98) = 0;
+
+        if ((ushort)MoveSceneEntity_00455B30(e, 0x8880) == 1) *(uint*)e &= 0x7fffffff;
+
+        if (Rolling(e) && *(short*)(e + 0x98) == 0)
+        {
+            TryPlaySoundNearEntity((uint*)e, 2, 700, 0x1000, 0, 0);
+            *(short*)(e + 0x98) = 0x0f;
+        }
+
+        (*(short*)(e + 0x98))--;
+        if (*(short*)(e + 0x98) < 0) *(short*)(e + 0x98) = 0;
+
+        TestTriggerVolumes_00534CD0((uint*)e);
+
+        *(int*)(e + 0x50) = 0;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = 0;
     }
 
     /// <summary>Ghidra: <c>&amp;DAT_0054f758</c> — quatre enregistrements jusqu'a

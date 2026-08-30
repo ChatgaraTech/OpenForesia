@@ -18389,3 +18389,49 @@ et il le remplace plus bas par `(int)(param_1 + iVar5 * -0x28)`, une arithmetiqu
 n'a aucun sens ici. La ligne du Z est donc inventee. Elle se recupere au desassembleur — c'est
 quelques instructions — mais transcrire la pseudo-C telle quelle produirait un deplacement faux
 qu'aucune compilation ne signalerait. Laissee pour une passe au desassembleur.
+
+## 2026-08-30 (suite 12) — la chasse aux doublons : ce qu'elle donne, et ce qu'elle coute
+
+Le compilateur de 1998 a emis plusieurs corps en double. Trois trouvailles ce jour :
+
+| adresse | duplicata de | preuve |
+|---|---|---|
+| `0x00458070` | `0x004566c0` | trois caracteres hexadecimaux d'ecart sur 112 octets : le deplacement du `call` |
+| `0x00412c20`, `0x00416210` | `0x0040fac0` | meme corps, meme planche dupliquee a trois adresses |
+| `0x0049f0c0` | `0x0049d030` | **648 instructions**, une seule difference — l'adresse de sa propre table de sauts |
+
+Le dernier est le plus instructif. Compare instruction par instruction apres neutralisation des
+cibles absolues, il ne differe que par `jmp dword [ecx*4+49FAB4h]` contre `+49DA24h`. Les deux
+tables portent cinq entrees, et **les cinq cibles sont decalees de `0x2090`** — exactement l'ecart
+entre les deux fonctions. C'est une relocalisation, pas une variante. Un `case` a suffi la ou
+1 800 octets attendaient.
+
+### La methode, et sa limite
+
+Grouper par les **32 premiers octets** est un bon filtre : un prologue n'a pas de deplacement
+relatif, donc deux copies ont le meme prologue octet pour octet. Mais ce n'est qu'un filtre — les
+gestionnaires d'une meme famille partagent leur prologue sans etre identiques, et le groupe le plus
+gros compte douze membres tous differents.
+
+La verification demande un desassemblage des deux corps, cibles absolues neutralisees. Deux pieges
+s'y trouvent :
+
+- **le desassembleur decode la table de sauts comme du code**, apres le dernier `ret` et avant le
+  bourrage. Ces lignes de charabia differ d'une copie a l'autre et polluent le compte ;
+- **le bourrage fait trois `nop`, pas quatre** — une coupe reglee sur quatre ne se declenche
+  jamais.
+
+Et surtout : `0x00457240` et `0x00458e90` ont le meme prologue, la meme longueur, et ne different
+que par **deux instructions et une constante** (`push 20h` contre `push 10h`). Ce sont deux corps
+distincts. Une difference d'une seule ligne peut changer le comportement ; le compte de lignes ne
+conclut pas, il oriente.
+
+### Ce qui a ete tente et abandonne
+
+Un script `find-duplicate-handlers.sh` a ete ecrit pour automatiser les deux temps, puis **retire**
+avant d'etre livre : apres plusieurs tours, ses comptes restaient inexpliques — trois fonctions
+manifestement differentes rendaient le meme chiffre. Livrer un outil dont on ne sait pas lire la
+sortie est pire que pas d'outil : on lui ferait confiance.
+
+La verification a la main reste donc la methode, et elle est ecrite ci-dessus. Le filtre par
+prologue, lui, vaut la peine d'etre refait a la main quand une grosse famille se presente.

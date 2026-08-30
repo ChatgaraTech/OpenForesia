@@ -5,6 +5,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **l'éclat qui jaillit existe lui aussi en trois exemplaires** (`0x0040f470`, `0x00412950`, `0x00415f40`) — les trois pseudo-C ne diffèrent que d'une ligne, celle qui pose la planche. Corps écrit une fois, planche en paramètre
+- feat : **`0x00459a70`, le troisième rocher qui roule** — compteur de sa sœur maigre, extinction de sa sœur riche, masque `0x8880`, le plus permissif des trois
+- feat : **`0x0049f0c0` est un duplicata relocalisé de l'Homme-lézard** (`0x0049d030`) — 648 instructions comparées une à une, une seule différence : l'adresse de sa propre table de sauts, dont les cinq cibles sont décalées de `0x2090`, exactement l'écart entre les deux fonctions. Un `case` au lieu d'un corps de 1 800 octets
+- feat : **la bulle existe en trois exemplaires** (`0x0040fac0`, `0x00412c20`, `0x00416210`) — même corps émis trois fois, mêmes cinq descripteurs dupliqués à trois adresses. Corps écrit une fois, planche en paramètre
+- feat : **`0x00457e20`, le rocher qui roule** — sœur maigre de `0x00456a30` : même déplacement avec collision, mais son compteur s'arrête à zéro au lieu de se recharger
+- feat : **`0x00458070` est un doublon octet pour octet de `0x004566c0`** — trois caractères hexadécimaux d'écart, le déplacement du `call`. Un `case` suffit, aucun corps à écrire
 - feat : **`0x0040f650`, la gerbe reculée** — la ligne du Z que Ghidra avait *inventée* (`param_1 + iVar5 * -0x28`) récupérée au désassembleur : c'est le cosinus de `cap + 0x400`, rangé dans un mot de pile et relu vingt lignes plus bas. Trois états, dont une attente
 - feat : **trois verbes de zone** — `0x00443960` (combien de membres debout, rangé dans une variable de script), `0x004439a0` (le compte de neuf drapeaux comparé à l'argument), `0x00443a00` (**la porte** : cinq états qui ouvrent puis referment l'animation d'une entité de sous-type 3)
 - feat : **quatre effets de la forêt d'un bloc** — `0x0040f190` (l'étincelle grise qui retombe), `0x0040f470` (l'éclat qui jaillit, mort à deux portes dont une aléatoire), `0x0040f8e0` (la gerbe large, vie fixe de 24 images), `0x0040fac0` (la bulle dont la vitesse sert d'horloge). Tous décompilés dans `Blaze.c`
