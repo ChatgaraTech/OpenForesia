@@ -5,6 +5,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **une seconde sonde, sur les objets** (`objets-exerces.tsv`) — accrochée à `RunItemScript_00523AA0`, elle voit les deux scripts. `ObjetsAtteignables.md` porte désormais la même lecture en deux colonnes que `GestionnairesEntites.md`, sur les 21 gestionnaires **et** sur les 607 objets un par un : **369 pleinement implémentés**
+- doc : **la clé de la sonde d'objets est l'hexa de la fiche, pas le nom** — les noms d'objet ne sont pas de l'ASCII (le disque français porte encore des fiches en katakana demi-chasse), et une clé lisible sortait en mojibake. Le recensement recalcule la même clé depuis `objets.csv` pour retrouver le nom
 - feat : **`census-item-effects.sh`, la liste de courses des objets** — il déroule hors ligne les deux scripts des 2 370 fiches d'objet du CD et sort `ObjetsAtteignables.md` : **21 gestionnaires atteignables par un objet, 3 écrits, 18 à transcrire**, triés par nombre d'emplois. Plus besoin de découvrir par plantage
 - doc : **le dérouleur a prédit les deux plantages de la séance avant qu'on les rencontre** — la Petite potion se décode en opcode 17 puis sous-type `0x40`, exactement dans cet ordre. C'est ce qui autorise à croire le reste du relevé
 - doc : **un objet fait la même chose où qu'on soit** — sur les 1 440 naissances relevées dans les scripts, **zéro** emploie un sous-type `≥ 0xc0` : tout passe par la table statique `0x00551c30`, commune aux onze zones. Les dix-huit corps restants n'ont donc pas de variante par carte

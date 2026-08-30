@@ -27559,11 +27559,126 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void RunItemScript_00523AA0(uint* slot, byte* record, byte* item, byte* script)
     {
+        NoteItemUsed(item);          // ECHAFAUDAGE : hors du binaire, voir la sonde plus bas.
+
         uint condition = 0;                              // Ghidra: local_4
 
         for (uint op = *script; op != 0xff && (op == 2 || condition == 0); op = *script)
         {
             script = DispatchItemOp(op, slot, record, item, script, &condition);
+        }
+    }
+
+    // =====================================================================
+    // ECHAFAUDAGE — LA SONDE D'OBJETS (2026-08-30)
+    //
+    // Jumelle de NoteHandlerSeen, sur l'autre bout du meme chantier. Celle-la dit quel gestionnaire
+    // d'entite a tourne ; celle-ci dit quel OBJET a ete employe. Les deux sont necessaires parce
+    // qu'elles ne repondent pas a la meme question : un gestionnaire exerce prouve qu'un corps
+    // tourne, un objet exerce prouve qu'un objet ENTIER se comporte bien de bout en bout.
+    //
+    // LA CLE EST L'HEXA DES SEIZE PREMIERS OCTETS DE LA FICHE, pas le nom lisible. La premiere
+    // version relevait le nom court decode, et c'etait une faute : les noms d'objet ne sont pas de
+    // l'ASCII — le jeu a son propre jeu de caracteres —, si bien que la moitie du releve sortait en
+    // mojibake et que le tri n'avait plus de sens. L'hexa n'a aucun de ces problemes : il est
+    // exact, stable, et `census-item-effects.sh` le recalcule a l'identique depuis la colonne
+    // `octets` d'objets.csv pour retrouver le nom deja decode. La cle est technique, l'affichage
+    // est lisible, et les deux ne se melangent pas.
+    //
+    // Releve dans Documentation/Etat/objets-exerces.tsv, meme forme et memes garanties que son
+    // ainee : union avec l'existant, ecriture immediate, suivi par git. OPENFORESIA_NO_PROBE=1
+    // desarme les deux.
+    // =====================================================================
+
+    private static readonly SortedSet<string> s_ItemsSeen = new(StringComparer.Ordinal);
+
+    private static SortedSet<string> s_ItemProbeAll;
+
+    private static string ItemProbePath => System.IO.Path.GetFullPath(System.IO.Path.Combine(
+        AppContext.BaseDirectory, "..", "..", "..", "..",
+        "Documentation", "Etat", "objets-exerces.tsv"));
+
+    /// <summary>
+    /// Note qu'un objet vient d'etre employe. Appelee sur les deux scripts — l'emploi et le
+    /// declenchement — puisque tous deux passent par
+    /// <see cref="RunItemScript_00523AA0"/>.
+    /// </summary>
+    private static void NoteItemUsed(byte* item)
+    {
+        if (!s_ProbeEnabled || item == null) return;
+
+        string key = ItemKey(item);
+
+        string line = $"{key}\t{Res.s_Unknown_005de528 & 0xff}\t{s_Unknown_005de52c}";
+
+        if (!s_ItemsSeen.Add(line)) return;
+
+        LoadItemProbe();
+        if (!s_ItemProbeAll.Add(line)) return;
+
+        WriteItemProbe();
+
+        Console.Error.WriteLine(
+            $"[SONDE OBJET] nouveau : {key} zone={Res.s_Unknown_005de528 & 0xff} " +
+            $"sous-zone={s_Unknown_005de52c} ({s_ItemProbeAll.Count} couples connus)");
+    }
+
+    /// <summary>
+    /// La <b>cle</b> d'une fiche d'objet : ses seize premiers octets en hexadecimal. C'est le champ
+    /// du nom court, mais pris <b>brut</b> — voir l'en-tete de section pour pourquoi il ne faut pas
+    /// le decoder ici.
+    /// </summary>
+    private static string ItemKey(byte* item)
+    {
+        var text = new System.Text.StringBuilder(0x20);
+        for (int i = 0; i < 0x10; i++) text.Append(item[i].ToString("x2"));
+        return text.ToString();
+    }
+
+    private static void LoadItemProbe()
+    {
+        if (s_ItemProbeAll != null) return;
+
+        s_ItemProbeAll = new SortedSet<string>(StringComparer.Ordinal);
+
+        try
+        {
+            if (System.IO.File.Exists(ItemProbePath))
+            {
+                foreach (string line in System.IO.File.ReadAllLines(ItemProbePath))
+                {
+                    if (line.Length != 0 && line[0] != '#') s_ItemProbeAll.Add(line);
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"[SONDE OBJET] fichier non relu : {error.Message}");
+        }
+    }
+
+    private static void WriteItemProbe()
+    {
+        try
+        {
+            var text = new System.Text.StringBuilder();
+            text.AppendLine("# Les objets REELLEMENT employes en jeu, une ligne par couple");
+            text.AppendLine("# (cle de fiche, zone, sous-zone). La CLE est l hexa des seize premiers");
+            text.AppendLine("# octets de la fiche — le champ du nom court, pris brut : les noms ne sont");
+            text.AppendLine("# pas de l ASCII. census-item-effects.sh la recalcule depuis objets.csv");
+            text.AppendLine("# pour retrouver le nom lisible. Ecrit par la sonde de");
+            text.AppendLine("# Screens/State03/WorldMapTick.cs des qu'un couple est nouveau, en");
+            text.AppendLine("# UNION avec ce que le fichier portait deja. Ne pas editer a la main :");
+            text.AppendLine("# il se lit comme une preuve accumulee, pas comme une intention.");
+            text.AppendLine("#");
+            text.AppendLine("# cle\tzone\tsous-zone");
+            foreach (string line in s_ItemProbeAll) text.AppendLine(line);
+
+            System.IO.File.WriteAllText(ItemProbePath, text.ToString(), System.Text.Encoding.UTF8);
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"[SONDE OBJET] releve non ecrit : {error.Message}");
         }
     }
 

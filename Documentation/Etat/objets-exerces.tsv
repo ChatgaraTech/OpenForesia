@@ -1,0 +1,14 @@
+﻿# Les objets REELLEMENT employes en jeu, une ligne par couple
+# (cle de fiche, zone, sous-zone). La CLE est l hexa des seize premiers
+# octets de la fiche — le champ du nom court, pris brut : les noms ne sont
+# pas de l ASCII. census-item-effects.sh la recalcule depuis objets.csv
+# pour retrouver le nom lisible. Ecrit par la sonde de
+# Screens/State03/WorldMapTick.cs des qu'un couple est nouveau, en
+# UNION avec ce que le fichier portait deja. Ne pas editer a la main :
+# il se lit comme une preuve accumulee, pas comme une intention.
+#
+# cle	zone	sous-zone
+6d426f75636c69657263756972000000	3	0
+7741726d757265206375697200000000	3	0
+7745706565206e6f726d616c65000000	3	0
+7750657469746520706f74696f6e0000	3	0

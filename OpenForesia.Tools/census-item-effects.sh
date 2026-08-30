@@ -34,6 +34,8 @@ set -e
 BIN=Legacy/Binaries/Blaze.exe
 ITEMS=Documentation/Reference/Bestiaire/objets.csv
 TICK=OpenForesia/src/Blaze/Screens/State03/WorldMapTick.cs
+PROBE=Documentation/Etat/handlers-exerces.tsv        # la sonde des gestionnaires
+IPROBE=Documentation/Etat/objets-exerces.tsv         # la sonde des objets
 
 DATA_DELTA=$((0x401A00))          # .data : VA - offset fichier
 SEL_VA=$((0x00566d98))            # la premiere des sept tables de pointeurs
@@ -75,6 +77,20 @@ sed -n '/private static void DispatchEntityHandlerCore/,/^    }$/p' "$TICK" \
     | grep -oE 'case 0x[0-9A-Fa-f]{8}:' | grep -oE '[0-9A-Fa-f]{8}' \
     | tr 'a-f' 'A-F' | sort -u > "$TMP/wired"
 
+# Ce que les deux sondes ont vu passer en jeu. Les fichiers peuvent ne pas exister encore :
+# une colonne « teste » entierement a non est une reponse, pas une erreur.
+if [ -f "$PROBE" ]; then
+    grep -v '^#' "$PROBE" | grep -v '^$' | cut -f1 | tr 'a-f' 'A-F' | sort -u > "$TMP/seen"
+else
+    : > "$TMP/seen"
+fi
+
+if [ -f "$IPROBE" ]; then
+    grep -v '^#' "$IPROBE" | grep -v '^$' | cut -f1 | sort -u > "$TMP/seenitems"
+else
+    : > "$TMP/seenitems"
+fi
+
 # ---------------------------------------------------------------------------------------------
 # 3. Derouler les deux scripts de chaque fiche
 # ---------------------------------------------------------------------------------------------
@@ -110,9 +126,15 @@ awk -F',' '
                 if (op < 0 || op == 255 || op == 22) break
                 if (!(op in w)) break                       # opcode hors des 23 : on s arrete
 
-                if (op == 9 || op == 10) print "SPAWN\t" zone "\t" sz "\t" h2(hex, pc + 1)
+                if (op == 9 || op == 10) {
+                    print "SPAWN\t" zone "\t" sz "\t" h2(hex, pc + 1)
+                    print "IOBJ\t" nomcourt "\t" h2(hex, pc + 1)
+                }
                 if (op == 18)            print "EFFET\t" h2(hex, pc + 1)
-                if (op == 14)            print "SORT\t" h2(hex, pc + 1) "\t" h2(hex, pc + 2)
+                if (op == 14) {
+                    print "SORT\t" h2(hex, pc + 1) "\t" h2(hex, pc + 2)
+                    print "IOP14\t" nomcourt
+                }
 
                 if (op == 1) { pc = u16(hex, pc + 1); continue }          # saut ferme
                 if (op == 2) { tgt = u16(hex, pc + 1); if (tgt > 0 && tgt < 320) stack[top++] = tgt }
@@ -124,9 +146,23 @@ awk -F',' '
 
     NR == 1 { next }
     {
-        hex = $0; sub(/.*,/, "", hex)                  # `octets` est le dernier champ
+        ligne = $0
+        hex = ligne; sub(/.*,/, "", hex)               # `octets` est le dernier champ
         if (length(hex) < 640) next
+
+        # La CLE : les seize premiers octets, tels quels. Identique a ItemKey cote jeu.
+        cle = substr(hex, 1, 32)
+
+        # Le NOM LISIBLE : le premier champ entre guillemets de la ligne, deja decode par le
+        # verbe bestiaire. On ne le redecode pas ici — les noms ne sont pas de l ASCII.
+        nom = ""
+        if (match(ligne, /"[^"]*"/)) nom = substr(ligne, RSTART + 1, RLENGTH - 2)
+        if (nom == "") nom = "(sans nom)"
+
         zone = $1 + 0; sz = $2 + 0
+        nomcourt = cle
+        print "INOM\t" cle "\t" nom
+        print "IVU\t" cle "\t" zone
         walk(hex, u16(hex, 128), zone, sz)
         walk(hex, u16(hex, 130), zone, sz)
     }
@@ -135,7 +171,7 @@ awk -F',' '
 # ---------------------------------------------------------------------------------------------
 # 4. Le rapport
 # ---------------------------------------------------------------------------------------------
-awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v empty="$EMPTY" '
+awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seenif="$TMP/seenitems" -v empty="$EMPTY" '
     BEGIN {
         FS = "\t"
         while ((getline line < tablesf) > 0) {
@@ -144,6 +180,8 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v empty="$EMPTY" '
             else             zon[f[2] "/" f[3] "/" f[4]] = f[5]
         }
         while ((getline a < wiredf) > 0) wired[a] = 1
+        while ((getline a < seenf) > 0) seen[a] = 1
+        while ((getline a < seenif) > 0) vus[a] = 1
     }
     {
         split($0, p, " ")
@@ -167,6 +205,24 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v empty="$EMPTY" '
         }
         if (f[1] == "EFFET") { effets[f[2] + 0] += count; next }
         if (f[1] == "SORT")  { sorts[f[2] "/" f[3]] += count; next }
+
+        # --- les quatre releves par OBJET -------------------------------------------------
+        if (f[1] == "INOM")  { objets[f[2]] = 1; libelle[f[2]] = f[3]; next }
+        if (f[1] == "IVU")   { objets[f[2]] = 1; next }
+        if (f[1] == "IOP14") { objets[f[2]] = 1; op14[f[2]] = 1; next }
+        if (f[1] == "IOBJ") {
+            nom = f[2]; st = f[3] + 0
+            objets[nom] = 1
+            # tous les sous-types releves sont < 0xc0, donc la table statique suffit ; un
+            # sous-type de sous-zone serait ici irresolvable faute de porter la sous-zone, et
+            # l objet serait marque « ? » plutot que « oui » — voir inconnu[] plus bas.
+            if (st >= 192) { inconnu[nom] = 1; next }
+            a = stat[st]
+            if (a == "" || a == empty) next
+            if (index(besoin[nom], a) == 0)
+                besoin[nom] = besoin[nom] (besoin[nom] == "" ? "" : " ") a
+            next
+        }
     }
     END {
         print "# Ce qu\47utiliser un objet peut atteindre"
@@ -218,8 +274,8 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v empty="$EMPTY" '
         print "Colonne **emplois** : le nombre de sites d\47appel dans l\47ensemble des scripts, pas le"
         print "nombre d\47objets. C\47est l\47ordre de travail — le plus employe d\47abord."
         print ""
-        print "| gestionnaire | emplois | sous-type | ecrit | zones |"
-        print "|---|---:|---|---|---|"
+        print "| gestionnaire | emplois | sous-type | implemente | teste | zones |"
+        print "|---|---:|---|---|---|---|"
 
         m = 0
         for (a in emplois) { ordre[m] = a; m++ }
@@ -232,13 +288,16 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v empty="$EMPTY" '
             a = ordre[x]; total++
             etat = (a in wired) ? "oui" : "**non**"
             if (!(a in wired)) manque++
+            vu = (a in seen) ? "oui" : "**non**"
+            if (a in seen) exerces++
             nz = split(zones[a], zz, " ")
             # tri numerique : sans lui la liste sort en 0,1,10,2,3, dans lordre du texte
             for (q = 1; q <= nz; q++) for (r = q + 1; r <= nz; r++)
                 if (zz[r] + 0 < zz[q] + 0) { tz = zz[q]; zz[q] = zz[r]; zz[r] = tz }
             lieux = ""
             for (q = 1; q <= nz; q++) if (zz[q] != "") lieux = lieux (lieux == "" ? "" : ",") zz[q]
-            printf "| `0x%s` | %d | %s | %s | %s |\n", a, emplois[a], soustypes[a], etat, lieux
+            printf "| `0x%s` | %d | %s | %s | %s | %s |\n",
+                   a, emplois[a], soustypes[a], etat, vu, lieux
         }
 
         print ""
@@ -251,6 +310,7 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v empty="$EMPTY" '
         printf "| gestionnaires distincts atteignables par un objet | **%d** |\n", total
         printf "| deja ecrits | **%d** |\n", total - manque
         printf "| a transcrire | **%d** |\n", manque
+        printf "| exerces en jeu (sonde des gestionnaires) | **%d** |\n", exerces + 0
         printf "| naissances resolues par la table STATIQUE | **%d** |\n", nstatique
         printf "| naissances resolues par une table de SOUS-ZONE | **%d** |\n", nparzone
         print ""
@@ -261,6 +321,69 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v empty="$EMPTY" '
         print "colonne `zones` ne dit que dans quels lieux l\47objet se trouve, pas de quoi depend son"
         print "comportement. La branche par sous-zone reste dans le script parce que c\47est la regle"
         print "du binaire ; elle ne se declenche simplement jamais ici."
+        print ""
+        print "---"
+        print ""
+        print "## Les objets, un par un"
+        print ""
+        print "Meme lecture que `GestionnairesEntites.md`, mais sur les objets et non sur les"
+        print "gestionnaires. **Les deux colonnes sont independantes** :"
+        print ""
+        print "| colonne | ce qu\47elle dit | d\47ou elle vient |"
+        print "|---|---|---|"
+        print "| **implemente** | tous les corps que ses scripts font naitre existent | le releve croise avec les `case` du repartiteur |"
+        print "| **teste** | l\47objet a reellement ete employe en jeu | la sonde d\47objets, `objets-exerces.tsv` |"
+        print ""
+        print "`implemente = ?` veut dire : tout ce qui est resolvable est ecrit, **mais le script"
+        print "emploie l\47opcode 14**, dont le sous-type engendre vit dans le repertoire des sorts et"
+        print "n\47est donc pas resolu ici. Ces objets peuvent encore lever une fois en jeu."
+        print ""
+        print "Un objet **sans naissance** est implemente par construction : son script ne fait"
+        print "appel qu\47a des opcodes tous transcrits."
+        print ""
+        print "**Les noms illisibles sont dans la donnee, pas dans ce rapport.** Le disque francais"
+        print "porte encore des fiches nommees dans le jeu de caracteres d\47origine (katakana"
+        print "demi-chasse), qu\47`objets.csv` rend octet par octet. Ils sont recopies tels quels ici :"
+        print "les corriger demanderait de savoir quelle table de caracteres le jeu applique a"
+        print "l\47affichage, ce qui n\47est pas etabli. L\47identite d\47une ligne ne depend de toute"
+        print "facon pas de son nom mais de sa **cle** — l\47hexa des seize premiers octets de la"
+        print "fiche —, la meme des deux cotes de la sonde."
+        print ""
+        print "| objet | gestionnaires requis | implemente | teste |"
+        print "|---|---|---|---|"
+
+        # Trie sur le LIBELLE, pas sur la cle : c est un document qui se lit.
+        ni = 0
+        for (o in objets) listeO[ni++] = o
+        for (x = 0; x < ni; x++) for (y = x + 1; y < ni; y++)
+            if (libelle[listeO[y]] < libelle[listeO[x]]) { t = listeO[x]; listeO[x] = listeO[y]; listeO[y] = t }
+
+        oktot = 0; vustot = 0
+        for (x = 0; x < ni; x++) {
+            o = listeO[x]
+            nb = split(besoin[o], bb, " ")
+            complet = 1; requis = ""
+            for (q = 1; q <= nb; q++) {
+                if (!(bb[q] in wired)) complet = 0
+                requis = requis (requis == "" ? "" : ", ") "`0x" bb[q] "`"
+            }
+            if (o in inconnu) complet = 0
+            if (requis == "") requis = "—"
+
+            if (!complet)          impl = "**non**"
+            else if (o in op14)    impl = "?"
+            else                 { impl = "oui"; oktot++ }
+
+            vu = (o in vus) ? "oui" : "**non**"
+            if (o in vus) vustot++
+
+            printf "| %s | %s | %s | %s |\n", libelle[o], requis, impl, vu
+        }
+
+        print ""
+        printf "**%d objets distincts**, dont **%d** pleinement implementes et **%d** deja employes\n",
+               ni, oktot, vustot
+        print "en jeu."
         print ""
         print "---"
         print ""

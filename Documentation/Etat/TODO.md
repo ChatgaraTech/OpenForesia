@@ -69,13 +69,36 @@ réellement engendré. Ce répertoire n'est pas dans `objets.csv` : les paires f
 listées sans être résolues. Les résoudre demanderait d'étendre le verbe `bestiaire` au répertoire
 des sorts — c'est le prochain pas si les 18 ne suffisent pas.
 
+## Les deux tableaux, et leurs deux colonnes
+
+`ObjetsAtteignables.md` porte maintenant **la même lecture en deux colonnes que
+`GestionnairesEntites.md`**, sur les deux niveaux :
+
+- **les 21 gestionnaires** — `implemente` (un `case` du répartiteur) et `teste` (la sonde des
+  gestionnaires, `handlers-exerces.tsv`) ;
+- **les 607 objets distincts, un par un** — `implemente` veut dire *tous* les corps que ses scripts
+  font naître existent, `teste` veut dire que l'objet a réellement été employé en jeu.
+
+**La sonde d'objets est nouvelle** (`Documentation/Etat/objets-exerces.tsv`) : elle s'accroche à
+`RunItemScript_00523AA0`, donc elle voit les deux scripts — l'emploi et le déclenchement. Sa clé
+est **l'hexa des seize premiers octets de la fiche**, pas le nom : les noms d'objet ne sont pas de
+l'ASCII, et une clé lisible sortait en mojibake. Le recensement recalcule la même clé depuis
+`objets.csv` pour retrouver le nom.
+
+État de départ : **369 des 607 objets sont pleinement implémentés**, 0 exercé — le fichier de sonde
+n'existe pas encore, il naîtra à la première partie.
+
+`implemente = ?` marque les objets dont tout le résolvable est écrit **mais dont le script emploie
+l'opcode 14** : leur sous-type engendré vit dans le répertoire des sorts et n'est pas résolu. Ceux-là
+peuvent encore lever une fois.
+
 ## La stratégie, en trois lignes
 
-1. Descendre `ObjetsAtteignables.md` de haut en bas — le plus employé d'abord, c'est le plus
+1. Descendre le tableau des gestionnaires de haut en bas — le plus employé d'abord, c'est le plus
    probable en jeu.
-2. Régénérer le fichier après chaque lot : la colonne « écrit » se met à jour toute seule.
-3. Garder la sonde en jeu comme **filet**, plus comme méthode : elle ne sert plus qu'à attraper ce
-   que le relevé statique n'a pas pu résoudre (l'opcode 14).
+2. Régénérer après chaque lot : les quatre colonnes se mettent à jour toutes seules.
+3. Jouer normalement en gardant les deux sondes armées. Elles ne servent plus à *découvrir* mais à
+   **prouver** : un objet ne passe à `teste = oui` que parce qu'on s'en est réellement servi.
 
 ---
 

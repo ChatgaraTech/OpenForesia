@@ -19255,3 +19255,46 @@ table statique `0x00551c30`, la même dans les onze zones : **un objet fait exac
 où qu'on soit**. Les dix-huit corps restants n'ont donc pas de variante par carte à redouter, et
 écrire chacun une fois le couvre partout. La branche par sous-zone reste dans le script parce que
 c'est la règle du binaire — elle ne se déclenche simplement jamais sur ces données.
+
+## 2026-08-30 (suite 38) — la seconde sonde : prouver qu'un objet marche, pas seulement qu'un corps tourne
+
+**La question était : « pour chaque entrée d'`ObjetsAtteignables`, y a-t-il une sonde ? »** La
+réponse était oui à moitié — et la moitié manquante était la plus intéressante.
+
+**Ce qui existait déjà.** `NoteHandlerSeen` couvre les gestionnaires atteints par un script
+d'objet : c'est elle qui a enregistré `0x00446790` au moment même où il levait. La colonne `teste`
+du tableau des gestionnaires ne coûtait donc qu'un croisement avec `handlers-exerces.tsv`.
+
+**Ce qui manquait.** Un gestionnaire exercé prouve qu'un *corps* tourne ; il ne prouve pas qu'un
+*objet* se comporte bien de bout en bout. Un objet dont trois des quatre naissances sont écrites
+lève quand même. D'où `NoteItemUsed`, accrochée à `RunItemScript_00523AA0` — la machine elle-même,
+donc les deux scripts, l'emploi comme le déclenchement — et le relevé
+`Documentation/Etat/objets-exerces.tsv`.
+
+**La clé n'est pas le nom, et c'est le point qui a demandé une reprise.** La première version
+relevait le nom court décodé. Elle a produit du mojibake sur la moitié des lignes et un tri sans
+signification : **les noms d'objet ne sont pas de l'ASCII**. Le disque français porte encore des
+fiches nommées dans le jeu de caractères d'origine — du katakana demi-chasse —, et `objets.csv` les
+rend octet par octet. La clé est donc **l'hexa des seize premiers octets de la fiche**, exacte et
+stable ; `census-item-effects.sh` la recalcule à l'identique depuis `objets.csv` pour retrouver le
+nom déjà décodé. La clé est technique, l'affichage est lisible, et les deux ne se mélangent pas.
+
+### Ce que le tableau par objet ajoute
+
+**607 objets distincts** — les 2 370 fiches sont le même objet répété par sous-zone. Pour chacun :
+les gestionnaires que ses scripts exigent, `implemente` (tous existent) et `teste` (la sonde l'a vu
+employer). **369 sont pleinement implémentés** d'entrée, sans rien écrire de plus : leurs scripts ne
+font naître que des corps déjà transcrits, ou n'en font naître aucun.
+
+**Un troisième état était nécessaire.** `implemente = ?` marque les objets dont tout le résolvable
+est écrit *mais dont le script emploie l'opcode 14* — le sous-type engendré vit alors dans le
+répertoire des sorts, hors d'`objets.csv`. Les compter comme `oui` aurait été une promesse que le
+relevé ne peut pas tenir ; les compter comme `non` aurait masqué qu'il n'y a rien à y faire pour
+l'instant. Le point d'interrogation dit exactement ce qu'on sait.
+
+### Le changement de régime
+
+Les sondes ne servent plus à **découvrir** — le relevé statique le fait mieux et d'avance — mais à
+**prouver**. Un objet ne passe à `teste = oui` que parce qu'on s'en est réellement servi en jeu.
+C'est la même distinction que `GestionnairesEntites.md` porte depuis le début entre ÉCRIT et
+EXERCÉ, appliquée un cran plus haut.
