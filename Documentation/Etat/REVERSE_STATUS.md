@@ -18222,3 +18222,69 @@ entre eux soit connu — c'est ce verbe qui le donne.
   affichée, ce qui explique la double écriture.
 - Le champ `+0x15c` est **relu du bloc** après cette écriture au lieu d'être repris du registre. Les
   deux lectures rendent la même valeur ; toutes deux sont conservées.
+
+## 2026-08-30 (suite 8) — la carte suivante : le sous-type 29, et la routine de déplacement partagée
+
+**Plantage signalé par Vincent** à l'arrivée sur la carte suivante :
+`FUN_0050e5e0, table 0x005fa5e0 entree 0, sous-type 29 : gestionnaire d'entite 0x456A30 non
+transcrit`.
+
+Deux corps à écrire, tous deux relevés sous `Legacy/Raw/Blaze/` :
+`FUN_00456A30.asm` (692 octets) et `FUN_00455B30.asm` (890 octets).
+
+### `FUN_00455b30` — la signature que Ghidra a ratée
+
+C'est la routine de **déplacement avec collision** que partagent seize sites d'appel. Elle est
+décompilée dans `Blaze.c`, mais avec quatre défauts de recouvrement qu'il fallait résoudre sur la
+pile avant de pouvoir la transcrire :
+
+| ce que Ghidra rend | ce que c'est |
+|---|---|
+| un seul paramètre | il y en a **deux** ; le second est un masque |
+| `unaff_retaddr` | ce second argument, lu à `[esp+0x40]` |
+| `unaff_EBP` | la copie de `+0x00` prise à l'entrée |
+| `unaff_EBX` | la copie de `+0x60` |
+
+Le piège du masque mérite d'être noté : il n'est lu **qu'une fois**, juste après un `call`, dans la
+vue de pile où l'argument de cet appel est encore empilé. L'offset y vaut donc `[esp+0x40]` et non
+`[esp+0x3c]` — Ghidra en a conclu qu'il s'agissait de l'adresse de retour, d'où le nom
+`unaff_retaddr` et la disparition du paramètre.
+
+**Et le bloc de restauration est apparié de travers dans la pseudo-C** : elle rend
+`param_1[7] = uVar1` là où `uVar1` vient de `param_1[0x18]`, sur onze champs. Le désassembleur
+montre que **chaque champ retourne à lui-même** — c'est une annulation de mouvement, pas une
+permutation. Transcrire la pseudo-C telle quelle aurait produit une entité qui se téléporte à
+chaque refus de collision, et rien ne l'aurait signalé à la compilation.
+
+**Ce que la routine fait** : elle sauvegarde onze champs, divise la vitesse par le nombre de côtés
+en appui (les quatre bits bas de `+0x09`), laisse la poussée l'emporter sur la volonté quand elle
+est plus forte, borne le pas à `0x1e000`, intègre, appelle `FinalizeEntityPlacement2`, puis annule
+tout et **inverse les vitesses horizontales** si le masque et l'état de contact se croisent. Elle
+rend le bit 29 du mot d'état.
+
+Un détail conservé : le mot de contact `+0x90` est sauvegardé sur **seize** bits et restitué sur
+**trente-deux**, ce qui efface sa moitié haute à chaque annulation.
+
+### `0x00456a30` — une entité qui roule, et qui se souvient
+
+Elle tient sa position **hors de son enregistrement**, dans six octets de l'arène
+(`0x005e9708`..`0x005e970d`) : trois coordonnées sur seize bits, poids fort puis poids faible,
+rechargées à la naissance et réécrites à chaque image. Elle survit donc à sa propre extinction —
+éteinte puis réengendrée, elle reprend où elle en était. Son point d'origine, lu dans la graine,
+est `(-300, 200, 4300)`, et c'est le même point que la fin du corps mesure.
+
+Elle désigne aussi, chaque image, le **membre vivant le plus proche**, et publie son indice dans la
+variable de script 2 — un script de la zone peut donc le relire.
+
+Deux sons et un effet se déclenchent au même seuil de vitesse (`0x2000` sur l'une des deux
+composantes horizontales), espacés par un compteur qui se recharge à 15.
+
+### Ce que cette entrée ouvre
+
+`MoveSceneEntity_00455B30` a **seize** sites d'appel : c'est la première fois que le dépôt en
+dispose, et les prochains gestionnaires d'entité de zone qui la demandent n'auront plus qu'à
+l'appeler. Les trois autres appelées du corps — `TryPlaceEntity` (`FUN_005330d0`),
+`FinalizeEntityPlacement2` (`FUN_00533940`) et `Ordinal_442` — étaient déjà en place ; `0x00545a10`
+s'est révélé n'être qu'un **thunk d'import** vers ce dernier.
+
+**Transcrits et compilés, pas exécutés** — le test en jeu revient à Vincent.

@@ -2773,6 +2773,397 @@ public static unsafe partial class Blaze
             (byte)Mem.s_BackColourB_005e93a4);
     }
 
+
+    /// <summary>
+    /// Ghidra: FUN_00455b30 @ 0x00455b30 — <b>le deplacement d'une entite de scene avec collision,
+    /// et son annulation</b>. 890 octets, decompilee dans <c>Blaze.c</c> mais avec une signature
+    /// ratee ; releve garde sous <c>Legacy/Raw/Blaze/FUN_00455B30.asm</c>. <b>Seize sites
+    /// d'appel</b> : c'est la routine que partagent les gestionnaires d'entite de zone.
+    ///
+    /// <para>
+    /// <b>Ce que Ghidra a manque, et ce que le desassembleur rend.</b> La pseudo-C ne declare
+    /// qu'<b>un</b> parametre alors que les seize appels en empilent deux, et elle lit trois
+    /// registres non initialises. Les quatre points se resolvent sur la pile :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><c>unaff_retaddr</c> est le <b>second argument</b>, le masque. Il n'est lu qu'une
+    /// fois, a <c>0x00455d62</c>, dans la vue d'apres le <c>push esi</c> de l'appel qui precede —
+    /// d'ou <c>[esp+0x40]</c> et non <c>[esp+0x3c]</c>, ce qui a fait croire a Ghidra qu'il
+    /// s'agissait de l'adresse de retour ;</item>
+    /// <item><c>unaff_EBP</c> est la copie de <c>+0x00</c> prise a l'entree
+    /// (<c>[esp+0x10]</c>) ;</item>
+    /// <item><c>unaff_EBX</c> est celle de <c>+0x60</c> (<c>[esp+0x14]</c>) ;</item>
+    /// <item>et surtout, <b>l'appariement du bloc de restauration est decale d'un cran</b> dans la
+    /// pseudo-C — elle rend <c>param_1[7] = uVar1</c> la ou <c>uVar1</c> vient de
+    /// <c>param_1[0x18]</c>. Le desassembleur montre que <b>chaque champ retourne a lui-meme</b> :
+    /// c'est une annulation, pas une permutation.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Le corps, en trois temps.</b> La naissance (<c>+0x10 == 0</c>) pose les quatre demi-cotes
+    /// a <c>0xa000</c>, met les vitesses a zero, fige le plancher <c>+0x60</c>/<c>+0x64</c> sur la
+    /// hauteur courante et appelle <see cref="TryPlaceEntity"/> avec le masque <c>0x8000</c>.
+    /// Ensuite l'entite est <b>sauvegardee</b> — onze champs plus le mot de contact <c>+0x90</c> —,
+    /// deplacee, puis <see cref="FinalizeEntityPlacement2"/> decide de la face du terrain sous
+    /// elle. Enfin, <b>deux conditions annulent tout</b> : le masque porte <c>0x2000</c> et la face
+    /// atteinte porte <c>0x20</c> en <c>+0x0d</c> ; ou le mot de contact croise le masque. Dans les
+    /// deux cas les onze champs reviennent et les vitesses horizontales <b>changent de signe</b> —
+    /// l'entite rebondit.
+    /// </para>
+    /// <para>
+    /// <b>La vitesse est divisee par le nombre de contacts.</b> Les quatre bits bas de <c>+0x09</c>
+    /// comptent les cotes en appui ; <c>+0x50</c> et <c>+0x58</c> sont divises par ce compte. Puis
+    /// les trois composantes poussees sont <b>halvees</b>, et si leur longueur depasse celle des
+    /// composantes voulues (<c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>), ce sont elles qui l'emportent :
+    /// une entite coincee se laisse pousser plutot que d'insister.
+    /// </para>
+    /// <para>
+    /// <b>Le mot de contact est sauvegarde sur seize bits et restitue sur trente-deux</b>
+    /// (<c>mov bp,[esi+90h]</c> a la sauvegarde, <c>mov [esi+90h],ebp</c> a la restitution, apres
+    /// masquage par <c>0xffff</c>). Une annulation efface donc la moitie haute de <c>+0x90</c>.
+    /// C'est ce que le binaire fait ; transcrit tel quel.
+    /// </para>
+    /// </summary>
+    /// <param name="mask">Le masque de refus, second argument des seize sites d'appel.</param>
+    /// <returns>Le bit 29 du mot d'etat de l'entite, 0 ou 1.</returns>
+    private static uint MoveSceneEntity_00455B30(byte* e, uint mask)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(int*)(e + 0x50) = 0;
+            *(ushort*)(e + 0x82) = 0xa000;
+            *(ushort*)(e + 0x86) = 0xa000;
+            *(ushort*)(e + 0x8a) = 0xa000;
+            *(ushort*)(e + 0x8e) = 0xa000;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x64) = *(int*)(e + 0x20);
+            *(int*)(e + 0x60) = *(int*)(e + 0x20);
+
+            TryPlaceEntity(*(byte**)Mem.Entity(0x005f7bc0), (uint*)e, 0x8000);
+        }
+
+        // ---------------------------------------------------------------- la sauvegarde
+        uint savedState = *(uint*)e;                    // [esp+0x10], l'unaff_EBP de Ghidra
+        int savedFloor = *(int*)(e + 0x60);             // [esp+0x14], l'unaff_EBX
+        int savedCeiling = *(int*)(e + 0x64);           // [esp+0x18]
+        int savedX = *(int*)(e + 0x1c);                 // [esp+0x1c]
+        int savedZ = *(int*)(e + 0x24);                 // [esp+0x20]
+        int saved80 = *(int*)(e + 0x80);                // [esp+0x24]
+        int saved84 = *(int*)(e + 0x84);                // [esp+0x28]
+        int saved88 = *(int*)(e + 0x88);                // [esp+0x2c]
+        int saved8c = *(int*)(e + 0x8c);                // [esp+0x30]
+        uint savedFace = *(uint*)(e + 0x7c);            // [esp+0x38]
+        uint contact = *(ushort*)(e + 0x90);            // bp — SEIZE bits, voir l'en-tete
+
+        // ---------------------------------------------------------------- la poussee des contacts
+        byte contacts = e[9];
+        if ((contacts & 0x0f) != 0)
+        {
+            int sides = 0;
+            for (int bit = 0; bit <= 3; bit++)
+            {
+                if (((contacts >> bit) & 1) != 0) sides++;
+            }
+
+            *(int*)(e + 0x50) /= sides;
+            *(int*)(e + 0x58) /= sides;
+        }
+
+        *(int*)(e + 0x54) >>= 1;
+        *(int*)(e + 0x58) >>= 1;
+        *(int*)(e + 0x50) >>= 1;
+
+        int wanted = (int)Winsys3d.Ordinal_442((uint)(
+            Squared(*(int*)(e + 0x44) >> 0xc)
+          + Squared(*(int*)(e + 0x48) >> 0xc)
+          + Squared(*(int*)(e + 0x4c) >> 0xc)));
+
+        int pushed = (int)Winsys3d.Ordinal_442((uint)(
+            Squared(*(int*)(e + 0x50) >> 0xc)
+          + Squared(*(int*)(e + 0x54) >> 0xc)
+          + Squared(*(int*)(e + 0x58) >> 0xc)));
+
+        // La poussee l'emporte sur la volonte : une entite coincee se laisse deplacer.
+        if (wanted < pushed)
+        {
+            *(int*)(e + 0x44) = *(int*)(e + 0x50);
+            *(int*)(e + 0x4c) = *(int*)(e + 0x58);
+        }
+
+        ClampStep(e + 0x44);
+        ClampStep(e + 0x4c);
+
+        // ---------------------------------------------------------------- l'integration
+        int vx = *(int*)(e + 0x44);
+        int vy = *(int*)(e + 0x48);
+        int vz = *(int*)(e + 0x4c);
+
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x24) += vz;
+        *(int*)(e + 0x20) += vy;
+
+        // Ghidra: `sar 2` puis, si le quotient est nul, la valeur entiere — un frottement d'un
+        // quart qui ne s'endort jamais sur les petites vitesses.
+        int brakeX = vx >> 2;
+        if (brakeX == 0) brakeX = vx;
+
+        int brakeZ = vz >> 2;
+        if (brakeZ == 0) brakeZ = vz;
+
+        int newX = *(int*)(e + 0x44) - brakeX;
+        *(int*)(e + 0x44) = newX;
+
+        int newZ = *(int*)(e + 0x4c) - brakeZ;
+
+        newX -= newX >> 8;
+        *(int*)(e + 0x44) = newX;
+
+        int gravity = *(short*)(e + 0x9a);
+        *(int*)(e + 0x48) = ((gravity >> 8) - (vy >> 8) - gravity) + vy;
+        *(int*)(e + 0x4c) = newZ - (newZ >> 8);
+
+        FinalizeEntityPlacement2((uint*)e);
+
+        // ---------------------------------------------------------------- les deux annulations
+        if ((mask & 0x2000) != 0)
+        {
+            contact &= 0xdfff;
+
+            byte* face = *(byte**)(e + 0x7c);
+            if ((face[0x0d] & 0x20) != 0)
+            {
+                RollBackMove(e, savedState, savedFloor, savedCeiling, savedX, savedZ,
+                             saved80, saved84, saved88, saved8c, savedFace, contact & 0xffff);
+            }
+        }
+
+        if ((*(uint*)(e + 0x90) & mask) != 0)
+        {
+            RollBackMove(e, savedState, savedFloor, savedCeiling, savedX, savedZ,
+                         saved80, saved84, saved88, saved8c, savedFace, contact & 0xffff);
+        }
+
+        // ---------------------------------------------------------------- le plancher
+        if (*(int*)(e + 0x20) <= *(int*)(e + 0x60) && (*(uint*)(e + 0x90) & 0xa000) == 0)
+        {
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(int*)(e + 0x48) = 0;
+        }
+        else
+        {
+            *(short*)(e + 0x9a) = 0x3000;
+        }
+
+        // Ghidra: `shr eax,1Dh ; and ax,1` — le bit 29 du mot d'etat, sur seize bits.
+        return (*(uint*)e >> 0x1d) & 1;
+    }
+
+    /// <summary>Le carre d'un entier, tel que les deux sommes de
+    /// <see cref="MoveSceneEntity_00455B30"/> l'emploient.</summary>
+    private static int Squared(int v) => v * v;
+
+    /// <summary>Une composante horizontale bornee a <c>0x1e000</c> en valeur absolue, la
+    /// comparaison portant sur la valeur <b>masquee</b> par <c>0xfffff000</c> — les douze bits de
+    /// fraction sont ignores par le test mais gardes par l'affectation. Les deux bornes sont
+    /// testees dans cet ordre, la seconde relisant le champ que la premiere a pu ecrire.</summary>
+    private static void ClampStep(byte* field)
+    {
+        if ((*(int*)field & unchecked((int)0xfffff000)) > 0x1e000) *(int*)field = 0x1e000;
+        if ((*(int*)field & unchecked((int)0xfffff000)) < -0x1e000) *(int*)field = -0x1e000;
+    }
+
+    /// <summary>
+    /// Les onze champs sauvegardes par <see cref="MoveSceneEntity_00455B30"/>, remis en place, et
+    /// les deux vitesses horizontales inversees. Le binaire ecrit ce bloc <b>deux fois</b>, aux
+    /// deux conditions d'annulation, dans un ordre de champs different mais avec le meme effet ;
+    /// il est factorise ici.
+    /// </summary>
+    private static void RollBackMove(
+        byte* e, uint state, int floor, int ceiling, int x, int z,
+        int f80, int f84, int f88, int f8c, uint face, uint contact)
+    {
+        *(uint*)(e + 0x7c) = face;
+        *(uint*)e = state;
+        *(uint*)(e + 0x90) = contact;
+        *(int*)(e + 0x64) = ceiling;
+        *(int*)(e + 0x60) = floor;
+        *(int*)(e + 0x24) = z;
+        *(int*)(e + 0x1c) = x;
+        *(int*)(e + 0x84) = f84;
+        *(int*)(e + 0x80) = f80;
+        *(int*)(e + 0x8c) = f8c;
+        *(int*)(e + 0x88) = f88;
+
+        *(int*)(e + 0x44) = -*(int*)(e + 0x44);
+        *(int*)(e + 0x4c) = -*(int*)(e + 0x4c);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00456a30</c> — <b>le sous-type 29 de la carte suivante</b>, entree de la table
+    /// <c>0x0056adc8</c> que la passe <see cref="TickEntityTable_005fa5e0"/> resout. 692 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; releve garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00456A30.asm</c>. Signalee en jeu par Vincent le 2026-08-30.
+    ///
+    /// <para>
+    /// <b>C'est une entite qui roule et qui poursuit.</b> Elle tient sa position hors de son propre
+    /// enregistrement, dans six octets de l'arene (<c>0x005e9708</c>..<c>0x005e970d</c>) : trois
+    /// coordonnees sur seize bits, chacune en deux octets poids fort puis poids faible. Le drapeau
+    /// <c>0x005e970e</c> commande le tout — son bit <c>2</c> dit que la position a ete semee, son
+    /// bit <c>1</c> ce que la fin du corps decide.
+    /// </para>
+    /// <para>
+    /// <b>Elle commence par designer le membre le plus proche.</b> Les quatre creneaux de
+    /// <see cref="Inp.s_SlotFlags_005e93c0"/> vivants et non retires sont mesures a la distance
+    /// euclidienne, et l'indice du plus proche part dans la <b>variable de script 2</b>
+    /// (<c>0x005e9062</c>) — d'ou un script de la zone peut le relire. La distance de depart est
+    /// <c>0x1869f</c>, soit 99 999.
+    /// </para>
+    /// <para>
+    /// <b>La position se recharge a la naissance et se resauvegarde a chaque image.</b> Tant que
+    /// <c>+0x10</c> vaut zero, les trois coordonnees viennent des six octets, decalees de douze
+    /// bits avec extension de signe depuis le seizieme (<c>shl 0x10</c> puis <c>sar 4</c>). A la
+    /// fin du corps, le trajet parcouru y est reecrit. L'entite <b>survit donc a sa propre
+    /// disparition</b> : eteinte puis reengendree, elle reprend ou elle en etait.
+    /// </para>
+    /// <para>
+    /// <b>Deux sons et un effet, au meme seuil.</b> Si l'une des deux vitesses horizontales depasse
+    /// <c>0x2000</c> en valeur absolue, le compteur <c>+0x98</c> arme un son
+    /// (<see cref="TryPlaySoundNearEntity"/>, identifiant 2) puis un effet
+    /// (<see cref="SpawnEffectNearCamera_00468110"/>, sous-type <c>0x3d</c>). Le compteur decompte
+    /// et se recharge a 15 : le son ne repart donc qu'une image sur seize tant que ca roule.
+    /// </para>
+    /// <para>
+    /// <b>Elle s'eteint de deux facons</b> : en tombant sous <c>-0x1f4000</c>, ou quand
+    /// <see cref="MoveSceneEntity_00455B30"/> rend 1 — c'est-a-dire quand le bit 29 du mot d'etat
+    /// est pose. Le masque passe au deplacement est <c>0x8882</c>.
+    /// </para>
+    /// <para>
+    /// <b>La fin mesure la distance a un point fixe</b> — <c>(-0x12c, +0xc8, +0x10cc)</c> en unites
+    /// entieres — et pose <c>+0x0a</c> a <b>4</b> au-dela de 200, a <b>5</b> en deca, en posant ou
+    /// en effacant le bit 1 de <c>0x005e970e</c>. Les trois vitesses sont remises a zero dans les
+    /// deux cas, apres l'integration : le deplacement de l'image a bien eu lieu, mais rien n'est
+    /// reporte a la suivante.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00456A30(byte* e)
+    {
+        // ---------------------------------------------------------------- le membre le plus proche
+        int nearest = 0x1869f;
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i <= 3; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x50000000) != 0) continue;
+
+            int dx = (*(int*)(e + 0x1c) - *(int*)(member + 0x1c)) >> 0xc;
+            int dy = (*(int*)(e + 0x20) - *(int*)(member + 0x20)) >> 0xc;
+            int dz = (*(int*)(e + 0x24) - *(int*)(member + 0x24)) >> 0xc;
+
+            int range = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+            if (range >= nearest) continue;
+
+            nearest = range;
+            Mem.Arena(0x005e9062)[0] = (byte)i;   // la variable de script 2
+        }
+
+        // ---------------------------------------------------------------- la position semee
+        byte* saved = Mem.Arena(0x005e9708);
+        byte* control = Mem.Arena(0x005e970e);
+
+        if ((control[0] & 2) == 0)
+        {
+            control[0] |= 2;
+            saved[0] = 0xfe; saved[1] = 0xd4;      // X = 0xfed4
+            saved[2] = 0x00; saved[3] = 0xc8;      // Y = 0x00c8
+            saved[4] = 0x10; saved[5] = 0xcc;      // Z = 0x10cc
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x98) = 0;
+
+            // Ghidra: `shl eax,10h ; sar eax,4` — l'extension de signe se fait depuis le bit 15,
+            // et le decalage net vaut douze bits.
+            *(int*)(e + 0x1c) = ((saved[0] << 8 | saved[1]) << 0x10) >> 4;
+            *(int*)(e + 0x20) = ((saved[2] << 8 | saved[3]) << 0x10) >> 4;
+            *(int*)(e + 0x24) = ((saved[4] << 8 | saved[5]) << 0x10) >> 4;
+        }
+
+        // ---------------------------------------------------------------- le deplacement
+        uint blocked = MoveSceneEntity_00455B30(e, 0x8882);
+        TestTriggerVolumes_00534CD0((uint*)e);
+
+        if (Rolling(e) && *(short*)(e + 0x98) == 0)
+        {
+            TryPlaySoundNearEntity((uint*)e, 2, 0x2bc, 0x1000, 0, 0);
+            *(short*)(e + 0x98) = 0x0f;
+        }
+
+        if (Rolling(e))
+        {
+            // Le binaire empile six arguments ; les deux derniers sont nuls et non relus, comme au
+            // site d'appel deja transcrit.
+            SpawnEffectNearCamera_00468110(e, 0x3d, 0, -1);
+        }
+
+        (*(short*)(e + 0x98))--;
+        if (*(short*)(e + 0x98) < 0) *(short*)(e + 0x98) = 0x0f;
+
+        // ---------------------------------------------------------------- l'extinction
+        if (*(int*)(e + 0x20) < unchecked((int)0xffe0c000) || (ushort)blocked == 1)
+        {
+            *(uint*)e &= 0x7fffffff;
+        }
+
+        // ---------------------------------------------------------------- la position resauvegardee
+        saved[0] = (byte)(*(int*)(e + 0x1c) >> 0x14);
+        saved[1] = (byte)(*(int*)(e + 0x1c) >> 0x0c);
+        saved[2] = (byte)(*(int*)(e + 0x20) >> 0x14);
+        saved[3] = (byte)(*(int*)(e + 0x20) >> 0x0c);
+        saved[4] = (byte)(*(int*)(e + 0x24) >> 0x14);
+        saved[5] = (byte)(*(int*)(e + 0x24) >> 0x0c);
+
+        // ---------------------------------------------------------------- la distance au point fixe
+        int ax = (*(int*)(e + 0x1c) >> 0xc) + 0x12c;
+        int ay = (*(int*)(e + 0x20) >> 0xc) - 0xc8;
+        int az = (*(int*)(e + 0x24) >> 0xc) - 0x10cc;
+
+        if ((int)Winsys3d.Ordinal_442((uint)(ax * ax + ay * ay + az * az)) > 0xc8)
+        {
+            control[0] |= 1;
+            e[0x0a] = 4;
+        }
+        else
+        {
+            control[0] &= 0xfe;
+            e[0x0a] = 5;
+        }
+
+        *(int*)(e + 0x50) = 0;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = 0;
+    }
+
+    /// <summary>Le test que <see cref="EntityHandler_00456A30"/> ecrit deux fois : l'une des deux
+    /// vitesses horizontales depasse-t-elle <c>0x2000</c> en valeur absolue ? Le binaire developpe
+    /// la valeur absolue par <c>cmp / jge / neg</c> aux quatre endroits.</summary>
+    private static bool Rolling(byte* e)
+    {
+        int vx = *(int*)(e + 0x50);
+        if (vx < 0) vx = -vx;
+        if (vx > 0x2000) return true;
+
+        int vz = *(int*)(e + 0x58);
+        if (vz < 0) vz = -vz;
+        return vz > 0x2000;
+    }
     /// <summary>
     /// Ghidra: FUN_0050e5e0 @ 0x0050e5e0 — la passe sur la table <c>DAT_005fa5e0</c>, 0x80
     /// enregistrements. La plus simple des six : gestionnaire, puis raccrochage a la grille.
@@ -4158,6 +4549,10 @@ public static unsafe partial class Blaze
             // Le premier gestionnaire PROPRE A UNE ZONE : sous-type 32 en foret, la ou la zone 0
             // renvoie au defaut. Releve le 2026-08-26.
             case 0x00456730: EntityHandler_00456730((uint*)record); return;
+
+            // Le sous-type 29 de la carte suivante — la premiere entite reconstruite qui emprunte
+            // MoveSceneEntity_00455B30. Signale le 2026-08-30.
+            case 0x00456A30: EntityHandler_00456A30(record); return;
             case 0x00458170: EntityHandler_00458170((uint*)record); return;
             case 0x004566C0: EntityHandler_004566C0((uint*)record); return;
             case 0x004571D0: EntityHandler_004571D0((uint*)record); return;

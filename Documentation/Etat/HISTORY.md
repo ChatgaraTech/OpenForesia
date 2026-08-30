@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **la carte suivante ne plante plus** — sous-type 29 (`0x00456a30`, 692 o.), une entité qui roule, garde sa position dans six octets de l'arène et désigne le membre le plus proche
+- feat : **`MoveSceneEntity_00455B30`**, le déplacement avec collision que partagent **seize** sites d'appel. Décompilée mais mal recouvrée : second argument perdu (lu à `[esp+0x40]`, d'où l'`unaff_retaddr` de Ghidra) et bloc de restauration apparié de travers sur onze champs — résolu au désassembleur
+- doc : `0x00545a10` n'est qu'un thunk d'import vers `Ordinal_442`, la racine carrée de winsys3d
 - feat : **le rocher qui donne un titre** — verbe 5 de la table de zone, `0x004438a0`, absente de `Blaze.c` (179 octets). Il convertit le compteur de mises à mort (`bloc+0x15c`) en un rang de 0 à 13 sur treize seuils doublants, et le publie en `bloc+0x1ff8`, l'indice de libellé que le pavé de statistiques relit
 - fix : **les trois modes de mélange ADDITIFS n'étaient pas portés** — le shim n'acceptait que `(5, 6)` SRCALPHA/INVSRCALPHA et rendait opaque `(2, 2)`, `(5, 2)` et `(3, 2)`, que `FUN_00a03c80` demande pour tout effet lumineux. D'où les nuages de la carte du monde en taches sombres et l'onde de choc en croissant noir
 - doc : `winsys3d.md` — la table des cinq couples `SRCBLEND`/`DESTBLEND` de `FUN_00a03c80`, et les deux garde-fous de capacité (tramage, puis abandon de la primitive) qui la précèdent
