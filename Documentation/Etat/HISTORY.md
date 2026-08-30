@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **`0x004134c0`, deux effets dans un seul corps** — `+0x5c` n'est pas un état mais un aiguillage. Variante 0 : une onde qui s'ouvre par huitièmes et **tient le compte des membres qu'elle a touchés** dans un masque de quatre bits que rien n'efface. Variante 1 : une étincelle qui rejoint `0xfa` par moitiés en six images, puis retombe par huitièmes en vingt-et-une
+- feat : **l'explosion de la forêt** (`0x00483650`) — six éclats en couronne dont le sous-type **vient de la sous-zone**, un noyau qui écrase tout ce que la couronne avait hérité, une secousse d'écran amortie en une ligne (`(n >> 2) - n`) et un script de onze sons différés relevé à `0x00552638`. Tout à la première image, dix images de vie
+- feat : **les deux mécanismes de décor de la forêt**, miroirs l'un de l'autre — `0x00459c20` monte en accélérant jusqu'à `0x4af` puis clignote et se fige, `0x00459dc0` tombe en accélérant tout en tournant et basculant, sur deux vitesses tirées au départ. Tous deux dorment jusqu'à ce qu'un bit de la banque de script 0 les arme, et accompagnent leur course d'une série sonore dont le gain se divise par deux à chaque étape
 - feat : **l'éclat qui jaillit existe lui aussi en trois exemplaires** (`0x0040f470`, `0x00412950`, `0x00415f40`) — les trois pseudo-C ne diffèrent que d'une ligne, celle qui pose la planche. Corps écrit une fois, planche en paramètre
 - feat : **`0x00459a70`, le troisième rocher qui roule** — compteur de sa sœur maigre, extinction de sa sœur riche, masque `0x8880`, le plus permissif des trois
 - feat : **`0x0049f0c0` est un duplicata relocalisé de l'Homme-lézard** (`0x0049d030`) — 648 instructions comparées une à une, une seule différence : l'adresse de sa propre table de sauts, dont les cinq cibles sont décalées de `0x2090`, exactement l'écart entre les deux fonctions. Un `case` au lieu d'un corps de 1 800 octets

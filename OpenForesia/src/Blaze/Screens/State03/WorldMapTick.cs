@@ -4779,6 +4779,16 @@ public static unsafe partial class Blaze
             case 0x00457E20: EntityHandler_00457E20(record); return;
             case 0x00459A70: EntityHandler_00459A70(record); return;
 
+            // Les deux mecanismes de decor, miroirs l'un de l'autre : celui qui monte et celui
+            // qui tombe, tous deux armes par un bit de la banque de script 0.
+            case 0x00459C20: EntityHandler_00459C20(record); return;
+            case 0x00459DC0: EntityHandler_00459DC0(record); return;
+
+            // L'EXPLOSION : six eclats en couronne, un noyau, une secousse d'ecran amortie et
+            // un script de sons differes. Tout a la premiere image ; dix images de vie.
+            case 0x00483650: EntityHandler_00483650(record); return;
+            case 0x004134C0: EntityHandler_004134C0(record); return;
+
             // Les deux autres exemplaires de l'eclat : meme corps, autre planche.
             case 0x00412950: EntityHandler_00412950(record); return;
             case 0x00415F40: EntityHandler_00415F40(record); return;
@@ -9595,6 +9605,463 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x50) = 0;
         *(int*)(e + 0x54) = 0;
         *(int*)(e + 0x58) = 0;
+    }
+
+    /// <summary>
+    /// Le bit que <see cref="EntityHandler_00459C20"/> et <see cref="EntityHandler_00459DC0"/>
+    /// attendent : le numero range en <c>+0x14</c> designe un bit de la <b>banque 0</b>
+    /// (<c>0x005e96e0</c>), octet <c>n / 8</c>, bit <c>n % 8</c>.
+    ///
+    /// <para>La division est celle du compilateur — <c>(n + (n &gt;&gt; 31 &amp; 7)) &gt;&gt; 3</c>,
+    /// donc vers zero — et le decalage est masque a cinq bits. Les deux corps l'ecrivent a
+    /// l'identique.</para>
+    /// </summary>
+    private static bool ScriptFlagSet(short index)
+    {
+        int cell = DivideTowardZeroBy8(index);
+        int bit = (index - cell * 8) & 0x1f;
+
+        return (Mem.s_StateBank0_005e96e0[(short)cell] & (byte)(1 << bit)) != 0;
+    }
+
+    /// <summary>Les sons de la sous-zone, ou les deux mecanismes prennent l'identifiant qu'ils
+    /// jouent. Ghidra: <c>**(int **)(DAT_005e97cc + 0xa8)</c>.</summary>
+    private static byte* SubAreaSounds()
+        => *(byte**)(*(byte**)(s_Unknown_005e97cc + 0xa8));
+
+    /// <summary>
+    /// Ghidra: FUN_00459c20 @ 0x00459c20 — <b>le mecanisme qui monte</b>. Decompilee dans
+    /// <c>Blaze.c</c>. Table <c>0x0056adc8</c>, foret.
+    ///
+    /// <para>
+    /// Il <b>dort</b> tant que le bit de script que designe son <c>+0x14</c> n'est pas pose
+    /// (<see cref="ScriptFlagSet"/>) — l'etat 0 rend la main sans rien faire. Une fois arme, il
+    /// monte : <c>+0x34</c> gagne <c>+0x12</c> par image et <c>+0x12</c> lui-meme gagne un, donc
+    /// l'ascension <b>accelere</b>. A <c>0x4af</c> depasse, il s'arrete.
+    /// </para>
+    /// <para>
+    /// <b>Le son accompagne la montee en s'eteignant</b> : aux images 0, 3, 6, 9 et 12 du compteur
+    /// <c>+0x98</c>, le meme son (<c>sons[0x21]</c>) part avec un gain qui <b>halve</b> a chaque
+    /// fois — <c>0x2000</c>, <c>0x1000</c>, <c>0x800</c>, <c>0x400</c>, <c>0x200</c>. Le
+    /// <c>switch</c> du binaire a cinq entrees qui convergent toutes vers le meme appel ; seul le
+    /// gain change.
+    /// </para>
+    /// <para>
+    /// <b>Puis il clignote et se fige.</b> L'etat 3 bascule le bit <c>0x4000</c> une image sur
+    /// deux pendant vingt-et-une images, et au bout l'etat passe a <b>100</b> — une valeur qu'aucun
+    /// test ne reconnait, donc plus rien ne s'execute — en laissant le bit <b>pose</b>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00459C20(byte* e)
+    {
+        if (ScriptFlagSet(*(short*)(e + 0x14)) && *(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 0) return;
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x12) = 10;
+            *(short*)(e + 0x10) = 2;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            // Ghidra: cinq entrees de switch qui convergent vers le meme appel, gain decroissant.
+            int gain = *(short*)(e + 0x98) switch
+            {
+                0 => 0x2000,
+                3 => 0x1000,
+                6 => 0x800,
+                9 => 0x400,
+                0x0c => 0x200,
+                _ => 0,
+            };
+
+            if (gain != 0)
+            {
+                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x21], 0x400, (short)gain, 0, 0);
+            }
+
+            (*(short*)(e + 0x98))++;
+            *(short*)(e + 0x34) += *(short*)(e + 0x12);
+            (*(short*)(e + 0x12))++;
+
+            if (*(short*)(e + 0x34) > 0x4af)
+            {
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x12) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 3) return;
+
+        uint flags = (*(ushort*)(e + 0x12) & 1) == 0
+            ? *(uint*)e | 0x4000
+            : *(uint*)e & 0xffffbfff;
+
+        short blink = (short)(*(ushort*)(e + 0x12) + 1);
+        *(uint*)e = flags;
+        *(short*)(e + 0x12) = blink;
+
+        if (blink > 0x14)
+        {
+            *(short*)(e + 0x10) = 100;
+            *(uint*)e = flags | 0x4000;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00459dc0 @ 0x00459dc0 — <b>le mecanisme qui tombe</b>, le miroir du precedent.
+    /// Decompilee dans <c>Blaze.c</c>. Table <c>0x0056adc8</c>, foret.
+    ///
+    /// <para>
+    /// Meme attente sur le meme genre de bit de script, puis une <b>chute qui accelere</b> :
+    /// <c>+0x20</c> perd <c>+0x12</c> unites entieres par image et <c>+0x12</c> gagne un. En
+    /// tombant, l'objet <b>tourne</b> (<c>+0x32</c> gagne <c>+0x9a</c>) et <b>bascule</b>
+    /// (<c>+0x34</c> gagne <c>+0x5c</c>) — deux vitesses tirees une fois pour toutes au moment ou
+    /// la chute commence, entre 1 et 60 pour la bascule, entre 1 et 20 pour la rotation.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 1 raccourcit le delai a chaque passage</b> : <c>+0x16</c> perd huit, borne a 1.
+    /// L'etat 2 compte jusqu'a ce delai avant de lacher. Un mecanisme rejoue tombe donc de plus en
+    /// plus vite.
+    /// </para>
+    /// <para>
+    /// Le son est la meme serie decroissante que chez son miroir, un cran plus bas
+    /// (<c>0x800</c> a <c>0x80</c>) et sur un autre identifiant, <c>sons[0x22]</c>. Sous
+    /// <c>-0xfa0000</c> l'etat passe a 100 et tout s'arrete.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00459DC0(byte* e)
+    {
+        if (ScriptFlagSet(*(short*)(e + 0x14)) && *(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 0) return;
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x16) -= 8;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x10) = 2;
+            if (*(short*)(e + 0x16) < 1) *(short*)(e + 0x16) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            (*(short*)(e + 0x12))++;
+
+            if (*(short*)(e + 0x16) <= *(short*)(e + 0x12))
+            {
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x12) = 0x14;
+
+                *(int*)(e + 0x5c) = CrtRand() % 0x3c + 1;
+
+                int spin = CrtRand();
+                *(short*)(e + 0x98) = 0;
+                *(short*)(e + 0x9a) = (short)(spin % 0x14 + 1);
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 3) return;
+
+        int gain = *(short*)(e + 0x98) switch
+        {
+            0 => 0x800,
+            3 => 0x400,
+            6 => 0x200,
+            9 => 0x100,
+            0x0c => 0x80,
+            _ => 0,
+        };
+
+        if (gain != 0)
+        {
+            TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x22], 0x400, (short)gain, 0, 0);
+        }
+
+        (*(short*)(e + 0x98))++;
+        (*(short*)(e + 0x12))++;
+        *(short*)(e + 0x34) += (short)*(int*)(e + 0x5c);
+
+        int height = *(int*)(e + 0x20) + *(short*)(e + 0x12) * -0x1000;
+        *(short*)(e + 0x32) += *(short*)(e + 0x9a);
+        *(int*)(e + 0x20) = height;
+
+        if ((height & unchecked((int)0xfffff000)) < -0xfa0000) *(short*)(e + 0x10) = 100;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552638</c> — <b>le script de sons differes de l'explosion</b>, onze
+    /// enregistrements de huit octets jusqu'a <c>DAT_00552690</c>. Le format est celui que decrit
+    /// <c>Audio.QueueDelayedSoundScript</c> : identifiant, hauteur en <c>+4</c>, gain en <c>+6</c>,
+    /// et les octets 1 et 2 du <b>premier</b> enregistrement servent en meme temps d'en-tete —
+    /// combien de sons partent ensemble, et dans combien d'images part le lot suivant.
+    ///
+    /// <para>La plage est relevee entiere : le script se termine sur un delai nul, et c'est bien
+    /// le dernier enregistrement (<c>30 00</c>) qui le porte.</para>
+    /// </summary>
+    private static readonly byte[] s_ExplosionSoundScript_00552638 =
+    [
+        0x0b, 0x01, 0x01, 0x00, 0xbc, 0x02, 0x00, 0x18,   // 0x00552638
+        0x20, 0x01, 0x01, 0x00, 0x00, 0x10, 0x00, 0x18,   // 0x00552640
+        0x0b, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x18,   // 0x00552648
+        0x10, 0x10, 0x01, 0x00, 0xa8, 0x0a, 0x00, 0x18,   // 0x00552650
+        0x20, 0x00, 0x01, 0x00, 0x53, 0x06, 0x00, 0x18,   // 0x00552658
+        0x21, 0x01, 0x01, 0x00, 0x2a, 0x03, 0x00, 0x18,   // 0x00552660
+        0x30, 0x02, 0x01, 0x00, 0x52, 0x0b, 0x00, 0x18,   // 0x00552668
+        0x30, 0x02, 0x01, 0x00, 0x52, 0x0b, 0x00, 0x18,   // 0x00552670
+        0x30, 0x02, 0x01, 0x00, 0x52, 0x0b, 0x00, 0x18,   // 0x00552678
+        0x30, 0x02, 0x01, 0x00, 0x52, 0x0b, 0x00, 0x18,   // 0x00552680
+        0x30, 0x00, 0x01, 0x00, 0x52, 0x0b, 0x00, 0x18,   // 0x00552688 — delai nul : fin
+    ];
+
+    private static byte* s_ExplosionSoundScriptStorage;
+
+    private static byte* ExplosionSoundScript()
+        => NativeCopy(s_ExplosionSoundScript_00552638, ref s_ExplosionSoundScriptStorage);
+
+    /// <summary>
+    /// Ghidra: FUN_00483650 @ 0x00483650 — <b>l'explosion</b>. Decompilee dans <c>Blaze.c</c>.
+    /// Table <c>0x0056b0c8</c>, foret.
+    ///
+    /// <para>
+    /// <b>Tout se joue a la premiere image</b> ; les neuf suivantes ne font qu'entretenir la
+    /// secousse d'ecran, et a la dixieme l'entite s'efface (<c>*e = 0</c>, l'emplacement redevient
+    /// libre).
+    /// </para>
+    /// <para>
+    /// <b>Six eclats en couronne.</b> Une boucle de six tours fait tourner le cap <c>+0x32</c> de
+    /// <c>0x2aa</c> — un sixieme de tour — et lui ajoute un tirage sur <c>0xff</c> plus
+    /// <c>0x380</c>, puis engendre a chaque tour une entite dont le <b>sous-type vient de la
+    /// sous-zone</b> : <c>repertoire[+0xd0][0] + 0xc0</c>. Chaque lieu explose donc avec ses
+    /// propres eclats.
+    /// </para>
+    /// <para>
+    /// <b>Puis le noyau.</b> L'entite se redecore de fond en comble — modele <c>7</c>, teinte
+    /// <c>0x808080</c>, echelles remises a zero — et engendre le sous-type <c>0x6c</c>. Les
+    /// valeurs posees avant la couronne (modele <c>0x38</c>, echelle <c>0x4002000</c>,
+    /// <c>+0x2e = -0x10</c>) ne servent qu'aux six eclats, qui heritent de l'entite par recopie :
+    /// c'est pour eux qu'elles sont ecrites, et elles sont ecrasees ensuite.
+    /// </para>
+    /// <para>
+    /// <b>La secousse d'ecran.</b> <c>0x005de0ac</c> — le decalage vertical que la camera ajoute a
+    /// sa cible — est pose a <b>10</b>, puis chaque image lui applique
+    /// <c>(n &gt;&gt; 2) - n</c> : la valeur change de signe et decroit, soit 10, -8, 6, -5, 3…
+    /// C'est une oscillation amortie, ecrite en une ligne.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00483650(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // Ce que les six eclats heriteront par recopie.
+            e[0x04] = 0x38;
+            short course = *(short*)(e + 0x32);
+            *(byte**)(e + 0x74) = *(byte**)(e + 0x6c);
+            *(uint*)(e + 0x38) = 0;
+            *(short*)(e + 0x36) = 4;
+            *(short*)(e + 0x2e) = -0x10;
+            *(uint*)(e + 0x28) = 0x4002000;
+            *(short*)(e + 0x2c) = 0x2000;
+            *(short*)(e + 0x12) = 2;
+
+            byte burst = (byte)(**(byte**)(s_Unknown_005e97cc + 0xd0) + 0xc0);
+
+            for (int i = 0; i < 6; i++)
+            {
+                *(ushort*)(e + 0x32) = (ushort)((CrtRand() & 0xff) + 0x380 + course);
+                SpawnCastEntity_0047AAE0(e, burst, 1, 1);
+                course += 0x2aa;
+            }
+
+            // Puis le noyau, qui ecrase tout ce qui precede.
+            *(uint*)(e + 0x70) = 0;
+            *(uint*)(e + 0x44) = 0;
+            *(uint*)(e + 0x48) = 0;
+            *(uint*)(e + 0x4c) = 0;
+            *(uint*)(e + 0x50) = 0x6000;
+            *(uint*)(e + 0x54) = 0x6000;
+            *(uint*)(e + 0x58) = 0x6000;
+            *(uint*)(e + 0x38) = 0x808080;
+            *(uint*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+            e[0x04] = 7;
+
+            SpawnCastEntity_0047AAE0(e, 0x6c, 1, 2);
+
+            *Mem.Camera(0x005de0ac) = 10;
+            Aud.QueueDelayedSoundScript(ExplosionSoundScript(), (int*)(e + 0x1c));
+        }
+
+        // Ghidra: `(n >> 2) - n` — la secousse change de signe et decroit a chaque image.
+        int* shake = Mem.Camera(0x005de0ac);
+        if (*shake != 0) *shake = (*shake >> 2) - *shake;
+
+        (*(short*)(e + 0x10))++;
+        if (*(short*)(e + 0x10) > 9) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004134c0 @ 0x004134c0 — <b>deux effets dans un seul corps</b>, choisis par
+    /// <c>+0x5c</c>. Decompilee dans <c>Blaze.c</c>. Table <c>0x0056b1c8</c>, foret.
+    ///
+    /// <para>
+    /// Le champ <c>+0x5c</c> n'est pas un etat mais un <b>aiguillage</b> : il vaut 0 ou 1 et ne
+    /// change jamais dans ce corps. Les deux moities ne partagent rien, pas meme leur decompte —
+    /// c'est le meme creneau de table employe pour deux choses.
+    /// </para>
+    ///
+    /// <para><b>Variante 0 — l'onde qui marque.</b> Un anneau qui s'ouvre : les echelles
+    /// <c>+0x28</c> et <c>+0x2c</c> rejoignent <c>30000</c> par <b>huitiemes</b>, donc vite au
+    /// debut et de plus en plus lentement. La teinte part de <c>0xfafafa</c> et perd 7, 7 et
+    /// <b>5</b> par image — le bleu tient plus longtemps, et c'est lui qui decide de la mort.
+    /// L'echelle de depart de l'axe Z vaut <c>(0x19 - +0x12) * 400</c> : plus le compteur qu'elle
+    /// herite est haut, plus l'anneau nait plat.</para>
+    ///
+    /// <para><b>Et elle tient le compte de qui elle a touche.</b> Tant que <c>+0x16</c> est nul et
+    /// que l'anneau n'a pas atteint 27000, elle balaie les quatre membres du groupe et pose, pour
+    /// chacun de vivant qui se trouve a moins de <c>echelle / 50</c> unites horizontales, <b>son
+    /// bit</b> dans <c>+0x14</c>. Le masque grandit donc avec l'anneau, et rien ne l'efface : un
+    /// membre touche reste marque.</para>
+    ///
+    /// <para><b>Variante 1 — l'etincelle qui s'allume puis s'eteint.</b> Modele <c>0x30</c>, trois
+    /// echelles tirees entre 200 et 399, un cap au hasard sur douze bits, une hauteur relevee d'un
+    /// tirage sur 200. Elle tourne de <c>-0x96</c> par image et grossit de 100 sur les trois axes,
+    /// sans arret. Sa teinte fait deux mouvements opposes : pendant six images elle <b>rejoint
+    /// <c>0xfa</c> par moities</b> — un eclat presque instantane —, puis pendant vingt-et-une elle
+    /// <b>retombe par huitiemes</b> vers zero. Le second mouvement est trois fois plus long que le
+    /// premier.</para>
+    /// </summary>
+    private static void EntityHandler_004134C0(byte* e)
+    {
+        if (*(uint*)(e + 0x5c) == 0)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                e[0x04] = 7;
+                e[0x0a] = 2;
+                e[0x0b] = 0;
+                e[0x38] = 0xfa;
+                e[0x39] = 0xfa;
+                e[0x3a] = 0xfa;
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = (short)((0x19 - *(short*)(e + 0x12)) * 400);
+                *(short*)(e + 0x2c) = 0;
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x12) = 0;
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x2e) = -0x3c;
+                *(ushort*)(e + 0x36) = (ushort)((*(ushort*)(e + 0x36) & 0xfffe) | 2);
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                BrightenEntityTint_00404DE0(e, -7, -7, -5);
+
+                short spread = (short)(((30000 - *(short*)(e + 0x28)) >> 3) + *(short*)(e + 0x28));
+                *(short*)(e + 0x28) = spread;
+                *(short*)(e + 0x2c) = (short)(((30000 - *(short*)(e + 0x2c)) >> 3) + *(short*)(e + 0x2c));
+
+                // Ghidra: `(char)` — le canal BLEU, celui qui perd 5 et non 7, decide de la mort.
+                if ((sbyte)e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
+
+                if (*(short*)(e + 0x16) == 0 && spread < 27000)
+                {
+                    byte* member = Inp.s_SlotFlags_005e93c0;
+
+                    for (int i = 0; i < 4; i++, member += 0x9c)
+                    {
+                        uint flags = *(uint*)member;
+                        if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                        int dx = (*(int*)(member + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                        int dz = (*(int*)(member + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                        if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz)) >= spread / 0x32) continue;
+                        if ((*(short*)(e + 0x14) & (1 << i)) != 0) continue;
+
+                        *(ushort*)(e + 0x14) |= (ushort)(1 << i);
+                    }
+                }
+            }
+        }
+
+        if (*(uint*)(e + 0x5c) != 1) return;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x30;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x28) = (short)(CrtRand() % 200 + 200);
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 200 + 200);
+            *(short*)(e + 0x2c) = (short)(CrtRand() % 200 + 200);
+
+            *(ushort*)(e + 0x32) = (ushort)SignedMask(CrtRand(), 0xfff);
+
+            int seed = CrtRand();
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x30) = (short)(seed % 500);
+
+            *(short*)(e + 0x2e) = -0x3c;
+            *(int*)(e + 0x20) += (CrtRand() % 200) * 0x1000;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x32) -= 0x96;
+
+            // Ghidra: `(0xfa - b) >> 1` ajoute a b — la teinte rejoint 0xfa par moities.
+            e[0x38] = (byte)(e[0x38] + (byte)((0xfa - (int)e[0x38]) >> 1));
+            e[0x39] = (byte)(e[0x39] + (byte)((0xfa - (int)e[0x39]) >> 1));
+            (*(short*)(e + 0x12))++;
+            e[0x3a] = (byte)(e[0x3a] + (byte)((0xfa - (int)e[0x3a]) >> 1));
+
+            if (*(short*)(e + 0x12) > 5)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+
+            GrowSparkScales(e);
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x32) -= 0x96;
+
+            // Ghidra: `-b >> 3` ajoute a b — la teinte retombe par huitiemes.
+            e[0x38] = (byte)(e[0x38] + (byte)((-(int)e[0x38]) >> 3));
+            e[0x39] = (byte)(e[0x39] + (byte)((-(int)e[0x39]) >> 3));
+            (*(short*)(e + 0x12))++;
+            e[0x3a] = (byte)(e[0x3a] + (byte)((-(int)e[0x3a]) >> 3));
+
+            if (*(short*)(e + 0x12) > 0x14) *(uint*)e &= 0x7fffffff;
+
+            GrowSparkScales(e);
+        }
+    }
+
+    /// <summary>Les trois echelles de l'etincelle de <see cref="EntityHandler_004134C0"/>, qui
+    /// gagnent 100 par image dans ses deux etats vivants. Le binaire ecrit le bloc deux fois.</summary>
+    private static void GrowSparkScales(byte* e)
+    {
+        *(short*)(e + 0x28) += 100;
+        *(short*)(e + 0x2a) += 100;
+        *(short*)(e + 0x2c) += 100;
     }
 
     /// <summary>Ghidra: <c>&amp;DAT_0054f758</c> — quatre enregistrements jusqu'a
