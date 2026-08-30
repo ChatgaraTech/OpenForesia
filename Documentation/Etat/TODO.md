@@ -92,6 +92,24 @@ n'existe pas encore, il naîtra à la première partie.
 l'opcode 14** : leur sous-type engendré vit dans le répertoire des sorts et n'est pas résolu. Ceux-là
 peuvent encore lever une fois.
 
+## Le raccourci
+
+**`tests\objets.bat`** — double-clic après une séance, le pendant de `feuille-de-route.bat`. Il
+régénère `ObjetsAtteignables.md` et réaffiche le compte, les gestionnaires à écrire, la dette, et
+le **contrôle croisé**.
+
+## L'angle mort que le contrôle croisé a déjà trouvé
+
+**`objets.csv` ne porte pas l'équipement de départ.** Dès la première partie, la sonde a relevé
+`Epee normale`, `Armure cuir` et `Bouclier cuir` — absents du catalogue. Le verbe `bestiaire` dumpe
+les catalogues **par sous-zone** (ce qu'on ramasse, ce que les coffres donnent), pas ce que la
+création de personnage accorde.
+
+Les 607 objets ne sont donc **pas** tout ce qui existe. Le rapport liste ces orphelins dans « Vus
+en jeu, absents du catalogue » et le `.bat` les réaffiche : les deux sources se contrôlent l'une
+l'autre. Si cette liste s'allonge beaucoup, c'est le signal qu'il faut étendre le verbe `bestiaire`
+à l'équipement de départ.
+
 ## La stratégie, en trois lignes
 
 1. Descendre le tableau des gestionnaires de haut en bas — le plus employé d'abord, c'est le plus

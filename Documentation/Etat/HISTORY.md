@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **`tests/objets.bat`**, le pendant de `feuille-de-route.bat` pour `ObjetsAtteignables.md` : il regenere, puis reaffiche le compte, les gestionnaires a ecrire, la dette et le controle croise
+- doc : **`objets.csv` ne porte pas l'equipement de depart** — decouvert par le controle croise des la premiere partie : la sonde a releve `Epee normale`, `Armure cuir` et `Bouclier cuir`, absents du catalogue. Le bestiaire dumpe les catalogues **par sous-zone**, pas ce que la creation de personnage accorde. Le rapport signale desormais ces angles morts tout seul
+- fix : **la sonde d'objets ecrivait un BOM** — `Encoding.UTF8` en pose un, si bien que la premiere ligne ne commencait plus par `#` et que l'en-tete etait comptee comme une cle d'objet. `UTF8Encoding(false)` cote jeu, et le lecteur le retire par precaution
 - feat : **une seconde sonde, sur les objets** (`objets-exerces.tsv`) — accrochée à `RunItemScript_00523AA0`, elle voit les deux scripts. `ObjetsAtteignables.md` porte désormais la même lecture en deux colonnes que `GestionnairesEntites.md`, sur les 21 gestionnaires **et** sur les 607 objets un par un : **369 pleinement implémentés**
 - doc : **la clé de la sonde d'objets est l'hexa de la fiche, pas le nom** — les noms d'objet ne sont pas de l'ASCII (le disque français porte encore des fiches en katakana demi-chasse), et une clé lisible sortait en mojibake. Le recensement recalcule la même clé depuis `objets.csv` pour retrouver le nom
 - feat : **`census-item-effects.sh`, la liste de courses des objets** — il déroule hors ligne les deux scripts des 2 370 fiches d'objet du CD et sort `ObjetsAtteignables.md` : **21 gestionnaires atteignables par un objet, 3 écrits, 18 à transcrire**, triés par nombre d'emplois. Plus besoin de découvrir par plantage

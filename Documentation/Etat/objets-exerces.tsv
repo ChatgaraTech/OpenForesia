@@ -1,4 +1,4 @@
-﻿# Les objets REELLEMENT employes en jeu, une ligne par couple
+# Les objets REELLEMENT employes en jeu, une ligne par couple
 # (cle de fiche, zone, sous-zone). La CLE est l hexa des seize premiers
 # octets de la fiche — le champ du nom court, pris brut : les noms ne sont
 # pas de l ASCII. census-item-effects.sh la recalcule depuis objets.csv

@@ -19298,3 +19298,44 @@ Les sondes ne servent plus à **découvrir** — le relevé statique le fait mie
 **prouver**. Un objet ne passe à `teste = oui` que parce qu'on s'en est réellement servi en jeu.
 C'est la même distinction que `GestionnairesEntites.md` porte depuis le début entre ÉCRIT et
 EXERCÉ, appliquée un cran plus haut.
+
+## 2026-08-30 (suite 39) — le raccourci, et l'angle mort qu'il a trouvé tout de suite
+
+**`tests/objets.bat`** est le pendant de `feuille-de-route.bat` pour `ObjetsAtteignables.md` : il
+régénère, puis réaffiche le compte, les gestionnaires à écrire (le plus employé en tête), la dette
+côté objets, et un **contrôle croisé** entre la sonde et le catalogue.
+
+### Deux pièges de `cmd.exe`, dont un qui mentait en silence
+
+**Un `grep` sur `**non**` attrape aussi la colonne `teste`.** La première version listait
+`0x004753D0` — implémenté, non testé — parmi les gestionnaires à écrire. Les extractions visent
+maintenant le **champ** et non la ligne : huit champs pour un gestionnaire (implémenté en 5, testé
+en 6), six pour un objet (4 et 5). Le nombre de champs suffit à distinguer les deux tableaux.
+
+**`!` est le caractère d'expansion différée de `cmd.exe`.** Sous `enabledelayedexpansion`, il est
+mangé avant que `bash` ne le voie : le `!~` d'awk disparaissait, l'expression devenait vraie
+partout, et le compte de la dette sortait à **zéro** au lieu de 368. Rien ne le signalait — un zéro
+est une réponse plausible. Les commandes du `.bat` n'emploient plus aucun `!` ; c'est noté dans
+`CLAUDE.md` à côté de la contrainte ASCII.
+
+### Ce que le contrôle croisé a trouvé dès la première partie
+
+La sonde avait relevé **quatre** objets et un seul figurait au rapport. Les trois autres — `Epee
+normale`, `Armure cuir`, `Bouclier cuir` — **n'existent pas dans `objets.csv`**.
+
+**Ce n'est pas un défaut de la sonde, c'est une limite du relevé statique** : le verbe `bestiaire`
+dumpe les catalogues **par sous-zone**, c'est-à-dire ce qu'on ramasse et ce que les coffres
+donnent. **L'équipement que la création de personnage accorde au départ n'y est pas.** Un objet
+obtenu autrement échappe donc au dénombrement des 607, et seule la sonde le voit.
+
+Le rapport porte désormais une section « Vus en jeu, absents du catalogue » qui liste ces clés
+orphelines, et le `.bat` la réaffiche. **Les deux sources se contrôlent l'une l'autre** : sans ce
+croisement, on aurait cru le relevé statique complet alors qu'il a un angle mort — et on ne l'aurait
+appris qu'en plantant sur un objet censé ne pas exister.
+
+### Un défaut d'écriture au passage
+
+`Encoding.UTF8` pose un **BOM**. La première ligne de `objets-exerces.tsv` ne commençait donc plus
+par `#`, échappait au filtre des commentaires, et l'en-tête était comptée comme une clé d'objet —
+d'où « 4 clés orphelines » au lieu de 3. Corrigé à la source (`UTF8Encoding(false)`), et le lecteur
+retire un BOM éventuel par précaution : le fichier déjà écrit existait.

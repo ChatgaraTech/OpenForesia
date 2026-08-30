@@ -86,7 +86,11 @@ else
 fi
 
 if [ -f "$IPROBE" ]; then
-    grep -v '^#' "$IPROBE" | grep -v '^$' | cut -f1 | sort -u > "$TMP/seenitems"
+    # Le `sed 1s/^\xef\xbb\xbf//` retire un BOM eventuel : sans lui la premiere ligne ne commence
+    # pas par '#', echappe au filtre des commentaires, et l'en-tete se retrouve compte comme une
+    # cle d'objet. C'est arrive.
+    sed '1s/^\xef\xbb\xbf//' "$IPROBE" | grep -v '^#' | grep -v '^$' \
+        | cut -f1 | sort -u > "$TMP/seenitems"
 else
     : > "$TMP/seenitems"
 fi
@@ -172,6 +176,28 @@ awk -F',' '
 # 4. Le rapport
 # ---------------------------------------------------------------------------------------------
 awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seenif="$TMP/seenitems" -v empty="$EMPTY" '
+    # Decode une cle hexa en texte, au mieux : les octets hors ASCII imprimable deviennent un
+    # point. Sert uniquement aux cles orphelines, pour lesquelles aucune fiche ne porte le vrai
+    # libelle. Le pictogramme de tete est saute, comme cote jeu.
+    function lisible(k,   st, i, c, s) {
+        st = (hx(substr(k, 1, 2)) > 95 && hx(substr(k, 3, 2)) < 96) ? 1 : 0
+        s = ""
+        for (i = st; i < 16; i++) {
+            c = hx(substr(k, i * 2 + 1, 2))
+            if (c <= 0) break
+            s = s ((c >= 32 && c < 127) ? sprintf("%c", c) : ".")
+        }
+        gsub(/^ +| +$/, "", s)
+        return s == "" ? "(illisible)" : s
+    }
+
+    function hx(p,   hi, lo) {
+        hi = index("0123456789abcdef", substr(p, 1, 1)) - 1
+        lo = index("0123456789abcdef", substr(p, 2, 1)) - 1
+        if (hi < 0 || lo < 0) return -1
+        return hi * 16 + lo
+    }
+
     BEGIN {
         FS = "\t"
         while ((getline line < tablesf) > 0) {
@@ -385,6 +411,31 @@ awk -v tablesf="$TMP/tables" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v seen
                ni, oktot, vustot
         print "en jeu."
         print ""
+
+        # --- le controle croise : la sonde connait-elle des objets que le catalogue ignore ? ---
+        orph = 0
+        for (k in vus) if (!(k in objets)) orph++
+
+        if (orph > 0) {
+            print "### Vus en jeu, absents du catalogue"
+            print ""
+            printf "**%d cle(s)** relevee(s) par la sonde ne correspondent a aucune fiche d\47`objets.csv`.\n", orph
+            print ""
+            print "Ce n\47est pas une erreur de la sonde : `objets.csv` porte les catalogues **par"
+            print "sous-zone** — ce qu\47on ramasse et ce que les coffres donnent —, et **pas**"
+            print "l\47equipement que la creation de personnage accorde au depart. Un objet obtenu"
+            print "autrement echappe donc au releve statique, et seule la sonde le voit. C\47est"
+            print "exactement le role de filet qu\47on lui a laisse."
+            print ""
+            print "Le nom ci-dessous est decode **au mieux** depuis la cle, faute de fiche ou lire"
+            print "le vrai libelle."
+            print ""
+            print "| cle | nom probable |"
+            print "|---|---|"
+            for (k in vus) if (!(k in objets)) printf "| `%s` | %s |\n", k, lisible(k)
+            print ""
+        }
+
         print "---"
         print ""
         print "## Les genres de la table des 48 effets (opcode 18)"

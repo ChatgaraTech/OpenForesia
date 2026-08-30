@@ -27674,7 +27674,11 @@ public static unsafe partial class Blaze
             text.AppendLine("# cle\tzone\tsous-zone");
             foreach (string line in s_ItemProbeAll) text.AppendLine(line);
 
-            System.IO.File.WriteAllText(ItemProbePath, text.ToString(), System.Text.Encoding.UTF8);
+            // UTF8Encoding(false) et non Encoding.UTF8 : celui-ci pose un BOM, et un BOM en tete
+            // fait que la premiere ligne ne commence plus par '#'. Tout lecteur qui filtre les
+            // commentaires par `^#` prend alors l'en-tete pour une donnee — c'est arrive.
+            System.IO.File.WriteAllText(
+                ItemProbePath, text.ToString(), new System.Text.UTF8Encoding(false));
         }
         catch (Exception error)
         {

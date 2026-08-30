@@ -479,7 +479,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Pendentif vaporeux | — | oui | **non** |
 | Pentacle de prince | — | oui | **non** |
 | Pentacle magique | — | oui | **non** |
-| Petite potion | `0x00446790` | oui | **non** |
+| Petite potion | `0x00446790` | oui | oui |
 | Pierre magique | `0x004753D0`, `0x00446790` | oui | **non** |
 | Pierre médicinale | `0x004753D0`, `0x00446790` | oui | **non** |
 | Pique | — | oui | **non** |
@@ -729,8 +729,27 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | **non** | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | **non** | **non** |
 
-**607 objets distincts**, dont **369** pleinement implementes et **0** deja employes
+**607 objets distincts**, dont **369** pleinement implementes et **1** deja employes
 en jeu.
+
+### Vus en jeu, absents du catalogue
+
+**3 cle(s)** relevee(s) par la sonde ne correspondent a aucune fiche d'`objets.csv`.
+
+Ce n'est pas une erreur de la sonde : `objets.csv` porte les catalogues **par
+sous-zone** — ce qu'on ramasse et ce que les coffres donnent —, et **pas**
+l'equipement que la creation de personnage accorde au depart. Un objet obtenu
+autrement echappe donc au releve statique, et seule la sonde le voit. C'est
+exactement le role de filet qu'on lui a laisse.
+
+Le nom ci-dessous est decode **au mieux** depuis la cle, faute de fiche ou lire
+le vrai libelle.
+
+| cle | nom probable |
+|---|---|
+| `6d426f75636c69657263756972000000` | Boucliercuir |
+| `7741726d757265206375697200000000` | Armure cuir |
+| `7745706565206e6f726d616c65000000` | Epee normale |
 
 ---
 
