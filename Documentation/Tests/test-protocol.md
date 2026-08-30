@@ -2119,3 +2119,17 @@ apres une seance de jeu. Le document croise les sources C# autant que le relevé
 **La lecon de fond** : un instrument qui enregistre une intention (« on est passe par la ») et un
 resultat (« ca a marche ») dans le meme champ ment des que les deux divergent. Ici les deux
 colonnes sont separees ; c'est le lien entre elles qu'il faut entretenir a la main.
+
+### La sonde a deux points d'entree, pas un (2026-08-30)
+
+La premiere version ne s'accrochait qu'a `DispatchEntityHandler`. Elle a manque les **verbes de
+zone** : `ScriptOpAreaVerb` lit la table `0x0056aec8` par son propre `switch`, et c'est un second
+point d'entree. Le defaut s'est vu par un cas concret — le verbe 8 a plante une partie, et
+`handlers-exerces.tsv` n'en portait aucune trace, alors que le jeu l'avait bel et bien atteint.
+
+Les 67 verbes de cette table ne pouvaient donc **jamais** passer a « teste », et la feuille de
+route les aurait affiches en dette pour toujours.
+
+**A retenir avant d'instrumenter** : compter les points d'entree avant de poser une sonde, et se
+demander lequel on n'a pas vu. Une couverture qui n'observe qu'un chemin sur deux se lit comme une
+couverture complete — c'est pire qu'une absence de mesure, parce qu'elle rassure.

@@ -1512,6 +1512,13 @@ public static unsafe partial class Blaze
 
         uint target = verbs[verb];
 
+        // La sonde de couverture. Le repartiteur de VERBES est le second point d'entree d'une
+        // table de sauts, a cote de DispatchEntityHandler — et il avait ete oublie : le verbe 8,
+        // qui a plante Vincent le 2026-08-30, n'apparaissait pas dans handlers-exerces.tsv alors
+        // que le jeu l'avait bel et bien atteint. Les 67 verbes de la table 0x0056aec8 ne
+        // pouvaient donc jamais passer a « teste ».
+        NoteHandlerSeen(target);
+
         *result = target switch
         {
             // Souche `ret` nu, verifiee au desassembleur : elle ne touche pas EAX, qui contient
@@ -1546,6 +1553,12 @@ public static unsafe partial class Blaze
             // Le verbe 5 : le rocher qui publie le titre tire du compteur de victimes. Il ne lit
             // ni l'entite ni le second argument — son creneau vient de la variable de script 4.
             0x004438A0 => AreaVerb_004438A0(),
+
+            // Les verbes 8 et suivants : deux EFFETS SONORES, et rien d'autre. Les deux plus
+            // employes du jeu — 78 emplois chacun — pour vingt-huit octets. Le 8 est celui de la
+            // porte, signale le 2026-08-30.
+            0x004457F0 => AreaVerb_004457F0(),
+            0x00445840 => AreaVerb_00445840(),
 
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
@@ -1735,6 +1748,42 @@ public static unsafe partial class Blaze
         // effet sur un rang de 0 a 13, mais elle est ce que le binaire fait.
         *(int*)(block + 0x1ff8) = (short)rank;
 
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004457f0</c> et <c>0x00445840</c> — <b>les deux verbes les plus employes du
+    /// jeu</b>, 78 emplois chacun d'apres le recensement, et ce ne sont que <b>deux effets
+    /// sonores</b>. Vingt-huit octets chacun, absents de <c>Blaze.c</c> ; releves gardes sous
+    /// <c>Legacy/Raw/Blaze/FUN_004457F0.asm</c> et <c>FUN_00445840.asm</c>.
+    ///
+    /// <para>
+    /// Le corps entier tient en un appel : <c>push</c> des quatre constantes,
+    /// <c>call 0x0053cea0</c> — le point d'entree sonore, deja transcrit en
+    /// <see cref="Audio.PlaySoundEffect"/> —, <c>xor eax,eax</c>, <c>ret</c>. Ils rendent donc
+    /// <b>zero</b>, ce qui laisse le script continuer, et ils <b>ignorent leurs deux arguments</b> :
+    /// ni l'entite ni le mot du script ne sont lus.
+    /// </para>
+    /// <para>
+    /// <b>Ce que le recensement a appris.</b> Ces deux-la etaient en tete de la liste des
+    /// gestionnaires manquants, loin devant tout le reste — et ils coutent deux lignes. C'est
+    /// exactement ce que le classement par nombre d'emplois devait faire ressortir : la porte qui
+    /// a plante Vincent le 2026-08-30 est le huitieme verbe, et il ne demandait qu'un son.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_004457F0()
+    {
+        Aud.PlaySoundEffect(0x29, 0x400, 0x1300, 0x1300);
+        return 0;
+    }
+
+    /// <summary>Ghidra: <c>0x00445840</c> — la jumelle de <see cref="AreaVerb_004457F0"/>, avec un
+    /// autre son et un autre gain. C'est le <b>verbe 8</b>, celui de la porte.</summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00445840()
+    {
+        Aud.PlaySoundEffect(0x1d, 0x300, 0x0c00, 0x0c00);
         return 0;
     }
 

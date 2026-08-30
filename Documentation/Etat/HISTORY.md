@@ -5,6 +5,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **les deux verbes les plus employés du jeu** (`0x004457f0` et `0x00445840`, 78 emplois chacun) — vingt-huit octets, deux effets sonores, `return 0`. Le 8 est celui de la porte. C'est exactement ce que le classement par emplois devait faire ressortir
+- fix : **la sonde ignorait le répartiteur de verbes** — `ScriptOpAreaVerb` est le second point d'entrée d'une table de sauts, et les 67 verbes de `0x0056aec8` ne pouvaient donc jamais passer à « testé ». Le verbe 8 avait planté sans laisser de trace dans le TSV
 - feat : **la poussière du bloc poussé** (`0x0040f370`, sous-type `0xfd` de la forêt) — quatre images d'atlas tenues 5 à 9 images chacune, teinte sombre `0x3c3c3c` qui s'assombrit d'un cran par image. Décompilée dans `Blaze.c` ; la plage `0x0054f720` relevée sur sept enregistrements, deux groupes
 - doc : **règle** — après chaque implémentation, régénérer `GestionnairesEntites.md` ; et si le gestionnaire était `implémenté=non, testé=oui`, retirer d'abord ses lignes du TSV. Ce « testé » ne prouvait que le plantage
 - feat : `tests\feuille-de-route.bat` — régénère `GestionnairesEntites.md` d'un double-clic et réaffiche l'avancement par zone plus les gestionnaires vus en jeu mais pas écrits. Il cherche `bash.exe` dans le PATH puis aux emplacements habituels de Git pour Windows, absent du PATH `cmd` sur cette machine
