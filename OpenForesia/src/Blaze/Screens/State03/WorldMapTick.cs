@@ -4794,6 +4794,11 @@ public static unsafe partial class Blaze
             case 0x00458FC0: EntityHandler_00458FC0(record); return;
             case 0x00457770: EntityHandler_00457770(record); return;
 
+            // 0x004593c0 est un DUPLICATA du tourniquet : 293 instructions comparees une a une,
+            // zero difference, et les deux pseudo-C de Blaze.c sont identiques ligne pour ligne.
+            // Le compilateur a emis le meme corps deux fois.
+            case 0x004593C0: EntityHandler_00457770(record); return;
+
             // Les deux autres exemplaires de l'eclat : meme corps, autre planche.
             case 0x00412950: EntityHandler_00412950(record); return;
             case 0x00415F40: EntityHandler_00415F40(record); return;

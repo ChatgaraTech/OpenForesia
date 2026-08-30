@@ -18435,3 +18435,26 @@ sortie est pire que pas d'outil : on lui ferait confiance.
 
 La verification a la main reste donc la methode, et elle est ecrite ci-dessus. Le filtre par
 prologue, lui, vaut la peine d'etre refait a la main quand une grosse famille se presente.
+
+## 2026-08-30 (suite 13) — le motif de duplication de la foret
+
+Quatre familles de la zone 3 se sont revelees etre **un seul corps emis plusieurs fois**, la copie
+ne differant que par l'adresse d'une planche :
+
+| corps | copies | ce qui change |
+|---|---|---|
+| la bulle | `0x0040fac0`, `0x00412c20`, `0x00416210` | une planche, elle-meme dupliquee a trois adresses |
+| l'eclat | `0x0040f470`, `0x00412950`, `0x00415f40` | une planche |
+| le tourniquet | `0x00457770`, `0x004593c0` | **rien** — 293 instructions identiques |
+| non encore ecrit | `0x00410cd0`, `0x00414140` | **deux** planches, sur trois variantes |
+
+Plus `0x00458070` (copie de `0x004566c0`) et `0x0049f0c0` (copie relocalisee de `0x0049d030`).
+
+**Neuf creneaux de table pour quatre corps.** Le chiffre de 1 430 gestionnaires distincts que le
+recensement annonce est donc un majorant : il compte des adresses, pas des comportements. Combien
+de ces 1 291 restants sont des copies, on ne le saura qu'en les comparant — mais la proportion
+observee en zone 3 est loin d'etre negligeable.
+
+**La consequence pratique** : avant de transcrire un corps decompile, comparer sa pseudo-C a celle
+de ses voisins de prologue. Un `diff` de deux blocs de `Blaze.c` coute quelques secondes et rend
+parfois un corps entier. C'est ce qui a donne le tourniquet et les deux triplets.
