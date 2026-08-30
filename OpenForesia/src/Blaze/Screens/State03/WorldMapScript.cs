@@ -1543,6 +1543,10 @@ public static unsafe partial class Blaze
             // que [esp+0x14], c'est-a-dire l'entite.
             0x0053DD20 => AreaVerb_0053DD20(ent),
 
+            // Le verbe 5 : le rocher qui publie le titre tire du compteur de victimes. Il ne lit
+            // ni l'entite ni le second argument — son creneau vient de la variable de script 4.
+            0x004438A0 => AreaVerb_004438A0(),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de la table 0x0056aec8 de la zone courante " +
@@ -1654,6 +1658,83 @@ public static unsafe partial class Blaze
         ClearScriptBank(Mem.s_StateBank2_005e9060);
         ClearScriptBank(Mem.s_StateBank1_005e9780);
         ClearScriptBank(Mem.s_StateBank0_005e96e0);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004438a0</c> — <b>le rocher qui donne un titre</b>. 179 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; relevé gardé sous
+    /// <c>Legacy/Raw/Blaze/FUN_004438A0.asm</c>. Signalé en jeu par Vincent le 2026-08-30 : le
+    /// rocher qui « donne des statistiques sur notre personnage » plantait ici.
+    ///
+    /// <para>
+    /// <b>Elle convertit un compteur de victimes en rang.</b> Le membre visé est l'octet bas de la
+    /// <b>variable de script 4</b> ; son bloc de personnage est adressé comme partout ailleurs,
+    /// <c>MainMem + (creneau + 0x78) * 0x2000</c>. Le compteur lu en <c>+0x15c</c> est celui que
+    /// <see cref="ResolveMeleeHit_00539B80"/> incrémente à chaque mise à mort, et le rang écrit en
+    /// <c>+0x1ff8</c> est l'indice de libellé que le pavé de statistiques relit
+    /// (<c>libellés + 0x500 + rang * 4</c>, dans <c>WorldMapMenu.cs</c>). Le rocher ne fait donc
+    /// que <b>recalculer et publier le titre</b>.
+    /// </para>
+    /// <para>
+    /// <b>L'échelle est un doublement.</b> Treize seuils — 10, 20, 40, 80, 160, 320, 640, 1280,
+    /// 2560, 5120, 10 240, 20 480, 40 960 — franchis un par un, ce qui donne un rang de 0 à 13,
+    /// soit quatorze titres. Le premier seuil <b>pose</b> 1 (<c>mov ecx,1</c>) au lieu
+    /// d'incrémenter ; les douze autres incrémentent. Sous dix victimes le rang est nul.
+    /// </para>
+    /// <para>
+    /// <b>Les comparaisons sont NON signées</b> (<c>jb</c>), alors que le compteur est un
+    /// <c>int</c> que le jeu borne ailleurs à <c>-1</c>. Un compteur négatif franchirait donc tous
+    /// les seuils et donnerait le rang maximal. Transcrit tel quel — c'est ce que le binaire
+    /// calcule.
+    /// </para>
+    /// <para>
+    /// <b>Elle écrit son résultat dans deux vues de la même banque.</b> Le compteur brut part sur
+    /// <b>quatre octets</b> à la variable 4 — donc par-dessus les variables 4 à 7, y compris le
+    /// numéro de créneau qu'elle venait d'y lire — et le rang sur un octet à la variable 8. C'est
+    /// la banque 2, celle que le moteur de texte relit pour composer sa ligne. Le champ
+    /// <c>+0x15c</c> est relu du bloc après cette écriture, et non repris du registre : les deux
+    /// lectures sont conservées, elles rendent la même valeur.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zéro — <c>xor eax,eax ; ret</c>, donc le script continue.</returns>
+    private static uint AreaVerb_004438A0()
+    {
+        byte* bank = Mem.s_StateBank2_005e9060;
+
+        // Ghidra: `mov eax,[5E9064h] ; and eax,0FFh` — la variable 4 lue sur 32 bits, dont seul
+        // l'octet bas designe le creneau.
+        uint slot = *(uint*)(bank + 4) & 0xff;
+        byte* block = GetMainMemPtr() + (slot + 0x78) * 0x2000;
+
+        bank[8] = 0;
+        *(uint*)(bank + 4) = *(uint*)(block + 0x15c);
+
+        // Ghidra: `mov edx,[eax+15Ch]` une seconde fois, apres l'ecriture ci-dessus.
+        uint kills = *(uint*)(block + 0x15c);
+
+        // Ghidra: le premier seuil POSE 1, les douze suivants incrementent. Comparaisons `jb`,
+        // donc non signees.
+        int rank = kills >= 0x0a ? 1 : 0;
+        if (kills >= 0x14) rank++;
+        if (kills >= 0x28) rank++;
+        if (kills >= 0x50) rank++;
+        if (kills >= 0xa0) rank++;
+        if (kills >= 0x140) rank++;
+        if (kills >= 0x280) rank++;
+        if (kills >= 0x500) rank++;
+        if (kills >= 0xa00) rank++;
+        if (kills >= 0x1400) rank++;
+        if (kills >= 0x2800) rank++;
+        if (kills >= 0x5000) rank++;
+        if (kills >= 0xa000) rank++;
+
+        bank[8] = (byte)rank;
+
+        // Ghidra: `movsx ecx,cx` avant le rangement — l'extension de signe de seize bits est sans
+        // effet sur un rang de 0 a 13, mais elle est ce que le binaire fait.
+        *(int*)(block + 0x1ff8) = (short)rank;
+
         return 0;
     }
 

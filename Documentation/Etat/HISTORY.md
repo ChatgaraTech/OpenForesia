@@ -5,6 +5,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **le rocher qui donne un titre** — verbe 5 de la table de zone, `0x004438a0`, absente de `Blaze.c` (179 octets). Il convertit le compteur de mises à mort (`bloc+0x15c`) en un rang de 0 à 13 sur treize seuils doublants, et le publie en `bloc+0x1ff8`, l'indice de libellé que le pavé de statistiques relit
 - fix : **les trois modes de mélange ADDITIFS n'étaient pas portés** — le shim n'acceptait que `(5, 6)` SRCALPHA/INVSRCALPHA et rendait opaque `(2, 2)`, `(5, 2)` et `(3, 2)`, que `FUN_00a03c80` demande pour tout effet lumineux. D'où les nuages de la carte du monde en taches sombres et l'onde de choc en croissant noir
 - doc : `winsys3d.md` — la table des cinq couples `SRCBLEND`/`DESTBLEND` de `FUN_00a03c80`, et les deux garde-fous de capacité (tramage, puis abandon de la primitive) qui la précèdent
 - fix : **l'onde de choc du Guerrier est noire parce que TOUTE la semi-transparence était désactivée** — le slot `+0x40` du périphérique synthétique rendait zéro par la souche neutre, or il répond « suis-je le matériel Direct3D ? » ; le jeu en concluait « rastériseur logiciel » et effaçait le bit `0x200` de tout modèle transparent, depuis toujours

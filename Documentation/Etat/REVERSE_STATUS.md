@@ -18183,3 +18183,42 @@ Deux conséquences pratiques :
   strictement identique entre les deux correctifs, alors que le premier était nécessaire. Une
   correction qui ne change rien à l'écran n'est pas pour autant inutile — ici elle a déplacé le
   défaut d'un cran, et c'est la carte du monde qui l'a dit, pas l'onde.
+
+## 2026-08-30 (suite 7) — le rocher qui donne un titre (`0x004438a0`)
+
+**Plantage signalé par Vincent** au contact d'un rocher « qui doit donner des statistiques sur notre
+personnage » : `Interpreteur de script, opcode 0 : verbe 5 = 0x4438A0, pas encore reconstruit`.
+
+179 octets, **absente de `Blaze.c`** ; relevé sous `Legacy/Raw/Blaze/FUN_004438A0.asm`.
+
+### Ce qu'elle fait
+
+Elle **convertit un compteur de victimes en rang**, et c'est tout :
+
+1. le créneau visé est l'octet bas de la **variable de script 4** (`0x005e9064`, banque 2) ;
+2. le bloc du personnage s'adresse comme partout ailleurs, `MainMem + (créneau + 0x78) * 0x2000` ;
+3. `+0x15c` est le **compteur de mises à mort** — celui que `ResolveMeleeHit_00539B80` incrémente
+   après chaque victime, borné ailleurs à `-1` ;
+4. treize seuils **doublants** — 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10 240, 20 480,
+   40 960 — donnent un rang de **0 à 13**, soit quatorze titres ;
+5. le rang part en `+0x1ff8` du bloc, qui est l'indice de libellé que le pavé de statistiques relit
+   (`libellés + 0x500 + rang * 4`, voir `WorldMapMenu.cs`).
+
+Le rocher ne calcule donc rien de neuf : il **republie** le titre que le personnage a déjà gagné.
+Les deux champs `+0x15c` et `+0x1ff8` étaient déjà transcrits, chacun de son côté, sans que le lien
+entre eux soit connu — c'est ce verbe qui le donne.
+
+### Trois détails conservés tels quels
+
+- **Le premier seuil pose 1, les douze autres incrémentent** (`mov ecx,1` puis douze `inc ecx`).
+  Sous dix victimes le rang est nul.
+- **Les comparaisons sont non signées** (`jb`) alors que le compteur est un `int` que le jeu borne
+  à `-1` ailleurs. Un compteur négatif franchirait donc tous les seuils et donnerait le rang
+  maximal. C'est ce que le binaire calcule ; le cas n'est pas atteignable par le chemin connu, mais
+  la largeur est transcrite fidèlement.
+- **Elle écrase le créneau qu'elle vient de lire.** Le compteur brut part sur **quatre octets** à la
+  variable 4, donc par-dessus les variables 4 à 7 — dont le numéro de créneau. La variable 8 reçoit
+  le rang sur un octet. Les deux sont ensuite relues par le moteur de texte pour composer la ligne
+  affichée, ce qui explique la double écriture.
+- Le champ `+0x15c` est **relu du bloc** après cette écriture au lieu d'être repris du registre. Les
+  deux lectures rendent la même valeur ; toutes deux sont conservées.
