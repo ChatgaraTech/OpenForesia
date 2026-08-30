@@ -4845,6 +4845,12 @@ public static unsafe partial class Blaze
             case 0x00412D10: EntityHandler_00412D10(record); return;
             case 0x00416300: EntityHandler_00416300(record); return;
             case 0x00483920: EntityHandler_00483920(record); return;
+            case 0x00415D40: EntityHandler_00415D40(record); return;
+            case 0x004157A0: EntityHandler_004157A0(record); return;
+            case 0x0040F260: EntityHandler_0040F260(record); return;
+            case 0x00458DE0: EntityHandler_00458DE0(record); return;
+            case 0x00459B20: EntityHandler_00459B20(record); return;
+            case 0x00458E90: EntityHandler_00458E90(record); return;
 
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
@@ -11866,8 +11872,8 @@ public static unsafe partial class Blaze
     // =====================================================================
 
     /// <summary>
-    /// Ghidra: <c>0x00571420</c> — <b>les cinq blocs de camera prives des scenes de la foret</b>,
-    /// <c>0x30</c> octets chacun, de <c>0x00571420</c> a <c>0x00571510</c>. Zero au chargement :
+    /// Ghidra: <c>0x00571420</c> — <b>le bloc prive des scenes de la foret</b>, une suite
+    /// d'enregistrements de <c>0x30</c> octets a partir de <c>0x00571420</c>. Zero au chargement :
     /// l'adresse tombe dans la queue non initialisee de <c>.data</c>, donc rien a relever, seule
     /// la taille compte.
     ///
@@ -11881,19 +11887,32 @@ public static unsafe partial class Blaze
     /// <c>DAT_005e9ae0</c>, <c>DAT_005eca94</c> et <c>DAT_005edebc</c> le temps de la scene.
     /// </para>
     /// <para>
-    /// <b>Modelise d'un seul bloc, et deliberement.</b> Les deux memoires d'emplacement
+    /// <b>Une seule allocation pour tout le domaine, et deliberement.</b> Les deux memoires d'emplacement
     /// <c>0x00571448</c> et <c>0x00571478</c> avaient d'abord ete declarees comme deux octets
     /// isoles ; ce sont en realite le <c>+0x28</c> des exemplaires 0 et 1. Les laisser separes
     /// aurait pose deux noms pour deux adresses d'un meme bloc — exactement le defaut d'aliasing
     /// que <c>MemoryLayoutTests.cs</c> surveille — le jour ou les scenes cinema seront transcrites.
     /// </para>
+    /// <para>
+    /// <b>La taille est celle du domaine, pas celle d'un compte etabli.</b> L'allocation couvre
+    /// <c>0x00571420</c> a <c>0x00571660</c> — jusqu'au voisin connu <c>DAT_00571668</c>. Le pas
+    /// de <c>0x30</c> se lit clairement sur les premiers enregistrements, mais <b>leur nombre
+    /// n'est pas etabli</b> : le verbe <c>0x00443b20</c> ecrit encore a <c>0x0057150c</c> et
+    /// <c>0x00571510</c>, et <see cref="EntityHandler_00458DE0"/> lit <c>0x00571654</c>, qu'aucune
+    /// source decompilee ne nomme. Plutot que d'inventer un compte, tout ce qui vit dans ce
+    /// domaine passe par <see cref="ForestSceneField"/>, adresse par adresse.
+    /// </para>
     /// </summary>
-    private static readonly byte* s_CutsceneCamera_00571420 =
-        (byte*)NativeMemory.AllocZeroed(5 * 0x30);
+    private static readonly byte* s_ForestSceneBlock_00571420 =
+        (byte*)NativeMemory.AllocZeroed(0x240);
 
     /// <summary>Le <c>+0x28</c> du bloc de camera <paramref name="index"/> : le numero du membre du
     /// groupe que l'invocation a saisi. <c>0x00571448</c> pour 0, <c>0x00571478</c> pour 1.</summary>
-    private static byte* CutsceneSlotMemo(int index) => s_CutsceneCamera_00571420 + index * 0x30 + 0x28;
+    private static byte* CutsceneSlotMemo(int index) => s_ForestSceneBlock_00571420 + index * 0x30 + 0x28;
+
+    /// <summary>Un champ du bloc, par son adresse Ghidra. Tout ce qui vit entre <c>0x00571420</c>
+    /// et <c>0x00571660</c> passe par ici, pour qu'une seule allocation porte l'ensemble.</summary>
+    private static byte* ForestSceneField(int va) => s_ForestSceneBlock_00571420 + (va - 0x00571420);
 
     /// <summary>Ghidra: <c>0x00411f80</c> — rythme lent, memoire <c>0x00571448</c>.</summary>
     private static void EntityHandler_00411F80(byte* e)
@@ -12192,6 +12211,456 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_00483920(byte* e) => *(uint*)e = 0;
+
+    // =====================================================================
+    // LE PANACHE QUI ENFLE ET S'ETEINT, EN DEUX EXEMPLAIRES (2026-08-30)
+    //
+    // 0x00415d40 et 0x004157a0 sont le meme corps, absents de Blaze.c ; releves au
+    // desassembleur — Legacy/Raw/Blaze/FUN_00415D40.asm.
+    //
+    // Le diff normalise tient en UNE ligne, et ce n'est meme pas une adresse : 0x004157a0 ecrit
+    // `mov [eax+0Bh],cl` DEUX FOIS de suite, la seconde n'ayant aucun effet. Le compilateur a emis
+    // le meme magasin deux fois. C'est la premiere famille de la foret dont les membres ne
+    // different par aucune donnee — un seul corps suffit pour les deux.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>0x00415d40</c> — le premier des deux panaches.</summary>
+    private static void EntityHandler_00415D40(byte* e) => TickSwellingPlume(e);
+
+    /// <summary>Ghidra: <c>0x004157a0</c> — le second, a un magasin redondant pres.</summary>
+    private static void EntityHandler_004157A0(byte* e) => TickSwellingPlume(e);
+
+    /// <summary>
+    /// Le corps commun des deux panaches.
+    ///
+    /// <para>
+    /// <b>Le champ <c>+0x14</c> choisit le modele, puis ne sert plus.</b> A la naissance il est
+    /// recopie dans <c>+0x04</c> — le numero de modele — et sa valeur decide de <c>+0x0a</c> :
+    /// <c>2</c> s'il valait 1, <c>9</c> sinon. Le meme <c>+0x04</c> est relu a chaque image pour
+    /// choisir la vitesse d'enflure, <c>0x190</c> contre <c>0x320</c>. Un panache « 1 » est donc
+    /// deux fois plus lent a grandir qu'un autre.
+    /// </para>
+    /// <para>
+    /// <b>Il part des trois echelles a zero</b> — <c>+0x28</c>, <c>+0x2a</c> et <c>+0x2c</c>, donc
+    /// invisible a sa premiere image — monte de <c>0x14000</c> d'un coup, et grandit ensuite d'un
+    /// pas fixe sur les trois axes. Rien ne borne cette croissance : c'est la teinte qui met fin a
+    /// l'affaire.
+    /// </para>
+    /// <para>
+    /// <b>La teinte est le seul compteur.</b> Elle part de blanc plein (<c>0xff</c> sur les trois
+    /// canaux) et perd <b>six</b> par image et par canal. Le binaire fait la soustraction sur des
+    /// mots de 16 bits obtenus par <c>movzx</c>, puis teste le <b>rouge seul</b> : s'il est passe
+    /// sous zero, les trois canaux sont remis a zero et l'entite s'eteint. Les trois canaux
+    /// partant de la meme valeur et perdant le meme pas, tester le rouge suffit — mais c'est bien
+    /// le rouge, pas un minimum.
+    /// </para>
+    /// <para>
+    /// La vie est donc de <c>0xff / 6</c>, soit <b>quarante-trois images</b> exactement, quelle que
+    /// soit la variante.
+    /// </para>
+    /// </summary>
+    private static void TickSwellingPlume(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            byte model = e[0x14];
+            bool slim = *(short*)(e + 0x14) == 1;
+
+            *(short*)(e + 0x10) = 1;
+            e[4] = model;
+            e[0x0a] = (byte)(slim ? 2 : 9);
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x34) = 0;
+
+            *(int*)(e + 0x20) += 0x14000;
+
+            e[0x38] = 0xff;
+            e[0x39] = 0xff;
+            e[0x3a] = 0xff;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short step = (short)(e[4] == 1 ? 0x190 : 0x320);
+
+        *(short*)(e + 0x28) += step;
+        *(short*)(e + 0x2a) += step;
+        *(short*)(e + 0x2c) += step;
+
+        // Ghidra: les trois canaux passent par un `movzx` 16 bits avant la soustraction, donc le
+        // resultat est signe et peut descendre sous zero — c'est ce que le test suivant guette.
+        short red = (short)(e[0x38] - 6);
+        short green = (short)(e[0x39] - 6);
+        short blue = (short)(e[0x3a] - 6);
+
+        if (red < 0)
+        {
+            red = 0;
+            green = 0;
+            blue = 0;
+            *(uint*)e &= 0x7fffffff;
+        }
+
+        e[0x38] = (byte)red;
+        e[0x39] = (byte)green;
+        e[0x3a] = (byte)blue;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0040f260</c> — <b>le halo accroche a son porteur</b>. Absent de <c>Blaze.c</c> ;
+    /// releve au desassembleur, 82 instructions. Table <c>0x0056b2c8</c>, foret.
+    ///
+    /// <para>
+    /// C'est le meme halo que la phase 3 de <see cref="TickFivePhaseBurst"/> — meme tuile
+    /// <c>0x3f x 0x3f</c>, meme echelle <c>0x800</c>, meme <c>+0x0a = 7</c>, meme montee de trois
+    /// par canal bornee a <c>0x3c</c>, puis meme battement en sinus. Deux differences :
+    /// </para>
+    /// <list type="bullet">
+    /// <item>il <b>suit son porteur en hauteur</b> — <c>+0x6c</c>, relu a chaque image des deux
+    /// etats, et sa hauteur recopiee telle quelle ; le porteur peut etre nul, et le binaire le
+    /// teste ;</item>
+    /// <item>sa planche de couleurs est une <b>constante</b>, <c>8</c> ecrit en dur dans l'octet 6
+    /// de l'enregistrement, la ou la gerbe y met le <c>+0x96</c> de l'entite.</item>
+    /// </list>
+    /// <para>
+    /// <b>Il meurt au temps, pas a la teinte.</b> <c>+0x16</c> monte d'un par image sans jamais
+    /// etre remis a zero ; a <c>0xc8</c> l'entite s'eteint. La vie est donc de deux cents images
+    /// exactement, dont les quarante-trois premieres en montee.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040F260(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            byte* atlas = Descriptors0054F7F8() + 8;     // Ghidra: &DAT_0054f800
+
+            *(byte**)(e + 0x3c) = atlas;
+            atlas[6] = 8;                                // Ghidra: DAT_0054f806 = 8
+
+            *(short*)(e + 0x2e) = -0x1e;
+            e[0x40] = 0;
+            e[0x0a] = 7;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x28) = 0x800;
+            *(short*)(e + 0x2a) = 0x800;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            if (carrier != null) *(int*)(e + 0x20) = *(int*)(carrier + 0x20);
+
+            BrightenEntityTint_00404DE0(e, 3, 3, 3);
+
+            if (e[0x38] >= 0x3c)
+            {
+                e[0x38] = 0x3c;
+                e[0x39] = 0x3c;
+                e[0x3a] = 0x3c;
+            }
+
+            (*(short*)(e + 0x12))++;
+
+            if (*(short*)(e + 0x12) >= 0x2b)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            if (carrier != null) *(int*)(e + 0x20) = *(int*)(carrier + 0x20);
+
+            // Les trois canaux lisent le meme +0x12 : l'increment ne vient qu'apres les trois
+            // appels, comme dans la phase 3 de la gerbe.
+            byte beat = (byte)(((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12) << 8) >> 8) + 0x3c);
+
+            e[0x38] = beat;
+            e[0x39] = beat;
+            e[0x3a] = beat;
+
+            (*(short*)(e + 0x12))++;
+
+            if (*(short*)(e + 0x16) >= 0xc8) *(uint*)e &= 0x7fffffff;
+        }
+
+        (*(short*)(e + 0x16))++;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00571654</c> — un <c>short</c> que le corps de
+    /// <see cref="EntityHandler_00458DE0"/> compare a <c>-100</c>, et <b>que rien n'ecrit dans les
+    /// sources decompilees</b>. Il n'apparait meme pas dans la liste des <c>DAT_</c> de
+    /// <c>Blaze.c</c> : ses voisins connus sont <c>0x00571640</c> et <c>0x00571668</c>, il n'est
+    /// donc rattachable a aucun bloc.
+    ///
+    /// <para>L'adresse tombe dans la queue non initialisee de <c>.data</c> : zero au chargement.
+    /// Tant que rien ne l'ecrit, le test <c>&gt; -100</c> est donc toujours vrai et
+    /// <see cref="EntityHandler_00458DE0"/> ne prend jamais sa seconde branche. Si un jour une
+    /// fonction encore non transcrite y ecrit, ce sera visible ici.</para>
+    /// </summary>
+    private static short* Unknown_00571654() => (short*)ForestSceneField(0x00571654);
+
+    /// <summary>
+    /// Ghidra: <c>0x00458de0</c> — <b>le decor qui range sa pose et la reprend</b>. Absent de
+    /// <c>Blaze.c</c> ; releve au desassembleur, 52 instructions. Table <c>0x0056adc8</c>, foret,
+    /// sous-zones 6 a 8.
+    ///
+    /// <para>
+    /// <b>La premiere image demenage six champs.</b> Les trois mots <c>+0x30</c>, <c>+0x32</c> et
+    /// <c>+0x34</c> — que la sous-zone a remplis, et qui servent partout ailleurs d'orientation —
+    /// sont recopies dans <c>+0x12</c>, <c>+0x14</c>, <c>+0x16</c>, puis <b>remis a zero</b>. Ce
+    /// ne sont donc pas des angles ici mais une <b>position de rechange</b>, en unites entieres.
+    /// En parallele, la position courante est rangee arrondie dans <c>+0x44</c>, <c>+0x48</c>,
+    /// <c>+0x4c</c>.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite il choisit entre les deux, chaque image.</b> Si <c>0x00571654</c> depasse
+    /// <c>-100</c>, la position revient de <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c> — c'est-a-dire
+    /// la position d'origine <b>arrondie a l'unite entiere</b> par l'aller-retour de decalage.
+    /// Sinon elle vient de la position de rechange.
+    /// </para>
+    /// <para>
+    /// <b>Le binaire teste <c>0x00571654</c> deux fois de suite</b> sans que rien ne l'ait modifie
+    /// entre-temps. C'est la queue commune d'un <c>if/else</c> que le compilateur a repliee ; le
+    /// second test rend donc toujours le meme verdict que le premier, et la branche de rechange
+    /// n'est atteinte que par le premier saut. Conserve tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00458DE0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            short x = *(short*)(e + 0x30);
+            *(short*)(e + 0x30) = 0;
+            *(short*)(e + 0x12) = x;
+
+            short y = *(short*)(e + 0x32);
+            *(short*)(e + 0x14) = y;
+
+            short z = *(short*)(e + 0x34);
+            *(short*)(e + 0x32) = 0;
+            *(short*)(e + 0x34) = 0;
+
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x44) = *(int*)(e + 0x1c) >> 0xc;
+            *(int*)(e + 0x48) = *(int*)(e + 0x20) >> 0xc;
+            *(short*)(e + 0x16) = z;
+            *(int*)(e + 0x4c) = *(int*)(e + 0x24) >> 0xc;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        if (*Unknown_00571654() > -100)
+        {
+            *(int*)(e + 0x1c) = *(int*)(e + 0x44) << 0xc;
+            *(int*)(e + 0x20) = *(int*)(e + 0x48) << 0xc;
+            *(int*)(e + 0x24) = *(int*)(e + 0x4c) << 0xc;
+
+            // Le second test du binaire. Rien n'a touche la globale entre les deux.
+            if (*Unknown_00571654() > -100) return;
+        }
+
+        *(int*)(e + 0x1c) = (int)*(short*)(e + 0x12) << 0xc;
+        *(int*)(e + 0x20) = (int)*(short*)(e + 0x14) << 0xc;
+        *(int*)(e + 0x24) = (int)*(short*)(e + 0x16) << 0xc;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00459b20</c> — <b>la dalle qui s'enfonce sous le poids</b>. Absent de
+    /// <c>Blaze.c</c> ; releve au desassembleur, 73 instructions. Table <c>0x0056adc8</c>, foret,
+    /// sous-zones 6 a 8.
+    ///
+    /// <para>
+    /// <b>Trois etats, et un seul aller-retour.</b> <c>+0x12</c> retient la hauteur de repos,
+    /// prise a la premiere image et arrondie a l'unite entiere. Ensuite
+    /// <see cref="CountPartyMembersMatching"/> compte les membres rattaches a la dalle
+    /// (<c>0x10</c> exige, <c>0x40000000</c> interdit) : s'il y en a, l'etat passe a 2 — la dalle
+    /// descend de <c>+0x14</c> unites ; s'il n'y en a plus, a 3 — elle remonte d'un coup. Les deux
+    /// etats se remettent eux-memes a 1 apres avoir agi, de sorte que la bascule peut se refaire a
+    /// chaque image.
+    /// </para>
+    /// <para>
+    /// <b>Elle pose un drapeau de script tant qu'on est dessus.</b> L'indice est <c>+0x16</c>, le
+    /// meme decoupage que <see cref="ScriptFlagSet"/> — un octet tous les huit indices dans la
+    /// banque d'etat 0 — et il est <b>borne a 32 octets</b> : un indice au-dela de 255 ne pose
+    /// rien du tout, silencieusement. Le drapeau n'est jamais retire.
+    /// </para>
+    /// <para>
+    /// <b>Le son ne part qu'une fois par appui</b> : <c>+0x98</c> le retient, et c'est l'etat 3 —
+    /// la remontee — qui le remet a zero. L'identifiant vient de la sous-zone,
+    /// <c>sons[0x12]</c>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00459B20(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)(*(int*)(e + 0x20) >> 0xc);
+            *(short*)(e + 0x98) = 0;
+        }
+
+        int riders = CountPartyMembersMatching(e, 0x10, 0x40000000);
+
+        if (riders != 0)
+        {
+            if (*(short*)(e + 0x10) == 1) *(short*)(e + 0x10) = 2;
+        }
+        else if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x10) = 3;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            if (*(short*)(e + 0x98) == 0)
+            {
+                TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x12], 0x400, 0x1000, 0, 0);
+                *(short*)(e + 0x98) = 1;
+            }
+
+            *(int*)(e + 0x20) = (*(short*)(e + 0x12) - *(short*)(e + 0x14)) << 0xc;
+            *(short*)(e + 0x10) = 1;
+
+            ScriptFlagRaise(*(short*)(e + 0x16));
+        }
+
+        if (*(short*)(e + 0x10) != 3) return;
+
+        *(int*)(e + 0x20) = (int)*(short*)(e + 0x12) << 0xc;
+        *(short*)(e + 0x98) = 0;
+        *(short*)(e + 0x10) = 1;
+    }
+
+    /// <summary>
+    /// Pose le drapeau de script <paramref name="index"/> dans la banque d'etat 0 — le pendant
+    /// ecrivain de <see cref="ScriptFlagSet"/>.
+    ///
+    /// <para><b>Le garde a 32 octets est dans le binaire</b>, pas ajoute ici : au-dela de l'indice
+    /// 255 le corps rend la main sans rien poser, et sans se plaindre. La banque fait bien
+    /// <c>0x40</c> octets, donc la moitie haute reste hors d'atteinte par ce chemin.</para>
+    /// </summary>
+    private static void ScriptFlagRaise(short index)
+    {
+        int cell = DivideTowardZeroBy8(index);
+        if (cell > 0x1f) return;
+
+        int bit = (index - cell * 8) & 0x1f;
+        Mem.s_StateBank0_005e96e0[cell] |= (byte)(1 << bit);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00458e90</c> — <b>le decor qui flotte, et qui replonge quand on le lache</b>.
+    /// Absent de <c>Blaze.c</c> ; releve au desassembleur, 101 instructions. Table
+    /// <c>0x0056adc8</c>, foret, sous-zones 6 a 8.
+    ///
+    /// <para>
+    /// <b>Le bit <c>0x40000000</c> partage le corps en deux moities qui ne se rencontrent
+    /// jamais.</b> Pose, l'entite <b>flotte</b> ; efface, elle joue la <b>replongee</b> et se
+    /// repose. Ce n'est donc pas un automate a etats mais deux comportements qu'un bit exterieur
+    /// commute — c'est autre chose qui efface ce bit, pas ce corps-ci.
+    /// </para>
+    /// <para>
+    /// <b>La flottaison.</b> La premiere image retient la hauteur de repos dans <c>+0x14</c>,
+    /// arrondie a l'unite entiere, et pose la vitesse <c>+0x16</c> a <c>-1</c>. Ensuite la hauteur
+    /// avance de <c>+0x16</c> unites par image, et la vitesse <b>s'inverse</b> des qu'on atteint
+    /// le repos par le haut ou le repos moins vingt par le bas. Un aller-retour de quarante
+    /// images, un pas d'une unite.
+    /// </para>
+    /// <para>
+    /// <b>La replongee.</b> Elle commence par poser <c>0x10000000</c>, met <c>+0x12</c> a dix et
+    /// joue <c>sons[0x18]</c>. Les dix images suivantes font <b>descendre</b> la hauteur de
+    /// <c>+0x12</c> unites — donc de neuf, puis huit, puis sept : un enfoncement qui ralentit.
+    /// Quand le compte est epuise, la hauteur <b>remonte</b> de <c>0x5000</c> par image jusqu'a
+    /// depasser le repos, ou elle s'y colle net ; le bit <c>0x40000000</c> revient alors, la
+    /// vitesse repart a <c>-1</c> et <c>+0x12</c> est charge a cent.
+    /// </para>
+    /// <para>
+    /// <b>Deux bits differents dans la meme instruction, et ce n'est pas une faute de lecture.</b>
+    /// La fin de la flottaison teste <c>0x10</c> (par <c>test al,10h</c>) et, s'il est absent,
+    /// efface <c>0x10000000</c> (par <c>and eax,0efffffffh</c>). Le bit teste n'est pas celui qui
+    /// est efface. Le desassemblage le confirme, et la transcription le garde tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00458E90(byte* e)
+    {
+        uint flags = *(uint*)e;
+
+        if ((flags & 0x40000000) != 0)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x16) = -1;
+                *(short*)(e + 0x14) = (short)(*(int*)(e + 0x20) >> 0xc);
+                *(short*)(e + 0x10) = 1;
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                short speed = *(short*)(e + 0x16);
+                int height = *(int*)(e + 0x20) + (speed << 0xc);
+                *(int*)(e + 0x20) = height;
+
+                int rest = *(short*)(e + 0x14) << 0xc;
+                int floor = (*(short*)(e + 0x14) - 20) << 0xc;
+
+                if (height >= rest || height <= floor) *(short*)(e + 0x16) = (short)-speed;
+            }
+
+            // Ghidra: `test al,10h` puis `and eax,0efffffffh`. Deux bits differents. Voir le resume.
+            if ((flags & 0x10) != 0) return;
+            *(uint*)e = flags & 0xefffffff;
+            return;
+        }
+
+        short state = *(short*)(e + 0x10);
+
+        if (state == 1 || state == 0)
+        {
+            flags |= 0x10000000;
+            *(short*)(e + 0x10) = 2;
+            *(short*)(e + 0x12) = 10;
+            *(uint*)e = flags;
+
+            TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x18], 0x400, 0x1000, 0, 0);
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        short remaining = *(short*)(e + 0x12);
+
+        if (remaining > 0)
+        {
+            remaining--;
+            *(short*)(e + 0x12) = remaining;
+            *(int*)(e + 0x20) -= remaining << 0xc;
+            return;
+        }
+
+        int rising = *(int*)(e + 0x20) + 0x5000;
+        *(int*)(e + 0x20) = rising;
+
+        int home = *(short*)(e + 0x14) << 0xc;
+        if (home > rising) return;
+
+        *(int*)(e + 0x20) = home;
+        *(uint*)e |= 0x40000000;
+        *(short*)(e + 0x10) = 1;
+        *(short*)(e + 0x16) = -1;
+        *(short*)(e + 0x12) = 100;
+    }
 
     /// <summary>
     /// Le corps commun des trois eclats de corde.
@@ -28491,6 +28960,34 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void ResetEntityWakeBits_0040E640()
     {
+        ResetSceneWakeBits_00444E60();
+
+        byte* slots = Mem.Arena(0x005e93c0);
+        for (int i = 0; i < 4; i++)
+        {
+            byte* record = slots + i * 0x9c;
+            record[0x38] = 0xff;
+            record[0x39] = 0xff;
+            record[0x3a] = 0xff;
+            *(ushort*)(record + 0x36) &= 0xfffb;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00444e60</c> — <b>les trois premieres boucles de
+    /// <see cref="ResetEntityWakeBits_0040E640"/>, et rien d'autre</b>. Absente de <c>Blaze.c</c>,
+    /// relevee au desassembleur, 57 instructions.
+    ///
+    /// <para>
+    /// Le binaire a emis ce bloc <b>deux fois</b> : une fois au sein de <c>FUN_0040e640</c>, qui y
+    /// ajoute la quatrieme boucle sur les fiches d'emplacement, et une fois seul a
+    /// <c>0x00444e60</c>, ou il sert de <b>verbe de zone</b> (<see cref="AreaVerb_00444E60"/>). Les
+    /// deux relevés ne different que par l'allocation des registres. Le corps est donc ecrit une
+    /// fois ici et appele des deux endroits.
+    /// </para>
+    /// </summary>
+    private static void ResetSceneWakeBits_00444E60()
+    {
         byte* scene = Mem.Entity(0x005ff400);
         for (int i = 0; i < 0x20; i++)
         {
@@ -28504,16 +29001,6 @@ public static unsafe partial class Blaze
 
         ClearWakeBitOnTable(Mem.Entity(0x005f2d40), 0x80);
         ClearWakeBitOnTable(Mem.Entity(0x005edee0), 0x80);
-
-        byte* slots = Mem.Arena(0x005e93c0);
-        for (int i = 0; i < 4; i++)
-        {
-            byte* record = slots + i * 0x9c;
-            record[0x38] = 0xff;
-            record[0x39] = 0xff;
-            record[0x3a] = 0xff;
-            *(ushort*)(record + 0x36) &= 0xfffb;
-        }
     }
 
     /// <summary>

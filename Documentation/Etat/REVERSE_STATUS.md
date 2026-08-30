@@ -18648,3 +18648,130 @@ silencieuse de pile morte.
 
 Les deux sont dans `legacy-bug.md`. Ni l'un ni l'autre n'est réparé : le projet reproduit les
 défauts d'origine, il ne les corrige pas.
+
+## 2026-08-30 (suite 21) — la taille d'une fonction ne se mesure pas au premier `ret`
+
+Le tri des 37 gestionnaires restants de la forêt reposait sur une mesure fausse : « longueur = nombre
+d'instructions jusqu'au premier `ret` ». Elle est fausse chaque fois que le compilateur émet un
+**retour de milieu de corps**, ce qui est courant dès qu'une fonction a une sortie anticipée.
+
+`0x00458e90` le montre : son premier `ret` est à `0x00458f09`, mais deux sauts internes visent
+`0x00458f0a` et `0x00458fb7`, **au-delà**. La fonction fait 101 instructions, pas 49.
+
+Deux heuristiques ont été essayées avant la bonne :
+
+1. **« le premier `ret` »** — trop court dès qu'il y a une sortie anticipée.
+2. **« le premier `ret` suivi de `nop` »** — trop long : le compilateur ne rembourre pas
+   systématiquement. `0x0040ef40` se termine par un `ret` immédiatement suivi du `push ebx` de la
+   fonction suivante, sans un seul `nop`, et cette heuristique la faisait déborder sur trois
+   fonctions.
+3. **« le premier `ret` qu'aucun saut interne rencontré jusque-là ne dépasse »** — celle-ci tient,
+   parce qu'un saut vers l'avant est la preuve directe que le corps continue.
+
+Six des dix-neuf tailles relevées la veille étaient fausses, dont deux gravement :
+
+| adresse | mesure « premier `ret` » | mesure juste |
+|---|---|---|
+| `0x00458200` | 232 | **569** |
+| `0x0040ef40` | 66 | **158** |
+| `0x00458e90` | 49 | **101** |
+| `0x00483760` | 93 | **152** |
+| `0x004101d0` | 144 | **138** |
+| `0x00413330` | 116 | **116** |
+
+La conséquence pratique : **une fonction ne se choisit pas d'après une mesure, elle se choisit
+d'après son désassemblage lu**. La mesure ne sert qu'à ordonner une file d'attente, et une file
+d'attente mal ordonnée coûte seulement du temps — à condition de vérifier avant d'écrire.
+
+---
+
+## 2026-08-30 (suite 22) — la famille sans donnée
+
+`0x00415d40` et `0x004157a0` sont le même corps. Le diff normalisé tient en **une ligne**, et pour
+la première fois dans la forêt cette ligne n'est ni une planche, ni un sous-type, ni un seuil :
+
+```
+> mov       [eax+0Bh],cl
+```
+
+`0x004157a0` écrit `+0x0b` **deux fois de suite**, avec le même registre, sans rien entre les deux.
+Le second magasin n'a aucun effet.
+
+Toutes les familles trouvées jusqu'ici différaient par au moins une donnée — une adresse de
+planche, un identifiant de son, un seuil. Celle-ci ne diffère par rien du tout : le corps est écrit
+une fois et les deux créneaux y sont branchés sans paramètre. C'est le cas le plus favorable
+possible, et il faut le chercher pour le trouver : sur le seul prologue, ces deux-là étaient déjà
+dans le même groupe, mais tant d'autres l'étaient aussi que le regroupement ne prouvait rien.
+
+---
+
+## 2026-08-30 (suite 23) — `BindMenuLabels` tronque son sujet, et c'est un défaut de notre côté
+
+Le verbe `0x00443300` attache la boîte de dialogue à la fiche d'un membre du groupe. C'est le
+premier site du projet à passer un **vrai pointeur** comme sujet — et cela a mis au jour un défaut
+de la reconstruction, pas du binaire.
+
+`BindMenuLabels(byte* labels, uint subject, byte* context, uint extra)` range le sujet ainsi :
+
+```csharp
+*(uint*)(context + 0x8b0) = subject;     // quatre octets
+```
+
+Ce qui est exact sur le x86 de 1998. Mais **les quatre sites qui relisent `+0x8b0` le relisent en
+pointeur** — `*(byte**)(descriptor + 0x8b0)` dans `UiText` (trois fois) et `UiWindow` (une fois) —
+donc sur huit octets ici. La moitié haute n'est jamais écrite : elle vaut zéro, et le sujet revient
+tronqué à ses 32 bits bas.
+
+**Ampleur.** Sur les 180 sites d'appel, 134 passent `0` — pour ceux-là les deux lectures coïncident
+et rien n'est cassé. Les **46 autres** passent `(uint)(nint)pointeur` et portent le défaut. Une
+allocation native au-dessus de 4 Go, ce qui est le cas ordinaire sur Windows x64, rend le pointeur
+relu invalide et non nul : le pire des deux mondes, puisque les gardes `if (owner == null)` ne le
+rattrapent pas.
+
+**Ce qui a été fait.** Une surcharge `BindMenuLabels(byte* labels, byte* subject, …)` qui range les
+huit octets, employée par le nouveau verbe. Les 46 sites existants ne sont **pas** migrés : chacun
+est un `(uint)(nint)` à retirer, mais c'est un changement de comportement sur 46 chemins, donc une
+décision à prendre plutôt qu'un effet de bord de cette séance.
+
+---
+
+## 2026-08-30 (suite 24) — `0x00571420` : le domaine plutôt que le compte
+
+Le bloc privé des scènes de la forêt avait été modélisé la veille comme **cinq enregistrements de
+`0x30` octets**, de `0x00571420` à `0x00571510`. Deux des gestionnaires de ce lot débordent :
+
+- le verbe `0x00443b20` écrit à `0x0057150c` (le `+0x2c` du cinquième) **et à `0x00571510`**, qui
+  serait le début d'un sixième ;
+- `0x00458de0` lit `0x00571654`, qu'**aucune source décompilée ne nomme** : il n'apparaît pas dans
+  la liste des `DAT_` de `Blaze.c`, et ses voisins connus sont `0x00571640` et `0x00571668`.
+
+Le pas de `0x30` continue au-delà — `0x00571540`, `0x00571570`, `0x005715a0`, `0x005715d0` portent
+tous des champs aux mêmes décalages — mais **le nombre d'enregistrements n'est établi nulle part**,
+et la fin de la série ne tombe pas sur une frontière ronde.
+
+**La décision.** Une seule allocation couvrant `0x00571420` à `0x00571660`, et un accesseur
+`ForestSceneField(va)` qui adresse par VA. Inventer un compte aurait été plus joli et moins vrai ;
+l'accesseur dit exactement ce qu'on sait, à savoir que ce domaine est contigu, à zéro au
+chargement, et qu'un même bloc le porte.
+
+---
+
+## 2026-08-30 (suite 25) — ce qui reste en zone 3
+
+109 sur 136. Les 27 restantes, par taille juste :
+
+| taille | adresses |
+|---|---|
+| 85 à 178 | `0x00541b80`, `0x00443b20`, `0x00413330`, `0x004101d0`, `0x00483760`, `0x0040ef40`, `0x00459840`, `0x00459fa0` |
+| 296 à 569 | `0x004433b0`, `0x00541550`, `0x004a3c30`, `0x004a35b0`, `0x00458200` |
+| 572 et plus | `0x0049e190`, `0x0049e920`, `0x004a13e0`, `0x0049fad0`, `0x004a54e0`, `0x004a4ae0`, `0x004a0480`, `0x004a2c90`, `0x004a4270` |
+| décompilées, mises de côté | `0x00410820`, `0x00413c90`, `0x00411240`, `0x004146b0` |
+
+Les quatre dernières sont les deux scènes cinéma et leurs deux amorces : leurs corps
+(`FUN_00411270`, `FUN_00414d10`) **sont** dans `Blaze.c`, et les deux appelées qui les bloquaient
+(`FUN_00423d10`, `FUN_0040b0e0`) aussi. Le bloc privé étant désormais modélisé, plus rien ne s'y
+oppose — c'est le prochain morceau à prendre, et il vaut quatre créneaux d'un coup.
+
+`0x00541b80` a été ouverte puis reposée : son second appel construit deux tampons de pile dont les
+décalages changent sous deux `push` intercalés, et le résultat ne se lit pas de façon sûre sans
+reconstruire la pile pas à pas. À reprendre avec le temps qu'il faut plutôt qu'à deviner.

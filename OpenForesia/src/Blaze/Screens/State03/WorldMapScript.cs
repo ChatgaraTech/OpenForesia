@@ -1566,6 +1566,16 @@ public static unsafe partial class Blaze
             0x004439A0 => AreaVerb_004439A0((short)(s[2] | (s[3] << 8))),
             0x00443A00 => AreaVerb_00443A00(ent),
 
+            // Six verbes de plus, tous relevés au désassembleur : deux ordres (l'effet 0x59 sur
+            // tout le groupe, le réveil de la scène), deux relevés d'état (la classe du locuteur
+            // rangée dans la banque 2, le niveau du groupe comparé à un seuil) et la boîte de
+            // dialogue attachée au membre que la banque 2 désigne.
+            0x004432A0 => AreaVerb_004432A0(),
+            0x004431F0 => AreaVerb_004431F0(ent),
+            0x00443830 => AreaVerb_00443830((short)(s[2] | (s[3] << 8))),
+            0x00444E60 => AreaVerb_00444E60(),
+            0x00443300 => AreaVerb_00443300((short)(s[2] | (s[3] << 8))),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de la table 0x0056aec8 de la zone courante " +
@@ -1821,6 +1831,167 @@ public static unsafe partial class Blaze
         }
 
         Mem.s_StateBank2_005e9060[(uint)slot & 0xff] = (byte)standing;
+        return 0;
+    }
+
+    // =====================================================================
+    // CINQ VERBES DE ZONE DE PLUS (2026-08-30)
+    //
+    // Tous absents de Blaze.c, tous releves au desassembleur, tous courts : de 26 a 58
+    // instructions. Aucun n'a de doublon.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x004432a0</c> — <b>« pose l'effet 0x59 sur tout le groupe »</b>. 26 instructions,
+    /// absente de <c>Blaze.c</c>. Table <c>0x0056aec8</c>, foret, sous-zones 5 a 9.
+    ///
+    /// <para>Elle balaie les quatre fiches d'emplacement et fait naitre le sous-type <c>0x59</c>
+    /// sur chacune qui porte <c>0x80000000</c> sans <c>0x50000000</c> — vivante et ni morte ni
+    /// absente. Elle ne lit ni l'entite ni l'argument, et rend toujours 0 : c'est un ordre, pas une
+    /// question.</para>
+    /// </summary>
+    private static uint AreaVerb_004432A0()
+    {
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            SpawnEffectEntity(member, 0x59, 0, -1);      // Ghidra: FUN_0047a9d0
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004431f0</c> — <b>« range la classe du locuteur dans la banque 2 »</b>. 52
+    /// instructions, absente de <c>Blaze.c</c>. Table <c>0x0056aec8</c>, foret, sous-zones 0 a 4.
+    ///
+    /// <para>
+    /// Elle lit les trois bits bas de l'octet d'identite <c>+0x150</c> de la fiche de personnage —
+    /// <c>MainMem + (emplacement + 0x78) * 0x2000</c> — et le range dans le <b>premier octet de la
+    /// banque d'etat 2</b> (<c>0x005e9060</c>), d'ou un script ulterieur le relira. Elle rend
+    /// toujours 0.
+    /// </para>
+    /// <para>
+    /// <b>Sept comparaisons pour calculer l'identite.</b> Le binaire ne range pas la classe
+    /// directement : il part de zero et enchaine <c>cmp al,1</c> … <c>cmp al,7</c>, posant a chaque
+    /// fois la constante correspondante. Comme la valeur a deja ete reduite a trois bits, le
+    /// resultat vaut exactement l'entree. La cascade est ecrite ici en une affectation, parce que
+    /// c'est ce qu'elle calcule ; le desassemblage garde la trace de la forme d'origine.
+    /// </para>
+    /// <para>
+    /// Le binaire porte au passage un <c>jne</c> vers <b>l'instruction suivante</b>
+    /// (<c>0x00443213</c>), c'est-a-dire un saut qui ne saute pas. C'est du code mort emis par le
+    /// compilateur, sans effet et sans equivalent a transcrire.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_004431F0(byte* ent)
+    {
+        byte* record = GetMainMemPtr() + (ent[8] + 0x78) * 0x2000;
+        Mem.s_StateBank2_005e9060[0] = (byte)(record[0x150] & 7);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00443830</c> — <b>« tout le groupe est-il sous le niveau N ? »</b>. 38
+    /// instructions, absente de <c>Blaze.c</c>. Table <c>0x0056aec8</c>, foret, toutes sous-zones.
+    ///
+    /// <para>
+    /// Elle part de <b>1</b> et retombe a 0 des qu'un membre vivant atteint ou depasse
+    /// <paramref name="level"/> — le niveau se lit en <c>+0x144</c> de la fiche de personnage, le
+    /// meme mot que l'ecran d'etat affiche. La reponse est donc « oui » pour un groupe vide, ce qui
+    /// est la convention habituelle de ces verbes.
+    /// </para>
+    /// <para>
+    /// <b>Le binaire n'indexe pas par emplacement mais par deux curseurs paralleles</b> : la fiche
+    /// de personnage avance de <c>0x2000</c> a partir de <c>0xf0000</c>, la fiche d'emplacement de
+    /// <c>0x9c</c> a partir de <c>0x005e93c0</c>. <c>0xf0000</c> est <c>0x78 * 0x2000</c>, la meme
+    /// base que partout ailleurs.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00443830(short level)
+    {
+        short below = 1;
+
+        byte* mainMem = GetMainMemPtr();
+        byte* member = Inp.s_SlotFlags_005e93c0;
+        int offset = 0xf0000;
+
+        for (int i = 0; i < 4; i++, member += 0x9c, offset += 0x2000)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            if (*(ushort*)(mainMem + offset + 0x144) >= level) below = 0;
+        }
+
+        return (uint)below;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00444e60</c> — <b>« reveille la scene »</b>. 57 instructions, absente de
+    /// <c>Blaze.c</c>. Table <c>0x0056aec8</c>, foret, sous-zones 5 et 9.
+    ///
+    /// <para>C'est <see cref="ResetEntityWakeBits_0040E640"/> <b>moins sa quatrieme boucle</b> —
+    /// celle qui repeint les quatre fiches d'emplacement en blanc. Le corps partage est
+    /// <see cref="ResetSceneWakeBits_00444E60"/> ; le verbe n'y ajoute que le <c>return 0</c>.</para>
+    /// </summary>
+    private static uint AreaVerb_00444E60()
+    {
+        ResetSceneWakeBits_00444E60();
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00443300</c> — <b>« fais parler le membre que la banque 2 designe »</b>. 58
+    /// instructions, absente de <c>Blaze.c</c>. Table <c>0x0056aec8</c>, foret, sous-zones 0 a 4.
+    ///
+    /// <para>
+    /// Elle cherche d'abord le <b>dernier</b> emplacement vivant — la boucle ne s'arrete pas au
+    /// premier trouve — puis lit l'octet <c>+2</c> de la banque d'etat 2 : c'est le membre que le
+    /// script veut faire parler. Si ce numero tient dans les quatre emplacements, il est employe
+    /// tel quel ; sinon on retombe sur le dernier vivant. La boite de dialogue est ensuite liee a
+    /// la fiche de ce membre, avec l'etiquette que l'argument designe dans le repertoire de la
+    /// sous-zone.
+    /// </para>
+    /// <para>
+    /// <b>Un defaut de 1998, conserve.</b> Le second test de validite lit
+    /// <c>0x005e93c0 + 4 * 0x9c</c>, c'est-a-dire un <b>cinquieme</b> emplacement dans une table
+    /// qui n'en a que quatre : le compilateur y a employe le compteur laisse par la boucle
+    /// precedente au lieu du numero teste. La lecture tombe juste apres la table, dans l'arene, et
+    /// ne peut se produire que si l'octet de banque depasse deja 3 — donc sur un chemin qui est de
+    /// toute facon hors des rails. Reproduit tel quel, voir <c>legacy-bug.md</c>.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00443300(short label)
+    {
+        ushort last = (ushort)(byte)Mem.s_Unknown_005de538;
+        byte* slots = Inp.s_SlotFlags_005e93c0;
+
+        int index = 0;
+        for (; index <= 3; index++)
+        {
+            uint flags = *(uint*)(slots + index * 0x9c);
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+            last = (ushort)index;
+        }
+
+        ushort speaker = Mem.s_StateBank2_005e9060[2];
+
+        if (speaker > 3)
+        {
+            if ((*(uint*)(slots + speaker * 0x9c) & 0x80000000) == 0) speaker = last;
+
+            // Ghidra: `index` vaut 4 en sortie de boucle. Le cinquieme emplacement. Voir le resume.
+            else if ((*(uint*)(slots + index * 0x9c) & 0x50000000) != 0) speaker = last;
+        }
+
+        byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + label * 4);
+        BindMenuLabels(labels, slots + speaker * 0x9c, s_WorldMapDescriptor_005633b0, 0);
+
         return 0;
     }
 

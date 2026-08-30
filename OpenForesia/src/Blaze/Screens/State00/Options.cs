@@ -2488,6 +2488,35 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// La meme liaison, mais avec un <b>vrai pointeur</b> comme sujet.
+    ///
+    /// <para>
+    /// <b>Pourquoi cette surcharge existe.</b> La version a <c>uint</c> ci-dessus range le sujet
+    /// sur <b>quatre octets</b> (<c>*(uint*)(context + 0x8b0) = subject</c>), ce qui est exact sur
+    /// le x86 d'origine. Mais les quatre sites qui le relisent le relisent en <b>pointeur</b> —
+    /// <c>*(byte**)(descriptor + 0x8b0)</c> dans <c>UiText</c> et <c>UiWindow</c> —, donc sur huit
+    /// octets ici. Un pointeur passe par la version <c>uint</c> perd sa moitie haute a l'ecriture
+    /// et la relit a zero : le sujet revient tronque, non nul, et faux.
+    /// </para>
+    /// <para>
+    /// Tant que le sujet vaut zero les deux versions sont equivalentes, ce qui est le cas de la
+    /// grande majorite des sites. Les <b>46 autres</b> passent <c>(uint)(nint)pointeur</c> et
+    /// portent le defaut ; ils sont a migrer vers cette surcharge, un <c>(uint)(nint)</c> a retirer
+    /// par site. Signale le 2026-08-30, non corrige en bloc : c'est un changement de comportement
+    /// sur 46 sites, donc une decision a prendre et pas un effet de bord.
+    /// </para>
+    /// </summary>
+    internal static void BindMenuLabels(byte* labels, byte* subject, byte* context, uint extra)
+    {
+        *(byte**)(context + 0x8b0) = subject;
+        context[0x8c7] |= 1;
+        *(byte**)(context + 0x8ac) = labels;
+        *(uint*)(context + 0x8a8) = extra;
+
+        if (*(short*)labels == 8) FreezeAllEntities();   // Ghidra: FUN_00535300(0)
+    }
+
+    /// <summary>
     /// Ghidra: FUN_00547140 @ 0x00547140 â€” the CRT `rand()`. The constants are MSVC's linear
     /// congruential generator, which also identifies its neighbour: `FUN_00547130`, already called
     /// by RunMainLoop with 1, is `srand`, and the global they share (`DAT_0056e9c0`) is the seed

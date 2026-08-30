@@ -816,6 +816,42 @@ personne.
 
 ---
 
+## LB-016 — Le verbe « fais parler le membre désigné » teste un cinquième emplacement
+
+**Relevé** le 2026-08-30 dans `0x00443300`, absent de `Blaze.c`, relevé au désassembleur.
+
+Le verbe cherche le dernier emplacement vivant, puis lit dans la banque d'état 2 le numéro du
+membre que le script veut faire parler. Si ce numéro dépasse 3 — donc s'il ne désigne aucun des
+quatre emplacements — il vérifie sa validité avant de retomber sur le dernier vivant :
+
+```asm
+0044333a  cmp  dx,3
+0044333e  jle  00443372            ; <= 3 : on l'emploie tel quel
+00443340  movsx ecx,dx             ; sinon, on le "verifie"
+0044334b  test dword [edi*4+5E93C0h],80000000h   ; edi = dx * 0x27  -> OK
+00443358  movsx eax,ax             ; <-- ax vaut 4, le compteur laisse par la boucle
+00443363  test dword [ecx*4+5E93C0h],50000000h   ; ecx = 4 * 0x27  -> HORS TABLE
+```
+
+Le second test devait porter sur le même numéro que le premier. Le compilateur y a employé `eax`,
+qui contient encore la valeur de sortie de la boucle de balayage, c'est-à-dire **4**. La table
+`0x005e93c0` n'a que quatre fiches de `0x9c` octets : la lecture tombe `0x270` octets après son
+début, sur ce que l'arène contient ensuite.
+
+**Pourquoi c'est sans conséquence en pratique.** Le chemin n'est atteint que si l'octet de banque
+dépasse déjà 3, c'est-à-dire quand le script désigne un membre qui n'existe pas — un cas qui
+finit de toute façon par retomber sur le dernier vivant. La valeur lue ne fait que choisir
+**laquelle** des deux branches de repli est prise, et les deux mènent au même endroit dès que le
+premier test échoue.
+
+**Ce que fait OpenForesia.** La lecture est reproduite telle quelle. `0x005e93c0` est une vue dans
+l'arène contiguë, pas une allocation de `0x270` octets : lire le cinquième emplacement tombe donc
+sur les octets suivants de l'arène, exactement comme en 1998, sans débordement de tas.
+
+Le correctif d'un mode « corrigé » serait de tester le même numéro dans les deux branches.
+
+---
+
 ## Note — ceci n'est PAS un bug d'origine : deux fautes de transcription du 2026-08-25
 
 Consignees ici parce que leur symptome ressemblait a un defaut de 1998, et que la prochaine
