@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **`census-item-effects.sh`, la liste de courses des objets** — il déroule hors ligne les deux scripts des 2 370 fiches d'objet du CD et sort `ObjetsAtteignables.md` : **21 gestionnaires atteignables par un objet, 3 écrits, 18 à transcrire**, triés par nombre d'emplois. Plus besoin de découvrir par plantage
+- doc : **le dérouleur a prédit les deux plantages de la séance avant qu'on les rencontre** — la Petite potion se décode en opcode 17 puis sous-type `0x40`, exactement dans cet ordre. C'est ce qui autorise à croire le reste du relevé
+- doc : **un objet fait la même chose où qu'on soit** — sur les 1 440 naissances relevées dans les scripts, **zéro** emploie un sous-type `≥ 0xc0` : tout passe par la table statique `0x00551c30`, commune aux onze zones. Les dix-huit corps restants n'ont donc pas de variante par carte
+- doc : **une potion ne soigne pas par la table des 48 effets** — elle soigne par l'**opcode 6**, l'unité arithmétique, sur `+0x4c` du bloc de la cible. La table des 48 est celle des altérations d'état ; seuls 13 de ses 48 genres sont atteignables par un objet
 - feat : **la bouffée de l'objet utilisé** (`0x00446790`) et **son étincelle** (`0xa9` → `0x0044fb10`) — les deux corps que le script d'une potion fait naître. L'étincelle tire tout son état au hasard en sept appels au générateur, et son `+0x14` sert successivement de borne au rayon puis de durée de vie
 - doc : **utiliser un objet ne demande pas un corps par objet** — les effets visibles viennent des **tables statiques** (274 gestionnaires pour les onze zones, 49 écrits), pas des tables de zone. Le plafond est 225, pas 1238, et le même corps sert la potion, le sort et le piège
 - doc : **l'étendue de `0x00551528` se déduit de la signature** — les quatre octets de queue valent `01 02 10 00` sur trente-cinq enregistrements puis changent : c'est la borne, aucun corps ne borne l'indice

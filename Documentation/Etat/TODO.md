@@ -12,36 +12,70 @@ déplacement.
 
 ---
 
-# NON : UTILISER UN OBJET NE DEMANDE PAS UN CORPS PAR OBJET (2026-08-30)
+# NON — ET IL N'Y A QUE DIX-HUIT CORPS À ÉCRIRE (2026-08-30)
 
-**La question s'est posée après le troisième plantage d'affilée sur la même potion.** Elle mérite
-une réponse chiffrée, parce que l'intuition « chaque objet a son comportement » est fausse et
-coûterait très cher à suivre.
+**Non, tous les objets ne fonctionnent pas.** Mais l'intuition « chaque objet a son comportement »
+est fausse, et la réponse exacte tient maintenant dans un fichier :
+**`Documentation/Etat/ObjetsAtteignables.md`**, généré par
+`sh OpenForesia.Tools/census-item-effects.sh`.
 
-**Ce qu'utiliser un objet met en jeu, dans l'ordre :**
+**On a arrêté de découvrir par plantage.** Les scripts d'objet sont de la *donnée*, et elle était
+déjà dans le dépôt : `Documentation/Reference/Bestiaire/objets.csv` porte les `0x140` octets de
+chaque fiche, scripts compris (`+0x80` l'emploi, `+0x82` le déclenchement). Le nouvel outil déroule
+les deux scripts des **2 370 fiches** en suivant les sauts, et sort la liste exacte de ce qu'un
+objet peut atteindre — **sans jouer une seule partie**.
 
-1. son **script**, dans le bloc de `0x280` octets de l'objet — 23 opcodes, tous transcrits sauf le
-   22, une levée volontaire. Pas de travail par objet : c'est une machine, les objets sont ses
-   données ;
-2. la **table des 48 effets** (`0x0056d4e0`) — soigner, altérer, lever, ressusciter, tuer.
-   **Complète.** Bornée à 48 pour tout le jeu, sorts compris ;
-3. les **gestionnaires d'entité des effets visibles** que le script fait naître. C'est le seul poste
-   ouvert — et il est **partagé**, pas propre à l'objet.
+## Le résultat
 
-**Le point qui décide de tout : ces gestionnaires viennent des tables STATIQUES**
-(`0x00551c30`, `0x00551f30`, `0x00552230`), pas des tables de zone. Trois tables de 192 entrées,
-valables dans les onze zones, **274 gestionnaires distincts au total** — dont 49 écrits. Ce n'est
-pas un chantier de 1238 corps mais **un plafond de 225**, et le même corps sert la potion, le sort
-et le piège.
+| | |
+|---|---|
+| gestionnaires d'entité atteignables par un objet | **21** |
+| déjà écrits | **3** |
+| **à transcrire** | **18** |
 
-**Et la profondeur est faible.** Chaîne observée pour la potion : la bouffée `0x00446790` sème
-l'étincelle `0xa9` → `0x0044fb10`, qui ne sème rien. Deux corps, une soixantaine de lignes chacune,
-toutes deux dans `Blaze.c`. **101 des 225 restantes sont décompilées dans `Blaze.c`** ; les autres
-demandent le désassembleur.
+Vingt et un pour **tous les objets du jeu**, pas 225 et pas 1238 : les objets se partagent une
+poignée d'effets visibles.
 
-**La marche à suivre reste donc l'inverse d'un plan** : jouer, lire l'adresse que la levée donne,
-la transcrire. Chaque corps écrit rapproche aussi les sorts et les pièges, puisque c'est le même
-jeu de tables.
+**Et le résultat le plus utile est ailleurs dans le compte** : sur les **1 440 naissances**
+relevées, **zéro** emploie un sous-type `≥ 0xc0`. Tout passe par la table statique `0x00551c30`,
+la même dans les onze zones — **un objet fait exactement la même chose où qu'on soit**. Écrire ces
+dix-huit corps une fois les couvre partout ; il n'y a pas de variante par carte à redouter.
+
+Le tableau est **trié par nombre d'emplois**, ce qui donne l'ordre de travail directement. Les
+trois premiers restants :
+
+- `0x00446DD0` (sous-type `0x3e`) — **189 emplois** ;
+- `0x00445F60` (`0x44`) — 166 ;
+- `0x004462B0` (`0x43`) — 162.
+
+## Pourquoi on peut s'y fier
+
+Le dérouleur a été vérifié avant d'être cru : la **Petite potion** se décode en opcode 17
+(recherche de cible, mode 0), puis naissance du sous-type `0x40` → `0x00446790`. **Ce sont
+exactement les deux levées rencontrées en jeu, dans cet ordre.** Il les avait toutes les deux sans
+qu'on ait eu besoin de jouer.
+
+## Ce qu'il a corrigé au passage
+
+**Une potion ne soigne pas par la table des 48 effets.** Elle soigne par l'**opcode 6**, l'unité
+arithmétique, sur le champ `+0x4c` du bloc de la cible. La table des 48 sert aux altérations d'état
+et aux guérisons des sorts et des pièges. Seuls **13 des 48 genres** sont atteignables par un
+objet — le tableau dit lesquels, donc lesquels valent un essai en jeu.
+
+## La seule lacune, et elle est bornée
+
+L'**opcode 14** désigne une fiche du répertoire des sorts, dont l'octet `+0x10` porte le sous-type
+réellement engendré. Ce répertoire n'est pas dans `objets.csv` : les paires famille/indice sont
+listées sans être résolues. Les résoudre demanderait d'étendre le verbe `bestiaire` au répertoire
+des sorts — c'est le prochain pas si les 18 ne suffisent pas.
+
+## La stratégie, en trois lignes
+
+1. Descendre `ObjetsAtteignables.md` de haut en bas — le plus employé d'abord, c'est le plus
+   probable en jeu.
+2. Régénérer le fichier après chaque lot : la colonne « écrit » se met à jour toute seule.
+3. Garder la sonde en jeu comme **filet**, plus comme méthode : elle ne sert plus qu'à attraper ce
+   que le relevé statique n'a pas pu résoudre (l'opcode 14).
 
 ---
 

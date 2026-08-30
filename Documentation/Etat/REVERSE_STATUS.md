@@ -19184,3 +19184,74 @@ où Ghidra pouvait mentir sur une largeur.
 L'**opcode 22** du script d'objet reste une levée volontaire — il rend un curseur de liste
 d'affichage là où la machine attend un curseur de script, un défaut de 1998 jamais observé. Rien
 d'autre.
+
+## 2026-08-30 (suite 37) — arrêter de découvrir par plantage : les scripts d'objet sont de la donnée
+
+**La question posée était « faut-il implémenter le comportement de chaque objet utilisable ? ».**
+Trois plantages d'affilée sur la même potion la rendaient légitime. La réponse est non, et elle
+tient désormais dans un fichier généré : `Documentation/Etat/ObjetsAtteignables.md`.
+
+**Ce que la méthode par plantage ne pouvait pas donner.** Elle marche — jouer, lire l'adresse que
+la levée nomme, transcrire — mais elle ne dit jamais *ce qui reste*. On ignore si on est à un corps
+de la fin ou à cinquante, et rien n'oriente vers ce qui sert le plus.
+
+**Ce qui a débloqué.** Les scripts d'objet ne sont pas du code du binaire : ce sont des **données du
+CD**, et elles étaient déjà relevées dans le dépôt. `Bestiaire/objets.csv` porte les `0x140` octets
+de chacune des 2 370 fiches, et les deux scripts d'un objet vivent dedans — `+0x80` pour l'emploi,
+`+0x82` pour le déclenchement. Il ne manquait que le dérouleur.
+
+`census-item-effects.sh` suit les deux scripts de chaque fiche **en reachability**, pas en balayage
+linéaire — un script porte des données entre ses blocs, et un balayage linéaire les lirait comme des
+opcodes. Les largeurs des 23 opcodes viennent des `return s + N` de `DispatchItemOp`, donc de la
+reconstruction elle-même.
+
+**La résolution d'un sous-type est ce qui rend le relevé utilisable.** Un numéro de sous-type ne veut
+rien dire seul, mais ici la règle est connue : `FUN_0047aa70` teste `index < 0xc0` — en dessous, la
+table **statique** `0x00551c30`, la même dans les onze zones ; au-dessus, la table `0x0056b0c8`
+installée pour *cette* sous-zone, à l'entrée `index - 0xc0`. C'est pourquoi la zone et la sous-zone
+de chaque fiche sont conservées jusqu'au bout du traitement.
+
+### Le résultat
+
+**21 gestionnaires d'entité pour tous les objets du jeu** — 3 écrits, **18 à transcrire** —, triés
+par nombre d'emplois. À comparer aux 274 des tables statiques et aux 1 238 du recensement général :
+les objets se partagent une poignée d'effets visibles.
+
+### La validation, qui vaut plus que le chiffre
+
+Le dérouleur a été vérifié **avant** d'être cru. La Petite potion se décode en :
+
+```
+0090  11  cible-recherche   00        <- mode 0, le même camp
+0095  00  consommer         64
+0097  0a  naitre-cible      40 00 01  <- sous-type 0x40 -> 0x00446790
+00a3  06  alu-stats-cible   4c 59 20  <- +0x4c, les points de vie
+```
+
+Ce sont **exactement les deux levées de la séance, dans cet ordre** : l'opcode 17 d'abord, le
+sous-type `0x40` ensuite. Le relevé statique les avait toutes les deux.
+
+### Ce qu'il corrige
+
+**Une potion ne soigne pas par la table des 48 effets.** Elle soigne par l'**opcode 6**, l'unité
+arithmétique, sur `+0x4c` du bloc de la cible — le genre 43 n'apparaît nulle part dans les scripts
+d'objet. La table des 48 est celle des **altérations d'état**, plus les guérisons des sorts et des
+pièges. Seuls **13 de ses 48 genres** sont atteignables par un objet, ce qui dit aussi lesquels
+valent un essai en jeu.
+
+### La lacune, et elle est bornée
+
+L'**opcode 14** désigne une fiche du répertoire des sorts, dont l'octet `+0x10` porte le sous-type
+réellement engendré. Ce répertoire n'est pas dans `objets.csv`, donc les paires famille/indice sont
+listées sans être résolues. Les résoudre demanderait d'étendre le verbe `bestiaire` au répertoire
+des sorts. C'est le prochain pas si les 18 ne suffisent pas — pas avant.
+
+**La sonde en jeu change de rôle** : de méthode, elle devient filet. Elle ne sert plus qu'à attraper
+ce que le relevé statique ne peut pas résoudre.
+
+**Post-scriptum, et c'est le résultat le plus utile de la suite 37.** Sur les **1 440 naissances**
+relevées dans les scripts d'objet, **zéro** emploie un sous-type `≥ 0xc0`. Tout se résout par la
+table statique `0x00551c30`, la même dans les onze zones : **un objet fait exactement la même chose
+où qu'on soit**. Les dix-huit corps restants n'ont donc pas de variante par carte à redouter, et
+écrire chacun une fois le couvre partout. La branche par sous-zone reste dans le script parce que
+c'est la règle du binaire — elle ne se déclenche simplement jamais sur ces données.
