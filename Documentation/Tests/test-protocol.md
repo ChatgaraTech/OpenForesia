@@ -2092,3 +2092,30 @@ la meme facon.
 La regle qui s'en degage : **un relevé qui ne s'ecrit qu'a la sortie ne survit pas a ce qu'on
 cherche justement a observer.** Ecrire des qu'il y a du nouveau coute quelques dizaines
 d'ecritures par seance et supprime la question.
+
+### Implementer un gestionnaire : remettre « teste » a zero (2026-08-30)
+
+La sonde note l'adresse **avant** d'appeler. Un gestionnaire absent est donc enregistre comme
+« teste » par le plantage meme qu'il provoque, et la feuille de route peut afficher
+`implemente = non, teste = oui`. Cette combinaison ne veut pas dire « eprouve » : elle veut dire
+**« le jeu arrive jusque-la et s'y arrete »**. C'est la ligne la plus utile du document — elle
+designe le travail que le jeu reclame vraiment.
+
+**La regle, posee par Vincent le 2026-08-30 :** quand on implemente un gestionnaire qui etait
+`implemente = non, teste = oui`, il faut **retirer ses lignes de `handlers-exerces.tsv`** avant de
+regenerer. Sinon le nouveau corps herite d'un « teste = oui » qui ne prouve rien, et la prochaine
+seance de jeu passera a cote — alors que c'est precisement le corps qui a le plus besoin d'etre
+exerce.
+
+```sh
+grep -v '^0040F370\t' Documentation/Etat/handlers-exerces.tsv > /tmp/t
+mv /tmp/t Documentation/Etat/handlers-exerces.tsv
+sh OpenForesia.Tools/census-entity-handlers.sh > Documentation/Etat/GestionnairesEntites.md
+```
+
+Et plus generalement : **regenerer la feuille de route apres chaque implementation**, pas seulement
+apres une seance de jeu. Le document croise les sources C# autant que le relevé de la sonde.
+
+**La lecon de fond** : un instrument qui enregistre une intention (« on est passe par la ») et un
+resultat (« ca a marche ») dans le meme champ ment des que les deux divergent. Ici les deux
+colonnes sont separees ; c'est le lien entre elles qu'il faut entretenir a la main.

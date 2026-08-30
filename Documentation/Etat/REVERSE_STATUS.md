@@ -18288,3 +18288,36 @@ l'appeler. Les trois autres appelées du corps — `TryPlaceEntity` (`FUN_005330
 s'est révélé n'être qu'un **thunk d'import** vers ce dernier.
 
 **Transcrits et compilés, pas exécutés** — le test en jeu revient à Vincent.
+
+## 2026-08-30 (suite 9) — `0x0040f370`, la poussiere du bloc pousse
+
+**Le premier gestionnaire que la sonde a designe avant qu'il soit ecrit.** Elle note l'adresse
+avant d'appeler, donc le plantage du teleporteur l'a lui-meme enregistre : la feuille de route
+l'affichait `implemente = non, teste = oui`, seule ligne dans ce cas.
+
+Decompilee dans `Blaze.c`. Sous-type `0xfd` de la table installee par zone — la passe
+`FUN_0047acf0` indexe `0x0056afc8`, deborde de trois tables et retombe sur `0x0056b2c8`. Presente
+dans les sous-zones 0 a 4 de la foret.
+
+**Elle ne bouge pas, elle s'eteint.** La naissance disperse la position — `[-40, +39]` unites a
+l'horizontale, `[0, +14]` vers le haut —, tire une echelle de `0x800 + (rand & 0x3ff)` et pose une
+teinte **sombre**, `0x3c3c3c`. Cinq tirages, dans cet ordre : echelle, X, Z, Y, duree. Ensuite
+chaque image assombrit d'un cran par canal et decompte ; a zero l'image d'atlas suivante est prise
+et le compteur repart de `+0x14`, tire une fois pour toutes entre 5 et 9. **Quatre images
+d'atlas**, donc 20 a 36 images de jeu — la teinte, partie de 60, n'a pas le temps d'atteindre
+zero : c'est le compteur d'atlas qui tue l'entite, pas l'extinction.
+
+### La plage `0x0054f720` porte deux groupes
+
+Sept enregistrements jusqu'a `DAT_0054f758`, tous en `0x18 x 0x18` sur la rangee `v = 0x30`. Les
+**quatre premiers** portent `01 02` en cinquieme et sixieme octets, les **trois derniers** `00 01`.
+Seuls les quatre premiers sont atteignables d'ici — le compteur s'arrete a 4. Les trois autres
+appartiennent a un groupe voisin qu'aucun symbole de `Blaze.c` ne nomme. La plage entiere est
+relevee quand meme : l'indexation se fait en avant, et un descripteur releve seul n'a aucun
+garde-fou.
+
+### Le « teste » a ete remis a zero
+
+Conformement a la regle posee le meme jour : ses lignes ont ete retirees de `handlers-exerces.tsv`
+avant de regenerer la feuille de route. Le gestionnaire y figure desormais
+`implemente = oui, teste = non`, et il ne reste **aucune** ligne `non / oui`.

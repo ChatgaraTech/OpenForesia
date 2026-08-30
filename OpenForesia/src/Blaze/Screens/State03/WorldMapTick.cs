@@ -4749,6 +4749,11 @@ public static unsafe partial class Blaze
             // le plantage a l'approche de l'eau, signale le 2026-08-30.
             case 0x0040F7F0: EntityHandler_0040F7F0(record); return;
 
+            // Le sous-type 0xfd de la meme table — la POUSSIERE DU BLOC POUSSE, signalee le
+            // 2026-08-30 sur le teleporteur. Premier gestionnaire que la sonde a designe avant
+            // qu'il soit ecrit.
+            case 0x0040F370: EntityHandler_0040F370(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de
@@ -8846,6 +8851,112 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x12) = 0;
         e[0x40] += 1;
         if (e[0x40] == 4) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f720</c> — la plage relevee jusqu'a <c>DAT_0054f758</c>, soit
+    /// <b>sept</b> enregistrements de huit octets, tous en <c>0x18 x 0x18</c> sur la rangee
+    /// <c>v = 0x30</c>.
+    ///
+    /// <para>
+    /// <b>Ce sont deux groupes, pas un.</b> Les quatre premiers (<c>u</c> = 0x48, 0x60, 0x78,
+    /// 0x90) portent <c>01 02</c> en cinquieme et sixieme octets ; les trois derniers
+    /// (<c>u</c> = 0x00, 0x18, 0x30) portent <c>00 01</c>. Seuls les quatre premiers sont
+    /// atteignables depuis <see cref="EntityHandler_0040F370"/>, dont le compteur <c>+0x40</c>
+    /// s'arrete a 4 — les trois autres appartiennent a un groupe voisin qu'aucun symbole de
+    /// <c>Blaze.c</c> ne nomme.
+    /// </para>
+    /// <para>
+    /// La plage entiere est relevee quand meme : l'indexation se fait <b>en avant</b> depuis
+    /// l'adresse donnee, et un descripteur releve seul n'a aucun garde-fou — c'est la lecon de
+    /// <c>0x005646c0</c> dans <c>DataSymbols.md</c>.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F720 =
+    [
+        0x48, 0x30, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x0054f720
+        0x60, 0x30, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x0054f728
+        0x78, 0x30, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x0054f730
+        0x90, 0x30, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x0054f738
+        0x00, 0x30, 0x18, 0x18, 0x00, 0x01, 0x10, 0x00,   // 0x0054f740 — l'autre groupe
+        0x18, 0x30, 0x18, 0x18, 0x00, 0x01, 0x10, 0x00,   // 0x0054f748
+        0x30, 0x30, 0x18, 0x18, 0x00, 0x01, 0x10, 0x00,   // 0x0054f750
+    ];
+
+    private static byte* s_Descriptors0054F720Storage;
+
+    private static byte* Descriptors0054F720()
+        => NativeCopy(s_Descriptors_0054F720, ref s_Descriptors0054F720Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_0040f370 @ 0x0040f370 — <b>la poussiere du bloc pousse</b>. Decompilee dans
+    /// <c>Blaze.c</c>. Sous-type <c>0xfd</c> de la table installee par zone : la passe
+    /// <see cref="TickEntityTable_005f2d40"/> indexe <c>0x0056afc8</c>, deborde de trois tables et
+    /// retombe sur <c>0x0056b2c8</c>. Presente dans les sous-zones 0 a 4 de la foret.
+    ///
+    /// <para>
+    /// Signalee en jeu par Vincent le 2026-08-30, en poussant le bloc sur le teleporteur — c'est
+    /// le premier gestionnaire que la sonde ait designe <b>avant</b> qu'il soit ecrit : elle note
+    /// l'adresse avant d'appeler, donc le plantage lui-meme l'a enregistre.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne bouge pas, elle s'eteint.</b> La naissance disperse la position sur les trois
+    /// axes — <c>[-40, +39]</c> unites entieres a l'horizontale, <c>[0, +14]</c> vers le haut —,
+    /// tire une echelle de <c>0x800 + (rand &amp; 0x3ff)</c>, et pose une teinte <b>sombre</b> a
+    /// <c>0x3c3c3c</c>. Cinq tirages en tout, dans cet ordre : echelle, X, Z, Y, duree.
+    /// </para>
+    /// <para>
+    /// Ensuite chaque image assombrit d'un cran par canal
+    /// (<see cref="BrightenEntityTint_00404DE0"/> avec <c>-1</c>) et decompte <c>+0x12</c>. A zero,
+    /// l'image d'atlas suivante est prise et le compteur repart de <c>+0x14</c>, tire une fois
+    /// pour toutes entre 5 et 9. <b>Quatre images d'atlas</b>, donc 20 a 36 images de jeu — la
+    /// teinte, partie de 60, n'a pas le temps d'atteindre zero : c'est le compteur d'atlas qui
+    /// tue l'entite, pas l'extinction.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040F370(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F720();   // Ghidra: &DAT_0054f720
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            e[0x38] = 0x3c;
+            e[0x39] = 0x3c;
+            e[0x3a] = 0x3c;
+
+            short scale = (short)(SignedMask(CrtRand(), 0x3ff) + 0x800);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x50 - 0x28) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x50 - 0x28) * 0x1000;
+
+            // Ghidra pose l'etat ENTRE le tirage et son emploi ; sans effet, transcrit a sa place.
+            int rise = CrtRand();
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x20) += (rise % 0xf) * 0x1000;
+
+            short hold = (short)(CrtRand() % 5 + 5);
+            *(short*)(e + 0x14) = hold;
+            *(short*)(e + 0x12) = hold;
+        }
+
+        // La premiere image passe ici aussi : la naissance pose +0x10 = 1.
+        if (*(short*)(e + 0x10) != 1) return;
+
+        BrightenEntityTint_00404DE0(e, -1, -1, -1);
+
+        (*(short*)(e + 0x12))--;
+        if (*(short*)(e + 0x12) >= 0) return;
+
+        // Ghidra: `(char)param_1[0x10] + 1` — l'octet de +0x40, en CHAR signe.
+        byte frame = (byte)(e[0x40] + 1);
+        *(short*)(e + 0x12) = *(short*)(e + 0x14);
+        e[0x40] = frame;
+
+        if (frame == 4) *(uint*)e &= 0x7fffffff;
     }
 
     /// <summary>

@@ -48,8 +48,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 | | |
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
-| testes en jeu | **29** |
-| implementes, jamais appeles | **84** |
+| testes en jeu | **41** |
+| implementes, jamais appeles | **72** |
 | a transcrire | **1317** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
@@ -65,7 +65,7 @@ et n'est pas un comportement.
 | 0 | L'auberge | 48 | 32 | 0 |
 | 1 | La mine abandonnee | 157 | 15 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 12 | 0 |
-| 3 | La foret | 136 | 44 | 11 |
+| 3 | La foret | 136 | 45 | 17 |
 | 4 | La vieille tour | 176 | 13 | 0 |
 | 5 | Le Labyrinthe des morts | 160 | 13 | 0 |
 | 6 | Le chateau de l'immortel | 170 | 13 | 0 |
@@ -634,7 +634,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 3 — La foret
 
-136 gestionnaires, 44 implementes, 11 testes.
+136 gestionnaires, 45 implementes, 17 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -642,7 +642,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0040EF40` | 0,1,2,3,4 | 0056B2C8 | **non** | **non** |
 | `0x0040F190` | 0,1,2,3,4 | 0056B2C8 | **non** | **non** |
 | `0x0040F260` | 0,1,2,3,4 | 0056B2C8 | **non** | **non** |
-| `0x0040F370` | 0,1,2,3,4 | 0056B2C8 | **non** | oui |
 | `0x0040F470` | 0,1,2,3,4 | 0056B2C8 | **non** | **non** |
 | `0x0040F650` | 0,1,2,3,4 | 0056B2C8 | **non** | **non** |
 | `0x0040F8E0` | 0,1,2,3,4 | 0056B2C8 | **non** | **non** |
@@ -737,7 +736,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004441F0` | 0,1,2,3,4 | 0056AEC8 | oui | **non** |
 | `0x00445480` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x004566C0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
-| `0x00456750` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00456CF0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00456E80` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00456F40` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
@@ -746,10 +744,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00457240` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00457370` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00457BF0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
-| `0x00457EC0` | 0,1,2,3,4 | 0056ADC8 | oui | **non** |
 | `0x00457FC0` | 0,1,2,3,4,6,7,8 | 0056ADC8 | oui | **non** |
-| `0x004734B0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
-| `0x004736D0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004738A0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A70` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x00473A90` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
@@ -760,19 +755,24 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004746F0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x0049B220` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
 | `0x0049B840` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
-| `0x0049C0B0` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
-| `0x0049C8E0` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
 | `0x0049D030` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
 | `0x0049DA40` | 0,1,2,3,4 | 0056AD48 | oui | **non** |
+| `0x0040F370` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
 | `0x0040F7F0` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
 | `0x00456730` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
+| `0x00456750` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
 | `0x00456A30` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
+| `0x00457EC0` | 0,1,2,3,4 | 0056ADC8 | oui | oui |
 | `0x00458170` | 0,1,2,3,4,6,7,8 | 0056ADC8 | oui | oui |
+| `0x004734B0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
+| `0x004736D0` | 0,1,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | oui |
 | `0x00483450` | 0,1,2,3,4 | 0056B0C8 | oui | oui |
 | `0x004834D0` | 0,1,2,3,4 | 0056B2C8 | oui | oui |
 | `0x00499DE0` | 0,1,2,3,4 | 0056AD48 | oui | oui |
 | `0x0049A360` | 0,1,2,3,4 | 0056AD48 | oui | oui |
 | `0x0049A980` | 0,1,2,3,4 | 0056AD48 | oui | oui |
+| `0x0049C0B0` | 0,1,2,3,4 | 0056AD48 | oui | oui |
+| `0x0049C8E0` | 0,1,2,3,4 | 0056AD48 | oui | oui |
 | `0x00541440` | 0,1,2,3,4,6,7,8 | 0056AFC8 | oui | oui |
 
 ## Zone 4 — La vieille tour

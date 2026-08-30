@@ -5,6 +5,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **la poussière du bloc poussé** (`0x0040f370`, sous-type `0xfd` de la forêt) — quatre images d'atlas tenues 5 à 9 images chacune, teinte sombre `0x3c3c3c` qui s'assombrit d'un cran par image. Décompilée dans `Blaze.c` ; la plage `0x0054f720` relevée sur sept enregistrements, deux groupes
+- doc : **règle** — après chaque implémentation, régénérer `GestionnairesEntites.md` ; et si le gestionnaire était `implémenté=non, testé=oui`, retirer d'abord ses lignes du TSV. Ce « testé » ne prouvait que le plantage
 - feat : `tests\feuille-de-route.bat` — régénère `GestionnairesEntites.md` d'un double-clic et réaffiche l'avancement par zone plus les gestionnaires vus en jeu mais pas écrits. Il cherche `bash.exe` dans le PATH puis aux emplacements habituels de Git pour Windows, absent du PATH `cmd` sur cette machine
 - feat : `GestionnairesEntites.md` devient une **feuille de route groupée par zone**, avec deux colonnes indépendantes — *implémenté* (un `case` le branche) et *testé* (la sonde l'a vu tourner). La combinaison « non / oui » désigne la priorité : le jeu y va vraiment et plante en y allant
 - fix : la sonde écrivait l'adresse sur **six** chiffres alors que le recensement la lit sur huit — aucun gestionnaire n'aurait jamais été marqué EXERCÉ. Format aligné, fichier existant normalisé
