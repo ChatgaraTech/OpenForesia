@@ -4789,6 +4789,10 @@ public static unsafe partial class Blaze
             case 0x00483650: EntityHandler_00483650(record); return;
             case 0x004134C0: EntityHandler_004134C0(record); return;
 
+            // L'ASCENSEUR — deux courses en un corps, choisies par +0x44. Il part quand tout
+            // le monde est monte et redescend si quelqu'un tombe.
+            case 0x00458FC0: EntityHandler_00458FC0(record); return;
+
             // Les deux autres exemplaires de l'eclat : meme corps, autre planche.
             case 0x00412950: EntityHandler_00412950(record); return;
             case 0x00415F40: EntityHandler_00415F40(record); return;
@@ -10054,6 +10058,180 @@ public static unsafe partial class Blaze
             GrowSparkScales(e);
         }
     }
+
+    /// <summary>
+    /// Ghidra: FUN_00458fc0 @ 0x00458fc0 — <b>l'ascenseur</b>. Decompilee dans <c>Blaze.c</c>.
+    /// Table <c>0x0056adc8</c>, foret.
+    ///
+    /// <para>
+    /// <b>Deux ascenseurs en un.</b> Le champ <c>+0x44</c>, fige a la premiere image depuis le
+    /// <c>+0x14</c> que la sous-zone a pose, choisit la course : <c>0</c> monte de <c>0x14000</c>
+    /// a <c>0x258000</c>, <c>1</c> monte de <c>-0xa0000</c> a <c>0xdc000</c>. Toutes les hauteurs
+    /// du corps sont doublees en consequence, y compris le seuil au-dessus duquel un membre compte
+    /// comme <b>deja en haut</b>.
+    /// </para>
+    /// <para>
+    /// <b>Il part quand tout le monde est monte.</b> Le compte des membres rattaches a la
+    /// plate-forme (<see cref="CountPartyMembersMatching"/>, masque <c>0x10</c> requis et
+    /// <c>0x40000000</c> interdit) est compare a
+    /// <see cref="ActivePartySlotCount_00466D70"/> <b>moins</b> ceux qui sont deja arrives — car
+    /// un membre debarque en haut cesse d'etre rattache. Le depart demande aussi qu'il reste au
+    /// moins un absent, sans quoi la plate-forme ferait la course a vide.
+    /// </para>
+    /// <para>
+    /// <b>Et il redescend tout seul</b> si un membre rattache tombe plus de <c>0x28000</c> sous
+    /// lui, ou si la camera (<c>0x005de06c</c>) passe au-dessus du seuil : l'etat 100 est la
+    /// descente, l'etat 1 la montee.
+    /// </para>
+    /// <para>
+    /// <b>Le son, une image sur cinq.</b> Pendant la course, le meme identifiant
+    /// (<c>sons[0x17]</c>) part toutes les cinq images a la hauteur <c>0x400</c>, et <b>une seule
+    /// fois</b> a l'arrivee, plus grave (<c>0x200</c>) — l'arret ne sonne que si la course avait
+    /// commence, ce que le drapeau <c>+0x5c</c> retient.
+    /// </para>
+    /// <para>
+    /// <b>Une bizarrerie du binaire, conservee.</b> Les deux tests d'arrivee verifient
+    /// <c>+0x10 != 0</c> alors que l'etat vient d'etre reconnu comme 2 ou 0x65 — la condition est
+    /// donc toujours vraie. Ghidra la rend telle quelle et le desassemblage la confirme.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00458FC0(byte* e)
+    {
+        if (*(short*)(e + 0x16) == 0)
+        {
+            *(int*)(e + 0x44) = *(short*)(e + 0x14);
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x98) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        bool high = *(int*)(e + 0x44) != 0;
+        int arrivedFloor = high ? 0xdbfff : 0x257fff;
+
+        // ------------------------------------------------- qui est proche, et qui est deja arrive
+        short arrived = 0;
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            int dx = (*(int*)(member + 0x1c) >> 0xc) - (*(int*)(e + 0x1c) >> 0xc);
+            int dy = (*(int*)(member + 0x20) >> 0xc) - (*(int*)(e + 0x20) >> 0xc);
+            int dz = (*(int*)(member + 0x24) >> 0xc) - (*(int*)(e + 0x24) >> 0xc);
+
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) >= 0x4b0) continue;
+
+            int height = *(int*)(member + 0x20);
+            if (height > arrivedFloor) arrived++;
+
+            // Un membre tombe trop bas fait redescendre la plate-forme.
+            if (height < *(int*)(e + 0x20) - 0x28000 && *(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 100;
+            }
+        }
+
+        short riding = (short)CountPartyMembersMatching(e, 0x10, 0x40000000);
+
+        // ------------------------------------------------- le depart
+        if (*(short*)(e + 0x14) != 0 && riding == 0) *(short*)(e + 0x14) = 0;
+
+        if (*(short*)(e + 0x14) == 0 && *(short*)(e + 0x10) == 0)
+        {
+            int active = ActivePartySlotCount_00466D70();
+            if (riding == active - arrived && active != arrived)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x14) = 1;
+            }
+        }
+
+        // ------------------------------------------------- les deux conditions de rappel
+        int top = high ? 0xdc000 : 0x258000;
+
+        if (*(short*)(e + 0x14) == 0 && *(short*)(e + 0x10) == 0
+            && riding == ActivePartySlotCount_00466D70() && *(int*)(e + 0x20) == top)
+        {
+            *(short*)(e + 0x10) = 100;
+            *(short*)(e + 0x14) = 1;
+        }
+
+        if (*Mem.Camera(0x005de06c) > arrivedFloor && *(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x10) = 2;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        // ------------------------------------------------- la montee
+        if (*(short*)(e + 0x10) == 2)
+        {
+            TickLiftTravel(e, 0x7000);
+
+            int height = *(int*)(e + 0x20);
+            if (height >= top + 1)
+            {
+                *(int*)(e + 0x20) = top;
+                if (*(int*)(e + 0x5c) == 1) LiftArrivalSound(e);
+                *(short*)(e + 0x10) = 0;
+            }
+        }
+
+        // ------------------------------------------------- la descente
+        if (*(short*)(e + 0x10) == 100)
+        {
+            *(short*)(e + 0x10) = 0x65;
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 0x65) return;
+
+        TickLiftTravel(e, -0x7000);
+
+        int bottom = high ? unchecked((int)0xfff60000) : 0x14000;
+        int floor = high ? -0xa0001 : 0x13fff;
+
+        if (*(int*)(e + 0x20) > floor) return;
+
+        *(int*)(e + 0x20) = bottom;
+        if (*(int*)(e + 0x5c) == 1) LiftArrivalSound(e);
+        *(short*)(e + 0x10) = 0;
+    }
+
+    /// <summary>Une image de course d'ascenseur : le son toutes les cinq images, le compteur, et le
+    /// pas vertical. Le binaire ecrit ce bloc deux fois, a la montee et a la descente, au signe du
+    /// pas pres.</summary>
+    private static void TickLiftTravel(byte* e, int step)
+    {
+        (*(short*)(e + 0x98))++;
+
+        if (*(short*)(e + 0x98) == 5)
+        {
+            *(short*)(e + 0x98) = 0;
+            TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x17], 0x400, 0x1000, 0, 0);
+            *(int*)(e + 0x5c) = 1;
+        }
+
+        (*(short*)(e + 0x12))++;
+        *(int*)(e + 0x20) += step;
+    }
+
+    /// <summary>Le meme son que la course, un ton plus grave, joue une seule fois a l'arret.</summary>
+    private static void LiftArrivalSound(byte* e)
+        => TryPlaySoundNearEntity((uint*)e, SubAreaSounds()[0x17], 0x200, 0x1000, 0, 0);
 
     /// <summary>Les trois echelles de l'etincelle de <see cref="EntityHandler_004134C0"/>, qui
     /// gagnent 100 par image dans ses deux etats vivants. Le binaire ecrit le bloc deux fois.</summary>
