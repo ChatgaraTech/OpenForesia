@@ -2049,3 +2049,46 @@ Corollaire observé le même jour : deux défauts en série peuvent se masquer l
 qu'aucun symptôme ne bouge quand on corrige le premier. La correction du slot `+0x40` n'a rien
 changé à l'onde de choc — mais elle a fait apparaître les nuages de la carte du monde, et ce sont
 eux qui ont montré le second défaut.
+
+## La sonde de couverture : « celui-la, est-il seulement passe en jeu ? » (2026-08-30)
+
+**Le probleme qu'elle resout.** Un gestionnaire transcrit d'apres le desassembleur **et qui
+compile** n'est pas un gestionnaire eprouve. Rien, dans une reconstruction, ne signale une lecture
+d'offset de travers ou une condition inversee tant que le code n'a pas tourne — le decalage de
+quatre octets sur la sonde de l'onde de choc, le 2026-08-30, avait passe la compilation sans un
+mot. Jusqu'ici le depot ne distinguait pas « ecrit » de « eprouve ».
+
+**Ce qu'elle fait.** `DispatchEntityHandler`, point d'entree unique des cinq passes a table de
+sauts, note l'adresse de chaque gestionnaire **reellement appele**, avec la zone et la sous-zone.
+Des qu'un couple est **nouveau**, le fichier est reecrit — en **union**, jamais en remplacement :
+`Documentation/Etat/handlers-exerces.tsv`, une ligne par couple `(gestionnaire, zone, sous-zone)`.
+
+Le fichier est suivi par git. Il s'enrichit d'une partie a l'autre, ne perd rien, et se lit comme
+une **preuve accumulee** : deux parties qui explorent des lieux differents s'additionnent.
+
+```
+[SONDE] nouveau : 0x0049A980 zone=3 sous-zone=0 (128 couples connus)
+```
+
+`OPENFORESIA_NO_PROBE=1` la desarme, si une partie ne doit rien ecrire.
+
+**Ce qu'on en fait.** `sh OpenForesia.Tools/census-entity-handlers.sh` croise trois sources — les
+dix tables du binaire, les `case` du repartiteur, et ce fichier — et regenere
+`Documentation/Etat/GestionnairesEntites.md` avec trois etats par gestionnaire : **ABSENT**,
+**ECRIT**, **EXERCE**. C'est la liste de courses et le tableau de bord en un seul document.
+
+**La regle qui va avec** : apres une seance de jeu, regenerer le recensement et committer les deux
+fichiers. Un gestionnaire qui passe de ECRIT a EXERCE est un acquis reel ; un qui reste ECRIT trop
+longtemps est une dette qu'il faut aller chercher exprès — par la salle d'essai, par le filet, ou
+en allant au bon endroit de la carte.
+
+**Correction du 2026-08-30, apres le premier essai en jeu.** La sonde n'ecrivait qu'a
+`ProcessExit`, et elle n'a rien laisse de la premiere seance. Deux raisons, et la premiere est
+definitive : **une exception non rattrapee termine le processus sans lever `ProcessExit`** — or
+c'est exactement ce qui arrive quand on tombe sur un gestionnaire absent, c'est-a-dire le cas le
+plus interessant a relever. La seconde est qu'un arret par le bouton de l'IDE tue le processus de
+la meme facon.
+
+La regle qui s'en degage : **un relevé qui ne s'ecrit qu'a la sortie ne survit pas a ce qu'on
+cherche justement a observer.** Ecrire des qu'il y a du nouveau coute quelques dizaines
+d'ecritures par seance et supprime la question.

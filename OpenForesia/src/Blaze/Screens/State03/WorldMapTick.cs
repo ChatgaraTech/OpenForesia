@@ -4327,6 +4327,130 @@ public static unsafe partial class Blaze
     private static bool s_MissingHandlerRecapArmed;
 
     /// <summary>
+    // =====================================================================
+    // LA SONDE DE COUVERTURE (2026-08-30)
+    //
+    // Question qu'elle repond : « celui-la, est-il seulement passe en jeu ? »
+    //
+    // Un gestionnaire transcrit et compile n'est pas un gestionnaire eprouve. Les corps de ce
+    // fichier sont ecrits d'apres le desassembleur, souvent sans qu'aucune partie ne les ait
+    // exerces — et jusqu'ici rien ne distinguait les deux etats. La sonde note l'adresse de chaque
+    // gestionnaire REELLEMENT appele, avec la zone et la sous-zone ou il l'a ete, et fusionne le
+    // releve dans `Documentation/Etat/handlers-exerces.tsv` a la fermeture du jeu.
+    //
+    // Le fichier est suivi par git : il s'enrichit d'une partie a l'autre et se lit comme une
+    // preuve accumulee. `OpenForesia.Tools/census-entity-handlers.sh` le croise avec les tables du
+    // binaire pour dire, gestionnaire par gestionnaire, s'il est absent, ecrit, ou exerce.
+    //
+    // Une ligne par couple (gestionnaire, zone, sous-zone), triee : la fusion est une union, donc
+    // deux parties differentes ne se marchent jamais dessus et le diff reste lisible.
+    //
+    // OPENFORESIA_NO_PROBE=1 la desarme.
+    // =====================================================================
+
+    private static bool s_ProbeEnabled =
+        Environment.GetEnvironmentVariable("OPENFORESIA_NO_PROBE") != "1";
+
+    private static readonly SortedSet<string> s_HandlersSeen = new(StringComparer.Ordinal);
+
+    private static SortedSet<string> s_ProbeAll;
+
+    /// <summary>Le chemin du releve, deduit de l'emplacement de l'executable : quatre crans
+    /// au-dessus de <c>bin/Debug/net9.0</c> ramenent a la racine du depot.</summary>
+    private static string ProbePath => System.IO.Path.GetFullPath(System.IO.Path.Combine(
+        AppContext.BaseDirectory, "..", "..", "..", "..",
+        "Documentation", "Etat", "handlers-exerces.tsv"));
+
+    /// <summary>
+    /// Note qu'un gestionnaire a ete appele ici et maintenant. Appelee sur le chemin chaud — une
+    /// fois par entite et par image —, donc le cas courant est un simple echec d'ajout dans un
+    /// ensemble deja peuple.
+    /// </summary>
+    private static void NoteHandlerSeen(uint target)
+    {
+        if (!s_ProbeEnabled) return;
+
+        string line = $"{target:X8}\t{Res.s_Unknown_005de528 & 0xff}\t{s_Unknown_005de52c}";
+
+        // Deja vu cette partie : rien a faire, et c'est le cas de la quasi-totalite des appels.
+        if (!s_HandlersSeen.Add(line)) return;
+
+        LoadHandlerProbe();
+
+        // Deja dans le fichier : la partie n'apprend rien, on n'ecrit pas.
+        if (!s_ProbeAll.Add(line)) return;
+
+        WriteHandlerProbe();
+
+        Console.Error.WriteLine(
+            $"[SONDE] nouveau : 0x{target:X8} zone={Res.s_Unknown_005de528 & 0xff} " +
+            $"sous-zone={s_Unknown_005de52c} ({s_ProbeAll.Count} couples connus)");
+    }
+
+    /// <summary>Le fichier relu une fois par partie, dans l'ensemble qui sert de reference.</summary>
+    private static void LoadHandlerProbe()
+    {
+        if (s_ProbeAll != null) return;
+
+        s_ProbeAll = new SortedSet<string>(StringComparer.Ordinal);
+
+        try
+        {
+            if (System.IO.File.Exists(ProbePath))
+            {
+                foreach (string line in System.IO.File.ReadAllLines(ProbePath))
+                {
+                    if (line.Length != 0 && line[0] != '#') s_ProbeAll.Add(line);
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"[SONDE] fichier non relu : {error.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Reecrit <c>Documentation/Etat/handlers-exerces.tsv</c> avec l'union courante.
+    ///
+    /// <para>
+    /// <b>L'ecriture est immediate, pas differee a la fermeture.</b> La premiere version ne
+    /// s'accrochait qu'a <c>ProcessExit</c>, et n'a rien ecrit de la premiere seance : une
+    /// exception non rattrapee termine le processus <b>sans</b> lever cet evenement, et c'est
+    /// precisement ce qui arrive quand on tombe sur un gestionnaire absent — le cas le plus
+    /// interessant a relever. Ecrire des qu'un couple est nouveau supprime la question : un
+    /// plantage, une fermeture par l'IDE ou un <c>TerminateProcess</c> laissent la preuve derriere
+    /// eux.
+    /// </para>
+    /// <para>
+    /// Le cout est nul en pratique : il n'y a de reecriture que pour un couple <b>jamais vu</b>,
+    /// soit quelques dizaines de fois par seance et 1 430 fois au grand maximum sur la vie du
+    /// projet.
+    /// </para>
+    /// </summary>
+    private static void WriteHandlerProbe()
+    {
+        try
+        {
+            var text = new System.Text.StringBuilder();
+            text.AppendLine("# Les gestionnaires d'entite REELLEMENT appeles en jeu, une ligne par");
+            text.AppendLine("# couple (gestionnaire, zone, sous-zone). Ecrit par la sonde de");
+            text.AppendLine("# Screens/State03/WorldMapTick.cs des qu'un couple est nouveau, en");
+            text.AppendLine("# UNION avec ce que le fichier portait deja. Ne pas editer a la main :");
+            text.AppendLine("# il se lit comme une preuve accumulee, pas comme une intention.");
+            text.AppendLine("#");
+            text.AppendLine("# gestionnaire\tzone\tsous-zone");
+            foreach (string line in s_ProbeAll) text.AppendLine(line);
+
+            System.IO.File.WriteAllText(ProbePath, text.ToString());
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"[SONDE] releve non ecrit : {error.Message}");
+            s_ProbeEnabled = false;   // inutile de reessayer a chaque image
+        }
+    }
+
     /// ECHAFAUDAGE : l'enveloppe de banc. Sous <c>OPENFORESIA_AI_BENCH</c>, chaque appel de
     /// gestionnaire est compte et sa levee retenue au lieu de tuer le run — c'est ce qui permet
     /// d'exercer vingt comportements d'un coup alors que le premier manquant aurait arrete la
@@ -4334,6 +4458,8 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void DispatchEntityHandler(uint target, byte* record, string where)
     {
+        NoteHandlerSeen(target);
+
         if (!s_AiBench)
         {
             DispatchEntityHandlerCore(target, record, where);

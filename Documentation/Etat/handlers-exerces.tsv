@@ -1,0 +1,37 @@
+# Les gestionnaires d'entite REELLEMENT appeles en jeu, une ligne par
+# couple (gestionnaire, zone, sous-zone). Ecrit par la sonde de
+# Screens/State03/WorldMapTick.cs des qu'un couple est nouveau, en
+# UNION avec ce que le fichier portait deja. Ne pas editer a la main :
+# il se lit comme une preuve accumulee, pas comme une intention.
+#
+# gestionnaire	zone	sous-zone
+00401FA0	0	8
+00402FC0	3	0
+00403250	3	0
+004034A0	3	0
+00403C10	3	0
+00403D60	3	0
+004041C0	3	0
+00404310	3	0
+00404EF0	0	8
+0040F370	3	0
+0040F7F0	3	0
+004508D0	0	8
+004509B0	0	8
+00450AA0	0	8
+00450D30	0	8
+00456730	3	0
+00456A30	3	0
+00458170	3	0
+00475400	3	0
+004758C0	3	0
+00475910	3	0
+00475D40	3	0
+00475FC0	3	0
+00483450	3	0
+004834D0	3	0
+00486EE0	0	8
+00499DE0	3	0
+0049A360	3	0
+0049A980	3	0
+00541440	3	0

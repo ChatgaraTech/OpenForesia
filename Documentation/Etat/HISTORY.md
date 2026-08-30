@@ -5,6 +5,13 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : `tests\feuille-de-route.bat` — régénère `GestionnairesEntites.md` d'un double-clic et réaffiche l'avancement par zone plus les gestionnaires vus en jeu mais pas écrits. Il cherche `bash.exe` dans le PATH puis aux emplacements habituels de Git pour Windows, absent du PATH `cmd` sur cette machine
+- feat : `GestionnairesEntites.md` devient une **feuille de route groupée par zone**, avec deux colonnes indépendantes — *implémenté* (un `case` le branche) et *testé* (la sonde l'a vu tourner). La combinaison « non / oui » désigne la priorité : le jeu y va vraiment et plante en y allant
+- fix : la sonde écrivait l'adresse sur **six** chiffres alors que le recensement la lit sur huit — aucun gestionnaire n'aurait jamais été marqué EXERCÉ. Format aligné, fichier existant normalisé
+- doc : premier relevé réel — **20 exercés, 93 écrits jamais appelés, 1 317 absents**, zones 0:8 et 3:0
+- fix : **la sonde n'écrivait rien** — elle ne s'accrochait qu'à `ProcessExit`, que la terminaison par exception non rattrapée ne lève pas. Or c'est précisément le cas d'un gestionnaire absent, le plus intéressant à relever. Elle écrit maintenant dès qu'un couple est nouveau, et signale chaque nouveauté sur stderr
+- feat : **la sonde de couverture** — `DispatchEntityHandler` note chaque gestionnaire réellement appelé en jeu et fusionne le relevé dans `Documentation/Etat/handlers-exerces.tsv` à la fermeture. Un corps qui compile n'est pas un corps éprouvé ; le dépôt distingue désormais les deux
+- feat : **`census-entity-handlers.sh`** — le recensement complet des dix tables de sauts, croisé avec le répartiteur et la sonde. **1 430 gestionnaires distincts atteignables** : 112 écrits, 1 318 à transcrire, 0 encore exercé. Sort `Documentation/Etat/GestionnairesEntites.md`
 - feat : **la carte suivante ne plante plus** — sous-type 29 (`0x00456a30`, 692 o.), une entité qui roule, garde sa position dans six octets de l'arène et désigne le membre le plus proche
 - feat : **`MoveSceneEntity_00455B30`**, le déplacement avec collision que partagent **seize** sites d'appel. Décompilée mais mal recouvrée : second argument perdu (lu à `[esp+0x40]`, d'où l'`unaff_retaddr` de Ghidra) et bloc de restauration apparié de travers sur onze champs — résolu au désassembleur
 - doc : `0x00545a10` n'est qu'un thunk d'import vers `Ordinal_442`, la racine carrée de winsys3d
