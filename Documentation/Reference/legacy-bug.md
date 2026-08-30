@@ -731,6 +731,91 @@ Le correctif d'un mode « corrigé » serait d'arrêter le curseur à la fin de 
 
 ---
 
+## LB-014 — La gerbe de la forêt sème trente-trois entités avec un descripteur jamais rempli
+
+**Relevé** le 2026-08-30 dans `FUN_004118a0` (la gerbe aux cinq phases de la forêt,
+`0x00411860` / `0x00414cd0`), en lisant la pseudo-C puis en confirmant au désassembleur.
+
+Ghidra déclare dans le prologue :
+
+```c
+undefined1 auStack_8 [8];
+```
+
+et **aucune écriture ne le précède**. Le tampon part pourtant comme troisième argument de
+`FUN_0047ac40`, trente-trois fois à l'entrée de la phase 2, une fois par image ensuite, puis
+trente-deux fois à la fermeture :
+
+```c
+FUN_0047ac40(param_1, puVar1, auStack_8, (short)param_1[0x26] + 0xc0, 0, 0xffffffff);
+```
+
+Le désassemblage confirme : après `sub esp,8` et les quatre `push`, le `lea ecx,[esp+18h]` désigne
+bien ces huit octets, et rien ne les a écrits. Ce troisième argument est le **descripteur
+d'atlas** : `FUN_0047ac40` le range tel quel dans le `+0x3c` de l'entité qui naît. Les nouvelles
+entités partent donc avec un pointeur vers de la pile morte.
+
+**Pourquoi le jeu ne plante pas.** Chaque corps d'effet pose sa propre planche dans `+0x3c` à son
+état 0, c'est-à-dire à sa toute première image — avant que quoi que ce soit ne lise le champ. La
+valeur héritée est écrasée sans jamais avoir servi. Le défaut est donc invisible en jeu, et il
+l'était déjà en 1998 : il tient sur une coïncidence entre deux fonctions qui ne se connaissent
+pas.
+
+**Ce que fait OpenForesia.** Le tampon est reproduit tel quel — huit octets de pile passés au
+même endroit — plutôt que remplacé par `null`. Passer `null` serait *moins* fidèle : si un jour
+un corps d'effet omettait de poser sa planche, l'original afficherait n'importe quoi et la
+reconstruction déréférencerait un pointeur nul. Le comportement doit rester le même dans les deux
+cas.
+
+Le correctif d'un mode « corrigé » serait de passer explicitement la planche que l'effet attend,
+ou `null` si le champ est de toute façon réécrit.
+
+---
+
+## LB-015 — L'invocation de la forêt lit un modèle par un registre non initialisé
+
+**Relevé** le 2026-08-30 dans `0x00411f80` et ses trois copies (`0x00412460`, `0x004153f0`,
+`0x00415990`), relevés au désassembleur — la fonction est absente de `Blaze.c`.
+
+Le prologue réserve `0xa0` octets, en met `0x9c` à zéro à partir de `[esp+0x14]`, et lit ensuite :
+
+```asm
+mov  esi,[esp+0B4h]      ; l'entité, l'argument
+mov  ebp,[esp+10h]       ; <- QUATRE OCTETS SOUS le tampon mis à zéro
+lea  edi,[esp+14h]       ; le tampon de secours
+```
+
+`[esp+0x10]` n'est **pas** dans la zone mise à zéro : c'est le mot juste en dessous, laissé par
+l'appelant. Le balayage des trente-deux entités de scène qui suit écrase `edi` et `ebp` à chaque
+entité qui répond — mais seulement si l'une répond :
+
+```asm
+mov  edx,[edx*4+5E9640h]
+mov  ebp,[edx+8]         ; le modèle d'animation de l'entité trouvée
+```
+
+Si **aucune** entité de scène n'a `+0x0c == 0` et le bit `0x80000000`, `edi` reste le tampon nul —
+inoffensif, tous les champs qu'on y écrit sont perdus — et `ebp` reste les quatre octets de pile
+d'origine. Le corps lit ensuite, dès que la tenue d'image est atteinte :
+
+```asm
+mov  ax,[ebp+16h]        ; le nombre d'images de l'animation
+```
+
+C'est une lecture à travers un pointeur arbitraire. En pratique le gestionnaire n'est installé que
+là où une entité de scène l'attend, ce qui explique que le jeu de 1998 n'en soit jamais mort.
+
+**Ce que fait OpenForesia.** Le pointeur de modèle est déclaré **nul** plutôt que rempli d'une
+valeur inventée. Le chemin fautif est le même, il se produit à la même condition, et il se
+signale au lieu de lire silencieusement de la pile morte. C'est une déviation assumée : la valeur
+d'origine n'existe pas — elle dépend de ce que l'appelant avait laissé — donc aucune transcription
+ne peut la restituer.
+
+Le correctif d'un mode « corrigé » serait de sortir sans rien faire quand le balayage ne trouve
+personne.
+
+---
+
 ## Note — ceci n'est PAS un bug d'origine : deux fautes de transcription du 2026-08-25
 
 Consignees ici parce que leur symptome ressemblait a un defaut de 1998, et que la prochaine

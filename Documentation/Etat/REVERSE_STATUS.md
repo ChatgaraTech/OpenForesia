@@ -18484,3 +18484,167 @@ planches le sont aussi : `0x0054f7a8` / `0x0054f8c8` / `0x0054f9c0`. Le jeu de 1
 optimisation ponctuelle : c'est la bonne premiere question. Sur les 136 creneaux de la foret, huit
 n'ont rien coute. Et le chiffre de 1 286 « a transcrire » reste un majorant : il compte des
 adresses, pas des comportements.
+
+## 2026-08-30 (suite 15) — l'amorce : le troisième cas de figure derrière une lacune
+
+Vingt-deux gestionnaires de la forêt ont été transcrits d'un bloc, faisant passer la zone 3 de
+76 à 98 implémentés sur 136. Aucun n'était décompilé dans `Blaze.c`. Mais « absent de `Blaze.c` »
+recouvrait en fait **trois** situations très différentes, et seule la troisième était nouvelle.
+
+**1. Le corps dupliqué.** Déjà connu, déjà exploité : le compilateur a émis le même corps deux ou
+trois fois, à une adresse de planche près. Onze des vingt-deux gestionnaires étaient de ceux-là.
+
+**2. Le corps jamais décompilé.** Ghidra n'a pas rendu de pseudo-C ; il faut le désassembleur.
+Cinq corps distincts de ce lot, dont `0x0040fbb0` et ses 520 instructions.
+
+**3. L'amorce — nouveau.** Six à dix-neuf instructions qui posent deux ou trois champs puis
+sautent dans un corps que Ghidra a, lui, **parfaitement rendu**. Six des vingt-deux gestionnaires
+étaient de celles-là :
+
+| amorce | taille | corps appelé | dans `Blaze.c` ? |
+|---|---|---|---|
+| `0x004103d0`, `0x00413840` | 6 instructions | `FUN_004103e0`, `FUN_00413850` | oui, 335 instructions |
+| `0x00410370`, `0x004137e0` | 19 instructions | `FUN_004183d0` | oui |
+| `0x00411860`, `0x00414cd0` | 15 instructions | `FUN_004118a0`, `FUN_00414d10` | oui, 561 instructions |
+
+`0x004103d0` est le cas pur : `mov eax,[esp+4] ; push eax ; call ... ; add esp,4 ; ret`. Elle
+n'existe que parce que la table de sauts a besoin d'une adresse à elle. Ghidra a décompilé la
+cible et pas l'amorce parce que l'amorce n'est atteinte que par une adresse prise dans une table
+de données — exactement la classe de fonctions que la décompilation manque.
+
+**La leçon, opératoire.** Devant une lacune, la première question n'est plus « combien
+d'octets ? » mais **« où pointe son `call` ? »**. Deux minutes de désassemblage évitent de
+retranscrire à la main ce qui existe déjà en pseudo-C. Les seize octets de `0x004103d0` cachaient
+335 instructions déjà disponibles.
+
+---
+
+## 2026-08-30 (suite 16) — le carré : quand la duplication porte deux paramètres
+
+Les familles trouvées jusqu'ici différaient par **une** chose, la planche. Trois familles de ce
+lot en portent **deux**, croisées, et forment un carré parfait :
+
+```
+                  planche 0x0054f8f0     planche 0x0054f9e8
+   +0x0a = 9          0x00412240             0x004156b0
+   +0x0a = 2          0x00412720             0x00415c50
+```
+
+Idem pour les braises (`0x00412330` / `0x00412810` / `0x00415860` / `0x00415e00`, planche ×
+rougissement) et pour l'invocation (`0x00411f80` / `0x00412460` / `0x004153f0` / `0x00415990`,
+mémoire d'emplacement × rythme).
+
+**Pourquoi cela compte.** Un regroupement par prologue sur 24 octets sur-fusionne : il met les
+quatre membres d'un carré dans le même sac alors que deux d'entre eux diffèrent d'une centaine de
+lignes. Ce qui tranche, c'est le **diff normalisé du corps entier** — adresses et étiquettes
+effacées, longueur bornée au premier `ret`. Sur les quatre membres d'un carré il rend exactement
+deux lignes ; sur deux fonctions sans rapport, deux cents.
+
+**Le « rythme » de l'invocation n'est pas un nombre.** Il déplace ensemble quatre choses : le
+début de la fanfare (`0x50` ou `0x3c`), sa fin (`0x82` ou `0x6e`), la tenue d'image (4 ou 6) et
+les **trois** sous-types semés (`0xc1`/`0xf4`/`0xf5` ou `0xc2`/`0xf6`/`0xf7`). Ce sont donc bien
+deux effets distincts qui partagent leur code, et non un effet réglé deux fois.
+
+---
+
+## 2026-08-30 (suite 17) — la règle « relever la plage » a payé pour de bon
+
+`CLAUDE.md` et les commentaires du fichier répètent depuis des semaines : relever la **plage**
+d'un bloc de descripteurs, pas seulement l'enregistrement que le corps courant atteint, parce que
+l'indexation se fait en avant sans garde-fou. Jusqu'ici c'était une précaution ; c'est maintenant
+un fait établi.
+
+Les braises (`0x00412330`) posent `+0x3c = 0x0054f8f0`. Or `0x0054f8f0` est le **deuxième**
+enregistrement de `s_Descriptors_0054F8E8`, un bloc relevé il y a deux jours pour
+`EntityHandler_00412950` — lequel n'en lit que le **premier**. Les quatre images que les braises
+parcourent sont les enregistrements 1 à 4 de ce même bloc. Le commentaire d'alors disait « aucun
+des cinq n'est atteignable, le corps pose l'indice à zéro » : c'était vrai de ce corps-là, et faux
+du bloc.
+
+**Deux gestionnaires différents se partagent un bloc, chacun à son décalage.** Relevé au plus
+juste sur le seul enregistrement lu par le premier, le bloc aurait manqué au second, et les
+braises seraient parties chercher une planche absente — sans erreur de compilation, sans
+exception, juste un affichage faux.
+
+Même motif pour `0x0054f808` : `EntityHandler_00410CD0` n'en lit que le premier enregistrement, la
+gerbe aux cinq phases lit le second (la grosse tuile `0x3f x 0x3f` du halo). Le bloc a été étendu
+de un à deux enregistrements plutôt que redéclaré.
+
+**Corollaire, désagréable.** Un bloc relevé « entier » ne l'est que jusqu'au symbole suivant
+**connu**. Rien ne garantit qu'il n'y ait pas, entre deux blocs déclarés, des enregistrements que
+personne n'a encore réclamés.
+
+---
+
+## 2026-08-30 (suite 18) — `0x00571420` : cinq blocs de caméra, et un aliasing évité de justesse
+
+L'invocation garde le numéro du membre saisi dans un octet global, `0x00571448` pour deux de ses
+exemplaires et `0x00571478` pour les deux autres. Ils ont d'abord été déclarés comme **deux
+octets isolés** — ce qui compile, ce qui marche, et ce qui est faux.
+
+Le désassemblage des deux amorces `0x00411240` / `0x004146b0`, et de leurs corps
+`FUN_00411270` / `FUN_00414d10` (tous deux décompilés), montre le vrai découpage : un tableau de
+**cinq enregistrements de `0x30` octets** de `0x00571420` à `0x00571510`, dont
+
+- `+0x00`, `+0x02`, `+0x04` en `short` — ce que `DAT_005e9ae0` va pointer ;
+- `+0x08`, `+0x0c`, `+0x10` en `int` — ce que `DAT_005eca94` va pointer ;
+- `+0x18`, `+0x1c`, `+0x20` en `int` — ce que `DAT_005edebc` va pointer ;
+- `+0x28` en octet — la mémoire d'emplacement.
+
+`0x00571448` est le `+0x28` de l'exemplaire 0, `0x00571478` celui de l'exemplaire 1. Les deux
+scènes cinéma mises de côté (`0x00410820`, `0x00413c90`) emploient les mêmes blocs. Les laisser
+en octets séparés aurait posé **deux noms pour deux adresses d'un même bloc** le jour où ces
+scènes seront transcrites — la définition exacte du défaut d'aliasing que `MemoryLayoutTests.cs`
+surveille. Le bloc est donc modélisé d'un seul tenant, et la mémoire d'emplacement en est une vue.
+
+La zone est dans la queue **non initialisée** de `.data` : zéro au chargement, rien à relever,
+seule la taille compte.
+
+**Ce que cela débloque.** Les deux scènes cinéma étaient mises de côté pour trois raisons : le
+bloc privé non modélisé, et deux appelées manquantes `FUN_00423d10` / `FUN_0040b0e0`. La première
+raison tombe ; les deux appelées sont, vérification faite, **présentes dans `Blaze.c`**. La chaîne
+est ouverte, elle reste à parcourir.
+
+---
+
+## 2026-08-30 (suite 19) — les familles de la forêt sont épuisées
+
+Les 37 gestionnaires encore absents de la zone 3 ont été passés au même filtre : corps
+désassemblé jusqu'au premier `ret`, adresses et étiquettes effacées, empreinte MD5.
+
+**Les 37 empreintes sont toutes distinctes.** Il n'y a plus un seul doublon à récolter dans cette
+zone. Ce qui reste se transcrit un par un, et le coût redevient proportionnel au travail.
+
+Ce qui reste, par taille :
+
+| taille | adresses |
+|---|---|
+| 10 à 60 instructions | `0x004146b0`, `0x00411240`, `0x004432a0`, `0x00443830`, `0x00458e90`, `0x004431f0`, `0x00444e60`, `0x00443300`, `0x00458de0` |
+| 60 à 170 | `0x0040ef40`, `0x00415d40`, `0x004157a0`, `0x00459b20`, `0x00541b80`, `0x00483760`, `0x0040f260`, `0x00413330`, `0x00443b20`, `0x004101d0`, `0x00459840` |
+| 200 à 470 | `0x00459fa0`, `0x00458200`, `0x004a4270`, `0x004a2c90`, `0x004433b0`, `0x004a3c30`, `0x0049e190`, `0x004a35b0` |
+| 550 à 920 | `0x0049e920`, `0x00541550`, `0x0049fad0`, `0x004a4ae0`, `0x004a13e0`, `0x004a0480`, `0x004a54e0`, `0x004a1d50` |
+
+Les deux premières lignes sont une matinée ; les quatorze routines d'intelligence
+(`0x0049exxx`, `0x004axxxx`) sont le vrai reste du chantier de la forêt.
+
+---
+
+## 2026-08-30 (suite 20) — deux défauts de 1998 relevés, reproduits, et documentés
+
+**Le descripteur jamais rempli.** Les trente-trois naissances de la phase 2 de la gerbe
+(`FUN_004118a0`) passent à `FUN_0047ac40` un tampon de huit octets de la pile qu'aucune écriture
+ne précède — Ghidra le nomme `auStack_8`, le désassemblage confirme. Le pointeur atterrit dans le
+`+0x3c` de l'entité qui naît. Il n'y survit que jusqu'à sa première image : **tous** les corps
+d'effet posent leur propre planche à l'état 0. Rien ne le lit donc jamais — mais rien ne le
+garantissait, et le jeu de 1998 tenait sur cette coïncidence.
+
+**Le registre laissé pour compte.** L'invocation (`0x00411f80`) balaie les trente-deux entités de
+scène et garde la dernière qui répond. Si **aucune** ne répond, `edi` garde un enregistrement
+local mis à zéro — inoffensif — mais `ebp` garde les quatre octets de pile situés juste sous ce
+tampon, que rien n'a écrits. Le corps lit ensuite `[ebp+0x16]` dès que la tenue d'image est
+atteinte. La transcription laisse le pointeur de modèle **nul** : l'accès fautif se produira au
+même endroit qu'en 1998, mais en le nommant, ce qui est strictement mieux qu'une lecture
+silencieuse de pile morte.
+
+Les deux sont dans `legacy-bug.md`. Ni l'un ni l'autre n'est réparé : le projet reproduit les
+défauts d'origine, il ne les corrige pas.
