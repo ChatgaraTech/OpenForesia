@@ -4794,6 +4794,12 @@ public static unsafe partial class Blaze
             case 0x00458FC0: EntityHandler_00458FC0(record); return;
             case 0x00457770: EntityHandler_00457770(record); return;
 
+            // LA CONVOCATION, en deux exemplaires : quatre variantes dans un corps, dont un
+            // chef qui lache trente-et-une spirales, une bouffee par image, puis trente-et-une
+            // spirales sortantes avant de s'eteindre.
+            case 0x00410CD0: EntityHandler_00410CD0(record); return;
+            case 0x00414140: EntityHandler_00414140(record); return;
+
             // 0x004593c0 est un DUPLICATA du tourniquet : 293 instructions comparees une a une,
             // zero difference, et les deux pseudo-C de Blaze.c sont identiques ligne pour ligne.
             // Le compilateur a emis le meme corps deux fois.
@@ -10422,6 +10428,345 @@ public static unsafe partial class Blaze
             *(short*)(e + 0x16) = 1;
             *(short*)(e + 0x14) = 99;
             *(uint*)e |= 0x40000000;
+        }
+    }
+
+    // =====================================================================
+    // LA CONVOCATION, EN DEUX EXEMPLAIRES (2026-08-30)
+    //
+    // 0x00410cd0 et 0x00414140 sont le meme corps a QUATRE adresses de planche pres — deux par
+    // copie. Les deux pseudo-C de Blaze.c ne different que par ces quatre lignes.
+    //
+    // Les planches sont identiques deux a deux : 0x0054f808 et 0x0054f920 portent le meme unique
+    // enregistrement, 0x0054f910 et 0x0054fa08 les memes deux. Le jeu de 1998 a duplique le code
+    // ET la donnee, comme pour la bulle et l'eclat.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f808</c> — un enregistrement jusqu'a
+    /// <c>DAT_0054f810</c>.</summary>
+    private static readonly byte[] s_Descriptors_0054F808 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f808
+    ];
+
+    private static byte* s_Descriptors0054F808Storage;
+
+    private static byte* Descriptors0054F808()
+        => NativeCopy(s_Descriptors_0054F808, ref s_Descriptors0054F808Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f920</c> — la copie du precedent, meme contenu.</summary>
+    private static readonly byte[] s_Descriptors_0054F920 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f920
+    ];
+
+    private static byte* s_Descriptors0054F920Storage;
+
+    private static byte* Descriptors0054F920()
+        => NativeCopy(s_Descriptors_0054F920, ref s_Descriptors0054F920Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f910</c> — deux enregistrements de <c>0x17 x 0x0f</c>
+    /// jusqu'a <c>DAT_0054f920</c>. Seul le premier est atteignable : la variante 2 pose l'indice
+    /// a zero et n'y revient pas.</summary>
+    private static readonly byte[] s_Descriptors_0054F910 =
+    [
+        0x90, 0xf0, 0x0f, 0x0f, 0x00, 0x00, 0x09, 0x00,   // 0x0054f910
+        0x20, 0xf0, 0x0f, 0x0f, 0x01, 0x02, 0x09, 0x00,   // 0x0054f918
+    ];
+
+    private static byte* s_Descriptors0054F910Storage;
+
+    private static byte* Descriptors0054F910()
+        => NativeCopy(s_Descriptors_0054F910, ref s_Descriptors0054F910Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054fa08</c> — la copie du precedent, meme contenu.</summary>
+    private static readonly byte[] s_Descriptors_0054FA08 =
+    [
+        0x90, 0xf0, 0x0f, 0x0f, 0x00, 0x00, 0x09, 0x00,   // 0x0054fa08
+        0x20, 0xf0, 0x0f, 0x0f, 0x01, 0x02, 0x09, 0x00,   // 0x0054fa10
+    ];
+
+    private static byte* s_Descriptors0054FA08Storage;
+
+    private static byte* Descriptors0054FA08()
+        => NativeCopy(s_Descriptors_0054FA08, ref s_Descriptors0054FA08Storage);
+
+    /// <summary>Ghidra: FUN_00410cd0 @ 0x00410cd0 — la premiere des deux convocations. Le corps est
+    /// dans <see cref="TickSummonEffect"/>.</summary>
+    private static void EntityHandler_00410CD0(byte* e)
+        => TickSummonEffect(e, Descriptors0054F910(), Descriptors0054F808());
+
+    /// <summary>Ghidra: FUN_00414140 @ 0x00414140 — la seconde.</summary>
+    private static void EntityHandler_00414140(byte* e)
+        => TickSummonEffect(e, Descriptors0054FA08(), Descriptors0054F920());
+
+    /// <summary>
+    /// Le corps commun des deux convocations : <b>quatre effets dans une seule fonction</b>,
+    /// choisis par <c>+0x14</c>, dont un est le <b>chef d'orchestre</b> des trois autres.
+    ///
+    /// <para>
+    /// <b>Variante 2 — le chef.</b> Il se teleporte de <c>0x12c000</c> vers le haut et de
+    /// <c>0x28</c> unites dans la direction de son cap, puis engendre <b>trente-et-une</b> copies
+    /// de lui-meme en variante 0 — il pose <c>+0x14 = 0</c> le temps des naissances, que
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> recopie, et le restaure ensuite. Pendant
+    /// quarante-trois images il s'eclaircit ; ensuite il <b>redescend</b> de trois unites par image
+    /// tout en lachant une variante 1 a chaque image. Passe l'image <c>0x9a</c>, il lache
+    /// trente-et-une variantes 4 et s'eteint.
+    /// </para>
+    /// <para>
+    /// <b>Variantes 0 et 4 — deux spirales opposees.</b> Toutes deux tournent autour d'un centre
+    /// fige a la naissance, la hauteur suivant un sinus de phase propre. La 0 <b>rentre</b> : son
+    /// rayon perd 2 a 4 par image et elle meurt quand il passe sous zero. La 4 <b>sort</b> : son
+    /// rayon gagne 5 a 8, son cap tourne <b>a l'envers</b> et deux fois plus vite, sa hauteur bat
+    /// deux fois plus ample, et elle meurt d'avoir noirci — sa teinte perd <c>2 a 4</c> par image
+    /// la ou la 0 en gagne dix.
+    /// </para>
+    /// <para>
+    /// <b>Variante 1 — la bouffee.</b> La plus simple : dispersee de <c>±20</c> sur les trois axes,
+    /// elle monte d'une unite par image et s'efface en s'assombrissant de six.
+    /// </para>
+    /// <para>
+    /// <b>Le sous-type des enfants vient de l'entite</b> : <c>+0x98</c>, pose a <c>0x38</c> a
+    /// chaque image par les deux premieres lignes du corps, plus <c>0xc0</c> — donc <c>0xf8</c>,
+    /// une entree de la table installee par zone.
+    /// </para>
+    /// </summary>
+    private static void TickSummonEffect(byte* e, byte* leaderAtlas, byte* childAtlas)
+    {
+        *(short*)(e + 0x98) = 0x38;
+        *(short*)(e + 0x96) = 10;
+
+        if (*(short*)(e + 0x14) == 2 && *(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = leaderAtlas;
+        }
+
+        // ---------------------------------------------------------------- variante 0 : la spirale rentrante
+        if (*(short*)(e + 0x14) == 0)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(byte**)(e + 0x3c) = childAtlas;
+                e[0x40] = 0;
+
+                *(int*)(e + 0x54) = *(int*)(e + 0x20);
+                *(ushort*)(e + 0x32) = (ushort)SignedMask(CrtRand(), 0xfff);
+                *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+                *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+                *(short*)(e + 0x9a) = (short)(CrtRand() % 0x14 + 0x46);
+
+                int speed = CrtRand();
+                e[0x38] = 0;
+                e[0x39] = 0;
+                e[0x3a] = 0;
+                *(int*)(e + 0x5c) = speed % 3 + 2;
+
+                *(ushort*)(e + 0x12) = (ushort)SignedMask(CrtRand(), 0xfff);
+                e[0x0a] = 9;
+                e[0x0b] = 0;
+
+                short scale = (short)(SignedMask(CrtRand(), 0x3ff) + 0x400);
+                *(short*)(e + 0x28) = scale;
+                *(short*)(e + 0x2a) = scale;
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                BrightenEntityTint_00404DE0(e, 10, 10, 10);
+                if (e[0x38] > 0x7f)
+                {
+                    e[0x38] = 0x80;
+                    e[0x39] = 0x80;
+                    e[0x3a] = 0x80;
+                }
+
+                SpiralAroundAnchor(e, 0x14);
+
+                *(short*)(e + 0x9a) -= (short)*(int*)(e + 0x5c);
+                *(short*)(e + 0x32) += (short)(*(int*)(e + 0x5c) * 0x10);
+
+                if (*(short*)(e + 0x9a) < 0) *(uint*)e &= 0x7fffffff;
+            }
+        }
+
+        // ---------------------------------------------------------------- variante 1 : la bouffee
+        if (*(short*)(e + 0x14) == 1)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(byte**)(e + 0x3c) = childAtlas;
+                e[0x40] = 0;
+                e[0x0a] = 9;
+                e[0x0b] = 0;
+
+                short scale = (short)(SignedMask(CrtRand(), 0x3ff) + 0x400);
+                e[0x38] = 0x80;
+                e[0x39] = 0x80;
+                e[0x3a] = 0x80;
+                *(short*)(e + 0x28) = scale;
+                *(short*)(e + 0x2a) = scale;
+
+                *(int*)(e + 0x1c) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+                *(int*)(e + 0x20) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+                *(int*)(e + 0x24) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                *(int*)(e + 0x20) += 0x1000;
+                BrightenEntityTint_00404DE0(e, -6, -6, -6);
+                if ((sbyte)e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+            }
+        }
+
+        // ---------------------------------------------------------------- variante 2 : le chef
+        if (*(short*)(e + 0x14) == 2)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                e[0x40] = 0;
+                e[0x0a] = 0x0e;
+                e[0x0b] = 0;
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x12) = 0;
+
+                *(int*)(e + 0x20) += 0x12c000;
+
+                short course = *(short*)(e + 0x32);
+                *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(course) * 0x28;
+                e[0x38] = 0;
+                *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(course) * 0x28;
+
+                *(short*)(e + 0x28) = 0x800;
+                *(short*)(e + 0x2a) = 0x800;
+                e[0x39] = 0;
+                e[0x3a] = 0;
+
+                SpawnSummonChildren(e, 0, 0x1f);
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                BrightenEntityTint_00404DE0(e, 3, 3, 3);
+                if (e[0x38] > 0x7f)
+                {
+                    e[0x38] = 0x80;
+                    e[0x39] = 0x80;
+                    e[0x3a] = 0x80;
+                }
+
+                (*(short*)(e + 0x12))++;
+                if (*(short*)(e + 0x12) > 0x2a)
+                {
+                    *(short*)(e + 0x10) = 2;
+                    *(short*)(e + 0x12) = 0;
+                }
+            }
+
+            if (*(short*)(e + 0x10) == 2)
+            {
+                SpawnSummonChildren(e, 1, 1);
+
+                if (*(short*)(e + 0x12) < 0x4b) *(int*)(e + 0x20) -= 0x3000;
+                (*(short*)(e + 0x12))++;
+
+                if (*(short*)(e + 0x16) > 0x9a)
+                {
+                    SpawnSummonChildren(e, 4, 0x1f);
+                    *(uint*)e &= 0x7fffffff;
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------- variante 4 : la spirale sortante
+        if (*(short*)(e + 0x14) == 4)
+        {
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(byte**)(e + 0x3c) = childAtlas;
+                e[0x40] = 0;
+
+                *(int*)(e + 0x58) = *(int*)(e + 0x24);
+                *(short*)(e + 0x9a) = 0;
+                *(ushort*)(e + 0x32) = (ushort)SignedMask(CrtRand(), 0xfff);
+                *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+                *(int*)(e + 0x54) = *(int*)(e + 0x20);
+
+                e[0x38] = 0x80;
+                e[0x39] = 0x80;
+                e[0x3a] = 0x80;
+                *(int*)(e + 0x5c) = SignedMask(CrtRand(), 3) + 5;
+
+                *(ushort*)(e + 0x12) = (ushort)SignedMask(CrtRand(), 0xfff);
+                e[0x0a] = 9;
+                e[0x0b] = 0;
+
+                short scale = (short)(SignedMask(CrtRand(), 0x3ff) + 0x400);
+                *(short*)(e + 0x28) = scale;
+                *(short*)(e + 0x2a) = scale;
+
+                *(int*)(e + 0x44) = -(CrtRand() % 3) - 2;
+            }
+
+            if (*(short*)(e + 0x10) == 1)
+            {
+                SpiralAroundAnchor(e, 0x28);
+
+                *(short*)(e + 0x9a) += (short)*(int*)(e + 0x5c);
+                *(short*)(e + 0x32) += (short)(*(int*)(e + 0x5c) * -2);
+
+                short fade = (short)*(int*)(e + 0x44);
+                BrightenEntityTint_00404DE0(e, fade, fade, fade);
+
+                if ((sbyte)e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+            }
+        }
+
+        (*(short*)(e + 0x16))++;
+    }
+
+    /// <summary>
+    /// La position d'une des deux spirales : le rayon <c>+0x9a</c> autour de l'ancre figee a la
+    /// naissance (<c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>), et une hauteur qui bat au sinus d'une
+    /// phase propre <c>+0x12</c> ajoutee au cap.
+    ///
+    /// <para><paramref name="sway"/> vaut <c>0x14</c> pour la spirale rentrante et <c>0x28</c>
+    /// pour la sortante : le seul nombre qui les separe ici.</para>
+    /// </summary>
+    private static void SpiralAroundAnchor(byte* e, int sway)
+    {
+        short course = *(short*)(e + 0x32);
+        short radius = *(short*)(e + 0x9a);
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(course) * radius + *(int*)(e + 0x50);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(course) * radius + *(int*)(e + 0x58);
+        *(int*)(e + 0x20) = *(int*)(e + 0x54)
+                          + (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12) + course) * sway;
+    }
+
+    /// <summary>
+    /// Les naissances du chef : <paramref name="count"/> enfants de la variante
+    /// <paramref name="variant"/>.
+    ///
+    /// <para>Le binaire pose <c>+0x14</c> a la variante voulue <b>avant</b> chaque naissance et le
+    /// restaure apres — c'est ainsi que l'enfant recoit sa variante, puisque
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> recopie l'entite entiere. Le sous-type, lui,
+    /// vient de <c>+0x98</c> plus <c>0xc0</c>.</para>
+    /// </summary>
+    private static void SpawnSummonChildren(byte* e, short variant, int count)
+    {
+        short saved = *(short*)(e + 0x14);
+
+        for (int i = 0; i < count; i++)
+        {
+            *(short*)(e + 0x14) = variant;
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), null, (byte)(*(short*)(e + 0x98) + 0xc0), 0, -1);
+            *(short*)(e + 0x14) = saved;
         }
     }
 
