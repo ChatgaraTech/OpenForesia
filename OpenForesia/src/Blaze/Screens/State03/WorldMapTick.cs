@@ -4629,6 +4629,11 @@ public static unsafe partial class Blaze
             case 0x00447380: EntityHandler_00447380(record); return;
             case 0x004474C0: EntityHandler_004474C0(record); return;
 
+            // LA BOUFFEE DE L'OBJET UTILISE — ce que le script d'une potion fait naitre, et
+            // l'etincelle (0xa9) qu'elle seme par paires.
+            case 0x00446790: EntityHandler_00446790(record); return;
+            case 0x0044FB10: EntityHandler_0044FB10(record); return;
+
             // LE TIR — les trois corps du jet du Goblin : le lanceur (0x49), la trajectoire (0x52)
             // et l'eclaboussure (0xbd). Premier sous-systeme d'attaque a distance transcrit.
             case 0x0047A100: EntityHandler_0047A100(record); return;
@@ -6768,6 +6773,1533 @@ public static unsafe partial class Blaze
                 (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x005647f0), 0x29, 0, 0);
         }
 
+        return 0;
+    }
+
+    // =====================================================================
+    // LA TABLE DES 48 EFFETS (0x0056d4e0) — 0x0053afb0 .. 0x0053cdf0
+    //
+    // C'est le sous-systeme que l'opcode 18 du script d'objet et les sorts partagent : une potion,
+    // un piege de coffre et un sort de guerison entrent tous les trois par ici. Les 48 corps sont
+    // dans Blaze.c, courts (14 a 87 lignes) et tres reguliers ; cinq etaient deja transcrits par
+    // le chemin des pieges de coffre (0x0053b3c0, 0x0053b4b0, 0x0053b580, 0x0053b660, 0x0053c420),
+    // les 43 autres le sont ici.
+    //
+    // LE SQUELETTE COMMUN, celui des entrees 0 a 33 :
+    //
+    //   1. PrepareCombatPair_00538870 appareille les deux combattants et resout leurs deux blocs
+    //      de statistiques. C'est un appel A DEUX SORTIES ECRITES PAR ADRESSE : dans l'original
+    //      les parametres 2 et 3 sont passes par pointeur et RECOIVENT les blocs, si bien que
+    //      `param_2` cesse d'etre la victime pour devenir le bloc de l'assaillant et `param_3`
+    //      cesse d'etre le drapeau pour devenir le bloc de la victime. Les corps qui ont encore
+    //      besoin de l'entite victime la sauvent AVANT l'appel (`iVar1 = param_2`), et cette
+    //      sauvegarde est reproduite ici par le simple fait que `victim` reste `victim`.
+    //   2. un masque d'immunite lu en +0x14 du bloc de la victime, quand l'effet en a un : pose,
+    //      l'effet echoue en faisant naitre le sous-type 0xbf — la marque du coup sans effet ;
+    //   3. un jet de sauvegarde, RollSavingThrow_0053A6C0 ou RollSavingThrowB_0053A790 selon
+    //      l'effet, quand il en a un ;
+    //   4. une duree calculee sur une statistique de l'assaillant, decalee et decalee seulement
+    //      (jamais divisee), rangee en +0x80..+0xc2 du bloc de la victime SI elle depasse ce qui
+    //      s'y trouve — un effet deja pose n'est jamais raccourci, seulement rallonge ;
+    //   5. un bit d'etat en +0x40, et c'est SA POSE, pas la duree, qui declenche la marque
+    //      visible : le 0x29 ne nait qu'a la premiere fois.
+    //
+    // Les entrees 34 a 42 sont les LEVEES : meme appareillage, puis un bit efface et sa duree
+    // remise a zero. Les entrees 43 a 47 touchent aux points de vie.
+    //
+    // Ces 48 corps restent 48 fonctions. Ils ne different pas seulement par des constantes — les
+    // uns ont un masque d'immunite et pas les autres, le jet de sauvegarde change de famille, et
+    // cinq d'entre eux font naitre une seconde entite. Les factoriser demanderait une table a
+    // huit colonnes dont trois seraient des drapeaux de presence : ce serait moins lisible que
+    // les corps eux-memes, et ce ne serait plus ce que le binaire contient.
+    // =====================================================================
+
+    /// <summary>
+    /// La <b>fiche de l'effet en cours</b> : le mot <c>+0x06</c> de l'entite porte la famille en
+    /// octet haut et l'indice en octet bas, tels que <see cref="CastSpell_0053A980"/> les y a
+    /// ecrits, et le repertoire principal les resout en une entree de <c>0x30</c> octets. C'est la
+    /// meme chaine que dans le lanceur, lue ici a l'envers.
+    ///
+    /// <para>
+    /// <b>Ce n'est pas reserve aux sorts</b>, et c'est ce qui fait tenir le script d'objet : le
+    /// champ <c>+0x06</c> est le <b>passage de main entre l'opcode 14 et l'opcode 18</b>. Le 14
+    /// (<see cref="ItemOpCast"/>) appelle <c>CastSpell_0053A980</c>, qui y range la paire et fait
+    /// naitre l'effet visible ; le 18 la relit ici pour aller chercher dans la fiche le montant de
+    /// base — le nombre de points qu'une potion rend. Un script qui emettrait le 18 sans le 14
+    /// lirait la paire laissee par l'effet precedent, ce que le binaire fait aussi : aucune garde
+    /// n'est ajoutee.
+    /// </para>
+    /// </summary>
+    private static byte* SpellSheetOf(uint* caster)
+    {
+        byte* e = (byte*)caster;
+        return *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x9c) + e[7] * 4)
+               + e[6] * 0x30;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>(*(code *)(&amp;DAT_0056d4e0)[genre])(…)</c> — <b>la table des 48 effets</b>, de
+    /// <c>0x0053afb0</c> a <c>0x0053cdf0</c>. Relevee dans le binaire ; l'etendue est deduite, le
+    /// dword qui suit la 48e entree vaut 1, debut d'une table de masques de bits.
+    ///
+    /// <para>Rendue en <c>switch</c> comme les deux autres repartiteurs du fichier, et pour la
+    /// meme raison : c'est une table de sauts dans l'original, et <c>Strategy.md</c> demande de
+    /// reconstruire le flot. <b>L'original ne borne pas son indice</b> — au-dela de 47 il saute sur
+    /// ce qui suit la table ; ici on le dit.</para>
+    /// </summary>
+    private static uint ApplyItemEffect_0056D4E0(byte kind, uint* source, byte* target, uint flag)
+    {
+        uint* victim = (uint*)target;
+        int keep = (int)flag;
+
+        return kind switch
+        {
+            0 => ApplyStatusEffect_0053AFB0(source, victim, keep),
+            1 => ApplyStatusEffect_0053B020(source, victim, keep),
+            2 => ApplyStatusEffect_0053B090(source, victim, keep),
+            3 => ApplyStatusEffect_0053B100(source, victim, keep),
+            4 => ApplyStatusEffect_0053B1B0(source, victim, keep),
+            5 => ApplyStatusEffect_0053B260(source, victim, keep),
+            6 => ApplyStatusEffect_0053B310(source, victim, keep),
+            7 => ApplyStatusEffect_0053B3C0(source, victim, keep),
+            8 => ApplyStatusEffect_0053B4B0(source, victim, keep),
+            9 => ApplyStatusEffect_0053B580(source, victim, keep),
+            10 => ApplyStatusEffect_0053B660(source, victim, keep),
+            11 => ApplyStatusEffect_0053B730(source, victim, keep),
+            12 => ApplyStatusEffect_0053B810(source, victim, keep),
+            13 => ApplyStatusEffect_0053B8F0(source, victim, keep),
+            14 => ApplyStatusEffect_0053B9C0(source, victim, keep),
+            15 => ApplyStatusEffect_0053BA90(source, victim, keep),
+            16 => ApplyStatusEffect_0053BB20(source, victim, keep),
+            17 => ApplyStatusEffect_0053BBD0(source, victim, keep),
+            18 => ApplyStatusEffect_0053BC60(source, victim, keep),
+            19 => ApplyStatusEffect_0053BD10(source, victim, keep),
+            20 => ApplyStatusEffect_0053BDA0(source, victim, keep),
+            21 => ApplyStatusEffect_0053BE70(source, victim, keep),
+            22 => ApplyStatusEffect_0053BF00(source, victim, keep),
+            23 => ApplyStatusEffect_0053BFB0(source, victim, keep),
+            24 => ApplyStatusEffect_0053C040(source, victim, keep),
+            25 => ApplyStatusEffect_0053C0F0(source, victim, keep),
+            26 => ApplyStatusEffect_0053C160(source, victim, keep),
+            27 => ApplyStatusEffect_0053C1F0(source, victim, keep),
+            28 => ApplyStatusEffect_0053C2A0(source, victim, keep),
+            29 => ClearAllStatusEffects_0053C330(source, victim, keep),
+            30 => ApplyTrapEffect_0053C420(source, victim, keep),
+            31 => ApplyStatusEffect_0053C510(source, victim, keep),
+            32 => ApplyStatusEffect_0053C5E0(source, victim, keep),
+            33 => ApplyStatusEffect_0053C6B0(source, victim, keep),
+            34 => ClearStatusEffect_0053C740(source, victim, keep),
+            35 => ClearStatusEffect_0053C790(source, victim, keep),
+            36 => ClearStatusEffect_0053C7E0(source, victim, keep),
+            37 => ClearStatusEffect_0053C830(source, victim, keep),
+            38 => ClearStatusEffect_0053C890(source, victim, keep),
+            39 => ClearStatusEffect_0053C8E0(source, victim, keep),
+            40 => ClearStatusEffect_0053C930(source, victim, keep),
+            41 => ClearStatusEffect_0053C980(source, victim, keep),
+            42 => ClearStatusEffect_0053CA30(source, victim, keep),
+            43 => HealTarget_0053CA80(source, victim, keep),
+            44 => HealPartyShare_0053CB30(source, victim, keep),
+            45 => HealTargetFully_0053CD20(source, victim, keep),
+            46 => ReviveTarget_0053CD80(source, victim, keep),
+            47 => SlayTarget_0053CDF0(source, victim, keep),
+            _ => throw new NotImplementedException(
+                     $"Table d'effets 0x0056d4e0, genre {kind} : au-dela des 48 entrees "
+                     + "(0x0053afb0..0x0053cdf0). L'original saute dans la table sans borne ; "
+                     + "ici on le dit."),
+        };
+    }
+
+    // ------------------------------------------------------------------ 0 a 2 : sans jet, sans marque
+
+    /// <summary>Ghidra: FUN_0053afb0 @ 0x0053afb0 — <b>l'effet 0</b>. Duree
+    /// <c>attaque/4 + 0x19</c> en <c>+0x80</c>, bit <c>0x8000000</c>. Ni masque d'immunite, ni jet
+    /// de sauvegarde, ni marque visible : il se pose toujours.</summary>
+    private static uint ApplyStatusEffect_0053AFB0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 2) + 0x19;
+        if (*(ushort*)(victimBlock + 0x80) < duration)
+        {
+            *(short*)(victimBlock + 0x80) = (short)duration;
+        }
+
+        *(uint*)(victimBlock + 0x40) |= 0x8000000;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053b020 @ 0x0053b020 — <b>l'effet 1</b>, la jumelle de
+    /// <see cref="ApplyStatusEffect_0053AFB0"/> : duree <c>attaque/4 + 0x3c</c> en <c>+0x82</c>,
+    /// bit <c>0x2000000</c>.</summary>
+    private static uint ApplyStatusEffect_0053B020(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 1, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 2) + 0x3c;
+        if (*(ushort*)(victimBlock + 0x82) < duration)
+        {
+            *(short*)(victimBlock + 0x82) = (short)duration;
+        }
+
+        *(uint*)(victimBlock + 0x40) |= 0x2000000;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053b090 @ 0x0053b090 — <b>l'effet 2</b>, la troisieme de la meme
+    /// forme : duree <c>attaque/4 + 0x3c</c> en <c>+0x84</c>, bit <c>0x4000000</c>.</summary>
+    private static uint ApplyStatusEffect_0053B090(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 2, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 2) + 0x3c;
+        if (*(ushort*)(victimBlock + 0x84) < duration)
+        {
+            *(short*)(victimBlock + 0x84) = (short)duration;
+        }
+
+        *(uint*)(victimBlock + 0x40) |= 0x4000000;
+        return 0;
+    }
+
+    // ------------------------------------------------------------------ 3 a 6 : les quatre a intensite
+
+    /// <summary>
+    /// Ghidra: FUN_0053b100 @ 0x0053b100 — <b>l'effet 3</b>, premier des quatre qui rangent une
+    /// <b>intensite</b> a cote de leur duree.
+    ///
+    /// <para>
+    /// L'intensite est <c>bloc[+0x2a] / 24 + fiche[+0x18]</c>, et <b>elle n'est ecrite que quand la
+    /// duree l'est</b> — les deux affectations sont dans le meme <c>if</c>. Un effet plus court que
+    /// celui deja pose ne change donc rien du tout, pas meme l'intensite.
+    /// </para>
+    /// <para>
+    /// <b>La division par 24 se lit dans le binaire, pas dans <c>Blaze.c</c>.</b> Ghidra en rend
+    /// les trois morceaux separement (<c>x / 0x18</c>, <c>x &gt;&gt; 0xf</c>, et un terme en
+    /// <c>&gt;&gt; 0x3f</c>) sans les recomposer, ce qui se lit comme une formule a trois termes
+    /// alors que c'en est une seule. Le desassembleur est sans ambiguite :
+    /// <c>imul 0x2AAAAAAB ; sar edx,2 ; shr eax,31 ; add</c> est la division signee par 24, celle
+    /// qui tronque vers zero — ce que <c>/</c> fait deja en C#. Et la fiche est lue en
+    /// <b>non signe</b> (<c>movzx</c>), pas en <c>short</c> comme Ghidra la declare.
+    /// </para>
+    /// </summary>
+    private static uint ApplyStatusEffect_0053B100(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 3, keep) != 0)
+        {
+            return 1;
+        }
+
+        int magnitude = *(short*)(attackerBlock + 0x2a) / 24
+                        + *(ushort*)(SpellSheetOf(attacker) + 0x18);
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x28;
+        if (*(ushort*)(victimBlock + 0x86) < duration)
+        {
+            *(short*)(victimBlock + 0x86) = (short)duration;
+            *(short*)(victimBlock + 0xe4) = (short)magnitude;
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053b1b0 @ 0x0053b1b0 — <b>l'effet 4</b>, la meme que
+    /// <see cref="ApplyStatusEffect_0053B100"/> en <c>+0x88</c> / <c>+0xe6</c>.</summary>
+    private static uint ApplyStatusEffect_0053B1B0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 4, keep) != 0)
+        {
+            return 1;
+        }
+
+        int magnitude = *(short*)(attackerBlock + 0x2a) / 24
+                        + *(ushort*)(SpellSheetOf(attacker) + 0x18);
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x28;
+        if (*(ushort*)(victimBlock + 0x88) < duration)
+        {
+            *(short*)(victimBlock + 0x88) = (short)duration;
+            *(short*)(victimBlock + 0xe6) = (short)magnitude;
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053b260 @ 0x0053b260 — <b>l'effet 5</b>, en <c>+0x8a</c> /
+    /// <c>+0xe8</c>.</summary>
+    private static uint ApplyStatusEffect_0053B260(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 5, keep) != 0)
+        {
+            return 1;
+        }
+
+        int magnitude = *(short*)(attackerBlock + 0x2a) / 24
+                        + *(ushort*)(SpellSheetOf(attacker) + 0x18);
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x28;
+        if (*(ushort*)(victimBlock + 0x8a) < duration)
+        {
+            *(short*)(victimBlock + 0x8a) = (short)duration;
+            *(short*)(victimBlock + 0xe8) = (short)magnitude;
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053b310 @ 0x0053b310 — <b>l'effet 6</b>, en <c>+0x8c</c> /
+    /// <c>+0xea</c>. Le dernier des quatre.</summary>
+    private static uint ApplyStatusEffect_0053B310(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 6, keep) != 0)
+        {
+            return 1;
+        }
+
+        int magnitude = *(short*)(attackerBlock + 0x2a) / 24
+                        + *(ushort*)(SpellSheetOf(attacker) + 0x18);
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x28;
+        if (*(ushort*)(victimBlock + 0x8c) < duration)
+        {
+            *(short*)(victimBlock + 0x8c) = (short)duration;
+            *(short*)(victimBlock + 0xea) = (short)magnitude;
+        }
+
+        return 0;
+    }
+
+    // ------------------------------------------------------------------ 11 a 14 : avec masque et jet
+
+    /// <summary>Ghidra: FUN_0053b730 @ 0x0053b730 — <b>l'effet 11</b>. Masque d'immunite
+    /// <c>0xfbaf9500</c> — le plus large de la famille —, jet B, duree
+    /// <c>defense/8 + 0x1a</c> en <c>+0x96</c>, bit <c>0x40</c>. Sa premiere fois fait naitre
+    /// <b>deux</b> entites : la marque <c>0x29</c> et un effet <c>0x47</c>.</summary>
+    private static uint ApplyStatusEffect_0053B730(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xb, keep) != 0)
+        {
+            return 1;
+        }
+
+        if ((*(uint*)(victimBlock + 0x14) & 0xfbaf9500) != 0)
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x3c) >> 3) + 0x1a;
+        if (*(ushort*)(victimBlock + 0x96) < duration)
+        {
+            *(short*)(victimBlock + 0x96) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x40) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x40;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564818), 0x29, 0, 0);
+            SpawnEffectEntity((byte*)victim, 0x47, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053b810 @ 0x0053b810 — <b>l'effet 12</b>. Masque <c>0xfb099500</c>,
+    /// jet A, duree <c>attaque/32 + 5</c> en <c>+0x98</c> — la duree la plus courte de la table —,
+    /// bit <c>0x80</c>, plus un effet <c>0x46</c> de saveur 2.</summary>
+    private static uint ApplyStatusEffect_0053B810(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xc, keep) != 0)
+        {
+            return 1;
+        }
+
+        if ((*(uint*)(victimBlock + 0x14) & 0xfb099500) != 0)
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x34) >> 5) + 5;
+        if (*(ushort*)(victimBlock + 0x98) < duration)
+        {
+            *(short*)(victimBlock + 0x98) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x80) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x80;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x005648b0), 0x29, 0, 0);
+            SpawnEffectEntity((byte*)victim, 0x46, 0, 2);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053b8f0 @ 0x0053b8f0 — <b>l'effet 13</b>. Masque <c>0xf3099500</c>,
+    /// jet A, duree <c>attaque/8 + 6</c> en <c>+0x9a</c>, bit <c>0x100</c>.</summary>
+    private static uint ApplyStatusEffect_0053B8F0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xd, keep) != 0)
+        {
+            return 1;
+        }
+
+        if ((*(uint*)(victimBlock + 0x14) & 0xf3099500) != 0)
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x34) >> 3) + 6;
+        if (*(ushort*)(victimBlock + 0x9a) < duration)
+        {
+            *(short*)(victimBlock + 0x9a) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x100) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x100;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564820), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053b9c0 @ 0x0053b9c0 — <b>l'effet 14</b>. Masque <c>0xfb299500</c>,
+    /// jet B, duree <c>defense/4 + 0x42</c> en <c>+0x9c</c>, bit <c>0x200</c>.</summary>
+    private static uint ApplyStatusEffect_0053B9C0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xe, keep) != 0)
+        {
+            return 1;
+        }
+
+        if ((*(uint*)(victimBlock + 0x14) & 0xfb299500) != 0)
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x3c) >> 2) + 0x42;
+        if (*(ushort*)(victimBlock + 0x9c) < duration)
+        {
+            *(short*)(victimBlock + 0x9c) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x200) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x200;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564810), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    // ------------------------------------------------------------------ 15 a 28 : sans masque d'immunite
+
+    /// <summary>Ghidra: FUN_0053ba90 @ 0x0053ba90 — <b>l'effet 15</b>. Ni masque ni jet : duree
+    /// <c>attaque/8 + 10</c> en <c>+0x9e</c>, bit <c>0x400</c>.</summary>
+    private static uint ApplyStatusEffect_0053BA90(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xf, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0x9e) < duration)
+        {
+            *(short*)(victimBlock + 0x9e) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x400) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x400;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564850), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053bb20 @ 0x0053bb20 — <b>l'effet 16</b>. Pas de masque, mais un
+    /// jet A : duree <c>attaque/8 + 10</c> en <c>+0xa0</c>, bit <c>0x800</c>.</summary>
+    private static uint ApplyStatusEffect_0053BB20(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x10, keep) != 0)
+        {
+            return 1;
+        }
+
+        if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xa0) < duration)
+        {
+            *(short*)(victimBlock + 0xa0) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x800) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x800;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564860), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053bbd0 @ 0x0053bbd0 — <b>l'effet 17</b>. Ni masque ni jet : duree
+    /// <c>attaque/8 + 10</c> en <c>+0xa2</c>, bit <c>0x1000</c>.</summary>
+    private static uint ApplyStatusEffect_0053BBD0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x11, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xa2) < duration)
+        {
+            *(short*)(victimBlock + 0xa2) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x1000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x1000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564848), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053bc60 @ 0x0053bc60 — <b>l'effet 18</b>. Jet A, duree
+    /// <c>attaque/8 + 10</c> en <c>+0xa4</c>, bit <c>0x2000</c>.</summary>
+    private static uint ApplyStatusEffect_0053BC60(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x12, keep) != 0)
+        {
+            return 1;
+        }
+
+        if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xa4) < duration)
+        {
+            *(short*)(victimBlock + 0xa4) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x2000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x2000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564858), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053bd10 @ 0x0053bd10 — <b>l'effet 19</b>. Ni masque ni jet : duree
+    /// <c>attaque/8 + 0x28</c> en <c>+0xa6</c>, bit <c>0x4000</c>.</summary>
+    private static uint ApplyStatusEffect_0053BD10(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x13, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x28;
+        if (*(ushort*)(victimBlock + 0xa6) < duration)
+        {
+            *(short*)(victimBlock + 0xa6) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x4000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x4000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564840), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053bda0 @ 0x0053bda0 — <b>l'effet 20</b>. Son masque d'immunite est
+    /// <c>0x80000000</c> — <b>un seul bit</b>, le plus etroit de la table. Jet A, duree
+    /// <c>attaque/8 + 0x28</c> en <c>+0xa8</c>, bit <c>0x8000</c>.</summary>
+    private static uint ApplyStatusEffect_0053BDA0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x14, keep) != 0)
+        {
+            return 1;
+        }
+
+        if ((*(uint*)(victimBlock + 0x14) & 0x80000000) != 0)
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x28;
+        if (*(ushort*)(victimBlock + 0xa8) < duration)
+        {
+            *(short*)(victimBlock + 0xa8) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x8000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x8000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564838), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053be70 @ 0x0053be70 — <b>l'effet 21</b>. Duree
+    /// <c>attaque/8 + 10</c> en <c>+0xaa</c>, bit <c>0x10000</c>.</summary>
+    private static uint ApplyStatusEffect_0053BE70(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x15, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xaa) < duration)
+        {
+            *(short*)(victimBlock + 0xaa) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x10000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x10000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564868), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053bf00 @ 0x0053bf00 — <b>l'effet 22</b>. Jet B, duree
+    /// <c>attaque/8 + 10</c> en <c>+0xac</c>, bit <c>0x20000</c>.</summary>
+    private static uint ApplyStatusEffect_0053BF00(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x16, keep) != 0)
+        {
+            return 1;
+        }
+
+        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xac) < duration)
+        {
+            *(short*)(victimBlock + 0xac) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x20000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x20000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564878), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053bfb0 @ 0x0053bfb0 — <b>l'effet 23</b>. Duree
+    /// <c>attaque/8 + 10</c> en <c>+0xae</c>, bit <c>0x40000</c>.</summary>
+    private static uint ApplyStatusEffect_0053BFB0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x17, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xae) < duration)
+        {
+            *(short*)(victimBlock + 0xae) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x40000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x40000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564880), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c040 @ 0x0053c040 — <b>l'effet 24</b>. Jet B, duree
+    /// <c>attaque/8 + 10</c> en <c>+0xb0</c>, bit <c>0x80000</c>.</summary>
+    private static uint ApplyStatusEffect_0053C040(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x18, keep) != 0)
+        {
+            return 1;
+        }
+
+        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xb0) < duration)
+        {
+            *(short*)(victimBlock + 0xb0) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x80000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x80000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564870), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053c0f0 @ 0x0053c0f0 — <b>l'effet 25</b>, duree <c>attaque/8 + 0x19</c> en
+    /// <c>+0xb2</c>, bit <c>0x100000</c>.
+    ///
+    /// <para><b>Le seul de la famille a poser un bit sans faire naitre de marque</b>, et le bit
+    /// <c>0x100000</c> est justement celui que les guerisons interrogent pour refuser leur soin.
+    /// L'effet est donc invisible sur le moment et se voit ailleurs.</para>
+    /// </summary>
+    private static uint ApplyStatusEffect_0053C0F0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x19, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x19;
+        if (*(ushort*)(victimBlock + 0xb2) < duration)
+        {
+            *(short*)(victimBlock + 0xb2) = (short)duration;
+        }
+
+        // Ghidra: le `if` du binaire est conserve tel quel, bien qu'un OU soit idempotent.
+        if ((*(uint*)(victimBlock + 0x40) & 0x100000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x100000;
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c160 @ 0x0053c160 — <b>l'effet 26</b>. Duree
+    /// <c>attaque/8 + 10</c> en <c>+0xb4</c>, bit <c>0x200000</c>.</summary>
+    private static uint ApplyStatusEffect_0053C160(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x1a, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xb4) < duration)
+        {
+            *(short*)(victimBlock + 0xb4) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x200000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x200000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564888), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c1f0 @ 0x0053c1f0 — <b>l'effet 27</b>. Jet B, duree
+    /// <c>attaque/8 + 10</c> en <c>+0xb6</c>, et son bit est <c>0x10000000</c> : il rompt la suite
+    /// des puissances de deux consecutives, la place naturelle etant deja prise.</summary>
+    private static uint ApplyStatusEffect_0053C1F0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x1b, keep) != 0)
+        {
+            return 1;
+        }
+
+        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 10;
+        if (*(ushort*)(victimBlock + 0xb6) < duration)
+        {
+            *(short*)(victimBlock + 0xb6) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x10000000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x10000000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564800), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c2a0 @ 0x0053c2a0 — <b>l'effet 28</b>. Duree
+    /// <c>attaque/8 + 0x19</c> en <c>+0xb8</c>, bit <c>0x400000</c>.</summary>
+    private static uint ApplyStatusEffect_0053C2A0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x1c, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 3) + 0x19;
+        if (*(ushort*)(victimBlock + 0xb8) < duration)
+        {
+            *(short*)(victimBlock + 0xb8) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x400000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x400000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564898), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    // ------------------------------------------------------------------ 29 : la grande levee
+
+    /// <summary>
+    /// Ghidra: FUN_0053c330 @ 0x0053c330 — <b>l'effet 29</b> : la <b>levee generale</b>, celle qui
+    /// efface d'un coup les dix etats de <c>+0x9e</c> a <c>+0xb0</c>.
+    ///
+    /// <para>
+    /// <b>Elle n'appareille pas les deux combattants comme les autres</b> : elle appelle
+    /// <see cref="ValidateCombatants_0053A860"/> puis fait le travail de
+    /// <see cref="PrepareCombatPair_00538870"/> a la main, et seulement pour la victime — le bloc
+    /// de l'assaillant ne lui sert a rien. Le marqueur qu'elle passe est <c>0xff</c>, celui des
+    /// effets qui ne sont pas un coup.
+    /// </para>
+    /// <para>
+    /// L'appariement lui-meme differe aussi : l'assaillant retient sa cible en <c>+0x70</c> et non
+    /// en <c>+0x70</c> de la victime — c'est la seule de la table a ecrire ce champ-la.
+    /// </para>
+    /// <para>
+    /// <b>Le bit <c>0x100000</c> la refuse</b>, comme il refuse les guerisons : elle fait alors
+    /// naitre la marque <c>0x29</c> de l'atlas <c>0x005648a0</c> et rend 1.
+    /// </para>
+    /// </summary>
+    private static uint ClearAllStatusEffects_0053C330(uint* attacker, uint* victim, int keep)
+    {
+        if (ValidateCombatants_0053A860(attacker, victim) != 0) return 1;
+
+        *(uint**)((byte*)attacker + 0x70) = victim;
+        victim[0x1c] = (uint)attacker;
+
+        byte* victimBlock = (*victim & 0x800000) == 0
+            ? ResolveSceneCombatBlock_00538830(victim, 0xff)
+            : ResolvePartyCombatBlock_005387C0(victim, 0xff, keep);
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x100000) != 0)
+        {
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x005648a0), 0x29, 0, 0);
+            return 1;
+        }
+
+        if ((*victim & 0x800000) != 0) TriggerEquippedItems_005238E0(victim, 0x11);
+
+        // 0xfff003ff : les dix bits 0x400 a 0x80000 tombent ensemble.
+        *(uint*)(victimBlock + 0x40) &= 0xfff003ff;
+
+        // Ghidra les ecrit dans un ordre disperse (0xa2, 0x9e, 0xaa, 0xae, 0xa4, 0xa0, 0xac, 0xb0,
+        // 0xa6, 0xa8) : c'est l'ordonnancement du compilateur, pas un sens. Remis en ordre.
+        for (int at = 0x9e; at <= 0xb0; at += 2)
+        {
+            *(short*)(victimBlock + at) = 0;
+        }
+
+        return 0;
+    }
+
+    // ------------------------------------------------------------------ 31 a 33
+
+    /// <summary>Ghidra: FUN_0053c510 @ 0x0053c510 — <b>l'effet 31</b>. Masque <c>0xfb099500</c>,
+    /// jet B, duree <c>defense/4 + 6</c> en <c>+0xe2</c>, bit <c>2</c>.</summary>
+    private static uint ApplyStatusEffect_0053C510(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x1e, keep) != 0)
+        {
+            return 1;
+        }
+
+        if ((*(uint*)(victimBlock + 0x14) & 0xfb099500) != 0)
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x3c) >> 2) + 6;
+        if (*(ushort*)(victimBlock + 0xe2) < duration)
+        {
+            *(short*)(victimBlock + 0xe2) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 2) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 2;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x005647c8), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053c5e0 @ 0x0053c5e0 — <b>l'effet 32</b>, masque <c>0xf3099500</c>, jet A,
+    /// duree <c>defense/4 + 0x24</c> en <c>+0xc0</c>.
+    ///
+    /// <para><b>Le seul qui compte au lieu de poser un bit</b> : sa marque visible depend d'un
+    /// compteur en <c>+0xec</c>, incremente tant qu'il reste sous 3. L'effet s'empile donc jusqu'a
+    /// trois fois, et trois marques coexistent — la ou tous les autres n'en font naitre
+    /// qu'une.</para>
+    /// </summary>
+    private static uint ApplyStatusEffect_0053C5E0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x1f, keep) != 0)
+        {
+            return 1;
+        }
+
+        if ((*(uint*)(victimBlock + 0x14) & 0xf3099500) != 0)
+        {
+            SpawnEffectEntity((byte*)victim, 0xbf, 0, 0);
+            return 1;
+        }
+
+        if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0) return 1;
+
+        int duration = (*(short*)(attackerBlock + 0x3c) >> 2) + 0x24;
+        if (*(ushort*)(victimBlock + 0xc0) < duration)
+        {
+            *(short*)(victimBlock + 0xc0) = (short)duration;
+        }
+
+        if (*(ushort*)(victimBlock + 0xec) < 3)
+        {
+            *(ushort*)(victimBlock + 0xec) += 1;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x005647f8), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c6b0 @ 0x0053c6b0 — <b>l'effet 33</b>, le dernier des poseurs.
+    /// Duree <c>attaque/4 + 0x1e</c> en <c>+0xc2</c>, bit <c>0x1000000</c>.</summary>
+    private static uint ApplyStatusEffect_0053C6B0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0x20, keep) != 0)
+        {
+            return 1;
+        }
+
+        int duration = (*(short*)(attackerBlock + 0x38) >> 2) + 0x1e;
+        if (*(ushort*)(victimBlock + 0xc2) < duration)
+        {
+            *(short*)(victimBlock + 0xc2) = (short)duration;
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x1000000) == 0)
+        {
+            *(uint*)(victimBlock + 0x40) |= 0x1000000;
+
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x00564828), 0x29, 0, 0);
+        }
+
+        return 0;
+    }
+
+    // ------------------------------------------------------------------ 34 a 42 : les levees
+    //
+    // Toutes de la meme forme, et toutes avec le marqueur 0xff : appareiller, effacer un bit du
+    // mot d'etat, remettre la duree correspondante a zero. Aucune ne fait naitre quoi que ce soit
+    // et aucune ne peut echouer une fois l'appareillage passe.
+
+    /// <summary>Ghidra: FUN_0053c740 @ 0x0053c740 — <b>leve l'effet du bit 1</b> (<c>+0xe0</c>),
+    /// celui que <see cref="ApplyTrapEffect_0053C420"/> pose.</summary>
+    private static uint ClearStatusEffect_0053C740(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(uint*)(victimBlock + 0x40) &= 0xfffffffe;
+        *(short*)(victimBlock + 0xe0) = 0;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c790 @ 0x0053c790 — <b>leve l'effet du bit 4</b> (<c>+0x8e</c>),
+    /// celui de <see cref="ApplyStatusEffect_0053B3C0"/>.</summary>
+    private static uint ClearStatusEffect_0053C790(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(uint*)(victimBlock + 0x40) &= 0xfffffffb;
+        *(short*)(victimBlock + 0x8e) = 0;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c7e0 @ 0x0053c7e0 — <b>leve l'effet du bit 2</b>
+    /// (<c>+0xe2</c>).</summary>
+    private static uint ClearStatusEffect_0053C7E0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(uint*)(victimBlock + 0x40) &= 0xfffffffd;
+        *(short*)(victimBlock + 0xe2) = 0;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c830 @ 0x0053c830 — <b>leve deux effets a la fois</b>, les bits
+    /// <c>8</c> et <c>0x200</c> (<c>+0x90</c> et <c>+0x9c</c>). Le masque <c>0xfffffdf7</c> les
+    /// efface d'un seul ET.</summary>
+    private static uint ClearStatusEffect_0053C830(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(uint*)(victimBlock + 0x40) &= 0xfffffdf7;
+        *(short*)(victimBlock + 0x90) = 0;
+        *(short*)(victimBlock + 0x9c) = 0;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c890 @ 0x0053c890 — <b>leve l'effet du bit 0x100</b>
+    /// (<c>+0x9a</c>).</summary>
+    private static uint ClearStatusEffect_0053C890(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(uint*)(victimBlock + 0x40) &= 0xfffffeff;
+        *(short*)(victimBlock + 0x9a) = 0;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c8e0 @ 0x0053c8e0 — <b>leve l'effet du bit 0x10</b>
+    /// (<c>+0x92</c>).</summary>
+    private static uint ClearStatusEffect_0053C8E0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(uint*)(victimBlock + 0x40) &= 0xffffffef;
+        *(short*)(victimBlock + 0x92) = 0;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053c930 @ 0x0053c930 — <b>leve l'effet du bit 0x20</b>
+    /// (<c>+0x94</c>).</summary>
+    private static uint ClearStatusEffect_0053C930(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(uint*)(victimBlock + 0x40) &= 0xffffffdf;
+        *(short*)(victimBlock + 0x94) = 0;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053c980 @ 0x0053c980 — <b>la levee des neuf</b> : le masque
+    /// <c>0xfffffc80</c> efface les bits <c>0x37f</c> d'un coup, et neuf durees tombent avec eux.
+    ///
+    /// <para><b>Le bit <c>0x80</c> survit</b>, alors qu'il est dans la plage — c'est l'effet 12,
+    /// celui de <see cref="ApplyStatusEffect_0053B810"/>. La levee generale n'est donc pas
+    /// generale, et l'exception est ecrite dans la constante.</para>
+    /// </summary>
+    private static uint ClearStatusEffect_0053C980(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(uint*)(victimBlock + 0x40) &= 0xfffffc80;
+
+        *(short*)(victimBlock + 0xe0) = 0;
+        *(short*)(victimBlock + 0x8e) = 0;
+        *(short*)(victimBlock + 0xe2) = 0;
+        *(short*)(victimBlock + 0x90) = 0;
+        *(short*)(victimBlock + 0x9a) = 0;
+        *(short*)(victimBlock + 0x92) = 0;
+        *(short*)(victimBlock + 0x94) = 0;
+        *(short*)(victimBlock + 0x9c) = 0;
+        *(short*)(victimBlock + 0x96) = 0;
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053ca30 @ 0x0053ca30 — <b>la levee de l'effet 32</b> : elle ne touche
+    /// aucun bit, seulement la duree <c>+0xc0</c> et le <b>compteur</b> <c>+0xec</c>, puisque
+    /// <see cref="ApplyStatusEffect_0053C5E0"/> compte au lieu de poser un bit.</summary>
+    private static uint ClearStatusEffect_0053CA30(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(short*)(victimBlock + 0xc0) = 0;
+        *(short*)(victimBlock + 0xec) = 0;
+        return 0;
+    }
+
+    // ------------------------------------------------------------------ 43 a 47 : les points de vie
+
+    /// <summary>
+    /// Ghidra: FUN_0053ca80 @ 0x0053ca80 — <b>la guerison</b>, entree 43 : celle de la potion.
+    ///
+    /// <para>
+    /// Le montant est <c>fiche[+0x18] + bloc[+0x24]/8</c> — la valeur de base de la fiche de sort
+    /// ou d'objet, plus le huitieme d'une statistique de celui qui s'en sert. Il s'ajoute aux
+    /// points de vie courants <c>+0x4c</c>, <b>plafonnes au maximum</b> <c>+0x48</c>.
+    /// </para>
+    /// <para>
+    /// Les deux ecritures qui suivent sont l'<b>affichage</b> : <c>+0x102</c> a 1 arme le nombre
+    /// flottant au-dessus de la cible, <c>+0x100</c> lui donne sa valeur. C'est le meme couple que
+    /// les degats emploient, avec un montant positif.
+    /// </para>
+    /// <para>
+    /// <b>Le plafond est applique apres coup, pas avant</b> : le nombre affiche est le montant
+    /// entier, meme quand la moitie a ete perdue au plafond. Fidele.
+    /// </para>
+    /// </summary>
+    private static uint HealTarget_0053CA80(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        int amount = *(ushort*)(SpellSheetOf(attacker) + 0x18)
+                     + (*(short*)(attackerBlock + 0x24) >> 3);
+
+        victimBlock[0x102] = 1;
+        *(short*)(victimBlock + 0x100) = (short)amount;
+        *(short*)(victimBlock + 0x4c) += (short)amount;
+
+        if (*(short*)(victimBlock + 0x48) < *(short*)(victimBlock + 0x4c))
+        {
+            *(short*)(victimBlock + 0x4c) = *(short*)(victimBlock + 0x48);
+        }
+
+        SpawnParticle_0050F070((uint*)((byte*)victim + 0x1c), (uint)amount, 1);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053cb30 @ 0x0053cb30 — <b>la guerison partagee</b>, entree 44 : le meme soin
+    /// que <see cref="HealTarget_0053CA80"/>, mais <b>divise par le nombre de soignables</b>.
+    ///
+    /// <para>
+    /// Elle refait a la main l'appareillage de
+    /// <see cref="PrepareCombatPair_00538870"/> — c'est la seule facon d'obtenir au passage la
+    /// <b>liste</b> sur laquelle compter : celle du groupe si l'assaillant en est
+    /// (<see cref="s_PartySize_005e9020"/> entrees), sinon les <c>0x20</c> entites de scene.
+    /// </para>
+    /// <para>
+    /// Le diviseur compte les vivants dont le bloc ne porte pas <c>0x100000</c> — le meme bit qui
+    /// refuse le soin individuel. <b>Resoudre le bloc de chacun pour le compter n'est pas gratuit</b> :
+    /// la boucle rebase les statistiques de toute la liste au passage, effet de bord du binaire
+    /// qui est conserve.
+    /// </para>
+    /// <para>
+    /// Le montant est <c>fiche[+0x18] + bloc[+0x24]/4</c> — un <b>quart</b> la ou le soin simple
+    /// prend un huitieme — puis divise. La division est faite sans garde : si le compte est nul,
+    /// l'original faute, et la transcription leve.
+    /// </para>
+    /// </summary>
+    private static uint HealPartyShare_0053CB30(uint* attacker, uint* victim, int keep)
+    {
+        if (ValidateCombatants_0053A860(attacker, victim) != 0) return 1;
+
+        attacker[0x1c] = (uint)victim;
+        victim[0x1c] = (uint)attacker;
+
+        byte* attackerBlock;
+        byte* roster;
+        int remaining;
+
+        if ((*attacker & 0x800000) == 0)
+        {
+            attackerBlock = ResolveSceneCombatBlock_00538830(attacker, 0xff);
+            remaining = 0x20;
+            roster = Mem.Entity(0x005ecaa0);
+        }
+        else
+        {
+            attackerBlock = ResolvePartyCombatBlock_005387C0(attacker, 0xff, keep);
+            roster = Inp.s_SlotFlags_005e93c0;
+            remaining = s_PartySize_005e9020;
+        }
+
+        byte* victimBlock = (*victim & 0x800000) == 0
+            ? ResolveSceneCombatBlock_00538830(victim, 0xff)
+            : ResolvePartyCombatBlock_005387C0(victim, 0xff, keep);
+
+        if ((*attacker & 0x800000) != 0)
+        {
+            if (keep == 0) *(uint*)Mem.Arena(0x005e99c0) = 0;
+            TriggerEquippedItems_005238E0(attacker, 7);
+        }
+
+        if ((*victim & 0x800000) != 0)
+        {
+            if (keep == 0) *(uint*)Mem.Arena(0x005e99c0) = 0;
+            TriggerEquippedItems_005238E0(victim, 0x11);
+        }
+
+        if ((*victim & 0x600000) == 0x600000) return 1;
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x100000) != 0)
+        {
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)(victim + 7), SpriteAtlas(0x005648a0), 0x29, 0, 0);
+            return 1;
+        }
+
+        int share = 0;
+        for (byte* slot = roster; remaining != 0; remaining--, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+            byte* block = (flags & 0x800000) == 0
+                ? ResolveSceneCombatBlock_00538830((uint*)slot, 0xff)
+                : ResolvePartyCombatBlock_005387C0((uint*)slot, 0xff, keep);
+
+            if ((*(uint*)(block + 0x40) & 0x100000) == 0) share++;
+        }
+
+        int amount = (*(ushort*)(SpellSheetOf(attacker) + 0x18)
+                      + (*(short*)(attackerBlock + 0x24) >> 2)) / share;
+
+        victimBlock[0x102] = 1;
+        *(short*)(victimBlock + 0x4c) += (short)amount;
+        *(short*)(victimBlock + 0x100) = (short)amount;
+
+        if (*(short*)(victimBlock + 0x48) < *(short*)(victimBlock + 0x4c))
+        {
+            *(short*)(victimBlock + 0x4c) = *(short*)(victimBlock + 0x48);
+        }
+
+        SpawnParticle_0050F070((uint*)((byte*)victim + 0x1c), (uint)amount, 1);
+        return 0;
+    }
+
+    /// <summary>Ghidra: FUN_0053cd20 @ 0x0053cd20 — <b>la guerison complete</b>, entree 45 : les
+    /// points de vie passent au maximum, et le nombre affiche est <b>ce qui manquait</b>. Elle ne
+    /// fait naitre aucune particule, contrairement aux deux precedentes.</summary>
+    private static uint HealTargetFully_0053CD20(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        victimBlock[0x102] = 1;
+        *(short*)(victimBlock + 0x100) =
+            (short)(*(short*)(victimBlock + 0x48) - *(short*)(victimBlock + 0x4c));
+        *(short*)(victimBlock + 0x4c) = *(short*)(victimBlock + 0x48);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053cd80 @ 0x0053cd80 — <b>la resurrection</b>, entree 46.
+    ///
+    /// <para>
+    /// Points de vie au maximum, le <b>double mot</b> <c>+0x18</c> de l'entite remis a zero
+    /// (<c>mov dword [esi+18h],0</c>, verifie au desassembleur), le bit
+    /// <c>0x40000000</c> — la mort — retire du bloc, et le mot d'etat de l'entite refait :
+    /// <c>&amp; 0xbfdfdf79 | 0x1000000</c>. <b>Le ET et le OU sont dans cet ordre</b> et le bit
+    /// pose n'est pas dans le masque efface, donc il survit ; l'ordre inverse donnerait autre
+    /// chose.
+    /// </para>
+    /// </summary>
+    private static uint ReviveTarget_0053CD80(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        *(short*)(victimBlock + 0x4c) = *(short*)(victimBlock + 0x48);
+        victim[6] = 0;
+        *(uint*)(victimBlock + 0x40) &= 0xbfffffff;
+        *victim = *victim & 0xbfdfdf79 | 0x1000000;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053cdf0 @ 0x0053cdf0 — <b>la mort immediate</b>, entree 47 et derniere.
+    ///
+    /// <para>
+    /// <b>Deux jets de sauvegarde, l'un apres l'autre</b> — c'est la seule de la table a en
+    /// demander deux, et il faut passer les deux. Ils ne sont tentes que si la cible a encore des
+    /// points de vie : sur un corps deja a zero, l'effet s'applique sans jet.
+    /// </para>
+    /// </summary>
+    private static uint SlayTarget_0053CDF0(uint* attacker, uint* victim, int keep)
+    {
+        byte* attackerBlock;
+        byte* victimBlock;
+
+        if (PrepareCombatPair_00538870(
+                attacker, victim, &attackerBlock, &victimBlock, 0xff, keep) != 0)
+        {
+            return 1;
+        }
+
+        if (*(short*)(victimBlock + 0x4c) != 0)
+        {
+            if (RollSavingThrow_0053A6C0(attacker, victim, attackerBlock, victimBlock) != 0)
+            {
+                return 1;
+            }
+
+            if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) != 0)
+            {
+                return 1;
+            }
+        }
+
+        *victim |= 0x40000000;
+        *(uint*)(victimBlock + 0x40) |= 0x40000000;
+        *(short*)(victimBlock + 0x4c) = 0;
         return 0;
     }
 
@@ -14330,6 +15862,219 @@ public static unsafe partial class Blaze
         }
 
         return s_SparkDescriptorStorage;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551528</c> — l'atlas que <see cref="EntityHandler_0044FB10"/> se donne
+    /// a lui-meme en naissant. Enregistrements de <b>huit octets</b> — <c>x, y, largeur, hauteur</c>
+    /// puis <c>01 02 10 00</c>.
+    ///
+    /// <para>
+    /// <b>L'etendue est deduite de la signature, pas d'un compteur</b> : les quatre octets de queue
+    /// valent <c>01 02 10 00</c> sur <b>trente-cinq</b> enregistrements d'affilee, puis changent en
+    /// <c>01 00 11 00</c> a <c>0x00551640</c> — c'est la borne. Aucun corps du binaire ne borne
+    /// l'indice, qui vient de <c>+0x9a</c> ; la meme methode que pour
+    /// <see cref="s_Descriptors_00551B00"/>.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551528 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x00551528
+        0x08, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x00551530
+        0x10, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551538
+        0x20, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551540
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x00551548
+        0x30, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551550
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551558
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551560
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551568
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551570
+        0x70, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551578
+        0x80, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551580
+        0x90, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551588
+        0xa0, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551590
+        0x60, 0x48, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551598
+        0x00, 0xd0, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x005515a0
+    ];
+
+    private static byte* s_Descriptors00551528Storage;
+
+    private static byte* Descriptors00551528()
+        => NativeCopy(s_Descriptors_00551528, ref s_Descriptors00551528Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_0044fb10 @ 0x0044fb10 — <b>l'etincelle de la bouffee</b> : le sous-type
+    /// <c>0xa9</c> que <see cref="EntityHandler_00446790"/> seme par paires. Entree 169 de la table
+    /// <b>statique</b> <c>0x00552230</c>. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Elle tire tout son etat au hasard en naissant</b>, en sept appels au generateur : la
+    /// vitesse de montee (<c>rand%10 + 12</c>), un cap sur le tour complet et un rayon, la vitesse
+    /// d'ouverture (<c>rand%600 + 600</c>), la duree de vie (<c>rand%15 + 10</c> images) et le
+    /// plafond d'ouverture (<c>rand%3000 + 4000</c>). Deux etincelles nees la meme image ne se
+    /// ressemblent donc jamais.
+    /// </para>
+    /// <para>
+    /// <b>Le cap est un modulo signe ecrit sans division.</b> Ghidra en rend les cinq operations
+    /// telles quelles (<c>((u ^ m) - m &amp; 0xfff ^ m) - m</c> avec <c>m</c> le masque de signe) :
+    /// c'est <c>x % 0x1000</c> a la mode du C, celui qui tronque vers zero et garde le signe du
+    /// dividende. Rendu par ce qu'il calcule.
+    /// </para>
+    /// <para>
+    /// Le rayon est tire modulo <c>+0x14</c>, que la mere a mis a <c>0x50</c> avant de la faire
+    /// naitre — puis <b>le meme champ devient la duree de vie</b> quelques lignes plus bas. Un
+    /// champ, deux roles successifs, et l'ordre des deux lectures est ce qui les separe.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite elle monte, s'ouvre et s'assombrit.</b> Chaque image : la teinte perd
+    /// <c>3 + rand%7</c> sur les trois canaux, les deux rayons <c>+0x28</c> et <c>+0x2a</c>
+    /// grandissent de <c>+0x16</c> jusqu'a leur plafond, la hauteur monte de la vitesse courante, et
+    /// cette vitesse <b>accelere une image sur deux</b> — sur la parite de la duree de vie
+    /// restante — jusqu'a <c>0x1e</c>. A zero, l'entite perd son bit <c>0x80000000</c>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0044FB10(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors00551528();
+            e[0x40] = 0;
+            e[0x0a] = e[0x9a];
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = CrtRand() % 10 + 0xc;
+
+            // Ghidra: les deux tirages sont faits AVANT que l'un ou l'autre ne serve — le cap est
+            // calcule sur le premier, le rayon sur le second.
+            int spun = CrtRand();
+            int spread = CrtRand();
+
+            short heading = (short)(spun % 0x1000);
+            short radius = (short)(spread % *(short*)(e + 0x14));
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * radius;
+
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * radius;
+
+            int growth = CrtRand();
+            e[0x38] = 0xb4;
+            e[0x39] = 0xb4;
+            e[0x3a] = 0xb4;
+            *(short*)(e + 0x16) = (short)(growth % 600 + 600);
+
+            // Le meme +0x14 qui vient de servir de borne au rayon devient la duree de vie.
+            *(short*)(e + 0x14) = (short)(CrtRand() % 0xf + 10);
+            *(short*)(e + 0x9a) = (short)(CrtRand() % 3000 + 4000);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short fade = (short)(-3 - CrtRand() % 7);
+        BrightenEntityTint_00404DE0(e, fade, fade, fade);
+
+        *(short*)(e + 0x28) += *(short*)(e + 0x16);
+        *(short*)(e + 0x2a) += *(short*)(e + 0x16);
+
+        short ceiling = *(short*)(e + 0x9a);
+        if (ceiling < *(short*)(e + 0x28)) *(short*)(e + 0x28) = ceiling;
+        if (ceiling < *(short*)(e + 0x2a)) *(short*)(e + 0x2a) = ceiling;
+
+        (*(short*)(e + 0x12))++;
+        *(int*)(e + 0x20) += *(int*)(e + 0x5c) * 0x1000;
+
+        // Ghidra: la parite est lue sur le mot NON SIGNE de +0x14, la duree de vie restante.
+        if ((*(ushort*)(e + 0x14) & 1) != 0)
+        {
+            int rise = *(int*)(e + 0x5c) + 1;
+            *(int*)(e + 0x5c) = rise;
+            if (rise > 0x1e) *(int*)(e + 0x5c) = 0x1e;
+        }
+
+        short life = (short)(*(ushort*)(e + 0x14) - 1);
+        *(short*)(e + 0x14) = life;
+        if (life < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00446790 @ 0x00446790 — <b>la bouffee de l'objet utilise</b> : ce que le script
+    /// d'une potion fait naitre au-dessus de celui qui s'en sert. Entree de la table <b>statique</b>
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>, donc valable dans les onze zones.
+    /// Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Elle se recale sur son porteur a chaque image</b> : les trois mots de position viennent
+    /// de l'entite de <c>+0x6c</c>, et <b>si ce champ est nul c'est l'enregistrement modele
+    /// <c>0x005de558</c> qui sert de source</b> — une entite orpheline se pose donc a l'origine
+    /// plutot que de dereferencer un pointeur nul. C'est une garde du binaire, pas de la
+    /// transcription.
+    /// </para>
+    /// <para>
+    /// <b>Sa premiere image seme quatre filles d'un coup</b> (sous-type <c>0xa9</c>, sans atlas),
+    /// puis <b>deux de plus a chaque image impaire</b>. Les quatre appels sont ecrits quatre fois
+    /// dans l'original avec les memes arguments — ce n'est pas une boucle deroulee par le
+    /// compilateur mais quatre appels distincts, et la transcription les rend par une boucle de
+    /// quatre tours, qui est le meme calcul.
+    /// </para>
+    /// <para>
+    /// Deux sons, a des images precises et une seule fois chacun : <c>0x30</c> a l'image 0,
+    /// <c>0x2f</c> a l'image 2. Puis le compteur <c>+0x16</c> monte, et passe <b>0x28</b> l'entite
+    /// s'eteint en perdant son bit <c>0x80000000</c>.
+    /// </para>
+    /// <para>
+    /// L'octet <c>+0x0a</c> — que <see cref="SpawnEffectEntity"/> a pose en naissant — sert deux
+    /// fois : il devient le mot <c>+0x9a</c> a la premiere image, et il est le dernier argument de
+    /// chaque naissance de fille. C'est la saveur de l'objet, transmise a l'effet visible.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00446790(byte* e)
+    {
+        // Ghidra: le corps entier est sous `if (param_1 != NULL)`.
+        if (e == null) return;
+
+        byte* parent = *(byte**)(e + 0x6c);
+        if (parent == null) parent = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(parent + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(parent + 0x20);
+        *(int*)(e + 0x24) = *(int*)(parent + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x14) = 0x50;
+            *(short*)(e + 0x16) = 0;
+            *(ushort*)(e + 0x9a) = e[0x0a];
+
+            // Ghidra: quatre appels identiques ecrits quatre fois.
+            for (int i = 0; i < 4; i++)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, e[0x0b], e[0x0a]);
+            }
+        }
+
+        if (*(short*)(e + 0x16) == 0) Aud.PlayPositionalSound(0x30, 0x200, 0x1000, (int*)(e + 0x1c));
+        if (*(short*)(e + 0x16) == 2) Aud.PlayPositionalSound(0x2f, 0x653, 0x1500, (int*)(e + 0x1c));
+
+        // Ghidra: `*(byte *)((int)param_1 + 0x16) & 1` — l'octet BAS du compteur, donc une image
+        // sur deux.
+        if ((e[0x16] & 1) != 0)
+        {
+            *(short*)(e + 0x14) = 0x50;
+
+            for (int i = 0; i < 2; i++)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, e[0x0b], e[0x0a]);
+            }
+        }
+
+        (*(short*)(e + 0x16))++;
+        if (*(short*)(e + 0x16) > 0x28) *(uint*)e &= 0x7fffffff;
     }
 
     /// <summary>
@@ -26263,27 +28008,78 @@ public static unsafe partial class Blaze
         return entry;
     }
 
-    /// <summary>Ghidra: FUN_00474ad0 @ 0x00474ad0 — <b>la recherche de cible</b> de l'opcode 17.
-    /// Deux balayages selon que la source est un membre du groupe ou une entite de scene, croises
-    /// avec l'argument : elle cherche donc <b>dans le camp d'en face</b>.</summary>
+    /// <summary>
+    /// Ghidra: FUN_00474ad0 @ 0x00474ad0 — <b>la recherche de cible</b> de l'opcode 17 du script
+    /// d'objet. Elle balaie autour de l'acteur avec la sonde ci-dessous et range le premier
+    /// trouve en <c>+0x78</c> de l'enregistrement.
+    ///
+    /// <para>
+    /// <b>L'argument choisit le camp, le bit <c>0x800000</c> dit d'ou l'on part.</b> Le bit
+    /// marque un <b>membre du groupe</b>, et les deux balayages sont les memes que ceux de la
+    /// melee : <see cref="SweepSceneEntitiesForMeleeHit_00519AF0"/> pour la scene,
+    /// <see cref="SweepPartyForMeleeHit_00519C30"/> pour le groupe. Le croisement des deux donne :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>mode 0</b> — le balayage <b>du meme camp</b> : un membre du groupe cherche un
+    /// membre du groupe, une entite de scene cherche une entite de scene. C'est le mode de la
+    /// potion qu'on donne a quelqu'un.</item>
+    /// <item><b>mode non nul</b> — le camp <b>d'en face</b>, exactement l'aiguillage de
+    /// <see cref="ProbeMeleeTarget_00474CA0"/>.</item>
+    /// </list>
+    /// <para>
+    /// <b>Le mode 0 pose le bit <c>0x2000</c> sur l'acteur le temps du balayage</b>, puis restaure
+    /// le mot d'etat entier. C'est ce qui empeche le balayage du groupe de se rendre lui-meme
+    /// quand la source est elle-meme dans le groupe.
+    /// </para>
+    /// <para>
+    /// <b>Le piege des arguments, deja rencontre sur la sœur <c>FUN_00474ca0</c>.</b> Ghidra rend
+    /// deux des quatre appels sans leur quatrieme argument. Le desassembleur tranche : le
+    /// <c>push 800h</c> est fait <b>une seule fois, avant le branchement</b> (0x00474b11 et
+    /// 0x00474b47), donc <b>les quatre appels recoivent <c>0x800</c></b>. Rien a deviner.
+    /// </para>
+    /// </summary>
+    /// <returns><b>0</b> quand une cible est trouvee, <b>1</b> sinon — et dans ce cas
+    /// <c>+0x78</c> recoit l'acteur lui-meme, jamais un pointeur nul.</returns>
     private static uint PickTargetBySearch_00474AD0(uint* slot, byte mode)
-        => throw new NotImplementedException(
-            $"FUN_00474ad0 (0x00474ad0), mode {mode} : non transcrite. 47 lignes dans Blaze.c, "
-            + "mais elle ouvre le sous-arbre de ciblage : FUN_00519af0 (52 l., le balayage des "
-            + "entites de scene par cellule) et FUN_00519c30 (63 l., le balayage du groupe), qui "
-            + "tirent a leur tour FUN_00535a90, FUN_00538af0 et FUN_005238e0. C'est le ciblage de "
-            + "combat, pas le script d'objet — il se fera pour lui-meme.");
+    {
+        byte* record = (byte*)slot;
+        byte* actor = *(byte**)(record + 0x74);
 
-    /// <summary>Ghidra: <c>(*(code *)(&amp;DAT_0056d4e0)[genre])(…)</c> — <b>la table des 48
-    /// effets</b>, de <c>0x0053afb0</c> a <c>0x0053cdf0</c>. L'etendue est deduite : le dword qui
-    /// suit la 48e entree vaut 1, debut d'une table de masques de bits.</summary>
-    private static uint ApplyItemEffect_0056D4E0(byte kind, uint* source, byte* target, uint flag)
-        => throw new NotImplementedException(
-            $"Table d'effets 0x0056d4e0, genre {kind} (drapeau {flag}) : non transcrite. "
-            + "48 fonctions, 0x0053afb0..0x0053cdf0, chacune une alteration d'etat ou un degat "
-            + "applique a la cible ; la premiere, FUN_0053afb0, pose le bit 0x8000000 sur le mot "
-            + "d'etat de la cible apres FUN_00538870. C'est le sous-systeme des effets, atteint "
-            + "aussi par les sorts — il se fera pour lui-meme, pas au fil du script d'objet.");
+        // Les six mots de la sonde, empiles sur place a chaque appel. Le sens de chacun est
+        // etabli par TestMeleeReach_00535A90 : decalage de cap, avance, demi-largeur, tolerance
+        // en hauteur, ouverture, profondeur. Ici un cone large et court, sans decalage de cap.
+        short* probe = stackalloc short[6] { 0, 10, 0x28, 100, 0x100, 0x96 };
+
+        byte* found;
+
+        if (mode == 0)
+        {
+            // Ghidra: `mov eax,edi ; or ah,20h` — le bit 0x2000, pose puis retire.
+            uint flags = *(uint*)actor;
+            *(uint*)actor = flags | 0x2000;
+
+            found = (flags & 0x800000) != 0
+                ? SweepPartyForMeleeHit_00519C30(actor, (int*)(actor + 0x1c), probe, 0x800)
+                : SweepSceneEntitiesForMeleeHit_00519AF0(actor, (int*)(actor + 0x1c), probe, 0x800);
+
+            *(uint*)actor = flags;
+        }
+        else
+        {
+            found = (*(uint*)actor & 0x800000) != 0
+                ? SweepSceneEntitiesForMeleeHit_00519AF0(actor, (int*)(actor + 0x1c), probe, 0x800)
+                : SweepPartyForMeleeHit_00519C30(actor, (int*)(actor + 0x1c), probe, 0x800);
+        }
+
+        if (found != null)
+        {
+            *(byte**)(record + 0x78) = found;
+            return 0;
+        }
+
+        *(byte**)(record + 0x78) = actor;
+        return 1;
+    }
 
     /// <summary>Ghidra: FUN_0051a020 @ 0x0051a020 (221 l.) — l'integration du deplacement au sol,
     /// appelee quand le personnage n'est pas en l'air.</summary>

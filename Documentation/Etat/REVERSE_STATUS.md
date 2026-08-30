@@ -19101,3 +19101,86 @@ une autre borne.
 
 **La zone 3 n'a plus de verbe manquant.** Les treize verbes distincts de la table `0x0056aec8` en
 zone 3 sont désormais tous couverts, souches comprises.
+
+## 2026-08-30 (suite 36) — la potion : le ciblage, puis les quarante-huit effets
+
+**Le plantage.** `FUN_00474ad0 (0x00474ad0), mode 0 : non transcrite`, en prenant une potion dans le
+menu rapide. Le message de la souche annonçait un sous-arbre entier à ouvrir — `FUN_00519af0`,
+`FUN_00519c30`, `FUN_00535a90`, `FUN_00538af0`, `FUN_005238e0`. **Les cinq étaient déjà écrites**,
+transcrites entre-temps par le chemin du combat de mêlée. Le message datait d'avant elles et n'avait
+pas été revu : une souche qui décrit son propre coût vieillit, et celle-là a fait passer pour un
+chantier ce qui était une fonction de vingt lignes.
+
+**`FUN_00474ad0` — la recherche de cible.** Elle balaie autour de l'acteur avec une sonde de six
+mots (`0, 10, 0x28, 100, 0x100, 0x96` : un cône large et court) et range le premier trouvé en
+`+0x78`. L'argument choisit le camp et le bit `0x800000` dit d'où l'on part : **mode 0 = le même
+camp** — la potion qu'on donne à quelqu'un —, **mode non nul = le camp d'en face**, exactement
+l'aiguillage de `FUN_00474ca0`. Le mode 0 pose le bit `0x2000` sur l'acteur le temps du balayage,
+ce qui l'empêche de se rendre lui-même.
+
+**Le même piège d'arguments que sur sa sœur, et la même réponse.** Ghidra rend deux des quatre
+appels sans leur quatrième argument. Le désassembleur tranche sans rien laisser à deviner : le
+`push 800h` est fait **une seule fois, avant le branchement** (0x00474b11 et 0x00474b47), donc les
+quatre appels reçoivent `0x800`.
+
+### Ce qui attendait juste derrière
+
+Débloquer le ciblage ne débloquait pas la potion : l'opcode 18 du script d'objet appelle la **table
+des 48 effets** (`0x0056d4e0`, 0x0053afb0..0x0053cdf0), elle-même en souche. **Les 48 sont dans
+`Blaze.c`**, courtes — 14 à 87 lignes, 1479 en tout — et cinq étaient déjà écrites par le chemin des
+pièges de coffre. Les 43 autres le sont maintenant.
+
+**Le squelette est le même pour les entrées 0 à 33** : appareiller les deux combattants, lire un
+masque d'immunité, tenter un jet de sauvegarde, poser une durée, poser un bit d'état. Les entrées 34
+à 42 sont les levées ; 43 à 47 touchent aux points de vie.
+
+**`FUN_00538870` a deux sorties écrites par adresse, et c'est ce qui rend `Blaze.c` déroutant ici.**
+Les paramètres 2 et 3 sont passés par pointeur et **reçoivent** les blocs de statistiques : après
+l'appel, `param_2` n'est plus la victime mais le bloc de l'assaillant, et `param_3` n'est plus le
+drapeau mais le bloc de la victime. Les corps qui ont encore besoin de l'entité victime la sauvent
+avant l'appel (`iVar1 = param_2`) — un idiome qu'il faut reconnaître pour lire n'importe laquelle
+des 48.
+
+**La division par 24 ne se lit que dans le binaire.** Les effets 3 à 6 rangent une intensité
+`bloc[+0x2a] / 24 + fiche[+0x18]`. Ghidra en rend les morceaux séparément — `x / 0x18`, `x >> 0xf`,
+et un terme en `>> 0x3f` — sans les recomposer, ce qui se lit comme une formule à trois termes alors
+que c'en est une seule. `imul 0x2AAAAAAB ; sar edx,2 ; shr eax,31 ; add` est la division signée par
+24 qui tronque vers zéro, ce que `/` fait déjà en C#. Et la fiche est lue en **non signé**
+(`movzx`), pas en `short` comme Ghidra la déclare.
+
+**La potion, c'est l'entrée 43** (`0x0053ca80`) : `fiche[+0x18] + bloc[+0x24]/8` ajouté aux points
+de vie, plafonné au maximum. Le **plafond est appliqué après coup** : le nombre qui monte au-dessus
+de la cible est le montant entier, même quand la moitié a été perdue au plafond. Fidèle.
+
+### Trois irrégularités qu'une table de constantes aurait effacées
+
+- **L'effet 32 compte au lieu de poser un bit.** Sa marque visible dépend d'un compteur en `+0xec`
+  incrémenté tant qu'il reste sous 3 : l'effet s'empile jusqu'à trois fois, et trois marques
+  coexistent. Tous les autres n'en font naître qu'une, à la première pose.
+- **La levée des neuf (`0x0053c980`) n'est pas générale.** Son masque `0xfffffc80` laisse survivre
+  le bit `0x80` — l'effet 12 — qui est pourtant dans la plage. L'exception est écrite dans la
+  constante, nulle part ailleurs.
+- **L'effet 25 pose un bit sans faire naître de marque**, et ce bit `0x100000` est justement celui
+  que les guérisons interrogent pour refuser leur soin. Il est invisible sur le moment et se voit
+  ailleurs.
+
+C'est pour ces trois-là que les 48 corps restent 48 fonctions. Ils ne diffèrent pas seulement par
+des constantes : les uns ont un masque d'immunité et pas les autres, le jet de sauvegarde change de
+famille, cinq font naître une seconde entité. Les factoriser demanderait une table à huit colonnes
+dont trois seraient des drapeaux de présence — moins lisible que les corps, et ce ne serait plus ce
+que le binaire contient.
+
+### La vérification
+
+Faite mécaniquement, corps par corps, contre `Blaze.c` : pour les 28 poseurs de durée, le
+**marqueur, la statistique, le décalage, la base, l'offset de durée, le bit et le descripteur**
+d'atlas ; pour tous, le **masque d'immunité** et **quelle famille de jet de sauvegarde** ; pour les
+levées, le **masque d'effacement** et la **liste des champs remis à zéro**. Aucune divergence. La
+résurrection a en plus été relue au désassembleur, son `mov dword [esi+18h],0` étant le seul endroit
+où Ghidra pouvait mentir sur une largeur.
+
+### Ce qui reste sur ce chemin
+
+L'**opcode 22** du script d'objet reste une levée volontaire — il rend un curseur de liste
+d'affichage là où la machine attend un curseur de script, un défaut de 1998 jamais observé. Rien
+d'autre.

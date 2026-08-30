@@ -12,6 +12,62 @@ déplacement.
 
 ---
 
+# NON : UTILISER UN OBJET NE DEMANDE PAS UN CORPS PAR OBJET (2026-08-30)
+
+**La question s'est posée après le troisième plantage d'affilée sur la même potion.** Elle mérite
+une réponse chiffrée, parce que l'intuition « chaque objet a son comportement » est fausse et
+coûterait très cher à suivre.
+
+**Ce qu'utiliser un objet met en jeu, dans l'ordre :**
+
+1. son **script**, dans le bloc de `0x280` octets de l'objet — 23 opcodes, tous transcrits sauf le
+   22, une levée volontaire. Pas de travail par objet : c'est une machine, les objets sont ses
+   données ;
+2. la **table des 48 effets** (`0x0056d4e0`) — soigner, altérer, lever, ressusciter, tuer.
+   **Complète.** Bornée à 48 pour tout le jeu, sorts compris ;
+3. les **gestionnaires d'entité des effets visibles** que le script fait naître. C'est le seul poste
+   ouvert — et il est **partagé**, pas propre à l'objet.
+
+**Le point qui décide de tout : ces gestionnaires viennent des tables STATIQUES**
+(`0x00551c30`, `0x00551f30`, `0x00552230`), pas des tables de zone. Trois tables de 192 entrées,
+valables dans les onze zones, **274 gestionnaires distincts au total** — dont 49 écrits. Ce n'est
+pas un chantier de 1238 corps mais **un plafond de 225**, et le même corps sert la potion, le sort
+et le piège.
+
+**Et la profondeur est faible.** Chaîne observée pour la potion : la bouffée `0x00446790` sème
+l'étincelle `0xa9` → `0x0044fb10`, qui ne sème rien. Deux corps, une soixantaine de lignes chacune,
+toutes deux dans `Blaze.c`. **101 des 225 restantes sont décompilées dans `Blaze.c`** ; les autres
+demandent le désassembleur.
+
+**La marche à suivre reste donc l'inverse d'un plan** : jouer, lire l'adresse que la levée donne,
+la transcrire. Chaque corps écrit rapproche aussi les sorts et les pièges, puisque c'est le même
+jeu de tables.
+
+---
+
+# LA TABLE DES 48 EFFETS EST ÉCRITE — À EXERCER (2026-08-30)
+
+**Prendre une potion dans le menu rapide a un chemin complet** : `0x00474ad0` (la recherche de
+cible) et les 48 entrées de `0x0056d4e0` sont transcrites. Détail dans `REVERSE_STATUS.md`,
+« suite 36 ».
+
+**Écrit, presque rien d'exercé.** Cinq des 48 avaient déjà tourné par les pièges de coffre ; les 43
+autres n'ont jamais tourné. Ce qui se vérifie facilement en jeu, dans l'ordre :
+
+- **une potion de soin** — l'entrée 43 : les points de vie montent, un nombre monte au-dessus de la
+  cible, une particule naît. Le nombre affiché est le montant **entier**, même si le plafond en a
+  mangé une partie : c'est fidèle, ce n'est pas un défaut ;
+- **une potion sur un compagnon** plutôt que sur soi — c'est le mode 0 de la recherche de cible, et
+  le cône est large (0x100 d'ouverture, 0x96 de profondeur) : il faut être près ;
+- **les altérations d'état**, par un sort ou un piège : la marque `0x29` ne naît **qu'à la première
+  pose**, et une seconde application ne fait que rallonger la durée. Voir deux marques sur une même
+  cible ne serait normal que pour l'effet 32, le seul qui s'empile (jusqu'à trois).
+
+**Ce qui reste sur ce chemin** : l'opcode 22 du script d'objet, une levée volontaire — un défaut de
+1998 jamais observé, décrit sur `ItemOpOpenItemMenu`.
+
+---
+
 # LES VERBES DE ZONE DE LA FORÊT — TABLE COMPLÈTE (2026-08-30)
 
 **Les treize verbes distincts de la table `0x0056aec8` en zone 3 sont transcrits**, souches
