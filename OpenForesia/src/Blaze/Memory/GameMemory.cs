@@ -375,10 +375,24 @@ internal sealed unsafe class GameMemory
     /// </summary>
     internal uint s_WorldFlags_005de02c;
 
-    /// <summary>Ghidra: DAT_005de024 et DAT_005de028 — deux mots que le prologue de
-    /// <c>FUN_00516fc0</c> remet a zero juste avant <see cref="s_WorldFlags_005de02c"/>, dans la
-    /// meme rafale de <c>mov [.],ebx</c>. Trois dwords contigus, trois champs : rien n'y accede par
-    /// arithmetique de pointeur, ni dans le binaire ni ici. Role non etabli.</summary>
+    /// <summary>
+    /// Ghidra: DAT_005de024 et DAT_005de028 — <b>les deux voiles plein cadre</b>. Les trois octets
+    /// bas portent la couleur, l'<b>octet de poids fort commande l'affichage</b> : la boucle de
+    /// dessin le teste avant d'appeler <c>FillScreenQuad_0051F940</c> sur toute la surface.
+    ///
+    /// <para>
+    /// Le prologue de <c>FUN_00516fc0</c> les remet a zero dans la meme rafale de <c>mov [.],ebx</c>
+    /// que <see cref="s_WorldFlags_005de02c"/> — trois dwords contigus, trois champs ; rien n'y
+    /// accede par arithmetique de pointeur.
+    /// </para>
+    /// <para>
+    /// <b>Le role a ete etabli le 2026-08-30</b> par <c>EntityHandler_0040EDF0</c>, le fondu de
+    /// transition : c'est le seul corps reconstruit qui les <b>anime</b>, en montant les trois
+    /// canaux de <c>+10</c> et <c>+3</c> par image pendant vingt-cinq images, puis en les
+    /// redescendant. Jusque-la on ne voyait que leur lecture, ce qui ne disait pas ce qu'ils
+    /// etaient.
+    /// </para>
+    /// </summary>
     internal uint s_Unknown_005de024;
     internal uint s_Unknown_005de028;
 

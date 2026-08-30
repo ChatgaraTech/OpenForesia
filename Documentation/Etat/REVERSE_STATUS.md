@@ -18321,3 +18321,32 @@ garde-fou.
 Conformement a la regle posee le meme jour : ses lignes ont ete retirees de `handlers-exerces.tsv`
 avant de regenerer la feuille de route. Le gestionnaire y figure desormais
 `implemente = oui, teste = non`, et il ne reste **aucune** ligne `non / oui`.
+
+## 2026-08-30 (suite 10) — `0x0040edf0`, le fondu de transition, et deux globales nommees
+
+327 octets, absente de `Blaze.c`, relevee sous `Legacy/Raw/Blaze/FUN_0040EDF0.asm`. Entree de la
+table `0x0056b0c8` — le debordement de `0x0056adc8` —, sous-zones 0 a 4 de la foret.
+
+### Un compte a rebours de 220 images
+
+La naissance fait naitre l'effet `0xfa` a sa propre position, puis `+0x16` avance d'une image par
+image : rien jusqu'a 169, les deux voiles **montent** de 170 a 194 (`+10` et `+3` par image),
+**redescendent** de 195 a 219, et a 220 l'entite s'eteint en ecrivant son `+0x98` dans le `+0x10`
+de son porteur (`+0x6c`). C'est ainsi que la transition rend la main a ce qui l'a declenchee.
+
+### Ce qu'elle etablit au passage
+
+`GameMemory.cs` disait de `DAT_005de024` et `DAT_005de028` : « trois dwords contigus, trois
+champs ; role non etabli ». Ce corps le donne : ce sont **deux voiles plein cadre**, trois octets de
+couleur et un octet de commande en poids fort — celui que la boucle de dessin teste avant
+`FillScreenQuad_0051F940`.
+
+**On n'en voyait jusqu'ici que la lecture.** Le site de dessin montrait qu'on les affichait, pas ce
+qu'ils etaient ; c'est le corps qui les **anime** qui le dit. Quand une globale reste opaque, ce
+n'est pas toujours faute de sites — c'est parfois qu'aucun de ceux qu'on a lus ne l'ecrit.
+
+### Une fragilite conservee
+
+Les additions sont sur huit bits et debordent au lieu de saturer. La descente ramene exactement au
+point de depart, donc le voile revient a ce qu'il etait — **pourvu que la montee soit allee au
+bout**. Une entite eteinte en cours de montee laisserait l'ecran teinte. Transcrit tel quel.

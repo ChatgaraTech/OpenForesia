@@ -4754,6 +4754,10 @@ public static unsafe partial class Blaze
             // qu'il soit ecrit.
             case 0x0040F370: EntityHandler_0040F370(record); return;
 
+            // Le fondu au blanc de la transition — table 0x0056b0c8, foret. Il anime les deux
+            // voiles plein cadre 0x005de024 et 0x005de028, dont le role etait « non etabli ».
+            case 0x0040EDF0: EntityHandler_0040EDF0(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de
@@ -8957,6 +8961,94 @@ public static unsafe partial class Blaze
         e[0x40] = frame;
 
         if (frame == 4) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0040edf0</c> — <b>le fondu au blanc de la transition</b>. 327 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; releve garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0040EDF0.asm</c>. Entree de la table <c>0x0056b0c8</c> —
+    /// le debordement de <c>0x0056adc8</c>, donc la passe <see cref="TickEntityTable_005fa5e0"/>
+    /// pour un sous-type au-dela de <c>0xc0</c>. Presente dans les sous-zones 0 a 4 de la foret.
+    ///
+    /// <para>
+    /// <b>Elle etablit le role des deux mots <c>0x005de024</c> et <c>0x005de028</c></b>, que
+    /// <see cref="GameMemory.s_Unknown_005de024"/> disait « non etabli ». Ce sont <b>deux voiles
+    /// plein cadre</b> : les trois octets bas portent la couleur, l'octet de poids fort commande
+    /// l'affichage — c'est lui que la boucle de dessin teste avant d'appeler
+    /// <see cref="FillScreenQuad_0051F940"/>. Ce corps-ci est le seul reconstruit qui les
+    /// <b>anime</b>.
+    /// </para>
+    /// <para>
+    /// <b>Un compte a rebours de 220 images, et rien d'autre.</b> La naissance fait naitre l'effet
+    /// <c>0xfa</c> a sa propre position, puis <c>+0x16</c> avance d'une image par image :
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>0 a 169</b> — elle ne fait rien. L'effet <c>0xfa</c> occupe l'ecran pendant ce
+    /// temps ;</item>
+    /// <item><b>170 a 194</b> — les deux voiles <b>montent</b> : <c>+10</c> par image sur les trois
+    /// canaux de <c>0x005de028</c>, <c>+3</c> sur ceux de <c>0x005de024</c>, et les deux octets de
+    /// commande passent a 1 ;</item>
+    /// <item><b>195 a 219</b> — ils <b>redescendent</b>, <c>-10</c> et <c>-3</c>, aux memes
+    /// cadences ;</item>
+    /// <item><b>220</b> — l'entite s'eteint et <b>rend la main a son porteur</b> : le mot
+    /// <c>+0x98</c> qu'elle transportait est ecrit dans le <c>+0x10</c> du porteur
+    /// (<c>+0x6c</c>), c'est-a-dire dans son <b>etat</b>. C'est ainsi que la transition dit « c'est
+    /// fini, reprends la » a ce qui l'a declenchee.</item>
+    /// </list>
+    /// <para>
+    /// <b>Les additions sont sur huit bits et debordent.</b> Vingt-cinq images a <c>+10</c> font
+    /// 250, qui tient ; vingt-cinq a <c>+3</c> font 75. La descente ramene exactement au point de
+    /// depart, donc le voile revient a ce qu'il etait — pourvu que la montee soit allee au bout.
+    /// Une entite eteinte en cours de montee laisserait l'ecran teinte : c'est la fragilite du
+    /// binaire d'origine, transcrite telle quelle.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040EDF0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xfa, 0, -1);
+        }
+
+        (*(short*)(e + 0x16))++;
+        short age = *(short*)(e + 0x16);
+
+        if (age >= 0xaa && age <= 0xc2)
+        {
+            Mem.s_Unknown_005de028 = ShiftScreenVeil(Mem.s_Unknown_005de028, 10);
+            Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, 3);
+        }
+
+        if (age >= 0xc3 && age <= 0xdb)
+        {
+            Mem.s_Unknown_005de028 = ShiftScreenVeil(Mem.s_Unknown_005de028, -10);
+            Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, -3);
+        }
+
+        if (*(short*)(e + 0x16) != 0xdc) return;
+
+        *(uint*)e &= 0x7fffffff;
+
+        // Ghidra: le porteur est relu et teste APRES l'extinction ; l'ordre est conserve.
+        byte* carrier = *(byte**)(e + 0x6c);
+        if (carrier != null) *(short*)(carrier + 0x10) = *(short*)(e + 0x98);
+    }
+
+    /// <summary>
+    /// Les trois canaux d'un voile plein cadre, decales de <paramref name="delta"/>, l'octet de
+    /// commande pose a 1. Les additions se font <b>sur huit bits</b>, comme les <c>add dl,al</c>
+    /// du binaire : elles debordent au lieu de saturer.
+    /// </summary>
+    private static uint ShiftScreenVeil(uint veil, int delta)
+    {
+        byte r = (byte)((byte)veil + delta);
+        byte g = (byte)((byte)(veil >> 8) + delta);
+        byte b = (byte)((byte)(veil >> 0x10) + delta);
+
+        return 0x01000000u | ((uint)b << 0x10) | ((uint)g << 8) | r;
     }
 
     /// <summary>

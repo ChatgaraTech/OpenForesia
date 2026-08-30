@@ -5,6 +5,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **le fondu au blanc de la transition** (`0x0040edf0`, table `0x0056b0c8`, forêt) — un compte à rebours de 220 images : rien pendant 170, montée des voiles pendant 25, descente pendant 25, puis extinction et retour de la main au porteur
+- doc : **le rôle de `0x005de024` et `0x005de028` est établi** — ce sont deux **voiles plein cadre**, trois octets de couleur et un octet de commande. `GameMemory.cs` les disait « non établi » : on n'en voyait que la lecture, jamais l'animation
 - feat : **les deux verbes les plus employés du jeu** (`0x004457f0` et `0x00445840`, 78 emplois chacun) — vingt-huit octets, deux effets sonores, `return 0`. Le 8 est celui de la porte. C'est exactement ce que le classement par emplois devait faire ressortir
 - fix : **la sonde ignorait le répartiteur de verbes** — `ScriptOpAreaVerb` est le second point d'entrée d'une table de sauts, et les 67 verbes de `0x0056aec8` ne pouvaient donc jamais passer à « testé ». Le verbe 8 avait planté sans laisser de trace dans le TSV
 - feat : **la poussière du bloc poussé** (`0x0040f370`, sous-type `0xfd` de la forêt) — quatre images d'atlas tenues 5 à 9 images chacune, teinte sombre `0x3c3c3c` qui s'assombrit d'un cran par image. Décompilée dans `Blaze.c` ; la plage `0x0054f720` relevée sur sept enregistrements, deux groupes
