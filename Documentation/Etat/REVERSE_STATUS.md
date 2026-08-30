@@ -18458,3 +18458,29 @@ observee en zone 3 est loin d'etre negligeable.
 **La consequence pratique** : avant de transcrire un corps decompile, comparer sa pseudo-C a celle
 de ses voisins de prologue. Un `diff` de deux blocs de `Blaze.c` coute quelques secondes et rend
 parfois un corps entier. C'est ce qui a donne le tourniquet et les deux triplets.
+
+## 2026-08-30 (suite 14) — le compte des duplications de la foret
+
+Six familles, quatorze creneaux, six corps :
+
+| corps | creneaux | ce qui differe |
+|---|---|---|
+| la bulle | `0x0040fac0`, `0x00412c20`, `0x00416210` | une planche |
+| l'eclat | `0x0040f470`, `0x00412950`, `0x00415f40` | une planche |
+| l'eclaboussure du pas | `0x0040f7f0`, `0x00412b30`, `0x00416120` | une planche |
+| la convocation | `0x00410cd0`, `0x00414140` | deux planches |
+| le tourniquet | `0x00457770`, `0x004593c0` | **rien** |
+| (deja transcrit) | `0x004566c0` / `0x00458070` | **rien** |
+| (deja transcrit) | `0x0049d030` / `0x0049f0c0` | la table de sauts, relocalisee |
+| (deja transcrit) | `0x00486ee0` / `0x004a5f10` | **rien** |
+
+**Les adresses des copies suivent un pas regulier.** Les trois exemplaires de chaque effet sont
+espaces d'environ `0x3260` et `0x3600` — `0x0040f470` / `0x00412950` / `0x00415f40`,
+`0x0040f7f0` / `0x00412b30` / `0x00416120`, `0x0040fac0` / `0x00412c20` / `0x00416210`. Leurs
+planches le sont aussi : `0x0054f7a8` / `0x0054f8c8` / `0x0054f9c0`. Le jeu de 1998 a donc
+**recopie un bloc entier d'effets deux fois**, code et donnee, plutot que de les partager.
+
+**Consequence pour la suite du chantier.** Chercher la copie avant d'ecrire n'est pas une
+optimisation ponctuelle : c'est la bonne premiere question. Sur les 136 creneaux de la foret, huit
+n'ont rien coute. Et le chiffre de 1 286 « a transcrire » reste un majorant : il compte des
+adresses, pas des comportements.

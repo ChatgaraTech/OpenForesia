@@ -4499,6 +4499,10 @@ public static unsafe partial class Blaze
             case 0x00450AA0: EntityHandler_00450AA0((uint*)record); return;
             case 0x00450D30: EntityHandler_00450D30((uint*)record); return;
             case 0x00486EE0: EntityHandler_00486EE0((uint*)record); return;
+
+            // 0x004a5f10 est un DUPLICATA de 0x00486ee0 : 299 instructions comparees une a une,
+            // zero difference. Meme corps, deux creneaux.
+            case 0x004A5F10: EntityHandler_00486EE0((uint*)record); return;
             case 0x00404EF0: EntityHandler_00404EF0((uint*)record); return;
 
             // L'entree 89 de la table statique 0x00551c30 — le seul creneau que la BRANCHE BASSE
@@ -4754,6 +4758,8 @@ public static unsafe partial class Blaze
             // sol (EntityHandler_00541440) seme un pas sur deux quand le sol porte 0x200. C'est
             // le plantage a l'approche de l'eau, signale le 2026-08-30.
             case 0x0040F7F0: EntityHandler_0040F7F0(record); return;
+            case 0x00412B30: EntityHandler_00412B30(record); return;
+            case 0x00416120: EntityHandler_00416120(record); return;
 
             // Le sous-type 0xfd de la meme table — la POUSSIERE DU BLOC POUSSE, signalee le
             // 2026-08-30 sur le teleporteur. Premier gestionnaire que la sonde a designe avant
@@ -8847,48 +8853,90 @@ public static unsafe partial class Blaze
         return ((((value ^ sign) - sign) & mask) ^ sign) - sign;
     }
 
+    // =====================================================================
+    // L'ECLABOUSSURE DU PAS, EN TROIS EXEMPLAIRES (2026-08-30)
+    //
+    // 0x0040f7f0, 0x00412b30 et 0x00416120 sont le meme corps. Compares instruction par
+    // instruction sur 77 lignes, ils ne different que d'une seule : l'adresse de la planche.
+    // Leurs trois planches — 0x0054f7a8, 0x0054f8c8, 0x0054f9c0 — portent les memes quatre
+    // enregistrements. C'est la sixieme famille de la foret batie ainsi.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f8c8</c> — la deuxieme copie de la planche du remous,
+    /// quatre enregistrements jusqu'a <c>DAT_0054f8e8</c>.</summary>
+    private static readonly byte[] s_SplashDescriptors_0054F8C8 =
+    [
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f8c8
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f8d0
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f8d8
+        0x10, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f8e0
+    ];
+
+    private static byte* s_SplashDescriptors0054F8C8Storage;
+
+    private static byte* Descriptors0054F8C8()
+        => NativeCopy(s_SplashDescriptors_0054F8C8, ref s_SplashDescriptors0054F8C8Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f9c0</c> — la troisieme copie, jusqu'a
+    /// <c>DAT_0054f9e0</c>.</summary>
+    private static readonly byte[] s_SplashDescriptors_0054F9C0 =
+    [
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f9c0
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f9c8
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f9d0
+        0x10, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f9d8
+    ];
+
+    private static byte* s_SplashDescriptors0054F9C0Storage;
+
+    private static byte* Descriptors0054F9C0()
+        => NativeCopy(s_SplashDescriptors_0054F9C0, ref s_SplashDescriptors0054F9C0Storage);
+
     /// <summary>
-    /// Ghidra: <c>0x0040f7f0</c> — <b>absente de <c>Blaze.c</c></b> ; relevee au desassembleur,
-    /// 231 octets (<c>0x0040f7f0</c>..<c>0x0040f8d6</c>) —
-    /// <c>Legacy/Raw/Blaze/FUN_0040F7F0.asm</c>. Gestionnaire de la passe
-    /// <see cref="TickEntityTable_005f2d40"/>, atteint par le sous-type <c>0xfe</c> : la passe
-    /// indexe <c>0x0056afc8</c>, <c>0xfe</c> deborde de trois tables et retombe sur l'entree
-    /// <c>0x3e</c> de <c>0x0056b2c8</c>, celle qu'installe la zone.
+    /// Ghidra: <c>0x0040f7f0</c> — la premiere des trois eclaboussures. Le corps est dans
+    /// <see cref="TickFootSplash"/>.
+    ///
+    /// <para>Atteinte par le sous-type <c>0xfe</c> : la passe
+    /// <see cref="TickEntityTable_005f2d40"/> indexe <c>0x0056afc8</c>, deborde de trois tables et
+    /// retombe sur l'entree <c>0x3e</c> de <c>0x0056b2c8</c>. C'est le crochet de contact au sol
+    /// (<see cref="EntityHandler_00541440"/>) qui la seme, un pas sur deux, quand le sol porte le
+    /// bit <c>0x200</c>.</para>
+    /// </summary>
+    private static void EntityHandler_0040F7F0(byte* e)
+        => TickFootSplash(e, Descriptors0054F7A8());   // Ghidra: &DAT_0054f7a8
+
+    /// <summary>Ghidra: <c>0x00412b30</c> — la deuxieme.</summary>
+    private static void EntityHandler_00412B30(byte* e)
+        => TickFootSplash(e, Descriptors0054F8C8());
+
+    /// <summary>Ghidra: <c>0x00416120</c> — la troisieme.</summary>
+    private static void EntityHandler_00416120(byte* e)
+        => TickFootSplash(e, Descriptors0054F9C0());
+
+    /// <summary>
+    /// Le corps commun des trois eclaboussures. Releve au desassembleur, 231 octets —
+    /// <c>Legacy/Raw/Blaze/FUN_0040F7F0.asm</c> ; les deux copies n'ont pas leur propre releve,
+    /// leur diff tenant en une ligne.
     ///
     /// <para>
-    /// <b>C'est l'ECLABOUSSURE DU PAS DANS L'EAU.</b> Le crochet de contact au sol de la zone
-    /// (<see cref="EntityHandler_00541440"/>) la seme a la position du membre <b>un pas sur
-    /// deux</b> du cycle de marche, des que <c>+0x90</c> de l'entite porte le bit <c>0x200</c> —
-    /// le sol liquide. Elle naissait donc en rafale au premier pas dans l'eau, et la passe
-    /// tombait sur la lacune : c'est le plantage signale le 2026-08-30 en s'approchant d'un point
-    /// d'eau.
-    /// </para>
-    /// <para>
     /// <b>Elle ne bouge pas et ne compte que ses images.</b> La naissance se disperse une fois pour
-    /// toutes — les trois coordonnees <c>+0x1c</c> / <c>+0x20</c> / <c>+0x24</c> sont ecartees d'un
-    /// tirage sur <c>[-20, +19]</c> unites entieres (<c>&lt;&lt; 12</c>, le point fixe du jeu), et
-    /// les deux echelles partent de <c>0x1400</c> moins un tirage sur <c>0x7ff</c>, soit
-    /// <c>0xc01</c>..<c>0x1400</c> : une gerbe toujours plus petite que la taille nominale, jamais
-    /// plus grande. Passe la naissance, plus rien ne touche ni la position ni l'echelle.
+    /// toutes — les trois coordonnees sont ecartees d'un tirage sur <c>[-20, +19]</c> unites
+    /// entieres, et les deux echelles partent de <c>0x1400</c> moins un tirage sur <c>0x7ff</c>,
+    /// soit une gerbe toujours plus petite que la taille nominale, jamais plus grande. Passe la
+    /// naissance, plus rien ne touche ni la position ni l'echelle.
     /// </para>
     /// <para>
     /// <b>Huit images de vie.</b> <c>+0x12</c> compte jusqu'a 2, se remet a zero et fait avancer
-    /// l'indice d'atlas <c>+0x40</c> : chacune des quatre tuiles de
-    /// <see cref="s_SplashDescriptors_0054F7A8"/> tient donc deux images, et l'entite s'eteint
-    /// (bit <c>0x80000000</c> de <c>+0x00</c>) a la quatrieme.
-    /// </para>
-    /// <para>
-    /// Le binaire entrelace <c>mov [esi+12h],bx</c> et <c>mov [esi+40h],bl</c> dans le dernier
-    /// tirage d'echelle — ordonnancement d'instructions, sans effet sur le sens ; les deux mises a
-    /// zero sont ecrites a leur place logique.
+    /// l'indice d'atlas <c>+0x40</c> : chacune des quatre tuiles tient deux images, et l'entite
+    /// s'eteint a la quatrieme.
     /// </para>
     /// </summary>
-    private static void EntityHandler_0040F7F0(byte* e)
+    private static void TickFootSplash(byte* e, byte* atlas)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x10) = 1;
-            *(byte**)(e + 0x3c) = Descriptors0054F7A8();   // Ghidra: &DAT_0054f7a8
+            *(byte**)(e + 0x3c) = atlas;
             e[0x0a] = 9;
             e[0x0b] = 0;
 

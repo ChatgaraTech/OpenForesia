@@ -5,6 +5,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **l'éclaboussure du pas existe elle aussi en trois exemplaires** (`0x0040f7f0`, `0x00412b30`, `0x00416120`) — 77 instructions comparées, **une seule ligne diffère** : l'adresse de la planche. Sixième famille de la forêt bâtie ainsi
+- feat : **`0x004a5f10` est un duplicata de `0x00486ee0`** — 299 instructions, zéro différence
 - feat : **la convocation, en deux exemplaires** (`0x00410cd0`, `0x00414140`) — quatre effets dans un corps, dont un **chef** qui se téléporte, lâche trente-et-une spirales rentrantes, s'éclaircit quarante-trois images, puis redescend en semant une bouffée par image avant de lâcher trente-et-une spirales sortantes et de s'éteindre. Les enfants reçoivent leur variante parce que la naissance **recopie l'entité entière** : le chef pose `+0x14` juste avant chaque appel et le restaure après
 - feat : **`0x004593c0` est un duplicata du tourniquet** (`0x00457770`) — 293 instructions comparées une à une, **zéro différence**, et les deux pseudo-C de `Blaze.c` sont identiques ligne pour ligne
 - doc : `0x00410cd0` et `0x00414140` sont **encore le même corps**, à quatre adresses de planche près — trois variantes sur `+0x14`, deux planches chacune. Quatrième occurrence de ce motif dans la forêt
