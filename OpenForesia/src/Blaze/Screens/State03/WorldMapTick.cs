@@ -4852,6 +4852,13 @@ public static unsafe partial class Blaze
             case 0x00459B20: EntityHandler_00459B20(record); return;
             case 0x00458E90: EntityHandler_00458E90(record); return;
 
+            // Les deux scenes cinema de la foret et leurs deux amorces : un corps chacune,
+            // parametre par l'enregistrement 0 ou 1 du bloc prive 0x00571420.
+            case 0x00410820: EntityHandler_00410820(record); return;
+            case 0x00413C90: EntityHandler_00413C90(record); return;
+            case 0x00411240: EntityHandler_00411240(record); return;
+            case 0x004146B0: EntityHandler_004146B0(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de
@@ -11908,7 +11915,12 @@ public static unsafe partial class Blaze
 
     /// <summary>Le <c>+0x28</c> du bloc de camera <paramref name="index"/> : le numero du membre du
     /// groupe que l'invocation a saisi. <c>0x00571448</c> pour 0, <c>0x00571478</c> pour 1.</summary>
-    private static byte* CutsceneSlotMemo(int index) => s_ForestSceneBlock_00571420 + index * 0x30 + 0x28;
+    private static byte* CutsceneSlotMemo(int index) => ForestSceneRecord(index) + 0x28;
+
+    /// <summary>La base de l'enregistrement <paramref name="index"/> du bloc : <c>0x00571420</c>
+    /// pour 0, <c>0x00571450</c> pour 1. Les deux scenes cinema et les deux invocations ne
+    /// different que par cet indice.</summary>
+    private static byte* ForestSceneRecord(int index) => s_ForestSceneBlock_00571420 + index * 0x30;
 
     /// <summary>Un champ du bloc, par son adresse Ghidra. Tout ce qui vit entre <c>0x00571420</c>
     /// et <c>0x00571660</c> passe par ici, pour qu'une seule allocation porte l'ensemble.</summary>
@@ -12660,6 +12672,501 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x10) = 1;
         *(short*)(e + 0x16) = -1;
         *(short*)(e + 0x12) = 100;
+    }
+
+    // =====================================================================
+    // LES DEUX SCENES CINEMA DE LA FORET (2026-08-30)
+    //
+    // Quatre creneaux, deux corps. 0x00410820 et 0x00413c90 sont le meme corps a 286 instructions,
+    // decompile dans Blaze.c ; 0x00411240 et 0x004146b0 sont deux AMORCES de dix instructions vers
+    // FUN_00411270 et FUN_00414d10, elles aussi decompilees et elles aussi identiques entre elles.
+    //
+    // Dans les deux cas la seule difference entre les exemplaires est la BASE DU BLOC PRIVE :
+    // l'enregistrement 0 (0x00571420) pour les uns, le 1 (0x00571450) pour les autres. Elles sont
+    // donc parametrees par un simple indice.
+    //
+    // Ces quatre-la avaient ete mises de cote le 2026-08-30 pour trois raisons : le bloc prive non
+    // modelise, et deux appelees « manquantes ». Aucune des trois ne tenait — FUN_00423d10 et
+    // FUN_0040b0e0 sont dans Blaze.c, et font quinze et quarante lignes.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00423d10 @ 0x00423d10 — <b>desarme les quatre emplacements</b>. Decompilee dans
+    /// <c>Blaze.c</c>, quinze lignes : elle efface le bit <c>0x4000000</c> sur les quatre fiches,
+    /// et rien d'autre.
+    ///
+    /// <para>C'est la remise a zero du compteur d'attente de <see cref="WaitForPartyToSettle"/> :
+    /// tant que les quatre bits ne sont pas revenus, la scene n'avance pas.</para>
+    /// </summary>
+    private static void DisarmPartySlots_00423D10()
+    {
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        for (int i = 0; i < 4; i++, slot += 0x9c) *(uint*)slot &= 0xfbffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0040b0e0 @ 0x0040b0e0 — <b>attend que les quatre membres soient poses</b>.
+    /// Decompilee dans <c>Blaze.c</c>. Rend <c>true</c> quand les quatre portent le bit
+    /// <c>0x4000000</c>.
+    ///
+    /// <para>
+    /// <b>Chaque membre tombe dans un des trois cas.</b> Le binaire les calcule par deux tests
+    /// enchevetres que Ghidra rend avec des <c>goto</c> ; reconstruits, ils disent :
+    /// </para>
+    /// <list type="number">
+    /// <item><b>a preparer</b> — le membre est vivant, il ne porte aucun des bits d'occupation
+    /// <c>0x44000003</c> ni <c>0x50000000</c>. Il est remis en pose neutre : teinte blanche, pose
+    /// et image a zero, <c>+0x0a</c> et <c>+0x96</c> effaces, le bit <c>0x40</c> retire et
+    /// <c>0x1000000</c> pose. Puis il est marque pret.</item>
+    /// <item><b>hors jeu</b> — mort, absent ou occupe autrement : marque pret sans etre
+    /// touche.</item>
+    /// <item><b>encore occupe</b> — vivant et portant un bit de <c>0x44000003</c> : rien du tout,
+    /// et la scene attendra une image de plus.</item>
+    /// </list>
+    /// <para>
+    /// <b>Le mot de drapeaux est relu apres avoir ete ecrit</b> dans le premier cas — le second
+    /// masque part de la valeur fraiche, pas de celle du debut. Conserve tel quel.
+    /// </para>
+    /// </summary>
+    private static bool WaitForPartyToSettle()
+    {
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+            short verdict = 0;
+
+            if ((flags & 0x44000003) == 0 && (flags & 0x80000000) != 0) verdict = 1;
+
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) verdict = 2;
+
+            if (verdict == 1)
+            {
+                *(uint*)slot = flags & 0xffffffbf | 0x4000000;
+
+                slot[0x0a] = 0;
+                slot[0x38] = 0xff;
+                slot[0x39] = 0xff;
+                slot[0x3a] = 0xff;
+                *(ushort*)(slot + 0x36) &= 0xfffb;
+                *(short*)(slot + 0x96) = 0;
+
+                // Ghidra relit *puVar2 ici : le masque part de la valeur qui vient d'etre ecrite.
+                *(uint*)slot = *(uint*)slot & 0xf7fffffb | 0x1000000;
+
+                *(short*)(slot + 0x18) = 0;
+                *(short*)(slot + 0x1a) = 0;
+            }
+
+            if (verdict == 2) *(uint*)slot |= 0x4000000;
+        }
+
+        short ready = 0;
+        slot = Inp.s_SlotFlags_005e93c0;
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            if ((*(uint*)slot & 0x4000000) != 0) ready++;
+        }
+
+        return ready == 4;
+    }
+
+    /// <summary>
+    /// La pose de fin de scene, par classe. Les deux scenes cinema portent la <b>meme</b> table,
+    /// ecrite en toutes lettres dans chacune : seize couples <c>(pose, image)</c>, choisis par les
+    /// trois bits bas de l'octet d'identite <c>+0x150</c> de la fiche de personnage, le bit
+    /// <c>3</c> departageant les deux moities.
+    ///
+    /// <para>Aucun des seize couples n'est calculable a partir de la classe : c'est une table, et
+    /// elle est relevee comme telle.</para>
+    /// </summary>
+    private static void ApplyCutscenePose(byte* slot, byte identity)
+    {
+        int cls = identity & 7;
+
+        short pose, frame;
+
+        if ((identity & 8) == 0)
+        {
+            switch (cls)
+            {
+                case 0: pose = 5; frame = 1; break;
+                case 1: pose = 6; frame = 0x12; break;
+                case 2: pose = 4; frame = 5; break;
+                case 3: pose = 3; frame = 3; break;
+                case 4: pose = 5; frame = 8; break;
+                case 5: pose = 6; frame = 9; break;
+                case 6: pose = 6; frame = 0x0b; break;
+                default: pose = 6; frame = 0x12; break;
+            }
+        }
+        else
+        {
+            switch (cls)
+            {
+                case 0: pose = 6; frame = 4; break;
+                case 1: pose = 6; frame = 9; break;
+                case 2: pose = 3; frame = 0; break;
+                case 3: pose = 6; frame = 0x12; break;
+                case 4: pose = 5; frame = 8; break;
+                case 5: pose = 7; frame = 5; break;
+                case 6: pose = 6; frame = 4; break;
+                default: pose = 6; frame = 9; break;
+            }
+        }
+
+        *(short*)(slot + 0x18) = pose;
+        *(short*)(slot + 0x1a) = frame;
+    }
+
+    /// <summary>Les quatre membres remis a blanc en tete de chaque image de scene : teinte pleine,
+    /// <c>+0x0a</c> et <c>+0x96</c> effaces, bit 2 de <c>+0x36</c> retire. Les deux corps de scene
+    /// ouvrent par cette meme boucle.</summary>
+    private static void ResetPartyAppearance()
+    {
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            slot[0x0a] = 0;
+            slot[0x38] = 0xff;
+            slot[0x39] = 0xff;
+            slot[0x3a] = 0xff;
+            *(ushort*)(slot + 0x36) &= 0xfffb;
+            *(short*)(slot + 0x96) = 0;
+        }
+    }
+
+    /// <summary>
+    /// La camera privee prend la main : le bloc <paramref name="record"/> recoit la pose du membre
+    /// vise, et les trois pointeurs <c>DAT_005e9ae0</c> / <c>DAT_005eca94</c> / <c>DAT_005edebc</c>
+    /// y sont detournes. Les deux corps de scene font exactement cela, au bloc pres.
+    ///
+    /// <para><b>La cible est tiree au sort autour du membre</b> : l'azimut prend <c>+200</c> plus
+    /// un tirage sur 400, l'elevation <c>+0x200</c> plus un tirage sur 200, et la distance
+    /// <c>+700</c> plus un tirage sur 200. La scene ne cadre donc jamais deux fois pareil.</para>
+    /// </summary>
+    private static void TakeCutsceneCamera(byte* e, byte* record)
+    {
+        byte* slots = Inp.s_SlotFlags_005e93c0;
+        int index = *(short*)(e + 0x12);
+        byte* member = slots + index * 0x9c;
+
+        *(int*)(e + 0x1c) = *(int*)(member + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(member + 0x20);
+        *(int*)(e + 0x24) = *(int*)(member + 0x24);
+        *(short*)(e + 0x30) = *(short*)(member + 0x30);
+        *(short*)(e + 0x32) = *(short*)(member + 0x32);
+
+        *(int*)(record + 0x18) = *(int*)(e + 0x1c);
+
+        *(short*)(e + 0x34) = *(short*)(member + 0x34);
+        *(short*)(e + 0x10) = 3;
+        *(short*)(e + 0x16) = 0;
+
+        *(int*)(record + 0x1c) = *(int*)(e + 0x20);
+        *(int*)(record + 0x20) = *(int*)(e + 0x24);
+
+        *(short*)(record + 0) = (short)(CrtRand() % 400 + *(short*)(e + 0x30) + 200);
+        *(short*)(record + 2) = (short)(CrtRand() % 200 + *(short*)(e + 0x32) + 0x200);
+        *(short*)(record + 4) = *(short*)(e + 0x34);
+
+        int* target = *(int**)Mem.Entity(0x005eca94);
+        *(int*)(record + 8) = target[0];
+        *(int*)(record + 0x0c) = target[1];
+        *(int*)(record + 0x10) = target[2];
+
+        int distance = CrtRand();
+
+        *(byte**)Mem.Entity(0x005eca94) = record + 8;
+        *(byte**)Mem.Arena(0x005e9ae0) = record;
+        *(byte**)Mem.Entity(0x005edebc) = record + 0x18;
+
+        *(int*)(record + 0x10) = distance % 200 + 700;
+    }
+
+    /// <summary>La camera de marche reprend la main : les trois memes pointeurs remis sur
+    /// <c>0x005de078</c>, <c>0x00564650</c> et <c>0x005de068</c>, puis le mode de camera
+    /// rappele.</summary>
+    private static void ReleaseCutsceneCamera()
+    {
+        *(byte**)Mem.Entity(0x005eca94) = (byte*)Mem.Camera(0x005de078);
+        *(byte**)Mem.Arena(0x005e9ae0) = s_WorldMapCamera_00564650;
+        *(byte**)Mem.Entity(0x005edebc) = (byte*)Mem.Camera(0x005de068);
+
+        CameraModeApply_005037E0(0);                          // Ghidra: FUN_005037b0
+    }
+
+    /// <summary>Le fondu des deux voiles pendant une scene : le second monte ou descend de dix par
+    /// canal, le premier de trois. C'est le meme rapport que
+    /// <see cref="EntityHandler_0040EDF0"/>.</summary>
+    private static void ShiftCutsceneVeils(int step)
+    {
+        Mem.s_Unknown_005de028 = ShiftScreenVeil(Mem.s_Unknown_005de028, 10 * step);
+        Mem.s_Unknown_005de024 = ShiftScreenVeil(Mem.s_Unknown_005de024, 3 * step);
+    }
+
+    /// <summary>Ghidra: <c>0x00410820</c> — la premiere scene cinema, bloc prive 0.</summary>
+    private static void EntityHandler_00410820(byte* e)
+        => TickForestCutscene(e, ForestSceneRecord(0));
+
+    /// <summary>Ghidra: <c>0x00413c90</c> — la seconde, bloc prive 1. Comparee instruction par
+    /// instruction : <b>seules les onze adresses du bloc different</b>.</summary>
+    private static void EntityHandler_00413C90(byte* e)
+        => TickForestCutscene(e, ForestSceneRecord(1));
+
+    /// <summary>
+    /// Ghidra: FUN_00410820 @ 0x00410820 (et FUN_00413c90) — <b>la scene cinema muette de la
+    /// foret</b>. Decompilee dans <c>Blaze.c</c>, 286 instructions.
+    ///
+    /// <para>
+    /// <b>Cinq etats, puis un compte a rebours de 202 images.</b> L'etat 0 desarme les quatre
+    /// emplacements et retient dans <c>+0x12</c> le membre que la memoire du bloc designe ; l'etat
+    /// 1 attend que les quatre soient poses ; l'etat 2 detourne la camera ; l'etat 3 seme l'entite
+    /// de sous-type <c>+0x98 + 0xc0</c> et passe a 4, ou plus rien ne se fait. Tout le reste est
+    /// gouverne par <c>+0x16</c>, qui monte d'un par image sans jamais redescendre.
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>0x82 a 0x9a</b> — les deux voiles montent, le second de dix par canal, le premier
+    /// de trois : l'ecran blanchit en vingt-cinq images.</item>
+    /// <item><b>0x9b</b> — la pose de fin est posee sur les quatre membres, par la table de
+    /// <see cref="ApplyCutscenePose"/>. C'est l'image ou l'ecran est le plus clair, donc celle ou
+    /// le changement ne se voit pas.</item>
+    /// <item><b>0x9b a 0xb3</b> — les deux voiles redescendent au meme rapport.</item>
+    /// <item><b>0xc8</b> — les deux voiles sont remis a zero net, canaux compris.</item>
+    /// <item><b>0xca</b> — la camera de marche revient, le script 1 part sur le membre vise, et
+    /// l'entite s'eteint.</item>
+    /// </list>
+    /// <para>
+    /// <b>Le mode de camera est rappele deux fois de suite</b> a la derniere image, une fois avant
+    /// le detournement des pointeurs et une fois apres. Ghidra le rend ainsi et le desassemblage le
+    /// confirme.
+    /// </para>
+    /// </summary>
+    private static void TickForestCutscene(byte* e, byte* record)
+    {
+        *(short*)(e + 0x98) = 0x38;
+        ResetPartyAppearance();
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            DisarmPartySlots_00423D10();
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = record[0x28];
+        }
+
+        if (*(short*)(e + 0x10) == 1 && WaitForPartyToSettle()) *(short*)(e + 0x10) = 2;
+
+        if (*(short*)(e + 0x10) == 2) TakeCutsceneCamera(e, record);
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(short*)(e + 0x10) = 4;
+            *(short*)(e + 0x14) = 2;
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), null, (byte)(*(short*)(e + 0x98) + 0xc0), 0, -1);
+        }
+
+        (*(short*)(e + 0x16))++;
+
+        short beat = *(short*)(e + 0x16);
+
+        if (beat > 0x81 && beat < 0x9b) ShiftCutsceneVeils(+1);
+
+        if (beat == 0x9b)
+        {
+            byte* mainMem = GetMainMemPtr();
+            byte* slot = Inp.s_SlotFlags_005e93c0;
+
+            for (int i = 0; i < 4; i++, slot += 0x9c)
+            {
+                uint flags = *(uint*)slot;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                ApplyCutscenePose(slot, mainMem[(slot[8] + 0x78) * 0x2000 + 0x150]);
+            }
+        }
+
+        if (beat > 0x9a && beat < 0xb4) ShiftCutsceneVeils(-1);
+
+        if (beat == 200)
+        {
+            Mem.s_Unknown_005de028 = 0x01000000;
+            Mem.s_Unknown_005de024 = 0x01000000;
+        }
+
+        if (beat != 0xca) return;
+
+        CameraModeApply_005037E0(0);                          // Ghidra: FUN_005037b0, le premier
+        RunEntityScript(
+            s_Unknown_005e97cc, Inp.s_SlotFlags_005e93c0 + *(short*)(e + 0x12) * 0x9c, 1);
+
+        ReleaseCutsceneCamera();                              // FUN_005037b0, le second
+        *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00411240</c> — <b>l'amorce de la scene cinema parlante</b>, bloc prive 0.
+    /// Absente de <c>Blaze.c</c> ; dix instructions. Elle pose <c>+0x98 = 0x39</c> et appelle
+    /// <c>FUN_00411270</c> avec trois constantes : le script <c>1</c>, la memoire d'emplacement du
+    /// bloc, et <c>-1</c> pour « ne pas changer de musique ».
+    /// </summary>
+    private static void EntityHandler_00411240(byte* e)
+    {
+        byte* record = ForestSceneRecord(0);
+        *(short*)(e + 0x98) = 0x39;
+        TickForestCutsceneWithDialogue(e, record, 1, record[0x28], 0xffff);
+    }
+
+    /// <summary>Ghidra: <c>0x004146b0</c> — la meme amorce sur le bloc prive 1. Les deux corps
+    /// appeles, <c>FUN_00411270</c> et <c>FUN_00414d10</c>, ne different eux aussi que par les
+    /// adresses du bloc.</summary>
+    private static void EntityHandler_004146B0(byte* e)
+    {
+        byte* record = ForestSceneRecord(1);
+        *(short*)(e + 0x98) = 0x39;
+        TickForestCutsceneWithDialogue(e, record, 1, record[0x28], 0xffff);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00411270 @ 0x00411270 (et FUN_00414d10) — <b>la scene cinema parlante de la
+    /// foret</b>. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// C'est <see cref="TickForestCutscene"/> avec quatre ajouts, et une soustraction. Le squelette
+    /// est identique — desarmement, attente, camera privee, semis, puis le compte de <c>+0x16</c>
+    /// avec ses deux fondus et sa pose de fin a <c>0x9b</c>.
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>Cinq sons</b> ponctuent le debut (<c>0x0f</c>, <c>9</c>, <c>0x2f</c> aux images 0,
+    /// 1 et 2) et le fondu au blanc (<c>5</c> deux fois, aux images <c>0x82</c> et <c>0x83</c>,
+    /// la seconde plus aigue). La scene muette n'en joue aucun.</item>
+    /// <item><b>Une boite de dialogue</b> s'ouvre a l'image 200, au moment ou les voiles retombent
+    /// a zero, sur la fiche du membre vise et avec l'etiquette <c>+0x490</c> du repertoire
+    /// principal.</item>
+    /// <item><b>Le script part sans entite</b> : <c>RunEntityScript(repertoire, null, script)</c>,
+    /// la ou la scene muette le lance sur le membre. Et il ne part que si
+    /// <paramref name="script"/> vaut autre chose que <c>-1</c>.</item>
+    /// <item><b>Un changement de musique optionnel</b>, si <paramref name="music"/> n'est pas
+    /// <c>0xffff</c> et que la piste demandee n'est pas deja en cours : la piste demarre et chaque
+    /// membre vivant recoit l'effet <c>0x59</c>. Les deux amorces connues passent <c>0xffff</c>,
+    /// donc <b>ce bloc ne s'execute jamais par elles</b> — il est transcrit parce qu'il est la, pas
+    /// parce qu'on l'a vu tourner.</item>
+    /// </list>
+    /// <para>
+    /// <b>La soustraction</b> : le mode de camera n'est rappele qu'une fois a la fin, contre deux
+    /// dans la scene muette.
+    /// </para>
+    /// <para>
+    /// <b>Le meme defaut de descripteur que la gerbe.</b> Le semis de l'etat 3 passe le tampon de
+    /// pile <c>local_8</c>, que rien ne remplit — voir <c>LB-014</c> dans <c>legacy-bug.md</c>. La
+    /// scene muette, elle, passe proprement <c>0</c> au meme endroit.
+    /// </para>
+    /// </summary>
+    /// <param name="script">L'indice de script lance a la derniere image, ou <c>-1</c> pour n'en
+    /// lancer aucun.</param>
+    /// <param name="member">Le membre du groupe que la scene cadre. Les deux amorces y passent la
+    /// memoire d'emplacement du bloc.</param>
+    /// <param name="music">La piste a lancer en sortant, ou <c>0xffff</c> pour n'y pas
+    /// toucher.</param>
+    private static void TickForestCutsceneWithDialogue(
+        byte* e, byte* record, short script, short member, ushort music)
+    {
+        // Le tampon jamais rempli du binaire, comme dans TickFivePhaseBurst. Voir LB-014.
+        byte* scratch = stackalloc byte[8];
+
+        ResetPartyAppearance();
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            DisarmPartySlots_00423D10();
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = member;
+        }
+
+        if (*(short*)(e + 0x10) == 1 && WaitForPartyToSettle()) *(short*)(e + 0x10) = 2;
+
+        if (*(short*)(e + 0x10) == 2) TakeCutsceneCamera(e, record);
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(short*)(e + 0x10) = 4;
+            *(short*)(e + 0x14) = 2;
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), scratch, (byte)(*(short*)(e + 0x98) + 0xc0), 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x0f, 0x200, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(9, 0x100, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x2f, 0x400, 0x1000, 0x1000);
+
+        (*(short*)(e + 0x16))++;
+
+        short beat = *(short*)(e + 0x16);
+
+        if (beat == 0x82) Aud.PlaySoundEffect(5, 0x100, 0x1000, 0x1000);
+        if (beat == 0x83) Aud.PlaySoundEffect(5, 0x16a, 0x1000, 0x1000);
+
+        if (beat > 0x81 && beat < 0x9b) ShiftCutsceneVeils(+1);
+
+        if (beat == 0x9b)
+        {
+            byte* mainMem = GetMainMemPtr();
+            byte* slot = Inp.s_SlotFlags_005e93c0;
+
+            for (int i = 0; i < 4; i++, slot += 0x9c)
+            {
+                uint flags = *(uint*)slot;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                ApplyCutscenePose(slot, mainMem[(slot[8] + 0x78) * 0x2000 + 0x150]);
+            }
+        }
+
+        if (beat > 0x9a && beat < 0xb4) ShiftCutsceneVeils(-1);
+
+        if (beat == 200)
+        {
+            Mem.s_Unknown_005de028 = 0x01000000;
+            Mem.s_Unknown_005de024 = 0x01000000;
+
+            byte* labels =
+                *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x490);
+
+            BindMenuLabels(
+                labels,
+                Inp.s_SlotFlags_005e93c0 + *(short*)(e + 0x12) * 0x9c,
+                s_WorldMapDescriptor_005633b0,
+                0);
+        }
+
+        if (beat != 0xca) return;
+
+        if (script != -1) RunEntityScript(s_Unknown_005e97cc, null, (uint)script);
+
+        if (music != 0xffff)
+        {
+            s_Unknown_005de534 = (byte)music;
+
+            if (s_Unknown_00566c8c != s_Unknown_005de534)
+            {
+                s_Unknown_00566c8c = (byte)s_Unknown_005de534;
+                PlayMusicTrack(music & 0xff);                 // Ghidra: FUN_00529ad0
+
+                byte* slot = Inp.s_SlotFlags_005e93c0;
+                for (int i = 0; i < 4; i++, slot += 0x9c)
+                {
+                    uint flags = *(uint*)slot;
+                    if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                    SpawnEffectEntity(slot, 0x59, 0, -1);     // Ghidra: FUN_0047a9d0
+                }
+            }
+        }
+
+        ReleaseCutsceneCamera();
+        *(uint*)e &= 0x7fffffff;
     }
 
     /// <summary>

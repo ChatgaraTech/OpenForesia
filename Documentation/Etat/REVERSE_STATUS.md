@@ -18775,3 +18775,127 @@ oppose — c'est le prochain morceau à prendre, et il vaut quatre créneaux d'u
 `0x00541b80` a été ouverte puis reposée : son second appel construit deux tampons de pile dont les
 décalages changent sous deux `push` intercalés, et le résultat ne se lit pas de façon sûre sans
 reconstruire la pile pas à pas. À reprendre avec le temps qu'il faut plutôt qu'à deviner.
+
+## 2026-08-30 (suite 26) — les scènes cinéma : trois raisons de blocage, trois fausses
+
+Les deux scènes cinéma de la forêt et leurs deux amorces avaient été mises de côté plus tôt dans la
+journée avec cette note :
+
+> **`0x00410820` et `0x00413c90` mis de côté** — deux cinématiques qui détournent trois pointeurs de
+> caméra vers un bloc privé non modélisé, et dont deux appelées (`FUN_00423d10`, `FUN_0040b0e0`)
+> manquent. Ouvrir cette chaîne est un travail en soi.
+
+Les trois raisons étaient fausses, et il a suffi de vérifier :
+
+1. **Le bloc privé** — modélisé depuis la transcription de l'invocation, quelques heures plus tôt,
+   parce que les deux mémoires d'emplacement `0x00571448` / `0x00571478` en sont le `+0x28`.
+2. **`FUN_00423d10` manquante** — elle est dans `Blaze.c` et fait **quinze lignes** : elle efface
+   le bit `0x4000000` sur les quatre fiches d'emplacement, et rien d'autre.
+3. **`FUN_0040b0e0` manquante** — dans `Blaze.c` aussi, **quarante lignes**.
+
+Le mot « manquent » venait d'un `grep` qui n'avait pas trouvé, pas d'une absence constatée. La
+vérification tient dans une ligne :
+
+```bash
+grep -c "FUN_00423d10" Legacy/Decompiled/Blaze.c   # 11
+```
+
+**La leçon, la même que celle des amorces.** Ce qui coûte cher, ce n'est pas la fonction difficile,
+c'est la fonction qu'on croit difficile. Un blocage noté dans `REVERSE_STATUS.md` mérite d'être
+re-testé avant d'être contourné, parce qu'il a pu être écrit sur une information partielle — et
+celui-ci l'avait été le jour même.
+
+---
+
+## 2026-08-30 (suite 27) — ce que font les deux scènes
+
+Quatre créneaux, deux corps, un paramètre : l'indice de l'enregistrement du bloc privé
+(`0x00571420` pour 0, `0x00571450` pour 1). Le diff normalisé entre `0x00410820` et `0x00413c90`
+tient en **onze lignes, toutes des adresses de ce bloc**.
+
+**Le squelette commun.** Cinq états, puis un compte à rebours gouverné par `+0x16` qui monte d'un
+par image et ne redescend jamais :
+
+| `+0x16` | ce qui se passe |
+|---|---|
+| — | état 0 : les quatre emplacements sont désarmés, le membre visé est retenu depuis `record[0x28]` |
+| — | état 1 : `WaitForPartyToSettle` — la scène n'avance que quand les quatre membres portent `0x4000000` |
+| — | état 2 : la caméra privée prend la main, sur un cadrage **tiré au sort** autour du membre |
+| — | état 3 : l'entité de sous-type `+0x98 + 0xc0` est semée, puis l'état 4 où plus rien ne se fait |
+| `0x82`–`0x9a` | les deux voiles montent, le second de dix par canal, le premier de trois |
+| `0x9b` | la **pose de fin** est posée sur les quatre membres |
+| `0x9b`–`0xb3` | les deux voiles redescendent au même rapport |
+| `0xc8` | les deux voiles sont remis à zéro net |
+| `0xca` | la caméra de marche revient, le script part, l'entité s'éteint |
+
+**La pose de fin tombe à l'image la plus claire.** `0x9b` est exactement le sommet du fondu au
+blanc : les personnages changent de pose au moment où l'écran ne montre plus rien. Ce n'est pas
+une coïncidence de valeurs, c'est la technique — et elle explique pourquoi la table de poses n'a
+aucune continuité (voir plus bas), puisque personne ne voit la transition.
+
+**Le cadrage n'est jamais deux fois le même.** L'azimut prend `+200` plus un tirage sur 400,
+l'élévation `+0x200` plus un tirage sur 200, la distance `+700` plus un tirage sur 200. Trois
+tirages, dans cet ordre, entre deux lectures du bloc.
+
+**Ce que la seconde ajoute.** `FUN_00411270` est la même chose plus cinq sons (`0x0f`, `9`,
+`0x2f` aux images 0, 1 et 2 ; `5` deux fois aux images `0x82` et `0x83`, la seconde plus aiguë),
+une boîte de dialogue ouverte à l'image 200 sur la fiche du membre visé, et un changement de
+musique optionnel. Elle lance son script **sans entité** (`RunEntityScript(répertoire, null, 1)`)
+là où la muette le lance sur le membre, et ne rappelle le mode de caméra qu'une fois contre deux.
+
+**Un bloc transcrit qui ne tournera jamais par ces amorces.** Le changement de musique est gardé
+par `music != 0xffff`, et les deux amorces connues passent précisément `0xffff`. Il est transcrit
+parce qu'il est là — la fidélité ne dépend pas de ce qu'on a vu tourner — mais il est signalé
+comme tel dans le résumé de la fonction.
+
+---
+
+## 2026-08-30 (suite 28) — la table de pose de fin
+
+Les deux scènes portent, écrite en toutes lettres dans chacune, la même table de seize couples
+`(pose, image)`. L'index est l'octet d'identité `+0x150` de la fiche de personnage : les trois bits
+bas donnent la classe, le bit 3 départage les deux moitiés.
+
+| classe | bit 3 à 0 | bit 3 à 1 |
+|---|---|---|
+| 0 | pose 5, image 1 | pose 6, image 4 |
+| 1 | pose 6, image 0x12 | pose 6, image 9 |
+| 2 | pose 4, image 5 | pose 3, image 0 |
+| 3 | pose 3, image 3 | pose 6, image 0x12 |
+| 4 | pose 5, image 8 | pose 5, image 8 |
+| 5 | pose 6, image 9 | pose 7, image 5 |
+| 6 | pose 6, image 0x0b | pose 6, image 4 |
+| 7 | pose 6, image 0x12 | pose 6, image 9 |
+
+**Aucun des seize couples ne se calcule.** Les valeurs ne suivent ni la classe ni le bit : la classe
+4 donne le même couple des deux côtés, les classes 1 et 7 sont identiques entre elles dans les deux
+moitiés, et la classe 2 change de pose entière. C'est une table d'animation choisie à la main, et
+elle est relevée comme telle plutôt que reconstruite en formule.
+
+Le binaire l'écrit en **seize `if` successifs** — `if (c == 0) …; if (c == 1) …;` — et non en
+`switch`, ce qui fait seize comparaisons là où une table d'indices en aurait fait zéro. Transcrite
+en `switch` ici, parce que c'est ce que le code calcule.
+
+---
+
+## 2026-08-30 (suite 29) — l'état de la forêt en fin de séance
+
+**113 sur 136.** Les 23 restantes, toutes absentes de `Blaze.c`, aucune n'ayant de doublon :
+
+| taille | adresses |
+|---|---|
+| 85 à 178 | `0x00541b80`, `0x00443b20`, `0x00413330`, `0x004101d0`, `0x00483760`, `0x0040ef40`, `0x00459840`, `0x00459fa0` |
+| 296 à 569 | `0x004433b0`, `0x00541550`, `0x004a3c30`, `0x004a35b0`, `0x00458200` |
+| 572 et plus | `0x0049e190`, `0x0049e920`, `0x004a13e0`, `0x0049fad0`, `0x004a54e0`, `0x004a4ae0`, `0x004a0480`, `0x004a2c90`, `0x004a4270` |
+
+Les neuf dernières sont les routines d'intelligence des espèces (table `0x0056ad48`) : c'est le
+gros du reste, et elles se prennent une par une.
+
+Deux notes pour la reprise :
+
+- **`0x00541b80` reste ouverte** — son second appel construit deux tampons de pile dont les
+  décalages changent sous deux `push` intercalés ; le résultat ne se lit pas de façon sûre sans
+  reconstruire la pile pas à pas.
+- **Rien de ce lot n'a tourné en jeu.** Les vingt-deux gestionnaires de la journée sont tous
+  `implémenté=oui, testé=non`, ce qui est une dette et non un acquis : un corps qui compile n'a
+  rien prouvé.
