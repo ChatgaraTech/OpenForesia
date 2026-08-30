@@ -1575,6 +1575,7 @@ public static unsafe partial class Blaze
             0x00443830 => AreaVerb_00443830((short)(s[2] | (s[3] << 8))),
             0x00444E60 => AreaVerb_00444E60(),
             0x00443300 => AreaVerb_00443300((short)(s[2] | (s[3] << 8))),
+            0x00443B20 => AreaVerb_00443B20(),
 
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
@@ -1992,6 +1993,134 @@ public static unsafe partial class Blaze
         byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + label * 4);
         BindMenuLabels(labels, slots + speaker * 0x9c, s_WorldMapDescriptor_005633b0, 0);
 
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00443b20</c> — <b>« joue l'animation de la statue »</b>. 95 instructions,
+    /// absente de <c>Blaze.c</c>. Table <c>0x0056aec8</c>, foret, sous-zones 5 et 9.
+    ///
+    /// <para>
+    /// <b>Elle ne prend aucun argument et ne rend jamais autre chose que 0.</b> C'est un ordre qui
+    /// se rappelle d'une image sur l'autre : tout son etat vit dans deux champs du bloc prive de la
+    /// foret — la phase en <c>0x0057150c</c> et un compteur d'images en <c>0x00571510</c>.
+    /// </para>
+    /// <para>
+    /// <b>Elle balaie d'abord les trente-deux entites de scene</b> et retient <b>la derniere</b>
+    /// dont <c>+0x0c</c> vaut 3 et qui est vivante — la boucle ne s'arrete pas au premier trouve.
+    /// A chacune elle remet la pose a zero et allume <c>0x8001000</c>. Elle retient au passage la
+    /// premiere entree de la table d'animation du modele, d'ou vient le nombre d'images.
+    /// </para>
+    /// <para>
+    /// <b>Cinq phases, gouvernees par le drapeau de script 208.</b> La phase 0 attend qu'une
+    /// statue reponde au balayage ; la 1 attend que le drapeau se leve ; la 2 fait avancer
+    /// l'animation <b>une image sur deux</b> — le compteur ne fait avancer que sur les valeurs
+    /// impaires, et seulement passe la huitieme — jusqu'a l'avant-derniere image, ou elle se cale
+    /// a <c>nombre - 2</c> ; la 3 attend que le drapeau retombe ; la 4 rembobine au meme rythme
+    /// jusqu'a zero, et la 5 est la fin.
+    /// </para>
+    /// <para>
+    /// <b>Deux valeurs ne survivent pas a un balayage infructueux.</b> Le binaire garde la statue
+    /// dans <c>ecx</c>, mis a zero au prologue, et la table d'animation dans <c>edi</c>, charge
+    /// depuis un emplacement de pile que <b>rien n'a ecrit</b> — le <c>push ecx</c> du prologue
+    /// n'y met que le <c>ecx</c> de l'appelant. Tant que la phase reste 0, ni l'un ni l'autre n'est
+    /// lu. Mais la phase vit dans le bloc et <b>survit d'une image a l'autre</b> : si la statue
+    /// disparait en cours d'animation, les phases 2 et 4 dereferencent zero. Reproduit tel quel —
+    /// voir <c>legacy-bug.md</c>.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00443B20()
+    {
+        byte* statue = null;
+        byte* animation = null;
+        bool found = false;
+
+        byte* scene = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, scene += 0x9c)
+        {
+            if (scene[0x0c] != 3) continue;
+            if ((*(uint*)scene & 0x80000000) == 0) continue;
+
+            *(short*)(scene + 0x18) = 0;
+            statue = scene;
+            animation = *(byte**)(*(byte**)(Mem.s_AnimationTable_005e9640 + scene[4] * 4));
+            *(uint*)scene |= 0x8001000;
+            found = true;
+        }
+
+        short* phase = (short*)ForestSceneField(0x0057150c);
+        short* ticks = (short*)ForestSceneField(0x00571510);
+
+        short state = *phase;
+
+        if (state == 0 && found)
+        {
+            state = 1;
+            statue[0x0a] = 0;
+            *(short*)(statue + 0x1a) = 0;
+            *phase = 1;
+        }
+
+        short tick;
+
+        if (state == 1 && (Mem.s_StateBank0_005e96e0[0x1a] & 1) != 0)
+        {
+            state = 2;
+            tick = 0;
+            *phase = 2;
+            *ticks = 0;
+        }
+        else
+        {
+            tick = *ticks;
+        }
+
+        // ------------------------------------------------------------------ 2 : l'aller
+        if (state == 2)
+        {
+            if (tick > 8 && (tick & 1) != 0)
+            {
+                (*(short*)(statue + 0x1a))++;
+
+                short frames = *(short*)(animation + 0x16);
+
+                if ((int)*(short*)(statue + 0x1a) >= (int)(ushort)frames - 1)
+                {
+                    state = 3;
+                    *(short*)(statue + 0x1a) = (short)(frames - 2);
+                    *phase = 3;
+                }
+            }
+
+            tick++;
+            *ticks = tick;
+        }
+
+        // ------------------------------------------------------------------ 3 : l'attente
+        if (state == 3 && (Mem.s_StateBank0_005e96e0[0x1a] & 1) == 0)
+        {
+            state = 4;
+            tick = 0;
+            *phase = 4;
+            *ticks = 0;
+        }
+
+        // ------------------------------------------------------------------ 4 : le retour
+        if (state != 4) return 0;
+
+        if ((tick & 1) != 0)
+        {
+            (*(short*)(statue + 0x1a))--;
+
+            if (*(short*)(statue + 0x1a) <= 0)
+            {
+                *(short*)(statue + 0x1a) = 0;
+                *phase = 5;
+            }
+        }
+
+        *ticks = (short)(tick + 1);
         return 0;
     }
 

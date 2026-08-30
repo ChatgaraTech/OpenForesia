@@ -18899,3 +18899,110 @@ Deux notes pour la reprise :
 - **Rien de ce lot n'a tourné en jeu.** Les vingt-deux gestionnaires de la journée sont tous
   `implémenté=oui, testé=non`, ce qui est une dette et non un acquis : un corps qui compile n'a
   rien prouvé.
+
+## 2026-08-30 (suite 30) — deux gestionnaires rangent leur état hors d'eux-mêmes
+
+Deux des sept transcrits dans ce lot ne gardent pas leur état dans l'enregistrement d'entité, et
+c'est délibéré dans les deux cas.
+
+**Le verbe de la statue (`0x00443b20`)** met sa phase en `0x0057150c` et son compteur d'images en
+`0x00571510` — deux champs du bloc privé de la forêt. Il ne prend aucun argument et ne rend jamais
+autre chose que 0 : tout ce qu'il sait, il le relit du bloc. C'est ce qui lui permet d'être appelé
+comme un verbe, sans entité porteuse.
+
+**Le pilier tournant (`0x00459fa0`)** va plus loin : son orientation est un champ de **deux bits**
+dans l'octet `0x005e96fd`, c'est-à-dire les drapeaux de script 232 à 239 de la banque 0. Quatre
+piliers, quatre champs, un octet. Le codage est une bijection avec quatre caps :
+
+| deux bits | cap |
+|---|---|
+| `00` | `0x0a00` |
+| `01` | `0x0600` |
+| `10` | `0x0200` |
+| `11` | `0x0e00` |
+
+L'état 0 décode, la fin de rotation ré-encode, et rien d'autre ne fait le lien entre les deux.
+**L'orientation survit donc à une sauvegarde** — elle n'est pas dans l'entité, elle est dans l'état
+de la partie. Un pilier rechargé se repose exactement où le joueur l'avait laissé, sans que la
+sauvegarde ait à connaître les entités de scène.
+
+La conséquence pour la reconstruction : un gestionnaire qui semble « oublier » son état entre deux
+images ne l'oublie pas forcément, il le range ailleurs. Chercher dans les banques d'état avant de
+conclure à un défaut.
+
+---
+
+## 2026-08-30 (suite 31) — `DAT_005de0b8` : « le coup porte-t-il », pas « a-t-on trouvé »
+
+`0x00483760` frappe par `FUN_00474ca0`, l'aiguillage des deux sondes de mêlée. Ghidra y a perdu les
+arguments — sa pseudo-C rend `FUN_00519af0()` sans aucun — mais le désassemblage est net : les
+**quatre** arguments sont empilés une seule fois, avant le branchement, et servent aux deux appels.
+
+```asm
+00474ca4  push 800h
+00474cab  lea  edx,[eax+1Ch]
+00474cb4  mov  ecx,[esp+0Ch]
+00474cb8  push ecx ; push edx ; push eax
+00474cbb  je   short 00474CC6
+00474cbd  call 00519AF0h        ; les entites de scene
+...
+00474cc6  call 00519C30h        ; le groupe
+```
+
+Le bit `0x800000` de l'entité décide du camp : posé, elle balaie les entités de scène ; absent,
+elle balaie le groupe. C'est le même geste vu des deux côtés.
+
+**Et le drapeau n'est pas ce qu'on croit.** `0x00483760` ne teste pas le pointeur rendu mais
+`DAT_005de0b8`, et il a raison : `SweepPartyForMeleeHit_00519C30` rend bien la cible quand elle
+**pare**, mais remet le drapeau à zéro. Tester le retour ferait passer chaque parade pour un coup
+réussi. Le nom juste du drapeau est donc « le coup porte-t-il », pas « a-t-on trouvé quelqu'un ».
+
+**Une leçon de méthode, au passage.** `SweepPartyForMeleeHit_00519C30` a été réécrite avant qu'on
+s'aperçoive qu'elle existait déjà, à l'identique, six mille lignes plus loin dans le même fichier.
+La vérification qui aurait évité ça — `grep "Ghidra: FUN_00519c30 @"` — avait bien été faite, mais
+sur ses *appelées* et pas sur elle. Vérifier la fonction qu'on s'apprête à écrire, pas seulement
+celles dont elle dépend.
+
+---
+
+## 2026-08-30 (suite 32) — la table de sauts écrite en donnée
+
+`0x00459840` joue cinq fois le même son, une image sur trois, à un gain qui décroît. Le binaire
+n'écrit pas cinq comparaisons : il écrit une **table de sauts**.
+
+```
+0x00459a40 : six adresses   -> 0045994A 00459955 00459960 00459984 004599A7 004599D2
+0x00459a58 : treize indices -> 00 05 05 01 05 05 02 05 05 03 05 05 04
+```
+
+`+0x98` indexe la seconde table (bornée à `0x0c`), et l'octet obtenu indexe la première. Les images
+0, 3, 6, 9 et 12 tombent sur les cinq premières entrées ; toutes les autres, et tout ce qui dépasse
+`0x0c`, tombent sur la sixième, qui ne fait rien.
+
+C'est la première table de sauts *de données* rencontrée dans un gestionnaire de la forêt, et elle
+n'est pas dans `Blaze.c` : il faut lire les deux tableaux au désassembleur pour retrouver la
+structure. Une transcription qui aurait suivi le code sans les lire aurait produit un `switch` sur
+six adresses sans savoir quelles images y mènent.
+
+---
+
+## 2026-08-30 (suite 33) — la forêt en fin de deuxième séance
+
+**120 sur 136.** Les seize restantes, toutes absentes de `Blaze.c`, aucune n'ayant de doublon :
+
+| taille | adresses |
+|---|---|
+| 85 à 95 | `0x00541b80` |
+| 296 à 569 | `0x004433b0`, `0x00541550`, `0x004a3c30`, `0x004a35b0`, `0x00458200` |
+| 572 et plus | `0x0049e190`, `0x0049e920`, `0x004a13e0`, `0x0049fad0`, `0x004a54e0`, `0x004a4ae0`, `0x004a0480`, `0x004a2c90`, `0x004a4270` |
+
+Les neuf dernières sont les routines d'intelligence des espèces (table `0x0056ad48`), entre 572 et
+1449 instructions chacune. C'est tout le reste du chantier de la forêt, et elles se prennent une
+par une.
+
+`0x00541b80` reste la seule petite en suspens : son second appel construit deux tampons de pile
+dont les décalages changent sous deux `push` intercalés, et le résultat ne se lit pas de façon sûre
+sans reconstruire la pile pas à pas.
+
+**Rien de ce lot n'a tourné en jeu.** Les trente-trois gestionnaires de la journée sont tous
+`implémenté=oui, testé=non`. C'est une dette, pas un acquis.
