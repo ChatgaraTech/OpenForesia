@@ -2524,3 +2524,25 @@ mentale, diviseur mental)`.
 **Trois valeurs pour huit classes**, et le regroupement n'est pas arbitraire — les deux classes
 purement physiques, les trois lanceurs de sorts, les trois hybrides. Le même partage apparaît dans
 les masques d'équipement et dans les tables du bestiaire, ce qui le confirme de trois côtés.
+
+## `0x0054f7a8` — les quatre images de l'éclaboussure du pas dans l'eau (2026-08-30)
+
+Quatre enregistrements de huit octets, posés en `+0x3c` par `0x0040f7f0` — le gestionnaire du
+sous-type `0xfe`, absent de `Blaze.c` et relevé au désassembleur le même jour
+(`Legacy/Raw/Blaze/FUN_0040F7F0.asm`).
+
+| adresse | octets | u, v, l, h |
+|---|---|---|
+| `0x0054f7a8` | `08 08 08 08 01 03 10 00` | 8, 8, 8, 8 |
+| `0x0054f7b0` | `10 08 08 08 01 03 10 00` | 16, 8, 8, 8 |
+| `0x0054f7b8` | `08 10 08 08 01 03 10 00` | 8, 16, 8, 8 |
+| `0x0054f7c0` | `10 10 08 08 01 03 10 00` | 16, 16, 8, 8 |
+
+**La borne se lit des deux côtés, ce qui est le cas le plus confortable.** Le corps compte `+0x40`
+jusqu'à 4 avant d'éteindre l'entité — quatre images. Et la mise en page est d'accord : la plage qui
+précède (`0x0054f778`..`0x0054f7a8`, les six images de `FUN_0040f8e0`) est en `0x18 x 0x18`, et
+`DAT_0054f7c8`, symbole distinct dans `Blaze.c`, ouvre la suivante en `0x10 x 0x10`.
+
+Les quatre tuiles sont les quatre coins d'un carré de `0x10` de côté à partir de `(8, 8)` : le jeu
+lit le carré en Z, un coin par paire d'images. La sixième et la septième colonne (`01 03`, `10 00`)
+sont celles de toute la famille — voir `0x0054f0e0` ci-dessus, qui porte `01 02`.

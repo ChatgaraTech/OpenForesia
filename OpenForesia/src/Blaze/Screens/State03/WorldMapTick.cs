@@ -4222,6 +4222,12 @@ public static unsafe partial class Blaze
             // ne croise aucun gabarit, il fait naitre le projectile 0x49 et rend la main.
             case 0x0049DA40: TickSceneEntityAi_0049DA40(record); return;
 
+            // Le sous-type 0xfe de la table installee par zone (0x0056afc8 + 0xfe * 4 deborde
+            // sur 0x0056b2c8) — l'ECLABOUSSURE DU PAS DANS L'EAU, que le crochet de contact au
+            // sol (EntityHandler_00541440) seme un pas sur deux quand le sol porte 0x200. C'est
+            // le plantage a l'approche de l'eau, signale le 2026-08-30.
+            case 0x0040F7F0: EntityHandler_0040F7F0(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de
@@ -8191,6 +8197,119 @@ public static unsafe partial class Blaze
         {
             *(uint*)e &= 0x7fffffff;
         }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f7a8</c> — <b>les quatre images de l'eclaboussure</b>, huit octets
+    /// chacune, relevees dans le binaire. Quatre tuiles de <c>8 x 8</c> aux quatre coins d'un carre
+    /// de <c>0x10</c> de cote, a partir de <c>(8, 8)</c> sur la planche.
+    ///
+    /// <para>
+    /// <b>Quatre, et le corps le dit</b> : <see cref="EntityHandler_0040F7F0"/> avance
+    /// <c>+0x40</c> une image sur deux et eteint l'entite quand il atteint 4. La donnee borne la
+    /// plage des deux cotes — celle qui precede (<c>0x0054f778</c>..<c>0x0054f7a8</c>, les six
+    /// images de <c>FUN_0040f8e0</c>) est en <c>0x18 x 0x18</c>, et <c>DAT_0054f7c8</c>, symbole
+    /// distinct dans <c>Blaze.c</c>, ouvre la suivante en <c>0x10 x 0x10</c>.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_SplashDescriptors_0054F7A8 =
+    [
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f7a8
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f7b0
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f7b8
+        0x10, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f7c0
+    ];
+
+    private static byte* s_SplashDescriptors0054F7A8Storage;
+
+    /// <summary>Les quatre images en memoire native : l'entite les garde par pointeur
+    /// (<c>+0x3c</c>) et choisit la sienne par <c>+0x40</c>.</summary>
+    private static byte* Descriptors0054F7A8()
+        => NativeCopy(s_SplashDescriptors_0054F7A8, ref s_SplashDescriptors0054F7A8Storage);
+
+    /// <summary>
+    /// L'idiome x86 du <b>reste signe par une puissance de deux</b> :
+    /// <c>cdq ; xor ; sub ; and &lt;masque&gt; ; xor ; sub</c>, c'est-a-dire
+    /// <c>signe(v) * (abs(v) &amp; masque)</c>. Le compilateur de 1998 l'emet pour un <c>%</c> par
+    /// une puissance de deux, qui doit garder le signe du dividende, et Ghidra le rend tel quel
+    /// dans les corps voisins (<c>FUN_0040f650</c>, <c>FUN_0040f8e0</c>).
+    ///
+    /// <para>Les appelants le nourrissent de <c>rand()</c>, qui ne rend jamais de negatif : le
+    /// masque nu suffirait. L'idiome est neanmoins conserve — c'est ce que le binaire calcule, et
+    /// le reduire prêterait au corps une hypothese qu'il ne fait pas.</para>
+    /// </summary>
+    private static int SignedMask(int value, int mask)
+    {
+        int sign = value >> 0x1f;
+        return ((((value ^ sign) - sign) & mask) ^ sign) - sign;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0040f7f0</c> — <b>absente de <c>Blaze.c</c></b> ; relevee au desassembleur,
+    /// 231 octets (<c>0x0040f7f0</c>..<c>0x0040f8d6</c>) —
+    /// <c>Legacy/Raw/Blaze/FUN_0040F7F0.asm</c>. Gestionnaire de la passe
+    /// <see cref="TickEntityTable_005f2d40"/>, atteint par le sous-type <c>0xfe</c> : la passe
+    /// indexe <c>0x0056afc8</c>, <c>0xfe</c> deborde de trois tables et retombe sur l'entree
+    /// <c>0x3e</c> de <c>0x0056b2c8</c>, celle qu'installe la zone.
+    ///
+    /// <para>
+    /// <b>C'est l'ECLABOUSSURE DU PAS DANS L'EAU.</b> Le crochet de contact au sol de la zone
+    /// (<see cref="EntityHandler_00541440"/>) la seme a la position du membre <b>un pas sur
+    /// deux</b> du cycle de marche, des que <c>+0x90</c> de l'entite porte le bit <c>0x200</c> —
+    /// le sol liquide. Elle naissait donc en rafale au premier pas dans l'eau, et la passe
+    /// tombait sur la lacune : c'est le plantage signale le 2026-08-30 en s'approchant d'un point
+    /// d'eau.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne bouge pas et ne compte que ses images.</b> La naissance se disperse une fois pour
+    /// toutes — les trois coordonnees <c>+0x1c</c> / <c>+0x20</c> / <c>+0x24</c> sont ecartees d'un
+    /// tirage sur <c>[-20, +19]</c> unites entieres (<c>&lt;&lt; 12</c>, le point fixe du jeu), et
+    /// les deux echelles partent de <c>0x1400</c> moins un tirage sur <c>0x7ff</c>, soit
+    /// <c>0xc01</c>..<c>0x1400</c> : une gerbe toujours plus petite que la taille nominale, jamais
+    /// plus grande. Passe la naissance, plus rien ne touche ni la position ni l'echelle.
+    /// </para>
+    /// <para>
+    /// <b>Huit images de vie.</b> <c>+0x12</c> compte jusqu'a 2, se remet a zero et fait avancer
+    /// l'indice d'atlas <c>+0x40</c> : chacune des quatre tuiles de
+    /// <see cref="s_SplashDescriptors_0054F7A8"/> tient donc deux images, et l'entite s'eteint
+    /// (bit <c>0x80000000</c> de <c>+0x00</c>) a la quatrieme.
+    /// </para>
+    /// <para>
+    /// Le binaire entrelace <c>mov [esi+12h],bx</c> et <c>mov [esi+40h],bl</c> dans le dernier
+    /// tirage d'echelle — ordonnancement d'instructions, sans effet sur le sens ; les deux mises a
+    /// zero sont ecrites a leur place logique.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040F7F0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054F7A8();   // Ghidra: &DAT_0054f7a8
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 40 - 20) << 0xc;
+            *(int*)(e + 0x24) += (CrtRand() % 40 - 20) << 0xc;
+            *(int*)(e + 0x20) += (CrtRand() % 40 - 20) << 0xc;
+
+            *(short*)(e + 0x28) = (short)(0x1400 - SignedMask(CrtRand(), 0x7ff));
+
+            *(short*)(e + 0x12) = 0;
+            e[0x40] = 0;
+
+            *(short*)(e + 0x2a) = (short)(0x1400 - SignedMask(CrtRand(), 0x7ff));
+        }
+
+        // La premiere image passe ici aussi : la naissance pose +0x10 = 1.
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x12))++;
+        if (*(short*)(e + 0x12) != 2) return;
+
+        *(short*)(e + 0x12) = 0;
+        e[0x40] += 1;
+        if (e[0x40] == 4) *(uint*)e &= 0x7fffffff;
     }
 
     /// <summary>

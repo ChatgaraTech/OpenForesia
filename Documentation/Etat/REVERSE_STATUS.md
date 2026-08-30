@@ -17793,3 +17793,66 @@ utile à connaître pour borner les plages voisines.
 Transcrits et **compilés, pas exécutés**. Reconnaissance à l'œil : à la montée de niveau, une
 auréole autour du personnage, des grains qui montent en hélice depuis le sol en s'éteignant, et des
 points colorés qui s'allument puis grossissent en pâlissant.
+
+## 2026-08-30 — l'éclaboussure du pas dans l'eau (`0x0040f7f0`)
+
+**Plantage signalé par Vincent** en s'approchant d'un point d'eau : la passe `FUN_0047acf0` tombait
+sur `gestionnaire d'entite 0x40F7F0 non transcrit`, sous-type `0xfe`, entrée 0 de `0x005f2d40`.
+
+### Où le sous-type `0xfe` mène
+
+La passe indexe `0x0056afc8` avec un octet. `0xfe` dépasse de `0x300` — trois tables — et retombe
+sur l'entrée `0x3e` de `0x0056b2c8`, celle qu'installe la zone. C'est le débordement délibéré déjà
+décrit sur `ResolveEntityHandler` ; rien de nouveau, mais c'est la première fois qu'il est emprunté
+au-delà de `0x0056b0c8`.
+
+### Qui la sème
+
+`EntityHandler_00541440`, le crochet de contact au sol de la forêt, déjà transcrit : à chaque
+demi-période du clip de marche, **si `+0x90` de l'entité porte `0x200`**, il appelle
+`SpawnStatusEffectEntity_0047AC40(e, e+0x1c, null, 0xfe, 0x18, -1)`. `0x200` est le sol liquide —
+d'où « un pas dans l'eau, une éclaboussure », et d'où le plantage dès le premier pas mouillé.
+
+Le rapprochement n'a pas demandé d'instrumentation : le dépôt contenait déjà l'unique site
+d'engendrement du sous-type, et le message de lacune donnait le sous-type. C'est exactement ce à
+quoi sert le vidage des seize premiers octets ajouté au message.
+
+### Le corps
+
+231 octets, `0x0040f7f0`..`0x0040f8d6`, **absents de `Blaze.c`** — Ghidra a décompilé ses deux
+voisines (`FUN_0040f650` et `FUN_0040f8e0`) et sauté celle-ci. Relevé sous
+`Legacy/Raw/Blaze/FUN_0040F7F0.asm`.
+
+Il est de la famille la plus simple : une naissance, puis un compteur.
+
+- La naissance pose l'atlas `0x0054f7a8` en `+0x3c`, écarte les trois coordonnées d'un tirage sur
+  `[-20, +19]` unités entières, et tire les deux échelles à `0x1400 - (rand & 0x7ff)`, soit
+  `0xc01`..`0x1400`. **Une éclaboussure n'est jamais plus grande que sa taille nominale.**
+- Ensuite, plus rien ne bouge : `+0x12` compte jusqu'à 2, remet à zéro et avance `+0x40`. Quatre
+  images d'atlas à deux images de jeu chacune — **huit images de vie**, puis le bit `0x80000000`
+  tombe.
+
+### Le masque signé, transcrit tel quel
+
+Le binaire calcule le tirage par `cdq / xor / sub / and 0x7ff / xor / sub`, l'idiome MSVC du reste
+signé par une puissance de deux. `rand()` ne rend jamais de négatif, donc `& 0x7ff` suffirait — mais
+l'idiome est écrit tel quel dans un `SignedMask(value, mask)`, parce que le réduire prêterait au
+corps une hypothèse qu'il ne fait pas. Ghidra rend la même forme dans les deux voisines décompilées,
+ce qui donne le modèle à suivre pour la famille entière.
+
+### Ce que la donnée voisine a confirmé
+
+`0x0054f7a8` porte **quatre** enregistrements, et pour une fois les deux bornes sont indépendantes :
+le compteur du corps s'arrête à 4, et la mise en page le dit aussi — `0x0054f778` (six images en
+`0x18 x 0x18`, celles de `FUN_0040f8e0`) avant, `DAT_0054f7c8` (`0x10 x 0x10`, symbole distinct dans
+`Blaze.c`) après. Relevé dans `DataSymbols.md`.
+
+### État
+
+Transcrit et **compilé, pas exécuté** — le test en jeu revient à Vincent. Reconnaissance à l'œil :
+en marchant dans l'eau, de petites gerbes de 8 x 8 qui apparaissent au pied du personnage un pas sur
+deux et disparaissent en huit images sans bouger.
+
+**Ce qui reste ouvert** : rien ne garantit que l'éclaboussure soit la seule lacune du chemin de
+l'eau. La chute et le repêchage décrits par Vincent — le personnage tombe puis revient sur la terre
+ferme — passent par d'autres gestionnaires qui n'ont pas encore été atteints.

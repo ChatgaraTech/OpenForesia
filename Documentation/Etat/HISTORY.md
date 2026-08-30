@@ -4,6 +4,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-08-30
+- feat : **l'éclaboussure du pas dans l'eau** — `0x0040f7f0`, absente de `Blaze.c`, relevée au désassembleur (231 octets). Sous-type `0xfe` de la table installée par zone, semé un pas sur deux par le crochet de contact au sol dès que le sol porte `0x200` : c'est le plantage à l'approche d'un point d'eau
+- doc : les quatre images de l'éclaboussure relevées à `0x0054f7a8` — quatre tuiles `8 x 8` aux coins d'un carré de `0x10`, bornées par `DAT_0054f7c8`
+
 ## 2026-08-29
 - fix : **les statistiques de départ des classes ne sont pas dans `Blaze.exe`, elles sont sur le CD** — l'écran de création les résout par `**(int **)(DAT_005e97c4 + 0x74) + classe * 8` (`FUN_00509470` à `0x005094e0`). `DAT_0056c7e0`, la table du binaire, n'est lue que par l'écran de groupe de mise au point. Un Guerrier démarre à **13** de force, pas 24 ; relevé par Vincent à l'écran, retrouvé dans `BLAZE.ALL` à `0x0090f0b4` où le motif n'apparaît qu'une fois sur 46 Mo
 - doc : **les sept caractéristiques portent enfin leur nom** — FO, INT, VO, AGI, CON, PM, CH. Les physiques 0, 3, 4 sont FO, AGI, CON et les mentales 1, 2, 5 sont INT, VO, PM ; les profils de classe le confirment un par un (Nain CON 15, Sorcier PM 14, Fée CH 16)
