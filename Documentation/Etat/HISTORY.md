@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-30
+- feat : **`0x0040f650`, la gerbe reculée** — la ligne du Z que Ghidra avait *inventée* (`param_1 + iVar5 * -0x28`) récupérée au désassembleur : c'est le cosinus de `cap + 0x400`, rangé dans un mot de pile et relu vingt lignes plus bas. Trois états, dont une attente
+- feat : **trois verbes de zone** — `0x00443960` (combien de membres debout, rangé dans une variable de script), `0x004439a0` (le compte de neuf drapeaux comparé à l'argument), `0x00443a00` (**la porte** : cinq états qui ouvrent puis referment l'animation d'une entité de sous-type 3)
+- feat : **quatre effets de la forêt d'un bloc** — `0x0040f190` (l'étincelle grise qui retombe), `0x0040f470` (l'éclat qui jaillit, mort à deux portes dont une aléatoire), `0x0040f8e0` (la gerbe large, vie fixe de 24 images), `0x0040fac0` (la bulle dont la vitesse sert d'horloge). Tous décompilés dans `Blaze.c`
+- doc : leurs quatre planches relevées **entières** (`0x0054f6f8`, `0x0054f778`, `0x0054f7c8`, `0x0054f7f8`) — trois d'entre elles contiennent plusieurs groupes dont un seul est atteignable
 - feat : **le fondu au blanc de la transition** (`0x0040edf0`, table `0x0056b0c8`, forêt) — un compte à rebours de 220 images : rien pendant 170, montée des voiles pendant 25, descente pendant 25, puis extinction et retour de la main au porteur
 - doc : **le rôle de `0x005de024` et `0x005de028` est établi** — ce sont deux **voiles plein cadre**, trois octets de couleur et un octet de commande. `GameMemory.cs` les disait « non établi » : on n'en voyait que la lecture, jamais l'animation
 - feat : **les deux verbes les plus employés du jeu** (`0x004457f0` et `0x00445840`, 78 emplois chacun) — vingt-huit octets, deux effets sonores, `return 0`. Le 8 est celui de la porte. C'est exactement ce que le classement par emplois devait faire ressortir

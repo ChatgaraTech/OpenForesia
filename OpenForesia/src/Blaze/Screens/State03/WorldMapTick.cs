@@ -4758,6 +4758,14 @@ public static unsafe partial class Blaze
             // voiles plein cadre 0x005de024 et 0x005de028, dont le role etait « non etabli ».
             case 0x0040EDF0: EntityHandler_0040EDF0(record); return;
 
+            // Quatre effets de plus de la meme table, transcrits d'un bloc le 2026-08-30 : tous
+            // decompiles dans Blaze.c, tous de la famille « naitre, se disperser, decompter ».
+            case 0x0040F190: EntityHandler_0040F190(record); return;
+            case 0x0040F470: EntityHandler_0040F470(record); return;
+            case 0x0040F8E0: EntityHandler_0040F8E0(record); return;
+            case 0x0040FAC0: EntityHandler_0040FAC0(record); return;
+            case 0x0040F650: EntityHandler_0040F650(record); return;
+
             default:
                 // Les seize premiers octets de l'enregistrement partent avec la lacune. Un
                 // gestionnaire manquant se lit toujours avec sa donnee : c'est ce qui permet de
@@ -9050,6 +9058,455 @@ public static unsafe partial class Blaze
 
         return 0x01000000u | ((uint)b << 0x10) | ((uint)g << 8) | r;
     }
+
+    // =====================================================================
+    // Quatre effets de la table 0x0056b2c8, foret — la meme famille que l'eclaboussure du pas
+    // (0x0040f7f0) : une naissance qui disperse, puis un decompte. Transcrits d'un bloc le
+    // 2026-08-30, tous decompiles dans Blaze.c.
+    //
+    // Leurs quatre planches se suivent dans .data et se bornent l'une l'autre ; chacune est
+    // relevee ENTIERE, pas seulement les enregistrements que son corps atteint. C'est la lecon de
+    // 0x005646c0 dans DataSymbols.md : l'indexation se fait en avant, un descripteur releve seul
+    // n'a aucun garde-fou.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f6f8</c> — cinq enregistrements jusqu'a
+    /// <c>DAT_0054f720</c>. <see cref="EntityHandler_0040FAC0"/> n'atteint que le <b>premier</b> :
+    /// son corps ne touche jamais l'indice <c>+0x40</c>, que la naissance a mis a zero. Les quatre
+    /// suivants reprennent les memes <c>u, v</c> que <see cref="s_Descriptors_0054F720"/> avec un
+    /// autre couple d'attributs (<c>00 03</c> au lieu de <c>01 02</c>) — une variante de la meme
+    /// animation.</summary>
+    private static readonly byte[] s_Descriptors_0054F6F8 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f6f8
+        0x48, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f700
+        0x60, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f708
+        0x78, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f710
+        0x90, 0x30, 0x18, 0x18, 0x00, 0x03, 0x10, 0x00,   // 0x0054f718
+    ];
+
+    private static byte* s_Descriptors0054F6F8Storage;
+
+    private static byte* Descriptors0054F6F8()
+        => NativeCopy(s_Descriptors_0054F6F8, ref s_Descriptors0054F6F8Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f778</c> — <b>six</b> enregistrements jusqu'a
+    /// <c>0x0054f7a8</c>, six tuiles de <c>0x18 x 0x18</c> sur deux rangees. Le compte se lit dans
+    /// le corps : <see cref="EntityHandler_0040F8E0"/> pose son indice a <c>rand % 6</c> a chaque
+    /// image.</summary>
+    private static readonly byte[] s_Descriptors_0054F778 =
+    [
+        0x00, 0x00, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00,   // 0x0054f778
+        0x18, 0x00, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00,   // 0x0054f780
+        0x00, 0x18, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00,   // 0x0054f788
+        0x18, 0x18, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00,   // 0x0054f790
+        0x00, 0x30, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00,   // 0x0054f798
+        0x18, 0x30, 0x18, 0x18, 0x00, 0x00, 0x00, 0x00,   // 0x0054f7a0
+    ];
+
+    private static byte* s_Descriptors0054F778Storage;
+
+    private static byte* Descriptors0054F778()
+        => NativeCopy(s_Descriptors_0054F778, ref s_Descriptors0054F778Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f7c8</c> — six enregistrements jusqu'a
+    /// <c>DAT_0054f7f8</c>. <see cref="EntityHandler_0040F470"/> n'atteint que le <b>premier</b> :
+    /// il pose <c>+0x40 = 0</c> et n'y revient jamais. Les quatre suivants sont des tuiles de
+    /// <c>0x20 x 0x20</c> et le dernier une tuile <c>0x17 x 0x0f</c> d'une autre planche : trois
+    /// groupes dans une seule plage.</summary>
+    private static readonly byte[] s_Descriptors_0054F7C8 =
+    [
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f7c8
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f7d0
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f7d8
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f7e0
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f7e8
+        0xa0, 0xf0, 0x17, 0x0f, 0x00, 0x00, 0x08, 0x00,   // 0x0054f7f0
+    ];
+
+    private static byte* s_Descriptors0054F7C8Storage;
+
+    private static byte* Descriptors0054F7C8()
+        => NativeCopy(s_Descriptors_0054F7C8, ref s_Descriptors0054F7C8Storage);
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f7f8</c> — deux enregistrements jusqu'a
+    /// <c>DAT_0054f808</c>. <see cref="EntityHandler_0040F190"/> n'atteint que le premier ; le
+    /// second est une tuile de <c>0x3f x 0x3f</c>, sans rapport de taille avec lui.</summary>
+    private static readonly byte[] s_Descriptors_0054F7F8 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f7f8
+        0xc0, 0xc0, 0x3f, 0x3f, 0x01, 0x02, 0x09, 0x00,   // 0x0054f800
+    ];
+
+    private static byte* s_Descriptors0054F7F8Storage;
+
+    private static byte* Descriptors0054F7F8()
+        => NativeCopy(s_Descriptors_0054F7F8, ref s_Descriptors0054F7F8Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_0040f190 @ 0x0040f190 — <b>l'etincelle grise qui retombe</b>. Decompilee dans
+    /// <c>Blaze.c</c>. Table <c>0x0056b2c8</c>, foret.
+    ///
+    /// <para>
+    /// La naissance se disperse de <c>[-20, +19]</c> unites entieres sur les <b>trois</b> axes,
+    /// prend une echelle de <c>0x400 + rand % 1000</c> et une teinte grise a <c>0x808080</c>.
+    /// Ensuite elle <b>tombe</b> d'une unite entiere par image (<c>-0x1000</c> sur <c>+0x20</c>) et
+    /// s'assombrit de six par canal, jusqu'a s'eteindre quand le canal rouge atteint zero — soit
+    /// vingt-deux images, l'assombrissement etant borne a zero par
+    /// <see cref="BrightenEntityTint_00404DE0"/>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040F190(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054F7F8();   // Ghidra: &DAT_0054f7f8
+            e[0x40] = 0;
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+
+            short scale = (short)(CrtRand() % 1000 + 0x400);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            e[0x38] = 0x80;
+            e[0x39] = 0x80;
+            e[0x3a] = 0x80;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(int*)(e + 0x20) -= 0x1000;
+        BrightenEntityTint_00404DE0(e, -6, -6, -6);
+
+        if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0040f470 @ 0x0040f470 — <b>l'eclat qui jaillit et retombe</b>. Decompilee dans
+    /// <c>Blaze.c</c>. Table <c>0x0056b2c8</c>, foret.
+    ///
+    /// <para>
+    /// <b>Elle tire son echelle deux fois</b>, et la seconde ecrase la premiere :
+    /// <c>0xc00 + (rand &amp; 0x3ff)</c> sur les deux axes, puis <c>0x1000 + rand % 0xc00</c>. Les
+    /// deux premiers tirages ne servent qu'a consommer deux nombres de la suite pseudo-aleatoire —
+    /// transcrits tels quels, la suite est partagee par tout le jeu.
+    /// </para>
+    /// <para>
+    /// Elle part d'une position dispersee puis <b>decalee de 0x32 fois le sinus et le cosinus de
+    /// son cap</b> <c>+0x32</c> — elle jaillit donc dans la direction que son porteur regarde. Sa
+    /// vitesse verticale <c>+0x54</c> part vers le haut (<c>+10 a +24</c> unites) et perd deux
+    /// unites par image : une parabole.
+    /// </para>
+    /// <para>
+    /// <b>Sa mort a deux portes, et l'une est aleatoire</b> : passe la onzieme image, une chance
+    /// sur six par image ; et de toute facon a la seizieme. La teinte perd <c>0x24</c> par canal et
+    /// par image <b>sans borne</b> — soustraction d'octet directe, pas
+    /// <see cref="BrightenEntityTint_00404DE0"/> —, donc elle deborde. C'est ce que fait le
+    /// binaire.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040F470(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F7C8();   // Ghidra: &DAT_0054f7c8
+
+            // Les deux premiers tirages d'echelle sont ecrases plus bas. Ils consomment deux
+            // nombres de la suite, et c'est leur seul effet.
+            *(ushort*)(e + 0x28) = (ushort)(SignedMask(CrtRand(), 0x3ff) + 0xc00);
+            ushort discarded = (ushort)(SignedMask(CrtRand(), 0x3ff) + 0xc00);
+            e[0x0a] = 0x0d;
+            e[0x0b] = 0;
+            *(ushort*)(e + 0x2a) = discarded;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0x96 - 0x4b) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x32 - 0x19) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 200 - 100) * 0x1000;
+
+            short course = *(short*)(e + 0x32);
+            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(course) * 0x32;
+            *(int*)(e + 0x1c) += Winsys3d.GetCosTableEntry(course) * 0x32;
+
+            *(int*)(e + 0x50) = (CrtRand() % 6 - 3) * 0x1000;
+            *(int*)(e + 0x54) = (CrtRand() % 0x0f + 10) * 0x1000;
+            *(int*)(e + 0x58) = (CrtRand() % 6 - 3) * 0x1000;
+
+            *(short*)(e + 0x28) = (short)(CrtRand() % 0xc00 + 0x1000);
+
+            int last = CrtRand();
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            e[0x40] = 0;
+            *(short*)(e + 0x2a) = (short)(last % 0xc00 + 0x1000);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(int*)(e + 0x1c) += *(int*)(e + 0x50);
+        *(int*)(e + 0x20) += *(int*)(e + 0x54);
+        *(int*)(e + 0x24) += *(int*)(e + 0x58);
+
+        (*(short*)(e + 0x12))++;
+
+        // Soustraction d'octet NUE, sans borne a zero : elle deborde.
+        e[0x38] = (byte)(e[0x38] - 0x24);
+        *(int*)(e + 0x54) -= 0x2000;
+        e[0x39] = (byte)(e[0x39] - 0x24);
+        e[0x3a] = (byte)(e[0x3a] - 0x24);
+
+        int roll = CrtRand();
+        if ((*(short*)(e + 0x12) > 10 && (short)(roll % 6) == 1) || *(short*)(e + 0x12) == 0x10)
+        {
+            *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0040f8e0 @ 0x0040f8e0 — <b>la gerbe large</b>. Decompilee dans <c>Blaze.c</c>.
+    /// Table <c>0x0056b2c8</c>, foret. Meme charpente que
+    /// <see cref="EntityHandler_0040F470"/> : jaillir, retomber, disparaitre.
+    ///
+    /// <para>
+    /// <b>Elle tire elle aussi son echelle deux fois</b>, la seconde ecrasant la premiere
+    /// (<c>0xc00 + (rand &amp; 0x3ff)</c> puis <c>0x800 + (rand &amp; 0x7ff)</c>), et se disperse
+    /// beaucoup plus large que sa sœur : <c>±250</c> unites sur X, <c>±35</c> sur Y, <c>±100</c>
+    /// sur Z. Le decalage par le cap est le meme, <c>0x32</c> fois sinus et cosinus.
+    /// </para>
+    /// <para>
+    /// Sa vie est <b>fixe</b> : vingt-quatre images, sans tirage. Et elle change d'image d'atlas a
+    /// chaque image, au hasard parmi six — c'est ce qui borne
+    /// <see cref="s_Descriptors_0054F778"/>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040F8E0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F778();   // Ghidra: &DAT_0054f778
+
+            *(ushort*)(e + 0x28) = (ushort)(SignedMask(CrtRand(), 0x3ff) + 0xc00);
+            ushort discarded = (ushort)(SignedMask(CrtRand(), 0x3ff) + 0xc00);
+            e[0x0a] = 5;
+            e[0x0b] = 0;
+            *(ushort*)(e + 0x2a) = discarded;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 500 - 0xfa) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x46 - 0x1e) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 200 - 100) * 0x1000;
+
+            short course = *(short*)(e + 0x32);
+            *(int*)(e + 0x24) += (int)Winsys3d.GetSinTableEntry(course) * 0x32;
+            *(int*)(e + 0x1c) += Winsys3d.GetCosTableEntry(course) * 0x32;
+
+            *(int*)(e + 0x50) = (SignedMask(CrtRand(), 0x0f) - 8) * 0x1000;
+            *(int*)(e + 0x54) = (CrtRand() % 10 + 3) * 0x1000;
+            *(int*)(e + 0x58) = (SignedMask(CrtRand(), 0x0f) - 8) * 0x1000;
+
+            *(ushort*)(e + 0x28) = (ushort)(SignedMask(CrtRand(), 0x7ff) + 0x800);
+
+            uint tail = (uint)CrtRand();
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(ushort*)(e + 0x2a) = (ushort)(SignedMask((int)tail, 0x7ff) + 0x800);
+
+            e[0x40] = (byte)(CrtRand() % 6);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(int*)(e + 0x1c) += *(int*)(e + 0x50);
+        *(int*)(e + 0x20) += *(int*)(e + 0x54);
+        (*(short*)(e + 0x12))++;
+        *(int*)(e + 0x24) += *(int*)(e + 0x58);
+        *(int*)(e + 0x54) -= 0x1000;
+
+        if (*(short*)(e + 0x12) == 0x18) *(uint*)e &= 0x7fffffff;
+
+        e[0x40] = (byte)(CrtRand() % 6);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0040fac0 @ 0x0040fac0 — <b>la bulle qui monte et retrecit</b>. Decompilee dans
+    /// <c>Blaze.c</c>. Table <c>0x0056b2c8</c>, foret.
+    ///
+    /// <para>
+    /// Elle se disperse de <c>±80</c> unites a l'horizontale, monte de <c>0 a 19</c> d'un coup a la
+    /// naissance, et part d'une echelle fixe de <c>0x9c4</c>. Son pas de montee <c>+0x12</c>, tire
+    /// entre 10 et 19, <b>diminue d'une unite une image sur deux</b> — le compteur <c>+0x14</c>
+    /// bascule.
+    /// </para>
+    /// <para>
+    /// <b>Deux seuils sur ce meme pas</b> : sous 7, l'echelle perd 200 par image sur les deux axes ;
+    /// sous 3, l'entite s'eteint. Elle ne compte donc pas ses images — c'est sa vitesse qui lui
+    /// sert d'horloge.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040FAC0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054F6F8();   // Ghidra: &DAT_0054f6f8
+            e[0x0a] = 6;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x1c) += (CrtRand() % 0xa0 - 0x50) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0xa0 - 0x50) * 0x1000;
+
+            int rise = CrtRand();
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x28) = 0x9c4;
+            *(short*)(e + 0x2a) = 0x9c4;
+            *(int*)(e + 0x20) += (rise % 0x14) * 0x1000;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 10 + 10);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        (*(short*)(e + 0x14))++;
+        *(int*)(e + 0x20) += *(short*)(e + 0x12) * 0x1000;
+
+        if (*(short*)(e + 0x14) == 2)
+        {
+            *(short*)(e + 0x14) = 0;
+            (*(short*)(e + 0x12))--;
+        }
+
+        if (*(short*)(e + 0x12) < 7)
+        {
+            *(short*)(e + 0x28) -= 200;
+            *(short*)(e + 0x2a) -= 200;
+        }
+
+        if (*(short*)(e + 0x12) < 3) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>Ghidra: <c>&amp;DAT_0054f758</c> — quatre enregistrements jusqu'a
+    /// <c>DAT_0054f778</c>, quatre tuiles de <c>8 x 8</c> aux coins d'un carre de <c>0x10</c>. Le
+    /// compte se lit dans le corps : <see cref="EntityHandler_0040F650"/> tire son indice a
+    /// <c>rand &amp; 3</c>. Le quatrieme a une <b>hauteur de 7</b> et non 8 — un pixel de moins,
+    /// releve tel quel.</summary>
+    private static readonly byte[] s_Descriptors_0054F758 =
+    [
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f758
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f760
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f768
+        0x10, 0x10, 0x08, 0x07, 0x01, 0x03, 0x10, 0x00,   // 0x0054f770
+    ];
+
+    private static byte* s_Descriptors0054F758Storage;
+
+    private static byte* Descriptors0054F758()
+        => NativeCopy(s_Descriptors_0054F758, ref s_Descriptors0054F758Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_0040f650 @ 0x0040f650 — <b>la gerbe reculee</b>. Table <c>0x0056b2c8</c>, foret.
+    /// Decompilee dans <c>Blaze.c</c>, mais avec un <b>appel dont Ghidra a jete le resultat</b> :
+    /// le relevé au desassembleur est garde sous <c>Legacy/Raw/Blaze/FUN_0040F650.asm</c>.
+    ///
+    /// <para>
+    /// <b>Ce que la pseudo-C a invente.</b> Elle rend quatre appels dont le deuxieme n'a pas
+    /// d'affectation :
+    /// </para>
+    /// <code>
+    /// iVar3 = Ordinal_451(cap + 0x400);
+    /// Ordinal_450(cap + 0x400);          /* resultat jete */
+    /// </code>
+    /// <para>
+    /// et remplace plus bas cette valeur perdue par <c>(int)(param_1 + iVar5 * -0x28)</c> — une
+    /// arithmetique de pointeur sur le parametre, qui n'a aucun sens ici. Le desassembleur montre
+    /// que le cosinus est range dans un mot de pile (<c>[esp+0x14]</c>) et relu vingt lignes plus
+    /// bas : la ligne du Z est <b>le miroir exact</b> de celle du X. Transcrire la pseudo-C telle
+    /// quelle aurait produit un deplacement faux qu'aucune compilation n'aurait signale.
+    /// </para>
+    /// <para>
+    /// <b>Ce qu'elle fait.</b> La naissance recule l'entite d'un demi-pas dans la direction
+    /// <c>cap + 0xc00</c> (<c>0xa0</c> fois sinus et cosinus), puis la decale d'un huitieme de la
+    /// difference entre les directions <c>cap + 0x400</c> et <c>cap + 0xc00</c>, multipliee par un
+    /// tirage de <c>0 a 7</c>. Les deux quarts de tour de part et d'autre du cap : la gerbe s'ouvre
+    /// donc perpendiculairement a ce que regarde son porteur, d'une largeur tiree au hasard.
+    /// </para>
+    /// <para>
+    /// <b>Trois etats, pas deux.</b> L'etat 1 est une <b>attente</b> de <c>rand % 5</c> images,
+    /// pendant laquelle le bit <c>0x4000</c> est pose ; a son terme l'etat passe a 2 et le bit
+    /// tombe. L'etat 2 change d'image d'atlas a chaque image et compte : il meurt a la vingtieme,
+    /// <b>ou</b> avant, sur une chance sur vingt par image. Deux portes, comme
+    /// <see cref="EntityHandler_0040F470"/>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040F650(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x2e) = 0x14;
+            *(byte**)(e + 0x3c) = Descriptors0054F758();   // Ghidra: &DAT_0054f758
+
+            *(short*)(e + 0x28) = (short)(CrtRand() % 600 + 7000);
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 600 + 7000);
+
+            // Ghidra: `lea ebx,[eax+eax*4] ; shl ebx,5` — les quatre produits valent 0xa0 fois la
+            // table. Le second, le cosinus de cap+0x400, est celui que la pseudo-C a perdu.
+            int course = *(short*)(e + 0x32);
+            int sinNear = (int)Winsys3d.GetSinTableEntry(course + 0x400) * 0xa0;
+            int cosNear = Winsys3d.GetCosTableEntry(course + 0x400) * 0xa0;
+            int sinFar = (int)Winsys3d.GetSinTableEntry(course + 0xc00) * 0xa0;
+            int cosFar = Winsys3d.GetCosTableEntry(course + 0xc00) * 0xa0;
+
+            *(int*)(e + 0x1c) -= sinFar;
+            *(int*)(e + 0x24) -= cosFar;
+
+            int spread = SignedMask(CrtRand(), 7);
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(int*)(e + 0x1c) += -DivideTowardZeroBy8(sinNear - sinFar) * spread;
+            *(int*)(e + 0x24) += -DivideTowardZeroBy8(cosNear - cosFar) * spread;
+
+            int wait = CrtRand();
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+            e[0x40] = 0;
+            *(uint*)e |= 0x4000;
+            *(short*)(e + 0x12) = (short)(wait % 5);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            (*(short*)(e + 0x12))--;
+            if (*(short*)(e + 0x12) < 0)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(uint*)e &= 0xffffbfff;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        (*(short*)(e + 0x14))++;
+        e[0x40] = (byte)SignedMask(CrtRand(), 3);
+
+        int roll = CrtRand();
+        if (*(short*)(e + 0x14) == 0x14 || (short)(roll % 0x14) == 1)
+        {
+            *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>cdq ; and edx,7 ; add eax,edx ; sar eax,3</c> — la division entiere par huit
+    /// <b>vers zero</b> que le compilateur de 1998 emet pour un <c>/ 8</c> signe. Un simple
+    /// <c>&gt;&gt; 3</c> arrondirait vers moins l'infini et donnerait un resultat different d'une
+    /// unite sur les valeurs negatives.
+    /// </summary>
+    private static int DivideTowardZeroBy8(int value) => (value + ((value >> 0x1f) & 7)) >> 3;
 
     /// <summary>
     /// Ghidra: <c>&amp;DAT_005515a0</c> — <b>les trois images de l'etincelle</b> de

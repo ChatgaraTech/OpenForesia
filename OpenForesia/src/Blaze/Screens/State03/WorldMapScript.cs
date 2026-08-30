@@ -1560,6 +1560,12 @@ public static unsafe partial class Blaze
             0x004457F0 => AreaVerb_004457F0(),
             0x00445840 => AreaVerb_00445840(),
 
+            // Trois verbes de plus : deux comptes (membres debout, drapeaux poses) et la PORTE,
+            // dont les cinq etats ouvrent puis referment l'animation d'une entite de sous-type 3.
+            0x00443960 => AreaVerb_00443960((short)(s[2] | (s[3] << 8))),
+            0x004439A0 => AreaVerb_004439A0((short)(s[2] | (s[3] << 8))),
+            0x00443A00 => AreaVerb_00443A00(ent),
+
             _ => throw new NotImplementedException(
                 $"Interpreteur de script, opcode 0 : verbe {verb} = 0x{target:X6}, pas encore " +
                 "reconstruit. Son adresse vient de la table 0x0056aec8 de la zone courante " +
@@ -1784,6 +1790,173 @@ public static unsafe partial class Blaze
     private static uint AreaVerb_00445840()
     {
         Aud.PlaySoundEffect(0x1d, 0x300, 0x0c00, 0x0c00);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00443960</c> — <b>« combien de membres sont debout ? »</b>. 58 octets, absente
+    /// de <c>Blaze.c</c> ; relevé sous <c>Legacy/Raw/Blaze/FUN_00443960.asm</c>.
+    ///
+    /// <para>
+    /// Elle balaie les quatre creneaux de <see cref="Inp.s_SlotFlags_005e93c0"/>, compte ceux qui
+    /// portent <c>0x80000000</c> sans <c>0x50000000</c> — vivants et non retires, le meme test que
+    /// <see cref="AreaVerb_00445480"/> —, et range le compte dans la <b>variable de script</b> que
+    /// son argument designe. Elle rend zero, donc le script continue et lira la variable ensuite.
+    /// </para>
+    /// <para>
+    /// L'argument est masque a huit bits : n'importe quelle valeur designe donc une variable de la
+    /// banque, sans borne. C'est le binaire qui le fait.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00443960(short slot)
+    {
+        int standing = 0;
+        byte* member = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) != 0 && (flags & 0x50000000) == 0) standing++;
+        }
+
+        Mem.s_StateBank2_005e9060[(uint)slot & 0xff] = (byte)standing;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004439a0</c> — <b>« en ai-je moins que ça ? »</b>. 84 octets, absente de
+    /// <c>Blaze.c</c> ; relevé sous <c>Legacy/Raw/Blaze/FUN_004439A0.asm</c>.
+    ///
+    /// <para>
+    /// Elle compte les bits poses dans <b>neuf drapeaux</b> — les huit de l'octet
+    /// <c>0x005e9000</c> et le bit 0 de <c>0x005e9001</c> — puis rend <c>1</c> si son argument est
+    /// <b>strictement superieur</b> a ce compte, <c>0</c> sinon. C'est donc un verbe de
+    /// <b>test</b> : l'interpreteur s'arrete sur un resultat non nul.
+    /// </para>
+    /// <para>
+    /// La comparaison est sur <b>seize bits et signee</b> (<c>cmp [esp+8],ax</c> puis
+    /// <c>setg</c>). Le premier bit <b>pose</b> 1 au lieu d'incrementer, comme dans
+    /// <c>AreaVerb_004438A0</c> — meme idiome de compilateur, meme resultat.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_004439A0(short threshold)
+    {
+        byte flags = Mem.Arena(0x005e9000)[0];
+
+        int count = (flags & 0x01) != 0 ? 1 : 0;
+        if ((flags & 0x02) != 0) count++;
+        if ((flags & 0x04) != 0) count++;
+        if ((flags & 0x08) != 0) count++;
+        if ((flags & 0x10) != 0) count++;
+        if ((flags & 0x20) != 0) count++;
+        if ((flags & 0x40) != 0) count++;
+        if ((flags & 0x80) != 0) count++;
+        if ((Mem.Arena(0x005e9001)[0] & 1) != 0) count++;
+
+        return threshold > (short)count ? 1u : 0u;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00443a00 @ 0x00443a00 — <b>la porte qui s'ouvre et se referme</b>. Decompilee
+    /// dans <c>Blaze.c</c>. Verbe de la table <c>0x0056aec8</c>.
+    ///
+    /// <para>
+    /// Elle cherche, parmi les <c>0x20</c> entites de scene de <c>0x005ecaa0</c>, celle de
+    /// <b>sous-type 3</b> qui est vivante — la porte —, lui pose <c>0x8001000</c> et remet son
+    /// image d'animation a zero. Puis elle deroule <b>cinq etats</b> sur l'entite appelante :
+    /// </para>
+    /// <list type="number">
+    /// <item><b>0 → 1</b> : des qu'une porte a ete trouvee, son image et son cap sont remis a
+    /// zero ;</item>
+    /// <item><b>1 → 2</b> : attend que le bit 0 de <c>0x005e96fa</c> soit pose ;</item>
+    /// <item><b>2</b> : passe la neuvieme image et <b>une image sur deux</b>, l'image d'animation
+    /// de la porte avance ; arrivee a l'avant-derniere de sa planche, elle s'y arrete et l'etat
+    /// passe a 3. La porte est ouverte ;</item>
+    /// <item><b>3 → 4</b> : attend que ce meme bit <b>retombe</b> ;</item>
+    /// <item><b>4</b> : une image sur deux, l'animation <b>recule</b> jusqu'a zero, puis l'etat
+    /// passe a 5 et plus rien ne s'execute. La porte est refermee.</item>
+    /// </list>
+    /// <para>
+    /// <b>Le nombre d'images vient de la planche</b>, pas d'une constante : la table
+    /// <c>0x005e9640</c> est lue a l'indice <c>+0x04</c> de la porte, puis dereferencee deux fois
+    /// pour atteindre le <c>+0x16</c> qui porte le compte.
+    /// </para>
+    /// <para>
+    /// <b>Une fragilite du binaire d'origine, conservee.</b> La porte est cherchee a chaque appel
+    /// et le pointeur est <b>local</b> : si elle disparait alors que l'etat vaut 2 ou 4, le corps
+    /// la dereference tout de meme. L'original a le meme defaut, et le meme sort.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00443A00(byte* entity)
+    {
+        byte* door = null;
+        bool found = false;
+        byte* frames = entity;                    // iVar5, initialise au parametre par le binaire
+
+        byte* record = Mem.Entity(0x005ecaa0);
+        for (int i = 0; i < 0x20; i++, record += 0x9c)
+        {
+            if (record[0x0c] != 3 || (*(uint*)record & 0x80000000) == 0) continue;
+
+            *(short*)(record + 0x18) = 0;
+            frames = *(byte**)*(byte***)(Mem.Arena(0x005e9640) + record[4] * 4);
+            *(uint*)record |= 0x8001000;
+            found = true;
+            door = record;
+        }
+
+        if (*(short*)(entity + 0x10) == 0 && found)
+        {
+            door[0x0a] = 0;
+            *(short*)(door + 0x1a) = 0;
+            *(short*)(entity + 0x10) = 1;
+        }
+
+        if (*(short*)(entity + 0x10) == 1 && (Mem.Arena(0x005e96fa)[0] & 1) != 0)
+        {
+            *(short*)(entity + 0x10) = 2;
+            *(short*)(entity + 0x16) = 0;
+        }
+
+        if (*(short*)(entity + 0x10) == 2)
+        {
+            if (*(short*)(entity + 0x16) > 8 && (*(ushort*)(entity + 0x16) & 1) != 0)
+            {
+                (*(short*)(door + 0x1a))++;
+                if (*(short*)(door + 0x1a) >= *(ushort*)(frames + 0x16) - 1)
+                {
+                    *(ushort*)(door + 0x1a) = (ushort)(*(ushort*)(frames + 0x16) - 2);
+                    *(short*)(entity + 0x10) = 3;
+                    *(short*)(entity + 0x12) = 0;
+                }
+            }
+
+            (*(short*)(entity + 0x16))++;
+        }
+
+        if (*(short*)(entity + 0x10) == 3 && (Mem.Arena(0x005e96fa)[0] & 1) == 0)
+        {
+            *(short*)(entity + 0x10) = 4;
+            *(short*)(entity + 0x16) = 0;
+        }
+
+        if (*(short*)(entity + 0x10) == 4)
+        {
+            if ((entity[0x16] & 1) != 0)
+            {
+                (*(short*)(door + 0x1a))--;
+                if (*(short*)(door + 0x1a) < 1)
+                {
+                    *(short*)(door + 0x1a) = 0;
+                    *(short*)(entity + 0x10) = 5;
+                }
+            }
+
+            (*(short*)(entity + 0x16))++;
+        }
+
         return 0;
     }
 

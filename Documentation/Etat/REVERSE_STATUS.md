@@ -18350,3 +18350,42 @@ n'est pas toujours faute de sites — c'est parfois qu'aucun de ceux qu'on a lus
 Les additions sont sur huit bits et debordent au lieu de saturer. La descente ramene exactement au
 point de depart, donc le voile revient a ce qu'il etait — **pourvu que la montee soit allee au
 bout**. Une entite eteinte en cours de montee laisserait l'ecran teinte. Transcrit tel quel.
+
+## 2026-08-30 (suite 11) — quatre effets de la foret, et un qui resiste
+
+Quatre corps decompiles dans `Blaze.c`, transcrits d'un bloc : `0x0040f190`, `0x0040f470`,
+`0x0040f8e0`, `0x0040fac0`. Tous de la table `0x0056b2c8`, tous de la famille « naitre, se
+disperser, decompter » — celle de l'eclaboussure du pas.
+
+| adresse | ce que c'est | ce qui la tue |
+|---|---|---|
+| `0x0040f190` | l'etincelle grise, dispersee sur trois axes, qui **tombe** d'une unite par image | sa teinte atteint zero, vingt-deux images |
+| `0x0040f470` | l'eclat qui **jaillit dans la direction du cap**, parabole | passe la 11e image, une chance sur six ; de toute facon a la 16e |
+| `0x0040f8e0` | la gerbe **large** (±250 sur X), image d'atlas retiree au hasard a chaque image | vingt-quatre images, sans tirage |
+| `0x0040fac0` | la bulle qui monte et retrecit | **sa vitesse**, pas ses images : sous 7 elle retrecit, sous 3 elle meurt |
+
+Deux idiomes reparaissent et sont conserves : l'**echelle tiree deux fois**, la seconde ecrasant la
+premiere (`0x0040f470` et `0x0040f8e0`) — le premier tirage ne sert qu'a consommer un nombre de la
+suite pseudo-aleatoire, partagee par tout le jeu — et la **soustraction d'octet nue** sur la teinte
+de `0x0040f470`, sans borne a zero, donc qui deborde.
+
+### Les planches se bornent l'une l'autre
+
+`0x0054f6f8`, `0x0054f778`, `0x0054f7c8`, `0x0054f7f8` : quatre plages contigues, relevees
+**entieres**. Trois d'entre elles contiennent plusieurs groupes dont un seul est atteignable depuis
+le corps qui les nomme — `0x0054f7c8` en compte trois. La regle de `DataSymbols.md` tient : on
+releve la plage, pas le descripteur.
+
+### `0x0040f650` mis de cote, et pourquoi
+
+Meme famille, decompilee elle aussi, mais Ghidra y a **perdu le resultat d'un appel** :
+
+```c
+iVar3 = Ordinal_451(angle + 0x400);
+Ordinal_450(angle + 0x400);            /* resultat jete */
+```
+
+et il le remplace plus bas par `(int)(param_1 + iVar5 * -0x28)`, une arithmetique de pointeur qui
+n'a aucun sens ici. La ligne du Z est donc inventee. Elle se recupere au desassembleur — c'est
+quelques instructions — mais transcrire la pseudo-C telle quelle produirait un deplacement faux
+qu'aucune compilation ne signalerait. Laissee pour une passe au desassembleur.
