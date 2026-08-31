@@ -4730,6 +4730,12 @@ public static unsafe partial class Blaze
             case 0x0047B6B0: TickWetFeetWave_0047B6B0(record); return;
             case 0x0047B750: TickWetFeetSplash_0047B750(record); return;
 
+            // ROCHER, ecole 0 indice 3 — trois corps, et le premier compte de references du
+            // depot : le cercle attend ses quatre rochers avant de rendre la main au lanceur.
+            case 0x0047B7A0: TickRockCircle_0047B7A0(record); return;
+            case 0x0047B850: TickRock_0047B850(record); return;
+            case 0x0047BB10: TickRockDust_0047BB10(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -9299,6 +9305,39 @@ public static unsafe partial class Blaze
 
     private static byte* Descriptors00551A78()
         => NativeCopy(s_Descriptors_00551A78, ref s_Descriptors00551A78Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551a98</c> — <b>les quatre images de la poussiere de Rocher</b>, l'atlas
+    /// que <see cref="TickRock_0047B850"/> passe a son enfant <c>0x4b</c>, une fois a la naissance
+    /// et une fois a l'impact.
+    ///
+    /// <para>
+    /// <b>Quatre, et le consommateur le dit</b> : <see cref="TickRockDust_0047BB10"/> pose
+    /// <c>+0x40 = compteur &gt;&gt; 1</c> et s'eteint des que ce quotient atteint 4. La donnee suit
+    /// — quatre tuiles <c>0x20 x 0x20</c> en <c>v = 0x88</c> (<c>u</c> = <c>0x40</c>, <c>0x60</c>,
+    /// <c>0x80</c>, <c>0xa0</c>), puis <c>0x00551ab8</c> reprend la meme serie avec un
+    /// <b>dernier octet different</b> (<c>02</c> au lieu de <c>00</c>) : c'est une seconde table,
+    /// pas la suite de celle-ci.
+    /// </para>
+    /// <para>
+    /// Elle commence ou <see cref="s_Descriptors_00551A78"/> finit, et les deux plages se suivent
+    /// sans trou — la tuile passe de <c>0x10 x 0x10</c> a <c>0x20 x 0x20</c> exactement a la
+    /// frontiere.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551A98 =
+    [
+        0x40, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551a98
+        0x60, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551aa0
+        0x80, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551aa8
+        0xa0, 0x88, 0x20, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551ab0
+    ];
+
+    private static byte* s_Descriptors00551A98Storage;
+
+    /// <summary>Les quatre descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551A98()
+        => NativeCopy(s_Descriptors_00551A98, ref s_Descriptors00551A98Storage);
 
     /// <summary>
     /// Ghidra: FUN_00475a30 @ 0x00475a30 — <b>l'entree 183 (<c>0xb7</c>) de la table statique
@@ -29799,6 +29838,276 @@ public static unsafe partial class Blaze
         }
 
         unchecked { *(uint*)(e + 0x38) = tint + 0xffefeff0; }   // -0x101010
+    }
+
+    // =====================================================================
+    // ROCHER — le quatrieme sort, ecole 0 indice 3, sous-type 0x03
+    //
+    // Trois corps, et une forme encore nouvelle : le sort ne va nulle part, il TOURNE AUTOUR DU
+    // LANCEUR et compte ses enfants.
+    //
+    //   0x0047B7A0   LE CERCLE. Sous-type 3 de 0x00551c30. Il se colle au lanceur, ne bouge pas,
+    //                et lache un rocher toutes les quatre images pendant seize — quatre rochers.
+    //                Puis il ATTEND : il ne s'eteint que lorsque ses deux compteurs tombent a zero.
+    //   0x0047B850   LE ROCHER, sous-type 0x69 de 0x00551f30. Il orbite autour du lanceur, son
+    //                orbite ralentit d'un huitieme par image, puis il est PROJETE et vole librement
+    //                jusqu'au sol ou jusqu'a une cible.
+    //   0x0047BB10   LA POUSSIERE, sous-type 0x4b de 0x00552230. Huit images, quatre tuiles.
+    //
+    // LES DEUX COMPTEURS SONT UN COMPTE DE REFERENCES, le premier du depot. Le cercle pose
+    // +0x14 = +0x16 = 4 ; chaque rocher DECREMENTE +0x14 du cercle (par son +0x6c) quand il quitte
+    // l'orbite, et +0x16 quand il meurt. Le cercle relache la marque 0x80 du lanceur quand +0x14
+    // atteint zero — les quatre rochers sont partis — et ne s'eteint lui-meme que quand +0x16
+    // atteint zero — les quatre sont retombes. C'est ce qui tient le lanceur immobile le temps du
+    // sort.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047b7a0 @ 0x0047b7a0 — <b>le cercle de Rocher</b> : le sous-type <c>0x03</c>,
+    /// creneau 3 de <see cref="s_StaticEntityHandlers_00551c30"/>. 176 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Il ne se deplace pas : a chaque image il <b>recopie la position du lanceur</b> et se pose a
+    /// <c>+0x60</c> — le <b>sol</b> sous lui, pas sa hauteur. Toutes les quatre images
+    /// (<c>compteur &amp; 3</c>) il lache un rocher et joue un son ; seize images, donc quatre
+    /// rochers.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite il attend.</b> Passe la seizieme image il ne fait plus que surveiller ses deux
+    /// compteurs : <c>+0x14</c> a zero relache la marque <c>0x80</c> qu'il avait posee sur le
+    /// lanceur, <c>+0x16</c> a zero l'eteint lui-meme. Ce sont les rochers qui les decrementent —
+    /// voir <see cref="TickRock_0047B850"/>.
+    /// </para>
+    /// </summary>
+    private static void TickRockCircle_0047B7A0(byte* record)
+    {
+        byte* e = record;
+        ushort age = *(ushort*)(e + 0x10);
+
+        if ((short)age >= 0x10)
+        {
+            // Ghidra: LAB_0047b82f — l'attente. Les deux compteurs sont tenus par les rochers.
+            if (*(ushort*)(e + 0x14) == 0) *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+            if (*(ushort*)(e + 0x16) == 0) *(uint*)e = 0;
+            return;
+        }
+
+        byte* caster = *(byte**)(e + 0x74);
+
+        if (age == 0)
+        {
+            *(uint*)caster |= 0x80;                   // le lanceur est immobilise
+            *(ushort*)(e + 0x36) = (ushort)((*(ushort*)(e + 0x36) & 0xfffb) | 2);
+            *(uint*)(e + 0x38) = 0x01000000;
+            e[0x40] = 0;
+            *(ushort*)(e + 0x14) = 4;                 // quatre rochers a lacher
+            *(ushort*)(e + 0x16) = 4;                 // quatre rochers a voir mourir
+        }
+
+        // Ghidra: LAB_0047b7e5 — il se recolle au lanceur a chaque image.
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24);
+        *(int*)(e + 0x20) = *(int*)(caster + 0x60);   // le SOL sous le lanceur
+
+        if ((e[0x10] & 3) == 0)
+        {
+            SpawnCastEntity_0047AAE0(e, 0x69, e[0x0b], -1);
+            Aud.PlayPositionalSound(0x16, 0x329, 0x1200, (int*)(e + 0x1c));
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047b850 @ 0x0047b850 — <b>le rocher</b> : le sous-type <c>0x69</c>, creneau 105
+    /// de <see cref="s_StaticEntityHandlers_00551f30"/>. 700 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Deux vies en une.</b> Tant que <c>+0x12</c> — la vitesse angulaire — vaut <c>0x10</c> ou
+    /// plus, le rocher <b>orbite</b> : sa position est recalculee a 90 unites du lanceur sur le cap
+    /// <c>+0x32</c>, il monte de <c>0x7000</c> par image, et la vitesse angulaire perd un huitieme
+    /// d'elle-meme a chaque tour. Des qu'elle passe sous <c>0x10</c> il est <b>projete</b> : une
+    /// impulsion tiree au hasard part dans <c>+0x50</c>/<c>+0x58</c>, le bit <c>0x2000000</c> le
+    /// marque comme lance, et il vole ensuite par
+    /// <see cref="IntegrateWithDrag_00535880"/>.
+    /// </para>
+    /// <para>
+    /// <b>Il tient les comptes de son semeur</b>, atteint par <c>+0x6c</c> : <c>-1</c> sur
+    /// <c>+0x14</c> quand il quitte l'orbite, <c>-1</c> sur <c>+0x16</c> quand il meurt. Le bit
+    /// <c>0x2000000</c> sert de garde — un rocher qui meurt avant d'avoir ete lance decremente
+    /// <b>les deux</b>, pour que le compte reste juste.
+    /// </para>
+    /// <para>
+    /// <b>Le test de sol est inverse par rapport a Pieds mouilles</b>, et c'est dans le binaire :
+    /// <see cref="TickWetFeet_0047B460"/> traite le sol quand <c>+0x20 &gt;= +0x60</c>, celui-ci
+    /// quand <c>+0x20 &lt;= +0x60</c>. Les deux sont transcrits tels quels ;
+    /// <c>TODO(REVERSE)</c> : etablir lequel des deux lit le champ dans le bon sens, ou si les deux
+    /// chemins ne se recouvrent jamais.
+    /// </para>
+    /// </summary>
+    private static void TickRock_0047B850(byte* record)
+    {
+        byte* e = record;
+        byte* caster = *(byte**)(e + 0x74);
+
+        short* probe = stackalloc short[6] { 0x0000, -0x0032, 0x0032, 0x0064, 0x0000, 0x0064 };
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            // ------------------------------------------------------------ la naissance
+            *(uint*)e |= 0x80;
+
+            // Le binaire garde le tirage ENTIER dans un registre et n'en range que les seize bits
+            // bas ; la table de trigonometrie ne lit que douze bits, donc les deux sont le meme
+            // angle. Ecrit comme le binaire le fait.
+            int spin = CrtRand();
+            *(short*)(e + 0x32) = (short)spin;
+            *(short*)(e + 0x34) = (short)CrtRand();
+
+            *(int*)(e + 0x20) = *(int*)(caster + 0x60) + 1;
+
+            // 90 unites : `lea *5 ; lea *9 ; lea [edx+ecx*2]`.
+            *(int*)(e + 0x1c) = *(int*)(caster + 0x1c) + (int)Winsys3d.GetSinTableEntry(spin) * 90;
+            *(int*)(e + 0x24) = *(int*)(caster + 0x24) + Winsys3d.GetCosTableEntry(spin) * 90;
+
+            uint scale = (uint)((CrtRand() & 0x1ff) + 0x600);
+            *(uint*)(e + 0x28) = (scale << 0x10) | scale;
+            *(ushort*)(e + 0x2c) = (ushort)scale;
+            *(uint*)(e + 0x38) = 0x02ffffff;
+            e[0x04] = 0x1b;                           // le modele
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551A98(), 0x4b, e[0x0b], -1);
+
+            *(short*)(e + 0x12) = 0x200;              // la vitesse angulaire de depart
+        }
+        else if (*(short*)(e + 0x12) >= 0x10)
+        {
+            // ------------------------------------------------------------ l'orbite
+            short speed = *(short*)(e + 0x12);
+            speed -= (short)(speed >> 3);             // elle perd un huitieme par image
+            *(short*)(e + 0x32) += speed;
+            *(short*)(e + 0x12) = speed;
+
+            int heading = *(short*)(e + 0x32);
+            *(int*)(e + 0x1c) = *(int*)(caster + 0x1c) + (int)Winsys3d.GetSinTableEntry(heading) * 90;
+            *(int*)(e + 0x24) = *(int*)(caster + 0x24) + Winsys3d.GetCosTableEntry(heading) * 90;
+            *(int*)(e + 0x20) += 0x7000;
+
+            if (*(short*)(e + 0x12) < 0x10)
+            {
+                // ------------------------------------------------------------ la projection
+                *(short*)(e + 0x9a) = 0x6000;
+
+                // Le cap du LANCEUR, disperse sur un huitieme de tour et recentre de 0x100.
+                int throwAngle = (CrtRand() & 0x1ff) + *(short*)(caster + 0x32) - 0x100;
+
+                int sin = (int)Winsys3d.GetSinTableEntry(throwAngle);
+                *(int*)(e + 0x50) = sin * ((CrtRand() & 0x1f) + 0x32);
+
+                int cos = Winsys3d.GetCosTableEntry(throwAngle);
+                *(int*)(e + 0x58) = cos * ((CrtRand() & 0x1f) + 0x32);
+
+                (*(ushort*)(*(byte**)(e + 0x6c) + 0x14))--;   // un rocher de moins en orbite
+                *(uint*)e |= 0x2000000;
+            }
+        }
+        else
+        {
+            // Ghidra: LAB_0047b9ee — le vol libre, une fois l'orbite quittee.
+            IntegrateWithDrag_00535880(e);            // Ghidra: FUN_00535880
+        }
+
+        // Ghidra: LAB_0047b9f7 — le placement, commun aux trois branches.
+        FinalizeEntityPlacement2((uint*)e);           // Ghidra: FUN_00533940
+
+        uint contact = *(uint*)(e + 0x90);
+        bool airborne = (contact & 0xa000) != 0;      // `test ah,0A0h`
+
+        if (!airborne && (contact & 0x802) == 0 && *(int*)(e + 0x20) > *(int*)(e + 0x60))
+        {
+            airborne = true;
+        }
+
+        if (!airborne)
+        {
+            // ------------------------------------------------------------ l'impact au sol
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551A98(), 0x4b, e[0x0b], -1);
+
+            byte* circle = *(byte**)(e + 0x6c);
+            if ((*(uint*)e & 0x2000000) == 0) (*(ushort*)(circle + 0x14))--;
+            (*(ushort*)(circle + 0x16))--;
+
+            *(uint*)e = 0;
+
+            Aud.PlayPositionalSound(4, 0x4aa, 0x1200, (int*)(e + 0x1c));
+            return;
+        }
+
+        // Ghidra: LAB_0047ba78 — en l'air : il cherche une cible.
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            int push = *(short*)(e + 0x32);
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+            *(ushort*)(victim + 0x96) = 0x10;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+            *(uint*)victim |= 0x40;
+        }
+
+        // Ghidra: LAB_0047badc — le mot d'etat est relu APRES le coup.
+        uint state = *(uint*)e;
+        *(ushort*)(e + 0x10) += 1;
+
+        if ((state & 0x60000000) != 0)
+        {
+            byte* circle = *(byte**)(e + 0x6c);
+            if ((state & 0x2000000) == 0) (*(ushort*)(circle + 0x14))--;
+            (*(ushort*)(circle + 0x16))--;
+
+            *(uint*)e = 0;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047bb10 @ 0x0047bb10 — <b>la poussiere de Rocher</b> : le sous-type <c>0x4b</c>,
+    /// creneau 75 de <see cref="s_StaticEntityHandlers_00552230"/>. 60 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// La jumelle de <see cref="TickSpark_0047B050"/> : huit images, l'image d'atlas est la moitie
+    /// du compteur, quatre tuiles. Deux differences, toutes deux dans le binaire — le decalage est
+    /// <b>non signe</b> (<c>shr</c> et non <c>sar</c>) et la comparaison porte sur le <b>mot</b>
+    /// entier (<c>cmp cx,4</c>) et non sur son octet bas. Ni echelle ni teinte ne bougent apres la
+    /// premiere image : elle ne fait que derouler ses quatre images.
+    /// </para>
+    /// </summary>
+    private static void TickRockDust_0047BB10(byte* record)
+    {
+        byte* e = record;
+
+        ushort counter = *(ushort*)(e + 0x10);
+        ushort frame = (ushort)(counter >> 1);        // `shr cx,1` — NON signe
+
+        if (counter == 0)
+        {
+            *(uint*)(e + 0x28) = 0x10001000;
+            *(uint*)(e + 0x38) = 0x01000000;
+            *(short*)(e + 0x2e) = -0x14;
+        }
+
+        if (frame >= 4) *(uint*)e = 0;
+
+        e[0x40] = (byte)frame;
+        *(ushort*)(e + 0x10) = (ushort)(counter + 1);
     }
 
     /// <summary>

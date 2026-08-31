@@ -5,6 +5,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Rocher, le quatrième sort** — trois corps absents de `Blaze.c` : le cercle `0x0047b7a0`, le rocher `0x0047b850` et sa poussière `0x0047bb10`
+- doc : **le premier compte de références du dépôt** — le cercle pose `+0x14 = +0x16 = 4`, chaque rocher décrémente `+0x14` du cercle (par son `+0x6c`) en quittant l'orbite et `+0x16` en mourant. Le cercle relâche la marque `0x80` du lanceur quand le premier tombe à zéro, et ne s'éteint que quand le second y arrive : c'est ce qui tient le lanceur immobile le temps du sort
+- doc : **le rocher a deux vies en une** — il orbite à 90 unités du lanceur, son orbite perd un huitième de sa vitesse par image, et dès qu'elle passe sous `0x10` il est projeté et vole librement par `IntegrateWithDrag_00535880`. Le bit `0x2000000` sépare les deux, et sert de garde pour que le compte reste juste si un rocher meurt avant d'être lancé
+- doc : **le test de sol est inversé entre deux sorts** — Pieds mouillés traite le sol quand `+0x20 >= +0x60`, Rocher quand `+0x20 <= +0x60`. Les deux sont dans le binaire et transcrits tels quels ; `TODO(REVERSE)` posé sur `TickRock_0047B850`
+- feat : **l'atlas `0x00551a98`** (quatre tuiles 32×32), borné par la poussière qui pose `+0x40 = compteur >> 1` et s'éteint à 4. La série reprend en `0x00551ab8` avec un **dernier octet différent** : c'est une seconde table, pas la suite
 - feat : **Pieds mouillés, le troisième sort** — trois corps absents de `Blaze.c` : la vague `0x0047b460`, sa crête `0x0047b6b0` et son éclaboussure `0x0047b750`
 - doc : **le premier sort sans graine, et le premier qui tombe** — le sous-type 2 *est* la vague, là où les deux précédents naissaient d'un corps d'une seule image. Elle porte une vitesse verticale en `+0x54`, une gravité de `0x6000` réécrite à chaque image en `+0x9a`, et **colle au sol** ou se marque `0x800` selon la distance parcourue pendant le placement
 - doc : **la crête ondule par sinusoïde amortie** — son échelle Y vaut `|sin(+0x12 << 8)| * (0x1000 − âge * 0x200) >> 11`, et le `+0x12` vient de la vague : chaque crête naît un cran plus loin dans l'onde. Le binaire calcule la valeur absolue en **appelant la table deux fois** ; la table étant une lecture pure, c'est écrit comme la valeur absolue qu'il calcule
