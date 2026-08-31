@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Ténèbres, le septième sort** — deux corps absents de `Blaze.c` : le sort `0x0047c3a0`, qui lâche **cinq ombres en éventail** sur un quart de tour, et l'ombre `0x0047c450`
+- doc : **le premier corps qui annule son propre déplacement** — l'ombre met de côté sa position **et les cinq dwords de `+0x80` à `+0x90`**, l'état de collision que `FinalizeEntityPlacement2` va écrire ; si le contact mord, elle remet les sept valeurs, fait demi-tour et **nie ses deux vitesses**. L'image du choc est exactement celle d'avant, vue à l'envers
+- doc : **et le premier dont la portée grossit avec lui** — les mots 2 et 3 de la sonde valent `(échelle >> 7) + 0x1e` et `(échelle >> 6) + 0x1e`, recalculés à chaque image pendant que l'échelle approche `0x3000`. Aucun des six sorts précédents ne faisait varier sa sonde ; sa poussée est aussi le double des autres (`<< 5`)
+- doc : **Ténèbres assombrit le décor** — `0x60` sur les trois canaux de fond, là où Wonder les monte à `0xc4`. Le sort ne remet pas le mode à zéro : ce sont ses ombres qui le font en mourant
 - feat : **Wonder, le sixième sort** — trois corps absents de `Blaze.c` : le sort `0x0047bf00` (724 octets), son aura `0x0047c1e0` et son anneau `0x0047c2c0`
 - doc : **le premier sort entretenu** — passé la seizième image il relit **la manette du joueur qui tient le lanceur** (`s_PlayerSlots_005e9188[indice * 0x4c]` puis `s_InputStateBase_00604a20 + emplacement * 0x10`, comparée au masque `+0x1fc4`) et s'arrête au relâchement. Il coûte **2 PM toutes les vingt images**, cadencé sur l'horloge du monde `0x005f2cf0` et non sur son propre âge
 - doc : **le bit `0x2000000` est un signal de fin qui se propage** — le sort se le pose, et ses deux enfants **héritent** des deux bits `0x3000000` de leur père par `+0x6c` à chaque image, puis basculent en résorption d'eux-mêmes. C'est le pendant du compte de références de Rocher : ici le père ne compte pas ses fils, il leur fait signe

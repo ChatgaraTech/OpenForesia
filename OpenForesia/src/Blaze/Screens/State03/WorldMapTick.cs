@@ -4749,6 +4749,11 @@ public static unsafe partial class Blaze
             case 0x0047C1E0: TickWonderAura_0047C1E0(record); return;
             case 0x0047C2C0: TickWonderRing_0047C2C0(record); return;
 
+            // TENEBRES, ecole 0 indice 6 — cinq ombres en eventail. L'ombre est le premier corps
+            // du depot qui ANNULE son deplacement pour rebondir.
+            case 0x0047C3A0: TickDarkness_0047C3A0(record); return;
+            case 0x0047C450: TickDarknessShade_0047C450(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -30806,6 +30811,200 @@ public static unsafe partial class Blaze
         // Meme forme que dans l aura : le OU porte sur le registre entier.
         *(uint*)(e + 0x28) = ((uint)scale << 0x10) | (uint)scale;
         *(uint*)(e + 0x38) = (uint)(((channel << 8 | channel) << 8) | channel);
+    }
+
+    // =====================================================================
+    // TENEBRES — le septieme sort, ecole 0 indice 6, sous-type 0x06
+    //
+    // Deux corps seulement, mais l'ombre est le premier corps du depot qui ANNULE SON PROPRE
+    // DEPLACEMENT.
+    //
+    //   0x0047C3A0   LE SORT. Sous-type 6 de 0x00551c30, 173 octets. Une seule image : il lache
+    //                CINQ ombres en eventail sur un quart de tour, assombrit le fond de l'ecran et
+    //                s'eteint.
+    //   0x0047C450   L'OMBRE, sous-type 0x6b de 0x00551f30, 520 octets. Elle glisse, grossit, et
+    //                REBONDIT sur le decor.
+    //
+    // LE REBOND EST UN RETOUR EN ARRIERE. L'ombre met de cote sa position et les CINQ dwords de
+    // +0x80 a +0x90 — l'etat de collision que FinalizeEntityPlacement2 va ecrire —, avance, puis
+    // appelle le placement. Si le contact a mordu (masque 0x802), elle remet tout en place, fait
+    // demi-tour sur +0x32 et INVERSE ses deux vitesses. Rien de ce que le placement a ecrit ne
+    // subsiste : c'est une annulation, pas une correction.
+    //
+    // ET SA PORTEE GROSSIT AVEC ELLE. Les mots 2 et 3 de la sonde — demi-largeur et tolerance en
+    // hauteur — sont recalcules a chaque image depuis l'echelle. Une ombre qui a grandi frappe plus
+    // large, ce qu'aucun des six sorts precedents ne faisait.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047c3a0 @ 0x0047c3a0 — <b>Tenebres</b> : le sous-type <c>0x06</c>, creneau 6 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 173 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Une seule image, comme les graines de Balle de feu et de Boule de lumiere — mais elle lache
+    /// <b>cinq</b> enfants et non un. Le cap recule d'abord de <c>0x200</c>, puis chaque ombre part
+    /// <c>0x100</c> plus loin que la precedente : l'eventail est centre sur le cap du lanceur et
+    /// couvre <b>un quart de tour</b>. La vitesse posee est de 22 unites sur le cap de chacune.
+    /// </para>
+    /// <para>
+    /// <b>Il assombrit la scene</b> : les trois canaux de fond passent a <c>0x60</c> avec le mode 2,
+    /// la ou <see cref="TickWonder_0047BF00"/> les monte a <c>0xc4</c>. Il ne remet pas le mode a
+    /// zero — ce sont ses ombres qui le font en mourant.
+    /// </para>
+    /// </summary>
+    private static void TickDarkness_0047C3A0(byte* record)
+    {
+        byte* e = record;
+
+        e[0x36] |= 6;
+        unchecked { *(ushort*)(e + 0x32) += 0xfe00; }   // -0x200 : le bord de l'eventail
+        *(int*)(e + 0x28) = 0;
+        *(short*)(e + 0x2c) = 0;
+        *(uint*)(e + 0x38) = 0xc0e0e0e0;
+        *(short*)(e + 0x2e) = -0x14;
+        e[0x04] = 0x1e;                                // le modele
+
+        for (int i = 0; i < 5; i++)
+        {
+            int heading = *(short*)(e + 0x32);
+
+            // 22 unites : `lea *5 ; lea [eax+ecx*2]` donne *11, puis `shl 1`.
+            *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(heading) * 22;
+            *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(heading) * 22;
+
+            SpawnCastEntity_0047AAE0(e, 0x6b, e[0x0b], -1);
+
+            *(ushort*)(e + 0x32) += 0x100;
+        }
+
+        // Le fond de la scene, assombri : trois canaux a 0x60, mode 2.
+        *(uint*)Mem.Arena(0x005e9160) = 0x00600060;
+        *(uint*)Mem.Arena(0x005e9164) = 0x00020060;
+
+        Aud.PlayPositionalSound(0x1a, 0x400, 0x1200, (int*)(e + 0x1c));
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047c450 @ 0x0047c450 — <b>l'ombre de Tenebres</b> : le sous-type <c>0x6b</c>,
+    /// creneau 107 de <see cref="s_StaticEntityHandlers_00551f30"/>. 520 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle rebondit, et le rebond est une annulation.</b> Avant d'avancer elle met de cote sa
+    /// position et les <b>cinq dwords de <c>+0x80</c> a <c>+0x90</c></b> — l'etat de collision que
+    /// <see cref="FinalizeEntityPlacement2"/> s'apprete a ecrire. Si le contact a mordu sur le
+    /// masque <c>0x802</c>, elle remet les sept valeurs en place, ajoute <c>0x800</c> a son cap et
+    /// <b>nie ses deux vitesses</b>. L'image ou elle touche est donc exactement l'image d'avant,
+    /// vue a l'envers.
+    /// </para>
+    /// <para>
+    /// <b>Sa portee grossit avec elle.</b> Les mots 2 et 3 de la sonde — demi-largeur et tolerance
+    /// en hauteur — valent <c>(echelle &gt;&gt; 7) + 0x1e</c> et <c>(echelle &gt;&gt; 6) + 0x1e</c>,
+    /// recalcules a chaque image. L'echelle, elle, approche <c>0x3000</c> d'un huitieme : l'ombre
+    /// enfle et frappe de plus en plus large. Aucun des six sorts precedents ne faisait varier sa
+    /// sonde.
+    /// </para>
+    /// <para>
+    /// <b>Sa poussee est deux fois celle des autres</b> — <c>&lt;&lt; 5</c> et non <c>&lt;&lt; 4</c>.
+    /// </para>
+    /// <para>
+    /// Elle n'a pas de compteur de vie : la teinte part de <c>0xe0e0e0</c>, perd <c>0x080808</c> par
+    /// image, et l'ombre s'eteint quand les vingt-quatre bits bas atteignent zero — vingt-huit
+    /// images. En mourant elle <b>rend au fond sa couleur</b>, ce que le sort lui-meme ne fait pas.
+    /// </para>
+    /// </summary>
+    private static void TickDarknessShade_0047C450(byte* record)
+    {
+        byte* e = record;
+
+        // {decalage de cap, avance, demi-largeur, tolerance en hauteur, ouverture, profondeur}.
+        // Les mots 2 et 3 sont reecrits plus bas a chaque image ; le binaire les initialise quand
+        // meme, et c'est reproduit tel quel.
+        short* probe = stackalloc short[6] { 0x0000, -0x0028, 0x0000, 0x0064, 0x0000, 0x0050 };
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(ushort*)(e + 0x10) = 1;
+            *(uint*)e |= 0x80;
+        }
+
+        // Ghidra: LAB_0047c493 — tout est mis de cote AVANT le placement.
+        uint kept80 = *(uint*)(e + 0x80);
+        uint kept84 = *(uint*)(e + 0x84);
+        uint kept88 = *(uint*)(e + 0x88);
+        uint kept8c = *(uint*)(e + 0x8c);
+        uint kept90 = *(uint*)(e + 0x90);
+        int keptX = *(int*)(e + 0x1c);
+        int keptZ = *(int*)(e + 0x24);
+
+        int vx = *(int*)(e + 0x50);
+        int vz = *(int*)(e + 0x58);
+
+        *(int*)(e + 0x1c) = keptX + vx;
+        *(int*)(e + 0x24) = keptZ + vz;
+
+        // Le frottement prend un 256e ET un 32e : plus mordant que celui de Wonder.
+        *(int*)(e + 0x50) = vx - (vx >> 8) - (vx >> 5);
+        *(int*)(e + 0x58) = vz - (vz >> 5) - (vz >> 8);
+
+        int keptY = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);            // Ghidra: FUN_00533940
+        uint contact = *(uint*)(e + 0x90);
+        *(int*)(e + 0x20) = keptY;
+
+        if ((contact & 0x802) != 0)
+        {
+            // Le rebond : l'image est annulee, et le cap fait demi-tour.
+            *(ushort*)(e + 0x32) += 0x800;
+
+            *(uint*)(e + 0x80) = kept80;
+            *(uint*)(e + 0x84) = kept84;
+            *(uint*)(e + 0x8c) = kept8c;
+            *(uint*)(e + 0x90) = kept90;
+            *(uint*)(e + 0x88) = kept88;
+
+            *(int*)(e + 0x1c) = keptX;
+            *(int*)(e + 0x24) = keptZ;
+            *(int*)(e + 0x50) = -*(int*)(e + 0x50);
+            *(int*)(e + 0x58) = -*(int*)(e + 0x58);
+        }
+
+        // Ghidra: LAB_0047c571 — l'enflement et l'effacement.
+        int scale = *(short*)(e + 0x28);
+        scale += (int)((uint)(0x3000 - scale) >> 3);   // `shr`, non signe
+
+        unchecked { *(uint*)(e + 0x38) += 0xfff7f7f8; }   // -0x080808
+
+        *(uint*)(e + 0x28) = ((uint)scale << 0x10) | (uint)scale;
+        *(short*)(e + 0x2c) = (short)((uint)scale >> 1);
+
+        // La sonde suit l'echelle : plus l'ombre est grande, plus elle mord large.
+        probe[2] = (short)(((uint)scale >> 7) + 0x1e);
+        probe[3] = (short)(((uint)scale >> 6) + 0x1e);
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            int push = *(short*)(e + 0x32);
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 5;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 5;
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+
+            Aud.PlayPositionalSound(0x1a, 0xea4, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047c630 — la teinte epuisee, ou le drapeau de fin.
+        if ((*(uint*)(e + 0x38) & 0xffffff) == 0 || (*(uint*)e & 0x40000000) != 0)
+        {
+            *(uint*)e = 0;
+            *(ushort*)Mem.Arena(0x005e9166) = 0;       // le fond reprend sa couleur
+        }
     }
 
     /// <summary>
