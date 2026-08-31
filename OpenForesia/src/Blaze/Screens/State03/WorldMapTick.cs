@@ -4881,6 +4881,11 @@ public static unsafe partial class Blaze
             case 0x00482DE0: TickFusionOrb_00482DE0(record); return;
             case 0x00482ED0: TickFusionSpark_00482ED0(record); return;
 
+            // PARDON, ecole 1 indice 0 — la premiere fiche du PRETRE. Il ne frappe pas : il
+            // designe une victime sur un bit de sa fiche d'espece, et son trait 0x9e fait le reste.
+            case 0x0044F060: TickForgive_0044F060(record); return;
+            case 0x0044F290: TickForgiveBolt_0044F290(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -38613,6 +38618,442 @@ public static unsafe partial class Blaze
 
         if (tint == 0) *(uint*)e = 0;
     }
+
+    // =====================================================================
+    // L'ECOLE 1 — LE PRETRE. Trois fonctions partagees, puis les fiches une a une.
+    //
+    // L'ecole 0 etait vingt-neuf corps independants, chacun repartant de zero. L'ecole 1 est
+    // batie autrement : ses vingt-quatre fiches commencent presque toutes par le meme trio, et
+    // c'est lui qu'il faut ecrire d'abord.
+    //
+    //   0x00448020   L'EXTINCTION AVEC REMISE DU DECOR. Vingt octets.
+    //   0x00448040   L'EXTINCTION SUR CONTACT DU DECOR. Vingt et un octets.
+    //   0x00447CB0   LE CHOIX DE LA CIBLE. Cent cinquante-deux octets, deux modes.
+    //
+    // Les trois sont decompilees dans Blaze.c, et les trois sont appelees avec TROIS arguments la
+    // ou Ghidra n'en declare qu'un ou deux. Ce n'est pas une signature manquee : l'appel est
+    // __cdecl, l'appelant depile lui-meme, et les corps ne lisent que les premiers. Transcrites
+    // avec les arguments qu'elles lisent, la difference notee ici.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00448020 @ 0x00448020 — <b>eteindre un sort de pretre et rendre sa couleur au
+    /// decor</b>. Vingt octets, decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// Elle efface <c>0x80000000</c> — ce que la passe relit pour rendre le creneau au pool — et
+    /// remet <c>DAT_005e9166</c> a zero, le mot de mode que les sorts de cette ecole posent a 2
+    /// pendant qu'ils teintent le decor.
+    /// </para>
+    /// </summary>
+    private static void EndSpellAndResetDecor_00448020(byte* e)
+    {
+        *(ushort*)Mem.Arena(0x005e9166) = 0;
+        *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00448040 @ 0x00448040 — <b>eteindre un sort de pretre que le decor a touche</b>.
+    /// Vingt et un octets, decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// Un seul test : si <c>0x40000000</c> est pose, <c>0x80000000</c> est efface. C'est la
+    /// premiere instruction de presque toutes les fiches de l'ecole 1 — <b>elle ne rend pas la
+    /// couleur du decor</b>, contrairement a sa voisine.
+    /// </para>
+    /// </summary>
+    private static void EndSpellOnTerrain_00448040(byte* e)
+    {
+        if ((*(uint*)e & 0x40000000) != 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00447cb0 @ 0x00447cb0 — <b>le choix de la cible d'un sort de pretre</b>. Cent
+    /// cinquante-deux octets, decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Elle pose d'abord le lanceur comme cible</b> (<c>+0x78 = +0x74</c>), puis, dans les deux
+    /// modes connus, l'ecrase par <see cref="FindTargetAround_00474BA0"/>. La valeur de repli
+    /// compte : un sort dont la recherche echoue vise son propre lanceur.
+    /// </para>
+    /// <para>
+    /// <b>Le mode 1 ressuscite.</b> Avant la recherche il parcourt les <b>quatre</b> emplacements du
+    /// groupe et, pour chacun qui porte <c>0x40000000</c> — mort —, retient le fait et efface
+    /// <c>0x40002000</c> ; apres la recherche il repose les bits qu'il avait retires. La cible peut
+    /// donc etre un membre mort, ce qu'aucune autre recherche du depot n'autorise : c'est le
+    /// mecanisme de Resurection et de Sang d'ange. La boucle est ecrite en dur sur quatre membres,
+    /// sans consulter <see cref="s_PartySize_005e9020"/>.
+    /// </para>
+    /// <para>
+    /// <b>Ghidra lui declare deux arguments, les appelants en empilent trois.</b> L'appel est
+    /// <c>__cdecl</c> et l'appelant depile ; le troisieme n'est jamais lu. Transcrite avec les deux
+    /// qu'elle lit.
+    /// </para>
+    /// </summary>
+    private static void AcquireHolyTarget_00447CB0(byte* e, int mode)
+    {
+        *(byte**)(e + 0x78) = *(byte**)(e + 0x74);
+
+        if (mode == 0)
+        {
+            *(byte**)(e + 0x78) = FindTargetAround_00474BA0(e, 0);
+        }
+
+        if (mode == 1)
+        {
+            short* revived = stackalloc short[4];
+            byte* slot = Inp.s_SlotFlags_005e93c0;
+
+            for (int member = 0; member < 4; member++, slot += 0x9c)
+            {
+                uint flags = *(uint*)slot;
+                revived[member] = 0;
+
+                if ((flags & 0x40000000) != 0)
+                {
+                    revived[member] = 1;
+                    *(uint*)slot = flags & 0xbfffdfff;
+                }
+            }
+
+            *(byte**)(e + 0x78) = FindTargetAround_00474BA0(e, 0);
+
+            slot = Inp.s_SlotFlags_005e93c0;
+
+            for (int member = 0; member < 4; member++, slot += 0x9c)
+            {
+                if (revived[member] == 1) *(uint*)slot |= 0x40002000;
+            }
+        }
+    }
+
+    // =====================================================================
+    // PARDON — le trentieme sort, ecole 1 indice 0, sous-type 0x1e
+    //
+    //   0x0044F060   LE SORT. Sous-type 0x1e de 0x00551c30, 558 octets.
+    //   0x0044F290   LE TRAIT, sous-type 0x9e de 0x00551f30, 874 octets. Un seul.
+    //                DECOMPILE dans Blaze.c.
+    //
+    // LE PREMIER SORT QUI CHOISIT SA VICTIME SUR UNE FICHE ET NON SUR UNE DISTANCE SEULE. Il balaie
+    // les 0x20 entites de scene, resout pour chacune ses trois blocs de description par
+    // ResolveEntityBlocks, et ne retient que celles dont le bloc de statistiques porte 0x3000000 en
+    // +0x14. Les autres conditions sont ordinaires — vivante, pas mourante, pas deja prise — mais
+    // celle-la ne l'est pas : c'est un sort qui ne mord que sur une espece.
+    //
+    // ET IL MESURE EN TROIS DIMENSIONS, DEUX FOIS. La candidate doit etre a moins de 0x5dc du
+    // LANCEUR, et c'est la plus proche du SORT qui l'emporte — deux distances differentes, toutes
+    // deux avec la composante verticale, la ou tout le reste du depot mesure a plat.
+    //
+    // 0 PM, jamais apprenable (la colonne « appr. » du releve vaut 0) : Pardon n'est pas une fiche
+    // qu'un pretre gagne en montant de niveau.
+    //
+    // CE QUI RESTE A ECRIRE APRES LUI : le trait 0x9e fait naitre trois sous-types que ce sort ne
+    // possede pas — 0x9f (0x0044F600), 0x93 (0x0044C110) et 0x96 (0x0044A320, par la table
+    // 0x00552230). Aucun n'est decompile, et les deux derniers appartiennent a d'autres fiches de
+    // l'ecole : ils viendront avec elles.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044f060 @ 0x0044f060 — <b>Pardon</b> : le sous-type <c>0x1e</c>, creneau 30 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et <b>la premiere fiche de l'ecole 1</b>. 558
+    /// octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne fait que designer.</b> Trois etats dans <c>+0x10</c> : 0 la mise en place (le decor
+    /// vire au violet, un son), 1 la recherche, 2 l'attente, <c>0x63</c> la fin. Le coup, lui,
+    /// appartient au trait <c>0x9e</c> qu'il engendre sur la victime trouvee.
+    /// </para>
+    /// <para>
+    /// <b>Le critere de selection est une fiche, pas une portee.</b> Pour chacune des <c>0x20</c>
+    /// entites de scene il appelle <see cref="ResolveEntityBlocks"/> et exige
+    /// <c>statistiques[0x14] &amp; 0x3000000</c>. Puis deux distances <b>en trois dimensions</b> :
+    /// moins de <c>0x5dc</c> depuis le lanceur pour etre eligible, et la plus courte depuis le sort
+    /// pour etre choisie.
+    /// </para>
+    /// <para>
+    /// <b>La victime est rattachee au pere du sort, pas au sort.</b> Il ecrit
+    /// <c>victime[0x74] = sort[0x6c]</c> — l'entite qui a fait naitre le sort — tout en gardant la
+    /// victime dans son propre <c>+0x78</c>.
+    /// </para>
+    /// <para>
+    /// <b>LB-019, une ecriture morte.</b> La branche « aucune cible » pose <c>+0x10 = 0x63</c> puis
+    /// tombe dans l'instruction suivante, qui pose <c>+0x10 = 2</c> : l'etat de fin est efface une
+    /// instruction plus tard. Le <c>+0x16 = 0x46</c> de la meme branche, lui, survit — ce qui
+    /// ramene l'attente de 90 a 20 images au lieu de la supprimer. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickForgive_0044F060(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_0044f089
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            // Le decor vire au violet, et le mot de mode passe a 2 — propre a cette ecole.
+            *(ushort*)Mem.Arena(0x005e9160) = 0xa0;
+            *(ushort*)Mem.Arena(0x005e9162) = 0xa0;
+            *(ushort*)Mem.Arena(0x005e9164) = 0xb4;
+            *(ushort*)Mem.Arena(0x005e9166) = 2;
+
+            Aud.PlaySoundEffect(0x0a, 0x653, 0x1000, 0x1000);
+        }
+
+        // Ghidra: LAB_0044f0d8 — la recherche, une seule image.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            if (caster == null) caster = Res.s_EntityList_005de558;
+
+            int nearest = 0x2710;
+            int chosen = -1;
+
+            byte* candidate = Mem.Entity(0x005ecaa0);
+
+            for (int index = 0; index < 0x20; index++, candidate += 0x9c)
+            {
+                ResolveEntityBlocks(candidate, out byte* stats, out byte* species, out byte* model);
+
+                uint flags = *(uint*)candidate;
+
+                if ((flags & 0x80000000) == 0) continue;
+                if ((flags & 0x40002000) != 0) continue;
+                if (*(int*)(candidate + 0x74) != 0) continue;
+
+                // LE CRITERE D'ESPECE : deux bits du bloc de statistiques, et rien d'autre.
+                if ((*(uint*)(stats + 0x14) & 0x3000000) == 0) continue;
+
+                // Premiere distance : de la victime au LANCEUR, en trois dimensions.
+                int ax = (*(int*)(candidate + 0x1c) - *(int*)(caster + 0x1c)) >> 0xc;
+                int ay = (*(int*)(candidate + 0x20) - *(int*)(caster + 0x20)) >> 0xc;
+                int az = (*(int*)(candidate + 0x24) - *(int*)(caster + 0x24)) >> 0xc;
+
+                if ((int)Winsys3d.Ordinal_442((uint)(ax * ax + ay * ay + az * az)) >= 0x5dc)
+                {
+                    continue;
+                }
+
+                // Seconde distance : du SORT a la victime, chaque terme decale AVANT la
+                // soustraction — l'inverse de la premiere.
+                int bx = (*(int*)(e + 0x1c) >> 0xc) - (*(int*)(candidate + 0x1c) >> 0xc);
+                int by = (*(int*)(e + 0x20) >> 0xc) - (*(int*)(candidate + 0x20) >> 0xc);
+                int bz = (*(int*)(e + 0x24) >> 0xc) - (*(int*)(candidate + 0x24) >> 0xc);
+
+                int reach = (int)Winsys3d.Ordinal_442((uint)(bx * bx + by * by + bz * bz));
+
+                if (nearest > reach)
+                {
+                    nearest = reach;
+                    chosen = index;
+                }
+            }
+
+            if ((short)chosen != -1)
+            {
+                byte* victim = Mem.Entity(0x005ecaa0) + (short)chosen * 0x9c;
+
+                *(byte**)(e + 0x78) = victim;
+                *(byte**)(victim + 0x74) = *(byte**)(e + 0x6c);   // le PERE du sort, pas le sort
+
+                SpawnCastEntity_0047AAE0(e, 0x9e, 0, -1);
+            }
+            else
+            {
+                // Ghidra: LAB_0044f23e — LB-019 : ce 0x63 est efface deux instructions plus loin.
+                *(short*)(e + 0x10) = 0x63;
+                *(short*)(e + 0x16) = 0x46;
+            }
+
+            // Ghidra: LAB_0044f24a — les DEUX chemins passent ici.
+            *(short*)(e + 0x10) = 2;
+        }
+
+        // Ghidra: LAB_0044f250
+        if (*(short*)(e + 0x10) == 2 && *(short*)(e + 0x16) >= 0x5a) *(short*)(e + 0x10) = 0x63;
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x10) == 0x63 && *(short*)(e + 0x16) >= 0x5a)
+        {
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044f290 @ 0x0044f290 — <b>le trait de Pardon</b> : le sous-type <c>0x9e</c>,
+    /// creneau 158 de <see cref="s_StaticEntityHandlers_00551f30"/>. 874 octets, <b>decompile dans
+    /// <c>Blaze.c</c></b>. Un seul, pose sur la victime.
+    ///
+    /// <para>
+    /// <b>Il vit sur sa victime.</b> A chaque image il se recopie la position de celle-ci, cinq
+    /// unites plus haut, et lui pose le bit <c>0x1000</c> — l'immobilisation. Des qu'elle porte
+    /// <c>0x40000000</c>, ou que lui-meme porte <c>0x2000000</c>, il cesse de la suivre et se marque
+    /// pour la fin.
+    /// </para>
+    /// <para>
+    /// <b>Sa taille est celle de la victime</b> : <c>hauteur &#215; 30</c>, bornee entre
+    /// <c>0x1000</c> et 30 000. Trois phases dans <c>+0x10</c> — 1 l'ouverture (quatorze images, le
+    /// cap et les deux echelles rejoignent leur consigne par quarts), 2 l'execution, 3 la fin.
+    /// </para>
+    /// <para>
+    /// <b>La phase 2 est une partition de quatre-vingts images.</b> Elle joue cinq sons a des
+    /// instants precis, engendre deux fois le sous-type <c>0x9f</c> (images 0 et 4, a des hauteurs
+    /// differentes), seme un <c>0x96</c> par image de la huitieme a la trentieme, allume le voile
+    /// plein cadre <c>DAT_005de024</c> en vert-blanc a la vingtieme avec deux <c>0x93</c>, et
+    /// <b>porte le coup a la vingt-deuxieme</b> — un seul, par
+    /// <see cref="ResolveSpellHit_0053A2B0"/>, en eteignant le voile dans la meme image. Passe la
+    /// soixantieme, il se resorbe et relache la victime ; a la quatre-vingtieme il passe en phase 3.
+    /// </para>
+    /// </summary>
+    private static void TickForgiveBolt_0044F290(byte* record)
+    {
+        byte* e = record;
+
+        byte* victim = *(byte**)(e + 0x78);
+        if (victim == null) victim = Res.s_EntityList_005de558;
+
+        if ((*(uint*)victim & 0x40000000) == 0 && (*(uint*)e & 0x2000000) == 0)
+        {
+            *(int*)(e + 0x1c) = *(int*)(victim + 0x1c);
+
+            int ground = *(int*)(victim + 0x60);
+            *(int*)(e + 0x20) = ground + 0x5000;
+            *(int*)(e + 0x60) = ground + 0x5000;
+
+            *(int*)(e + 0x24) = *(int*)(victim + 0x24);
+            *(uint*)victim |= 0x1000;                  // elle est clouee sur place
+        }
+        else
+        {
+            *(uint*)e |= 0x2000000;
+        }
+
+        // Sa taille suit celle de la victime, bornee des deux cotes.
+        int span = StatusBubbleHeight_00538BC0((uint*)victim) * 0x1e;
+        if (span < 0x1000) span = 0x1000;
+        if (span > 30000) span = 30000;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x2b;
+            e[0x0a] = 6;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0x1000;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x32) = 0;
+
+            // Une victime deja disparue le tue avant meme sa premiere image.
+            if ((*(uint*)victim & 0x80000000) == 0 || (*(uint*)victim & 0x40000000) != 0)
+            {
+                *(uint*)e &= 0x7fffffff;
+                *(uint*)victim &= 0xffffefff;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x32) += (short)((0x800 - *(short*)(e + 0x32)) >> 2);
+            *(short*)(e + 0x28) += (short)((span - *(short*)(e + 0x28)) >> 2);
+            *(short*)(e + 0x2c) += (short)((span - *(short*)(e + 0x2c)) >> 2);
+
+            if (*(short*)(e + 0x16) >= 0x0e)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x16) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            short beat = *(short*)(e + 0x16);
+
+            if (beat == 0x00) Aud.PlaySoundEffect(0x0f, 0x100, 0x1000, 0x1000);
+            if (beat == 0x01) Aud.PlaySoundEffect(0x0f, 0x155, 0x1000, 0x1000);
+            if (beat == 0x14) Aud.PlaySoundEffect(0x0b, 0x800, 0x1000, 0x1000);
+            if (beat == 0x15) Aud.PlaySoundEffect(0x0c, 0x653, 0x1000, 0x1000);
+            if (beat == 0x16) Aud.PlaySoundEffect(0x1c, 0x653, 0x1000, 0x1000);
+
+            if (beat == 0)
+            {
+                *(ushort*)(e + 0x9a) = 6;
+                *(short*)(e + 0x14) = 0x1000;
+                *(int*)(e + 0x5c) = 0x5dc;
+                *(int*)(e + 0x44) = 30000;
+                *(int*)(e + 0x48) = 0x28;
+                SpawnCastEntity_0047AAE0(e, 0x9f, 0, -1);
+            }
+
+            if (beat == 4)
+            {
+                *(ushort*)(e + 0x9a) = 6;
+                *(short*)(e + 0x14) = 0x0f3c;
+                *(int*)(e + 0x5c) = 0x5dc;
+                *(int*)(e + 0x44) = 30000;
+                *(int*)(e + 0x48) = 0x28;
+                SpawnCastEntity_0047AAE0(e, 0x9f, 0, -1);
+            }
+
+            if (beat > 7 && beat < 0x1f)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x96, 0, -1);
+            }
+
+            if (beat == 0x14)
+            {
+                // Le voile plein cadre s'allume en vert-blanc — R, V, B et l'octet d'activation
+                // tiennent dans le meme mot.
+                Mem.s_Unknown_005de024 = 0x01b4c896;
+
+                SpawnCastEntity_0047AAE0(e, 0x93, 0, -1);
+                SpawnCastEntity_0047AAE0(e, 0x93, 0, -1);
+            }
+
+            if (beat == 0x16)
+            {
+                // LE COUP, une seule fois, et le voile s'eteint dans la meme image.
+                ResolveSpellHit_0053A2B0(
+                    *(uint**)(e + 0x74), *(uint**)(e + 0x78), e[7], e[6], 0);
+
+                byte* struck = *(byte**)(e + 0x78);
+                *(ushort*)(struck + 0x96) = 0x10;      // le clignotement de degat
+                *(uint*)struck |= 0x40;
+
+                Mem.s_Unknown_005de024 = 0x01000000;
+            }
+
+            if (beat > 0x3c)
+            {
+                // La resorption : `(-taille) >> 3` et non `-(taille >> 3)`, comme ecrit.
+                *(short*)(e + 0x28) +=
+                    (short)((-(int)*(short*)(e + 0x28)) >> 3);
+                *(short*)(e + 0x2c) +=
+                    (short)((-(int)*(short*)(e + 0x2c)) >> 3);
+
+                *(uint*)(*(byte**)(e + 0x78) + 0x74) = 0;
+            }
+
+            if (beat == 0x50) *(short*)(e + 0x10) = 3;
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(uint*)e &= 0x7fffffff;
+            *(uint*)victim &= 0xffffefff;              // la victime est relachee
+        }
+
+        *(short*)(e + 0x16) += 1;
+    }
+
 
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>

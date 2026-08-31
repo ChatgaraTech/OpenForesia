@@ -997,3 +997,48 @@ La valeur diffère de celle de 1998 ; ce qui est fidèle, c'est que la direction
 ### Où porterait le correctif
 
 Poser `ebp = +0x32` sur ce chemin comme sur les trois autres.
+
+---
+
+## LB-019 — L'état de fin de « Pardon » est écrit puis effacé une instruction plus loin
+
+**Fonction** : `FUN_0044f060` (Pardon, école 1 indice 0, sous-type `0x1e`), relevé le 2026-08-31.
+Absent de `Blaze.c` — trouvé au désassembleur.
+
+### Le symptôme
+
+Quand le balayage des trente-deux entités de scène ne trouve aucune victime éligible, le sort est
+censé se terminer : la branche pose `+0x10 = 0x63`, l'état de fin, et `+0x16 = 0x46`. Mais elle ne
+saute pas — elle **tombe** dans l'instruction suivante, qui pose `+0x10 = 2` inconditionnellement :
+
+```
+0044f23c  jmp  0044F24A          <- la branche « cible trouvée » saute ici
+LAB_0044f23e:                     <- la branche « aucune cible » arrive ici
+0044f23e  mov  word [edi+10h],63h    <- l'état de fin…
+0044f244  mov  word [edi+16h],46h
+LAB_0044f24a:
+0044f24a  mov  word [edi+10h],2      <- …effacé ici, six octets plus loin
+```
+
+Le `0x63` est donc **mort** : les deux chemins sortent en état 2.
+
+### Pourquoi c'en est un
+
+Le `jmp` de la branche « trouvée » vise `LAB_0044f24a`, pas `LAB_0044f23e` : les deux blocs sont
+bien distincts, et le second n'est atteint que par l'échec. Écrire l'état de fin pour l'écraser
+aussitôt n'a aucune lecture cohérente ; l'intention lisible est de terminer sur-le-champ.
+
+### Ce que ça change en jeu
+
+Peu, et c'est sans doute pourquoi personne ne l'a vu. Le `+0x16 = 0x46` de la même branche, lui,
+survit ; or l'état 2 passe en `0x63` dès que `+0x16` atteint `0x5a`. Un Pardon sans cible attend
+donc **vingt images au lieu de quatre-vingt-dix** — un raccourci, là où le code voulait zéro.
+
+### Ce que la transcription fait
+
+`TickForgive_0044F060` écrit les deux affectations dans l'ordre du binaire, `0x63` compris, et
+laisse le `2` les suivre.
+
+### Où porterait le correctif
+
+Remplacer la chute par un saut par-dessus `LAB_0044f24a`.
