@@ -104,21 +104,21 @@ deux boutons** ; les coups sont separes par un tiret.
 | ecole | # | sort | combinaison | PM | appr. | duree | sous-type | gestionnaire | implemente | teste |
 |---:|---:|---|---|---:|---:|---:|---:|---|---|---|
 | 0 | 0 | Balle de feu | O-T-O | 2 | 10 | 4 | 0x00 | `0x0047ADD0` | oui | oui |
-| 0 | 1 | Boule de lumière | T-C-O | 4 | 20 | 4 | 0x01 | `0x0047B0B0` | oui | **non** |
-| 0 | 2 | Pieds mouillés | X-T-X | 3 | 23 | 4 | 0x02 | `0x0047B460` | oui | **non** |
-| 0 | 3 | Rocher | C-T-C | 6 | 26 | 4 | 0x03 | `0x0047B7A0` | oui | **non** |
-| 0 | 4 | Feu d'enfer | C-X-O | 10 | 24 | 20 | 0x04 | `0x0047BB50` | oui | **non** |
-| 0 | 5 | Wonder | TO-T-O | 8 | 37 | 8 | 0x05 | `0x0047BF00` | oui | **non** |
-| 0 | 6 | Ténèbres | XC-C-X | 10 | 43 | 8 | 0x06 | `0x0047C3A0` | oui | **non** |
-| 0 | 7 | Onde de choc | X-X-T-T | 8 | 31 | 8 | 0x07 | `0x0047C660` | oui | **non** |
-| 0 | 8 | Flêches magiques | T-O-X-C | 12 | 40 | 8 | 0x08 | `0x0047C910` | oui | **non** |
-| 0 | 9 | Enchant | O-C-X-T | 15 | 35 | 24 | 0x09 | `0x0047CE40` | oui | **non** |
-| 0 | 10 | Mur de flammes | O-T-O-C-C-O | 16 | 44 | 20 | 0x0a | `0x0047CFF0` | oui | **non** |
-| 0 | 11 | Coup de jus | T-C-O-T-C-T | 16 | 47 | 20 | 0x0b | `0x0047D330` | oui | **non** |
-| 0 | 12 | Congèlo | X-T-X-C-C-X | 16 | 50 | 32 | 0x0c | `0x0047D600` | oui | **non** |
-| 0 | 13 | Atchoum | C-T-C-X-T-O | 20 | 52 | 40 | 0x0d | `0x0047DB50` | oui | **non** |
-| 0 | 14 | Assaut magique | C-T-O-C-X-O | 32 | 55 | 40 | 0x0e | `0x0047DF70` | oui | **non** |
-| 0 | 15 | Lumière | T-O-X-C-X-O-T-O | 24 | 58 | 60 | 0x0f | `0x0047E260` | oui | **non** |
+| 0 | 1 | Boule de lumière | T-C-O | 4 | 20 | 4 | 0x01 | `0x0047B0B0` | oui | oui |
+| 0 | 2 | Pieds mouillés | X-T-X | 3 | 23 | 4 | 0x02 | `0x0047B460` | oui | oui |
+| 0 | 3 | Rocher | C-T-C | 6 | 26 | 4 | 0x03 | `0x0047B7A0` | oui | oui |
+| 0 | 4 | Feu d'enfer | C-X-O | 10 | 24 | 20 | 0x04 | `0x0047BB50` | oui | oui |
+| 0 | 5 | Wonder | TO-T-O | 8 | 37 | 8 | 0x05 | `0x0047BF00` | oui | oui |
+| 0 | 6 | Ténèbres | XC-C-X | 10 | 43 | 8 | 0x06 | `0x0047C3A0` | oui | oui |
+| 0 | 7 | Onde de choc | X-X-T-T | 8 | 31 | 8 | 0x07 | `0x0047C660` | oui | oui |
+| 0 | 8 | Flêches magiques | T-O-X-C | 12 | 40 | 8 | 0x08 | `0x0047C910` | oui | oui |
+| 0 | 9 | Enchant | O-C-X-T | 15 | 35 | 24 | 0x09 | `0x0047CE40` | oui | oui |
+| 0 | 10 | Mur de flammes | O-T-O-C-C-O | 16 | 44 | 20 | 0x0a | `0x0047CFF0` | oui | oui |
+| 0 | 11 | Coup de jus | T-C-O-T-C-T | 16 | 47 | 20 | 0x0b | `0x0047D330` | oui | oui |
+| 0 | 12 | Congèlo | X-T-X-C-C-X | 16 | 50 | 32 | 0x0c | `0x0047D600` | oui | oui |
+| 0 | 13 | Atchoum | C-T-C-X-T-O | 20 | 52 | 40 | 0x0d | `0x0047DB50` | oui | oui |
+| 0 | 14 | Assaut magique | C-T-O-C-X-O | 32 | 55 | 40 | 0x0e | `0x0047DF70` | oui | oui |
+| 0 | 15 | Lumière | T-O-X-C-X-O-T-O | 24 | 58 | 60 | 0x0f | `0x0047E260` | oui | oui |
 | 0 | 16 | Eclair | TO-T-O-T-C-T-X-T-O | 40 | 68 | 60 | 0x10 | `0x0047E590` | oui | **non** |
 | 0 | 17 | Trouille | XC-C-X-O-T-C-O-T-O | 38 | 60 | 60 | 0x11 | `0x0047EAE0` | oui | **non** |
 | 0 | 18 | Exorciste | C-O-T-X-C-O-T-O | 40 | 62 | 45 | 0x12 | `0x0047F070` | oui | **non** |
@@ -133,7 +133,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 0 | 27 | Météores | X-T-C-X-T-O-X-C-O-X-C-O-T | 82 | 0 | 96 | 0x1b | `0x00482370` | oui | **non** |
 | 0 | 28 | Fusion | TO-T-O-T-C-T-X-T-X-T-T-TO | 100 | 0 | 120 | 0x1c | `0x004828F0` | oui | **non** |
 | 1 | 0 | Pardon | X-T-T | 0 | 0 | 20 | 0x1e | `0x0044F060` | oui | **non** |
-| 1 | 1 | Sang pur | T-O-O | 12 | 23 | 12 | 0x1f | `0x00447DF0` | **non** | **non** |
+| 1 | 1 | Sang pur | T-O-O | 12 | 23 | 12 | 0x1f | `0x00447DF0` | oui | **non** |
 | 1 | 2 | Renfort | C-O-C | 8 | 27 | 8 | 0x20 | `0x00448060` | **non** | **non** |
 | 1 | 3 | Gnoukoulé | X-O-X | 8 | 30 | 8 | 0x21 | `0x00448300` | **non** | **non** |
 | 1 | 4 | Sonde | C-X-O | 2 | 26 | 8 | 0x37 | `0x004484F0` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **30** |
-| a transcrire | **50** |
-| lancees en jeu au moins une fois | **1** |
-| dette : implementees mais jamais lancees | **29** |
+| implementees (le gestionnaire existe) | **31** |
+| a transcrire | **49** |
+| lancees en jeu au moins une fois | **16** |
+| dette : implementees mais jamais lancees | **15** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -218,7 +218,7 @@ corps a tourne, par un sort ou par autre chose.
 | gestionnaire | emplois | implemente | teste | sorts |
 |---|---:|---|---|---|
 | `0x0047A5D0` | 7 | **non** | **non** | Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius, Belladone |
-| `0x00447DF0` | 1 | **non** | **non** | Sang pur |
+| `0x00447DF0` | 1 | oui | **non** | Sang pur |
 | `0x00448060` | 1 | **non** | **non** | Renfort |
 | `0x00448300` | 1 | **non** | **non** | Gnoukoulé |
 | `0x004484F0` | 1 | **non** | **non** | Sonde |
@@ -263,21 +263,21 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00479DE0` | 1 | **non** | **non** | Zéphe |
 | `0x00479F70` | 1 | **non** | **non** | Liquide |
 | `0x0047ADD0` | 1 | oui | oui | Balle de feu |
-| `0x0047B0B0` | 1 | oui | **non** | Boule de lumière |
-| `0x0047B460` | 1 | oui | **non** | Pieds mouillés |
-| `0x0047B7A0` | 1 | oui | **non** | Rocher |
-| `0x0047BB50` | 1 | oui | **non** | Feu d'enfer |
-| `0x0047BF00` | 1 | oui | **non** | Wonder |
-| `0x0047C3A0` | 1 | oui | **non** | Ténèbres |
-| `0x0047C660` | 1 | oui | **non** | Onde de choc |
-| `0x0047C910` | 1 | oui | **non** | Flêches magiques |
-| `0x0047CE40` | 1 | oui | **non** | Enchant |
-| `0x0047CFF0` | 1 | oui | **non** | Mur de flammes |
-| `0x0047D330` | 1 | oui | **non** | Coup de jus |
-| `0x0047D600` | 1 | oui | **non** | Congèlo |
-| `0x0047DB50` | 1 | oui | **non** | Atchoum |
-| `0x0047DF70` | 1 | oui | **non** | Assaut magique |
-| `0x0047E260` | 1 | oui | **non** | Lumière |
+| `0x0047B0B0` | 1 | oui | oui | Boule de lumière |
+| `0x0047B460` | 1 | oui | oui | Pieds mouillés |
+| `0x0047B7A0` | 1 | oui | oui | Rocher |
+| `0x0047BB50` | 1 | oui | oui | Feu d'enfer |
+| `0x0047BF00` | 1 | oui | oui | Wonder |
+| `0x0047C3A0` | 1 | oui | oui | Ténèbres |
+| `0x0047C660` | 1 | oui | oui | Onde de choc |
+| `0x0047C910` | 1 | oui | oui | Flêches magiques |
+| `0x0047CE40` | 1 | oui | oui | Enchant |
+| `0x0047CFF0` | 1 | oui | oui | Mur de flammes |
+| `0x0047D330` | 1 | oui | oui | Coup de jus |
+| `0x0047D600` | 1 | oui | oui | Congèlo |
+| `0x0047DB50` | 1 | oui | oui | Atchoum |
+| `0x0047DF70` | 1 | oui | oui | Assaut magique |
+| `0x0047E260` | 1 | oui | oui | Lumière |
 | `0x0047E590` | 1 | oui | **non** | Eclair |
 | `0x0047EAE0` | 1 | oui | **non** | Trouille |
 | `0x0047F070` | 1 | oui | **non** | Exorciste |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | oui | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **44** a transcrire.
+**74 gestionnaires distincts**, dont **43** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le

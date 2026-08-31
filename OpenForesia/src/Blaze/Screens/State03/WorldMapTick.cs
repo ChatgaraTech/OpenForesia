@@ -4886,6 +4886,10 @@ public static unsafe partial class Blaze
             case 0x0044F060: TickForgive_0044F060(record); return;
             case 0x0044F290: TickForgiveBolt_0044F290(record); return;
 
+            // SANG PUR, ecole 1 indice 1 — le soin de base du pretre, et le premier sort du depot
+            // qui n'apporte aucun corps d'enfant : ses deux sous-types etaient deja ecrits.
+            case 0x00447DF0: TickPureBlood_00447DF0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -39054,6 +39058,213 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x16) += 1;
     }
 
+
+    // =====================================================================
+    // SANG PUR — le trente et unieme sort, ecole 1 indice 1, sous-type 0x1f
+    //
+    //   0x00447DF0   LE SORT. Sous-type 0x1f de 0x00551c30, 487 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00447DF0.asm.
+    //   0x00447FE0   LE SOIN SOUS CONDITION. Soixante et un octets, decompile dans Blaze.c.
+    //   0x004364B0   LE GARDE-FOU PARTAGE. Quatre-vingt-onze octets, decompile dans Blaze.c.
+    //
+    // AUCUN CORPS D'ENFANT NEUF. C'est le premier sort du depot dont les deux sous-types engendres
+    // etaient deja ecrits pour d'autres fiches : l'etincelle 0xa9 est celle de la bouffee
+    // (EntityHandler_0044FB10) et la bille 0x70 est celle d'Enchant (TickEnchantMote_0047CF30).
+    // Sang pur ne coute donc que son propre corps et les deux fonctions de soin.
+    //
+    // IL SOIGNE A LA PREMIERE IMAGE, PAS A LA DERNIERE. Renfort, son voisin immediat dans le
+    // binaire et de meme forme, attend la soixantieme image pour poser son effet ; Sang pur appelle
+    // le soin dans son bloc de naissance et passe les quarante images suivantes a n'etre plus
+    // qu'un decor. Deux sorts jumeaux par la forme, opposes par le moment.
+    //
+    // ET IL COLLE A SA CIBLE SANS SE RELEVER. Comme toutes les fiches de l'ecole il recopie chaque
+    // image la position de +0x78 dans la sienne — mais SANS le +0x50000 vertical que Renfort et
+    // ses voisins ajoutent en +0x20. Sang pur naît donc aux pieds de qui il soigne, la ou les
+    // autres naissent a hauteur de poitrine ; la compensation est reportee sur ses billes.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004364b0 @ 0x004364b0 — <b>le garde-fou que tout effet applique franchit
+    /// d'abord</b>. Quatre-vingt-onze octets, decompilee dans <c>Blaze.c</c>. Une dizaine
+    /// d'enveloppes de la forme « si le garde-fou laisse passer, appliquer » l'appellent
+    /// (<c>FUN_00436510</c>, <c>FUN_00436550</c>, <c>FUN_00436590</c>,
+    /// <see cref="HealTargetIfEligible_00447FE0"/>, <c>FUN_00448210</c>…), chacune avec son propre
+    /// effet derriere.
+    ///
+    /// <para>
+    /// <b>Elle rend 1 pour REFUSER.</b> Quatre motifs, dont un redondant : la cible porte l'un des
+    /// bits <c>0x50002000</c> (mourante, immobilisee, prise), elle est deja eteinte
+    /// (<c>0x80000000</c> absent), elle est en recul (<c>+0x12</c> non nul), ou l'un des deux —
+    /// lanceur ou cible — est eteint. Le troisieme test reprend le bit de vie de la cible que le
+    /// premier a deja regarde ; transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// <b>Elle n'est pas pure.</b> Avant tout examen elle ecrit <c>lanceur[7] = 7</c> lorsque le
+    /// lanceur porte <c>0x400000</c> sans <c>0x800</c> — c'est-a-dire qu'elle force l'ecole de sa
+    /// paire famille/indice a 7, la huitieme, celle qui n'est aucune des quatre jouables. Cet effet
+    /// de bord a lieu meme quand le garde-fou refuse ensuite.
+    /// </para>
+    /// </summary>
+    private static uint IsEffectPairBlocked_004364B0(uint* caster, uint* victim)
+    {
+        uint casterFlags = *caster;
+
+        if ((casterFlags & 0x400000) != 0 && (casterFlags & 0x800) == 0)
+        {
+            ((byte*)caster)[7] = 7;
+        }
+
+        uint blocked = 0;
+        uint victimFlags = *victim;
+
+        if ((victimFlags & 0x50002000) != 0 || (victimFlags & 0x80000000) == 0) blocked = 1;
+        if (*(short*)((byte*)victim + 0x12) != 0) blocked = 1;
+        if ((victimFlags & 0x80000000) == 0 || (casterFlags & 0x80000000) == 0) blocked = 1;
+
+        return blocked;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00447fe0 @ 0x00447fe0 — <b>soigner si la cible l'accepte</b>. Soixante et un
+    /// octets, decompilee dans <c>Blaze.c</c> : <see cref="IsEffectPairBlocked_004364B0"/>, puis
+    /// <see cref="HealTarget_0053CA80"/> si le garde-fou a laisse passer.
+    ///
+    /// <para>
+    /// <b>Le sens de la valeur rendue est inverse d'un chemin a l'autre.</b> Refus du garde-fou :
+    /// elle rend <c>true</c> sans rien faire. Passage : elle rend le resultat du soin, qui vaut
+    /// <c>1</c> quand <see cref="PrepareCombatPair_00538870"/> a echoue et <c>0</c> quand les
+    /// points de vie ont bien ete rendus. <b>Aucun appelant ne la lit</b> — Sang pur jette le
+    /// resultat, comme <c>FUN_00448060</c> jette celui de sa jumelle <c>FUN_00448210</c>.
+    /// </para>
+    /// </summary>
+    private static bool HealTargetIfEligible_00447FE0(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return HealTarget_0053CA80(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00447df0 @ 0x00447df0 — <b>Sang pur</b> : le sous-type <c>0x1f</c>, creneau 31 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>deuxieme fiche de l'ecole 1</b>. 487
+    /// octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le soin est dans le bloc de naissance.</b> A la premiere image il recopie sa propre paire
+    /// famille/indice (<c>+0x06</c>/<c>+0x07</c>) sur le lanceur — c'est ce que
+    /// <see cref="SpellSheetOf"/> relira pour trouver le montant en <c>+0x18</c> de la fiche — puis
+    /// appelle <see cref="HealTargetIfEligible_00447FE0"/> une fois et une seule. Les quarante
+    /// images qui suivent ne sont plus que l'effet visuel.
+    /// </para>
+    /// <para>
+    /// <b>Trois semis differents, sur trois horloges.</b> Quatre etincelles <c>0xa9</c> a la
+    /// naissance, deux de plus a chaque image <b>impaire</b>, et une bille <c>0x70</c> par image
+    /// jusqu'a la <b>25e</b>. Le champ <c>+0x14</c> arbitre entre les deux especes : pose a
+    /// <c>0x50</c> avant chaque etincelle — c'est le rayon dont
+    /// <see cref="EntityHandler_0044FB10"/> tire sa spirale — et remis a <b>zero</b> avant chaque
+    /// bille, ou il vaut vitesse angulaire et signifie donc « ne tourne pas ». Un seul champ, deux
+    /// conventions, reglees a chaque appel.
+    /// </para>
+    /// <para>
+    /// <b>Les deux angles des billes sont tires modulo, ceux d'Enchant ne l'etaient pas.</b>
+    /// <c>+0x32</c> vaut <c>rand % 0x400 + 0x400</c> et <c>+0x34</c> vaut <c>rand % 0x1000</c>, la
+    /// ou <see cref="TickEnchant_0047CE40"/> ecrit le tirage brut. Le binaire rend le modulo par
+    /// l'idiome MSVC en cinq operations (<c>cdq</c>, deux <c>xor</c>/<c>sub</c> autour d'un
+    /// <c>and</c>) : c'est <c>x % 2^n</c> a la mode du C, qui garde le signe du dividende.
+    /// </para>
+    /// <para>
+    /// <b>L'ancre des billes est la cible, pas le sort</b> (<c>+0x70 = +0x78</c>), et leur ecart
+    /// vertical <c>+0x48</c> est fixe a <c>0x50000</c> — exactement la hauteur que le corps du sort
+    /// s'est refusee en recopiant la position de sa cible.
+    /// </para>
+    /// <para>
+    /// <b>Le test de parite est fait sur un octet.</b> <c>test byte [esi+0x16],1</c> ne regarde que
+    /// la moitie basse du compteur de seize bits ; celui-ci ne depasse jamais <c>0x29</c>, donc
+    /// cela ne change rien. Rendu par l'acces octet, comme le binaire.
+    /// </para>
+    /// </summary>
+    private static void TickPureBlood_00447DF0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_00447e15 — la position est recopiee de la cible A CHAQUE IMAGE, sans le
+        // +0x50000 vertical que les autres fiches de l'ecole ajoutent en +0x20.
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x14) = 0x50;      // le rayon que l'etincelle 0xa9 tirera
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x9a) = 1;
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+
+            // La paire famille/indice passe au lanceur : c'est SA fiche que le soin relira. Le
+            // binaire relit +0x74 pour chacun des deux octets ; sans consequence.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            HealTargetIfEligible_00447FE0(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+        }
+
+        // Ghidra: LAB_00447ecc
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x30, 0x200, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x2f, 0x653, 0x1500, 0x1500);
+
+        // Ghidra: LAB_00447f0b — deux etincelles de plus a chaque image impaire.
+        if ((e[0x16] & 1) != 0)
+        {
+            *(short*)(e + 0x14) = 0x50;
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+        }
+
+        // Ghidra: LAB_00447f3d — une bille par image, vingt-cinq images durant.
+        if (*(short*)(e + 0x16) < 0x19)
+        {
+            e[0x04] = 0x3f;                            // le modele, celui des billes d'Enchant
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+
+            *(byte**)(e + 0x70) = *(byte**)(e + 0x78); // l'ancre : la cible, pas le sort
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0x50000;               // l'ecart vertical, du cote de la bille
+            *(int*)(e + 0x4c) = 0;
+
+            *(short*)(e + 0x32) = (short)(CrtRand() % 0x400 + 0x400);   // Ghidra: FUN_00547140
+            *(short*)(e + 0x34) = (short)(CrtRand() % 0x1000);          // Ghidra: FUN_00547140
+
+            *(short*)(e + 0x14) = 0;                   // ici le champ vaut vitesse angulaire
+            *(short*)(e + 0x12) = 0xc8;                // le rayon de depart
+            *(short*)(e + 0x28) = 0x1fff;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2c) = 0x100;
+
+            SpawnCastEntity_0047AAE0(e, 0x70, 0, -1);
+        }
+
+        // Ghidra: LAB_00447fbd
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 0x28) EndSpellAndResetDecor_00448020(e);
+    }
 
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>
