@@ -2324,6 +2324,35 @@ Les deux premiers ont `00 00` en cinquième et sixième octets là où les trois
 deux groupes dans une même table, ce qui est une raison de plus de ne pas trancher la longueur sans
 le corps consommateur.
 
+### `0x00551af8` — la borne gauche manquait d'une ligne (2026-08-31)
+
+**Stalagtite** (`FUN_00480600`, sous-type `0x17`) passe le même genre d'atlas à `FUN_0047ac40`, et
+sa base est `0x00551af8`, pas `0x00551b00` :
+
+```
+00480711  mov  ecx,3
+00480716  idiv ecx
+00480718  lea  edx,[edx*8+551AF8h]
+```
+
+Trois enregistrements, la longueur lue dans le corps comme pour `0x00551a60` — mais **les deux
+derniers sont les deux premiers de `0x00551b00`** :
+
+| adresse | octets |
+|---|---|
+| `0x00551af8` | `00 68 10 10 00 00 10 00` |
+| `0x00551b00` | `10 68 10 10 00 00 10 00` |
+| `0x00551b08` | `20 68 10 10 00 00 10 00` |
+
+Le groupe `00 00` compte donc **trois** lignes et commence une ligne plus haut que le relevé du
+2026-08-29 ne pouvait le voir : `0x00551b00` n'était pas un début de table, c'était le milieu d'un
+groupe. Les deux consommateurs entrent dans le même bloc de `.data` à deux bases distantes de huit
+octets, l'un prenant les trois `00 00`, l'autre les deux derniers `00 00` plus les trois `01 02`.
+
+**Ce que ça change pour la méthode** : deux bases différentes dans un même bloc contigu ne sont pas
+une contradiction à arbitrer, et un « début de table » établi par le seul changement de planche
+reste une borne *droite* — la gauche ne se prouve que par un `lea` d'appelant.
+
 
 ## `0x00551ab8` — l'atlas de la gerbe `0x3c`, et une borne par champ (2026-08-29)
 

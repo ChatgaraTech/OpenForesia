@@ -4844,6 +4844,12 @@ public static unsafe partial class Blaze
             case 0x00480080: TickPolarDemonHead_00480080(record); return;
             case 0x00480490: TickPolarDemonTail_00480490(record); return;
 
+            // STALAGTITE, ecole 0 indice 23 — un seul corps pour deux vies : la pointe qui rampe,
+            // puis l'eboulement. Le bit 0x2000000 les separe au lieu de l'eteindre.
+            case 0x00480600: TickStalactite_00480600(record); return;
+            case 0x00480A20: TickStalactiteSpike_00480A20(record); return;
+            case 0x00480A70: TickStalactiteShard_00480A70(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -35701,6 +35707,404 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x24) = *(int*)(head + 0x24) + offset[2];
     }
 
+
+    // =====================================================================
+    // STALAGTITE — le vingt-quatrieme sort, ecole 0 indice 23, sous-type 0x17
+    //
+    // Trois corps neufs, absents de Blaze.c.
+    //
+    //   0x00480600   LE SORT. Sous-type 0x17 de 0x00551c30, 1048 octets.
+    //   0x00480A20   L'AIGUILLE, sous-type 0x73 de 0x00551f30, 79 octets. Six exemplaires.
+    //   0x00480A70   LA PIERRE, sous-type 0x74 de 0x00551f30, 283 octets. Une image sur deux.
+    //
+    // LE PREMIER SORT QUI VIT DEUX VIES DANS UN SEUL CORPS. Son mot d'etat commence par tester
+    // 0x2000000 et se branche sur DEUX corps complets, pas sur une fin de vie : tant que le bit est
+    // absent la pointe RAMPE (vingt unites par image sur son cap, la hauteur rendue apres le
+    // placement au sol) ; des qu'il est pose, LAB_004809d3 range la position dans l'ancre
+    // +0x44/+0x48/+0x4c, remet l'age a zero, et le meme corps devient un eboulement de 0x50 images.
+    // Tous les autres sorts du depot eteignent leur entite sur ce bit ; celui-ci s'en sert de
+    // sablier. C'est ce qui explique le sens du test a l'entree, qui parait inverse.
+    //
+    // ET SES SIX AIGUILLES SONT UN CHAPELET, PAS UNE GERBE. A la premiere image il en engendre une
+    // sans ecart (modele 0x15), puis cinq (modele 0x16) a 30, 60, 90, 120 et 150 unites sur le cap
+    // DU LANCEUR, chacune 0x200 plus petite que la precedente sur les trois axes. Chaque aiguille
+    // relit l'ancre de son pere a chaque image (0x00480A20) : la file entiere suit la pointe qui
+    // rampe, sans qu'aucune ne calcule son propre deplacement.
+    //
+    // SON ATLAS DE POUSSIERE FIXE LE DEBUT D'UNE TABLE DEJA RELEVEE. Il tire rand % 3 dans
+    // 0x00551AF8, dont les deux derniers enregistrements sont les DEUX PREMIERS de
+    // s_Descriptors_00551B00, borne jusqu'ici par le seul changement de planche. Les deux
+    // consommateurs lisent le meme bloc de .data a deux bases distantes de huit octets.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551af8</c> — l'atlas de la poussiere de <b>Stalagtite</b>.
+    /// <b>Trois enregistrements</b>, et c'est le sort qui le dit : il pose <c>rand % 3</c> comme
+    /// indice, exactement comme <see cref="s_Descriptors_00551A60"/>.
+    ///
+    /// <para>
+    /// <b>Il chevauche <see cref="s_Descriptors_00551B00"/>.</b> Ses deuxieme et troisieme lignes
+    /// sont les premiere et deuxieme de celui-la : le bloc de <c>.data</c> est unique, et les deux
+    /// gestionnaires y entrent a deux bases distantes de huit octets. Cette table-ci donne donc la
+    /// <b>vraie borne gauche</b> du groupe <c>0068 1010</c>, que l'autre releve n'avait pas.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551AF8 =
+    [
+        0x00, 0x68, 0x10, 0x10, 0x00, 0x00, 0x10, 0x00,   // 0x00551af8
+        0x10, 0x68, 0x10, 0x10, 0x00, 0x00, 0x10, 0x00,   // 0x00551b00
+        0x20, 0x68, 0x10, 0x10, 0x00, 0x00, 0x10, 0x00,   // 0x00551b08
+    ];
+
+    private static byte* s_Descriptors00551AF8Storage;
+
+    /// <summary>Les trois descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551AF8()
+        => NativeCopy(s_Descriptors_00551AF8, ref s_Descriptors00551AF8Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00480600 @ 0x00480600 — <b>Stalagtite</b> : le sous-type <c>0x17</c>, creneau 23
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/>. 1048 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Un corps, deux vies.</b> Le bit <c>0x2000000</c> ne l'eteint pas : il la fait passer de la
+    /// <i>pointe qui rampe</i> a l'<i>eboulement</i>. La pointe avance de vingt unites par image sur
+    /// son propre cap, se laisse poser au sol par <see cref="FinalizeEntityPlacement2"/> puis
+    /// <b>reprend sa hauteur</b> — elle glisse a l'horizontale au lieu d'epouser le relief.
+    /// </para>
+    /// <para>
+    /// <b>Trois choses la font basculer</b> : le decor (<c>0x40000000</c> ou <c>+0x90</c> sur le
+    /// masque <c>0x8802</c>), quarante images, et le bouton relache — ou, pour un lanceur qui n'est
+    /// pas un joueur (bit <c>0x800000</c> absent), vingt images tout court. <b>Aucune ponction de
+    /// PM</b> : elle dure tant que le bouton tient, sans rien couter de plus.
+    /// </para>
+    /// <para>
+    /// <b>L'eboulement dure 0x50 images.</b> A chacune il seme un eclat <c>0xbf</c> — celui de
+    /// Flêches magiques, <see cref="TickTrailSpark_00475F60"/> — dans un rayon de 255 unites autour
+    /// de l'ancre, avec une vitesse verticale de 40 a 71 ; une image sur deux il lache en plus une
+    /// pierre <c>0x74</c> au cap tire au hasard, et son bruit.
+    /// </para>
+    /// </summary>
+    private static void TickStalactite_00480600(byte* record)
+    {
+        byte* e = record;
+
+        // Le binaire remplit ses six mots de sonde en tete de fonction, avant meme le branchement ;
+        // seule la vie « pointe » s'en sert.
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0;
+        probe[2] = 0x3c;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x12c;
+
+        uint state = *(uint*)e;
+
+        if ((state & 0x2000000) != 0)
+        {
+            // =================================================== la seconde vie : l'eboulement
+            if (*(short*)(e + 0x10) >= 0x50) { *(uint*)e = 0; return; }
+            if ((state & 0x40000000) != 0) { *(uint*)e = 0; return; }
+
+            byte* fallen = *(byte**)(e + 0x74);
+            if ((*(uint*)fallen & 0x40000000) != 0) { *(uint*)e = 0; return; }
+
+            // Les deux mots d'echelle sont mis de cote : la poussiere naît a 0x2000 par recopie du
+            // pere, et le sort reprend sa taille des la naissance faite.
+            uint savedScaleXy = *(uint*)(e + 0x28);
+            uint savedScaleZ = *(uint*)(e + 0x2c);
+
+            int scatter = CrtRand();
+            int reach = CrtRand() & 0xff;
+
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(scatter) * reach + *(int*)(e + 0x44);
+            *(int*)(e + 0x20) = *(int*)(e + 0x48);
+            *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(scatter) * reach + *(int*)(e + 0x4c);
+
+            int drift = CrtRand();
+            int speed = (CrtRand() & 0x1f) + 0x0a;
+
+            *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(drift) * speed;
+            *(int*)(e + 0x54) = ((CrtRand() & 0x1f) + 0x28) << 0xc;
+            *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(drift) * speed;
+
+            *(uint*)(e + 0x38) = 0x01f0f0f0;
+            *(uint*)(e + 0x28) = 0x20002000;
+            *(ushort*)(e + 0x2c) = 0x1f;
+
+            byte* atlas = Descriptors00551AF8() + CrtRand() % 3 * 8;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), atlas, 0xbf, e[0x0b], -1);
+
+            *(uint*)(e + 0x28) = savedScaleXy;
+            *(uint*)(e + 0x2c) = savedScaleZ;
+
+            // Ghidra: `test al,1` — une image sur deux, et une seule pierre a la fois.
+            if ((e[0x10] & 1) != 0)
+            {
+                *(uint*)(e + 0x38) = 0x00808080;
+                *(ushort*)(e + 0x32) = (ushort)CrtRand();
+
+                e[0x04] = 0x17;
+                SpawnCastEntity_0047AAE0(e, 0x74, e[0x0b], -1);
+
+                Aud.PlayPositionalSound(4, 0x400, 0x1200, (int*)(e + 0x1c));
+            }
+
+            *(ushort*)(e + 0x10) += 1;
+            return;
+        }
+
+        // ======================================================= la premiere vie : la pointe
+        if (*(short*)(e + 0x10) == 0)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+
+            e[0x36] |= 6;
+            *(uint*)e = state | 0x80;                  // le lanceur est immobilise
+
+            // Ghidra: `and al,0FEh` puis `shl eax,0Bh`. Seul le bit 0 est efface, donc c'est
+            // (hauteur >> 1) << 12 — la demi-hauteur du Demon polaire, ecrite autrement.
+            int height = StatusBubbleHeight_00538BC0((uint*)caster);
+            *(int*)(e + 0x20) += (height & ~1) << 0xb;
+
+            int casterHeading = *(short*)(caster + 0x32);
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(casterHeading) * 20;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(casterHeading) * 20;
+
+            // La premiere aiguille n'a pas d'ecart : elle est la pointe elle-meme.
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+
+            *(uint*)(e + 0x38) = 0x00808080;
+            *(uint*)(e + 0x28) = 0x10001000;
+            *(ushort*)(e + 0x2c) = 0x1000;
+
+            e[0x04] = 0x15;
+            SpawnCastEntity_0047AAE0(e, 0x73, e[0x0b], -1);
+
+            // Les cinq suivantes : autre modele, de trente en trente unites derriere la premiere,
+            // 0x200 plus petites a chaque pas et tournees d'un huitieme de tour tire au hasard.
+            e[0x04] = 0x16;
+
+            for (int span = 0x1e; span <= 0x96; span += 0x1e)
+            {
+                *(int*)(e + 0x44) = (int)Winsys3d.GetSinTableEntry(casterHeading) * span;
+                *(int*)(e + 0x48) = 0;
+                *(int*)(e + 0x4c) = Winsys3d.GetCosTableEntry(casterHeading) * span;
+
+                *(ushort*)(e + 0x2c) += 0xfe00;         // -0x200 sur Z
+                *(uint*)(e + 0x28) += 0xfdfffe00;       // -0x200 sur X et sur Y, en un seul dword
+
+                *(ushort*)(e + 0x34) += (ushort)((CrtRand() & 0x1ff) + 0x300);
+
+                SpawnCastEntity_0047AAE0(e, 0x73, e[0x0b], -1);
+            }
+
+            Aud.PlayPositionalSound(4, 0x400, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0048089c — vingt unites par image sur son propre cap.
+        int heading = *(short*)(e + 0x32);
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 20;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 20;
+
+        // La hauteur est relevee AVANT le placement et rendue apres : la pointe glisse a plat, le
+        // sol ne la souleve pas.
+        int keptHeight = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);
+        *(int*)(e + 0x20) = keptHeight;
+
+        state = *(uint*)e;
+
+        if ((state & 0x40000000) != 0 || (*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            state |= 0x2000000;
+            *(uint*)e = state;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+        short age = *(short*)(e + 0x10);
+
+        if (age >= 0x28) *(uint*)e |= 0x2000000;
+
+        state = *(uint*)e;
+
+        if ((state & 0x800000) != 0)
+        {
+            // Le meme code de manette que les sorts entretenus, mais sans la ponction de PM.
+            byte* caster = *(byte**)(e + 0x74);
+            uint index = caster[8];
+            byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+            int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+            ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            {
+                state |= 0x2000000;
+                *(uint*)e = state;
+            }
+        }
+        else if (age >= 0x14)
+        {
+            state |= 0x2000000;
+            *(uint*)e = state;
+        }
+
+        if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            // La poussee est prise un QUART DE TOUR avant le cap de la pointe : la victime part de
+            // cote, pas devant.
+            int push = *(short*)(e + 0x32) - 0x400;
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+            *(ushort*)(victim + 0x96) = 0x10;          // le clignotement de degat
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+            *(uint*)victim |= 0x40;
+        }
+
+        // Ghidra: LAB_004809d3 — la bascule. Elle a lieu dans l'image meme ou le bit vient d'etre
+        // pose, donc la seconde vie commence au pas suivant avec un age tout neuf.
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+            *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x48) = *(int*)(e + 0x60);     // l'ancre se pose au SOL
+
+            *(short*)(e + 0x10) = 0;
+            *(uint*)(e + 0x28) = 0x1400;               // X a 0x1400, Y a zero : dword, comme ecrit
+            *(ushort*)(e + 0x2c) = 0x1400;
+            *(short*)(e + 0x34) = 0;
+            *(short*)(e + 0x1a) = 1;
+            *(ushort*)(e + 0x9a) = 0x7fff;             // la gravite, la plus forte du depot
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00480a20 @ 0x00480a20 — <b>une aiguille de Stalagtite</b> : le sous-type
+    /// <c>0x73</c>, creneau 115 de <see cref="s_StaticEntityHandlers_00551f30"/>. 79 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle ne se deplace pas, elle est placee.</b> Sa position vaut a chaque image l'ancre de
+    /// son pere plus son propre ecart <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>, fige a la naissance :
+    /// les six aiguilles forment un chapelet rigide que la pointe traine derriere elle. Seul son
+    /// tangage bouge, de <c>0x100</c> en arriere par image.
+    /// </para>
+    /// <para>
+    /// <b>Elle meurt du bit de son pere.</b> Elle prend <c>0x2000000</c> dans le mot d'etat du pere,
+    /// se le pose, et s'eteint dans la foulee — le sens de lecture inverse de celui d'Assaut
+    /// magique, ou la lame posait le bit <i>sur</i> son pere.
+    /// </para>
+    /// </summary>
+    private static void TickStalactiteSpike_00480A20(byte* record)
+    {
+        byte* e = record;
+        byte* parent = *(byte**)(e + 0x6c);
+
+        uint state = *(uint*)e | (*(uint*)parent & 0x2000000);
+        *(uint*)e = state;
+
+        if ((state & 0x2000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        *(int*)(e + 0x1c) = *(int*)(e + 0x44) + *(int*)(parent + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(e + 0x48) + *(int*)(parent + 0x20);
+        *(ushort*)(e + 0x34) += 0xff00;                // -0x100 de tangage
+        *(int*)(e + 0x24) = *(int*)(e + 0x4c) + *(int*)(parent + 0x24);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00480a70 @ 0x00480a70 — <b>une pierre de l'eboulement</b> : le sous-type
+    /// <c>0x74</c>, creneau 116 de <see cref="s_StaticEntityHandlers_00551f30"/>. 283 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle ne vit que par sa hauteur.</b> Son echelle Y <c>+0x2a</c> passe par trois regimes,
+    /// tous par demi-ecart : elle rejoint <c>0x1900</c> pendant quatre images, redescend vers
+    /// <c>0x1402</c> jusqu'a la douzieme, puis <b>se divise par deux</b> jusqu'a la seizieme, ou
+    /// elle s'eteint. La pierre jaillit, tient, et s'affaisse.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne frappe que pendant sa montee et son plateau</b> — au-dela de la douzieme image la
+    /// sonde n'est plus consultee. Celle-ci commence <b>quatre-vingts unites en arriere</b>
+    /// (<c>-0x50</c> d'avance) et porte <c>0xc8</c> de profondeur sur <c>0xa0</c> d'ouverture :
+    /// elle prend ce qui se tient au pied de la pierre, pas devant elle.
+    /// </para>
+    /// </summary>
+    private static void TickStalactiteShard_00480A70(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = unchecked((short)0xffb0);
+        probe[2] = 0x50;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0xa0;
+
+        uint state = *(uint*)e;
+
+        if ((state & 0x40000000) != 0)
+        {
+            *(uint*)e = 0;                             // le decor l'arrete net
+            return;
+        }
+
+        short age = *(short*)(e + 0x10);
+
+        if (age < 4)
+        {
+            *(uint*)e = state | 0x80;
+            *(short*)(e + 0x2a) += (short)((0x1900 - *(short*)(e + 0x2a)) >> 1);
+        }
+        else if (age < 0x0c)
+        {
+            *(short*)(e + 0x2a) += (short)((0x1402 - *(short*)(e + 0x2a)) >> 1);
+        }
+        else if (age < 0x10)
+        {
+            *(short*)(e + 0x2a) -= (short)(*(short*)(e + 0x2a) >> 1);
+        }
+        else
+        {
+            *(uint*)e = 0;
+        }
+
+        if (age < 0x0c)
+        {
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+            if (victim != null)
+            {
+                ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+                // La meme poussee de cote que la pointe, au quart de tour pres.
+                int push = *(short*)(e + 0x32) - 0x400;
+                *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+                *(ushort*)(victim + 0x96) = 0x10;      // le clignotement de degat
+                *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+                *(uint*)victim |= 0x40;
+            }
+        }
+
+        // Elle est incrementee meme sur l'image qui l'eteint : le binaire ne rend la main qu'ici.
+        *(short*)(e + 0x10) += 1;
+    }
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>
     /// saisie pendant l'incantation. Elle rend l'indice du sort dont la combinaison correspond, ou
