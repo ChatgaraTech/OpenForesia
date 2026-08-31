@@ -4850,6 +4850,12 @@ public static unsafe partial class Blaze
             case 0x00480A20: TickStalactiteSpike_00480A20(record); return;
             case 0x00480A70: TickStalactiteShard_00480A70(record); return;
 
+            // SATANAS, ecole 0 indice 24 — le seul sort qui TUE : son demon appelle
+            // SlayTarget_0053CDF0, l'entree 47 de la table des 48, et non ResolveSpellHit.
+            case 0x00480B90: TickSatanas_00480B90(record); return;
+            case 0x00480E40: TickSatanasSigil_00480E40(record); return;
+            case 0x00481250: TickSatanasReaper_00481250(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -36105,6 +36111,727 @@ public static unsafe partial class Blaze
         // Elle est incrementee meme sur l'image qui l'eteint : le binaire ne rend la main qu'ici.
         *(short*)(e + 0x10) += 1;
     }
+
+    // =====================================================================
+    // SATANAS — le vingt-cinquieme sort, ecole 0 indice 24, sous-type 0x18
+    //
+    // Trois corps neufs, absents de Blaze.c.
+    //
+    //   0x00480B90   LE SORT. Sous-type 0x18 de 0x00551c30, 688 octets.
+    //   0x00480E40   LE SCEAU, sous-type 0x87 de 0x00551f30, 1038 octets. DOUZE exemplaires.
+    //   0x00481250   LE DEMON, sous-type 0x88 de 0x00551f30, 1050 octets. Un seul, et tard.
+    //
+    // LE SEUL SORT DU DEPOT QUI TUE SANS PASSER PAR LES DEGATS. Le demon n'appelle pas
+    // ResolveSpellHit_0053A2B0 : il appelle SlayTarget_0053CDF0, l'entree 47 et derniere de la
+    // table des 48 — la mort immediate, la seule qui exige DEUX jets de sauvegarde d'affilee. Les
+    // vingt-quatre sorts precedents retiraient des points de vie ; celui-ci en demande zero.
+    //
+    // ET LE SEUL QUI SE DEROULE EN TROIS ACTES, CHACUN GARDE PAR UN BIT DIFFERENT.
+    //
+    //   1. LA RONDE. A la premiere image le sort pose douze sceaux en cercle autour du lanceur, a
+    //      la hauteur de sa tete et au rayon de celle-ci, espaces de 0x155 (un douzieme de tour) et
+    //      retardes chacun de deux images de plus que le precedent (+0x12 = 1, 3, 5 … 23). Ils
+    //      grossissent sur place jusqu'a la teinte 0xF0 ; le premier a y arriver pose 0x1000000 sur
+    //      le sort.
+    //   2. LA CHASSE. Ce bit ouvre la recherche : le sort appelle FindNearestOpponent_00474EB0 a
+    //      chaque image, et s'eteint au bout de 0x3c images s'il ne trouve rien. Des qu'il trouve,
+    //      il se lie a la proie dans les deux sens (+0x78 chez lui, +0x74 chez elle), pose son bit
+    //      2 — que les sceaux heritent avec la proie — et remet son age a zero.
+    //   3. LA MISE A MORT. Chaque sceau vole vers la proie et s'y ACCROCHE au contact ; chaque
+    //      accrochage incremente le +0x14 du sort. Quand les DOUZE tiennent, le sort fait naitre le
+    //      demon 0x88 a la position du lanceur. Il approche 0x3c images, puis frappe.
+    //
+    // LE CONTROLE DE PLACE EST LE SECOND DU DEPOT. Comme Demon polaire, il compare le curseur du
+    // pool 0x006007a0 a une borne avant de partir — 0x6c ici contre 0x76 la-bas, parce qu'il lui
+    // faut douze emplacements d'un coup et non six.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551b88</c> — l'atlas de la gerbe d'eclats du demon de <b>Satanas</b>.
+    /// <b>Trois enregistrements</b>, bornes par le corps consommateur : le demon pose
+    /// <c>rand % 3</c> comme indice.
+    ///
+    /// <para>
+    /// Comme <see cref="s_Descriptors_00551AF8"/>, il commence au milieu d'un groupe : la ligne qui
+    /// le precede (<c>0x00551b80</c>, <c>d8 d0 0f 0f 00 00 10 00</c>) appartient a la meme planche
+    /// et a la meme famille, et n'a pas encore de consommateur connu.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551B88 =
+    [
+        0xd8, 0xe0, 0x0f, 0x0f, 0x00, 0x00, 0x10, 0x00,   // 0x00551b88
+        0xd8, 0xf0, 0x0f, 0x0f, 0x00, 0x00, 0x10, 0x00,   // 0x00551b90
+        0xe8, 0xf0, 0x0f, 0x0f, 0x00, 0x00, 0x10, 0x00,   // 0x00551b98
+    ];
+
+    private static byte* s_Descriptors00551B88Storage;
+
+    /// <summary>Les trois descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551B88()
+        => NativeCopy(s_Descriptors_00551B88, ref s_Descriptors00551B88Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552588</c> — <b>le sixieme script de sons differes</b>, celui de
+    /// <see cref="TickSatanas_00480B90"/>. Le son <c>0x31</c>, une image d'attente, puis le
+    /// <c>0x12</c> qui termine — l'invocation, puis la ronde qui s'allume.
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552588 =
+    [
+        0x31, 0x01, 0x01, 0x00, 0x94, 0x01, 0x00, 0x12,   // 0x00552588
+        0x12, 0x00, 0x01, 0x00, 0x53, 0x06, 0x00, 0x0f,   // 0x00552590 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552588Storage;
+
+    /// <summary>Les deux pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00552588()
+        => NativeCopy(s_DelayedSoundScript_00552588, ref s_DelayedSoundScript00552588Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00480b90 @ 0x00480b90 — <b>Satanas</b> : le sous-type <c>0x18</c>, creneau 24 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 688 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le sort lui-meme ne touche jamais personne.</b> Il n'a ni sonde ni appel a
+    /// <see cref="ResolveSpellHit_0053A2B0"/> : il pose douze sceaux, attend leur signal, cherche
+    /// une proie, et quand les douze la tiennent il fait naitre le demon qui tue. Il est
+    /// l'ordonnanceur des deux autres corps.
+    /// </para>
+    /// <para>
+    /// <b>Il compte de trois facons a la fois.</b> <c>+0x16</c> est le nombre de sceaux encore en
+    /// vie — a zero, le sort meurt ; <c>+0x14</c> le nombre de ceux accroches a la proie — a douze,
+    /// le demon naît ; <c>+0x12</c> monte tant que le joueur tient un bouton de face, plafonne a
+    /// <c>+0x14 &#215; 5</c>. Les trois sont remis a zero a la fin de la premiere image, apres avoir
+    /// servi de compteur de boucle a la pose des sceaux.
+    /// </para>
+    /// <para>
+    /// <b>Il lit la manette par la proie, pas par le lanceur.</b> L'indice de personnage vient de
+    /// l'entite liee en <c>+0x78</c> — de <c>DAT_005de538</c> si elle porte <c>0x10000</c>, de son
+    /// <c>+0x08</c> sinon — et le masque est <c>0xf0</c> sur l'octet <c>+2</c> de l'etat de manette,
+    /// les quatre boutons de face. Aucun autre corps du depot ne s'adresse a la manette par ce
+    /// chemin.
+    /// </para>
+    /// </summary>
+    private static void TickSatanas_00480B90(byte* record)
+    {
+        byte* e = record;
+
+        uint state = *(uint*)e;
+        byte* caster = *(byte**)(e + 0x74);
+
+        if ((state & 0x2000000) != 0)
+        {
+            *(uint*)caster &= 0xffffff7f;               // le lanceur est rendu a lui-meme
+            byte* bound = *(byte**)(e + 0x78);
+            if (bound != null) *(uint*)(bound + 0x74) = 0;   // la proie oublie son marqueur
+            *(uint*)e = 0;
+            return;
+        }
+
+        if ((state & 2) != 0)
+        {
+            // ================================================ la proie est designee
+            short latched = *(short*)(e + 0x14);
+
+            if (latched != 0)
+            {
+                if (*(short*)(e + 0x10) == 0 && latched == 0x0c)
+                {
+                    // Les douze sceaux tiennent : le demon naît a la place du lanceur.
+                    *(short*)(e + 0x10) = 1;
+                    *(uint*)(e + 0x28) = 0;
+                    *(ushort*)(e + 0x2c) = 0;
+                    *(uint*)(e + 0x38) = 0;
+
+                    *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+                    *(int*)(e + 0x24) = *(int*)(caster + 0x24);
+                    *(ushort*)(e + 0x32) = *(ushort*)(caster + 0x32);
+                    *(ushort*)(e + 0x34) = 0x400;
+
+                    SpawnCastEntity_0047AAE0(e, 0x88, e[0x0b], -1);
+                }
+
+                state = *(uint*)e;                     // Ghidra: LAB_00480c33, le mot est relu
+
+                if ((state & 0x400000) != 0)
+                {
+                    byte* bound = *(byte**)(e + 0x78);
+
+                    uint index = (*(uint*)bound & 0x10000) != 0
+                        ? (uint)(byte)Mem.s_Unknown_005de538
+                        : bound[8];
+
+                    int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+
+                    // Le masque 0xf0 sur l'octet +2 : les quatre boutons de face, tenus.
+                    if ((Inp.s_InputStateBase_00604a20[slot * 0x10 + 2] & 0xf0) != 0
+                        && *(short*)(e + 0x12) < *(short*)(e + 0x14) * 5)
+                    {
+                        *(short*)(e + 0x12) += 1;
+                    }
+                }
+            }
+
+            // Ghidra: LAB_00480c8a — la proie perdue ou le lanceur au decor posent le bit 4, que
+            // les sceaux relisent pour se decrocher.
+            byte* prey = *(byte**)(e + 0x78);
+
+            if ((prey != null && (*(uint*)prey & 0x50000000) != 0)
+                || (*(uint*)(*(byte**)(e + 0x74)) & 0x40000000) != 0)
+            {
+                state |= 4;
+                *(uint*)e = state;
+            }
+
+            // Plus un seul sceau en vie : le sort n'a plus rien a ordonner.
+            if (*(short*)(e + 0x16) == 0) *(uint*)e |= 0x2000000;
+            return;
+        }
+
+        // ==================================================== pas encore de proie
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // Le controle de place — douze emplacements d'un coup.
+            if (*Mem.Entity(0x006007a0) > 0x6c)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            *(uint*)caster |= 0x80;                    // le lanceur est immobilise
+            e[0x36] |= 6;
+            *(ushort*)(e + 0x2e) = 0xffc0;
+            *(byte**)(e + 0x78) = null;
+
+            int height = StatusBubbleHeight_00538BC0((uint*)caster);
+
+            int anchorX = *(int*)(e + 0x1c);
+            int anchorZ = *(int*)(e + 0x24);
+
+            *(ushort*)(e + 0x34) += 0xff00;            // le tangage descend d'un cran
+            *(int*)(e + 0x20) += (height + 0x1e) << 0xc;
+            *(ushort*)(e + 0x32) += 0x400;
+
+            *(uint*)(e + 0x38) = 0;
+            *(uint*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(short*)(e + 0x12) = 1;
+            *(short*)(e + 0x14) = 1;
+
+            int pitch = *(short*)(e + 0x34);
+            e[0x04] = 0x14;
+
+            // Douze sceaux, un douzieme de tour d'ecart, deux images de retard de plus a chaque
+            // fois : +0x12 et +0x14 servent ici de compteurs et partent dans la copie de chaque
+            // enfant, qui les relit comme son retard et son rang.
+            for (int seal = 0; seal < 0x0c; seal++)
+            {
+                int yaw = *(short*)(e + 0x32) - 0x400;
+
+                *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(yaw) * height + anchorX;
+                *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(yaw) * height + anchorZ;
+
+                SetVectorFromAngles_00532AD0((int*)(e + 0x50), yaw, pitch, 0x80);
+                SpawnCastEntity_0047AAE0(e, 0x87, e[0x0b], -1);
+
+                *(ushort*)(e + 0x32) += 0x155;
+                *(short*)(e + 0x12) += 2;
+                *(short*)(e + 0x14) += 1;
+            }
+
+            *(short*)(e + 0x16) = 0x0c;
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x14) = 0;
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00552588(), (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_00480de6 — la chasse ne s'ouvre qu'au signal des sceaux.
+        state = *(uint*)e;
+        *(ushort*)(e + 0x10) += 1;
+
+        if ((state & 0x1000000) == 0) return;
+
+        byte* found = FindNearestOpponent_00474EB0((uint*)caster, 0x0cf66a00, 1);
+
+        if (found != null)
+        {
+            // Le lien est reciproque, comme celui de la fleche magique.
+            *(byte**)(e + 0x78) = found;
+            *(byte**)(found + 0x74) = e;
+
+            *(short*)(e + 0x10) = 0;
+            *(uint*)e |= 2;
+            return;
+        }
+
+        if (*(short*)(e + 0x10) >= 0x3c || (*(uint*)caster & 0x40000000) != 0)
+        {
+            *(uint*)e |= 0x2000000;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00480e40 @ 0x00480e40 — <b>un sceau de Satanas</b> : le sous-type <c>0x87</c>,
+    /// creneau 135 de <see cref="s_StaticEntityHandlers_00551f30"/>. 1038 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. Douze exemplaires.
+    ///
+    /// <para>
+    /// <b>Trois vies, dans cet ordre.</b> Sans le bit <c>2</c> il grandit sur place vers
+    /// <c>0x800</c> et s'eclaircit de <c>0x10</c> par image ; arrive a <c>0xF0</c> il pose
+    /// <c>0x1000000</c> sur le sort — c'est ce qui ouvre la chasse. Le bit <c>2</c> et la proie lui
+    /// arrivent ensuite du sort, par heritage direct du mot d'etat. Il decompte alors son retard
+    /// <c>+0x12</c>, joue son bruit a zero, et vole.
+    /// </para>
+    /// <para>
+    /// <b>Son vol est une poursuite amortie.</b> A chaque image il recalcule les deux angles vers la
+    /// tete de la proie, en tire un pas de <c>0x10</c> qu'il <b>ajoute</b> a sa vitesse, puis retire
+    /// un huitieme de celle-ci : une poussee continue freinee, pas un cap. Son orientation vient
+    /// ensuite de son deplacement reel.
+    /// </para>
+    /// <para>
+    /// <b>Au contact il s'accroche.</b> Il frappe une fois, retient l'ecart a la victime dans
+    /// <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>, se pose le bit <c>4</c> et ne fait plus que suivre —
+    /// et il incremente le <c>+0x14</c> du sort. <b>Faute de proie il s'etale</b> : son echelle X
+    /// enfle vers <c>0x5000</c> pendant que les deux autres fondent d'un quart, et il meurt quand
+    /// son echelle Y passe sous 8.
+    /// </para>
+    /// </summary>
+    private static void TickSatanasSigil_00480E40(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6];
+        probe[0] = unchecked((short)0xfc00);
+        probe[1] = unchecked((short)0xff80);
+        probe[2] = 0x32;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x80;
+
+        uint state = *(uint*)e;
+
+        if ((state & 0x2000000) != 0)
+        {
+            short shrinking = (short)(*(short*)(e + 0x2a) - (*(short*)(e + 0x2a) >> 2));
+            *(short*)(e + 0x2a) = shrinking;
+            *(short*)(e + 0x2c) -= (short)(*(short*)(e + 0x2c) >> 2);
+
+            if (shrinking < 8) *(uint*)e = 0;
+            return;
+        }
+
+        byte* spell = *(byte**)(e + 0x6c);
+
+        if ((state & 0x40000000) != 0)
+        {
+            // Le decor : il previent le sort et lui force son compteur de charge a 0x3c.
+            *(uint*)spell |= 4;
+            *(short*)(*(byte**)(e + 0x6c) + 0x12) = 0x3c;
+        }
+
+        byte* prey = *(byte**)(e + 0x78);
+
+        // Ghidra: LAB_00480ece — deux facons de lacher la proie : le sort le demande (son bit 4),
+        // ou la charge a depasse cinq fois le rang de ce sceau alors qu'il tenait deja.
+        bool release = prey != null && (*(uint*)spell & 4) != 0;
+
+        if (!release)
+        {
+            release = *(short*)(spell + 0x12) >= *(short*)(e + 0x14) * 5
+                      && (*(uint*)e & 4) != 0;
+        }
+
+        if (release)
+        {
+            *(uint*)e &= 0xfffffffb;
+            *(byte**)(e + 0x78) = null;
+            *(short*)(spell + 0x16) -= 1;
+            prey = null;
+        }
+
+        if (prey != null && (*(uint*)e & 4) != 0)
+        {
+            // Accroche : il ne se deplace plus, il est place.
+            *(int*)(e + 0x1c) = *(int*)(prey + 0x1c) + *(int*)(e + 0x44);
+            *(int*)(e + 0x20) = *(int*)(prey + 0x20) + *(int*)(e + 0x48);
+            *(int*)(e + 0x24) = *(int*)(prey + 0x24) + *(int*)(e + 0x4c);
+            return;
+        }
+
+        if ((*(uint*)e & 2) == 0)
+        {
+            // ============================================ Ghidra: LAB_004811de, le sceau qui monte
+            short scale = *(short*)(e + 0x28);
+            scale += (short)((0x800 - scale) >> 2);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+            *(short*)(e + 0x2c) = scale;
+
+            // Il herite du sort ses deux bits : la fin, et la designation de la proie.
+            *(uint*)e |= *(uint*)spell & 0x2000002;
+
+            if ((*(uint*)e & 2) != 0) *(byte**)(e + 0x78) = *(byte**)(spell + 0x78);
+
+            if ((*(uint*)e & 0x2000000) != 0) *(short*)(spell + 0x16) -= 1;
+
+            uint tint = *(uint*)(e + 0x38);
+
+            if (tint < 0xf0)
+            {
+                *(uint*)(e + 0x38) = tint + 0x10;
+            }
+            else
+            {
+                // Le signal qui ouvre la chasse du sort.
+                *(uint*)spell |= 0x1000000;
+            }
+
+            return;
+        }
+
+        // ================================================ Ghidra: LAB_00480f3c, le sceau qui vole
+        short delay = *(short*)(e + 0x12);
+
+        if (delay != 0)
+        {
+            delay -= 1;
+            *(short*)(e + 0x12) = delay;
+            if (delay != 0) return;
+
+            Aud.PlayPositionalSound(0x12, 0x7a7, 0x1200, (int*)(e + 0x1c));
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(uint*)e |= 0x80;
+        }
+
+        // Ghidra: LAB_00480f88 — la position d'avant le pas, pour en deduire l'orientation apres.
+        int keptX = *(int*)(e + 0x1c);
+        int keptY = *(int*)(e + 0x20);
+        int keptZ = *(int*)(e + 0x24);
+
+        int yaw;
+        int pitch;
+
+        if (prey != null)
+        {
+            int dx = (*(int*)(prey + 0x1c) - keptX) >> 0xc;
+
+            // La visee monte a la tete de la proie, pas a ses pieds.
+            int preyHead = StatusBubbleHeight_00538BC0((uint*)prey);
+            int dy = (((preyHead & ~1) << 0xb) + *(int*)(prey + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+            int dz = (*(int*)(prey + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            yaw = Winsys3d.Ordinal_457(dx, dz);
+            pitch = Winsys3d.Ordinal_457(dy, flat);
+        }
+        else
+        {
+            // Ghidra: LAB_00481011 — sans proie il s'eteint et s'etale.
+            uint tint = *(uint*)(e + 0x38);
+            if (tint != 0) *(uint*)(e + 0x38) = tint - 0x10;
+
+            short sx = *(short*)(e + 0x28);
+            *(short*)(e + 0x28) = (short)(sx + ((0x5000 - sx) >> 2));
+
+            short sy = *(short*)(e + 0x2a);
+            sy -= (short)(sy >> 2);
+            *(short*)(e + 0x2a) = sy;
+
+            short sz = *(short*)(e + 0x2c);
+            *(short*)(e + 0x2c) = (short)(sz - (sz >> 2));
+
+            if (sy < 8)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            yaw = *(short*)(e + 0x32) - 0x400;
+            pitch = *(short*)(e + 0x34);
+        }
+
+        // Ghidra: LAB_00481075 — le pas s'AJOUTE a la vitesse, qui perd ensuite un huitieme.
+        int* step = stackalloc int[3];
+        SetVectorFromAngles_00532AD0(step, yaw, pitch, 0x10);
+
+        int vx = *(int*)(e + 0x50) + step[0];
+        int vy = *(int*)(e + 0x54) + step[1];
+        int vz = *(int*)(e + 0x58) + step[2];
+
+        vx -= vx >> 3;
+        vy -= vy >> 3;
+        vz -= vz >> 3;
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x58) = vz;
+
+        int movedX = keptX + vx;
+        int movedY = keptY + vy;
+        int movedZ = keptZ + vz;
+
+        *(int*)(e + 0x1c) = movedX;
+        *(int*)(e + 0x20) = movedY;
+        *(int*)(e + 0x24) = movedZ;
+
+        // L'orientation vient du deplacement REEL, pas du cap vise.
+        int mx = (movedX - keptX) >> 0xc;
+        int my = (movedY - keptY) >> 0xc;
+        int mz = (movedZ - keptZ) >> 0xc;
+
+        int travelled = (int)Winsys3d.Ordinal_442((uint)(mx * mx + mz * mz));
+
+        *(short*)(e + 0x32) = (short)(Winsys3d.Ordinal_457(mx, mz) + 0x400);
+        *(short*)(e + 0x34) = (short)Winsys3d.Ordinal_457(my, travelled);
+
+        if (prey == null) return;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        // Il ne mord que SA proie : tout autre corps traverse.
+        if (victim == null || victim != *(byte**)(e + 0x78)) return;
+
+        ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+        *(ushort*)(victim + 0x96) = 1;             // le clignotement de degat
+        *(uint*)victim |= 0x40;
+
+        *(short*)(spell + 0x14) += 1;              // un sceau de plus qui tient
+
+        *(int*)(e + 0x44) = *(int*)(e + 0x1c) - *(int*)(victim + 0x1c);
+        *(int*)(e + 0x48) = *(int*)(e + 0x20) - *(int*)(victim + 0x20);
+        *(int*)(e + 0x4c) = *(int*)(e + 0x24) - *(int*)(victim + 0x24);
+
+        Mem.s_BackColourR_005e93a0 = 0xff;         // le fond vire au rouge, une image
+        *(uint*)e |= 4;
+
+        Aud.PlayPositionalSound(0x2e, 0xca6, 0x1200, (int*)(e + 0x1c));
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00481250 @ 0x00481250 — <b>le demon de Satanas</b> : le sous-type <c>0x88</c>,
+    /// creneau 136 de <see cref="s_StaticEntityHandlers_00551f30"/>. 1050 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. Un seul, et seulement quand les douze sceaux tiennent.
+    ///
+    /// <para>
+    /// <b>C'est lui qui tue.</b> Au contact de la proie il appelle
+    /// <see cref="SlayTarget_0053CDF0"/> — l'entree 47 de la table des 48, la mort immediate — et
+    /// non <see cref="ResolveSpellHit_0053A2B0"/>. Aucun autre corps de sort du depot ne fait cela.
+    /// Si les deux jets de sauvegarde passent, il n'en reste que le bruit ; sinon la proie s'eteint
+    /// et six eclats <c>0xbf</c> partent en gerbe.
+    /// </para>
+    /// <para>
+    /// <b>Il recopie sa fiche de sort sur le lanceur.</b> Juste avant de frapper il ecrit son
+    /// <c>+0x06</c> — la paire famille/indice — dans le <c>+0x06</c> du lanceur. C'est la seule
+    /// ecriture du depot d'un enfant vers ce champ de son invocateur, et elle est faite <b>avant</b>
+    /// l'appel, donc <c>SlayTarget</c> la lit.
+    /// </para>
+    /// <para>
+    /// <b>Deux allures, separees par <c>0x1000000</c>.</b> Pendant 0x3c images il approche en
+    /// tournant ses deux angles <b>par le plus court chemin</b>, un huitieme de l'ecart par image,
+    /// et grossit vers <c>0x2000</c>/<c>0x1000</c>/<c>0x1000</c>. Le bit pose, il fonce a
+    /// <c>0x80</c> par image et frappe ; douze images plus tard il s'eteint, en prevenant le sort.
+    /// </para>
+    /// <para>
+    /// <b>Sa garde d'abandon ne peut pas se declencher.</b> Pendant l'approche il s'eteint si le
+    /// <c>+0x12</c> du sort divise par dix atteint 12, soit 120 ; or ce compteur est plafonne a
+    /// <c>+0x14 &#215; 5</c>, et <c>+0x14</c> ne depasse pas les douze sceaux — donc 60. Le sceau
+    /// qui touche le decor le force a <c>0x3c</c>, ce qui ne change rien. La branche est ecrite
+    /// telle quelle : c'est une borne du binaire, pas une omission.
+    /// </para>
+    /// </summary>
+    private static void TickSatanasReaper_00481250(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6];
+        probe[0] = unchecked((short)0xfc00);
+        probe[1] = unchecked((short)0xff80);
+        probe[2] = 0x32;
+        probe[3] = 0xc8;
+        probe[4] = 0;
+        probe[5] = 0x80;
+
+        uint state = *(uint*)e;
+
+        // Le seul corps de ce sort a tester les deux bits ensemble : la fin voulue et le decor.
+        if ((state & 0x42000000) != 0)
+        {
+            short shrinking = (short)(*(short*)(e + 0x2a) - (*(short*)(e + 0x2a) >> 2));
+            *(short*)(e + 0x2a) = shrinking;
+            *(short*)(e + 0x2c) -= (short)(*(short*)(e + 0x2c) >> 2);
+
+            if (shrinking < 8) *(uint*)e = 0;
+            return;
+        }
+
+        byte* spell = *(byte**)(e + 0x6c);
+
+        if ((state & 0x1000000) == 0)
+        {
+            // ============================================ Ghidra: LAB_00481507, l'approche
+            byte* prey = *(byte**)(e + 0x78);
+
+            *(uint*)e = state | 0x80;
+
+            int dx = (*(int*)(prey + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            int preyHead = StatusBubbleHeight_00538BC0((uint*)prey);
+            int dy = (((preyHead & ~1) << 0xb)
+                      + (*(int*)(prey + 0x20) - *(int*)(e + 0x20))) >> 0xc;
+            int dz = (*(int*)(prey + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            short heading = *(short*)(e + 0x32);
+            short tilt = *(short*)(e + 0x34);
+
+            int yawGap = (Winsys3d.Ordinal_457(dx, dz) + 0x400 - heading) & 0xfff;
+            int tiltGap = (Winsys3d.Ordinal_457(dy, flat) - tilt) & 0xfff;
+
+            // Le plus court chemin : au-dela d'un demi-tour, le huitieme est NIE — le meme choix
+            // que le fantome de Trouille et que la tete du Demon polaire.
+            *(short*)(e + 0x32) += (short)(yawGap < 0x800 ? yawGap >> 3 : -((0x1000 - yawGap) >> 3));
+            *(short*)(e + 0x34) =
+                (short)(tilt + (tiltGap < 0x800 ? tiltGap >> 3 : -((0x1000 - tiltGap) >> 3)));
+
+            short sx = *(short*)(e + 0x28);
+            *(short*)(e + 0x28) = (short)(sx + ((0x2000 - sx) >> 2));
+
+            short sy = *(short*)(e + 0x2a);
+            *(short*)(e + 0x2a) = (short)(sy + ((0x1000 - sy) >> 2));
+
+            short sz = *(short*)(e + 0x2c);
+            *(short*)(e + 0x2c) = (short)(sz + ((0x1000 - sz) >> 2));
+
+            uint tint = *(uint*)(e + 0x38);
+            if (tint < 0xf0) *(uint*)(e + 0x38) = tint + 0x10;
+
+            *(ushort*)(e + 0x10) += 1;
+
+            if (*(short*)(e + 0x10) >= 0x3c)
+            {
+                *(short*)(e + 0x10) = 0;
+                *(uint*)e |= 0x1000000;                // il passe a la frappe
+                return;
+            }
+
+            // Ghidra: `imul 66666667h` puis `sar edx,1` — une division par dix par multiplication
+            // magique. Voir l'en-tete : le seuil de 12 est hors d'atteinte.
+            if (*(short*)(spell + 0x12) / 10 >= 0x0c) *(uint*)e |= 0x2000000;
+            return;
+        }
+
+        // ================================================ Ghidra: LAB_004812c8, la frappe
+        int yaw;
+        int pitch;
+
+        if ((state & 1) != 0)
+        {
+            // Il a deja frappe : il continue tout droit, sans se reorienter.
+            yaw = *(short*)(e + 0x32) - 0x400;
+            pitch = *(short*)(e + 0x34);
+        }
+        else
+        {
+            byte* prey = *(byte**)(e + 0x78);
+
+            int dx = (*(int*)(prey + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            int preyHead = StatusBubbleHeight_00538BC0((uint*)prey);
+            int dy = (((preyHead & ~1) << 0xb)
+                      + (*(int*)(prey + 0x20) - *(int*)(e + 0x20))) >> 0xc;
+            int dz = (*(int*)(prey + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            yaw = Winsys3d.Ordinal_457(dx, dz);
+            pitch = Winsys3d.Ordinal_457(dy, flat);
+
+            *(short*)(e + 0x34) = (short)pitch;
+            *(short*)(e + 0x32) = (short)(yaw + 0x400);
+        }
+
+        // Ghidra: LAB_00481356 — la vitesse est REMPLACEE, pas cumulee : il ne courbe pas.
+        SetVectorFromAngles_00532AD0((int*)(e + 0x50), yaw, pitch, 0x80);
+
+        *(int*)(e + 0x1c) += *(int*)(e + 0x50);
+        *(int*)(e + 0x24) += *(int*)(e + 0x58);
+        *(int*)(e + 0x20) += *(int*)(e + 0x54);
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null && victim == *(byte**)(e + 0x78))
+        {
+            *(uint*)e |= 1;
+
+            // La fiche de sort du demon est recopiee sur le lanceur AVANT l'appel.
+            *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+            if (SlayTarget_0053CDF0(*(uint**)(e + 0x74), (uint*)victim, 0) == 0)
+            {
+                // La mort a pris : six eclats partent, et le demon se prete a chacun d'eux sa
+                // propre vitesse et sa propre echelle avant de les reprendre.
+                int keptVx = *(int*)(e + 0x50);
+                int keptVy = *(int*)(e + 0x54);
+                int keptVz = *(int*)(e + 0x58);
+                uint keptScaleXy = *(uint*)(e + 0x28);
+                uint keptScaleZ = *(uint*)(e + 0x2c);
+                uint keptTint = *(uint*)(e + 0x38);
+
+                *(ushort*)(e + 0x9a) = 0x6000;         // la gravite des eclats
+
+                for (int shard = 0; shard < 6; shard++)
+                {
+                    int spin = CrtRand();
+
+                    *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(spin) << 5;
+                    *(int*)(e + 0x54) = ((CrtRand() & 0x1f) + 0x1e) << 0xc;
+                    *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(spin) << 5;
+
+                    *(uint*)(e + 0x38) = 0x01f0f0f0;
+                    *(uint*)(e + 0x28) = 0x02002000;
+                    *(ushort*)(e + 0x2c) = 0x1f;
+                    *(short*)(e + 0x1a) = 1;
+
+                    byte* atlas = Descriptors00551B88() + CrtRand() % 3 * 8;
+                    SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), atlas, 0xbf, 0, 0x0c);
+                }
+
+                *(int*)(e + 0x50) = keptVx;
+                *(int*)(e + 0x54) = keptVy;
+                *(int*)(e + 0x58) = keptVz;
+                *(uint*)(e + 0x28) = keptScaleXy;
+                *(uint*)(e + 0x2c) = keptScaleZ;
+                *(uint*)(e + 0x38) = keptTint;
+
+                *(ushort*)(victim + 0x96) = 1;         // le clignotement de degat
+            }
+
+            // Ghidra: LAB_004814c7 — le decor vire au rouge sombre, meme quand la mort est refusee.
+            *(uint*)spell |= 4;
+
+            Mem.s_BackColourR_005e93a0 = 0x80;         // le binaire ecrit R et V en un seul dword
+            Mem.s_BackColourG_005e93a2 = 0;
+            Mem.s_BackColourB_005e93a4 = 0;
+        }
+
+        // Ghidra: LAB_004814e4 — douze images, et il s'eteint en prevenant le sort.
+        if (*(short*)(e + 0x10) >= 0x0c)
+        {
+            *(uint*)spell |= 4;
+            *(uint*)e = 0;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>
     /// saisie pendant l'incantation. Elle rend l'indice du sort dont la combinaison correspond, ou

@@ -2353,6 +2353,34 @@ octets, l'un prenant les trois `00 00`, l'autre les deux derniers `00 00` plus l
 une contradiction à arbitrer, et un « début de table » établi par le seul changement de planche
 reste une borne *droite* — la gauche ne se prouve que par un `lea` d'appelant.
 
+### `0x00551b88` — le même cas, une deuxième fois (2026-08-31)
+
+Le démon de **Satanas** (`FUN_00481250`, sous-type `0x88`) tire lui aussi `rand % 3` dans un atlas,
+et sa base tombe au milieu d'un groupe de quatre lignes identiques de forme :
+
+| adresse | octets | |
+|---|---|---|
+| `0x00551b80` | `d8 d0 0f 0f 00 00 10 00` | même planche, **aucun consommateur connu** |
+| `0x00551b88` | `d8 e0 0f 0f 00 00 10 00` | ← la base du démon |
+| `0x00551b90` | `d8 f0 0f 0f 00 00 10 00` | |
+| `0x00551b98` | `e8 f0 0f 0f 00 00 10 00` | |
+
+Deux relevés indépendants, deux fois le même piège : la borne gauche d'un atlas ne se lit pas dans
+la donnée. Ici c'est la ligne `0x00551b80` qui reste orpheline — la chercher plutôt que la rattacher.
+
+## `0x00552588` — le sixième script de sons différés (2026-08-31)
+
+Mis en file par `FUN_00480b90` (**Satanas**) à la fin de sa première image. Même format que les
+cinq précédents : huit octets par pas, l'octet `+1` est le délai, un délai nul termine.
+
+| adresse | octets | |
+|---|---|---|
+| `0x00552588` | `31 01 01 00 94 01 00 12` | son `0x31`, une image d'attente |
+| `0x00552590` | `12 00 01 00 53 06 00 0f` | son `0x12`, délai nul : fin |
+
+La file contiguë depuis `0x00552530` compte donc six scripts relevés ; le septième
+(`0x00552598`, `30 20 01 00 29 03 00 12`) reste à rencontrer.
+
 
 ## `0x00551ab8` — l'atlas de la gerbe `0x3c`, et une borne par champ (2026-08-29)
 
