@@ -4949,6 +4949,11 @@ public static unsafe partial class Blaze
             case 0x0044A880: TickHolyDome_0044A880(record); return;
             case 0x004500B0: TickHolyCatchSpark_004500B0(record); return;
 
+            // PRIERE, ecole 1 indice 13 — la seconde moitie de Lapeche : sa nasse attrape
+            // exactement ce que l'autre laisse passer (le bit 0x800 exige au lieu d'interdit).
+            case 0x0044AE90: TickPrayer_0044AE90(record); return;
+            case 0x0044AF70: TickHolyWard_0044AF70(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -42160,7 +42165,8 @@ public static unsafe partial class Blaze
     //                      dome->elles divise par huit, et leur +0x96 passe a 0x10
     //   0x005f2d40 (0x80)  les entites d'effet — marquees 0x40000000, donc detruites
     //   0x005edee0 (0x80)  les entites d'incantation — idem
-    //   0x005ff400 (0x10)  la quatrieme table — idem
+    //   0x005ff400 (0x10)  la quatrieme table — idem, mais sur SEIZE creneaux seulement alors
+    //                      qu'elle en compte trente-deux : voir LB-022
     //
     // Chaque prise coute cent au canal bleu du dome et fait naitre l'etincelle 0xa5. Le dome
     // s'eteint quand ce bleu touche zero : ATTRAPER TROP DE CHOSES TUE LA NASSE.
@@ -42426,7 +42432,7 @@ public static unsafe partial class Blaze
                 SweepDomeCatch(e, Mem.Entity(0x005ecaa0), 0x20, true);
                 SweepDomeCatch(e, Mem.Entity(0x005f2d40), 0x80, false);
                 SweepDomeCatch(e, Mem.Entity(0x005edee0), 0x80, false);
-                SweepDomeCatch(e, Mem.Entity(0x005ff400), 0x10, false);
+                SweepDomeCatch(e, Mem.Entity(0x005ff400), 0x10, false);   // 0x10, pas 0x20 : LB-022
             }
         }
 
@@ -42569,6 +42575,350 @@ public static unsafe partial class Blaze
             if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x23, 0x653, 0x1000, 0x1000);
             if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x16, 0x155, 0x1000, 0x1000);
             if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x0f, 0x2ff, 0x1000, 0x1000);
+
+            *(short*)(e + 0x16) += 1;
+        }
+
+        // L'etat 2 ne vient que du dome.
+        if (*(short*)(e + 0x10) == 2) EndSpellAndResetDecor_00448020(e);
+    }
+
+    // =====================================================================
+    // PRIERE — le quarante-troisieme sort, ecole 1 indice 13, sous-type 0x2b
+    //
+    //   0x0044AE90   LE SORT. Sous-type 0x2b de 0x00551c30, 224 octets. DECOMPILE dans Blaze.c.
+    //   0x0044AF70   LE DOME, sous-type 0x8f de 0x00551f30, 1440 octets. UN. DECOMPILE.
+    //
+    // C'EST LAPECHE, ET LES DEUX NASSES SONT COMPLEMENTAIRES. Le dome de Lapeche attrape les
+    // entites d'effet qui n'ont PAS le bit 0x800 ; celui de Priere attrape celles qui l'ONT. Deux
+    // sorts au meme prix (22 PM), a la meme combinaison de longueur, poses cote a cote dans le
+    // binaire, et qui se partagent exactement le champ des cibles. Aucun autre couple du depot ne
+    // fait cela.
+    //
+    // ET IL NE REPOUSSE PAS LES MONSTRES, IL LES NETTOIE. La ou Lapeche donne aux entites de scene
+    // une vitesse fuyante et une etincelle, Priere leur retire simplement les bits 0x880 de leur
+    // mot d'etat, sans rien faire naitre. Le reste — les trois tables d'effet — est traite pareil :
+    // marque 0x40000000 et une etincelle 0xa5 par prise.
+    //
+    // LES CINQ DIFFERENCES, ET RIEN D'AUTRE :
+    //
+    //   +0x0a           2 chez lui, 1 chez Lapeche — la teinte du dome
+    //   +0x9a           2 chez lui, 9 chez Lapeche — la teinte des etincelles de prise
+    //   le troisieme son  0x31 chez lui, 0x0f chez Lapeche
+    //   le filtre       0x800 EXIGE chez lui, INTERDIT chez Lapeche
+    //   la 4e table     0x20 creneaux chez lui, 0x10 chez Lapeche — voir LB-022
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044af70 @ 0x0044af70 — <b>le dome de Priere</b> : le sous-type <c>0x8f</c>,
+    /// creneau 143 de <see cref="s_StaticEntityHandlers_00551f30"/>. 1440 octets, <b>decompilee
+    /// dans <c>Blaze.c</c></b>. <see cref="TickPrayer_0044AE90"/> n'en fait naitre <b>qu'un</b>,
+    /// sur le lanceur lui-meme.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickHolyDome_0044A880"/> a quelques valeurs pres</b> : meme ouverture en
+    /// trois etats, meme battement de teinte par <c>sin(+0x12)</c>, meme ponction de deux points
+    /// de magie toutes les dix images, memes trois conditions d'arret, meme signal remontant qui
+    /// eteint le sort en mourant.
+    /// </para>
+    /// <para>
+    /// <b>Mais les deux nasses sont complementaires.</b> Sur les trois tables d'effet, Lapeche
+    /// exige que <c>0x800</c> soit <b>absent</b> et demande en plus <c>0x200</c> et <c>0x400</c> ;
+    /// Priere exige que <c>0x800</c> soit <b>present</b> et ne demande rien d'autre que
+    /// <c>0x400000</c> et <c>0x80</c>. Les deux sorts se partagent le champ des cibles.
+    /// </para>
+    /// <para>
+    /// <b>Et il ne repousse pas les entites de scene, il les nettoie</b> : il leur retire les bits
+    /// <c>0x880</c> (<c>&amp; 0xfffff77f</c>) et ne fait rien naitre, la ou Lapeche leur donne une
+    /// vitesse fuyante, un <c>+0x96</c> a <c>0x10</c> et une etincelle. Son filtre est aussi plus
+    /// large d'un cran : il ne teste pas <c>0x400000</c>.
+    /// </para>
+    /// <para>
+    /// <b>Il balaie la quatrieme table sur <c>0x20</c> creneaux</b>, la ou Lapeche s'arrete a
+    /// <c>0x10</c> — voir <c>LB-022</c> dans <c>Documentation/Reference/legacy-bug.md</c>.
+    /// </para>
+    /// <para>
+    /// <b>Son en-tete pose la hauteur a chaque image</b> (<c>cible[+0x60] + 0xc8000</c>), la ou
+    /// celui de Lapeche ne la posait qu'a la naissance. Les etats 1 a 3 la reecrivent aussitot, donc
+    /// cela ne se voit que sur l'image ou aucun etat ne s'applique.
+    /// </para>
+    /// </summary>
+    private static void TickHolyWard_0044AF70(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60) + 0xc8000;
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 1;                               // le modele
+            e[0x0a] = 2;                               // la teinte — 1 chez Lapeche
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            e[0x38] = 0;                               // il naît noir
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x28) = 500;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2c) = 500;
+
+            // Le binaire refait ici le repli sur DAT_005de558, sur le pointeur d'origine.
+            byte* birth = *(byte**)(e + 0x78);
+            if (birth == null) birth = Res.s_EntityList_005de558;
+
+            *(int*)(e + 0x1c) = *(int*)(birth + 0x1c);
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x20) = *(int*)(birth + 0x60) + 0xc8000;
+            *(int*)(e + 0x24) = *(int*)(birth + 0x24);
+
+            **(uint**)(e + 0x74) |= 0x80;              // le lanceur est immobilise
+        }
+
+        *(short*)(e + 0x32) += 600;
+        if (*(short*)(e + 0x32) > 0xfff) *(short*)(e + 0x32) -= 0x1000;
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            byte* rising = *(byte**)(e + 0x78);
+            if (rising == null) rising = Res.s_EntityList_005de558;
+
+            *(int*)(e + 0x1c) = *(int*)(rising + 0x1c);
+            *(int*)(e + 0x24) = *(int*)(rising + 0x24);
+
+            *(short*)(e + 0x28) += 500;
+            *(short*)(e + 0x2c) += 500;
+
+            if (*(short*)(e + 0x28) > 10999)
+            {
+                *(short*)(e + 0x28) = 11000;
+                *(short*)(e + 0x2c) = 11000;
+            }
+
+            *(short*)(e + 0x2a) += 500;
+            *(short*)(e + 0x12) += 9;
+
+            *(int*)(e + 0x20) =
+                *(int*)(rising + 0x60) + *(short*)(e + 0x12) * -0x1000 + 0xc8000;
+
+            if (*(short*)(e + 0x2a) > 10999)
+            {
+                *(short*)(e + 0x2a) = 11000;
+                *(int*)(e + 0x20) = *(int*)(rising + 0x60);
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+
+            BrightenEntityTint_00404DE0(e, 0x28, 0x28, 0x3c);
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            byte* held = *(byte**)(e + 0x78);
+            if (held == null) held = Res.s_EntityList_005de558;
+
+            *(int*)(e + 0x1c) = *(int*)(held + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(held + 0x60);
+            *(int*)(e + 0x24) = *(int*)(held + 0x24);
+
+            // Ghidra: trois appels a Ordinal_451 avec le MEME argument, un par canal.
+            int beat = *(short*)(e + 0x12);
+            e[0x38] = (byte)(sbyte)(((int)Winsys3d.GetSinTableEntry(beat) >> 7) - 0x38);
+            e[0x39] = (byte)(sbyte)(((int)Winsys3d.GetSinTableEntry(beat) >> 7) - 0x38);
+            e[0x3a] = (byte)(sbyte)(((int)Winsys3d.GetSinTableEntry(beat) >> 7) - 0x38);
+
+            *(short*)(e + 0x12) += 300;
+            if (*(short*)(e + 0x12) > 0xfff) *(short*)(e + 0x12) -= 0x1000;
+
+            if ((*(uint*)e & 0x800000) != 0)
+            {
+                uint* caster = *(uint**)(e + 0x74);
+                *caster |= 0x80;
+
+                uint slot = ((byte*)caster)[8];
+                byte* sheet = GetMainMemPtr() + (slot + 0x78) * 0x2000;
+
+                // `&DAT_00604a20 + n * 4` en pseudo-C vaut n * 0x10 en octets — le symbole est
+                // type undefined4. Verifie au desassembleur (`shl ebx,4`).
+                ushort buttons = *(ushort*)(Inp.s_InputStateBase_00604a20
+                                            + Inp.s_PlayerSlots_005e9188[slot * 0x4c] * 0x10);
+
+                if ((*(ushort*)(sheet + 0x1fc4) & buttons) == 0)
+                {
+                    *(short*)(e + 0x10) = 3;
+                    *caster &= 0xffffff7f;
+                }
+
+                if ((*(uint*)(sheet + 0x140) & 0x3e8) != 0
+                    || (*(uint*)(Inp.s_SlotFlags_005e93c0 + slot * 0x9c) & 0x40000000) != 0)
+                {
+                    *(short*)(e + 0x10) = 3;
+                    **(uint**)(e + 0x74) &= 0xffffff7f;
+                }
+
+                if (*(uint*)Mem.Entity(0x005f2cf0) % 10 == 0)
+                {
+                    if (*(short*)(sheet + 0x14e) < 2)
+                    {
+                        *(short*)(sheet + 0x14e) = 0;
+                        *(short*)(e + 0x10) = 3;
+                        **(uint**)(e + 0x74) &= 0xffffff7f;
+                    }
+                    else
+                    {
+                        *(short*)(sheet + 0x14e) -= 2;
+                    }
+                }
+            }
+
+            uint* owner = *(uint**)(e + 0x74);
+            if (owner == null) owner = (uint*)Res.s_EntityList_005de558;
+
+            if ((*owner & 0x800000) != 0)
+            {
+                SweepWardClean(e, Mem.Entity(0x005ecaa0), 0x20);
+
+                SweepWardCatch(e, Mem.Entity(0x005f2d40), 0x80);
+                SweepWardCatch(e, Mem.Entity(0x005edee0), 0x80);
+                SweepWardCatch(e, Mem.Entity(0x005ff400), 0x20);   // 0x10 chez Lapeche : LB-022
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            byte* closing = *(byte**)(e + 0x78);
+            if (closing == null) closing = Res.s_EntityList_005de558;
+
+            *(int*)(e + 0x1c) = *(int*)(closing + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(closing + 0x60);
+            *(int*)(e + 0x24) = *(int*)(closing + 0x24);
+
+            BrightenEntityTint_00404DE0(e, -10, -10, -10);
+
+            if (e[0x3a] == 0)
+            {
+                *(uint*)e &= 0x7fffffff;
+
+                byte* parent = *(byte**)(e + 0x6c);
+                if (parent == null) parent = Res.s_EntityList_005de558;
+
+                *(short*)(parent + 0x10) = 2;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Le balayage des entites de scene par le dome de Priere. Deux tests seulement — vivante et
+    /// pas mourante —, puis, sous <c>0x136</c> en trois dimensions, il <b>retire les bits
+    /// <c>0x880</c></b> du mot d'etat et ne fait rien naitre.
+    ///
+    /// <para>C'est l'oppose de ce que fait <see cref="SweepDomeCatch"/> sur la meme table pour
+    /// Lapeche : la, une vitesse fuyante, un <c>+0x96</c> a <c>0x10</c> et une etincelle.</para>
+    /// </summary>
+    private static void SweepWardClean(byte* e, byte* table, int count)
+    {
+        byte* slot = table;
+
+        for (int index = 0; index < count; index++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x40000000) != 0) continue;
+
+            int dx = (*(int*)(e + 0x1c) - *(int*)(slot + 0x1c)) >> 0xc;
+            int dy = (*(int*)(e + 0x20) - *(int*)(slot + 0x20)) >> 0xc;
+            int dz = (*(int*)(e + 0x24) - *(int*)(slot + 0x24)) >> 0xc;
+
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) >= 0x136) continue;
+
+            *(short*)(e + 0x9a) = 2;
+            e[0x3a] = (byte)(e[0x3a] - 100);
+            *(uint*)slot &= 0xfffff77f;
+        }
+    }
+
+    /// <summary>
+    /// Le balayage des trois tables d'effet par le dome de Priere. Il exige <c>0x80000000</c>,
+    /// <c>0x400000</c>, <b><c>0x800</c></b> et <c>0x80</c> — la ou <see cref="SweepDomeCatch"/>
+    /// exige que <c>0x800</c> soit <b>absent</b> et demande en plus <c>0x200</c> et <c>0x400</c>.
+    /// <b>Les deux nasses sont complementaires.</b>
+    /// </summary>
+    private static void SweepWardCatch(byte* e, byte* table, int count)
+    {
+        byte* slot = table;
+
+        for (int index = 0; index < count; index++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x400000) == 0) continue;
+            if ((flags & 0x800) == 0) continue;
+            if ((flags & 0x80) == 0) continue;
+
+            int dx = (*(int*)(e + 0x1c) - *(int*)(slot + 0x1c)) >> 0xc;
+            int dy = (*(int*)(e + 0x20) - *(int*)(slot + 0x20)) >> 0xc;
+            int dz = (*(int*)(e + 0x24) - *(int*)(slot + 0x24)) >> 0xc;
+
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) >= 0x136) continue;
+
+            e[0x3a] = (byte)(e[0x3a] - 100);
+            *(short*)(e + 0x9a) = 2;
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(slot + 0x1c), null, 0xa5, 0, -1);
+
+            *(uint*)slot |= 0x40000000;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044ae90 @ 0x0044ae90 — <b>Priere</b> : le sous-type <c>0x2b</c>, creneau 43 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>quatorzieme fiche de l'ecole 1</b>.
+    /// 224 octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickLapeche_0044A7A0"/> a un son pres</b> : meme recherche de cible
+    /// aussitot ecrasee par <c>+0x78 = +0x74</c>, meme absence d'enveloppe d'effet, meme trio de
+    /// sons a la naissance dont seul le troisieme change (<c>0x31</c> au lieu de <c>0x0f</c>), meme
+    /// etat 2 qui n'est jamais pose par son propre corps mais par le dome en mourant.
+    /// </para>
+    /// <para>
+    /// Les deux fiches coutent 22 PM, s'apprennent au meme niveau, ont des combinaisons de meme
+    /// longueur et se suivent dans le binaire. Ce sont deux moities d'un meme mecanisme — voir
+    /// <see cref="TickHolyWard_0044AF70"/> pour le partage des cibles.
+    /// </para>
+    /// </summary>
+    private static void TickPrayer_0044AE90(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            AcquireHolyTarget_00447CB0(e, 0);
+            *(byte**)(e + 0x78) = *(byte**)(e + 0x74);   // et la recherche est ecrasee
+
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                SpawnCastEntity_0047AAE0(e, 0x8f, 0, -1);
+                *(short*)(e + 0x16) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x23, 0x653, 0x1000, 0x1000);
+            if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x16, 0x155, 0x1000, 0x1000);
+            if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x31, 0x100, 0x1000, 0x1000);
 
             *(short*)(e + 0x16) += 1;
         }

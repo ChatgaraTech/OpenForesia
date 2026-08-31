@@ -1147,3 +1147,49 @@ pas, elle dépend de ce que l'appelant avait laissé.
 
 Initialiser le local, ou supprimer le test et semer l'étincelle inconditionnellement — ce que fait
 déjà le port, par construction.
+
+---
+
+## LB-022 — Le dôme de « Lapêche » ne balaie que la moitié de la quatrième table
+
+**Fonctions** : `FUN_0044a880` (le dôme de Lapêche) et sa jumelle `FUN_0044af70` (le dôme de
+Prière), relevées le 2026-08-31. Toutes deux décompilées dans `Blaze.c`, confirmées au
+désassembleur.
+
+### Le symptôme
+
+Les deux dômes balaient les mêmes quatre tables d'entités à chaque image pour attraper ce qui passe
+à portée. Sur les trois premières les deux comptent pareil. Sur la quatrième, `0x005ff400`, ils ne
+comptent pas la même chose :
+
+```
+Lapêche  0044ad68  mov  ebp,5FF400h
+         0044ad6d  mov  dword [esp+14h],10h      <- seize créneaux
+
+Prière   0044b3f7  mov  ebp,5FF400h
+         0044b3fc  mov  dword [esp+14h],20h      <- trente-deux
+```
+
+### Pourquoi c'en est un
+
+La table `0x005ff400` compte **trente-deux** créneaux, et tout le reste du jeu la traite comme telle
+— `ClearEntitySlots(0x005ff400, 0x20)` à l'entrée de la carte, `ApplyFlagToSlots(0x005ff400, 0x20,
+…)` dans les verbes de script. Prière la balaie entièrement ; Lapêche s'arrête à la moitié. Les deux
+corps sont par ailleurs le même à cinq valeurs près, et les quatre autres comptes de boucle sont
+identiques : `0x20`, `0x80`, `0x80`. Le `0x10` est isolé.
+
+### Ce que ça change en jeu
+
+Une entité logée dans les seize derniers créneaux de cette table traverse le dôme de Lapêche sans
+être attrapée, alors que celui de Prière l'aurait prise. L'effet est invisible tant que la table
+reste peu remplie — les créneaux sont alloués depuis le début —, et ne se manifeste que dans une
+scène chargée. C'est probablement pourquoi personne ne l'a vu.
+
+### Ce que la transcription fait
+
+`TickHolyDome_0044A880` balaie `0x10` créneaux, `TickHolyWard_0044AF70` en balaie `0x20`, comme
+leurs binaires respectifs.
+
+### Où porterait le correctif
+
+Passer le compte de Lapêche à `0x20`, comme sa jumelle.

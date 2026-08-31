@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Prière, le quarante-troisième sort** : le sort `0x0044ae90` (224 octets) et son dôme `0x0044af70` (1 440 octets), tous deux décompilés dans `Blaze.c`. Aucun corps d'enfant neuf — l'étincelle de prise était écrite avec Lapêche
+- doc : **les deux nasses sont complémentaires** — le dôme de Lapêche attrape les entités d'effet qui n'ont **pas** le bit `0x800` ; celui de Prière attrape celles qui l'**ont**. Deux sorts au même prix (22 PM), au même palier, de même longueur de combinaison, posés côte à côte dans le binaire, et qui se partagent exactement le champ des cibles. Aucun autre couple du dépôt ne fait ça
+- doc : **et Prière ne repousse pas les monstres, il les nettoie** — il retire les bits `0x880` du mot d'état des entités de scène et ne fait rien naître, là où Lapêche leur donne une vitesse fuyante, un `+0x96` à `0x10` et une étincelle
+- doc : **LB-022 — le dôme de Lapêche ne balaie que la moitié de la quatrième table** : `0x10` créneaux de `0x005ff400` au lieu de `0x20`. Sa jumelle Prière en balaie `0x20`, et tout le reste du jeu traite cette table comme `0x20`. Les quatre autres comptes de boucle des deux corps sont identiques ; le `0x10` est isolé
 - feat : **Lapêche, le quarante-deuxième sort** : le sort `0x0044a7a0` (224 octets), son dôme `0x0044a880` (1 552 octets — le plus gros corps d'enfant de l'école) et son étincelle de prise `0x004500b0` (288 octets), tous trois décompilés dans `Blaze.c`
 - doc : **le premier sort du dépôt qui dure tant qu'on le paie** — le dôme ponctionne deux points au `+0x14e` de la fiche de personnage toutes les dix images et s'arrête dès que ce compteur tombe sous deux. Trois autres conditions le coupent : la combinaison de boutons relâchée (`+0x1fc4` de la fiche contre l'entrée `0x00604a20 + créneau * 0x10`), un état du `+0x140`, et la mort du lanceur
 - doc : **le premier sort de l'école sans enveloppe d'effet** — il ne passe jamais par `IsEffectPairBlocked_004364B0` ni par la table des 48 : son effet **est** le dôme, qui travaille directement sur les quatre tables d'entités
