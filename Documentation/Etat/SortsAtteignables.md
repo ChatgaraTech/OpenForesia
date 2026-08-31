@@ -128,7 +128,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 0 | 22 | Démon polaire | X-T-X-C-C-X-C-XC-O | 30 | 75 | 60 | 0x16 | `0x0047FE60` | oui | **non** |
 | 0 | 23 | Stalagtite | C-T-C-X-T-C-O-X-O | 45 | 72 | 60 | 0x17 | `0x00480600` | oui | **non** |
 | 0 | 24 | Satanas | C-X-O-T-C-X-O-T-C-O-X-T-O | 60 | 74 | 60 | 0x18 | `0x00480B90` | oui | **non** |
-| 0 | 25 | Au sec | T-X-O-C-XC-TO-TOXC | 80 | 76 | 120 | 0x19 | `0x00481670` | **non** | **non** |
+| 0 | 25 | Au sec | T-X-O-C-XC-TO-TOXC | 80 | 76 | 120 | 0x19 | `0x00481670` | oui | **non** |
 | 0 | 26 | Colère | XC-C-X-O-T-C-O-T-C-O-X-O | 96 | 0 | 132 | 0x1a | `0x004819D0` | **non** | **non** |
 | 0 | 27 | Météores | X-T-C-X-T-O-X-C-O-X-C-O-T | 82 | 0 | 96 | 0x1b | `0x00482370` | **non** | **non** |
 | 0 | 28 | Fusion | TO-T-O-T-C-T-X-T-X-T-T-TO | 100 | 0 | 120 | 0x1c | `0x004828F0` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **25** |
-| a transcrire | **55** |
+| implementees (le gestionnaire existe) | **26** |
+| a transcrire | **54** |
 | lancees en jeu au moins une fois | **1** |
-| dette : implementees mais jamais lancees | **24** |
+| dette : implementees mais jamais lancees | **25** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -287,12 +287,12 @@ corps a tourne, par un sort ou par autre chose.
 | `0x0047FE60` | 1 | oui | **non** | Démon polaire |
 | `0x00480600` | 1 | oui | **non** | Stalagtite |
 | `0x00480B90` | 1 | oui | **non** | Satanas |
-| `0x00481670` | 1 | **non** | **non** | Au sec |
+| `0x00481670` | 1 | oui | **non** | Au sec |
 | `0x004819D0` | 1 | **non** | **non** | Colère |
 | `0x00482370` | 1 | **non** | **non** | Météores |
 | `0x004828F0` | 1 | **non** | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **49** a transcrire.
+**74 gestionnaires distincts**, dont **48** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le

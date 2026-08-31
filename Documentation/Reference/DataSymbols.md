@@ -2378,8 +2378,21 @@ cinq précédents : huit octets par pas, l'octet `+1` est le délai, un délai n
 | `0x00552588` | `31 01 01 00 94 01 00 12` | son `0x31`, une image d'attente |
 | `0x00552590` | `12 00 01 00 53 06 00 0f` | son `0x12`, délai nul : fin |
 
-La file contiguë depuis `0x00552530` compte donc six scripts relevés ; le septième
-(`0x00552598`, `30 20 01 00 29 03 00 12`) reste à rencontrer.
+## `0x00552598` — le septième script, et le plus long (2026-08-31)
+
+Mis en file par `FUN_00481720`, la spirale d'**Au sec**, à sa première image. **Cinq pas**, contre
+deux ou trois pour les six précédents :
+
+| adresse | octets | son | délai | hauteur |
+|---|---|---:|---:|---:|
+| `0x00552598` | `30 20 01 00 29 03 00 12` | `0x30` | 0x20 | `0x0329` |
+| `0x005525a0` | `31 10 01 00 00 01 00 12` | `0x31` | 0x10 | `0x0100` |
+| `0x005525a8` | `12 02 01 00 00 02 00 12` | `0x12` | 2 | `0x0200` |
+| `0x005525b0` | `12 02 01 00 29 03 00 12` | `0x12` | 2 | `0x0329` |
+| `0x005525b8` | `12 00 01 00 00 04 00 12` | `0x12` | **0** : fin | `0x0400` |
+
+La file contiguë depuis `0x00552530` compte donc sept scripts relevés, jusqu'à `0x005525bf` ; le
+huitième (`0x005525c0`, `1a 01 01 00 00 02 00 12`) reste à rencontrer.
 
 
 ## `0x00551ab8` — l'atlas de la gerbe `0x3c`, et une borne par champ (2026-08-29)

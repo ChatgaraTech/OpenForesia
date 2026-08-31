@@ -4856,6 +4856,11 @@ public static unsafe partial class Blaze
             case 0x00480E40: TickSatanasSigil_00480E40(record); return;
             case 0x00481250: TickSatanasReaper_00481250(record); return;
 
+            // AU SEC, ecole 0 indice 25 — le seul sort qui CHANGE D'ECRAN : sa spirale pose
+            // s_GameStateId_005de510 = 2 et arrete la boucle de la carte du monde.
+            case 0x00481670: TickRecall_00481670(record); return;
+            case 0x00481720: TickRecallSpiral_00481720(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -36830,6 +36835,282 @@ public static unsafe partial class Blaze
         }
 
         *(ushort*)(e + 0x10) += 1;
+    }
+
+    // =====================================================================
+    // AU SEC — le vingt-sixieme sort, ecole 0 indice 25, sous-type 0x19
+    //
+    //   0x00481670   LE SORT. Sous-type 0x19 de 0x00551c30, 169 octets. DECOMPILE dans Blaze.c.
+    //   0x00481720   LA SPIRALE, sous-type 0x63 de 0x00551f30, 680 octets. Absente de Blaze.c.
+    //                DEUX exemplaires par membre du groupe, soit huit au complet.
+    //
+    // LE SEUL SORT DU DEPOT QUI CHANGE D'ECRAN. A sa soixante-quinzieme image la spirale pose
+    // s_GameStateId_005de510 = 2 et s_WorldMapStep_005645f8 = 0xfe : l'etat 2 est l'ecran de
+    // destination (Screens/State02/), et 0xfe arrete la boucle de la carte du monde. « Au sec »
+    // n'est donc pas un sort de combat du tout — c'est la sortie de donjon, et son nom le dit.
+    //
+    // ET LE PREMIER QUI S'ADRESSE AU GROUPE ENTIER. Le sort ne fait rien d'autre que balayer les
+    // 0x9c octets par membre de Inp.s_SlotFlags_005e93c0 et engendrer DEUX spirales par membre
+    // vivant — l'une au cap courant, l'autre a l'oppose (+0x800) —, puis s'eteindre dans la meme
+    // image. Il n'a ni age, ni sonde, ni fin : son corps entier tient dans une seule passe.
+    //
+    // Hors d'un lanceur du groupe il ne fait RIEN. La premiere instruction teste 0x800000 sur son
+    // propre mot d'etat et saute directement a l'extinction : un monstre qui lancerait cette fiche
+    // n'obtiendrait pas meme une spirale.
+    //
+    // ET LA TRANSITION EST FAITE DEUX FOIS PAR MEMBRE. Les deux spirales d'un meme membre sont
+    // identiques a leur cap pres — la seule difference que le sort leur donne, +0x16 a 0 puis a 1,
+    // n'est JAMAIS relue par leur corps —, donc toutes deux atteignent l'age 0x30 et refont le bloc
+    // en entier : le +0x12 du membre et le compteur 0x005de544 sont incrementes deux fois, l'anneau
+    // 0x6c naît en double. Les ecritures d'etat, elles, sont idempotentes. C'est ecrit tel quel.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552598</c> — <b>le septieme script de sons differes</b>, celui de
+    /// <see cref="TickRecallSpiral_00481720"/>, et <b>le plus long du depot</b> : cinq pas contre
+    /// deux ou trois pour les six precedents.
+    ///
+    /// <para>
+    /// Le son <c>0x30</c> tenu <c>0x20</c> images, le <c>0x31</c> tenu <c>0x10</c>, puis trois
+    /// <c>0x12</c> a deux images d'ecart dont le dernier termine — la montee, le declic, et les
+    /// trois notes de la disparition. Les trois derniers pas montent en hauteur — <c>0x0200</c>,
+    /// <c>0x0329</c>, <c>0x0400</c> — la seule progression de ce genre parmi les sept scripts.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552598 =
+    [
+        0x30, 0x20, 0x01, 0x00, 0x29, 0x03, 0x00, 0x12,   // 0x00552598
+        0x31, 0x10, 0x01, 0x00, 0x00, 0x01, 0x00, 0x12,   // 0x005525a0
+        0x12, 0x02, 0x01, 0x00, 0x00, 0x02, 0x00, 0x12,   // 0x005525a8
+        0x12, 0x02, 0x01, 0x00, 0x29, 0x03, 0x00, 0x12,   // 0x005525b0
+        0x12, 0x00, 0x01, 0x00, 0x00, 0x04, 0x00, 0x12,   // 0x005525b8 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552598Storage;
+
+    /// <summary>Les cinq pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00552598()
+        => NativeCopy(s_DelayedSoundScript_00552598, ref s_DelayedSoundScript00552598Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00481670 @ 0x00481670 — <b>Au sec</b> : le sous-type <c>0x19</c>, creneau 25 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 169 octets, <b>decompilee dans
+    /// <c>Blaze.c</c></b> — la premiere fiche de sort de l'ecole 0 dans ce cas depuis Balle de feu.
+    ///
+    /// <para>
+    /// <b>Il vit une seule image.</b> Il balaie le groupe, pose deux spirales par membre vivant, et
+    /// remet son mot d'etat a zero avant de rendre la main. Toute la duree du sort appartient a ses
+    /// enfants.
+    /// </para>
+    /// <para>
+    /// <b>Il ne part que d'un membre du groupe</b> : le bit <c>0x800000</c> de son propre mot d'etat
+    /// garde l'ensemble du corps. Le critere de selection d'un membre est le meme que partout —
+    /// <c>0x80000000</c> pose (l'emplacement existe) et <c>0x50000000</c> absent (il n'est ni mort
+    /// ni mourant).
+    /// </para>
+    /// </summary>
+    private static void TickRecall_00481670(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x800000) != 0)
+        {
+            *(uint*)(e + 0x28) = 0x60000000;           // X a zero, Y a 0x6000 : un trait vertical
+            *(uint*)(e + 0x38) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            e[0x04] = 0x3e;
+
+            byte* member = Inp.s_SlotFlags_005e93c0;
+
+            for (int remaining = s_PartySize_005e9020; remaining != 0; remaining--, member += 0x9c)
+            {
+                if ((*(uint*)member & 0x80000000) == 0) continue;
+                if ((*(uint*)member & 0x50000000) != 0) continue;
+
+                *(byte**)(e + 0x78) = member;
+
+                // Les deux spirales ne different que par leur cap : leur corps ne relit jamais
+                // le +0x16 que le sort leur distingue ici.
+                *(ushort*)(e + 0x16) = 0;
+                SpawnCastEntity_0047AAE0(e, 0x63, e[0x0b], -1);
+
+                *(ushort*)(e + 0x32) += 0x800;
+                *(ushort*)(e + 0x16) = 1;
+                SpawnCastEntity_0047AAE0(e, 0x63, e[0x0b], -1);
+            }
+        }
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00481720 @ 0x00481720 — <b>une spirale d'Au sec</b> : le sous-type <c>0x63</c>,
+    /// creneau 99 de <see cref="s_StaticEntityHandlers_00551f30"/>. 680 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle tourne autour de son membre, jamais autour d'elle-meme.</b> Sa position est
+    /// recalculee a chaque image comme celle du membre plus un vecteur de rayon
+    /// <c>echelle &#215; 15 &gt;&gt; 12</c> sur son propre cap ; sous l'age <c>0x30</c> sa hauteur
+    /// est celle du <b>sol du membre</b> (<c>+0x60</c>). Le cap avance de <c>+0x12</c>, qui grandit
+    /// lui-meme de 8 par image : la spirale accelere sans fin.
+    /// </para>
+    /// <para>
+    /// <b>Quatre ages, et le dernier change d'ecran.</b> De 0 a 15 le rayon suit un sinus sur seize
+    /// images (<c>sin &#215; hauteur / 75</c>) et la teinte monte de <c>0x80808</c> ; de 16 a 31 elle
+    /// tourne sans rien faire ; de 32 a 47 le rayon suit le sinus <b>inverse</b> et la spirale
+    /// <b>retrecit le membre lui-meme</b> en lui ecrivant <c>0x1000 - sin</c> dans ses deux echelles.
+    /// A partir de 48 elle seme un eclat <c>0xbf</c> par image ; a l'image <c>0x30</c> exactement
+    /// elle lache un anneau <c>0x6c</c> ancre au membre et <b>declenche la sortie</b> ; de 48 a 63
+    /// elle emporte le membre vers le haut de <c>0x3c000</c> par image ; a 64 elle s'eteint.
+    /// </para>
+    /// <para>
+    /// <b>La division par 75</b> est faite par le multiplicateur magique <c>0x1B4E81B5</c> avec un
+    /// decalage de 3 — le meme que l'aureole d'incantation emploie avec 4 pour diviser par 150, et
+    /// que la lame d'Assaut magique emploie deja tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickRecallSpiral_00481720(byte* record)
+    {
+        byte* e = record;
+        byte* member = *(byte**)(e + 0x78);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;     // le lanceur est immobilise
+            e[0x36] |= 6;
+
+            // Le decor vire au bleu-vert, et n'en revient qu'a l'extinction.
+            *(uint*)Mem.Arena(0x005e9160) = 0x00400040;
+            *(uint*)Mem.Arena(0x005e9164) = 0x00020040;
+
+            *(ushort*)(e + 0x9a) = 0x5000;
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00552598(), (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_00481772 — le pas angulaire grandit de 8 a chaque image.
+        ushort spin = *(ushort*)(e + 0x12);
+        *(ushort*)(e + 0x32) += spin;
+        *(ushort*)(e + 0x12) = (ushort)(spin + 8);
+
+        short age = *(short*)(e + 0x10);
+
+        if (age < 0x10)
+        {
+            *(uint*)(e + 0x38) += 0x80808;
+
+            int phase = (int)Winsys3d.GetSinTableEntry((age & 0x0f) << 6);
+            int height = StatusBubbleHeight_00538BC0((uint*)member);
+
+            // Ghidra: `imul 1B4E81B5h` puis `sar edx,3` — une division par 75.
+            short scale = (short)(phase * height / 75);
+
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2c) = scale;
+        }
+        else if (age >= 0x20 && age < 0x30)
+        {
+            *(uint*)(e + 0x38) += 0x70707;
+
+            int shrink = 0x1000 - (int)Winsys3d.GetSinTableEntry((age & 0x0f) << 6);
+            int height = StatusBubbleHeight_00538BC0((uint*)member);
+
+            short scale = (short)(height * shrink / 75);
+
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2c) = scale;
+
+            // C'est ici que le membre lui-meme se met a retrecir.
+            *(short*)(member + 0x28) = (short)shrink;
+            *(short*)(member + 0x2c) = (short)shrink;
+        }
+        else if (age >= 0x30)
+        {
+            // ============================================ Ghidra: LAB_00481832, la disparition
+            *(byte**)(e + 0x70) = null;
+
+            int pitch = (CrtRand() & 0xff) - 0x380;
+            int yaw = CrtRand();                       // le second tirage : l'ordre compte
+            SetVectorFromAngles_00532AD0((int*)(e + 0x50), yaw, pitch, 0x40);
+
+            uint keptScaleXy = *(uint*)(e + 0x28);
+            *(int*)(e + 0x54) >>= 3;                   // la poussee verticale est divisee par huit
+            uint keptScaleZ = *(uint*)(e + 0x2c);
+            uint keptTint = *(uint*)(e + 0x38);
+
+            // L'eclat est engendre a la taille et a la teinte qu'on lui prete ici, puis la spirale
+            // reprend les siennes plus bas.
+            *(uint*)(e + 0x28) = 0x10001000;
+            *(ushort*)(e + 0x2c) = 3;
+            *(uint*)(e + 0x38) = 0x00808080;
+            *(short*)(e + 0x1a) = 3;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors005519B8(), 0xbf, e[0x0b], -1);
+
+            if (*(short*)(e + 0x10) == 0x30)
+            {
+                // L'anneau de l'Onde de choc, ancre au membre par +0x70 — la branche « avec
+                // ancre », l'inverse de celle que Durdur emploie.
+                *(int*)(e + 0x44) = 0;
+                *(int*)(e + 0x48) = 0;
+                *(int*)(e + 0x4c) = 0;
+                *(int*)(e + 0x50) = 0x1000;
+                *(int*)(e + 0x54) = 0x0c00;
+                *(int*)(e + 0x58) = 0x1000;
+                *(uint*)(e + 0x28) = 0;
+                *(ushort*)(e + 0x2c) = 0;
+                *(byte**)(e + 0x70) = member;
+                e[0x04] = 7;
+
+                SpawnCastEntity_0047AAE0(e, 0x6c, 0, 4);
+
+                uint flags = *(uint*)member;
+                *(ushort*)(member + 0x98) = *(ushort*)(member + 0x32);
+                *(short*)(member + 0x12) += 1;
+                *(uint*)member = (flags & 0xf7fffdff) | 0x2000;
+
+                // LA SORTIE. L'etat 2 est l'ecran de destination ; 0xfe arrete la boucle de la
+                // carte du monde a la fin de l'image.
+                s_Unknown_005de53c = (byte)Mem.s_Unknown_005de538;
+                s_Unknown_005de544++;
+                s_WorldMapStep_005645f8 = -2;          // 0xfe
+                s_GameStateId_005de510 = 2;
+            }
+
+            // Ghidra: LAB_00481936 — la taille et la teinte pretees a l'eclat sont rendues.
+            *(uint*)(e + 0x28) = keptScaleXy;
+            *(uint*)(e + 0x2c) = keptScaleZ;
+            *(uint*)(e + 0x38) = keptTint;
+
+            if (*(short*)(e + 0x10) < 0x40)
+            {
+                *(int*)(e + 0x20) += 0x3c000;          // le membre monte
+                *(uint*)member |= 0x5000;
+            }
+            else
+            {
+                *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+                *(ushort*)Mem.Arena(0x005e9166) = 0;   // le decor reprend sa couleur
+                *(uint*)e = 0;
+            }
+        }
+
+        // Ghidra: LAB_0048197a — la position, toujours prise sur celle du membre.
+        int radius = (*(short*)(e + 0x28) * 15) >> 0xc;
+        int heading = *(short*)(e + 0x32);
+
+        *(int*)(e + 0x1c) =
+            (int)Winsys3d.GetSinTableEntry(heading) * radius + *(int*)(member + 0x1c);
+        *(int*)(e + 0x24) =
+            Winsys3d.GetCosTableEntry(heading) * radius + *(int*)(member + 0x24);
+
+        short now = *(short*)(e + 0x10);
+        if (now < 0x30) *(int*)(e + 0x20) = *(int*)(member + 0x60);
+
+        // Elle est incrementee meme sur l'image qui l'eteint.
+        *(short*)(e + 0x10) = (short)(now + 1);
     }
 
     /// <summary>
