@@ -4821,6 +4821,12 @@ public static unsafe partial class Blaze
             case 0x0047F070: TickExorcism_0047F070(record); return;
             case 0x0047F290: TickExorcismHalo_0047F290(record); return;
 
+            // DURDUR, ecole 0 indice 19 — sa coquille lui dit quand partir, et il reemploie
+            // l'anneau d'Onde de choc par sa branche SANS ancre, jamais empruntee jusqu'ici.
+            case 0x0047F2B0: TickHardening_0047F2B0(record); return;
+            case 0x0047F400: TickHardeningShell_0047F400(record); return;
+            case 0x0047F470: TickHardeningBurst_0047F470(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -34347,6 +34353,228 @@ public static unsafe partial class Blaze
         *(uint*)(e + 0x38) = tint;
 
         if ((byte)tint < 0x20) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // DURDUR — le vingtieme sort, ecole 0 indice 19, sous-type 0x13
+    //
+    // Trois corps neufs. Il n'est PAS entretenu, malgre son apparence : c'est sa coquille qui lui
+    // dit quand partir.
+    //
+    //   0x0047F2B0   LE SORT. Sous-type 0x13 de 0x00551c30, 336 octets.
+    //   0x0047F400   LA COQUILLE, sous-type 0x85 de 0x00551f30, 98 octets. Elle enfle, et quand
+    //                elle arrive a sa taille elle marque son pere.
+    //   0x0047F470   L'ONDE, sous-type 0x86 de 0x00551f30, 246 octets. Elle porte l'effet.
+    //
+    // ET IL REEMPLOIE L'ANNEAU D'ONDE DE CHOC — le sous-type 0x6c de TickShockwaveRing_0047C830 —
+    // en posant son ancre +0x70 A ZERO. C'est le premier appelant a emprunter la branche « sans
+    // ancre » de ce corps, celle qui replie la position dans l'ecart et fait de l'anneau sa propre
+    // reference. Elle etait ecrite « parce qu'elle est la » ; elle sert.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047f2b0 @ 0x0047f2b0 — <b>Durdur</b> : le sous-type <c>0x13</c>, creneau 19 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 336 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Deux images utiles, separees par une attente.</b> A la premiere il immobilise le lanceur,
+    /// se place a mi-hauteur de sa tete — et <b>a la meme distance devant lui</b>, la demi-hauteur
+    /// servant a la fois d'altitude et de portee —, puis lache la coquille <c>0x85</c>. Ensuite il
+    /// ne fait plus que compter, jusqu'a ce que la coquille lui pose <c>0x2000000</c>.
+    /// </para>
+    /// <para>
+    /// <b>A ce signal il lache deux enfants et s'eteint</b> : l'anneau <c>0x6c</c> d'Onde de choc,
+    /// avec l'ancre <c>+0x70</c> <b>a zero</b> — la branche sans ancre de
+    /// <see cref="TickShockwaveRing_0047C830"/>, jamais empruntee jusqu'ici — et l'onde
+    /// <c>0x86</c>, qui portera l'effet.
+    /// </para>
+    /// <para>
+    /// Les six champs <c>+0x44</c>..<c>+0x58</c> sont poses avant chaque naissance : ecart nul et
+    /// trois echelles visees pour l'anneau, puis une seule hauteur (<c>0x369d</c>) pour l'onde.
+    /// </para>
+    /// </summary>
+    private static void TickHardening_0047F2B0(byte* record)
+    {
+        byte* e = record;
+        byte* caster = *(byte**)(e + 0x74);
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            // ------------------------------------------------------------ le signal recu
+            unchecked { *(ushort*)(e + 0x32) += 0xfc00; }   // -0x400
+
+            // L'anneau d'Onde de choc, SANS ancre : il deviendra sa propre reference.
+            *(int*)(e + 0x70) = 0;
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+            *(int*)(e + 0x50) = 0x1000;
+            *(int*)(e + 0x54) = 0x1800;
+            *(int*)(e + 0x58) = 0x1000;
+            *(uint*)(e + 0x38) = 0x00808080;
+            *(int*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(ushort*)(e + 0x34) = 0x400;
+            e[0x04] = 7;
+
+            SpawnCastEntity_0047AAE0(e, 0x6c, e[0x0b], -1);
+
+            // Puis l'onde, avec une seule des trois echelles.
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0x369d;
+            *(int*)(e + 0x58) = 0;
+            *(int*)(e + 0x28) = 0x1000;
+            *(ushort*)(e + 0x2c) = 0x1000;
+            e[0x04] = 5;
+
+            SpawnCastEntity_0047AAE0(e, 0x86, e[0x0b], -1);
+
+            *(ushort*)(e + 0x10) += 1;
+            *(uint*)e = 0;
+            return;
+        }
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(uint*)caster |= 0x80;                    // le lanceur est immobilise
+
+            // La demi-hauteur de tete sert a la fois de portee et d'altitude.
+            int half = StatusBubbleHeight_00538BC0((uint*)caster) >> 1;
+            int heading = *(short*)(e + 0x32);
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * half;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * half;
+            *(int*)(e + 0x20) += half << 0xc;
+
+            *(ushort*)(e + 0x14) = 2;                  // le decalage d'approche de la coquille
+            e[0x04] = 2;
+            *(uint*)(e + 0x38) = 0;
+            *(int*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(ushort*)(e + 0x12) = 0x800;              // et sa taille visee
+
+            SpawnCastEntity_0047AAE0(e, 0x85, e[0x0b], -1);
+
+            Aud.PlayPositionalSound(0x10, 0x800, 0x1200, (int*)(e + 0x1c));
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047f400 @ 0x0047f400 — <b>la coquille de Durdur</b> : le sous-type <c>0x85</c>,
+    /// creneau 133 de <see cref="s_StaticEntityHandlers_00551f30"/>. 98 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Elle enfle vers la taille <c>+0x12</c> que le sort lui a donnee, d'un <b>decalage</b> que
+    /// <c>+0x14</c> porte — un <c>sar</c> a compte variable, comme celui de l'etincelle de trainee.
+    /// Elle s'eclaircit du meme mouvement.
+    /// </para>
+    /// <para>
+    /// <b>Des qu'elle arrive a moins de <c>0x10</c> de sa taille</b>, elle pose <c>0x2000000</c>
+    /// sur le mot d'etat de son <b>pere</b> et s'eteint. C'est le troisieme signal remontant du
+    /// depot, apres la lame d'Assaut magique et le fantome de Trouille — et le seul dont le
+    /// declencheur soit une <b>taille atteinte</b> plutot qu'une horloge.
+    /// </para>
+    /// </summary>
+    private static void TickHardeningShell_0047F400(byte* record)
+    {
+        byte* e = record;
+
+        int wanted = *(short*)(e + 0x12);
+        short current = *(short*)(e + 0x28);
+        int shift = e[0x14];
+
+        *(ushort*)(e + 0x32) += 0x40;
+
+        short next = (short)(((wanted - current) >> (shift & 0x1f)) + current);
+        *(short*)(e + 0x28) = next;
+        *(short*)(e + 0x2a) = next;
+        *(short*)(e + 0x2c) = next;
+
+        uint tint = *(uint*)(e + 0x38);
+        if (tint < 0x00f0f0f0) *(uint*)(e + 0x38) = tint + 0x00101010;
+
+        // Ghidra: LAB_0047f442 — a moins de 0x10 du but, elle previent son pere.
+        if (next >= wanted - 0x10)
+        {
+            *(uint*)(*(uint**)(e + 0x6c)) |= 0x2000000;
+            *(uint*)e = 0;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047f470 @ 0x0047f470 — <b>l'onde de Durdur</b> : le sous-type <c>0x86</c>,
+    /// creneau 134 de <see cref="s_StaticEntityHandlers_00551f30"/>. 246 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Ses trois echelles approchent trois cibles distinctes d'un quart</b>, rangees dans les
+    /// champs de vitesse <c>+0x50</c>, <c>+0x54</c> et <c>+0x58</c> que le sort a detournes pour
+    /// l'occasion. Seule la hauteur en a une non nulle : l'onde s'aplatit en montant.
+    /// </para>
+    /// <para>
+    /// <b>Et sa profondeur de sonde suit cette hauteur</b> : <c>(hauteur * 150) &gt;&gt; 12</c>
+    /// plus <c>0x28</c>, recalculee a chaque image. C'est la quatrieme sonde variable du depot.
+    /// </para>
+    /// <para>
+    /// L'effet est <see cref="ApplyStatusEffect_0053B8F0"/>, l'entree 13 de la table des 48 — et
+    /// <b>quand il prend, la victime est clouee sur place</b> : ses deux vitesses horizontales sont
+    /// mises a zero. Le clignotement est de 8 images, la moitie de l'ordinaire.
+    /// </para>
+    /// <para>
+    /// C'est elle qui relache le lanceur, quand sa teinte s'epuise.
+    /// </para>
+    /// </summary>
+    private static void TickHardeningBurst_0047F470(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { 0x0400, -0x0028, 0x003c, 0x0064, 0x0000, 0x0000 };
+
+        // Les trois echelles, chacune vers sa cible, d'un quart.
+        short x = *(short*)(e + 0x28);
+        *(short*)(e + 0x28) = (short)(((*(int*)(e + 0x50) - x) >> 2) + x);
+
+        short y = *(short*)(e + 0x2a);
+        short newY = (short)(((*(int*)(e + 0x54) - y) >> 2) + y);
+        *(short*)(e + 0x2a) = newY;
+
+        short z = *(short*)(e + 0x2c);
+        *(short*)(e + 0x2c) = (short)(((*(int*)(e + 0x58) - z) >> 2) + z);
+
+        // La profondeur suit la hauteur : `*3 *5 *5 *2` donne 150, puis `sar 12` et `+0x28`.
+        probe[5] = (short)(((newY * 150) >> 0xc) + 0x28);
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            *(ushort*)(caster + 6) = *(ushort*)(e + 6);
+
+            if (ApplyStatusEffect_0053B8F0((uint*)caster, (uint*)victim, 0) != 0)
+            {
+                // L'effet a pris : la victime est clouee sur place.
+                *(int*)(victim + 0x50) = 0;
+                *(int*)(victim + 0x58) = 0;
+            }
+
+            *(ushort*)(victim + 0x96) = 8;
+            *(uint*)victim |= 0x40;
+        }
+
+        // Ghidra: LAB_0047f543 — et c'est elle qui rend le lanceur a lui-meme.
+        uint tint;
+        unchecked { tint = *(uint*)(e + 0x38) + 0xffefeff0; }   // -0x101010
+        *(uint*)(e + 0x38) = tint;
+
+        if (tint == 0)
+        {
+            *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;
+            *(uint*)e = 0;
+        }
     }
 
     /// <summary>

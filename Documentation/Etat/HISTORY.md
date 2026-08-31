@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Durdur, le vingtième sort** — trois corps absents de `Blaze.c` : le sort `0x0047f2b0`, sa coquille `0x0047f400` et son onde `0x0047f470`. **Un quart de l'école 0 est écrit**
+- doc : **il emprunte la branche « sans ancre » de l'anneau d'Onde de choc** — il pose `+0x70` à zéro avant d'engendrer le sous-type `0x6c`, ce qui fait replier à l'anneau sa position dans son écart et devenir sa propre référence. Cette branche avait été transcrite « parce qu'elle est là », sans appelant connu : elle en a un
+- doc : **la coquille signale par une taille atteinte, pas par une horloge** — dès qu'elle arrive à moins de `0x10` de la taille visée, elle pose `0x2000000` sur son père et s'éteint. Troisième signal remontant du dépôt, après la lame d'Assaut magique et le fantôme de Trouille, et le seul déclenché par une grandeur physique
+- doc : **quand l'effet prend, la victime est clouée sur place** — `ApplyStatusEffect_0053B8F0` rend non nul, et l'onde met alors ses deux vitesses horizontales à zéro. Sa profondeur de sonde suit sa propre hauteur (`hauteur × 150 >> 12 + 0x28`) : quatrième sonde variable du dépôt
 - feat : **Exorciste, le dix-neuvième sort** — deux corps absents de `Blaze.c` : le sort `0x0047f070` et son halo `0x0047f290`, **30 octets — le plus court corps de sort du dépôt**. Plus le troisième script de sons différés, `0x00552558`
 - doc : **il ne frappe pas, il nettoie** — à chaque image il balaie autour de lui et appelle `ClearAllStatusEffects_0053C330`, l'entrée 29 de la table des 48. **Faute de cible il se rabat sur le lanceur** : c'est ce qui en fait un sort de soin autant que d'attaque
 - doc : **sa sonde pulse au lieu de croître** — l'échelle bat au rythme d'un cosinus, et l'avance et la profondeur de la sonde en sont tirées à chaque image (sept dixièmes en arrière, quatorze fois plus en avant). Troisième sonde variable du dépôt, après l'ombre de Ténèbres et le segment de Coup de jus
