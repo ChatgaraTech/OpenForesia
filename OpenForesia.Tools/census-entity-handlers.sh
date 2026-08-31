@@ -137,6 +137,12 @@ awk -F'\t' -v empty="$EMPTY" -v wiredf="$TMP/wired" -v seenf="$TMP/seen" -v anyf
                 subs[key] = subs[key] (subs[key] ? "," : "") s
             if (seenHere[h "\t" z "\t" s]) testeIci[key] = 1
         }
+        # LES TABLES STATIQUES SE TESTENT PARTOUT. Elles portent zone -1 / sous-zone -1, alors que
+        # la sonde note toujours une zone reelle : le rapprochement par triplet ne pouvait donc
+        # JAMAIS aboutir, et la section des tables statiques affichait « 0 testes » quoi qu il
+        # arrive — 274 gestionnaires en angle mort. Une table gravee dans .data est la meme dans les
+        # onze zones : l avoir vue passer quelque part suffit a la dire exercee.
+        else if (z < 0 && seenAny[h]) testeIci[key] = 1
 
         if (index(" " tables[key] " ", " " t " ") == 0)
             tables[key] = tables[key] (tables[key] ? " " : "") t

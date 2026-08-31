@@ -4710,6 +4710,13 @@ public static unsafe partial class Blaze
             // l'appui sur Select en foret, signale le 2026-08-28.
             case 0x004765D0: TickCastAura_004765D0(record); return;
 
+            // BALLE DE FEU, ecole 0 indice 0 — le premier sort transcrit. La graine est le
+            // sous-type 0 de la table statique 0x00551c30 (celle des effets, ou CastSpell_0053A980
+            // depose), le projectile le sous-type 0x64 de 0x00551f30 (celle des incantations).
+            case 0x0047ADD0: SpawnFireball_0047ADD0(record); return;
+            case 0x0047AE80: TickFireball_0047AE80(record); return;
+            case 0x0047B050: TickSpark_0047B050(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -20072,6 +20079,197 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: FUN_0053a2b0 @ 0x0053a2b0 — <b>la resolution du coup d'un SORT</b>. Ce que
+    /// <see cref="ResolveMeleeHit_00539B80"/> est a l'arme, celle-ci l'est a la magie : elle prend
+    /// la paire famille/indice, va lire la fiche de <c>0x30</c> octets, et en tire l'element et le
+    /// montant qui s'ajoutent au calcul.
+    ///
+    /// <para>
+    /// <b>Trois differences avec le coup d'arme</b>, et elles disent ce qu'est un sort :
+    /// </para>
+    /// <list type="bullet">
+    /// <item>l'attaque ne vient pas de <c>+0x30</c> mais de <c>+0x38</c>, <b>divisee par
+    /// <c>fiche[0x1e]</c></b> — c'est le cout que la fiche fait payer a la puissance magique du
+    /// lanceur. La defense vient de <c>+0x3a</c> et non de <c>+0x32</c> : deux autres
+    /// caracteristiques, celles de la magie ;</item>
+    /// <item>il n'y a pas de coup critique, mais un <b>jet de sauvegarde</b>
+    /// (<see cref="RollSavingThrowB_0053A790"/>). <b>Le rater est bon pour l'assaillant</b> : c'est
+    /// le retour nul qui divise la defense par deux ;</item>
+    /// <item>l'element de la fiche <b>tord le bloc du lanceur</b> avant le calcul — le montant
+    /// <c>fiche[0x18 + 2n]</c> s'ajoute a la case de cet element, et <b>toutes les autres cases
+    /// sont mises a zero des deux cotes</b>, sauf celle-la et sa jumelle de paire
+    /// (<c>(e-2) ^ 1</c>). Un sort de feu ne frappe qu'en feu, et efface le reste.</item>
+    /// </list>
+    /// <para>
+    /// <b>Le meme montant sert deux fois</b>, et ce n'est pas une erreur de lecture : il tord le
+    /// bloc plus haut, puis il se rajoute a la fin — <b>sauf si la victime est deja de cet
+    /// element</b>, ce que <see cref="DominantElement_005399E0"/> tranche. Bruler ce qui brule deja
+    /// perd le bonus, pas le sort.
+    /// </para>
+    /// <para>
+    /// <b>Un element de 1 efface les huit cases.</b> L'indice conserve est <c>e - 2</c> en
+    /// <b>non signe</b> : pour <c>e = 1</c> il vaut <c>0xFFFFFFFF</c>, qu'aucun <c>i</c> de 0 a 7
+    /// n'egale. C'est ecrit tel quel, la soustraction non signee comprise.
+    /// </para>
+    /// </summary>
+    /// <param name="variant">Le rang dans la fiche : <c>fiche[0x16 + n]</c> donne l'element et
+    /// <c>fiche[0x18 + 2n]</c> le montant. Vaut 0 pour tous les appelants transcrits.</param>
+    /// <returns>1 si le coup a ete refuse, 0 sinon.</returns>
+    private static int ResolveSpellHit_0053A2B0(
+        uint* attacker, uint* victim, int family, int index, int variant)
+    {
+        if (ValidateCombatants_0053A860(attacker, victim) != 0) return 1;
+
+        // Chacun retient l'autre en +0x70. Ecrit a la largeur d'un pointeur : le binaire y range un
+        // dword parce qu'un pointeur en fait un.
+        *(byte**)((byte*)attacker + 0x70) = (byte*)victim;
+        *(byte**)((byte*)victim + 0x70) = (byte*)attacker;
+
+        byte* attackerBlock;
+
+        if ((*attacker & 0x800000) == 0)
+        {
+            attackerBlock = ResolveSceneCombatBlock_00538830(attacker, 0xff);
+        }
+        else
+        {
+            // La paire est (re)posee en +0x06 du lanceur avant que son bloc ne soit resolu : c'est
+            // la meme case que CastSpell_0053A980 ecrit, et c'est ce que relira SpellSheetOf.
+            *(ushort*)((byte*)attacker + 6) = (ushort)(((family & 0xff) << 8) | (index & 0xffff));
+            attackerBlock = ResolvePartyCombatBlock_005387C0(attacker, 0xff, 0);
+            TiltDominantElement_005398A0(attackerBlock);
+        }
+
+        byte* victimBlock;
+
+        if ((*victim & 0x800000) == 0)
+        {
+            victimBlock = ResolveSceneCombatBlock_00538830(victim, 0xff);
+        }
+        else
+        {
+            // Ghidra rend cet appel SANS arguments (`iVar7 = FUN_005387c0();`). Le desassembleur
+            // tranche : les trois `push 0 / push -1 / push ebx` sont faits AVANT le branchement
+            // (0x0053a320..0x0053a329), donc les deux branches recoivent les memes trois.
+            victimBlock = ResolvePartyCombatBlock_005387C0(victim, 0xff, 0);
+            TiltDominantElement_005398A0(victimBlock);
+        }
+
+        if ((*attacker & 0x800000) != 0)
+        {
+            *Mem.Arena(0x005e99c0) = 0;                  // `mov byte [5E99C0h],0` — un octet
+            TriggerEquippedItems_005238E0(attacker, 7);
+        }
+
+        if ((*victim & 0x800000) != 0)
+        {
+            *Mem.Arena(0x005e99c0) = 0;
+            TriggerEquippedItems_005238E0(victim, 0x11);
+        }
+
+        if ((*(uint*)(victimBlock + 0x40) & 0x100000) != 0)
+        {
+            // Le coup ne passe pas : la marque 0x29 et rien d'autre.
+            SpawnStatusEffectEntity_0047AC40(
+                (byte*)victim, (int*)((byte*)victim + 0x1c), SpriteAtlas(0x005648a0), 0x29, 0, 0);
+            return 1;
+        }
+
+        // ---------------------------------------------------------------- la fiche du sort
+        byte* sheet = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x9c) + family * 4)
+                      + index * 0x30;
+
+        byte element = sheet[0x16 + variant];
+
+        if (element != 0)
+        {
+            *(short*)(attackerBlock + 0x10c + element * 2) +=
+                *(short*)(sheet + 0x18 + variant * 2);
+
+            uint kept = (uint)(element - 2);
+
+            for (uint i = 0; i < 8; i++)
+            {
+                if (i == kept || i == (kept ^ 1)) continue;
+                *(ushort*)(attackerBlock + 0x110 + i * 2) = 0;
+                *(ushort*)(victimBlock + 0x110 + i * 2) = 0;
+            }
+        }
+
+        // ---------------------------------------------------------------- attaque et defense
+        // L'ordre des deux tirages est celui du binaire : ils partagent une seule suite.
+        int magic = *(short*)(attackerBlock + 0x38) / sheet[0x1e];
+        short attackSpread = *(short*)(attackerBlock + 0x2c);
+        int attack = magic + ((CrtRand() % (attackSpread + 1) - (attackSpread >> 1)) >> 2);
+        if (attack < 0) attack = 0;
+
+        short defenceSpread = *(short*)(victimBlock + 0x2c);
+        int defence = *(short*)(victimBlock + 0x3a)
+                      + ((CrtRand() % (defenceSpread + 1) - (defenceSpread >> 1)) >> 2);
+        if (defence < 0) defence = 0;
+
+        // Le jet RATE (retour nul) coupe la defense en deux — le biais est du cote du sort.
+        if (RollSavingThrowB_0053A790(attacker, victim, attackerBlock, victimBlock) == 0)
+        {
+            defence >>= 1;
+        }
+
+        // ---------------------------------------------------------------- les degats
+        int damage = attack - defence;
+        if (damage < 0) damage = 0;
+
+        damage += ResolveElementalExchange_005398E0(attackerBlock, victimBlock);
+
+        // Le montant de la fiche ne se rajoute que si la victime n'est PAS deja de cet element.
+        if (element == 0 || element != DominantElement_005399E0(victimBlock))
+        {
+            damage += *(ushort*)(sheet + 0x18 + variant * 2);
+        }
+
+        damage -= *(short*)(victimBlock + 0x3a) >> 5;
+        if (damage < 1) damage = 1;
+
+        if (Mem.s_DebugModeLatch_005633a8 == 0 && s_DebugOverlayEnabled_005de020 != 0)
+        {
+            throw new NotImplementedException(
+                "FUN_0053a2b0 : le bandeau de mise au point du combat (0x0053a4fb environ) n'est " +
+                "pas transcrit — c'est le meme que celui de FUN_00539b80. Il recopie les huit " +
+                "elements de chaque camp (DAT_005e90c0..DAT_005e90de), les deux indices d'entite, " +
+                "l'element, la famille, l'indice et les degats (jusqu'a DAT_005e90e8), puis " +
+                "appelle FUN_00544350 avec la table de libelles du repertoire de zone (+0x70, " +
+                "+0x5f0) et &DAT_005633b0. DAT_005de020 vaut 0 au chargement, donc ce bloc ne " +
+                "s'atteint que par la touche de mise au point, elle-meme non transcrite.");
+        }
+
+        // ---------------------------------------------------------------- le coup porte
+        byte* attackerCharacter = GetMainMemPtr() + ((byte)attacker[2] + 0x78) * 0x2000;
+
+        int killed = ApplyDamage_00539A20(
+            attacker, victim, attackerBlock, victimBlock, (short)damage, element);
+
+        if (killed != 0 && (*attacker & 0x800000) != 0
+            && *(int*)(attackerCharacter + 0x15c) != -1)
+        {
+            *(int*)(attackerCharacter + 0x15c) += 1;
+        }
+
+        // Une entite de scene retient qui l'a frappee, et reagit si son genre le prevoit. Le test
+        // porte sur 0x400000 et non sur l'absence de 0x800000 : ce n'est pas tout a fait le meme
+        // ensemble que celui de FUN_00539b80, et c'est ecrit tel quel.
+        if ((*victim & 0x400000) != 0)
+        {
+            ((byte*)victim)[9] = (byte)attacker[2];
+
+            if ((((byte*)victim)[0x0d] & 0xf) == 10)
+            {
+                RunEntityScript(s_Unknown_005e97cc, (byte*)victim, *(ushort*)((byte*)victim + 0x0e));
+            }
+        }
+
+        return 0;
+    }
+
+    /// <summary>
     /// Ghidra: les deux blocs jumeaux de <c>FUN_00539b80</c> (0x00539bc0 et 0x00539c60) —
     /// <b>refaire la fiche d'un combattant avant le coup</b>, et rendre le bloc de statistiques sur
     /// lequel tout le calcul va porter.
@@ -28758,19 +28956,306 @@ public static unsafe partial class Blaze
         *(ushort*)(e + 0x34) += 0x80;
     }
 
+    // =====================================================================
+    // BALLE DE FEU — le premier sort, ecole 0 indice 0, sous-type 0x00
+    //
+    // Deux corps, et c'est la forme generale d'un sort de projectile :
+    //
+    //   0x0047ADD0   LA GRAINE. Sous-type 0 de la table statique 0x00551c30, celle que la passe
+    //                FUN_0047aa70 emprunte pour la table des effets 0x005ff400 — c'est-a-dire
+    //                exactement ce que CastSpell_0053A980 fait naitre. Elle ne vit qu'UNE image :
+    //                elle se pose devant le lanceur, se donne un modele et une taille, lache le
+    //                projectile, joue le son, et s'eteint.
+    //   0x0047AE80   LE PROJECTILE. Sous-type 0x64 de la table statique 0x00551f30, celle de la
+    //                table d'incantation 0x005edee0 ou SpawnCastEntity_0047AAE0 depose. Il avance,
+    //                traine des etincelles, cherche une cible douze images durant, et au contact
+    //                appelle ResolveSpellHit_0053A2B0.
+    //
+    // Les deux sont ABSENTES de Blaze.c — Ghidra ne les a pas decompilees, elles n'existent que
+    // comme entrees de table. Transcrites au desassembleur ; les releves sont gardes sous
+    // Legacy/Raw/Blaze/FUN_0047add0.asm et FUN_0047AE80.asm.
+    //
+    // LE QUART DE TOUR. La graine avance de 80 unites dans la direction +0x32 heritee du lanceur,
+    // puis AJOUTE 0x400 a cette direction avant de lacher le projectile ; le projectile, lui,
+    // RETRANCHE 0x400 avant d'avancer. Les deux se compensent exactement, et le projectile part
+    // donc bien droit devant. Le detour sert au dessin, qui lit +0x32 tel quel.
+    // =====================================================================
+
     /// <summary>
-    /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de directions</b>
+    /// Ghidra: FUN_0047add0 @ 0x0047add0 — <b>la graine de Balle de feu</b> : le sous-type
+    /// <c>0x00</c>, creneau 0 de <see cref="s_StaticEntityHandlers_00551c30"/>. 161 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Elle ne tourne qu'une image. Le mot d'etat est mis a zero en sortie, ce qui rend le creneau
+    /// a la passe suivante — la meme extinction que <see cref="DespawnEntity_0047ADC0"/>, mais
+    /// apres avoir fait son travail.
+    /// </para>
+    /// <para>
+    /// <b>Elle se place a hauteur de tete du LANCEUR</b>, pas au sol :
+    /// <see cref="StatusBubbleHeight_00538BC0"/> mesure <c>+0x74</c> — que
+    /// <see cref="CastSpell_0053A980"/> a pointe sur le lanceur lui-meme juste avant la naissance —
+    /// et la hauteur, arrondie au pair, monte en <c>+0x20</c> decalee de 11 bits. C'est la meme
+    /// mesure et le meme arrondi que <see cref="TickCastAura_004765D0"/>.
+    /// </para>
+    /// <para>
+    /// Les quatre champs poses avant la naissance du projectile sont recopies dedans par
+    /// <see cref="SpawnCastEntity_0047AAE0"/>, qui duplique les <c>0x27</c> dwords de la source :
+    /// le modele <c>0x39</c>, l'echelle <c>0x640</c> sur les trois axes, la teinte pleine
+    /// <c>0xffffff</c>. La graine s'habille pour son enfant.
+    /// </para>
+    /// </summary>
+    private static void SpawnFireball_0047ADD0(byte* record)
+    {
+        byte* e = record;
+
+        e[0x36] |= 6;
+
+        int heading = *(short*)(e + 0x32);
+
+        // 80 unites devant le lanceur, dans le plan. `lea eax,[eax+eax*4] ; shl eax,4` = *80.
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 80;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 80;
+
+        // La hauteur de tete du lanceur, arrondie au pair : `and al,0FEh` n'efface que le bit 0.
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+        *(int*)(e + 0x20) += (height & ~1) << 0xb;
+
+        *(ushort*)(e + 0x32) += 0x400;
+
+        *(uint*)(e + 0x28) = 0x06400640;              // echelle X et Y
+        *(ushort*)(e + 0x2c) = 0x0640;                // echelle Z
+        *(uint*)(e + 0x38) = 0x00ffffff;              // teinte pleine
+        e[0x04] = 0x39;                               // le modele
+
+        SpawnCastEntity_0047AAE0(e, 0x64, e[0x0b], -1);
+
+        Aud.PlayPositionalSound(0x1f, 0x6fd, 0x1200, (int*)(e + 0x1c));   // Ghidra: FUN_0053db20
+
+        *(uint*)e = 0;                                // la graine s'eteint des cette image
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551ad8</c> — l'atlas des etincelles que le projectile de Balle de feu
+    /// traine derriere lui. <b>Quatre enregistrements</b> : quatre carreaux de 16x16 alignes en
+    /// <c>u = 0x60, 0x70, 0x80, 0x90</c> sur la meme ligne <c>v = 0xa8</c>.
+    ///
+    /// <para>
+    /// <b>La borne se lit dans le corps du consommateur</b>, comme pour
+    /// <see cref="s_Descriptors_00551A60"/> et non a l'aveugle :
+    /// <see cref="TickSpark_0047B050"/> pose <c>+0x40 = compteur &gt;&gt; 1</c> et s'eteint des que
+    /// ce quotient atteint <b>4</b>. Il n'existe donc que quatre images. La donnee le confirme —
+    /// <c>0x00551af8</c> change de planche (<c>v</c> passe a <c>0x68</c>, les attributs de
+    /// <c>01 02</c> a <c>00 00</c>).
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551AD8 =
+    [
+        0x60, 0xa8, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551ad8
+        0x70, 0xa8, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551ae0
+        0x80, 0xa8, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551ae8
+        0x90, 0xa8, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551af0
+    ];
+
+    private static byte* s_Descriptors00551AD8Storage;
+
+    /// <summary>Les quatre descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551AD8()
+    {
+        if (s_Descriptors00551AD8Storage == null)
+        {
+            s_Descriptors00551AD8Storage =
+                (byte*)NativeMemory.Alloc((nuint)s_Descriptors_00551AD8.Length);
+            for (int i = 0; i < s_Descriptors_00551AD8.Length; i++)
+            {
+                s_Descriptors00551AD8Storage[i] = s_Descriptors_00551AD8[i];
+            }
+        }
+
+        return s_Descriptors00551AD8Storage;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047ae80 @ 0x0047ae80 — <b>le projectile de Balle de feu</b> : le sous-type
+    /// <c>0x64</c>, creneau 100 de <see cref="s_StaticEntityHandlers_00551f30"/>. 455 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Chaque image, dans cet ordre</b> : il avance de 40 unites sur son cap (moins le quart de
+    /// tour que la graine avait ajoute) ; il lache une etincelle <c>0x46</c> <b>derriere lui</b> —
+    /// le cap plus un demi-tour, a 60 unites, plus un bruit de +/-32 unites de 4096 sur les trois
+    /// axes, trois tirages consecutifs ; il repose son placement par
+    /// <see cref="FinalizeEntityPlacement2"/> ; il cherche une cible.
+    /// </para>
+    /// <para>
+    /// <b>La hauteur est sauvee et rendue autour du placement.</b>
+    /// <c>FinalizeEntityPlacement2</c> pose l'entite <i>sur le sol</i>, ce qui ecraserait
+    /// <c>+0x20</c> ; le binaire garde la valeur dans un registre et la remet juste apres. La
+    /// balle vole donc a la hauteur ou la graine l'a lachee, et le placement ne sert qu'a la
+    /// detection.
+    /// </para>
+    /// <para>
+    /// <b>Trois fins</b>. Le decor : le mot d'etat porte <c>0x40000000</c>, ou <c>+0x90</c> porte
+    /// l'un des bits <c>0x8802</c> — la balle s'eteint sans rien faire. Le temps : douze images
+    /// sans cible, comptees dans <c>+0x10</c>. La cible : <c>ProbeMeleeTarget_00474CA0</c> rend une
+    /// victime, et alors <see cref="ResolveSpellHit_0053A2B0"/> resout le coup avec la paire
+    /// famille/indice que <see cref="CastSpell_0053A980"/> avait rangee en <c>+0x06</c>, la victime
+    /// est <b>poussee</b> de 16 unites sur le cap de la balle, marquee <c>0x40</c> et
+    /// <c>+0x96 = 0x10</c>, et un second son part.
+    /// </para>
+    /// <para>
+    /// La sonde de portee est la meme forme que celle de <see cref="PickTargetBySearch_00474AD0"/>
+    /// et de la melee : six mots — decalage de cap, avance, demi-largeur, tolerance en hauteur,
+    /// ouverture, profondeur.
+    /// </para>
+    /// </summary>
+    private static void TickFireball_0047AE80(byte* record)
+    {
+        byte* e = record;
+
+        // Ghidra: les six mots de la sonde, empiles sur place. -1024 de decalage de cap, -100
+        // d'avance, 50 de demi-largeur, 100 de tolerance en hauteur, aucune ouverture, 100 de
+        // profondeur. Les trois ints qui suivent recoivent la position de l'etincelle : le binaire
+        // n'a qu'un seul bloc de 0x18 octets sur sa pile, et il s'en sert des deux façons.
+        short* probe = stackalloc short[6] { -0x0400, -0x0064, 0x0032, 0x0064, 0x0000, 0x0064 };
+        int* sparkAt = stackalloc int[3];
+
+        if (*(ushort*)(e + 0x10) == 0) *(uint*)e |= 0x80;   // la premiere image
+
+        // Le cap, moins le quart de tour que la graine avait ajoute.
+        int heading = *(short*)(e + 0x32) - 0x400;
+
+        // 40 unites d'avance : `lea eax,[eax+eax*4] ; shl eax,3`.
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 40;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 40;
+
+        // L'etincelle part DERRIERE, a 60 unites (`*3` puis `*5` puis `*4`), et chaque axe recoit
+        // un bruit de (rand & 0x3f) - 0x20 quarts d'unite. L'ordre des trois tirages est celui du
+        // binaire — ils partagent une seule suite pseudo-aleatoire.
+        int behind = heading + 0x800;
+
+        int back = (int)Winsys3d.GetSinTableEntry(behind) * 60;
+        sparkAt[0] = *(int*)(e + 0x1c) + back + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+
+        sparkAt[1] = *(int*)(e + 0x20) + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+
+        back = Winsys3d.GetCosTableEntry(behind) * 60;
+        sparkAt[2] = *(int*)(e + 0x24) + back + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+
+        SpawnStatusEffectEntity_0047AC40(e, sparkAt, Descriptors00551AD8(), 0x46, e[0x0b], -1);
+
+        // Le placement ecraserait la hauteur : elle est mise de cote et rendue tout de suite apres.
+        int keptHeight = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);               // Ghidra: FUN_00533940
+        uint state = *(uint*)e;
+        *(int*)(e + 0x20) = keptHeight;
+
+        if ((state & 0x40000000) != 0 || (*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            *(uint*)e = 0;                                // le decor : elle s'eteint sur place
+            return;
+        }
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim == null)
+        {
+            *(ushort*)(e + 0x10) += 1;
+            if (*(short*)(e + 0x10) < 0x0c) return;       // douze images de vol
+
+            *(uint*)e = 0;
+            return;
+        }
+
+        // ------------------------------------------------------------------ le coup
+        ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+        // La poussee : 16 unites sur le cap de la balle, celui-la NON corrige du quart de tour.
+        int push = *(short*)(e + 0x32);
+        *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+        *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+
+        *(uint*)victim |= 0x40;
+        *(ushort*)(victim + 0x96) = 0x10;
+
+        Aud.PlayPositionalSound(0x13, 0x653, 0x1200, (int*)(e + 0x1c));   // Ghidra: FUN_0053db20
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047b050 @ 0x0047b050 — <b>l'etincelle</b> que le projectile de Balle de feu
+    /// laisse derriere lui : le sous-type <c>0x46</c> de
+    /// <see cref="s_StaticEntityHandlers_00552230"/>, la table de la passe <c>FUN_0047acf0</c> sur
+    /// <c>0x005f2d40</c>. 91 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le corps le plus court de la chaine, et le seul qui compte des images.</b> Le compteur
+    /// <c>+0x10</c> monte d'une unite par image ; l'image d'atlas <c>+0x40</c> est sa <b>moitie</b>,
+    /// si bien que chacun des quatre carreaux de <see cref="s_Descriptors_00551AD8"/> tient deux
+    /// images. A la huitieme, le quotient atteint 4 et le mot d'etat passe a zero : l'etincelle
+    /// vit <b>huit images</b>, ni plus ni moins.
+    /// </para>
+    /// <para>
+    /// Pendant ce temps elle <b>monte</b> de <c>0xa000</c> par image, <b>retrecit</b> de
+    /// <c>0x100</c> sur X et Y, et <b>palit</b> de <c>0x18</c> sur les trois canaux. Les deux
+    /// dernieres sont des additions de <b>dword</b> dans l'original (<c>0xfeffff00</c> et
+    /// <c>0xffe7e7e8</c>, soit <c>-0x01000100</c> et <c>-0x00181818</c>) : deux shorts et trois
+    /// octets traites d'un seul coup, retenue comprise. C'est transcrit tel quel — la retenue fait
+    /// partie du comportement, pas de l'astuce d'ecriture.
+    /// </para>
+    /// <para>
+    /// L'echelle et la teinte ne sont posees qu'a la <b>premiere</b> image (<c>+0x10 == 0</c>) :
+    /// <c>0x1800</c> sur X et Y, blanc plein. <see cref="SpawnStatusEffectEntity_0047AC40"/> a mis
+    /// <c>+0x10</c> et <c>+0x40</c> a zero a la naissance, donc la branche est prise une fois.
+    /// </para>
+    /// </summary>
+    private static void TickSpark_0047B050(byte* record)
+    {
+        byte* e = record;
+
+        ushort counter = *(ushort*)(e + 0x10);
+
+        if (counter == 0)
+        {
+            *(uint*)(e + 0x28) = 0x18001800;          // echelle X et Y
+            *(uint*)(e + 0x38) = 0x00ffffff;          // teinte pleine
+        }
+        else
+        {
+            // Deux shorts et trois octets, en une addition de dword chacune.
+            unchecked
+            {
+                *(uint*)(e + 0x28) += 0xfeffff00;     // -0x100 sur X et sur Y
+                *(uint*)(e + 0x38) += 0xffe7e7e8;     // -0x18 sur les trois canaux
+            }
+        }
+
+        *(int*)(e + 0x20) += 0xa000;                  // elle monte
+
+        // `mov cx,dx ; sar cx,1` : la moitie, en SIGNE et sur seize bits. `cmp cl,4 ; jb` compare
+        // ensuite l'octet BAS, non signe.
+        short half = (short)((short)counter >> 1);
+        e[0x40] = (byte)half;
+
+        if ((byte)half >= 4) *(uint*)e = 0;
+
+        *(ushort*)(e + 0x10) = (ushort)(counter + 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>
     /// saisie pendant l'incantation. Elle rend l'indice du sort dont la combinaison correspond, ou
     /// <c>-1</c>.
     ///
     /// <para>
     /// <b>C'est la table de sorts elle-meme qui porte les combinaisons.</b> Chaque fiche fait
     /// <c>0x30</c> octets ; <c>+0x1f</c> est la <b>longueur</b> de sa combinaison et <c>+0x20</c>
-    /// ouvre la suite des directions attendues. La borne du balayage vient de
+    /// ouvre la suite des coups attendus. La borne du balayage vient de
     /// <see cref="s_SpellCounts_00564600"/>, indexee par l'ecole <c>personnage[0x2b5]</c>.
     /// </para>
     /// <para>
-    /// Cote joueur, <see cref="ApplyGroundMotion_0051A020"/> empile chaque direction tenue dans
+    /// Cote joueur, <see cref="ApplyGroundMotion_0051A020"/> empile chaque bouton de face presse dans
     /// <c>entree[0x0c + n]</c> sous la forme <c>(manette[2..3] &gt;&gt; 8) &amp; 0xf0</c> et compte
     /// les coups dans <c>entree[0x0b]</c>, plafonne a <c>0x10</c>. <b>Les deux bornes se repondent
     /// exactement</b> : seize octets tiennent entre <c>+0x20</c> et la fin de la fiche, ce qui
