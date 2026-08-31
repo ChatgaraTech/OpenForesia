@@ -4912,6 +4912,10 @@ public static unsafe partial class Blaze
             // le soin PARTAGE au lieu du soin simple. Aucun corps d'enfant neuf.
             case 0x004491F0: TickHealAll_004491F0(record); return;
 
+            // 3EME OEIL, ecole 1 indice 6 — Sonde a cinq valeurs pres, au meme prix de deux PM.
+            // Il reveille la branche 0x0d du semis d'etincelle du trait, morte jusqu'ici.
+            case 0x00448EF0: TickThirdEye_00448EF0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -39843,7 +39847,8 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: FUN_004487f0 @ 0x004487f0 — <b>le trait de Sonde</b> : le sous-type <c>0xa2</c>,
     /// creneau 162 de <see cref="s_StaticEntityHandlers_00551f30"/>. 1104 octets, <b>decompilee
-    /// dans <c>Blaze.c</c></b>. Le sort en fait naitre <b>huit</b>, en quatre paires.
+    /// dans <c>Blaze.c</c></b>. <see cref="TickProbe_004484F0"/> et
+    /// <see cref="TickThirdEye_00448EF0"/> en font naitre <b>huit</b> chacun, en quatre paires.
     ///
     /// <para>
     /// <b>Il est en coordonnees spheriques, et il ne s'integre jamais.</b> A chaque image sa
@@ -40085,9 +40090,10 @@ public static unsafe partial class Blaze
     /// Il prete <c>+0x5c</c> — son champ de rayon — pour porter la teinte que
     /// <see cref="TickProbeMote_00448E20"/> recopiera ; l'appelant le restaure aussitot.
     ///
-    /// <para><b>Le second test est mort pour Sonde</b> : <c>+0x0a</c> vaut le <c>+0x5c</c> que le
-    /// sort avait pose, soit <c>0x0e</c> pour les huit traits. La valeur <c>0x0d</c> attend un
-    /// autre appelant.</para>
+    /// <para><b>Les deux tests sont vivants, un par sort</b> : <c>+0x0a</c> vaut le <c>+0x5c</c>
+    /// que le sort avait pose avant d'engendrer le trait — <c>0x0e</c> pour Sonde,
+    /// <c>0x0d</c> pour <see cref="TickThirdEye_00448EF0"/>. Les etincelles de l'un naissent donc
+    /// avec la teinte <c>9</c>, celles de l'autre avec la teinte <c>2</c>.</para>
     /// </summary>
     private static void DropProbeMote(byte* e)
     {
@@ -40100,7 +40106,8 @@ public static unsafe partial class Blaze
     /// <summary>
     /// Ghidra: FUN_00448c40 @ 0x00448c40 — <b>l'embrasement de Sonde</b> : le sous-type
     /// <c>0xa3</c>, creneau 163 de <see cref="s_StaticEntityHandlers_00551f30"/>. 510 octets,
-    /// <b>decompilee dans <c>Blaze.c</c></b>. Le sort n'en fait naitre <b>qu'un</b>, sur la cible.
+    /// <b>decompilee dans <c>Blaze.c</c></b>. Sonde et 3eme oeil n'en font naitre <b>qu'un</b>
+    /// chacun, sur la cible.
     ///
     /// <para>
     /// <b>Il tient sa victime.</b> Tant qu'elle ne porte aucun bit de <c>0x50000000</c> il recopie
@@ -40566,6 +40573,153 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x16) += 1;
 
         if (*(short*)(e + 0x16) > 0x28) EndSpellAndResetDecor_00448020(e);
+    }
+
+    // =====================================================================
+    // 3EME OEIL — le trente-sixieme sort, ecole 1 indice 6, sous-type 0x38
+    //
+    //   0x00448EF0   LE SORT. Sous-type 0x38 de 0x00551c30, 701 octets. DECOMPILE dans Blaze.c.
+    //   0x004491B0   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //
+    // C'EST SONDE, ET LES DEUX FIGURENT DANS LE JEU AVEC LE MEME PRIX : deux PM, la meme forme,
+    // les memes huit traits en quatre paires, le meme embrasement, la meme immobilisation du
+    // lanceur en deux temps. Cinq differences, pas une de plus :
+    //
+    //   la teinte des traits    +0x5c = 0x0d chez lui, 0x0e chez Sonde
+    //   la teinte de l'embrasement  +0x5c = 2 chez lui, 9 chez Sonde
+    //   le decor                0xdc/0xa0/0xa0 chez lui, 0xa0/0xa0/0xdc chez Sonde
+    //   les etincelles          UNE PAR IMAGE de la 80e a la 139e, la ou Sonde n'en seme
+    //                           qu'une image sur deux — soixante contre trente
+    //   l'effet                 2 (0x0053b090) chez lui, 1 (0x0053b020) chez Sonde
+    //
+    // ET IL REVEILLE UNE BRANCHE MORTE. Le semis d'etincelle du trait teste +0x0a contre 0x0e puis
+    // contre 0x0d ; le second test etait inatteignable tant que Sonde etait le seul appelant. Il
+    // est desormais celui de 3eme oeil, et ses etincelles naissent donc avec la teinte 2 la ou
+    // celles de Sonde naissent avec la teinte 9. Deux sorts jumeaux, deux couleurs.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004491b0 @ 0x004491b0 — <b>poser l'effet 2 si la cible l'accepte</b>. Soixante et
+    /// un octets, decompilee dans <c>Blaze.c</c>. Sixieme exemplaire de la meme enveloppe que
+    /// <see cref="HealTargetIfEligible_00447FE0"/> et ses sœurs : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="ApplyStatusEffect_0053B090"/> derriere — l'entree 2, voisine immediate de
+    /// l'entree 1 que Sonde emploie, de meme duree et de bit voisin.
+    /// </summary>
+    private static bool ApplyStatusEffectIfEligible_004491B0(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ApplyStatusEffect_0053B090(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00448ef0 @ 0x00448ef0 — <b>3eme oeil</b> : le sous-type <c>0x38</c>, creneau 56
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>septieme fiche de l'ecole 1</b>.
+    /// 701 octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickProbe_004484F0"/> a cinq valeurs pres</b>, et les deux fiches coutent
+    /// le meme prix : deux PM. Meme passe-plat par <c>+0x14</c>, <c>+0x16</c>, <c>+0x48</c> et
+    /// <c>+0x9a</c>, memes huit traits <c>0xa2</c> en quatre paires sur les quatre quarts de tour,
+    /// meme embrasement <c>0xa3</c>, meme immobilisation du lanceur posee a la naissance et effacee
+    /// deux fois — a la <c>0x78</c>e image puis a la <c>0xa0</c>e.
+    /// </para>
+    /// <para>
+    /// <b>Les cinq differences</b> : la teinte des traits (<c>+0x5c = 0x0d</c> contre <c>0x0e</c>),
+    /// celle de l'embrasement (<c>2</c> contre <c>9</c>), la teinte du decor
+    /// (<c>0xdc</c>/<c>0xa0</c>/<c>0xa0</c> contre <c>0xa0</c>/<c>0xa0</c>/<c>0xdc</c>), l'effet
+    /// pose (2 au lieu de 1), et le <b>rythme des etincelles</b> : 3eme oeil en seme <b>une par
+    /// image</b> de la 80e a la 139e, la ou Sonde teste la parite de son compteur et n'en seme
+    /// qu'une sur deux. Soixante contre trente.
+    /// </para>
+    /// <para>
+    /// <b>Il reveille une branche morte.</b> <see cref="DropProbeMote"/> teste <c>+0x0a</c> contre
+    /// <c>0x0e</c> puis contre <c>0x0d</c> ; le second test etait inatteignable tant que Sonde
+    /// etait le seul appelant du trait. Il est celui de 3eme oeil : ses etincelles naissent avec la
+    /// teinte <c>2</c>, celles de Sonde avec la teinte <c>9</c>.
+    /// </para>
+    /// </summary>
+    private static void TickThirdEye_00448EF0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_00448f16 — la position de la cible, sans relevement.
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            *(int*)(e + 0x5c) = 0x0d;                  // la teinte que les traits porteront
+
+            // Quatre paires, un quart de tour d'ecart, un tangage tire par paire.
+            for (int quarter = 0; quarter < 4; quarter++)
+            {
+                *(short*)(e + 0x14) = (short)(*(short*)(target + 0x32) + quarter * 0x400);
+                *(short*)(e + 0x16) = (short)(CrtRand() % 0x1000);   // Ghidra: FUN_00547140
+                *(int*)(e + 0x48) = quarter * 0x400;
+
+                *(short*)(e + 0x9a) = 0x18;
+                SpawnCastEntity_0047AAE0(e, 0xa2, 0, -1);
+
+                *(short*)(e + 0x9a) = 0x19;
+                SpawnCastEntity_0047AAE0(e, 0xa2, 0, -1);
+            }
+
+            *(short*)(e + 0x16) = 0;                   // le champ redevient le compteur d'images
+            *(int*)(e + 0x5c) = 2;                     // et celui-ci la teinte de l'embrasement
+
+            SpawnCastEntity_0047AAE0(e, 0xa3, 0, -1);
+
+            **(uint**)(e + 0x74) |= 0x80;              // le lanceur est immobilise
+
+            // Le decor vire au rouge — les trois canaux dans l'autre ordre que chez Sonde.
+            *(ushort*)Mem.Arena(0x005e9160) = 0xdc;
+            *(ushort*)Mem.Arena(0x005e9162) = 0xa0;
+            *(ushort*)Mem.Arena(0x005e9164) = 0xa0;
+            *(ushort*)Mem.Arena(0x005e9166) = 2;
+        }
+
+        // Ghidra: LAB_0044911b — une etincelle a CHAQUE image, de la 80e a la 139e.
+        if (*(short*)(e + 0x16) >= 0x50)
+        {
+            *(short*)(e + 0x14) = 0x50;                // le rayon que l'etincelle 0xa9 tirera
+            *(short*)(e + 0x9a) = 2;
+
+            if (*(short*)(e + 0x16) < 0x8c)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            }
+        }
+
+        // Ghidra: LAB_00449150
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) >= 0x78) **(uint**)(e + 0x74) &= 0xffffff7f;
+
+        if (*(short*)(e + 0x16) >= 0xa0)
+        {
+            **(uint**)(e + 0x74) &= 0xffffff7f;        // deja efface vingt images plus tot
+            EndSpellAndResetDecor_00448020(e);
+
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ApplyStatusEffectIfEligible_004491B0(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+        }
     }
 
     /// <summary>

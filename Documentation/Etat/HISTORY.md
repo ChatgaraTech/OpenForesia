@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **3ème œil, le trente-sixième sort** : le sort `0x00448ef0` (701 octets) et son enveloppe d'effet `0x004491b0`, tous deux décompilés dans `Blaze.c`. **Aucun corps d'enfant neuf** — ses quatre sous-types sont ceux de Sonde
+- doc : **c'est Sonde à cinq valeurs près, et au même prix de deux PM** — la teinte des traits (`+0x5c = 0x0d` contre `0x0e`), celle de l'embrasement (2 contre 9), la teinte du décor (`0xdc/0xa0/0xa0` contre `0xa0/0xa0/0xdc`), l'effet posé (2 au lieu de 1), et le rythme des étincelles : **une par image** de la 80ᵉ à la 139ᵉ, là où Sonde teste la parité de son compteur et n'en sème qu'une sur deux — soixante contre trente
+- doc : **il réveille une branche morte** — le semis d'étincelle du trait teste `+0x0a` contre `0x0e` puis contre `0x0d` ; le second test était inatteignable tant que Sonde était le seul appelant. Les étincelles de l'un naissent avec la teinte 9, celles de l'autre avec la teinte 2
 - feat : **Bobos finis, le trente-cinquième sort** : le sort `0x004491f0` (822 octets, absent de `Blaze.c`), plus son enveloppe de soin `0x00449530` et le comptage `0x00449570`, tous deux décompilés. **Aucun corps d'enfant neuf** — l'étincelle `0xa9` et la bille `0x70` étaient déjà écrites pour Sang pur
 - doc : **c'est Sang pur sur les quatre emplacements du groupe** — sa seconde moitié est le bloc de bille de `TickPureBlood_00447DF0` instruction pour instruction, enroulé dans une boucle sur les membres. Le sort a été écrit en recopiant son cadet de trois fiches
 - doc : **deux balayages du groupe, et un masque entre les deux** — le premier tente le soin sur chaque emplacement et note dans `+0x98` le bit de ceux qui l'ont **refusé** ; le second, une image sur deux pendant quarante images, saute ceux dont le bit est posé. Un membre que le soin n'a pas pris n'est pas décoré non plus
