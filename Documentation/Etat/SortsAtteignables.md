@@ -140,7 +140,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 1 | 5 | Bobos finis | T-O-O-O-X-C-T | 42 | 35 | 32 | 0x23 | `0x004491F0` | oui | **non** |
 | 1 | 6 | 3ème oeil | O-X-C | 2 | 34 | 16 | 0x38 | `0x00448EF0` | oui | **non** |
 | 1 | 7 | Antidote | T-O-O-X-X-O | 16 | 37 | 16 | 0x25 | `0x00449590` | oui | **non** |
-| 1 | 8 | Lourdes | T-O-O-C-C-O | 16 | 39 | 16 | 0x26 | `0x004498B0` | **non** | **non** |
+| 1 | 8 | Lourdes | T-O-O-C-C-O | 16 | 39 | 16 | 0x26 | `0x004498B0` | oui | **non** |
 | 1 | 9 | Antisort | T-O-O-T-T-O | 16 | 41 | 16 | 0x27 | `0x00449C30` | **non** | **non** |
 | 1 | 10 | Marteau | T-O-O-O-O-O | 16 | 43 | 16 | 0x28 | `0x00449F90` | **non** | **non** |
 | 1 | 11 | Sang d'ange | T-O-O-O-O-T-T-O | 40 | 45 | 36 | 0x29 | `0x0044A4B0` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **37** |
-| a transcrire | **43** |
+| implementees (le gestionnaire existe) | **38** |
+| a transcrire | **42** |
 | lancees en jeu au moins une fois | **16** |
-| dette : implementees mais jamais lancees | **21** |
+| dette : implementees mais jamais lancees | **22** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -225,7 +225,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00448EF0` | 1 | oui | **non** | 3ème oeil |
 | `0x004491F0` | 1 | oui | **non** | Bobos finis |
 | `0x00449590` | 1 | oui | **non** | Antidote |
-| `0x004498B0` | 1 | **non** | **non** | Lourdes |
+| `0x004498B0` | 1 | oui | **non** | Lourdes |
 | `0x00449C30` | 1 | **non** | **non** | Antisort |
 | `0x00449F90` | 1 | **non** | **non** | Marteau |
 | `0x0044A4B0` | 1 | **non** | **non** | Sang d'ange |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | oui | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **37** a transcrire.
+**74 gestionnaires distincts**, dont **36** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le

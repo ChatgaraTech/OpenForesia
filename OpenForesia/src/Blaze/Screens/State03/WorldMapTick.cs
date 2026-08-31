@@ -4922,6 +4922,11 @@ public static unsafe partial class Blaze
             case 0x00449760: TickHolyBubble_00449760(record); return;
             case 0x004501B0: TickHolyHalo_004501B0(record); return;
 
+            // LOURDES, ecole 1 indice 8 — Antidote a quatre valeurs pres. Son enfant porte le meme
+            // sous-type 0x8c que la bulle d'Antidote, mais dans l'autre table : c'est un grain.
+            case 0x004498B0: TickLourdes_004498B0(record); return;
+            case 0x00449A70: TickHolyMote_00449A70(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -41056,6 +41061,237 @@ public static unsafe partial class Blaze
             caster[7] = e[7];
 
             ClearStatusEffectIfEligible_00449720(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    // =====================================================================
+    // LOURDES — le trente-huitieme sort, ecole 1 indice 8, sous-type 0x26
+    //
+    //   0x004498B0   LE SORT. Sous-type 0x26 de 0x00551c30, 384 octets. DECOMPILE dans Blaze.c.
+    //   0x00449A30   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x00449A70   LE GRAIN, sous-type 0x8c de 0x00551f30, 435 octets. SOIXANTE. ABSENT de
+    //                Blaze.c ; releve sous Legacy/Raw/Blaze/FUN_00449A70.asm.
+    //
+    // ET LE MEME PIEGE QU'ANTIDOTE, UN SORT PLUS TARD. Antidote seme un sous-type 0x8c par
+    // SpawnStatusEffectEntity_0047AC40 — table 0x00552230, ou 0x8c est la bulle 0x00449760.
+    // Lourdes seme le MEME NUMERO par SpawnCastEntity_0047AAE0 — table 0x00551f30, ou 0x8c est
+    // 0x00449A70, un grain qui n'a rien a voir. Deux sorts voisins, deux corps differents sous le
+    // meme numero, exactement comme le 0xa9 la fiche d'avant. La table est la moitie du sous-type.
+    //
+    // POUR LE RESTE, C'EST ANTIDOTE. Meme trio de tete, meme copie de la position ET du cap de la
+    // cible, memes cinq reglages de l'aureole 0xa9, memes deux premiers sons, meme enumeration en
+    // clair des neuf images sonores, meme fin a la centieme image. Quatre differences :
+    //
+    //   le son repete    0x27 a la hauteur 0x1000, contre 0x21 a 0x200
+    //   l'enfant seme    le grain 0x8c de la table 0x00551f30, contre la bulle de la 0x00552230
+    //   sa cadence       UNE PAR IMAGE jusqu'a la soixantieme, contre une sur deux
+    //   l'effet          35 (0x0053c790), contre 34 (0x0053c740)
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00449a30 @ 0x00449a30 — <b>effacer les alterations d'etat si la cible
+    /// l'accepte</b>, seconde variante. Soixante et un octets, decompilee dans <c>Blaze.c</c>.
+    /// Huitieme exemplaire de la meme enveloppe : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="ClearStatusEffect_0053C790"/> derriere — l'entree 35, voisine immediate de
+    /// l'entree 34 qu'Antidote emploie.
+    /// </summary>
+    private static bool ClearStatusEffectIfEligible_00449A30(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053C790(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00449a70 @ 0x00449a70 — <b>le grain de Lourdes</b> : le sous-type <c>0x8c</c>
+    /// <b>de la table <see cref="s_StaticEntityHandlers_00551f30"/></b>, creneau 140. 435 octets,
+    /// <b>absent de <c>Blaze.c</c></b>. <see cref="TickLourdes_004498B0"/> en seme <b>soixante</b>,
+    /// un par image, et c'est son seul appelant.
+    ///
+    /// <para>
+    /// <b>Ce n'est pas la bulle d'Antidote</b>, qui porte pourtant le meme numero <c>0x8c</c> —
+    /// mais dans <see cref="s_StaticEntityHandlers_00552230"/>
+    /// (<see cref="TickHolyBubble_00449760"/>). Le numero seul ne designe rien.
+    /// </para>
+    /// <para>
+    /// <b>Il tombe vers le centre au lieu de tourner autour.</b> Sa position est spherique et n'est
+    /// jamais integree — <c>centre + vecteur(cap +0x12, tangage +0x14, rayon +0x9a)</c> — et le
+    /// rayon <b>diminue</b> de <c>+0x5c</c> par image jusqu'a zero, ou le grain s'eteint. Rayon de
+    /// depart <c>rand % 200 + 100</c>, vitesse de chute <c>rand % 30 + 20</c> : il vit entre deux et
+    /// quinze images selon le tirage.
+    /// </para>
+    /// <para>
+    /// <b>Son orientation suit sa position.</b> <c>+0x32</c> vaut son cap plus <c>0xc00</c> et
+    /// <c>+0x34</c> vaut <c>0x400</c> moins son tangage : le grain est toujours tourne vers le
+    /// centre sur lequel il tombe.
+    /// </para>
+    /// <para>
+    /// <b>Le bloc de naissance efface le centre qu'il vient de calculer.</b> L'en-tete pose
+    /// <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> depuis l'ancre — le sort, une hauteur d'homme plus
+    /// haut — puis la naissance les remplace par la position propre du grain, celle que la copie
+    /// des <c>0x27</c> dwords lui a donnee. L'effet ne dure qu'une image : l'en-tete les recalcule
+    /// des la suivante. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickHolyMote_00449A70(byte* record)
+    {
+        byte* e = record;
+
+        byte* origin = *(byte**)(e + 0x6c);            // le SORT, pas la cible
+        if (origin == null) origin = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_00449a85
+        *(int*)(e + 0x50) = *(int*)(origin + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(origin + 0x20) + 0x50000;
+        *(int*)(e + 0x58) = *(int*)(origin + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+
+            e[0x04] = 0;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);        // le cap
+            *(short*)(e + 0x14) = (short)(CrtRand() % 0x400);         // le tangage
+            *(short*)(e + 0x9a) = (short)(CrtRand() % 0xc8 + 0x64);   // le rayon de depart
+
+            *(short*)(e + 0x28) = 0xc8;
+            *(short*)(e + 0x2c) = 0xc8;
+
+            // Le centre calcule par l'en-tete est ecrase par la position propre du grain.
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+
+            *(int*)(e + 0x5c) = CrtRand() % 0x1e + 0x14;              // la vitesse de chute
+
+            e[0x38] = 0;                               // il naît noir
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 0x3e8 + 0x3e8);
+            e[0x3b] &= 0xfd;
+        }
+
+        // Ghidra: LAB_00449b50 — la naissance et la premiere image sont la meme passe.
+        if (*(short*)(e + 0x10) != 1) return;
+
+        BrightenEntityTint_00404DE0(e, 30, 30, 30);
+
+        *(short*)(e + 0x9a) -= *(short*)(e + 0x5c);
+
+        if (*(short*)(e + 0x9a) < 0)
+        {
+            *(short*)(e + 0x9a) = 0;
+            *(uint*)e &= 0x7fffffff;
+        }
+
+        // Ghidra: LAB_00449b8e — spherique, et le produit n'est pas recadre au dernier facteur.
+        int yaw = *(short*)(e + 0x12);
+        int pitch = *(short*)(e + 0x14);
+        int radius = *(short*)(e + 0x9a);
+
+        *(int*)(e + 0x1c) = (Winsys3d.GetCosTableEntry(pitch) * radius >> 0xc)
+                            * (int)Winsys3d.GetSinTableEntry(yaw) + *(int*)(e + 0x50);
+
+        *(int*)(e + 0x24) = (Winsys3d.GetCosTableEntry(pitch) * radius >> 0xc)
+                            * Winsys3d.GetCosTableEntry(yaw) + *(int*)(e + 0x58);
+
+        *(int*)(e + 0x20) = (int)Winsys3d.GetSinTableEntry(pitch) * radius + *(int*)(e + 0x54);
+
+        // Il regarde le centre sur lequel il tombe.
+        *(short*)(e + 0x32) = (short)(*(short*)(e + 0x12) + 0xc00);
+        *(short*)(e + 0x34) = (short)(0x400 - *(short*)(e + 0x14));
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004498b0 @ 0x004498b0 — <b>Lourdes</b> : le sous-type <c>0x26</c>, creneau 38 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>neuvieme fiche de l'ecole 1</b>. 384
+    /// octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickAntidote_00449590"/> a quatre valeurs pres</b> : meme trio de tete,
+    /// meme copie de la position <b>et du cap</b> de la cible a chaque image, memes cinq reglages
+    /// de l'aureole <c>0xa9</c> — teinte 6, largeur <c>0x1000</c>, plafond <c>0x1000</c>, compte a
+    /// rebours <c>0x46</c>, vitesse 300 —, memes deux premiers sons, meme enumeration en clair des
+    /// neuf images sonores, meme fin passe la centieme image, et le decor laisse tranquille.
+    /// </para>
+    /// <para>
+    /// <b>Les quatre differences</b> : le son repete (<c>0x27</c> a la hauteur <c>0x1000</c> contre
+    /// <c>0x21</c> a <c>0x200</c>), l'enfant seme (<see cref="TickHolyMote_00449A70"/> contre
+    /// <see cref="TickHolyBubble_00449760"/>), sa cadence (<b>une par image</b> jusqu'a la
+    /// soixantieme, contre une sur deux) et l'effet pose (35 au lieu de 34).
+    /// </para>
+    /// <para>
+    /// <b>Les deux enfants portent le meme numero de sous-type</b>, <c>0x8c</c> — mais Antidote le
+    /// sonne par <see cref="SpawnStatusEffectEntity_0047AC40"/> et Lourdes par
+    /// <see cref="SpawnCastEntity_0047AAE0"/>, donc dans deux tables differentes. C'est le meme
+    /// piege que le <c>0xa9</c> de la fiche precedente, une fiche plus loin.
+    /// </para>
+    /// </summary>
+    private static void TickLourdes_004498B0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_004498d6 — la position ET le cap de la cible, a chaque image.
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+        *(short*)(e + 0x32) = *(short*)(target + 0x32);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            // Les quatre reglages de l'aureole, poses pour qu'elle les recopie.
+            *(short*)(e + 0x9a) = 6;         // sa teinte
+            *(short*)(e + 0x14) = 0x1000;    // sa largeur
+            *(int*)(e + 0x44) = 0x1000;      // le plafond de sa hauteur
+            *(int*)(e + 0x48) = 0x46;        // son compte a rebours
+            *(int*)(e + 0x5c) = 300;         // sa vitesse de montee
+
+            SpawnCastEntity_0047AAE0(e, 0xa9, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x30, 0x16a, 0x1200, 0x1200);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x10, 0x200, 0x1200, 0x1200);
+
+        // Ghidra: 0x00449970 — les neuf valeurs sont enumerees en clair, comme chez Antidote.
+        short step = *(short*)(e + 0x16);
+
+        if (step == 2 || step == 0x0c || step == 0x16 || step == 0x20 || step == 0x2a
+            || step == 0x34 || step == 0x3e || step == 0x48 || step == 0x52)
+        {
+            Aud.PlaySoundEffect(0x27, 0x1000, 0x1200, 0x1200);
+        }
+
+        // Un grain a CHAQUE image, soixante images durant.
+        if (*(short*)(e + 0x16) < 0x3c) SpawnCastEntity_0047AAE0(e, 0x8c, 0, -1);
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 99)
+        {
+            // La paire famille/indice passe au lanceur : c'est SA fiche que l'effet relira.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ClearStatusEffectIfEligible_00449A30(
                 *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
 
             EndSpellAndResetDecor_00448020(e);
