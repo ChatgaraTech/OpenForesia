@@ -4916,6 +4916,12 @@ public static unsafe partial class Blaze
             // Il reveille la branche 0x0d du semis d'etincelle du trait, morte jusqu'ici.
             case 0x00448EF0: TickThirdEye_00448EF0(record); return;
 
+            // ANTIDOTE, ecole 1 indice 7 — le premier sort de l'ecole qui laisse le decor
+            // tranquille. Son 0xa9 est celui de la table 0x00551f30, pas celui de la 0x00552230.
+            case 0x00449590: TickAntidote_00449590(record); return;
+            case 0x00449760: TickHolyBubble_00449760(record); return;
+            case 0x004501B0: TickHolyHalo_004501B0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -40719,6 +40725,340 @@ public static unsafe partial class Blaze
 
             ApplyStatusEffectIfEligible_004491B0(
                 *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+        }
+    }
+
+    // =====================================================================
+    // ANTIDOTE — le trente-septieme sort, ecole 1 indice 7, sous-type 0x25
+    //
+    //   0x00449590   LE SORT. Sous-type 0x25 de 0x00551c30, 400 octets. DECOMPILE dans Blaze.c.
+    //   0x00449720   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x00449760   LA BULLE, sous-type 0x8c de 0x00552230, 335 octets. TRENTE. ABSENTE de
+    //                Blaze.c ; relevee sous Legacy/Raw/Blaze/FUN_00449760.asm.
+    //   0x004501B0   L'AUREOLE, sous-type 0xa9 de 0x00551f30, 275 octets. UNE. ABSENTE de Blaze.c ;
+    //                relevee sous Legacy/Raw/Blaze/FUN_004501B0.asm.
+    //
+    // ATTENTION AU NUMERO 0xa9 : CE N'EST PAS LE MEME QUE PARTOUT AILLEURS. Les sorts precedents
+    // semaient un sous-type 0xa9 par SpawnStatusEffectEntity_0047AC40, donc dans la table
+    // 0x00552230, ou il designe l'etincelle de la bouffee (EntityHandler_0044FB10). Antidote sonne
+    // le meme numero par SpawnCastEntity_0047AAE0, donc dans la table 0x00551f30, ou il designe
+    // 0x004501B0 — une aureole qui n'a rien a voir. Le sous-type ne veut rien dire sans sa table.
+    //
+    // L'AUREOLE EST PARTAGEE PAR TROIS FICHES : Antidote et les deux suivantes (0x004498b0 et
+    // 0x00449c30) l'appellent de la meme facon. Elle est donc ecrite une fois pour trois.
+    //
+    // IL NE FRAPPE PAS ET NE CHERCHE RIEN. Il colle a sa cible, sonne cinq fois, seme une bulle une
+    // image sur deux pendant soixante images, et pose l'effet 34 a la centieme — la seule des 48
+    // entrees qui EFFACE des etats au lieu d'en poser un.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00449720 @ 0x00449720 — <b>effacer les alterations d'etat si la cible
+    /// l'accepte</b>. Soixante et un octets, decompilee dans <c>Blaze.c</c>. Septieme exemplaire de
+    /// la meme enveloppe : le meme <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="ClearStatusEffect_0053C740"/> derriere — l'entree 34.
+    /// </summary>
+    private static bool ClearStatusEffectIfEligible_00449720(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053C740(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00449760 @ 0x00449760 — <b>la bulle d'Antidote</b> : le sous-type <c>0x8c</c>,
+    /// creneau 140 de <see cref="s_StaticEntityHandlers_00552230"/>. 335 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. <see cref="TickAntidote_00449590"/> en seme <b>trente</b>, une image sur
+    /// deux, et c'est son seul appelant.
+    ///
+    /// <para>
+    /// <b>Elle tourne autour du sort et monte.</b> Sa position n'est jamais integree : a chaque
+    /// image elle vaut <c>ancre + (sin, cos)(+0x9a + +0x12) &#215; +0x5c</c> pour l'horizontale, et
+    /// <c>(+0x44 + age) &lt;&lt; 0xc</c> au-dessus de l'ancre pour la hauteur — donc une montee
+    /// <b>lineaire</b> d'une unite par image, sans vitesse ni gravite. L'ancre est le SORT
+    /// (<c>+0x6c</c>), dont la hauteur est prise en <c>+0x60</c> et non en <c>+0x20</c>.
+    /// </para>
+    /// <para>
+    /// <b>Trois tirages a la naissance</b> lui donnent son rayon (<c>rand % 30 + 40</c>), son cap
+    /// (<c>rand % 0x1000</c>) et son decalage vertical de depart (<c>rand % 120</c>) : trente
+    /// bulles, trente trajectoires.
+    /// </para>
+    /// <para>
+    /// <b>Un seul compteur pour grandir, retrecir et mourir.</b> <c>+0x14</c> avance d'un par
+    /// image ; jusqu'a <c>0x14</c> l'echelle monte de <c>0x96</c> et se plafonne a <c>0x800</c>,
+    /// au-dela elle perd <c>0x96</c> et l'entite s'eteint des que l'echelle passe sous zero.
+    /// Vingt images de montee, une quinzaine de retrait.
+    /// </para>
+    /// <para>
+    /// <b>Le produit n'est pas recadre</b> — <c>imul</c> sans <c>&gt;&gt; 0xc</c>, comme chez toutes
+    /// les orbites de cette ecole.
+    /// </para>
+    /// </summary>
+    private static void TickHolyBubble_00449760(byte* record)
+    {
+        byte* e = record;
+
+        byte* origin = *(byte**)(e + 0x6c);            // le SORT, pas la cible
+        if (origin == null) origin = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_00449774 — l'ancre, dont la hauteur est prise en +0x60.
+        *(int*)(e + 0x50) = *(int*)(origin + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(origin + 0x60);
+        *(int*)(e + 0x58) = *(int*)(origin + 0x24);
+        *(short*)(e + 0x12) = *(short*)(origin + 0x32);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x18;   // Ghidra: DAT_00551540
+            e[0x40] = 0;
+            e[0x0a] = 6;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x14) = 0;
+
+            *(int*)(e + 0x5c) = CrtRand() % 0x1e + 0x28;          // Ghidra: FUN_00547140
+            *(short*)(e + 0x9a) = (short)(CrtRand() % 0x1000);    // Ghidra: FUN_00547140
+
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            *(int*)(e + 0x44) = CrtRand() % 0x78;                 // Ghidra: FUN_00547140
+        }
+
+        // Ghidra: LAB_004497f4 — la naissance et la premiere image sont la meme passe.
+        if (*(short*)(e + 0x10) != 1) return;
+
+        int heading = *(short*)(e + 0x9a) + *(short*)(e + 0x12);
+        int radius = *(int*)(e + 0x5c);
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(heading) * radius + *(int*)(e + 0x50);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(heading) * radius + *(int*)(e + 0x58);
+
+        short age = *(short*)(e + 0x14);
+        *(int*)(e + 0x20) = ((*(int*)(e + 0x44) + age) << 0xc) + *(int*)(e + 0x54);
+
+        *(short*)(e + 0x14) = (short)(age + 1);
+
+        if (*(short*)(e + 0x14) > 0x14)
+        {
+            // Ghidra: 0x0044985f — le retrait.
+            *(short*)(e + 0x28) -= 0x96;
+            short scale = *(short*)(e + 0x28);
+            *(short*)(e + 0x2a) -= 0x96;
+
+            if (scale < 0)
+            {
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                *(uint*)e &= 0x7fffffff;
+            }
+
+            return;
+        }
+
+        // Ghidra: LAB_00449889 — la montee, plafonnee.
+        *(short*)(e + 0x28) += 0x96;
+        *(short*)(e + 0x2a) += 0x96;
+
+        if (*(short*)(e + 0x28) > 0x800)
+        {
+            *(short*)(e + 0x28) = 0x800;
+            *(short*)(e + 0x2a) = 0x800;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004501b0 @ 0x004501b0 — <b>l'aureole des benedictions du Pretre</b> : le
+    /// sous-type <c>0xa9</c>, creneau 169 de <see cref="s_StaticEntityHandlers_00551f30"/>. 275
+    /// octets, <b>absente de <c>Blaze.c</c></b>. Trois fiches de l'ecole l'emploient —
+    /// <see cref="TickAntidote_00449590"/> et les deux suivantes du binaire — a raison d'une chacune.
+    ///
+    /// <para>
+    /// <b>Le numero <c>0xa9</c> ne designe pas ici ce qu'il designe ailleurs.</b> Les sorts
+    /// precedents le sonnaient par <see cref="SpawnStatusEffectEntity_0047AC40"/>, donc dans la
+    /// table <c>0x00552230</c>, ou <c>0xa9</c> est l'etincelle de la bouffee
+    /// (<see cref="EntityHandler_0044FB10"/>). Celui-ci passe par
+    /// <see cref="SpawnCastEntity_0047AAE0"/> et la table <c>0x00551f30</c>. Un sous-type ne veut
+    /// rien dire sans sa table.
+    /// </para>
+    /// <para>
+    /// <b>Elle monte de plus en plus vite, puis a vitesse constante.</b> <c>+0x2a</c> — sa demi-hauteur — croit de
+    /// <c>+0x5c</c> par image jusqu'au plafond <c>+0x44</c>, et la position gagne
+    /// <c>+0x2a &#215; 150</c> a chaque image : la montee accelere puis se stabilise. Les deux
+    /// bornes viennent du sort, qui les pose avant de l'engendrer.
+    /// </para>
+    /// <para>
+    /// <b><c>+0x48</c> est le compte a rebours, et le seul aiguillage.</b> Tant qu'il reste positif
+    /// l'aureole s'eclaircit de dix par image et se plafonne a <c>0xb4</c> ; passe sous zero elle
+    /// s'assombrit de dix et s'eteint quand le rouge touche zero. Antidote le pose a <c>0x46</c> —
+    /// soixante-dix images de montee, une vingtaine d'extinction.
+    /// </para>
+    /// <para>
+    /// <b>Elle se cale sur <c>+0x60</c> de sa cible</b>, comme la bulle et comme l'embrasement de
+    /// Sonde, et non sur son <c>+0x20</c>.
+    /// </para>
+    /// </summary>
+    private static void TickHolyHalo_004501B0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_004501cf
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+
+            e[0x04] = 5;                               // le modele
+            e[0x40] = 0;
+            e[0x0a] = e[0x9a];                         // la teinte, posee par le sort
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x28) = *(short*)(e + 0x14); // la largeur, posee par le sort
+            *(short*)(e + 0x2c) = *(short*)(e + 0x14);
+            *(short*)(e + 0x2a) = 0;                   // et la hauteur part de zero
+
+            e[0x38] = 0;                               // elle naît noire
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x34) = 0x800;
+        }
+
+        // Ghidra: LAB_00450222
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x32) += 0x96;
+        if (*(short*)(e + 0x32) >= 0x1000) *(short*)(e + 0x32) -= 0x1000;
+
+        // Ghidra: LAB_00450245 — la demi-hauteur croit jusqu'au plafond que le sort a pose.
+        *(short*)(e + 0x2a) += *(short*)(e + 0x5c);
+
+        if ((int)*(short*)(e + 0x2a) > *(int*)(e + 0x44))
+        {
+            *(short*)(e + 0x2a) = (short)*(int*)(e + 0x44);
+        }
+
+        // Ghidra: LAB_00450260 — `lea` en cascade : x3, x5, x5, x2 = x150.
+        *(int*)(e + 0x20) += *(short*)(e + 0x2a) * 150;
+
+        *(int*)(e + 0x48) -= 1;
+
+        if (*(int*)(e + 0x48) < 0)
+        {
+            BrightenEntityTint_00404DE0(e, -10, -10, -10);
+            if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+            return;
+        }
+
+        // Ghidra: LAB_0045029f
+        BrightenEntityTint_00404DE0(e, 10, 10, 10);
+
+        if (e[0x38] > 0xb4)
+        {
+            e[0x38] = 0xb4;
+            e[0x39] = 0xb4;
+            e[0x3a] = 0xb4;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00449590 @ 0x00449590 — <b>Antidote</b> : le sous-type <c>0x25</c>, creneau 37
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>huitieme fiche de l'ecole 1</b>.
+    /// 400 octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne cherche rien et ne frappe rien.</b> Aucune recherche de victime au-dela du choix de
+    /// cible ordinaire, aucune immobilisation du lanceur, aucune teinte de decor — le premier sort
+    /// de l'ecole 1 qui laisse le decor tranquille. Il colle a sa cible, y compris en reprenant son
+    /// cap <c>+0x32</c> a chaque image, et attend cent images.
+    /// </para>
+    /// <para>
+    /// <b>Une aureole, puis trente bulles.</b> L'aureole <c>0xa9</c> naît a la premiere image, avec
+    /// ses quatre reglages poses juste avant — largeur <c>0x1000</c>, plafond de hauteur
+    /// <c>0x1000</c>, compte a rebours <c>0x46</c>, vitesse <c>300</c>. Les bulles <c>0x8c</c>
+    /// suivent, une image sur deux jusqu'a la soixantieme.
+    /// </para>
+    /// <para>
+    /// <b>Cinq sons, dont un qui revient neuf fois.</b> Un a la naissance, un a la premiere image,
+    /// puis le meme toutes les dix images de la 2e a la 82e — le seul sort du depot qui enumere
+    /// neuf valeurs de compteur en clair plutot que de tester un reste.
+    /// </para>
+    /// <para>
+    /// <b>Il pose l'entree 34</b>, <see cref="ClearStatusEffect_0053C740"/> : la seule des 48 qui
+    /// <b>efface</b> des alterations d'etat au lieu d'en poser une.
+    /// </para>
+    /// </summary>
+    private static void TickAntidote_00449590(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_004495b6 — la position ET le cap de la cible, a chaque image.
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+        *(short*)(e + 0x32) = *(short*)(target + 0x32);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            // Les quatre reglages de l'aureole, poses pour qu'elle les recopie.
+            *(short*)(e + 0x9a) = 6;         // sa teinte
+            *(short*)(e + 0x14) = 0x1000;    // sa largeur
+            *(int*)(e + 0x44) = 0x1000;      // le plafond de sa hauteur
+            *(int*)(e + 0x48) = 0x46;        // son compte a rebours
+            *(int*)(e + 0x5c) = 300;         // sa vitesse de montee
+
+            SpawnCastEntity_0047AAE0(e, 0xa9, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x30, 0x16a, 0x1200, 0x1200);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x10, 0x200, 0x1200, 0x1200);
+
+        // Ghidra: 0x00449650 — les neuf valeurs sont enumerees en clair dans le binaire.
+        short step = *(short*)(e + 0x16);
+
+        if (step == 2 || step == 0x0c || step == 0x16 || step == 0x20 || step == 0x2a
+            || step == 0x34 || step == 0x3e || step == 0x48 || step == 0x52)
+        {
+            Aud.PlaySoundEffect(0x21, 0x200, 0x1200, 0x1200);
+        }
+
+        // Une bulle une image sur deux, soixante images durant.
+        if ((*(ushort*)(e + 0x16) & 1) != 0 && *(short*)(e + 0x16) < 0x3c)
+        {
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x8c, 0, -1);
+        }
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 99)
+        {
+            // La paire famille/indice passe au lanceur : c'est SA fiche que l'effet relira.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ClearStatusEffectIfEligible_00449720(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+
+            EndSpellAndResetDecor_00448020(e);
         }
     }
 

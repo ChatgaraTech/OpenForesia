@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **106** |
-| implementes, jamais appeles | **183** |
-| a transcrire | **1141** |
+| implementes, jamais appeles | **186** |
+| a transcrire | **1138** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -61,7 +61,7 @@ et n'est pas un comportement.
 
 | zone | lieu | gestionnaires | implementes | testes |
 |---|---|---|---|---|
-| — | **tables statiques** (partout) | 274 | 144 | 71 |
+| — | **tables statiques** (partout) | 274 | 147 | 71 |
 | 0 | L'auberge | 48 | 35 | 12 |
 | 1 | La mine abandonnee | 157 | 22 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
@@ -85,7 +85,7 @@ depassent donc le total global.
 Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` et
 `0x0047acf0` lisent pour un indice sous `0xc0`. Elles ne dependent d'aucune zone.
 
-274 gestionnaires, 144 implementes, 71 testes.
+274 gestionnaires, 147 implementes, 71 testes.
 
 | gestionnaire | tables | implemente | teste |
 |---|---|---|---|
@@ -118,8 +118,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004478F0` | 00551F30 | **non** | **non** |
 | `0x00447A90` | 00551C30 | **non** | **non** |
 | `0x00447D50` | 00551F30 | **non** | **non** |
-| `0x00449590` | 00551C30 | **non** | **non** |
-| `0x00449760` | 00552230 | **non** | **non** |
 | `0x004498B0` | 00551C30 | **non** | **non** |
 | `0x00449A70` | 00551F30 | **non** | **non** |
 | `0x00449C30` | 00551C30 | **non** | **non** |
@@ -168,7 +166,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0044FC90` | 00552230 | **non** | **non** |
 | `0x0044FF40` | 00552230 | **non** | **non** |
 | `0x004500B0` | 00552230 | **non** | **non** |
-| `0x004501B0` | 00551F30 | **non** | **non** |
 | `0x00475CC0` | 00551C30 | **non** | **non** |
 | `0x004760C0` | 00551C30 | **non** | oui |
 | `0x00476140` | 00552230 | **non** | **non** |
@@ -236,9 +233,12 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00448E20` | 00552230 | oui | **non** |
 | `0x00448EF0` | 00551C30 | oui | **non** |
 | `0x004491F0` | 00551C30 | oui | **non** |
+| `0x00449590` | 00551C30 | oui | **non** |
+| `0x00449760` | 00552230 | oui | **non** |
 | `0x0044F060` | 00551C30 | oui | **non** |
 | `0x0044F290` | 00551F30 | oui | **non** |
 | `0x0044FE00` | 00552230 | oui | **non** |
+| `0x004501B0` | 00551F30 | oui | **non** |
 | `0x00475170` | 00551C30 | oui | **non** |
 | `0x004751E0` | 00551F30 | oui | **non** |
 | `0x004752F0` | 00552230 | oui | **non** |
