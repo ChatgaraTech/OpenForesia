@@ -4838,6 +4838,12 @@ public static unsafe partial class Blaze
             case 0x0047FB80: TickGale_0047FB80(record); return;
             case 0x0047FE40: TickGaleGust_0047FE40(record); return;
 
+            // DEMON POLAIRE, ecole 0 indice 22 — trois demons en deux moities, qui se retrouvent
+            // par leur NUMERO D'EMPLACEMENT et non par un pointeur.
+            case 0x0047FE60: TickPolarDemon_0047FE60(record); return;
+            case 0x00480080: TickPolarDemonHead_00480080(record); return;
+            case 0x00480490: TickPolarDemonTail_00480490(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -9637,6 +9643,23 @@ public static unsafe partial class Blaze
     /// <summary>Les deux pas du script en memoire native.</summary>
     private static byte* DelayedSoundScript00552568()
         => NativeCopy(s_DelayedSoundScript_00552568, ref s_DelayedSoundScript00552568Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552578</c> — <b>le cinquieme script de sons differes</b>, celui de
+    /// <see cref="TickPolarDemon_0047FE60"/>. Le son <c>0x23</c>, trois images d'attente, puis le
+    /// <c>0x12</c> qui termine.
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552578 =
+    [
+        0x23, 0x03, 0x01, 0x00, 0xfd, 0x06, 0x00, 0x12,   // 0x00552578
+        0x12, 0x00, 0x01, 0x00, 0xbf, 0x01, 0x00, 0x12,   // 0x00552580 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552578Storage;
+
+    /// <summary>Les deux pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00552578()
+        => NativeCopy(s_DelayedSoundScript_00552578, ref s_DelayedSoundScript00552578Storage);
 
     /// <summary>
     /// Ghidra: FUN_00475a30 @ 0x00475a30 — <b>l'entree 183 (<c>0xb7</c>) de la table statique
@@ -28909,6 +28932,53 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: FUN_00475090 @ 0x00475090 — <b>reserver des emplacements d'entite a l'avance</b>,
+    /// sans les prendre. Decompilee dans <c>Blaze.c</c>, jamais transcrite jusqu'ici faute
+    /// d'appelant.
+    ///
+    /// <para>
+    /// La liste libre d'un pool est un octet de curseur, un octet de capacite, puis les indices
+    /// disponibles. Cette fonction <b>trie les <paramref name="count"/> plus petits indices
+    /// restants vers la tete</b> par une selection partielle, <b>sans avancer le curseur</b> :
+    /// l'appelant peut donc lire d'avance quels indices les prochaines allocations lui donneront,
+    /// et s'en servir comme d'un rendez-vous.
+    /// </para>
+    /// <para>
+    /// <b>C'est exactement ce que fait Demon polaire</b> : il reserve deux emplacements, range
+    /// leurs indices dans <c>+0x16</c> et <c>+0x17</c>, puis engendre ses deux moities — qui se
+    /// retrouvent ensuite par <c>0x005edee0 + indice * 0x9c</c>, sans jamais se passer de pointeur.
+    /// </para>
+    /// </summary>
+    /// <returns>1 si la place existait, 0 sinon — et dans ce cas rien n'est touche.</returns>
+    private static uint ReserveEntitySlots_00475090(byte* pool, int count)
+    {
+        if (pool[1] < count + pool[0]) return 0;
+
+        byte* list = pool + pool[0] + 2;
+
+        for (; count != 0; count--, list++)
+        {
+            int smallest = 0;
+            byte value = *list;
+
+            for (int i = 1; i < count; i++)
+            {
+                if (list[i] < value)
+                {
+                    smallest = i;
+                    value = list[i];
+                }
+            }
+
+            byte swap = list[smallest];
+            list[smallest] = *list;
+            *list = swap;
+        }
+
+        return 1;
+    }
+
+    /// <summary>
     /// Ghidra: FUN_00475110 @ 0x00475110 — <b>le lanceur tient-il encore ?</b> Decompilee dans
     /// <c>Blaze.c</c>. C'est la garde des sorts <b>entretenus</b> : elle rend <b>0</b> tant que le
     /// lanceur peut continuer, <b>1</b> des qu'il faut couper.
@@ -35184,6 +35254,451 @@ public static unsafe partial class Blaze
         *(uint*)(e + 0x38) = tint;
 
         if (tint == 0) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // DEMON POLAIRE — le vingt-troisieme sort, ecole 0 indice 22, sous-type 0x16
+    //
+    // Trois corps neufs, et le premier sort qui VERIFIE SES RESSOURCES avant de partir.
+    //
+    //   0x0047FE60   LE SORT. Sous-type 0x16 de 0x00551c30, 532 octets. Septieme sort entretenu,
+    //                a 5 PM par vingt images.
+    //   0x00480080   LA TETE, sous-type 0x3c de 0x00551f30, 1026 octets. Trois exemplaires.
+    //   0x00480490   LA QUEUE, sous-type 0x3d de 0x00551f30, 362 octets. Trois aussi.
+    //
+    // IL REFUSE DE PARTIR SI LA TABLE EST PLEINE. La premiere instruction utile compare le curseur
+    // du pool 0x006007a0 a 0x76 : au-dela, le sort s'eteint sans rien faire. Aucun autre corps du
+    // depot ne fait ce controle — celui-ci en a besoin, il lui faut six emplacements d'un coup.
+    //
+    // ET SES DEUX MOITIES SE RETROUVENT PAR LEUR NUMERO D'EMPLACEMENT. Pour chacun des trois
+    // demons, le sort RESERVE deux emplacements par ReserveEntitySlots_00475090 — qui trie les deux
+    // plus petits indices libres en tete SANS avancer le curseur —, les lit dans +0x16 et +0x17,
+    // puis engendre la tete et la queue. La queue recalcule ensuite l'adresse de sa tete par
+    // `0x005edee0 + (+0x16) * 0x9c`, sans qu'aucun pointeur ne circule. C'est la seule
+    // communication par indice du depot.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047fe60 @ 0x0047fe60 — <b>Demon polaire</b> : le sous-type <c>0x16</c>, creneau
+    /// 22 de <see cref="s_StaticEntityHandlers_00551c30"/>. 532 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il commence par verifier qu'il a la place.</b> Si le curseur du pool des entites
+    /// d'incantation depasse <c>0x76</c> — moins de dix emplacements libres sur <c>0x80</c> — il
+    /// s'eteint immediatement, sans immobiliser le lanceur ni jouer de son.
+    /// </para>
+    /// <para>
+    /// <b>Trois demons, chacun en deux moities.</b> Pour chacun il reserve deux emplacements par
+    /// <see cref="ReserveEntitySlots_00475090"/>, recopie les deux indices dans <c>+0x16</c> et
+    /// <c>+0x17</c>, avance son cap d'un quart de tour et sa phase <c>+0x12</c> d'un tiers
+    /// (<c>0x555</c>), puis engendre la tete <c>0x3c</c> et la queue <c>0x3d</c>.
+    /// </para>
+    /// <para>
+    /// <b>Il attend ensuite le bit <c>2</c></b> que ses tetes lui posent quand elles ont fini de
+    /// grandir — comme Trouille — avant de relacher le lanceur et de lire la manette. Septieme sort
+    /// entretenu, a 5 PM toutes les vingt images ; le decor vire au bleu de Congelo, reecrit a
+    /// chaque image.
+    /// </para>
+    /// </summary>
+    private static void TickPolarDemon_0047FE60(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(ushort*)Mem.Arena(0x005e9166) = 0;       // le decor reprend sa couleur
+            *(uint*)e = 0;
+            return;
+        }
+
+        byte* caster = *(byte**)(e + 0x74);
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            // ------------------------------------------------------------ le controle de place
+            if (*Mem.Entity(0x006007a0) > 0x76)
+            {
+                *(uint*)e = 0;                         // pas assez d'emplacements : il renonce
+                return;
+            }
+
+            *(uint*)caster |= 0x80;
+            *(int*)(e + 0x78) = 0;
+
+            int heading = *(short*)(e + 0x32);
+            int half = StatusBubbleHeight_00538BC0((uint*)caster) >> 1;
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * half;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * half;
+            *(ushort*)(e + 0x12) = 0;
+            *(int*)(e + 0x20) += half << 0xc;
+
+            for (int demon = 0; demon < 3; demon++)
+            {
+                // Les deux emplacements sont RESERVES, pas pris : les deux naissances qui suivent
+                // les prendront dans cet ordre.
+                byte* pool = Mem.Entity(0x006007a0);
+                ReserveEntitySlots_00475090(pool, 2);
+
+                e[0x16] = pool[*pool + 2];
+                e[0x17] = pool[*pool + 3];
+
+                int spin = *(short*)(e + 0x32);
+                *(int*)(e + 0x50) += (int)Winsys3d.GetSinTableEntry(spin) << 6;
+                *(int*)(e + 0x58) += Winsys3d.GetCosTableEntry(spin) << 6;
+                *(ushort*)(e + 0x32) += 0x400;
+
+                e[0x04] = 0x24;
+                SpawnCastEntity_0047AAE0(e, 0x3c, e[0x0b], -1);
+
+                e[0x04] = 0x25;
+                SpawnCastEntity_0047AAE0(e, 0x3d, e[0x0b], -1);
+
+                *(ushort*)(e + 0x12) += 0x555;         // un tiers de tour de phase
+            }
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00552578(), (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047ffa1 — rien ne bouge tant que les tetes n'ont pas pose le bit 2.
+        if ((*(uint*)e & 2) != 0)
+        {
+            *(uint*)caster &= 0xffffff7f;              // le lanceur est rendu a lui-meme
+
+            if ((*(uint*)e & 0x800000) != 0)
+            {
+                uint index = ((uint*)caster)[2] & 0xff;
+                byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+                int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+                ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+                if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+
+                if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
+                {
+                    short mana = *(short*)(perChar + 0x14e);
+
+                    if (mana >= 5)
+                    {
+                        *(short*)(perChar + 0x14e) = (short)(mana - 5);
+                    }
+                    else
+                    {
+                        *(ushort*)(perChar + 0x14e) = 0;
+                        *(uint*)e |= 0x2000000;
+                    }
+                }
+            }
+            else if (*(short*)(e + 0x10) >= 0x78)
+            {
+                *(uint*)e |= 0x2000000;
+            }
+
+            if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+        }
+
+        // Ghidra: LAB_00480057 — le bleu de Congelo, reecrit a chaque image.
+        *(uint*)Mem.Arena(0x005e9160) = 0x00400040;
+        *(uint*)Mem.Arena(0x005e9164) = 0x00020080;
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00480080 @ 0x00480080 — <b>la tete du Demon polaire</b> : le sous-type
+    /// <c>0x3c</c>, creneau 60 de <see cref="s_StaticEntityHandlers_00551f30"/>. 1026 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle grandit, puis elle chasse.</b> Son echelle approche <c>0x1800</c> d'un quart ; des
+    /// qu'elle depasse <c>0x17e0</c> elle pose le bit <c>2</c> sur son <b>pere</b> — c'est ce signal
+    /// qui debloque le sort. Elle prend ensuite l'adversaire le plus proche et le garde quarante
+    /// images, avec le meme lien reciproque que la fleche magique ; faute de proie elle tourne
+    /// autour du lanceur, a hauteur de sa tete et sur un cap qui avance de <c>0x80</c> par image.
+    /// </para>
+    /// <para>
+    /// <b>Ses deux angles tournent par le plus court chemin</b> — comme le fantome de Trouille,
+    /// mais tous les deux — et le tangage vise est decale de <c>(age &amp; 7) &lt;&lt; 7</c>. La
+    /// meme quantite, decalee de cinq bits, donne sa vitesse : elle <b>bat des ailes sur huit
+    /// images</b>, l'ondulation et la poussee venant du meme compteur.
+    /// </para>
+    /// <para>
+    /// Une image sur quatre elle laisse une trainee <c>0xbf</c> derriere elle, six champs pretes
+    /// puis rendus.
+    /// </para>
+    /// </summary>
+    private static void TickPolarDemonHead_00480080(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { -0x0400, -0x0050, 0x003c, 0x0064, 0x0000, 0x00a0 };
+        int* step = stackalloc int[3];
+        int* trailAt = stackalloc int[3];
+
+        uint state = *(uint*)e;
+
+        if ((state & 0x2000000) != 0)
+        {
+            short shrinking = *(short*)(e + 0x28);
+            shrinking -= (short)(shrinking >> 2);
+            *(short*)(e + 0x28) = shrinking;
+            *(short*)(e + 0x2a) = shrinking;
+            *(short*)(e + 0x2c) = shrinking;
+
+            if (shrinking < 0x100) { *(uint*)e = 0; return; }
+
+            *(ushort*)(e + 0x10) += 1;
+            return;
+        }
+
+        // Ghidra: LAB_004800eb
+        byte* father = *(byte**)(e + 0x6c);
+        *(uint*)e = (*(uint*)father & 0x2000000) | state;
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(int*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+            *(ushort*)(e + 0x9a) = 0x1000;
+        }
+
+        // Ghidra: LAB_00480120 — elle grandit, et previent son pere quand elle y est.
+        short grown = *(short*)(e + 0x28);
+        grown += (short)((0x1800 - grown) >> 2);
+        *(short*)(e + 0x28) = grown;
+        *(short*)(e + 0x2a) = grown;
+        *(short*)(e + 0x2c) = grown;
+
+        if (grown > 0x17e0) *(uint*)father |= 2;
+
+        // Ghidra: LAB_0048014b — la proie, gardee quarante images au plus.
+        byte* prey = *(byte**)(e + 0x78);
+
+        if (prey != null)
+        {
+            if ((*(uint*)prey & 0x50000000) != 0 || *(short*)(e + 0x10) >= 0x28)
+            {
+                *(uint*)(prey + 0x74) = 0;
+                *(int*)(e + 0x78) = 0;
+                *(ushort*)(e + 0x10) = 0;
+                prey = null;
+            }
+        }
+        else
+        {
+            prey = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+        }
+
+        // Ghidra: LAB_00480181
+        *(ushort*)(e + 0x12) += 0x80;
+        int orbit = *(short*)(e + 0x12);
+
+        int dx, dy, dz;
+
+        if (prey != null)
+        {
+            *(byte**)(e + 0x78) = prey;
+            *(byte**)(prey + 0x74) = e;
+
+            dx = (*(int*)(prey + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            int head = StatusBubbleHeight_00538BC0((uint*)prey);
+            dy = (((head & ~1) << 0xb) + *(int*)(prey + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+            dz = (*(int*)(prey + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+        }
+        else
+        {
+            // Ghidra: LAB_004801c3 — elle tourne autour du lanceur, a hauteur de sa tete.
+            byte* caster = *(byte**)(e + 0x74);
+            int radius = StatusBubbleHeight_00538BC0((uint*)caster);
+
+            dx = ((int)Winsys3d.GetSinTableEntry(orbit) * radius
+                  + *(int*)(caster + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            dy = (*(int*)(caster + 0x20) + (radius << 0xc) - *(int*)(e + 0x20)) >> 0xc;
+            dz = (Winsys3d.GetCosTableEntry(orbit) * radius
+                  + *(int*)(caster + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+        }
+
+        // Ghidra: LAB_0048021a — la poussee s'ajoute, puis tout perd un quart.
+        int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int wantYaw = Winsys3d.Ordinal_457(dx, dz);
+        int wantPitch = Winsys3d.Ordinal_457(dy, flat);
+
+        SetVectorFromAngles_00532AD0(step, wantYaw, wantPitch, *(int*)(e + 0x5c));
+
+        int vx = *(int*)(e + 0x50) + step[0];
+        int vy = *(int*)(e + 0x54) + step[1];
+        int vz = *(int*)(e + 0x58) + step[2];
+
+        // L'ondulation : la phase sur huit images decale le tangage vise ET donne la vitesse.
+        int flap = (e[0x10] & 7) << 7;
+
+        short pitch = *(short*)(e + 0x34);
+        short yaw = *(short*)(e + 0x32);
+
+        int gapYaw = (wantYaw - yaw + 0x400) & 0xfff;
+        int gapPitch = (wantPitch - flap - pitch + 0x200) & 0xfff;
+
+        *(short*)(e + 0x32) =
+            (short)(yaw + (gapYaw < 0x800 ? gapYaw >> 2 : -((0x1000 - gapYaw) >> 2)));
+        *(short*)(e + 0x34) =
+            (short)(pitch + (gapPitch < 0x800 ? gapPitch >> 2 : -((0x1000 - gapPitch) >> 2)));
+
+        *(int*)(e + 0x5c) = flap >> 5;                 // soit (age & 7) * 4
+
+        vx -= vx >> 2;
+        vy -= vy >> 2;
+        vz -= vz >> 2;
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x58) = vz;
+
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x20) += vy;
+        *(int*)(e + 0x24) += vz;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+
+            Aud.PlayPositionalSound(0x22, 0xf4e, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0048039c — une image sur quatre, la trainee.
+        if ((e[0x10] & 3) == 0)
+        {
+            uint keptScale = *(uint*)(e + 0x28);
+            uint keptDepth = *(uint*)(e + 0x2c);
+            uint keptTint = *(uint*)(e + 0x38);
+
+            int behind = *(short*)(e + 0x32) + 0x400;
+
+            trailAt[0] = *(int*)(e + 0x1c) + (int)Winsys3d.GetSinTableEntry(behind) * 60
+                         + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+            trailAt[1] = *(int*)(e + 0x20) + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+            trailAt[2] = *(int*)(e + 0x24) + Winsys3d.GetCosTableEntry(behind) * 60
+                         + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+
+            *(uint*)(e + 0x28) = 0x18001800;
+            *(ushort*)(e + 0x2c) = 0x1f;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(ushort*)(e + 0x1a) = 1;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, trailAt, Descriptors00551BB8(), 0xbf, e[0x0b], -1);
+
+            *(uint*)(e + 0x28) = keptScale;
+            *(uint*)(e + 0x2c) = keptDepth;
+            *(uint*)(e + 0x38) = keptTint;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00480490 @ 0x00480490 — <b>la queue du Demon polaire</b> : le sous-type
+    /// <c>0x3d</c>, creneau 61 de <see cref="s_StaticEntityHandlers_00551f30"/>. 362 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle retrouve sa tete par son NUMERO D'EMPLACEMENT</b>, pas par un pointeur : a sa
+    /// premiere image elle calcule <c>0x005edee0 + (+0x16) * 0x9c</c> — le binaire l'ecrit
+    /// <c>indice * 39 * 4</c> — et range le resultat dans <c>+0x70</c>. L'indice vient de la
+    /// reservation faite avant les deux naissances, voir
+    /// <see cref="ReserveEntitySlots_00475090"/>.
+    /// </para>
+    /// <para>
+    /// Ensuite elle suit : ses deux angles rattrapent ceux de la tete <b>par le plus court
+    /// chemin</b>, et sa position vaut celle de la tete plus un vecteur de longueur
+    /// <c>echelle * 60 &gt;&gt; 12</c> dans le sens <b>oppose</b> a son regard — cap plus un quart
+    /// de tour, tangage nie. Elle traine donc exactement derriere.
+    /// </para>
+    /// </summary>
+    private static void TickPolarDemonTail_00480490(byte* record)
+    {
+        byte* e = record;
+        uint state = *(uint*)e;
+
+        int* offset = stackalloc int[3];
+
+        if ((state & 0x2000000) != 0)
+        {
+            short shrinking = *(short*)(e + 0x28);
+            shrinking -= (short)(shrinking >> 2);
+            *(short*)(e + 0x28) = shrinking;
+            *(short*)(e + 0x2a) = shrinking;
+            *(short*)(e + 0x2c) = shrinking;
+
+            if (shrinking < 0x100) *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_004804d5
+        byte* father = *(byte**)(e + 0x6c);
+        *(uint*)e = (*(uint*)father & 0x2000000) | state;
+
+        byte* head;
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(ushort*)(e + 0x10) = 1;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(int*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+
+            // `lea edx,[eax+eax*4] ; shl edx,3 ; sub edx,eax ; lea edi,[edx*4+5EDEE0h]` :
+            // l'indice fois 39, fois 4 — soit 0x9c, le pas de la table des incantations.
+            head = Mem.Entity(0x005edee0) + e[0x16] * 0x9c;
+            *(byte**)(e + 0x70) = head;
+        }
+        else
+        {
+            head = *(byte**)(e + 0x70);
+        }
+
+        // Ghidra: LAB_0048051c
+        short scaleNow = *(short*)(e + 0x28);
+        short grown = (short)(((0x1800 - scaleNow) >> 2) + scaleNow);
+        *(short*)(e + 0x28) = grown;
+        *(short*)(e + 0x2a) = grown;
+        *(short*)(e + 0x2c) = grown;
+
+        // Les deux angles rattrapent ceux de la tete, chacun par le plus court chemin.
+        short yaw = *(short*)(e + 0x32);
+        short pitch = *(short*)(e + 0x34);
+
+        int gapYaw = (*(ushort*)(head + 0x32) - yaw) & 0xfff;
+        int gapPitch = (*(ushort*)(head + 0x34) - pitch) & 0xfff;
+
+        *(short*)(e + 0x32) =
+            (short)(yaw + (gapYaw < 0x800 ? gapYaw >> 2 : -((0x1000 - gapYaw) >> 2)));
+        *(short*)(e + 0x34) =
+            (short)(pitch + (gapPitch < 0x800 ? gapPitch >> 2 : -((0x1000 - gapPitch) >> 2)));
+
+        // Et elle se pose derriere : le cap de la TETE plus un quart de tour, son tangage nie.
+        int span = (grown * 15 * 4) >> 0xc;
+
+        SetVectorFromAngles_00532AD0(
+            offset,
+            *(short*)(head + 0x32) + 0x400,
+            -*(short*)(head + 0x34),
+            span);
+
+        *(int*)(e + 0x1c) = *(int*)(head + 0x1c) + offset[0];
+        *(int*)(e + 0x20) = *(int*)(head + 0x20) + offset[1];
+        *(int*)(e + 0x24) = *(int*)(head + 0x24) + offset[2];
     }
 
     /// <summary>
