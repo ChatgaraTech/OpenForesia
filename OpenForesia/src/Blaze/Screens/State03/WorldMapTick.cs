@@ -4875,6 +4875,12 @@ public static unsafe partial class Blaze
             case 0x004824F0: TickMeteor_004824F0(record); return;
             case 0x004828B0: TickMeteorTrail_004828B0(record); return;
 
+            // FUSION, ecole 0 indice 28 — le DERNIER de l'ecole. Son +0x16 est a la fois l'avance
+            // de la boule et le decompte avant la detonation : c'est son arret qui l'allume.
+            case 0x004828F0: TickFusion_004828F0(record); return;
+            case 0x00482DE0: TickFusionOrb_00482DE0(record); return;
+            case 0x00482ED0: TickFusionSpark_00482ED0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -38215,6 +38221,398 @@ public static unsafe partial class Blaze
         if ((state & 0x2000000) != 0) *(uint*)e = 0;
     }
 
+    // =====================================================================
+    // FUSION — le vingt-neuvieme sort, ecole 0 indice 28, sous-type 0x1c
+    //
+    // LE DERNIER DE L'ECOLE 0. Deux corps neufs seulement, et deux enfants deja ecrits.
+    //
+    //   0x004828F0   LE SORT. Sous-type 0x1c de 0x00551c30, 1260 octets.
+    //   0x00482DE0   LA BILLE, sous-type 0x79 de 0x00551f30, 234 octets. NEUF exemplaires.
+    //                DECOMPILEE dans Blaze.c.
+    //   0x00482ED0   L'ETINCELLE, sous-type 0x7a de 0x00551f30, 25 octets — LE PLUS COURT CORPS
+    //                DE SORT DU DEPOT, devant les 30 du halo d'Exorciste.
+    //
+    // Ses deux autres enfants existaient deja : la trainee 0x50 est celle de Boule de feu
+    // (TickFireOrbTrail_00482EF0) et la bourrasque 0x83 celle de Ventilo
+    // (TickGaleGust_0047FE40). Le sort le plus cher de l'ecole 0 — 100 PM — est donc aussi celui
+    // dont la moitie des enfants etait deja ecrite.
+    //
+    // ET SON COMPTEUR DE VITESSE EST SON COMPTEUR DE MISE A FEU. Le champ +0x16 est a la fois
+    // l'avance en unites par image et le decompte avant la detonation : parti a 0x19 il perd un
+    // par image, et le corps saute tout le bloc central tant qu'il n'est pas nul. La boule roule
+    // donc en ralentissant sur vingt-cinq images, et c'est son immobilite qui l'allume. Un mur la
+    // met a zero d'un coup (+0x90 sur 0x8802) : elle explose ou elle s'arrete.
+    //
+    // IL ASPIRE — OU IL BRASSE — TOUT CE QUI L'ENTOURE. A chaque image il balaie soit les 0x20
+    // entites de scene (0x005ecaa0) si le lanceur n'est pas du groupe, soit les membres du groupe
+    // (0x005e93c0) sinon, et ajoute a la vitesse de chaque corps a moins de 0x320 un vecteur pris
+    // au cap qui va de la boule vers lui, MOINS 0x600. La correction usuelle etant 0x400, c'est le
+    // rayon sortant tourne d'un huitieme de tour : un tourbillon, pas une poussee droite. Aucun
+    // autre corps de sort transcrit ne balaie un camp entier pour en modifier les vitesses.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004828f0 @ 0x004828f0 — <b>Fusion</b> : le sous-type <c>0x1c</c>, creneau 28 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et <b>le dernier de l'ecole 0</b>. 1260 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Une boule qui roule, puis qui s'allume.</b> A la premiere image elle pose une bille
+    /// <c>0x79</c> centrale et huit autres en couronne, chacune a son propre rayon, son propre cap
+    /// et son propre tangage tires au hasard ; puis elle avance a <c>+0x16</c> unites par image, ce
+    /// meme champ perdant un par image depuis <c>0x19</c>. Tant qu'il n'est pas nul le corps saute
+    /// tout ce qui suit : <b>la detonation commence quand la boule s'arrete</b>, ou quand un mur
+    /// l'arrete.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite trois cadences se superposent.</b> Une trainee <c>0x50</c> par image — celle de
+    /// Boule de feu ; une etincelle <c>0x7a</c> une image sur seize pendant les 180 premieres, avec
+    /// l'ecran qui vire au <b>blanc</b> ; une bourrasque <c>0x83</c> — celle de Ventilo — une image
+    /// sur quatre pendant les 200 premieres, posee au sol a 256 unites au hasard autour d'elle. Et
+    /// une paire de sons toutes les quatorze images.
+    /// </para>
+    /// <para>
+    /// <b>Il ne meurt pas de lui-meme.</b> Passe <c>0xc8</c> images il se pose <c>0x2000000</c> et
+    /// remet son age a zero, mais il attend ensuite le <c>0x1000000</c> que sa bille centrale lui
+    /// pose en achevant son fondu. C'est le meme signal remontant qu'Assaut magique, et il est ici
+    /// la <b>seule</b> condition de fin.
+    /// </para>
+    /// </summary>
+    private static void TickFusion_004828F0(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = unchecked((short)0xff00);
+        probe[2] = 0x100;
+        probe[3] = 0x12c;
+        probe[4] = 0;
+        probe[5] = 0x200;
+
+        uint state = *(uint*)e;
+        byte* caster = *(byte**)(e + 0x74);
+
+        if ((state & 0x2000000) != 0)
+        {
+            // Il attend le signal de sa bille centrale avant de rendre le lanceur.
+            if ((state & 0x1000000) != 0)
+            {
+                *(uint*)e = 0;
+                *(uint*)caster &= 0xffffff7f;
+                return;
+            }
+        }
+        else
+        {
+            // Ghidra: LAB_00482951
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(uint*)caster |= 0x80;                // le lanceur est immobilise
+
+                *(ushort*)(e + 0x36) = (ushort)((*(ushort*)(e + 0x36) & 0xfffe) | 6);
+                *(uint*)e = state | 0x80;
+                *(ushort*)(e + 0x2e) = 0xffc0;
+
+                int height = StatusBubbleHeight_00538BC0((uint*)caster);
+
+                *(uint*)(e + 0x38) = 0;
+                *(int*)(e + 0x20) += (height & ~1) << 0xb;
+                *(uint*)(e + 0x28) = 0;
+                *(ushort*)(e + 0x2c) = 0;
+
+                // La bille centrale : rayon nul, elle reste sur la boule.
+                *(ushort*)(e + 0x12) = 0x1800;
+                *(ushort*)(e + 0x14) = 0;
+                *(ushort*)(e + 0x16) = 0;
+                e[0x04] = 2;
+                SpawnCastEntity_0047AAE0(e, 0x79, 0, 7);
+
+                // Les huit autres : meme echelle visee, mais un rayon et une orientation propres,
+                // et un huitieme de tour d'ecart d'une a l'autre.
+                *(ushort*)(e + 0x12) = 0x2000;
+                *(ushort*)(e + 0x14) = 0;
+                e[0x04] = 0x30;
+
+                int spoke = 0;
+
+                for (int orb = 8; orb != 0; orb--)
+                {
+                    *(ushort*)(e + 0x16) = (ushort)((CrtRand() & 0x1f) + 0x96);
+                    *(ushort*)(e + 0x32) = (ushort)((CrtRand() & 0x3f) + spoke - 0x20);
+                    *(ushort*)(e + 0x34) = (ushort)((CrtRand() & 0x1ff) - 0x100);
+
+                    SpawnCastEntity_0047AAE0(e, 0x79, 0, 1);
+
+                    spoke += 0x200;
+                }
+
+                // +0x16 redevient ce qu'il est vraiment : l'avance de la boule.
+                *(ushort*)(e + 0x16) = 0x19;
+                *(ushort*)(e + 0x32) = *(ushort*)(caster + 0x32);
+            }
+
+            // Ghidra: LAB_00482a32 — une trainee par image, empruntee a Boule de feu.
+            int keptYaw = *(short*)(e + 0x32);
+            int keptTilt = *(short*)(e + 0x34);
+
+            *(uint*)(e + 0x28) = 0x30003000;
+            *(ushort*)(e + 0x12) = (ushort)((CrtRand() & 0x7f) + 0x320);
+            *(uint*)(e + 0x38) = 0;
+            *(short*)(e + 0x1a) = 3;
+            *(ushort*)(e + 0x32) = (ushort)CrtRand();
+            *(ushort*)(e + 0x34) = (ushort)((CrtRand() & 0x1ff) - 0x100);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors005519A0(), 0x50, 0, 7);
+
+            ushort speed = *(ushort*)(e + 0x16);
+
+            *(ushort*)(e + 0x32) = (ushort)keptYaw;
+            *(ushort*)(e + 0x34) = (ushort)keptTilt;
+
+            if (speed != 0)
+            {
+                // Elle roule encore : rien d'autre ne se declenche.
+                *(ushort*)(e + 0x16) = (ushort)(speed - 1);
+            }
+            else
+            {
+                // Ghidra: LAB_00482aae — une etincelle une image sur seize, 180 images durant.
+                if (*(short*)(e + 0x10) < 0xb4 && (CrtRand() & 0x0f) == 0)
+                {
+                    int sparkYaw = *(short*)(e + 0x32);
+                    int sparkTilt = *(short*)(e + 0x34);
+
+                    *(uint*)(e + 0x28) = 0x60006000;
+                    *(ushort*)(e + 0x2c) = 0x6000;
+                    *(uint*)(e + 0x38) = 0x00f0f0f0;
+                    *(ushort*)(e + 0x32) = (ushort)CrtRand();
+                    *(ushort*)(e + 0x34) = (ushort)CrtRand();
+
+                    e[0x04] = 0x1d;
+                    SpawnCastEntity_0047AAE0(e, 0x7a, 0, 7);
+
+                    *(ushort*)(e + 0x32) = (ushort)sparkYaw;
+                    *(ushort*)(e + 0x34) = (ushort)sparkTilt;
+
+                    Aud.PlayPositionalSound(0x0f, 0x800, 0x1200, (int*)(e + 0x1c));
+
+                    // L'ecran vire au BLANC — le binaire ecrit R et V en un dword, B a part.
+                    Mem.s_BackColourR_005e93a0 = 0xff;
+                    Mem.s_BackColourG_005e93a2 = 0xff;
+                    Mem.s_BackColourB_005e93a4 = 0xff;
+                }
+
+                // Ghidra: LAB_00482b30 — une bourrasque une image sur quatre, 200 images durant.
+                short age = *(short*)(e + 0x10);
+
+                if (age < 0xc8 && (age & 3) == 0)
+                {
+                    int keptX = *(int*)(e + 0x1c);
+                    int keptY = *(int*)(e + 0x20);
+                    int keptZ = *(int*)(e + 0x24);
+                    int gustYaw = *(short*)(e + 0x32);
+                    int gustTilt = *(short*)(e + 0x34);
+
+                    int scatter = CrtRand();
+                    int reach = (CrtRand() & 0xff) + 0x100;
+
+                    *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(scatter) * reach;
+                    *(int*)(e + 0x20) = *(int*)(e + 0x60);         // au sol
+                    *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(scatter) * reach;
+
+                    *(uint*)(e + 0x38) = 0x00f0f0f0;
+                    *(uint*)(e + 0x28) = 0x50005000;
+                    *(ushort*)(e + 0x2c) = 0x5000;
+                    *(ushort*)(e + 0x32) = (ushort)CrtRand();
+                    *(ushort*)(e + 0x34) = 0x400;
+                    e[0x04] = (byte)((CrtRand() & 3) + 8);
+
+                    SpawnCastEntity_0047AAE0(e, 0x83, 0, 7);
+
+                    *(ushort*)(e + 0x32) = (ushort)gustYaw;
+                    *(ushort*)(e + 0x34) = (ushort)gustTilt;
+                    *(int*)(e + 0x1c) = keptX;
+                    *(int*)(e + 0x20) = keptY;
+                    *(int*)(e + 0x24) = keptZ;
+                }
+
+                // Ghidra: LAB_00482c15 — elle ne frappe qu'une fois arretee.
+                byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+                if (victim != null)
+                {
+                    ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+                    *(uint*)victim |= 0x40;
+                    *(ushort*)(victim + 0x96) = 0x10;      // le clignotement de degat
+                }
+            }
+
+            // Ghidra: LAB_00482c53 — +0x16 est l'avance ; la hauteur est rendue apres le placement.
+            int heading = *(short*)(e + 0x32);
+            int advance = *(short*)(e + 0x16);
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * advance;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * advance;
+
+            int keptHeight = *(int*)(e + 0x20);
+            FinalizeEntityPlacement2((uint*)e);
+            *(int*)(e + 0x20) = keptHeight;
+
+            // Un mur ne la tue pas : il l'arrete, et l'arret est ce qui l'allume.
+            if ((*(uint*)(e + 0x90) & 0x8802) != 0) *(ushort*)(e + 0x16) = 0;
+
+            // Ghidra: LAB_00482c9f — LE TOURBILLON, sur tout le camp d'en face.
+            uint remaining;
+            byte* body;
+
+            if ((*(uint*)e & 0x800000) != 0)
+            {
+                remaining = 0x20;
+                body = Mem.Entity(0x005ecaa0);         // les entites de scene
+            }
+            else
+            {
+                remaining = (uint)s_PartySize_005e9020;
+                body = Inp.s_SlotFlags_005e93c0;       // le groupe
+            }
+
+            for (; remaining != 0; remaining--, body += 0x9c)
+            {
+                if ((*(uint*)body & 0x80000000) == 0) continue;
+
+                int dx = (*(int*)(body + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                int dz = (*(int*)(body + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+                if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz)) >= 0x320) continue;
+
+                // La correction usuelle est 0x400 : 0x600 met le rayon sortant de biais.
+                int swirl = Winsys3d.Ordinal_457(dx, dz) - 0x600;
+
+                *(int*)(body + 0x50) += (int)Winsys3d.GetSinTableEntry(swirl) << 2;
+                *(int*)(body + 0x58) += Winsys3d.GetCosTableEntry(swirl) << 2;
+            }
+
+            // Ghidra: LAB_00482d3f — la secousse est RETIREE a chaque image, pas amortie.
+            int shake = (CrtRand() & 0x0f) - 8;
+
+            *(uint*)Mem.Arena(0x005e9160) = 0x00500040;
+            *(uint*)Mem.Arena(0x005e9164) = 0x00020060;
+            *Mem.Camera(0x005de0ac) = shake;
+
+            if (*(short*)(e + 0x10) >= 0xc8
+                || (*(uint*)e & 0x40000000) != 0
+                || (*(uint*)(*(byte**)(e + 0x74)) & 0x40000000) != 0)
+            {
+                *(uint*)e |= 0x2000000;
+                *(short*)(e + 0x10) = 0;               // l'age repart pour l'extinction
+                *(ushort*)Mem.Arena(0x005e9166) = 0;   // le decor reprend sa couleur
+            }
+        }
+
+        // Ghidra: LAB_00482d93 — deux sons toutes les quatorze images, y compris pendant la fin.
+        if (*(short*)(e + 0x10) % 14 == 0)
+        {
+            Aud.PlayPositionalSound(0x23, 0x400, 0x1200, (int*)(e + 0x1c));
+            Aud.PlayPositionalSound(0x2d, 0x200, 0x1200, (int*)(e + 0x1c));
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00482de0 @ 0x00482de0 — <b>une bille de Fusion</b> : le sous-type <c>0x79</c>,
+    /// creneau 121 de <see cref="s_StaticEntityHandlers_00551f30"/>. 234 octets, <b>decompilee dans
+    /// <c>Blaze.c</c></b>. Neuf exemplaires : une au centre, huit en couronne.
+    ///
+    /// <para>
+    /// <b>Elle est en coordonnees polaires, comme la bille d'Enchant</b> — sa position n'est jamais
+    /// integree : elle vaut a chaque image celle du sort plus un vecteur de rayon <c>+0x14</c> sur
+    /// son propre cap, et son cap recule de <c>0x80</c> par image. Son rayon et son echelle
+    /// rejoignent leurs consignes <c>+0x16</c> et <c>+0x12</c> par huitiemes. La centrale a un rayon
+    /// vise nul : elle reste sur la boule.
+    /// </para>
+    /// <para>
+    /// <b>Et c'est elle qui autorise la mort du sort.</b> Sur <c>0x2000000</c> herite, son rayon et
+    /// son echelle se resorbent et sa teinte perd <c>0x080808</c> par image ; a l'instant ou celle-ci
+    /// atteint zero elle s'eteint <b>et pose <c>0x1000000</c> sur son pere</b>. Les neuf le font,
+    /// mais le mot est idempotent : c'est la premiere arrivee qui compte.
+    /// </para>
+    /// </summary>
+    private static void TickFusionOrb_00482DE0(byte* record)
+    {
+        byte* e = record;
+
+        *(ushort*)(e + 0x32) += 0xff80;                // -0x80 de cap par image
+        byte* orb = *(byte**)(e + 0x6c);
+
+        if ((*(uint*)e & 0x2000000) == 0)
+        {
+            *(uint*)e |= *(uint*)orb & 0x2000000;
+
+            short scale = *(short*)(e + 0x28);
+            *(short*)(e + 0x28) = (short)(((*(short*)(e + 0x12) - scale) >> 3) + scale);
+
+            short radius = *(short*)(e + 0x14);
+            *(short*)(e + 0x14) = (short)(((*(short*)(e + 0x16) - radius) >> 3) + radius);
+
+            if (*(uint*)(e + 0x38) < 0xf0f0f0) *(uint*)(e + 0x38) += 0x00080808;
+        }
+        else
+        {
+            short scale = *(short*)(e + 0x28);
+            *(short*)(e + 0x28) = (short)(scale - (scale >> 3));
+
+            short radius = *(short*)(e + 0x14);
+            *(short*)(e + 0x14) = (short)(radius - (radius >> 3));
+
+            uint tint = *(uint*)(e + 0x38) - 0x00080808;
+            *(uint*)(e + 0x38) = tint;
+
+            if (tint == 0)
+            {
+                *(uint*)e = 0;
+                *(uint*)orb |= 0x1000000;              // le feu vert que le sort attend
+            }
+        }
+
+        // Ghidra: LAB_00482e83 — la position, jamais integree.
+        int yaw = *(short*)(e + 0x32) - 0x400;
+        short span = *(short*)(e + 0x14);
+        short size = *(short*)(e + 0x28);
+
+        *(short*)(e + 0x2a) = size;
+        *(short*)(e + 0x2c) = size;
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(yaw) * span + *(int*)(orb + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(orb + 0x20);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(yaw) * span + *(int*)(orb + 0x24);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00482ed0 @ 0x00482ed0 — <b>une etincelle de Fusion</b> : le sous-type
+    /// <c>0x7a</c>, creneau 122 de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>25 octets — le
+    /// plus court corps de sort du depot</b>, devant les 30 du halo d'Exorciste.
+    ///
+    /// <para>
+    /// Elle perd <c>0x101010</c> de teinte par image et s'eteint a zero. Rien d'autre : ni
+    /// deplacement, ni sonde, ni horloge. <b>C'est la bourrasque de Ventilo moins une
+    /// instruction</b> — <see cref="TickGaleGust_0047FE40"/> fait exactement cela et pose en plus le
+    /// bit <c>4</c> de <c>+0x36</c>, ce qui explique ses quatre octets de plus. Le compilateur a
+    /// emis deux fois la meme idee a deux endroits, sans la partager.
+    /// </para>
+    /// </summary>
+    private static void TickFusionSpark_00482ED0(byte* record)
+    {
+        byte* e = record;
+
+        uint tint;
+        unchecked { tint = *(uint*)(e + 0x38) + 0xffefeff0; }   // -0x101010
+        *(uint*)(e + 0x38) = tint;
+
+        if (tint == 0) *(uint*)e = 0;
+    }
 
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>
