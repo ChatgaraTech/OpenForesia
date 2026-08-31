@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Enchant, le dixième sort** — deux corps neufs seulement, absents de `Blaze.c` : le sort `0x0047ce40` et sa bille `0x0047cf30`. L'embrasement `0x4c` est celui de Feu d'enfer, et l'effet posé était déjà transcrit
+- doc : **le premier sort qui ne frappe pas** — aucun de ses corps n'appelle `ResolveSpellHit_0053A2B0` ni ne cherche de victime. Il se résout d'un seul coup à la soixantième image par `ApplyStatusEffect_0053AFB0`, l'entrée 0 de la table des 48 — celle qui n'a **ni masque d'immunité, ni jet de sauvegarde, ni marque visible** : Enchant ne rate jamais
+- doc : **la bille est en coordonnées polaires** — sa position n'est jamais intégrée : elle vaut à chaque image `ancre + écart + vecteur(cap, tangage, rayon)`, et c'est le **rayon** qui se resserre d'un quart par image jusqu'à la tuer. Les vingt-quatre billes ne tournent pas — leur vitesse angulaire est posée à zéro : la spirale est collective, pas individuelle
 - feat : **Flêches magiques, le neuvième sort** — trois corps absents de `Blaze.c` : le sort `0x0047c910`, la flèche `0x0047ca50` (**1007 octets**, le plus gros corps de sort du dépôt) et son étincelle de traînée `0x00475f60`
 - doc : **le premier projectile à tête chercheuse** — la flèche recalcule à chaque image les deux angles vers sa cible et **ajoute** le vecteur à sa vitesse au lieu de la remplacer : c'est une poussée continue, pas une correction de cap, donc elle décrit une courbe et peut dépasser. Son orientation vient de son **déplacement réel**, pas du cap visé
 - doc : **la cible est tenue des deux côtés** — la flèche range son adversaire en `+0x78` et s'écrit elle-même dans le `+0x74` de celui-ci ; elle le relâche en mourant, au contact comme sur le décor. Premier sort à marquer sa victime *avant* de la toucher

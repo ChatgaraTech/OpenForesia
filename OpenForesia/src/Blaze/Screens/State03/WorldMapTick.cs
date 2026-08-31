@@ -4765,6 +4765,11 @@ public static unsafe partial class Blaze
             case 0x0047CA50: TickMagicArrowShaft_0047CA50(record); return;
             case 0x00475F60: TickTrailSpark_00475F60(record); return;
 
+            // ENCHANT, ecole 0 indice 9 — le premier sort qui NE FRAPPE PAS : il pose son effet
+            // d'un seul coup a la soixantieme image, et cet effet-la ne rate jamais.
+            case 0x0047CE40: TickEnchant_0047CE40(record); return;
+            case 0x0047CF30: TickEnchantMote_0047CF30(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -31646,6 +31651,158 @@ public static unsafe partial class Blaze
         scale -= (short)(scale >> (shift & 0x1f));
         *(short*)(e + 0x28) = scale;
         *(short*)(e + 0x2a) = scale;
+    }
+
+    // =====================================================================
+    // ENCHANT — le dixieme sort, ecole 0 indice 9, sous-type 0x09
+    //
+    // Deux corps neufs seulement : le troisieme enfant, l'embrasement 0x4c, est celui de Feu
+    // d'enfer, et l'effet pose est deja transcrit.
+    //
+    //   0x0047CE40   LE SORT. Sous-type 9 de 0x00551c30, 240 octets. Il choisit une cible, seme
+    //                UNE bille par image pendant vingt-quatre images, puis attend la soixantieme
+    //                pour poser l'effet et s'eteindre.
+    //   0x0047CF30   LA BILLE, sous-type 0x70 de 0x00551f30, 183 octets. Elle tombe en spirale
+    //                sur la cible.
+    //
+    // C'EST LE PREMIER SORT QUI NE FRAPPE PAS. Aucun des deux corps n'appelle
+    // ResolveSpellHit_0053A2B0 ni ne cherche de victime : le sort se resout d'un seul coup a la fin
+    // par ApplyStatusEffect_0053AFB0, l'entree 0 de la table des 48. Et celle-la n'a ni masque
+    // d'immunite, ni jet de sauvegarde, ni marque visible — elle se pose TOUJOURS. Enchant ne
+    // rate pas.
+    //
+    // LES VINGT-QUATRE BILLES NE TOURNENT PAS. Le sort pose leur vitesse angulaire +0x14 a zero :
+    // chacune garde le cap tire au hasard a sa naissance et se contente de resserrer son rayon.
+    // La spirale est collective, pas individuelle — vingt-quatre traits qui convergent.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047ce40 @ 0x0047ce40 — <b>Enchant</b> : le sous-type <c>0x09</c>, creneau 9 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 240 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Trois temps, tous gouvernes par le meme compteur.</b> A la naissance il choisit sa cible
+    /// par <see cref="FindTargetAround_00474BA0"/> — qu'il range dans <c>+0x78</c> <b>et</b>
+    /// <c>+0x70</c>, l'un pour lui, l'autre pour que ses billes l'heritent — et lache
+    /// l'embrasement <c>0x4c</c>, celui de Feu d'enfer. Jusqu'a la <b>24e</b> image il seme une
+    /// bille par image. A la <b>60e</b> il recopie sa paire famille/indice sur le lanceur, appelle
+    /// <see cref="ApplyStatusEffect_0053AFB0"/> et s'eteint.
+    /// </para>
+    /// <para>
+    /// <b>Chaque bille est parametree avant d'etre engendree</b> : cap et tangage tires au hasard,
+    /// rayon de depart <c>0x1f4</c> en <c>+0x12</c>, vitesse angulaire <b>nulle</b> en
+    /// <c>+0x14</c>, et un ecart vertical <c>+0x48</c> qui vaut la hauteur de tete de la
+    /// <b>cible</b> — pas du lanceur. Elles convergent donc sur sa tete.
+    /// </para>
+    /// </summary>
+    private static void TickEnchant_0047CE40(byte* record)
+    {
+        byte* e = record;
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(short*)(e + 0x2e) = -0x40;
+
+            byte* target = FindTargetAround_00474BA0(e, 0);
+            *(byte**)(e + 0x78) = target;
+            *(byte**)(e + 0x70) = target;              // l'ancre que les billes heriteront
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA0(), 0x4c, e[0x0b], -1);
+
+            Aud.PlayPositionalSound(0x10, 0x3d4, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047ce9a — une bille par image, vingt-quatre images durant.
+        if (*(short*)(e + 0x10) < 0x18)
+        {
+            *(short*)(e + 0x32) = (short)(CrtRand() + 0x400);
+            *(short*)(e + 0x34) = (short)CrtRand();
+
+            *(uint*)(e + 0x28) = 0x00007fff;           // X plein, Y nul
+            *(ushort*)(e + 0x2c) = 0x0400;
+            *(uint*)(e + 0x38) = 0;                    // elle naît invisible
+            *(short*)(e + 0x12) = 0x01f4;              // le rayon de depart
+            *(ushort*)(e + 0x14) = 0;                  // et elle ne tourne pas
+            *(int*)(e + 0x44) = 0;
+
+            int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x78));
+            *(int*)(e + 0x48) = (height & ~1) << 0xb;
+            *(int*)(e + 0x4c) = 0;
+            e[0x04] = 0x3f;                            // le modele
+
+            SpawnCastEntity_0047AAE0(e, 0x70, e[0x0b], -1);
+        }
+
+        // Ghidra: LAB_0047cf03 — la soixantieme image : l'effet, enfin.
+        if (*(short*)(e + 0x10) >= 0x3c)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            *(ushort*)(caster + 6) = *(ushort*)(e + 6);
+
+            ApplyStatusEffect_0053AFB0((uint*)caster, *(uint**)(e + 0x78), 0);
+
+            *(uint*)e = 0;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047cf30 @ 0x0047cf30 — <b>la bille d'Enchant</b> : le sous-type <c>0x70</c>,
+    /// creneau 112 de <see cref="s_StaticEntityHandlers_00551f30"/>. 183 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle est en coordonnees polaires.</b> Sa position n'est jamais integree : a chaque image
+    /// elle vaut <c>ancre + ecart + vecteur(cap, tangage, rayon)</c>, ou l'ancre est l'entite de
+    /// <c>+0x70</c> et le vecteur sort de <see cref="SetVectorFromAngles_00532AD0"/>. Le rayon
+    /// <c>+0x12</c> perd un quart a chaque image : la bille tombe donc sur sa cible en s'accelerant,
+    /// et disparait des qu'il passe sous <c>0x10</c> — environ dix-sept images.
+    /// </para>
+    /// <para>
+    /// <b>Le cap avance de <c>+0x14</c></b>, que le sort laisse a zero : la bille garde donc la
+    /// direction tiree a sa naissance. Le champ existe, et un autre appelant pourrait la faire
+    /// spiraler ; celui-la ne le fait pas.
+    /// </para>
+    /// <para>
+    /// Pendant ce temps elle <b>apparait</b> — la teinte monte de <c>0x101010</c> par image jusqu'a
+    /// <c>0xf0f0f0</c> — et <b>s'affine</b> : son echelle X perd un quart tant qu'elle depasse
+    /// <c>0x800</c>. Elle naît donc large et invisible, et finit fine et pleine.
+    /// </para>
+    /// </summary>
+    private static void TickEnchantMote_0047CF30(byte* record)
+    {
+        byte* e = record;
+        byte* anchor = *(byte**)(e + 0x70);
+
+        int* offset = stackalloc int[3];
+
+        *(short*)(e + 0x32) += *(short*)(e + 0x14);
+
+        int yaw = *(short*)(e + 0x32) - 0x400;
+        int pitch = *(short*)(e + 0x34);
+        int radius = *(short*)(e + 0x12);
+
+        SetVectorFromAngles_00532AD0(offset, yaw, pitch, radius);
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c) + *(int*)(e + 0x44) + offset[0];
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + *(int*)(e + 0x48) + offset[1];
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24) + *(int*)(e + 0x4c) + offset[2];
+
+        uint tint = *(uint*)(e + 0x38);
+        if (tint < 0x00f0f0f0) *(uint*)(e + 0x38) = tint + 0x00101010;
+
+        // Ghidra: LAB_0047cfad — elle s'affine, avec un plancher.
+        short scale = *(short*)(e + 0x28);
+        if (scale > 0x0800) *(short*)(e + 0x28) = (short)(scale - (scale >> 2));
+
+        // Ghidra: LAB_0047cfc4 — et le rayon se resserre, sans plancher : c'est lui qui la tue.
+        short next = (short)(radius - (radius >> 2));
+        *(short*)(e + 0x12) = next;
+
+        if (next < 0x10) *(uint*)e = 0;
     }
 
     /// <summary>
