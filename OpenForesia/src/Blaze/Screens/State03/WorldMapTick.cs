@@ -4932,6 +4932,12 @@ public static unsafe partial class Blaze
             case 0x00449C30: TickAntispell_00449C30(record); return;
             case 0x00449E30: TickHolySpiral_00449E30(record); return;
 
+            // MARTEAU, ecole 1 indice 10 — le corps de sort le plus court de l'ecole. Tout est dans
+            // sa masse, qui ECRASE la cible et fait clignoter l'ecran.
+            case 0x00449F90: TickHammer_00449F90(record); return;
+            case 0x0044A080: TickHammerHead_0044A080(record); return;
+            case 0x0044A320: TickHammerDebris_0044A320(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -38794,9 +38800,14 @@ public static unsafe partial class Blaze
     // qu'un pretre gagne en montant de niveau.
     //
     // CE QUI RESTE A ECRIRE APRES LUI : le trait 0x9e fait naitre trois sous-types que ce sort ne
-    // possede pas — 0x9f (0x0044F600), 0x93 (0x0044C110) et 0x96 (0x0044A320, par la table
-    // 0x00552230). Aucun n'est decompile, et les deux derniers appartiennent a d'autres fiches de
-    // l'ecole : ils viendront avec elles.
+    // possede pas — 0x9f (0x0044F600) et 0x93 (0x0044C110), tous deux par la table 0x00551f30, et
+    // 0x96 (0x0044F750) par la table 0x00552230. Aucun n'est decompile, et les deux derniers
+    // appartiennent a d'autres fiches de l'ecole : ils viendront avec elles.
+    //
+    // (Correction du 2026-08-31 : cette note attribuait le 0x96 a 0x0044a320. C'etait un index
+    // compte a la main sur la table imprimee. Le creneau 0x96 de 0x00552230 vaut 0x0044F750 ;
+    // 0x0044A320 est le creneau 0x8e, l'eclat de Marteau. Se relever une entree de table par le
+    // relevé, jamais en comptant les lignes.)
     // =====================================================================
 
     /// <summary>
@@ -41551,6 +41562,339 @@ public static unsafe partial class Blaze
             caster[7] = e[7];
 
             ClearStatusEffectIfEligible_00449DF0(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    // =====================================================================
+    // MARTEAU — le quarantieme sort, ecole 1 indice 10, sous-type 0x28
+    //
+    //   0x00449F90   LE SORT. Sous-type 0x28 de 0x00551c30, 176 octets. DECOMPILE dans Blaze.c.
+    //   0x0044A040   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x0044A080   LA MASSE, sous-type 0xa5 de 0x00551f30, 662 octets. UNE. DECOMPILEE.
+    //   0x0044A320   L'ECLAT, sous-type 0x8e de 0x00552230, 386 octets. SIX, d'un coup. ABSENT de
+    //                Blaze.c ; releve sous Legacy/Raw/Blaze/FUN_0044A320.asm.
+    //
+    // LE SORT LE PLUS COURT DE L'ECOLE — cent soixante-seize octets, et il ne fait rien d'autre
+    // qu'engendrer la masse et attendre trente images. Tout le spectacle est dans l'enfant.
+    //
+    // ET LA MASSE ECRASE SA VICTIME POUR DE BON. Elle sauvegarde le +0x2a de la cible — son echelle
+    // verticale — a la naissance, le force a 0x800 au moment de l'impact, le laisse revenir d'un
+    // quart par image, et le REPOSE exactement a sa valeur d'origine en mourant. Aucun autre corps
+    // du depot ne deforme sa victime.
+    //
+    // ET C'EST LE PREMIER SORT QUI FAIT CLIGNOTER L'ECRAN. A l'impact il pose le voile plein cadre
+    // 0x005de024 en rouge sombre (0xff/0x96/0x96), et deux images plus tard le remet a zero — deux
+    // images de flash, la seule ecriture de ce champ par un corps de sort.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044a040 @ 0x0044a040 — <b>effacer les alterations d'etat si la cible
+    /// l'accepte</b>, quatrieme variante. Soixante et un octets, decompilee dans <c>Blaze.c</c>.
+    /// Dixieme exemplaire de la meme enveloppe : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="ClearStatusEffect_0053C830"/> derriere — l'entree 37, la quatrieme d'une suite de
+    /// quatre entrees consecutives (34 a 37) que se partagent Antidote, Lourdes, Antisort et
+    /// Marteau.
+    /// </summary>
+    private static bool ClearStatusEffectIfEligible_0044A040(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053C830(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044a320 @ 0x0044a320 — <b>l'eclat de Marteau</b> : le sous-type <c>0x8e</c>,
+    /// creneau 142 de <see cref="s_StaticEntityHandlers_00552230"/>. 386 octets, <b>absent de
+    /// <c>Blaze.c</c></b>. <see cref="TickHammerHead_0044A080"/> en lache <b>six d'un coup</b> a
+    /// l'impact, et c'est son seul appelant.
+    ///
+    /// <para>
+    /// <b>Il part vers l'exterieur et ralentit.</b> Position spherique jamais integree — cap
+    /// <c>+0x4c</c> et tangage <c>+0x48</c> tires au hasard une fois pour toutes — autour d'un
+    /// centre fige a la naissance, <c>0x78000</c> au-dessus du point d'impact. Le rayon
+    /// <c>+0x44</c> part de zero et gagne <c>+0x5c</c> par image, mais <c>+0x5c</c> <b>perd un
+    /// quart de lui-meme a chaque image</b> : les six eclats jaillissent d'un coup puis s'arretent
+    /// presque sur place. Six images suffisent a epuiser la vitesse.
+    /// </para>
+    /// <para>
+    /// <b>Le tangage est tire dans un secteur, pas sur le tour.</b> <c>rand % 0x4b0 - 0xc8</c> :
+    /// entre <c>-0xc8</c> et <c>0x3e7</c>, soit un peu plus d'un quart de tour au-dessus de
+    /// l'horizontale et un peu en dessous. Les eclats montent en gerbe.
+    /// </para>
+    /// <para>
+    /// <b>Il naît rouge et s'eteint en s'assombrissant</b> — teinte <c>ff/ff/96</c>, moins vingt
+    /// sur les trois canaux par image, mort quand le rouge touche zero, soit une douzaine
+    /// d'images. Son image d'atlas <c>+0x40</c> tourne sur trois, une par image.
+    /// </para>
+    /// </summary>
+    private static void TickHammerDebris_0044A320(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x78;   // Ghidra: DAT_005515a0
+            e[0x40] = 0;
+            e[0x0a] = 6;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            // Le centre de la gerbe, fige a la naissance.
+            *(int*)(e + 0x54) = *(int*)(e + 0x20) + 0x78000;
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+
+            *(short*)(e + 0x14) = 0;
+
+            short scale = (short)(CrtRand() % 0x400 + 0x800);     // Ghidra: FUN_00547140
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            e[0x3a] = 0x96;                            // il naît rouge
+            e[0x38] = 0xff;
+            e[0x39] = 0xff;
+
+            *(int*)(e + 0x44) = 0;                                // le rayon
+            *(int*)(e + 0x5c) = CrtRand() % 10 + 0x1e;            // sa vitesse
+            *(int*)(e + 0x4c) = CrtRand() % 0x1000;               // le cap
+            *(int*)(e + 0x48) = CrtRand() % 0x4b0 - 0xc8;         // le tangage, en secteur
+        }
+
+        // Ghidra: LAB_0044a3e2
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x28) += 0x64;
+        *(short*)(e + 0x2a) += 0x64;
+
+        int pitch = *(int*)(e + 0x48);
+        int yaw = *(int*)(e + 0x4c);
+        int radius = *(int*)(e + 0x44);
+
+        *(int*)(e + 0x1c) = (Winsys3d.GetCosTableEntry(pitch) * radius >> 0xc)
+                            * (int)Winsys3d.GetSinTableEntry(yaw) + *(int*)(e + 0x50);
+
+        *(int*)(e + 0x24) = (Winsys3d.GetCosTableEntry(pitch) * radius >> 0xc)
+                            * Winsys3d.GetCosTableEntry(yaw) + *(int*)(e + 0x58);
+
+        *(int*)(e + 0x20) = (int)Winsys3d.GetSinTableEntry(pitch) * radius + *(int*)(e + 0x54);
+
+        int speed = *(int*)(e + 0x5c);
+        *(int*)(e + 0x44) = radius + speed;
+        *(int*)(e + 0x5c) = speed - (speed >> 2);      // il perd un quart de sa vitesse par image
+
+        *(short*)(e + 0x14) += 1;
+
+        e[0x40] += 1;                                  // l'image d'atlas tourne sur trois
+        if (e[0x40] >= 3) e[0x40] = 0;
+
+        // Ghidra: LAB_0044a482
+        BrightenEntityTint_00404DE0(e, -20, -20, -20);
+        if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044a080 @ 0x0044a080 — <b>la masse de Marteau</b> : le sous-type <c>0xa5</c>,
+    /// creneau 165 de <see cref="s_StaticEntityHandlers_00551f30"/>. 662 octets, <b>decompilee dans
+    /// <c>Blaze.c</c></b>. <see cref="TickHammer_00449F90"/> n'en fait naitre <b>qu'une</b>, et
+    /// c'est son seul appelant.
+    ///
+    /// <para>
+    /// <b>Elle est tout le sort.</b> Le corps de Marteau ne fait que l'engendrer ; elle porte la
+    /// chute, le choc, la gerbe, le flash et la deformation de la victime.
+    /// </para>
+    /// <para>
+    /// <b>Elle se place a chaque image au-dessus et DEVANT sa cible</b> : <c>0xb4000</c> plus haut,
+    /// et cent unites dans la direction ou la cible regarde — <c>sin</c> et <c>cos</c> de son
+    /// <c>+0x32</c>, multiplies par cent sans recadrage.
+    /// </para>
+    /// <para>
+    /// <b>Deux etats, et le second porte un sous-compteur.</b> Etat 1, la chute : les echelles X et
+    /// Z montent de 400 par image jusqu'a <c>8000</c>, et l'orientation converge d'un quart vers
+    /// celle de la cible ; l'etat passe a 2 des que la masse est pleine. Etat 2, le sejour :
+    /// <c>+0x34</c> monte de 400, l'orientation converge d'un huitieme, et passe <c>0x76c</c> les
+    /// trois echelles perdent 1000 par image jusqu'a la disparition.
+    /// </para>
+    /// <para>
+    /// <b>Le sous-compteur <c>+0x12</c> cadence l'impact</b> : un son au pas 2, <b>les six eclats
+    /// et le flash</b> au pas 3, un autre son au pas 4, l'extinction du flash au pas 5. Cinq images
+    /// pour toute la scene.
+    /// </para>
+    /// <para>
+    /// <b>ELLE ECRASE SA VICTIME.</b> A la naissance elle sauvegarde le <c>+0x2a</c> de la cible —
+    /// son echelle verticale — dans son propre <c>+0x14</c> ; au pas 3 elle le force a
+    /// <c>0x800</c> ; chaque image elle le laisse revenir d'un quart vers la valeur sauvegardee ;
+    /// et en mourant elle le repose exactement. <b>Aucun autre corps du depot ne deforme sa
+    /// victime.</b>
+    /// </para>
+    /// <para>
+    /// <b>Et elle fait clignoter l'ecran</b> : au pas 3 le voile plein cadre
+    /// <c>DAT_005de024</c> passe au rouge sombre
+    /// (<c>ff</c>/<c>96</c>/<c>96</c>, octet de commande a 1), au pas 5 il revient a zero. Deux
+    /// images de flash — la seule ecriture de ce champ par un corps de sort.
+    /// </para>
+    /// </summary>
+    private static void TickHammerHead_0044A080(byte* record)
+    {
+        byte* e = record;
+
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_0044a096 — au-dessus et DEVANT la cible, cent unites dans son regard.
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20) + 0xb4000;
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        int facing = *(short*)(target + 0x32);
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(facing) * 100;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(facing) * 100;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x1a;                            // le modele
+            e[0x0a] = 0;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x28) = 0;                   // elle naît plate
+            *(short*)(e + 0x2a) = 8000;
+            *(short*)(e + 0x2c) = 0;
+
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x32) = 0x2000;
+            *(short*)(e + 0x34) = 0;
+
+            // La hauteur de la cible, mise de cote pour lui etre rendue.
+            *(short*)(e + 0x14) = *(short*)(target + 0x2a);
+            *(short*)(e + 0x98) = 0;
+
+            Aud.PlaySoundEffect(0x16, 0x195, 0x1300, 0x1300);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x28) += 400;
+            *(short*)(e + 0x2c) += 400;
+
+            *(short*)(e + 0x32) += (short)
+                (((*(short*)(target + 0x32) - *(short*)(e + 0x32)) + 0x400) >> 2);
+
+            if (*(short*)(e + 0x28) > 7999)
+            {
+                *(short*)(e + 0x28) = 8000;
+                *(short*)(e + 0x2a) = 8000;
+                *(short*)(e + 0x2c) = 8000;
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x34) += 400;
+
+        *(short*)(e + 0x32) += (short)
+            (((*(short*)(target + 0x32) - *(short*)(e + 0x32)) + 0x400) >> 3);
+
+        if (*(short*)(e + 0x34) > 0x76c)
+        {
+            *(short*)(e + 0x28) -= 1000;
+            *(short*)(e + 0x2a) -= 1000;
+            *(short*)(e + 0x2c) -= 1000;
+        }
+
+        if (*(short*)(e + 0x28) < 0)
+        {
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(uint*)e &= 0x7fffffff;
+
+            // La cible retrouve exactement sa hauteur d'origine.
+            *(short*)(target + 0x2a) = *(short*)(e + 0x14);
+        }
+
+        // Ghidra: 0x0044a1f2 — l'impact : six eclats, le flash, et la victime ecrasee.
+        if (*(short*)(e + 0x12) == 3)
+        {
+            for (int shard = 0; shard < 6; shard++)
+            {
+                SpawnStatusEffectEntity_0047AC40(
+                    e, (int*)(target + 0x1c), null, 0x8e, 0, -1);
+            }
+
+            Mem.s_Unknown_005de024 = 0x019696ff;       // le voile plein cadre, rouge sombre
+            *(short*)(target + 0x2a) = 0x800;          // et la cible est ecrasee
+        }
+
+        // Ghidra: LAB_0044a297
+        if (*(short*)(e + 0x12) == 5) Mem.s_Unknown_005de024 = 0x01000000;
+
+        // Ghidra: LAB_0044a2b7 — la hauteur de la cible revient d'un quart par image.
+        *(short*)(target + 0x2a) += (short)
+            ((*(short*)(e + 0x14) - *(short*)(target + 0x2a)) >> 2);
+
+        if (*(short*)(e + 0x12) == 2) Aud.PlaySoundEffect(0x22, 0x960, 0x0a00, 0x0a00);
+        if (*(short*)(e + 0x12) == 4) Aud.PlaySoundEffect(0x04, 0x4b0, 0x1300, 0x1300);
+
+        *(short*)(e + 0x12) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00449f90 @ 0x00449f90 — <b>Marteau</b> : le sous-type <c>0x28</c>, creneau 40 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>onzieme fiche de l'ecole 1</b>. 176
+    /// octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le corps de sort le plus court de l'ecole</b>, et sans doute du depot pour une fiche
+    /// jouable. Il choisit sa cible, s'y colle, engendre <see cref="TickHammerHead_0044A080"/> a la
+    /// premiere image, compte trente images et pose l'entree 37. Rien d'autre : ni son, ni decor,
+    /// ni immobilisation, ni semis. <b>Tout le spectacle appartient a la masse.</b>
+    /// </para>
+    /// <para>
+    /// <b>Il meurt avant elle.</b> Trente images pour le sort, une bonne cinquantaine pour la masse
+    /// — qui n'en depend pas, ayant recopie la cible dans son propre <c>+0x78</c> a la naissance.
+    /// </para>
+    /// </summary>
+    private static void TickHammer_00449F90(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_00449fb6
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            SpawnCastEntity_0047AAE0(e, 0xa5, 0, -1);
+        }
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 0x1d)
+        {
+            // La paire famille/indice passe au lanceur : c'est SA fiche que l'effet relira.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ClearStatusEffectIfEligible_0044A040(
                 *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
 
             EndSpellAndResetDecor_00448020(e);
