@@ -4943,6 +4943,12 @@ public static unsafe partial class Blaze
             case 0x0044A4B0: TickAngelBlood_0044A4B0(record); return;
             case 0x0044A6A0: TickAngelWing_0044A6A0(record); return;
 
+            // LAPECHE, ecole 1 indice 12 — le premier sort qui DURE TANT QU'ON LE PAIE, et le
+            // premier sans enveloppe d'effet : son dome travaille sur les quatre tables d'entites.
+            case 0x0044A7A0: TickLapeche_0044A7A0(record); return;
+            case 0x0044A880: TickHolyDome_0044A880(record); return;
+            case 0x004500B0: TickHolyCatchSpark_004500B0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -42129,6 +42135,446 @@ public static unsafe partial class Blaze
 
             EndSpellAndResetDecor_00448020(e);
         }
+    }
+
+    // =====================================================================
+    // LAPECHE — le quarante-deuxieme sort, ecole 1 indice 12, sous-type 0x2a
+    //
+    //   0x0044A7A0   LE SORT. Sous-type 0x2a de 0x00551c30, 224 octets. DECOMPILE dans Blaze.c.
+    //   0x0044A880   LE DOME, sous-type 0x8e de 0x00551f30, 1552 octets. UN. DECOMPILE.
+    //   0x004500B0   L'ETINCELLE DE PRISE, sous-type 0xa5 de 0x00552230, 288 octets. DECOMPILEE.
+    //
+    // IL N'A PAS D'ENVELOPPE D'EFFET. C'est la premiere fiche de l'ecole qui ne passe jamais par
+    // IsEffectPairBlocked_004364B0 ni par la table des 48 : son effet EST le dome, et le dome
+    // travaille directement sur les quatre tables d'entites.
+    //
+    // ET C'EST LE PREMIER SORT DU DEPOT QUI DURE TANT QU'ON LE PAIE. Le dome ponctionne deux points
+    // au +0x14e de la fiche de personnage toutes les dix images, et s'arrete des que ce compteur
+    // tombe sous deux. Trois autres conditions le coupent : la combinaison de boutons relachee, un
+    // etat du +0x140 de la fiche, et la mort du lanceur.
+    //
+    // LE DOME EST UNE NASSE. Une fois ouvert il balaie QUATRE tables a chaque image et attrape tout
+    // ce qui passe a moins de 0x136 :
+    //
+    //   0x005ecaa0 (0x20)  les entites de scene — repoussees : leur vitesse devient le vecteur
+    //                      dome->elles divise par huit, et leur +0x96 passe a 0x10
+    //   0x005f2d40 (0x80)  les entites d'effet — marquees 0x40000000, donc detruites
+    //   0x005edee0 (0x80)  les entites d'incantation — idem
+    //   0x005ff400 (0x10)  la quatrieme table — idem
+    //
+    // Chaque prise coute cent au canal bleu du dome et fait naitre l'etincelle 0xa5. Le dome
+    // s'eteint quand ce bleu touche zero : ATTRAPER TROP DE CHOSES TUE LA NASSE.
+    //
+    // LE SORT LUI-MEME NE SAIT PAS QUAND IL FINIT. Son etat 2 — celui qui l'eteint — n'est jamais
+    // pose par son propre corps : c'est le dome qui, en mourant, ecrit 2 dans le +0x10 de son pere
+    // par le +0x6c. Un signal remontant, comme chez Fusion et Assaut magique.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004500b0 @ 0x004500b0 — <b>l'etincelle de prise</b> : le sous-type <c>0xa5</c>,
+    /// creneau 165 de <see cref="s_StaticEntityHandlers_00552230"/>. 288 octets, <b>decompilee dans
+    /// <c>Blaze.c</c></b>. <see cref="TickHolyDome_0044A880"/> en fait naitre une par chose
+    /// attrapee.
+    ///
+    /// <para>
+    /// <b>Ce n'est pas la masse de Marteau</b>, qui porte pourtant le meme numero <c>0xa5</c> —
+    /// mais dans <see cref="s_StaticEntityHandlers_00551f30"/>
+    /// (<see cref="TickHammerHead_0044A080"/>). Quatrieme collision de numero de l'ecole.
+    /// </para>
+    /// <para>
+    /// <b>Elle naît a cote de ce qu'elle marque</b> : un demi-metre plus haut, puis decalee de
+    /// <c>rand % 40 - 20</c> unites sur chacun des trois axes. Elle grossit de 500 et s'assombrit
+    /// de dix <b>une image sur deux</b> — <c>+0x12</c> compte a rebours depuis <c>+0x14</c>, pose a
+    /// 2 — et meurt a la quatrieme etape. Huit images en tout.
+    /// </para>
+    /// </summary>
+    private static void TickHolyCatchSpark_004500B0(byte* record)
+    {
+        byte* e = record;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x0a] = e[0x9a];                         // la teinte, posee par le dome
+            *(short*)(e + 0x14) = 2;                   // la cadence
+            *(short*)(e + 0x12) = 2;
+
+            *(short*)(e + 0x28) = 5000;
+            *(short*)(e + 0x2a) = 5000;
+
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x30;   // Ghidra: DAT_00551558
+            e[0x40] = 0;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            e[0x38] = 0x80;
+            e[0x39] = 0x80;
+            e[0x3a] = 0x80;
+
+            *(int*)(e + 0x20) += 0x50000;
+
+            // Ghidra: FUN_00547140 trois fois — un cube de quarante unites de cote.
+            *(int*)(e + 0x1c) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x28 - 0x14) * 0x1000;
+        }
+
+        // Le decompte n'a lieu que dans l'etat 1 — l'operateur virgule de Ghidra le dit bien.
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x12) -= 1;
+        if (*(short*)(e + 0x12) >= 1) return;
+
+        *(short*)(e + 0x28) += 500;
+        *(short*)(e + 0x2a) += 500;
+
+        BrightenEntityTint_00404DE0(e, -10, -10, -10);
+
+        byte step = (byte)(e[0x40] + 1);
+        *(short*)(e + 0x12) = *(short*)(e + 0x14);
+        e[0x40] = step;
+
+        if (step == 4) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044a880 @ 0x0044a880 — <b>le dome de Lapeche</b> : le sous-type <c>0x8e</c>
+    /// <b>de la table <see cref="s_StaticEntityHandlers_00551f30"/></b>, creneau 142. 1552 octets,
+    /// <b>decompilee dans <c>Blaze.c</c></b>. <see cref="TickLapeche_0044A7A0"/> n'en fait naitre
+    /// <b>qu'un</b>, sur le lanceur lui-meme.
+    ///
+    /// <para>
+    /// <b>Ce n'est pas l'eclat de Marteau</b>, qui porte pourtant le meme numero <c>0x8e</c> — mais
+    /// dans <see cref="s_StaticEntityHandlers_00552230"/>
+    /// (<see cref="TickHammerDebris_0044A320"/>).
+    /// </para>
+    /// <para>
+    /// <b>Trois etats.</b> L'ouverture (1) : le dome monte de <c>0xc8000</c> au-dessus du lanceur et
+    /// redescend d'un neuvieme de <c>0x1000</c> par image en s'elargissant de 500, jusqu'a
+    /// <c>11000</c> sur les trois axes ; il vire au bleu en chemin. La tenue (2) : il colle au
+    /// lanceur, sa teinte <b>bat</b> — les trois canaux valent <c>sin(+0x12) &gt;&gt; 7 - 0x38</c>,
+    /// l'angle avancant de 300 par image — et c'est la qu'il attrape. La fermeture (3) : les trois
+    /// canaux perdent dix par image, et quand le bleu touche zero le dome meurt <b>et pose l'etat 2
+    /// dans le <c>+0x10</c> de son pere</b>, ce qui eteint le sort.
+    /// </para>
+    /// <para>
+    /// <b>Il se paie en points de magie.</b> Toutes les dix images — sur le compteur global
+    /// <c>0x005f2cf0</c> — il retire deux au <c>+0x14e</c> de la fiche de personnage du lanceur, et
+    /// passe a l'etat 3 des que ce compteur tombe sous deux. Deux autres conditions le coupent : le
+    /// masque de boutons de la fiche (<c>+0x1fc4</c> contre l'entree
+    /// <c>s_InputStateBase_00604a20 + creneau * 0x10</c>) tombe a zero — le joueur a relache la
+    /// combinaison —, et le lanceur meurt ou porte l'un des bits <c>0x3e8</c> de son
+    /// <c>+0x140</c>.
+    /// </para>
+    /// <para>
+    /// <b>La nasse balaie quatre tables.</b> Les <c>0x20</c> entites de scene sont
+    /// <b>repoussees</b> — leur vitesse <c>+0x50</c>/<c>+0x58</c> devient le vecteur dome vers elles
+    /// divise par huit, leur <c>+0x96</c> passe a <c>0x10</c> et leur mot d'etat perd <c>0x400</c>
+    /// pour gagner <c>0x40</c>. Les trois tables d'effet (<c>0x005f2d40</c>, <c>0x005edee0</c>,
+    /// <c>0x005ff400</c>) sont simplement <b>marquees <c>0x40000000</c></b>, c'est-a-dire
+    /// detruites. Le rayon est le meme partout : <c>0x136</c> en trois dimensions.
+    /// </para>
+    /// <para>
+    /// <b>Chaque prise coute cent au canal bleu</b>, et le dome s'eteint quand ce bleu touche zero :
+    /// attraper trop de choses tue la nasse. C'est la seule limite en dehors des points de magie.
+    /// </para>
+    /// <para>
+    /// <b>Il appelle le sinus trois fois avec le meme argument</b> pour ses trois canaux, la ou une
+    /// seule aurait suffi. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickHolyDome_0044A880(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 1;                               // le modele
+            e[0x0a] = 1;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            e[0x38] = 0;                               // il naît noir
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x28) = 500;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2c) = 500;
+
+            // Le binaire refait ici le repli sur DAT_005de558, sur le pointeur d'origine.
+            byte* birth = *(byte**)(e + 0x78);
+            if (birth == null) birth = Res.s_EntityList_005de558;
+
+            *(int*)(e + 0x1c) = *(int*)(birth + 0x1c);
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x20) = *(int*)(birth + 0x60) + 0xc8000;
+            *(int*)(e + 0x24) = *(int*)(birth + 0x24);
+
+            **(uint**)(e + 0x74) |= 0x80;              // le lanceur est immobilise
+        }
+
+        // La rotation avance dans tous les etats.
+        *(short*)(e + 0x32) += 600;
+        if (*(short*)(e + 0x32) > 0xfff) *(short*)(e + 0x32) -= 0x1000;
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            byte* rising = *(byte**)(e + 0x78);
+            if (rising == null) rising = Res.s_EntityList_005de558;
+
+            *(int*)(e + 0x1c) = *(int*)(rising + 0x1c);
+            *(int*)(e + 0x24) = *(int*)(rising + 0x24);
+
+            *(short*)(e + 0x28) += 500;
+            *(short*)(e + 0x2c) += 500;
+
+            if (*(short*)(e + 0x28) > 10999)
+            {
+                *(short*)(e + 0x28) = 11000;
+                *(short*)(e + 0x2c) = 11000;
+            }
+
+            *(short*)(e + 0x2a) += 500;
+            *(short*)(e + 0x12) += 9;
+
+            *(int*)(e + 0x20) =
+                *(int*)(rising + 0x60) + *(short*)(e + 0x12) * -0x1000 + 0xc8000;
+
+            if (*(short*)(e + 0x2a) > 10999)
+            {
+                *(short*)(e + 0x2a) = 11000;
+                *(int*)(e + 0x20) = *(int*)(rising + 0x60);
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+
+            BrightenEntityTint_00404DE0(e, 0x28, 0x28, 0x3c);
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            byte* held = *(byte**)(e + 0x78);
+            if (held == null) held = Res.s_EntityList_005de558;
+
+            *(int*)(e + 0x1c) = *(int*)(held + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(held + 0x60);
+            *(int*)(e + 0x24) = *(int*)(held + 0x24);
+
+            // Ghidra: trois appels a Ordinal_451 avec le MEME argument, un par canal.
+            int beat = *(short*)(e + 0x12);
+            e[0x38] = (byte)(sbyte)(((int)Winsys3d.GetSinTableEntry(beat) >> 7) - 0x38);
+            e[0x39] = (byte)(sbyte)(((int)Winsys3d.GetSinTableEntry(beat) >> 7) - 0x38);
+            e[0x3a] = (byte)(sbyte)(((int)Winsys3d.GetSinTableEntry(beat) >> 7) - 0x38);
+
+            *(short*)(e + 0x12) += 300;
+            if (*(short*)(e + 0x12) > 0xfff) *(short*)(e + 0x12) -= 0x1000;
+
+            // Le bit 0x800000 du DOME, pas du lanceur : c'est la copie du mot d'etat de celui-ci.
+            if ((*(uint*)e & 0x800000) != 0)
+            {
+                uint* caster = *(uint**)(e + 0x74);
+                *caster |= 0x80;
+
+                uint slot = ((byte*)caster)[8];
+                byte* sheet = GetMainMemPtr() + (slot + 0x78) * 0x2000;
+
+                // Le masque de boutons tenu : `&DAT_00604a20 + n * 4` en pseudo-C vaut n * 0x10 en
+                // octets — le symbole est type undefined4. Meme piege que PollInputAndAudio.
+                ushort buttons = *(ushort*)(Inp.s_InputStateBase_00604a20
+                                         + Inp.s_PlayerSlots_005e9188[slot * 0x4c] * 0x10);
+
+                if ((*(ushort*)(sheet + 0x1fc4) & buttons) == 0)
+                {
+                    *(short*)(e + 0x10) = 3;
+                    *caster &= 0xffffff7f;
+                }
+
+                if ((*(uint*)(sheet + 0x140) & 0x3e8) != 0
+                    || (*(uint*)(Inp.s_SlotFlags_005e93c0 + slot * 0x9c) & 0x40000000) != 0)
+                {
+                    *(short*)(e + 0x10) = 3;
+                    **(uint**)(e + 0x74) &= 0xffffff7f;
+                }
+
+                // Ghidra: `div` non signe sur DAT_005f2cf0, le compteur d'images du monde.
+                if (*(uint*)Mem.Entity(0x005f2cf0) % 10 == 0)
+                {
+                    if (*(short*)(sheet + 0x14e) < 2)
+                    {
+                        *(short*)(sheet + 0x14e) = 0;
+                        *(short*)(e + 0x10) = 3;
+                        **(uint**)(e + 0x74) &= 0xffffff7f;
+                    }
+                    else
+                    {
+                        *(short*)(sheet + 0x14e) -= 2;
+                    }
+                }
+            }
+
+            uint* owner = *(uint**)(e + 0x74);
+            if (owner == null) owner = (uint*)Res.s_EntityList_005de558;
+
+            if ((*owner & 0x800000) != 0)
+            {
+                SweepDomeCatch(e, Mem.Entity(0x005ecaa0), 0x20, true);
+                SweepDomeCatch(e, Mem.Entity(0x005f2d40), 0x80, false);
+                SweepDomeCatch(e, Mem.Entity(0x005edee0), 0x80, false);
+                SweepDomeCatch(e, Mem.Entity(0x005ff400), 0x10, false);
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            byte* closing = *(byte**)(e + 0x78);
+            if (closing == null) closing = Res.s_EntityList_005de558;
+
+            *(int*)(e + 0x1c) = *(int*)(closing + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(closing + 0x60);
+            *(int*)(e + 0x24) = *(int*)(closing + 0x24);
+
+            BrightenEntityTint_00404DE0(e, -10, -10, -10);
+
+            if (e[0x3a] == 0)
+            {
+                *(uint*)e &= 0x7fffffff;
+
+                // Le signal remontant : le pere passe a l'etat 2, donc s'eteint.
+                byte* parent = *(byte**)(e + 0x6c);
+                if (parent == null) parent = Res.s_EntityList_005de558;
+
+                *(short*)(parent + 0x10) = 2;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Un des quatre balayages de la nasse de <see cref="TickHolyDome_0044A880"/>, ecrits en clair
+    /// et presque a l'identique dans le binaire. Le rayon est <c>0x136</c> en trois dimensions dans
+    /// les quatre cas, et chaque prise coute cent au canal bleu du dome.
+    ///
+    /// <para>
+    /// <paramref name="sceneEntities"/> separe les deux formes. La table des entites de scene
+    /// exige <c>0x80000000</c>, <b>pas</b> <c>0x40000000</c> et <c>0x400000</c>, et la prise
+    /// <b>repousse</b> : vitesse <c>+0x50</c>/<c>+0x58</c> egale au vecteur dome vers l'entite
+    /// divise par huit, <c>+0x96</c> a <c>0x10</c>, mot d'etat <c>&amp; ~0x400 | 0x40</c>. Les trois
+    /// tables d'effet exigent <c>0x80000000</c>, <b>pas</b> <c>0x800</c>, puis <c>0x400000</c>,
+    /// <c>0x200</c>, <c>0x400</c> et <c>0x80</c>, et la prise se contente de poser
+    /// <c>0x40000000</c>.
+    /// </para>
+    /// </summary>
+    private static void SweepDomeCatch(byte* e, byte* table, int count, bool sceneEntities)
+    {
+        byte* slot = table;
+
+        for (int index = 0; index < count; index++, slot += 0x9c)
+        {
+            uint flags = *(uint*)slot;
+
+            if ((flags & 0x80000000) == 0) continue;
+
+            if (sceneEntities)
+            {
+                if ((flags & 0x40000000) != 0) continue;
+                if ((flags & 0x400000) == 0) continue;
+            }
+            else
+            {
+                if ((flags & 0x800) != 0) continue;
+                if ((flags & 0x400000) == 0) continue;
+                if ((flags & 0x200) == 0) continue;
+                if ((flags & 0x400) == 0) continue;
+                if ((flags & 0x80) == 0) continue;
+            }
+
+            int dx = (*(int*)(e + 0x1c) - *(int*)(slot + 0x1c)) >> 0xc;
+            int dy = (*(int*)(e + 0x20) - *(int*)(slot + 0x20)) >> 0xc;
+            int dz = (*(int*)(e + 0x24) - *(int*)(slot + 0x24)) >> 0xc;
+
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) >= 0x136) continue;
+
+            e[0x3a] = (byte)(e[0x3a] - 100);           // chaque prise coute cent au bleu
+            *(short*)(e + 0x9a) = 9;
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(slot + 0x1c), null, 0xa5, 0, -1);
+
+            if (sceneEntities)
+            {
+                *(int*)(slot + 0x50) = (*(int*)(slot + 0x1c) - *(int*)(e + 0x1c)) >> 3;
+                *(int*)(slot + 0x58) = (*(int*)(slot + 0x24) - *(int*)(e + 0x24)) >> 3;
+                *(short*)(slot + 0x96) = 0x10;
+                *(uint*)slot = (*(uint*)slot & 0xfffffbff) | 0x40;
+            }
+            else
+            {
+                *(uint*)slot |= 0x40000000;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044a7a0 @ 0x0044a7a0 — <b>Lapeche</b> : le sous-type <c>0x2a</c>, creneau 42 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>treizieme fiche de l'ecole 1</b>. 224
+    /// octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il vise le lanceur.</b> Il appelle <see cref="AcquireHolyTarget_00447CB0"/> comme les
+    /// autres, puis <b>ecrase le resultat</b> par <c>+0x78 = +0x74</c> : la cible est toujours celui
+    /// qui lance. La recherche ne sert a rien ; elle est faite quand meme.
+    /// </para>
+    /// <para>
+    /// <b>Il n'a pas d'enveloppe d'effet.</b> Premiere fiche de l'ecole a ne jamais passer par
+    /// <see cref="IsEffectPairBlocked_004364B0"/> ni par la table des 48 : son effet <b>est</b> le
+    /// dome, et celui-ci travaille directement sur les quatre tables d'entites.
+    /// </para>
+    /// <para>
+    /// <b>Il ne sait pas quand il finit.</b> Son etat 2, celui qui l'eteint, n'est jamais pose par
+    /// son propre corps : c'est <see cref="TickHolyDome_0044A880"/> qui, en mourant, l'ecrit dans
+    /// le <c>+0x10</c> de son pere par le <c>+0x6c</c>. Un signal remontant, comme chez Fusion et
+    /// Assaut magique.
+    /// </para>
+    /// <para>
+    /// Trois sons a la naissance, aux images 0, 1 et 2, et rien d'autre.
+    /// </para>
+    /// </summary>
+    private static void TickLapeche_0044A7A0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            AcquireHolyTarget_00447CB0(e, 0);
+            *(byte**)(e + 0x78) = *(byte**)(e + 0x74);   // et la recherche est ecrasee
+
+            // Ghidra teste a nouveau +0x10 ici ; AcquireHolyTarget ne l'ecrit pas, donc il vaut
+            // toujours zero. Transcrit tel quel.
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                SpawnCastEntity_0047AAE0(e, 0x8e, 0, -1);
+                *(short*)(e + 0x16) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x23, 0x653, 0x1000, 0x1000);
+            if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x16, 0x155, 0x1000, 0x1000);
+            if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x0f, 0x2ff, 0x1000, 0x1000);
+
+            *(short*)(e + 0x16) += 1;
+        }
+
+        // L'etat 2 ne vient que du dome.
+        if (*(short*)(e + 0x10) == 2) EndSpellAndResetDecor_00448020(e);
     }
 
     /// <summary>
