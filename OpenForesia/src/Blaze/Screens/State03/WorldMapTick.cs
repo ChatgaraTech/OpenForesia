@@ -4890,6 +4890,12 @@ public static unsafe partial class Blaze
             // qui n'apporte aucun corps d'enfant : ses deux sous-types etaient deja ecrits.
             case 0x00447DF0: TickPureBlood_00447DF0(record); return;
 
+            // RENFORT, ecole 1 indice 2 — la premiere benediction. Ses deux enfants sont ceux de
+            // Gnoukoule aussi : l'etincelle 0xa7 et l'eclat 0xa0 servent aux deux fiches.
+            case 0x00448060: TickReinforce_00448060(record); return;
+            case 0x0044FE00: TickHolySpark_0044FE00(record); return;
+            case 0x00448250: TickHolyFlash_00448250(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -39266,6 +39272,320 @@ public static unsafe partial class Blaze
         if (*(short*)(e + 0x16) > 0x28) EndSpellAndResetDecor_00448020(e);
     }
 
+
+    // =====================================================================
+    // RENFORT — le trente-deuxieme sort, ecole 1 indice 2, sous-type 0x20
+    //
+    //   0x00448060   LE SORT. Sous-type 0x20 de 0x00551c30, 425 octets. DECOMPILE dans Blaze.c.
+    //   0x00448210   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x00448250   L'ECLAT, sous-type 0xa0 de 0x00551f30, 168 octets. Un seul, a la 30e image.
+    //                DECOMPILE dans Blaze.c.
+    //   0x0044FE00   L'ETINCELLE, sous-type 0xa7 de 0x00552230, 315 octets. Huit, par paires.
+    //                ABSENTE de Blaze.c ; relevee sous Legacy/Raw/Blaze/FUN_0044FE00.asm.
+    //
+    // TROIS DES QUATRE CORPS SONT DECOMPILES. C'est le premier sort de l'ecole 1 dont le
+    // desassembleur ne sert qu'a un seul enfant.
+    //
+    // ET IL EN OUVRE UN DEUXIEME. Gnoukoule (0x00448300, ecole 1 indice 3) est le MEME corps a
+    // quatre valeurs pres : meme trio de tete, meme paire d'etincelles aux images 1, 3, 6 et 9,
+    // meme eclat a la 30e, meme fin a la 60e. Il ne differe que par le +0x9a pose a 2 au lieu de 6,
+    // deux sons, et l'effet applique a la fin. Les deux enfants ecrits ici sont donc les siens
+    // aussi : il ne lui reste que son propre corps et son enveloppe d'effet.
+    //
+    // LES ETINCELLES NAISSENT PAR PAIRES OPPOSEES. Le sort pose +0x48 — l'angle de depart — a 0
+    // puis a 0x800 entre les deux appels, soit un demi-tour : chaque bouffee est deux etincelles
+    // diametralement opposees sur le meme cercle. Quatre bouffees, huit etincelles.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00448210 @ 0x00448210 — <b>poser l'effet 17 si la cible l'accepte</b>. Soixante
+    /// et un octets, decompilee dans <c>Blaze.c</c>. Jumelle exacte de
+    /// <see cref="HealTargetIfEligible_00447FE0"/> : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, un autre effet derriere — ici
+    /// <see cref="ApplyStatusEffect_0053BBD0"/>, l'entree 17 de la table des 48, celle qui hausse
+    /// l'attaque.
+    ///
+    /// <para><b>Aucun appelant ne lit ce qu'elle rend</b>, pas plus ici que chez sa jumelle.</para>
+    /// </summary>
+    private static bool ApplyStatusEffectIfEligible_00448210(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ApplyStatusEffect_0053BBD0(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044fe00 @ 0x0044fe00 — <b>l'etincelle des benedictions du Pretre</b> : le
+    /// sous-type <c>0xa7</c>, creneau 167 de <see cref="s_StaticEntityHandlers_00552230"/>. 315
+    /// octets, <b>absente de <c>Blaze.c</c></b>. <see cref="TickReinforce_00448060"/> et Gnoukoule
+    /// en sement huit chacun, par paires.
+    ///
+    /// <para>
+    /// <b>Elle tombe en tournant.</b> Le centre de son orbite <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>
+    /// est recopie de la cible a chaque image, releve de <c>0x3c000</c> ; sa hauteur <c>+0x20</c>
+    /// part <c>0xfa000</c> au-dessus de ce centre et descend de <c>0xa000</c> par image jusqu'a s'y
+    /// poser — <b>vingt-cinq images de chute</b>. Pendant ce temps sa position horizontale n'est
+    /// jamais integree : elle vaut <c>centre + sin/cos(+0x48) &#215; +0x44</c>, l'angle avancant de
+    /// <c>+0x5c</c> par image et se repliant sur <c>[0, 0x1000[</c>. Rayon et pas viennent du sort,
+    /// qui les pose a <c>0x50</c> et <c>0x96</c> avant de la faire naitre.
+    /// </para>
+    /// <para>
+    /// <b>Le produit n'est pas recadre.</b> <c>imul eax,[esi+44h]</c> n'est suivi d'aucun decalage :
+    /// l'entree de table de sinus multiplie le rayon tel quel, la ou le reste du depot ramene le
+    /// resultat par <c>&gt;&gt; 0xc</c>. C'est ce qui fait tenir un rayon de <c>0x50</c> a l'echelle
+    /// du monde.
+    /// </para>
+    /// <para>
+    /// <b>Elle grandit puis se retracte, et <c>+0x14</c> est la charniere.</b> Ce compteur, pose a
+    /// <c>0x28</c> par le sort, perd un par image : tant qu'il reste positif l'echelle monte
+    /// (<c>+0x64</c> en X, <c>+0xc8</c> en Y) jusqu'a <c>0x800</c>/<c>0x1000</c> ; passe sous zero
+    /// elle redescend du meme pas, et l'entite s'eteint quand <c>+0x28</c> devient negatif. Une
+    /// seule valeur commande la croissance, la decroissance et la mort.
+    /// </para>
+    /// </summary>
+    private static void TickHolySpark_0044FE00(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_0044fe1f — le centre de l'orbite suit la cible, une hauteur d'homme plus haut.
+        *(int*)(e + 0x50) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(anchor + 0x20) + 0x3c000;
+        *(int*)(e + 0x58) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            e[0x0a] = e[0x9a];                         // la teinte, que le sort a posee en +0x9a
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x28;   // Ghidra: DAT_00551550
+            e[0x40] = 0;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x20) += 0xfa000;              // elle naît tres haut
+
+            *(short*)(e + 0x28) = 0;                   // et sans taille
+            *(short*)(e + 0x2a) = 0;
+
+            e[0x38] = 0xc8;
+            e[0x39] = 0xc8;
+            e[0x3a] = 0xc8;
+        }
+
+        // Ghidra: LAB_0044fe7c — tout ce qui suit n'a lieu que dans l'etat 1.
+        if (*(short*)(e + 0x10) != 1) return;
+
+        int height = *(int*)(e + 0x20) - 0xa000;
+        *(int*)(e + 0x20) = height;
+        if (height < *(int*)(e + 0x54)) *(int*)(e + 0x20) = *(int*)(e + 0x54);
+
+        // Ghidra: LAB_0044fe9d — la position horizontale, recalculee et non integree.
+        // `call 00545A1C` = winsys3d Ordinal_451, la table de sinus ; `call 00545A16` = son
+        // voisin de table d'import, le cosinus.
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(*(int*)(e + 0x48)) * *(int*)(e + 0x44)
+                            + *(int*)(e + 0x50);
+
+        *(int*)(e + 0x24) = (int)Winsys3d.GetCosTableEntry(*(int*)(e + 0x48)) * *(int*)(e + 0x44)
+                            + *(int*)(e + 0x58);
+
+        int angle = *(int*)(e + 0x48) + *(int*)(e + 0x5c);
+        *(int*)(e + 0x48) = angle;
+
+        if (angle >= 0x1000) *(int*)(e + 0x48) = angle - 0x1000;
+
+        // Ghidra: LAB_0044fee1 — le repli par le bas relit le champ, il ne reprend pas `angle`.
+        if (*(int*)(e + 0x48) < 0) *(int*)(e + 0x48) += 0x1000;
+
+        // Ghidra: LAB_0044fef0 — un seul compteur pour la croissance, la retraction et la mort.
+        *(short*)(e + 0x14) -= 1;
+
+        if (*(short*)(e + 0x14) >= 0)
+        {
+            // Ghidra: LAB_0044ff17
+            *(short*)(e + 0x28) += 0x64;
+            short scale = *(short*)(e + 0x28);
+            *(short*)(e + 0x2a) += 0xc8;
+
+            if (scale >= 0x800)
+            {
+                *(short*)(e + 0x28) = 0x800;
+                *(short*)(e + 0x2a) = 0x1000;
+            }
+
+            return;
+        }
+
+        *(short*)(e + 0x28) -= 0x64;
+        short shrunk = *(short*)(e + 0x28);
+        *(short*)(e + 0x2a) -= 0xc8;
+
+        if (shrunk < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00448250 @ 0x00448250 — <b>l'eclat des benedictions du Pretre</b> : le sous-type
+    /// <c>0xa0</c>, creneau 160 de <see cref="s_StaticEntityHandlers_00551f30"/>. 168 octets,
+    /// <b>decompilee dans <c>Blaze.c</c></b>. <see cref="TickReinforce_00448060"/> et Gnoukoule en
+    /// font naitre <b>un seul</b>, a leur trentieme image.
+    ///
+    /// <para>
+    /// <b>Elle ne fait que s'allumer puis s'eteindre.</b> Trois etats : la naissance pose le modele
+    /// <c>2</c>, une echelle de <c>0x11f4</c> sur les trois axes et une teinte <b>noire</b> ;
+    /// l'etat 1 ajoute <c>+50</c> aux trois canaux par image jusqu'a ce que le rouge atteigne
+    /// <c>0xb4</c> ; l'etat 2 retire <c>-15 / -10 / -15</c> — <b>le vert plus lentement que les deux
+    /// autres</b>, ce qui fait virer l'eclat au vert en mourant — et l'entite s'eteint quand ce vert
+    /// touche zero.
+    /// </para>
+    /// <para>
+    /// <b>Elle est la seule de la famille a ne pas commencer par
+    /// <see cref="EndSpellOnTerrain_00448040"/>.</b> Elle colle a la cible comme les autres
+    /// (<c>+0x50000</c> au-dessus), mais le decor ne l'eteint pas.
+    /// </para>
+    /// </summary>
+    private static void TickHolyFlash_00448250(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_00448261
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + 0x50000;
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 2;
+            e[0x0a] = 6;
+            e[0x0b] = 1;
+
+            e[0x38] = 0;                               // elle naît noire
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x28) = 0x11f4;
+            *(short*)(e + 0x2a) = 0x11f4;
+            *(short*)(e + 0x2c) = 0x11f4;
+
+            *(short*)(e + 0x10) = 1;
+        }
+
+        // Ghidra: LAB_004482b1 — la naissance et la premiere montee sont la meme passe.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            BrightenEntityTint_00404DE0(e, 0x32, 0x32, 0x32);
+            if (e[0x38] >= 0xb4) *(short*)(e + 0x10) = 2;
+        }
+
+        // Ghidra: LAB_004482d3
+        if (*(short*)(e + 0x10) == 2)
+        {
+            BrightenEntityTint_00404DE0(e, -15, -10, -15);
+            if (e[0x39] == 0) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00448060 @ 0x00448060 — <b>Renfort</b> : le sous-type <c>0x20</c>, creneau 32 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>troisieme fiche de l'ecole 1</b>. 425
+    /// octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il pose son effet a la soixantieme image, pas a la premiere</b> — l'inverse de
+    /// <see cref="TickPureBlood_00447DF0"/>, dont il est pourtant le voisin immediat dans le
+    /// binaire et le jumeau de forme. Il recopie alors sa paire famille/indice sur le lanceur et
+    /// appelle <see cref="ApplyStatusEffectIfEligible_00448210"/>, l'entree 17 de la table des 48.
+    /// Les cinquante-neuf images precedentes sont entierement decoratives.
+    /// </para>
+    /// <para>
+    /// <b>Son calendrier tient dans un seul compteur.</b> <c>+0x16</c> avance d'un par image et
+    /// commande tout : un son a la 0 et a la 2, <b>deux etincelles</b> aux images 1, 3, 6 et 9,
+    /// l'eclat a la 30, deux sons de plus a la 35 et a la 37, l'effet et l'extinction passe la 60.
+    /// Les quatre bouffees sont resserrees au debut et rien ne se produit ensuite pendant vingt
+    /// images.
+    /// </para>
+    /// <para>
+    /// <b>Les deux etincelles d'une bouffee sont opposees</b> : <c>+0x48</c>, l'angle de depart
+    /// qu'elles heritent par la copie, vaut <c>0</c> pour la premiere et <c>0x800</c> pour la
+    /// seconde — un demi-tour d'ecart sur le meme cercle.
+    /// </para>
+    /// <para>
+    /// <b>Il parametre ses enfants dans son propre enregistrement.</b> <c>+0x44 = 0x50</c> le rayon,
+    /// <c>+0x5c = 0x96</c> le pas angulaire, <c>+0x14 = 0x28</c> la duree de croissance,
+    /// <c>+0x9a = 6</c> la teinte — aucun de ces quatre champs ne lui sert a lui : ils n'existent
+    /// que pour etre recopies par <see cref="SpawnStatusEffectEntity_0047AC40"/> dans chaque
+    /// etincelle. C'est ce qui distingue Renfort de Gnoukoule, qui pose <c>2</c> en <c>+0x9a</c>.
+    /// </para>
+    /// </summary>
+    private static void TickReinforce_00448060(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_00448087
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + 0x50000;
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            // Les quatre champs qui ne servent qu'aux etincelles.
+            *(short*)(e + 0x14) = 0x28;
+            *(int*)(e + 0x44) = 0x50;
+            *(int*)(e + 0x5c) = 0x96;
+            *(short*)(e + 0x9a) = 6;
+        }
+
+        // Ghidra: LAB_004480dd — quatre bouffees, deux etincelles chacune, a un demi-tour d'ecart.
+        short step = *(short*)(e + 0x16);
+
+        if (step == 1 || step == 3 || step == 6 || step == 9)
+        {
+            *(int*)(e + 0x48) = 0;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa7, 0, -1);
+
+            *(int*)(e + 0x48) = 0x800;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa7, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x16, 0x100, 0x1200, 0x1200);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x16, 0x12a, 0x1200, 0x1200);
+
+        // Ghidra: LAB_00448171 — l'eclat, un seul, a mi-parcours.
+        if (*(short*)(e + 0x16) == 0x1e) SpawnCastEntity_0047AAE0(e, 0xa0, 0, -1);
+
+        if (*(short*)(e + 0x16) == 0x23) Aud.PlaySoundEffect(0x19, 0x800, 0x1200, 0x1200);
+        if (*(short*)(e + 0x16) == 0x25) Aud.PlaySoundEffect(0x1c, 0x400, 0x1000, 0x1000);
+
+        // Ghidra: LAB_004481ca
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 0x3c)
+        {
+            // La paire famille/indice passe au lanceur : c'est SA fiche que l'effet relira.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ApplyStatusEffectIfEligible_00448210(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>
     /// saisie pendant l'incantation. Elle rend l'indice du sort dont la combinaison correspond, ou
