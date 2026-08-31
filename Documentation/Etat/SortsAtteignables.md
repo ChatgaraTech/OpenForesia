@@ -104,7 +104,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | ecole | # | sort | combinaison | PM | appr. | duree | sous-type | gestionnaire | implemente | teste |
 |---:|---:|---|---|---:|---:|---:|---:|---|---|---|
 | 0 | 0 | Balle de feu | O-T-O | 2 | 10 | 4 | 0x00 | `0x0047ADD0` | oui | oui |
-| 0 | 1 | Boule de lumière | T-C-O | 4 | 20 | 4 | 0x01 | `0x0047B0B0` | **non** | **non** |
+| 0 | 1 | Boule de lumière | T-C-O | 4 | 20 | 4 | 0x01 | `0x0047B0B0` | oui | **non** |
 | 0 | 2 | Pieds mouillés | X-T-X | 3 | 23 | 4 | 0x02 | `0x0047B460` | **non** | **non** |
 | 0 | 3 | Rocher | C-T-C | 6 | 26 | 4 | 0x03 | `0x0047B7A0` | **non** | **non** |
 | 0 | 4 | Feu d'enfer | C-X-O | 10 | 24 | 20 | 0x04 | `0x0047BB50` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **1** |
-| a transcrire | **79** |
+| implementees (le gestionnaire existe) | **2** |
+| a transcrire | **78** |
 | lancees en jeu au moins une fois | **1** |
-| dette : implementees mais jamais lancees | **0** |
+| dette : implementees mais jamais lancees | **1** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -263,7 +263,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00479DE0` | 1 | **non** | **non** | Zéphe |
 | `0x00479F70` | 1 | **non** | **non** | Liquide |
 | `0x0047ADD0` | 1 | oui | oui | Balle de feu |
-| `0x0047B0B0` | 1 | **non** | **non** | Boule de lumière |
+| `0x0047B0B0` | 1 | oui | **non** | Boule de lumière |
 | `0x0047B460` | 1 | **non** | **non** | Pieds mouillés |
 | `0x0047B7A0` | 1 | **non** | **non** | Rocher |
 | `0x0047BB50` | 1 | **non** | **non** | Feu d'enfer |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | **non** | **non** | Météores |
 | `0x004828F0` | 1 | **non** | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **73** a transcrire.
+**74 gestionnaires distincts**, dont **72** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le

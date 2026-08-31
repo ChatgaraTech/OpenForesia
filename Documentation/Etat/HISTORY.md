@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Boule de lumière, le deuxième sort** — quatre corps, tous absents de `Blaze.c` : la graine `0x0047b0b0`, la boule `0x0047b150`, son étincelle `0x0047b340` et son halo `0x0047b3a0`. Le socle `ResolveSpellHit_0053A2B0` a servi tel quel : le deuxième sort n'a coûté que ses propres corps
+- doc : **la boule de lumière ne meurt pas au contact** — là où Balle de feu s'éteint dans la branche du coup, celle-ci y retombe sur le vieillissement commun : elle traverse et peut frapper à chaque image de ses douze. Le binaire n'a aucune garde contre le coup répété
+- doc : **le halo se recolle, il ne se déplace pas** — il reprend à chaque image la position de l'entité de `+0x78`, qui est la boule d'abord puis **la victime** dès le premier contact. Sa taille est celle de la tête de son ancre, `(hauteur << 12) / 150`, la même division par `0x1B4E81B5` que l'auréole d'incantation
+- feat : **l'atlas `0x00551ba8`** (deux tuiles 24×24). Les deux autres atlas du sort, `0x005519a0` et `0x00551a60`, étaient déjà relevés — et le halo les borne à trois exactement comme leur premier consommateur
 - fix : **la section des tables statiques de `GestionnairesEntites.md` affichait « 0 testés » quoi qu'il arrive** — ses lignes portent zone −1 / sous-zone −1 alors que la sonde note toujours une zone réelle, si bien que le rapprochement par triplet ne pouvait jamais aboutir. 274 gestionnaires étaient en angle mort ; **28 étaient déjà exercés**. Une table gravée dans `.data` est la même dans les onze zones : l'avoir vue passer quelque part suffit
 - feat : **l'étincelle `0x0047b050`**, le troisième maillon de Balle de feu — sous-type `0x46` de `0x00552230`, 91 octets, absente de `Blaze.c`. Huit images, quatre carreaux d'atlas à deux images chacun : c'est **son corps qui borne** `0x00551ad8` à quatre enregistrements, mieux que le changement de planche
 - doc : **Balle de feu est lancée en jeu et va au bout** — graine, projectile, étincelle. Première ligne de `sorts-exerces.tsv`

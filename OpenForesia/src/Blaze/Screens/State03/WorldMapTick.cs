@@ -4717,6 +4717,13 @@ public static unsafe partial class Blaze
             case 0x0047AE80: TickFireball_0047AE80(record); return;
             case 0x0047B050: TickSpark_0047B050(record); return;
 
+            // BOULE DE LUMIERE, ecole 0 indice 1 — quatre corps : la graine, la boule, son
+            // etincelle et son halo.
+            case 0x0047B0B0: SpawnLightBall_0047B0B0(record); return;
+            case 0x0047B150: TickLightBall_0047B150(record); return;
+            case 0x0047B340: TickLightSparkle_0047B340(record); return;
+            case 0x0047B3A0: TickLightHalo_0047B3A0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -29061,19 +29068,33 @@ public static unsafe partial class Blaze
 
     /// <summary>Les quatre descripteurs en memoire native.</summary>
     private static byte* Descriptors00551AD8()
-    {
-        if (s_Descriptors00551AD8Storage == null)
-        {
-            s_Descriptors00551AD8Storage =
-                (byte*)NativeMemory.Alloc((nuint)s_Descriptors_00551AD8.Length);
-            for (int i = 0; i < s_Descriptors_00551AD8.Length; i++)
-            {
-                s_Descriptors00551AD8Storage[i] = s_Descriptors_00551AD8[i];
-            }
-        }
+        => NativeCopy(s_Descriptors_00551AD8, ref s_Descriptors00551AD8Storage);
 
-        return s_Descriptors00551AD8Storage;
-    }
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551ba8</c> — l'atlas de la <b>Boule de lumiere</b> elle-meme, celui que
+    /// <see cref="SpawnLightBall_0047B0B0"/> passe a son enfant <c>0x47</c>. <b>Deux
+    /// enregistrements</b> de <c>0x18 x 0x18</c> a <c>u = 0x18</c> et <c>0x30</c> sur la ligne
+    /// <c>v = 0</c> ; la plage s'arrete a <c>0x00551bb8</c>, ou la tuile passe a <c>0x10 x 0x10</c>.
+    ///
+    /// <para>
+    /// <b>Le consommateur n'en emploie jamais qu'un.</b> <see cref="TickLightBall_0047B150"/> ne
+    /// touche pas a son propre <c>+0x40</c>, que <see cref="SpawnStatusEffectEntity_0047AC40"/> a
+    /// mis a zero : la boule garde la premiere image toute sa vie. Le second enregistrement est
+    /// releve parce qu'il fait partie de la meme plage, pas parce qu'on l'atteint — et c'est
+    /// exactement la raison pour laquelle on releve une plage et non un descripteur isole.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551BA8 =
+    [
+        0x18, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551ba8
+        0x30, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551bb0
+    ];
+
+    private static byte* s_Descriptors00551BA8Storage;
+
+    /// <summary>Les deux descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551BA8()
+        => NativeCopy(s_Descriptors_00551BA8, ref s_Descriptors00551BA8Storage);
 
     /// <summary>
     /// Ghidra: FUN_0047ae80 @ 0x0047ae80 — <b>le projectile de Balle de feu</b> : le sous-type
@@ -29241,6 +29262,286 @@ public static unsafe partial class Blaze
         if ((byte)half >= 4) *(uint*)e = 0;
 
         *(ushort*)(e + 0x10) = (ushort)(counter + 1);
+    }
+
+    // =====================================================================
+    // BOULE DE LUMIERE — le deuxieme sort, ecole 0 indice 1, sous-type 0x01
+    //
+    // Quatre corps, tous absents de Blaze.c. La forme est celle de Balle de feu, avec UNE
+    // difference de fond : la boule ne meurt pas au contact.
+    //
+    //   0x0047B0B0   LA GRAINE. Sous-type 1 de 0x00551c30. Une image, comme celle du feu, mais
+    //                elle avance de 40 et non de 80, ne se donne pas de modele, et fait naitre son
+    //                enfant dans la table 0x005f2d40 par SpawnStatusEffectEntity_0047AC40 — pas
+    //                dans celle des incantations. Il n'y a donc pas de projectile au sens du feu.
+    //   0x0047B150   LA BOULE. Sous-type 0x47 de 0x00552230. Elle avance, seme deux sortes
+    //                d'entites, cherche une cible — et CONTINUE apres l'avoir touchee. Douze
+    //                images de vie quoi qu'il arrive.
+    //   0x0047B340   L'ETINCELLE semee a chaque image (sous-type 0x48). Six images, trois tuiles
+    //                en anneau.
+    //   0x0047B3A0   LE HALO accroche a l'ancre (sous-type 0x49). Vingt images, il se recolle a
+    //                chaque image sur l'entite de +0x78 et tire son image au hasard sur trois.
+    //
+    // CE QUI DISTINGUE CE SORT DU PRECEDENT. Balle de feu s'eteint des qu'elle touche
+    // (`mov dword [esi],0` dans la branche du coup) ; ici la branche du coup RETOMBE sur le
+    // vieillissement commun. Elle traverse donc, et peut frapper a chaque image de ses douze.
+    // C'est ecrit tel quel : le binaire n'a aucune garde contre le coup repete.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047b0b0 @ 0x0047b0b0 — <b>la graine de Boule de lumiere</b> : le sous-type
+    /// <c>0x01</c>, creneau 1 de <see cref="s_StaticEntityHandlers_00551c30"/>. 159 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Meme geste que <see cref="SpawnFireball_0047ADD0"/> — une image, se placer devant le lanceur
+    /// a hauteur de tete, lacher l'enfant, jouer le son, s'eteindre — a quatre details pres :
+    /// l'avance est de <b>40</b> et non 80, il n'y a <b>ni modele ni quart de tour</b>, l'echelle
+    /// est <c>0x1400</c>, et l'enfant nait par
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> dans <c>0x005f2d40</c> et non par
+    /// <see cref="SpawnCastEntity_0047AAE0"/> dans <c>0x005edee0</c>.
+    /// </para>
+    /// <para>
+    /// <c>+0x36</c> est traite en <b>mot</b> (<c>&amp; 0xfffb | 2</c>) la ou la graine du feu se
+    /// contentait d'un <c>|= 6</c> sur l'octet : ici le bit <c>4</c> est explicitement <b>efface</b>.
+    /// </para>
+    /// </summary>
+    private static void SpawnLightBall_0047B0B0(byte* record)
+    {
+        byte* e = record;
+
+        // `mov ax,[esi+36h] ; and al,0FBh ; or al,2 ; mov [esi+36h],ax` — l'octet haut est garde.
+        *(ushort*)(e + 0x36) = (ushort)((*(ushort*)(e + 0x36) & 0xfffb) | 2);
+
+        int heading = *(short*)(e + 0x32);
+
+        // 40 unites devant le lanceur : `lea eax,[eax+eax*4] ; shl ecx,3`.
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 40;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 40;
+
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+        *(int*)(e + 0x20) += (height & ~1) << 0xb;
+
+        *(uint*)(e + 0x28) = 0x14001400;              // echelle X et Y
+        *(uint*)(e + 0x38) = 0x00ffffff;              // teinte pleine
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors00551BA8(), 0x47, e[0x0b], -1);
+
+        Aud.PlayPositionalSound(0x14, 0x653, 0x1200, (int*)(e + 0x1c));   // Ghidra: FUN_0053db20
+
+        *(uint*)e = 0;                                // la graine s'eteint des cette image
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047b150 @ 0x0047b150 — <b>la Boule de lumiere</b> elle-meme : le sous-type
+    /// <c>0x47</c>, creneau 71 de <see cref="s_StaticEntityHandlers_00552230"/>. 492 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>A la premiere image</b> elle pose <c>0x80</c> sur son mot d'etat, se designe elle-meme en
+    /// <c>+0x78</c> — le champ « cible trouvee », qui sert ici d'<b>ancre</b> pour le halo —, prend
+    /// l'echelle <c>0x1000</c> et le blanc plein, et lache un premier halo <c>0x49</c>.
+    /// </para>
+    /// <para>
+    /// <b>A chaque image</b> : 40 unites d'avance sur <c>+0x32</c> — <b>sans</b> la correction de
+    /// quart de tour du projectile de feu, sa graine n'en ayant pas ajoute —, une etincelle
+    /// <c>0x48</c> semee a la position bruitee de +/-32 unites de 4096 sur les trois axes, le
+    /// replacement, puis la recherche de cible.
+    /// </para>
+    /// <para>
+    /// <b>Le coup ne l'arrete pas.</b> La branche du contact resout les degats, <b>rattache le halo
+    /// a la victime</b> (<c>+0x78</c> change d'ancre, et un second halo nait), pousse et marque la
+    /// victime — puis <b>retombe sur le vieillissement commun</b>. Seules les douze images, le
+    /// decor (<c>0x40000000</c>) ou <c>+0x90</c> sur le masque <c>0x8802</c> la tuent.
+    /// </para>
+    /// <para>
+    /// <b>La poussee emploie <c>+0x32 - 0x400</c></b> alors que l'avance emploie <c>+0x32</c> nu.
+    /// L'asymetrie est dans le binaire ; elle n'est pas expliquee ici, elle est transcrite.
+    /// </para>
+    /// </summary>
+    private static void TickLightBall_0047B150(byte* record)
+    {
+        byte* e = record;
+
+        // Meme forme que le projectile de feu : six mots de sonde, puis trois ints de position
+        // dans le meme bloc de 0x18 octets. Aucun decalage de cap ici, et la moitie de l'avance.
+        short* probe = stackalloc short[6] { 0x0000, -0x0032, 0x0032, 0x0064, 0x0000, 0x0064 };
+        int* sparkAt = stackalloc int[3];
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(uint*)e |= 0x80;
+
+            // Elle est sa propre ancre tant qu'elle n'a rien touche.
+            *(byte**)(e + 0x78) = e;
+
+            *(uint*)(e + 0x28) = 0x10001000;
+            *(uint*)(e + 0x38) = 0x00ffffff;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551A60(), 0x49, e[0x0b], -1);
+        }
+
+        // Ghidra: LAB_0047b1c1 — le cap, pris tel quel.
+        int heading = *(short*)(e + 0x32);
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 40;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 40;
+
+        // L'etincelle nait sur place, seulement bruitee. L'ordre des trois tirages est celui du
+        // binaire — ils partagent une seule suite pseudo-aleatoire.
+        sparkAt[0] = *(int*)(e + 0x1c) + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+        sparkAt[1] = *(int*)(e + 0x20) + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+        sparkAt[2] = *(int*)(e + 0x24) + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+
+        SpawnStatusEffectEntity_0047AC40(e, sparkAt, Descriptors005519A0(), 0x48, e[0x0b], -1);
+
+        // Le placement ecraserait la hauteur : elle est mise de cote et rendue tout de suite apres.
+        int keptHeight = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);               // Ghidra: FUN_00533940
+        uint state = *(uint*)e;
+        *(int*)(e + 0x20) = keptHeight;
+
+        if ((state & 0x40000000) != 0 || (*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            *(uint*)e = 0;                                // le decor : elle s'eteint sur place
+            return;
+        }
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            // Le halo change d'ancre : il suivra desormais la victime.
+            *(byte**)(e + 0x78) = victim;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551A60(), 0x49, e[0x0b], -1);
+
+            int push = *(short*)(e + 0x32) - 0x400;
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+
+            Aud.PlayPositionalSound(0x14, 0x800, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047b319 — le vieillissement, commun aux deux branches. C'est LA difference
+        // avec Balle de feu : le coup n'eteint pas la boule, elle traverse.
+        *(ushort*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) < 0x0c) return;
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047b340 @ 0x0047b340 — <b>l'etincelle de Boule de lumiere</b> : le sous-type
+    /// <c>0x48</c>, creneau 72 de <see cref="s_StaticEntityHandlers_00552230"/>. 88 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// La sœur de <see cref="TickSpark_0047B050"/>, a trois differences : elle vit <b>six</b>
+    /// images et non huit, elle palit deux fois plus vite (<c>-0x20</c> par canal contre
+    /// <c>-0x18</c>), et son image d'atlas <b>tourne en anneau</b> sur les trois tuiles de
+    /// <see cref="s_Descriptors_005519A0"/> au lieu d'etre la moitie du compteur. C'est ce
+    /// bouclage a 3 qui borne cet atlas, et il le borne deja pour un autre consommateur.
+    /// </para>
+    /// </summary>
+    private static void TickLightSparkle_0047B340(byte* record)
+    {
+        byte* e = record;
+
+        ushort counter = *(ushort*)(e + 0x10);
+
+        if (counter == 0)
+        {
+            *(uint*)(e + 0x28) = 0x10001000;          // echelle X et Y
+            *(uint*)(e + 0x38) = 0x00ffffff;          // teinte pleine
+        }
+        else
+        {
+            // Deux shorts et trois octets, en une addition de dword chacune.
+            unchecked
+            {
+                *(uint*)(e + 0x28) += 0xfeffff00;     // -0x100 sur X et sur Y
+                *(uint*)(e + 0x38) += 0xffdfdfe0;     // -0x20 sur les trois canaux
+            }
+        }
+
+        // `inc dl ; cmp dl,3 ; mov [eax+40h],dl ; jb ; mov byte [eax+40h],0` — l'ecriture precede
+        // la remise a zero, ce qui revient a un anneau de trois.
+        byte frame = (byte)(e[0x40] + 1);
+        e[0x40] = frame < 3 ? frame : (byte)0;
+
+        counter = (ushort)(counter + 1);
+        *(ushort*)(e + 0x10) = counter;
+
+        if ((short)counter >= 6) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047b3a0 @ 0x0047b3a0 — <b>le halo de Boule de lumiere</b> : le sous-type
+    /// <c>0x49</c>, creneau 73 de <see cref="s_StaticEntityHandlers_00552230"/>. 191 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne se deplace pas, il se recolle.</b> A chaque image il reprend la position de l'entite
+    /// que <c>+0x78</c> designe — la boule d'abord, la victime ensuite — bruitee de +/-32 unites de
+    /// 4096 sur X et Z, et decalee en hauteur de la tete de l'ancre. Son image d'atlas est
+    /// <b>tiree au hasard sur trois</b> a chaque image, ce qui borne
+    /// <see cref="s_Descriptors_00551A60"/> exactement comme <c>FUN_00475910</c> le borne deja.
+    /// </para>
+    /// <para>
+    /// <b>La taille est celle de l'ancre</b>, mesuree une seule fois : <c>(hauteur &lt;&lt; 12) /
+    /// 150</c>, la meme division par multiplication magique <c>0x1B4E81B5</c> que
+    /// <see cref="TickCastAura_004765D0"/> emploie. Le calcul est saute quand l'ancre porte
+    /// <c>0x100000</c> — le bit du modele de paquet —, auquel cas <c>+0x12</c> reste nul et le halo
+    /// colle au sol.
+    /// </para>
+    /// <para>
+    /// <b>Deux fins</b> : vingt images, ou l'ancre qui s'eteint (son bit <c>0x80000000</c> tombe).
+    /// La seconde est ce qui fait disparaitre le halo avec la boule.
+    /// </para>
+    /// </summary>
+    private static void TickLightHalo_0047B3A0(byte* record)
+    {
+        byte* e = record;
+        byte* anchor = *(byte**)(e + 0x78);
+
+        if (*(ushort*)(e + 0x10) == 0 && (*(uint*)anchor & 0x100000) == 0)
+        {
+            short height = (short)StatusBubbleHeight_00538BC0((uint*)anchor);
+            *(short*)(e + 0x12) = height;
+
+            // `imul 0x1B4E81B5 ; sar edx,4` et la correction de signe : une division par 150.
+            int scale = (height << 0xc) / 150;
+            *(uint*)(e + 0x28) = ((uint)scale << 0x10) | (uint)scale;
+        }
+
+        // Ghidra: LAB_0047b3e6 — le recollage, hors de toute branche d'etat.
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c) + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+
+        // La hauteur n'est pas bruitee comme les deux autres axes : `lea eax,[edx+eax*2-40h]` la
+        // melange au tirage AVANT le decalage de 11 bits, l'arrondi au pair compris.
+        int lift = (*(short*)(e + 0x12) & ~1) + (CrtRand() & 0x3f) * 2 - 0x40;
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + (lift << 0xb);
+
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24) + (((CrtRand() & 0x3f) - 0x20) << 0xc);
+
+        *(ushort*)(e + 0x10) += 1;
+
+        if (*(short*)(e + 0x10) >= 0x14 || (*(uint*)anchor & 0x80000000) == 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        e[0x40] = (byte)(CrtRand() % 3);              // `cdq ; idiv 3`, le reste
     }
 
     /// <summary>
