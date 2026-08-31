@@ -4804,6 +4804,12 @@ public static unsafe partial class Blaze
             case 0x0047E260: TickLight_0047E260(record); return;
             case 0x0047E370: TickLightGlobe_0047E370(record); return;
 
+            // ECLAIR, ecole 0 indice 16 — quatrieme sort entretenu (1 PM par DIX images), et le
+            // seul dont le compte de references se fait sur les naissances REUSSIES.
+            case 0x0047E590: TickThunder_0047E590(record); return;
+            case 0x0047E6F0: TickThunderStrand_0047E6F0(record); return;
+            case 0x0047EA80: TickThunderSpark_0047EA80(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -9535,6 +9541,29 @@ public static unsafe partial class Blaze
     /// <summary>Les trois pas du script en memoire native.</summary>
     private static byte* DelayedSoundScript00552530()
         => NativeCopy(s_DelayedSoundScript_00552530, ref s_DelayedSoundScript00552530Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552548</c> — <b>le second script de sons differes</b>, celui que
+    /// <see cref="TickThunderStrand_0047E6F0"/> met en file a chaque decharge. Deux pas, et le
+    /// premier delai vaut <b>1</b> : le second son part a l'image suivante, ce qui donne le
+    /// claquement en deux temps de la foudre.
+    ///
+    /// <para>
+    /// Il suit immediatement <see cref="s_DelayedSoundScript_00552530"/> dans le binaire, et c'est
+    /// son premier octet de delai nul qui bornait celui-la.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552548 =
+    [
+        0x0c, 0x01, 0x01, 0x00, 0x00, 0x04, 0x00, 0x12,   // 0x00552548
+        0x20, 0x00, 0x01, 0x00, 0x4e, 0x0f, 0x00, 0x12,   // 0x00552550 — [1] = 0 : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552548Storage;
+
+    /// <summary>Les deux pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00552548()
+        => NativeCopy(s_DelayedSoundScript_00552548, ref s_DelayedSoundScript00552548Storage);
 
     /// <summary>
     /// Ghidra: FUN_00475a30 @ 0x00475a30 — <b>l'entree 183 (<c>0xb7</c>) de la table statique
@@ -33379,6 +33408,372 @@ public static unsafe partial class Blaze
 
         // Ghidra: LAB_0047e56b
         if ((*(uint*)e & 0x40000000) != 0) *(uint*)e |= 0x2000000;
+    }
+
+    // =====================================================================
+    // ECLAIR — le dix-septieme sort, ecole 0 indice 16, sous-type 0x10
+    //
+    // Trois corps neufs, et le QUATRIEME sort entretenu — le plus vorace : 1 PM toutes les DIX
+    // images, soit deux fois la cadence des trois autres.
+    //
+    //   0x0047E590   LE SORT. Sous-type 0x10 de 0x00551c30, 342 octets.
+    //   0x0047E6F0   LE FILAMENT, sous-type 0x64 de 0x00551c30 — la table des EFFETS, pas celle
+    //                des incantations. 901 octets. Quatre exemplaires.
+    //   0x0047EA80   L'ETINCELLE, sous-type 0x6f de 0x00551f30, 83 octets.
+    //
+    // LE COMPTE DE REFERENCES EST FAIT SUR LES NAISSANCES REUSSIES. Le sort appelle quatre fois
+    // SpawnEffectEntity et ADDITIONNE ses retours dans +0x16 — la fonction rend 1 quand un
+    // emplacement etait libre, 0 sinon. Le compte est donc exact meme si le pool est plein, la ou
+    // Rocher posait un 4 en dur. Chaque filament decremente ce compte en mourant, et le sort
+    // s'eteint quand il retombe a zero.
+    //
+    // ET LE FILAMENT A DEUX VIES, SEPAREES PAR UN BIT. Tant que 0x40 n'est pas pose sur son mot
+    // d'etat il VOLE — vers sa cible a la vitesse 0x10, ou en errant pres du lanceur a la
+    // vitesse 8 avec un bruit de +/-256 sur les deux axes horizontaux. Des qu'il touche, il pose
+    // 0x40 et bascule : il reste accroche et decharge une etincelle UNE IMAGE SUR HUIT.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047e590 @ 0x0047e590 — <b>Eclair</b> : le sous-type <c>0x10</c>, creneau 16 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 342 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Le quatrieme sort entretenu, et le plus gourmand : <b>1 PM toutes les dix images</b> — deux
+    /// fois la cadence de Wonder, Atchoum et Lumiere, qui ponctionnent toutes les vingt. Le reste
+    /// est leur code commun.
+    /// </para>
+    /// <para>
+    /// <b>Il compte ses filaments sur leurs naissances reussies.</b> Les quatre appels a
+    /// <see cref="SpawnEffectEntity"/> rendent 1 ou 0 selon qu'un emplacement etait libre, et le
+    /// sort <b>additionne</b> ces retours dans <c>+0x16</c>. Il ne s'eteint que lorsque ce compte
+    /// retombe a zero, chaque filament le decrementant en mourant. C'est le compte de references
+    /// de <see cref="TickRockCircle_0047B7A0"/>, en plus juste : un pool plein ne le fait pas
+    /// attendre un enfant qui n'existe pas.
+    /// </para>
+    /// <para>
+    /// Le decor blanchit a <c>0xc4</c> sur les trois canaux, comme Wonder.
+    /// </para>
+    /// </summary>
+    private static void TickThunder_0047E590(byte* record)
+    {
+        byte* e = record;
+
+        if (*(ushort*)(e + 0x10) != 0)
+        {
+            if (*(ushort*)(e + 0x16) == 0)
+            {
+                // Les quatre filaments sont morts : le sort avec eux.
+                *(uint*)e = 0;
+                *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;
+                *(ushort*)Mem.Arena(0x005e9166) = 0;
+                return;
+            }
+        }
+        else
+        {
+            // Ghidra: LAB_0047e5c1 — la naissance.
+            byte* born = *(byte**)(e + 0x74);
+            *(uint*)born |= 0x80;                      // le lanceur est immobilise
+            *(int*)(e + 0x78) = 0;
+
+            int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+            *(int*)(e + 0x20) += (height & ~1) << 0xb;
+
+            *(ushort*)(e + 0x16) = 0;
+
+            // Le compte se fait sur ce que la naissance rend, pas sur le nombre d'appels.
+            for (int strand = 0; strand < 4; strand++)
+            {
+                *(ushort*)(e + 0x16) += (ushort)SpawnEffectEntity(e, 0x64, 0, -1);
+            }
+
+            *(uint*)Mem.Arena(0x005e9160) = 0x00c400c4;
+            *(uint*)Mem.Arena(0x005e9164) = 0x000200c4;
+
+            Aud.PlayPositionalSound(0x2c, 0x329, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047e631 — l'entretien, la meme forme que les trois autres.
+        if ((*(uint*)e & 0x2000000) == 0)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+
+            if ((*(uint*)e & 0x800000) != 0)
+            {
+                uint index = ((uint*)caster)[2] & 0xff;
+                byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+                int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+                ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+                if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+
+                // DIX images, pas vingt : c'est le seul a cette cadence.
+                if (*(uint*)Mem.Entity(0x005f2cf0) % 10 == 0)
+                {
+                    short mana = *(short*)(perChar + 0x14e);
+
+                    if (mana >= 1)
+                    {
+                        *(short*)(perChar + 0x14e) = (short)(mana - 1);
+                    }
+                    else
+                    {
+                        *(ushort*)(perChar + 0x14e) = 0;
+                        *(uint*)e |= 0x2000000;
+                    }
+                }
+            }
+            else if (*(short*)(e + 0x10) >= 0x78)
+            {
+                *(uint*)e |= 0x2000000;
+            }
+        }
+
+        // Ghidra: LAB_0047e6ca
+        if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047e6f0 @ 0x0047e6f0 — <b>le filament d'Eclair</b> : le sous-type <c>0x64</c>,
+    /// creneau 100 de <see cref="s_StaticEntityHandlers_00551c30"/> — <b>la table des effets</b>,
+    /// celle ou <see cref="SpawnEffectEntity"/> depose, et non celle des incantations ou le meme
+    /// numero designe le projectile de Balle de feu. 901 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Deux vies, separees par le bit <c>0x40</c> de son propre mot d'etat.</b>
+    /// </para>
+    /// <list type="bullet">
+    /// <item><b>Libre</b> — il vole. Vers sa cible s'il en a une, a la vitesse <c>0x10</c> ; sinon
+    /// il erre autour du lanceur a la vitesse <b>8</b>, en visant un point bruite de +/-256 unites
+    /// sur les deux axes horizontaux et cent au-dessus de sa tete. Dans les deux cas la poussee
+    /// s'<b>ajoute</b> a la vitesse, qui perd ensuite un huitieme — la meme mecanique que la fleche
+    /// magique.</item>
+    /// <item><b>Accroche</b> — il ne bouge plus et <b>decharge une image sur huit</b>
+    /// (<c>+0x10 &amp; 7 == 1</c>) : une etincelle <c>0x6f</c> a un point quelconque a moins de 79
+    /// unites de la victime, les degats, et le claquement en deux temps de
+    /// <see cref="s_DelayedSoundScript_00552548"/>.</item>
+    /// </list>
+    /// <para>
+    /// <b>Il herite du bit de fin de son pere</b> (<c>+0x6c</c>, masque <c>0x2000000</c>) et
+    /// <b>decremente son compte</b> <c>+0x16</c> en mourant : le signal descend, le compte remonte.
+    /// C'est le seul corps du depot qui fasse les deux.
+    /// </para>
+    /// <para>
+    /// Sur le decor il lache l'eclaboussure <c>0xbd</c> de
+    /// <see cref="s_Descriptors_00551A08"/> et relache sa victime.
+    /// </para>
+    /// </summary>
+    private static void TickThunderStrand_0047E6F0(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { 0x0000, -0x003c, 0x003c, 0x00c8, 0x0000, 0x0078 };
+        int* step = stackalloc int[3];
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(ushort*)(e + 0x10) = 1;
+            *(uint*)e |= 0x80;
+            *(short*)(e + 0x2e) = -0x14;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA0(), 0x4d, e[0x0b], -1);
+
+            *(ushort*)(e + 0x12) = 0x1000;
+            SpawnCastEntity_0047AAE0(e, 0x6a, e[0x0b], -1);
+
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+        }
+
+        // Ghidra: LAB_0047e781 — la fin rend son du au pere.
+        byte* father = *(byte**)(e + 0x6c);
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            (*(ushort*)(father + 0x16))--;
+            *(uint*)e = 0;
+            return;
+        }
+
+        // L'heritage du bit de fin, et le drapeau de mort propre.
+        *(uint*)e |= *(uint*)father & 0x2000000;
+        if ((*(uint*)e & 0x40000000) != 0) *(uint*)e |= 0x2000000;
+
+        if ((*(uint*)e & 0x40) != 0)
+        {
+            // ------------------------------------------------------------ accroche
+            byte* held = *(byte**)(e + 0x78);
+
+            if ((*(uint*)held & 0x50000000) != 0)
+            {
+                *(uint*)e |= 0x2000000;
+                return;
+            }
+
+            if ((e[0x10] & 7) == 1)
+            {
+                int spray = CrtRand();
+                int reach = CrtRand() & 0x4f;
+
+                *(int*)(e + 0x1c) = *(int*)(held + 0x1c)
+                                    + (int)Winsys3d.GetSinTableEntry(spray) * reach;
+                *(int*)(e + 0x20) = *(int*)(held + 0x20);
+                *(int*)(e + 0x24) = *(int*)(held + 0x24)
+                                    + Winsys3d.GetCosTableEntry(spray) * reach;
+
+                e[0x04] = 0;
+                SpawnCastEntity_0047AAE0(e, 0x6f, e[0x0b], -1);
+
+                ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)held, e[7], e[6], 0);
+
+                *(uint*)held |= 0x40;
+                *(ushort*)(held + 0x96) = 0x10;
+
+                Aud.QueueDelayedSoundScript(DelayedSoundScript00552548(), (int*)(e + 0x1c));
+            }
+
+            *(ushort*)(e + 0x10) += 1;
+            return;
+        }
+
+        // ------------------------------------------------------------ libre
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+
+        int dx, dy, dz, speed;
+
+        if (target != null)
+        {
+            if ((*(uint*)target & 0x50000000) != 0)
+            {
+                *(uint*)(target + 0x74) = 0;
+                *(uint*)e |= 0x2000000;
+            }
+
+            // Ghidra: LAB_0047e8b2
+            *(byte**)(e + 0x78) = target;
+            dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            *(byte**)(target + 0x74) = e;
+
+            int head = StatusBubbleHeight_00538BC0((uint*)target);
+            dy = (head >> 1) + ((*(int*)(target + 0x20) - *(int*)(e + 0x20)) >> 0xc);
+            dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+            speed = 0x10;
+        }
+        else
+        {
+            // Ghidra: LAB_0047e8f3 — l'errance autour du lanceur, bruitee.
+            byte* caster = *(byte**)(e + 0x74);
+
+            dx = (CrtRand() & 0x1ff)
+                 + ((*(int*)(caster + 0x1c) - *(int*)(e + 0x1c)) >> 0xc) - 0x100;
+
+            int head = StatusBubbleHeight_00538BC0((uint*)caster);
+            dy = head + ((*(int*)(caster + 0x20) - *(int*)(e + 0x20)) >> 0xc) + 0x64;
+
+            dz = (CrtRand() & 0x1ff)
+                 + ((*(int*)(caster + 0x24) - *(int*)(e + 0x24)) >> 0xc) - 0x100;
+            speed = 8;
+        }
+
+        // Ghidra: LAB_0047e951 — la poussee s'ajoute, puis la vitesse perd un huitieme.
+        int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int pitch = Winsys3d.Ordinal_457(dy, flat);
+        int yaw = Winsys3d.Ordinal_457(dx, dz);
+
+        SetVectorFromAngles_00532AD0(step, yaw, pitch, speed);
+
+        int vx = *(int*)(e + 0x50) + step[0];
+        int vy = *(int*)(e + 0x54) + step[1];
+        int vz = *(int*)(e + 0x58) + step[2];
+
+        vx -= vx >> 3;
+        vy -= vy >> 3;
+        vz -= vz >> 3;
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x58) = vz;
+
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x20) += vy;
+        *(int*)(e + 0x24) += vz;
+
+        FinalizeEntityPlacement2((uint*)e);            // Ghidra: FUN_00533940
+
+        if (*(int*)(e + 0x20) <= *(int*)(e + 0x60))
+        {
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        // Ghidra: LAB_0047e9f4 — le decor l'eteint.
+        uint contact = *(uint*)(e + 0x90);
+
+        if ((contact & 0xa000) == 0 && (contact & 0x802) != 0)
+        {
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551A08(), 0xbd, 0, 4);
+
+            byte* held = *(byte**)(e + 0x78);
+            if (held != null) *(uint*)(held + 0x74) = 0;
+
+            *(uint*)e |= 0x2000000;
+            return;
+        }
+
+        // Ghidra: LAB_0047ea3a — le contact pose 0x40 et le fait basculer.
+        if (*(byte**)(e + 0x78) == null) return;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+        if (victim == null) return;
+
+        *(uint*)e |= 0x1000040;
+        *(uint*)victim |= 0x40;
+        *(ushort*)(victim + 0x96) = 0x10;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047ea80 @ 0x0047ea80 — <b>l'etincelle d'Eclair</b> : le sous-type <c>0x6f</c>,
+    /// creneau 111 de <see cref="s_StaticEntityHandlers_00551f30"/>. 83 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Elle ne se deplace pas : elle nait large (<c>0x1000</c>, avec le mode <c>0x6000</c> dans les
+    /// seize bits hauts de <c>+0x28</c>), tourne de <c>0x40</c> par image, perd un quart de sa
+    /// taille et s'eteint sous <c>0x100</c> — une dizaine d'images.
+    /// </para>
+    /// </summary>
+    private static void TickThunderSpark_0047EA80(byte* record)
+    {
+        byte* e = record;
+        ushort age = *(ushort*)(e + 0x10);
+
+        if (age == 0)
+        {
+            *(uint*)(e + 0x28) = 0x60001000;
+            *(ushort*)(e + 0x2c) = 0x1000;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+        }
+        else
+        {
+            short scale = *(short*)(e + 0x28);
+            scale -= (short)(scale >> 2);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2c) = scale;
+        }
+
+        // Ghidra: LAB_0047eab9
+        *(ushort*)(e + 0x32) += 0x40;
+        if (*(short*)(e + 0x28) < 0x100) *(uint*)e = 0;
+
+        *(ushort*)(e + 0x10) = (ushort)(age + 1);
     }
 
     /// <summary>

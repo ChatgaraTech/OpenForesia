@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Eclair, le dix-septième sort** — trois corps absents de `Blaze.c` : le sort `0x0047e590`, le filament `0x0047e6f0` (901 octets, quatre exemplaires) et l'étincelle `0x0047ea80`. Plus le second script de sons différés, `0x00552548`
+- doc : **le quatrième sort entretenu, et le plus vorace** — 1 PM toutes les **dix** images, là où Wonder, Atchoum et Lumière ponctionnent toutes les vingt (2, 4 et 6 PM). Même code de manette et même garde pour les quatre
+- doc : **son compte de références se fait sur les naissances réussies** — les quatre appels à `SpawnEffectEntity` rendent 1 ou 0 selon qu'un emplacement était libre, et le sort **additionne** ces retours dans `+0x16`. Un pool plein ne le fait donc pas attendre un enfant qui n'existe pas, là où Rocher posait un 4 en dur
+- doc : **le filament a deux vies, séparées par le bit `0x40` de son propre mot d'état** — libre il vole (vers sa cible à la vitesse `0x10`, ou en errant près du lanceur à 8 avec un bruit de ±256) ; dès qu'il touche il pose `0x40`, reste accroché et décharge **une image sur huit**. C'est aussi le seul corps du dépôt qui hérite du signal de fin de son père *et* décrémente son compte
 - feat : **Lumière, le seizième sort** — deux corps absents de `Blaze.c` : le sort `0x0047e260` et son globe `0x0047e370`. Son projectile est la **flèche magique** du sort 8, déjà écrite : le sort le moins coûteux en travail depuis le début
 - doc : **les trois sorts entretenus forment une échelle** — Wonder 2 PM par vingt images, Atchoum 4, Lumière 6. Même lecture de manette, même garde `CanSustainChannel_00475110`, même cadence sur l'horloge du monde `0x005f2cf0` : seul le prix change
 - doc : **le globe est un lance-flèches** — sa visée est mot pour mot celle de `TickMagicArrow_0047C910` (`ratan2` sur les écarts, `SquareRoot0` pour la distance à plat, cap dispersé sur douze bits) mais refaite **à chaque image** au lieu d'une seule fois. Trois dwords lui sont prêtés puis rendus — `+0x30` emporte le cap `+0x32`, `+0x04` le modèle — et le globe reprend ensuite son apparence
