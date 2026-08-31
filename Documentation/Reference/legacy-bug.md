@@ -1042,3 +1042,55 @@ laisse le `2` les suivre.
 ### Où porterait le correctif
 
 Remplacer la chute par un saut par-dessus `LAB_0044f24a`.
+
+---
+
+## LB-020 — Le fusible de secours du trait de « Sonde » ne peut pas sauter
+
+**Fonction** : `FUN_004487f0` (le trait de Sonde, sous-type `0xa2` de la table `0x00551f30`),
+relevé le 2026-08-31. Décompilé dans `Blaze.c`, confirmé au désassembleur.
+
+### Le symptôme
+
+La dernière instruction de la fonction est une sécurité : si le trait vit plus de 5 000 images
+(environ une minute et demie), il s'éteint de lui-même. Mais le compteur qu'elle lit est un
+**octet** :
+
+```
+00448c1d  mov  bl,[esi+43h]        <- lecture sur 8 bits
+00448c20  inc  bl
+00448c22  mov  al,bl
+00448c24  mov  [esi+43h],bl
+00448c27  and  eax,0FFh            <- et la comparaison est faite sur cet octet
+00448c2c  cmp  eax,1388h           <- 5000
+00448c31  jl   00448C39
+00448c33  and  dword [esi],7FFFFFFFh   <- inatteignable
+```
+
+`eax` est masqué à `0xff` juste avant la comparaison : la valeur comparée vaut au plus 255, donc
+jamais 5 000. La branche d'extinction est morte, et le compteur repasse par zéro toutes les 256
+images.
+
+### Pourquoi c'en est un
+
+Une comparaison à 5 000 n'a de sens que si le compteur peut l'atteindre. Le champ `+0x43` est
+manifestement un octet du bloc — les deux autres lectures de la fonction (`cmp byte [esi+43h],64h`)
+le traitent aussi comme tel —, mais la constante de garde, elle, a été écrite pour un compteur de
+16 bits. C'est un seuil qui n'a jamais été relu après un changement de largeur de champ.
+
+### Ce que ça change en jeu
+
+Rien de visible, et c'est probablement pourquoi personne ne l'a vu. Le chemin normal éteint le trait
+bien avant : passé la centième image, l'état `0x63` réduit son échelle de 200 par image et le tue en
+une trentaine d'images de plus. La sécurité ne servait qu'au cas où un trait resterait coincé dans un
+état antérieur — et dans ce cas-là, elle ne le sauverait pas.
+
+### Ce que la transcription fait
+
+`TickProbeRing_004487F0` écrit la comparaison telle quelle, masque compris, et laisse la branche
+inatteignable en place.
+
+### Où porterait le correctif
+
+Comparer le compteur à 255, ou l'élargir à 16 bits — un champ libre voisin serait nécessaire, le
+`+0x43` est un octet du bloc.

@@ -136,7 +136,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 1 | 1 | Sang pur | T-O-O | 12 | 23 | 12 | 0x1f | `0x00447DF0` | oui | **non** |
 | 1 | 2 | Renfort | C-O-C | 8 | 27 | 8 | 0x20 | `0x00448060` | oui | **non** |
 | 1 | 3 | Gnoukoulé | X-O-X | 8 | 30 | 8 | 0x21 | `0x00448300` | oui | **non** |
-| 1 | 4 | Sonde | C-X-O | 2 | 26 | 8 | 0x37 | `0x004484F0` | **non** | **non** |
+| 1 | 4 | Sonde | C-X-O | 2 | 26 | 8 | 0x37 | `0x004484F0` | oui | **non** |
 | 1 | 5 | Bobos finis | T-O-O-O-X-C-T | 42 | 35 | 32 | 0x23 | `0x004491F0` | **non** | **non** |
 | 1 | 6 | 3ème oeil | O-X-C | 2 | 34 | 16 | 0x38 | `0x00448EF0` | **non** | **non** |
 | 1 | 7 | Antidote | T-O-O-X-X-O | 16 | 37 | 16 | 0x25 | `0x00449590` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **33** |
-| a transcrire | **47** |
+| implementees (le gestionnaire existe) | **34** |
+| a transcrire | **46** |
 | lancees en jeu au moins une fois | **16** |
-| dette : implementees mais jamais lancees | **17** |
+| dette : implementees mais jamais lancees | **18** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -221,7 +221,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00447DF0` | 1 | oui | **non** | Sang pur |
 | `0x00448060` | 1 | oui | **non** | Renfort |
 | `0x00448300` | 1 | oui | **non** | Gnoukoulé |
-| `0x004484F0` | 1 | **non** | **non** | Sonde |
+| `0x004484F0` | 1 | oui | **non** | Sonde |
 | `0x00448EF0` | 1 | **non** | **non** | 3ème oeil |
 | `0x004491F0` | 1 | **non** | **non** | Bobos finis |
 | `0x00449590` | 1 | **non** | **non** | Antidote |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | oui | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **41** a transcrire.
+**74 gestionnaires distincts**, dont **40** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le

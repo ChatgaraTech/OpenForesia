@@ -4900,6 +4900,14 @@ public static unsafe partial class Blaze
             // Aucun enfant neuf : il partage l'etincelle 0xa7 et l'eclat 0xa0 avec lui.
             case 0x00448300: TickGnoukoule_00448300(record); return;
 
+            // SONDE, ecole 1 indice 4 — 2 500 octets pour deux PM. Huit traits en coordonnees
+            // spheriques, un embrasement qui tient la cible, et une etincelle par trait tous les
+            // quatre images.
+            case 0x004484F0: TickProbe_004484F0(record); return;
+            case 0x004487F0: TickProbeRing_004487F0(record); return;
+            case 0x00448C40: TickProbeBurst_00448C40(record); return;
+            case 0x00448E20: TickProbeMote_00448E20(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -39721,6 +39729,594 @@ public static unsafe partial class Blaze
                 *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
 
             EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    // =====================================================================
+    // SONDE — le trente-quatrieme sort, ecole 1 indice 4, sous-type 0x37
+    //
+    //   0x004484F0   LE SORT. Sous-type 0x37 de 0x00551c30, 704 octets. DECOMPILE dans Blaze.c.
+    //   0x004487B0   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x004487F0   LE TRAIT, sous-type 0xa2 de 0x00551f30, 1104 octets. HUIT. Decompile.
+    //   0x00448C40   L'EMBRASEMENT, sous-type 0xa3 de 0x00551f30, 510 octets. UN. Decompile.
+    //   0x00448E20   L'ETINCELLE, sous-type 0x97 de 0x00552230, 194 octets. ABSENTE de Blaze.c ;
+    //                relevee sous Legacy/Raw/Blaze/FUN_00448E20.asm.
+    //
+    // LE SORT LE PLUS GROS DE L'ECOLE 1 A CE JOUR, et le premier dont le trait tienne quatre etats
+    // successifs. Deux PM, et pourtant 2 500 octets de corps.
+    //
+    // LE SORT SE SERT DE SES PROPRES CHAMPS COMME D'UN PASSE-PLAT. +0x14, +0x16, +0x48 et +0x9a
+    // sont ecrits juste avant chaque appel a SpawnCastEntity_0047AAE0 pour que la copie des 0x27
+    // dwords les porte dans l'enfant, puis remis a leur role. Le cas de +0x16 est le plus net :
+    // c'est le COMPTEUR D'IMAGES du sort, et il sert de fourgon a quatre angles tires au hasard
+    // avant d'etre remis a zero. Rien dans la fonction ne signale ce double emploi.
+    //
+    // HUIT TRAITS EN QUATRE PAIRES, SUR LES QUATRE QUARTS DE TOUR. +0x48 vaut 0, 0x400, 0x800 puis
+    // 0xc00 ; a chaque quart, deux traits naissent avec le meme cap mais un modele different
+    // (+0x9a = 0x18 puis 0x19), et c'est ce modele qui decidera, cent images plus tard, de
+    // laquelle des deux fins le trait prend.
+    //
+    // LB : LE FUSIBLE DU TRAIT NE PEUT PAS SAUTER. Sa derniere instruction incremente le compteur
+    // OCTET +0x43 et le compare a 5000 : la comparaison est faite sur `eax` masque a 0xff, donc sur
+    // une valeur bornee a 255. La branche d'extinction de secours est morte. Seul le chemin normal
+    // — +0x43 passe 100 dans l'etat 0x63 — eteint un trait.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004487b0 @ 0x004487b0 — <b>poser l'effet 1 si la cible l'accepte</b>. Soixante
+    /// et un octets, decompilee dans <c>Blaze.c</c>. Quatrieme exemplaire de la meme enveloppe que
+    /// <see cref="HealTargetIfEligible_00447FE0"/>,
+    /// <see cref="ApplyStatusEffectIfEligible_00448210"/> et
+    /// <see cref="ApplyStatusEffectIfEligible_004484B0"/> : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="ApplyStatusEffect_0053B020"/> derriere.
+    /// </summary>
+    private static bool ApplyStatusEffectIfEligible_004487B0(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ApplyStatusEffect_0053B020(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00448e20 @ 0x00448e20 — <b>l'etincelle que les traits de Sonde laissent
+    /// tomber</b> : le sous-type <c>0x97</c>, creneau 151 de
+    /// <see cref="s_StaticEntityHandlers_00552230"/>. 194 octets, <b>absente de <c>Blaze.c</c></b>.
+    /// <see cref="TickProbeRing_004487F0"/> en seme une toutes les quatre images, dans ses deux
+    /// etats mobiles.
+    ///
+    /// <para>
+    /// <b>Elle naît a cote, pas dessus.</b> Trois tirages independants la deplacent de
+    /// <c>rand % 100 - 50</c> unites sur chacun des trois axes — un cube de cent unites de cote
+    /// autour du point donne. Elle monte ensuite de <c>0x5000</c> par image en retrecissant de
+    /// <c>0x190</c>, et s'eteint des que son echelle passe sous zero : <b>une dizaine d'images</b>.
+    /// </para>
+    /// <para>
+    /// <b>Sa teinte est portee par <c>+0x5c</c>.</b> Le trait pose ce champ a <c>9</c> ou <c>2</c>
+    /// juste avant de la faire naitre, uniquement pour qu'elle le recopie ici dans son
+    /// <c>+0x0a</c>, puis le remet aussitot a sa valeur de rayon.
+    /// </para>
+    /// </summary>
+    private static void TickProbeMote_00448E20(byte* record)
+    {
+        byte* e = record;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors00551528();
+            e[0x0a] = e[0x5c];                         // la teinte, passee par le champ de rayon
+            e[0x40] = 0;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x28) = 0x0fa0;
+            *(short*)(e + 0x2a) = 0x0fa0;
+            *(short*)(e + 0x10) = 1;
+
+            // Ghidra: FUN_00547140 trois fois — un cube de cent unites de cote.
+            *(int*)(e + 0x1c) += (CrtRand() % 100 - 0x32) << 0xc;
+            *(int*)(e + 0x20) += (CrtRand() % 100 - 0x32) << 0xc;
+            *(int*)(e + 0x24) += (CrtRand() % 100 - 0x32) << 0xc;
+        }
+
+        // Ghidra: LAB_00448ea5 — la naissance et la premiere image sont la meme passe.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(int*)(e + 0x20) += 0x5000;
+
+            *(short*)(e + 0x28) -= 0x190;
+            short scale = *(short*)(e + 0x28);
+            *(short*)(e + 0x2a) -= 0x190;
+
+            if (scale < 0)
+            {
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                *(uint*)e &= 0x7fffffff;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004487f0 @ 0x004487f0 — <b>le trait de Sonde</b> : le sous-type <c>0xa2</c>,
+    /// creneau 162 de <see cref="s_StaticEntityHandlers_00551f30"/>. 1104 octets, <b>decompilee
+    /// dans <c>Blaze.c</c></b>. Le sort en fait naitre <b>huit</b>, en quatre paires.
+    ///
+    /// <para>
+    /// <b>Il est en coordonnees spheriques, et il ne s'integre jamais.</b> A chaque image sa
+    /// position vaut <c>ancre + vecteur(cap +0x14, tangage +0x16, rayon +0x5c)</c>, l'ancre etant
+    /// le SORT — <c>+0x6c</c>, pas <c>+0x78</c> — releve de <c>0x3c000</c>. Le produit final n'est
+    /// <b>pas recadre</b> : deux decalages de douze bits pour trois multiplications, comme chez
+    /// <see cref="TickHolySpark_0044FE00"/>.
+    /// </para>
+    /// <para>
+    /// <b>Quatre etats, et le rayon est l'horloge des deux premiers.</b> Etat 1, l'approche : le
+    /// rayon converge vers <c>0x50000</c> d'un seizieme par image en partant de <c>0x3e8000</c>,
+    /// le cap avance de 100 et le tangage se redresse d'un trente-deuxieme ; l'etat passe a 2 des
+    /// que le rayon tombe sous <c>0x55000</c>. Etat 2, le rangement : cap et rotation convergent
+    /// vers <c>+0x44</c>, le cap d'arrivee que la naissance a fige a partir du cap de depart, et le
+    /// <c>+0x34</c> monte vers <c>0x1000</c> ; passe <c>0xf3c</c> l'etat passe a 3. Etat 3, la
+    /// pose, deux sons ; etat <c>0x63</c>, la sortie.
+    /// </para>
+    /// <para>
+    /// <b>Le modele decide de la fin.</b> <c>+0x04</c>, pose a la naissance depuis le <c>+0x9a</c>
+    /// que le sort a rempli, vaut <c>0x18</c> ou <c>0x19</c> selon le trait. Le <c>0x19</c> quitte
+    /// l'etat 3 en avancant son <c>+0x34</c> de 300 par image et s'arrete net a <c>0x640</c> ; le
+    /// <c>0x18</c> l'avance de <c>0x28</c> et attend <c>0x1130</c>. Une seule valeur, deux fins.
+    /// </para>
+    /// <para>
+    /// <b>Il seme une etincelle toutes les quatre images</b>, dans l'etat 1 et dans l'etat
+    /// <c>0x63</c>, en pretant son champ de rayon <c>+0x5c</c> pour porter la teinte
+    /// (<see cref="TickProbeMote_00448E20"/>) et en le restaurant juste apres.
+    /// </para>
+    /// <para>
+    /// <b>LB — son fusible de secours ne peut pas sauter.</b> La derniere instruction incremente le
+    /// compteur <b>octet</b> <c>+0x43</c> et compare le resultat, masque a <c>0xff</c>, a
+    /// <c>5000</c> : la branche d'extinction est inatteignable. Seul le chemin normal — <c>+0x43</c>
+    /// depassant 100 dans l'etat <c>0x63</c> — eteint un trait. Transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// <b>Sur les deux <c>CONCAT22</c> de la decompilation.</b> Ghidra rend deux expressions de
+    /// l'etat 2 avec la moitie haute d'un registre laissee par un <c>movsx</c> precedent. Elle vaut
+    /// <b>toujours zero ici</b> : l'etat 1 masque <c>+0x32</c> et <c>+0x34</c> sur douze bits a
+    /// chaque passe et s'execute forcement avant l'etat 2, y compris dans la passe ou il y bascule.
+    /// Rendu par ce que le calcul vaut.
+    /// </para>
+    /// </summary>
+    private static void TickProbeRing_004487F0(byte* record)
+    {
+        byte* e = record;
+
+        byte* origin = *(byte**)(e + 0x6c);            // le SORT, pas la cible
+        if (origin == null) origin = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_00448806
+        *(int*)(e + 0x50) = *(int*)(origin + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(origin + 0x20) + 0x3c000;
+        *(int*)(e + 0x58) = *(int*)(origin + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+
+            *(short*)(e + 0x28) = 6000;
+            *(short*)(e + 0x2a) = 6000;
+            *(short*)(e + 0x2c) = 6000;
+
+            e[0x04] = e[0x9a];                         // le modele, 0x18 ou 0x19
+            e[0x0a] = e[0x5c];                         // la teinte des etincelles
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x5c) = 0x3e8000;              // et le champ reprend son role de RAYON
+            *(short*)(e + 0x9a) = 0;
+
+            *(int*)(e + 0x44) = *(ushort*)(e + 0x14) & 0xfff;   // le cap d'arrivee
+            *(short*)(e + 0x98) = 0;
+        }
+
+        // Ghidra: LAB_00448871
+        if (*(short*)(e + 0x98) == 0 && *(short*)(e + 0x10) < 3)
+        {
+            Aud.PlaySoundEffect(0x0d, 0x5a9, 0x1300, 0x1300);
+        }
+
+        *(short*)(e + 0x98) += 1;
+
+        if (*(short*)(e + 0x10) != 0x63)
+        {
+            PlaceProbeRing(e, *(int*)(e + 0x54));
+            *(int*)(e + 0x5c) = ((0x50000 - *(int*)(e + 0x5c)) >> 4) + *(int*)(e + 0x5c);
+        }
+
+        // Ghidra: LAB_00448930 — l'approche.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int radius = ((0x50000 - *(int*)(e + 0x5c)) >> 4) + *(int*)(e + 0x5c);
+
+            *(short*)(e + 0x9a) += 1;
+            *(int*)(e + 0x5c) = radius;
+
+            *(short*)(e + 0x32) = (short)((*(short*)(e + 0x32) + 200) & 0xfff);
+            *(short*)(e + 0x34) = (short)((*(short*)(e + 0x34) + 100) & 0xfff);
+
+            if (*(short*)(e + 0x9a) > 3)
+            {
+                *(short*)(e + 0x9a) = 0;
+                DropProbeMote(e);
+                *(int*)(e + 0x5c) = radius;
+            }
+
+            // Ghidra: LAB_004489bb
+            *(short*)(e + 0x14) = (short)((*(short*)(e + 0x14) + 100) & 0xfff);
+            *(short*)(e + 0x16) =
+                (short)(((-(int)*(short*)(e + 0x16) >> 5) + *(short*)(e + 0x16)) & 0xfff);
+
+            if (*(int*)(e + 0x5c) < 0x55000) *(short*)(e + 0x10) = 2;
+        }
+
+        // Ghidra: LAB_004489f5 — le rangement sur le cap d'arrivee.
+        if (*(short*)(e + 0x10) == 2)
+        {
+            int landing = *(int*)(e + 0x44);
+
+            *(short*)(e + 0x14) =
+                (short)(((landing - *(short*)(e + 0x14)) >> 4) + *(short*)(e + 0x14));
+            *(short*)(e + 0x16) =
+                (short)((-(int)*(short*)(e + 0x16) >> 4) + *(short*)(e + 0x16));
+
+            short turned = (short)(((landing - *(short*)(e + 0x32)) >> 3) + *(short*)(e + 0x32));
+
+            // Ghidra: `mov [esi+32h],ax ; and eax,0xfff ; mov [esi+32h],ax` — la premiere
+            // ecriture est recouverte deux instructions plus loin. Transcrite telle quelle.
+            *(short*)(e + 0x32) = turned;
+            *(short*)(e + 0x32) = (short)(turned & 0xfff);
+
+            ushort spin = *(ushort*)(e + 0x34);
+            spin = (ushort)((((0x1000 - spin) >> 3) + spin) & 0xfff);
+            *(ushort*)(e + 0x34) = spin;
+
+            if (spin > 0xf3c)
+            {
+                *(short*)(e + 0x10) = 3;
+                *(short*)(e + 0x98) = 0;
+            }
+        }
+
+        // Ghidra: LAB_00448a70 — la pose, et les deux fins que le modele separe.
+        if (*(short*)(e + 0x10) == 3)
+        {
+            if (*(short*)(e + 0x98) == 1) Aud.PlaySoundEffect(0x0a, 0x6fd, 0x1300, 0x1300);
+            if (*(short*)(e + 0x98) == 6) Aud.PlaySoundEffect(0x0f, 0x100, 0x1300, 0x1300);
+
+            if (e[0x04] == 0x19)
+            {
+                ushort spin = (ushort)((*(short*)(e + 0x34) + 300) & 0xfff);
+                *(ushort*)(e + 0x34) = spin;
+
+                if (spin > 0x640 && spin < 2000)
+                {
+                    *(short*)(e + 0x34) = 0x640;
+                    *(short*)(e + 0x10) = 0x63;
+                }
+            }
+            else
+            {
+                // Ghidra: LAB_00448af1
+                *(short*)(e + 0x34) += 0x28;
+
+                if (*(short*)(e + 0x34) > 0x112f)
+                {
+                    *(short*)(e + 0x10) = 0x63;
+                    *(ushort*)(e + 0x34) &= 0xfff;
+                    *(int*)(e + 0x48) = 0;
+                }
+            }
+        }
+
+        // Ghidra: LAB_00448b12 — la sortie : la meme position, decalee du +0x48 qui s'ouvre.
+        if (*(short*)(e + 0x10) == 0x63)
+        {
+            PlaceProbeRing(e, *(int*)(e + 0x48) + *(int*)(e + 0x54));
+
+            int radius = *(int*)(e + 0x5c);
+            *(short*)(e + 0x9a) += 1;
+
+            if (*(short*)(e + 0x9a) > 3)
+            {
+                *(short*)(e + 0x9a) = 0;
+                DropProbeMote(e);
+                *(int*)(e + 0x5c) = radius;
+            }
+
+            // Ghidra: LAB_00448bde — le fondu, cent images apres la naissance.
+            if (e[0x43] > 100)
+            {
+                *(short*)(e + 0x32) += 200;
+                *(short*)(e + 0x28) -= 200;
+                *(short*)(e + 0x2c) -= 200;      // +0x2c, et non +0x2a : le binaire dit cela
+                *(int*)(e + 0x48) += 0xf000;
+
+                if (*(short*)(e + 0x28) < 0)
+                {
+                    *(short*)(e + 0x28) = 0;
+                    *(short*)(e + 0x2a) = 0;
+                    *(uint*)e &= 0x7fffffff;
+                }
+            }
+        }
+
+        // Ghidra: LAB_00448c1d — LB : compteur OCTET compare a 5000, la branche est morte.
+        e[0x43] += 1;
+        if ((e[0x43] & 0xff) >= 5000) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// La position spherique du trait de Sonde, ecrite deux fois dans <c>FUN_004487f0</c> — une
+    /// fois pour les etats 1 a 3, une fois pour l'etat <c>0x63</c> — a la hauteur pres. Le
+    /// <paramref name="baseY"/> vaut <c>+0x54</c> dans le premier cas et <c>+0x48 + +0x54</c> dans
+    /// le second.
+    ///
+    /// <para>Ghidra: <c>Ordinal_450</c> est le cosinus (winsys3d), <c>Ordinal_451</c> le sinus.
+    /// <b>Le produit final n'est pas recadre</b> : deux <c>sar 0xc</c> pour trois
+    /// multiplications.</para>
+    /// </summary>
+    private static void PlaceProbeRing(byte* e, int baseY)
+    {
+        int pitch = *(short*)(e + 0x16);
+        int yaw = *(short*)(e + 0x14);
+        int radius = *(int*)(e + 0x5c) >> 0xc;
+
+        *(int*)(e + 0x1c) =
+            (Winsys3d.GetCosTableEntry(pitch) * radius >> 0xc)
+            * (int)Winsys3d.GetSinTableEntry(yaw) + *(int*)(e + 0x50);
+
+        *(int*)(e + 0x24) =
+            (Winsys3d.GetCosTableEntry(pitch) * radius >> 0xc)
+            * Winsys3d.GetCosTableEntry(yaw) + *(int*)(e + 0x58);
+
+        *(int*)(e + 0x20) = (int)Winsys3d.GetSinTableEntry(pitch) * radius + baseY;
+    }
+
+    /// <summary>
+    /// Le semis d'une etincelle par le trait de Sonde, ecrit deux fois dans <c>FUN_004487f0</c>.
+    /// Il prete <c>+0x5c</c> — son champ de rayon — pour porter la teinte que
+    /// <see cref="TickProbeMote_00448E20"/> recopiera ; l'appelant le restaure aussitot.
+    ///
+    /// <para><b>Le second test est mort pour Sonde</b> : <c>+0x0a</c> vaut le <c>+0x5c</c> que le
+    /// sort avait pose, soit <c>0x0e</c> pour les huit traits. La valeur <c>0x0d</c> attend un
+    /// autre appelant.</para>
+    /// </summary>
+    private static void DropProbeMote(byte* e)
+    {
+        if (e[0x0a] == 0x0e) *(int*)(e + 0x5c) = 9;
+        if (e[0x0a] == 0x0d) *(int*)(e + 0x5c) = 2;
+
+        SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x97, 0, -1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00448c40 @ 0x00448c40 — <b>l'embrasement de Sonde</b> : le sous-type
+    /// <c>0xa3</c>, creneau 163 de <see cref="s_StaticEntityHandlers_00551f30"/>. 510 octets,
+    /// <b>decompilee dans <c>Blaze.c</c></b>. Le sort n'en fait naitre <b>qu'un</b>, sur la cible.
+    ///
+    /// <para>
+    /// <b>Il tient sa victime.</b> Tant qu'elle ne porte aucun bit de <c>0x50000000</c> il recopie
+    /// sa position et lui pose <c>0x1000</c> — l'immobilisation ; sinon c'est lui qui se marque
+    /// <c>0x2000000</c>. <b>Sa hauteur vient de <c>+0x60</c> de la cible</b>, et non de son
+    /// <c>+0x20</c> : le seul corps de sort transcrit qui lise ce champ-la pour se placer.
+    /// </para>
+    /// <para>
+    /// <b>Sa taille est celle de la victime</b> : <c>hauteur &#215; 30</c> par
+    /// <see cref="StatusBubbleHeight_00538BC0"/>, bornee entre <c>0x1000</c> et <c>30000</c>. Ce
+    /// plafond est recalcule a chaque image, meme dans les etats qui ne s'en servent pas.
+    /// </para>
+    /// <para>
+    /// Quatre etats sur un seul compteur : l'ouverture, qui converge d'un quart par image vers
+    /// cette taille et vers une rotation de <c>0x800</c> et dure quatorze images ; l'attente, cent
+    /// images ; la fermeture, qui ramene tout vers zero au quart et au huitieme. Il s'eteint a la
+    /// <c>0x96</c>e image et <b>relache alors sa victime</b>.
+    /// </para>
+    /// </summary>
+    private static void TickProbeBurst_00448C40(byte* record)
+    {
+        byte* e = record;
+
+        uint* victim = *(uint**)(e + 0x78);
+        if (victim == null) victim = (uint*)Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_00448c54
+        if ((*victim & 0x50000000) == 0)
+        {
+            *(int*)(e + 0x1c) = *(int*)((byte*)victim + 0x1c);
+            *(int*)(e + 0x20) = *(int*)((byte*)victim + 0x60) + 0x5000;   // +0x60, pas +0x20
+            *(int*)(e + 0x24) = *(int*)((byte*)victim + 0x24);
+
+            *victim |= 0x1000;
+        }
+        else
+        {
+            *(uint*)e |= 0x2000000;
+        }
+
+        int size = StatusBubbleHeight_00538BC0(victim) * 0x1e;
+        if (size < 0x1000) size = 0x1000;
+        if (size > 30000) size = 30000;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x2b;
+            e[0x0a] = e[0x5c];
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0x1000;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x32) = 0;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            if (*(short*)(e + 0x98) == 0)
+            {
+                Aud.PlaySoundEffect(0x2c, 0x27f, 0x1200, 0x1200);
+                *(short*)(e + 0x98) += 1;
+            }
+
+            if (*(short*)(e + 0x98) == 1)
+            {
+                Aud.PlaySoundEffect(0x2f, 0x200, 0x1200, 0x1200);
+                *(short*)(e + 0x98) += 1;
+            }
+
+            *(short*)(e + 0x32) += (short)((0x800 - *(short*)(e + 0x32)) >> 2);
+            *(short*)(e + 0x28) += (short)((size - *(short*)(e + 0x28)) >> 2);
+            *(short*)(e + 0x2c) += (short)((size - *(short*)(e + 0x2c)) >> 2);
+
+            if (*(short*)(e + 0x16) > 0x0d)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x16) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2 && *(short*)(e + 0x16) > 100) *(short*)(e + 0x10) = 3;
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(short*)(e + 0x32) += (short)(-(int)*(short*)(e + 0x32) >> 2);
+            *(short*)(e + 0x28) += (short)(-(int)*(short*)(e + 0x28) >> 3);
+            *(short*)(e + 0x2c) += (short)(-(int)*(short*)(e + 0x2c) >> 3);
+        }
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 0x95)
+        {
+            *(uint*)e &= 0x7fffffff;
+            *victim &= 0xffffefff;                     // la victime est relachee
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004484f0 @ 0x004484f0 — <b>Sonde</b> : le sous-type <c>0x37</c>, creneau 55 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>cinquieme fiche de l'ecole 1</b>. 704
+    /// octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne fait rien apres la premiere image, ou presque.</b> Tout son travail tient dans le
+    /// bloc de naissance : huit traits, un embrasement, l'immobilisation du lanceur et la teinte du
+    /// decor. Les 160 images suivantes n'ajoutent qu'une etincelle <c>0xa9</c> une image sur deux,
+    /// entre la 80e et la 140e.
+    /// </para>
+    /// <para>
+    /// <b>Ses propres champs servent de passe-plat.</b> <c>+0x14</c>, <c>+0x16</c>, <c>+0x48</c> et
+    /// <c>+0x9a</c> sont ecrits juste avant chaque <see cref="SpawnCastEntity_0047AAE0"/> pour que
+    /// la copie des <c>0x27</c> dwords les porte dans l'enfant. Le cas de <c>+0x16</c> est le plus
+    /// net : c'est le <b>compteur d'images</b> du sort, et il transporte quatre angles tires au
+    /// hasard avant d'etre remis a zero.
+    /// </para>
+    /// <para>
+    /// <b>Huit traits en quatre paires, sur les quatre quarts de tour.</b> Le cap de depart
+    /// <c>+0x14</c> vaut le <c>+0x32</c> de la cible plus <c>0</c>, <c>0x400</c>, <c>0x800</c> et
+    /// <c>0xc00</c> ; le tangage <c>+0x16</c> est tire au hasard sur le tour entier, un tirage par
+    /// paire ; et les deux traits d'une paire ne different que par leur modele, <c>0x18</c> puis
+    /// <c>0x19</c>, ce qui leur donnera deux fins differentes.
+    /// </para>
+    /// <para>
+    /// <b>Il immobilise son lanceur puis le relache en deux temps.</b> Le bit <c>0x80</c> est pose
+    /// a la naissance, efface a la <c>0x78</c>e image, puis <b>efface une seconde fois</b> a la
+    /// <c>0xa0</c>e — et cette seconde branche est la seule qui pose l'effet. L'ecriture de trop
+    /// est sans consequence.
+    /// </para>
+    /// <para>
+    /// <b>L'ordre de la fin est l'inverse de celui de ses voisins.</b> Renfort et Gnoukoule posent
+    /// l'effet puis s'eteignent ; Sonde s'eteint d'abord — <see cref="EndSpellAndResetDecor_00448020"/>
+    /// — et recopie sa paire famille/indice ensuite. Sans consequence, l'extinction ne touchant que
+    /// le mot d'etat et le mode du decor.
+    /// </para>
+    /// </summary>
+    private static void TickProbe_004484F0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_00448516 — la position de la cible, sans relevement.
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            *(int*)(e + 0x5c) = 0x0e;                  // la teinte que les traits porteront
+
+            // Quatre paires, un quart de tour d'ecart, un tangage tire par paire.
+            for (int quarter = 0; quarter < 4; quarter++)
+            {
+                *(short*)(e + 0x14) = (short)(*(short*)(target + 0x32) + quarter * 0x400);
+                *(short*)(e + 0x16) = (short)(CrtRand() % 0x1000);   // Ghidra: FUN_00547140
+                *(int*)(e + 0x48) = quarter * 0x400;
+
+                *(short*)(e + 0x9a) = 0x18;
+                SpawnCastEntity_0047AAE0(e, 0xa2, 0, -1);
+
+                *(short*)(e + 0x9a) = 0x19;
+                SpawnCastEntity_0047AAE0(e, 0xa2, 0, -1);
+            }
+
+            *(short*)(e + 0x16) = 0;                   // le champ redevient le compteur d'images
+            *(int*)(e + 0x5c) = 9;                     // et celui-ci la teinte de l'embrasement
+
+            SpawnCastEntity_0047AAE0(e, 0xa3, 0, -1);
+
+            **(uint**)(e + 0x74) |= 0x80;              // le lanceur est immobilise
+
+            // Le decor vire au violet, et le mot de mode passe a 2 — propre a cette ecole.
+            *(ushort*)Mem.Arena(0x005e9160) = 0xa0;
+            *(ushort*)Mem.Arena(0x005e9162) = 0xa0;
+            *(ushort*)Mem.Arena(0x005e9164) = 0xdc;
+            *(ushort*)Mem.Arena(0x005e9166) = 2;
+        }
+
+        // Ghidra: LAB_00448717 — une etincelle une image sur deux, de la 80e a la 140e.
+        if (*(short*)(e + 0x16) >= 0x50)
+        {
+            *(short*)(e + 0x14) = 0x50;                // le rayon que l'etincelle 0xa9 tirera
+            *(short*)(e + 0x9a) = 9;
+
+            if (*(short*)(e + 0x16) < 0x8c && (e[0x16] & 1) != 0)
+            {
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            }
+        }
+
+        // Ghidra: LAB_00448752
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) >= 0x78) **(uint**)(e + 0x74) &= 0xffffff7f;
+
+        if (*(short*)(e + 0x16) >= 0xa0)
+        {
+            **(uint**)(e + 0x74) &= 0xffffff7f;        // deja efface vingt images plus tot
+            EndSpellAndResetDecor_00448020(e);
+
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ApplyStatusEffectIfEligible_004487B0(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
         }
     }
 
