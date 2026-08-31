@@ -4776,6 +4776,11 @@ public static unsafe partial class Blaze
             case 0x0047D270: TickFlameWallEmber_0047D270(record); return;
             case 0x0047D2A0: TickFlameWallColumn_0047D2A0(record); return;
 
+            // COUP DE JUS, ecole 0 indice 11 — la foudre est une polyligne : l'arc pose trois
+            // segments bout a bout en une seule image, et chacun frappe sur sa propre longueur.
+            case 0x0047D330: TickLightningArc_0047D330(record); return;
+            case 0x0047D470: TickLightningBolt_0047D470(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -32074,6 +32079,179 @@ public static unsafe partial class Blaze
         if ((short)frame >= *(short*)(e + 0x1a)) e[0x40] = 0;
 
         *(ushort*)(e + 0x10) = (ushort)(age + 1);
+    }
+
+    // =====================================================================
+    // COUP DE JUS — le douzieme sort, ecole 0 indice 11, sous-type 0x0b
+    //
+    // Deux corps neufs. Le halo qu'il pose sur sa victime est celui de Boule de lumiere, deja
+    // ecrit — troisieme sort d'affilee a reutiliser un corps du depot.
+    //
+    //   0x0047D330   L'ARC. Sous-type 0x0b de 0x00551c30, 310 octets. UNE SEULE IMAGE : il pose
+    //                trois segments bout a bout, chacun devie au hasard, et s'eteint.
+    //   0x0047D470   LE SEGMENT, sous-type 0x75 de 0x00551f30, 395 octets. Il ne bouge pas ; il
+    //                clignote sur place et frappe.
+    //
+    // LA FOUDRE EST UNE POLYLIGNE. L'arc ne lance pas un projectile : il MARCHE. A chaque tour de
+    // sa boucle de trois il tire une deviation, tire une longueur, engendre un segment, puis
+    // AVANCE de cette longueur sur le nouveau cap. Les trois segments se touchent donc bout a bout
+    // et forment une ligne brisee — c'est tout le dessin de l'eclair.
+    //
+    // ET LA PORTEE DU SEGMENT EST SA LONGUEUR. Son echelle X vaut `longueur << 12 / 250`, et sa
+    // sonde s'en deduit : l'avance vaut -(echelle >> 5) et la profondeur echelle >> 4. Un segment
+    // long frappe loin, un court frappe court. C'est la deuxieme fois qu'une sonde varie — la
+    // premiere etait l'ombre de Tenebres, qui suivait sa propre croissance.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047d330 @ 0x0047d330 — <b>Coup de jus</b> : le sous-type <c>0x0b</c>, creneau 11
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/>. 310 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il vit une seule image et pose trois segments bout a bout.</b> A chaque tour : une
+    /// deviation tiree sur <c>0x1c0</c>, <b>relative a la precedente</b> (le binaire retranche
+    /// l'ecart cumule avant d'ajouter le nouveau, ce qui fait zigzaguer l'arc au lieu de le courber
+    /// toujours du meme cote), une longueur de <c>0x100</c> a <c>0x1ff</c>, un modele tire parmi
+    /// trois (8, 9 ou 10) et deux echelles au hasard. Puis il <b>avance</b> de la longueur sur le
+    /// nouveau cap, et recommence.
+    /// </para>
+    /// <para>
+    /// <b>L'echelle X du segment est sa longueur</b>, ramenee par une division par 250 —
+    /// <c>imul 0x10624DD3</c> puis <c>sar edx,4</c>, l'idiome du compilateur. C'est ce qui fait
+    /// que le trait dessine mesure exactement la distance parcourue.
+    /// </para>
+    /// </summary>
+    private static void TickLightningArc_0047D330(byte* record)
+    {
+        byte* e = record;
+
+        *(uint*)(e + 0x38) = 0x00f0f0f0;
+
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+        *(int*)(e + 0x20) += (height & ~1) << 0xb;
+
+        Aud.PlayPositionalSound(0x26, 0x653, 0x1200, (int*)(e + 0x1c));
+
+        *(ushort*)(e + 0x32) += 0x400;
+
+        int baseHeading = *(short*)(e + 0x32);
+        int drift = 0;
+
+        for (int segment = 0; segment < 3; segment++)
+        {
+            // La deviation est RELATIVE : l'ecart precedent est retranche du nouveau tirage, donc
+            // l'arc zigzague au lieu de tourner toujours du meme cote.
+            drift = (CrtRand() & 0x1c0) - drift - 0x100;
+            *(short*)(e + 0x32) = (short)(baseHeading + drift);
+
+            int length = (CrtRand() & 0xff) + 0x100;
+
+            // `imul 0x10624DD3 ; sar edx,4` plus la correction de signe : une division par 250.
+            *(short*)(e + 0x28) = (short)((length << 0xc) / 250);
+            *(short*)(e + 0x2a) = (short)((CrtRand() & 0xfff) + 0x2000);
+            *(short*)(e + 0x2c) = (short)((CrtRand() & 0xfff) + 0x2800);
+            e[0x04] = (byte)(CrtRand() % 3 + 8);       // trois modeles d'eclair
+
+            SpawnCastEntity_0047AAE0(e, 0x75, e[0x0b], -1);
+
+            // Et il marche jusqu'au bout du segment qu'il vient de poser.
+            int heading = *(short*)(e + 0x32) - 0x400;
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * length;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * length;
+        }
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047d470 @ 0x0047d470 — <b>le segment de Coup de jus</b> : le sous-type
+    /// <c>0x75</c>, creneau 117 de <see cref="s_StaticEntityHandlers_00551f30"/>. 395 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne bouge pas.</b> Il reste ou l'arc l'a pose et se contente de <b>clignoter</b> :
+    /// modele et deux echelles retires au hasard <b>a chaque image</b>, ce qui donne le
+    /// grouillement de l'eclair. La teinte perd <c>0x101010</c> par image et c'est elle, une fois
+    /// nulle, qui l'eteint — seize images.
+    /// </para>
+    /// <para>
+    /// <b>Sa sonde se deduit de sa taille, et de deux manieres.</b> A la naissance, l'avance et la
+    /// profondeur viennent de l'echelle X que l'arc lui a donnee — donc de la longueur du segment.
+    /// A chaque image, la demi-largeur et l'ouverture viennent des deux echelles fraichement
+    /// tirees. La zone frappee suit donc exactement le trait dessine, image par image.
+    /// </para>
+    /// <para>
+    /// <b>Il immobilise le lanceur</b> a sa naissance et le relache en mourant : les trois segments
+    /// posent et relachent la meme marque, le dernier a s'eteindre libere.
+    /// </para>
+    /// <para>
+    /// La marque posee sur la victime est le <c>0x49</c> de
+    /// <see cref="TickLightHalo_0047B3A0"/> — celui de Boule de lumiere, avec son atlas
+    /// <see cref="s_Descriptors_00551A60"/>. Le segment se range en <c>+0x78</c> avant de
+    /// l'engendrer, pour que le halo s'accroche a la victime et non a lui.
+    /// </para>
+    /// </summary>
+    private static void TickLightningBolt_0047D470(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { -0x0400, -0x0040, 0x0040, 0x0080, 0x0000, 0x0180 };
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            *(uint*)caster |= 0x80;                    // le lanceur est immobilise
+
+            *(ushort*)(e + 0x36) = (ushort)((*(ushort*)(e + 0x36) & 0xfffe) | 4);
+            *(uint*)e |= 0x80;
+            *(ushort*)(e + 0x10) += 1;
+
+            // L'avance et la profondeur viennent de la LONGUEUR du segment, une fois pour toutes.
+            short scale = *(short*)(e + 0x28);
+            probe[5] = (short)(scale >> 4);
+            probe[1] = (short)-(scale >> 5);
+        }
+
+        // Ghidra: LAB_0047d4eb — le clignotement, retire a chaque image.
+        e[0x04] = (byte)(CrtRand() % 3 + 8);
+        *(short*)(e + 0x2a) = (short)((CrtRand() & 0xfff) + 0x2000);
+        *(short*)(e + 0x2c) = (short)((CrtRand() & 0xfff) + 0x2800);
+
+        // Et la demi-largeur et l'ouverture suivent les deux echelles de cette image.
+        probe[2] = (short)(*(short*)(e + 0x2c) >> 7);
+        probe[4] = (short)(*(short*)(e + 0x2a) >> 6);
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            // Le halo s'accroche a la VICTIME : c'est +0x78 qui le lui dit.
+            *(byte**)(e + 0x78) = victim;
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551A60(), 0x49, e[0x0b], -1);
+
+            int push = *(short*)(e + 0x32);
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+
+            Aud.PlayPositionalSound(0x14, 0x800, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047d5d6 — la teinte epuisee relache le lanceur et eteint le segment.
+        uint tint;
+        unchecked { tint = *(uint*)(e + 0x38) + 0xffefeff0; }   // -0x101010
+        *(uint*)(e + 0x38) = tint;
+
+        if (tint == 0)
+        {
+            *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;
+            *(uint*)e = 0;
+        }
     }
 
     /// <summary>
