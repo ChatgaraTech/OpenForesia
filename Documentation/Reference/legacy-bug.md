@@ -1094,3 +1094,56 @@ inatteignable en place.
 
 Comparer le compteur à 255, ou l'élargir à 16 bits — un champ libre voisin serait nécessaire, le
 `+0x43` est un octet du bloc.
+
+---
+
+## LB-021 — « Bobos finis » décide d'une étincelle sur un mot de pile que rien n'a écrit
+
+**Fonction** : `FUN_004491f0` (Bobos finis, école 1 indice 5, sous-type `0x23`), relevé le
+2026-08-31. Absente de `Blaze.c` — trouvée au désassembleur.
+
+### Le symptôme
+
+Le prologue réserve huit octets de locaux, et la fonction n'en écrit qu'un :
+
+```asm
+004491f0  sub  esp,8              <- deux mots de locaux : [esp+10h] et [esp+14h]
+...
+0044927b  mov  dword [esp+10h],4  <- le premier est le compteur de boucle
+```
+
+`[esp+0x14]` n'est écrit **nulle part** dans les 822 octets. Il est lu une seule fois, en mot, et
+sert de condition à un semis :
+
+```asm
+00449421  cmp  word [esp+14h],3Ch     <- lecture d'un local jamais écrit
+...
+00449436  jge  0044944Bh              <- ≥ 60 : pas d'étincelle
+00449438  push 0FFFFFFFFh             <- < 60 : une étincelle 0xa9
+```
+
+### Pourquoi c'en est un
+
+Un local jamais écrit vaut ce que le dernier appel de même profondeur a laissé sur la pile. La
+comparaison à `0x3c` — soixante, la valeur d'une temporisation — a toutes les allures d'un test
+écrit pour un compteur qui existait ailleurs et qui n'a jamais été relié ici. Aucune lecture ne rend
+ce code correct : la branche est décidée par du bruit.
+
+### Ce que ça change en jeu
+
+Peu de chose, et de façon invisible. La seconde étincelle du même bloc est tirée juste après, une
+fois sur sept ; celle-ci fait donc varier la densité du scintillement autour d'un membre soigné,
+sans jamais toucher au soin lui-même. Le résultat est stable pour un chemin d'appel donné — la pile
+est déterministe —, ce qui explique que ça n'ait pas l'air aléatoire en jouant.
+
+### Ce que la transcription fait
+
+`TickHealAll_004491F0` déclare ce mot à **zéro** plutôt que d'inventer une valeur, sur le même
+principe que LB-015 : le chemin fautif est conservé, la condition reste visible, et la branche est
+donc toujours prise dans OpenForesia. C'est une déviation assumée — la valeur d'origine n'existe
+pas, elle dépend de ce que l'appelant avait laissé.
+
+### Où porterait le correctif
+
+Initialiser le local, ou supprimer le test et semer l'étincelle inconditionnellement — ce que fait
+déjà le port, par construction.

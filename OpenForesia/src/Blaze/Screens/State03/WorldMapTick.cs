@@ -4908,6 +4908,10 @@ public static unsafe partial class Blaze
             case 0x00448C40: TickProbeBurst_00448C40(record); return;
             case 0x00448E20: TickProbeMote_00448E20(record); return;
 
+            // BOBOS FINIS, ecole 1 indice 5 — Sang pur sur les quatre emplacements du groupe, avec
+            // le soin PARTAGE au lieu du soin simple. Aucun corps d'enfant neuf.
+            case 0x004491F0: TickHealAll_004491F0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -40318,6 +40322,250 @@ public static unsafe partial class Blaze
             ApplyStatusEffectIfEligible_004487B0(
                 *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
         }
+    }
+
+    // =====================================================================
+    // BOBOS FINIS — le trente-cinquieme sort, ecole 1 indice 5, sous-type 0x23
+    //
+    //   0x004491F0   LE SORT. Sous-type 0x23 de 0x00551c30, 822 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_004491F0.asm.
+    //   0x00449530   LE SOIN PARTAGE SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x00449570   LE COMPTAGE DES ENTITES D'EFFET VIVANTES. Trente et un octets, decompile.
+    //
+    // AUCUN CORPS D'ENFANT NEUF, pour la deuxieme fois de l'ecole : l'etincelle 0xa9 est celle de
+    // la bouffee et la bille 0x70 celle d'Enchant. Les deux etaient deja ecrites pour Sang pur.
+    //
+    // C'EST SANG PUR SUR LES QUATRE MEMBRES. La seconde moitie de la fonction est, instruction pour
+    // instruction, le bloc de bille de TickPureBlood_00447DF0 — meme modele 0x3f, meme +0x48 a
+    // 0x50000, memes deux tirages en +0x32 et +0x34, meme rayon 0xc8 — mais executee une fois par
+    // membre eligible au lieu d'une fois pour la cible. Le sort a ete ecrit en recopiant son cadet
+    // de trois fiches et en enroulant une boucle autour.
+    //
+    // DEUX BALAYAGES DU GROUPE, ET UN MASQUE ENTRE LES DEUX. Le premier, a la naissance, tente le
+    // soin sur chacun des quatre emplacements et note dans +0x98 le bit de ceux qui l'ont refuse.
+    // Le second, une image sur deux pendant quarante images, ne decore que ceux dont le bit est
+    // absent : un membre que le soin n'a pas pris ne recoit pas non plus les etincelles.
+    //
+    // LE SOIN EST LE SOIN PARTAGE, PAS LE SOIN SIMPLE. 0x00449530 mene a HealPartyShare_0053CB30,
+    // l'entree 44 — celle qui DIVISE le montant par le nombre de soignables. Appelee quatre fois de
+    // suite, une par membre. Quarante-deux PM pour cela.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00449530 @ 0x00449530 — <b>poser le soin partage si la cible l'accepte</b>.
+    /// Soixante et un octets, decompilee dans <c>Blaze.c</c>. Cinquieme exemplaire de la meme
+    /// enveloppe que <see cref="HealTargetIfEligible_00447FE0"/> et ses sœurs : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="HealPartyShare_0053CB30"/> derriere.
+    ///
+    /// <para><b>Celle-ci, en revanche, est lue.</b> C'est la seule des cinq dont l'appelant regarde
+    /// le resultat : <see cref="TickHealAll_004491F0"/> s'en sert pour marquer, dans son
+    /// <c>+0x98</c>, les emplacements que le soin a refuses.</para>
+    /// </summary>
+    private static bool HealPartyShareIfEligible_00449530(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return HealPartyShare_0053CB30(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00449570 @ 0x00449570 — <b>combien d'entites d'effet vivent</b> : elle balaie les
+    /// <c>0x80</c> enregistrements de <c>DAT_005f2d40</c> et compte ceux qui portent
+    /// <c>0x80000000</c>. Trente et un octets, decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Son seul appelant jette le resultat.</b> <see cref="TickHealAll_004491F0"/> l'appelle en
+    /// premiere instruction, range le compte dans un emplacement de pile — l'un des arguments que
+    /// l'appelant avait empiles — et ne le relit jamais. La fonction ne lisant que de la memoire,
+    /// l'appel entier est sans effet. L'intention lisible est un plafond au nombre d'etincelles
+    /// semees, qui n'a jamais ete cable.
+    /// </para>
+    /// </summary>
+    private static int CountLiveStatusEntities_00449570()
+    {
+        int live = 0;
+        byte* slot = Mem.Entity(0x005f2d40);
+
+        for (int index = 0; index < 0x80; index++, slot += 0x9c)
+        {
+            if ((*(uint*)slot & 0x80000000) != 0) live++;
+        }
+
+        return live;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004491f0 @ 0x004491f0 — <b>Bobos finis</b> : le sous-type <c>0x23</c>, creneau 35
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>sixieme fiche de l'ecole 1</b>. 822
+    /// octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickPureBlood_00447DF0"/> sur les quatre emplacements du groupe.</b> Sa
+    /// seconde moitie est le bloc de bille de Sang pur instruction pour instruction — modele
+    /// <c>0x3f</c>, <c>+0x48</c> a <c>0x50000</c>, les deux memes tirages en <c>+0x32</c> et
+    /// <c>+0x34</c>, rayon <c>0xc8</c> — enroule dans une boucle sur les quatre membres.
+    /// </para>
+    /// <para>
+    /// <b>Deux balayages, et un masque entre eux.</b> Le premier, a la naissance, tente le soin sur
+    /// chaque emplacement vivant et non mourant, et note dans <c>+0x98</c> le bit de ceux qui l'ont
+    /// <b>refuse</b> ; les autres recoivent aussitot deux etincelles. Le second, une image sur deux
+    /// pendant quarante images, saute les emplacements dont le bit est pose : un membre que le soin
+    /// n'a pas pris n'est pas decore non plus.
+    /// </para>
+    /// <para>
+    /// <b>Le soin est le soin PARTAGE.</b> <see cref="HealPartyShareIfEligible_00449530"/> mene a
+    /// l'entree 44, celle qui divise le montant par le nombre de soignables — et elle est appelee
+    /// quatre fois de suite, une par emplacement. Sang pur, lui, appelle le soin simple une fois.
+    /// </para>
+    /// <para>
+    /// <b>Il recopie sa paire famille/indice sur le lanceur a chaque tour de boucle</b>, et non une
+    /// fois avant : quatre ecritures identiques, dont trois sans objet.
+    /// </para>
+    /// <para>
+    /// <b>LB-021 — une des deux etincelles du second balayage est commandee par de la pile
+    /// morte.</b> Le prologue reserve huit octets de locaux dont un seul est ecrit ; l'autre est lu
+    /// une fois, en mot, et compare a <c>0x3c</c> pour decider d'un semis. Voir
+    /// <c>Documentation/Reference/legacy-bug.md</c>. Le port declare ce mot a zero, ce qui prend la
+    /// branche a tous les coups.
+    /// </para>
+    /// </summary>
+    private static void TickHealAll_004491F0(byte* record)
+    {
+        byte* e = record;
+
+        // Ghidra: `call 00449570h ; mov [esp+20h],eax` — le compte est range dans un emplacement
+        // de pile et jamais relu. L'appel ne lit que de la memoire : il est sans effet.
+        CountLiveStatusEntities_00449570();
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_00449222
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x14) = 0x50;      // le rayon que l'etincelle 0xa9 tirera
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x9a) = 1;
+            *(short*)(e + 0x98) = 0;         // le masque des emplacements qui refuseront
+
+            // Ghidra: LAB_00449283 — le premier balayage : le soin, quatre fois.
+            byte* slot = Inp.s_SlotFlags_005e93c0;
+
+            for (int member = 0; member < 4; member++, slot += 0x9c)
+            {
+                uint flags = *(uint*)slot;
+
+                if ((flags & 0x80000000) == 0) continue;
+                if ((flags & 0x50000000) != 0) continue;
+
+                *(byte**)(e + 0x78) = slot;
+
+                // La paire famille/indice passe au lanceur — a chaque tour, et non une fois.
+                byte* caster = *(byte**)(e + 0x74);
+                caster[6] = e[6];
+                caster[7] = e[7];
+
+                if (HealPartyShareIfEligible_00449530(
+                        *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0))
+                {
+                    // Ghidra: LAB_004492f8 — refuse : on note le bit et on ne decore pas.
+                    *(short*)(e + 0x98) |= (short)(1 << member);
+                    continue;
+                }
+
+                *(int*)(e + 0x1c) = *(int*)(slot + 0x1c);
+                *(int*)(e + 0x20) = *(int*)(slot + 0x20);
+                *(int*)(e + 0x24) = *(int*)(slot + 0x24);
+
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            }
+
+            // Le decor vire au violet, et le mot de mode passe a 2 — propre a cette ecole.
+            *(ushort*)Mem.Arena(0x005e9160) = 0x82;
+            *(ushort*)Mem.Arena(0x005e9162) = 0x82;
+            *(ushort*)Mem.Arena(0x005e9164) = 0xc8;
+            *(ushort*)Mem.Arena(0x005e9166) = 2;
+        }
+
+        // Ghidra: LAB_0044934b — quatre sons, dont trois sur la meme voix.
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x30, 0x200, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x2f, 0x653, 0x1500, 0x1500);
+        if (*(short*)(e + 0x16) == 0x0c) Aud.PlaySoundEffect(0x2f, 0x800, 0x1500, 0x1500);
+        if (*(short*)(e + 0x16) == 0x16) Aud.PlaySoundEffect(0x2f, 0xbfc, 0x1500, 0x1500);
+
+        // Ghidra: LAB_004493ca — le second balayage, une image sur deux.
+        if ((e[0x16] & 1) != 0)
+        {
+            byte* slot = Inp.s_SlotFlags_005e93c0;
+
+            for (int member = 0; member < 4; member++, slot += 0x9c)
+            {
+                uint flags = *(uint*)slot;
+
+                if ((flags & 0x80000000) == 0) continue;
+                if ((flags & 0x50000000) != 0) continue;
+                if (((1 << member) & (int)*(short*)(e + 0x98)) != 0) continue;
+
+                *(short*)(e + 0x14) = 0x50;
+                *(byte**)(e + 0x78) = slot;
+
+                *(int*)(e + 0x1c) = *(int*)(slot + 0x1c);
+                *(int*)(e + 0x20) = *(int*)(slot + 0x20);
+                *(int*)(e + 0x24) = *(int*)(slot + 0x24);
+
+                // LB-021 : le binaire teste ici un mot de pile que rien n'a ecrit. Declare a zero,
+                // ce qui prend la branche — voir legacy-bug.md.
+                short uninitialised = 0;
+                if (uninitialised < 0x3c)
+                {
+                    SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+                }
+
+                // Ghidra: LAB_0044944b — une etincelle de plus une fois sur sept.
+                if (CrtRand() % 7 == 1)          // Ghidra: FUN_00547140
+                {
+                    SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+                }
+
+                // Ghidra: LAB_00449471 — le bloc de bille de Sang pur, verbatim.
+                e[0x04] = 0x3f;                            // le modele, celui des billes d'Enchant
+                e[0x0a] = 9;
+                e[0x0b] = 0;
+
+                *(byte**)(e + 0x70) = *(byte**)(e + 0x78); // l'ancre : le membre soigne
+                *(int*)(e + 0x44) = 0;
+                *(int*)(e + 0x48) = 0x50000;               // l'ecart vertical, du cote de la bille
+                *(int*)(e + 0x4c) = 0;
+
+                *(short*)(e + 0x32) = (short)(CrtRand() % 0x400 + 0x400);   // Ghidra: FUN_00547140
+                *(short*)(e + 0x34) = (short)(CrtRand() % 0x1000);          // Ghidra: FUN_00547140
+
+                *(short*)(e + 0x14) = 0;                   // ici le champ vaut vitesse angulaire
+                *(short*)(e + 0x12) = 0xc8;                // le rayon de depart
+                *(short*)(e + 0x28) = 0x1fff;
+                *(short*)(e + 0x2a) = 0;
+                *(short*)(e + 0x2c) = 0x100;
+
+                SpawnCastEntity_0047AAE0(e, 0x70, 0, -1);
+            }
+        }
+
+        // Ghidra: LAB_00449508
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 0x28) EndSpellAndResetDecor_00448020(e);
     }
 
     /// <summary>
