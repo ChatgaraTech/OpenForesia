@@ -4861,6 +4861,14 @@ public static unsafe partial class Blaze
             case 0x00481670: TickRecall_00481670(record); return;
             case 0x00481720: TickRecallSpiral_00481720(record); return;
 
+            // COLERE, ecole 0 indice 26 — cinq corps, un serpent de huit anneaux chaine par
+            // NUMERO D'EMPLACEMENT, et le seul appel du depot avec une variante non nulle.
+            case 0x004819D0: TickWrath_004819D0(record); return;
+            case 0x00481D50: TickWrathGlow_00481D50(record); return;
+            case 0x00481E30: TickWrathHead_00481E30(record); return;
+            case 0x004821A0: TickWrathLink_004821A0(record); return;
+            case 0x00482300: TickWrathPillar_00482300(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -20504,7 +20512,9 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     /// <param name="variant">Le rang dans la fiche : <c>fiche[0x16 + n]</c> donne l'element et
-    /// <c>fiche[0x18 + 2n]</c> le montant. Vaut 0 pour tous les appelants transcrits.</param>
+    /// <c>fiche[0x18 + 2n]</c> le montant. Vaut 0 partout <b>sauf</b> chez
+    /// <see cref="TickWrathHead_00481E30"/>, la tete du serpent de Colere, qui passe <c>1</c> —
+    /// seul appelant du depot a le faire, releve le 2026-08-31.</param>
     /// <returns>1 si le coup a ete refuse, 0 sinon.</returns>
     private static int ResolveSpellHit_0053A2B0(
         uint* attacker, uint* victim, int family, int index, int variant)
@@ -37112,6 +37122,741 @@ public static unsafe partial class Blaze
         // Elle est incrementee meme sur l'image qui l'eteint.
         *(short*)(e + 0x10) = (short)(now + 1);
     }
+
+    // =====================================================================
+    // COLERE — le vingt-septieme sort, ecole 0 indice 26, sous-type 0x1a
+    //
+    // CINQ corps neufs, tous absents de Blaze.c — le sort le plus fourni du depot.
+    //
+    //   0x004819D0   LE SORT. Sous-type 0x1a de 0x00551c30, 883 octets.
+    //   0x00481D50   LE HALO, sous-type 0x3e de 0x00551f30, 212 octets. QUATRE exemplaires.
+    //   0x00481E30   LA TETE, sous-type 0x3f de 0x00551f30, 876 octets. Une seule.
+    //   0x004821A0   L'ANNEAU, sous-type 0x40 de 0x00551f30, 348 octets. SEPT exemplaires.
+    //   0x00482300   LA COLONNE, sous-type 0x41 de 0x00551f30, 107 octets. Une seule.
+    //
+    // UN SERPENT DE HUIT ANNEAUX, CHAINE PAR NUMERO D'EMPLACEMENT. Le sort reserve dix places par
+    // ReserveEntitySlots_00475090, puis engendre la tete 0x3f et sept anneaux 0x40 a la suite. Avant
+    // chaque naissance il lit l'indice libre courant du pool 0x006007a0, engendre, PUIS range cet
+    // indice dans son +0x16 : l'anneau ne recoit donc pas son propre numero mais celui de son
+    // PREDECESSEUR. Chaque anneau retrouve son devancier par 0x005edee0 + indice * 0x9c et se place
+    // derriere lui — c'est la deuxieme communication par indice du depot, apres Demon polaire, et
+    // la premiere qui forme une chaine et non une paire.
+    //
+    // ET LE SEUL APPEL DU DEPOT AVEC UNE VARIANTE NON NULLE. La tete passe 1 comme cinquieme
+    // argument de ResolveSpellHit_0053A2B0, la ou les vingt-six sorts precedents passaient 0 : la
+    // fiche est lue en +0x17 et +0x1a au lieu de +0x16 et +0x18. La documentation de cette fonction
+    // disait « vaut 0 pour tous les appelants transcrits » ; ce n'est plus vrai.
+    //
+    // LE PLUS CHER A ENTRETENIR, DE LOIN : 2 PM toutes les CINQ images, contre 1 PM par dix pour
+    // Eclair, le precedent record. Et 300 images de duree maximale hors joueur.
+    //
+    // La premiere image se joue en deux temps, separes par le bit 2 : quatre halos montent du sol et
+    // decrementent le +0x16 du sort en arrivant a leur teinte de consigne ; a zero le sort se pose
+    // le bit 2 et fait naitre la colonne, la tete et les anneaux.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005525c0</c> — <b>le huitieme script de sons differes</b>, celui de
+    /// <see cref="TickWrath_004819D0"/>, et <b>de loin le plus long</b> : <b>huit pas</b>, contre
+    /// cinq pour Au sec et deux ou trois pour les six premiers.
+    ///
+    /// <para>
+    /// Il occupe <c>0x005525c0</c> a <c>0x005525ff</c>. Les huit scripts des sorts de l'ecole 0 se
+    /// suivent desormais sans trou depuis <c>0x00552530</c>, chacun borne par l'octet de delai nul
+    /// du precedent — mais la file continue : <c>0x00552600</c> en porte un neuvieme, sans
+    /// consommateur connu.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_005525C0 =
+    [
+        0x1a, 0x01, 0x01, 0x00, 0x00, 0x02, 0x00, 0x12,   // 0x005525c0
+        0x10, 0x1e, 0x01, 0x00, 0x29, 0x03, 0x00, 0x12,   // 0x005525c8
+        0x2d, 0x01, 0x01, 0x00, 0x00, 0x04, 0x00, 0x12,   // 0x005525d0
+        0x13, 0x0a, 0x01, 0x00, 0x00, 0x04, 0x00, 0x12,   // 0x005525d8
+        0x15, 0x01, 0x01, 0x00, 0x00, 0x04, 0x00, 0x12,   // 0x005525e0
+        0x23, 0x28, 0x01, 0x00, 0xaa, 0x02, 0x00, 0x12,   // 0x005525e8
+        0x23, 0x14, 0x01, 0x00, 0x53, 0x06, 0x00, 0x12,   // 0x005525f0
+        0x23, 0x00, 0x01, 0x00, 0x52, 0x07, 0x00, 0x12,   // 0x005525f8 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript005525C0Storage;
+
+    /// <summary>Les huit pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript005525C0()
+        => NativeCopy(s_DelayedSoundScript_005525C0, ref s_DelayedSoundScript005525C0Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_004819d0 @ 0x004819d0 — <b>Colere</b> : le sous-type <c>0x1a</c>, creneau 26 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 883 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Deux temps, separes par le bit 2.</b> A la premiere image il pose quatre halos
+    /// <c>0x3e</c> au sol, chacun avec sa propre teinte de consigne et sa propre vitesse de rotation,
+    /// et met son <c>+0x16</c> a 4. Chaque halo arrive a sa consigne decremente ce compteur ; a zero,
+    /// <c>LAB_00481d31</c> pose le bit <c>2</c> — et le corps entier bascule dans le second temps.
+    /// </para>
+    /// <para>
+    /// <b>Le second temps engendre le serpent.</b> Une colonne <c>0x41</c>, puis dix emplacements
+    /// reserves d'un coup, puis la tete <c>0x3f</c> et sept anneaux <c>0x40</c> chaines par leur
+    /// numero d'emplacement. Le septieme change de modele (<c>0x13</c> au lieu de <c>0x28</c>) :
+    /// c'est la queue.
+    /// </para>
+    /// <para>
+    /// <b>Le plus cher a entretenir du depot</b> : <b>2 PM toutes les cinq images</b>. Hors joueur il
+    /// dure 300 images. Il frappe lui-meme, une fois par image, avec une sonde tres large
+    /// (<c>0x190</c> de profondeur, <c>0x200</c> d'ouverture) dont le cap tourne de <c>0x190</c> par
+    /// image — il balaie.
+    /// </para>
+    /// </summary>
+    private static void TickWrath_004819D0(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = unchecked((short)0xff00);
+        probe[2] = 0x100;
+        probe[3] = 0x190;
+        probe[4] = 0;
+        probe[5] = 0x200;
+
+        uint state = *(uint*)e;
+
+        if ((state & 0x2000000) != 0)
+        {
+            *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+            *(ushort*)Mem.Arena(0x005e9166) = 0;       // le decor reprend sa couleur
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_00481a27 — les quatre halos, une seule fois.
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+
+            // Le controle de place — dix emplacements lui seront necessaires plus tard.
+            if (*Mem.Entity(0x006007a0) > 0x6c)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            byte* caster = *(byte**)(e + 0x74);
+            *(uint*)caster |= 0x80;                    // le lanceur est immobilise
+
+            e[0x36] = (byte)((e[0x36] & 0xfe) | 6);
+            *(byte**)(e + 0x78) = null;
+            *(ushort*)(e + 0x2e) = 0xffdd;
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);     // au sol
+
+            // Le premier halo : teinte de depart 0x40000000, pas de 0x080808, consigne 0x808080.
+            *(uint*)(e + 0x38) = 0x40000000;
+            *(uint*)(e + 0x44) = 0x00080808;
+            *(uint*)(e + 0x48) = 0x00808080;
+            *(uint*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(ushort*)(e + 0x12) = 0x4000;             // echelle X visee
+            *(ushort*)(e + 0x14) = 0x4000;             // echelle Y visee
+            *(ushort*)(e + 0x16) = 0;                  // pas de rotation
+            e[0x04] = 0x29;
+            SpawnCastEntity_0047AAE0(e, 0x3e, 0, 0x0b);
+
+            // Le deuxieme : plus sombre, plus lent, et il tourne d'un cran par image.
+            *(ushort*)(e + 0x2e) = 0xffe2;
+            *(uint*)(e + 0x38) = 0x80202020;
+            *(uint*)(e + 0x44) = 0x00040404;
+            *(uint*)(e + 0x48) = 0x00404040;
+            SpawnCastEntity_0047AAE0(e, 0x3e, 1, 3);
+
+            // Le troisieme : plus grand, presque noir, et il tourne de 0x20.
+            *(ushort*)(e + 0x2e) = 0xffd8;
+            *(uint*)(e + 0x38) = 0;
+            *(uint*)(e + 0x44) = 8;
+            *(uint*)(e + 0x48) = 0x40;
+            *(uint*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(ushort*)(e + 0x12) = 0x5000;
+            *(ushort*)(e + 0x14) = 0x5000;
+            *(ushort*)(e + 0x16) = 0x20;
+            e[0x04] = 0x22;
+            SpawnCastEntity_0047AAE0(e, 0x3e, 1, 2);
+
+            // Le quatrieme : le plus large, et il tourne a l'ENVERS.
+            *(uint*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(ushort*)(e + 0x12) = 0x6000;
+            *(ushort*)(e + 0x14) = 0x4000;
+            *(ushort*)(e + 0x16) = 0xffe0;
+            SpawnCastEntity_0047AAE0(e, 0x3e, 1, 2);
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript005525C0(), (int*)(e + 0x1c));
+
+            *(ushort*)(e + 0x16) = 4;                  // les quatre halos a attendre
+        }
+
+        // Ghidra: LAB_00481b59
+        state = *(uint*)e;
+
+        if ((state & 2) == 0)
+        {
+            // Les halos n'ont pas tous fini : rien d'autre a faire que compter.
+            if (*(short*)(e + 0x16) == 0) *(uint*)e = state | 2;
+            return;
+        }
+
+        *(uint*)Mem.Arena(0x005e9160) = 0x008000a0;
+        *(uint*)Mem.Arena(0x005e9164) = 0x00020080;
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            // ---------------------------------------------------------- la colonne
+            *(uint*)(e + 0x38) = 0;
+            *(uint*)(e + 0x28) = 0x7fff0000;
+            *(ushort*)(e + 0x2c) = 0;
+            e[0x04] = 0x36;
+            SpawnCastEntity_0047AAE0(e, 0x41, 0, 0x0d);
+
+            // ---------------------------------------------------------- le serpent
+            // Dix emplacements sont RESERVES d'un coup : les huit naissances qui suivent les
+            // prendront dans cet ordre, et c'est ce qui rend la chaine par indice previsible.
+            ReserveEntitySlots_00475090(Mem.Entity(0x006007a0), 0x0a);
+
+            e[0x36] &= 0xfb;
+            *(ushort*)(e + 0x16) = 0x400;
+            *(ushort*)(e + 0x32) = 0x400;
+            *(ushort*)(e + 0x34) = 0x400;
+            *(ushort*)(e + 0x14) = 0;
+            *(uint*)(e + 0x38) = 0x02f0f0f0;
+            *(uint*)(e + 0x28) = 0x20002000;
+            *(ushort*)(e + 0x2c) = 0x2000;
+            e[0x04] = 0x27;
+
+            // L'indice libre courant est lu AVANT la naissance : la tete le porte, et c'est donc
+            // son propre emplacement qu'elle emmene — les anneaux, eux, porteront celui de leur
+            // devancier.
+            byte* pool = Mem.Entity(0x006007a0);
+            *(ushort*)(e + 0x16) = pool[*pool + 2];
+            SpawnCastEntity_0047AAE0(e, 0x3f, 0, 0x0b);
+
+            e[0x04] = 0x28;
+
+            for (int link = 7; link != 0; link--)
+            {
+                if (link == 1) e[0x04] = 0x13;         // le septieme est la queue
+
+                byte* slots = Mem.Entity(0x006007a0);
+                ushort previous = slots[*slots + 2];
+
+                SpawnCastEntity_0047AAE0(e, 0x40, 0, 0x0b);
+
+                *(ushort*)(e + 0x16) = previous;
+            }
+
+            *(ushort*)(e + 0x34) = 0;
+        }
+
+        // Ghidra: LAB_00481c40 — l'entretien.
+        state = *(uint*)e;
+
+        if ((state & 0x800000) != 0)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            uint index = caster[8];
+            byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+            int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+            ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            {
+                state |= 0x2000000;
+                *(uint*)e = state;
+            }
+
+            // Ghidra: LAB_00481c8a — 2 PM toutes les CINQ images, le prix le plus lourd du depot.
+            if (*(uint*)Mem.Entity(0x005f2cf0) % 5 == 0)
+            {
+                short mana = *(short*)(perChar + 0x14e);
+
+                if (mana >= 2)
+                {
+                    *(short*)(perChar + 0x14e) = (short)(mana - 2);
+                }
+                else
+                {
+                    *(ushort*)(perChar + 0x14e) = 0;
+                    *(uint*)e |= 0x2000000;
+                }
+            }
+        }
+        else if (*(short*)(e + 0x10) >= 0x12c)
+        {
+            *(uint*)e |= 0x2000000;
+        }
+
+        if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+
+        // Ghidra: LAB_00481ce2 — la sonde tourne de 0x190 par image : il balaie.
+        *(ushort*)(e + 0x32) += 0x190;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;          // le clignotement de degat
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00481d50 @ 0x00481d50 — <b>un halo de Colere</b> : le sous-type <c>0x3e</c>,
+    /// creneau 62 de <see cref="s_StaticEntityHandlers_00551f30"/>. 212 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. Quatre exemplaires, tous differents par les seuls champs que le sort leur
+    /// prete.
+    ///
+    /// <para>
+    /// <b>Il grandit, puis il s'allume, puis il fait signe.</b> Ses deux echelles rejoignent
+    /// <c>+0x12</c> et <c>+0x14</c> par huitiemes ; tant que le pas d'echelle X depasse <c>0x20</c>
+    /// il ne fait que grandir et tourner. Sous ce seuil il ajoute <c>+0x44</c> a sa teinte a chaque
+    /// image, et quand celle-ci atteint <c>+0x48</c> il <b>decremente le <c>+0x16</c> de son
+    /// pere</b> et se pose le bit <c>2</c> — apres quoi il ne fait plus que tourner.
+    /// </para>
+    /// <para>
+    /// <b>Il meurt en s'eteignant</b>, pas d'un coup : sur le bit <c>0x2000000</c> herite du sort il
+    /// <i>retire</i> <c>+0x44</c> par image et ne se coupe qu'une fois les vingt-quatre bits bas de
+    /// sa teinte a zero. Seul corps du depot dont la fin est un fondu.
+    /// </para>
+    /// </summary>
+    private static void TickWrathGlow_00481D50(byte* record)
+    {
+        byte* e = record;
+
+        uint state = *(uint*)e;
+
+        if ((state & 0x2000000) != 0)
+        {
+            uint tint = *(uint*)(e + 0x38) - *(uint*)(e + 0x44);
+            *(uint*)(e + 0x38) = tint;
+
+            if ((tint & 0xffffff) == 0)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            *(ushort*)(e + 0x10) += 1;                 // Ghidra: LAB_00481e1c
+            return;
+        }
+
+        if ((state & 2) != 0)
+        {
+            // Il a fait son signal : il ne fait plus que tourner, et attendre la fin du sort.
+            uint inherited = state | (*(uint*)(*(byte**)(e + 0x6c)) & 0x2000000);
+
+            *(ushort*)(e + 0x32) += *(ushort*)(e + 0x16);
+            *(ushort*)(e + 0x10) += 1;
+            *(uint*)e = inherited;
+            return;
+        }
+
+        // Ghidra: LAB_00481da8 — les deux echelles rejoignent leur consigne par huitiemes.
+        int stepX = (*(short*)(e + 0x12) - *(short*)(e + 0x28)) >> 3;
+        short scaleY = *(short*)(e + 0x2a);
+        int newY = ((*(short*)(e + 0x14) - scaleY) >> 3) + scaleY;
+
+        *(short*)(e + 0x28) += (short)stepX;
+        short newX = *(short*)(e + 0x28);
+
+        *(short*)(e + 0x2a) = (short)newY;
+        *(short*)(e + 0x2c) = newX;
+
+        if (stepX < 0x20)
+        {
+            uint tint = *(uint*)(e + 0x38);
+
+            if ((tint & 0xffffff) < *(uint*)(e + 0x48))
+            {
+                *(uint*)(e + 0x38) = tint + *(uint*)(e + 0x44);
+                *(ushort*)(e + 0x32) += *(ushort*)(e + 0x16);
+                *(ushort*)(e + 0x10) += 1;
+                return;
+            }
+
+            // Ghidra: LAB_00481e06 — le signal qui fait avancer le sort.
+            *(short*)(*(byte**)(e + 0x6c) + 0x16) -= 1;
+            *(uint*)e |= 2;
+        }
+
+        // Ghidra: LAB_00481e14
+        *(ushort*)(e + 0x32) += *(ushort*)(e + 0x16);
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00481e30 @ 0x00481e30 — <b>la tete du serpent de Colere</b> : le sous-type
+    /// <c>0x3f</c>, creneau 63 de <see cref="s_StaticEntityHandlers_00551f30"/>. 876 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle monte trente images, puis elle chasse.</b> Avant l'age <c>0x1e</c> son vecteur de
+    /// visee est vertical pur (<c>dy = 0x190</c>, dx et dz nuls) : elle s'eleve. Ensuite elle prend
+    /// l'adversaire le plus proche du <b>lanceur</b> — pas d'elle-meme — le retient dans
+    /// <c>+0x78</c> avec le lien reciproque de la fleche magique, et le lache des qu'il porte
+    /// <c>0x50000000</c>.
+    /// </para>
+    /// <para>
+    /// <b>Faute de proie elle erre autour du lanceur</b>, et sa cible d'errance est retiree tous les
+    /// 32 images seulement (<c>age &amp; 0x1f</c>), a plus ou moins 128 unites de lui ; sa hauteur
+    /// visee y ajoute une ondulation de <c>sin &#215; 400 &gt;&gt; 12</c> sur une phase qui avance de
+    /// <c>0x80</c> par image.
+    /// </para>
+    /// <para>
+    /// <b>Sa visee passe par un limiteur avant d'arriver a ses angles</b> — deux etages, et c'est le
+    /// seul corps du depot qui en ait deux. Les angles voulus sont d'abord ranges dans <c>+0x14</c>
+    /// et <c>+0x16</c> en ne bougeant que de <c>0x100</c> par image quand l'ecart depasse
+    /// <c>0x100</c> ; puis <c>+0x32</c> et <c>+0x34</c> rejoignent ceux-la d'un quart de l'ecart,
+    /// par le plus court chemin. La poussee, elle, s'ajoute a la vitesse, qui perd ensuite un quart.
+    /// </para>
+    /// <para>
+    /// <b>Et elle est le seul appelant du depot a passer une variante non nulle</b> a
+    /// <see cref="ResolveSpellHit_0053A2B0"/> : <c>1</c>, ce qui lui fait lire <c>+0x17</c> et
+    /// <c>+0x1a</c> de la fiche au lieu de <c>+0x16</c> et <c>+0x18</c>.
+    /// </para>
+    /// <para>
+    /// <b>Sa fin est une derniere montee puis une chute.</b> Sur le bit <c>0x2000000</c> herite du
+    /// sort, son age repart de zero : trente images vers le haut, soixante-dix vers le bas, puis
+    /// elle se pose <c>0x20000000</c>, que les sept anneaux heritent l'un apres l'autre.
+    /// </para>
+    /// </summary>
+    private static void TickWrathHead_00481E30(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6];
+        probe[0] = unchecked((short)0xfc00);
+        probe[1] = unchecked((short)0xff00);
+        probe[2] = 0x64;
+        probe[3] = 0x96;
+        probe[4] = 0;
+        probe[5] = 0x100;
+
+        uint state = *(uint*)e;
+
+        if ((state & 0x20000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        int dx = 0;
+        int dy;
+        int dz = 0;
+        bool dying = false;                            // le chemin de fin saute l'heritage
+
+        if ((state & 0x2000000) != 0)
+        {
+            // Ghidra: LAB_00481e78 — la fin : elle monte trente images, puis retombe.
+            short fall = *(short*)(e + 0x10);
+
+            if (fall < 0x1e)
+            {
+                dy = 0x190;
+            }
+            else if (fall < 0x64)
+            {
+                dy = -0x190;
+            }
+            else
+            {
+                *(uint*)e = state | 0x20000000;        // le signal que la chaine suivra
+                return;
+            }
+
+            // Ce chemin saute l'heritage : il est deja dedans.
+            dying = true;
+        }
+        else
+        {
+            byte* prey = *(byte**)(e + 0x78);
+
+            if (prey != null)
+            {
+                if ((*(uint*)prey & 0x50000000) != 0)
+                {
+                    *(uint*)(prey + 0x74) = 0;
+                    *(byte**)(e + 0x78) = null;
+                    prey = null;
+                }
+            }
+            else
+            {
+                // Ghidra: LAB_00481ecf — elle cherche l'adversaire du LANCEUR.
+                prey = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+            }
+
+            // Ghidra: LAB_00481ee1
+            short age = *(short*)(e + 0x10);
+
+            if (age < 0x1e)
+            {
+                dy = 0x190;                            // les trente premieres images : elle monte
+            }
+            else if (prey != null)
+            {
+                *(byte**)(e + 0x78) = prey;
+                dx = (*(int*)(prey + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+                *(byte**)(prey + 0x74) = e;
+
+                int preyHead = StatusBubbleHeight_00538BC0((uint*)prey);
+                dy = (((preyHead & ~1) << 0xb)
+                      + (*(int*)(prey + 0x20) - *(int*)(e + 0x20))) >> 0xc;
+                dz = (*(int*)(prey + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+            }
+            else
+            {
+                // Ghidra: LAB_00481f37 — l'errance, retiree une image sur 32 seulement.
+                byte* caster = *(byte**)(e + 0x74);
+
+                if ((age & 0x1f) == 0)
+                {
+                    *(int*)(e + 0x44) = (CrtRand() & 0xff)
+                        + ((*(int*)(caster + 0x1c) - *(int*)(e + 0x1c)) >> 0xc) - 0x80;
+                    *(int*)(e + 0x4c) = (CrtRand() & 0xff)
+                        + ((*(int*)(caster + 0x24) - *(int*)(e + 0x24)) >> 0xc) - 0x80;
+                }
+
+                // Ghidra: LAB_00481f76
+                *(int*)(e + 0x48) =
+                    ((*(int*)(caster + 0x20) - *(int*)(e + 0x20)) >> 0xc) + 0x190;
+
+                *(ushort*)(e + 0x12) += 0x80;
+
+                dx = *(int*)(e + 0x44);
+                dz = *(int*)(e + 0x4c);
+                dy = (((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12)) * 400) >> 0xc)
+                     + *(int*)(e + 0x48);
+            }
+        }
+
+        if (!dying)
+        {
+            // Ghidra: LAB_00481fb3 — l'heritage de la fin, et l'age qui repart.
+            *(uint*)e = state | (*(uint*)(*(byte**)(e + 0x6c)) & 0x2000000);
+            if ((*(uint*)e & 0x2000000) != 0) *(short*)(e + 0x10) = 0;
+        }
+
+        // Ghidra: LAB_00481fd2
+        int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int yaw = Winsys3d.Ordinal_457(dx, dz);
+        int pitch = Winsys3d.Ordinal_457(dy, flat);
+
+        int* step = stackalloc int[3];
+        SetVectorFromAngles_00532AD0(step, yaw, pitch, 0x10);
+
+        int vx = *(int*)(e + 0x50) + step[0];
+        int vy = *(int*)(e + 0x54) + step[1];
+        int vz = *(int*)(e + 0x58) + step[2];
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x58) = vz;
+
+        // PREMIER ETAGE : l'angle range ne bouge que de 0x100 par image, et seulement si l'ecart
+        // depasse 0x100. Le test est ecrit en (ecart + 0x100) & 0xfff <= 0x200.
+        short wantedYaw = *(short*)(e + 0x14);
+        int yawGap = (yaw - wantedYaw) & 0xfff;
+
+        if (((yawGap + 0x100) & 0xfff) > 0x200)
+        {
+            *(short*)(e + 0x14) = (short)(wantedYaw + (yawGap >= 0x800 ? -0x100 : 0x100));
+        }
+
+        // Ghidra: LAB_0048207f — le meme limiteur, sur le tangage.
+        short wantedPitch = *(short*)(e + 0x16);
+        int pitchGap = (pitch - wantedPitch) & 0xfff;
+
+        if (((pitchGap + 0x100) & 0xfff) > 0x200)
+        {
+            *(short*)(e + 0x16) = (short)(wantedPitch + (pitchGap >= 0x800 ? -0x100 : 0x100));
+        }
+
+        // SECOND ETAGE : Ghidra LAB_004820af — un quart de l'ecart, par le plus court chemin. Le
+        // cap porte en plus le quart de tour de decalage du modele.
+        short heading = *(short*)(e + 0x32);
+        short tilt = *(short*)(e + 0x34);
+
+        int turnGap = (*(short*)(e + 0x14) - heading + 0x400) & 0xfff;
+        int riseGap = (*(short*)(e + 0x16) - tilt) & 0xfff;
+
+        *(short*)(e + 0x32) =
+            (short)(heading + (turnGap < 0x800 ? turnGap >> 2 : -((0x1000 - turnGap) >> 2)));
+        *(short*)(e + 0x34) =
+            (short)(tilt + (riseGap < 0x800 ? riseGap >> 2 : -((0x1000 - riseGap) >> 2)));
+
+        // Ghidra: LAB_0048210e — la vitesse perd un quart, puis la position l'ajoute.
+        vx -= vx >> 2;
+        vy -= vy >> 2;
+        vz -= vz >> 2;
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x58) = vz;
+
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x20) += vy;
+        *(int*)(e + 0x24) += vz;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            // LA VARIANTE 1 : seule du depot. Elle deplace la lecture de la fiche de sort.
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 1);
+
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;          // le clignotement de degat
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004821a0 @ 0x004821a0 — <b>un anneau du serpent de Colere</b> : le sous-type
+    /// <c>0x40</c>, creneau 64 de <see cref="s_StaticEntityHandlers_00551f30"/>. 348 octets,
+    /// <b>absente de <c>Blaze.c</c></b>. Sept exemplaires, en file.
+    ///
+    /// <para>
+    /// <b>Il retrouve son devancier par son numero d'emplacement.</b> A sa premiere image il calcule
+    /// <c>0x005edee0 + (+0x16) * 0x9c</c> et range l'adresse dans <c>+0x70</c> — le meme mecanisme
+    /// que la queue du Demon polaire, mais ici il forme une <b>chaine</b> : le sort a donne a chaque
+    /// anneau le numero de celui qui le precede, et au premier celui de la tete.
+    /// </para>
+    /// <para>
+    /// <b>Il ne se deplace pas, il se place.</b> Sa position vaut a chaque image celle de son
+    /// devancier plus un vecteur de longueur <c>echelle X &#215; 80 &gt;&gt; 12</c>, pris sur le cap
+    /// du devancier plus un quart de tour et sur son tangage <b>nie</b> — donc exactement derriere
+    /// lui. Son orientation, elle, vient de son deplacement reel, rejointe d'un quart par image.
+    /// </para>
+    /// <para>
+    /// <b>Il meurt par heritage.</b> Il prend <c>0x20000000</c> dans le mot d'etat de son devancier
+    /// et s'eteint a l'image suivante : la fin descend la chaine anneau par anneau, un cran par
+    /// image, ce qui fait disparaitre le serpent par la queue.
+    /// </para>
+    /// </summary>
+    private static void TickWrathLink_004821A0(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x20000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        byte* leader;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            leader = Mem.Entity(0x005edee0) + *(short*)(e + 0x16) * 0x9c;
+            *(byte**)(e + 0x70) = leader;
+        }
+        else
+        {
+            leader = *(byte**)(e + 0x70);
+        }
+
+        // Ghidra: LAB_004821e6
+        int span = (*(short*)(e + 0x28) * 5 << 4) >> 0xc;
+
+        int keptX = *(int*)(e + 0x1c);
+        int keptY = *(int*)(e + 0x20);
+        int keptZ = *(int*)(e + 0x24);
+
+        int* offset = stackalloc int[3];
+        SetVectorFromAngles_00532AD0(
+            offset, *(short*)(leader + 0x32) + 0x400, -*(short*)(leader + 0x34), span);
+
+        int newX = *(int*)(leader + 0x1c) + offset[0];
+        int newY = *(int*)(leader + 0x20) + offset[1];
+        int newZ = *(int*)(leader + 0x24) + offset[2];
+
+        *(int*)(e + 0x1c) = newX;
+        *(int*)(e + 0x20) = newY;
+        *(int*)(e + 0x24) = newZ;
+
+        int mx = (newX - keptX) >> 0xc;
+        int my = (newY - keptY) >> 0xc;
+        int mz = (newZ - keptZ) >> 0xc;
+
+        int travelled = (int)Winsys3d.Ordinal_442((uint)(mx * mx + mz * mz));
+
+        short heading = *(short*)(e + 0x32);
+        short tilt = *(short*)(e + 0x34);
+
+        int turnGap = (Winsys3d.Ordinal_457(mx, mz) + 0x400 - heading) & 0xfff;
+        int riseGap = (Winsys3d.Ordinal_457(my, travelled) - tilt) & 0xfff;
+
+        *(short*)(e + 0x32) +=
+            (short)(turnGap < 0x800 ? turnGap >> 2 : -((0x1000 - turnGap) >> 2));
+        *(short*)(e + 0x34) =
+            (short)(tilt + (riseGap < 0x800 ? riseGap >> 2 : -((0x1000 - riseGap) >> 2)));
+
+        // La fin descend la chaine : il la prend chez son devancier.
+        *(uint*)e |= *(uint*)(*(byte**)(e + 0x70)) & 0x20000000;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00482300 @ 0x00482300 — <b>la colonne de Colere</b> : le sous-type <c>0x41</c>,
+    /// creneau 65 de <see cref="s_StaticEntityHandlers_00551f30"/>. 107 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. Une seule.
+    ///
+    /// <para>
+    /// <b>Elle ne fait que grandir et tourner.</b> Son echelle rejoint <c>0x7fff</c> par huitiemes —
+    /// la plus grande consigne du depot — et son cap avance de <c>0x80</c> par image, y compris
+    /// pendant son extinction. Sa teinte monte de <c>0x080808</c> jusqu'a <c>0x808080</c>, puis
+    /// redescend du meme pas quand le sort lui passe <c>0x2000000</c>, et c'est ce fondu qui la tue.
+    /// </para>
+    /// </summary>
+    private static void TickWrathPillar_00482300(byte* record)
+    {
+        byte* e = record;
+
+        uint state = *(uint*)e;
+        uint tint = *(uint*)(e + 0x38);
+
+        if ((state & 0x2000000) != 0)
+        {
+            tint += 0xfff7f7f8;                        // -0x080808
+            *(uint*)(e + 0x38) = tint;
+
+            if (tint == 0)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+        }
+        else
+        {
+            // Ghidra: LAB_00482327
+            if (tint < 0x808080) *(uint*)(e + 0x38) = tint + 0x00080808;
+
+            short scale = *(short*)(e + 0x28);
+            scale += (short)((0x7fff - scale) >> 3);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2c) = scale;
+
+            *(uint*)e = state | (*(uint*)(*(byte**)(e + 0x6c)) & 0x2000000);
+        }
+
+        // Ghidra: LAB_00482362 — le cap tourne meme pendant le fondu.
+        *(ushort*)(e + 0x32) += 0x80;
+    }
+
 
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>

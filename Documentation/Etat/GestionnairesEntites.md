@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **63** |
-| implementes, jamais appeles | **200** |
-| a transcrire | **1167** |
+| implementes, jamais appeles | **205** |
+| a transcrire | **1162** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -61,7 +61,7 @@ et n'est pas un comportement.
 
 | zone | lieu | gestionnaires | implementes | testes |
 |---|---|---|---|---|
-| — | **tables statiques** (partout) | 274 | 120 | 29 |
+| — | **tables statiques** (partout) | 274 | 125 | 29 |
 | 0 | L'auberge | 48 | 35 | 12 |
 | 1 | La mine abandonnee | 157 | 22 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
@@ -85,7 +85,7 @@ depassent donc le total global.
 Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` et
 `0x0047acf0` lisent pour un indice sous `0xc0`. Elles ne dependent d'aucune zone.
 
-274 gestionnaires, 120 implementes, 29 testes.
+274 gestionnaires, 125 implementes, 29 testes.
 
 | gestionnaire | tables | implemente | teste |
 |---|---|---|---|
@@ -231,11 +231,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x0047A730` | 00552230 | **non** | **non** |
 | `0x0047A7D0` | 00552230 | **non** | **non** |
 | `0x0047A950` | 00552230 | **non** | **non** |
-| `0x004819D0` | 00551C30 | **non** | **non** |
-| `0x00481D50` | 00551F30 | **non** | **non** |
-| `0x00481E30` | 00551F30 | **non** | **non** |
-| `0x004821A0` | 00551F30 | **non** | **non** |
-| `0x00482300` | 00551F30 | **non** | **non** |
 | `0x00482370` | 00551C30 | **non** | **non** |
 | `0x004824F0` | 00551C30 | **non** | **non** |
 | `0x004828B0` | 00551F30 | **non** | **non** |
@@ -333,6 +328,11 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00481250` | 00551F30 | oui | **non** |
 | `0x00481670` | 00551C30 | oui | **non** |
 | `0x00481720` | 00551F30 | oui | **non** |
+| `0x004819D0` | 00551C30 | oui | **non** |
+| `0x00481D50` | 00551F30 | oui | **non** |
+| `0x00481E30` | 00551F30 | oui | **non** |
+| `0x004821A0` | 00551F30 | oui | **non** |
+| `0x00482300` | 00551F30 | oui | **non** |
 | `0x00482EF0` | 00552230 | oui | **non** |
 | `0x00402FC0` | 00551C30 | oui | oui |
 | `0x00403250` | 00552230 | oui | oui |

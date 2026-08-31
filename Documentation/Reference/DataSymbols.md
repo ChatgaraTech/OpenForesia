@@ -2391,8 +2391,30 @@ deux ou trois pour les six précédents :
 | `0x005525b0` | `12 02 01 00 29 03 00 12` | `0x12` | 2 | `0x0329` |
 | `0x005525b8` | `12 00 01 00 00 04 00 12` | `0x12` | **0** : fin | `0x0400` |
 
-La file contiguë depuis `0x00552530` compte donc sept scripts relevés, jusqu'à `0x005525bf` ; le
-huitième (`0x005525c0`, `1a 01 01 00 00 02 00 12`) reste à rencontrer.
+## `0x005525c0` — le huitième script, et la fin de la file (2026-08-31)
+
+Mis en file par `FUN_004819d0` (**Colère**) à sa première image. **Huit pas**, `0x005525c0` à
+`0x005525ff` :
+
+| adresse | son | délai | hauteur |
+|---|---:|---:|---:|
+| `0x005525c0` | `0x1a` | 1 | `0x0200` |
+| `0x005525c8` | `0x10` | 0x1e | `0x0329` |
+| `0x005525d0` | `0x2d` | 1 | `0x0400` |
+| `0x005525d8` | `0x13` | 0x0a | `0x0400` |
+| `0x005525e0` | `0x15` | 1 | `0x0400` |
+| `0x005525e8` | `0x23` | 0x28 | `0x02aa` |
+| `0x005525f0` | `0x23` | 0x14 | `0x0653` |
+| `0x005525f8` | `0x23` | **0** : fin | `0x0752` |
+
+**Huit scripts se suivent maintenant sans trou** de `0x00552530` à `0x005525ff`, chacun borné par
+l'octet de délai nul du précédent, et les huit sont transcrits — ce sont exactement ceux des sorts
+de l'école 0.
+
+**La file ne s'arrête pas là.** `0x00552600` porte un neuvième script
+(`1f 01 01 00 00 04 00 18`, puis `1f 00 …` qui termine) dont **aucun consommateur n'est encore
+connu** ; son octet de gain vaut `0x18` là où les huit précédents portent `0x12`, ce qui suggère une
+autre famille d'appelants. À rattacher quand on le croisera.
 
 
 ## `0x00551ab8` — l'atlas de la gerbe `0x3c`, et une borne par champ (2026-08-29)
