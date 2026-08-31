@@ -5,6 +5,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Calgon, le quarante-quatrième sort** : le sort `0x0044b510` (416 octets), son enveloppe d'effet `0x0044b6b0` et sa goutte `0x0044b6f0` (544 octets, une toutes les trois images), tous trois décompilés ; plus son anneau `0x0044c800` (145 octets, deux exemplaires concentriques), sorti du désassembleur
+- doc : **il ne se place nulle part** — aucune de ses 416 instructions ne touche à `+0x1c`, `+0x20` ni `+0x24` : il reste où `SpawnEffectEntity` l'a mis, sur le lanceur. Premier corps de sort de l'école à ne pas recopier la position de sa cible, et donc le seul à ne jamais consulter le repli `DAT_005de558`
+- doc : **son décor monte** — les autres fiches de l'école posent trois constantes dans `0x005e9160` une fois pour toutes ; Calgon les réécrit **à chaque image**, le troisième canal valant `(compteur + 0x4b) × 2`, de `0x96` à `0xd2` en trente images
+- doc : **deux compteurs, deux rôles** — `+0x16` est l'âge (les sons, la teinte, les deux anneaux, la fin) ; `+0x14` n'espace que les gouttes et **n'est jamais comparé à la durée** : le semis ne s'arrête que parce que le corps cesse d'être appelé
+- doc : **la goutte plonge puis remonte** — `+0x12` part de `-8` et gagne huit par image, la hauteur avançant de `+0x12 × 0x1000` : une parabole inversée écrite sans gravité ni vitesse. Elle respire en même temps, ses deux échelles horizontales valant `sin(+0x14) / 2 + 400`
 - feat : **Prière, le quarante-troisième sort** : le sort `0x0044ae90` (224 octets) et son dôme `0x0044af70` (1 440 octets), tous deux décompilés dans `Blaze.c`. Aucun corps d'enfant neuf — l'étincelle de prise était écrite avec Lapêche
 - doc : **les deux nasses sont complémentaires** — le dôme de Lapêche attrape les entités d'effet qui n'ont **pas** le bit `0x800` ; celui de Prière attrape celles qui l'**ont**. Deux sorts au même prix (22 PM), au même palier, de même longueur de combinaison, posés côte à côte dans le binaire, et qui se partagent exactement le champ des cibles. Aucun autre couple du dépôt ne fait ça
 - doc : **et Prière ne repousse pas les monstres, il les nettoie** — il retire les bits `0x880` du mot d'état des entités de scène et ne fait rien naître, là où Lapêche leur donne une vitesse fuyante, un `+0x96` à `0x10` et une étincelle

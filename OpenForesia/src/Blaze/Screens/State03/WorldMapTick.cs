@@ -4954,6 +4954,12 @@ public static unsafe partial class Blaze
             case 0x0044AE90: TickPrayer_0044AE90(record); return;
             case 0x0044AF70: TickHolyWard_0044AF70(record); return;
 
+            // CALGON, ecole 1 indice 14 — le premier corps de sort de l'ecole qui ne recopie pas la
+            // position de sa cible, et le seul dont la teinte du decor MONTE au fil des images.
+            case 0x0044B510: TickCalgon_0044B510(record); return;
+            case 0x0044B6F0: TickCalgonDroplet_0044B6F0(record); return;
+            case 0x0044C800: TickCalgonRing_0044C800(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -42925,6 +42931,281 @@ public static unsafe partial class Blaze
 
         // L'etat 2 ne vient que du dome.
         if (*(short*)(e + 0x10) == 2) EndSpellAndResetDecor_00448020(e);
+    }
+
+    // =====================================================================
+    // CALGON — le quarante-quatrieme sort, ecole 1 indice 14, sous-type 0x2c
+    //
+    //   0x0044B510   LE SORT. Sous-type 0x2c de 0x00551c30, 416 octets. DECOMPILE dans Blaze.c.
+    //   0x0044B6B0   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x0044B6F0   LA GOUTTE, sous-type 0x90 de 0x00551f30, 544 octets. DIX. DECOMPILEE.
+    //   0x0044C800   L'ANNEAU, sous-type 0x95 de 0x00551f30, 145 octets. DEUX. ABSENT de Blaze.c ;
+    //                releve sous Legacy/Raw/Blaze/FUN_0044C800.asm.
+    //
+    // IL NE SE PLACE NULLE PART. Aucune des quatre-cent-seize instructions du sort ne touche a
+    // +0x1c, +0x20 ni +0x24 : il reste ou SpawnEffectEntity l'a mis, c'est-a-dire sur le lanceur.
+    // C'est le premier corps de sort de l'ecole a ne pas recopier la position de sa cible a chaque
+    // image — et par consequent le seul a ne jamais consulter le repli DAT_005de558.
+    //
+    // ET SON DECOR N'EST PAS FIXE : IL MONTE. Les trois autres sorts de l'ecole qui teintent le
+    // decor y posent trois constantes. Calgon pose 0x96 sur deux canaux et calcule le troisieme,
+    // (compteur + 0x4b) * 2, qui va de 0x96 a 0xd2 en trente images. La teinte vire donc lentement
+    // vers le bleu pendant que le sort dure.
+    //
+    // ET IL SEME MEME QUAND IL A FINI. Le semis des gouttes est commande par +0x14, un compteur
+    // separe de +0x16 qui n'est jamais teste contre la duree : il continue tant que le corps
+    // s'execute. Ici sans effet, +0x16 arretant tout a la trentieme image.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044b6b0 @ 0x0044b6b0 — <b>effacer les alterations d'etat si la cible
+    /// l'accepte</b>, cinquieme variante. Soixante et un octets, decompilee dans <c>Blaze.c</c>.
+    /// Douzieme exemplaire de la meme enveloppe : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="ClearStatusEffect_0053C890"/> derriere — l'entree 38, la cinquieme d'une suite de
+    /// cinq entrees consecutives (34 a 38) que se partagent Antidote, Lourdes, Antisort, Marteau et
+    /// Calgon.
+    /// </summary>
+    private static bool ClearStatusEffectIfEligible_0044B6B0(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053C890(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044b6f0 @ 0x0044b6f0 — <b>la goutte de Calgon</b> : le sous-type <c>0x90</c>,
+    /// creneau 144 de <see cref="s_StaticEntityHandlers_00551f30"/>. 544 octets, <b>decompilee dans
+    /// <c>Blaze.c</c></b>. <see cref="TickCalgon_0044B510"/> en seme <b>une toutes les trois
+    /// images</b>, et c'est son seul appelant.
+    ///
+    /// <para>
+    /// <b>Elle plonge puis remonte.</b> <c>+0x12</c> part de <c>-8</c> et gagne huit par image ; la
+    /// hauteur avance de <c>+0x12 &#215; 0x1000</c> a chaque fois. La goutte descend donc une seule
+    /// image, s'arrete, puis monte de plus en plus vite — une parabole inversee, ecrite sans
+    /// gravite ni vitesse.
+    /// </para>
+    /// <para>
+    /// <b>Elle respire pendant ce temps.</b> Ses deux echelles horizontales valent
+    /// <c>sin(+0x14) / 2 + 400</c>, l'angle avancant de <c>0x60</c> par image : elle s'aplatit et
+    /// se regonfle trois fois avant de disparaitre a <c>0x76b</c>, soit une trentaine d'images.
+    /// L'echelle verticale, elle, ne bouge pas.
+    /// </para>
+    /// <para>
+    /// <b>Le sinus est appele deux fois avec le meme argument</b>, une fois par echelle, la ou une
+    /// seule aurait suffi — et les deux appels precedent l'avance de l'angle, donc portent bien la
+    /// meme valeur. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickCalgonDroplet_0044B6F0(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 3;                               // le modele
+            e[0x0a] = 0x0d;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(short*)(e + 0x28) = 400;
+            *(short*)(e + 0x2c) = 400;
+            *(short*)(e + 0x2a) = 0x1000;
+
+            *(short*)(e + 0x12) = -8;                  // Ghidra: 0xfff8
+            *(short*)(e + 0x14) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        // Ghidra: deux appels a Ordinal_451 avec le MEME argument, tous deux AVANT l'avance.
+        int breath = *(short*)(e + 0x14);
+
+        *(short*)(e + 0x28) = (short)(((int)Winsys3d.GetSinTableEntry(breath) >> 1) + 400);
+        int second = (int)Winsys3d.GetSinTableEntry(breath);
+
+        *(short*)(e + 0x12) += 8;
+        *(short*)(e + 0x14) += 0x60;
+
+        *(short*)(e + 0x2c) = (short)((second >> 1) + 400);
+
+        *(int*)(e + 0x20) += *(short*)(e + 0x12) * 0x1000;
+
+        if (*(short*)(e + 0x14) > 0x76b) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044c800 @ 0x0044c800 — <b>l'anneau de Calgon</b> : le sous-type <c>0x95</c>,
+    /// creneau 149 de <see cref="s_StaticEntityHandlers_00551f30"/>. 145 octets, <b>absent de
+    /// <c>Blaze.c</c></b>. <see cref="TickCalgon_0044B510"/> en fait naitre <b>deux</b> a la
+    /// premiere image, a deux echelles differentes, et c'est son seul appelant.
+    ///
+    /// <para>
+    /// <b>Il ne fait que s'allumer puis s'eteindre</b>, a hauteur de poitrine de la cible
+    /// (<c>+0x60 + 0xa000</c>). Cinq images de montee a <c>+60</c> sur les trois canaux, puis une
+    /// descente a <c>-8 / -8 / -6</c> jusqu'a ce que le bleu touche zero. <b>Le bleu descend moins
+    /// vite que les deux autres</b> : l'anneau vire au bleu en mourant, et c'est lui qui commande
+    /// la fin.
+    /// </para>
+    /// <para>
+    /// <b>Ses trois echelles viennent du sort</b>, par la copie des <c>0x27</c> dwords : celui-ci
+    /// les pose a <c>0x157c</c> avant le premier anneau et a <c>0x1450</c> avant le second, ce qui
+    /// fait deux cercles concentriques. Son <c>+0x2e</c> a <c>-60</c> est en revanche le sien.
+    /// </para>
+    /// </summary>
+    private static void TickCalgonRing_0044C800(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_0044c814 — +0x60, pas +0x20, comme toutes les entites de cette famille.
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60) + 0xa000;
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x0d;                            // le modele
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            e[0x38] = 0;                               // il naît noir
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x2e) = -60;                 // Ghidra: 0xffc4
+            *(short*)(e + 0x16) = 0;
+        }
+
+        // Ghidra: LAB_0044c859 — la naissance et la premiere image sont la meme passe.
+        if (*(short*)(e + 0x10) != 1) return;
+
+        if (*(short*)(e + 0x16) <= 4)
+        {
+            BrightenEntityTint_00404DE0(e, 60, 60, 60);
+        }
+        else
+        {
+            // Ghidra: LAB_0044c86e — le bleu descend moins vite que les deux autres.
+            BrightenEntityTint_00404DE0(e, -8, -8, -6);
+        }
+
+        if (e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
+
+        *(short*)(e + 0x16) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044b510 @ 0x0044b510 — <b>Calgon</b> : le sous-type <c>0x2c</c>, creneau 44 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>quinzieme fiche de l'ecole 1</b>. 416
+    /// octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne se place nulle part.</b> Aucune de ses instructions ne touche a <c>+0x1c</c>,
+    /// <c>+0x20</c> ni <c>+0x24</c> : il reste ou <c>SpawnEffectEntity</c> l'a mis, sur le lanceur.
+    /// C'est le premier corps de sort de l'ecole a ne pas recopier la position de sa cible a chaque
+    /// image, et donc le seul a ne jamais consulter le repli
+    /// <c>DAT_005de558</c>. Sa recherche de cible ne sert qu'a remplir
+    /// <c>+0x78</c> pour ses enfants et pour l'effet.
+    /// </para>
+    /// <para>
+    /// <b>Son decor monte.</b> Les autres fiches de l'ecole posent trois constantes dans
+    /// <c>0x005e9160</c> une fois pour toutes ; Calgon les reecrit <b>a chaque image</b>, avec
+    /// <c>0x96</c> sur deux canaux et <c>(compteur + 0x4b) &#215; 2</c> sur le troisieme — de
+    /// <c>0x96</c> a <c>0xd2</c> en trente images. La teinte vire lentement pendant que le sort
+    /// dure.
+    /// </para>
+    /// <para>
+    /// <b>Deux compteurs, deux roles.</b> <c>+0x16</c> est l'age : il commande les quatre sons, la
+    /// teinte du decor, les deux anneaux de la premiere image et la fin a la trentieme.
+    /// <c>+0x14</c> ne sert qu'a espacer les gouttes — une toutes les trois images — et
+    /// <b>n'est jamais compare a la duree</b> : le semis ne s'arrete que parce que le corps cesse
+    /// d'etre appele.
+    /// </para>
+    /// <para>
+    /// <b>Les deux anneaux naissent concentriques</b> : le sort pose les trois echelles a
+    /// <c>0x157c</c>, engendre le premier, les repose a <c>0x1450</c> et engendre le second.
+    /// </para>
+    /// </summary>
+    private static void TickCalgon_0044B510(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+        }
+
+        // Une goutte toutes les trois images — +0x14 n'est jamais borne par la duree.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x14) += 1;
+
+            if (*(short*)(e + 0x14) > 2)
+            {
+                *(short*)(e + 0x14) = 0;
+                SpawnCastEntity_0047AAE0(e, 0x90, 0, -1);
+            }
+        }
+
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x28, 0x1000, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x1c, 0x400, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 3) Aud.PlaySoundEffect(0x28, 0x653, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 4) Aud.PlaySoundEffect(0x23, 0x400, 0x1000, 0x1000);
+
+        // Le decor, reecrit a chaque image : le troisieme canal monte avec l'age.
+        *(ushort*)Mem.Arena(0x005e9160) = 0x96;
+        *(ushort*)Mem.Arena(0x005e9162) = 0x96;
+        *(ushort*)Mem.Arena(0x005e9166) = 2;
+        *(ushort*)Mem.Arena(0x005e9164) = (ushort)((*(short*)(e + 0x16) + 0x4b) * 2);
+
+        if (*(short*)(e + 0x16) == 0)
+        {
+            *(short*)(e + 0x30) = 0;
+            *(short*)(e + 0x34) = 0;
+            *(short*)(e + 0x32) = 0x200;
+
+            *(short*)(e + 0x28) = 0x157c;
+            *(short*)(e + 0x2c) = 0x157c;
+            *(short*)(e + 0x2a) = 0x157c;
+            SpawnCastEntity_0047AAE0(e, 0x95, 0, -1);
+
+            *(short*)(e + 0x28) = 0x1450;
+            *(short*)(e + 0x2c) = 0x1450;
+            *(short*)(e + 0x2a) = 0x1450;
+            SpawnCastEntity_0047AAE0(e, 0x95, 0, -1);
+        }
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) == 0x1e)
+        {
+            // La paire famille/indice passe au lanceur : c'est SA fiche que l'effet relira.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ClearStatusEffectIfEligible_0044B6B0(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+
+            EndSpellAndResetDecor_00448020(e);
+        }
     }
 
     /// <summary>
