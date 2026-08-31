@@ -4960,6 +4960,10 @@ public static unsafe partial class Blaze
             case 0x0044B6F0: TickCalgonDroplet_0044B6F0(record); return;
             case 0x0044C800: TickCalgonRing_0044C800(record); return;
 
+            // ZOMBIE, ecole 1 indice 15 — Pardon sur TOUT LE MONDE : meme critere d'espece, meme
+            // trait 0x9e, mais toutes les candidates au lieu de la plus proche. Porte aussi LB-019.
+            case 0x0044F930: TickZombie_0044F930(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -43204,6 +43208,151 @@ public static unsafe partial class Blaze
             ClearStatusEffectIfEligible_0044B6B0(
                 *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
 
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    // =====================================================================
+    // ZOMBIE — le quarante-cinquieme sort, ecole 1 indice 15, sous-type 0x2d
+    //
+    //   0x0044F930   LE SORT. Sous-type 0x2d de 0x00551c30, 477 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044F930.asm.
+    //
+    // UN SEUL CORPS, ET AUCUN ENFANT NEUF : c'est PARDON SUR TOUT LE MONDE. Meme critere d'espece
+    // (statistiques[0x14] & 0x3000000), meme portee de 0x5dc depuis le LANCEUR, meme trait 0x9e —
+    // TickForgiveBolt_0044F290, deja ecrit. La difference tient en une phrase : Pardon retient la
+    // candidate la plus proche du sort et n'en frappe qu'une, Zombie les frappe TOUTES.
+    //
+    // ET IL PORTE LE MEME DEFAUT, LB-019. La branche « aucune cible » pose +0x10 = 0x63 puis tombe
+    // dans l'instruction qui pose +0x10 = 2, exactement comme chez Pardon. Le defaut n'etait donc
+    // pas propre a cette fiche : les deux corps ont ete ecrits sur le meme patron, defaut compris.
+    //
+    // ET IL EN AJOUTE UN SECOND, SANS CONSEQUENCE. Le bloc de fin appelle EndSpellAndResetDecor
+    // DEUX fois : une sous la garde « +0x16 >= 0x5a », l'autre juste apres, sans garde. Le `jl` ne
+    // saute que le premier appel. Cela ne se voit pas : l'etat 0x63 n'est atteint que par ce meme
+    // test, donc la garde est toujours vraie quand le bloc s'execute. Transcrit tel quel.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044f930 @ 0x0044f930 — <b>Zombie</b> : le sous-type <c>0x2d</c>, creneau 45 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>seizieme fiche de l'ecole 1</b>. 477
+    /// octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickForgive_0044F060"/> sur tout le monde.</b> Meme balayage des
+    /// <c>0x20</c> entites de scene, meme resolution par <see cref="ResolveEntityBlocks"/>, meme
+    /// critere d'espece <c>statistiques[0x14] &amp; 0x3000000</c>, meme portee de <c>0x5dc</c>
+    /// depuis le <b>lanceur</b>, meme rattachement de la victime au pere du sort
+    /// (<c>victime[0x74] = sort[0x6c]</c>), meme trait <c>0x9e</c>. La seule difference : Pardon
+    /// mesure une seconde distance pour ne garder que la plus proche, Zombie n'en mesure qu'une et
+    /// frappe <b>toutes</b> celles qui passent.
+    /// </para>
+    /// <para>
+    /// <b>Il ne compte que pour savoir s'il a rate.</b> Un compteur de pile s'incremente a chaque
+    /// victime ; s'il est reste nul apres le balayage, le sort prend la branche « aucune cible ».
+    /// </para>
+    /// <para>
+    /// <b>LB-019, ici aussi.</b> Cette branche pose <c>+0x10 = 0x63</c> et <c>+0x16 = 0x46</c>, puis
+    /// <b>tombe</b> dans l'instruction suivante qui pose <c>+0x10 = 2</c> — le meme defaut, au meme
+    /// endroit, que chez Pardon. Voir <c>Documentation/Reference/legacy-bug.md</c>.
+    /// </para>
+    /// <para>
+    /// <b>Et un second appel d'extinction, sans garde.</b> Le bloc de fin appelle
+    /// <see cref="EndSpellAndResetDecor_00448020"/> une premiere fois sous la condition
+    /// <c>+0x16 &gt;= 0x5a</c>, puis une seconde fois inconditionnellement : le <c>jl</c> ne saute
+    /// que le premier appel. Sans consequence — l'etat <c>0x63</c> n'est atteint que par ce meme
+    /// test, donc la garde est toujours vraie quand le bloc s'execute. Transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// Son decor est le sien : <c>0x78</c>/<c>0x82</c>/<c>0xb4</c>, la ou Pardon posait
+    /// <c>0xa0</c>/<c>0xa0</c>/<c>0xb4</c>.
+    /// </para>
+    /// </summary>
+    private static void TickZombie_0044F930(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_0044f959
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            *(ushort*)Mem.Arena(0x005e9160) = 0x78;
+            *(ushort*)Mem.Arena(0x005e9162) = 0x82;
+            *(ushort*)Mem.Arena(0x005e9164) = 0xb4;
+            *(ushort*)Mem.Arena(0x005e9166) = 2;
+        }
+
+        // Ghidra: LAB_0044f990
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x27, 0x200, 0x1000, 0x1000);
+
+        // Ghidra: LAB_0044f9b0 — la recherche, une seule image, et elle prend TOUT.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            if (caster == null) caster = Res.s_EntityList_005de558;
+
+            int struck = 0;
+            byte* candidate = Mem.Entity(0x005ecaa0);
+
+            for (int index = 0; index < 0x20; index++, candidate += 0x9c)
+            {
+                ResolveEntityBlocks(candidate, out byte* stats, out byte* species, out byte* model);
+
+                uint flags = *(uint*)candidate;
+
+                if ((flags & 0x80000000) == 0) continue;
+                if ((flags & 0x40002000) != 0) continue;
+                if (*(int*)(candidate + 0x74) != 0) continue;
+
+                // LE CRITERE D'ESPECE, le meme que celui de Pardon.
+                if ((*(uint*)(stats + 0x14) & 0x3000000) == 0) continue;
+
+                // Une seule distance, celle au LANCEUR, en trois dimensions.
+                int dx = (*(int*)(candidate + 0x1c) - *(int*)(caster + 0x1c)) >> 0xc;
+                int dy = (*(int*)(candidate + 0x20) - *(int*)(caster + 0x20)) >> 0xc;
+                int dz = (*(int*)(candidate + 0x24) - *(int*)(caster + 0x24)) >> 0xc;
+
+                if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) >= 0x5dc)
+                {
+                    continue;
+                }
+
+                *(byte**)(e + 0x78) = candidate;
+                *(byte**)(candidate + 0x74) = *(byte**)(e + 0x6c);   // le PERE du sort
+
+                SpawnCastEntity_0047AAE0(e, 0x9e, 0, -1);
+
+                struck++;
+            }
+
+            if (struck == 0)
+            {
+                // Ghidra: 0x0044fab0 — LB-019 : ce 0x63 est efface l'instruction d'apres.
+                *(short*)(e + 0x10) = 0x63;
+                *(short*)(e + 0x16) = 0x46;
+            }
+
+            // Ghidra: LAB_0044fabc — les DEUX chemins passent ici.
+            *(short*)(e + 0x10) = 2;
+        }
+
+        // Ghidra: LAB_0044fac2
+        if (*(short*)(e + 0x10) == 2 && *(short*)(e + 0x16) >= 0x5a) *(short*)(e + 0x10) = 0x63;
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x10) == 0x63)
+        {
+            // Le `jl` ne saute que ce premier appel ; le second n'a pas de garde.
+            if (*(short*)(e + 0x16) >= 0x5a) EndSpellAndResetDecor_00448020(e);
+
+            // Ghidra: LAB_0044faf8 — inconditionnel.
             EndSpellAndResetDecor_00448020(e);
         }
     }

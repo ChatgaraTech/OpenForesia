@@ -1002,8 +1002,14 @@ Poser `ebp = +0x32` sur ce chemin comme sur les trois autres.
 
 ## LB-019 — L'état de fin de « Pardon » est écrit puis effacé une instruction plus loin
 
-**Fonction** : `FUN_0044f060` (Pardon, école 1 indice 0, sous-type `0x1e`), relevé le 2026-08-31.
-Absent de `Blaze.c` — trouvé au désassembleur.
+**Fonctions** : `FUN_0044f060` (Pardon, école 1 indice 0, sous-type `0x1e`) **et `FUN_0044f930`**
+(Zombie, école 1 indice 15, sous-type `0x2d`), relevées le 2026-08-31. Toutes deux absentes de
+`Blaze.c` — trouvées au désassembleur.
+
+**Le défaut n'est pas propre à Pardon** (constaté le 2026-08-31, en transcrivant Zombie). Les deux
+corps sont bâtis sur le même patron — même balayage des trente-deux entités de scène, même critère
+d'espèce, même trait `0x9e` — et ils portent la même chute. Zombie y ajoute un second appel
+d'extinction sans garde, décrit en fin d'entrée.
 
 ### Le symptôme
 
@@ -1037,11 +1043,29 @@ donc **vingt images au lieu de quatre-vingt-dix** — un raccourci, là où le c
 ### Ce que la transcription fait
 
 `TickForgive_0044F060` écrit les deux affectations dans l'ordre du binaire, `0x63` compris, et
-laisse le `2` les suivre.
+laisse le `2` les suivre. `TickZombie_0044F930` fait de même.
+
+### Le supplément de Zombie : un second appel d'extinction sans garde
+
+Son bloc de fin appelle `FUN_00448020` — l'extinction avec remise du décor — **deux fois** :
+
+```
+0044fada  cmp  word [edi+10h],63h
+0044fae3  jne  0044FB05
+0044fae5  cmp  ax,5Ah
+0044fae9  jl   0044FAF8          <- ne saute QUE le premier appel
+0044faeb  call 00448020h         <- premier, sous garde
+LAB_0044faf8:
+0044fafd  call 00448020h         <- second, sans garde
+```
+
+**Sans conséquence** : l'état `0x63` n'est atteint que par ce même test `+0x16 >= 0x5a`, donc la
+garde est toujours vraie quand le bloc s'exécute, et l'extinction est idempotente. La transcription
+garde les deux appels.
 
 ### Où porterait le correctif
 
-Remplacer la chute par un saut par-dessus `LAB_0044f24a`.
+Remplacer la chute par un saut par-dessus `LAB_0044f24a` (et par-dessus `LAB_0044faf8` pour Zombie).
 
 ---
 

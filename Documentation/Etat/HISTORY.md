@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Zombie, le quarante-cinquième sort** : un seul corps, `0x0044f930` (477 octets, absent de `Blaze.c`). **Aucun enfant neuf** — son trait est le `0x9e` de Pardon, déjà écrit
+- doc : **c'est Pardon sur tout le monde** — même balayage des 32 entités de scène, même critère d'espèce (`statistiques[0x14] & 0x3000000`), même portée de `0x5dc` depuis le lanceur, même rattachement de la victime au père du sort, même trait. La seule différence : Pardon mesure une **seconde** distance pour ne garder que la plus proche, Zombie n'en mesure qu'une et frappe **toutes** les candidates
+- fix : **LB-019 n'était pas propre à Pardon** — Zombie porte la même chute, au même endroit : la branche « aucune cible » pose `+0x10 = 0x63` puis tombe dans l'instruction qui pose `+0x10 = 2`. Les deux corps ont été écrits sur le même patron, défaut compris. L'entrée de `legacy-bug.md` est corrigée
+- doc : **et Zombie ajoute un second appel d'extinction sans garde** — le `jl` ne saute que le premier des deux `FUN_00448020`. Sans conséquence : l'état `0x63` n'est atteint que par ce même test, donc la garde est toujours vraie quand le bloc s'exécute
 - feat : **Calgon, le quarante-quatrième sort** : le sort `0x0044b510` (416 octets), son enveloppe d'effet `0x0044b6b0` et sa goutte `0x0044b6f0` (544 octets, une toutes les trois images), tous trois décompilés ; plus son anneau `0x0044c800` (145 octets, deux exemplaires concentriques), sorti du désassembleur
 - doc : **il ne se place nulle part** — aucune de ses 416 instructions ne touche à `+0x1c`, `+0x20` ni `+0x24` : il reste où `SpawnEffectEntity` l'a mis, sur le lanceur. Premier corps de sort de l'école à ne pas recopier la position de sa cible, et donc le seul à ne jamais consulter le repli `DAT_005de558`
 - doc : **son décor monte** — les autres fiches de l'école posent trois constantes dans `0x005e9160` une fois pour toutes ; Calgon les réécrit **à chaque image**, le troisième canal valant `(compteur + 0x4b) × 2`, de `0x96` à `0xd2` en trente images

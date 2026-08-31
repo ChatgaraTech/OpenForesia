@@ -147,7 +147,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 1 | 12 | Lapêche | O-T-C-X-O-T-C-X-O | 22 | 55 | 20 | 0x2a | `0x0044A7A0` | oui | **non** |
 | 1 | 13 | Prière | O-X-C-T-O-X-C-T-O | 22 | 55 | 20 | 0x2b | `0x0044AE90` | oui | **non** |
 | 1 | 14 | Calgon | C-O-X-T-C-O-X-T | 26 | 51 | 40 | 0x2c | `0x0044B510` | oui | **non** |
-| 1 | 15 | Zombie | X-T-T-T-O-X-C | 10 | 48 | 60 | 0x2d | `0x0044F930` | **non** | **non** |
+| 1 | 15 | Zombie | X-T-T-T-O-X-C | 10 | 48 | 60 | 0x2d | `0x0044F930` | oui | **non** |
 | 1 | 16 | Parole sainte | X-T-T-XC-TO | 60 | 58 | 12 | 0x2e | `0x0044D370` | **non** | **non** |
 | 1 | 17 | Délivrance | T-O-O-O-T-O-TO-C-O-T-X | 40 | 63 | 36 | 0x2f | `0x0044B7B0` | **non** | **non** |
 | 1 | 18 | Micro | T-O-O-O-X-C-XC-C-O-T-X | 40 | 63 | 36 | 0x30 | `0x0044BAF0` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **44** |
-| a transcrire | **36** |
+| implementees (le gestionnaire existe) | **45** |
+| a transcrire | **35** |
 | lancees en jeu au moins une fois | **16** |
-| dette : implementees mais jamais lancees | **28** |
+| dette : implementees mais jamais lancees | **29** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -241,7 +241,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x0044D370` | 1 | **non** | **non** | Parole sainte |
 | `0x0044DC60` | 1 | **non** | **non** | Ange |
 | `0x0044F060` | 1 | oui | **non** | Pardon |
-| `0x0044F930` | 1 | **non** | **non** | Zombie |
+| `0x0044F930` | 1 | oui | **non** | Zombie |
 | `0x00476C70` | 1 | **non** | **non** | Dodo |
 | `0x00476FD0` | 1 | **non** | **non** | Gros sabots |
 | `0x00477360` | 1 | **non** | **non** | Vitesse |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | oui | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **30** a transcrire.
+**74 gestionnaires distincts**, dont **29** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le
