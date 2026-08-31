@@ -4788,6 +4788,11 @@ public static unsafe partial class Blaze
             case 0x0047D950: TickIceBlock_0047D950(record); return;
             case 0x0047DA50: TickIceShard_0047DA50(record); return;
 
+            // ATCHOUM, ecole 0 indice 13 — le second sort entretenu, et le seul ou l'AGE d'un
+            // enfant lui sert de laissez-passer pour frapper.
+            case 0x0047DB50: TickSneeze_0047DB50(record); return;
+            case 0x0047DE10: TickSneezePuff_0047DE10(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -32639,6 +32644,284 @@ public static unsafe partial class Blaze
         *(ushort*)(e + 0x10) += 1;
 
         if (*(uint*)(e + 0x38) == 0) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // ATCHOUM — le quatorzieme sort, ecole 0 indice 13, sous-type 0x0d
+    //
+    // Deux corps neufs. C'est le SECOND SORT ENTRETENU, apres Wonder — meme lecture de manette,
+    // meme ponction cadencee sur l'horloge du monde, meme garde CanSustainChannel_00475110 — mais
+    // il coute 4 PM par vingt images au lieu de 2, et il POURSUIT.
+    //
+    //   0x0047DB50   LE NUAGE. Sous-type 0x0d de 0x00551c30, 698 octets.
+    //   0x0047DE10   LA BOUFFEE, sous-type 0x4f de 0x00552230, 346 octets. Huit exemplaires.
+    //
+    // TROIS AGES, ET ILS NE SE RESSEMBLENT PAS. Les huit premieres images le nuage se tient au
+    // lanceur et laisse tomber une bouffee par image, chacune a une position tiree au hasard au
+    // SOL autour de lui. De la huitieme a la seizieme il relache le lanceur. Ensuite il poursuit
+    // l'adversaire le plus proche, en approchant d'un huitieme sur les trois axes.
+    //
+    // ET UNE SEULE BOUFFEE SUR HUIT PEUT FRAPPER. Le nuage ecrit son propre age dans le +0x12 de
+    // chaque bouffee avant de l'engendrer, et la bouffee ne cherche de victime que si ce champ est
+    // NUL. Seule la premiere — celle de l'image 0 — mord donc, et elle cesse des que la
+    // resorption commence a incrementer le champ. Ce n'est pas une garde de securite : c'est
+    // l'age qui sert de laissez-passer.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047db50 @ 0x0047db50 — <b>Atchoum</b> : le sous-type <c>0x0d</c>, creneau 13 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 698 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le second sort entretenu du depot.</b> Comme <see cref="TickWonder_0047BF00"/> il relit
+    /// la manette du joueur qui tient le lanceur et s'arrete au relachement, et comme lui il
+    /// ponctionne sur l'horloge du monde <c>0x005f2cf0</c> — mais <b>4 PM toutes les vingt
+    /// images</b>, le double.
+    /// </para>
+    /// <para>
+    /// <b>Trois ages.</b> Images 0 a 7 : il se tient a hauteur de tete du lanceur et laisse tomber
+    /// une bouffee par image, chacune au <b>sol</b> (<c>+0x60</c> du lanceur) a un ecart tire sur
+    /// 256 unites. Images 8 a 15 : il relache la marque <c>0x80</c> du lanceur et ne fait rien
+    /// d'autre. A partir de 16 : il <b>poursuit</b> l'adversaire le plus proche, approchant d'un
+    /// huitieme sur les trois axes ; faute de cible il revient se coller au lanceur.
+    /// </para>
+    /// <para>
+    /// <b>Le lien avec la cible est reciproque</b>, comme celui de la fleche magique : le nuage
+    /// s'ecrit dans le <c>+0x74</c> de sa proie et la relache si elle meurt.
+    /// </para>
+    /// <para>
+    /// Un lanceur hors du groupe n'a ni manette ni PM : il tient <b>120 images</b>.
+    /// </para>
+    /// </summary>
+    private static void TickSneeze_0047DB50(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        int* puffAt = stackalloc int[3];
+        ushort age = *(ushort*)(e + 0x10);
+
+        if (age == 0)
+        {
+            *(uint*)(*(uint**)(e + 0x74)) |= 0x80;     // le lanceur est immobilise
+            *(uint*)e |= 0x80;
+            *(int*)(e + 0x78) = 0;
+            *(uint*)(e + 0x28) = 0x18001800;
+            *(uint*)(e + 0x38) = 0x00808080;
+
+            Aud.PlayPositionalSound(3, 0x100, 0x1200, (int*)(e + 0x1c));
+        }
+
+        byte* caster = *(byte**)(e + 0x74);
+
+        if ((short)age < 8)
+        {
+            // ------------------------------------------------------------ la bouffee
+            // L'age du nuage part avec la bouffee : c'est son laissez-passer pour frapper.
+            *(short*)(e + 0x12) = (short)age;
+
+            puffAt[0] = *(int*)(caster + 0x1c) + (((CrtRand() & 0xff) - 0x80) << 0xc);
+            puffAt[1] = *(int*)(caster + 0x60);        // au SOL, pas a sa hauteur
+            puffAt[2] = *(int*)(caster + 0x24) + (((CrtRand() & 0xff) - 0x80) << 0xc);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, puffAt, TrapBurstDescriptors(), 0x4f, e[0x0b], -1);
+
+            *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(caster + 0x20)
+                                + ((StatusBubbleHeight_00538BC0((uint*)caster) + 0x64) << 0xc);
+            *(int*)(e + 0x24) = *(int*)(caster + 0x24);
+
+            *(ushort*)(e + 0x10) += 1;
+            return;
+        }
+
+        if ((short)age < 0x10)
+        {
+            // Ghidra: LAB_0047dc4d — huit images de latence, le lanceur est rendu a lui-meme.
+            *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;
+        }
+        else
+        {
+            // ------------------------------------------------------------ la poursuite
+            byte* target = *(byte**)(e + 0x78);
+
+            if (target != null)
+            {
+                if ((*(uint*)target & 0x50000000) != 0)
+                {
+                    *(uint*)(target + 0x74) = 0;
+                    *(int*)(e + 0x78) = 0;
+                    target = null;
+                }
+            }
+            else
+            {
+                target = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+            }
+
+            if (target != null)
+            {
+                *(byte**)(e + 0x78) = target;
+                *(byte**)(target + 0x74) = e;          // le lien est reciproque
+
+                *(int*)(e + 0x1c) += (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 3;
+
+                int head = StatusBubbleHeight_00538BC0((uint*)target);
+                *(int*)(e + 0x20) +=
+                    (((head & ~1) << 0xb) + *(int*)(target + 0x20) - *(int*)(e + 0x20)) >> 3;
+
+                *(int*)(e + 0x24) += (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 3;
+            }
+            else
+            {
+                // Ghidra: LAB_0047dcd9 — faute de proie, il revient sur le lanceur.
+                *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+                *(int*)(e + 0x20) = *(int*)(caster + 0x20)
+                                    + ((StatusBubbleHeight_00538BC0((uint*)caster) + 0x64) << 0xc);
+                *(int*)(e + 0x24) = *(int*)(caster + 0x24);
+            }
+
+            // Ghidra: LAB_0047dcff — le placement, la hauteur rendue.
+            int keptHeight = *(int*)(e + 0x20);
+            FinalizeEntityPlacement2((uint*)e);        // Ghidra: FUN_00533940
+            int ground = *(int*)(e + 0x60);
+            *(int*)(e + 0x20) = keptHeight;
+
+            if (keptHeight <= ground)
+            {
+                *(int*)(e + 0x20) = ground;
+                *(uint*)(e + 0x90) = 0x800;
+            }
+
+            if ((*(uint*)e & 0x40000000) != 0
+                || (*(uint*)(e + 0x90) & 0x8802) != 0
+                || CanSustainChannel_00475110(e) != 0)
+            {
+                *(uint*)e |= 0x2000000;
+            }
+        }
+
+        // Ghidra: LAB_0047dd51 — l'entretien, commun aux deux derniers ages.
+        if ((*(uint*)e & 0x800000) != 0)
+        {
+            uint index = ((uint*)caster)[2] & 0xff;
+            byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+            int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+            ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+
+            // Ghidra: LAB_0047dd9f — quatre PM toutes les vingt images, le double de Wonder.
+            if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
+            {
+                short mana = *(short*)(perChar + 0x14e);
+
+                if (mana >= 4)
+                {
+                    *(short*)(perChar + 0x14e) = (short)(mana - 4);
+                }
+                else
+                {
+                    *(ushort*)(perChar + 0x14e) = 0;
+                    *(uint*)e |= 0x2000000;
+                }
+            }
+        }
+        else if (*(short*)(e + 0x10) >= 0x78)
+        {
+            // Ghidra: LAB_0047ddf0 — sans manette ni PM, cent-vingt images et c'est tout.
+            *(uint*)e |= 0x2000000;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047de10 @ 0x0047de10 — <b>la bouffee d'Atchoum</b> : le sous-type <c>0x4f</c>,
+    /// creneau 79 de <see cref="s_StaticEntityHandlers_00552230"/>. 346 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle flotte autour de son pere</b> sans jamais l'atteindre : a chaque image elle vise un
+    /// point tire au hasard a moins de 64 unites du nuage, et n'en parcourt qu'<b>un quart</b>.
+    /// Le resultat est un flottement, pas un suivi.
+    /// </para>
+    /// <para>
+    /// <b>Elle herite du mot d'etat du nuage</b> par <c>+0x6c</c>, les deux bits <c>0x3000000</c>,
+    /// exactement comme l'aura de Wonder : c'est ainsi que la fin se propage. Une fois marquee elle
+    /// perd un quart de son echelle par image et disparait sous <c>0x100</c>.
+    /// </para>
+    /// <para>
+    /// <b>Une seule bouffee sur huit frappe.</b> Le nuage lui a passe son propre age dans
+    /// <c>+0x12</c>, et la recherche de victime est gardee par <c>+0x12 == 0</c> : seule celle de
+    /// la premiere image mord. La resorption incremente ce champ, ce qui la fait taire aussi.
+    /// </para>
+    /// <para>
+    /// Son image d'atlas tourne en anneau sur sept — la borne de
+    /// <see cref="s_TrapBurstDescriptors_005519D0"/>, deja etablie par un autre consommateur.
+    /// </para>
+    /// </summary>
+    private static void TickSneezePuff_0047DE10(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { 0x0000, -0x003c, 0x003c, 0x00c8, 0x0000, 0x0078 };
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            // La resorption — et l'increment de +0x12 la prive du droit de frapper.
+            *(ushort*)(e + 0x12) += 1;
+
+            short scale = *(short*)(e + 0x28);
+            scale -= (short)(scale >> 2);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            if (scale < 0x100)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+        }
+
+        // Ghidra: LAB_0047de75 — l'anneau des sept images.
+        byte frame = (byte)(e[0x40] + 1);
+        e[0x40] = frame;
+        if (frame >= 7) e[0x40] = 0;
+
+        byte* cloud = *(byte**)(e + 0x6c);
+
+        // Elle vise un point quelconque autour du nuage et n'en fait que le quart.
+        int wantX = *(int*)(cloud + 0x1c) + (((CrtRand() & 0x7f) - 0x40) << 0xc);
+        int wantY = *(int*)(cloud + 0x20) + (((CrtRand() & 0x7f) - 0x40) << 0xc);
+        int wantZ = *(int*)(cloud + 0x24) + (((CrtRand() & 0x7f) - 0x40) << 0xc);
+
+        *(int*)(e + 0x1c) += (wantX - *(int*)(e + 0x1c)) >> 2;
+        *(int*)(e + 0x20) += (wantY - *(int*)(e + 0x20)) >> 2;
+        *(int*)(e + 0x24) += (wantZ - *(int*)(e + 0x24)) >> 2;
+
+        // L'heritage des deux bits du pere, comme l'aura de Wonder.
+        *(uint*)e |= *(uint*)cloud & 0x3000000;
+
+        if (*(ushort*)(e + 0x12) != 0) return;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+        if (victim == null) return;
+
+        ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+        *(uint*)victim |= 0x40;
+        *(ushort*)(victim + 0x96) = 0x10;
+        *(byte**)(e + 0x78) = victim;
+
+        Aud.PlayPositionalSound(0x0e, 0x200, 0x1200, (int*)(e + 0x1c));
     }
 
     /// <summary>
