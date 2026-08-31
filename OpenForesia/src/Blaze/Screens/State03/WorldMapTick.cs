@@ -4793,6 +4793,12 @@ public static unsafe partial class Blaze
             case 0x0047DB50: TickSneeze_0047DB50(record); return;
             case 0x0047DE10: TickSneezePuff_0047DE10(record); return;
 
+            // ASSAUT MAGIQUE, ecole 0 indice 14 — le seul sort ou le signal de fin REMONTE : ce
+            // sont les lames qui marquent leur pere, pas l'inverse.
+            case 0x0047DF70: TickMagicAssault_0047DF70(record); return;
+            case 0x0047E150: TickAssaultBlade_0047E150(record); return;
+            case 0x0047E200: TickAssaultRing_0047E200(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -32922,6 +32928,236 @@ public static unsafe partial class Blaze
         *(byte**)(e + 0x78) = victim;
 
         Aud.PlayPositionalSound(0x0e, 0x200, 0x1200, (int*)(e + 0x1c));
+    }
+
+    // =====================================================================
+    // ASSAUT MAGIQUE — le quinzieme sort, ecole 0 indice 14, sous-type 0x0e
+    //
+    // Trois corps neufs. Comme Enchant, il NE FRAPPE PAS : aucun de ses corps n'appelle
+    // ResolveSpellHit_0053A2B0. Tout se resout a la soixantieme image par
+    // ApplyStatusEffect_0053BE70, l'entree 21 de la table des 48.
+    //
+    //   0x0047DF70   LE SORT. Sous-type 0x0e de 0x00551c30, 477 octets.
+    //   0x0047E150   LA LAME, sous-type 0x76 de 0x00551f30, 169 octets. SIX exemplaires.
+    //   0x0047E200   L'ANNEAU, sous-type 0x77 de 0x00551f30, 90 octets. Deux exemplaires.
+    //
+    // LES SIX LAMES SONT DEUX GROUPES DE TROIS. La boucle est double : trois lames espacees de
+    // 0x555 — un tiers de tour —, puis un decalage de 0x2aa et trois autres. La meme figure que
+    // les deux anneaux de Feu d'enfer, avec un corps qui bouge au lieu de tourner sur place.
+    //
+    // ET CE SONT LES LAMES QUI DECIDENT DE LA FIN. Quand l'echelle angulaire +0x34 d'une lame
+    // tombe sous 8, elle pose 0x2000000 sur le mot d'etat de son PERE — l'inverse du signal de
+    // Wonder, qui descendait du pere vers les fils. Le sort attend ce signal pour lacher ses deux
+    // anneaux.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047df70 @ 0x0047df70 — <b>Assaut magique</b> : le sous-type <c>0x0e</c>, creneau
+    /// 14 de <see cref="s_StaticEntityHandlers_00551c30"/>. 477 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Trois divisions par multiplication magique a la naissance</b>, toutes sur la hauteur de
+    /// tete de la cible : l'echelle <c>+0x28</c> vaut <c>hauteur &lt;&lt; 12 / 60</c>
+    /// (<c>0x88888889</c> avec la correction <c>add edx,edi</c> que reclame un multiplicateur
+    /// au-dela de <c>2^31</c>), <c>+0x2c</c> en vaut le dixieme (<c>0x66666667</c>), et le rayon des
+    /// anneaux <c>hauteur &lt;&lt; 12 / 75</c> (<c>0x1B4E81B5</c> avec un decalage de 3 — le meme
+    /// multiplicateur que l'aureole d'incantation, qui l'emploie avec 4 pour diviser par 150).
+    /// </para>
+    /// <para>
+    /// <b>Il attend le signal de ses lames.</b> Le corps ne compte rien : il regarde
+    /// <c>0x2000000</c> sur son propre mot d'etat — que les lames y posent en mourant — et se
+    /// marque alors <c>0x1000000</c> pour ne le faire qu'une fois. C'est a cet instant qu'il lache
+    /// les deux anneaux, opposes d'un demi-tour.
+    /// </para>
+    /// <para>
+    /// A la soixantieme image, il recopie sa paire famille/indice sur le lanceur et pose
+    /// <see cref="ApplyStatusEffect_0053BE70"/> sur la cible.
+    /// </para>
+    /// </summary>
+    private static void TickMagicAssault_0047DF70(byte* record)
+    {
+        byte* e = record;
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(short*)(e + 0x2e) = -0x14;
+
+            byte* target = FindTargetAround_00474BA0(e, 0);
+            *(byte**)(e + 0x78) = target;
+            *(byte**)(e + 0x70) = target;              // l'ancre des lames
+
+            *(short*)(e + 0x12) = 0x190;               // la hauteur de depart des lames
+            *(uint*)(e + 0x38) = 0;
+
+            int height = StatusBubbleHeight_00538BC0((uint*)target);
+
+            // `imul 0x88888889 ; add edx,edi ; sar edx,5` : une division par 60. Le `add` est ce
+            // que reclame un multiplicateur qui ne tient pas dans un entier signe.
+            int span = (height << 0xc) / 60;
+            *(int*)(e + 0x28) = span;
+            e[0x04] = 0x3f;                            // le modele des lames
+
+            // `imul 0x66666667 ; sar edx,2` : le dixieme.
+            *(short*)(e + 0x2c) = (short)(span / 10);
+
+            int heading = *(short*)(e + 0x32);
+            int radius = (height >> 1) - (height >> 4);
+
+            // Deux groupes de trois, decales entre eux d'un sixieme de tour.
+            for (int ring = 0; ring < 2; ring++)
+            {
+                for (int blade = 0; blade < 3; blade++)
+                {
+                    heading += 0x555;                  // un tiers de tour
+
+                    *(ushort*)(e + 0x34) = 0x800;
+                    *(short*)(e + 0x14) = (short)heading;         // l'angle vise
+                    *(short*)(e + 0x32) = (short)(heading + 0x800);  // et l'oppose pour partir
+
+                    *(int*)(e + 0x44) = (int)Winsys3d.GetSinTableEntry(heading) * radius;
+                    *(int*)(e + 0x4c) = Winsys3d.GetCosTableEntry(heading) * radius;
+
+                    SpawnCastEntity_0047AAE0(e, 0x76, e[0x0b], -1);
+                }
+
+                heading += 0x2aa;
+            }
+
+            Aud.PlayPositionalSound(0x2c, 0x37e, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047e075 — le signal des lames, traite une seule fois.
+        uint state = *(uint*)e;
+
+        if ((state & 0x1000000) == 0 && (state & 0x2000000) != 0)
+        {
+            *(uint*)e = state | 0x1000000;
+            e[0x04] = 0x3e;                            // le modele des anneaux
+
+            int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x78));
+
+            // `imul 0x1B4E81B5 ; sar edx,3` : une division par 75.
+            int radius = (height << 0xc) / 75;
+            *(short*)(e + 0x2c) = (short)radius;
+            *(uint*)(e + 0x28) = (uint)radius | 0x60000000;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(ushort*)(e + 0x34) = 0;
+
+            SpawnCastEntity_0047AAE0(e, 0x77, e[0x0b], -1);
+            *(ushort*)(e + 0x32) += 0x800;             // l'autre moitie du cercle
+            SpawnCastEntity_0047AAE0(e, 0x77, e[0x0b], -1);
+
+            Aud.PlayPositionalSound(0x0d, 0x800, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047e11a — l'effet, a la soixantieme image.
+        if (*(short*)(e + 0x10) >= 0x3c)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            *(ushort*)(caster + 6) = *(ushort*)(e + 6);
+
+            ApplyStatusEffect_0053BE70((uint*)caster, *(uint**)(e + 0x78), 0);
+
+            *(uint*)e = 0;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047e150 @ 0x0047e150 — <b>la lame d'Assaut magique</b> : le sous-type
+    /// <c>0x76</c>, creneau 118 de <see cref="s_StaticEntityHandlers_00551f30"/>. 169 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Trois amortissements a un huitieme, et rien d'autre.</b> Son angle <c>+0x32</c> approche
+    /// d'un huitieme la cible <c>+0x14</c> que le sort lui a donnee — elle part d'un demi-tour de
+    /// la et vient s'y ranger ; son <c>+0x34</c> et son <c>+0x12</c> perdent chacun un huitieme
+    /// d'eux-memes. Le premier est son horloge, le second sa hauteur.
+    /// </para>
+    /// <para>
+    /// <b>Elle descend.</b> Sa hauteur vaut <c>+0x12 &lt;&lt; 12</c> au-dessus du <b>sol sous
+    /// l'ancre</b> (<c>+0x60</c> de la cible, pas sa position), et <c>+0x12</c> part de 400 : la
+    /// lame tombe donc en s'amortissant, ce qui donne un mouvement d'epee qu'on abaisse.
+    /// </para>
+    /// <para>
+    /// <b>C'est elle qui declare la fin.</b> Des que <c>+0x34</c> tombe sous 8, elle pose
+    /// <c>0x2000000</c> sur le mot d'etat de son <b>pere</b> (<c>+0x6c</c>) — le signal remonte, la
+    /// ou celui de Wonder descendait. Ensuite elle palit de <c>0x101010</c> par image ; avant, elle
+    /// s'eclaircissait du meme pas.
+    /// </para>
+    /// </summary>
+    private static void TickAssaultBlade_0047E150(byte* record)
+    {
+        byte* e = record;
+        byte* anchor = *(byte**)(e + 0x70);
+
+        // L'angle approche sa cible d'un huitieme.
+        short angle = *(short*)(e + 0x32);
+        *(short*)(e + 0x32) = (short)(((*(short*)(e + 0x14) - angle) >> 3) + angle);
+
+        // L'horloge et la hauteur perdent un huitieme chacune.
+        short clock = *(short*)(e + 0x34);
+        clock -= (short)(clock >> 3);
+        *(short*)(e + 0x34) = clock;
+
+        short lift = *(short*)(e + 0x12);
+        lift -= (short)(lift >> 3);
+        *(short*)(e + 0x12) = lift;
+
+        *(int*)(e + 0x1c) = *(int*)(e + 0x44) + *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = (lift << 0xc) + *(int*)(anchor + 0x60);   // au-dessus du SOL
+        *(int*)(e + 0x24) = *(int*)(e + 0x4c) + *(int*)(anchor + 0x24);
+
+        if (clock < 8)
+        {
+            // Le signal REMONTE vers le pere : c'est la lame qui declare la fin.
+            *(uint*)(*(uint**)(e + 0x6c)) |= 0x2000000;
+
+            uint tint;
+            unchecked { tint = *(uint*)(e + 0x38) + 0xffefeff0; }     // -0x101010
+            *(uint*)(e + 0x38) = tint;
+
+            if (tint == 0) *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_0047e1e1 — tant qu'elle vit, elle s'eclaircit.
+        uint current = *(uint*)(e + 0x38);
+        if (current < 0x00f0f0f0) *(uint*)(e + 0x38) = current + 0x00101010;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047e200 @ 0x0047e200 — <b>l'anneau d'Assaut magique</b> : le sous-type
+    /// <c>0x77</c>, creneau 119 de <see cref="s_StaticEntityHandlers_00551f30"/>. 90 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Il se pose sur un cercle autour de l'ancre, au <b>sol</b> sous elle, a un rayon qui vaut
+    /// <c>15 * (+0x28) &gt;&gt; 12</c> — l'echelle que le sort a calculee. Son angle ne bouge pas :
+    /// les deux exemplaires sont figes a un demi-tour l'un de l'autre, et c'est leur teinte qui les
+    /// eteint, seize images plus tard.
+    /// </para>
+    /// </summary>
+    private static void TickAssaultRing_0047E200(byte* record)
+    {
+        byte* e = record;
+        byte* anchor = *(byte**)(e + 0x70);
+
+        int heading = *(short*)(e + 0x32);
+        int radius = (*(short*)(e + 0x28) * 15) >> 0xc;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c) + (int)Winsys3d.GetSinTableEntry(heading) * radius;
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60);    // au sol
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24) + Winsys3d.GetCosTableEntry(heading) * radius;
+
+        uint tint;
+        unchecked { tint = *(uint*)(e + 0x38) + 0xffefeff0; }         // -0x101010
+        *(uint*)(e + 0x38) = tint;
+
+        if (tint == 0) *(uint*)e = 0;
     }
 
     /// <summary>
