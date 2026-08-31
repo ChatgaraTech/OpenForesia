@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Trouille, le dix-huitième sort** — trois corps absents de `Blaze.c` : le sort `0x0047eae0`, le fantôme `0x0047ec30` (808 octets) et la luciole `0x0047ef60`. Cinquième sort entretenu, à 3 PM par vingt images
+- doc : **le seul sort qui ne puisse même pas mourir sans le feu vert de son enfant** — le fantôme naît gros, rétrécit, et quand son échelle Y passe sous `0x2040` il se pose le bit `0x02`, **le pose sur son père** et relâche le lanceur. Tant que le sort ne l'a pas, il ne lit ni la manette ni les PM — et sa branche de fin commence par tester ce bit et rend la main s'il manque
+- doc : **le fantôme tourne par le plus court chemin** — l'écart d'angle est ramené sur douze bits puis comparé à `0x800` ; au-delà, le huitième est **nié** plutôt que de faire presque un tour complet. Seul corps transcrit à faire ce choix
+- doc : deux détails du binaire écrits tels quels dans la luciole : son échelle Y est `taille << 17` et non `<< 16` (donc le double de la X), et son sol est lu en **`+0x64`** et non en `+0x60` comme dans tous les autres corps
 - feat : **Eclair, le dix-septième sort** — trois corps absents de `Blaze.c` : le sort `0x0047e590`, le filament `0x0047e6f0` (901 octets, quatre exemplaires) et l'étincelle `0x0047ea80`. Plus le second script de sons différés, `0x00552548`
 - doc : **le quatrième sort entretenu, et le plus vorace** — 1 PM toutes les **dix** images, là où Wonder, Atchoum et Lumière ponctionnent toutes les vingt (2, 4 et 6 PM). Même code de manette et même garde pour les quatre
 - doc : **son compte de références se fait sur les naissances réussies** — les quatre appels à `SpawnEffectEntity` rendent 1 ou 0 selon qu'un emplacement était libre, et le sort **additionne** ces retours dans `+0x16`. Un pool plein ne le fait donc pas attendre un enfant qui n'existe pas, là où Rocher posait un 4 en dur

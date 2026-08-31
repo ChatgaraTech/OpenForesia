@@ -4810,6 +4810,12 @@ public static unsafe partial class Blaze
             case 0x0047E6F0: TickThunderStrand_0047E6F0(record); return;
             case 0x0047EA80: TickThunderSpark_0047EA80(record); return;
 
+            // TROUILLE, ecole 0 indice 17 — cinquieme sort entretenu, et le seul qui ne puisse
+            // meme pas MOURIR avant que son fantome ne lui ait pose le bit 0x02.
+            case 0x0047EAE0: TickFear_0047EAE0(record); return;
+            case 0x0047EC30: TickFearGhost_0047EC30(record); return;
+            case 0x0047EF60: TickFearWisp_0047EF60(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -33774,6 +33780,372 @@ public static unsafe partial class Blaze
         if (*(short*)(e + 0x28) < 0x100) *(uint*)e = 0;
 
         *(ushort*)(e + 0x10) = (ushort)(age + 1);
+    }
+
+    // =====================================================================
+    // TROUILLE — le dix-huitieme sort, ecole 0 indice 17, sous-type 0x11
+    //
+    // Trois corps neufs, et le CINQUIEME sort entretenu (3 PM par vingt images).
+    //
+    //   0x0047EAE0   LE SORT. Sous-type 0x11 de 0x00551c30, 323 octets.
+    //   0x0047EC30   LE FANTOME, sous-type 0x89 de 0x00551f30, 808 octets. Un seul.
+    //   0x0047EF60   LA LUCIOLE, sous-type 0x8a de 0x00551f30, 260 octets.
+    //
+    // LE BIT 0x02 EST UN SIGNAL QUI REMONTE, ET IL DEBLOQUE LE SORT. Le fantome nait gros et
+    // retrecit ; quand son echelle Y passe sous 0x2040 il se pose 0x02, POSE LE MEME BIT SUR SON
+    // PERE, et relache le lanceur. Tant que le sort ne l'a pas, il ne lit ni la manette ni les PM,
+    // et surtout il refuse de mourir : la branche de fin commence par `test al,2` et rend la main
+    // si le bit manque. Le sort attend donc que son fantome soit sorti avant d'avoir le droit de
+    // s'arreter.
+    //
+    // ET LE FANTOME TOURNE PAR LE PLUS COURT CHEMIN. L'ecart d'angle est ramene sur douze bits,
+    // puis compare a 0x800 : au-dela il vaut mieux tourner dans l'autre sens, et le binaire nie le
+    // huitieme. C'est le seul corps transcrit qui fasse ce choix.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047eae0 @ 0x0047eae0 — <b>Trouille</b> : le sous-type <c>0x11</c>, creneau 17 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 323 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Le cinquieme sort entretenu — <b>3 PM toutes les vingt images</b> — avec une difference de
+    /// fond : <b>rien ne se passe tant que le bit <c>0x02</c> n'est pas pose</b>. Ni la manette, ni
+    /// les PM, ni meme la fin : la branche de sortie commence par le tester et rend la main s'il
+    /// manque. C'est <see cref="TickFearGhost_0047EC30"/> qui le pose, une fois sorti.
+    /// </para>
+    /// <para>
+    /// Une fois le bit la et <c>0x2000000</c> pose, le sort compte encore une image dans
+    /// <c>+0x12</c> avant de s'eteindre — le temps que le fantome se resorbe.
+    /// </para>
+    /// </summary>
+    private static void TickFear_0047EAE0(byte* record)
+    {
+        byte* e = record;
+        uint state = *(uint*)e;
+
+        if ((state & 0x2000000) != 0)
+        {
+            // Sans le signal du fantome, il ne meurt meme pas.
+            if ((state & 2) == 0) return;
+
+            ushort delay = *(ushort*)(e + 0x12);
+            if (delay != 0) *(uint*)e = 0;
+            *(ushort*)(e + 0x12) = (ushort)(delay + 1);
+            return;
+        }
+
+        byte* caster = *(byte**)(e + 0x74);
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(uint*)(e + 0x38) = 0;
+            *(uint*)(e + 0x28) = 0x30001400;
+            *(ushort*)(e + 0x2c) = 0x1400;
+            e[0x04] = 0x1f;                            // le modele
+
+            SpawnCastEntity_0047AAE0(e, 0x89, e[0x0b], -1);
+
+            *(int*)(e + 0x78) = 0;
+            *(uint*)caster |= 0x80;                    // le lanceur est immobilise
+
+            Aud.PlayPositionalSound(0x1a, 0x6fd, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047eb6e — l'entretien n'existe qu'une fois le fantome sorti.
+        if ((*(uint*)e & 2) != 0)
+        {
+            if ((*(uint*)e & 0x800000) != 0)
+            {
+                uint index = ((uint*)caster)[2] & 0xff;
+                byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+                int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+                ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+                if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+
+                if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
+                {
+                    short mana = *(short*)(perChar + 0x14e);
+
+                    if (mana >= 3)
+                    {
+                        *(short*)(perChar + 0x14e) = (short)(mana - 3);
+                    }
+                    else
+                    {
+                        *(ushort*)(perChar + 0x14e) = 0;
+                        *(uint*)e |= 0x2000000;
+                    }
+                }
+            }
+            else if (*(short*)(e + 0x10) >= 0x78)
+            {
+                *(uint*)e |= 0x2000000;
+            }
+        }
+
+        // Ghidra: LAB_0047ec08
+        if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047ec30 @ 0x0047ec30 — <b>le fantome de Trouille</b> : le sous-type <c>0x89</c>,
+    /// creneau 137 de <see cref="s_StaticEntityHandlers_00551f30"/>. 808 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il commence par sortir.</b> Ne son echelle Y a <c>0x3000</c>, il l'approche de
+    /// <c>0x1800</c> d'un huitieme et s'eclaircit ; des qu'elle passe sous <c>0x2040</c> il se pose
+    /// le bit <c>0x02</c>, <b>le pose sur son pere</b>, et relache le lanceur. Le sort ne peut ni
+    /// entretenir ni mourir avant cet instant.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite il chasse.</b> Il colle au lanceur — position approchee d'un quart, hauteur d'un
+    /// huitieme — sauf quand <c>+0x90</c> porte <c>0x8000</c>, et recopie <b>six dwords de
+    /// <c>+0x7c</c></b> du lanceur a chaque image, ce que rien d'autre dans le depot ne fait. Il
+    /// prend l'adversaire le plus proche, le garde <b>quarante images</b> au plus, puis en cherche
+    /// un autre.
+    /// </para>
+    /// <para>
+    /// <b>Il tourne par le plus court chemin</b> : l'ecart d'angle est ramene sur douze bits, et
+    /// au-dela de <c>0x800</c> le huitieme est <b>nie</b> — tourner a gauche plutot que faire
+    /// presque un tour a droite. C'est le seul corps transcrit qui fasse ce choix.
+    /// </para>
+    /// <para>
+    /// <b>Et il crache une luciole par image</b> vers sa proie, a une vitesse proportionnelle a la
+    /// distance (le huitieme de la norme 3D). Six champs lui sont pretes puis rendus — la position
+    /// entiere, l'echelle et le modele.
+    /// </para>
+    /// </summary>
+    private static void TickFearGhost_0047EC30(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            // ------------------------------------------------------------ la resorption
+            short x = *(short*)(e + 0x28);
+            *(short*)(e + 0x28) = (short)(x - (x >> 3));
+
+            short z = *(short*)(e + 0x2c);
+            *(short*)(e + 0x2c) = (short)(z - (z >> 3));
+
+            short spin = *(short*)(e + 0x12);
+            *(ushort*)(e + 0x32) += (ushort)(spin << 6);
+
+            spin++;
+            *(short*)(e + 0x12) = spin;
+
+            if (spin >= 0x14)
+            {
+                *(uint*)e = 0;
+                byte* held = *(byte**)(e + 0x78);
+                if (held != null) *(uint*)(held + 0x74) = 0;
+            }
+
+            return;
+        }
+
+        // Ghidra: LAB_0047eca1 — six dwords recopies du lanceur, a chaque image.
+        byte* caster = *(byte**)(e + 0x74);
+        Mem.CopyDwords((uint*)(caster + 0x7c), (uint*)(e + 0x7c), 6);
+
+        if ((*(uint*)(e + 0x90) & 0x8000) == 0)
+        {
+            *(int*)(e + 0x1c) += (*(int*)(caster + 0x1c) - *(int*)(e + 0x1c)) >> 2;
+
+            int head = StatusBubbleHeight_00538BC0((uint*)caster);
+            int wasY = *(int*)(e + 0x20);
+            *(int*)(e + 0x20) =
+                ((((head & ~1) << 0xb) + *(int*)(caster + 0x20) - wasY) >> 3) + wasY;
+
+            *(int*)(e + 0x24) += (*(int*)(caster + 0x24) - *(int*)(e + 0x24)) >> 2;
+        }
+
+        // Ghidra: LAB_0047ed01
+        if ((*(uint*)e & 2) == 0)
+        {
+            // ------------------------------------------------------------ il sort
+            uint tint = *(uint*)(e + 0x38);
+            if (tint < 0x00f0f0f0) *(uint*)(e + 0x38) = tint + 0x00101010;
+
+            short height = *(short*)(e + 0x2a);
+            height += (short)((0x1800 - height) >> 3);
+            *(short*)(e + 0x2a) = height;
+
+            if (height < 0x2040)
+            {
+                *(uint*)e |= 2;
+                *(uint*)(*(uint**)(e + 0x6c)) |= 2;    // le signal remonte au sort
+                *(uint*)caster &= 0xffffff7f;          // et le lanceur est rendu a lui-meme
+            }
+
+            return;
+        }
+
+        // ------------------------------------------------------------ il chasse
+        *(uint*)e |= *(uint*)(*(byte**)(e + 0x6c)) & 0x2000000;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            Aud.PlayPositionalSound(0x31, 0x16a, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047ed39 — la proie, gardee quarante images au plus.
+        byte* prey = *(byte**)(e + 0x78);
+
+        if (prey != null)
+        {
+            *(ushort*)(e + 0x10) += 1;
+
+            if ((*(uint*)prey & 0x50000000) != 0 || *(short*)(e + 0x10) >= 0x28)
+            {
+                *(uint*)(prey + 0x74) = 0;
+                *(int*)(e + 0x78) = 0;
+                *(ushort*)(e + 0x10) = 0;
+                prey = null;
+            }
+        }
+        else
+        {
+            prey = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+            if (prey != null) Aud.PlayPositionalSound(0x23, 0x1000, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047ed96 — le cap vise.
+        int wanted;
+
+        if (prey != null)
+        {
+            *(byte**)(e + 0x78) = prey;
+            *(byte**)(prey + 0x74) = e;
+
+            wanted = Winsys3d.Ordinal_457(
+                (*(int*)(prey + 0x1c) - *(int*)(e + 0x1c)) >> 0xc,
+                (*(int*)(prey + 0x24) - *(int*)(e + 0x24)) >> 0xc);
+        }
+        else
+        {
+            wanted = *(ushort*)(caster + 0x32);
+        }
+
+        // Ghidra: LAB_0047edc6 — LE PLUS COURT CHEMIN : au-dela d'un demi-tour, on nie.
+        int gap = (wanted - *(short*)(e + 0x32)) & 0xfff;
+        int turn = gap < 0x800 ? gap >> 3 : -((0x1000 - gap) >> 3);
+        *(ushort*)(e + 0x32) += (ushort)turn;
+
+        int heading = *(short*)(e + 0x32);
+        if (prey == null) return;
+
+        // ------------------------------------------------------------ la luciole
+        int keptX = *(int*)(e + 0x1c);
+        int keptY = *(int*)(e + 0x20);
+        int keptZ = *(int*)(e + 0x24);
+
+        // 30 unites d'avance (`lea *3 ; lea *5 ; shl 1`) et un bond vertical.
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 30;
+        *(int*)(e + 0x20) += 0x104000;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 30;
+
+        int dx = (*(int*)(prey + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+        int dy = (*(int*)(prey + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+        int dz = (*(int*)(prey + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+        int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int pitch = Winsys3d.Ordinal_457(dy, flat);
+
+        // La norme a TROIS dimensions : c'est elle qui donne la vitesse.
+        int span = (int)Winsys3d.Ordinal_442((uint)(dy * dy + dx * dx + dz * dz));
+
+        uint keptScale = *(uint*)(e + 0x28);
+        ushort keptDepth = *(ushort*)(e + 0x2c);
+        uint keptModel = *(uint*)(e + 0x04);
+
+        *(uint*)(e + 0x28) = 0x08000400;
+        *(ushort*)(e + 0x2c) = 0x0400;
+
+        SetVectorFromAngles_00532AD0((int*)(e + 0x50), heading, pitch, span >> 3);
+
+        e[0x04] = 0x1e;
+        SpawnCastEntity_0047AAE0(e, 0x8a, 0, 4);
+
+        *(uint*)(e + 0x28) = keptScale;
+        *(ushort*)(e + 0x2c) = keptDepth;
+        *(uint*)(e + 0x04) = keptModel;
+
+        *(int*)(e + 0x1c) = keptX;
+        *(int*)(e + 0x20) = keptY;
+        *(int*)(e + 0x24) = keptZ;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047ef60 @ 0x0047ef60 — <b>la luciole de Trouille</b> : le sous-type
+    /// <c>0x8a</c>, creneau 138 de <see cref="s_StaticEntityHandlers_00551f30"/>. 260 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle enfle en volant.</b> Sa taille vaut <c>(age² + 8) &lt;&lt; 7</c> plus un bruit sur
+    /// dix bits — donc quadratique : discrete au depart, large a la huitieme et derniere image.
+    /// </para>
+    /// <para>
+    /// <b>Deux details du binaire ecrits tels quels</b> : l'echelle Y est <c>eax &lt;&lt; 17</c> et
+    /// non <c>&lt;&lt; 16</c>, ce qui la fait valoir le double de l'echelle X ; et le sol est lu en
+    /// <c>+0x64</c>, non en <c>+0x60</c> comme partout ailleurs.
+    /// </para>
+    /// </summary>
+    private static void TickFearWisp_0047EF60(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { 0x0000, 0x0000, 0x003c, 0x00c8, 0x0000, 0x0078 };
+
+        int age = *(short*)(e + 0x10);
+        int size = (CrtRand() & 0x3ff) + ((age * age + 8) << 7);
+
+        *(short*)(e + 0x2c) = (short)size;
+
+        // `shl edx,11h` : DIX-SEPT bits, pas seize. L'echelle Y vaut donc le double de la X.
+        *(uint*)(e + 0x28) = ((uint)size << 0x11) | (uint)size;
+
+        *(int*)(e + 0x1c) += *(int*)(e + 0x50);
+        int newY = *(int*)(e + 0x20) + *(int*)(e + 0x54);
+        *(int*)(e + 0x20) = newY;
+        *(int*)(e + 0x24) += *(int*)(e + 0x58);
+
+        e[0x3b] = 0xc0;
+
+        FinalizeEntityPlacement2((uint*)e);            // Ghidra: FUN_00533940
+
+        // Le sol est lu en +0x64 ici, et non en +0x60 comme dans tous les autres corps.
+        int ground = *(int*)(e + 0x64);
+        *(int*)(e + 0x20) = newY;
+
+        if (newY <= ground)
+        {
+            *(int*)(e + 0x20) = ground;
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        if ((*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) >= 8) *(uint*)e = 0;
     }
 
     /// <summary>
