@@ -4724,6 +4724,12 @@ public static unsafe partial class Blaze
             case 0x0047B340: TickLightSparkle_0047B340(record); return;
             case 0x0047B3A0: TickLightHalo_0047B3A0(record); return;
 
+            // PIEDS MOUILLES, ecole 0 indice 2 — trois corps, et pas de graine : le sous-type 2
+            // est deja la vague. Elle seme la crete et l'eclaboussure a chaque image.
+            case 0x0047B460: TickWetFeet_0047B460(record); return;
+            case 0x0047B6B0: TickWetFeetWave_0047B6B0(record); return;
+            case 0x0047B750: TickWetFeetSplash_0047B750(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -29071,30 +29077,32 @@ public static unsafe partial class Blaze
         => NativeCopy(s_Descriptors_00551AD8, ref s_Descriptors00551AD8Storage);
 
     /// <summary>
-    /// Ghidra: <c>&amp;DAT_00551ba8</c> — l'atlas de la <b>Boule de lumiere</b> elle-meme, celui que
-    /// <see cref="SpawnLightBall_0047B0B0"/> passe a son enfant <c>0x47</c>. <b>Deux
-    /// enregistrements</b> de <c>0x18 x 0x18</c> a <c>u = 0x18</c> et <c>0x30</c> sur la ligne
-    /// <c>v = 0</c> ; la plage s'arrete a <c>0x00551bb8</c>, ou la tuile passe a <c>0x10 x 0x10</c>.
+    /// <c>&amp;DAT_00551ba8</c>, l'atlas de la <b>Boule de lumiere</b> — le <b>deuxieme</b>
+    /// enregistrement de la plage <see cref="s_Descriptors_00551BA0"/>, pas une table a lui.
     ///
     /// <para>
-    /// <b>Le consommateur n'en emploie jamais qu'un.</b> <see cref="TickLightBall_0047B150"/> ne
-    /// touche pas a son propre <c>+0x40</c>, que <see cref="SpawnStatusEffectEntity_0047AC40"/> a
-    /// mis a zero : la boule garde la premiere image toute sa vie. Le second enregistrement est
-    /// releve parce qu'il fait partie de la meme plage, pas parce qu'on l'atteint — et c'est
-    /// exactement la raison pour laquelle on releve une plage et non un descripteur isole.
+    /// <b>Il avait ete releve a part le 2026-08-31, et c'etait la faute que le depot s'etait deja
+    /// faite une fois</b> : les deux tuiles de <c>0x00551ba8</c> et <c>0x00551bb0</c> etaient
+    /// recopiees dans un tableau neuf alors que <c>s_Descriptors_00551BA0</c> les portait deja.
+    /// Deux relevés du meme octet finissent par diverger, et surtout l'indexation en avant — la
+    /// convention des fonctions de dessin — n'aurait plus rien trouve au-dela du second.
+    /// Adresser par decalage dans la plage est la seule forme juste.
+    /// </para>
+    /// <para>
+    /// <see cref="TickLightBall_0047B150"/> ne touche pas a son propre <c>+0x40</c>, que
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> a mis a zero : la boule garde donc la tuile
+    /// <c>0x18 x 0x18</c> de <c>0x00551ba8</c> toute sa vie.
     /// </para>
     /// </summary>
-    private static readonly byte[] s_Descriptors_00551BA8 =
-    [
-        0x18, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551ba8
-        0x30, 0x00, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551bb0
-    ];
+    private static byte* Descriptors00551BA8() => Descriptors00551BA0() + 8;
 
-    private static byte* s_Descriptors00551BA8Storage;
-
-    /// <summary>Les deux descripteurs en memoire native.</summary>
-    private static byte* Descriptors00551BA8()
-        => NativeCopy(s_Descriptors_00551BA8, ref s_Descriptors00551BA8Storage);
+    /// <summary>
+    /// <c>&amp;DAT_00551bb8</c>, l'atlas de l'<b>eclaboussure</b> de Pieds mouilles — le
+    /// <b>quatrieme</b> enregistrement de la meme plage
+    /// <see cref="s_Descriptors_00551BA0"/>. <see cref="TickWetFeetSplash_0047B750"/> ne touche pas
+    /// non plus a son <c>+0x40</c> : une seule tuile, <c>0x10 x 0x10</c>.
+    /// </summary>
+    private static byte* Descriptors00551BB8() => Descriptors00551BA0() + 0x18;
 
     /// <summary>
     /// Ghidra: FUN_0047ae80 @ 0x0047ae80 — <b>le projectile de Balle de feu</b> : le sous-type
@@ -29542,6 +29550,255 @@ public static unsafe partial class Blaze
         }
 
         e[0x40] = (byte)(CrtRand() % 3);              // `cdq ; idiv 3`, le reste
+    }
+
+    // =====================================================================
+    // PIEDS MOUILLES — le troisieme sort, ecole 0 indice 2, sous-type 0x02
+    //
+    // Trois corps, et une forme NOUVELLE : il n'y a pas de graine. Le sous-type 2 de la table des
+    // effets EST le sort — il se deplace, rebondit et frappe lui-meme, la ou les deux premiers
+    // sorts naissaient d'une graine d'une seule image.
+    //
+    //   0x0047B460   LA VAGUE. Sous-type 2 de 0x00551c30. Vingt images. Elle avance de 20 par
+    //                image, TOMBE (une vitesse verticale en +0x54 que la gravite ronge), colle au
+    //                sol quand elle le touche, seme deux enfants a chaque image et frappe.
+    //   0x0047B6B0   LA CRETE, sous-type 0x66 de 0x00551f30, semee par SpawnCastEntity_0047AAE0.
+    //                Modele 0x1e, huit images, et sa hauteur suit une SINUSOIDE amortie.
+    //   0x0047B750   L'ECLABOUSSURE, sous-type 0x4a de 0x00552230. Elle vole par
+    //                IntegrateWithDrag_00535880 et s'eteint quand sa teinte atteint zero.
+    //
+    // LE PRET DES TROIS CHAMPS DE VITESSE. Avant de lacher l'eclaboussure, le corps ECRASE
+    // +0x50/+0x54/+0x58 avec une impulsion tiree au hasard, appelle SpawnStatusEffectEntity_0047AC40
+    // — qui recopie les 0x27 dwords, donc emporte l'impulsion — puis les REND. C'est le meme geste
+    // que CastSpell_0053A980 fait sur +0x74/+0x78 : passer un argument par un champ de l'entite,
+    // faute de parametre.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047b460 @ 0x0047b460 — <b>Pieds mouilles</b> : le sous-type <c>0x02</c>,
+    /// creneau 2 de <see cref="s_StaticEntityHandlers_00551c30"/>. 583 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le premier sort qui n'a pas de graine.</b> Les deux precedents naissaient d'un corps
+    /// d'une seule image qui lachait le vrai projectile ; ici le sous-type que
+    /// <see cref="CastSpell_0053A980"/> fait naitre est deja la vague, et il vit vingt images.
+    /// </para>
+    /// <para>
+    /// <b>Et le premier qui tombe.</b> <c>+0x54</c> porte une vitesse verticale, <c>+0x9a</c> une
+    /// constante de <c>0x6000</c> reecrite a chaque image, et la mise a jour est
+    /// <c>v' = v + (c &gt;&gt; 8) - (v &gt;&gt; 8) - c</c> : un frottement au 256e et une chute
+    /// constante, dans la meme expression. Le sol vient de <c>+0x60</c>, que
+    /// <see cref="FinalizeEntityPlacement2"/> vient de renseigner.
+    /// </para>
+    /// <para>
+    /// <b>Le contact avec le sol se decide sur la distance parcourue</b>, pas sur la seule hauteur :
+    /// si la hauteur d'avant le placement, majoree de <c>0xa000</c>, depasse encore la hauteur
+    /// d'apres, la vague <b>colle au sol</b> ; sinon elle marque <c>0x800</c> dans <c>+0x90</c> —
+    /// le drapeau qui la tuera a l'image suivante par le masque <c>0x802</c>. Dans les deux cas la
+    /// vitesse verticale est remise a zero.
+    /// </para>
+    /// <para>
+    /// La poussee de la victime emploie <c>+0x32</c> nu et marque <c>+0x96 = 4</c>, non
+    /// <c>0x10</c> : un clignotement plus court que celui des deux premiers sorts. Il n'y a
+    /// <b>pas de son au contact</b> — le seul son est celui de la premiere image.
+    /// </para>
+    /// </summary>
+    private static void TickWetFeet_0047B460(byte* record)
+    {
+        byte* e = record;
+
+        // Six mots de sonde : aucun decalage de cap, 10 en arriere, 60 de demi-largeur — deux fois
+        // plus large que les deux sorts precedents, c'est une vague.
+        short* probe = stackalloc short[6] { 0x0000, -0x000a, 0x003c, 0x0064, 0x0000, 0x0064 };
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(uint*)e |= 0x80;
+            *(ushort*)(e + 0x36) = (ushort)((*(ushort*)(e + 0x36) & 0xfffb) | 2);
+            *(short*)(e + 0x2e) = -0x14;
+            *(int*)(e + 0x54) = 0;                    // la vitesse verticale part de zero
+
+            Aud.PlayPositionalSound(0x18, 0x6fd, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047b4d3 — tout ce qui suit tourne a chaque image.
+        int heading = *(short*)(e + 0x32);
+        *(short*)(e + 0x9a) = 0x6000;                 // reecrite a chaque image, jamais lue ailleurs
+
+        // 20 unites d'avance : `lea eax,[eax+eax*4] ; shl eax,2`.
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 20;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 20;
+
+        // La chute. L'ordre compte : la hauteur prend l'ANCIENNE vitesse.
+        int gravity = *(short*)(e + 0x9a);
+        int velocity = *(int*)(e + 0x54);
+        *(int*)(e + 0x20) += velocity;
+        *(int*)(e + 0x54) = velocity + (gravity >> 8) - (velocity >> 8) - gravity;
+
+        SpawnCastEntity_0047AAE0(e, 0x66, e[0x0b], -1);
+
+        // ---------------------------------------------------------------- l'eclaboussure
+        // Les trois champs de vitesse sont PRETES a l'enfant : il en herite par la recopie des
+        // 0x27 dwords, puis ils sont rendus intacts.
+        int keptX = *(int*)(e + 0x50);
+        int keptY = *(int*)(e + 0x54);
+        int keptZ = *(int*)(e + 0x58);
+
+        // Un cap disperse sur un quart de tour, decale d'un tiers et demi : `rand & 0x3ff`,
+        // plus le cap, plus 0x600.
+        int spray = (CrtRand() & 0x3ff) + *(short*)(e + 0x32) + 0x600;
+
+        *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(spray) * 20;
+        *(int*)(e + 0x54) = ((CrtRand() & 0xf) + 0x14) << 0xc;
+        *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(spray) * 20;
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors00551BB8(), 0x4a, e[0x0b], -1);
+
+        int beforePlacement = *(int*)(e + 0x20);
+
+        *(int*)(e + 0x50) = keptX;
+        *(int*)(e + 0x54) = keptY;
+        *(int*)(e + 0x58) = keptZ;
+
+        FinalizeEntityPlacement2((uint*)e);           // Ghidra: FUN_00533940
+
+        // ---------------------------------------------------------------- le sol
+        int height = *(int*)(e + 0x20);
+        int ground = *(int*)(e + 0x60);
+
+        if (height >= ground && (*(uint*)(e + 0x90) & 0x2200) != 0x2000)
+        {
+            if (beforePlacement + 0xa000 > height) *(int*)(e + 0x20) = ground;
+            else *(uint*)(e + 0x90) |= 0x800;         // `or dh,8`
+
+            *(int*)(e + 0x54) = 0;
+        }
+
+        // Ghidra: LAB_0047b60b — le masque est 0x802 ici, pas 0x8802 : le bit 0x8000 ne la tue pas.
+        if ((*(uint*)e & 0x40000000) != 0 || (*(uint*)(e + 0x90) & 0x802) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            int push = *(short*)(e + 0x32);
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+            *(ushort*)(victim + 0x96) = 4;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+            *(uint*)victim |= 0x40;
+        }
+
+        // Ghidra: LAB_0047b687 — deux compteurs avancent, un seul borne la vie. `+0x12` est celui
+        // que la crete lit pour sa sinusoide.
+        *(ushort*)(e + 0x10) += 1;
+        ushort age = *(ushort*)(e + 0x10);
+        *(ushort*)(e + 0x12) += 1;
+
+        if ((short)age >= 0x14) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047b6b0 @ 0x0047b6b0 — <b>la crete de Pieds mouilles</b> : le sous-type
+    /// <c>0x66</c>, creneau 102 de <see cref="s_StaticEntityHandlers_00551f30"/>. 148 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Sa hauteur est une sinusoide amortie</b>, et c'est ce qui donne la vague : l'echelle Y
+    /// (<c>+0x2a</c>) vaut <c>|sin(+0x12 &lt;&lt; 8)| * (0x1000 - age * 0x200) &gt;&gt; 11</c>.
+    /// Le <c>+0x12</c> vient de la vague qui l'a semee — chaque crete nait donc un cran plus loin
+    /// dans la sinusoide que la precedente, et l'ensemble ondule.
+    /// </para>
+    /// <para>
+    /// <b>La valeur absolue est calculee en appelant la table DEUX FOIS.</b> Le binaire teste le
+    /// signe du premier appel puis rappelle <c>Ordinal_451</c> avec le meme angle, pour nier ou non.
+    /// La table est une lecture pure, donc le second appel rend exactement le premier : c'est
+    /// ecrit ici comme la valeur absolue qu'il calcule, et non comme deux appels.
+    /// </para>
+    /// <para>
+    /// Pendant ce temps l'echelle X perd <c>0x380</c> par image et la teinte <c>0x101010</c> — le
+    /// blanc plein <c>0x808080</c> de la convention winsys3d, pas <c>0xffffff</c>. Huit images.
+    /// </para>
+    /// </summary>
+    private static void TickWetFeetWave_0047B6B0(byte* record)
+    {
+        byte* e = record;
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(uint*)(e + 0x38) = 0x00808080;          // le blanc PLEIN de winsys3d
+            *(ushort*)(e + 0x28) = 0x1800;
+            *(ushort*)(e + 0x2c) = 0x1800;
+            e[0x04] = 0x1e;                           // le modele
+        }
+        else
+        {
+            unchecked { *(uint*)(e + 0x38) += 0xffefeff0; }   // -0x101010
+        }
+
+        // Ghidra: LAB_0047b6de — l'aplatissement et l'onde, communs aux deux branches.
+        unchecked { *(ushort*)(e + 0x28) += 0xfc80; }         // -0x380
+
+        int angle = *(short*)(e + 0x12) << 8;
+        int wave = (int)Winsys3d.GetSinTableEntry(angle);
+        if (wave < 0) wave = -wave;                   // le binaire rappelle la table pour nier
+
+        ushort age = *(ushort*)(e + 0x10);
+        int decay = 0x1000 - ((short)age << 9);
+        *(short*)(e + 0x2a) = (short)(decay * wave >> 0xb);
+
+        age = (ushort)(age + 1);
+        *(ushort*)(e + 0x10) = age;
+
+        if ((short)age >= 8) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047b750 @ 0x0047b750 — <b>l'eclaboussure de Pieds mouilles</b> : le sous-type
+    /// <c>0x4a</c>, creneau 74 de <see cref="s_StaticEntityHandlers_00552230"/>. 66 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Le seul corps de la chaine qui ne compte pas les images : <b>c'est sa teinte qui lui tient
+    /// lieu d'horloge</b>. Elle part de <c>0xf0f0f0</c> et perd <c>0x101010</c> par image ; a la
+    /// seizieme le dword tombe pile a zero et l'entite s'eteint. Le test est
+    /// <c>e[0x38] == 0</c> — une egalite exacte, qui ne tient que parce que les trois canaux
+    /// descendent du meme pas et partent de la meme valeur.
+    /// </para>
+    /// <para>
+    /// Son mouvement est celui que la vague lui a prete dans <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>,
+    /// integre par <see cref="IntegrateWithDrag_00535880"/>.
+    /// </para>
+    /// </summary>
+    private static void TickWetFeetSplash_0047B750(byte* record)
+    {
+        byte* e = record;
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(ushort*)(e + 0x10) = 1;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(uint*)(e + 0x28) = 0x20002000;
+        }
+
+        IntegrateWithDrag_00535880(e);                // Ghidra: FUN_00535880
+
+        uint tint = *(uint*)(e + 0x38);
+
+        if (tint == 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        unchecked { *(uint*)(e + 0x38) = tint + 0xffefeff0; }   // -0x101010
     }
 
     /// <summary>
