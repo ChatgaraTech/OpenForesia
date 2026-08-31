@@ -5,6 +5,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Feu d'enfer, le cinquième sort** — trois corps absents de `Blaze.c` : le sort `0x0047bb50`, sa flamme `0x0047bc40` et son embrasement `0x0047bdf0`. Le quatrième maillon, la braise `0x0047bd00`, **existait déjà et était déjà exercé en forêt** : c'est le premier sort à réutiliser un corps que le dépôt avait
+- doc : **le premier sort qui vise** — les quatre précédents partaient devant le lanceur ou tournaient autour de lui ; celui-ci choisit une cible dès sa naissance, la range en `+0x78`, et **tous ses enfants la suivent** par la recopie des `0x27` dwords. Les six flammes et l'embrasement se recollent sur elle à chaque image
+- doc : **et le premier à différer son effet** — soixante images après, il recopie sa paire famille/indice sur le lanceur et appelle `ApplyStatusEffect_0053BA90`, l'entrée 15 de la table des 48. Il n'y a pas de nouvelle recherche de cible : c'est celle d'il y a soixante images qui brûle
+- doc : **la position vient de la cible, l'altitude du lanceur** — les deux enfants lisent `+0x78` pour X et Z mais mesurent la tête de `+0x74` : la couronne se pose à hauteur d'homme quelle que soit la taille du monstre visé
+- feat : **`FindTargetAround_00474BA0`** — la jumelle de `PickTargetBySearch_00474AD0`, même corps à la queue près : elle rend le pointeur au lieu de le ranger, et rend l'acteur lui-même faute de cible. Décompilée dans `Blaze.c`
 - feat : **Rocher, le quatrième sort** — trois corps absents de `Blaze.c` : le cercle `0x0047b7a0`, le rocher `0x0047b850` et sa poussière `0x0047bb10`
 - doc : **le premier compte de références du dépôt** — le cercle pose `+0x14 = +0x16 = 4`, chaque rocher décrémente `+0x14` du cercle (par son `+0x6c`) en quittant l'orbite et `+0x16` en mourant. Le cercle relâche la marque `0x80` du lanceur quand le premier tombe à zéro, et ne s'éteint que quand le second y arrive : c'est ce qui tient le lanceur immobile le temps du sort
 - doc : **le rocher a deux vies en une** — il orbite à 90 unités du lanceur, son orbite perd un huitième de sa vitesse par image, et dès qu'elle passe sous `0x10` il est projeté et vole librement par `IntegrateWithDrag_00535880`. Le bit `0x2000000` sépare les deux, et sert de garde pour que le compte reste juste si un rocher meurt avant d'être lancé

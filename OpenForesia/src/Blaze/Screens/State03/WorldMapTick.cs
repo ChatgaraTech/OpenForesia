@@ -4736,6 +4736,12 @@ public static unsafe partial class Blaze
             case 0x0047B850: TickRock_0047B850(record); return;
             case 0x0047BB10: TickRockDust_0047BB10(record); return;
 
+            // FEU D'ENFER, ecole 0 indice 4 — le premier sort qui VISE : il choisit une cible et
+            // tous ses enfants la suivent. La braise 0x68 (0x0047BD00) etait deja ecrite.
+            case 0x0047BB50: TickHellfire_0047BB50(record); return;
+            case 0x0047BC40: TickHellfireFlame_0047BC40(record); return;
+            case 0x0047BDF0: TickHellfireBlaze_0047BDF0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -28557,6 +28563,58 @@ public static unsafe partial class Blaze
         return 1;
     }
 
+    /// <summary>
+    /// Ghidra: FUN_00474ba0 @ 0x00474ba0 — <b>la meme recherche de cible que
+    /// <see cref="PickTargetBySearch_00474AD0"/>, mais qui rend le resultat</b> au lieu de le ranger.
+    /// Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Les deux fonctions se suivent dans le binaire et ont le meme corps a la queue pres</b> :
+    /// meme sonde de six mots, meme bit <c>0x2000</c> pose puis retire en mode 0, meme aiguillage
+    /// des deux balayages. Elles ne different que par ce qu'elles font du resultat — celle-la
+    /// l'ecrit en <c>+0x78</c> et rend un etat, celle-ci rend le pointeur. Le compilateur a emis
+    /// les deux ; elles restent deux ici, comme dans le binaire.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne rend jamais <c>null</c> quand l'acteur existe</b> : faute de cible, elle rend
+    /// l'acteur lui-meme. C'est ce qui permet a ses appelants de ranger le resultat sans garde.
+    /// </para>
+    /// <para>
+    /// Ghidra rend deux des quatre appels de balayage sans leur quatrieme argument, le meme
+    /// artefact que sur ses deux sœurs : le <c>push 800h</c> est fait avant le branchement, donc
+    /// les quatre le recoivent.
+    /// </para>
+    /// </summary>
+    private static byte* FindTargetAround_00474BA0(byte* record, int mode)
+    {
+        byte* actor = *(byte**)(record + 0x74);
+        if (actor == null) return null;
+
+        short* probe = stackalloc short[6] { 0, 10, 0x28, 100, 0x100, 0x96 };
+
+        byte* found;
+
+        if (mode == 0)
+        {
+            uint flags = *(uint*)actor;
+            *(uint*)actor = flags | 0x2000;
+
+            found = (flags & 0x800000) != 0
+                ? SweepPartyForMeleeHit_00519C30(actor, (int*)(actor + 0x1c), probe, 0x800)
+                : SweepSceneEntitiesForMeleeHit_00519AF0(actor, (int*)(actor + 0x1c), probe, 0x800);
+
+            *(uint*)actor = flags;
+        }
+        else
+        {
+            found = (*(uint*)actor & 0x800000) != 0
+                ? SweepSceneEntitiesForMeleeHit_00519AF0(actor, (int*)(actor + 0x1c), probe, 0x800)
+                : SweepPartyForMeleeHit_00519C30(actor, (int*)(actor + 0x1c), probe, 0x800);
+        }
+
+        return found != null ? found : actor;
+    }
+
     /// <summary>Ghidra: FUN_0051a020 @ 0x0051a020 (221 l.) — l'integration du deplacement au sol,
     /// appelee quand le personnage n'est pas en l'air.</summary>
     private static void ApplyGroundMotion_0051A020(uint* slot, byte* entry, byte* perChar, byte* pad, byte* anim)
@@ -30108,6 +30166,257 @@ public static unsafe partial class Blaze
 
         e[0x40] = (byte)frame;
         *(ushort*)(e + 0x10) = (ushort)(counter + 1);
+    }
+
+    // =====================================================================
+    // FEU D'ENFER — le cinquieme sort, ecole 0 indice 4, sous-type 0x04
+    //
+    // Trois corps a ecrire, et un quatrieme qui existait deja.
+    //
+    //   0x0047BB50   LE SORT. Sous-type 4 de 0x00551c30. Il CHOISIT UNE CIBLE des la premiere
+    //                image, lache six flammes et un embrasement autour d'elle, puis attend
+    //                soixante images avant de poser l'effet d'etat et de s'eteindre.
+    //   0x0047BC40   LA FLAMME, sous-type 0x67 de 0x00551f30. Six exemplaires, en deux anneaux de
+    //                trois inclines en sens contraires.
+    //   0x0047BDF0   L'EMBRASEMENT, sous-type 0x4c de 0x00552230. Il grossit, puis a la 32e image
+    //                lache DEUX braises 0x68 et se resorbe.
+    //   0x0047BD00   LA BRAISE, sous-type 0x68 — deja ecrite et deja exercee en foret. Rien a
+    //                faire : ce sort est le premier a reutiliser un corps que le depot avait.
+    //
+    // LE PREMIER SORT QUI VISE. Les quatre precedents partaient devant le lanceur ou tournaient
+    // autour de lui ; celui-ci appelle FindTargetAround_00474BA0 des sa naissance, range la cible
+    // en +0x78, et TOUS ses enfants la suivent — la recopie des 0x27 dwords la leur transmet. Les
+    // flammes et l'embrasement se recollent sur elle a chaque image.
+    //
+    // ET LE PREMIER A DIFFERER SON EFFET. A la soixantieme image il recopie sa paire
+    // famille/indice sur le lanceur et appelle ApplyStatusEffect_0053BA90 — l'entree 15 de la table
+    // des 48. Il n'y a pas de recherche de cible a ce moment-la : c'est celle d'il y a soixante
+    // images qui brule.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047bb50 @ 0x0047bb50 — <b>Feu d'enfer</b> : le sous-type <c>0x04</c>, creneau 4
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/>. 240 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>A la naissance</b> il choisit sa cible par
+    /// <see cref="FindTargetAround_00474BA0"/> et la range en <c>+0x78</c>, prend le modele
+    /// <c>0x0f</c>, puis lache <b>six flammes en deux anneaux</b> : trois a l'inclinaison
+    /// <c>+0x155</c>, trois a <c>-0x155</c>, chacune decalee d'un tiers de tour
+    /// (<c>0x555</c>) et les deux anneaux decales entre eux de <c>0x2aa</c> — un sixieme de tour.
+    /// Puis l'embrasement et le son.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite il ne fait plus que compter</b>, jusqu'a la soixantieme image. La il recopie sa
+    /// paire famille/indice dans le <c>+0x06</c> du <b>lanceur</b> — pour que
+    /// <see cref="ResolveSpellHit_0053A2B0"/> lise la bonne fiche s'il y arrive — et appelle
+    /// <see cref="ApplyStatusEffect_0053BA90"/>, l'entree 15 de la table des 48, sur le couple
+    /// (lanceur, cible). Puis il s'eteint.
+    /// </para>
+    /// </summary>
+    private static void TickHellfire_0047BB50(byte* record)
+    {
+        byte* e = record;
+        ushort age = *(ushort*)(e + 0x10);
+
+        if (age != 0)
+        {
+            if ((short)age < 0x3c)
+            {
+                *(ushort*)(e + 0x10) += 1;            // Ghidra: LAB_0047bc38
+                return;
+            }
+
+            // La soixantieme image : l'effet d'etat, enfin.
+            byte* caster = *(byte**)(e + 0x74);
+            *(ushort*)(caster + 6) = *(ushort*)(e + 6);
+
+            ApplyStatusEffect_0053BA90((uint*)caster, *(uint**)(e + 0x78), 0);
+
+            *(ushort*)(e + 0x10) += 1;
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_0047bb95 — la naissance.
+        e[0x36] |= 6;
+
+        *(byte**)(e + 0x78) = FindTargetAround_00474BA0(e, 0);
+        e[0x04] = 0x0f;                               // le modele
+        *(short*)(e + 0x34) = 0x155;                  // l'inclinaison du premier anneau
+
+        // Trois flammes, un tiers de tour d'ecart. 0x555 est le tiers de 0x1000 arrondi en bas.
+        for (int i = 0; i < 3; i++)
+        {
+            SpawnCastEntity_0047AAE0(e, 0x67, e[0x0b], -1);
+            *(short*)(e + 0x32) += 0x555;
+        }
+
+        // Le second anneau : un sixieme de tour plus loin, et l'inclinaison inversee.
+        *(short*)(e + 0x32) = (short)(*(short*)(e + 0x32) + 0x2aa);
+        *(short*)(e + 0x34) = -0x155;
+
+        for (int i = 0; i < 3; i++)
+        {
+            SpawnCastEntity_0047AAE0(e, 0x67, e[0x0b], -1);
+            *(short*)(e + 0x32) += 0x555;
+        }
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors00551BA0(), 0x4c, e[0x0b], -1);
+
+        Aud.PlayPositionalSound(0x10, 0x400, 0x1200, (int*)(e + 0x1c));
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047bc40 @ 0x0047bc40 — <b>la flamme de Feu d'enfer</b> : le sous-type
+    /// <c>0x67</c>, creneau 103 de <see cref="s_StaticEntityHandlers_00551f30"/>. 181 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Elle ne se deplace pas d'elle-meme : a chaque image elle <b>se recolle sur la cible</b>
+    /// (<c>+0x78</c>, heritee du sort) et tourne de <c>-0xc0</c> sur <c>+0x32</c>. Six exemplaires
+    /// tournant ensemble font la couronne.
+    /// </para>
+    /// <para>
+    /// <b>Trois ages.</b> A la naissance elle prend l'echelle <c>0x1800</c> sur les trois axes et
+    /// une teinte <b>nulle</b> — invisible. Jusqu'a la 32e image elle <b>s'eclaircit</b> de
+    /// <c>0x101010</c> par image jusqu'a <c>0xf0f0f0</c>, et retrecit de <c>0x80</c> tant que son
+    /// echelle depasse <c>0xc00</c>. Au-dela elle ne fait plus que retrecir, sans plancher — et
+    /// c'est <b>l'echelle nulle qui l'eteint</b>, pas un compteur.
+    /// </para>
+    /// <para>
+    /// <b>La hauteur est celle de la tete du LANCEUR</b> (<c>+0x74</c>), pas de la cible : la
+    /// position vient de l'une et l'altitude de l'autre. C'est dans le binaire, et c'est ce qui
+    /// pose la couronne a hauteur d'homme quelle que soit la taille du monstre vise.
+    /// </para>
+    /// </summary>
+    private static void TickHellfireFlame_0047BC40(byte* record)
+    {
+        byte* e = record;
+        byte* target = *(byte**)(e + 0x78);
+        ushort age = *(ushort*)(e + 0x10);
+
+        if (age == 0)
+        {
+            *(uint*)(e + 0x28) = 0x18001800;
+            *(ushort*)(e + 0x2c) = 0x1800;
+            *(uint*)(e + 0x38) = 0;                   // invisible a la naissance
+        }
+        else if ((short)age < 0x20)
+        {
+            if (*(short*)(e + 0x28) > 0x0c00)
+            {
+                unchecked
+                {
+                    *(uint*)(e + 0x28) += 0xff7fff80;  // -0x80 sur X et sur Y
+                    *(ushort*)(e + 0x2c) += 0xff80;    // -0x80 sur Z
+                }
+            }
+
+            uint tint = *(uint*)(e + 0x38);
+            if (tint < 0x00f0f0f0) *(uint*)(e + 0x38) = tint + 0x00101010;
+        }
+        else
+        {
+            // Ghidra: LAB_0047bc9b — passe la 32e image elle ne fait plus que retrecir.
+            unchecked
+            {
+                *(uint*)(e + 0x28) += 0xff7fff80;
+                *(ushort*)(e + 0x2c) += 0xff80;
+            }
+        }
+
+        // Ghidra: LAB_0047bcac — le recollage, commun aux trois ages.
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+        unchecked { *(ushort*)(e + 0x32) += 0xff40; }  // -0xc0 de rotation par image
+        *(int*)(e + 0x20) = *(int*)(target + 0x20) + ((height & ~1) << 0xb);
+
+        // C'est l'echelle a zero qui l'eteint — les deux shorts d'un coup.
+        if (age != 0 && *(uint*)(e + 0x28) == 0) *(uint*)e = 0;
+
+        *(ushort*)(e + 0x10) = (ushort)(age + 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047bdf0 @ 0x0047bdf0 — <b>l'embrasement de Feu d'enfer</b> : le sous-type
+    /// <c>0x4c</c>, creneau 76 de <see cref="s_StaticEntityHandlers_00552230"/>. 270 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Meme forme que la flamme — il se recolle sur la cible a chaque image, a la hauteur de tete
+    /// du lanceur, et c'est sa <b>teinte a zero</b> qui l'eteint. Il naît invisible et sans taille,
+    /// grossit de <c>0x100</c> par image jusqu'a <c>0x1000</c> et s'eclaircit de <c>0x080808</c>
+    /// jusqu'a <c>0xd0d0d0</c>.
+    /// </para>
+    /// <para>
+    /// <b>A la 32e image exactement</b> — pas avant, pas apres : le test est une egalite — il lache
+    /// <b>deux braises</b> <c>0x68</c>, qui sont
+    /// <see cref="EntityHandler_0047BD00"/>, deja transcrite et deja exercee en foret. Ensuite il se
+    /// resorbe : la teinte redescend de <c>0x080808</c> et l'echelle <b>approche</b> <c>0x2000</c>
+    /// d'un quart de la distance restante a chaque image — elle grandit donc encore en s'effacant.
+    /// </para>
+    /// </summary>
+    private static void TickHellfireBlaze_0047BDF0(byte* record)
+    {
+        byte* e = record;
+        byte* target = *(byte**)(e + 0x78);
+        ushort age = *(ushort*)(e + 0x10);
+
+        if (age == 0)
+        {
+            *(uint*)(e + 0x28) = 0;
+            *(uint*)(e + 0x38) = 0;
+            *(ushort*)(e + 0x0a) = 7;
+            *(short*)(e + 0x2e) = -0x14;
+        }
+        else if ((short)age < 0x20)
+        {
+            // La croissance : le dword porte les deux shorts, le test ne regarde que le bas.
+            if (*(short*)(e + 0x28) < 0x1000) *(uint*)(e + 0x28) += 0x01000100;
+
+            uint tint = *(uint*)(e + 0x38);
+            if (tint < 0x00d0d0d0) *(uint*)(e + 0x38) = tint + 0x00080808;
+        }
+        else
+        {
+            // Ghidra: LAB_0047be4a — les deux braises, a la 32e image et a elle seule.
+            if (age == 0x20)
+            {
+                *(short*)(e + 0x12) = 0;
+                *(ushort*)(e + 0x14) = 0x2000;
+                SpawnCastEntity_0047AAE0(e, 0x68, e[0x0b], -1);
+                SpawnCastEntity_0047AAE0(e, 0x68, e[0x0b], -1);
+            }
+
+            // Ghidra: LAB_0047be7e — la resorption.
+            uint tint = *(uint*)(e + 0x38);
+            if (tint != 0) unchecked { *(uint*)(e + 0x38) = tint + 0xfff7f7f8; }   // -0x080808
+
+            // L'echelle approche 0x2000 d'un quart de ce qui reste, sur X puis sur Y.
+            short x = *(short*)(e + 0x28);
+            *(short*)(e + 0x28) = (short)(x + ((0x2000 - x) >> 2));
+
+            short y = *(short*)(e + 0x2a);
+            *(short*)(e + 0x2a) = (short)(y + ((0x2000 - y) >> 2));
+        }
+
+        // Ghidra: LAB_0047bebb — le recollage, commun aux trois ages.
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+        *(int*)(e + 0x20) = *(int*)(target + 0x20) + ((height & ~1) << 0xb);
+
+        if (age != 0 && *(uint*)(e + 0x38) == 0) *(uint*)e = 0;
+
+        *(ushort*)(e + 0x10) = (ushort)(age + 1);
     }
 
     /// <summary>
