@@ -1,0 +1,12 @@
+# Les fiches de sort REELLEMENT declenchees en jeu, une ligne par
+# couple (famille, indice, zone, sous-zone). La paire famille/indice est
+# ce que CastSpell_0053A980 recoit ; census-spells.sh retrouve le nom
+# lisible dans Bestiaire/sorts.csv a partir d'elle. Le lanceur n'est pas
+# releve : une incantation, un script d'objet et une entite de scene
+# entrent par la meme fonction, et c'est la FICHE qu'on verifie.
+# Ecrit par la sonde de Screens/State03/WorldMapTick.cs des qu'un couple
+# est nouveau, en UNION avec ce que le fichier portait deja. Ne pas
+# editer a la main : il se lit comme une preuve accumulee, pas comme une
+# intention.
+#
+# famille	indice	zone	sous-zone

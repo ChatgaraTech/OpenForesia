@@ -257,6 +257,15 @@ internal static class Bestiaire
         // que le rang tire par FUN_0053a920 designe — le butin nomme, donc.
         if (regions) DumpItemLists(stateDir, report);
 
+        // Les fiches de SORT vivent dans la meme table `+0x9c`, et c'est CastSpell_0053A980 qui les
+        // adresse : `*(int*)(*(int*)(etat + 0x9c) + famille * 4) + indice * 0x30`. Elles ne
+        // dependent ni de la zone ni de la sous-zone — le repertoire est celui de l'etat 3 —, donc
+        // le releve se fait une fois, ici, avant la boucle des zones.
+        var spellCsv = new StringBuilder(
+            "famille,indice,nom,sous_type_0x10,param_0x11,param_0x12,duree_0x13,cout_pm_0x14,"
+            + "cout_apprentissage_0x1d,combinaison_len_0x1f,combinaison,octets\n");
+        DumpSpellSheets(stateDir, report, spellCsv);
+
         var speciesCsv = new StringBuilder("zone,sous_zone,espece,ia,modele,classe_butin,drapeaux,octets\n");
         var modelCsv = new StringBuilder(
             "zone,sous_zone,modele,nom,rang_0x10,pv_0x14,pm_0x16,champ_0x12,champ_0x18,champ_0x1a,"
@@ -307,10 +316,11 @@ internal static class Bestiaire
             File.WriteAllText(Path.Combine(outDir, "butin_par_objet.csv"), dropCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "lieux.csv"), placeCsv.ToString());
             File.WriteAllText(Path.Combine(outDir, "coffres.csv"), chestCsv.ToString());
+            File.WriteAllText(Path.Combine(outDir, "sorts.csv"), spellCsv.ToString());
             Console.WriteLine();
             Console.WriteLine($"Ecrit dans {outDir} : bestiaire.md, especes.csv, modeles.csv, "
                               + "formations.csv, butin.csv, objets.csv, butin_par_objet.csv, lieux.csv, "
-                              + "coffres.csv");
+                              + "coffres.csv, sorts.csv");
         }
     }
 
@@ -939,6 +949,125 @@ internal static class Bestiaire
             report.AppendLine("*Aucune table d'entites dans cette sous-zone.*");
             report.AppendLine();
         }
+    }
+
+    /// <summary>
+    /// <b>Les fiches de sort</b>, lues dans la table <c>+0x9c</c> du repertoire d'etat exactement
+    /// comme <c>CastSpell_0053A980</c> les adresse :
+    /// <c>*(int*)(*(int*)(etat + 0x9c) + famille * 4) + indice * 0x30</c>.
+    ///
+    /// <para>
+    /// <b>Le compte de chaque famille vient de la donnee elle-meme</b>, pas d'une table du binaire :
+    /// les listes se suivent sans trou, donc la fin de l'une est le debut de la suivante, et la
+    /// derniere est bornee par <see cref="RegionEnd"/>. Le recoupement avec <c>DAT_00564600</c>
+    /// (<c>1d 18 14</c>) est exact sur les trois ecoles reelles — 29 Sorcier/Elfe, 24 Pretre,
+    /// 20 Fee — et c'est ce qui valide la methode.
+    /// </para>
+    /// <para>
+    /// Les champs releves sont ceux de <c>Documentation/Reference/Sorts.md</c> : <c>+0x10</c> le
+    /// <b>sous-type d'entite</b> que <c>SpawnEffectEntity</c> fait naitre (c'est lui qui decide si
+    /// le sort est implemente ou non), <c>+0x11</c> et <c>+0x12</c> ses deux parametres,
+    /// <c>+0x13</c> la duree d'incantation en images, <c>+0x14</c> le cout en PM, <c>+0x1d</c> le
+    /// cout d'apprentissage, <c>+0x1f</c> la longueur de la combinaison et <c>+0x20</c> la
+    /// combinaison elle-meme.
+    /// </para>
+    /// <para>
+    /// <b>La combinaison n'est pas faite de directions mais des quatre boutons de face.</b> La
+    /// saisie est <c>(manette[2..3] &gt;&gt; 8) &amp; 0xf0</c> et le masque teste est
+    /// <c>0xf000</c> : ce sont les quatre bits que <c>s_PadButtonMasks_00564f18</c> nomme triangle,
+    /// rond, croix et carre. Un octet peut en porter plusieurs — deux boutons dans la meme image.
+    /// </para>
+    /// </summary>
+    private static void DumpSpellSheets(Blob stateDir, StringBuilder report, StringBuilder csv)
+    {
+        if (!stateDir.In(0x9c, 4)) return;
+        int table = stateDir.I32(0x9c);
+        if (table == 0 || !stateDir.In(table, 4)) return;
+
+        int tableEnd = RegionEnd(stateDir, table);
+
+        // Les pointeurs de famille, dans l'ordre : ils bornent les listes les uns les autres.
+        var lists = new List<int>();
+        for (int at = table; at + 4 <= tableEnd; at += 4)
+        {
+            int list = stateDir.I32(at);
+            if (list == 0 || !stateDir.In(list, 0x30)) break;
+            lists.Add(list);
+        }
+        if (lists.Count == 0) return;
+
+        report.AppendLine($"## Fiches de sort — table `+0x9c` a 0x{table:x6}, {lists.Count} famille(s)");
+        report.AppendLine();
+        report.AppendLine("| famille | pointeur | fiches | premier | dernier |");
+        report.AppendLine("|---:|---:|---:|---|---|");
+
+        for (int family = 0; family < lists.Count; family++)
+        {
+            int list = lists[family];
+
+            // La borne : la famille suivante si elle est bien au-dessus, sinon la fin de region.
+            bool bounded = family + 1 < lists.Count && lists[family + 1] > list;
+            int end = bounded ? lists[family + 1] : RegionEnd(stateDir, list);
+            int count = (end - list) / 0x30;
+            if (count <= 0) continue;
+
+            string first = "", last = "";
+
+            for (int index = 0; index < count; index++)
+            {
+                int off = list + index * 0x30;
+                if (!stateDir.In(off, 0x30)) { count = index; break; }
+
+                // LA DERNIERE FAMILLE N'A PAS DE SUCCESSEUR pour la borner, et RegionEnd deborde :
+                // le releve brut continuait 200 fiches trop loin, dans la region de textes qui suit
+                // (« Feu », « Eau », « Divin »… — les noms d'element). L'invariant qui tranche est
+                // celui de la combinaison : le tampon de saisie du joueur est plafonne a 0x10 coups
+                // (ApplyGroundMotion_0051A020) et les seize octets tiennent exactement entre +0x20
+                // et la fin de la fiche. Une longueur superieure n'est donc pas une fiche.
+                if (!bounded && stateDir.U8(off + 0x1f) > 0x10) { count = index; break; }
+
+                string name = Name(stateDir, off);
+                if (index == 0) first = name;
+                last = name;
+
+                // Un tiret entre les coups : sans lui « TO » ne dirait pas si c'est un coup a deux
+                // boutons ou deux coups a un bouton, et les deux existent.
+                byte length = stateDir.U8(off + 0x1f);
+                var combo = new StringBuilder();
+                for (int k = 0; k < length && k < 0x10; k++)
+                {
+                    if (k != 0) combo.Append('-');
+                    combo.Append(Buttons(stateDir.U8(off + 0x20 + k)));
+                }
+
+                string raw = string.Join("", Enumerable.Range(0, 0x30).Select(b => stateDir.U8(off + b).ToString("x2")));
+
+                csv.AppendLine(
+                    $"{family},{index},\"{name.Replace("\"", "\"\"")}\",{stateDir.U8(off + 0x10)},"
+                    + $"{stateDir.U8(off + 0x11)},{stateDir.U8(off + 0x12)},{stateDir.U8(off + 0x13)},"
+                    + $"{stateDir.U16(off + 0x14)},{stateDir.U8(off + 0x1d)},{length},"
+                    + $"{combo},{raw}");
+            }
+
+            report.AppendLine($"| {family} | 0x{list:x6} | {count} | {first} | {last} |");
+        }
+        report.AppendLine();
+    }
+
+    /// <summary>
+    /// Un octet de combinaison rendu en lettres : <c>T</c> triangle, <c>O</c> rond, <c>X</c> croix,
+    /// <c>C</c> carre — l'ordre des bits de <c>s_PadButtonMasks_00564f18</c> decale de huit. Un
+    /// octet a plusieurs bits donne plusieurs lettres, et c'est voulu : deux boutons tenus dans la
+    /// meme image ne font qu'un coup dans la combinaison.
+    /// </summary>
+    private static string Buttons(byte value)
+    {
+        var text = new StringBuilder();
+        if ((value & 0x10) != 0) text.Append('T');
+        if ((value & 0x20) != 0) text.Append('O');
+        if ((value & 0x40) != 0) text.Append('X');
+        if ((value & 0x80) != 0) text.Append('C');
+        return text.Length == 0 ? "." : text.ToString();
     }
 
     /// <summary>

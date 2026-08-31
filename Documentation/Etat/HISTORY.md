@@ -4,6 +4,16 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-08-31
+- feat : **`SortsAtteignables.md`, la feuille de route de la magie** — le troisième document de la famille, après `GestionnairesEntites.md` et `ObjetsAtteignables.md` : les 123 fiches de sort du CD une par une, avec leur combinaison, leur coût, le corps qu'elles font naître, et les deux colonnes `implemente` / `teste`. Bilan de départ : **80 sorts d'école, 74 corps distincts, aucun écrit**
+- feat : **une troisième sonde, sur les sorts** (`sorts-exerces.tsv`) — accrochée à `CastSpell_0053A980`, elle relève la paire famille/indice avec la zone et la sous-zone. Elle ne distingue pas le lanceur : incantation, script d'objet et entité de scène entrent par la même fonction, et c'est la fiche qu'on vérifie
+- feat : **`census-spells.sh`** croise les fiches du CD, la table de sauts statique de `Blaze.exe`, les `case` du répartiteur et les deux sondes. Comme pour les objets, **aucune partie n'est jouée** pour produire le document
+- feat : **le verbe `bestiaire` écrit `sorts.csv`** — les huit familles de la table `+0x9c`, lues en rejouant hors ligne la chaîne de chargement. Le compte des trois écoles jouables (29 / 24 / 20) recoupe exactement `DAT_00564600`, ce qui valide la lecture des bornes de liste
+- doc : **un sort fait la même chose où qu'on soit** — aucune des 123 fiches n'emploie un sous-type `≥ 0xc0` : tout passe par la table statique `0x00551c30`, comme pour les objets. Et c'est **presque un corps par sort** : 74 corps distincts pour 80 fiches, pas un répartiteur à branches partagées
+- doc : **la combinaison d'un sort n'est pas faite de directions mais des quatre boutons de face** — le masque testé est `0xf000`, soit triangle, rond, croix et carré dans `s_PadButtonMasks_00564f18`, pas la croix directionnelle. `Sorts.md` disait le contraire depuis le 2026-08-29
+- doc : **l'école 3 n'est pas vide, elle est herboriste** — le CD y porte sept plantes (Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius, Belladone), toutes sur un seul corps `0x0047a5d0` paramétré par `+0x12`. `DAT_00564600` n'en déclare qu'une : l'herboristerie du Chasseur a été écrite puis débranchée, pas jamais remplie
+- doc : **le nom des sorts est relevé** — ce sont les seize premiers octets de la fiche, et ils sont en clair dans le CD français. Les quatre familles au-delà des écoles gardent, elles, leurs noms d'origine en katakana : ce sont vraisemblablement les sorts des monstres
+
 ## 2026-08-30
 - feat : **`tests/objets.bat`**, le pendant de `feuille-de-route.bat` pour `ObjetsAtteignables.md` : il regenere, puis reaffiche le compte, les gestionnaires a ecrire, la dette et le controle croise
 - doc : **`objets.csv` ne porte pas l'equipement de depart** — decouvert par le controle croise des la premiere partie : la sonde a releve `Epee normale`, `Armure cuir` et `Bouclier cuir`, absents du catalogue. Le bestiaire dumpe les catalogues **par sous-zone**, pas ce que la creation de personnage accorde. Le rapport signale desormais ces angles morts tout seul

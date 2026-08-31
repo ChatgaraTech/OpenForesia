@@ -27686,6 +27686,111 @@ public static unsafe partial class Blaze
         }
     }
 
+    // =====================================================================
+    // ECHAFAUDAGE — LA SONDE DE SORTS (2026-08-31)
+    //
+    // La troisieme du meme chantier, apres NoteHandlerSeen (quel gestionnaire a tourne) et
+    // NoteItemUsed (quel objet a ete employe). Celle-ci dit quelle FICHE DE SORT est partie.
+    //
+    // LA CLE EST LA PAIRE FAMILLE/INDICE, pas le nom : c'est exactement ce que
+    // CastSpell_0053A980 recoit, et c'est ce qui adresse la fiche dans la table +0x9c du
+    // repertoire d'etat. Les noms, eux, vivent sur le CD, et `census-spells.sh` les retrouve dans
+    // Documentation/Reference/Bestiaire/sorts.csv a partir de la meme paire. La cle est technique,
+    // l'affichage est lisible, et les deux ne se melangent pas — meme partage que pour les objets.
+    //
+    // ELLE NE DISTINGUE PAS LE LANCEUR, et c'est voulu. L'incantation d'un personnage, l'opcode 14
+    // d'un script d'objet et le mot +0x06 d'une entite de scene entrent tous les trois par
+    // CastSpell_0053A980 : ce qu'on veut savoir est si LA FICHE a ete exercee, pas par quel chemin.
+    //
+    // Releve dans Documentation/Etat/sorts-exerces.tsv, memes garanties que ses deux ainees :
+    // union avec l'existant, ecriture immediate (une exception non rattrapee ne leve pas
+    // ProcessExit, et c'est precisement le cas interessant), suivi par git. OPENFORESIA_NO_PROBE=1
+    // desarme les trois.
+    // =====================================================================
+
+    private static readonly SortedSet<string> s_SpellsSeen = new(StringComparer.Ordinal);
+
+    private static SortedSet<string> s_SpellProbeAll;
+
+    private static string SpellProbePath => System.IO.Path.GetFullPath(System.IO.Path.Combine(
+        AppContext.BaseDirectory, "..", "..", "..", "..",
+        "Documentation", "Etat", "sorts-exerces.tsv"));
+
+    /// <summary>
+    /// Note qu'une fiche de sort vient d'etre declenchee, avec le lieu ou elle l'a ete.
+    /// </summary>
+    private static void NoteSpellCast(int family, int index)
+    {
+        if (!s_ProbeEnabled) return;
+
+        string line = $"{family}\t{index}\t{Res.s_Unknown_005de528 & 0xff}\t{s_Unknown_005de52c}";
+
+        if (!s_SpellsSeen.Add(line)) return;
+
+        LoadSpellProbe();
+        if (!s_SpellProbeAll.Add(line)) return;
+
+        WriteSpellProbe();
+
+        Console.Error.WriteLine(
+            $"[SONDE SORT] nouveau : famille {family} indice {index} " +
+            $"zone={Res.s_Unknown_005de528 & 0xff} sous-zone={s_Unknown_005de52c} " +
+            $"({s_SpellProbeAll.Count} couples connus)");
+    }
+
+    private static void LoadSpellProbe()
+    {
+        if (s_SpellProbeAll != null) return;
+
+        s_SpellProbeAll = new SortedSet<string>(StringComparer.Ordinal);
+
+        try
+        {
+            if (System.IO.File.Exists(SpellProbePath))
+            {
+                foreach (string line in System.IO.File.ReadAllLines(SpellProbePath))
+                {
+                    if (line.Length != 0 && line[0] != '#') s_SpellProbeAll.Add(line);
+                }
+            }
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"[SONDE SORT] fichier non relu : {error.Message}");
+        }
+    }
+
+    private static void WriteSpellProbe()
+    {
+        try
+        {
+            var text = new System.Text.StringBuilder();
+            text.AppendLine("# Les fiches de sort REELLEMENT declenchees en jeu, une ligne par");
+            text.AppendLine("# couple (famille, indice, zone, sous-zone). La paire famille/indice est");
+            text.AppendLine("# ce que CastSpell_0053A980 recoit ; census-spells.sh retrouve le nom");
+            text.AppendLine("# lisible dans Bestiaire/sorts.csv a partir d'elle. Le lanceur n'est pas");
+            text.AppendLine("# releve : une incantation, un script d'objet et une entite de scene");
+            text.AppendLine("# entrent par la meme fonction, et c'est la FICHE qu'on verifie.");
+            text.AppendLine("# Ecrit par la sonde de Screens/State03/WorldMapTick.cs des qu'un couple");
+            text.AppendLine("# est nouveau, en UNION avec ce que le fichier portait deja. Ne pas");
+            text.AppendLine("# editer a la main : il se lit comme une preuve accumulee, pas comme une");
+            text.AppendLine("# intention.");
+            text.AppendLine("#");
+            text.AppendLine("# famille\tindice\tzone\tsous-zone");
+            foreach (string line in s_SpellProbeAll) text.AppendLine(line);
+
+            // UTF8Encoding(false) et non Encoding.UTF8 : celui-ci pose un BOM, et un BOM en tete
+            // fait que la premiere ligne ne commence plus par '#'. Tout lecteur qui filtre les
+            // commentaires par `^#` prend alors l'en-tete pour une donnee — c'est arrive.
+            System.IO.File.WriteAllText(
+                SpellProbePath, text.ToString(), new System.Text.UTF8Encoding(false));
+        }
+        catch (Exception error)
+        {
+            Console.Error.WriteLine($"[SONDE SORT] releve non ecrit : {error.Message}");
+        }
+    }
+
     /// <summary>
     /// Ghidra: <c>(*(code *)(&amp;PTR_LAB_00564f80)[opcode])(…)</c> — les 23 gestionnaires.
     ///
@@ -28097,6 +28202,8 @@ public static unsafe partial class Blaze
     /// L'entree trouvee est rendue : deux appelants la relisent.</para></summary>
     private static byte* CastSpell_0053A980(uint* caster, int family, int index, int a, int b)
     {
+        NoteSpellCast(family, index);   // ECHAFAUDAGE : hors du binaire, voir la sonde plus bas.
+
         byte* e = (byte*)caster;
 
         // Le mot de +6 porte les DEUX : la famille en octet haut, l'indice en octet bas. Ghidra

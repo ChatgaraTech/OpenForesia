@@ -31,11 +31,18 @@ L'école est `+0x2b5`, posée à la création depuis `s_ClassStartIcon_00562ab8`
 | 5 Elfe | 0 | 29 | **20** (voir plus bas) |
 | 7 Fée | 2 | 20 | 16 |
 
-**L'école 3 est morte.** Le Chasseur s'en voit attribuer une, mais elle ne mène nulle part : la
-table de pointeurs `PTR_DAT_00564640` porte trois rangées puis un mot nul, `DAT_0056d330` donne
-`00 00 00 00 08` pour cette école, la création n'initialise le masque des sorts connus que pour les
-écoles 0, 1 et 2 — et de toute façon le Chasseur n'entre jamais dans la posture d'incantation. Une
-quatrième école a été prévue et jamais remplie.
+**L'école 3 est inatteignable — mais elle n'est pas vide.** Le Chasseur s'en voit attribuer une, et
+elle ne mène nulle part : la table de pointeurs `PTR_DAT_00564640` porte trois rangées puis un mot
+nul, `DAT_0056d330` donne `00 00 00 00 08` pour cette école, la création n'initialise le masque des
+sorts connus que pour les écoles 0, 1 et 2 — et de toute façon le Chasseur n'entre jamais dans la
+posture d'incantation.
+
+> Le CD, lui, y porte **sept fiches**, et ce sont des **plantes** : Lavande, Sauge, Verveine,
+> Mercuriale, Fenouil, Hysopius, Belladone. Toutes sept ont la même forme — aucune combinaison, un
+> coût d'un point, et le même sous-type `0x4f`, qui n'est donc qu'un seul corps paramétré par
+> l'octet `+0x12`. `DAT_00564600` n'en déclare qu'une. Une herboristerie de Chasseur a été écrite
+> puis débranchée, pas « prévue et jamais remplie ». Relevé le 2026-08-31 en lisant le CD ; voir
+> `Documentation/Etat/SortsAtteignables.md`.
 
 ---
 
@@ -52,11 +59,18 @@ Le répertoire de ressources principal porte à `+0x9c` un tableau de pointeurs,
 | `+0x13` | la **durée d'incantation**, en images | la posture, dans `+0x14` de l'entité |
 | `+0x14` | le **coût en PM** (mot) | recopié dans `personnage + 0x204` |
 | `+0x1d` | le **coût d'apprentissage** (octet) | `TryLearnSpell` |
-| `+0x1f` | la **longueur de la combinaison** de directions | `PickCastTarget_0051A5D0` |
-| `+0x20`..`+0x2f` | la **combinaison** elle-même, une direction par octet | idem |
+| `+0x1f` | la **longueur de la combinaison** de boutons | `PickCastTarget_0051A5D0` |
+| `+0x20`..`+0x2f` | la **combinaison** elle-même, un coup par octet | idem |
 
 Les seize octets de combinaison tiennent **exactement** entre `+0x20` et la fin de la fiche, et le
 tampon de saisie du joueur est plafonné à `0x10` coups. Les deux bornes se confirment l'une l'autre.
+
+> **La combinaison n'est pas faite de directions**, contrairement à ce que ce document a dit
+> jusqu'au 2026-08-31. La saisie est `(manette[2..3] >> 8) & 0xf0` et le masque qui l'ouvre est
+> `0xf000` : ce sont les quatre bits que `s_PadButtonMasks_00564f18` nomme **triangle, rond, croix
+> et carré**, pas ceux de la croix directionnelle (`0x0010`..`0x0080`). Un octet peut porter
+> plusieurs bits — deux boutons tenus dans la même image ne font qu'un seul coup.
+> `Documentation/Etat/SortsAtteignables.md` donne la combinaison de chaque sort, lue sur le CD.
 
 Le nombre de sorts par école est dans `DAT_00564600` : `1d 18 14` — **29, 24, 20**. La rangée
 cumulée voisine (`00 1d 35 49`) est la somme courante des trois, ce qui recoupe le relevé.
@@ -174,7 +188,7 @@ La posture vit dans `ApplyGroundMotion_0051A020`, sur `entité + 0x18` :
 
 **État 5 — l'incantation.** Le bouton est maintenu. Le compte à rebours `+0x14` part de la durée
 `+0x13` de la fiche du sort **mémorisé** (`+0x2b6`), et le coût de ce sort est déjà recopié dans
-`+0x204`. Chaque direction tenue s'empile dans `entrée[0x0c + n]` sous la forme
+`+0x204`. Chaque bouton de face pressé s'empile dans `entrée[0x0c + n]` sous la forme
 `(manette >> 8) & 0xf0`, et `entrée[0x0b]` compte les coups, plafonné à seize.
 
 **Le relâchement — le choix du sort.** `PickCastTarget_0051A5D0` compare la combinaison saisie à
@@ -228,8 +242,10 @@ C'est ce sort mémorisé qui fixe la durée d'incantation avant même que la com
 `ApplyTrapEffect_0053C420` en font partie, transcrites parce que les pièges de coffre y mènent. Les
 autres attendent. C'est là que vivent les dégâts et les altérations d'état des sorts.
 
-**Le nom des sorts et des écoles.** Ils vivent dans les fichiers du CD, pas dans le binaire ; rien
-n'a été relevé.
+**Le nom des écoles.** Il vit dans les fichiers du CD, pas dans le binaire ; rien n'a été relevé.
+Le nom des **sorts**, lui, l'a été le 2026-08-31 : ce sont les seize premiers octets de chaque
+fiche, et `Documentation/Etat/SortsAtteignables.md` les donne tous, avec leur combinaison, leur
+coût et le corps qu'ils font naître.
 
 **La double lecture de `+0x160`** — masque de bits contre compteurs de charges, voir plus haut.
 
