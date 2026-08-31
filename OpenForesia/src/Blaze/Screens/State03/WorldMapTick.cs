@@ -4759,6 +4759,12 @@ public static unsafe partial class Blaze
             case 0x0047C660: TickShockwave_0047C660(record); return;
             case 0x0047C830: TickShockwaveRing_0047C830(record); return;
 
+            // FLECHES MAGIQUES, ecole 0 indice 8 — le premier projectile a tete chercheuse, et le
+            // plus gros corps de sort du depot (1007 octets).
+            case 0x0047C910: TickMagicArrow_0047C910(record); return;
+            case 0x0047CA50: TickMagicArrowShaft_0047CA50(record); return;
+            case 0x00475F60: TickTrailSpark_00475F60(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -5980,6 +5986,46 @@ public static unsafe partial class Blaze
     {
         destination[0] = (short)packed * scale;
         destination[2] = (packed >> 0x10) * scale;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00532010 @ 0x00532010 — <b>la version a trois dimensions de
+    /// <see cref="ScaleAngleComponents_00531FE0"/></b> : deux angles empaquetes et une vitesse
+    /// donnent un vecteur complet. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// X et Z portent le <b>cosinus du tangage</b> en facteur, Y son sinus seul — la conversion
+    /// spherique habituelle. Le produit des deux sinus/cosinus est ramene d'un facteur
+    /// <c>0x1000</c> par l'idiome de division signee du compilateur de 1998
+    /// (<c>t + (t &gt;&gt; 31 &amp; 0xfff)</c> avant le decalage), qui arrondit vers zero et non
+    /// vers le bas.
+    /// </para>
+    /// </summary>
+    private static void ScaleAngleComponents3_00532010(
+        int* destination, int packedYaw, int packedPitch, int scale)
+    {
+        int t = (short)packedYaw * (packedPitch >> 0x10);
+        destination[0] = ((t + (int)((uint)(t >> 0x1f) & 0xfff)) >> 0xc) * scale;
+
+        t = (packedYaw >> 0x10) * (packedPitch >> 0x10);
+        destination[1] = (short)packedPitch * scale;
+        destination[2] = ((t + (int)((uint)(t >> 0x1f) & 0xfff)) >> 0xc) * scale;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00532ad0 @ 0x00532ad0 — <b>poser une vitesse a trois dimensions a partir de deux
+    /// angles</b>. La sœur de <see cref="SetVectorFromAngle_00532B10"/> : meme table empaquetee,
+    /// un angle de plus. Appelee sur <c>+0x50</c>, elle ecrit X, Y et Z en <c>+0x50</c>,
+    /// <c>+0x54</c> et <c>+0x58</c> — contrairement a sa sœur, qui laisse Y au site d'appel.
+    /// </summary>
+    private static void SetVectorFromAngles_00532AD0(
+        int* destination, int yaw, int pitch, int scale)
+    {
+        ScaleAngleComponents3_00532010(
+            destination,
+            (int)s_LookupTable00600920[yaw & 0xfff],
+            (int)s_LookupTable00600920[pitch & 0xfff],
+            scale);
     }
 
     /// <summary>
@@ -9361,6 +9407,36 @@ public static unsafe partial class Blaze
     /// <summary>Les quatre descripteurs en memoire native.</summary>
     private static byte* Descriptors00551A98()
         => NativeCopy(s_Descriptors_00551A98, ref s_Descriptors00551A98Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551a08</c> — <b>les sept images de l'eclaboussure de tir</b>, relevees
+    /// dans <c>Documentation/Reference/DataSymbols.md</c> le 2026-08-29 et transcrites ici le
+    /// 2026-08-31 pour <see cref="TickMagicArrowShaft_0047CA50"/>, qui les passe a son
+    /// <c>0xbd</c> quand la fleche meurt sur le decor.
+    ///
+    /// <para>
+    /// <b>Sept, et c'est le code qui le dit</b> : <c>EntityHandler_00476320</c> compte
+    /// <c>+0x40</c> jusqu'a 7 avant de s'eteindre, et
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> pose ce champ a zero. La donnee le confirme —
+    /// la huitieme entree (<c>0x00551a40</c>) change de forme.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551A08 =
+    [
+        0xc0, 0xb8, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551a08
+        0xd8, 0xb8, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551a10
+        0x60, 0xd0, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551a18
+        0x78, 0xd0, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551a20
+        0x90, 0xd0, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551a28
+        0xa8, 0xd0, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551a30
+        0xc0, 0xd0, 0x18, 0x18, 0x01, 0x02, 0x10, 0x00,   // 0x00551a38
+    ];
+
+    private static byte* s_Descriptors00551A08Storage;
+
+    /// <summary>Les sept descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551A08()
+        => NativeCopy(s_Descriptors_00551A08, ref s_Descriptors00551A08Storage);
 
     /// <summary>
     /// Ghidra: FUN_00475a30 @ 0x00475a30 — <b>l'entree 183 (<c>0xb7</c>) de la table statique
@@ -31211,6 +31287,365 @@ public static unsafe partial class Blaze
         if (age != 0 && tint == 0) *(uint*)e = 0;
 
         *(ushort*)(e + 0x10) = (ushort)(age + 1);
+    }
+
+    // =====================================================================
+    // FLECHES MAGIQUES — le neuvieme sort, ecole 0 indice 8, sous-type 0x08
+    //
+    // Trois corps, et le premier projectile A TETE CHERCHEUSE du depot.
+    //
+    //   0x0047C910   LE SORT. Sous-type 8 de 0x00551c30, 309 octets. Une image : il CHERCHE
+    //                l'adversaire le plus proche, calcule le cap et le tangage qui y menent, pose
+    //                la vitesse et lache la fleche.
+    //   0x0047CA50   LA FLECHE, sous-type 0x6d de 0x00551f30. 1007 octets — le plus gros corps de
+    //                sort transcrit. Elle recorrige son cap vers la cible a chaque image.
+    //   0x00475F60   L'ETINCELLE de sa trainee, sous-type 0xbf de 0x00552230. 87 octets.
+    //
+    // LA CIBLE EST TENUE DES DEUX COTES. La fleche range son adversaire en +0x78 et s'ecrit
+    // elle-meme dans le +0x74 de celui-ci — un lien reciproque, que la mort de l'un rompt pour
+    // l'autre. C'est la premiere fois qu'un sort marque sa victime AVANT de la toucher.
+    //
+    // LES SIX CHAMPS PRETES. Comme Pieds mouilles, la fleche ecrase +0x50/+0x54/+0x58, +0x28,
+    // +0x2c et +0x38 pour parametrer l'etincelle qu'elle seme, puis les rend. Six champs cette
+    // fois, et le passage par la pile est le meme.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047c910 @ 0x0047c910 — <b>Fleches magiques</b> : le sous-type <c>0x08</c>,
+    /// creneau 8 de <see cref="s_StaticEntityHandlers_00551c30"/>. 309 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Une seule image. Il se hisse a hauteur de tete du lanceur, puis demande a
+    /// <see cref="FindNearestOpponent_00474EB0"/> l'adversaire le plus proche — <b>pas</b> la sonde
+    /// conique des sorts precedents, une vraie recherche du plus proche.
+    /// </para>
+    /// <para>
+    /// <b>Avec une cible</b>, il calcule les trois ecarts, en tire la distance horizontale par
+    /// <c>Ordinal_442</c> (le <c>SquareRoot0</c> de libgte), puis deux angles par deux
+    /// <c>ratan2</c> : le cap, <b>disperse d'un tirage sur douze bits</b> et decale de
+    /// <c>0xa00</c>, et le tangage decale de <c>0x100</c>. La vitesse sort de
+    /// <see cref="SetVectorFromAngles_00532AD0"/> a <c>0x20</c>.
+    /// </para>
+    /// <para>
+    /// <b>Sans cible</b>, la fleche part droit devant a <c>rsin/rcos &lt;&lt; 6</c>, sans
+    /// composante verticale, et le cap avance de <c>0x400</c> — de quoi eventer les tirs suivants.
+    /// </para>
+    /// </summary>
+    private static void TickMagicArrow_0047C910(byte* record)
+    {
+        byte* e = record;
+        byte* caster = *(byte**)(e + 0x74);
+
+        int height = StatusBubbleHeight_00538BC0((uint*)caster);
+        *(int*)(e + 0x20) += (height & ~1) << 0xb;
+
+        byte* target = FindNearestOpponent_00474EB0((uint*)caster, 0xffffffff, 1);
+
+        *(uint*)(e + 0x38) = 0x00f0f0f0;
+        *(uint*)(e + 0x28) = 0x08000c00;
+        *(ushort*)(e + 0x2c) = 0x0800;
+
+        if (target != null)
+        {
+            *(byte**)(e + 0x78) = target;
+
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            // La visee monte a la tete de la cible, pas a ses pieds.
+            int targetHead = StatusBubbleHeight_00538BC0((uint*)target);
+            int dy = (((targetHead & ~1) << 0xb) + *(int*)(target + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            // Ghidra: FUN_00545a10 — winsys3d Ordinal_442, le SquareRoot0 de libgte.
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            // Le cap, disperse : le tirage sur douze bits couvre un tour entier, et le 0xa00 le
+            // recentre. C'est ce qui fait qu'une volee de fleches ne part pas en faisceau.
+            int yaw = Winsys3d.Ordinal_457(dx, dz) + (CrtRand() & 0xfff) + 0xa00;
+            *(short*)(e + 0x32) = (short)yaw;
+
+            int pitch = Winsys3d.Ordinal_457(dy, flat) + 0x100;
+            *(short*)(e + 0x34) = (short)pitch;
+
+            SetVectorFromAngles_00532AD0(
+                (int*)(e + 0x50), *(short*)(e + 0x32) - 0x400, (short)pitch, 0x20);
+        }
+        else
+        {
+            // Ghidra: LAB_0047c9fb — droit devant, a plat.
+            int heading = *(short*)(e + 0x32);
+            *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(heading) << 6;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(heading) << 6;
+            *(ushort*)(e + 0x32) += 0x400;
+        }
+
+        // Ghidra: LAB_0047ca24
+        e[0x04] = 0x14;                                // le modele
+        SpawnCastEntity_0047AAE0(e, 0x6d, e[0x0b], -1);
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047ca50 @ 0x0047ca50 — <b>la fleche magique</b> : le sous-type <c>0x6d</c>,
+    /// creneau 109 de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>1007 octets</b>, le plus
+    /// gros corps de sort du depot, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle poursuit.</b> Tant qu'elle a une cible en <c>+0x78</c>, elle recalcule a chaque image
+    /// les deux angles qui y menent et <b>ajoute</b> le vecteur correspondant a sa vitesse, laquelle
+    /// perd ensuite un huitieme sur chaque axe. Ce n'est donc pas une correction de cap mais une
+    /// <b>poussee continue</b> vers la cible : la fleche decrit une courbe et peut depasser.
+    /// </para>
+    /// <para>
+    /// <b>Le lien est reciproque.</b> Elle ecrit son propre enregistrement dans le <c>+0x74</c> de
+    /// sa cible, et le remet a zero en mourant — au contact comme sur le decor. Une cible qui porte
+    /// <c>0x50000000</c> (morte ou mourante) est relachee et la fleche redevient libre.
+    /// </para>
+    /// <para>
+    /// <b>Son orientation vient du deplacement reel</b>, pas du cap vise : apres avoir bouge, elle
+    /// compare sa position a celle d'avant et en tire <c>+0x32</c> et <c>+0x34</c> par deux
+    /// <c>ratan2</c>. Le modele pointe donc toujours dans la direction ou elle va vraiment.
+    /// </para>
+    /// <para>
+    /// <b>La trainee.</b> Quand l'indice du sort vaut 8 — c'est-a-dire pour Fleches magiques et pas
+    /// pour un autre appelant du meme sous-type — elle seme a chaque image un <c>0xbf</c> dont la
+    /// vitesse part en arriere, dispersee de deux tirages sur huit bits. Six champs lui sont pretes
+    /// puis rendus.
+    /// </para>
+    /// <para>
+    /// Douze images sans cible et elle s'eteint ; sur le decor elle lache un <c>0xbd</c> —
+    /// l'eclaboussure de <see cref="s_Descriptors_00551A08"/>.
+    /// </para>
+    /// </summary>
+    private static void TickMagicArrowShaft_0047CA50(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { -0x0400, -0x0080, 0x0032, 0x00c8, 0x0000, 0x0080 };
+        int* step = stackalloc int[3];
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(ushort*)(e + 0x10) = 1;
+            *(uint*)e |= 0x80;
+            Aud.PlayPositionalSound(0x12, 0x400, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047caaf
+        e[0x36] |= 6;
+
+        int wasX = *(int*)(e + 0x1c);
+        int wasY = *(int*)(e + 0x20);
+        int wasZ = *(int*)(e + 0x24);
+
+        byte* target = *(byte**)(e + 0x78);
+        byte* keptTarget = target;
+
+        int yaw;
+        int pitch;
+
+        if (target == null)
+        {
+            // Ghidra: LAB_0047cb67 — sans cible, elle vieillit et finit par s'eteindre.
+            *(ushort*)(e + 0x10) += 1;
+
+            if (*(short*)(e + 0x10) >= 0x0c)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            // Ghidra: LAB_0047cb7c — elle garde son cap.
+            yaw = *(short*)(e + 0x32) - 0x400;
+            pitch = *(short*)(e + 0x34);
+        }
+        else if ((*(uint*)target & 0x50000000) != 0)
+        {
+            // La cible est morte : le lien est rompu des deux cotes.
+            *(uint*)(target + 0x74) = 0;
+            *(byte**)(e + 0x78) = null;
+            keptTarget = null;
+
+            // DEFAUT DE 1998, transcrit tel quel — voir Documentation/Reference/legacy-bug.md.
+            // Le binaire lit ici DEUX FOIS un emplacement de pile qu'il n'a jamais ecrit : celui de
+            // son propre argument, c'est-a-dire le POINTEUR de l'enregistrement. Le cap et le
+            // tangage valent donc une adresse, masquee a douze bits par la table. La direction est
+            // arbitraire mais deterministe — et jamais celle qu'on voulait.
+            yaw = (int)(nint)record;
+            pitch = (int)(nint)record;
+        }
+        else
+        {
+            // Ghidra: LAB_0047caf9 — la poursuite.
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            *(byte**)(target + 0x74) = e;              // la cible retient la fleche
+
+            int targetHead = StatusBubbleHeight_00538BC0((uint*)target);
+            int dy = (((targetHead & ~1) << 0xb) + *(int*)(target + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            yaw = Winsys3d.Ordinal_457(dx, dz);
+            pitch = Winsys3d.Ordinal_457(dy, flat);
+        }
+
+        // Ghidra: LAB_0047cb8a — la poussee vers la cible s'AJOUTE a la vitesse, elle ne la
+        // remplace pas. Puis chaque axe perd un huitieme.
+        SetVectorFromAngles_00532AD0(step, yaw, pitch, 0x10);
+
+        int vx = *(int*)(e + 0x50) + step[0];
+        int vy = *(int*)(e + 0x54) + step[1];
+        int vz = *(int*)(e + 0x58) + step[2];
+
+        vx -= vx >> 3;
+        vy -= vy >> 3;
+        vz -= vz >> 3;
+
+        *(int*)(e + 0x50) = vx;
+        *(int*)(e + 0x54) = vy;
+        *(int*)(e + 0x58) = vz;
+
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x20) += vy;
+        *(int*)(e + 0x24) += vz;
+
+        // L'orientation vient du deplacement REEL de cette image.
+        int movedX = (*(int*)(e + 0x1c) - wasX) >> 0xc;
+        int movedY = (*(int*)(e + 0x20) - wasY) >> 0xc;
+        int movedZ = (*(int*)(e + 0x24) - wasZ) >> 0xc;
+
+        int movedFlat = (int)Winsys3d.Ordinal_442((uint)(movedX * movedX + movedZ * movedZ));
+
+        *(short*)(e + 0x32) = (short)(Winsys3d.Ordinal_457(movedX, movedZ) + 0x400);
+        *(short*)(e + 0x34) = (short)Winsys3d.Ordinal_457(movedY, movedFlat);
+
+        if (*(ushort*)(e + 6) == 8)
+        {
+            // ------------------------------------------------------------ la trainee
+            // Six champs pretes a l'enfant, comme Pieds mouilles en prete trois.
+            int keptVx = *(int*)(e + 0x50);
+            int keptVy = *(int*)(e + 0x54);
+            int keptVz = *(int*)(e + 0x58);
+            uint keptScaleXY = *(uint*)(e + 0x28);
+            uint keptScaleZ = *(uint*)(e + 0x2c);
+            uint keptTint = *(uint*)(e + 0x38);
+
+            *(int*)(e + 0x70) = 0;
+
+            int sprayYaw = *(short*)(e + 0x32) - (CrtRand() & 0xff) - 0x380;
+            int sprayPitch = *(short*)(e + 0x34) - (CrtRand() & 0xff) + 0x880;
+
+            SetVectorFromAngles_00532AD0((int*)(e + 0x50), sprayYaw, sprayPitch, 0x20);
+
+            *(uint*)(e + 0x28) = 0x0c000c00;
+            *(int*)(e + 0x54) = *(int*)(e + 0x54) >> 3;
+            *(ushort*)(e + 0x2c) = 3;                  // l'etincelle retrecit d'un huitieme
+            *(uint*)(e + 0x38) = 0x00808080;
+            *(ushort*)(e + 0x1a) = 1;                  // une seule image d'atlas
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA8(), 0xbf, e[0x0b], -1);
+
+            *(int*)(e + 0x50) = keptVx;
+            *(int*)(e + 0x54) = keptVy;
+            *(int*)(e + 0x58) = keptVz;
+            *(uint*)(e + 0x28) = keptScaleXY;
+            *(uint*)(e + 0x2c) = keptScaleZ;
+            *(uint*)(e + 0x38) = keptTint;
+        }
+
+        // Ghidra: LAB_0047cd30
+        FinalizeEntityPlacement2((uint*)e);            // Ghidra: FUN_00533940
+
+        if (*(int*)(e + 0x20) <= *(int*)(e + 0x60))
+        {
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        // Ghidra: LAB_0047cd50 — le decor, ou le drapeau de fin.
+        uint contact = *(uint*)(e + 0x90);
+        bool spent = (*(uint*)e & 0x40000000) != 0
+                     || ((contact & 0xa000) == 0 && (contact & 0x802) != 0);
+
+        if (spent)
+        {
+            // Ghidra: LAB_0047ce0a — l'eclaboussure, et la cible relachee.
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551A08(), 0xbd, 0, 4);
+
+            if (keptTarget != null) *(uint*)(keptTarget + 0x74) = 0;
+
+            *(uint*)e = 0;
+            return;
+        }
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+        if (victim == null) return;
+
+        ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+        int push = *(short*)(e + 0x32) - 0x400;
+        *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+        *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+        *(uint*)victim |= 0x40;
+        *(ushort*)(victim + 0x96) = 0x10;
+        *(uint*)(victim + 0x74) = 0;                   // la victime est relachee
+
+        Aud.PlayPositionalSound(0x0b, 0x800, 0x1200, (int*)(e + 0x1c));
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00475f60 @ 0x00475f60 — <b>l'etincelle de trainee</b> : le sous-type
+    /// <c>0xbf</c> de <see cref="s_StaticEntityHandlers_00552230"/>. 87 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle est entierement parametree par son parent</b>, et c'est ce qui la rend reutilisable :
+    /// <c>+0x1a</c> donne le nombre d'images d'atlas a parcourir en anneau, <c>+0x2c</c> le
+    /// <b>decalage</b> par lequel son echelle retrecit a chaque image — un decalage
+    /// <b>variable</b>, <c>sar ax,cl</c>, ce qui est rare — et <c>+0x38</c> sa teinte de depart.
+    /// <see cref="TickMagicArrowShaft_0047CA50"/> pose <c>1</c>, <c>3</c> et <c>0x808080</c> : une
+    /// seule image, un huitieme de moins par image, blanc plein.
+    /// </para>
+    /// <para>
+    /// Elle vole par <see cref="IntegrateWithDrag_00535880"/> et meurt quand les vingt-quatre bits
+    /// bas de sa teinte atteignent zero.
+    /// </para>
+    /// </summary>
+    private static void TickTrailSpark_00475F60(byte* record)
+    {
+        byte* e = record;
+
+        IntegrateWithDrag_00535880(e);                 // Ghidra: FUN_00535880
+
+        byte frame = (byte)(e[0x40] + 1);
+        e[0x40] = frame;
+        if ((short)frame >= *(short*)(e + 0x1a)) e[0x40] = 0;
+
+        // Ghidra: LAB_00475f84
+        uint tint = *(uint*)(e + 0x38);
+
+        if ((tint & 0xffffff) == 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        int shift = *(short*)(e + 0x2c);
+        unchecked { *(uint*)(e + 0x38) = tint + 0xffefeff0; }   // -0x101010
+
+        // `sar ax,cl` : le pas de retrecissement est un DECALAGE porte par l'entite.
+        short scale = *(short*)(e + 0x28);
+        scale -= (short)(scale >> (shift & 0x1f));
+        *(short*)(e + 0x28) = scale;
+        *(short*)(e + 0x2a) = scale;
     }
 
     /// <summary>

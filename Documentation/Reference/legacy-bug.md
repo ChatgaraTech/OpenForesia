@@ -894,3 +894,57 @@ chaque tour, avec un contenu qui derivait — **la sauvegarde de Vincent en est 
 **La regle** : quand deux chemins d'un `switch` partagent leurs dernieres lignes, verifier qu'ils
 partagent aussi celles d'avant. Ici le `break` du chemin de succes etait a l'interieur du `if`, et
 c'est tout ce qui les separait.
+
+---
+
+## LB-017 — La flèche magique qui perd sa cible se réoriente sur son propre pointeur
+
+**Relevé** le 2026-08-31 au désassembleur, en transcrivant `FUN_0047ca50` (le sous-type `0x6d`,
+la flèche de *Flêches magiques*). Absent de `Blaze.c` — Ghidra n'a pas décompilé ce corps.
+
+### Symptôme
+
+Une flèche magique dont la cible meurt **en vol** part dans une direction arbitraire au lieu de
+continuer sur sa lancée. La direction est toujours la même pour un même emplacement de la table des
+entités, ce qui la rend reproductible mais dénuée de sens.
+
+### La cause
+
+Le corps garde son cap et son tangage dans deux registres, `ebp` et `eax`, avant d'appeler
+`FUN_00532ad0` pour en tirer un vecteur de vitesse. Trois chemins y mènent :
+
+| chemin | cap et tangage |
+|---|---|
+| il poursuit sa cible | deux `ratan2` sur les écarts — correct |
+| il n'a plus de cible du tout | `+0x32 - 0x400` et `+0x34` — correct |
+| **sa cible vient de mourir** | `[esp+0x44]`, **lu deux fois, jamais écrit** |
+
+```
+0047cae2  mov ebp,[esp+44h]     <- jamais ecrit sur ce chemin
+0047cae6  mov [eax+74h],edi
+0047cae9  mov eax,[esp+44h]     <- le meme
+0047caed  mov [esi+78h],edi
+0047caf4  jmp 0047CB8A          <- FUN_00532ad0(dest, ebp, eax, 0x10)
+```
+
+`[esp+0x44]` est, à cet instant, **l'emplacement du premier argument de la fonction** — c'est-à-dire
+le pointeur de l'enregistrement de la flèche elle-même. Le cap et le tangage valent donc une
+adresse, que la table de trigonométrie ramène à douze bits. Les deux autres chemins écrivent bien
+`ebp` et `eax` ; celui-là a été oublié.
+
+C'est le même genre de défaut que **LB-008** et **LB-015** : une valeur prise dans une pile ou un
+registre que le chemin emprunté n'a pas renseigné. Trois occurrences maintenant, toutes dans des
+corps que Ghidra n'a pas décompilés — ce n'est pas un hasard, ce sont les corps que personne n'a
+relus.
+
+### Ce que la transcription fait
+
+`TickMagicArrowShaft_0047CA50` reproduit la lecture telle quelle, en prenant le pointeur de
+l'enregistrement comme angle. La valeur numérique diffère de celle de 1998 — les adresses ne sont
+pas les mêmes — mais elle l'était déjà d'une partie à l'autre : ce qui est fidèle, c'est que la
+direction ne veut rien dire.
+
+### Où porterait le correctif
+
+Sur ce chemin, poser `ebp = +0x32 - 0x400` et `eax = +0x34` comme le fait le chemin « plus de
+cible » : la flèche continuerait tout droit, ce qui est visiblement l'intention.
