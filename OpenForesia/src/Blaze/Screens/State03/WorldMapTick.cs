@@ -4754,6 +4754,11 @@ public static unsafe partial class Blaze
             case 0x0047C3A0: TickDarkness_0047C3A0(record); return;
             case 0x0047C450: TickDarknessShade_0047C450(record); return;
 
+            // ONDE DE CHOC, ecole 0 indice 7 — la premiere poussee RADIALE : chaque victime part
+            // sur son propre angle, calcule par le ratan2 de libgte.
+            case 0x0047C660: TickShockwave_0047C660(record); return;
+            case 0x0047C830: TickShockwaveRing_0047C830(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -31005,6 +31010,207 @@ public static unsafe partial class Blaze
             *(uint*)e = 0;
             *(ushort*)Mem.Arena(0x005e9166) = 0;       // le fond reprend sa couleur
         }
+    }
+
+    // =====================================================================
+    // ONDE DE CHOC — le huitieme sort, ecole 0 indice 7, sous-type 0x07
+    //
+    // Deux corps, et deux premieres.
+    //
+    //   0x0047C660   LE SORT. Sous-type 7 de 0x00551c30, 450 octets. Il ne va nulle part : il reste
+    //                colle au lanceur treize images, tourne sur lui-meme et frappe tout ce qui
+    //                passe a portee. Il lache DEUX anneaux, l'un au sol, l'autre a hauteur de tete.
+    //   0x0047C830   L'ANNEAU, sous-type 0x6c de 0x00551f30, 210 octets.
+    //
+    // LA POUSSEE EST RADIALE, ET C'EST LA PREMIERE. Les sept sorts precedents poussaient leur
+    // victime sur le cap du projectile ; celui-ci calcule l'angle qui va de l'onde VERS la victime
+    // (Ordinal_457, le ratan2 de libgte, sur les deux ecarts) et y ajoute un demi-tour. Chaque
+    // victime part donc dans une direction qui lui est propre — mais VERS le centre, pas au loin :
+    // le demi-tour renverse le sens. C'est ce que le binaire fait, et ce n'est pas commente ici
+    // autrement que pour le signaler.
+    //
+    // L'ANNEAU S'ACCROCHE PAR UN DECALAGE, PAS PAR UNE COPIE. Ses champs +0x44/+0x48/+0x4c portent
+    // un ecart au lanceur, et sa position est recalculee a chaque image comme ancre + ecart. C'est
+    // ce qui permet aux deux anneaux de partager un corps : le premier a un ecart nul (il est au
+    // sol), le second a la hauteur de tete du lanceur.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047c660 @ 0x0047c660 — <b>Onde de choc</b> : le sous-type <c>0x07</c>, creneau 7
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/>. 450 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il immobilise le lanceur et reste sur lui.</b> Treize images durant, il recopie la
+    /// position du lanceur, tourne de <c>0xcc</c> sur <c>+0x32</c>, et frappe par la meme sonde
+    /// large que Wonder (70 de demi-largeur, 140 de profondeur). Puis il relache la marque
+    /// <c>0x80</c> et s'eteint.
+    /// </para>
+    /// <para>
+    /// <b>Ses deux anneaux se distinguent par trois champs, pas par leur sous-type.</b> Il pose
+    /// <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c> — l'ecart a l'ancre — et
+    /// <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> — les trois echelles visees — puis engendre, deux fois
+    /// de suite, le meme <c>0x6c</c>. Le premier part au sol avec le modele <c>7</c> et vise
+    /// <c>0x1800</c>/<c>0x1c00</c>/<c>0x1800</c> ; le second a hauteur de tete avec le modele
+    /// <c>2</c> et vise <c>0x1000</c> partout. <b>Le premier recoit aussi <c>param4 = 4</c></b>,
+    /// que <see cref="SpawnCastEntity_0047AAE0"/> range en <c>+0x0a</c>.
+    /// </para>
+    /// </summary>
+    private static void TickShockwave_0047C660(byte* record)
+    {
+        byte* e = record;
+        byte* caster = *(byte**)(e + 0x74);
+
+        short* probe = stackalloc short[6] { 0x0000, -0x0046, 0x0046, 0x0064, 0x0000, 0x008c };
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            // ------------------------------------------------------------ la naissance
+            *(uint*)caster |= 0x80;                    // le lanceur est immobilise
+            e[0x36] |= 6;
+            *(byte**)(e + 0x70) = caster;              // l'ancre des anneaux
+            *(int*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(uint*)(e + 0x38) = 0x00808080;           // le blanc plein de winsys3d
+            *(short*)(e + 0x2e) = -0x14;
+
+            // L'anneau du sol : aucun ecart, et une echelle plus haute que large.
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+            *(int*)(e + 0x50) = 0x1800;
+            *(int*)(e + 0x54) = 0x1c00;
+            *(int*)(e + 0x58) = 0x1800;
+            e[0x04] = 7;
+
+            SpawnCastEntity_0047AAE0(e, 0x6c, 0, 4);
+
+            // L'anneau de tete : l'ecart vertical vaut la hauteur du lanceur, arrondie au pair.
+            *(int*)(e + 0x44) = 0;
+            int height = StatusBubbleHeight_00538BC0((uint*)caster);
+            *(int*)(e + 0x48) = (height & ~1) << 0xb;
+            *(int*)(e + 0x50) = 0x1000;
+            *(int*)(e + 0x54) = 0x1000;
+            *(int*)(e + 0x58) = 0x1000;
+            *(int*)(e + 0x4c) = 0;
+            e[0x04] = 2;
+
+            SpawnCastEntity_0047AAE0(e, 0x6c, e[0x0b], -1);
+
+            Aud.PlayPositionalSound(0x23, 0x194a, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047c743 — l'onde ne quitte pas son lanceur.
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(caster + 0x20);
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24);
+        *(ushort*)(e + 0x32) += 0xcc;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            // LA POUSSEE RADIALE : l'angle va de l'onde vers la victime, plus un demi-tour. Les
+            // deux ecarts sont ramenes en unites entieres (>> 12) avant le ratan2, comme partout.
+            int dz = (*(int*)(victim + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+            int dx = (*(int*)(victim + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+            int away = Winsys3d.Ordinal_457(dx, dz) + 0x800;   // Ghidra: FUN_00545a22, ratan2
+
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(away) << 4;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(away) << 4;
+            *(ushort*)(victim + 0x96) = 0x10;
+            *(uint*)victim |= 0x40;
+
+            Aud.PlayPositionalSound(0x1e, 0x800, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047c7fb — treize images, ou le drapeau de fin.
+        if (*(short*)(e + 0x10) >= 0x0d || (*(uint*)e & 0x40000000) != 0)
+        {
+            *(uint*)caster &= 0xffffff7f;              // le lanceur est relache
+            *(uint*)e = 0;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047c830 @ 0x0047c830 — <b>l'anneau d'Onde de choc</b> : le sous-type
+    /// <c>0x6c</c>, creneau 108 de <see cref="s_StaticEntityHandlers_00551f30"/>. 210 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il se place par un ecart, pas par une copie</b> : sa position vaut a chaque image
+    /// <c>ancre + (+0x44, +0x48, +0x4c)</c>, l'ancre etant l'entite de <c>+0x70</c> — le lanceur,
+    /// que le sort y a range avant d'engendrer. C'est ce qui laisse un seul corps servir les deux
+    /// anneaux : celui du sol a un ecart nul, celui de tete un ecart vertical.
+    /// </para>
+    /// <para>
+    /// <b>Sans ancre, il devient sa propre ancre</b> : la branche <c>+0x70 == 0</c> replie la
+    /// position courante dans l'ecart, met la position a zero et prend son propre enregistrement
+    /// comme reference. Aucun appelant transcrit n'y passe — le sort pose toujours
+    /// <c>+0x70</c> — mais elle est ecrite parce qu'elle est la.
+    /// </para>
+    /// <para>
+    /// Les trois echelles approchent d'un quart les cibles que le sort a posees en
+    /// <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>, et la teinte perd <c>0x080808</c> par image : c'est
+    /// elle, une fois nulle, qui eteint l'anneau.
+    /// </para>
+    /// <para>
+    /// <b>Un detail du binaire qui ne se voit pas ici</b> : les trois approches se font dans un
+    /// registre dont les seize bits hauts portent encore le pointeur d'ancre. Seule la moitie basse
+    /// est rangee, donc le resultat est juste — mais c'est pourquoi la pseudo-C de ce genre de corps
+    /// est illisible.
+    /// </para>
+    /// </summary>
+    private static void TickShockwaveRing_0047C830(byte* record)
+    {
+        byte* e = record;
+        byte* anchor = *(byte**)(e + 0x70);
+
+        if (anchor == null)
+        {
+            if (*(ushort*)(e + 0x10) == 0)
+            {
+                // La position courante devient l'ecart, une fois pour toutes.
+                *(int*)(e + 0x44) += *(int*)(e + 0x1c);
+                *(int*)(e + 0x48) += *(int*)(e + 0x20);
+                *(int*)(e + 0x4c) += *(int*)(e + 0x24);
+                *(ushort*)(e + 0x10) = 1;
+            }
+
+            // Ghidra: LAB_0047c869
+            *(int*)(e + 0x1c) = 0;
+            *(int*)(e + 0x20) = 0;
+            *(int*)(e + 0x24) = 0;
+            anchor = e;
+        }
+
+        // Ghidra: LAB_0047c880 — ancre plus ecart.
+        *(int*)(e + 0x1c) = *(int*)(e + 0x44) + *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(e + 0x48) + *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(e + 0x4c) + *(int*)(anchor + 0x24);
+
+        // Les trois echelles, chacune approchant sa cible d'un quart.
+        short x = *(short*)(e + 0x28);
+        *(short*)(e + 0x28) = (short)(((*(int*)(e + 0x50) - x) >> 2) + x);
+
+        short y = *(short*)(e + 0x2a);
+        *(short*)(e + 0x2a) = (short)(((*(int*)(e + 0x54) - y) >> 2) + y);
+
+        short z = *(short*)(e + 0x2c);
+        *(short*)(e + 0x2c) = (short)(((*(int*)(e + 0x58) - z) >> 2) + z);
+
+        uint tint;
+        unchecked { tint = *(uint*)(e + 0x38) + 0xfff7f7f8; }   // -0x080808
+        *(uint*)(e + 0x38) = tint;
+
+        ushort age = *(ushort*)(e + 0x10);
+        if (age != 0 && tint == 0) *(uint*)e = 0;
+
+        *(ushort*)(e + 0x10) = (ushort)(age + 1);
     }
 
     /// <summary>

@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Onde de choc, le huitième sort** — deux corps absents de `Blaze.c` : le sort `0x0047c660`, qui reste collé au lanceur treize images, et son anneau `0x0047c830`
+- doc : **la première poussée radiale** — les sept sorts précédents poussaient leur victime sur le cap du projectile ; celui-ci calcule l'angle qui va de l'onde **vers** la victime par `Ordinal_457` (le `ratan2` de libgte) et y ajoute un demi-tour. Chaque victime part donc sur son propre angle — vers le centre, le demi-tour renversant le sens
+- doc : **l'anneau s'accroche par un écart, pas par une copie** — sa position vaut `ancre + (+0x44, +0x48, +0x4c)`, recalculée à chaque image. C'est ce qui laisse **un seul corps servir les deux anneaux** : celui du sol a un écart nul, celui de tête un écart vertical. Ils ne diffèrent que par six champs posés avant l'engendrement
+- doc : le binaire calcule les trois approches d'échelle dans un registre dont les seize bits hauts portent encore le pointeur d'ancre ; seule la moitié basse est rangée, donc le résultat est juste — c'est pourquoi la pseudo-C de ces corps est illisible
 - feat : **Ténèbres, le septième sort** — deux corps absents de `Blaze.c` : le sort `0x0047c3a0`, qui lâche **cinq ombres en éventail** sur un quart de tour, et l'ombre `0x0047c450`
 - doc : **le premier corps qui annule son propre déplacement** — l'ombre met de côté sa position **et les cinq dwords de `+0x80` à `+0x90`**, l'état de collision que `FinalizeEntityPlacement2` va écrire ; si le contact mord, elle remet les sept valeurs, fait demi-tour et **nie ses deux vitesses**. L'image du choc est exactement celle d'avant, vue à l'envers
 - doc : **et le premier dont la portée grossit avec lui** — les mots 2 et 3 de la sonde valent `(échelle >> 7) + 0x1e` et `(échelle >> 6) + 0x1e`, recalculés à chaque image pendant que l'échelle approche `0x3000`. Aucun des six sorts précédents ne faisait varier sa sonde ; sa poussée est aussi le double des autres (`<< 5`)
