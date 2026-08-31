@@ -130,7 +130,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 0 | 24 | Satanas | C-X-O-T-C-X-O-T-C-O-X-T-O | 60 | 74 | 60 | 0x18 | `0x00480B90` | oui | **non** |
 | 0 | 25 | Au sec | T-X-O-C-XC-TO-TOXC | 80 | 76 | 120 | 0x19 | `0x00481670` | oui | **non** |
 | 0 | 26 | Colère | XC-C-X-O-T-C-O-T-C-O-X-O | 96 | 0 | 132 | 0x1a | `0x004819D0` | oui | **non** |
-| 0 | 27 | Météores | X-T-C-X-T-O-X-C-O-X-C-O-T | 82 | 0 | 96 | 0x1b | `0x00482370` | **non** | **non** |
+| 0 | 27 | Météores | X-T-C-X-T-O-X-C-O-X-C-O-T | 82 | 0 | 96 | 0x1b | `0x00482370` | oui | **non** |
 | 0 | 28 | Fusion | TO-T-O-T-C-T-X-T-X-T-T-TO | 100 | 0 | 120 | 0x1c | `0x004828F0` | **non** | **non** |
 | 1 | 0 | Pardon | X-T-T | 0 | 0 | 20 | 0x1e | `0x0044F060` | **non** | **non** |
 | 1 | 1 | Sang pur | T-O-O | 12 | 23 | 12 | 0x1f | `0x00447DF0` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **27** |
-| a transcrire | **53** |
+| implementees (le gestionnaire existe) | **28** |
+| a transcrire | **52** |
 | lancees en jeu au moins une fois | **1** |
-| dette : implementees mais jamais lancees | **26** |
+| dette : implementees mais jamais lancees | **27** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -289,10 +289,10 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00480B90` | 1 | oui | **non** | Satanas |
 | `0x00481670` | 1 | oui | **non** | Au sec |
 | `0x004819D0` | 1 | oui | **non** | Colère |
-| `0x00482370` | 1 | **non** | **non** | Météores |
+| `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | **non** | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **47** a transcrire.
+**74 gestionnaires distincts**, dont **46** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le
@@ -361,7 +361,7 @@ pourquoi ces lignes sont hors du compte principal.
 | 7 | 36 | ¿Æ¯¸òÑ | 0x1d | `0x0047ADC0` | oui | **non** |
 | 7 | 37 | á½ðÚ¯Ä | 0x1d | `0x0047ADC0` | oui | **non** |
 | 7 | 38 | õÜ³ª²ò | 0x1d | `0x0047ADC0` | oui | **non** |
-| 7 | 39 | ÒÃµ½Ï¯¼­ | 0x1b | `0x00482370` | **non** | **non** |
+| 7 | 39 | ÒÃµ½Ï¯¼­ | 0x1b | `0x00482370` | oui | **non** |
 
 ---
 

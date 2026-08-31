@@ -4869,6 +4869,12 @@ public static unsafe partial class Blaze
             case 0x004821A0: TickWrathLink_004821A0(record); return;
             case 0x00482300: TickWrathPillar_00482300(record); return;
 
+            // METEORES, ecole 0 indice 27 — le seul sort qui n'immobilise pas son lanceur, et le
+            // seul qui sonde le decor avant d'engendrer.
+            case 0x00482370: TickMeteorStorm_00482370(record); return;
+            case 0x004824F0: TickMeteor_004824F0(record); return;
+            case 0x004828B0: TickMeteorTrail_004828B0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -37855,6 +37861,358 @@ public static unsafe partial class Blaze
 
         // Ghidra: LAB_00482362 — le cap tourne meme pendant le fondu.
         *(ushort*)(e + 0x32) += 0x80;
+    }
+
+    // =====================================================================
+    // METEORES — le vingt-huitieme sort, ecole 0 indice 27, sous-type 0x1b
+    //
+    // Trois corps neufs, absents de Blaze.c.
+    //
+    //   0x00482370   LE SORT. Sous-type 0x1b de 0x00551c30, 381 octets.
+    //   0x004824F0   LE METEORE, sous-type 0x65 de 0x00551c30, 954 octets. HUIT exemplaires.
+    //   0x004828B0   LA TRAINE, sous-type 0x78 de 0x00551f30, 58 octets. Deux par meteore.
+    //
+    // LE PREMIER SORT QUI N'IMMOBILISE PAS SON LANCEUR. Aucun des 381 octets du sort n'ecrit dans le
+    // mot d'etat du lanceur : il ne pose jamais 0x80. Les vingt-sept sorts precedents le faisaient
+    // tous, sans exception. Il ne lit pas non plus la manette et ne ponctionne aucun PM — il dure
+    // 0x50 images et s'arrete.
+    //
+    // ET LE PREMIER QUI CHERCHE UN SOL AVANT D'ENGENDRER. Une image sur huit, pendant les soixante
+    // premieres, il se DEPLACE lui-meme a un point tire au hasard dans un carre de 256 unites autour
+    // d'une ancre posee devant le lanceur, se recopie les six mots de contexte de collision du
+    // lanceur (+0x7c), appelle FinalizeEntityPlacement2 TROIS FOIS de suite en accumulant le mot de
+    // contact — et n'engendre le meteore que si 0x8800 est reste absent. Aucun autre corps transcrit
+    // ne sonde le decor pour decider d'une naissance, ni n'appelle le placement plusieurs fois pour
+    // le faire converger.
+    //
+    // ET C'EST L'ARBRE LE PLUS PROFOND DU DEPOT : le sort engendre le meteore, qui engendre a son
+    // tour quatre especes. Il tombe en trainant deux 0x78 ; a l'impact il lache trois anneaux 0x6c
+    // de tailles differentes et quatre eclats 0xbf ; puis, dix images durant, une eclaboussure 0xbe
+    // par image et un coup porte.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00482370 @ 0x00482370 — <b>Meteores</b> : le sous-type <c>0x1b</c>, creneau 27 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 381 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne touche personne et n'immobilise personne.</b> Ni sonde, ni appel de resolution, ni
+    /// <c>0x80</c> sur le lanceur : il n'est qu'un semoir. Le lanceur reste libre de ses mouvements
+    /// pendant les 0x50 images que dure la pluie — <b>aucun autre sort du depot ne fait cela</b>.
+    /// </para>
+    /// <para>
+    /// <b>L'ancre est posee a la premiere image</b>, a 256 unites devant le lanceur sur son cap et a
+    /// <c>0x32</c> unites au-dessus de son sol ; le sort s'y donne aussi une vitesse et une gravite
+    /// dont il ne se sert pas — ce sont les champs que ses meteores heritent par recopie.
+    /// </para>
+    /// <para>
+    /// <b>Une image sur huit</b> (<c>age &amp; 7</c>), et seulement pendant les soixante premieres,
+    /// il se transporte a un point tire dans un carre de 256 unites autour de l'ancre, se recopie le
+    /// contexte de collision du lanceur, laisse <see cref="FinalizeEntityPlacement2"/> converger en
+    /// <b>trois passes</b>, et n'engendre le meteore que si le decor n'a rien signale sur le masque
+    /// <c>0x8800</c>. Le bruit, lui, part dans tous les cas.
+    /// </para>
+    /// </summary>
+    private static void TickMeteorStorm_00482370(byte* record)
+    {
+        byte* e = record;
+        byte* caster = *(byte**)(e + 0x74);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            int heading = *(short*)(e + 0x32);
+
+            *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(heading) << 5;
+            *(int*)(e + 0x54) = -0x14000;
+            *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(heading) << 5;
+
+            *(ushort*)(e + 0x32) += 0x400;
+            *(ushort*)(e + 0x9a) = 0x7fff;
+
+            // Le quart de tour vient d'etre ajoute et se retire aussitot : l'ancre est bien sur le
+            // cap d'origine. Le champ +0x32, lui, garde le decalage.
+            int yaw = *(short*)(e + 0x32) - 0x400;
+            *(ushort*)(e + 0x34) = 0xfd00;
+
+            *(int*)(e + 0x44) = *(int*)(caster + 0x1c)
+                                - ((int)Winsys3d.GetSinTableEntry(yaw) << 8);
+            *(int*)(e + 0x48) = *(int*)(caster + 0x60) + 0x320000;
+            *(int*)(e + 0x4c) = *(int*)(caster + 0x24)
+                                - (Winsys3d.GetCosTableEntry(yaw) << 8);
+        }
+
+        // Ghidra: LAB_004823f4 — un meteore toutes les huit images, soixante images durant.
+        short age = *(short*)(e + 0x10);
+
+        if ((age & 7) == 0 && age < 0x3c)
+        {
+            *(int*)(e + 0x20) = *(int*)(e + 0x48);
+            *(int*)(e + 0x1c) = (((CrtRand() & 0x1ff) - 0x100) << 0xc) + *(int*)(e + 0x44);
+            *(int*)(e + 0x24) = (((CrtRand() & 0x1ff) - 0x100) << 0xc) + *(int*)(e + 0x4c);
+
+            // Les six mots de contexte de collision du lanceur, recopies tels quels : sans eux le
+            // placement ne saurait pas dans quelle piece il tombe.
+            for (int word = 0; word < 6; word++)
+            {
+                *(int*)(e + 0x7c + word * 4) = *(int*)(caster + 0x7c + word * 4);
+            }
+
+            *(uint*)(e + 0x90) = 0;
+
+            uint contact = 0;
+
+            for (int pass = 3; pass != 0; pass--)
+            {
+                FinalizeEntityPlacement2((uint*)e);
+                contact |= *(uint*)(e + 0x90);
+            }
+
+            // Le decor a repondu : pas de meteore ici. Le bruit part quand meme.
+            if ((contact & 0x8800) == 0) SpawnEffectEntity(e, 0x65, 0, -1);
+
+            Aud.PlaySoundEffect(0x20, 0x400, 0x1200, 0x1200);
+        }
+
+        // Ghidra: LAB_004824b0 — le ciel vire au rouge sombre, reecrit a chaque image.
+        *(uint*)Mem.Arena(0x005e9160) = 0x00400080;
+        *(uint*)Mem.Arena(0x005e9164) = 0x00020040;
+
+        if (*(short*)(e + 0x10) >= 0x50 || (*(uint*)(*(byte**)(e + 0x74)) & 0x40000000) != 0)
+        {
+            *(uint*)e = 0;
+            *(ushort*)Mem.Arena(0x005e9166) = 0;       // le decor reprend sa couleur
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004824f0 @ 0x004824f0 — <b>un meteore</b> : le sous-type <c>0x65</c>, creneau 101
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/>. 954 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. Huit exemplaires, un toutes les huit images.
+    ///
+    /// <para>
+    /// <b>Il est engendre par <see cref="SpawnEffectEntity"/></b>, pas par
+    /// <see cref="SpawnCastEntity_0047AAE0"/> : il naît donc dans la table <c>0x005ff400</c>, et son
+    /// sous-type est resolu par <see cref="s_StaticEntityHandlers_00551c30"/>, <b>la table des sorts
+    /// eux-memes</b>. Tous les enfants de sort transcrits jusqu'ici vivaient dans une des deux autres
+    /// tables (0x00551f30 par SpawnCastEntity, 0x00552230 par SpawnStatusEffectEntity) ; celui-ci est
+    /// le premier a partager la table de son pere.
+    /// </para>
+    /// <para>
+    /// <b>Sa chute est une derive, pas une trajectoire.</b> A chaque image il <i>ajoute</i>
+    /// <c>sin/cos &lt;&lt; 3</c> de son cap a sa vitesse, laisse
+    /// <see cref="IntegrateWithDrag_00535880"/> l'amortir, puis <see cref="FinalizeEntityPlacement2"/>
+    /// le poser ; s'il est passe sous son sol il y est remonte de force et se signale
+    /// <c>0x800</c> a lui-meme dans <c>+0x90</c>. Deux traines <c>0x78</c> le suivent depuis sa
+    /// naissance.
+    /// </para>
+    /// <para>
+    /// <b>L'impact tient en un bloc</b> : trois anneaux <c>0x6c</c> de tailles et de vitesses
+    /// differentes, quatre eclats <c>0xbf</c> avec l'atlas de Stalagtite, un bruit, et
+    /// <c>DAT_005de0ac</c> pose a 8 — la secousse d'ecran, la meme que Boule de feu.
+    /// </para>
+    /// <para>
+    /// <b>Puis dix images de resolution</b>, une frappe par image : une eclaboussure <c>0xbe</c>
+    /// jetee a l'ecart, une sonde large (<c>0x12c</c> de profondeur, <c>0x200</c> d'ouverture), une
+    /// poussee au cap disperse, et la secousse rongee de trois quarts <b>en changeant de signe</b>
+    /// a chaque image — l'oscillation amortie de <see cref="EntityHandler_00476730"/>, ecrite ici
+    /// une deuxieme fois.
+    /// </para>
+    /// </summary>
+    private static void TickMeteor_004824F0(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = unchecked((short)0xff00);
+        probe[2] = 0x100;
+        probe[3] = 0x12c;
+        probe[4] = 0;
+        probe[5] = 0x200;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(uint*)e |= 0x80;
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x70) = null;
+
+            *(uint*)(e + 0x38) = 0x008080ff;
+            *(uint*)(e + 0x28) = 0x18001800;
+            *(ushort*)(e + 0x2c) = 0x1800;
+            *(ushort*)(e + 0x9a) = 0x7fff;
+
+            e[0x04] = 0x1c;
+            SpawnCastEntity_0047AAE0(e, 0x78, 0, 8);
+
+            e[0x04] = 0x39;
+            SpawnCastEntity_0047AAE0(e, 0x78, 0, 2);
+        }
+
+        // Ghidra: LAB_0048257e
+        uint state = *(uint*)e;
+
+        if ((state & 0x2000000) != 0)
+        {
+            // ============================================ la resolution, dix images
+            short beat = *(short*)(e + 0x10);
+
+            if (beat >= 0x0a || (state & 0x40000000) != 0)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            *(short*)(e + 0x10) = (short)(beat + 1);
+            *(short*)(e + 0x1a) = 7;
+            *(uint*)(e + 0x38) = 0x01606060;
+
+            // Le cap est disperse sur 512 unites, et recule de 0x500 : la gerbe s'ouvre en avant.
+            int spread = (CrtRand() & 0x1ff) + *(short*)(e + 0x32) - 0x500;
+
+            *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(spread) << 6;
+            *(int*)(e + 0x54) = 0x40000;
+            *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(spread) << 6;
+
+            *(short*)(e + 0x12) = 3;
+            *(uint*)(e + 0x28) = 0x20002000;
+            *(short*)(e + 0x14) = 0x5000;
+            *(short*)(e + 0x16) = 2;
+
+            int* splash = stackalloc int[3];
+            splash[0] = (((CrtRand() & 0x1ff) - 0x100) << 0xc) + *(int*)(e + 0x1c);
+            splash[1] = *(int*)(e + 0x20);
+            splash[2] = (((CrtRand() & 0x1ff) - 0x100) << 0xc) + *(int*)(e + 0x24);
+
+            SpawnStatusEffectEntity_0047AC40(e, splash, Descriptors00551A08(), 0xbe, 0, 2);
+
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+            if (victim != null)
+            {
+                ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+                *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(spread) << 5;
+                *(ushort*)(victim + 0x96) = 0x10;      // le clignotement de degat
+                *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(spread) << 5;
+                *(uint*)victim |= 0x40;
+            }
+
+            // Ghidra: LAB_004826bc — la secousse s'amortit de trois quarts, signe compris.
+            int* shake = Mem.Camera(0x005de0ac);
+            if (*shake == 0) return;
+            *shake = (*shake >> 2) - *shake;
+            return;
+        }
+
+        // ================================================ Ghidra: LAB_004826e8, la chute
+        int yaw = *(short*)(e + 0x32) - 0x400;
+
+        *(int*)(e + 0x50) += (int)Winsys3d.GetSinTableEntry(yaw) << 3;
+        *(int*)(e + 0x58) += Winsys3d.GetCosTableEntry(yaw) << 3;
+
+        IntegrateWithDrag_00535880(e);
+        FinalizeEntityPlacement2((uint*)e);
+
+        // Passe sous son sol : il y est remonte, et il se signale le contact lui-meme.
+        if (*(int*)(e + 0x20) <= *(int*)(e + 0x60))
+        {
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(uint*)(e + 0x90) |= 0x800;
+        }
+
+        // Ghidra: LAB_00482742
+        if ((*(uint*)(e + 0x90) & 0x8802) != 0 || (*(uint*)e & 0x20000000) != 0)
+        {
+            // ============================================ Ghidra: LAB_0048275a, l'impact
+            *(short*)(e + 0x34) = 0;
+            *(ushort*)(e + 0x2e) = 0xffc0;
+
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+
+            *(int*)(e + 0x50) = 0x4000;
+            *(int*)(e + 0x54) = 0x2000;
+            *(int*)(e + 0x58) = 0x4000;
+            *(uint*)(e + 0x38) = 0x00808080;
+            *(uint*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+
+            // Les trois anneaux d'Onde de choc, branche « sans ancre » : +0x44/+0x48/+0x4c a zero.
+            e[0x04] = 7;
+            SpawnCastEntity_0047AAE0(e, 0x6c, 0, 3);
+
+            *(int*)(e + 0x50) = 0x2000;
+            *(int*)(e + 0x54) = 0x2000;
+            *(int*)(e + 0x58) = 0x2000;
+            e[0x04] = 1;
+            SpawnCastEntity_0047AAE0(e, 0x6c, 1, 0x0e);
+
+            *(int*)(e + 0x50) = 0x2000;
+            *(int*)(e + 0x54) = 0x1000;
+            *(int*)(e + 0x58) = 0x2000;
+            *(uint*)(e + 0x38) = 0x00808080;
+            *(uint*)(e + 0x28) = 0x50007000;
+            *(ushort*)(e + 0x2c) = 0x7000;
+            e[0x04] = 0x26;
+            SpawnCastEntity_0047AAE0(e, 0x6c, 1, 6);
+
+            for (int shard = 4; shard != 0; shard--)
+            {
+                int spin = CrtRand();
+
+                *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(spin) << 5;
+                *(int*)(e + 0x54) = ((CrtRand() & 0x1f) + 0x32) << 0xc;
+                *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(spin) << 5;
+
+                *(uint*)(e + 0x38) = 0x01f0f0f0;
+                *(uint*)(e + 0x28) = 0x02802800;
+                *(ushort*)(e + 0x2c) = 0x1f;
+                *(short*)(e + 0x1a) = 1;
+
+                byte* atlas = Descriptors00551AF8() + CrtRand() % 3 * 8;
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), atlas, 0xbf, 0, 2);
+            }
+
+            *(uint*)e |= 0x2000000;
+
+            Aud.PlayPositionalSound(0x2e, 0x400, 0x1200, (int*)(e + 0x1c));
+
+            *Mem.Camera(0x005de0ac) = 8;               // la secousse d'ecran
+        }
+
+        // Ghidra: LAB_00482892
+        if ((*(uint*)e & 0x40000000) != 0) *(uint*)e |= 0x2000000;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004828b0 @ 0x004828b0 — <b>une traine de meteore</b> : le sous-type <c>0x78</c>,
+    /// creneau 120 de <see cref="s_StaticEntityHandlers_00551f30"/>. 58 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. Deux par meteore, de modeles differents.
+    ///
+    /// <para>
+    /// <b>Elle recopie la position de son pere, sans decalage aucun.</b> Ni vitesse, ni age, ni
+    /// horloge : elle est exactement la ou le meteore est, et ne differe de lui que par le modele et
+    /// l'echelle que la naissance lui a laisses. Elle prend <c>0x2000000</c> chez lui et s'eteint
+    /// dans la meme image — pas a la suivante, contrairement a l'aiguille de Stalagtite.
+    /// </para>
+    /// </summary>
+    private static void TickMeteorTrail_004828B0(byte* record)
+    {
+        byte* e = record;
+        byte* meteor = *(byte**)(e + 0x6c);
+
+        uint state = *(uint*)e | (*(uint*)meteor & 0x2000000);
+        *(uint*)e = state;
+
+        *(int*)(e + 0x1c) = *(int*)(meteor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(meteor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(meteor + 0x24);
+
+        if ((state & 0x2000000) != 0) *(uint*)e = 0;
     }
 
 
