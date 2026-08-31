@@ -4927,6 +4927,11 @@ public static unsafe partial class Blaze
             case 0x004498B0: TickLourdes_004498B0(record); return;
             case 0x00449A70: TickHolyMote_00449A70(record); return;
 
+            // ANTISORT, ecole 1 indice 9 — la troisieme du meme moule, et la derniere. Ses vingt
+            // spirales sortent au MILIEU du sort, pas au debut.
+            case 0x00449C30: TickAntispell_00449C30(record); return;
+            case 0x00449E30: TickHolySpiral_00449E30(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -41292,6 +41297,260 @@ public static unsafe partial class Blaze
             caster[7] = e[7];
 
             ClearStatusEffectIfEligible_00449A30(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    // =====================================================================
+    // ANTISORT — le trente-neuvieme sort, ecole 1 indice 9, sous-type 0x27
+    //
+    //   0x00449C30   LE SORT. Sous-type 0x27 de 0x00551c30, 448 octets. DECOMPILE dans Blaze.c.
+    //   0x00449DF0   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x00449E30   LA SPIRALE, sous-type 0x8d de 0x00552230, 341 octets. VINGT, par paires.
+    //                ABSENTE de Blaze.c ; relevee sous Legacy/Raw/Blaze/FUN_00449E30.asm.
+    //
+    // LA TROISIEME DU MEME MOULE, ET LA DERNIERE : Antidote, Lourdes et Antisort partagent
+    // l'aureole 0xa9, les memes cinq reglages, les memes deux premiers sons, la meme fin a la
+    // centieme image et le meme decor laisse tranquille. Chacune a son enfant a elle, son son a
+    // elle et son entree d'effet a elle — 34, 35 puis 36, trois entrees consecutives de la table
+    // des 48, toutes trois de la famille qui EFFACE des etats.
+    //
+    // CELUI-CI SE DISTINGUE PAR SON CALENDRIER. Ses vingt spirales ne sortent pas au debut mais
+    // AU MILIEU : une paire toutes les deux images, de la 21e a la 39e seulement, precedee de deux
+    // sons a la 21e et a la 23e. Les vingt premieres images et les soixante dernieres ne montrent
+    // que l'aureole.
+    //
+    // ET SA SPIRALE EST LA COUSINE DE CELLE DE RENFORT. TickHolySpark_0044FE00 et 0x00449E30 ont
+    // la meme forme au demi-octet pres — meme chute de 0xfa000 par 0xa000, meme descripteur
+    // 0x00551550, meme orbite non recadree, meme +0x14 charniere entre croissance et retrait. La
+    // difference tient en une ligne : ici le RAYON se referme d'une unite par image, plancher a
+    // 0x28. La spirale de Renfort tourne a rayon fixe ; celle-ci se resserre.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00449df0 @ 0x00449df0 — <b>effacer les alterations d'etat si la cible
+    /// l'accepte</b>, troisieme variante. Soixante et un octets, decompilee dans <c>Blaze.c</c>.
+    /// Neuvieme exemplaire de la meme enveloppe : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="ClearStatusEffect_0053C7E0"/> derriere — l'entree 36, la troisieme et derniere
+    /// des trois entrees consecutives que se partagent Antidote, Lourdes et Antisort.
+    /// </summary>
+    private static bool ClearStatusEffectIfEligible_00449DF0(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053C7E0(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00449e30 @ 0x00449e30 — <b>la spirale d'Antisort</b> : le sous-type <c>0x8d</c>,
+    /// creneau 141 de <see cref="s_StaticEntityHandlers_00552230"/>. 341 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. <see cref="TickAntispell_00449C30"/> en seme <b>vingt</b>, par paires
+    /// opposees, et c'est son seul appelant.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickHolySpark_0044FE00"/> avec un rayon qui se referme.</b> Meme centre
+    /// d'orbite recopie de la cible <c>0x3c000</c> plus haut, meme chute depuis <c>0xfa000</c> par
+    /// <c>0xa000</c> jusqu'a s'y poser, meme descripteur <c>0x00551550</c>, meme orbite non
+    /// recadree, meme <c>+0x14</c> qui arbitre croissance et retrait. La seule difference de fond :
+    /// ici le rayon <c>+0x44</c> <b>perd une unite par image</b>, plancher a <c>0x28</c> — la
+    /// spirale de Renfort tourne a rayon fixe, celle-ci se resserre en tombant.
+    /// </para>
+    /// <para>
+    /// <b>Le pas angulaire vient du sort</b> (<c>+0x5c = 0x78</c>), la ou celle de Renfort le
+    /// recevait aussi mais a <c>0x96</c> ; l'angle se replie sur <c>[0, 0x1000[</c> par les deux
+    /// memes tests.
+    /// </para>
+    /// <para>
+    /// <b>Croissance et retrait vont du meme pas ici</b> : <c>+0x50</c> sur les deux echelles,
+    /// plafond <c>0x5dc</c>, alors que celle de Renfort montait de <c>0x64</c> en X et de
+    /// <c>0xc8</c> en Y vers deux plafonds distincts.
+    /// </para>
+    /// </summary>
+    private static void TickHolySpiral_00449E30(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_00449e50 — le centre de l'orbite suit la cible, une hauteur d'homme plus haut.
+        *(int*)(e + 0x50) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(anchor + 0x20) + 0x3c000;
+        *(int*)(e + 0x58) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+
+            *(int*)(e + 0x20) += 0xfa000;              // elle naît tres haut
+
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x28;   // Ghidra: DAT_00551550
+            e[0x40] = 0;
+            e[0x0a] = e[0x9a];                         // la teinte, que le sort a posee en +0x9a
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x28) = 0;                   // et sans taille
+            *(short*)(e + 0x2a) = 0;
+
+            e[0x38] = 0xc8;
+            e[0x39] = 0xc8;
+            e[0x3a] = 0xc8;
+        }
+
+        // Ghidra: LAB_00449eab — tout ce qui suit n'a lieu que dans l'etat 1.
+        if (*(short*)(e + 0x10) != 1) return;
+
+        int height = *(int*)(e + 0x20) - 0xa000;
+        *(int*)(e + 0x20) = height;
+        if (height < *(int*)(e + 0x54)) *(int*)(e + 0x20) = *(int*)(e + 0x54);
+
+        // Ghidra: LAB_00449ecd — l'orbite, sur le rayon COURANT, avant qu'il ne se referme.
+        int radius = *(int*)(e + 0x44);
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(*(int*)(e + 0x48)) * radius
+                            + *(int*)(e + 0x50);
+
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(*(int*)(e + 0x48)) * radius
+                            + *(int*)(e + 0x58);
+
+        *(int*)(e + 0x44) = radius - 1;
+        if (*(int*)(e + 0x44) < 0x28) *(int*)(e + 0x44) = 0x28;
+
+        // Ghidra: LAB_00449f09 — l'angle avance du pas que le sort a pose, et se replie.
+        int angle = *(int*)(e + 0x48) + *(int*)(e + 0x5c);
+        *(int*)(e + 0x48) = angle;
+
+        if (angle >= 0x1000) *(int*)(e + 0x48) = angle - 0x1000;
+
+        // Ghidra: LAB_00449f25 — le repli par le bas relit le champ, il ne reprend pas `angle`.
+        if (*(int*)(e + 0x48) < 0) *(int*)(e + 0x48) += 0x1000;
+
+        // Ghidra: LAB_00449f34 — un seul compteur pour la croissance, le retrait et la mort.
+        *(short*)(e + 0x14) -= 1;
+
+        if (*(short*)(e + 0x14) >= 0)
+        {
+            // Ghidra: LAB_00449f5e
+            *(short*)(e + 0x28) += 0x50;
+            *(short*)(e + 0x2a) += 0x50;
+
+            if (*(short*)(e + 0x28) >= 0x5dc)
+            {
+                *(short*)(e + 0x28) = 0x5dc;
+                *(short*)(e + 0x2a) = 0x5dc;
+            }
+
+            return;
+        }
+
+        *(short*)(e + 0x28) -= 0x50;
+        short shrunk = *(short*)(e + 0x28);
+        *(short*)(e + 0x2a) -= 0x50;
+
+        if (shrunk < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00449c30 @ 0x00449c30 — <b>Antisort</b> : le sous-type <c>0x27</c>, creneau 39
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>dixieme fiche de l'ecole 1</b>.
+    /// 448 octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>La troisieme du meme moule, et la derniere.</b> Comme
+    /// <see cref="TickAntidote_00449590"/> et <see cref="TickLourdes_004498B0"/> : meme trio de
+    /// tete, meme copie de la position <b>et du cap</b> de la cible, memes cinq reglages de
+    /// l'aureole <c>0xa9</c>, memes deux premiers sons, meme fin passe la centieme image, et le
+    /// decor laisse tranquille. Les trois posent trois entrees <b>consecutives</b> de la table des
+    /// 48 — 34, 35, 36 —, toutes trois de la famille qui efface des etats.
+    /// </para>
+    /// <para>
+    /// <b>Son calendrier est le seul des trois a etre creux aux deux bouts.</b> Ses vingt spirales
+    /// sortent au <b>milieu</b> : une paire toutes les deux images, de la 21e a la 39e seulement,
+    /// precedee de deux sons a la 21e et a la 23e. Les vingt premieres images et les soixante
+    /// dernieres ne montrent que l'aureole. Antidote et Lourdes, eux, semaient sans interruption de
+    /// la premiere a la soixantieme.
+    /// </para>
+    /// <para>
+    /// <b>Les deux spirales d'une paire sont opposees</b> : <c>+0x48</c>, l'angle de depart qu'elles
+    /// heritent par la copie, vaut <c>0</c> pour la premiere et <c>0x800</c> pour la seconde — le
+    /// meme demi-tour que chez <see cref="TickReinforce_00448060"/>.
+    /// </para>
+    /// <para>
+    /// <b>Il repose les cinq reglages avant chaque paire</b>, et ils ne sont pas ceux de l'aureole :
+    /// <c>+0x14 = 0x1e</c> la duree de croissance, <c>+0x44 = 0x5a</c> le rayon de depart,
+    /// <c>+0x5c = 0x78</c> le pas angulaire. Les memes champs servent deux especes d'enfant a
+    /// quelques images d'intervalle.
+    /// </para>
+    /// </summary>
+    private static void TickAntispell_00449C30(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_00449c56 — la position ET le cap de la cible, a chaque image.
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+        *(short*)(e + 0x32) = *(short*)(target + 0x32);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            // Les cinq reglages de l'aureole, poses pour qu'elle les recopie.
+            *(short*)(e + 0x9a) = 6;         // sa teinte
+            *(short*)(e + 0x14) = 0x1000;    // sa largeur
+            *(int*)(e + 0x44) = 0x1000;      // le plafond de sa hauteur
+            *(int*)(e + 0x48) = 0x46;        // son compte a rebours
+            *(int*)(e + 0x5c) = 300;         // sa vitesse de montee
+
+            SpawnCastEntity_0047AAE0(e, 0xa9, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x30, 0x16a, 0x1200, 0x1200);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x10, 0x200, 0x1200, 0x1200);
+        if (*(short*)(e + 0x16) == 0x15) Aud.PlaySoundEffect(0x16, 0x100, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x17) Aud.PlaySoundEffect(0x16, 0x12a, 0x1000, 0x1000);
+
+        // Ghidra: 0x00449d5f — dix paires de spirales, de la 21e image a la 39e.
+        if (*(short*)(e + 0x16) > 0x14 && *(short*)(e + 0x16) < 0x28
+            && (*(ushort*)(e + 0x16) & 1) != 0)
+        {
+            // Les memes champs, pour l'autre espece d'enfant.
+            *(short*)(e + 0x9a) = 6;         // sa teinte
+            *(short*)(e + 0x14) = 0x1e;      // sa duree de croissance
+            *(int*)(e + 0x44) = 0x5a;        // son rayon de depart
+            *(int*)(e + 0x5c) = 0x78;        // son pas angulaire
+
+            *(int*)(e + 0x48) = 0;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x8d, 0, -1);
+
+            *(int*)(e + 0x48) = 0x800;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x8d, 0, -1);
+        }
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 99)
+        {
+            // La paire famille/indice passe au lanceur : c'est SA fiche que l'effet relira.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ClearStatusEffectIfEligible_00449DF0(
                 *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
 
             EndSpellAndResetDecor_00448020(e);
