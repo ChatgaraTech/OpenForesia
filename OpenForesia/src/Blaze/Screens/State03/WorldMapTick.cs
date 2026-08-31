@@ -4799,6 +4799,11 @@ public static unsafe partial class Blaze
             case 0x0047E150: TickAssaultBlade_0047E150(record); return;
             case 0x0047E200: TickAssaultRing_0047E200(record); return;
 
+            // LUMIERE, ecole 0 indice 15 — troisieme sort entretenu (6 PM par vingt images), et
+            // son globe tire une FLECHE MAGIQUE par image : le projectile du sort 8, deja ecrit.
+            case 0x0047E260: TickLight_0047E260(record); return;
+            case 0x0047E370: TickLightGlobe_0047E370(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -33158,6 +33163,222 @@ public static unsafe partial class Blaze
         *(uint*)(e + 0x38) = tint;
 
         if (tint == 0) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // LUMIERE — le seizieme sort, ecole 0 indice 15, sous-type 0x0f
+    //
+    // Deux corps neufs, et le sort le plus economique du depot en travail : son projectile est
+    // la FLECHE MAGIQUE, deja ecrite pour le sort 8.
+    //
+    //   0x0047E260   LE SORT. Sous-type 0x0f de 0x00551c30, 257 octets. Troisieme sort entretenu,
+    //                a 6 PM par vingt images.
+    //   0x0047E370   LE GLOBE, sous-type 0x6e de 0x00551f30, 531 octets. Il flotte pres du lanceur
+    //                et TIRE UNE FLECHE PAR IMAGE sur l'adversaire le plus proche.
+    //
+    // LES TROIS SORTS ENTRETENUS FORMENT UNE ECHELLE. Wonder coute 2 PM par vingt images, Atchoum
+    // 4, Lumiere 6 — meme code de manette, meme garde CanSustainChannel_00475110, meme cadence sur
+    // l'horloge du monde 0x005f2cf0. Seul le prix change.
+    //
+    // ET LE GLOBE EST UN LANCE-FLECHES. Sa visee est mot pour mot celle de
+    // TickMagicArrow_0047C910 — ratan2 sur les ecarts, SquareRoot0 pour la distance a plat,
+    // dispersion du cap sur douze bits — mais il la refait A CHAQUE IMAGE au lieu d'une fois.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047e260 @ 0x0047e260 — <b>Lumiere</b> : le sous-type <c>0x0f</c>, creneau 15 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 257 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Le troisieme sort entretenu, et le plus cher : <b>6 PM toutes les vingt images</b> contre 4
+    /// pour <see cref="TickSneeze_0047DB50"/> et 2 pour <see cref="TickWonder_0047BF00"/>. Tout le
+    /// reste est identique — la manette du joueur relue par <c>s_PlayerSlots_005e9188</c>, la
+    /// cadence sur l'horloge du monde, la garde <see cref="CanSustainChannel_00475110"/>, et les
+    /// 120 images d'un lanceur hors du groupe.
+    /// </para>
+    /// <para>
+    /// Il ne fait rien d'autre que tenir : c'est le globe qu'il engendre a la premiere image qui
+    /// travaille.
+    /// </para>
+    /// </summary>
+    private static void TickLight_0047E260(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;   // le lanceur est relache
+            *(uint*)e = 0;
+            return;
+        }
+
+        byte* caster = *(byte**)(e + 0x74);
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(uint*)caster |= 0x80;                    // le lanceur est immobilise
+            *(uint*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            e[0x04] = 2;                               // le modele
+            SpawnCastEntity_0047AAE0(e, 0x6e, e[0x0b], -1);
+        }
+
+        // Ghidra: LAB_0047e2b6 — l'entretien, la meme forme que Wonder et Atchoum.
+        if ((*(uint*)e & 0x800000) != 0)
+        {
+            uint index = ((uint*)caster)[2] & 0xff;
+            byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+            int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+            ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+
+            if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
+            {
+                short mana = *(short*)(perChar + 0x14e);
+
+                if (mana >= 6)
+                {
+                    *(short*)(perChar + 0x14e) = (short)(mana - 6);
+                }
+                else
+                {
+                    *(ushort*)(perChar + 0x14e) = 0;
+                    *(uint*)e |= 0x2000000;
+                }
+            }
+        }
+        else if (*(short*)(e + 0x10) >= 0x78)
+        {
+            *(uint*)e |= 0x2000000;
+        }
+
+        // Ghidra: LAB_0047e346
+        if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047e370 @ 0x0047e370 — <b>le globe de Lumiere</b> : le sous-type <c>0x6e</c>,
+    /// creneau 110 de <see cref="s_StaticEntityHandlers_00551f30"/>. 531 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il flotte</b> : sa position, son echelle (vers <c>0x1000</c>) et sa teinte (vers
+    /// <c>0x80</c>) approchent toutes leur cible d'un quart par image, la position visee etant le
+    /// lanceur a hauteur de tete plus cent unites. Il herite du bit <c>0x2000000</c> de son pere
+    /// par <c>+0x6c</c>, comme l'aura de Wonder, et se resorbe alors d'un quart par image.
+    /// </para>
+    /// <para>
+    /// <b>Et il tire une fleche magique par image.</b> La visee est mot pour mot celle de
+    /// <see cref="TickMagicArrow_0047C910"/> — <c>ratan2</c> sur les trois ecarts,
+    /// <c>Ordinal_442</c> pour la distance a plat, cap disperse sur douze bits et recentre de
+    /// <c>0xa00</c>, tangage decale de <c>0x100</c> — mais refaite <b>a chaque image</b> au lieu
+    /// d'une seule fois. Le projectile est le <c>0x6d</c> de
+    /// <see cref="TickMagicArrowShaft_0047CA50"/>, deja ecrit.
+    /// </para>
+    /// <para>
+    /// <b>Trois dwords lui sont pretes puis rendus</b> — <c>+0x30</c>, <c>+0x34</c> et
+    /// <c>+0x04</c> —, ce qui emporte au passage le cap <c>+0x32</c> et le modele. Le globe reprend
+    /// ensuite son apparence : blanc plein et echelle <c>0x0c00</c>. Meme geste que le pret de
+    /// vitesse de Pieds mouilles, sur d'autres champs.
+    /// </para>
+    /// </summary>
+    private static void TickLightGlobe_0047E370(byte* record)
+    {
+        byte* e = record;
+        uint state = *(uint*)e;
+
+        e[0x36] |= 6;
+
+        if ((state & 0x2000000) != 0)
+        {
+            // ------------------------------------------------------------ la resorption
+            short scale = *(short*)(e + 0x28);
+            scale -= (short)(scale >> 2);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+            *(short*)(e + 0x2c) = scale;
+
+            if (scale < 0x80) *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_0047e3b9 — l'heritage du bit de fin, puis les trois approches.
+        byte* father = *(byte**)(e + 0x6c);
+        byte* caster = *(byte**)(e + 0x74);
+
+        state |= 0x80;
+        *(uint*)e = (*(uint*)father & 0x2000000) | state;
+
+        short current = *(short*)(e + 0x28);
+        current += (short)((0x1000 - current) >> 2);
+        *(short*)(e + 0x28) = current;
+        *(short*)(e + 0x2a) = current;
+        *(short*)(e + 0x2c) = current;
+
+        int channel = e[0x38];
+        channel += (0x80 - channel) >> 2;
+        *(uint*)(e + 0x38) = (uint)(((channel << 8 | channel) << 8) | channel);
+
+        int wasY = *(int*)(e + 0x20);
+        *(int*)(e + 0x1c) += (*(int*)(caster + 0x1c) - *(int*)(e + 0x1c)) >> 2;
+
+        int casterHead = StatusBubbleHeight_00538BC0((uint*)caster);
+        *(int*)(e + 0x20) =
+            (((((casterHead + 0x64) << 0xc) + *(int*)(caster + 0x20)) - wasY) >> 2) + wasY;
+
+        *(int*)(e + 0x24) += (*(int*)(caster + 0x24) - *(int*)(e + 0x24)) >> 2;
+
+        byte* target = FindNearestOpponent_00474EB0((uint*)caster, 0xffffffff, 1);
+
+        if (target != null)
+        {
+            // ------------------------------------------------------------ la fleche
+            // Trois dwords pretes : +0x30 emporte le cap +0x32, +0x04 le modele.
+            uint kept30 = *(uint*)(e + 0x30);
+            uint kept34 = *(uint*)(e + 0x34);
+            uint kept04 = *(uint*)(e + 0x04);
+
+            *(byte**)(e + 0x78) = target;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(uint*)(e + 0x28) = 0x06000800;
+            *(ushort*)(e + 0x2c) = 0x0600;
+
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            int targetHead = StatusBubbleHeight_00538BC0((uint*)target);
+            int dy = (((targetHead & ~1) << 0xb) + *(int*)(target + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+
+            int yaw = Winsys3d.Ordinal_457(dx, dz) + (CrtRand() & 0xfff) + 0xa00;
+            *(short*)(e + 0x32) = (short)yaw;
+
+            int pitch = Winsys3d.Ordinal_457(dy, flat) + 0x100;
+            *(short*)(e + 0x34) = (short)pitch;
+
+            SetVectorFromAngles_00532AD0(
+                (int*)(e + 0x50), *(short*)(e + 0x32) - 0x400, (short)pitch, 0x20);
+
+            e[0x04] = 0x14;                            // le modele de la fleche
+            SpawnCastEntity_0047AAE0(e, 0x6d, e[0x0b], -1);
+
+            *(uint*)(e + 0x30) = kept30;
+            *(uint*)(e + 0x34) = kept34;
+            *(uint*)(e + 0x04) = kept04;
+
+            // Et le globe reprend son apparence.
+            *(uint*)(e + 0x38) = 0x00ffffff;
+            *(uint*)(e + 0x28) = 0x0c000c00;
+            *(ushort*)(e + 0x2c) = 0x0c00;
+        }
+
+        // Ghidra: LAB_0047e56b
+        if ((*(uint*)e & 0x40000000) != 0) *(uint*)e |= 0x2000000;
     }
 
     /// <summary>
