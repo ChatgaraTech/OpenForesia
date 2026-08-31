@@ -4781,6 +4781,13 @@ public static unsafe partial class Blaze
             case 0x0047D330: TickLightningArc_0047D330(record); return;
             case 0x0047D470: TickLightningBolt_0047D470(record); return;
 
+            // CONGELO, ecole 0 indice 12 — quatre corps, et le premier a alimenter la file des
+            // sons differes, restee vide jusqu'ici.
+            case 0x0047D600: TickFreeze_0047D600(record); return;
+            case 0x0047D670: TickIcePillar_0047D670(record); return;
+            case 0x0047D950: TickIceBlock_0047D950(record); return;
+            case 0x0047DA50: TickIceShard_0047DA50(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -9479,6 +9486,39 @@ public static unsafe partial class Blaze
     /// <summary>Les quatre descripteurs en memoire native.</summary>
     private static byte* Descriptors00551B40()
         => NativeCopy(s_Descriptors_00551B40, ref s_Descriptors00551B40Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552530</c> — <b>le craquement de la glace</b>, et le <b>premier script
+    /// de sons differes</b> que le depot rencontre. <see cref="TickIcePillar_0047D670"/> le remet a
+    /// <c>QueueDelayedSoundScript</c> a l'instant ou la colonne finit de monter.
+    ///
+    /// <para>
+    /// Le format est celui que <c>TickDelayedSounds</c> lit : huit octets par pas — le son en
+    /// <c>[0]</c>, le <b>delai avant le pas suivant</b> en <c>[1]</c> (zero termine), le nombre de
+    /// sons a jouer d'un coup en <c>[2]</c>, la hauteur en <c>[4]</c> et le gain en <c>[6]</c>.
+    /// </para>
+    /// <para>
+    /// Trois pas, tous le meme son <c>0x23</c> a la meme hauteur, espaces de <b>vingt images</b> :
+    /// la glace craque trois fois. La borne est le <c>[1] = 0</c> du troisieme ; le pas suivant
+    /// (<c>0x00552548</c>) ouvre un autre script, avec un autre son et un autre delai.
+    /// </para>
+    /// <para>
+    /// <b>La file des sons differes cessait donc d'etre morte</b> : jusqu'ici rien de transcrit ne
+    /// la remplissait, et <c>TickDelayedSounds</c> tournait a vide. C'est ce sort qui l'alimente.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552530 =
+    [
+        0x23, 0x14, 0x01, 0x00, 0x51, 0x06, 0x00, 0x12,   // 0x00552530
+        0x23, 0x14, 0x01, 0x00, 0x51, 0x06, 0x00, 0x12,   // 0x00552538
+        0x23, 0x00, 0x01, 0x00, 0x51, 0x06, 0x00, 0x12,   // 0x00552540 — [1] = 0 : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552530Storage;
+
+    /// <summary>Les trois pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00552530()
+        => NativeCopy(s_DelayedSoundScript_00552530, ref s_DelayedSoundScript00552530Storage);
 
     /// <summary>
     /// Ghidra: FUN_00475a30 @ 0x00475a30 — <b>l'entree 183 (<c>0xb7</c>) de la table statique
@@ -32252,6 +32292,353 @@ public static unsafe partial class Blaze
             *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;
             *(uint*)e = 0;
         }
+    }
+
+    // =====================================================================
+    // CONGELO — le treizieme sort, ecole 0 indice 12, sous-type 0x0c
+    //
+    // Quatre corps neufs, et le plus long enchainement transcrit jusqu'ici.
+    //
+    //   0x0047D600   LE SORT. Sous-type 0x0c de 0x00551c30, 105 octets. Une image : il lache la
+    //                colonne et s'eteint.
+    //   0x0047D670   LA COLONNE, sous-type 0x71 de 0x00551f30, 730 octets. Elle MONTE sur place,
+    //                puis BALAIE en spirale, puis ECLATE en quatre eclats.
+    //   0x0047D950   LE BLOC, sous-type 0x72 de 0x00551f30, 241 octets. Il prend la victime dans
+    //                la glace et fond.
+    //   0x0047DA50   L'ECLAT, sous-type 0x4e de 0x00552230, 244 octets.
+    //
+    // DEUX PHASES, SEPAREES PAR LA TEINTE. Tant que +0x38 n'a pas atteint 0xf0f0f0, la colonne
+    // grandit sur place et s'eclaircit d'un huitieme par image ; l'image ou elle y arrive, elle
+    // RELACHE le lanceur et met en file le craquement. Ensuite elle balaie : le cap tourne de 0x60
+    // par image et le rayon approche 0xa000 d'un quart, ce qui donne une spirale qui s'ouvre.
+    //
+    // ET C'EST LE PREMIER CORPS QUI ALIMENTE LA FILE DES SONS DIFFERES. Jusqu'ici rien de
+    // transcrit n'ecrivait dans 0x005dfb90 et TickDelayedSounds tournait a vide ; le script
+    // 0x00552530 lui donne enfin quelque chose a jouer.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047d600 @ 0x0047d600 — <b>Congelo</b> : le sous-type <c>0x0c</c>, creneau 12 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 105 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Une image, et rien de plus : il se hisse a hauteur de tete du lanceur, remet a zero teinte
+    /// et echelles — la colonne les reconstruira —, prend le modele <c>0x1b</c>, engendre et
+    /// s'eteint.
+    /// </para>
+    /// </summary>
+    private static void TickFreeze_0047D600(byte* record)
+    {
+        byte* e = record;
+
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+        *(int*)(e + 0x20) += (height & ~1) << 0xb;
+
+        *(uint*)(e + 0x38) = 0;
+        *(uint*)(e + 0x28) = 0;
+        *(ushort*)(e + 0x2c) = 0;
+        e[0x04] = 0x1b;                                // le modele
+
+        SpawnCastEntity_0047AAE0(e, 0x71, e[0x0b], -1);
+        Aud.PlayPositionalSound(0x1c, 0x400, 0x1200, (int*)(e + 0x1c));
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047d670 @ 0x0047d670 — <b>la colonne de glace</b> : le sous-type <c>0x71</c>,
+    /// creneau 113 de <see cref="s_StaticEntityHandlers_00551f30"/>. 730 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Sa teinte est son horloge de phase</b>, pas un compteur. Tant que <c>+0x38</c> n'a pas
+    /// atteint <c>0xf0f0f0</c> — elle l'approche d'un huitieme par image — la colonne <b>monte sur
+    /// place</b> : son echelle approche <c>0x2000</c> d'un huitieme et sa hauteur suit. L'image
+    /// exacte ou la teinte y arrive, elle <b>relache le lanceur</b> et met le craquement en file
+    /// (<see cref="s_DelayedSoundScript_00552530"/>).
+    /// </para>
+    /// <para>
+    /// <b>Ensuite elle balaie en spirale</b> : le cap tourne de <c>0x60</c> par image, mais le
+    /// deplacement se fait sur le cap <b>de depart</b> garde en <c>+0x12</c>, et le rayon
+    /// <c>+0x5c</c> approche <c>0xa000</c> d'un quart. Elle seme a chaque image un eclat
+    /// <c>0x4e</c> dont l'atlas est tire parmi <b>cinq</b>, et prend dans la glace ce qu'elle
+    /// touche — le bloc <c>0x72</c>.
+    /// </para>
+    /// <para>
+    /// <b>Elle finit par eclater</b> : le decor ou le drapeau de fin la font semer <b>quatre</b>
+    /// <c>0xbf</c> — l'etincelle de Fleches magiques — projetes au hasard avec une gravite, puis
+    /// elle force son compteur a <c>0x50</c>, ce qui la tue par le chemin normal en rendant sa
+    /// couleur au decor.
+    /// </para>
+    /// <para>
+    /// Le decor vire au <b>bleu</b> (<c>0x40</c>, <c>0x40</c>, <c>0x80</c>) a chaque image tant
+    /// qu'elle vit — le pendant froid de l'orange de Mur de flammes.
+    /// </para>
+    /// </summary>
+    private static void TickIcePillar_0047D670(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { 0x0000, -0x0100, 0x0100, 0x0190, 0x0000, 0x0200 };
+
+        // Les cinq atlas parmi lesquels l'eclat tire le sien. Le binaire les empile sur sa propre
+        // pile a chaque image ; ils vivent tous dans deux plages deja relevees.
+        byte** atlases = stackalloc byte*[5];
+        atlases[0] = Descriptors00551B00() + 0x10;
+        atlases[1] = Descriptors00551B00() + 0x18;
+        atlases[2] = Descriptors00551B00() + 0x20;
+        atlases[3] = Descriptors00551BB8();
+        atlases[4] = Descriptors00551BA8();
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = *(short*)(e + 0x32);  // le cap de depart, mis de cote
+            *(uint*)e |= 0x80;
+            *(ushort*)(e + 0x10) = 1;
+            *(int*)(e + 0x5c) = 0;                      // le rayon du balayage
+            *(byte**)(e + 0x70) = e;
+            *(uint*)(*(uint**)(e + 0x74)) |= 0x80;      // le lanceur est immobilise
+        }
+
+        // Ghidra: LAB_0047d6f6 — la teinte separe les deux phases.
+        if (*(uint*)(e + 0x38) < 0x00f0f0f0)
+        {
+            // ------------------------------------------------------------ elle monte
+            int channel = e[0x38];
+            channel += (0xff - channel) >> 3;
+            uint tint = (uint)(((channel << 8 | channel) << 8) | channel);
+            *(uint*)(e + 0x38) = tint;
+
+            if (tint == 0x00f0f0f0)
+            {
+                *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;   // le lanceur est relache
+                Aud.QueueDelayedSoundScript(DelayedSoundScript00552530(), (int*)(e + 0x1c));
+            }
+
+            // Ghidra: LAB_0047d744 — l'echelle approche 0x2000 d'un huitieme, et la hauteur suit.
+            int scale = *(short*)(e + 0x28);
+            int rise = (0x2000 - scale) >> 3;
+            *(int*)(e + 0x20) += rise;
+
+            scale += rise * 2;
+            *(short*)(e + 0x2c) = (short)scale;
+            *(uint*)(e + 0x28) = ((uint)scale << 0x10) | (uint)scale;
+        }
+        else
+        {
+            // ------------------------------------------------------------ elle balaie
+            // Le cap TOURNE, mais le deplacement se fait sur celui de depart : c'est ce qui donne
+            // une spirale et non un cercle.
+            int start = *(short*)(e + 0x12);
+            *(ushort*)(e + 0x32) += 0x60;
+
+            int radius = *(int*)(e + 0x5c);
+            *(int*)(e + 0x1c) += ((int)Winsys3d.GetSinTableEntry(start) * radius) >> 0xc;
+            *(int*)(e + 0x24) += (Winsys3d.GetCosTableEntry(start) * radius) >> 0xc;
+            *(int*)(e + 0x5c) = radius + ((0xa000 - radius) >> 2);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), atlases[CrtRand() % 5], 0x4e, e[0x0b], -1);
+
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+            if (victim != null)
+            {
+                ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+                *(uint*)victim |= 0x40;
+                *(ushort*)(victim + 0x96) = 0x1e;      // un clignotement plus long qu'ailleurs
+
+                // Le bloc s'accroche a la victime par +0x78, comme le halo de Coup de jus.
+                *(byte**)(e + 0x78) = victim;
+                SpawnCastEntity_0047AAE0(e, 0x72, e[0x0b], -1);
+
+                Aud.PlayPositionalSound(0x19, 0x6fd, 0x1200, (int*)(e + 0x1c));
+            }
+
+            *(ushort*)(e + 0x10) += 1;
+        }
+
+        // Ghidra: LAB_0047d849 — le placement, commun aux deux phases. La hauteur est rendue.
+        int keptHeight = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);            // Ghidra: FUN_00533940
+        int ground = *(int*)(e + 0x60);
+        *(int*)(e + 0x20) = keptHeight;
+
+        if (keptHeight <= ground)
+        {
+            *(int*)(e + 0x20) = ground;
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        // Ghidra: LAB_0047d86c — l'eclatement.
+        if ((*(uint*)e & 0x40000000) != 0 || (*(uint*)(e + 0x90) & 0x8802) != 0)
+        {
+            *(short*)(e + 0x9a) = 0x6000;
+
+            for (int shard = 0; shard < 4; shard++)
+            {
+                int spray = CrtRand();
+                *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(spray) << 4;
+                *(int*)(e + 0x54) = ((CrtRand() & 0x1f) + 0x1e) << 0xc;
+                *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(spray) << 4;
+
+                *(uint*)(e + 0x38) = 0x01f0f0f0;
+                *(uint*)(e + 0x28) = 0x01801800;
+                *(ushort*)(e + 0x2c) = 0x1f;
+                *(ushort*)(e + 0x1a) = 1;
+
+                SpawnStatusEffectEntity_0047AC40(
+                    e, (int*)(e + 0x1c), Descriptors00551B00() + 0x10 + CrtRand() % 3 * 8,
+                    0xbf, e[0x0b], -1);
+            }
+
+            *(ushort*)(e + 0x10) = 0x50;               // et elle finit par le chemin normal
+        }
+
+        if (*(short*)(e + 0x10) >= 0x50)
+        {
+            *(ushort*)Mem.Arena(0x005e9166) = 0;       // le decor reprend sa couleur
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_0047d92e — le decor vire au bleu, a chaque image.
+        *(uint*)Mem.Arena(0x005e9160) = 0x00400040;    // R 0x40, V 0x40
+        *(uint*)Mem.Arena(0x005e9164) = 0x00020080;    // B 0x80, mode 2
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047d950 @ 0x0047d950 — <b>le bloc de glace</b> : le sous-type <c>0x72</c>,
+    /// creneau 114 de <see cref="s_StaticEntityHandlers_00551f30"/>. 241 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Il enferme la victime que <c>+0x78</c> designe et la suit : sa position est recopiee de la
+    /// sienne a chaque image, decalee de la hauteur de tete <b>mesuree une seule fois</b> a la
+    /// naissance et gardee en <c>+0x12</c>.
+    /// </para>
+    /// <para>
+    /// <b>Quarante images pour prendre, vingt pour fondre.</b> Pendant les quarante premieres son
+    /// echelle approche <c>hauteur &lt;&lt; 12 / 100</c> d'un quart et sa teinte <c>0xff</c> d'un
+    /// quart ; ensuite les deux perdent un quart d'elles-memes. A la soixantieme il disparait.
+    /// </para>
+    /// </summary>
+    private static void TickIceBlock_0047D950(byte* record)
+    {
+        byte* e = record;
+        byte* victim = *(byte**)(e + 0x78);
+        ushort age = *(ushort*)(e + 0x10);
+
+        if (age == 0)
+        {
+            *(uint*)(e + 0x38) = 0;
+            *(short*)(e + 0x2e) = -0x14;
+            *(uint*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+            *(short*)(e + 0x32) = (short)CrtRand();
+            *(short*)(e + 0x12) = (short)StatusBubbleHeight_00538BC0((uint*)victim);
+        }
+        else
+        {
+            int channel = e[0x38];
+            short scale = *(short*)(e + 0x28);
+
+            if ((short)age < 0x28)
+            {
+                // La prise : les deux approchent leur cible d'un quart.
+                channel += (0xff - channel) >> 2;
+
+                // `imul 0x51EB851F ; sar edx,5` plus la correction de signe : /100.
+                int target = (*(short*)(e + 0x12) << 0xc) / 100;
+                scale += (short)((target - scale) >> 2);
+                *(short*)(e + 0x28) = scale;
+            }
+            else
+            {
+                // La fonte : un quart de moins chacun.
+                channel -= channel >> 2;
+                scale -= (short)(scale >> 2);
+                *(short*)(e + 0x28) = scale;
+            }
+
+            // Ghidra: LAB_0047d9f3
+            *(uint*)(e + 0x38) = (uint)(((channel << 8 | channel) << 8) | channel);
+            *(short*)(e + 0x2a) = scale;
+            *(short*)(e + 0x2c) = scale;
+        }
+
+        // Ghidra: LAB_0047da0e — il colle a sa victime, a hauteur de tete.
+        *(int*)(e + 0x1c) = *(int*)(victim + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(victim + 0x20) + ((*(short*)(e + 0x12) & ~1) << 0xb);
+        *(int*)(e + 0x24) = *(int*)(victim + 0x24);
+
+        *(ushort*)(e + 0x10) += 1;
+        if (*(short*)(e + 0x10) >= 0x3c) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047da50 @ 0x0047da50 — <b>l'eclat de glace</b> : le sous-type <c>0x4e</c>,
+    /// creneau 78 de <see cref="s_StaticEntityHandlers_00552230"/>. 244 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il tourne autour du point ou il est ne</b> — <c>+0x44</c> et <c>+0x4c</c> gardent ce
+    /// point — sur un rayon <c>+0x12</c> qui part de zero et approche <b>300</b> d'un huitieme,
+    /// tandis que le cap avance de <c>0x100</c> par image. C'est une spirale qui s'ouvre, comme
+    /// celle de sa mere, mais dix fois plus serree.
+    /// </para>
+    /// <para>
+    /// <b>Verticalement il retombe.</b> Sa vitesse <c>+0x54</c> part negative — entre
+    /// <c>-0x14000</c> et <c>-0x23000</c> selon le tirage — et gagne <c>0x4000</c> par image : il
+    /// monte d'abord, puis redescend. La teinte perd <c>0x080808</c> par image et l'eteint a la
+    /// vingtieme.
+    /// </para>
+    /// </summary>
+    private static void TickIceShard_0047DA50(byte* record)
+    {
+        byte* e = record;
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(uint*)(e + 0x38) = 0x00a0a0a0;
+            *(short*)(e + 0x2e) = -0x14;
+
+            uint scale = (uint)((CrtRand() & 0xfff) + 0x1800);
+            *(uint*)(e + 0x28) = (scale << 0x10) | scale;
+
+            *(short*)(e + 0x32) = (short)CrtRand();
+            *(int*)(e + 0x20) += 0x32000;
+
+            *(int*)(e + 0x4c) = *(int*)(e + 0x24);     // le point de naissance, en Z
+            *(int*)(e + 0x54) = unchecked((int)0xfffec000) - ((CrtRand() & 0xf) << 0xc);
+            *(int*)(e + 0x44) = *(int*)(e + 0x1c);     // et en X
+            e[0x40] = 0;
+            *(short*)(e + 0x12) = 0;                   // le rayon part de zero
+        }
+        else
+        {
+            unchecked { *(uint*)(e + 0x38) += 0xfff7f7f8; }   // -0x080808
+
+            short radius = *(short*)(e + 0x12);
+            *(short*)(e + 0x12) = (short)(((0x12c - radius) >> 3) + radius);
+        }
+
+        // Ghidra: LAB_0047dae8 — la spirale autour du point de naissance.
+        *(ushort*)(e + 0x32) += 0x100;
+
+        int heading = *(short*)(e + 0x32);
+        int radiusNow = *(short*)(e + 0x12);
+
+        *(int*)(e + 0x1c) = *(int*)(e + 0x44) + (int)Winsys3d.GetSinTableEntry(heading) * radiusNow;
+        *(int*)(e + 0x20) += *(int*)(e + 0x54);
+        *(int*)(e + 0x24) = *(int*)(e + 0x4c) + Winsys3d.GetCosTableEntry(heading) * radiusNow;
+
+        *(int*)(e + 0x54) += 0x4000;                   // la gravite le rattrape
+
+        *(ushort*)(e + 0x10) += 1;
+
+        if (*(uint*)(e + 0x38) == 0) *(uint*)e = 0;
     }
 
     /// <summary>

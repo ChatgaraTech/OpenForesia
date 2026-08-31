@@ -1625,9 +1625,10 @@ internal sealed unsafe class Audio(GameMemory mem, Model3d mdl)
     /// (<c>pcVar4 - 4</c>, <c>pcVar4 - 0x10</c>) : l'entree commence bien 0x10 octets plus bas, ce
     /// que le desassemblage confirme (<c>mov edi,5DFBA0h</c>, puis <c>lea ecx,[edi-10h]</c>).</para>
     ///
-    /// <para>TODO(REVERSE) : rien de ce qui <b>remplit</b> cette file n'est encore transcrit. Elle
-    /// reste donc nulle et <see cref="TickDelayedSounds"/> ne fait rien â€” ce qui est fidele, pas un
-    /// contournement.</para>
+    /// <para><b>Elle a un ecrivain depuis le 2026-08-31</b> : la colonne de glace de Congelo
+    /// (<c>TickIcePillar_0047D670</c>) y met le script <c>0x00552530</c> a l instant ou elle
+    /// finit de monter — trois craquements espaces de vingt images. C etait le seul chemin
+    /// manquant ; <see cref="TickDelayedSounds"/> a desormais de quoi tourner.</para>
     /// </summary>
     internal readonly byte* s_DelayedSounds_005dfb90 = (byte*)NativeMemory.AllocZeroed(0x20 * 0x14);
 

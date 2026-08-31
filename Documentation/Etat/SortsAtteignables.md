@@ -115,7 +115,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 0 | 9 | Enchant | O-C-X-T | 15 | 35 | 24 | 0x09 | `0x0047CE40` | oui | **non** |
 | 0 | 10 | Mur de flammes | O-T-O-C-C-O | 16 | 44 | 20 | 0x0a | `0x0047CFF0` | oui | **non** |
 | 0 | 11 | Coup de jus | T-C-O-T-C-T | 16 | 47 | 20 | 0x0b | `0x0047D330` | oui | **non** |
-| 0 | 12 | Congèlo | X-T-X-C-C-X | 16 | 50 | 32 | 0x0c | `0x0047D600` | **non** | **non** |
+| 0 | 12 | Congèlo | X-T-X-C-C-X | 16 | 50 | 32 | 0x0c | `0x0047D600` | oui | **non** |
 | 0 | 13 | Atchoum | C-T-C-X-T-O | 20 | 52 | 40 | 0x0d | `0x0047DB50` | **non** | **non** |
 | 0 | 14 | Assaut magique | C-T-O-C-X-O | 32 | 55 | 40 | 0x0e | `0x0047DF70` | **non** | **non** |
 | 0 | 15 | Lumière | T-O-X-C-X-O-T-O | 24 | 58 | 60 | 0x0f | `0x0047E260` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **12** |
-| a transcrire | **68** |
+| implementees (le gestionnaire existe) | **13** |
+| a transcrire | **67** |
 | lancees en jeu au moins une fois | **1** |
-| dette : implementees mais jamais lancees | **11** |
+| dette : implementees mais jamais lancees | **12** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -274,7 +274,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x0047CE40` | 1 | oui | **non** | Enchant |
 | `0x0047CFF0` | 1 | oui | **non** | Mur de flammes |
 | `0x0047D330` | 1 | oui | **non** | Coup de jus |
-| `0x0047D600` | 1 | **non** | **non** | Congèlo |
+| `0x0047D600` | 1 | oui | **non** | Congèlo |
 | `0x0047DB50` | 1 | **non** | **non** | Atchoum |
 | `0x0047DF70` | 1 | **non** | **non** | Assaut magique |
 | `0x0047E260` | 1 | **non** | **non** | Lumière |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | **non** | **non** | Météores |
 | `0x004828F0` | 1 | **non** | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **62** a transcrire.
+**74 gestionnaires distincts**, dont **61** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le
