@@ -5,6 +5,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Sang d'ange, le quarante et unième sort** : le sort `0x0044a4b0` (419 octets, absent de `Blaze.c`), plus son enveloppe d'effet `0x0044a660` et son aile `0x0044a6a0` (256 octets), tous deux décompilés. Aucun corps d'enfant neuf à sortir du désassembleur
+- doc : **malgré son nom, il ne ressuscite pas** — il pose l'entrée 45, la **guérison complète** (points de vie au maximum, le nombre affiché étant ce qui manquait). La résurrection est l'entrée 46, et elle appartient à Résurection (`0x0044cd00`)
+- doc : **et il ne sait pas viser un mort** — il appelle `AcquireHolyTarget_00447CB0` en **mode 0**. Le mode 1, celui qui efface `0x40002000` sur les quatre emplacements du groupe le temps de la recherche, n'a **qu'un seul appelant dans tout le binaire** : Résurection. Les quatorze appels décompilés passent 0, et `0x0044cd20` est le seul `push 1`
+- fix : **la note de `AcquireHolyTarget_00447CB0` attribuait le mode 1 à Résurection *et* à Sang d'ange** — c'était une déduction sur le nom du sort, pas un relevé. Corrigée, avec la vérification qui la tranche
+- doc : **troisième collision de numéro de sous-type dans l'école** — son aile est le `0x8d` de la table `0x00551f30`, là où la spirale d'Antisort est le `0x8d` de la `0x00552230`. Après le `0xa9` d'Antidote et le `0x8c` de Lourdes
+- doc : **il résout à la naissance et recopie sa paire famille/indice à la mort**, l'ordre inverse de toutes ses sœurs. Sans conséquence : `CastSpell_0053A980` a déjà écrit cette paire sur le lanceur à l'incantation, donc la fiche lue à l'image 0 est la bonne
 - feat : **Marteau, le quarantième sort — LA MOITIÉ DES QUATRE ÉCOLES EST ÉCRITE** (40 fiches sur 80) : le sort `0x00449f90` (176 octets), son enveloppe d'effet `0x0044a040` et sa masse `0x0044a080` (662 octets), tous trois décompilés ; plus son éclat `0x0044a320` (386 octets, six d'un coup), sorti du désassembleur
 - doc : **le corps de sort le plus court de l'école** — 176 octets qui n'engendrent que la masse et attendent trente images. Ni son, ni décor, ni immobilisation, ni semis : **tout le spectacle appartient à l'enfant**, qui survit d'ailleurs au sort
 - doc : **la masse écrase sa victime pour de bon** — elle sauvegarde le `+0x2a` de la cible (son échelle verticale) à la naissance, le force à `0x800` à l'impact, le laisse revenir d'un quart par image, et le **repose exactement** en mourant. Aucun autre corps du dépôt ne déforme sa victime

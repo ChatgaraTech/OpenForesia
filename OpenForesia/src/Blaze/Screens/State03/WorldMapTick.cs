@@ -4938,6 +4938,11 @@ public static unsafe partial class Blaze
             case 0x0044A080: TickHammerHead_0044A080(record); return;
             case 0x0044A320: TickHammerDebris_0044A320(record); return;
 
+            // SANG D'ANGE, ecole 1 indice 11 — malgre son nom il ne ressuscite pas : il pose la
+            // guerison COMPLETE, entree 45. Son 0x8d est celui de la table 0x00551f30.
+            case 0x0044A4B0: TickAngelBlood_0044A4B0(record); return;
+            case 0x0044A6A0: TickAngelWing_0044A6A0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -38733,8 +38738,15 @@ public static unsafe partial class Blaze
     /// groupe et, pour chacun qui porte <c>0x40000000</c> — mort —, retient le fait et efface
     /// <c>0x40002000</c> ; apres la recherche il repose les bits qu'il avait retires. La cible peut
     /// donc etre un membre mort, ce qu'aucune autre recherche du depot n'autorise : c'est le
-    /// mecanisme de Resurection et de Sang d'ange. La boucle est ecrite en dur sur quatre membres,
-    /// sans consulter <see cref="s_PartySize_005e9020"/>.
+    /// mecanisme de <b>Resurection</b> (<c>0x0044CD00</c>), <b>son seul appelant dans tout le
+    /// binaire</b> : les quatorze appels decompiles passent <c>0</c>, et <c>0x0044cd20</c> est le
+    /// seul <c>push 1</c>. La boucle est ecrite en dur sur quatre membres, sans consulter
+    /// <see cref="s_PartySize_005e9020"/>.
+    /// </para>
+    /// <para>
+    /// (Correction du 2026-08-31 : cette note citait aussi Sang d'ange, sur la foi de son nom.
+    /// <see cref="TickAngelBlood_0044A4B0"/> appelle le mode <b>0</b> et pose la guerison complete,
+    /// pas la resurrection.)
     /// </para>
     /// <para>
     /// <b>Ghidra lui declare deux arguments, les appelants en empilent trois.</b> L'appel est
@@ -41896,6 +41908,224 @@ public static unsafe partial class Blaze
 
             ClearStatusEffectIfEligible_0044A040(
                 *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    // =====================================================================
+    // SANG D'ANGE — le quarante et unieme sort, ecole 1 indice 11, sous-type 0x29
+    //
+    //   0x0044A4B0   LE SORT. Sous-type 0x29 de 0x00551c30, 419 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044A4B0.asm.
+    //   0x0044A660   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //   0x0044A6A0   L'AILE, sous-type 0x8d de 0x00551f30, 256 octets. UNE. DECOMPILEE.
+    //
+    // MALGRE SON NOM, IL NE RESSUSCITE PAS. Il pose l'entree 45, la GUERISON COMPLETE : les points
+    // de vie passent au maximum et le nombre affiche est ce qui manquait. La resurrection est
+    // l'entree 46, et elle appartient a Resurection (0x0044CD00), pas a lui.
+    //
+    // ET IL NE SAIT PAS VISER UN MORT. Il appelle AcquireHolyTarget_00447CB0 en mode 0, le mode
+    // ordinaire. Le mode 1 — celui qui efface 0x40002000 sur les quatre emplacements du groupe le
+    // temps de la recherche pour qu'un cadavre soit eligible — n'a qu'un seul appelant dans tout le
+    // binaire, et c'est Resurection. Verifie au desassembleur : les quatorze appels decompiles
+    // passent 0, et 0x0044cd20 est le seul `push 1`.
+    //
+    // IL RESOUT A LA NAISSANCE, ET RECOPIE SA PAIRE FAMILLE/INDICE A LA MORT. L'ordre est l'inverse
+    // de celui de toutes ses sœurs, qui recopient puis appellent. Ce n'est pas un defaut :
+    // CastSpell_0053A980 a deja ecrit la paire sur le lanceur au moment de l'incantation, donc la
+    // fiche lue a l'image 0 est la bonne. La recopie de la 70e image ne sert plus a ce sort-la.
+    //
+    // AUCUN CORPS D'ENFANT NEUF A ECRIRE AU DESASSEMBLEUR : l'aile 0x8d est decompilee et
+    // l'etincelle 0xa9 est celle de la bouffee, deja ecrite.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044a660 @ 0x0044a660 — <b>guerir completement si la cible l'accepte</b>.
+    /// Soixante et un octets, decompilee dans <c>Blaze.c</c>. Onzieme exemplaire de la meme
+    /// enveloppe : le meme <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="HealTargetFully_0053CD20"/> derriere — l'entree 45.
+    /// </summary>
+    private static bool HealTargetFullyIfEligible_0044A660(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return HealTargetFully_0053CD20(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044a6a0 @ 0x0044a6a0 — <b>l'aile de Sang d'ange</b> : le sous-type <c>0x8d</c>
+    /// <b>de la table <see cref="s_StaticEntityHandlers_00551f30"/></b>, creneau 141. 256 octets,
+    /// <b>decompilee dans <c>Blaze.c</c></b>. <see cref="TickAngelBlood_0044A4B0"/> n'en fait
+    /// naitre <b>qu'une</b>, et c'est son seul appelant.
+    ///
+    /// <para>
+    /// <b>Ce n'est pas la spirale d'Antisort</b>, qui porte pourtant le meme numero <c>0x8d</c> —
+    /// mais dans <see cref="s_StaticEntityHandlers_00552230"/>
+    /// (<see cref="TickHolySpiral_00449E30"/>). Troisieme collision de numero de l'ecole, apres le
+    /// <c>0xa9</c> d'Antidote et le <c>0x8c</c> de Lourdes.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne se deplace pas : elle tourne et change de couleur.</b> Sa position est celle de
+    /// la cible a chaque image — <c>+0x60</c> pour la hauteur, comme toutes les entites de cette
+    /// famille — et son cap <c>+0x32</c> avance de <c>+0x5c</c>, pose a 100 et jamais relu
+    /// autrement.
+    /// </para>
+    /// <para>
+    /// <b>Trois etats, et chacun est une teinte qui monte.</b> Elle naît noire ; l'etat 1 la fait
+    /// virer au vert (<c>+0x0f</c> par image, plus un filet de bleu) jusqu'a ce que le vert passe
+    /// 199 ; l'etat 2 echange le vert contre du bleu (<c>-10</c> et <c>+10</c>) jusqu'a saturation
+    /// du bleu a <c>0xff</c> ; l'etat 3 eteint les trois canaux de huit par image, en aplatissant
+    /// l'aile — la hauteur perd <c>0x28</c> pendant que la largeur et la profondeur en gagnent
+    /// autant. Elle disparait quand les trois canaux sont a zero.
+    /// </para>
+    /// </summary>
+    private static void TickAngelWing_0044A6A0(byte* record)
+    {
+        byte* e = record;
+
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x60);    // +0x60, pas +0x20
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x26;                            // le modele
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+
+            *(short*)(e + 0x10) = 1;
+
+            *(short*)(e + 0x28) = 4000;
+            *(short*)(e + 0x2c) = 4000;
+            *(short*)(e + 0x2a) = 3000;
+
+            e[0x38] = 0;                               // elle naît noire
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(int*)(e + 0x5c) = 100;                   // sa vitesse de rotation
+        }
+
+        // La rotation avance dans tous les etats, y compris a la naissance.
+        *(short*)(e + 0x32) += (short)*(int*)(e + 0x5c);
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            BrightenEntityTint_00404DE0(e, 0, 0x0f, 1);
+            if (e[0x39] > 199) *(short*)(e + 0x10) = 2;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            BrightenEntityTint_00404DE0(e, 0, -10, 10);
+            if (e[0x3a] == 0xff) *(short*)(e + 0x10) = 3;
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            BrightenEntityTint_00404DE0(e, -8, -8, -8);
+
+            *(short*)(e + 0x2a) -= 0x28;               // elle s'aplatit en s'eteignant
+            *(short*)(e + 0x28) += 0x28;
+            *(short*)(e + 0x2c) += 0x28;
+
+            if (e[0x38] == 0 && e[0x39] == 0 && e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044a4b0 @ 0x0044a4b0 — <b>Sang d'ange</b> : le sous-type <c>0x29</c>, creneau
+    /// 41 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>douzieme fiche de l'ecole
+    /// 1</b>. 419 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Malgre son nom, il ne ressuscite pas.</b> Il pose l'entree 45,
+    /// <see cref="HealTargetFully_0053CD20"/> — les points de vie au maximum, le nombre affiche
+    /// etant ce qui manquait. La resurrection est l'entree 46
+    /// (<see cref="ReviveTarget_0053CD80"/>), et elle appartient a Resurection
+    /// (<c>0x0044CD00</c>).
+    /// </para>
+    /// <para>
+    /// <b>Et il ne sait pas viser un mort.</b> Il appelle
+    /// <see cref="AcquireHolyTarget_00447CB0"/> en <b>mode 0</b>. Le mode 1 — celui qui efface
+    /// <c>0x40002000</c> sur les quatre emplacements du groupe le temps de la recherche, pour
+    /// qu'un cadavre soit eligible — n'a qu'un appelant dans tout le binaire, et c'est
+    /// Resurection : les quatorze appels decompiles passent <c>0</c>, et <c>0x0044cd20</c> est le
+    /// seul <c>push 1</c>.
+    /// </para>
+    /// <para>
+    /// <b>Il resout a la naissance et recopie sa paire famille/indice a la mort</b>, l'ordre
+    /// inverse de celui de toutes ses sœurs. Sans consequence :
+    /// <see cref="CastSpell_0053A980"/> a deja ecrit cette paire sur le lanceur au moment de
+    /// l'incantation, donc la fiche lue a l'image 0 est la bonne. La recopie de la 70e image ne
+    /// sert plus a ce sort-la.
+    /// </para>
+    /// <para>
+    /// <b>Une aile, cinq etincelles, puis une etincelle une image sur deux</b> pendant soixante-dix
+    /// images. Trois sons a la 0e, la 1re et la 3e. C'est tout : ni decor teinte, ni immobilisation
+    /// du lanceur.
+    /// </para>
+    /// </summary>
+    private static void TickAngelBlood_0044A4B0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_0044a4d8
+        byte* target = *(byte**)(e + 0x78);
+        if (target == null) target = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x20);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x14) = 0x50;      // le rayon que l'etincelle 0xa9 tirera
+            *(short*)(e + 0x9a) = 1;
+
+            SpawnCastEntity_0047AAE0(e, 0x8d, 0, -1);
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+
+            // L'effet est pose DES LA NAISSANCE, avant toute recopie de paire.
+            HealTargetFullyIfEligible_0044A660(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+        }
+
+        // Ghidra: LAB_0044a5ac
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x2c, 0x1bf, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x30, 0x200, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 3) Aud.PlaySoundEffect(0x2f, 0x653, 0x1000, 0x1000);
+
+        // Ghidra: LAB_0044a60b — une etincelle de plus a chaque image impaire.
+        if ((e[0x16] & 1) != 0)
+        {
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+        }
+
+        // Ghidra: LAB_0044a625
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) >= 0x46)
+        {
+            // La paire famille/indice passe au lanceur — soixante-dix images APRES l'effet.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
 
             EndSpellAndResetDecor_00448020(e);
         }
