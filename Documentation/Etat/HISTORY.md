@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Gnoukoulé, le trente-troisième sort** : le sort `0x00448300` (418 octets) et son enveloppe d'effet `0x004484b0`, tous deux décompilés dans `Blaze.c`. **Aucun corps d'enfant neuf** — l'étincelle `0xa7` et l'éclat `0xa0` avaient été écrits avec Renfort
+- doc : **le binaire porte deux fois le même corps** — Gnoukoulé est Renfort à **quatre valeurs près** : la teinte `+0x9a` posée à 2 au lieu de 6, un son `0x0d` qui accompagne l'éclat de la 30ᵉ image, le couple de sons des images 35 et 37 remplacé par un seul à la 32ᵉ, et l'effet 23 (`0x0053bfb0`) au lieu du 17. Calendrier, bouffées, rayon, pas angulaire, durée de croissance et fin sont identiques. Ce ne sont pas des paramètres : ce sont 418 octets recopiés, et les quatre différences sont des immédiats
+- doc : **la même enveloppe d'effet en trois exemplaires** — `0x00447fe0`, `0x00448210` et `0x004484b0` ont le même corps à l'effet appelé près, chacune posant `IsEffectPairBlocked_004364B0` devant. Aucune des trois n'est lue par son appelant
 - feat : **Renfort, le trente-deuxième sort** : le sort `0x00448060` (425 octets), son enveloppe d'effet `0x00448210` et son éclat `0x00448250` (168 octets) — **tous trois décompilés dans `Blaze.c`** —, plus son étincelle `0x0044fe00` (315 octets, absente de `Blaze.c`), sortie du désassembleur
 - doc : **il pose son effet à la soixantième image, Sang pur à la première** — deux voisins immédiats dans le binaire, de forme identique, opposés par le moment. Les cinquante-neuf premières images de Renfort sont entièrement décoratives
 - doc : **ses étincelles naissent par paires opposées** — le sort pose `+0x48`, l'angle de départ que l'enfant hérite par la copie, à `0` puis à `0x800` entre les deux appels : chaque bouffée est deux étincelles à un demi-tour d'écart sur le même cercle. Quatre bouffées aux images 1, 3, 6 et 9, huit étincelles en tout

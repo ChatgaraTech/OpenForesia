@@ -4896,6 +4896,10 @@ public static unsafe partial class Blaze
             case 0x0044FE00: TickHolySpark_0044FE00(record); return;
             case 0x00448250: TickHolyFlash_00448250(record); return;
 
+            // GNOUKOULE, ecole 1 indice 3 — 418 octets recopies de Renfort a quatre valeurs pres.
+            // Aucun enfant neuf : il partage l'etincelle 0xa7 et l'eclat 0xa0 avec lui.
+            case 0x00448300: TickGnoukoule_00448300(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -39586,6 +39590,140 @@ public static unsafe partial class Blaze
             EndSpellAndResetDecor_00448020(e);
         }
     }
+
+    // =====================================================================
+    // GNOUKOULE — le trente-troisieme sort, ecole 1 indice 3, sous-type 0x21
+    //
+    //   0x00448300   LE SORT. Sous-type 0x21 de 0x00551c30, 418 octets. DECOMPILE dans Blaze.c.
+    //   0x004484B0   L'EFFET SOUS CONDITION. Soixante et un octets, decompile.
+    //
+    // DEUX CORPS, ET AUCUN ENFANT NEUF. Ses deux enfants — l'etincelle 0xa7
+    // (TickHolySpark_0044FE00) et l'eclat 0xa0 (TickHolyFlash_00448250) — ont ete ecrits avec
+    // Renfort, dont il est le clone.
+    //
+    // CLONE, AU SENS PROPRE. Renfort et lui font la meme chose octet pour octet a QUATRE VALEURS
+    // pres, et ce sont exactement les quatre qu'un sort de cette famille est cense porter :
+    //
+    //   +0x9a         6 chez Renfort, 2 chez lui — la teinte que chaque etincelle recopie en +0x0a
+    //   son a la 30e  Renfort n'en joue pas, lui joue 0x0d ; et il n'a pas le couple 0x23/0x25 de
+    //                 Renfort mais un seul son a la 32e image
+    //   l'effet       17 (0x0053bbd0) chez Renfort, 23 (0x0053bfb0) chez lui
+    //
+    // Le calendrier, les bouffees, le rayon, le pas angulaire, la duree de croissance, l'eclat de
+    // la 30e image et la fin a la 60e sont identiques. Le compilateur a emis deux fois le meme
+    // corps plutot que de le partager — le meme constat que pour LAB_00474320 et FUN_00450700,
+    // mais ici sur 418 octets.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004484b0 @ 0x004484b0 — <b>poser l'effet 23 si la cible l'accepte</b>. Soixante
+    /// et un octets, decompilee dans <c>Blaze.c</c>. Troisieme exemplaire de la meme enveloppe que
+    /// <see cref="HealTargetIfEligible_00447FE0"/> et
+    /// <see cref="ApplyStatusEffectIfEligible_00448210"/> : le meme
+    /// <see cref="IsEffectPairBlocked_004364B0"/> devant, ici
+    /// <see cref="ApplyStatusEffect_0053BFB0"/> derriere.
+    ///
+    /// <para><b>Aucun appelant ne lit ce qu'elle rend</b>, comme chez ses deux sœurs.</para>
+    /// </summary>
+    private static bool ApplyStatusEffectIfEligible_004484B0(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ApplyStatusEffect_0053BFB0(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00448300 @ 0x00448300 — <b>Gnoukoule</b> : le sous-type <c>0x21</c>, creneau 33
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>quatrieme fiche de l'ecole 1</b>.
+    /// 418 octets, <b>decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickReinforce_00448060"/> a quatre valeurs pres.</b> Meme trio de tete,
+    /// meme copie de la position de la cible <c>0x50000</c> plus haut, memes quatre bouffees de
+    /// deux etincelles aux images 1, 3, 6 et 9 avec le meme demi-tour d'ecart, meme rayon
+    /// <c>0x50</c>, meme pas angulaire <c>0x96</c>, meme duree de croissance <c>0x28</c>, meme
+    /// eclat unique a la 30e image, meme fin passe la 60e. Les differences tiennent en quatre
+    /// lignes : la teinte <c>+0x9a</c> vaut <b>2</b> et non 6, le son <c>0x0d</c> accompagne
+    /// l'eclat, le couple de sons de la 35e et de la 37e est remplace par un seul a la <b>32e</b>,
+    /// et l'effet pose est le <b>23</b> au lieu du 17.
+    /// </para>
+    /// <para>
+    /// <b>Le binaire porte donc deux fois le meme corps.</b> Ce n'est pas une fonction partagee
+    /// avec un parametre : ce sont 418 octets recopies, et les quatre valeurs qui les distinguent
+    /// sont des immediats. Le meme constat que pour <c>LAB_00474320</c> et
+    /// <see cref="ChestPickupDone_00450700"/>, a une autre echelle.
+    /// </para>
+    /// </summary>
+    private static void TickGnoukoule_00448300(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_00448327
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + 0x50000;
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            // Les quatre champs qui ne servent qu'aux etincelles. Seul le dernier separe cette
+            // fiche de Renfort, qui y pose 6.
+            *(short*)(e + 0x14) = 0x28;
+            *(int*)(e + 0x44) = 0x50;
+            *(int*)(e + 0x5c) = 0x96;
+            *(short*)(e + 0x9a) = 2;
+        }
+
+        // Ghidra: LAB_0044837d — quatre bouffees, deux etincelles chacune, a un demi-tour d'ecart.
+        short step = *(short*)(e + 0x16);
+
+        if (step == 1 || step == 3 || step == 6 || step == 9)
+        {
+            *(int*)(e + 0x48) = 0;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa7, 0, -1);
+
+            *(int*)(e + 0x48) = 0x800;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa7, 0, -1);
+        }
+
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x16, 0x100, 0x1200, 0x1200);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x16, 0x12a, 0x1200, 0x1200);
+
+        // Ghidra: LAB_00448411 — l'eclat, et le son que Renfort ne joue pas ici.
+        if (*(short*)(e + 0x16) == 0x1e)
+        {
+            SpawnCastEntity_0047AAE0(e, 0xa0, 0, -1);
+            Aud.PlaySoundEffect(0x0d, 0x5a9, 0x1200, 0x1200);
+        }
+
+        if (*(short*)(e + 0x16) == 0x20) Aud.PlaySoundEffect(0x2d, 0x400, 0x1000, 0x1000);
+
+        // Ghidra: LAB_00448463
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 0x3c)
+        {
+            // La paire famille/indice passe au lanceur : c'est SA fiche que l'effet relira.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ApplyStatusEffectIfEligible_004484B0(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);   // le resultat est jete
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>
     /// saisie pendant l'incantation. Elle rend l'indice du sort dont la combinaison correspond, ou
