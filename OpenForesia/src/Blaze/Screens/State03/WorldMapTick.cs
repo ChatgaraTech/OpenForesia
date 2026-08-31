@@ -4742,6 +4742,13 @@ public static unsafe partial class Blaze
             case 0x0047BC40: TickHellfireFlame_0047BC40(record); return;
             case 0x0047BDF0: TickHellfireBlaze_0047BDF0(record); return;
 
+            // WONDER, ecole 0 indice 5 — le premier sort ENTRETENU : il tient tant que le joueur
+            // garde le bouton, a 2 PM toutes les vingt images, et fait signe a ses deux enfants
+            // par le bit 0x2000000 qu'ils heritent de lui.
+            case 0x0047BF00: TickWonder_0047BF00(record); return;
+            case 0x0047C1E0: TickWonderAura_0047C1E0(record); return;
+            case 0x0047C2C0: TickWonderRing_0047C2C0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -28615,6 +28622,44 @@ public static unsafe partial class Blaze
         return found != null ? found : actor;
     }
 
+    /// <summary>
+    /// Ghidra: FUN_00475110 @ 0x00475110 — <b>le lanceur tient-il encore ?</b> Decompilee dans
+    /// <c>Blaze.c</c>. C'est la garde des sorts <b>entretenus</b> : elle rend <b>0</b> tant que le
+    /// lanceur peut continuer, <b>1</b> des qu'il faut couper.
+    ///
+    /// <para>
+    /// Trois conditions doivent tenir ensemble pour continuer : le lanceur est <b>vivant</b>
+    /// (<c>0x80000000</c>), il n'est <b>ni mort ni en train de mourir</b> (<c>0x50000000</c>
+    /// absent), et son bloc de combat ne porte <b>aucune</b> alteration du masque
+    /// <c>0x400003e8</c> en <c>+0x40</c> — le meme masque que
+    /// <see cref="ApplyGroundMotion_0051A020"/> teste avant d'ouvrir la posture d'incantation.
+    /// Etourdi, endormi ou petrifie, on ne tient pas un sort.
+    /// </para>
+    /// <para>
+    /// Le bloc vient de la meme paire que <see cref="StatusBubbleHeight_00538BC0"/> : un membre du
+    /// groupe le tient de <c>MainMem</c>, une entite de scene de
+    /// <see cref="s_EntityStatBlocks_005ea560"/>.
+    /// </para>
+    /// </summary>
+    private static uint CanSustainChannel_00475110(byte* record)
+    {
+        uint* actor = *(uint**)(record + 0x74);
+        uint flags = *actor;
+
+        byte* block = (flags & 0x800000) == 0
+            ? s_EntityStatBlocks_005ea560 + (byte)actor[2] * 0x120
+            : GetMainMemPtr() + (byte)actor[2] * 0x2000 + 0xf0100;
+
+        if ((flags & 0x80000000) != 0
+            && (flags & 0x50000000) == 0
+            && (*(uint*)(block + 0x40) & 0x400003e8) == 0)
+        {
+            return 0;
+        }
+
+        return 1;
+    }
+
     /// <summary>Ghidra: FUN_0051a020 @ 0x0051a020 (221 l.) — l'integration du deplacement au sol,
     /// appelee quand le personnage n'est pas en l'air.</summary>
     private static void ApplyGroundMotion_0051A020(uint* slot, byte* entry, byte* perChar, byte* pad, byte* anim)
@@ -30417,6 +30462,350 @@ public static unsafe partial class Blaze
         if (age != 0 && *(uint*)(e + 0x38) == 0) *(uint*)e = 0;
 
         *(ushort*)(e + 0x10) = (ushort)(age + 1);
+    }
+
+    // =====================================================================
+    // WONDER — le sixieme sort, ecole 0 indice 5, sous-type 0x05
+    //
+    // Trois corps, et la forme la plus riche jusqu'ici : c'est le premier sort ENTRETENU.
+    //
+    //   0x0047BF00   LE SORT. Sous-type 5 de 0x00551c30, 724 octets. Il immobilise le lanceur,
+    //                s'envole tout droit avec frottement, frappe, et TIENT tant que le joueur
+    //                garde le bouton d'incantation enfonce — en lui prenant 2 PM toutes les vingt
+    //                images.
+    //   0x0047C1E0   L'AURA, sous-type 0x6a de 0x00551f30. Deux exemplaires, colles au sort.
+    //   0x0047C2C0   L'ANNEAU, sous-type 0x4d de 0x00552230. Colle au sort lui aussi.
+    //
+    // LE BIT 0x2000000 EST LE SIGNAL DE FIN, ET IL SE PROPAGE. Le sort se le pose quand il doit
+    // s'arreter ; ses deux enfants LISENT le mot d'etat de leur pere par +0x6c et en heritent
+    // (`and 3000000h ; or`). Ils basculent alors en resorption et s'eteignent d'eux-memes. C'est le
+    // pendant du compte de references de Rocher : ici le pere ne compte pas ses fils, il leur fait
+    // signe.
+    //
+    // ET IL PEINT LE FOND DE L'ECRAN. La naissance ecrit 0x005e9160..0x005e9166 — trois canaux a
+    // 0xc4 et le mode 2 —, la fin remet le mode a zero. C'est la couleur de fond de la scene, celle
+    // que WorldMap.cs fait converger a chaque image : le sort blanchit le decor tant qu'il dure.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047bf00 @ 0x0047bf00 — <b>Wonder</b> : le sous-type <c>0x05</c>, creneau 5 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 724 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le premier sort entretenu du depot.</b> Passe la seizieme image, si le lanceur est un
+    /// membre du groupe, il relit <b>la manette de ce joueur</b> — l'emplacement vient de
+    /// <c>s_PlayerSlots_005e9188[indice * 0x4c]</c>, l'etat de
+    /// <c>s_InputStateBase_00604a20 + emplacement * 0x10</c>, et le masque compare est
+    /// <c>+0x1fc4</c> du bloc du personnage, celui-la meme qui ouvre la posture d'incantation. Le
+    /// bouton relache, le sort se marque <c>0x2000000</c> et tout s'arrete.
+    /// </para>
+    /// <para>
+    /// <b>Il coute 2 PM toutes les vingt images</b>, cadence sur le compteur global
+    /// <c>0x005f2cf0</c> — donc sur l'horloge du monde, pas sur son propre age. A court de PM il
+    /// les met a zero et se coupe. Un lanceur qui n'est pas du groupe n'a ni manette ni PM : il
+    /// tient <b>120 images</b> et s'arrete.
+    /// </para>
+    /// <para>
+    /// <b>Le mouvement est une ligne droite qui s'essouffle</b> : la vitesse posee a la naissance
+    /// (40 unites sur le cap) perd un huitieme <b>et</b> un 256e d'elle-meme a chaque image. Le
+    /// placement ne sert qu'a detecter le decor — la hauteur est sauvee et rendue autour, comme
+    /// pour les autres projectiles —, et un contact sur <c>0x8802</c> annule la vitesse sans tuer
+    /// le sort : il reste sur place jusqu'a ce que le joueur lache.
+    /// </para>
+    /// </summary>
+    private static void TickWonder_0047BF00(byte* record)
+    {
+        byte* e = record;
+        uint state = *(uint*)e;
+
+        // Une sonde plus large et plus profonde que celles des sorts precedents : 70 de
+        // demi-largeur, 140 de profondeur.
+        short* probe = stackalloc short[6] { 0x0000, -0x0046, 0x0046, 0x0064, 0x0000, 0x008c };
+
+        if ((state & 0x2000000) != 0)
+        {
+            // ------------------------------------------------------------ la fin
+            *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;   // le lanceur est relache
+            *(uint*)e = 0;
+            *(ushort*)Mem.Arena(0x005e9166) = 0;           // le fond reprend sa couleur
+            return;
+        }
+
+        ushort age = *(ushort*)(e + 0x10);
+
+        if (age == 0)
+        {
+            // ------------------------------------------------------------ la naissance
+            byte* caster = *(byte**)(e + 0x74);
+            *(uint*)caster |= 0x80;                        // le lanceur est immobilise
+            *(uint*)e |= 0x80;
+            e[0x36] |= 6;
+            *(short*)(e + 0x2e) = -0x14;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA0(), 0x4d, e[0x0b], -1);
+
+            *(ushort*)(e + 0x12) = 0x1000;
+            SpawnCastEntity_0047AAE0(e, 0x6a, e[0x0b], -1);
+            SpawnCastEntity_0047AAE0(e, 0x6a, e[0x0b], -1);
+
+            int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+            int heading = *(short*)(e + 0x32);
+            *(int*)(e + 0x20) += (height & ~1) << 0xb;
+
+            *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(heading) * 40;
+            *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(heading) * 40;
+
+            // La couleur de fond de la scene : trois canaux a 0xc4, mode 2.
+            *(uint*)Mem.Arena(0x005e9160) = 0x00c400c4;
+            *(uint*)Mem.Arena(0x005e9164) = 0x000200c4;
+
+            Aud.PlayPositionalSound(0x2d, 0x400, 0x1200, (int*)(e + 0x1c));
+        }
+        else if ((short)age >= 0x10)
+        {
+            // ------------------------------------------------------------ l'entretien
+            if ((state & 0x800000) != 0)
+            {
+                byte* caster = *(byte**)(e + 0x74);
+                uint index = ((uint*)caster)[2] & 0xff;
+                byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+                // La manette du joueur qui tient ce personnage. Le pas est 0x4c dans la table des
+                // emplacements et 0x10 dans celle des etats — le meme piege que PollInputAndAudio
+                // documente : la pseudo-C ecrit `* 4` parce que le symbole est typé `undefined4`.
+                int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+                ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+                if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+                {
+                    state |= 0x2000000;                    // le bouton est relache
+                    *(uint*)e = state;
+                }
+
+                // Ghidra: LAB_0047c07f — la ponction, cadencee sur l'horloge du monde.
+                if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
+                {
+                    short mana = *(short*)(perChar + 0x14e);
+
+                    if (mana >= 2)
+                    {
+                        *(short*)(perChar + 0x14e) = (short)(mana - 2);
+                    }
+                    else
+                    {
+                        *(ushort*)(perChar + 0x14e) = 0;
+                        *(uint*)e = *(uint*)e | 0x2000000;
+                    }
+                }
+            }
+            else if ((short)age >= 0x78)
+            {
+                // Un lanceur hors groupe n'a ni manette ni PM : 120 images, et c'est tout.
+                *(uint*)e |= 0x2000000;
+            }
+
+            // Ghidra: LAB_0047c0c2 — et dans tous les cas, le lanceur doit tenir debout.
+            if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+        }
+
+        // Ghidra: LAB_0047c0d5 — le vol, commun aux trois branches.
+        int vx = *(int*)(e + 0x50);
+        int vz = *(int*)(e + 0x58);
+
+        *(int*)(e + 0x1c) += vx;
+        *(int*)(e + 0x24) += vz;
+
+        // Le frottement prend un huitieme ET un 256e : la vitesse s'eteint en une trentaine
+        // d'images.
+        *(int*)(e + 0x50) = vx - (vx >> 3) - (vx >> 8);
+        *(int*)(e + 0x58) = vz - (vz >> 8) - (vz >> 3);
+
+        int keptHeight = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);                // Ghidra: FUN_00533940
+        uint contact = *(uint*)(e + 0x90);
+        *(int*)(e + 0x20) = keptHeight;
+
+        if ((contact & 0x8802) != 0)
+        {
+            // Le decor l'arrete, mais ne le tue pas : il reste la tant qu'on le tient.
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x58) = 0;
+        }
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            int push = *(short*)(e + 0x32);
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+
+            Aud.PlayPositionalSound(0x0f, 0xaa8, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047c1ad — le sort meurt avec son lanceur.
+        uint now = *(uint*)e;
+
+        if ((now & 0x40000000) != 0 || (*(uint*)(*(uint**)(e + 0x74)) & 0x40000000) != 0)
+        {
+            *(uint*)e = now | 0x2000000;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047c1e0 @ 0x0047c1e0 — <b>l'aura de Wonder</b> : le sous-type <c>0x6a</c>,
+    /// creneau 106 de <see cref="s_StaticEntityHandlers_00551f30"/>. 216 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle herite du mot d'etat de son pere</b> a chaque image : les deux bits <c>0x3000000</c>
+    /// du sort (<c>+0x6c</c>) sont recopies dans le sien. C'est ainsi que la fin se propage — le
+    /// sort se marque, l'aura le voit a l'image suivante et bascule en resorption sans que
+    /// personne ne la previenne autrement.
+    /// </para>
+    /// <para>
+    /// Tant que le pere tient, elle se colle a lui, tourne de <c>0x30</c> et <c>0x40</c> sur ses
+    /// deux axes, et <b>approche d'un quart</b> deux cibles : l'echelle vers <c>+0x12</c> (que le
+    /// sort a pose a <c>0x1000</c>) et la teinte vers <c>0xff</c>. Une fois marquee elle perd un
+    /// quart de chaque par image et s'eteint sous <c>0x100</c> d'echelle.
+    /// </para>
+    /// <para>
+    /// <b>Un seul canal est lu, trois sont ecrits</b> : le binaire prend l'octet bas de
+    /// <c>+0x38</c> et le replique sur les trois. L'aura est donc toujours grise.
+    /// </para>
+    /// </summary>
+    private static void TickWonderAura_0047C1E0(byte* record)
+    {
+        byte* e = record;
+        uint state = *(uint*)e;
+
+        int scale;
+        int channel;
+
+        if ((state & 0x3000000) != 0)
+        {
+            // ------------------------------------------------------------ la resorption
+            scale = *(short*)(e + 0x28);
+            scale -= scale >> 2;
+
+            channel = e[0x38];
+            channel -= channel >> 2;
+
+            if (scale < 0x100) *(uint*)e = 0;
+        }
+        else
+        {
+            // Ghidra: LAB_0047c219 — l'heritage des deux bits du pere.
+            byte* parent = *(byte**)(e + 0x6c);
+            *(uint*)e = (*(uint*)parent & 0x3000000) | state;
+
+            if (*(ushort*)(e + 0x10) == 0)
+            {
+                *(ushort*)(e + 0x10) = 1;
+                *(int*)(e + 0x28) = 0;
+                *(short*)(e + 0x2c) = 0;
+                *(short*)(e + 0x30) = (short)CrtRand();
+                *(short*)(e + 0x32) = (short)CrtRand();
+                *(short*)(e + 0x34) = (short)CrtRand();
+                e[0x04] = 0x1d;                            // le modele
+            }
+
+            // Ghidra: LAB_0047c25c — les deux approches, chacune d'un quart.
+            scale = *(short*)(e + 0x28);
+            scale += (*(short*)(e + 0x12) - scale) >> 2;
+
+            channel = e[0x38];
+            channel += (0xff - channel) >> 2;
+
+            *(int*)(e + 0x1c) = *(int*)(parent + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(parent + 0x20);
+            *(int*)(e + 0x24) = *(int*)(parent + 0x24);
+
+            *(ushort*)(e + 0x32) += 0x30;
+            *(ushort*)(e + 0x34) += 0x40;
+        }
+
+        // Ghidra: LAB_0047c298 — l'echelle et la teinte, communes aux deux branches.
+        *(short*)(e + 0x2c) = (short)scale;
+        // `mov edx,eax ; shl edx,10h ; or edx,eax` porte sur le registre ENTIER : une echelle
+        // negative garderait ses bits de signe dans la moitie haute. Ecrit tel quel.
+        *(uint*)(e + 0x28) = ((uint)scale << 0x10) | (uint)scale;
+        *(uint*)(e + 0x38) = (uint)(((channel << 8 | channel) << 8) | channel);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047c2c0 @ 0x0047c2c0 — <b>l'anneau de Wonder</b> : le sous-type <c>0x4d</c>,
+    /// creneau 77 de <see cref="s_StaticEntityHandlers_00552230"/>. 219 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Meme heritage du mot d'etat que <see cref="TickWonderAura_0047C1E0"/>, meme resorption sous
+    /// <c>0x100</c>. Deux differences : son echelle approche <c>0x1800</c> <b>de moitie</b> et non
+    /// d'un quart, et sa teinte <b>bat</b> — elle suit
+    /// <c>(sin(age &lt;&lt; 9) &gt;&gt; 7) + 0x80</c>, approchee d'un quart. L'anneau pulse donc
+    /// pendant que l'aura ne fait que monter.
+    /// </para>
+    /// <para>
+    /// Le binaire garde le canal dans <b>l'emplacement de son propre argument</b> sur la pile, et y
+    /// travaille en octet. Ecrit ici avec une variable locale : c'est la meme valeur, sans le
+    /// detour.
+    /// </para>
+    /// </summary>
+    private static void TickWonderRing_0047C2C0(byte* record)
+    {
+        byte* e = record;
+        uint state = *(uint*)e;
+
+        int scale;
+        int channel;
+
+        if ((state & 0x3000000) != 0)
+        {
+            // ------------------------------------------------------------ la resorption
+            int current = *(short*)(e + 0x28);
+            scale = current - (current >> 2) * 2;
+
+            channel = e[0x38];
+            channel = (byte)(channel - (channel >> 2));
+
+            if (scale < 0x100) *(uint*)e = 0;
+        }
+        else
+        {
+            // Ghidra: LAB_0047c305 — l'heritage des deux bits du pere.
+            byte* parent = *(byte**)(e + 0x6c);
+            ushort age = *(ushort*)(e + 0x10);
+            *(uint*)e = (*(uint*)parent & 0x3000000) | state;
+
+            if (age == 0) *(int*)(e + 0x28) = 0;
+
+            // Ghidra: LAB_0047c324 — l'echelle approche 0x1800 de moitie.
+            int current = *(short*)(e + 0x28);
+            scale = current + ((0x1800 - current) >> 2) * 2;
+
+            channel = e[0x38];
+
+            // La teinte bat : elle approche d'un quart la cible (sin(age << 9) >> 7) + 0x80.
+            int beat = (int)Winsys3d.GetSinTableEntry((short)age << 9);
+            channel = (byte)(channel + (((beat >> 7) - channel + 0x80) >> 2));
+
+            *(int*)(e + 0x1c) = *(int*)(parent + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(parent + 0x20);
+            *(int*)(e + 0x24) = *(int*)(parent + 0x24);
+        }
+
+        // Ghidra: LAB_0047c375 — l'age avance dans les deux branches, l'echelle et la teinte aussi.
+        *(ushort*)(e + 0x10) += 1;
+        // Meme forme que dans l aura : le OU porte sur le registre entier.
+        *(uint*)(e + 0x28) = ((uint)scale << 0x10) | (uint)scale;
+        *(uint*)(e + 0x38) = (uint)(((channel << 8 | channel) << 8) | channel);
     }
 
     /// <summary>
