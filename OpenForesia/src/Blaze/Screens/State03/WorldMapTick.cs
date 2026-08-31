@@ -4770,6 +4770,12 @@ public static unsafe partial class Blaze
             case 0x0047CE40: TickEnchant_0047CE40(record); return;
             case 0x0047CF30: TickEnchantMote_0047CF30(record); return;
 
+            // MUR DE FLAMMES, ecole 0 indice 10 — Pieds mouilles refait en feu : meme chute, mais
+            // le decor vire a l'orange et le contact acheve le sort au lieu de l'eteindre.
+            case 0x0047CFF0: TickFlameWall_0047CFF0(record); return;
+            case 0x0047D270: TickFlameWallEmber_0047D270(record); return;
+            case 0x0047D2A0: TickFlameWallColumn_0047D2A0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -9442,6 +9448,32 @@ public static unsafe partial class Blaze
     /// <summary>Les sept descripteurs en memoire native.</summary>
     private static byte* Descriptors00551A08()
         => NativeCopy(s_Descriptors_00551A08, ref s_Descriptors00551A08Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551b40</c> — <b>les quatre images de la colonne de feu</b>, l'atlas que
+    /// <see cref="TickFlameWall_0047CFF0"/> passe a son enfant <c>0x52</c>.
+    ///
+    /// <para>
+    /// <b>Quatre, et c'est l'engendreur qui le dit</b> — pas le consommateur, pour une fois : le
+    /// sort pose <c>+0x1a = 4</c> juste avant d'engendrer, et
+    /// <see cref="TickFlameWallColumn_0047D2A0"/> fait tourner <c>+0x40</c> en anneau sur ce compte.
+    /// La donnee suit : quatre tuiles <c>0x18 x 0x20</c> en <c>v = 0x48</c>, puis
+    /// <c>0x00551b60</c> passe en <c>0x10 x 0x10</c>.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551B40 =
+    [
+        0x00, 0x48, 0x18, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551b40
+        0x18, 0x48, 0x18, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551b48
+        0x30, 0x48, 0x18, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551b50
+        0x48, 0x48, 0x18, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x00551b58
+    ];
+
+    private static byte* s_Descriptors00551B40Storage;
+
+    /// <summary>Les quatre descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551B40()
+        => NativeCopy(s_Descriptors_00551B40, ref s_Descriptors00551B40Storage);
 
     /// <summary>
     /// Ghidra: FUN_00475a30 @ 0x00475a30 — <b>l'entree 183 (<c>0xb7</c>) de la table statique
@@ -31803,6 +31835,245 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x12) = next;
 
         if (next < 0x10) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // MUR DE FLAMMES — le onzieme sort, ecole 0 indice 10, sous-type 0x0a
+    //
+    // Trois corps neufs. C'est Pieds mouilles refait en feu — meme chute, meme gravite de 0x6000
+    // en +0x9a, meme avance de 20 sur le cap — mais il seme deux enfants au lieu de deux, sur une
+    // image sur deux, et il TEINTE LE DECOR EN ORANGE tant qu'il brule.
+    //
+    //   0x0047CFF0   LE SORT. Sous-type 0x0a de 0x00551c30, 626 octets. Quarante images.
+    //   0x0047D270   LA BRAISE, sous-type 0x7b de 0x00551f30, 35 octets — le plus court corps de
+    //                sort du depot.
+    //   0x0047D2A0   LA COLONNE, sous-type 0x52 de 0x00552230, 143 octets. Elle monte, puis
+    //                retombe.
+    //
+    // LA DIFFERENCE AVEC PIEDS MOUILLES tient en trois points : le decor vire a l'orange
+    // (0xc0/0x80/0x60, reecrit A CHAQUE IMAGE et non a la naissance), le contact avec le decor ne
+    // tue pas le sort mais FORCE son compteur a 0x28 — la fin par le chemin normal —, et les
+    // enfants naissent a une position tiree au hasard autour de lui, jusqu'a 127 unites.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047cff0 @ 0x0047cff0 — <b>Mur de flammes</b> : le sous-type <c>0x0a</c>, creneau
+    /// 10 de <see cref="s_StaticEntityHandlers_00551c30"/>. 626 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il avance et il tombe</b>, exactement comme <see cref="TickWetFeet_0047B460"/> : 20
+    /// unites sur le cap, une vitesse verticale en <c>+0x54</c> et la meme gravite de <c>0x6000</c>
+    /// reecrite en <c>+0x9a</c> a chaque image. Le sol le colle et lui coupe la vitesse.
+    /// </para>
+    /// <para>
+    /// <b>Une image sur deux, il seme deux enfants</b> — le test est <c>+0x10 &amp; 1</c>, et le
+    /// compteur part de 1. La position est <b>deplacee au hasard</b> jusqu'a 127 unites dans une
+    /// direction quelconque le temps des deux naissances, puis rendue : la braise et la colonne
+    /// naissent donc eparpillees autour du trajet, pas dessus.
+    /// </para>
+    /// <para>
+    /// <b>Le decor vire a l'orange</b> — <c>0xc0</c>, <c>0x80</c>, <c>0x60</c> avec le mode 2 —
+    /// et <b>a chaque image</b>, non a la naissance comme Wonder et Tenebres. Le mode revient a
+    /// zero quand le sort s'eteint.
+    /// </para>
+    /// <para>
+    /// <b>Le decor ne le tue pas, il l'acheve.</b> Un contact sur le masque <c>0x802</c> ne met pas
+    /// le mot d'etat a zero : il force <c>+0x10</c> a <c>0x28</c>, ce qui fait passer le sort par
+    /// sa fin normale a la fin de la meme image — donc en frappant une derniere fois et en rendant
+    /// sa couleur au decor.
+    /// </para>
+    /// </summary>
+    private static void TickFlameWall_0047CFF0(byte* record)
+    {
+        byte* e = record;
+
+        short* probe = stackalloc short[6] { 0x0000, -0x0080, 0x0080, 0x00c8, 0x0000, 0x0100 };
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(ushort*)(e + 0x10) = 1;
+            *(uint*)e |= 0x80;
+            *(short*)(e + 0x2e) = -0x40;
+            *(uint*)(e + 0x28) = 0x30003000;
+            *(ushort*)(e + 0x2c) = 0x3000;
+            *(uint*)(e + 0x38) = 0x00d0d0d0;
+            e[0x04] = 4;                               // le modele
+
+            // Deux fois le meme son, a deux hauteurs : c'est ce qui lui donne son grondement.
+            Aud.PlayPositionalSound(0x20, 0x400, 0x1200, (int*)(e + 0x1c));
+            Aud.PlayPositionalSound(0x20, 0x455, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047d088 — une image sur deux.
+        if ((e[0x10] & 1) != 0)
+        {
+            int keptX = *(int*)(e + 0x1c);
+            int keptZ = *(int*)(e + 0x24);
+
+            // Un ecart quelconque, jusqu'a 127 unites : les deux enfants naissent eparpilles.
+            int spray = CrtRand();
+            int reach = CrtRand() & 0x7f;
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(spray) * reach;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(spray) * reach;
+
+            SpawnCastEntity_0047AAE0(e, 0x7b, e[0x0b], -1);
+
+            *(ushort*)(e + 0x1a) = 4;                  // quatre images d'atlas pour la colonne
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551B40(), 0x52, e[0x0b], -1);
+
+            *(int*)(e + 0x1c) = keptX;
+            *(int*)(e + 0x24) = keptZ;
+        }
+
+        // Ghidra: LAB_0047d112 — l'avance et la chute, comme Pieds mouilles.
+        int heading = *(short*)(e + 0x32);
+        *(short*)(e + 0x9a) = 0x6000;
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 20;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 20;
+
+        int gravity = *(short*)(e + 0x9a);
+        int velocity = *(int*)(e + 0x54);
+        *(int*)(e + 0x20) += velocity;
+        *(int*)(e + 0x54) = (gravity >> 8) - (velocity >> 8) + velocity - gravity;
+
+        FinalizeEntityPlacement2((uint*)e);            // Ghidra: FUN_00533940
+
+        if (*(int*)(e + 0x20) < *(int*)(e + 0x60))
+        {
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+            *(uint*)(e + 0x90) = 0x800;
+        }
+
+        // Ghidra: LAB_0047d18d — le decor n'eteint pas, il precipite la fin.
+        uint contact = *(uint*)(e + 0x90);
+        if ((contact & 0xa000) == 0 && (contact & 0x802) != 0) *(ushort*)(e + 0x10) = 0x28;
+
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            int push = *(short*)(e + 0x32) - 0x400;
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(push) << 4;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(push) << 4;
+            *(uint*)victim |= 0x40;
+            *(ushort*)(victim + 0x96) = 0x10;
+
+            Aud.PlayPositionalSound(0x13, 0x653, 0x1200, (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047d224 — la teinte du decor, reecrite a chaque image.
+        *(uint*)Mem.Arena(0x005e9160) = 0x008000c0;    // R 0xc0, V 0x80
+        *(uint*)Mem.Arena(0x005e9164) = 0x00020060;    // B 0x60, mode 2
+
+        if (*(short*)(e + 0x10) >= 0x28 || (*(uint*)e & 0x40000000) != 0)
+        {
+            *(ushort*)Mem.Arena(0x005e9166) = 0;       // le decor reprend sa couleur
+            *(uint*)e = 0;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047d270 @ 0x0047d270 — <b>la braise de Mur de flammes</b> : le sous-type
+    /// <c>0x7b</c>, creneau 123 de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>35 octets</b>,
+    /// le plus court corps de sort du depot, <b>absent de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Elle ne fait rien d'autre que tourner de <c>-0x170</c> et palir de <c>0x101010</c> par
+    /// image, jusqu'a extinction. <b>Le test de fin porte sur le resultat de l'addition</b>, pas sur
+    /// le champ relu : le <c>jne</c> lit les indicateurs de l'<c>add</c>. C'est le meme sens, et
+    /// c'est ecrit ainsi pour que le rapprochement avec le desassemblage reste immediat.
+    /// </para>
+    /// <para>
+    /// Elle n'a ni position propre — elle garde celle de sa naissance — ni compteur de vie : la
+    /// teinte lui tient lieu d'horloge, comme a l'eclaboussure de Pieds mouilles.
+    /// </para>
+    /// </summary>
+    private static void TickFlameWallEmber_0047D270(byte* record)
+    {
+        byte* e = record;
+
+        unchecked
+        {
+            *(ushort*)(e + 0x32) += 0xfe90;            // -0x170
+            uint tint = *(uint*)(e + 0x38) + 0xffefeff0;   // -0x101010
+            *(uint*)(e + 0x38) = tint;
+
+            if (tint == 0) *(uint*)e = 0;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047d2a0 @ 0x0047d2a0 — <b>la colonne de Mur de flammes</b> : le sous-type
+    /// <c>0x52</c>, creneau 82 de <see cref="s_StaticEntityHandlers_00552230"/>. 143 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Seize images, en deux moities.</b> Les huit premieres son echelle approche <c>0x3000</c>
+    /// d'un quart ; les huit suivantes elle perd un quart d'elle-meme ; a la seizieme elle
+    /// s'eteint. Elle monte donc et retombe sans que rien ne la deplace.
+    /// </para>
+    /// <para>
+    /// <b>Sa hauteur EST son echelle.</b> A la naissance elle met sa hauteur de cote dans
+    /// <c>+0x48</c>, et a chaque image <c>+0x20 = +0x48 + (echelle &lt;&lt; 6)</c> : la colonne
+    /// s'eleve au-dessus du sol exactement dans la proportion ou elle grandit. C'est le seul corps
+    /// transcrit qui lie ainsi la position a la taille.
+    /// </para>
+    /// <para>
+    /// Son image d'atlas tourne en anneau sur <c>+0x1a</c>, que le sort a pose a 4 —
+    /// <see cref="s_Descriptors_00551B40"/>.
+    /// </para>
+    /// </summary>
+    private static void TickFlameWallColumn_0047D2A0(byte* record)
+    {
+        byte* e = record;
+        ushort age = *(ushort*)(e + 0x10);
+
+        if (age == 0)
+        {
+            *(uint*)(e + 0x28) = 0;
+            *(int*)(e + 0x48) = *(int*)(e + 0x20);     // la hauteur du sol, mise de cote
+        }
+
+        if ((short)age < 8)
+        {
+            // La montee : l'echelle approche 0x3000 d'un quart.
+            short scale = *(short*)(e + 0x28);
+            scale += (short)((0x3000 - scale) >> 2);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+        }
+        else if ((short)age < 0x10)
+        {
+            // La retombee : un quart de moins par image.
+            short scale = *(short*)(e + 0x28);
+            scale -= (short)(scale >> 2);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+        }
+        else
+        {
+            *(uint*)e = 0;
+        }
+
+        // Ghidra: LAB_0047d302 — la hauteur suit l'echelle, decalee de six bits.
+        *(int*)(e + 0x20) = (*(short*)(e + 0x28) << 6) + *(int*)(e + 0x48);
+
+        byte frame = (byte)(e[0x40] + 1);
+        e[0x40] = frame;
+        if ((short)frame >= *(short*)(e + 0x1a)) e[0x40] = 0;
+
+        *(ushort*)(e + 0x10) = (ushort)(age + 1);
     }
 
     /// <summary>
