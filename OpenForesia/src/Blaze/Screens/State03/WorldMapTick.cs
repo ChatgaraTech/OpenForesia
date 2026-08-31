@@ -4833,6 +4833,11 @@ public static unsafe partial class Blaze
             case 0x0047FB10: TickFireOrbShell_0047FB10(record); return;
             case 0x00482EF0: TickFireOrbTrail_00482EF0(record); return;
 
+            // VENTILO, ecole 0 indice 21 — Coup de jus trois fois : trois polylignes de trois
+            // segments, toutes parties du meme point. Le segment 0x75 est celui du sort 11.
+            case 0x0047FB80: TickGale_0047FB80(record); return;
+            case 0x0047FE40: TickGaleGust_0047FE40(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -9610,6 +9615,28 @@ public static unsafe partial class Blaze
     /// <summary>Les deux pas du script en memoire native.</summary>
     private static byte* DelayedSoundScript00552558()
         => NativeCopy(s_DelayedSoundScript_00552558, ref s_DelayedSoundScript00552558Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552568</c> — <b>le quatrieme script de sons differes</b>, celui de
+    /// <see cref="TickGale_0047FB80"/>. Le son <c>0x14</c>, une image d'attente, puis le
+    /// <c>0x2c</c> qui termine — le souffle avant la bourrasque.
+    ///
+    /// <para>
+    /// Il est le quatrieme d'une file de scripts contigus depuis <c>0x00552530</c>, chacun borne
+    /// par l'octet de delai nul du precedent. Le cinquieme (<c>0x00552578</c>) reste a rencontrer.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552568 =
+    [
+        0x14, 0x01, 0x01, 0x00, 0x00, 0x08, 0x00, 0x12,   // 0x00552568
+        0x2c, 0x00, 0x01, 0x00, 0x00, 0x08, 0x00, 0x12,   // 0x00552570 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552568Storage;
+
+    /// <summary>Les deux pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00552568()
+        => NativeCopy(s_DelayedSoundScript_00552568, ref s_DelayedSoundScript00552568Storage);
 
     /// <summary>
     /// Ghidra: FUN_00475a30 @ 0x00475a30 — <b>l'entree 183 (<c>0xb7</c>) de la table statique
@@ -34992,6 +35019,171 @@ public static unsafe partial class Blaze
         if (frame >= *(ushort*)(e + 0x1a)) e[0x40] = 0;
 
         if (*(short*)(e + 0x12) < 0x30 || (*(uint*)mother & 0x40000000) != 0) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // VENTILO — le vingt-deuxieme sort, ecole 0 indice 21, sous-type 0x15
+    //
+    // Deux corps neufs seulement : c'est COUP DE JUS TROIS FOIS. Il reemploie tel quel le segment
+    // 0x75 de TickLightningBolt_0047D470, et l'eclat 0xbe deja ecrit.
+    //
+    //   0x0047FB80   LE SORT. Sous-type 0x15 de 0x00551c30, 696 octets.
+    //   0x0047FE40   LA BOURRASQUE, sous-type 0x83 de 0x00551f30, 29 octets.
+    //
+    // TROIS POLYLIGNES AU LIEU D'UNE. La boucle est double : trois eclairs, chacun de trois
+    // segments poses bout a bout comme le fait Coup de jus, et les trois partent du MEME point —
+    // la position est mise de cote et rendue entre chaque. Les caps de depart sont espaces de
+    // 0x200, ce qui ouvre l'eventail.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047fb80 @ 0x0047fb80 — <b>Ventilo</b> : le sous-type <c>0x15</c>, creneau 21 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/>. 696 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>A la naissance</b> il se place a mi-hauteur de tete du lanceur et a la meme distance
+    /// devant lui — le meme geste que Boule de feu et Durdur —, lache la bourrasque <c>0x83</c>
+    /// avec un modele tire parmi quatre, un eclat <c>0xbe</c>, et met le souffle en file.
+    /// </para>
+    /// <para>
+    /// <b>A la quatorzieme image il frappe</b> : un second eclat, le tonnerre, puis <b>trois
+    /// eclairs de trois segments</b>. Chacun est exactement la polyligne de
+    /// <see cref="TickLightningArc_0047D330"/> — deviation relative sur <c>0x1c0</c>, longueur de
+    /// <c>0x100</c> a <c>0x1ff</c>, echelle <c>longueur &lt;&lt; 12 / 250</c>, modele parmi trois —
+    /// et les trois repartent du <b>meme point</b>, la position etant mise de cote et rendue entre
+    /// chaque. Les caps de depart sont espaces de <c>0x200</c>.
+    /// </para>
+    /// <para>
+    /// Le sort s'eteint dans la foulee : les segments vivent leur vie sans lui.
+    /// </para>
+    /// </summary>
+    private static void TickGale_0047FB80(byte* record)
+    {
+        byte* e = record;
+        byte* caster = *(byte**)(e + 0x74);
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            // ------------------------------------------------------------ la naissance
+            *(uint*)caster |= 0x80;
+
+            int heading = *(short*)(e + 0x32);
+            int half = StatusBubbleHeight_00538BC0((uint*)caster) >> 1;
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * half;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * half;
+            *(int*)(e + 0x20) += half << 0xc;
+
+            *(ushort*)(e + 0x32) += 0x400;
+            *(ushort*)(e + 0x34) += 0x400;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(uint*)(e + 0x28) = 0x20004000;
+            *(ushort*)(e + 0x2c) = 0x2000;
+
+            e[0x04] = (byte)((CrtRand() & 3) + 8);     // un modele parmi quatre
+
+            SpawnCastEntity_0047AAE0(e, 0x83, e[0x0b], -1);
+
+            unchecked { *(ushort*)(e + 0x34) += 0xfc00; }   // -0x400 : le tangage est rendu
+
+            *(int*)(e + 0x70) = 0;
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+            *(ushort*)(e + 0x12) = 0x1f;
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+            *(int*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x14) = 0x2000;
+            *(ushort*)(e + 0x16) = 2;
+            *(uint*)(e + 0x38) = 0x01f0f0f0;
+            *(ushort*)(e + 0x1a) = 1;
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA0() + 0x10, 0xbe, e[0x0b], -1);
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00552568(), (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047fc97 — treize images d'attente, puis tout d'un coup.
+        if (*(short*)(e + 0x10) < 0x0e)
+        {
+            *(ushort*)(e + 0x10) += 1;
+            return;
+        }
+
+        *(int*)(e + 0x28) = 0x1ffc;
+        *(ushort*)(e + 0x14) = 0;
+        *(ushort*)(e + 0x16) = 3;
+        *(uint*)(e + 0x38) = 0x00f0f0f0;
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors00551BA0() + 0x10, 0xbe, e[0x0b], -1);
+
+        Aud.PlayPositionalSound(0x26, 0x653, 0x1200, (int*)(e + 0x1c));
+
+        int baseHeading = *(short*)(e + 0x32) - 0x200;
+
+        // Trois eclairs, tous partis du meme point : la position est rendue entre chaque.
+        for (int arc = 0; arc < 3; arc++)
+        {
+            int drift = 0;
+            int keptX = *(int*)(e + 0x1c);
+            int keptY = *(int*)(e + 0x20);
+            int keptZ = *(int*)(e + 0x24);
+
+            for (int segment = 0; segment < 3; segment++)
+            {
+                drift = (CrtRand() & 0x1c0) - drift - 0x100;
+                *(short*)(e + 0x32) = (short)(baseHeading + drift);
+
+                int length = (CrtRand() & 0xff) + 0x100;
+
+                *(short*)(e + 0x28) = (short)((length << 0xc) / 250);
+                *(short*)(e + 0x2a) = (short)((CrtRand() & 0xfff) + 0x2000);
+                *(short*)(e + 0x2c) = (short)((CrtRand() & 0xfff) + 0x2800);
+                e[0x04] = (byte)(CrtRand() % 3 + 8);
+
+                SpawnCastEntity_0047AAE0(e, 0x75, e[0x0b], -1);
+
+                int heading = *(short*)(e + 0x32) - 0x400;
+                *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * length;
+                *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * length;
+            }
+
+            *(int*)(e + 0x20) = keptY;
+            *(int*)(e + 0x1c) = keptX;
+            *(int*)(e + 0x24) = keptZ;
+
+            baseHeading += 0x200;                      // l'eventail s'ouvre
+        }
+
+        *(uint*)e = 0;
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047fe40 @ 0x0047fe40 — <b>la bourrasque de Ventilo</b> : le sous-type
+    /// <c>0x83</c>, creneau 131 de <see cref="s_StaticEntityHandlers_00551f30"/>. 29 octets,
+    /// <b>absente de <c>Blaze.c</c></b> — le deuxieme plus court corps de sort du depot.
+    ///
+    /// <para>
+    /// Elle pose le bit <c>4</c> de <c>+0x36</c> a chaque image — le seul corps de sort a le faire
+    /// dans son corps plutot qu'a la naissance — et perd <c>0x101010</c> de teinte. Seize images.
+    /// </para>
+    /// </summary>
+    private static void TickGaleGust_0047FE40(byte* record)
+    {
+        byte* e = record;
+
+        e[0x36] |= 4;
+
+        uint tint;
+        unchecked { tint = *(uint*)(e + 0x38) + 0xffefeff0; }   // -0x101010
+        *(uint*)(e + 0x38) = tint;
+
+        if (tint == 0) *(uint*)e = 0;
     }
 
     /// <summary>

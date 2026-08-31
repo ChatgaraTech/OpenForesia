@@ -5,6 +5,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Ventilo, le vingt-deuxième sort** — deux corps neufs seulement : le sort `0x0047fb80` et sa bourrasque `0x0047fe40` (29 octets). Plus le quatrième script de sons différés, `0x00552568`
+- doc : **c'est Coup de jus trois fois** — il réemploie tel quel le segment `0x75` du sort 11 et l'éclat `0xbe` déjà écrit. Sa boucle est double : **trois éclairs de trois segments**, tous partis du **même point** — la position est mise de côté et rendue entre chaque —, avec des caps de départ espacés de `0x200` qui ouvrent l'éventail
 - feat : **Boule de feu, le vingt-et-unième sort** — trois corps neufs absents de `Blaze.c` : le sort `0x0047f570` (**1425 octets, le plus gros du dépôt**), sa coque `0x0047fb10` et sa traînée `0x00482ef0`. Le quatrième enfant, l'éclat `0xbe`, était déjà écrit et exercé
 - doc : **le seul sort qui choisisse entre deux sondes** — deux blocs de six mots se suivent sur sa pile, et la fin du corps calcule `esp + eax*12 + 0x1c` : une sonde étroite (50 de portée) tant que la boule vole, une large (512) pendant l'explosion. Les trois sondes variables du dépôt *modifiaient* leurs mots ; celle-ci en **sélectionne** une
 - doc : **et le seul qui secoue l'écran** — l'explosion pose 8 dans `DAT_005de0ac`, le décalage vertical de caméra, puis le sort le ronge lui-même de trois quarts par image. Il peint aussi le fond en rouge **directement** dans `s_BackColour*_005e93a0`, sans passer par le mode 2 des autres sorts
