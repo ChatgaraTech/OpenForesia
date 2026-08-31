@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Exorciste, le dix-neuvième sort** — deux corps absents de `Blaze.c` : le sort `0x0047f070` et son halo `0x0047f290`, **30 octets — le plus court corps de sort du dépôt**. Plus le troisième script de sons différés, `0x00552558`
+- doc : **il ne frappe pas, il nettoie** — à chaque image il balaie autour de lui et appelle `ClearAllStatusEffects_0053C330`, l'entrée 29 de la table des 48. **Faute de cible il se rabat sur le lanceur** : c'est ce qui en fait un sort de soin autant que d'attaque
+- doc : **sa sonde pulse au lieu de croître** — l'échelle bat au rythme d'un cosinus, et l'avance et la profondeur de la sonde en sont tirées à chaque image (sept dixièmes en arrière, quatorze fois plus en avant). Troisième sonde variable du dépôt, après l'ombre de Ténèbres et le segment de Coup de jus
+- doc : **le balayage est écrit sur place**, pas via `ProbeMeleeTarget_00474CA0` — la sonde est particulière (un demi-tour de décalage de cap, aucune ouverture) et l'acteur est le **sort lui-même**, pas son `+0x74`
 - feat : **Trouille, le dix-huitième sort** — trois corps absents de `Blaze.c` : le sort `0x0047eae0`, le fantôme `0x0047ec30` (808 octets) et la luciole `0x0047ef60`. Cinquième sort entretenu, à 3 PM par vingt images
 - doc : **le seul sort qui ne puisse même pas mourir sans le feu vert de son enfant** — le fantôme naît gros, rétrécit, et quand son échelle Y passe sous `0x2040` il se pose le bit `0x02`, **le pose sur son père** et relâche le lanceur. Tant que le sort ne l'a pas, il ne lit ni la manette ni les PM — et sa branche de fin commence par tester ce bit et rend la main s'il manque
 - doc : **le fantôme tourne par le plus court chemin** — l'écart d'angle est ramené sur douze bits puis comparé à `0x800` ; au-delà, le huitième est **nié** plutôt que de faire presque un tour complet. Seul corps transcrit à faire ce choix

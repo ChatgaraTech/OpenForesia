@@ -4816,6 +4816,11 @@ public static unsafe partial class Blaze
             case 0x0047EC30: TickFearGhost_0047EC30(record); return;
             case 0x0047EF60: TickFearWisp_0047EF60(record); return;
 
+            // EXORCISTE, ecole 0 indice 18 — il ne frappe pas, il NETTOIE : ClearAllStatusEffects
+            // a chaque image, sur ce qu'il balaie, ou sur le lanceur faute de cible.
+            case 0x0047F070: TickExorcism_0047F070(record); return;
+            case 0x0047F290: TickExorcismHalo_0047F290(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -9570,6 +9575,29 @@ public static unsafe partial class Blaze
     /// <summary>Les deux pas du script en memoire native.</summary>
     private static byte* DelayedSoundScript00552548()
         => NativeCopy(s_DelayedSoundScript_00552548, ref s_DelayedSoundScript00552548Storage);
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552558</c> — <b>le troisieme script de sons differes</b>, celui que
+    /// <see cref="TickExorcism_0047F070"/> met en file a sa naissance. Deux pas : le son
+    /// <c>0x19</c>, deux images d'attente, puis le <c>0x1c</c> qui termine.
+    ///
+    /// <para>
+    /// Il suit <see cref="s_DelayedSoundScript_00552548"/> sans trou, et son propre octet de delai
+    /// nul borne les deux entrees suivantes (<c>0x00552568</c>), qui appartiennent a un quatrieme
+    /// script non encore rencontre.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00552558 =
+    [
+        0x19, 0x02, 0x01, 0x00, 0x00, 0x08, 0x00, 0x12,   // 0x00552558
+        0x1c, 0x00, 0x01, 0x00, 0x00, 0x08, 0x00, 0x12,   // 0x00552560 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00552558Storage;
+
+    /// <summary>Les deux pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00552558()
+        => NativeCopy(s_DelayedSoundScript_00552558, ref s_DelayedSoundScript00552558Storage);
 
     /// <summary>
     /// Ghidra: FUN_00475a30 @ 0x00475a30 — <b>l'entree 183 (<c>0xb7</c>) de la table statique
@@ -34146,6 +34174,179 @@ public static unsafe partial class Blaze
 
         *(ushort*)(e + 0x10) += 1;
         if (*(short*)(e + 0x10) >= 8) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // EXORCISTE — le dix-neuvieme sort, ecole 0 indice 18, sous-type 0x12
+    //
+    // Deux corps neufs, dont le plus court du depot : trente octets.
+    //
+    //   0x0047F070   LE SORT. Sous-type 0x12 de 0x00551c30, 532 octets. Sixieme sort entretenu,
+    //                a 4 PM par vingt images.
+    //   0x0047F290   LE HALO, sous-type 0x84 de 0x00551f30, 30 octets. Un par image.
+    //
+    // IL NE FRAPPE PAS, IL NETTOIE. A chaque image il balaie autour de lui et appelle
+    // ClearAllStatusEffects_0053C330 — l'entree 29 de la table des 48 — sur ce qu'il trouve. Faute
+    // de cible, il se rabat sur le LANCEUR : le sort se nettoie donc lui-meme quand il ne trouve
+    // personne, ce qui est visiblement l'usage voulu.
+    //
+    // ET SA SONDE ENFLE AVEC LUI. L'echelle bat au rythme d'un cosinus ; l'avance et la profondeur
+    // de la sonde en sont tirees a chaque image — sept dixiemes en arriere, quatorze fois en avant.
+    // C'est la troisieme sonde variable du depot, apres l'ombre de Tenebres et le segment de Coup
+    // de jus, et la seule qui PULSE au lieu de croitre.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047f070 @ 0x0047f070 — <b>Exorciste</b> : le sous-type <c>0x12</c>, creneau 18
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/>. 532 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il bat.</b> Sa teinte suit <c>sin(age &lt;&lt; 9) &gt;&gt; 6 + 0xbf</c> et son echelle
+    /// <c>cos(age &lt;&lt; 7) &gt;&gt; 1 + 0x3000</c> — deux sinusoides de periodes differentes, ce
+    /// qui donne une pulsation qui ne se repete pas. La hauteur, elle, vaut la moitie de la
+    /// largeur.
+    /// </para>
+    /// <para>
+    /// <b>Le balayage est ecrit sur place</b>, pas via
+    /// <see cref="ProbeMeleeTarget_00474CA0"/> : la sonde est particuliere — un demi-tour de
+    /// decalage de cap, aucune ouverture, et une avance et une profondeur <b>tirees de l'echelle
+    /// courante</b> — et l'acteur est le sort lui-meme et non son <c>+0x74</c>.
+    /// </para>
+    /// <para>
+    /// <b>Faute de cible, il prend le lanceur.</b> C'est ce qui fait de lui un sort de soin autant
+    /// que d'attaque : <see cref="ClearAllStatusEffects_0053C330"/> s'applique alors a celui qui le
+    /// lance.
+    /// </para>
+    /// <para>
+    /// Sixieme sort entretenu, a <b>4 PM toutes les vingt images</b> — le meme prix qu'Atchoum.
+    /// </para>
+    /// </summary>
+    private static void TickExorcism_0047F070(byte* record)
+    {
+        byte* e = record;
+        byte* caster = *(byte**)(e + 0x74);
+
+        // Un demi-tour de decalage de cap, et une ouverture de 0x155. Les mots 1 et 5 sont
+        // recalcules plus bas depuis l'echelle.
+        short* probe = stackalloc short[6] { -0x0800, 0x0000, 0x0000, 0x0096, 0x0155, 0x0000 };
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(ushort*)(e + 0x36) = (ushort)((*(ushort*)(e + 0x36) & 0xfffe) | 6);
+            *(short*)(e + 0x2e) = -0x40;
+            e[0x04] = 0x0c;                            // le modele
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00552558(), (int*)(e + 0x1c));
+        }
+
+        // Ghidra: LAB_0047f0e3 — les deux battements, de periodes differentes.
+        int age = *(short*)(e + 0x10);
+        *(ushort*)(e + 0x32) += 0x80;
+
+        int channel = ((int)Winsys3d.GetSinTableEntry(age << 9) >> 6) + 0xbf;
+        *(uint*)(e + 0x38) = (uint)(((channel << 8 | channel) << 8) | channel);
+
+        int scale = (Winsys3d.GetCosTableEntry(age << 7) >> 1) + 0x3000;
+        *(short*)(e + 0x28) = (short)scale;
+        *(short*)(e + 0x2a) = (short)(scale >> 1);     // la hauteur vaut la moitie
+        *(short*)(e + 0x2c) = (short)scale;
+
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24);
+
+        SpawnCastEntity_0047AAE0(e, 0x84, e[0x0b], -1);
+
+        // La sonde suit l'echelle : sept dixiemes en arriere, quatorze fois plus en avant.
+        int reach = scale * 7;
+        probe[1] = (short)((-reach * 10) >> 0xc);
+        probe[5] = (short)((reach * 20) >> 0xc);
+
+        // Le balayage, ecrit sur place : l'acteur est le SORT, pas son lanceur.
+        byte* found = (*(uint*)e & 0x800000) != 0
+            ? SweepPartyForMeleeHit_00519C30(e, (int*)(e + 0x1c), probe, 0x800)
+            : SweepSceneEntitiesForMeleeHit_00519AF0(e, (int*)(e + 0x1c), probe, 0x800);
+
+        // Faute de cible, c'est le lanceur qu'il nettoie.
+        if (found == null) found = *(byte**)(e + 0x74);
+        *(byte**)(e + 0x78) = found;
+
+        *(ushort*)(caster + 6) = *(ushort*)(e + 6);
+        ClearAllStatusEffects_0053C330((uint*)caster, (uint*)found, 0);
+
+        // Ghidra: LAB_0047f1d7 — l'entretien, la meme forme que les cinq autres.
+        if ((*(uint*)e & 0x800000) != 0)
+        {
+            uint index = ((uint*)caster)[2] & 0xff;
+            byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+            int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+            ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+
+            if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
+            {
+                short mana = *(short*)(perChar + 0x14e);
+
+                if (mana >= 4)
+                {
+                    *(short*)(perChar + 0x14e) = (short)(mana - 4);
+                }
+                else
+                {
+                    *(ushort*)(perChar + 0x14e) = 0;
+                    *(uint*)e |= 0x2000000;
+                }
+            }
+        }
+        else if (*(short*)(e + 0x10) >= 0x78)
+        {
+            *(uint*)e |= 0x2000000;
+        }
+
+        // Ghidra: LAB_0047f265
+        if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047f290 @ 0x0047f290 — <b>le halo d'Exorciste</b> : le sous-type <c>0x84</c>,
+    /// creneau 132 de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>30 octets</b> — le plus
+    /// court corps de sort du depot, <b>absent de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Il ne fait rien d'autre que s'effacer : il herite de tout du sort a sa naissance — position,
+    /// echelle, teinte, modele — et perd <c>0x20</c> par canal a chaque image. Six images.
+    /// </para>
+    /// <para>
+    /// <b>Le test porte sur le canal bas seul</b>, en non signe : sous <c>0x20</c> il s'eteint,
+    /// avant comme apres la soustraction. Le double test evite qu'un canal deja bas ne repasse
+    /// au-dessus par emprunt sur le canal voisin.
+    /// </para>
+    /// </summary>
+    private static void TickExorcismHalo_0047F290(byte* record)
+    {
+        byte* e = record;
+        uint tint = *(uint*)(e + 0x38);
+
+        if ((byte)tint < 0x20)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        tint -= 0x202020;
+        *(uint*)(e + 0x38) = tint;
+
+        if ((byte)tint < 0x20) *(uint*)e = 0;
     }
 
     /// <summary>
