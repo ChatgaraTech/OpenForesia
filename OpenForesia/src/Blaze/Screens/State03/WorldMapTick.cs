@@ -4827,6 +4827,12 @@ public static unsafe partial class Blaze
             case 0x0047F400: TickHardeningShell_0047F400(record); return;
             case 0x0047F470: TickHardeningBurst_0047F470(record); return;
 
+            // BOULE DE FEU, ecole 0 indice 20 — le plus gros sort du depot (1425 octets), le seul
+            // qui CHOISISSE entre deux sondes, et le seul qui secoue l'ecran.
+            case 0x0047F570: TickFireOrb_0047F570(record); return;
+            case 0x0047FB10: TickFireOrbShell_0047FB10(record); return;
+            case 0x00482EF0: TickFireOrbTrail_00482EF0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -34575,6 +34581,417 @@ public static unsafe partial class Blaze
             *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;
             *(uint*)e = 0;
         }
+    }
+
+    // =====================================================================
+    // BOULE DE FEU — le vingt-et-unieme sort, ecole 0 indice 20, sous-type 0x14
+    //
+    // Quatre corps, dont trois neufs, et le plus gros sort du depot : 1425 octets pour le seul
+    // corps principal.
+    //
+    //   0x0047F570   LE SORT. Sous-type 0x14 de 0x00551c30. QUATRE ages successifs.
+    //   0x0047FB10   LA COQUE, sous-type 0x51 de 0x00552230, 112 octets.
+    //   0x00482EF0   LA TRAINEE, sous-type 0x50 de 0x00552230, 167 octets.
+    //   0x00475FC0   L'ECLAT 0xbe — deja ecrit et deja exerce.
+    //
+    // IL PORTE DEUX SONDES ET CHOISIT ENTRE ELLES. Les deux blocs de six mots se suivent sur la
+    // pile, et la fin du corps calcule `esp + eax*12 + 0x1c` : une sonde etroite (50 de portee)
+    // tant que la boule vole, une large (512) pendant l'explosion. C'est le seul corps du depot a
+    // CHOISIR sa sonde plutot qu'a la modifier.
+    //
+    // ET IL SECOUE L'ECRAN. L'explosion pose 8 dans DAT_005de0ac — le decalage vertical de camera
+    // qu'EntityHandler_00476730 amortit — puis le sort le ronge lui-meme de trois quarts par image
+    // pendant ses dix dernieres. Il peint aussi le fond en rouge, DIRECTEMENT dans
+    // s_BackColour*_005e93a0, sans passer par le mode 2 des autres sorts.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047f570 @ 0x0047f570 — <b>Boule de feu</b> : le sous-type <c>0x14</c>, creneau
+    /// 20 de <see cref="s_StaticEntityHandlers_00551c30"/>. <b>1425 octets</b>, le plus gros corps
+    /// de sort du depot, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para><b>Quatre ages, dans l'ordre :</b></para>
+    /// <list type="number">
+    /// <item><b>0 a 9</b> — elle se forme. A la premiere image elle se place a mi-hauteur de tete
+    /// du lanceur et a la meme distance devant lui, et lache la coque <c>0x51</c> ; a chaque image
+    /// ensuite, une bille <c>0x70</c> — celle d'Enchant — sur un cap tire au hasard.</item>
+    /// <item><b>13</b> — un anneau <c>0x6c</c>, celui d'Onde de choc, avec l'ancre a zero.</item>
+    /// <item><b>20 et au-dela</b> — elle vole : 20 unites par image, une flammeche <c>0x50</c> une
+    /// image sur deux, et le decor l'arrete. Le joueur peut la lacher en relachant le bouton —
+    /// <b>mais elle ne coute rien de plus</b> : c'est le seul sort qui lise la manette sans
+    /// ponctionner de PM.</item>
+    /// <item><b>l'explosion</b> — deux anneaux, un eclat, le fond en rouge, la secousse de camera
+    /// a 8, et le compteur remis a zero pour dix images d'eclats disperses.</item>
+    /// </list>
+    /// <para>
+    /// <b>DEFAUT DE 1998 sur les images 10 a 19</b> : le cap de la poussee est lu dans un
+    /// emplacement de pile jamais ecrit sur ce chemin. Voir <c>legacy-bug.md</c>, LB-018.
+    /// </para>
+    /// </summary>
+    private static void TickFireOrb_0047F570(byte* record)
+    {
+        byte* e = record;
+
+        // DEUX sondes, contigues sur la pile : l'etroite pour le vol, la large pour l'explosion.
+        short* probes = stackalloc short[12]
+        {
+            0x0000, -0x0032, 0x0032, 0x0064, 0x0000, 0x0032,   // en vol
+            0x0000, -0x0100, 0x0100, 0x0190, 0x0000, 0x0200,   // a l'explosion
+        };
+
+        int* burstAt = stackalloc int[3];
+        uint state = *(uint*)e;
+        int heading;
+        int wide;
+
+        if ((state & 0x2000000) != 0)
+        {
+            // ------------------------------------------------------------ l'explosion
+            if (*(short*)(e + 0x10) >= 0x0a || (state & 0x40000000) != 0)
+            {
+                *(uint*)e = 0;
+                *(uint*)(*(uint**)(e + 0x74)) &= 0xffffff7f;
+                return;
+            }
+
+            *(ushort*)(e + 0x1a) = 7;
+            *(int*)(e + 0x70) = 0;
+            *(uint*)(e + 0x38) = 0x01606060;
+
+            heading = CrtRand();
+            *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(heading) << 6;
+            *(int*)(e + 0x54) = 0x40000;
+            *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(heading) << 6;
+
+            *(ushort*)(e + 0x12) = 3;
+            *(uint*)(e + 0x28) = 0x20002000;
+            *(ushort*)(e + 0x14) = 0x5000;
+            *(ushort*)(e + 0x16) = 2;
+
+            burstAt[0] = *(int*)(e + 0x1c) + (((CrtRand() & 0x1ff) - 0x100) << 0xc);
+            burstAt[1] = *(int*)(e + 0x20);
+            burstAt[2] = *(int*)(e + 0x24) + (((CrtRand() & 0x1ff) - 0x100) << 0xc);
+
+            SpawnStatusEffectEntity_0047AC40(e, burstAt, Descriptors00551A08(), 0xbe, 0, 2);
+
+            // La secousse s'amortit : trois quarts en moins, et le signe s'inverse.
+            int* shake = Mem.Camera(0x005de0ac);
+            if (*shake != 0) *shake = (*shake >> 2) - *shake;
+
+            wide = 1;                                  // la sonde large
+        }
+        else
+        {
+            wide = 0;
+            byte* caster = *(byte**)(e + 0x74);
+
+            if (*(ushort*)(e + 0x10) == 0)
+            {
+                // -------------------------------------------------------- la formation
+                *(uint*)caster |= 0x80;
+                *(uint*)e |= 0x80;
+                *(byte**)(e + 0x70) = e;
+                *(short*)(e + 0x2e) = -0x14;
+
+                int half = StatusBubbleHeight_00538BC0((uint*)caster) >> 1;
+                heading = *(short*)(e + 0x32);
+
+                *(int*)(e + 0x20) += half << 0xc;
+                *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * half;
+                *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * half;
+
+                *(int*)(e + 0x28) = 0;
+                *(uint*)(e + 0x38) = 0x00f0f0f0;
+                *(ushort*)(e + 0x1a) = 3;
+
+                SpawnStatusEffectEntity_0047AC40(
+                    e, (int*)(e + 0x1c), Descriptors00551B00() + 0x28, 0x51, 0, 2);
+
+                *(int*)(e + 0x28) = 0x7fff;
+                *(ushort*)(e + 0x2c) = 0x400;
+                *(uint*)(e + 0x38) = 0;
+                *(ushort*)(e + 0x12) = 0x1f4;
+                *(int*)(e + 0x44) = 0;
+                *(int*)(e + 0x48) = 0;
+                *(int*)(e + 0x4c) = 0;
+
+                Aud.PlayPositionalSound(0x16, 0x155, 0x1200, (int*)(e + 0x1c));
+            }
+            else
+            {
+                // DEFAUT DE 1998 (LB-018) : sur ce chemin, le binaire lit l'emplacement de son
+                // propre argument, jamais ecrit ici. Le cap vaut donc le POINTEUR de
+                // l'enregistrement, et sert tel quel a la poussee des images 10 a 19.
+                heading = (int)(nint)record;
+            }
+
+            // Ghidra: LAB_0047f792
+            ushort age = *(ushort*)(e + 0x10);
+
+            if ((short)age < 0x14)
+            {
+                if ((short)age < 0x0a)
+                {
+                    // Une bille par image, sur un cap quelconque. Le cap est rendu apres.
+                    heading = *(short*)(e + 0x32);
+
+                    *(short*)(e + 0x32) = (short)(CrtRand() + 0x400);
+                    *(short*)(e + 0x34) = (short)CrtRand();
+                    e[0x04] = 0x3f;
+
+                    SpawnCastEntity_0047AAE0(e, 0x70, 0, 2);
+
+                    *(short*)(e + 0x32) = (short)heading;
+                }
+
+                // Ghidra: LAB_0047f7d7 — la treizieme image, et elle seule.
+                if (*(ushort*)(e + 0x10) == 0x13)
+                {
+                    short keptHeading = *(short*)(e + 0x32);
+                    byte* keptAnchor = *(byte**)(e + 0x70);
+
+                    *(int*)(e + 0x70) = 0;             // l'anneau sera sa propre ancre
+                    *(int*)(e + 0x44) = 0;
+                    *(int*)(e + 0x48) = 0;
+                    *(int*)(e + 0x4c) = 0;
+                    *(int*)(e + 0x50) = 0x1000;
+                    *(int*)(e + 0x54) = 0x1000;
+                    *(int*)(e + 0x58) = 0x1000;
+                    *(uint*)(e + 0x38) = 0x00808080;
+                    *(int*)(e + 0x28) = 0;
+                    *(ushort*)(e + 0x2c) = 0;
+                    *(short*)(e + 0x32) = (short)(keptHeading - 0x400);
+                    *(ushort*)(e + 0x34) = 0x400;
+                    e[0x04] = 7;
+
+                    SpawnCastEntity_0047AAE0(e, 0x6c, 0, 4);
+
+                    *(short*)(e + 0x32) = keptHeading;
+                    *(byte**)(e + 0x70) = keptAnchor;
+                }
+            }
+            else
+            {
+                // -------------------------------------------------------- le vol
+                if ((age & 1) != 0)
+                {
+                    short keptHeading = *(short*)(e + 0x32);
+
+                    *(uint*)(e + 0x28) = 0x20002000;
+                    *(ushort*)(e + 0x12) = (ushort)((CrtRand() & 0x7f) + 0xc8);
+                    *(uint*)(e + 0x38) = 0;
+                    *(ushort*)(e + 0x1a) = 7;
+                    *(short*)(e + 0x32) = (short)CrtRand();
+                    *(short*)(e + 0x34) = (short)((CrtRand() & 0x1ff) - 0x100);
+
+                    SpawnStatusEffectEntity_0047AC40(
+                        e, (int*)(e + 0x1c), Descriptors00551A08(), 0x50, 0, 4);
+
+                    *(short*)(e + 0x32) = keptHeading;
+                }
+
+                // Ghidra: LAB_0047f8a1
+                heading = *(short*)(e + 0x32);
+                *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 20;
+                *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 20;
+
+                int keptY = *(int*)(e + 0x20);
+                FinalizeEntityPlacement2((uint*)e);    // Ghidra: FUN_00533940
+                int ground = *(int*)(e + 0x60);
+                *(int*)(e + 0x20) = keptY;
+
+                if (keptY <= ground)
+                {
+                    *(int*)(e + 0x20) = ground;
+                    *(uint*)(e + 0x90) = 0x800;
+                }
+
+                if ((*(uint*)(e + 0x90) & 0x8802) != 0) *(uint*)e |= 0x2000000;
+                if (*(short*)(e + 0x10) >= 0x3c) *(uint*)e |= 0x2000000;
+
+                // Ghidra: LAB_0047f913 — la manette, SANS ponction : elle ne coute rien de plus.
+                if ((*(uint*)e & 0x800000) != 0)
+                {
+                    uint index = ((uint*)caster)[2] & 0xff;
+                    int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+                    ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+                    byte* perChar = GetMainMemPtr() + index * 0x2000 + 0xf0000;
+
+                    if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0) *(uint*)e |= 0x2000000;
+                }
+                else if (*(short*)(e + 0x10) >= 0x28)
+                {
+                    *(uint*)e |= 0x2000000;
+                }
+
+                if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+
+                if ((*(uint*)e & 0x2000000) != 0)
+                {
+                    // ---------------------------------------------------- elle eclate
+                    *(short*)(e + 0x2e) = -0x40;
+                    *(ushort*)(e + 0x34) = 0;
+                    *(int*)(e + 0x44) = 0;
+                    *(int*)(e + 0x48) = 0;
+                    *(int*)(e + 0x4c) = 0;
+                    *(int*)(e + 0x50) = 0x4000;
+                    *(int*)(e + 0x54) = 0x2000;
+                    *(int*)(e + 0x58) = 0x4000;
+                    *(uint*)(e + 0x38) = 0x00808080;
+                    *(int*)(e + 0x28) = 0;
+                    *(ushort*)(e + 0x2c) = 0;
+                    e[0x04] = 7;
+
+                    SpawnCastEntity_0047AAE0(e, 0x6c, 0, 3);
+
+                    *(int*)(e + 0x50) = 0x2000;
+                    *(int*)(e + 0x54) = 0x2000;
+                    *(int*)(e + 0x58) = 0x2000;
+                    e[0x04] = 1;
+
+                    SpawnCastEntity_0047AAE0(e, 0x6c, 1, 0x0e);
+
+                    byte* keptAnchor = *(byte**)(e + 0x70);
+                    *(int*)(e + 0x70) = 0;
+                    *(int*)(e + 0x50) = 0;
+                    *(int*)(e + 0x54) = 0;
+                    *(int*)(e + 0x58) = 0;
+                    *(ushort*)(e + 0x12) = 0x1f;
+                    *(int*)(e + 0x44) = 0;
+                    *(int*)(e + 0x48) = 0;
+                    *(int*)(e + 0x4c) = 0;
+                    *(ushort*)(e + 0x14) = 0x7fff;
+                    *(ushort*)(e + 0x16) = 2;
+                    *(uint*)(e + 0x38) = 0x00f0f0f0;
+                    *(ushort*)(e + 0x1a) = 1;
+
+                    SpawnStatusEffectEntity_0047AC40(
+                        e, (int*)(e + 0x1c), Descriptors00551BA0(), 0xbe, 0, 7);
+
+                    *(byte**)(e + 0x70) = keptAnchor;
+
+                    // Le fond de l'ecran, ecrit DIRECTEMENT — sans le mode 2 des autres sorts.
+                    Mem.s_BackColourR_005e93a0 = 0x00ff;
+                    Mem.s_BackColourG_005e93a2 = 0x0040;
+                    Mem.s_BackColourB_005e93a4 = 0x0040;
+
+                    *(ushort*)(e + 0x10) = 0;          // dix images d'eclats commencent
+                    *Mem.Camera(0x005de0ac) = 8;       // et l'ecran tremble
+
+                    Aud.PlayPositionalSound(0x0b, 0x329, 0x1200, (int*)(e + 0x1c));
+                }
+            }
+
+            // Ghidra: LAB_0047fa7d
+            if ((*(uint*)e & 0x40000000) != 0)
+            {
+                *(uint*)e |= 0x2000000;
+                *(ushort*)(e + 0x10) = 0;
+            }
+        }
+
+        // Ghidra: LAB_0047fa93 — `lea edx,[esp+ecx*4+1Ch]` : la sonde est CHOISIE, pas modifiee.
+        byte* victim = ProbeMeleeTarget_00474CA0(e, probes + wide * 6);
+
+        if (victim != null)
+        {
+            ResolveSpellHit_0053A2B0(*(uint**)(e + 0x74), (uint*)victim, e[7], e[6], 0);
+
+            *(int*)(victim + 0x50) += (int)Winsys3d.GetSinTableEntry(heading) << 5;
+            *(int*)(victim + 0x58) += Winsys3d.GetCosTableEntry(heading) << 5;
+            *(ushort*)(victim + 0x96) = 0x10;
+            *(uint*)victim |= 0x40;
+        }
+
+        *(ushort*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047fb10 @ 0x0047fb10 — <b>la coque de Boule de feu</b> : le sous-type
+    /// <c>0x51</c>, creneau 81 de <see cref="s_StaticEntityHandlers_00552230"/>. 112 octets,
+    /// <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Elle colle a la boule — l'ancre est <c>+0x70</c>, que le sort a pointe sur lui-meme —,
+    /// approche <c>0x1000</c> d'un huitieme et fait tourner son image d'atlas sur <c>+0x1a</c>.
+    /// <b>Elle herite du bit de fin</b> de son ancre et s'eteint avec elle, sans transition.
+    /// </para>
+    /// </summary>
+    private static void TickFireOrbShell_0047FB10(byte* record)
+    {
+        byte* e = record;
+        byte* anchor = *(byte**)(e + 0x70);
+
+        uint state = *(uint*)e | (*(uint*)anchor & 0x2000000);
+        *(uint*)e = state;
+
+        if ((state & 0x2000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_0047fb3a
+        short scale = *(short*)(e + 0x28);
+        scale += (short)((0x1000 - scale) >> 3);
+        *(short*)(e + 0x28) = scale;
+        *(short*)(e + 0x2a) = scale;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+
+        byte frame = (byte)(e[0x40] + 1);
+        e[0x40] = frame;
+
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (frame >= *(ushort*)(e + 0x1a)) e[0x40] = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00482ef0 @ 0x00482ef0 — <b>la trainee de Boule de feu</b> : le sous-type
+    /// <c>0x50</c>, creneau 80 de <see cref="s_StaticEntityHandlers_00552230"/>. 167 octets,
+    /// <b>absente de <c>Blaze.c</c></b>. C'est le seul corps de ce sort qui vive loin des autres
+    /// dans le binaire.
+    ///
+    /// <para>
+    /// Elle tourne autour de sa mere en coordonnees <b>spheriques</b> : son rayon <c>+0x12</c> perd
+    /// un huitieme par image et son cap <c>+0x32</c> recule de <c>0x80</c>, le tangage <c>+0x34</c>
+    /// restant celui que la boule lui a tire. <b>Sa teinte MONTE</b> de <c>0x202020</c> jusqu'a
+    /// <c>0xe0e0e0</c>, a l'envers de toutes les autres trainees du depot.
+    /// </para>
+    /// <para>
+    /// <b>Deux fins</b> : son rayon sous <c>0x30</c>, ou sa mere marquee <c>0x40000000</c>.
+    /// </para>
+    /// </summary>
+    private static void TickFireOrbTrail_00482EF0(byte* record)
+    {
+        byte* e = record;
+        byte* mother = *(byte**)(e + 0x6c);
+
+        int* offset = stackalloc int[3];
+
+        unchecked { *(ushort*)(e + 0x32) += 0xff80; }  // -0x80
+
+        short radius = *(short*)(e + 0x12);
+        radius -= (short)(radius >> 3);
+        *(short*)(e + 0x12) = radius;
+
+        SetVectorFromAngles_00532AD0(
+            offset, *(short*)(e + 0x32), *(short*)(e + 0x34), radius);
+
+        *(int*)(e + 0x1c) = *(int*)(mother + 0x1c) + offset[0];
+        *(int*)(e + 0x20) = *(int*)(mother + 0x20) + offset[1];
+        *(int*)(e + 0x24) = *(int*)(mother + 0x24) + offset[2];
+
+        uint tint = *(uint*)(e + 0x38);
+        if (tint < 0x00e0e0e0) *(uint*)(e + 0x38) = tint + 0x00202020;
+
+        byte frame = (byte)(e[0x40] + 1);
+        e[0x40] = frame;
+        if (frame >= *(ushort*)(e + 0x1a)) e[0x40] = 0;
+
+        if (*(short*)(e + 0x12) < 0x30 || (*(uint*)mother & 0x40000000) != 0) *(uint*)e = 0;
     }
 
     /// <summary>

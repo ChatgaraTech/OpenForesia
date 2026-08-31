@@ -948,3 +948,52 @@ direction ne veut rien dire.
 
 Sur ce chemin, poser `ebp = +0x32 - 0x400` et `eax = +0x34` comme le fait le chemin « plus de
 cible » : la flèche continuerait tout droit, ce qui est visiblement l'intention.
+
+---
+
+## LB-018 — Boule de feu pousse sa victime dans la direction de sa propre adresse
+
+**Relevé** le 2026-08-31 au désassembleur, en transcrivant `FUN_0047f570` (le sous-type `0x14`).
+Absent de `Blaze.c`. **Même défaut que LB-017, dans un autre corps.**
+
+### Symptôme
+
+Une Boule de feu qui touche quelqu'un **entre sa dixième et sa dix-neuvième image** — la phase où
+elle est formée mais n'a pas encore commencé à voler — projette sa victime dans une direction
+arbitraire au lieu de l'écarter du point d'impact. Comme pour LB-017, la direction est stable pour
+un même emplacement de la table des entités.
+
+### La cause
+
+Le cap de la poussée vit dans `ebp` jusqu'à la fin du corps. Quatre chemins y mènent :
+
+| âge | `ebp` |
+|---|---|
+| 0 (naissance) | `+0x32`, puis réécrit par la branche « moins de dix » |
+| 1 à 9 | `+0x32` — correct |
+| **10 à 19** | **`[esp+0x38]`, jamais écrit sur ce chemin** |
+| 20 et au-delà | `+0x32` — correct |
+
+```
+0047f78e  mov ebp,[esp+38h]      <- jamais ecrit quand on arrive ici
+...
+0047fac4  push ebp
+0047fac5  call 00545A1Ch         <- rsin(ebp) : la poussee
+```
+
+`[esp+0x38]` est, à cet instant, **l'emplacement du premier argument de la fonction** — le pointeur
+de l'enregistrement. Les deux seules écritures dans cette case (`0047f91a` et `0047f9f1`) sont sur
+des chemins que les images 10 à 19 ne prennent pas, et la pile est réécrite par l'appelant à chaque
+image : la valeur lue est donc toujours l'adresse, jamais un reste de l'image précédente.
+
+C'est la **quatrième** occurrence de cette famille, après LB-008, LB-015 et LB-017 — et toutes
+les quatre sont dans des corps que Ghidra n'a pas décompilés.
+
+### Ce que la transcription fait
+
+`TickFireOrb_0047F570` reproduit la lecture, en prenant le pointeur de l'enregistrement comme cap.
+La valeur diffère de celle de 1998 ; ce qui est fidèle, c'est que la direction ne veut rien dire.
+
+### Où porterait le correctif
+
+Poser `ebp = +0x32` sur ce chemin comme sur les trois autres.

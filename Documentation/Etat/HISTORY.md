@@ -5,6 +5,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-08-31
+- feat : **Boule de feu, le vingt-et-unième sort** — trois corps neufs absents de `Blaze.c` : le sort `0x0047f570` (**1425 octets, le plus gros du dépôt**), sa coque `0x0047fb10` et sa traînée `0x00482ef0`. Le quatrième enfant, l'éclat `0xbe`, était déjà écrit et exercé
+- doc : **le seul sort qui choisisse entre deux sondes** — deux blocs de six mots se suivent sur sa pile, et la fin du corps calcule `esp + eax*12 + 0x1c` : une sonde étroite (50 de portée) tant que la boule vole, une large (512) pendant l'explosion. Les trois sondes variables du dépôt *modifiaient* leurs mots ; celle-ci en **sélectionne** une
+- doc : **et le seul qui secoue l'écran** — l'explosion pose 8 dans `DAT_005de0ac`, le décalage vertical de caméra, puis le sort le ronge lui-même de trois quarts par image. Il peint aussi le fond en rouge **directement** dans `s_BackColour*_005e93a0`, sans passer par le mode 2 des autres sorts
+- doc : **il lit la manette sans ponctionner de PM** — le joueur peut relâcher pour déclencher l'explosion, mais aucun prix supplémentaire n'est prélevé. Seul cas du dépôt
+- doc : **LB-018, quatrième défaut de la même famille** — entre ses images 10 et 19, le cap de la poussée est lu dans l'emplacement de son propre argument, jamais écrit sur ce chemin : la victime part dans la direction de l'adresse de l'entité. Après LB-008, LB-015 et LB-017, et comme elles dans un corps que Ghidra n'a pas décompilé
 - feat : **Durdur, le vingtième sort** — trois corps absents de `Blaze.c` : le sort `0x0047f2b0`, sa coquille `0x0047f400` et son onde `0x0047f470`. **Un quart de l'école 0 est écrit**
 - doc : **il emprunte la branche « sans ancre » de l'anneau d'Onde de choc** — il pose `+0x70` à zéro avant d'engendrer le sous-type `0x6c`, ce qui fait replier à l'anneau sa position dans son écart et devenir sa propre référence. Cette branche avait été transcrite « parce qu'elle est là », sans appelant connu : elle en a un
 - doc : **la coquille signale par une taille atteinte, pas par une horloge** — dès qu'elle arrive à moins de `0x10` de la taille visée, elle pose `0x2000000` sur son père et s'éteint. Troisième signal remontant du dépôt, après la lame d'Assaut magique et le fantôme de Trouille, et le seul déclenché par une grandeur physique
