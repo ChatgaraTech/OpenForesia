@@ -5015,6 +5015,12 @@ public static unsafe partial class Blaze
             case 0x0044DED0: TickAngelForm_0044DED0(record); return;
             case 0x0044EA60: TickAngelFeather_0044EA60(record); return;
 
+            // DODO, ecole 2 indice 0 — la PREMIERE fiche de l'ecole de la Fee, et elle ne
+            // ressemble a rien de l'ecole 1 : le sort ne vit qu'une image et tout est dans sa
+            // bulle, un projectile a tete chercheuse qui pose l'effet d'etat 11.
+            case 0x00476C70: TickSleep_00476C70(record); return;
+            case 0x00476CF0: TickSleepBubble_00476CF0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -46778,6 +46784,282 @@ public static unsafe partial class Blaze
         // Ghidra: LAB_0044ef07 — le compteur boucle, comme celui du sort.
         *(short*)(e + 0x16) += 1;
         if (*(short*)(e + 0x16) >= 0x0bb8) *(short*)(e + 0x16) = 0x14;
+    }
+
+    // =====================================================================
+    // DODO — la PREMIERE fiche de l'ecole 2, indice 0, sous-type 0xa0
+    //
+    //   0x00476C70   LE SORT. Sous-type 0xa0 de 0x00551c30, dix-huit lignes. Decompile dans Blaze.c.
+    //   0x00476CF0   sa bulle, sous-type 0x53 de 0x00552230. 727 octets, ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00476CF0.asm.
+    //
+    // L'ECOLE 2 NE RESSEMBLE PAS A L'ECOLE 1, ET LA PREMIERE FICHE LE DIT DEJA. Les vingt-quatre
+    // fiches de l'ecole 1 sont des corps qui vivent trente a soixante images, comptent, engendrent
+    // du decor et posent leur effet a une image fixee. Dodo ne vit qu'UNE image : il remplit une
+    // douzaine de champs, engendre un seul enfant, et s'efface en mettant son mot d'etat a zero.
+    // Tout le sort est dans l'enfant.
+    //
+    // ET CET ENFANT EST UN PROJECTILE A TETE CHERCHEUSE. La bulle avance de dix unites par image
+    // dans l'axe de son cap, tourne de 0x40 par image vers la cible que PickTargetInCone lui a
+    // trouvee — mais seulement si l'ecart depasse une zone morte de +-0x40 —, ondule verticalement
+    // autour de sa hauteur de depart, et seme une eclaboussure par image a une position tiree au
+    // sort dans un cube de 0x40 unites. Elle meurt sur le decor, sur son age (quarante images), ou
+    // sur sa victime — a qui elle pose l'effet d'etat 11.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551b60</c> — <b>les quatre images de la bulle de sommeil</b>, l'atlas
+    /// que <see cref="TickSleep_00476C70"/> passe a son enfant <c>0x53</c>.
+    ///
+    /// <para>
+    /// <b>Quatre, et l'engendreur le dit</b> : le sort pose <c>+0x1a = 4</c> juste avant
+    /// d'engendrer, et <see cref="TickSleepBubble_00476CF0"/> fait tourner <c>+0x40</c> en anneau
+    /// sur ce compte. La donnee suit : quatre tuiles <c>0x10 x 0x10</c> en <c>v = 0x78</c>, et la
+    /// cinquieme entree (<c>0x00551b80</c>) change de forme.
+    /// </para>
+    /// <para>
+    /// Elle commence exactement ou <see cref="s_Descriptors_00551B40"/> finit — la note portee sur
+    /// celle-la annonçait deja le passage en <c>0x10 x 0x10</c> a cette frontiere.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_00551B60 =
+    [
+        0x30, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551b60
+        0x40, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551b68
+        0x50, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551b70
+        0x60, 0x78, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551b78
+    ];
+
+    private static byte* s_Descriptors00551B60Storage;
+
+    /// <summary>Les quatre descripteurs en memoire native.</summary>
+    private static byte* Descriptors00551B60()
+        => NativeCopy(s_Descriptors_00551B60, ref s_Descriptors00551B60Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00476c70 @ 0x00476c70 — <b>Dodo</b> : le sous-type <c>0xa0</c>, creneau 160 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>premiere fiche de l'ecole 2</b>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne vit qu'une image.</b> C'est la premiere fiche du depot a le faire : il monte a la
+    /// hauteur de tete du lanceur (<see cref="StatusBubbleHeight_00538BC0"/>, arrondie au pair et
+    /// portee en <c>0x800</c>), remplit une douzaine de champs pour son enfant, engendre la bulle
+    /// <c>0x53</c>, puis <b>met son propre mot d'etat a zero</b> — ce qui l'efface avant l'image
+    /// suivante. Aucune des vingt-quatre fiches de l'ecole 1 ne fonctionne ainsi ; toutes comptent
+    /// des images.
+    /// </para>
+    /// <para>
+    /// Les champs qu'il pose sont ceux que la bulle relira en naissant : l'atlas
+    /// <see cref="Descriptors00551B60"/> et son compte d'images <c>+0x1a = 4</c>, la teinte
+    /// <c>0x808080</c>, les echelles, et <c>+0x78 = 0</c> — la bulle n'a <b>pas</b> de cible en
+    /// naissant, elle ira la chercher elle-meme.
+    /// </para>
+    /// </summary>
+    private static void TickSleep_00476C70(byte* record)
+    {
+        byte* e = record;
+
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+        *(int*)(e + 0x20) += (int)((uint)height & 0xfffffffe) * 0x800;
+
+        *(short*)(e + 0x2e) = -20;
+
+        *(uint*)(e + 0x38) = 0x00808080;
+        *(uint*)(e + 0x28) = 0x20002000;
+        *(ushort*)(e + 0x2c) = 0x1f;
+
+        *(int*)(e + 0x50) = 0;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = 0;
+
+        *(ushort*)(e + 0x9a) = 0xd000;
+        *(byte**)(e + 0x78) = null;
+        *(ushort*)(e + 0x1a) = 4;
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors00551B60(), 0x53, e[0x0b], -1);
+
+        // ET IL S'EFFACE : le mot d'etat entier a zero, donc plus de 0x80000000.
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00476cf0 @ 0x00476cf0 — <b>la bulle de Dodo</b> : le sous-type <c>0x53</c> de
+    /// <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c>. 727 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00476CF0.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est elle le sort.</b> Elle cherche sa cible seule, a la premiere image, par
+    /// <see cref="PickTargetInCone_00474F00"/> avec un masque plein — puis, tant qu'elle en a une,
+    /// elle tourne vers elle de <c>0x40</c> par image. <b>La correction a une zone morte</b> :
+    /// l'ecart de cap est replie sur douze bits et decale de <c>0x40</c> ; s'il tient dans
+    /// <c>0x80</c>, la bulle ne corrige pas. Le sens du virage sort d'un
+    /// <c>setge</c>/<c>dec</c>/<c>and 0x80</c> qui vaut <c>+0x40</c> sous un demi-tour et
+    /// <c>-0x40</c> au-dela.
+    /// </para>
+    /// <para>
+    /// <b>Elle avance de dix unites par image</b> dans l'axe de son cap, et <b>ondule</b> : sa
+    /// hauteur vaut <c>sin(age &lt;&lt; 8) * 32</c> ajoute a la hauteur de depart, que la premiere
+    /// image a rangee dans <c>+0x48</c>. Chaque image elle seme une eclaboussure <c>0xbf</c> a une
+    /// position tiree au sort dans un cube de <c>0x40</c> unites autour d'elle — trois tirages, un
+    /// par axe — en pretant <c>+0x1a = 1</c> le temps de l'appel.
+    /// </para>
+    /// <para>
+    /// <b>Trois facons de mourir</b>, et toutes relachent le lanceur : le decor
+    /// (<c>0x40000000</c> pose par <see cref="FinalizeEntityPlacement2"/>, ou le contact
+    /// <c>0x8802</c> en <c>+0x90</c>), l'age (quarante images), ou la victime. La hauteur que la
+    /// finalisation calcule est jetee — la bulle vole, elle ne se pose pas.
+    /// </para>
+    /// <para>
+    /// <b>Sur la victime</b> : la paire famille/indice est pretee au lanceur <b>en un seul mot</b>
+    /// (<c>+0x06</c> et <c>+0x07</c> ensemble, la ou l'ecole 1 les ecrit octet par octet), puis
+    /// <see cref="ApplyStatusEffect_0053B730"/> — <b>l'effet d'etat 11</b> — le clignotement, et un
+    /// halo <c>0xbe</c> mis a l'echelle de la tete de la victime, <c>(hauteur &lt;&lt; 12) / 150</c>
+    /// par la multiplication magique <c>0x1B4E81B5</c>.
+    /// </para>
+    /// </summary>
+    private static void TickSleepBubble_00476CF0(byte* record)
+    {
+        byte* e = record;
+
+        // La boite de detection, reconstruite sur la pile a chaque image.
+        short* probe = stackalloc short[6] { 0, -60, 60, 100, 0, 120 };
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(uint*)e |= 0x80;
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+
+            // La hauteur de depart, autour de laquelle elle ondulera.
+            *(int*)(e + 0x48) = *(int*)(e + 0x20);
+        }
+
+        // Ghidra: LAB_00476d40 — la tete chercheuse.
+        byte* target = *(byte**)(e + 0x78);
+
+        if (target == null)
+        {
+            *(byte**)(e + 0x78) = PickTargetInCone_00474F00(e, 0xffffffff);
+        }
+        else
+        {
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            int yaw = *(short*)(e + 0x32);
+
+            // L'ecart de cap, replie sur douze bits — ce masque est aussi ce qui rend inoffensif
+            // le mot haut du registre, que le binaire ne recharge pas.
+            int error = (Winsys3d.Ordinal_457(dx, dz) - yaw) & 0xfff;
+
+            // LA ZONE MORTE : sous 0x80 de part et d'autre, la bulle ne corrige pas.
+            if (((error + 0x40) & 0xfff) > 0x80)
+            {
+                // Ghidra: `setge dl ; dec edx ; and edx,80h ; add edx,-0x40` — +0x40 sous un
+                // demi-tour, -0x40 au-dela.
+                int turn = error >= 0x800 ? -0x40 : 0x40;
+                *(short*)(e + 0x32) = (short)(turn + yaw);
+            }
+        }
+
+        // Ghidra: LAB_00476da8 — dix unites par image dans l'axe du cap.
+        int heading = *(short*)(e + 0x32);
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 10;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 10;
+
+        // L'ONDULATION : l'age, porte a huit bits, sert d'angle.
+        *(int*)(e + 0x20) =
+            ((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 8) << 5) + *(int*)(e + 0x48);
+
+        // L'ECLABOUSSURE, une par image, a une position tiree dans un cube de 0x40 unites.
+        {
+            short lentFrames = *(short*)(e + 0x1a);
+            *(ushort*)(e + 0x1a) = 1;
+
+            int* scatter = stackalloc int[3];
+            scatter[0] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x1c);
+            scatter[1] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x20);
+            scatter[2] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x24);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, scatter, Descriptors00551BB8(), 0xbf, e[0x0b], -1);
+
+            *(short*)(e + 0x1a) = lentFrames;
+        }
+
+        // La finalisation sert au CONTACT, pas au placement : sa hauteur est jetee.
+        int flying = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);
+        bool consumed = (*(uint*)e & 0x40000000) != 0;
+        *(int*)(e + 0x20) = flying;
+
+        if (!consumed && (*(uint*)(e + 0x90) & 0x8802) == 0)
+        {
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+            if (victim != null)
+            {
+                // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
+                *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+                // Le binaire appelle le lecteur de bloc de statistiques et jette le resultat ; la
+                // fonction est pure, l'appel est donc sans effet. Transcrit tel quel.
+                _ = GetEntityStatBlock((uint*)victim);
+
+                ApplyStatusEffect_0053B730(*(uint**)(e + 0x74), (uint*)victim, 0);
+
+                *(uint*)victim |= 0x40;
+                *(ushort*)(victim + 0x96) = 0x10;
+
+                // LE HALO, mis a l'echelle de la tete de la victime.
+                int height = StatusBubbleHeight_00538BC0((uint*)victim);
+
+                *(int*)(e + 0x44) = 0;
+                *(int*)(e + 0x48) = (height & ~1) << 0xb;
+
+                // (hauteur << 12) / 150 — multiplication magique 0x1B4E81B5 puis `sar 3`.
+                int scale = (height << 0xc) / 150;
+
+                *(int*)(e + 0x4c) = 0;
+                *(int*)(e + 0x50) = 0;
+                *(int*)(e + 0x54) = 0;
+                *(int*)(e + 0x58) = 0;
+
+                *(int*)(e + 0x28) = (scale << 0x10) | scale;
+                *(short*)(e + 0x16) = 0x1f;
+                *(uint*)(e + 0x38) = 0x01606060;
+                *(ushort*)(e + 0x1a) = 7;
+                *(byte**)(e + 0x70) = victim;
+
+                SpawnStatusEffectEntity_0047AC40(
+                    e, (int*)(e + 0x1c), TrapBurstDescriptors(), 0xbe, 0, 3);
+
+                Aud.PlayPositionalSound(0x21, 0x0329, 0x1200, (int*)(e + 0x1c));
+
+                *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+                *(uint*)e = 0;
+                return;
+            }
+
+            // Ghidra: LAB_00476f6e — l'anneau d'images de l'atlas.
+            e[0x40] = (byte)(e[0x40] + 1);
+            if (e[0x40] >= *(short*)(e + 0x1a)) e[0x40] = 0;
+
+            // Un bruit toutes les quatorze images.
+            if (*(short*)(e + 0x10) % 14 == 0)
+            {
+                Aud.PlayPositionalSound(0x17, 0x0100, 0x1200, (int*)(e + 0x1c));
+            }
+
+            *(short*)(e + 0x10) += 1;
+            if (*(short*)(e + 0x10) < 0x28) return;
+        }
+
+        // Ghidra: LAB_00476fb3 — le decor, ou l'age : le lanceur est relache et la bulle s'efface.
+        *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+        *(uint*)e = 0;
     }
 
     /// <summary>
