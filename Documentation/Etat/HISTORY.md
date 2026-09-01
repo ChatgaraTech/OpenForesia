@@ -5,6 +5,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **`0x00541550`, le pas sur le maillage du terrain** — 1584 octets absents de `Blaze.c`, la piece que l'embarcation attendait. Zone 3 passe a **124 des 136**. Il ne deplace rien : il dit sur quelles faces l'entite se retrouve, quel plancher et quel plafond elle a, et ce qui l'a arretee
+- doc : **une troisieme table sur le morceau de terrain, `morceau + 0x30`** — la liste d'adjacence par sommet, une suite de `short` terminee par un negatif. C'est elle qui rend la traversee d'arete possible sans balayer toutes les faces
+- doc : **le bobinage des faces identifie la face d'en face** — la voisine est celle dont une arete est le couple de sommets INVERSE, compare comme une simple egalite de dwords. Aucune recherche geometrique
+- doc : **le masque de traversee et le test « qui est a bord » sont le meme bit `0x2000`** — les deux bouts du mecanisme, ecrits sans se connaitre, se recoupent dessus. C'est le meilleur controle qu'on ait sur la lecture des deux corps
+- fix : **`census-entity-handlers.sh` ne voyait pas `CallSubAreaMoveProbe`** — le creneau 63 de `0x0056afc8` n'est pas appele comme un gestionnaire d'entite (trois arguments, pas un), donc son aiguillage vit ailleurs que dans le repartiteur. Sans cette ligne le corps restait marque « a transcrire » alors qu'il est branche
 - feat : **l'embarcation de la foret**, `0x00458200` — 2088 octets absents de `Blaze.c`, le plus gros corps d'entite de scene transcrit a ce jour, plus son balayage prive `0x00458a30` (943 octets). Zone 3 passe de 122 a **123 des 136** gestionnaires
 - doc : **le groupe la pilote a la pagaie** — quatre gachettes en couples opposes (rotation, poussee), un sillage de deux entites par image, et elle ne bouge que si tout le monde est a bord. Plus il y a de rameurs, moins chaque coup porte mais plus le plafond de vitesse est haut : 8/4 pour un seul, 2/1 pour quatre
 - doc : **`+0x10` n'est pas un etat mais un renvoi vers la fiche de placement de la sous-zone** — la premiere image y range `(+0x14 << 8) | +0x16`, puis les deux champs changent de metier. Chaque image y reecrit position et cap : l'embarcation est encore la au retour

@@ -19808,3 +19808,94 @@ dès l'entrée dans la sous-zone.
 | `0x00541B80` | 5,9 | 0056AFC8 | son jumeau, 258 octets |
 | `0x0049FAD0` `0x004A0480` `0x004A13E0` `0x004A1D50` `0x004A2C90` `0x004A35B0` | 6,7,8 | 0056AD48 | six comportements d'ennemi |
 | `0x004A3C30` `0x004A4270` `0x004A4AE0` `0x004A54E0` | 5,9 | 0056AD48 | quatre comportements d'ennemi |
+
+## 2026-09-01 (suite 3) — `0x00541550`, le pas sur le maillage du terrain
+
+Le deuxième des quatorze de la zone 3, et celui que l'embarcation attendait. **1584 octets, absents
+de `Blaze.c`**, trente-sept étiquettes de saut, **un seul appelé** : `GroundHeightOnFace`. Relevé
+sous `Legacy/Raw/Blaze/FUN_00541550.asm`.
+
+Zone 3 passe de **123 à 124 implémentés sur 136**.
+
+### Ce que c'est
+
+**Il ne déplace rien.** La position est déjà écrite par l'appelant ; cette fonction répond à trois
+questions : *sur quelles faces l'entité se retrouve*, *quel plancher et quel plafond elle a*, et
+*ce qui l'a arrêtée*. Elle écrit les quatre créneaux de face `+0x80`..`+0x8c`, la face courante
+`+0x7c`, le plancher `+0x60`, le plafond `+0x64`, et le mot de contact `+0x90`.
+
+**Trois passes.**
+
+1. **La marche sur le maillage.** Pour chacun des quatre créneaux — un par *genre* de face, l'octet
+   `+0x0e` de la face, le même index que `TryPlaceEntity` emploie —, jusqu'à **seize** traversées
+   d'arête d'affilée. À chaque tour : quelle arête le déplacement franchit, puis la liste
+   d'adjacence **par sommet** du morceau de terrain est parcourue pour trouver la face qui porte
+   la même arête **à l'envers**. Si elle existe et que ses attributs rencontrent le masque,
+   l'entité passe dessus ; sinon le bit `0x0800` est posé et la marche s'arrête.
+2. **Le plancher.** Les quatre créneaux sont relus **du dernier au premier**. Le premier qui porte
+   une vraie face donne `+0x7c` et `+0x60`, et arrête la passe. Si ce sol est à plus de `0x32000`
+   au-dessus de l'entité — cinquante unités —, la marche est trop haute : ou bien le créneau
+   portait déjà `0x2000` et il est effacé au profit du suivant, ou bien c'est un blocage franc.
+3. **Le plafond.** Les créneaux restants reçoivent les attributs de leur face, et le premier
+   d'entre eux qui ne porte pas `0x1000` donne `+0x64`. Si aucun ne convient, `+0x64` vaut
+   `0x80000000` et le contact reçoit `0x20001000`.
+
+### Ce que le corps a appris au dépôt
+
+**Une troisième table sur le morceau de terrain : `morceau + 0x30`.** Le dépôt connaissait
+`+0x28` (les faces, seize octets chacune) et `+0x40` (les sommets, huit octets chacun, déjà déréfé-
+rencé par `DAT_005f7cc0`). `+0x30` est une **liste d'adjacence par sommet** : un tableau de
+pointeurs indexé par numéro de sommet, chacun désignant une suite de `short` — les faces qui
+touchent ce sommet — terminée par un nombre négatif. C'est la structure qui rend la traversée
+d'arête possible sans balayer toutes les faces du morceau.
+
+**Le bobinage des faces est cohérent, et c'est ce qui identifie la face d'en face.** Les arêtes
+sont essayées dans l'ordre `v0→v2`, `v2→v1`, puis `v1→v0` pour un triangle, `v1→v3` et `v3→v0`
+pour un quadrilatère. La voisine est celle dont **une arête est le couple inverse** : le binaire
+compare le couple `(depuis << 16) | vers` aux quatre couples inverses de la candidate, recomposés
+à la volée à partir de ses deux premiers dwords. Aucune recherche géométrique — une égalité de
+dwords.
+
+**Le masque est ce qui rend l'embarcation flottante.** Une face n'est traversable que si
+`attributs & masque` est non nul, et `SweepEntitySurroundings_00458A30` passe `0x2000` : elle ne
+peut aller que sur les faces marquées `0x2000` — **exactement les mêmes** que
+`TickPartyRaft_00458200` teste sur chaque membre du groupe pour savoir qui est à bord. Les deux
+bouts du mécanisme, écrits à une heure d'intervalle et sans se connaître, se recoupent sur ce
+bit-là. C'est le meilleur contrôle qu'on ait sur la lecture des deux corps.
+
+**Le créneau d'arrivée n'est pas forcément celui qu'on parcourt.** Quand l'entité franchit une
+arête vers une face d'un *autre genre*, le nouvel enregistrement est écrit dans le créneau de ce
+genre-là, et le créneau parcouru se retrouve inchangé — sur quoi le corps y écrit `0x8000`,
+« plus de face de ce genre sous moi ». Ce n'est pas un défaut : c'est comment le passage d'un
+genre de sol à un autre est enregistré.
+
+**Trois comparaisons asymétriques dans le test d'arête** — `>= 0`, `> 0`, `< 0`. Un point posé
+exactement sur une arête est donc traité différemment selon l'extrémité, ce qui évite qu'un sommet
+compte deux fois pour deux arêtes voisines. Transcrit tel quel ; le réécrire « proprement » en
+trois `>= 0` changerait le comportement sur les sommets.
+
+**Le bit de quadrilatère est lu dans le CRÉNEAU, pas dans la face.** Le binaire teste
+`[creneau + 2] & 1` et non `face[3] & 1`. Les deux disent la même chose — le créneau est une copie
+des seize bits bas de `face[3]`, et rien de ce qui le retouche ensuite ne va jusqu'au bit 1 — mais
+c'est le créneau qui est lu, et `FindCrossedEdge` le reçoit donc en paramètre plutôt que de
+relire la face. Une divergence aujourd'hui sans effet, notée pour qu'elle ne devienne pas une
+dette silencieuse.
+
+### Le recensement a dû être étendu
+
+`census-entity-handlers.sh` ne comptait « implémenté » que ce qu'un `case` de
+`DispatchEntityHandlerCore` ou un `0x… =>` de `ScriptOpAreaVerb` nomme. **`0x00541550` n'est ni
+l'un ni l'autre** : il n'est pas appelé comme un gestionnaire d'entité — il prend trois arguments,
+pas un — et son aiguillage vit dans `CallSubAreaMoveProbe`. Le script balaie maintenant cette
+fonction aussi. Sans cette ligne le corps serait resté marqué « à transcrire » alors qu'il est
+écrit et branché ; c'est le genre d'écart qui fausse un tableau de bord sans qu'on le voie.
+
+### Ce qui reste ouvert
+
+`CallSubAreaMoveProbe` lève encore pour `0x00541b80`, le jumeau des sous-zones 5 et 9 (258 octets).
+Il n'est atteint que par un appelant des sous-zones 5 ou 9, pas par l'embarcation.
+
+**Douze gestionnaires restent en zone 3** : `0x0049E920` (la priorité — la sonde l'a vu passer),
+`0x00541B80`, et les dix comportements d'ennemi `0x0049FAD0`, `0x004A0480`, `0x004A13E0`,
+`0x004A1D50`, `0x004A2C90`, `0x004A35B0` (sous-zones 6-8) et `0x004A3C30`, `0x004A4270`,
+`0x004A4AE0`, `0x004A54E0` (sous-zones 5 et 9).
