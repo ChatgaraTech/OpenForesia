@@ -248,7 +248,7 @@ tests/           les raccourcis de lancement a double-cliquer (banc.bat : la sal
 | `Documentation/DLL/<dll>.md` | Accumulated knowledge per DLL (ordinals, signatures, confirmed vs. hypothesis). |
 | `OpenForesia/src/Blaze/**` | The reconstruction, split into `Platform/`, `Memory/`, `Engine/`, `Screens/` — **see `Documentation/ARCHITECTURE.md`**. |
 | `OpenForesia/src/Host/**` | Our 2026 scaffolding — the Direct3D 11 replacement for the 1998 display chain. **Not bound by fidelity.** |
-| `OpenForesia.Tools/` | PE export-table dumper, **x86-32 disassembler** (`disasm`, via Iced), the **level-up simulator** (`montee`, `MonteeDeNiveau/`), `playtest.ps1`, and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
+| `OpenForesia.Tools/` | PE export-table dumper, **x86-32 disassembler** (`disasm`, via Iced), the **level-up simulator** (`montee`, `MonteeDeNiveau/`), `playtest.ps1`, the census scripts (`census-*.sh`), **`check-descriptors.sh`** (see below), and the split tooling (`split-manifest.awk`, `apply-split.ps1`, `verify-split.ps1`, `blaze-baseline.txt`, `bodies-baseline.txt`). |
 | `OpenForesia/src/DLL/*.dll` | Copies of the helper DLLs, flattened into the build output for P/Invoke. |
 | `Analyse/` | Notes d'observation du jeu original (comportement, sessions x32dbg). |
 | `tests/` | Raccourcis `.bat` a double-cliquer. `banc.bat` lance le jeu avec la salle d’essai (`OPENFORESIA_AI_BENCH`) et reaffiche les lignes `[BANC]` a la fermeture ; `montee.bat` ouvre le simulateur de montee de niveau ; `feuille-de-route.bat` regenere `GestionnairesEntites.md` apres une seance et reaffiche l’avancement par zone ; `objets.bat` fait le meme office pour `ObjetsAtteignables.md` — le compte, les gestionnaires a ecrire, la dette, et le **controle croise** qui signale les objets que la sonde connait mais qu’`objets.csv` ignore ; `sorts.bat` fait le troisieme, pour `SortsAtteignables.md`. ASCII pur — `cmd.exe` ne lit pas l’UTF-8, et **aucun `!` dans les commandes** : avec `enabledelayedexpansion`, `cmd.exe` le mange avant que `bash` ne le voie (le `!~` d’awk disparaissait, et le compte sortait a zero). |
@@ -385,6 +385,17 @@ dotnet run --project OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x005631f
 Record what you recover in `Documentation/Reference/DataSymbols.md`, keyed by VA. **Never invent
 plausible content** for one of these — an address that lands in `.data`'s uninitialised tail is
 reported as such, and that is an answer.
+
+**And a lookup table's LENGTH is as much a finding as its content.** Consumers index forward from
+the address they are handed — the sprite renderer reads `*(byte**)(e + 0x3c) + e[0x40] * 8` — so a
+range transcribed too short returns uninitialised heap, with no compile error and no exception: the
+sprite simply comes out the wrong size, or invisible, or as scattered garbage. A change of texture
+plate is a *hypothesis* about where a table ends, never a proof. This defect shipped three times
+(`0x00551b00` on Boule de feu, `0x00551528` on Marteau). Run
+**`sh OpenForesia.Tools/check-descriptors.sh`** after touching any `s_Descriptors_…`: it re-reads
+every table out of `Blaze.exe` and prints how many records each install site has left after its
+offset. A margin of 1 is only safe when the entity's body leaves `+0x40` at zero — check that by
+hand, the script cannot.
 
 **Bodies Ghidra did not decompile** — address-taken-only code (window procedures, thread procedures,
 vtable slots appearing only as `LAB_…`) and whole functions missing from `Blaze.c`. Until

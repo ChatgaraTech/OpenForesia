@@ -19484,3 +19484,41 @@ le binaire, il donne la famille sans discussion.
 gestionnaire qui lève y laisse une trace de passage. Les deux lignes ont été retirées avant de
 régénérer `GestionnairesEntites.md`, et les quatre corps y sont maintenant `implemente=oui,
 teste=non` — l'état honnête tant que Vincent n'a pas rejoué le sort.
+
+## 2026-09-01 — les étoiles de Marteau, et le contrôle des tables d'atlas
+
+Troisième occurrence du même défaut, et la deuxième dans la même journée. Les six éclats que
+`TickHammerHead_0044A080` lâche à l'impact de **Marteau** sortaient gigantesques et couvraient une
+bonne partie de l'écran.
+
+`TickHammerDebris_0044A320` pose `0x005515a0` dans son `+0x3c` et fait tourner son image d'atlas sur
+trois. Le rendu lit `*(byte**)(e + 0x3c) + e[0x40] * 8`, donc il lui faut **trois** enregistrements
+consécutifs. `s_Descriptors_00551528` s'arrêtait au premier : deux images sur trois lisaient huit
+octets de tas jamais écrits, une par image de jeu. D'où des étoiles qui clignotent en géant plutôt
+qu'un scintillement régulier. Le détail est dans `DataSymbols.md`.
+
+### Ce n'est jamais le contenu, c'est toujours la longueur
+
+`OpenForesia.Tools/check-descriptors.sh` relit **les 35 tables** dans `Blaze.exe` : aucune n'a un
+octet faux. Les trois plantages et déformations de la semaine viennent tous du même endroit — une
+borne droite posée à vue, sur un changement de planche de texture, alors que le consommateur indexe
+au-delà.
+
+La deuxième passe du script est celle qui compte : pour chaque
+`*(byte**)(e + 0x3c) = Descriptors…() [+ N]`, combien d'enregistrements restent. Elle signale les
+marges `<= 2`, faute de savoir lire le plafond de `+0x40` dans le corps de l'entité. **Les cinq
+signalées ce jour ont été vérifiées à la main et sont bonnes** :
+
+| site | tableau | marge | pourquoi c'est sûr |
+|---|---|---:|---|
+| `EntityHandler_004038F0` | `0x0054F158` | 1 | son corps ne touche jamais `+0x40` |
+| `EntityHandler_0040EF40` | `0x0054F7C8 +0x28` | 1 | `+0x40` posé à 0, jamais avancé |
+| `EntityHandler_0040F190` | `0x0054F7F8` | 2 | idem |
+| `EntityHandler_00411860` | `0x0054F910 +8` | 1 | idem |
+| `EntityHandler_00414CD0` | `0x0054FA08 +8` | 1 | idem |
+| `EntityHandler_004459E0` | `0x005515B8` | 1 | la branche `+0x44 == 0` laisse `+0x40` à zéro ; c'est la branche `+0x44 == 1` qui monte à l'image 3, et elle prend `0x005515c0`, qui porte ses quatre enregistrements |
+
+**Ce que ça change pour la méthode** : la longueur d'une table est un relevé au même titre que son
+contenu, et elle ne se déduit pas de la donnée. Elle se déduit du **consommateur** — de son plafond
+de `+0x40`, ou du `+ 0xNN` que le code applique à la base. Écrire le réflexe dans un document n'a
+pas suffi (il l'était depuis Boule de feu, le matin même) ; le script, lui, se lance.

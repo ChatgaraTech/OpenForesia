@@ -2705,3 +2705,41 @@ pointeur utilisable. Il se relève dans le binaire et se pose en symbole, au mê
 `&DAT_…`. Un balayage de tout le dépôt (`\((byte|int|uint|…)\*+\)\s*0x0*[45][0-9a-f]{5}`) n'en a
 trouvé qu'un seul, celui-ci ; le motif vaut la peine d'être relancé après toute transcription qui
 recopie des arguments de `FUN_0051c120` ou de ses voisines d'affichage de texte.
+
+## `0x005515a0` — l'éclat de Marteau a **trois** images, la table n'en portait qu'une (2026-09-01)
+
+Même défaut que `0x00551b28`, trouvé le même jour, par le même symptôme inversé : là où Boule de feu
+n'affichait rien, les étoiles de **Marteau** sortaient énormes et couvraient une bonne partie de
+l'écran.
+
+`TickHammerDebris_0044A320` pose `0x005515a0` dans son `+0x3c` et fait tourner son `+0x40` sur
+**trois** (`e[0x40] += 1; if (e[0x40] >= 3) e[0x40] = 0;`). Le rendu lit
+`*(byte**)(e + 0x3c) + e[0x40] * 8` : il lui faut donc trois enregistrements consécutifs, et le
+binaire les a :
+
+| adresse | octets | |
+|---|---|---|
+| `0x005515a0` | `00 d0 0f 0f 01 02 10 00` | cellule 15×15 à (0, 0xd0) |
+| `0x005515a8` | `10 d0 0f 0f 01 02 10 00` | ← **manquait** |
+| `0x005515b0` | `20 d0 0f 0f 01 02 10 00` | ← **manquait** |
+| `0x005515b8` | `a0 a8 0f 0f 01 02 10 00` | déjà `s_Descriptors_005515B8`, une table à part |
+
+Le tableau C# s'arrêtait à `0x80` octets, soit `0x00551528`–`0x005515a7`. Deux images sur trois
+lisaient huit octets de tas jamais écrits : une image correcte, deux images de taille aléatoire, à
+raison d'une par image de jeu. D'où des étoiles qui clignotent en géant.
+
+### Le contrôle est maintenant outillé
+
+Trois fois le même défaut suffit. `OpenForesia.Tools/check-descriptors.sh` fait deux passes :
+
+1. **le contenu** — chaque `s_Descriptors_00…` est relu dans `Blaze.exe` à son adresse. Les 35
+   tableaux sont conformes ; ce n'était jamais le contenu qui était faux.
+2. **la marge** — pour chaque `*(byte**)(e + 0x3c) = Descriptors…() [+ N]`, combien
+   d'enregistrements restent après `N`. C'est là que le défaut vit.
+
+La marge sûre dépend du plafond de `+0x40` dans le corps de l'entité, que le script ne sait pas
+lire ; il signale donc les marges `<= 2`. Les cinq signalées au 2026-09-01 ont été vérifiées à la
+main et sont **toutes correctes** : `EntityHandler_004038F0`, `EntityHandler_0040EF40`,
+`EntityHandler_0040F190`, `EntityHandler_00411860` et `EntityHandler_00414CD0` laissent `+0x40` à
+zéro, et la branche à quatre images d'`EntityHandler_004459E0` est celle qui prend `0x005515c0`, qui
+porte bien ses quatre enregistrements.

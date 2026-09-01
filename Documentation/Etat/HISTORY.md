@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- fix : **les étoiles de Marteau sortaient gigantesques** — `TickHammerDebris_0044A320` fait tourner son image d'atlas sur **trois**, et la table `0x00551528` s'arrêtait à la première : deux images sur trois lisaient huit octets de tas jamais écrits. Table portée de 16 à 18 enregistrements (`0x00551528`-`0x005515b7`)
+- feat : **`OpenForesia.Tools/check-descriptors.sh`** — le contrôle des tables d'atlas, en deux passes : le contenu de chaque tableau relu dans `Blaze.exe`, et la marge de chaque site qui en installe une. Trois fois le même défaut (`0x00551b00`, `0x00551528`) suffisent à l'outiller
+- doc : les 35 tables sont **conformes au binaire au dernier octet** ; ce n'était jamais le contenu qui était faux, toujours la longueur. Les cinq marges courtes signalées par l'outil ont été vérifiées à la main et sont bonnes
 - feat : **les deux aures d'état et leurs enfants** : `0x004761D0` (le sommeil, sous-type `0x47`) et sa bulle `0x00476290`, plus le jumeau `0x004760C0` (l'état `0x80`, sous-type `0x46`). Endormir un ennemi avec la magie du Lutin ne plante plus
 - fix : **`0x00476140` était rangé sous le mauvais sort**. Il était écrit et nommé `TickHerbSeed` — sous-type `0x2d`, herboristerie — alors que c'est le sous-type `0x2e`, l'enfant de la gerbe d'état `0x004760C0` : un décalage d'un cran dans la table `0x00552230`. Le seul engendreur de `0x2e` dans tout le binaire est `0x004760C0`, et le corps le disait déjà — il meurt sur le bit `0x80`, celui de l'effet 12, qu'une herbe ne pose jamais. Renommé `TickStatusMote_00476140`
 - doc : **une aure d'état se pose sur la VICTIME**, pas sur le lanceur, et les deux se distinguent par leur durée : celle de l'état `0x80` sème quatre enfants en croix puis s'éteint dans l'image, celle du sommeil vit et en lâche un toutes les huit images tant que la victime dort
