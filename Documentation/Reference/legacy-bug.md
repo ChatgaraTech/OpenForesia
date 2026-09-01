@@ -1518,3 +1518,64 @@ avec la note qui dit pourquoi elle ne passe jamais.
 
 Masquer le poids fort dans le test de la braise, comme le fait déjà l'élémentaire :
 `if ((tint & 0x00ffffff) < 0x00e0e0e0)`.
+
+---
+
+## LB-029 — Le trait des sorts de monstre appelle un balayage avec trois arguments sur quatre
+
+**Relevé** le 2026-09-01 en transcrivant `FUN_004478f0` (`TickMonsterBolt_004478F0`), le trait que
+lance le sort de la famille 4.
+
+### Symptôme
+
+Quand le trait cherche une victime du côté des entités de scène, il appelle `FUN_00519af0` — le
+balayage de la grille spatiale — **en n'empilant que trois arguments**. La fonction en lit
+**quatre**. Le quatrième vaut ce que la pile portait déjà.
+
+### Cause
+
+Le site d'appel, à `0x00447a36` :
+
+```asm
+00447a36  mov       ecx,[esi+74h]
+00447a39  lea       eax,[esp+10h]
+00447a3d  push      eax              ; probe
+00447a3e  push      edi              ; position
+00447a3f  push      ecx              ; entité
+00447a40  call      00519AF0h
+00447a45  add       esp,0Ch          ; <- TROIS arguments, pas quatre
+```
+
+Les six autres sites d'appel du dépôt en passent quatre — `0` ou `0x800` selon le cas. Et le
+quatrième sert : c'est lui qui décide si la **parade** compte.
+
+```csharp
+if ((*(uint*)found & 0x10) != 0 && (flags & 0x800) == 0 …   // 0x00519af0
+```
+
+L'emplacement du quatrième argument, à `esp+0x10` vu du callee, tombe sur le mot où le prologue de
+`FUN_004478f0` a sauvé **`edi`** — le registre tel qu'il arrivait de l'appelant de la passe
+d'entités. Ce n'est ni nul ni constant : ça dépend de ce que la fonction précédente a laissé.
+
+### Ce que ça change en jeu
+
+**Une victime en parade est parfois touchée quand même.** Si le mot laissé sur la pile porte le bit
+`0x800`, le test de parade est sauté et le trait passe au travers ; sinon il se comporte
+normalement. Le résultat dépend du chemin d'exécution qui a précédé, donc il n'est pas reproductible
+d'une image à l'autre. C'est le même genre de défaut que LB-008 et LB-021 : une décision prise sur
+un mot de pile que personne n'a écrit.
+
+**Aucune observation en jeu**, et pour une bonne raison : ce sort appartient aux familles hors école,
+celles que seuls les monstres lancent, et la sonde ne l'a encore jamais vu partir.
+
+### Ce que ce port en fait
+
+**Il passe `0`.** Reproduire fidèlement demanderait de simuler la pile de l'appelant, ce que la
+transcription ne fait nulle part ailleurs et ce qui n'aurait aucun sens ici — la valeur d'origine
+n'est pas une donnée, c'est un accident. `0` est la valeur qu'ont **six des sept** sites d'appel, et
+c'est la branche qui respecte la parade. **Divergence déclarée**, notée ici et en commentaire sur le
+site d'appel.
+
+### Où porterait le correctif
+
+Empiler `0` avant les trois autres, et corriger le `add esp,0Ch` en `add esp,10h`.

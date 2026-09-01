@@ -27,6 +27,14 @@ dans les sources C#, et les deux sondes `sorts-exerces.tsv` et `handlers-exerces
 **Elles sont independantes.** Un corps transcrit d'apres le desassembleur et qui
 compile n'a rien prouve ; « implemente = oui, teste = non » est une dette.
 
+> **`implemente` ne va pas plus loin que l'ENFANT DIRECT.** La colonne resout le
+> sous-type `+0x10` de la fiche, et s'arrete la. Elle ne dit **rien** de ce que ce
+> corps engendre a son tour : un sort peut se lire « implemente » et planter quand
+> meme, parce qu'un petit-enfant manque. C'est arrive a Pardon et a Ange, dont les
+> trois derniers trous ont ete trouves le 2026-09-01 en depliant a la main tous les
+> engendrements du code ecrit. **Ce document n'est pas une preuve d'atteignabilite ;
+> seule la sonde en est une.**
+
 ## Comment un sort atteint du code
 
 `CastSpell_0053A980` prend une **famille** et un **indice**, va chercher la fiche de
@@ -319,9 +327,9 @@ pourquoi ces lignes sont hors du compte principal.
 
 | famille | # | nom | sous-type | gestionnaire | implemente | teste |
 |---:|---:|---|---:|---|---|---|
-| 4 | 0 | ³ª²ò | 0x4b | `0x004477D0` | **non** | **non** |
+| 4 | 0 | ³ª²ò | 0x4b | `0x004477D0` | oui | **non** |
 | 5 | 0 | ±Û | 0x49 | `0x0047A100` | oui | **non** |
-| 6 | 0 | ½Àë½Ä | 0x4a | `0x004769A0` | **non** | **non** |
+| 6 | 0 | ½Àë½Ä | 0x4a | `0x004769A0` | oui | **non** |
 | 7 | 0 | ù²èÝÀ¯Á | 0x1d | `0x0047ADC0` | oui | **non** |
 | 7 | 1 | õ××²èÀ¯Á | 0x1d | `0x0047ADC0` | oui | **non** |
 | 7 | 2 | õ××²è±² | 0x1d | `0x0047ADC0` | oui | **non** |

@@ -268,10 +268,20 @@ C'est ce sort mémorisé qui fixe la durée d'incantation avant même que la com
 
 ## Ce qui n'est pas établi
 
-**Les 48 effets.** `0x0056d4e0` porte quarante-huit fonctions, de `0x0053afb0` à `0x0053cdf0` ;
-`ApplyStatusEffect_0053B3C0` et ses trois sœurs (`b4b0`, `b580`, `b660`) ainsi que
-`ApplyTrapEffect_0053C420` en font partie, transcrites parce que les pièges de coffre y mènent. Les
-autres attendent. C'est là que vivent les dégâts et les altérations d'état des sorts.
+**Les 48 effets sont écrits.** `0x0056d4e0` porte quarante-huit fonctions, de `0x0053afb0` à
+`0x0053cdf0` ; les quarante-huit ont un corps depuis le 2026-08-31, et `ApplyItemEffect_0056D4E0`
+les répartit toutes. **Les sept de l'herboristerie aussi**, celles de la table voisine
+`0x0056d4c0` — voir plus haut. Ce qui reste ouvert de ce côté n'est plus l'écriture mais la
+**preuve** : la plupart n'ont jamais été vues s'appliquer en jeu.
+
+**L'étendue des familles 4 à 7.** Les quatre familles hors école — les sorts de monstre — n'ont pas
+de borne : la dernière liste n'a pas de successeur pour la fermer, et le relevé s'arrête
+arbitrairement à la première fiche dont la combinaison dépasse seize coups. Les 43 lignes de
+`SortsAtteignables.md` sont donc un plafond, pas un compte. **Deux indices disent que le vrai
+compte est bien plus petit** : trente-neuf des quarante-trois tombent sur le bouche-trou
+`0x0047adc0`, et les trois seules fiches qui désignent un corps propre sont les **premières** des
+familles 4, 5 et 6, sur trois sous-types **consécutifs** (`0x4b`, `0x49`, `0x4a`). Établir la borne
+demanderait de lire où s'arrête chaque liste dans le blob du CD.
 
 **Le nom des écoles.** Il vit dans les fichiers du CD, pas dans le binaire ; rien n'a été relevé.
 Le nom des **sorts**, lui, l'a été le 2026-08-31 : ce sont les seize premiers octets de chaque
