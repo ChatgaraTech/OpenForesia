@@ -5116,6 +5116,11 @@ public static unsafe partial class Blaze
             case 0x00479300: TickFlame_00479300(record); return;
             case 0x00479BC0: TickFlameEmber_00479BC0(record); return;
 
+            // ZEPHE, ecole 2 indice 18 — le TROISIEME jumeau du meme corps, et le seul des quatre
+            // qui n'ait demande aucun corps neuf : sa bourrasque 0x50 est TickFireOrbTrail_00482EF0,
+            // la trainee de BOULE DE FEU, deja ecrite pour l'ecole 0.
+            case 0x00479DE0: TickZephyr_00479DE0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -50850,7 +50855,6 @@ public static unsafe partial class Blaze
         if (tall < 0x80) *(uint*)e = 0;
     }
 
-
     /// <summary>
     /// Ghidra: <c>&amp;DAT_005518f8</c> — <b>le script de sons differes de Flamme</b>, neuf pas de
     /// huit octets. Meme format que <see cref="s_DelayedSoundScript_005518D8"/>, qu'il suit sans
@@ -50902,8 +50906,9 @@ public static unsafe partial class Blaze
     //                manquait vraiment, et Terre l'emploiera aussi.
     //
     // LE SORT EST LE JUMEAU EXACT DE LIQUIDE. Les 392 octets des deux corps sont IDENTIQUES a
-    // cinq deplacements d'appel pres — qui resolvent tous vers les memes cibles — et a UN SEUL
-    // mot : le pointeur de script de sons differes empile, 0x005518f8 ici contre 0x00551978 la.
+    // six deplacements d'appel pres — qui different tous EXACTEMENT du decalage des deux
+    // fonctions, donc designent les memes cibles — et a UN SEUL mot : le pointeur de script de
+    // sons differes empile, 0x005518f8 ici contre 0x00551978 la.
     // Le compilateur a emis deux fois le meme corps ; la verification est deux `od` et une
     // soustraction, faite le 2026-09-01 (voir « Check for a duplicate before transcribing » dans
     // CLAUDE.md). Tout ce que dit la note de TickLiquid_00479F70 vaut mot pour mot ici : trois
@@ -51099,6 +51104,184 @@ public static unsafe partial class Blaze
         // Ghidra: LAB_00479c28 — trop pres, ou nee trop haut, ou le parent s'en va.
         if (stepY < 0x400 || (*(uint*)parent & 0x40000000) != 0) *(uint*)e = 0;
     }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551968</c> — <b>le script de sons differes de Zephe</b>, deux pas de
+    /// huit octets. <b>Le plus court des quatre elementaires</b>, et de loin.
+    ///
+    /// <para>
+    /// Le <c>0x11</c> grave (<c>0x01bf</c>) que les quatre ouvrent, puis <b>un seul <c>0x23</c>
+    /// tres aigu</b> (<c>0x0653</c>) l'image suivante : un coup de vent bref, la ou Flamme etale
+    /// huit crepitements sur trente-six images. <b>Ce script-la se termine proprement</b> — le
+    /// <c>[1] = 0</c> du second pas est sa borne.
+    /// </para>
+    /// <para>
+    /// C'est aussi <b>celui sur lequel deborde le script de Terre</b> (<c>0x00551940</c>), qui n'a
+    /// pas de terminateur : voir LB-027 dans <c>Documentation/Reference/legacy-bug.md</c>.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00551968 =
+    [
+        0x11, 0x01, 0x01, 0x00, 0xbf, 0x01, 0x00, 0x12,   // 0x00551968
+        0x23, 0x00, 0x01, 0x00, 0x53, 0x06, 0x00, 0x12,   // 0x00551970 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00551968Storage;
+
+    /// <summary>Les deux pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00551968()
+        => NativeCopy(s_DelayedSoundScript_00551968, ref s_DelayedSoundScript00551968Storage);
+
+    // =====================================================================
+    // ZEPHE — ecole 2, indice 18, sous-type 0xb2
+    //
+    //   0x00479DE0   LE SORT. Sous-type 0xb2 de 0x00551c30. 392 octets, ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00479DE0.asm.
+    //   0x00479490   L'ELEMENTAIRE, deja ecrit — TickElementalFamiliar_00479490, entree 2 de la
+    //                table 0x00479b78.
+    //   0x00482EF0   LA BOURRASQUE, sous-type 0x50 de 0x00552230 — DEJA ECRITE, et pas pour lui :
+    //                c'est TickFireOrbTrail_00482EF0, la trainee de BOULE DE FEU.
+    //
+    // LE TROISIEME JUMEAU. Comme Flamme, les 392 octets sont ceux de Liquide a six deplacements
+    // d'appel pres — et les six different EXACTEMENT du decalage des deux fonctions (0x190), donc
+    // designent les memes cibles — et a un seul mot : le script de sons, 0x00551968 ici. La
+    // verification est deux `od` et une soustraction (2026-09-01).
+    //
+    // ET CELUI-LA N'A DEMANDE AUCUN CORPS NEUF. Sa branche « case 2 » de l'elementaire etait
+    // ecrite, et le sous-type 0x50 qu'elle engendre l'etait aussi — depuis Boule de feu, qui
+    // n'a rien a voir avec l'ecole 2. C'est le premier reemploi du depot qui traverse deux
+    // ecoles : la trainee spherique de la boule de feu sert de bourrasque a l'elementaire d'air.
+    // Le corps convient parce qu'il ne lit que ce que le semeur lui a mis : un rayon en +0x12,
+    // un cap et un tangage en +0x32/+0x34, et une teinte en +0x38. L'elementaire les tire au sort
+    // a chaque bourrasque — rayon 0xc8 a 0x147, cap quelconque, tangage +-0x100, teinte NULLE.
+    //
+    // Cette teinte nulle a une consequence : le meme test non masque qui rend l'eclaircissement
+    // de la braise inatteignable (LB-028) fonctionne ici sans probleme, parce que la bourrasque
+    // part de zero et non de 0x01000000. Le defaut est dans ce que les semeurs ecrivent, pas dans
+    // le test.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00479de0 @ 0x00479de0 — <b>Zephe</b> : le sous-type <c>0xb2</c>, creneau 178 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>dix-neuvieme fiche de l'ecole 2</b>.
+    /// 392 octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00479DE0.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est le meme corps que <see cref="TickLiquid_00479F70"/> et
+    /// <see cref="TickFlame_00479300"/>, octet pour octet</b>, a la seule exception du script de
+    /// sons empile — <see cref="DelayedSoundScript00551968"/>. Trois des quatre elementaires
+    /// partagent ainsi le meme corps recopie trois fois par le compilateur ; chacun est transcrit
+    /// a son adresse pour garder sa tracabilite.
+    /// </para>
+    /// <para>
+    /// <b>Trois elementaires naissent a la premiere image</b>, a 120 degres l'un de l'autre
+    /// (<c>0x555</c> de pas) sur un cercle d'une <b>demi-stature</b> autour du lanceur, trente
+    /// unites au-dessus du sol, chacun avec sa propre phase en <c>+0x12</c>. Ensuite le sort ne
+    /// fait plus que <b>payer deux PM toutes les cinq images</b> tant que le bouton reste tenu, et
+    /// <b>seulement une fois qu'un elementaire a pose le bit <c>0x2</c></b> sur son enregistrement.
+    /// Son age reste a 1, donc le repli des cent-vingt images est inatteignable — transcrit tel
+    /// quel, comme chez les deux autres.
+    /// </para>
+    /// </summary>
+    private static void TickZephyr_00479DE0(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_00479dfe
+        short age = *(short*)(e + 0x10);
+
+        if (age == 0)
+        {
+            int savedX = *(int*)(e + 0x1c);
+            int savedZ = *(int*)(e + 0x24);
+            int angle = *(short*)(e + 0x32);
+
+            *(ushort*)(e + 0x10) = 1;
+
+            int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+
+            *(ushort*)(e + 0x12) = 0;
+            e[0x04] = 0x39;
+
+            *(short*)(e + 0x32) += 0x400;
+
+            // TRENTE UNITES AU-DESSUS DU SOL, mesurees depuis +0x60.
+            *(int*)(e + 0x20) = ((height + 0x1e) << 0xc) + *(int*)(e + 0x60);
+
+            int radius = height >> 1;
+
+            // TROIS ELEMENTAIRES, a un tiers de tour l'un de l'autre.
+            for (int remaining = 3; remaining != 0; remaining--)
+            {
+                *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(angle) * radius + savedX;
+                *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(angle) * radius + savedZ;
+
+                SpawnCastEntity_0047AAE0(e, 0x7f, e[0x0b], -1);
+
+                // La phase de chacun, du meme pas : ils tourneront en decalage.
+                *(short*)(e + 0x12) += 0x555;
+                angle += 0x555;
+            }
+
+            // LA SEULE DIFFERENCE AVEC LIQUIDE : le coup de vent bref, deux sons.
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00551968(), (int*)(e + 0x1c));
+
+            // Le lanceur est immobilise ; c'est l'elementaire qui le relachera.
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+            return;
+        }
+
+        // Ghidra: LAB_00479ebc — RIEN NE SE PASSE TANT QU'AUCUN ELEMENTAIRE N'EST PRET.
+        if ((*(uint*)e & 2) == 0) return;
+
+        if ((*(uint*)e & 0x800000) != 0)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            uint index = ((uint*)caster)[2] & 0xff;
+            byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+            int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+            ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            {
+                *(uint*)e |= 0x2000000;                   // le bouton est relache
+            }
+
+            // Ghidra: LAB_00479f0c — DEUX PM TOUTES LES CINQ IMAGES.
+            if (*(uint*)Mem.Entity(0x005f2cf0) % 5 == 0)
+            {
+                short mana = *(short*)(perChar + 0x14e);
+
+                if (mana >= 2)
+                {
+                    *(short*)(perChar + 0x14e) = (short)(mana - 2);
+                }
+                else
+                {
+                    // Ghidra: LAB_00479f37
+                    *(ushort*)(perChar + 0x14e) = 0;
+                    *(uint*)e |= 0x2000000;
+                }
+            }
+        }
+        else if (age >= 0x78)
+        {
+            // Ghidra: LAB_00479f42 — inatteignable : l'age reste a 1.
+            *(uint*)e |= 0x2000000;
+        }
+
+        // Ghidra: LAB_00479f4f — et le lanceur doit tenir debout.
+        if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+    }
+
     /// <summary>
     /// Ghidra: FUN_0051a5d0 @ 0x0051a5d0 — <b>la reconnaissance de la combinaison de boutons</b>
     /// saisie pendant l'incantation. Elle rend l'indice du sort dont la combinaison correspond, ou
