@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **Matéria terre, école 2 indice 4** : le sort `0x00477660` (décompilé) — la deuxième de la fratrie. Aucun corps nouveau à écrire : elle réemploie l'embrasement `0x4c` et la flamme `0x56` de Matéria feu
+- doc : **la fratrie diffère par TROIS constantes, pas deux** — le désassemblage de feu et de terre, adresses de saut mises à part, ne diffère qu'en trois points : l'identifiant du son de la première image (`0x20` / `4`), **sa hauteur** (`0x400` / `0x190`), et l'effet posé à la dernière (3 / 4). Le compte annoncé hier était incomplet, il est corrigé dans l'en-tête de la fratrie
+- doc : **les effets 3 et 4 rangent leur durée et leur intensité à des emplacements voisins mais distincts** — `+0x86`/`+0xe4` pour feu, `+0x88`/`+0xe6` pour terre : les deux enchantements élémentaires se cumulent au lieu de se remplacer
 - feat : **Matéria feu, école 2 indice 3** : le sort `0x004774c0` (décompilé) et sa flamme `0x00477600` (96 octets, **absente de `Blaze.c`**, sortie du désassembleur) ; son embrasement `0x4c` est celui de Feu d'enfer, réemployé tel quel. Plus le script de sons différés `0x005518a8` relevé dans le binaire
 - doc : **Matéria feu est la première d'une fratrie de quatre** — `0x00477660` (terre), `0x004777a0` (air) et `0x004778e0` (eau) ont le même corps instruction pour instruction, et ne diffèrent que par deux constantes : le son de la première image et l'indice de l'effet posé à la dernière (3, 4, 5, 6, les quatre effets « à intensité »). Ce sont quatre enchantements élémentaires, pas quatre sorts
 - doc : **la flamme ne compte pas ses images, c'est sa teinte qui la tue** — partie de `0xf0f0f0`, elle perd `0x101010` par image et le corps s'efface quand la soustraction tombe **pile sur zéro** : le `jne` final lit les indicateurs de cette addition-là, pas un compteur. Quinze images, donc, et rien d'autre ne la borne
