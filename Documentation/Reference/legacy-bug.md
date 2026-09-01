@@ -1386,7 +1386,7 @@ pointeur et de la distance.
 
 ---
 
-## LB-027 — Le script de sons des quatre élémentaires n'a pas de terminateur
+## LB-027 — Le script de sons de « Liquide » n'a pas de terminateur
 
 **Relevé** le 2026-09-01 dans les données du binaire, en transcrivant `FUN_00479f70`
 (« Liquide », `TickLiquid_00479F70`), qui met ce script en file à sa première image.
@@ -1436,3 +1436,77 @@ notée ici et dans le commentaire du tableau.
 ### Où porterait le correctif
 
 Mettre l'octet `[1]` du cinquième enregistrement à zéro.
+
+### Les trois autres élémentaires, vérifiés depuis
+
+**Ajout du 2026-09-01, en transcrivant `FUN_00479300` (« Flamme »).** Le titre d'origine de cette
+entrée disait « les quatre élémentaires » ; c'était une extrapolation, et elle est fausse. Les
+quatre sorts empilent **quatre scripts différents**, relevés un par un dans leur corps respectif :
+
+| sort | corps | script | dernier délai |
+|---|---|---|---|
+| Liquide | `0x00479F70` | `0x00551978` | **4 — aucun terminateur** |
+| Flamme | `0x00479300` | `0x005518F8` | 0 — se termine proprement |
+| Terre | `0x00479C50` | `0x00551940` | **10 — pas de terminateur non plus** |
+| Zéphé | `0x00479DE0` | `0x00551968` | 0 — se termine proprement |
+
+**Terre déborde aussi, mais sans conséquence** : ses cinq pas sont suivis immédiatement par le
+script de Zéphé (`0x00551968`), dont le second pas porte un délai nul. Terre joue donc **deux sons
+de trop** — le `0x11` d'ouverture puis un `0x23` — dix images après le dernier des siens, et
+s'arrête là. Ce n'est pas la marche dans `.data` de Liquide : c'est un script qui en avale un autre
+et qui s'arrête au bout.
+
+Le défaut décrit ci-dessus **ne concerne donc que Liquide**, et c'est le seul des quatre dont le
+débordement sorte de la zone des scripts.
+
+---
+
+## LB-028 — La braise des élémentaires ne peut jamais s'éclaircir
+
+**Relevé** le 2026-09-01 en transcrivant `FUN_00479bc0` (`TickFlameEmber_00479BC0`), la braise que
+sèment les élémentaires de « Flamme » et de « Terre ».
+
+### Symptôme
+
+La braise porte un éclaircissement progressif : `+0x38` gagne `0x202020` par image tant qu'il reste
+sous `0xe0e0e0`. **Il ne s'applique jamais.** La braise garde d'un bout à l'autre la teinte que son
+parent lui a donnée à la naissance.
+
+### Cause
+
+`+0x38` n'est pas une couleur pleine : les vingt-quatre bits bas sont la teinte, l'octet de poids
+fort porte un indicateur d'affichage. L'élémentaire lui-même le sait — `FUN_00479490`, pour le même
+champ, fait son test **masqué** :
+
+```c
+if ((tint & 0x00ffffff) < 0x00f0f0f0) tint += 0x00080808;   // 0x00479b21
+```
+
+La braise, écrite pour le même champ, fait le sien **sur le mot entier** :
+
+```asm
+00479bf9  mov       ecx,[eax+38h]
+00479bfe  cmp       ecx,0E0E0E0h        ; pas de masque
+00479c07  jae       short 00479C12h     ; -> on saute l'addition
+```
+
+Or les **deux** semeurs de braise la font naître avec `+0x38 = 0x01000000` — la branche « Flamme »
+et la branche « Terre » de `FUN_00479490` écrivent toutes deux cette constante. `0x01000000` est
+au-dessus de `0x00e0e0e0` dès la première image : la comparaison non signée est vraie tout de
+suite, et l'addition est **du code mort pour les deux seuls appelants qui existent**.
+
+### Ce que ça change en jeu
+
+La braise reste noire au lieu de virer au clair en cinq images. C'est visible sur l'élémentaire de
+feu et sur celui de terre pendant les vingt images de leur levée, et nulle part ailleurs — c'est le
+seul emploi du sous-type `0x57`.
+
+### Ce que ce port en fait
+
+**Il le reproduit tel quel** : la comparaison est écrite sans masque, exactement comme le binaire,
+avec la note qui dit pourquoi elle ne passe jamais.
+
+### Où porterait le correctif
+
+Masquer le poids fort dans le test de la braise, comme le fait déjà l'élémentaire :
+`if ((tint & 0x00ffffff) < 0x00e0e0e0)`.
