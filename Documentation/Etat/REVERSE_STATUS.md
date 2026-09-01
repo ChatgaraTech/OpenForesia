@@ -19434,3 +19434,53 @@ verrou serait inutile. Hypothèse à vérifier : un drapeau que `CastSpell_0053A
 membre relit pour savoir que le sort vient d'une démarche et non d'une incantation — auquel cas il
 n'a pas à coûter de PM. À reprendre en cherchant qui teste `0x800` sur `+0x00` d'un membre du
 groupe.
+
+## 2026-09-01 — les deux aures d'état, et un corps rangé sous le mauvais sort
+
+Endormir un ennemi avec la magie du Lutin plantait : `ApplyStatusEffect_0053B730` — l'effet 11, le
+sommeil — fait naître un sous-type `0x47` sur la victime, dont le gestionnaire `0x004761D0` n'était
+pas transcrit. Il est dans `Blaze.c`, ainsi que ses trois voisins de famille.
+
+### Quatre corps, deux familles
+
+| adresse | sous-type | table | rôle |
+|---|---|---|---|
+| `0x004760C0` | `0x46` | `0x00551c30` | la gerbe de l'état `0x80` (effet 12) — **une seule image** |
+| `0x00476140` | `0x2e` | `0x00552230` | son enfant, qui tourne autour de la victime |
+| `0x004761D0` | `0x47` | `0x00551c30` | l'aure du **sommeil** (effet 11) — elle vit |
+| `0x00476290` | `0x2f` | `0x00552230` | son enfant, la bulle qui monte en ondulant |
+
+**L'aure se pose sur la victime, pas sur le lanceur.** Les deux appellent
+`StatusBubbleHeight_00538BC0` sur elle, rangent la hauteur de tête en `+0x12` et s'en servent deux
+fois : pour poser l'enfant à cette hauteur, et pour l'échelle `hauteur << n / 150`. Le décalage `n`
+diffère — `0xd` pour le sommeil contre `0xb` pour l'autre —, donc les bulles du sommeil sont
+**quatre fois plus grosses**.
+
+**Elles ne durent pas pareil, et c'est la seule vraie différence de forme.** Celle de l'état `0x80`
+sème quatre enfants en tournant le cap d'un quart de tour entre chacun, puis `*param_1 = 0` dans la
+même image : ce sont les enfants qui portent la durée. Celle du sommeil vit, lâche un enfant une
+image sur huit (le test porte sur l'octet bas de `+0x10`, donc sur l'âge), et surveille la victime à
+chaque image — elle s'efface dès que la victime disparaît, meurt, ou **se réveille**.
+
+### `0x00476140` était rangé sous le mauvais sort
+
+Il était déjà écrit, sous le nom `TickHerbSeed_00476140`, documenté « sous-type `0x2d`, créneau 45 »
+et rangé dans le bloc de l'herboristerie. **Les trois sont faux.** Le créneau 45 de `0x00552230` est
+`0x0047A880` ; `0x00476140` est le créneau **46**, sous-type `0x2e`. Et le seul appel de
+`FUN_0047ac40(..., 0x2e, ...)` de tout le binaire est dans `0x004760C0`.
+
+Le corps, lui, était juste — et il le disait : sa condition de survie lit le bit `0x80` de `+0x40`,
+celui que pose l'effet 12, qu'aucune herbe ne pose. Renommé `TickStatusMote_00476140` et déplacé
+dans le bloc des aures.
+
+**Ce que ça apprend** : un sous-type se vérifie en comptant les entrées de la table, pas en lisant
+la ligne du tableau à l'œil — les lignes de huit invitent à l'erreur d'un cran. Le contre-contrôle
+qui coûte le moins est de chercher **qui engendre le sous-type** : s'il n'y a qu'un engendreur dans
+le binaire, il donne la famille sans discussion.
+
+### Deux « testé=oui » qui ne prouvaient qu'un plantage
+
+`handlers-exerces.tsv` portait `004760C0` et `004761D0` : la sonde les note avant l'appel, donc un
+gestionnaire qui lève y laisse une trace de passage. Les deux lignes ont été retirées avant de
+régénérer `GestionnairesEntites.md`, et les quatre corps y sont maintenant `implemente=oui,
+teste=non` — l'état honnête tant que Vincent n'a pas rejoué le sort.

@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **les deux aures d'état et leurs enfants** : `0x004761D0` (le sommeil, sous-type `0x47`) et sa bulle `0x00476290`, plus le jumeau `0x004760C0` (l'état `0x80`, sous-type `0x46`). Endormir un ennemi avec la magie du Lutin ne plante plus
+- fix : **`0x00476140` était rangé sous le mauvais sort**. Il était écrit et nommé `TickHerbSeed` — sous-type `0x2d`, herboristerie — alors que c'est le sous-type `0x2e`, l'enfant de la gerbe d'état `0x004760C0` : un décalage d'un cran dans la table `0x00552230`. Le seul engendreur de `0x2e` dans tout le binaire est `0x004760C0`, et le corps le disait déjà — il meurt sur le bit `0x80`, celui de l'effet 12, qu'une herbe ne pose jamais. Renommé `TickStatusMote_00476140`
+- doc : **une aure d'état se pose sur la VICTIME**, pas sur le lanceur, et les deux se distinguent par leur durée : celle de l'état `0x80` sème quatre enfants en croix puis s'éteint dans l'image, celle du sommeil vit et en lâche un toutes les huit images tant que la victime dort
 - feat : **les trois dernières postures**, `0x0051A6B0` (4), `0x0051A700` (6) et `0x0051A710` (7) — **absentes de `Blaze.c`**, sorties du désassembleur, 208 octets à elles trois. La table `0x00562ca0` est maintenant entièrement écrite : quatre corps vides et quatre gestionnaires
 - fix : **jouer le Lutin plantait à l'entrée en forêt** — il vole, la posture 7, et son gestionnaire n'était pas transcrit
 - doc : **une posture peut lancer un sort**. Les postures 4 et 7 appellent `CastSpell_0053A980` — familles **5** et **6**, indice 0 — à une image précise de l'état d'animation 3, le moment où le pied touche ou l'aile bat. Deux des quatre familles hors école ont donc un déclencheur qui n'est ni une incantation, ni un objet, ni une entité de scène

@@ -5126,7 +5126,15 @@ public static unsafe partial class Blaze
             case 0x0047A5D0: TickHerbalism_0047A5D0(record); return;
             case 0x0047A7D0: TickHerbGlow_0047A7D0(record); return;
             case 0x0047A730: TickHerbMote_0047A730(record); return;
-            case 0x00476140: TickHerbSeed_00476140(record); return;
+
+            // LES DEUX AURES D'ETAT — 0x46 et 0x47, posees sur la VICTIME par les effets 12 et 11,
+            // avec leurs deux enfants. `0x00476140` etait range ici sous le nom « TickHerbSeed » :
+            // c'est une erreur d'identification, il n'appartient pas a l'herboristerie. Le seul
+            // engendreur de son sous-type 0x2e dans tout le binaire est `0x004760C0`.
+            case 0x004760C0: TickStatusBurst_004760C0(record); return;
+            case 0x00476140: TickStatusMote_00476140(record); return;
+            case 0x004761D0: TickSleepAura_004761D0(record); return;
+            case 0x00476290: TickSleepBubble_00476290(record); return;
 
             // LES SORTS DE MONSTRE, familles 4 et 6 — les deux seules fiches des quatre familles
             // hors ecole qui designent un corps a elles. Leurs sous-types 0x4a et 0x4b sont
@@ -52358,9 +52366,19 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00476140 @ 0x00476140 — <b>la graine qui tourne</b> : le sous-type <c>0x2d</c>,
-    /// creneau 45 de <see cref="s_StaticEntityHandlers_00552230"/>. Le sort en seme <b>six d'un
-    /// coup</b> a sa premiere image.
+    /// Ghidra: FUN_00476140 @ 0x00476140 — <b>le grain qui tourne autour d'une victime</b> : le
+    /// sous-type <c>0x2e</c>, creneau <b>70</b> de <see cref="s_StaticEntityHandlers_00552230"/>.
+    ///
+    /// <para>
+    /// <b>Corrige le 2026-09-01 : ce corps n'appartient pas a l'herboristerie.</b> Il etait ecrit
+    /// et range sous le nom « TickHerbSeed », avec le sous-type <c>0x2d</c> et le creneau 45 — un
+    /// decalage d'un cran dans la table, et une famille de rattachement fausse. Le sous-type
+    /// <c>0x2d</c> est <see cref="EntityHandler_0047A880"/> ; le seul engendreur de <c>0x2e</c>
+    /// dans <b>tout le binaire</b> est <see cref="TickStatusBurst_004760C0"/>, la gerbe de l'etat
+    /// <c>0x80</c>, qui en seme <b>quatre</b> en croix. Le corps, lui, etait juste — et sa condition
+    /// de survie le disait deja : elle lit le bit <c>0x80</c>, celui de l'effet 12, que jamais une
+    /// herbe ne pose.
+    /// </para>
     ///
     /// <para>
     /// <b>Ghidra a perdu deux valeurs sur ce corps</b> — il les rend en <c>unaff_EBX</c> et
@@ -52371,34 +52389,34 @@ public static unsafe partial class Blaze
     /// distinctes. Releve garde sous <c>Legacy/Raw/Blaze/FUN_00476140.asm</c>.
     /// </para>
     /// <para>
-    /// <b>Elle tourne autour du lanceur</b> (<c>+0x74</c>, que le sort a rempli pour elle) : un
+    /// <b>Elle tourne autour de la victime</b> (<c>+0x74</c>, que la gerbe a rempli pour elle) : un
     /// cercle du <b>quart</b> de <c>+0x12</c>, le cap avancant de <c>0x80</c> par image, a une
-    /// hauteur fixe de <c>+0x12</c> unites au-dessus de lui. Elle ne se sert donc <b>pas</b> de la
-    /// vitesse que le sort lui a donnee en <c>+0x50</c>..<c>+0x58</c> ni de la gravite <c>+0x9a</c>
+    /// hauteur fixe de <c>+0x12</c> unites au-dessus d'elle. Elle ne se sert donc <b>pas</b> de la
+    /// vitesse heritee en <c>+0x50</c>..<c>+0x58</c> ni de la gravite <c>+0x9a</c>
     /// : ces champs sont poses, herites, et jamais lus par elle. Son image d'atlas boucle sur
     /// <c>+0x1a</c>.
     /// </para>
     /// <para>
-    /// <b>Elle vit tant que le lanceur porte son etat</b> : elle relit le bloc de statistiques du
-    /// lanceur a chaque image et s'efface des que le bit <c>0x80</c> de <c>+0x40</c> tombe, ou des
-    /// que le bit <c>0x40000000</c> se pose. C'est la seule des trois qui n'ait pas de duree a
-    /// elle.
+    /// <b>Elle vit tant que la victime porte son etat</b> : elle relit le bloc de statistiques de
+    /// la victime a chaque image et s'efface des que le bit <c>0x80</c> de <c>+0x40</c> tombe, ou
+    /// des que le bit <c>0x40000000</c> se pose. Elle n'a pas de duree a elle — c'est sa mere qui
+    /// cesse d'en semer.
     /// </para>
     /// </summary>
-    private static void TickHerbSeed_00476140(byte* record)
+    private static void TickStatusMote_00476140(byte* record)
     {
         byte* e = record;
 
         short lift = *(short*)(e + 0x12);
         short yaw = *(short*)(e + 0x32);
-        byte* caster = *(byte**)(e + 0x74);
+        byte* anchor = *(byte**)(e + 0x74);
 
         // Ghidra: unaff_retaddr et unaff_EBX sont cette meme valeur, spillee en [esp+0x18].
         int radius = lift >> 2;
 
-        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(yaw) * radius + *(int*)(caster + 0x1c);
-        *(int*)(e + 0x20) = (lift << 0xc) + *(int*)(caster + 0x20);
-        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(yaw) * radius + *(int*)(caster + 0x24);
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(yaw) * radius + *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = (lift << 0xc) + *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(yaw) * radius + *(int*)(anchor + 0x24);
 
         *(short*)(e + 0x32) = (short)(yaw + 0x80);
 
@@ -52406,9 +52424,166 @@ public static unsafe partial class Blaze
         e[0x40] = frame;
         if (frame >= *(short*)(e + 0x1a)) e[0x40] = 0;
 
-        uint state = *(uint*)(GetEntityStatBlock((uint*)caster) + 0x40);
+        uint state = *(uint*)(GetEntityStatBlock((uint*)anchor) + 0x40);
 
         if ((state & 0x80) == 0 || (state & 0x40000000) != 0) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // LES DEUX AURES D'ETAT — 0x46 et 0x47 de 0x00551c30, et leurs deux enfants
+    //
+    // Une entite d'aura par etat inflige, posee sur la VICTIME et non sur le lanceur. Les deux se
+    // ressemblent assez pour se lire ensemble, et different sur un point qui compte :
+    //
+    //   0x004760C0   L'etat 0x80 (l'effet 12, FUN_0053b810). Une SEULE image : elle seme quatre
+    //                enfants 0x2e en croix, puis s'eteint. L'aura ne dure pas ; les enfants si.
+    //   0x004761D0   L'etat 0x40, LE SOMMEIL (l'effet 11, FUN_0053b730). Elle VIT : un enfant
+    //                0x2f toutes les huit images, tant que la victime dort.
+    //
+    //   0x00476140   l'enfant de la premiere, sous-type 0x2e — deja ecrit.
+    //   0x00476290   l'enfant de la seconde, sous-type 0x2f — ecrit ici.
+    //
+    // LES DEUX SUIVENT LA TETE DE LA VICTIME. Elles appellent StatusBubbleHeight_00538BC0 sur elle,
+    // rangent la hauteur en +0x12 et s'en servent deux fois : pour poser l'enfant a cette hauteur
+    // au-dessus d'elle, et pour l'echelle, `hauteur << n / 150`. Le decalage n differe — 0xd pour le
+    // sommeil, 0xb pour l'autre —, donc les bulles du sommeil sont QUATRE FOIS plus grosses.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004760c0 @ 0x004760c0 — <b>la gerbe de l'etat <c>0x80</c></b> : le sous-type
+    /// <c>0x46</c>, creneau 70 de <see cref="s_StaticEntityHandlers_00551c30"/>. Vingt lignes.
+    ///
+    /// <para>
+    /// <b>Elle ne vit qu'une image.</b> Elle se cale sur la victime (<c>+0x6c</c> recopie dans
+    /// <c>+0x74</c>), prend sa hauteur de tete, seme <b>quatre</b> enfants <c>0x2e</c> en tournant
+    /// le cap de <c>0x400</c> — un quart de tour — entre chacun, puis s'eteint. Ce sont les enfants
+    /// qui portent la duree : ils vivent tant que la victime garde le bit <c>0x80</c>.
+    /// </para>
+    /// <para>
+    /// Elle ne pose <b>pas</b> la position des enfants : <c>+0x1c</c>..<c>+0x24</c> partent tels que
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> les recopie, et
+    /// <see cref="TickStatusMote_00476140"/> les recalcule des sa premiere image depuis
+    /// <c>+0x74</c>. C'est ce qui la distingue de sa sœur du sommeil.
+    /// </para>
+    /// </summary>
+    private static void TickStatusBurst_004760C0(byte* record)
+    {
+        byte* e = record;
+        byte* victim = *(byte**)(e + 0x6c);
+
+        *(byte**)(e + 0x74) = victim;
+
+        int height = StatusBubbleHeight_00538BC0((uint*)victim);
+        *(short*)(e + 0x12) = (short)height;
+
+        uint scale = (uint)((height << 0xb) / 0x96);
+        *(ushort*)(e + 0x1a) = 3;
+        *(uint*)(e + 0x28) = scale << 0x10 | scale;
+
+        for (int i = 0; i < 4; i++)
+        {
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors005519A0(), 0x2e, e[0x0b], -1);
+
+            *(short*)(e + 0x32) += 0x400;
+        }
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004761d0 @ 0x004761d0 — <b>l'aure du sommeil</b> : le sous-type <c>0x47</c>,
+    /// creneau 71 de <see cref="s_StaticEntityHandlers_00551c30"/>. C'est l'entite que
+    /// <see cref="ApplyStatusEffect_0053B730"/> — l'effet 11, bit <c>0x40</c> — fait naitre sur la
+    /// victime en meme temps que la marque <c>0x29</c>.
+    ///
+    /// <para><b>Trois temps, et ils ne tombent pas ensemble :</b></para>
+    /// <list type="bullet">
+    /// <item><b>a la premiere image seulement</b> — elle prend la victime pour ancre, mesure sa
+    /// hauteur de tete et en tire son echelle, <c>hauteur &lt;&lt; 13 / 150</c> dans les deux
+    /// axes.</item>
+    /// <item><b>une image sur huit</b> — un cap tire au hasard, la position reprise de la victime
+    /// mais relevee de la hauteur de tete, et un enfant <c>0x2f</c> lache. Le test porte sur
+    /// l'octet bas de <c>+0x10</c>, donc bien sur l'age et non sur un compteur separe.</item>
+    /// <item><b>a chaque image</b> — elle relit le bloc de statistiques de la victime et s'efface
+    /// des que celle-ci disparait, meurt, ou <b>se reveille</b> : le bit <c>0x40</c> de
+    /// <c>+0x40</c> est la condition de sa survie.</item>
+    /// </list>
+    /// </summary>
+    private static void TickSleepAura_004761D0(byte* record)
+    {
+        byte* e = record;
+        byte* victim = *(byte**)(e + 0x6c);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x74) = victim;
+
+            int height = StatusBubbleHeight_00538BC0((uint*)victim);
+            *(short*)(e + 0x12) = (short)height;
+
+            uint scale = (uint)((height << 0xd) / 0x96);
+            *(uint*)(e + 0x28) = scale << 0x10 | scale;
+        }
+
+        // Ghidra lit l'octet bas de +0x10 : une image sur huit.
+        if ((e[0x10] & 7) == 0)
+        {
+            *(short*)(e + 0x32) = (short)CrtRand();
+
+            *(int*)(e + 0x1c) = *(int*)(victim + 0x1c);
+            *(int*)(e + 0x20) = (*(short*)(e + 0x12) << 0xc) + *(int*)(victim + 0x20);
+            *(int*)(e + 0x24) = *(int*)(victim + 0x24);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA0() + 0x30, 0x2f, e[0x0b], -1);
+        }
+
+        uint state = *(uint*)(GetEntityStatBlock((uint*)victim) + 0x40);
+
+        if ((*(uint*)victim & 0x80000000) == 0 || (state & 0x40000000) != 0 || (state & 0x40) == 0)
+        {
+            *(uint*)e = 0;
+        }
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00476290 @ 0x00476290 — <b>la bulle du sommeil</b> : le sous-type <c>0x2f</c>,
+    /// creneau 47 de <see cref="s_StaticEntityHandlers_00552230"/>. L'enfant que
+    /// <see cref="TickSleepAura_004761D0"/> lache une image sur huit.
+    ///
+    /// <para>
+    /// <b>Elle monte en ondulant.</b> Sa hauteur gagne <c>0x4000</c> par image — quatre unites — et
+    /// sa derive horizontale est un balancement : l'amplitude est <c>sin(age &lt;&lt; 8) &gt;&gt;
+    /// 10</c>, appliquee sur le cap <b>a angle droit</b> (<c>cap + 0x800</c>), et s'ajoute a une
+    /// derive constante de quatre unites sur le cap lui-meme. Le cap ne bouge pas ; c'est
+    /// l'amplitude qui change de signe, ce qui fait osciller la bulle de part et d'autre de sa
+    /// trajectoire.
+    /// </para>
+    /// <para><b>Vingt images</b>, et elle s'eteint : elle n'a pas besoin de savoir si la victime
+    /// dort encore, sa mere s'en charge et cesse d'en lacher.</para>
+    /// </summary>
+    private static void TickSleepBubble_00476290(byte* record)
+    {
+        byte* e = record;
+
+        int heading = *(short*)(e + 0x32);
+        int sway = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 8);
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading + 0x800) * (sway >> 10)
+                             + (int)Winsys3d.GetSinTableEntry(heading) * 4;
+        *(int*)(e + 0x20) += 0x4000;
+
+        int lateral = Winsys3d.GetCosTableEntry(heading + 0x800);
+        int along = Winsys3d.GetCosTableEntry(heading);
+
+        *(short*)(e + 0x10) += 1;
+
+        *(int*)(e + 0x24) += lateral * (sway >> 10) + along * 4;
+
+        if (*(short*)(e + 0x10) > 0x13) *(uint*)e = 0;
     }
 
     // =====================================================================
