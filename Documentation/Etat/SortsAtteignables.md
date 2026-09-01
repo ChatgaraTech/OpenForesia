@@ -151,7 +151,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 1 | 16 | Parole sainte | X-T-T-XC-TO | 60 | 58 | 12 | 0x2e | `0x0044D370` | oui | **non** |
 | 1 | 17 | Délivrance | T-O-O-O-T-O-TO-C-O-T-X | 40 | 63 | 36 | 0x2f | `0x0044B7B0` | oui | **non** |
 | 1 | 18 | Micro | T-O-O-O-X-C-XC-C-O-T-X | 40 | 63 | 36 | 0x30 | `0x0044BAF0` | oui | **non** |
-| 1 | 19 | Coup de pouce | T-O-O-O-O-T-T-O-T-O | 86 | 72 | 60 | 0x31 | `0x0044BF00` | **non** | **non** |
+| 1 | 19 | Coup de pouce | T-O-O-O-O-T-T-O-T-O | 86 | 72 | 60 | 0x31 | `0x0044BF00` | oui | **non** |
 | 1 | 20 | Remontant | T-O-O-C-TO-XC-O-O | 62 | 70 | 60 | 0x32 | `0x0044C3A0` | **non** | **non** |
 | 1 | 21 | Miracle | C-X-T-O-C-X-T-O-C-X-T-O | 39 | 66 | 60 | 0x33 | `0x0044C8A0` | **non** | **non** |
 | 1 | 22 | Résurection | T-O-X-C-TO-XC-TO-XC-XC | 100 | 0 | 40 | 0x34 | `0x0044CD00` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **48** |
-| a transcrire | **32** |
+| implementees (le gestionnaire existe) | **49** |
+| a transcrire | **31** |
 | lancees en jeu au moins une fois | **16** |
-| dette : implementees mais jamais lancees | **32** |
+| dette : implementees mais jamais lancees | **33** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -234,7 +234,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x0044B510` | 1 | oui | **non** | Calgon |
 | `0x0044B7B0` | 1 | oui | **non** | Délivrance |
 | `0x0044BAF0` | 1 | oui | **non** | Micro |
-| `0x0044BF00` | 1 | **non** | **non** | Coup de pouce |
+| `0x0044BF00` | 1 | oui | **non** | Coup de pouce |
 | `0x0044C3A0` | 1 | **non** | **non** | Remontant |
 | `0x0044C8A0` | 1 | **non** | **non** | Miracle |
 | `0x0044CD00` | 1 | **non** | **non** | Résurection |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | oui | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **26** a transcrire.
+**74 gestionnaires distincts**, dont **25** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le

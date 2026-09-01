@@ -4984,6 +4984,12 @@ public static unsafe partial class Blaze
             case 0x0044BCC0: TickMicroMote_0044BCC0(record); return;
             case 0x0044BE40: TickMicroFlash_0044BE40(record); return;
 
+            // COUP DE POUCE, ecole 1 indice 19 — le premier sort de l'ecole qui prend TOUT LE
+            // GROUPE : il balaie 0x005e93c0 et pose l'effet 33 sur chaque membre vivant.
+            case 0x0044BF00: TickHelpingHand_0044BF00(record); return;
+            case 0x0044C110: TickBlessingSpark_0044C110(record); return;
+            case 0x0044C260: TickHelpingHandSpiral_0044C260(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -44450,6 +44456,357 @@ public static unsafe partial class Blaze
 
         // Ghidra: LAB_0044beea — les deux chemins comptent l'image.
         *(short*)(e + 0x12) += 1;
+    }
+
+    // =====================================================================
+    // COUP DE POUCE — le quarante-neuvieme sort, ecole 1 indice 19, sous-type 0x31
+    //
+    //   0x0044BF00   LE SORT. Sous-type 0x31 de 0x00551c30. Decompile dans Blaze.c.
+    //   0x0044C0D0   SON ENVELOPPE D'EFFET. Cinquante-huit octets, decompilee dans Blaze.c.
+    //   0x0044C110   son etincelle, sous-type 0x93 de 0x00551f30. 333 octets, ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044C110.asm.
+    //   0x0044C260   sa spirale, sous-type 0x91 de 0x00552230. Decompilee dans Blaze.c.
+    //
+    // LE PREMIER SORT DE L'ECOLE QUI FRAPPE TOUT LE GROUPE. Les quarante-huit precedents visent une
+    // entite — celle qu'AcquireHolyTarget a retenue, ou toutes les entites de SCENE pour Zombie.
+    // Coup de pouce, lui, balaie les QUATRE EMPLACEMENTS DU GROUPE (0x005e93c0, pas 0x005ecaa0) et
+    // pose l'effet 33 sur chaque membre vivant. C'est un sort d'appui, pas une attaque.
+    //
+    // ET C'EST LA TROISIEME COPIE DE LA MEME ENVELOPPE. 0x0044B910 (Delivrance), 0x0044BC80 (Micro)
+    // et 0x0044C0D0 sont trois corps de 58 octets identiques instruction pour instruction, aux
+    // deplacements de leurs deux `call` pres — et le premier des deux resout vers le meme
+    // 0x004364b0 dans les trois. Le compilateur a emis le meme patron trois fois de suite.
+    //
+    // IL DEBOUCHE DEUX GESTIONNAIRES QUE D'AUTRES FICHES ATTENDAIENT. Le sous-type 0x93 est celui
+    // que le trait de Pardon (TickForgiveBolt_0044F290) engendre par paires depuis qu'il a ete
+    // ecrit, sans corps derriere. Et le 0x91 de la table 0x00552230 n'est PAS celui de la table
+    // 0x00551f30 : le petale de Delivrance porte le meme numero dans l'autre table.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044c0d0 @ 0x0044c0d0 — <b>poser l'effet d'etat 33 si la cible l'accepte</b>.
+    /// Cinquante-huit octets, decompilee dans <c>Blaze.c</c> : le garde-fou
+    /// <see cref="IsEffectPairBlocked_004364B0"/>, puis <see cref="ApplyStatusEffect_0053C6B0"/>
+    /// s'il a laisse passer.
+    ///
+    /// <para>
+    /// <b>La troisieme copie du meme corps</b>, apres
+    /// <see cref="ClearStatusEffectIfEligible_0044B910"/> et
+    /// <see cref="ClearStatusEffectIfEligible_0044BC80"/> : les trois sont identiques instruction
+    /// pour instruction, aux deplacements de leurs deux <c>call</c> pres, et le premier des deux
+    /// resout vers <c>0x004364b0</c> dans les trois cas. Seul l'effet appele change — ici un
+    /// <b>poseur</b> et non une levee, le seul des trois.
+    /// </para>
+    /// </summary>
+    private static bool ApplyStatusEffectIfEligible_0044C0D0(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ApplyStatusEffect_0053C6B0(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044bf00 @ 0x0044bf00 — <b>Coup de pouce</b> : le sous-type <c>0x31</c>, creneau
+    /// 49 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>vingtieme fiche de l'ecole
+    /// 1</b>. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Le premier sort de l'ecole qui prend tout le groupe.</b> Il balaie les quatre
+    /// emplacements de <see cref="Input.s_SlotFlags_005e93c0"/> — la table du <b>groupe</b>, pas
+    /// celle des entites de scene — et retient chaque membre vivant (<c>0x80000000</c> present,
+    /// <c>0x50000000</c> absent). A la <b>dixieme</b> image il pose sur chacun l'effet d'etat 33
+    /// par <see cref="ApplyStatusEffectIfEligible_0044C0D0"/> (bit <c>0x1000000</c>, duree en
+    /// <c>+0xc2</c>) et fait naitre <b>deux</b> etincelles <c>0x93</c> par membre.
+    /// </para>
+    /// <para>
+    /// <b>Il colle a son LANCEUR, pas a sa cible.</b> C'est <c>+0x74</c> qu'il recopie chaque image
+    /// dans sa position, la ou toutes les fiches precedentes de l'ecole recopient <c>+0x78</c>.
+    /// <c>+0x78</c> lui sert d'autre chose : de curseur de balayage, reecrit a chaque membre
+    /// examine — et c'est la valeur du <b>dernier</b> membre retenu qui y reste apres la boucle.
+    /// </para>
+    /// <para>
+    /// <b>Les spirales alternent d'un cote et de l'autre.</b> Chaque image jusqu'a la quatorzieme,
+    /// une spirale <c>0x91</c> nait sur chaque membre vivant ; <c>+0x9a</c>, qui porte leur angle
+    /// de depart, bascule entre <c>0x800</c> et <c>0</c> selon la parite de <c>+0x16</c>. Le
+    /// <c>+0x5c = 1</c> pose juste avant chaque naissance est lu par la spirale elle-meme, qui n'y
+    /// prend qu'un couple de champs d'affichage.
+    /// </para>
+    /// <para>Cinquante images en tout.</para>
+    /// </summary>
+    private static void TickHelpingHand_0044BF00(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // LE LANCEUR, et non la cible : c'est +0x74 que ce sort recopie.
+        byte* caster = *(byte**)(e + 0x74);
+        if (caster == null) caster = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(caster + 0x20);
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+        }
+
+        // L'angle de depart des spirales bascule d'une image a l'autre.
+        *(ushort*)(e + 0x9a) = (*(ushort*)(e + 0x16) & 1) == 0 ? (ushort)0x800 : (ushort)0;
+
+        if (*(ushort*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x16, 0x0095, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x30, 0x0200, 0x0a00, 0x0a00);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x2f, 0x0653, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 3) Aud.PlaySoundEffect(0x2c, 0x0200, 0x1000, 0x1000);
+
+        // L'EFFET, a la dixieme image, sur chaque membre vivant du groupe.
+        if (*(short*)(e + 0x16) == 10)
+        {
+            byte* member = Inp.s_SlotFlags_005e93c0;
+
+            for (int slot = 0; slot < 4; slot++, member += 0x9c)
+            {
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                *(byte**)(e + 0x78) = member;
+
+                // La paire famille/indice est pretee au lanceur avant chaque pose, membre par
+                // membre — le binaire relit +0x74 pour chacune des deux ecritures.
+                (*(byte**)(e + 0x74))[6] = e[6];
+                (*(byte**)(e + 0x74))[7] = e[7];
+
+                ApplyStatusEffectIfEligible_0044C0D0(
+                    *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+                SpawnCastEntity_0047AAE0(e, 0x93, 0, -1);
+                SpawnCastEntity_0047AAE0(e, 0x93, 0, -1);
+            }
+        }
+
+        // LES SPIRALES, chaque image jusqu'a la quatorzieme, une par membre vivant.
+        if (*(short*)(e + 0x16) < 0x0e)
+        {
+            byte* member = Inp.s_SlotFlags_005e93c0;
+
+            for (int slot = 0; slot < 4; slot++, member += 0x9c)
+            {
+                uint flags = *(uint*)member;
+                if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+
+                *(byte**)(e + 0x78) = member;
+                *(int*)(e + 0x5c) = 1;   // lu par la spirale en naissant
+
+                SpawnStatusEffectEntity_0047AC40(
+                    e, (int*)(member + 0x1c), null, 0x91, 0, -1);
+            }
+        }
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) == 0x32) EndSpellAndResetDecor_00448020(e);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044c110 @ 0x0044c110 — <b>l'etincelle de benediction</b> : le sous-type
+    /// <c>0x93</c>, creneau 147 de <see cref="s_StaticEntityHandlers_00551f30"/>. 333 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0044C110.asm</c>.
+    ///
+    /// <para>
+    /// <b>Deux fiches l'engendrent</b>, toujours par paires : <see cref="TickForgiveBolt_0044F290"/>
+    /// — le trait de Pardon, qui l'attendait sans corps depuis sa transcription — et
+    /// <see cref="TickHelpingHand_0044BF00"/>, sur chaque membre du groupe. Le nom est donc neutre
+    /// a dessein.
+    /// </para>
+    /// <para>
+    /// <b>Elle lache sa cible quand celle-ci meurt.</b> Si le porteur porte <c>0x50000000</c>, ou
+    /// si elle-meme porte deja <c>0x2000000</c>, elle cesse de recopier sa position et se marque
+    /// <c>0x2000000</c> — le drapeau d'extinction. Sinon elle colle au porteur, une tete au-dessus
+    /// (<c>0x46000</c>).
+    /// </para>
+    /// <para>
+    /// <b>Tout son etat est tire au sort</b> : les trois rotations sur un tour complet, et deux
+    /// vitesses de rotation dans <c>[-150, 149]</c>. Huit images a <c>+50</c> de teinte, puis
+    /// <c>-7 / -7 / -4</c> — le seul degrade asymetrique de la famille — jusqu'a ce que son canal
+    /// <b>bleu</b> <c>+0x3a</c> retombe a zero. Ses sœurs surveillent le rouge <c>+0x38</c> ;
+    /// celle-ci surveille le canal qui descend le moins vite, donc elle vit plus longtemps.
+    /// </para>
+    /// </summary>
+    private static void TickBlessingSpark_0044C110(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_0044c124 — le porteur mourant, ou le drapeau deja pose, detachent l'etincelle.
+        if ((*(uint*)anchor & 0x50000000) != 0 || (*(uint*)e & 0x2000000) != 0)
+        {
+            *(uint*)e |= 0x2000000;
+        }
+        else
+        {
+            *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + 0x46000;
+            *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+        }
+
+        // Ghidra: LAB_0044c154
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x1d;
+            e[0x0a] = 3;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x28) = 0x1f40;
+            *(short*)(e + 0x2a) = 0x1f40;
+            *(short*)(e + 0x2c) = 0x1f40;
+
+            *(short*)(e + 0x30) = (short)(CrtRand() % 0x1000);
+            *(short*)(e + 0x32) = (short)(CrtRand() % 0x1000);
+            *(short*)(e + 0x34) = (short)(CrtRand() % 0x1000);
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 300 - 0x96);
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x2e) = -60;
+            *(short*)(e + 0x14) = (short)(CrtRand() % 300 - 0x96);
+        }
+
+        // Ghidra: LAB_0044c206
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short spinA = *(short*)(e + 0x12);
+        short spinB = *(short*)(e + 0x14);
+
+        *(short*)(e + 0x30) += spinA;
+        *(short*)(e + 0x32) += spinB;
+        *(short*)(e + 0x34) -= spinA;
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) <= 7)
+        {
+            BrightenEntityTint_00404DE0(e, 0x32, 0x32, 0x32);
+            return;
+        }
+
+        // Ghidra: LAB_0044c23e — le degrade asymetrique, et la garde sur le BLEU.
+        BrightenEntityTint_00404DE0(e, -7, -7, -4);
+
+        if (e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044c260 @ 0x0044c260 — <b>la spirale de Coup de pouce</b> : le sous-type
+    /// <c>0x91</c> de <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c>
+    /// ou depose <see cref="SpawnStatusEffectEntity_0047AC40"/>. <b>Decompilee dans
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Meme numero de sous-type que le petale de Delivrance, autre table, autre corps</b> :
+    /// <see cref="TickDeliverancePetal_0044BA00"/> est le <c>0x91</c> de <c>0x00551f30</c>, celui
+    /// que <see cref="SpawnCastEntity_0047AAE0"/> atteint ; celui-ci est le <c>0x91</c> de
+    /// <c>0x00552230</c>. Rien ne les relie.
+    /// </para>
+    /// <para>
+    /// <b>Elle monte en tournant, et son rayon s'ouvre.</b> L'angle <c>+0x12</c> — pris de
+    /// <c>+0x9a</c>, que le sort fait basculer d'une image a l'autre — avance de <c>0xfa</c> et se
+    /// replie sur le tour ; le rayon <c>+0x14</c> part de <c>0x32</c> et gagne <c>1</c> par image ;
+    /// la hauteur vaut <c>+0x16 * 0x2000</c>. Le centre est le <b>porteur vivant</b>, recopie en
+    /// tete de chaque image dans <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> — la spirale suit donc son
+    /// membre du groupe, contrairement a la bille de Micro qui reste accrochee a un instantane.
+    /// </para>
+    /// <para>
+    /// <b>Deux ruptures a mi-course, a la vingt-cinquieme image</b> : l'echelle cesse de croitre de
+    /// <c>0xa0</c> et se met a decroitre d'autant, et le rayon passe a <c>+3</c> par image des
+    /// qu'il depasse <c>0x1e</c> — elle s'ecarte donc plus vite en s'effaçant. Quarante images en
+    /// tout.
+    /// </para>
+    /// <para>
+    /// <c>+0x5c</c>, que le sort pose a <c>1</c> avant chaque naissance, ne sert qu'a un couple de
+    /// champs d'affichage (<c>+0x0a = 1</c>, <c>+0x0b = 0</c>) et n'est lu nulle part ailleurs.
+    /// </para>
+    /// </summary>
+    private static void TickHelpingHandSpiral_0044C260(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // Le centre de la spirale, relu a chaque image : elle suit son porteur.
+        *(int*)(e + 0x50) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x58) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x30;   // Ghidra: &DAT_00551558
+            e[0x40] = 0;
+
+            if (*(int*)(e + 0x5c) == 1)
+            {
+                e[0x0a] = 1;
+                e[0x0b] = 0;
+            }
+
+            *(short*)(e + 0x10) = 1;
+            *(ushort*)(e + 0x12) = *(ushort*)(e + 0x9a);   // l'angle de depart, pose par le sort
+
+            // Le centre est repris de sa propre position, ecrasant la copie du porteur ci-dessus.
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(short*)(e + 0x14) = 0x32;
+            *(short*)(e + 0x16) = 0;
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(short*)(e + 0x2e) = -60;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        int angle = *(short*)(e + 0x12);
+        short radius = *(short*)(e + 0x14);
+        short step = *(short*)(e + 0x16);
+
+        // Ghidra: Ordinal_451 / Ordinal_450.
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(angle) * radius + *(int*)(e + 0x50);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(angle) * radius + *(int*)(e + 0x58);
+        *(int*)(e + 0x20) = step * 0x2000 + *(int*)(e + 0x54);
+
+        *(short*)(e + 0x12) = (short)(angle + 0xfa);
+        if (*(short*)(e + 0x12) > 0x0fff) *(short*)(e + 0x12) -= 0x1000;
+
+        *(short*)(e + 0x14) = (short)(radius + 1);
+
+        if (step < 0x19)
+        {
+            *(short*)(e + 0x28) += 0xa0;
+            *(short*)(e + 0x2a) += 0xa0;
+        }
+        else
+        {
+            *(short*)(e + 0x28) -= 0xa0;
+            *(short*)(e + 0x2a) -= 0xa0;
+
+            // Passe la moitie, le rayon s'ouvre trois fois plus vite — mais seulement une fois
+            // qu'il a depasse 0x1e, seuil que le rayon franchit des la trentieme image.
+            if ((short)(radius + 1) > 0x1e) *(short*)(e + 0x14) = (short)(radius + 3);
+        }
+
+        *(short*)(e + 0x16) = (short)(step + 1);
+
+        if ((short)(step + 1) > 0x27) *(uint*)e &= 0x7fffffff;
     }
 
     /// <summary>
