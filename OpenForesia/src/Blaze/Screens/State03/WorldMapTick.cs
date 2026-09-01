@@ -5033,6 +5033,13 @@ public static unsafe partial class Blaze
             case 0x00477360: TickHaste_00477360(record); return;
             case 0x00477420: TickHasteRing_00477420(record); return;
 
+            // MATERIA FEU, ecole 2 indice 3 — la premiere d'une fratrie de QUATRE corps
+            // identiques (terre, air, eau), qui ne different que par le son de la premiere image
+            // et l'indice de l'effet a intensite pose a la derniere. Son embrasement 0x4c est
+            // celui de Feu d'enfer, deja ecrit.
+            case 0x004774C0: TickFireMateria_004774C0(record); return;
+            case 0x00477600: TickFireMateriaFlame_00477600(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -46928,7 +46935,7 @@ public static unsafe partial class Blaze
     /// <b>Sur la victime</b> : la paire famille/indice est pretee au lanceur <b>en un seul mot</b>
     /// (<c>+0x06</c> et <c>+0x07</c> ensemble, la ou l'ecole 1 les ecrit octet par octet), puis
     /// <see cref="ApplyStatusEffect_0053B730"/> — <b>l'effet d'etat 11</b> — le clignotement, et un
-    /// halo <c>0xbe</c> mis a l'echelle de la tete de la victime, <c>(hauteur &lt;&lt; 12) / 150</c>
+    /// halo <c>0xbe</c> mis a l'echelle de la tete de la victime, <c>(hauteur &lt;&lt; 12) / 75</c>
     /// par la multiplication magique <c>0x1B4E81B5</c>.
     /// </para>
     /// </summary>
@@ -47031,8 +47038,9 @@ public static unsafe partial class Blaze
                 *(int*)(e + 0x44) = 0;
                 *(int*)(e + 0x48) = (height & ~1) << 0xb;
 
-                // (hauteur << 12) / 150 — multiplication magique 0x1B4E81B5 puis `sar 3`.
-                int scale = (height << 0xc) / 150;
+                // (hauteur << 12) / 75 — multiplication magique 0x1B4E81B5 puis `sar 3`. Le
+                // decalage de 3 donne 75 ; c'est `sar 4` qui donne 150 (Vitesse, Materia feu).
+                int scale = (height << 0xc) / 75;
 
                 *(int*)(e + 0x4c) = 0;
                 *(int*)(e + 0x50) = 0;
@@ -47118,7 +47126,7 @@ public static unsafe partial class Blaze
     // ET LE SABOT TOMBE. Il n'a pas de vitesse propre : le sort lui pose seulement une gravite
     // (+0x9a = 0x6000), et IntegrateWithDrag_00535880 fait le reste. Pendant la chute il grossit
     // d'un quart de l'ecart par image vers une taille reglee sur la stature de la victime —
-    // (hauteur << 12) / 150, la meme division magique que le halo de Dodo.
+    // (hauteur << 12) / 75, la meme division magique que le halo de Dodo.
     //
     // A L'IMPACT il APLATIT sa victime : echelles 0x1800 / 0 / 0x1800, c'est-a-dire etalee au sol
     // et sans epaisseur. C'est le seul corps du depot a ecrire les echelles d'une AUTRE entite.
@@ -47177,9 +47185,9 @@ public static unsafe partial class Blaze
         // TROIS CENTS UNITES AU-DESSUS DE SA TETE : c'est de la que le sabot tombera.
         *(int*)(e + 0x20) += (height + 0x12c) << 0xc;
 
-        // La taille visee — (hauteur << 12) / 150, multiplication magique 0x1B4E81B5 puis `sar 3`,
+        // La taille visee — (hauteur << 12) / 75, multiplication magique 0x1B4E81B5 puis `sar 3`,
         // exactement comme le halo de Dodo.
-        *(short*)(e + 0x12) = (short)((height << 0xc) / 150);
+        *(short*)(e + 0x12) = (short)((height << 0xc) / 75);
 
         // ET IL NAITRA SANS TAILLE : le sabot grandit en tombant.
         *(int*)(e + 0x28) = 0;
@@ -47591,6 +47599,223 @@ public static unsafe partial class Blaze
         }
 
         *(short*)(e + 0x10) = (short)(age + 1);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005518a8</c> — <b>le script de sons differes des quatre Materia</b>, six
+    /// enregistrements de huit octets en <b>quatre pas</b>. Meme format que
+    /// <see cref="s_DelayedSoundScript_00551888"/>, qu'il suit sans trou.
+    ///
+    /// <para>
+    /// <b>Son dernier pas joue TROIS sons d'un coup</b> : son <c>[2]</c> vaut 3, et
+    /// <c>Audio.TickDelayedSounds</c> avance alors de trois enregistrements. C'est le premier
+    /// script du depot a s'en servir — les cinq autres ont tous <c>[2] = 1</c> partout —, et c'est
+    /// ce qui donne les six enregistrements pour quatre pas. La borne reste le <c>[1] = 0</c>, porte
+    /// par le quatrieme.
+    /// </para>
+    /// <para>
+    /// Les trois derniers sont le meme son <c>0x1c</c> a trois hauteurs (<c>0x0800</c>,
+    /// <c>0x0554</c>, <c>0x0400</c>) et au meme gain plus faible <c>0x0f00</c> : un accord, la ou
+    /// les trois premiers pas sont des coups isoles.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_005518A8 =
+    [
+        0x2c, 0x18, 0x01, 0x00, 0x29, 0x03, 0x00, 0x12,   // 0x005518a8
+        0x10, 0x10, 0x01, 0x00, 0xa6, 0x0c, 0x00, 0x12,   // 0x005518b0
+        0x0c, 0x03, 0x01, 0x00, 0x00, 0x04, 0x00, 0x12,   // 0x005518b8
+        0x1c, 0x00, 0x03, 0x00, 0x00, 0x08, 0x00, 0x0f,   // 0x005518c0 — delai nul : fin, et TROIS sons
+        0x1c, 0x00, 0x00, 0x00, 0x54, 0x05, 0x00, 0x0f,   // 0x005518c8 — le deuxieme du lot
+        0x1c, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x0f,   // 0x005518d0 — le troisieme
+    ];
+
+    private static byte* s_DelayedSoundScript005518A8Storage;
+
+    /// <summary>Les six enregistrements du script en memoire native.</summary>
+    private static byte* DelayedSoundScript005518A8()
+        => NativeCopy(s_DelayedSoundScript_005518A8, ref s_DelayedSoundScript005518A8Storage);
+
+    // =====================================================================
+    // MATERIA FEU — ecole 2, indice 3, sous-type 0xa3
+    //
+    //   0x004774C0   LE SORT. Sous-type 0xa3 de 0x00551c30. DECOMPILE dans Blaze.c.
+    //   0x00477600   LA FLAMME, sous-type 0x56 de 0x00552230. 96 octets, ABSENTE de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00477600.asm.
+    //   0x0047BDF0   l'embrasement, sous-type 0x4c — DEJA ECRIT ET DEJA EXERCE : c'est celui de
+    //                Feu d'enfer (TickHellfireBlaze_0047BDF0). La Materia le reemploie tel quel.
+    //
+    // MATERIA FEU EST LA PREMIERE D'UNE FRATRIE DE QUATRE. `0x00477660` (terre), `0x004777a0`
+    // (air) et `0x004778e0` (eau) ont le MEME corps, instruction pour instruction : ils ne
+    // different que par deux constantes — l'identifiant du son joue a la premiere image, et
+    // l'indice de l'effet pose a la derniere (3, 4, 5, 6, les quatre effets « a intensite » de la
+    // table des quarante-huit). Ce sont donc quatre enchantements elementaires, pas quatre sorts.
+    //
+    // ELLE DURE SOIXANTE IMAGES ET SE LANCE SUR UN ALLIE, comme Vitesse : FindTargetAround en
+    // mode 0, qui rend le lanceur lui-meme faute de voisin. Les vingt-quatre premieres images
+    // sement UNE FLAMME PAR IMAGE autour des pieds de la cible, a un angle et un rayon tires au
+    // sort — le rayon dans la moitie de sa stature. A la soixantieme, l'effet est pose.
+    //
+    // ET LA FLAMME NE COMPTE PAS SES IMAGES : c'est sa TEINTE qui la tue. Elle part de 0xf0f0f0,
+    // perd 0x101010 par image, et le corps s'efface quand la soustraction tombe pile sur zero —
+    // le `jne` lit les indicateurs de cette addition-la, pas un compteur. Quinze images, donc,
+    // et pas une de plus ni de moins.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004774c0 @ 0x004774c0 — <b>Materia feu</b> : le sous-type <c>0xa3</c>, creneau
+    /// 163 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>quatrieme fiche de l'ecole
+    /// 2</b>. <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Premiere fiche de l'ecole 2 a vivre plus d'une image</b> — soixante, et en trois temps
+    /// qui se recouvrent : la mise en place a l'image 0, l'ensemencement jusqu'a la 24e, et l'effet
+    /// a la 60e.
+    /// </para>
+    /// <para>
+    /// <b>Sa cible est un allie</b>, par <see cref="FindTargetAround_00474BA0"/> en mode 0 — le
+    /// lanceur lui-meme quand personne n'est a portee, comme <see cref="TickHaste_00477360"/>. Elle
+    /// la range en <c>+0x78</c> (ce que l'effet recevra) et en <c>+0x70</c> (ce a quoi les flammes
+    /// se recolleront).
+    /// </para>
+    /// <para>
+    /// <b>Elle lache d'abord l'embrasement <c>0x4c</c></b>, qui est celui de Feu d'enfer
+    /// (<see cref="TickHellfireBlaze_0047BDF0"/>) — deja transcrit, deja exerce en foret. Puis
+    /// <b>une flamme <c>0x56</c> par image pendant vingt-quatre images</b>, chacune a un angle tire
+    /// au sort et un rayon tire dans la <b>moitie de la stature</b> de la cible (<c>+0x12</c>). La
+    /// hauteur de depart est <c>cible+0x60</c>, la cote du sol : les flammes naissent a ses pieds.
+    /// </para>
+    /// <para>
+    /// <b>A la soixantieme image elle pose l'effet 3</b> (<see cref="ApplyStatusEffect_0053B100"/>),
+    /// le premier des quatre qui rangent une <b>intensite</b> a cote de leur duree — c'est ce qui
+    /// fait de cette fratrie des enchantements elementaires. La paire famille/indice est pretee au
+    /// lanceur en un seul mot, comme partout dans l'ecole 2.
+    /// </para>
+    /// </summary>
+    private static void TickFireMateria_004774C0(byte* record)
+    {
+        byte* e = record;
+        byte* target;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(short*)(e + 0x2e) = -64;
+
+            // Faute de voisin dans son camp, elle rend le lanceur : la Materia ne rate jamais.
+            target = FindTargetAround_00474BA0(e, 0);
+
+            *(byte**)(e + 0x78) = target;
+            *(byte**)(e + 0x70) = target;
+
+            // L'EMBRASEMENT, et c'est celui de Feu d'enfer — reemploye tel quel.
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA0(), 0x4c, e[0x0b], -1);
+
+            int height = StatusBubbleHeight_00538BC0((uint*)target);
+
+            // La MOITIE de la stature : c'est le rayon dans lequel les flammes seront semees.
+            *(short*)(e + 0x12) = (short)(height >> 1);
+
+            // (hauteur << 12) / 150 — multiplication magique 0x1B4E81B5 puis `sar 4`. Ecrit en
+            // mot long, donc l'echelle en Y (+0x2a) part a zero : c'est de la que la flamme
+            // s'etirera.
+            *(int*)(e + 0x28) = (height << 0xc) / 150;
+
+            // Le decalage dont la flamme divisera son etirement restant, a chaque image.
+            *(ushort*)(e + 0x14) = 3;
+
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+
+            Aud.PlayPositionalSound(0x20, 0x400, 0x1200, (int*)(e + 0x1c));
+            Aud.QueueDelayedSoundScript(DelayedSoundScript005518A8(), (int*)(e + 0x1c));
+        }
+        else
+        {
+            target = *(byte**)(e + 0x78);
+        }
+
+        // UNE FLAMME PAR IMAGE, pendant vingt-quatre images.
+        if (*(short*)(e + 0x10) < 0x18)
+        {
+            int angle = CrtRand();                              // Ghidra: FUN_00547140
+            int radius = CrtRand() % *(short*)(e + 0x12);
+
+            *(short*)(e + 0x32) = (short)angle;
+
+            // Le decalage horizontal, que la flamme ajoutera a la position de la cible a chaque
+            // image de sa vie — il ne bouge plus une fois tire.
+            *(int*)(e + 0x44) = (int)Winsys3d.GetSinTableEntry(angle) * radius;
+            *(int*)(e + 0x4c) = Winsys3d.GetCosTableEntry(angle) * radius;
+
+            // Et elle naît AUX PIEDS de la cible : +0x60 est la cote du sol sous elle.
+            *(int*)(e + 0x20) = *(int*)(target + 0x60);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors005519A0(), 0x56, e[0x0b], -1);
+        }
+
+        if (*(short*)(e + 0x10) >= 0x3c)
+        {
+            // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
+            *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+            ApplyStatusEffect_0053B100(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            *(uint*)e = 0;
+        }
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00477600 @ 0x00477600 — <b>la flamme de Materia feu</b> : le sous-type
+    /// <c>0x56</c> de <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c>.
+    /// 96 octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00477600.asm</c>. Les quatre Materia la partagent.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Elle ne compte pas ses images : c'est sa TEINTE qui la tue.</b> Elle perd <c>0x101010</c>
+    /// par image, et le corps s'efface quand la soustraction tombe <b>pile sur zero</b> — le
+    /// <c>jne</c> final lit les indicateurs de cette addition-la, pas un compteur. Partie de
+    /// <c>0xf0f0f0</c>, elle vit donc exactement quinze images. Une flamme qui naitrait d'une autre
+    /// teinte ne s'eteindrait jamais : rien d'autre ne la borne.
+    /// </para>
+    /// <para>
+    /// <b>Elle s'etire.</b> Son echelle en Y (<c>+0x2a</c>) part de zero et approche <c>0x7fff</c>
+    /// d'une fraction de la distance restante a chaque image — la fraction etant
+    /// <c>1 / 2^(+0x14)</c>, et le sort ayant pose <c>+0x14 = 3</c>, un huitieme. Le decalage est
+    /// lu comme un <b>octet</b> et sert de compte de decalage tel quel.
+    /// </para>
+    /// <para>
+    /// <b>Elle suit sa cible en X/Z</b> — position de la cible plus le decalage fixe que le sort a
+    /// tire pour elle (<c>+0x44</c> et <c>+0x4c</c>) — et <b>monte de vingt unites par image</b>,
+    /// sans gravite ni integrateur : <c>+0x20</c> est simplement augmente de <c>0x14000</c>.
+    /// </para>
+    /// </remarks>
+    private static void TickFireMateriaFlame_00477600(byte* record)
+    {
+        byte* e = record;
+        byte* target = *(byte**)(e + 0x70);
+
+        // L'ETIREMENT : un huitieme de ce qui reste jusqu'a 0x7fff, par image.
+        short stretch = *(short*)(e + 0x2a);
+        stretch = (short)(stretch + ((0x7fff - stretch) >> e[0x14]));
+        *(short*)(e + 0x2a) = stretch;
+
+        // Elle se recolle a sa cible, decalee de ce que le sort a tire pour elle.
+        *(int*)(e + 0x1c) = *(int*)(e + 0x44) + *(int*)(target + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(e + 0x4c) + *(int*)(target + 0x24);
+
+        // Et elle monte de vingt unites par image, sans gravite ni integrateur.
+        *(int*)(e + 0x20) += 0x14000;
+
+        // LA TEINTE EST SON COMPTE A REBOURS. `add ecx,0FFEFEFF0h` puis `jne` : c'est cette
+        // soustraction-la qui decide, et seul un zero exact eteint la flamme.
+        uint tint = *(uint*)(e + 0x38) - 0x00101010;
+        *(uint*)(e + 0x38) = tint;
+
+        if (tint == 0) *(uint*)e = 0;
     }
 
     /// <summary>
