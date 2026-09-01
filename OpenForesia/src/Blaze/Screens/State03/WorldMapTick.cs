@@ -5027,6 +5027,12 @@ public static unsafe partial class Blaze
             case 0x00476FD0: TickHeavyHoof_00476FD0(record); return;
             case 0x004770A0: TickHeavyHoofStomp_004770A0(record); return;
 
+            // VITESSE, ecole 2 indice 2 — le PREMIER SORT BIENFAISANT de l'ecole : sa cible est
+            // un allie, et faute de voisin le lanceur lui-meme. Deux anneaux naissent la meme
+            // image ; seul le second, marque +0x16 = 1, pose l'effet 19.
+            case 0x00477360: TickHaste_00477360(record); return;
+            case 0x00477420: TickHasteRing_00477420(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -47401,6 +47407,190 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x1c) = *(int*)(victim + 0x1c);
         *(int*)(e + 0x24) = *(int*)(victim + 0x24);
         *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551888</c> — <b>le script de sons differes de Vitesse</b>, quatre pas
+    /// de huit octets. Meme format que <see cref="s_DelayedSoundScript_00551878"/>, qu'il suit sans
+    /// trou : l'identifiant en <c>[0]</c>, le delai avant le pas suivant en <c>[1]</c> (zero
+    /// termine), le nombre de sons d'un coup en <c>[2]</c>, la hauteur en <c>[4]</c>, le gain en
+    /// <c>[6]</c>.
+    ///
+    /// <para>
+    /// <b>Quatre fois le meme son <c>0x0c</c>, de plus en plus aigu</b> — <c>0x0200</c>,
+    /// <c>0x02d4</c>, <c>0x037e</c>, <c>0x0554</c> — et espaces de <b>deux images</b> : un arpege
+    /// montant, qui est ce qu'on entend quand l'anneau se ferme. La borne est le <c>[1] = 0</c> du
+    /// quatrieme pas.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00551888 =
+    [
+        0x0c, 0x02, 0x01, 0x00, 0x00, 0x02, 0x00, 0x12,   // 0x00551888
+        0x0c, 0x02, 0x01, 0x00, 0xd4, 0x02, 0x00, 0x12,   // 0x00551890
+        0x0c, 0x02, 0x01, 0x00, 0x7e, 0x03, 0x00, 0x12,   // 0x00551898
+        0x0c, 0x00, 0x01, 0x00, 0x54, 0x05, 0x00, 0x12,   // 0x005518a0 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00551888Storage;
+
+    /// <summary>Les quatre pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00551888()
+        => NativeCopy(s_DelayedSoundScript_00551888, ref s_DelayedSoundScript00551888Storage);
+
+    // =====================================================================
+    // VITESSE — ecole 2, indice 2, sous-type 0xa2
+    //
+    //   0x00477360   LE SORT. Sous-type 0xa2 de 0x00551c30. DECOMPILE dans Blaze.c.
+    //   0x00477420   L'ANNEAU, sous-type 0x81 de 0x00551f30. DECOMPILE dans Blaze.c aussi — les
+    //                deux corps de cette fiche sont les premiers de l'ecole 2 a l'etre.
+    //
+    // C'EST LE PREMIER SORT BIENFAISANT DE L'ECOLE 2, et sa cible n'est pas un ennemi :
+    // FindTargetAround_00474BA0 en mode 0 fait balayer au lanceur SON PROPRE CAMP, et faute de
+    // voisin elle rend le lanceur lui-meme — Vitesse ne rate donc jamais, elle se lance sur soi.
+    // L'effet 19 le confirme : c'est le seul de la table des quarante-huit a n'avoir NI masque
+    // d'immunite NI jet de sauvegarde.
+    //
+    // LE SORT NE VIT QU'UNE IMAGE, comme les deux precedentes fiches de l'ecole. Mais la ou Dodo
+    // et Gros sabots engendraient un seul enfant, celui-ci en engendre DEUX D'AFFILEE — deux
+    // anneaux de tailles differentes, distingues par le mot +0x16 : le premier est haut et etroit
+    // (largeur x, hauteur 1,5x), le second large et plat (largeur 1,5x, hauteur 0,75x). Ils
+    // partent la meme image et vivent les memes trente-deux.
+    //
+    // ET SEUL LE SECOND POSE L'EFFET : l'anneau ne le fait que si son +0x16 est non nul. Le
+    // premier n'est que du decor. C'est le seul endroit du depot ou deux enfants identiques se
+    // partagent ainsi le travail.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00477360 @ 0x00477360 — <b>Vitesse</b> : le sous-type <c>0xa2</c>, creneau 162
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>troisieme fiche de l'ecole 2</b>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle ne vit qu'une image</b> et met son mot d'etat a zero en partant, comme
+    /// <see cref="TickSleep_00476C70"/> et <see cref="TickHeavyHoof_00476FD0"/> — mais sans meme
+    /// avoir besoin d'un bit de garde, puisqu'elle ne revient jamais.
+    /// </para>
+    /// <para>
+    /// <b>Sa cible est un ALLIE</b> : <see cref="FindTargetAround_00474BA0"/> en mode 0 fait
+    /// balayer au lanceur son propre camp, et rend le lanceur lui-meme quand personne n'est a
+    /// portee. Elle la range <b>deux fois</b> — en <c>+0x70</c>, dont l'anneau se sert pour se
+    /// coller a ses pieds, et en <c>+0x78</c>, qui est ce que l'effet recevra.
+    /// </para>
+    /// <para>
+    /// <b>Deux anneaux, pas un</b>, tailles reglees sur la stature de la cible :
+    /// <c>base = (hauteur &lt;&lt; 12) / 150</c> — la meme division magique que Dodo et Gros
+    /// sabots — puis <c>haut = base + base/2</c>. Le premier anneau part en
+    /// <c>(base, haut, base)</c> avec <c>+0x16 = 0</c>, le second en
+    /// <c>(haut, (haut &amp; ~1)/2, haut)</c> avec <c>+0x16 = 1</c>. Le compilateur ecrit ce second
+    /// couple comme <c>(haut &amp; ~1) &lt;&lt; 15 | haut</c> : le <c>&amp; ~1</c> garantit que le
+    /// decalage ne deborde pas dans le mot bas, ce qui revient a poser la moitie en <c>+0x2a</c>.
+    /// </para>
+    /// </summary>
+    private static void TickHaste_00477360(byte* record)
+    {
+        byte* e = record;
+
+        // Faute de voisin dans son camp, elle rend le lanceur : Vitesse ne rate jamais.
+        byte* target = FindTargetAround_00474BA0(e, 0);
+
+        *(byte**)(e + 0x78) = target;
+        *(byte**)(e + 0x70) = target;
+
+        *(uint*)(e + 0x38) = 0x00f0f0f0;
+        e[0x04] = 0x26;
+
+        int height = StatusBubbleHeight_00538BC0((uint*)target);
+
+        // La taille de base — (hauteur << 12) / 150, la meme que les deux fiches precedentes.
+        uint low = (uint)((height << 0xc) / 0x96);
+        uint high = (uint)(((int)low >> 1) + (int)low);      // une fois et demie
+
+        // LE PREMIER ANNEAU : haut et etroit, et il ne posera RIEN.
+        *(short*)(e + 0x2c) = (short)low;
+        *(ushort*)(e + 0x16) = 0;
+        *(uint*)(e + 0x28) = high * 0x10000 | low;
+
+        SpawnCastEntity_0047AAE0(e, 0x81, e[0x0b], -1);
+
+        // LE SECOND : large et plat, et c'est LUI qui posera l'effet.
+        *(uint*)(e + 0x28) = (high & 0xfffffffe) << 0xf | high;
+        *(short*)(e + 0x2c) = (short)high;
+        *(ushort*)(e + 0x16) = 1;
+
+        SpawnCastEntity_0047AAE0(e, 0x81, e[0x0b], -1);
+
+        Aud.PlayPositionalSound(0x0d, 0x2d4, 0x1200, (int*)(e + 0x1c));
+
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00477420 @ 0x00477420 — <b>l'anneau de Vitesse</b> : le sous-type <c>0x81</c> de
+    /// <see cref="s_StaticEntityHandlers_00551f30"/>, la table de <c>0x005edee0</c>.
+    /// <b>Decompile dans <c>Blaze.c</c></b>. Il en naît <b>deux par lancer</b>, que seul le mot
+    /// <c>+0x16</c> distingue.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Il ne se deplace pas : il se recolle</b> a sa cible chaque image, et
+    /// <b>a ses PIEDS</b> — la hauteur vient de <c>cible+0x60</c>, la cote du sol sous elle, pas de
+    /// son <c>+0x20</c>. C'est ce qui fait un anneau qui tourne au ras du sol et non a mi-corps.
+    /// Il tourne de <c>age * 8</c> par image, donc de plus en plus vite.
+    /// </para>
+    /// <para>
+    /// <b>Sa teinte est un sinus de son age</b> : <c>sin(age &lt;&lt; 6) * 255 &gt;&gt; 12</c>,
+    /// pose sur les trois canaux a la fois — un gris qui monte puis redescend. A l'age
+    /// <c>0x20</c>, l'anneau se ferme : le script de sons differes
+    /// <see cref="s_DelayedSoundScript_00551888"/> part et il s'efface.
+    /// </para>
+    /// <para>
+    /// <b>Et seul le second anneau agit.</b> Sous <c>+0x16 == 0</c> il ne fait rien de plus ;
+    /// sinon il prete la paire famille/indice au lanceur <b>en un seul mot</b> (<c>+0x06</c> et
+    /// <c>+0x07</c> ensemble, comme toute l'ecole 2) et appelle
+    /// <see cref="ApplyStatusEffect_0053BD10"/> — l'effet 19, duree <c>attaque/8 + 0x28</c> en
+    /// <c>+0xa6</c>, bit <c>0x4000</c>, et <b>ni masque d'immunite ni jet de sauvegarde</b>.
+    /// </para>
+    /// <para>
+    /// L'age est incremente <b>apres</b> l'effacement, sur le meme chemin ; c'est ce que fait
+    /// l'original et l'emplacement est deja libre, donc sans consequence.
+    /// </para>
+    /// </remarks>
+    private static void TickHasteRing_00477420(byte* record)
+    {
+        byte* e = record;
+        byte* target = *(byte**)(e + 0x70);
+
+        short age = *(short*)(e + 0x10);
+
+        // Il tourne de plus en plus vite : le pas est l'age lui-meme, multiplie par huit.
+        *(short*)(e + 0x32) += (short)(age * 8);
+
+        // IL SE COLLE AUX PIEDS DE SA CIBLE : +0x60 est la cote du sol sous elle, pas son +0x20.
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x60);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        // Ghidra: Ordinal_451 — la table de sinus de winsys3d.
+        int grey = (int)Winsys3d.GetSinTableEntry(age << 6) * 0xff >> 0xc;
+        *(uint*)(e + 0x38) = (uint)((grey << 8 | grey) << 8 | grey);
+
+        if (age >= 0x20)
+        {
+            if (*(short*)(e + 0x16) != 0)
+            {
+                // LE SECOND ANNEAU SEUL. La paire famille/indice, pretee au lanceur en un mot.
+                *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+                ApplyStatusEffect_0053BD10(
+                    *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+            }
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00551888(), (int*)(e + 0x1c));
+            *(uint*)e = 0;
+        }
+
+        *(short*)(e + 0x10) = (short)(age + 1);
     }
 
     /// <summary>
