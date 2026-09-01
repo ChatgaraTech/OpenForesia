@@ -19899,3 +19899,96 @@ Il n'est atteint que par un appelant des sous-zones 5 ou 9, pas par l'embarcatio
 `0x00541B80`, et les dix comportements d'ennemi `0x0049FAD0`, `0x004A0480`, `0x004A13E0`,
 `0x004A1D50`, `0x004A2C90`, `0x004A35B0` (sous-zones 6-8) et `0x004A3C30`, `0x004A4270`,
 `0x004A4AE0`, `0x004A54E0` (sous-zones 5 et 9).
+
+## 2026-09-01 (suite 4) — `0x0049E920`, la bête qui empoigne
+
+**La priorité de la zone 3 est levée.** C'était la seule ligne `implémenté=non, testé=oui` du lieu :
+la sonde l'avait vue passer en sous-zone 2, ce qui veut dire que le jeu y allait vraiment et
+plantait en y allant. 1932 octets, **absents de `Blaze.c`**, quarante-huit étiquettes de saut et
+huit `return`. Relevé sous `Legacy/Raw/Blaze/FUN_0049E920.asm`.
+
+Zone 3 passe de **124 à 125 implémentés sur 136**, et **plus une seule ligne `non/oui` n'y
+subsiste** : les onze qui restent sont toutes `non/non`, c'est-à-dire « à écrire un jour », pas
+« ça plante ».
+
+### Ce que c'est
+
+La **quatrième intelligence d'entité de scène** de la forêt, après `0x00499de0`, `0x0049a980` et
+`0x0049e190`. Même découpage en trois temps que ses trois sœurs, mêmes feuilles
+(`SceneEntityDelay`, `RestSceneEntity`, `HoldSceneEntityAtRange`, `WanderSceneEntity`,
+`HesitateSceneEntity`, `TurnSceneEntityTowards_0049E384`) — et une mécanique qu'aucune des trois
+n'a.
+
+**Elle empoigne.** Quand sa sonde de geste trouve un membre du groupe, elle ne se contente pas de
+le frapper : elle retient l'écart de position dans `+0x44`/`+0x48`/`+0x4c`, garde la victime dans
+`+0x6c`, allume le bit `1` de `+0x40` — sa marque de prise — et se **colle** à elle à chaque image,
+en la frappant une fois par image.
+
+**Et on s'en débarrasse en secouant la manette.** Chaque image de prise, le corps remonte de la
+victime à sa manette — l'octet `+8` de l'emplacement, le `* 0x4c` de `s_PlayerSlots_005e9188`, le
+`* 0x10` de la table d'état — et regarde les quatre bits `0xf0` de l'octet `+2`. Tant qu'ils sont
+nuls la prise tient ; dès qu'ils bougent, le compteur `+0x10` descend, et à zéro la bête lâche en
+étant **projetée à l'opposé de son propre cap** (`+0x50` et `+0x58` reçoivent
+`sin/cos(cap + 0x800) << 5`). Le compteur de départ vaut `hasard % 8 + hardiesse / 4 + 8` : **une
+bête hardie tient plus longtemps**.
+
+**C'est le premier mécanisme du dépôt où l'entrée du joueur agit sur le comportement d'un
+ennemi.** Partout ailleurs la manette pilote le personnage ; ici elle décide de la durée d'une
+prise.
+
+**Trois fois sur dix la prise empoisonne** : si `+0x16` est non nul, un tirage sur cent sous trente
+appelle `ApplyTrapEffect_0053C420` — l'événement `0x1d` — après avoir posé `7` dans `+0x07`.
+
+### Ce qui la distingue, chiffre par chiffre
+
+| | 0x0049a980 | 0x0049e190 | **0x0049e920** |
+|---|---|---|---|
+| sonde de geste | 0, 0x1e, 0x32, 0x64, 0, 0x50 | 0, 0, 0x32, 0x64, 0, 0x5a | **0, 0x32, 0x23, 0x32, 0, 0x5a** |
+| bande proche, attaque | 30 % | 30 % | **60 %** |
+| portée du coup | — | `0x50` + tirage | **`0x64` + tirage** |
+| échec du cône | hésite | hésite | **erre** |
+| distance tenue | 0x64 | 0x64 | **0x5a** |
+| pas de rotation, posture 1 | — | `hardiesse*2 + 0x80` | **`hardiesse + 0x20`** |
+| pas de rotation, posture 2 | — | `hardiesse*2 + 0x80` | **`hardiesse + 0x40`** |
+| vitesse, posture 2 | — | `(hardiesse+0xc0) << 7` | **`(hardiesse+0xe0) << 7`** |
+
+**Sa sonde est la seule de la famille à porter un décalage vertical** (`0x32` en `+0x02` et en
+`+0x06`) : elle frappe en hauteur. Et **elle est de loin la plus agressive** — six fois sur dix au
+corps à corps contre trois pour ses sœurs, et l'échec du cône la fait avancer au lieu de la figer.
+
+### Trois observations de forme
+
+**Sa posture 3 marche vers un CAP, pas vers une position.** `+0x10` porte le cap visé, et la
+posture s'y aligne par pas de `hardiesse/2 + 0x20` tant que l'écart dépasse un huitième de tour.
+La sœur `0x0049e190` déplaçait sa position directement par sinus et cosinus ; ce n'est pas la même
+chose.
+
+**Sa phase d'application est écrite en clair**, là où ses sœurs appellent
+`IntegrateSceneEntityMotion_00488160`, `EndSceneEntityAnimation_004DFAF0` et
+`InterruptSceneEntity_004E3770`. Et ce n'est pas une copie de ces trois-là : la pose au sol lit le
+**plancher** `+0x60` et non le plafond `+0x64`, avec une marge de `0xc000` quand l'entité n'est pas
+en cours d'animation, et l'interruption ne consulte pas le bloc de statistiques. Transcrit comme un
+corps distinct, ce qu'il est.
+
+**Elle résout les trois blocs de description et n'en lit aucun.** L'appel à `ResolveEntityBlocks`
+est là, ses trois sorties vont sur la pile, et **aucune instruction ne les relit** — vérifié sur le
+désassemblage. Ses sœurs gardent le bloc de statistiques pour leur interruption ; celle-ci a la
+sienne en clair, qui s'en passe. L'appel est conservé : il est dans le corps.
+
+**Elle ne replanifie pas tant qu'elle tient** : le bit `1` de `+0x40` est un quatrième verrou en
+tête du troisième temps, en plus des trois que ses sœurs ont.
+
+### La ligne de sonde a été retirée, comme la règle le demande
+
+`handlers-exerces.tsv` portait `0049E920 / zone 3 / sous-zone 2`. Ce « testé » ne prouvait que le
+plantage : il datait d'une partie où le corps n'existait pas, et la sonde note l'adresse **avant**
+d'appeler. La ligne est supprimée, conformément à la consigne de `CLAUDE.md`. `0x0049E920` est donc
+maintenant `implémenté=oui, testé=non` — une dette honnête, et non un acquis usurpé. Le total des
+testés de la zone passe de 25 à 24, ce qui est le bon sens de la correction.
+
+### Les onze qui restent en zone 3
+
+`0x00541B80` (le jumeau du pas de collision, 258 octets, sous-zones 5 et 9) et **dix comportements
+d'ennemi** : `0x0049FAD0`, `0x004A0480`, `0x004A13E0`, `0x004A1D50`, `0x004A2C90`, `0x004A35B0`
+(sous-zones 6-8) et `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0` (sous-zones 5 et 9).
+Aucun n'est signalé par la sonde : rien ne prouve encore qu'une partie y passe.

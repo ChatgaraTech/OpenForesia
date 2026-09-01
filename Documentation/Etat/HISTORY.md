@@ -5,6 +5,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **`0x0049E920`, la bete qui EMPOIGNE** — 1932 octets absents de `Blaze.c`, la quatrieme intelligence d'entite de scene de la foret. C'etait **la seule ligne `implemente=non, teste=oui` de la zone 3** : le jeu y allait vraiment et plantait. Zone 3 passe a **125 des 136**, et plus aucune ligne « ca plante » n'y subsiste
+- doc : **on s'en debarrasse en secouant la manette** — la bete se colle a sa victime et la frappe a chaque image ; les quatre bits `0xf0` de l'octet `+2` de la manette de la VICTIME font descendre un compteur, et a zero la bete est projetee a l'oppose de son cap. Le compteur vaut `hasard % 8 + hardiesse / 4 + 8` : une bete hardie tient plus longtemps
+- doc : **premier mecanisme du depot ou l'entree du joueur agit sur le comportement d'un ennemi** — partout ailleurs la manette pilote le personnage ; ici elle decide de la duree d'une prise
+- doc : **la plus agressive de la famille** — six fois sur dix au corps a corps contre trois pour ses sœurs, une sonde a decalage vertical (la seule), et l'echec du cone la fait avancer au lieu de la figer
+- fix : **la ligne de sonde de `0x0049E920` retiree de `handlers-exerces.tsv`** — ce « teste » ne prouvait que le plantage, la sonde notant l'adresse avant d'appeler. Le gestionnaire est maintenant `implemente=oui, teste=non` : une dette honnete plutot qu'un acquis usurpe
 - feat : **`0x00541550`, le pas sur le maillage du terrain** — 1584 octets absents de `Blaze.c`, la piece que l'embarcation attendait. Zone 3 passe a **124 des 136**. Il ne deplace rien : il dit sur quelles faces l'entite se retrouve, quel plancher et quel plafond elle a, et ce qui l'a arretee
 - doc : **une troisieme table sur le morceau de terrain, `morceau + 0x30`** — la liste d'adjacence par sommet, une suite de `short` terminee par un negatif. C'est elle qui rend la traversee d'arete possible sans balayer toutes les faces
 - doc : **le bobinage des faces identifie la face d'en face** — la voisine est celle dont une arete est le couple de sommets INVERSE, compare comme une simple egalite de dwords. Aucune recherche geometrique
