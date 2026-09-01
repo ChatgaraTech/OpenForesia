@@ -5,6 +5,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **Matéria eau, école 2 indice 6 — et la FRATRIE DES QUATRE MATÉRIA EST CLOSE** : le sort `0x004778e0` (décompilé), son `0x18` à la hauteur `0x384`, effet 6 (`+0x8c` / `+0xea`). L'école 2 passe à **7 fiches sur 20**
+- doc : **les quatre copies sont relevées, et il n'y a pas de quatrième différence** — ce que le diff établissait pour terre puis pour air vaut pour la fratrie entière : un seul comportement et quatre tables de trois constantes (le son de la première image, sa hauteur, l'effet de la dernière)
+- doc : **ni l'un ni l'autre des deux enfants n'est propre à un élément** — les quatre Matéria lâchent le même embrasement `0x4c` et la même flamme `0x56`, avec les mêmes atlas. À l'écran elles sont **identiques** ; seuls le son de départ et l'effet rangé dans le bloc de statistiques changent
 - feat : **Matéria air, école 2 indice 5** : le sort `0x004777a0` (décompilé) — la troisième de la fratrie, et la parenté est de nouveau vérifiée au désassembleur : hors adresses de saut, trois constantes d'écart avec feu et rien d'autre. Son `9` à la hauteur `0x100` (la plus grave des trois), effet 5 (`+0x8a` / `+0xe8`)
 - doc : **les quatre enchantements élémentaires occupent quatre paires consécutives** — `+0x86`/`+0xe4`, `+0x88`/`+0xe6`, `+0x8a`/`+0xe8` pour feu, terre et air : ils se cumulent tous, aucun ne remplace l'autre
 - feat : **Matéria terre, école 2 indice 4** : le sort `0x00477660` (décompilé) — la deuxième de la fratrie. Aucun corps nouveau à écrire : elle réemploie l'embrasement `0x4c` et la flamme `0x56` de Matéria feu

@@ -5048,6 +5048,11 @@ public static unsafe partial class Blaze
             // verifiee au desassembleur : trois constantes d'ecart, et rien d'autre.
             case 0x004777A0: TickAirMateria_004777A0(record); return;
 
+            // MATERIA EAU, ecole 2 indice 6 — la QUATRIEME ET DERNIERE de la fratrie. Les
+            // quatre copies sont relevees : pas de quatrieme difference, le comportement est
+            // unique et seules trois constantes changent.
+            case 0x004778E0: TickWaterMateria_004778E0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -48016,6 +48021,107 @@ public static unsafe partial class Blaze
 
             // LA TROISIEME DIFFERENCE : l'effet 5, duree en +0x8a et intensite en +0xe8.
             ApplyStatusEffect_0053B260(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            *(uint*)e = 0;
+        }
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004778e0 @ 0x004778e0 — <b>Materia eau</b> : le sous-type <c>0xa6</c>, creneau
+    /// 166 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>septieme fiche de l'ecole
+    /// 2</b>. <b>Decompilee dans <c>Blaze.c</c></b>. <b>Elle clot la fratrie des quatre
+    /// Materia.</b>
+    ///
+    /// <para>
+    /// <b>La quatrieme et derniere copie du corps de <see cref="TickFireMateria_004774C0"/></b>, et
+    /// la parente est verifiee au desassembleur comme pour les deux precedentes : hors adresses de
+    /// saut, le diff ne porte que sur les trois memes constantes, aux trois memes endroits. Le son
+    /// de la premiere image est <c>0x18</c> a la hauteur <c>0x384</c>, et l'effet pose a la
+    /// derniere est <see cref="ApplyStatusEffect_0053B310"/>, l'effet 6.
+    /// </para>
+    /// <para>
+    /// <b>Les quatre copies sont donc relevees, et la reponse est nette : il n'y a pas de quatrieme
+    /// difference.</b> Ce que le diff etablissait pour terre puis pour air vaut pour la fratrie
+    /// entiere. Elle est faite d'un seul comportement et de quatre tables de constantes, et les
+    /// quatre effets qu'elle pose (3, 4, 5, 6) sont les quatre « a intensite » de la table des
+    /// quarante-huit, rangeant leur duree et leur magnitude en <b>quatre paires consecutives</b> —
+    /// <c>+0x86</c>/<c>+0xe4</c>, <c>+0x88</c>/<c>+0xe6</c>, <c>+0x8a</c>/<c>+0xe8</c>,
+    /// <c>+0x8c</c>/<c>+0xea</c>. Aucun ne remplace l'autre : les quatre enchantements se cumulent.
+    /// </para>
+    /// <para>
+    /// <b>Ni l'un ni l'autre des deux enfants n'est propre a un element</b> : les quatre lachent le
+    /// meme embrasement <c>0x4c</c> — celui de Feu d'enfer — et la meme flamme <c>0x56</c>, avec
+    /// les memes atlas. Quelle que soit la Materia lancee, ce qu'on voit a l'ecran est identique ;
+    /// seul le son de depart et l'effet range dans le bloc de statistiques changent.
+    /// </para>
+    /// </summary>
+    private static void TickWaterMateria_004778E0(byte* record)
+    {
+        byte* e = record;
+        byte* target;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(short*)(e + 0x2e) = -64;
+
+            // Faute de voisin dans son camp, elle rend le lanceur : la Materia ne rate jamais.
+            target = FindTargetAround_00474BA0(e, 0);
+
+            *(byte**)(e + 0x78) = target;
+            *(byte**)(e + 0x70) = target;
+
+            // LE MEME embrasement que les trois precedentes — donc celui de Feu d'enfer.
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA0(), 0x4c, e[0x0b], -1);
+
+            int height = StatusBubbleHeight_00538BC0((uint*)target);
+
+            // La MOITIE de la stature : le rayon dans lequel les flammes seront semees.
+            *(short*)(e + 0x12) = (short)(height >> 1);
+
+            // (hauteur << 12) / 150 — multiplication magique 0x1B4E81B5 puis `sar 4`.
+            *(int*)(e + 0x28) = (height << 0xc) / 150;
+
+            *(ushort*)(e + 0x14) = 3;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+
+            // LA PREMIERE ET LA DEUXIEME DIFFERENCE : le son 0x18, a la hauteur 0x384.
+            Aud.PlayPositionalSound(0x18, 0x384, 0x1200, (int*)(e + 0x1c));
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript005518A8(), (int*)(e + 0x1c));
+        }
+        else
+        {
+            target = *(byte**)(e + 0x78);
+        }
+
+        // UNE FLAMME PAR IMAGE, pendant vingt-quatre images — la meme 0x56 que Materia feu.
+        if (*(short*)(e + 0x10) < 0x18)
+        {
+            int angle = CrtRand();                              // Ghidra: FUN_00547140
+            int radius = CrtRand() % *(short*)(e + 0x12);
+
+            *(short*)(e + 0x32) = (short)angle;
+
+            *(int*)(e + 0x44) = (int)Winsys3d.GetSinTableEntry(angle) * radius;
+            *(int*)(e + 0x4c) = Winsys3d.GetCosTableEntry(angle) * radius;
+
+            *(int*)(e + 0x20) = *(int*)(target + 0x60);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors005519A0(), 0x56, e[0x0b], -1);
+        }
+
+        if (*(short*)(e + 0x10) >= 0x3c)
+        {
+            // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
+            *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+            // LA TROISIEME DIFFERENCE : l'effet 6, duree en +0x8c et intensite en +0xea.
+            ApplyStatusEffect_0053B310(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
 
             *(uint*)e = 0;
         }
