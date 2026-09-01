@@ -1333,11 +1333,14 @@ Employer `0x005e9324` dans la moitié « groupe », comme le fait la plume.
 
 ---
 
-## LB-026 — « Champ magique » vise le dernier candidat balayé, pas le plus proche
+## LB-026 — « Champ magique » et « Escargot » visent le dernier candidat balayé, pas le plus proche
 
 **Relevé** le 2026-09-01 au désassembleur, en transcrivant `FUN_004780b0`
 (`TickMagicField_004780B0`). Le corps est absent de `Blaze.c` ; le relevé est sous
-`Legacy/Raw/Blaze/FUN_004780B0.asm`.
+`Legacy/Raw/Blaze/FUN_004780B0.asm`. **Le défaut est double** : `FUN_004786c0` (« Escargot »,
+`TickSnail_004786C0`) est la jumelle recompilée de ce corps et le porte à l'identique — seuls
+le son de départ, un second son à la douzième image et la classe d'entités chassée les
+séparent. Ce qui suit vaut mot pour mot pour les deux.
 
 ### Symptôme
 

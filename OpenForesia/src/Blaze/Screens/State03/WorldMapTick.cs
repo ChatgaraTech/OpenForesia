@@ -5076,6 +5076,11 @@ public static unsafe partial class Blaze
             // pieds d'un allie, vingt images, puis l'effet 28.
             case 0x004785F0: TickAirCushion_004785F0(record); return;
 
+            // ESCARGOT, ecole 2 indice 11 — la JUMELLE de Champ magique : meme corps a trois
+            // differences pres, dont une seule compte — elle guette une AUTRE classe
+            // d'entites, (etat & 0xe80) == 0x680 au lieu de (etat & 0x880) == 0x880.
+            case 0x004786C0: TickSnail_004786C0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -49207,6 +49212,324 @@ public static unsafe partial class Blaze
 
             *(uint*)e = 0;
         }
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004786c0 @ 0x004786c0 — <b>Escargot</b> : le sous-type <c>0xab</c>, creneau 171
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>douzieme fiche de l'ecole 2</b>.
+    /// 1 364 octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_004786C0.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickMagicField_004780B0"/>, a trois differences pres</b>, et le diff des
+    /// deux desassemblages les donne toutes les trois — le reste n'etant que des adresses de saut
+    /// et des registres echanges :
+    /// </para>
+    /// <list type="number">
+    /// <item><description>
+    /// <b>le son de la premiere image</b> : <c>0x31</c> a la hauteur <c>0x195</c>, la ou Champ
+    /// magique joue <c>0x0d</c> a <c>0x800</c> ;
+    /// </description></item>
+    /// <item><description>
+    /// <b>un second son a la douzieme image exactement</b> — <c>0x16</c> a la hauteur <c>0x653</c>,
+    /// sur un test d'egalite, pas de seuil. Champ magique n'a pas cette image-la ;
+    /// </description></item>
+    /// <item><description>
+    /// <b>la classe d'entites chassee</b> : <c>(etat &amp; 0xe80) == 0x680</c> au lieu de
+    /// <c>(etat &amp; 0x880) == 0x880</c>. Les deux sentinelles ne guettent donc <b>pas la meme
+    /// chose</b> : celle-ci exige <c>0x400</c> et <c>0x200</c> et refuse <c>0x800</c>, que l'autre
+    /// exige au contraire. C'est la seule difference qui change ce que le sort fait.
+    /// </description></item>
+    /// </list>
+    /// <para>
+    /// <b>Elle est recompilee, pas recopiee</b> : <c>ecx</c> et <c>edx</c> y jouent des roles
+    /// echanges par rapport a sa jumelle, ce qu'une copie du meme code n'aurait pas produit — le
+    /// meme signe que la boule d'Ecrase porte vis-a-vis de la bulle de Dodo.
+    /// </para>
+    /// <para>
+    /// Tout le reste est mot pour mot celui de Champ magique : la pose sur un allie, la levee en
+    /// seize images, l'entretien a quatre PM toutes les vingt, le balayage des trois tables, la
+    /// visee au quart de l'ecart, le tir a quatre etincelles, l'extinction par retrecissement, et
+    /// <b>le meme defaut d'origine</b> — la visee porte sur le dernier candidat balaye et non sur
+    /// le plus proche (LB-026).
+    /// </para>
+    /// </summary>
+    private static void TickSnail_004786C0(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            // L'EXTINCTION : un quart de moins par image, et la disparition sous 0x100.
+            short fading = *(short*)(e + 0x28);
+            fading = (short)(fading - (short)(fading >> 2));
+
+            *(short*)(e + 0x28) = fading;
+            *(short*)(e + 0x2a) = fading;
+            *(short*)(e + 0x2c) = fading;
+
+            if (fading < 0x100)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+        }
+        else
+        {
+            // Ghidra: LAB_00478704
+            byte* carrier;
+
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+
+                e[0x36] |= 6;
+                *(short*)(e + 0x2e) = -20;
+
+                carrier = FindTargetAround_00474BA0(e, 0);
+
+                *(byte**)(e + 0x78) = carrier;
+                *(byte**)(e + 0x70) = carrier;
+
+                *(short*)(e + 0x12) = (short)StatusBubbleHeight_00538BC0((uint*)carrier);
+
+                *(int*)(e + 0x28) = 0;
+
+                *(short*)(e + 0x14) = *(short*)(carrier + 0x32);
+                *(short*)(e + 0x16) = *(short*)(carrier + 0x34);
+                *(short*)(e + 0x32) = *(short*)(carrier + 0x32);
+                *(short*)(e + 0x34) = *(short*)(carrier + 0x34);
+
+                *(ushort*)(e + 0x28) = 0;
+                *(int*)(e + 0x38) = 0;
+
+                // LA PREMIERE DIFFERENCE : un autre son, et bien plus grave.
+                Aud.PlayPositionalSound(0x31, 0x195, 0x1200, (int*)(e + 0x1c));
+            }
+            else
+            {
+                // Ghidra: LAB_0047877b
+                carrier = *(byte**)(e + 0x78);
+            }
+
+            // Ghidra: LAB_0047877e — la hauteur, recollee sur le porteur a chaque image.
+            int height = *(short*)(e + 0x12);
+            *(int*)(e + 0x20) = ((height & ~1) << 0xb) + *(int*)(carrier + 0x20);
+
+            if (*(short*)(e + 0x10) < 0x10)
+            {
+                // LA DEUXIEME DIFFERENCE : un second son a la DOUZIEME image exactement — un test
+                // d'egalite, pas un seuil. Champ magique n'a pas cette image-la.
+                if (*(short*)(e + 0x10) == 0x0c)
+                {
+                    Aud.PlayPositionalSound(0x16, 0x653, 0x1200, (int*)(e + 0x1c));
+                }
+
+                // Ghidra: LAB_004787b7 — LA LEVEE, seize images.
+                *(short*)(e + 0x28) += 0xc0;
+
+                short grown = *(short*)(e + 0x28);
+                *(short*)(e + 0x2a) = grown;
+                *(short*)(e + 0x2c) = grown;
+
+                uint tint = *(uint*)(e + 0x38);
+                if (tint < 0x00808080) *(uint*)(e + 0x38) = tint + 0x00080808;
+            }
+            else
+            {
+                // Ghidra: LAB_004787e4 — le lanceur est relache, et le sort se met a couter.
+                *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+
+                int breath =
+                    0xc00 - (Winsys3d.GetCosTableEntry(*(short*)(e + 0x10) << 8) >> 3);
+
+                *(short*)(e + 0x28) = (short)breath;
+                *(short*)(e + 0x2a) = (short)breath;
+                *(short*)(e + 0x2c) = (short)breath;
+
+                if ((*(uint*)e & 0x800000) != 0)
+                {
+                    byte* caster = *(byte**)(e + 0x74);
+                    uint index = ((uint*)caster)[2] & 0xff;
+                    byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+                    int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+                    ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+                    if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+                    {
+                        *(uint*)e |= 0x2000000;               // le bouton est relache
+                    }
+
+                    // Ghidra: LAB_0047885b — quatre PM toutes les vingt images.
+                    if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
+                    {
+                        short mana = *(short*)(perChar + 0x14e);
+
+                        if (mana >= 4)
+                        {
+                            *(short*)(perChar + 0x14e) = (short)(mana - 4);
+                        }
+                        else
+                        {
+                            // Ghidra: LAB_00478886
+                            *(ushort*)(perChar + 0x14e) = 0;
+                            *(uint*)e |= 0x2000000;
+                        }
+                    }
+                }
+                else if (*(short*)(e + 0x10) >= 0x78)
+                {
+                    // Ghidra: LAB_00478891 — un lanceur hors groupe tient cent-vingt images.
+                    *(uint*)e |= 0x2000000;
+                }
+
+                // Ghidra: LAB_0047889f — et dans tous les cas, le lanceur doit tenir debout.
+                if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+            }
+
+            // ============================================================================
+            // Ghidra: LAB_004788b2 — LE BALAYAGE DES TROIS TABLES.
+            // ============================================================================
+            byte* best = null;
+            int bestDistance = 0x190;
+
+            // Les ecarts du DERNIER candidat retenu — et c'est bien ceux-la que la visee emploie
+            // (LB-026), tout comme chez Champ magique.
+            int lastDx = 0;
+            int lastDy = 0;
+            int lastDz = 0;
+
+            for (int table = 3; table != 0; table--)
+            {
+                // Ghidra: LAB_004788cc — la branche par defaut (LAB_00478905) est inatteignable.
+                byte* slot;
+                int count;
+
+                switch (table)
+                {
+                    case 3: slot = Mem.Entity(0x005ff400); count = 0x20; break;
+                    case 2: slot = Mem.Entity(0x005edee0); count = 0x80; break;
+                    default: slot = Mem.Entity(0x005f2d40); count = 0x80; break;
+                }
+
+                // Ghidra: LAB_00478915
+                for (; count != 0; count--, slot += 0x9c)
+                {
+                    uint state = *(uint*)slot;
+
+                    if ((state & 0x80000000) == 0) continue;   // l'emplacement est libre
+
+                    // LA TROISIEME DIFFERENCE, ET LA SEULE QUI CHANGE CE QUE LE SORT FAIT :
+                    // Escargot exige 0x400 et 0x200 et REFUSE 0x800, que Champ magique exige.
+                    // Les deux sentinelles ne guettent pas la meme classe d'entites.
+                    if ((state & 0xe80) != 0x680) continue;
+
+                    if ((state & 0x40000000) != 0) continue;   // deja consomme
+
+                    lastDx = (*(int*)(slot + 0x1c) - *(int*)(carrier + 0x1c)) >> 0xc;
+                    lastDy = (*(int*)(slot + 0x20) - *(int*)(carrier + 0x20)) >> 0xc;
+                    lastDz = (*(int*)(slot + 0x24) - *(int*)(carrier + 0x24)) >> 0xc;
+
+                    int distance = (int)Winsys3d.Ordinal_442(
+                        (uint)(lastDx * lastDx + lastDy * lastDy + lastDz * lastDz));
+
+                    if (bestDistance > distance)
+                    {
+                        bestDistance = distance;
+                        best = slot;
+                    }
+                }
+            }
+
+            if (best != null)
+            {
+                // LA VISEE, sur les ecarts du DERNIER candidat — le defaut d'origine LB-026.
+                int flat = (int)Winsys3d.Ordinal_442((uint)(lastDx * lastDx + lastDz * lastDz));
+
+                *(short*)(e + 0x14) = (short)(Winsys3d.Ordinal_457(lastDx, lastDz) + 0x400);
+                *(short*)(e + 0x16) = (short)Winsys3d.Ordinal_457(lastDy, flat);
+            }
+            else
+            {
+                // Ghidra: LAB_00478a13
+                *(short*)(e + 0x14) = (short)(*(short*)(carrier + 0x32) + 0x400);
+                *(short*)(e + 0x16) = *(short*)(carrier + 0x34);
+            }
+
+            // Ghidra: LAB_00478a28 — LE VIRAGE : un quart de l'ecart par image, dans les deux axes.
+            int currentYaw = *(short*)(e + 0x32);
+            int currentPitch = *(short*)(e + 0x34);
+
+            int yawError = (*(ushort*)(e + 0x14) - currentYaw) & 0xfff;
+            int pitchError = (*(ushort*)(e + 0x16) - currentPitch) & 0xfff;
+
+            int yawStep = yawError < 0x800 ? yawError >> 2 : -((0x1000 - yawError) >> 2);
+            *(short*)(e + 0x32) = (short)(currentYaw + yawStep);
+
+            int pitchStep = pitchError < 0x800 ? pitchError >> 2 : -((0x1000 - pitchError) >> 2);
+            *(short*)(e + 0x34) = (short)(currentPitch + pitchStep);
+
+            // Ghidra: LAB_00478a82 — LE TIR, aux memes trois conditions.
+            if (best != null
+                && bestDistance < height - (height >> 2)
+                && ((yawError + 0x200) & 0xfff) < 0x400
+                && ((pitchError + 0x200) & 0xfff) < 0x400)
+            {
+                int savedScale = *(int*)(e + 0x28);
+                int savedDepth = *(int*)(e + 0x2c);
+                int savedTint = *(int*)(e + 0x38);
+
+                int* at = (int*)(best + 0x1c);
+
+                *(ushort*)(e + 0x1a) = 1;
+                *(ushort*)(e + 0x9a) = 0x2000;
+                *(uint*)(e + 0x38) = 0x00f0f0f0;
+                *(uint*)(e + 0x28) = 0x10001000;
+                *(ushort*)(e + 0x2c) = 0x1f;
+
+                // Ghidra: LAB_00478b18 — quatre etincelles.
+                for (int remaining = 4; remaining != 0; remaining--)
+                {
+                    int yaw = (CrtRand() & 0x1ff) + *(short*)(e + 0x32) - 0x500;
+                    int pitch = (CrtRand() & 0x1ff) + *(short*)(e + 0x34) - 0x100;
+                    int speed = (CrtRand() & 0x0f) + 0x14;
+
+                    SetVectorFromAngles_00532AD0((int*)(e + 0x50), yaw, pitch, speed);
+
+                    SpawnStatusEffectEntity_0047AC40(
+                        e, at, Descriptors00551BA8(), 0xbf, e[0x0b], -1);
+                }
+
+                *(int*)(e + 0x2c) = savedDepth;
+                *(int*)(e + 0x28) = savedScale;
+                *(int*)(e + 0x38) = savedTint;
+
+                // ET LA CIBLE EST ETEINTE.
+                *(uint*)best |= 0x40000000;
+            }
+        }
+
+        // ================================================================================
+        // Ghidra: LAB_00478b9e — LA QUEUE, commune a tous les chemins qui ne sont pas morts.
+        // ================================================================================
+        int radius = *(short*)(e + 0x12);
+        radius -= radius >> 2;                       // les trois quarts de la stature
+
+        byte* holder = *(byte**)(e + 0x78);
+
+        int* offset = stackalloc int[3];
+        SetVectorFromAngles_00532AD0(
+            offset, *(short*)(e + 0x32) - 0x400, *(short*)(e + 0x34), radius);
+
+        *(int*)(e + 0x1c) = *(int*)(holder + 0x1c) + offset[0];
+        *(int*)(e + 0x20) += offset[1];
+        *(int*)(e + 0x24) = *(int*)(holder + 0x24) + offset[2];
+
+        e[0x04] = 0x0e;
+        SpawnCastEntity_0047AAE0(e, 0x84, e[0x0b], -1);
 
         *(short*)(e + 0x10) += 1;
     }

@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **Escargot, école 2 indice 11** : le sort `0x004786c0` (1 364 octets, vingt-sept cibles de saut, **absent de `Blaze.c`**, sorti du désassembleur) — aucun enfant à écrire, le troisième d'affilée dans ce cas
+- doc : **c'est la jumelle de Champ magique**, et le diff des deux désassemblages donne les trois seules différences : le son de la première image (`0x31` à `0x195` au lieu de `0x0d` à `0x800`), **un second son à la douzième image exactement** (`0x16` à `0x653`, sur un test d'égalité) que Champ magique n'a pas, et la classe d'entités chassée
+- doc : **et c'est cette dernière qui compte** — `(état & 0xe80) == 0x680` au lieu de `(état & 0x880) == 0x880` : Escargot exige `0x400` et `0x200` et **refuse** `0x800`, que Champ magique exige au contraire. Les deux sentinelles ne guettent pas la même chose, et c'est tout ce qui les sépare en jeu
+- doc : **elle est recompilée, pas recopiée** — `ecx` et `edx` y jouent des rôles échangés par rapport à sa jumelle, le même signe que la boule d'Écrase porte vis-à-vis de la bulle de Dodo. Elle hérite aussi de LB-026 : la visée porte sur le dernier candidat balayé, pas sur le plus proche
 - feat : **Coussin d'air, école 2 indice 10** : le sort `0x004785f0` (205 octets, un seul saut interne, **absent de `Blaze.c`**, sorti du désassembleur) — le plus court corps de l'école, et le **second d'affilée sans enfant à écrire** : sa seule créature est l'étincelle `0xbf`, déjà transcrite
 - doc : **c'est un souffle sous les pieds d'un allié** — il se pose par `FindTargetAround` en mode 0, se donne une gravité `0x4000` que les étincelles héritent, et sème **une étincelle par image** à la position du porteur pendant vingt images : seize unités de vitesse horizontale dans une direction tirée au sort, et une poussée verticale fixe de `0x1e000`. À la vingtième il pose l'effet 28 et s'efface
 - doc : **l'effet 28 n'a ni masque d'immunité ni jet de sauvegarde**, comme celui de Vitesse — c'est un bienfait, il ne se refuse pas. Sa durée va en `+0xb8`, son bit est `0x400000`
