@@ -5,6 +5,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **`0x0049FAD0`, le TRENT — la SECONDE bete du depot qui lance un sort** — 2437 octets absents de `Blaze.c`. Zone 3 passe a **133 des 136**
+- doc : **le mecanisme d'incantation n'appartient pas au Behemoth** — le Trent le porte au complet : meme bit `0x800`, meme seconde machine a postures dans `+0x10`, meme entite `0xbd`, meme duree lue dans la fiche de sort (`+0x13`), meme masque de traits qui l'annule. Deux constantes les separent. Premier morceau de comportement de cette taille dont on constate qu'il est REUTILISE
+- doc : **les deux tables de sorts se recouvrent** — Trent 3/13/19, Behemoth 13/19/23, tous famille 0. Deux sorts sur trois en commun, alors qu'ils sont dans deux blocs differents
+- doc : **sa charge ne frappe qu'en MOUVEMENT** — le geste mesure sa propre vitesse a plat, n'ouvre le balayage qu'au-dessus de 6, et ne se ferme que quand elle retombe sous `hardiesse/8 + 1`. Son impulsion `(hardiesse + 0x360) << 7` est la plus forte poussee horizontale de la famille
+- doc : **elle saute, et la HARDIESSE decide de la frequence** — `hasard % 100 < hardiesse / 8` : un Trent hardi bondit huit fois sur cent, un Trent timide jamais. Premiere routine ou une statistique decide de la frequence d'un mouvement et non de son amplitude
+- fix : **la fin de `s_SpellGestures_00552978` est ETABLIE** — le releve du 2026-08-29 s'arretait sur un indice (« au-dela on lit des triplets `0x14 / 0x3c / 0x64` »), sans preuve. Ces trois nombres sont les termes `[1]`/`[2]`/`[3]` du gabarit du Trent a `0x00552990` : la table tient en douze mots exactement, et elle est bornee des deux cotes
 - feat : **`0x004A35B0`, WILLIE — la quatrieme bete volante** — 1636 octets absents de `Blaze.c`, la sœur de la Coccinelle que le crible annoncait a 417 lignes. Zone 3 passe a **132 des 136**
 - doc : **elle ENFLE pour frapper** — les trois echelles `+0x28`/`+0x2a`/`+0x2c` convergent vers `0x3000`, TROIS FOIS sa taille, des que le rebours du geste passe sous 8. Aucune des dix-huit routines precedentes ne touche a son echelle pour se battre
 - doc : **sa sonde est centree sur son propre corps** — `probe[1] = -0x3c`, le seul decalage avant NEGATIF du depot : la boite de frappe l'englobe au lieu de se poser devant. Le gabarit d'une chose qui blesse par contact, et il va avec l'enflure et le balayage a chaque image

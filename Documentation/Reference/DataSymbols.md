@@ -2213,6 +2213,8 @@ les huit suivants en transcrivant les quatre routines du bloc B et du bloc C de 
 | `0x00552948` | 0 | `0x32` | `0x5a` | `0x96` | 0 | `0xc8` | non attribuee |
 | `0x00552960` | 0 | `0x1e` | `0x46` | `0x96` | `-0x100` | `0x50` | **`FUN_0049B840`, la griffe** |
 | `0x0055296c` | 0 | `0x1e` | `0x32` | `0x96` | 0 | `0x50` | **`FUN_0049B840`, le bond** |
+| `0x00552990` | 0 | `0x14` | `0x3c` | `0x64` | 0 | `0x50` | **`FUN_0049FAD0`, le coup** |
+| `0x0055299c` | 0 | `0x28` | `0x32` | `0x64` | 0 | `0x46` | **`FUN_0049FAD0`, la charge** |
 | `0x005529d0` | 0 | `0x32` | `0x32` | `0x64` | 0 | `0x78` | **`FUN_004A2C90`, le coup de patte** |
 | `0x005529dc` | 0 | `0x32` | `0x82` | `0x64` | `-0x100` | `0x96` | **`FUN_004A2C90`, le bond** |
 | `0x005529e8` | 0 | `0x1e` | `0x46` | `0x96` | `-0x100` | `0x50` | **`FUN_004A4270`, la griffe** |
@@ -2251,14 +2253,37 @@ Grizzly s'abat d'en haut ; celle de sa prise est la plus large en portee lateral
 (`0x50`), ce qui va avec un geste qui doit attraper plutot que toucher. **La prise du Behemoth est
 la seule de la serie a porter un decalage vertical POSITIF** (`+0x100`) : elle empoigne par le bas.
 
-**Les deux du Geant** (`0x005529d0` et `0x005529dc`, ajoutees le 2026-09-01) **comblent une partie
-du trou** que le releve de 2026-08-29 laissait entre `0x00552978` et `0x005529e8`. Celle de son bond
-est **la plus longue de toute la serie** — `0x82` en portee avant, contre `0x5a` au plus ailleurs —
-et porte le `-0x100` de la griffe du Grizzly : elle tombe dessus. Le trou n'est pas entierement
-comble pour autant, et **ce qui reste dedans ne doit pas etre devine** : les routines du bloc B qui
-restent a transcrire le nommeront.
+**Les deux du Geant** (`0x005529d0` et `0x005529dc`) et **les deux du Trent** (`0x00552990` et
+`0x0055299c`), ajoutees le 2026-09-01, **comblent le trou** que le releve de 2026-08-29 laissait
+entre `0x00552978` et `0x005529e8`. Celle du bond du Geant est **la plus longue de toute la serie** —
+`0x82` en portee avant, contre `0x5a` au plus ailleurs — et porte le `-0x100` de la griffe du
+Grizzly : elle tombe dessus.
 
-## `0x00552a30` — les trois sorts du Behemoth (2026-09-01)
+**Et les deux du Trent bornent enfin `s_SpellGestures_00552978` par le haut.** Le releve de
+2026-08-29 s'arretait sur un indice : « au-dela, la donnee change de forme — on y lit des triplets
+`0x14 / 0x3c / 0x64` qui ressemblent a des seuils de pourcentage », en notant que ce n'etait pas une
+preuve. Ces trois nombres sont les termes `[1]`, `[2]` et `[3]` du gabarit `0x00552990`, qui suit la
+table sans espace. **La table des gestes de sort tient donc en douze mots exactement**, quatre
+triplets, et elle est desormais bornee des deux cotes.
+
+Il reste `0x005529a8`, entre les sondes du Trent et celles du Geant : c'est la table des trois sorts
+du Trent, decrite plus bas.
+
+## `0x005529a8` et `0x00552a30` — les trois sorts du Trent, les trois du Behemoth (2026-09-01)
+
+```
+0x005529a8: 0300 0d00 1300 0000
+```
+
+**Les trois sorts du Trent** (`FUN_0049FAD0`), de meme forme et de meme longueur que ceux du
+Behemoth ci-dessous, et bornes de la meme facon deux fois : le corps tire `hasard % 3`, et le
+quatrieme mot est nul. Les trois sont de la **famille 0** aux indices **3, 13 et 19**.
+
+**Les deux tables se recouvrent** : le Behemoth tire 13, 19 ou 23, le Trent 3, 13 ou 19. Deux sorts
+sur trois leur sont communs — ce qui rapproche les deux especes plus que leurs blocs ne le
+laisseraient croire (le Trent est en bloc B, le Behemoth en bloc C).
+
+
 
 ```
 0x00552a30: 0d00 1300 1700 0000

@@ -20580,3 +20580,86 @@ binaire.
 Toutes du bloc B, dans l'ordre du crible : `0x0049FAD0` (Trent, 454 lignes du Goblin-sorcier),
 `0x004A13E0` (Wyrm, 583 du Crabe), `0x004A1D50` (Varan, 1 171) et `0x004A0480` (Fleur du mal,
 1 262).
+
+## 2026-09-01 (suite 13) — `0x0049FAD0`, le Trent : le mécanisme d'incantation n'appartient pas au Behemoth
+
+Le dixième des quatorze de la zone 3. 2 437 octets, absents de `Blaze.c`, quarante-sept étiquettes,
+**deux** tables de sauts à quatre entrées (`0x004A0458` et `0x004A0468`). Relevé sous
+`Legacy/Raw/Blaze/FUN_0049FAD0.asm`.
+
+Zone 3 passe de **132 à 133 implémentés sur 136**. **Trois restent**, toutes du bloc B.
+
+### Le crible visait juste, et pour une raison qu'il ne pouvait pas savoir
+
+Il l'annonçait à **454 lignes du Goblin-sorcier `0x0049E190`** — le seul lanceur de sorts écrit
+avant. Ce n'était pas un hasard de forme : **le Trent est la seconde bête du dépôt qui lance un
+sort**, et elle le fait par le mécanisme du Behemoth, complet.
+
+Même bit `0x800` qui bascule sur une seconde machine à postures lue dans `+0x10`, mêmes quatre états
+comptés de 3 vers 0, même entité de lancement `0xbd`, même tirage sur trois fiches, **même lecture
+de la durée d'incantation dans l'octet `+0x13` de la fiche de sort**, et le même masque de traits
+`0x400003e8` qui annule tout avant le dispatch.
+
+**Deux constantes seulement les séparent** : l'animation de lancement est `6` chez le Trent et `7`
+chez le Behemoth, et le sort part à la **dix-septième** image au lieu de la quatorzième. L'armement
+diffère aussi d'un chiffre : animation `5` contre `6`.
+
+**Ce n'est donc pas une singularité du Behemoth.** Deux routines de deux blocs différents partagent
+un mécanisme entier de bout en bout — c'est le premier morceau de comportement de cette taille dont
+on constate qu'il est *réutilisé* plutôt qu'écrit une fois.
+
+### Les deux tables de sorts se recouvrent
+
+| | famille | indices |
+|---|---|---|
+| Trent, `0x005529A8` | 0 | **3, 13, 19** |
+| Behemoth, `0x00552A30` | 0 | **13, 19, 23** |
+
+Deux sorts sur trois leur sont communs. Les deux tables sont bornées deux fois de la même façon —
+`hasard % 3` d'un côté, un mot nul de l'autre.
+
+### Ce qui lui est propre
+
+**Sa charge ne frappe qu'en mouvement.** Le geste de la posture 1 mesure sa propre vitesse à plat —
+la racine de `(+0x50 >> 12)² + (+0x58 >> 12)²` — et n'ouvre le balayage que si elle dépasse **6**,
+après la dix-septième image. Il se ferme quand l'animation est finie **et** que cette vitesse est
+retombée sous `hardiesse/8 + 1`. C'est le verrou de la ruée de l'abeille tueuse, mais appliqué à un
+geste de contact.
+
+L'impulsion arrive à la seizième image, une seule : `(hardiesse + 0x360) << 7`, **la plus forte
+poussée horizontale de la famille**.
+
+**Son coup gèle l'image en l'air.** Le geste de la posture 0 décrémente `+0x1a` à chaque image où le
+bit 0 est posé, ce qui annule exactement l'avance que `AdvanceEntityAnimation_004DB5A0` vient de
+faire. Le geste attend d'avoir touché terre. Le Géant faisait cela en bornant l'image à `0x11` ; le
+Trent la décrémente. Deux écritures pour un même effet.
+
+**Elle saute, et la hardiesse décide.** Sa posture 3 tire `hasard % 100` contre `hardiesse / 8` :
+sous le seuil elle **bondit** — `+0x54` **augmenté** de `0x10000`, pas posé, et le bit 0 mis —,
+sinon elle marche. Un Trent hardi saute donc jusqu'à huit fois sur cent, un Trent timide jamais.
+C'est la première routine où une statistique décide de la *fréquence* d'un mouvement plutôt que de
+son amplitude.
+
+**Et elle n'a pas de gravité propre.** Aucune écriture dans `+0x9a`, là où le Grizzly pose `0x6000`,
+le Méchant ours `0x7000` et le Behemoth `0x7fff`. Elle retombe de ce que la simulation lui laisse.
+
+### Ses deux gabarits bornent enfin `s_SpellGestures_00552978`
+
+Le relevé du 2026-08-29 s'arrêtait sur un indice : « au-delà des douze mots, la donnée change de
+forme — on y lit des triplets `0x14 / 0x3c / 0x64` qui ressemblent à des seuils de pourcentage », en
+notant explicitement que ce n'était pas une preuve.
+
+**Ces trois nombres sont les termes `[1]`, `[2]` et `[3]` du gabarit `0x00552990`**, la sonde du
+coup du Trent, qui suit la table sans espace. La table des gestes de sort tient donc en **douze mots
+exactement**, quatre triplets, et elle est maintenant bornée des deux côtés. L'indice est devenu une
+preuve, et il a suffi de transcrire le corps qui lisait la donnée d'à côté.
+
+Avec les deux du Géant, les quatre sondes ajoutées aujourd'hui **comblent le trou** que
+`DataSymbols.md` laissait entre `0x00552978` et `0x005529e8`.
+
+### Les trois qui restent en zone 3
+
+Toutes du bloc B : `0x004A13E0` (Wyrm, 583 lignes du Crabe), `0x004A1D50` (Varan, 1 171) et
+`0x004A0480` (Fleur du mal, 1 262). **Les deux derniers sont les deux plus gros et les deux plus
+étrangers à tout ce qui est écrit** — le crible le disait, et ils sont maintenant seuls avec le
+Wyrm.

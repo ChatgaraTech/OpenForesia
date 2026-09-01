@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-09-01** | **19** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`, `0x004A35B0`) |
+| **écrits au 2026-09-01** | **20** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`, `0x004A35B0`, `0x0049FAD0`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -122,7 +122,7 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 | sous-type | gestionnaire | bête |
 |---|---|---|
 | 7 | `0x0049F0C0` | Homme-lézard · Lézard noir |
-| 10 | `0x0049FAD0` | Trent |
+| 10 | `0x0049FAD0` | Trent — **écrite** |
 | 11 | `0x004A0480` | Fleur du mal |
 | 12 | `0x004A13E0` | Wyrm |
 | 13 | `0x004A1D50` | Varan |
@@ -133,8 +133,20 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 `0x0049D030` en bloc A et `0x0049F0C0` en bloc B. C'est le rappel concret que la table est
 rechargée par sous-zone.
 
-Les sous-types 7 (`0x0049F0C0`), 14 (`0x004A2C90`) et 15 (`0x004A35B0`) sont **écrits** ; les quatre
-autres du bloc attendent.
+Les sous-types 7 (`0x0049F0C0`), 10 (`0x0049FAD0`), 14 (`0x004A2C90`) et 15 (`0x004A35B0`) sont
+**écrits** ; les trois autres du bloc attendent.
+
+**Le Trent `0x0049FAD0` est la seconde bête du dépôt qui lance un sort**, et elle le fait par le
+mécanisme du Behemoth **au complet** : même bit `0x800` qui bascule sur une seconde machine à
+postures, mêmes quatre états dans `+0x10`, même entité de lancement `0xbd`, même durée
+d'incantation lue dans la fiche de sort. Deux constantes seulement les séparent, et leurs deux
+tables de sorts — `0x005529A8` contre `0x00552A30` — partagent deux fiches sur trois. **Un
+mécanisme de cette taille est donc réutilisé d'un bloc à l'autre, pas réécrit.**
+
+Ce qui lui appartient : sa **charge ne frappe qu'en mouvement** (elle mesure sa propre vitesse et
+n'ouvre le balayage qu'au-dessus de 6), son **coup gèle l'image d'animation tant qu'elle est en
+l'air**, et elle **saute d'autant plus souvent qu'elle est hardie** — `hasard % 100 < hardiesse / 8`.
+Elle n'a aucune gravité propre.
 
 **Willie `0x004A35B0` est la quatrième bête volante du dépôt**, et la sœur de la Coccinelle du bloc
 A : même queue de vol, même cône, même replanification à un champ près (`+0x10` au lieu de `+0x12`).
@@ -191,11 +203,12 @@ duelliste.
 
 ### Ce qui reste, au 2026-09-01
 
-**Quatre routines restent pour rendre la forêt entièrement stable, et elles sont toutes du bloc B.**
-Le Géant `0x004A2C90` et Willie `0x004A35B0` ont été écrits le 2026-09-01, dans l'ordre du crible
-ci-dessous plutôt que dans celui des tailles, et **le crible a eu raison les deux fois** : le Géant
-annoncé à 283 lignes du Grizzly en est un à trois différences près, Willie annoncée à 417 de la
-Coccinelle en est la sœur.
+**Trois routines restent pour rendre la forêt entièrement stable, et elles sont toutes du bloc B.**
+Le Géant `0x004A2C90`, Willie `0x004A35B0` et le Trent `0x0049FAD0` ont été écrits le 2026-09-01,
+dans l'ordre du crible ci-dessous plutôt que dans celui des tailles, et **le crible a eu raison les
+trois fois** : le Géant annoncé à 283 lignes du Grizzly en est un à trois différences près, Willie
+annoncée à 417 de la Coccinelle en est la sœur, et le Trent annoncé à 454 du Goblin-sorcier est,
+comme lui, un **lanceur de sorts**.
 **Les blocs A et C sont complets** : les sous-zones d'arrivée (0-4) et celles du lieu de coupe et de
 la grotte (5 et 9) n'ont plus de trou.
 
@@ -211,7 +224,7 @@ ou trois lignes, comme `0x004A4270`.
 |---|---|---:|---|---:|
 | `0x004A2C90` | Géant | 2 336 | `0x0049B840`, le Grizzly | **283** — **écrite** |
 | `0x004A35B0` | Willie | 1 664 | `0x0049A360`, la Coccinelle | **417** — **écrite** |
-| `0x0049FAD0` | Trent | 2 480 | `0x0049E190`, le Goblin-sorcier | **454** |
+| `0x0049FAD0` | Trent | 2 480 | `0x0049E190`, le Goblin-sorcier | **454** — **écrite** |
 | `0x004A13E0` | Wyrm | 2 320 | `0x0049C0B0`, le Crabe | 583 |
 | `0x004A1D50` | Varan | 3 904 | `0x00499DE0`, la Fourmi géante | 1 171 |
 | `0x004A0480` | Fleur du mal | 3 936 | `0x00499DE0`, la Fourmi géante | 1 262 |
@@ -222,10 +235,15 @@ taille il fallait commencer par le Willie, par l'écart il faut commencer par le
 un Grizzly modifié. Le coût d'une transcription se mesure au nombre de formes distinctes, pas au
 nombre d'octets.
 
-**Les deux premières l'ont confirmé.** Le Géant est bien le Grizzly du crible, et Willie bien la
-sœur de la Coccinelle — jusqu'à une replanification identique décision pour décision, à un champ
-près. Restent les quatre du bas du tableau, dont **les deux plus gros sont aussi les deux plus
-étrangers à tout ce qui est écrit** : ce sont eux qui coûteront.
+**Les trois premières l'ont confirmé**, et la troisième d'une façon que le crible ne pouvait pas
+prévoir. Le Géant est bien le Grizzly qu'il annonçait ; Willie bien la sœur de la Coccinelle,
+jusqu'à une replanification identique décision pour décision, à un champ près ; et le Trent, placé
+près du **Goblin-sorcier**, s'est révélé être ce que ce voisinage suggérait sans le dire — un
+**lanceur de sorts**, portant le mécanisme d'incantation du Behemoth au complet.
+
+Autrement dit, **la colonne « le plus proche déjà écrit » ne mesure pas que du code : elle attrape
+aussi des parentés de comportement.** Restent les trois du bas du tableau, dont **les deux plus gros
+sont aussi les deux plus étrangers à tout ce qui est écrit** : ce sont eux qui coûteront.
 
 Le détail est dans `REVERSE_STATUS.md`, section « les six du bloc B passées au crible ».
 
