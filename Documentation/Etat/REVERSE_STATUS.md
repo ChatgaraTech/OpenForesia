@@ -19992,3 +19992,281 @@ testés de la zone passe de 25 à 24, ce qui est le bon sens de la correction.
 d'ennemi** : `0x0049FAD0`, `0x004A0480`, `0x004A13E0`, `0x004A1D50`, `0x004A2C90`, `0x004A35B0`
 (sous-zones 6-8) et `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0` (sous-zones 5 et 9).
 Aucun n'est signalé par la sonde : rien ne prouve encore qu'une partie y passe.
+
+## 2026-09-01 (suite 5) — `0x00541B80`, et une hypothèse de nom qui était fausse
+
+Le troisième des quatorze de la zone 3, et **le moins cher du dépôt à ce jour** : 259 octets,
+absents de `Blaze.c`, relevés sous `Legacy/Raw/Blaze/FUN_00541B80.asm`. Zone 3 passe de **125 à
+126 implémentés sur 136**.
+
+### Ce n'était pas ce que le dépôt en disait
+
+Trois sections précédentes l'annoncent comme « le jumeau du pas de collision, 258 octets,
+sous-zones 5 et 9 », et le message d'exception de `CallSubAreaMoveProbe` le disait aussi. **C'est
+faux, et le désassemblage le règle en une lecture.** Ce n'est pas le créneau 63 des sept tables,
+c'est le **créneau 32** — bloc `0x005562a8`, la même case que `0x00541440` occupe dans les blocs
+`0x005555a8` et `0x00555c28`. Sa signature le disait déjà : il lit **un seul** argument, là où le
+créneau 63 en reçoit trois.
+
+Le nom venait d'une inférence — « deux corps voisins en adresse, dans la même zone, l'un est le pas
+de collision, donc l'autre est son jumeau » — jamais vérifiée contre les tables. La leçon est la
+même que celle des longueurs de table : **une adresse voisine n'est pas une preuve de rôle.**
+
+Corollaire au passage, et il ferme la question du créneau 63 pour la forêt : **`0x00541550` est le
+seul créneau 63 non vide du lieu.** Les autres blocs de la forêt, celui des sous-zones 5 et 9
+compris, y laissent la souche `0x00401FA0`. Le pas de collision est un équipement de
+l'embarcation, pas de la zone — `CallSubAreaMoveProbe` ne lèvera donc jamais en forêt.
+
+### Ce que c'est
+
+**Le crochet de contact au sol**, celui que `EntityHandler_00541440` porte déjà : la poussière du
+pas, semée un pas sur deux du cycle de marche quand `+0x90` porte `0x200`, puis le sol qui brûle
+quand les trois bits bas de `+0x150` du bloc de personnage valent `4`.
+
+**Les deux désassemblages, mis côte à côte, ne diffèrent que par trois instructions** — le
+`test dword [esi],50000000h`, son saut, et le `je` qui passe de court à long pour l'absorber.
+Exactement les douze octets d'écart entre 271 et 259. Tout le reste, registres et constantes
+compris, est identique. Le corps est donc écrit **une fois**, `TickGroundContact`, et les deux
+adresses en sont des enveloppes d'une ligne, chacune avec sa traçabilité Ghidra.
+
+### La divergence n'est pas cosmétique
+
+**En sous-zones 5 et 9, le sol brûlant s'applique même à une entité retirée ou morte.** L'effet
+`0x2A` naît et le mini-script part quand même ; ailleurs en forêt, le `0x50000000` coupe court.
+Transcrit tel quel — c'est ce que le binaire fait, et rien ne dit que ce soit voulu.
+
+### Les dix qui restent en zone 3
+
+**Dix comportements d'ennemi**, et plus rien d'autre : `0x0049FAD0`, `0x004A0480`, `0x004A13E0`,
+`0x004A1D50`, `0x004A2C90`, `0x004A35B0` (sous-zones 6-8) et `0x004A3C30`, `0x004A4270`,
+`0x004A4AE0`, `0x004A54E0` (sous-zones 5 et 9). Toute la plomberie de la forêt — terrain,
+embarcation, sol — est maintenant écrite. Aucun des dix n'est signalé par la sonde.
+
+## 2026-09-01 (suite 6) — `0x004A3C30`, la bête qui recule en vous regardant
+
+Le quatrième des quatorze de la zone 3, et **la première des dix intelligences d'ennemi qui
+restaient**. 1583 octets, absents de `Blaze.c`, trente-quatre étiquettes de saut, une table de sauts
+à quatre entrées en `0x004A4260`. Relevé sous `Legacy/Raw/Blaze/FUN_004A3C30.asm`.
+
+Zone 3 passe de **126 à 127 implémentés sur 136**.
+
+### C'est la troisième bête volante
+
+Le tri par la fonction d'intégration, que `Comportement.md` recommande, l'a classée en une ligne :
+`FUN_0049a8e0` et non `FUN_00488160`, `FUN_004a1cf0` et non `FUN_004e3770`. Elle rejoint la
+Coccinelle `0x0049A360` et l'Abeille `0x0049B220`, qui partagent déjà cette queue. Et le
+**battement d'ailes est identique au mot près** à celui de la Coccinelle — même masque
+`0xdfffd8ff`, même phase accumulée dans `+0x14` par `hasard % 0x100 + 0x100`, même plafond pris au
+plus haut de `+0x60` et de `+0x48`, même `0x28000` de prise de hauteur pendant un geste.
+`BeatWings_0049A68F` est donc partagé tel quel, sans paramètre de différenciation : les deux
+désassemblages coïncident sur tout le bloc.
+
+### Sa posture 3 est une ruée, pas une errance
+
+**C'est ce qu'aucune des cinq intelligences déjà écrites ne fait.** Les autres marchent vers un cap
+par petits pas de rotation ; celle-ci se donne une **impulsion**, une seule image.
+
+Le compte à rebours `+0x43` vaut **2** à l'entrée de la posture — jamais une durée tirée, ce qui la
+distingue de `WanderSceneEntity` dont elle est par ailleurs la jumelle. L'image où il vaut 2 pose la
+poussée `(timidité + 0x120) << 8`, la verse d'un coup dans `+0x50` et `+0x58` par le sinus et le
+cosinus du cap `+0x10`, puis **remet la poussée à zéro** : rien ne l'entretient. L'image suivante ne
+fait qu'attendre que la vitesse retombe sous `hardiesse/8 + 1`, mesurée en deux dimensions.
+
+**Et pendant toute la ruée elle reste face à la cible** : la posture finit par `+0x32 += cap
+relatif`, à chaque image, quelle que soit la direction de l'impulsion. Comme la ruée du corps à
+corps part à `+0x800` du cap visé — un demi-tour —, **elle recule en vous regardant**. Celle de la
+distance moyenne part sans décalage : elle fonce. Le même mécanisme sert au bond en avant et au bond
+en arrière, seul le biais change.
+
+### Trois autres écarts avec sa sœur
+
+**Son geste a une image de frappe.** La seizième, et une seule (`cmp [esi+1Ah],bx` avec `bx = 0x10`).
+La Coccinelle balaie le groupe à *chaque* image du geste ; celle-ci porte un coup.
+
+**Son geste finit quand l'animation finit.** Le bit `0x2000000` que
+`AdvanceEntityAnimation_004DB5A0` pose sur la dernière image d'un clip non bouclé, et non un compte
+à rebours. Aucune des cinq précédentes ne s'arrête ainsi.
+
+**Sa sonde ne porte aucun décalage vertical** — `{0, 0x1e, 0x32, 0x64, 0, 0x50}`, `probe[4] = 0` là
+où la Coccinelle a `-0x100`. Elle vole, mais elle frappe à hauteur d'homme. C'est exactement la
+sonde de `0x0049a980`, une terrestre.
+
+### Le tableau des six
+
+| | 0x0049a980 | 0x0049e190 | 0x0049e920 | 0x0049a360 | **0x004a3c30** |
+|---|---|---|---|---|---|
+| intégration | terrestre | terrestre | terrestre | **vol** | **vol** |
+| sonde, décalage vertical | 0 | 0 | 0x32 | -0x100 | **0** |
+| image de frappe | 8 ou 12 | 8 ou 12 | 8 ou 12 | **chaque image** | **16, une seule** |
+| fin du geste | rebours | rebours | rebours | rebours | **fin d'animation** |
+| cône de virage | hardiesse/4 + 0x38 | idem | idem | idem | **hardiesse\*2 + 0x80** |
+| plages de distance | 0x12c / 0x258 | idem | idem | 0x12c / 0x258 | **0xfa / 0x1f4** |
+| posture 3 | marcher | marcher | marcher vers un cap | marcher | **se ruer** |
+
+Le cône est **huit fois plus large** que celui de la famille : à hardiesse nulle, `0x80` contre
+`0x38`, et l'écart croît avec la hardiesse. Elle se retourne vite, ce qui va avec une bête qui se
+bat en reculant.
+
+### Une inversion de seuil qui n'est pas une erreur de lecture
+
+Sous `0xfa`, l'engagement demande une distance sous `0x64` **augmentée** d'un tirage de
+`hasard % (2 * timidité + 1)`. La Coccinelle, au même endroit, **diminue** son seuil du même tirage.
+Les deux formes sont dans les deux désassemblages, à la même place, avec le même opérande : plus
+cette bête-ci est timide, **plus loin** elle accepte d'engager ; plus la Coccinelle hésite, plus
+près il faut être. Transcrit tel quel.
+
+### Ce que l'engagement ne fait pas
+
+Il ne touche **pas** à `+0x42`. Il pose le bit 2, force l'animation 3, efface le bit de bouclage
+`0x1000000`, met le rebours à 1 et annule la poussée — et la posture d'avant reprend à la fin du
+geste. Les sœurs, elles, écrivent une posture en même temps.
+
+### Les neuf qui restent en zone 3
+
+`0x0049FAD0`, `0x004A0480`, `0x004A13E0`, `0x004A1D50`, `0x004A2C90`, `0x004A35B0` (sous-zones 6-8)
+et `0x004A4270`, `0x004A4AE0`, `0x004A54E0` (sous-zones 5 et 9). Aucun n'est signalé par la sonde.
+
+## 2026-09-01 (suite 7) — `0x004A4270` : le même Grizzly, deux fois
+
+Le cinquième des quatorze de la zone 3, et **le seul du dépôt qui n'ait demandé aucune
+transcription**. Zone 3 passe de **127 à 128 implémentés sur 136**.
+
+### La règle « chercher un doublon avant de transcrire » a resservi, sous une forme nouvelle
+
+`CLAUDE.md` la posait après `LAB_00474320` : deux `od` et une soustraction règlent la question quand
+deux adresses jouent le même rôle. Ici **cela n'aurait pas suffi**, et c'est ce que cette séance
+ajoute à la règle.
+
+Les 2 141 octets de `0x004A4270` et ceux de `0x0049B840`, désassemblés puis normalisés (les
+déplacements relatifs d'appel effacés), donnent **705 lignes identiques sur 705** — à **deux
+immédiates** près :
+
+| `0x0049B840` | `0x004A4270` |
+|---|---|
+| `push 0x0055296c` | `push 0x005529f4` |
+| `push 0x00552960` | `push 0x005529e8` |
+
+Ce sont les adresses des **deux gabarits de portée** du Grizzly, la griffe et le bond. Comparés
+octet à octet, les deux corps *diffèrent* donc, et un `od` seul aurait conclu « fonction
+différente ». Il fallait aller lire la **donnée** :
+
+```
+0x00552960: 0000 1e00 4600 9600 00ff 5000 0000 1e00 3200 9600 0000 5000
+0x005529e8: 0000 1e00 4600 9600 00ff 5000 0000 1e00 3200 9600 0000 5000
+```
+
+**Les vingt-quatre octets sont les mêmes.** Le compilateur de 1998 a émis la fonction deux fois, et
+avec elle sa table. Les deux Grizzlys se comportent exactement pareil, et
+`TickSceneEntityAi_004A4270` n'est qu'un renvoi d'une ligne vers
+`TickSceneEntityAi_0049B840`, avec la preuve écrite au-dessus.
+
+**La règle s'énonce donc mieux ainsi** : quand deux corps ne diffèrent que par des immédiates qui
+sont des adresses, la comparaison n'est pas finie — il faut comparer ce qu'elles désignent. Le
+relevé de `0x004A4270` est gardé sous `Legacy/Raw/Blaze/FUN_004A4270.asm` pour que la comparaison
+reste refaisable sans le binaire.
+
+### Une correction sur la séance précédente
+
+`0x004A3C30` a été annoncée « la seconde bête volante ». Elle est **la troisième** :
+`0x0049B220`, l'Abeille du bloc A, partage déjà la queue `FUN_0049a8e0` / `BeatWings_0049A68F` /
+`FUN_004a1cf0` avec la Coccinelle. Corrigé dans le code, dans `HISTORY.md` et dans
+`Comportement.md`. Rien d'autre ne dépendait du compte.
+
+### Les huit qui restent en zone 3
+
+`0x0049FAD0`, `0x004A0480`, `0x004A13E0`, `0x004A1D50`, `0x004A2C90`, `0x004A35B0` (bloc B,
+sous-zones 6-8) et `0x004A4AE0`, `0x004A54E0` (bloc C, sous-zones 5 et 9). Aucun n'est signalé par
+la sonde.
+
+## 2026-09-01 (suite 8) — `0x004A4AE0`, le Méchant ours : trois gestes, une prise, et l'écran qui tremble
+
+Le sixième des quatorze de la zone 3, et **le corps le plus riche de la famille des intelligences
+d'entité de scène**. 2 542 octets, absents de `Blaze.c`, quarante-sept étiquettes de saut, table de
+sauts à `0x004A54D0`. Relevé sous `Legacy/Raw/Blaze/FUN_004A4AE0.asm`.
+
+Zone 3 passe de **128 à 129 implémentés sur 136**.
+
+### Le crible du doublon d'abord, et il a payé son temps
+
+La séance précédente venait d'apprendre que deux adresses peuvent porter le même corps. Le crible a
+donc été passé **avant** de lire quoi que ce soit : les 2 542 octets normalisés, comparés aux treize
+routines d'intelligence déjà écrites. Écart minimal **533 lignes** (le Crabe `0x0049C0B0`). Ce n'est
+pas une copie ; l'outillage tient en une commande et la question est réglée en une minute.
+
+### Trois gestes, là où le Crabe et le Grizzly en ont deux
+
+C'est la posture `+0x42` tenue au moment où le bit 2 se pose qui décide lequel part.
+
+**La griffe (posture 0).** Trois temps repris de l'image d'animation, sans compte à rebours : avant
+la douzième elle se replace vers la cible (cône `hardiesse/2 + 0x20`), à la douzième elle s'élance
+et grogne, à partir de la treizième elle balaie le groupe à chaque image. Dégâts pleins.
+
+**La prise (posture 1) — ce qu'aucune autre ne fait.** Elle empoigne un membre du groupe, lui
+inflige la **moitié** de l'attaque du bloc de modèle — l'idiome que le Crabe et le Grizzly
+partagent déjà —, puis le **projette** à quarante fois le sinus et le cosinus d'un cap oblique et
+le fait **décoller** (`+0x54 = 0x18000`). Le bit `0x20` marque « la prise est faite » et coupe tout
+balayage ultérieur ; il est effacé **avec** le bit de geste quand le rebours tombe — un `and
+al,0DDh`, deux bits d'un coup.
+
+Sa poussée monte **par quarts** vers `(hardiesse + 0x400) << 7`, là où toute la famille monte par
+seizièmes : elle se jette en avant pour attraper.
+
+**Le souffle (posture 2) — la seule attaque à distance de la famille.** `+0x10` y est une machine à
+deux temps. À 1, deux bruits ponctuent l'animation (images 11 et 13) et sa dernière image fait
+naître une entité ; à 0, un rebours de dix images s'écoule et ferme le geste.
+
+### Le souffle vise une table par sous-zone, et c'est une première
+
+Le sous-type n'est pas une constante : **`0xc0` plus le neuvième octet du premier bloc du répertoire
+de zone** (`+0xcc`). Or un sous-type `>= 0xc0` désigne la table **par sous-zone** `0x0056adc8`, et
+non la table statique `0x00551c30`. **Le souffle de l'ours n'est donc pas le même objet d'une carte
+à l'autre** — c'est la première routine d'intelligence du dépôt dont l'effet dépende de la
+sous-zone. `ObjetsAtteignables.md` avait établi qu'aucun *objet* n'emploie de sous-type `>= 0xc0` ;
+les ennemis, eux, le font.
+
+### Elle secoue l'écran quand elle marche
+
+À deux images précises de deux animations — la quatrième et la douzième de l'animation 1, la
+huitième de l'animation 4 —, elle pose `-8` dans `DAT_005de0ac`, le décalage vertical que la caméra
+ajoute à sa cible, et joue le son `0x35`. **C'est la seule des quatorze qui touche à la caméra.**
+
+L'amortissement est celui de `EntityHandler_00476730`, `a <- (a/4) - a` : trois quarts en moins par
+image, et le signe qui s'inverse. **Mais celle-ci nettoie derrière elle** — sous 4 en valeur absolue
+la valeur retombe à zéro, quand la secousse d'explosion laissait un décalage résiduel pour toujours
+(voir `legacy-bug.md`). Le même mécanisme, écrit deux fois, avec et sans le nettoyage.
+
+Le bloc est sur le **chemin commun de sortie** : il tourne même quand la bête ne pense pas.
+
+### Deux détails de forme, dont un qu'on ne cherche pas à expliquer
+
+**Son garde de posture exclut le bit 0** : `flags & 0x11` et non `0x10`. Tant qu'elle n'a pas les
+quatre pattes au sol, elle ne prend aucune décision de posture. Aucune de ses voisines ne met le
+bit 0 dans ce garde.
+
+**Le sens de l'oblique de projection se lit sur l'attaque du modèle**, pas sur la géométrie :
+`-0x400` quand `modèle + 0x30` vaut `0x800` ou plus, `+0x400` sinon. Le désassemblage est net — un
+`cmp ebp,800h` sur la valeur *sauvegardée*, après la restauration —, et c'est transcrit tel quel.
+Aucune autre routine ne fait dépendre une direction d'une statistique de dégâts. **On note la
+bizarrerie sans lui prêter d'intention** : rien ne permet de dire si c'est voulu ou si c'est un
+registre repris par erreur, et le projet reproduit ce que le binaire fait.
+
+### Sa géométrie, comparée à la famille
+
+| | Crabe / Grizzly | **Méchant ours** |
+|---|---|---|
+| gestes | 2 | **3** |
+| gravité `+0x9a` | `0x6000` | **`0x7000`** |
+| garde de posture | `0x10` | **`0x11`** |
+| plages | `0x12c` / `0x258` | **`0xfa` / `0x1f4`** |
+| cône, posture 1 | `hardiesse*2 + 0x80` | `hardiesse*2 + 0x80` |
+| cône, postures 2 et 3 | — | **`hardiesse*2 + 0x40`** |
+| posture 3 | marcher | **déplacer la position, regarder la cible** |
+| seuil d'engagement | — | **`0xc8` augmenté d'un tirage** |
+
+**La prise est le seul geste qui parte à n'importe quelle distance** — au corps à corps, à moyenne
+portée et de loin. C'est ce qui rend la bête lisible : elle vient toujours vous chercher.
+
+### Les sept qui restent en zone 3
+
+`0x0049FAD0`, `0x004A0480`, `0x004A13E0`, `0x004A1D50`, `0x004A2C90`, `0x004A35B0` (bloc B,
+sous-zones 6-8) et `0x004A54E0`, le Behemoth (bloc C). Aucun n'est signalé par la sonde.

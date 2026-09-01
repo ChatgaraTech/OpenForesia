@@ -2212,9 +2212,45 @@ groupe. Releves au verbe `at` en transcrivant `FUN_0049B840`, le Grizzly.
 | `0x00552948` | 0 | `0x32` | `0x5a` | `0x96` | 0 | `0xc8` | non attribuee |
 | `0x00552960` | 0 | `0x1e` | `0x46` | `0x96` | `-0x100` | `0x50` | **`FUN_0049B840`, la griffe** |
 | `0x0055296c` | 0 | `0x1e` | `0x32` | `0x96` | 0 | `0x50` | **`FUN_0049B840`, le bond** |
+| `0x005529e8` | 0 | `0x1e` | `0x46` | `0x96` | `-0x100` | `0x50` | **`FUN_004A4270`, la griffe** |
+| `0x005529f4` | 0 | `0x1e` | `0x32` | `0x96` | 0 | `0x50` | **`FUN_004A4270`, le bond** |
+| `0x00552a00` | 0 | `0x28` | `0x50` | `0x96` | 0 | `0x78` | **`FUN_004A4AE0`, la griffe** |
+| `0x00552a0c` | 0 | `0x50` | `0x5a` | `0x96` | 0 | `0x64` | **`FUN_004A4AE0`, la prise** |
 
 Le cinquieme terme est un **decalage vertical** : negatif, le gabarit se leve — la griffe du Grizzly
 s'abat d'en haut, son bond frappe au ras du sol.
+
+**Les deux dernieres lignes sont une COPIE des deux precedentes, ajoutee le 2026-09-01**, et c'est
+un fait sur le binaire, pas une redite de ce tableau : `FUN_004A4270` est le meme code que
+`FUN_0049B840`, emis une seconde fois par le compilateur, et sa copie de la table l'accompagne. Les
+vingt-quatre octets de `0x005529e8` sont ceux de `0x00552960`, releves l'un et l'autre au verbe
+`at` :
+
+```
+0x00552960: 0000 1e00 4600 9600 00ff 5000 0000 1e00 3200 9600 0000 5000
+0x005529e8: 0000 1e00 4600 9600 00ff 5000 0000 1e00 3200 9600 0000 5000
+```
+
+C'est ce qui a permis de conclure que les deux Grizzlys se comportent exactement pareil, et donc de
+ne pas transcrire le second. **La comparaison de deux corps ne s'arrete pas au code quand les seuls
+octets qui different sont des adresses** — il faut lire ce qu'elles designent.
+
+**Les deux dernieres lignes, `0x00552a00` et `0x00552a0c`, sont celles du Mechant ours**
+(`FUN_004A4AE0`), relevees le meme jour. **Elles ne ferment pas la serie** : la suite immediate a
+encore la forme d'une sonde, et sur deux entrees au moins —
+
+```
+0x00552a18: 0000 3200 5a00 9600 0000 9600
+0x00552a24: 0000 3200 4600 9600 0001 aa00
+```
+
+— la seconde portant meme un decalage vertical de `0x100`. Elles appartiennent a des routines non
+encore transcrites, et **il ne faut pas les deviner** : celle qui les lira les nommera. La borne de
+fin de ce cote n'est donc pas etablie, contrairement a celle du Grizzly.
+
+**Ni l'une ni l'autre des deux sondes de l'ours ne porte de decalage vertical**, la ou la griffe du
+Grizzly s'abat d'en haut ; et celle de la prise est la plus large en portee laterale des sept
+relevees (`0x50`), ce qui va avec un geste qui doit attraper plutot que toucher.
 
 **Deux bornes, lues dans la donnee et non dans les sites d'appel.** `0x00552954` porte
 `00 00 00 00 0e 02 14 00 1b 00 00 00`, qui n'a plus la forme d'une sonde : la serie de trois

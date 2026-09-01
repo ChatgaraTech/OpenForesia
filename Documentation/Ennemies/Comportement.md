@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-08-29** | **10** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`) |
+| **écrits au 2026-09-01** | **16** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -106,12 +106,12 @@ le 2026-08-29 ; les trois premières sont confirmées **en jeu** par le bilan de
 | 6 | `0x0049C8E0` | Poisson volant | **écrit** |
 | 7 | `0x0049D030` | Homme-lézard | **écrit** |
 | 8 | `0x0049DA40` | Goblin | **écrit** |
-| 9 | `0x0049E190` | Goblin-sorcier | — |
-| 18 | `0x0049E920` | Crotale | — |
+| 9 | `0x0049E190` | Goblin-sorcier | **écrit** |
+| 18 | `0x0049E920` | Crotale | **écrit** |
 
 **Les onze se suivent dans le binaire**, dans l'ordre des sous-types. Les deux plantages signalés
-étaient les sous-types 0 et 2 ; les neuf autres attendent, et ce sont eux qui se réveilleront à la
-prochaine rencontre.
+étaient les sous-types 0 et 2. **Le bloc A est complet depuis le 2026-09-01** : les onze sont
+écrits, et plus aucune ligne « ça plante » ne subsiste dans les sous-zones d'arrivée.
 
 Une espèce de la sous-zone 3 porte le **sous-type 30, « Barricade »**, absent de ce tableau : son
 créneau ne fait pas partie des onze relevés, donc il pointe sur la souche vide ou sur un
@@ -133,18 +133,51 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 `0x0049D030` en bloc A et `0x0049F0C0` en bloc B. C'est le rappel concret que la table est
 rechargée par sous-zone.
 
+Le sous-type 7, `0x0049F0C0`, est **écrit** ; les six autres du bloc attendent.
+
 ### Bloc C — le lieu de coupe et la grotte
 
 | sous-type | gestionnaire | bête | genre |
 |---|---|---|---|
-| 3 | `0x004A3C30` | Abeille tueuse | IA |
-| 4 | `0x004A4270` | Grizzly | IA |
-| 16 | `0x004A4AE0` | Méchant ours | IA |
+| 3 | `0x004A3C30` | Abeille tueuse | IA — **écrite** |
+| 4 | `0x004A4270` | Grizzly | IA — **écrite** (le même corps que `0x0049B840`) |
+| 16 | `0x004A4AE0` | Méchant ours | IA — **écrite** |
 | 17 | `0x004A54E0` | Behemoth | IA |
 | 19 | `0x004A5F10` | Abeille tueuse | simple |
 
-**Treize routines restent pour rendre la forêt entièrement stable**, dont deux pour les seules
-sous-zones d'arrivée.
+**L'abeille tueuse `0x004A3C30` est la troisième bête volante du dépôt** — après la Coccinelle
+`0x0049A360` et l'Abeille `0x0049B220` —, écrite le 2026-09-01 : même vol que la Coccinelle,
+`BeatWings_0049A68F` est partagé au mot près ; mais sa posture 3 est une **ruée**, une impulsion
+d'une seule image, et le bond du corps à corps part à `+0x800` du cap visé : elle recule en restant
+face au groupe. Le détail est dans `REVERSE_STATUS.md`.
+
+Noter que le bloc A porte déjà une « Abeille tueuse » sous un **autre** gestionnaire
+(`0x0049B220`) : le nom d'espèce ne détermine pas le comportement, le bloc et le sous-type le font.
+
+**Et le Grizzly `0x004A4270` n'a pas de corps à lui** : c'est le **même code** que `0x0049B840`, le
+Grizzly du bloc A, émis une seconde fois par le compilateur. Les deux désassemblages donnent 705
+lignes identiques sur 705, à deux immédiates près — les adresses de ses deux gabarits de portée,
+`0x005529e8` et `0x005529f4` au lieu de `0x00552960` et `0x0055296c`. **Et les vingt-quatre octets
+de ces deux copies sont eux-mêmes identiques**, ce qui règle la question : les deux Grizzlys se
+comportent exactement pareil.
+
+C'est un cas de plus pour la recette : quand deux corps ne diffèrent que par des immédiates qui sont
+des **adresses**, la comparaison n'est pas finie — il faut aller lire ce qu'elles désignent. Un
+`od` du seul code aurait conclu « fonction différente ».
+
+**Et le Méchant ours `0x004A4AE0` est le corps le plus riche de la famille** : **trois** gestes là
+où le Crabe et le Grizzly en ont deux. La griffe, la **prise** — elle empoigne, inflige la moitié de
+l'attaque du bloc de modèle, projette la victime et la fait décoller — et le **souffle**, la seule
+attaque à distance de la famille. Son souffle fait naître un sous-type `>= 0xc0`, donc pris dans la
+table **par sous-zone** `0x0056adc8` : c'est la première routine d'intelligence dont l'effet dépende
+de la carte. Et c'est la seule des quatorze qui **secoue la caméra** quand elle marche.
+
+### Ce qui reste, au 2026-09-01
+
+**Sept routines restent pour rendre la forêt entièrement stable** : les six du bloc B
+(`0x0049FAD0`, `0x004A0480`, `0x004A13E0`, `0x004A1D50`, `0x004A2C90`, `0x004A35B0`) et la dernière
+du bloc C, le Behemoth `0x004A54E0`. Le relevé du 2026-08-29 en comptait treize, dont deux pour les
+seules sous-zones d'arrivée ; ces deux-là sont faites.
 
 ---
 

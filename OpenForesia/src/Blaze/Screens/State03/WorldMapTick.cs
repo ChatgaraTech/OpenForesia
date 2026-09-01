@@ -4727,6 +4727,7 @@ public static unsafe partial class Blaze
             case 0x00457370: EntityHandler_00457370((uint*)record); return;
             case 0x00456CF0: EntityHandler_00456CF0((uint*)record); return;
             case 0x00541440: EntityHandler_00541440((uint*)record); return;
+            case 0x00541B80: EntityHandler_00541B80((uint*)record); return;
 
             // L'entree 0xbd de la table statique 0x00551f30 — l'aureole d'incantation, le seul
             // creneau de CETTE table qu'un chemin reconstruit atteigne. C'est le plantage a
@@ -5202,6 +5203,11 @@ public static unsafe partial class Blaze
             // vraie espece de la sous-zone d'arrivee, donc validable sans greffe.
             case 0x0049A360: TickSceneEntityAi_0049A360(record); return;
 
+            // La TROISIEME BETE VOLANTE, celle des sous-zones 5 et 9 : meme vol que la Coccinelle,
+            // mais sa posture 3 est une RUEE — une impulsion d'une image, et elle recule en
+            // restant face au groupe.
+            case 0x004A3C30: TickSceneEntityAi_004A3C30(record); return;
+
             // Le sous-type 6 — le POISSON VOLANT, qui ne vole pas : il bondit, et il s'accroche.
             case 0x0049C8E0: TickSceneEntityAi_0049C8E0(record); return;
 
@@ -5214,6 +5220,16 @@ public static unsafe partial class Blaze
             // bond QUITTE LE SOL et son geste se ferme a l'atterrissage, pas sur un compte a
             // rebours. Ses deux gabarits de portee sont dans .data (0x00552960, 0x0055296c).
             case 0x0049B840: TickSceneEntityAi_0049B840(record); return;
+
+            // Le sous-type 4 du bloc C — LE MEME GRIZZLY, emis une seconde fois par le compilateur.
+            // 705 lignes d'assembleur identiques sur 705, a deux immediates pres : les adresses des
+            // deux gabarits, 0x005529e8 et 0x005529f4, dont les 24 octets sont ceux de 0x00552960.
+            case 0x004A4270: TickSceneEntityAi_004A4270(record); return;
+
+            // Le sous-type 16 du bloc C — LE MECHANT OURS, la plus riche de la famille : TROIS
+            // gestes au lieu de deux, une attaque a distance, une prise qui projette, et le seul
+            // pas du depot qui secoue la camera.
+            case 0x004A4AE0: TickSceneEntityAi_004A4AE0(record); return;
 
             // Le sous-type 3 — l'ABEILLE, deuxieme bete volante : la queue de la Coccinelle (vol,
             // integration, interruption) sur la charpente des terrestres, et une posture 3 qui file
@@ -15731,8 +15747,10 @@ public static unsafe partial class Blaze
     /// masque. Le creneau 63 est reserve a autre chose qu'un pas d'entite.
     /// </para>
     /// <para>
-    /// En foret, sous-zones 6 a 8, il vaut <c>0x00541550</c> (bloc <c>0x00555c28</c>, entree 63) —
-    /// une des quatorze lignes que <c>GestionnairesEntites.md</c> compte encore pour la zone 3.
+    /// En foret, sous-zones 6 a 8, il vaut <c>0x00541550</c> (bloc <c>0x00555c28</c>, entree 63).
+    /// <b>C'est le seul creneau 63 non vide du lieu</b> : les autres blocs de la foret, celui des
+    /// sous-zones 5 et 9 (<c>0x005562a8</c>) compris, y laissent la souche <c>0x00401FA0</c>. Le
+    /// pas de collision est donc une specificite de l'embarcation, pas un equipement de zone.
     /// </para>
     /// </summary>
     private static void CallSubAreaMoveProbe(byte* entity, int* previous, int mask)
@@ -15747,10 +15765,10 @@ public static unsafe partial class Blaze
 
         throw new NotImplementedException(
             $"FUN_00458a30 : le pas de collision de la sous-zone (0x0056afc8[63] = 0x{target:X6}) " +
-            "n'est pas transcrit. Celui de la foret 6-8 (0x00541550) l'est ; son jumeau des " +
-            "sous-zones 5 et 9 est 0x00541b80 (258 octets, absents de Blaze.c), et il est compte " +
-            "comme une ligne a part de la zone 3 dans GestionnairesEntites.md. Le relever avec " +
-            "`OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x00541b80 258`.");
+            "n'est pas transcrit. Celui de la foret 6-8 (0x00541550) l'est, et c'est le seul " +
+            "creneau 63 non vide de la foret : les sous-zones 5 et 9 (bloc 0x005562a8) y portent " +
+            "la souche 0x00401FA0. Relever le corps manquant avec " +
+            $"`OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x{target:X6} <taille>`.");
     }
 
     /// <summary>
@@ -26541,6 +26559,410 @@ public static unsafe partial class Blaze
     }
 
     // =============================================================================================
+    // 0x004A3C30 — LA TROISIEME BETE VOLANTE, sous-type de la table 0x0056ad48 des sous-zones 5 et
+    // 9 de la foret. Transcrite le 2026-09-01 au desassembleur (Legacy/Raw/Blaze/FUN_004A3C30.asm,
+    // 1583 octets, absente de Blaze.c). Quatre postures, table de sauts a 0x004A4260.
+    //
+    // LES TROIS SONT LA COCCINELLE 0x0049A360, L'ABEILLE 0x0049B220 ET CELLE-CI. Toutes trois
+    // partagent la meme queue — IntegrateFlyingEntityMotion_0049A8E0, BeatWings_0049A68F,
+    // InterruptFlyingEntity_004A1CF0 —, ce qui reste le tri le plus sur de la famille.
+    //
+    // ELLE VOLE COMME LA COCCINELLE et se bat comme personne d'autre. Le tri par la fonction
+    // d'integration, recommande dans Comportement.md, la classe tout de suite : FUN_0049a8e0 et non
+    // FUN_00488160, FUN_004a1cf0 et non FUN_004e3770, et le meme battement d'ailes au mot pres —
+    // BeatWings_0049A68F est partage tel quel, les deux corps sont identiques sur ce bloc.
+    //
+    // TROIS CHOSES LA SEPARENT DE SA SŒUR, ET LA TROISIEME N'APPARTIENT QU'A ELLE :
+    //
+    //   1. son geste a une IMAGE DE FRAPPE — la seizieme, une seule — la ou la Coccinelle balaie
+    //      le groupe a chaque image du geste ; et il finit quand l'ANIMATION finit (le bit
+    //      0x2000000 que AdvanceEntityAnimation_004DB5A0 pose sur sa derniere image), non sur un
+    //      compte a rebours ;
+    //   2. sa sonde ne porte AUCUN decalage vertical (probe[4] = 0, la Coccinelle a -0x100) : elle
+    //      vole, mais elle frappe a hauteur d'homme ;
+    //   3. sa posture 3 n'est pas une errance, c'est une RUEE. Voir le resume de
+    //      TickSceneEntityAi_004A3C30.
+    // =============================================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x004a3c30</c> — <b>l'ABEILLE TUEUSE</b>, sous-type 3 du bloc C de la foret (les
+    /// sous-zones 5 et 9, le lieu de coupe et la grotte) et <b>la troisieme bete volante du
+    /// depot</b>. L'espece vient du croisement <c>especes.csv</c> x <c>modeles.csv</c> consigne
+    /// dans <c>Documentation/Ennemies/Comportement.md</c> ; le bloc A porte une autre « Abeille
+    /// tueuse » sous <see cref="TickSceneEntityAi_0049B220"/>, ce qui rappelle que le nom d'espece
+    /// ne determine pas le comportement. 1583 octets, <b>absente de <c>Blaze.c</c></b> comme toute
+    /// la famille ; releve garde sous <c>Legacy/Raw/Blaze/FUN_004A3C30.asm</c>.
+    ///
+    /// <para>
+    /// Meme charpente en trois temps que ses voisines — decider, appliquer, replanifier — et quatre
+    /// postures : <b>0</b> attendre, <b>1</b> se tourner, <b>2</b> tenir la distance, <b>3</b> se
+    /// ruer. Le champ <c>+0x10</c> sert aux deux dernieres, mais pas au meme titre : la posture 2 y
+    /// lit une <b>distance</b>, la posture 3 un <b>cap</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Sa posture 3 est une ruee, et c'est ce qui la distingue de toute la famille.</b> La ou
+    /// ses voisines marchent vers un cap par petits pas, celle-ci se donne une <b>impulsion</b> :
+    /// le compte a rebours <c>+0x43</c> vaut 2 a l'entree, l'image ou il vaut 2 pose la poussee
+    /// <c>(timidite + 0x120) &lt;&lt; 8</c> et la verse d'un coup dans les deux composantes de
+    /// vitesse <c>+0x50</c> et <c>+0x58</c> par le sinus et le cosinus du cap <c>+0x10</c>, puis
+    /// <b>remet la poussee a zero</b> ; l'image suivante ne fait plus qu'attendre que la vitesse
+    /// retombe sous <c>hardiesse/8 + 1</c>. Elle est <b>lancee</b>, elle ne marche pas.
+    /// </para>
+    /// <para>
+    /// <b>Et pendant toute la ruee elle reste face a la cible</b> : la posture 3 finit par
+    /// <c>+0x32 += cap relatif</c>, a chaque image, quelle que soit la direction de l'impulsion.
+    /// Comme la ruee du corps a corps part a <c>+0x800</c> du cap vise — un demi-tour, donc a
+    /// l'oppose du groupe —, <b>elle recule en vous regardant</b>. Celle de la distance moyenne
+    /// part sans decalage : elle fonce. Le meme mecanisme sert au bond en avant et au bond en
+    /// arriere, le biais seul change.
+    /// </para>
+    /// <para>
+    /// <b>Ses trois plages de distance sont plus serrees que celles de la Coccinelle</b> :
+    /// <c>0xfa</c> et <c>0x1f4</c> au lieu de <c>0x12c</c> et <c>0x258</c>. Sous <c>0xfa</c>, trois
+    /// chances sur dix d'engager — et l'engagement demande en plus un cap dans le cone et une
+    /// distance sous <c>0x64</c> augmentee d'un tirage ; deux sur dix de tenir la distance ; cinq
+    /// sur dix de reculer d'un bond. Entre les deux seuils, elle hesite (45 %), fonce (25 %), tient
+    /// (20 %) ou se repose (10 %). Au-dela elle se repose, hesite ou se rue vers un cap
+    /// <b>entierement tire au sort</b>.
+    /// </para>
+    /// <para>
+    /// <b>Son engagement ne change pas de posture</b> : il pose le bit 2, force l'animation 3,
+    /// efface le bit de bouclage <c>0x1000000</c>, met le compte a rebours a 1 et annule la
+    /// poussee. La posture <c>+0x42</c> reste celle d'avant, et c'est elle qui reprend a la fin du
+    /// geste.
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_004A3C30(byte* record)
+    {
+        byte* e = record;
+
+        ResolveEntityBlocks(e, out byte* stats, out _, out _);
+
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0x1e;
+        probe[2] = 0x32;
+        probe[3] = 0x64;
+        probe[4] = 0;          // aucun decalage vertical : elle vole, mais elle frappe a plat
+        probe[5] = 0x50;
+
+        int boldness, distance, heading, speed;
+        uint traits;
+        ReadSceneEntitySituation_00535F20(e, &boldness, &distance, &heading, &speed, &traits);
+
+        int timid = 0x40 - boldness;
+
+        // ---------------------------------------------------------------- 1. decider
+        DecideSceneEntityAction_004A3C30(e, probe, boldness, distance, heading, speed, timid, traits);
+
+        // ---------------------------------------------------------------- 2. appliquer
+        IntegrateFlyingEntityMotion_0049A8E0(e, speed);
+        FinalizeEntityPlacement2((uint*)e);
+        BeatWings_0049A68F(e);
+        InterruptFlyingEntity_004A1CF0((uint*)e, stats);
+
+        // ---------------------------------------------------------------- 3. replanifier
+        if (speed == 0) return;
+        if ((*(uint*)e & 0x816) != 0) return;
+        if (e[0x43] != 0) return;
+
+        ReplanSceneEntityAction_004A3C30(e, boldness, timid);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a3cb8..0x004a3f59</c> — <b>le premier temps</b> de
+    /// <see cref="TickSceneEntityAi_004A3C30"/>.
+    /// </summary>
+    private static void DecideSceneEntityAction_004A3C30(
+        byte* e, short* probe, int boldness, int distance, int heading, int speed, int timid,
+        uint traits)
+    {
+        if (speed == 0) return;
+
+        AdvanceEntityAnimation_004DB5A0((uint*)e);
+        uint flags = *(uint*)e;
+
+        // ================================================================ le geste en cours
+        if ((flags & 2) != 0)
+        {
+            if ((traits & 0x10) != 0)
+            {
+                e[0x43] = 0;
+                *(uint*)e = flags & 0xfffffffd;
+                return;
+            }
+
+            // L'image de frappe est la seizieme, et une seule : la Coccinelle, elle, balaie a
+            // chaque image du geste.
+            if (*(short*)(e + 0x1a) == 0x10)
+            {
+                byte* victim = SweepPartyForMeleeHit_00519C30(e, (int*)(e + 0x1c), probe, 0);
+
+                if (*Mem.Camera(0x005de0b8) != 0)
+                {
+                    *(ushort*)(victim + 0x96) = 0x10;
+                    *(uint*)victim |= 0x40;
+
+                    ResolveMeleeHit_00539B80((uint*)e, (uint*)victim);
+                    Aud.PlayPositionalSound(3, 0x300, 0x1800, (int*)(victim + 0x1c));
+                }
+            }
+
+            // Le geste s'arrete quand l'ANIMATION s'arrete : le bit 0x2000000 est celui que
+            // AdvanceEntityAnimation_004DB5A0 pose sur la derniere image d'un clip non boucle.
+            flags = *(uint*)e;
+            if ((flags & 0x2000000) == 0) return;
+
+            e[0x43] = 0;
+            *(uint*)e = flags & 0xfffffffd;
+            return;
+        }
+
+        // ================================================================ la posture tenue
+        if ((flags & 0x10) != 0) return;
+        if ((flags & 0x804) != 0) return;
+
+        byte held = e[0x42];
+        if (held > 3) return;
+
+        // Le cone de virage des postures 1 et 2 : deux fois la hardiesse et 0x80, soit bien plus
+        // large que celui de la Coccinelle (hardiesse/4 + 0x38). Elle se retourne vite.
+        int cone = boldness * 2 + 0x80;
+
+        switch (held)
+        {
+            // ---------------------------------------------------------- 0 : attendre
+            case 0:
+                if (*(ushort*)(e + 0x18) != 0)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 0;
+                    *(uint*)e = flags;
+                }
+
+                if (distance < 0x12c)
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+                DampFlyingEntityPush(e);
+                return;
+
+            // ---------------------------------------------------------- 1 : se tourner
+            case 1:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                if (TurnSceneEntityTowardTarget(e, cone, heading)) e[0x43] = 0;
+                DampFlyingEntityPush(e);
+                return;
+
+            // ---------------------------------------------------------- 2 : tenir la distance
+            case 2:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                // La distance tenue est lue dans +0x10, ou la replanification l'a posee.
+                if (distance < *(short*)(e + 0x10))
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+
+                TurnSceneEntityTowardTarget(e, cone, heading);
+                RampFlyingEntityPush(e, (boldness + 0x200) << 7);
+                return;
+
+            // ---------------------------------------------------------- 3 : se ruer
+            default:
+            {
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                if (e[0x43] == 1)
+                {
+                    // La ruee est finie quand la vitesse est retombee. La mesure est en deux
+                    // dimensions, sur +0x50 et +0x58, sans la composante verticale du vol.
+                    int vx = *(int*)(e + 0x50) >> 0xc;
+                    int vz = *(int*)(e + 0x58) >> 0xc;
+
+                    if ((int)Winsys3d.Ordinal_442((uint)(vx * vx + vz * vz)) <= (boldness >> 3) + 1)
+                        e[0x43] = 0;
+                }
+                else if (e[0x43] == 2)
+                {
+                    // L'impulsion, une seule image. La poussee est posee, versee dans les deux
+                    // composantes de vitesse, puis remise a zero : rien ne la maintient.
+                    int push = (timid + 0x120) << 8;
+                    *(int*)(e + 0x5c) = push;
+
+                    short bearing = *(short*)(e + 0x10);
+
+                    *(int*)(e + 0x50) += (int)Winsys3d.GetSinTableEntry(bearing) * push >> 0xc;
+
+                    int forward = Winsys3d.GetCosTableEntry(bearing) * *(int*)(e + 0x5c);
+                    *(int*)(e + 0x5c) = 0;
+                    *(int*)(e + 0x58) += forward >> 0xc;
+
+                    e[0x43]--;
+                }
+
+                // Elle reste face a la cible pendant toute la ruee, quelle que soit la direction
+                // de l'impulsion.
+                *(ushort*)(e + 0x32) += (ushort)heading;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a4023..0x004a4256</c> — <b>le troisieme temps</b> : quelle posture prendre
+    /// pour la suite.
+    ///
+    /// <para>
+    /// <b>La distance et le cap sont recalcules ici, en deux dimensions</b>, comme chez toutes ses
+    /// voisines : la hauteur est ignoree, une bete volante ne renonce pas parce que vous etes plus
+    /// bas qu'elle.
+    /// </para>
+    /// </summary>
+    private static void ReplanSceneEntityAction_004A3C30(byte* e, int boldness, int timid)
+    {
+        byte* chased = *(byte**)(e + 0x6c);
+
+        int dx = (*(int*)(chased + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+        int dz = (*(int*)(chased + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int heading = (Winsys3d.Ordinal_457(dx, dz) - *(ushort*)(e + 0x32)) & 0xfff;
+
+        // ================================================================ le corps a corps
+        if (distance < 0xfa)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x1e)
+            {
+                if (((heading + timid * 4 + 0x100) & 0xfff) > timid * 8 + 0x200)
+                {
+                    HesitateSceneEntity(e);
+                    return;
+                }
+
+                // Le seuil AUGMENTE du tirage : plus elle est timide, plus loin elle accepte
+                // d'engager. C'est l'inverse de la Coccinelle, qui le diminue.
+                if (distance >= 0x64 + CrtRand() % (timid * 2 + 1))
+                {
+                    HesitateSceneEntity(e);
+                    return;
+                }
+
+                // L'engagement ne touche pas a +0x42 : la posture d'avant reprend a la fin du
+                // geste.
+                uint flags = *(uint*)e;
+                *(int*)(e + 0x18) = 3;
+                e[0x43] = 1;
+                *(int*)(e + 0x5c) = 0;
+                *(uint*)e = (flags & 0xfeffffff) | 2;
+                return;
+            }
+
+            if (roll < 0x3c)
+            {
+                HoldSceneEntityAtRange(e, timid, 0x64);
+                return;
+            }
+
+            // 0x800 est un demi-tour : elle bondit en arriere, tout en restant face au groupe.
+            LungeSceneEntity_004A3C30(e, boldness, heading, 0x800);
+            return;
+        }
+
+        // ================================================================ la distance moyenne
+        if (distance < 0x1f4)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x2d)
+            {
+                HesitateSceneEntity(e);
+                return;
+            }
+
+            if (roll < 0x46)
+            {
+                LungeSceneEntity_004A3C30(e, boldness, heading, 0);
+                return;
+            }
+
+            if (roll < 0x5a)
+            {
+                HoldSceneEntityAtRange(e, timid, 0x64);
+                return;
+            }
+
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        // ================================================================ le lointain
+        int far = CrtRand() % 100;
+
+        if (far < 0x1e)
+        {
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        if (far < 0x3c)
+        {
+            HesitateSceneEntity(e);
+            return;
+        }
+
+        // Ghidra: LAB_004a4246 — la seule sortie ou le cap est ENTIEREMENT tire au sort, sans
+        // reference a la cible : trop loin pour qu'elle compte.
+        e[0x42] = 3;
+        e[0x43] = 2;
+        *(short*)(e + 0x10) = (short)CrtRand();
+    }
+
+    /// <summary>Ghidra: LAB_004a4120 et LAB_004a418a — <b>la ruee</b> : posture 3 pour deux images,
+    /// le cap etant celui de la cible plus un ecart tire dans une fourchette large de
+    /// <c>(hardiesse + 0x80) * 16</c>, centree, plus <paramref name="bias"/>.
+    ///
+    /// <para>C'est la jumelle de <see cref="WanderSceneEntity"/>, a un detail pres qui change tout :
+    /// le compte a rebours vaut <b>2</b> et non une duree tiree. Deux images, c'est exactement ce
+    /// qu'il faut a la posture 3 de cette espece — une pour l'impulsion, une pour attendre qu'elle
+    /// retombe.</para></summary>
+    private static void LungeSceneEntity_004A3C30(byte* e, int boldness, int heading, int bias)
+    {
+        e[0x42] = 3;
+        e[0x43] = 2;
+
+        int spread = (boldness + 0x80) << 4;
+        int offset = CrtRand() % spread - (spread >> 1);
+
+        *(short*)(e + 0x10) = (short)(offset + heading + *(short*)(e + 0x32) + bias);
+    }
+
+    // =============================================================================================
     // 0x0049C8E0 — LE POISSON VOLANT, sous-type 6 du bloc A de la foret. Transcrite le 2026-08-29
     // au desassembleur (Legacy/Raw/Blaze/FUN_0049C8E0.asm, 1866 octets, absente de Blaze.c).
     //
@@ -27605,6 +28027,12 @@ public static unsafe partial class Blaze
     /// reprises ici. La suite immediate (<c>0x00552978</c>) n'a plus la forme d'une sonde, donc la
     /// paire du Grizzly s'arrete bien a deux entrees.
     /// </para>
+    /// <para>
+    /// <b>Le binaire en porte une seconde copie</b>, a <c>0x005529e8</c> et <c>0x005529f4</c>, que
+    /// lit le Grizzly du bloc C (<see cref="TickSceneEntityAi_004A4270"/>). Les vingt-quatre octets
+    /// sont <b>byte a byte les memes</b>, verifies au releve : ces valeurs-ci valent donc pour les
+    /// deux adresses, et il n'y a pas de second tableau a tenir.
+    /// </para>
     /// </summary>
     private static readonly short[] s_GrizzlyProbes_00552960 =
     [
@@ -27683,6 +28111,34 @@ public static unsafe partial class Blaze
 
         ReplanPouncingEntityAction_0049B840(e, boldness, timid);
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a4270</c> — <b>le Grizzly du bloc C</b>, sous-type 4 des sous-zones 5 et 9.
+    /// Il n'a pas de corps a lui : c'est le <b>meme code</b> que
+    /// <see cref="TickSceneEntityAi_0049B840"/>, emis une seconde fois par le compilateur.
+    ///
+    /// <para>
+    /// <b>La preuve tient en deux comparaisons</b>, et il en fallait bien deux. Les 2 141 octets
+    /// des deux corps donnent, apres normalisation des deplacements relatifs d'appel, <b>705 lignes
+    /// d'assembleur identiques sur 705</b> — a l'exception de <b>deux immediates</b> :
+    /// <c>push 0x0055296c</c> devient <c>push 0x005529f4</c>, et <c>push 0x00552960</c> devient
+    /// <c>push 0x005529e8</c>. Ce sont les deux gabarits de portee. Le corps est donc le meme
+    /// code lisant une <b>autre copie</b> de la meme table, et un simple <c>od</c> du code ne
+    /// suffisait pas a conclure : il fallait aussi lire la donnee.
+    /// </para>
+    /// <para>
+    /// <b>Et les deux copies sont byte a byte egales</b> : les vingt-quatre octets de
+    /// <c>0x005529e8</c> sont ceux de <c>0x00552960</c>, releves l'un et l'autre par
+    /// <c>OpenForesia.Tools -- at</c> (<c>0000 1e00 4600 9600 00ff 5000 0000 1e00 3200 9600 0000
+    /// 5000</c>). Les deux Grizzlys se comportent donc <b>exactement</b> pareil ; la seconde
+    /// adresse ne merite pas une seconde transcription, seulement ce renvoi.
+    /// </para>
+    /// <para>
+    /// Releve garde sous <c>Legacy/Raw/Blaze/FUN_004A4270.asm</c>, pour que la comparaison reste
+    /// refaisable sans le binaire.
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_004A4270(byte* record) => TickSceneEntityAi_0049B840(record);
 
     /// <summary>
     /// Ghidra: <c>0x0049b8a5..0x0049c098</c> — <b>le premier temps</b> du Grizzly.
@@ -28079,6 +28535,666 @@ public static unsafe partial class Blaze
         *(int*)(e + 0x18) = 4;
         e[0x42] = 1;
         *(ushort*)(e + 0x10) = 2;
+    }
+
+    // =============================================================================================
+    // 0x004A4AE0 — LE MECHANT OURS, sous-type 16 du bloc C de la foret (sous-zones 5 et 9).
+    // Transcrite le 2026-09-01 au desassembleur (Legacy/Raw/Blaze/FUN_004A4AE0.asm, 2 542 octets,
+    // absente de Blaze.c). Quarante-sept etiquettes de saut, table de sauts a 0x004A54D0.
+    //
+    // PASSEE AU CRIBLE DU DOUBLON D'ABORD, comme le Grizzly du bloc C : compare aux treize
+    // routines d'intelligence deja ecrites, l'ecart minimal est de 533 lignes (le Crabe). Ce n'est
+    // donc pas une copie, c'est un corps neuf — et le plus riche de la famille a ce jour.
+    //
+    // TROIS GESTES, LA OU LE CRABE ET LE GRIZZLY EN ONT DEUX. La posture tenue au moment ou le bit
+    // 2 se pose decide lequel part : 0 la griffe, 1 la prise, 2 le souffle.
+    //
+    //   - LA GRIFFE (posture 0). Elle se replace jusqu'a la douzieme image, s'elance a la douzieme,
+    //     et balaie a partir de la treizieme jusqu'a la fin de l'animation. Degats pleins.
+    //
+    //   - LA PRISE (posture 1). C'EST CE QU'AUCUNE AUTRE NE FAIT : elle empoigne un membre du
+    //     groupe, lui inflige la MOITIE de l'attaque du bloc de modele, puis le PROJETTE en
+    //     diagonale et le fait decoller. Elle se deplace un instant SUR sa victime pour y faire
+    //     naitre l'effet 0x39, puis se remet ou elle etait. Le bit 0x20 marque la prise faite et
+    //     empeche de rejouer le balayage ; il est efface avec le bit de geste quand le rebours
+    //     tombe.
+    //
+    //   - LE SOUFFLE (posture 2). Une attaque A DISTANCE : deux bruits aux images 11 et 13, puis a
+    //     la fin de l'animation la naissance d'un sous-type >= 0xc0 lu dans le repertoire de zone.
+    //     C'est la premiere routine d'intelligence du depot qui fasse naitre une entite de la table
+    //     PAR SOUS-ZONE (0x0056adc8) plutot que de la table statique.
+    //
+    // ET ELLE SECOUE L'ECRAN QUAND ELLE MARCHE. A deux images precises de deux animations, elle
+    // pose -8 dans DAT_005de0ac — le decalage vertical de camera — et joue un son de pas. Puis elle
+    // amortit elle-meme la secousse, par le meme a <- (a/4) - a que EntityHandler_00476730, mais
+    // avec un plancher : sous 4 en valeur absolue, elle remet a zero. C'est la seule des quatorze
+    // qui touche a la camera, et la seule qui NETTOIE derriere elle.
+    // =============================================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00552a00</c> et <c>0x00552a0c</c> — <b>les deux gabarits de portee du Mechant
+    /// ours</b>, releves dans <c>.data</c> (<c>OpenForesia.Tools -- at</c>). Meme forme que
+    /// <see cref="s_GrizzlyProbes_00552960"/>, dont ils suivent la paire dans la meme serie.
+    ///
+    /// <para>
+    /// <b>Aucun des deux ne porte de decalage vertical</b> (le cinquieme terme est nul des deux
+    /// cotes), la ou la griffe du Grizzly s'abat d'en haut. Celui de la prise est le plus large en
+    /// portee laterale de la serie (<c>0x50</c>) : il faut bien attraper.
+    /// </para>
+    /// </summary>
+    private static readonly short[] s_MeanBearProbes_00552A00 =
+    [
+        0x0000, 0x0028, 0x0050, 0x0096, 0x0000, 0x0078,   // 0x00552a00 — la griffe
+        0x0000, 0x0050, 0x005a, 0x0096, 0x0000, 0x0064,   // 0x00552a0c — la prise
+    ];
+
+    private static short* s_MeanBearProbeStorage;
+
+    /// <summary>Une des deux entrees de <see cref="s_MeanBearProbes_00552A00"/> en memoire native,
+    /// puisque <see cref="SweepPartyForMeleeHit_00519C30"/> la recoit par pointeur.</summary>
+    private static short* MeanBearProbe(int row)
+    {
+        if (s_MeanBearProbeStorage == null)
+        {
+            s_MeanBearProbeStorage =
+                (short*)NativeMemory.Alloc((nuint)s_MeanBearProbes_00552A00.Length, sizeof(short));
+
+            for (int i = 0; i < s_MeanBearProbes_00552A00.Length; i++)
+            {
+                s_MeanBearProbeStorage[i] = s_MeanBearProbes_00552A00[i];
+            }
+        }
+
+        return s_MeanBearProbeStorage + row * 6;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a4ae0</c> — <b>l'intelligence du Mechant ours</b>, sous-type 16 de la table
+    /// installee <c>0x0056ad48</c> dans les sous-zones 5 et 9 de la foret.
+    ///
+    /// <para>
+    /// <b>Quatre postures</b>, table de sauts a <c>0x004A54D0</c> : 0 attendre, 1 se tourner,
+    /// 2 tenir la distance, 3 marcher vers un cap. Et <b>trois gestes</b>, aiguilles par la posture
+    /// tenue au moment ou le bit 2 se pose — c'est une de plus que le Crabe et le Grizzly.
+    /// </para>
+    /// <para>
+    /// <b>Sa gravite est <c>0x7000</c></b>, reposee a chaque image avant l'integration, contre
+    /// <c>0x6000</c> pour le Grizzly. Elle est plus lourde.
+    /// </para>
+    /// <para>
+    /// <b>Son garde de posture exclut le bit 0</b> (<c>flags &amp; 0x11</c> et non <c>0x10</c>) :
+    /// tant qu'elle n'a pas les quatre pattes au sol, elle ne prend aucune decision de posture.
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_004A4AE0(byte* record)
+    {
+        byte* e = record;
+
+        // Comme le Crabe et le Grizzly, il lui faut le bloc de MODELE : sa prise ampute l'attaque
+        // de moitie.
+        ResolveEntityBlocks(e, out byte* stats, out _, out byte* model);
+
+        int boldness, distance, heading, speed;
+        uint traits;
+        ReadSceneEntitySituation_00535F20(e, &boldness, &distance, &heading, &speed, &traits);
+
+        int timid = 0x40 - boldness;
+
+        // ---------------------------------------------------------------- 1. decider
+        DecideHurlingEntityAction_004A4AE0(e, model, boldness, distance, heading, speed, traits);
+
+        // ---------------------------------------------------------------- 2. appliquer
+        StampBearFootfall(e);
+
+        // Ghidra: LAB_004a5157 — sa gravite, reposee a chaque image et sur toutes les sorties.
+        *(ushort*)(e + 0x9a) = 0x7000;
+
+        IntegrateSceneEntityMotion_00488160(e, speed);
+        FinalizeEntityPlacement2((uint*)e);
+        EndSceneEntityAnimation_004DFAF0((uint*)e);
+        InterruptSceneEntity_004E3770((uint*)e, stats);
+
+        // ---------------------------------------------------------------- 3. replanifier
+        if (speed == 0) return;
+        if ((*(uint*)e & 0x817) != 0) return;
+        if (e[0x43] != 0) return;
+
+        ReplanHurlingEntityAction_004A4AE0(e, boldness, timid);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a50df..0x004a5152</c> — <b>le pas qui secoue l'ecran</b>, sur le chemin
+    /// commun de sortie, donc joue meme quand la bete ne pense pas.
+    ///
+    /// <para>
+    /// Deux images de deux animations le declenchent : la quatrieme et la douzieme de l'animation
+    /// <b>1</b> (la marche), la huitieme de l'animation <b>4</b> (la prise). Chacune pose
+    /// <c>-8</c> dans <c>DAT_005de0ac</c> — le decalage vertical que la camera ajoute a sa cible —
+    /// et joue le son <c>0x35</c>.
+    /// </para>
+    /// <para>
+    /// L'amortissement est celui de <see cref="EntityHandler_00476730"/>, <c>a &lt;- (a / 4) - a</c>,
+    /// donc une oscillation qui perd trois quarts par image et change de signe. <b>Mais celle-ci
+    /// nettoie derriere elle</b> : sous <c>4</c> en valeur absolue la valeur est remise a zero,
+    /// quand la secousse d'explosion laissait un decalage residuel pour toujours.
+    /// </para>
+    /// </summary>
+    private static void StampBearFootfall(byte* e)
+    {
+        short animation = *(short*)(e + 0x18);
+        short frame = *(short*)(e + 0x1a);
+
+        bool footfall = (animation == 1 && (frame == 4 || frame == 0x0b))
+                     || (animation == 4 && frame == 8);
+
+        if (footfall)
+        {
+            *Mem.Camera(0x005de0ac) = -8;
+            Aud.PlayPositionalSound(0x35, 0x200, 0x1800, (int*)(e + 0x1c));
+        }
+
+        int shake = *Mem.Camera(0x005de0ac);
+        if (shake == 0) return;
+
+        shake = (shake >> 2) - shake;
+        *Mem.Camera(0x005de0ac) = shake;
+
+        if (shake < 0) shake = -shake;
+        if (shake < 4) *Mem.Camera(0x005de0ac) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a4b40..0x004a50de</c> — <b>le premier temps</b> du Mechant ours.
+    ///
+    /// <para>
+    /// <b>Trois gestes</b>, et c'est la posture <c>+0x42</c> tenue au moment ou le bit 2 s'est pose
+    /// qui dit lequel : 0 la griffe, 1 la prise, 2 le souffle. Une posture au-dela de 2 en cours de
+    /// geste ne fait rien du tout — le binaire retombe sur la sortie commune.
+    /// </para>
+    /// </summary>
+    private static void DecideHurlingEntityAction_004A4AE0(
+        byte* e, byte* model, int boldness, int distance, int heading, int speed, uint traits)
+    {
+        if (speed == 0) return;
+
+        AdvanceEntityAnimation_004DB5A0((uint*)e);
+        uint flags = *(uint*)e;
+
+        // ================================================================ le geste en cours
+        if ((flags & 2) != 0)
+        {
+            // Le trait 0x10 coupe court : l'espece ne poursuit pas son geste.
+            if ((traits & 0x10) != 0)
+            {
+                e[0x43] = 0;
+                *(uint*)e = flags & 0xfffffffd;
+                return;
+            }
+
+            switch (e[0x42])
+            {
+                case 0: ClawGesture_004A4DD1(e, boldness, heading); return;
+                case 1: SeizeGesture_004A4C46(e, model, boldness, heading, flags); return;
+                case 2: BreathGesture_004A4B89(e); return;
+                default: return;
+            }
+        }
+
+        // ================================================================ la posture tenue
+        // Ghidra: `test al,11h` — le bit 0 est dans le garde, contrairement a ses voisines : une
+        // bete en l'air ne change pas de posture.
+        if ((flags & 0x11) != 0) return;
+        if ((flags & 0x804) != 0) return;
+
+        byte held = e[0x42];
+        if (held > 3) return;
+
+        switch (held)
+        {
+            // ---------------------------------------------------------- 0 : attendre
+            case 0:
+                if (*(ushort*)(e + 0x18) != 0)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 0;
+                    *(uint*)e = flags;
+                }
+
+                if (distance < 0x12c)
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+                *(int*)(e + 0x5c) = 0;
+                return;
+
+            // ---------------------------------------------------------- 1 : se tourner
+            case 1:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                if (TurnSceneEntityTowardTarget(e, boldness * 2 + 0x80, heading)) e[0x43] = 0;
+                *(int*)(e + 0x5c) = 0;
+                return;
+
+            // ---------------------------------------------------------- 2 : tenir la distance
+            case 2:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                if (distance < *(short*)(e + 0x10))
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+
+                // Le cone de l'approche est deux fois plus etroit que celui du demi-tour.
+                TurnSceneEntityTowardTarget(e, boldness * 2 + 0x40, heading);
+                *(int*)(e + 0x5c) = (boldness + 0x120) << 7;
+                return;
+
+            // ---------------------------------------------------------- 3 : marcher vers un cap
+            default:
+            {
+                if (e[0x43] != 0) e[0x43]--;
+
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                // Elle DEPLACE sa position le long de +0x10 — elle ne pousse pas sa vitesse —,
+                // puis tourne son corps vers la cible. Le cap suivi et le cap regarde sont donc
+                // deux choses distinctes, comme chez 0x0049e190.
+                int stride = (boldness + 0x100) << 7;
+                *(int*)(e + 0x5c) = stride;
+
+                short course = *(short*)(e + 0x10);
+                *(int*)(e + 0x1c) += ((int)Winsys3d.GetSinTableEntry(course) * stride) >> 0xc;
+                *(int*)(e + 0x24) += (Winsys3d.GetCosTableEntry(course) * *(int*)(e + 0x5c)) >> 0xc;
+                *(int*)(e + 0x5c) = 0;
+
+                TurnSceneEntityTowardTarget(e, boldness * 2 + 0x40, heading);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a4dd1..0x004a4eeb</c> — <b>la griffe</b>, le geste de la posture 0.
+    ///
+    /// <para>
+    /// Trois temps repris de l'image d'animation, sans compte a rebours : <b>avant la douzieme</b>
+    /// elle se replace vers la cible, <b>a la douzieme</b> elle s'elance et grogne,
+    /// <b>a partir de la treizieme</b> elle balaie le groupe a chaque image. Le geste se ferme a la
+    /// fin de l'animation.
+    /// </para>
+    /// <para>
+    /// Le cone de correction, <c>hardiesse / 2 + 0x20</c>, est deux fois plus large que celui du
+    /// Grizzly dans le meme role — mais il court jusqu'a l'image 11 contre 8 chez lui.
+    /// </para>
+    /// </summary>
+    private static void ClawGesture_004A4DD1(byte* e, int boldness, int heading)
+    {
+        short frame = *(short*)(e + 0x1a);
+
+        if (frame < 0x0c) TurnSceneEntityTowardTarget(e, (boldness >> 1) + 0x20, heading);
+
+        if (frame == 0x0c)
+        {
+            int lunge = (boldness + 0x300) << 7;
+            *(int*)(e + 0x5c) = lunge;
+
+            int course = *(short*)(e + 0x32);
+            *(int*)(e + 0x50) += ((int)Winsys3d.GetSinTableEntry(course) * lunge) >> 0xc;
+            *(int*)(e + 0x58) += (Winsys3d.GetCosTableEntry(course) * *(int*)(e + 0x5c)) >> 0xc;
+            *(int*)(e + 0x5c) = 0;
+
+            Aud.PlayPositionalSound(0x3f, 0x4aa, 0x1800, (int*)(e + 0x1c));
+        }
+
+        if (*(short*)(e + 0x1a) >= 0x0d)
+        {
+            byte* victim = SweepPartyForMeleeHit_00519C30(e, (int*)(e + 0x1c), MeanBearProbe(0), 0);
+
+            if (*Mem.Camera(0x005de0b8) != 0)
+            {
+                *(ushort*)(victim + 0x96) = 0x10;
+                *(uint*)victim |= 0x40;
+                ResolveMeleeHit_00539B80((uint*)e, (uint*)victim);
+                Aud.PlayPositionalSound(3, 0x300, 0x1800, (int*)(victim + 0x1c));
+            }
+        }
+
+        uint flags = *(uint*)e;
+        if ((flags & 0x2000000) != 0) *(uint*)e = flags & 0xfffffffd;
+
+        *(int*)(e + 0x5c) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a4c46..0x004a4dd0</c> — <b>la prise</b>, le geste de la posture 1, et le
+    /// morceau qui n'appartient qu'a cette espece.
+    ///
+    /// <para>
+    /// Le compte a rebours <c>+0x43</c> mene le geste, et a zero il efface <b>deux</b> bits :
+    /// celui du geste et le <c>0x20</c> qui marque « la prise est faite ». Tant que <c>0x20</c> est
+    /// pose, plus aucun balayage n'a lieu — on n'empoigne qu'une fois.
+    /// </para>
+    /// <para>
+    /// <b>La poussee monte par QUARTS</b> vers <c>(hardiesse + 0x400) &lt;&lt; 7</c>, la ou toute la
+    /// famille monte par seiziemes : la bete se jette en avant pour attraper.
+    /// </para>
+    /// <para>
+    /// <b>La projection.</b> La victime encaisse la moitie de l'attaque du bloc de modele — le meme
+    /// idiome que le Crabe et le Grizzly —, puis part a <b>quarante fois</b> le sinus et le cosinus
+    /// d'un cap oblique, et decolle avec <c>0x54 = 0x18000</c> si elle n'etait pas deja en l'air.
+    /// </para>
+    /// <para>
+    /// <b>Le sens de l'oblique se lit sur l'attaque du modele</b>, pas sur la geometrie :
+    /// <c>-0x400</c> quand elle vaut <c>0x800</c> ou plus, <c>+0x400</c> sinon. C'est ce que dit le
+    /// desassemblage (<c>cmp ebp,800h</c> sur la valeur <b>sauvegardee</b> de <c>modele + 0x30</c>,
+    /// apres la restauration), et c'est transcrit tel quel. Aucune autre routine ne fait dependre
+    /// une direction d'une statistique de degats ; on ne cherche pas ici a expliquer l'intention.
+    /// </para>
+    /// <para>
+    /// <b>Elle se deplace SUR sa victime pour semer l'effet <c>0x39</c></b>, puis se remet ou elle
+    /// etait : <see cref="SpawnEffectEntity"/> recopie la position de son modele, et c'est le seul
+    /// moyen de faire naitre l'effet ailleurs qu'a ses propres pieds. Meme detour que chez le
+    /// Grizzly.
+    /// </para>
+    /// </summary>
+    private static void SeizeGesture_004A4C46(byte* e, byte* model, int boldness, int heading, uint flags)
+    {
+        if (e[0x43] != 0)
+        {
+            if (--e[0x43] == 0) *(uint*)e = flags & 0xffffffdd;   // le geste ET la prise
+        }
+
+        // Ghidra: LAB_004a4c58 — la montee de poussee par QUARTS, propre a ce geste.
+        int push = *(int*)(e + 0x5c);
+        *(int*)(e + 0x5c) = push + ((((boldness + 0x400) << 7) - push) >> 2);
+
+        TurnSceneEntityTowardTarget(e, (boldness >> 2) + 0x20, heading);
+
+        if ((*(uint*)e & 0x20) != 0) return;
+
+        byte* prey = SweepPartyForMeleeHit_00519C30(e, (int*)(e + 0x1c), MeanBearProbe(1), 0);
+        if (prey != null) *(uint*)e |= 0x20;
+
+        if (*Mem.Camera(0x005de0b8) == 0) return;
+
+        *(ushort*)(prey + 0x96) = 0x10;
+        *(uint*)prey |= 0x40;
+
+        short power = *(short*)(model + 0x30);
+        *(short*)(model + 0x30) = (short)(power >> 1);
+        ResolveMeleeHit_00539B80((uint*)e, (uint*)prey);
+        *(short*)(model + 0x30) = power;
+
+        Aud.PlayPositionalSound(3, 0x300, 0x1800, (int*)(prey + 0x1c));
+
+        // Une victime que le coup vient d'emporter n'est pas projetee.
+        if ((*(uint*)prey & 0x40000000) != 0) return;
+
+        int bias = power >= 0x800 ? -0x400 : 0x400;
+
+        *(int*)(prey + 0x50) = (int)Winsys3d.GetSinTableEntry(bias + *(short*)(e + 0x32)) * 40;
+        *(int*)(prey + 0x58) = Winsys3d.GetCosTableEntry(bias + *(short*)(e + 0x32)) * 40;
+
+        uint preyFlags = *(uint*)prey;
+        if ((preyFlags & 1) == 0)
+        {
+            *(int*)(prey + 0x54) = 0x18000;
+            *(uint*)prey = preyFlags | 1;
+        }
+
+        // Ghidra: LAB_004a4d8a — les trois mots de position sont echanges avec ceux de la victime
+        // le temps de la naissance, puis rendus.
+        int savedX = *(int*)(e + 0x1c);
+        int savedY = *(int*)(e + 0x20);
+        int savedZ = *(int*)(e + 0x24);
+
+        *(int*)(e + 0x1c) = *(int*)(prey + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(prey + 0x20);
+        *(int*)(e + 0x24) = *(int*)(prey + 0x24);
+
+        SpawnEffectEntity(e, 0x39, 0, -1);
+
+        *(int*)(e + 0x1c) = savedX;
+        *(int*)(e + 0x20) = savedY;
+        *(int*)(e + 0x24) = savedZ;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a4b89..0x004a4c45</c> — <b>le souffle</b>, le geste de la posture 2 : la
+    /// seule attaque a distance de toute la famille.
+    ///
+    /// <para>
+    /// <c>+0x10</c> y sert de machine a deux temps. <b>A 1</b>, deux bruits ponctuent l'animation —
+    /// aux images 11 et 13 — et sa derniere image fait naitre l'entite, puis <c>+0x10</c> retombe a
+    /// 0 et un rebours de dix images s'arme. <b>A 0</b>, ce rebours s'ecoule et ferme le geste.
+    /// </para>
+    /// <para>
+    /// <b>Le sous-type n'est pas une constante</b> : <c>0xc0</c> plus le neuvieme octet du premier
+    /// bloc du repertoire de zone (<c>+0xcc</c>). Un sous-type <c>&gt;= 0xc0</c> designe la table
+    /// <b>par sous-zone</b> <c>0x0056adc8</c> et non la table statique <c>0x00551c30</c> : le
+    /// souffle de l'ours n'est donc pas le meme objet d'une carte a l'autre. Meme idiome que la
+    /// trainee de <see cref="TickSceneEntityAi_0049A980"/>, a l'octet pres.
+    /// </para>
+    /// <para>
+    /// <b><c>+0x9a</c> est mis a zero le temps de la naissance</b>, puis rendu :
+    /// <see cref="SpawnEffectEntity"/> recopie les <c>0x9c</c> octets de l'entite, donc le souffle
+    /// heriterait de la gravite de l'ours et tomberait comme une pierre.
+    /// </para>
+    /// </summary>
+    private static void BreathGesture_004A4B89(byte* e)
+    {
+        short phase = *(short*)(e + 0x10);
+
+        if (phase == 1)
+        {
+            if (*(short*)(e + 0x1a) == 0x0b)
+                Aud.PlayPositionalSound(0x3f, 0x32a, 0x1800, (int*)(e + 0x1c));
+
+            if (*(short*)(e + 0x1a) == 0x0d)
+                Aud.PlayPositionalSound(0x3f, 0x384, 0x1800, (int*)(e + 0x1c));
+
+            if ((*(uint*)e & 0x2000000) != 0)
+            {
+                short savedGravity = *(short*)(e + 0x9a);
+                *(short*)(e + 0x9a) = 0;
+
+                byte* block = *(byte**)(s_Unknown_005e97cc + 0xcc);
+                int subtype = (*(byte**)block)[9] + 0xc0;
+
+                SpawnEffectEntity(e, (byte)subtype, 0xff, -1);
+
+                *(short*)(e + 0x10) -= 1;
+                *(short*)(e + 0x9a) = savedGravity;
+                e[0x43] = 0x0a;
+                *(int*)(e + 0x5c) = 0;
+                return;
+            }
+        }
+        else if (phase == 0)
+        {
+            // Ghidra: LAB_004a4c30 — le rebours de recuperation, et le geste se ferme a zero.
+            if (--e[0x43] == 0) *(uint*)e &= 0xfffffffd;
+        }
+
+        *(int*)(e + 0x5c) = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004a51ad..0x004a54c5</c> — <b>le troisieme temps</b> : quelle posture, ou quel
+    /// geste, pour la suite.
+    ///
+    /// <para>
+    /// <b>La distance et le cap sont recalcules ici, en deux dimensions</b>, comme chez toutes ses
+    /// voisines.
+    /// </para>
+    /// <para>
+    /// <b>Les trois gestes se repartissent sur les trois plages</b>, et c'est ce qui rend la bete
+    /// lisible : au corps a corps (sous <c>0xfa</c>) elle griffe ou elle empoigne, a moyenne
+    /// distance (sous <c>0x1f4</c>) elle empoigne ou elle souffle, et de loin elle ne peut plus
+    /// qu'empoigner — la prise est le seul geste qui parte a n'importe quelle distance.
+    /// </para>
+    /// </summary>
+    private static void ReplanHurlingEntityAction_004A4AE0(byte* e, int boldness, int timid)
+    {
+        byte* chased = *(byte**)(e + 0x6c);
+
+        int dx = (*(int*)(chased + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+        int dz = (*(int*)(chased + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int heading = (Winsys3d.Ordinal_457(dx, dz) - *(ushort*)(e + 0x32)) & 0xfff;
+
+        bool inCone = ((heading + timid * 4 + 0x100) & 0xfff) <= timid * 8 + 0x200;
+
+        // ================================================================ le corps a corps
+        if (distance < 0xfa)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x3c)
+            {
+                if (!inCone)
+                {
+                    HesitateSceneEntity(e);
+                    return;
+                }
+
+                // Le seuil AUGMENTE du tirage, comme chez l'abeille tueuse : plus elle est timide,
+                // plus loin elle accepte de griffer.
+                if (distance >= 0xc8 + CrtRand() % (timid * 2 + 1))
+                {
+                    HesitateSceneEntity(e);
+                    return;
+                }
+
+                // Ghidra: LAB_004a5254 — armer LA GRIFFE : posture 0, animation 3, bit de geste.
+                uint flags = *(uint*)e;
+                *(int*)(e + 0x18) = 3;
+                e[0x42] = 0;
+                *(int*)(e + 0x5c) = 0;
+                *(uint*)e = (flags & 0xfeffffff) | 2;
+                return;
+            }
+
+            if (roll < 0x4b)
+            {
+                HoldSceneEntityAtRange(e, timid, 0x64);
+                return;
+            }
+
+            if (roll < 0x5a)
+            {
+                if (!inCone)
+                {
+                    WanderSceneEntity(e, boldness, timid, heading, 0x800);
+                    return;
+                }
+
+                SeizeAt(e, boldness);
+                return;
+            }
+
+            // 0x800 est un demi-tour : elle recule.
+            WanderSceneEntity(e, boldness, timid, heading, 0x800);
+            return;
+        }
+
+        // ================================================================ la distance moyenne
+        if (distance < 0x1f4)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x32)
+            {
+                // Ghidra: LAB_004a536b — un cone d'un demi-tour entier, et non celui de la
+                // timidite : a cette distance elle empoigne des que la cible est DEVANT elle.
+                if (((heading + 0x400) & 0xfff) >= 0x800)
+                {
+                    HesitateSceneEntity(e);
+                    return;
+                }
+
+                SeizeAt(e, boldness);
+                return;
+            }
+
+            if (roll < 0x46)
+            {
+                // Ghidra: LAB_004a53bd — armer LE SOUFFLE : posture 2, animation 5, machine a
+                // deux temps mise a 1. Aucun compte a rebours : c'est l'animation qui mene.
+                uint flags = *(uint*)e;
+                *(int*)(e + 0x18) = 5;
+                e[0x42] = 2;
+                *(uint*)e = (flags & 0xfeffffff) | 2;
+                *(short*)(e + 0x10) = 1;
+                return;
+            }
+
+            if (roll < 0x5a)
+            {
+                WanderSceneEntity(e, boldness, timid, heading, 0);
+                return;
+            }
+
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        // ================================================================ le lointain
+        int far = CrtRand() % 100;
+
+        if (far < 0x1e)
+        {
+            SeizeAt(e, boldness);
+            return;
+        }
+
+        if (far < 0x3c)
+        {
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        // Ghidra: LAB_004a549e — trop loin pour que la cible compte : le cap est entierement tire.
+        e[0x42] = 3;
+        e[0x43] = SceneEntityDelay(timid);
+        *(ushort*)(e + 0x10) = (ushort)CrtRand();
+    }
+
+    /// <summary>Ghidra: LAB_004a52d2, LAB_004a5393 et LAB_004a544c — <b>armer la prise</b> : le
+    /// drapeau de geste, le bit de bouclage d'animation, l'animation 4, la posture 1 et un compte a
+    /// rebours de <c>hardiesse / 8 + 0x18</c>. Les trois sites qui empoignent partagent ce corps.
+    ///
+    /// <para>Contrairement au bond du Grizzly, <b>le bit <c>0x1000000</c> est POSE et non
+    /// efface</b> : l'animation de prise boucle, et c'est le rebours seul qui la termine.</para>
+    /// </summary>
+    private static void SeizeAt(byte* e, int boldness)
+    {
+        *(uint*)e |= 0x1000002;
+        *(int*)(e + 0x18) = 4;
+        e[0x42] = 1;
+        e[0x43] = (byte)((boldness >> 3) + 0x18);
     }
 
     // =============================================================================================
@@ -62358,10 +63474,26 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
-    /// Ghidra: FUN_00541440 @ 0x00541440 — <b>le crochet de contact au sol de la foret</b>, entree
-    /// 32 de la table <c>0x0056afc8</c>. 271 octets, absente de <c>Blaze.c</c>. La zone 0 met la
-    /// souche vide a cette entree ; la foret y met ceci, et c'est <b>ce que le sol fait a chaque
-    /// pas</b>.
+    /// <b>Le crochet de contact au sol de la foret</b>, entree 32 de la table <c>0x0056afc8</c>.
+    /// La zone 0 met la souche vide a cette entree ; la foret y met ceci, et c'est <b>ce que le sol
+    /// fait a chaque pas</b>.
+    ///
+    /// <para>
+    /// <b>Le binaire en porte deux exemplaires</b>, un par groupe de sous-zones :
+    /// <c>FUN_00541440</c> (271 octets, blocs <c>0x005555a8</c> et <c>0x00555c28</c>) et
+    /// <c>FUN_00541b80</c> (259 octets, bloc <c>0x005562a8</c>, <b>sous-zones 5 et 9</b>). Aucun des
+    /// deux n'est dans <c>Blaze.c</c>. Mis cote a cote, les deux desassemblages <b>ne different que
+    /// par trois instructions</b> — le <c>test dword [esi],50000000h</c>, son saut, et le <c>je</c>
+    /// qui passe de court a long pour l'absorber : exactement les douze octets d'ecart. Tout le
+    /// reste, registres et constantes compris, est identique. Le corps est donc ecrit une fois, et
+    /// <paramref name="guardRemovedOrDead"/> porte la seule divergence. Releves sous
+    /// <c>Legacy/Raw/Blaze/FUN_00541440.asm</c> et <c>FUN_00541B80.asm</c>.
+    /// </para>
+    /// <para>
+    /// <b>Cette divergence n'est pas cosmetique.</b> En sous-zones 5 et 9, le sol brulant s'applique
+    /// <b>meme a une entite retiree ou morte</b> : l'effet <c>0x2A</c> nait et le mini-script part
+    /// quand meme. Ailleurs en foret, le <c>0x50000000</c> coupe court. Transcrit tel quel.
+    /// </para>
     ///
     /// <para><b>Deux moities independantes</b>, sans etat ni compteur — la fonction est rejouee en
     /// entier a chaque image et ne retient rien.</para>
@@ -62382,7 +63514,8 @@ public static unsafe partial class Blaze
     ///
     /// <para>
     /// <b>Le sol qui brule.</b> Si le porteur (<c>+0x7c</c>) a un <c>+0x0a</c> non nul, que
-    /// l'entite n'est ni retiree ni morte (<c>0x50000000</c>), et que les <b>trois bits bas</b> de
+    /// l'entite n'est ni retiree ni morte (<c>0x50000000</c> — cette garde-la pour
+    /// <c>FUN_00541440</c> seulement), et que les <b>trois bits bas</b> de
     /// <c>+0x150</c> du bloc de personnage valent <b>4</b> — le type de terrain —, alors un effet
     /// <c>0x2A</c> nait et un mini-script part.
     /// </para>
@@ -62402,7 +63535,7 @@ public static unsafe partial class Blaze
     /// gestionnaire s'arrete a <c>s[6]</c>.
     /// </para>
     /// </summary>
-    private static void EntityHandler_00541440(uint* entity)
+    private static void TickGroundContact(uint* entity, bool guardRemovedOrDead)
     {
         byte* e = (byte*)entity;
 
@@ -62426,7 +63559,7 @@ public static unsafe partial class Blaze
         byte* carrier = *(byte**)(e + 0x7c);
 
         if (*(short*)(carrier + 0x0a) == 0) return;
-        if ((*(uint*)e & 0x50000000) != 0) return;
+        if (guardRemovedOrDead && (*(uint*)e & 0x50000000) != 0) return;
         if ((character[0x150] & 7) != 4) return;
 
         ushort savedFacing = *(ushort*)(e + 0x0a);
@@ -62451,6 +63584,24 @@ public static unsafe partial class Blaze
 
         ScriptOpAluChunkRecords(script);           // Ghidra: FUN_00513FE0 -> FUN_00515790
     }
+
+    /// <summary>
+    /// Ghidra: FUN_00541440 @ 0x00541440 — l'exemplaire du crochet de sol installe hors des
+    /// sous-zones 5 et 9 (blocs <c>0x005555a8</c> et <c>0x00555c28</c>), 271 octets. Il <b>coupe
+    /// court sur une entite retiree ou morte</b>. Corps et comparaison des deux exemplaires :
+    /// <see cref="TickGroundContact"/>.
+    /// </summary>
+    private static void EntityHandler_00541440(uint* entity)
+        => TickGroundContact(entity, guardRemovedOrDead: true);
+
+    /// <summary>
+    /// Ghidra: FUN_00541b80 @ 0x00541b80 — l'exemplaire des <b>sous-zones 5 et 9</b> (bloc
+    /// <c>0x005562a8</c>), 259 octets. Meme corps que <see cref="EntityHandler_00541440"/> a une
+    /// garde pres : ici le sol brulant s'applique <b>meme a une entite retiree ou morte</b>. Corps
+    /// et comparaison : <see cref="TickGroundContact"/>.
+    /// </summary>
+    private static void EntityHandler_00541B80(uint* entity)
+        => TickGroundContact(entity, guardRemovedOrDead: false);
 
     /// <summary>
     /// Ghidra: FUN_00473a70 @ 0x00473a70 - les sous-types <b>6 et 7</b>. Vingt-trois octets, et il
