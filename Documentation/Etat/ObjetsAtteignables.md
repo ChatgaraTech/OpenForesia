@@ -734,7 +734,7 @@ en jeu.
 
 ### Vus en jeu, absents du catalogue
 
-**10 cle(s)** relevee(s) par la sonde ne correspondent a aucune fiche d'`objets.csv`.
+**11 cle(s)** relevee(s) par la sonde ne correspondent a aucune fiche d'`objets.csv`.
 
 Ce n'est pas une erreur de la sonde : `objets.csv` porte les catalogues **par
 sous-zone** — ce qu'on ramasse et ce que les coffres donnent —, et **pas**
@@ -756,6 +756,7 @@ le vrai libelle.
 | `77526f62650000000000000000000000` | Robe |
 | `77436f75727465206570656500000000` | Courte epee |
 | `7745706565206e6f726d616c65000000` | Epee normale |
+| `6d546f6d616861776b00000000000000` | Tomahawk |
 | `6d4d6173737565000000000000000000` | Massue |
 
 ---

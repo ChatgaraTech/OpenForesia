@@ -19708,3 +19708,103 @@ dette n'est pas un reproche : les 21 gestionnaires d'objet sont désormais tous 
 prochaine séance de jeu qui utilise un objet exercera pour de bon ce qui n'est aujourd'hui vérifié
 que par lecture. Les trois sondes (`handlers-exerces.tsv`, `objets-exerces.tsv`,
 `sorts-exerces.tsv`) sont en place pour l'enregistrer.
+
+## 2026-09-01 (suite 2) — l'embarcation de la forêt, `0x00458200`
+
+Premier des quatorze gestionnaires que la zone 3 comptait encore. **2088 octets, absents de
+`Blaze.c`**, quarante-huit étiquettes de saut et cinq `return` — le plus gros corps d'entité de
+scène transcrit jusqu'ici. Avec son balayage privé `0x00458a30` (943 octets), deux corps.
+
+Zone 3 passe de **122 à 123 implémentés sur 136**.
+
+### Ce que c'est
+
+Une **embarcation que le groupe pilote à la pagaie**, dans les sous-zones 6 à 8 de la forêt. Rien
+dans le corps ne dit « eau » — c'est le terrain qui le dit, par le bit `0x2000` des attributs de
+face. Ce que le corps établit, lui :
+
+- **quatre gâchettes en couples opposés** (rotation, poussée) : `0x400` gauche-avant, `0x800`
+  droite-avant, `0x100` droite-arrière, `0x200` gauche-arrière — le geste de la pagaie ;
+- **il ne bouge que si tout le groupe est à bord**, et la caméra passe à son bord pendant ce
+  temps ;
+- **il sème un sillage** : deux entités `0x30` par image dès qu'il bouge, plus une troisième une
+  fois sur six ;
+- **il se souvient d'où il est** : chaque image, sa position et son cap sont réécrits dans la fiche
+  de placement de la sous-zone.
+
+### Trois choses que le corps a apprises au dépôt
+
+**1. `+0x10` n'est pas un état, c'est un renvoi vers la fiche de placement.** La première image y
+range `(+0x14 << 8) | +0x16` — la liste de sous-zone dans le haut, le rang dans le bas, tels que
+`SpawnSubAreaEntities` les avait posés — puis remet les deux champs à zéro. **Les mêmes deux champs
+servent donc à deux métiers selon que l'initialisation a eu lieu ou non** : indices de fiche avant,
+rotation et poussée après. C'est ce qui rend la fin du corps lisible : `((int**)(répertoire +
+0x30))[+0x10 >> 8] + (+0x10 & 0xff) * 0x20` retrouve l'enregistrement de huit dwords que la
+sous-zone avait lu, et y réécrit `x`, `y`, `z` et le cap aux décalages `+4`, `+6`, `+8` et `+0xc` —
+exactement ceux que `SpawnSubAreaEntities` relit.
+
+**2. `PTR_FUN_0056b0c4` n'est pas une globale isolée : c'est l'entrée 63 de la table `0x0056afc8`.**
+Le chargement de sous-zone recopie **0x40 entrées** à partir de `0x0056afc8`, et
+`0x0056afc8 + 63 * 4 = 0x0056b0c4`. Le creneau 63 est donc **réservé à autre chose qu'un pas
+d'entité** : partout ailleurs les sept tables portent des fonctions à un argument, ici le binaire
+en pousse trois (l'entité, sa position d'avant le pas, un masque) et nettoie `0x0c` octets. En forêt
+6-8 il vaut `0x00541550` — une des lignes que `GestionnairesEntites.md` compte encore pour la
+zone 3, et c'est **le prochain à dépiler**.
+
+**3. Le bloc privé de la forêt s'arrêtait un mot trop tôt.** `s_ForestSceneBlock_00571420` était
+alloué à `0x240`, ce qui couvre `0x00571420`..`0x0057165f`. Le corps écrit un `int` à
+`0x00571660` — exactement le premier octet dehors. Porté à `0x248`, jusqu'au voisin connu
+`DAT_00571668`. Le commentaire du bloc disait déjà « jusqu'à `0x00571660` » ; il fallait lire
+« jusqu'à `0x00571660` **inclus** ». Aucun corps ne l'avait encore atteint, donc rien ne l'avait
+signalé — c'est la même classe de défaut que les tables de descripteurs trop courtes, et elle ne se
+voit pas plus à la compilation.
+
+### Le pilotage, chiffré
+
+Le pas de rotation, le pas de poussée et le plafond des deux sont choisis par le nombre de membres
+utilisables :
+
+| rameurs | rotation | poussée | plafond |
+|---:|---:|---:|---:|
+| 1 | 8 | 4 | 0x23 |
+| 2 | 4 | 2 | 0x2b |
+| 3 | 3 | 2 | 0x32 |
+| 4 | 2 | 1 | 0x3c |
+
+**Plus on est nombreux, moins chaque coup porte, mais plus l'engin peut aller vite** : le pas est
+divisé par quatre entre un rameur et quatre, le plafond passe de 35 à 60. Les deux accumulateurs
+perdent une unité par image en dehors des coups.
+
+### Le balayage `0x00458a30`
+
+Il travaille sur une **copie** des 0x27 mots de l'entité, posée à `0x005715b0` — d'où les
+`DAT_005715cc` (position), `DAT_005715e2` (cap) et `DAT_00571640` (contact) que `Blaze.c` emploie
+sans les relier à quoi que ce soit : ce sont `+0x1c`, `+0x32` et `+0x90` de la copie. Six pas
+enchaînés autour d'elle — `+0x400` à 220, `+0xe00` à 150, `+0xc00` à 330, `+0x800` à 220, `+0x400`
+à 330, `+0x200` à 150 —, chacun suivi du pas de collision de la sous-zone. **Les six ne repartent
+pas du centre** : chacun relit ce que le précédent a laissé, correction de collision comprise.
+Le rendu est le numéro de la **dernière** sonde qui a touché, jamais la première ; l'appelant ne
+regarde que « nul ou non ».
+
+Sur contact, dix champs sont remis comme ils étaient — position, cap, les quatre mots de face
+`+0x80`..`+0x8c`, la face `+0x7c`, le mot de contact `+0x90` — et les deux accumulateurs annulés.
+C'est le même jeu de champs que `RollBackMove` restaure pour une entité de scène ordinaire, ce qui
+a servi de contrôle croisé sur la lecture des offsets.
+
+### Ce qui reste ouvert
+
+`CallSubAreaMoveProbe` lève en se nommant tant que `0x00541550` n'est pas transcrit. **La
+conséquence est bornée et connue** : le corps ne l'atteint qu'une fois tout le groupe embarqué et en
+train de pagayer. Traverser les sous-zones 6 à 8 à pied, croiser l'embarcation, monter dessus — rien
+de tout cela n'y va. C'est donc un gain net par rapport à l'absence du gestionnaire, qui plantait
+dès l'entrée dans la sous-zone.
+
+### Les treize qui restent en zone 3
+
+| gestionnaire | sous-zones | table | note |
+|---|---|---|---|
+| `0x0049E920` | 0-4 | 0056AD48 | **la priorité** : la sonde l'a vu passer, donc le jeu y va |
+| `0x00541550` | 6,7,8 | 0056AFC8 | le pas de collision de l'embarcation — 1584 octets |
+| `0x00541B80` | 5,9 | 0056AFC8 | son jumeau, 258 octets |
+| `0x0049FAD0` `0x004A0480` `0x004A13E0` `0x004A1D50` `0x004A2C90` `0x004A35B0` | 6,7,8 | 0056AD48 | six comportements d'ennemi |
+| `0x004A3C30` `0x004A4270` `0x004A4AE0` `0x004A54E0` | 5,9 | 0056AD48 | quatre comportements d'ennemi |

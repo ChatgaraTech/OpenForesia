@@ -5329,6 +5329,10 @@ public static unsafe partial class Blaze
             case 0x00459B20: EntityHandler_00459B20(record); return;
             case 0x00458E90: EntityHandler_00458E90(record); return;
 
+            // L'EMBARCATION que le groupe pilote a la pagaie, sous-zones 6 a 8 de la foret.
+            // 2088 octets absents de Blaze.c ; voir le pave devant TickPartyRaft_00458200.
+            case 0x00458200: TickPartyRaft_00458200(record); return;
+
             // Les deux scenes cinema de la foret et leurs deux amorces : un corps chacune,
             // parametre par l'enregistrement 0 ou 1 du bloc prive 0x00571420.
             case 0x00410820: EntityHandler_00410820(record); return;
@@ -14429,7 +14433,10 @@ public static unsafe partial class Blaze
     /// </para>
     /// <para>
     /// <b>La taille est celle du domaine, pas celle d'un compte etabli.</b> L'allocation couvre
-    /// <c>0x00571420</c> a <c>0x00571660</c> — jusqu'au voisin connu <c>DAT_00571668</c>. Le pas
+    /// <c>0x00571420</c> a <c>0x00571667</c> — jusqu'au voisin connu <c>DAT_00571668</c>, exclu.
+    /// Elle valait <c>0x240</c> jusqu'au 2026-09-01, ce qui s'arretait <b>un mot trop tot</b> :
+    /// <c>TickPartyRaft_00458200</c> ecrit un <c>int</c> a <c>0x00571660</c>, soit exactement le
+    /// premier octet hors de l'ancienne etendue. Portee a <c>0x248</c>. Le pas
     /// de <c>0x30</c> se lit clairement sur les premiers enregistrements, mais <b>leur nombre
     /// n'est pas etabli</b> : le verbe <c>0x00443b20</c> ecrit encore a <c>0x0057150c</c> et
     /// <c>0x00571510</c>, et <see cref="EntityHandler_00458DE0"/> lit <c>0x00571654</c>, qu'aucune
@@ -14438,7 +14445,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static readonly byte* s_ForestSceneBlock_00571420 =
-        (byte*)NativeMemory.AllocZeroed(0x240);
+        (byte*)NativeMemory.AllocZeroed(0x248);
 
     /// <summary>Le <c>+0x28</c> du bloc de camera <paramref name="index"/> : le numero du membre du
     /// groupe que l'invocation a saisi. <c>0x00571448</c> pour 0, <c>0x00571478</c> pour 1.</summary>
@@ -15199,6 +15206,608 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x10) = 1;
         *(short*)(e + 0x16) = -1;
         *(short*)(e + 0x12) = 100;
+    }
+
+    // =====================================================================
+    // L'EMBARCATION DE LA FORET (2026-09-01) — 0x00458200, sous-zones 6 a 8, table 0x0056adc8.
+    //
+    // 2088 octets, ABSENTE de `Blaze.c`, quarante-huit etiquettes de saut et cinq `return`.
+    // Releve garde sous `Legacy/Raw/Blaze/FUN_00458200.asm`.
+    //
+    // C'est le plus gros corps d'entite de scene transcrit jusqu'ici, et le premier que le groupe
+    // PILOTE : les quatre membres pagayent, l'engin tourne et avance, la camera passe a son bord
+    // tant que tout le monde est dessus, et sa position est reecrite dans la fiche de placement de
+    // la sous-zone pour qu'il soit encore la au retour.
+    // =====================================================================
+
+    /// <summary>
+    /// Le calage de l'embarcation sur le terrain, ecrit deux fois dans le binaire (a
+    /// <c>0x004582c2</c> et a <c>0x0045834d</c>) avec les memes six lignes.
+    ///
+    /// <para>
+    /// Les quatre demi-mots hauts de <c>+0x80</c>..<c>+0x8c</c> portent les <b>attributs de face</b>
+    /// que <see cref="TryPlaceEntity"/> y ecrit (<c>+0x82 + genre * 4</c>) ; ils sont remis au motif
+    /// <c>0xa000</c> — celui que le reste du moteur lit comme « aucune face » — avant l'appel, pour
+    /// que les genres que le nouveau point ne rencontre pas ne gardent pas l'ancienne reponse.
+    /// Plancher et plafond sont ramenes a la hauteur courante dans la foulee.
+    /// </para>
+    /// </summary>
+    private static void SettleRaftOnTerrain(byte* e)
+    {
+        *(ushort*)(e + 0x82) = 0xa000;
+        *(ushort*)(e + 0x86) = 0xa000;
+        *(ushort*)(e + 0x8a) = 0xa000;
+        *(ushort*)(e + 0x8e) = 0xa000;
+
+        *(int*)(e + 0x64) = *(int*)(e + 0x20);
+        *(int*)(e + 0x60) = *(int*)(e + 0x20);
+
+        TryPlaceEntity(*(byte**)Mem.Entity(0x005f7bc0), (uint*)e, 0x8000);
+    }
+
+    /// <summary>
+    /// L'etat de manette du membre <paramref name="member"/>, par la meme triple indirection que
+    /// <c>LeaderPadState</c> : l'octet <c>+8</c> de l'emplacement donne le personnage, le
+    /// <c>* 0x4c</c> de <see cref="Input.s_PlayerSlots_005e9188"/> donne la manette, et le
+    /// <c>* 0x10</c> donne sa ligne. Le binaire lit <b>l'octet <c>+3</c></b>, c'est-a-dire le haut
+    /// du mot de fronts <c>+2</c> : les quatre gachettes y sont les bits <c>1</c>, <c>2</c>,
+    /// <c>4</c> et <c>8</c>, soit <c>0x100</c>, <c>0x200</c>, <c>0x400</c> et <c>0x800</c> du mot.
+    /// </summary>
+    private static byte RaftPaddleBits(byte* member)
+        => Inp.s_InputStateBase_00604a20[Inp.s_PlayerSlots_005e9188[member[8] * 0x4c] * 0x10 + 3];
+
+    /// <summary>
+    /// Ghidra: <c>0x00458200</c> — <b>l'embarcation que le groupe pilote a la pagaie</b>. Creneau
+    /// de la table <c>0x0056adc8</c> installee par les sous-zones 6, 7 et 8 de la foret, donc une
+    /// entite de la troisieme table (<c>0x005fa5e0</c>, passe <c>FUN_0050e5e0</c>). 2088 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; releve sous <c>Legacy/Raw/Blaze/FUN_00458200.asm</c>.
+    ///
+    /// <para>
+    /// <b>Ce que le corps etablit</b>, sans rien supposer : quatre gachettes agissent en couples
+    /// (rotation, poussee) opposes deux a deux — c'est un coup de pagaie ; l'engin avance sur son
+    /// propre cap <c>+0x32</c> par sinus et cosinus ; il seme deux entites <c>0x30</c> par image
+    /// des qu'il bouge, par <see cref="SpawnEffectNearCamera_00468110"/>, plus une troisieme une
+    /// fois sur six — un sillage ; et il ne bouge <b>que si tout le groupe est a bord</b>. Ce que
+    /// le corps <b>n'etablit pas</b> : la nature du milieu. Rien ici ne dit « eau » ; c'est le
+    /// terrain qui le dit, par le bit <c>0x2000</c> des attributs de face.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Qui est a bord.</b> Chaque image, les quatre emplacements sont classes en trois tas. Un
+    /// membre est <b>a bord</b> si les attributs de la face qu'il foule — a l'indice de genre que
+    /// l'embarcation foule elle-meme, <c>(*(byte**)(e + 0x7c))[0x0e]</c> — portent le bit
+    /// <c>0x2000</c>, <b>et</b> si son <c>+0x78</c> designe une entite de sous-type <c>0x14</c>. Il
+    /// est <b>a terre</b> si le bit de face manque. Entre les deux — le bit present mais pas la
+    /// monture — il n'est compte nulle part : les deux totaux ne sont pas complementaires, et c'est
+    /// ce qui rend les trois branches suivantes distinctes.
+    /// </para>
+    ///
+    /// <list type="bullet">
+    /// <item><b>Tout le monde a bord</b> (<c>aBord == ActivePartySlotCount_00466D70</c>) : la
+    /// camera passe a l'embarcation. Le mode de vue courant est mis de cote dans
+    /// <c>DAT_00604b7c</c>, le mode devient <b>3</b>, la cible et l'angle de vue sont rebranches
+    /// sur deux triplets du bloc prive de la foret (<c>0x00571658</c> et <c>0x005715a8</c>), et
+    /// <c>+0x9a</c> retient « j'ai la barre ».</item>
+    /// <item><b>Tout le monde a terre</b> : l'angle courant est rendu au but <c>0x006067e0</c>
+    /// masque sur douze bits, <see cref="CameraModeApply_005037E0"/> rabat le mode 3 sur celui de
+    /// la sauvegarde et rebranche les trois globales, et <c>+0x9a</c> repasse a zero.</item>
+    /// <item><b>Entre les deux</b> : l'embarcation garde son echelle mais ne bouge pas.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Le pilotage, et pourquoi il depend du nombre de rameurs.</b> Le pas de rotation, le pas
+    /// de poussee et le plafond des deux sont choisis par le nombre de membres <i>utilisables</i>
+    /// (bit <c>0x80000000</c> pose, <c>0x50000000</c> et <c>0x10000</c> absents) :
+    /// </para>
+    /// <list type="table">
+    /// <item><term>1</term><description>rotation 8, poussee 4, plafond 0x23</description></item>
+    /// <item><term>2</term><description>rotation 4, poussee 2, plafond 0x2b</description></item>
+    /// <item><term>3</term><description>rotation 3, poussee 2, plafond 0x32</description></item>
+    /// <item><term>4</term><description>rotation 2, poussee 1, plafond 0x3c</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Plus on est nombreux, moins chaque coup porte, mais plus l'engin peut aller vite</b> : le
+    /// pas est divise par quatre entre un rameur et quatre, le plafond est presque double. Les
+    /// quatre gachettes se repartissent alors les quatre coins : <c>0x400</c> tourne a gauche en
+    /// poussant, <c>0x800</c> tourne a droite en poussant, <c>0x100</c> tourne a droite en tirant,
+    /// <c>0x200</c> tourne a gauche en tirant. Chaque membre encore debout ajoute la sienne, et les
+    /// deux accumulateurs <c>+0x14</c> et <c>+0x16</c> perdent une unite par image en dehors de ca.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Trois arrets d'urgence</b>, tous en remettant <c>+0x14</c> et <c>+0x16</c> a zero : un
+    /// membre portant le bit <c>0x10000000</c> (et la, retour immediat), un membre portant a la
+    /// fois <c>0x80000000</c>, <c>0x40000000</c> et <c>0x80</c>, et l'absence de barre.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Le pas et son annulation.</b> Le cap avance de <c>+0x14</c>, la position de
+    /// <c>sin/cos(cap + 0x400) * +0x16</c>, puis <see cref="FinalizeEntityPlacement2"/> pose
+    /// l'entite. <c>FUN_00458a30</c> — le balayage a six sondes autour d'elle — dit si elle a
+    /// touche ; si oui, <b>dix champs</b> sont remis comme ils etaient (position, cap, les quatre
+    /// mots de face <c>+0x80</c>..<c>+0x8c</c>, la face <c>+0x7c</c>, le mot de contact
+    /// <c>+0x90</c>) et les deux accumulateurs sont annules. C'est le meme jeu de champs que
+    /// <c>RollBackMove</c> restaure pour une entite de scene ordinaire.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Elle se souvient d'ou elle est.</b> <c>+0x10</c> n'est pas un etat mais un
+    /// <b>renvoi vers sa propre fiche de placement</b> : la premiere image y range
+    /// <c>(+0x14 &lt;&lt; 8) | +0x16</c>, c'est-a-dire la liste de sous-zone dans le haut et le
+    /// rang dans le bas, tels que la sous-zone les avait poses. Chaque image suivante y reecrit
+    /// position et cap. <b>Les memes deux champs servent donc a deux choses selon que
+    /// l'initialisation a eu lieu ou non</b> — indices de fiche avant, pilotage apres.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Deux traces de 1998 conservees.</b> (1) Quand aucun membre n'est utilisable, ni le pas ni
+    /// le plafond ne sont poses : les trois gardent ce que les comptages precedents avaient laisse
+    /// dans leurs registres — le nombre de membres a terre pour la rotation, le nombre a bord pour
+    /// la poussee et pour le plafond. (2) Les quatre <c>short</c> de <c>+0x10</c> a <c>+0x16</c> de
+    /// la fiche de placement recoivent <c>0xffff</c> et non zero, le registre servant a la fois de
+    /// « pas de teinte » pour le sillage et de valeur ecrite ici.
+    /// </para>
+    /// </summary>
+    private static void TickPartyRaft_00458200(byte* e)
+    {
+        byte* members = Inp.s_SlotFlags_005e93c0;
+
+        // --- Franchir la limite en z relance le script de chaque membre -----------------------
+        if (*(int*)(e + 0x24) > 0x125c000)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                uint flags = *(uint*)(members + i * 0x9c);
+                if ((flags & 0x80000000) == 0) continue;
+                if ((flags & 0x50000000) != 0) continue;
+
+                RunEntityScript(s_Unknown_005e97cc, members + i * 0x9c, 0);
+            }
+        }
+
+        // --- Ghidra: LAB_00458249 — la premiere image, et elle seule ---------------------------
+        if (*(short*)(e + 0x10) == 0)
+        {
+            int dx = (*Mem.Camera(0x005de068) >> 0xc) - (*(int*)(e + 0x1c) >> 0xc);
+            int dy = (*Mem.Camera(0x005de06c) >> 0xc) - (*(int*)(e + 0x20) >> 0xc);
+            int dz = (*Mem.Camera(0x005de070) >> 0xc) - (*(int*)(e + 0x24) >> 0xc);
+
+            // A moins de cent unites du meneur, l'embarcation se colle a lui.
+            if ((int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz)) < 0x64)
+            {
+                *(int*)(e + 0x1c) = *Mem.Camera(0x005de068);
+                *(int*)(e + 0x20) = *Mem.Camera(0x005de06c);
+                *(int*)(e + 0x24) = *Mem.Camera(0x005de070);
+            }
+
+            SettleRaftOnTerrain(e);
+
+            // Le binaire reteste +0x10 apres l'appel, puis une troisieme fois plus bas. Rien de ce
+            // qui precede n'y touche ; les deux tests sont conserves comme ils sont ecrits.
+            if (*(short*)(e + 0x10) == 0)
+            {
+                if ((*Mem.Arena(0x005e9700) & 1) != 0)
+                {
+                    int px = *Mem.Camera(0x005de068) >> 0xc;
+                    int pz = *Mem.Camera(0x005de070) >> 0xc;
+
+                    // Le meneur dans ce rectangle : l'embarcation est deplacee d'office a son
+                    // poste d'amarrage.
+                    if (px > -100 && px < 300 && pz > 1000 && pz < 1300)
+                    {
+                        *(int*)(e + 0x1c) = -0x96000;
+                        *(int*)(e + 0x24) = 0x960000;
+                        *(short*)(e + 0x32) = 0x400;
+
+                        SettleRaftOnTerrain(e);
+                    }
+                }
+
+                // Ghidra: LAB_00458389 — +0x14 et +0x16 changent de metier ici.
+                if (*(short*)(e + 0x10) == 0)
+                {
+                    *(short*)(e + 0x9a) = 0;
+                    *(short*)(e + 0x10) =
+                        (short)((*(short*)(e + 0x14) << 8) | *(short*)(e + 0x16));
+                    *(short*)(e + 0x12) = 0;
+                    *(short*)(e + 0x14) = 0;
+                    *(short*)(e + 0x16) = 0;
+                }
+            }
+        }
+
+        // --- Ghidra: LAB_004583b3 — qui est a bord, qui est a terre ---------------------------
+        int ashore = 0;
+        int aboard = 0;
+
+        for (int i = 0; i < 4; i++)
+        {
+            byte* member = members + i * 0x9c;
+            uint flags = *(uint*)member;
+
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x50000000) != 0) continue;
+
+            // La face que l'embarcation foule est relue A CHAQUE tour, et seulement une fois les
+            // deux tests d'etat passes : un emplacement vide ne la deference donc pas.
+            byte raftFaceKind = (*(byte**)(e + 0x7c))[0x0e];
+
+            // Les attributs que TryPlaceEntity a ecrits pour le membre, au genre de face que
+            // l'embarcation foule elle-meme.
+            if ((*(ushort*)(member + 0x82 + raftFaceKind * 4) & 0x2000) == 0)
+            {
+                ashore++;
+                continue;
+            }
+
+            byte* mount = *(byte**)(member + 0x78);
+            if (mount == null || mount[5] != 0x14) continue;
+
+            aboard++;
+
+            // L'angle de vue suit l'embarcation tant qu'on est dessus.
+            short* view = (short*)ForestSceneField(0x005715a8);
+            view[1] = (short)(0xfc00 - *(short*)(e + 0x32));
+            view[0] = (short)(*(short*)(e + 0x30) + 0x200);
+            view[2] = *(short*)(e + 0x34);
+        }
+
+        // --- La barre : tout le monde a bord la prend, tout le monde a terre la rend -----------
+        if (aboard == (short)ActivePartySlotCount_00466D70())
+        {
+            if (*(short*)(e + 0x9a) == 0)
+            {
+                Saves.s_SavedViewMode_00604b7c = s_Unknown_005de54c;
+                int* target = *(int**)Mem.Entity(0x005eca94);
+
+                s_Unknown_005de54c = 3;
+
+                *(int*)ForestSceneField(0x00571660) = target[2];
+                *(int*)ForestSceneField(0x00571658) = target[0];
+                *(int*)ForestSceneField(0x0057165c) = target[1];
+
+                *(byte**)Mem.Entity(0x005eca94) = ForestSceneField(0x00571658);
+                *(byte**)Mem.Arena(0x005e9ae0) = ForestSceneField(0x005715a8);
+            }
+
+            *(short*)(e + 0x9a) = 1;
+        }
+
+        // Ghidra: LAB_004584af — le second appel, le binaire ne reutilise pas le premier resultat.
+        if (ashore == (short)ActivePartySlotCount_00466D70())
+        {
+            if (*(short*)(e + 0x9a) == 1)
+            {
+                short* view = (short*)ForestSceneField(0x005715a8);
+                short* goal = (short*)Mem.View(0x006067e0);
+
+                goal[0] = (short)(view[0] & 0xfff);
+                goal[1] = (short)(view[1] & 0xfff);
+                goal[2] = (short)(view[2] & 0xfff);
+
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x16) = 0;
+
+                CameraModeApply_005037E0(0);                  // Ghidra: FUN_005037b0
+            }
+
+            *(short*)(e + 0x9a) = 0;
+            return;
+        }
+
+        // Ghidra: LAB_0045851a
+        if (*(short*)(e + 0x9a) == 0) return;
+
+        if (ashore == 0 && aboard == 0)
+        {
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+            return;
+        }
+
+        // Ghidra: LAB_00458541
+        *(short*)(e + 0x28) = 0x1000;
+        *(short*)(e + 0x2c) = 0x1000;
+
+        if (aboard != (short)ActivePartySlotCount_00466D70() && *(short*)(e + 0x9a) == 1)
+        {
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+            return;
+        }
+
+        // Ghidra: LAB_00458572 — un membre occupe arrete tout.
+        for (int i = 0; i <= 3; i++)
+        {
+            if ((*(uint*)(members + i * 0x9c) & 0x10000000) != 0)
+            {
+                *(short*)(e + 0x14) = 0;
+                *(short*)(e + 0x16) = 0;
+                return;
+            }
+        }
+
+        // La distance de camera glisse vers 1800 par huitiemes.
+        int* reach = (int*)ForestSceneField(0x00571660);
+        *reach += (0x708 - *reach) >> 3;
+
+        // --- L'embarcation devient la reference du groupe -------------------------------------
+        if (*(short*)(e + 0x9a) == 1)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                *(uint*)Mem.Entity(0x005f7d70 + i * 4) = *(uint*)(e + 0x80 + i * 4);
+            }
+
+            *(int*)Mem.Arena(0x005e9a30) = *(int*)(e + 0x1c);
+            *(int*)Mem.Arena(0x005e9a34) = *(int*)(e + 0x20);
+            *(int*)Mem.Arena(0x005e9a38) = *(int*)(e + 0x24);
+            *(short*)Mem.Arena(0x005e9b38) = *(short*)(e + 0x90);
+            *(uint*)Mem.Entity(0x005f7b48) = *(uint*)(e + 0x7c);
+        }
+
+        // --- Ghidra: LAB_00458617 — les deux accumulateurs perdent une unite par image ---------
+        if (*(short*)(e + 0x14) > 0) *(short*)(e + 0x14) -= 1;
+        if (*(short*)(e + 0x14) < 0) *(short*)(e + 0x14) += 1;
+        if (*(short*)(e + 0x16) > 0) *(short*)(e + 0x16) -= 1;
+        if (*(short*)(e + 0x16) < 0) *(short*)(e + 0x16) += 1;
+
+        // --- Ghidra: LAB_0045864f — la sauvegarde que l'annulation relira ----------------------
+        int savedX = *(int*)(e + 0x1c);
+        int savedY = *(int*)(e + 0x20);
+        int savedZ = *(int*)(e + 0x24);
+        short savedHeading = *(short*)(e + 0x32);
+        uint saved80 = *(uint*)(e + 0x80);
+        uint saved84 = *(uint*)(e + 0x84);
+        uint saved88 = *(uint*)(e + 0x88);
+        uint saved8c = *(uint*)(e + 0x8c);
+        uint savedFace = *(uint*)(e + 0x7c);
+        ushort savedContact = *(ushort*)(e + 0x90);
+
+        // --- Combien de rameurs, et donc quel pas ---------------------------------------------
+        int usable = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            uint flags = *(uint*)(members + i * 0x9c);
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x50000000) != 0) continue;
+            if ((flags & 0x10000) != 0) continue;
+            usable++;
+        }
+
+        // Aucun rameur : les trois gardent ce que les comptages precedents ont laisse dans les
+        // registres. C'est ce que fait le binaire ; voir le resume.
+        int turnStep = ashore;
+        int thrustStep = aboard;
+        int cap = aboard;
+
+        if (usable == 1) { turnStep = 8; thrustStep = 4; cap = 0x23; }
+        if (usable == 2) { turnStep = 4; thrustStep = 2; cap = 0x2b; }
+        if (usable == 3) { turnStep = 3; thrustStep = 2; cap = 0x32; }
+        if (usable == 4) { turnStep = 2; thrustStep = 1; cap = 0x3c; }
+
+        // --- Ghidra: LAB_00458741 — les quatre coups de pagaie --------------------------------
+        for (int i = 0; i < 4; i++)
+        {
+            byte* member = members + i * 0x9c;
+            uint flags = *(uint*)member;
+
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x50000000) != 0) continue;
+
+            if ((RaftPaddleBits(member) & 4) != 0)
+            {
+                *(short*)(e + 0x14) -= (short)turnStep;
+                *(short*)(e + 0x16) += (short)thrustStep;
+            }
+
+            if ((RaftPaddleBits(member) & 8) != 0)
+            {
+                *(short*)(e + 0x14) += (short)turnStep;
+                *(short*)(e + 0x16) += (short)thrustStep;
+            }
+
+            if ((RaftPaddleBits(member) & 1) != 0)
+            {
+                *(short*)(e + 0x14) += (short)turnStep;
+                *(short*)(e + 0x16) -= (short)thrustStep;
+            }
+
+            if ((RaftPaddleBits(member) & 2) != 0)
+            {
+                *(short*)(e + 0x14) -= (short)turnStep;
+                *(short*)(e + 0x16) -= (short)thrustStep;
+            }
+        }
+
+        // Ghidra: LAB_004587ff — un membre dans cet etat-la arrete tout.
+        for (int i = 0; i < 4; i++)
+        {
+            uint flags = *(uint*)(members + i * 0x9c);
+
+            if ((flags & 0x80000000) == 0) continue;
+            if ((flags & 0x40000000) == 0) continue;
+            if ((flags & 0x80) == 0) continue;
+
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+        }
+
+        // --- Le plafond, sur les deux accumulateurs et dans les deux sens ----------------------
+        if (*(short*)(e + 0x16) > cap) *(short*)(e + 0x16) = (short)cap;
+        if (*(short*)(e + 0x16) < -cap) *(short*)(e + 0x16) = (short)-cap;
+        if (*(short*)(e + 0x14) > cap) *(short*)(e + 0x14) = (short)cap;
+        if (*(short*)(e + 0x14) < -cap) *(short*)(e + 0x14) = (short)-cap;
+
+        // --- Ghidra: LAB_0045885f — le sillage ------------------------------------------------
+        if (*(short*)(e + 0x16) != 0 || *(short*)(e + 0x14) != 0)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                SpawnEffectNearCamera_00468110(e, 0x30, 0, -1);
+                if (CrtRand() % 6 == 1) SpawnEffectNearCamera_00468110(e, 0x30, 0, -1);
+            }
+        }
+
+        // --- Ghidra: LAB_004588af — le pas ----------------------------------------------------
+        *(short*)(e + 0x32) += *(short*)(e + 0x14);
+
+        int heading = *(short*)(e + 0x32) + 0x400;
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * *(short*)(e + 0x16);
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * *(short*)(e + 0x16);
+
+        FinalizeEntityPlacement2((uint*)e);                   // Ghidra: FUN_00533940
+
+        int height;
+
+        if (SweepEntitySurroundings_00458A30((uint*)e) != 0)
+        {
+            *(int*)(e + 0x1c) = savedX;
+            *(int*)(e + 0x24) = savedZ;
+            *(short*)(e + 0x32) = savedHeading;
+            *(uint*)(e + 0x80) = saved80;
+            *(uint*)(e + 0x84) = saved84;
+            *(uint*)(e + 0x88) = saved88;
+            *(uint*)(e + 0x8c) = saved8c;
+            *(uint*)(e + 0x7c) = savedFace;
+            *(int*)(e + 0x20) = savedY;
+            *(uint*)(e + 0x90) = savedContact;
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+
+            height = savedY;
+        }
+        else
+        {
+            // Ghidra: LAB_00458974 — la hauteur n'est relue que sur le chemin sans contact.
+            height = *(int*)(e + 0x20);
+        }
+
+        // Ghidra: LAB_00458977
+        *(int*)(e + 0x64) = height;
+        *(int*)(e + 0x60) = height;
+
+        FinalizeEntityPlacement2((uint*)e);
+
+        // --- La fiche de placement de la sous-zone est reecrite --------------------------------
+        short handle = *(short*)(e + 0x10);
+        byte* record = ((byte**)*(byte***)(s_Unknown_005e97cc + 0x30))[handle >> 8]
+                       + (handle & 0xff) * 0x20;
+
+        *(short*)(record + 0x04) = (short)(*(int*)(e + 0x1c) >> 0xc);
+        *(short*)(record + 0x06) = (short)(*(int*)(e + 0x20) >> 0xc);
+        *(short*)(record + 0x08) = (short)(*(int*)(e + 0x24) >> 0xc);
+        *(short*)(record + 0x0c) = *(short*)(e + 0x32);
+
+        short* here = (short*)ForestSceneField(0x00571650);
+        here[0] = (short)(*(int*)(e + 0x1c) >> 0xc);
+        here[1] = (short)(*(int*)(e + 0x20) >> 0xc);
+        here[2] = (short)(*(int*)(e + 0x24) >> 0xc);
+        *(short*)ForestSceneField(0x00571580) = *(short*)(e + 0x32);
+
+        // Le registre vaut -1 depuis le sillage, et c'est lui qui est ecrit : 0xffff, pas zero.
+        *(short*)(record + 0x10) = -1;
+        *(short*)(record + 0x12) = -1;
+        *(short*)(record + 0x14) = -1;
+        *(short*)(record + 0x16) = -1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>PTR_FUN_0056b0c4</c> — <b>l'entree 63 de la table installee <c>0x0056afc8</c></b>,
+    /// et non un pointeur isole. Le chargement de sous-zone recopie <b>0x40 entrees</b> a partir de
+    /// <c>0x0056afc8</c> (<c>FUN_0052a660</c>, branche <c>DAT_00600904</c>), et
+    /// <c>0x0056afc8 + 63 * 4 = 0x0056b0c4</c> : c'est la derniere. Ce n'est donc pas une globale
+    /// qu'il faudrait chercher, c'est un creneau de table que le jeu remplit par sous-zone.
+    ///
+    /// <para>
+    /// <b>Elle n'est pas appelee comme un gestionnaire d'entite.</b> Les sept tables portent
+    /// partout ailleurs des fonctions a un seul argument ; ici le binaire pousse <b>trois</b>
+    /// arguments et nettoie <c>0x0c</c> octets — l'entite, sa position d'avant le pas, et un
+    /// masque. Le creneau 63 est reserve a autre chose qu'un pas d'entite.
+    /// </para>
+    /// <para>
+    /// En foret, sous-zones 6 a 8, il vaut <c>0x00541550</c> (bloc <c>0x00555c28</c>, entree 63) —
+    /// une des quatorze lignes que <c>GestionnairesEntites.md</c> compte encore pour la zone 3.
+    /// </para>
+    /// </summary>
+    private static void CallSubAreaMoveProbe(byte* entity, int* previous, int mask)
+    {
+        uint target = Res.ResolveEntityHandler(0x0056afc8, 0x3f);
+        if (target == 0x00401FA0) return;                     // corps vide, verifie dans Blaze.c
+
+        throw new NotImplementedException(
+            $"FUN_00458a30 : le pas de collision de la sous-zone (0x0056afc8[63] = 0x{target:X6}) " +
+            "n'est pas transcrit. En foret 6-8 c'est 0x00541550, 1584 octets absents de Blaze.c " +
+            "(0x00541550..0x00541b7f) — une geometrie de segments contre les faces du decor, " +
+            "quatre creneaux de face par seize faces voisines. Son jumeau des sous-zones 5 et 9 " +
+            "est 0x00541b80 (258 octets). Les deux sont deja comptes comme lignes a part de la " +
+            "zone 3 dans GestionnairesEntites.md ; les relever avec " +
+            "`OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x00541550 1584`.");
+    }
+
+    /// <summary>
+    /// Une des six sondes de <see cref="SweepEntitySurroundings_00458A30"/> : la copie de travail
+    /// avance de <paramref name="distance"/> sur le cap tourne de <paramref name="turn"/>, puis le
+    /// pas de collision de la sous-zone dit si elle a touche.
+    ///
+    /// <para>
+    /// <b>Les six sondes s'enchainent, elles ne repartent pas du centre</b> : chacune relit la
+    /// position que la precedente a laissee, y compris ce que le pas de collision a pu y corriger.
+    /// C'est une marche autour de l'entite, pas six rayons.
+    /// </para>
+    /// </summary>
+    private static bool ProbeAroundEntity(byte* scratch, int turn, int distance)
+    {
+        int* previous = stackalloc int[3];
+        previous[0] = *(int*)(scratch + 0x1c);
+        previous[1] = *(int*)(scratch + 0x20);
+        previous[2] = *(int*)(scratch + 0x24);
+
+        int angle = *(short*)(scratch + 0x32) + turn;
+
+        *(int*)(scratch + 0x1c) += (int)Winsys3d.GetSinTableEntry(angle) * distance;
+        *(int*)(scratch + 0x24) += Winsys3d.GetCosTableEntry(angle) * distance;
+
+        CallSubAreaMoveProbe(scratch, previous, 0x2000);
+
+        return (*(uint*)ForestSceneField(0x00571640) & 0x8800) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00458a30 @ 0x00458a30 — <b>le balayage a six sondes</b> qui dit a
+    /// <see cref="TickPartyRaft_00458200"/> si elle vient de heurter quelque chose. 943 octets,
+    /// decompilee dans <c>Blaze.c</c> mais avec les arguments des appels indirects perdus ; le
+    /// releve du desassembleur est garde sous <c>Legacy/Raw/Blaze/FUN_00458A30.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle travaille sur une copie</b>, les 0x27 mots de l'entite recopies dans le bloc prive
+    /// de la foret a <c>0x005715b0</c> — d'ou les noms <c>DAT_005715cc</c> (sa position),
+    /// <c>DAT_005715e2</c> (son cap) et <c>DAT_00571640</c> (son mot de contact) que
+    /// <c>Blaze.c</c> emploie sans les relier a l'entite. L'originale n'est jamais touchee.
+    /// </para>
+    /// <para>
+    /// <b>Six pas, six directions, six distances</b>, dans cet ordre : <c>+0x400</c> a 220,
+    /// <c>+0xe00</c> a 150, <c>+0xc00</c> a 330, <c>+0x800</c> a 220, <c>+0x400</c> a 330,
+    /// <c>+0x200</c> a 150. Le rendu est <b>le numero de la derniere sonde qui a touche</b>, de 1 a
+    /// 6, ou zero — les six ne s'arretent pas au premier contact, et un contact precoce est donc
+    /// ecrase par un contact tardif. L'appelant ne regarde que « nul ou non ».
+    /// </para>
+    /// </summary>
+    private static short SweepEntitySurroundings_00458A30(uint* entity)
+    {
+        byte* scratch = ForestSceneField(0x005715b0);
+        Mem.CopyDwords(entity, (uint*)scratch, 0x27);
+
+        short hit = 0;
+
+        if (ProbeAroundEntity(scratch, 0x400, 0xdc)) hit = 1;
+        if (ProbeAroundEntity(scratch, 0xe00, 0x96)) hit = 2;
+        if (ProbeAroundEntity(scratch, 0xc00, 0x14a)) hit = 3;
+        if (ProbeAroundEntity(scratch, 0x800, 0xdc)) hit = 4;
+        if (ProbeAroundEntity(scratch, 0x400, 0x14a)) hit = 5;
+        if (ProbeAroundEntity(scratch, 0x200, 0x96)) hit = 6;
+
+        return hit;
     }
 
     // =====================================================================

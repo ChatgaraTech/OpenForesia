@@ -5,6 +5,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **l'embarcation de la foret**, `0x00458200` — 2088 octets absents de `Blaze.c`, le plus gros corps d'entite de scene transcrit a ce jour, plus son balayage prive `0x00458a30` (943 octets). Zone 3 passe de 122 a **123 des 136** gestionnaires
+- doc : **le groupe la pilote a la pagaie** — quatre gachettes en couples opposes (rotation, poussee), un sillage de deux entites par image, et elle ne bouge que si tout le monde est a bord. Plus il y a de rameurs, moins chaque coup porte mais plus le plafond de vitesse est haut : 8/4 pour un seul, 2/1 pour quatre
+- doc : **`+0x10` n'est pas un etat mais un renvoi vers la fiche de placement de la sous-zone** — la premiere image y range `(+0x14 << 8) | +0x16`, puis les deux champs changent de metier. Chaque image y reecrit position et cap : l'embarcation est encore la au retour
+- doc : **`PTR_FUN_0056b0c4` est l'entree 63 de la table `0x0056afc8`**, pas une globale isolee — la table installee par sous-zone fait 0x40 entrees. Ce creneau-la est appele avec **trois** arguments la ou les sept tables en portent partout ailleurs a un seul : il est reserve au pas de collision, `0x00541550` en foret
+- fix : **le bloc prive de la foret s'arretait un mot trop tot** — `s_ForestSceneBlock_00571420` allouait `0x240`, et le nouveau corps ecrit un `int` a `0x00571660`, exactement le premier octet dehors. Porte a `0x248`. Meme classe de defaut que les tables de descripteurs trop courtes, et aussi invisible a la compilation
 - feat : **les objets, 21 sur 21 — la liste est close** : `0x00447630`, `0x00404920` et `0x00446A90`, les trois derniers, sortis du désassembleur. `ObjetsAtteignables.md` ne porte plus une seule ligne `implemente = non`, et les **1 440 emplois** sont couverts
 - feat : **deux enfants de plus**, décompilés : `0x00446C90` (l'écaille `0x9b`) et `0x00404A50` (la braise `0x37`). Comme chaque fois, ils auraient planté à l'image suivant leur parent
 - doc : **`0x00447630` REPOUSSE sa victime** — `(300 - moyenne des dimensions) / 8` sur le cap du frappeur, posé dans les vitesses de la victime avec le bit `1` : une grosse bête est moins repoussée qu'une petite, et au-delà de 900 unités elle ne bouge plus
