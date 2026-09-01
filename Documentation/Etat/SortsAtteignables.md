@@ -163,7 +163,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 2 | 4 | Matéria terre | X-T-C-X-T | 16 | 33 | 24 | 0xa4 | `0x00477660` | oui | **non** |
 | 2 | 5 | Matéria air | X-T-T-X-T | 16 | 33 | 24 | 0xa5 | `0x004777A0` | oui | **non** |
 | 2 | 6 | Matéria eau | X-T-X-X-T | 16 | 33 | 24 | 0xa6 | `0x004778E0` | oui | **non** |
-| 2 | 7 | Chant sirènes | C-C-T-O-X-C | 8 | 42 | 16 | 0xa7 | `0x00477A20` | **non** | **non** |
+| 2 | 7 | Chant sirènes | C-C-T-O-X-C | 8 | 42 | 16 | 0xa7 | `0x00477A20` | oui | **non** |
 | 2 | 8 | Ecrase | X-X-C-T-O-X | 8 | 48 | 16 | 0xa8 | `0x00477D20` | **non** | **non** |
 | 2 | 9 | Champ magique | T-C-X-X-C-T-O | 12 | 63 | 24 | 0xa9 | `0x004780B0` | **non** | **non** |
 | 2 | 10 | Coussin d'air | C-O-X-X-T-T-T-T | 30 | 54 | 24 | 0xaa | `0x004785F0` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **60** |
-| a transcrire | **20** |
+| implementees (le gestionnaire existe) | **61** |
+| a transcrire | **19** |
 | lancees en jeu au moins une fois | **16** |
-| dette : implementees mais jamais lancees | **44** |
+| dette : implementees mais jamais lancees | **45** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -249,7 +249,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00477660` | 1 | oui | **non** | Matéria terre |
 | `0x004777A0` | 1 | oui | **non** | Matéria air |
 | `0x004778E0` | 1 | oui | **non** | Matéria eau |
-| `0x00477A20` | 1 | **non** | **non** | Chant sirènes |
+| `0x00477A20` | 1 | oui | **non** | Chant sirènes |
 | `0x00477D20` | 1 | **non** | **non** | Ecrase |
 | `0x004780B0` | 1 | **non** | **non** | Champ magique |
 | `0x004785F0` | 1 | **non** | **non** | Coussin d'air |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | oui | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **14** a transcrire.
+**74 gestionnaires distincts**, dont **13** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le

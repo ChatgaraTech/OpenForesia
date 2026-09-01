@@ -5053,6 +5053,12 @@ public static unsafe partial class Blaze
             // unique et seules trois constantes changent.
             case 0x004778E0: TickWaterMateria_004778E0(record); return;
 
+            // CHANT SIRENES, ecole 2 indice 7 — le premier corps vraiment neuf de l'ecole
+            // depuis Vitesse, et c'est DODO REECRIT : meme charpente que sa bulle, mais
+            // refaite et non copiee. Elle respire au lieu de semer, et pose l'effet 8.
+            case 0x00477A20: TickSirenSong_00477A20(record); return;
+            case 0x00477A90: TickSirenSongNote_00477A90(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -48127,6 +48133,292 @@ public static unsafe partial class Blaze
         }
 
         *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// <c>&amp;DAT_00551bc0</c>, l'atlas du <b>Chant des sirenes</b> — le <b>cinquieme</b>
+    /// enregistrement de la plage <see cref="s_Descriptors_00551BA0"/>, pas une table a lui, comme
+    /// <see cref="Descriptors00551BA8"/> est le deuxieme.
+    ///
+    /// <para>
+    /// Le sort et sa note l'emploient tous deux, et tous deux avec <c>+0x1a = 1</c> : un seul
+    /// enregistrement est atteint. C'est celui qui n'a <b>pas</b> les octets <c>01 02</c> de ses
+    /// voisins — la particularite que la note portee sur la plage signalait sans savoir qui s'en
+    /// servait.
+    /// </para>
+    /// </summary>
+    private static byte* Descriptors00551BC0() => Descriptors00551BA0() + 0x20;
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_005518d8</c> — <b>le script de sons differes du Chant des sirenes</b>,
+    /// quatre pas de huit octets. Meme format que <see cref="s_DelayedSoundScript_005518A8"/>,
+    /// qu'il suit sans trou.
+    ///
+    /// <para>
+    /// <b>Quatre fois le meme son <c>0x1c</c>, de plus en plus aigu</b> — <c>0x0200</c>,
+    /// <c>0x0329</c>, <c>0x0400</c>, <c>0x0653</c> — espaces de <b>trois images</b> : une gamme
+    /// montante, ce qu'on entend quand le chant prend. La borne est le <c>[1] = 0</c> du quatrieme
+    /// pas ; le suivant (<c>0x005518f8</c>) change de son et de gain, donc de script.
+    /// </para>
+    /// <para>
+    /// C'est le meme son <c>0x1c</c> que l'accord final des quatre Materia
+    /// (<see cref="s_DelayedSoundScript_005518A8"/>), joue ici en sequence au lieu d'un coup.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_005518D8 =
+    [
+        0x1c, 0x03, 0x01, 0x00, 0x00, 0x02, 0x00, 0x12,   // 0x005518d8
+        0x1c, 0x03, 0x01, 0x00, 0x29, 0x03, 0x00, 0x12,   // 0x005518e0
+        0x1c, 0x03, 0x01, 0x00, 0x00, 0x04, 0x00, 0x12,   // 0x005518e8
+        0x1c, 0x00, 0x01, 0x00, 0x53, 0x06, 0x00, 0x12,   // 0x005518f0 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript005518D8Storage;
+
+    /// <summary>Les quatre pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript005518D8()
+        => NativeCopy(s_DelayedSoundScript_005518D8, ref s_DelayedSoundScript005518D8Storage);
+
+    // =====================================================================
+    // CHANT SIRENES — ecole 2, indice 7, sous-type 0xa7
+    //
+    //   0x00477A20   LE SORT. Sous-type 0xa7 de 0x00551c30. DECOMPILE dans Blaze.c, dix lignes.
+    //   0x00477A90   LA NOTE, sous-type 0x54 de 0x00552230. 656 octets, ABSENTE de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00477A90.asm.
+    //
+    // C'EST DODO, REECRIT. Apres la fratrie des Materia — quatre copies d'un meme corps —, voici
+    // la seconde forme de reemploi de l'ecole 2, et elle est d'une autre nature : le corps n'est
+    // pas copie, il est REFAIT. La note du Chant des sirenes et la bulle de Dodo
+    // (TickSleepBubble_00476CF0) ont la meme charpente instruction par instruction sur les deux
+    // tiers de leur longueur — meme boite de detection {0, -60, 60, 100, 0, 120}, meme saisie du
+    // lanceur a la premiere image, meme tete chercheuse a zone morte de +-0x40, meme dix unites
+    // par image, meme ondulation sin(age << 8) << 5, meme anneau d'images, meme bruit toutes les
+    // quatorze images, meme mort a la quarantieme — mais ce ne sont PAS les memes octets, et les
+    // deux corps existent separement dans le binaire.
+    //
+    // TROIS CHOSES LES SEPARENT, et toutes trois sont ce qui fait le sort :
+    //
+    //   1. LA BULLE SEMAIT, LA NOTE RESPIRE. Dodo lachait une eclaboussure par image a une
+    //      position tiree dans un cube ; la note ne lache rien et fait battre sa propre taille,
+    //      0x1800 plus la moitie d'un sinus de son age pris sur NEUF bits (age << 9, deux fois
+    //      plus vite que l'ondulation).
+    //   2. L'EFFET N'EST PAS LE MEME : l'effet 8 (0x0053b4b0) au lieu du 11. C'est « le seul
+    //      effet discret de la famille » — il ne fait naitre que sa marque, sans poussiere — et
+    //      son jet de sauvegarde est l'autre des deux (RollSavingThrowB_0053A790).
+    //   3. LA VICTIME EST FETEE AUTREMENT. Dodo posait un halo unique a l'echelle de sa tete ;
+    //      la note lache SIX eclats 0xbe autour d'elle, chacun avec sa propre vitesse a deux
+    //      angles tires au sort, et met en file une gamme montante de quatre notes.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00477a20 @ 0x00477a20 — <b>Chant sirenes</b> : le sous-type <c>0xa7</c>, creneau
+    /// 167 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>huitieme fiche de l'ecole
+    /// 2</b>. <b>Decompilee dans <c>Blaze.c</c></b>, dix lignes.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickSleep_00476C70"/> allege.</b> Meme forme exactement — monter a la
+    /// hauteur de tete du lanceur, remplir quelques champs pour l'enfant, l'engendrer, mettre son
+    /// propre mot d'etat a zero —, mais quatre des champs que Dodo posait ont disparu : la
+    /// profondeur <c>+0x2c</c>, la remise a zero de la vitesse, et surtout <b>la gravite
+    /// <c>+0x9a</c></b>, que le sort ne touche pas. La note ne tombe donc pas ; elle n'a d'ailleurs
+    /// aucun integrateur.
+    /// </para>
+    /// <para>
+    /// <c>+0x1a = 1</c> : la note ne parcourt qu'un seul enregistrement d'atlas, contre quatre pour
+    /// la bulle de Dodo. Son anneau d'images tourne donc sur place.
+    /// </para>
+    /// </summary>
+    private static void TickSirenSong_00477A20(byte* record)
+    {
+        byte* e = record;
+
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+
+        *(short*)(e + 0x2e) = -20;
+        *(int*)(e + 0x20) += (int)((uint)height & 0xfffffffe) * 0x800;
+
+        *(uint*)(e + 0x38) = 0x00808080;
+        *(uint*)(e + 0x28) = 0x20002000;
+
+        // La note n'a PAS de cible en naissant : elle ira la chercher elle-meme.
+        *(byte**)(e + 0x78) = null;
+
+        // Un seul enregistrement d'atlas, la ou Dodo en parcourait quatre.
+        *(ushort*)(e + 0x1a) = 1;
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors00551BC0(), 0x54, e[0x0b], -1);
+
+        // ET IL S'EFFACE.
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00477a90 @ 0x00477a90 — <b>la note du Chant des sirenes</b> : le sous-type
+    /// <c>0x54</c> de <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c>.
+    /// 656 octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00477A90.asm</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>C'est la bulle de Dodo refaite</b> (<see cref="TickSleepBubble_00476CF0"/>) : meme boite
+    /// de detection, meme saisie du lanceur a la premiere image, meme tete chercheuse — cap corrige
+    /// de <c>0x40</c> par image, avec la <b>meme zone morte</b> repliee sur douze bits et decalee
+    /// de <c>0x40</c>, et le meme <c>setge</c>/<c>dec</c>/<c>and 0x80</c> pour le sens du virage —,
+    /// meme dix unites par image, meme ondulation, meme anneau d'images, meme bruit toutes les
+    /// quatorze images, meme mort a la quarantieme. <b>Ce ne sont pourtant pas les memes octets</b>
+    /// : le binaire porte les deux corps.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne seme rien : elle respire.</b> La ou la bulle lachait une eclaboussure par image,
+    /// la note fait battre sa propre taille — <c>0x1800</c> plus la moitie d'un sinus de son age
+    /// pris sur <b>neuf</b> bits, donc deux fois plus vite que l'ondulation qui, elle, en prend
+    /// huit. Les deux echelles <c>+0x28</c> et <c>+0x2a</c> recoivent la meme valeur ;
+    /// <c>+0x2c</c> garde ce que le sort y avait laisse.
+    /// </para>
+    /// <para>
+    /// <b>Sur la victime</b>, elle marque puis pose <see cref="ApplyStatusEffect_0053B4B0"/> —
+    /// l'effet 8, le seul discret de sa famille. <b>Si l'effet passe</b>, elle lache <b>six</b>
+    /// eclats <c>0xbe</c> a la position de la victime, chacun avec sa propre vitesse tiree par
+    /// <see cref="SetVectorFromAngles_00532AD0"/> sur deux angles, et met en file la gamme montante
+    /// <see cref="s_DelayedSoundScript_005518D8"/>. Qu'il passe ou non, la note s'eteint et relache
+    /// le lanceur.
+    /// </para>
+    /// <para>
+    /// <b>L'ordre des tirages est celui du binaire</b>, pas celui de la lecture : le <b>premier</b>
+    /// appel au generateur donne le <b>tangage</b> (masque par <c>0x3ff</c>) et le second le lacet.
+    /// Les ecrire dans l'ordre des arguments C# inverserait deux tirages du meme flux et changerait
+    /// toute la suite.
+    /// </para>
+    /// </remarks>
+    private static void TickSirenSongNote_00477A90(byte* record)
+    {
+        byte* e = record;
+
+        // La boite de detection, reconstruite sur la pile a chaque image — la MEME que Dodo.
+        short* probe = stackalloc short[6] { 0, -60, 60, 100, 0, 120 };
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(uint*)e |= 0x80;
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+
+            // La hauteur de depart, autour de laquelle elle ondulera.
+            *(int*)(e + 0x48) = *(int*)(e + 0x20);
+        }
+
+        // Ghidra: LAB_00477ae3 — la tete chercheuse.
+        byte* target = *(byte**)(e + 0x78);
+
+        if (target == null)
+        {
+            // Ghidra: LAB_00477b3f
+            *(byte**)(e + 0x78) = PickTargetInCone_00474F00(e, 0xffffffff);
+        }
+        else
+        {
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            int yaw = *(short*)(e + 0x32);
+            int error = (Winsys3d.Ordinal_457(dx, dz) - yaw) & 0xfff;
+
+            // LA ZONE MORTE : sous 0x80 de part et d'autre, la note ne corrige pas.
+            if (((error + 0x40) & 0xfff) > 0x80)
+            {
+                int turn = error >= 0x800 ? -0x40 : 0x40;
+                *(short*)(e + 0x32) = (short)(turn + yaw);
+            }
+        }
+
+        // Ghidra: LAB_00477b4d — dix unites par image dans l'axe du cap.
+        int heading = *(short*)(e + 0x32);
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 10;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 10;
+
+        // L'ONDULATION : l'age sur huit bits sert d'angle.
+        *(int*)(e + 0x20) =
+            ((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 8) << 5) + *(int*)(e + 0x48);
+
+        // LE BATTEMENT, qui remplace l'eclaboussure de Dodo : l'age sur NEUF bits, donc deux fois
+        // plus vite que l'ondulation.
+        int pulse = ((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 9) >> 1) + 0x1800;
+        *(uint*)(e + 0x28) = (uint)(pulse << 0x10 | pulse);
+
+        // La finalisation sert au CONTACT, pas au placement : sa hauteur est jetee.
+        int flying = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);       // Ghidra: FUN_00533940
+        bool consumed = (*(uint*)e & 0x40000000) != 0;
+        *(int*)(e + 0x20) = flying;
+
+        if (!consumed && (*(uint*)(e + 0x90) & 0x8802) == 0)
+        {
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+            if (victim != null)
+            {
+                // La marque est posee AVANT l'effet ici, la ou la bulle de Dodo la posait apres.
+                *(uint*)victim |= 0x40;
+                *(short*)(victim + 0x96) = 0x10;
+
+                // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
+                *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+                if (ApplyStatusEffect_0053B4B0(*(uint**)(e + 0x74), (uint*)victim, 0) == 0)
+                {
+                    *(byte**)(e + 0x70) = null;
+                    *(int*)(e + 0x44) = 0;
+                    *(int*)(e + 0x48) = 0;
+                    *(int*)(e + 0x4c) = 0;
+                    *(int*)(e + 0x28) = 0;
+
+                    *(uint*)(e + 0x38) = 0x01f0f0f0;
+                    *(short*)(e + 0x12) = 2;
+                    *(short*)(e + 0x16) = 2;
+
+                    // SIX ECLATS, chacun avec sa propre vitesse : l'engendreur recopie
+                    // +0x50..+0x58 de la source, donc c'est ainsi qu'ils partent en tous sens.
+                    for (int remaining = 6; remaining != 0; remaining--)
+                    {
+                        // L'ORDRE DES TIRAGES EST CELUI DU BINAIRE : le tangage d'abord.
+                        int pitch = CrtRand() & 0x3ff;     // Ghidra: FUN_00547140
+                        int yaw = CrtRand();
+
+                        SetVectorFromAngles_00532AD0((int*)(e + 0x50), yaw, pitch, 0x20);
+
+                        *(ushort*)(e + 0x14) = (ushort)((CrtRand() & 0x7ff) + 0x1400);
+
+                        // Ils naissent SUR LA VICTIME, pas sur la note.
+                        SpawnStatusEffectEntity_0047AC40(
+                            e, (int*)(victim + 0x1c), Descriptors00551BC0(), 0xbe, e[0x0b], -1);
+                    }
+
+                    Aud.QueueDelayedSoundScript(DelayedSoundScript005518D8(), (int*)(e + 0x1c));
+                }
+
+                // Qu'il ait passe ou non, la note s'eteint : les deux chemins tombent sur
+                // LAB_00477cfb.
+            }
+            else
+            {
+                // Ghidra: LAB_00477cb5 — l'anneau d'images de l'atlas.
+                e[0x40] = (byte)(e[0x40] + 1);
+                if (e[0x40] >= *(short*)(e + 0x1a)) e[0x40] = 0;
+
+                // Un bruit toutes les quatorze images.
+                if (*(short*)(e + 0x10) % 14 == 0)
+                {
+                    Aud.PlayPositionalSound(0x17, 0x0100, 0x1200, (int*)(e + 0x1c));
+                }
+
+                *(short*)(e + 0x10) += 1;
+                if (*(short*)(e + 0x10) < 0x28) return;
+            }
+        }
+
+        // Ghidra: LAB_00477cfb — le decor, l'age, ou la victime : le lanceur est relache.
+        *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+        *(uint*)e = 0;
     }
 
     /// <summary>
