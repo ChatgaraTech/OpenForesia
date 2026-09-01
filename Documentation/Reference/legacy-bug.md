@@ -1459,6 +1459,14 @@ et qui s'arrête au bout.
 Le défaut décrit ci-dessus **ne concerne donc que Liquide**, et c'est le seul des quatre dont le
 débordement sorte de la zone des scripts.
 
+**Et celui de Terre, ce port le reproduit** (2026-09-01, en transcrivant `FUN_00479c50`). Il est
+borné : les deux scripts se suivent sans trou dans `.data`, donc les sept pas sont déclarés d'un
+seul bloc dans `s_DelayedSoundScript_00551940`, et `DelayedSoundScript00551968` est une **vue à
+`+0x28`** de ce même bloc plutôt qu'une allocation séparée — la même façon de faire que
+`Descriptors00551BC0`. Les séparer casserait le débordement. Terre joue donc bien ses deux sons de
+trop, comme en 1998. **Seul le débordement de Liquide reste une divergence déclarée**, parce que
+lui seul sortirait de la zone des scripts.
+
 ---
 
 ## LB-028 — La braise des élémentaires ne peut jamais s'éclaircir
