@@ -2199,11 +2199,12 @@ Declarees dans `Screens/State03/WorldMapScript.cs` chez leur seul ecrivain trans
 `0x005dff64` est le seul des neuf traite a part : le verbe 57 y met l'octet `+0x2bc` du bloc du
 personnage (`MainMem + membre * 0x2000 + 0xf02bc`), le verbe 58 y met zero.
 
-## `0x00552930`..`0x00552978` — des gabarits de portee d'ennemi, en dur dans `.data` (2026-08-29)
+## `0x00552930`..`0x00552a30` — des gabarits de portee d'ennemi, en dur dans `.data` (2026-08-29, etendu le 2026-09-01)
 
-Cinq enregistrements de six `short`, de la meme forme que
+Des enregistrements de six `short`, de la meme forme que
 `s_MeleeProbes_00562cf0` — le gabarit que `TestMeleeReach_00535A90` croise avec chaque membre du
-groupe. Releves au verbe `at` en transcrivant `FUN_0049B840`, le Grizzly.
+groupe. Les cinq premiers ont ete releves au verbe `at` en transcrivant `FUN_0049B840`, le Grizzly ;
+les huit suivants en transcrivant les quatre routines du bloc B et du bloc C de la foret.
 
 | adresse | `[0]` | `[1]` | `[2]` | `[3]` | `[4]` | `[5]` | attribution |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -2212,6 +2213,8 @@ groupe. Releves au verbe `at` en transcrivant `FUN_0049B840`, le Grizzly.
 | `0x00552948` | 0 | `0x32` | `0x5a` | `0x96` | 0 | `0xc8` | non attribuee |
 | `0x00552960` | 0 | `0x1e` | `0x46` | `0x96` | `-0x100` | `0x50` | **`FUN_0049B840`, la griffe** |
 | `0x0055296c` | 0 | `0x1e` | `0x32` | `0x96` | 0 | `0x50` | **`FUN_0049B840`, le bond** |
+| `0x005529d0` | 0 | `0x32` | `0x32` | `0x64` | 0 | `0x78` | **`FUN_004A2C90`, le coup de patte** |
+| `0x005529dc` | 0 | `0x32` | `0x82` | `0x64` | `-0x100` | `0x96` | **`FUN_004A2C90`, le bond** |
 | `0x005529e8` | 0 | `0x1e` | `0x46` | `0x96` | `-0x100` | `0x50` | **`FUN_004A4270`, la griffe** |
 | `0x005529f4` | 0 | `0x1e` | `0x32` | `0x96` | 0 | `0x50` | **`FUN_004A4270`, le bond** |
 | `0x00552a00` | 0 | `0x28` | `0x50` | `0x96` | 0 | `0x78` | **`FUN_004A4AE0`, la griffe** |
@@ -2247,6 +2250,13 @@ Behemoth, decrite plus bas.
 Grizzly s'abat d'en haut ; celle de sa prise est la plus large en portee laterale de la serie
 (`0x50`), ce qui va avec un geste qui doit attraper plutot que toucher. **La prise du Behemoth est
 la seule de la serie a porter un decalage vertical POSITIF** (`+0x100`) : elle empoigne par le bas.
+
+**Les deux du Geant** (`0x005529d0` et `0x005529dc`, ajoutees le 2026-09-01) **comblent une partie
+du trou** que le releve de 2026-08-29 laissait entre `0x00552978` et `0x005529e8`. Celle de son bond
+est **la plus longue de toute la serie** — `0x82` en portee avant, contre `0x5a` au plus ailleurs —
+et porte le `-0x100` de la griffe du Grizzly : elle tombe dessus. Le trou n'est pas entierement
+comble pour autant, et **ce qui reste dedans ne doit pas etre devine** : les routines du bloc B qui
+restent a transcrire le nommeront.
 
 ## `0x00552a30` — les trois sorts du Behemoth (2026-09-01)
 

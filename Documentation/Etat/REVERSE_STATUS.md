@@ -20380,3 +20380,128 @@ l'inverse de toutes ses voisines : **plus on s'éloigne d'un Behemoth, plus il a
 Toutes du **bloc B**, les sous-zones 6 à 8 : `0x0049FAD0` (Trent), `0x004A0480` (Fleur du mal),
 `0x004A13E0` (Wyrm), `0x004A1D50` (Varan), `0x004A2C90` (Géant), `0x004A35B0` (Willie). Aucune n'est
 signalée par la sonde.
+
+## 2026-09-01 (suite 10) — les six du bloc B passées au crible, avant d'en écrire une seule
+
+Après `0x004A4270` — le Grizzly que deux `push` séparaient d'un corps déjà écrit —, le crible du
+doublon est devenu un réflexe. Il a été passé sur **les six routines qui restent en zone 3**, toutes
+du bloc B, **avant** d'en lire une seule ligne.
+
+### La méthode, en une phrase
+
+Désassembler chaque corps, effacer ce qui n'est que placement — les déplacements relatifs d'appel,
+les cibles de saut, les étiquettes —, et compter les lignes qui divergent. Un doublon vrai sort à
+deux ou trois lignes d'écart (c'est ce qu'a donné `0x004A4270`) ; une parenté de famille sort entre
+deux cents et six cents.
+
+Les fenêtres sont bornées par l'adresse du symbole suivant, donc chaque relevé traîne un peu de
+bourrage et sa table de sauts. Cela ajoute le même bruit partout et ne gêne pas la comparaison.
+
+### Le résultat : aucun doublon, six corps réels
+
+| routine | bête | lignes | ≤ octets | le plus proche déjà écrit | écart |
+|---|---|---:|---:|---|---:|
+| `0x004A2C90` | Géant | 767 | 2 336 | `0x0049B840`, le Grizzly | **283** |
+| `0x004A35B0` | Willie | 578 | 1 664 | `0x0049A360`, la Coccinelle | **417** |
+| `0x0049FAD0` | Trent | 812 | 2 480 | `0x0049E190`, le Goblin-sorcier | **454** |
+| `0x004A13E0` | Wyrm | 790 | 2 320 | `0x0049C0B0`, le Crabe | 583 |
+| `0x004A1D50` | Varan | 1 178 | 3 904 | `0x00499DE0`, la Fourmi géante | 1 171 |
+| `0x004A0480` | Fleur du mal | 1 273 | 3 936 | `0x00499DE0`, la Fourmi géante | 1 262 |
+
+**Le plus proche voisin est un renseignement en soi**, et c'est ce que `Comportement.md` appelle la
+recette « calquer sur une sœur de même milieu » : il dit sur quel corps déjà transcrit ouvrir la
+comparaison. Le Géant est un Grizzly modifié — vérifié à la main sur le début du diff : même
+charpente, mêmes registres, mais `+0x54 = 0x14000` là où le Grizzly n'écrit rien, un `+0x43` qui
+remplace le `+0x10` de la machine à trois temps, et l'image de détente à 7 au lieu de 14.
+
+### Deux paires se signalent parmi les six
+
+`0x004A0480` et `0x004A1D50` sont **plus proches l'une de l'autre** (1 199) que d'aucun corps écrit,
+et de même `0x004A13E0` et `0x004A35B0` (572). Ce sont les deux plus gros et les deux plus petits du
+lot. Rien ne dit encore que ce soit une parenté réelle plutôt qu'un effet de taille — 1 199 lignes
+d'écart n'est pas une parenté —, mais pour la seconde paire l'écart est du même ordre que celui qui
+sépare le Willie de la Coccinelle, donc la question mérite d'être posée quand on y arrivera.
+
+### Ce que ça change à l'ordre de travail
+
+L'ordre par taille disait « Willie, puis Wyrm, puis Trent ». **L'ordre par écart dit « Géant
+d'abord »** : 2 336 octets, mais 283 lignes de divergence avec un corps qu'on connaît déjà bien. Le
+coût d'une transcription se mesure au nombre de formes distinctes à comprendre, pas au nombre
+d'octets — c'est ce que `CLAUDE.md` note depuis `FUN_004747F0`, et le crible en donne enfin une
+mesure.
+
+Les deux plus gros, la Fleur du mal et le Varan, sont aussi les deux plus étrangers à tout ce qui
+est écrit. Ce sont eux qui coûteront, et il vaut mieux le savoir avant de commencer que de le
+découvrir au milieu.
+
+## 2026-09-01 (suite 11) — `0x004A2C90`, le Géant : le crible avait raison
+
+Le huitième des quatorze de la zone 3, et **le premier choisi par le crible plutôt que par la
+taille**. 2 308 octets, absents de `Blaze.c`, quarante-sept étiquettes, table de sauts à
+`0x004A3594`. Relevé sous `Legacy/Raw/Blaze/FUN_004A2C90.asm`.
+
+Zone 3 passe de **130 à 131 implémentés sur 136**.
+
+### Le crible a tenu sa promesse
+
+Il l'annonçait à **283 lignes du Grizzly `0x0049B840`**, la plus faible divergence des six
+restantes. C'est exactement ce qu'on a trouvé : le squelette est celui du Grizzly — deux gestes lus
+dans `+0x42`, même moitié d'attaque du bloc de modèle autour de `ResolveMeleeHit`, même projection à
+trente fois le sinus, même détour par la position de la victime pour y semer l'effet `0x39`, même
+gravité `0x6000`. La transcription a coûté une lecture, pas une enquête.
+
+**C'est la première fois que le coût d'une transcription est estimé avant de la commencer, et que
+l'estimation tienne.** La règle de `CLAUDE.md` — « ce qui prédit le coût, c'est le nombre de formes
+distinctes, pas la taille » — a maintenant un instrument.
+
+### Trois mécanismes lui appartiennent
+
+**Elle arme un élan qui ne part pas toujours.** À l'engagement, `+0x43` reçoit **2 si la cible était
+à `0x96` ou plus, 1 sinon** — et les deux gestes ne s'élancent *que* sur la valeur 2. Un Géant qui
+engage de trop près joue son animation **sans le bond**. La distance est mesurée une fois, au
+moment de décider, et ne se relit jamais. Le motif `cmp eax,96h ; setge cl ; inc ecx` est émis trois
+fois, aux trois sites d'engagement.
+
+**Ses deux gestes quittent le sol**, pas seulement le bond : le coup de patte pose lui aussi le bit
+0 et `0x17000` de vitesse verticale. Le Crabe et le Grizzly gardent leur coup de patte au ras du
+sol.
+
+**Et tant qu'elle est en l'air, l'image d'animation du coup de patte est bloquée à `0x11`** — le
+geste se fige sur sa dernière image et n'en sort qu'à l'atterrissage. C'est ce qui remplace le
+compte à rebours des autres : le geste dure exactement le temps du vol.
+
+### Sa replanification a un second essai
+
+C'est ce qui la distingue le plus à la lecture. Au corps à corps, si le cône du coup de patte échoue
+— ou si la cible est trop loin —, **elle ne se rabat pas sur l'hésitation** : elle retente le
+**bond** avec un cône **trois fois plus large**, `timidité * 4 + 0x300` contre `+ 0x100`, et un
+seuil de distance retiré au hasard une seconde fois. L'hésitation n'arrive qu'après **deux** refus.
+
+Aucune des quinze routines précédentes n'a de second essai. Le tirage du second seuil est bien un
+second appel au générateur — vérifié sur le désassemblage — et il est transcrit tel quel : les deux
+`call rand` sont **court-circuités** quand le cône échoue, exactement comme en C#, donc le flux du
+générateur est préservé.
+
+### Deux détails de forme
+
+**La projection part vers la CIBLE, pas dans son propre cap.** Le désassemblage ajoute le cap
+relatif à `+0x32` avant le sinus (`mov edx,[esp+40h] ; add edx,ecx`), ce que ni le Grizzly ni le
+Behemoth ne font : ils projettent le long de leur propre orientation. Le Géant envoie sa victime
+dans le prolongement de la ligne qui les joint.
+
+**Son bond n'a que deux phases**, à 1 et à 0 : le temps de s'accroupir du Grizzly n'existe pas. Et
+sa poussée verticale est `0x14000`, la plus faible des lourdes — `0x24000` chez le Grizzly.
+
+### Ses deux gabarits comblent le trou de `.data`
+
+`0x005529d0` et `0x005529dc`, ajoutés à `DataSymbols.md`. **Celui du bond est le plus long de toute
+la série** — `0x82` en portée avant, contre `0x5a` au plus ailleurs — et porte le `-0x100` de la
+griffe du Grizzly : elle tombe dessus. Le trou entre `0x00552978` et `0x005529e8` n'est pas
+entièrement comblé, et ce qui reste dedans **n'est pas deviné** : les routines du bloc B qui restent
+le nommeront.
+
+### Les cinq qui restent en zone 3
+
+Toutes du bloc B : `0x004A35B0` (Willie, 417 lignes de la Coccinelle), `0x0049FAD0` (Trent, 454 du
+Goblin-sorcier), `0x004A13E0` (Wyrm, 583 du Crabe), `0x004A1D50` (Varan, 1 171) et `0x004A0480`
+(Fleur du mal, 1 262). L'ordre du crible tient toujours.

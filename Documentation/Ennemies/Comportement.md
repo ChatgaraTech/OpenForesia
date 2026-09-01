@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-09-01** | **17** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`) |
+| **écrits au 2026-09-01** | **18** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -126,14 +126,15 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 | 11 | `0x004A0480` | Fleur du mal |
 | 12 | `0x004A13E0` | Wyrm |
 | 13 | `0x004A1D50` | Varan |
-| 14 | `0x004A2C90` | Géant |
+| 14 | `0x004A2C90` | Géant — **écrite** |
 | 15 | `0x004A35B0` | Willie |
 
 **Le même numéro ne désigne pas la même bête d'un bloc à l'autre** : le sous-type 7 est
 `0x0049D030` en bloc A et `0x0049F0C0` en bloc B. C'est le rappel concret que la table est
 rechargée par sous-zone.
 
-Le sous-type 7, `0x0049F0C0`, est **écrit** ; les six autres du bloc attendent.
+Le sous-type 7, `0x0049F0C0`, et le sous-type 14, `0x004A2C90`, sont **écrits** ; les cinq autres du
+bloc attendent.
 
 ### Bloc C — le lieu de coupe et la grotte
 
@@ -182,13 +183,38 @@ duelliste.
 
 ### Ce qui reste, au 2026-09-01
 
-**Six routines restent pour rendre la forêt entièrement stable, et elles sont toutes du bloc B** :
-`0x0049FAD0` (Trent), `0x004A0480` (Fleur du mal), `0x004A13E0` (Wyrm), `0x004A1D50` (Varan),
-`0x004A2C90` (Géant), `0x004A35B0` (Willie). **Les blocs A et C sont complets** : les sous-zones
-d'arrivée (0-4) et celles du lieu de coupe et de la grotte (5 et 9) n'ont plus de trou.
+**Cinq routines restent pour rendre la forêt entièrement stable, et elles sont toutes du bloc B** —
+le Géant `0x004A2C90` a été écrit le 2026-09-01, le premier choisi par le crible ci-dessous plutôt
+que par la taille, et **le crible avait raison** : il l'annonçait à 283 lignes du Grizzly, c'est un
+Grizzly à trois différences près (ses deux gestes quittent le sol, son élan ne part que si la cible
+était assez loin à l'engagement, et sa replanification a un second essai).
+**Les blocs A et C sont complets** : les sous-zones d'arrivée (0-4) et celles du lieu de coupe et de
+la grotte (5 et 9) n'ont plus de trou.
 
 Le relevé du 2026-08-29 en comptait treize, dont deux pour les seules sous-zones d'arrivée ; ces
 deux-là sont faites.
+
+**Les six ont été passées au crible du doublon le 2026-09-01**, avant d'en écrire une seule :
+désassemblage, effacement de tout ce qui n'est que placement (déplacements d'appel, cibles de saut,
+étiquettes), et comptage des lignes qui divergent. **Aucun doublon** — un doublon vrai sort à deux
+ou trois lignes, comme `0x004A4270`.
+
+| routine | bête | ≤ octets | le plus proche déjà écrit | écart |
+|---|---|---:|---|---:|
+| `0x004A2C90` | Géant | 2 336 | `0x0049B840`, le Grizzly | **283** — **écrite** |
+| `0x004A35B0` | Willie | 1 664 | `0x0049A360`, la Coccinelle | **417** |
+| `0x0049FAD0` | Trent | 2 480 | `0x0049E190`, le Goblin-sorcier | **454** |
+| `0x004A13E0` | Wyrm | 2 320 | `0x0049C0B0`, le Crabe | 583 |
+| `0x004A1D50` | Varan | 3 904 | `0x00499DE0`, la Fourmi géante | 1 171 |
+| `0x004A0480` | Fleur du mal | 3 936 | `0x00499DE0`, la Fourmi géante | 1 262 |
+
+**La colonne de droite est la recette « calquer sur une sœur » rendue mesurable** : elle dit sur
+quel corps déjà transcrit ouvrir la comparaison. Et elle **change l'ordre de travail** — par la
+taille il fallait commencer par le Willie, par l'écart il faut commencer par le **Géant**, qui est
+un Grizzly modifié. Le coût d'une transcription se mesure au nombre de formes distinctes, pas au
+nombre d'octets.
+
+Le détail est dans `REVERSE_STATUS.md`, section « les six du bloc B passées au crible ».
 
 ---
 
