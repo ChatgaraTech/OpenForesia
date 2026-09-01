@@ -63,12 +63,12 @@ nombre d'objets. C'est l'ordre de travail — le plus employe d'abord.
 | `0x00445E70` | 17 | 0x48 | **non** | **non** | 0,3,4,6 |
 | `0x00445CF0` | 15 | 0x4c | **non** | **non** | 0,1,3,5,6,10 |
 | `0x00447630` | 14 | 0x3b | **non** | **non** | 0,1,3,4,5,10 |
-| `0x0047A100` | 10 | 0x49 | oui | **non** | 0,4,6 |
+| `0x0047A100` | 10 | 0x49 | oui | oui | 0,4,6 |
 | `0x00446170` | 10 | 0x4d | **non** | **non** | 0,1,4,10 |
 | `0x00404920` | 10 | 0x55 | **non** | **non** | 0,6,10 |
 | `0x00475CC0` | 8 | 0x4e | **non** | **non** | 0,1,10 |
 | `0x00446A90` | 4 | 0x3f | **non** | **non** | 0,5,10 |
-| `0x004477D0` | 2 | 0x4b | **non** | **non** | 0,2 |
+| `0x004477D0` | 2 | 0x4b | oui | **non** | 0,2 |
 | `0x00447170` | 1 | 0x3c | **non** | **non** | 1 |
 
 ---
@@ -78,9 +78,9 @@ nombre d'objets. C'est l'ordre de travail — le plus employe d'abord.
 | | |
 |---|---|
 | gestionnaires distincts atteignables par un objet | **21** |
-| deja ecrits | **3** |
-| a transcrire | **18** |
-| exerces en jeu (sonde des gestionnaires) | **1** |
+| deja ecrits | **4** |
+| a transcrire | **17** |
+| exerces en jeu (sonde des gestionnaires) | **2** |
 | naissances resolues par la table STATIQUE | **1440** |
 | naissances resolues par une table de SOUS-ZONE | **0** |
 
@@ -218,7 +218,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Baguette stellaire | — | oui | **non** |
 | Baguette-Misuril | — | oui | **non** |
 | Baguette-vampire | — | oui | **non** |
-| Bahamut | `0x004477D0` | **non** | **non** |
+| Bahamut | `0x004477D0` | oui | **non** |
 | Bahil | — | oui | **non** |
 | Balance des juges | `0x004753D0` | ? | **non** |
 | Balle de cristal | `0x00446790` | oui | **non** |
@@ -271,7 +271,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Bracelet de reine | — | oui | **non** |
 | Broche au joyau | — | oui | **non** |
 | Broche d'argent | — | oui | **non** |
-| Bâton d'Apollon | — | oui | **non** |
+| Bâton d'Apollon | — | oui | oui |
 | Bâton de cristal | — | oui | **non** |
 | Bâton de fer | — | oui | **non** |
 | Bâton des sages | — | oui | **non** |
@@ -438,7 +438,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Lame de la terre | — | oui | **non** |
 | Lame du soleil | — | oui | **non** |
 | Lampe sacrée | `0x004753D0` | ? | **non** |
-| Large épée | — | oui | **non** |
+| Large épée | — | oui | oui |
 | Lavande | — | oui | **non** |
 | Livre de la technique | — | oui | **non** |
 | Long marteau | — | oui | **non** |
@@ -705,7 +705,7 @@ fiche —, la meme des deux cotes de la sonde.
 | ïÐÆµÝÌªæ | `0x004753D0`, `0x00476500` | **non** | **non** |
 | ïÚ²ÝÛ¯ï | — | oui | **non** |
 | ïÛ÷ÆÙ | — | oui | **non** |
-| ðÊÑÄ | `0x004477D0` | **non** | **non** |
+| ðÊÑÄ | `0x004477D0` | oui | **non** |
 | ðçØ½¸½¹²Ù | — | oui | **non** |
 | ñ­Ã¨óÙ | — | oui | **non** |
 | ò×¯¸±Ï | — | oui | **non** |
@@ -729,12 +729,12 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | **non** | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | **non** | **non** |
 
-**607 objets distincts**, dont **369** pleinement implementes et **1** deja employes
+**607 objets distincts**, dont **371** pleinement implementes et **3** deja employes
 en jeu.
 
 ### Vus en jeu, absents du catalogue
 
-**3 cle(s)** relevee(s) par la sonde ne correspondent a aucune fiche d'`objets.csv`.
+**10 cle(s)** relevee(s) par la sonde ne correspondent a aucune fiche d'`objets.csv`.
 
 Ce n'est pas une erreur de la sonde : `objets.csv` porte les catalogues **par
 sous-zone** — ce qu'on ramasse et ce que les coffres donnent —, et **pas**
@@ -747,9 +747,16 @@ le vrai libelle.
 
 | cle | nom probable |
 |---|---|
+| `6d53696d706c65206172630000000000` | Simple arc |
 | `6d426f75636c69657263756972000000` | Boucliercuir |
+| `6d506f69676e61726400000000000000` | Poignard |
+| `6d4261746f6e20646520626f69730000` | Baton de bois |
 | `7741726d757265206375697200000000` | Armure cuir |
+| `77426167756574746500000000000000` | Baguette |
+| `77526f62650000000000000000000000` | Robe |
+| `77436f75727465206570656500000000` | Courte epee |
 | `7745706565206e6f726d616c65000000` | Epee normale |
+| `6d4d6173737565000000000000000000` | Massue |
 
 ---
 

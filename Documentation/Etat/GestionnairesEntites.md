@@ -48,8 +48,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 | | |
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
-| testes en jeu | **144** |
-| implementes, jamais appeles | **237** |
+| testes en jeu | **243** |
+| implementes, jamais appeles | **138** |
 | a transcrire | **1049** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
@@ -61,7 +61,7 @@ et n'est pas un comportement.
 
 | zone | lieu | gestionnaires | implementes | testes |
 |---|---|---|---|---|
-| — | **tables statiques** (partout) | 274 | 237 | 109 |
+| — | **tables statiques** (partout) | 274 | 237 | 208 |
 | 0 | L'auberge | 48 | 35 | 12 |
 | 1 | La mine abandonnee | 157 | 22 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
@@ -85,7 +85,7 @@ depassent donc le total global.
 Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` et
 `0x0047acf0` lisent pour un indice sous `0xc0`. Elles ne dependent d'aucune zone.
 
-274 gestionnaires, 237 implementes, 109 testes.
+274 gestionnaires, 237 implementes, 208 testes.
 
 | gestionnaire | tables | implemente | teste |
 |---|---|---|---|
@@ -135,68 +135,12 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004474C0` | 00552230 | oui | **non** |
 | `0x004477D0` | 00551C30 | oui | **non** |
 | `0x004478F0` | 00551F30 | oui | **non** |
-| `0x00447DF0` | 00551C30 | oui | **non** |
-| `0x00448060` | 00551C30 | oui | **non** |
-| `0x00448250` | 00551F30 | oui | **non** |
-| `0x00448300` | 00551C30 | oui | **non** |
-| `0x004484F0` | 00551C30 | oui | **non** |
-| `0x004487F0` | 00551F30 | oui | **non** |
-| `0x00448C40` | 00551F30 | oui | **non** |
-| `0x00448E20` | 00552230 | oui | **non** |
-| `0x00448EF0` | 00551C30 | oui | **non** |
-| `0x004491F0` | 00551C30 | oui | **non** |
-| `0x00449590` | 00551C30 | oui | **non** |
-| `0x00449760` | 00552230 | oui | **non** |
-| `0x004498B0` | 00551C30 | oui | **non** |
-| `0x00449A70` | 00551F30 | oui | **non** |
-| `0x00449C30` | 00551C30 | oui | **non** |
-| `0x00449E30` | 00552230 | oui | **non** |
-| `0x00449F90` | 00551C30 | oui | **non** |
-| `0x0044A080` | 00551F30 | oui | **non** |
-| `0x0044A320` | 00552230 | oui | **non** |
-| `0x0044A4B0` | 00551C30 | oui | **non** |
-| `0x0044A6A0` | 00551F30 | oui | **non** |
-| `0x0044A7A0` | 00551C30 | oui | **non** |
-| `0x0044A880` | 00551F30 | oui | **non** |
-| `0x0044AE90` | 00551C30 | oui | **non** |
-| `0x0044AF70` | 00551F30 | oui | **non** |
-| `0x0044B510` | 00551C30 | oui | **non** |
-| `0x0044B6F0` | 00551F30 | oui | **non** |
-| `0x0044B7B0` | 00551C30 | oui | **non** |
-| `0x0044B950` | 00552230 | oui | **non** |
-| `0x0044BA00` | 00551F30 | oui | **non** |
-| `0x0044BAF0` | 00551C30 | oui | **non** |
-| `0x0044BCC0` | 00552230 | oui | **non** |
-| `0x0044BE40` | 00551F30 | oui | **non** |
-| `0x0044BF00` | 00551C30 | oui | **non** |
-| `0x0044C110` | 00551F30 | oui | **non** |
-| `0x0044C260` | 00552230 | oui | **non** |
-| `0x0044C3A0` | 00551C30 | oui | **non** |
-| `0x0044C730` | 00551F30 | oui | **non** |
-| `0x0044C800` | 00551F30 | oui | **non** |
-| `0x0044C8A0` | 00551C30 | oui | **non** |
-| `0x0044CAC0` | 00551F30 | oui | **non** |
-| `0x0044CBD0` | 00551F30 | oui | **non** |
-| `0x0044CD00` | 00551C30 | oui | **non** |
-| `0x0044CF30` | 00551F30 | oui | **non** |
-| `0x0044D030` | 00551F30 | oui | **non** |
-| `0x0044D170` | 00552230 | oui | **non** |
-| `0x0044D370` | 00551C30 | oui | **non** |
-| `0x0044D8E0` | 00551F30 | oui | **non** |
 | `0x0044D9B0` | 00552230 | oui | **non** |
 | `0x0044DB30` | 00551F30 | oui | **non** |
-| `0x0044DC60` | 00551C30 | oui | **non** |
-| `0x0044DED0` | 00551F30 | oui | **non** |
-| `0x0044EA60` | 00551F30 | oui | **non** |
 | `0x0044EF40` | 00552230 | oui | **non** |
-| `0x0044F060` | 00551C30 | oui | **non** |
 | `0x0044F290` | 00551F30 | oui | **non** |
 | `0x0044F600` | 00551F30 | oui | **non** |
 | `0x0044F750` | 00552230 | oui | **non** |
-| `0x0044F930` | 00551C30 | oui | **non** |
-| `0x0044FE00` | 00552230 | oui | **non** |
-| `0x004500B0` | 00552230 | oui | **non** |
-| `0x004501B0` | 00551F30 | oui | **non** |
 | `0x00475170` | 00551C30 | oui | **non** |
 | `0x004751E0` | 00551F30 | oui | **non** |
 | `0x004752F0` | 00552230 | oui | **non** |
@@ -207,51 +151,8 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00475A80` | 00552230 | oui | **non** |
 | `0x00475B90` | 00551C30 | oui | **non** |
 | `0x00475BE0` | 00551F30 | oui | **non** |
-| `0x004760C0` | 00551C30 | oui | **non** |
-| `0x00476140` | 00552230 | oui | **non** |
-| `0x004761D0` | 00551C30 | oui | **non** |
-| `0x00476290` | 00552230 | oui | **non** |
 | `0x00476730` | 00551C30 | oui | **non** |
 | `0x004768A0` | 00552230 | oui | **non** |
-| `0x004769A0` | 00551C30 | oui | **non** |
-| `0x004769F0` | 00552230 | oui | **non** |
-| `0x00476FD0` | 00551C30 | oui | **non** |
-| `0x004770A0` | 00551F30 | oui | **non** |
-| `0x00477360` | 00551C30 | oui | **non** |
-| `0x00477420` | 00551F30 | oui | **non** |
-| `0x004774C0` | 00551C30 | oui | **non** |
-| `0x00477600` | 00552230 | oui | **non** |
-| `0x00477660` | 00551C30 | oui | **non** |
-| `0x004777A0` | 00551C30 | oui | **non** |
-| `0x004778E0` | 00551C30 | oui | **non** |
-| `0x00477A20` | 00551C30 | oui | **non** |
-| `0x00477A90` | 00552230 | oui | **non** |
-| `0x00477D20` | 00551C30 | oui | **non** |
-| `0x00477DA0` | 00551F30 | oui | **non** |
-| `0x00477E40` | 00552230 | oui | **non** |
-| `0x004780B0` | 00551C30 | oui | **non** |
-| `0x004785F0` | 00551C30 | oui | **non** |
-| `0x004786C0` | 00551C30 | oui | **non** |
-| `0x00478C20` | 00551C30 | oui | **non** |
-| `0x00478D10` | 00551C30 | oui | **non** |
-| `0x00478DF0` | 00551C30 | oui | **non** |
-| `0x00478FC0` | 00551F30 | oui | **non** |
-| `0x00479030` | 00551F30 | oui | **non** |
-| `0x004790C0` | 00551C30 | oui | **non** |
-| `0x00479250` | 00551F30 | oui | **non** |
-| `0x00479300` | 00551C30 | oui | **non** |
-| `0x00479490` | 00551F30 | oui | **non** |
-| `0x00479B90` | 00551F30 | oui | **non** |
-| `0x00479BC0` | 00552230 | oui | **non** |
-| `0x00479C50` | 00551C30 | oui | **non** |
-| `0x00479DE0` | 00551C30 | oui | **non** |
-| `0x00479F70` | 00551C30 | oui | **non** |
-| `0x0047A100` | 00551C30 | oui | **non** |
-| `0x0047A270` | 00551F30 | oui | **non** |
-| `0x0047A5D0` | 00551C30 | oui | **non** |
-| `0x0047A730` | 00552230 | oui | **non** |
-| `0x0047A7D0` | 00552230 | oui | **non** |
-| `0x0047A880` | 00552230 | oui | **non** |
 | `0x0047ADC0` | 00551C30 00551F30 00552230 | oui | **non** |
 | `0x00481250` | 00551F30 | oui | **non** |
 | `0x00402FC0` | 00551C30 | oui | oui |
@@ -264,7 +165,63 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004041C0` | 00551C30 | oui | oui |
 | `0x00404310` | 00552230 | oui | oui |
 | `0x00446790` | 00551C30 | oui | oui |
+| `0x00447DF0` | 00551C30 | oui | oui |
+| `0x00448060` | 00551C30 | oui | oui |
+| `0x00448250` | 00551F30 | oui | oui |
+| `0x00448300` | 00551C30 | oui | oui |
+| `0x004484F0` | 00551C30 | oui | oui |
+| `0x004487F0` | 00551F30 | oui | oui |
+| `0x00448C40` | 00551F30 | oui | oui |
+| `0x00448E20` | 00552230 | oui | oui |
+| `0x00448EF0` | 00551C30 | oui | oui |
+| `0x004491F0` | 00551C30 | oui | oui |
+| `0x00449590` | 00551C30 | oui | oui |
+| `0x00449760` | 00552230 | oui | oui |
+| `0x004498B0` | 00551C30 | oui | oui |
+| `0x00449A70` | 00551F30 | oui | oui |
+| `0x00449C30` | 00551C30 | oui | oui |
+| `0x00449E30` | 00552230 | oui | oui |
+| `0x00449F90` | 00551C30 | oui | oui |
+| `0x0044A080` | 00551F30 | oui | oui |
+| `0x0044A320` | 00552230 | oui | oui |
+| `0x0044A4B0` | 00551C30 | oui | oui |
+| `0x0044A6A0` | 00551F30 | oui | oui |
+| `0x0044A7A0` | 00551C30 | oui | oui |
+| `0x0044A880` | 00551F30 | oui | oui |
+| `0x0044AE90` | 00551C30 | oui | oui |
+| `0x0044AF70` | 00551F30 | oui | oui |
+| `0x0044B510` | 00551C30 | oui | oui |
+| `0x0044B6F0` | 00551F30 | oui | oui |
+| `0x0044B7B0` | 00551C30 | oui | oui |
+| `0x0044B950` | 00552230 | oui | oui |
+| `0x0044BA00` | 00551F30 | oui | oui |
+| `0x0044BAF0` | 00551C30 | oui | oui |
+| `0x0044BCC0` | 00552230 | oui | oui |
+| `0x0044BE40` | 00551F30 | oui | oui |
+| `0x0044BF00` | 00551C30 | oui | oui |
+| `0x0044C110` | 00551F30 | oui | oui |
+| `0x0044C260` | 00552230 | oui | oui |
+| `0x0044C3A0` | 00551C30 | oui | oui |
+| `0x0044C730` | 00551F30 | oui | oui |
+| `0x0044C800` | 00551F30 | oui | oui |
+| `0x0044C8A0` | 00551C30 | oui | oui |
+| `0x0044CAC0` | 00551F30 | oui | oui |
+| `0x0044CBD0` | 00551F30 | oui | oui |
+| `0x0044CD00` | 00551C30 | oui | oui |
+| `0x0044CF30` | 00551F30 | oui | oui |
+| `0x0044D030` | 00551F30 | oui | oui |
+| `0x0044D170` | 00552230 | oui | oui |
+| `0x0044D370` | 00551C30 | oui | oui |
+| `0x0044D8E0` | 00551F30 | oui | oui |
+| `0x0044DC60` | 00551C30 | oui | oui |
+| `0x0044DED0` | 00551F30 | oui | oui |
+| `0x0044EA60` | 00551F30 | oui | oui |
+| `0x0044F060` | 00551C30 | oui | oui |
+| `0x0044F930` | 00551C30 | oui | oui |
 | `0x0044FB10` | 00552230 | oui | oui |
+| `0x0044FE00` | 00552230 | oui | oui |
+| `0x004500B0` | 00552230 | oui | oui |
+| `0x004501B0` | 00551F30 | oui | oui |
 | `0x00475400` | 00552230 | oui | oui |
 | `0x004754C0` | 00551C30 | oui | oui |
 | `0x004755C0` | 00552230 | oui | oui |
@@ -276,12 +233,55 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00475EA0` | 00551C30 | oui | oui |
 | `0x00475F60` | 00552230 | oui | oui |
 | `0x00475FC0` | 00552230 | oui | oui |
+| `0x004760C0` | 00551C30 | oui | oui |
+| `0x00476140` | 00552230 | oui | oui |
+| `0x004761D0` | 00551C30 | oui | oui |
+| `0x00476290` | 00552230 | oui | oui |
 | `0x00476320` | 00552230 | oui | oui |
 | `0x004765D0` | 00551F30 | oui | oui |
 | `0x00476770` | 00551C30 | oui | oui |
 | `0x004767E0` | 00551F30 | oui | oui |
+| `0x004769A0` | 00551C30 | oui | oui |
+| `0x004769F0` | 00552230 | oui | oui |
 | `0x00476C70` | 00551C30 | oui | oui |
 | `0x00476CF0` | 00552230 | oui | oui |
+| `0x00476FD0` | 00551C30 | oui | oui |
+| `0x004770A0` | 00551F30 | oui | oui |
+| `0x00477360` | 00551C30 | oui | oui |
+| `0x00477420` | 00551F30 | oui | oui |
+| `0x004774C0` | 00551C30 | oui | oui |
+| `0x00477600` | 00552230 | oui | oui |
+| `0x00477660` | 00551C30 | oui | oui |
+| `0x004777A0` | 00551C30 | oui | oui |
+| `0x004778E0` | 00551C30 | oui | oui |
+| `0x00477A20` | 00551C30 | oui | oui |
+| `0x00477A90` | 00552230 | oui | oui |
+| `0x00477D20` | 00551C30 | oui | oui |
+| `0x00477DA0` | 00551F30 | oui | oui |
+| `0x00477E40` | 00552230 | oui | oui |
+| `0x004780B0` | 00551C30 | oui | oui |
+| `0x004785F0` | 00551C30 | oui | oui |
+| `0x004786C0` | 00551C30 | oui | oui |
+| `0x00478C20` | 00551C30 | oui | oui |
+| `0x00478D10` | 00551C30 | oui | oui |
+| `0x00478DF0` | 00551C30 | oui | oui |
+| `0x00478FC0` | 00551F30 | oui | oui |
+| `0x00479030` | 00551F30 | oui | oui |
+| `0x004790C0` | 00551C30 | oui | oui |
+| `0x00479250` | 00551F30 | oui | oui |
+| `0x00479300` | 00551C30 | oui | oui |
+| `0x00479490` | 00551F30 | oui | oui |
+| `0x00479B90` | 00551F30 | oui | oui |
+| `0x00479BC0` | 00552230 | oui | oui |
+| `0x00479C50` | 00551C30 | oui | oui |
+| `0x00479DE0` | 00551C30 | oui | oui |
+| `0x00479F70` | 00551C30 | oui | oui |
+| `0x0047A100` | 00551C30 | oui | oui |
+| `0x0047A270` | 00551F30 | oui | oui |
+| `0x0047A5D0` | 00551C30 | oui | oui |
+| `0x0047A730` | 00552230 | oui | oui |
+| `0x0047A7D0` | 00552230 | oui | oui |
+| `0x0047A880` | 00552230 | oui | oui |
 | `0x0047ADD0` | 00551C30 | oui | oui |
 | `0x0047AE80` | 00551F30 | oui | oui |
 | `0x0047B050` | 00552230 | oui | oui |

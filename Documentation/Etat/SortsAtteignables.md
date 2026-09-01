@@ -140,57 +140,57 @@ deux boutons** ; les coups sont separes par un tiret.
 | 0 | 26 | Colère | XC-C-X-O-T-C-O-T-C-O-X-O | 96 | 0 | 132 | 0x1a | `0x004819D0` | oui | oui |
 | 0 | 27 | Météores | X-T-C-X-T-O-X-C-O-X-C-O-T | 82 | 0 | 96 | 0x1b | `0x00482370` | oui | oui |
 | 0 | 28 | Fusion | TO-T-O-T-C-T-X-T-X-T-T-TO | 100 | 0 | 120 | 0x1c | `0x004828F0` | oui | oui |
-| 1 | 0 | Pardon | X-T-T | 0 | 0 | 20 | 0x1e | `0x0044F060` | oui | **non** |
-| 1 | 1 | Sang pur | T-O-O | 12 | 23 | 12 | 0x1f | `0x00447DF0` | oui | **non** |
-| 1 | 2 | Renfort | C-O-C | 8 | 27 | 8 | 0x20 | `0x00448060` | oui | **non** |
-| 1 | 3 | Gnoukoulé | X-O-X | 8 | 30 | 8 | 0x21 | `0x00448300` | oui | **non** |
-| 1 | 4 | Sonde | C-X-O | 2 | 26 | 8 | 0x37 | `0x004484F0` | oui | **non** |
-| 1 | 5 | Bobos finis | T-O-O-O-X-C-T | 42 | 35 | 32 | 0x23 | `0x004491F0` | oui | **non** |
-| 1 | 6 | 3ème oeil | O-X-C | 2 | 34 | 16 | 0x38 | `0x00448EF0` | oui | **non** |
-| 1 | 7 | Antidote | T-O-O-X-X-O | 16 | 37 | 16 | 0x25 | `0x00449590` | oui | **non** |
-| 1 | 8 | Lourdes | T-O-O-C-C-O | 16 | 39 | 16 | 0x26 | `0x004498B0` | oui | **non** |
-| 1 | 9 | Antisort | T-O-O-T-T-O | 16 | 41 | 16 | 0x27 | `0x00449C30` | oui | **non** |
-| 1 | 10 | Marteau | T-O-O-O-O-O | 16 | 43 | 16 | 0x28 | `0x00449F90` | oui | **non** |
-| 1 | 11 | Sang d'ange | T-O-O-O-O-T-T-O | 40 | 45 | 36 | 0x29 | `0x0044A4B0` | oui | **non** |
-| 1 | 12 | Lapêche | O-T-C-X-O-T-C-X-O | 22 | 55 | 20 | 0x2a | `0x0044A7A0` | oui | **non** |
-| 1 | 13 | Prière | O-X-C-T-O-X-C-T-O | 22 | 55 | 20 | 0x2b | `0x0044AE90` | oui | **non** |
-| 1 | 14 | Calgon | C-O-X-T-C-O-X-T | 26 | 51 | 40 | 0x2c | `0x0044B510` | oui | **non** |
-| 1 | 15 | Zombie | X-T-T-T-O-X-C | 10 | 48 | 60 | 0x2d | `0x0044F930` | oui | **non** |
-| 1 | 16 | Parole sainte | X-T-T-XC-TO | 60 | 58 | 12 | 0x2e | `0x0044D370` | oui | **non** |
-| 1 | 17 | Délivrance | T-O-O-O-T-O-TO-C-O-T-X | 40 | 63 | 36 | 0x2f | `0x0044B7B0` | oui | **non** |
-| 1 | 18 | Micro | T-O-O-O-X-C-XC-C-O-T-X | 40 | 63 | 36 | 0x30 | `0x0044BAF0` | oui | **non** |
-| 1 | 19 | Coup de pouce | T-O-O-O-O-T-T-O-T-O | 86 | 72 | 60 | 0x31 | `0x0044BF00` | oui | **non** |
-| 1 | 20 | Remontant | T-O-O-C-TO-XC-O-O | 62 | 70 | 60 | 0x32 | `0x0044C3A0` | oui | **non** |
-| 1 | 21 | Miracle | C-X-T-O-C-X-T-O-C-X-T-O | 39 | 66 | 60 | 0x33 | `0x0044C8A0` | oui | **non** |
-| 1 | 22 | Résurection | T-O-X-C-TO-XC-TO-XC-XC | 100 | 0 | 40 | 0x34 | `0x0044CD00` | oui | **non** |
-| 1 | 23 | Ange | T-O-C-T-O-X-C-O-X-C-T-O | 108 | 0 | 120 | 0x35 | `0x0044DC60` | oui | **non** |
-| 2 | 0 | Dodo | C-C-O-O | 2 | 10 | 8 | 0xa0 | `0x00476C70` | oui | **non** |
-| 2 | 1 | Gros sabots | C-O-X-X | 2 | 28 | 8 | 0xa1 | `0x00476FD0` | oui | **non** |
-| 2 | 2 | Vitesse | C-O-T-T | 2 | 26 | 8 | 0xa2 | `0x00477360` | oui | **non** |
-| 2 | 3 | Matéria feu | X-T-O-X-T | 16 | 33 | 24 | 0xa3 | `0x004774C0` | oui | **non** |
-| 2 | 4 | Matéria terre | X-T-C-X-T | 16 | 33 | 24 | 0xa4 | `0x00477660` | oui | **non** |
-| 2 | 5 | Matéria air | X-T-T-X-T | 16 | 33 | 24 | 0xa5 | `0x004777A0` | oui | **non** |
-| 2 | 6 | Matéria eau | X-T-X-X-T | 16 | 33 | 24 | 0xa6 | `0x004778E0` | oui | **non** |
-| 2 | 7 | Chant sirènes | C-C-T-O-X-C | 8 | 42 | 16 | 0xa7 | `0x00477A20` | oui | **non** |
-| 2 | 8 | Ecrase | X-X-C-T-O-X | 8 | 48 | 16 | 0xa8 | `0x00477D20` | oui | **non** |
-| 2 | 9 | Champ magique | T-C-X-X-C-T-O | 12 | 63 | 24 | 0xa9 | `0x004780B0` | oui | **non** |
-| 2 | 10 | Coussin d'air | C-O-X-X-T-T-T-T | 30 | 54 | 24 | 0xaa | `0x004785F0` | oui | **non** |
-| 2 | 11 | Escargot | X-O-T-T-O-X-O | 12 | 59 | 24 | 0xab | `0x004786C0` | oui | **non** |
-| 2 | 12 | Ralenti | C-O-X-X-C-T-O-X | 40 | 67 | 40 | 0xac | `0x00478C20` | oui | **non** |
-| 2 | 13 | Turbo | C-O-T-T-C-T-O-X | 40 | 65 | 40 | 0xad | `0x00478D10` | oui | **non** |
-| 2 | 14 | Superman | X-T-X-T-X-C-T-X-O-T | 60 | 68 | 60 | 0xae | `0x00478DF0` | oui | **non** |
-| 2 | 15 | Blindé | C-T-O-X-C-T-O-X-C-O | 80 | 63 | 20 | 0xaf | `0x004790C0` | oui | **non** |
-| 2 | 16 | Liquide | XC-TO-X-X-X-X-X-X-X-O | 50 | 0 | 70 | 0xb0 | `0x00479F70` | oui | **non** |
-| 2 | 17 | Flamme | XC-TO-O-O-O-O-O-O-O-O | 50 | 0 | 70 | 0xb1 | `0x00479300` | oui | **non** |
-| 2 | 18 | Zéphe | XC-TO-T-T-T-T-T-T-T-O | 50 | 0 | 70 | 0xb2 | `0x00479DE0` | oui | **non** |
-| 2 | 19 | Terre | XC-TO-C-C-C-C-C-C-C-O | 50 | 0 | 70 | 0xb3 | `0x00479C50` | oui | **non** |
-| 3 | 0 | Lavande | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
-| 3 | 1 | Sauge | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
-| 3 | 2 | Verveine | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
-| 3 | 3 | Mercuriale | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
-| 3 | 4 | Fenouil | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
-| 3 | 5 | Hysopius | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
-| 3 | 6 | Belladone | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
+| 1 | 0 | Pardon | X-T-T | 0 | 0 | 20 | 0x1e | `0x0044F060` | oui | oui |
+| 1 | 1 | Sang pur | T-O-O | 12 | 23 | 12 | 0x1f | `0x00447DF0` | oui | oui |
+| 1 | 2 | Renfort | C-O-C | 8 | 27 | 8 | 0x20 | `0x00448060` | oui | oui |
+| 1 | 3 | Gnoukoulé | X-O-X | 8 | 30 | 8 | 0x21 | `0x00448300` | oui | oui |
+| 1 | 4 | Sonde | C-X-O | 2 | 26 | 8 | 0x37 | `0x004484F0` | oui | oui |
+| 1 | 5 | Bobos finis | T-O-O-O-X-C-T | 42 | 35 | 32 | 0x23 | `0x004491F0` | oui | oui |
+| 1 | 6 | 3ème oeil | O-X-C | 2 | 34 | 16 | 0x38 | `0x00448EF0` | oui | oui |
+| 1 | 7 | Antidote | T-O-O-X-X-O | 16 | 37 | 16 | 0x25 | `0x00449590` | oui | oui |
+| 1 | 8 | Lourdes | T-O-O-C-C-O | 16 | 39 | 16 | 0x26 | `0x004498B0` | oui | oui |
+| 1 | 9 | Antisort | T-O-O-T-T-O | 16 | 41 | 16 | 0x27 | `0x00449C30` | oui | oui |
+| 1 | 10 | Marteau | T-O-O-O-O-O | 16 | 43 | 16 | 0x28 | `0x00449F90` | oui | oui |
+| 1 | 11 | Sang d'ange | T-O-O-O-O-T-T-O | 40 | 45 | 36 | 0x29 | `0x0044A4B0` | oui | oui |
+| 1 | 12 | Lapêche | O-T-C-X-O-T-C-X-O | 22 | 55 | 20 | 0x2a | `0x0044A7A0` | oui | oui |
+| 1 | 13 | Prière | O-X-C-T-O-X-C-T-O | 22 | 55 | 20 | 0x2b | `0x0044AE90` | oui | oui |
+| 1 | 14 | Calgon | C-O-X-T-C-O-X-T | 26 | 51 | 40 | 0x2c | `0x0044B510` | oui | oui |
+| 1 | 15 | Zombie | X-T-T-T-O-X-C | 10 | 48 | 60 | 0x2d | `0x0044F930` | oui | oui |
+| 1 | 16 | Parole sainte | X-T-T-XC-TO | 60 | 58 | 12 | 0x2e | `0x0044D370` | oui | oui |
+| 1 | 17 | Délivrance | T-O-O-O-T-O-TO-C-O-T-X | 40 | 63 | 36 | 0x2f | `0x0044B7B0` | oui | oui |
+| 1 | 18 | Micro | T-O-O-O-X-C-XC-C-O-T-X | 40 | 63 | 36 | 0x30 | `0x0044BAF0` | oui | oui |
+| 1 | 19 | Coup de pouce | T-O-O-O-O-T-T-O-T-O | 86 | 72 | 60 | 0x31 | `0x0044BF00` | oui | oui |
+| 1 | 20 | Remontant | T-O-O-C-TO-XC-O-O | 62 | 70 | 60 | 0x32 | `0x0044C3A0` | oui | oui |
+| 1 | 21 | Miracle | C-X-T-O-C-X-T-O-C-X-T-O | 39 | 66 | 60 | 0x33 | `0x0044C8A0` | oui | oui |
+| 1 | 22 | Résurection | T-O-X-C-TO-XC-TO-XC-XC | 100 | 0 | 40 | 0x34 | `0x0044CD00` | oui | oui |
+| 1 | 23 | Ange | T-O-C-T-O-X-C-O-X-C-T-O | 108 | 0 | 120 | 0x35 | `0x0044DC60` | oui | oui |
+| 2 | 0 | Dodo | C-C-O-O | 2 | 10 | 8 | 0xa0 | `0x00476C70` | oui | oui |
+| 2 | 1 | Gros sabots | C-O-X-X | 2 | 28 | 8 | 0xa1 | `0x00476FD0` | oui | oui |
+| 2 | 2 | Vitesse | C-O-T-T | 2 | 26 | 8 | 0xa2 | `0x00477360` | oui | oui |
+| 2 | 3 | Matéria feu | X-T-O-X-T | 16 | 33 | 24 | 0xa3 | `0x004774C0` | oui | oui |
+| 2 | 4 | Matéria terre | X-T-C-X-T | 16 | 33 | 24 | 0xa4 | `0x00477660` | oui | oui |
+| 2 | 5 | Matéria air | X-T-T-X-T | 16 | 33 | 24 | 0xa5 | `0x004777A0` | oui | oui |
+| 2 | 6 | Matéria eau | X-T-X-X-T | 16 | 33 | 24 | 0xa6 | `0x004778E0` | oui | oui |
+| 2 | 7 | Chant sirènes | C-C-T-O-X-C | 8 | 42 | 16 | 0xa7 | `0x00477A20` | oui | oui |
+| 2 | 8 | Ecrase | X-X-C-T-O-X | 8 | 48 | 16 | 0xa8 | `0x00477D20` | oui | oui |
+| 2 | 9 | Champ magique | T-C-X-X-C-T-O | 12 | 63 | 24 | 0xa9 | `0x004780B0` | oui | oui |
+| 2 | 10 | Coussin d'air | C-O-X-X-T-T-T-T | 30 | 54 | 24 | 0xaa | `0x004785F0` | oui | oui |
+| 2 | 11 | Escargot | X-O-T-T-O-X-O | 12 | 59 | 24 | 0xab | `0x004786C0` | oui | oui |
+| 2 | 12 | Ralenti | C-O-X-X-C-T-O-X | 40 | 67 | 40 | 0xac | `0x00478C20` | oui | oui |
+| 2 | 13 | Turbo | C-O-T-T-C-T-O-X | 40 | 65 | 40 | 0xad | `0x00478D10` | oui | oui |
+| 2 | 14 | Superman | X-T-X-T-X-C-T-X-O-T | 60 | 68 | 60 | 0xae | `0x00478DF0` | oui | oui |
+| 2 | 15 | Blindé | C-T-O-X-C-T-O-X-C-O | 80 | 63 | 20 | 0xaf | `0x004790C0` | oui | oui |
+| 2 | 16 | Liquide | XC-TO-X-X-X-X-X-X-X-O | 50 | 0 | 70 | 0xb0 | `0x00479F70` | oui | oui |
+| 2 | 17 | Flamme | XC-TO-O-O-O-O-O-O-O-O | 50 | 0 | 70 | 0xb1 | `0x00479300` | oui | oui |
+| 2 | 18 | Zéphe | XC-TO-T-T-T-T-T-T-T-O | 50 | 0 | 70 | 0xb2 | `0x00479DE0` | oui | oui |
+| 2 | 19 | Terre | XC-TO-C-C-C-C-C-C-C-O | 50 | 0 | 70 | 0xb3 | `0x00479C50` | oui | oui |
+| 3 | 0 | Lavande | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | oui |
+| 3 | 1 | Sauge | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | oui |
+| 3 | 2 | Verveine | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | oui |
+| 3 | 3 | Mercuriale | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | oui |
+| 3 | 4 | Fenouil | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | oui |
+| 3 | 5 | Hysopius | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | oui |
+| 3 | 6 | Belladone | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | oui |
 
 ---
 
@@ -202,8 +202,8 @@ deux boutons** ; les coups sont separes par un tiret.
 | dont les trois ecoles jouables | **73** |
 | implementees (le gestionnaire existe) | **80** |
 | a transcrire | **0** |
-| lancees en jeu au moins une fois | **29** |
-| dette : implementees mais jamais lancees | **51** |
+| lancees en jeu au moins une fois | **80** |
+| dette : implementees mais jamais lancees | **0** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -225,51 +225,51 @@ corps a tourne, par un sort ou par autre chose.
 
 | gestionnaire | emplois | implemente | teste | sorts |
 |---|---:|---|---|---|
-| `0x0047A5D0` | 7 | oui | **non** | Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius, Belladone |
-| `0x00447DF0` | 1 | oui | **non** | Sang pur |
-| `0x00448060` | 1 | oui | **non** | Renfort |
-| `0x00448300` | 1 | oui | **non** | Gnoukoulé |
-| `0x004484F0` | 1 | oui | **non** | Sonde |
-| `0x00448EF0` | 1 | oui | **non** | 3ème oeil |
-| `0x004491F0` | 1 | oui | **non** | Bobos finis |
-| `0x00449590` | 1 | oui | **non** | Antidote |
-| `0x004498B0` | 1 | oui | **non** | Lourdes |
-| `0x00449C30` | 1 | oui | **non** | Antisort |
-| `0x00449F90` | 1 | oui | **non** | Marteau |
-| `0x0044A4B0` | 1 | oui | **non** | Sang d'ange |
-| `0x0044A7A0` | 1 | oui | **non** | Lapêche |
-| `0x0044AE90` | 1 | oui | **non** | Prière |
-| `0x0044B510` | 1 | oui | **non** | Calgon |
-| `0x0044B7B0` | 1 | oui | **non** | Délivrance |
-| `0x0044BAF0` | 1 | oui | **non** | Micro |
-| `0x0044BF00` | 1 | oui | **non** | Coup de pouce |
-| `0x0044C3A0` | 1 | oui | **non** | Remontant |
-| `0x0044C8A0` | 1 | oui | **non** | Miracle |
-| `0x0044CD00` | 1 | oui | **non** | Résurection |
-| `0x0044D370` | 1 | oui | **non** | Parole sainte |
-| `0x0044DC60` | 1 | oui | **non** | Ange |
-| `0x0044F060` | 1 | oui | **non** | Pardon |
-| `0x0044F930` | 1 | oui | **non** | Zombie |
-| `0x00476C70` | 1 | oui | **non** | Dodo |
-| `0x00476FD0` | 1 | oui | **non** | Gros sabots |
-| `0x00477360` | 1 | oui | **non** | Vitesse |
-| `0x004774C0` | 1 | oui | **non** | Matéria feu |
-| `0x00477660` | 1 | oui | **non** | Matéria terre |
-| `0x004777A0` | 1 | oui | **non** | Matéria air |
-| `0x004778E0` | 1 | oui | **non** | Matéria eau |
-| `0x00477A20` | 1 | oui | **non** | Chant sirènes |
-| `0x00477D20` | 1 | oui | **non** | Ecrase |
-| `0x004780B0` | 1 | oui | **non** | Champ magique |
-| `0x004785F0` | 1 | oui | **non** | Coussin d'air |
-| `0x004786C0` | 1 | oui | **non** | Escargot |
-| `0x00478C20` | 1 | oui | **non** | Ralenti |
-| `0x00478D10` | 1 | oui | **non** | Turbo |
-| `0x00478DF0` | 1 | oui | **non** | Superman |
-| `0x004790C0` | 1 | oui | **non** | Blindé |
-| `0x00479300` | 1 | oui | **non** | Flamme |
-| `0x00479C50` | 1 | oui | **non** | Terre |
-| `0x00479DE0` | 1 | oui | **non** | Zéphe |
-| `0x00479F70` | 1 | oui | **non** | Liquide |
+| `0x0047A5D0` | 7 | oui | oui | Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius, Belladone |
+| `0x00447DF0` | 1 | oui | oui | Sang pur |
+| `0x00448060` | 1 | oui | oui | Renfort |
+| `0x00448300` | 1 | oui | oui | Gnoukoulé |
+| `0x004484F0` | 1 | oui | oui | Sonde |
+| `0x00448EF0` | 1 | oui | oui | 3ème oeil |
+| `0x004491F0` | 1 | oui | oui | Bobos finis |
+| `0x00449590` | 1 | oui | oui | Antidote |
+| `0x004498B0` | 1 | oui | oui | Lourdes |
+| `0x00449C30` | 1 | oui | oui | Antisort |
+| `0x00449F90` | 1 | oui | oui | Marteau |
+| `0x0044A4B0` | 1 | oui | oui | Sang d'ange |
+| `0x0044A7A0` | 1 | oui | oui | Lapêche |
+| `0x0044AE90` | 1 | oui | oui | Prière |
+| `0x0044B510` | 1 | oui | oui | Calgon |
+| `0x0044B7B0` | 1 | oui | oui | Délivrance |
+| `0x0044BAF0` | 1 | oui | oui | Micro |
+| `0x0044BF00` | 1 | oui | oui | Coup de pouce |
+| `0x0044C3A0` | 1 | oui | oui | Remontant |
+| `0x0044C8A0` | 1 | oui | oui | Miracle |
+| `0x0044CD00` | 1 | oui | oui | Résurection |
+| `0x0044D370` | 1 | oui | oui | Parole sainte |
+| `0x0044DC60` | 1 | oui | oui | Ange |
+| `0x0044F060` | 1 | oui | oui | Pardon |
+| `0x0044F930` | 1 | oui | oui | Zombie |
+| `0x00476C70` | 1 | oui | oui | Dodo |
+| `0x00476FD0` | 1 | oui | oui | Gros sabots |
+| `0x00477360` | 1 | oui | oui | Vitesse |
+| `0x004774C0` | 1 | oui | oui | Matéria feu |
+| `0x00477660` | 1 | oui | oui | Matéria terre |
+| `0x004777A0` | 1 | oui | oui | Matéria air |
+| `0x004778E0` | 1 | oui | oui | Matéria eau |
+| `0x00477A20` | 1 | oui | oui | Chant sirènes |
+| `0x00477D20` | 1 | oui | oui | Ecrase |
+| `0x004780B0` | 1 | oui | oui | Champ magique |
+| `0x004785F0` | 1 | oui | oui | Coussin d'air |
+| `0x004786C0` | 1 | oui | oui | Escargot |
+| `0x00478C20` | 1 | oui | oui | Ralenti |
+| `0x00478D10` | 1 | oui | oui | Turbo |
+| `0x00478DF0` | 1 | oui | oui | Superman |
+| `0x004790C0` | 1 | oui | oui | Blindé |
+| `0x00479300` | 1 | oui | oui | Flamme |
+| `0x00479C50` | 1 | oui | oui | Terre |
+| `0x00479DE0` | 1 | oui | oui | Zéphe |
+| `0x00479F70` | 1 | oui | oui | Liquide |
 | `0x0047ADD0` | 1 | oui | oui | Balle de feu |
 | `0x0047B0B0` | 1 | oui | oui | Boule de lumière |
 | `0x0047B460` | 1 | oui | oui | Pieds mouillés |
@@ -328,8 +328,8 @@ pourquoi ces lignes sont hors du compte principal.
 | famille | # | nom | sous-type | gestionnaire | implemente | teste |
 |---:|---:|---|---:|---|---|---|
 | 4 | 0 | ³ª²ò | 0x4b | `0x004477D0` | oui | **non** |
-| 5 | 0 | ±Û | 0x49 | `0x0047A100` | oui | **non** |
-| 6 | 0 | ½Àë½Ä | 0x4a | `0x004769A0` | oui | **non** |
+| 5 | 0 | ±Û | 0x49 | `0x0047A100` | oui | oui |
+| 6 | 0 | ½Àë½Ä | 0x4a | `0x004769A0` | oui | oui |
 | 7 | 0 | ù²èÝÀ¯Á | 0x1d | `0x0047ADC0` | oui | **non** |
 | 7 | 1 | õ××²èÀ¯Á | 0x1d | `0x0047ADC0` | oui | **non** |
 | 7 | 2 | õ××²è±² | 0x1d | `0x0047ADC0` | oui | **non** |
