@@ -1045,11 +1045,12 @@ public static unsafe partial class Blaze
             cursor = Prims.DrawTextRun(otBase, cursor, block, Mem.Entity(0x005fa5d0), 0, 0, 0x10);
 
             block[2] += 10 << 0x10;
-            cursor = Prims.DrawTextRun(otBase, cursor, block, (byte*)0x564a14, 0, 0, -1);
+            cursor = Prims.DrawTextRun(otBase, cursor, block, s_HpLabel_00564a14, 0, 0, -1);
 
             block[2] = ((block[2] >> 0x10) << 0x10) | (((block[2] & 0xffff) + 0x12) & 0xffff);
             block[0] = (int)(nint)SpriteAtlas(0x00566c30);
-            cursor = DrawIconGlyph_0051BE90(otBase, cursor, block, *(short*)Mem.Arena(0x005e9a22), 5, 0);
+            cursor = Prims.DrawDecimalNumber(
+                otBase, cursor, block, (uint)*(short*)Mem.Arena(0x005e9a22), 5, 0);
         }
 
         // ---------------------------------------------------------- les deux indicateurs d'ecran
@@ -2092,14 +2093,14 @@ public static unsafe partial class Blaze
                                 // ResolveEntityBlocks a porte jusqu'au 2026-08-23.
                                 byte* stats = s_EntityStatBlocks_005ea560 + e[8] * 0x120;
 
-                                cursor = DrawIconGlyph_0051BE90(
+                                cursor = Prims.DrawDecimalNumber(
                                     otBase + 2, cursor, dbg, *(ushort*)(stats + 0x44), 5, 0);
                                 *(short*)(db + 0xa) += 8;
-                                cursor = DrawIconGlyph_0051BE90(
-                                    otBase + 2, cursor, dbg, *(short*)(stats + 0x4c), 5, 0);
+                                cursor = Prims.DrawDecimalNumber(
+                                    otBase + 2, cursor, dbg, (uint)*(short*)(stats + 0x4c), 5, 0);
                                 *(short*)(db + 0xa) += 8;
-                                cursor = DrawIconGlyph_0051BE90(
-                                    otBase + 2, cursor, dbg, *(short*)(stats + 0x4e), 5, 0);
+                                cursor = Prims.DrawDecimalNumber(
+                                    otBase + 2, cursor, dbg, (uint)*(short*)(stats + 0x4e), 5, 0);
                             }
                         }
                     }
@@ -2240,13 +2241,6 @@ public static unsafe partial class Blaze
     private static uint* DrawChunkListC_00522140(
         uint* otEntry, uint* prim, byte* chunk, int* placement)
         => Mdl.DrawChunkFaces(otEntry, prim, chunk, placement);
-
-    /// <summary>Ghidra: FUN_0051be90 @ 0x0051be90 (74 l.) — le second chemin de pictogramme, celui
-    /// que <c>Engine/UiText.cs</c> cite comme distinct de son propre glyphe en ligne.</summary>
-    private static uint* DrawIconGlyph_0051BE90(
-        uint* otEntry, uint* prim, int* block, int value, int digits, int flags)
-        => throw new NotImplementedException(
-            $"FUN_0051be90 (0x0051be90), valeur {value} : non transcrite. 74 lignes dans Blaze.c.");
 
     /// <summary>Ghidra: FUN_0051c420 @ 0x0051c420 — l'emission d'un modele de decor. Transcrite
     /// dans <c>Engine/Model3d.cs</c>, a cote de sa sœur animee FUN_0051d1f0 : meme banc GTE, memes

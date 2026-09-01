@@ -19339,3 +19339,41 @@ appris qu'en plantant sur un objet censé ne pas exister.
 par `#`, échappait au filtre des commentaires, et l'en-tête était comptée comme une clé d'objet —
 d'où « 4 clés orphelines » au lieu de 3. Corrigé à la source (`UTF8Encoding(false)`), et le lecteur
 retire un BOM éventuel par précaution : le fichier déjà écrit existait.
+
+## 2026-09-01 — `FUN_0051be90` transcrite trois fois, dont une qui plantait
+
+Frapper une entité en carte du monde plantait deux fois de suite, sur deux défauts différents du
+**même bloc de dessin** — celui que `DAT_005de0b4` déclenche pour montrer le bandeau
+nom / `HP` / points de vie de la victime. Le premier était le littéral d'adresse `0x564a14`
+(voir `DataSymbols.md`). Le second, deux appels plus loin :
+
+```
+Unhandled exception. System.NotImplementedException: FUN_0051be90 (0x0051be90), valeur 5 :
+non transcrite. 74 lignes dans Blaze.c.
+   at Blaze.DrawIconGlyph_0051BE90(...) WorldMapTick.cs:2248
+```
+
+**Elle était transcrite depuis longtemps.** Un recensement du VA sur tout le dépôt en donne trois
+exemplaires :
+
+| où | nom | état |
+|---|---|---|
+| `Screens/State03/WorldMapTick.cs` | `DrawIconGlyph_0051BE90` | **stub qui lève** — supprimé |
+| `Engine/Primitives2d.cs` | `DrawDecimalNumber` | corps complet, ~30 sites d'appel |
+| `Screens/State04/SaveSlots.cs` | `EmitCardGlyphTile` | corps complet, ~8 sites d'appel |
+
+Les deux corps vivants sont **identiques ligne à ligne** — même boucle de dix rangs, même
+significativité levée d'office au dernier, même double emploi du paramètre `digits` (quartet bas =
+nombre de rangs, bit `0x80` = les zéros de tête avancent sans dessiner). Aucune divergence à
+arbitrer aujourd'hui, mais deux copies d'une même fonction divergeront tôt ou tard : **la fusion de
+`EmitCardGlyphTile` vers `Primitives2d.DrawDecimalNumber` reste à faire**, et elle est mécanique
+(un renvoi, aucun site d'appel à toucher).
+
+Le nom du stub disait déjà l'erreur : « DrawIconGlyph » avait été deviné d'après le voisinage, alors
+que les soixante-dix sites d'appel de `Blaze.c` lui passent tous une valeur et un nombre de
+chiffres. Un stub qui lève n'est pas neutre — il **cache** que le travail est fait, et le nom
+approximatif empêche le `grep` qui l'aurait montré.
+
+**Réflexe à prendre** : avant d'écrire un corps, chercher son VA dans **tout le dépôt**, pas
+seulement dans `Blaze.c`. `Documentation/Reference/DataSymbols.md` porte la carte des symboles
+reconstruits ; elle est indexée par adresse, et c'est exactement à ça qu'elle sert.

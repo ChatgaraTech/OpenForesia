@@ -2671,3 +2671,37 @@ précède (`0x0054f778`..`0x0054f7a8`, les six images de `FUN_0040f8e0`) est en 
 Les quatre tuiles sont les quatre coins d'un carré de `0x10` de côté à partir de `(8, 8)` : le jeu
 lit le carré en Z, un coin par paire d'images. La sixième et la septième colonne (`01 03`, `10 00`)
 sont celles de toute la famille — voir `0x0054f0e0` ci-dessus, qui porte `01 02`.
+
+## `0x00564a14` — `"HP"`, et le piège du littéral d'adresse (2026-09-01)
+
+Le bandeau que la carte du monde montre à chaque coup porté — nom de la victime, `HP`, points de
+vie — se dessine en trois appels, et le deuxième passe une chaîne que **Ghidra n'a pas nommée** :
+
+```c
+uVar7 = FUN_0051c120(unaff_EBP,uVar7,&uStack_48,0x564a14,0,0,0xffffffff);
+```
+
+`0x564a14` est un entier nu dans la pseudo-C, pas un `&DAT_…`. La transcription l'avait recopié tel
+quel en `(byte*)0x564a14` : une adresse parfaitement valide dans le processus de 1998, une page non
+mappée dans le nôtre. **Le premier coup porté tuait le jeu** sur un `0xC0000005` dans `DrawTextRun`,
+et le chemin n'avait jamais été exercé avant parce qu'il faut frapper une entité pour poser
+`DAT_005de0b4 = 0xff`.
+
+Les quatre voisins, relevés d'un coup :
+
+| adresse | octets | contenu |
+|---|---|---|
+| `0x00564a00` | `5f 25 30 32 64 2e 73 6e 64 00` | `"_%02d.snd"` |
+| `0x00564a0c` | `2f 00` | `"/"` — déjà `s_SlashLabel_00564a0c` |
+| `0x00564a10` | `0c 0f 00 00` | deux codes de contrôle — déjà `s_PageWaitCommand_00564a10` |
+| `0x00564a14` | `48 50 00 00` | **`"HP"`** ← celui qui manquait |
+| `0x00564a18` | `2d 00` | `"-"` |
+| `0x00564a1c` | `43 48 47 00` | `"CHG"` |
+| `0x00564a20` | `44 50 54 00` `4c 4f 43 00` `41 4e 47 00` | `"DPT"`, `"LOC"`, `"ANG"` |
+| `0x00564a2c` | `3e 00` | `">"` — déjà `s_CursorGlyph_00564a2c` |
+
+**Ce que ça change pour la méthode** : un littéral d'adresse dans la pseudo-C n'est jamais un
+pointeur utilisable. Il se relève dans le binaire et se pose en symbole, au même titre qu'un
+`&DAT_…`. Un balayage de tout le dépôt (`\((byte|int|uint|…)\*+\)\s*0x0*[45][0-9a-f]{5}`) n'en a
+trouvé qu'un seul, celui-ci ; le motif vaut la peine d'être relancé après toute transcription qui
+recopie des arguments de `FUN_0051c120` ou de ses voisines d'affichage de texte.

@@ -179,6 +179,17 @@ public static unsafe partial class Blaze
     /// (debut de page) puis <c>0x0f</c> (attente), lies tels quels a la fin du chargement.</summary>
     private static readonly byte* s_PageWaitCommand_00564a10 = AllocBytes([0x0c, 0x0f, 0x00, 0x00]);
 
+    /// <summary>Ghidra: <c>0x00564a14</c> — la chaine <c>"HP"</c>, posee entre le nom de la victime
+    /// et ses points de vie sur le bandeau que <c>DrawWorldMapFrame</c> montre a chaque coup porte.
+    ///
+    /// <para><b>Ghidra ne lui a pas donne de nom</b> : elle apparait dans la decompilation comme
+    /// l'entier nu <c>0x564a14</c>, quatrieme argument de <c>FUN_0051c120</c>, et la transcription
+    /// l'avait recopie tel quel en <c>(byte*)0x564a14</c>. C'est une adresse valide dans le
+    /// processus de 1998 et une page non mappee dans le notre : le premier coup porte tuait le jeu
+    /// sur un <c>0xC0000005</c>. Un litteral d'adresse n'est jamais un pointeur — il se releve dans
+    /// le binaire et se pose en symbole, comme ses deux voisins ci-dessus.</para></summary>
+    private static readonly byte* s_HpLabel_00564a14 = ToAnsiZ("HP");
+
     /// <summary>
     /// Ghidra: &amp;DAT_00566ad8 — la rangee d'icones fixes du cadre de la fiche d'objet, dix
     /// enregistrements de quatre octets termines par un dword nul, releves a 0x00566ad8 :
