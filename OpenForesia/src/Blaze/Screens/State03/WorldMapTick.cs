@@ -5044,6 +5044,10 @@ public static unsafe partial class Blaze
             // trois constantes pres ; meme embrasement, meme flamme.
             case 0x00477660: TickEarthMateria_00477660(record); return;
 
+            // MATERIA AIR, ecole 2 indice 5 — la troisieme de la fratrie, meme parente
+            // verifiee au desassembleur : trois constantes d'ecart, et rien d'autre.
+            case 0x004777A0: TickAirMateria_004777A0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -47916,6 +47920,102 @@ public static unsafe partial class Blaze
 
             // LA TROISIEME DIFFERENCE : l'effet 4, duree en +0x88 et intensite en +0xe6.
             ApplyStatusEffect_0053B1B0(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            *(uint*)e = 0;
+        }
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004777a0 @ 0x004777a0 — <b>Materia air</b> : le sous-type <c>0xa5</c>, creneau
+    /// 165 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>sixieme fiche de l'ecole
+    /// 2</b>. <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Troisieme copie du corps de <see cref="TickFireMateria_004774C0"/></b>, et la parente est
+    /// verifiee au desassembleur comme pour <see cref="TickEarthMateria_00477660"/> : hors adresses
+    /// de saut, le diff ne porte que sur <b>les trois memes constantes</b>, aux trois memes
+    /// endroits. Le son de la premiere image est <c>9</c> a la hauteur <c>0x100</c> — la plus grave
+    /// des trois relevees jusqu'ici (<c>0x400</c> pour feu, <c>0x190</c> pour terre) — et l'effet
+    /// pose a la derniere est <see cref="ApplyStatusEffect_0053B260"/>, l'effet 5.
+    /// </para>
+    /// <para>
+    /// <b>Aucune quatrieme difference n'apparait</b> : la crainte gardee en tete depuis terre — que
+    /// l'une des copies s'ecarte du patron — ne s'est pas realisee ici. Elle reste a verifier pour
+    /// eau, la derniere de la fratrie.
+    /// </para>
+    /// <para>
+    /// <b>L'effet 5 range en <c>+0x8a</c> / <c>+0xe8</c></b>, deux crans plus loin que l'effet 4 :
+    /// les quatre enchantements elementaires occupent quatre paires consecutives et se cumulent
+    /// donc tous les quatre.
+    /// </para>
+    /// </summary>
+    private static void TickAirMateria_004777A0(byte* record)
+    {
+        byte* e = record;
+        byte* target;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(short*)(e + 0x2e) = -64;
+
+            // Faute de voisin dans son camp, elle rend le lanceur : la Materia ne rate jamais.
+            target = FindTargetAround_00474BA0(e, 0);
+
+            *(byte**)(e + 0x78) = target;
+            *(byte**)(e + 0x70) = target;
+
+            // LE MEME embrasement que les deux precedentes — donc celui de Feu d'enfer.
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors00551BA0(), 0x4c, e[0x0b], -1);
+
+            int height = StatusBubbleHeight_00538BC0((uint*)target);
+
+            // La MOITIE de la stature : le rayon dans lequel les flammes seront semees.
+            *(short*)(e + 0x12) = (short)(height >> 1);
+
+            // (hauteur << 12) / 150 — multiplication magique 0x1B4E81B5 puis `sar 4`.
+            *(int*)(e + 0x28) = (height << 0xc) / 150;
+
+            *(ushort*)(e + 0x14) = 3;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+
+            // LA PREMIERE ET LA DEUXIEME DIFFERENCE : un autre son, et le plus grave des trois.
+            Aud.PlayPositionalSound(9, 0x100, 0x1200, (int*)(e + 0x1c));
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript005518A8(), (int*)(e + 0x1c));
+        }
+        else
+        {
+            target = *(byte**)(e + 0x78);
+        }
+
+        // UNE FLAMME PAR IMAGE, pendant vingt-quatre images — la meme 0x56 que Materia feu.
+        if (*(short*)(e + 0x10) < 0x18)
+        {
+            int angle = CrtRand();                              // Ghidra: FUN_00547140
+            int radius = CrtRand() % *(short*)(e + 0x12);
+
+            *(short*)(e + 0x32) = (short)angle;
+
+            *(int*)(e + 0x44) = (int)Winsys3d.GetSinTableEntry(angle) * radius;
+            *(int*)(e + 0x4c) = Winsys3d.GetCosTableEntry(angle) * radius;
+
+            *(int*)(e + 0x20) = *(int*)(target + 0x60);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, (int*)(e + 0x1c), Descriptors005519A0(), 0x56, e[0x0b], -1);
+        }
+
+        if (*(short*)(e + 0x10) >= 0x3c)
+        {
+            // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
+            *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+            // LA TROISIEME DIFFERENCE : l'effet 5, duree en +0x8a et intensite en +0xe8.
+            ApplyStatusEffect_0053B260(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
 
             *(uint*)e = 0;
         }

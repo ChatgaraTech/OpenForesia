@@ -5,6 +5,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **Matéria air, école 2 indice 5** : le sort `0x004777a0` (décompilé) — la troisième de la fratrie, et la parenté est de nouveau vérifiée au désassembleur : hors adresses de saut, trois constantes d'écart avec feu et rien d'autre. Son `9` à la hauteur `0x100` (la plus grave des trois), effet 5 (`+0x8a` / `+0xe8`)
+- doc : **les quatre enchantements élémentaires occupent quatre paires consécutives** — `+0x86`/`+0xe4`, `+0x88`/`+0xe6`, `+0x8a`/`+0xe8` pour feu, terre et air : ils se cumulent tous, aucun ne remplace l'autre
 - feat : **Matéria terre, école 2 indice 4** : le sort `0x00477660` (décompilé) — la deuxième de la fratrie. Aucun corps nouveau à écrire : elle réemploie l'embrasement `0x4c` et la flamme `0x56` de Matéria feu
 - doc : **la fratrie diffère par TROIS constantes, pas deux** — le désassemblage de feu et de terre, adresses de saut mises à part, ne diffère qu'en trois points : l'identifiant du son de la première image (`0x20` / `4`), **sa hauteur** (`0x400` / `0x190`), et l'effet posé à la dernière (3 / 4). Le compte annoncé hier était incomplet, il est corrigé dans l'en-tête de la fratrie
 - doc : **les effets 3 et 4 rangent leur durée et leur intensité à des emplacements voisins mais distincts** — `+0x86`/`+0xe4` pour feu, `+0x88`/`+0xe6` pour terre : les deux enchantements élémentaires se cumulent au lieu de se remplacer
