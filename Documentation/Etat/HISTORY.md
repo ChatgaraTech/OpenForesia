@@ -4,6 +4,14 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-01
+- feat : **Parole sainte, le quarante-sixième sort** : le sort `0x0044d370` (1 384 octets), son éclat de départ `0x0044d8e0` (208 octets) et l'éclat posé sur chaque victime `0x0044db30` (304 octets), tous trois **absents de `Blaze.c`** et sortis du désassembleur ; plus sa poussière `0x0044d9b0`, décompilée. Quatre corps, quatre créneaux gagnés
+- doc : **le premier sort de l'école 1 qui vise un cône, et non une cible** — les quinze précédents choisissent leur victime par `AcquireHolyTarget_00447CB0` ou par un balayage à la ronde ; celui-ci retient tout ce qui tient à la fois dans un rayon de `0x320` et dans une ouverture de `±0x320` autour de son cap, soit 45 degrés de chaque côté. L'écart nul est refusé : le test demande `> 0` d'un côté et `> 0xce0` de l'autre, et zéro rate les deux
+- doc : **et le seul corps transcrit qui vérifie la vue** — une candidate retenue n'est frappée que si le sort peut l'**atteindre** : il déplace sa propre position en quatre pas d'un quart de l'écart, la repose par `FinalizeEntityPlacement2` à chaque pas, et abandonne dès que le contact `0x8800` apparaît en `+0x90`. Un mur entre les deux protège l'ennemi
+- doc : **le prix en est une danse de sauvegarde** — puisqu'il se sert de lui-même comme sonde, neuf champs partent sur la pile en tête d'itération et la position dans le triplet `+0x44`/`+0x48`/`+0x4c`, tout revient en queue. `+0x48` est écrit à chaque tour et **jamais relu** : la hauteur revient de la pile. Et la restitution de `+0x90` passe par `and eax,0FFFFh` — le mot haut est effacé, 32 fois par image
+- doc : **son critère d'espèce est `0x1000080`** là où Pardon et Zombie demandent `0x3000000` — une autre famille de bestiaire, la première relevée dans l'école
+- doc : **la poussière `0x94` se compte en teinte négative** — les trois canaux sont tirés dans `[-76, -37]` et remontent de `-30` par image ; l'entité rend la main quand `+0x38`, **lu comme un octet signé**, atteint exactement zéro. Sa durée de vie dépend donc de son propre tirage
+
 ## 2026-08-31
 - feat : **Zombie, le quarante-cinquième sort** : un seul corps, `0x0044f930` (477 octets, absent de `Blaze.c`). **Aucun enfant neuf** — son trait est le `0x9e` de Pardon, déjà écrit
 - doc : **c'est Pardon sur tout le monde** — même balayage des 32 entités de scène, même critère d'espèce (`statistiques[0x14] & 0x3000000`), même portée de `0x5dc` depuis le lanceur, même rattachement de la victime au père du sort, même trait. La seule différence : Pardon mesure une **seconde** distance pour ne garder que la plus proche, Zombie n'en mesure qu'une et frappe **toutes** les candidates

@@ -4964,6 +4964,14 @@ public static unsafe partial class Blaze
             // trait 0x9e, mais toutes les candidates au lieu de la plus proche. Porte aussi LB-019.
             case 0x0044F930: TickZombie_0044F930(record); return;
 
+            // PAROLE SAINTE, ecole 1 indice 16 — le premier sort de l'ecole qui vise un CONE et
+            // non une cible, et le seul qui verifie la vue : il marche jusqu'a chaque candidate en
+            // quatre pas et renonce des que le decor le touche.
+            case 0x0044D370: TickHolyWord_0044D370(record); return;
+            case 0x0044D8E0: TickHolyWordFlare_0044D8E0(record); return;
+            case 0x0044DB30: TickHolyWordShard_0044DB30(record); return;
+            case 0x0044D9B0: TickHolyWordMote_0044D9B0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -43354,6 +43362,506 @@ public static unsafe partial class Blaze
 
             // Ghidra: LAB_0044faf8 — inconditionnel.
             EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    // =====================================================================
+    // PAROLE SAINTE — le quarante-sixieme sort, ecole 1 indice 16, sous-type 0x2e
+    //
+    //   0x0044D370   LE SORT. Sous-type 0x2e de 0x00551c30, 1 384 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044D370.asm.
+    //   0x0044D8E0   son eclat de depart, sous-type 0x9a de 0x00551f30. 208 octets, ABSENT.
+    //   0x0044DB30   l'eclat pose sur chaque victime, sous-type 0x9b de 0x00551f30. 304 octets,
+    //                ABSENT de Blaze.c lui aussi.
+    //   0x0044D9B0   la poussiere, sous-type 0x94 de 0x00552230 — celle-la EST dans Blaze.c.
+    //
+    // C'EST LE PREMIER SORT DE L'ECOLE 1 QUI VISE UN CONE, ET NON UNE CIBLE. Les quinze
+    // precedents choisissent leur victime par AcquireHolyTarget_00447CB0 ou par un balayage a la
+    // ronde ; celui-ci balaie les 0x20 entites de scene et ne retient que ce qui tient a la fois
+    // dans un rayon de 0x320 et dans une ouverture de +-0x320 autour de son cap — un huitieme de
+    // tour de chaque cote, soit 45 degres.
+    //
+    // ET IL VERIFIE LA VUE. Une cible dans le cone n'est frappee que si le sort peut l'ATTEINDRE :
+    // il deplace sa PROPRE position en quatre pas d'un quart de l'ecart, la repose par
+    // FinalizeEntityPlacement2 a chaque pas, et abandonne des que le contact 0x8800 apparait en
+    // +0x90. Un mur entre les deux protege donc l'ennemi. Aucun autre corps de l'ecole 1 transcrit
+    // ne fait cela — c'est la seule occurrence d'un trait qui se cogne au decor.
+    //
+    // LE PRIX EN EST UNE DANSE DE SAUVEGARDE. Puisque le sort se sert de lui-meme comme sonde, il
+    // doit se rendre intact a chaque tour de boucle : neuf champs partent sur la pile en tete
+    // d'iteration (+0x20, +0x60, +0x64, +0x7c, +0x80..+0x8c, +0x90) et la position dans le triplet
+    // +0x44/+0x48/+0x4c, tout revient en queue. La restitution de +0x90 passe par `and eax,0FFFFh`
+    // — LE MOT HAUT EST DONC EFFACE, 0x20 fois par image.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044d370 @ 0x0044d370 — <b>Parole sainte</b> : le sous-type <c>0x2e</c>, creneau
+    /// 46 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>dix-septieme fiche de l'ecole
+    /// 1</b>. 1 384 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Un cone, pas une cible.</b> Le sort balaie les <c>0x20</c> entites de <c>0x005ecaa0</c>
+    /// et retient celles qui tiennent a la fois dans un rayon de <c>0x320</c> et dans une ouverture
+    /// de <c>+-0x320</c> autour de son cap <c>+0x32</c> — l'ecart est mesure par <c>ratan2</c> plus
+    /// un demi-tour, moins le cap, puis ramene dans <c>[0, 0x1000)</c>. Un ecart <b>nul</b> est
+    /// refuse : le test demande <c>&gt; 0</c> d'un cote et <c>&gt; 0xce0</c> de l'autre, et zero
+    /// rate les deux.
+    /// </para>
+    /// <para>
+    /// <b>Et la vue est verifiee.</b> Une candidate retenue n'est frappee que si le sort peut
+    /// l'atteindre : il avance <b>sa propre position</b> de quatre pas d'un quart de l'ecart, repose
+    /// chacun par <see cref="FinalizeEntityPlacement2"/>, et renonce des que le contact
+    /// <c>0x8800</c> apparait en <c>+0x90</c>.
+    /// </para>
+    /// <para>
+    /// <b>Le critere d'espece est <c>0x1000080</c></b>, la ou Pardon et Zombie demandent
+    /// <c>0x3000000</c> — une autre famille de bestiaire.
+    /// </para>
+    /// <para>
+    /// <b>La chronologie tient en soixante images</b> : bruit aux images 0, 10, 11 et 12 ; l'eclat
+    /// <c>0x9a</c> a la premiere ; le voile plein cadre vert-blanc <c>0x01b4c896</c> a la dixieme,
+    /// qui fait passer l'etat de 1 a 2 ; le <b>balayage a la douzieme</b>, une seule image ; le
+    /// voile s'eteint dans la foulee (etat 3 puis 4) ; le lanceur, tenu par le bit <c>0x80</c>
+    /// depuis la premiere image, est relache a la vingtieme ; extinction a la soixantieme.
+    /// </para>
+    /// <para>
+    /// Sur chaque victime : le coup par <see cref="ResolveSpellHit_0053A2B0"/>, une poussee de
+    /// <c>sin/cos * 10</c> sur <c>+0x50</c>/<c>+0x58</c>, le clignotement <c>+0x96 = 0x10</c>, un
+    /// eclat <c>0x9b</c> et <b>quatre</b> poussieres <c>0x94</c>. Le sort se prete son propre
+    /// <c>+0x78</c> et son propre cap le temps de ces appels, et les rend ensuite.
+    /// </para>
+    /// </summary>
+    private static void TickHolyWord_0044D370(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_0044d399 .. LAB_0044d3fc — quatre coups, a l'image pres.
+        if (*(short*)(e + 0x16) == 0x00) Aud.PlaySoundEffect(0x30, 0x800, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x0a) Aud.PlaySoundEffect(0x0c, 0x800, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x0b) Aud.PlaySoundEffect(0x30, 0x0ca6, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x0c) Aud.PlaySoundEffect(0x1c, 0x800, 0x1000, 0x1000);
+
+        // Ghidra: LAB_0044d420 — l'amorce, une seule fois.
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+            e[0x38] = 0xfa;
+            e[0x39] = 0xfa;
+            e[0x3a] = 0xfa;
+
+            SpawnCastEntity_0047AAE0(e, 0x9a, 0, -1);
+
+            // Le demi-tour du cap, replie dans le tour. Le binaire relit le champ apres l'ajout.
+            *(ushort*)(e + 0x32) += 0x800;
+            if (*(short*)(e + 0x32) >= 0x1000) *(short*)(e + 0x32) -= 0x1000;
+
+            // LE LANCEUR EST TENU : le bit 0x80 le fige jusqu'a la vingtieme image.
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+        }
+
+        // Ghidra: LAB_0044d46f — le decor du sort, repose a chaque image de l'etat 1.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(ushort*)Mem.Arena(0x005e9160) = 0xaa;
+            *(ushort*)Mem.Arena(0x005e9164) = 0xaa;
+            *(ushort*)Mem.Arena(0x005e9162) = 0xc8;
+            *(ushort*)Mem.Arena(0x005e9166) = 2;
+
+            if (*(short*)(e + 0x16) == 0x0a)
+            {
+                *(short*)(e + 0x10) = 2;
+
+                // Le voile plein cadre s'allume en vert-blanc — les trois canaux et l'octet
+                // d'activation tiennent dans le meme mot.
+                Mem.s_Unknown_005de024 = 0x01b4c896;
+
+                *(ushort*)Mem.Arena(0x005e9166) = 0;
+            }
+        }
+
+        // Ghidra: LAB_0044d4d1 — tout le balayage n'a lieu que dans l'etat 2.
+        if (*(short*)(e + 0x10) == 2)
+        {
+            if (*(short*)(e + 0x16) == 0x0c) *(short*)(e + 0x10) = 3;
+
+            byte* candidate = Mem.Entity(0x005ecaa0);
+
+            for (int slot = 0; slot < 0x20; slot++, candidate += 0x9c)
+            {
+                // Ghidra: LAB_0044d4f7 — LA SAUVEGARDE. Le sort va se servir de lui-meme comme
+                // sonde ; neuf champs partent sur la pile et la position dans +0x44/+0x48/+0x4c.
+                int saved60 = *(int*)(e + 0x60);
+                int saved64 = *(int*)(e + 0x64);
+                int saved7c = *(int*)(e + 0x7c);
+                int saved80 = *(int*)(e + 0x80);
+                int saved84 = *(int*)(e + 0x84);
+                int saved88 = *(int*)(e + 0x88);
+                int saved8c = *(int*)(e + 0x8c);
+                ushort saved90 = *(ushort*)(e + 0x90);
+                int savedY = *(int*)(e + 0x20);
+
+                *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+                *(int*)(e + 0x48) = *(int*)(e + 0x20);
+                *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+
+                // L'ecart au candidat, garde deux fois : brut pour la marche, en unites entieres
+                // pour l'angle et la portee.
+                int rawX = *(int*)(candidate + 0x1c) - *(int*)(e + 0x1c);
+                int rawY = *(int*)(candidate + 0x20) - *(int*)(e + 0x20);
+                int rawZ = *(int*)(candidate + 0x24) - *(int*)(e + 0x24);
+
+                int dx = rawX >> 0xc;
+                int dy = rawY >> 0xc;
+                int dz = rawZ >> 0xc;
+
+                // Ghidra: FUN_00545a22 — winsys3d Ordinal_457, ratan2. Le demi-tour compense celui
+                // que l'amorce a ajoute au cap.
+                int bearing = Winsys3d.Ordinal_457(dx, dz) + 0x800 - *(short*)(e + 0x32);
+
+                // Le repli dans [0, 0x1000), ecrit comme le binaire : un seul ajout d'un multiple
+                // de tour par le bas, une soustraction repetee par le haut.
+                if (bearing < 0) bearing += (int)((uint)(0xfff - bearing) >> 0xc << 0xc);
+
+                if (bearing >= 0x1000)
+                {
+                    uint turns = (uint)bearing >> 0xc;
+                    do { bearing -= 0x1000; } while (--turns != 0);
+                }
+
+                // Ghidra: FUN_00545a10 — winsys3d Ordinal_442, le SquareRoot0 de libgte. La portee
+                // se mesure en trois dimensions, l'angle en deux.
+                int range = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+
+                // Ghidra: 0x0044d5ed — LE CONE, et une seule image pour le franchir. L'ecart nul
+                // est refuse : le premier test demande strictement positif, et zero retombe alors
+                // dans la fenetre haute, qu'il rate aussi.
+                bool aimed = (bearing > 0 && bearing < 0x320)
+                             || (bearing < 0x1000 && bearing > 0x0ce0);
+
+                if (*(short*)(e + 0x16) == 0x0c && range < 0x320 && aimed)
+                {
+                    // Ghidra: LAB_0044d628 — LA MARCHE. Quatre pas d'un quart de l'ecart, chacun
+                    // repose et teste le contact ; le compteur saute a 0x63 des qu'il porte, ce qui
+                    // sort de la boucle a l'increment suivant.
+                    int stepX = rawX >> 2;
+                    int stepY = rawY >> 2;
+                    int stepZ = rawZ >> 2;
+
+                    bool blocked = false;
+                    int step = 0;
+
+                    do
+                    {
+                        *(int*)(e + 0x1c) += stepX;
+                        *(int*)(e + 0x20) += stepY;
+                        *(int*)(e + 0x24) += stepZ;
+
+                        FinalizeEntityPlacement2((uint*)e);   // Ghidra: FUN_00533940
+
+                        if ((*(uint*)(e + 0x90) & 0x8800) != 0)
+                        {
+                            blocked = true;
+                            step = 0x63;
+                        }
+
+                        step++;
+                    }
+                    while ((short)step <= 3);
+
+                    if (!blocked)
+                    {
+                        ResolveEntityBlocks(candidate, out byte* stats, out _, out _);
+
+                        uint flags = *(uint*)candidate;
+
+                        // LE CRITERE D'ESPECE : 0x1000080, et non le 0x3000000 de Pardon.
+                        if ((flags & 0x80000000) != 0
+                            && (flags & 0x40002000) == 0
+                            && (*(uint*)(stats + 0x14) & 0x1000080) != 0)
+                        {
+                            // Ghidra: 0x0044d6f0 — LE COUP. Le sort se pose sur la victime.
+                            *(int*)(e + 0x1c) = *(int*)(candidate + 0x1c);
+                            *(int*)(e + 0x20) = *(int*)(candidate + 0x20);
+                            *(int*)(e + 0x24) = *(int*)(candidate + 0x24);
+
+                            *(ushort*)(e + 0x14) = 0x32;
+                            *(ushort*)(e + 0x9a) = 2;
+
+                            // Le cap et le pointeur de cible sont PRETES le temps des appels : les
+                            // deux enfants et le depot les lisent, et les deux sont rendus ensuite.
+                            short lentYaw = *(short*)(e + 0x32);
+                            byte* lentTarget = *(byte**)(e + 0x78);
+
+                            *(short*)(e + 0x32) = (short)Winsys3d.Ordinal_457(dx, dz);
+                            *(byte**)(e + 0x78) = candidate;
+
+                            SpawnCastEntity_0047AAE0(e, 0x9b, 0, -1);
+
+                            // Quatre poussieres, ecrites quatre fois de suite dans le binaire.
+                            for (int mote = 0; mote < 4; mote++)
+                            {
+                                SpawnStatusEffectEntity_0047AC40(
+                                    e, (int*)(e + 0x1c), null, 0x94, 0, -1);
+                            }
+
+                            ResolveSpellHit_0053A2B0(
+                                *(uint**)(e + 0x74), *(uint**)(e + 0x78), e[7], e[6], 0);
+
+                            // LA POUSSEE, dans l'axe du coup et dix fois la table.
+                            int shove = *(short*)(e + 0x32);
+                            *(int*)(candidate + 0x50) +=
+                                (int)Winsys3d.GetSinTableEntry(shove) * 10;
+                            *(int*)(candidate + 0x58) +=
+                                Winsys3d.GetCosTableEntry(shove) * 10;
+
+                            *(ushort*)(candidate + 0x96) = 0x10;   // le clignotement de degat
+                            *(uint*)candidate |= 0x40;
+
+                            *(short*)(e + 0x32) = lentYaw;
+                            *(byte**)(e + 0x78) = lentTarget;
+                        }
+                    }
+                }
+
+                // Ghidra: LAB_0044d80a — LA RESTITUTION, sur les deux chemins. La hauteur revient
+                // de la pile, l'abscisse et la cote du triplet +0x44/+0x4c ; +0x48 est ecrit en
+                // tete d'iteration et JAMAIS RELU.
+                *(int*)(e + 0x7c) = saved7c;
+                *(int*)(e + 0x20) = savedY;
+
+                // `and eax,0FFFFh` avant l'ecriture : le mot haut de +0x90 est efface.
+                *(uint*)(e + 0x90) = saved90;
+
+                *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+                *(int*)(e + 0x60) = saved60;
+                *(int*)(e + 0x64) = saved64;
+                *(int*)(e + 0x84) = saved84;
+                *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+                *(int*)(e + 0x80) = saved80;
+                *(int*)(e + 0x88) = saved88;
+                *(int*)(e + 0x8c) = saved8c;
+            }
+        }
+
+        // Ghidra: LAB_0044d87e — l'etat 3 ne dure pas une image : il eteint le voile et passe a 4.
+        if (*(short*)(e + 0x10) == 3)
+        {
+            Mem.s_Unknown_005de024 = 0x01000000;
+            *(short*)(e + 0x10) = 4;
+        }
+
+        // Le lanceur est relache a la vingtieme image.
+        if (*(short*)(e + 0x16) == 0x14) *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) >= 0x3c) EndSpellAndResetDecor_00448020(e);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044d8e0 @ 0x0044d8e0 — <b>l'eclat de depart de Parole sainte</b> : le sous-type
+    /// <c>0x9a</c>, creneau 154 de <see cref="s_StaticEntityHandlers_00551f30"/>. 208 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0044D8E0.asm</c>.
+    ///
+    /// <para>
+    /// Il nait a la premiere image du sort, <b>avant</b> que celui-ci ne retourne son cap : il se
+    /// pousse donc de <c>50</c> fois <c>sin</c>/<c>cos</c> devant le lanceur et de <c>0x46000</c>
+    /// au-dessus, part a l'echelle pleine <c>0x1000</c> sur les trois axes et noir sur les trois
+    /// canaux.
+    /// </para>
+    /// <para>
+    /// <b>Onze images, deux moities.</b> Jusqu'a la dixieme il grossit de <c>100</c> par axe et
+    /// s'eclaircit de <c>+20</c> ; ensuite il ne fait plus que s'assombrir de <c>-10</c>, et rend
+    /// la main des que son canal rouge <c>+0x38</c> est retombe a zero.
+    /// </para>
+    /// </summary>
+    private static void TickHolyWordFlare_0044D8E0(byte* record)
+    {
+        byte* e = record;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x2c;
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            // Ghidra: call 00545A1C / 00545A16 — les tables de sinus et de cosinus de winsys3d.
+            int heading = *(short*)(e + 0x32);
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 50;
+            *(short*)(e + 0x16) = 0;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 50;
+            *(int*)(e + 0x20) += 0x46000;
+
+            *(short*)(e + 0x28) = 0x1000;
+            *(short*)(e + 0x2a) = 0x1000;
+            *(short*)(e + 0x2c) = 0x1000;
+        }
+
+        // Ghidra: LAB_0044d95c
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) > 0x0a)
+        {
+            BrightenEntityTint_00404DE0(e, -10, -10, -10);
+            if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+            return;
+        }
+
+        // Ghidra: LAB_0044d98d
+        *(short*)(e + 0x28) += 100;
+        *(short*)(e + 0x2a) += 100;
+        *(short*)(e + 0x2c) += 100;
+
+        BrightenEntityTint_00404DE0(e, 0x14, 0x14, 0x14);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044db30 @ 0x0044db30 — <b>l'eclat pose sur la victime</b> de Parole sainte : le
+    /// sous-type <c>0x9b</c>, creneau 155 de <see cref="s_StaticEntityHandlers_00551f30"/>. 304
+    /// octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0044DB30.asm</c>.
+    ///
+    /// <para>
+    /// <b>Il ne quitte jamais sa cible.</b> Sa position est recopiee a chaque image de son
+    /// <c>+0x78</c> — que le sort avait prete a la candidate juste avant de l'engendrer — avec
+    /// <c>0x32000</c> de hauteur en plus. Un <c>+0x78</c> nul le rabat sur
+    /// <see cref="Resources.s_EntityList_005de558"/>, l'entite nulle du moteur.
+    /// </para>
+    /// <para>
+    /// <b>Tout le reste est tire au sort</b> : les trois rotations sur un tour complet, et deux
+    /// vitesses de rotation dans <c>[-50, 49]</c> qui poussent <c>+0x30</c> et <c>+0x32</c> dans un
+    /// sens et <c>+0x34</c> dans l'autre. Cinq images seulement : quatre a <c>+40</c> de teinte,
+    /// puis <c>-30</c> jusqu'a extinction.
+    /// </para>
+    /// </summary>
+    private static void TickHolyWordShard_0044DB30(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + 0x32000;
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x1d;
+            e[0x0a] = 2;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x28) = 0x0fa0;
+            *(short*)(e + 0x2a) = 0x0fa0;
+            *(short*)(e + 0x2c) = 0x0fa0;
+
+            *(short*)(e + 0x30) = (short)(CrtRand() % 0x1000);
+            *(short*)(e + 0x32) = (short)(CrtRand() % 0x1000);
+            *(short*)(e + 0x34) = (short)(CrtRand() % 0x1000);
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 100 - 0x32);
+            *(short*)(e + 0x2e) = -60;
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x14) = (short)(CrtRand() % 100 - 0x32);
+        }
+
+        // Ghidra: LAB_0044dc09
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short spinA = *(short*)(e + 0x12);
+        short spinB = *(short*)(e + 0x14);
+
+        *(short*)(e + 0x30) += spinA;
+        *(short*)(e + 0x32) += spinB;
+        *(short*)(e + 0x34) -= spinA;
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) < 5)
+        {
+            BrightenEntityTint_00404DE0(e, 0x28, 0x28, 0x28);
+            return;
+        }
+
+        // Ghidra: LAB_0044dc41
+        BrightenEntityTint_00404DE0(e, -30, -30, -30);
+        if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044d9b0 @ 0x0044d9b0 — <b>la poussiere</b> de Parole sainte : le sous-type
+    /// <c>0x94</c> de <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c>
+    /// ou depose <see cref="SpawnStatusEffectEntity_0047AC40"/>. <b>Presente dans <c>Blaze.c</c></b>,
+    /// contrairement aux trois autres corps de ce sort.
+    ///
+    /// <para>
+    /// Le sort en engendre <b>quatre</b> a la position de chaque victime. Chacune se donne l'atlas
+    /// <see cref="Descriptors00551528"/>, se disperse d'un ecart de <c>[-50, 49]</c> unites sur les
+    /// trois axes, prend un cap a <c>+-150</c> de celui du sort et une vitesse de <c>30</c> a
+    /// <c>39</c>, et part en teinte <b>negative</b> — les trois canaux tires dans <c>[-76, -37]</c>.
+    /// </para>
+    /// <para>
+    /// <b>C'est cette teinte negative qui la tue.</b> Elle remonte de <c>-30</c> par image, donc
+    /// vers zero, et l'entite rend la main des que <c>+0x38</c>, <b>lu comme un octet signe</b>,
+    /// atteint exactement zero. Sa duree de vie depend donc de son propre tirage de depart.
+    /// </para>
+    /// </summary>
+    private static void TickHolyWordMote_0044D9B0(byte* record)
+    {
+        byte* e = record;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors00551528();   // Ghidra: &DAT_00551528
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x32) += (short)(CrtRand() % 300 - 0x96);
+            *(short*)(e + 0x14) = (short)(CrtRand() % 0x1e - 0x0f);
+            *(short*)(e + 0x12) = (short)(CrtRand() % 10 + 0x1e);
+
+            short size = (short)(CrtRand() % 0x400 + 0x1000);
+            *(short*)(e + 0x28) = size;
+            *(short*)(e + 0x2a) = size;
+
+            // La teinte part NEGATIVE : c'est elle qui compte les images.
+            e[0x38] = (byte)(CrtRand() % 0x28 - 0x4c);
+            e[0x39] = (byte)(CrtRand() % 0x28 - 0x4c);
+            e[0x3a] = (byte)(CrtRand() % 0x28 - 0x4c);
+
+            *(int*)(e + 0x1c) += (CrtRand() % 100 - 0x32) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 100 - 0x32) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 100 - 0x32) * 0x1000;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            // Ghidra: Ordinal_451 / Ordinal_450 — les tables de sinus et de cosinus.
+            int heading = *(short*)(e + 0x32);
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * *(short*)(e + 0x12);
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * *(short*)(e + 0x12);
+            *(int*)(e + 0x20) += *(short*)(e + 0x14) * 0x1000;
+
+            BrightenEntityTint_00404DE0(e, -30, -30, -30);
+
+            if ((sbyte)e[0x38] == 0) *(uint*)e &= 0x7fffffff;
         }
     }
 
