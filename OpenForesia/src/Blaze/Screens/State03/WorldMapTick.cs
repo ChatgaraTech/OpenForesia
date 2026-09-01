@@ -4978,6 +4978,12 @@ public static unsafe partial class Blaze
             case 0x0044B950: TickDeliveranceHalo_0044B950(record); return;
             case 0x0044BA00: TickDeliverancePetal_0044BA00(record); return;
 
+            // MICRO, ecole 1 indice 18 — le jumeau exact de Delivrance : meme cout, meme palier,
+            // meme portee, meme forme ; il leve l'etat 10 la ou l'autre leve le 9.
+            case 0x0044BAF0: TickMicro_0044BAF0(record); return;
+            case 0x0044BCC0: TickMicroMote_0044BCC0(record); return;
+            case 0x0044BE40: TickMicroFlash_0044BE40(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -44131,6 +44137,319 @@ public static unsafe partial class Blaze
 
             BrightenEntityTint_00404DE0(e, -50, -50, -50);
         }
+    }
+
+    // =====================================================================
+    // MICRO — le quarante-huitieme sort, ecole 1 indice 18, sous-type 0x30
+    //
+    //   0x0044BAF0   LE SORT. Sous-type 0x30 de 0x00551c30, 391 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044BAF0.asm.
+    //   0x0044BC80   SON ENVELOPPE D'EFFET. Cinquante-huit octets, decompilee dans Blaze.c.
+    //   0x0044BCC0   sa bille en orbite, sous-type 0x90 de 0x00552230. Decompilee dans Blaze.c.
+    //   0x0044BE40   son eclair, sous-type 0x92 de 0x00551f30. 177 octets, ABSENT de Blaze.c.
+    //
+    // MICRO ET DELIVRANCE SONT DEUX JUMEAUX EXACTS, ET LE CD LE DIT AVANT LE BINAIRE. Meme cout
+    // (40 PM), meme palier (63), meme portee (36), meme longueur de combinaison (onze coups), poses
+    // cote a cote dans la table de sorts ET dans le binaire. Le corps confirme : meme forme, meme
+    // enveloppe a garde-fou, meme pret de la paire famille/indice au lanceur, et l'effet a la
+    // derniere image. La seule difference est CE QU'ILS LEVENT — Delivrance l'etat 9 (bit 0x10,
+    // +0x92), Micro l'etat 10 (bit 0x20, +0x94), les deux effets voisins de la table d'etats.
+    // C'est le second couple de ce genre releve dans l'ecole, apres Lapeche et Priere.
+    //
+    // MAIS SA MISE EN SCENE, ELLE, N'A PAS DE JUMELLE. Micro est la SEULE fiche de l'ecole a
+    // reprendre sa cible A CHAQUE IMAGE — les autres appellent AcquireHolyTarget une fois, dans le
+    // bloc de naissance ; Micro l'appelle sans garde, avant meme de savoir s'il vient de naitre. Et
+    // c'est aussi la seule a mettre EndSpellOnTerrain sous condition, exactement a l'inverse.
+    //
+    // ET IL SE TELEPORTE A L'ORIGINE POUR ENGENDRER SON ECLAIR. Aux images 0 et 4 il pose
+    // +0x1c = +0x20 = +0x24 = 0xdac avant d'appeler SpawnCastEntity, et ne les repose pas : c'est
+    // l'image suivante qui les reprend du porteur. Sans consequence visible sur l'eclair, qui
+    // recalcule sa propre position depuis +0x78 des sa premiere image ; sans consequence non plus
+    // sur la visee, FindTargetAround_00474BA0 balayant autour du LANCEUR et non autour du sort.
+    // Transcrit tel quel.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044bc80 @ 0x0044bc80 — <b>lever l'effet d'etat 10 si la cible l'accepte</b>.
+    /// Cinquante-huit octets, decompilee dans <c>Blaze.c</c> : le garde-fou
+    /// <see cref="IsEffectPairBlocked_004364B0"/>, puis <see cref="ClearStatusEffect_0053C930"/>
+    /// s'il a laisse passer.
+    ///
+    /// <para>
+    /// <b>Instruction pour instruction la meme fonction que
+    /// <see cref="ClearStatusEffectIfEligible_0044B910"/></b> : les deux corps de 58 octets ne
+    /// different que par les deplacements de leurs deux <c>call</c>, et le premier des deux resout
+    /// vers le meme <c>0x004364b0</c> — seul l'effet appele change. Le compilateur a emis deux fois
+    /// le meme corps pour les deux jumeaux. Meme inversion du sens rendu, et son seul appelant jette
+    /// le resultat.
+    /// </para>
+    /// </summary>
+    private static bool ClearStatusEffectIfEligible_0044BC80(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053C930(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044baf0 @ 0x0044baf0 — <b>Micro</b> : le sous-type <c>0x30</c>, creneau 48 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>dix-neuvieme fiche de l'ecole 1</b>.
+    /// 391 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le jumeau de <see cref="TickDeliverance_0044B7B0"/></b> : meme forme, meme enveloppe a
+    /// garde-fou, meme pret de la paire famille/indice au lanceur, meme effet a la derniere image —
+    /// la vingt-huitieme ici, la trentieme la-bas. Il leve <b>l'effet d'etat 10</b> (le bit
+    /// <c>0x20</c> de <c>+0x40</c>, duree en <c>+0x94</c>), celui que
+    /// <see cref="ApplyStatusEffect_0053B660"/> pose, quand Delivrance leve le 9.
+    /// </para>
+    /// <para>
+    /// <b>Deux singularites dans l'ecole, et elles vont par paire.</b> Micro est la seule fiche a
+    /// appeler <see cref="AcquireHolyTarget_00447CB0"/> <b>a chaque image</b> — il reprend donc sa
+    /// cible en continu, la ou les autres la fixent en naissant — et la seule a mettre
+    /// <see cref="EndSpellOnTerrain_00448040"/> <b>sous condition</b>, ne l'appelant qu'a la
+    /// premiere image quand les autres l'appellent toujours. Les deux choix sont exactement
+    /// inverses de la norme de l'ecole.
+    /// </para>
+    /// <para>
+    /// <b>La mise en scene</b> : quatre bruits aux images 0 a 3 ; un eclair <c>0x92</c> aux images 0
+    /// et 4 ; et <b>deux billes <c>0x90</c> toutes les trois images</b>, la seconde a un demi-tour
+    /// de la premiere — l'ecart passe par <c>+0x9a</c>, que la bille relit en naissant comme angle
+    /// de depart. Le champ reste a <c>0x800</c> apres la salve ; rien ne le repose.
+    /// </para>
+    /// </summary>
+    private static void TickMicro_0044BAF0(byte* record)
+    {
+        byte* e = record;
+
+        // SOUS CONDITION — la seule fiche de l'ecole a le faire.
+        if (*(short*)(e + 0x10) == 0) EndSpellOnTerrain_00448040(e);
+
+        // Ghidra: LAB_0044bb0a — SANS GARDE : la cible est reprise a chaque image.
+        AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_0044bb21 — le sort colle a sa cible, sans decalage vertical.
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x14) = 0;
+        }
+
+        // Ghidra: LAB_0044bb49 — DEUX BILLES TOUTES LES TROIS IMAGES, un demi-tour d'ecart. L'angle
+        // de depart voyage par +0x9a, que la bille relit en naissant.
+        if (*(short*)(e + 0x14) >= 3)
+        {
+            *(short*)(e + 0x14) = 0;
+
+            *(ushort*)(e + 0x9a) = 0;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x90, 0, -1);
+
+            *(ushort*)(e + 0x9a) = 0x800;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x90, 0, -1);
+        }
+
+        // Ghidra: LAB_0044bb8a — L'ECLAIR, aux images 0 et 4. Le sort se pose a l'origine juste
+        // avant d'engendrer, et ne se repose pas : c'est l'image suivante qui le reprend du
+        // porteur. L'eclair n'en herite pas — il recalcule sa position depuis +0x78.
+        if (*(short*)(e + 0x16) == 0 || *(short*)(e + 0x16) == 4)
+        {
+            *(int*)(e + 0x1c) = 0x0dac;
+            *(int*)(e + 0x20) = 0x0dac;
+            *(int*)(e + 0x24) = 0x0dac;
+
+            SpawnCastEntity_0047AAE0(e, 0x92, 0, -1);
+        }
+
+        // Ghidra: LAB_0044bbb7 .. LAB_0044bc16 — quatre bruits sur les quatre premieres images.
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x2f, 0x0ca6, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x2f, 0x0d50, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x31, 0x0194, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 3) Aud.PlaySoundEffect(0x16, 0x00ca, 0x1000, 0x1000);
+
+        // Ghidra: LAB_0044bc36
+        *(short*)(e + 0x14) += 1;
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) == 0x1c)
+        {
+            // LE SEUL EFFET DU SORT, comme chez Delivrance : la paire famille/indice est pretee au
+            // lanceur, c'est elle que le depot relit pour retrouver la fiche.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ClearStatusEffectIfEligible_0044BC80(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044bcc0 @ 0x0044bcc0 — <b>la bille en orbite de Micro</b> : le sous-type
+    /// <c>0x90</c> de <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c>
+    /// ou depose <see cref="SpawnStatusEffectEntity_0047AC40"/>. <b>Decompilee dans
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle tourne, monte et grossit, tout a la fois</b>, sur trois compteurs qui avancent d'un
+    /// pas fixe : l'angle <c>+0x12</c> de <c>0xa0</c>, le rayon <c>+0x14</c> de <c>5</c>, et le
+    /// compteur d'altitude <c>+0x16</c> de <c>5</c> aussi — la hauteur valant <c>+0x16 * 0x800</c>.
+    /// L'angle de depart vient de <c>+0x9a</c>, que le sort a pose avant de l'engendrer : c'est ce
+    /// qui met les deux billes d'une salve a un demi-tour l'une de l'autre.
+    /// </para>
+    /// <para>
+    /// <b>Elle orbite autour de deux centres a la fois.</b> La position est d'abord calculee autour
+    /// de l'<b>instantane</b> pris a la naissance (<c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>), puis
+    /// ramenee d'un quart vers la meme orbite prise autour du <b>porteur vivant</b>
+    /// (<c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>, recopies en tete de chaque image). L'instantane
+    /// n'est jamais reecrit : la bille reste donc a un quart du chemin, elle ne rattrape pas.
+    /// </para>
+    /// <para>
+    /// <b>Son echelle change de signe a mi-course</b> : <c>+0x96</c> par image tant que
+    /// <c>+0x16 &lt;= 0x50</c>, puis <c>-0xbe</c>. Elle rend la main quand <c>+0x16</c> depasse
+    /// <c>0x77</c>, soit une vingtaine d'images.
+    /// </para>
+    /// </summary>
+    private static void TickMicroMote_0044BCC0(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // Le porteur vivant, relu a chaque image.
+        *(int*)(e + 0x44) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x48) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x4c) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x40] = 0;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);      // l'instantane de naissance
+            e[0x0b] = 0;
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+            *(ushort*)(e + 0x12) = *(ushort*)(e + 0x9a);   // l'angle de depart, pose par le sort
+            *(short*)(e + 0x14) = 0x14;
+            *(short*)(e + 0x16) = 0x14;
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x30;   // Ghidra: &DAT_00551558
+            e[0x0a] = 6;
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(short*)(e + 0x28) = 700;
+            *(short*)(e + 0x2a) = 700;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        // Le binaire consulte les deux tables DEUX fois chacune avec le meme argument ; une lecture
+        // suffit ici, ce sont des tables.
+        int angle = *(short*)(e + 0x12);
+        int radius = *(short*)(e + 0x14);
+        short lift = *(short*)(e + 0x16);
+
+        int sin = (int)Winsys3d.GetSinTableEntry(angle);   // Ghidra: Ordinal_451
+        int cos = Winsys3d.GetCosTableEntry(angle);        // Ghidra: Ordinal_450
+
+        // L'orbite autour de l'instantane de naissance...
+        int x = sin * radius + *(int*)(e + 0x50);
+        int z = cos * radius + *(int*)(e + 0x58);
+        int y = *(int*)(e + 0x54) + lift * 0x800;
+
+        // ... ramenee d'un quart vers la meme orbite autour du porteur vivant. La hauteur est
+        // defaite puis refaite : `y + lift * -0x800` redonne l'instantane vertical.
+        x -= (x - (sin * radius + *(int*)(e + 0x44))) >> 2;
+        y -= ((y + lift * -0x800) - *(int*)(e + 0x48)) >> 2;
+        z -= (z - (cos * radius + *(int*)(e + 0x4c))) >> 2;
+
+        *(int*)(e + 0x1c) = x;
+        *(int*)(e + 0x20) = y;
+        *(int*)(e + 0x24) = z;
+
+        *(short*)(e + 0x12) = (short)(angle + 0xa0);
+        *(short*)(e + 0x14) = (short)(radius + 5);
+
+        lift = (short)(lift + 5);
+        *(short*)(e + 0x16) = lift;
+
+        short grow = lift > 0x50 ? (short)-0xbe : (short)0x96;
+        *(short*)(e + 0x28) += grow;
+        *(short*)(e + 0x2a) += grow;
+
+        if (lift > 0x77) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044be40 @ 0x0044be40 — <b>l'eclair de Micro</b> : le sous-type <c>0x92</c>,
+    /// creneau 146 de <see cref="s_StaticEntityHandlers_00551f30"/>. 177 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; le releve est garde sous <c>Legacy/Raw/Blaze/FUN_0044BE40.asm</c>.
+    ///
+    /// <para>
+    /// <b>Il ignore la position que le sort lui a donnee</b> — le <c>0xdac</c> de l'origine — et
+    /// recalcule la sienne des sa premiere image depuis son <c>+0x78</c>, une tete au-dessus
+    /// (<c>0x46000</c>). C'est ce qui rend le detour du sort par l'origine invisible.
+    /// </para>
+    /// <para>
+    /// <b>Cinq images de flash, puis la resorption</b> : <c>+0x12</c> compte les images, la teinte
+    /// monte de <c>+70</c> tant qu'il est sous <c>5</c> et descend de <c>-30</c> ensuite, jusqu'a
+    /// ce que le canal rouge <c>+0x38</c> retombe a zero. Le cap <c>+0x32</c> est avance de
+    /// <c>0x300</c> une fois pour toutes en naissant, et l'echelle <c>+0x34</c> grandit de
+    /// <c>0x12c</c> par image sur les deux chemins.
+    /// </para>
+    /// </summary>
+    private static void TickMicroFlash_0044BE40(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + 0x46000;
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(ushort*)(e + 0x32) += 0x300;
+            e[0x04] = 0x11;
+            e[0x0a] = 0x0f;
+            e[0x0b] = 0;
+            *(short*)(e + 0x34) = 0x200;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x2e) = -60;
+            *(short*)(e + 0x12) = 0;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+        }
+
+        // Ghidra: LAB_0044bea5
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(ushort*)(e + 0x34) += 0x12c;
+
+        if (*(short*)(e + 0x12) < 5)
+        {
+            BrightenEntityTint_00404DE0(e, 0x46, 0x46, 0x46);
+            *(short*)(e + 0x12) += 1;
+            return;
+        }
+
+        // Ghidra: LAB_0044bece
+        BrightenEntityTint_00404DE0(e, -30, -30, -30);
+
+        if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+
+        // Ghidra: LAB_0044beea — les deux chemins comptent l'image.
+        *(short*)(e + 0x12) += 1;
     }
 
     /// <summary>
