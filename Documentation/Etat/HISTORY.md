@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **les trois dernières postures**, `0x0051A6B0` (4), `0x0051A700` (6) et `0x0051A710` (7) — **absentes de `Blaze.c`**, sorties du désassembleur, 208 octets à elles trois. La table `0x00562ca0` est maintenant entièrement écrite : quatre corps vides et quatre gestionnaires
+- fix : **jouer le Lutin plantait à l'entrée en forêt** — il vole, la posture 7, et son gestionnaire n'était pas transcrit
+- doc : **une posture peut lancer un sort**. Les postures 4 et 7 appellent `CastSpell_0053A980` — familles **5** et **6**, indice 0 — à une image précise de l'état d'animation 3, le moment où le pied touche ou l'aile bat. Deux des quatre familles hors école ont donc un déclencheur qui n'est ni une incantation, ni un objet, ni une entité de scène
+- doc : la posture 4 vise **deux images différentes** selon le bit 8 de `+0x150` du bloc par personnage (0x10 éteint, 0x0c allumé) : deux cycles de marche de longueurs différentes, le même effet posé au bon moment dans chacun
 - fix : **frapper une entité plantait encore**, deux instructions plus loin — `DrawIconGlyph_0051BE90` levait `NotImplementedException` alors que `FUN_0051be90` était **déjà transcrite** sous le nom `DrawDecimalNumber`, appelée quatre lignes plus bas dans le même fichier. Le stub mort supprimé, ses quatre sites branchés sur la vraie fonction
 - doc : **`FUN_0051be90` existait en trois exemplaires** dans la reconstruction — le stub qui plantait, `Primitives2d.DrawDecimalNumber` et `SaveSlots.EmitCardGlyphTile`. Les deux corps vivants sont identiques ligne à ligne ; la fusion reste à faire. Avant d'écrire un corps, chercher son VA dans **tout le dépôt**, pas seulement dans `Blaze.c`
 - fix : **frapper une entité plantait le jeu** (`0xC0000005` dans `DrawTextRun`) — le bandeau nom/`HP`/points de vie passait la chaîne `0x00564a14` en **littéral d'adresse**, recopié tel quel de la pseudo-C où Ghidra ne l'a pas nommée. Relevée dans le binaire (`"HP"`) et posée en symbole `s_HpLabel_00564a14`

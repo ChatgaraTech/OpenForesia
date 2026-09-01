@@ -19377,3 +19377,60 @@ approximatif empêche le `grep` qui l'aurait montré.
 **Réflexe à prendre** : avant d'écrire un corps, chercher son VA dans **tout le dépôt**, pas
 seulement dans `Blaze.c`. `Documentation/Reference/DataSymbols.md` porte la carte des symboles
 reconstruits ; elle est indexée par adresse, et c'est exactement à ça qu'elle sert.
+
+## 2026-09-01 — les quatre gestionnaires de posture, et un sort lancé par une démarche
+
+Jouer le **Lutin** plantait à l'entrée en forêt : il vole, sa posture est la 7, et le créneau 7 de
+`PTR_FUN_00562ca0` valait `0x0051A710`, non transcrit. Les trois derniers créneaux non vides —
+`0x0051A6B0` (posture 4), `0x0051A700` (posture 6), `0x0051A710` (posture 7) — sont **absents de
+`Blaze.c`** et sont sortis du désassembleur en une passe. 208 octets à eux trois ; le dump est sous
+`Legacy/Raw/Blaze/FUN_0051A6B0.asm`, qui couvre les trois d'affilée.
+
+### Les quatre gestionnaires sont le même geste
+
+Tous comparent le dword `+0x18` de l'entité à une valeur **exacte** et agissent à cette seule image.
+Ce dword est la paire (état d'animation, image) déjà décrite sur `PostureHandler_0051A670` : le
+`short` bas est l'état, le haut l'image.
+
+| posture | adresse | condition | effet |
+|---:|---|---|---|
+| 0 | `0x0051a670` | état 6, image 5 | fait naître l'effet `0xba`, la traînée d'arme |
+| 4 | `0x0051a6b0` | état 3, image **0x10** ou **0x0c** | `CastSpell_0053A980(…, 5, 0, -1, -1)` |
+| 6 | `0x0051a700` | — | la queue de la posture 0, seule : `0x04` retombe si `0x01` est levé |
+| 7 | `0x0051a710` | état 3, image 3 | `CastSpell_0053A980(…, 6, 0, -1, -1)` |
+
+L'état 3 est celui du déplacement : les deux postures qui lancent visent **le moment du cycle où le
+pied touche, ou l'aile bat**.
+
+### Ce que ça apprend sur le déclenchement des sorts
+
+`SortsAtteignables.md` compte à part les quatre familles au-delà des écoles, en les supposant
+« vraisemblablement les sorts des monstres », et note que leur étendue n'est pas établie. **Deux
+d'entre elles ont en fait un déclencheur qui n'est ni une incantation, ni un script d'objet, ni le
+mot `+0x06` d'une entité de scène : une simple démarche de membre du groupe.** La famille 5 indice 0
+(sous-type `0x49`, gestionnaire `0x0047A100`) et la famille 6 indice 0 (sous-type `0x4a`,
+gestionnaire `0x004769A0`) partent à chaque pas d'un personnage dans la posture correspondante. Les
+deux gestionnaires existent déjà ; la sonde `sorts-exerces.tsv` devrait les voir passer dès qu'un
+Lutin marche.
+
+**Le recensement des sorts n'a donc pas la liste complète de leurs déclencheurs.** Il résout ce
+qu'une *fiche* fait naître ; il ne dit pas qui déclenche la fiche. Ici c'est une table de pointeurs
+indexée par `bloc par personnage + 0x150 & 7`, que rien dans le chemin des sorts ne mentionne.
+
+### La posture 4 vise deux images selon un bit de démarche
+
+La cascade du binaire est écrite « en losange » : le test de l'image `0x10` retombe dans celui de
+l'image `0x0c` quand l'image est bonne mais le bit aussi. Cela revient à deux conjonctions —
+image `0x10` avec le bit 8 de `+0x150` **éteint**, image `0x0c` avec le bit **allumé**. Deux cycles
+de marche de longueurs différentes pour la même posture, avec l'effet posé au bon moment dans
+chacun. C'est le seul des quatre corps à lire un deuxième argument ; les trois autres ne consomment
+que l'entité, bien que le site d'appel en empile cinq (cdecl, donc sans conséquence).
+
+### TODO(REVERSE) — le bit `0x800` du mot d'état de l'entité
+
+Les postures 4 et 7 le lèvent juste avant de lancer, et **aucun lecteur n'en est identifié dans le
+transcrit**. Ce n'est pas un verrou « déjà émis ce cycle » : la condition ne tient qu'une image, le
+verrou serait inutile. Hypothèse à vérifier : un drapeau que `CastSpell_0053A980` ou la boucle du
+membre relit pour savoir que le sort vient d'une démarche et non d'une incantation — auquel cas il
+n'a pas à coûter de PM. À reprendre en cherchant qui teste `0x800` sur `+0x00` d'un membre du
+groupe.

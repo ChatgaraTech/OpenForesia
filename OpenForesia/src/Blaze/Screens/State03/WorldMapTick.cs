@@ -53042,6 +53042,14 @@ public static unsafe partial class Blaze
     /// de posture, releves sous <see cref="s_PostureHandlers_00562ca0"/>. <b>Quatre sont le corps
     /// vide <c>0x0040A600</c></b>, deja verifie au desassembleur : les postures 1, 2, 3 et 5 ne
     /// font rien.
+    ///
+    /// <para>
+    /// <b>Les quatre autres sont maintenant ecrites</b> (2026-09-01). Le site d'appel empile cinq
+    /// arguments — entite, entree d'emplacement, bloc par personnage, manette, animation courante —
+    /// mais le desassemblage montre que trois des quatre corps ne lisent que le premier ; seule la
+    /// posture 4 va chercher le troisieme. L'appel est en cdecl, donc les arguments non lus sont
+    /// sans consequence.
+    /// </para>
     /// </summary>
     private static void DispatchPostureHandler(
         byte posture, uint* slot, byte* entry, byte* perChar, byte* pad, byte* anim)
@@ -53052,16 +53060,15 @@ public static unsafe partial class Blaze
         {
             case 0x0040A600: return;   // corps vide verifie au desassembleur
             case 0x0051A670: PostureHandler_0051A670(slot); return;
+            case 0x0051A6B0: PostureHandler_0051A6B0(slot, perChar); return;
+            case 0x0051A700: PostureHandler_0051A700(slot); return;
+            case 0x0051A710: PostureHandler_0051A710(slot); return;
 
             default:
                 throw new NotImplementedException(
                     $"FUN_0050bf20 : le gestionnaire de posture {posture} (table 0x00562ca0) vaut " +
-                    $"0x{target:X6} et n'est pas transcrit. Les trois qui restent — 0x0051A6B0, " +
-                    "0x0051A700 et 0x0051A710 — sont **absentes de Blaze.c** : " +
-                    $"`OpenForesia.Tools -- disasm Legacy/Binaries/Blaze.exe 0x{target:x8} 512`. " +
-                    "Le site d'appel empile (entite, entree d'emplacement, bloc par personnage, " +
-                    "manette, animation courante), mais 0x0051A670 ne lit que le premier — " +
-                    "verifier au cas par cas ce que chacune consomme reellement.");
+                    $"0x{target:X6}, qui n'est aucune des cinq adresses relevees dans la table. " +
+                    "La table est fausse, ou l'indice deborde.");
         }
     }
 
@@ -53091,6 +53098,89 @@ public static unsafe partial class Blaze
         }
 
         if ((*slot & 1) != 0) *slot &= 0xfffffffb;
+    }
+
+    // =====================================================================
+    // LES TROIS DERNIERES POSTURES — 4, 6 et 7, absentes de `Blaze.c`, sorties du desassembleur
+    // le 2026-09-01. Elles tiennent en 208 octets a elles trois.
+    //
+    // LES QUATRE GESTIONNAIRES DE POSTURE SONT LE MEME GESTE. Tous comparent le dword `+0x18` de
+    // l'entite a une valeur exacte, et agissent a cette seule image. Ce dword est la paire
+    // (etat d'animation, image) que `PostureHandler_0051A670` decrit : le `short` bas est l'etat,
+    // le haut l'image. Les trois nouvelles visent toutes **l'etat 3**, celui du deplacement, a une
+    // image precise du cycle — le moment ou le pied touche, ou l'aile bat.
+    //
+    // Et deux d'entre elles ne font pas naitre une entite d'effet : elles **lancent un sort**, par
+    // le meme `CastSpell_0053A980` qu'une incantation. Les familles 5 et 6, indice 0 — deux des
+    // quatre familles hors ecole, celles que `SortsAtteignables.md` compte a part.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0051a6b0 @ 0x0051a6b0 — la posture <b>4</b>, 77 octets, <b>absente de
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// A une image precise de l'etat d'animation 3, elle leve le bit <c>0x800</c> de l'entite et
+    /// lance la fiche de sort <b>famille 5, indice 0</b> (sous-type <c>0x49</c>). L'image visee
+    /// depend du bit <c>8</c> de <c>+0x150</c> du bloc par personnage — <b>l'image 0x10 quand il
+    /// est eteint, l'image 0x0c quand il est allume</b> : deux cycles de longueurs differentes pour
+    /// la meme posture, et le meme effet pose au bon moment dans chacun.
+    /// </para>
+    /// <para>
+    /// La cascade du binaire est ecrite « en losange » — le premier test retombe dans le second
+    /// quand l'image est la bonne mais le bit aussi —, ce qui revient exactement aux deux
+    /// conjonctions ci-dessous.
+    /// </para>
+    /// </summary>
+    private static void PostureHandler_0051A6B0(uint* slot, byte* perChar)
+    {
+        if ((*slot & 2) == 0) return;
+
+        uint frame = *(uint*)((byte*)slot + 0x18);
+        bool alternate = (perChar[0x150] & 8) != 0;
+
+        if ((frame == 0x100003 && !alternate) || (frame == 0x000c0003 && alternate))
+        {
+            // TODO(REVERSE): le bit 0x800 du mot d'etat de l'entite — pose ici et par la posture 7,
+            // aucun lecteur identifie dans le transcrit. Voir REVERSE_STATUS.md, 2026-09-01.
+            *slot |= 0x800;
+            CastSpell_0053A980(slot, 5, 0, -1, -1);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051a700 @ 0x0051a700 — la posture <b>6</b>, <b>16 octets</b>, la plus courte du
+    /// depot apres les corps vides, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// Elle est la <b>queue de <see cref="PostureHandler_0051A670"/></b>, seule : le compilateur a
+    /// emis deux fois la meme fin. Cette posture ne fait donc que retomber le bit <c>0x04</c> quand
+    /// le bit <c>0x01</c> est leve, sans rien engendrer.
+    /// </para>
+    /// </summary>
+    private static void PostureHandler_0051A700(uint* slot)
+    {
+        if ((*slot & 1) != 0) *slot &= 0xfffffffb;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051a710 @ 0x0051a710 — la posture <b>7</b>, 42 octets, <b>absente de
+    /// <c>Blaze.c</c></b>. <b>C'est le vol</b> : la posture du Lutin, et celle qui plantait des
+    /// l'entree en foret.
+    ///
+    /// <para>
+    /// A l'image 3 de l'etat d'animation 3 — le battement d'aile —, elle leve le bit <c>0x800</c>
+    /// et lance la fiche de sort <b>famille 6, indice 0</b> (sous-type <c>0x4a</c>, le gestionnaire
+    /// <c>0x004769a0</c>). Rien d'autre : pas de queue en <c>0x04</c> comme les postures 0 et 6.
+    /// </para>
+    /// </summary>
+    private static void PostureHandler_0051A710(uint* slot)
+    {
+        if ((*slot & 2) != 0 && *(uint*)((byte*)slot + 0x18) == 0x30003)
+        {
+            *slot |= 0x800;
+            CastSpell_0053A980(slot, 6, 0, -1, -1);
+        }
     }
 
     /// <summary>
