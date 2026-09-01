@@ -5089,6 +5089,13 @@ public static unsafe partial class Blaze
             // qu'il trouve un allie de plus. Vitesse hate un compagnon, Turbo tout le groupe.
             case 0x00478D10: TickTurbo_00478D10(record); return;
 
+            // SUPERMAN, ecole 2 indice 14 — VITESSE EN PLUS GRAND ET EN PLUS LONG : la meme
+            // premiere image a deux anneaux, divisee par 100 au lieu de 150, puis vingt-quatre
+            // images qui sement un grain de poussiere chacune.
+            case 0x00478DF0: TickSuperman_00478DF0(record); return;
+            case 0x00479030: TickSupermanRing_00479030(record); return;
+            case 0x00478FC0: TickSupermanMote_00478FC0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -49730,6 +49737,267 @@ public static unsafe partial class Blaze
         while (found != *(byte**)(e + 0x74));
 
         *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // SUPERMAN — ecole 2, indice 14, sous-type 0xae
+    //
+    //   0x00478DF0   LE SORT. Sous-type 0xae de 0x00551c30. DECOMPILE dans Blaze.c.
+    //   0x00479030   L'ANNEAU, sous-type 0x82 de 0x00551f30. DECOMPILE. C'est celui de Vitesse a
+    //                DEUX differences pres — l'effet, et un script de sons en moins.
+    //   0x00478FC0   LA POUSSIERE, sous-type 0x7d de 0x00551f30. 97 octets, ABSENTE de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00478FC0.asm.
+    //
+    // C'EST VITESSE, EN PLUS GRAND ET EN PLUS LONG. La premiere image est celle de Vitesse mot
+    // pour mot — deux anneaux de tailles reglees sur la stature, distingues par +0x16, dont seul
+    // le second posera l'effet — a ceci pres que la division est par 100 et non par 150 : les
+    // anneaux de Superman sont donc une fois et demie plus larges. Puis le sort NE MEURT PAS : il
+    // vit vingt-quatre images, et a chacune il seme UN GRAIN DE POUSSIERE quelque part dans un
+    // cube d'une stature de cote autour des pieds du porteur.
+    //
+    // ET LE SORT RELIT LA STATURE. Il appelle StatusBubbleHeight une SECONDE fois sur la meme
+    // cible, pour en tirer une autre taille — celle-la divisee par 75 — qu'il laisse dans +0x2c et
+    // +0x28 a l'intention des grains. Les deux appels rendent la meme chose ; le second n'est
+    // qu'une relecture, transcrite telle quelle.
+    //
+    // LA POUSSIERE NE COMPTE PAS SES IMAGES : comme la flamme des Materia et la marque d'Ecrase,
+    // c'est sa teinte qui la tue — 0xf0f0f0 moins 0x101010 par image, et un zero exact. Quinze
+    // images. Elle retrecit d'un quart par image et tourne de 0x80, sans jamais bouger de son
+    // decalage : elle se recolle a chaque image sur le porteur plus l'ecart que le sort lui a tire.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00478df0 @ 0x00478df0 — <b>Superman</b> : le sous-type <c>0xae</c>, creneau 174
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>quinzieme fiche de l'ecole 2</b>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Sa premiere image est celle de <see cref="TickHaste_00477360"/></b>, aux deux memes
+    /// anneaux et au meme couple de tailles <c>(base, 1,5x)</c> puis <c>(1,5x, 0,75x)</c>, le meme
+    /// <c>+0x16</c> decidant lequel posera l'effet. <b>Deux ecarts</b> : la division est par
+    /// <b>100</b> et non par 150 — les anneaux sont une fois et demie plus larges —, et le
+    /// sous-type engendre est <c>0x82</c> (<see cref="TickSupermanRing_00479030"/>) au lieu de
+    /// <c>0x81</c>.
+    /// </para>
+    /// <para>
+    /// <b>Puis il ne meurt pas.</b> La ou Vitesse s'efface a la fin de son unique image, celui-ci
+    /// vit <b>vingt-quatre images</b> et seme a chacune un grain de poussiere <c>0x7d</c>
+    /// (<see cref="TickSupermanMote_00478FC0"/>) a une position tiree dans un cube d'<b>une
+    /// stature de cote</b> autour des pieds du porteur — X et Z centres, Y toujours positif, donc
+    /// au-dessus du sol et jamais dessous. A la vingt-quatrieme il met son mot d'etat a zero.
+    /// </para>
+    /// <para>
+    /// <b>Il relit la stature.</b> <see cref="StatusBubbleHeight_00538BC0"/> est appelee une
+    /// <b>seconde</b> fois sur la meme cible, pour en tirer la taille des grains — celle-la divisee
+    /// par <b>75</b> (<c>0x1B4E81B5</c> puis <c>sar 3</c>). Les deux appels rendent la meme chose ;
+    /// le second n'est qu'une relecture, transcrite telle quelle.
+    /// </para>
+    /// <para>
+    /// <b>Et il siffle une image sur deux</b> a partir de la huitieme : le son <c>0x1f</c>, sur un
+    /// test d'age impair.
+    /// </para>
+    /// </summary>
+    private static void TickSuperman_00478DF0(byte* record)
+    {
+        byte* e = record;
+        byte* carrier;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x36] |= 6;
+            *(short*)(e + 0x2e) = -64;
+
+            // Faute de voisin dans son camp, elle rend le lanceur : le sort se pose toujours.
+            carrier = FindTargetAround_00474BA0(e, 0);
+
+            *(byte**)(e + 0x78) = carrier;
+            *(byte**)(e + 0x70) = carrier;
+
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            e[0x04] = 0x26;
+
+            int height = StatusBubbleHeight_00538BC0((uint*)carrier);
+
+            // (hauteur << 12) / 100 — 0x51EB851F puis `sar 5`. Vitesse divise par 150.
+            uint low = (uint)((height << 0xc) / 100);
+            uint high = (uint)(((int)low >> 1) + (int)low);      // une fois et demie
+
+            // LE PREMIER ANNEAU : haut et etroit, et il ne posera RIEN.
+            *(short*)(e + 0x2c) = (short)low;
+            *(ushort*)(e + 0x16) = 0;
+            *(uint*)(e + 0x28) = high * 0x10000 | low;
+
+            SpawnCastEntity_0047AAE0(e, 0x82, e[0x0b], -1);
+
+            // LE SECOND : large et plat, et c'est LUI qui posera l'effet 26.
+            *(uint*)(e + 0x28) = (high & 0xfffffffe) << 0xf | high;
+            *(short*)(e + 0x2c) = (short)high;
+            *(ushort*)(e + 0x16) = 1;
+
+            SpawnCastEntity_0047AAE0(e, 0x82, e[0x0b], -1);
+
+            // LA STATURE EST RELUE — un second appel sur la meme cible, qui rend la meme chose.
+            int again = StatusBubbleHeight_00538BC0((uint*)carrier);
+
+            // La demi-stature : c'est le rayon dans lequel les grains seront semes.
+            *(short*)(e + 0x12) = (short)(again >> 1);
+
+            // Et leur taille, celle-la divisee par 75 — 0x1B4E81B5 puis `sar 3`.
+            int mote = (again << 0xc) / 75;
+
+            *(short*)(e + 0x2c) = (short)mote;
+            *(int*)(e + 0x28) = mote * 4;
+            *(ushort*)(e + 0x14) = 3;
+
+            Aud.PlayPositionalSound(0x11, 0x22f1, 0x1200, (int*)(e + 0x1c));
+            Aud.PlayPositionalSound(0x20, 0x400, 0x1200, (int*)(e + 0x1c));
+        }
+        else
+        {
+            // Ghidra: LAB_00478f12
+            carrier = *(byte**)(e + 0x78);
+        }
+
+        // Ghidra: LAB_00478f15 — UN GRAIN PAR IMAGE, pendant vingt-quatre images.
+        if (*(short*)(e + 0x10) < 0x18)
+        {
+            *(short*)(e + 0x32) = (short)CrtRand();       // Ghidra: FUN_00547140
+            *(short*)(e + 0x34) = (short)CrtRand();
+
+            int half = *(short*)(e + 0x12);
+            int span = half + half;
+
+            // Le cube fait une stature de cote. X et Z sont centres sur le porteur ; Y ne l'est
+            // pas — le reste de la division n'est pas decale, donc le grain naît toujours
+            // AU-DESSUS du sol.
+            *(int*)(e + 0x44) = (CrtRand() % span - half) << 0xc;
+            *(int*)(e + 0x48) = (CrtRand() % span) << 0xc;
+            *(int*)(e + 0x4c) = (CrtRand() % span - half) << 0xc;
+
+            *(int*)(e + 0x20) = *(int*)(carrier + 0x60);
+            e[0x04] = 6;
+
+            SpawnCastEntity_0047AAE0(e, 0x7d, e[0x0b], -1);
+        }
+        else
+        {
+            *(uint*)e = 0;
+        }
+
+        // Ghidra: LAB_00478f83 — un sifflement une image sur deux, a partir de la huitieme.
+        if (*(short*)(e + 0x10) > 7 && (*(ushort*)(e + 0x10) & 1) != 0)
+        {
+            Aud.PlayPositionalSound(0x1f, 0x1000, 0x1200, (int*)(e + 0x1c));
+        }
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00479030 @ 0x00479030 — <b>l'anneau de Superman</b> : le sous-type <c>0x82</c>
+    /// de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>Decompile dans <c>Blaze.c</c></b>. Il
+    /// en naît <b>deux par lancer</b>, comme chez Vitesse, et seul le mot <c>+0x16</c> les
+    /// distingue.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickHasteRing_00477420"/> a deux differences pres</b>, et le diff des
+    /// deux desassemblages ne montre rien d'autre : l'effet pose est
+    /// <see cref="ApplyStatusEffect_0053C160"/> — le 26, duree en <c>+0xb4</c>, bit
+    /// <c>0x200000</c> — au lieu du 19, et <b>il n'y a pas de script de sons differes</b> : la
+    /// gamme montante que l'anneau de Vitesse met en file en se fermant n'existe pas ici. Il se
+    /// ferme en silence.
+    /// </para>
+    /// <para>
+    /// Tout le reste est identique : il se recolle aux <b>pieds</b> de sa cible
+    /// (<c>cible+0x60</c>), tourne de <c>age * 8</c> par image donc de plus en plus vite, sa teinte
+    /// est un sinus de son age pose sur les trois canaux, et il se ferme a l'age <c>0x20</c>.
+    /// </para>
+    /// </summary>
+    private static void TickSupermanRing_00479030(byte* record)
+    {
+        byte* e = record;
+        byte* target = *(byte**)(e + 0x70);
+
+        short age = *(short*)(e + 0x10);
+
+        // Il tourne de plus en plus vite : le pas est l'age lui-meme, multiplie par huit.
+        *(short*)(e + 0x32) += (short)(age * 8);
+
+        // IL SE COLLE AUX PIEDS DE SA CIBLE : +0x60 est la cote du sol sous elle.
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(target + 0x60);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        // Ghidra: Ordinal_451 — la table de sinus de winsys3d.
+        int grey = (int)Winsys3d.GetSinTableEntry(age << 6) * 0xff >> 0xc;
+        *(uint*)(e + 0x38) = (uint)((grey << 8 | grey) << 8 | grey);
+
+        if (age >= 0x20)
+        {
+            if (*(short*)(e + 0x16) != 0)
+            {
+                // LE SECOND ANNEAU SEUL. La paire famille/indice, pretee au lanceur en un mot.
+                *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+                ApplyStatusEffect_0053C160(
+                    *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+            }
+
+            // ET IL SE FERME EN SILENCE : pas de script de sons differes, contrairement a Vitesse.
+            *(uint*)e = 0;
+        }
+
+        *(short*)(e + 0x10) = (short)(age + 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00478fc0 @ 0x00478fc0 — <b>le grain de poussiere de Superman</b> : le sous-type
+    /// <c>0x7d</c> de <see cref="s_StaticEntityHandlers_00551f30"/>. 97 octets, <b>absent de
+    /// <c>Blaze.c</c></b> ; le releve est garde sous <c>Legacy/Raw/Blaze/FUN_00478FC0.asm</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Il ne bouge pas de son ecart.</b> Le sort lui a tire un decalage a trois axes
+    /// (<c>+0x44</c>, <c>+0x48</c>, <c>+0x4c</c>) et il se recolle a chaque image sur la position
+    /// du porteur plus cet ecart-la — jamais recalcule. Il tourne de <c>0x80</c> par image et
+    /// perd un quart de sa taille, en largeur (<c>+0x28</c>) et en profondeur (<c>+0x2c</c>)
+    /// seulement : <b><c>+0x2a</c> n'est pas touche</b>, ni ici ni par le sort, qui l'a laisse a
+    /// zero en ecrivant <c>+0x28</c> en mot long.
+    /// </para>
+    /// <para>
+    /// <b>Il ne compte pas ses images : c'est sa teinte qui le tue</b> — la meme mecanique que la
+    /// flamme des Materia (<see cref="TickFireMateriaFlame_00477600"/>) et que la marque d'Ecrase
+    /// (<see cref="TickCrushMark_00477DA0"/>) : <c>0xf0f0f0</c> moins <c>0x101010</c> par image, et
+    /// le corps s'efface sur un <b>zero exact</b>. Quinze images.
+    /// </para>
+    /// </remarks>
+    private static void TickSupermanMote_00478FC0(byte* record)
+    {
+        byte* e = record;
+        byte* carrier = *(byte**)(e + 0x70);
+
+        // Il tourne sur lui-meme.
+        *(short*)(e + 0x32) += 0x80;
+
+        // Et il perd un quart de sa taille par image — en largeur et en profondeur seulement.
+        short width = *(short*)(e + 0x28);
+        width = (short)(width - (short)(width >> 2));
+        *(short*)(e + 0x28) = width;
+
+        short depth = *(short*)(e + 0x2c);
+        depth = (short)(depth - (short)(depth >> 2));
+        *(short*)(e + 0x2c) = depth;
+
+        // IL SE RECOLLE SUR SON ECART, jamais recalcule.
+        *(int*)(e + 0x1c) = *(int*)(e + 0x44) + *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(e + 0x48) + *(int*)(carrier + 0x20);
+        *(int*)(e + 0x24) = *(int*)(e + 0x4c) + *(int*)(carrier + 0x24);
+
+        // LA TEINTE EST SON COMPTE A REBOURS : seul un zero exact l'eteint.
+        uint tint = *(uint*)(e + 0x38) - 0x00101010;
+        *(uint*)(e + 0x38) = tint;
+
+        if (tint == 0) *(uint*)e = 0;
     }
 
     /// <summary>
