@@ -5096,6 +5096,12 @@ public static unsafe partial class Blaze
             case 0x00479030: TickSupermanRing_00479030(record); return;
             case 0x00478FC0: TickSupermanMote_00478FC0(record); return;
 
+            // BLINDE, ecole 2 indice 15 — LE SEUL SORT DE L'ECOLE QUI SE LANCE SUR LUI-MEME :
+            // le lanceur est passe des deux cotes a l'effet 25, et si celui-ci ne passe pas,
+            // le sort n'a pas lieu du tout. Sa duree lui est rendue par l'effet.
+            case 0x004790C0: TickArmour_004790C0(record); return;
+            case 0x00479250: TickArmourShell_00479250(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -49998,6 +50004,221 @@ public static unsafe partial class Blaze
         *(uint*)(e + 0x38) = tint;
 
         if (tint == 0) *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // BLINDE — ecole 2, indice 15, sous-type 0xaf
+    //
+    //   0x004790C0   LE SORT. Sous-type 0xaf de 0x00551c30. DECOMPILE dans Blaze.c.
+    //   0x00479250   LA COQUE, sous-type 0x80 de 0x00551f30. DECOMPILEE aussi.
+    //
+    // IL SE LANCE SUR LUI-MEME, ET C'EST LE SEUL. Toutes les autres fiches de l'ecole cherchent
+    // une cible — un adversaire pour Dodo, Gros sabots et Ralenti, un allie pour Vitesse, les
+    // Materia, Coussin d'air, Champ magique, Escargot et Superman. Blinde n'en cherche aucune :
+    // il appelle l'effet 25 avec le LANCEUR EN ARGUMENT DES DEUX COTES, assaillant et victime.
+    //
+    // ET SI L'EFFET NE PASSE PAS, LE SORT N'A PAS LIEU : le corps rend la main sur-le-champ, sans
+    // rien engendrer et sans meme une image de decor. C'est le seul de l'ecole qui puisse echouer
+    // completement.
+    //
+    // SA DUREE LUI EST RENDUE PAR L'EFFET LUI-MEME. L'effet 25 range sa duree dans le +0xb2 du
+    // bloc de statistiques ; le sort relit ce meme +0xb2 juste apres et s'en fait un compte de
+    // charges, qu'il decremente toutes les vingt images jusqu'a zero. Les deux bouts se
+    // rejoignent : ce qui est ecrit par l'effet est ce qui fait vivre le sort.
+    //
+    // QUATRE COQUES L'ENTOURENT, deux a l'image 0 et deux a l'image 4 — la premiere de chaque
+    // paire a hauteur de tete, la seconde a vingt unites du sol, et le cap tourne d'un demi-tour
+    // entre chacune. Elles apparaissent en FONDU (leur teinte monte de 0x101010 par image jusqu'a
+    // 0xf0f0f0) et disparaissent de meme quand le sort finit : c'est le seul corps du depot dont
+    // la teinte serve de compte a rebours DANS LES DEUX SENS.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004790c0 @ 0x004790c0 — <b>Blinde</b> : le sous-type <c>0xaf</c>, creneau 175 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>seizieme fiche de l'ecole 2</b>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le seul sort de l'ecole qui se lance sur lui-meme</b> : il passe le lanceur des deux
+    /// cotes a <see cref="ApplyStatusEffect_0053C0F0"/> — l'effet 25, « le seul de la famille a
+    /// poser un bit sans faire naitre de marque », celui que les guerisons interrogent pour refuser
+    /// leur soin. <b>Et si l'effet ne passe pas, le sort n'a pas lieu</b> : le corps met son mot
+    /// d'etat a zero et rend la main sans rien engendrer.
+    /// </para>
+    /// <para>
+    /// <b>Sa duree lui est rendue par l'effet.</b> L'effet 25 range <c>attaque / 8 + 0x19</c> dans
+    /// le <c>+0xb2</c> du bloc de statistiques ; le sort relit ce meme <c>+0xb2</c> juste apres et
+    /// s'en fait un <b>compte de charges</b> en <c>+0x14</c>, decremente toutes les vingt images —
+    /// sur l'horloge du monde, pas sur son propre age — jusqu'a zero. La resolution du bloc est
+    /// celle de <see cref="StatusBubbleHeight_00538BC0"/>, par le bit <c>0x800000</c>.
+    /// </para>
+    /// <para>
+    /// <b>Quatre coques</b> naissent, deux a l'image 0 et deux a l'image 4 : la premiere de chaque
+    /// paire a hauteur de tete moins vingt unites, la seconde a vingt unites du sol, avec des
+    /// rayons de <c>0x1000</c> et <c>0xc00</c> ; le cap <c>+0x34</c> avance d'un demi-tour apres
+    /// chacune. Passe la seizieme image, seuls le compte de charges et
+    /// <see cref="CanSustainChannel_00475110"/> peuvent l'arreter.
+    /// </para>
+    /// <para>
+    /// Et a chaque image, quoi qu'il arrive, il se recolle sur le lanceur.
+    /// </para>
+    /// </summary>
+    private static void TickArmour_004790C0(byte* record)
+    {
+        byte* e = record;
+        byte* caster = *(byte**)(e + 0x74);
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT — sur lui-meme, ici.
+            *(ushort*)(caster + 6) = *(ushort*)(e + 6);
+
+            // ET IL EST SA PROPRE VICTIME. Si l'effet ne passe pas, le sort n'a pas lieu.
+            if (ApplyStatusEffect_0053C0F0((uint*)caster, (uint*)caster, 0) != 0)
+            {
+                *(uint*)e = 0;
+                return;
+            }
+
+            SpawnStatusEffectEntity_0047AC40(
+                caster, (int*)(caster + 0x1c), SpriteAtlas(0x005648a0), 0x29, 0, 0);
+
+            // Le bloc de statistiques du lanceur, resolu par le bit 0x800000 comme partout.
+            byte* stats = (*(uint*)caster & 0x800000) != 0
+                ? GetMainMemPtr() + 0xf0100 + caster[8] * 0x2000
+                : s_EntityStatBlocks_005ea560 + caster[8] * 0x120;
+
+            // LE COMPTE DE CHARGES, relu la ou l'effet vient d'ecrire sa duree.
+            *(ushort*)(e + 0x14) = *(ushort*)(stats + 0xb2);
+        }
+
+        // DEUX COQUES A L'IMAGE 0, DEUX A L'IMAGE 4.
+        if ((*(ushort*)(e + 0x10) & 3) == 0 && *(short*)(e + 0x10) < 8)
+        {
+            int height = StatusBubbleHeight_00538BC0((uint*)caster);
+
+            *(short*)(e + 0x16) = (short)height;
+
+            // La premiere de la paire : a hauteur de tete moins vingt unites.
+            *(int*)(e + 0x48) = (height - 0x14) * 0x1000;
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x4c) = 0;
+
+            // Elles naissent NOIRES : la teinte montera d'elle-meme.
+            *(uint*)(e + 0x38) = 0;
+
+            e[0x04] = 7;
+            *(short*)(e + 0x2e) = -20;
+            *(ushort*)(e + 0x12) = 0x1000;
+
+            SpawnCastEntity_0047AAE0(e, 0x80, e[0x0b], -1);
+
+            *(short*)(e + 0x34) += 0x800;
+
+            // La seconde : plus etroite, et a vingt unites du sol.
+            *(ushort*)(e + 0x12) = 0xc00;
+            *(int*)(e + 0x48) = 0x14000;
+
+            SpawnCastEntity_0047AAE0(e, 0x80, e[0x0b], -1);
+
+            *(short*)(e + 0x34) += 0x800;
+        }
+
+        if (*(short*)(e + 0x10) > 0xf)
+        {
+            // LE COMPTE DE CHARGES, cadence sur l'horloge du monde et non sur l'age du sort.
+            if (*(uint*)Mem.Entity(0x005f2cf0) % 20 == 0)
+            {
+                *(short*)(e + 0x14) -= 1;
+                if (*(short*)(e + 0x14) == 0) *(uint*)e |= 0x2000000;
+            }
+
+            // Et le lanceur doit tenir debout.
+            if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+        }
+
+        // Ghidra: LAB_00479229 — il se recolle sur le lanceur, sur tous les chemins.
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(caster + 0x20);
+
+        int z = *(int*)(caster + 0x24);
+        *(short*)(e + 0x10) += 1;
+        *(int*)(e + 0x24) = z;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00479250 @ 0x00479250 — <b>la coque de Blinde</b> : le sous-type <c>0x80</c> de
+    /// <see cref="s_StaticEntityHandlers_00551f30"/>. <b>Decompilee dans <c>Blaze.c</c></b>. Il en
+    /// naît <b>quatre par lancer</b>.
+    ///
+    /// <para>
+    /// <b>Sa teinte est un compte a rebours DANS LES DEUX SENS</b>, et c'est le seul corps du depot
+    /// a le faire. Tant que le pere n'a pas leve son <c>0x2000000</c>, elle <b>monte</b> de
+    /// <c>0x101010</c> par image jusqu'a la butee <c>0xf0f0f0</c> — la coque apparaît en fondu ;
+    /// des que le pere l'a leve, elle <b>redescend</b> du meme pas et le corps s'efface sur un zero
+    /// exact. La flamme des Materia, la marque d'Ecrase et le grain de Superman n'en font que la
+    /// moitie.
+    /// </para>
+    /// <para>
+    /// <b>Elle herite ce bit du pere a chaque image</b>, pas une seule fois : le mot d'etat du
+    /// pere est relu tant que la coque ne l'a pas. C'est ce qui lui permet de survivre au sort et
+    /// de s'eteindre proprement apres lui.
+    /// </para>
+    /// <para>
+    /// <b>Elle respire</b> : son rayon vaut <c>+0x12</c> plus le huitieme d'un cosinus de son age,
+    /// pose sur les trois echelles a la fois. Elle se recolle sur le lanceur plus son ecart fixe
+    /// (<c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>), et cogne le son <c>0x17</c> une image sur seize.
+    /// </para>
+    /// </summary>
+    private static void TickArmourShell_00479250(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) == 0)
+        {
+            // Le bit du pere, relu a CHAQUE image tant qu'elle ne l'a pas.
+            *(uint*)e |= *(uint*)(*(byte**)(e + 0x6c)) & 0x2000000;
+
+            // ELLE APPARAIT EN FONDU.
+            uint tint = *(uint*)(e + 0x38);
+            if (tint < 0x00f0f0f0) *(uint*)(e + 0x38) = tint + 0x00101010;
+        }
+        else
+        {
+            // ET ELLE DISPARAIT DE MEME, sur un zero exact.
+            uint tint = *(uint*)(e + 0x38) - 0x00101010;
+            *(uint*)(e + 0x38) = tint;
+
+            if (tint == 0) *(uint*)e = 0;
+        }
+
+        // Ghidra: LAB_00479295 — ELLE RESPIRE : le huitieme d'un cosinus de son age.
+        int radius = (Winsys3d.GetCosTableEntry(*(short*)(e + 0x10) << 8) >> 3)
+                     + *(short*)(e + 0x12);
+
+        *(short*)(e + 0x2c) = (short)radius;
+        *(uint*)(e + 0x28) = (uint)(radius << 0x10 | radius);
+
+        // Elle se recolle sur le lanceur plus son ecart fixe.
+        byte* caster = *(byte**)(e + 0x74);
+
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c) + *(int*)(e + 0x44);
+        *(int*)(e + 0x20) = *(int*)(caster + 0x20) + *(int*)(e + 0x48);
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24) + *(int*)(e + 0x4c);
+
+        // Un choc une image sur seize.
+        if ((*(uint*)(e + 0x10) & 0xf) == 0)
+        {
+            Aud.PlayPositionalSound(0x17, 200, 0x1200, (int*)(e + 0x1c));
+        }
+
+        *(short*)(e + 0x10) += 1;
     }
 
     /// <summary>

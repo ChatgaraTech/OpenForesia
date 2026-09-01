@@ -171,7 +171,7 @@ deux boutons** ; les coups sont separes par un tiret.
 | 2 | 12 | Ralenti | C-O-X-X-C-T-O-X | 40 | 67 | 40 | 0xac | `0x00478C20` | oui | **non** |
 | 2 | 13 | Turbo | C-O-T-T-C-T-O-X | 40 | 65 | 40 | 0xad | `0x00478D10` | oui | **non** |
 | 2 | 14 | Superman | X-T-X-T-X-C-T-X-O-T | 60 | 68 | 60 | 0xae | `0x00478DF0` | oui | **non** |
-| 2 | 15 | Blindé | C-T-O-X-C-T-O-X-C-O | 80 | 63 | 20 | 0xaf | `0x004790C0` | **non** | **non** |
+| 2 | 15 | Blindé | C-T-O-X-C-T-O-X-C-O | 80 | 63 | 20 | 0xaf | `0x004790C0` | oui | **non** |
 | 2 | 16 | Liquide | XC-TO-X-X-X-X-X-X-X-O | 50 | 0 | 70 | 0xb0 | `0x00479F70` | **non** | **non** |
 | 2 | 17 | Flamme | XC-TO-O-O-O-O-O-O-O-O | 50 | 0 | 70 | 0xb1 | `0x00479300` | **non** | **non** |
 | 2 | 18 | Zéphe | XC-TO-T-T-T-T-T-T-T-O | 50 | 0 | 70 | 0xb2 | `0x00479DE0` | **non** | **non** |
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **68** |
-| a transcrire | **12** |
+| implementees (le gestionnaire existe) | **69** |
+| a transcrire | **11** |
 | lancees en jeu au moins une fois | **16** |
-| dette : implementees mais jamais lancees | **52** |
+| dette : implementees mais jamais lancees | **53** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -257,7 +257,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00478C20` | 1 | oui | **non** | Ralenti |
 | `0x00478D10` | 1 | oui | **non** | Turbo |
 | `0x00478DF0` | 1 | oui | **non** | Superman |
-| `0x004790C0` | 1 | **non** | **non** | Blindé |
+| `0x004790C0` | 1 | oui | **non** | Blindé |
 | `0x00479300` | 1 | **non** | **non** | Flamme |
 | `0x00479C50` | 1 | **non** | **non** | Terre |
 | `0x00479DE0` | 1 | **non** | **non** | Zéphe |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | oui | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **6** a transcrire.
+**74 gestionnaires distincts**, dont **5** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le
