@@ -5071,6 +5071,11 @@ public static unsafe partial class Blaze
             // eteint ce qui approche. Entretenu comme Ange, quatre PM toutes les vingt images.
             case 0x004780B0: TickMagicField_004780B0(record); return;
 
+            // COUSSIN D'AIR, ecole 2 indice 10 — apres le plus gros corps de l'ecole, le plus
+            // petit : 205 octets, un seul saut, aucun enfant a ecrire. Un souffle sous les
+            // pieds d'un allie, vingt images, puis l'effet 28.
+            case 0x004785F0: TickAirCushion_004785F0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -49089,6 +49094,119 @@ public static unsafe partial class Blaze
 
         e[0x04] = 0x0e;
         SpawnCastEntity_0047AAE0(e, 0x84, e[0x0b], -1);
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// <c>&amp;DAT_00551bc8</c>, l'atlas du <b>Coussin d'air</b> — le <b>sixieme</b> enregistrement
+    /// de la plage <see cref="s_Descriptors_00551BA0"/>, pas une table a lui, comme
+    /// <see cref="Descriptors00551BA8"/> en est le deuxieme et <see cref="Descriptors00551BC0"/> le
+    /// cinquieme. Il suit ce dernier immediatement et reprend les octets <c>01 02</c> que celui-la
+    /// n'a pas.
+    /// </summary>
+    private static byte* Descriptors00551BC8() => Descriptors00551BA0() + 0x28;
+
+    // =====================================================================
+    // COUSSIN D'AIR — ecole 2, indice 10, sous-type 0xaa
+    //
+    //   0x004785F0   LE SORT, ET IL EST SEUL. 205 octets, ABSENT de Blaze.c ; releve garde sous
+    //                Legacy/Raw/Blaze/FUN_004785F0.asm. Un seul saut interne.
+    //
+    // APRES LE PLUS GROS CORPS DE L'ECOLE, LE PLUS PETIT. Champ magique faisait 1 333 octets et
+    // vingt-six sauts ; celui-ci en fait 205 et un seul. Et comme lui, il n'a AUCUN enfant a
+    // ecrire : la seule creature qu'il fait naitre est l'etincelle 0xbf, deja transcrite
+    // (TickTrailSpark_00475F60) et deja exercee.
+    //
+    // C'EST UN SOUFFLE SOUS LES PIEDS D'UN ALLIE. Il se pose par FindTargetAround en mode 0 — le
+    // lanceur lui-meme faute de voisin, comme Vitesse et les Materia —, puis pendant vingt images
+    // il seme UNE ETINCELLE PAR IMAGE a la position du porteur, chacune avec une vitesse
+    // horizontale de seize unites dans une direction tiree au sort et une poussee verticale fixe
+    // de 0x1e000. A la vingtieme il pose l'effet 28 et s'efface.
+    //
+    // L'effet 28 n'a ni masque d'immunite ni jet de sauvegarde — comme celui de Vitesse : c'est
+    // un bienfait, il ne se refuse pas.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_004785f0 @ 0x004785f0 — <b>Coussin d'air</b> : le sous-type <c>0xaa</c>, creneau
+    /// 170 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>onzieme fiche de l'ecole
+    /// 2</b>. 205 octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_004785F0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le plus court corps de l'ecole, et le second d'affilee sans enfant a lui</b> : la seule
+    /// creature qu'il fait naitre est l'etincelle <c>0xbf</c>, qui est
+    /// <see cref="TickTrailSpark_00475F60"/> — deja transcrite, deja exercee.
+    /// </para>
+    /// <para>
+    /// <b>Vingt et une images, et rien d'autre a faire que souffler.</b> A la premiere il se pose
+    /// sur un allie (<see cref="FindTargetAround_00474BA0"/> en mode 0, le lanceur lui-meme faute
+    /// de voisin) et se donne une gravite <c>0x4000</c> que les etincelles heriteront. A chacune —
+    /// y compris la premiere — il seme <b>une</b> etincelle a la position du porteur, avec seize
+    /// unites de vitesse horizontale dans une direction tiree au sort et une poussee verticale fixe
+    /// de <c>0x1e000</c> : le souffle monte tout en s'evasant.
+    /// </para>
+    /// <para>
+    /// <b>A la vingtieme il pose l'effet 28</b> (<see cref="ApplyStatusEffect_0053C2A0"/>, duree en
+    /// <c>+0xb8</c>, bit <c>0x400000</c>) et s'efface. Comme l'effet 19 de Vitesse, celui-la n'a ni
+    /// masque d'immunite ni jet de sauvegarde : c'est un bienfait, il ne se refuse pas.
+    /// </para>
+    /// <para>
+    /// <c>+0x12</c> recoit la stature du porteur a la premiere image et <b>rien ne la relit</b> —
+    /// ni ici, ni dans l'etincelle, qui ne recopie ce champ que par la copie en bloc de
+    /// l'engendreur. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickAirCushion_004785F0(byte* record)
+    {
+        byte* e = record;
+        byte* carrier;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // Faute de voisin dans son camp, elle rend le lanceur : le coussin se pose toujours.
+            carrier = FindTargetAround_00474BA0(e, 0);
+
+            *(byte**)(e + 0x78) = carrier;
+            *(byte**)(e + 0x70) = carrier;
+
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(uint*)(e + 0x28) = 0x10001000;
+            *(ushort*)(e + 0x2c) = 0x1f;
+
+            // La gravite que les etincelles heriteront par la copie en bloc.
+            *(ushort*)(e + 0x9a) = 0x4000;
+            *(ushort*)(e + 0x1a) = 1;
+
+            // Posee, et jamais relue — ni ici ni ailleurs.
+            *(short*)(e + 0x12) = (short)StatusBubbleHeight_00538BC0((uint*)carrier);
+        }
+        else
+        {
+            // Ghidra: LAB_00478643
+            carrier = *(byte**)(e + 0x78);
+        }
+
+        // Ghidra: LAB_00478646 — UNE ETINCELLE PAR IMAGE, a la position du porteur.
+        int angle = CrtRand();                       // Ghidra: FUN_00547140
+
+        *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(angle) << 4;
+        *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(angle) << 4;
+        *(int*)(e + 0x54) = 0x1e000;                 // et la poussee vers le haut, elle, est fixe
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(carrier + 0x1c), Descriptors00551BC8(), 0xbf, e[0x0b], -1);
+
+        if (*(short*)(e + 0x10) >= 0x14)
+        {
+            // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
+            *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+            ApplyStatusEffect_0053C2A0(*(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            *(uint*)e = 0;
+        }
 
         *(short*)(e + 0x10) += 1;
     }
