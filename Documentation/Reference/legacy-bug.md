@@ -1330,3 +1330,53 @@ de scène étant de même taille et de même disposition.
 ### Où porterait le correctif
 
 Employer `0x005e9324` dans la moitié « groupe », comme le fait la plume.
+
+---
+
+## LB-026 — « Champ magique » vise le dernier candidat balayé, pas le plus proche
+
+**Relevé** le 2026-09-01 au désassembleur, en transcrivant `FUN_004780b0`
+(`TickMagicField_004780B0`). Le corps est absent de `Blaze.c` ; le relevé est sous
+`Legacy/Raw/Blaze/FUN_004780B0.asm`.
+
+### Symptôme
+
+Le champ est une sentinelle : à chaque image il balaie les trois tables d'entités, retient la plus
+proche du porteur, et tire dessus quand elle est à portée et qu'il est bien pointé. **La direction
+vers laquelle il se tourne n'est pas celle de cette entité-là** : c'est celle du dernier candidat
+rencontré pendant le balayage, qu'il soit le plus proche ou non.
+
+### Cause
+
+Le balayage range les trois écarts de position dans des emplacements de pile **avant** la
+comparaison de distance, donc pour *chaque* candidat retenu :
+
+```
+0047832c  mov [esp+28h],eax      <- écart X, inconditionnel
+00478336  mov [esp+14h],ecx      <- écart Y, inconditionnel
+0047833d  mov [esp+18h],edx      <- écart Z, inconditionnel
+00478355  call 00545A22h         <- la distance
+0047835e  cmp  ebp,eax
+00478360  jle  0047836Ch         <- pas meilleur : on passe au suivant
+00478364  mov  [esp+10h],edi     <- meilleur : on garde LE POINTEUR
+00478368  mov  [esp+1Ch],ebp     <- et LA DISTANCE
+```
+
+La branche « celui-ci est meilleur » ne garde que le pointeur et la distance. Les trois écarts, eux,
+ont déjà été écrasés par le candidat suivant. Le bloc de visée (`0x004783a1`) les relit tels quels
+pour calculer le lacet et le tangage.
+
+### Ce que ça change en jeu
+
+**Le champ tire quand même sur la bonne cible** — le pointeur retenu est bien le plus proche, et
+c'est lui qui reçoit les quatre étincelles et le bit `0x40000000`. Ce qui est faux, c'est
+l'orientation visible du champ et, par contrecoup, **le moment** du tir : les deux conditions
+d'angle (`±0x200` en lacet et en tangage) portent sur l'écart vers le *dernier* candidat. Avec une
+seule entité en vue — le cas ordinaire, un projectile isolé — les deux coïncident et rien ne se
+voit. Avec plusieurs, le champ se tourne vers la mauvaise et refuse de tirer sur la bonne jusqu'à ce
+que les deux directions se rapprochent par hasard.
+
+### Où porterait le correctif
+
+Déplacer les trois `mov [esp+…]` d'écart dans la branche « celui-ci est meilleur », à côté du
+pointeur et de la distance.
