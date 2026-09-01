@@ -5001,6 +5001,13 @@ public static unsafe partial class Blaze
             case 0x0044CAC0: TickMiraclePillar_0044CAC0(record); return;
             case 0x0044CBD0: TickMiracleAureole_0044CBD0(record); return;
 
+            // RESURECTION, ecole 1 indice 22 — la seule fiche a ne pas recopier le patron
+            // d'enveloppe : le garde-fou commun refuse une cible mourante, et elle vise un mort.
+            case 0x0044CD00: TickResurrection_0044CD00(record); return;
+            case 0x0044CF30: TickResurrectionColumn_0044CF30(record); return;
+            case 0x0044D030: TickResurrectionMote_0044D030(record); return;
+            case 0x0044D170: TickResurrectionVeil_0044D170(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -45401,6 +45408,479 @@ public static unsafe partial class Blaze
         }
 
         *(short*)(e + 0x16) += 1;
+    }
+
+    // =====================================================================
+    // RESURECTION — le cinquante-deuxieme sort, ecole 1 indice 22, sous-type 0x34
+    // (l'orthographe est celle du jeu : une seule R)
+    //
+    //   0x0044CD00   LE SORT. Sous-type 0x34 de 0x00551c30, 475 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044CD00.asm.
+    //   0x0044CEE0   SON ENVELOPPE D'EFFET — ET ELLE N'EST PAS LA SIXIEME COPIE. Decompilee.
+    //   0x0044CF30   sa colonne, sous-type 0x98 de 0x00551f30. 249 octets, ABSENT.
+    //   0x0044D030   son eclat montant, sous-type 0x99 de 0x00551f30. 315 octets, ABSENT.
+    //   0x0044D170   son voile, sous-type 0x93 de 0x00552230. 507 octets, ABSENT.
+    //
+    // L'ENVELOPPE A DU ETRE ECRITE A PART, ET LA RAISON EST LOGIQUE. Les cinq fiches precedentes
+    // partagent le meme corps de 58 octets, qui commence par IsEffectPairBlocked_004364B0 — un
+    // garde-fou qui REFUSE une cible portant 0x50002000, c'est-a-dire mourante, immobilisee ou
+    // prise. Une cible morte le porte. Resurection ne pouvait donc pas s'en servir : elle a son
+    // propre garde, qui accepte le mort et refuse au contraire l'entite deja consommee (0x10000040)
+    // ou en recul (+0x12) ou clignotante (+0x96). La seule fiche de la serie a ne pas recopier le
+    // patron, et c'est la seule qui avait besoin d'autre chose.
+    //
+    // MEME RAISON POUR LE MODE 1 D'ACQUIREHOLYTARGET. Resurection est le seul appelant du depot a
+    // passer 1 : ce mode efface temporairement 0x40000000 et 0x2000 sur les quatre membres du
+    // groupe le temps du balayage, puis les repose. Autrement dit il rend les morts VISIBLES a la
+    // recherche de cible, juste le temps de la faire. Le mode existait pour ce sort-la.
+    //
+    // ET C'EST LE PLUS LONG DE L'ECOLE : 180 images, trois secondes, contre 60 a 70 pour ses
+    // voisines. Quatre coups du meme bruit 0x27 a hauteurs montantes, puis deux autres a la fin.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044cee0 @ 0x0044cee0 — <b>ressusciter si la cible l'accepte</b>. Decompilee
+    /// dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Elle n'est PAS la sixieme copie du patron de l'ecole</b>, et c'est la seule de la serie a
+    /// s'en ecarter. Les cinq precedentes
+    /// (<see cref="ClearStatusEffectIfEligible_0044B910"/> et ses jumelles) appellent
+    /// <see cref="IsEffectPairBlocked_004364B0"/>, qui <b>refuse</b> une cible portant l'un des
+    /// bits <c>0x50002000</c> — mourante, immobilisee, prise. Une cible morte le porte : le
+    /// garde-fou commun aurait donc refuse tout appel de Resurection.
+    /// </para>
+    /// <para>
+    /// Son garde a elle est ecrit sur place et prend l'autre parti : elle refuse si la cible porte
+    /// <c>0x10000040</c>, si elle n'est plus vivante au sens <c>0x80000000</c>, si elle est en
+    /// recul (<c>+0x12</c>) ou si elle clignote (<c>+0x96</c>). <b>Rien sur <c>0x40000000</c></b>,
+    /// le bit de mort — et c'est tout l'objet.
+    /// </para>
+    /// <para>
+    /// La valeur rendue en cas de refus est le <c>CONCAT22</c> du binaire : <c>1</c> dans le mot
+    /// bas, et le <b>mot haut du drapeau de la cible</b> dans le mot haut, laisse la par le
+    /// registre. Aucun appelant ne la lit ; transcrite telle quelle.
+    /// </para>
+    /// </summary>
+    private static uint ReviveTargetIfEligible_0044CEE0(uint* caster, uint* victim, int keep)
+    {
+        bool blocked = false;
+        uint flags = *victim;
+
+        if ((flags & 0x10000040) != 0 || (flags & 0x80000000) == 0) blocked = true;
+
+        if (*(short*)((byte*)victim + 0x12) != 0 || *(short*)((byte*)victim + 0x96) != 0)
+        {
+            blocked = true;
+        }
+
+        if (!blocked) return ReviveTarget_0053CD80(caster, victim, keep);
+
+        // Ghidra: CONCAT22((short)(flags >> 0x10), 1) — le mot haut est un reste de registre.
+        return (flags & 0xffff0000) | 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044cd00 @ 0x0044cd00 — <b>Resurection</b> : le sous-type <c>0x34</c>, creneau
+    /// 52 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>vingt-troisieme fiche de
+    /// l'ecole 1</b>. 475 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le seul appelant du depot a passer <c>1</c> a
+    /// <see cref="AcquireHolyTarget_00447CB0"/>.</b> Ce mode efface temporairement
+    /// <c>0x40000000</c> et <c>0x2000</c> sur les quatre membres du groupe, lance le balayage, puis
+    /// repose les deux bits : il rend les <b>morts visibles</b> a la recherche de cible, le temps
+    /// de la faire. Le mode n'existait que pour cette fiche.
+    /// </para>
+    /// <para>
+    /// <b>Le plus long sort de l'ecole</b> : 180 images, contre 60 a 70 pour ses voisines. Quatre
+    /// coups du <b>meme</b> bruit <c>0x27</c> a hauteurs montantes
+    /// (<c>0x200</c>, <c>0x2aa</c>, <c>0x3d3</c>, <c>0x329</c>) aux images 0, 10, 40 et 50, puis
+    /// deux autres aux images 128 et 129 ; une colonne <c>0x98</c> a la naissance ; et a la
+    /// vingtieme image deux eclats <c>0x99</c> et un voile <c>0x93</c>.
+    /// </para>
+    /// <para>
+    /// <b>Il tient le lanceur ET la cible</b> par le bit <c>0x80</c>, des la premiere image, et les
+    /// relache tous les deux apres <see cref="EndSpellAndResetDecor_00448020"/>. Aucune autre fiche
+    /// de l'ecole ne tient sa cible.
+    /// </para>
+    /// </summary>
+    private static void TickResurrection_0044CD00(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        // LE MODE 1 : il rend les morts visibles a la recherche de cible.
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 1);
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        // Le meme bruit quatre fois, de plus en plus haut, puis deux autres a la fin.
+        if (*(short*)(e + 0x16) == 0x00) Aud.PlaySoundEffect(0x27, 0x0200, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x0a) Aud.PlaySoundEffect(0x27, 0x02aa, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x28) Aud.PlaySoundEffect(0x27, 0x03d3, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x32) Aud.PlaySoundEffect(0x27, 0x0329, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x80) Aud.PlaySoundEffect(0x2d, 0x0200, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x81) Aud.PlaySoundEffect(0x30, 0x0329, 0x1000, 0x1000);
+
+        // Ghidra: LAB_0044ce0a — l'amorce.
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            SpawnCastEntity_0047AAE0(e, 0x98, 0, -1);
+
+            // LE LANCEUR ET LA CIBLE sont tenus tous les deux.
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+            *(uint*)anchor |= 0x80;
+        }
+
+        // Ghidra: LAB_0044ce3f
+        if (*(short*)(e + 0x10) != 1) return;
+
+        if (*(short*)(e + 0x16) == 0x14)
+        {
+            SpawnCastEntity_0047AAE0(e, 0x99, 0, -1);
+            SpawnCastEntity_0047AAE0(e, 0x99, 0, -1);
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x93, 0, -1);
+        }
+
+        // Ghidra: LAB_0044ce8a
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) == 0xb4)
+        {
+            // La paire famille/indice est pretee au lanceur ; le binaire relit +0x74 pour chacune
+            // des deux ecritures.
+            (*(byte**)(e + 0x74))[6] = e[6];
+            (*(byte**)(e + 0x74))[7] = e[7];
+
+            ReviveTargetIfEligible_0044CEE0(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            EndSpellAndResetDecor_00448020(e);
+
+            // Les deux sont relaches apres l'extinction.
+            *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+            *(uint*)anchor &= 0xffffff7f;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044cf30 @ 0x0044cf30 — <b>la colonne de Resurection</b> : le sous-type
+    /// <c>0x98</c>, creneau 152 de <see cref="s_StaticEntityHandlers_00551f30"/>. 249 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0044CF30.asm</c>.
+    ///
+    /// <para>
+    /// Posee sur le <b>plancher</b> <c>+0x60</c> du porteur, comme la colonne de Miracle et le rai
+    /// de Remontant. Ses deux echelles horizontales approchent d'un quart par image la valeur
+    /// <c>0x1000</c>, la verticale est <b>repinglee a <c>0x61a8</c> a chaque image</b> — pas
+    /// approchee, ecrite.
+    /// </para>
+    /// <para>
+    /// <b>Elle touche a <c>+0x36</c> en naissant</b> : <c>(x &amp; ~1) | 4</c>. C'est le seul corps
+    /// de l'ecole a modifier ce mot de drapeaux d'affichage, et la valeur d'origine est celle que
+    /// <see cref="SpawnCastEntity_0047AAE0"/> a recopiee du sort.
+    /// </para>
+    /// <para>
+    /// <b>Cent quarante images de montee, puis vingt de descente</b> : la teinte monte de
+    /// <c>+10</c> par image sous un plafond a <c>0x64</c> — comparaison <b>non signee</b>, le meme
+    /// motif que <see cref="TickMiraclePillar_0044CAC0"/> mais a un plafond plus bas ; passe
+    /// <c>0x8c</c> elle bascule en etat 2, ou la teinte tombe de <c>-20</c> jusqu'a zero.
+    /// </para>
+    /// </summary>
+    private static void TickResurrectionColumn_0044CF30(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60);   // LE PLANCHER
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x2d;
+            e[0x0a] = 7;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x34) = 0;
+            *(short*)(e + 0x16) = 0;
+
+            // Le mot de drapeaux d'affichage, lu avant tout le reste et repose en dernier.
+            *(ushort*)(e + 0x36) = (ushort)((*(ushort*)(e + 0x36) & ~1) | 4);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x28) += (short)((0x1000 - *(short*)(e + 0x28)) >> 2);
+            *(short*)(e + 0x2c) += (short)((0x1000 - *(short*)(e + 0x2c)) >> 2);
+
+            // La verticale n'est pas approchee : elle est reecrite a chaque image.
+            *(short*)(e + 0x2a) = 0x61a8;
+
+            BrightenEntityTint_00404DE0(e, 10, 10, 10);
+
+            // Le plafond, lu NON SIGNE.
+            if (e[0x38] >= 0x64)
+            {
+                e[0x38] = 0x64;
+                e[0x39] = 0x64;
+                e[0x3a] = 0x64;
+            }
+
+            if (*(short*)(e + 0x16) >= 0x8c)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            BrightenEntityTint_00404DE0(e, -20, -20, -20);
+
+            if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+        }
+
+        // Ghidra: LAB_0044d022 — tous les chemins comptent l'image.
+        *(short*)(e + 0x16) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044d030 @ 0x0044d030 — <b>l'eclat montant de Resurection</b> : le sous-type
+    /// <c>0x99</c>, creneau 153 de <see cref="s_StaticEntityHandlers_00551f30"/>. 315 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0044D030.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est l'eclat de Parole sainte qui monte.</b> Meme forme que
+    /// <see cref="TickHolyWordShard_0044DB30"/> — trois rotations tirees sur le tour complet, deux
+    /// vitesses de rotation dans <c>[-50, 49]</c>, echelle <c>0xfa0</c> — mais deux differences :
+    /// il part du <b>plancher</b> <c>+0x60</c> et non du corps, et il <b>s'eleve</b>.
+    /// </para>
+    /// <para>
+    /// <b>La montee ralentit sans jamais s'arreter</b> : <c>+0x5c</c> part de <c>250</c>, la
+    /// hauteur gagne <c>+0x5c &lt;&lt; 12</c> par image, et <c>+0x5c</c> perd <c>2</c> — jusqu'a un
+    /// <b>plancher a <c>30</c></b>, sous lequel il ne descend plus. L'eclat continue donc de monter
+    /// lentement jusqu'a sa cent-vingt-huitieme image, ou il rend la main.
+    /// </para>
+    /// </summary>
+    private static void TickResurrectionMote_0044D030(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60);   // LE PLANCHER
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0x1d;
+            e[0x0a] = 2;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x28) = 0x0fa0;
+            *(short*)(e + 0x2a) = 0x0fa0;
+            *(short*)(e + 0x2c) = 0x0fa0;
+
+            *(short*)(e + 0x30) = (short)(CrtRand() % 0x1000);
+            *(short*)(e + 0x32) = (short)(CrtRand() % 0x1000);
+            *(short*)(e + 0x34) = (short)(CrtRand() % 0x1000);
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 100 - 0x32);
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x2e) = -60;
+            *(int*)(e + 0x5c) = 0xfa;
+            *(short*)(e + 0x14) = (short)(CrtRand() % 100 - 0x32);
+        }
+
+        // Ghidra: LAB_0044d10a
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short spinA = *(short*)(e + 0x12);
+            short spinB = *(short*)(e + 0x14);
+
+            *(short*)(e + 0x30) += spinA;
+            *(short*)(e + 0x34) -= spinA;
+            *(short*)(e + 0x32) += spinB;
+
+            int climb = *(int*)(e + 0x5c);
+            *(int*)(e + 0x20) += climb << 0xc;
+
+            climb -= 2;
+            *(int*)(e + 0x5c) = climb;
+            if (climb < 0x1e) *(int*)(e + 0x5c) = 0x1e;
+
+            *(short*)(e + 0x16) += 1;
+
+            BrightenEntityTint_00404DE0(e, 8, 8, 8);
+        }
+
+        // Ghidra: LAB_0044d15a — hors du bloc d'etat : les deux chemins y passent.
+        if (*(short*)(e + 0x16) == 0x80) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044d170 @ 0x0044d170 — <b>le voile de Resurection</b> : le sous-type
+    /// <c>0x93</c> de <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c>.
+    /// 507 octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0044D170.asm</c>.
+    ///
+    /// <para>
+    /// <b>Meme numero que <see cref="TickBlessingSpark_0044C110"/>, autre table, autre corps</b> :
+    /// celui-la est le <c>0x93</c> de <c>0x00551f30</c>, que
+    /// <see cref="SpawnCastEntity_0047AAE0"/> atteint ; celui-ci est le <c>0x93</c> de
+    /// <c>0x00552230</c>.
+    /// </para>
+    /// <para>
+    /// <b>C'est lui qui pilote le voile plein cadre</b>
+    /// (<see cref="GameMemory.s_Unknown_005de024"/>), et il le fait <b>canal par canal</b> : seize
+    /// images a <c>+15</c> sur les trois, ecretees a <c>0xff</c>, puis seize a <c>-15</c>, planchees
+    /// a zero, et un dernier passage qui remet les trois a zero d'un coup. C'est le seul corps du
+    /// depot a monter le voile par paliers plutot qu'a lui poser une couleur d'un bloc — et il
+    /// <b>ecrete</b> la ou <see cref="ShiftScreenVeil"/>, l'aide des fondus de transition,
+    /// <b>enroule</b>. Les deux ne sont donc pas interchangeables.
+    /// </para>
+    /// <para>
+    /// <b>Il monte comme l'eclat</b> — meme <c>+0x5c</c> partant de <c>250</c> et perdant <c>2</c>
+    /// par image, meme hauteur gagnee de <c>+0x5c &lt;&lt; 12</c> — mais chez lui le plancher a
+    /// <c>30</c> fait <b>basculer l'etat</b> au lieu de simplement borner la vitesse : c'est ce qui
+    /// declenche le voile. Il se marque alors <c>0x4000</c> a chaque image de la descente.
+    /// </para>
+    /// </summary>
+    private static void TickResurrectionVeil_0044D170(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60);   // LE PLANCHER
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x70;   // Ghidra: &DAT_00551598
+            e[0x40] = 0;
+            e[0x0a] = 7;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(int*)(e + 0x5c) = 0xfa;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x2e) = -60;
+        }
+
+        // Ghidra: LAB_0044d1d1 — la montee.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x28) += (short)((0x0bb8 - *(short*)(e + 0x28)) >> 2);
+            *(short*)(e + 0x2a) += (short)((0x0bb8 - *(short*)(e + 0x2a)) >> 2);
+
+            int climb = *(int*)(e + 0x5c);
+            *(int*)(e + 0x20) += climb << 0xc;
+
+            climb -= 2;
+            *(int*)(e + 0x5c) = climb;
+
+            if (climb < 0x1e)
+            {
+                // Le plancher de vitesse fait basculer l'etat, et la fonction rend la main tout de
+                // suite : l'image du basculement ne passe pas par le bloc du voile.
+                *(int*)(e + 0x5c) = 0x1e;
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 0;
+                return;
+            }
+
+            // Ghidra: LAB_0044d235
+            BrightenEntityTint_00404DE0(e, 8, 8, 8);
+
+            if (e[0x38] >= 0xa0)
+            {
+                e[0x38] = 0xa0;
+                e[0x39] = 0xa0;
+                e[0x3a] = 0xa0;
+            }
+        }
+
+        // Ghidra: LAB_0044d256 — LE VOILE.
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(int*)(e + 0x20) += *(int*)(e + 0x5c) << 0xc;
+        *(short*)(e + 0x28) += 0x01f4;
+        *(short*)(e + 0x2a) += 0x01f4;
+
+        if (*(short*)(e + 0x12) <= 0x0f)
+        {
+            // Seize images de montee, ECRETEES a 0xff — et non enroulees.
+            uint veil = Mem.s_Unknown_005de024;
+            int r = (byte)veil + 0x0f;
+            int g = (byte)(veil >> 8) + 0x0f;
+            int b = (byte)(veil >> 0x10) + 0x0f;
+
+            if (r > 0xff) r = 0xff;
+            if (g > 0xff) g = 0xff;
+            if (b > 0xff) b = 0xff;
+
+            Mem.s_Unknown_005de024 =
+                0x01000000u | ((uint)b << 0x10) | ((uint)g << 8) | (uint)r;
+
+            *(short*)(e + 0x12) += 1;
+            return;
+        }
+
+        // Ghidra: LAB_0044d2e6 — la descente.
+        *(uint*)e |= 0x4000;
+
+        {
+            uint veil = Mem.s_Unknown_005de024;
+            int r = (byte)veil - 0x0f;
+            int g = (byte)(veil >> 8) - 0x0f;
+            int b = (byte)(veil >> 0x10) - 0x0f;
+
+            if (r < 0) r = 0;
+            if (g < 0) g = 0;
+            if (b < 0) b = 0;
+
+            Mem.s_Unknown_005de024 =
+                0x01000000u | ((uint)b << 0x10) | ((uint)g << 8) | (uint)r;
+        }
+
+        if (*(short*)(e + 0x12) == 0x20)
+        {
+            *(uint*)e &= 0x7fffffff;
+            Mem.s_Unknown_005de024 = 0x01000000;
+        }
+
+        // Ghidra: LAB_0044d364
+        *(short*)(e + 0x12) += 1;
     }
 
     /// <summary>
