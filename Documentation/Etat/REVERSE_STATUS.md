@@ -19522,3 +19522,189 @@ signalées ce jour ont été vérifiées à la main et sont bonnes** :
 contenu, et elle ne se déduit pas de la donnée. Elle se déduit du **consommateur** — de son plafond
 de `+0x40`, ou du `+ 0xNN` que le code applique à la base. Écrire le réflexe dans un document n'a
 pas suffi (il l'était depuis Boule de feu, le matin même) ; le script, lui, se lance.
+
+## 2026-09-01 — les gestionnaires d'objet, 14 sur 17
+
+`ObjetsAtteignables.md` recensait 21 gestionnaires d'entité atteignables par un script d'objet, dont
+quatre écrits. Quatorze de plus le sont maintenant, et avec eux **cinq petits-enfants** que le
+recensement ne pouvait pas montrer.
+
+| | avant | après |
+|---|---:|---:|
+| gestionnaires d'objet implémentés | 4 / 21 | **18 / 21** |
+| emplois couverts (sur 1 440) | 486 | **1 412** |
+| corps nouveaux dans le dépôt | — | **19** |
+
+Dix sortent de `Blaze.c`, quatre du désassembleur (`0x00446F30`, `0x00476500`, `0x00446410`,
+`0x00447170` — relevés sous `Legacy/Raw/Blaze/`). Il reste `0x00447630` (14 emplois),
+`0x00404920` (10) et `0x00446A90` (4), soit **28 emplois sur 1 440**.
+
+### Le patron commun, et les quatre exceptions
+
+Les dix-huit suivent la forme de la bouffée `0x00446790` déjà écrite : `+0x10` est un état à zéro à
+la naissance, la première image l'avance et arme un compte à rebours, l'entité s'éteint en perdant
+son bit `0x80000000`. Quatre s'en écartent, et chaque écart est une information :
+
+**`0x00446F30` mesure son porteur.** Il résout les trois blocs de description
+(`ResolveEntityBlocks`) et lit les trois dimensions du bloc de **modèle** : `+0x14` reçoit
+`(largeur + profondeur) / 4`, `+0x16` reçoit `(l + h + p) / 3` plafonné à 600 puis multiplié par 50.
+Ni l'un ni l'autre n'est relu par lui — ils partent dans la fille par la recopie des 0x27 mots que
+fait `SpawnStatusEffectEntity_0047AC40`, et c'est la fille `0x00447050` qui en fait son échelle.
+**Un gros monstre a donc un gros effet.** Un membre du groupe n'est pas mesuré du tout : le bit
+`0x800000` court-circuite le calcul et impose `0x1e` et `6000`, si bien que les personnages ont
+tous la même taille d'effet.
+
+**`0x00446620` intervertit sa taille de départ et sa taille d'arrivée.** Sa mère lui laisse la cible
+dans `+0x28`..`+0x2c` et le départ dans `+0x44`..`+0x4c` ; sa première image recopie la cible dans
+`+0x50`..`+0x58` puis charge le départ dans l'échelle. C'est ce qui permet à `0x00446410` de
+décrire **quatre sphères différentes avec les mêmes champs**, en changeant seulement ces deux
+triplets entre les quatre appels.
+
+**`0x00446170` ne fait naître rien** : il éteint le fond de l'écran en écrivant zéro directement
+dans les trois composantes de `s_BackColour*_005e93a0`, sans passer par le fondu du mode 2. Avec
+l'explosion de Boule de feu, c'est le seul autre corps du dépôt à écrire ce champ en clair.
+
+**`0x00445E70` fait clignoter son porteur** plutôt que d'engendrer : `+0x9a` vaut `0x800` une image
+sur deux pendant cinquante images. Et c'est le seul de la famille à **vérifier que son porteur est
+encore vivant** avant de semer.
+
+### Les petits-enfants, encore
+
+Le recensement des objets déroule les scripts et donne l'**enfant direct** de chaque fiche. Il ne
+dit rien de ce que cet enfant engendre à son tour. Cinq des quatorze en avaient un, et aucun
+n'existait :
+
+| parent | enfant | ce que c'est |
+|---|---|---|
+| `0x00446DD0` | `0x00446E20` (`0xa6`) | la bulle qui enfle et respire |
+| `0x00445F60` | `0x00446060` (`0x9c`) | l'étincelle qui monte en tournant |
+| `0x00476350` | `0x00476410` (`0x6e`) | l'anneau qui se referme |
+| `0x00446F30` | `0x00447050` (`0x9a`) | la spirale dimensionnée par la mesure |
+| `0x00446410` | `0x00446620` (`0xa7`) | la sphère à deux moitiés |
+
+**Chacun aurait planté à l'image suivant son parent.** La leçon des sorts vaut pour les objets : on
+ne livre pas un gestionnaire sans résoudre ce qu'il engendre. Les quatorze sous-types semés ont été
+résolus dans les trois tables statiques et vérifiés branchés un par un.
+
+### Deux tables de descripteurs de plus
+
+`0x005515e0` (10 enregistrements) et `0x00551630` (3) étaient dans un trou entre
+`s_Descriptors_005515C0` et le reste. `0x00447050` fait monter son `+0x40` jusqu'à **sept**, ce qui
+demandait sept enregistrements à `0x005515e0` — le défaut de Marteau, évité cette fois parce que
+`check-descriptors.sh` existait avant d'écrire le corps. Les trois tables se suivent désormais sans
+interstice de `0x005515c0` à `0x00551648`.
+
+## 2026-09-01 (suite) — les trois derniers, et la liste des objets est close
+
+`0x00447630` (14 emplois), `0x00404920` (10) et `0x00446A90` (4) étaient les trois gestionnaires
+d'objet restants. Les trois sont **absents de `Blaze.c`** et sortent du désassembleur ; les relevés
+sont sous `Legacy/Raw/Blaze/FUN_00447630.asm`, `FUN_00404920.asm` et `FUN_00446A90.asm`. Avec leurs
+deux enfants, cinq corps de plus.
+
+| | avant | après |
+|---|---:|---:|
+| gestionnaires d'objet implémentés | 18 / 21 | **21 / 21** |
+| emplois couverts (sur 1 440) | 1 412 | **1 440** |
+
+**`ObjetsAtteignables.md` ne porte plus une seule ligne `implemente = non`.** Aucun script d'objet
+du CD ne peut plus atteindre un corps manquant : les 2 370 fiches ne font naître que ces vingt et
+un sous-types, tous par la table statique `0x00551c30`, la même dans les onze zones.
+
+### Les trois corps
+
+**`0x00447630` — l'éclat d'impact qui repousse.** C'est `0x00447280` (le sous-type `0x39`, l'éclat
+que les routines d'intelligence posent à chaque coup) avec une poussée en plus : même couronne de
+huit étincelles `0x98` semées à huit angles réguliers par `+0x16`, même anneau `0xa4`, mêmes deux
+sons, même vie de deux images. La poussée vaut `(300 - (l + h + p) / 3) / 8`, plancher à zéro,
+projetée sur le cap `+0x32` du **frappeur** (`+0x6c`) et posée dans les vitesses de la **victime**
+(`+0x70`) : `+0x50` en x, `+0x58` en z, `0x18000` tout net en y, plus le bit `1` du mot d'état qui
+fait vivre la vitesse. **Une grosse bête est donc moins repoussée qu'une petite**, et au-delà de
+900 unités de dimension totale elle ne bouge plus du tout. C'est la première fois que le dépôt voit
+un effet d'objet écrire dans le mouvement de sa cible.
+
+Il porte aussi les **trois mêmes lignes mort-nées** que son jumeau — l'encombrement borné à `0x15e`
+puis à `0x64`, écrasé par une constante quatre instructions plus loin. Chez `0x00447280` c'est
+`0xb4`, ici `0xaa` : le compilateur a émis deux fois le même calcul inutile avec deux constantes
+différentes, ce qui écarte l'hypothèse d'un corps recopié tel quel.
+
+**`0x00404920` — le troisième effet qui tient sa cible.** Après `0x00402FC0` (`0x54`) et
+`0x004041C0` (`0x52`), même squelette : la victime en `+0x6c`, collée à la position de l'effet,
+animation **2** imposée et défilée à la main une image sur deux jusqu'à la dernière image de la
+séquence, bit 3 du mot d'état posé puis rendu. Quatre écarts :
+
+1. il ne pose que le bit 3, pas `0x1008` — la victime n'est pas marquée « rendue comme modèle du
+   paquet » ;
+2. la durée est de `hasard % 5 + 6` images, contre 15 à 19 chez les deux sœurs ;
+3. **il n'a pas de compteur de parité propre** : la cadence d'une image sur deux est prise sur le
+   bit bas du compte à rebours `+0x12` lui-même ;
+4. il sème deux choses — un unique effet `0x50` à la naissance, **engendré depuis la victime et non
+   depuis l'effet**, donc c'est elle qu'il suivra, puis une braise `0x37` à chaque image.
+
+**`0x00446A90` — le jumeau tiré au sort de `0x00446F30`.** Même mesure du porteur, même
+court-circuit du bit `0x800000` pour un membre du groupe, même semis de cinq images — mais chacune
+des trois mesures passe ensuite par un tirage, de sorte que les cinq filles ne se superposent pas :
+`+0x14` devient `hasard % ((l + p) / 4)`, `+0x16` garde la moitié de son échelle et lui rajoute un
+tirage sur cette moitié (donc dans `[v/2, v[`), `+0x9a` devient `hasard % hauteur`. Puis trente
+images de bourdon en phase 2, sans plus rien semer, avec le son `0x14` une image sur quatre.
+
+### Les deux enfants, et ce qu'ils prouvent
+
+Ni l'un ni l'autre n'était écrit ; les deux sont décompilés dans `Blaze.c`.
+
+| parent | enfant | ce que c'est |
+|---|---|---|
+| `0x00446A90` | `0x00446C90` (`0x9b`) | l'écaille qui papillote et pâlit |
+| `0x00404920` | `0x00404A50` (`0x37`) | la braise qui jaillit et retombe |
+
+**`0x00446C90` identifie les trois mesures de sa mère**, et c'est la meilleure preuve qu'on avait
+lu le corps du parent correctement : `+0x14` l'écarte du centre par sinus et cosinus sur un cap tiré
+au hasard, `+0x9a` borne le tirage qui la soulève, `+0x16` devient son échelle `+0x28`/`+0x2a`.
+Chaque champ que `0x00446A90` tirait sans le relire trouve ici son emploi.
+
+Elle décroît aussi d'une façon qu'aucun autre corps du dépôt n'emploie : la teinte perd **un
+huitième d'elle-même** par image (`(char)((int)-(uint)t >> 3) + t`), une décroissance
+proportionnelle là où toute la famille retire une constante par `BrightenEntityTint_00404DE0`.
+
+**`0x00404A50` tire ses trois vitesses du seul champ que sa mère lui passe**, `+0x14` — la moyenne
+des dimensions du modèle de la victime : les deux horizontales centrées sur zéro dans
+`[-e/16, e/8 - e/16[`, la verticale toujours positive dans `[e/16, e/8[`. Puis la pesanteur retire
+`0x1000` par image sans plancher, et l'entité meurt sous `-0xa000` — dix images de chute après le
+sommet, quelle que soit la hauteur atteinte.
+
+### Un descripteur retrouvé, un descripteur relevé
+
+**Les trois enregistrements orphelins de `0x005515e0` ont un consommateur.** Le relevé du matin
+disait des trois derniers (`0x00551618`-`0x0055162f`) qu'ils « changent de bande dans l'atlas et
+n'ont pas de consommateur connu ; ils sont relevés parce qu'ils sont dans la plage, pas parce qu'on
+sait à quoi ils servent ». C'est `0x00446C90` : elle pose `&DAT_00551618` dans son `+0x3c` et tire
+`hasard % 3`. **Trois enregistrements relevés, trois consommés** — la longueur de la plage se
+vérifie des deux côtés. Le code écrit `Descriptors005515E0() + 0x38` plutôt qu'une seconde
+allocation, pour que l'adjacence reste vraie dans le dépôt comme dans le binaire.
+
+**`0x0054f098` (4 enregistrements) est nouveau**, celui de la braise. Sa longueur se lit aussi dans
+les deux sens : le corps fait monter `+0x40` jusqu'à 4 puis le retient à 3, donc il en consomme
+exactement quatre ; et le cinquième enregistrement de la plage (`0x0054f0b8`) change de bande — son
+octet `+0x04` passe de `0x01` à `0x00` —, ce qui borne la table du côté du binaire.
+
+`check-descriptors.sh` confirme les deux : `0x0054F098 +0x00 → 4 restants`, `0x005515E0 +0x38 →
+3 restants`, et les 37 tables du dépôt restent conformes au binaire au dernier octet.
+
+### Trois traces de 1998 transcrites telles quelles
+
+1. **Une branche morte dans `0x00446A90`.** La phase 2 joue un son quand `+0x98` vaut zéro ; or
+   `+0x98` est mis à zéro à l'entrée en phase 2, puis **incrémenté avant le test**, et remis à zéro
+   dès qu'il atteint 4. Il vaut donc toujours 1 à 4 à cet endroit, jamais 0 : le son à `0xf4e` ne
+   part jamais. Seul celui à `0x1000` s'entend, une image sur quatre.
+2. **Trois divisions non gardées**, toujours dans `0x00446A90` : les trois modulos divisent par une
+   mesure du modèle sans vérifier qu'elle est non nulle. Un modèle plat ferait un `#DE` en 1998
+   comme il fait une `DivideByZeroException` ici. Reproduit plutôt que corrigé, conformément à la
+   règle : le défaut appartient au binaire.
+3. **Le calcul mort-né de `0x00447630`**, décrit plus haut.
+
+### Ce que ça change pour la suite
+
+`GestionnairesEntites.md` passe à **162 corps écrits jamais appelés** sur 1 430 atteignables. La
+dette n'est pas un reproche : les 21 gestionnaires d'objet sont désormais tous branchés, et la
+prochaine séance de jeu qui utilise un objet exercera pour de bon ce qui n'est aujourd'hui vérifié
+que par lecture. Les trois sondes (`handlers-exerces.tsv`, `objets-exerces.tsv`,
+`sorts-exerces.tsv`) sont en place pour l'enregistrer.

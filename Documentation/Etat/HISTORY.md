@@ -5,6 +5,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **les objets, 21 sur 21 — la liste est close** : `0x00447630`, `0x00404920` et `0x00446A90`, les trois derniers, sortis du désassembleur. `ObjetsAtteignables.md` ne porte plus une seule ligne `implemente = non`, et les **1 440 emplois** sont couverts
+- feat : **deux enfants de plus**, décompilés : `0x00446C90` (l'écaille `0x9b`) et `0x00404A50` (la braise `0x37`). Comme chaque fois, ils auraient planté à l'image suivant leur parent
+- doc : **`0x00447630` REPOUSSE sa victime** — `(300 - moyenne des dimensions) / 8` sur le cap du frappeur, posé dans les vitesses de la victime avec le bit `1` : une grosse bête est moins repoussée qu'une petite, et au-delà de 900 unités elle ne bouge plus
+- doc : **`0x00446A90` est `0x00446F30` tiré au sort** — mêmes trois mesures du modèle du porteur, mais chacune passée par un tirage, pour que les cinq filles ne se superposent pas
+- doc : **les trois enregistrements orphelins de `0x005515e0` ont leur consommateur** : `0x00446C90` pose `&DAT_00551618` et tire `hasard % 3`. Trois relevés, trois consommés — la longueur se vérifie des deux côtés
+- feat : **une table de descripteurs de plus**, `0x0054f098` (4 enregistrements), celle de la braise ; bornée par le corps (`+0x40` retenu à 3) et par le binaire (le cinquième change de bande)
+- doc : **trois traces de 1998 transcrites telles quelles** — une branche morte dans `0x00446A90` (le son à `0xf4e` ne part jamais, `+0x98` ne vaut jamais zéro au test), trois divisions non gardées par une mesure du modèle, et le calcul mort-né de `0x00447630` écrasé par `0xaa`
+- feat : **les objets, 14 gestionnaires sur 17** — `ObjetsAtteignables.md` passe de 4 à **18 des 21** gestionnaires atteignables par un script d'objet, soit **1 412 des 1 440 emplois** couverts. Dix corps décompilés, quatre sortis du désassembleur
+- feat : **cinq petits-enfants** que le recensement des objets ne montrait pas : `0x00446E20` (la bulle `0xa6`), `0x00446060` (l'étincelle `0x9c`), `0x00476410` (l'anneau `0x6e`), `0x00447050` (la spirale `0x9a`), `0x00446620` (la sphère `0xa7`). Chacun aurait planté à l'image suivant son parent
+- feat : **deux tables de descripteurs relevées**, `0x005515e0` (10 enregistrements) et `0x00551630` (3) — elles comblent le trou entre `0x005515c0` et `0x00551648`, qui se suivent maintenant sans interstice
+- doc : **`0x00446f30` MESURE son porteur** et passe la taille à sa fille par la recopie des 0x27 mots : `(largeur + profondeur) / 4` d'un côté, `(l + h + p) / 3` plafonné à 600 puis × 50 de l'autre. Un gros monstre a un gros effet. Un membre du groupe n'est pas mesuré — le bit `0x800000` impose deux constantes
+- doc : **`0x00446620` intervertit sa taille de départ et sa taille d'arrivée à la naissance**, ce qui permet à sa mère de décrire quatre sphères différentes avec les mêmes champs
 - fix : **les étoiles de Marteau sortaient gigantesques** — `TickHammerDebris_0044A320` fait tourner son image d'atlas sur **trois**, et la table `0x00551528` s'arrêtait à la première : deux images sur trois lisaient huit octets de tas jamais écrits. Table portée de 16 à 18 enregistrements (`0x00551528`-`0x005515b7`)
 - feat : **`OpenForesia.Tools/check-descriptors.sh`** — le contrôle des tables d'atlas, en deux passes : le contenu de chaque tableau relu dans `Blaze.exe`, et la marge de chaque site qui en installe une. Trois fois le même défaut (`0x00551b00`, `0x00551528`) suffisent à l'outiller
 - doc : les 35 tables sont **conformes au binaire au dernier octet** ; ce n'était jamais le contenu qui était faux, toujours la longueur. Les cinq marges courtes signalées par l'outil ont été vérifiées à la main et sont bonnes
