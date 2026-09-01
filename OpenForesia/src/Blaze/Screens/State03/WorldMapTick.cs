@@ -4995,6 +4995,12 @@ public static unsafe partial class Blaze
             case 0x0044C3A0: TickRestorative_0044C3A0(record); return;
             case 0x0044C730: TickRestorativeBeam_0044C730(record); return;
 
+            // MIRACLE, ecole 1 indice 21 — il leve le seul effet qui COMPTE au lieu de poser un
+            // bit : la duree +0xc0 et le compteur +0xec, les trois marques d'un coup.
+            case 0x0044C8A0: TickMiracle_0044C8A0(record); return;
+            case 0x0044CAC0: TickMiraclePillar_0044CAC0(record); return;
+            case 0x0044CBD0: TickMiracleAureole_0044CBD0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -45091,6 +45097,310 @@ public static unsafe partial class Blaze
 
             if ((sbyte)e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
         }
+    }
+
+    // =====================================================================
+    // MIRACLE — le cinquante et unieme sort, ecole 1 indice 21, sous-type 0x33
+    //
+    //   0x0044C8A0   LE SORT. Sous-type 0x33 de 0x00551c30. Decompile dans Blaze.c.
+    //   0x0044CA80   SON ENVELOPPE D'EFFET. Cinquante-huit octets, decompilee dans Blaze.c.
+    //   0x0044CAC0   sa colonne, sous-type 0x96 de 0x00551f30. Decompilee dans Blaze.c.
+    //   0x0044CBD0   son aureole, sous-type 0x97 de 0x00551f30. Decompilee dans Blaze.c.
+    //
+    // TOUTE LA FICHE EST DANS BLAZE.C — la premiere de la serie depuis Priere. Rien a
+    // desassembler : le sort, son enveloppe et ses deux enfants sont decompiles.
+    //
+    // IL LEVE LE SEUL EFFET QUI COMPTE AU LIEU DE POSER UN BIT. ClearStatusEffect_0053CA30 ne
+    // touche aucun bit du mot d'etat : elle remet a zero la duree +0xc0 et le COMPTEUR +0xec, parce
+    // que l'effet 32 (ApplyStatusEffect_0053C5E0) s'empile jusqu'a trois fois au lieu de se marquer
+    // d'un bit. Miracle efface donc les trois marques d'un coup.
+    //
+    // ET C'EST LA CINQUIEME COPIE DE LA MEME ENVELOPPE. 0x0044B910, 0x0044BC80, 0x0044C0D0,
+    // 0x0044C6F0 et 0x0044CA80 : cinq corps de 58 octets identiques instruction pour instruction,
+    // aux deplacements de leurs deux `call` pres, le premier resolvant vers 0x004364b0 dans les
+    // cinq cas. Cinq fiches consecutives, cinq copies.
+    //
+    // SES DEUX ENFANTS SE POSENT SUR LE PLANCHER, comme le rai de Remontant : la hauteur vient de
+    // +0x60 du porteur et non de +0x20. Deux colonnes emboitees, trois aureoles tournantes.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044ca80 @ 0x0044ca80 — <b>lever l'effet 32 si la cible l'accepte</b>.
+    /// Cinquante-huit octets, decompilee dans <c>Blaze.c</c> : le garde-fou
+    /// <see cref="IsEffectPairBlocked_004364B0"/>, puis <see cref="ClearStatusEffect_0053CA30"/>
+    /// s'il a laisse passer.
+    ///
+    /// <para>
+    /// <b>La cinquieme copie du meme corps</b>, apres
+    /// <see cref="ClearStatusEffectIfEligible_0044B910"/>,
+    /// <see cref="ClearStatusEffectIfEligible_0044BC80"/>,
+    /// <see cref="ApplyStatusEffectIfEligible_0044C0D0"/> et
+    /// <see cref="ClearAllStatusEffectsIfEligible_0044C6F0"/> : les cinq sont identiques
+    /// instruction pour instruction, aux deplacements de leurs deux <c>call</c> pres, et le premier
+    /// des deux resout vers <c>0x004364b0</c> dans les cinq cas.
+    /// </para>
+    /// </summary>
+    private static bool ClearCountingEffectIfEligible_0044CA80(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053CA30(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044c8a0 @ 0x0044c8a0 — <b>Miracle</b> : le sous-type <c>0x33</c>, creneau 51 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>vingt-deuxieme fiche de l'ecole 1</b>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>, ainsi que ses trois compagnes — la premiere fiche de
+    /// la serie a ne rien devoir au desassembleur depuis Priere.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Il leve le seul effet qui compte.</b> <see cref="ClearStatusEffect_0053CA30"/> ne touche
+    /// aucun bit du mot d'etat : elle remet a zero la duree <c>+0xc0</c> et le <b>compteur</b>
+    /// <c>+0xec</c>, parce que l'effet 32 (<see cref="ApplyStatusEffect_0053C5E0"/>) s'empile
+    /// jusqu'a trois fois au lieu de se marquer d'un bit. Miracle efface donc les trois marques
+    /// d'un coup. La levee tombe a la soixante-dixieme image.
+    /// </para>
+    /// <para>
+    /// <b>Cinq enfants a la naissance, tous dans la meme image</b> : deux colonnes <c>0x96</c>
+    /// emboitees (echelles cibles <c>4000</c> puis <c>2000</c>) et trois aureoles <c>0x97</c>
+    /// (<c>0x157c</c> deux fois, puis <c>0x1964</c>). L'echelle cible voyage par <c>+0x9a</c>, que
+    /// le sort reecrit avant chaque naissance.
+    /// </para>
+    /// <para>
+    /// <b>Puis cinquante images de poussiere.</b> Tant que <c>+0x16 &lt; 0x32</c>, une etincelle de
+    /// bouffee <c>0xa9</c> (<see cref="EntityHandler_0044FB10"/>, deja ecrite) nait chaque image.
+    /// Les deux champs que le sort repose avant chacune sont exactement ceux que l'etincelle lit en
+    /// naissant : <c>+0x14 = 0x50</c> lui sert de <b>borne de rayon</b>
+    /// (<c>tirage % +0x14</c>) et <c>+0x9a = 1</c> devient son <c>+0x0a</c> d'affichage.
+    /// </para>
+    /// </remarks>
+    private static void TickMiracle_0044C8A0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        // Quatre coups, a l'image pres.
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x10, 0x037e, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x0d, 0x0329, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x0f, 0x0194, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 3) Aud.PlaySoundEffect(0x11, 0x016a, 0x1000, 0x1000);
+
+        // LES CINQ ENFANTS, tous dans l'image de naissance. L'echelle cible voyage par +0x9a.
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            *(ushort*)(e + 0x9a) = 4000;
+            SpawnCastEntity_0047AAE0(e, 0x96, 0, -1);
+
+            *(ushort*)(e + 0x9a) = 2000;
+            SpawnCastEntity_0047AAE0(e, 0x96, 0, -1);
+
+            *(ushort*)(e + 0x9a) = 0x157c;
+            SpawnCastEntity_0047AAE0(e, 0x97, 0, -1);
+
+            *(ushort*)(e + 0x9a) = 0x157c;
+            SpawnCastEntity_0047AAE0(e, 0x97, 0, -1);
+
+            *(ushort*)(e + 0x9a) = 0x1964;
+            SpawnCastEntity_0047AAE0(e, 0x97, 0, -1);
+        }
+
+        // UNE ETINCELLE PAR IMAGE pendant cinquante images. Les deux champs reposes avant chacune
+        // sont ceux qu'elle lit en naissant : la borne de son rayon et son champ d'affichage.
+        if (*(short*)(e + 0x10) == 1 && *(short*)(e + 0x16) < 0x32)
+        {
+            *(ushort*)(e + 0x14) = 0x50;
+            *(ushort*)(e + 0x9a) = 1;
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+        }
+
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) == 0x46)
+        {
+            // La paire famille/indice est pretee au lanceur ; le binaire relit +0x74 pour chacune
+            // des deux ecritures.
+            (*(byte**)(e + 0x74))[6] = e[6];
+            (*(byte**)(e + 0x74))[7] = e[7];
+
+            ClearCountingEffectIfEligible_0044CA80(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044cac0 @ 0x0044cac0 — <b>la colonne de Miracle</b> : le sous-type <c>0x96</c>,
+    /// creneau 150 de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>Decompilee dans
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Elle se pose sur le PLANCHER de la cible</b>, comme
+    /// <see cref="TickRestorativeBeam_0044C730"/> : sa hauteur vient de <c>+0x60</c> du porteur, la
+    /// cote du sol, et non de <c>+0x20</c>. Le sort en fait naitre <b>deux</b>, emboitees : leurs
+    /// echelles horizontales approchent d'un quart par image les cibles <c>4000</c> et
+    /// <c>2000</c> que <c>+0x9a</c> leur a portees, tandis que la verticale reste fixee a
+    /// <c>30000</c>. C'est donc un fut, pas un disque.
+    /// </para>
+    /// <para>
+    /// <b>Trente images de montee, puis la resorption.</b> Etat 1 : la teinte monte de <c>+10</c>
+    /// par image, mais un second plafond la <b>rabat a <c>0xa0</c></b> — comparaison
+    /// <b>non signee</b> sur le canal rouge — la ou l'aureole laisse la sienne saturer a
+    /// <c>0xff</c>. Passe la vingt-neuvieme image elle bascule en etat 2 : les deux echelles
+    /// horizontales perdent un huitieme d'elles-memes par image, la teinte descend de <c>-5</c>, et
+    /// elle rend la main quand <c>+0x38</c> retombe a zero.
+    /// </para>
+    /// </summary>
+    private static void TickMiraclePillar_0044CAC0(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // LE PLANCHER, +0x60, et non la hauteur du corps.
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 5;
+            e[0x0a] = 0x0f;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+            *(short*)(e + 0x2a) = 30000;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x2e) = -60;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short target = *(short*)(e + 0x9a);
+
+            *(short*)(e + 0x28) += (short)((target - *(short*)(e + 0x28)) >> 2);
+            *(short*)(e + 0x2c) += (short)((target - *(short*)(e + 0x2c)) >> 2);
+
+            BrightenEntityTint_00404DE0(e, 10, 10, 10);
+
+            // Le second plafond, lu NON SIGNE : la colonne ne monte qu'a 0xa0.
+            if (e[0x38] > 0xa0)
+            {
+                e[0x38] = 0xa0;
+                e[0x39] = 0xa0;
+                e[0x3a] = 0xa0;
+            }
+
+            if (*(short*)(e + 0x16) > 0x1d) *(short*)(e + 0x10) = 2;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x28) += (short)(-(int)*(short*)(e + 0x28) >> 3);
+            *(short*)(e + 0x2c) += (short)(-(int)*(short*)(e + 0x2c) >> 3);
+
+            BrightenEntityTint_00404DE0(e, -5, -5, -5);
+
+            if ((sbyte)e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+        }
+
+        *(short*)(e + 0x16) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044cbd0 @ 0x0044cbd0 — <b>l'aureole de Miracle</b> : le sous-type <c>0x97</c>,
+    /// creneau 151 de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>Decompilee dans
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>La jumelle plate de la colonne</b>, et posee sur le meme plancher <c>+0x60</c> : meme
+    /// forme a trois etats, meme approche d'un quart, meme resorption d'un huitieme. Trois
+    /// differences seulement, et elles se tiennent :
+    /// </para>
+    /// <list type="bullet">
+    /// <item>ses echelles horizontales visent <b>10000</b> en dur, et c'est la <b>verticale</b> qui
+    /// prend la valeur de <c>+0x9a</c> (<c>0x157c</c> pour deux d'entre elles, <c>0x1964</c> pour la
+    /// troisieme) — l'inverse exact de la colonne ;</item>
+    /// <item>elle <b>tourne</b> : son cap part d'un tirage sur le tour complet et avance de
+    /// <c>0x96</c> par image, ce qui separe les trois exemplaires nes dans la meme image ;</item>
+    /// <item>sa teinte n'a <b>pas</b> le plafond a <c>0xa0</c> de la colonne — elle sature a
+    /// <c>0xff</c> dans <see cref="BrightenEntityTint_00404DE0"/>.</item>
+    /// </list>
+    /// <para>
+    /// L'etat 2 resorbe en plus la verticale, que la colonne laisse intacte.
+    /// </para>
+    /// </summary>
+    private static void TickMiracleAureole_0044CBD0(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2c) = 0;
+            e[0x04] = 0x26;
+            e[0x0a] = 1;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(ushort*)(e + 0x2a) = *(ushort*)(e + 0x9a);
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x2e) = -60;
+
+            *(ushort*)(e + 0x32) = (ushort)(CrtRand() % 0x1000);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x32) += 0x96;
+
+            *(short*)(e + 0x28) += (short)((10000 - *(short*)(e + 0x28)) >> 2);
+            *(short*)(e + 0x2c) += (short)((10000 - *(short*)(e + 0x2c)) >> 2);
+
+            BrightenEntityTint_00404DE0(e, 10, 10, 10);
+
+            if (*(short*)(e + 0x16) > 0x1d) *(short*)(e + 0x10) = 2;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x28) += (short)(-(int)*(short*)(e + 0x28) >> 3);
+            *(short*)(e + 0x2c) += (short)(-(int)*(short*)(e + 0x2c) >> 3);
+            *(short*)(e + 0x2a) += (short)(-(int)*(short*)(e + 0x2a) >> 3);
+
+            BrightenEntityTint_00404DE0(e, -5, -5, -5);
+
+            if ((sbyte)e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+        }
+
+        *(short*)(e + 0x16) += 1;
     }
 
     /// <summary>
