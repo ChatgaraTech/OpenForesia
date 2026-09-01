@@ -1383,3 +1383,56 @@ que les deux directions se rapprochent par hasard.
 
 Déplacer les trois `mov [esp+…]` d'écart dans la branche « celui-ci est meilleur », à côté du
 pointeur et de la distance.
+
+---
+
+## LB-027 — Le script de sons des quatre élémentaires n'a pas de terminateur
+
+**Relevé** le 2026-09-01 dans les données du binaire, en transcrivant `FUN_00479f70`
+(« Liquide », `TickLiquid_00479F70`), qui met ce script en file à sa première image.
+
+### Symptôme
+
+`&DAT_00551978` est un script de sons différés de cinq enregistrements. **Aucun des cinq ne porte
+un octet de délai nul**, alors que c'est la seule chose qui termine un script. Les six autres
+scripts du dépôt en ont un ; celui-là n'en a pas.
+
+### Cause
+
+Les octets, relevés à `at 0x00551978 40` :
+
+```
+0x00551978: 11 01 01 00 bf 01 00 12     <- délai 1
+0x00551980: 18 04 01 00 a6 0c 00 12     <- délai 4
+0x00551988: 18 04 01 00 50 0d 00 12     <- délai 4
+0x00551990: 18 04 01 00 fa 0d 00 12     <- délai 4
+0x00551998: 18 04 01 00 a4 0e 00 12     <- délai 4, et c'est le dernier
+0x005519a0: 00 c0 10 10 01 02 10 00     <- &DAT_005519a0, la table de descripteurs
+```
+
+`Audio.TickDelayedSounds` lit le délai en `[1]` et le nombre de sons en `[2]`, puis avance de huit
+octets par son. Après le cinquième pas il avance donc dans **la table de descripteurs**, dont le
+premier enregistrement se lit comme « seize sons d'identifiant 0, puis 192 images d'attente », et
+repart 128 octets plus loin — au milieu de `&DAT_00551a08`. Rien ne l'arrête ensuite : il continue
+à marcher dans `.data`.
+
+### Ce que ça change en jeu
+
+**Difficile à dire sans l'entendre.** L'identifiant 0 est vraisemblablement inerte, auquel cas le
+seul effet est qu'un emplacement de la file des sons différés reste occupé indéfiniment — la file
+en a trente-deux et n'a pas de test d'occupation (voir la note portée sur
+`s_DelayedSounds_005dfb90`), donc l'emplacement finit par être réécrasé. Si l'identifiant 0 produit
+un son, en revanche, chaque lancer de Liquide, Flamme, Zéphé ou Terre en déclenche seize d'un coup
+cinq images après le début.
+
+### Ce que ce port en fait
+
+**Il ne reproduit pas la marche.** `s_DelayedSoundScript_00551978` s'arrête à ses cinq
+enregistrements ; les deux tables étant ici deux allocations distinctes, la lecture au-delà tomberait
+sur de la mémoire quelconque plutôt que sur les descripteurs. Reproduire fidèlement demanderait de
+recopier 168 octets de tables sans rapport à la suite du script. **C'est une divergence déclarée**,
+notée ici et dans le commentaire du tableau.
+
+### Où porterait le correctif
+
+Mettre l'octet `[1]` du cinquième enregistrement à zéro.

@@ -5102,6 +5102,13 @@ public static unsafe partial class Blaze
             case 0x004790C0: TickArmour_004790C0(record); return;
             case 0x00479250: TickArmourShell_00479250(record); return;
 
+            // LIQUIDE, ecole 2 indice 16 — la premiere des QUATRE ELEMENTAIRES, et elles
+            // partagent UN SEUL corps d'enfant : 0x00479490 lit son +0x06 (l'indice du sort,
+            // 0x10 a 0x13) et saute dans une table de quatre entrees pour choisir l'element.
+            case 0x00479F70: TickLiquid_00479F70(record); return;
+            case 0x00479490: TickElementalFamiliar_00479490(record); return;
+            case 0x00479B90: TickLiquidColumn_00479B90(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -50219,6 +50226,621 @@ public static unsafe partial class Blaze
         }
 
         *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551978</c> — <b>le script de sons differes des quatre elementaires</b>,
+    /// cinq pas de huit octets : un coup <c>0x11</c> puis quatre <c>0x18</c> de plus en plus aigus,
+    /// espaces de quatre images.
+    ///
+    /// <para>
+    /// <b>Il n'a PAS de terminateur</b>, et c'est un defaut d'origine (LB-027) : aucun de ses cinq
+    /// enregistrements ne porte un octet de delai nul. La plage s'arrete la parce que
+    /// <see cref="s_Descriptors_005519A0"/> commence a <c>0x005519a0</c> — pas parce qu'une borne
+    /// la designe. <c>Audio.TickDelayedSounds</c> continue donc dans la table de descripteurs, dont
+    /// le premier enregistrement se lit comme « seize sons d'un coup, puis 192 images d'attente ».
+    /// </para>
+    /// <para>
+    /// <b>Ce port ne reproduit pas cette marche</b> : les deux tables sont ici deux allocations
+    /// distinctes, et le script s'arrete a son cinquieme pas. C'est une divergence declaree, pas un
+    /// oubli — reproduire la marche demanderait de recopier a la suite 168 octets de tables sans
+    /// rapport.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00551978 =
+    [
+        0x11, 0x01, 0x01, 0x00, 0xbf, 0x01, 0x00, 0x12,   // 0x00551978
+        0x18, 0x04, 0x01, 0x00, 0xa6, 0x0c, 0x00, 0x12,   // 0x00551980
+        0x18, 0x04, 0x01, 0x00, 0x50, 0x0d, 0x00, 0x12,   // 0x00551988
+        0x18, 0x04, 0x01, 0x00, 0xfa, 0x0d, 0x00, 0x12,   // 0x00551990
+        0x18, 0x04, 0x01, 0x00, 0xa4, 0x0e, 0x00, 0x12,   // 0x00551998 — et PAS de delai nul
+    ];
+
+    private static byte* s_DelayedSoundScript00551978Storage;
+
+    /// <summary>Les cinq pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00551978()
+        => NativeCopy(s_DelayedSoundScript_00551978, ref s_DelayedSoundScript00551978Storage);
+
+    // =====================================================================
+    // LIQUIDE — ecole 2, indice 16, sous-type 0xb0
+    //
+    //   0x00479F70   LE SORT. Sous-type 0xb0 de 0x00551c30. 392 octets, ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00479F70.asm.
+    //   0x00479490   L'ELEMENTAIRE, sous-type 0x7f de 0x00551f30. 1 766 octets, ABSENT de
+    //                Blaze.c ; releve sous Legacy/Raw/Blaze/FUN_00479490.asm.
+    //   0x00479B90   LA COLONNE, sous-type 0x8b de 0x00551f30. 34 octets, ABSENT de Blaze.c.
+    //
+    // LES QUATRE DERNIERES FICHES DE L'ECOLE PARTAGENT UN SEUL CORPS D'ENFANT, ET C'EST UNE
+    // FRATRIE D'UNE AUTRE ESPECE QUE LES MATERIA. Celles-la etaient quatre copies d'un meme corps ;
+    // ici il n'y a qu'UN corps, et c'est lui qui se branche : 0x00479490 lit le mot +0x06 de son
+    // enregistrement — l'INDICE du sort dans son ecole, 0x10 a 0x13 — et saute dans une table de
+    // quatre entrees a 0x00479b78 pour choisir son element. Liquide prend l'entree 0, Flamme la 1,
+    // Zephe la 2, Terre la 3.
+    //
+    // LE SORT FAIT NAITRE TROIS ELEMENTAIRES, a 120 degres l'un de l'autre sur un cercle d'une
+    // demi-stature autour du lanceur, trente unites au-dessus du sol. Puis il ne fait plus que
+    // payer : DEUX PM TOUTES LES CINQ IMAGES tant que le bouton reste tenu — la cadence la plus
+    // chere de toute l'ecole, quatre fois celle de Champ magique.
+    //
+    // ET L'ELEMENTAIRE EST LE PREMIER VRAI FAMILIER DU DEPOT. Il grossit sur place, previent son
+    // pere quand il est pret (il pose le bit 0x2 sur l'enregistrement du pere, qui n'a aucun autre
+    // moyen de le savoir), puis CHASSE : il cherche un adversaire, le retient par +0x74, vole vers
+    // lui a coups de poussee de huit unites amortie d'un huitieme par image, le frappe au contact
+    // par ResolveSpellHit avec la famille et l'indice de son propre sort, et le lache au bout de
+    // quarante images pour en chercher un autre. Sans proie, il tourne autour de son lanceur.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00479f70 @ 0x00479f70 — <b>Liquide</b> : le sous-type <c>0xb0</c>, creneau 176
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>dix-septieme fiche de l'ecole
+    /// 2</b>. 392 octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00479F70.asm</c>.
+    ///
+    /// <para>
+    /// <b>Trois elementaires naissent a la premiere image</b>, a 120 degres l'un de l'autre
+    /// (<c>0x555</c> de pas, soit un tiers de tour) sur un cercle d'une <b>demi-stature</b> autour
+    /// du lanceur, place trente unites au-dessus du sol. Chacun recoit une phase differente en
+    /// <c>+0x12</c>, du meme pas de <c>0x555</c> : c'est ce qui les fera tourner en decalage quand
+    /// ils n'auront pas de proie.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite le sort ne fait plus que payer.</b> Il n'engendre plus rien et ne bouge plus :
+    /// il preleve <b>deux PM toutes les cinq images</b> tant que le bouton reste tenu — la cadence
+    /// la plus chere de l'ecole, quatre fois celle de Champ magique — et s'arrete des que les PM
+    /// manquent, que le bouton est relache, ou que
+    /// <see cref="CanSustainChannel_00475110"/> refuse.
+    /// </para>
+    /// <para>
+    /// <b>Son age reste a 1.</b> La premiere image le pose et <b>rien ne l'incremente ensuite</b> :
+    /// le corps n'a pas de compteur. Le repli des cent-vingt images, prevu pour un lanceur hors
+    /// groupe, est donc inatteignable — un tel lanceur n'a de toute facon ni manette ni PM.
+    /// Transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// <b>Et il attend son enfant.</b> Le test <c>+0x2</c> qui ouvre toutes les images suivantes
+    /// n'est pose par personne d'autre que l'elementaire, quand il a fini de grossir
+    /// (<see cref="TickElementalFamiliar_00479490"/>, <c>0x004797ff</c>). Tant qu'aucun n'est pret,
+    /// le sort ne coute rien.
+    /// </para>
+    /// </summary>
+    private static void TickLiquid_00479F70(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_00479f8e
+        short age = *(short*)(e + 0x10);
+
+        if (age == 0)
+        {
+            int savedX = *(int*)(e + 0x1c);
+            int savedZ = *(int*)(e + 0x24);
+            int angle = *(short*)(e + 0x32);
+
+            *(ushort*)(e + 0x10) = 1;
+
+            int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+
+            *(ushort*)(e + 0x12) = 0;
+            e[0x04] = 0x39;
+
+            *(short*)(e + 0x32) += 0x400;
+
+            // TRENTE UNITES AU-DESSUS DU SOL, mesurees depuis +0x60.
+            *(int*)(e + 0x20) = ((height + 0x1e) << 0xc) + *(int*)(e + 0x60);
+
+            int radius = height >> 1;
+
+            // TROIS ELEMENTAIRES, a un tiers de tour l'un de l'autre.
+            for (int remaining = 3; remaining != 0; remaining--)
+            {
+                *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(angle) * radius + savedX;
+                *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(angle) * radius + savedZ;
+
+                SpawnCastEntity_0047AAE0(e, 0x7f, e[0x0b], -1);
+
+                // La phase de chacun, du meme pas : ils tourneront en decalage.
+                *(short*)(e + 0x12) += 0x555;
+                angle += 0x555;
+            }
+
+            Aud.QueueDelayedSoundScript(DelayedSoundScript00551978(), (int*)(e + 0x1c));
+
+            // Le lanceur est immobilise ; c'est l'elementaire qui le relachera.
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+            return;
+        }
+
+        // Ghidra: LAB_0047a04c — RIEN NE SE PASSE TANT QU'AUCUN ELEMENTAIRE N'EST PRET.
+        if ((*(uint*)e & 2) == 0) return;
+
+        if ((*(uint*)e & 0x800000) != 0)
+        {
+            byte* caster = *(byte**)(e + 0x74);
+            uint index = ((uint*)caster)[2] & 0xff;
+            byte* perChar = GetMainMemPtr() + (index + 0x78) * 0x2000;
+
+            int slot = Inp.s_PlayerSlots_005e9188[index * 0x4c];
+            ushort pad = *(ushort*)(Inp.s_InputStateBase_00604a20 + slot * 0x10);
+
+            if ((*(ushort*)(perChar + 0x1fc4) & pad) == 0)
+            {
+                *(uint*)e |= 0x2000000;                   // le bouton est relache
+            }
+
+            // Ghidra: LAB_0047a09c — DEUX PM TOUTES LES CINQ IMAGES.
+            if (*(uint*)Mem.Entity(0x005f2cf0) % 5 == 0)
+            {
+                short mana = *(short*)(perChar + 0x14e);
+
+                if (mana >= 2)
+                {
+                    *(short*)(perChar + 0x14e) = (short)(mana - 2);
+                }
+                else
+                {
+                    // Ghidra: LAB_0047a0c7
+                    *(ushort*)(perChar + 0x14e) = 0;
+                    *(uint*)e |= 0x2000000;
+                }
+            }
+        }
+        else if (age >= 0x78)
+        {
+            // Ghidra: LAB_0047a0d2 — inatteignable : l'age reste a 1.
+            *(uint*)e |= 0x2000000;
+        }
+
+        // Ghidra: LAB_0047a0df — et le lanceur doit tenir debout.
+        if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00479490 @ 0x00479490 — <b>l'elementaire</b> : le sous-type <c>0x7f</c> de
+    /// <see cref="s_StaticEntityHandlers_00551f30"/>. 1 766 octets, <b>absent de <c>Blaze.c</c></b>
+    /// ; le releve est garde sous <c>Legacy/Raw/Blaze/FUN_00479490.asm</c>.
+    /// <b>Les quatre dernieres fiches de l'ecole 2 le partagent.</b>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Un seul corps, quatre elements.</b> Il lit <c>+0x06</c> — l'<b>indice</b> du sort dans
+    /// son ecole, <c>0x10</c> a <c>0x13</c> — et saute dans une table de quatre entrees relevee a
+    /// <c>0x00479b78</c> : Liquide (0), Flamme (1), Zephe (2), Terre (3). C'est une fratrie d'une
+    /// autre espece que les Materia, qui etaient quatre copies d'un meme corps ; ici il n'y a qu'un
+    /// corps, et c'est lui qui se branche.
+    /// </para>
+    /// <para>
+    /// <b>Il a trois vies, dans cet ordre.</b> <b>La levee</b> (bit <c>0x2</c> clair) : il grossit
+    /// sur place et seme le decor de son element une image sur deux ou sur quatre selon celui-ci.
+    /// Quand son echelle atteint <c>0x7f0</c>, il <b>pose le bit <c>0x2</c> sur l'enregistrement de
+    /// son pere</b> — c'est le seul signal que le sort recoit, et sans lui le sort ne coute jamais
+    /// rien — relache le lanceur, se donne une gravite et passe a la suite.
+    /// </para>
+    /// <para>
+    /// <b>La chasse</b> (bit <c>0x2</c> pose) : il cherche un adversaire par
+    /// <see cref="FindNearestOpponent_00474EB0"/>, le <b>retient par <c>+0x74</c></b>, vise sa
+    /// hauteur de tete et s'y pousse de huit unites par image, sa vitesse etant amortie d'un
+    /// huitieme. Son cap tourne d'un quart de l'ecart, mais <b>vise 0x400 a cote</b> — le binaire
+    /// ajoute un quart de tour a l'erreur avant de la replier. Au contact il frappe par
+    /// <see cref="ResolveSpellHit_0053A2B0"/> avec la famille (<c>+0x07</c>) et l'indice
+    /// (<c>+0x06</c>) de son propre sort. Il lache sa proie au bout de <b>quarante images</b>, ou
+    /// des qu'elle porte <c>0x50000000</c>. <b>Sans proie il tourne autour du lanceur</b>, a la
+    /// phase que le sort lui a donnee.
+    /// </para>
+    /// <para>
+    /// <b>L'extinction</b> (bit <c>0x2000000</c>, herite du pere a chaque image) : il perd un quart
+    /// de sa taille par image et disparait sous <c>8</c>.
+    /// </para>
+    /// <para>
+    /// <b>Et il respire en permanence</b> : a la fin de chaque image, son echelle avance d'un
+    /// huitieme vers <c>(sin(age &lt;&lt; 8) &gt;&gt; 2) + 0x800</c>, dans les trois axes a la fois.
+    /// </para>
+    /// </remarks>
+    private static void TickElementalFamiliar_00479490(byte* record)
+    {
+        byte* e = record;
+
+        // La boite de detection, reconstruite sur la pile a chaque image — la MEME que Dodo.
+        short* probe = stackalloc short[6] { 0, -60, 60, 100, 0, 120 };
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            // L'EXTINCTION : un quart de moins par image, et la disparition sous 8.
+            short fading = *(short*)(e + 0x28);
+            fading = (short)(fading - (short)(fading >> 2));
+
+            *(short*)(e + 0x28) = fading;
+            *(short*)(e + 0x2a) = fading;
+            *(short*)(e + 0x2c) = fading;
+
+            if (fading < 8) *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_004794f9
+        if ((*(uint*)e & 2) != 0)
+        {
+            // ================================ LA CHASSE ================================
+            *(uint*)e |= *(uint*)(*(byte**)(e + 0x6c)) & 0x2000000;
+
+            byte* prey = *(byte**)(e + 0x78);
+
+            if (prey != null)
+            {
+                // Quarante images par proie, et il la lache aussi des qu'elle porte 0x50000000.
+                if ((*(uint*)prey & 0x50000000) != 0 || *(short*)(e + 0x10) >= 0x28)
+                {
+                    // Ghidra: LAB_00479526
+                    *(byte**)(prey + 0x74) = null;
+                    *(byte**)(e + 0x78) = null;
+                    *(ushort*)(e + 0x10) = 0;
+                    prey = null;
+                }
+            }
+            else
+            {
+                // Ghidra: LAB_00479534
+                prey = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+            }
+
+            // Ghidra: LAB_00479546 — la phase avance, proie ou non.
+            *(short*)(e + 0x12) += 0x80;
+            short phase = *(short*)(e + 0x12);
+
+            int dx;
+            int dy;
+            int aimZ;
+
+            if (prey != null)
+            {
+                *(byte**)(e + 0x78) = prey;
+                dx = (*(int*)(prey + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+                // IL LA RETIENT : plus aucune autre recherche ne la verra.
+                *(byte**)(prey + 0x74) = e;
+
+                int preyHeight = StatusBubbleHeight_00538BC0((uint*)prey);
+
+                // Il vise la mi-hauteur de sa proie.
+                dy = ((((preyHeight & ~1) << 0xb) + *(int*)(prey + 0x20)) - *(int*)(e + 0x20))
+                     >> 0xc;
+
+                aimZ = *(int*)(prey + 0x24);
+            }
+            else
+            {
+                // Ghidra: LAB_00479588 — sans proie, il tourne autour du lanceur, a sa phase.
+                byte* caster = *(byte**)(e + 0x74);
+                int casterHeight = StatusBubbleHeight_00538BC0((uint*)caster);
+
+                dx = ((int)Winsys3d.GetSinTableEntry(phase) * casterHeight
+                      + *(int*)(caster + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+                dy = ((casterHeight << 0xc) + *(int*)(caster + 0x20) - *(int*)(e + 0x20)) >> 0xc;
+
+                aimZ = Winsys3d.GetCosTableEntry(phase) * casterHeight + *(int*)(caster + 0x24);
+            }
+
+            // Ghidra: LAB_004795e5 — la poussee vers le point vise, huit unites par image.
+            int dz = (aimZ - *(int*)(e + 0x24)) >> 0xc;
+
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+            int aimYaw = Winsys3d.Ordinal_457(dx, dz);
+            int aimPitch = Winsys3d.Ordinal_457(dy, flat);
+
+            int* thrust = stackalloc int[3];
+            SetVectorFromAngles_00532AD0(thrust, aimYaw, aimPitch, 8);
+
+            int vx = *(int*)(e + 0x50) + thrust[0];
+            int vy = *(int*)(e + 0x54) + thrust[1];
+            int vz = *(int*)(e + 0x58) + thrust[2];
+
+            *(int*)(e + 0x50) = vx;
+            *(int*)(e + 0x54) = vy;
+            *(int*)(e + 0x58) = vz;
+
+            // LE VIRAGE, ET IL VISE UN QUART DE TOUR A COTE : le binaire ajoute 0x400 a l'ecart
+            // avant de le replier sur douze bits.
+            short heading = *(short*)(e + 0x32);
+            int error = (aimYaw - heading + 0x400) & 0xfff;
+
+            int step = error < 0x800 ? error >> 2 : -((0x1000 - error) >> 2);
+            *(short*)(e + 0x32) = (short)(heading + step);
+
+            // Ghidra: LAB_0047967f — l'amortissement, un huitieme par image sur les trois axes.
+            vx -= vx >> 3;
+            vy -= vy >> 3;
+            vz -= vz >> 3;
+
+            *(int*)(e + 0x50) = vx;
+            *(int*)(e + 0x54) = vy;
+            *(int*)(e + 0x58) = vz;
+
+            *(int*)(e + 0x1c) += vx;
+            *(int*)(e + 0x20) += vy;
+            *(int*)(e + 0x24) += vz;
+
+            byte* hit = ProbeMeleeTarget_00474CA0(e, probe);
+
+            if (hit != null)
+            {
+                // IL FRAPPE AVEC LA FAMILLE ET L'INDICE DE SON PROPRE SORT.
+                ResolveSpellHit_0053A2B0(
+                    *(uint**)(e + 0x74), (uint*)hit, e[0x07], e[0x06], 0);
+
+                *(uint*)hit |= 0x40;
+                *(short*)(hit + 0x96) = 0x10;
+            }
+
+            // Ghidra: LAB_004796f9 — une trainee une image sur quatre.
+            if ((e[0x10] & 3) == 0)
+            {
+                int savedScale = *(int*)(e + 0x28);
+                int savedDepth = *(int*)(e + 0x2c);
+                int savedTint = *(int*)(e + 0x38);
+
+                int ahead = *(short*)(e + 0x32) + 0x400;
+
+                // Quinze unites devant lui, plus une dispersion de 0x40 unites sur les trois axes.
+                int lead = (int)Winsys3d.GetSinTableEntry(ahead) * 15;
+
+                int* at = stackalloc int[3];
+                at[0] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + lead * 8 + *(int*)(e + 0x1c);
+                at[1] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x20);
+
+                lead = Winsys3d.GetCosTableEntry(ahead) * 15;
+                at[2] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + lead * 8 + *(int*)(e + 0x24);
+
+                *(uint*)(e + 0x28) = 0x18001800;
+                *(ushort*)(e + 0x2c) = 0x1f;
+                *(uint*)(e + 0x38) = 0x00f0f0f0;
+                *(ushort*)(e + 0x1a) = 4;
+
+                SpawnStatusEffectEntity_0047AC40(
+                    e, at, Descriptors00551AD8(), 0xbf, e[0x0b], -1);
+
+                *(int*)(e + 0x28) = savedScale;
+                *(int*)(e + 0x2c) = savedDepth;
+                *(int*)(e + 0x38) = savedTint;
+            }
+        }
+        else
+        {
+            // ================================ LA LEVEE ================================
+            // Ghidra: LAB_004797d1
+            short age = *(short*)(e + 0x10);
+
+            if (age == 0)
+            {
+                *(byte**)(e + 0x78) = null;
+
+                // Terre naît deja teintee ; les trois autres partent du noir.
+                *(uint*)(e + 0x38) = e[0x06] == 0x13 ? 0x40000000u : 0u;
+
+                *(int*)(e + 0x28) = 0;
+                *(ushort*)(e + 0x2c) = 0;
+            }
+
+            // Ghidra: LAB_004797f7 — IL EST PRET, ET IL LE DIT A SON PERE.
+            if (*(short*)(e + 0x28) >= 0x7f0)
+            {
+                // Le seul signal que le sort recoit : sans lui, il ne coute jamais rien.
+                *(uint*)(*(byte**)(e + 0x6c)) |= 2;
+
+                // Et le lanceur est relache.
+                *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+
+                *(uint*)e |= 2;
+
+                *(int*)(e + 0x50) = 0;
+                *(int*)(e + 0x54) = 0;
+                *(int*)(e + 0x58) = 0;
+                *(ushort*)(e + 0x9a) = 0x1000;
+            }
+            else if (age < 0x14)
+            {
+                // Ghidra: LAB_00479830 — LE DECOR DE L'ELEMENT, pendant vingt images.
+                int savedX = *(int*)(e + 0x1c);
+                int savedY = *(int*)(e + 0x20);
+                int savedZ = *(int*)(e + 0x24);
+
+                // Ghidra: `jmp dword [eax*4+479B78h]` — la table des quatre elements, relevee.
+                int element = e[0x06] - 0x10;
+
+                switch (element)
+                {
+                    case 0 when (age & 3) == 0:
+                    {
+                        // LIQUIDE : une colonne d'eau et une eclaboussure qui monte.
+                        int savedScale = *(int*)(e + 0x28);
+                        int savedDepth = *(int*)(e + 0x2c);
+                        int savedTint = *(int*)(e + 0x38);
+                        byte savedKind = e[0x04];
+
+                        *(short*)(e + 0x32) += -0x400;
+
+                        *(uint*)(e + 0x28) = 0x40001000;
+                        *(ushort*)(e + 0x2c) = 0x1000;
+                        *(uint*)(e + 0x38) = 0x01000000;
+
+                        *(int*)(e + 0x1c) += ((CrtRand() & 0x7f) - 0x40) << 0xc;
+                        *(int*)(e + 0x20) = *(int*)(e + 0x60);          // au ras du sol
+                        *(int*)(e + 0x24) += ((CrtRand() & 0x7f) - 0x40) << 0xc;
+
+                        e[0x04] = 0x1e;
+                        SpawnCastEntity_0047AAE0(e, 0x8b, 0, 1);
+
+                        *(ushort*)(e + 0x9a) = 0x6000;
+
+                        int spray = CrtRand();
+                        *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(spray) << 4;
+                        *(int*)(e + 0x54) = ((CrtRand() & 0x1f) + 0x1e) << 0xc;
+                        *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(spray) << 4;
+
+                        *(uint*)(e + 0x38) = 0x01f0f0f0;
+                        *(uint*)(e + 0x28) = 0x01801800;
+                        *(ushort*)(e + 0x2c) = 0x1f;
+                        *(ushort*)(e + 0x1a) = 1;
+
+                        SpawnStatusEffectEntity_0047AC40(
+                            e, (int*)(e + 0x1c), Descriptors00551BB8(), 0xbf, 0, 1);
+
+                        *(short*)(e + 0x32) += 0x400;
+
+                        *(int*)(e + 0x28) = savedScale;
+                        *(int*)(e + 0x2c) = savedDepth;
+                        *(int*)(e + 0x38) = savedTint;
+                        e[0x04] = savedKind;
+                        break;
+                    }
+
+                    case 1 when (age & 1) != 0:
+                    {
+                        // FLAMME : une braise une image sur deux, dispersee sur les trois axes.
+                        int savedScale = *(int*)(e + 0x28);
+                        int savedTint = *(int*)(e + 0x38);
+
+                        *(uint*)(e + 0x28) = 0x20002000;
+                        *(uint*)(e + 0x38) = 0x01000000;
+
+                        *(int*)(e + 0x1c) += ((CrtRand() & 0x1ff) - 0x100) << 0xc;
+                        *(int*)(e + 0x20) += ((CrtRand() & 0x1ff) - 0x100) << 0xc;
+                        *(int*)(e + 0x24) += ((CrtRand() & 0x1ff) - 0x100) << 0xc;
+
+                        *(ushort*)(e + 0x1a) = 4;
+
+                        SpawnStatusEffectEntity_0047AC40(
+                            e, (int*)(e + 0x1c), Descriptors00551AD8(), 0x57, 0, 2);
+
+                        *(int*)(e + 0x28) = savedScale;
+                        *(int*)(e + 0x38) = savedTint;
+                        break;
+                    }
+
+                    case 2 when (age & 3) == 0:
+                    {
+                        // ZEPHE : une bourrasque, taille et angles tires au sort.
+                        int savedSize = *(short*)(e + 0x12);
+                        int savedScale = *(int*)(e + 0x28);
+                        int savedTint = *(int*)(e + 0x38);
+                        short savedYaw = *(short*)(e + 0x32);
+                        short savedPitch = *(short*)(e + 0x34);
+
+                        *(uint*)(e + 0x28) = 0x20002000;
+                        *(short*)(e + 0x12) = (short)((CrtRand() & 0x7f) + 0xc8);
+                        *(uint*)(e + 0x38) = 0;
+                        *(ushort*)(e + 0x1a) = 7;
+
+                        *(short*)(e + 0x32) = (short)CrtRand();
+                        *(short*)(e + 0x34) = (short)((CrtRand() & 0x1ff) - 0x100);
+
+                        SpawnStatusEffectEntity_0047AC40(
+                            e, (int*)(e + 0x1c), Descriptors00551A08(), 0x50, 0, 4);
+
+                        *(short*)(e + 0x32) = savedYaw;
+                        *(short*)(e + 0x34) = savedPitch;
+                        *(int*)(e + 0x28) = savedScale;
+                        *(int*)(e + 0x38) = savedTint;
+                        *(short*)(e + 0x12) = (short)savedSize;
+                        break;
+                    }
+
+                    case 3 when (age & 3) == 0:
+                    {
+                        // TERRE : une motte au ras du sol, dispersee en X et Z seulement.
+                        int savedScale = *(int*)(e + 0x28);
+                        int savedTint = *(int*)(e + 0x38);
+
+                        *(uint*)(e + 0x28) = 0x20002000;
+                        *(uint*)(e + 0x38) = 0x01000000;
+
+                        *(int*)(e + 0x1c) += ((CrtRand() & 0xff) - 0x80) << 0xc;
+                        *(int*)(e + 0x20) = *(int*)(e + 0x60);          // au ras du sol
+                        *(int*)(e + 0x24) += ((CrtRand() & 0xff) - 0x80) << 0xc;
+
+                        *(ushort*)(e + 0x1a) = 7;
+
+                        SpawnStatusEffectEntity_0047AC40(
+                            e, (int*)(e + 0x1c), TrapBurstDescriptors(), 0x57, 0, 3);
+
+                        *(int*)(e + 0x28) = savedScale;
+                        *(int*)(e + 0x38) = savedTint;
+                        break;
+                    }
+                }
+
+                // Ghidra: LAB_00479b0d — la position est rendue, quelle qu'ait ete la branche.
+                *(int*)(e + 0x1c) = savedX;
+                *(int*)(e + 0x20) = savedY;
+                *(int*)(e + 0x24) = savedZ;
+            }
+
+            // Ghidra: LAB_00479b21 — il s'eclaircit de 0x080808 par image, jusqu'a 0xf0f0f0. Le
+            // test masque l'octet de poids fort, l'addition non : Terre garde son 0x40000000.
+            uint tint = *(uint*)(e + 0x38);
+            if ((tint & 0x00ffffff) < 0x00f0f0f0) *(uint*)(e + 0x38) = tint + 0x00080808;
+        }
+
+        // Ghidra: LAB_00479b3c — IL RESPIRE, sur tous les chemins vivants : son echelle avance
+        // d'un huitieme vers (sin(age << 8) >> 2) + 0x800.
+        short scale = *(short*)(e + 0x28);
+        int aim = ((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 8) >> 2) - scale + 0x800;
+
+        *(short*)(e + 0x10) += 1;
+
+        short breathed = (short)((aim >> 3) + scale);
+        *(short*)(e + 0x28) = breathed;
+        *(short*)(e + 0x2a) = breathed;
+        *(short*)(e + 0x2c) = breathed;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00479b90 @ 0x00479b90 — <b>la colonne d'eau de Liquide</b> : le sous-type
+    /// <c>0x8b</c> de <see cref="s_StaticEntityHandlers_00551f30"/>. 34 octets, <b>absente de
+    /// <c>Blaze.c</c></b> — le plus court corps de l'ecole 2, et de loin.
+    ///
+    /// <para>
+    /// <b>Elle ne fait qu'une chose</b> : perdre un quart de sa <b>hauteur</b> par image — l'echelle
+    /// en <c>+0x2a</c> seule, ni la largeur ni la profondeur — et disparaitre en passant sous
+    /// <c>0x80</c>. Le sort la fait naitre haute (<c>+0x28 = 0x40001000</c>, donc une hauteur de
+    /// <c>0x4000</c> pour une largeur de <c>0x1000</c>) : c'est une colonne qui s'affaisse.
+    /// </para>
+    /// </summary>
+    private static void TickLiquidColumn_00479B90(byte* record)
+    {
+        byte* e = record;
+
+        short tall = *(short*)(e + 0x2a);
+        tall = (short)(tall - (short)(tall >> 2));
+        *(short*)(e + 0x2a) = tall;
+
+        if (tall < 0x80) *(uint*)e = 0;
     }
 
     /// <summary>
