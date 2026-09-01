@@ -4990,6 +4990,11 @@ public static unsafe partial class Blaze
             case 0x0044C110: TickBlessingSpark_0044C110(record); return;
             case 0x0044C260: TickHelpingHandSpiral_0044C260(record); return;
 
+            // REMONTANT, ecole 1 indice 20 — la grande levee : neuf effets d'un coup, la ou
+            // Delivrance et Micro n'en enlevent qu'un chacun.
+            case 0x0044C3A0: TickRestorative_0044C3A0(record); return;
+            case 0x0044C730: TickRestorativeBeam_0044C730(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -44807,6 +44812,285 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x16) = (short)(step + 1);
 
         if ((short)(step + 1) > 0x27) *(uint*)e &= 0x7fffffff;
+    }
+
+    // =====================================================================
+    // REMONTANT — le cinquantieme sort, ecole 1 indice 20, sous-type 0x32
+    //
+    //   0x0044C3A0   LE SORT. Sous-type 0x32 de 0x00551c30, 837 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044C3A0.asm.
+    //   0x0044C6F0   SON ENVELOPPE D'EFFET. Cinquante-huit octets, decompilee dans Blaze.c.
+    //   0x0044C730   son rai, sous-type 0x94 de 0x00551f30. Decompile dans Blaze.c.
+    //
+    // C'EST LA GRANDE LEVEE : neuf effets d'un coup. Delivrance leve l'etat 9, Micro l'etat 10 ;
+    // Remontant appelle ClearStatusEffect_0053C980, qui efface les bits 0x37f du mot d'etat et
+    // remet neuf durees a zero. Il coute 62 PM la ou les deux autres en coutent 40, et c'est la
+    // seule fiche de l'ecole a lever plus d'un effet.
+    //
+    // ET C'EST LA QUATRIEME COPIE DE LA MEME ENVELOPPE. 0x0044B910, 0x0044BC80, 0x0044C0D0 et
+    // 0x0044C6F0 : quatre corps de 58 octets identiques instruction pour instruction, aux
+    // deplacements de leurs deux `call` pres, le premier des deux resolvant vers 0x004364b0 dans
+    // les quatre cas. Le patron a ete emis une fois par fiche.
+    //
+    // UN SEUL CORPS D'ENFANT NEUF SUR QUATRE SOUS-TYPES. Il en engendre quatre — 0x94, 0x95, 0x93
+    // et 0x92 — mais trois etaient deja ecrits : 0x95 est l'anneau de Calgon, 0x93 l'etincelle de
+    // Coup de pouce et de Pardon, 0x92 l'eclair de Micro. Seul le 0x94 restait, et il ne cherche
+    // pas la hauteur de sa cible mais SON PLANCHER, +0x60 — les huit exemplaires se rangent donc
+    // sur le sol et non sur le corps.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044c6f0 @ 0x0044c6f0 — <b>lever les neuf effets si la cible l'accepte</b>.
+    /// Cinquante-huit octets, decompilee dans <c>Blaze.c</c> : le garde-fou
+    /// <see cref="IsEffectPairBlocked_004364B0"/>, puis <see cref="ClearStatusEffect_0053C980"/>
+    /// s'il a laisse passer.
+    ///
+    /// <para>
+    /// <b>La quatrieme copie du meme corps</b>, apres
+    /// <see cref="ClearStatusEffectIfEligible_0044B910"/>,
+    /// <see cref="ClearStatusEffectIfEligible_0044BC80"/> et
+    /// <see cref="ApplyStatusEffectIfEligible_0044C0D0"/> : les quatre sont identiques instruction
+    /// pour instruction, aux deplacements de leurs deux <c>call</c> pres, et le premier des deux
+    /// resout vers <c>0x004364b0</c> dans les quatre cas.
+    /// </para>
+    /// </summary>
+    private static bool ClearAllStatusEffectsIfEligible_0044C6F0(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053C980(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044c3a0 @ 0x0044c3a0 — <b>Remontant</b> : le sous-type <c>0x32</c>, creneau 50
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>vingt et unieme fiche de l'ecole
+    /// 1</b>. 837 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>La grande levee de l'ecole.</b> Ses deux voisines n'enlevent qu'un effet chacune —
+    /// <see cref="TickDeliverance_0044B7B0"/> l'etat 9, <see cref="TickMicro_0044BAF0"/> l'etat 10 ;
+    /// celle-ci appelle <see cref="ClearStatusEffect_0053C980"/>, qui efface les bits <c>0x37f</c>
+    /// du mot d'etat et remet <b>neuf</b> durees a zero. Elle coute 62 PM contre 40 pour les deux
+    /// autres. La levee tombe a la soixantieme image, et le lanceur est relache dans la foulee.
+    /// </para>
+    /// <para>
+    /// <b>Le lanceur est tenu du debut a la fin</b> par le bit <c>0x80</c>, pose a la premiere image
+    /// et retire apres <see cref="EndSpellAndResetDecor_00448020"/> — le seul corps de l'ecole a le
+    /// relacher <b>apres</b> son extinction et non a une image fixee d'avance.
+    /// </para>
+    /// <para>
+    /// <b>Huit rais d'un coup a la naissance</b>, poses en deux series de quatre par les champs
+    /// <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>, que le rai relit comme un ecart a son porteur :
+    /// quatre a <c>0xa0000</c> au-dessus du sol, aux quatre quarts de tour, echelle cible
+    /// <c>0x18b0</c> ; puis quatre a <c>0xa000</c> seulement, ecartes de <c>±0xad000</c> sur X et
+    /// sur Z, echelle cible <c>0x1a40</c>. Les huit naissent dans la meme image.
+    /// </para>
+    /// <para>
+    /// <b>Puis quatre rendez-vous</b> : a la vingtieme image un anneau <c>0x95</c> (celui de
+    /// Calgon), a la vingt et unieme deux etincelles <c>0x93</c> (celles de Coup de pouce et de
+    /// Pardon), et aux vingt-deuxieme et vingt-sixieme un eclair <c>0x92</c> (celui de Micro). Le
+    /// sort prete a chacun ses propres champs d'echelle et de rotation, qu'il ne repose pas.
+    /// </para>
+    /// </summary>
+    private static void TickRestorative_0044C3A0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_0044c3c5 — le sort colle a sa cible, sans decalage vertical.
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            // LE LANCEUR EST TENU, et il ne sera relache qu'a l'extinction.
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+        }
+
+        // Ghidra: LAB_0044c400 .. LAB_0044c4be — sept coups, a l'image pres.
+        if (*(short*)(e + 0x16) == 0x00) Aud.PlaySoundEffect(0x0a, 0x0800, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x01) Aud.PlaySoundEffect(0x0f, 0x0400, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x02) Aud.PlaySoundEffect(0x10, 0x07a7, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x15) Aud.PlaySoundEffect(0x2f, 0x0b52, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x16) Aud.PlaySoundEffect(0x2f, 0x0bfc, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x17) Aud.PlaySoundEffect(0x30, 0x0329, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x18) Aud.PlaySoundEffect(0x2d, 0x0200, 0x1000, 0x1000);
+
+        // Ghidra: LAB_0044c4de — LES HUIT RAIS, tous dans la meme image. Chacun lit l'ecart que le
+        // sort vient de poser dans +0x50/+0x54/+0x58 et l'echelle cible dans +0x9a.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            // La premiere serie : quatre rais hauts, aux quatre quarts de tour.
+            *(ushort*)(e + 0x9a) = 0x18b0;
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x58) = 0;
+            *(int*)(e + 0x54) = 0xa0000;
+            *(short*)(e + 0x34) = 0x05dc;
+
+            *(short*)(e + 0x32) = 0x0000;
+            SpawnCastEntity_0047AAE0(e, 0x94, 0, -1);
+
+            *(short*)(e + 0x32) = 0x0400;
+            SpawnCastEntity_0047AAE0(e, 0x94, 0, -1);
+
+            *(short*)(e + 0x32) = 0x0800;
+            SpawnCastEntity_0047AAE0(e, 0x94, 0, -1);
+
+            *(short*)(e + 0x32) = 0x0c00;
+            SpawnCastEntity_0047AAE0(e, 0x94, 0, -1);
+
+            // La seconde : quatre rais bas, ecartes de 0xad000 sur les deux axes horizontaux.
+            *(ushort*)(e + 0x9a) = 0x1a40;
+            *(int*)(e + 0x54) = 0xa000;
+            *(short*)(e + 0x34) = 0x0400;
+
+            *(int*)(e + 0x58) = 0x000ad000;
+            *(short*)(e + 0x32) = 0x0200;
+            SpawnCastEntity_0047AAE0(e, 0x94, 0, -1);
+
+            *(int*)(e + 0x58) = unchecked((int)0xfff53000);   // -0xad000
+            *(short*)(e + 0x32) = unchecked((short)0xfa00);   // -0x600
+            SpawnCastEntity_0047AAE0(e, 0x94, 0, -1);
+
+            *(int*)(e + 0x58) = 0;
+            *(int*)(e + 0x50) = 0x000ad000;
+            *(short*)(e + 0x32) = 0x0600;
+            SpawnCastEntity_0047AAE0(e, 0x94, 0, -1);
+
+            *(int*)(e + 0x50) = unchecked((int)0xfff53000);
+            *(short*)(e + 0x32) = unchecked((short)0xfe00);   // -0x200
+            SpawnCastEntity_0047AAE0(e, 0x94, 0, -1);
+
+            *(short*)(e + 0x10) = 2;
+        }
+
+        // Ghidra: LAB_0044c5f2 — tout le reste de la vie du sort.
+        if (*(short*)(e + 0x10) != 2) return;
+
+        *(short*)(e + 0x16) += 1;
+
+        // L'anneau de Calgon, une fois.
+        if (*(short*)(e + 0x16) == 0x14)
+        {
+            *(short*)(e + 0x28) = 0x1310;
+            *(short*)(e + 0x2c) = 0x1310;
+            *(short*)(e + 0x2a) = 0x1040;
+            *(short*)(e + 0x30) = 0;
+            *(short*)(e + 0x32) = 0x0200;
+            *(short*)(e + 0x34) = 0;
+
+            SpawnCastEntity_0047AAE0(e, 0x95, 0, -1);
+        }
+
+        // Les deux etincelles.
+        if (*(short*)(e + 0x16) == 0x15)
+        {
+            SpawnCastEntity_0047AAE0(e, 0x93, 0, -1);
+            SpawnCastEntity_0047AAE0(e, 0x93, 0, -1);
+        }
+
+        // L'eclair, deux fois, a quatre images d'ecart.
+        if (*(short*)(e + 0x16) == 0x16 || *(short*)(e + 0x16) == 0x1a)
+        {
+            *(short*)(e + 0x28) = 0x0bb8;
+            *(short*)(e + 0x2a) = 0x0bb8;
+            *(short*)(e + 0x2c) = 0x0bb8;
+            *(short*)(e + 0x30) = 0;
+            *(short*)(e + 0x34) = 0;
+            *(short*)(e + 0x32) = 0x0200;
+
+            SpawnCastEntity_0047AAE0(e, 0x92, 0, -1);
+        }
+
+        // Ghidra: LAB_0044c6a3 — LA LEVEE, a la soixantieme image.
+        if (*(short*)(e + 0x16) == 0x3c)
+        {
+            // La paire famille/indice est pretee au lanceur ; le binaire relit +0x74 pour chacune
+            // des deux ecritures.
+            (*(byte**)(e + 0x74))[6] = e[6];
+            (*(byte**)(e + 0x74))[7] = e[7];
+
+            ClearAllStatusEffectsIfEligible_0044C6F0(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            EndSpellAndResetDecor_00448020(e);
+
+            // Et le lanceur est relache APRES l'extinction — le seul de l'ecole a le faire ici.
+            *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044c730 @ 0x0044c730 — <b>le rai de Remontant</b> : le sous-type <c>0x94</c>,
+    /// creneau 148 de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>Decompile dans
+    /// <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il se range sur le PLANCHER de son porteur, pas sur son corps.</b> Sa position horizontale
+    /// vient de <c>+0x1c</c>/<c>+0x24</c> du porteur, mais sa hauteur de <c>+0x60</c> — la cote du
+    /// sol que <see cref="FinalizeEntityPlacement2"/> depose sous chaque entite. C'est le seul corps
+    /// de l'ecole a lire ce champ, et c'est ce qui range les huit exemplaires au sol autour de la
+    /// cible plutot qu'a hauteur de poitrine. S'y ajoute l'ecart propre a chacun, que le sort a pose
+    /// dans <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> avant de l'engendrer.
+    /// </para>
+    /// <para>
+    /// <b>Une colonne mince qui s'etire.</b> Les deux echelles horizontales restent a <c>300</c> et
+    /// la verticale part de zero pour <b>approcher</b> d'un quart par image la valeur que le sort a
+    /// laissee dans <c>+0x9a</c> — <c>0x18b0</c> pour les quatre du haut, <c>0x1a40</c> pour les
+    /// quatre du bas. Passe la quarantieme image il s'assombrit de <c>-10 / -10 / -3</c> et rend la
+    /// main quand son canal <b>bleu</b> <c>+0x3a</c> retombe a zero — la meme garde que
+    /// <see cref="TickBlessingSpark_0044C110"/>, sur le canal qui descend le moins vite.
+    /// </para>
+    /// </summary>
+    private static void TickRestorativeBeam_0044C730(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        // LE PLANCHER, +0x60, et non la hauteur du corps.
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c) + *(int*)(e + 0x50);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x60) + *(int*)(e + 0x54);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24) + *(int*)(e + 0x58);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0;
+            e[0x0a] = 3;
+            e[0x0b] = 1;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x28) = 300;
+            *(short*)(e + 0x2c) = 300;
+            *(short*)(e + 0x2a) = 0;
+            *(short*)(e + 0x2e) = -60;
+            *(short*)(e + 0x16) = 0;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x16) += 1;
+
+        // L'echelle verticale approche d'un quart la cible que le sort a laissee en +0x9a.
+        *(short*)(e + 0x2a) +=
+            (short)((*(short*)(e + 0x9a) - *(short*)(e + 0x2a)) >> 2);
+
+        if (*(short*)(e + 0x16) > 0x28)
+        {
+            BrightenEntityTint_00404DE0(e, -10, -10, -3);
+
+            if ((sbyte)e[0x3a] == 0) *(uint*)e &= 0x7fffffff;
+        }
     }
 
     /// <summary>
