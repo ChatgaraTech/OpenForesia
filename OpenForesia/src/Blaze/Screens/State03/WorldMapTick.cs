@@ -5021,6 +5021,12 @@ public static unsafe partial class Blaze
             case 0x00476C70: TickSleep_00476C70(record); return;
             case 0x00476CF0: TickSleepBubble_00476CF0(record); return;
 
+            // GROS SABOTS, ecole 2 indice 1 — meme charpente que Dodo : le sort ne vit qu'une
+            // image et tout est dans son enfant. Mais celui-ci ne cherche rien — le sort a deja
+            // choisi la victime — il TOMBE dessus de trois cents unites de haut et l'aplatit.
+            case 0x00476FD0: TickHeavyHoof_00476FD0(record); return;
+            case 0x004770A0: TickHeavyHoofStomp_004770A0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -47060,6 +47066,341 @@ public static unsafe partial class Blaze
         // Ghidra: LAB_00476fb3 — le decor, ou l'age : le lanceur est relache et la bulle s'efface.
         *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
         *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00551878</c> — <b>le script de sons differes du sabot</b>, deux pas de
+    /// huit octets. Le format est celui que decrit <c>Audio.QueueDelayedSoundScript</c> :
+    /// l'identifiant en <c>[0]</c>, le <b>delai avant le pas suivant</b> en <c>[1]</c> (zero
+    /// termine), le nombre de sons a jouer d'un coup en <c>[2]</c>, la hauteur en <c>[4]</c> et le
+    /// gain en <c>[6]</c>.
+    ///
+    /// <para>
+    /// Deux fois le meme son <c>0x02</c>, espaces de <b>cinq images</b> et le second plus aigu
+    /// (<c>0x0400</c> puis <c>0x0554</c>) : le sabot cogne, puis rebondit. La borne est le
+    /// <c>[1] = 0</c> du second pas ; il suit sans trou
+    /// <see cref="s_ResistSoundScript_00551868"/>, qui se termine de la meme facon.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_DelayedSoundScript_00551878 =
+    [
+        0x02, 0x05, 0x01, 0x00, 0x00, 0x04, 0x00, 0x12,   // 0x00551878
+        0x02, 0x00, 0x01, 0x00, 0x54, 0x05, 0x00, 0x12,   // 0x00551880 — delai nul : fin
+    ];
+
+    private static byte* s_DelayedSoundScript00551878Storage;
+
+    /// <summary>Les deux pas du script en memoire native.</summary>
+    private static byte* DelayedSoundScript00551878()
+        => NativeCopy(s_DelayedSoundScript_00551878, ref s_DelayedSoundScript00551878Storage);
+
+    // =====================================================================
+    // GROS SABOTS — ecole 2, indice 1, sous-type 0xa1
+    //
+    //   0x00476FD0   LE SORT. Sous-type 0xa1 de 0x00551c30. 199 octets, ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00476FD0.asm.
+    //   0x004770A0   LE SABOT, sous-type 0x7e de 0x00551f30 — donc de l'AUTRE table statique,
+    //                celle de la passe qui raccroche ses entites a la grille. 702 octets,
+    //                ABSENT de Blaze.c ; releve sous Legacy/Raw/Blaze/FUN_004770A0.asm.
+    //
+    // LA DEUXIEME FICHE DE L'ECOLE 2 CONFIRME CE QUE DISAIT LA PREMIERE : le sort ne vit qu'une
+    // image et tout est dans son enfant. Mais la ou Dodo lachait un projectile qui cherche sa
+    // cible, Gros sabots la choisit LUI-MEME — FindNearestOpponent_00474EB0 des la premiere image
+    // — puis fait naitre le sabot TROIS CENTS UNITES AU-DESSUS DE LA TETE de cette victime, a
+    // l'aplomb exact de ses X/Z, et s'efface.
+    //
+    // ET LE SABOT TOMBE. Il n'a pas de vitesse propre : le sort lui pose seulement une gravite
+    // (+0x9a = 0x6000), et IntegrateWithDrag_00535880 fait le reste. Pendant la chute il grossit
+    // d'un quart de l'ecart par image vers une taille reglee sur la stature de la victime —
+    // (hauteur << 12) / 150, la meme division magique que le halo de Dodo.
+    //
+    // A L'IMPACT il APLATIT sa victime : echelles 0x1800 / 0 / 0x1800, c'est-a-dire etalee au sol
+    // et sans epaisseur. C'est le seul corps du depot a ecrire les echelles d'une AUTRE entite.
+    // Puis six eclaboussures partent en etoile, l'ecran tremble, et pendant quarante images le
+    // sabot se dandine sur place avant de retrecir d'un quart par image, tandis que la victime
+    // regagne 0x1000 dans les trois axes. Il ne la relache qu'a ce moment-la.
+    //
+    // SAUF SI ELLE RESISTE : l'effet 20 (ApplyStatusEffect_0053BDA0) rend non nul, le sabot se
+    // marque 0x1004000 et meurt a l'image suivante, sans rien aplatir.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00476fd0 @ 0x00476fd0 — <b>Gros sabots</b> : le sous-type <c>0xa1</c>, creneau
+    /// 161 de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>deuxieme fiche de l'ecole
+    /// 2</b>. 199 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne vit qu'une image</b>, comme <see cref="TickSleep_00476C70"/> : la premiere fait
+    /// tout, la seconde ne trouve que le bit <c>0x2000000</c> qu'elle a pose et met le mot d'etat
+    /// a zero.
+    /// </para>
+    /// <para>
+    /// <b>Il choisit la victime lui-meme</b> — <see cref="FindNearestOpponent_00474EB0"/> avec le
+    /// mode <c>1</c>, le seul que la carte du monde emploie — et sans cible il s'eteint sans rien
+    /// engendrer. Avec une cible, il se replace a l'aplomb de celle-ci
+    /// (<c>+0x1c</c>/<c>+0x24</c> recopies, <c>+0x32</c> aussi) et <b>monte de sa stature plus 300
+    /// unites</b> avant d'engendrer le sabot. Ce qu'il laisse dans <c>+0x12</c> est la taille que
+    /// l'enfant visera en tombant.
+    /// </para>
+    /// </summary>
+    private static void TickHeavyHoof_00476FD0(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            // La deuxieme image : tout s'est joue a la premiere, l'emplacement redevient libre.
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_00476fe9
+        byte* target = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+
+        if (target == null)
+        {
+            // Ghidra: LAB_00477091 — personne en face, et le sort s'efface sans engendrer.
+            *(uint*)e = 0;
+            return;
+        }
+
+        *(byte**)(e + 0x78) = target;
+
+        int height = StatusBubbleHeight_00538BC0((uint*)target);
+
+        // TROIS CENTS UNITES AU-DESSUS DE SA TETE : c'est de la que le sabot tombera.
+        *(int*)(e + 0x20) += (height + 0x12c) << 0xc;
+
+        // La taille visee — (hauteur << 12) / 150, multiplication magique 0x1B4E81B5 puis `sar 3`,
+        // exactement comme le halo de Dodo.
+        *(short*)(e + 0x12) = (short)((height << 0xc) / 150);
+
+        // ET IL NAITRA SANS TAILLE : le sabot grandit en tombant.
+        *(int*)(e + 0x28) = 0;
+        *(ushort*)(e + 0x2c) = 0;
+        *(ushort*)(e + 0x14) = 0;
+
+        *(int*)(e + 0x50) = 0;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = 0;
+
+        // Sa gravite par entite : c'est la seule chose qui le fera descendre.
+        *(ushort*)(e + 0x9a) = 0x6000;
+
+        *(short*)(e + 0x32) = *(short*)(target + 0x32);
+        *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+        e[0x04] = 0x31;
+
+        SpawnCastEntity_0047AAE0(e, 0x7e, e[0x0b], -1);
+
+        *(uint*)e |= 0x2000000;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004770a0 @ 0x004770a0 — <b>le sabot de Gros sabots</b> : le sous-type
+    /// <c>0x7e</c> de <see cref="s_StaticEntityHandlers_00551f30"/>, la table de
+    /// <c>0x005edee0</c>. 702 octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_004770A0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Deux vies, separees par le bit <c>0x2</c></b> du mot d'etat. Tant qu'il est clair, le
+    /// sabot <b>tombe</b> : <see cref="IntegrateWithDrag_00535880"/> l'amene vers le bas sous la
+    /// gravite que le sort lui a posee, et sa taille rejoint <c>+0x12</c> d'un quart de l'ecart par
+    /// image. A la premiere image il <b>saisit</b> sa victime — <c>victime+0x74</c> pointe sur lui
+    /// — et cogne le son <c>0x16</c>.
+    /// </para>
+    /// <para>
+    /// <b>Il touche quand il est passe sous la hauteur de sa victime</b>, et alors il prete la paire
+    /// famille/indice au lanceur <b>en un seul mot</b> (<c>+0x06</c> et <c>+0x07</c> ensemble, comme
+    /// la bulle de Dodo) et appelle <see cref="ApplyStatusEffect_0053BDA0"/> — l'effet 20, le plus
+    /// etroitement immunise de la table des quarante-huit.
+    /// </para>
+    /// <para>
+    /// <b>Si l'effet passe, la victime est APLATIE</b> : <c>0x1800 / 0 / 0x1800</c> dans ses trois
+    /// echelles, etalee au sol et sans epaisseur. C'est le seul corps transcrit qui ecrive les
+    /// echelles d'une autre entite. Six eclaboussures <c>0xbe</c> partent en etoile — chacune avec
+    /// sa propre vitesse, parce que <see cref="SpawnStatusEffectEntity_0047AC40"/> recopie
+    /// <c>+0x50</c>..<c>+0x58</c> de la source — le script de sons differes
+    /// <see cref="s_DelayedSoundScript_00551878"/> part, et l'ecran tremble.
+    /// </para>
+    /// <para>
+    /// <b>Ensuite il se dandine quarante images</b> (<c>+0x32</c> module par un sinus de son age),
+    /// puis retrecit d'un quart par image pendant que la victime regagne <c>0x1000</c> ; il ne
+    /// relache <c>victime+0x74</c> et ne s'efface que lorsqu'elle a retrouve sa taille.
+    /// <b>Si elle a resiste</b>, il se marque <c>0x1004000</c> et meurt a l'image suivante.
+    /// </para>
+    /// <para>
+    /// <b>Il suit sa victime en X/Z a chaque image</b>, quoi qu'il arrive — la fin de fonction est
+    /// commune a tous les chemins, y compris ceux qui viennent de mettre le mot d'etat a zero.
+    /// </para>
+    /// </summary>
+    private static void TickHeavyHoofStomp_004770A0(byte* record)
+    {
+        byte* e = record;
+        byte* victim = *(byte**)(e + 0x78);
+
+        // Le pere pose son 0x2000000 APRES avoir engendre ; le sabot le recupere ici, a sa
+        // premiere image, et le garde.
+        if ((*(uint*)e & 0x2000000) == 0)
+        {
+            *(uint*)e |= *(uint*)(*(byte**)(e + 0x6c)) & 0x2000000;
+        }
+
+        // Ghidra: LAB_004770c6 — le bit 0x2 separe la chute de l'ecrasement.
+        if ((*(uint*)e & 2) != 0)
+        {
+            if ((*(uint*)e & 0x1000000) != 0)
+            {
+                // La victime a resiste. Une image de repit — le temps que le 0x2000000 soit la —
+                // puis le sabot relache et s'efface.
+                if ((*(uint*)e & 0x2000000) != 0)
+                {
+                    *(byte**)(victim + 0x74) = null;
+                    *(uint*)e = 0;
+                }
+            }
+            else
+            {
+                // Ghidra: LAB_004770f4 — LE DANDINEMENT : l'age sert d'angle, sur huit bits.
+                *(short*)(e + 0x32) +=
+                    (short)((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 8) >> 5);
+
+                if (*(short*)(e + 0x10) >= 0x28)
+                {
+                    // Le sabot perd un quart de sa taille par image.
+                    short hoof = *(short*)(e + 0x28);
+                    hoof = (short)(hoof - (short)(hoof >> 2));
+                    *(short*)(e + 0x28) = hoof;
+                    *(short*)(e + 0x2a) = hoof;
+                    *(short*)(e + 0x2c) = hoof;
+
+                    // Et la victime regagne 0x1000, du quart de l'ecart par image. L'epaisseur
+                    // (+0x2a) repart de zero ; la largeur et la profondeur redescendent de 0x1800.
+                    short flat = *(short*)(victim + 0x28);
+                    flat = (short)(flat + ((0x1000 - flat) >> 2));
+
+                    short thickness = *(short*)(victim + 0x2a);
+                    thickness = (short)(((0x1000 - thickness) >> 2) + thickness);
+
+                    *(short*)(victim + 0x28) = flat;
+                    *(short*)(victim + 0x2a) = thickness;
+                    *(short*)(victim + 0x2c) = flat;
+
+                    // La borne est prise sur la largeur seule, a huit unites pres de 0x1000.
+                    if (flat <= 0x1008)
+                    {
+                        *(byte**)(victim + 0x74) = null;
+                        *(uint*)e = 0;
+                    }
+                }
+
+                // Ghidra: LAB_0047716d — la secousse s'amortit EN CHANGEANT DE SIGNE a chaque
+                // image : 8, -6, 4, -3, 2, -2, 1, -1, 0. Le meme amortissement que l'explosion.
+                int* shake = Mem.Camera(0x005de0ac);
+                if (*shake != 0) *shake = (*shake >> 2) - *shake;
+            }
+        }
+        else
+        {
+            // Ghidra: LAB_0047718c — LA CHUTE.
+            if (*(short*)(e + 0x10) == 0)
+            {
+                // IL SAISIT SA VICTIME des la premiere image, avant meme de l'avoir touchee.
+                *(byte**)(victim + 0x74) = e;
+                Aud.PlayPositionalSound(0x16, 0x400, 0x1200, (int*)(e + 0x1c));
+            }
+
+            // Ghidra: LAB_004771af — la taille rejoint +0x12 d'un quart de l'ecart par image.
+            short scale = *(short*)(e + 0x28);
+            scale = (short)(scale + ((*(short*)(e + 0x12) - scale) >> 2));
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+            *(short*)(e + 0x2c) = scale;
+
+            // Il n'a aucune vitesse propre : seule la gravite +0x9a le fait descendre.
+            IntegrateWithDrag_00535880(e);
+
+            if (*(int*)(e + 0x20) < *(int*)(victim + 0x20))
+            {
+                // IL TOUCHE. La hauteur est ramenee sur celle de la victime, et la seconde vie
+                // commence — l'age repart de zero.
+                *(int*)(e + 0x20) = *(int*)(victim + 0x20);
+                *(uint*)e |= 2;
+                *(short*)(e + 0x10) = 0;
+
+                // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
+                *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+                if (ApplyStatusEffect_0053BDA0(*(uint**)(e + 0x74), (uint*)victim, 0) != 0)
+                {
+                    // Resiste : rien n'est aplati, et le sabot mourra a l'image suivante.
+                    *(uint*)e |= 0x1004000;
+                }
+                else
+                {
+                    // Ghidra: LAB_0047721d — L'APLATISSEMENT.
+                    *(short*)(victim + 0x96) = 0x28;
+                    *(int*)(victim + 0x28) = 0x1800;      // largeur 0x1800, epaisseur ZERO
+                    *(ushort*)(victim + 0x2c) = 0x1800;   // et profondeur 0x1800
+
+                    // Les trois champs que les eclaboussures vont emprunter, mis de cote.
+                    int savedScale = *(int*)(e + 0x28);
+                    int savedTint = *(int*)(e + 0x38);
+                    int savedFrame = *(int*)(e + 0x14);
+
+                    *(byte**)(e + 0x70) = null;
+                    *(ushort*)(e + 0x1a) = 7;
+                    *(uint*)(e + 0x38) = 0x01606060;
+                    *(short*)(e + 0x12) = 3;
+                    *(uint*)(e + 0x28) = 0x20002000;
+                    *(ushort*)(e + 0x14) = 0x3000;
+                    *(short*)(e + 0x16) = 3;
+
+                    // SIX ECLABOUSSURES EN ETOILE. La vitesse est ecrite sur LE SABOT avant
+                    // chaque naissance : l'engendreur recopie +0x50..+0x58 de la source, c'est
+                    // donc ainsi que chacune part dans sa propre direction. Le sabot garde la
+                    // derniere, sans consequence — il n'integre plus rien dans sa seconde vie.
+                    int* scatter = stackalloc int[3];
+
+                    for (int remaining = 6; remaining != 0; remaining--)
+                    {
+                        int angle = CrtRand();      // Ghidra: FUN_00547140
+
+                        *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(angle) << 5;
+                        *(int*)(e + 0x54) = 0x20000;
+                        *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(angle) << 5;
+
+                        // Le carre de dispersion fait 0x40 unites, et il est PLAT : la hauteur
+                        // est reprise telle quelle, seuls X et Z sont tires au sort.
+                        scatter[0] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x1c);
+                        scatter[1] = *(int*)(e + 0x20);
+                        scatter[2] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x24);
+
+                        SpawnStatusEffectEntity_0047AC40(
+                            e, scatter, Descriptors00551A08(), 0xbe, 0, 3);
+                    }
+
+                    *(int*)(e + 0x28) = savedScale;
+                    *(int*)(e + 0x38) = savedTint;
+                    *(int*)(e + 0x14) = savedFrame;
+
+                    Aud.QueueDelayedSoundScript(DelayedSoundScript00551878(), (int*)(e + 0x1c));
+
+                    *Mem.Camera(0x005de0ac) = 8;          // et l'ecran tremble
+                }
+
+                // Ghidra: LAB_0047732e — le choc, resiste ou non.
+                Aud.PlayPositionalSound(0x22, 0x800, 0x1200, (int*)(e + 0x1c));
+            }
+        }
+
+        // Ghidra: LAB_00477346 — IL SUIT SA VICTIME EN X/Z, sur tous les chemins, y compris ceux
+        // qui viennent de mettre le mot d'etat a zero.
+        *(int*)(e + 0x1c) = *(int*)(victim + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(victim + 0x24);
+        *(short*)(e + 0x10) += 1;
     }
 
     /// <summary>
