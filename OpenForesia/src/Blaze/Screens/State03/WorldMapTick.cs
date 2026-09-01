@@ -4972,6 +4972,12 @@ public static unsafe partial class Blaze
             case 0x0044DB30: TickHolyWordShard_0044DB30(record); return;
             case 0x0044D9B0: TickHolyWordMote_0044D9B0(record); return;
 
+            // DELIVRANCE, ecole 1 indice 17 — Sang pur a l'envers : trente images de decor, puis
+            // la levee de l'effet d'etat 9 a la derniere.
+            case 0x0044B7B0: TickDeliverance_0044B7B0(record); return;
+            case 0x0044B950: TickDeliveranceHalo_0044B950(record); return;
+            case 0x0044BA00: TickDeliverancePetal_0044BA00(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -43862,6 +43868,268 @@ public static unsafe partial class Blaze
             BrightenEntityTint_00404DE0(e, -30, -30, -30);
 
             if ((sbyte)e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    // =====================================================================
+    // DELIVRANCE — le quarante-septieme sort, ecole 1 indice 17, sous-type 0x2f
+    //
+    //   0x0044B7B0   LE SORT. Sous-type 0x2f de 0x00551c30, 352 octets. ABSENT de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044B7B0.asm.
+    //   0x0044B910   SON ENVELOPPE D'EFFET. Cinquante-huit octets, decompilee dans Blaze.c.
+    //   0x0044B950   son halo, sous-type 0x8f de 0x00552230. Decompile dans Blaze.c.
+    //   0x0044BA00   le petale de la couronne, sous-type 0x91 de 0x00551f30. 226 octets, ABSENT.
+    //
+    // TOUT LE SORT TIENT EN UN APPEL, ET IL VIENT A LA FIN. Trente images de mise en scene — quatre
+    // bruits, un halo, deux couronnes de huit petales — puis, a la trentieme, ClearStatusEffect
+    // 0x0053c8e0 leve l'effet d'etat 9 (le bit 0x10 de +0x40, duree en +0x92). C'est l'exacte
+    // symetrie de Renfort : la meme forme que Sang pur, mais l'effet a la DERNIERE image au lieu de
+    // la premiere.
+    //
+    // ET IL PRETE SA PAIRE AU LANCEUR AVANT DE FRAPPER. Comme Sang pur, il recopie ses propres
+    // +0x06/+0x07 sur le lanceur juste avant l'appel — c'est la paire famille/indice que le depot
+    // relit pour retrouver la fiche.
+    //
+    // LA COURONNE EST UN TOUR ENTIER, ET LE CAP EST RENDU. Aux images 5 et 10, le sort met son cap
+    // a zero, engendre huit petales en avancant de 0x200 (un huitieme de tour) entre chacun, puis
+    // REPOSE le cap qu'il avait avant. Le meme pret-restitution que Parole sainte, en plus court.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044b910 @ 0x0044b910 — <b>lever l'effet d'etat 9 si la cible l'accepte</b>.
+    /// Cinquante-huit octets, decompilee dans <c>Blaze.c</c> : le garde-fou
+    /// <see cref="IsEffectPairBlocked_004364B0"/>, puis <see cref="ClearStatusEffect_0053C8E0"/>
+    /// s'il a laisse passer. La jumelle exacte de <see cref="HealTargetIfEligible_00447FE0"/>,
+    /// avec l'autre effet derriere.
+    ///
+    /// <para>
+    /// <b>Meme inversion du sens rendu</b> que sa jumelle : refus du garde-fou, elle rend
+    /// <c>true</c> sans rien faire ; passage, elle rend le resultat de la levee, qui vaut <c>1</c>
+    /// quand <see cref="PrepareCombatPair_00538870"/> a echoue et <c>0</c> quand l'effet a bien ete
+    /// leve. <b>Son seul appelant, Delivrance, jette le resultat.</b>
+    /// </para>
+    /// </summary>
+    private static bool ClearStatusEffectIfEligible_0044B910(uint* caster, uint* victim, int keep)
+    {
+        if (IsEffectPairBlocked_004364B0(caster, victim) != 0) return true;
+
+        return ClearStatusEffect_0053C8E0(caster, victim, keep) != 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044b7b0 @ 0x0044b7b0 — <b>Delivrance</b> : le sous-type <c>0x2f</c>, creneau 47
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>dix-huitieme fiche de l'ecole
+    /// 1</b>. 352 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il ne fait qu'une chose, et a la derniere image.</b> Trente images durant il n'est que du
+    /// decor ; a la trentieme il recopie sa paire famille/indice sur le lanceur et appelle
+    /// <see cref="ClearStatusEffectIfEligible_0044B910"/> sur <c>+0x78</c>, ce qui leve <b>l'effet
+    /// d'etat 9</b> — le bit <c>0x10</c> de <c>+0x40</c>, dont la duree vit en <c>+0x92</c>, celui
+    /// que <see cref="ApplyStatusEffect_0053B580"/> pose. Puis il s'eteint dans la meme image.
+    /// </para>
+    /// <para>
+    /// <b>C'est Sang pur a l'envers.</b> Meme forme, meme enveloppe a garde-fou, meme pret de la
+    /// paire au lanceur — mais Sang pur soigne dans son bloc de naissance et passe le reste a
+    /// n'etre qu'un decor, la ou Delivrance passe le decor d'abord et frappe en sortant.
+    /// </para>
+    /// <para>
+    /// <b>La mise en scene</b> : un halo <c>0x8f</c> a la premiere image ; quatre bruits aux images
+    /// 0, 1, 2 et 3 ; et <b>deux couronnes de huit petales</b> <c>0x91</c>, aux images 5 et 10. La
+    /// couronne se trace en mettant le cap a zero, en avancant de <c>0x200</c> — un huitieme de
+    /// tour — entre chaque petale, et en <b>reposant</b> le cap d'origine a la fin.
+    /// </para>
+    /// </summary>
+    private static void TickDeliverance_0044B7B0(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0) AcquireHolyTarget_00447CB0(e, 0);
+
+        // Ghidra: LAB_0044b7d8 — l'amorce, une seule fois : le halo et rien d'autre.
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0x8f, 0, -1);
+        }
+
+        // Ghidra: LAB_0044b806 .. LAB_0044b865 — quatre bruits sur les quatre premieres images.
+        if (*(short*)(e + 0x16) == 0) Aud.PlaySoundEffect(0x21, 0x0329, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 1) Aud.PlaySoundEffect(0x0c, 0x0800, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 2) Aud.PlaySoundEffect(0x0f, 0x0400, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 3) Aud.PlaySoundEffect(0x10, 0x0329, 0x1000, 0x1000);
+
+        // Ghidra: LAB_0044b885 — LA COURONNE, deux fois : aux images 5 et 10.
+        if (*(short*)(e + 0x16) == 5 || *(short*)(e + 0x16) == 10)
+        {
+            // Le cap est PRETE le temps du tour, et repose ensuite.
+            short lentYaw = *(short*)(e + 0x32);
+            *(short*)(e + 0x32) = 0;
+
+            for (int petal = 0; petal < 8; petal++)
+            {
+                SpawnCastEntity_0047AAE0(e, 0x91, 0, -1);
+                *(ushort*)(e + 0x32) += 0x200;   // un huitieme de tour
+            }
+
+            *(short*)(e + 0x32) = lentYaw;
+        }
+
+        // Ghidra: LAB_0044b8d0
+        *(short*)(e + 0x16) += 1;
+
+        if (*(short*)(e + 0x16) == 0x1e)
+        {
+            // LE SEUL EFFET DU SORT. La paire famille/indice est preteee au lanceur d'abord : c'est
+            // elle que le depot relit pour retrouver la fiche.
+            byte* caster = *(byte**)(e + 0x74);
+            caster[6] = e[6];
+            caster[7] = e[7];
+
+            ClearStatusEffectIfEligible_0044B910(
+                *(uint**)(e + 0x74), *(uint**)(e + 0x78), 0);
+
+            EndSpellAndResetDecor_00448020(e);
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044b950 @ 0x0044b950 — <b>le halo de Delivrance</b> : le sous-type <c>0x8f</c>
+    /// de <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c> ou depose
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/>. <b>Decompile dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Il colle a la cible, une tete au-dessus.</b> Sa position est recopiee a chaque image de
+    /// son <c>+0x78</c> avec <c>0x46000</c> de hauteur en plus ; un <c>+0x78</c> nul le rabat sur
+    /// <see cref="Resources.s_EntityList_005de558"/>.
+    /// </para>
+    /// <para>
+    /// <b>Il part enorme et blanc, et se resorbe geometriquement</b> : echelle <c>30000</c> sur
+    /// deux axes, teinte pleine <c>0xff</c> sur les trois canaux, puis chaque image un huitieme
+    /// d'echelle en moins (<c>x - (x &gt;&gt; 3)</c>) et <c>-10</c> de teinte. Il rend la main
+    /// quand son canal rouge <c>+0x38</c>, <b>lu comme un octet signe</b>, atteint zero.
+    /// </para>
+    /// </summary>
+    private static void TickDeliveranceHalo_0044B950(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20) + 0x46000;
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x70;   // Ghidra: &DAT_00551598
+            e[0x38] = 0xff;
+            e[0x39] = 0xff;
+            e[0x3a] = 0xff;
+            e[0x40] = 0;
+            e[0x0a] = 7;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x28) = 30000;
+            *(short*)(e + 0x2a) = 30000;
+            *(short*)(e + 0x2e) = -60;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            BrightenEntityTint_00404DE0(e, -10, -10, -10);
+
+            *(short*)(e + 0x28) -= (short)(*(short*)(e + 0x28) >> 3);
+            *(short*)(e + 0x2a) -= (short)(*(short*)(e + 0x2a) >> 3);
+
+            if ((sbyte)e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044ba00 @ 0x0044ba00 — <b>le petale de la couronne de Delivrance</b> : le
+    /// sous-type <c>0x91</c>, creneau 145 de <see cref="s_StaticEntityHandlers_00551f30"/>. 226
+    /// octets, <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0044BA00.asm</c>.
+    ///
+    /// <para>
+    /// Il est engendre par huit, un huitieme de tour d'ecart, et colle a son <c>+0x78</c> —
+    /// <b>sans</b> decalage vertical, contrairement au halo. Ce sont donc huit exemplaires du meme
+    /// corps que seul leur cap <c>+0x32</c> distingue.
+    /// </para>
+    /// <para>
+    /// <b>Son minuteur est une echelle.</b> <c>+0x34</c> part de <c>0x400</c> et perd <c>20</c> par
+    /// image ; le cap tourne de <c>0x64</c> et <c>+0x2a</c> grandit de <c>0xb4</c>. Sous
+    /// <c>0x96</c>, le petale entre dans sa fin : les deux echelles horizontales perdent <c>20</c>,
+    /// <c>+0x2a</c> gagne <c>0x32</c> de plus, et la teinte passe de <c>+20</c> a <c>-30</c> net.
+    /// Il s'eteint quand <c>+0x34</c> devient negatif — <b>a la lecture d'avant</b> le nouveau test
+    /// de <c>0x96</c>, qui relit donc la valeur remise a zero.
+    /// </para>
+    /// </summary>
+    private static void TickDeliverancePetal_0044BA00(byte* record)
+    {
+        byte* e = record;
+
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 1;
+            *(short*)(e + 0x28) = 0x0320;
+            *(short*)(e + 0x2c) = 0x0320;
+            *(short*)(e + 0x2a) = 0x012c;
+            *(short*)(e + 0x34) = 0x0400;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x14) = 0;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+        }
+
+        // Ghidra: LAB_0044ba65
+        if (*(short*)(e + 0x10) != 1) return;
+
+        BrightenEntityTint_00404DE0(e, 0x14, 0x14, 0x14);
+
+        *(ushort*)(e + 0x32) += 0x64;
+        *(ushort*)(e + 0x2a) += 0xb4;
+        *(short*)(e + 0x34) -= 20;
+
+        // Le binaire retient ici les deux valeurs qu'il vient d'ecrire ; c'est CETTE lecture de
+        // +0x2a que le bloc de fin reprend, et non une relecture du champ.
+        short grown = *(short*)(e + 0x2a);
+        short fuse = *(short*)(e + 0x34);
+
+        if (*(short*)(e + 0x32) >= 0x1000) *(short*)(e + 0x32) -= 0x1000;
+
+        // Ghidra: LAB_0044baa5 — le minuteur passe sous zero : le petale rend la main.
+        if (fuse < 0)
+        {
+            *(short*)(e + 0x34) = 0;
+            *(uint*)e &= 0x7fffffff;
+        }
+
+        // Ghidra: LAB_0044bab7 — le champ est RELU, donc la remise a zero ci-dessus fait entrer
+        // dans cette derniere branche l'image ou le petale s'eteint.
+        if (*(short*)(e + 0x34) < 0x96)
+        {
+            *(short*)(e + 0x28) -= 20;
+            *(short*)(e + 0x2c) -= 20;
+            *(short*)(e + 0x2a) = (short)(grown + 0x32);
+
+            BrightenEntityTint_00404DE0(e, -50, -50, -50);
         }
     }
 
