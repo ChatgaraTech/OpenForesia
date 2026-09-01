@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-09-01** | **16** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`) |
+| **écrits au 2026-09-01** | **17** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -142,7 +142,7 @@ Le sous-type 7, `0x0049F0C0`, est **écrit** ; les six autres du bloc attendent.
 | 3 | `0x004A3C30` | Abeille tueuse | IA — **écrite** |
 | 4 | `0x004A4270` | Grizzly | IA — **écrite** (le même corps que `0x0049B840`) |
 | 16 | `0x004A4AE0` | Méchant ours | IA — **écrite** |
-| 17 | `0x004A54E0` | Behemoth | IA |
+| 17 | `0x004A54E0` | Behemoth | IA — **écrite** |
 | 19 | `0x004A5F10` | Abeille tueuse | simple |
 
 **L'abeille tueuse `0x004A3C30` est la troisième bête volante du dépôt** — après la Coccinelle
@@ -172,12 +172,23 @@ attaque à distance de la famille. Son souffle fait naître un sous-type `>= 0xc
 table **par sous-zone** `0x0056adc8` : c'est la première routine d'intelligence dont l'effet dépende
 de la carte. Et c'est la seule des quatorze qui **secoue la caméra** quand elle marche.
 
+**Et le Behemoth `0x004A54E0` ferme le bloc.** C'est la seule bête du dépôt qui ait **deux machines
+à postures** — le bit `0x800` des drapeaux choisit entre le régime ordinaire (quatre postures dans
+`+0x42`) et l'**incantation** (quatre états dans `+0x10`) —, et **la première qui lance un sort** :
+elle en tire un sur trois dans `0x00552A30`, famille 0, indices 13/19/23, et va lire la durée de
+l'incantation dans la fiche de sort elle-même. Sa gravité `0x7fff` est le maximum d'un `short`
+signé ; ses cônes de virage sont des constantes et son rythme ignore la timidité — une masse, pas un
+duelliste.
+
 ### Ce qui reste, au 2026-09-01
 
-**Sept routines restent pour rendre la forêt entièrement stable** : les six du bloc B
-(`0x0049FAD0`, `0x004A0480`, `0x004A13E0`, `0x004A1D50`, `0x004A2C90`, `0x004A35B0`) et la dernière
-du bloc C, le Behemoth `0x004A54E0`. Le relevé du 2026-08-29 en comptait treize, dont deux pour les
-seules sous-zones d'arrivée ; ces deux-là sont faites.
+**Six routines restent pour rendre la forêt entièrement stable, et elles sont toutes du bloc B** :
+`0x0049FAD0` (Trent), `0x004A0480` (Fleur du mal), `0x004A13E0` (Wyrm), `0x004A1D50` (Varan),
+`0x004A2C90` (Géant), `0x004A35B0` (Willie). **Les blocs A et C sont complets** : les sous-zones
+d'arrivée (0-4) et celles du lieu de coupe et de la grotte (5 et 9) n'ont plus de trou.
+
+Le relevé du 2026-08-29 en comptait treize, dont deux pour les seules sous-zones d'arrivée ; ces
+deux-là sont faites.
 
 ---
 

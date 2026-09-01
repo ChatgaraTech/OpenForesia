@@ -20270,3 +20270,113 @@ portée et de loin. C'est ce qui rend la bête lisible : elle vient toujours vou
 
 `0x0049FAD0`, `0x004A0480`, `0x004A13E0`, `0x004A1D50`, `0x004A2C90`, `0x004A35B0` (bloc B,
 sous-zones 6-8) et `0x004A54E0`, le Behemoth (bloc C). Aucun n'est signalé par la sonde.
+
+## 2026-09-01 (suite 9) — `0x004A54E0`, le Behemoth : deux machines à postures, et le premier sort lancé par une bête
+
+Le septième des quatorze de la zone 3, et **le bloc C est fermé** : les sous-zones 5 et 9 de la
+forêt sont entièrement couvertes, intelligences comprises. 2 571 octets, absents de `Blaze.c`,
+soixante-quatre étiquettes de saut, **deux** tables de sauts à quatre entrées (`0x004A5EEC` et
+`0x004A5EFC`). Relevé sous `Legacy/Raw/Blaze/FUN_004A54E0.asm`.
+
+Zone 3 passe de **129 à 130 implémentés sur 136**. **Les six qui restent sont tous du bloc B**, les
+sous-zones 6 à 8.
+
+Crible du doublon passé d'abord, comme les deux séances précédentes : écart minimal 722 lignes sur
+les quatorze routines d'intelligence déjà écrites. Corps neuf.
+
+### Elle a deux machines à postures, et c'est la seule
+
+Le bit `0x800` des drapeaux choisit laquelle tourne :
+
+- **dégagé**, c'est le régime **ordinaire** — quatre postures lues dans `+0x42`, table
+  `0x004A5EFC`, la charpente de toute la famille ;
+- **posé**, c'est l'**incantation** — quatre états lus dans `+0x10`, table `0x004A5EEC`, comptés de
+  3 vers 0. Le régime se termine tout seul, en effaçant son propre bit à la fin de l'animation.
+
+Ce que le désassembleur montrait comme « une table de huit entrées à `0x004A5EEC` » est en fait
+**deux tables de quatre** qui se suivent. C'est le contrôle de borne qui le dit : les deux dispatchs
+testent `cmp ecx,3 ; ja`, donc chacun ne lit que quatre entrées.
+
+### Le premier sort lancé par une bête
+
+L'incantation, état par état :
+
+1. **3** — l'entité de lancement `0xbd` naît (`SpawnCastEntity_0047AAE0`), un sort est tiré parmi
+   **trois** dans la table `0x00552A30` et rangé dans `+0x06`, et **la durée de l'incantation est
+   lue dans la fiche de sort elle-même** : l'octet `+0x13`, à `famille * 4` puis `indice * 0x30`
+   dans le répertoire `+0x9c`. Le temps d'incantation est donc une propriété du *sort*, pas de la
+   bête.
+2. **2** — le rebours s'écoule pendant qu'elle se tourne vers sa cible. C'est **le seul cône du
+   corps qui dépende de la hardiesse** (`hardiesse * 4 + 0x32`).
+3. **1** — l'animation 7 est posée, et à sa quatorzième image `CastSpell_0053A980` part avec la
+   paire famille/indice de `+0x06`.
+4. **0** — la fin de l'animation efface `0x800` et rend la main au régime ordinaire.
+
+**La table des trois sorts est bornée deux fois**, ce qui la rend sûre : le corps tire
+`hasard % 3`, et le quatrième mot du binaire est nul. Les trois valeurs sont `0x000d`, `0x0013`,
+`0x0017` — **famille 0, la première école, aux indices 13, 19 et 23**. Même forme que
+`s_SpellGestures_00552978`, la table du Goblin-sorcier.
+
+**Certains traits d'espèce annulent l'incantation net** : si `stat + 0x40` porte un bit de
+`0x400003e8`, les bits `0x804` sont effacés et le rebours remis à zéro avant même le dispatch. Le
+masque n'est pas décomposé — chacun de ses bits est un trait dont le sens n'est pas établi, et on
+ne devine pas.
+
+### Trois gestes, dont un qui frappe en retombant
+
+**Le coup de patte** (posture 0) : elle se replace jusqu'à l'image 5, s'élance à la 6
+(`+0x5c = 0x24000`), balaie à partir de la 7. Sonde `0x00552A18`, la plus longue portée relevée
+(`0x96`).
+
+**La prise** (posture 1) : la jumelle de celle du Méchant ours — même bit `0x20` de marquage, même
+moitié d'attaque, même déplacement sur la victime pour y semer l'effet `0x39`. **Trois différences,
+toutes chiffrées** : elle se détend en *sautant* (`+0x54 = 0x32000`, bit 0 posé), la projection est
+à **trente** fois le sinus et non quarante, et **il n'y a pas d'oblique** — la victime part droit
+devant, sans le biais de `0x400` que l'ours calcule sur l'attaque du modèle. Le geste ne se ferme
+qu'au sol, comme le bond du Grizzly.
+
+**Le saut** (posture 2) : elle bondit sur place — `+0x54 = 0x64000`, **la plus forte impulsion
+verticale du dépôt** — et **son atterrissage fait naître une entité**, puis `0x28` images de
+récupération. Une onde de choc, très vraisemblablement.
+
+### Le premier bloc du répertoire de zone est un catalogue d'effets, adressé par rang
+
+Le sous-type que le saut fait naître est `0xc0 + répertoire[2]`, donc `>= 0xc0`, donc pris dans la
+table **par sous-zone** `0x0056adc8`. Trois routines lisent maintenant ce même bloc à trois rangs
+différents :
+
+| routine | octet lu | ce qui naît |
+|---|---|---|
+| `0x0049A980`, le sillage | `[1]` | la traînée |
+| `0x004A4AE0`, le souffle | `[9]` | l'attaque à distance |
+| `0x004A54E0`, le saut | `[2]` | l'onde de choc |
+
+**Le premier bloc du répertoire de zone est donc un petit catalogue d'effets propres à la carte**,
+et chaque routine y a son rang. C'est un acquis qui dépasse ces trois bêtes : la prochaine qui lira
+ce bloc dira quel rang lui revient, et le tableau se remplira tout seul.
+
+### Ce qui la distingue, chiffre par chiffre
+
+| | Grizzly | Méchant ours | **Behemoth** |
+|---|---|---|---|
+| gravité `+0x9a` | `0x6000` | `0x7000` | **`0x7fff`** |
+| gestes | 2 | 3 | **3** |
+| machines à postures | 1 | 1 | **2** |
+| cônes de virage | hardiesse | hardiesse | **constants** (`0x40`, `0x60`, `0x80`) |
+| durée d'une posture | `+ timide/2` | `+ timide/2` | **sans terme de timidité** |
+| plages de distance | `0x12c` / `0x258` | `0xfa` / `0x1f4` | **`0x12c` seule** |
+| projection de la prise | ×30 | ×40, oblique | **×30, droit devant** |
+
+**Ses cônes sont des constantes et son rythme ignore la timidité.** Le corps ne calcule d'ailleurs
+jamais `0x40 - hardiesse` : c'est la seule de la famille qui s'en passe. Elle tourne au même rythme
+quel que soit le niveau du groupe — une masse, pas un duelliste.
+
+**Et elle n'a que deux plages de distance**, séparées à `0x12c`. Au corps à corps elle a deux
+choses à faire ; **au loin elle en a quatre** — empoigner, sauter, incanter, ou errer. C'est
+l'inverse de toutes ses voisines : **plus on s'éloigne d'un Behemoth, plus il a de moyens.**
+
+### Les six qui restent en zone 3
+
+Toutes du **bloc B**, les sous-zones 6 à 8 : `0x0049FAD0` (Trent), `0x004A0480` (Fleur du mal),
+`0x004A13E0` (Wyrm), `0x004A1D50` (Varan), `0x004A2C90` (Géant), `0x004A35B0` (Willie). Aucune n'est
+signalée par la sonde.

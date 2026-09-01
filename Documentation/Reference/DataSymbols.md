@@ -2216,6 +2216,8 @@ groupe. Releves au verbe `at` en transcrivant `FUN_0049B840`, le Grizzly.
 | `0x005529f4` | 0 | `0x1e` | `0x32` | `0x96` | 0 | `0x50` | **`FUN_004A4270`, le bond** |
 | `0x00552a00` | 0 | `0x28` | `0x50` | `0x96` | 0 | `0x78` | **`FUN_004A4AE0`, la griffe** |
 | `0x00552a0c` | 0 | `0x50` | `0x5a` | `0x96` | 0 | `0x64` | **`FUN_004A4AE0`, la prise** |
+| `0x00552a18` | 0 | `0x32` | `0x5a` | `0x96` | 0 | `0x96` | **`FUN_004A54E0`, le coup de patte** |
+| `0x00552a24` | 0 | `0x32` | `0x46` | `0x96` | `0x100` | `0xaa` | **`FUN_004A54E0`, la prise** |
 
 Le cinquieme terme est un **decalage vertical** : negatif, le gabarit se leve — la griffe du Grizzly
 s'abat d'en haut, son bond frappe au ras du sol.
@@ -2235,22 +2237,30 @@ C'est ce qui a permis de conclure que les deux Grizzlys se comportent exactement
 ne pas transcrire le second. **La comparaison de deux corps ne s'arrete pas au code quand les seuls
 octets qui different sont des adresses** — il faut lire ce qu'elles designent.
 
-**Les deux dernieres lignes, `0x00552a00` et `0x00552a0c`, sont celles du Mechant ours**
-(`FUN_004A4AE0`), relevees le meme jour. **Elles ne ferment pas la serie** : la suite immediate a
-encore la forme d'une sonde, et sur deux entrees au moins —
-
-```
-0x00552a18: 0000 3200 5a00 9600 0000 9600
-0x00552a24: 0000 3200 4600 9600 0001 aa00
-```
-
-— la seconde portant meme un decalage vertical de `0x100`. Elles appartiennent a des routines non
-encore transcrites, et **il ne faut pas les deviner** : celle qui les lira les nommera. La borne de
-fin de ce cote n'est donc pas etablie, contrairement a celle du Grizzly.
+**Les quatre dernieres lignes ont ete ajoutees le 2026-09-01** : `0x00552a00` et `0x00552a0c` sont
+les deux gabarits du **Mechant ours** (`FUN_004A4AE0`), `0x00552a18` et `0x00552a24` ceux du
+**Behemoth** (`FUN_004A54E0`). **Et ces deux dernieres ferment la serie** : `0x00552a30` porte
+`0d00 1300 1700 0000`, qui n'a plus la forme d'une sonde — c'est la table des trois sorts du
+Behemoth, decrite plus bas.
 
 **Ni l'une ni l'autre des deux sondes de l'ours ne porte de decalage vertical**, la ou la griffe du
-Grizzly s'abat d'en haut ; et celle de la prise est la plus large en portee laterale des sept
-relevees (`0x50`), ce qui va avec un geste qui doit attraper plutot que toucher.
+Grizzly s'abat d'en haut ; celle de sa prise est la plus large en portee laterale de la serie
+(`0x50`), ce qui va avec un geste qui doit attraper plutot que toucher. **La prise du Behemoth est
+la seule de la serie a porter un decalage vertical POSITIF** (`+0x100`) : elle empoigne par le bas.
+
+## `0x00552a30` — les trois sorts du Behemoth (2026-09-01)
+
+```
+0x00552a30: 0d00 1300 1700 0000
+```
+
+Trois mots, puis un zero. Meme forme que `s_SpellGestures_00552978`, la table du Goblin-sorcier :
+l'octet haut est la **famille**, l'octet bas l'**indice**, tels que `CastSpell_0053A980` les recoit.
+Les trois sont donc **famille 0** — la premiere ecole — aux indices **13, 19 et 23**.
+
+**La borne est etablie deux fois**, et c'est ce qui la rend sure, contrairement a celle de la table
+du Goblin-sorcier : le corps de `FUN_004A54E0` tire `hasard % 3`, donc il n'en lit jamais plus de
+trois, et le quatrieme mot du binaire est nul.
 
 **Deux bornes, lues dans la donnee et non dans les sites d'appel.** `0x00552954` porte
 `00 00 00 00 0e 02 14 00 1b 00 00 00`, qui n'a plus la forme d'une sonde : la serie de trois

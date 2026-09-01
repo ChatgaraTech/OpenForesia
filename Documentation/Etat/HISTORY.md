@@ -5,6 +5,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **`0x004A54E0`, le BEHEMOTH — et le BLOC C EST FERME** : les sous-zones 5 et 9 de la foret sont entierement couvertes, IA comprises. 2571 octets absents de `Blaze.c`. Zone 3 passe a **130 des 136**, et les six qui restent sont toutes du bloc B
+- doc : **la seule bete du depot qui ait DEUX machines a postures** — le bit `0x800` choisit : degage, quatre postures dans `+0x42` ; pose, quatre etats d'incantation dans `+0x10`. Ce que le desassembleur montrait comme une table de huit entrees est deux tables de quatre, et c'est le controle de borne qui le dit
+- doc : **LE PREMIER SORT LANCE PAR UNE BETE** — elle en tire un sur trois dans `0x00552A30` (famille 0, indices 13/19/23), et **va lire la duree de l'incantation dans la fiche de sort elle-meme** (`+0x13`). Le temps d'incantation est une propriete du SORT, pas de la bete
+- doc : **le premier bloc du repertoire de zone est un catalogue d'effets adresse par rang** — le sillage du Goblin lit `[1]`, le souffle du Mechant ours `[9]`, l'onde de choc du Behemoth `[2]`. Trois routines, trois rangs, la meme table par sous-zone
+- doc : **sa gravite est `0x7fff`, le maximum d'un short signe** — le Grizzly a `0x6000`, le Mechant ours `0x7000`. La bete la plus lourde du jeu, et le binaire le dit en une constante
+- doc : **ses cones sont des CONSTANTES et son rythme ignore la timidite** — la seule de la famille qui ne calcule jamais `0x40 - hardiesse`. Et **plus on s'eloigne d'elle, plus elle a de moyens** : deux choix au corps a corps, quatre au loin — l'inverse de toutes ses voisines
 - feat : **`0x004A4AE0`, le MECHANT OURS** — 2542 octets absents de `Blaze.c`, le corps le plus riche de la famille des intelligences d'entite de scene. Zone 3 passe a **129 des 136**
 - doc : **TROIS gestes la ou le Crabe et le Grizzly en ont deux** — la griffe, la PRISE (elle empoigne, inflige la moitie de l'attaque, projette la victime a 40x et la fait decoller), et le SOUFFLE, la seule attaque a distance de la famille
 - doc : **le souffle vise une table PAR SOUS-ZONE** — son sous-type est `0xc0` + un octet du repertoire de zone, donc `>= 0xc0`, donc la table `0x0056adc8` et non la statique. Premiere routine d'IA dont l'effet depend de la carte ; les objets, eux, n'en emploient aucun
