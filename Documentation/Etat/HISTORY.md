@@ -5,6 +5,12 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **`0x004A35B0`, WILLIE — la quatrieme bete volante** — 1636 octets absents de `Blaze.c`, la sœur de la Coccinelle que le crible annoncait a 417 lignes. Zone 3 passe a **132 des 136**
+- doc : **elle ENFLE pour frapper** — les trois echelles `+0x28`/`+0x2a`/`+0x2c` convergent vers `0x3000`, TROIS FOIS sa taille, des que le rebours du geste passe sous 8. Aucune des dix-huit routines precedentes ne touche a son echelle pour se battre
+- doc : **sa sonde est centree sur son propre corps** — `probe[1] = -0x3c`, le seul decalage avant NEGATIF du depot : la boite de frappe l'englobe au lieu de se poser devant. Le gabarit d'une chose qui blesse par contact, et il va avec l'enflure et le balayage a chaque image
+- doc : **elle pulse, et tout bat sur la meme phase** — taille, couleur (`+0x38`, un gris de `0x20` a `0xe0`) et altitude de vol partagent l'accumulateur `+0x14`. Premier corps du depot ou trois canaux visuels sortent d'un seul compteur
+- doc : **elle ne change JAMAIS d'animation** — aucune de ses quatre postures n'ecrit `+0x18`, ni son engagement ; toutes ses sœurs y posent 0 ou 1. Et **son interruption est conditionnelle** : `+0x16` au-dessus de `0x0a` lui donne l'interruption terrestre, en dessous la volante
+- fix : **`BeatWings_0049A68F` scinde en deux** — le masque `0xdfffd8ff` d'un cote, le vol (`HoverOnWings`) de l'autre : Willie emet le vol mais n'efface les drapeaux de vue que dans une de ses deux branches d'interruption
 - feat : **`0x004A2C90`, le GEANT** — 2308 octets absents de `Blaze.c`, la premiere routine choisie par le crible plutot que par la taille, et **le crible avait raison** : 283 lignes du Grizzly annoncees, squelette du Grizzly trouve. Zone 3 passe a **131 des 136**
 - doc : **elle arme un elan qui ne part pas toujours** — `+0x43` vaut 2 si la cible etait a `0x96` ou plus a l'engagement, 1 sinon, et les deux gestes ne s'elancent QUE sur 2. Un Geant qui engage de trop pres joue son animation sans le bond ; la distance est mesuree une fois et ne se relit jamais
 - doc : **ses DEUX gestes quittent le sol**, et tant qu'elle est en l'air l'image d'animation du coup de patte est **bloquee a `0x11`** : le geste se fige sur sa derniere image et n'en sort qu'a l'atterrissage. C'est ce qui remplace le compte a rebours des autres

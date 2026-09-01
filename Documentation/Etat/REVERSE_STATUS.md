@@ -20505,3 +20505,78 @@ le nommeront.
 Toutes du bloc B : `0x004A35B0` (Willie, 417 lignes de la Coccinelle), `0x0049FAD0` (Trent, 454 du
 Goblin-sorcier), `0x004A13E0` (Wyrm, 583 du Crabe), `0x004A1D50` (Varan, 1 171) et `0x004A0480`
 (Fleur du mal, 1 262). L'ordre du crible tient toujours.
+
+## 2026-09-01 (suite 12) — `0x004A35B0`, Willie : elle enfle pour frapper
+
+Le neuvième des quatorze de la zone 3. 1 636 octets, absents de `Blaze.c`, trente-deux étiquettes,
+table de sauts à `0x004A3C14`. Relevé sous `Legacy/Raw/Blaze/FUN_004A35B0.asm`.
+
+Zone 3 passe de **131 à 132 implémentés sur 136**. **Quatre restent**, toutes du bloc B.
+
+Le crible l'annonçait à **417 lignes de la Coccinelle `0x0049A360`**, la deuxième plus faible
+divergence des six. C'est bien sa sœur : même queue de vol (`IntegrateFlyingEntityMotion_0049A8E0`,
+le bloc de battement, `InterruptFlyingEntity_004A1CF0`), même cône `hardiesse/4 + 0x38`, même
+distance tenue `0x12c`, même `FlyingEntityDelay`.
+
+### Elle enfle pour frapper
+
+**Les trois échelles `+0x28`/`+0x2a`/`+0x2c` convergent par quarts vers `0x3000`** — trois fois sa
+taille — dès que le compte à rebours du geste passe **sous 8**, et vers `0x1000` avant cela. La
+comparaison est non signée (`jb`), donc le seuil porte bien sur les huit dernières images.
+
+**Aucune des dix-huit routines précédentes ne touche à son échelle pour se battre.** Les échelles
+n'avaient servi jusqu'ici qu'à faire naître ou mourir une entité — « elle meurt de rétrécir »,
+« il part des trois échelles à zéro ». Ici c'est une arme.
+
+### Sa sonde est centrée sur elle-même
+
+`{0, -0x3c, 0x3c, 0x96, 0, 0x78}`. **`probe[1]` vaut `-0x3c`, le seul décalage avant négatif du
+dépôt.** Comme `TestMeleeReach_00535A90` construit le quadrilatère à `probe[1]` devant l'entité puis
+`probe[5]` de profondeur, la boîte s'étend de `-0x3c` à `+0x3c` le long de son cap : **elle
+l'englobe**. C'est le gabarit d'une chose qui blesse par contact, pas d'un coup porté — et cela va
+avec l'enflure et avec le balayage à *chaque* image du geste.
+
+### Elle pulse, et tout bat sur la même phase
+
+Hors geste, les mêmes trois échelles convergent vers `sinus(+0x14) / 4 + 0x1000`, et le mot de
+couleur `+0x38` reçoit un **gris uniforme** oscillant autour de `0x80` — `3 * sinus / 2` ramené sur
+six bits, donc de `0x20` à `0xe0`.
+
+**La phase est `+0x14`, celle-là même qui fait osciller sa hauteur de vol.** La couleur, la taille
+et l'altitude battent ensemble. C'est le premier corps du dépôt où trois canaux visuels partagent
+un seul accumulateur.
+
+### Deux singularités de structure
+
+**Elle ne change jamais d'animation.** Aucune de ses quatre postures n'écrit `+0x18`, et son
+engagement non plus ; toutes ses sœurs y posent 0 ou 1 selon la posture. Elle n'a qu'un seul clip —
+ce qui se tient, pour une chose qui exprime tout par sa taille et sa couleur.
+
+**Son interruption est conditionnelle**, ce qu'aucune autre n'a : `+0x16` au-dessus de `0x0a` lui
+donne l'interruption **terrestre** (`FUN_004e3770`), en dessous la **volante** (`FUN_004a1cf0`). Et
+l'effacement des drapeaux de vue `0xdfffd8ff` n'accompagne que la branche volante — c'est ce qui a
+obligé à séparer `BeatWings_0049A68F` en deux : le masque d'un côté, le vol (`HoverOnWings`) de
+l'autre. Les deux corps partagent le vol et pas le masque, et le désassemblage le dit sans
+ambiguïté.
+
+### Sa replanification est celle de la Coccinelle, à un champ près
+
+Décision pour décision et seuil pour seuil : les mêmes plages `0x12c` et `0x258`, la même chance sur
+`0x3c` d'engager, le même seuil `0xfa` **diminué** d'un tirage — et non augmenté comme chez l'abeille
+tueuse —, le même engagement qui ne pose que le bit 2 et un rebours de `timidité/8 + 0x10`, jusqu'au
+même tirage jeté de la plage moyenne.
+
+**La seule différence est le champ du cap d'errance : `+0x10` au lieu de `+0x12`**, et la posture 3
+le relit au même endroit.
+
+**Les deux corps n'ont pas été fusionnés**, et c'est délibéré : le désassemblage normalisé montre
+que le compilateur n'a pas alloué les mêmes registres et que Willie a recopié en clair le bloc de
+délai que la Coccinelle partage par un saut. Ce n'est donc pas le cas de `0x004A4270`, où 705 lignes
+sur 705 coïncidaient ; ici la fusion serait une décision de reconstruction, pas un fait sur le
+binaire.
+
+### Les quatre qui restent en zone 3
+
+Toutes du bloc B, dans l'ordre du crible : `0x0049FAD0` (Trent, 454 lignes du Goblin-sorcier),
+`0x004A13E0` (Wyrm, 583 du Crabe), `0x004A1D50` (Varan, 1 171) et `0x004A0480` (Fleur du mal,
+1 262).

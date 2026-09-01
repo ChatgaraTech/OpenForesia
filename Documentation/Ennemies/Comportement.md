@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-09-01** | **18** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`) |
+| **écrits au 2026-09-01** | **19** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`, `0x004A35B0`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -127,14 +127,22 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 | 12 | `0x004A13E0` | Wyrm |
 | 13 | `0x004A1D50` | Varan |
 | 14 | `0x004A2C90` | Géant — **écrite** |
-| 15 | `0x004A35B0` | Willie |
+| 15 | `0x004A35B0` | Willie — **écrite** |
 
 **Le même numéro ne désigne pas la même bête d'un bloc à l'autre** : le sous-type 7 est
 `0x0049D030` en bloc A et `0x0049F0C0` en bloc B. C'est le rappel concret que la table est
 rechargée par sous-zone.
 
-Le sous-type 7, `0x0049F0C0`, et le sous-type 14, `0x004A2C90`, sont **écrits** ; les cinq autres du
-bloc attendent.
+Les sous-types 7 (`0x0049F0C0`), 14 (`0x004A2C90`) et 15 (`0x004A35B0`) sont **écrits** ; les quatre
+autres du bloc attendent.
+
+**Willie `0x004A35B0` est la quatrième bête volante du dépôt**, et la sœur de la Coccinelle du bloc
+A : même queue de vol, même cône, même replanification à un champ près (`+0x10` au lieu de `+0x12`).
+Ce qui lui appartient est visuel — **elle enfle jusqu'à trois fois sa taille pour frapper**, sa
+sonde de contact est **centrée sur son propre corps** (le seul `probe[1]` négatif du dépôt), et hors
+geste sa taille, sa couleur et son altitude de vol pulsent toutes trois sur la même phase `+0x14`.
+Elle ne change jamais d'animation, et c'est la seule routine qui **choisisse** entre l'interruption
+terrestre et la volante, selon `+0x16`.
 
 ### Bloc C — le lieu de coupe et la grotte
 
@@ -183,11 +191,11 @@ duelliste.
 
 ### Ce qui reste, au 2026-09-01
 
-**Cinq routines restent pour rendre la forêt entièrement stable, et elles sont toutes du bloc B** —
-le Géant `0x004A2C90` a été écrit le 2026-09-01, le premier choisi par le crible ci-dessous plutôt
-que par la taille, et **le crible avait raison** : il l'annonçait à 283 lignes du Grizzly, c'est un
-Grizzly à trois différences près (ses deux gestes quittent le sol, son élan ne part que si la cible
-était assez loin à l'engagement, et sa replanification a un second essai).
+**Quatre routines restent pour rendre la forêt entièrement stable, et elles sont toutes du bloc B.**
+Le Géant `0x004A2C90` et Willie `0x004A35B0` ont été écrits le 2026-09-01, dans l'ordre du crible
+ci-dessous plutôt que dans celui des tailles, et **le crible a eu raison les deux fois** : le Géant
+annoncé à 283 lignes du Grizzly en est un à trois différences près, Willie annoncée à 417 de la
+Coccinelle en est la sœur.
 **Les blocs A et C sont complets** : les sous-zones d'arrivée (0-4) et celles du lieu de coupe et de
 la grotte (5 et 9) n'ont plus de trou.
 
@@ -202,7 +210,7 @@ ou trois lignes, comme `0x004A4270`.
 | routine | bête | ≤ octets | le plus proche déjà écrit | écart |
 |---|---|---:|---|---:|
 | `0x004A2C90` | Géant | 2 336 | `0x0049B840`, le Grizzly | **283** — **écrite** |
-| `0x004A35B0` | Willie | 1 664 | `0x0049A360`, la Coccinelle | **417** |
+| `0x004A35B0` | Willie | 1 664 | `0x0049A360`, la Coccinelle | **417** — **écrite** |
 | `0x0049FAD0` | Trent | 2 480 | `0x0049E190`, le Goblin-sorcier | **454** |
 | `0x004A13E0` | Wyrm | 2 320 | `0x0049C0B0`, le Crabe | 583 |
 | `0x004A1D50` | Varan | 3 904 | `0x00499DE0`, la Fourmi géante | 1 171 |
@@ -213,6 +221,11 @@ quel corps déjà transcrit ouvrir la comparaison. Et elle **change l'ordre de t
 taille il fallait commencer par le Willie, par l'écart il faut commencer par le **Géant**, qui est
 un Grizzly modifié. Le coût d'une transcription se mesure au nombre de formes distinctes, pas au
 nombre d'octets.
+
+**Les deux premières l'ont confirmé.** Le Géant est bien le Grizzly du crible, et Willie bien la
+sœur de la Coccinelle — jusqu'à une replanification identique décision pour décision, à un champ
+près. Restent les quatre du bas du tableau, dont **les deux plus gros sont aussi les deux plus
+étrangers à tout ce qui est écrit** : ce sont eux qui coûteront.
 
 Le détail est dans `REVERSE_STATUS.md`, section « les six du bloc B passées au crible ».
 
