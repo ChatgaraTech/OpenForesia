@@ -5008,6 +5008,13 @@ public static unsafe partial class Blaze
             case 0x0044D030: TickResurrectionMote_0044D030(record); return;
             case 0x0044D170: TickResurrectionVeil_0044D170(record); return;
 
+            // ANGE, ecole 1 indice 23 — la DERNIERE fiche de l'ecole, et le seul sort du depot qui
+            // dure tant qu'on tient le bouton : quatre conditions le soutiennent, deux PM toutes
+            // les dix images le paient.
+            case 0x0044DC60: TickAngel_0044DC60(record); return;
+            case 0x0044DED0: TickAngelForm_0044DED0(record); return;
+            case 0x0044EA60: TickAngelFeather_0044EA60(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -45881,6 +45888,896 @@ public static unsafe partial class Blaze
 
         // Ghidra: LAB_0044d364
         *(short*)(e + 0x12) += 1;
+    }
+
+    // =====================================================================
+    // ANGE — le cinquante-troisieme et DERNIER sort de l'ecole 1, indice 23, sous-type 0x35
+    //
+    //   0x0044DC60   LE SORT. Sous-type 0x35 de 0x00551c30, 614 octets. Decompile dans Blaze.c.
+    //   0x0044DED0   la silhouette, sous-type 0x9c de 0x00551f30. 2 919 octets, ABSENT ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044DED0.asm.
+    //   0x0044EA60   la plume, sous-type 0x9d de 0x00551f30. 1 216 octets, ABSENT ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_0044EA60.asm.
+    //
+    // C'EST LE SEUL SORT DU DEPOT QUI DURE TANT QU'ON TIENT LE BOUTON. Les cinquante-deux autres
+    // comptent des images et s'eteignent. Ange, lui, tient tant que quatre conditions restent
+    // vraies, et le corps les teste toutes les images a partir de la soixantieme :
+    //   - le bouton d'action remappe du lanceur (+0x1fc4 de sa fiche) est toujours enfonce ;
+    //   - il lui reste des PM — DEUX toutes les dix images, preleves sur +0x14e ;
+    //   - son mot d'etat +0x140 ne porte aucun des bits 0x3e8 ;
+    //   - il n'est pas mort (0x40000000 sur son emplacement de groupe).
+    // La premiere qui tombe pose +0x12 (0x46, ou 0x28 pour la panne de PM) et passe en etat 3, ou
+    // le sort se defait en autant d'images.
+    //
+    // ET SON COMPTEUR D'IMAGES BOUCLE. +0x16 est ramene de 30000 a 3000 quand il deborde : une
+    // invocation tenue plusieurs minutes ne casse rien. Aucune autre fiche n'en a besoin.
+    //
+    // QUATRE SILHOUETTES NAISSENT, UNE SEULE AGIT. Les quatre 0x9c se distinguent par le couple
+    // (+0x5c, +0x9a) que le sort pose avant chaque naissance : (3,0) et (4,0) grossissent a deux
+    // vitesses puis se figent dans l'etat 0x63 ; (4,0x14) retrecit et se fige aussi ; seule
+    // (4,10) — celle qui monte en bleu jusqu'a 0xff — passe en etat 1 et devient l'ange qui agit.
+    //
+    // L'ANGE CHERCHE SIX CIBLES ET LES DONNE A SES SIX PLUMES. Il balaie le camp adverse, retient
+    // jusqu'a six proies dans un tableau de pile, et emballe leurs indices par PAIRES dans
+    // +0x44/+0x48/+0x4c — un saut a sept branches choisit l'arrangement selon le nombre trouve.
+    // Chaque plume lit ensuite SA moitie de paire d'apres son propre +0x14 (0 a 5).
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0044dc60 @ 0x0044dc60 — <b>Ange</b> : le sous-type <c>0x35</c>, creneau 53 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>vingt-quatrieme et derniere fiche de
+    /// l'ecole 1</b>. <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Le seul sort du depot qui dure tant qu'on tient le bouton.</b> A partir de la soixantieme
+    /// image il verifie quatre conditions a chaque tour : le <b>bouton d'action remappe</b> du
+    /// lanceur (le masque <c>+0x1fc4</c> de sa fiche, croise avec l'etat vif de sa manette) est
+    /// toujours enfonce ; il lui reste des PM — <b>deux toutes les dix images</b>, preleves sur
+    /// <c>+0x14e</c> ; son mot d'etat <c>+0x140</c> ne porte aucun des bits <c>0x3e8</c> ; et il
+    /// n'est pas mort. La premiere qui tombe pose <c>+0x12</c> et passe en etat 3.
+    /// </para>
+    /// <para>
+    /// <b>Son compteur d'images boucle</b> : <c>+0x16</c> est ramene de <c>30000</c> a <c>3000</c>
+    /// quand il deborde. Aucune autre fiche n'en a besoin — aucune autre ne peut durer.
+    /// </para>
+    /// <para>
+    /// <b>Un lanceur hors groupe n'est soumis a rien de tout cela</b> : la branche
+    /// <c>0x800000</c> absente se contente de decompter <c>+0x5c</c>, parti de <c>0x78</c>. Cent
+    /// vingt images, et c'est fini.
+    /// </para>
+    /// <para>
+    /// <b>Quatre silhouettes <c>0x9c</c> naissent d'un coup</b>, distinguees par le couple
+    /// <c>(+0x5c, +0x9a)</c> que le sort pose avant chacune : <c>(3,0)</c>, <c>(4,0)</c>,
+    /// <c>(4,10)</c>, <c>(4,0x14)</c>. Une seule — celle a <c>10</c> — deviendra l'ange qui agit ;
+    /// les trois autres se figent dans l'etat <c>0x63</c> et ne bougent plus qu'avec lui.
+    /// </para>
+    /// </summary>
+    private static void TickAngel_0044DC60(byte* record)
+    {
+        byte* e = record;
+
+        EndSpellOnTerrain_00448040(e);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            AcquireHolyTarget_00447CB0(e, 0);
+
+            // Le champ est RELU apres l'appel : l'amorce n'a lieu que s'il est reste nul.
+            if (*(short*)(e + 0x10) == 0)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x16) = 0;
+                *(short*)(e + 0x98) = 0;
+                *(int*)(e + 0x5c) = 0x78;
+                *(short*)(e + 0x12) = 0;
+            }
+        }
+
+        // LE COMPTEUR QUI BOUCLE — la seule fiche du depot a en avoir besoin.
+        *(short*)(e + 0x16) += 1;
+        if (*(short*)(e + 0x16) > 30000) *(short*)(e + 0x16) = 3000;
+
+        // Le meme bruit aux images 0 et 10 d'un cycle de trente, indefiniment.
+        if (*(short*)(e + 0x98) == 0)  Aud.PlaySoundEffect(0x23, 0x0800, 0x1000, 0x1000);
+        if (*(short*)(e + 0x98) == 10) Aud.PlaySoundEffect(0x23, 0x0800, 0x1000, 0x1000);
+
+        *(short*)(e + 0x98) += 1;
+        if (*(short*)(e + 0x98) == 0x1e) *(short*)(e + 0x98) = 10;
+
+        // LES QUATRE SILHOUETTES, toutes dans la meme image.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(ushort*)(e + 0x9a) = 0;
+            *(int*)(e + 0x5c) = 3;
+            SpawnCastEntity_0047AAE0(e, 0x9c, 0, -1);
+
+            *(int*)(e + 0x5c) = 4;
+            SpawnCastEntity_0047AAE0(e, 0x9c, 0, -1);
+
+            *(ushort*)(e + 0x9a) = 10;
+            SpawnCastEntity_0047AAE0(e, 0x9c, 0, -1);
+
+            *(ushort*)(e + 0x9a) = 0x14;
+            SpawnCastEntity_0047AAE0(e, 0x9c, 0, -1);
+
+            *(short*)(e + 0x10) = 2;
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            // Soixante images de grace : le lanceur est seulement tenu, rien n'est verifie.
+            if (*(short*)(e + 0x16) < 0x3c)
+            {
+                *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+                return;
+            }
+
+            bool sustained;
+
+            if ((*(uint*)e & 0x800000) == 0)
+            {
+                // Ghidra: LAB_0044de78 — hors groupe, seule la duree compte.
+                *(int*)(e + 0x5c) -= 1;
+                sustained = *(int*)(e + 0x5c) > 0;
+            }
+            else
+            {
+                *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+
+                int slot = (*(byte**)(e + 0x74))[8];
+                byte* character = GetMainMemPtr() + (slot + 0x78) * 0x2000;
+
+                // LE BOUTON TENU. Le masque du troisieme bouton d'action remappe, croise avec
+                // l'etat vif de la manette assignee a l'emplacement. **Le pas de la table de
+                // manettes est 0x10 et non 4** — le meme piege que celui note sur
+                // <see cref="Input.PollInputAndAudio"/>, verifie ici au desassembleur
+                // (`shl eax,4` en 0x0044ddfa).
+                int pad = Inp.s_PlayerSlots_005e9188[slot * 0x4c];
+                ushort held = *(ushort*)(Inp.s_InputStateBase_00604a20 + pad * 0x10);
+
+                if ((*(ushort*)(character + 0x1fc4) & held) == 0)
+                {
+                    *(short*)(e + 0x12) = 0x46;
+                    *(short*)(e + 0x10) = 3;
+                }
+
+                // LE PRIX : deux PM toutes les dix images, sur le compteur global d'images.
+                if (*(uint*)Mem.Entity(0x005f2cf0) % 10 == 0)
+                {
+                    if (*(short*)(character + 0x14e) < 2)
+                    {
+                        *(short*)(character + 0x14e) = 0;
+                        *(short*)(e + 0x12) = 0x28;   // la panne de PM coupe plus court
+                        *(short*)(e + 0x10) = 3;
+                    }
+                    else
+                    {
+                        *(short*)(character + 0x14e) -= 2;
+                    }
+                }
+
+                sustained =
+                    (*(uint*)(character + 0x140) & 0x3e8) == 0
+                    && (*(uint*)(Inp.s_SlotFlags_005e93c0 + slot * 0x9c) & 0x40000000) == 0;
+            }
+
+            // Ghidra: LAB_0044de85 — les deux chemins tombent ici quand la condition est rompue.
+            if (!sustained)
+            {
+                *(short*)(e + 0x12) = 0x46;
+                *(short*)(e + 0x10) = 3;
+            }
+        }
+
+        // Ghidra: LAB_0044de8f — la defaite, en +0x12 images.
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+
+            *(short*)(e + 0x12) -= 1;
+
+            if (*(short*)(e + 0x12) < 1)
+            {
+                // Le binaire relit +0x74 et refait le meme masquage ; sans effet.
+                *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+                EndSpellAndResetDecor_00448020(e);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Les <b>six ancrages de plume</b> qu'Ange construit sur sa pile — a l'identique dans
+    /// <see cref="TickAngelForm_0044DED0"/> et dans <see cref="TickAngelFeather_0044EA60"/>, qui
+    /// les recopient chacun a chaque appel.
+    ///
+    /// <para>
+    /// Trois paires symetriques, tournees par le cap de l'ange : l'ecart lateral
+    /// <see cref="s_AngelWingSide"/>, l'ecart avant <see cref="s_AngelWingFront"/> et la hauteur
+    /// <see cref="s_AngelWingLift"/>, cette derniere en unites entieres (elle est decalee de douze
+    /// bits a l'emploi).
+    /// </para>
+    /// </summary>
+    private static ReadOnlySpan<short> s_AngelWingSide => [0x3e, 0x3e, 0x47, 0x47, 0x54, 0x54];
+
+    /// <summary>L'ecart avant de chaque plume — voir <see cref="s_AngelWingSide"/>.</summary>
+    private static ReadOnlySpan<short> s_AngelWingFront => [-0x60, 0x60, -0x96, 0x96, -0x69, 0x69];
+
+    /// <summary>La hauteur de chaque plume — voir <see cref="s_AngelWingSide"/>.</summary>
+    private static ReadOnlySpan<short> s_AngelWingLift => [-70, -70, 0x24, 0x24, 0x8f, 0x8f];
+
+    /// <summary>
+    /// Ghidra: FUN_0044ded0 @ 0x0044ded0 — <b>la silhouette de l'ange</b> : le sous-type
+    /// <c>0x9c</c>, creneau 156 de <see cref="s_StaticEntityHandlers_00551f30"/>. <b>2 919 octets,
+    /// absente de <c>Blaze.c</c></b> — le plus gros corps de l'ecole ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0044DED0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle flotte au-dessus du lanceur</b>, gagnant chaque image un quart de l'ecart qui l'en
+    /// separe, <c>0x14A000</c> plus haut, et copiant son cap. Et elle meurt avec le sort : le
+    /// premier geste du corps est de lire l'etat de son <c>+0x6c</c> — la fiche Ange — et de passer
+    /// en etat 3 des qu'elle y voit 3.
+    /// </para>
+    /// <para>
+    /// <b>Quatre exemplaires naissent, un seul agit.</b> L'etat 0 se lit sur <c>+0x9a</c>, que le
+    /// sort a pose : a <c>0</c> la silhouette grossit vers <c>0xF3C</c> <b>d'un pas dicte par
+    /// <c>+0x5c</c></b> (un decalage, donc 3 ou 4 selon l'exemplaire) et se fige a <c>0xED8</c> dans
+    /// l'etat <c>0x63</c> ; a <c>0x14</c> elle part de <c>0x1F40</c>, retrecit de <c>0xCD</c> et se
+    /// fige de meme ; a <c>10</c> — et a <c>10</c> seulement — elle monte en teinte
+    /// <c>(+30, +30, +60)</c> et bascule en <b>etat 1</b> des que son bleu atteint <c>0xff</c>.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 1 seme les six plumes</b> <c>0x9d</c>, chacune a son ancrage tourne par le cap
+    /// (<see cref="s_AngelWingSide"/>), et chacune marquee de son rang dans <c>+0x14</c>.
+    /// </para>
+    /// <para>
+    /// <b>L'etat 2 est la chasse</b>, et il tourne a chaque image : une bouffee <c>0xa9</c> lachee
+    /// <c>0xA0000</c> plus bas, puis le balayage du camp adverse — les <c>0x20</c> entites de scene
+    /// si le lanceur est du groupe (<c>0x800000</c>), les emplacements de groupe sinon. Une proie
+    /// est retenue si elle est a moins de <c>0x320</c>, si la silhouette peut l'ATTEINDRE (quatre
+    /// pas d'un quart, contact <c>0x8800</c>), et si elle passe le critere d'espece
+    /// <c>0x1000080</c> — le meme que Parole sainte. Chaque proie retenue prend le sort en
+    /// <c>+0x74</c>.
+    /// </para>
+    /// <para>
+    /// <b>Six places, et la septieme evince la plus lointaine.</b> Passe six proies, le corps
+    /// mesure la distance de la nouvelle et la compare a chacune des retenues ; a la premiere plus
+    /// lointaine qu'elle, il remplace. Puis le saut a sept branches emballe les indices retenus par
+    /// paires dans <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>, ou les plumes viendront les lire.
+    /// </para>
+    /// <para>
+    /// <b>Trois anomalies sont transcrites telles quelles</b>, toutes dans ce corps ; voir
+    /// <c>Documentation/Reference/legacy-bug.md</c>.
+    /// </para>
+    /// </summary>
+    private static void TickAngelForm_0044DED0(byte* record)
+    {
+        byte* e = record;
+
+        ReadOnlySpan<short> side = s_AngelWingSide;
+        ReadOnlySpan<short> front = s_AngelWingFront;
+        ReadOnlySpan<short> lift = s_AngelWingLift;
+
+        // Le tableau des proies : 0x40 octets remplis de -1 en tete d'appel, six cases utiles.
+        short* picks = stackalloc short[32];
+        for (int i = 0; i < 32; i++) picks[i] = -1;
+
+        byte* spell = *(byte**)(e + 0x6c);
+        if (spell == null) spell = Res.s_EntityList_005de558;
+
+        byte* caster = *(byte**)(e + 0x74);
+        if (caster == null) caster = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_0044df95 — elle gagne un quart du chemin vers le lanceur, une hauteur d'homme
+        // et demie au-dessus, et copie son cap.
+        *(int*)(e + 0x1c) += (*(int*)(caster + 0x1c) - *(int*)(e + 0x1c)) >> 2;
+        *(int*)(e + 0x24) += (*(int*)(caster + 0x24) - *(int*)(e + 0x24)) >> 2;
+        *(int*)(e + 0x20) +=
+            (*(int*)(caster + 0x20) - *(int*)(e + 0x20) + 0x14a000) >> 2;
+
+        *(ushort*)(e + 0x32) = *(ushort*)(caster + 0x32);
+
+        // ELLE MEURT AVEC LE SORT.
+        if (*(short*)(spell + 0x10) == 3) *(short*)(e + 0x10) = 3;
+
+        // Ghidra: LAB_0044dfe2 — l'apparition, pilotee par +0x9a.
+        if (*(short*)(e + 0x10) == 0)
+        {
+            if (*(short*)(e + 0x9a) == 0)
+            {
+                e[0x04] = 0x2e;
+                e[0x0a] = 2;
+                e[0x0b] = 1;
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2c) = 0;
+                *(short*)(e + 0x2a) = 0x0fa0;
+                *(short*)(e + 0x9a) = 1;
+                e[0x38] = 0xfa;
+                e[0x39] = 0xfa;
+                e[0x3a] = 0xfa;
+            }
+
+            if (*(short*)(e + 0x9a) == 1)
+            {
+                // LE PAS DE CROISSANCE EST UN DECALAGE, et il vient de +0x5c : 3 pour la premiere
+                // silhouette, 4 pour la seconde.
+                int shift = *(int*)(e + 0x5c) & 0x1f;
+
+                short grown = (short)(*(short*)(e + 0x28) + ((0x0f3c - *(short*)(e + 0x28)) >> shift));
+                *(short*)(e + 0x2c) += (short)((0x0f3c - *(short*)(e + 0x2c)) >> shift);
+                *(short*)(e + 0x28) = grown;
+
+                if (grown >= 0x0ed8)
+                {
+                    *(short*)(e + 0x28) = 0x0ed8;
+                    *(short*)(e + 0x2c) = 0x0ed8;
+                    *(short*)(e + 0x10) = 0x63;   // elle se fige et ne bougera plus qu'avec le sort
+                }
+            }
+
+            if (*(short*)(e + 0x9a) == 10)
+            {
+                e[0x04] = 0x2e;
+                e[0x0a] = 2;
+                e[0x0b] = 1;
+                *(short*)(e + 0x28) = 0x1000;
+                *(short*)(e + 0x2c) = 0x1000;
+                *(short*)(e + 0x2a) = 0x1000;
+                *(short*)(e + 0x9a) = 0x0b;
+                e[0x38] = 0;
+                e[0x39] = 0;
+                e[0x3a] = 0;
+            }
+
+            if (*(short*)(e + 0x9a) == 0x0b)
+            {
+                BrightenEntityTint_00404DE0(e, 0x1e, 0x1e, 0x3c);
+
+                // LA SEULE DES QUATRE qui se met a agir.
+                if (e[0x3a] == 0xff) *(short*)(e + 0x10) = 1;
+            }
+
+            if (*(short*)(e + 0x9a) == 0x14)
+            {
+                e[0x04] = 0x2e;
+                e[0x0a] = 2;
+                e[0x0b] = 1;
+                *(short*)(e + 0x28) = 0x1f40;
+                *(short*)(e + 0x2c) = 0x1f40;
+                *(short*)(e + 0x2a) = 0x1f40;
+                *(short*)(e + 0x9a) = 0x15;
+                e[0x38] = 0;
+                e[0x39] = 0;
+                e[0x3a] = 0;
+            }
+
+            if (*(short*)(e + 0x9a) == 0x15)
+            {
+                *(short*)(e + 0x28) += -0xcd;
+                *(short*)(e + 0x2a) += -0xcd;
+                *(short*)(e + 0x2c) += -0xcd;
+
+                BrightenEntityTint_00404DE0(e, 0x1e, 0x1e, 0x3c);
+
+                if (*(short*)(e + 0x28) <= 0x1068 && e[0x38] == 0xff)
+                {
+                    *(short*)(e + 0x28) = 0x1068;
+                    *(short*)(e + 0x2a) = 0x1068;
+                    *(short*)(e + 0x2c) = 0x1068;
+                    *(short*)(e + 0x10) = 0x63;
+                }
+            }
+        }
+
+        // Ghidra: LAB_0044e165 — LES SIX PLUMES, une seule fois.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+
+            for (int wing = 0; wing <= 5; wing++)
+            {
+                int x = *(int*)(e + 0x1c);
+                int y = *(int*)(e + 0x20);
+                int z = *(int*)(e + 0x24);
+
+                int yaw = *(short*)(e + 0x32);
+                int sin = (int)Winsys3d.GetSinTableEntry(yaw);
+                int cos = Winsys3d.GetCosTableEntry(yaw);
+
+                // L'ancrage, tourne par le cap.
+                *(int*)(e + 0x1c) = x + (cos * front[wing] - sin * side[wing]);
+                *(int*)(e + 0x20) = y + (lift[wing] << 0xc);
+                *(int*)(e + 0x24) = z - (cos * side[wing] + sin * front[wing]);
+
+                // Le rang de la plume voyage par +0x14, prete puis rendue.
+                short lentIndex = *(short*)(e + 0x14);
+                *(short*)(e + 0x14) = (short)wing;
+
+                SpawnCastEntity_0047AAE0(e, 0x9d, 0, -1);
+
+                *(short*)(e + 0x14) = lentIndex;
+
+                *(int*)(e + 0x1c) = x;
+                *(int*)(e + 0x20) = y;
+                *(int*)(e + 0x24) = z;
+            }
+
+            *(short*)(e + 0x10) = 2;
+        }
+
+        // Ghidra: LAB_0044e258 — LA CHASSE.
+        if (*(short*)(e + 0x10) == 2)
+        {
+            int myY = *(int*)(e + 0x20);
+
+            // La bouffee nait plus bas, puis la hauteur est rendue.
+            *(int*)(e + 0x20) = myY - 0xa0000;
+            *(ushort*)(e + 0x9a) = 9;
+            *(short*)(e + 0x14) = 0x64;
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xa9, 0, -1);
+            *(int*)(e + 0x20) = myY;
+
+            int kept = 0;
+
+            // Le lanceur du groupe chasse les entites de scene ; un lanceur de l'autre bord chasse
+            // le groupe.
+            bool huntScene = (*(uint*)caster & 0x800000) != 0;
+
+            int count = huntScene ? 0x20 : 3;
+            byte* prey = huntScene ? Mem.Entity(0x005ecaa0) : Inp.s_SlotFlags_005e93c0;
+
+            for (int slot = 0; slot < count; slot++, prey += 0x9c)
+            {
+                // La sauvegarde : la silhouette se sert d'elle-meme comme sonde.
+                int saved60 = *(int*)(e + 0x60);
+                int saved64 = *(int*)(e + 0x64);
+                int saved7c = *(int*)(e + 0x7c);
+                int saved80 = *(int*)(e + 0x80);
+                int saved84 = *(int*)(e + 0x84);
+                int saved88 = *(int*)(e + 0x88);
+                int saved8c = *(int*)(e + 0x8c);
+                ushort saved90 = *(ushort*)(e + 0x90);
+
+                int myX = *(int*)(e + 0x1c);
+                int myZ = *(int*)(e + 0x24);
+
+                *(int*)(e + 0x44) = myX;
+                *(int*)(e + 0x48) = myY;
+                *(int*)(e + 0x4c) = myZ;
+
+                int rawX = *(int*)(prey + 0x1c) - myX;
+                int rawY = *(int*)(prey + 0x20) - myY;
+                int rawZ = *(int*)(prey + 0x24) - myZ;
+
+                int range = (int)Winsys3d.Ordinal_442(
+                    (uint)((rawX >> 0xc) * (rawX >> 0xc)
+                           + (rawY >> 0xc) * (rawY >> 0xc)
+                           + (rawZ >> 0xc) * (rawZ >> 0xc)));
+
+                if (range < 0x320)
+                {
+                    // LA MARCHE, quatre pas d'un quart, exactement comme Parole sainte.
+                    int stepX = rawX >> 2;
+                    int stepY = rawY >> 2;
+                    int stepZ = rawZ >> 2;
+
+                    bool blocked = false;
+                    int step = 0;
+
+                    do
+                    {
+                        *(int*)(e + 0x1c) += stepX;
+                        *(int*)(e + 0x20) += stepY;
+                        *(int*)(e + 0x24) += stepZ;
+
+                        FinalizeEntityPlacement2((uint*)e);
+
+                        if ((*(uint*)(e + 0x90) & 0x8800) != 0)
+                        {
+                            blocked = true;
+                            step = 0x63;
+                        }
+
+                        step++;
+                    }
+                    while ((short)step <= 3);
+
+                    if (!blocked)
+                    {
+                        bool eligible;
+
+                        if (huntScene)
+                        {
+                            ResolveEntityBlocks(prey, out byte* stats, out _, out _);
+
+                            uint flags = *(uint*)prey;
+                            eligible = (flags & 0x80000000) != 0
+                                       && (flags & 0x40002000) == 0
+                                       && (*(uint*)(stats + 0x14) & 0x1000080) != 0;
+                        }
+                        else
+                        {
+                            // Le camp du groupe n'a pas de bloc d'espece a consulter : la fiche est
+                            // celle d'un personnage. Le corps se contente du mot d'etat et du recul.
+                            uint flags = *(uint*)prey;
+                            eligible = (flags & 0x80000000) != 0
+                                       && (flags & 0x40002000) == 0
+                                       && *(short*)(prey + 0x12) == 0;
+                        }
+
+                        if (eligible)
+                        {
+                            *(byte**)(prey + 0x74) = *(byte**)(e + 0x6c);
+
+                            kept++;
+
+                            if (kept != 7)
+                            {
+                                picks[kept - 1] = (short)(slot + 1);
+                            }
+                            else
+                            {
+                                // LA SEPTIEME EVINCE LA PLUS LOINTAINE. La distance est reprise
+                                // depuis la position SAUVEGARDEE, la marche ayant deplace la sonde.
+                                int nx = (myX >> 0xc) - (*(int*)(prey + 0x1c) >> 0xc);
+                                int ny = (myY >> 0xc) - (*(int*)(prey + 0x20) >> 0xc);
+                                int nz = (myZ >> 0xc) - (*(int*)(prey + 0x24) >> 0xc);
+
+                                int newRange = (int)Winsys3d.Ordinal_442(
+                                    (uint)(nx * nx + ny * ny + nz * nz));
+
+                                int scan = 0;
+
+                                do
+                                {
+                                    // LB : LES DEUX MOITIES DECODENT L'INDICE PAR LA TABLE DE
+                                    // SCENE, y compris quand les indices retenus viennent du
+                                    // GROUPE. Transcrit tel quel.
+                                    byte* held = Mem.Entity(0x005ecaa0) + (picks[scan] - 1) * 0x9c;
+
+                                    int hx = (*(int*)(e + 0x1c) >> 0xc) - (*(int*)(held + 0x1c) >> 0xc);
+                                    int hy = (*(int*)(e + 0x20) >> 0xc) - (*(int*)(held + 0x20) >> 0xc);
+                                    int hz = (*(int*)(e + 0x24) >> 0xc) - (*(int*)(held + 0x24) >> 0xc);
+
+                                    int heldRange = (int)Winsys3d.Ordinal_442(
+                                        (uint)(hx * hx + hy * hy + hz * hz));
+
+                                    if (newRange < heldRange)
+                                    {
+                                        // LB : LES DEUX MARQUES VONT A CONTRESENS DE L'INDICE — la
+                                        // nouvelle proie est DEMARQUEE et l'ancienne MARQUEE, alors
+                                        // que c'est la nouvelle qui prend la place dans le tableau.
+                                        *(int*)(prey + 0x74) = 0;
+                                        *(byte**)(held + 0x74) = *(byte**)(e + 0x6c);
+
+                                        picks[scan] = (short)(slot + 1);
+
+                                        scan = 6;   // une seule eviction, puis on sort
+                                    }
+
+                                    scan++;
+                                }
+                                while ((short)scan <= 5);
+
+                                kept = 6;
+                            }
+                        }
+                    }
+                }
+
+                // Ghidra: LAB_0044e55b — la restitution, sur tous les chemins.
+                *(int*)(e + 0x7c) = saved7c;
+                *(uint*)(e + 0x90) = saved90;    // le mot haut est efface, comme chez Parole sainte
+                *(int*)(e + 0x1c) = *(int*)(e + 0x44);
+                *(int*)(e + 0x60) = saved60;
+                *(int*)(e + 0x64) = saved64;
+                *(int*)(e + 0x84) = saved84;
+                *(int*)(e + 0x24) = *(int*)(e + 0x4c);
+                *(int*)(e + 0x20) = myY;
+                *(int*)(e + 0x80) = saved80;
+                *(int*)(e + 0x88) = saved88;
+                *(int*)(e + 0x8c) = saved8c;
+            }
+
+            // Ghidra: LAB_0044e8c9 — le saut a sept branches : les indices retenus, emballes par
+            // paires dans les trois mots que les plumes viendront lire.
+            short p0 = picks[0], p1 = picks[1], p2 = picks[2];
+            short p3 = picks[3], p4 = picks[4], p5 = picks[5];
+
+            switch (kept)
+            {
+                case 0:
+                    *(int*)(e + 0x44) = 0;
+                    *(int*)(e + 0x48) = 0;
+                    *(int*)(e + 0x4c) = 0;
+                    break;
+
+                case 1:
+                    *(int*)(e + 0x44) = (p0 << 0x10) | (ushort)p0;
+                    *(int*)(e + 0x48) = *(int*)(e + 0x44);
+                    *(int*)(e + 0x4c) = *(int*)(e + 0x44);
+                    break;
+
+                case 2:
+                    *(int*)(e + 0x44) = (p1 << 0x10) | (ushort)p0;
+                    *(int*)(e + 0x48) = (p0 << 0x10) | (ushort)p1;
+                    *(int*)(e + 0x4c) = *(int*)(e + 0x44);
+                    break;
+
+                case 3:
+                    *(int*)(e + 0x44) = (p0 << 0x10) | (ushort)p1;
+                    *(int*)(e + 0x48) = (p2 << 0x10) | (ushort)p0;
+                    *(int*)(e + 0x4c) = (p1 << 0x10) | (ushort)p2;
+                    break;
+
+                case 4:
+                    *(int*)(e + 0x44) = (p0 << 0x10) | (ushort)p1;
+                    *(int*)(e + 0x48) = (p2 << 0x10) | (ushort)p3;
+                    *(int*)(e + 0x4c) = *(int*)(e + 0x44);
+                    break;
+
+                case 5:
+                    *(int*)(e + 0x44) = (p0 << 0x10) | (ushort)p0;
+                    *(int*)(e + 0x48) = (p1 << 0x10) | (ushort)p2;
+                    *(int*)(e + 0x4c) = (p3 << 0x10) | (ushort)p4;
+                    break;
+
+                case 6:
+                    *(int*)(e + 0x44) = (p0 << 0x10) | (ushort)p1;
+                    *(int*)(e + 0x48) = (p2 << 0x10) | (ushort)p3;
+                    *(int*)(e + 0x4c) = (p4 << 0x10) | (ushort)p5;
+                    break;
+            }
+        }
+
+        // Ghidra: LAB_0044ea09
+        if (*(short*)(e + 0x10) == 3)
+        {
+            BrightenEntityTint_00404DE0(e, -5, -5, -5);
+
+            if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044ea60 @ 0x0044ea60 — <b>la plume de l'ange</b> : le sous-type <c>0x9d</c>,
+    /// creneau 157 de <see cref="s_StaticEntityHandlers_00551f30"/>. 1 216 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; le releve est garde sous <c>Legacy/Raw/Blaze/FUN_0044EA60.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle se pose a son ancrage</b> — le meme triplet de tables que la silhouette
+    /// (<see cref="s_AngelWingSide"/>), tourne par le cap de celle-ci — et lit <b>sa</b> cible dans
+    /// le mot que son rang <c>+0x14</c> designe : <c>+0x44</c> pour les rangs 0 et 1, <c>+0x48</c>
+    /// pour 2 et 3, <c>+0x4c</c> pour 4 et 5, moitie basse pour les rangs pairs, moitie haute
+    /// (<b>decalage arithmetique</b>) pour les impairs.
+    /// </para>
+    /// <para>
+    /// <b>Elle s'etire de sa queue a sa tete.</b> <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> tiennent le
+    /// point de queue, qui gagne chaque image un quart du chemin vers la cible ; l'echelle
+    /// verticale <c>+0x2a</c> vaut la distance qui l'en separe, <c>(distance &lt;&lt; 12) / 140</c>,
+    /// que le binaire ecrit en multiplication magique <c>0xEA0EA0EB</c> suivie de <c>sar 7</c>. Le
+    /// cap et le tangage sont les deux <c>ratan2</c> de ce meme vecteur, le tangage replie dans un
+    /// demi-tour par deux boucles.
+    /// </para>
+    /// <para>
+    /// <b>Elle frappe toutes les vingt images</b> : passe <c>+0x16 &gt; 0x14</c> elle appelle
+    /// <see cref="ResolveSpellHit_0053A2B0"/> sur sa cible, la fait clignoter, et <b>recule son
+    /// compteur de vingt</b> au lieu de le remettre a zero. Une image sur deux, elle seme en plus
+    /// une etincelle <c>0x95</c> a son point de queue, un tirage sur trois.
+    /// </para>
+    /// <para>
+    /// <b>Sans cible elle s'efface</b> — teinte a <c>-20</c>, compteur remis a zero, et le bit
+    /// <c>0x4000</c> pose quand elle est eteinte. Et son compteur d'images boucle lui aussi, de
+    /// <c>0xBB8</c> a <c>0x14</c>, pour la meme raison que celui du sort.
+    /// </para>
+    /// </summary>
+    private static void TickAngelFeather_0044EA60(byte* record)
+    {
+        byte* e = record;
+
+        ReadOnlySpan<short> side = s_AngelWingSide;
+        ReadOnlySpan<short> front = s_AngelWingFront;
+        ReadOnlySpan<short> lift = s_AngelWingLift;
+
+        byte* form = *(byte**)(e + 0x6c);
+        if (form == null) form = Res.s_EntityList_005de558;
+
+        byte* caster = *(byte**)(e + 0x74);
+        if (caster == null) caster = Res.s_EntityList_005de558;
+
+        // Ghidra: LAB_0044eb0e — l'ancrage, repris de la silhouette et tourne par son cap.
+        int wing = *(short*)(e + 0x14);
+
+        *(int*)(e + 0x1c) = *(int*)(form + 0x1c);
+        *(int*)(e + 0x24) = *(int*)(form + 0x24);
+        *(int*)(e + 0x20) = *(int*)(form + 0x20);
+
+        int yaw = *(short*)(form + 0x32);
+        int sin = (int)Winsys3d.GetSinTableEntry(yaw);
+        int cos = Winsys3d.GetCosTableEntry(yaw);
+
+        *(int*)(e + 0x1c) += cos * front[wing] - sin * side[wing];
+        *(int*)(e + 0x24) -= cos * side[wing] + sin * front[wing];
+        *(int*)(e + 0x20) += lift[wing] << 0xc;
+
+        // La silhouette disparue, ou entree dans sa defaite, emporte la plume.
+        if ((*(uint*)form & 0x80000000) == 0 || *(short*)(form + 0x10) == 3)
+        {
+            *(short*)(e + 0x10) = 2;
+        }
+
+        // Ghidra: LAB_0044ebba — SA cible, dans la moitie de mot que son rang designe.
+        int index = wing switch
+        {
+            0 => *(int*)(form + 0x44) & 0xffff,
+            1 => *(int*)(form + 0x44) >> 0x10,
+            2 => *(int*)(form + 0x48) & 0xffff,
+            3 => *(int*)(form + 0x48) >> 0x10,
+            4 => *(int*)(form + 0x4c) & 0xffff,
+            5 => *(int*)(form + 0x4c) >> 0x10,
+
+            // Le binaire y relit une case de pile — l'ecart avant de la plume. Le rang venant de la
+            // silhouette, qui ne pose que 0 a 5, la branche est inatteignable.
+            _ => front[0],
+        };
+
+        byte* target;
+
+        if (index == 0)
+        {
+            // Pas de cible : la plume se suit elle-meme.
+            *(byte**)(e + 0x78) = null;
+            target = e;
+        }
+        else
+        {
+            // Le <b>-1</b> de l'indice est absorbe par la base, comme dans la silhouette.
+            target = (*(uint*)caster & 0x800000) != 0
+                ? Mem.Entity(0x005ecaa0) + (index - 1) * 0x9c
+                : Inp.s_SlotFlags_005e93c0 + (index - 1) * 0x9c;
+
+            *(byte**)(e + 0x78) = target;
+        }
+
+        // Ghidra: LAB_0044ec46
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = 0;
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x28) = 0x012c;
+            *(short*)(e + 0x2c) = 0x012c;
+            *(short*)(e + 0x2a) = 0x1f40;
+            *(short*)(e + 0x34) = 0x0400;
+            *(short*)(e + 0x10) = 1;
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(short*)(e + 0x16) = 0;
+
+            *(int*)(e + 0x50) = *(int*)(target + 0x1c);
+            *(int*)(e + 0x54) = *(int*)(target + 0x20);
+            e[0x36] &= 0xfe;
+            *(int*)(e + 0x58) = *(int*)(target + 0x24);
+            *(short*)(e + 0x98) = 0;
+        }
+
+        // Ghidra: LAB_0044eca4
+        if (*(short*)(e + 0x10) == 1)
+        {
+            BrightenEntityTint_00404DE0(e, 10, 10, 10);
+
+            // Le point de queue gagne un quart du chemin vers la cible.
+            *(int*)(e + 0x50) += (*(int*)(target + 0x1c) - *(int*)(e + 0x50)) >> 2;
+            *(int*)(e + 0x58) += (*(int*)(target + 0x24) - *(int*)(e + 0x58)) >> 2;
+            *(int*)(e + 0x54) += (*(int*)(target + 0x20) - *(int*)(e + 0x54)) >> 2;
+
+            int dx = (*(int*)(e + 0x1c) >> 0xc) - (*(int*)(e + 0x50) >> 0xc);
+            int dy = (*(int*)(e + 0x20) >> 0xc) - (*(int*)(e + 0x54) >> 0xc);
+            int dz = (*(int*)(e + 0x24) >> 0xc) - (*(int*)(e + 0x58) >> 0xc);
+
+            int flat = (int)Winsys3d.Ordinal_442((uint)(dz * dz + dx * dx));
+
+            // LE TANGAGE, replie dans un demi-tour par deux boucles et non par un modulo.
+            *(short*)(e + 0x34) = (short)(Winsys3d.Ordinal_457(dy, flat) + 0x400);
+
+            while (*(short*)(e + 0x34) >= 0x800) *(short*)(e + 0x34) -= 0x800;
+            while (*(short*)(e + 0x34) < 0) *(short*)(e + 0x34) += 0x800;
+
+            // Ghidra: LAB_0044ed6a
+            *(short*)(e + 0x32) = (short)(Winsys3d.Ordinal_457(dx, dz) + 0x400);
+
+            int span = (int)Winsys3d.Ordinal_442((uint)(dy * dy + dz * dz + dx * dx));
+
+            *(ushort*)(e + 0x9a) = 9;
+
+            // L'ETIREMENT : (distance << 12) / 140, ecrit en multiplication magique 0xEA0EA0EB
+            // suivie de `sar 7` — le meme idiome que le /150 de l'aureole d'incantation.
+            *(short*)(e + 0x2a) = (short)((span << 0xc) / 140);
+
+            if (*(byte**)(e + 0x78) == null)
+            {
+                // Ghidra: LAB_0044ee9e — sans cible, elle s'efface.
+                *(short*)(e + 0x98) = 0;
+                BrightenEntityTint_00404DE0(e, -20, -20, -20);
+                *(short*)(e + 0x16) = 0;
+
+                if (e[0x38] == 0)
+                {
+                    *(uint*)e |= 0x4000;
+                    e[0x38] = 0;
+                    e[0x39] = 0;
+                    e[0x3a] = 0;
+                }
+            }
+            else
+            {
+                if (*(short*)(e + 0x98) == 0)
+                {
+                    Aud.PlaySoundEffect(0x0f, 0x0800, 0x1000, 0x1000);
+                }
+
+                *(short*)(e + 0x98) += 1;
+                if (*(short*)(e + 0x98) == 5) *(short*)(e + 0x98) = 0;
+
+                *(uint*)e &= 0xffffbfff;
+
+                // Une image sur deux, une etincelle au point de queue — un tirage sur trois.
+                if ((e[0x16] & 1) != 0)
+                {
+                    int x = *(int*)(e + 0x1c);
+                    int y = *(int*)(e + 0x20);
+                    int z = *(int*)(e + 0x24);
+
+                    *(int*)(e + 0x1c) = *(int*)(e + 0x50);
+                    *(int*)(e + 0x20) = *(int*)(e + 0x54);
+                    *(int*)(e + 0x24) = *(int*)(e + 0x58);
+
+                    if (CrtRand() % 3 == 0)
+                    {
+                        SpawnStatusEffectEntity_0047AC40(
+                            e, (int*)(e + 0x1c), null, 0x95, 0, -1);
+                    }
+
+                    *(int*)(e + 0x1c) = x;
+                    *(int*)(e + 0x20) = y;
+                    *(int*)(e + 0x24) = z;
+                }
+
+                // Ghidra: LAB_0044ee5f — LE COUP, toutes les vingt images.
+                if (*(short*)(e + 0x16) > 0x14)
+                {
+                    ResolveSpellHit_0053A2B0(
+                        *(uint**)(e + 0x74), *(uint**)(e + 0x78), e[7], e[6], 0);
+
+                    byte* struck = *(byte**)(e + 0x78);
+                    *(ushort*)(struck + 0x96) = 0x10;
+                    *(uint*)struck |= 0x40;
+
+                    // Le compteur RECULE de vingt ; il n'est pas remis a zero.
+                    *(short*)(e + 0x16) += -20;
+                }
+            }
+        }
+
+        // Ghidra: LAB_0044eed2
+        if (*(short*)(e + 0x10) == 2)
+        {
+            BrightenEntityTint_00404DE0(e, -20, -20, -20);
+
+            if (e[0x38] == 0)
+            {
+                *(uint*)e &= 0x7fffffff;
+
+                // La proie est relachee.
+                if (*(byte**)(e + 0x78) != null) *(int*)(*(byte**)(e + 0x78) + 0x74) = 0;
+            }
+        }
+
+        // Ghidra: LAB_0044ef07 — le compteur boucle, comme celui du sort.
+        *(short*)(e + 0x16) += 1;
+        if (*(short*)(e + 0x16) >= 0x0bb8) *(short*)(e + 0x16) = 0x14;
     }
 
     /// <summary>

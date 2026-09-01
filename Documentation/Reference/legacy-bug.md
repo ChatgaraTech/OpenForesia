@@ -1217,3 +1217,116 @@ leurs binaires respectifs.
 ### Où porterait le correctif
 
 Passer le compte de Lapêche à `0x20`, comme sa jumelle.
+
+---
+
+## LB-023 — L'éviction de « Ange » marque une proie et en démarque une autre
+
+**Fonction** : `FUN_0044ded0` (la silhouette d'Ange, sous-type `0x9c`), 2 919 octets, absente de
+`Blaze.c` — relevée au désassembleur le 2026-09-01. Le relevé est gardé sous
+`Legacy/Raw/Blaze/FUN_0044DED0.asm`.
+
+### Le symptôme
+
+L'ange retient jusqu'à six proies dans un tableau de pile, et **marque chacune** en lui écrivant le
+sort dans son `+0x74` — c'est ce marquage qui dit « celle-ci est prise ». Quand une septième proie
+passe le tri, il compare sa distance à celle de chaque proie déjà retenue et remplace la première
+qu'il trouve plus lointaine. Les trois écritures de ce remplacement partent dans deux directions :
+
+```
+0044e515  mov  dword [ebp+54h],0        <- la NOUVELLE proie est démarquée
+0044e51c  mov  edx,[esi+6ch]
+0044e51f  mov  [eax+74h],edx            <- l'ANCIENNE est marquée
+0044e52c  mov  [edx],cx                 <- et c'est la NOUVELLE qui prend sa place dans le tableau
+```
+
+`ebp` pointe la nouvelle proie (à `+0x20` près), `eax` l'ancienne, que la boucle vient de résoudre.
+La nouvelle entre dans le tableau et sort du marquage ; l'ancienne quitte le tableau et y reste.
+
+### Pourquoi c'en est un
+
+Les deux moitiés du corps — celle qui chasse les entités de scène et celle qui chasse le groupe —
+portent la même inversion, aux mêmes trois instructions près. Et le marquage n'est pas décoratif :
+la plume relâche sa proie en remettant ce même `+0x74` à zéro quand elle s'éteint, et la boucle de
+tri refuse une proie déjà prise. Une entité peut donc rester marquée alors que plus aucune plume ne
+la vise, et une autre être visée sans porter la marque.
+
+### Ce que ça change en jeu
+
+Peu, et seulement au-delà de six ennemis simultanés à portée de l'ange — le cas est rare. La proie
+évincée garde une marque que rien n'effacera avant la fin du sort ; la proie qui la remplace est
+attaquée sans être marquée, et peut donc être retenue une seconde fois par la même passe.
+
+### Où porterait le correctif
+
+Échanger les deux destinations : `[ebp+54h]` reçoit le sort, `[eax+74h]` reçoit zéro.
+
+---
+
+## LB-024 — « Ange » ne balaie que trois des quatre membres du groupe
+
+**Fonction** : `FUN_0044ded0`, la moitié qui chasse le groupe (celle qu'un lanceur **hors** groupe
+emprunte), relevée le 2026-09-01.
+
+### Le symptôme
+
+La moitié qui balaie les entités de scène compte `0x20` créneaux, ce qui est le compte de la table.
+Celle qui balaie le groupe s'arrête à trois :
+
+```
+0044e8af  cmp  ax,3
+0044e8b3  ...
+0044e8c3  jl   0044E5DCh      <- indices 0, 1 et 2 seulement
+```
+
+### Pourquoi c'en est un
+
+Le groupe compte **quatre** emplacements, et tout le reste du jeu les traite comme quatre —
+`AcquireHolyTarget_00447CB0` en mode 1 en parcourt quatre, « Coup de pouce » en parcourt quatre.
+Le `3` est isolé, dans une moitié de corps par ailleurs identique à sa jumelle.
+
+### Ce que ça change en jeu
+
+**Rien d'observable, sans doute.** Cette moitié n'est empruntée que si le lanceur ne porte pas
+`0x800000`, c'est-à-dire s'il n'est pas un membre du groupe — un monstre lançant Ange. Aucune fiche
+de monstre relevée jusqu'ici ne le fait. Le quatrième personnage serait à l'abri.
+
+### Où porterait le correctif
+
+Passer le compte à `4`.
+
+---
+
+## LB-025 — La moitié « groupe » de « Ange » relit ses indices dans la table de scène
+
+**Fonction** : `FUN_0044ded0`, même moitié que LB-024, relevée le 2026-09-01.
+
+### Le symptôme
+
+Les deux moitiés retiennent des **indices de créneau** dans le même tableau de pile, et les
+reconvertissent en adresses au moment de comparer les distances. Les deux le font avec la même base :
+
+```
+0044e4bb  mov  ecx,[edx*4+5ECA20h]      <- moitié SCÈNE
+0044e7b2  mov  ecx,[edx*4+5ECA20h]      <- moitié GROUPE, la même
+```
+
+`0x005eca04 + indice * 0x9c` est la table des entités de scène. Les indices que la moitié « groupe »
+y a rangés désignent pourtant des emplacements de `0x005e93c0`.
+
+### Pourquoi c'en est un
+
+La plume, elle, choisit la bonne table selon le camp du lanceur — `0x5eca04` d'un côté, `0x5e9324`
+de l'autre (`FUN_0044ea60`, 0x0044ec19 et 0x0044ec2d). Les deux corps lisent le même tableau
+d'indices et n'en tirent pas la même chose.
+
+### Ce que ça change en jeu
+
+**Rien d'observable, pour la même raison que LB-024** : seule la moitié « groupe » est touchée, et
+elle n'est atteinte que par un lanceur hors groupe. Si elle l'était, la comparaison de distance
+porterait sur des entités quelconques, et l'éviction choisirait mal — sans jamais planter, la table
+de scène étant de même taille et de même disposition.
+
+### Où porterait le correctif
+
+Employer `0x005e9324` dans la moitié « groupe », comme le fait la plume.
