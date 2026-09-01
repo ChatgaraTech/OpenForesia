@@ -5081,6 +5081,10 @@ public static unsafe partial class Blaze
             // d'entites, (etat & 0xe80) == 0x680 au lieu de (etat & 0x880) == 0x880.
             case 0x004786C0: TickSnail_004786C0(record); return;
 
+            // RALENTI, ecole 2 indice 12 — GROS SABOTS REPETE : le meme sabot 0x7e, mais
+            // toutes les huit images et sans borne, tant qu'il reste quelqu'un en face.
+            case 0x00478C20: TickSlow_00478C20(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -49530,6 +49534,110 @@ public static unsafe partial class Blaze
 
         e[0x04] = 0x0e;
         SpawnCastEntity_0047AAE0(e, 0x84, e[0x0b], -1);
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00478c20 @ 0x00478c20 — <b>Ralenti</b> : le sous-type <c>0xac</c>, creneau 172
+    /// de <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>treizieme fiche de l'ecole 2</b>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est Gros sabots, repete.</b> Elle engendre le meme sous-type <c>0x7e</c> —
+    /// <see cref="TickHeavyHoofStomp_004770A0"/>, deja transcrit — et remplit pour lui les memes
+    /// champs, mais <b>toutes les huit images</b> au lieu d'une fois : le test est
+    /// <c>(age &amp; 7) == 0</c>, et rien ne borne le sort. Il ne s'arrete que si le balayage ne
+    /// trouve plus personne en face, ou si le lanceur porte <c>0x40000000</c>. Aucun enfant a
+    /// ecrire, donc — le quatrieme d'affilee dans ce cas.
+    /// </para>
+    /// <para>
+    /// <b>Trois ecarts avec <see cref="TickHeavyHoof_00476FD0"/></b>, tous les trois lisibles au
+    /// desassembleur :
+    /// </para>
+    /// <list type="number">
+    /// <item><description>
+    /// <b>le sabot naît depuis le SOL, pas depuis le sort</b> : la hauteur est
+    /// <c>(stature + 300) &lt;&lt; 12</c> ajoutee a <c>+0x60</c>, la cote du sol, la ou Gros sabots
+    /// l'ajoutait a son propre <c>+0x20</c> ;
+    /// </description></item>
+    /// <item><description>
+    /// <b>la taille visee est divisee par 100</b> et non par 75 — <c>imul 0x51EB851F</c> puis
+    /// <c>sar 5</c>, la ou Gros sabots emploie <c>0x1B4E81B5</c> puis <c>sar 3</c>. Les sabots de
+    /// Ralenti sont donc les trois quarts de celui de Gros sabots ;
+    /// </description></item>
+    /// <item><description>
+    /// <c>+0x14</c> recoit <c>0x80</c> au lieu de zero.
+    /// </description></item>
+    /// </list>
+    /// <para>
+    /// <b>Une consequence des deux corps, notee sans avoir ete observee en jeu</b> : le sabot
+    /// herite le bit <c>0x2000000</c> de l'enregistrement de son pere (<c>+0x6c</c>), et ne s'en
+    /// sert que pour mourir apres une resistance. Gros sabots pose ce bit juste apres avoir
+    /// engendre ; Ralenti ne le pose qu'a la fin du sort. Un sabot de Ralenti dont la victime
+    /// resiste attend donc cette fin-la pour disparaitre, au lieu de l'image suivante.
+    /// </para>
+    /// </summary>
+    private static void TickSlow_00478C20(byte* record)
+    {
+        byte* e = record;
+
+        if ((*(uint*)e & 0x2000000) != 0)
+        {
+            *(uint*)e = 0;
+            return;
+        }
+
+        // Ghidra: LAB_00478c35 — la mise en place, a la premiere image seulement.
+        if (*(ushort*)(e + 0x10) == 0)
+        {
+            *(int*)(e + 0x28) = 0;
+            *(ushort*)(e + 0x2c) = 0;
+
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+
+            *(ushort*)(e + 0x9a) = 0x6000;
+            e[0x04] = 0x31;
+        }
+
+        // Ghidra: LAB_00478c5f — UN SABOT TOUTES LES HUIT IMAGES.
+        if ((*(ushort*)(e + 0x10) & 7) == 0)
+        {
+            byte* target = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 1);
+
+            if (target == null)
+            {
+                // Ghidra: LAB_00478ce3 — plus personne en face : le sort s'arrete.
+                *(uint*)e |= 0x2000000;
+            }
+            else
+            {
+                *(byte**)(e + 0x78) = target;
+
+                int height = StatusBubbleHeight_00538BC0((uint*)target);
+
+                *(ushort*)(e + 0x14) = 0x80;
+
+                // TROIS CENTS UNITES AU-DESSUS DE SA TETE, MESUREES DEPUIS LE SOL : +0x60, la ou
+                // Gros sabots partait de son propre +0x20.
+                *(int*)(e + 0x20) = ((height + 0x12c) << 0xc) + *(int*)(e + 0x60);
+
+                // (stature << 12) / 100 — multiplication magique 0x51EB851F puis `sar 5`. Gros
+                // sabots divise par 75 ; ses sabots a elle sont donc plus petits d'un quart.
+                *(short*)(e + 0x12) = (short)((height << 0xc) / 100);
+
+                *(short*)(e + 0x32) = *(short*)(target + 0x32);
+                *(int*)(e + 0x1c) = *(int*)(target + 0x1c);
+                *(int*)(e + 0x24) = *(int*)(target + 0x24);
+
+                SpawnCastEntity_0047AAE0(e, 0x7e, e[0x0b], -1);
+            }
+        }
+
+        // Ghidra: LAB_00478ce9 — et le lanceur doit tenir : son 0x40000000 arrete tout.
+        if ((*(uint*)(*(byte**)(e + 0x74)) & 0x40000000) != 0) *(uint*)e |= 0x2000000;
 
         *(short*)(e + 0x10) += 1;
     }

@@ -5,6 +5,10 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 ---
 
 ## 2026-09-01
+- feat : **Ralenti, école 2 indice 12** : le sort `0x00478c20` (décompilé) — aucun enfant à écrire, le **quatrième d'affilée** dans ce cas
+- doc : **c'est Gros sabots, répété** — elle engendre le même sabot `0x7e` (`TickHeavyHoofStomp_004770A0`) et lui remplit les mêmes champs, mais **toutes les huit images** au lieu d'une fois, et **rien ne la borne** : elle ne s'arrête que si le balayage ne trouve plus personne en face, ou si le lanceur porte `0x40000000`
+- doc : **trois écarts avec Gros sabots**, tous lus au désassembleur : le sabot naît depuis le **sol** (`+0x60`) et non depuis le `+0x20` du sort ; la taille visée est divisée par **100** (`0x51EB851F` puis `sar 5`) et non par 75, donc ses sabots sont plus petits d'un quart ; et `+0x14` reçoit `0x80` au lieu de zéro
+- doc : **une conséquence des deux corps, notée sans avoir été observée en jeu** — le sabot hérite le bit `0x2000000` de l'enregistrement de son père et ne s'en sert que pour mourir après une résistance. Gros sabots pose ce bit juste après avoir engendré ; Ralenti ne le pose qu'à la fin du sort. Un sabot de Ralenti dont la victime résiste attend donc cette fin-là pour disparaître
 - feat : **Escargot, école 2 indice 11** : le sort `0x004786c0` (1 364 octets, vingt-sept cibles de saut, **absent de `Blaze.c`**, sorti du désassembleur) — aucun enfant à écrire, le troisième d'affilée dans ce cas
 - doc : **c'est la jumelle de Champ magique**, et le diff des deux désassemblages donne les trois seules différences : le son de la première image (`0x31` à `0x195` au lieu de `0x0d` à `0x800`), **un second son à la douzième image exactement** (`0x16` à `0x653`, sur un test d'égalité) que Champ magique n'a pas, et la classe d'entités chassée
 - doc : **et c'est cette dernière qui compte** — `(état & 0xe80) == 0x680` au lieu de `(état & 0x880) == 0x880` : Escargot exige `0x400` et `0x200` et **refuse** `0x800`, que Champ magique exige au contraire. Les deux sentinelles ne guettent pas la même chose, et c'est tout ce qui les sépare en jeu
