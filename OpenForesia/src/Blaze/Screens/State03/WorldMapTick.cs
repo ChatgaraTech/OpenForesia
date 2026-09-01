@@ -5085,6 +5085,10 @@ public static unsafe partial class Blaze
             // toutes les huit images et sans borne, tant qu'il reste quelqu'un en face.
             case 0x00478C20: TickSlow_00478C20(record); return;
 
+            // TURBO, ecole 2 indice 13 — VITESSE DANS UNE BOUCLE : le meme corps, rejoue tant
+            // qu'il trouve un allie de plus. Vitesse hate un compagnon, Turbo tout le groupe.
+            case 0x00478D10: TickTurbo_00478D10(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -49640,6 +49644,92 @@ public static unsafe partial class Blaze
         if ((*(uint*)(*(byte**)(e + 0x74)) & 0x40000000) != 0) *(uint*)e |= 0x2000000;
 
         *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00478d10 @ 0x00478d10 — <b>Turbo</b> : le sous-type <c>0xad</c>, creneau 173 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>quatorzieme fiche de l'ecole 2</b>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickHaste_00477360"/> dans une boucle</b> : le meme corps mot pour mot —
+    /// les deux anneaux <c>0x81</c>, la meme division par 150, le meme couple de tailles
+    /// <c>(base, 1,5x)</c> puis <c>(1,5x, 0,75x)</c>, le meme <c>+0x16</c> qui distingue lequel des
+    /// deux posera l'effet, le meme son <c>0x0d</c> a <c>0x2d4</c> — enveloppe dans un
+    /// <c>do…while</c> qui le rejoue tant qu'il trouve un allie de plus. <b>Vitesse hate un
+    /// compagnon ; Turbo hate tout le groupe, en une seule image.</b>
+    /// </para>
+    /// <para>
+    /// <b>Et c'est le marqueur <c>+0x74</c> qui fait avancer la boucle.</b> La recherche employee
+    /// n'est pas celle de Vitesse : c'est <see cref="FindNearestOpponent_00474EB0"/> en mode
+    /// <c>0</c>, qui pour un lanceur du groupe descend dans
+    /// <see cref="FindNearestPartyMember_00474CD0"/> — et celle-la <b>ignore tout membre dont
+    /// <c>+0x74</c> est non nul</b>. En posant <c>allie+0x74 = soi</c> sur chaque allie servi, le
+    /// sort le retire de la recherche suivante. Quand il ne reste plus personne, la recherche rend
+    /// <c>null</c>, le corps retombe sur le lanceur, et la condition <c>trouve != lanceur</c>
+    /// ferme la boucle.
+    /// </para>
+    /// <para>
+    /// <b>Les marqueurs ne sont jamais effaces ici, et ce n'est pas un oubli</b> : le pas par image
+    /// d'un membre du groupe oublie sa cible <c>+0x74</c> des que l'emplacement visee cesse de
+    /// porter <c>0x80000000</c>. Turbo met son propre mot d'etat a zero en sortant de la boucle ;
+    /// tous les allies marques se liberent donc d'eux-memes a leur prochain pas. Le marquage ne
+    /// dure que le temps de l'image ou la boucle tourne — exactement ce qu'il lui faut.
+    /// </para>
+    /// <para>
+    /// <b>Le <c>do…while</c> garantit un tour</b> : un lanceur seul se hate lui-meme, comme Vitesse
+    /// le fait par le repli de sa propre recherche.
+    /// </para>
+    /// </summary>
+    private static void TickTurbo_00478D10(byte* record)
+    {
+        byte* e = record;
+        byte* found;
+
+        do
+        {
+            // Ghidra: LAB_00478d1b — l'allie le plus proche qui ne porte pas deja un marqueur.
+            found = FindNearestOpponent_00474EB0(*(uint**)(e + 0x74), 0xffffffff, 0);
+
+            // Ghidra: LAB_00478d34 — plus personne : on retombe sur le lanceur, et ce sera le
+            // dernier tour.
+            if (found == null) found = *(byte**)(e + 0x74);
+
+            *(byte**)(e + 0x78) = found;
+            *(byte**)(e + 0x70) = found;
+
+            // LE MARQUEUR QUI FAIT AVANCER LA BOUCLE : cet allie sera invisible a la recherche
+            // suivante. Son propre pas par image l'effacera, le sort etant mort d'ici la.
+            *(byte**)(found + 0x74) = e;
+
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            e[0x04] = 0x26;
+
+            int height = StatusBubbleHeight_00538BC0((uint*)found);
+
+            // (hauteur << 12) / 150 — la meme division que Vitesse, `sar 4` compris.
+            uint low = (uint)((height << 0xc) / 150);
+            uint high = (uint)(((int)low >> 1) + (int)low);      // une fois et demie
+
+            // LE PREMIER ANNEAU : haut et etroit, et il ne posera RIEN.
+            *(short*)(e + 0x2c) = (short)low;
+            *(ushort*)(e + 0x16) = 0;
+            *(uint*)(e + 0x28) = high * 0x10000 | low;
+
+            SpawnCastEntity_0047AAE0(e, 0x81, e[0x0b], -1);
+
+            // LE SECOND : large et plat, et c'est LUI qui posera l'effet 19.
+            *(uint*)(e + 0x28) = (high & 0xfffffffe) << 0xf | high;
+            *(short*)(e + 0x2c) = (short)high;
+            *(ushort*)(e + 0x16) = 1;
+
+            SpawnCastEntity_0047AAE0(e, 0x81, e[0x0b], -1);
+
+            Aud.PlayPositionalSound(0x0d, 0x2d4, 0x1200, (int*)(e + 0x1c));
+        }
+        while (found != *(byte**)(e + 0x74));
+
+        *(uint*)e = 0;
     }
 
     /// <summary>
