@@ -5059,6 +5059,13 @@ public static unsafe partial class Blaze
             case 0x00477A20: TickSirenSong_00477A20(record); return;
             case 0x00477A90: TickSirenSongNote_00477A90(record); return;
 
+            // ECRASE, ecole 2 indice 8 — le sort est celui de DODO, octet pour octet : deux
+            // constantes changent, le sous-type engendre et l'atlas. Sa boule engendre a son
+            // tour, et c'est la PREMIERE PETITE-FILLE de l'ecole 2.
+            case 0x00477D20: TickCrush_00477D20(record); return;
+            case 0x00477E40: TickCrushOrb_00477E40(record); return;
+            case 0x00477DA0: TickCrushMark_00477DA0(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -48419,6 +48426,310 @@ public static unsafe partial class Blaze
         // Ghidra: LAB_00477cfb — le decor, l'age, ou la victime : le lanceur est relache.
         *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
         *(uint*)e = 0;
+    }
+
+    // =====================================================================
+    // ECRASE — ecole 2, indice 8, sous-type 0xa8
+    //
+    //   0x00477D20   LE SORT. Sous-type 0xa8 de 0x00551c30. DECOMPILE dans Blaze.c.
+    //   0x00477E40   LA BOULE, sous-type 0x55 de 0x00552230. 618 octets, ABSENTE de Blaze.c ;
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00477E40.asm.
+    //   0x00477DA0   LA MARQUE, sous-type 0x7c de 0x00551f30. DECOMPILEE dans Blaze.c. C'est la
+    //                PREMIERE PETITE-FILLE de l'ecole 2 : un enfant qui engendre a son tour.
+    //
+    // LE SORT EST CELUI DE DODO, OCTET POUR OCTET. Le desassemblage des deux corps ne differe
+    // qu'en DEUX points : le sous-type engendre (0x55 au lieu de 0x53) et l'atlas passe
+    // (0x00551a78 au lieu de 0x00551b60). Tout le reste — la montee a la hauteur de tete, les
+    // douze champs, la gravite 0xd000, le +0x1a = 4, l'effacement — est identique instruction
+    // pour instruction. C'est le troisieme mode de reemploi que l'ecole 2 montre, et le plus
+    // radical : ici le compilateur a emis deux fois le meme code a deux constantes pres, comme
+    // pour la fratrie des Materia, mais entre deux sorts qui n'ont rien a voir.
+    //
+    // LA BOULE, ELLE, EST RECOMPILEE ET NON RECOPIEE. Elle a la charpente de la bulle de Dodo —
+    // meme boite de detection, meme saisie du lanceur, meme tete chercheuse a zone morte, meme
+    // dix unites par image, meme ondulation, meme eclaboussure par image, meme anneau, meme mort
+    // a la quarantieme — mais l'allocation de registres differe (edi et ebp echanges) et trois
+    // choses changent : l'eclaboussure prete +0x1a = 4 au lieu de 1, l'effet est le 10 au lieu du
+    // 11, et surtout, quand l'effet passe, elle ENGENDRE.
+    //
+    // ET CE QU'ELLE ENGENDRE EST UNE MARQUE QUI RETRECIT SUR LA VICTIME. La petite-fille se colle
+    // a mi-corps de celle-ci, naît a la taille de sa stature et perd un seizieme de cette taille
+    // par image. Comme la flamme des Materia, elle ne compte pas ses images : sa teinte part de
+    // 0xf0f0f0, perd 0x101010 par image, et le corps s'efface quand la soustraction tombe pile
+    // sur zero — quinze images.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00477d20 @ 0x00477d20 — <b>Ecrase</b> : le sous-type <c>0xa8</c>, creneau 168 de
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> et la <b>neuvieme fiche de l'ecole 2</b>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="TickSleep_00476C70"/>, octet pour octet.</b> Le desassemblage des deux
+    /// corps ne differe qu'en <b>deux</b> points : <c>push 55h</c> au lieu de <c>push 53h</c>, et
+    /// <c>push 551A78h</c> au lieu de <c>push 551B60h</c>. Rien d'autre — meme montee a la hauteur
+    /// de tete du lanceur, memes douze champs, meme gravite <c>0xd000</c>, meme <c>+0x1a = 4</c>,
+    /// meme effacement a la fin de la seule image qu'il vit.
+    /// </para>
+    /// <para>
+    /// Le corps est donc ecrit deux fois ici, comme dans le binaire, et pour la meme raison que la
+    /// fratrie des Materia : ce qui est transcrit est ce que le compilateur a emis. Ce qui separe
+    /// reellement les deux sorts vit dans l'enfant.
+    /// </para>
+    /// </summary>
+    private static void TickCrush_00477D20(byte* record)
+    {
+        byte* e = record;
+
+        int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x74));
+        *(int*)(e + 0x20) += (int)((uint)height & 0xfffffffe) * 0x800;
+
+        *(short*)(e + 0x2e) = -20;
+
+        *(uint*)(e + 0x38) = 0x00808080;
+        *(uint*)(e + 0x28) = 0x20002000;
+        *(ushort*)(e + 0x2c) = 0x1f;
+
+        *(int*)(e + 0x50) = 0;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = 0;
+
+        *(ushort*)(e + 0x9a) = 0xd000;
+
+        // La boule n'a PAS de cible en naissant : elle ira la chercher elle-meme.
+        *(byte**)(e + 0x78) = null;
+        *(ushort*)(e + 0x1a) = 4;
+
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors00551A78(), 0x55, e[0x0b], -1);
+
+        // ET IL S'EFFACE.
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00477e40 @ 0x00477e40 — <b>la boule d'Ecrase</b> : le sous-type <c>0x55</c> de
+    /// <see cref="s_StaticEntityHandlers_00552230"/>, la table de <c>0x005f2d40</c>. 618 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00477E40.asm</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>La charpente est celle de <see cref="TickSleepBubble_00476CF0"/></b> — la meme boite de
+    /// detection <c>{0, -60, 60, 100, 0, 120}</c>, la meme saisie du lanceur a la premiere image,
+    /// la meme tete chercheuse a zone morte de <c>±0x40</c>, les memes dix unites par image, la
+    /// meme ondulation <c>sin(age &lt;&lt; 8) &lt;&lt; 5</c>, la meme eclaboussure semee dans un
+    /// cube de <c>0x40</c> unites, le meme anneau d'images, le meme bruit toutes les quatorze
+    /// images, la meme mort a la quarantieme. <b>Mais ce n'est pas la meme compilation</b> :
+    /// <c>edi</c> et <c>ebp</c> y jouent des roles echanges, ce qu'une copie du meme code n'aurait
+    /// pas produit.
+    /// </para>
+    /// <para>
+    /// <b>Trois choses la separent de la bulle</b>, et la troisieme est le sort :
+    /// l'eclaboussure prete <c>+0x1a = 4</c> au lieu de <c>1</c> — donc quatre images d'atlas au
+    /// lieu d'une ; l'effet est <see cref="ApplyStatusEffect_0053B660"/>, le 10, « le plus banal
+    /// des quatre » ; et <b>quand l'effet passe, elle engendre</b> la marque <c>0x7c</c>
+    /// (<see cref="TickCrushMark_00477DA0"/>), en lui laissant la victime en <c>+0x70</c>.
+    /// </para>
+    /// <para>
+    /// La marque part par <see cref="SpawnCastEntity_0047AAE0"/> et non par
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> : elle vit donc dans l'<b>autre</b> table
+    /// d'entites, celle que la passe raccroche a la grille. <b>C'est la premiere petite-fille de
+    /// l'ecole 2</b> — jusqu'ici aucun enfant de sort n'avait engendre a son tour.
+    /// </para>
+    /// </remarks>
+    private static void TickCrushOrb_00477E40(byte* record)
+    {
+        byte* e = record;
+
+        // La boite de detection, reconstruite sur la pile a chaque image — la MEME que Dodo.
+        short* probe = stackalloc short[6] { 0, -60, 60, 100, 0, 120 };
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(uint*)e |= 0x80;
+            *(uint*)(*(byte**)(e + 0x74)) |= 0x80;
+
+            // La hauteur de depart, autour de laquelle elle ondulera.
+            *(int*)(e + 0x48) = *(int*)(e + 0x20);
+        }
+
+        // Ghidra: LAB_00477e92 — la tete chercheuse.
+        byte* target = *(byte**)(e + 0x78);
+
+        if (target == null)
+        {
+            // Ghidra: LAB_00477eec
+            *(byte**)(e + 0x78) = PickTargetInCone_00474F00(e, 0xffffffff);
+        }
+        else
+        {
+            int dz = (*(int*)(target + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+            int dx = (*(int*)(target + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+
+            int yaw = *(short*)(e + 0x32);
+            int error = (Winsys3d.Ordinal_457(dx, dz) - yaw) & 0xfff;
+
+            // LA ZONE MORTE : sous 0x80 de part et d'autre, la boule ne corrige pas.
+            if (((error + 0x40) & 0xfff) > 0x80)
+            {
+                int turn = error >= 0x800 ? -0x40 : 0x40;
+                *(short*)(e + 0x32) = (short)(turn + yaw);
+            }
+        }
+
+        // Ghidra: LAB_00477efa — dix unites par image dans l'axe du cap.
+        int heading = *(short*)(e + 0x32);
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * 10;
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * 10;
+
+        // L'ONDULATION : l'age, porte a huit bits, sert d'angle.
+        *(int*)(e + 0x20) =
+            ((int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) << 8) << 5) + *(int*)(e + 0x48);
+
+        // L'ECLABOUSSURE, une par image, dans un cube de 0x40 unites — et elle prete QUATRE
+        // images d'atlas le temps de l'appel, la ou la bulle de Dodo n'en pretait qu'une.
+        {
+            short lentFrames = *(short*)(e + 0x1a);
+            *(ushort*)(e + 0x1a) = 4;
+
+            int* scatter = stackalloc int[3];
+            scatter[0] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x1c);
+            scatter[1] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x20);
+            scatter[2] = (((CrtRand() & 0x3f) - 0x20) << 0xc) + *(int*)(e + 0x24);
+
+            SpawnStatusEffectEntity_0047AC40(
+                e, scatter, Descriptors00551A78(), 0xbf, e[0x0b], -1);
+
+            *(short*)(e + 0x1a) = lentFrames;
+        }
+
+        // La finalisation sert au CONTACT, pas au placement : sa hauteur est jetee.
+        int flying = *(int*)(e + 0x20);
+        FinalizeEntityPlacement2((uint*)e);       // Ghidra: FUN_00533940
+        bool consumed = (*(uint*)e & 0x40000000) != 0;
+        *(int*)(e + 0x20) = flying;
+
+        if (!consumed && (*(uint*)(e + 0x90) & 0x8802) == 0)
+        {
+            byte* victim = ProbeMeleeTarget_00474CA0(e, probe);
+
+            if (victim != null)
+            {
+                *(short*)(victim + 0x96) = 0x10;
+                *(uint*)victim |= 0x40;
+
+                // LA PAIRE FAMILLE/INDICE, pretee au lanceur EN UN SEUL MOT.
+                *(ushort*)(*(byte**)(e + 0x74) + 6) = *(ushort*)(e + 6);
+
+                if (ApplyStatusEffect_0053B660(*(uint**)(e + 0x74), (uint*)victim, 0) == 0)
+                {
+                    // ET ELLE ENGENDRE : la marque part dans l'AUTRE table d'entites.
+                    e[0x04] = 2;
+                    *(byte**)(e + 0x70) = victim;
+
+                    SpawnCastEntity_0047AAE0(e, 0x7c, e[0x0b], -1);
+
+                    Aud.PlayPositionalSound(0x1e, 0x200, 0x1200, (int*)(e + 0x1c));
+                }
+
+                // Qu'il ait passe ou non, la boule s'eteint : les deux chemins tombent sur
+                // LAB_00478093.
+            }
+            else
+            {
+                // Ghidra: LAB_0047804d — l'anneau d'images de l'atlas.
+                e[0x40] = (byte)(e[0x40] + 1);
+                if (e[0x40] >= *(short*)(e + 0x1a)) e[0x40] = 0;
+
+                // Un bruit toutes les quatorze images.
+                if (*(short*)(e + 0x10) % 14 == 0)
+                {
+                    Aud.PlayPositionalSound(0x17, 0x0100, 0x1200, (int*)(e + 0x1c));
+                }
+
+                *(short*)(e + 0x10) += 1;
+                if (*(short*)(e + 0x10) < 0x28) return;
+            }
+        }
+
+        // Ghidra: LAB_00478093 — le decor, l'age, ou la victime : le lanceur est relache.
+        *(uint*)(*(byte**)(e + 0x74)) &= 0xffffff7f;
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00477da0 @ 0x00477da0 — <b>la marque d'Ecrase</b> : le sous-type <c>0x7c</c> de
+    /// <see cref="s_StaticEntityHandlers_00551f30"/>, la table de <c>0x005edee0</c>.
+    /// <b>Decompilee dans <c>Blaze.c</c></b>. <b>La premiere petite-fille de l'ecole 2</b> : elle
+    /// naît d'un enfant de sort, pas d'un sort.
+    ///
+    /// <para>
+    /// <b>Elle se colle a mi-corps de la victime</b> — <c>victime+0x20</c> plus la moitie de sa
+    /// stature, rangee en <c>+0x48</c> a la premiere image sous la forme
+    /// <c>(hauteur &amp; ~1) &lt;&lt; 11</c> — et la suit en X/Z. Elle naît a la taille de cette
+    /// stature (<c>(hauteur &lt;&lt; 12) / 150</c>, multiplication magique <c>0x1B4E81B5</c> puis
+    /// <c>sar 4</c>) et <b>perd un seizieme de cette taille de depart par image</b>, dans les trois
+    /// axes a la fois : le pas de retrait est fige en <c>+0x12</c> a la premiere image, il ne se
+    /// recalcule pas.
+    /// </para>
+    /// <para>
+    /// <b>Elle ne compte pas ses images</b>, comme la flamme des Materia
+    /// (<see cref="TickFireMateriaFlame_00477600"/>) : sa teinte part de <c>0xf0f0f0</c>, perd
+    /// <c>0x101010</c> par image, et le corps s'efface quand la soustraction tombe <b>pile sur
+    /// zero</b>. Quinze images, donc — et son <c>+0x10</c> est mis a <c>1</c> a la premiere pour ne
+    /// plus jamais bouger, ce qui sert de garde et non de compteur.
+    /// </para>
+    /// <para>
+    /// Quinze images a un seizieme de retrait par image : elle finit a un seizieme de sa taille de
+    /// depart au moment ou elle disparaît. Les deux bornes se repondent.
+    /// </para>
+    /// </summary>
+    private static void TickCrushMark_00477DA0(byte* record)
+    {
+        byte* e = record;
+        byte* victim = *(byte**)(e + 0x70);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // Une garde, pas un compteur : rien ne le fera plus bouger.
+            *(ushort*)(e + 0x10) = 1;
+
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+
+            int height = StatusBubbleHeight_00538BC0((uint*)victim);
+
+            // A MI-CORPS : la moitie de la stature, en 20.12.
+            *(int*)(e + 0x48) = (int)((uint)height & 0xfffffffe) << 0xb;
+
+            // (hauteur << 12) / 150 — multiplication magique 0x1B4E81B5 puis `sar 4`.
+            int scale = (height << 0xc) / 150;
+
+            *(short*)(e + 0x2c) = (short)scale;
+            *(uint*)(e + 0x28) = (uint)(scale << 0x10 | scale);
+
+            // LE PAS DE RETRAIT, fige ici : un seizieme de la taille de depart.
+            *(short*)(e + 0x12) = (short)(scale >> 4);
+        }
+
+        *(int*)(e + 0x1c) = *(int*)(victim + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(victim + 0x20) + *(int*)(e + 0x48);
+
+        // ELLE RETRECIT, dans les trois axes a la fois.
+        *(short*)(e + 0x28) -= *(short*)(e + 0x12);
+
+        short shrunk = *(short*)(e + 0x28);
+        *(short*)(e + 0x2a) = shrunk;
+        *(short*)(e + 0x2c) = shrunk;
+
+        *(int*)(e + 0x24) = *(int*)(victim + 0x24);
+
+        // LA TEINTE EST SON COMPTE A REBOURS, comme la flamme des Materia : seul un zero exact
+        // l'eteint.
+        uint tint = *(uint*)(e + 0x38) - 0x00101010;
+        *(uint*)(e + 0x38) = tint;
+
+        if (tint == 0) *(uint*)e = 0;
     }
 
     /// <summary>
