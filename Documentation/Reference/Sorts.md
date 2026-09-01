@@ -39,10 +39,41 @@ posture d'incantation.
 
 > Le CD, lui, y porte **sept fiches**, et ce sont des **plantes** : Lavande, Sauge, Verveine,
 > Mercuriale, Fenouil, Hysopius, Belladone. Toutes sept ont la même forme — aucune combinaison, un
-> coût d'un point, et le même sous-type `0x4f`, qui n'est donc qu'un seul corps paramétré par
-> l'octet `+0x12`. `DAT_00564600` n'en déclare qu'une. Une herboristerie de Chasseur a été écrite
-> puis débranchée, pas « prévue et jamais remplie ». Relevé le 2026-08-31 en lisant le CD ; voir
+> coût d'un point, et le même sous-type `0x4f`, qui n'est donc qu'un seul corps. `DAT_00564600`
+> n'en déclare qu'une. Une herboristerie de Chasseur a été écrite puis débranchée, pas « prévue et
+> jamais remplie ». Relevé le 2026-08-31 en lisant le CD ; voir
 > `Documentation/Etat/SortsAtteignables.md`.
+
+**Ce qui paramètre le corps, c'est `+0x06`, pas `+0x12`.** Correction du 2026-09-01, en transcrivant
+`FUN_0047a5d0` : le corps lit l'octet `+0x06` de son entité — **l'indice de la plante dans son
+école**, que `SpawnEffectEntity` lui recopie depuis le lanceur — et s'en sert pour deux choses, et
+deux seulement : choisir l'**effet** dans une table de sept pointeurs relevée à `0x0056d4c0`, et
+choisir l'**atlas** de son halo dans une table de huit octets du répertoire de ressources
+(`+0x94` → `+0x1c`). Tout le reste de la mise en scène est commun aux sept.
+
+**Les sept effets sont un bloc à part.** `0x0056d4c0` n'est pas la table des 48 effets d'objet :
+celle-là commence huit dwords plus loin, à `0x0056d4e0`, et les deux blocs sont séparés par un
+pointeur **nul** (l'entrée 7). Aucun autre appelant du binaire n'atteint les sept. Elles se
+distinguent aussi par où elles écrivent : les effets d'objet appareillent par `FUN_00538870` et
+travaillent sur le **bloc de combat**, les sept plantes se contentent de `FUN_0053a860` et écrivent
+**directement dans la fiche de personnage** — la même mémoire vue `0x100` octets plus bas, puisque
+`FUN_005387c0` rend `fiche + 0x100`.
+
+| plante | effet | ce qu'il fait |
+|---|---|---|
+| Lavande | `0x0053ace0` | rend `rand() % 27 + 4 + carac/4` **PV**, plafonnés au maximum |
+| Sauge | `0x0053ad80` | la même chose en **PM** |
+| Verveine | `0x0053ae20` | lève le bit `0x1` de `+0x140` et sa durée `+0x1e0` |
+| Mercuriale | `0x0053ae70` | lève le bit `0x4` et sa durée `+0x18e` |
+| Fenouil | `0x0053aec0` | lève le bit `0x100` (la pétrification) et `+0x19a` |
+| Hysopius | `0x0053af10` | lève le bit `0x2` — **sans toucher à la durée `+0x1e2`** |
+| Belladone | `0x0053af60` | lève le bit `0x10` — **sans toucher à la durée `+0x192`** |
+
+Les cinq levées ont chacune leur jumelle exacte parmi les effets d'objet 34 à 42, à cette
+dissymétrie près : les jumelles d'Hysopius et de Belladone remettent la durée à zéro, elles non. Ce
+n'est pas une lecture approximative — leurs corps font 70 octets contre 79 pour les trois autres, et
+les neuf octets d'écart sont exactement le `mov word [eax+…],0` qui leur manque. Sans conséquence en
+jeu, l'école étant injouable.
 
 ---
 

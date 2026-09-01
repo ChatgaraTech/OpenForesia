@@ -5126,6 +5126,14 @@ public static unsafe partial class Blaze
             // quatre elementaires n'auront donc apporte que DEUX corps neufs a eux tous.
             case 0x00479C50: TickEarth_00479C50(record); return;
 
+            // L'HERBORISTERIE, ecole 3 — LES SEPT PLANTES SUR UN SEUL CORPS, qui se branche sur son
+            // +0x06 pour choisir non pas un decor mais L'EFFET (ApplyHerbEffect_0056D4C0). Ecole
+            // injouable : ces quatre corps ne tournent dans aucune partie.
+            case 0x0047A5D0: TickHerbalism_0047A5D0(record); return;
+            case 0x0047A7D0: TickHerbGlow_0047A7D0(record); return;
+            case 0x0047A730: TickHerbMote_0047A730(record); return;
+            case 0x00476140: TickHerbSeed_00476140(record); return;
+
             // Le sous-type 2 de la table installee 0x0056ad48 — l'INTELLIGENCE DES MONSTRES.
             // C'est le plantage juste apres l'apparition d'un groupe d'ennemis, signale le
             // 2026-08-28.
@@ -7363,6 +7371,258 @@ public static unsafe partial class Blaze
                      + "(0x0053afb0..0x0053cdf0). L'original saute dans la table sans borne ; "
                      + "ici on le dit."),
         };
+    }
+
+    // ================================================================================
+    // LES SEPT EFFETS DE L'HERBORISTERIE — 0x0053ace0 a 0x0053af60
+    //
+    // LA TABLE DES EFFETS NE COMMENCE PAS OU LE DEPOT LA FAIT COMMENCER. ApplyItemEffect_0056D4E0
+    // indexe 0x0056d4e0 ; l'herboristerie, elle, indexe 0x0056d4c0 — HUIT DWORDS PLUS TOT. Ses
+    // sept entrees (0x0053ace0, 0x0053ad80, 0x0053ae20, 0x0053ae70, 0x0053aec0, 0x0053af10,
+    // 0x0053af60) sont suivies d'un ZERO, et c'est ce zero qui separe les deux blocs : l'entree 7
+    // est nulle, l'entree 8 est l'effet 0 des objets. Un bloc de sept fonctions qu'AUCUN autre
+    // appelant n'atteint, releve le 2026-09-01.
+    //
+    // ELLES NE TRAVAILLENT PAS SUR LE MEME OBJET QUE LES 48 AUTRES. Les effets d'objet appareillent
+    // par PrepareCombatPair_00538870 et ecrivent dans le BLOC DE COMBAT ; celles-ci se contentent
+    // de ValidateCombatants_0053A860 et ecrivent DIRECTEMENT dans la fiche de personnage, a
+    // MainMem + (indice + 0x78) * 0x2000. C'est la meme memoire vue 0x100 octets plus bas —
+    // ResolvePartyCombatBlock_005387C0 rend `fiche + 0x100` —, ce qui se verifie champ par champ :
+    // le bloc a ses PV en +0x4c et son mot d'etat en +0x40, la fiche les a en +0x14c et +0x140.
+    // Elles sautent donc tout l'appareillage : ni recalcul des statistiques derivees, ni bonus
+    // d'equipement, ni marqueur +0x203.
+    //
+    // DEUX SOIGNENT, CINQ LEVENT. Les deux premieres rendent des points — le meme montant tire de
+    // la meme facon, `rand() % 27 + 4 + caracteristique/4` —, les cinq autres effacent un bit du
+    // mot d'etat. Chacune des cinq a sa jumelle exacte parmi les levees d'objet (les entrees 34 a
+    // 42), a UNE difference pres, signalee sur les deux concernees : Hysopius et Belladone
+    // effacent le bit SANS remettre la duree a zero, la ou leurs jumelles font les deux.
+    // ================================================================================
+
+    /// <summary>
+    /// Ghidra: <c>(*(code *)(&amp;PTR_FUN_0056d4c0)[plante])(…)</c> — <b>la table des sept effets de
+    /// l'herboristerie</b>, relevee dans le binaire a <c>0x0056d4c0</c>. L'indice est l'octet
+    /// <c>+0x06</c> de l'entite du sort, c'est-a-dire <b>l'indice de la plante dans l'ecole 3</b>.
+    ///
+    /// <para>
+    /// Rendue en <c>switch</c> comme <see cref="ApplyItemEffect_0056D4E0"/> et pour la meme raison.
+    /// <b>Le site d'appel passe trois arguments</b> (lanceur, cible, 0) mais <b>aucune des sept ne
+    /// lit le troisieme</b> — le desassemblage le confirme sur les cinq que <c>Blaze.c</c> n'a pas
+    /// decompilees, et Ghidra n'en a type que deux sur les deux qu'il a rendues. Il n'est donc pas
+    /// transmis ici.
+    /// </para>
+    /// <para>
+    /// <b>Aucun autre appelant n'atteint ce bloc</b> : l'herboristerie est la seule ecole a indexer
+    /// <c>0x0056d4c0</c>, et elle-meme n'est pas atteignable en jeu normal (voir
+    /// <c>Documentation/Reference/Sorts.md</c>).
+    /// </para>
+    /// </summary>
+    private static uint ApplyHerbEffect_0056D4C0(byte plant, uint* caster, uint* target)
+        => plant switch
+        {
+            0 => HealHerbHitPoints_0053ACE0(caster, target),        // Lavande
+            1 => HealHerbManaPoints_0053AD80(caster, target),       // Sauge
+            2 => ClearHerbStatus_0053AE20(caster, target),          // Verveine
+            3 => ClearHerbStatus_0053AE70(caster, target),          // Mercuriale
+            4 => ClearHerbStatus_0053AEC0(caster, target),          // Fenouil
+            5 => ClearHerbStatus_0053AF10(caster, target),          // Hysopius
+            6 => ClearHerbStatus_0053AF60(caster, target),          // Belladone
+            _ => throw new NotImplementedException(
+                     $"Table des herbes 0x0056d4c0, plante {plant} : au-dela des sept entrees "
+                     + "(0x0053ace0..0x0053af60). L'entree 7 est un pointeur NUL dans le binaire, "
+                     + "et au-dela commence la table des effets d'objet."),
+        };
+
+    /// <summary>
+    /// Ghidra: FUN_0053ace0 @ 0x0053ace0 — <b>Lavande</b>, la premiere plante : elle <b>rend des
+    /// points de vie</b>.
+    ///
+    /// <para>
+    /// Le montant est <c>rand() % 27 + 4 + caracteristique/4</c>, la caracteristique etant celle du
+    /// <b>lanceur</b> en <c>+0x126</c> de sa fiche. Il s'ajoute aux PV courants
+    /// (<c>+0x14c</c>), <b>plafonnes au maximum</b> (<c>+0x148</c>), et part en nombre flottant
+    /// au-dessus de la cible.
+    /// </para>
+    /// <para>
+    /// <b>Le plafond est applique apres coup</b>, comme chez <see cref="HealTarget_0053CA80"/> : le
+    /// nombre affiche est le montant entier, meme quand une partie a ete perdue au plafond.
+    /// </para>
+    /// </summary>
+    private static uint HealHerbHitPoints_0053ACE0(uint* caster, uint* target)
+    {
+        if (ValidateCombatants_0053A860(caster, target) != 0) return 1;
+
+        byte* mainMem = GetMainMemPtr();
+        byte* casterSheet = mainMem + (((byte*)caster)[8] + 0x78) * 0x2000;
+        byte* targetSheet = mainMem + (((byte*)target)[8] + 0x78) * 0x2000;
+
+        int amount = CrtRand() % 0x1b + 4 + (*(short*)(casterSheet + 0x126) >> 2);
+
+        *(short*)(targetSheet + 0x14c) += (short)amount;
+
+        if (*(short*)(targetSheet + 0x148) < *(short*)(targetSheet + 0x14c))
+        {
+            *(short*)(targetSheet + 0x14c) = *(short*)(targetSheet + 0x148);
+        }
+
+        SpawnParticle_0050F070((uint*)((byte*)target + 0x1c), (uint)amount, 1);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053ad80 @ 0x0053ad80 — <b>Sauge</b> : la jumelle exacte de
+    /// <see cref="HealHerbHitPoints_0053ACE0"/>, <b>sur les points de magie</b>. Meme tirage, meme
+    /// caracteristique, meme nombre flottant ; seuls changent les deux champs — <c>+0x14e</c>
+    /// courant, <c>+0x14a</c> maximum.
+    /// </summary>
+    private static uint HealHerbManaPoints_0053AD80(uint* caster, uint* target)
+    {
+        if (ValidateCombatants_0053A860(caster, target) != 0) return 1;
+
+        byte* mainMem = GetMainMemPtr();
+        byte* casterSheet = mainMem + (((byte*)caster)[8] + 0x78) * 0x2000;
+        byte* targetSheet = mainMem + (((byte*)target)[8] + 0x78) * 0x2000;
+
+        int amount = CrtRand() % 0x1b + 4 + (*(short*)(casterSheet + 0x126) >> 2);
+
+        *(short*)(targetSheet + 0x14e) += (short)amount;
+
+        if (*(short*)(targetSheet + 0x14a) < *(short*)(targetSheet + 0x14e))
+        {
+            *(short*)(targetSheet + 0x14e) = *(short*)(targetSheet + 0x14a);
+        }
+
+        SpawnParticle_0050F070((uint*)((byte*)target + 0x1c), (uint)amount, 1);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053ae20 @ 0x0053ae20 — <b>Verveine</b> : leve <b>le bit 1</b> du mot d'etat
+    /// (<c>+0x140</c> de la fiche) et remet sa duree (<c>+0x1e0</c>) a zero. 79 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; le releve est garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_0053AE20.asm</c>, <b>qui couvre les cinq levees d'un bloc</b> —
+    /// elles se suivent sans trou jusqu'a l'effet 0 des objets.
+    ///
+    /// <para>
+    /// C'est <b>l'exacte jumelle de <see cref="ClearStatusEffect_0053C740"/></b>, l'entree 34 des
+    /// effets d'objet, aux deux champs pres qui sont les memes vus 0x100 octets plus haut. L'etat
+    /// leve est celui qui <b>draine trois pour cent des PV maximum toutes les trente images</b>
+    /// (voir la retenue de <see cref="AdvanceSceneEntityAnimation_0053aa10"/>).
+    /// </para>
+    /// </summary>
+    private static uint ClearHerbStatus_0053AE20(uint* caster, uint* target)
+    {
+        if (ValidateCombatants_0053A860(caster, target) != 0) return 1;
+
+        byte* sheet = GetMainMemPtr() + (((byte*)target)[8] + 0x78) * 0x2000;
+
+        *(ushort*)(sheet + 0x1e0) = 0;
+        *(uint*)(sheet + 0x140) &= 0xfffffffe;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053ae70 @ 0x0053ae70 — <b>Mercuriale</b> : leve <b>le bit 4</b> du mot d'etat
+    /// et remet sa duree (<c>+0x18e</c>) a zero. 79 octets, <b>absente de <c>Blaze.c</c></b>.
+    /// L'exacte jumelle de <see cref="ClearStatusEffect_0053C790"/>, l'entree 35.
+    /// </summary>
+    private static uint ClearHerbStatus_0053AE70(uint* caster, uint* target)
+    {
+        if (ValidateCombatants_0053A860(caster, target) != 0) return 1;
+
+        byte* sheet = GetMainMemPtr() + (((byte*)target)[8] + 0x78) * 0x2000;
+
+        *(ushort*)(sheet + 0x18e) = 0;
+        *(uint*)(sheet + 0x140) &= 0xfffffffb;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053aec0 @ 0x0053aec0 — <b>Fenouil</b> : leve <b>le bit 0x100</b> du mot d'etat
+    /// et remet sa duree (<c>+0x19a</c>) a zero. 79 octets, <b>absente de <c>Blaze.c</c></b>.
+    /// L'exacte jumelle de <see cref="ClearStatusEffect_0053C890"/>, l'entree 38.
+    ///
+    /// <para>
+    /// C'est <b>la petrification</b> — le seul des etats retenus qui n'ait pas de duree qui le
+    /// termine : il draine cinq pour cent des PV maximum toutes les trente images et ne s'arrete
+    /// jamais de lui-meme. <b>La duree +0x19a est donc remise a zero alors qu'elle n'est jamais
+    /// employee</b> ; c'est ce que fait aussi l'entree 38, et c'est transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// Le binaire efface ce bit-la par <c>and ch, 0xfe</c> — un ET sur le seul octet <c>ch</c>,
+    /// donc sur les bits 8 a 15 du mot. Le resultat est celui d'un <c>&amp; 0xfffffeff</c>, ecrit
+    /// ainsi ici pour rester lisible ; les trois autres octets ne sont pas touches dans un cas
+    /// comme dans l'autre.
+    /// </para>
+    /// </summary>
+    private static uint ClearHerbStatus_0053AEC0(uint* caster, uint* target)
+    {
+        if (ValidateCombatants_0053A860(caster, target) != 0) return 1;
+
+        byte* sheet = GetMainMemPtr() + (((byte*)target)[8] + 0x78) * 0x2000;
+
+        *(ushort*)(sheet + 0x19a) = 0;
+        *(uint*)(sheet + 0x140) &= 0xfffffeff;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053af10 @ 0x0053af10 — <b>Hysopius</b> : leve <b>le bit 2</b> du mot d'etat.
+    /// 70 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>ET ELLE NE REMET PAS LA DUREE A ZERO</b>, contrairement a sa jumelle d'objet
+    /// <see cref="ClearStatusEffect_0053C7E0"/> (entree 36), qui efface le bit <b>et</b> le
+    /// <c>+0xe2</c> du bloc. Ici le <c>+0x1e2</c> de la fiche reste debout. Le corps fait 70 octets
+    /// contre 79 pour les trois precedentes : les neuf octets manquants sont exactement le
+    /// <c>mov word [eax+…],0</c> qu'elles ont et qu'elle n'a pas. Ce n'est pas une lecture
+    /// approximative, c'est une instruction absente.
+    /// </para>
+    /// <para>
+    /// <b>Ce que ca change</b> : la retenue ne decompte <c>+0x1e2</c> que tant que le bit est pose,
+    /// donc une valeur restee la ne fait rien tant que l'etat ne revient pas. Mais une nouvelle
+    /// application prend le <b>maximum</b> de la duree en place et de la nouvelle
+    /// (<see cref="ApplyStatusEffect_0053B4B0"/> et ses voisines) : apres Hysopius, un etat
+    /// reapplique peut durer ce que durait le precedent. L'etat en question est celui qui draine
+    /// trois pour cent des PM maximum toutes les trente images.
+    /// </para>
+    /// <para>
+    /// Aucune consequence en jeu : l'herboristerie est injouable. Note ici parce que la
+    /// dissymetrie est reelle et qu'elle se lit dans la taille des corps.
+    /// </para>
+    /// </summary>
+    private static uint ClearHerbStatus_0053AF10(uint* caster, uint* target)
+    {
+        if (ValidateCombatants_0053A860(caster, target) != 0) return 1;
+
+        byte* sheet = GetMainMemPtr() + (((byte*)target)[8] + 0x78) * 0x2000;
+
+        // PAS de remise a zero de +0x1e2 : voir la note. L'instruction n'est pas dans le binaire.
+        *(uint*)(sheet + 0x140) &= 0xfffffffd;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0053af60 @ 0x0053af60 — <b>Belladone</b>, la septieme et derniere plante : leve
+    /// <b>le bit 0x10</b> du mot d'etat. 70 octets, <b>absente de <c>Blaze.c</c></b>.
+    ///
+    /// <para>
+    /// <b>Meme dissymetrie qu'<see cref="ClearHerbStatus_0053AF10"/></b> : sa jumelle d'objet
+    /// <see cref="ClearStatusEffect_0053C8E0"/> (entree 39) efface le bit <b>et</b> la duree
+    /// <c>+0x92</c> du bloc ; celle-ci laisse le <c>+0x192</c> de la fiche debout. Meme ecart de
+    /// neuf octets, meme conclusion. L'etat leve est <b>l'effet d'etat 9</b>
+    /// (<see cref="ApplyStatusEffect_0053B580"/>).
+    /// </para>
+    /// </summary>
+    private static uint ClearHerbStatus_0053AF60(uint* caster, uint* target)
+    {
+        if (ValidateCombatants_0053A860(caster, target) != 0) return 1;
+
+        byte* sheet = GetMainMemPtr() + (((byte*)target)[8] + 0x78) * 0x2000;
+
+        // PAS de remise a zero de +0x192 : voir la note portee sur ClearHerbStatus_0053AF10.
+        *(uint*)(sheet + 0x140) &= 0xffffffef;
+        return 0;
     }
 
     // ------------------------------------------------------------------ 0 a 2 : sans jet, sans marque
@@ -51473,6 +51733,299 @@ public static unsafe partial class Blaze
 
         // Ghidra: LAB_00479dbf — et le lanceur doit tenir debout.
         if (CanSustainChannel_00475110(e) != 0) *(uint*)e |= 0x2000000;
+    }
+
+    // =====================================================================
+    // L'HERBORISTERIE — ecole 3, les SEPT plantes, toutes sur le sous-type 0x4f
+    //
+    //   0x0047A5D0   LE SORT, pour les sept. Sous-type 0x4f de 0x00551c30. DECOMPILE dans Blaze.c.
+    //   0x0047A7D0   LE HALO, sous-type 0x2c de 0x00552230. DECOMPILE.
+    //   0x0047A730   LE GRAIN, sous-type 0x2b de 0x00552230. DECOMPILE.
+    //   0x00476140   LA GRAINE QUI TOURNE, sous-type 0x2d de 0x00552230. Decompilee, mais avec
+    //                DEUX PARAMETRES PERDUS (unaff_EBX, unaff_retaddr) — resolus au desassembleur,
+    //                releve garde sous Legacy/Raw/Blaze/FUN_00476140.asm.
+    //
+    // UN SEUL CORPS POUR SEPT FICHES, ET IL SE BRANCHE SUR SON +0x06. C'est la meme forme que la
+    // fratrie des elementaires, a ceci pres que le branchement ne choisit pas un decor mais
+    // L'EFFET : le sort appelle (&PTR_FUN_0056d4c0)[plante] — voir ApplyHerbEffect_0056D4C0 —
+    // et rien d'autre ne distingue Lavande de Belladone. Meme mise en scene pour les sept.
+    //
+    // ET IL EST INJOUABLE. DAT_00564600 ne declare qu'un sort pour l'ecole 3, le Chasseur ne lance
+    // rien, et aucune classe n'a l'ecole 3 : ces onze corps ne tournent dans aucune partie. Ils
+    // sont transcrits parce qu'ils existent et qu'ils completent la carte, pas parce qu'on les
+    // attend a l'ecran. Voir Documentation/Reference/Sorts.md.
+    //
+    // LA MISE EN SCENE, en vingt-quatre images :
+    //   image 0   — il recopie le lanceur de +0x6c vers +0x74 (c'est la que ses enfants iront le
+    //               chercher), cherche une cible par FindTargetAround_00474BA0 et la range en
+    //               +0x78, POSE L'EFFET DE SA PLANTE, lache le halo 0x2c avec l'atlas propre a la
+    //               plante lu sur le CD, puis SIX graines 0x2d en couronne (0x2aa de pas, soit un
+    //               sixieme de tour) lancees vers le haut a 0x10000 par image ;
+    //   0 a 0x17  — un grain 0x2b par image, et son cap tourne d'un quart de tour a chaque fois ;
+    //   0x18      — il s'efface.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_0047a5d0 @ 0x0047a5d0 — <b>l'herboristerie</b> : le sous-type <c>0x4f</c>,
+    /// creneau 79 de <see cref="s_StaticEntityHandlers_00551c30"/>, et <b>les sept fiches de
+    /// l'ecole 3 a elles toutes</b> — Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius,
+    /// Belladone.
+    ///
+    /// <para>
+    /// <b>Ce qui distingue les sept plantes ne tient qu'en deux lignes</b> : l'effet, choisi par
+    /// <see cref="ApplyHerbEffect_0056D4C0"/> sur l'octet <c>+0x06</c>, et l'atlas du halo, lu au
+    /// meme indice dans une table de huit octets du repertoire de ressources
+    /// (<c>+0x94</c> → <c>+0x1c</c>). <b>Tout le reste est commun.</b>
+    /// </para>
+    /// <para>
+    /// <b>Il pose son effet a la premiere image, et une seule fois</b> : la cible vient de
+    /// <see cref="FindTargetAround_00474BA0"/> en mode 0, elle est rangee en <c>+0x78</c>, et
+    /// l'effet lui est applique immediatement. Les vingt-quatre images qui suivent ne sont que du
+    /// decor — <b>le sort a deja agi</b>.
+    /// </para>
+    /// <para>
+    /// <b>Le lanceur passe de <c>+0x6c</c> a <c>+0x74</c></b> a la premiere image. C'est necessaire :
+    /// <see cref="SpawnEffectEntity"/> range le lanceur en <c>+0x6c</c>, mais
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> ecrase ce meme <c>+0x6c</c> chez l'enfant avec
+    /// le <b>sort</b>. Sans la recopie, les graines n'auraient plus aucun moyen de retrouver celui
+    /// qui les a semees.
+    /// </para>
+    /// <para>
+    /// <b>Si aucune cible n'est trouvee, le sort deposera un halo autour d'un pointeur nul.</b>
+    /// <see cref="TickHerbMote_0047A730"/> lit <c>+0x78</c> sans le tester ; l'original ne teste pas
+    /// non plus le retour de la recherche. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickHerbalism_0047A5D0(byte* record)
+    {
+        byte* e = record;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // Le lanceur, recopie la ou les enfants iront le chercher.
+            *(byte**)(e + 0x74) = *(byte**)(e + 0x6c);
+
+            e[0x40] = 0;
+            *(uint*)(e + 0x38) = 0x00f0f0f0;
+            *(uint*)(e + 0x28) = 0x10001000;
+
+            byte* target = FindTargetAround_00474BA0(e, 0);
+            *(byte**)(e + 0x78) = target;
+
+            // L'EFFET DE LA PLANTE, pose une fois pour toutes. Le binaire passe un troisieme
+            // argument nul qu'aucune des sept ne lit.
+            ApplyHerbEffect_0056D4C0(e[6], *(uint**)(e + 0x6c), (uint*)target);
+
+            int* here = (int*)(e + 0x1c);
+
+            // LE HALO, avec l'atlas propre a la plante : huit octets par entree.
+            byte* atlas = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x94) + 0x1c)
+                          + e[6] * 8;
+
+            SpawnStatusEffectEntity_0047AC40(e, here, atlas, 0x2c, 0, 0);
+
+            int height = StatusBubbleHeight_00538BC0(*(uint**)(e + 0x6c));
+
+            *(ushort*)(e + 0x9a) = 0x4000;                // la gravite que les graines heriteront
+            *(int*)(e + 0x20) += height * 0x1000;         // et elles naissent a hauteur de tete
+
+            // SIX GRAINES EN COURONNE, un sixieme de tour l'une de l'autre.
+            for (int remaining = 6; remaining != 0; remaining--)
+            {
+                short yaw = *(short*)(e + 0x32);
+
+                *(int*)(e + 0x50) = (int)Winsys3d.GetSinTableEntry(yaw) << 4;
+                *(int*)(e + 0x54) = 0x10000;              // et toutes vers le haut, a la meme vitesse
+                *(int*)(e + 0x58) = Winsys3d.GetCosTableEntry(yaw) << 4;
+
+                SpawnStatusEffectEntity_0047AC40(
+                    e, here, Descriptors005519A0(), 0x2d, e[0x0b], -1);
+
+                *(short*)(e + 0x32) += 0x2aa;
+            }
+
+            *(int*)(e + 0x20) -= height * 0x1000;         // la hauteur est rendue
+
+            *(uint*)(e + 0x38) = 0x00b0b0b0;
+            *(uint*)(e + 0x28) = 0x20002000;
+
+            Aud.PlayPositionalSound(0x2f, 0x653, 0x3fff, here);
+        }
+
+        // UN GRAIN PAR IMAGE, celle-ci comprise.
+        SpawnStatusEffectEntity_0047AC40(
+            e, (int*)(e + 0x1c), Descriptors005519A0(), 0x2b, e[0x0b], -1);
+
+        *(short*)(e + 0x32) += 0x400;
+        *(short*)(e + 0x10) += 1;
+
+        if (*(short*)(e + 0x10) > 0x17) *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047a7d0 @ 0x0047a7d0 — <b>le halo de l'herboristerie</b> : le sous-type
+    /// <c>0x2c</c>, creneau 44 de <see cref="s_StaticEntityHandlers_00552230"/>.
+    ///
+    /// <para>
+    /// <b>Il reste colle a la tete du lanceur</b> — il relit <c>+0x74</c> a chaque image et se pose
+    /// une stature au-dessus de lui, donc il le suit s'il bouge. Sa vie tient en trois temps :
+    /// <b>il s'ouvre</b> pendant douze images, son echelle suivant un quart de sinus
+    /// (<c>sin(age &lt;&lt; 7) * 0x1200 &gt;&gt; 12</c>) sur la largeur et la hauteur mais
+    /// <b>pas sur la profondeur</b> ; il tient ; puis <b>a partir de la trente-deuxieme il s'eteint</b>,
+    /// sa teinte descendant de <c>0x20</c> par image et par composante jusqu'a la quarantieme, ou il
+    /// s'efface.
+    /// </para>
+    /// <para>
+    /// La teinte de l'extinction est batie a partir d'un seul octet — <c>0x4ff - age * 0x20</c> —
+    /// recopie dans les trois composantes, avec un <c>0x200</c> force dans la composante du milieu.
+    /// A la premiere image de l'extinction l'octet vaut <c>0xff</c> et le mot fait
+    /// <c>0x02ffffff</c> ; a la trente-neuvieme, la derniere ou il vit encore, il vaut <c>0x1f</c> et le mot <c>0x021f1f1f</c>. C'est
+    /// ecrit tel quel, decalages compris.
+    /// </para>
+    /// </summary>
+    private static void TickHerbGlow_0047A7D0(byte* record)
+    {
+        byte* e = record;
+
+        byte* caster = *(byte**)(e + 0x74);
+
+        *(int*)(e + 0x1c) = *(int*)(caster + 0x1c);
+        *(int*)(e + 0x20) = StatusBubbleHeight_00538BC0((uint*)caster) * 0x1000
+                            + *(int*)(caster + 0x20);
+        *(int*)(e + 0x24) = *(int*)(caster + 0x24);
+
+        short age = *(short*)(e + 0x10);
+
+        if (age == 0)
+        {
+            *(uint*)(e + 0x38) = 0x01ffffff;
+            *(uint*)(e + 0x28) = 0;
+            *(short*)(e + 0x2e) = -10;
+        }
+
+        if (age < 0xc)
+        {
+            // L'OUVERTURE : un quart de sinus sur douze images, largeur et profondeur seulement.
+            short scale = (short)((int)Winsys3d.GetSinTableEntry(age << 7) * 0x1200 >> 0xc);
+
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+        }
+
+        age = *(short*)(e + 0x10);
+
+        if (age >= 0x20)
+        {
+            // L'EXTINCTION : un seul octet, recopie dans les trois composantes.
+            uint fade = (uint)(age * -0x20 + 0x4ff);
+            *(uint*)(e + 0x38) = (((fade | 0x200) << 8 | fade) << 8) | fade;
+        }
+
+        if (age == 0x28) *(uint*)e = 0;
+
+        *(short*)(e + 0x10) = (short)(age + 1);
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0047a730 @ 0x0047a730 — <b>le grain de l'herboristerie</b> : le sous-type
+    /// <c>0x2b</c>, creneau 43 de <see cref="s_StaticEntityHandlers_00552230"/>. Le sort en lache
+    /// <b>un par image</b> pendant les vingt-quatre.
+    ///
+    /// <para>
+    /// <b>Il tourne autour de la CIBLE</b>, pas du lanceur : il lit <c>+0x78</c>, le seul des trois
+    /// enfants a le faire. Un cercle de <c>0x32</c> unites, le cap avancant de <c>0x100</c> par
+    /// image, <b>et une hauteur qui redescend</b> — <c>sin(0x800 - age * 0x40) * 0xf0</c>, donc un
+    /// arc qui part du haut et retombe. Son image d'atlas boucle sur trois.
+    /// </para>
+    /// <para>
+    /// <b>Sa mort tient a un zero exact</b> : sa teinte perd <c>0x101010</c> par image et il ne
+    /// s'efface que si le resultat vaut <b>exactement</b> zero. Ca tombe juste parce que le sort la
+    /// lui donne a <c>0xb0b0b0</c>, soit onze fois le pas — il vit onze images. <b>La marge est
+    /// nulle</b> : une teinte de depart qui ne serait pas un multiple exact ferait un grain
+    /// immortel, qui continuerait a descendre dans les negatifs. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickHerbMote_0047A730(byte* record)
+    {
+        byte* e = record;
+
+        byte* prey = *(byte**)(e + 0x78);
+        short yaw = *(short*)(e + 0x32);
+
+        *(int*)(e + 0x1c) = *(int*)(prey + 0x1c) + (int)Winsys3d.GetSinTableEntry(yaw) * 0x32;
+
+        // L'ARC QUI RETOMBE : le sinus est pris a rebours de l'age.
+        *(int*)(e + 0x20) = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x10) * -0x40 + 0x800) * 0xf0
+                            + *(int*)(prey + 0x20);
+
+        *(int*)(e + 0x24) = *(int*)(prey + 0x24) + Winsys3d.GetCosTableEntry(yaw) * 0x32;
+
+        *(short*)(e + 0x32) = (short)(yaw + 0x100);
+
+        byte frame = (byte)(e[0x40] + 1);
+        e[0x40] = frame;
+        if (frame > 2) e[0x40] = 0;
+
+        // LE ZERO EXACT, et rien d'autre, ne l'arrete.
+        int tint = *(int*)(e + 0x38) - 0x101010;
+        *(int*)(e + 0x38) = tint;
+        if (tint == 0) *(uint*)e = 0;
+
+        *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00476140 @ 0x00476140 — <b>la graine qui tourne</b> : le sous-type <c>0x2d</c>,
+    /// creneau 45 de <see cref="s_StaticEntityHandlers_00552230"/>. Le sort en seme <b>six d'un
+    /// coup</b> a sa premiere image.
+    ///
+    /// <para>
+    /// <b>Ghidra a perdu deux valeurs sur ce corps</b> — il les rend en <c>unaff_EBX</c> et
+    /// <c>unaff_retaddr</c>, la marque d'un parametre non reconstruit. Le desassemblage tranche, et
+    /// la reponse est que <b>les deux sont la meme</b> : le rayon <c>(short)+0x12 &gt;&gt; 2</c>,
+    /// calcule une fois en <c>0x00476155</c> et range sur la pile en <c>[esp+0x18]</c> avant les
+    /// deux <c>push</c> qui decalent le cadre. Ghidra a lu les deux relectures comme deux entrees
+    /// distinctes. Releve garde sous <c>Legacy/Raw/Blaze/FUN_00476140.asm</c>.
+    /// </para>
+    /// <para>
+    /// <b>Elle tourne autour du lanceur</b> (<c>+0x74</c>, que le sort a rempli pour elle) : un
+    /// cercle du <b>quart</b> de <c>+0x12</c>, le cap avancant de <c>0x80</c> par image, a une
+    /// hauteur fixe de <c>+0x12</c> unites au-dessus de lui. Elle ne se sert donc <b>pas</b> de la
+    /// vitesse que le sort lui a donnee en <c>+0x50</c>..<c>+0x58</c> ni de la gravite <c>+0x9a</c>
+    /// : ces champs sont poses, herites, et jamais lus par elle. Son image d'atlas boucle sur
+    /// <c>+0x1a</c>.
+    /// </para>
+    /// <para>
+    /// <b>Elle vit tant que le lanceur porte son etat</b> : elle relit le bloc de statistiques du
+    /// lanceur a chaque image et s'efface des que le bit <c>0x80</c> de <c>+0x40</c> tombe, ou des
+    /// que le bit <c>0x40000000</c> se pose. C'est la seule des trois qui n'ait pas de duree a
+    /// elle.
+    /// </para>
+    /// </summary>
+    private static void TickHerbSeed_00476140(byte* record)
+    {
+        byte* e = record;
+
+        short lift = *(short*)(e + 0x12);
+        short yaw = *(short*)(e + 0x32);
+        byte* caster = *(byte**)(e + 0x74);
+
+        // Ghidra: unaff_retaddr et unaff_EBX sont cette meme valeur, spillee en [esp+0x18].
+        int radius = lift >> 2;
+
+        *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(yaw) * radius + *(int*)(caster + 0x1c);
+        *(int*)(e + 0x20) = (lift << 0xc) + *(int*)(caster + 0x20);
+        *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(yaw) * radius + *(int*)(caster + 0x24);
+
+        *(short*)(e + 0x32) = (short)(yaw + 0x80);
+
+        byte frame = (byte)(e[0x40] + 1);
+        e[0x40] = frame;
+        if (frame >= *(short*)(e + 0x1a)) e[0x40] = 0;
+
+        uint state = *(uint*)(GetEntityStatBlock((uint*)caster) + 0x40);
+
+        if ((state & 0x80) == 0 || (state & 0x40000000) != 0) *(uint*)e = 0;
     }
 
     /// <summary>

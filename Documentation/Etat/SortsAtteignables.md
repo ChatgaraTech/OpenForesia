@@ -176,13 +176,13 @@ deux boutons** ; les coups sont separes par un tiret.
 | 2 | 17 | Flamme | XC-TO-O-O-O-O-O-O-O-O | 50 | 0 | 70 | 0xb1 | `0x00479300` | oui | **non** |
 | 2 | 18 | Zéphe | XC-TO-T-T-T-T-T-T-T-O | 50 | 0 | 70 | 0xb2 | `0x00479DE0` | oui | **non** |
 | 2 | 19 | Terre | XC-TO-C-C-C-C-C-C-C-O | 50 | 0 | 70 | 0xb3 | `0x00479C50` | oui | **non** |
-| 3 | 0 | Lavande | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | **non** | **non** |
-| 3 | 1 | Sauge | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | **non** | **non** |
-| 3 | 2 | Verveine | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | **non** | **non** |
-| 3 | 3 | Mercuriale | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | **non** | **non** |
-| 3 | 4 | Fenouil | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | **non** | **non** |
-| 3 | 5 | Hysopius | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | **non** | **non** |
-| 3 | 6 | Belladone | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | **non** | **non** |
+| 3 | 0 | Lavande | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
+| 3 | 1 | Sauge | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
+| 3 | 2 | Verveine | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
+| 3 | 3 | Mercuriale | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
+| 3 | 4 | Fenouil | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
+| 3 | 5 | Hysopius | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
+| 3 | 6 | Belladone | — | 1 | 0 | 0 | 0x4f | `0x0047A5D0` | oui | **non** |
 
 ---
 
@@ -192,10 +192,10 @@ deux boutons** ; les coups sont separes par un tiret.
 |---|---|
 | fiches des quatre ecoles | **80** |
 | dont les trois ecoles jouables | **73** |
-| implementees (le gestionnaire existe) | **73** |
-| a transcrire | **7** |
+| implementees (le gestionnaire existe) | **80** |
+| a transcrire | **0** |
 | lancees en jeu au moins une fois | **16** |
-| dette : implementees mais jamais lancees | **57** |
+| dette : implementees mais jamais lancees | **64** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -217,7 +217,7 @@ corps a tourne, par un sort ou par autre chose.
 
 | gestionnaire | emplois | implemente | teste | sorts |
 |---|---:|---|---|---|
-| `0x0047A5D0` | 7 | **non** | **non** | Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius, Belladone |
+| `0x0047A5D0` | 7 | oui | **non** | Lavande, Sauge, Verveine, Mercuriale, Fenouil, Hysopius, Belladone |
 | `0x00447DF0` | 1 | oui | **non** | Sang pur |
 | `0x00448060` | 1 | oui | **non** | Renfort |
 | `0x00448300` | 1 | oui | **non** | Gnoukoulé |
@@ -292,7 +292,7 @@ corps a tourne, par un sort ou par autre chose.
 | `0x00482370` | 1 | oui | **non** | Météores |
 | `0x004828F0` | 1 | oui | **non** | Fusion |
 
-**74 gestionnaires distincts**, dont **1** a transcrire.
+**74 gestionnaires distincts**, dont **0** a transcrire.
 
 **Presque un corps par sort.** Ce n'est pas un repartiteur a quelques branches
 partagees comme la table des 48 effets : chaque sort des trois ecoles jouables a le
