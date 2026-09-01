@@ -6310,12 +6310,27 @@ public static unsafe partial class Blaze
     ];
 
     /// <summary>
-    /// Ghidra: <c>&amp;DAT_00551b00</c> — l'atlas que <see cref="EntityHandler_00483450"/> passe a
-    /// son enfant. <b>Cinq enregistrements</b>, borne par le changement de planche a
-    /// <c>0x00551b28</c> (<c>a818 1818</c>) et non par un compteur : le gestionnaire consommateur
-    /// est resolu par sous-zone, on ne peut donc pas lire la longueur dans son corps comme pour
-    /// <see cref="s_Descriptors_00551A60"/>. Les deux premiers ont <c>00 00</c> en cinquieme et
-    /// sixieme octets la ou les trois suivants ont <c>01 02</c>.
+    /// Ghidra: <c>&amp;DAT_00551b00</c> — <b>huit enregistrements</b>, soit toute la plage
+    /// <c>0x00551b00</c>–<c>0x00551b3f</c>, jusqu'a la table voisine
+    /// <see cref="s_Descriptors_00551B40"/>. Ce n'est pas une table mais <b>deux planches qui se
+    /// suivent</b>, et deux consommateurs distincts les adressent par la meme base :
+    ///
+    /// <list type="bullet">
+    /// <item><b>Les cinq premiers</b> (<c>+0x00</c> a <c>+0x20</c>, planche <c>1010</c>) —
+    /// <see cref="EntityHandler_00483450"/> les passe a son enfant. Les deux premiers ont
+    /// <c>00 00</c> en cinquieme et sixieme octets la ou les trois suivants ont <c>01 02</c>.</item>
+    /// <item><b>Les trois derniers</b> (<c>+0x28</c> a <c>+0x38</c>, planche <c>1818</c>) — la
+    /// coque <c>0x51</c> de <see cref="TickFireOrb_0047F570"/> designe le premier d'entre eux,
+    /// <c>0x00551b28</c>, en clair dans le binaire (<c>push 551B28h</c> a
+    /// <c>0x0047f734</c>).</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Le changement de planche a <c>0x00551b28</c> n'etait donc pas une borne.</b> Il servait
+    /// de fin de table faute de compteur lisible ; Boule de feu prouve le contraire, et le tableau
+    /// arrete a <c>0x28</c> octets faisait lire a la coque huit octets de tas jamais ecrits — d'ou
+    /// l'absence de boule orange et les eclats parasites autour d'elle.
+    /// </para>
     /// </summary>
     private static readonly byte[] s_Descriptors_00551B00 =
     [
@@ -6324,6 +6339,9 @@ public static unsafe partial class Blaze
         0x00, 0x68, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551b10
         0x10, 0x68, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551b18
         0x20, 0x68, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x00551b20
+        0xa8, 0x18, 0x18, 0x18, 0x00, 0x00, 0x10, 0x00,   // 0x00551b28
+        0xc0, 0x18, 0x18, 0x18, 0x00, 0x00, 0x10, 0x00,   // 0x00551b30
+        0xd8, 0x18, 0x18, 0x18, 0x00, 0x00, 0x10, 0x00,   // 0x00551b38
     ];
 
     private static byte* s_Descriptors00551A60Storage;

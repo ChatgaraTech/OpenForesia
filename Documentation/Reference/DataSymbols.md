@@ -2311,7 +2311,8 @@ Passés en troisième argument de `FUN_0047ac40` par les deux naissances `FUN_00
 `0x00551b00` — **cinq** enregistrements, bornés autrement : ici le consommateur est résolu par
 sous-zone (`0xc0 + n`), donc **aucun compteur du code ne donne la longueur**. Ce qui la donne est le
 changement de planche à `0x00551b28` (`a8 18 18 18`). À reprendre si le gestionnaire réel se révèle
-en compter plus.
+en compter plus. **C'est arrivé** — voir `0x00551b28` plus bas (2026-09-01) : la plage en compte
+huit, et cette borne-là était fausse.
 
 | adresse | octets |
 |---|---|
@@ -2368,6 +2369,37 @@ et sa base tombe au milieu d'un groupe de quatre lignes identiques de forme :
 
 Deux relevés indépendants, deux fois le même piège : la borne gauche d'un atlas ne se lit pas dans
 la donnée. Ici c'est la ligne `0x00551b80` qui reste orpheline — la chercher plutôt que la rattacher.
+
+### `0x00551b28` — et la borne *droite* n'en était pas une non plus (2026-09-01)
+
+Troisième fois sur le même bloc, mais de l'autre côté. Le relevé du 2026-08-29 arrêtait
+`0x00551b00` à cinq enregistrements parce que la planche change à `0x00551b28` (`a8 18 18 18`),
+faute de compteur lisible dans le consommateur. **Boule de feu** (`FUN_0047f570`) prouve que non :
+elle passe cette adresse en clair à `FUN_0047ac40` pour engendrer sa coque `0x51`.
+
+```
+0047f734  push  551B28h
+```
+
+La plage `0x00551b00`–`0x00551b3f` compte donc **huit** enregistrements — deux planches qui se
+suivent sans séparateur, jusqu'à la table voisine `0x00551b40` :
+
+| adresse | octets | |
+|---|---|---|
+| `0x00551b28` | `a8 18 18 18 00 00 10 00` | ← la coque de Boule de feu |
+| `0x00551b30` | `c0 18 18 18 00 00 10 00` | aucun consommateur connu |
+| `0x00551b38` | `d8 18 18 18 00 00 10 00` | aucun consommateur connu |
+
+**Ce que ça a coûté en jeu** : le tableau C# s'arrêtait à `0x28` octets, et
+`Descriptors00551B00() + 0x28` lisait donc huit octets de tas jamais écrits. La coque naissait avec
+un descripteur d'atlas aléatoire — pas de boule orange, et des éclats parasites un peu partout qui
+convergeaient vers l'ancre. L'explosion, elle, était juste : elle n'emploie pas cette table.
+
+**Ce que ça change pour la méthode** : ni la borne gauche ni la borne droite d'un atlas ne se
+lisent dans la donnée. Un changement de planche est une *hypothèse* de fin, pas une preuve — et une
+plage de `.data` transcrite trop court ne se voit pas à la compilation, elle se voit à l'écran, sous
+la forme de géométrie parasite. Quand un effet sort en glitchs, **comparer d'abord la longueur du
+tableau au plus grand décalage que le code lui applique**.
 
 ## `0x00552588` — le sixième script de sons différés (2026-08-31)
 

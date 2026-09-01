@@ -127,19 +127,19 @@ deux boutons** ; les coups sont separes par un tiret.
 | 0 | 13 | Atchoum | C-T-C-X-T-O | 20 | 52 | 40 | 0x0d | `0x0047DB50` | oui | oui |
 | 0 | 14 | Assaut magique | C-T-O-C-X-O | 32 | 55 | 40 | 0x0e | `0x0047DF70` | oui | oui |
 | 0 | 15 | Lumière | T-O-X-C-X-O-T-O | 24 | 58 | 60 | 0x0f | `0x0047E260` | oui | oui |
-| 0 | 16 | Eclair | TO-T-O-T-C-T-X-T-O | 40 | 68 | 60 | 0x10 | `0x0047E590` | oui | **non** |
-| 0 | 17 | Trouille | XC-C-X-O-T-C-O-T-O | 38 | 60 | 60 | 0x11 | `0x0047EAE0` | oui | **non** |
-| 0 | 18 | Exorciste | C-O-T-X-C-O-T-O | 40 | 62 | 45 | 0x12 | `0x0047F070` | oui | **non** |
-| 0 | 19 | Durdur | C-T-X-O-O-X-T-C | 38 | 64 | 36 | 0x13 | `0x0047F2B0` | oui | **non** |
-| 0 | 20 | Boule de feu | O-T-O-C-C-O-T-TO-O | 45 | 68 | 60 | 0x14 | `0x0047F570` | oui | **non** |
-| 0 | 21 | Ventilo | T-C-O-T-C-T-O-TO | 45 | 70 | 60 | 0x15 | `0x0047FB80` | oui | **non** |
-| 0 | 22 | Démon polaire | X-T-X-C-C-X-C-XC-O | 30 | 75 | 60 | 0x16 | `0x0047FE60` | oui | **non** |
-| 0 | 23 | Stalagtite | C-T-C-X-T-C-O-X-O | 45 | 72 | 60 | 0x17 | `0x00480600` | oui | **non** |
-| 0 | 24 | Satanas | C-X-O-T-C-X-O-T-C-O-X-T-O | 60 | 74 | 60 | 0x18 | `0x00480B90` | oui | **non** |
-| 0 | 25 | Au sec | T-X-O-C-XC-TO-TOXC | 80 | 76 | 120 | 0x19 | `0x00481670` | oui | **non** |
-| 0 | 26 | Colère | XC-C-X-O-T-C-O-T-C-O-X-O | 96 | 0 | 132 | 0x1a | `0x004819D0` | oui | **non** |
-| 0 | 27 | Météores | X-T-C-X-T-O-X-C-O-X-C-O-T | 82 | 0 | 96 | 0x1b | `0x00482370` | oui | **non** |
-| 0 | 28 | Fusion | TO-T-O-T-C-T-X-T-X-T-T-TO | 100 | 0 | 120 | 0x1c | `0x004828F0` | oui | **non** |
+| 0 | 16 | Eclair | TO-T-O-T-C-T-X-T-O | 40 | 68 | 60 | 0x10 | `0x0047E590` | oui | oui |
+| 0 | 17 | Trouille | XC-C-X-O-T-C-O-T-O | 38 | 60 | 60 | 0x11 | `0x0047EAE0` | oui | oui |
+| 0 | 18 | Exorciste | C-O-T-X-C-O-T-O | 40 | 62 | 45 | 0x12 | `0x0047F070` | oui | oui |
+| 0 | 19 | Durdur | C-T-X-O-O-X-T-C | 38 | 64 | 36 | 0x13 | `0x0047F2B0` | oui | oui |
+| 0 | 20 | Boule de feu | O-T-O-C-C-O-T-TO-O | 45 | 68 | 60 | 0x14 | `0x0047F570` | oui | oui |
+| 0 | 21 | Ventilo | T-C-O-T-C-T-O-TO | 45 | 70 | 60 | 0x15 | `0x0047FB80` | oui | oui |
+| 0 | 22 | Démon polaire | X-T-X-C-C-X-C-XC-O | 30 | 75 | 60 | 0x16 | `0x0047FE60` | oui | oui |
+| 0 | 23 | Stalagtite | C-T-C-X-T-C-O-X-O | 45 | 72 | 60 | 0x17 | `0x00480600` | oui | oui |
+| 0 | 24 | Satanas | C-X-O-T-C-X-O-T-C-O-X-T-O | 60 | 74 | 60 | 0x18 | `0x00480B90` | oui | oui |
+| 0 | 25 | Au sec | T-X-O-C-XC-TO-TOXC | 80 | 76 | 120 | 0x19 | `0x00481670` | oui | oui |
+| 0 | 26 | Colère | XC-C-X-O-T-C-O-T-C-O-X-O | 96 | 0 | 132 | 0x1a | `0x004819D0` | oui | oui |
+| 0 | 27 | Météores | X-T-C-X-T-O-X-C-O-X-C-O-T | 82 | 0 | 96 | 0x1b | `0x00482370` | oui | oui |
+| 0 | 28 | Fusion | TO-T-O-T-C-T-X-T-X-T-T-TO | 100 | 0 | 120 | 0x1c | `0x004828F0` | oui | oui |
 | 1 | 0 | Pardon | X-T-T | 0 | 0 | 20 | 0x1e | `0x0044F060` | oui | **non** |
 | 1 | 1 | Sang pur | T-O-O | 12 | 23 | 12 | 0x1f | `0x00447DF0` | oui | **non** |
 | 1 | 2 | Renfort | C-O-C | 8 | 27 | 8 | 0x20 | `0x00448060` | oui | **non** |
@@ -202,8 +202,8 @@ deux boutons** ; les coups sont separes par un tiret.
 | dont les trois ecoles jouables | **73** |
 | implementees (le gestionnaire existe) | **80** |
 | a transcrire | **0** |
-| lancees en jeu au moins une fois | **16** |
-| dette : implementees mais jamais lancees | **64** |
+| lancees en jeu au moins une fois | **29** |
+| dette : implementees mais jamais lancees | **51** |
 | sous-types non resolvables (>= 0xc0, dependent de la sous-zone) | **0** |
 | fiches des familles 4 a 7, comptees a part | 43 |
 
@@ -286,19 +286,19 @@ corps a tourne, par un sort ou par autre chose.
 | `0x0047DB50` | 1 | oui | oui | Atchoum |
 | `0x0047DF70` | 1 | oui | oui | Assaut magique |
 | `0x0047E260` | 1 | oui | oui | Lumière |
-| `0x0047E590` | 1 | oui | **non** | Eclair |
-| `0x0047EAE0` | 1 | oui | **non** | Trouille |
-| `0x0047F070` | 1 | oui | **non** | Exorciste |
-| `0x0047F2B0` | 1 | oui | **non** | Durdur |
-| `0x0047F570` | 1 | oui | **non** | Boule de feu |
-| `0x0047FB80` | 1 | oui | **non** | Ventilo |
-| `0x0047FE60` | 1 | oui | **non** | Démon polaire |
-| `0x00480600` | 1 | oui | **non** | Stalagtite |
-| `0x00480B90` | 1 | oui | **non** | Satanas |
-| `0x00481670` | 1 | oui | **non** | Au sec |
-| `0x004819D0` | 1 | oui | **non** | Colère |
-| `0x00482370` | 1 | oui | **non** | Météores |
-| `0x004828F0` | 1 | oui | **non** | Fusion |
+| `0x0047E590` | 1 | oui | oui | Eclair |
+| `0x0047EAE0` | 1 | oui | oui | Trouille |
+| `0x0047F070` | 1 | oui | oui | Exorciste |
+| `0x0047F2B0` | 1 | oui | oui | Durdur |
+| `0x0047F570` | 1 | oui | oui | Boule de feu |
+| `0x0047FB80` | 1 | oui | oui | Ventilo |
+| `0x0047FE60` | 1 | oui | oui | Démon polaire |
+| `0x00480600` | 1 | oui | oui | Stalagtite |
+| `0x00480B90` | 1 | oui | oui | Satanas |
+| `0x00481670` | 1 | oui | oui | Au sec |
+| `0x004819D0` | 1 | oui | oui | Colère |
+| `0x00482370` | 1 | oui | oui | Météores |
+| `0x004828F0` | 1 | oui | oui | Fusion |
 
 **74 gestionnaires distincts**, dont **0** a transcrire.
 
