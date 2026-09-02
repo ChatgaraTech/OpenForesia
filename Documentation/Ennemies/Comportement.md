@@ -124,7 +124,7 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 | 7 | `0x0049F0C0` | Homme-lézard · Lézard noir |
 | 10 | `0x0049FAD0` | Trent — **écrite** |
 | 11 | `0x004A0480` | Fleur du mal |
-| 12 | `0x004A13E0` | Wyrm |
+| 12 | `0x004A13E0` | Wyrm — **écrite** |
 | 13 | `0x004A1D50` | Varan — **écrite** |
 | 14 | `0x004A2C90` | Géant — **écrite** |
 | 15 | `0x004A35B0` | Willie — **écrite** |
@@ -133,8 +133,28 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 `0x0049D030` en bloc A et `0x0049F0C0` en bloc B. C'est le rappel concret que la table est
 rechargée par sous-zone.
 
-Les sous-types 7 (`0x0049F0C0`), 10 (`0x0049FAD0`), 13 (`0x004A1D50`), 14 (`0x004A2C90`) et 15
-(`0x004A35B0`) sont **écrits** ; les deux autres du bloc attendent.
+Les sous-types 7 (`0x0049F0C0`), 10 (`0x0049FAD0`), 12 (`0x004A13E0`), 13 (`0x004A1D50`), 14
+(`0x004A2C90`) et 15 (`0x004A35B0`) sont **écrits** ; seule la Fleur du mal attend.
+
+**Le Wyrm `0x004A13E0` est la cinquième bête volante du dépôt, et la seule des cinq à porter DEUX
+gestes.** Le crible l'annonçait près du Crabe géant, une terrestre ; sa liste d'appels dit
+`FUN_0049A8E0` et `FUN_004A1CF0` — donc volante, et sœur de Willie, avec la même interruption
+conditionnelle sur `+0x16`. Le comptage de lignes ne pouvait pas trancher (584 contre 594) ; la
+liste d'appels, si.
+
+Ses deux gestes se lisent dans `+0x42`, comme chez les terrestres : la posture 0 **le coup** — sonde
+`0x005529b0`, décalage vertical `-0x100`, il frappe sous lui, à pleine attaque, sans contrôle
+d'image — et la posture 1 **la charge**, en deux phases, dont la seconde balaie tant que sa vitesse
+à plat dépasse 3. **La charge porte la prise** : le bit `0x20` se pose au premier contact et interdit
+tout second balayage, donc elle ne blesse qu'une fois ; sa victime part à 30 unités vers la cible et
+à `0x18000` de haut, et l'effet naît à la position de la victime. **C'est le geste du Géant greffé
+sur le corps du Trent.**
+
+Ce qui lui appartient en propre est le mouvement : **ses quatre postures amortissent leur poussée
+d'un seizième** au lieu de la poser ou de l'effacer d'un coup — une bête qui vole n'a pas de frein —
+et elle **garde l'animation 0 pour se tourner**, là où toute la famille passe à 1 : elle ne marche
+pas, elle dérive. Enfin, **une fois sur cinq sa replanification à moyenne distance ne change rien du
+tout** et recommence à l'image suivante. Le détail est dans `REVERSE_STATUS.md`.
 
 **Le Varan `0x004A1D50` n'est pas de la même famille que les treize autres.** C'est la première
 routine d'intelligence du dépôt qui n'appelle **aucune** des quatre feuilles partagées
@@ -223,9 +243,8 @@ duelliste.
 
 ### Ce qui reste, au 2026-09-02
 
-**Deux routines restent pour rendre la forêt entièrement stable, et elles sont toutes deux du
-bloc B** : le Wyrm `0x004A13E0` et la Fleur du mal `0x004A0480`. Le Varan `0x004A1D50` a été écrit
-le 2026-09-02.
+**Une seule routine reste pour rendre la forêt entièrement stable : la Fleur du mal `0x004A0480`**,
+du bloc B. Le Varan `0x004A1D50` et le Wyrm `0x004A13E0` ont été écrits le 2026-09-02.
 
 Le Géant `0x004A2C90`, Willie `0x004A35B0` et le Trent `0x0049FAD0` ont été écrits le 2026-09-01,
 dans l'ordre du crible ci-dessous plutôt que dans celui des tailles, et **le crible a eu raison les
@@ -248,7 +267,7 @@ ou trois lignes, comme `0x004A4270`.
 | `0x004A2C90` | Géant | 2 336 | `0x0049B840`, le Grizzly | **283** — **écrite** |
 | `0x004A35B0` | Willie | 1 664 | `0x0049A360`, la Coccinelle | **417** — **écrite** |
 | `0x0049FAD0` | Trent | 2 480 | `0x0049E190`, le Goblin-sorcier | **454** — **écrite** |
-| `0x004A13E0` | Wyrm | 2 320 | `0x0049C0B0`, le Crabe | 583 |
+| `0x004A13E0` | Wyrm | 2 320 | `0x0049C0B0`, le Crabe | 583 — **écrite, et le voisin était FAUX** |
 | `0x004A1D50` | Varan | 3 904 | `0x00499DE0`, la Fourmi géante | 1 171 — **écrite** |
 | `0x004A0480` | Fleur du mal | 3 936 | `0x00499DE0`, la Fourmi géante | 1 262 |
 
@@ -267,13 +286,29 @@ près du **Goblin-sorcier**, s'est révélé être ce que ce voisinage suggérai
 Autrement dit, **la colonne « le plus proche déjà écrit » ne mesure pas que du code : elle attrape
 aussi des parentés de comportement.**
 
-**Le Varan, écrit le 2026-09-02, a donné la limite de l'instrument.** Annoncé à 1 171 lignes de la
-Fourmi géante, il n'est pas une bête exotique : c'est un corps qui **inline** les feuilles que ses
-sœurs appellent, et qui en a donc mécaniquement beaucoup plus de lignes. Un vrai changement de
-charpente s'y ajoutait, mais les deux se confondaient dans le chiffre. La correction est bon marché
-et vaut pour la Fleur du mal, qui porte le même écart : **avant de mesurer les lignes, comparer les
-listes d'appels** — `grep -o "call .*" *.asm | sort -u`. Deux corps qui n'appellent pas les mêmes
-feuilles ne sont pas comparables ligne à ligne.
+**Le Varan et le Wyrm, écrits le 2026-09-02, ont donné la limite de l'instrument — deux fois, et de
+deux façons différentes.**
+
+Le **Varan**, annoncé à 1 171 lignes de la Fourmi géante, n'est pas une bête exotique : c'est un
+corps qui **inline** les feuilles que ses sœurs appellent, et qui en a donc mécaniquement beaucoup
+plus de lignes. Un vrai changement de charpente s'y ajoutait, mais les deux se confondaient dans le
+chiffre.
+
+Le **Wyrm** est le cas symétrique, et le plus instructif : le crible désignait le **Crabe géant**,
+une terrestre, alors que le Wyrm est une **volante**. Recompté après coup, l'écart avec sa vraie
+sœur Willie est de **584 lignes contre 594 pour le Crabe** — dix lignes sur six cents, c'est-à-dire
+une égalité que le comptage ne peut pas trancher, et il avait tranché dans le mauvais sens.
+
+**Donc : avant de mesurer les lignes, comparer les listes d'appels.**
+
+```sh
+grep -o "call      00[0-9A-F]*h" Legacy/Raw/Blaze/FUN_XXXXXXXX.asm | sort -u
+```
+
+`FUN_0049A8E0` + `FUN_004A1CF0` ⇒ volante ; `FUN_00488160` + `FUN_004DFAF0` + `FUN_004E3770` ⇒
+terrestre ; **aucun des deux** ⇒ charpente propre, comme le Varan. Deux corps qui n'appellent pas
+les mêmes feuilles ne sont pas comparables ligne à ligne, et la colonne « écart » ne veut alors
+rien dire.
 
 Le détail est dans `REVERSE_STATUS.md`, section « les six du bloc B passées au crible ».
 

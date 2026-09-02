@@ -2283,6 +2283,37 @@ quatrieme mot est nul. Les trois sont de la **famille 0** aux indices **3, 13 et
 sur trois leur sont communs — ce qui rapproche les deux especes plus que leurs blocs ne le
 laisseraient croire (le Trent est en bloc B, le Behemoth en bloc C).
 
+## `0x005529b0` et `0x005529bc` — les deux sondes du Wyrm, et la region est CLOSE (2026-09-02)
+
+```
+0x005529b0: 0000 1e00 4600 6400 00ff 5a00     le coup   {0, 0x1e, 0x46, 0x64, -0x100, 0x5a}
+0x005529bc: 0000 1e00 3200 7800 0000 5a00     la charge {0, 0x1e, 0x32, 0x78,       0, 0x5a}
+```
+
+**Les deux gabarits de portee de `FUN_004A13E0`.** Le premier porte le decalage vertical `-0x100` de
+la Coccinelle : le Wyrm **frappe sous lui**. Le second est plat et va deux fois plus loin devant
+(`0x78` contre `0x64`) : c'est la charge, a l'horizontale.
+
+**Et ils closent la suite.** Le releve du 2026-09-01 notait que les sondes du Trent et du Geant
+« comblaient le trou » entre `0x00552978` et `0x005529e8`, mais il restait vingt-quatre octets sans
+emploi connu entre la table des sorts du Trent (`0x005529a8`, quatre mots) et le sort du Varan
+(`0x005529c8`). C'etait exactement la place de ces deux gabarits. La suite
+
+```
+00552978  gestes de sort du Goblin-sorcier   (12 mots)
+005529a8  sorts du Trent                     (4 mots)
+005529b0  sonde du coup du Wyrm              (6 mots)
+005529bc  sonde de la charge du Wyrm         (6 mots)
+005529c8  sort du Varan                      (2 mots)
+005529d0  sonde de la patte du Geant         (6 mots)
+005529dc  sonde du bond du Geant             (6 mots)
+005529e8  sonde de la griffe du Grizzly      (6 mots)
+005529f4  sonde de la charge du Grizzly      (6 mots)
+```
+
+est desormais **entierement attribuee, sans trou**. C'est le controle croise le plus fort qu'on ait
+sur ces lectures : chaque table est bornee par sa voisine des deux cotes.
+
 ## `0x005529c8` — le sort du Varan, un mot et un seul (2026-09-02)
 
 ```

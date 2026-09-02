@@ -20842,3 +20842,127 @@ Zone 3 passe à **134 des 136**. Et la leçon du Varan vaut d'avance pour la Fle
 le même écart énorme : **avant de commencer, comparer les listes d'appels.** Si elle n'appelle pas
 `FUN_00488160` ni `FUN_004E3770`, c'est une seconde routine de la charpente du Varan, et les cinq
 feuilles écrites aujourd'hui la couvrent déjà.
+
+## 2026-09-02 (suite) — `0x004A13E0`, le Wyrm : le crible s'était trompé de sœur, la liste d'appels l'a corrigé
+
+2 416 octets, absents de `Blaze.c`, cinquante-six étiquettes, une table de sauts à quatre entrées à
+`0x004A1CD4`. Relevé : `Legacy/Raw/Blaze/FUN_004A13E0.asm`.
+
+### La leçon du Varan a servi le jour même, et elle a coûté une commande
+
+Le crible du 2026-09-01 l'annonçait à **583 lignes du Crabe géant** — une **terrestre**. La première
+chose faite ce matin, avant toute lecture, a été de comparer les listes d'appels :
+
+```
+grep -o "call      00[0-9A-F]*h" Legacy/Raw/Blaze/FUN_004A13E0.asm | sort -u
+```
+
+Elle appelle **`FUN_0049A8E0`** (l'intégration volante) et **`FUN_004A1CF0`** (l'interruption
+volante), et **ni `FUN_00488160` ni `FUN_004DFAF0`**. C'est une **volante**, et sa vraie sœur est
+**Willie `0x004A35B0`** : même queue, même interruption conditionnelle sur `+0x16`, même masque
+`0xdfffd8ff` réservé à la branche volante.
+
+Recompté après coup, à titre de contrôle : **584 lignes d'écart avec Willie contre 594 avec le
+Crabe**. Dix lignes sur près de six cents — le comptage ne pouvait pas trancher, et il avait tranché
+dans le mauvais sens. **La liste d'appels, elle, tranche sans ambiguïté.** C'est le deuxième cas en
+deux transcriptions, et cela suffit à faire de la comparaison des appels le *premier* geste, avant
+le comptage.
+
+Le tri « volante ou terrestre » que `Comportement.md` recommande depuis l'Abeille est exactement
+cela ; ce qui manquait, c'était de l'appliquer **avant** de croire le chiffre.
+
+### Elle a deux gestes, et c'est ce qui la sépare des quatre autres volantes
+
+La Coccinelle, l'Abeille, l'Abeille tueuse et Willie n'en ont qu'un. Le Wyrm en a **deux**, lus dans
+`+0x42` comme chez le Crabe, le Grizzly et le Géant : la posture 0 porte **le coup**, la posture 1
+**la charge**. C'est le croisement des deux axes décrit depuis l'Abeille — queue volante, charpente
+de terrestre —, poussé un cran plus loin.
+
+**Le coup** (`0x004a16d7`) n'a aucun contrôle d'image : il balaie à chaque image du geste, comme la
+Coccinelle, et il porte **à pleine attaque**. Sa sonde `0x005529b0` porte le décalage vertical
+`-0x100` : **il frappe sous lui**. Il finit sur le rebours `+0x43`, pas sur l'animation.
+
+**La charge** (`0x004a1486`) a deux phases dans `+0x10`. À **1**, une seule image — la seizième —
+verse `(hardiesse + 0x500) << 7` d'un coup dans les deux vitesses à plat, laisse
+`(hardiesse + 0x60) << 7` de poussée tenue, et passe en phase 0. À **0**, elle balaie à chaque image
+**tant que sa vitesse à plat dépasse 3**, et ne se ferme que quand l'animation est finie *et* que
+cette vitesse est retombée sous `hardiesse / 8 + 1`. C'est le geste du Trent, sur une volante.
+
+### Et sa charge porte la prise : elle ne blesse qu'une fois
+
+Le bit `0x20` est posé dès que le balayage rencontre quelqu'un, et il barre tout balayage ultérieur
+jusqu'à la fermeture du geste. **Une charge de Wyrm ne blesse qu'une seule fois**, si longue
+qu'elle soit — et les deux bits tombent ensemble (`0xffffffdd`) à la fermeture.
+
+Ce qu'elle inflige est la **moitié** de l'attaque du bloc de modèle, comme le Crabe, le Grizzly, le
+Géant et le Behemoth ; la victime part à **30 unités le long du cap vers la cible**, cap relatif
+compris — le geste du Géant, au facteur près — et à `0x18000` de haut. L'effet `0x39` naît **à la
+position de la victime**, la position du Wyrm étant échangée puis rendue autour de la naissance :
+encore le motif du Géant.
+
+Autrement dit **le geste de charge du Wyrm est celui du Géant greffé sur le corps du Trent**. Aucune
+des deux routines n'a été relue pour l'écrire — les deux transcriptions du dépôt ont suffi.
+
+### Deux sondes, et la plus haute est celle du coup
+
+`0x005529b0` = `{0, 0x1e, 0x46, 0x64, -0x100, 0x5a}`, `0x005529bc` = `{0, 0x1e, 0x32, 0x78, 0,
+0x5a}`. La première frappe sous elle et court ; la seconde est plate et porte deux fois plus loin
+devant (`0x78` contre `0x64`). **Elle mord d'en haut et charge à l'horizontale.**
+
+**Et ces vingt-quatre octets ferment la région.** `DataSymbols.md` notait depuis le 2026-09-01 que
+la suite `0x00552978` → `0x005529f4` était « comblée » par les sondes du Trent et du Géant, mais il
+restait sans emploi connu l'intervalle entre la table des sorts du Trent (`0x005529a8`, quatre mots)
+et le sort du Varan (`0x005529c8`). C'était exactement la place de ces deux gabarits. La suite est
+maintenant **entièrement attribuée**, sans trou.
+
+### Ses quatre postures amortissent leur poussée d'un seizième
+
+Aucune terrestre ne fait cela : chez elles `+0x5c` est posé ou effacé d'un coup. Ici la poussée
+**glisse** — les postures 0 et 1 la laissent décroître vers zéro par seizièmes, la 2 la ramène vers
+`(hardiesse + 0x1a0) << 7`, le geste du coup vers `(hardiesse + 0x280) << 7`. Une bête qui vole n'a
+pas de frein, et le corps l'écrit ainsi.
+
+La posture 3 est à part : elle verse `(hardiesse + 0x40) << 7` **à chaque image** dans les vitesses,
+le long du cap rangé en `+0x10`, puis remet la poussée à zéro. Ce n'est pas la ruée d'une seule
+image de l'Abeille tueuse — c'est une accélération continue dont l'intégration garde ce qu'elle
+veut.
+
+**Et elle garde l'animation 0 pour se tourner**, là où toute la famille passe à 1 : le Wyrm ne
+marche pas, il dérive. Seule la posture 2 pose l'animation 1, et le coup l'animation 3.
+
+### Une fois sur cinq, sa replanification ne change rien
+
+Trois plages — sous `0xfa` le corps à corps, sous `0x1f4` l'approche, au-delà l'errance — mais elles
+ne se ressemblent pas.
+
+Le **corps à corps** n'a que deux issues : mordre (six fois sur dix) ou errer. Pas de posture 2, pas
+de recul.
+
+L'**approche** en a trois, dont **une qui ne fait rien** : un tirage de `0x50` à `0x63` rend la main
+sans toucher ni la posture ni le rebours. Comme `+0x43` reste à zéro, la replanification retournera
+au même point à l'image suivante et retirera. **Ce n'est pas une branche oubliée, c'est une image
+perdue** — une sur cinq, à cette distance. Transcrite comme un `return` nu, et signalée sur place.
+
+Le **lointain** répartit trois fois : repos, hésitation, errance sur un cap **absolu** tiré au
+hasard (`(short)rand()`), sans rapport avec la cible — la seule des trois errances à faire cela.
+
+### Son seuil d'engagement est toujours au-dessus de sa plage
+
+Le corps à corps teste `distance >= 0x12c - hasard % (timidité * 2 + 1)` pour refuser. C'est la
+forme de l'Abeille tueuse, qui teste `0xfa - hasard % (timidité * 2 + 1)` — mais **avec `0x12c`
+alors que la plage s'arrête à `0xfa`**.
+
+Conséquence : le seuil ne peut descendre sous `0x12c` que de `2 × timidité` au plus, donc **un Wyrm
+dont la timidité est inférieure à 25 mord sans condition de distance**. Seul un Wyrm très craintif,
+et seulement au bord de sa plage, peut se voir refuser un engagement. La soustraction n'est pas
+morte, mais elle ne mord que dans un coin.
+
+**Et son rebours n'est pas celui de la famille** : `hasard % 10 + timidité / 4 + 10` sur ses cinq
+sites, contre `hasard % 10 + timidité / 2 + 0x14` pour `SceneEntityDelay`. Le quart de la timidité
+et dix images de socle au lieu de vingt — **il se ravise deux fois plus vite que les terrestres.**
+
+### Ce qui reste en zone 3
+
+Une seule : **`0x004A0480`, la Fleur du mal** (3 936 octets, annoncée à 1 262 lignes de la Fourmi
+géante). Zone 3 passe à **135 des 136**. Le premier geste sur elle est écrit d'avance : comparer sa
+liste d'appels avant de croire le chiffre.
