@@ -21078,3 +21078,115 @@ Les 136 créneaux de la zone 3 sont écrits, mais **24 seulement sont éprouvés
 pour montrer : un corps transcrit d'après le désassembleur et qui compile n'est pas un corps qui a
 tourné. La forêt est le premier lieu où cette dette est *la seule qui reste*, et donc le premier où
 une séance de jeu peut se lire comme une mesure et non comme une chasse au plantage.
+
+## 2026-09-02 (suite 3) — le taux de doublon, mesuré : 24 % des corps, 38 % sur les IA
+
+Toute estimation de la charge restante butait sur une inconnue : **combien des 1 012 gestionnaires à
+transcrire sont des ré-émissions du même corps ?** La forêt suggérait « beaucoup » — le Grizzly
+`0x004A4270` était le Grizzly `0x0049B840` à deux immédiates près — mais un cas ne fait pas un taux.
+
+`OpenForesia.Tools/census-duplicates.sh` répond sans rien estimer.
+
+### La méthode, et le détail qui la fait ou la défait
+
+Les 1 430 corps sont désassemblés de leur adresse à la **borne suivante** — l'union des adresses de
+gestionnaires et des `FUN_xxxxxx @ 0x…` de `Blaze.c` —, puis normalisés et comparés par empreinte.
+
+**Le détail qui décide de tout est la troncature à la dernière instruction `ret`.** Sans elle, deux
+émissions du même corps ne se ressemblent pas : leurs fenêtres n'ont pas la même longueur, donc
+elles traînent un bourrage et parfois une table de sauts différents. La première version de la
+mesure a donné « la paire de Grizzlys n'est pas un doublon », ce qui est faux et contredit le relevé
+du 2026-09-01. Avec la troncature, elle rentre dans le rang.
+
+Deux normalisations, et il faut les deux :
+
+- **STRICT** ne masque que les cibles de saut et d'appel — le placement, rien d'autre ;
+- **LOOSE** masque toute immédiate qui ressemble à une adresse.
+
+**Le contrôle est la paire de Grizzlys**, dont on sait qu'elle est le même corps à deux immédiates
+près, et que ces deux immédiates désignent des données identiques. Une mesure correcte doit donc
+rendre STRICT *différent* et LOOSE *identique* — c'est exactement ce qu'elle rend, et le script le
+vérifie avant d'imprimer quoi que ce soit. **Une mesure qui ne se contrôle pas sur un cas connu ne
+vaut rien** ; celle-ci en a un, et c'est ce qui autorise à lire la suite.
+
+### Le résultat
+
+| le reste | corps | corps réels | gratuits | instructions à lire |
+|---|---:|---:|---:|---:|
+| routines d'IA | 141 | **88** | **38 %** | 81 075 sur 127 048 |
+| gestionnaires simples | 871 | 678 | 22 % | 77 929 sur 97 730 |
+| **total** | **1 012** | **766** | **24 %** | **159 004 sur 224 778** |
+
+Sur les 246 corps gratuits, **70 sont déjà des copies exactes de quelque chose d'écrit** et 176 sont
+des copies d'un frère non écrit — à écrire une fois, à renvoyer ensuite.
+
+**Et le taux est le plus élevé là où il coûte le plus cher.** Les routines d'intelligence, qui
+pèsent 57 % du volume restant, sont **gratuites à 38 %** ; les gestionnaires simples, à 22 %. C'est
+l'inverse de ce qu'on pouvait craindre.
+
+### Ce que la forêt a déjà payé ailleurs
+
+Les corps écrits en forêt couvrent **21 routines d'IA** des autres zones, exactement :
+
+| écrit en forêt | couvre |
+|---|---|
+| le Varan `0x004A1D50` (1 074 instr) | `0x004F14F0` — la grotte scellée |
+| le Wyrm `0x004A13E0` (718) | `0x004E37D0`, `0x004E84E0`, `0x004ED250`, `0x004EFC20` |
+| le Goblin-sorcier `0x0049E190` (572) | `0x00487260`, `0x00488210`, `0x004A6A00`, … |
+| Willie `0x004A35B0` (524) | `0x0048C530`, `0x004935F0`, `0x004DC890`, `0x004E9DB0` |
+| l'Homme-lézard `0x0049D030` (789) | `0x004AA070`, `0x004E2D60` |
+| le Crabe `0x0049C0B0` (642) | `0x0048D300` |
+| le Géant `0x004A2C90` (474) | `0x00495C90` |
+
+**Le Varan écrit ce matin avait donc déjà un jumeau dans la grotte scellée**, la zone la plus lourde
+du jeu, et personne ne le savait. C'est l'argument le plus net pour finir une zone avant d'en
+ouvrir une autre : le travail se rembourse ailleurs, à l'insu de celui qui le fait.
+
+### Le rythme, mesuré lui aussi
+
+Compté sur les `case` du répartiteur, commit par commit, du 22 août au 2 septembre — onze séances
+qui contenaient aussi le recensement des objets, celui des sorts, le simulateur de montée de niveau
+et le bestiaire, donc c'est bien une moyenne « on ne faisait pas que ça » :
+
+| | net de doublon |
+|---|---:|
+| filière IA | 2 128 instructions / séance |
+| filière simple | 3 967 instructions / séance |
+| toutes filières | **5 128 instructions / séance** |
+
+### La projection
+
+- filière IA : 81 075 ÷ 2 128 = **38 séances**
+- filière simple : 77 929 ÷ 3 967 = **20 séances**
+- menées **ensemble** dans les mêmes séances, ce qui s'est fait le 29 août (+7 IA *et* +52 simples) :
+  **~44 séances**
+- menées **en alternance** : ~58
+
+**L'estimation à vue du même jour donnait 35 à 50, centre 40. La mesure donne 44.** Elle n'a donc
+pas déplacé le chiffre — elle a supprimé l'incertitude qui l'entourait, et pour une raison qui vaut
+d'être notée : **l'économie de 29 % sur le volume est presque exactement annulée par un effet de
+composition.** Ce qui reste est deux fois plus dense en intelligence que ce qui est fait — 57 % du
+volume contre 23 % —, et la filière IA avance à la moitié du rythme de l'autre. Les deux effets se
+compensent.
+
+### Ce que le calcul donne comme ordre de travail
+
+Il reste **32 routines d'IA qui sont des copies exactes d'un frère non écrit** : les écrire par
+représentant, et non par zone, économise 32 corps entiers. Les plus rentables :
+
+| groupe | taille | à écrire une fois |
+|---:|---:|---|
+| 5 corps | 1 179 instr | `0x004A7190` `0x004B22D0` `0x004E8DF0` `0x004EDB60` `0x004F8270` |
+| 3 corps | 1 212 | `0x004D1F70` `0x004E67C0` `0x004EB530` |
+| 3 corps | 1 110 | `0x004ACC20` `0x004CE120` `0x004DB610` |
+| 3 corps | 1 008 | `0x004F3350` `0x004F5630` `0x004FC9B0` |
+| 3 corps | 986 | `0x004E56C0` `0x004EA430` `0x004EEB20` |
+| 3 corps | 970 | `0x004BFE90` `0x004E7810` `0x004EC580` |
+
+Ces six groupes seuls représentent **20 corps pour 6 lectures**, et chacune de ces lectures est une
+grosse routine — c'est le meilleur rendement disponible dans tout ce qui reste.
+
+**Ce que la mesure ne dit pas**, et c'est sa limite : elle ne compte que les doublons **exacts**. La
+Fleur du mal n'en était pas un et a pourtant coûté une fraction de sa taille, parce qu'elle
+partageait la *charpente* du Varan. Les 766 corps « réels » sont donc un majorant : la vraie charge
+est plus basse, d'une quantité que seule la lecture révèle.
