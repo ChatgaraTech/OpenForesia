@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-09-01** | **20** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`, `0x004A35B0`, `0x0049FAD0`) |
+| **écrits au 2026-09-02** | **23** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`, `0x004A35B0`, `0x0049FAD0`, `0x004A1D50`, `0x004A13E0`, `0x004A0480`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -55,7 +55,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | 0 | L'auberge | 2 | 1 | 0 |
 | 1 | La mine abandonnée | 23 | 17 | 0 |
 | 2 | La montagne du dragon de feu | 2 | 1 | 0 |
-| **3** | **La forêt** | **23** | **22** | **9** |
+| **3** | **La forêt** | **23** | **22** | **22 — complète** |
 | 4 | La vieille tour | 22 | 10 | 0 |
 | 5 | Le Labyrinthe des morts | 19 | 13 | 0 |
 | 6 | Le château de l'immortel | 21 | 9 | 0 |
@@ -123,7 +123,7 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 |---|---|---|
 | 7 | `0x0049F0C0` | Homme-lézard · Lézard noir |
 | 10 | `0x0049FAD0` | Trent — **écrite** |
-| 11 | `0x004A0480` | Fleur du mal |
+| 11 | `0x004A0480` | Fleur du mal — **écrite** |
 | 12 | `0x004A13E0` | Wyrm — **écrite** |
 | 13 | `0x004A1D50` | Varan — **écrite** |
 | 14 | `0x004A2C90` | Géant — **écrite** |
@@ -133,8 +133,22 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 `0x0049D030` en bloc A et `0x0049F0C0` en bloc B. C'est le rappel concret que la table est
 rechargée par sous-zone.
 
-Les sous-types 7 (`0x0049F0C0`), 10 (`0x0049FAD0`), 12 (`0x004A13E0`), 13 (`0x004A1D50`), 14
-(`0x004A2C90`) et 15 (`0x004A35B0`) sont **écrits** ; seule la Fleur du mal attend.
+**Les sept du bloc B sont écrits depuis le 2026-09-02**, et avec eux la forêt entière.
+
+**La Fleur du mal `0x004A0480` est la seconde routine de la charpente du Varan**, et c'est ce qui
+en fait une famille plutôt qu'un cas isolé : aucune des quatre feuilles partagées, les quatre
+feuilles propres au Varan (`FUN_004A1020`, `FUN_004C3810`, `FUN_004D5DE0`, `FUN_004D5E60`), et
+**exactement la même sonde bâtie sur la pile**, `{0, 0x1e, 0x32, 0x64, 0, 0x64}`, mot pour mot. Son
+bloc de heurt ne diffère que par le masque de contact — `0x2000af82` contre `0x2000ad82`, un bit —,
+si bien qu'il est désormais partagé avec un paramètre.
+
+Ce qui lui appartient : **son geste sème des braises** — la posture `0x0b` fait naître une image sur
+trois le sous-type `0xEF`, qui se résout en `0x004101D0`, la braise qui dérive, déjà écrite ; et
+**elle ne choisit pas sa proie, elle la tire au sort** (même chercheur que le Varan, mais avec le
+mode 0, qui n'a pas de `case` : seule la pièce à 60 % agit). Elle n'a ni sort, ni prise, ni poison —
+cinq de ses douze cases sont vides —, sa posture 7 n'est joignable que par un mur, et **ses deux
+dernières bandes de replanification ne se recouvrent pas**, ce qui range le recouvrement du Varan du
+côté des singularités.
 
 **Le Wyrm `0x004A13E0` est la cinquième bête volante du dépôt, et la seule des cinq à porter DEUX
 gestes.** Le crible l'annonçait près du Crabe géant, une terrestre ; sa liste d'appels dit
@@ -241,10 +255,16 @@ l'incantation dans la fiche de sort elle-même. Sa gravité `0x7fff` est le maxi
 signé ; ses cônes de virage sont des constantes et son rythme ignore la timidité — une masse, pas un
 duelliste.
 
-### Ce qui reste, au 2026-09-02
+### Rien ne reste : la forêt est complète (2026-09-02)
 
-**Une seule routine reste pour rendre la forêt entièrement stable : la Fleur du mal `0x004A0480`**,
-du bloc B. Le Varan `0x004A1D50` et le Wyrm `0x004A13E0` ont été écrits le 2026-09-02.
+**Les 136 créneaux de la zone 3 ont un corps.** C'est la **première zone entièrement implémentée du
+dépôt** — la zone 0 en est à 261 sur 274, et les neuf autres entre 16 et 22 sur des centaines. Les
+trois dernières, le Varan `0x004A1D50`, le Wyrm `0x004A13E0` et la Fleur du mal `0x004A0480`, ont
+été écrites le 2026-09-02.
+
+**La dette qui reste est celle de l'épreuve, pas de l'écriture** : 24 des 136 seulement ont été vus
+tourner en jeu. La forêt est donc le premier lieu où une séance de test se lit comme une mesure et
+non comme une chasse au plantage.
 
 Le Géant `0x004A2C90`, Willie `0x004A35B0` et le Trent `0x0049FAD0` ont été écrits le 2026-09-01,
 dans l'ordre du crible ci-dessous plutôt que dans celui des tailles, et **le crible a eu raison les
@@ -269,7 +289,7 @@ ou trois lignes, comme `0x004A4270`.
 | `0x0049FAD0` | Trent | 2 480 | `0x0049E190`, le Goblin-sorcier | **454** — **écrite** |
 | `0x004A13E0` | Wyrm | 2 320 | `0x0049C0B0`, le Crabe | 583 — **écrite, et le voisin était FAUX** |
 | `0x004A1D50` | Varan | 3 904 | `0x00499DE0`, la Fourmi géante | 1 171 — **écrite** |
-| `0x004A0480` | Fleur du mal | 3 936 | `0x00499DE0`, la Fourmi géante | 1 262 |
+| `0x004A0480` | Fleur du mal | 3 936 | `0x00499DE0`, la Fourmi géante | 1 262 — **écrite, et le voisin était FAUX** |
 
 **La colonne de droite est la recette « calquer sur une sœur » rendue mesurable** : elle dit sur
 quel corps déjà transcrit ouvrir la comparaison. Et elle **change l'ordre de travail** — par la

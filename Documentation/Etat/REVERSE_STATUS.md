@@ -20966,3 +20966,115 @@ et dix images de socle au lieu de vingt — **il se ravise deux fois plus vite q
 Une seule : **`0x004A0480`, la Fleur du mal** (3 936 octets, annoncée à 1 262 lignes de la Fourmi
 géante). Zone 3 passe à **135 des 136**. Le premier geste sur elle est écrit d'avance : comparer sa
 liste d'appels avant de croire le chiffre.
+
+## 2026-09-02 (suite 2) — `0x004A0480`, la Fleur du mal : LA FORÊT EST COMPLÈTE
+
+3 936 octets, absents de `Blaze.c`, la plus grosse des 136 de la zone. Relevé :
+`Legacy/Raw/Blaze/FUN_004A0480.asm`.
+
+**Zone 3 passe à 136 des 136.** C'est la **première zone du dépôt entièrement implémentée** — zone 0
+en est à 261 sur 274, et les neuf autres entre 16 et 22 sur des centaines. Toutes les tables de
+sauts que les sous-zones 0 à 9 de la forêt peuvent atteindre ont désormais un corps derrière chaque
+créneau non vide.
+
+### La prédiction de la veille était bonne, et elle a coûté une commande
+
+Le relevé du Varan, écrit quelques heures plus tôt, se terminait par : « la leçon du Varan vaut
+d'avance pour la Fleur du mal, qui portait le même écart énorme : **avant de commencer, comparer
+les listes d'appels.** Si elle n'appelle pas `FUN_00488160` ni `FUN_004E3770`, c'est une seconde
+routine de la charpente du Varan, et les cinq feuilles écrites aujourd'hui la couvrent déjà. »
+
+C'est exactement cela. Sa liste d'appels donne `FUN_004A1020`, `FUN_004C3810`, `FUN_004D5DE0` et
+`FUN_004D5E60` — les quatre feuilles propres au Varan — et **aucune** des quatre feuilles de la
+famille. **Rien n'a eu besoin d'être écrit pour elle** : le heurt des murs, la pose au sol, le
+chercheur de proie et l'assommement étaient déjà là, et le corps s'est transcrit en lisant.
+
+Recompté après coup, l'écart tombe à **1 164 lignes du Varan**, contre 1 262 de la Fourmi géante
+au relevé du 2026-09-01 — c'est-à-dire que même après avoir écrit sa vraie sœur, le comptage la
+donne encore à plus de mille lignes. **Le chiffre ne descend pas parce que ces corps inlinent leurs
+feuilles** : l'écart mesure la duplication du compilateur, pas la parenté. La liste d'appels, elle,
+donnait la réponse en une seconde. Troisième cas en trois transcriptions.
+
+### La charpente du Varan est une vraie famille, pas un cas isolé
+
+Deux membres, tous deux du bloc B, tous deux sans feuille partagée, tous deux avec leur sonde bâtie
+sur la pile — et **c'est exactement la même sonde**, `{0, 0x1e, 0x32, 0x64, 0, 0x64}`, mot pour mot.
+Le bloc de heurt est le même à **une constante près**, le masque de contact, qui apparaît deux fois :
+`0x2000ad82` pour le Varan, `0x2000af82` pour la Fleur — un bit de plus, `0x200`. Tout le reste, les
+onze champs restaurés compris, coïncide instruction pour instruction.
+
+Il a donc été **paramétré** plutôt que dupliqué : `SettleVaranOnGroundAndWalls` est devenu
+`SettleSceneEntityOnGroundAndWalls(e, hardiesse, masque, placement)`. C'est le même choix que pour
+le Grizzly émis deux fois, à ceci près qu'ici les deux corps diffèrent réellement — d'un `and`.
+
+### Ce qui la sépare du Varan, et c'est peu
+
+**Elle ne choisit pas sa proie, elle la tire au sort.** Même appel à `FUN_004A1020` à la naissance,
+mais avec le **mode 0** — et le mode 0 n'a pas de `case` dans le chercheur. Il ne reste donc que la
+pièce à 60 % qui remplace le mode par `0xffff`, « n'importe qui de vivant » : environ une fois sur
+trois elle change de cible au hasard, sinon elle garde la sienne. Le Varan, lui, demande la
+classe 3. **Le même chercheur sert donc à deux intentions opposées**, et c'est l'argument qui les
+sépare.
+
+**Elle n'a ni sort, ni prise, ni poison.** Douze cases de table de sauts (`0x004A0FE8`) au lieu de
+treize, dont **cinq vides** — 4, 5, 8, 9, 10. Il ne lui reste que attendre, se tourner, approcher,
+louvoyer, bondir, marcher droit, et son geste. Pas de `CastSpell`, pas de projection, pas d'effet de
+piège : trois choses que le Varan fait et qu'elle ignore. Elle n'a pas non plus la machine à poser
+le bit `0x10` sur la posture 5 ; sa posture 5 est vide et rien de plus.
+
+**Son geste porte à pleine attaque.** Elle ne touche pas au `+0x30` du bloc de modèle — le Varan
+prend le quart, le Crabe, le Grizzly, le Géant, le Wyrm et le Behemoth la moitié. Le bloc de modèle
+est d'ailleurs **résolu et jamais lu** : `ResolveEntityBlocks` est appelée, ses trois sorties
+écrites sur la pile, et aucune n'est relue. Un reste du gabarit de la famille.
+
+### Et son geste sème des braises
+
+La posture `0x0b` **ne pose jamais `+0x12`**, donc son corps tourne à chaque image tant qu'elle la
+tient. Une image sur trois, elle fait naître le sous-type **`0xEF`** à sa propre position par
+`FUN_0047AC40`, la table `0x005f2d40`.
+
+Ce sous-type se résout — `0x0056afc8 + 0xEF * 4` déborde de trois tables et retombe sur l'entrée 47
+de `0x0056b2c8` — en **`0x004101D0`, la braise qui dérive**, déjà transcrite le 2026-08-27 : une
+entité qui part tout droit, grossit de trois paliers et s'éteint en rougissant. **Une fleur qui
+crache des étincelles.**
+
+**Et le descripteur d'atlas qu'elle passe est nul, ce qui n'est pas un oubli.** `FUN_0047AC40` range
+son troisième argument dans `+0x3c` de l'entité qui naît ; la Fleur y met zéro parce que la braise
+**s'en donne un elle-même à sa première image** — `0x004101D0` écrit `+0x3c` avant toute lecture.
+C'est le genre de zéro qu'il aurait été tentant de traiter comme une donnée manquante ; il a suffi
+de relire le consommateur.
+
+### Sa posture 7 n'est joignable que par un mur
+
+Le seul site qui pose la posture 7 est le heurt (`0x004a0b71`). Le Varan l'arme aussi depuis sa
+bande du milieu ; la Fleur, jamais — et à la place, sa bande du milieu porte **une branche qui ne
+fait rien** : cible dans la moitié avant, un tirage sur cinq, ni posture ni rebours ne bougent, donc
+le replanificateur retire à l'image suivante.
+
+**C'est le second temps mort de ce genre trouvé aujourd'hui**, après celui du Wyrm, dans deux
+routines sans rapport de charpente. Deux occurrences ne font pas une règle, mais elles font une
+chose à regarder : une bande de replanification peut légitimement ne rien décider.
+
+### Et ses deux dernières bandes ne se recouvrent pas
+
+Celle du milieu s'arrête à `0x258`, exactement où commence celle du lointain. Le Varan, lui, laisse
+la sienne courir jusqu'à `0x2bb` et se fait écraser sa posture entre `0x258` et `0x2bb`.
+
+**Deux routines de la même charpente, une seule des deux avec le défaut.** Cela range le
+recouvrement du Varan du côté des singularités de son corps, et non des traits de famille — ce
+qu'on ne pouvait pas dire hier, faute de second exemplaire.
+
+### Menues différences de réglage
+
+Ses pas de virage prennent le socle `0x28` là où le Varan prend `0x32` ou `0x80` ; sa posture 3
+tourne de `hardiesse * 8 + 0x28`, le pas le plus vif des deux corps ; sa posture 7 pousse à
+`0x7000` et non `0x5000` ; et sa posture 1 ne décompte pas `+0x43`, là où celle du Varan le fait
+descendre à chaque image.
+
+### Ce que la forêt donne comme point d'appui
+
+Les 136 créneaux de la zone 3 sont écrits, mais **24 seulement sont éprouvés** — la colonne
+« testé » de `GestionnairesEntites.md` n'a pas bougé. C'est la dette honnête que le document est fait
+pour montrer : un corps transcrit d'après le désassembleur et qui compile n'est pas un corps qui a
+tourné. La forêt est le premier lieu où cette dette est *la seule qui reste*, et donc le premier où
+une séance de jeu peut se lire comme une mesure et non comme une chasse au plantage.
