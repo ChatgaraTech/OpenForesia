@@ -20663,3 +20663,182 @@ Toutes du bloc B : `0x004A13E0` (Wyrm, 583 lignes du Crabe), `0x004A1D50` (Varan
 `0x004A0480` (Fleur du mal, 1 262). **Les deux derniers sont les deux plus gros et les deux plus
 étrangers à tout ce qui est écrit** — le crible le disait, et ils sont maintenant seuls avec le
 Wyrm.
+
+## 2026-09-02 — `0x004A1D50`, le Varan : la première intelligence bâtie sur une AUTRE charpente
+
+La quatorzième des quatorze routines d'intelligence de la forêt à être lue, et **la première dont
+la lecture ne commence pas par « c'est une sœur de… »**. 3 904 octets, absents de `Blaze.c`,
+cinquante-huit étiquettes, une table de sauts à **treize** entrées à `0x004A2BB8`.
+Relevé : `Legacy/Raw/Blaze/FUN_004A1D50.asm`.
+
+### Le crible avait raison une quatrième fois, mais en disant l'inverse
+
+Le crible du 2026-09-01 l'annonçait à **1 171 lignes** de la Fourmi géante — l'écart le plus grand
+du lot avec la Fleur du mal. Pour le Géant (283), Willie (417) et le Trent (454), la colonne
+« le plus proche déjà écrit » disait *sur quel corps ouvrir la comparaison*. Ici elle dit autre
+chose, et c'est aussi un renseignement : **il n'y a pas de corps sur lequel ouvrir la comparaison.**
+
+Les treize routines précédentes appellent toutes les quatre mêmes feuilles — `FUN_00488160`
+l'intégration, `FUN_004DB5A0` l'animation, `FUN_004DFAF0` la fin de geste, `FUN_004E3770`
+l'interruption. **Le Varan n'en appelle aucune** : il recopie les deux premières en ligne,
+instruction pour instruction, et remplace les deux dernières par un bloc à lui. En échange il
+appelle cinq fonctions qu'aucune de ses sœurs ne connaît : `FUN_004A1020`, `FUN_004D5DE0`,
+`FUN_004D5E60`, `FUN_004C3810` et `FUN_004A2BF0`.
+
+C'est ce qui explique l'écart : **le crible mesure des lignes d'assembleur, et un corps qui inline
+ses feuilles en a mécaniquement beaucoup d'autres.** L'écart de 1 171 n'était donc pas la mesure
+d'une bête exotique, c'était la mesure d'un *choix de compilation* plus un vrai changement de
+charpente. Les deux se confondent dans le chiffre ; seule la liste des appels les sépare, et elle
+coûte une commande.
+
+### Trois différences de forme, et elles se tiennent
+
+**La machine à postures a treize cases**, pas quatre. La table `0x004A2BB8` compte treize entrées
+(0 à `0x0c`), dont trois — 4, 5 et `0x0a` — retombent sur la sortie. La posture **5** est le cas
+propre : elle ne fait rien *et* le prélude lui pose le bit `0x10`, celui que toute la famille lit
+comme « pas de décision ». C'est une posture d'immobilisation, écrite comme telle.
+
+**Le geste n'interrompt pas la posture.** Chez ses treize sœurs, `flags & 2` ouvre un bloc de geste
+qui rend la main ; ici il n'ouvre qu'un **prélude** — la sonde de contact des postures `0x0b` et 8 —
+et la case de la posture s'exécute ensuite **dans tous les cas**. Geste et posture tournent la même
+image. Aucune autre routine du dépôt ne fait cela, et c'est le point qu'il faut avoir en tête pour
+lire le reste : `+0x12` n'est pas un état de geste, c'est un compteur de phase *de la posture*.
+
+**Le cône qui décide n'est pas le pas qui tourne.** Partout ailleurs,
+`TurnSceneEntityTowardTarget` teste l'écart contre la largeur dont il va tourner — un seul nombre.
+Ici les deux sont indépendants : la posture 2 juge sur `0x100` et tourne de `hardiesse * 2 + 0x80`,
+les postures 1, 3 et 8 jugent sur `0xc8` ou `0x100` et tournent de `hardiesse + 0x32`,
+l'incantation juge sur `0xc8` et tourne de `hardiesse / 2 + 0x32`. **Le corps ne rattrape jamais
+son cap d'un coup** : il n'y a pas de branche « l'écart tient dans le cône, prends-le ».
+
+### Il choisit sa proie, et il la choisit par classe
+
+L'octet `+0x41` sert de drapeau « déjà né ». À zéro, la première image appelle **`FUN_004A1020`**
+avec le mode **5**. Aucune des treize autres ne touche à `+0x6c` : elles héritent de la cible que
+la naissance leur a donnée. Le Varan la choisit.
+
+`FUN_004A1020` est le chercheur de proie de la zone — le binaire en émet une copie par zone
+(`0x004a8150`, `0x004c8d80`…), seule celle de la forêt est transcrite. Sa forme :
+
+- une permutation de départ tirée parmi **quatre rotations de `{0,1,2,3}`** bâties sur la pile ; les
+  quatre emplacements sont parcourus dans cet ordre et **le dernier qui convient l'emporte** ;
+- **deux pièces avant tout choix**. La première décide si l'on rechoisit du tout : `hasard % 10`,
+  cinq valeurs sur dix rendent la main sans rien toucher. La seconde décide si le mode demandé
+  compte : `hasard % 10 < 6` le remplace par `0xffff`, « n'importe qui de vivant ». **Un mode n'est
+  donc respecté que deux fois sur dix** ;
+- les modes 1 et 2 se départagent sur le rapport de points de vie `(+0x148 << 12) / +0x14c`, les
+  modes 3 à 7 sur l'octet de classe `MainMem + 0xf0150 + n * 0x2000`. Le mode 5 demande la
+  classe `3`.
+
+Et **ce que la fonction rend quand elle ne choisit pas est `hasard / 10`** — un entier sans rapport
+laissé dans `EAX`. Aucun appelant ne le lit ; il est reproduit pour que la lecture reste
+vérifiable.
+
+### Il se heurte aux murs, et il contourne — le premier du dépôt
+
+Après l'intégration et le placement, le corps relit le mot de contact `+0x90`, lui efface ses bits
+`0x100` et `0x200`, puis pose l'entité au sol contre `+0x60`. **L'image de l'atterrissage ne heurte
+rien** : si l'entité était en l'air et vient de se poser, le corps rend la main avant même de
+regarder le contact. C'est ce qui empêche un bond de se conclure sur un mur.
+
+Si le contact porte `0x2000ad82`, **toute l'image est annulée** : les onze champs de placement —
+`+0x1c`, `+0x20`, `+0x24`, `+0x60`, `+0x64`, `+0x7c`, `+0x80`..`+0x8c`, `+0x90` — sont remis à ce
+qu'ils étaient avant l'intégration, le bit de geste tombe, la posture passe à 7 si elle n'y était
+pas, et **`FUN_004D5E60` dit de quel côté passer**.
+
+`FUN_004D5E60` mérite sa ligne. Elle plante **deux sondes réelles** : elle déplace le corps d'un
+quart de tour à gauche puis d'un quart de tour à droite, `0x3c` unités devant et `0x14000`
+au-dessus, rappelle `FinalizeEntityPlacement2` à chaque fois, relève le mot de contact, et remet
+les onze champs — plus le cap, la seconde fois. Elle rend `-1`, `0` ou `+1` : le côté libre, ou zéro
+si les deux se valent. Le Varan tourne alors de `(hardiesse + 0x40)` de ce côté-là, **et tire à pile
+ou face quand elle rend zéro**.
+
+**Ghidra rend ce corps illisible** — quatre `unaff_`, un seul paramètre récupéré sur deux, les onze
+champs restaurés dans le désordre, et une queue de retour à quatre branches dont il ne reste rien de
+lisible. Le relevé qui compte est `Legacy/Raw/Blaze/FUN_004D5E60.asm` ; le chargement mort de
+`0x004d604d` (`mov eax,[esp+38h]`, qui relit l'emplacement du premier argument réécrit en scratch)
+n'atteint aucune sortie et n'est pas transcrit.
+
+### Il empoigne et il jette — mais le corps est inatteignable
+
+La posture 8 est une **charge amortie** : impulsion `((hardiesse & ~3) + 0x50) << 10`, correction de
+cap tant que le rebours dépasse `0x14`, puis un amortissement d'un huitième par image avec plancher
+à `0x5000`. Son prélude de contact empoigne : l'attaque du bloc de modèle est **divisée par quatre**
+le temps de la résolution — le quart, là où le Crabe, le Grizzly, le Géant et le Behemoth prennent
+la moitié —, et la victime part à `+0x18000` de haut et `[+0x5c] >> 11` d'élan horizontal **dans le
+cap du Varan**, donc dans le prolongement de sa charge. Ni vers elle (le Géant), ni selon l'attaque
+du modèle (le Méchant ours).
+
+**Sauf que ce prélude ne s'exécute jamais.** Il est gardé par le bit `2` du mot de drapeaux, et
+**rien dans la routine ne pose ce bit pour la posture 8** : la replanification l'arme en
+`0x004a2b26` sans lui, et le seul site qui pose le bit est celui de la morsure (posture `0x0b`), qui
+l'efface en finissant. Un Varan charge donc, mais n'empoigne jamais.
+
+Le corps est transcrit quand même, et signalé sur place : **c'est un défaut de 1998, pas un trou de
+lecture.** Il ne s'observe pas à l'écran, seulement à la lecture ; il est donc noté ici et dans le
+commentaire de `VaranSeizeAndThrow_004A1FC7`, et non dans `legacy-bug.md`, qui recense ce qui se
+constate en jouant.
+
+### Le troisième lanceur de sort, et une seule fiche
+
+La posture `0x0c` lit le mot `0x005529c8` — **famille 0, indice `0x13`** —, le range en `+0x06` et
+le passe à `CastSpell_0053A980`. **Une seule fiche**, là où le Behemoth et le Trent en tirent une
+sur trois.
+
+Et c'est **exactement la fiche que ces deux-là ont en commun** : le Behemoth tire 13, 19 ou 23, le
+Trent 3, 13 ou 19, le Varan 19 et rien d'autre. Les trois lanceurs de la forêt partagent donc
+précisément un sort, et c'est celui du plus simple des trois. Le mécanisme, lui, n'est **pas**
+partagé : pas de bit `0x800`, pas de seconde machine à postures, pas d'entité `0xbd`, pas de durée
+lue dans la fiche. L'incantation du Varan est une posture ordinaire qui finit quand l'animation
+finit.
+
+### Cinq façons de se déplacer, dont deux inédites
+
+Marcher (2 et 7), louvoyer en ligne droite le long d'un cap rangé en `+0x10` (3) — la posture 3
+**déplace la position elle-même** puis remet la poussée à zéro, le découplage déjà vu chez le Géant
+et le Behemoth, mais ici l'échelle de vitesse entre dans le produit.
+
+**Bondir (6)** : une impulsion d'une seule image, `(hardiesse + 0x100) << 6` à l'horizontale et
+`+0x1e000` à la verticale, bit 0 posé — et la posture dure tant que l'entité n'a pas touché terre.
+Si elle est **déjà** en l'air quand la posture s'ouvre, le bond est refusé et la posture rendue
+aussitôt.
+
+**Tourner sur place en fonçant (9)** : `+0x10` y porte une **vitesse angulaire**, tirée dans
+`(hasard % 10 - 5) * 10`, donc de `-50` à `+40` par pas de 10, ajoutée au cap **à chaque image**
+pendant que le corps avance à `((hardiesse & ~3) + 0x14) << 10`. C'est une course en arc de cercle.
+**Aucune autre routine du dépôt ne met une vitesse angulaire dans `+0x10`** — partout ailleurs ce
+champ porte un cap absolu ou une distance.
+
+### Et sa replanification a une zone de recouvrement
+
+Trois plages — moins de `0xfa`, de `0xfa` à `0x2bb`, au-delà de `0x258` — mais **les deux dernières
+se chevauchent de `0x258` à `0x2bb`** : entre 600 et 700 unités le corps choisit une posture dans la
+bande du milieu, **puis en rechoisit une dans celle du lointain qui l'écrase**. Le premier tirage
+n'est pas mort pour autant : il laisse derrière lui `+0x10` et `+0x12`, que le second ne réécrit pas
+toujours. Transcrit en trois `if` successifs, et non en cascade, pour que le recouvrement reste
+lisible.
+
+**Le cône du corps à corps s'ouvre avec la timidité** : `timidité * 8 + 0x200`, centré sur
+`timidité * 4`. Un Varan hardi doit être presque en face pour mordre, un Varan craintif mord de
+biais. Et **la portée elle-même est tirée** — `0x64 + hasard % (timidité * 2 + 1)` —, ce qui fait de
+la distance de morsure une grandeur aléatoire : seule du dépôt dans ce cas.
+
+### La morsure applique un effet de piège
+
+Le geste de la posture `0x0b` frappe à la seizième image, une image et une seule, par une sonde
+bâtie sur la pile — `{0, 0x1e, 0x32, 0x64, 0, 0x64}`, la même forme à six mots que celle du Trent.
+Le relevé de `+0x1a` est refait **après** le balayage : si le balayage a fait avancer l'animation,
+le coup ne porte pas.
+
+Et **une morsure sur quinze empoisonne**, à condition que `+0x16` vaille 1 : c'est `FUN_004A2BF0`,
+donc `ApplyTrapEffect_0053C420` derrière le filtre `FUN_004A2C30`. **Aucune des treize routines
+précédentes n'appelle un effet de piège** ; c'était jusqu'ici le chemin des coffres et des pièges de
+sol. Une bête peut donc appliquer l'un d'eux.
+
+### Les deux qui restent en zone 3
+
+`0x004A13E0` (Wyrm, 583 lignes du Crabe) et `0x004A0480` (Fleur du mal, 1 262 de la Fourmi géante).
+Zone 3 passe à **134 des 136**. Et la leçon du Varan vaut d'avance pour la Fleur du mal, qui portait
+le même écart énorme : **avant de commencer, comparer les listes d'appels.** Si elle n'appelle pas
+`FUN_00488160` ni `FUN_004E3770`, c'est une seconde routine de la charpente du Varan, et les cinq
+feuilles écrites aujourd'hui la couvrent déjà.

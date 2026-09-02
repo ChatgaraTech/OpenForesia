@@ -4,6 +4,21 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-02
+
+- feat : **`0x004A1D50`, le VARAN — la premiere intelligence batie sur une AUTRE charpente** : 3 904 octets absents de `Blaze.c`, et la seule des quatorze qui n'appelle AUCUNE des quatre feuilles partagees. Zone 3 passe a **134 des 136**
+- feat : cinq feuilles neuves avec elle — `FUN_004A1020` (le chercheur de proie), `FUN_004D5DE0` (l'annulation de geste par les traits), `FUN_004D5E60` (de quel cote passer), `FUN_004C3810` (l'assommement) et `FUN_004A2BF0` + `FUN_004A2C30` (l'effet de piege filtre)
+- doc : **il CHOISIT sa proie, et par classe** — l'octet `+0x41` sert de drapeau de naissance, et la premiere image appelle `FUN_004A1020` en mode 5, celui qui cherche la classe 3. Aucune des treize autres ne touche a `+0x6c`. Mais le mode n'est respecte que **deux fois sur dix** : le chercheur tire deux pieces avant tout choix
+- doc : **il CONTOURNE les murs, le premier du depot** — sur contact `0x2000ad82` toute l'image est annulee (les onze champs de placement remis), puis `FUN_004D5E60` plante deux sondes reelles, un quart de tour de part et d'autre, et dit quel cote est libre. Pile ou face quand les deux se valent
+- doc : **son geste n'interrompt pas sa posture** — `flags & 2` n'ouvre qu'un prelude, et la case de `+0x42` tourne la meme image. Treize cases dans la table de sauts au lieu de quatre, dont la posture 5 qui ne fait rien et pose le bit `0x10`
+- doc : **le cone qui decide n'est jamais le pas qui tourne** — 0x100 juge et `hardiesse * 2 + 0x80` tourne, 0xc8 juge et `hardiesse + 0x32` tourne. Le corps ne rattrape jamais son cap d'un coup, ce qu'aucune de ses sœurs ne fait
+- doc : **troisieme lanceur de sort de la foret, avec UNE seule fiche** — `0x005529c8`, famille 0 indice 19, et c'est exactement celle que le Behemoth et le Trent ont en commun. Le mecanisme d'incantation, lui, n'est pas partage : pas de bit `0x800`, pas de seconde machine a postures
+- doc : **sa morsure empoisonne une fois sur quinze** — `FUN_004A2BF0`, donc un effet de piege applique par une bete. Aucune des treize routines precedentes n'y touche ; c'etait le chemin des coffres et des pieges de sol
+- doc : **sa posture 9 met une VITESSE ANGULAIRE dans `+0x10`** — `(hasard % 10 - 5) * 10` ajoute au cap a chaque image pendant qu'il fonce : une course en arc de cercle. Partout ailleurs ce champ porte un cap absolu ou une distance
+- doc : **sa PRISE est inatteignable** — la posture 8 arme une charge dont le prelude empoigne, divise l'attaque du modele par quatre et projette la victime, mais rien n'y pose le bit de geste qui le garde. Defaut de 1998, transcrit tel quel et signale sur place
+- doc : **ses deux dernieres plages de replanification se CHEVAUCHENT** — de 0x258 a 0x2bb le corps choisit une posture, puis en rechoisit une qui l'ecrase. Transcrit en trois `if` successifs pour que le recouvrement reste lisible
+- doc : **la limite du crible du doublon est trouvee** — il mesure des lignes d'assembleur, et un corps qui INLINE ses feuilles en a mecaniquement beaucoup plus. L'ecart de 1 171 lignes n'annoncait pas une bete exotique : il additionnait un choix de compilation et un vrai changement de charpente. La correction tient en une commande, comparer les listes d'appels avant de compter les lignes
+
 ## 2026-09-01
 - feat : **`0x0049FAD0`, le TRENT — la SECONDE bete du depot qui lance un sort** — 2437 octets absents de `Blaze.c`. Zone 3 passe a **133 des 136**
 - doc : **le mecanisme d'incantation n'appartient pas au Behemoth** — le Trent le porte au complet : meme bit `0x800`, meme seconde machine a postures dans `+0x10`, meme entite `0xbd`, meme duree lue dans la fiche de sort (`+0x13`), meme masque de traits qui l'annule. Deux constantes les separent. Premier morceau de comportement de cette taille dont on constate qu'il est REUTILISE

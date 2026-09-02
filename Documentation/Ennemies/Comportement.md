@@ -125,7 +125,7 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 | 10 | `0x0049FAD0` | Trent — **écrite** |
 | 11 | `0x004A0480` | Fleur du mal |
 | 12 | `0x004A13E0` | Wyrm |
-| 13 | `0x004A1D50` | Varan |
+| 13 | `0x004A1D50` | Varan — **écrite** |
 | 14 | `0x004A2C90` | Géant — **écrite** |
 | 15 | `0x004A35B0` | Willie — **écrite** |
 
@@ -133,8 +133,28 @@ gestionnaire simple. À vérifier quand on ira dans cette sous-zone — le nom s
 `0x0049D030` en bloc A et `0x0049F0C0` en bloc B. C'est le rappel concret que la table est
 rechargée par sous-zone.
 
-Les sous-types 7 (`0x0049F0C0`), 10 (`0x0049FAD0`), 14 (`0x004A2C90`) et 15 (`0x004A35B0`) sont
-**écrits** ; les trois autres du bloc attendent.
+Les sous-types 7 (`0x0049F0C0`), 10 (`0x0049FAD0`), 13 (`0x004A1D50`), 14 (`0x004A2C90`) et 15
+(`0x004A35B0`) sont **écrits** ; les deux autres du bloc attendent.
+
+**Le Varan `0x004A1D50` n'est pas de la même famille que les treize autres.** C'est la première
+routine d'intelligence du dépôt qui n'appelle **aucune** des quatre feuilles partagées
+(`FUN_00488160`, `FUN_004DB5A0`, `FUN_004DFAF0`, `FUN_004E3770`) : elle inline les deux premières et
+remplace les deux dernières par un bloc à elle. Sa machine à postures a **treize** cases au lieu de
+quatre, son bloc de geste **n'interrompt pas** la posture — les deux tournent la même image —, et
+son cône de décision n'est jamais la largeur dont elle tourne.
+
+Ce qui lui appartient : elle **choisit sa proie** à la naissance, par classe, via `FUN_004A1020`
+(mode 5, la classe 3) — aucune autre ne touche à `+0x6c` ; elle **contourne les murs**, en annulant
+l'image entière puis en demandant à `FUN_004D5E60` de quel côté passer ; elle **tourne sur place en
+fonçant** (posture 9, où `+0x10` porte une vitesse angulaire et non un cap) ; et **sa morsure
+empoisonne une fois sur quinze**, par `FUN_004A2BF0`, le premier effet de piège appliqué par une
+bête.
+
+C'est aussi le **troisième lanceur de sort** de la forêt, avec une seule fiche — `0x005529c8`,
+famille 0 indice 19 — et c'est précisément celle que le Behemoth et le Trent ont en commun. Enfin,
+sa posture 8 arme une **prise** complète (attaque du modèle divisée par quatre, victime projetée)
+qui est **inatteignable** : rien n'y pose le bit de geste qui la garde. Défaut de 1998, transcrit
+tel quel. Le détail est dans `REVERSE_STATUS.md`.
 
 **Le Trent `0x0049FAD0` est la seconde bête du dépôt qui lance un sort**, et elle le fait par le
 mécanisme du Behemoth **au complet** : même bit `0x800` qui bascule sur une seconde machine à
@@ -201,9 +221,12 @@ l'incantation dans la fiche de sort elle-même. Sa gravité `0x7fff` est le maxi
 signé ; ses cônes de virage sont des constantes et son rythme ignore la timidité — une masse, pas un
 duelliste.
 
-### Ce qui reste, au 2026-09-01
+### Ce qui reste, au 2026-09-02
 
-**Trois routines restent pour rendre la forêt entièrement stable, et elles sont toutes du bloc B.**
+**Deux routines restent pour rendre la forêt entièrement stable, et elles sont toutes deux du
+bloc B** : le Wyrm `0x004A13E0` et la Fleur du mal `0x004A0480`. Le Varan `0x004A1D50` a été écrit
+le 2026-09-02.
+
 Le Géant `0x004A2C90`, Willie `0x004A35B0` et le Trent `0x0049FAD0` ont été écrits le 2026-09-01,
 dans l'ordre du crible ci-dessous plutôt que dans celui des tailles, et **le crible a eu raison les
 trois fois** : le Géant annoncé à 283 lignes du Grizzly en est un à trois différences près, Willie
@@ -226,7 +249,7 @@ ou trois lignes, comme `0x004A4270`.
 | `0x004A35B0` | Willie | 1 664 | `0x0049A360`, la Coccinelle | **417** — **écrite** |
 | `0x0049FAD0` | Trent | 2 480 | `0x0049E190`, le Goblin-sorcier | **454** — **écrite** |
 | `0x004A13E0` | Wyrm | 2 320 | `0x0049C0B0`, le Crabe | 583 |
-| `0x004A1D50` | Varan | 3 904 | `0x00499DE0`, la Fourmi géante | 1 171 |
+| `0x004A1D50` | Varan | 3 904 | `0x00499DE0`, la Fourmi géante | 1 171 — **écrite** |
 | `0x004A0480` | Fleur du mal | 3 936 | `0x00499DE0`, la Fourmi géante | 1 262 |
 
 **La colonne de droite est la recette « calquer sur une sœur » rendue mesurable** : elle dit sur
@@ -242,8 +265,15 @@ près du **Goblin-sorcier**, s'est révélé être ce que ce voisinage suggérai
 **lanceur de sorts**, portant le mécanisme d'incantation du Behemoth au complet.
 
 Autrement dit, **la colonne « le plus proche déjà écrit » ne mesure pas que du code : elle attrape
-aussi des parentés de comportement.** Restent les trois du bas du tableau, dont **les deux plus gros
-sont aussi les deux plus étrangers à tout ce qui est écrit** : ce sont eux qui coûteront.
+aussi des parentés de comportement.**
+
+**Le Varan, écrit le 2026-09-02, a donné la limite de l'instrument.** Annoncé à 1 171 lignes de la
+Fourmi géante, il n'est pas une bête exotique : c'est un corps qui **inline** les feuilles que ses
+sœurs appellent, et qui en a donc mécaniquement beaucoup plus de lignes. Un vrai changement de
+charpente s'y ajoutait, mais les deux se confondaient dans le chiffre. La correction est bon marché
+et vaut pour la Fleur du mal, qui porte le même écart : **avant de mesurer les lignes, comparer les
+listes d'appels** — `grep -o "call .*" *.asm | sort -u`. Deux corps qui n'appellent pas les mêmes
+feuilles ne sont pas comparables ligne à ligne.
 
 Le détail est dans `REVERSE_STATUS.md`, section « les six du bloc B passées au crible ».
 

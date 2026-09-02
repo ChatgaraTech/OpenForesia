@@ -2283,6 +2283,23 @@ quatrieme mot est nul. Les trois sont de la **famille 0** aux indices **3, 13 et
 sur trois leur sont communs — ce qui rapproche les deux especes plus que leurs blocs ne le
 laisseraient croire (le Trent est en bloc B, le Behemoth en bloc C).
 
+## `0x005529c8` — le sort du Varan, un mot et un seul (2026-09-02)
+
+```
+0x005529c8: 1300 0000
+```
+
+**Ce n'est pas une table** : `FUN_004A1D50` ne tire rien et n'indexe rien. Il lit l'adresse, range
+le mot en `+0x06` de l'entite, puis passe l'octet haut comme **famille** et l'octet bas comme
+**indice** a `CastSpell_0053A980` — donc **famille 0, indice 19**.
+
+**Et 19 est exactement la fiche que le Trent et le Behemoth ont en commun.** Les trois lanceurs de
+sort de la foret partagent donc precisement un sort, et c'est le seul dont dispose le plus simple
+des trois.
+
+Le mot suivant est nul, et `0x005529d0` ouvre les deux sondes du Geant : le mot est **borne des
+deux cotes**, comme les deux tables ci-dessus.
+
 
 
 ```
