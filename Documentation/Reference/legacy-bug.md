@@ -1579,3 +1579,80 @@ site d'appel.
 ### Où porterait le correctif
 
 Empiler `0` avant les trois autres, et corriger le `add esp,0Ch` en `add esp,10h`.
+
+---
+
+## LB-030 — Le souffle du Méchant ours fait clignoter tout l'écran en rouge
+
+**Constaté** le 2026-09-15 par Vincent dans OpenForesia, au combat contre le Méchant ours (forêt,
+sous-zone 5, « Le lieu de coupe »), puis **confirmé sur le jeu officiel** : même clignotement.
+
+### Symptôme
+
+Pendant le souffle — l'attaque de zone aux grands cercles —, **l'écran entier passe au rouge sombre
+une image sur deux**, pendant trente images. L'effet est agressif pour les yeux, et d'autant plus
+que l'écran rafraîchit vite (voir plus bas).
+
+### Cause
+
+Deux pièces, dont aucune n'est fautive seule.
+
+**1. L'effet pousse le voile plein écran une image sur deux.** Le gestionnaire de sous-zone
+`0x00413330` (`EntityHandler_00413330`, `WorldMapTick.cs`), qui accompagne le souffle, écrit le
+voile `DAT_005de024` à chaque image :
+
+```
+0041343a  mov   byte [5DE027h],1     ; voile armé
+00413441  test  al,1                 ; al = +0x12, le compteur d'images
+00413443  mov   [5DE024h],cl         ; rouge = 0x1e ...
+00413449  jne   00413451h
+0041344b  mov   [5DE024h],bl         ; ... ou 0 une image sur deux
+```
+
+Le vert et le bleu restent à zéro. Une image sur deux le voile vaut donc `0x0100001e`, l'autre
+`0x01000000` — couleur nulle, et `FUN_0051f940` ne dessine alors rien.
+
+**2. Le voile est un rectangle « semi-transparent » que la DLL PC peint opaque.**
+`FUN_0051f940` construit une primitive PlayStation de code **`0x62`** — rectangle plat,
+**semi-transparent** — avec la page `0xe1000200` (mode de mélange 0, moitié-moitié). Sur la console,
+c'était une teinte rouge légère posée sur la scène.
+
+Mais `winsys3d.dll` range `0x60`, `0x61`, `0x62` et `0x63` dans **le même cas** du répartiteur de
+`DrawOTag` (`FUN_00a13400`), servi par `FUN_00a10690`, dont la première chose est
+`FUN_00a03db0(1)` : `ALPHABLENDENABLE = 0`, `SRCBLEND = ONE`, `DESTBLEND = ZERO`. **Le bit de
+semi-transparence est ignoré** et le rectangle est peint opaque. Chaîné en `ot[0]` — le dernier
+maillon parcouru —, il recouvre toute la scène.
+
+C'est donc un **défaut du portage PC** : la semi-transparence du voile a été perdue dans la DLL, et
+un effet pensé comme une pulsation rouge devient un stroboscope plein écran.
+
+### Portée
+
+Tous les voiles plein écran passent par `FUN_0051f940` et donc par ce même rectangle opaque — le
+fondu de transition (`EntityHandler_0040EDF0`), les éclairs clairs (`0x01b4c896`), le voile rouge
+sombre `0x019696ff`. Le stroboscope du Méchant ours est simplement le seul relevé qui **alterne**
+d'une image à l'autre, et c'est l'alternance qui rend l'opacité insupportable.
+
+### Ce que ce port en fait
+
+**Il le reproduit tel quel** : la transcription de `0x00413330` et de `FUN_0051f940` est fidèle, et
+la DLL d'origine fait le reste.
+
+Une aggravation propre à OpenForesia : **le jeu n'a pas de limiteur de cadence**. Il avance d'une
+image par `Present(1, 0)`, c'est-à-dire au rafraîchissement de l'écran ; le jeu de 1998 était calé
+sur 60 Hz. Sur un écran à 120 ou 144 Hz, les trente images du stroboscope défilent deux fois plus
+vite ou davantage (réserve déjà notée dans `Host/D3D11Backend.cs`, `Present`).
+
+### Où porterait le correctif
+
+Deux endroits possibles, du plus au moins fidèle :
+
+- **Côté hôte** (non tenu à la fidélité) : honorer le bit `0x02` des codes `0x60..0x63` en posant le
+  mélange du mode de la page au lieu de l'opaque — c'est-à-dire rendre au voile le comportement de la
+  console. Il faudrait intercepter avant `FUN_00a10690`, la DLL ne transmettant plus l'information au
+  périphérique.
+- **Côté jeu** : dans `EntityHandler_00413330`, ne pas remettre le rouge à zéro une image sur deux.
+  Ce serait une déviation du binaire, à déclarer.
+
+Indépendamment, un limiteur à 60 images par seconde dans `Present` supprimerait l'aggravation liée
+aux écrans rapides.
