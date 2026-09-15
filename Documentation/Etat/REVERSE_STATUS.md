@@ -21368,3 +21368,132 @@ le rend muet** — et un vérificateur muet se lit comme un vérificateur satisf
 transcrire**. Les tables statiques sortent de la liste de courses ; tout ce qui reste est propre à
 une zone. La zone 0 (l'auberge) devient la plus proche de la fin — 35 sur 48 —, et c'est la seule
 où la sonde a déjà relevé du passage.
+
+---
+
+## 2026-09-15 (suite) — la zone 0 : L'AUBERGE EST COMPLÈTE, 48 sur 48
+
+Treize créneaux manquaient ce matin. **Quatre n'ont demandé aucun code**, et c'est le premier
+enseignement de la séance.
+
+### Quatre créneaux récupérés sans écrire une ligne de reconstruction
+
+**Deux verbes étaient écrits mais pas branchés.** `AreaVerb_0053DEA0` et `AreaVerb_0053DF20` — les
+verbes 57 et 58, le coffre — existaient depuis le 2026-08-25, **avec tout le panneau qu'ils
+ouvrent** (`WorldMapDepot.cs`, trois fonctions). Le `switch` de `ScriptOpAreaVerb` ne les citait
+pas : le répartiteur levait sur les deux. Deux lignes.
+
+**Deux autres étaient branchés mais invisibles au recensement.** `0x0053DCB0` et `0x0053DF90` sont
+les créneaux **8 et 10** de la table `0x0056afc8` — les deux crochets par image de la carte du monde
+(`PTR_FUN_0056afe8` et `PTR_FUN_0056aff0`). Ils ne sont pas appelés comme des gestionnaires
+d'entité : l'un ne prend aucun argument, l'autre en prend quatre, et chacun a donc son propre
+aiguillage, `CallEntityHook_0056afe8` et `CallEntityHook_0056aff0`. `census-entity-handlers.sh` ne
+lisait que `DispatchEntityHandlerCore`, `CallSubAreaMoveProbe` et `ScriptOpAreaVerb` ; les deux
+crochets manquaient à la liste.
+
+> **C'est la deuxième fois que ce défaut se produit**, et exactement de la même façon : le
+> 2026-09-01, `CallSubAreaMoveProbe` avait été ajouté pour la même raison. **Un aiguillage qui vit
+> hors du répartiteur principal doit être déclaré au script le jour où il est écrit**, sinon le
+> recensement compte comme dette du travail déjà fait — et personne ne s'en aperçoit, parce qu'un
+> faux « à transcrire » ne fait rien échouer.
+
+### Les six verbes de zone, pris en une passe
+
+Le relevé du 2026-08-23 les avait tous les six vus au désassembleur, sans les écrire, avec cette
+note : *« les prendre en une passe le jour où l'un d'eux sera demandé coûtera moins cher que de les
+reprendre un par un »*. C'est ce qui a été fait, et le pari était bon : les six font ensemble
+416 octets et se lisent en une séance de lecture.
+
+| verbe | corps | ce qu'il fait |
+|---:|---|---|
+| 2 | `0x004430B0` | compte les **neuf** drapeaux bas de `0x005e9000`, résultat dans `0x005e906a` |
+| 4 | `0x00442F20` | remonte à 5 les **sept compteurs de sorts** `+0x178` du personnage |
+| 5 | `0x00442E70` | le plancher de niveau `+0x144` atteint-il 180 ? |
+| 6 | `0x00442EA0` | le même plancher, échelonné de 0 à 5 par seuils de 20 |
+| 7 | `0x00442E20` | le personnage porte-t-il l'**Écu du destin** ? |
+| 12 | `0x00442DB0` | remet un objet tiré au sort à chacun des quatre membres |
+
+**Quatre d'entre eux lisent leur argument ET rendent leur résultat dans la banque `0x005e9060`.**
+Le verbe reçoit l'entité et un `ushort`, comme tous les autres, et n'en fait rien : le membre du
+groupe sur lequel il porte est l'octet 0 de la banque (l'octet **2** pour le verbe 4), et le
+résultat y est réécrit par-dessus. La valeur de retour, elle, est zéro. **Seul le verbe 4 rend une
+vraie valeur** : 1 si aucun compteur n'avait besoin d'être remonté, 0 sinon — la forme exacte d'un
+service d'auberge qu'on ne facture que s'il a servi.
+
+**Le mot `0x2efb` a un nom.** Le relevé de 2026-08-23 s'arrêtait à « cherche le mot `0x2EFB` en
+`+0x86` ». `objets.csv` le donne : c'est l'**Écu du destin**, et c'est la même fiche dans toutes les
+zones où elle apparaît. Le champ `+0x86` est celui dont `GrantChestContents_00530F20` teste déjà la
+plage `0x32c9`–`0x32cf` ; `0x2efb` tombe en dehors, c'est une autre famille.
+
+**Deux verbes voisins écrivent la même adresse de deux façons.** Le 5 fait `membre << 13` puis
+`+ 0xf0144` ; le 6 fait `(membre + 0x78) << 13` puis `+ 0x144`. Comme `0x78 × 0x2000 = 0xf0000`,
+c'est le même octet. C'est le compilateur, pas une différence de sens — mais il faut l'avoir vu une
+fois pour ne pas chercher deux champs là où il n'y en a qu'un.
+
+### `0x00404B90` et `0x00404C80` : un arpège et quatre-vingt-dix étincelles
+
+Deux sous-types qui vivent dans **deux débordements différents** : `0xfe` de la passe qui lit
+`0x0056adc8` (donc `0x0056b0c8`, créneau 62) et `0xff` de la passe qui lit `0x0056afc8` (donc
+`0x0056b2c8`, créneau 63). Le père est voisin d'adresse de `0x00404E50`, le `0xff` de la **première**
+passe — trois sous-types portant deux fois le même numéro, dans trois tables.
+
+Le père **se colle à l'entité de scène 0** : `0x005ecabc`, `0x005ecac0` et `0x005ecac4` sont les
+trois coordonnées du premier enregistrement de `0x005ecaa0`, lues **en absolu**. Il ne suit pas
+« sa » cible, il suit le créneau 0, quel qu'il soit. Trente images, trois enfants par image, et
+**trois notes** : le même son `0x20` aux hauteurs `0x255`, `0x2aa`, `0x2d4`, aux images 30, 22 et 14
+du décompte, par `PlaySoundEffect` et non par la porte de distance — le son ne dépend pas de
+l'endroit où l'on se trouve.
+
+L'enfant est une étincelle qui monte en tournant et **meurt d'être noircie** : sa teinte part entre
+`0x5a` et `0xa9` et perd de 10 à 19 par image, le pas étant tiré à la naissance. Elle vit donc de 4
+à 17 images selon deux tirages. Son atlas `0x0054f160` compte quatre enregistrements, et les deux
+bouts se démontrent : il commence où finit `0x0054f158` et il est clos par la **réapparition du
+séparateur** `00 00 08 08 01 02 10 00` à `0x0054f180` — le motif relevé le 2026-08-29. Le corps
+confirme, son `+0x40` rebouclant à 4.
+
+### `0x00487260` : le quatrième lanceur de sorts, et le premier hors de la forêt
+
+1904 octets, absents de `Blaze.c`. C'est la seconde et dernière routine d'intelligence de la zone 0,
+et le détail est dans `Documentation/Ennemies/Comportement.md`. Trois points méritent d'être ici.
+
+**Le mécanisme d'incantation du Behemoth est réutilisé une troisième fois, et à l'identique.** Même
+bit `0x800` qui bascule sur une seconde machine à états logée dans `+0x10`, mêmes quatre états dans
+le même ordre, même entité de lancement `0xbd`, même masque de traits `0x400003e8`, même durée lue
+dans le `+0x13` de la fiche de sort. **Quatre valeurs séparent les deux corps** — l'animation de
+lancement (5 contre 7), l'image du lancer (7 contre 14), et la table. Le constat du 2026-09-02 se
+confirme donc au-delà d'une seule zone : *un morceau de comportement de cette taille se recopie, il
+ne se réécrit pas*.
+
+**Ses sorts viennent du PLACEMENT et non de l'espèce.** La table `0x00552868` a **huit rangées** de
+trois fiches ; la rangée est `+0x14`, c'est-à-dire l'octet 6 du relevé de placement que la naissance
+d'une entité de scène recopie tel quel (`*(int*)(slot + 0x14) = record[6]`, `WorldMapScript`). Deux
+exemplaires de la même bête posés sur la même carte peuvent donc n'avoir pas les mêmes sorts.
+Aucune autre routine écrite ne fait dépendre son arsenal de l'endroit où elle a été posée. Les
+quatre dernières rangées **répètent** les quatre premières, octet pour octet — c'est la donnée qui
+est redondante, pas la lecture qui déborde : le motif de 0x18 octets apparaît exactement deux fois
+avant que la plage ne change de nature (une sonde de geste, à `0x00552898`).
+
+**Elle fuit, et « charger » veut dire « incanter ».** Dans la plage de corps à corps, sa sortie la
+plus probable (40 %) pose la posture 3 sur un cap tiré autour de la cible **plus un demi-tour** ;
+et dans les deux plages lointaines, la branche qui correspond à la charge des autres bêtes ne pose
+pas de posture du tout — elle lève `0x1000804` et met `+0x10 = 3`, c'est-à-dire qu'elle entre dans
+la machine d'incantation. Elle n'a ni bond, ni posture 4 ; son recul ne fait **rien** (pas même se
+tourner vers ce qui l'a touchée) ; et sa marche est la seule de la famille à **ne pas multiplier son
+pas par sa vitesse d'animation**.
+
+**Ce qu'elle n'a pas coûté** : `census-duplicates.sh` ne la range dans aucun groupe — c'est une
+forme unique. Mais cinq helpers de la famille écrits pour la forêt l'ont couverte sans retouche
+(`SceneEntityDelay`, `HesitateSceneEntity`, `RestSceneEntity`, `HoldSceneEntityAtRange`,
+`WanderSceneEntity`), et son incantation est une copie de conduite de `AdvanceIncantation_004A5919`.
+La forêt continue de payer pour les autres zones.
+
+### Ce que ça change pour la suite
+
+`GestionnairesEntites.md` : **1 430 atteignables, 258 testés, 186 écrits jamais appelés, 986 à
+transcrire**. Trois ensembles sont complets — les tables statiques (274), la forêt (136) et
+l'auberge (48) — et la zone 0 est **la seule des trois où la sonde ait déjà relevé du passage** en
+plus du socle commun.
+
+La prochaine cible par rendement n'est plus une zone mais un **groupe de doublons** : les 32
+routines d'IA qui sont des copies exactes d'un frère non écrit, dont les six meilleurs groupes font
+20 corps pour 6 lectures.

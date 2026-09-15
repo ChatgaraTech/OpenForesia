@@ -1550,6 +1550,24 @@ public static unsafe partial class Blaze
             // que [esp+0x14], c'est-a-dire l'entite.
             0x0053DD20 => AreaVerb_0053DD20(ent),
 
+            // Les verbes 57 et 58 : LE COFFRE, en mode 0 et en mode 1. Les deux corps etaient
+            // ecrits depuis le 2026-08-25 — avec tout le panneau qu'ils ouvrent, WorldMapDepot.cs —
+            // mais n'avaient jamais ete branches ici : le repartiteur levait sur les deux.
+            0x0053DEA0 => AreaVerb_0053DEA0(ent),
+            0x0053DF20 => AreaVerb_0053DF20(ent),
+
+            // LES SIX VERBES DE L'AUBERGE, pris en une passe le 2026-09-15 : la remise d'un objet
+            // a tout le groupe (12), la recherche de l'Ecu du destin (7), les deux lectures du
+            // plancher de niveau (5 et 6), la recharge des sept compteurs de sorts (4) et le
+            // compte des neuf drapeaux (2). Les quatre premiers rendent leur resultat dans la
+            // BANQUE 0x005e9060, pas dans le retour.
+            0x00442DB0 => AreaVerb_00442DB0(),
+            0x00442E20 => AreaVerb_00442E20(),
+            0x00442E70 => AreaVerb_00442E70(),
+            0x00442EA0 => AreaVerb_00442EA0(),
+            0x00442F20 => AreaVerb_00442F20(),
+            0x004430B0 => AreaVerb_004430B0(),
+
             // Le verbe 5 : le rocher qui publie le titre tire du compteur de victimes. Il ne lit
             // ni l'entite ni le second argument — son creneau vient de la variable de script 4.
             0x004438A0 => AreaVerb_004438A0(),
@@ -2592,6 +2610,254 @@ public static unsafe partial class Blaze
     private static uint AreaVerb_00442D90(byte* entity, short index)
     {
         *(byte**)(Mem.Entity(0x005ecaa0) + index * 0x9c + 0x6c) = entity;
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00442db0 @ 0x00442db0 — <b>le verbe 12 de la table de zone</b> : il <b>remet un
+    /// objet a chacun des quatre membres du groupe</b>. Quatre-vingt-seize octets, decompilee dans
+    /// <c>Blaze.c</c> ; dump conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00442DB0.asm</c>.
+    ///
+    /// <para>
+    /// La boucle est ecrite en dur sur <b>quatre</b> emplacements de <c>0x9c</c> octets a partir de
+    /// <see cref="Input.s_SlotFlags_005e93c0"/>, sans consulter
+    /// <c>s_PartySize_005e9020</c> — comme la boucle de resurrection de
+    /// <see cref="AcquireHolyTarget_00447CB0"/>. Seuls les emplacements portant le bit
+    /// <c>0x80000000</c> sont servis.
+    /// </para>
+    /// <para>
+    /// Pour chacun, trois gestes dans cet ordre : le tirage pondere
+    /// (<see cref="PickWeightedTableEntry"/>, ligne 0, borne 100) choisit la fiche ;
+    /// <see cref="GrantChestContents_00530F20"/> fige le monde, joue l'animation de reaction et
+    /// compose la phrase ; <see cref="StoreItemInInventory_005312D0"/> range enfin l'objet.
+    /// </para>
+    /// <para>
+    /// <b>Le rappel de fin de boite vaut zero ici</b>, la ou les trois autres appelants
+    /// reconstruits passent <c>0x00450700</c> ou <c>0x00474320</c> : le rangement n'est pas
+    /// differe, il est fait tout de suite par l'appel suivant. C'est le seul site du depot qui
+    /// enchaine les deux a la main.
+    /// </para>
+    /// <para>
+    /// <c>+0x6c</c> de l'emplacement est remis a zero <b>deux fois</b>, avant et apres la remise :
+    /// le porteur du script ne doit rester designe ni pendant ni apres. Et
+    /// <see cref="GameMemory.s_Unknown_005e909f"/> — la porte de validation des boites — est
+    /// rabaissee a chaque tour.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00442DB0()
+    {
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            if ((*(uint*)slot & 0x80000000) == 0) continue;
+
+            Mem.s_Unknown_005e909f = 0;
+            *(uint*)(slot + 0x6c) = 0;
+
+            int sheet = PickWeightedTableEntry(0, 100);        // Ghidra: FUN_0053a920(0,100,0)
+            GrantChestContents_00530F20((uint*)slot, sheet, 0);
+
+            *(uint*)(slot + 0x6c) = 0;
+            StoreItemInInventory_005312D0((uint*)slot);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00442e20 @ 0x00442e20 — <b>le verbe 7 de la table de zone</b> :
+    /// <b>« ce personnage porte-t-il l'Ecu du destin ? »</b> Soixante-dix-sept octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; dump conserve dans
+    /// <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00442E20.asm</c>.
+    ///
+    /// <para>
+    /// Le membre n'est pas l'entite qu'on lui passe : il vient de la <b>banque de script</b>
+    /// <c>0x005e9060</c>, octet 0 — celle que les verbes 5 et 6 ecrivent aussi. Le verbe la
+    /// <b>remet a zero</b> avant de chercher, puis y pose 1 s'il trouve : la banque sert donc
+    /// d'argument et de resultat, et la valeur de retour du verbe ne porte rien
+    /// (<c>xor eax,eax</c>).
+    /// </para>
+    /// <para>
+    /// L'inventaire parcouru est celui de <see cref="GrantChestContents_00530F20"/> : dix
+    /// emplacements de <c>0x280</c> octets a <c>MainMem + 0xf0300 + membre * 0x2000</c>. Un
+    /// emplacement dont le premier octet est nul est vide et saute.
+    /// </para>
+    /// <para>
+    /// <b>Le mot cherche est <c>0x2efb</c> en <c>+0x86</c></b>, et <c>objets.csv</c> le nomme :
+    /// c'est l'<b>Ecu du destin</b>, la meme fiche dans toutes les zones ou elle apparait. Le champ
+    /// <c>+0x86</c> est celui dont <see cref="GrantChestContents_00530F20"/> teste deja la plage
+    /// <c>0x32c9</c>–<c>0x32cf</c> ; <c>0x2efb</c> tombe en dehors, c'est une autre famille.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero — le resultat est dans la banque, pas dans le retour.</returns>
+    private static uint AreaVerb_00442E20()
+    {
+        byte* bank = Mem.Arena(0x005e9060);
+        byte member = bank[0];
+
+        bank[0] = 0;
+
+        byte* inventory = GetMainMemPtr() + (member << 0x0d) + 0xf0300;
+
+        for (int i = 0; i < 10; i++, inventory += 0x280)
+        {
+            if (inventory[0] == 0) continue;
+            if (*(ushort*)(inventory + 0x86) == 0x2efb) bank[0] = 1;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00442e70 @ 0x00442e70 — <b>le verbe 5 de la table de zone</b> : <b>le plancher
+    /// de niveau du personnage atteint-il 180 ?</b> Quarante octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; dump conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00442E70.asm</c>.
+    ///
+    /// <para>
+    /// Meme convention que <see cref="AreaVerb_00442E20"/> : le membre est lu dans l'octet 0 de la
+    /// banque <c>0x005e9060</c>, et le resultat y est reecrit. Le champ mesure est <c>+0x144</c> du
+    /// bloc de personnage — le <b>plancher de niveau</b>, celui que
+    /// <c>LevelUpCharacter_005391F0</c> avance (voir <c>MonteeDeNiveau.md</c>).
+    /// </para>
+    /// <para>
+    /// <b>La banque recoit 1 ou 2, jamais 0.</b> <c>setb</c> rend 1 quand le plancher est
+    /// <i>sous</i> <c>0xb4</c>, et l'<c>inc</c> qui suit porte donc <b>2 pour « pas encore »</b> et
+    /// <b>1 pour « oui »</b>. La comparaison est <b>non signee</b>.
+    /// </para>
+    /// <para>
+    /// <b>Le detail qui compte</b> : l'<c>inc eax</c> porte sur le registre entier, qui contient
+    /// encore <c>membre &lt;&lt; 13</c>. L'octet bas de ce produit est nul pour les quatre membres
+    /// possibles, donc l'increment ne deborde jamais sur le resultat — c'est vrai par construction,
+    /// pas par hasard, et c'est pourquoi la transcription peut s'en tenir a 1 et 2.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00442E70()
+    {
+        byte* bank = Mem.Arena(0x005e9060);
+        byte member = bank[0];
+
+        ushort floor = *(ushort*)(GetMainMemPtr() + (member << 0x0d) + 0xf0144);
+
+        bank[0] = (byte)(floor < 0xb4 ? 2 : 1);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00442ea0 @ 0x00442ea0 — <b>le verbe 6 de la table de zone</b> : <b>le meme
+    /// plancher de niveau, echelonne de 0 a 5</b>. Cent quatorze octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; dump conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00442EA0.asm</c>.
+    ///
+    /// <para>
+    /// Cinq seuils testes l'un apres l'autre — 20, 40, 60, 80, 100 — et un increment a chacun qui
+    /// passe : la banque <c>0x005e9060</c> ressort avec le <b>nombre de paliers franchis</b>. Les
+    /// cinq comparaisons sont <b>non signees</b> et portent toutes sur le meme mot, relu a chaque
+    /// fois.
+    /// </para>
+    /// <para>
+    /// <b>Il adresse le bloc autrement que son voisin, pour la meme adresse.</b> Ici
+    /// <c>(membre + 0x78) &lt;&lt; 13</c>, la <c>membre &lt;&lt; 13</c> puis <c>+ 0xf0144</c> chez
+    /// <see cref="AreaVerb_00442E70"/> — et <c>0x78 &times; 0x2000 = 0xf0000</c>, donc les deux
+    /// designent le meme octet. Deux ecritures d'une meme adresse dans deux verbes voisins : c'est
+    /// le compilateur, pas une difference de sens.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero.</returns>
+    private static uint AreaVerb_00442EA0()
+    {
+        byte* bank = Mem.Arena(0x005e9060);
+
+        // `(membre + 0x78) << 13` — la meme adresse que `membre << 13 + 0xf0000`.
+        byte* block = GetMainMemPtr() + (bank[0] + 0x78 << 0x0d);
+
+        bank[0] = 0;
+
+        if (*(ushort*)(block + 0x144) >= 0x14) bank[0] = 1;
+        if (*(ushort*)(block + 0x144) >= 0x28) bank[0]++;
+        if (*(ushort*)(block + 0x144) >= 0x3c) bank[0]++;
+        if (*(ushort*)(block + 0x144) >= 0x50) bank[0]++;
+        if (*(ushort*)(block + 0x144) >= 0x64) bank[0]++;
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00442f20 @ 0x00442f20 — <b>le verbe 4 de la table de zone</b> : il <b>remonte a
+    /// cinq les sept compteurs de sorts</b> d'un personnage. Cinquante-sept octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; dump conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_00442F20.asm</c>.
+    ///
+    /// <para>
+    /// Les sept octets contigus a <c>+0x178</c> du bloc de personnage sont ceux que
+    /// <see cref="StoreItemInInventory_005312D0"/> indexe par <c>famille - 0x3151</c> : <b>deux
+    /// releves independants sur le meme champ</b>, celui-ci et le rangement d'objet. Chacun est
+    /// force a 5 s'il etait en dessous ; ceux qui valaient plus ne bougent pas.
+    /// </para>
+    /// <para>
+    /// <b>Il lit son membre dans l'octet 2 de la banque</b> <c>0x005e9060</c>, et non l'octet 0
+    /// comme les trois verbes voisins — c'est la banque que <c>AreaVerb_004431F0</c> remplit avec
+    /// la classe du locuteur.
+    /// </para>
+    /// <para>
+    /// <b>C'est le seul des six a rendre autre chose que zero</b> : <c>1</c> si <b>aucun</b>
+    /// compteur n'a eu besoin d'etre remonte, <c>0</c> si au moins un l'a ete. Le script peut donc
+    /// distinguer « il n'y avait rien a faire » de « j'ai rechargé » — la forme exacte d'un service
+    /// d'auberge qu'on ne facture que s'il a servi.
+    /// </para>
+    /// </summary>
+    private static uint AreaVerb_00442F20()
+    {
+        byte* bank = Mem.Arena(0x005e9060);
+        byte* counters = GetMainMemPtr() + (bank[2] + 0x78 << 0x0d) + 0x178;
+
+        int raised = 0;
+
+        for (int i = 0; i < 7; i++)
+        {
+            if (counters[i] < 5)
+            {
+                counters[i] = 5;
+                raised++;
+            }
+        }
+
+        // Ghidra: `test cx,cx ; sete al` — seize bits, mais le compte ne depasse jamais sept.
+        return raised == 0 ? 1u : 0u;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_004430b0 @ 0x004430b0 — <b>le verbe 2 de la table de zone</b> : il <b>compte les
+    /// neuf drapeaux bas du banc d'etat</b>. Soixante-dix-huit octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; dump conserve dans <c>Legacy/Raw/Blaze/AreaVerbs/FUN_004430B0.asm</c>.
+    ///
+    /// <para>
+    /// Les huit bits de <c>0x005e9000</c> et le bit 0 de <c>0x005e9001</c> — <b>exactement les neuf
+    /// que <see cref="AreaVerb_00442F60"/> decale d'un cran vers le banc <c>0x005e9840</c></b>.
+    /// Les deux verbes lisent donc la meme collection, et c'est ce qui la delimite : neuf, pas
+    /// seize. Le compte part dans l'octet <b>10</b> de la banque de script, <c>0x005e906a</c>.
+    /// </para>
+    /// <para>
+    /// Le binaire ecrit neuf tests successifs plutot qu'une boucle, et le premier fait
+    /// <c>mov eax,1</c> la ou les huit autres font <c>inc eax</c> — sans difference, le registre
+    /// venant d'etre mis a zero.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero — le compte est dans la banque.</returns>
+    private static uint AreaVerb_004430B0()
+    {
+        byte* flags = Mem.Arena(0x005e9000);
+        byte low = flags[0];
+
+        int count = 0;
+        for (int bit = 0; bit < 8; bit++)
+        {
+            if ((low & 1 << bit) != 0) count++;
+        }
+
+        if ((flags[1] & 1) != 0) count++;
+
+        Mem.Arena(0x005e9060)[10] = (byte)count;   // Ghidra: DAT_005e906a
         return 0;
     }
 

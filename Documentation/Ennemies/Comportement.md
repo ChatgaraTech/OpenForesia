@@ -40,7 +40,7 @@ lui qui décide ce que la créature fait : attendre, se tourner, approcher, erre
 | **gestionnaires distincts** | **166** |
 | dont routines d'intelligence complètes | **112** |
 | dont gestionnaires simples (décor, coffres, déclencheurs) | 54 |
-| **écrits au 2026-09-02** | **23** (`0x00486EE0`, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`, `0x004A35B0`, `0x0049FAD0`, `0x004A1D50`, `0x004A13E0`, `0x004A0480`) |
+| **écrits au 2026-09-15** | **24** (`0x00486EE0`, **`0x00487260`**, `0x00499DE0`, `0x0049A360`, `0x0049A980`, `0x0049B220`, `0x0049B840`, `0x0049C0B0`, `0x0049C8E0`, `0x0049D030`, `0x0049DA40`, `0x0049E190`, `0x0049E920`, `0x0049F0C0`, `0x004A3C30`, `0x004A4270`, `0x004A4AE0`, `0x004A54E0`, `0x004A2C90`, `0x004A35B0`, `0x0049FAD0`, `0x004A1D50`, `0x004A13E0`, `0x004A0480`) |
 
 Un gestionnaire est compté comme **routine d'intelligence** s'il appelle `FUN_00535F20`, la lecture
 de situation — c'est le marqueur sûr de la famille, et il ne se partage avec rien d'autre.
@@ -52,7 +52,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 
 | zone | lieu | gestionnaires | dont IA | IA écrites |
 |---|---|---|---|---|
-| 0 | L'auberge | 2 | 1 | 0 |
+| **0** | **L'auberge** | **2** | **1** | **1 — complète** |
 | 1 | La mine abandonnée | 23 | 17 | 0 |
 | 2 | La montagne du dragon de feu | 2 | 1 | 0 |
 | **3** | **La forêt** | **23** | **22** | **22 — complète** |
@@ -900,3 +900,57 @@ d'essai ».
 - `Documentation/Etat/REVERSE_STATUS.md`, sections du 2026-08-28 — le détail de chaque fonction
   écrite, et les deux pièges de signature que `Blaze.c` tend sur cette famille.
 - `Documentation/Reference/Bestiaire/` — les 555 espèces, leurs statistiques et leur butin.
+
+---
+
+## L'auberge (zone 0) — deux créneaux, et le second est un lanceur de sorts (2026-09-15)
+
+La zone la plus petite du relevé : **deux** sous-types remplis dans son unique bloc de table,
+`0x00553288`. Le sous-type 0 est `0x00486EE0`, la bestiole errante, écrite le 2026-08-30. Le
+sous-type 1 est `0x00487260`, et il ne ressemble pas à ce qu'on attendait d'une auberge.
+
+**C'est le quatrième lanceur de sorts du dépôt**, après le Behemoth (`0x004A54E0`), le Trent
+(`0x0049FAD0`) et le Varan (`0x004A1D50`). Il porte le **mécanisme d'incantation du Behemoth au
+complet** — même bit `0x800` qui bascule sur une seconde machine à états logée dans `+0x10`, mêmes
+quatre états dans le même ordre, même entité de lancement `0xbd`, même masque de traits
+`0x400003e8` qui l'annule net, même durée lue dans le `+0x13` de la fiche de sort.
+
+**C'est donc le troisième emploi de ce bloc**, et le premier hors de la forêt. Le constat du
+2026-09-02 tient : un morceau de comportement de cette taille se recopie, il ne se réécrit pas. Ce
+qui change d'une bête à l'autre tient à quatre valeurs — ici l'animation de lancement est la **5**
+et non la 7, et le coup part à l'image **7** et non à la 14.
+
+### Ce qui lui appartient : ses sorts viennent du PLACEMENT
+
+Le Behemoth tire sa fiche dans une liste fixe de trois (`0x00552A30`). Celui-ci lit d'abord une
+**rangée** dans `0x00552868`, et la rangée vient de `+0x14` — c'est-à-dire de l'**octet 6 du relevé
+de placement**, que la naissance d'une entité de scène recopie tel quel
+(`WorldMapScript`, `*(int*)(slot + 0x14) = record[6]`).
+
+**Deux exemplaires de la même bête posés sur la même carte peuvent donc n'avoir pas les mêmes
+sorts.** Aucune autre routine écrite ne fait dépendre son arsenal de l'endroit où elle a été posée ;
+partout ailleurs, l'arsenal est une propriété de l'espèce.
+
+La table compte huit rangées de trois fiches (`0x00552868`–`0x00552897`), bornée par la sonde de
+geste qui commence à `0x00552898`. **Les quatre dernières répètent les quatre premières**, octet
+pour octet — c'est la donnée de 1998 qui est redondante, pas la lecture qui déborde.
+
+### Trois autres choses qui la distinguent de la famille
+
+**Elle n'a qu'un seul geste.** Sa sonde `{0, 0, 0x32, 0x64, 0, 0x5a}` est croisée à **chaque** image
+à partir de la huitième, sans que `+0x42` ne la nuance : là où le Goblin choisit son coup selon sa
+posture, celle-ci frappe et c'est tout. Et **son plancher de sonde est à zéro** quand toute la
+famille commence à `0x1e` — elle atteint ce qui est à terre.
+
+**Elle fuit.** Dans la plage de corps à corps, la sortie la plus probable (40 %) pose la posture 3
+sur un cap tiré autour de la cible **plus un demi-tour**. C'est la contrepartie du lanceur : elle
+n'a rien à gagner à rester au contact. Aucune autre routine écrite ne prend cette sortie.
+
+**« Charger » veut dire « incanter ».** Dans les deux plages lointaines, la branche qui correspond à
+la charge des autres bêtes ne pose pas de posture : elle lève les bits `0x1000804` et met `+0x10` à
+3, c'est-à-dire qu'elle entre dans la machine d'incantation. Elle n'a ni bond, ni charge, ni
+posture 4 ; sa posture 3 marche à allure **fixe**, sans multiplier son pas par sa vitesse
+d'animation — la seule de la famille dans ce cas.
+
+Enfin, **son recul ne fait rien du tout** : le bit `0x10` rend la main sans même la tourner vers ce
+qui l'a touchée, là où le Goblin s'y retourne.

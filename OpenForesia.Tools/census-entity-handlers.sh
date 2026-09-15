@@ -14,13 +14,19 @@
 #     couples (zone, sous-zone) via les sept selecteurs contigus a 0x00566d98 ;
 #   - les TROIS tables statiques (0x00551c30, 0x00551f30, 0x00552230), 192 entrees chacune,
 #     valables partout ;
-#   - les `case 0x…:` de DispatchEntityHandlerCore et de CallSubAreaMoveProbe, et les `0x… =>` de
-#     ScriptOpAreaVerb ;
+#   - les `case 0x…:` de DispatchEntityHandlerCore, de CallSubAreaMoveProbe et de
+#     CallEntityHook_0056afe8, et les `0x… =>` de ScriptOpAreaVerb et de CallEntityHook_0056aff0 ;
 #
 # CallSubAreaMoveProbe a ete ajoute le 2026-09-01 : le creneau 63 de la table 0x0056afc8 n'est PAS
 # appele comme un gestionnaire d'entite — il prend trois arguments, pas un — et son aiguillage vit
 # donc dans sa propre fonction. Sans cette ligne, 0x00541550 serait reste marque « a transcrire »
 # alors que le corps est ecrit et branche.
+#
+# CallEntityHook_0056afe8 et CallEntityHook_0056aff0 ont ete ajoutes le 2026-09-15, pour la meme
+# raison et au meme endroit : les creneaux 8 et 10 de 0x0056afc8 sont les deux crochets par image de
+# la carte du monde, l'un sans argument et l'autre a quatre, chacun avec son propre aiguillage.
+# 0x0053DCB0 et 0x0053DF90 — la remise a zero par image et TOUT le panneau du coffre — se lisaient
+# « a transcrire » alors qu'ils sont ecrits et branches depuis le 2026-08-25.
 #   - Documentation/Etat/handlers-exerces.tsv, ecrit par la sonde des qu'un couple est nouveau.
 #
 # Usage :
@@ -95,6 +101,10 @@ sort -u "$TMP/use" | awk -F'\t' -v empty="$EMPTY" '$1 != empty' > "$TMP/use.s"
         | grep -oE 'case 0x[0-9A-Fa-f]{8}:'
     sed -n '/private static void CallSubAreaMoveProbe/,/^    }$/p' "$TICK" \
         | grep -oE 'case 0x[0-9A-Fa-f]{8}:'
+    sed -n '/private static void CallEntityHook_0056afe8/,/^    }$/p' "$TICK" \
+        | grep -oE 'case 0x[0-9A-Fa-f]{8}:'
+    sed -n '/private static uint\* CallEntityHook_0056aff0/,/^    }$/p' "$TICK" \
+        | grep -oE '0x[0-9A-Fa-f]{8} =>'
     sed -n '/private static byte\* ScriptOpAreaVerb/,/^    }$/p' "$SCRIPT" \
         | grep -oE '0x[0-9A-Fa-f]{8} =>'
 } | grep -oE '[0-9A-Fa-f]{8}' | tr 'a-f' 'A-F' | sort -u > "$TMP/wired"

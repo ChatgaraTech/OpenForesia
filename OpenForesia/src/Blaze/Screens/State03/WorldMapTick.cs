@@ -4494,6 +4494,11 @@ public static unsafe partial class Blaze
             case 0x00450D30: EntityHandler_00450D30((uint*)record); return;
             case 0x00486EE0: EntityHandler_00486EE0((uint*)record); return;
 
+            // Le sous-type 1 de l'auberge — la seconde et derniere routine d'intelligence de la
+            // zone 0, et le QUATRIEME lanceur de sorts du depot. Elle porte le mecanisme
+            // d'incantation du Behemoth au complet, mais choisit ses sorts par le PLACEMENT.
+            case 0x00487260: TickSceneEntityAi_00487260(record); return;
+
             // 0x004a5f10 est un DUPLICATA de 0x00486ee0 : 299 instructions comparees une a une,
             // zero difference. Meme corps, deux creneaux.
             case 0x004A5F10: EntityHandler_00486EE0((uint*)record); return;
@@ -4703,6 +4708,12 @@ public static unsafe partial class Blaze
             // L'entree 1 de la meme table — le changement de musique differe de la femme a la
             // petite harpe. Signale le 2026-08-25.
             case 0x00404E50: EntityHandler_00404E50((uint*)record); return;
+
+            // Le sous-type 0xfe de la meme table (0x0056adc8 + 0xfe * 4 deborde sur 0x0056b0c8)
+            // et son etincelle 0xff, qui vit dans l'AUTRE debordement (0x0056afc8 -> 0x0056b2c8).
+            // Trente images, trois etincelles par image, et un arpege de trois notes.
+            case 0x00404B90: EntityHandler_00404B90(record); return;
+            case 0x00404C80: EntityHandler_00404C80(record); return;
 
             // Les trois derniers balayeurs d'entites de scene, transcrits d'un bloc le 2026-08-25 :
             // le binaire range les six cote a cote, entrees 32 a 37 de 0x0056b0c8, soit les
@@ -21570,6 +21581,174 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: <c>0x00404b90</c> — <b>le sous-type <c>0xfe</c></b> de la passe qui lit
+    /// <see cref="s_StaticEntityHandlers_00551c30"/> sous <c>0xc0</c> et la table installee
+    /// <c>0x0056adc8</c> au-dela : <c>0x0056adc8 + 0xfe * 4</c> deborde sur <c>0x0056b0c8</c>,
+    /// creneau 62. 232 octets, <b>absente de <c>Blaze.c</c></b> ; releve garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00404B90.asm</c>. Voisine de <see cref="EntityHandler_00404E50"/>,
+    /// qui est le <c>0xff</c> de la meme table.
+    ///
+    /// <para>
+    /// <b>Elle se colle a l'entite de scene 0</b> — <c>0x005ecabc</c>, <c>0x005ecac0</c> et
+    /// <c>0x005ecac4</c> sont les trois coordonnees du <b>premier</b> enregistrement de
+    /// <c>0x005ecaa0</c>, lues en absolu et non par un pointeur qu'on lui aurait passe. Elle ne
+    /// suit donc pas « sa » cible : elle suit le creneau 0, quel qu'il soit.
+    /// </para>
+    /// <para>
+    /// <b>Trente images, et rien d'autre a faire que semer.</b> Elle lache <b>trois</b> entites
+    /// <c>0xff</c> (<see cref="EntityHandler_00404C80"/>) a <b>chaque</b> image, sur sa propre
+    /// position — quatre-vingt-dix en tout — et s'eteint quand <c>+0x16</c> retombe a zero.
+    /// </para>
+    /// <para>
+    /// <b>Trois notes, pas trois bruits.</b> Le meme son <c>0x20</c> part aux images 30, 22 et 14
+    /// du decompte, a trois hauteurs montantes — <c>0x255</c>, <c>0x2aa</c>, <c>0x2d4</c> — par
+    /// <see cref="Audio.PlaySoundEffect"/> et non par la porte de distance : le son ne depend pas
+    /// de l'endroit ou l'on est. C'est un arpege, joue en clair dans le corps.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00404B90(byte* e)
+    {
+        // Ghidra: trois adresses absolues, 0x005ecabc / 0x005ecac0 / 0x005ecac4 — le +0x1c, +0x20
+        // et +0x24 de l'entite de scene 0.
+        byte* anchor = Mem.Entity(0x005ecaa0);
+
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0x1e;
+        }
+
+        // Ghidra: LAB_00404bc5 — les trois naissances sont ecrites l'une apres l'autre, pas en
+        // boucle, et la premiere image passe ici aussi.
+        for (int i = 0; i < 3; i++)
+        {
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xff, 0, -1);
+        }
+
+        // Ghidra: FUN_0053cea0 en direct — hauteur montante aux images 30, 22 et 14.
+        if (*(short*)(e + 0x16) == 0x1e) Aud.PlaySoundEffect(0x20, 0x255, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x16) Aud.PlaySoundEffect(0x20, 0x2aa, 0x1000, 0x1000);
+        if (*(short*)(e + 0x16) == 0x0e) Aud.PlaySoundEffect(0x20, 0x2d4, 0x1000, 0x1000);
+
+        *(short*)(e + 0x16) -= 1;
+        if (*(short*)(e + 0x16) == 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f160</c> — <b>l'atlas de l'etincelle <c>0xff</c></b>, celui que
+    /// <see cref="EntityHandler_00404C80"/> pose en <c>+0x3c</c>. <b>Quatre enregistrements</b>, et
+    /// les deux bouts de la plage se demontrent : elle commence ou finit
+    /// <see cref="s_Descriptors_0054F158"/>, et elle est close par la <b>reapparition du meme
+    /// separateur</b> <c>00 00 08 08 01 02 10 00</c> a <c>0x0054f180</c> — le motif releve le
+    /// 2026-08-29 en meme temps que son jumeau. Le corps le confirme : <c>+0x40</c> reboucle des
+    /// qu'il depasse 3.
+    ///
+    /// <para>Les quatre tuiles sont la meme planche <c>0x18 x 0x20</c> prise de <c>0x00</c> en
+    /// <c>0x18</c> : <c>0x20184800</c>, <c>0x20184818</c>, <c>0x20184830</c>, <c>0x20184848</c>.</para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F160 =
+    [
+        0x00, 0x48, 0x18, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f160
+        0x18, 0x48, 0x18, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f168
+        0x30, 0x48, 0x18, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f170
+        0x48, 0x48, 0x18, 0x20, 0x01, 0x02, 0x10, 0x00,   // 0x0054f178
+    ];
+
+    private static byte* s_Descriptors0054F160Storage;
+
+    private static byte* Descriptors0054F160()
+        => NativeCopy(s_Descriptors_0054F160, ref s_Descriptors0054F160Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00404c80 @ 0x00404c80 — <b>le sous-type <c>0xff</c></b> de la passe
+    /// <see cref="TickEntityTable_005f2d40"/> : <c>0x0056afc8 + 0xff * 4</c> deborde sur
+    /// <c>0x0056b2c8</c>, creneau 63. Decompilee dans <c>Blaze.c</c>. C'est ce que
+    /// <see cref="EntityHandler_00404B90"/> lache par trois a chaque image.
+    ///
+    /// <para>
+    /// <b>Une etincelle qui monte en tournant et s'eteint d'etre noircie.</b> Elle fige son ancre
+    /// <c>+0x50</c>/<c>+0x58</c> a la naissance, se donne un rayon (20 a 59), un pas angulaire
+    /// (100 a 199) et un cap tire sur douze bits, puis recalcule <c>X</c> et <c>Z</c> a chaque
+    /// image autour de l'ancre pendant que <c>Y</c> gagne <c>+0x54 &times; 0x1000</c> — une montee
+    /// constante, tiree entre 20 et 39 a la naissance.
+    /// </para>
+    /// <para>
+    /// <b>Le produit n'est pas recadre</b> : l'entree de table de sinus multiplie le rayon tel
+    /// quel, sans <c>&gt;&gt; 0xc</c>. Meme convention que <see cref="TickHolySpark_0044FE00"/>,
+    /// et c'est ce qui fait tenir un rayon de quelques dizaines a l'echelle du monde.
+    /// </para>
+    /// <para>
+    /// <b>Sa mort est dans sa teinte.</b> Elle part entre <c>0x5a</c> et <c>0xa9</c> sur les trois
+    /// canaux et perd <c>+0x9a</c> — un pas <b>negatif</b>, entre -10 et -19, tire a la naissance —
+    /// par image. <see cref="BrightenEntityTint_00404DE0"/> borne a zero, et l'entite s'eteint des
+    /// que le canal rouge y touche : elle vit donc 4 a 17 images selon les deux tirages.
+    /// </para>
+    /// <para>
+    /// <b>Ghidra passe un <c>CONCAT22</c> aux trois arguments de teinte</b> : le binaire empile un
+    /// registre 32 bits dont seuls les seize bits bas portent <c>+0x9a</c>, les hauts trainant le
+    /// <c>Y</c> qui vient d'etre calcule. La fonction appelee ne lit que seize bits ; c'est un
+    /// artefact de decompilation, pas un argument compose.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00404C80(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F160();   // Ghidra: &DAT_0054f160
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x28 + 0x14);   // le rayon
+            *(short*)(e + 0x14) = (short)(CrtRand() % 100 + 100);     // le pas angulaire
+            *(ushort*)(e + 0x16) = (ushort)(CrtRand() % 0x1000);      // le cap
+
+            // L'ancre : la position de naissance, autour de laquelle le tour se dessine.
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x54) = CrtRand() % 0x14 + 0x14;              // la montee par image
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            byte tint = (byte)(CrtRand() % 0x50 + 0x5a);
+            e[0x38] = tint;
+            e[0x39] = tint;
+            e[0x3a] = tint;
+
+            // Le pas d'assombrissement, negatif : -10 a -19.
+            *(short*)(e + 0x9a) = (short)(-10 - CrtRand() % 10);
+
+            short scale = (short)(CrtRand() % 0x400 + 0xdac);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short yaw = *(short*)(e + 0x16);
+            short radius = *(short*)(e + 0x12);
+
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(yaw) * radius + *(int*)(e + 0x50);
+            *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(yaw) * radius + *(int*)(e + 0x58);
+
+            *(int*)(e + 0x20) += *(int*)(e + 0x54) * 0x1000;
+
+            *(short*)(e + 0x16) += *(short*)(e + 0x14);
+
+            short fade = *(short*)(e + 0x9a);
+            BrightenEntityTint_00404DE0(e, fade, fade, fade);
+
+            if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
+
+            e[0x40]++;
+            if (e[0x40] > 3) e[0x40] = 0;
+        }
+    }
+
+    /// <summary>
     /// Ghidra: FUN_00404ef0 @ 0x00404ef0 — le gestionnaire <b>0x404EF0</b> de la table des effets
     /// <c>0x005ff400</c> : il ne touche pas a sa propre entite mais <b>balaie les 0x20
     /// enregistrements de la table <c>0x005ecaa0</c></b> et reveille ceux qui portent a la fois le
@@ -22587,6 +22766,531 @@ public static unsafe partial class Blaze
 
         *(short*)(e + 0x32) = *(short*)(trial + 0x32);
         e[0x40] = trial[0x40];
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_00552868</c> — <b>la table de sorts de <c>0x00487260</c></b> : huit
+    /// rangees de trois fiches, bornee par la sonde de geste qui suit a <c>0x00552898</c>
+    /// (<c>0000 1e00 4600 9600 00ff 5000</c>, la forme des six <c>short</c> qu'une routine pose sur
+    /// sa pile). Chaque mot porte la <b>famille dans l'octet haut</b> et l'<b>indice dans l'octet
+    /// bas</b>, comme le <c>+0x06</c> ou il est range.
+    ///
+    /// <para>
+    /// <b>Les quatre dernieres rangees repetent les quatre premieres</b>, octet pour octet. Ce
+    /// n'est pas une lecture trop longue : le motif de 0x18 octets apparait exactement deux fois
+    /// avant que la donnee ne change de nature. Transcrit tel quel — c'est la donnee de 1998 qui
+    /// est redondante, et le corps peut adresser les huit rangees.
+    /// </para>
+    /// <para>
+    /// Comparer avec <see cref="s_BehemothSpells_00552A30"/>, qui est une <b>seule</b> rangee de
+    /// trois : la meme mecanique d'incantation, mais la ou le Behemoth tire dans une liste fixe,
+    /// celle-ci <b>choisit d'abord la rangee par <c>+0x14</c></b>, c'est-a-dire par l'octet 6 du
+    /// <b>relevé de placement</b> que <c>WorldMapScript</c> recopie a la naissance. Deux exemplaires
+    /// de la meme bete posees sur la meme carte peuvent donc n'avoir pas les memes sorts.
+    /// </para>
+    /// </summary>
+    private static readonly ushort[] s_Spells_00552868 =
+    [
+        0x0000, 0x0003, 0x0008,   // 0x00552868
+        0x000a, 0x0010, 0x020c,   // 0x0055286e
+        0x0003, 0x0008, 0x0200,   // 0x00552874
+        0x0008, 0x0200, 0x0101,   // 0x0055287a
+        0x0000, 0x0003, 0x0008,   // 0x00552880 — la repetition commence ici
+        0x000a, 0x0010, 0x020c,   // 0x00552886
+        0x0003, 0x0008, 0x0200,   // 0x0055288c
+        0x0008, 0x0200, 0x0101,   // 0x00552892
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>0x00487260</c> — <b>l'intelligence du sous-type 1 de l'auberge</b>, la seconde et
+    /// derniere routine de la zone 0 apres <see cref="EntityHandler_00486EE0"/>. 1904 octets,
+    /// <b>absente de <c>Blaze.c</c></b> ; releve garde sous
+    /// <c>Legacy/Raw/Blaze/FUN_00487260.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est un LANCEUR DE SORTS, et le quatrieme du depot</b> apres le Behemoth, le Trent et le
+    /// Varan. Elle porte le mecanisme d'incantation du Behemoth <b>au complet</b> : meme bit
+    /// <c>0x800</c> qui bascule sur une seconde machine a etats logee dans <c>+0x10</c>, memes
+    /// quatre etats dans le meme ordre, meme entite de lancement <c>0xbd</c>, meme masque de traits
+    /// <c>0x400003e8</c> qui l'annule net, et meme durée lue dans le <c>+0x13</c> de la fiche de
+    /// sort. C'est le <b>troisieme</b> emploi de ce bloc : il ne se reecrit pas, il se recopie.
+    /// </para>
+    /// <para>
+    /// <b>Ce qui lui appartient : ses sorts sont choisis par le PLACEMENT et non par l'espece.</b>
+    /// La table <see cref="s_Spells_00552868"/> a huit rangees ; la rangee vient de <c>+0x14</c>,
+    /// que la naissance recopie de l'octet 6 du relevé de placement, et la fiche de la rangee est
+    /// tiree a trois. Aucune autre bete du depot ne fait dependre son arsenal de l'endroit ou elle
+    /// a ete posee.
+    /// </para>
+    /// <para>
+    /// <b>Elle n'a qu'un seul geste</b> — la sonde <c>{0, 0, 0x32, 0x64, 0, 0x5a}</c>, croisee a
+    /// <b>chaque</b> image a partir de la huitieme, sans posture pour le nuancer : la ou le Goblin
+    /// choisit son coup selon <c>+0x42</c>, celle-ci frappe et c'est tout. Sa sonde part du sol
+    /// (<c>probe[1] = 0</c>) la ou toute la famille commence a <c>0x1e</c> : <b>elle atteint ce qui
+    /// est a terre.</b>
+    /// </para>
+    /// <para>
+    /// <b>Et ses quatre postures ne connaissent ni bond ni charge.</b> La posture 3 marche — en
+    /// integrant la position a la main, comme le Goblin, mais <b>sans multiplier par le pas</b> :
+    /// son allure ne depend pas de sa vitesse d'animation. Il n'y a aucune posture 4.
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_00487260(byte* record)
+    {
+        byte* e = record;
+
+        // Des trois blocs resolus, seul celui de statistiques sert — a la fin, en argument de
+        // l'interruption.
+        ResolveEntityBlocks(e, out byte* stats, out _, out _);
+
+        // La sonde du geste. Son plancher est a ZERO, la ou la famille le met a 0x1e.
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = 0;
+        probe[2] = 0x32;
+        probe[3] = 0x64;
+        probe[4] = 0;
+        probe[5] = 0x5a;
+
+        int boldness, distance, heading, speed;
+        uint traits;
+        ReadSceneEntitySituation_00535F20(e, &boldness, &distance, &heading, &speed, &traits);
+
+        int timid = 0x40 - boldness;
+
+        // ---------------------------------------------------------------- 1. decider
+        DecideSceneEntityAction_00487260(e, probe, boldness, distance, heading, speed, traits);
+
+        // ---------------------------------------------------------------- 2. appliquer
+        IntegrateSceneEntityMotion_00488160(e, speed);
+        FinalizeEntityPlacement2((uint*)e);
+        EndSceneEntityAnimation_004DFAF0((uint*)e);
+        InterruptSceneEntity_004E3770((uint*)e, stats);
+
+        // ---------------------------------------------------------------- 3. replanifier
+        if (speed == 0) return;
+        if ((*(uint*)e & 0x817) != 0) return;
+        if (e[0x43] != 0) return;
+
+        ReplanSceneEntityAction_00487260(e, boldness, timid);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004872eb..0x004876cf</c> — <b>le premier temps</b> de
+    /// <see cref="TickSceneEntityAi_00487260"/>.
+    ///
+    /// <para>
+    /// Trois regimes, testes dans cet ordre : le <b>geste</b> (bit 2), le <b>recul</b> (bit 0x10,
+    /// qui ici ne fait <b>rien du tout</b> — pas meme se tourner, contrairement au Goblin), puis
+    /// soit l'<b>incantation</b> (bits <c>0x804</c>) soit la <b>posture tenue</b>.
+    /// </para>
+    /// </summary>
+    private static void DecideSceneEntityAction_00487260(
+        byte* e, short* probe, int boldness, int distance, int heading, int speed, uint traits)
+    {
+        if (speed == 0) return;
+
+        AdvanceEntityAnimation_004DB5A0((uint*)e);
+        uint flags = *(uint*)e;
+
+        // ================================================================ le geste en cours
+        if ((flags & 2) != 0)
+        {
+            // Le trait 0x10 coupe court : l'espece ne poursuit pas son geste.
+            if ((traits & 0x10) != 0)
+            {
+                e[0x43] = 0;
+                *(uint*)e = flags & 0xfffffffd;
+                return;
+            }
+
+            // Ghidra: LAB_00487318 — a partir de la huitieme image, et a CHAQUE image ensuite.
+            if (*(short*)(e + 0x1a) >= 8)
+            {
+                byte* victim = SweepPartyForMeleeHit_00519C30(e, (int*)(e + 0x1c), probe, 0);
+
+                if (*Mem.Camera(0x005de0b8) != 0)
+                {
+                    *(ushort*)(victim + 0x96) = 0x10;      // le clignotement de degat
+                    *(uint*)victim |= 0x40;
+
+                    ResolveMeleeHit_00539B80((uint*)e, (uint*)victim);
+                    Aud.PlayPositionalSound(3, 0x300, 0x1800, (int*)(victim + 0x1c));
+                }
+
+                // Ghidra: LAB_0048736d — le mot d'etat est RELU : le coup a pu le changer.
+                flags = *(uint*)e;
+                if ((flags & 1) != 0) *(short*)(e + 0x1a) -= 1;
+            }
+
+            // Ghidra: LAB_00487377 — en l'air, l'image du geste ne progresse pas et rien ne finit.
+            if ((flags & 1) != 0) return;
+
+            // Ghidra: LAB_0048737f — la fin d'animation termine le geste ; sinon on se contente de
+            // couper la poussee. Les deux chemins passent par LAB_004875a6.
+            if ((flags & 0x2000000) != 0)
+            {
+                *(uint*)e = flags & 0xfffffffd;
+                e[0x43] = 0;
+            }
+
+            *(int*)(e + 0x5c) = 0;
+            return;
+        }
+
+        // ================================================================ le recul
+        // Ghidra: LAB_0048739a — le bit 0x10 rend la main sans rien faire. La famille s'en sert
+        // pour se tourner vers ce qui l'a touchee ; celle-ci encaisse sans reagir.
+        if ((flags & 0x10) != 0) return;
+
+        // ================================================================ l'incantation
+        if ((flags & 0x804) != 0)
+        {
+            AdvanceIncantation_00487260(e, boldness, heading, traits, flags);
+            return;
+        }
+
+        // ================================================================ la posture tenue
+        // Ghidra: LAB_004874ff — une bete en l'air ne change pas de posture.
+        if ((flags & 1) != 0) return;
+
+        byte held = e[0x42];
+        if (held > 3) return;
+
+        switch (held)
+        {
+            // ---------------------------------------------------------- 0 : attendre
+            case 0:
+                if (*(ushort*)(e + 0x18) != 0)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 0;
+                    *(uint*)e = flags;
+                }
+
+                if (distance < 0x12c)
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                // Ghidra: LAB_0048753f — le compteur a zero laisse la poussee telle quelle ; ce
+                // n'est qu'en decomptant qu'elle est coupee. Les deux autres postures ne font pas
+                // cette distinction.
+                if (e[0x43] == 0)
+                {
+                    *(int*)(e + 0x5c) = 0;
+                    return;
+                }
+
+                e[0x43]--;
+                *(int*)(e + 0x5c) = 0;
+                return;
+
+            // ---------------------------------------------------------- 1 : se tourner
+            case 1:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                // Le compte a rebours ne repart que lorsque le cap est ATTEINT.
+                if (TurnSceneEntityTowardTarget(e, boldness * 2 + 0x80, heading)) e[0x43] = 0;
+                *(int*)(e + 0x5c) = 0;
+                return;
+
+            // ---------------------------------------------------------- 2 : s'approcher
+            case 2:
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                // La distance tenue est dans +0x10, la meme case que l'incantation emploie comme
+                // compteur d'etat et que la posture 3 remplit d'un cap : trois roles, jamais en
+                // meme temps.
+                if (distance < *(short*)(e + 0x10))
+                {
+                    e[0x43] = 0;
+                    return;
+                }
+
+                if (e[0x43] != 0) e[0x43]--;
+
+                TurnSceneEntityTowardTarget(e, boldness * 2 + 0x80, heading);
+                *(int*)(e + 0x5c) = (boldness + 0xc0) << 7;
+                return;
+
+            // ---------------------------------------------------------- 3 : marcher
+            default:
+            {
+                if (e[0x43] != 0) e[0x43]--;
+
+                if (*(ushort*)(e + 0x18) != 1)
+                {
+                    flags |= 0x1000000;
+                    *(int*)(e + 0x18) = 1;
+                    *(uint*)e = flags;
+                }
+
+                // La POSITION avance directement, et — contrairement au Goblin — le pas n'est PAS
+                // multiplie par la vitesse d'animation : l'allure est la meme quoi qu'il arrive.
+                int walk = (boldness + 0x80) << 7;
+                *(int*)(e + 0x5c) = walk;
+
+                short course = *(short*)(e + 0x10);
+                *(int*)(e + 0x1c) += ((int)Winsys3d.GetSinTableEntry(course) * walk) >> 0xc;
+                *(int*)(e + 0x24) += (Winsys3d.GetCosTableEntry(course) * walk) >> 0xc;
+
+                *(int*)(e + 0x5c) = 0;
+                TurnSceneEntityTowardTarget(e, boldness * 4 + 0x32, heading);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004873ad..0x004874fe</c> — <b>l'incantation</b>, la seconde machine a etats,
+    /// logee dans <c>+0x10</c> et gardee par le bit <c>0x800</c>.
+    ///
+    /// <para>
+    /// <b>C'est <see cref="AdvanceIncantation_004A5919"/> a quatre valeurs pres.</b> Meme masque de
+    /// traits qui l'annule, memes quatre etats decomptes de 3 vers 0, meme lecture de la duree dans
+    /// la fiche de sort. Les differences : l'animation de lancement est la <b>5</b> et non la 7, le
+    /// coup part a l'image <b>7</b> et non a la 14, et la fiche est prise dans une table <b>a
+    /// plusieurs rangees</b> (<see cref="s_Spells_00552868"/>), la rangee venant de <c>+0x14</c>.
+    /// </para>
+    /// <para>
+    /// <b>Les quatre etats, dans l'ordre ou ils se jouent</b> — <c>3</c> choisir le sort et faire
+    /// naitre l'entite de lancement ; <c>2</c> incanter, en se tournant, le temps que le
+    /// <c>+0x43</c> de la fiche s'ecoule ; <c>1</c> jouer l'animation et lancer a l'image 7 ;
+    /// <c>0</c> attendre la fin de l'animation, qui efface <c>0x800</c> et rend la main au regime
+    /// ordinaire.
+    /// </para>
+    /// </summary>
+    private static void AdvanceIncantation_00487260(
+        byte* e, int boldness, int heading, uint traits, uint flags)
+    {
+        if ((traits & 0x400003e8) != 0)
+        {
+            flags &= 0xfffff7fb;                 // le bit 0x800 et le bit 0x4
+            e[0x43] = 0;
+            *(uint*)e = flags;
+        }
+
+        short state = *(short*)(e + 0x10);
+        if ((uint)state > 3) return;
+
+        switch (state)
+        {
+            // ---------------------------------------------------------- 0 : rendre la main
+            case 0:
+                flags = *(uint*)e;
+                if ((flags & 0x2000000) != 0) *(uint*)e = flags & 0xfffff7ff;
+                return;
+
+            // ---------------------------------------------------------- 1 : lancer
+            case 1:
+                if (*(ushort*)(e + 0x18) != 5)
+                {
+                    *(int*)(e + 0x18) = 5;
+                    *(uint*)e = *(uint*)e & 0xfefffffb;
+                    return;
+                }
+
+                if (*(short*)(e + 0x1a) != 7) return;
+
+                {
+                    ushort sheet = *(ushort*)(e + 6);
+                    CastSpell_0053A980((uint*)e, (sheet >> 8) & 0xff, sheet & 0xff, -1, -1);
+                }
+
+                *(short*)(e + 0x10) -= 1;
+                return;
+
+            // ---------------------------------------------------------- 2 : incanter
+            case 2:
+                if (--e[0x43] == 0) *(short*)(e + 0x10) -= 1;
+
+                TurnSceneEntityTowardTarget(e, boldness * 4 + 0x32, heading);
+                return;
+
+            // ---------------------------------------------------------- 3 : choisir le sort
+            default:
+            {
+                SpawnCastEntity_0047AAE0(e, 0xbd, 0, 0);
+
+                // La rangee vient du placement (+0x14), la colonne d'un tirage a trois. L'original
+                // ne borne PAS la rangee : un +0x14 au-dela de 7 y lirait la donnee qui suit. Ici
+                // la lecture leve, ce qui est la bonne facon de decouvrir qu'une carte pose une
+                // valeur inattendue — les huit rangees couvrent tout ce que la donnee declare.
+                ushort sheet = s_Spells_00552868[*(short*)(e + 0x14) * 3 + CrtRand() % 3];
+                *(ushort*)(e + 6) = sheet;
+
+                // Ghidra: `mov edx,[edx+9Ch] ; mov ecx,[edx+ecx*4] ; mov dl,[ecx+eax+13h]` — le
+                // repertoire des sorts, adresse famille * 4 puis indice * 0x30, comme
+                // CastSpell_0053A980 le fait lui-meme.
+                byte* family = ((byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x9c)))
+                                   [(sheet >> 8) & 0xff];
+
+                e[0x43] = family[(sheet & 0xff) * 0x30 + 0x13];
+
+                *(short*)(e + 0x10) -= 1;
+                *(int*)(e + 0x5c) = 0;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00487721..0x004879cf</c> — <b>le troisieme temps</b> : quelle posture prendre
+    /// pour la suite. Comme chez toute la famille, la distance et le cap sont <b>recalcules en deux
+    /// dimensions</b>, la hauteur ignoree.
+    ///
+    /// <para>
+    /// Trois plages, et dans chacune un tirage sur cent. <b>Sous <c>0xfa</c></b> : frapper (30 %),
+    /// s'ecarter (30 %) ou <b>fuir</b> (40 %). <b>Sous <c>0x1f4</c></b> : charger (45 %), aller
+    /// vers la cible (25 %), tenir la distance a 100 (20 %), attendre (10 %). <b>Au-dela</b> :
+    /// charger (30 %), attendre (30 %), errer (40 %).
+    /// </para>
+    /// <para>
+    /// <b>La fuite est ce qui la distingue.</b> Dans la plage de corps a corps, la sortie la plus
+    /// probable pose la posture 3 sur un cap tire autour de la cible <b>plus un demi-tour</b>
+    /// (<c>+0x800</c>) : elle s'eloigne. Aucune autre routine ecrite ne fait ca — c'est la
+    /// contrepartie du lanceur de sorts, qui n'a rien a gagner a rester au contact.
+    /// </para>
+    /// <para>
+    /// <b>La portee du coup est plus courte que celle du Goblin</b> : <c>rand % (timide * 2 + 1) +
+    /// 0x50</c> contre <c>+ 100</c> chez lui, pour le meme cone.
+    /// </para>
+    /// <para>
+    /// <b>La charge n'est pas une posture, c'est un etat pose a la main</b> : animation 4, image 0,
+    /// bits <c>0x1000804</c> — dont le <c>0x800</c> qui bascule sur l'incantation — et
+    /// <c>+0x10 = 3</c>, le premier etat de celle-ci. <b>« Charger » veut donc dire « incanter ».</b>
+    /// </para>
+    /// </summary>
+    private static void ReplanSceneEntityAction_00487260(byte* e, int boldness, int timid)
+    {
+        byte* chased = *(byte**)(e + 0x6c);
+
+        int dx = (*(int*)(chased + 0x1c) - *(int*)(e + 0x1c)) >> 0xc;
+        int dz = (*(int*)(chased + 0x24) - *(int*)(e + 0x24)) >> 0xc;
+
+        int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dz * dz));
+        int heading = (Winsys3d.Ordinal_457(dx, dz) - *(ushort*)(e + 0x32)) & 0xfff;
+
+        // ================================================================ le corps a corps
+        if (distance < 0xfa)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x1e)
+            {
+                // Frapper : dans le cone ET assez pres, la portee s'elargissant avec la timidite.
+                if (((heading + timid * 4 + 0x100) & 0xfff) <= timid * 8 + 0x200
+                    && distance < CrtRand() % (timid * 2 + 1) + 0x50)
+                {
+                    uint flags = *(uint*)e;
+                    *(int*)(e + 0x18) = 3;                 // animation 3, image 0
+                    *(int*)(e + 0x5c) = 0;
+                    *(uint*)e = (flags & 0xfeffffff) | 2;
+                    return;
+                }
+
+                HesitateSceneEntity(e);
+                return;
+            }
+
+            if (roll < 0x3c)
+            {
+                // Tenir la distance a 100 — la meme sortie que la plage moyenne.
+                HoldSceneEntityAtRange(e, timid, 0x64);
+                return;
+            }
+
+            // FUIR : le cap est tire autour de la cible, puis retourne d'un demi-tour.
+            WanderSceneEntity(e, boldness, timid, heading, 0x800);
+            return;
+        }
+
+        // ================================================================ l'approche
+        if (distance < 0x1f4)
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x2d)
+            {
+                if (((heading + timid * 4 + 0x100) & 0xfff) <= timid * 8 + 0x200)
+                {
+                    BeginIncantation_00487260(e);
+                    return;
+                }
+
+                HesitateSceneEntity(e);
+                return;
+            }
+
+            if (roll < 0x46)
+            {
+                // Aller vers la cible : le meme tirage de cap, sans le demi-tour.
+                WanderSceneEntity(e, boldness, timid, heading, 0);
+                return;
+            }
+
+            if (roll < 0x5a)
+            {
+                HoldSceneEntityAtRange(e, timid, 0x64);
+                return;
+            }
+
+            RestSceneEntity(e, timid);
+            return;
+        }
+
+        // ================================================================ le lointain
+        {
+            int roll = CrtRand() % 100;
+
+            if (roll < 0x1e)
+            {
+                if (((heading + timid * 4 + 0x100) & 0xfff) <= timid * 8 + 0x200)
+                {
+                    BeginIncantation_00487260(e);
+                    return;
+                }
+
+                HesitateSceneEntity(e);
+                return;
+            }
+
+            if (roll < 0x3c)
+            {
+                RestSceneEntity(e, timid);
+                return;
+            }
+
+            // Ghidra: LAB_004879a0 — errer : le cap est un tirage BRUT, sans rapport avec la cible.
+            e[0x42] = 3;
+            e[0x43] = SceneEntityDelay(timid);
+            *(ushort*)(e + 0x10) = (ushort)CrtRand();
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>LAB_00487946</c> — <b>entrer en incantation</b>. Ce n'est pas une posture : c'est
+    /// l'animation 4 posee a la main, les bits <c>0x1000804</c> leves — dont le <c>0x800</c> qui
+    /// bascule <see cref="DecideSceneEntityAction_00487260"/> sur
+    /// <see cref="AdvanceIncantation_00487260"/> — et <c>+0x10 = 3</c>, le premier des quatre etats.
+    /// </summary>
+    private static void BeginIncantation_00487260(byte* e)
+    {
+        *(int*)(e + 0x18) = 4;                 // animation 4, image 0
+        *(short*)(e + 0x10) = 3;
+        *(uint*)e |= 0x1000804;
     }
 
     /// <summary>

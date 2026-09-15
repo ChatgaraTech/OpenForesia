@@ -4,6 +4,22 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-15 (suite)
+
+- feat : **LA ZONE 0, L'AUBERGE, EST COMPLETE — 48 sur 48** : troisieme ensemble entierement implemente apres les tables statiques et la foret. Treize creneaux restaient ce matin ; quatre n'avaient besoin d'aucun code
+- feat : **`0x00487260`, le QUATRIEME LANCEUR DE SORTS du depot** — 1904 octets absents de `Blaze.c`, la seconde et derniere routine d'intelligence de l'auberge. Elle porte le mecanisme d'incantation du Behemoth **au complet** : meme bit `0x800`, memes quatre etats dans `+0x10`, meme entite `0xbd`, meme masque de traits, meme duree lue dans la fiche. Troisieme emploi de ce bloc, et le premier hors de la foret
+- doc : **ses sorts viennent du PLACEMENT, pas de l'espece** — la table `0x00552868` a huit rangees, et la rangee est `+0x14`, c'est-a-dire l'octet 6 du releve de placement que la naissance recopie. **Deux exemplaires de la meme bete posees sur la meme carte peuvent n'avoir pas les memes sorts.** Aucune autre routine ecrite ne fait ca
+- doc : **elle FUIT** — dans la plage de corps a corps, sa sortie la plus probable (40 %) prend un cap autour de la cible **plus un demi-tour**. Et sa « charge » n'est pas une posture : elle leve `0x1000804` et entre en incantation. Elle n'a ni bond, ni posture 4, son recul ne fait rien du tout, et sa marche est la seule de la famille a ne pas multiplier son pas par sa vitesse d'animation
+- feat : **les six verbes de zone de l'auberge**, pris en une passe comme le releve du 2026-08-23 le recommandait : la remise d'un objet a tout le groupe (12), la recherche de l'**Ecu du destin** dans l'inventaire (7), les deux lectures du plancher de niveau (5 et 6), la recharge des sept compteurs de sorts (4) et le compte des neuf drapeaux (2)
+- doc : **le mot `0x2efb` que le verbe 7 cherche en `+0x86` a un nom** — `objets.csv` le donne : l'**Ecu du destin**, la meme fiche dans toutes les zones ou elle apparait. Le releve de 2026-08-23 s'arretait au numero
+- doc : **quatre verbes rendent leur resultat dans la BANQUE `0x005e9060`, pas dans leur retour** — ils y lisent aussi leur argument. Seul le verbe 4 rend une vraie valeur : 1 si aucun compteur n'avait besoin d'etre remonte, 0 sinon — la forme exacte d'un service d'auberge qu'on ne facture que s'il a servi
+- fix : **les verbes 57 et 58 n'etaient pas branches** — `AreaVerb_0053DEA0` et `AreaVerb_0053DF20` existaient depuis le 2026-08-25, avec tout le panneau du coffre (`WorldMapDepot.cs`), mais `ScriptOpAreaVerb` levait sur les deux. Deux lignes
+- fix : **`census-entity-handlers.sh` etait aveugle aux deux crochets par image** — `CallEntityHook_0056afe8` et `CallEntityHook_0056aff0` ont leur propre aiguillage, comme `CallSubAreaMoveProbe`. `0x0053DCB0` et `0x0053DF90` se lisaient « a transcrire » alors qu'ils sont ecrits depuis le 2026-08-25
+- feat : **`0x00404B90` et son etincelle `0x00404C80`** — le sous-type `0xfe` se colle a l'entite de scene 0 (trois adresses absolues, pas un pointeur qu'on lui passe), seme trois etincelles par image pendant trente images, et joue un **arpege de trois notes** : le meme son `0x20` a trois hauteurs montantes, aux images 30, 22 et 14
+- doc : **l'atlas `0x0054f160` est releve** — quatre enregistrements, et les deux bouts se demontrent : il commence ou finit `0x0054f158` et il est clos par la **reapparition du separateur** `00 00 08 08` a `0x0054f180`. Le corps confirme, son `+0x40` rebouclant a 4
+
+---
+
 ## 2026-09-15
 
 - feat : **LES TABLES STATIQUES SONT COMPLETES — 274 sur 274** : les treize derniers gestionnaires communs sont ecrits d'un bloc (`0x00403E80`, `0x00404000`, `0x00404460`, `0x004045F0`, `0x00404730`, `0x00447A90`, `0x00447D50`, `0x0044FC90`, `0x0044FF40`, `0x00476950`, `0x00476970`, `0x0047A950`, `0x00482FA0`). Six absents de `Blaze.c`, sortis du desassembleur ; releves gardes sous `Legacy/Raw/Blaze/`. Deuxieme ensemble entierement implemente apres la foret, et le seul qui vaille dans les onze zones

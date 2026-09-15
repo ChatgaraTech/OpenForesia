@@ -12,15 +12,15 @@ déplacement.
 
 ---
 
-# LES TABLES STATIQUES SONT FINIES — 274 SUR 274 (2026-09-15)
+# TROIS ENSEMBLES COMPLETS — LES TABLES STATIQUES, LA FORÊT, L'AUBERGE (2026-09-15)
 
-Les trois tables gravées dans `.data` — `0x00551c30`, `0x00551f30`, `0x00552230` — sont
-**entièrement implémentées**. Ce sont celles qui ne dépendent d'aucune zone : ce qui est écrit là
-vaut dans les onze. Les treize derniers ont été écrits d'un bloc ; le détail est dans
-`REVERSE_STATUS.md`, section du 2026-09-15.
+Les trois tables gravées dans `.data` — `0x00551c30`, `0x00551f30`, `0x00552230`, **274 sur 274** —
+et la **zone 0, l'auberge, 48 sur 48**. Avec la forêt (zone 3, 136 sur 136, bouclée le 2026-09-02),
+cela fait trois ensembles entièrement implémentés. Le détail est dans `REVERSE_STATUS.md`, les deux
+sections du 2026-09-15.
 
-C'est le **deuxième ensemble complet** du dépôt, après la forêt (zone 3, 136 sur 136). La différence
-est qu'il n'est pas localisé : la forêt ne sert qu'en forêt, le socle commun sert partout.
+Les tables statiques ne sont pas une zone : **ce qui est écrit là vaut dans les onze**. C'est le
+socle commun, et il est entier.
 
 ## Où on en est
 
@@ -28,31 +28,70 @@ est qu'il n'est pas localisé : la forêt ne sert qu'en forêt, le socle commun 
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **258** |
-| implémentés, jamais appelés | **173** |
-| à transcrire | **999** |
+| implémentés, jamais appelés | **186** |
+| à transcrire | **986** |
+
+| zone | lieu | implémentés |
+|---:|---|---|
+| — | **tables statiques** (partout) | **274 / 274** |
+| 0 | **L'auberge** | **48 / 48** |
+| 3 | **La forêt** | **136 / 136** |
+| 1 | La mine abandonnée | 22 / 157 |
+| 2 | La montagne du dragon de feu | 18 / 42 |
+| 4 | La vieille tour | 19 / 176 |
+| 5 | Le Labyrinthe des morts | 19 / 160 |
+| 6 | Le château de l'immortel | 20 / 170 |
+| 7 | Les ruines souterraines | 16 / 35 |
+| 8 | La vallée d'argent | 17 / 46 |
+| 9 | Les ruines dans le lac | 17 / 41 |
+| 10 | La grotte scellée | 20 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
 ## La suite, par ordre de rendement
 
-1. **La zone 0, l'auberge — 35 sur 48.** C'est la plus proche de la fin, et **la seule où la sonde
-   a déjà relevé du passage** (12 exercés). Treize corps pour boucler une troisième zone.
-2. **Les 32 routines d'IA qui sont des copies exactes d'un frère non écrit** (relevé du 2026-09-02,
-   `census-duplicates.sh`). Les écrire **par représentant** et non par zone économise 32 corps ;
-   les six meilleurs groupes font 20 corps pour 6 lectures.
-3. Le reste, zone par zone. La mine (157) et la grotte scellée (349) sont les deux gros morceaux.
+1. **Les 32 routines d'IA qui sont des copies exactes d'un frère non écrit** (relevé du 2026-09-02,
+   `census-duplicates.sh`, revérifié le 2026-09-15). Les écrire **par représentant** et non par zone
+   économise 32 corps entiers ; les six meilleurs groupes font **20 corps pour 6 lectures**, et
+   chacune de ces lectures est une grosse routine. C'est le meilleur rendement disponible.
+   - 5 corps, 1 179 instr : `0x004A7190` `0x004B22D0` `0x004E8DF0` `0x004EDB60` `0x004F8270`
+   - 3 corps, 1 212 : `0x004D1F70` `0x004E67C0` `0x004EB530`
+   - 3 corps, 1 110 : `0x004ACC20` `0x004CE120` `0x004DB610`
+   - 3 corps, 1 008 : `0x004F3350` `0x004F5630` `0x004FC9B0`
+   - 3 corps, 986 : `0x004E56C0` `0x004EA430` `0x004EEB20`
+   - 3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`
+2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.
+   Le plus gros fait 7 corps pour 47 instructions.
+3. **La zone 2 (18 / 42) et la zone 7 (16 / 35)**, les deux plus petites de celles qui restent.
+4. Le reste. La mine (157) et la grotte scellée (349) sont les deux gros morceaux.
 
-## Ce que cette séance a appris et qui vaut pour la suite
+**La dette d'épreuve, elle, grandit** : 186 corps écrits n'ont jamais tourné. Trois ensembles sont
+complets et seuls 12 créneaux de l'auberge et 37 de la forêt ont été vus passer. Une séance de test
+sur l'auberge se lirait désormais comme une mesure, pas comme une chasse au plantage.
 
-- **Deux relais rendent le recensement statique aveugle.** `0x00476950` et `0x00476970` lisent le
-  sous-type de leur enfant dans leur propre `+0x0b`. `GestionnairesEntites.md` ne peut pas dire ce
-  qu'ils atteignent ; seule la sonde le peut.
-- **Un nom d'atlas hors convention rend `check-descriptors.sh` muet, pas bruyant.** Le script
-  reconnaît `s_Descriptors_00…` / `Descriptors00…()` et rien d'autre. Un vérificateur muet se lit
-  comme un vérificateur satisfait — nommer à la convention n'est pas cosmétique.
-- **Le même champ change de rôle d'un sous-type au suivant, dans une même famille.** `+0x9a` est
-  une couche de dessin pour `0xa8` et un plafond d'échelle pour `0xa6`, qui sont voisins immédiats
-  dans le binaire. Lire un offset « par analogie avec la sœur » est un piège.
+## Ce que ces deux séances ont appris, et qui vaut pour la suite
+
+- **Un aiguillage qui vit hors du répartiteur principal doit être déclaré à
+  `census-entity-handlers.sh` le jour où il est écrit.** C'est arrivé deux fois — `CallSubAreaMoveProbe`
+  le 2026-09-01, `CallEntityHook_0056afe8` et `CallEntityHook_0056aff0` le 2026-09-15. Un faux
+  « à transcrire » ne fait rien échouer : personne ne s'en aperçoit, et on compte comme dette du
+  travail déjà fait.
+- **Vérifier qu'un corps écrit est bien BRANCHÉ.** `AreaVerb_0053DEA0` et `AreaVerb_0053DF20`
+  existaient depuis trois semaines, avec tout le panneau du coffre derrière eux, et le répartiteur
+  levait sur les deux. Écrire sans brancher est indétectable jusqu'au premier plantage.
+- **Un nom hors convention rend `check-descriptors.sh` muet, pas bruyant.** Le script reconnaît
+  `s_Descriptors_00…` / `Descriptors00…()` et rien d'autre. Un vérificateur muet se lit comme un
+  vérificateur satisfait.
+- **Le même champ change de rôle d'un sous-type au suivant, dans une même famille.** `+0x9a` est une
+  couche de dessin pour `0xa8` et un plafond d'échelle pour `0xa6`, voisins immédiats dans le
+  binaire. Lire un offset « par analogie avec la sœur » est un piège.
+- **Deux relais rendent le recensement structurellement aveugle.** `0x00476950` et `0x00476970`
+  lisent le sous-type de leur enfant dans leur propre `+0x0b` : aucune analyse statique ne peut dire
+  ce qu'ils atteignent. Seule la sonde le peut.
+- **Le mécanisme d'incantation se recopie d'une zone à l'autre.** Le bloc du Behemoth est désormais
+  relevé trois fois (Behemoth, Trent, `0x00487260`), dont une hors de la forêt, à quatre constantes
+  près à chaque fois. Devant une routine qui appelle `CastSpell_0053A980`, chercher le bit `0x800`
+  avant de lire quoi que ce soit d'autre.
 
 ---
 

@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **258** |
-| implementes, jamais appeles | **173** |
-| a transcrire | **999** |
+| implementes, jamais appeles | **186** |
+| a transcrire | **986** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -62,7 +62,7 @@ et n'est pas un comportement.
 | zone | lieu | gestionnaires | implementes | testes |
 |---|---|---|---|---|
 | — | **tables statiques** (partout) | 274 | 274 | 211 |
-| 0 | L'auberge | 48 | 35 | 12 |
+| 0 | L'auberge | 48 | 48 | 12 |
 | 1 | La mine abandonnee | 157 | 22 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
 | 3 | La foret | 136 | 136 | 37 |
@@ -366,30 +366,25 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 0 — L'auberge
 
-48 gestionnaires, 35 implementes, 12 testes.
+48 gestionnaires, 48 implementes, 12 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x00404B90` | 0 | 0056B0C8 | **non** | **non** |
-| `0x00404C80` | 0 | 0056B2C8 | **non** | **non** |
-| `0x00442DB0` | 0 | 0056AEC8 | **non** | **non** |
-| `0x00442E20` | 0 | 0056AEC8 | **non** | **non** |
-| `0x00442E70` | 0 | 0056AEC8 | **non** | **non** |
-| `0x00442EA0` | 0 | 0056AEC8 | **non** | **non** |
-| `0x00442F20` | 0 | 0056AEC8 | **non** | **non** |
-| `0x004430B0` | 0 | 0056AEC8 | **non** | **non** |
-| `0x00487260` | 0 | 0056AD48 | **non** | **non** |
-| `0x0053DCB0` | 0 | 0056AFC8 | **non** | **non** |
-| `0x0053DEA0` | 0 | 0056AEC8 | **non** | **non** |
-| `0x0053DF20` | 0 | 0056AEC8 | **non** | **non** |
-| `0x0053DF90` | 0 | 0056AFC8 | **non** | **non** |
+| `0x00404B90` | 0 | 0056B0C8 | oui | **non** |
+| `0x00404C80` | 0 | 0056B2C8 | oui | **non** |
 | `0x00404E50` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405A70` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405D60` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405E70` | 0 | 0056B0C8 | oui | **non** |
 | `0x00405FE0` | 0 | 0056B0C8 | oui | **non** |
 | `0x00442D90` | 0 | 0056AEC8 | oui | **non** |
+| `0x00442DB0` | 0 | 0056AEC8 | oui | **non** |
 | `0x00442E10` | 0 | 0056AEC8 | oui | **non** |
+| `0x00442E20` | 0 | 0056AEC8 | oui | **non** |
+| `0x00442E70` | 0 | 0056AEC8 | oui | **non** |
+| `0x00442EA0` | 0 | 0056AEC8 | oui | **non** |
+| `0x00442F20` | 0 | 0056AEC8 | oui | **non** |
+| `0x004430B0` | 0 | 0056AEC8 | oui | **non** |
 | `0x004431F0` | 0 | 0056AEC8 | oui | **non** |
 | `0x00443260` | 0 | 0056AEC8 | oui | **non** |
 | `0x004457F0` | 0 | 0056AEC8 | oui | **non** |
@@ -405,7 +400,12 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00473CB0` | 0 | 0056ADC8 | oui | **non** |
 | `0x00473ED0` | 0 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0 | 0056ADC8 | oui | **non** |
+| `0x00487260` | 0 | 0056AD48 | oui | **non** |
+| `0x0053DCB0` | 0 | 0056AFC8 | oui | **non** |
 | `0x0053DD20` | 0 | 0056AEC8 | oui | **non** |
+| `0x0053DEA0` | 0 | 0056AEC8 | oui | **non** |
+| `0x0053DF20` | 0 | 0056AEC8 | oui | **non** |
+| `0x0053DF90` | 0 | 0056AFC8 | oui | **non** |
 | `0x00404EF0` | 0 | 0056B0C8 | oui | oui |
 | `0x004055C0` | 0 | 0056B0C8 | oui | oui |
 | `0x00442F60` | 0 | 0056AEC8 | oui | oui |

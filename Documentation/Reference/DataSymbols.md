@@ -2769,6 +2769,63 @@ plage n'est donc toujours pas une borne.
 `check-descriptors.sh`, qui ne reconnaît que `s_Descriptors_00…` et `Descriptors00…()`. Renommé à la
 convention, il est vérifié comme les 35 autres. Un nom hors convention ne fait pas échouer le
 vérificateur : il le rend muet, et un vérificateur muet se lit comme un vérificateur satisfait.
+
+## `0x0054f160` — l'autre moitié de ce que le séparateur de `0x0054f158` annonçait (2026-09-15)
+
+| adresse | octets | planche |
+|---|---|---|
+| `0x0054f160` | `00 48 18 20 01 02 10 00` | `0x20184800` |
+| `0x0054f168` | `18 48 18 20 01 02 10 00` | `0x20184818` |
+| `0x0054f170` | `30 48 18 20 01 02 10 00` | `0x20184830` |
+| `0x0054f178` | `48 48 18 20 01 02 10 00` | `0x20184848` |
+
+**Quatre enregistrements**, et c'est le cas le plus net du dépôt : **les deux bornes se démontrent**.
+La plage commence où finit `0x0054f158` (le séparateur relevé le 2026-08-29), et elle est close par
+la **réapparition du même motif** `00 00 08 08 01 02 10 00` à `0x0054f180` — ce que la note du
+2026-08-29 avait prédit en toutes lettres : *« c'est une borne exploitable pour les plages
+voisines »*. Elle l'a été.
+
+Le consommateur est `FUN_00404C80`, le sous-type `0xff` de la passe `0x005f2d40`, et il confirme :
+son `+0x40` s'incrémente et reboucle dès qu'il **dépasse 3**. Donnée et code se bornent l'un l'autre.
+
+Les quatre tuiles sont la même planche `0x18 × 0x20` prise de `0x00` en `0x18`.
+
+## `0x00552868` — la table de sorts de `0x00487260`, à plusieurs rangées (2026-09-15)
+
+**Huit rangées de trois `ushort`**, `0x00552868`–`0x00552897`. Chaque mot porte la **famille dans
+l'octet haut** et l'**indice dans l'octet bas**, la forme sous laquelle il est rangé dans le `+0x06`
+de l'entité.
+
+| rangée | adresse | fiches (famille:indice) |
+|---:|---|---|
+| 0 | `0x00552868` | 0:0, 0:3, 0:8 |
+| 1 | `0x0055286e` | 0:10, 0:16, 2:12 |
+| 2 | `0x00552874` | 0:3, 0:8, 2:0 |
+| 3 | `0x0055287a` | 0:8, 2:0, 1:1 |
+| 4 | `0x00552880` | **répète la rangée 0** |
+| 5 | `0x00552886` | **répète la rangée 1** |
+| 6 | `0x0055288c` | **répète la rangée 2** |
+| 7 | `0x00552892` | **répète la rangée 3** |
+
+**La borne est la nature de la donnée qui suit** : à `0x00552898` commence `0000 1e00 4600 9600
+00ff 5000`, c'est-à-dire la forme exacte des six `short` qu'une routine d'intelligence pose sur sa
+pile comme sonde de geste. Le motif de 0x18 octets apparaît donc **exactement deux fois** avant de
+changer de nature ; les quatre dernières rangées ne sont pas une lecture trop longue, elles sont
+dans le binaire.
+
+**Ce qui rend cette table particulière, c'est son indexation.** Le corps lit
+`table[+0x14 × 3 + rand % 3]` : la colonne est un tirage à trois, mais la **rangée vient de
+`+0x14`**, que la naissance d'une entité de scène recopie de l'**octet 6 du relevé de placement**
+(`*(int*)(slot + 0x14) = record[6]`, `WorldMapScript`). L'arsenal d'un monstre est donc une
+propriété de **l'endroit où il est posé**, pas de son espèce — le seul cas relevé dans le dépôt.
+
+Comparer avec `0x00552A30`, la table du Behemoth : une seule rangée de trois (`0x000d`, `0x0013`,
+`0x0017`), tirée sans rangée. Le mécanisme d'incantation est le même, l'indexation non.
+
+**L'original ne borne pas la rangée.** Un `+0x14` au-delà de 7 lirait la sonde de geste comme si
+c'étaient des fiches de sort. La reconstruction lève à la place, ce qui est la bonne façon de
+découvrir qu'une carte pose une valeur inattendue.
+
 ## `0x0056d308` et `0x0056d310` — les deux tables de la montée de niveau (2026-08-29)
 
 Relevées de longue date dans `WorldMapTick.cs`, portées ici parce que la première a changé de sens.
