@@ -3021,3 +3021,17 @@ Zone non initialisée de `.data` — zéro au chargement :
 | `0x005ddf90` | 0x20 | miroir de SYSTEM (`0x005e9000`) |
 | `0x005ddfd8` | 0x40 | miroir de ITEM (`0x005e9840`) — finit sur `0x005de018` |
 | `0x005e90c0` | 0x2a | le bandeau de coup, dans `GameArena` (disposition sur `PostCombatDebugBanner`) |
+
+## `0x00552A50` — les sorts du Gremlin, et quatre copies conformes (2026-09-15)
+
+```
+0x00552a50: 0d00 0702 0802 0002   0002 0000
+```
+
+Quatre mots tirés par `hasard % 4` pour la variante 0 — famille 0 indice 13 (Atchoum), famille 2
+indices 7 (Chant sirènes), 8 (Écrase) et 0 (Dodo) —, puis le dword lu par la variante 1, masqué sur
+seize bits : famille 2 indice 0, Dodo.
+
+**Quatre autres copies du corps lisent leur propre table** : `0x00552A88`, `0x00552E98`,
+`0x00552EF8`, `0x00552FC0`. Les cinq ont été relevées : **mêmes douze octets**. Le C# n'en porte
+qu'une (`s_GremlinSpells_00552A50`), et c'est une conclusion vérifiée, pas un raccourci.

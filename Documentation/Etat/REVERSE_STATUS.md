@@ -21600,3 +21600,47 @@ d'indice du bloc de sprite. C'est le `local_4 = 0x513ba5` de Ghidra. L'indice es
 chaque dessin.
 
 **Pas encore établi** : ce que montrent ces deux atlas — il faut le voir en jeu.
+
+## 2026-09-15 (suite 5) — `0x004A7190`, le Gremlin : cinq corps en une lecture
+
+**Transcrit** au désassembleur (`Legacy/Raw/Blaze/FUN_004A7190.asm`, 3 980 octets de code, absent
+de `Blaze.c`), table de sauts à treize entrées à `0x004A811C`. Sous-type 2 de la vieille tour
+(zone 4, sous-zone 0 : le **Gremlin**). C'était le premier groupe de la liste des doublons.
+
+**Les cinq corps sont une seule routine, vérifiée et non supposée.** `0x004A7190`, `0x004B22D0`,
+`0x004E8DF0`, `0x004EDB60` et `0x004F8270`, comparés instruction par instruction une fois les
+cibles d'appel relatives normalisées, ne diffèrent **que** par l'adresse de leur table de sorts
+(`0x00552A50`, `0x00552A88`, `0x00552E98`, `0x00552EF8`, `0x00552FC0`). Les cinq tables sont
+relevées et portent les mêmes douze octets. Chaque copie appelle sa propre copie du chercheur de
+proie (`0x004A8150`, `0x004B3290`, `0x004E6400`, `0x004EB170`, `0x004F9230`), toutes identiques à
+`PickChasedPartyMember_004A1020` au saut près. Un `case` par adresse, un seul corps.
+
+**Ce que la lecture a établi**
+
+* **Charpente du Varan, queue de volante.** Les feuilles propres du Varan (`FUN_004d5de0`,
+  `FUN_004d5e60`, `FUN_004c3810`) et son heurt de mur qui annule l'image, mais l'intégration est
+  `FUN_0049a8e0` recopiée en ligne — vérifié instruction pour instruction, d'où l'appel à
+  `IntegrateFlyingEntityMotion_0049A8E0`.
+* **Deux régimes fixés à la naissance par `+0x16`** : à 10 ou plus la variante est ramenée de dix
+  et le bit `0x20` tombe (vol bas, à `0x8c` unités du plancher) ; sinon il vole autour de `+0x48`,
+  que la hauteur de la proie entraîne.
+* **Il ondule** : `+0x14` avance d'un pas tiré à chaque image, et la hauteur visée suit
+  `sin(+0x14) * 60`.
+* **Trois attaques** : le piqué (0x0c, trois phases, morsure à l'image 17), l'**accroche** (0x0b :
+  il rejoint la hauteur de sa proie et la frappe à chaque image au huitième de son attaque tant que
+  l'animation dure), le sort (0x0a, quatre phases, un seul à la fois : il renonce si une entité de
+  `0x005ff400` le porte encore en `+0x6c`).
+* **La sauvegarde du placement ne garde pas `+0x20`** : une volante heurtée garde sa hauteur.
+* **Les `Ordinal_4xx` sont en `stdcall`** : sans le compter, les emplacements de pile relus après
+  un sinus tombent de quatre octets à côté. Noté ici parce que c'est ce qui a failli tromper la
+  lecture de l'intégration.
+
+**Deux défauts de 1998, transcrits et non observés en jeu**
+
+* **Le registre du sort n'est pas rechargé pour une variante au-delà de 1.** `edi` sort de la
+  boucle de refus à 32 ; le Gremlin lance alors le mot `0x0020`, famille 0 indice 32, quand la
+  famille 0 n'a que 29 fiches. La variante réelle des Gremlins placés n'est pas relevée.
+* **Une comparaison morte** dans la plage lointaine (`tirage < 0x3c` après `tirage >= 0x4b`).
+
+**Ce qui reste ouvert** : ce qu'est `+0x16` pour une entité de scène (la variante), et ce qu'est
+`+0x64` de la proie, que l'altitude de référence recopie.

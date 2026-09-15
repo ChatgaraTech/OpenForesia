@@ -954,3 +954,26 @@ d'animation — la seule de la famille dans ce cas.
 
 Enfin, **son recul ne fait rien du tout** : le bit `0x10` rend la main sans même la tourner vers ce
 qui l'a touchée, là où le Goblin s'y retourne.
+
+## La vieille tour (zone 4) — le Gremlin, et cinq créneaux pour une lecture (2026-09-15)
+
+`0x004A7190`, sous-type 2 de la sous-zone 0. **Le premier groupe de doublons écrit par
+représentant** : `0x004B22D0`, `0x004E8DF0`, `0x004EDB60` et `0x004F8270` en sont des copies qui
+ne diffèrent que par l'adresse de leur table de sorts — et les cinq tables portent les mêmes octets.
+La vérification est à refaire pour chaque groupe : **normaliser les cibles d'appel relatives, pas
+les adresses de données**, sinon une table propre à chaque copie passe inaperçue.
+
+**Le calque** : la **charpente du Varan** (ses trois feuilles propres, le heurt de mur qui annule
+l'image, le contournement en posture 7) sur la **queue d'une volante** (`FUN_0049a8e0`, en ligne).
+Le troisième croisement des deux axes, après l'Abeille et le Wyrm.
+
+Ce qui lui appartient :
+
+* **Deux régimes par `+0x16`** : vol libre autour de `+0x48` (bit `0x20`), ou vol bas à `0x8c`
+  unités du plancher pour une variante de 10 et plus.
+* **Il ondule** en permanence, sauf pendant la préparation d'un piqué.
+* **L'accroche** (posture 0x0b) : la seule routine du dépôt qui **frappe à chaque image**, sans
+  condition d'image d'animation, au huitième de son attaque.
+* **Son sort dépend de la variante**, et une variante au-delà de 1 lance un mot laissé par une
+  boucle (`0x0020`). Voir `REVERSE_STATUS.md`.
+* **Un sort à la fois** : il renonce tant qu'une entité de la table des effets le porte en `+0x6c`.

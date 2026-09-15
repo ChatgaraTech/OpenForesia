@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-15 (suite)
 
+- feat : **le Gremlin**, `0x004A7190` — et **cinq gestionnaires d'un coup** (`0x004B22D0`, `0x004E8DF0`, `0x004EDB60`, `0x004F8270`) : les cinq corps ne different que par l'adresse de leur table de sorts, et les cinq tables portent les memes octets. Une volante qui ondule, pique, s'accroche a sa proie et incante
+- doc : le Gremlin lance `0x0020` (famille 0 indice 32, hors des 29 fiches) quand sa variante depasse 1 — le registre du sort sort d'une boucle sans etre recharge. Defaut de 1998, non observe en jeu
 - feat : **l'etat de jeu 10**, `FUN_00513ba0` (`Screens/State10/RebootScreen.cs`) — ce que la ligne REBOOT du menu de mise au point lance : deux images qui defilent, une animation superposee, puis retour a l'etat 0. Plus aucune ligne du menu ne leve
 - feat : **MONITOR est transcrit** — les cinq sites que la ligne MONITOR allume sont transcrits : l'en-tete ANG/LOC/DPT/CHG, le **journal des drapeaux** (chaque bit de FLAG, ITEM ou SYSTEM qui bouge pendant l'image, dans une boite), le trace de portee du corps a corps en eclats, et le bandeau de calcul des coups et des sorts
 - fix : deux releves de ces lacunes etaient faux — le trace fait naitre le sous-type 0 (pas 4 a 7), et le bandeau de sort emporte l'attaque et la defense (pas la famille et l'indice : `FUN_0053a2b0` reutilise ces emplacements de pile)
