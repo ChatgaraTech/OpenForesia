@@ -28,8 +28,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **258** |
-| implémentés, jamais appelés | **197** |
-| à transcrire | **975** |
+| implémentés, jamais appelés | **200** |
+| à transcrire | **972** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -44,7 +44,7 @@ socle commun, et il est entier.
 | 7 | Les ruines souterraines | 17 / 35 |
 | 8 | La vallée d'argent | 17 / 46 |
 | 9 | Les ruines dans le lac | 17 / 41 |
-| 10 | La grotte scellée | 25 / 349 |
+| 10 | La grotte scellée | 28 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -61,7 +61,8 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      preux (chateau de l'immortel). Copies conformes, sans donnee propre.
    - ~~3 corps, 1 110 : `0x004ACC20` `0x004CE120` `0x004DB610`~~ — **fait le 2026-09-15** : la
      Crapouille, la Gargouille et le Crapaud, trois especes pour une routine.
-   - 3 corps, 1 008 : `0x004F3350` `0x004F5630` `0x004FC9B0`
+   - ~~3 corps, 1 008 : `0x004F3350` `0x004F5630` `0x004FC9B0`~~ — **fait le 2026-09-15** : le Gremlin
+     de la grotte scellee, un terrestre sans rapport avec celui de la vieille tour.
    - 3 corps, 986 : `0x004E56C0` `0x004EA430` `0x004EEB20`
    - 3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`
 2. **Les groupes de gestionnaires simples**, même principe : 144 corps couverts par 49 lectures.

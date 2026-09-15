@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-15 (suite)
 
+- feat : **le Gremlin de la grotte scellee**, `0x004F3350`, `0x004F5630`, `0x004FC9B0` — un terrestre qui frappe a chaque image de son geste, bondit, charge et fait naitre l'effet 0xdc
+- doc : **deux especes du meme nom, deux comportements sans rapport** — le Gremlin de la vieille tour vole et incante, celui de la grotte scellee court et charge. Le nom d'espece ne designe pas une routine
 - feat : **la Crapouille, la Gargouille et le Crapaud**, `0x004ACC20`, `0x004CE120`, `0x004DB610` — trois especes, UNE routine : une volante qui ondule, s'accroche, se pose au sol et en repart en pique
 - doc : la poussee de pique de ces trois especes vaut toujours 0x14000 — un decalage dont le compte est masque sur cinq bits annule la hardiesse
 - feat : **le Pourpre preux**, `0x004D1F70` — et ses deux copies conformes de la grotte scellee (`0x004E67C0`, `0x004EB530`) : un chevalier a cinq attaques (coup, combo, charge qui projette, coup en l'air, effet) qui PARE quand sa cible frappe

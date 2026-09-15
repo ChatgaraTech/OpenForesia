@@ -21704,3 +21704,26 @@ ondulation (au pas de `0x32`), accroche en 0x0b, heurt sans restitution de la ha
 décalage est masqué sur cinq bits et les dix bits bas du premier terme sont nuls : elle vaut
 **toujours `0x14000`**. Probablement une expression mal écrite en 1998 — la forme voisine du Varan
 est `((hardiesse & ~3) + 0x14) << 10`. Transcrit tel quel ; l'opérateur C# masque de la même façon.
+
+## 2026-09-15 (suite 8) — `0x004F3350`, le Gremlin de la grotte scellée : un autre Gremlin
+
+**Transcrit** au désassembleur (`Legacy/Raw/Blaze/FUN_004F3350.asm`, 3 380 octets de code, absent
+de `Blaze.c`), table de sauts à treize entrées à `0x004F4064`. Quatrième groupe de doublons :
+`0x004F5630` et `0x004FC9B0`, conformes, tous trois dans la grotte scellée (zone 10). L'espèce
+s'appelle **Gremlin** dans les fiches de modèle — et **n'a rien de commun** avec la routine du
+Gremlin de la vieille tour (`0x004A7190`) : terrestre, sans vol, sans sort, sans variante.
+
+**Charpente du Varan** : `FUN_00488160`, pose au sol et heurt au masque `0x2000ad82` — mais écrits
+en ligne, **pas** par `SettleSceneEntityOnGroundAndWalls`, à cause de trois écarts vérifiés : le
+placement ne sauvegarde ni `+0x60` ni `+0x64` ; heurté en l'air, le bit de geste tombe aussi ;
+heurté au sol, la posture 7 et son rebours sont reposés même s'il y était déjà.
+
+**Ce qui lui appartient**
+
+* **Un geste qui frappe à chaque image** tant que le bit 2 tient, sans condition d'image.
+* **Le bond** (posture 6) : élan à l'image 10, le saut est le geste, fin au sol. **La charge**
+  (posture 11) : immédiate si hardiesse > `0x32`, sinon après l'image 6, poussée `0x1e000`.
+* **La posture 12** fait naître l'effet `0xdc` à la fin de son animation si la cible est à moins de
+  `0x9c4`, `+0x9a` neutralisé le temps de l'appel. À l'arrêt, la posture est rendue.
+* **Sous `0x64`, la replanification s'écrase elle-même** : quelle que soit la sortie de la plage de
+  contact, la posture devient 3.

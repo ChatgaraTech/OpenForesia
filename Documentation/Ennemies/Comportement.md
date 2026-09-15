@@ -1002,3 +1002,13 @@ de la Crapouille.
 Le calque est le **Gremlin sans son sort**. Sa pièce propre est la **posture 10**, où la bête se pose
 et peut repartir en piqué ; et sa replanification lit la variante `+0x16` pour choisir entre se poser
 (variante 0) et piquer (les autres).
+
+## La grotte scellée (zone 10) — le Gremlin qui n'est pas le Gremlin (2026-09-15)
+
+`0x004F3350` et ses deux copies. **Même nom d'espèce que `0x004A7190`, aucun code commun** : ce
+Gremlin-là est un terrestre sur la charpente du Varan. Avec la Crapouille, c'est le second
+avertissement du même jour : **une routine s'identifie par son adresse, pas par le nom de la bête**.
+
+Sa queue ressemble à `SettleSceneEntityOnGroundAndWalls` à trois écarts près, et c'est pourquoi elle
+est écrite en ligne (`SettleCaveGremlin_004F3B71`) : **avant de réutiliser une feuille de charpente,
+comparer le placement sauvegardé et la sortie en l'air**, pas seulement le masque.
