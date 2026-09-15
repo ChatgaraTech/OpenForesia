@@ -6,6 +6,7 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-15 (suite)
 
+- feat : **l'etat de jeu 10**, `FUN_00513ba0` (`Screens/State10/RebootScreen.cs`) — ce que la ligne REBOOT du menu de mise au point lance : deux images qui defilent, une animation superposee, puis retour a l'etat 0. Plus aucune ligne du menu ne leve
 - feat : **MONITOR est transcrit** — les cinq sites que la ligne MONITOR allume sont transcrits : l'en-tete ANG/LOC/DPT/CHG, le **journal des drapeaux** (chaque bit de FLAG, ITEM ou SYSTEM qui bouge pendant l'image, dans une boite), le trace de portee du corps a corps en eclats, et le bandeau de calcul des coups et des sorts
 - fix : deux releves de ces lacunes etaient faux — le trace fait naitre le sous-type 0 (pas 4 a 7), et le bandeau de sort emporte l'attaque et la defense (pas la famille et l'indice : `FUN_0053a2b0` reutilise ces emplacements de pile)
 - feat : **`FUN_0051aa30`, le MENU DE MISE AU POINT de la carte du monde** — ouvert par SELECT une fois « Gurkha » trace : treize lignes (QUEST, MAP, PLAYER, FLAG, WORK, TEMP, ITEM, SYSTEM, TEX, REBOOT, MENU, MONITOR, FONT), teleportation, taille du groupe, edition bit a bit des banques d'etat, visionneuse de pages de texture. Transcrit contre ses 3 616 octets desassembles

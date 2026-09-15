@@ -141,7 +141,8 @@ public static unsafe partial class Blaze
             case 9:
                 throw new NotImplementedException("FUN_0051bb00 (game state 9) not yet reconstructed");
             case 10:
-                throw new NotImplementedException("FUN_00513ba0 (game state 10) not yet reconstructed");
+                RunRebootScreen_00513BA0();   // Ghidra: FUN_00513ba0
+                break;
             default:
                 // Ghidra: `uRam00000000 = 1;` â€” a store to address 0. Not a translation artifact:
                 // the original deliberately faults on an unknown state, i.e. this is its assert.

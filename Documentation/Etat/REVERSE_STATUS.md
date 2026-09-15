@@ -21542,7 +21542,6 @@ courte d'affichage.
 * `DAT_005de018` : non nul, le menu s'affiche sans rien faire. **Aucun écrivain dans `Blaze.c`**.
   TODO(REVERSE).
 * `DAT_00566be0` (FONT) : **aucun lecteur dans `Blaze.c`**. TODO(REVERSE).
-* **REBOOT mène à une lacune connue** : l'état 10 (`FUN_00513ba0`) n'est pas reconstruit et lève.
 * Le terminateur de la table des libellés est `DAT_00572b40`, où `FUN_00512900` écrit. S'il cessait
   de commencer par un zéro, l'original lirait le verrou `0x005633a8` comme un pointeur ; la
   transcription lève à cet endroit.
@@ -21582,3 +21581,22 @@ testent. Les cinq levaient ; les cinq sont transcrits, contre le désassemblage.
 
 **Ce qui reste ouvert** : le flux `+0x5f0` du répertoire d'état, qui affiche le bandeau de coup,
 n'a pas été lu — on ne sait pas encore ce qu'il montre des valeurs recopiées.
+
+## 2026-09-15 (suite 4) — `FUN_00513ba0`, l'état de jeu 10
+
+**Transcrit**, contre le désassemblage (`Legacy/Raw/Blaze/FUN_00513BA0.asm`), dans un répertoire à
+lui : `Screens/State10/RebootScreen.cs` (`RunRebootScreen_00513BA0`). Le répartiteur ne lève plus
+sur l'état 10. Dans `Blaze.c`, **seule la ligne REBOOT** du menu de mise au point y mène.
+
+Ce qu'il fait : recharge les ressources de jeu (`FUN_00504ca0`), piste 7, puis fait défiler vers la
+gauche les enregistrements 0 et 1 du premier atlas de la table `+0x94` du répertoire d'état — 256
+pixels en 1 024 images, avec un fondu figé à 0x80 —, tient 700 images en superposant pendant les
+cent dernières le second atlas, animé sur cinq poses, et rend la main à l'état 0. START ou CARRÉ
+coupent l'écran, mais seulement une fois le fondu terminé.
+
+**Un piège de pile, sans effet** : la fonction commence par `call FUN_00504ca0` / `jmp` sur son vrai
+prologue, et l'adresse de retour périmée `0x00513ba5` se retrouve dans le cadre, sur le champ
+d'indice du bloc de sprite. C'est le `local_4 = 0x513ba5` de Ghidra. L'indice est écrit avant
+chaque dessin.
+
+**Pas encore établi** : ce que montrent ces deux atlas — il faut le voir en jeu.
