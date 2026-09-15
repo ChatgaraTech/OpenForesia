@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-15 (suite)
 
+- feat : **le Pourpre preux**, `0x004D1F70` — et ses deux copies conformes de la grotte scellee (`0x004E67C0`, `0x004EB530`) : un chevalier a cinq attaques (coup, combo, charge qui projette, coup en l'air, effet) qui PARE quand sa cible frappe
+- doc : la parade du Pourpre preux compare la timidite a un REGISTRE — le dernier tirage de la replanification, ou a defaut le pas d'avance de l'integration
 - feat : **le Gremlin**, `0x004A7190` — et **cinq gestionnaires d'un coup** (`0x004B22D0`, `0x004E8DF0`, `0x004EDB60`, `0x004F8270`) : les cinq corps ne different que par l'adresse de leur table de sorts, et les cinq tables portent les memes octets. Une volante qui ondule, pique, s'accroche a sa proie et incante
 - doc : le Gremlin lance `0x0020` (famille 0 indice 32, hors des 29 fiches) quand sa variante depasse 1 — le registre du sort sort d'une boucle sans etre recharge. Defaut de 1998, non observe en jeu
 - feat : **l'etat de jeu 10**, `FUN_00513ba0` (`Screens/State10/RebootScreen.cs`) — ce que la ligne REBOOT du menu de mise au point lance : deux images qui defilent, une animation superposee, puis retour a l'etat 0. Plus aucune ligne du menu ne leve

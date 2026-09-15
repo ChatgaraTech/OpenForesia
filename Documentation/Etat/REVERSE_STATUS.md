@@ -21644,3 +21644,32 @@ proie (`0x004A8150`, `0x004B3290`, `0x004E6400`, `0x004EB170`, `0x004F9230`), to
 
 **Ce qui reste ouvert** : ce qu'est `+0x16` pour une entité de scène (la variante), et ce qu'est
 `+0x64` de la proie, que l'altitude de référence recopie.
+
+## 2026-09-15 (suite 6) — `0x004D1F70`, le Pourpre preux : trois corps, et une parade qui lit un registre
+
+**Transcrit** au désassembleur (`Legacy/Raw/Blaze/FUN_004D1F70.asm`, 4 104 octets de code, absent
+de `Blaze.c`), table de sauts à quatorze entrées à `0x004D2F80`. Sous-type 11 du château de
+l'immortel (zone 6, sous-zones 7, 9, 10). Deuxième groupe de doublons : `0x004E67C0` et
+`0x004EB530` (grotte scellée) sont **identiques instruction pour instruction**, sans même une table
+propre ; leurs chercheurs de proie sont conformes à `FUN_004A1020`.
+
+**La charpente du Varan, queue comprise** : `FUN_00488160` en ligne, puis
+`SettleSceneEntityOnGroundAndWalls` au masque `0x2000ad82`, relu champ par champ — aucune feuille
+nouvelle.
+
+**Ce qui lui appartient**
+
+* **Cinq attaques** : le coup (0x0b, image 8, pleine attaque), le **combo** (0x0c : image 8 de
+  l'animation 3 puis image 10 de l'animation 5, trois quarts d'attaque, le premier coup sans faire
+  chanceler), la **charge** (0x0d : seconde sonde sans avancée, moitié d'attaque, projection dans
+  le cap à `+0x5c >> 13`, un seul contact, élan tiré de `+0x16`), le **coup en l'air** (un bond
+  change d'animation et arme le geste, hardiesse chances sur 60 par image), et la posture 10, qui
+  fait naître `0x4b` (variante 1) ou `0x36` (variante 2) — et ne fait rien en variante 0.
+* **La parade** (posture 5, animation 6 figée à l'image 7) : testée à la fin de **chaque** image
+  où il bouge, **même quand le rebours saute la replanification**. Elle exige que la cible porte
+  son bit de geste.
+
+**Un registre dans une condition** : la parade compare `EBX < timidité`. EBX y vaut le dernier
+tirage de la replanification si elle a eu lieu, sinon **le pas d'avance** que l'intégration vient
+de calculer (`vitesse * +0x5c >> 12`). Transcrit tel quel — un chevalier immobile et timide pare à
+coup sûr.

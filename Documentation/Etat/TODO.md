@@ -28,8 +28,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **258** |
-| implémentés, jamais appelés | **191** |
-| à transcrire | **981** |
+| implémentés, jamais appelés | **194** |
+| à transcrire | **978** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -40,11 +40,11 @@ socle commun, et il est entier.
 | 2 | La montagne du dragon de feu | 18 / 42 |
 | 4 | La vieille tour | 21 / 176 |
 | 5 | Le Labyrinthe des morts | 19 / 160 |
-| 6 | Le château de l'immortel | 20 / 170 |
+| 6 | Le château de l'immortel | 21 / 170 |
 | 7 | Les ruines souterraines | 16 / 35 |
 | 8 | La vallée d'argent | 17 / 46 |
 | 9 | Les ruines dans le lac | 17 / 41 |
-| 10 | La grotte scellée | 23 / 349 |
+| 10 | La grotte scellée | 25 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 
@@ -57,7 +57,8 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
    - ~~5 corps, 1 179 instr : `0x004A7190` `0x004B22D0` `0x004E8DF0` `0x004EDB60` `0x004F8270`~~ —
      **fait le 2026-09-15** : le Gremlin (vieille tour). Les cinq ne different que par l'adresse de
      leur table de sorts, et les cinq tables portent les memes octets.
-   - 3 corps, 1 212 : `0x004D1F70` `0x004E67C0` `0x004EB530`
+   - ~~3 corps, 1 212 : `0x004D1F70` `0x004E67C0` `0x004EB530`~~ — **fait le 2026-09-15** : le Pourpre
+     preux (chateau de l'immortel). Copies conformes, sans donnee propre.
    - 3 corps, 1 110 : `0x004ACC20` `0x004CE120` `0x004DB610`
    - 3 corps, 1 008 : `0x004F3350` `0x004F5630` `0x004FC9B0`
    - 3 corps, 986 : `0x004E56C0` `0x004EA430` `0x004EEB20`

@@ -977,3 +977,17 @@ Ce qui lui appartient :
 * **Son sort dépend de la variante**, et une variante au-delà de 1 lance un mot laissé par une
   boucle (`0x0020`). Voir `REVERSE_STATUS.md`.
 * **Un sort à la fois** : il renonce tant qu'une entité de la table des effets le porte en `+0x6c`.
+
+## Le château de l'immortel (zone 6) — le Pourpre preux (2026-09-15)
+
+`0x004D1F70`, sous-type 11, et ses deux copies conformes de la grotte scellée. **La charpente du
+Varan appliquée à un combattant** : aucune feuille nouvelle, tout est dans les gestes.
+
+* **Deux sondes sur la pile** : `{0, 0x1e, 0x32, 0x64, 0, 0x64}` pour le coup, le combo et le coup
+  en l'air ; `{0, 0, 0x50, 0x64, 0, 0x64}` — sans avancée, plus large — pour la charge.
+* **Trois fractions d'attaque** : pleine pour le coup, trois quarts pour le combo, moitié pour la
+  charge.
+* **La parade** : le premier ennemi du dépôt qui **réagit au geste de sa cible** (bit `2` de la
+  cible). Elle se teste après la replanification, à chaque image.
+* **Deux fins de posture inhabituelles** : le coup (0x0b) rend la posture 0 au lieu de passer par le
+  rebours, et la parade ne décompte que sur les images où l'animation est au bout.
