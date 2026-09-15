@@ -227,7 +227,7 @@ fiche —, la meme des deux cotes de la sonde.
 | Balle de l'arc-en-ciel | — | ? | **non** |
 | Balle de l'illusion | `0x004753D0` | ? | **non** |
 | Balle de lumière | — | ? | **non** |
-| Balle de terre | — | ? | **non** |
+| Balle de terre | — | ? | oui |
 | Balle des ténèbres | — | ? | **non** |
 | Balle des éléments | — | ? | **non** |
 | Balle du tonnerre | — | ? | **non** |
@@ -729,7 +729,7 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | oui | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | oui | **non** |
 
-**607 objets distincts**, dont **536** pleinement implementes et **3** deja employes
+**607 objets distincts**, dont **536** pleinement implementes et **4** deja employes
 en jeu.
 
 ### Vus en jeu, absents du catalogue
