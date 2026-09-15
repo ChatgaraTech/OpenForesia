@@ -398,12 +398,12 @@ fiche —, la meme des deux cotes de la sonde.
 | Gantelets de chevaliers | — | oui | **non** |
 | Gants ailés | — | oui | **non** |
 | Gants de cuir | — | oui | **non** |
-| Gants de force | — | oui | **non** |
+| Gants de force | — | oui | oui |
 | Gants des runes | — | oui | **non** |
 | Gants sacrés | — | oui | **non** |
 | Genocide | `0x00404920` | oui | **non** |
 | Glaive | — | oui | **non** |
-| Grand arc | — | oui | **non** |
+| Grand arc | — | oui | oui |
 | Grande hache | — | oui | **non** |
 | Gulwick | `0x00446F30` | oui | **non** |
 | Hache d'Ouga | — | oui | **non** |
@@ -729,7 +729,7 @@ fiche —, la meme des deux cotes de la sonde.
 | ù²èÝ±¸½ | `0x00446F30` | oui | **non** |
 | ù²èÝÚ²ö± | `0x00446F30` | oui | **non** |
 
-**607 objets distincts**, dont **536** pleinement implementes et **4** deja employes
+**607 objets distincts**, dont **536** pleinement implementes et **6** deja employes
 en jeu.
 
 ### Vus en jeu, absents du catalogue
