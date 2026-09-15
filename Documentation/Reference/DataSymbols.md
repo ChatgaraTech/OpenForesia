@@ -2955,3 +2955,69 @@ main et sont **toutes correctes** : `EntityHandler_004038F0`, `EntityHandler_004
 `EntityHandler_0040F190`, `EntityHandler_00411860` et `EntityHandler_00414CD0` laissent `+0x40` à
 zéro, et la branche à quatre images d'`EntityHandler_004459E0` est celle qui prend `0x005515c0`, qui
 porte bien ses quatre enregistrements.
+
+## `0x00563368`..`0x005633a4` et `0x00564968` — le menu de mise au point de la carte du monde (2026-09-15)
+
+Relevés pour `FUN_0051aa30` (`Screens/State03/WorldMapDebugMenu.cs`).
+
+| VA | octets | lecture |
+|---|---|---|
+| `0x00563368` | `04 00 00 00` | `s_DebugTexPage_00563368` : la page de texture de la ligne TEX, **4** au chargement |
+| `0x0056336c` | `00 00 00 00` | cité nulle part |
+| `0x00563370` | 14 pointeurs | la table des libellés, lue jusqu'à une chaîne **vide** |
+| `0x00564968`..`0x005649c0` | chaînes | `FONT`, `MONITOR`, `MENU`, `REBOOT`, `TEX`, `SYSTEM`, `ITEM`, `TEMP`, `WORK`, `FLAG`, `PLAYER`, `MAP`, `QUEST` — rangées à l'envers de la table |
+| `0x00564a30` | `76 00` | `"v"`, le curseur de bit |
+| `0x00566be0` | `01 00 00 00` | `s_Unknown_00566be0` : la ligne FONT, **1** au chargement ; aucun lecteur dans `Blaze.c` |
+
+Les treize premiers pointeurs de `0x00563370` désignent les libellés de `QUEST` (`0x005649c0`) à
+`FONT` (`0x00564968`). **Le quatorzième, `0x00572b40`, est le terminateur** : son premier octet est
+nul. Il vaut `s_EmptyLabel_00572b40`, déjà modélisé, et la transcription le relit à l'appel. La
+table s'arrête pile sur `0x005633a8`, le verrou de mise au point.
+
+Les globales du menu dans la queue non initialisée de `.data` — **zéro au chargement** :
+
+| VA | symbole | largeur au niveau machine |
+|---|---|---|
+| `0x005dbb48` | `s_DebugSystemIndex_005dbb48` | octet |
+| `0x005dbc14` | `s_DebugQuest_005dbc14` (renommé, ex-`s_Unknown_005dbc14`) | octet |
+| `0x005dbc18` | `s_DebugPlayer_005dbc18` (renommé, ex-`s_Unknown_005dbc18`) | octet |
+| `0x005dbc1c` | `s_DebugItemIndex_005dbc1c` | octet |
+| `0x005dbc20` | `s_DebugWorkIndex_005dbc20` | octet |
+| `0x005dbc24` | `s_DebugBitCursor_005dbc24` | octet |
+| `0x005ddf88` | `s_DebugFlagIndex_005ddf88` | octet — commence **exactement** où finit `s_WorldPanels_005dbc68` (4 × 0x8c8) |
+| `0x005ddfd0` | `s_DebugMap_005ddfd0` (renommé, ex-`s_Unknown_005ddfd0`) | octet |
+| `0x005ddfd4` | `s_DebugTempIndex_005ddfd4` | octet |
+| `0x005de018` | `s_Unknown_005de018` | dword ; aucun écrivain dans `Blaze.c` |
+| `0x005de01c` | `s_DebugMenuSelection_005de01c` | dword signé |
+
+Aucune ne tombe dans l'étendue d'une arène (`OpenForesia.Tests` ne les signale pas).
+
+La ligne TEX écrit aussi dans deux régions déjà modélisées : les huit octets de descripteur
+`0x005eca88` (`EntityArena`, le même emplacement que le curseur du coffre) et l'entrée `0x32` de la
+table de pages, `0x005e8fc8` (`s_EntityDecodeTable_005e8f00 + 0xc8`).
+
+## `0x00563c78`, `0x005649c8`..`0x005649e8`, `0x0056aca0` — l'affichage MONITOR (2026-09-15)
+
+| VA | contenu | lecture |
+|---|---|---|
+| `0x00564a18`..`0x00564a28` | `-`, `CHG`, `DPT`, `LOC`, `ANG` | les libellés de l'en-tête |
+| `0x00564a10` | `0c 0f 00 00` | le flux de texte de la boîte du journal : deux codes de contrôle, rien à écrire |
+| `0x00563350` | 3 pointeurs | `EvFlag :` (`0x005649e8`), `EvItem :` (`0x005649dc`), `SysFlag:` (`0x005649d0`) |
+| `0x00563360` | 2 pointeurs | `Off` (`0x005649cc`), `On` (`0x005649c8`) |
+| `0x00563c78` | descripteur d'interface, 0x8c8 octets | la boîte du journal ; en-tête `31 / 00580000 / 007800f0 / 0 / 0a200000 / 0 / 010f0808 / 02000000 / 01071010 / …`, le reste nul jusqu'à `0x00564540` (vérifié octet par octet) |
+| `0x00564524` | — | **pas une globale** : le champ `+0x8ac` du descripteur précédent |
+| `0x0056aca0` | `18 00 18 18 01 03 10 01` | l'atlas des éclats du tracé de portée, **un** enregistrement (borne démontrée : `+0x40` à 0, `+0x3c` remplacé à la première image) |
+
+Zone non initialisée de `.data` — zéro au chargement :
+
+| VA | taille | rôle |
+|---|---:|---|
+| `0x005dbb08` | 0x40 | miroir de FLAG (`0x005e96e0`) — finit sur `0x005dbb48` |
+| `0x005dbb50` | 0x40 | colonne « bit » de la liste des changements |
+| `0x005dbb90` | 0x40 | colonne « état nouveau » |
+| `0x005dbbd0` | 0x40 | colonne « octet de banque » — finit sur le compte |
+| `0x005dbc10` | 1 | le compte des changements |
+| `0x005dbc28` | 0x40 | colonne « banque » (0 FLAG, 1 ITEM, 2 SYSTEM) — finit sur `s_WorldPanels_005dbc68` |
+| `0x005ddf90` | 0x20 | miroir de SYSTEM (`0x005e9000`) |
+| `0x005ddfd8` | 0x40 | miroir de ITEM (`0x005e9840`) — finit sur `0x005de018` |
+| `0x005e90c0` | 0x2a | le bandeau de coup, dans `GameArena` (disposition sur `PostCombatDebugBanner`) |

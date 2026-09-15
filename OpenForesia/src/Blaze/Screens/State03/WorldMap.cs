@@ -1786,13 +1786,15 @@ public static unsafe partial class Blaze
 
     /// <summary>Ghidra: DAT_005dbc14, DAT_005dbc18 et DAT_005ddfd0 — trois octets que le prologue
     /// de <c>FUN_00516fc0</c> remplit d'un instantane (zone, sous-zone, taille du groupe) quand le
-    /// verrou de mode de mise au point est leve. Ce ne sont pas de purs temoins : <c>Blaze.c</c>
-    /// l. 65818 decremente <c>DAT_005dbc14</c>, donc le nom reste neutre tant que ce site n'est pas
-    /// lu. Les trois sont des <b>octets</b> — le code machine les charge en <c>al</c>/<c>cl</c>/
+    /// verrou de mode de mise au point est leve. <b>Role etabli le 2026-09-15</b> par
+    /// <see cref="RunDebugMenuFrame_0051AA30"/> : ce sont les trois premieres lignes du menu de mise
+    /// au point, que le binaire etiquette lui-meme <c>QUEST</c>, <c>MAP</c> et <c>PLAYER</c> — la
+    /// zone et la sous-zone ou se teleporter, et la taille du groupe a reconstituer. L'instantane
+    /// sert a ce que le menu s'ouvre sur l'etat courant. Les trois sont des <b>octets</b> — le code machine les charge en <c>al</c>/<c>cl</c>/
     /// <c>dl</c> et les range en <c>mov [.],r8</c>, la ou la pseudo-C laisse croire a des mots.
     /// Ils ne sont pas voisins entre eux : 0x005dbc14 et 0x005dbc18 le sont, 0x005ddfd0 est
     /// ailleurs.</summary>
-    private static byte s_Unknown_005dbc14, s_Unknown_005dbc18, s_Unknown_005ddfd0;
+    private static byte s_DebugQuest_005dbc14, s_DebugPlayer_005dbc18, s_DebugMap_005ddfd0;
 
     /// <summary>
     /// Ghidra: FUN_00401000 @ 0x00401000 — <b>restitue l'orientation sauvegardee, puis en fait le

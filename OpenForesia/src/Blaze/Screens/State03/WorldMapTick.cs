@@ -56,9 +56,9 @@ public static unsafe partial class Blaze
     {
         if (Mem.s_DebugModeLatch_005633a8 == 0)
         {
-            s_Unknown_005dbc14 = (byte)Res.s_Unknown_005de528;
-            s_Unknown_005ddfd0 = s_Unknown_005de52c;
-            s_Unknown_005dbc18 = (byte)s_PartySize_005e9020;
+            s_DebugQuest_005dbc14 = (byte)Res.s_Unknown_005de528;
+            s_DebugMap_005ddfd0 = s_Unknown_005de52c;
+            s_DebugPlayer_005dbc18 = (byte)s_PartySize_005e9020;
         }
 
         uint* otBase;
@@ -146,6 +146,17 @@ public static unsafe partial class Blaze
         }
 
         Winsys3d.Ordinal_379(0x190);                  // libgte SetGeomScreen(400)
+
+        // Ghidra: le bloc de sprite de sept champs a [esp+0x34] de la trame (voir
+        // Primitives2d.DrawSpritePrimitive). Seul RunDebugMenuFrame_0051AA30 le recoit d'ici pour
+        // l'instant ; DrawWorldMapFrame garde le sien, et chaque lecteur ecrit les champs qu'il lit.
+        // Alloue hors de la boucle d'images, comme la trame de l'original.
+        //
+        // Le champ +4 part a 0x1000000 : c'est la valeur que l'emplacement porte a la fin de chaque
+        // image (0x0051833d et 0x005192ef l'y ecrivent), et l'en-tete MONITOR le lit avant de
+        // l'ecrire. Meme raisonnement, et meme limite, que LB-008 sur DrawWorldMapFrame.
+        int* spriteBlock = stackalloc int[5];
+        spriteBlock[1] = 0x1000000;
         Inp.JoystickResetState(false);                // Ghidra: FUN_00504b10(0)
 
         // =============================================================================
@@ -215,15 +226,10 @@ public static unsafe partial class Blaze
 
             if (debugLatch == 0 && s_DebugOverlayEnabled_005de020 != 0)
             {
-                throw new NotImplementedException(
-                    "FUN_00516fc0 : l'affichage de mise au point de la carte du monde (0x0051718c " +
-                    "a 0x005174d0) n'est pas transcrit. Il pose une trentaine d'appels a " +
-                    "FUN_0051c120 / FUN_0051be90 puis recopie les trois bancs de drapeaux " +
-                    "(DAT_005e96e0, DAT_005e9840, DAT_005e9000) vers leurs miroirs d'image " +
-                    "precedente. DAT_005de020 vaut 0 au chargement — releve dans le binaire, " +
-                    "queue non initialisee de .data — donc ce bloc ne s'atteint que par la touche " +
-                    "de mise au point qui le bascule (Blaze.c 66241/66244), elle-meme non " +
-                    "transcrite. FUN_0051be90 est le seul appele qui manque.");
+                // L'en-tete MONITOR (0x00517208..0x0051762b), allume par la ligne MONITOR du menu
+                // de mise au point : quatre lignes de valeurs, puis la recopie des banques dans les
+                // miroirs que DrawDebugMonitorChanges comparera plus bas dans la meme image.
+                primCursor = DrawDebugMonitorHeader(otBase, primCursor, spriteBlock);
             }
 
             if ((Mem.s_WorldFlags_005de02c & 0x40) != 0)
@@ -456,7 +462,7 @@ public static unsafe partial class Blaze
                     // FUN_005443a0, FUN_0051d1f0, FUN_00521f20, FUN_00544350, FUN_0052a280) ;
                     // manquent, toutes dans Blaze.c :
                     //
-                    //   FUN_0051aa30  594 l.   FUN_0051fa40  441 l.   FUN_0051e700  423 l.
+                    //   FUN_0051aa30  594 l. (transcrite le 2026-09-15)   FUN_0051fa40  441 l.   FUN_0051e700  423 l.
                     //   FUN_0051c420  374 l.   FUN_00521000  365 l.   FUN_004011c0  363 l.
                     //   FUN_00522140  315 l.   FUN_005309b0  147 l.   FUN_0051be90   74 l.
                     //   FUN_005320f0   51 l.   FUN_005321f0   51 l.   FUN_00532b40   29 l.
@@ -464,7 +470,7 @@ public static unsafe partial class Blaze
                     //   FUN_0051c250   10 l.
                     //
                     // Le sous-bloc de mise au point (0x00518473 en amont, ~150 l.) est garde par
-                    // DAT_005de020, nul au chargement : le transcrire en dernier.
+                    // DAT_005de020 : transcrit le 2026-09-15, DrawDebugMonitorChanges.
                     // =========================================================================
                     // -------- la tete du bloc : tout l'etat de vue, avant la premiere primitive --
                     ApplyViewMode_004011C0(s_Unknown_005de54c);
@@ -650,20 +656,19 @@ public static unsafe partial class Blaze
 
                 if (debugLatch == 0 && (Mem.s_WorldFlags_005de02c & 1) != 0)
                 {
-                    // Le seul chemin de cette branche qui ne mene PAS au menu, et il ne s'ouvre
-                    // qu'en mode de mise au point. Le binaire lui passe quatre arguments —
-                    // `(otBase, curseur, [esp+0x38], manette)` — dont le troisieme est un bloc
-                    // local de la trame que rien de transcrit ne nomme encore.
-                    throw new NotImplementedException(
-                        "FUN_0051aa30 (0x0051aa30, 598 lignes dans Blaze.c) : non transcrite. " +
-                        "C'est la surimpression de mise au point, prise quand le verrou " +
-                        "DAT_005633a8 vaut 0 ET que DAT_005de02c porte le bit 1. Elle prend " +
-                        "quatre arguments en __cdecl (otBase, curseur de primitives, un bloc " +
-                        "local de la trame, l'etat de manette) et rend le curseur.");
+                    // Le seul chemin de cette branche qui ne mene PAS au menu de jeu : le menu de
+                    // mise au point, a la place. Le troisieme argument est `lea ecx,[esp+38h]`
+                    // apres un `push` — [esp+0x34] avant lui, le bloc de sprite de la trame. Les
+                    // deux chemins se rejoignent en 0x00517a77 : les quatre ecritures 256x224 qui
+                    // suivent valent pour l'un comme pour l'autre.
+                    primCursor = RunDebugMenuFrame_0051AA30(
+                        otBase, primCursor, spriteBlock, (ushort*)menuPad);
                 }
-
-                primCursor = RunPartyMenuFrame_0052A7D0(
-                    otBase, otEntry, primCursor, menuSlot, (ushort*)menuPad);
+                else
+                {
+                    primCursor = RunPartyMenuFrame_0052A7D0(
+                        otBase, otEntry, primCursor, menuSlot, (ushort*)menuPad);
+                }
 
                 *(ushort*)Mem.Arena(0x005e9950) = 0x100;
                 *(ushort*)Mem.Arena(0x005e98e0) = 0x100;
@@ -1127,13 +1132,9 @@ public static unsafe partial class Blaze
 
         if (debugLatch == 0 && s_DebugOverlayEnabled_005de020 != 0)
         {
-            throw new NotImplementedException(
-                "FUN_00516fc0 : l'affichage de mise au point du bloc d'affichage " +
-                "(0x005182b0 a 0x00518473) n'est pas transcrit. Il compare les trois bancs de " +
-                "drapeaux a leurs miroirs d'image precedente et liste les bits qui ont change, " +
-                "avec le descripteur 0x00563c78 et les tables de chaines 0x00563350 / 0x00563360, " +
-                "toutes relevees dans DataSymbols.md. DAT_005de020 vaut 0 au chargement, donc ce " +
-                "bloc ne s'atteint que par la touche de mise au point.");
+            // Le journal MONITOR (0x0051815a..0x00518473) : les bits qui ont bouge depuis la
+            // recopie de l'en-tete, dans une boite. Voir WorldMapDebugMenu.cs.
+            cursor = DrawDebugMonitorChanges(otBase, cursor, block);
         }
 
         DrawCompassRose(otBase, otEntry, ref cursor, block);
@@ -2372,8 +2373,8 @@ public static unsafe partial class Blaze
     private static readonly int[] s_PanelX_00564948 = [0xa0, 0xa0, 0xa0, 0xa0];
     private static readonly int[] s_PanelX_00564958 = [0xb4, 0x8c, 0xb4, 0x8c];
 
-    /// <summary>Ghidra: DAT_005de020 — le drapeau d'affichage de mise au point, bascule par une
-    /// touche (Blaze.c 66241/66244, non transcrite). <b>Zero au chargement</b> : l'adresse tombe
+    /// <summary>Ghidra: DAT_005de020 — le drapeau d'affichage de mise au point, bascule par la
+    /// ligne MONITOR de <see cref="RunDebugMenuFrame_0051AA30"/> (Blaze.c 66241/66244). <b>Zero au chargement</b> : l'adresse tombe
     /// dans la queue non initialisee de <c>.data</c>, verifie avec
     /// <c>OpenForesia.Tools -- at Legacy/Binaries/Blaze.exe 0x005de018</c>.</summary>
     private static byte s_DebugOverlayEnabled_005de020;
@@ -24669,6 +24670,70 @@ public static unsafe partial class Blaze
     private static uint PackGroundPoint(int x, int z) => ((uint)z << 0x10) | ((uint)x & 0xffff);
 
     /// <summary>
+    /// Ghidra: un des huit appels du trace de mise au point de <c>FUN_00535a90</c> — le point
+    /// empaquete redevient une position en virgule fixe (<c>movsx ecx,ax / shl ecx,0Ch</c> pour X,
+    /// <c>sar eax,4 / and eax,0FFFFF000h</c> pour Z), puis un eclat de sous-type 0 y nait.
+    /// </summary>
+    private static void PlaceReachMarker(byte* entity, int* marker, uint packed, int frame)
+    {
+        marker[0] = (short)packed << 0xc;
+        marker[2] = ((int)packed >> 4) & unchecked((int)0xfffff000);
+        SpawnStatusEffectEntity_0047AC40(entity, marker, s_ReachMarkerAtlas_0056aca0, 0, 1, frame);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0056aca0</c> — le descripteur que le trace de mise au point confie a ses
+    /// eclats. <b>Un seul enregistrement est releve, et c'est une borne demontree</b> : l'eclat nait
+    /// avec <c>+0x40</c> a zero, et son gestionnaire (<see cref="EntityHandler_00482FA0"/>) remplace
+    /// <c>+0x3c</c> par son propre atlas des sa premiere image. Au plus l'enregistrement 0 est donc lu,
+    /// par un dessin qui tomberait entre la naissance et ce premier passage. Les octets suivants
+    /// (<c>00 08 01 08 02 08 03 08</c>…) n'ont pas la forme d'un descripteur.
+    /// </summary>
+    private static readonly byte* s_ReachMarkerAtlas_0056aca0 = AllocBytes([
+        0x18, 0x00, 0x18, 0x18, 0x01, 0x03, 0x10, 0x01,
+    ]);
+
+    /// <summary>
+    /// Ghidra: le bandeau de mise au point commun a <c>FUN_00539b80</c> et <c>FUN_0053a2b0</c>, allume
+    /// par la ligne MONITOR du menu de mise au point : le detail du calcul d'un coup, recopie dans
+    /// l'arene a <c>0x005e90c0</c>, puis lie au panneau de la carte du monde
+    /// (<c>&amp;DAT_005633b0</c>) avec le flux de texte <c>+0x5f0</c> de la table <c>+0x70</c> du
+    /// repertoire d'etat. C'est ce flux qui relit les valeurs par ses <c>$</c>-echappements.
+    ///
+    /// <code>
+    /// +0x00..+0x0e  les huit shorts +0x30..+0x3e du bloc de l'assaillant
+    /// +0x10..+0x1e  les huit du bloc de la victime
+    /// +0x20 +0x21   les octets +8 des deux entites (leur numero d'emplacement)
+    /// +0x22         l'element               +0x23  la chance de critique (melee) ou 0 (sort)
+    /// +0x24 +0x26   l'attaque et la defense, sur seize bits
+    /// +0x28         les degats
+    /// </code>
+    /// </summary>
+    private static void PostCombatDebugBanner(
+        uint* attacker, uint* victim, byte* attackerBlock, byte* victimBlock,
+        byte element, byte extra, int attack, int defence, int damage)
+    {
+        byte* banner = Mem.Arena(0x005e90c0);
+
+        for (int i = 0; i < 8; i++)
+        {
+            *(short*)(banner + i * 2) = *(short*)(attackerBlock + 0x30 + i * 2);
+            *(short*)(banner + 0x10 + i * 2) = *(short*)(victimBlock + 0x30 + i * 2);
+        }
+
+        banner[0x20] = (byte)attacker[2];
+        banner[0x21] = (byte)victim[2];
+        banner[0x22] = element;
+        banner[0x23] = extra;
+        *(short*)(banner + 0x24) = (short)attack;
+        *(short*)(banner + 0x26) = (short)defence;
+        *(short*)(banner + 0x28) = (short)damage;
+
+        byte* labels = *(byte**)(*(byte**)(Mem.s_MainResourceDirectory_005e97c4 + 0x70) + 0x5f0);
+        BindMenuLabels(labels, (byte*)attacker, s_WorldMapDescriptor_005633b0, 0);   // Ghidra: FUN_00544350
+    }
+
+    /// <summary>
     /// Ghidra: FUN_005358f0 @ 0x005358f0 — <b>de quel cote de chaque arete tombe chaque sommet</b> :
     /// seize produits en croix, un par couple (arete de <paramref name="edges"/>, sommet de
     /// <paramref name="corners"/>), dont seuls les <b>signes</b> sont gardes, empiles dans un mot
@@ -24862,16 +24927,27 @@ public static unsafe partial class Blaze
         body[3] = PackGroundPoint(cornerX - acrossX, cornerZ - acrossZ);
 
         // ---------------------------------------------------------------- le trace de mise au point
+        // Ghidra: 0x00535d1d..0x00535ec8, allume par la ligne MONITOR du menu de mise au point. Les
+        // huit sommets des deux figures deviennent chacun un eclat dans la table 0x005f2d40 :
+        // `FUN_0047ac40(entite, &point, &DAT_0056aca0, 0, 1, 4..7)`. Le sous-type est 0 et c'est
+        // le SIXIEME argument, ecrit en +0x0a, qui va de 4 a 7 — le releve precedent de ce trou
+        // les confondait. La hauteur est celle de l'entite pour le geste, celle du membre pour son
+        // rectangle ; X et Z sortent du point empaquete.
         if (Mem.s_DebugModeLatch_005633a8 == 0 && s_DebugOverlayEnabled_005de020 != 0)
         {
-            throw new NotImplementedException(
-                "FUN_00535a90 : le trace de mise au point (0x00535d1d a 0x00535ec8) n'est pas " +
-                "transcrit. Il pose les huit sommets des deux figures en entites d'effet, par huit " +
-                "appels a SpawnStatusEffectEntity_0047AC40 (sous-types 4 a 7, deux fois) dont le " +
-                "descripteur est &DAT_0056aca0 — une table qui reste a relever dans le binaire, " +
-                "et la seule chose qui manque pour l'ecrire. DAT_005de020 vaut 0 au chargement, " +
-                "donc ce bloc ne s'atteint que par la touche de mise au point, elle-meme non " +
-                "transcrite.");
+            int* marker = stackalloc int[3];
+
+            marker[1] = position[1];
+            for (int corner = 0; corner < 4; corner++)
+            {
+                PlaceReachMarker(entity, marker, swing[corner], corner + 4);
+            }
+
+            marker[1] = *(int*)(member + 0x20);
+            for (int corner = 0; corner < 4; corner++)
+            {
+                PlaceReachMarker(entity, marker, body[corner], corner + 4);
+            }
         }
 
         // ---------------------------------------------------------------- le croisement
@@ -25287,14 +25363,10 @@ public static unsafe partial class Blaze
 
         if (Mem.s_DebugModeLatch_005633a8 == 0 && s_DebugOverlayEnabled_005de020 != 0)
         {
-            throw new NotImplementedException(
-                "FUN_00539b80 : le bandeau de mise au point du combat (0x00539df2 environ) n'est " +
-                "pas transcrit. Il recopie une vingtaine de valeurs du calcul dans l'arene " +
-                "(DAT_005e90c0..DAT_005e90e8 : les huit elements de chaque camp, les deux indices " +
-                "d'entite, l'issue, la chance de critique, l'attaque, la defense et les degats) " +
-                "puis appelle FUN_00544350 avec la table de libelles du repertoire de zone " +
-                "(+0x70, +0x5f0) et &DAT_005633b0. DAT_005de020 vaut 0 au chargement, donc ce " +
-                "bloc ne s'atteint que par la touche de mise au point, elle-meme non transcrite.");
+            // 0x00539f6d..0x0053a07d. L'octet +0x23 est la CHANCE DE CRITIQUE ([esp+0x20]), et
+            // non l'issue ([esp+0x14]), que le bandeau n'emporte pas.
+            PostCombatDebugBanner(attacker, victim, attackerBlock, victimBlock,
+                (byte)element, (byte)criticalChance, attack, defence, damage);
         }
 
         // ---------------------------------------------------------------- le coup porte
@@ -25548,14 +25620,12 @@ public static unsafe partial class Blaze
 
         if (Mem.s_DebugModeLatch_005633a8 == 0 && s_DebugOverlayEnabled_005de020 != 0)
         {
-            throw new NotImplementedException(
-                "FUN_0053a2b0 : le bandeau de mise au point du combat (0x0053a4fb environ) n'est " +
-                "pas transcrit — c'est le meme que celui de FUN_00539b80. Il recopie les huit " +
-                "elements de chaque camp (DAT_005e90c0..DAT_005e90de), les deux indices d'entite, " +
-                "l'element, la famille, l'indice et les degats (jusqu'a DAT_005e90e8), puis " +
-                "appelle FUN_00544350 avec la table de libelles du repertoire de zone (+0x70, " +
-                "+0x5f0) et &DAT_005633b0. DAT_005de020 vaut 0 au chargement, donc ce bloc ne " +
-                "s'atteint que par la touche de mise au point, elle-meme non transcrite.");
+            // 0x0053a511..0x0053a61f. Ghidra y lit `param_3` et `param_4` — la famille et l'indice
+            // du sort —, mais le binaire a REUTILISE ces deux emplacements de pile pour l'attaque
+            // (0x0053a44d) et la defense (0x0053a47f). C'est donc la meme paire que le coup de
+            // melee qui part dans le bandeau. L'octet +0x23 est nul ici.
+            PostCombatDebugBanner(attacker, victim, attackerBlock, victimBlock,
+                element, 0, attack, defence, damage);
         }
 
         // ---------------------------------------------------------------- le coup porte

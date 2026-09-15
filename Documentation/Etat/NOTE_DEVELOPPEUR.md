@@ -143,6 +143,25 @@ C'est la plus économe des décisions de conception qu'on ait croisées dans ce 
 
 ---
 
+## 7. FLAG, WORK, TEMP, ITEM — le menu de mise au point, et les vrais noms des banques
+
+**`FUN_0051aa30`**, reconstruit le 2026-09-15.
+
+Le mot « Gurkha » ouvre une deuxième porte : sur la carte du monde, SELECT fait apparaître un
+**menu de développeur complet** de treize lignes, en majuscules, avec un curseur « > » et un « v »
+au-dessus du bit qu'on édite. On s'y téléporte dans n'importe quelle zone (QUEST, MAP), on refait
+le groupe à une à quatre personnes (PLAYER), on relance le jeu vers l'état 10 (REBOOT) ou l'état 1 (MENU),
+et on **regarde la mémoire vidéo** page par page (TEX) en la faisant défiler au pad.
+
+Le plus précieux, ce sont quatre des libellés. Le jeu range son état dans des banques de 64 octets
+que ce projet appelait « banque 0 », « banque 1 »… Le menu les édite bit à bit, et il leur donne
+leurs noms d'atelier : **FLAG**, **WORK**, **TEMP** et **ITEM**. Plus une cinquième, **SYSTEM**,
+dont chaque bit est aussitôt recopié dans la fiche de chaque personnage.
+
+Et une ligne **FONT**, qui bascule une valeur que plus rien dans le jeu ne lit.
+
+---
+
 ## Ce qu'on cherche pour la suite
 
 Rien de systématique — ces trouvailles arrivent en travaillant sur autre chose. Mais deux endroits

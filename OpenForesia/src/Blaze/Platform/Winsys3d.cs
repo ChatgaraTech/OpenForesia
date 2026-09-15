@@ -271,6 +271,11 @@ public static unsafe partial class Blaze
             // definition.**
             _ = s_MenuDescriptors_00568530;             // 0x3000 -- 4 x 0x8c8, menu de jeu et coffre
 
+            // Le septieme, ajoute le 2026-09-15 : la boite du journal MONITOR. Elle ne s'ouvre qu'en
+            // mode de mise au point, donc tard, et c'est exactement le cas que la lecon ci-dessus
+            // designe.
+            _ = s_MonitorBox_00563c78;                  // 0x1000
+
             // Tout ce qui doit vivre bas est pris. Ce qui reste est la marge, et c'est le seul
             // chiffre qui dise quelque chose si la fenetre venait a se refermer : « plein » et
             // « fragmente » n'appellent pas la meme suite.

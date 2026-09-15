@@ -6,6 +6,11 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-15 (suite)
 
+- feat : **MONITOR est transcrit** — les cinq sites que la ligne MONITOR allume sont transcrits : l'en-tete ANG/LOC/DPT/CHG, le **journal des drapeaux** (chaque bit de FLAG, ITEM ou SYSTEM qui bouge pendant l'image, dans une boite), le trace de portee du corps a corps en eclats, et le bandeau de calcul des coups et des sorts
+- fix : deux releves de ces lacunes etaient faux — le trace fait naitre le sous-type 0 (pas 4 a 7), et le bandeau de sort emporte l'attaque et la defense (pas la famille et l'indice : `FUN_0053a2b0` reutilise ces emplacements de pile)
+- feat : **`FUN_0051aa30`, le MENU DE MISE AU POINT de la carte du monde** — ouvert par SELECT une fois « Gurkha » trace : treize lignes (QUEST, MAP, PLAYER, FLAG, WORK, TEMP, ITEM, SYSTEM, TEX, REBOOT, MENU, MONITOR, FONT), teleportation, taille du groupe, edition bit a bit des banques d'etat, visionneuse de pages de texture. Transcrit contre ses 3 616 octets desassembles
+- doc : **les banques d'etat ont leurs noms d'atelier** — `0x005e96e0` FLAG, `0x005e9780` WORK, `0x005e9060` TEMP, `0x005e9840` ITEM ; et `0x005e9000` (SYSTEM) est recopie a `+0x2e0` de chaque fiche de personnage
+- doc : `DAT_005dbc14` / `DAT_005ddfd0` / `DAT_005dbc18` sont les lignes QUEST, MAP et PLAYER — renommes
 - feat : **LA ZONE 0, L'AUBERGE, EST COMPLETE — 48 sur 48** : troisieme ensemble entierement implemente apres les tables statiques et la foret. Treize creneaux restaient ce matin ; quatre n'avaient besoin d'aucun code
 - feat : **`0x00487260`, le QUATRIEME LANCEUR DE SORTS du depot** — 1904 octets absents de `Blaze.c`, la seconde et derniere routine d'intelligence de l'auberge. Elle porte le mecanisme d'incantation du Behemoth **au complet** : meme bit `0x800`, memes quatre etats dans `+0x10`, meme entite `0xbd`, meme masque de traits, meme duree lue dans la fiche. Troisieme emploi de ce bloc, et le premier hors de la foret
 - doc : **ses sorts viennent du PLACEMENT, pas de l'espece** — la table `0x00552868` a huit rangees, et la rangee est `+0x14`, c'est-a-dire l'octet 6 du releve de placement que la naissance recopie. **Deux exemplaires de la meme bete posees sur la meme carte peuvent n'avoir pas les memes sorts.** Aucune autre routine ecrite ne fait ca

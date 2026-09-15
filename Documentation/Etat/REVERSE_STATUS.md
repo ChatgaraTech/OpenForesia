@@ -12056,6 +12056,8 @@ fiche (`+8`), pas directement. Les deux sont transcrites telles qu'elles sont ec
 
 `FUN_0051aa30` (598 l.) reste une lacune nommee. Elle n'est atteinte que par le mode de mise au
 point (`DAT_005633a8 == 0` **et** bit 1 de `DAT_005de02c`), donc hors du chemin du joueur.
+**Transcrite le 2026-09-15** : c'est le menu de mise au point — voir la section du même jour en fin
+de fichier.
 
 ### `FUN_0052a7d0` — l'enveloppe, transcrite
 
@@ -21497,3 +21499,86 @@ plus du socle commun.
 La prochaine cible par rendement n'est plus une zone mais un **groupe de doublons** : les 32
 routines d'IA qui sont des copies exactes d'un frère non écrit, dont les six meilleurs groupes font
 20 corps pour 6 lectures.
+
+## 2026-09-15 (suite 2) — `FUN_0051aa30` : le menu de mise au point de la carte du monde
+
+**Transcrite en entier**, contre le désassemblage (`Legacy/Raw/Blaze/FUN_0051AA30.asm`, 3 616
+octets), dans un fichier à elle : `Screens/State03/WorldMapDebugMenu.cs`
+(`RunDebugMenuFrame_0051AA30`). Le `NotImplementedException` du site d'appel est levé.
+
+**Ce que c'est.** Un menu de treize lignes dont les libellés sont dans `.data` (table
+`0x00563370`) : QUEST, MAP, PLAYER, FLAG, WORK, TEMP, ITEM, SYSTEM, TEX, REBOOT, MENU, MONITOR, FONT.
+Téléportation (zone / sous-zone), taille du groupe, édition bit à bit de quatre banques d'état et du
+masque `0x005e9000`, visionneuse de pages de texture, retour aux états 10 et 1, et les deux
+bascules `DAT_005de020` / `DAT_00566be0`. Le tableau complet est sur la classe.
+
+**On y entre** avec le verrou « Gurkha » tombé, puis SELECT sur la carte du monde (le cas 2 du
+répartiteur bascule le bit 1 de `DAT_005de02c`). Les deux conditions sont testées par la branche
+courte d'affichage.
+
+**Ce que la lecture a établi**
+
+* **Les noms du développeur pour les banques d'état** : `0x005e96e0` = FLAG, `0x005e9780` = WORK,
+  `0x005e9060` = TEMP, `0x005e9840` = ITEM — les banques 0 à 3 que la sauvegarde recopie.
+* **`0x005e9000` (SYSTEM) est un miroir de fiche** : chaque bit levé ou baissé est recopié à
+  `+0x2e0` de la fiche de chaque membre du groupe.
+* `DAT_005dbc14` / `DAT_005ddfd0` / `DAT_005dbc18` étaient les trois octets que le prologue de
+  `FUN_00516fc0` remplit en mode de mise au point : ce sont QUEST, MAP et PLAYER. **Renommés**
+  `s_DebugQuest_005dbc14`, `s_DebugMap_005ddfd0`, `s_DebugPlayer_005dbc18`.
+* **La page TEX saute 0..3 et 16..19** : le pas boucle sur 4..15 puis 20..31. La page est affichée
+  en 256x224 en réécrivant l'entrée `0x32` de la table de pages `0x005e8f00`.
+* **Le troisième argument** est le bloc de sprite de la trame de `FUN_00516fc0` (`[esp+0x34]`).
+  Le menu écrit chaque champ avant de le faire lire ; un `stackalloc` hors de la boucle d'images le
+  remplace. **Les quatre écritures 256x224** qui suivent l'appel sont communes aux deux chemins
+  (`0x00517a77`) : elles étaient déjà là, elles valent aussi pour ce menu.
+* **Largeurs** : toutes les globales du menu sont des octets au niveau machine sauf
+  `DAT_005de01c` (sélection, dword signé), `DAT_00563368` (page, dword, **4** au chargement) et
+  `DAT_00566be0` (FONT, dword, **1** au chargement). Ghidra les rend en `CONCAT31`.
+* **Deux écritures d'octet sur des champs `int`** : `mov [5DE528h],al` (la zone) et
+  `mov byte [5DE538h],0` (le meneur) ne touchent que l'octet bas ; transcrit ainsi.
+
+**Ce qui reste ouvert**
+
+* `DAT_005de018` : non nul, le menu s'affiche sans rien faire. **Aucun écrivain dans `Blaze.c`**.
+  TODO(REVERSE).
+* `DAT_00566be0` (FONT) : **aucun lecteur dans `Blaze.c`**. TODO(REVERSE).
+* **REBOOT mène à une lacune connue** : l'état 10 (`FUN_00513ba0`) n'est pas reconstruit et lève.
+* Le terminateur de la table des libellés est `DAT_00572b40`, où `FUN_00512900` écrit. S'il cessait
+  de commencer par un zéro, l'original lirait le verrou `0x005633a8` comme un pointeur ; la
+  transcription lève à cet endroit.
+
+## 2026-09-15 (suite 3) — MONITOR : les cinq sites gardés par `DAT_005de020`
+
+La ligne MONITOR du menu de mise au point lève `DAT_005de020`, et **cinq** sites du binaire le
+testent. Les cinq levaient ; les cinq sont transcrits, contre le désassemblage.
+
+| site | ce qu'il fait | où |
+|---|---|---|
+| `FUN_00516fc0` `0x00517208..0x0051762b` | l'**en-tête** : ANG (deux angles de caméra), LOC (position du personnage **0**), DPT (translation de la matrice de caméra), CHG (`DAT_005de058`), puis la recopie de FLAG, ITEM et SYSTEM dans trois **miroirs** | `DrawDebugMonitorHeader` |
+| `FUN_00516fc0` `0x0051815a..0x00518473` | le **journal** : chaque bit qui diffère de son miroir est listé (`EvFlag :` / `EvItem :` / `SysFlag:`, octet, bit, `On`/`Off`) dans une boîte qui s'ouvre sur le meneur | `DrawDebugMonitorChanges` |
+| `FUN_00535a90` `0x00535d1d..0x00535ec8` | le **tracé de portée** : les huit sommets des deux figures du test de corps à corps deviennent des éclats | `PlaceReachMarker` |
+| `FUN_00539b80` `0x00539f6d..0x0053a07d` | le **bandeau de coup** : le détail du calcul recopié à `0x005e90c0` et lié au panneau de la carte | `PostCombatDebugBanner` |
+| `FUN_0053a2b0` `0x0053a511..0x0053a61f` | le même, pour un sort | `PostCombatDebugBanner` |
+
+**Ce que la lecture a établi**
+
+* **Les miroirs et la liste ont des étendues démontrées.** Les trois `rep movsd` prennent 0x40, 0x40
+  et 0x20 octets, et les deux premiers finissent pile sur un symbole connu (`0x005dbb48`,
+  `0x005de018`). Les quatre colonnes de la liste (`0x005dbb50`, `0x005dbb90`, `0x005dbbd0`,
+  `0x005dbc28`) font 0x40 chacune, et la dernière finit exactement sur `s_WorldPanels_005dbc68`.
+* **La liste n'est bornée par rien** dans l'original : au 65e changement, l'indice 0x40 écrase son
+  propre compte (`0x005dbc10`) puis les panneaux du monde. Non modélisé — la transcription lève.
+* **`DAT_00564524` n'est pas une globale** : c'est le champ `+0x8ac` (le flux lié) du descripteur
+  de la boîte MONITOR, `0x00563c78`, dont l'en-tête est relevé. D'où l'absence d'écrivain sous ce
+  nom dans `Blaze.c`.
+* **Deux relevés antérieurs de ces lacunes étaient faux**, et le désassembleur les a corrigés :
+  le tracé de portée fait naître le **sous-type 0** (c'est le sixième argument, `+0x0a`, qui va de 4
+  à 7) ; et le bandeau de sort n'emporte pas la famille et l'indice — `FUN_0053a2b0` a **réutilisé
+  ces deux emplacements de pile** pour l'attaque et la défense.
+* **L'atlas `0x0056aca0` est relevé sur un seul enregistrement**, et la borne est démontrée :
+  l'éclat naît avec `+0x40` à 0 et `EntityHandler_00482FA0` remplace `+0x3c` dès sa première image.
+* Le bloc de sprite de la trame de `FUN_00516fc0` part avec `+4 = 0x1000000` : l'en-tête le lit
+  avant de l'écrire (même raisonnement que LB-008).
+
+**Ce qui reste ouvert** : le flux `+0x5f0` du répertoire d'état, qui affiche le bandeau de coup,
+n'a pas été lu — on ne sait pas encore ce qu'il montre des valeurs recopiées.

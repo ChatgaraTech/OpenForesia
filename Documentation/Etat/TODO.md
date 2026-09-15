@@ -562,9 +562,9 @@ l'épilogue partagé dans la suite 3, l'inventaire dans la suite 4, l'équipemen
   à `0x005de109` et mord de neuf octets sur `s_ItemMenuArena_005de100`. La divergence ne se voit
   qu'avec un nom de 63 caractères, ce qu'aucun nom du jeu n'atteint. Même TODO(REVERSE) que dans
   `Engine/UiWindow.cs`.
-* `FUN_0051aa30` (598 l.), l'autre moitié de la branche courte : la surimpression de mise au point.
-  Atteinte seulement avec le verrou `DAT_005633a8` à 0 **et** le bit 1 de `DAT_005de02c`, donc hors
-  du chemin du joueur. À faire en dernier.
+* ~~`FUN_0051aa30` (598 l.), l'autre moitié de la branche courte~~ — **transcrite le 2026-09-15** :
+  c'est le menu de mise au point (`Screens/State03/WorldMapDebugMenu.cs`). Les cinq sites que sa ligne
+  MONITOR allume sont transcrits le même jour.
 
 ---
 
