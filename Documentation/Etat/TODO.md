@@ -28,8 +28,8 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **258** |
-| implémentés, jamais appelés | **194** |
-| à transcrire | **978** |
+| implémentés, jamais appelés | **197** |
+| à transcrire | **975** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
@@ -38,10 +38,10 @@ socle commun, et il est entier.
 | 3 | **La forêt** | **136 / 136** |
 | 1 | La mine abandonnée | 22 / 157 |
 | 2 | La montagne du dragon de feu | 18 / 42 |
-| 4 | La vieille tour | 21 / 176 |
+| 4 | La vieille tour | 22 / 176 |
 | 5 | Le Labyrinthe des morts | 19 / 160 |
-| 6 | Le château de l'immortel | 21 / 170 |
-| 7 | Les ruines souterraines | 16 / 35 |
+| 6 | Le château de l'immortel | 22 / 170 |
+| 7 | Les ruines souterraines | 17 / 35 |
 | 8 | La vallée d'argent | 17 / 46 |
 | 9 | Les ruines dans le lac | 17 / 41 |
 | 10 | La grotte scellée | 25 / 349 |
@@ -59,7 +59,8 @@ Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\fe
      leur table de sorts, et les cinq tables portent les memes octets.
    - ~~3 corps, 1 212 : `0x004D1F70` `0x004E67C0` `0x004EB530`~~ — **fait le 2026-09-15** : le Pourpre
      preux (chateau de l'immortel). Copies conformes, sans donnee propre.
-   - 3 corps, 1 110 : `0x004ACC20` `0x004CE120` `0x004DB610`
+   - ~~3 corps, 1 110 : `0x004ACC20` `0x004CE120` `0x004DB610`~~ — **fait le 2026-09-15** : la
+     Crapouille, la Gargouille et le Crapaud, trois especes pour une routine.
    - 3 corps, 1 008 : `0x004F3350` `0x004F5630` `0x004FC9B0`
    - 3 corps, 986 : `0x004E56C0` `0x004EA430` `0x004EEB20`
    - 3 corps, 970 : `0x004BFE90` `0x004E7810` `0x004EC580`

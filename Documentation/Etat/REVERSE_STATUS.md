@@ -21673,3 +21673,34 @@ nouvelle.
 tirage de la replanification si elle a eu lieu, sinon **le pas d'avance** que l'intégration vient
 de calculer (`vitesse * +0x5c >> 12`). Transcrit tel quel — un chevalier immobile et timide pare à
 coup sûr.
+
+## 2026-09-15 (suite 7) — `0x004ACC20` : la Crapouille, la Gargouille et le Crapaud, une routine
+
+**Transcrit** au désassembleur (`Legacy/Raw/Blaze/FUN_004ACC20.asm`, 3 724 octets de code, absent
+de `Blaze.c`), table de sauts à treize entrées à `0x004ADAAC`. Troisième groupe de doublons, et le
+premier qui **couvre plusieurs espèces** : `0x004ACC20` (sous-type 6 de la vieille tour, la
+Crapouille), `0x004CE120` (sous-type 5 du château, la Gargouille), `0x004DB610` (sous-type 0 des
+ruines souterraines, le Crapaud). Identiques instruction pour instruction ; chercheurs de proie
+conformes. **Ce que l'on appelle trois espèces n'a qu'un comportement** : ce sont les modèles, pas
+le code, qui les distinguent.
+
+**La charpente du Gremlin sans le sort** : naissance sur `+0x16`, vol autour de `+0x48`,
+ondulation (au pas de `0x32`), accroche en 0x0b, heurt sans restitution de la hauteur.
+
+**Ce qui lui appartient**
+
+* **Une seule morsure**, à l'image 8 de tout geste, clignotement `0x14`.
+* **La posture 10, se poser** : descente d'un trente-deuxième de l'écart par image (d'un seizième
+  sous trois unités), puis au sol un rebours qui **descend sous zéro** s'il y était déjà, et un
+  élan en piqué à portée (hardiesse chances sur 80) — sauf variante 0. La variante 1 refuse de se
+  poser. Un contact `0x20002000` pendant la posture 10 **rend la hauteur d'avant l'image**, seule
+  restitution de `+0x20` du corps.
+* **Le piqué** part à l'image 6, vise la hauteur de la proie plus `0x14`, dure
+  `(variante + 2) * 10` images.
+* **La variante oriente la replanification** : la variante 0 se pose là où les autres piquent ; la
+  variante 1 approche ou pique là où les autres filent.
+
+**Une constante déguisée** : la poussée de piqué est `0x14 << (((hardiesse & ~3) << 10) + 12)`. Le
+décalage est masqué sur cinq bits et les dix bits bas du premier terme sont nuls : elle vaut
+**toujours `0x14000`**. Probablement une expression mal écrite en 1998 — la forme voisine du Varan
+est `((hardiesse & ~3) + 0x14) << 10`. Transcrit tel quel ; l'opérateur C# masque de la même façon.

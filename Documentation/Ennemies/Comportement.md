@@ -991,3 +991,14 @@ Varan appliquée à un combattant** : aucune feuille nouvelle, tout est dans les
   cible). Elle se teste après la replanification, à chaque image.
 * **Deux fins de posture inhabituelles** : le coup (0x0b) rend la posture 0 au lieu de passer par le
   rebours, et la parade ne décompte que sur les images où l'animation est au bout.
+
+## Trois espèces, un comportement : la Crapouille, la Gargouille, le Crapaud (2026-09-15)
+
+`0x004ACC20` (vieille tour), `0x004CE120` (château), `0x004DB610` (ruines souterraines) : trois
+copies conformes, trois espèces différentes. **Premier cas relevé où le nom d'espèce ne dit rien du
+comportement** — c'est à retenir avant de chercher « la routine de la Gargouille » : elle est celle
+de la Crapouille.
+
+Le calque est le **Gremlin sans son sort**. Sa pièce propre est la **posture 10**, où la bête se pose
+et peut repartir en piqué ; et sa replanification lit la variante `+0x16` pour choisir entre se poser
+(variante 0) et piquer (les autres).

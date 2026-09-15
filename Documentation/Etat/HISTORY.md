@@ -6,6 +6,8 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-15 (suite)
 
+- feat : **la Crapouille, la Gargouille et le Crapaud**, `0x004ACC20`, `0x004CE120`, `0x004DB610` — trois especes, UNE routine : une volante qui ondule, s'accroche, se pose au sol et en repart en pique
+- doc : la poussee de pique de ces trois especes vaut toujours 0x14000 — un decalage dont le compte est masque sur cinq bits annule la hardiesse
 - feat : **le Pourpre preux**, `0x004D1F70` — et ses deux copies conformes de la grotte scellee (`0x004E67C0`, `0x004EB530`) : un chevalier a cinq attaques (coup, combo, charge qui projette, coup en l'air, effet) qui PARE quand sa cible frappe
 - doc : la parade du Pourpre preux compare la timidite a un REGISTRE — le dernier tirage de la replanification, ou a defaut le pas d'avance de l'integration
 - feat : **le Gremlin**, `0x004A7190` — et **cinq gestionnaires d'un coup** (`0x004B22D0`, `0x004E8DF0`, `0x004EDB60`, `0x004F8270`) : les cinq corps ne different que par l'adresse de leur table de sorts, et les cinq tables portent les memes octets. Une volante qui ondule, pique, s'accroche a sa proie et incante

@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **258** |
-| implementes, jamais appeles | **194** |
-| a transcrire | **978** |
+| implementes, jamais appeles | **197** |
+| a transcrire | **975** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -66,10 +66,10 @@ et n'est pas un comportement.
 | 1 | La mine abandonnee | 157 | 22 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
 | 3 | La foret | 136 | 136 | 37 |
-| 4 | La vieille tour | 176 | 21 | 0 |
+| 4 | La vieille tour | 176 | 22 | 0 |
 | 5 | Le Labyrinthe des morts | 160 | 19 | 0 |
-| 6 | Le chateau de l'immortel | 170 | 21 | 0 |
-| 7 | Les ruines souterraines | 35 | 16 | 0 |
+| 6 | Le chateau de l'immortel | 170 | 22 | 0 |
+| 7 | Les ruines souterraines | 35 | 17 | 0 |
 | 8 | La vallee d'argent | 46 | 17 | 0 |
 | 9 | Les ruines dans le lac | 41 | 17 | 0 |
 | 10 | La grotte scellee | 349 | 25 | 0 |
@@ -777,7 +777,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 4 — La vieille tour
 
-176 gestionnaires, 21 implementes, 0 testes.
+176 gestionnaires, 22 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -922,7 +922,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004AA070` | 0,1,2,4 | 0056AD48 | **non** | **non** |
 | `0x004AAA80` | 0,1,2,4 | 0056AD48 | **non** | **non** |
 | `0x004AB940` | 10,5,6,8 | 0056AD48 | **non** | **non** |
-| `0x004ACC20` | 10,5,6,8 | 0056AD48 | **non** | **non** |
 | `0x004ADAE0` | 10,5,6,8 | 0056AD48 | **non** | **non** |
 | `0x004AE820` | 10,5,6,8 | 0056AD48 | **non** | **non** |
 | `0x004AF560` | 10,5,6,8 | 0056AD48 | **non** | **non** |
@@ -956,6 +955,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00474380` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1,10,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004A7190` | 0,1,2,4 | 0056AD48 | oui | **non** |
+| `0x004ACC20` | 10,5,6,8 | 0056AD48 | oui | **non** |
 | `0x004B22D0` | 3,7,9 | 0056AD48 | oui | **non** |
 
 ## Zone 5 — Le Labyrinthe des morts
@@ -1127,7 +1127,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 6 — Le chateau de l'immortel
 
-170 gestionnaires, 21 implementes, 0 testes.
+170 gestionnaires, 22 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -1266,7 +1266,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004CB4F0` | 0,1,2,3,4 | 0056AD48 | **non** | **non** |
 | `0x004CC650` | 0,1,2,3,4 | 0056AD48 | **non** | **non** |
 | `0x004CD260` | 0,1,2,3,4 | 0056AD48 | **non** | **non** |
-| `0x004CE120` | 10,6,7,8,9 | 0056AD48 | **non** | **non** |
 | `0x004CF3A0` | 10,6,7,8,9 | 0056AD48 | **non** | **non** |
 | `0x004D01C0` | 10,6,7,8,9 | 0056AD48 | **non** | **non** |
 | `0x004D12A0` | 10,6,7,8,9 | 0056AD48 | **non** | **non** |
@@ -1300,11 +1299,12 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00473ED0` | 0,1,10,11,2,3,4,5,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1,10,2,3,4,6,7,8,9 | 0056ADC8 | oui | **non** |
 | `0x004746F0` | 0,1,10,2,3,4,6,7,8,9 | 0056ADC8 | oui | **non** |
+| `0x004CE120` | 10,6,7,8,9 | 0056AD48 | oui | **non** |
 | `0x004D1F70` | 10,6,7,8,9 | 0056AD48 | oui | **non** |
 
 ## Zone 7 — Les ruines souterraines
 
-35 gestionnaires, 16 implementes, 0 testes.
+35 gestionnaires, 17 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -1319,7 +1319,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x004450E0` | 0,1,2 | 0056AEC8 | **non** | **non** |
 | `0x00445120` | 0,1,2 | 0056AEC8 | **non** | **non** |
 | `0x00466BE0` | 0,1,2 | 0056ADC8 | **non** | **non** |
-| `0x004DB610` | 0,1,2 | 0056AD48 | **non** | **non** |
 | `0x004DC890` | 0,1,2 | 0056AD48 | **non** | **non** |
 | `0x004DCF10` | 0,1,2 | 0056AD48 | **non** | **non** |
 | `0x004DDE30` | 0,1,2 | 0056AD48 | **non** | **non** |
@@ -1343,6 +1342,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00473CB0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x00473ED0` | 0,1,2 | 0056ADC8 | oui | **non** |
 | `0x004746C0` | 0,1,2 | 0056ADC8 | oui | **non** |
+| `0x004DB610` | 0,1,2 | 0056AD48 | oui | **non** |
 
 ## Zone 8 — La vallee d'argent
 
