@@ -4,6 +4,20 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-15
+
+- feat : **LES TABLES STATIQUES SONT COMPLETES — 274 sur 274** : les treize derniers gestionnaires communs sont ecrits d'un bloc (`0x00403E80`, `0x00404000`, `0x00404460`, `0x004045F0`, `0x00404730`, `0x00447A90`, `0x00447D50`, `0x0044FC90`, `0x0044FF40`, `0x00476950`, `0x00476970`, `0x0047A950`, `0x00482FA0`). Six absents de `Blaze.c`, sortis du desassembleur ; releves gardes sous `Legacy/Raw/Blaze/`. Deuxieme ensemble entierement implemente apres la foret, et le seul qui vaille dans les onze zones
+- feat : **la fratrie 80-85 de `0x00551c30` est bouclee** — les six effets de sort portes par leur victime, dont les deux qui manquaient : `0x51` (deux sons dates par le compteur d'images, une entite `0x33` une image sur deux) et `0x53`, **la seule de la fratrie qui se joue en deux temps** — elle seme du `0x35` pendant 6 a 10 images, puis lache onze `0x36` d'un coup a la dixieme image de son attente
+- feat : **`0x00447A90`, un sort de pretre qui rampe au sol en spirale** et frappe a chaque image, avec les onze traineaux `0xa1` qu'il lache a sa naissance. Il recopie la garde de `EndSpellOnTerrain_00448040` dans son corps au lieu de l'appeler, et porte son coup **au nom du lanceur** (`+0x6c`), pas du sort
+- feat : **le bloc des cinq enfants de benediction (`0xa5` a `0xa9`) est complet** — `0xa8`, l'anneau dont l'elevation n'est pas un champ mais une fonction du cap (`sin(cap) x +0x12 >> 12`), donc qui ondule ; et `0xa6`, la bulle qui monte en accelerant une image sur deux
+- doc : **deux relais rendent le recensement statique aveugle** — `0x00476950` et `0x00476970` lisent le **sous-type de leur enfant dans leur propre `+0x0b`**. Un seul creneau de table de sauts ouvre donc sur n'importe quel gestionnaire de l'autre table, et `GestionnairesEntites.md` ne peut pas dire ce qu'ils atteignent
+- doc : **`0x00404000` a un rayon d'orbite fige a zero** — les deux appels aux tables de sinus et de cosinus sont bien la, l'angle avance de `0x64` par image, mais `+0x98` est mis a zero a la naissance et rien ne le rouvre. La bouffee retombe donc exactement sur son ancre. Transcrit tel quel, pas repare
+- doc : **`0x00482FA0` est le SOUS-TYPE ZERO, et ce n'est pas une souche** — ce qu'une entite de `0x005f2d40` fait quand personne ne lui a donne de sous-type : un eclat qui perd un quart de sa taille par image et s'efface a la onzieme. Les creneaux vraiment vides, eux, tiennent `0x0047adc0`
+- doc : **`0x0047A950` pulse au rythme du compteur de fondu GLOBAL** (`s_FadeCounter_005e9960`), pas d'un champ a elle : toutes les bulles d'etat a l'ecran respirent en phase. Elle ne vit que deux images et est donc reengendree en continu tant que l'etat dure
+- doc : **l'atlas `0x0054f138` est releve et borne** — quatre enregistrements jusqu'a `0x0054f158`, la table voisine ; `0x00404730` n'en atteint que trois, son `+0x40` rebouclant a 3. `check-descriptors.sh` le verifie desormais, le nom suivant enfin la convention que le script reconnait
+
+---
+
 ## 2026-09-02
 
 - doc : **le TAUX DE DOUBLON est mesure, plus estime** — `OpenForesia.Tools/census-duplicates.sh` desassemble les 1 430 corps, les tronque a leur dernier `ret`, et compare deux normalisations. **24 % des 1 012 restants sont des copies exactes**, et **38 % sur la filiere des IA** — c'est-a-dire la ou le volume est

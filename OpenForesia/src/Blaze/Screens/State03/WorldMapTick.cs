@@ -4527,6 +4527,31 @@ public static unsafe partial class Blaze
             // meme atlas et meme mort a sept que 0x00404310, mais elle ne monte pas.
             case 0x00403D60: EntityHandler_00403D60(record); return;
 
+            // L'entree 81 (0x51) — la troisieme de la fratrie 80-85 : meme prise de la victime que
+            // la 82, mais deux sons dates par le compteur d'images, une entite 0x33 une image sur
+            // deux, et un noircissement de dix au lieu de quinze.
+            case 0x00403E80: EntityHandler_00403E80(record); return;
+
+            // L'entree 51 (0x33) de la table 0x00552230 — ce que la precedente lache : elle monte
+            // en accelerant, enfle, et reboucle sur son atlas jusqu'a ce que sa duree tombe.
+            case 0x00404000: EntityHandler_00404000(record); return;
+
+            // L'entree 83 (0x53) — la seule de la fratrie 80-85 qui se joue en DEUX temps : elle
+            // seme du 0x35 pendant 6 a 10 images, puis lache onze 0x36 d'un coup a la dixieme
+            // image de son attente, et s'eteint a la quinzieme.
+            case 0x00404460: EntityHandler_00404460(record); return;
+
+            // Ses deux enfants, entrees 53 (0x35) et 54 (0x36) de la table 0x00552230 : la bouffee
+            // qui ne monte pas, et la gerbe qui file en ligne droite en enflant.
+            case 0x004045F0: EntityHandler_004045F0(record); return;
+            case 0x00404730: EntityHandler_00404730(record); return;
+
+            // L'entree 54 (0x36) de la table 0x00551c30 — un sort de pretre qui rampe au sol en
+            // spirale et frappe a chaque image, et les onze traineaux 0xa1 qu'il lache a sa
+            // naissance (entree 161 de la table 0x00551f30).
+            case 0x00447A90: EntityHandler_00447A90(record); return;
+            case 0x00447D50: EntityHandler_00447D50(record); return;
+
             // L'entree 186 (0xba) et son enfant de meme numero dans l'autre table : le pere n'est
             // qu'une naissance qui s'efface, l'enfant est ce qui vole et porte le coup.
             case 0x00476770: EntityHandler_00476770(record); return;
@@ -4918,6 +4943,25 @@ public static unsafe partial class Blaze
             // Gnoukoule aussi : l'etincelle 0xa7 et l'eclat 0xa0 servent aux deux fiches.
             case 0x00448060: TickReinforce_00448060(record); return;
             case 0x0044FE00: TickHolySpark_0044FE00(record); return;
+
+            // Les deux dernieres du bloc de cinq enfants de benediction (0xa5 a 0xa9) : l'anneau
+            // qui ondule autour de sa cible (0xa8) et la bulle qui monte en s'eclaircissant (0xa6).
+            case 0x0044FC90: EntityHandler_0044FC90(record); return;
+            case 0x0044FF40: EntityHandler_0044FF40(record); return;
+
+            // LES DEUX RELAIS, entrees 98 (0x62) et 99 (0x63) de la table 0x00551c30 : elles
+            // lachent un enfant dont le SOUS-TYPE EST LU DANS +0x0b, et s'effacent. Un seul
+            // creneau ouvre donc sur n'importe quel gestionnaire de l'autre table.
+            case 0x00476950: EntityHandler_00476950(record); return;
+            case 0x00476970: EntityHandler_00476970(record); return;
+
+            // L'entree 42 (0x2a) de la table 0x00552230 — la bulle d'etat au-dessus d'une tete,
+            // deux images, qui pulse au rythme du compteur de fondu global.
+            case 0x0047A950: EntityHandler_0047A950(record); return;
+
+            // L'entree 0 de la meme table — LE SOUS-TYPE ZERO, un eclat qui perd un quart de sa
+            // taille par image et s'efface a la onzieme.
+            case 0x00482FA0: EntityHandler_00482FA0(record); return;
             case 0x00448250: TickHolyFlash_00448250(record); return;
 
             // GNOUKOULE, ecole 1 indice 3 — 418 octets recopies de Renfort a quatre valeurs pres.
@@ -6382,6 +6426,593 @@ public static unsafe partial class Blaze
                 e[0x40]++;
                 if (e[0x40] == 7) *(uint*)e &= 0x7fffffff;
             }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00403e80</c> — <b>l'entree 81 (<c>0x51</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551c30"/></b>, 380 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_00403E80.asm</c>.
+    ///
+    /// <para>
+    /// <b>La troisieme sœur de la fratrie 80-85</b>, le bloc contigu d'effets de sort portes par
+    /// leur victime : <see cref="EntityHandler_00403C10"/> (80), celui-ci (81),
+    /// <see cref="EntityHandler_004041C0"/> (82), <see cref="EntityHandler_00404460"/> (83),
+    /// <see cref="EntityHandler_00402FC0"/> (84) et <see cref="EntityHandler_00404920"/> (85).
+    /// Meme squelette que la 82 : la victime en <c>+0x6c</c>, l'effet colle a sa position, les bits
+    /// <c>0x1008</c> poses sur son mot d'etat, une duree tiree entre 15 et 19 images, et l'image
+    /// d'animation de la victime avancee a la main une image sur deux.
+    /// </para>
+    /// <para>
+    /// <b>Cinq differences avec la 82</b>, toutes lues dans le desassemblage :
+    /// </para>
+    /// <list type="number">
+    /// <item><b>La sequence 2 est reimposee a CHAQUE image</b> (<c>mov word [edi+18h],2</c> dans le
+    /// prologue) la ou la 82 l'ecrit une seule fois, a l'initialisation. Le pointeur d'animation est
+    /// donc resolu sur l'indice <b>2 litteral</b> (<c>[ecx+8]</c>) et non a travers <c>+0x18</c> :
+    /// le piege de la sœur n'existe pas ici.</item>
+    /// <item><b>Deux sons, un par image</b>, et non un seul a l'initialisation : <c>0x21</c> a
+    /// l'image 0, <c>0x23</c> a l'image 1, tous deux par la porte de distance de
+    /// <see cref="TryPlaySoundNearEntity"/>.</item>
+    /// <item><b>Une entite d'etat une image sur deux</b> (<c>+0x16</c> impair), sous-type
+    /// <c>0x33</c> — <see cref="EntityHandler_00404000"/> — et non un <c>0x34</c> a chaque
+    /// image.</item>
+    /// <item><b>Elle noircit la victime de dix</b> par image, et non de quinze.</item>
+    /// <item><b>Le corps est garde par <c>+0x10 == 1</c></b>, la ou la 82 laisse l'initialisation
+    /// tomber dans la suite sans garde. La garde ne change rien a la premiere image :
+    /// l'initialisation vient de poser <c>+0x10 = 1</c>.</item>
+    /// </list>
+    /// <para>
+    /// <c>+0x14</c> recoit la <b>moyenne</b> des trois etendues du bloc de modele de la victime
+    /// (<c>imul 55555556h</c>, la division par trois tronquee vers zero de MSVC) : c'est le germe
+    /// que l'entite <c>0x33</c> relit pour se dimensionner.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00403E80(byte* effect)
+    {
+        byte* victim = *(byte**)(effect + 0x6c);
+        if (victim == null) return;
+
+        *(int*)(effect + 0x1c) = *(int*)(victim + 0x1c);
+        *(int*)(effect + 0x20) = *(int*)(victim + 0x20);
+        *(int*)(effect + 0x24) = *(int*)(victim + 0x24);
+
+        // La sequence 2, reimposee a chaque image — voir le commentaire de tete.
+        *(short*)(victim + 0x18) = 2;
+
+        // `mov ecx,[eax*4+5E9640h] ; mov edx,[ecx+8]` : l'indice 2 en clair, pas +0x18.
+        byte* animation = ((byte**)*(byte***)(Mem.s_AnimationTable_005e9640 + victim[4] * 4))[2];
+
+        *(uint*)victim |= 0x1008;
+
+        if (*(short*)(effect + 0x10) == 0)
+        {
+            *(short*)(effect + 0x10) = 1;
+            *(short*)(effect + 0x12) = (short)(CrtRand() % 5 + 0x0f);   // Ghidra: FUN_00547140
+
+            victim[0x0a] = 0;
+            *(short*)(victim + 0x1a) = 0;
+
+            ResolveEntityBlocks(victim, out _, out _, out byte* model);
+
+            *(short*)(effect + 0x16) = 0;
+
+            // Ghidra: `imul 55555556h` puis le rattrapage par le bit de signe — la division par
+            // trois tronquee vers zero de l'idiome MSVC.
+            int extent = *(short*)(model + 0x1c) + *(short*)(model + 0x1e) + *(short*)(model + 0x20);
+            *(short*)(effect + 0x14) = (short)(extent / 3);
+        }
+
+        // Ghidra: LAB_00403f3c / LAB_00403f5c — les deux sons vivent HORS de l'initialisation :
+        // c'est +0x16, le compteur d'images, qui les date. Ils partent aux images 0 et 1.
+        if (*(short*)(effect + 0x16) == 0)
+        {
+            TryPlaySoundNearEntity((uint*)effect, 0x21, 0x329, 0x1000, 0, 0);
+        }
+
+        if (*(short*)(effect + 0x16) == 1)
+        {
+            TryPlaySoundNearEntity((uint*)effect, 0x23, 0x400, 0xa00, 0, 0);
+        }
+
+        // Ghidra: LAB_00403f7c — la premiere image passe ici aussi.
+        if (*(short*)(effect + 0x10) == 1)
+        {
+            // L'octet bas de +0x16, lu AVANT le decompte : une image sur deux.
+            bool odd = (effect[0x16] & 1) != 0;
+
+            *(short*)(effect + 0x12) -= 1;
+
+            if (odd)
+            {
+                SpawnStatusEffectEntity_0047AC40(effect, (int*)(effect + 0x1c), null, 0x33, 0, -1);
+            }
+
+            // La duree est epuisee : l'effet s'eteint et rend son bit 3 a la victime. Meme sortie
+            // que EntityHandler_004041C0 et RestoreVitalsEntity_00403710.
+            if (*(short*)(effect + 0x12) < 0)
+            {
+                *(uint*)effect &= 0x7fffffff;
+                *(uint*)victim &= 0xfffffff7;
+            }
+        }
+
+        // Ghidra: LAB_00403fb7 — hors de la garde precedente : la victime s'assombrit de dix par
+        // image sur les trois composantes, meme apres l'extinction de l'effet.
+        BrightenEntityTint_00404DE0(victim, -10, -10, -10);
+
+        // Ghidra: LAB_00403fc3 — meme borne que la sœur : l'image SIGNEE comparee au compte NON
+        // signe, decremente sur 32 bits et reecrit sur seize.
+        if ((effect[0x16] & 1) != 0)
+        {
+            *(short*)(victim + 0x1a) += 1;
+
+            ushort frames = *(ushort*)(animation + 0x16);
+            if (*(short*)(victim + 0x1a) >= (int)frames)
+            {
+                *(ushort*)(victim + 0x1a) = (ushort)(frames - 1);
+            }
+        }
+
+        *(ushort*)(effect + 0x16) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00404000</c> — <b>l'entree 51 (<c>0x33</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>, celle de la passe
+    /// <see cref="TickEntityTable_005f2d40"/>. 440 octets, <b>absente de <c>Blaze.c</c></b> ;
+    /// releve garde sous <c>Legacy/Raw/Blaze/FUN_00404000.asm</c>.
+    ///
+    /// <para>
+    /// C'est ce que <see cref="EntityHandler_00403E80"/> lache une image sur deux — le pendant
+    /// exact de <see cref="EntityHandler_00404310"/> pour la sœur 82. Elle en partage d'ailleurs
+    /// l'atlas, <see cref="s_Entity34Descriptors_0054F0E0"/>, et le compteur a sept.
+    /// </para>
+    /// <para>
+    /// <b>Ce qu'elle fait</b> : elle nait sur le point donne, monte de plus en plus vite, enfle, et
+    /// s'eteint au bout de 25 a 39 images. La montee est un <b>cumul</b> — <c>+0x54</c> part a 1 ou
+    /// 2, <c>Y</c> gagne <c>+0x54 &lt;&lt; 10</c> par image, et <c>+0x54</c> gagne lui-meme
+    /// <c>germe / 120 + 1</c> — donc une acceleration constante et non une vitesse. L'echelle,
+    /// tiree entre <c>0xc00</c> et <c>0xfff</c>, gagne <c>germe + 0x50</c> par image sur les deux
+    /// axes. Le germe est le <c>+0x14</c> que le pere a pose : la moyenne des etendues du modele de
+    /// la victime.
+    /// </para>
+    /// <para>
+    /// <b>La teinte</b> part verdatre-bleutee — <c>0x20</c>/<c>0x3c</c>/<c>0x40</c> plus un tirage
+    /// sur 25 — et perd <c>2</c>/<c>1</c>/<c>2</c> par image.
+    /// </para>
+    /// <para>
+    /// <b>Le tour de manege ne tourne pas.</b> Les deux appels aux tables de sinus et de cosinus de
+    /// winsys3d sont bien la, l'angle <c>+0x12</c> part d'un tirage sur <c>0x1000</c> et gagne
+    /// <c>0x64</c> par image — mais le rayon, <c>+0x98</c>, est mis a zero a la naissance et
+    /// <b>rien ne le rouvre</b>. Le produit est donc nul et la position retombe exactement sur
+    /// l'ancre <c>+0x50</c>/<c>+0x58</c> figee a la naissance. C'est ecrit ainsi dans le binaire :
+    /// transcrit tel quel, pas repare.
+    /// </para>
+    /// <para>
+    /// <b>L'atlas defile a chaque image</b>, pour la meme raison : le seuil compare a <c>+0x9a</c>
+    /// est <c>+0x16</c>, mis a zero a la naissance et jamais reecrit. L'entite parcourt donc ses
+    /// sept images en sept images, puis <b>reboucle</b> — le compteur revient a zero au lieu
+    /// d'eteindre l'entite, contrairement a sa jumelle. Seul <c>+0x5c</c> la tue.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00404000(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Entity34Descriptors();   // Ghidra: &DAT_0054f0e0
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x98) = 0;                       // le rayon — voir le commentaire de tete
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);
+
+            // L'ancre : la position de naissance, autour de laquelle le tour est cense se dessiner.
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            short scale = (short)(CrtRand() % 0x400 + 0xc00);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+
+            *(short*)(e + 0x16) = 0;
+            *(short*)(e + 0x9a) = 0;
+            *(int*)(e + 0x54) = CrtRand() % 2 + 1;
+
+            e[0x38] = (byte)(CrtRand() % 0x19 + 0x20);
+            e[0x39] = (byte)(CrtRand() % 0x19 + 0x3c);
+            e[0x3a] = (byte)(CrtRand() % 0x19 + 0x40);
+
+            *(int*)(e + 0x5c) = CrtRand() % 0x0f + 0x19;
+        }
+
+        // Ghidra: LAB_004040e2 — la premiere image passe ici aussi.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int rise = *(int*)(e + 0x54);
+            *(int*)(e + 0x20) += rise << 0x0a;
+
+            // Ghidra: `imul 88888889h ; add edx,edi ; sar edx,6` plus le rattrapage par le bit de
+            // signe — la division par 120 tronquee vers zero de l'idiome MSVC.
+            *(int*)(e + 0x54) = rise + *(short*)(e + 0x14) / 120 + 1;
+
+            // Les deux tables lisent le MEME angle : l'increment ne tombe qu'apres le cosinus.
+            short yaw = *(short*)(e + 0x12);
+            short radius = *(short*)(e + 0x98);
+
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(yaw) * radius + *(int*)(e + 0x50);
+            int across = Winsys3d.GetCosTableEntry(yaw) * radius;
+
+            *(short*)(e + 0x12) += 0x64;
+            *(int*)(e + 0x24) = across + *(int*)(e + 0x58);
+
+            *(short*)(e + 0x9a) += 1;
+
+            // `mov ax,[esi+14h]` : le germe relu sur seize bits, puis deux additions seize bits.
+            short growth = (short)(*(short*)(e + 0x14) + 0x50);
+            *(short*)(e + 0x28) += growth;
+            *(short*)(e + 0x2a) += growth;
+
+            if (*(short*)(e + 0x9a) >= *(short*)(e + 0x16))
+            {
+                *(short*)(e + 0x9a) = 0;
+
+                e[0x40]++;
+                if (e[0x40] == 7) e[0x40] = 0;
+            }
+
+            // Ghidra: LAB_00404195.
+            BrightenEntityTint_00404DE0(e, -2, -1, -2);
+
+            *(int*)(e + 0x5c) -= 1;
+            if (*(int*)(e + 0x5c) < 0) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00404460</c> — <b>l'entree 83 (<c>0x53</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551c30"/></b>, 392 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_00404460.asm</c>.
+    ///
+    /// <para>
+    /// <b>La quatrieme de la fratrie 80-85</b>, et la seule qui se joue <b>en deux temps</b>. Elle
+    /// tient sa victime comme ses sœurs — position recopiee, sequence <c>2</c> reimposee a chaque
+    /// image, image d'animation avancee a la main une image sur deux — mais elle ne pose que le
+    /// <b>bit 3</b> de son mot d'etat, pas les <c>0x1008</c> de la 81 et de la 82 : la victime
+    /// garde donc son propre defilement d'animation en plus du sien.
+    /// </para>
+    /// <para>
+    /// <b>Phase 1, la montee</b> : le son <c>0x20</c> a la naissance, puis une entite <c>0x35</c>
+    /// (<see cref="EntityHandler_004045F0"/>) a chaque image, pendant 6 a 10 images. La duree
+    /// epuisee, <c>+0x10</c> passe a 2 et le compteur repart de zero.
+    /// </para>
+    /// <para>
+    /// <b>Phase 2, la rupture</b> : quinze images d'attente, dont la <b>dixieme</b> porte tout —
+    /// le son <c>0x25</c> et <b>onze</b> entites <c>0x36</c> d'un coup
+    /// (<see cref="EntityHandler_00404730"/>, la spirale). A la quinzieme l'effet s'eteint et rend
+    /// son bit 3 a la victime.
+    /// </para>
+    /// <para>
+    /// <c>+0x14</c> recoit la <b>moyenne</b> des trois etendues du bloc de modele de la victime,
+    /// comme chez ses sœurs : c'est le germe que les deux enfants relisent pour se repartir autour
+    /// d'elle. Elle est la seule des six a ne jamais toucher a la teinte de sa victime.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00404460(byte* effect)
+    {
+        byte* victim = *(byte**)(effect + 0x6c);
+        if (victim == null) return;
+
+        *(int*)(effect + 0x1c) = *(int*)(victim + 0x1c);
+        *(int*)(effect + 0x20) = *(int*)(victim + 0x20);
+        *(int*)(effect + 0x24) = *(int*)(victim + 0x24);
+
+        // La sequence 2, reimposee a chaque image, et l'animation resolue sur l'indice 2 litteral.
+        *(short*)(victim + 0x18) = 2;
+        byte* animation = ((byte**)*(byte***)(Mem.s_AnimationTable_005e9640 + victim[4] * 4))[2];
+
+        // `or ecx,8` seul : le bit « tenue par un effet », sans les 0x1000 de la 81 et de la 82.
+        *(uint*)victim |= 8;
+
+        if (*(short*)(effect + 0x10) == 0)
+        {
+            *(short*)(effect + 0x10) = 1;
+            *(short*)(effect + 0x12) = (short)(CrtRand() % 5 + 6);   // Ghidra: FUN_00547140
+
+            victim[0x0a] = 0;
+            *(short*)(victim + 0x1a) = 0;
+
+            ResolveEntityBlocks(victim, out _, out _, out byte* model);
+
+            // Ghidra: `imul 55555556h` puis le rattrapage par le bit de signe — la division par
+            // trois tronquee vers zero de l'idiome MSVC.
+            int extent = *(short*)(model + 0x1c) + *(short*)(model + 0x1e) + *(short*)(model + 0x20);
+            *(short*)(effect + 0x14) = (short)(extent / 3);
+            *(short*)(effect + 0x16) = 0;
+
+            // Ghidra: FUN_004031c0 — jumeau de TryPlaySoundNearEntity.
+            TryPlaySoundNearEntity((uint*)effect, 0x20, 0x800, 0xa00, 0, 0);
+        }
+
+        // Ghidra: LAB_0040452d — la premiere image passe ici aussi.
+        if (*(short*)(effect + 0x10) == 1)
+        {
+            *(short*)(effect + 0x12) -= 1;
+
+            SpawnStatusEffectEntity_0047AC40(effect, (int*)(effect + 0x1c), null, 0x35, 0, -1);
+
+            if (*(short*)(effect + 0x12) < 0)
+            {
+                *(short*)(effect + 0x10) = 2;
+                *(short*)(effect + 0x12) = 0;
+            }
+        }
+
+        // Ghidra: LAB_00404558 — la seconde phase. La premiere image de la phase 1 ne tombe PAS
+        // dedans : le passage a 2 se fait en fin de phase 1, et le compteur vaut alors 0.
+        if (*(short*)(effect + 0x10) == 2)
+        {
+            *(short*)(effect + 0x12) += 1;
+
+            if (*(short*)(effect + 0x12) == 0x0a)
+            {
+                TryPlaySoundNearEntity((uint*)effect, 0x25, 0x400, 0xa00, 0, 0);
+
+                // Ghidra: LAB_00404586 — `mov ebx,0Bh` puis `dec ebx ; jnz` : onze, pas dix.
+                for (int i = 0; i < 0x0b; i++)
+                {
+                    SpawnStatusEffectEntity_0047AC40(
+                        effect, (int*)(effect + 0x1c), null, 0x36, 0, -1);
+                }
+            }
+
+            // Ghidra: LAB_0040459b — `jl`, donc l'extinction tombe a quinze et non a seize.
+            if (*(short*)(effect + 0x12) >= 0x0f)
+            {
+                *(uint*)effect &= 0x7fffffff;
+                *(uint*)victim &= 0xfffffff7;
+            }
+        }
+
+        // Ghidra: LAB_004045b2 — meme borne que ses sœurs : l'image SIGNEE comparee au compte NON
+        // signe, decremente sur 32 bits et reecrit sur seize.
+        if ((effect[0x16] & 1) != 0)
+        {
+            *(short*)(victim + 0x1a) += 1;
+
+            ushort frames = *(ushort*)(animation + 0x16);
+            if (*(short*)(victim + 0x1a) >= (int)frames)
+            {
+                *(ushort*)(victim + 0x1a) = (ushort)(frames - 1);
+            }
+        }
+
+        *(ushort*)(effect + 0x16) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004045f0</c> — <b>l'entree 53 (<c>0x35</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>, celle de la passe
+    /// <see cref="TickEntityTable_005f2d40"/>. 312 octets, <b>absente de <c>Blaze.c</c></b> ;
+    /// releve garde sous <c>Legacy/Raw/Blaze/FUN_004045F0.asm</c>.
+    ///
+    /// <para>
+    /// C'est ce que <see cref="EntityHandler_00404460"/> seme pendant sa premiere phase, et c'est
+    /// <b>presque mot pour mot <see cref="EntityHandler_00404310"/></b> : meme atlas
+    /// (<see cref="s_Entity34Descriptors_0054F0E0"/>), meme dispersion autour du point, meme
+    /// echelle <c>0xbb8</c>, meme teinte <c>0xa0</c>, meme perte de deux par image, meme pas de
+    /// 2 ou 3 images et meme mort a la septieme image d'atlas.
+    /// </para>
+    /// <para>
+    /// <b>Deux differences, et deux seulement</b> :
+    /// </para>
+    /// <list type="number">
+    /// <item><b>Elle ne monte pas.</b> Le <c>Y += 0x8000</c> par image de la jumelle n'existe pas
+    /// ici : la bouffee reste a l'altitude ou elle est nee.</item>
+    /// <item><b>Le diviseur est <c>germe / 2 + 1</c></b> et non <c>germe / 2</c>
+    /// (<c>sar ecx,1 ; inc ecx</c>). Un germe inferieur a 2 fait diviser par zero chez la jumelle
+    /// et pas ici — la meme dispersion, ecrite deux fois, une fois avec la garde.</item>
+    /// </list>
+    /// </summary>
+    private static void EntityHandler_004045F0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            // Le binaire relit `word [esi+14h]` avant chaque tirage ; rien ne l'ecrit entre-temps.
+            int size = *(short*)(e + 0x14);
+
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Entity34Descriptors();   // Ghidra: &DAT_0054f0e0
+            e[0x40] = 0;
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x1c) += (CrtRand() % (size / 2 + 1) - size / 4) << 0xc;
+
+            size = *(short*)(e + 0x14);
+            *(int*)(e + 0x24) += (CrtRand() % (size / 2 + 1) - size / 4) << 0xc;
+
+            *(short*)(e + 0x12) = 0;
+
+            // Pas de recentrage sur Y : la bouffee nait au-dessus du point, jamais en dessous.
+            size = *(short*)(e + 0x14);
+            *(int*)(e + 0x20) += (CrtRand() % (size / 2 + 1)) << 0xc;
+
+            *(short*)(e + 0x28) = 0xbb8;
+            *(short*)(e + 0x2a) = 0xbb8;
+            e[0x38] = 0xa0;
+            e[0x39] = 0xa0;
+            e[0x3a] = 0xa0;
+
+            // Ghidra: l'idiome MSVC du modulo signe, puis +2 — donc 2 ou 3 images par pas.
+            *(short*)(e + 0x16) = (short)(CrtRand() % 2 + 2);
+        }
+
+        // Ghidra: LAB_004046e9 — la premiere image passe ici aussi.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            BrightenEntityTint_00404DE0(e, -2, -2, -2);
+
+            *(short*)(e + 0x12) += 1;
+
+            if (*(short*)(e + 0x12) >= *(short*)(e + 0x16))
+            {
+                *(short*)(e + 0x12) = 0;
+
+                // Le binaire incremente PUIS compare a 7 : la septieme image d'atlas n'est jamais
+                // affichee, elle sert de borne.
+                e[0x40]++;
+                if (e[0x40] == 7) *(uint*)e &= 0x7fffffff;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f138</c> — <b>l'atlas de la spirale</b> que
+    /// <see cref="EntityHandler_00404730"/> pose en <c>+0x3c</c>. Quatre enregistrements de huit
+    /// octets, toute la plage <c>0x0054f138</c>–<c>0x0054f157</c>, bornee par
+    /// <see cref="s_Descriptors_0054F158"/> qui suit immediatement.
+    ///
+    /// <para>
+    /// <b>Le corps n'en atteint que trois</b> : <c>+0x40</c> s'incremente et <b>reboucle</b> a 3.
+    /// Le quatrieme est declare parce que la plage lui appartient — la borne vient de la donnee,
+    /// pas du compteur.
+    /// </para>
+    /// <para>
+    /// Les trois derniers sont une meme planche en <c>0x0f x 0x0f</c> (<c>0x0f0fa870</c>,
+    /// <c>0x0f0fa880</c>, <c>0x0f0fa890</c>) ; le premier, <c>0x0f0f08f0</c>, est ailleurs dans
+    /// l'atlas mais au meme gabarit.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F138 =
+    [
+        0xf0, 0x08, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x0054f138
+        0x70, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x0054f140
+        0x80, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x0054f148
+        0x90, 0xa8, 0x0f, 0x0f, 0x01, 0x02, 0x10, 0x00,   // 0x0054f150
+    ];
+
+    private static byte* s_Descriptors0054F138Storage;
+
+    private static byte* Descriptors0054F138()
+        => NativeCopy(s_Descriptors_0054F138, ref s_Descriptors0054F138Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00404730 @ 0x00404730 — <b>l'entree 54 (<c>0x36</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>. Decompilee dans <c>Blaze.c</c>.
+    /// <b>La gerbe que <see cref="EntityHandler_00404460"/> lache par onze d'un coup</b>, a la
+    /// dixieme image de sa seconde phase.
+    ///
+    /// <para>
+    /// <b>C'est la spirale sur une sphere de <see cref="EntityHandler_004034A0"/></b>, a
+    /// l'identique dans sa forme : <c>+0x50</c> le cap, <c>+0x54</c> l'elevation, <c>+0x58</c> le
+    /// rayon, l'ancre figee en <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>, et la position entierement
+    /// recalculee a chaque image. Le rayon croit de <c>+0x5c</c> (8 a 13) par image : l'etincelle
+    /// s'ecarte en tournant.
+    /// </para>
+    /// <para>
+    /// <b>Ce qui la distingue</b> : les deux angles sont <b>figes</b> a la naissance — ni cap ni
+    /// elevation ne bougent —, si bien qu'elle ne tourne pas vraiment, elle <b>file en ligne
+    /// droite dans une direction tiree au sort</b>, en s'ecartant de plus en plus vite. Elle part
+    /// de la moitie du germe (<c>+0x14 &gt;&gt; 1</c>, un <c>sar</c> nu), a une demi-hauteur de
+    /// germe au-dessus de son point de naissance, et <b>enfle</b> de 50 par image sur les deux
+    /// axes — la jumelle, elle, retrecit.
+    /// </para>
+    /// <para>
+    /// <b>Elle meurt d'etre eteinte.</b> Le germe <c>+0x14</c> est <b>ecrase</b> a la naissance par
+    /// un tirage entre 9 et 15 : c'est desormais le pas d'assombrissement, applique aux trois
+    /// canaux a chaque image. La teinte part entre <c>0xc8</c> et <c>0xf9</c>
+    /// (<c>rand % 50 - 0x38</c>, replie sur l'octet) et l'entite s'eteint quand le canal rouge
+    /// touche zero — 14 a 28 images. Un champ, deux roles, comme chez ses sœurs.
+    /// </para>
+    /// <para>
+    /// L'atlas <see cref="s_Descriptors_0054F138"/> defile tous les <c>+0x16</c> images
+    /// (1 ou 2) et <b>reboucle a trois</b> : il ne borne pas la vie.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00404730(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054F138();   // Ghidra: &DAT_0054f138
+            e[0x40] = 0;
+            e[0x0a] = 0x0f;
+            e[0x0b] = 1;
+
+            // Ghidra: `CONCAT31(...) & 0xfffffffe) * 0x800` — le germe sign-etendu, son bit bas
+            // tombe, decale de onze. La gerbe nait au-dessus du point qu'on lui a donne.
+            *(int*)(e + 0x20) += (*(short*)(e + 0x14) & ~1) << 0x0b;
+
+            *(int*)(e + 0x50) = CrtRand() % 0x1000;   // le cap, fige
+            *(int*)(e + 0x54) = CrtRand() % 0x1000;   // l'elevation, figee
+
+            // `sar` nu, arrondi vers moins l'infini — pas l'idiome tronque vers zero.
+            *(int*)(e + 0x58) = *(short*)(e + 0x14) >> 1;
+            *(int*)(e + 0x5c) = CrtRand() % 6 + 8;
+
+            short scale = (short)(CrtRand() % 0x400 + 0xc00);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            // `(char)(rand % 50) - 0x38` : l'octet deborde, la teinte part donc entre 0xc8 et 0xf9.
+            e[0x38] = (byte)(CrtRand() % 0x32 - 0x38);
+            e[0x39] = (byte)(CrtRand() % 0x32 - 0x38);
+
+            *(short*)(e + 0x12) = 0;
+
+            e[0x3a] = (byte)(CrtRand() % 0x32 - 0x38);
+
+            *(short*)(e + 0x16) = (short)(CrtRand() % 2 + 1);
+
+            // Le germe est ECRASE ici : il devient le pas d'assombrissement.
+            *(short*)(e + 0x14) = (short)(CrtRand() % 7 + 9);
+
+            // L'ancre : la position de naissance, autour de laquelle la spirale se dessine.
+            *(int*)(e + 0x44) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x48) = *(int*)(e + 0x20);
+            *(int*)(e + 0x4c) = *(int*)(e + 0x24);
+        }
+
+        // Ghidra: la premiere image passe ici aussi.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int pitch = *(int*)(e + 0x54);
+            int yaw = *(int*)(e + 0x50);
+            int radius = *(int*)(e + 0x58);
+
+            // Le produit du rayon par le cosinus de l'elevation est ramene de douze bits ; celui
+            // par le sinus ne l'est PAS. Meme asymetrie que chez EntityHandler_004034A0.
+            int ring = (Winsys3d.GetCosTableEntry(pitch) * radius) >> 0xc;
+
+            *(int*)(e + 0x1c) = ring * (int)Winsys3d.GetSinTableEntry(yaw) + *(int*)(e + 0x44);
+            *(int*)(e + 0x24) = ring * Winsys3d.GetCosTableEntry(yaw) + *(int*)(e + 0x4c);
+
+            *(short*)(e + 0x12) += 1;
+
+            *(int*)(e + 0x20) = (int)Winsys3d.GetSinTableEntry(pitch) * radius + *(int*)(e + 0x48);
+            *(int*)(e + 0x58) = *(int*)(e + 0x5c) + radius;
+
+            if (*(short*)(e + 0x16) <= *(short*)(e + 0x12))
+            {
+                *(short*)(e + 0x12) = 0;
+
+                e[0x40]++;
+                if (e[0x40] == 3) e[0x40] = 0;
+            }
+
+            *(short*)(e + 0x28) += 0x32;
+            *(short*)(e + 0x2a) += 0x32;
+
+            short fade = (short)-*(short*)(e + 0x14);
+            BrightenEntityTint_00404DE0(e, fade, fade, fade);
+
+            // Le canal rouge est le seul teste : les trois perdent le meme pas, mais ils ne sont
+            // pas partis du meme endroit.
+            if (e[0x38] == 0) *(uint*)e &= 0x7fffffff;
         }
     }
 
@@ -10905,6 +11536,149 @@ public static unsafe partial class Blaze
 
         if (*(short*)(e + 0x10) > 0x3f) *(uint*)e = 0;
         *(short*)(e + 0x10) += 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00476950 @ 0x00476950 — <b>l'entree 98 (<c>0x62</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551c30"/></b>. Onze octets, decompilee dans
+    /// <c>Blaze.c</c>. <b>Un relais</b>, la plus courte naissance du depot avec sa jumelle
+    /// <see cref="EntityHandler_00476970"/> : elle lache un enfant et s'efface dans la meme image.
+    ///
+    /// <para>
+    /// <b>Le sous-type de l'enfant n'est pas ecrit dans le code : il est dans l'entite.</b> Elle
+    /// passe son propre <c>+0x0b</c> comme sous-type a <see cref="SpawnCastEntity_0047AAE0"/> —
+    /// le champ qui, partout ailleurs, sert de parametre de dessin. Un seul creneau de table de
+    /// sauts ouvre donc sur <b>n'importe quel</b> gestionnaire de la table <c>0x00551f30</c>,
+    /// selon ce que l'engendreur a range dans <c>+0x0b</c>.
+    /// </para>
+    /// <para>
+    /// C'est ce qui la rend impossible a suivre statiquement : le recensement de
+    /// <c>GestionnairesEntites.md</c> ne peut pas dire ce qu'elle atteint.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00476950(byte* e)
+    {
+        SpawnCastEntity_0047AAE0(e, e[0x0b], 0, -1);
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00476970 @ 0x00476970 — <b>l'entree 99 (<c>0x63</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551c30"/></b>. Vingt-quatre octets, decompilee dans
+    /// <c>Blaze.c</c>. <b>La jumelle de <see cref="EntityHandler_00476950"/> sur l'autre table</b>.
+    ///
+    /// <para>
+    /// Meme relais, meme sous-type pris dans <c>+0x0b</c>, mais par
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> : l'enfant nait donc dans
+    /// <c>0x005f2d40</c> et se resout par <see cref="s_StaticEntityHandlers_00552230"/>. Elle
+    /// transmet en plus sa <b>position</b> (<c>+0x1c</c>) et son <b>atlas</b> (<c>+0x3c</c>), que
+    /// la version <c>0x00551f30</c> n'a pas a passer — la copie des 0x27 dwords les porte deja.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00476970(byte* e)
+    {
+        SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), *(byte**)(e + 0x3c), e[0x0b], 0, -1);
+        *(uint*)e = 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0047a950</c> — <b>l'entree 42 (<c>0x2a</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>, 121 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_0047A950.asm</c>.
+    ///
+    /// <para>
+    /// <b>La bulle d'etat au-dessus d'une tete</b>, et elle ne vit que <b>deux images</b> : la
+    /// premiere l'installe, la seconde efface son mot d'etat d'un seul <c>mov dword [esi],0</c>.
+    /// Elle est donc reengendree en continu tant que l'etat dure, et non maintenue.
+    /// </para>
+    /// <para>
+    /// <b>Elle se colle a son porteur</b> (<c>+0x6c</c>) : <c>X</c> et <c>Z</c> recopies tels
+    /// quels, et <c>Y</c> releve de ce que <see cref="StatusBubbleHeight_00538BC0"/> rend pour ce
+    /// porteur — la meme hauteur de bulle que le reste du projet lit deja. Le porteur n'est jamais
+    /// verifie : s'il a disparu, la lecture part dans le vide, comme dans le binaire.
+    /// </para>
+    /// <para>
+    /// <b>Elle respire au rythme du fondu general.</b> Son echelle vaut
+    /// <c>sin(s_FadeCounter &#215; 512) / 2 + 0x1000</c> — <see cref="s_FadeCounter_005e9960"/>,
+    /// le compteur global, et non un champ a elle : <b>toutes les bulles a l'ecran pulsent donc en
+    /// phase</b>. Le meme mot est ecrit d'un coup sur <c>+0x28</c> et <c>+0x2a</c> (<c>shl 16</c>
+    /// puis <c>or</c>), la teinte est blanche (<c>0x00ffffff</c> sur le dword <c>+0x38</c>, ce qui
+    /// remet <c>+0x3b</c> a zero au passage), et <c>+0x2e</c> vaut <c>-10</c>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0047A950(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+
+        // Le compteur de fondu global, partage par toutes les bulles a l'ecran.
+        int wave = (int)Winsys3d.GetSinTableEntry((int)(s_FadeCounter_005e9960 << 9));
+        short scale = (short)((wave >> 1) + 0x1000);
+
+        *(uint*)(e + 0x38) = 0x00ffffff;   // blanc, et +0x3b remis a zero
+        *(uint*)(e + 0x40) = 0;
+
+        // `shl ecx,16 ; or ecx,eax` : les deux echelles ecrites d'un seul mot.
+        *(uint*)(e + 0x28) = (uint)(((ushort)scale << 0x10) | (ushort)scale);
+
+        *(short*)(e + 0x2e) = -10;
+
+        *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+        *(int*)(e + 0x20) =
+            (StatusBubbleHeight_00538BC0((uint*)carrier) << 0xc) + *(int*)(carrier + 0x20);
+        *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+
+        // Deux images : la seconde efface le mot d'etat en entier, pas seulement le bit de vie.
+        short age = *(short*)(e + 0x10);
+        if (age >= 1) *(uint*)e = 0;
+        *(short*)(e + 0x10) = (short)(age + 1);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00482fa0</c> — <b>l'entree 0 (<c>0x00</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>, 79 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_00482FA0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Le sous-type zero</b> : ce qu'une entite de la table <c>0x005f2d40</c> fait quand
+    /// personne ne lui a donne de sous-type. Ce n'est pourtant pas une souche — le creneau porte un
+    /// vrai corps, la ou <c>0x0047adc0</c> tient les creneaux vraiment vides.
+    /// </para>
+    /// <para>
+    /// <b>Un eclat qui retrecit et disparait</b>, et rien d'autre : pas de deplacement, pas de
+    /// teinte qui bouge, pas d'atlas qui defile. Il nait a l'echelle <c>0x1000</c> avec la teinte
+    /// <c>0xf0</c> sur les trois canaux et l'atlas <see cref="s_Descriptors_005519A0"/>, puis perd
+    /// <b>un quart de sa taille par image</b> (<c>taille - taille &gt;&gt; 2</c>, un <c>sar</c> nu
+    /// sur seize bits) jusqu'a passer sous <c>0x100</c> — <b>onze images</b>, quel que soit ce qui
+    /// l'a fait naitre.
+    /// </para>
+    /// <para>
+    /// <b>Il s'efface d'un <c>mov dword [eax],0</c></b>, le mot d'etat entier, et non par le seul
+    /// bit de vie : meme sortie que les relais <see cref="EntityHandler_00476950"/> et
+    /// <see cref="EntityHandler_0047A950"/>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00482FA0(byte* e)
+    {
+        short age = *(short*)(e + 0x10);
+
+        if (age == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors005519A0();   // Ghidra: &DAT_005519a0
+            *(uint*)(e + 0x28) = 0x10001000;               // les deux echelles d'un seul mot
+            *(uint*)(e + 0x38) = 0x00f0f0f0;               // et la teinte de meme
+        }
+        else
+        {
+            // `sar si,2` puis `sub` : le quart tronque vers moins l'infini, sur seize bits.
+            short scale = *(short*)(e + 0x28);
+            scale = (short)(scale - (scale >> 2));
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+        }
+
+        if (*(short*)(e + 0x28) < 0x100) *(uint*)e = 0;
+
+        *(short*)(e + 0x10) = (short)(age + 1);
     }
 
     /// <summary>
@@ -48505,6 +49279,246 @@ public static unsafe partial class Blaze
         }
     }
 
+    /// <summary>
+    /// Ghidra: <c>0x00447a90</c> — <b>l'entree 54 (<c>0x36</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551c30"/></b>, 536 octets, <b>absente de
+    /// <c>Blaze.c</c></b> ; releve garde sous <c>Legacy/Raw/Blaze/FUN_00447A90.asm</c>.
+    ///
+    /// <para>
+    /// <b>Un sort de pretre qui part en tournant.</b> Il appartient a la famille de
+    /// <see cref="AcquireHolyTarget_00447CB0"/> — il l'appelle en mode 0 des sa premiere image, et
+    /// il commence par la garde de <see cref="EndSpellOnTerrain_00448040"/>, <b>recopiee dans son
+    /// corps</b> plutot qu'appelee : le decor l'eteint.
+    /// </para>
+    /// <para>
+    /// <b>La naissance</b> joue le son <c>0x23</c>, fige l'ancre <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>
+    /// sur sa position, prend son cap dans <c>+0x32</c>, <b>ecrase ses trois echelles</b> (le
+    /// quart, la moitie, le quart de ce qu'elles valaient), pose la teinte <c>0xfa</c> partout, et
+    /// lache <b>onze entites <c>0xa1</c></b> d'un coup — <see cref="EntityHandler_00447D50"/>, les
+    /// traineaux qui le suivent. Entre deux, les trois echelles gagnent <c>0x258</c>, la rotation
+    /// <c>+0x34</c> avance de <c>0x99</c>, et la teinte perd <c>10</c>/<c>20</c>/<c>20</c> :
+    /// les onze enfants naissent donc <b>tous differents</b>, de plus en plus larges, tournes et
+    /// sombres. La boucle s'arrete quand la rotation depasse <c>0x1093</c>.
+    /// </para>
+    /// <para>
+    /// <b>La vie</b> est une spirale a plat : le rayon <c>+0x9a</c> part de zero et gagne
+    /// <c>+0x5c</c> (30) par image, le cap <c>+0x12</c> ne bouge pas, et <c>X</c>/<c>Z</c> sont
+    /// recalcules a chaque image autour de l'ancre. L'altitude est <b>collee au sol</b> :
+    /// <see cref="FinalizeEntityPlacement2"/> resout le terrain, et tant que le sol
+    /// (<c>+0x60</c>) reste a moins de <c>0x32000</c> de l'entite, <c>Y</c> y est pose. Sortir de
+    /// cette fourchette, ou toucher le decor (<c>+0x90</c> sur le masque <c>0x8802</c>), passe
+    /// l'entite en phase 2.
+    /// </para>
+    /// <para>
+    /// <b>Le coup</b> est porte a chaque image, en phase 1 comme au moment du passage en phase 2 :
+    /// <see cref="SweepPartyForMeleeHit_00519C30"/> avec la sonde de pile
+    /// <c>{0, -50, 50, 80, 0, 100}</c>, puis <see cref="ResolveMeleeHit_00539B80"/> au nom du
+    /// <b>lanceur</b> (<c>+0x6c</c>) et non du sort lui-meme. Soixante images au plus.
+    /// </para>
+    /// <para>
+    /// <b>Phase 2</b> n'est qu'un compte a rebours de cinq images avant l'extinction — le temps
+    /// que les onze traineaux finissent leur course.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00447A90(byte* e)
+    {
+        // La sonde de heurt, batie sur la pile a chaque image : largeur, bas, haut, portee.
+        short* probe = stackalloc short[6];
+        probe[0] = 0;
+        probe[1] = unchecked((short)0xffce);
+        probe[2] = 0x32;
+        probe[3] = 0x50;
+        probe[4] = 0;
+        probe[5] = 0x64;
+
+        // Ghidra: la garde de EndSpellOnTerrain_00448040, recopiee et non appelee.
+        if ((*(uint*)e & 0x40000000) != 0) *(uint*)e &= 0x7fffffff;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            AcquireHolyTarget_00447CB0(e, 0);
+
+            // Ghidra: `cmp word [esi+10h],0 ; jne LAB_00447ba5` — le meme test, refait apres la
+            // recherche de cible. AcquireHolyTarget_00447CB0 n'ecrit pas +0x10 : il ne peut pas
+            // echouer. Transcrit parce qu'il est ecrit.
+            if (*(short*)(e + 0x10) == 0)
+            {
+                Aud.PlayPositionalSound(0x23, 0x640, 0x1800, (int*)(e + 0x1c));
+
+                *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+                *(int*)(e + 0x54) = *(int*)(e + 0x20);
+                *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+                // `sar` nus : le quart, la moitie, le quart. Le sort nait donc aplati.
+                *(short*)(e + 0x28) = (short)(*(short*)(e + 0x28) >> 2);
+                *(short*)(e + 0x2a) = (short)(*(short*)(e + 0x2a) >> 1);
+                *(short*)(e + 0x2c) = (short)(*(short*)(e + 0x2c) >> 2);
+
+                *(short*)(e + 0x12) = *(short*)(e + 0x32);
+
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x16) = 0;
+                *(int*)(e + 0x5c) = 0x1e;
+                *(short*)(e + 0x9a) = 0;
+
+                e[0x38] = 0xfa;
+                e[0x39] = 0xfa;
+                e[0x3a] = 0xfa;
+
+                // Ghidra: LAB_00447b67 — onze tours, la borne etant la rotation et non un compte :
+                // 0x0a99 par pas de 0x99 jusqu'a 0x1093 inclus.
+                for (int spin = 0x0a99; ; spin += 0x99)
+                {
+                    SpawnCastEntity_0047AAE0(e, 0xa1, 0, -1);
+
+                    *(short*)(e + 0x28) += 0x258;
+                    *(short*)(e + 0x2a) += 0x258;
+                    *(short*)(e + 0x2c) += 0x258;
+
+                    *(short*)(e + 0x34) = (short)spin;
+
+                    BrightenEntityTint_00404DE0(e, -10, -20, -20);
+
+                    if ((short)(spin + 0x99) > 0x1093) break;
+                }
+            }
+        }
+
+        // Ghidra: LAB_00447ba5 — la premiere image passe ici aussi.
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short heading = *(short*)(e + 0x12);
+            short radius = *(short*)(e + 0x9a);
+
+            *(int*)(e + 0x1c) =
+                (int)Winsys3d.GetSinTableEntry(heading) * radius + *(int*)(e + 0x50);
+            *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(heading) * radius + *(int*)(e + 0x58);
+
+            // `mov dx,[esi+5Ch] ; add dx,di` : l'increment est lu sur seize bits du dword.
+            *(short*)(e + 0x9a) = (short)(*(short*)(e + 0x5c) + radius);
+
+            FinalizeEntityPlacement2((uint*)e);       // Ghidra: FUN_00533940
+
+            bool settled = false;
+
+            if ((*(uint*)(e + 0x90) & 0x8802) == 0)
+            {
+                int ground = *(int*)(e + 0x60);
+                int height = *(int*)(e + 0x20);
+
+                if (height >= ground - 0x32000 && height <= ground + 0x32000)
+                {
+                    // Il rampe : l'altitude est celle du sol, pas la sienne.
+                    *(int*)(e + 0x20) = ground;
+                    settled = true;
+                }
+            }
+
+            // Ghidra: LAB_00447c30 — le decor, ou une marche trop haute : l'entite s'arrete. Le
+            // balayage qui suit a lieu quand meme, le saut tombant juste apres.
+            if (!settled)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 5;
+            }
+
+            // Ghidra: LAB_00447c3c — le coup est porte au nom du LANCEUR, pas du sort.
+            byte* victim =
+                SweepPartyForMeleeHit_00519C30(*(byte**)(e + 0x6c), (int*)(e + 0x1c), probe, 0);
+
+            if (victim != null)
+            {
+                ResolveMeleeHit_00539B80(*(uint**)(e + 0x6c), (uint*)victim);
+
+                *(uint*)victim |= 0x40;
+                *(short*)(victim + 0x96) = 0x10;
+            }
+
+            // Ghidra: LAB_00447c72 — soixante images au plus.
+            *(short*)(e + 0x16) += 1;
+            if (*(short*)(e + 0x16) >= 0x3c)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x12) = 5;
+            }
+        }
+
+        // Ghidra: LAB_00447c89 — cinq images d'attente, puis l'extinction.
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x12) -= 1;
+            if (*(short*)(e + 0x12) <= 0) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00447d50 @ 0x00447d50 — <b>l'entree 161 (<c>0xa1</c>) de la table statique
+    /// <see cref="s_StaticEntityHandlers_00551f30"/></b>. Decompilee dans <c>Blaze.c</c>.
+    /// <b>Le traineau que <see cref="EntityHandler_00447A90"/> lache par onze</b> a sa naissance.
+    ///
+    /// <para>
+    /// <b>Il ne se deplace pas tout seul</b> : a chaque image il se recopie la position de son pere
+    /// (<c>+0x6c</c>), et si le pere a disparu il prend l'entite de service
+    /// <see cref="Resources.s_EntityList_005de558"/> — dont la position est zero. <b>Il meurt avec
+    /// son pere</b> : des que le <c>+0x10</c> de celui-ci vaut 2, la phase d'attente du sort, le
+    /// traineau s'eteint.
+    /// </para>
+    /// <para>
+    /// <b>Sa naissance</b> lui prend le cap du pere (<c>+0x32</c>) et <b>le fait tourner de
+    /// <c>0x400</c> dans le pere</b> — un quart de tour par enfant : les onze naissent donc
+    /// repartis sur plusieurs tours complets. Il se donne le modele <c>0x10</c>, la couche de
+    /// dessin <c>0x0d</c>, et fige l'ancre <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>.
+    /// </para>
+    /// <para>
+    /// <b>Sa vie tient en une ligne</b> : <c>+0x34</c> — la rotation que le pere lui a posee a la
+    /// naissance, mise de cote dans <c>+0x14</c> — est retiree chaque image et <b>retirage a
+    /// <c>+/- 75</c> pres</b> (<c>rand % 150 - 75</c>). Il vibre sur place autour de son angle,
+    /// il ne tourne pas.
+    /// </para>
+    /// <para>
+    /// <b>Ghidra lui declare une valeur de retour</b> (<c>undefined4 *</c>) : c'est le contenu
+    /// residuel du registre, un <c>CONCAT22</c> de deux champs sans rapport. Le repartiteur
+    /// l'appelle comme tous les autres, sans rien lire — transcrite <c>void</c>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00447D50(byte* e)
+    {
+        byte* parent = *(byte**)(e + 0x6c);
+        if (parent == null) parent = Res.s_EntityList_005de558;   // Ghidra: DAT_005de558
+
+        *(int*)(e + 0x1c) = *(int*)(parent + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(parent + 0x20);
+        *(int*)(e + 0x24) = *(int*)(parent + 0x24);
+
+        // Le pere est passe en phase d'attente : le traineau ne lui survit pas.
+        if (*(short*)(parent + 0x10) == 2) *(uint*)e &= 0x7fffffff;
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x12) = *(short*)(e + 0x32);
+            *(short*)(e + 0x32) += 0x400;
+
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+
+            *(short*)(e + 0x10) = 1;
+            e[4] = 0x10;
+            e[0x0a] = 0x0d;
+            e[0x0b] = 0;
+
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            // La rotation que le pere a posee, mise de cote : +0x34 est reecrit a chaque image.
+            *(short*)(e + 0x14) = *(short*)(e + 0x34);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x34) = *(short*)(e + 0x14);
+            *(short*)(e + 0x34) += (short)(CrtRand() % 0x96 - 0x4b);   // Ghidra: FUN_00547140
+        }
+    }
+
     // =====================================================================
     // PARDON — le trentieme sort, ecole 1 indice 0, sous-type 0x1e
     //
@@ -49448,6 +50462,221 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x2a) -= 0xc8;
 
         if (shrunk < 0) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044fc90 @ 0x0044fc90 — <b>le sous-type <c>0xa8</c>, creneau 168 de
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>. Decompilee dans <c>Blaze.c</c>.
+    /// <b>Voisine immediate</b> de <see cref="TickHolySpark_0044FE00"/> (<c>0xa7</c>) et de
+    /// <see cref="EntityHandler_0044FB10"/> (<c>0xa9</c>) : le binaire range les cinq enfants de
+    /// benediction cote a cote, sous-types <c>0xa5</c> a <c>0xa9</c> par adresses croissantes.
+    ///
+    /// <para>
+    /// <b>Elle tourne autour de sa cible en montant et en descendant.</b> Comme ses sœurs elle
+    /// tient sa cible en <c>+0x78</c> — pas <c>+0x6c</c> — et recopie sa position dans l'ancre
+    /// <c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c> a chaque image ; si la cible a disparu elle prend
+    /// l'entite de service <see cref="Resources.s_EntityList_005de558"/>. La position est ensuite
+    /// entierement recalculee : c'est la spirale sur une sphere de
+    /// <see cref="EntityHandler_004034A0"/>, avec le cap <c>+0x4c</c>, l'elevation <c>+0x48</c> et
+    /// le rayon <c>+0x44</c>.
+    /// </para>
+    /// <para>
+    /// <b>Ce qui lui appartient : l'elevation n'est pas un champ, c'est une fonction du cap.</b>
+    /// A chaque image <c>+0x48</c> vaut <c>sin(cap) &#215; +0x12 &gt;&gt; 12</c>, replie sur douze
+    /// bits — l'anneau <b>ondule</b> au lieu de rester a plat, et <c>+0x12</c> (pris du cap de
+    /// depart a la naissance) en regle l'amplitude. Le rayon et le pas angulaire <c>+0x5c</c>
+    /// viennent du sort, qui les pose avant de la faire naitre.
+    /// </para>
+    /// <para>
+    /// <b>La table de sinus recoit le cap NON replie</b> (<c>Ordinal_451(uVar4)</c> avant le
+    /// masque) alors que les trois autres appels recoivent le champ deja masque. Transcrit tel
+    /// quel.
+    /// </para>
+    /// <para>
+    /// <b>Quatre etats</b>, et un seul compteur les enchaine : 1 elle enfle de <c>0x5a</c> par
+    /// image jusqu'a <c>1000</c> ; 2 elle attend que <c>+0x14</c> — la duree que le sort lui a
+    /// donnee — retombe sous zero ; 3 elle se retracte de <c>0x3c</c> par image et s'eteint a
+    /// zero. Elle ne meurt d'aucune autre facon : ni le decor ni un heurt ne l'arretent.
+    /// </para>
+    /// <para>
+    /// <b>Son engendreur n'est pas identifie.</b> Aucun site d'appel decompile de
+    /// <see cref="SpawnStatusEffectEntity_0047AC40"/> ne passe <c>0xa8</c> ; comme pour <c>0xa6</c>,
+    /// le pere est un corps que Ghidra n'a pas decompile.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0044FC90(byte* e)
+    {
+        byte* anchor = *(byte**)(e + 0x78);
+        if (anchor == null) anchor = Res.s_EntityList_005de558;   // Ghidra: DAT_005de558
+
+        *(int*)(e + 0x50) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x54) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x58) = *(int*)(anchor + 0x24);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x28;   // Ghidra: &DAT_00551550
+            e[0x40] = 0;
+            e[0x0a] = e[0x9a];                         // la couche, que le sort a posee en +0x9a
+            e[0x0b] = 0;
+
+            e[0x38] = 200;
+            e[0x39] = 200;
+            e[0x3a] = 200;
+
+            // L'amplitude de l'ondulation : l'elevation de depart, gardee sur seize bits.
+            *(short*)(e + 0x12) = (short)*(int*)(e + 0x48);
+
+            *(short*)(e + 0x28) = 0;                   // elle nait sans taille
+            *(short*)(e + 0x2a) = 0;
+        }
+
+        // Ghidra: le cap avance, puis se replie — mais la table de sinus recoit la valeur AVANT
+        // le repli. Voir le commentaire de tete.
+        int raw = *(int*)(e + 0x4c) + *(int*)(e + 0x5c);
+        *(int*)(e + 0x4c) = raw & 0xfff;
+
+        // L'elevation, recalculee du cap a chaque image : l'anneau ondule.
+        int pitch = ((int)Winsys3d.GetSinTableEntry(raw) * *(short*)(e + 0x12) >> 0xc) & 0xfff;
+        *(int*)(e + 0x48) = pitch;
+
+        int radius = *(int*)(e + 0x44);
+        int yaw = *(int*)(e + 0x4c);
+
+        // Le produit du rayon par le cosinus de l'elevation est ramene de douze bits ; celui par
+        // le sinus ne l'est pas. Meme asymetrie que chez EntityHandler_004034A0.
+        *(int*)(e + 0x1c) = (Winsys3d.GetCosTableEntry(pitch) * radius >> 0xc)
+                            * (int)Winsys3d.GetSinTableEntry(yaw) + *(int*)(e + 0x50);
+
+        *(int*)(e + 0x24) = (Winsys3d.GetCosTableEntry(*(int*)(e + 0x48)) * *(int*)(e + 0x44) >> 0xc)
+                            * Winsys3d.GetCosTableEntry(yaw) + *(int*)(e + 0x58);
+
+        *(int*)(e + 0x20) =
+            (int)Winsys3d.GetSinTableEntry(*(int*)(e + 0x48)) * *(int*)(e + 0x44)
+            + *(int*)(e + 0x54);
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x28) += 0x5a;
+            *(short*)(e + 0x2a) += 0x5a;
+
+            if (*(short*)(e + 0x28) > 1000)
+            {
+                *(short*)(e + 0x28) = 1000;
+                *(short*)(e + 0x2a) = 1000;
+                *(short*)(e + 0x10) = 2;
+            }
+        }
+
+        // Ghidra: le decompte est fait DANS le test — il a lieu des que l'etat vaut 2.
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x14) -= 1;
+            if (*(short*)(e + 0x14) < 0) *(short*)(e + 0x10) = 3;
+        }
+
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(short*)(e + 0x28) -= 0x3c;
+            *(short*)(e + 0x2a) -= 0x3c;
+
+            if (*(short*)(e + 0x28) < 0)
+            {
+                *(short*)(e + 0x28) = 0;
+                *(short*)(e + 0x2a) = 0;
+                *(uint*)e &= 0x7fffffff;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0044ff40 @ 0x0044ff40 — <b>le sous-type <c>0xa6</c>, creneau 166 de
+    /// <see cref="s_StaticEntityHandlers_00552230"/></b>. Decompilee dans <c>Blaze.c</c>.
+    /// La quatrieme du bloc de cinq (<c>0xa5</c> a <c>0xa9</c>), entre
+    /// <see cref="TickHolySpark_0044FE00"/> et <see cref="TickHolyCatchSpark_004500B0"/>.
+    ///
+    /// <para>
+    /// <b>Une bulle qui monte en s'eclaircissant.</b> Elle ne suit personne — aucune cible, aucune
+    /// ancre : elle nait ou on la pose, s'ecarte une fois pour toutes d'un cap tire sur douze bits
+    /// et d'une distance tiree sur le <c>+0x14</c> qu'elle a herite, puis ne fait plus que monter.
+    /// </para>
+    /// <para>
+    /// <b>Son ascension accelere</b> : <c>+0x5c</c> part entre 12 et 21, <c>Y</c> en gagne
+    /// <c>&#215; 0x1000</c> par image, et <c>+0x5c</c> lui-meme gagne un <b>une image sur deux</b>
+    /// (la parite de la duree restante), plafonne a <c>0x1e</c>.
+    /// </para>
+    /// <para>
+    /// <b>Elle enfle vite et s'arrete net</b> : les deux echelles gagnent <c>+0x16</c> (400 a 799)
+    /// par image et sont ecretees a <c>+0x9a</c> (3000 a 6999) — ici <c>+0x9a</c> porte un
+    /// <b>plafond d'echelle</b>, la ou sa voisine <c>0xa8</c> y lit une couche de dessin. Un champ,
+    /// deux roles, selon le sous-type.
+    /// </para>
+    /// <para>
+    /// <b>Elle part noire et s'eclaircit de quinze par canal et par image</b>
+    /// (<see cref="BrightenEntityTint_00404DE0"/>), et vit entre 8 et 22 images — la duree, tiree
+    /// a la naissance, est le meme champ <c>+0x14</c> qui vient de servir a la dispersion. Le
+    /// binaire lit donc l'ancienne valeur avant de l'ecraser ; si elle vaut zero, la division de
+    /// la dispersion est une division par zero. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0044FF40(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors00551528() + 0x10;   // Ghidra: &DAT_00551538
+            e[0x40] = 0;
+            e[0x0a] = e[0x9a];
+            e[0x0b] = 0;
+
+            *(short*)(e + 0x12) = 0;
+            *(int*)(e + 0x5c) = CrtRand() % 10 + 0x0c;            // Ghidra: FUN_00547140
+
+            // Le cap et la distance sont tires AVANT que +0x14 ne devienne la duree.
+            int heading = (short)(CrtRand() % 0x1000);
+            int spread = (short)(CrtRand() % *(short*)(e + 0x14));
+
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * spread;
+
+            *(short*)(e + 0x28) = 0;
+            *(short*)(e + 0x2a) = 0;
+
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * spread;
+
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+
+            *(short*)(e + 0x16) = (short)(CrtRand() % 400 + 400);   // le pas d'echelle
+            *(short*)(e + 0x14) = (short)(CrtRand() % 0x0f + 8);    // la duree ecrase la portee
+            *(short*)(e + 0x9a) = (short)(CrtRand() % 4000 + 3000); // le plafond d'echelle
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            BrightenEntityTint_00404DE0(e, 0x0f, 0x0f, 0x0f);
+
+            *(short*)(e + 0x28) += *(short*)(e + 0x16);
+            *(short*)(e + 0x2a) += *(short*)(e + 0x16);
+
+            short ceiling = *(short*)(e + 0x9a);
+            if (ceiling < *(short*)(e + 0x28)) *(short*)(e + 0x28) = ceiling;
+            if (ceiling < *(short*)(e + 0x2a)) *(short*)(e + 0x2a) = ceiling;
+
+            *(short*)(e + 0x12) += 1;
+            *(int*)(e + 0x20) += *(int*)(e + 0x5c) * 0x1000;
+
+            // La parite de la duree restante : une image sur deux, la montee s'accelere.
+            if ((*(ushort*)(e + 0x14) & 1) != 0)
+            {
+                *(int*)(e + 0x5c) += 1;
+                if (*(int*)(e + 0x5c) > 0x1e) *(int*)(e + 0x5c) = 0x1e;
+            }
+
+            *(short*)(e + 0x14) = (short)(*(ushort*)(e + 0x14) - 1);
+            if (*(short*)(e + 0x14) < 0) *(uint*)e &= 0x7fffffff;
+        }
     }
 
     /// <summary>

@@ -2743,6 +2743,32 @@ prise à l'origine de la planche, posée entre deux animations : `00 00 08 08 01
 **séparateur** dans cette zone de `.data`. C'est une borne exploitable pour les plages voisines,
 au même titre qu'un changement de planche.
 
+## `0x0054f138` — la plage que le séparateur de `0x0054f158` annonçait (2026-09-15)
+
+| adresse | octets | planche |
+|---|---|---|
+| `0x0054f138` | `f0 08 0f 0f 01 02 10 00` | `0x0f0f08f0` |
+| `0x0054f140` | `70 a8 0f 0f 01 02 10 00` | `0x0f0fa870` |
+| `0x0054f148` | `80 a8 0f 0f 01 02 10 00` | `0x0f0fa880` |
+| `0x0054f150` | `90 a8 0f 0f 01 02 10 00` | `0x0f0fa890` |
+
+**Quatre enregistrements**, et la borne ne se discute pas : la section `0x0054f158` ci-dessus avait
+déjà relevé que cette plage était en `0x0f × 0x0f` et que le séparateur `00 00 08 08` la clôt. Le
+consommateur est `FUN_00404730` (sous-type `0x36` de `0x00552230`), qui la pose en `+0x3c`.
+
+**Il n'en atteint que trois** : son `+0x40` s'incrémente et **reboucle à 3**, il ne s'en sert pas
+comme borne de vie. La table fait donc quatre enregistrements, l'usage trois, et la marge d'un est
+réelle — ce qui est le bon sens de lecture : *la donnée borne la table, le corps borne le
+parcours*. L'inverse est ce qui a fait dérailler `0x00551b00` et `0x00551528`.
+
+Les trois derniers partagent une planche (`0xa870`, `0xa880`, `0xa890`, de `0x10` en `0x10`) ; le
+premier est ailleurs (`0x08f0`) mais au même gabarit. Un changement de planche à l'intérieur d'une
+plage n'est donc toujours pas une borne.
+
+**Nommage.** Déclaré d'abord `s_SpiralDescriptors_0054F138`, il a été **silencieusement ignoré** par
+`check-descriptors.sh`, qui ne reconnaît que `s_Descriptors_00…` et `Descriptors00…()`. Renommé à la
+convention, il est vérifié comme les 35 autres. Un nom hors convention ne fait pas échouer le
+vérificateur : il le rend muet, et un vérificateur muet se lit comme un vérificateur satisfait.
 ## `0x0056d308` et `0x0056d310` — les deux tables de la montée de niveau (2026-08-29)
 
 Relevées de longue date dans `WorldMapTick.cs`, portées ici parce que la première a changé de sens.

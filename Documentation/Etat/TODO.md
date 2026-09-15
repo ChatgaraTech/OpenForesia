@@ -1,6 +1,6 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-08-30**. L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-15**. L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -9,6 +9,50 @@ Point d’entrée entre deux sessions. Mis à jour le **2026-08-30**. L'historiq
 reproduire un symptôme localisé : c'est lui qui les exécute. Voir le partage dans
 `Documentation/Tests/test-protocol.md`. Restent à l'agent le build et les lancements sans
 déplacement.
+
+---
+
+# LES TABLES STATIQUES SONT FINIES — 274 SUR 274 (2026-09-15)
+
+Les trois tables gravées dans `.data` — `0x00551c30`, `0x00551f30`, `0x00552230` — sont
+**entièrement implémentées**. Ce sont celles qui ne dépendent d'aucune zone : ce qui est écrit là
+vaut dans les onze. Les treize derniers ont été écrits d'un bloc ; le détail est dans
+`REVERSE_STATUS.md`, section du 2026-09-15.
+
+C'est le **deuxième ensemble complet** du dépôt, après la forêt (zone 3, 136 sur 136). La différence
+est qu'il n'est pas localisé : la forêt ne sert qu'en forêt, le socle commun sert partout.
+
+## Où on en est
+
+| | |
+|---|---|
+| gestionnaires distincts atteignables | **1 430** |
+| testés en jeu | **258** |
+| implémentés, jamais appelés | **173** |
+| à transcrire | **999** |
+
+Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
+
+## La suite, par ordre de rendement
+
+1. **La zone 0, l'auberge — 35 sur 48.** C'est la plus proche de la fin, et **la seule où la sonde
+   a déjà relevé du passage** (12 exercés). Treize corps pour boucler une troisième zone.
+2. **Les 32 routines d'IA qui sont des copies exactes d'un frère non écrit** (relevé du 2026-09-02,
+   `census-duplicates.sh`). Les écrire **par représentant** et non par zone économise 32 corps ;
+   les six meilleurs groupes font 20 corps pour 6 lectures.
+3. Le reste, zone par zone. La mine (157) et la grotte scellée (349) sont les deux gros morceaux.
+
+## Ce que cette séance a appris et qui vaut pour la suite
+
+- **Deux relais rendent le recensement statique aveugle.** `0x00476950` et `0x00476970` lisent le
+  sous-type de leur enfant dans leur propre `+0x0b`. `GestionnairesEntites.md` ne peut pas dire ce
+  qu'ils atteignent ; seule la sonde le peut.
+- **Un nom d'atlas hors convention rend `check-descriptors.sh` muet, pas bruyant.** Le script
+  reconnaît `s_Descriptors_00…` / `Descriptors00…()` et rien d'autre. Un vérificateur muet se lit
+  comme un vérificateur satisfait — nommer à la convention n'est pas cosmétique.
+- **Le même champ change de rôle d'un sous-type au suivant, dans une même famille.** `+0x9a` est
+  une couche de dessin pour `0xa8` et un plafond d'échelle pour `0xa6`, qui sont voisins immédiats
+  dans le binaire. Lire un offset « par analogie avec la sœur » est un piège.
 
 ---
 

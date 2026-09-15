@@ -21190,3 +21190,181 @@ grosse routine — c'est le meilleur rendement disponible dans tout ce qui reste
 Fleur du mal n'en était pas un et a pourtant coûté une fraction de sa taille, parce qu'elle
 partageait la *charpente* du Varan. Les 766 corps « réels » sont donc un majorant : la vraie charge
 est plus basse, d'une quantité que seule la lecture révèle.
+
+---
+
+## 2026-09-15 — les treize derniers gestionnaires communs : LES TABLES STATIQUES SONT COMPLÈTES
+
+Point de départ : `GestionnairesEntites.md` donnait **274 gestionnaires, 261 implémentés** pour les
+trois tables gravées dans `.data` (`0x00551c30`, `0x00551f30`, `0x00552230`) — celles qui ne
+dépendent d'aucune zone et valent donc dans les onze. Treize manquaient, tous `implemente=non,
+teste=non`. Ils sont écrits ; la section passe à **274 sur 274**.
+
+| gestionnaire | table | créneau | source |
+|---|---|---:|---|
+| `0x00403E80` | `0x00551C30` | 81 (`0x51`) | désassembleur, 380 o |
+| `0x00404000` | `0x00552230` | 51 (`0x33`) | désassembleur, 440 o |
+| `0x00404460` | `0x00551C30` | 83 (`0x53`) | désassembleur, 392 o |
+| `0x004045F0` | `0x00552230` | 53 (`0x35`) | désassembleur, 312 o |
+| `0x00404730` | `0x00552230` | 54 (`0x36`) | `Blaze.c` |
+| `0x00447A90` | `0x00551C30` | 54 (`0x36`) | désassembleur, 536 o |
+| `0x00447D50` | `0x00551F30` | 161 (`0xa1`) | `Blaze.c` |
+| `0x0044FC90` | `0x00552230` | 168 (`0xa8`) | `Blaze.c` |
+| `0x0044FF40` | `0x00552230` | 166 (`0xa6`) | `Blaze.c` |
+| `0x00476950` | `0x00551C30` | 98 (`0x62`) | `Blaze.c` |
+| `0x00476970` | `0x00551C30` | 99 (`0x63`) | `Blaze.c` |
+| `0x0047A950` | `0x00552230` | 42 (`0x2a`) | désassembleur, 121 o |
+| `0x00482FA0` | `0x00552230` | 0 (`0x00`) | désassembleur, 79 o |
+
+Les six relevés sont gardés sous `Legacy/Raw/Blaze/`. Ce n'est pas une zone de plus : c'est **le
+socle commun aux onze**, et il est désormais entier.
+
+### Ce n'étaient pas treize corps isolés : ce sont trois familles et deux singularités
+
+**La fratrie 80-85 de `0x00551c30`**, six créneaux contigus, tous des effets de sort *portés par
+leur victime* : `0x00403C10` (80), `0x00403E80` (81), `0x004041C0` (82), `0x00404460` (83),
+`0x00402FC0` (84), `0x00404920` (85). Quatre étaient écrits ; les deux qui manquaient étaient
+justement ceux du milieu. Le squelette est le même dans les six : la victime en `+0x6c`, l'effet
+collé à sa position, la séquence d'animation 2 imposée et défilée à la main **une image sur deux**,
+et `+0x14` qui reçoit la moyenne des trois étendues du bloc de modèle — le *germe* que les entités
+filles relisent pour se répartir autour d'elle.
+
+Écrire la 81 après la 82 a coûté une lecture, pas une reconstruction. Ses cinq différences tiennent
+en une liste :
+
+1. **la séquence 2 est réimposée à chaque image** (`mov word [edi+18h],2` dans le prologue), donc le
+   pointeur d'animation est résolu sur l'indice **2 littéral** (`[ecx+8]`) et non à travers
+   `+0x18` — *le piège documenté sur la 82 n'existe pas ici* ;
+2. **deux sons datés par le compteur d'images** et non un seul à l'initialisation : `0x21` à
+   l'image 0, `0x23` à l'image 1. Ils vivent hors du bloc d'initialisation, et c'est `+0x16` qui
+   les déclenche ;
+3. une entité `0x33` **une image sur deux** au lieu d'un `0x34` à chaque image ;
+4. elle noircit la victime de **dix** et non de quinze ;
+5. son corps est gardé par `+0x10 == 1` là où la 82 laisse l'initialisation tomber dedans sans
+   garde — une garde qui ne change rien, l'initialisation venant de poser la valeur.
+
+**La 83 est la seule de la fratrie qui se joue en deux temps**, et c'est ce qui la distingue
+vraiment. Phase 1 : le son `0x20`, puis une entité `0x35` à chaque image, 6 à 10 images. Phase 2 :
+quinze images d'attente dont la **dixième porte tout** — le son `0x25` et **onze** entités `0x36`
+d'un coup (`mov ebx,0Bh` puis `dec ebx ; jnz`). Elle ne pose par ailleurs que le **bit 3** du mot
+d'état de sa victime, pas les `0x1008` de ses deux sœurs : la victime garde donc son propre
+défilement d'animation *en plus* de celui que l'effet lui impose. Et elle est la seule des six à ne
+jamais toucher à sa teinte.
+
+**Les enfants suivent le même schéma que leurs pères.** `0x004045F0` est
+`EntityHandler_00404310` à deux différences près : elle ne monte pas (`Y += 0x8000` absent), et son
+diviseur est `germe / 2 + 1` et non `germe / 2` — *la même dispersion, écrite deux fois, une fois
+avec la garde contre la division par zéro*. `0x00404730` est la spirale de `0x004034A0` avec ses
+deux angles **figés** à la naissance : elle ne tourne pas, elle file en ligne droite dans une
+direction tirée au sort en s'écartant de plus en plus vite, et son germe `+0x14` est **écrasé** à la
+naissance par un tirage entre 9 et 15 qui devient son pas d'assombrissement. Un champ, deux rôles.
+
+**Le bloc des cinq enfants de bénédiction** (`0xa5` à `0xa9`, adresses `0x0044FB10` à `0x004500B0`)
+est complet avec `0xa8` et `0xa6`. Tous tiennent leur cible en **`+0x78`**, pas `+0x6c`, et
+retombent sur `Res.s_EntityList_005de558` si elle a disparu.
+
+- **`0x0044FC90` (`0xa8`) : son élévation n'est pas un champ, c'est une fonction du cap.** À chaque
+  image `+0x48` vaut `sin(cap) × +0x12 >> 12`, replié sur douze bits. L'anneau **ondule** au lieu de
+  rester à plat, et `+0x12` — pris de l'élévation de départ à la naissance — en règle l'amplitude.
+  Aucune autre orbite du dépôt ne dérive son élévation de son cap. Détail transcrit tel quel : la
+  table de sinus reçoit le cap **non replié**, alors que les trois autres appels reçoivent le champ
+  déjà masqué.
+- **`0x0044FF40` (`0xa6`)** ne suit personne : elle s'écarte une fois pour toutes et monte en
+  accélérant, `+0x5c` gagnant un **une image sur deux** — la *parité de la durée restante*.
+  `+0x9a` y porte un **plafond d'échelle** (3000 à 6999) là où sa voisine `0xa8` y lit une **couche
+  de dessin**. Le même champ, deux rôles selon le sous-type ; c'est ce qui rend une lecture
+  d'offset « par analogie » dangereuse dans cette famille.
+
+### `0x00447A90` : un sort de prêtre qui rampe au sol
+
+Le seul gros corps des treize (536 octets). Il appartient à la famille de
+`AcquireHolyTarget_00447CB0` — qu'il appelle en mode 0 dès sa première image — et commence par la
+garde de `EndSpellOnTerrain_00448040`, **recopiée dans son corps plutôt qu'appelée**.
+
+Trois choses méritent d'être notées :
+
+- **Sa naissance lâche onze traîneaux en faisant varier leur apparence entre deux.** La boucle
+  n'est pas comptée : sa borne est la *rotation* `+0x34`, qui part de `0x0a99` par pas de `0x99`
+  tant qu'elle reste sous `0x1093` — onze tours. Entre chaque, les trois échelles gagnent `0x258` et
+  la teinte perd `10`/`20`/`20`. Les onze enfants naissent donc **tous différents**, de plus en plus
+  larges, tournés et sombres. Aucun n'est une copie du précédent.
+- **Il est collé au sol, pas posé dessus.** `FinalizeEntityPlacement2` résout le terrain, puis tant
+  que le sol `+0x60` reste à moins de `0x32000` de l'entité, `Y` y est **posé**. Sortir de cette
+  fourchette ou toucher le décor (`+0x90` sur `0x8802`) le passe en phase 2 — mais le balayage de
+  cette image a **quand même lieu**, le saut tombant juste après.
+- **Il frappe au nom du lanceur.** `SweepPartyForMeleeHit_00519C30` et `ResolveMeleeHit_00539B80`
+  reçoivent `+0x6c`, pas l'entité du sort. Un coup porté par un sort est donc imputé à celui qui l'a
+  lancé, et c'est visible dans le choix d'arguments, pas dans une résolution ultérieure.
+
+Son enfant `0x00447D50` **ne se déplace pas tout seul** : il se recopie la position de son père à
+chaque image et **meurt avec lui** (dès que le `+0x10` du père vaut 2). Sa naissance fait tourner le
+père de `0x400` — c'est ce qui répartit les onze. Sa vie tient en une ligne : `+0x34` est retiré du
+`+0x14` où il a été mis de côté, puis **retiré au sort à ±75 près**. Il vibre sur place autour de
+son angle, il ne tourne pas.
+
+### Deux relais rendent le recensement statique aveugle
+
+`0x00476950` et `0x00476970` (onze et vingt-quatre octets) lâchent un enfant et s'effacent dans la
+même image. **Le sous-type de cet enfant n'est pas dans le code : il est dans `+0x0b`** — le champ
+qui, partout ailleurs, sert de paramètre de dessin.
+
+Conséquence directe sur l'outillage : `census-entity-handlers.sh` ne peut pas dire ce que ces deux
+créneaux atteignent. Un seul créneau de table de sauts ouvre sur **n'importe quel** gestionnaire de
+l'autre table, selon ce que l'engendreur a rangé dans `+0x0b`. C'est la première fois qu'un corps
+transcrit rend une case du recensement structurellement indécidable ; la sonde reste le seul moyen
+de savoir.
+
+### `0x00482FA0` est le sous-type ZÉRO, et ce n'est pas une souche
+
+Le créneau 0 de `0x00552230` — ce qu'une entité de `0x005f2d40` fait quand personne ne lui a donné
+de sous-type — porte un **vrai corps** de 79 octets. Les créneaux vraiment vides, eux, tiennent
+`0x0047adc0`.
+
+Il ne fait qu'une chose : naître à l'échelle `0x1000` avec la teinte `0xf0`, puis perdre **un quart
+de sa taille par image** (`taille - taille >> 2`, un `sar` nu sur seize bits) jusqu'à passer sous
+`0x100` — **onze images**, quoi qu'il arrive. Pas de déplacement, pas d'atlas qui défile, pas de
+teinte qui bouge.
+
+### `0x0047A950` : toutes les bulles d'état respirent en phase
+
+La bulle au-dessus d'une tête ne vit que **deux images** : la première l'installe, la seconde efface
+son mot d'état d'un seul `mov dword [esi],0`. Elle est donc **réengendrée en continu** tant que
+l'état dure, et non maintenue.
+
+Son échelle vaut `sin(s_FadeCounter_005e9960 × 512) / 2 + 0x1000` — **le compteur global de fondu**,
+pas un champ à elle. Toutes les bulles à l'écran pulsent donc exactement ensemble. Son `Y` sort de
+`StatusBubbleHeight_00538BC0` appelé sur le porteur, la même hauteur de bulle que le reste du projet
+lit déjà.
+
+### Deux défauts de 1998 transcrits tels quels
+
+**`0x00404000` a un rayon d'orbite figé à zéro.** Les deux appels aux tables de sinus et de cosinus
+sont bien là, l'angle `+0x12` part d'un tirage sur `0x1000` et gagne `0x64` par image — mais le
+rayon `+0x98` est mis à zéro à la naissance et **rien ne le rouvre**. Le produit est nul et la
+position retombe exactement sur l'ancre `+0x50`/`+0x58` figée à la naissance. La bouffée monte et
+enfle sans jamais tourner.
+
+**Le même corps ne meurt pas de son atlas.** Le seuil comparé à `+0x9a` est `+0x16`, mis à zéro à la
+naissance et jamais réécrit : l'atlas avance donc à chaque image et **reboucle** à sept au lieu
+d'éteindre l'entité, contrairement à sa jumelle `0x00404310`. Seul `+0x5c` la tue.
+
+Les deux sont écrits ainsi dans le binaire. Transcrits, pas réparés.
+
+### Une borne d'atlas de plus, et un nom qui manquait au vérificateur
+
+`&DAT_0054f138` est relevé : **quatre enregistrements** jusqu'à `0x0054f158`, où commence la table
+voisine déjà déclarée. `0x00404730` n'en atteint que trois — son `+0x40` reboucle à 3 —, donc la
+borne vient de la *donnée*, pas du compteur, et la marge est réelle.
+
+Il a d'abord été nommé `s_SpiralDescriptors_0054F138`, et `check-descriptors.sh` l'a **silencieusement
+ignoré** : le script reconnaît `s_Descriptors_00…` et `Descriptors00…()`, rien d'autre. Renommé à la
+convention, il est vérifié comme les autres (`ok 0x0054F138 32 octets = 4 enregistrements`). La
+leçon est petite mais vaut d'être écrite : **un nom hors convention ne casse pas le vérificateur, il
+le rend muet** — et un vérificateur muet se lit comme un vérificateur satisfait.
+
+### Ce que ça change pour la suite
+
+`GestionnairesEntites.md` : **1 430 atteignables, 258 testés, 173 écrits jamais appelés, 999 à
+transcrire**. Les tables statiques sortent de la liste de courses ; tout ce qui reste est propre à
+une zone. La zone 0 (l'auberge) devient la plus proche de la fin — 35 sur 48 —, et c'est la seule
+où la sonde a déjà relevé du passage.
