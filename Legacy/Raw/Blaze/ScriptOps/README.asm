@@ -13,3 +13,8 @@
 ; 2026-08-25 : FUN_00515a10 (opcode 17) reprise sur 110 octets — son corps s'arrete a 0x00515a7d,
 ; soit 14 octets apres la fenetre de 96. La coupure tombait sur `mov [5DE53Ch],al`, dont le premier
 ; octet seul se lit "(bad)".
+
+;
+; 2026-09-15 : FUN_00515fa0 (opcode 38) reprise sur 122 octets — son corps s'arrete a 0x00516019,
+; la fenetre de 96 le coupait sur le `mov ecx,[esp+20h]` qui suit l'appel a FUN_00514040.
+; Les 39 opcodes sont desormais tous branches dans DispatchScriptOp.

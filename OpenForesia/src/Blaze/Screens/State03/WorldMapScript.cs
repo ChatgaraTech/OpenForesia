@@ -360,6 +360,18 @@ public static unsafe partial class Blaze
             28 => ScriptOpAluParty(s, result),
             29 => ScriptOpBeginScriptedCamera(ent, s),
             30 => ScriptOpExitToDestinationSelect(ent, s),
+            15 => ScriptOpPlaySound(ctx, s),
+            20 => ScriptOpSetCameraOffset(s),
+            21 => ScriptOpSetBackColour(s),
+            27 => ScriptOpGrantItem(ent, s, result),
+            31 => ScriptOpPercentDamage(ent, s),
+            32 => ScriptOpKillAllSceneEntities(s),
+            33 => ScriptOpRetireAllSceneEntities(s),
+            34 => ScriptOpChangeMusic(s),
+            35 => s + 2,                                     // Ghidra: 0x00515f10 — `add eax,2 / ret`, rien d'autre
+            36 => ScriptOpReenterSubArea(ent, s),
+            37 => ScriptOpSwapStateBanks(s),
+            38 => ScriptOpAluEntityStatsHigh(ent, s, result),
             _  => throw new NotImplementedException(BuildScriptOpGap(op)),
         };
 
@@ -643,6 +655,258 @@ public static unsafe partial class Blaze
     {
         FreezeAllEntities();                                 // Ghidra: FUN_00535300(script[1]) — operande ignoree
         return s + 2;
+    }
+
+    /// <summary>
+    /// Ghidra: 0x00515ed0 (opcode 34) — <b>change la musique</b> de la carte : l'operande
+    /// <c>script[1]</c> est un numero de piste. Absent de <c>Blaze.c</c> (table <c>PTR_LAB_</c>) ;
+    /// transcrit depuis <c>Legacy/Raw/Blaze/ScriptOps/FUN_00515ed0.asm</c>, 50 octets.
+    ///
+    /// <para>Si la piste demandee n'est pas deja celle qui joue (<c>DAT_00566c8c</c>), elle devient la
+    /// piste de la zone (<c>DAT_005de534</c>) et de la lecture, puis <see cref="PlayMusicTrack"/> la
+    /// lance. C'est le meme couple que le prologue de <see cref="RunWorldMapTick"/> compare a chaque
+    /// entree de carte : la piste choisie par script survit donc a un rechargement de sous-zone.</para>
+    ///
+    /// <para><c>mov [5DE534h],al</c> n'ecrit que l'octet bas de <c>DAT_005de534</c>, declare
+    /// <c>int</c> ici ; les trois autres sont gardes.</para>
+    /// </summary>
+    private static byte* ScriptOpChangeMusic(byte* s)
+    {
+        byte track = s[1];
+
+        if (s_Unknown_00566c8c != track)
+        {
+            s_Unknown_005de534 = (int)((uint)s_Unknown_005de534 & 0xffffff00) | track;
+            s_Unknown_00566c8c = track;
+            PlayMusicTrack(track);                           // Ghidra: FUN_00529ad0
+        }
+
+        return s + 2;
+    }
+
+    // =============================================================================================
+    // Les dix derniers opcodes, transcrits le 2026-09-15 d'un bloc. Neuf sont absents de Blaze.c
+    // (table PTR_LAB_) et relus au desassembleur ; le 27 y est, mais n'avait jamais ete branche.
+    // Tous prennent (ctx, entite, script, resultat) en __cdecl et rendent le script avance.
+    // =============================================================================================
+
+    /// <summary>
+    /// Ghidra: 0x00515970 (opcode 15) — <b>joue un son</b> decrit par un enregistrement de huit
+    /// octets du contexte. <c>script[1]</c> indexe la table <c>ctx + 0x90</c> ; l'enregistrement
+    /// porte quatre mots : l'indice dans la table d'identifiants <c>**(DAT_005e97cc + 0xa8)</c>, puis
+    /// les trois derniers arguments de <c>FUN_0053cea0</c> tels quels.
+    /// </summary>
+    private static byte* ScriptOpPlaySound(byte* ctx, byte* s)
+    {
+        byte* record = *(byte**)(ctx + 0x90) + s[1] * 8;
+        byte* ids = *(byte**)*(byte**)(s_Unknown_005e97cc + 0xa8);
+
+        Aud.PlaySoundEffect(                                 // Ghidra: FUN_0053cea0
+            ids[*(ushort*)record],
+            *(ushort*)(record + 2),
+            *(ushort*)(record + 4),
+            *(ushort*)(record + 6));
+
+        return s + 2;
+    }
+
+    /// <summary>
+    /// Ghidra: 0x00515ab0 (opcode 20) — pose les quatre mots <c>DAT_005e9028..2e</c> : trois
+    /// composantes multipliees par seize (<c>script[2..4] &lt;&lt; 4</c>) puis <c>script[1]</c> brut.
+    /// Ce sont les mots que le chargement de sous-zone remplit depuis la camera de la carte
+    /// (<c>WorldMap.cs</c>) : le script les reecrit. Cinq octets.
+    /// </summary>
+    private static byte* ScriptOpSetCameraOffset(byte* s)
+    {
+        *(ushort*)Mem.Arena(0x005e9028) = (ushort)(s[2] << 4);
+        *(ushort*)Mem.Arena(0x005e902a) = (ushort)(s[3] << 4);
+        *(ushort*)Mem.Arena(0x005e902c) = (ushort)(s[4] << 4);
+        *(ushort*)Mem.Arena(0x005e902e) = s[1];
+        return s + 5;
+    }
+
+    /// <summary>
+    /// Ghidra: 0x00515b00 (opcode 21) — pose les quatre mots <c>DAT_005e9160..66</c> : les trois
+    /// composantes <c>script[2..4]</c> puis <c>script[1]</c>. C'est le bloc que le lissage de couleur
+    /// de fond recopie vers <c>s_BackColour*_005e93a0</c> quand <c>DAT_005e9166</c> vaut 1 (voir
+    /// <c>GameMemory</c>) : le script fixe donc la couleur de fond et son mode. Cinq octets.
+    /// </summary>
+    private static byte* ScriptOpSetBackColour(byte* s)
+    {
+        *(ushort*)Mem.Arena(0x005e9160) = s[2];
+        *(ushort*)Mem.Arena(0x005e9162) = s[3];
+        *(ushort*)Mem.Arena(0x005e9164) = s[4];
+        *(ushort*)Mem.Arena(0x005e9166) = s[1];
+        return s + 5;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00515d30 @ 0x00515d30 (opcode 27) — <b>remet un objet</b> tire au sort a
+    /// l'entite : un tirage pondere dans la rangee <c>script[1]</c> de la table de butin, confie a
+    /// <see cref="GrantChestContents_00530F20"/> avec le rangement <c>0x005312d0</c> comme rappel. Le
+    /// resultat est ce qu'elle rend (zero si l'objet est passe).
+    ///
+    /// <para><b>Present dans Blaze.c, et absent du repartiteur jusqu'ici.</b> Ghidra le montre avec
+    /// <c>FUN_0053a920(…, 100, FUN_005312d0)</c> : le troisieme <c>push</c> est en realite le rappel de
+    /// l'appel SUIVANT, pose sur la pile avant le tirage (<c>0x00515d3c</c>) et consomme par
+    /// <c>FUN_00530f20</c>, qui nettoie douze octets.</para>
+    /// </summary>
+    private static byte* ScriptOpGrantItem(byte* ent, byte* s, uint* result)
+    {
+        *(uint*)(ent + 0x6c) = 0;
+        Mem.s_Unknown_005e909f = 0;
+
+        int sheet = PickWeightedTableEntry(s[1], 100);       // Ghidra: FUN_0053a920
+        *result = (uint)GrantChestContents_00530F20((uint*)ent, sheet, 0x005312d0);
+        return s + 2;
+    }
+
+    /// <summary>Ghidra: 0x00515e80 (opcode 31) — des degats en pourcentage des points de vie a
+    /// l'entite du script : <c>script[1]</c> le pourcentage, <c>script[2]</c> le parametre d'effet.
+    /// Trois octets.</summary>
+    private static byte* ScriptOpPercentDamage(byte* ent, byte* s)
+    {
+        ApplyPercentDamage_005397B0((uint*)ent, s[1], s[2]); // Ghidra: FUN_005397b0
+        return s + 3;
+    }
+
+    /// <summary>Ghidra: 0x00515eb0 (opcode 32) — <see cref="KillAllSceneEntities_0051BA70"/>, puis
+    /// un octet.</summary>
+    private static byte* ScriptOpKillAllSceneEntities(byte* s)
+    {
+        KillAllSceneEntities_0051BA70();
+        return s + 1;
+    }
+
+    /// <summary>Ghidra: 0x00515ec0 (opcode 33) — <see cref="RetireAllSceneEntities_0051BAC0"/>, puis
+    /// un octet.</summary>
+    private static byte* ScriptOpRetireAllSceneEntities(byte* s)
+    {
+        RetireAllSceneEntities_0051BAC0();
+        return s + 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0051ba70 @ 0x0051ba70 — <b>tue les trente-deux entites de scene</b> : clignotement
+    /// <c>0x10</c>, bits <c>0x40000040</c> sur l'entite (morte, touchee) et <c>0x40000000</c> sur son
+    /// bloc de statistiques. Aucun test : les emplacements vides recoivent les memes bits.
+    ///
+    /// <para><c>&amp;DAT_005ea5a0</c> est le champ <c>+0x40</c> du premier bloc de
+    /// <c>s_EntityStatBlocks_005ea560</c> (0x120 octets par entite), parcouru au meme pas.</para>
+    /// </summary>
+    private static void KillAllSceneEntities_0051BA70()
+    {
+        byte* entity = Mem.Entity(0x005ecaa0);
+        byte* stats = s_EntityStatBlocks_005ea560 + 0x40;
+
+        for (int i = 0; i < 0x20; i++, entity += 0x9c, stats += 0x120)
+        {
+            *(ushort*)(entity + 0x96) = 0x10;
+            *(uint*)entity |= 0x40000040;
+            *(uint*)stats |= 0x40000000;
+        }
+    }
+
+    /// <summary>Ghidra: FUN_0051bac0 @ 0x0051bac0 — <b>retire les entites de scene vivantes</b> :
+    /// toute entite posee (<c>0x80000000</c>) et pas morte (<c>0x40000000</c>) recoit
+    /// <c>0x18000000</c>. A l'inverse de <see cref="KillAllSceneEntities_0051BA70"/>, rien ne meurt
+    /// et les emplacements vides ne sont pas touches.</summary>
+    private static void RetireAllSceneEntities_0051BAC0()
+    {
+        byte* entity = Mem.Entity(0x005ecaa0);
+
+        for (int i = 0; i < 0x20; i++, entity += 0x9c)
+        {
+            uint flags = *(uint*)entity;
+            if ((flags & 0x80000000) != 0 && (flags & 0x40000000) == 0)
+            {
+                *(uint*)entity = flags | 0x18000000;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: 0x00515f20 (opcode 36) — <b>rentrer dans la sous-zone courante</b> par l'entree
+    /// <c>script[1]</c>, si l'entite du script est un membre du groupe (seul <c>0x800000</c> parmi
+    /// les bits <c>0xfc0000</c>).
+    ///
+    /// <para>Le membre recoit <c>0x2000</c> et perd <c>0x08000000</c> et <c>0x200</c>, son
+    /// <c>+0x12</c> avance d'un cran et son cap est range en <c>+0x98</c>. Puis la zone et la
+    /// sous-zone a charger reprennent celles qui sont chargees (<c>DAT_00566c84</c>,
+    /// <c>DAT_00566c88</c>), l'entree devient <c>script[1]</c> (<c>DAT_005de038</c>), le meneur
+    /// devient ce membre, et le pas de boucle passe a 1 — seul le second script d'entree sera
+    /// relance. Deux octets dans tous les cas.</para>
+    /// </summary>
+    private static byte* ScriptOpReenterSubArea(byte* ent, byte* s)
+    {
+        uint flags = *(uint*)ent;
+        if ((flags & 0xfc0000) != 0x800000) return s + 2;
+
+        (*(ushort*)(ent + 0x12))++;
+        *(short*)(ent + 0x98) = *(short*)(ent + 0x32);
+        *(uint*)ent = (flags & 0xf7fffdff) | 0x2000;
+
+        Res.s_Unknown_005de528 = (int)((uint)Res.s_Unknown_005de528 & 0xffffff00) | s_Unknown_00566c84;
+        s_Unknown_005de52c = s_Unknown_00566c88;
+        *(byte*)Mem.Camera(0x005de038) = s[1];
+        s_Unknown_005de53c = ent[8];
+        s_WorldMapStep_005645f8 = 1;
+
+        return s + 2;
+    }
+
+    /// <summary>Ghidra: 0x00515f90 (opcode 37) — <see cref="SwapStateBanks_00513F50"/>, puis un
+    /// octet.</summary>
+    private static byte* ScriptOpSwapStateBanks(byte* s)
+    {
+        SwapStateBanks_00513F50();
+        return s + 1;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00513f50 @ 0x00513f50 — <b>echange les quatre banques d'etat vives avec leurs
+    /// quatre jumelles</b>, seize dwords chacune : FLAG (<c>0x005e96e0</c>) avec <c>0x005e9720</c>,
+    /// WORK (<c>0x005e9780</c>) avec <c>0x005e92c0</c>, TEMP (<c>0x005e9060</c>) avec
+    /// <c>0x005e9980</c>, ITEM (<c>0x005e9840</c>) avec <c>0x005e9360</c>. Ce sont les huit banques
+    /// que la sauvegarde recopie : le jeu tient deux jeux d'etat et le script bascule de l'un a
+    /// l'autre.
+    /// </summary>
+    private static void SwapStateBanks_00513F50()
+    {
+        SwapDwords(Mem.s_StateBank0_005e96e0, Mem.s_StateBank4_005e9720);
+        SwapDwords(Mem.s_StateBank1_005e9780, Mem.s_StateBank5_005e92c0);
+        SwapDwords(Mem.s_StateBank2_005e9060, Mem.s_StateBank6_005e9980);
+        SwapDwords(Mem.s_StateBank3_005e9840, Mem.s_StateBank7_005e9360);
+    }
+
+    private static void SwapDwords(byte* a, byte* b)
+    {
+        for (int i = 0; i < 0x40; i += 4)
+        {
+            uint kept = *(uint*)(a + i);
+            *(uint*)(a + i) = *(uint*)(b + i);
+            *(uint*)(b + i) = kept;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: 0x00515fa0 (opcode 38) — la jumelle de <see cref="ScriptOpAluEntityStats"/> (opcode
+    /// 22), <b>0x100 octets plus loin</b> dans le meme bloc : <c>MainMem + 0xf0200</c> au lieu de
+    /// <c>0xf0100</c> pour un membre du groupe, <c>0x005ea660</c> au lieu de <c>0x005ea560</c> pour
+    /// une entite de scene. Meme refus sans les bits <c>0xc00000</c> (resultat 1), memes quatre
+    /// octets.
+    /// </summary>
+    private static byte* ScriptOpAluEntityStatsHigh(byte* ent, byte* s, uint* result)
+    {
+        if ((*(uint*)ent & 0xc00000) == 0)
+        {
+            *result = 1;
+            return s + 4;
+        }
+
+        byte* stats = GetEntityStatBlock((uint*)ent) + 0x100;
+        *result = ApplyScriptOp(stats + s[1], s[2], s[3]) ? 1u : 0u;
+        return s + 4;
     }
 
     /// <summary>Ghidra: 0x00515aa0 (opcode 19) — degele la simulation, l'exact inverse de

@@ -21727,3 +21727,30 @@ heurté au sol, la posture 7 et son rebours sont reposés même s'il y était d�
   `0x9c4`, `+0x9a` neutralisé le temps de l'appel. À l'arrêt, la posture est rendue.
 * **Sous `0x64`, la replanification s'écrase elle-même** : quelle que soit la sortie de la plage de
   contact, la posture devient 3.
+
+## 2026-09-15 (suite 9) — opcode 34 de l'interpréteur de script : la musique
+
+Signalé en jeu : la porte avant le Grizzly de la forêt plantait sur l'opcode 34 (`0x00515ed0`).
+**Transcrit** (`ScriptOpChangeMusic`, 50 octets) : `script[1]` est une piste ; si elle n'est pas
+celle qui joue, elle devient la piste de la zone (`DAT_005de534`, octet bas seulement) et de la
+lecture (`DAT_00566c8c`), et `FUN_00529ad0` la lance. Avance de deux octets.
+
+**Pourquoi la forêt « complète » plantait** : `GestionnairesEntites.md` recense les **gestionnaires
+d'entité**, pas les **opcodes de l'interpréteur de script**. Les deux sont indépendants, et aucun
+recensement ne dit quels opcodes les scripts d'une zone emploient. Les onze opcodes restants (15, 20, 21, 27, 31, 32, 33, 35, 36, 37, 38) sont **transcrits le même
+jour** : l'interpréteur a ses 39 opcodes.
+
+### Les dix derniers opcodes — ce que la lecture a appris
+
+* **27** (`FUN_00515d30`) était dans `Blaze.c` et **jamais branché**. Ghidra y montre
+  `FUN_0053a920(…, 100, FUN_005312d0)` : le troisième `push` est le rappel de l'appel suivant,
+  posé avant le tirage et consommé par `FUN_00530f20`.
+* **37** échange les quatre banques vives (FLAG, WORK, TEMP, ITEM) avec leurs quatre jumelles —
+  les huit banques que la sauvegarde recopie forment donc **deux jeux d'état** entre lesquels un
+  script bascule.
+* **38** est l'opcode 22 décalé de `0x100` dans le même bloc de statistiques.
+* **36** recharge la sous-zone courante par l'entrée `script[1]` (`DAT_005de038`), le membre du
+  groupe qui l'a déclenché devenant meneur, pas de boucle à 1.
+* **32** tue les trente-deux entités de scène sans tester l'occupation des emplacements ; **33** ne
+  retire que les vivantes.
+* **35** ne fait rien et avance de deux octets.

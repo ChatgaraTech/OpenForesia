@@ -6,6 +6,9 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ## 2026-09-15 (suite)
 
+- feat : **l'interpreteur de script est complet, 39 opcodes sur 39** — les dix derniers d'un bloc : son joue (15), camera (20), couleur de fond (21), objet tire au sort (27), degats en pourcentage (31), tuer ou retirer toutes les entites de scene (32, 33), no-op (35), rentrer dans la sous-zone par une autre entree (36), echanger les deux jeux de banques d'etat (37), statistiques d'entite +0x100 (38)
+- fix : l'opcode 27 (`FUN_00515d30`) etait dans Blaze.c mais n'avait jamais ete branche au repartiteur
+- fix : **l'opcode 34 de l'interpreteur de script** (`0x00515ed0`, changer la musique) — la porte avant le Grizzly de la foret plantait dessus. Les feuilles de route comptent les gestionnaires d'entite, pas les opcodes : « foret complete » ne couvrait pas les scripts
 - feat : **le Gremlin de la grotte scellee**, `0x004F3350`, `0x004F5630`, `0x004FC9B0` — un terrestre qui frappe a chaque image de son geste, bondit, charge et fait naitre l'effet 0xdc
 - doc : **deux especes du meme nom, deux comportements sans rapport** — le Gremlin de la vieille tour vole et incante, celui de la grotte scellee court et charge. Le nom d'espece ne designe pas une routine
 - feat : **la Crapouille, la Gargouille et le Crapaud**, `0x004ACC20`, `0x004CE120`, `0x004DB610` — trois especes, UNE routine : une volante qui ondule, s'accroche, se pose au sol et en repart en pique
