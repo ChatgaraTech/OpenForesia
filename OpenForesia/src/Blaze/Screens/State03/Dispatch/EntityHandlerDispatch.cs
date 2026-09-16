@@ -1150,6 +1150,8 @@ public static unsafe partial class Blaze
             case 0x00409C10: EntityHandler_00409C10(record); return;
             case 0x00409D00: EntityHandler_00409D00(record); return;
             case 0x0040A670: EntityHandler_0040A670(record); return;
+            case 0x0040AAC0: EntityHandler_0040AAC0(record); return;   // Cutscene/MineScenes.cs
+            case 0x0040B8D0: EntityHandler_0040B8D0(record); return;   // Cutscene/MineScenes.cs
             case 0x0040B1B0: EntityHandler_0040B1B0(record); return;
             case 0x0040B900: EntityHandler_0040B900(record); return;
             case 0x0040C820: EntityHandler_0040C820(record); return;

@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **327** |
-| implementes, jamais appeles | **166** |
-| a transcrire | **937** |
+| implementes, jamais appeles | **168** |
+| a transcrire | **935** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -63,7 +63,7 @@ et n'est pas un comportement.
 |---|---|---|---|---|
 | — | **tables statiques** (partout) | 274 | 274 | 219 |
 | 0 | L'auberge | 48 | 48 | 16 |
-| 1 | La mine abandonnee | 157 | 56 | 0 |
+| 1 | La mine abandonnee | 157 | 58 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
 | 3 | La foret | 136 | 136 | 90 |
 | 4 | La vieille tour | 176 | 23 | 3 |
@@ -421,7 +421,7 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 1 — La mine abandonnee
 
-157 gestionnaires, 56 implementes, 0 testes.
+157 gestionnaires, 58 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
@@ -438,8 +438,6 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00409E40` | 3,4,9 | 0056B0C8 | **non** | **non** |
 | `0x00409F40` | 3,4,9 | 0056B1C8 | **non** | **non** |
 | `0x0040A610` | 3,4,9 | 0056B0C8 | **non** | **non** |
-| `0x0040AAC0` | 3,4,9 | 0056B0C8 | **non** | **non** |
-| `0x0040B8D0` | 3,4,9 | 0056B0C8 | **non** | **non** |
 | `0x0040B940` | 3,4,9 | 0056B0C8 | **non** | **non** |
 | `0x0040BCA0` | 3,4,9 | 0056B2C8 | **non** | **non** |
 | `0x0040BE50` | 3,4,9 | 0056B2C8 | **non** | **non** |
@@ -554,7 +552,9 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00409D00` | 5,6,7,8 | 0056B2C8 | oui | **non** |
 | `0x0040A600` | 5,6,7,8,3,4,9,3,4,9,3,4,9 | 0056ADC8 0056AEC8 0056B0C8 0056B2C8 | oui | **non** |
 | `0x0040A670` | 3,4,9 | 0056B2C8 | oui | **non** |
+| `0x0040AAC0` | 3,4,9 | 0056B0C8 | oui | **non** |
 | `0x0040B1B0` | 3,4,9 | 0056B2C8 | oui | **non** |
+| `0x0040B8D0` | 3,4,9 | 0056B0C8 | oui | **non** |
 | `0x0040B900` | 3,4,9 | 0056B2C8 | oui | **non** |
 | `0x0040C820` | 3,4,9 | 0056B2C8 | oui | **non** |
 | `0x0040CA80` | 3,4,9 | 0056B2C8 | oui | **non** |

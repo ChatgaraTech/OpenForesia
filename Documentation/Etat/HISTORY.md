@@ -27,8 +27,15 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
   retombe, sous-zones 5 a 8 et 3, 4, 9. Leurs modeles sont factorises, planche en parametre :
   `TickJitterSpark_00407AD0` et `TickFallingGlint_00406DF0`. Planche `0x0054F388` relevee (jumelle
   de `0x0054F230`). Zone 1 : 53 -> 56
-- doc : restent deux copies directes dans la mine, `0x0040AAC0` et `0x0040B8D0` — amorces de la
-  scene parlante (`FUN_00411270`, bloc `0x005713c0`), en attente d'un fichier `Cutscene/MineScenes.cs`
+- feat : `0x0040AAC0` et `0x0040B8D0`, les deux amorces de la scene parlante de la mine — le corps
+  est `TickForestCutsceneWithDialogue` (`FUN_0040aaf0` = `FUN_00411270` au bloc prive pres). Nouveau
+  fichier `Cutscene/MineScenes.cs`. Zone 1 : 56 -> 58 ; plus aucune copie directe dans la mine
+- doc : la premiere amorce passe la **piste 8** — le changement de musique de la scene parlante,
+  jamais demande en foret, l'est ici
+- doc : **le bloc prive de la mine, `0x005713c0`, est DANS `s_ViewParams_00571270`** — la borne
+  `0x00571400` de cette allocation est la fin de `.data` dans le fichier, pas une frontiere de
+  structure. Adresse par `Mem.ViewParams` pour ne pas creer un alias. L'enregistrement suivant,
+  `0x005713f0`, chevaucherait deux allocations et un trou (`0x00571400..0x0057141f`) : pas encore employe
 
 ## 2026-09-16 (suite 13)
 
