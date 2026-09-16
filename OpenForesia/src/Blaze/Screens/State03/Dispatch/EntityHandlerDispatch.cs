@@ -1131,6 +1131,13 @@ public static unsafe partial class Blaze
             case 0x00406DF0: EntityHandler_00406DF0(record); return;
             case 0x00406F60: EntityHandler_00406F60(record); return;
             case 0x004070F0: EntityHandler_004070F0(record); return;
+            case 0x00407800: EntityHandler_00407800(record); return;
+            case 0x004079E0: EntityHandler_004079E0(record); return;
+            case 0x00407AD0: EntityHandler_00407AD0(record); return;
+            case 0x00407C10: EntityHandler_00407C10(record); return;
+            case 0x00408490: EntityHandler_00408490(record); return;
+            // La quatrieme amorce du flash de sortie de zone — Effects/AreaExitFlash.cs.
+            case 0x00407FE0: EntityHandler_00407FE0(record); return;
             case 0x00411860: EntityHandler_00411860(record); return;
             case 0x00414CD0: EntityHandler_00414CD0(record); return;
             case 0x004103D0: EntityHandler_004103D0(record); return;

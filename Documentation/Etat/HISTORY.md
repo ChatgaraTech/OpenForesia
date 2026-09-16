@@ -4,6 +4,36 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 10)
+
+- feat : **six gestionnaires de la mine d'un coup** — `0x00407800`, `0x004079E0`, `0x00407AD0`,
+  `0x00407C10` (les quatre decompiles dans `Blaze.c`), plus `0x00407FE0` et `0x00408490` (96 octets
+  chacun, au desassembleur). Zone 1 : 34 -> 40 implementes
+- fix : **la plage `0x0054f180` etait relevee TROP COURTE — cinq enregistrements au lieu de six.**
+  Le sixieme, `0x0054f1a8`, avait ete pris pour la borne parce qu'il porte le motif separateur ;
+  `0x004079E0` le pose en `+0x3c`, donc c'est une tuile. La lecon se repete : un motif separateur
+  est un enregistrement, et quelqu'un finit toujours par s'en servir
+- doc : **TROIS gestionnaires se partagent `0x0054f180`**, chacun a son decalage et aucun ne lit ce
+  que lit un autre — `0x00406130` au decalage 0, `0x00407AD0` au 2 (il tire son image entre 0 et 2
+  sur les trois tuiles de la page 03), `0x004079E0` au 5. Un quatrieme, `0x00407800`, prend
+  `0x0054f1b0` au decalage 1. Le cas d'ecole de la regle de la plage, quatre fois sur deux blocs
+- doc : `0x00407FE0` est **la QUATRIEME amorce du flash de sortie de zone**, et une copie octet a
+  octet de `0x004060C0` sur ses 49 premiers octets. Le compilateur a emis la meme amorce **une par
+  groupe de sous-zones** : la foret en a deux, la mine en a deux
+- doc : `0x00408490` est `0x00406570` reemis pour les sous-zones 5 a 8, a TROIS differences — sa
+  planche `0x0054f418` est la copie conforme de `0x0054f2c0` (donnee dupliquee comme le code), sa
+  teinte nait a `0x96` et non `0x20`, et sa hauteur est relue du `+0x64` et non du `+0x60`
+- doc : `0x00407800` est la soeur de `0x00406F60` — memes deux signatures, l'inversion sinus/cosinus
+  et la double ecriture d'echelle —, mais sous une gravite DOUBLE et avec **deux portes pour
+  mourir** : une chance sur six passe la dixieme image, et la seizieme de toute facon
+- fix : sous-type de `0x004070F0` corrige, **62 et non 51** — l'indice 51 est `0x004071E0`
+- doc : `0x004071E0` (1 568 octets) mis de cote pour une seance dediee. Son etat 0 porte quatre
+  blocs quasi identiques qui parcourent huit secteurs de 45 degres autour du cap, deux points par
+  bloc a rayon 150 ; cinq coordonnees y sont portees en registres et en pile
+
+---
+
+
 ## 2026-09-16 (suite 9)
 
 - feat : `0x00406DF0`, **l'eclat qui retombe en scintillant** — decompile. Meme balistique que

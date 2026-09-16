@@ -5,24 +5,26 @@
 // qui decide ou va une fonction sont dans Documentation/ARCHITECTURE.md. L etat de la
 // reconstruction et les questions ouvertes sont dans Documentation/Etat/REVERSE_STATUS.md.
 //
-// LE FLASH BLANC QUI FERME UNE ZONE — le corps 0x004183d0 et ses TROIS amorces.
+// LE FLASH BLANC QUI FERME UNE ZONE — le corps 0x004183d0 et ses QUATRE amorces.
 //
 // Sorti de `ForestParticlesA.cs` le 2026-09-16 : ce n'est pas un effet de la foret. La mine
-// abandonnee emploie le meme corps, par une troisieme amorce, et le nom du fichier mentait donc
-// pour elle. Toute zone qui reutilisera ce flash viendra ici.
+// abandonnee emploie le meme corps, par DEUX amorces a elle — une par groupe de sous-zones —, et
+// le nom du fichier mentait donc pour elles. Toute zone qui reutilisera ce flash viendra ici.
 //
 // LE CORPS EST DECOMPILE, LES AMORCES NE LE SONT PAS. C'est le troisieme cas de figure que la
 // liste des gestionnaires manquants recouvre, apres les corps dupliques et les corps jamais
 // decompiles : un corps DECOMPILE atteint par une amorce qui, elle, ne l'est pas. Verifier ou
 // pointe le `call` d'une amorce coute deux minutes et evite de transcrire a la main ce que Ghidra
-// a deja rendu — les trois amorces de ce fichier l'ont prouve trois fois.
+// a deja rendu — les quatre amorces de ce fichier l'ont prouve quatre fois.
 //
-// LES TROIS AMORCES NE DIFFERENT QUE PAR DEUX CHOSES : le genre pose en `+0x5c`, et le NUMERO
-// D'ENREGISTREMENT dont elles recopient la pose.
+// LES QUATRE AMORCES NE DIFFERENT QUE PAR DEUX CHOSES : le genre pose en `+0x5c`, et le NUMERO
+// D'ENREGISTREMENT dont elles recopient la pose. Et par zone, elles vont par PAIRES : une par
+// groupe de sous-zones, copie exacte l'une de l'autre.
 //
 //   0x00410370   foret   +0x5c = 0x3a   enregistrement 0
 //   0x004137e0   foret   +0x5c = 0x3a   enregistrement 0   (copie exacte de la precedente)
-//   0x004060c0   mine    +0x5c = 0x39   enregistrement 6
+//   0x004060c0   mine    +0x5c = 0x39   enregistrement 6   (sous-zones 0 a 2)
+//   0x00407fe0   mine    +0x5c = 0x39   enregistrement 6   (sous-zones 5 a 8, copie exacte)
 //
 // `DAT_005fa9a4` et ses voisins ne sont pas des globales isolees — pas plus que `DAT_005fa5fc`
 // pour la foret. Ce sont les champs `+0x1c`/`+0x20`/`+0x24` (position) et `+0x30`/`+0x32`/`+0x34`
@@ -257,4 +259,23 @@ public static unsafe partial class Blaze
         CameraModeApply_005037E0(0);                          // Ghidra: FUN_005037b0 -> FUN_005037e0
         *e &= 0x7fffffff;
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x00407fe0</c> — <b>la quatrieme amorce, et une copie EXACTE de la troisieme</b>.
+    /// Sous-type <b>33</b> du bloc <c>0x00554328</c>, sous-zones <b>5 a 8</b> de la mine, la ou
+    /// <see cref="EntityHandler_004060C0"/> sert les sous-zones 0 a 2. Absente de <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Comparee octet a octet : identique sur les 49 premiers octets</b>, soit tout le corps
+    /// jusqu'au <c>call</c> — dont seul le deplacement relatif differe, consequence mecanique de
+    /// l'adresse. Meme genre <c>0x39</c>, meme ancre (l'enregistrement 6 de la table
+    /// <c>0x005fa5e0</c>), meme cible.
+    /// </para>
+    /// <para>
+    /// Le compilateur a donc emis la meme amorce <b>une fois par groupe de sous-zones</b> de la
+    /// mine, exactement comme il l'avait fait deux fois pour la foret. <b>Quatre amorces, un seul
+    /// corps.</b>
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00407FE0(byte* e) => EntityHandler_004060C0(e);
 }
