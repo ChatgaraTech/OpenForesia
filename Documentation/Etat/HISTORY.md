@@ -4,6 +4,29 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 9)
+
+- feat : `0x00406DF0`, **l'eclat qui retombe en scintillant** — decompile. Meme balistique que
+  `0x00406C40`, vitesses plus molles ; ce qui les separe est l'image, tiree AU HASARD a chaque
+  tour au lieu d'avancer. Elle ne touche jamais sa teinte
+- feat : `0x00406F60`, **la gerbe qui monte haut et noircit** — absente de `Blaze.c`, 400 octets.
+  La plus haute des trois balistiques. **Elle inverse sinus et cosinus** a la naissance : Z recoit
+  le sinus et X le cosinus, l'inverse de toutes ses voisines — son placement est tourne d'un quart
+  de tour. Elle noircit par DEBORDEMENT d'octet (`+0xdc` sans borne a zero)
+- feat : `0x004070F0`, **la petite animation qui ne bouge pas** — absente de `Blaze.c`, le corps le
+  plus simple du fichier : aucune vitesse, huit images de vie, deux echelles tirees separement et
+  par soustraction. Zone 1 : 31 -> 34 implementes
+- doc : **LA REGLE DE LA PLAGE PRISE SUR LE FAIT.** `0x004070F0` pose `&DAT_0054f1e8`, qui est la
+  planche `0x0054f1b0` AU DECALAGE 7. Les quatre images que le relevé de `0x00406680` portait sans
+  consommateur connu sont exactement celles qu'il joue. Un relevé au plus juste sur le premier
+  corps aurait casse le second. `check-descriptors.sh` le confirme de lui-meme :
+  « 0x0054F1B0 +0x38 4 restant(s) »
+- doc : deux nouvelles bandes de quatre images relevees, `0x0054f230` (bornee par la planche de
+  `0x00406C40`) et `0x0054f208` (bornee par un changement d'attribut, et qui ferme aussi
+  `0x0054f1b0` par l'autre bout)
+
+---
+
 ## 2026-09-16 (suite 8)
 
 - feat : `0x00406AA0`, **la poussiere posee contre une paroi** — sous-type 55, decompile dans

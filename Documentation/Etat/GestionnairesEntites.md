@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **327** |
-| implementes, jamais appeles | **141** |
-| a transcrire | **962** |
+| implementes, jamais appeles | **144** |
+| a transcrire | **959** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -63,7 +63,7 @@ et n'est pas un comportement.
 |---|---|---|---|---|
 | — | **tables statiques** (partout) | 274 | 274 | 219 |
 | 0 | L'auberge | 48 | 48 | 16 |
-| 1 | La mine abandonnee | 157 | 31 | 0 |
+| 1 | La mine abandonnee | 157 | 34 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
 | 3 | La foret | 136 | 136 | 90 |
 | 4 | La vieille tour | 176 | 22 | 3 |
@@ -421,13 +421,10 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 1 — La mine abandonnee
 
-157 gestionnaires, 31 implementes, 0 testes.
+157 gestionnaires, 34 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x00406DF0` | 0,1,2 | 0056B2C8 | **non** | **non** |
-| `0x00406F60` | 0,1,2 | 0056B2C8 | **non** | **non** |
-| `0x004070F0` | 0,1,2 | 0056B2C8 | **non** | **non** |
 | `0x004071E0` | 0,1,2 | 0056B2C8 | **non** | **non** |
 | `0x00407800` | 0,1,2 | 0056B2C8 | **non** | **non** |
 | `0x004079E0` | 0,1,2 | 0056B2C8 | **non** | **non** |
@@ -560,6 +557,9 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00406970` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00406AA0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00406C40` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x00406DF0` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x00406F60` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x004070F0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00442E10` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00443100` | 3,4,9 | 0056AEC8 | oui | **non** |
 | `0x004431F0` | 0,1,2,3,4,9 | 0056AEC8 | oui | **non** |
