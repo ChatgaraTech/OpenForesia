@@ -434,8 +434,19 @@ plate is a *hypothesis* about where a table ends, never a proof. This defect shi
 (`0x00551b00` on Boule de feu, `0x00551528` on Marteau). Run
 **`sh OpenForesia.Tools/check-descriptors.sh`** after touching any `s_Descriptors_…`: it re-reads
 every table out of `Blaze.exe` and prints how many records each install site has left after its
-offset. A margin of 1 is only safe when the entity's body leaves `+0x40` at zero — check that by
-hand, the script cannot.
+offset. A margin of 1 is only safe when the entity's body leaves `+0x40` at zero (a margin of 2,
+at 0 or 1) — check that by hand, the script cannot. **Mind the spawner**: `FUN_0047ac40` zeroes
+`+0x40`, but `FUN_0047a9d0` and `FUN_0047aae0` copy it from the parent, so "the body never writes
+`+0x40`" is only proof for an entity born through the first. In the binary this is harmless: of the
+430 handlers those two pools (`0x005ff400`, `0x005edee0`) can run, **none installs a planche on its
+own record** (checked 2026-09-16 against `Blaze.c`, the dumps and the binary), so the inherited
+`+0x40` always comes with the parent's own `+0x3c`. A C# body in one of those pools that writes
+`(e + 0x3c)` is therefore a transcription error, not a new case — the script's last section reads
+those pools' handlers out of `Blaze.exe` and flags any such write. Once proven, add the site to
+`OpenForesia.Tools/marges-verifiees.txt` with the bodies the proof depends on, and run the script
+with `--sceller`: it fingerprints those bodies, shows the site as `prouve`, and brings the warning
+back as `PREUVE PERIMEE` the moment one of them changes. All 25 short margins were proven on
+2026-09-16.
 
 **Bodies Ghidra did not decompile** — address-taken-only code (window procedures, thread procedures,
 vtable slots appearing only as `LAB_…`) and whole functions missing from `Blaze.c`. Until

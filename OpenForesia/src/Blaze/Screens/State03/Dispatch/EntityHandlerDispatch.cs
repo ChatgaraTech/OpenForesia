@@ -144,8 +144,11 @@ public static unsafe partial class Blaze
     {
         switch (target)
         {
-            // Souche `ret` nu, verifiee dans Blaze.c.
+            // Souche `ret` nu, verifiee dans Blaze.c. 0x0040A600 est la seconde : un `ret` seul lui
+            // aussi (c3, verifie au desassembleur), installe dans 21 creneaux des blocs de
+            // sous-zone, et deja traite en corps vide par Resources.CallAreaHandler.
             case 0x00401FA0:
+            case 0x0040A600:
                 if (s_TraceEntity && s_SeenEmptySlots.Add(where))
                 {
                     Console.Error.WriteLine($"[SOUCHE] {where}");
@@ -1139,6 +1142,19 @@ public static unsafe partial class Blaze
             case 0x00408490: EntityHandler_00408490(record); return;
             case 0x00408680: EntityHandler_00408680(record); return;
             case 0x00408910: EntityHandler_00408910(record); return;
+            // Les copies des sous-zones 5 a 8 et 3, 4, 9 — des amorces et des corps deja ecrits
+            // ailleurs, a la planche pres. Effects/MineParticles.cs.
+            case 0x00408040: EntityHandler_00408040(record); return;
+            case 0x00408C60: EntityHandler_00408C60(record); return;
+            case 0x00409A30: EntityHandler_00409A30(record); return;
+            case 0x00409C10: EntityHandler_00409C10(record); return;
+            case 0x00409D00: EntityHandler_00409D00(record); return;
+            case 0x0040A670: EntityHandler_0040A670(record); return;
+            case 0x0040B1B0: EntityHandler_0040B1B0(record); return;
+            case 0x0040B900: EntityHandler_0040B900(record); return;
+            case 0x0040C820: EntityHandler_0040C820(record); return;
+            case 0x0040CA80: EntityHandler_0040CA80(record); return;
+            case 0x0040CC60: EntityHandler_0040CC60(record); return;
             // La quatrieme amorce du flash de sortie de zone — Effects/AreaExitFlash.cs.
             case 0x00407FE0: EntityHandler_00407FE0(record); return;
             case 0x00411860: EntityHandler_00411860(record); return;

@@ -1,0 +1,61 @@
+# LES MARGES COURTES PROUVEES — lu par check-descriptors.sh.
+#
+# Une marge <= 2 n'est pas un defaut : elle est sure si le compteur d'images +0x40 ne depasse pas
+# la marge moins un tant que la planche est posee. Cela se prouve a la main, corps par corps, contre
+# Blaze.c ou le binaire. Une fois prouve, le site est note ici, et le script l'affiche « prouve » au
+# lieu de le signaler.
+#
+# UNE PREUVE EST SCELLEE SUR LES CORPS DONT ELLE DEPEND. La quatrieme colonne les nomme ; la
+# cinquieme est l'empreinte de leur texte, commentaires et lignes vides retires. Qu'un seul de ces
+# corps change d'une instruction, l'empreinte ne correspond plus, le script affiche PREUVE PERIMEE
+# et le site redevient a verifier. Un commentaire retouche ne perime rien.
+#
+# Pour ajouter une preuve : ecrire la ligne avec la cinquieme colonne VIDE, puis
+#   sh OpenForesia.Tools/check-descriptors.sh --sceller
+# qui pose l'empreinte des lignes non scellees, et d'elles seules. Une preuve PERIMEE ne se
+# rescelle pas en vidant sa colonne sans avoir relu le corps : c'est tout ce que le sceau protege.
+#
+# Les cles (trois premieres colonnes) sont celles que le script imprime.
+# site | planche | decalage | corps dont depend la preuve | empreinte | pourquoi +0x40 reste dans la marge
+#
+# Verifiees le 2026-09-16.
+
+# ---- marge 1 : +0x40 doit rester a 0
+EntityHandler_004038F0 | 0x0054F158 | +0x00 | EntityHandler_004038F0,SpawnStatusEffectEntity_0047AC40 | 90b764e1cce6 | n'ecrit jamais +0x40 ; ne nait que par FUN_0047ac40 (seul allocateur du pool 0x005f2d40), qui le met a 0
+EntityHandler_004079E0 | 0x0054F180 | +0x28 | EntityHandler_004079E0,SpawnStatusEffectEntity_0047AC40 | 7dd683c88ee4 | n'ecrit jamais +0x40 ; sous-type 0xff lu a 0x56b2c8, que seul le pool 0x005f2d40 atteint, donc ne par FUN_0047ac40
+EntityHandler_0040EF40 | 0x0054F7C8 | +0x28 | EntityHandler_0040EF40 | afa3f4f41acf | pose 0 a la naissance, ne l'ecrit plus (releve FUN_0040EF40.asm)
+EntityHandler_0040F260 | 0x0054F7F8 | +0x08 | EntityHandler_0040F260 | df3237921e4d | pose 0 a la naissance, ne l'ecrit plus (disasm jusqu'au ret 0x0040f363)
+EntityHandler_004459E0 | 0x005515B8 | +0x00 | EntityHandler_004459E0 | dd4045badc60 | branche +0x44 == 0 : pose 0 ; seule la branche +0x44 == 1 l'avance, sur 0x005515c0, plafond 3 ; +0x44 jamais ecrit
+EntityHandler_00411860 | 0x0054F910 | +0x08 | EntityHandler_00411860,TickFivePhaseBurst | 90e890f45082 | role 2 : le corps pose 0 ; TickFivePhaseBurst n'ecrit que des zeros dans +0x40
+EntityHandler_00414CD0 | 0x0054FA08 | +0x08 | EntityHandler_00414CD0,TickFivePhaseBurst | 6ab11cd60c2d | copie de la precedente (FUN_00414d10)
+EntityHandler_00411860/TickFivePhaseBurst | 0x0054F808 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | role 3 : pose atlas + 8 et 0 ; aucune ecriture non nulle de +0x40 dans le corps
+EntityHandler_00414CD0/TickFivePhaseBurst | 0x0054F920 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | idem, sur la seconde copie de la planche
+TickMonsterOrbCast_004769A0 | 0x00551BA0 | +0x38 | TickMonsterOrbCast_004769A0,SpawnStatusEffectEntity_0047AC40,TickMonsterOrb_004769F0 | aa46ef9b1d8d | l'enfant nait par FUN_0047ac40 (0) ; ses 640 octets n'accedent jamais a +0x40
+
+# ---- marge 2 : +0x40 doit rester a 0 ou 1
+EntityHandler_00406810 | 0x0054F2A0 | +0x00 | EntityHandler_00406810,TickMineSparkle_00406810 | 4235ec1b8ec8 | 0 a la naissance, puis rand % 2 a chaque image ; rand rend 0..0x7fff
+EntityHandler_00406810 | 0x0054F2B0 | +0x00 | EntityHandler_00406810,TickMineSparkle_00406810 | 4235ec1b8ec8 | idem, seconde planche
+EntityHandler_00408680 | 0x0054F3F8 | +0x00 | EntityHandler_00408680,TickMineSparkle_00406810 | d533ca19f303 | idem, copie des sous-zones 5 a 8
+EntityHandler_00408680 | 0x0054F408 | +0x00 | EntityHandler_00408680,TickMineSparkle_00406810 | d533ca19f303 | idem
+EntityHandler_0040F190 | 0x0054F7F8 | +0x00 | EntityHandler_0040F190 | 66938188211e | pose 0, ne l'ecrit plus
+EntityHandler_004103D0 | 0x0054F808 | +0x00 | EntityHandler_004103D0,TickPurpleSmoke | dca2c62b59ea | trois ecritures de +0x40, toutes a 0
+EntityHandler_00413840 | 0x0054F920 | +0x00 | EntityHandler_00413840,TickPurpleSmoke | be7b71c6065d | idem (FUN_00413850)
+EntityHandler_00410CD0 | 0x0054F808 | +0x00 | EntityHandler_00410CD0,TickSummonEffect | d5ac1972cbf1 | quatre ecritures de +0x40, toutes a 0 (puVar3 compris)
+EntityHandler_00410CD0 | 0x0054F910 | +0x00 | EntityHandler_00410CD0,TickSummonEffect | d5ac1972cbf1 | idem, planche du chef
+EntityHandler_00414140 | 0x0054F920 | +0x00 | EntityHandler_00414140,TickSummonEffect | a397984f4595 | idem (seconde copie)
+EntityHandler_00414140 | 0x0054FA08 | +0x00 | EntityHandler_00414140,TickSummonEffect | a397984f4595 | idem
+EntityHandler_00411860 | 0x0054F808 | +0x00 | EntityHandler_00411860,TickFivePhaseBurst | 90e890f45082 | roles 0, 1 et 4 : n'ecrit que des zeros dans +0x40
+EntityHandler_00414CD0 | 0x0054F920 | +0x00 | EntityHandler_00414CD0,TickFivePhaseBurst | 6ab11cd60c2d | idem
+EntityHandler_00445CF0 | 0x00551630 | +0x08 | EntityHandler_00445CF0,SpawnStatusEffectEntity_0047AC40,TickFireMateriaFlame_00477600 | 345fb71641d4 | l'enfant 0x56 nait par FUN_0047ac40 (0) ; 00477600 n'accede jamais a +0x40
+TickSleepAura_004761D0 | 0x00551BA0 | +0x30 | TickSleepAura_004761D0,SpawnStatusEffectEntity_0047AC40,TickSleepBubble_00476290 | e620cc34bd5b | l'enfant 0x2f nait par FUN_0047ac40 (0) ; 00476290 n'ecrit jamais +0x40
+
+# ---- ajoutees le 2026-09-16 avec les copies de la mine (sous-zones 5 a 8, et 3, 4, 9)
+EntityHandler_00409C10 | 0x0054F2D8 | +0x28 | EntityHandler_00409C10,TickRisingBubble,SpawnStatusEffectEntity_0047AC40 | dac0e272e443 | TickRisingBubble n'ecrit jamais +0x40 ; creneau 63 de 0x0056b2c8, donc ne par FUN_0047ac40 (0) — meme preuve que 004079E0
+EntityHandler_0040C820 | 0x0054F4D0 | +0x18 | EntityHandler_0040C820,TickRisingBubble,SpawnStatusEffectEntity_0047AC40 | 4f408f29fce6 | idem, sous-zones 3, 4 et 9
+EntityHandler_0040A670 | 0x0054F450 | +0x00 | EntityHandler_0040A670,TickPurpleSmoke | fc18da39131f | trois ecritures de +0x40 dans TickPurpleSmoke, toutes a 0
+EntityHandler_0040B1B0 | 0x0054F450 | +0x00 | EntityHandler_0040B1B0,TickFivePhaseBurst | b33cc9a21557 | TickFivePhaseBurst n'ecrit que des zeros dans +0x40
+EntityHandler_0040B900 | 0x0054F450 | +0x00 | EntityHandler_0040B900,TickFivePhaseBurst | 94dfa9e87a58 | idem
+EntityHandler_0040B1B0 | 0x0054F620 | +0x00 | EntityHandler_0040B1B0,TickFivePhaseBurst | b33cc9a21557 | role 2 : le corps pose 0 dans la meme passe
+EntityHandler_0040B900 | 0x0054F620 | +0x08 | EntityHandler_0040B900,TickFivePhaseBurst | 94dfa9e87a58 | idem, second enregistrement
+EntityHandler_0040B1B0/TickFivePhaseBurst | 0x0054F450 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | role 3 : pose atlas + 8 et 0
+EntityHandler_0040B900/TickFivePhaseBurst | 0x0054F450 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | idem

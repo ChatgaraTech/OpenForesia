@@ -4,6 +4,63 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 14)
+
+- feat : **dix gestionnaires de la mine, aucun corps neuf** — zone 1 : 43 -> 53 implementes.
+  Recherche de copies sur les textes de `Blaze.c` (adresses masquees), confirmee par `diff` : chaque
+  copie ne differe de son modele que par l'adresse de planche
+- feat : `0x00408040` et `0x0040A670`, amorces de la fumee violette (`TickPurpleSmoke`), sous-zones
+  5 a 8 et 3, 4, 9
+- feat : `0x0040B1B0` et `0x0040B900`, amorces de la gerbe aux cinq phases (`TickFivePhaseBurst`),
+  meme forme que `0x00411860` ; elles se reproduisent elles-memes (`+0x98` = 0 et 1)
+- feat : `0x00409C10` et `0x0040C820`, la bulle (`TickRisingBubble`) ; `0x00409A30` et
+  `0x0040CA80`, l'eclat (`TickBurstingSpark`)
+- feat : `0x0040A600`, la seconde souche `ret` nu — branchee au repartiteur et aux verbes de zone
+  (elle rend l'indice du verbe, comme `0x00401FA0`) ; elle compte dans presque toutes les zones
+- feat : `0x004431B0`, verbe de zone — le nombre de membres du groupe encore debout, range dans la
+  banque de script 2
+- doc : **les planches de la mine sont recopiees par blocs** — sous-zones 5 a 8 = sous-zones 0 a 2
+  decalees de `0x158`, octet pour octet ; sous-zones 3, 4, 9 = decalage `0x340`, a partir de
+  `0x0054f190` seulement. Six planches relevees (`0x0054F2D8`, `F308`, `F450`, `F4D0`, `F4F0`,
+  `F620`), toutes conformes au binaire ; neuf nouvelles marges courtes, toutes prouvees et scellees
+- feat : `0x00409D00`, `0x0040CC60` et `0x00408C60` — l'etincelle qui tremble et l'eclat qui
+  retombe, sous-zones 5 a 8 et 3, 4, 9. Leurs modeles sont factorises, planche en parametre :
+  `TickJitterSpark_00407AD0` et `TickFallingGlint_00406DF0`. Planche `0x0054F388` relevee (jumelle
+  de `0x0054F230`). Zone 1 : 53 -> 56
+- doc : restent deux copies directes dans la mine, `0x0040AAC0` et `0x0040B8D0` — amorces de la
+  scene parlante (`FUN_00411270`, bloc `0x005713c0`), en attente d'un fichier `Cutscene/MineScenes.cs`
+
+## 2026-09-16 (suite 13)
+
+- feat : `check-descriptors.sh` garde l'heritage de `+0x40` — il relit dans `Blaze.exe` les 430
+  gestionnaires des pools `0x005ff400` / `0x005edee0`, examine les 235 transcrits, et signale tout
+  corps C# qui pose `+0x3c` sur son propre enregistrement (alias, forme `uint*` et delegation `=>`
+  suivis). Aujourd'hui : aucun
+
+- doc : le `+0x40` herite par `FUN_0047a9d0` / `FUN_0047aae0` ne peut deborder nulle part — sur les
+  430 gestionnaires des pools `0x005ff400` et `0x005edee0`, aucun ne pose de planche sur son propre
+  enregistrement (Blaze.c, releves et binaire) : l'enfant garde la paire `+0x3c` / `+0x40` du parent
+
+- feat : `check-descriptors.sh` connait les marges deja prouvees — `OpenForesia.Tools/marges-verifiees.txt`,
+  une ligne par site, scellee sur l'empreinte des corps dont la preuve depend (`--sceller`). Le site
+  s'affiche `prouve` ; un corps modifie rend `PREUVE PERIMEE`, un corps renomme `PREUVE CASSEE`, un
+  site disparu une preuve ORPHELINE. Les 25 marges courtes y sont : 25 prouvees, 0 a verifier
+
+- doc : les **quinze** marges a 2 sont sures aussi — onze corps n'ecrivent que des zeros dans
+  `+0x40`, les deux etincelles de la mine le tirent a `rand % 2` (0 ou 1), et les deux semeurs
+  (`00445CF0`, `TickSleepAura_004761D0`) passent leur planche a un enfant (`00477600`, `00476290`)
+  ne par `FUN_0047ac40` et qui ne touche jamais `+0x40`
+
+- doc : les huit marges a 1 de `check-descriptors.sh` sont **toutes sures**, verifiees contre
+  `Blaze.c` et le binaire — cinq corps posent `+0x40 = 0` sans jamais l'avancer, trois ne
+  l'ecrivent pas et naissent tous par `FUN_0047ac40`, qui le remet a zero (`DAT_005f2d80`)
+- doc : `FUN_0047a9d0` et `FUN_0047aae0` **ne remettent pas** `+0x40` a zero : l'enfant herite
+  celui du parent. « Le corps n'ecrit jamais +0x40 » n'est une preuve que dans le pool `0x005f2d40`
+- fix : `check-descriptors.sh` ne voyait pas le decalage pris DANS un corps factorise —
+  `TickFivePhaseBurst` role 3 pose `atlas + 8` (`0x0054f810` / `0x0054f928`), deux marges a 1 de
+  plus, sures elles aussi. Il les mesure desormais, et liste a part tout emploi d'une planche recue
+  qu'il ne sait pas mesurer (passage a un tiers, locale) au lieu de l'ignorer
+
 ## 2026-09-16 (suite 12)
 
 - fix : **`check-descriptors.sh` ratait deux familles entieres, en silence.** Ses deux passes

@@ -1789,6 +1789,13 @@ public static unsafe partial class Blaze
             // encore l'indice de verbe au moment du `mov [ecx],eax`.
             0x00401FA0 => verb,
 
+            // 0x0040A600 : la seconde souche `ret` nu (c3 seul, verifie au desassembleur). Meme
+            // registre, meme resultat : l'indice du verbe.
+            0x0040A600 => verb,
+
+            // Le compte des membres vivants, range dans la banque 2 (mine, sous-zones 0 a 2).
+            0x004431B0 => AreaVerb_004431B0((short)(s[2] | (s[3] << 8))),
+
             // 0x004441F0 : `xor eax,eax ; ret`, verifie au desassembleur. A distinguer de la souche
             // ci-dessus — celle-ci met EAX a zero explicitement, donc le resultat de condition est
             // 0 et non l'indice du verbe. Deux souches, deux comportements.
@@ -1975,6 +1982,42 @@ public static unsafe partial class Blaze
         ClearScriptBank(Mem.s_StateBank2_005e9060);
         ClearScriptBank(Mem.s_StateBank1_005e9780);
         ClearScriptBank(Mem.s_StateBank0_005e96e0);
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004431b0</c> — <b>« combien de membres du groupe sont encore debout ? »</b>
+    /// Cinquante-quatre octets, <b>absente de <c>Blaze.c</c></b> ; relevé gardé sous
+    /// <c>Legacy/Raw/Blaze/AreaVerbs/FUN_004431B0.asm</c>. Créneau 12 du bloc de verbes
+    /// <c>0x00553aa8</c> (mine, sous-zones 0 à 2) et créneau 16 de <c>0x00558f28</c>.
+    ///
+    /// <para>
+    /// Elle balaie les <b>quatre</b> emplacements de <c>0x9c</c> octets du groupe, comme
+    /// <see cref="AreaVerb_00442DB0"/>, et compte ceux dont le mot d'état porte le bit de vie
+    /// <c>0x80000000</c> <b>sans</b> <c>0x40000000</c> (mort) ni <c>0x10000000</c> (retiré) — le
+    /// <c>test eax,50000000h</c> les prend ensemble. Le compte, un octet, est écrit dans la
+    /// <b>banque 2</b> (<c>0x005e9060</c>) à l'indice que l'opérande désigne : le script le relira
+    /// par les opcodes de banque.
+    /// </para>
+    /// <para>
+    /// <b>L'indice est signé</b> (<c>movsx eax, word [esp+0Ch]</c>, le second argument une fois
+    /// <c>ebx</c> empilé) et <b>aucune borne n'est vérifiée</b> — même situation que
+    /// <see cref="AreaVerb_00442D90"/>, transcrite telle quelle.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zéro : <c>xor eax,eax</c> avant le <c>ret</c>.</returns>
+    private static uint AreaVerb_004431B0(short index)
+    {
+        byte* slot = Inp.s_SlotFlags_005e93c0;
+        byte standing = 0;
+
+        for (int i = 0; i < 4; i++, slot += 0x9c)
+        {
+            uint word = *(uint*)slot;
+            if ((word & 0x80000000) != 0 && (word & 0x50000000) == 0) standing++;
+        }
+
+        Mem.s_StateBank2_005e9060[index] = standing;
         return 0;
     }
 

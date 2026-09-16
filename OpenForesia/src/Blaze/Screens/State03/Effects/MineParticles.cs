@@ -1151,12 +1151,26 @@ public static unsafe partial class Blaze
     /// <b>Elle ne touche jamais sa teinte</b> — ni a la naissance, ni au tour. Ce qu'elle porte en
     /// <c>+0x38</c>/<c>+0x39</c>/<c>+0x3a</c> lui vient de qui la fait naitre.
     /// </para>
+    /// <para>
+    /// <b>Le corps est dans <see cref="TickFallingGlint_00406DF0"/></b>, planche en parametre
+    /// depuis le 2026-09-16 : <c>FUN_00408c60</c> en est la copie conforme a l'adresse de planche
+    /// pres.
+    /// </para>
     /// </summary>
     private static void EntityHandler_00406DF0(byte* e)
+        => TickFallingGlint_00406DF0(e, Descriptors0054F230());   // Ghidra: &DAT_0054f230
+
+    /// <summary>
+    /// Le corps partage par <see cref="EntityHandler_00406DF0"/> (sous-zones 0 a 2) et
+    /// <see cref="EntityHandler_00408C60"/> (5 a 8). Voir le premier pour ce qu'il fait. La planche
+    /// doit porter quatre enregistrements a partir de <paramref name="plate"/> : l'image est tiree
+    /// entre 0 et 3 a chaque tour.
+    /// </summary>
+    private static void TickFallingGlint_00406DF0(byte* e, byte* plate)
     {
         if (*(short*)(e + 0x10) == 0)
         {
-            *(byte**)(e + 0x3c) = Descriptors0054F230();   // Ghidra: &DAT_0054f230
+            *(byte**)(e + 0x3c) = plate;
             e[0x0a] = 3;
             e[0x0b] = 0;
 
@@ -1533,13 +1547,27 @@ public static unsafe partial class Blaze
     /// scintille entre les trois tuiles <c>0x10 x 0x10</c> de la page <c>0x03</c>. C'est le corps
     /// qui donne un consommateur a ces trois-la.
     /// </para>
+    /// <para>
+    /// <b>Le corps est dans <see cref="TickJitterSpark_00407AD0"/></b>, planche en parametre depuis
+    /// le 2026-09-16 : <c>FUN_00409d00</c> et <c>FUN_0040cc60</c> en sont des copies conformes a
+    /// l'adresse de planche pres.
+    /// </para>
     /// </summary>
     private static void EntityHandler_00407AD0(byte* e)
+        => TickJitterSpark_00407AD0(e, Descriptors0054F180() + 0x10);   // Ghidra: &DAT_0054f190
+
+    /// <summary>
+    /// Le corps partage par <see cref="EntityHandler_00407AD0"/> (sous-zones 0 a 2),
+    /// <see cref="EntityHandler_00409D00"/> (5 a 8) et <see cref="EntityHandler_0040CC60"/>
+    /// (3, 4 et 9). Voir le premier pour ce qu'il fait. La planche doit porter trois
+    /// enregistrements a partir de <paramref name="plate"/> : l'image est tiree entre 0 et 2.
+    /// </summary>
+    private static void TickJitterSpark_00407AD0(byte* e, byte* plate)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x10) = 1;
-            *(byte**)(e + 0x3c) = Descriptors0054F180() + 0x10;   // Ghidra: &DAT_0054f190
+            *(byte**)(e + 0x3c) = plate;
             *(short*)(e + 0x28) = 0x1000;
             *(short*)(e + 0x2a) = 0x1000;
             e[0x0a] = 8;
@@ -1991,4 +2019,328 @@ public static unsafe partial class Blaze
             if (frame == 4) *(uint*)e &= 0x7fffffff;
         }
     }
+
+    // =====================================================================
+    // LES COPIES DES SOUS-ZONES 5 A 8, ET 3, 4 ET 9 (2026-09-16)
+    //
+    // Dix gestionnaires de la mine, et AUCUN corps neuf. Chacun est soit une amorce de quelques
+    // instructions, soit un corps que le binaire a emis en double et que le depot avait deja ecrit
+    // ailleurs — la foret l'a factorise, avec la planche en parametre. Recherche faite sur les
+    // textes de Blaze.c, adresses masquees, puis confirmee par un `diff` des textes bruts : entre
+    // chaque copie et son modele, la SEULE difference est l'adresse de planche.
+    //
+    //   0x00408040 -> FUN_00408050 = TickPurpleSmoke   (FUN_004103e0),  planche 0x0054f2d8
+    //   0x0040A670 -> FUN_0040a680 = TickPurpleSmoke,                   planche 0x0054f450
+    //   0x0040B1B0 -> FUN_0040b1f0 = TickFivePhaseBurst (FUN_004118a0), planche 0x0054f450
+    //   0x0040B900 -> FUN_0040b1f0, meme corps
+    //   0x00409C10, 0x0040C820     = TickRisingBubble  (FUN_0040fac0)
+    //   0x00409A30, 0x0040CA80     = TickBurstingSpark (FUN_0040f470)
+    //   0x00409D00, 0x0040CC60     = TickJitterSpark_00407AD0   (factorise pour elles)
+    //   0x00408C60                 = TickFallingGlint_00406DF0  (idem)
+    //
+    // LES PLANCHES SONT RECOPIEES PAR BLOCS. Le bloc des sous-zones 5 a 8 est celui des sous-zones
+    // 0 a 2 decale de 0x158, octet pour octet de 0x0054f180 a 0x0054f2d8 ; celui des sous-zones 3, 4
+    // et 9 le reprend decale de 0x340, a partir de 0x0054f190 seulement. Chaque plage relevee
+    // ci-dessous est donc bornee comme sa jumelle deja relevee, et les deux bornes sont verifiees
+    // dans le binaire : un changement de taille de tuile ou de planche de part et d'autre.
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f2d8</c> — <b>la jumelle de <see cref="s_Descriptors_0054F180"/></b>
+    /// pour les sous-zones 5 a 8 : les memes six enregistrements, octet pour octet.
+    ///
+    /// <para>
+    /// Bornee en bas par <c>0x0054f2d0</c>, dernier enregistrement de
+    /// <see cref="s_Descriptors_0054F2C0"/>, et en haut par <c>0x0054f308</c>, premier de
+    /// <see cref="s_Descriptors_0054F308"/> — la meme borne que la jumelle a <c>0x0054f1b0</c>.
+    /// Trois consommateurs, aux memes decalages que chez la jumelle :
+    /// <see cref="EntityHandler_00408040"/> a <c>+0</c>, <see cref="EntityHandler_00409D00"/> a
+    /// <c>+0x10</c> (images 0 a 2), et <see cref="EntityHandler_00409C10"/> a <c>+0x28</c>, le motif
+    /// separateur pris seul.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F2D8 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f2d8  <- 0x00408040
+        0xc0, 0xc0, 0x3f, 0x3f, 0x01, 0x02, 0x09, 0x00,   // 0x0054f2e0
+        0x00, 0xd0, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f2e8
+        0x10, 0xd0, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f2f0
+        0x20, 0xd0, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f2f8
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f300  <- 0x00409C10
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f308</c> — <b>la jumelle de <see cref="s_Descriptors_0054F1B0"/></b>
+    /// pour les sous-zones 5 a 8, onze enregistrements. Bornee en haut par <c>0x0054f360</c>, ou la
+    /// tuile passe en <c>0x1f x 0x1f</c> — la borne de la jumelle a <c>0x0054f208</c>.
+    /// <see cref="EntityHandler_00409A30"/> la lit a <c>+8</c>, comme
+    /// <see cref="EntityHandler_00407800"/> lit sa jumelle.
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F308 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f308
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f310  <- 0x00409A30
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x0054f318
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f320
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f328
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f330
+        0x10, 0x10, 0x08, 0x07, 0x01, 0x03, 0x10, 0x00,   // 0x0054f338
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f340
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f348
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f350
+        0x10, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f358
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f450</c> — <b>la planche de la fumee et de la gerbe des sous-zones
+    /// 3, 4 et 9</b>, deux enregistrements : la tuile <c>8 x 8</c> et le separateur. Meme forme que
+    /// <see cref="s_Descriptors_0054F808"/> en foret, et pour la meme raison : la gerbe lit
+    /// <c>+8</c> dans son role 3 et ecrit l'octet 6 de ce second enregistrement.
+    ///
+    /// <para>
+    /// Bornee de part et d'autre par des tuiles <c>0x20 x 0x20</c> : <c>0x0054f448</c> en bas,
+    /// <c>0x0054f460</c> en haut, dont le sixieme octet passe de <c>0x02</c> a <c>0x01</c>.
+    /// <b>Partagee par deux corps</b> — <see cref="EntityHandler_0040A670"/> et les deux amorces de la
+    /// gerbe — exactement comme dans le binaire, ou c'est la meme adresse.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F450 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f450  <- fumee, gerbe
+        0xc0, 0xc0, 0x3f, 0x3f, 0x01, 0x02, 0x09, 0x00,   // 0x0054f458  <- gerbe, role 3
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f4d0</c> — <b>l'eclat et la bulle des sous-zones 3, 4 et 9</b>,
+    /// quatre enregistrements, jumeaux des quatre derniers de
+    /// <see cref="s_Descriptors_0054F180"/>.
+    ///
+    /// <para>
+    /// <b>Le miroir ne commence qu'ici.</b> Les deux enregistrements qui precedent,
+    /// <c>0x0054f4c0</c> et <c>0x0054f4c8</c>, ne sont PAS la tuile et le separateur de la jumelle :
+    /// ce sont des tuiles <c>0x18 x 0x18</c> d'une autre suite. La plage s'ouvre donc sur la
+    /// premiere image de l'etincelle et se ferme sur la bulle, avant
+    /// <see cref="s_Descriptors_0054F4F0"/>. <see cref="EntityHandler_0040CC60"/> la lit a <c>+0</c>
+    /// (images 0 a 2), <see cref="EntityHandler_0040C820"/> a <c>+0x18</c>.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F4D0 =
+    [
+        0x00, 0xd0, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f4d0
+        0x10, 0xd0, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f4d8
+        0x20, 0xd0, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f4e0
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f4e8  <- 0x0040C820
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f4f0</c> — <b>la seconde jumelle de
+    /// <see cref="s_Descriptors_0054F1B0"/></b>, pour les sous-zones 3, 4 et 9. Onze
+    /// enregistrements, bornee en haut par <c>0x0054f548</c> et sa tuile <c>0x1f x 0x1f</c>.
+    /// <see cref="EntityHandler_0040CA80"/> la lit a <c>+8</c>.
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F4F0 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f4f0
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f4f8  <- 0x0040CA80
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x0054f500
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f508
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f510
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f518
+        0x10, 0x10, 0x08, 0x07, 0x01, 0x03, 0x10, 0x00,   // 0x0054f520
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f528
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f530
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f538
+        0x10, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f540
+    ];
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f620</c> — <b>les deux planches de role 2 des amorces de la gerbe</b>,
+    /// sous-zones 3, 4 et 9. Meme forme que <see cref="s_Descriptors_0054F910"/> en foret : deux
+    /// tuiles <c>0x0f x 0x0f</c> sur la page <c>0x09</c>, que
+    /// <see cref="EntityHandler_0040B1B0"/> pose a <c>+0</c> et <see cref="EntityHandler_0040B900"/>
+    /// a <c>+8</c>. Bornee en bas par la tuile <c>0x3f x 0x5f</c> de <c>0x0054f618</c>, en haut par
+    /// la paire tuile/separateur de <c>0x0054f630</c>.
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F620 =
+    [
+        0x00, 0xf0, 0x0f, 0x0f, 0x01, 0x02, 0x09, 0x00,   // 0x0054f620  <- 0x0040B1B0
+        0x10, 0xf0, 0x0f, 0x0f, 0x01, 0x02, 0x09, 0x00,   // 0x0054f628  <- 0x0040B900
+    ];
+
+    private static byte* s_Descriptors0054F2D8Storage;
+    private static byte* s_Descriptors0054F308Storage;
+    private static byte* s_Descriptors0054F450Storage;
+    private static byte* s_Descriptors0054F4D0Storage;
+    private static byte* s_Descriptors0054F4F0Storage;
+    private static byte* s_Descriptors0054F620Storage;
+
+    private static byte* Descriptors0054F2D8()
+        => NativeCopy(s_Descriptors_0054F2D8, ref s_Descriptors0054F2D8Storage);
+
+    private static byte* Descriptors0054F308()
+        => NativeCopy(s_Descriptors_0054F308, ref s_Descriptors0054F308Storage);
+
+    private static byte* Descriptors0054F450()
+        => NativeCopy(s_Descriptors_0054F450, ref s_Descriptors0054F450Storage);
+
+    private static byte* Descriptors0054F4D0()
+        => NativeCopy(s_Descriptors_0054F4D0, ref s_Descriptors0054F4D0Storage);
+
+    private static byte* Descriptors0054F4F0()
+        => NativeCopy(s_Descriptors_0054F4F0, ref s_Descriptors0054F4F0Storage);
+
+    private static byte* Descriptors0054F620()
+        => NativeCopy(s_Descriptors_0054F620, ref s_Descriptors0054F620Storage);
+
+    /// <summary>
+    /// Ghidra: <c>0x00408040</c> — <b>l'amorce de la fumee violette</b>, sous-type <b>57</b> du bloc
+    /// <c>0x00554528</c>, sous-zones 5 a 8. Absente de <c>Blaze.c</c> ; cinq instructions qui
+    /// empilent l'enregistrement et appellent <c>FUN_00408050</c>, seize octets plus loin —
+    /// <c>Legacy/Raw/Blaze/FUN_00408040.asm</c>.
+    ///
+    /// <para>
+    /// <c>FUN_00408050</c> est <b>le corps de <see cref="TickPurpleSmoke"/></b> a une adresse de
+    /// planche pres (trois occurrences, toutes <c>0x0054f2d8</c>). Meme creneau 57 que
+    /// <see cref="EntityHandler_00406120"/> dans le bloc des sous-zones 0 a 2 : c'est la meme
+    /// particule, une fois par groupe de sous-zones.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00408040(byte* e)
+        => TickPurpleSmoke(e, Descriptors0054F2D8());   // Ghidra: FUN_00408050, &DAT_0054f2d8
+
+    /// <summary>
+    /// Ghidra: <c>0x0040a670</c> — <b>la meme amorce pour les sous-zones 3, 4 et 9</b>, sous-type
+    /// <b>51</b> du bloc <c>0x00554ba8</c>. Absente de <c>Blaze.c</c> ;
+    /// <c>Legacy/Raw/Blaze/FUN_0040A670.asm</c>. Elle appelle <c>FUN_0040a680</c>, lui aussi
+    /// <see cref="TickPurpleSmoke"/> a la planche pres : <c>0x0054f450</c>.
+    /// </summary>
+    private static void EntityHandler_0040A670(byte* e)
+        => TickPurpleSmoke(e, Descriptors0054F450());   // Ghidra: FUN_0040a680, &DAT_0054f450
+
+    /// <summary>
+    /// Ghidra: <c>0x0040b1b0</c> — <b>la premiere amorce de la gerbe aux cinq phases</b>, sous-zones
+    /// 3, 4 et 9 : sous-type <b>0</b> du bloc <c>0x00554ba8</c>, donc <c>0xc0</c>. Absente de
+    /// <c>Blaze.c</c> ; <c>Legacy/Raw/Blaze/FUN_0040B1B0.asm</c>.
+    ///
+    /// <para>
+    /// <b>La forme exacte de <see cref="EntityHandler_00411860"/></b>, avec trois constantes
+    /// differentes : <c>+0x98 = 0</c> (les phases 2 et 3 feront naitre <c>0 + 0xc0 = 0xc0</c>,
+    /// c'est-a-dire elle-meme), <c>+0x96 = 9</c>, et la planche de role 2
+    /// <c>0x0054f620</c>. Le corps appele, <c>FUN_0040b1f0</c>, est
+    /// <see cref="TickFivePhaseBurst"/> sur la planche <c>0x0054f450</c> — quatre adresses de
+    /// planche, rien d'autre.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040B1B0(byte* e)
+    {
+        *(short*)(e + 0x98) = 0;
+        *(short*)(e + 0x96) = 9;
+
+        if (*(short*)(e + 0x14) == 2 && *(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F620();       // Ghidra: &DAT_0054f620
+        }
+
+        TickFivePhaseBurst(e, Descriptors0054F450());          // Ghidra: FUN_0040b1f0
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x0040b900</c> — <b>la seconde amorce</b>, sous-type <b>1</b> du meme bloc
+    /// (<c>0xc1</c>). <c>+0x98 = 1</c>, donc elle aussi se reproduit elle-meme ; <c>+0x96 = 7</c> ;
+    /// planche de role 2 <c>0x0054f628</c>, le second enregistrement de
+    /// <see cref="s_Descriptors_0054F620"/>. Meme corps appele. Absente de <c>Blaze.c</c> ;
+    /// <c>Legacy/Raw/Blaze/FUN_0040B900.asm</c>.
+    /// </summary>
+    private static void EntityHandler_0040B900(byte* e)
+    {
+        *(short*)(e + 0x98) = 1;
+        *(short*)(e + 0x96) = 7;
+
+        if (*(short*)(e + 0x14) == 2 && *(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F620() + 8;   // Ghidra: &DAT_0054f628
+        }
+
+        TickFivePhaseBurst(e, Descriptors0054F450());          // Ghidra: FUN_0040b1f0
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00409c10 @ 0x00409c10 — <b>la bulle des sous-zones 5 a 8</b>, sous-type
+    /// <b>63</b> du bloc <c>0x00554528</c>. Decompilee dans <c>Blaze.c</c>, et identique a
+    /// <see cref="EntityHandler_004079E0"/> comme a <c>FUN_0040fac0</c> a la planche pres :
+    /// <c>0x0054f300</c>, le separateur de <see cref="s_Descriptors_0054F2D8"/>. Le corps est
+    /// <see cref="TickRisingBubble"/>.
+    /// </summary>
+    private static void EntityHandler_00409C10(byte* e)
+        => TickRisingBubble(e, Descriptors0054F2D8() + 0x28);   // Ghidra: &DAT_0054f300
+
+    /// <summary>
+    /// Ghidra: FUN_0040c820 @ 0x0040c820 — <b>la bulle des sous-zones 3, 4 et 9</b>, sous-type
+    /// <b>63</b> du bloc <c>0x00554ba8</c>. Meme corps, planche <c>0x0054f4e8</c> — le dernier
+    /// enregistrement de <see cref="s_Descriptors_0054F4D0"/>.
+    /// </summary>
+    private static void EntityHandler_0040C820(byte* e)
+        => TickRisingBubble(e, Descriptors0054F4D0() + 0x18);   // Ghidra: &DAT_0054f4e8
+
+    /// <summary>
+    /// Ghidra: FUN_00409a30 @ 0x00409a30 — <b>l'eclat des sous-zones 5 a 8</b>, sous-type
+    /// <b>50</b> du bloc <c>0x00554528</c>. Decompilee dans <c>Blaze.c</c> ; identique a
+    /// <see cref="EntityHandler_00407800"/> et a <c>FUN_0040f470</c> a la planche pres :
+    /// <c>0x0054f310</c>. Le corps est <see cref="TickBurstingSpark"/>.
+    /// </summary>
+    private static void EntityHandler_00409A30(byte* e)
+        => TickBurstingSpark(e, Descriptors0054F308() + 8);   // Ghidra: &DAT_0054f310
+
+    /// <summary>
+    /// Ghidra: FUN_0040ca80 @ 0x0040ca80 — <b>l'eclat des sous-zones 3, 4 et 9</b>, sous-type
+    /// <b>50</b> du bloc <c>0x00554ba8</c>. Meme corps, planche <c>0x0054f4f8</c>.
+    /// </summary>
+    private static void EntityHandler_0040CA80(byte* e)
+        => TickBurstingSpark(e, Descriptors0054F4F0() + 8);   // Ghidra: &DAT_0054f4f8
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f388</c> — <b>la jumelle de <see cref="s_Descriptors_0054F230"/></b>
+    /// pour les sous-zones 5 a 8 : les memes quatre tuiles <c>0x1f x 0x1f</c>, octet pour octet.
+    /// Bornee en bas par <c>0x0054f380</c>, dont les attributs different (<c>01 03</c> au lieu de
+    /// <c>00 01</c>), et en haut par <c>0x0054f3a8</c>, la jumelle de <c>0x0054f250</c> — la borne
+    /// de sa jumelle. <see cref="EntityHandler_00408C60"/> tire son image entre 0 et 3 : les quatre
+    /// sont atteignables.
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F388 =
+    [
+        0x00, 0x40, 0x1f, 0x1f, 0x00, 0x01, 0x18, 0x00,   // 0x0054f388
+        0x20, 0x40, 0x1f, 0x1f, 0x00, 0x01, 0x18, 0x00,   // 0x0054f390
+        0x40, 0x40, 0x1f, 0x1f, 0x00, 0x01, 0x18, 0x00,   // 0x0054f398
+        0x60, 0x40, 0x1f, 0x1f, 0x00, 0x01, 0x18, 0x00,   // 0x0054f3a0
+    ];
+
+    private static byte* s_Descriptors0054F388Storage;
+
+    private static byte* Descriptors0054F388()
+        => NativeCopy(s_Descriptors_0054F388, ref s_Descriptors0054F388Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00409d00 @ 0x00409d00 — <b>l'etincelle qui tremble, sous-zones 5 a 8</b>,
+    /// sous-type <b>49</b> du bloc <c>0x00554528</c>. Decompilee dans <c>Blaze.c</c> ; identique a
+    /// <see cref="EntityHandler_00407AD0"/> a la planche pres : <c>0x0054f2e8</c>, soit
+    /// <see cref="s_Descriptors_0054F2D8"/> au decalage 2, comme la jumelle.
+    /// </summary>
+    private static void EntityHandler_00409D00(byte* e)
+        => TickJitterSpark_00407AD0(e, Descriptors0054F2D8() + 0x10);   // Ghidra: &DAT_0054f2e8
+
+    /// <summary>
+    /// Ghidra: FUN_0040cc60 @ 0x0040cc60 — <b>la meme, sous-zones 3, 4 et 9</b>, sous-type
+    /// <b>49</b> du bloc <c>0x00554ba8</c>. Planche <c>0x0054f4d0</c>, les trois premiers
+    /// enregistrements de <see cref="s_Descriptors_0054F4D0"/>.
+    /// </summary>
+    private static void EntityHandler_0040CC60(byte* e)
+        => TickJitterSpark_00407AD0(e, Descriptors0054F4D0());   // Ghidra: &DAT_0054f4d0
+
+    /// <summary>
+    /// Ghidra: FUN_00408c60 @ 0x00408c60 — <b>l'eclat qui retombe en scintillant, sous-zones 5 a
+    /// 8</b>, sous-type <b>53</b> du bloc <c>0x00554528</c>. Decompilee dans <c>Blaze.c</c> ;
+    /// identique a <see cref="EntityHandler_00406DF0"/> a la planche pres : <c>0x0054f388</c>.
+    /// </summary>
+    private static void EntityHandler_00408C60(byte* e)
+        => TickFallingGlint_00406DF0(e, Descriptors0054F388());   // Ghidra: &DAT_0054f388
 }
