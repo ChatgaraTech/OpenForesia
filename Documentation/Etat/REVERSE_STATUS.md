@@ -21828,3 +21828,65 @@ membres — `RunWorldMapTick`, `CallEntityHook_0056afe8`, `CallEntityHook_0056af
 Les renvois `WorldMapTick.cs:NNNN` que porte cet historique — il y en a une vingtaine — **ne sont
 pas réécrits**. Ils sont datés et se lisent comme tels : ils désignent l'état du dépôt au jour de
 leur écriture. Pour retrouver une ligne, chercher le nom du symbole dans `Screens/State03/`.
+
+## 2026-09-16 (suite 23) — la mine, suite des effets : douze gestionnaires, dont six copies
+
+Point de départ : `0x004084F0`, demandé. Méthode de la séance : **comparer chaque effet restant de la
+mine à tous les corps connus avant d'en lire un seul**, au désassemblage normalisé (cibles de saut
+ramenées au début de la fonction, adresses de planche masquées), puis au cache de
+`census-duplicates.sh` (colonne LOOSE) pour les copies hors de la mine.
+
+### Six corps sans une ligne de logique neuve
+
+| gestionnaire | copie de | ce qui diffère |
+|---|---|---|
+| `0x004084F0` (5-8) | `0x00406680` | planche `0x0054f308`, copie de `0x0054f1b0` |
+| `0x00408AB0` (5-8) | `0x00406C40` | planche `0x0054f3a8`, copie de `0x0054f250` |
+| `0x00409120` (5-8) | `0x00406F60` | planche `0x0054f360`, copie de `0x0054f208` |
+| `0x0040C5D0` (3,4,9) | `0x00406810` | deux planches, **et** un compte à rebours `rand % 3 + 3` au lieu de `% 4 + 4` |
+| `0x0040D6C0` (zone 2) | `0x00407D70` | planche `0x0054f6d8` |
+| `0x00439D30` (zone 10) | `0x00407D70` | planche `0x005510a8` |
+
+Les trois premiers corps prennent désormais leur planche en paramètre (`TickInwardSpiral_00406680`,
+`TickFallingShard_00406C40`, `TickDarkeningSpray_00406F60`) ; `TickMineSparkle_00406810` prend en
+plus la base du compte à rebours. **Le paramètre a périmé quatre preuves de marge** — le sceau
+couvre le corps partagé, qui avait changé d'une instruction —, relues et rescellées : le `+0x40`
+n'est pas touché.
+
+### Trois corps qui frappent : ils sortent d'`Effects/`
+
+Le test d'appartenance a tranché : `Effects/` « ne décide de rien », et ces trois-là résolvent un
+coup ou appliquent un effet d'état. Ils vont dans `Combat/Projectiles.cs`, « ce qui part et ce qui
+rencontre ». **Placement à confirmer par Vincent** : si ce fichier doit rester au tir, un
+`Combat/AreaHits.cs` les accueillerait.
+
+- **`0x00407D70`, la bouffée qui blesse** — un corps pour trois zones. File droit le long du cap
+  reçu, grossit, s'assombrit ; frappe les quatre membres à moins de `0x50` au nom du propriétaire
+  `+0x74`, **attaque du bloc de modèle ramenée aux trois quarts** le temps de l'appel. Un membre
+  **en garde et tourné vers elle** l'éteint : c'est `FUN_004375A0`, transcrite
+  (`IsGuardingToward_004375A0`) — posture 0 ou 6, bit `4`, écart de cap dans `]0, 1000[` ou
+  `]0xc18, 0x1000[`. Elle est dans `Blaze.c` mais **aucun appelant n'y figure**.
+- **`0x00409F40` / `0x0040CEA0`, l'onde qui afflige** — la cousine de l'onde de la forêt
+  `0x004134C0`, qui ne fait que marquer. Celle-ci applique **l'effet d'état numéro `+0x44`** par une
+  table de sauts de douze entrées (onze cibles : 4 et 9 vont au même bloc), chaque entrée étant une
+  enveloppe « garde-fou `0x004364B0`, puis appliqueur ». **Le lanceur est le grand-parent**
+  (`+0x6c` du `+0x6c`), et sans parent l'effet n'est jamais appliqué bien que le bit soit posé.
+  Les deux émissions ne diffèrent que par la marge d'arrêt, 2000 et 3000.
+- **`0x00482FF0`, la gerbe qui frappe en grossissant** — une seule adresse pour la mine, la vieille tour et la grotte scellée ; huit images, échelle en `t²`, vide
+  l'emplacement entier (`*e = 0`) à la fin. **Le placement est annulé en hauteur** : la hauteur
+  calculée avant `FUN_00533940` est réécrite après.
+
+### Deux effets neufs
+
+`0x0040C910` (décompilée) : attend une à trois images cachée par `0x4000`, puis part avec une pente
+qui partage la vitesse entre le plan et la montée. `0x0040BE50` : monte à vitesse constante et se
+rétracte passé un cap tiré à part. Deux nouvelles marges de 1, prouvées (« pose 0, ne l'écrit plus »).
+
+### Ce qui reste en zone 1, et pourquoi
+
+- **`0x00483B50`** est bloquée par **`FUN_00536090`** : Ghidra la lit à deux paramètres et trois
+  `__allshr` sans opérande — c'est une rotation de vecteur par la matrice que construit
+  `FUN_0051c300` (`Ordinal_366`), au calcul 64 bits. À transcrire au désassembleur d'abord.
+- `0x0040BCA0` (130 instr.), `0x00408EF0` (191), `0x0040B940` (217), `0x0040BF50` (449) : sans copie
+  connue.
+- `0x00443170` et `0x005413E0` ne sont pas dans les tables d'effets.

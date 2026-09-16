@@ -1,6 +1,6 @@
 ﻿# TODO
 
-Point d’entrée entre deux sessions. Mis à jour le **2026-09-15**. L'historique détaillé est dans
+Point d’entrée entre deux sessions. Mis à jour le **2026-09-16**. L'historique détaillé est dans
 `REVERSE_STATUS.md` (sections datées) ; ce fichier ne garde que l'état courant et la suite à faire.
 
 **Ne pas commit** — seul l'utilisateur commit, même après une tâche terminée.
@@ -27,24 +27,24 @@ socle commun, et il est entier.
 | | |
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
-| testés en jeu | **258** |
-| implémentés, jamais appelés | **200** |
-| à transcrire | **972** |
+| testés en jeu | **327** |
+| implémentés, jamais appelés | **240** |
+| à transcrire | **863** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
 | — | **tables statiques** (partout) | **274 / 274** |
 | 0 | **L'auberge** | **48 / 48** |
 | 3 | **La forêt** | **136 / 136** |
-| 1 | La mine abandonnée | 22 / 157 |
-| 2 | La montagne du dragon de feu | 18 / 42 |
-| 4 | La vieille tour | 22 / 176 |
-| 5 | Le Labyrinthe des morts | 19 / 160 |
-| 6 | Le château de l'immortel | 22 / 170 |
+| 1 | La mine abandonnée | 127 / 157 |
+| 2 | La montagne du dragon de feu | 20 / 42 |
+| 4 | La vieille tour | 24 / 176 |
+| 5 | Le Labyrinthe des morts | 20 / 160 |
+| 6 | Le château de l’immortel | 24 / 170 |
 | 7 | Les ruines souterraines | 17 / 35 |
 | 8 | La vallée d'argent | 17 / 46 |
 | 9 | Les ruines dans le lac | 17 / 41 |
-| 10 | La grotte scellée | 28 / 349 |
+| 10 | La grotte scellée | 31 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 

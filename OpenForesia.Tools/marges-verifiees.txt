@@ -33,10 +33,12 @@ EntityHandler_00414CD0/TickFivePhaseBurst | 0x0054F920 | +0x08 | TickFivePhaseBu
 TickMonsterOrbCast_004769A0 | 0x00551BA0 | +0x38 | TickMonsterOrbCast_004769A0,SpawnStatusEffectEntity_0047AC40,TickMonsterOrb_004769F0 | aa46ef9b1d8d | l'enfant nait par FUN_0047ac40 (0) ; ses 640 octets n'accedent jamais a +0x40
 
 # ---- marge 2 : +0x40 doit rester a 0 ou 1
-EntityHandler_00406810 | 0x0054F2A0 | +0x00 | EntityHandler_00406810,TickMineSparkle_00406810 | 4235ec1b8ec8 | 0 a la naissance, puis rand % 2 a chaque image ; rand rend 0..0x7fff
-EntityHandler_00406810 | 0x0054F2B0 | +0x00 | EntityHandler_00406810,TickMineSparkle_00406810 | 4235ec1b8ec8 | idem, seconde planche
-EntityHandler_00408680 | 0x0054F3F8 | +0x00 | EntityHandler_00408680,TickMineSparkle_00406810 | d533ca19f303 | idem, copie des sous-zones 5 a 8
-EntityHandler_00408680 | 0x0054F408 | +0x00 | EntityHandler_00408680,TickMineSparkle_00406810 | d533ca19f303 | idem
+EntityHandler_00406810 | 0x0054F2A0 | +0x00 | EntityHandler_00406810,TickMineSparkle_00406810 | 219a0496917d | 0 a la naissance, puis rand % 2 a chaque image ; rand rend 0..0x7fff
+EntityHandler_00406810 | 0x0054F2B0 | +0x00 | EntityHandler_00406810,TickMineSparkle_00406810 | 219a0496917d | idem, seconde planche
+EntityHandler_00408680 | 0x0054F3F8 | +0x00 | EntityHandler_00408680,TickMineSparkle_00406810 | b47e2f90ece3 | idem, copie des sous-zones 5 a 8
+EntityHandler_00408680 | 0x0054F408 | +0x00 | EntityHandler_00408680,TickMineSparkle_00406810 | b47e2f90ece3 | idem
+EntityHandler_0040C5D0 | 0x0054F5F8 | +0x00 | EntityHandler_0040C5D0,TickMineSparkle_00406810 | 17c2288ec5a6 | idem, copie des sous-zones 3, 4 et 9 (Blaze.c FUN_0040c5d0)
+EntityHandler_0040C5D0 | 0x0054F608 | +0x00 | EntityHandler_0040C5D0,TickMineSparkle_00406810 | 17c2288ec5a6 | idem
 EntityHandler_0040F190 | 0x0054F7F8 | +0x00 | EntityHandler_0040F190 | 66938188211e | pose 0, ne l'ecrit plus
 EntityHandler_004103D0 | 0x0054F808 | +0x00 | EntityHandler_004103D0,TickPurpleSmoke | dca2c62b59ea | trois ecritures de +0x40, toutes a 0
 EntityHandler_00413840 | 0x0054F920 | +0x00 | EntityHandler_00413840,TickPurpleSmoke | be7b71c6065d | idem (FUN_00413850)
@@ -59,3 +61,5 @@ EntityHandler_0040B1B0 | 0x0054F620 | +0x00 | EntityHandler_0040B1B0,TickFivePha
 EntityHandler_0040B900 | 0x0054F620 | +0x08 | EntityHandler_0040B900,TickFivePhaseBurst | 94dfa9e87a58 | idem, second enregistrement
 EntityHandler_0040B1B0/TickFivePhaseBurst | 0x0054F450 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | role 3 : pose atlas + 8 et 0
 EntityHandler_0040B900/TickFivePhaseBurst | 0x0054F450 | +0x08 | TickFivePhaseBurst | bd0ff40827f0 | idem
+EntityHandler_0040C910 | 0x0054F568 | +0x00 | EntityHandler_0040C910 | 1c05c35685ac | pose 0 a la naissance, ne l'ecrit plus (Blaze.c FUN_0040c910)
+EntityHandler_0040BE50 | 0x0054F4D0 | +0x18 | EntityHandler_0040BE50 | efe24ee3341c | pose 0 a la naissance, ne l'ecrit plus

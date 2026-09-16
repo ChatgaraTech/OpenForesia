@@ -1205,6 +1205,20 @@ public static unsafe partial class Blaze
             case 0x004087E0: EntityHandler_004087E0(record); return;
             case 0x00409E40: EntityHandler_00409E40(record); return;
             case 0x0040C460: EntityHandler_0040C460(record); return;
+            case 0x004084F0: EntityHandler_004084F0(record); return;
+            case 0x00408AB0: EntityHandler_00408AB0(record); return;
+            case 0x00409120: EntityHandler_00409120(record); return;
+            case 0x0040C5D0: EntityHandler_0040C5D0(record); return;
+            case 0x0040C910: EntityHandler_0040C910(record); return;
+            case 0x0040BE50: EntityHandler_0040BE50(record); return;
+            // La bouffee qui blesse, un corps pour trois zones — Combat/Projectiles.cs.
+            case 0x00407D70: EntityHandler_00407D70(record); return;
+            case 0x0040D6C0: EntityHandler_0040D6C0(record); return;
+            case 0x00439D30: EntityHandler_00439D30(record); return;
+            // L'onde qui afflige, mine et montagne du dragon de feu — Combat/Projectiles.cs.
+            case 0x00409F40: EntityHandler_00409F40(record); return;
+            case 0x0040CEA0: EntityHandler_0040CEA0(record); return;
+            case 0x00482FF0: EntityHandler_00482FF0(record); return;   // Combat/Projectiles.cs
             case 0x00408040: EntityHandler_00408040(record); return;
             case 0x00408C60: EntityHandler_00408C60(record); return;
             case 0x00409A30: EntityHandler_00409A30(record); return;

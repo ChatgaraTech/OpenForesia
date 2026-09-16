@@ -4,6 +4,27 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 23)
+
+- feat : `0x004084F0`, la grande spirale des sous-zones 5 a 8 — copie conforme de `0x00406680` a la
+  planche pres ; avec elle `0x00408AB0` (= `0x00406C40`) et `0x00409120` (= `0x00406F60`), trois
+  corps desormais parametres par leur planche
+- feat : `0x0040C5D0`, l'eclat scintillant des sous-zones 3, 4 et 9 — le corps de `0x00406810`, mais
+  son compte a rebours est tire par `rand % 3 + 3` et non `% 4 + 4`
+- feat : **la bouffee qui blesse**, `0x00407D70`, un corps pour trois zones (`0x0040D6C0` montagne du
+  dragon, `0x00439D30` grotte scellee) : frappe le groupe a 75 % de l'attaque du proprietaire, et s'eteint
+  sur un membre en garde tourne vers elle — `FUN_004375A0`, transcrite
+- feat : **l'onde qui afflige**, `0x00409F40` et `0x0040CEA0` : la cousine de l'onde de la foret, qui
+  applique l'effet d'etat `+0x44` par une table de douze enveloppes, au nom du grand-parent
+- feat : `0x00482FF0`, la gerbe qui frappe en grossissant — une adresse pour la mine, la vieille tour et la grotte scellee ; `0x0040C910`, l'eclat qui attend puis
+  part en biais ; `0x0040BE50`, la tuile qui monte puis se retracte
+- doc : les corps qui frappent quittent `Effects/` pour `Combat/Projectiles.cs` — test
+  d'appartenance « ne decide de rien » ; placement a confirmer
+- doc : `0x00483B50` reste bloquee par `FUN_00536090`, une rotation de vecteur dont Ghidra a perdu
+  les parametres
+- fix : quatre preuves de marge perimees par le parametrage de `TickMineSparkle_00406810`, relues et
+  rescellees ; deux marges de 1 nouvelles prouvees
+
 ## 2026-09-16 (suite 22)
 
 - feat : **neuf particules de la mine**, `Effects/MineParticles.cs`. Zone 1 : 109 -> 118. La table
