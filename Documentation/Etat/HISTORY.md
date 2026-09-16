@@ -4,6 +4,28 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 22)
+
+- feat : **neuf particules de la mine**, `Effects/MineParticles.cs`. Zone 1 : 109 -> 118. La table
+  `0x0056adc8` etant finie, le lot vient des tables d'effets `0056B0C8` / `0056B1C8` / `0056B2C8`
+- feat : **trois corps obtenus sans en ecrire une ligne** — `0x00409320` et `0x0040C730` sont
+  `0x004070F0`, `0x00409410` est `0x004071E0` (475 instructions), a l'adresse de planche pres. Les
+  deux corps existants prennent desormais leur planche en parametre, comme le reste du fichier
+- doc : **les trois planches de la mine sont identiques octet pour octet** — `0x0054f1b0`,
+  `0x0054f308` et `0x0054f4f0` portent les memes onze enregistrements, bornes des deux cotes de la
+  meme facon, et les deux decalages employes sont les memes dans les trois (enregistrements 3 et
+  7). Le compilateur a emis la meme particule une fois par bloc de sous-zones
+- feat : `0x0040A610`, la cinquieme amorce du flash de sortie — ancre 4 et genre `0x33`, la ou ses
+  deux sœurs prennent l'ancre 6 et le genre `0x39` : ce n'est pas une copie de plus
+- feat : `0x004092B0`, l'etincelle qui se repose sur le **plancher fige** `+0x64` de son parent et
+  non sur sa hauteur courante ; `0x004087E0`, l'escarbille qui monte en tournant et **borne
+  elle-meme** son image de planche a 3
+- feat : `0x00408DD0`, le semeur qui fait naitre six entites `0xff` en deux images autour du point
+  vise par la camera ; `0x00409E40`, l'eclair qui bat le voile plein cadre une image sur deux ;
+  `0x0040C460`, la braise a deux variantes qui ne noircit qu'en retombant
+- doc : quatre relevés au desassembleur gardes sous `Legacy/Raw/Blaze/` ;
+  `sh OpenForesia.Tools/check-descriptors.sh` repasse au vert, 0 marge a verifier
+
 ## 2026-09-16 (suite 21)
 
 - refactor : **`Handlers/Mine.cs` coupe en deux** a 3 734 lignes — `Mine.cs` (2 093 l.) et

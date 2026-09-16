@@ -1345,14 +1345,13 @@ public static unsafe partial class Blaze
     /// par un autre chemin ne la tuerait pas — il n'y en a pas, mais c'est ce que le binaire dit.
     /// </para>
     /// </summary>
-    private static void EntityHandler_004070F0(byte* e)
+    private static void TickMineSpeck_004070F0(byte* e, byte* plate)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x10) = 1;
 
-            // &DAT_0054f1e8 = s_Descriptors_0054F1B0 + 7 enregistrements.
-            *(byte**)(e + 0x3c) = Descriptors0054F1B0() + 0x38;   // Ghidra: &DAT_0054f1e8
+            *(byte**)(e + 0x3c) = plate;
             e[0x0a] = 9;
             e[0x0b] = 0;
 
@@ -1896,12 +1895,12 @@ public static unsafe partial class Blaze
     /// <see cref="EntityHandler_004070F0"/> les 7 a 10. Quatre gestionnaires se partagent ce bloc.
     /// </para>
     /// </summary>
-    private static void EntityHandler_004071E0(byte* e)
+    private static void TickMineFan_004071E0(byte* e, byte* plate)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             *(short*)(e + 0x2e) = 0x14;
-            *(byte**)(e + 0x3c) = Descriptors0054F1B0() + 0x18;   // Ghidra: &DAT_0054f1c8
+            *(byte**)(e + 0x3c) = plate;
 
             *(short*)(e + 0x28) = (short)(CrtRand() % 0x258 + 0x1770);
             *(short*)(e + 0x2a) = (short)(CrtRand() % 0x258 + 0x1770);
@@ -2343,4 +2342,420 @@ public static unsafe partial class Blaze
     /// </summary>
     private static void EntityHandler_00408C60(byte* e)
         => TickFallingGlint_00406DF0(e, Descriptors0054F388());   // Ghidra: &DAT_0054f388
+
+    // =====================================================================
+    // LES TROIS EXEMPLAIRES D'UNE MEME PARTICULE
+    //
+    // La mine installe trois blocs de sous-zones, et le compilateur a emis la meme particule une
+    // fois par bloc. Les corps sont identiques A L'ADRESSE DE PLANCHE PRES — un seul `mov` les
+    // separe, et la preuve tient en un `diff` du desassemblage masque sur ce seul champ.
+    //
+    // Mieux : les TROIS PLANCHES SONT IDENTIQUES OCTET POUR OCTET. `0x0054f1b0`, `0x0054f308` et
+    // `0x0054f4f0` portent les memes onze enregistrements, bornes des deux cotes de la meme facon
+    // — le motif separateur `00 00 08 08 01 02 10 00` en bas, le changement de famille vers les
+    // tuiles `0x1f x 0x1f` en haut. Et les deux decalages employes sont les memes dans les trois :
+    // l'enregistrement 3 (`+0x18`) et l'enregistrement 7 (`+0x38`).
+    //
+    // C'est exactement le cas que la regle « relever la PLAGE, pas le descripteur » protege : une
+    // plage relevee au plus juste sur ce que lit un seul corps aurait manque les autres.
+    // =====================================================================
+
+    /// <summary>Ghidra: <c>0x004070f0</c> — sous-type <b>62</b> du bloc <c>0x00553ea8</c>,
+    /// sous-zones 0 a 2. Planche <c>&amp;DAT_0054f1e8</c>, soit
+    /// <see cref="s_Descriptors_0054F1B0"/> au septieme enregistrement. Voir
+    /// <see cref="TickMineSpeck_004070F0"/>.</summary>
+    private static void EntityHandler_004070F0(byte* e)
+        => TickMineSpeck_004070F0(e, Descriptors0054F1B0() + 0x38);
+
+    /// <summary>Ghidra: <c>0x00409320</c> — le meme corps pour les <b>sous-zones 5 a 8</b>, bloc
+    /// <c>0x00554328</c>. Absente de <c>Blaze.c</c> ; 75 instructions, et le desassemblage ne
+    /// differe de <see cref="EntityHandler_004070F0"/> que par
+    /// <c>mov dword [esi+3Ch],54F340h</c> — la meme planche, recopiee ailleurs.</summary>
+    private static void EntityHandler_00409320(byte* e)
+        => TickMineSpeck_004070F0(e, Descriptors0054F308() + 0x38);
+
+    /// <summary>Ghidra: <c>0x0040c730</c> — le meme corps pour les <b>sous-zones 3, 4 et 9</b>,
+    /// bloc <c>0x005547a8</c>. Absente de <c>Blaze.c</c> ; seule difference,
+    /// <c>mov dword [esi+3Ch],54F528h</c>.</summary>
+    private static void EntityHandler_0040C730(byte* e)
+        => TickMineSpeck_004070F0(e, Descriptors0054F4F0() + 0x38);
+
+    /// <summary>Ghidra: <c>0x004071e0</c> — sous-type <b>63</b> du bloc <c>0x00553ea8</c>,
+    /// sous-zones 0 a 2. Planche <c>&amp;DAT_0054f1c8</c>, troisieme enregistrement. Voir
+    /// <see cref="TickMineFan_004071E0"/>.</summary>
+    private static void EntityHandler_004071E0(byte* e)
+        => TickMineFan_004071E0(e, Descriptors0054F1B0() + 0x18);
+
+    /// <summary>Ghidra: <c>0x00409410</c> — le meme corps pour les <b>sous-zones 5 a 8</b>.
+    /// Absente de <c>Blaze.c</c> ; <b>475 instructions</b>, et le desassemblage masque sur le champ
+    /// de planche est identique a celui de <see cref="EntityHandler_004071E0"/> a la ligne pres :
+    /// <c>mov dword [esi+3Ch],54F320h</c>. Le plus gros corps de la mine obtenu sans en ecrire
+    /// une ligne.</summary>
+    private static void EntityHandler_00409410(byte* e)
+        => TickMineFan_004071E0(e, Descriptors0054F308() + 0x18);
+
+    /// <summary>
+    /// Ghidra: <c>0x0040a610</c> — <b>la cinquieme amorce du flash de sortie</b>, sous-zones 3, 4
+    /// et 9 de la mine. Absente de <c>Blaze.c</c> ; 18 instructions,
+    /// <c>Legacy/Raw/Blaze/FUN_0040A610.asm</c>.
+    ///
+    /// <para>
+    /// La sœur de <see cref="EntityHandler_004060C0"/> et de
+    /// <see cref="EntityHandler_00407FE0"/>, au meme dessin : elle copie la position et les trois
+    /// angles d'un <b>enregistrement d'ancrage</b> de la table <c>0x005fa5e0</c>, pose un genre
+    /// dans <c>+0x5c</c>, et confie tout a <see cref="TickAreaExitFlash_004183D0"/>.
+    /// </para>
+    /// <para>
+    /// <b>Deux choses la distinguent de ses deux sœurs</b> : l'ancre est l'enregistrement
+    /// <b>4</b> et non le 6 (<c>0x005fa86c - 0x1c = 0x005fa850</c>, soit
+    /// <c>0x005fa5e0 + 4 * 0x9c</c>), et le genre vaut <b>0x33</b> et non <c>0x39</c>. Ce n'est
+    /// donc pas une copie conforme de plus : c'est une autre sortie, vers un autre endroit.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040A610(byte* e)
+    {
+        byte* anchor = Mem.Entity(0x005fa5e0) + 4 * 0x9c;
+
+        *(int*)(e + 0x5c) = 0x33;
+        *(int*)(e + 0x1c) = *(int*)(anchor + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(anchor + 0x20);
+        *(int*)(e + 0x24) = *(int*)(anchor + 0x24);
+        *(short*)(e + 0x30) = *(short*)(anchor + 0x30);
+        *(short*)(e + 0x32) = *(short*)(anchor + 0x32);
+        *(short*)(e + 0x34) = *(short*)(anchor + 0x34);
+
+        TickAreaExitFlash_004183D0((uint*)e);
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004092b0</c> — <b>l'etincelle qui colle a son parent</b>, sous-zones 5 a 8 de
+    /// la mine. Absente de <c>Blaze.c</c> ; 33 instructions,
+    /// <c>Legacy/Raw/Blaze/FUN_004092B0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle n'a pas de mouvement propre.</b> A chaque image elle se repose sur son parent
+    /// <c>+0x6c</c> : son <c>x</c> et son <c>z</c> tels quels, mais pour la hauteur c'est le
+    /// <c>+0x64</c> du parent — <b>le plancher fige</b>, pas sa position courante. Elle reste donc
+    /// au sol sous un parent qui monte.
+    /// </para>
+    /// <para>
+    /// <b>Deux morts</b>, testees dans cet ordre : sous <c>-0xfa0000</c>, et quand le parent passe
+    /// a l'etat 2. Parent nul, et elle ne fait rien du tout — ni copie, ni naissance, ni mort.
+    /// </para>
+    /// <para>
+    /// La naissance ne vient qu'apres les deux morts, et elle pose la planche
+    /// <see cref="s_Descriptors_0054F418"/>, un demi-cote <c>+0x2e</c> de <c>-10</c> et les trois
+    /// teintes a <c>0x32</c> — elle naît donc sombre.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004092B0(byte* e)
+    {
+        byte* parent = *(byte**)(e + 0x6c);
+        if (parent == null) return;
+
+        *(int*)(e + 0x1c) = *(int*)(parent + 0x1c);
+        *(int*)(e + 0x20) = *(int*)(parent + 0x64);   // le plancher du parent, pas sa hauteur
+        *(int*)(e + 0x24) = *(int*)(parent + 0x24);
+
+        if (*(int*)(e + 0x20) < -0xfa0000) *(uint*)e &= 0x7fffffff;
+        if (*(short*)(parent + 0x10) == 2) *(uint*)e &= 0x7fffffff;
+
+        if (*(short*)(e + 0x10) != 0) return;
+
+        *(short*)(e + 0x10) = 1;
+        *(byte**)(e + 0x3c) = Descriptors0054F418();   // Ghidra: &DAT_0054f418
+        e[0x40] = 0;
+        e[0x0a] = 3;
+        e[0x0b] = 0;
+        *(short*)(e + 0x2e) = -10;
+        e[0x38] = 0x32;
+        e[0x39] = 0x32;
+        e[0x3a] = 0x32;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_00408dd0 @ 0x00408dd0 — <b>le semeur d'eclairs autour de la camera</b>,
+    /// sous-zones 5 a 8 de la mine. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Elle ne dure que deux images et elle ne se dessine pas.</b> Son seul travail est de se
+    /// teleporter a un point tire au hasard <b>autour du point vise par la camera</b> — plus ou
+    /// moins 800 unites en <c>x</c> et en <c>z</c>, et de 800 a 1200 <b>au-dessus</b> — puis d'y
+    /// faire naitre <b>trois</b> entites d'incantation de sous-type <c>0xff</c>, une par valeur de
+    /// <c>+0x14</c> (0, 1, 2). C'est <c>+0x14</c> que les trois filles liront pour savoir laquelle
+    /// elles sont.
+    /// </para>
+    /// <para>
+    /// <b>Elle recommence aux images 0 ET 1</b> : le test porte sur <c>+0x16 == 0 || +0x16 == 1</c>,
+    /// donc deux volees de trois avant que le compteur ne depasse 1 et ne l'eteigne. Six filles en
+    /// deux images, a deux endroits differents.
+    /// </para>
+    /// <para>
+    /// Avant chaque volee elle recopie <b>sept dwords</b> de <c>0x005e943c</c> dans son propre
+    /// <c>+0x7c</c> — le bloc de face de terrain — puis remet a zero ses vitesses
+    /// (<c>+0x50</c>/<c>+0x54</c>/<c>+0x58</c>) et ses trois champs <c>+0x44</c>/<c>+0x48</c>/<c>+0x4c</c>,
+    /// et se fait reposer sur le terrain par <see cref="FinalizeEntityPlacement2"/>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00408DD0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x16) = 0;
+        }
+
+        if (*(short*)(e + 0x16) == 0 || *(short*)(e + 0x16) == 1)
+        {
+            Mem.CopyDwords((uint*)Mem.Arena(0x005e943c), (uint*)(e + 0x7c), 7);   // FUN_005352e0
+
+            *(int*)(e + 0x1c) = (CrtRand() % 0x640 - 800) * 0x1000 + *Mem.Camera(0x005de068);
+            *(int*)(e + 0x24) = (CrtRand() % 0x640 - 800) * 0x1000 + *Mem.Camera(0x005de070);
+
+            int roll = CrtRand();
+            *(int*)(e + 0x50) = 0;
+            *(int*)(e + 0x54) = 0;
+            *(int*)(e + 0x58) = 0;
+            *(int*)(e + 0x44) = 0;
+            *(int*)(e + 0x48) = 0;
+            *(int*)(e + 0x4c) = 0;
+            *(int*)(e + 0x20) = (roll % 400 + 800) * 0x1000 + *Mem.Camera(0x005de06c);
+
+            FinalizeEntityPlacement2((uint*)e);                                  // FUN_00533940
+
+            for (short which = 0; which <= 2; which++)
+            {
+                *(short*)(e + 0x14) = which;
+                SpawnCastEntity_0047AAE0(e, 0xff, 0, -1);                        // FUN_0047aae0
+            }
+        }
+
+        *(short*)(e + 0x16) += 1;
+        if (*(short*)(e + 0x16) > 1) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004087e0</c> — <b>l'escarbille qui monte en tournant</b>, sous-zones 5 a 8 de
+    /// la mine. Absente de <c>Blaze.c</c> ; 97 instructions,
+    /// <c>Legacy/Raw/Blaze/FUN_004087E0.asm</c>.
+    ///
+    /// <para>
+    /// Planche <see cref="s_Descriptors_0054F3D8"/> <b>au premier enregistrement</b>, la meme que
+    /// <see cref="EntityHandler_00406AA0"/> pose — deux corps se partagent ce bloc.
+    /// </para>
+    /// <para>
+    /// <b>Naissance</b> : echelles a <c>0x1000</c>, teintes a <c>0x5a</c>, un cap tire sur
+    /// <c>0x1000</c>, une duree <c>+0x14</c> de <c>rand % 5 + 10</c>, et une cadence d'animation
+    /// <c>+0x16</c> qui vaut <b>cette duree divisee par trois</b> (le binaire l'ecrit en
+    /// multipliant par <c>0x55555556</c>).
+    /// </para>
+    /// <para>
+    /// <b>Ensuite, a chaque image</b> : elle monte de <c>0xa000</c>, avance le long de son cap de
+    /// <b>deux fois</b> ce qui reste de duree — donc de moins en moins —, s'assombrit de 6 par
+    /// canal, et grossit de 100 sur ses deux echelles. La duree tombe d'un par image et
+    /// <b>l'entite meurt des qu'elle atteint zero</b> : le test est <c>&lt;= 0</c> sur la valeur
+    /// deja decrementee.
+    /// </para>
+    /// <para>
+    /// L'image de la planche avance quand le compteur <c>+0x5c</c> atteint la cadence, et
+    /// <b>s'arrete a 3</b> : arrivee a 4 elle est ramenee a 3, si bien que la derniere image reste
+    /// affichee au lieu de deborder de la plage. C'est la borne que le corps se donne lui-meme.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004087E0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(byte**)(e + 0x3c) = Descriptors0054F3D8();   // Ghidra: &DAT_0054f3d8
+            *(short*)(e + 0x28) = 0x1000;
+            *(short*)(e + 0x2a) = 0x1000;
+            e[0x0a] = 5;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);
+            e[0x40] = 0;
+            *(int*)(e + 0x5c) = 0;
+
+            short life = (short)(CrtRand() % 5 + 10);
+            *(short*)(e + 0x14) = life;
+            *(short*)(e + 0x16) = (short)(life / 3);   // Ghidra: imul 55555556h — division par 3
+
+            e[0x38] = 0x5a;
+            e[0x39] = 0x5a;
+            e[0x3a] = 0x5a;
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(int*)(e + 0x20) += 0xa000;
+
+        short heading = *(short*)(e + 0x12);
+        short life2 = *(short*)(e + 0x14);
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * (life2 * 2);   // Ordinal_451
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * (life2 * 2);        // Ordinal_450
+
+        *(short*)(e + 0x14) = (short)(life2 - 1);
+        if (life2 - 1 <= 0) *(uint*)e &= 0x7fffffff;
+
+        BrightenEntityTint_00404DE0(e, -6, -6, -6);   // Ghidra: FUN_00404de0
+
+        *(short*)(e + 0x28) += 100;
+        *(short*)(e + 0x2a) += 100;
+
+        *(int*)(e + 0x5c) += 1;
+        if (*(int*)(e + 0x5c) < *(short*)(e + 0x16)) return;
+
+        *(int*)(e + 0x5c) = 0;
+        e[0x40]++;
+        if (e[0x40] >= 4) e[0x40] = 3;   // la derniere image reste, la plage ne deborde pas
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00409e40</c> — <b>l'eclair qui blanchit l'ecran</b>, sous-zones 5 a 8 de la
+    /// mine. Absente de <c>Blaze.c</c> ; 77 instructions,
+    /// <c>Legacy/Raw/Blaze/FUN_00409E40.asm</c>.
+    ///
+    /// <para>
+    /// <b>Naissance</b> : le son <c>0x2c</c> de la zone a la hauteur <c>0x300</c> et au gain
+    /// <c>0x2a00</c> — le plus fort de toute la mine —, puis <b>onze</b> entites d'incantation de
+    /// sous-type <c>0xde</c>, toutes avec les octets <c>+0x0a</c> et <c>+0x0b</c> de l'entite.
+    /// </para>
+    /// <para>
+    /// <b>Elle rejoue ensuite aux images 0, 3 et 7</b> : une douzieme fille a chaque fois, et le
+    /// compteur <c>+0x16</c> passe a 0 la premiere fois puis a 1 les deux suivantes — c'est ce que
+    /// les filles liront pour distinguer le premier coup des suivants.
+    /// </para>
+    /// <para>
+    /// <b>Le voile plein cadre bat une image sur deux.</b> A chaque image elle ecrit
+    /// <see cref="GameMemory.s_Unknown_005de024"/> : l'octet de tete a 1 pour l'allumer, les deux
+    /// canaux hauts a zero, et le canal bas a <c>0x1e</c> aux images impaires, a zero aux paires.
+    /// L'ecran clignote donc en bleu sombre pendant trente images, puis l'entite s'eteint.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00409E40(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x2c), 0x300, 0x2a00, 0, 0);
+
+            *(int*)(e + 0x5c) = 1;
+            for (int i = 0; i < 0x0b; i++)
+            {
+                SpawnCastEntity_0047AAE0(e, 0xde, e[0x0b], e[0x0a]);   // Ghidra: FUN_0047aae0
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        short beat = *(short*)(e + 0x12);
+        if (beat == 0 || beat == 3 || beat == 7)
+        {
+            *(int*)(e + 0x5c) = 0;
+            *(short*)(e + 0x16) = beat == 0 ? (short)0 : (short)1;
+
+            SpawnCastEntity_0047AAE0(e, 0xde, e[0x0b], e[0x0a]);
+        }
+
+        *(short*)(e + 0x12) += 1;
+
+        // Le voile : tete a 1, les deux canaux hauts a zero, le canal bas a 0x1e une image sur
+        // deux. Ghidra: `mov [5DE027h],1 ; test al,1 ; mov [5DE024h],1Eh ; jne ... ; mov [5DE024h],0`.
+        bool lit = (*(short*)(e + 0x12) & 1) != 0;
+        Mem.s_Unknown_005de024 = 0x01000000u | (lit ? 0x1eu : 0u);
+
+        if (*(short*)(e + 0x12) >= 0x1e) *(uint*)e &= 0x7fffffff;
+    }
+
+    /// <summary>
+    /// Ghidra: FUN_0040c460 @ 0x0040c460 — <b>la braise qui retombe</b>, sous-zones 3, 4 et 9 de
+    /// la mine. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// Planche <c>&amp;DAT_0054f500</c>, soit <see cref="s_Descriptors_0054F4F0"/> au
+    /// <b>deuxieme</b> enregistrement. Echelles tirees ensemble sur <c>0x800 + rand % 0x800</c> —
+    /// une seule valeur pour les deux axes, donc jamais etiree.
+    /// </para>
+    /// <para>
+    /// <b>Deux variantes, choisies par <c>+0x14</c>.</b> La variante <b>0</b> part de
+    /// <c>0x96000</c> au-dessus de sa pose, derive de <c>±5</c> cases par image et monte d'abord de
+    /// <c>15 a 29</c> ; la variante <b>non nulle</b> part d'une hauteur <b>tiree de son propre
+    /// numero</b> (<c>(+0x14 &amp; ~0x1f) * 0x80</c>), derive de <c>±15</c> et ne monte que de
+    /// <c>8 a 12</c>. La premiere va loin et haut, la seconde reste courte et se disperse.
+    /// </para>
+    /// <para>
+    /// <b>La vitesse verticale tombe d'un par image et devient negative</b> : c'est la chute. Le
+    /// noircissement ne commence que sous <c>-5</c> pour la variante 0 et sous <c>-10</c> pour
+    /// l'autre — la braise reste donc vive tout le temps qu'elle monte, et ne s'eteint qu'en
+    /// retombant, par pas de 10 sur les trois canaux jusqu'a zero.
+    /// </para>
+    /// <para>
+    /// <b>Le rouge est teste en <c>short</c> et les deux autres canaux en <c>char</c></b> : c'est
+    /// le rouge qui decide de la mort, et les deux autres suivent sans etre relus. Transcrit tel
+    /// quel.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_0040C460(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054F4F0() + 0x10;   // Ghidra: &DAT_0054f500
+            e[0x40] = 0;
+            e[0x0a] = 0x0c;
+            e[0x0b] = 0;
+
+            short scale = (short)(CrtRand() % 0x800 + 0x800);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            if (*(short*)(e + 0x14) == 0)
+            {
+                *(int*)(e + 0x50) = (CrtRand() % 10 - 5) * 0x1000;
+                *(int*)(e + 0x58) = (CrtRand() % 10 - 5) * 0x1000;
+                *(int*)(e + 0x54) = CrtRand() % 0x0f + 0x0f;
+                *(int*)(e + 0x20) += 0x96000;
+            }
+            else
+            {
+                *(int*)(e + 0x50) = (CrtRand() % 0x1e - 0x0f) * 0x1000;
+                *(int*)(e + 0x58) = (CrtRand() % 0x1e - 0x0f) * 0x1000;
+                *(int*)(e + 0x54) = CrtRand() % 5 + 8;
+                *(int*)(e + 0x20) += (*(short*)(e + 0x14) & ~0x1f) * 0x80;
+            }
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(int*)(e + 0x1c) += *(int*)(e + 0x50);
+        *(int*)(e + 0x24) += *(int*)(e + 0x58);
+        *(int*)(e + 0x20) += *(int*)(e + 0x54) * 0x1000;
+
+        int rise = *(int*)(e + 0x54) - 1;
+        *(int*)(e + 0x54) = rise;
+
+        bool fading = (rise < -5 && *(short*)(e + 0x14) == 0)
+                   || (rise < -10 && *(short*)(e + 0x14) != 0);
+        if (!fading) return;
+
+        short red = (short)(e[0x38] - 10);
+        sbyte green = (sbyte)(e[0x39] - 10);
+        sbyte blue = (sbyte)(e[0x3a] - 10);
+
+        if (red < 0)
+        {
+            red = 0;
+            green = 0;
+            blue = 0;
+            *(uint*)e &= 0x7fffffff;
+        }
+
+        e[0x38] = (byte)red;
+        e[0x39] = (byte)green;
+        e[0x3a] = (byte)blue;
+    }
 }
