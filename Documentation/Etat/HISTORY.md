@@ -4,6 +4,60 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 12)
+
+- fix : **`check-descriptors.sh` ratait deux familles entieres, en silence.** Ses deux passes
+  rendaient une liste plus courte, jamais une erreur — le mode d'echec le plus couteux de ce depot,
+  et cette fois c'est le garde-fou lui-meme qui l'avait
+- fix : la passe 2 ne reconnaissait que le motif LITTERAL `(e + 0x3c) = Descriptors...()`. Tout
+  site qui passe la planche AUTREMENT lui echappait : les corps factorises qui la prennent en
+  parametre (`TickRisingBubble(e, Descriptors0054F6F8())`) et les planches passees a un semeur
+  (`SpawnStatusEffectEntity_0047AC40(..., Descriptors00551BC8(), ...)`). Desormais tout appel
+  compte, ou qu'il apparaisse
+- fix : les **accesseurs alias** — `DescriptorsA() => DescriptorsB() + off` — sont resolus en
+  chaine. Sans cela leur marge sortait a zero, ce qui se lisait comme un defaut grave alors que
+  c'est un simple renvoi
+- fix : la passe 1 n'acceptait que le nom `s_Descriptors_<VA>`. Les tableaux qualifies
+  (`s_SplashDescriptors_...`, `s_DustDescriptors_...`, `s_TrapBurstDescriptors_...`) n'etaient donc
+  **pas relus dans le binaire du tout**
+- doc : mesure avant / apres — **53 -> 62 planches verifiees, 55 -> 155 sites mesures**, 0 erreur de
+  contenu, 0 plage non relevee. La correction est **strictement additive** : aucune ligne de
+  l'ancienne sortie n'a disparu
+- doc : le controle elargi signale **23 marges courtes, dont huit a UN seul enregistrement
+  restant** — `0x004038F0`, `0x004079E0`, `0x0040EF40`, `0x0040F260`, `0x00411860`, `0x00414CD0`,
+  `0x004459E0`, `0x004769A0`. Sept d'entre elles etaient invisibles jusqu'ici. Une marge de 1 n'est
+  sure que si le corps laisse `+0x40` a zero : a verifier corps par corps
+
+---
+
+
+## 2026-09-16 (suite 11)
+
+- feat : `0x004071E0`, **l'eventail** — sous-type 51, 1 568 octets absents de `Blaze.c`, le plus
+  gros corps de la mine. Sa taille trompe : c'est une cascade de QUATRE blocs quasi identiques,
+  meme forme que `FUN_004747F0`. Le geste : un tirage choisit un SECTEUR de 45 degres autour du
+  cap, ses deux points sont calcules a rayon 150 avec gigue, et un second tirage place l'entite a
+  un CRAN sur le segment qui les joint. Trois etats, trois genres, et une bande de quatre images
+- feat : `0x00408680` et `0x00408910` — les jumeaux de `0x00406810` et `0x00406AA0` pour les
+  sous-zones 5 a 8. Compares ligne par ligne : deux differences pour le premier, UNE pour le
+  second, et ce sont des adresses de planche. Zone 1 : 40 -> 43 implementes
+- doc : **les planches sont dupliquees comme les corps** — `0x0054f3d8`, `0x0054f3f8` et
+  `0x0054f408` reprennent octet pour octet `0x0054f280`, `0x0054f2a0` et `0x0054f2b0`. Le code est
+  factorise (`TickMineSparkle_00406810`, `TickMineWallDust_00406AA0`), la donnee non : ce sont des
+  adresses distinctes dans `.data`
+- doc : **QUATRE gestionnaires se partagent le bloc `0x0054f1b0`**, a quatre decalages —
+  `0x00406680` (+0), `0x00407800` (+1), `0x004071E0` (+3), `0x004070F0` (+7). Avec l'eventail, les
+  DEUX suites de quatre tuiles `8 x 8` de ce bloc ont enfin leur consommateur
+- fix : **point aveugle mesure dans `check-descriptors.sh`** — sa section 2 detecte les sites
+  d'installation sur le motif LITTERAL `(e + 0x3c) = DescriptorsXXXX()`. Des qu'une planche passe
+  en parametre, le site devient invisible et la marge n'est plus verifiee. Cinq planches de la mine
+  sont dans ce cas depuis la factorisation d'aujourd'hui, et les **dix corps parametres de la foret
+  y echappaient deja**. Le CONTENU reste verifie par la section 1. Marges consignees a la main dans
+  les bandeaux ; le script gagnerait a suivre un niveau de parametre
+
+---
+
+
 ## 2026-09-16 (suite 10)
 
 - feat : **six gestionnaires de la mine d'un coup** — `0x00407800`, `0x004079E0`, `0x00407AD0`,

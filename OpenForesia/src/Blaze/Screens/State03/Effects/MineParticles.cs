@@ -690,12 +690,38 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_00406810(byte* e)
+        => TickMineSparkle_00406810(e, Descriptors0054F2A0(), Descriptors0054F2B0());
+
+    /// <summary>
+    /// Ghidra: FUN_00408680 @ 0x00408680 — <b>le meme eclat, pour les sous-zones 5 a 8</b>.
+    /// Sous-type <b>60</b> du bloc <c>0x00554528</c>. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Compare a <see cref="EntityHandler_00406810"/> ligne par ligne : deux differences, et ce
+    /// sont deux adresses de planche.</b> Et les planches elles-memes sont des copies conformes —
+    /// <c>0x0054f3f8</c> reprend les deux enregistrements de <c>0x0054f2a0</c>, <c>0x0054f408</c>
+    /// ceux de <c>0x0054f2b0</c>, octet pour octet. Le jeu de 1998 a duplique le code ET la donnee,
+    /// une fois par groupe de sous-zones.
+    /// </para>
+    /// <para>
+    /// Le corps est donc ecrit UNE fois, avec ses deux planches en parametres : c'est une unite
+    /// reelle, deux sites l'emploient a l'identique.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00408680(byte* e)
+        => TickMineSparkle_00406810(e, Descriptors0054F3F8(), Descriptors0054F408());
+
+    /// <summary>
+    /// Le corps partage par <see cref="EntityHandler_00406810"/> (sous-zones 0 a 2) et
+    /// <see cref="EntityHandler_00408680"/> (sous-zones 5 a 8). Voir le premier pour ce qu'il fait.
+    /// </summary>
+    private static void TickMineSparkle_00406810(byte* e, byte* plateA, byte* plateB)
     {
         if (*(short*)(e + 0x10) == 0)
         {
             if (*(short*)(e + 0x14) == 0)
             {
-                *(byte**)(e + 0x3c) = Descriptors0054F2A0();   // Ghidra: &DAT_0054f2a0
+                *(byte**)(e + 0x3c) = plateA;
                 e[0x0a] = 7;
                 e[0x0b] = 0;
                 *(int*)(e + 0x20) += 0x50000;
@@ -703,7 +729,7 @@ public static unsafe partial class Blaze
 
             if (*(short*)(e + 0x14) == 1)
             {
-                *(byte**)(e + 0x3c) = Descriptors0054F2B0();   // Ghidra: &DAT_0054f2b0
+                *(byte**)(e + 0x3c) = plateB;
                 e[0x0a] = 2;
                 e[0x0b] = 0;
             }
@@ -895,10 +921,31 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void EntityHandler_00406AA0(byte* e)
+        => TickMineWallDust_00406AA0(e, Descriptors0054F280());
+
+    /// <summary>
+    /// Ghidra: FUN_00408910 @ 0x00408910 — <b>la meme poussiere, pour les sous-zones 5 a 8</b>.
+    /// Sous-type <b>55</b> du bloc <c>0x00554528</c>. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Compare a <see cref="EntityHandler_00406AA0"/> ligne par ligne : UNE difference, et c'est
+    /// l'adresse de la planche.</b> Et la planche <c>0x0054f3d8</c> est la copie conforme de
+    /// <c>0x0054f280</c> — les quatre memes tuiles, octet pour octet. Code et donnee dupliques,
+    /// comme pour <see cref="EntityHandler_00408680"/>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00408910(byte* e)
+        => TickMineWallDust_00406AA0(e, Descriptors0054F3D8());
+
+    /// <summary>
+    /// Le corps partage par <see cref="EntityHandler_00406AA0"/> (sous-zones 0 a 2) et
+    /// <see cref="EntityHandler_00408910"/> (sous-zones 5 a 8). Voir le premier pour ce qu'il fait.
+    /// </summary>
+    private static void TickMineWallDust_00406AA0(byte* e, byte* plate)
     {
         if (*(short*)(e + 0x10) == 0)
         {
-            *(byte**)(e + 0x3c) = Descriptors0054F280();   // Ghidra: &DAT_0054f280
+            *(byte**)(e + 0x3c) = plate;
             *(short*)(e + 0x28) = 0x1000;
             *(short*)(e + 0x2a) = 0x1000;
             e[0x0a] = 5;
@@ -1630,6 +1677,68 @@ public static unsafe partial class Blaze
         => NativeCopy(s_Descriptors_0054F418, ref s_Descriptors0054F418Storage);
 
     /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f3d8</c>, <c>&amp;DAT_0054f3f8</c>, <c>&amp;DAT_0054f408</c> — <b>les
+    /// trois planches des sous-zones 5 a 8, toutes copies conformes de celles des sous-zones
+    /// 0 a 2</b>.
+    ///
+    /// <para>
+    /// <c>0x0054f3d8</c> reprend les quatre tuiles de <see cref="s_Descriptors_0054F280"/>,
+    /// <c>0x0054f3f8</c> les deux de <see cref="s_Descriptors_0054F2A0"/>, <c>0x0054f408</c> les
+    /// deux de <see cref="s_Descriptors_0054F2B0"/> — <b>octet pour octet</b>, verifie au
+    /// desassembleur le 2026-09-16.
+    /// </para>
+    /// <para>
+    /// Elles sont relevees a part plutot que partagees : ce sont des adresses distinctes dans
+    /// <c>.data</c>, et les confondre ferait mentir la carte des symboles. C'est le CODE qui est
+    /// factorise (<see cref="TickMineSparkle_00406810"/>, <see cref="TickMineWallDust_00406AA0"/>), pas la donnee.
+    /// </para>
+    /// <para>
+    /// <b>La factorisation a d'abord sorti ces planches du controle de marge</b>, puis
+    /// <c>check-descriptors.sh</c> a ete corrige le meme jour : il ne reconnaissait que le motif
+    /// litteral <c>(e + 0x3c) = DescriptorsXXXX()</c> et ratait donc tout site qui passe la planche
+    /// en parametre. Il suit maintenant les deux formes, et ces cinq planches sont de nouveau
+    /// mesurees. Rien a faire ici, mais la lecon vaut d'etre gardee : <b>factoriser un corps peut
+    /// retirer sa donnee d'un garde-fou, et le garde-fou ne le dit pas</b>.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F3D8 =
+    [
+        0x00, 0xa0, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f3d8
+        0x20, 0xa0, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f3e0
+        0x40, 0xa0, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f3e8
+        0x60, 0xa0, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f3f0
+    ];
+
+    /// <summary>La jumelle de <see cref="s_Descriptors_0054F2A0"/> — voir
+    /// <see cref="s_Descriptors_0054F3D8"/>.</summary>
+    private static readonly byte[] s_Descriptors_0054F3F8 =
+    [
+        0x3f, 0x20, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f3f8
+        0x60, 0x20, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f400
+    ];
+
+    /// <summary>La jumelle de <see cref="s_Descriptors_0054F2B0"/> — voir
+    /// <see cref="s_Descriptors_0054F3D8"/>.</summary>
+    private static readonly byte[] s_Descriptors_0054F408 =
+    [
+        0x00, 0x20, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f408
+        0x20, 0x20, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f410
+    ];
+
+    private static byte* s_Descriptors0054F3D8Storage;
+    private static byte* s_Descriptors0054F3F8Storage;
+    private static byte* s_Descriptors0054F408Storage;
+
+    private static byte* Descriptors0054F3D8()
+        => NativeCopy(s_Descriptors_0054F3D8, ref s_Descriptors0054F3D8Storage);
+
+    private static byte* Descriptors0054F3F8()
+        => NativeCopy(s_Descriptors_0054F3F8, ref s_Descriptors0054F3F8Storage);
+
+    private static byte* Descriptors0054F408()
+        => NativeCopy(s_Descriptors_0054F408, ref s_Descriptors0054F408Storage);
+
+    /// <summary>
     /// Ghidra: <c>0x00408490</c> — <b>la marque accrochee a son porteur, seconde emission</b>,
     /// sous-type <b>48</b> du bloc <c>0x00554528</c>, sous-zones <b>5 a 8</b> de la mine. Absente
     /// de <c>Blaze.c</c> ; relevee au desassembleur, <c>Legacy/Raw/Blaze/FUN_00408490.asm</c>.
@@ -1679,6 +1788,207 @@ public static unsafe partial class Blaze
         {
             // +0x64 ici, +0x60 chez la jumelle. Ecrase le Y pris au porteur, comme elle.
             *(int*)(e + 0x20) = *(int*)(e + 0x64);
+        }
+    }
+
+    /// <summary>
+    /// Le point que <see cref="EntityHandler_004071E0"/> calcule huit fois : un decalage a
+    /// <c>angle</c>, de rayon <b>150</b>, avec une gigue de <c>±10</c> cases sur chaque composante.
+    ///
+    /// <para>
+    /// Le binaire l'emet <b>en ligne, huit fois</b> — quatre blocs de deux points. C'est une unite
+    /// reelle et non un decoupage de confort : les vingt instructions sont identiques a l'angle
+    /// pres. Le rayon vient de trois <c>lea</c> (<c>x3</c>, <c>x5</c>, <c>x5</c> = 75) puis d'un
+    /// doublement dans le <c>lea</c> final, soit 150.
+    /// </para>
+    /// <para>
+    /// <b>L'ordre des tirages compte</b> et il est respecte : sinus, puis la gigue de X, puis
+    /// cosinus, puis la gigue de Z. Deux appels au generateur par point, huit par naissance.
+    /// </para>
+    /// </summary>
+    private static void MineFanPoint_004071E0(short angle, out int x, out int z)
+    {
+        x = (int)Winsys3d.GetSinTableEntry(angle) * 150 + (CrtRand() % 0x14 - 10) * 0x1000;
+        z = Winsys3d.GetCosTableEntry(angle) * 150 + (CrtRand() % 0x14 - 10) * 0x1000;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x004071e0</c> — <b>l'eventail : une naissance placee sur un arc autour du
+    /// cap</b>. Sous-type <b>51</b> du bloc <c>0x00553ea8</c>, sous-zones 0 a 2 de la mine. Absente
+    /// de <c>Blaze.c</c> ; 1 568 octets releves au desassembleur — le plus gros corps de la mine a
+    /// ce jour, <c>Legacy/Raw/Blaze/FUN_004071E0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Sa taille trompe : c'est une cascade de quatre blocs quasi identiques</b>, la meme forme
+    /// que <c>FUN_004747F0</c> avait montree. Ce qui coute, c'est le nombre de FORMES distinctes,
+    /// pas le nombre d'octets — il n'y en a qu'une ici, emise quatre fois.
+    /// </para>
+    /// <para>
+    /// <b>LE GESTE : choisir un SECTEUR, puis un CRAN dedans.</b> Un tirage donne un secteur —
+    /// entre 0 et 5, ou entre 0 et 7 quand <c>+0x12</c> vaut 2 a l'entree. Le secteur designe deux
+    /// angles autour du cap <c>+0x32</c>, par pas de <c>0x200</c> (45 degres), et les deux points
+    /// correspondants sont calcules par <see cref="MineFanPoint_004071E0"/>. Un second tirage
+    /// choisit alors un cran parmi <c>N</c> sur le segment qui les joint, et l'entite s'y pose.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>0 ou 4</term><description>de <c>+0x200</c> a <c>-0x200</c>, en 8 crans</description></item>
+    ///   <item><term>1, ou 6-7 si <c>+0x12</c> = 2</term><description>de <c>-0x200</c> a <c>-0x400</c>, en 4 crans</description></item>
+    ///   <item><term>2 ou 5</term><description>de <c>-0x400</c> a <c>+0x400</c>, en 8 crans</description></item>
+    ///   <item><term>3</term><description>de <c>+0x400</c> a <c>+0x200</c>, en 4 crans</description></item>
+    /// </list>
+    /// <para>
+    /// Les quatre tests sont <b>mutuellement exclusifs par construction</b> : chaque valeur de
+    /// secteur en declenche exactement un, et tous sont couverts. Le bloc de repli du binaire
+    /// (<c>LAB_00407348</c>, qui charge les cinq registres avec le secteur lui-meme) n'est donc
+    /// jamais la derniere ecriture : il n'est traverse que pour atteindre le test suivant.
+    /// </para>
+    /// <para>
+    /// <b>L'interpolation TRONQUE avant d'interpoler.</b> Les deux points sont ramenes en unites
+    /// entieres (<c>&gt;&gt; 0xc</c>), le pas est divise, le resultat remis a l'echelle
+    /// (<c>&lt;&lt; 0xc</c>). Les fractions de case sont donc perdues avant le calcul, pas apres.
+    /// Transcrit tel quel.
+    /// </para>
+    /// <para>
+    /// <b>TROIS GENRES, lus dans <c>+0x12</c> a l'entree</b>, qui decident de l'echelle, de la
+    /// visibilite et de la duree : le genre 0 ne touche a rien ; le genre 1 grossit de
+    /// <c>0x400</c> ; le genre 2 retrecit de <c>0x320</c>. Puis <c>+0x12</c> cesse d'etre le genre
+    /// et devient la <b>duree</b> : <c>(rand % 5 + 8)</c>, double pour le genre 0.
+    /// </para>
+    /// <para>
+    /// <b>Trois etats.</b> L'etat 1 pose le bit <c>0x4000</c> a chaque image — l'entite ne se
+    /// montre pas —, le leve passe la troisieme image pour les genres 0 et 1 seulement, et bascule
+    /// en etat 2 des la neuvieme image OU sur une chance sur dix par image, en descendant alors de
+    /// <c>0xf000</c>. L'etat 2 derive de <c>±10</c> cases par image et joue sa bande de quatre
+    /// images, quatre prises chacune, avant de mourir.
+    /// </para>
+    /// <para>
+    /// <b>Sa planche est <see cref="s_Descriptors_0054F1B0"/> au decalage 3</b>
+    /// (<c>0x0054f1c8</c>). Avec elle, les DEUX suites de quatre tuiles <c>8 x 8</c> de ce bloc ont
+    /// leur consommateur : celle-ci prend les enregistrements 3 a 6,
+    /// <see cref="EntityHandler_004070F0"/> les 7 a 10. Quatre gestionnaires se partagent ce bloc.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004071E0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x2e) = 0x14;
+            *(byte**)(e + 0x3c) = Descriptors0054F1B0() + 0x18;   // Ghidra: &DAT_0054f1c8
+
+            *(short*)(e + 0x28) = (short)(CrtRand() % 0x258 + 0x1770);
+            *(short*)(e + 0x2a) = (short)(CrtRand() % 0x258 + 0x1770);
+
+            // Le genre, lu AVANT d'etre ecrase par la duree en fin de naissance.
+            short kind = *(short*)(e + 0x12);
+
+            short sector = kind == 2 ? (short)(CrtRand() % 8) : (short)(CrtRand() % 6);
+            short yaw = *(short*)(e + 0x32);
+
+            // Les cinq valeurs que le binaire porte en registres. Le repli de LAB_00407348 les
+            // charge avec le secteur lui-meme ; un bloc ecrit toujours par-dessus.
+            int ax = sector, az = sector, bx = sector, bz = sector;
+            int step = sector, steps = sector;
+
+            if (sector == 0 || sector == 4)
+            {
+                MineFanPoint_004071E0((short)(yaw + 0x200), out ax, out az);
+                MineFanPoint_004071E0((short)(yaw - 0x200), out bx, out bz);
+                step = CrtRand() % 8; steps = 8;
+            }
+            else if (sector == 1 || (kind == 2 && sector >= 6))
+            {
+                MineFanPoint_004071E0((short)(yaw - 0x200), out ax, out az);
+                MineFanPoint_004071E0((short)(yaw - 0x400), out bx, out bz);
+                step = CrtRand() % 4; steps = 4;
+            }
+            else if (sector == 2 || sector == 5)
+            {
+                MineFanPoint_004071E0((short)(yaw - 0x400), out ax, out az);
+                MineFanPoint_004071E0((short)(yaw + 0x400), out bx, out bz);
+                step = CrtRand() % 8; steps = 8;
+            }
+            else if (sector == 3)
+            {
+                MineFanPoint_004071E0((short)(yaw + 0x400), out ax, out az);
+                MineFanPoint_004071E0((short)(yaw + 0x200), out bx, out bz);
+                step = CrtRand() % 4; steps = 4;
+            }
+
+            // Le cran retenu, et l'interpolation. Tout est TRONQUE en unites entieres d'abord.
+            int crans = (short)step + 1;
+            int n = (short)steps;
+
+            int a = ax >> 0xc, b = bx >> 0xc;
+            *(int*)(e + 0x1c) += (a - (a - b) / n * crans) << 0xc;
+
+            a = az >> 0xc; b = bz >> 0xc;
+            *(int*)(e + 0x24) += (a - (a - b) / n * crans) << 0xc;
+
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+
+            *(int*)(e + 0x20) += -0xa000 - (CrtRand() % 0x14) * 0x1000;
+            *(int*)(e + 0x54) = *(int*)(e + 0x20);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            if (kind == 0) *(short*)(e + 0x9a) = 0;
+
+            if (kind == 1)
+            {
+                *(short*)(e + 0x9a) = 1;
+                *(short*)(e + 0x28) += 0x400;
+                *(short*)(e + 0x2a) += 0x400;
+            }
+
+            if (kind == 2)
+            {
+                *(short*)(e + 0x9a) = 2;
+                *(short*)(e + 0x28) += -0x320;
+                *(short*)(e + 0x2a) += -0x320;
+            }
+
+            short mode = *(short*)(e + 0x9a);
+            int longevity = (mode == 1 || mode == 2) ? 1 : 2;
+
+            *(short*)(e + 0x14) = 0;
+            *(short*)(e + 0x16) = 0;
+            e[0x40] = 0;
+            *(short*)(e + 0x12) = (short)((CrtRand() % 5 + 8) * longevity);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(uint*)e |= 0x4000;                          // pose a CHAQUE image
+            *(short*)(e + 0x14) += 1;
+
+            if (*(short*)(e + 0x14) > 3)
+            {
+                short mode = *(short*)(e + 0x9a);
+                if (mode == 0 || mode == 1) *(uint*)e &= 0xffffbfff;
+            }
+
+            // Deux portes vers l'etat 2 : la neuvieme image, ou une chance sur dix par image.
+            int roll = CrtRand() % 10;
+            if (*(short*)(e + 0x14) > 8 || roll == 0)
+            {
+                *(uint*)e &= 0xffffbfff;
+                *(int*)(e + 0x20) -= 0xf000;
+                *(short*)(e + 0x10) = 2;
+                *(short*)(e + 0x14) = 0;
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(int*)(e + 0x1c) += (CrtRand() % 0x14 - 10) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x14 - 10) * 0x1000;
+
+            *(short*)(e + 0x16) += 1;
+            byte frame = (byte)(*(short*)(e + 0x16) >> 2);
+            e[0x40] = frame;
+            if (frame == 4) *(uint*)e &= 0x7fffffff;
         }
     }
 }

@@ -49,8 +49,8 @@ d'appeler : un gestionnaire absent est donc enregistre par le plantage meme qu'i
 |---|---|
 | gestionnaires distincts atteignables | **1430** |
 | testes en jeu | **327** |
-| implementes, jamais appeles | **150** |
-| a transcrire | **953** |
+| implementes, jamais appeles | **153** |
+| a transcrire | **950** |
 
 La souche a corps vide `0x00401FA0` est exclue : elle occupe la majorite des creneaux
 et n'est pas un comportement.
@@ -63,7 +63,7 @@ et n'est pas un comportement.
 |---|---|---|---|---|
 | — | **tables statiques** (partout) | 274 | 274 | 219 |
 | 0 | L'auberge | 48 | 48 | 16 |
-| 1 | La mine abandonnee | 157 | 40 | 0 |
+| 1 | La mine abandonnee | 157 | 43 | 0 |
 | 2 | La montagne du dragon de feu | 42 | 18 | 0 |
 | 3 | La foret | 136 | 136 | 90 |
 | 4 | La vieille tour | 176 | 22 | 3 |
@@ -421,17 +421,14 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 
 ## Zone 1 — La mine abandonnee
 
-157 gestionnaires, 40 implementes, 0 testes.
+157 gestionnaires, 43 implementes, 0 testes.
 
 | gestionnaire | sous-zones | tables | implemente | teste |
 |---|---|---|---|---|
-| `0x004071E0` | 0,1,2 | 0056B2C8 | **non** | **non** |
 | `0x00407D70` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
 | `0x00408040` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
 | `0x004084F0` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
-| `0x00408680` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
 | `0x004087E0` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
-| `0x00408910` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
 | `0x00408AB0` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
 | `0x00408C60` | 5,6,7,8 | 0056B2C8 | **non** | **non** |
 | `0x00408DD0` | 5,6,7,8 | 0056B0C8 | **non** | **non** |
@@ -554,12 +551,15 @@ Les trois tables gravees dans `.data` que les passes `0x0047aa70`, `0x0047ab70` 
 | `0x00406DF0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00406F60` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x004070F0` | 0,1,2 | 0056B2C8 | oui | **non** |
+| `0x004071E0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00407800` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x004079E0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00407AD0` | 0,1,2 | 0056B2C8 | oui | **non** |
 | `0x00407C10` | 5,6,7,8 | 0056B0C8 | oui | **non** |
 | `0x00407FE0` | 5,6,7,8 | 0056B0C8 | oui | **non** |
 | `0x00408490` | 5,6,7,8 | 0056B2C8 | oui | **non** |
+| `0x00408680` | 5,6,7,8 | 0056B2C8 | oui | **non** |
+| `0x00408910` | 5,6,7,8 | 0056B2C8 | oui | **non** |
 | `0x00442E10` | 0,1,2,3,4,5,6,7,8,9 | 0056AEC8 | oui | **non** |
 | `0x00443100` | 3,4,9 | 0056AEC8 | oui | **non** |
 | `0x004431F0` | 0,1,2,3,4,9 | 0056AEC8 | oui | **non** |
