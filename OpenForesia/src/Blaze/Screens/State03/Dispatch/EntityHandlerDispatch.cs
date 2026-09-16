@@ -1121,6 +1121,7 @@ public static unsafe partial class Blaze
             // Les particules de la mine abandonnee (zone 1) — Effects/MineParticles.cs.
             case 0x00406120: EntityHandler_00406120(record); return;
             case 0x00406130: EntityHandler_00406130(record); return;
+            case 0x00406570: EntityHandler_00406570(record); return;
             case 0x00411860: EntityHandler_00411860(record); return;
             case 0x00414CD0: EntityHandler_00414CD0(record); return;
             case 0x004103D0: EntityHandler_004103D0(record); return;

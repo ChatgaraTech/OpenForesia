@@ -4,6 +4,20 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 3)
+
+- feat : `0x00406570`, **la marque accrochee a son porteur** — sous-type 48 du bloc `0x00553ea8`,
+  sous-zones 0-2 de la mine. Absente de `Blaze.c`, dix-sept instructions au desassembleur. Elle
+  suit son porteur par `+0x6c` et ne meurt jamais d'elle-meme. Zone 1 : 24 -> 25 implementes
+- doc : **sa hauteur est ecrite deux fois** — `Y` est pris au `+0x60` du PORTEUR (et non a son
+  `+0x20`), puis aussitot ecrase par le `+0x60` de l'entite elle-meme des que l'etat vaut 1. La
+  valeur prise au porteur est morte ; transcrite telle quelle
+- doc : planche `0x0054f2c0`, trois enregistrements, fin `0x54f2d8` — et **ce qui suit son
+  separateur est la copie conforme de ce qui suit celui de `0x0054f180`** : la donnee est dupliquee
+  comme les corps le sont
+
+---
+
 ## 2026-09-16 (suite 2)
 
 - feat : `0x00406120` / `0x00406130`, **trois particules en une fonction** — sous-type 57 du bloc
