@@ -4,6 +4,22 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 17)
+
+- feat : **dix autres decors de la mine**, `Handlers/Mine.cs`. Zone 1 : 78 -> 88
+- feat : `0x00454E10`, le mecanisme qui bascule au signal — il attend le bit 4 de `0x00571570` que
+  `0x00454D90` pose quand le groupe s'y rattache : une paire declencheur / mecanisme
+- feat : `0x00451A00`, la chute de pierres au bit `0x10` de la banque de script 3 ; `0x00452670`, le
+  debris qui se detache et tombe ; `0x00453E60`, le decor qui s'effondre dans le sol
+- feat : `0x00454130`, le decor qui respire (echelle verticale sur un sinus) ; `0x004528D0`, celui qui
+  file droit le long de son cap ; `0x00454BB0`, la navette et son circuit de huit etapes
+- feat : `0x00453280`, le decor a deux places, qui se tient toujours a la plus proche du point vise
+  par la camera (racine carree de winsys3d)
+- feat : `0x00451250` et `0x00452BD0`, les emetteurs a positions fixes — l'entite saute un instant
+  sur des coordonnees codees en dur (3 x 2 points, 12 points), y fait naitre l'effet `0x3c` et revient
+- doc : six relevés au desassembleur gardes sous `Legacy/Raw/Blaze/` ; `FUN_004551d0` lit aussi le
+  mot `0x00571570`, non transcrit
+
 ## 2026-09-16 (suite 16)
 
 - feat : **dix autres decors de la mine**, `Handlers/Mine.cs`. Zone 1 : 68 -> 78
