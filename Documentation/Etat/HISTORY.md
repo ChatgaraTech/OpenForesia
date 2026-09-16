@@ -4,6 +4,21 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 26)
+
+- feat : **`Ai/Mine/` ouvert — quatre creatures, douze corps**. Mine : 144 -> 150 sur 157 ; les
+  copies ferment aussi deux corps au Labyrinthe, un au chateau, un a la montagne et deux a la grotte
+- feat : **la Belle bleue** (`0x0048B530` + 2 copies) : frappe par contact a chaque image, nage,
+  enfle, et s'accroche a sa proie tant que le joueur ne se debat pas
+- feat : **la Salamandre** (`0x0048E3A0` + 1) : une volante qui choisit ses sorts par variante et
+  crache l'effet `0xDF`
+- feat : **l'Ogre** (`0x0048F230` + 3) : la charpente du Pourpre preux sans la parade, un combo et
+  une charge bondissante qui repousse la victime
+- feat : **la Chauve-souris** (`0x00489CA0` + 2) : pique depuis `0xc8` unites, et tourne en spirale
+  autour de sa proie avant de s'y accrocher
+- doc : les noms des sept routines restantes de la mine, relevés au bestiaire — Chef-Goblin, Ours
+  gris (un second corps), Mille-patte, Scorpion, Jeune dragon, Troll, Araignee
+
 ## 2026-09-16 (suite 25)
 
 - feat : **dix routines d'IA de la mine, et une de la vieille tour, sans une ligne de comportement

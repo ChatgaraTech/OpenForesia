@@ -21981,3 +21981,48 @@ Treize routines sans copie écrite : `0x004889A0`, `0x00489CA0` (= `0x004D01C0`,
 (= `0x004F9C70`), `0x004901B0` (28 lignes de `0x00489CA0`), `0x00491650`, `0x004921A0`,
 `0x004944E0`, `0x00494D10` (= `0x004F23D0`), `0x004965B0`, `0x00497370`. Six d'entre elles ont un
 jumeau exact ailleurs : les écrire une fois en ferme deux.
+
+## 2026-09-16 (suite 26) — quatre créatures de la mine, douze corps : `Ai/Mine/` est ouvert
+
+Demandé : « les 6 IA à jumeau ». Le répertoire `Ai/Mine/` a été proposé avec le choix et validé.
+Les noms viennent du bestiaire — `especes.csv` (colonne `ia`) croisé à `modeles.csv`, zone 1 —,
+jamais d'une supposition ; le même croisement confirme au passage les dix copies de la suite 25
+(Ours gris = Grizzly, Géant vert = Géant, Maudite = Willie, Poisson tueur = Poisson volant,
+Vipère = Crotale, et les deux Goblins).
+
+| fichier | créature | corps | modèle le plus proche |
+|---|---|---|---|
+| `BlueBeauty.cs` | Belle bleue | `0x0048B530`, `0x004BC530`, `0x004BE200` | aucun — une nageuse |
+| `Salamander.cs` | Salamandre | `0x0048E3A0`, `0x00497EF0` | le Gremlin |
+| `Ogre.cs` | Ogre | `0x0048F230`, `0x00494D10`, `0x004F9C70`, `0x004F23D0` | le Pourpre preux, sans la parade |
+| `Bat.cs` | Chauve-souris | `0x00489CA0`, `0x004901B0`, `0x004D01C0` | le Gremlin |
+
+**Quatre lectures pleines pour douze corps.** Les copies sont prouvées comme à la suite 25 : diff
+STRICT, puis, pour chaque écart (`0x00494D10`, `0x004901B0`, `0x004BE200`), lecture côte à côte du
+passage — ce sont chaque fois des chargements réordonnés dont la formule est la même.
+
+### Ce que chacune apporte
+
+- **La Belle bleue frappe par contact, à chaque image** : le bit de geste est posé sans condition
+  en tête de routine. Elle nage avec l'intégration des terrestres (`FUN_00488160`), gonfle ses
+  échelles avec sa poussée, et son bond sur la proie (posture 7) la tient accrochée tant que le
+  joueur ne se débat pas — le même pad que le Poisson volant.
+- **La Salamandre choisit ses sorts par variante** (`0x005528b0`, deux par variante : Balle de
+  feu, Mur de flammes, Boule de feu, Flèches magiques, Congèlo, Démon polaire) et **crache** (effet
+  `0xDF`, posture 12). Même registre non chargé que le Gremlin au-delà de la variante 3.
+- **L'Ogre** : un combo à l'image 12 de l'animation 6, et une **charge bondissante** qui repousse
+  la victime loin de lui plutôt que dans son cap.
+- **La Chauve-souris** pique (montée à `0xc8` unités puis chute de `0x21` images) et, en variante 1,
+  **tourne en spirale autour de sa proie avant de s'y accrocher** à 80 unités, mordant au quart de
+  son attaque.
+
+### Deux simplifications de code, sans effet
+
+`SwimBlueBeauty_0048BC6D` appelle désormais `IntegrateSceneEntityMotion_00488160` au lieu d'en
+porter la copie. Et le flottement de la Chauve-souris réutilise `AdvanceSalamanderBob` : le même
+pas de phase dans les deux binaires.
+
+### Ce qui reste en zone 1
+
+Sept routines, sans jumeau écrit : `0x004889A0` Chef-Goblin, `0x0048DB30` Ours gris (sous-zones 6 à 8 — un autre corps que le Grizzly de `0x00493C70`), `0x00491650` Mille-patte,
+`0x004921A0` Scorpion, `0x004944E0` Jeune dragon, `0x004965B0` Troll, `0x00497370` Araignée.

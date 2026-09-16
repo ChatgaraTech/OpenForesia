@@ -173,6 +173,34 @@ public static unsafe partial class Blaze
             // d'adresse, 0x00552880, dont les quatre rangees sont celles de 0x00552868.
             case 0x00488210: TickSceneEntityAi_00488210(record); return;
 
+            // LA BELLE BLEUE — sous-type 7 de la mine (sous-zones 5 a 8), et deux copies au Labyrinthe
+            // des morts. Ai/Mine/BlueBeauty.cs.
+            case 0x0048B530:
+            case 0x004BC530:
+            case 0x004BE200:
+                TickSceneEntityAi_0048B530(record); return;
+
+            // LA SALAMANDRE — sous-type 12 de la mine (sous-zone 6), et sa copie de la montagne du
+            // dragon de feu. La charpente du Gremlin, avec ses propres postures. Ai/Mine/Salamander.cs.
+            case 0x0048E3A0:
+            case 0x00497EF0:
+                TickSceneEntityAi_0048E3A0(record); return;
+
+            // L'OGRE — sous-type 14 des deux blocs de la mine, et ses deux copies de la grotte scellee.
+            // La charpente du Pourpre preux sans la parade. Ai/Mine/Ogre.cs.
+            case 0x0048F230:
+            case 0x00494D10:
+            case 0x004F9C70:
+            case 0x004F23D0:
+                TickSceneEntityAi_0048F230(record); return;
+
+            // LA CHAUVE-SOURIS — sous-type 3 des deux blocs de la mine, et sa copie du chateau de
+            // l'immortel. La charpente du Gremlin. Ai/Mine/Bat.cs.
+            case 0x00489CA0:
+            case 0x004901B0:
+            case 0x004D01C0:
+                TickSceneEntityAi_00489CA0(record); return;
+
             // 0x004a5f10 est un DUPLICATA de 0x00486ee0 : 299 instructions comparees une a une,
             // zero difference. Meme corps, deux creneaux.
             case 0x004A5F10: EntityHandler_00486EE0((uint*)record); return;

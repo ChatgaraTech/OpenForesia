@@ -53,7 +53,7 @@ décompilé que cinq corps sur toute cette plage. Tous demandent le désassemble
 | zone | lieu | gestionnaires | dont IA | IA écrites |
 |---|---|---|---|---|
 | **0** | **L'auberge** | **2** | **1** | **1 — complète** |
-| 1 | La mine abandonnée | 23 | 17 | 10 |
+| 1 | La mine abandonnée | 23 | 17 | 16 |
 | 2 | La montagne du dragon de feu | 2 | 1 | 0 |
 | **3** | **La forêt** | **23** | **22** | **22 — complète** |
 | 4 | La vieille tour | 22 | 10 | 0 |
