@@ -3394,4 +3394,341 @@ public static unsafe partial class Blaze
 
         SilencePads();
     }
+
+    // =====================================================================
+    // L'EFFONDREMENT — creneau 31 du bloc 0x005539a8, le dernier de la table
+    //
+    // 1354 octets, le plus gros corps de la table 0x0056adc8 de la mine, et son seul a huit etats
+    // enchaines. La masse tombe, s'ecrase, puis PART EN COURBE : quatre de ses etats deplacent
+    // l'entite en coordonnees polaires — cap +0x14, rayon +0x16 divise par deux — en faisant
+    // varier le cap, le rayon, ou les deux. C'est ce qui lui donne sa trajectoire de debris lance.
+    //
+    // En plus de sa propre chute, elle surveille A CHAQUE IMAGE le membre du groupe que designe
+    // l'octet 0x005e9062, et lance le script 3 sur lui des qu'il passe sous -0x384000 — le fond du
+    // gouffre. C'est la seule chose de ce corps qui ne concerne pas la masse elle-meme.
+    // =====================================================================
+
+    /// <summary>
+    /// Un pas en coordonnees polaires, partage par les etats 3, 4, 6 et 7 de
+    /// <see cref="EntityHandler_00451B40"/> : la position avance de
+    /// <c>(sin, cos)</c> du cap <c>+0x14</c>, multiplies par <b>la moitie</b> du rayon
+    /// <c>+0x16</c>. Le binaire relit <c>+0x16</c> entre les deux multiplications ; rien ne
+    /// l'ecrit entre-temps.
+    /// </summary>
+    private static void CollapseArcStep(byte* e)
+    {
+        short heading = *(short*)(e + 0x14);
+        int half = *(short*)(e + 0x16) >> 1;
+
+        *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(heading) * half;   // Ordinal_451
+        *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(heading) * half;        // Ordinal_450
+    }
+
+    /// <summary>
+    /// La surveillance du membre tombe. L'octet <c>0x005e9062</c> — dans la banque d'etat 2 —
+    /// designe un emplacement du groupe ; des que sa hauteur passe sous <c>-0x384000</c>, le
+    /// script <b>3</b> part sur lui.
+    ///
+    /// <para>
+    /// <b>Mais pas forcement sur lui.</b> Trois candidats sont essayes dans l'ordre : l'emplacement
+    /// designe s'il est actif, sinon le meneur <c>0x005de538</c> s'il l'est, sinon <b>le plus petit
+    /// emplacement actif</b> — la boucle de repli descend de 3 a 0 et garde la derniere trouvaille,
+    /// donc la plus basse. Aucun actif, et rien ne part.
+    /// </para>
+    /// <para>L'etat <c>0xff</c> desarme la surveillance.</para>
+    /// </summary>
+    private static void WatchFallenMember(byte* e)
+    {
+        byte* slots = Inp.s_SlotFlags_005e93c0;
+        int watched = Mem.Arena(0x005e9062)[0];
+
+        if (*(int*)(slots + watched * 0x9c + 0x20) >= -0x384000) return;   // 0xffc7c000
+        if (*(short*)(e + 0x10) == 0xff) return;
+
+        byte* member = slots + watched * 0x9c;
+        if (PartySlotIsActive(member))
+        {
+            RunEntityScript(s_Unknown_005e97cc, member, 3);
+            return;
+        }
+
+        byte* leader = slots + (byte)Mem.s_Unknown_005de538 * 0x9c;
+        if (PartySlotIsActive(leader))
+        {
+            RunEntityScript(s_Unknown_005e97cc, leader, 3);
+            return;
+        }
+
+        // Ghidra: la boucle descend de 3 a 0 et ecrase son candidat a chaque trouvaille ; elle
+        // rend donc le PLUS PETIT emplacement actif, pas le premier rencontre. 0x63 est la
+        // sentinelle « aucun ».
+        int found = 0x63;
+        for (int i = 3; i >= 0; i--)
+        {
+            if (PartySlotIsActive(slots + i * 0x9c)) found = i;
+        }
+
+        if (found == 0x63) return;
+        RunEntityScript(s_Unknown_005e97cc, slots + found * 0x9c, 3);
+    }
+
+    /// <summary>Un emplacement de groupe est actif quand son mot de tete porte le bit de signe et
+    /// aucun bit de <c>0x50000000</c> — la lecture que font <see cref="WatchFallenMember"/>,
+    /// <see cref="PartyMembersInBox"/> et <see cref="ActivePartySlotCount_00466D70"/>.</summary>
+    private static bool PartySlotIsActive(byte* member)
+    {
+        uint flags = *(uint*)member;
+        return (flags & 0x80000000) != 0 && (flags & 0x50000000) == 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00451b40</c> — <b>l'effondrement</b>, sous-type <b>31</b> du bloc
+    /// <c>0x005539a8</c>, sous-zones 0 a 2. Absente de <c>Blaze.c</c> ; 1354 octets,
+    /// <c>Legacy/Raw/Blaze/FUN_00451B40.asm</c>. <b>Le dernier creneau de la table
+    /// <c>0x0056adc8</c> de la mine.</b>
+    ///
+    /// <para>
+    /// Comme les deux chutes de pierres (<see cref="EntityHandler_00451A00"/>,
+    /// <see cref="EntityHandler_004518D0"/>), elle dort tant que le bit <c>0x10</c> du premier
+    /// octet de la banque 3 n'est pas pose. Elle naît alors a l'etat 2. <b>Pendant les etats 3 a
+    /// 7, deux effets <c>0x33</c> naissent par image</b>, sans condition : c'est la trainee.
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>2</term><description>vingt images d'attente, puis l'etat 1 avec le cap de
+    ///     depart <c>0x514</c>, rayon et compteurs a zero</description></item>
+    ///   <item><term>1</term><description><b>la chute</b> : la hauteur perd <c>+0x12 &lt;&lt; 12</c>
+    ///     par image (vitesse plafonnee a 10) et l'assiette <c>+0x34</c> perd 10. Au plancher
+    ///     <c>-0x2ee000</c> : le son <c>0x2c</c> une seule fois, onze effets <c>0x32</c>, etat 3,
+    ///     et — si le bit <c>0x20</c> de son mot d'etat est pose — le script <b>0</b> sur le membre
+    ///     surveille</description></item>
+    ///   <item><term>3</term><description>le cap <b>recule de 10 par image</b> et le rayon monte
+    ///     d'un jusqu'a 20 : la courbe se resserre en accelerant. Le lacet <c>+0x32</c> tourne de
+    ///     la moitie de <c>+0x44</c>, qui monte lui aussi jusqu'a 20, et l'assiette remonte de 5
+    ///     par image, plafonnee a zero. Cap sous <c>-200</c> : etat 4, avec <c>+0x5c = -10</c>
+    ///     </description></item>
+    ///   <item><term>4</term><description>le cap n'avance plus d'un pas fixe mais de <c>+0x5c</c>,
+    ///     qui gagne 9 par image jusqu'a 20 — <b>la courbe s'inverse puis repart</b>. Passe
+    ///     l'image 170 le pas perd 6 par image ; a l'image 245, etat 5. Le lacet tourne toujours,
+    ///     mais <c>+0x44</c> <b>redescend</b> jusqu'a -10</description></item>
+    ///   <item><term>5</term><description>soixante images en ligne droite, <c>0x2000</c> par image
+    ///     sur x et sur z a la fois, lacet de 8 ; puis l'etat 6, cap remis a <c>0x2bc</c>
+    ///     </description></item>
+    ///   <item><term>6</term><description>cap fige, <b>le rayon seul grandit</b> jusqu'a 40 :
+    ///     l'arc s'ouvre. A l'image 285 (<c>0x11d</c>), etat 7</description></item>
+    ///   <item><term>7</term><description><b>la retombee</b> : le rayon <b>perd deux par image</b>
+    ///     avec un plancher a 5, l'assiette pique de 20, et la hauteur retombe en accelerant.
+    ///     Sous <c>-0x578000</c>, etat 8</description></item>
+    ///   <item><term>8</term><description>les bits <c>0x6000</c> poses, et au bout de soixante
+    ///     images le bit de signe efface — elle disparait</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le compteur <c>+0x9a</c> court a travers les etats 3, 4, 6 et 7 sans jamais etre remis a
+    /// zero entre eux</b> : c'est lui, et non les etats, qui donne les deux echeances de 245 et de
+    /// 285 images. L'etat 2 est le seul a le remettre a zero.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00451B40(byte* e)
+    {
+        if ((Mem.s_StateBank3_005e9840[0] & 0x10) == 0 && *(short*)(e + 0x10) == 0) return;
+
+        short entry = *(short*)(e + 0x10);
+        if (entry >= 3 && entry <= 7)
+        {
+            for (int i = 0; i < 2; i++) SpawnEffectNearCamera_00468110(e, 0x33, 0, -1);
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 2;
+            *(short*)(e + 0x12) = 3;
+            *(short*)(e + 0x98) = 0;
+        }
+
+        if ((Mem.s_StateBank3_005e9840[0] & 0x10) != 0) WatchFallenMember(e);
+
+        // --- Etat 1 : la chute -------------------------------------------------------------
+        if (*(short*)(e + 0x10) == 1)
+        {
+            short speed = *(short*)(e + 0x12);
+            *(int*)(e + 0x20) -= speed << 0xc;
+            speed++;
+            *(short*)(e + 0x12) = speed;
+            if (speed > 0x0a) *(short*)(e + 0x12) = 0x0a;
+
+            *(short*)(e + 0x34) -= 10;
+
+            const int floor = -0x2ee000;   // 0xffd12000
+
+            if (*(int*)(e + 0x20) < floor)
+            {
+                if (*(short*)(e + 0x98) == 0)
+                {
+                    TryPlaySoundNearEntity((uint*)e, ZoneSound(0x2c), 0x300, 0x1000, 0, 0);
+                    *(short*)(e + 0x98) = 1;
+                }
+
+                *(int*)(e + 0x20) = floor;
+                for (int i = 0; i < 0x0b; i++) SpawnEffectNearCamera_00468110(e, 0x32, 0, -1);
+
+                bool announced = (e[0] & 0x20) != 0;
+                *(short*)(e + 0x10) = 3;
+
+                if (announced && (Mem.s_StateBank3_005e9840[0] & 0x10) != 0)
+                {
+                    byte* watched = Inp.s_SlotFlags_005e93c0 + Mem.Arena(0x005e9062)[0] * 0x9c;
+                    RunEntityScript(s_Unknown_005e97cc, watched, 0);
+                }
+            }
+        }
+
+        // --- Etat 2 : l'attente ------------------------------------------------------------
+        if (*(short*)(e + 0x10) == 2)
+        {
+            *(short*)(e + 0x12) += 1;
+            if (*(short*)(e + 0x12) == 0x14)
+            {
+                *(short*)(e + 0x10) = 1;
+                *(short*)(e + 0x12) = 3;
+                *(short*)(e + 0x14) = 0x514;
+                *(short*)(e + 0x16) = 0;
+                *(short*)(e + 0x9a) = 0;
+                *(int*)(e + 0x44) = 0;
+            }
+        }
+
+        // --- Etat 3 : la courbe qui se resserre ---------------------------------------------
+        if (*(short*)(e + 0x10) == 3)
+        {
+            *(short*)(e + 0x9a) += 1;
+
+            short radius = *(short*)(e + 0x16);
+            CollapseArcStep(e);
+
+            *(short*)(e + 0x14) -= 10;
+            *(short*)(e + 0x16) = (short)(radius + 1);
+
+            if (*(short*)(e + 0x14) < -200)
+            {
+                *(short*)(e + 0x10) = 4;
+                *(int*)(e + 0x5c) = -10;
+                return;
+            }
+
+            if (radius + 1 > 0x14) *(short*)(e + 0x16) = 0x14;
+
+            int spin = *(int*)(e + 0x44);
+            *(short*)(e + 0x32) += (short)(spin >> 1);
+            spin++;
+            *(int*)(e + 0x44) = spin;
+            if (spin > 0x14) *(int*)(e + 0x44) = 0x14;
+
+            *(short*)(e + 0x34) += 5;
+            if (*(short*)(e + 0x34) > 0) *(short*)(e + 0x34) = 0;
+        }
+
+        // --- Etat 4 : la courbe qui s'inverse -----------------------------------------------
+        if (*(short*)(e + 0x10) == 4)
+        {
+            *(short*)(e + 0x9a) += 1;
+
+            short radius = *(short*)(e + 0x16);
+            CollapseArcStep(e);
+
+            *(short*)(e + 0x14) += (short)*(int*)(e + 0x5c);
+
+            int pace = *(int*)(e + 0x5c) + 9;
+            *(short*)(e + 0x16) = (short)(radius + 1);
+            *(int*)(e + 0x5c) = pace;
+            if (pace > 0x14) *(int*)(e + 0x5c) = 0x14;
+
+            short age = *(short*)(e + 0x9a);
+            if (age > 0xaa) *(int*)(e + 0x5c) -= 6;
+
+            if (age >= 0xf5)
+            {
+                *(short*)(e + 0x10) = 5;
+                *(short*)(e + 0x12) = 0;
+                return;
+            }
+
+            if (radius + 1 > 0x14) *(short*)(e + 0x16) = 0x14;
+
+            int spin = *(int*)(e + 0x44);
+            *(short*)(e + 0x32) += (short)(spin >> 1);
+            spin--;
+            *(int*)(e + 0x44) = spin;
+            if (spin < -10) *(int*)(e + 0x44) = -10;
+        }
+
+        // --- Etat 5 : la ligne droite --------------------------------------------------------
+        short state = *(short*)(e + 0x10);
+
+        if (state == 5)
+        {
+            *(short*)(e + 0x12) += 1;
+            *(short*)(e + 0x32) += 8;
+            *(int*)(e + 0x1c) += 0x2000;
+            *(int*)(e + 0x24) += 0x2000;
+
+            if (*(short*)(e + 0x12) > 0x3c)
+            {
+                *(short*)(e + 0x10) = 6;
+                *(short*)(e + 0x14) = 0x2bc;
+                *(short*)(e + 0x16) = 0;
+                return;
+            }
+        }
+
+        // --- Etat 6 : l'arc qui s'ouvre ------------------------------------------------------
+        if (state == 6)
+        {
+            *(short*)(e + 0x9a) += 1;
+            *(short*)(e + 0x32) += 8;
+
+            short radius = *(short*)(e + 0x16);
+            CollapseArcStep(e);
+
+            *(short*)(e + 0x16) = (short)(radius + 1);
+            if (radius + 1 > 0x28) *(short*)(e + 0x16) = 0x28;
+
+            if (*(short*)(e + 0x9a) >= 0x11d)
+            {
+                *(short*)(e + 0x10) = 7;
+                *(short*)(e + 0x12) = 0x0d;
+                return;
+            }
+        }
+
+        // --- Etat 7 : la retombee ------------------------------------------------------------
+        if (*(short*)(e + 0x10) == 7)
+        {
+            *(short*)(e + 0x9a) += 1;
+            *(short*)(e + 0x32) += 8;
+            *(short*)(e + 0x34) -= 20;
+
+            short radius = *(short*)(e + 0x16);
+            CollapseArcStep(e);
+
+            short speed = *(short*)(e + 0x12);
+            *(int*)(e + 0x20) -= speed << 0xc;
+            *(short*)(e + 0x12) = (short)(speed + 1);
+
+            *(short*)(e + 0x16) = (short)(radius - 2);
+            if (radius - 2 < 5) *(short*)(e + 0x16) = 5;
+
+            if (*(int*)(e + 0x20) < -0x578000)   // 0xffa88000
+            {
+                *(short*)(e + 0x10) = 8;
+                *(short*)(e + 0x12) = 0;
+                return;
+            }
+        }
+
+        // --- Etat 8 : l'extinction -----------------------------------------------------------
+        if (*(short*)(e + 0x10) != 8) return;
+
+        *(uint*)e |= 0x6000;
+        *(short*)(e + 0x12) += 1;
+        if (*(short*)(e + 0x12) >= 0x3c) *(uint*)e &= 0x7fffffff;
+    }
 }

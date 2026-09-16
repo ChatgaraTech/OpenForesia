@@ -4,6 +4,20 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 20)
+
+- feat : `0x00451B40`, **l'effondrement** — le dernier creneau de la table `0x0056adc8` de la mine.
+  **La table est complete** : 68 sur 68. Zone 1 : 108 -> 109
+- feat : huit etats enchaines, dont quatre deplacent l'entite **en coordonnees polaires** — cap
+  `+0x14`, rayon `+0x16` divise par deux — en faisant varier le cap (etat 3), le pas de cap
+  (etat 4), le rayon seul (etat 6) ou le rayon a rebours (etat 7)
+- doc : le compteur `+0x9a` **court a travers les etats 3, 4, 6 et 7 sans remise a zero** ; ce sont
+  ses echeances (245 et 285 images), et non les etats, qui decident des enchainements
+- doc : la surveillance du membre tombe essaie **trois candidats** — l'emplacement que designe
+  l'octet `0x005e9062`, puis le meneur `0x005de538`, puis le **plus petit** emplacement actif (la
+  boucle de repli descend de 3 a 0 et garde la derniere trouvaille)
+- doc : relevé au desassembleur garde sous `Legacy/Raw/Blaze/FUN_00451B40.asm`
+
 ## 2026-09-16 (suite 19)
 
 - feat : **dix autres gestionnaires de la mine**, `Handlers/Mine.cs`. Zone 1 : 98 -> 108. Il ne
