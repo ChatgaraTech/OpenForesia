@@ -4,6 +4,19 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 16)
+
+- feat : **dix autres decors de la mine**, `Handlers/Mine.cs`. Zone 1 : 68 -> 78
+- feat : les creneaux 40, 41 et 43 portent le meme decor dans les trois blocs de la mine — neuf
+  corps pour trois : `TickBobbingSpinner` (danse sur place, `0x00452950` / `0x00454220` /
+  `0x004544E0`), `TickScrapingBlock` (le bloc qui racle quand on le pousse, `0x004529F0` /
+  `0x004542C0` / `0x00455A90`, masque de deplacement `0x882` ou `0x800`), `TickFlickeringGlow`
+  (la lueur grise qui palpite, `0x00452A90` / `0x00454450` / `0x00456010`, absents de `Blaze.c`)
+- feat : `0x00454D90`, le decor que le groupe arme en s'y rattachant ; et `FUN_00454580`,
+  `AddEntityVelocity_00454580`, qui debloque aussi `0x004528D0` et `0x00453E60`
+- doc : `TickScrapingBlock` remet son delai de son a zero a chaque tour tant que son etat vaut 0,
+  et rien dans le corps ne le fait changer — le son peut repartir a chaque image de poussee
+
 ## 2026-09-16 (suite 15)
 
 - feat : **dix decors de la mine** (table `0x0056adc8`), dans le nouveau fichier `Handlers/Mine.cs`.

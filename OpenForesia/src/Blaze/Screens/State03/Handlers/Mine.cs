@@ -282,4 +282,238 @@ public static unsafe partial class Blaze
         if (*(short*)(e + 0x10) == 1) *(short*)(e + 0x10) = 2;
         if (*(short*)(e + 0x10) == 2) *(uint*)e |= 0x6000;
     }
+
+    /// <summary>
+    /// Ghidra: FUN_00454d90 @ 0x00454d90 — <b>le decor que le groupe declenche en s'y
+    /// rattachant</b>, sous-type <b>14</b> du bloc <c>0x005546a8</c>, sous-zones 3, 4 et 9.
+    /// Decompilee dans <c>Blaze.c</c>. Le role a l'ecran n'est pas etabli.
+    ///
+    /// <para>
+    /// A chaque image il compte les membres du groupe <b>rattaches a lui</b>
+    /// (<see cref="CountPartyMembersMatching"/> : <c>+0x78</c> pointe sur lui, bit <c>0x10</c>,
+    /// pas <c>0x40000000</c>) et efface le bit <c>0x10</c> de son octet 7. Des qu'il y en a un et
+    /// qu'il est au repos, il s'arme : etat 1, compteur a zero, et le bit <c>4</c> de
+    /// <c>DAT_00571570</c>, dans l'arene d'etat. Qui relit ce bit n'est pas trace ici.
+    /// </para>
+    /// <para>
+    /// Arme, il avance <c>+0x34</c> de <c>0x40</c> par image pendant cinq images, puis passe a
+    /// l'etat 2 : bit <c>0x10</c> repose, <c>+0x58 = -0x3c000</c> (la composante Z de la vitesse,
+    /// comme chez les particules) et bit <c>0x2000</c> du mot d'etat. Il ne revient jamais a
+    /// l'etat 0.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00454D90(byte* e)
+    {
+        int standing = CountPartyMembersMatching(e, 0x10, 0x40000000);   // Ghidra: FUN_00535000
+        e[7] &= 0xef;
+
+        if (standing != 0 && standing > 0 && *(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 0;
+            *Mem.EntityState(0x00571570) |= 4;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            *(short*)(e + 0x34) += 0x40;
+            *(short*)(e + 0x12) += 1;
+
+            if (*(short*)(e + 0x12) > 4)
+            {
+                *(short*)(e + 0x10) = 2;
+                e[7] |= 0x10;
+                *(uint*)(e + 0x58) = 0xfffc4000;
+                *(uint*)e |= 0x2000;
+            }
+        }
+    }
+
+    // =====================================================================
+    // TROIS DECORS, TROIS FOIS — UN PAR GROUPE DE SOUS-ZONES (2026-09-16)
+    //
+    // Les creneaux 40, 41 et 43 portent le meme decor dans les trois blocs de la mine. Les neuf
+    // corps se ramenent a trois : identiques deux a deux instruction pour instruction (releves et
+    // textes de Blaze.c compares adresses masquees), a une seule constante pres dans le cas du
+    // creneau 41.
+    //
+    //   creneau 40  0x00452950  0x00454220  0x004544E0   TickBobbingSpinner
+    //   creneau 41  0x004529F0  0x004542C0  0x00455A90   TickScrapingBlock (0x882, 0x882, 0x800)
+    //   creneau 43  0x00452A90  0x00454450  0x00456010   TickFlickeringGlow
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: FUN_00454580 @ 0x00454580 — <b>ajoute un vecteur a la vitesse d'une entite</b>,
+    /// <c>+0x50</c>, <c>+0x54</c>, <c>+0x58</c>. Decompilee dans <c>Blaze.c</c>, trois lignes. La
+    /// somme de <see cref="ClearEntityVelocity_00460FC0"/>.
+    /// </summary>
+    private static void AddEntityVelocity_00454580(byte* e, int dx, int dy, int dz)
+    {
+        *(int*)(e + 0x50) += dx;
+        *(int*)(e + 0x54) += dy;
+        *(int*)(e + 0x58) += dz;
+    }
+
+    /// <summary>
+    /// Le corps du creneau 40 — <c>FUN_00452950</c>, <c>FUN_00454220</c>, <c>FUN_004544E0</c>, tous
+    /// trois decompiles et identiques : <b>le decor qui danse sur place</b>.
+    ///
+    /// <para>
+    /// Au premier tour il se tire une phase (<c>rand % 4000</c>), un sens de rotation
+    /// (<c>-1</c>, <c>0</c> ou <c>+1</c>) et retient sa hauteur de pose en unites entieres
+    /// (<c>+0x16 = Y &gt;&gt; 12</c>). Ensuite, a chaque image, sa hauteur devient
+    /// <c>(sin(phase) + (pose - 100) * 0x20) * 0x80</c> — il ondule autour d'un point <b>cent
+    /// unites sous sa pose</b> — et la difference avec l'image precedente est versee dans sa vitesse
+    /// verticale, remise a zero juste avant. La phase avance de <c>0x32</c>, et il tourne de quatre
+    /// pas dans son sens.
+    /// </para>
+    /// <para>
+    /// <b>Le rebouclage de phase est strict</b> : <c>0x1000 &lt; phase</c>, donc la valeur
+    /// <c>0x1000</c> elle-meme est gardee une image. Transcrit tel quel.
+    /// </para>
+    /// </summary>
+    private static void TickBobbingSpinner(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)(CrtRand() % 4000);
+            *(short*)(e + 0x14) = (short)(CrtRand() % 3 - 1);
+            *(short*)(e + 0x16) = (short)(*(int*)(e + 0x20) >> 0xc);
+        }
+
+        int before = *(int*)(e + 0x20);
+        int wave = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12));   // Ghidra: Ordinal_451
+        int height = (wave + (*(short*)(e + 0x16) - 100) * 0x20) * 0x80;
+        *(int*)(e + 0x20) = height;
+        AddEntityVelocity_00454580(e, 0, height - before, 0);
+
+        *(short*)(e + 0x12) += 0x32;
+        if (*(short*)(e + 0x12) > 0x1000) *(short*)(e + 0x12) -= 0x1000;
+
+        *(short*)(e + 0x32) += (short)(*(short*)(e + 0x14) * 4);
+    }
+
+    /// <summary>Ghidra: FUN_00452950 @ 0x00452950 — creneau 40, sous-zones 0 a 2.</summary>
+    private static void EntityHandler_00452950(byte* e) => TickBobbingSpinner(e);
+
+    /// <summary>Ghidra: FUN_00454220 @ 0x00454220 — creneau 40, sous-zones 5 a 8.</summary>
+    private static void EntityHandler_00454220(byte* e) => TickBobbingSpinner(e);
+
+    /// <summary>Ghidra: FUN_004544e0 @ 0x004544e0 — creneau 40, sous-zones 3, 4 et 9.</summary>
+    private static void EntityHandler_004544E0(byte* e) => TickBobbingSpinner(e);
+
+    /// <summary>
+    /// Le corps du creneau 41 — <c>FUN_004529F0</c>, <c>FUN_004542C0</c>, <c>FUN_00455A90</c>,
+    /// decompiles, identiques a <paramref name="moveMask"/> pres : <b>le bloc qui racle quand on le
+    /// pousse</b>.
+    ///
+    /// <para>
+    /// A chaque image il se deplace par <see cref="MoveSceneEntity_00455B30"/> et <b>s'eteint</b> si
+    /// le deplacement rend 1. Si sa poussee horizontale (<c>+0x44</c> ou <c>+0x4c</c>) depasse
+    /// <c>0x1000</c> en valeur absolue et que son delai <c>+0x12</c> est ecoule, il joue le son
+    /// <c>0x2d</c> de la zone et rearme le delai a vingt images. Le delai decroit d'une image a
+    /// chaque tour, borne a zero, et la vitesse est remise a zero en sortant.
+    /// </para>
+    /// <para>
+    /// <b>Le delai est remis a zero a CHAQUE tour tant que l'etat vaut 0</b> — et rien, dans ce
+    /// corps, ne fait quitter l'etat 0. Le son peut donc repartir a chaque image de poussee, sauf
+    /// si le deplacement change <c>+0x10</c>. Transcrit tel quel : c'est ce que fait le binaire,
+    /// et <see cref="MoveSceneEntity_00455B30"/> n'a pas ete relu sous cet angle.
+    /// </para>
+    /// </summary>
+    private static void TickScrapingBlock(byte* e, uint moveMask)
+    {
+        if (*(short*)(e + 0x10) == 0) *(short*)(e + 0x12) = 0;
+
+        if ((short)MoveSceneEntity_00455B30(e, moveMask) == 1) *(uint*)e &= 0x7fffffff;
+
+        int pushX = *(int*)(e + 0x44);
+        if (pushX < 0) pushX = -pushX;
+        int pushZ = *(int*)(e + 0x4c);
+        if (pushZ < 0) pushZ = -pushZ;
+
+        if ((pushX > 0x1000 || pushZ > 0x1000) && *(short*)(e + 0x12) == 0)
+        {
+            TryPlaySoundNearEntity((uint*)e, ZoneSound(0x2d), 0x800, 0x1000, 0, 0);   // FUN_00468080
+            *(short*)(e + 0x12) = 0x14;
+        }
+
+        *(short*)(e + 0x12) -= 1;
+        if (*(short*)(e + 0x12) < 0) *(short*)(e + 0x12) = 0;
+
+        *(int*)(e + 0x50) = 0;
+        *(int*)(e + 0x54) = 0;
+        *(int*)(e + 0x58) = 0;
+    }
+
+    /// <summary>Ghidra: FUN_004529f0 @ 0x004529f0 — creneau 41, sous-zones 0 a 2, masque
+    /// <c>0x882</c>.</summary>
+    private static void EntityHandler_004529F0(byte* e) => TickScrapingBlock(e, 0x882);
+
+    /// <summary>Ghidra: FUN_004542c0 @ 0x004542c0 — creneau 41, sous-zones 5 a 8, masque
+    /// <c>0x882</c>.</summary>
+    private static void EntityHandler_004542C0(byte* e) => TickScrapingBlock(e, 0x882);
+
+    /// <summary>Ghidra: FUN_00455a90 @ 0x00455a90 — creneau 41, sous-zones 3, 4 et 9, masque
+    /// <c>0x800</c> : la seule des trois qui differe.</summary>
+    private static void EntityHandler_00455A90(byte* e) => TickScrapingBlock(e, 0x800);
+
+    /// <summary>
+    /// Le corps du creneau 43 — <c>0x00452A90</c>, <c>0x00454450</c>, <c>0x00456010</c>, tous trois
+    /// <b>absents de <c>Blaze.c</c></b>, releves sous <c>Legacy/Raw/Blaze/</c> et identiques
+    /// instruction pour instruction : <b>la lueur qui palpite</b>.
+    ///
+    /// <para>
+    /// Vitesse remise a zero a chaque image. Au premier tour, une phase de depart
+    /// <c>(rand % 15) &lt;&lt; 8</c>. Ensuite la phase avance de <c>0x100</c> par image — seize
+    /// images par cycle — et la <b>teinte grise</b> vaut
+    /// <c>0x78 + (rand &amp; 0xf) - (sin(phase) &gt;&gt; 7)</c>, calculee sur un octet puis recopiee
+    /// sur les trois canaux (<c>+0x38</c> ecrit en <c>dword</c> : l'octet <c>+0x3b</c> passe a
+    /// zero). Un sinus lent qui respire, et un bruit de quinze niveaux par-dessus.
+    /// </para>
+    /// <para>
+    /// <b>La soustraction est sur un octet</b> (<c>sub al,bl</c> puis <c>add al,78h</c>) : le
+    /// resultat reboucle modulo 256 au lieu de saturer. Avec un sinus borne a <c>±32</c> apres le
+    /// decalage, il reste entre <c>0x58</c> et <c>0xa7</c> — le rebouclage n'arrive jamais, mais
+    /// c'est bien la largeur du binaire. La phase revient a zero des qu'elle atteint
+    /// <c>0x1000</c>, test signe.
+    /// </para>
+    /// </summary>
+    private static void TickFlickeringGlow(byte* e)
+    {
+        ClearEntityVelocity_00460FC0(e);
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = (short)((CrtRand() % 15) << 8);
+        }
+
+        if (*(short*)(e + 0x10) != 1) return;
+
+        *(short*)(e + 0x12) += 0x100;
+
+        int wave = (int)Winsys3d.GetSinTableEntry(*(short*)(e + 0x12));   // 0x00545a1c : sinus
+        byte noise = (byte)(CrtRand() & 0x0f);
+        byte grey = (byte)(noise - (byte)(wave >> 7) + 0x78);
+
+        *(uint*)(e + 0x38) = (uint)(grey << 16 | grey << 8 | grey);
+
+        if (*(short*)(e + 0x12) >= 0x1000) *(short*)(e + 0x12) = 0;
+    }
+
+    /// <summary>Ghidra: <c>0x00452a90</c> — creneau 43, sous-zones 0 a 2.
+    /// <c>Legacy/Raw/Blaze/FUN_00452A90.asm</c>.</summary>
+    private static void EntityHandler_00452A90(byte* e) => TickFlickeringGlow(e);
+
+    /// <summary>Ghidra: <c>0x00454450</c> — creneau 43, sous-zones 5 a 8.
+    /// <c>Legacy/Raw/Blaze/FUN_00454450.asm</c>.</summary>
+    private static void EntityHandler_00454450(byte* e) => TickFlickeringGlow(e);
+
+    /// <summary>Ghidra: <c>0x00456010</c> — creneau 43, sous-zones 3, 4 et 9.
+    /// <c>Legacy/Raw/Blaze/FUN_00456010.asm</c>.</summary>
+    private static void EntityHandler_00456010(byte* e) => TickFlickeringGlow(e);
 }
