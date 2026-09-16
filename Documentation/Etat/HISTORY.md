@@ -4,6 +4,54 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 6)
+
+- feat : `0x00406810`, **l'eclat bref qui scintille** — sous-type 60 du bloc `0x00553ea8`,
+  sous-zones 0-2 de la mine, decompile dans `Blaze.c`. Deux variantes par `+0x14`, une planche
+  chacune ; elle se place en deux temps (le long du cap recu, puis une boite de dispersion) et
+  **scintille en tirant son image a pile ou face a chaque tour**. Elle meurt de vieillesse, pas
+  d'extinction : 4 a 7 images. Zone 1 : 27 -> 28 implementes
+- doc : planches `0x0054f2a0` et `0x0054f2b0`, **deux enregistrements chacune, bornees par le CODE
+  et non par la donnee** — toute la region est une suite uniforme de tuiles `0x1f x 0x1f` sur la
+  meme page, sans motif separateur ni changement d'attribut ; ce qui coupe, ce sont les adresses
+  que du code reference
+- doc : `check-descriptors.sh` signale « marge courte » sur ces deux lignes et **c'est correct** :
+  le corps tire `+0x40` entre 0 et 1, donc deux enregistrements sont exactement ce qu'il faut. Ne
+  pas allonger ces plages pour faire taire le drapeau
+
+---
+
+## 2026-09-16 (suite 5)
+
+- feat : `0x00406680`, **la grande spirale qui rentre** — sous-type 61 du bloc `0x00553ea8`,
+  sous-zones 0-2 de la mine. Absente de `Blaze.c`, 400 octets au desassembleur.
+  Zone 1 : 26 -> 27 implementes
+- doc : c'est la **cousine** de la variante 0 de `0x00406130`, pas sa copie — meme geste, aucune
+  constante en commun : elle se disperse EN HAUTEUR a la naissance (-380 a +379), tourne cinq fois
+  plus vite (`pas * 20` contre `* 4`), sa houle vaut `sin * 50` contre `sin * 0x28`, elle meurt
+  sous un rayon de `0x32` contre `0x50`, et ses trois canaux sont bornes a `0x80` ENSEMBLE la ou
+  l'autre bornait chacun a sa valeur
+- doc : planche `0x0054f1b0`, onze enregistrements, fin `0x54f208` — **troisieme plage de cette zone
+  de `.data` qui commence sur le motif separateur**, mais la premiere dont la borne haute est un
+  changement de famille d'attributs et non le motif
+- doc : `0x00545a1c` et `0x00545a16` sont les sauts par la table d'imports vers `Ordinal_451`
+  (sinus) et `Ordinal_450` (cosinus) — recoupe sur `FUN_00404c80`, que Ghidra decompile et nomme
+
+---
+
+## 2026-09-16 (suite 4)
+
+- feat : `0x004065D0`, **la jumelle du 0x00406570, pilotee par l'etat de son porteur** — sous-type
+  47 du bloc `0x00553ea8`, sous-zones 0-2 de la mine. Absente de `Blaze.c`. Meme planche, meme
+  `+0x2e`, meme hauteur ecrite deux fois ; ce qui la distingue tient en une recopie et trois tests :
+  elle copie le `+0x10` du porteur dans son `+0x12` et s'en sert comme consigne — 1 elle
+  s'eclaircit de 2, 2 elle s'assombrit de 3, 0x65 elle est remise a noir d'un coup.
+  Zone 1 : 25 -> 26 implementes
+- doc : elle **nait noire** la ou sa jumelle nait a `0x20` — elle est donc invisible tant que son
+  porteur n'est pas passe par l'etat 1. Et comme sa jumelle, **elle ne meurt jamais d'elle-meme**
+
+---
+
 ## 2026-09-16 (suite 3)
 
 - feat : `0x00406570`, **la marque accrochee a son porteur** — sous-type 48 du bloc `0x00553ea8`,

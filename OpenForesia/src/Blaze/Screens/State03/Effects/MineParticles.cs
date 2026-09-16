@@ -366,4 +366,353 @@ public static unsafe partial class Blaze
             *(int*)(e + 0x20) = *(int*)(e + 0x60);
         }
     }
+
+    /// <summary>
+    /// Ghidra: <c>0x004065d0</c> — <b>la meme marque, mais pilotee par l'etat de son porteur</b>.
+    /// Sous-type <b>47</b> du bloc <c>0x00553ea8</c>, sous-zones 0 a 2 de la mine. Absente de
+    /// <c>Blaze.c</c> ; relevee au desassembleur —
+    /// <c>Legacy/Raw/Blaze/FUN_004065D0.asm</c>.
+    ///
+    /// <para>
+    /// <b>Elle partage tout avec <see cref="EntityHandler_00406570"/></b> : la meme planche
+    /// <c>0x0054f2c0</c>, le meme <c>+0x2e</c> a <c>-10</c>, les memes <c>+0x0a</c>/<c>+0x0b</c>, et
+    /// la meme hauteur ecrite deux fois — <c>Y</c> pris au <c>+0x60</c> du porteur puis aussitot
+    /// ecrase par le <c>+0x60</c> de l'entite. Les deux corps sont manifestement le meme geste,
+    /// emis deux fois.
+    /// </para>
+    /// <para>
+    /// <b>Ce qui la distingue tient en une ligne de recopie et trois tests.</b> Elle copie aussi
+    /// l'ETAT du porteur — <c>+0x10</c> du porteur vers son propre <c>+0x12</c> — puis s'en sert
+    /// comme d'une consigne :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>1</term><description>elle <b>s'eclaircit</b> de 2 par canal et par image</description></item>
+    ///   <item><term>2</term><description>elle <b>s'assombrit</b> de 3 par canal et par image</description></item>
+    ///   <item><term>0x65</term><description>elle est <b>remise a noir</b> d'un coup</description></item>
+    /// </list>
+    /// <para>
+    /// Les trois tests ne sont pas exclusifs dans le binaire — ce sont trois <c>if</c> a la suite,
+    /// et non un <c>switch</c> —, mais les trois valeurs s'excluent d'elles-memes. Transcrits dans
+    /// la meme forme.
+    /// </para>
+    /// <para>
+    /// <b>Elle nait NOIRE</b>, la ou <see cref="EntityHandler_00406570"/> nait a <c>0x20</c> sur
+    /// les trois canaux : c'est la seule difference de naissance entre les deux. Elle apparait donc
+    /// invisible et ne se montre que si son porteur passe par l'etat 1.
+    /// </para>
+    /// <para>
+    /// Comme sa jumelle, <b>elle ne meurt jamais d'elle-meme</b> : aucun chemin n'efface le bit de
+    /// vie.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_004065D0(byte* e)
+    {
+        byte* carrier = *(byte**)(e + 0x6c);
+        if (carrier != null)
+        {
+            *(int*)(e + 0x1c) = *(int*)(carrier + 0x1c);
+            *(int*)(e + 0x20) = *(int*)(carrier + 0x60);   // le +0x60 du PORTEUR, comme la jumelle
+            *(int*)(e + 0x24) = *(int*)(carrier + 0x24);
+            *(short*)(e + 0x12) = *(short*)(carrier + 0x10);   // l'etat du porteur devient la consigne
+        }
+
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054F2C0();   // Ghidra: &DAT_0054f2c0
+            e[0x40] = 0;
+            e[0x0a] = 3;
+            e[0x0b] = 0;
+            *(short*)(e + 0x2e) = -10;
+            e[0x38] = 0;      // noire a la naissance, la ou sa jumelle nait a 0x20
+            e[0x39] = 0;
+            e[0x3a] = 0;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            // Ecrase le Y qui vient d'etre pris au porteur. Fidele, comme chez la jumelle.
+            *(int*)(e + 0x20) = *(int*)(e + 0x60);
+
+            if (*(short*)(e + 0x12) == 1) BrightenEntityTint_00404DE0(e, 2, 2, 2);
+            if (*(short*)(e + 0x12) == 2) BrightenEntityTint_00404DE0(e, -3, -3, -3);
+
+            if (*(short*)(e + 0x12) == 0x65)
+            {
+                e[0x38] = 0;
+                e[0x39] = 0;
+                e[0x3a] = 0;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f1b0</c> — <b>la planche du sous-type 61 de la mine</b>, celle que
+    /// <see cref="EntityHandler_00406680"/> pose en <c>+0x3c</c>.
+    ///
+    /// <para>
+    /// <b>Elle commence encore sur le motif separateur</b>, <c>00 00 08 08 01 02 10 00</c>, cette
+    /// fois a <c>0x0054f1b0</c> — le troisieme cas du genre releve dans cette zone de <c>.data</c>,
+    /// apres <c>0x0054f180</c> et <c>0x0054f2d8</c>. Le motif borne, et il sert.
+    /// </para>
+    /// <para>
+    /// <b>Onze enregistrements</b>, et la borne haute n'est PAS un separateur cette fois : c'est un
+    /// <b>changement de famille d'attributs</b>. A <c>0x0054f208</c> le cinquieme octet passe de
+    /// <c>0x01</c> a <c>0x00</c>, le septieme de <c>0x10</c> a <c>0x18</c>, et la tuile passe en
+    /// <c>0x1f x 0x1f</c> : plus rien a voir. C'est l'autre borne exploitable que
+    /// <c>DataSymbols.md</c> nomme — le changement de planche.
+    /// </para>
+    /// <para>
+    /// Les enregistrements 3 a 6 et 7 a 10 forment deux suites de quatre tuiles <c>8 x 8</c> qui
+    /// ressemblent a deux animations de quatre images. <b>Le corps n'en atteint aucune</b> :
+    /// <c>+0x40</c> est pose a zero et n'est jamais avance, donc seul l'enregistrement 0 sert. Les
+    /// dix autres sont releves parce que la regle veut la plage entiere.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F1B0 =
+    [
+        0x00, 0x00, 0x08, 0x08, 0x01, 0x02, 0x10, 0x00,   // 0x0054f1b0 — le seul que le corps lit
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x03, 0x10, 0x00,   // 0x0054f1b8
+        0x08, 0x08, 0x10, 0x10, 0x01, 0x02, 0x10, 0x00,   // 0x0054f1c0
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f1c8
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f1d0
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f1d8
+        0x10, 0x10, 0x08, 0x07, 0x01, 0x03, 0x10, 0x00,   // 0x0054f1e0
+        0x08, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f1e8
+        0x10, 0x08, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f1f0
+        0x08, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f1f8
+        0x10, 0x10, 0x08, 0x08, 0x01, 0x03, 0x10, 0x00,   // 0x0054f200
+    ];
+
+    private static byte* s_Descriptors0054F1B0Storage;
+
+    private static byte* Descriptors0054F1B0()
+        => NativeCopy(s_Descriptors_0054F1B0, ref s_Descriptors0054F1B0Storage);
+
+    /// <summary>
+    /// Ghidra: <c>0x00406680</c> — <b>la grande spirale qui rentre</b>, sous-type <b>61</b> du bloc
+    /// <c>0x00553ea8</c>, sous-zones 0 a 2 de la mine. Absente de <c>Blaze.c</c> ; 400 octets
+    /// releves au desassembleur — <c>Legacy/Raw/Blaze/FUN_00406680.asm</c>.
+    ///
+    /// <para>
+    /// <b>C'est la cousine de la variante 0 de <see cref="EntityHandler_00406130"/></b>, pas sa
+    /// copie : meme geste — naitre noire, tourner autour d'une ancre figee, s'eclaircir, mourir
+    /// quand le rayon se referme — mais <b>aucune constante en commun</b>, et une naissance qui la
+    /// distingue nettement :
+    /// </para>
+    /// <list type="table">
+    ///   <item><term>naissance</term><description>elle se DISPERSE EN HAUTEUR, de
+    ///     <c>-380</c> a <c>+379</c> unites de <c>0x1000</c> autour de son <c>Y</c>. La variante 0
+    ///     de l'autre, elle, montait d'un <c>+0x64000</c> fixe.</description></item>
+    ///   <item><term>tour</term><description>le cap avance de <c>+0x5c * 20</c> par image, contre
+    ///     <c>* 4</c> chez l'autre — elle tourne cinq fois plus vite.</description></item>
+    ///   <item><term>hauteur</term><description>la houle verticale vaut <c>sin * 50</c>, contre
+    ///     <c>sin * 0x28</c>.</description></item>
+    ///   <item><term>mort</term><description>sous un rayon de <c>0x32</c>, contre
+    ///     <c>0x50</c>.</description></item>
+    ///   <item><term>plafond</term><description>les trois canaux sont bornes a <c>0x80</c>
+    ///     ENSEMBLE, des que le rouge y touche — la ou l'autre bornait chaque canal a sa propre
+    ///     valeur, <c>80/8c/aa</c>.</description></item>
+    /// </list>
+    /// <para>
+    /// <b>Le produit n'est pas recadre</b> : l'entree de table de sinus multiplie le rayon tel
+    /// quel, sans <c>&gt;&gt; 0xc</c>. Meme convention que partout dans cette famille.
+    /// </para>
+    /// <para>
+    /// <b>Le pas est ecrit sur 32 bits et relu sur 16.</b> <c>+0x5c</c> recoit un
+    /// <c>mov [esi+5Ch],edx</c> a la naissance, mais le tour le relit par <c>mov cx,[esi+5Ch]</c>
+    /// et <c>mov dx,[esi+5Ch]</c>. Les deux largeurs sont transcrites telles quelles ; la valeur
+    /// tenant sur quatre bits, cela ne change rien, mais c'est ce que le binaire fait.
+    /// </para>
+    /// <para>
+    /// <b>Les deux appels de trigonometrie sont des sauts par la table d'imports</b> :
+    /// <c>0x00545a1c</c> saute par <c>[0x6087bc]</c> et <c>0x00545a16</c> par <c>[0x6087c0]</c>.
+    /// Le recoupement se fait sur <see cref="EntityHandler_00404C80"/>, que Ghidra decompile : elle
+    /// appelle la meme paire dans le meme ordre, et Ghidra y nomme <c>Ordinal_451</c> puis
+    /// <c>Ordinal_450</c> — donc sinus pour <c>X</c>, cosinus pour <c>Z</c>.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00406680(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            *(short*)(e + 0x10) = 1;
+            *(byte**)(e + 0x3c) = Descriptors0054F1B0();   // Ghidra: &DAT_0054f1b0
+            e[0x40] = 0;
+
+            *(short*)(e + 0x32) = (short)(CrtRand() % 0x1000);       // le cap
+
+            // La dispersion verticale : -380 a +379 unites de 0x1000.
+            int scattered = *(int*)(e + 0x20) + (CrtRand() % 0x2f8 - 0x17c) * 0x1000;
+            *(int*)(e + 0x20) = scattered;
+            *(int*)(e + 0x54) = scattered;
+            *(int*)(e + 0x50) = *(int*)(e + 0x1c);
+            *(int*)(e + 0x58) = *(int*)(e + 0x24);
+
+            *(short*)(e + 0x9a) = (short)(CrtRand() % 0x64 + 0x12c);  // le rayon, 300 a 399
+
+            e[0x38] = 0;
+            e[0x39] = 0;
+            e[0x3a] = 0;
+            *(int*)(e + 0x5c) = CrtRand() % 0x0a + 5;                 // le pas, 5 a 14
+
+            e[0x0a] = 9;
+            e[0x0b] = 0;
+            *(short*)(e + 0x12) = (short)(CrtRand() % 0x1000);        // le dephasage de la houle
+
+            short scale = (short)(CrtRand() % 0x400 + 0x1000);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            BrightenEntityTint_00404DE0(e, 0x14, 0x14, 0x14);
+            if (e[0x38] >= 0x80)
+            {
+                e[0x38] = 0x80;
+                e[0x39] = 0x80;
+                e[0x3a] = 0x80;
+            }
+
+            short yaw = *(short*)(e + 0x32);
+            short radius = *(short*)(e + 0x9a);
+
+            *(int*)(e + 0x1c) = (int)Winsys3d.GetSinTableEntry(yaw) * radius + *(int*)(e + 0x50);
+            *(int*)(e + 0x24) = Winsys3d.GetCosTableEntry(yaw) * radius + *(int*)(e + 0x58);
+            *(int*)(e + 0x20) = *(int*)(e + 0x54)
+                + (int)Winsys3d.GetSinTableEntry((short)(*(short*)(e + 0x12) + yaw)) * 50;
+
+            // Le pas est relu sur SEIZE bits, la ou la naissance l'a ecrit sur trente-deux.
+            *(short*)(e + 0x32) += (short)(*(short*)(e + 0x5c) * 0x14);
+            *(short*)(e + 0x9a) -= *(short*)(e + 0x5c);
+
+            if (*(short*)(e + 0x9a) < 0x32) *(uint*)e &= 0x7fffffff;
+        }
+    }
+
+    /// <summary>
+    /// Ghidra: <c>&amp;DAT_0054f2a0</c> et <c>&amp;DAT_0054f2b0</c> — <b>les deux planches du
+    /// sous-type 60</b>, une par variante, que <see cref="EntityHandler_00406810"/> pose en
+    /// <c>+0x3c</c>.
+    ///
+    /// <para>
+    /// <b>Deux enregistrements chacune, et les bornes viennent du CODE.</b> Toute cette region de
+    /// <c>.data</c> est une suite uniforme de tuiles <c>0x1f x 0x1f</c> sur la meme page
+    /// (<c>01 02 18 00</c>) : aucun changement d'attribut, aucun motif separateur ne s'y lit. Ce qui
+    /// coupe, ce sont les adresses que du code reference — <c>0x0054f2b0</c> ferme la premiere
+    /// plage, et <c>0x0054f2c0</c> ferme la seconde parce que c'est la planche de
+    /// <see cref="EntityHandler_00406570"/>, deja relevee.
+    /// </para>
+    /// <para>
+    /// <b>Deux, c'est exactement ce qu'il faut</b>, et c'est le corps qui le prouve : son
+    /// <c>+0x40</c> est <b>retire au hasard entre 0 et 1 a chaque image</b>. Une plage d'un seul
+    /// enregistrement rendrait du tas non initialise une image sur deux.
+    /// <c>check-descriptors.sh</c> signalera « marge courte » sur ces deux lignes : c'est attendu,
+    /// la marge de 2 est juste, et il ne faut pas l'allonger.
+    /// </para>
+    /// </summary>
+    private static readonly byte[] s_Descriptors_0054F2A0 =
+    [
+        0x3f, 0x20, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f2a0
+        0x60, 0x20, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f2a8
+    ];
+
+    /// <summary>La planche de la variante 1 — voir <see cref="s_Descriptors_0054F2A0"/>.</summary>
+    private static readonly byte[] s_Descriptors_0054F2B0 =
+    [
+        0x00, 0x20, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f2b0
+        0x20, 0x20, 0x1f, 0x1f, 0x01, 0x02, 0x18, 0x00,   // 0x0054f2b8
+    ];
+
+    private static byte* s_Descriptors0054F2A0Storage;
+    private static byte* s_Descriptors0054F2B0Storage;
+
+    private static byte* Descriptors0054F2A0()
+        => NativeCopy(s_Descriptors_0054F2A0, ref s_Descriptors0054F2A0Storage);
+
+    private static byte* Descriptors0054F2B0()
+        => NativeCopy(s_Descriptors_0054F2B0, ref s_Descriptors0054F2B0Storage);
+
+    /// <summary>
+    /// Ghidra: FUN_00406810 @ 0x00406810 — <b>l'eclat bref qui scintille</b>, sous-type <b>60</b>
+    /// du bloc <c>0x00553ea8</c>, sous-zones 0 a 2 de la mine. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// <b>Deux variantes, choisies par <c>+0x14</c></b>, et elles ne different qu'a la naissance :
+    /// la variante 0 prend la planche <c>0x0054f2a0</c>, se pose <c>7</c> en <c>+0x0a</c> et
+    /// <b>monte de <c>0x50000</c></b> ; la variante 1 prend <c>0x0054f2b0</c>, se pose <c>2</c>, et
+    /// ne monte pas. Tout le reste leur est commun.
+    /// </para>
+    /// <para>
+    /// <b>Elle se place en deux temps.</b> D'abord elle avance le long du cap qu'on lui a donne —
+    /// <c>+0x32</c> n'est jamais ecrit par ce corps, il vient de qui la fait naitre — d'une
+    /// distance tiree entre 0 et 99. Puis elle se decale d'une boite : <c>±0x19</c> en <c>X</c> et
+    /// en <c>Z</c>, et <c>0</c> a <c>0x1d</c> vers le haut, le tout en unites de <c>0x1000</c>.
+    /// </para>
+    /// <para>
+    /// <b>Elle scintille en changeant d'image au hasard.</b> Le tour ne fait presque rien d'autre :
+    /// <c>+0x40</c> est <b>retire a pile ou face a chaque image</b>, entre les deux enregistrements
+    /// de sa planche. C'est ce qui exige deux enregistrements et pas un — voir
+    /// <see cref="s_Descriptors_0054F2A0"/>.
+    /// </para>
+    /// <para>
+    /// <b>Elle meurt de vieillesse, pas d'extinction.</b> Elle nait a <c>0x80</c> sur les trois
+    /// canaux et perd 7 par image, mais son compte a rebours <c>+0x12</c> ne lui laisse que 4 a 7
+    /// images : elle disparait encore claire, sans jamais atteindre le noir.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00406810(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            if (*(short*)(e + 0x14) == 0)
+            {
+                *(byte**)(e + 0x3c) = Descriptors0054F2A0();   // Ghidra: &DAT_0054f2a0
+                e[0x0a] = 7;
+                e[0x0b] = 0;
+                *(int*)(e + 0x20) += 0x50000;
+            }
+
+            if (*(short*)(e + 0x14) == 1)
+            {
+                *(byte**)(e + 0x3c) = Descriptors0054F2B0();   // Ghidra: &DAT_0054f2b0
+                e[0x0a] = 2;
+                e[0x0b] = 0;
+            }
+
+            *(short*)(e + 0x10) = 1;
+
+            short scale = (short)(CrtRand() % 0x400 + 0x6d4);
+            *(short*)(e + 0x28) = scale;
+            *(short*)(e + 0x2a) = scale;
+
+            e[0x40] = 0;
+            *(short*)(e + 0x12) = (short)(CrtRand() % 4 + 4);   // le compte a rebours, 4 a 7
+
+            // Premier temps : avancer le long du cap recu, de 0 a 99.
+            short reach = (short)(CrtRand() % 100);
+            short yaw = *(short*)(e + 0x32);
+            *(int*)(e + 0x1c) += (int)Winsys3d.GetSinTableEntry(yaw) * reach;
+            *(int*)(e + 0x24) += Winsys3d.GetCosTableEntry(yaw) * reach;
+
+            // Second temps : la boite de dispersion.
+            *(int*)(e + 0x1c) += (CrtRand() % 0x32 - 0x19) * 0x1000;
+            *(int*)(e + 0x20) += (CrtRand() % 0x1e) * 0x1000;
+            *(int*)(e + 0x24) += (CrtRand() % 0x32 - 0x19) * 0x1000;
+
+            e[0x38] = 0x80;
+            e[0x39] = 0x80;
+            e[0x3a] = 0x80;
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            e[0x40] = (byte)(CrtRand() % 2);   // pile ou face entre les deux images
+            BrightenEntityTint_00404DE0(e, -7, -7, -7);
+
+            *(short*)(e + 0x12) -= 1;
+            if (*(short*)(e + 0x12) < 1) *(uint*)e &= 0x7fffffff;
+        }
+    }
 }
