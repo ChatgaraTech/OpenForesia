@@ -1144,6 +1144,17 @@ public static unsafe partial class Blaze
             case 0x00408910: EntityHandler_00408910(record); return;
             // Les copies des sous-zones 5 a 8 et 3, 4, 9 — des amorces et des corps deja ecrits
             // ailleurs, a la planche pres. Effects/MineParticles.cs.
+            // Les decors de la mine, table 0x0056adc8 — Handlers/Mine.cs.
+            case 0x00451170: EntityHandler_00451170(record); return;
+            case 0x004511F0: EntityHandler_004511F0(record); return;
+            case 0x004523A0: EntityHandler_004523A0(record); return;
+            case 0x00452B20: EntityHandler_00452B20(record); return;
+            case 0x00452B60: EntityHandler_00452B60(record); return;
+            case 0x00453000: EntityHandler_00453000(record); return;
+            case 0x00453DE0: EntityHandler_00453DE0(record); return;
+            case 0x004545B0: EntityHandler_004545B0(record); return;
+            case 0x00454AD0: EntityHandler_00454AD0(record); return;
+            case 0x00454B40: EntityHandler_00454B40(record); return;
             case 0x00408040: EntityHandler_00408040(record); return;
             case 0x00408C60: EntityHandler_00408C60(record); return;
             case 0x00409A30: EntityHandler_00409A30(record); return;

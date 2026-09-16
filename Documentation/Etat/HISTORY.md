@@ -4,6 +4,23 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 15)
+
+- feat : **dix decors de la mine** (table `0x0056adc8`), dans le nouveau fichier `Handlers/Mine.cs`.
+  Zone 1 : 58 -> 68
+- feat : `0x004523A0`, `0x00454B40`, `0x00453000`, `0x00454AD0` — le decor qui sonne a intervalle
+  fixe, attenue par la distance. Quatre corps identiques instruction pour instruction a cinq
+  constantes pres (periode, son, hauteur, gain, portee) : un seul corps,
+  `TickRepeatingDistanceSound`
+- feat : `0x004511F0`, sa cousine dont la hauteur et le gain viennent de l'entite ; `0x00453DE0`, le
+  balancier qui grince aux deux bouts de sa course
+- feat : `0x00452B60`, le decor qui flotte sur un sinus ; `0x00452B20`, le souffle qui fait naitre
+  l'effet `0x3d` une image sur deux
+- feat : `0x00451170` et `0x004545B0`, les decors gardes par un bit de script de la banque 0 — le
+  premier s'efface avant de poser `0x6000`, le second le pose d'un coup
+- doc : six relevés au desassembleur gardes sous `Legacy/Raw/Blaze/` ; les quatre autres corps
+  sont decompiles
+
 ## 2026-09-16 (suite 14)
 
 - feat : **dix gestionnaires de la mine, aucun corps neuf** — zone 1 : 43 -> 53 implementes.
