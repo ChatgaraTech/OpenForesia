@@ -28,23 +28,23 @@ socle commun, et il est entier.
 |---|---|
 | gestionnaires distincts atteignables | **1 430** |
 | testés en jeu | **327** |
-| implémentés, jamais appelés | **240** |
-| à transcrire | **863** |
+| implémentés, jamais appelés | **261** |
+| à transcrire | **842** |
 
 | zone | lieu | implémentés |
 |---:|---|---|
 | — | **tables statiques** (partout) | **274 / 274** |
 | 0 | **L'auberge** | **48 / 48** |
 | 3 | **La forêt** | **136 / 136** |
-| 1 | La mine abandonnée | 127 / 157 |
-| 2 | La montagne du dragon de feu | 20 / 42 |
-| 4 | La vieille tour | 24 / 176 |
-| 5 | Le Labyrinthe des morts | 20 / 160 |
-| 6 | Le château de l’immortel | 24 / 170 |
-| 7 | Les ruines souterraines | 17 / 35 |
-| 8 | La vallée d'argent | 17 / 46 |
-| 9 | Les ruines dans le lac | 17 / 41 |
-| 10 | La grotte scellée | 31 / 349 |
+| 1 | La mine abandonnée | 144 / 157 |
+| 2 | La montagne du dragon de feu | 21 / 42 |
+| 4 | La vieille tour | 28 / 176 |
+| 5 | Le Labyrinthe des morts | 21 / 160 |
+| 6 | Le château de l’immortel | 25 / 170 |
+| 7 | Les ruines souterraines | 18 / 35 |
+| 8 | La vallée d'argent | 18 / 46 |
+| 9 | Les ruines dans le lac | 18 / 41 |
+| 10 | La grotte scellée | 36 / 349 |
 
 Régénérer avec `sh OpenForesia.Tools/census-entity-handlers.sh` (ou `tests\feuille-de-route.bat`).
 

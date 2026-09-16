@@ -169,6 +169,9 @@ public static unsafe partial class Blaze
             // zone 0, et le QUATRIEME lanceur de sorts du depot. Elle porte le mecanisme
             // d'incantation du Behemoth au complet, mais choisit ses sorts par le PLACEMENT.
             case 0x00487260: TickSceneEntityAi_00487260(record); return;
+            // La meme routine dans la mine abandonnee, sous-zones 0 a 2 : seule la table de sorts change
+            // d'adresse, 0x00552880, dont les quatre rangees sont celles de 0x00552868.
+            case 0x00488210: TickSceneEntityAi_00488210(record); return;
 
             // 0x004a5f10 est un DUPLICATA de 0x00486ee0 : 299 instructions comparees une a une,
             // zero difference. Meme corps, deux creneaux.
@@ -918,6 +921,10 @@ public static unsafe partial class Blaze
             // La QUATRIEME intelligence d'entite de scene : celle qui EMPOIGNE. Foret,
             // sous-zones 0 a 4 ; 1932 octets absents de Blaze.c. Elle etait la seule ligne
             // « implemente=non, teste=oui » de la zone 3.
+            // Et deux copies dans la mine (sous-zones 0 a 2 et 3, 4, 9) : le meme texte, a trois
+            // chargements de champ pres, avances en registre avant le calcul qui les emploie.
+            case 0x0048AD80:
+            case 0x00492E40:
             case 0x0049E920: TickSceneEntityAi_0049E920(record); return;
 
             // Le sous-type 0 de la meme table — la sœur du precedent, une bete plus petite et plus
@@ -936,16 +943,24 @@ public static unsafe partial class Blaze
             case 0x004A3C30: TickSceneEntityAi_004A3C30(record); return;
 
             // Le sous-type 6 — le POISSON VOLANT, qui ne vole pas : il bondit, et il s'accroche.
+            // Et sa copie de la mine, sous-zones 5 a 8 : trois chargements de champ non avances en
+            // registre, le meme calcul.
+            case 0x0048CBB0:
             case 0x0049C8E0: TickSceneEntityAi_0049C8E0(record); return;
 
             // Le sous-type 5 — le CRABE GEANT, la plus proche parente des deux premieres : meme
             // integration terrestre, meme table de sauts, mais DEUX attaques — la pince, qui balaie
             // quatre images de suite, et la ruee, qui ne porte qu'a moitie.
+            // Et sa copie de la mine, sous-zones 5 a 8, identique instruction pour instruction.
+            case 0x0048D300:
             case 0x0049C0B0: TickSceneEntityAi_0049C0B0(record); return;
 
             // Le sous-type 4 — le GRIZZLY, jumeau du precedent : memes quatre postures, mais son
             // bond QUITTE LE SOL et son geste se ferme a l'atterrissage, pas sur un compte a
             // rebours. Ses deux gabarits de portee sont dans .data (0x00552960, 0x0055296c).
+            // Et sa copie de la mine, sous-zones 3, 4 et 9 : le gabarit du bond est lu a 0x005528cc,
+            // dont les douze octets sont ceux de 0x0055296c.
+            case 0x00493C70:
             case 0x0049B840: TickSceneEntityAi_0049B840(record); return;
 
             // Le sous-type 4 du bloc C — LE MEME GRIZZLY, emis une seconde fois par le compilateur.
@@ -965,11 +980,17 @@ public static unsafe partial class Blaze
             // Le sous-type 14 du bloc B — LE GEANT, un Grizzly a trois differences : ses DEUX
             // gestes quittent le sol, son elan ne part que si la cible etait assez loin a
             // l'engagement, et sa replanification a un second essai sur un cone elargi.
+            // Et sa copie de la mine, sous-zones 3, 4 et 9 : le gabarit du bond est lu a 0x005528fc,
+            // dont les douze octets sont ceux de 0x005529dc.
+            case 0x00495C90:
             case 0x004A2C90: TickSceneEntityAi_004A2C90(record); return;
 
             // Le sous-type 15 du bloc B — WILLIE, quatrieme bete volante : la sœur de la
             // Coccinelle qui ENFLE pour frapper (trois fois sa taille), dont la sonde est centree
             // sur son propre corps, et qui pulse en taille et en couleur sur la phase de son vol.
+            // Et ses deux copies de la mine (sous-zones 5 a 8, puis 3, 4 et 9), identiques.
+            case 0x0048C530:
+            case 0x004935F0:
             case 0x004A35B0: TickSceneEntityAi_004A35B0(record); return;
 
             // Le sous-type 10 du bloc B — LE TRENT, seconde bete du depot qui LANCE UN SORT : le
@@ -1041,6 +1062,11 @@ public static unsafe partial class Blaze
 
             // Le sous-type 8 — le GOBLIN, la premiere bete qui ATTAQUE DE LOIN : son second geste
             // ne croise aucun gabarit, il fait naitre le projectile 0x49 et rend la main.
+            // Et deux copies : la mine (sous-zones 0 a 2) et la vieille tour (0, 1, 2, 4). Leur texte
+            // porte en ligne le « tenir la distance » (posture 2, portee 0x64) que la foret atteint
+            // par un saut ; memes ecritures, meme tirage.
+            case 0x004879F0:
+            case 0x004A6290:
             case 0x0049DA40: TickSceneEntityAi_0049DA40(record); return;
 
             // Le sous-type 0xfe de la table installee par zone (0x0056afc8 + 0xfe * 4 deborde

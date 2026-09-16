@@ -4,6 +4,18 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 25)
+
+- feat : **dix routines d'IA de la mine, et une de la vieille tour, sans une ligne de comportement
+  neuve** — toutes sont des corps deja ecrits : Willie (x2), le Crabe geant, le Grizzly, le Geant,
+  le Crotale (x2), le Poisson volant, le Goblin (+ `0x004A6290` en tour) et le lanceur de
+  l'auberge (`0x00488210`, par sa table de sorts). Mine : 127 -> 144 sur 157
+- doc : prouver une copie demande deux temps apres le diff — lire la donnee que designent les
+  immediates, et verifier qu'un chargement deplace en registre n'est pas relu avant reecriture
+- doc : la table de sorts de l'auberge a vraisemblablement quatre rangees, pas huit — la seconde
+  moitie est celle de la mine ; et le Goblin-sorcier `0x0049E190` est le meme corps que
+  `0x00487260`, transcrit deux fois
+
 ## 2026-09-16 (suite 24)
 
 - feat : **dix gestionnaires d'un coup — la mine n'a plus d'effet a ecrire**, il n'y reste que ses

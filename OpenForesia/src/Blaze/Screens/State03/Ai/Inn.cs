@@ -269,6 +269,38 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void TickSceneEntityAi_00487260(byte* record)
+        => TickSpellcasterAi_00487260(record, 0);
+
+    /// <summary>
+    /// Ghidra: <c>0x00488210</c> — <b>la meme routine dans la mine abandonnee</b>, sous-zones 0 a 2,
+    /// table <c>0x0056ad48</c>. Absente de <c>Blaze.c</c>. Le desassemblage, adresses de saut
+    /// ramenees, ne differe de celui de <c>0x00487260</c> que par une ligne :
+    /// <c>mov ax,[ecx*2+552880h]</c> au lieu de <c>552868h</c>.
+    ///
+    /// <para>
+    /// <b>Et <c>0x00552880</c> est la seconde moitie de <see cref="s_Spells_00552868"/></b>, celle que
+    /// son resume decrivait comme une repetition : les quatre rangees de la mine. La table de
+    /// l'auberge n'a donc vraisemblablement que QUATRE rangees, et la suite est la table de la
+    /// mine, octet pour octet la meme — et <c>0x00552978</c>, celle du Goblin-sorcier de la foret,
+    /// porte encore ces quatre rangees. La mine lit la meme donnee a partir de la rangee 4 ; une
+    /// rangee <c>+0x14</c> au-dela de 3 y leve, la ou le binaire lirait la sonde qui suit.
+    /// </para>
+    /// <para>
+    /// <b>Et le Goblin-sorcier est lui aussi ce corps</b> : <c>0x0049E190</c> ne differe de
+    /// <c>0x00487260</c> que par l'adresse de sa table (<c>552978h</c>). Il a ete transcrit a part
+    /// (<see cref="TickSceneEntityAi_0049E190"/>) avant que la comparaison ne soit faite ; les deux
+    /// transcriptions restent a rapprocher.
+    /// </para>
+    /// </summary>
+    private static void TickSceneEntityAi_00488210(byte* record)
+        => TickSpellcasterAi_00487260(record, 4 * 3);   // Ghidra: &DAT_00552880
+
+    /// <summary>
+    /// Le corps partage par <see cref="TickSceneEntityAi_00487260"/> (auberge) et
+    /// <see cref="TickSceneEntityAi_00488210"/> (mine). <paramref name="spellBase"/> est la
+    /// position, dans <see cref="s_Spells_00552868"/>, du debut de la table que lit l'emission.
+    /// </summary>
+    private static void TickSpellcasterAi_00487260(byte* record, int spellBase)
     {
         byte* e = record;
 
@@ -292,7 +324,7 @@ public static unsafe partial class Blaze
         int timid = 0x40 - boldness;
 
         // ---------------------------------------------------------------- 1. decider
-        DecideSceneEntityAction_00487260(e, probe, boldness, distance, heading, speed, traits);
+        DecideSceneEntityAction_00487260(e, probe, boldness, distance, heading, speed, traits, spellBase);
 
         // ---------------------------------------------------------------- 2. appliquer
         IntegrateSceneEntityMotion_00488160(e, speed);
@@ -319,7 +351,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void DecideSceneEntityAction_00487260(
-        byte* e, short* probe, int boldness, int distance, int heading, int speed, uint traits)
+        byte* e, short* probe, int boldness, int distance, int heading, int speed, uint traits, int spellBase)
     {
         if (speed == 0) return;
 
@@ -379,7 +411,7 @@ public static unsafe partial class Blaze
         // ================================================================ l'incantation
         if ((flags & 0x804) != 0)
         {
-            AdvanceIncantation_00487260(e, boldness, heading, traits, flags);
+            AdvanceIncantation_00487260(e, boldness, heading, traits, flags, spellBase);
             return;
         }
 
@@ -506,7 +538,7 @@ public static unsafe partial class Blaze
     /// </para>
     /// </summary>
     private static void AdvanceIncantation_00487260(
-        byte* e, int boldness, int heading, uint traits, uint flags)
+        byte* e, int boldness, int heading, uint traits, uint flags, int spellBase)
     {
         if ((traits & 0x400003e8) != 0)
         {
@@ -561,7 +593,7 @@ public static unsafe partial class Blaze
                 // ne borne PAS la rangee : un +0x14 au-dela de 7 y lirait la donnee qui suit. Ici
                 // la lecture leve, ce qui est la bonne facon de decouvrir qu'une carte pose une
                 // valeur inattendue — les huit rangees couvrent tout ce que la donnee declare.
-                ushort sheet = s_Spells_00552868[*(short*)(e + 0x14) * 3 + CrtRand() % 3];
+                ushort sheet = s_Spells_00552868[spellBase + *(short*)(e + 0x14) * 3 + CrtRand() % 3];
                 *(ushort*)(e + 6) = sheet;
 
                 // Ghidra: `mov edx,[edx+9Ch] ; mov ecx,[edx+ecx*4] ; mov dl,[ecx+eax+13h]` — le

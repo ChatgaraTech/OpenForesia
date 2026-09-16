@@ -21941,3 +21941,43 @@ entre zones.
 ### Ce qui reste en zone 1
 
 Les **vingt-trois routines d'IA** `0x004879F0`…`0x00497370` (table `0x0056ad48`) et rien d'autre.
+
+## 2026-09-16 (suite 25) — dix routines d'IA de la mine sans une ligne de comportement neuve
+
+Demandé : dix routines d'IA de la mine. **Aucune n'a demandé de transcription** : la recherche de
+quasi-copies (suite 24) passée sur les vingt-trois routines de la zone en a trouvé dix — plus une
+onzième, dans la vieille tour — qui sont des corps **déjà écrits**. Le travail a été de le
+prouver, pas d'écrire.
+
+| mine | corps écrit | ce qui diffère, et pourquoi c'est sans effet |
+|---|---|---|
+| `0x0048C530`, `0x004935F0` | Willie `0x004A35B0` | rien |
+| `0x0048D300` | Crabe géant `0x0049C0B0` | rien |
+| `0x00493C70` | Grizzly `0x0049B840` | gabarit du bond à `0x005528cc` — mêmes douze octets que `0x0055296c` |
+| `0x00495C90` | Géant `0x004A2C90` | gabarit à `0x005528fc` — mêmes octets que `0x005529dc` |
+| `0x0048AD80`, `0x00492E40` | Crotale `0x0049E920` | trois chargements de `+0x44/+0x48/+0x4c` avancés en `ebp/ebx/edi` avant les écritures de position ; aucun des trois registres n'est relu avant d'être réécrit |
+| `0x0048CBB0` | Poisson volant `0x0049C8E0` | l'inverse : la forêt avance ses chargements, la mine non — même preuve |
+| `0x004879F0` (+ `0x004A6290`, tour) | Goblin `0x0049DA40` | le « tenir la distance » (posture 2, portée `0x64`) écrit en ligne là où la forêt y saute ; mêmes écritures, même tirage |
+| `0x00488210` | l'auberge `0x00487260` | la table de sorts, `0x00552880` au lieu de `0x00552868` |
+
+**La preuve a deux temps, et le second n'est pas facultatif.** Le diff STRICT (adresses de saut
+seules masquées) dit ce qui change dans le texte ; il faut ensuite **lire ce que les immédiates
+désignent** (`od` des gabarits) et, pour un chargement déplacé, **vérifier la vivacité des
+registres** — un registre écrasé plus tôt ne compte que s'il est relu avant d'être réécrit.
+
+### Deux trouvailles en chemin
+
+- **La table de sorts de l'auberge n'a vraisemblablement que quatre rangées.** Sa « répétition »
+  de `0x00552880` est la table de la mine, lue par un autre corps. Le relevé à huit rangées est
+  gardé (le corps de l'auberge lève au-delà) ; la mine lit à partir de la rangée 4.
+- **Le Goblin-sorcier `0x0049E190` est le corps de l'auberge `0x00487260`**, à l'adresse de sa
+  table près (`0x00552978`, mêmes quatre rangées). Les deux ont été transcrits séparément ; ils
+  restent à rapprocher — c'est une dette de code, pas de comportement.
+
+### Ce qui reste en zone 1
+
+Treize routines sans copie écrite : `0x004889A0`, `0x00489CA0` (= `0x004D01C0`, château, non
+écrit), `0x0048B530` (= `0x004BC530`), `0x0048DB30`, `0x0048E3A0` (= `0x00497EF0`), `0x0048F230`
+(= `0x004F9C70`), `0x004901B0` (28 lignes de `0x00489CA0`), `0x00491650`, `0x004921A0`,
+`0x004944E0`, `0x00494D10` (= `0x004F23D0`), `0x004965B0`, `0x00497370`. Six d'entre elles ont un
+jumeau exact ailleurs : les écrire une fois en ferme deux.
