@@ -4,6 +4,25 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 24)
+
+- feat : **dix gestionnaires d'un coup — la mine n'a plus d'effet a ecrire**, il n'y reste que ses
+  vingt-trois routines d'IA
+- feat : `0x0040BCA0`, la spirale qui s'ouvre et monte, et `0x004380C0` dans la grotte scellee —
+  le meme corps a six differences, dont une image qui n'avance jamais
+- feat : `0x00483B50` et `0x00486DE0`, l'emetteur accroche a son parent (copie conforme) ; debloque
+  par `FUN_00536090`, la rotation de vecteur sur 64 bits que Ghidra lisait a deux parametres
+- feat : `0x0040BF50` et `0x0043E170`, l'entite de scene qui s'agite, enfle et se dissout ;
+  `0x0040B940`, la saisie de l'entite de scene 2 avec le fond qui vire et la gamme qui monte
+- feat : `0x00408EF0`, le rocher qui tombe, eclate et blesse ; `FUN_00418F50`, les degats en
+  pourcentage autour d'un point
+- feat : `0x005413E0`, la poussiere du pas des dix autres zones — sortie de `TickGroundContact`, qui
+  la portait recopiee en ligne ; `0x00443170`, le verbe de dialogue sans garde-fou
+- doc : la recherche de copies passe aux **quasi-copies** (diff ligne a ligne contre les corps de
+  taille voisine) : trois des dix en viennent
+- doc : `0x0043E170` range son clip dans la case de l'argument — sans cible, il lit l'entite
+  elle-meme comme un clip
+
 ## 2026-09-16 (suite 23)
 
 - feat : `0x004084F0`, la grande spirale des sous-zones 5 a 8 — copie conforme de `0x00406680` a la

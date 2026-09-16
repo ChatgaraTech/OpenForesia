@@ -1122,4 +1122,45 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x10) += 1;
         if (*(short*)(e + 0x10) >= 8) *(uint*)e = 0;
     }
+
+    /// <summary>
+    /// Ghidra: FUN_00418f50 @ 0x00418f50 — <b>blesser le groupe autour d'un point</b>, en
+    /// pourcentage. Decompilee dans <c>Blaze.c</c>.
+    ///
+    /// <para>
+    /// Chaque membre vivant, ni <c>0x50000000</c>, de <c>+0x12</c> nul, a moins de
+    /// <paramref name="radius"/> unites du point — <b>la hauteur relevee de <c>0x3c</c></b>, comme
+    /// dans les autres balayages du groupe — et sans clignotement en cours, perd
+    /// <paramref name="percent"/> % de ses points de vie maximum par
+    /// <see cref="ApplyPercentDamage_005397B0"/>, puis recoit le bit <c>0x40</c> et <b>un
+    /// clignotement de <c>0x3c</c></b> — quatre fois plus long que celui d'un coup ordinaire, et qui
+    /// ecrase le <c>0x10</c> que l'appliqueur vient de poser.
+    /// </para>
+    /// <para>
+    /// Les sites d'appel empilent <b>huit</b> arguments (<c>add esp,20h</c>) ; le corps n'en lit
+    /// que six.
+    /// </para>
+    /// </summary>
+    private static void DamagePartyNearPoint_00418F50(int x, int y, int z, short radius, short percent, short effectParam)
+    {
+        byte* member = Inp.s_SlotFlags_005e93c0;                             // 0x005e93c0
+
+        for (int i = 4; i != 0; i--, member += 0x9c)
+        {
+            uint flags = *(uint*)member;
+            if ((flags & 0x80000000) == 0 || (flags & 0x50000000) != 0) continue;
+            if (*(short*)(member + 0x12) != 0) continue;
+
+            int dx = (x >> 0xc) - (*(int*)(member + 0x1c) >> 0xc);
+            int dz = (z >> 0xc) - (*(int*)(member + 0x24) >> 0xc);
+            int dy = (y >> 0xc) - (*(int*)(member + 0x20) >> 0xc) - 0x3c;
+
+            int distance = (int)Winsys3d.Ordinal_442((uint)(dx * dx + dy * dy + dz * dz));
+            if (distance >= radius || *(short*)(member + 0x96) != 0) continue;
+
+            ApplyPercentDamage_005397B0((uint*)member, percent, (ushort)effectParam);
+            *(uint*)member |= 0x40;
+            *(short*)(member + 0x96) = 0x3c;
+        }
+    }
 }

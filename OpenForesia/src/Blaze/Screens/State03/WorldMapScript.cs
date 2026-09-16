@@ -1864,6 +1864,9 @@ public static unsafe partial class Blaze
             0x00443830 => AreaVerb_00443830((short)(s[2] | (s[3] << 8))),
             0x00444E60 => AreaVerb_00444E60(),
             0x00443300 => AreaVerb_00443300((short)(s[2] | (s[3] << 8))),
+
+            // La meme boite de dialogue sans garde-fou, mine abandonnee, sous-zones 0 a 2.
+            0x00443170 => AreaVerb_00443170((short)(s[2] | (s[3] << 8))),
             0x00443B20 => AreaVerb_00443B20(),
 
             // Le verbe 13 : le rassemblement du groupe sur l'un des quatre emplacements des deux
@@ -2322,6 +2325,30 @@ public static unsafe partial class Blaze
 
         byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + label * 4);
         BindMenuLabels(labels, slots + speaker * 0x9c, s_WorldMapDescriptor_005633b0, 0);
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Ghidra: <c>0x00443170</c> — <b>« fais parler le membre que la banque 2 designe », sans
+    /// garde-fou</b>. 18 instructions, absente de <c>Blaze.c</c> ;
+    /// <c>Legacy/Raw/Blaze/FUN_00443170.asm</c>. Table <c>0x0056aec8</c>, mine abandonnee,
+    /// sous-zones 0 a 2.
+    ///
+    /// <para>
+    /// C'est <see cref="AreaVerb_00443300"/> <b>reduit a sa derniere ligne</b> : l'octet
+    /// <c>0x005e9062</c> — l'octet <c>+2</c> de la banque 2 — designe l'emplacement tel quel, sans
+    /// recherche du dernier membre vivant ni controle de bornes. Un octet au-dela de 3 lie la boite
+    /// a une adresse hors de la table des quatre emplacements ; c'est ce que le binaire fait.
+    /// </para>
+    /// </summary>
+    /// <returns>Toujours zero (<c>xor eax,eax</c>).</returns>
+    private static uint AreaVerb_00443170(short label)
+    {
+        byte* speaker = Inp.s_SlotFlags_005e93c0 + Mem.s_StateBank2_005e9060[2] * 0x9c;
+
+        byte* labels = *(byte**)(*(byte**)(s_Unknown_005e97cc + 0x70) + label * 4);
+        BindMenuLabels(labels, speaker, s_WorldMapDescriptor_005633b0, 0);
 
         return 0;
     }

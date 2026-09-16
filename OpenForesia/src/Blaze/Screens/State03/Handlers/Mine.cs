@@ -2090,4 +2090,115 @@ public static unsafe partial class Blaze
         *(short*)(e + 0x12) += 1;
         if (*(short*)(e + 0x12) >= 0x3c) *(uint*)e &= 0x7fffffff;
     }
+
+    // =====================================================================
+    // LE ROCHER QUI TOMBE ET ECLATE — creneau 63 du bloc 0x00554428 (table 0x0056b1c8)
+    // =====================================================================
+
+    /// <summary>
+    /// Ghidra: <c>0x00408ef0</c> — <b>le rocher qui tombe, eclate et blesse</b>, creneau 63 du bloc
+    /// <c>0x00554428</c>, sous-zones 5 a 8 de la mine. Absente de <c>Blaze.c</c> ; 191 instructions,
+    /// <c>Legacy/Raw/Blaze/FUN_00408EF0.asm</c>. Il vit ici et non dans <c>Effects/</c> : c'est un
+    /// decor qui tombe et qui frappe, comme le pilon et les masses.
+    ///
+    /// <para>
+    /// <b>Son modele est choisi par <c>+0x14</c></b>, ajoute a <see cref="s_Unknown_005edec4"/> —
+    /// l'indice ou commencent les modeles de zone. La variante 0 fait aussi naitre un effet
+    /// <c>0xEF</c> a sa position.
+    /// </para>
+    /// <para>
+    /// <b>Etat 1, la chute</b> : il descend d'une vitesse <c>+0x12</c> qui part de 10 cases et gagne
+    /// une case par image. <b>Au sol</b> (<c>+0x64</c>) il se pose, tire une vitesse de rebond
+    /// (<c>-8..7</c> cases en X et Z, <c>20..22</c> vers le haut), fait naitre <b>trois eclats
+    /// <c>0xF4</c></b>, joue le son <c>0x20</c> de la zone a moins de 2000 unites de la camera, tire
+    /// trois vitesses de rotation entre <c>-20</c> et <c>19</c>, et <b>blesse le groupe</b> par
+    /// <see cref="DamagePartyNearPoint_00418F50"/> : <c>3 %</c> des points de vie a moins de
+    /// <c>0x50</c>. Tombe sous <c>-0xbb8000</c> sans toucher le sol, il meurt sur-le-champ.
+    /// </para>
+    /// <para>
+    /// <b>Etat 2, le rebond</b> — il commence dans l'image meme de l'impact : il vole sur sa
+    /// vitesse, tourne sur ses trois axes, perd une case de vitesse verticale par image, <b>clignote
+    /// une image sur deux</b> (bit <c>0x4000</c> suivant la parite de <c>+0x16</c>) et meurt quand la
+    /// vitesse verticale passe sous <c>-15</c>, ou sous la meme profondeur que la chute.
+    /// </para>
+    /// </summary>
+    private static void EntityHandler_00408EF0(byte* e)
+    {
+        if (*(short*)(e + 0x10) == 0)
+        {
+            e[0x04] = (byte)(s_Unknown_005edec4 + e[0x14]);
+            e[0x0a] = 2;
+            e[0x0b] = 0;
+            *(short*)(e + 0x10) = 1;
+            *(short*)(e + 0x12) = 10;
+            *(short*)(e + 0x16) = 0;
+
+            if (*(short*)(e + 0x14) == 0)
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xef, 0, -1);
+        }
+
+        if (*(short*)(e + 0x10) == 1)
+        {
+            int height = *(int*)(e + 0x20) - (*(short*)(e + 0x12) << 0xc);
+            *(int*)(e + 0x20) = height;
+
+            if (height <= *(int*)(e + 0x64))
+            {
+                *(int*)(e + 0x20) = *(int*)(e + 0x64);
+                *(short*)(e + 0x10) = 2;
+
+                *(int*)(e + 0x50) = SignedMask(CrtRand(), 0xf) - 8;
+                *(int*)(e + 0x58) = SignedMask(CrtRand(), 0xf) - 8;
+                *(int*)(e + 0x54) = CrtRand() % 3 + 0x14;
+
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xf4, 0, -1);
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xf4, 0, -1);
+                SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xf4, 0, -1);
+
+                TryPlaySoundNearEntity((uint*)e, ZoneSound(0x20), 0x800, 0x1000, 0, 0);   // Ghidra: FUN_00468080
+
+                *(int*)(e + 0x44) = CrtRand() % 0x28 - 0x14;
+                *(int*)(e + 0x48) = CrtRand() % 0x28 - 0x14;
+                *(int*)(e + 0x4c) = CrtRand() % 0x28 - 0x14;
+
+                DamagePartyNearPoint_00418F50(
+                    *(int*)(e + 0x1c), *(int*)(e + 0x20), *(int*)(e + 0x24), 0x50, 3, 0);
+            }
+
+            *(short*)(e + 0x12) += 1;
+            if (*(int*)(e + 0x20) < -0xbb8000)
+            {
+                *(short*)(e + 0x10) = 2;
+                *(uint*)e &= 0x7fffffff;
+                return;   // le seul chemin qui saute l'avance de +0x16
+            }
+        }
+
+        if (*(short*)(e + 0x10) == 2)
+        {
+            int height = *(int*)(e + 0x20);
+            if (height < -0xbb8000) *(uint*)e &= 0x7fffffff;
+
+            *(int*)(e + 0x1c) += *(int*)(e + 0x50) << 0xc;
+            *(int*)(e + 0x24) += *(int*)(e + 0x58) << 0xc;
+
+            int climb = *(int*)(e + 0x54);
+            *(int*)(e + 0x20) = (climb << 0xc) + height;
+
+            *(short*)(e + 0x30) += (short)*(int*)(e + 0x44);
+            *(short*)(e + 0x34) += (short)*(int*)(e + 0x4c);
+            *(short*)(e + 0x32) += (short)*(int*)(e + 0x48);
+
+            climb -= 1;
+            *(int*)(e + 0x54) = climb;
+
+            uint flags = *(uint*)e;
+            flags = (e[0x16] & 1) != 0 ? flags | 0x4000 : flags & 0xffffbfff;
+            *(uint*)e = flags;
+
+            if (climb < -15) *(uint*)e = flags & 0x7fffffff;
+        }
+
+        *(short*)(e + 0x16) += 1;
+    }
 }

@@ -76,6 +76,41 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: FUN_00536090 @ 0x00536090 — <b>tourner un vecteur par trois angles</b>.
+    /// Decompilee dans <c>Blaze.c</c>, mais illisible : Ghidra n'y voit que deux parametres et trois
+    /// <c>__allshr</c> sans operande. Transcrite au desassembleur,
+    /// <c>Legacy/Raw/Blaze/FUN_00536090.asm</c>.
+    ///
+    /// <para>
+    /// Trois arguments : les trois angles (shorts), le vecteur d'entree et le vecteur de sortie
+    /// (trois ints chacun). Elle bâtit la matrice de rotation par <see cref="RotMatrix"/> dans un
+    /// tampon local de 32 octets, la depose dans le registre MATRIX (<c>Ordinal_366</c>,
+    /// <c>SetRotMatrix</c>), puis <b>relit ce registre</b> (<c>[0x608810]</c>, l'import de
+    /// l'ordinal 814) pour le produit — pas sa copie locale.
+    /// </para>
+    /// <para>
+    /// <b>Le produit est fait sur 64 bits</b> : chaque terme par <c>imul</c> a un operande (resultat
+    /// dans <c>edx:eax</c>), les trois sommes avec retenue, puis <c>__allshr</c> de 12. Le decalage
+    /// ne perd donc rien avant d'etre tronque a 32 bits. La translation du registre n'est pas
+    /// ajoutee. Les lignes 2 et 3 additionnent leurs termes dans l'ordre 0, 2, 1 ; une somme ne
+    /// depend pas de l'ordre.
+    /// </para>
+    /// </summary>
+    private static void RotateVectorByAngles_00536090(short* angles, int* input, int* output)
+    {
+        short* matrix = stackalloc short[0x10];   // le tampon local de 0x20 octets
+        RotMatrix(angles, matrix);                 // Ghidra: FUN_0051c300
+        Winsys3d.Ordinal_366(matrix);
+
+        EnsureGteRegisters();
+        short* m = (short*)s_GteMatrix814;         // Ghidra: Ordinal_814_exref
+
+        output[0] = (int)(((long)m[0] * input[0] + (long)m[1] * input[1] + (long)m[2] * input[2]) >> 0xc);
+        output[1] = (int)(((long)m[3] * input[0] + (long)m[5] * input[2] + (long)m[4] * input[1]) >> 0xc);
+        output[2] = (int)(((long)m[6] * input[0] + (long)m[8] * input[2] + (long)m[7] * input[1]) >> 0xc);
+    }
+
+    /// <summary>
     /// Ghidra: FUN_00532b10 @ 0x00532b10 — <b>poser une vitesse horizontale a partir d'un cap</b> :
     /// l'angle indexe la table sinus/cosinus empaquetee construite au demarrage, et les deux
     /// composantes partent en <c>+0x00</c> et <c>+0x08</c> du bloc vise. Appelee sur <c>+0x50</c>,

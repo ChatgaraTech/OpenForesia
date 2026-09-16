@@ -21890,3 +21890,54 @@ rétracte passé un cap tiré à part. Deux nouvelles marges de 1, prouvées («
 - `0x0040BCA0` (130 instr.), `0x00408EF0` (191), `0x0040B940` (217), `0x0040BF50` (449) : sans copie
   connue.
 - `0x00443170` et `0x005413E0` ne sont pas dans les tables d'effets.
+
+## 2026-09-16 (suite 24) — dix de plus : la mine n'a plus d'effet à écrire
+
+Demandé : `0x0040BCA0`, et dix d'un coup. Même méthode que la suite 23, élargie : la comparaison
+se fait **aux quasi-copies** et non plus aux seules copies exactes — `diff` ligne à ligne du
+désassemblage LOOSE du cache `census-duplicates.sh`, contre les 1 430 corps de taille voisine
+(±15 %). C'est ce qui a donné trois des dix.
+
+| gestionnaire | où | ce que c'est |
+|---|---|---|
+| `0x0040BCA0` | mine 3,4,9 | la spirale qui s'ouvre et monte |
+| `0x004380C0` | grotte 4,9 | **la même, à six différences** — dont une structurelle : l'`inc` du `+0x40` a disparu, l'image n'avance jamais |
+| `0x00443170` | mine 0-2, verbe | « fais parler le membre de la banque 2 », sans le garde-fou de `0x00443300` |
+| `0x005413E0` | dix zones | la poussière du pas, **seule** — la première moitié de `TickGroundContact`, que `0x00541440` porte recopiée en ligne |
+| `0x00408EF0` | mine 5-8 | le rocher qui tombe, éclate en trois et blesse (`Handlers/Mine.cs`) |
+| `0x00483B50` | mine 3,4,9 et grotte | l'émetteur accroché à son parent |
+| `0x00486DE0` | grotte 13-15 | **copie conforme** du précédent : seuls deux termes d'une addition changent d'ordre de chargement |
+| `0x0040B940` | mine 3,4,9 | la saisie de l'entité de scène 2 : le fond qui vire, la gamme qui monte, le script 6 |
+| `0x0040BF50` | mine 3,4,9 | l'entité de scène 3 qui s'agite, enfle et se dissout, le script 0 |
+| `0x0043E170` | grotte 11,12 | **la même, à quatre différences** (genre 0, deux semis `0xF8`, repli sur `0x005de558`, pas de mémoire d'emplacement) |
+
+### Deux fonctions de soutien, transcrites en chemin
+
+- **`FUN_00536090`** (`Physics/AngleMath.cs`, `RotateVectorByAngles_00536090`) — ce qui bloquait
+  `0x00483B50`. Trois arguments et non deux : angles, vecteur d'entrée, vecteur de sortie. `RotMatrix`
+  dans un tampon local, `SetRotMatrix`, puis le produit **relu dans le registre MATRIX** (import
+  `[0x608810]`, l'ordinal 814), sur 64 bits — les trois `__allshr` que Ghidra affichait sans
+  opérande sont les décalages de 12 de ce produit.
+- **`FUN_00418F50`** (`Combat/Projectiles.cs`, `DamagePartyNearPoint_00418F50`) — blesser en
+  pourcentage le groupe autour d'un point, clignotement `0x3c` qui écrase le `0x10` de l'appliqueur.
+  Décompilée, jamais appelée par du code transcrit jusqu'ici.
+
+### Deux défauts de 1998 de plus, et une lecture de case d'argument
+
+- `0x0040B940` et `0x0040BF50` reprennent le défaut de `TickPartySummon` : sans entité de scène, le
+  clip est un mot de pile jamais écrit. Pointeur laissé nul, la faute tombe au même endroit.
+- **`0x0043E170` ne l'a pas**, mais pour une raison étrange : le clip y est rangé dans
+  `[esp+14h]`, **la case de l'argument**. Sans cible, il vaut donc l'entité elle-même, et le corps
+  lit son `+0x16` comme un nombre d'images.
+
+### Placement
+
+`0x0040B940`, `0x0040BF50` et leurs copies suivent `TickPartySummon`, rangé dans `Effects/`. Les
+copies de la grotte scellée sont **rangées auprès du corps qu'elles partagent**, dans
+`MineParticles.cs` (désormais ~3 900 lignes) : il n'existe pas de fichier d'effets pour la zone 10.
+**À trancher par Vincent** — un `Effects/SharedSceneEffects.cs` accueillerait les corps partagés
+entre zones.
+
+### Ce qui reste en zone 1
+
+Les **vingt-trois routines d'IA** `0x004879F0`…`0x00497370` (table `0x0056ad48`) et rien d'autre.

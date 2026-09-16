@@ -2265,6 +2265,38 @@ public static unsafe partial class Blaze
     }
 
     /// <summary>
+    /// Ghidra: <c>0x005413e0</c> — <b>la poussiere du pas</b>, seule : l'entree 32 de la table
+    /// <c>0x0056afc8</c> dans les dix zones autres que la foret. Absente de <c>Blaze.c</c> ;
+    /// 32 instructions, <c>Legacy/Raw/Blaze/FUN_005413E0.asm</c>. C'est la premiere moitie de
+    /// <see cref="TickGroundContact"/>, que <c>0x00541440</c> porte recopiee en ligne ; voir le resume
+    /// de celui-ci pour la periode et la division non signee.
+    /// </summary>
+    private static void EntityHandler_005413E0(uint* entity) => SpawnStepDust_005413E0((byte*)entity);
+
+    /// <summary>
+    /// Le corps de <c>0x005413e0</c>, partage avec <see cref="TickGroundContact"/> : un effet
+    /// <c>0xFE</c> nait a la position de l'entite quand l'image du clip courant tombe sur la
+    /// demi-periode (ou a chaque image si le bit 0 est pose), et seulement au contact du sol
+    /// (<c>+0x90 &amp; 0x200</c>).
+    /// </summary>
+    private static void SpawnStepDust_005413E0(byte* e)
+    {
+        // Ghidra: `mov edx,[eax*4+5E9680h] ; mov eax,[edx+ecx*4]` — bundle du membre, puis clip.
+        byte* bundle = *(byte**)(Mem.Arena(0x005e9680) + e[4] * 4);
+        byte* clip = *(byte**)(bundle + *(short*)(e + 0x18) * 4);
+
+        uint period = (uint)*(ushort*)(clip + 0x16) >> 1;
+        if (period == 0) return;
+
+        // Ghidra: `div esi` — division NON SIGNEE sur une valeur etendue par movsx.
+        uint frame = (uint)(int)*(short*)(e + 0x1a);
+        if (frame % period != 0 && (e[0] & 1) == 0) return;
+
+        if ((*(uint*)(e + 0x90) & 0x200) != 0)
+            SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xfe, 0x18, -1);
+    }
+
+    /// <summary>
     /// <b>Le crochet de contact au sol de la foret</b>, entree 32 de la table <c>0x0056afc8</c>.
     /// La zone 0 met la souche vide a cette entree ; la foret y met ceci, et c'est <b>ce que le sol
     /// fait a chaque pas</b>.
@@ -2325,26 +2357,17 @@ public static unsafe partial class Blaze
     /// gestionnaire directement. Le huitieme octet du tampon n'est jamais ecrit ni lu — le
     /// gestionnaire s'arrete a <c>s[6]</c>.
     /// </para>
+    /// <para>
+    /// <b>La premiere moitie existe seule dans le binaire</b> : c'est <c>0x005413e0</c>, que les
+    /// dix autres zones installent au meme creneau. Le compilateur l'a recopiee ici en ligne ; elle
+    /// est ecrite une fois, <see cref="SpawnStepDust_005413E0"/>.
+    /// </para>
     /// </summary>
     private static void TickGroundContact(uint* entity, bool guardRemovedOrDead)
     {
         byte* e = (byte*)entity;
 
-        // Ghidra: `mov edx,[eax*4+5E9680h] ; mov eax,[edx+ecx*4]` — bundle du membre, puis clip.
-        byte* bundle = *(byte**)(Mem.Arena(0x005e9680) + e[4] * 4);
-        byte* clip = *(byte**)(bundle + *(short*)(e + 0x18) * 4);
-
-        uint period = (uint)*(ushort*)(clip + 0x16) >> 1;
-        if (period != 0)
-        {
-            // Ghidra: `div ecx` — division NON SIGNEE sur une valeur etendue par movsx.
-            uint frame = (uint)(int)*(short*)(e + 0x1a);
-            if (frame % period == 0 || (e[0] & 1) != 0)
-            {
-                if ((*(uint*)(e + 0x90) & 0x200) != 0)
-                    SpawnStatusEffectEntity_0047AC40(e, (int*)(e + 0x1c), null, 0xfe, 0x18, -1);
-            }
-        }
+        SpawnStepDust_005413E0(e);
 
         byte* character = GetMainMemPtr() + (e[8] + 0x78) * 0x2000;
         byte* carrier = *(byte**)(e + 0x7c);

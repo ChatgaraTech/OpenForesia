@@ -434,6 +434,7 @@ public static unsafe partial class Blaze
             case 0x00457370: EntityHandler_00457370((uint*)record); return;
             case 0x00456CF0: EntityHandler_00456CF0((uint*)record); return;
             case 0x00541440: EntityHandler_00541440((uint*)record); return;
+            case 0x005413E0: EntityHandler_005413E0((uint*)record); return;   // les dix autres zones
             case 0x00541B80: EntityHandler_00541B80((uint*)record); return;
 
             // L'entree 0xbd de la table statique 0x00551f30 — l'aureole d'incantation, le seul
@@ -1210,7 +1211,15 @@ public static unsafe partial class Blaze
             case 0x00409120: EntityHandler_00409120(record); return;
             case 0x0040C5D0: EntityHandler_0040C5D0(record); return;
             case 0x0040C910: EntityHandler_0040C910(record); return;
+            case 0x0040BCA0: EntityHandler_0040BCA0(record); return;
+            case 0x004380C0: EntityHandler_004380C0(record); return;   // grotte scellee, corps de 0x0040BCA0
             case 0x0040BE50: EntityHandler_0040BE50(record); return;
+            case 0x00408EF0: EntityHandler_00408EF0(record); return;   // Handlers/Mine.cs
+            case 0x0040B940: EntityHandler_0040B940(record); return;
+            case 0x0040BF50: EntityHandler_0040BF50(record); return;
+            case 0x0043E170: EntityHandler_0043E170(record); return;   // grotte scellee, corps de 0x0040BF50
+            case 0x00483B50: EntityHandler_00483B50(record); return;
+            case 0x00486DE0: EntityHandler_00486DE0(record); return;   // grotte scellee, corps de 0x00483B50
             // La bouffee qui blesse, un corps pour trois zones — Combat/Projectiles.cs.
             case 0x00407D70: EntityHandler_00407D70(record); return;
             case 0x0040D6C0: EntityHandler_0040D6C0(record); return;
