@@ -1185,6 +1185,16 @@ public static unsafe partial class Blaze
             case 0x00455EB0: EntityHandler_00455EB0(record); return;
             case 0x00452410: EntityHandler_00452410(record); return;
             case 0x00453650: EntityHandler_00453650(record); return;
+            case 0x00451460: EntityHandler_00451460(record); return;
+            case 0x00451630: EntityHandler_00451630(record); return;
+            case 0x00452E40: EntityHandler_00452E40(record); return;
+            case 0x00451790: EntityHandler_00451790(record); return;
+            case 0x00453070: EntityHandler_00453070(record); return;
+            case 0x004518D0: EntityHandler_004518D0(record); return;
+            case 0x00454610: EntityHandler_00454610(record); return;
+            case 0x004533A0: EntityHandler_004533A0(record); return;
+            case 0x00454ED0: EntityHandler_00454ED0(record); return;
+            case 0x004551D0: EntityHandler_004551D0(record); return;
             case 0x00408040: EntityHandler_00408040(record); return;
             case 0x00408C60: EntityHandler_00408C60(record); return;
             case 0x00409A30: EntityHandler_00409A30(record); return;

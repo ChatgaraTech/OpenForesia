@@ -4,6 +4,29 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 19)
+
+- feat : **dix autres gestionnaires de la mine**, `Handlers/Mine.cs`. Zone 1 : 98 -> 108. Il ne
+  reste qu'un creneau a la table `0x0056adc8` de la mine, `0x00451B40` (1354 octets)
+- feat : `0x00451460`, `0x00451630` et `0x00452E40`, **la saisie d'un personnage** — animation 6,
+  monde gele le temps qu'elle se joue, puis bit `0x2000000` sur la victime et bouffee d'effets
+- doc : **`0x00451460` ne reagit qu'au Nain** — elle remonte a l'enregistrement de personnage
+  (`MainMem + 0xf0150 + emplacement * 0x2000`) et exige que les trois bits bas de l'octet
+  d'identite valent 6. Seul declencheur de la mine qui lise une classe
+- feat : `0x00451790` et `0x00453070`, **les portes a deux battants** : chacune fait tourner une
+  entite voisine atteinte par `this + n * 0x9c`, le numero arrivant par un champ de placement
+- feat : `0x004518D0`, la seconde chute de pierres — jumelle de `0x00451A00`, sans l'attente et
+  avec une rotation tiree au sort
+- feat : `0x00454610`, les cinq jets des sous-zones 3, 4 et 9 ; `EmitJetPair` resservait tel quel
+- feat : `0x004533A0`, **la catapulte** — elle coupe les manettes, ecrit `+0x54` avec la puissance
+  de `+0x16` et pousse deux voisines distinctes
+- feat : `0x00454ED0`, le battant qui pivote aux deux bits bas de `DAT_00571570`, chaque moitie
+  consommant le sien ; `0x004551D0`, **la nacelle du gouffre** qui se range au quai le plus proche
+  du groupe
+- fix : la comparaison de quai de `0x004551D0` doit etre **signee** — `& 0xfffff000` met le bit de
+  signe en jeu, et en non signe la nacelle ne serait jamais allee chercher le groupe
+- doc : neuf relevés au desassembleur gardes sous `Legacy/Raw/Blaze/`
+
 ## 2026-09-16 (suite 18)
 
 - feat : **dix autres gestionnaires de la mine**, `Handlers/Mine.cs`. Zone 1 : 88 -> 98
