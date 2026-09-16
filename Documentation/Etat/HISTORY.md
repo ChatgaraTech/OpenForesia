@@ -4,6 +4,27 @@ Une ligne par fonctionnalité ou correction. Le plus récent en haut.
 
 ---
 
+## 2026-09-16 (suite 18)
+
+- feat : **dix autres gestionnaires de la mine**, `Handlers/Mine.cs`. Zone 1 : 88 -> 98
+- feat : `0x00452090` et `0x00454800`, **les deux ascenseurs** — meme forme, meme boite de comptage
+  en (x, z), meme grondement toutes les dix images ; le premier est garde par le bit `0x40` de
+  `0x005e96fc`, sans lequel il ne bouge pas et rend la main au script
+- feat : `0x00452790` et `0x00453F60`, **le pilon** du creneau 11 : celui des sous-zones 0 a 2
+  frappe a chaque image, celui des sous-zones 5 a 8 ne frappe qu'a l'arrivee et marque d'abord les
+  membres touches (`0x20000000`, mot de contact `0x8000`)
+- feat : `0x004538C0` et `0x00455570`, **le wagonnet** — 0x511 octets identiques a l'octet pres, un
+  seul corps ; il joue toute sa course a la naissance pour en connaitre les deux bouts
+- feat : `0x00454360` et `0x00455EB0`, **la tremie qui change de carte** ; la seconde borne le
+  numero de sous-zone a 4 et refuse de partir tant qu'un membre est sous `0x12c000`
+- feat : `0x00452410` et `0x00453650`, **les deux masses** : l'une tombe quand le groupe approche a
+  600 unites, l'autre rebondit pendant dix-neuf images puis revient se pendre a sa pose
+- fix : `TickScrapingBlock` appelle desormais `ScrapeSoundTick`, les cinq memes lignes que le
+  creneau 37 portait en double
+- doc : trois relevés au desassembleur gardes sous `Legacy/Raw/Blaze/` ; Ghidra rend le `0x514000`
+  de `FUN_00453650` comme `FUN_00514000` — l'immediat tombe sur l'adresse d'une fonction
+
+
 ## 2026-09-16 (suite 17)
 
 - feat : **dix autres decors de la mine**, `Handlers/Mine.cs`. Zone 1 : 78 -> 88
